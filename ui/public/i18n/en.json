@@ -547,11 +547,15 @@
           "mark": {
             "correct": "correct",
             "extra": "should not be painted",
-            "color": "wrong colour"
+            "color": "wrong colour",
+            "wrong": "wrong"
           },
           "counter": "Found {{found}} · Left {{missing}} · Extra {{extra}}",
           "tooMany": "You marked too many regions; marks are hidden. Reduce your selection and check again.",
-          "solutionShown": "The correct regions are shown."
+          "solutionShown": "The correct regions are shown.",
+          "hintNumbered": "Pick a colour and tap a numbered region: every region with that number is painted. Tap again with the same colour to remove it. You can also paint from the numbers below.",
+          "groupNo": "Number {{n}}",
+          "groups": "Question numbers"
         }
       }
     },

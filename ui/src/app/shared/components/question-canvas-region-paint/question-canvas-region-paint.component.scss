@@ -306,3 +306,37 @@
 .rp-regions.is-circle.is-readonly .rp-region.is-painted .rp-region__shape:hover {
   fill: transparent;
 }
+
+// Dilim c: numaralı boyama — soru numaraları listesi.
+.rp-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rp-group {
+  @extend .rp-swatch;
+  min-height: 36px;
+  padding: 2px 8px 2px 4px;
+
+  &__no {
+    min-width: 24px;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+  }
+
+  .rp-swatch__chip {
+    width: 22px;
+    height: 22px;
+
+    &.is-empty {
+      background: repeating-linear-gradient(
+        45deg,
+        var(--ms-surface),
+        var(--ms-surface) 3px,
+        var(--ms-surface-strong) 3px,
+        var(--ms-surface-strong) 6px
+      );
+    }
+  }
+}

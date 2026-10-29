@@ -547,11 +547,15 @@
           "mark": {
             "correct": "doğru",
             "extra": "boyanmamalıydı",
-            "color": "renk yanlış"
+            "color": "renk yanlış",
+            "wrong": "yanlış"
           },
           "counter": "Bulunan {{found}} · Kalan {{missing}} · Fazla {{extra}}",
           "tooMany": "Çok fazla bölge işaretledin; işaretler gösterilmiyor. Seçimini azaltıp yeniden kontrol et.",
-          "solutionShown": "Doğru bölgeler gösteriliyor."
+          "solutionShown": "Doğru bölgeler gösteriliyor.",
+          "hintNumbered": "Bir renk seç ve numaralı bölgeye dokun: o numaralı bütün bölgeler boyanır. Aynı renkle yeniden dokunursan boya kalkar. Aşağıdaki numaralardan da boyayabilirsin.",
+          "groupNo": "{{n}} numara",
+          "groups": "Soru numaraları"
         }
       }
     },

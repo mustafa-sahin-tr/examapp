@@ -33,6 +33,16 @@ namespace ExamApp.Api.Services.Interactions;
 /// bölge. <c>CorrectCount</c> = bulunan, <c>TotalCount</c> = hedef + fazla. Geri bildirim yalnız BOYALI bölgeler (plan sırası;
 /// <c>reason</c>: <c>extra</c> | <c>color</c>) ve sayılar (<c>found</c>, <c>missing</c>, <c>extra</c>); boyanmamış hedef yazılmaz.
 /// Fazla boya <see cref="TextSelectGrader.TooManyExtraMin"/> eşiğini aşarsa satırlar yazılmaz (<c>tooMany</c>).
+/// <para>Dilim c — numaralı boyama (bölge modunda isteğe bağlı <c>groups</c>; "her sorunun doğru cevabının rengiyle aynı numaralı
+/// bölümleri boyayınız", mandala):</para>
+/// <list type="bullet">
+/// <item>Plan: <c>groups:[{id,label?}]</c> (1..40; id'ler planda tekil) ve her bölgede <c>group</c> (plandaki bir grup; grup varken
+/// zorunlu, yokken yasak). Her grubun en az bir bölgesi olur. Grup = soru numarası; bir grubun bütün bölgeleri birlikte boyanır.</item>
+/// <item>Çözüm: <c>{"fills":{"g1":"p1"}}</c> — her grup → doğru cevabın rengi (bütün gruplar).</item>
+/// <item>Öğrenci payload'u: <c>{fills:{"g1":"p1"}}</c> (anahtar grup id'si).</item>
+/// </list>
+/// Kontrol grup başına (MCQ gibi): satır = grup (plan sırası), doğru ⇔ doğru renk; boyanmamış grup yanlış. Geri bildirim
+/// <c>{"rows":[{id,correct}]}</c>; beklenen renk yazılmaz.
 /// </summary>
 public sealed class RegionPaintGrader : IInteractionGrader
 {
@@ -45,6 +55,7 @@ public sealed class RegionPaintGrader : IInteractionGrader
     public const string StyleCircle = "circle";
 
     public const int MaxRegions = 100;
+    public const int MaxGroups = 40;
     public const int MinPoints = 3;
     public const int MaxPoints = 64;
     public const double MaxCoordinate = InteractionBoxes.MaxExtent;
@@ -66,8 +77,9 @@ public sealed class RegionPaintGrader : IInteractionGrader
     };
 
     private static readonly HashSet<string> RootKeys = new(StringComparer.Ordinal) { "version", "type", "mode", "rows", "cols", "palette" };
-    private static readonly HashSet<string> RegionsRootKeys = new(StringComparer.Ordinal) { "version", "type", "mode", "style", "palette", "regions" };
-    private static readonly HashSet<string> RegionKeys = new(StringComparer.Ordinal) { "id", "points", "label" };
+    private static readonly HashSet<string> RegionsRootKeys = new(StringComparer.Ordinal) { "version", "type", "mode", "style", "palette", "groups", "regions" };
+    private static readonly HashSet<string> RegionKeys = new(StringComparer.Ordinal) { "id", "points", "label", "group" };
+    private static readonly HashSet<string> GroupKeys = new(StringComparer.Ordinal) { "id", "label" };
     private static readonly HashSet<string> PaletteKeys = new(StringComparer.Ordinal) { "id", "color", "label" };
 
     private static readonly JsonDocumentOptions StrictOptions = new() { MaxDepth = 8, AllowDuplicateProperties = false };
@@ -138,7 +150,7 @@ public sealed class RegionPaintGrader : IInteractionGrader
     /// Kayıt kuralı (issue #587): ızgarada 2..20 × 2..20, palet 1..8 tekil id ve tekil izinli renk, etiket isteğe bağlı düz metin
     /// (≤ 40); çözüm boşsa geçerli (taslak), doluysa her palet rengine 0..hücre sayısı tam sayı, toplam ≤ hücre sayısı, en az bir renk
     /// &gt; 0. Bölge modunda 1..100 çokgen bölge (3..64 köşe, alan ≥ 1); çözüm doluysa en az bir bölge, her biri plandaki bir bölgeden
-    /// plandaki bir renge.
+    /// plandaki bir renge. Numaralı boyamada (gruplar) her bölge bir gruba bağlı, her grubun bölgesi var; çözüm her gruba bir renk.
     /// </summary>
     public bool ValidateDefinition(string? plan, string? solution)
     {
@@ -158,15 +170,16 @@ public sealed class RegionPaintGrader : IInteractionGrader
                 if (!HasOnlyKeys(root, ["fills"]) || !root.TryGetProperty("fills", out var fillsElement)
                     || fillsElement.ValueKind != JsonValueKind.Object)
                     return false;
-                var regionIds = model.Regions.Select(r => r.Id).ToHashSet(StringComparer.Ordinal);
+                var keyIds = model.FillKeys();
                 var filled = new HashSet<string>(StringComparer.Ordinal);
                 foreach (var entry in fillsElement.EnumerateObject())
                 {
-                    if (!regionIds.Contains(entry.Name) || !filled.Add(entry.Name) || entry.Value.ValueKind != JsonValueKind.String
+                    if (!keyIds.Contains(entry.Name) || !filled.Add(entry.Name) || entry.Value.ValueKind != JsonValueKind.String
                         || !paletteIds.Contains(entry.Value.GetString() ?? string.Empty))
                         return false;
                 }
-                return filled.Count > 0;
+                // Numaralı boyamada her grubun (sorunun) bir doğru rengi var.
+                return model.IsGrouped ? filled.Count == keyIds.Count : filled.Count > 0;
             }
             if (!HasOnlyKeys(root, ["counts"]) || !root.TryGetProperty("counts", out var countsElement)
                 || countsElement.ValueKind != JsonValueKind.Object)
@@ -192,11 +205,21 @@ public sealed class RegionPaintGrader : IInteractionGrader
 
     private sealed record Paint(string Id, string Color, string Label);
 
-    private sealed record Area(string Id, string Label);
+    private sealed record Area(string Id, string Label, string? Group);
 
-    private sealed record PaintPlan(string Mode, int Rows, int Cols, List<Paint> Palette, List<Area> Regions)
+    private sealed record Group(string Id, string Label);
+
+    private sealed record PaintPlan(string Mode, int Rows, int Cols, List<Paint> Palette, List<Area> Regions, List<Group> Groups)
     {
         public bool IsRegions => Mode == RegionsMode;
+
+        /// <summary>Numaralı boyama: boya grup başına.</summary>
+        public bool IsGrouped => Groups.Count > 0;
+
+        /// <summary><c>fills</c> anahtarları: gruplu planda grup id'leri, değilse bölge id'leri.</summary>
+        public HashSet<string> FillKeys() => IsGrouped
+            ? Groups.Select(g => g.Id).ToHashSet(StringComparer.Ordinal)
+            : Regions.Select(r => r.Id).ToHashSet(StringComparer.Ordinal);
 
         public int Cells => Rows * Cols;
     }
@@ -227,6 +250,13 @@ public sealed class RegionPaintGrader : IInteractionGrader
         if (!TryReadFillsSolution(input.Solution, plan, out var targets))
             return InteractionGradeResult.Ungradable;
         var fills = StudentFills(plan, input.Payload);
+        if (plan.IsGrouped)
+        {
+            var groupRows = plan.Groups.Where(g => targets.ContainsKey(g.Id))
+                .Select(g => (g.Id, fills.TryGetValue(g.Id, out var paint) && string.Equals(paint, targets[g.Id], StringComparison.Ordinal)))
+                .ToList();
+            return InteractionGradeResult.Of(groupRows.Count(r => r.Item2), groupRows.Count, WriteFeedback(groupRows));
+        }
         var rows = new List<(string Id, bool Correct, string? Reason)>();
         var found = 0;
         var extra = 0;
@@ -262,14 +292,18 @@ public sealed class RegionPaintGrader : IInteractionGrader
             return [];
         var fills = StudentFills(plan, input.Payload);
         var palette = plan.Palette.ToDictionary(p => p.Id, StringComparer.Ordinal);
-        return plan.Regions.Select((region, index) => (region, index)).Where(x => targets.ContainsKey(x.region.Id)).Select(x =>
+        // Numaralı boyamada öğe = grup (soru), değilse hedef bölge.
+        var items = plan.IsGrouped
+            ? plan.Groups.Select(g => (g.Id, g.Label))
+            : plan.Regions.Select(r => (r.Id, r.Label));
+        return items.Select((item, index) => (item.Id, item.Label, index)).Where(x => targets.ContainsKey(x.Id)).Select(x =>
         {
-            var label = InteractionAnalysis.TextLabel(string.IsNullOrWhiteSpace(x.region.Label)
+            var label = InteractionAnalysis.TextLabel(string.IsNullOrWhiteSpace(x.Label)
                 ? (x.index + 1).ToString(System.Globalization.CultureInfo.InvariantCulture)
-                : x.region.Label);
-            if (!fills.TryGetValue(x.region.Id, out var paint) || !palette.TryGetValue(paint, out var entry))
-                return new InteractionItemResponse(x.region.Id, label, false, null, null);
-            return new InteractionItemResponse(x.region.Id, label, string.Equals(paint, targets[x.region.Id], StringComparison.Ordinal),
+                : x.Label);
+            if (!fills.TryGetValue(x.Id, out var paint) || !palette.TryGetValue(paint, out var entry))
+                return new InteractionItemResponse(x.Id, label, false, null, null);
+            return new InteractionItemResponse(x.Id, label, string.Equals(paint, targets[x.Id], StringComparison.Ordinal),
                 paint, InteractionAnalysis.TextLabel(PaintName(entry)));
         }).ToList();
     }
@@ -279,7 +313,8 @@ public sealed class RegionPaintGrader : IInteractionGrader
         => payload != null && TryParseFills(payload, plan, out var fills) ? fills : new Dictionary<string, string>(StringComparer.Ordinal);
 
     /// <summary>
-    /// Katı bölge payload'u: <c>fills</c> nesnesi; plan verilmişse anahtarlar plandaki bölgeler, değerler plandaki renkler. Plan
+    /// Katı bölge payload'u: <c>fills</c> nesnesi; plan verilmişse anahtarlar plandaki bölgeler (gruplu planda gruplar), değerler
+    /// plandaki renkler. Plan
     /// verilmezse (Normalize) yalnız biçim: en çok <see cref="MaxRegions"/> geçerli id → geçerli id.
     /// </summary>
     private static bool TryParseFills(string payload, PaintPlan? plan, out Dictionary<string, string> fills)
@@ -299,7 +334,7 @@ public sealed class RegionPaintGrader : IInteractionGrader
                 return false;
             if (!root.TryGetProperty("fills", out var element) || element.ValueKind != JsonValueKind.Object)
                 return false;
-            var regionIds = plan?.Regions.Select(r => r.Id).ToHashSet(StringComparer.Ordinal);
+            var regionIds = plan?.FillKeys();
             var paletteIds = plan?.Palette.Select(p => p.Id).ToHashSet(StringComparer.Ordinal);
             foreach (var entry in element.EnumerateObject())
             {
@@ -321,7 +356,7 @@ public sealed class RegionPaintGrader : IInteractionGrader
         }
     }
 
-    /// <summary>Çözüm: hedef bölge → renk. Toleranslı: plana uymayan atlanır; okunamaz ya da boşsa false.</summary>
+    /// <summary>Çözüm: hedef bölge (gruplu planda grup) → renk. Toleranslı: plana uymayan atlanır; okunamaz ya da boşsa false.</summary>
     private static bool TryReadFillsSolution(string? solution, PaintPlan plan, out Dictionary<string, string> targets)
     {
         targets = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -333,7 +368,7 @@ public sealed class RegionPaintGrader : IInteractionGrader
             if (doc.RootElement.ValueKind != JsonValueKind.Object || !doc.RootElement.TryGetProperty("fills", out var element)
                 || element.ValueKind != JsonValueKind.Object)
                 return false;
-            var regionIds = plan.Regions.Select(r => r.Id).ToHashSet(StringComparer.Ordinal);
+            var regionIds = plan.FillKeys();
             var paletteIds = plan.Palette.Select(p => p.Id).ToHashSet(StringComparer.Ordinal);
             foreach (var entry in element.EnumerateObject())
             {
@@ -383,7 +418,7 @@ public sealed class RegionPaintGrader : IInteractionGrader
 
     private static bool TryReadPlan(string? plan, JsonDocumentOptions options, bool strict, out PaintPlan model)
     {
-        model = new PaintPlan(GridMode, 0, 0, new List<Paint>(), new List<Area>());
+        model = new PaintPlan(GridMode, 0, 0, new List<Paint>(), new List<Area>(), new List<Group>());
         if (string.IsNullOrWhiteSpace(plan))
             return false;
         try
@@ -436,8 +471,33 @@ public sealed class RegionPaintGrader : IInteractionGrader
                 return false;
 
             var regions = new List<Area>();
+            var groups = new List<Group>();
             if (regionsMode)
             {
+                if (root.TryGetProperty("groups", out var groupsElement))
+                {
+                    if (groupsElement.ValueKind != JsonValueKind.Array)
+                    {
+                        if (strict) return false;
+                    }
+                    else
+                    {
+                        foreach (var raw in groupsElement.EnumerateArray())
+                        {
+                            if (raw.ValueKind != JsonValueKind.Object || (strict && !HasOnlyKeys(raw, GroupKeys))
+                                || !TryReadString(raw, "id", out var id) || !InteractionIds.IsValid(id) || !ids.Add(id)
+                                || !TryReadLabel(raw, strict, out var label))
+                            {
+                                if (strict) return false;
+                                continue;
+                            }
+                            groups.Add(new Group(id, label));
+                        }
+                        if (groups.Count > MaxGroups || (strict && groups.Count == 0))
+                            return false;
+                    }
+                }
+                var groupIds = groups.Select(g => g.Id).ToHashSet(StringComparer.Ordinal);
                 if (!root.TryGetProperty("regions", out var regionsElement) || regionsElement.ValueKind != JsonValueKind.Array)
                     return false;
                 foreach (var raw in regionsElement.EnumerateArray())
@@ -445,23 +505,44 @@ public sealed class RegionPaintGrader : IInteractionGrader
                     if (raw.ValueKind != JsonValueKind.Object || (strict && !HasOnlyKeys(raw, RegionKeys))
                         || !TryReadString(raw, "id", out var id) || !InteractionIds.IsValid(id) || !ids.Add(id)
                         || !raw.TryGetProperty("points", out var points) || !IsValidPolygon(points)
-                        || !TryReadLabel(raw, strict, out var label))
+                        || !TryReadLabel(raw, strict, out var label) || !TryReadRegionGroup(raw, groupIds, strict, out var group))
                     {
                         if (strict) return false;
                         continue;
                     }
-                    regions.Add(new Area(id, label));
+                    regions.Add(new Area(id, label, group));
                 }
                 if (regions.Count is 0 or > MaxRegions)
                     return false;
+                // Her grubun (sorunun) boyanacak en az bir bölgesi olur; okumada bölgesiz grup atlanır.
+                var used = regions.Select(r => r.Group).OfType<string>().ToHashSet(StringComparer.Ordinal);
+                if (strict && groups.Any(g => !used.Contains(g.Id)))
+                    return false;
+                groups.RemoveAll(g => !used.Contains(g.Id));
             }
-            model = new PaintPlan(mode, rows, cols, palette, regions);
+            model = new PaintPlan(mode, rows, cols, palette, regions, groups);
             return true;
         }
         catch (Exception ex) when (ex is JsonException or ArgumentException or InvalidOperationException)
         {
             return false;
         }
+    }
+
+    /// <summary>
+    /// Bölgenin grubu: grup varken plandaki bir grup (zorunlu), yokken alan yasak. Okumada gruplu planda grupsuz / bilinmeyen gruplu bölge
+    /// atlanır; grupsuz planda alan yok sayılır.
+    /// </summary>
+    private static bool TryReadRegionGroup(JsonElement raw, IReadOnlySet<string> groupIds, bool strict, out string? group)
+    {
+        group = null;
+        var present = raw.TryGetProperty("group", out var value) && value.ValueKind != JsonValueKind.Null;
+        if (groupIds.Count == 0)
+            return !strict || !present;
+        if (!present || value.ValueKind != JsonValueKind.String || !groupIds.Contains(value.GetString() ?? string.Empty))
+            return false;
+        group = value.GetString();
+        return true;
     }
 
     /// <summary>Etiket isteğe bağlı; varsa düz metin, sınır içinde (kayıtta). Okumada eksik / bozuksa boş.</summary>

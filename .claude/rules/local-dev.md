@@ -765,7 +765,7 @@ CSS rengi alınmaz; renkler ve id'ler tekil, `label` isteğe bağlı düz metin 
 Oynatıcı: palet + silgi, dokun / sürükle boyar, aynı renkli kareden başlayan sürükleme siler, renk başına sayaç canlı (hedef gösterilmez);
 çözüm açıkken hedef sayılar satır öncelikli örnek dolguyla. Yazarlık görselsiz editörde (tür **Boyama (ızgara)**): boyut + renkler, hedef
 kitaptaki gibi kesir (`2/5`), ondalık (`0,35`), yüzde (`%25`) ya da kare sayısı; tam kareye inmeyen hedef reddedilir (kayda yalnız sayı
-gider). Testte de çözülebilir (puanlanır). Sonraki dilim: c) MCQ → resim boyama. Migration yok; Aspire'da
+gider). Testte de çözülebilir (puanlanır). Dilim c: numaralı boyama (aşağıda). Migration yok; Aspire'da
 exam API'yi yeniden başlat (yeni kontrolcü).
 
 **Issue #587 dilim b — `regionPaint` bölge modu (görsel üzerinde boyama / daire içine alma).** Plan
@@ -781,6 +781,17 @@ bölge çizilir; yeni bölge ve tuvalde bölgeye tık fırçadaki rengi çözüm
 tık en küçüğüne gider. Oynatıcı görselin üstünde SVG çokgen çizer (tek renkli palette renk seçici gizli; `circle`'da boyalı bölge
 elipsle çevrilir); kontrol sonrası doğru yeşil, fazla kırmızı, yanlış renk turuncu + "Bulunan · Kalan · Fazla". Claude sayfa
 işaretlemesi E bloğuna tip türetmez. Migration yok; Aspire'da exam API'yi yeniden başlat.
+
+**Issue #587 dilim c — numaralı boyama (MCQ → resim boyama, mandala).** Yeni tip yok: bölge planına isteğe bağlı
+`groups:[{id,label?}]` (1–40; grup = soru numarası, id'ler bölge / paletle birlikte tekil) ve her bölgede `group` (grup varken zorunlu,
+yokken yasak; her grubun en az bir bölgesi olur). Çözüm `{"fills":{"g1":"p1"}}` — **her** grup → o sorunun doğru cevabının rengi (sorular ve
+renkli şıklar görselde, öğrenci cevabı rengi seçerek verir). Öğrenci payload'u `{"fills":{"g1":"p1"}}` (anahtar grup). Kontrol grup başına
+(MCQ gibi): satır = grup (plan sırası), boyanmamış grup yanlış, geri bildirim `{"rows":[{id,correct}]}` (beklenen renk yazılmaz, sayaç yok);
+analiz: öğe = grup, cevap = renk. Oynatıcı: bölgeye dokunmak o numaralı **bütün** bölgeleri boyar; altta numara listesi (klavyeyle boyama,
+kontrol sonrası grup başına ✓/✗). Etkinlikte boyanmamış numara "eksik" sayılır. Yazarlık soru tuvalinde **Boyama** → **Numaralı boyama**:
+açınca var olan bölgeler 1. soruya girer; yeni bölge seçili soruya girer, tuvalde bölgeye tık onu seçili soruya taşır; soru başına numara
+etiketi ve doğru renk; bölgesi olan soru silinmez. Pilot TT MatLab dosya 57 (8 soru, ~65 bölge, 8 renk). Migration yok; Aspire'da exam
+API'yi yeniden başlat.
 
 **Dev sıfırlama — soru bankası.** `deploy/scripts/dev-reset-questions.sh` (dev-only) tüm soruları ve FK ile bağlı
 her şeyi (test-soru bağları, öğrenci cevapları, yorumlar, LabelingPages/Results), öğrencilerin test oturumlarını

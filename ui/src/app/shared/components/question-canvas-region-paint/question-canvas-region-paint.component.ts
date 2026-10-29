@@ -17,6 +17,7 @@ import {
   buildRegionPaintPayload,
   countPainted,
   emptyCells,
+  groupName,
   isEmptyPaint,
   paintCss,
   parseRegionPaintAnswer,
@@ -33,6 +34,8 @@ import {
 export interface PaintRegionView {
   region: PaintRegion;
   no: number;
+  /** Numaralı boyamada boyanın anahtarı grup id'si, değilse bölge id'si. */
+  key: string;
   points: string;
   ellipse: { cx: number; cy: number; rx: number; ry: number };
   /** Gösterilen boya (çözüm açıkken çözüm) — palet dizini ya da null. */
@@ -52,6 +55,9 @@ import { StorageImageResolver } from '../../utils/storage-image-refresh.util';
  * silgi) boyayı kaldırır. `circle` stilinde boya bölgeyi çevreleyen elips olarak çizilir; tek renkli palette renk seçici gizlidir.
  * Kontrol sonrası yalnız boyalı bölgeler işaretlenir (doğru yeşil, fazla kırmızı, yanlış renk turuncu) ve "Bulunan · Kalan · Fazla"
  * sayacı gösterilir; çözüm açıkken hedef bölgeler kendi renkleriyle çizilir.
+ *
+ * Dilim c — numaralı boyama (planda `groups`): bölgeye dokunmak o numaralı (gruptaki) bütün bölgeleri boyar; altta soru numaraları
+ * listesi aynı işi klavyeyle yapar ve kontrol sonrası grup başına doğru / yanlış gösterir.
  */
 @Component({
   selector: 'app-question-canvas-region-paint',
@@ -177,19 +183,43 @@ export class QuestionCanvasRegionPaintComponent {
     const fills = this.shownFills();
     const index = new Map(plan.palette.map((p, i) => [p.id, i]));
     const marks = new Map((this._feedback()?.rows ?? []).map((r) => [r.id, r]));
+    const grouped = plan.groups.length > 0;
     return plan.regions.map((region, i) => {
       const b = polygonBounds(region.points);
       // Daire: bölgeyi çevreleyen elips (kenarlar biraz dışarıda kalsın).
       const pad = Math.max(4, Math.min(b.width, b.height) * 0.12);
-      const paintId = Object.hasOwn(fills, region.id) ? fills[region.id] : null;
-      const row = this._showSolution() ? undefined : marks.get(region.id);
+      const key = grouped ? (region.group ?? region.id) : region.id;
+      const paintId = Object.hasOwn(fills, key) ? fills[key] : null;
+      const row = this._showSolution() ? undefined : marks.get(key);
+      // Numaralı boyamada yanlış grup "yanlış renk" gibi işaretlenir (boyanmamış da olsa).
+      const wrong: RegionPaintReason = grouped ? 'color' : (row?.reason ?? 'extra');
       return {
         region,
         no: i + 1,
+        key,
         points: region.points.map(([x, y]) => `${x},${y}`).join(' '),
         ellipse: { cx: b.x + b.width / 2, cy: b.y + b.height / 2, rx: b.width / 2 + pad, ry: b.height / 2 + pad },
         paint: paintId === null ? null : (index.get(paintId) ?? null),
-        mark: row ? (row.correct ? 'correct' : (row.reason ?? 'extra')) : null,
+        mark: row ? (row.correct ? 'correct' : wrong) : null,
+      };
+    });
+  });
+
+  /** Numaralı boyama: soru numaraları (grup) listesi — gösterilen boya ve kontrol işareti. */
+  readonly groupViews = computed(() => {
+    const plan = this._regionsPlan();
+    if (!plan || plan.groups.length === 0) return [];
+    const fills = this.shownFills();
+    const index = new Map(plan.palette.map((p, i) => [p.id, i]));
+    const marks = this.rowMarks();
+    return plan.groups.map((group) => {
+      const paintId = Object.hasOwn(fills, group.id) ? fills[group.id] : null;
+      const mark = this._showSolution() ? undefined : marks.get(group.id);
+      return {
+        id: group.id,
+        name: groupName(plan, group.id),
+        paint: paintId === null ? null : (index.get(paintId) ?? null),
+        mark: mark === undefined ? null : mark ? ('ok' as const) : ('bad' as const),
       };
     });
   });
@@ -211,10 +241,23 @@ export class QuestionCanvasRegionPaintComponent {
     return paint === null || !plan || !plan.palette[paint] ? null : paintCss(plan.palette[paint].color);
   }
 
-  /** Bölgeye dokunma: seçili renk verilir; aynı renkle boyalıysa (ya da silgide) boya kalkar. */
+  /**
+   * Bölgeye dokunma: seçili renk verilir; aynı renkle boyalıysa (ya da silgide) boya kalkar. Numaralı boyamada anahtar grup id'sidir
+   * (gruptaki bütün bölgeler birlikte boyanır; `regionId` olarak grup id'si de verilebilir).
+   */
   toggleRegion(regionId: string): void {
     const plan = this._regionsPlan();
-    if (this.readOnly() || !plan || !plan.regions.some((r) => r.id === regionId)) return;
+    if (this.readOnly() || !plan) return;
+    if (plan.groups.length > 0) {
+      const group = plan.groups.some((g) => g.id === regionId) ? regionId : plan.regions.find((r) => r.id === regionId)?.group;
+      if (group) this.togglePaint(plan, group);
+      return;
+    }
+    if (!plan.regions.some((r) => r.id === regionId)) return;
+    this.togglePaint(plan, regionId);
+  }
+
+  private togglePaint(plan: RegionPaintRegionsPlanV1, regionId: string): void {
     const selected = plan.palette.length === 1 ? 0 : this.selected();
     const current = this.fills();
     const paint = selected === null ? null : (plan.palette[selected]?.id ?? null);
@@ -227,7 +270,8 @@ export class QuestionCanvasRegionPaintComponent {
 
   regionAria(view: PaintRegionView, t: (key: string, params?: Record<string, unknown>) => string): string {
     const plan = this._regionsPlan();
-    const name = view.region.label || t('regions.regionNo', { n: view.no });
+    const group = view.region.group && plan ? groupName(plan, view.region.group) : null;
+    const name = group ? t('regions.groupNo', { n: group }) : view.region.label || t('regions.regionNo', { n: view.no });
     const entry = view.paint === null || !plan ? null : plan.palette[view.paint];
     const state = entry ? entry.label || t('colors.' + entry.color) : t('regions.unpainted');
     return view.mark ? `${name}: ${state}, ${t('regions.mark.' + view.mark)}` : `${name}: ${state}`;
@@ -238,6 +282,14 @@ export class QuestionCanvasRegionPaintComponent {
    */
   cellSize(cols: number): string {
     return `clamp(14px, calc((100vw - 64px) / ${cols}), 32px)`;
+  }
+
+  groupAria(view: { name: string; paint: number | null; mark: 'ok' | 'bad' | null }, t: (key: string, params?: Record<string, unknown>) => string): string {
+    const plan = this._regionsPlan();
+    const entry = view.paint === null || !plan ? null : plan.palette[view.paint];
+    const state = entry ? entry.label || t('colors.' + entry.color) : t('regions.unpainted');
+    const mark = view.mark === 'ok' ? `, ${t('regions.mark.correct')}` : view.mark === 'bad' ? `, ${t('regions.mark.wrong')}` : '';
+    return `${t('regions.groupNo', { n: view.name })}: ${state}${mark}`;
   }
 
   css(color: PaintColor): string {

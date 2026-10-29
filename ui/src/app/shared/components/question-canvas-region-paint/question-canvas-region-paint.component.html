@@ -59,13 +59,33 @@
       </div>
     }
 
+    @if (groupViews().length > 0) {
+      <!-- Dilim c: numaralı boyama — soru numarası başına boya (klavye) ve kontrol işareti. -->
+      <div class="rp-groups" data-testid="rp-groups" role="group" [attr.aria-label]="t('regions.groups')">
+        @for (g of groupViews(); track g.id) {
+          <button type="button" class="rp-group" [attr.data-group]="g.id" [class.is-ok]="g.mark === 'ok'" [class.is-bad]="g.mark === 'bad'"
+            [disabled]="readOnly()" [attr.aria-label]="groupAria(g, t)" (click)="toggleRegion(g.id)">
+            <span class="rp-group__no">{{ g.name }}</span>
+            <span class="rp-swatch__chip" [class.is-empty]="g.paint === null" [style.background]="regionPaintCss(g.paint)" aria-hidden="true"></span>
+            @if (g.mark === 'ok') {
+              <mat-icon class="rp-swatch__mark" aria-hidden="true">check</mat-icon>
+            } @else if (g.mark === 'bad') {
+              <mat-icon class="rp-swatch__mark" aria-hidden="true">close</mat-icon>
+            }
+          </button>
+        }
+      </div>
+    }
+
     @if (!solutionShown()) {
       <div class="rp-actions">
         <button mat-stroked-button type="button" data-testid="rp-reset" [disabled]="!canReset()" (click)="reset()">
           <mat-icon>restart_alt</mat-icon>{{ t('reset') }}
         </button>
       </div>
-      <p class="rp-hint">{{ regionStyle() === 'circle' ? t('regions.hintCircle') : t('regions.hint') }}</p>
+      <p class="rp-hint">
+        {{ groupViews().length > 0 ? t('regions.hintNumbered') : regionStyle() === 'circle' ? t('regions.hintCircle') : t('regions.hint') }}
+      </p>
     }
 
     @if (feedbackState(); as fb) {
@@ -78,6 +98,12 @@
         @if (fb.tooMany) {
           <p class="rp-hint" data-testid="rp-too-many">{{ t('regions.tooMany') }}</p>
         }
+      } @else if (groupViews().length > 0) {
+        <p class="rp-result" role="status" data-testid="rp-result" [class.is-ok]="correctCount() === fb.rows.length"
+          [class.is-bad]="correctCount() < fb.rows.length">
+          <mat-icon aria-hidden="true">{{ correctCount() === fb.rows.length ? 'check_circle' : 'error' }}</mat-icon>
+          {{ correctCount() === fb.rows.length ? t('resultOk') : t('resultPartial', { ok: correctCount(), total: fb.rows.length }) }}
+        </p>
       }
     }
   } @else {

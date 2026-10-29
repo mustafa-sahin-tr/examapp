@@ -103,7 +103,10 @@
       "noTargets": "Boyama: en az bir bölgeye renk verin (boyanması / daire içine alınması gereken).",
       "tooManyRegions": "Boyama: en çok {{max}} bölge olabilir.",
       "labelTooLong": "Boyama: renk ve bölge etiketleri en çok {{maxLabel}} karakter olabilir.",
-      "pendingPolygon": "Boyama: çizimi süren çokgeni bitirin ya da iptal edin."
+      "pendingPolygon": "Boyama: çizimi süren çokgeni bitirin ya da iptal edin.",
+      "emptyGroup": "Boyama: bölgesi olmayan soru var (bölge çizin ya da soruyu silin).",
+      "groupWithoutColor": "Boyama: her sorunun doğru cevabının rengini seçin.",
+      "tooManyGroups": "Boyama: en çok {{max}} soru olabilir."
     }
   },
   "menu": {

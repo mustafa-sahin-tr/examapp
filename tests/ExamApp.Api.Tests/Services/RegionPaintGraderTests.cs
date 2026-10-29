@@ -319,4 +319,81 @@ public class RegionPaintGraderTests
         items[1].Correct.ShouldBeFalse();
         items[2].AnswerKey.ShouldBeNull();
     }
+
+    // ---- Numaralı boyama (dilim c) ----
+
+    // TT MatLab s.57 mandala (küçültülmüş): soru 1 → mavi (r1, r3), soru 2 → kırmızı (r2); sarı çeldirici.
+    private const string GroupsPlan =
+        """{"version":1,"type":"regionPaint","mode":"regions","palette":[{"id":"p1","color":"blue"},{"id":"p2","color":"red"},{"id":"p3","color":"yellow"}],"groups":[{"id":"g1","label":"1"},{"id":"g2"}],"regions":[{"id":"r1","points":[[0,0],[40,0],[40,40],[0,40]],"group":"g1"},{"id":"r2","points":[[50,0],[90,0],[70,40]],"group":"g2"},{"id":"r3","points":[[0,50],[40,50],[40,90],[0,90]],"group":"g1"}]}""";
+
+    private const string GroupsSolution = """{"fills":{"g1":"p1","g2":"p2"}}""";
+
+    private static InteractionGradeInput GroupsInput(string? solution, string? payload)
+        => new(GroupsPlan, solution, payload, SelectedAnswerId: null, CorrectAnswerId: null);
+
+    [Fact]
+    public void Groups_ValidateDefinition_Pilot_Accepted()
+    {
+        Grader.ValidateDefinition(GroupsPlan, GroupsSolution).ShouldBeTrue();
+        Grader.ValidateDefinition(GroupsPlan, null).ShouldBeTrue();
+    }
+
+    [Theory]
+    // Grupsuz bölge / bilinmeyen grup / bölgesiz grup / boş grup listesi / grupsuz planda group alanı / grup id'si bölgeyle aynı.
+    [InlineData("""{"version":1,"type":"regionPaint","mode":"regions","palette":[{"id":"p1","color":"red"}],"groups":[{"id":"g1"}],"regions":[{"id":"r1","points":[[0,0],[9,0],[9,9]],"group":"g1"},{"id":"r2","points":[[0,0],[9,0],[9,9]]}]}""")]
+    [InlineData("""{"version":1,"type":"regionPaint","mode":"regions","palette":[{"id":"p1","color":"red"}],"groups":[{"id":"g1"}],"regions":[{"id":"r1","points":[[0,0],[9,0],[9,9]],"group":"g9"}]}""")]
+    [InlineData("""{"version":1,"type":"regionPaint","mode":"regions","palette":[{"id":"p1","color":"red"}],"groups":[{"id":"g1"},{"id":"g2"}],"regions":[{"id":"r1","points":[[0,0],[9,0],[9,9]],"group":"g1"}]}""")]
+    [InlineData("""{"version":1,"type":"regionPaint","mode":"regions","palette":[{"id":"p1","color":"red"}],"groups":[],"regions":[{"id":"r1","points":[[0,0],[9,0],[9,9]]}]}""")]
+    [InlineData("""{"version":1,"type":"regionPaint","mode":"regions","palette":[{"id":"p1","color":"red"}],"regions":[{"id":"r1","points":[[0,0],[9,0],[9,9]],"group":"g1"}]}""")]
+    [InlineData("""{"version":1,"type":"regionPaint","mode":"regions","palette":[{"id":"p1","color":"red"}],"groups":[{"id":"r1"}],"regions":[{"id":"r1","points":[[0,0],[9,0],[9,9]],"group":"r1"}]}""")]
+    // Izgara modunda gruplar.
+    [InlineData("""{"version":1,"type":"regionPaint","mode":"grid","rows":2,"cols":2,"palette":[{"id":"p1","color":"red"}],"groups":[{"id":"g1"}]}""")]
+    public void Groups_ValidateDefinition_BadPlan_Rejected(string plan)
+    {
+        Grader.ValidateDefinition(plan, null).ShouldBeFalse();
+    }
+
+    [Theory]
+    // Eksik grup / bölge anahtarı / bilinmeyen renk.
+    [InlineData("""{"fills":{"g1":"p1"}}""")]
+    [InlineData("""{"fills":{"g1":"p1","g2":"p2","r1":"p1"}}""")]
+    [InlineData("""{"fills":{"g1":"p1","g2":"p9"}}""")]
+    public void Groups_ValidateDefinition_BadSolution_Rejected(string solution)
+    {
+        Grader.ValidateDefinition(GroupsPlan, solution).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Groups_Validate_PayloadKeysAreGroups()
+    {
+        Grader.Validate(GroupsPlan, Fills(("g1", "p1"))).ShouldBeTrue();
+        Grader.Validate(GroupsPlan, Fills(("r1", "p1"))).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Groups_Grade_PerGroup_UnpaintedIsWrong_NoSolutionLeak()
+    {
+        Grader.Grade(GroupsInput(GroupsSolution, Fills(("g1", "p1"), ("g2", "p2")))).IsCorrect.ShouldBeTrue();
+        var result = Grader.Grade(GroupsInput(GroupsSolution, Fills(("g1", "p3"))));
+        result.CorrectCount.ShouldBe(0);
+        result.TotalCount.ShouldBe(2);
+        Rows(result.Feedback).ShouldBe([("g1", false), ("g2", false)]);
+        result.Feedback!.ShouldNotContain("p1");
+        result.Feedback.ShouldNotContain("p2");
+        var partial = Grader.Grade(GroupsInput(GroupsSolution, Fills(("g1", "p1"), ("g2", "p3"))));
+        partial.CorrectCount.ShouldBe(1);
+        Rows(partial.Feedback).ShouldBe([("g1", true), ("g2", false)]);
+    }
+
+    [Fact]
+    public void Groups_Analyze_GroupItems()
+    {
+        var items = Grader.Analyze(GroupsInput(GroupsSolution, Fills(("g2", "p3"))));
+        items.Select(i => i.ItemId).ShouldBe(["g1", "g2"]);
+        items[0].ItemLabel.ShouldBe("1");
+        items[0].AnswerKey.ShouldBeNull();
+        items[1].ItemLabel.ShouldBe("2");
+        items[1].AnswerLabel.ShouldBe("yellow");
+        items[1].Correct.ShouldBeFalse();
+    }
 }

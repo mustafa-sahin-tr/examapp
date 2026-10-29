@@ -10,6 +10,10 @@
  * `{"fills":{"r1":"p1"}}` (boyanacak bölge → renk; yazılmayan bölge boş kalmalı). Öğrenci bölgeye dokunarak seçili rengi verir
  * (`{"fills":{...}}`); `style: "circle"` boyamayı daire içine alma olarak çizer. Kontrol hedef / fazla sayar, geri bildirim yalnız
  * boyalı bölgeleri taşır (backend `RegionPaintGrader`, `TextSelectGrader` kalıbı).
+ *
+ * Dilim c — numaralı boyama (bölge planında `groups`): bölgeler soru numarasına (gruba) bağlı; bir gruba dokunmak o numaralı bütün
+ * bölgeleri boyar. `fills` anahtarı grup id'sidir (plan, çözüm, payload); çözüm her gruba doğru cevabın rengi. Kontrol grup başına
+ * (MCQ gibi): `rows` = gruplar, sayaç yok.
  */
 import { isInteractionType, isValidInteractionId } from './interaction-ids';
 
@@ -22,6 +26,7 @@ export const REGION_PAINT_LIMITS = {
   maxPalette: 8,
   maxLabel: 40,
   maxRegions: 100,
+  maxGroups: 40,
   minPoints: 3,
   maxPoints: 64,
   maxCoordinate: 100_000,
@@ -74,6 +79,14 @@ export interface PaintRegion {
   id: string;
   points: PaintPoint[];
   label: string;
+  /** Numaralı boyamada bölgenin grubu (soru numarası); grupsuz planda yok. */
+  group?: string;
+}
+
+/** Numaralı boyama grubu: soru numarası; `label` boşsa sıra numarası gösterilir. */
+export interface PaintGroup {
+  id: string;
+  label: string;
 }
 
 export interface RegionPaintRegionsPlanV1 {
@@ -83,9 +96,11 @@ export interface RegionPaintRegionsPlanV1 {
   style: RegionPaintStyle;
   palette: PaintEntry[];
   regions: PaintRegion[];
+  /** Numaralı boyama (dilim c); yoksa boş dizi. */
+  groups: PaintGroup[];
 }
 
-/** Bölge id'si → palet id'si. */
+/** Bölge id'si (numaralı boyamada grup id'si) → palet id'si. */
 export type PaintFills = Record<string, string>;
 
 export function isRegionPaintType(type: unknown): boolean {
@@ -188,27 +203,54 @@ export function parseRegionPaintRegionsPlan(json: string | null | undefined): Re
     const ids = new Set<string>();
     const palette = parsePalette(parsed['palette'], ids);
     if (palette.length === 0 || palette.length > REGION_PAINT_LIMITS.maxPalette) return null;
+    let groups: PaintGroup[] = [];
+    for (const raw of Array.isArray(parsed['groups']) ? (parsed['groups'] as unknown[]) : []) {
+      if (!raw || typeof raw !== 'object') continue;
+      const { id, label } = raw as Record<string, unknown>;
+      if (!isValidInteractionId(id) || ids.has(id)) continue;
+      ids.add(id);
+      groups.push({ id, label: typeof label === 'string' ? label : '' });
+    }
+    if (groups.length > REGION_PAINT_LIMITS.maxGroups) return null;
+    const groupIds = new Set(groups.map((g) => g.id));
     const regions: PaintRegion[] = [];
     for (const raw of Array.isArray(parsed['regions']) ? (parsed['regions'] as unknown[]) : []) {
       if (!raw || typeof raw !== 'object') continue;
-      const { id, points, label } = raw as Record<string, unknown>;
+      const { id, points, label, group } = raw as Record<string, unknown>;
       if (!isValidInteractionId(id) || ids.has(id) || !isValidPolygon(points)) continue;
+      // Gruplu planda grupsuz / bilinmeyen gruplu bölge atlanır (backend okuması gibi).
+      if (groupIds.size > 0 && (typeof group !== 'string' || !groupIds.has(group))) continue;
       ids.add(id);
-      regions.push({ id, points: points.map(([x, y]) => [x, y] as PaintPoint), label: typeof label === 'string' ? label : '' });
+      const region: PaintRegion = { id, points: points.map(([x, y]) => [x, y] as PaintPoint), label: typeof label === 'string' ? label : '' };
+      if (groupIds.size > 0) region.group = group as string;
+      regions.push(region);
     }
     if (regions.length === 0 || regions.length > REGION_PAINT_LIMITS.maxRegions) return null;
+    const used = new Set(regions.map((r) => r.group));
+    groups = groups.filter((g) => used.has(g.id));
     const style: RegionPaintStyle = parsed['style'] === 'circle' ? 'circle' : 'fill';
-    return { version: 1, type: REGION_PAINT, mode: 'regions', style, palette, regions };
+    return { version: 1, type: REGION_PAINT, mode: 'regions', style, palette, regions, groups };
   } catch {
     return null;
   }
+}
+
+/** `fills` anahtarları plan sırasıyla: numaralı boyamada gruplar, değilse bölgeler. */
+export function fillKeys(plan: RegionPaintRegionsPlanV1): string[] {
+  return plan.groups.length > 0 ? plan.groups.map((g) => g.id) : plan.regions.map((r) => r.id);
+}
+
+/** Grubun gösterilen adı: etiket, yoksa sıra numarası. */
+export function groupName(plan: RegionPaintRegionsPlanV1, groupId: string): string {
+  const index = plan.groups.findIndex((g) => g.id === groupId);
+  return index < 0 ? '' : plan.groups[index].label || String(index + 1);
 }
 
 /** `fills` nesnesini okur; plan verilirse plandaki bölge / renkle sınırlar. Prototipsiz. */
 function readFills(value: unknown, plan: RegionPaintRegionsPlanV1 | null): PaintFills {
   const out = Object.create(null) as PaintFills;
   if (!value || typeof value !== 'object' || Array.isArray(value)) return out;
-  const regions = plan ? new Set(plan.regions.map((r) => r.id)) : null;
+  const regions = plan ? new Set(fillKeys(plan)) : null;
   const palette = plan ? new Set(plan.palette.map((p) => p.id)) : null;
   for (const [region, paint] of Object.entries(value as Record<string, unknown>)) {
     if (!isValidInteractionId(region) || !isValidInteractionId(paint)) continue;
@@ -244,7 +286,7 @@ export function parseRegionPaintFillsSolution(json: string | null | undefined, p
 /** Payload (bölge modu): plan sırasıyla. */
 export function buildRegionPaintFillsPayload(fills: PaintFills, plan?: RegionPaintRegionsPlanV1 | null): string {
   const ordered: PaintFills = {};
-  const keys = plan ? plan.regions.map((r) => r.id).filter((id) => Object.hasOwn(fills, id)) : Object.keys(fills);
+  const keys = plan ? fillKeys(plan).filter((id) => Object.hasOwn(fills, id)) : Object.keys(fills);
   for (const id of keys) ordered[id] = fills[id];
   return JSON.stringify({ version: 1, type: REGION_PAINT, fills: ordered });
 }

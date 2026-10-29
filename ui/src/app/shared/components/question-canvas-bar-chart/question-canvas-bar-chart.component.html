@@ -1,0 +1,95 @@
+<div class="bc-root" [class.is-solution]="solutionShown()" *transloco="let t; prefix: 'shared.questionCanvas.barChart'">
+  @if (!hidePassage && passageImageUrl(); as pUrl) {
+    <div class="bc-passage">
+      @if (passageTitle(); as title) {
+        <div class="bc-passage__title">{{ title }}</div>
+      }
+      <img class="bc-passage__image" [src]="pUrl" [alt]="t('passageAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  @if (imageUrl(); as url) {
+    <div class="bc-image-wrap">
+      <img class="bc-image" [src]="url" [alt]="t('imageAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  @if (plan(); as p) {
+    @if (p.title) {
+      <div class="bc-title" data-testid="bc-title">{{ p.title }}</div>
+    }
+    <div class="bc-scroll">
+      <div class="bc-chart" data-testid="bc-chart" [style.min-width.px]="p.categories.length * 48 + 72">
+        @if (p.yLabel) {
+          <div class="bc-yname"><span>{{ p.yLabel }}</span></div>
+        }
+        <div class="bc-yaxis" aria-hidden="true">
+          @for (v of axisLabels(); track v) {
+            <span class="bc-ytick" [style.bottom]="percent(v)">{{ v }}</span>
+          }
+        </div>
+        <div class="bc-plot" data-testid="bc-plot">
+          @for (line of gridLines(); track line.value) {
+            <span class="bc-grid" [class.is-major]="line.major" [style.bottom]="percent(line.value)" aria-hidden="true"></span>
+          }
+          @if (p.style === 'line' && linePoints()) {
+            <svg class="bc-line" [attr.viewBox]="'0 0 ' + p.categories.length + ' ' + p.max" preserveAspectRatio="none" aria-hidden="true">
+              <polyline [attr.points]="linePoints()" />
+            </svg>
+          }
+          <div class="bc-columns">
+            @for (col of columns(); track col.id) {
+              <div class="bc-col" role="slider" [attr.data-col]="col.id" [class.is-fixed]="col.fixed"
+                [class.is-ok]="col.state === 'ok'" [class.is-bad]="col.state === 'bad'"
+                [attr.tabindex]="col.fixed || readOnly() ? -1 : 0"
+                [attr.aria-label]="col.fixed ? t('fixedAria', { label: col.label }) : col.label"
+                [attr.aria-valuemin]="0" [attr.aria-valuemax]="p.max" [attr.aria-valuenow]="col.value ?? 0"
+                [attr.aria-valuetext]="col.value === null ? t('unset') : col.value"
+                [attr.aria-readonly]="col.fixed || readOnly() ? 'true' : null"
+                (click)="setFromPointer($event, col)" (keydown)="onColumnKey($event, col)">
+                @if (col.value !== null) {
+                  @if (p.style === 'line') {
+                    <span class="bc-dot" [style.bottom]="percent(col.value)"></span>
+                  } @else {
+                    <span class="bc-bar" [style.height]="percent(col.value)"></span>
+                  }
+                }
+              </div>
+            }
+          </div>
+        </div>
+        <div class="bc-xaxis" aria-hidden="true">
+          @for (col of columns(); track col.id) {
+            <span class="bc-xtick" [class.is-fixed]="col.fixed">{{ col.label }}</span>
+          }
+        </div>
+        @if (p.xLabel) {
+          <div class="bc-xname">{{ p.xLabel }}</div>
+        }
+      </div>
+    </div>
+
+    @if (!solutionShown()) {
+      <div class="bc-actions">
+        <button mat-stroked-button type="button" data-testid="bc-reset" [disabled]="!canReset()" (click)="reset()">
+          <mat-icon>restart_alt</mat-icon>{{ t('reset') }}
+        </button>
+      </div>
+      <p class="bc-hint">{{ t(p.style === 'line' ? 'hintLine' : 'hint') }}</p>
+    }
+  } @else {
+    <p class="bc-hint" data-testid="bc-invalid">{{ t('invalid') }}</p>
+  }
+
+  @if (feedbackState(); as fb) {
+    <p class="bc-result" role="status" data-testid="bc-result" [class.is-ok]="correctCount() === fb.rows.length"
+      [class.is-bad]="correctCount() < fb.rows.length">
+      <mat-icon aria-hidden="true">{{ correctCount() === fb.rows.length ? 'check_circle' : 'error' }}</mat-icon>
+      {{ correctCount() === fb.rows.length ? t('resultOk') : t('resultPartial', { ok: correctCount(), total: fb.rows.length }) }}
+    </p>
+  }
+
+  @if (solutionShown()) {
+    <p class="bc-hint" data-testid="bc-solution-hint">{{ t('solutionShown') }}</p>
+  }
+</div>

@@ -29,6 +29,7 @@ const KNOWN_TYPES = new Set([
   'logicGrid',
   'regionPaint',
   'numberLine',
+  'barChart',
 ]);
 
 /**

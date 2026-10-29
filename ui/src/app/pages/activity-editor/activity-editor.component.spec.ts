@@ -220,6 +220,31 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(JSON.parse(q.interactionSolution)).toEqual({ positions: { k1: 3, k2: null } });
   });
 
+  it('grafik kurma: kategorileri değer ve hazır sütunla kaydeder, önizlemede grafiği çizer (#588)', async () => {
+    await setup({ testId: '9' });
+    component.selectKind('barChart');
+    fixture.detectChanges();
+    expect(el('[data-testid="bar-chart-form"]')).not.toBeNull();
+
+    component.setChartOption({ title: 'Sevilen meyveler' });
+    component.setChartCategory(0, { label: 'Elma', value: '6', fixed: true });
+    component.setChartCategory(1, { label: 'Armut', value: '4' });
+    component.removeChartCategory(2);
+    fixture.detectChanges();
+    expect(el('[data-testid="preview"] app-question-canvas-bar-chart')).not.toBeNull();
+
+    component.save(false);
+    const q = questions.saveBulk.mock.calls[0][0].questions[0];
+    expect(q.interactionType).toBe('barChart');
+    const plan = JSON.parse(q.interactionPlan);
+    expect(plan.categories).toEqual([
+      { id: 'c1', label: 'Elma' },
+      { id: 'c2', label: 'Armut' },
+    ]);
+    expect(plan.fixed).toEqual({ c1: 6 });
+    expect(JSON.parse(q.interactionSolution)).toEqual({ values: { c2: 4 } });
+  });
+
   it('kelime avı: ızgarayı kelimelerden üretir, önizlemede çizer ve çözümü ayrı kaydeder (#586)', async () => {
     await setup({ testId: '9' });
     component.selectKind('wordSearch');

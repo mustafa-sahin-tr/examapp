@@ -806,6 +806,19 @@ kart ← / → ile kayar, ikinci dokunuş / Delete havuza geri koyar. Yazarlık 
 kesin), tahmin (100 bölme + tolerans + gizli çentik). Testte de çözülebilir (puanlanır). Sonraki dilimler: grafik kurma, kareli zeminde
 kural tabanlı çizim. Migration yok; Aspire'da exam API'yi yeniden başlat (yeni kontrolcü).
 
+**Issue #588 dilim b — `barChart` (bileşen F, grafik kurma).** Plan
+`{"version":1,"type":"barChart","style?":"bar"|"line","title?","xLabel?","yLabel?","max","step","unit?","categories":[{id,label}],"fixed?":{"c1":6}}`
+(dikey eksen 0..max, max 1–1000; `step` etiketli çizgi aralığı, max'ı böler, ≤ 20 aralık; `unit` öğrencinin en küçük adımı, step'i böler,
+≤ 100 adım, varsayılan step; 2–12 kategori, etiket ≤ 30, başlık ≤ 80, eksen adı ≤ 40, düz metin; `style` yalnız görünüm). `fixed` önceden
+çizilmiş, değiştirilemeyen ve kontrol edilmeyen sütunlar ("grafiği tamamla"); en az bir kategori serbest. Veri tablosu planda yok — yönergede
+ya da görselde. Çözüm `{"values":{"c2":4}}` (her serbest kategoriye unit katı 0..max; sabit kategori yazılmaz). Öğrenci payload'u
+`{"values":{"c2":4}}` (yalnız serbest kategoriler; çizilmeyen sütun 0 sayılır; boş = cevap yok). Kontrol kategori başına eşitlik
+(`BarChartGrader`), geri bildirim `{"rows":[{id,correct}]}` (hedef yazılmaz); analiz: öğe = serbest kategori, cevap = çizilen değer.
+Oynatıcı: sütunun üstünde seviyeye dokun (en yakın unit katı), aynı seviyeye ikinci dokunuş siler; sütun klavyede kaydırıcı (↑/↓ unit,
+PageUp/PageDown step, Home/End, Delete); çizgi görünümünde nokta + çizgi; sabit sütunlar gri. Yazarlık görselsiz editörde (tür **Grafik
+kurma**): görünüm, başlık, eksen adları, eksen, kategori + değer + "Hazır". Daire grafiği ve kareli zeminde çizim sonraki dilimlerde. Testte de
+çözülebilir (puanlanır). Migration yok; Aspire'da exam API'yi yeniden başlat (yeni kontrolcü).
+
 **Dev sıfırlama — soru bankası.** `deploy/scripts/dev-reset-questions.sh` (dev-only) tüm soruları ve FK ile bağlı
 her şeyi (test-soru bağları, öğrenci cevapları, yorumlar, LabelingPages/Results), öğrencilerin test oturumlarını
 (`TestInstances` — Questions'a FK'sı yok, CASCADE ulaşmaz, açıkça silinir; aksi halde "boş test yapılmış" gibi kalır),

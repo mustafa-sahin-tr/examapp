@@ -829,6 +829,73 @@
           </div>
         }
 
+        @if (barChart(); as bc) {
+          <div class="ae__block" data-testid="bar-chart-form">
+            <p class="ae__hint">{{ t('barChart.hint') }}</p>
+            <div class="ae__row ae__row--wrap">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                <mat-label>{{ t('barChart.style') }}</mat-label>
+                <mat-select [value]="bc.style" (selectionChange)="setChartOption({ style: $event.value })">
+                  <mat-option value="bar">{{ t('barChart.styleBar') }}</mat-option>
+                  <mat-option value="line">{{ t('barChart.styleLine') }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                <mat-label>{{ t('barChart.title') }}</mat-label>
+                <input matInput [value]="bc.title" [attr.maxlength]="chartLimits.maxTitle" (input)="setChartOption({ title: $any($event.target).value })" />
+              </mat-form-field>
+            </div>
+            <div class="ae__row ae__row--wrap">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                <mat-label>{{ t('barChart.xLabel') }}</mat-label>
+                <input matInput [value]="bc.xLabel" [attr.maxlength]="chartLimits.maxAxis" (input)="setChartOption({ xLabel: $any($event.target).value })" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                <mat-label>{{ t('barChart.yLabel') }}</mat-label>
+                <input matInput [value]="bc.yLabel" [attr.maxlength]="chartLimits.maxAxis" (input)="setChartOption({ yLabel: $any($event.target).value })" />
+              </mat-form-field>
+            </div>
+            <div class="ae__row ae__row--wrap">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                <mat-label>{{ t('barChart.max') }}</mat-label>
+                <input matInput type="number" data-testid="bc-max" min="1" [max]="chartLimits.maxValue" [value]="bc.max"
+                  (input)="setChartAxis({ max: $any($event.target).valueAsNumber })" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                <mat-label>{{ t('barChart.step') }}</mat-label>
+                <input matInput type="number" data-testid="bc-step" min="1" [value]="bc.step"
+                  (input)="setChartAxis({ step: $any($event.target).valueAsNumber })" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                <mat-label>{{ t('barChart.unit') }}</mat-label>
+                <input matInput type="number" data-testid="bc-unit" min="1" [value]="bc.unit"
+                  (input)="setChartAxis({ unit: $any($event.target).valueAsNumber })" />
+              </mat-form-field>
+            </div>
+
+            <span class="ae__label">{{ t('barChart.categories') }}</span>
+            @for (cat of bc.categories; track $index; let i = $index) {
+              <div class="ae__row ae__row--wrap" [attr.data-chart-category]="i">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                  <mat-label>{{ t('barChart.category', { n: i + 1 }) }}</mat-label>
+                  <input matInput [value]="cat.label" [attr.maxlength]="chartLimits.maxCategory" (input)="setChartCategory(i, { label: $any($event.target).value })" />
+                </mat-form-field>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__narrow">
+                  <mat-label>{{ t('barChart.value') }}</mat-label>
+                  <input matInput inputmode="numeric" [value]="cat.value" [attr.maxlength]="4"
+                    (input)="setChartCategory(i, { value: $any($event.target).value })" />
+                </mat-form-field>
+                <mat-checkbox [checked]="cat.fixed" (change)="setChartCategory(i, { fixed: $event.checked })">{{ t('barChart.fixed') }}</mat-checkbox>
+                <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="bc.categories.length <= chartLimits.minCategories"
+                  (click)="removeChartCategory(i)"><mat-icon>close</mat-icon></button>
+              </div>
+            }
+            <button mat-button type="button" [disabled]="bc.categories.length >= chartLimits.maxCategories" (click)="addChartCategory()">
+              <mat-icon>add</mat-icon>{{ t('barChart.addCategory') }}
+            </button>
+          </div>
+        }
+
         @if (wordSearch(); as ws) {
           <div class="ae__block" data-testid="word-search-form">
             <p class="ae__hint">{{ t('wordSearch.hint') }}</p>
@@ -944,6 +1011,11 @@
             }
             @case ('numberLine') {
               <app-question-canvas-number-line [questionRegion]="previewRegion()"
+                [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
+                [showSolution]="showSolution()" [activityMode]="true" />
+            }
+            @case ('barChart') {
+              <app-question-canvas-bar-chart [questionRegion]="previewRegion()"
                 [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
                 [showSolution]="showSolution()" [activityMode]="true" />
             }

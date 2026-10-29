@@ -221,6 +221,19 @@ describe('describeNotification (issue #105)', () => {
         }
     });
 
+    it('SchoolChange_ParentLinksChild_SelfHasNoRoute (issue #542)', () => {
+        for (const type of ['SchoolChangedToParent', 'SchoolAssignedToParent', 'SchoolRemovedToParent']) {
+            const result = describeNotification({ type, data: JSON.stringify({ studentId: 21, fromSchoolId: 1, toSchoolId: 2 }) });
+            expect(result.route, type).toEqual({ commands: ['/parent'], queryParams: { child: 21 } });
+            expect(result.icon, type).toBe('school');
+        }
+        for (const type of ['SchoolChangedToStudent', 'SchoolRemovedToStudent', 'SchoolChangedToTeacher']) {
+            const result = describeNotification({ type, data: JSON.stringify({ studentId: null }) });
+            expect(result.route, type).toBeNull();
+            expect(result.icon, type).toBe('school');
+        }
+    });
+
     it('ParentCoParentLeftToPrimary_LinksParentPageForThatChild (issue #436)', () => {
         const result = describeNotification({
             type: 'ParentCoParentLeftToPrimary',

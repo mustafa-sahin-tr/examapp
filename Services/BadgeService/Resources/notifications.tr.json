@@ -11,7 +11,8 @@
       "rejectionReasonSuffix": " Gerekçe: {0}",
       "defaultChild": "Çocuğunuz",
       "defaultParent": "Veliniz",
-      "defaultCoParent": "Diğer veliniz"
+      "defaultCoParent": "Diğer veliniz",
+      "schoolChangePrivatized": " \"Okulum\" ile paylaştığınız {0} sınav artık yalnız size açık; isterseniz yeniden paylaşabilirsiniz."
     },
     "BadgeEarned": {
       "title": "Yeni rozet kazandın!",
@@ -236,6 +237,38 @@
     "StudentParentGraceReminder": {
       "title": "Velini ekle",
       "body": "Velini ekle: hesabının kısıtlanmasına {0} gün kaldı."
+    },
+    "SchoolChangedToStudent": {
+      "title": "Okulun değişti",
+      "body": "Okulun {0} yerine {1} olarak güncellendi. Artık yeni okulunun ödevlerini ve okul sıralamasını göreceksin."
+    },
+    "SchoolAssignedToStudent": {
+      "title": "Okulun belirlendi",
+      "body": "Okulun {1} olarak belirlendi. Okulunun ödevlerini ve okul sıralamasını göreceksin."
+    },
+    "SchoolRemovedToStudent": {
+      "title": "Okul kaydın kaldırıldı",
+      "body": "{0} okul kaydın kaldırıldı. Okulunun ödevlerini ve okul sıralamasını artık görmeyeceksin; geçmiş sonuçların korunur."
+    },
+    "SchoolChangedToTeacher": {
+      "title": "Okulunuz değişti",
+      "body": "Okulunuz {0} yerine {1} olarak güncellendi.{2}"
+    },
+    "SchoolAssignedToTeacher": {
+      "title": "Okula bağlandınız",
+      "body": "Hesabınız {1} okuluna bağlandı."
+    },
+    "SchoolChangedToParent": {
+      "title": "Çocuğunuzun okulu değişti",
+      "body": "{2} adlı çocuğunuzun okulu {0} yerine {1} olarak güncellendi."
+    },
+    "SchoolAssignedToParent": {
+      "title": "Çocuğunuzun okulu belirlendi",
+      "body": "{2} adlı çocuğunuzun okulu {1} olarak belirlendi."
+    },
+    "SchoolRemovedToParent": {
+      "title": "Çocuğunuzun okul kaydı kaldırıldı",
+      "body": "{2} adlı çocuğunuzun {0} okul kaydı kaldırıldı."
     }
   }
 }

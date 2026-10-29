@@ -798,6 +798,59 @@ public class AdminTeacherSchoolServiceTests : IDisposable
         (await AuditAsync()).ShouldHaveSingleItem().AffectedCount.ShouldBeNull();
     }
 
+    // ---- issue #542: okul değişimi bildirimi ----
+
+    private async Task<List<ExamApp.Foundation.Contracts.SchoolChangedEvent>> SchoolEventsAsync()
+    {
+        await using var ctx = _db.NewContext();
+        var type = ExamApp.Foundation.Contracts.OutboxEventRegistry.NameFor<ExamApp.Foundation.Contracts.SchoolChangedEvent>();
+        return (await ctx.OutboxMessages.AsNoTracking().Where(m => m.Type == type).Select(m => m.Content).ToListAsync())
+            .Select(c => System.Text.Json.JsonSerializer.Deserialize<ExamApp.Foundation.Contracts.SchoolChangedEvent>(c)!)
+            .ToList();
+    }
+
+    [Fact]
+    public async Task School_change_writes_one_teacher_event_with_school_names_and_privatized_count_issue542()
+    {
+        var s = await SeedAsync();
+        await WorksheetAsync(TeacherUserId, WorksheetTeacherSharing.SchoolOnly, s.GradeId);
+        await WorksheetAsync(TeacherUserId, WorksheetTeacherSharing.SchoolOnly, s.GradeId);
+
+        (await RunAsync(s.TeacherId, s.SchoolB)).Status.ShouldBe(AdminTeacherSchoolChangeStatus.Success);
+
+        var e = (await SchoolEventsAsync()).ShouldHaveSingleItem();
+        e.Audience.ShouldBe(ExamApp.Foundation.Contracts.SchoolChangedEvent.TeacherAudience);
+        e.RecipientUserId.ShouldBe(TeacherUserId);
+        e.RecipientKeycloakId.ShouldBe(TargetSub);
+        e.SubjectUserId.ShouldBe(TeacherUserId);
+        e.StudentId.ShouldBeNull();
+        (e.FromSchoolId, e.FromSchoolName, e.ToSchoolId, e.ToSchoolName).ShouldBe((s.SchoolA, "A", s.SchoolB, "B"));
+        e.PrivatizedWorksheetCount.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task No_teacher_event_for_same_school_or_leftover_request_cleanup_issue542()
+    {
+        var s = await SeedAsync(t => t.RequestedSchoolId = null);
+        (await RunAsync(s.TeacherId, s.SchoolA)).Changed.ShouldBeFalse();
+        await using (var ctx = _db.NewContext())
+            await ctx.Teachers.Where(t => t.Id == s.TeacherId).ExecuteUpdateAsync(x => x.SetProperty(t => t.RequestedSchoolId, s.SchoolB));
+        (await RunAsync(s.TeacherId, s.SchoolA)).Changed.ShouldBeTrue();
+
+        (await SchoolEventsAsync()).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Failed_privatization_rolls_back_the_teacher_event_too_issue542()
+    {
+        var s = await SeedAsync();
+        await WorksheetAsync(TeacherUserId, WorksheetTeacherSharing.SchoolOnly, s.GradeId);
+
+        await Should.ThrowAsync<InvalidOperationException>(() => RunAsync(s.TeacherId, s.SchoolB, new FailingWorksheetUpdate()));
+
+        (await SchoolEventsAsync()).ShouldBeEmpty();
+    }
+
     [Fact]
     public async Task Failure_while_privatizing_rolls_back_the_school_change()
     {

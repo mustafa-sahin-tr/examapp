@@ -9,7 +9,11 @@ namespace ExamApp.Api.Services
     public interface IProgramService
     {
         Task<List<ProgramStepDto>> GetProgramStepsAsync();
-        Task<UserProgramDto> CreateUserProgramAsync(string userId, CreateProgramRequestDto request);
+        /// <summary>
+        /// Programı oluşturur ve takvimi üretir (issue #514): dersler <paramref name="studentUserId"/> öğrencisinin
+        /// sınıfının dersleridir, zor dersler daha sık planlanır. Sınıf bilinmiyorsa bütün dersler kullanılır.
+        /// </summary>
+        Task<UserProgramDto> CreateUserProgramAsync(string userId, CreateProgramRequestDto request, int? studentUserId = null);
         Task<List<UserProgramDto>> GetUserProgramsAsync(string userId);
         Task<UserProgramDto?> GetUserProgramByIdAsync(string userId, int programId);
         Task<UserProgramDto?> AddStudyItemSchedulesAsync(string userId, int programId, ProgramStudyItemScheduleRequestDto request);

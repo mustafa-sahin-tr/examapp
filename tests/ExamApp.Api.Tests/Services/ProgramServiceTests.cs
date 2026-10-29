@@ -672,5 +672,100 @@ public class ProgramServiceTests : IDisposable
         dto.ProgressPercentage.ShouldBe(100);
     }
 
+    // ---- issue #514: dersler öğrencinin sınıfından, zor dersler daha sık ----
+
+    private const int StudentUserId = 501;
+
+    private async Task<Dictionary<string, int>> SeedGradesWithSubjectsAsync()
+    {
+        await using var ctx = _db.NewContext();
+        var g4 = new Grade { Name = "4. Sınıf" };
+        var g5 = new Grade { Name = "5. Sınıf" };
+        var names = new[] { "Türkçe", "Matematik", "Fen Bilimleri", "Sosyal Bilgiler", "Hayat Bilgisi", "Din Kültürü" };
+        var subjects = names.Select(n => new Subject { Name = n }).ToList();
+        ctx.AddRange(g4, g5);
+        ctx.Subjects.AddRange(subjects);
+        await ctx.SaveChangesAsync();
+
+        // 5. sınıf: Türkçe, Matematik, Fen, Sosyal, Din; 4. sınıf: Türkçe, Matematik, Hayat Bilgisi.
+        foreach (var n in new[] { "Türkçe", "Matematik", "Fen Bilimleri", "Sosyal Bilgiler", "Din Kültürü" })
+            ctx.GradeSubjects.Add(new GradeSubject { GradeId = g5.Id, SubjectId = subjects.Single(s => s.Name == n).Id });
+        foreach (var n in new[] { "Türkçe", "Matematik", "Hayat Bilgisi" })
+            ctx.GradeSubjects.Add(new GradeSubject { GradeId = g4.Id, SubjectId = subjects.Single(s => s.Name == n).Id });
+
+        ctx.Students.Add(new Student { UserId = StudentUserId, StudentNumber = "S501", GradeId = g5.Id });
+
+        // Sihirbazın 7. adımı: seçenek değeri → ders adı (ProgramStepSeed ile aynı).
+        var step = new ProgramStep { Id = 7, Title = "Zor", Description = "d", Order = 7, Multiple = true };
+        step.Options.Add(new ProgramStepOption { Label = "Hayat Bilgisi", Value = "1", Icon = "i" });
+        step.Options.Add(new ProgramStepOption { Label = "Türkçe", Value = "2", Icon = "i" });
+        step.Options.Add(new ProgramStepOption { Label = "Matematik", Value = "3", Icon = "i" });
+        step.Options.Add(new ProgramStepOption { Label = "Fen Bilimleri", Value = "4", Icon = "i" });
+        step.Options.Add(new ProgramStepOption { Label = "Yok", Value = "5", Icon = "i" });
+        ctx.ProgramSteps.Add(step);
+        await ctx.SaveChangesAsync();
+        return subjects.ToDictionary(s => s.Name, s => s.Id);
+    }
+
+    private static CreateProgramRequestDto FourWeekRequest(params UserSelectionDto[] extra) => new()
+    {
+        ProgramName = "Plan",
+        Description = "d",
+        StartDate = "2026-03-02",
+        EndDate = "2026-03-29", // 28 gün
+        UserSelections = new List<UserSelectionDto> { Sel(1, "time"), Sel(2, "25-5"), Sel(5, "2") }.Concat(extra).ToList(),
+    };
+
+    [Fact]
+    public async Task Fifth_grade_program_uses_only_fifth_grade_subjects()
+    {
+        var ids = await SeedGradesWithSubjectsAsync();
+
+        UserProgramDto dto;
+        await using (var ctx = _db.NewContext())
+            dto = await NewService(ctx).CreateUserProgramAsync(User, FourWeekRequest(), StudentUserId);
+
+        var fifthGrade = new[] { "Türkçe", "Matematik", "Fen Bilimleri", "Sosyal Bilgiler", "Din Kültürü" }.Select(n => ids[n]).ToHashSet();
+        dto.Schedules.Count.ShouldBe(28 * 2);
+        dto.Schedules.ShouldAllBe(s => fifthGrade.Contains(s.SubjectId));
+        dto.Schedules.Select(s => s.SubjectId).Distinct().Count().ShouldBe(5); // ilk 4 ile sınırlı değil
+        dto.Schedules.GroupBy(s => s.ScheduleDate).ShouldAllBe(day => day.Select(s => s.SubjectId).Distinct().Count() == 2);
+        // Zor ders seçilmeyince dersler eşit dağılır.
+        var counts = dto.Schedules.GroupBy(s => s.SubjectId).Select(g => g.Count()).ToList();
+        (counts.Max() - counts.Min()).ShouldBeLessThanOrEqualTo(1);
+    }
+
+    [Fact]
+    public async Task Difficult_subjects_are_planned_more_often()
+    {
+        var ids = await SeedGradesWithSubjectsAsync();
+
+        UserProgramDto dto;
+        await using (var ctx = _db.NewContext())
+            dto = await NewService(ctx).CreateUserProgramAsync(User, FourWeekRequest(Sel(7, "3", "4")), StudentUserId);
+
+        int Count(string name) => dto.Schedules.Count(s => s.SubjectId == ids[name]);
+        var easiest = new[] { "Türkçe", "Sosyal Bilgiler", "Din Kültürü" }.Max(Count);
+        Count("Matematik").ShouldBeGreaterThan(easiest);
+        Count("Fen Bilimleri").ShouldBeGreaterThan(easiest);
+        // Ağırlık 2: zor ders ötekilerin yaklaşık iki katı (56 slot = 2×16 + 3×8).
+        Count("Matematik").ShouldBe(16);
+        new[] { "Türkçe", "Sosyal Bilgiler", "Din Kültürü" }.Select(Count).ShouldAllBe(c => c == 8);
+        // 4. sınıfın dersi (Hayat Bilgisi) zor seçilse de 5. sınıf programına girmez.
+        dto.Schedules.ShouldNotContain(s => s.SubjectId == ids["Hayat Bilgisi"]);
+    }
+
+    [Fact]
+    public async Task Student_without_grade_falls_back_to_all_subjects_not_first_four()
+    {
+        await SeedSubjectsAsync("A", "B", "C", "D", "E");
+
+        UserProgramDto dto;
+        await using (var ctx = _db.NewContext())
+            dto = await NewService(ctx).CreateUserProgramAsync(User, FourWeekRequest(), studentUserId: 999);
+
+        dto.Schedules.Select(s => s.SubjectName).Distinct().Count().ShouldBe(5);
+    }
+
     public void Dispose() => _db.Dispose();
 }

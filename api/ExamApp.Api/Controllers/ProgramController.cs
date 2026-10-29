@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services;
+using ExamApp.Api.Services.Interfaces;
 using ExamApp.Foundation.Localization;
 using Microsoft.Extensions.Localization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,9 +25,13 @@ namespace ExamApp.Api.Controllers
     // senaryolarda varsayılan dile düşebilmek için opsiyonel.
         private readonly IStringLocalizer<Messages> _localizer;
 
-        public ProgramController(IProgramService programService, IStringLocalizer<Messages>? localizer = null)
+        // Takvimdeki dersler öğrencinin sınıfından gelir (issue #514); DI'siz kurulan testlerde yok.
+        private readonly IUserProfileProvider? _profiles;
+
+        public ProgramController(IProgramService programService, IStringLocalizer<Messages>? localizer = null, IUserProfileProvider? profiles = null)
         {
             _programService = programService;
+            _profiles = profiles;
             _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         }
 
@@ -47,7 +52,10 @@ namespace ExamApp.Api.Controllers
                 return Unauthorized(_localizer["program.userIdNotFoundInToken"].Value);
             }
 
-            var userProgram = await _programService.CreateUserProgramAsync(userId, request);
+            var profile = _profiles is null ? null : await _profiles.GetAsync(userId, HttpContext.RequestAborted);
+            var studentUserId = profile is { Id: > 0 } ? profile.Id : (int?)null;
+
+            var userProgram = await _programService.CreateUserProgramAsync(userId, request, studentUserId);
             return Ok(userProgram);
         }
 

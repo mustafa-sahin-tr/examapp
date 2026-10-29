@@ -556,6 +556,13 @@
           "hintNumbered": "Pick a colour and tap a numbered region: every region with that number is painted. Tap again with the same colour to remove it. You can also paint from the numbers below.",
           "groupNo": "Number {{n}}",
           "groups": "Question numbers"
+        },
+        "pie": {
+          "total": "The circle is divided into {{total}} equal slices.",
+          "label": "Pie chart",
+          "slice": "Slice {{n}}",
+          "hint": "Pick a colour, then tap slices or drag across them. Starting on a slice of the same colour erases. The number next to each colour is how many slices you painted with it.",
+          "solutionShown": "The number of slices for each colour is shown with a sample fill (the slices could be elsewhere too)."
         }
       },
       "numberLine": {
@@ -583,7 +590,8 @@
         "hintLine": "To place a point, tap the right level above its category; tapping the same level again removes it. You can also use ↑ / ↓ on the keyboard. Grey points are already drawn.",
         "resultOk": "The graph is right!",
         "resultPartial": "{{ok}} of {{total}} bars are right; check the red ones again.",
-        "solutionShown": "The correct graph is shown."
+        "solutionShown": "The correct graph is shown.",
+        "hintDot": "Tap the height a column should reach to stack that many dots; tapping the top dot removes it. With the keyboard, ↑ / ↓ adds or removes one dot. Grey dots are already drawn."
       },
       "gridDraw": {
         "passageAlt": "Reading passage image",

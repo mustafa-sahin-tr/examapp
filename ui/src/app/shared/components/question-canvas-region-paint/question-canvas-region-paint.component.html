@@ -138,8 +138,20 @@
       }
     </div>
 
-    <p class="rp-total">{{ t('total', { total: total() }) }}</p>
+    <p class="rp-total">{{ p.mode === 'pie' ? t('pie.total', { total: total() }) : t('total', { total: total() }) }}</p>
 
+    @if (p.mode === 'pie') {
+      <!-- #588 dilim d: daire grafiği — dilim = tek satırlık ızgaranın hücresi, tepeden saat yönünde. -->
+      <svg class="rp-pie" data-testid="rp-pie" viewBox="-104 -104 208 208" role="group" [attr.aria-label]="t('pie.label')"
+        (pointermove)="moveStroke($event)" (pointerup)="endStroke()" (pointercancel)="endStroke()" (pointerleave)="endStroke()">
+        @for (value of shown()[0]; track $index; let c = $index) {
+          <path class="rp-slice" data-cell data-r="0" [attr.data-c]="c" [attr.d]="slicePath(c, p.cols)" role="button"
+            [attr.tabindex]="readOnly() ? -1 : 0" [attr.aria-disabled]="readOnly()" [attr.aria-label]="sliceAria(c, value, t)"
+            [style.fill]="cellColor(value)" (pointerdown)="startStroke($event, 0, c)"
+            (keydown.enter)="$event.preventDefault(); toggle(0, c)" (keydown.space)="$event.preventDefault(); toggle(0, c)" />
+        }
+      </svg>
+    } @else {
     <div class="rp-scroll">
       <div class="rp-grid" data-testid="rp-grid" [style.--rp-cell]="cellSize(p.cols)"
         [style.grid-template-columns]="'repeat(' + p.cols + ', var(--rp-cell))'"
@@ -154,6 +166,7 @@
         }
       </div>
     </div>
+    }
 
     @if (!solutionShown()) {
       <div class="rp-actions">
@@ -161,7 +174,7 @@
           <mat-icon>restart_alt</mat-icon>{{ t('reset') }}
         </button>
       </div>
-      <p class="rp-hint">{{ t('hint') }}</p>
+      <p class="rp-hint">{{ p.mode === 'pie' ? t('pie.hint') : t('hint') }}</p>
     }
   } @else {
     <p class="rp-hint" data-testid="rp-invalid">{{ t('invalid') }}</p>
@@ -178,6 +191,6 @@
   }
 
   @if (solutionShown()) {
-    <p class="rp-hint" data-testid="rp-solution-hint">{{ regionsPlan() ? t('regions.solutionShown') : t('solutionShown') }}</p>
+    <p class="rp-hint" data-testid="rp-solution-hint">{{ regionsPlan() ? t('regions.solutionShown') : plan()?.mode === 'pie' ? t('pie.solutionShown') : t('solutionShown') }}</p>
   }
 </div>

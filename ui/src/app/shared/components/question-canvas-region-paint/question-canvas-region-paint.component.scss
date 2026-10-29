@@ -163,6 +163,32 @@
   }
 }
 
+// #588 dilim d: daire grafiği.
+.rp-pie {
+  display: block;
+  width: min(100%, 320px);
+  height: auto;
+  touch-action: none;
+  user-select: none;
+}
+
+.rp-slice {
+  fill: var(--whiteColor);
+  stroke: var(--ms-text-medium);
+  stroke-width: 1.5;
+  cursor: pointer;
+
+  &[aria-disabled='true'] {
+    cursor: default;
+  }
+
+  &:focus-visible {
+    outline: none;
+    stroke: var(--ms-action-border-focus);
+    stroke-width: 4;
+  }
+}
+
 .rp-actions {
   display: flex;
   flex-wrap: wrap;

@@ -12,7 +12,7 @@ namespace ExamApp.Api.Services.Interactions;
 /// <item>Plan v1: <c>{version:1,type:"barChart",style?,title?,xLabel?,yLabel?,max,step,unit?,categories:[{id,label}],fixed?}</c>.
 /// Dikey eksen 0..<c>max</c>; <c>step</c> etiketli ızgara çizgisi aralığı (<c>max</c>'ı böler, en çok 20 aralık), <c>unit</c> öğrencinin
 /// ayarlayabildiği en küçük adım (<c>step</c>'i böler, varsayılan <c>step</c>, en çok 100 adım). <c>style</c> <c>bar</c> (varsayılan) |
-/// <c>line</c> — yalnız görünüm. Kategoriler 2..12, etiket zorunlu düz metin ≤ 30; başlık ≤ 80, eksen adları ≤ 40.
+/// <c>line</c> | <c>dot</c> (nokta grafiği, dilim d: her <c>unit</c> bir nokta, en çok <see cref="MaxDots"/>) — yalnız görünüm. Kategoriler 2..12, etiket zorunlu düz metin ≤ 30; başlık ≤ 80, eksen adları ≤ 40.
 /// <c>fixed</c> (<c>{"c1":6}</c>) önceden çizilmiş, öğrencinin değiştiremediği sütunlar ("grafiği tamamla"); en az bir kategori serbest.</item>
 /// <item>Çözüm: <c>{"values":{"c2":4}}</c> — her serbest kategoriye <c>unit</c>'in katı 0..max; sabit kategori yazılmaz.</item>
 /// <item>Öğrenci payload'u: <c>{version:1,type:"barChart",values:{"c2":4}}</c> — yalnız serbest kategoriler; yazılmayan kategori 0
@@ -28,6 +28,7 @@ public sealed class BarChartGrader : IInteractionGrader
     public const int MaxValue = 1000;
     public const int MaxSteps = 20;
     public const int MaxUnits = 100;
+    public const int MaxDots = 20;
     public const int MinCategories = 2;
     public const int MaxCategories = 12;
     public const int MaxCategoryLength = 30;
@@ -158,6 +159,7 @@ public sealed class BarChartGrader : IInteractionGrader
             if (!root.TryGetProperty("type", out var type) || type.ValueKind != JsonValueKind.String
                 || !string.Equals(type.GetString(), Type, StringComparison.Ordinal))
                 return false;
+            var dots = false;
             if (strict)
             {
                 if (!HasOnlyKeys(root, RootKeys))
@@ -166,8 +168,9 @@ public sealed class BarChartGrader : IInteractionGrader
                     && (version.ValueKind != JsonValueKind.Number || !version.TryGetInt32(out var v) || v != 1))
                     return false;
                 if (root.TryGetProperty("style", out var style)
-                    && (style.ValueKind != JsonValueKind.String || style.GetString() is not ("bar" or "line")))
+                    && (style.ValueKind != JsonValueKind.String || style.GetString() is not ("bar" or "line" or "dot")))
                     return false;
+                dots = root.TryGetProperty("style", out style) && style.GetString() == "dot";
                 if (!IsOptionalText(root, "title", MaxTitleLength) || !IsOptionalText(root, "xLabel", MaxAxisLength)
                     || !IsOptionalText(root, "yLabel", MaxAxisLength))
                     return false;
@@ -182,6 +185,9 @@ public sealed class BarChartGrader : IInteractionGrader
                     || unit < 1 || step % unit != 0 || max / unit > MaxUnits)
                     return false;
             }
+            // Nokta grafiğinde sütun üst üste noktalardır: çizilebilir nokta sayısı sınırlı.
+            if (dots && max / unit > MaxDots)
+                return false;
 
             if (!root.TryGetProperty("categories", out var categoriesElement) || categoriesElement.ValueKind != JsonValueKind.Array)
                 return false;

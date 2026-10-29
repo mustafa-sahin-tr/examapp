@@ -153,6 +153,12 @@ export class QuestionCanvasBarChartComponent {
   readonly canReset = computed(() => !this.readOnly() && Object.keys(this.values()).length > 0);
 
   /** Değerin dikey konumu (alttan yüzde). */
+  /** Nokta grafiği: `value` değerindeki sütunun nokta merkezleri (her unit aralığının ortası). */
+  dotLevels(value: number): number[] {
+    const unit = this._plan()?.unit ?? 0;
+    return unit > 0 ? Array.from({ length: Math.floor(value / unit) }, (_, k) => (k + 0.5) * unit) : [];
+  }
+
   percent(value: number): string {
     const plan = this._plan();
     return plan ? `${(value / plan.max) * 100}%` : '0%';
@@ -166,6 +172,13 @@ export class QuestionCanvasBarChartComponent {
     const rect = el.getBoundingClientRect();
     if (rect.height <= 0) return;
     const ratio = Math.min(1, Math.max(0, (rect.bottom - event.clientY) / rect.height));
+    if (plan.style === 'dot') {
+      // Nokta grafiği: dokunulan birim aralığına kadar nokta; en üstteki noktaya dokunmak onu kaldırır.
+      const value = Math.max(1, Math.ceil((ratio * plan.max) / plan.unit)) * plan.unit;
+      const next = column.value === value ? value - plan.unit : value;
+      this.set(column.id, next > 0 ? next : null);
+      return;
+    }
     const value = Math.round((ratio * plan.max) / plan.unit) * plan.unit;
     this.set(column.id, column.value === value ? null : value);
   }

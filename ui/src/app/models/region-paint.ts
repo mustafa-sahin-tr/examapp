@@ -14,6 +14,9 @@
  * Dilim c — numaralı boyama (bölge planında `groups`): bölgeler soru numarasına (gruba) bağlı; bir gruba dokunmak o numaralı bütün
  * bölgeleri boyar. `fills` anahtarı grup id'sidir (plan, çözüm, payload); çözüm her gruba doğru cevabın rengi. Kontrol grup başına
  * (MCQ gibi): `rows` = gruplar, sayaç yok.
+ *
+ * Issue #588 dilim d — daire grafiği (`mode: "pie"`, `slices` eş dilim): tek satırlık ızgara gibi okunur (`rows` 1, `cols` dilim
+ * sayısı; dilim 1 tepeden saat yönünde). Çözüm, payload ve kontrol ızgarayla aynı (renk başına dilim sayısı).
  */
 import { isInteractionType, isValidInteractionId } from './interaction-ids';
 
@@ -30,6 +33,8 @@ export const REGION_PAINT_LIMITS = {
   minPoints: 3,
   maxPoints: 64,
   maxCoordinate: 100_000,
+  minSlices: 2,
+  maxSlices: 36,
 } as const;
 
 export const PAINT_COLORS = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'brown', 'black', 'gray'] as const;
@@ -47,7 +52,8 @@ export interface PaintEntry {
 export interface RegionPaintPlanV1 {
   version: 1;
   type: typeof REGION_PAINT;
-  mode: 'grid';
+  /** `pie`: daire grafiği — `rows` 1, `cols` dilim sayısı (planda `slices`). */
+  mode: 'grid' | 'pie';
   rows: number;
   cols: number;
   palette: PaintEntry[];
@@ -116,20 +122,26 @@ export function paintCss(color: PaintColor): string {
   return `var(--paint-${color})`;
 }
 
-/** Plan JSON'unu güvenli ayrıştırır; tür / mod farklı, boyut sınır dışı ya da palet boşsa null. */
+/**
+ * Izgara / daire planını güvenli ayrıştırır; tür / mod farklı, boyut sınır dışı ya da palet boşsa null. Daire grafiği tek satırlık
+ * ızgara olarak döner.
+ */
 export function parseRegionPaintPlan(json: string | null | undefined): RegionPaintPlanV1 | null {
   if (!json) return null;
   try {
     const parsed = JSON.parse(json) as Record<string, unknown> | null;
-    if (!parsed || typeof parsed !== 'object' || !isRegionPaintType(parsed['type']) || parsed['mode'] !== 'grid') return null;
-    const { minSize, maxSize, maxPalette } = REGION_PAINT_LIMITS;
-    const size = (v: unknown) => (Number.isInteger(v) && (v as number) >= minSize && (v as number) <= maxSize ? (v as number) : null);
-    const rows = size(parsed['rows']);
-    const cols = size(parsed['cols']);
+    if (!parsed || typeof parsed !== 'object' || !isRegionPaintType(parsed['type'])) return null;
+    const mode = parsed['mode'];
+    if (mode !== 'grid' && mode !== 'pie') return null;
+    const { minSize, maxSize, minSlices, maxSlices, maxPalette } = REGION_PAINT_LIMITS;
+    const within = (v: unknown, min: number, max: number) =>
+      Number.isInteger(v) && (v as number) >= min && (v as number) <= max ? (v as number) : null;
+    const rows = mode === 'pie' ? 1 : within(parsed['rows'], minSize, maxSize);
+    const cols = mode === 'pie' ? within(parsed['slices'], minSlices, maxSlices) : within(parsed['cols'], minSize, maxSize);
     if (rows === null || cols === null) return null;
     const palette = parsePalette(parsed['palette'], new Set<string>());
     if (palette.length === 0 || palette.length > maxPalette) return null;
-    return { version: 1, type: REGION_PAINT, mode: 'grid', rows, cols, palette };
+    return { version: 1, type: REGION_PAINT, mode, rows, cols, palette };
   } catch {
     return null;
   }
@@ -148,6 +160,29 @@ function parsePalette(value: unknown, ids: Set<string>): PaintEntry[] {
     palette.push({ id, color, label: typeof label === 'string' ? label : '' });
   }
   return palette;
+}
+
+/** Plan JSON'u yazımı: daire grafiğinde `slices`, ızgarada `rows`/`cols`. */
+export function serializeRegionPaintPlan(
+  plan: Pick<RegionPaintPlanV1, 'mode' | 'rows' | 'cols'> & { palette: readonly object[] }
+): Record<string, unknown> {
+  const base = { version: 1, type: REGION_PAINT, mode: plan.mode };
+  const size = plan.mode === 'pie' ? { slices: plan.cols } : { rows: plan.rows, cols: plan.cols };
+  return { ...base, ...size, palette: plan.palette };
+}
+
+/**
+ * Daire grafiğinde `index`. dilimin SVG yolu (merkez 0,0, yarıçap `r`; dilim 0 tepeden başlar, saat yönünde). En az 2 dilim olduğundan
+ * yay hep küçük yaydır.
+ */
+export function pieSlicePath(index: number, slices: number, r: number): string {
+  const angle = (k: number) => (2 * Math.PI * k) / slices - Math.PI / 2;
+  const point = (a: number) => `${round(r * Math.cos(a))} ${round(r * Math.sin(a))}`;
+  return `M 0 0 L ${point(angle(index))} A ${r} ${r} 0 0 1 ${point(angle(index + 1))} Z`;
+}
+
+function round(v: number): number {
+  return Math.round(v * 1000) / 1000;
 }
 
 /** Çokgen alanı (köşe sırasından bağımsız, mutlak). */

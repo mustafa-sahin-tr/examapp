@@ -27,6 +27,7 @@ import {
   parseRegionPaintRegionsPlan,
   parseRegionPaintSolution,
   polygonBounds,
+  pieSlicePath,
   solutionCells,
 } from '../../../models/region-paint';
 
@@ -361,6 +362,15 @@ export class QuestionCanvasRegionPaintComponent {
     if (!plan) return;
     this.cells.set(emptyCells(plan));
     this.emit();
+  }
+
+  slicePath(index: number, slices: number): string {
+    return pieSlicePath(index, slices, 100);
+  }
+
+  sliceAria(index: number, value: number | null, t: (key: string, params?: Record<string, unknown>) => string): string {
+    const entry = value === null ? null : this._plan()?.palette[value];
+    return `${t('pie.slice', { n: index + 1 })}: ${entry ? entry.label || t('colors.' + entry.color) : '—'}`;
   }
 
   cellAria(r: number, c: number, value: number | null): string {

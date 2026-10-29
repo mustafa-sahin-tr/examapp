@@ -299,7 +299,8 @@
         "crossword": "Crossword",
         "wordSearch": "Word search",
         "logicGrid": "Logic grid",
-        "regionPaint": "Colouring"
+        "regionPaint": "Colouring",
+        "numberLine": "Number line"
       }
     },
     "addTextItem": "Add text-only item"

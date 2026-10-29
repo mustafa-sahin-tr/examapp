@@ -1,0 +1,92 @@
+<div class="nl-root" [class.is-solution]="solutionShown()" *transloco="let t; prefix: 'shared.questionCanvas.numberLine'">
+  @if (!hidePassage && passageImageUrl(); as pUrl) {
+    <div class="nl-passage">
+      @if (passageTitle(); as title) {
+        <div class="nl-passage__title">{{ title }}</div>
+      }
+      <img class="nl-passage__image" [src]="pUrl" [alt]="t('passageAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  @if (imageUrl(); as url) {
+    <div class="nl-image-wrap">
+      <img class="nl-image" [src]="url" [alt]="t('imageAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  @if (plan(); as p) {
+    <div class="nl-pool" role="group" [attr.aria-label]="t('pool')" data-testid="nl-pool">
+      @for (card of pool(); track card.id) {
+        <button type="button" class="nl-card" [attr.data-card]="card.id" [attr.aria-pressed]="selected() === card.id"
+          [class.is-selected]="selected() === card.id" [class.is-ok]="cardState(card.id) === 'ok'"
+          [class.is-bad]="cardState(card.id) === 'bad'" [disabled]="readOnly()" (click)="toggleCard(card.id)">
+          {{ card.label }}
+        </button>
+      } @empty {
+        <span class="nl-pool__empty">{{ t('poolEmpty') }}</span>
+      }
+    </div>
+
+    <div class="nl-scroll">
+      <div class="nl-track" data-testid="nl-track" [style.width]="trackWidth(p)" [style.--nl-stack]="tallest()">
+        <div class="nl-axis nl-axis--stacks">
+          @for (stack of stacks(); track stack.at) {
+            <div class="nl-stack" [style.left]="left(stack.at)" [attr.data-stack]="stack.at">
+              @for (card of stack.cards; track card.id) {
+                <button type="button" class="nl-card nl-card--placed" [attr.data-card]="card.id" [attr.aria-pressed]="selected() === card.id"
+                  [attr.aria-label]="t('placedAria', { card: card.label, tick: tickAria(stack.at) })"
+                  [class.is-selected]="selected() === card.id" [class.is-ok]="cardState(card.id) === 'ok'"
+                  [class.is-bad]="cardState(card.id) === 'bad'" [disabled]="readOnly()" (click)="toggleCard(card.id)"
+                  (keydown)="onCardKey($event, card.id)">
+                  {{ card.label }}
+                </button>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="nl-axis nl-axis--line" data-testid="nl-line" [class.is-armed]="selected() !== null && !readOnly()"
+          (click)="placeAtPointer($event)">
+          <span class="nl-line" aria-hidden="true"></span>
+          @for (at of ticks(); track at) {
+            <button type="button" class="nl-tick" [attr.data-tick]="at" [style.left]="left(at)" [attr.aria-label]="tickAria(at)"
+              [class.is-major]="tickLabel(at) !== null" [disabled]="readOnly() || selected() === null"
+              (click)="$event.stopPropagation(); place(at)"></button>
+          }
+        </div>
+
+        <div class="nl-axis nl-axis--labels" aria-hidden="true">
+          @for (label of p.labels; track label.at) {
+            <span class="nl-label" [style.left]="left(label.at)">{{ label.text }}</span>
+          }
+        </div>
+      </div>
+    </div>
+
+    @if (!solutionShown()) {
+      <div class="nl-actions">
+        <button mat-stroked-button type="button" data-testid="nl-return" [disabled]="readOnly() || !selectedPlaced()" (click)="returnSelected()">
+          <mat-icon>undo</mat-icon>{{ t('return') }}
+        </button>
+        <button mat-stroked-button type="button" data-testid="nl-reset" [disabled]="!canReset()" (click)="reset()">
+          <mat-icon>restart_alt</mat-icon>{{ t('reset') }}
+        </button>
+      </div>
+      <p class="nl-hint">{{ t('hint') }}</p>
+    }
+  } @else {
+    <p class="nl-hint" data-testid="nl-invalid">{{ t('invalid') }}</p>
+  }
+
+  @if (feedbackState(); as fb) {
+    <p class="nl-result" role="status" data-testid="nl-result" [class.is-ok]="correctCount() === fb.rows.length"
+      [class.is-bad]="correctCount() < fb.rows.length">
+      <mat-icon aria-hidden="true">{{ correctCount() === fb.rows.length ? 'check_circle' : 'error' }}</mat-icon>
+      {{ correctCount() === fb.rows.length ? t('resultOk') : t('resultPartial', { ok: correctCount(), total: fb.rows.length }) }}
+    </p>
+  }
+
+  @if (solutionShown()) {
+    <p class="nl-hint" data-testid="nl-solution-hint">{{ t('solutionShown') }}</p>
+  }
+</div>

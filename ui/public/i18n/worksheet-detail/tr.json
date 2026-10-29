@@ -299,7 +299,8 @@
         "crossword": "Çengel bulmaca",
         "wordSearch": "Kelime avı",
         "logicGrid": "Mantık tablosu",
-        "regionPaint": "Boyama"
+        "regionPaint": "Boyama",
+        "numberLine": "Sayı doğrusu"
       }
     },
     "addTextItem": "Görselsiz madde ekle"

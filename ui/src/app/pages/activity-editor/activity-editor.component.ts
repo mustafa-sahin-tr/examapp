@@ -64,6 +64,12 @@ import {
 } from '../../models/activity-authoring-region-paint';
 import { PAINT_COLORS, PaintColor, paintCss } from '../../models/region-paint';
 import {
+  NUMBER_LINE_FORM_LIMITS,
+  NumberLineCardForm,
+  NumberLineForm,
+  targetTick,
+} from '../../models/activity-authoring-number-line';
+import {
   LOGIC_GRID_FORM_LIMITS,
   LogicGridForm,
   addLogicCategory,
@@ -93,6 +99,7 @@ import {
 import { QuestionCanvasCrosswordComponent } from '../../shared/components/question-canvas-crossword/question-canvas-crossword.component';
 import { QuestionCanvasLogicGridComponent } from '../../shared/components/question-canvas-logic-grid/question-canvas-logic-grid.component';
 import { QuestionCanvasRegionPaintComponent } from '../../shared/components/question-canvas-region-paint/question-canvas-region-paint.component';
+import { QuestionCanvasNumberLineComponent } from '../../shared/components/question-canvas-number-line/question-canvas-number-line.component';
 import { QuestionCanvasWordSearchComponent } from '../../shared/components/question-canvas-word-search/question-canvas-word-search.component';
 import { QuestionCanvasDragPlaceComponent } from '../../shared/components/question-canvas-drag-place/question-canvas-drag-place.component';
 import { QuestionCanvasMatchComponent } from '../../shared/components/question-canvas-match/question-canvas-match.component';
@@ -155,6 +162,7 @@ interface EditableItem {
     QuestionCanvasWordSearchComponent,
     QuestionCanvasLogicGridComponent,
     QuestionCanvasRegionPaintComponent,
+    QuestionCanvasNumberLineComponent,
   ],
   providers: [provideTranslocoScope(ACTIVITY_EDITOR_SCOPE)],
   templateUrl: './activity-editor.component.html',
@@ -183,6 +191,7 @@ export class ActivityEditorComponent {
   readonly logicLimits = LOGIC_GRID_FORM_LIMITS;
   readonly paintLimits = REGION_PAINT_FORM_LIMITS;
   readonly paintColors = PAINT_COLORS;
+  readonly lineLimits = NUMBER_LINE_FORM_LIMITS;
   /** Otomatik yerleştirmenin son sonucu: kesiştirilemeyip ayrı satıra konan kelimeler (1 tabanlı). */
   readonly crosswordUnplaced = signal<number[] | null>(null);
   /**
@@ -237,6 +246,7 @@ export class ActivityEditorComponent {
   readonly crossword = computed(() => (this.form().kind === 'crossword' ? (this.form() as CrosswordForm) : null));
   readonly regionPaint = computed(() => (this.form().kind === 'regionPaint' ? (this.form() as RegionPaintForm) : null));
   readonly logicGrid = computed(() => (this.form().kind === 'logicGrid' ? (this.form() as LogicGridForm) : null));
+  readonly numberLine = computed(() => (this.form().kind === 'numberLine' ? (this.form() as NumberLineForm) : null));
   readonly wordSearch = computed(() => (this.form().kind === 'wordSearch' ? (this.form() as WordSearchForm) : null));
   /** D/Y ağacının düzeyleri: genişlik öncelikli sırada her düzeyin ifade dizinleri. */
   readonly treeLevels = computed(() => {
@@ -874,6 +884,57 @@ export class ActivityEditorComponent {
     this.updateRegionPaint((f) => (f.entries.length > 1 ? { ...f, entries: f.entries.filter((_, i) => i !== index) } : f));
   }
 
+  // ---- Sayı doğrusu ----
+
+  /** Kartın hedef çentiğinin adı (etiketi, yoksa "3/8"); boş hedef çeldirici, geçersiz null. */
+  lineTargetName(target: string, form: NumberLineForm): { value: string | null } | null {
+    const at = targetTick(target, form.divisions);
+    if (at === undefined) return null;
+    if (at === null) return { value: null };
+    return { value: form.labels.find((l) => l.at === at)?.text.trim() || `${at}/${form.divisions}` };
+  }
+
+  setLineOption(patch: Partial<Pick<NumberLineForm, 'divisions' | 'tolerance' | 'hideTicks'>>): void {
+    for (const key of ['divisions', 'tolerance'] as const) {
+      const value = patch[key];
+      if (value !== undefined && !Number.isFinite(value)) return;
+      if (value !== undefined) patch[key] = Math.round(value);
+    }
+    this.updateNumberLine((f) => ({ ...f, ...patch }));
+  }
+
+  setLineLabel(index: number, patch: Partial<NumberLineForm['labels'][number]>): void {
+    if (patch.at !== undefined && !Number.isFinite(patch.at)) return;
+    this.updateNumberLine((f) => ({ ...f, labels: f.labels.map((l, i) => (i === index ? { ...l, ...patch } : l)) }));
+  }
+
+  /** Yeni etiket: etiketsiz ilk çentik. */
+  addLineLabel(): void {
+    this.updateNumberLine((f) => {
+      const used = new Set(f.labels.map((l) => l.at));
+      const at = Array.from({ length: f.divisions + 1 }, (_, i) => i).find((i) => !used.has(i));
+      return at === undefined ? f : { ...f, labels: [...f.labels, { at, text: '' }].sort((a, b) => a.at - b.at) };
+    });
+  }
+
+  removeLineLabel(index: number): void {
+    this.updateNumberLine((f) => ({ ...f, labels: f.labels.filter((_, i) => i !== index) }));
+  }
+
+  setLineCard(index: number, patch: Partial<NumberLineCardForm>): void {
+    this.updateNumberLine((f) => ({ ...f, cards: f.cards.map((c, i) => (i === index ? { ...c, ...patch } : c)) }));
+  }
+
+  addLineCard(): void {
+    this.updateNumberLine((f) =>
+      f.cards.length < NUMBER_LINE_FORM_LIMITS.maxCards ? { ...f, cards: [...f.cards, { label: '', target: '' }] } : f
+    );
+  }
+
+  removeLineCard(index: number): void {
+    this.updateNumberLine((f) => (f.cards.length > 1 ? { ...f, cards: f.cards.filter((_, i) => i !== index) } : f));
+  }
+
   // ---- Kelime avı ----
 
   setWordSearchOption(patch: Partial<Pick<WordSearchForm, 'rows' | 'cols' | 'diagonal' | 'reverse'>>): void {
@@ -1213,6 +1274,11 @@ export class ActivityEditorComponent {
     if (f) this.form.set(update(f));
   }
 
+  private updateNumberLine(update: (f: NumberLineForm) => NumberLineForm): void {
+    const f = this.numberLine();
+    if (f) this.form.set(update(f));
+  }
+
   private updateLogicGrid(update: (f: LogicGridForm) => LogicGridForm): void {
     const f = this.logicGrid();
     if (f) this.form.set(update(f));
@@ -1293,6 +1359,8 @@ function itemTitle(form: AuthoringForm, instruction: string | null | undefined):
       return form.entries[0]?.clue ?? '';
     case 'regionPaint':
       return form.entries.map((e) => e.label || e.target).filter(Boolean).join(', ');
+    case 'numberLine':
+      return form.cards.map((c) => c.label).filter(Boolean).join(', ').slice(0, 80);
     case 'logicGrid':
       return form.clues.find((c) => c.trim()) ?? form.subjects.join(', ');
     case 'wordSearch':

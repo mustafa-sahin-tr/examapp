@@ -1329,6 +1329,65 @@ describe('ActivityPlayerComponent (#573)', () => {
     });
   });
 
+  describe('numberLine (#588)', () => {
+    const NL_PLAN = JSON.stringify({
+      version: 1,
+      type: 'numberLine',
+      divisions: 4,
+      labels: [
+        { at: 0, text: '0' },
+        { at: 4, text: '1' },
+      ],
+      cards: [
+        { id: 'k1', label: '1/4' },
+        { id: 'k2', label: '5/4' },
+      ],
+    });
+    const nlAnswer = (placed: Record<string, number>) => JSON.stringify({ version: 1, type: 'numberLine', placed });
+    const base = () => instance().testInstanceQuestions[0].question;
+    const typed = (answer: string) =>
+      instance({}, [{ answerPayload: answer, question: { ...base(), interactionType: 'NumberLine', interactionPlan: NL_PLAN } }]);
+
+    it('rendersPlayer_BlankIsIncomplete_CardRowsAndFeedback', async () => {
+      await create(typed(nlAnswer({})));
+      fixture.componentInstance.goTo(0);
+      await settle();
+
+      expect(el().querySelector('app-question-canvas-number-line')).not.toBeNull();
+      expect(fixture.componentInstance.blankItems()).toContain('a');
+
+      fixture.componentInstance.onDragDropChange(nlAnswer({ k1: 2, k2: 4 }), fixture.componentInstance.items()[0]);
+      await settle();
+      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+
+      activityService.check.mockReturnValue(
+        of({
+          success: true,
+          correctCount: 0,
+          totalCount: 3,
+          questions: [
+            {
+              instanceQuestionId: 101,
+              isCorrect: false,
+              correctCount: 0,
+              totalCount: 2,
+              feedback: '{"rows":[{"id":"k1","correct":false},{"id":"k2","correct":false}]}',
+            },
+            { instanceQuestionId: 102, isCorrect: false, correctCount: 0, totalCount: 1, feedback: null },
+          ],
+        })
+      );
+      await fixture.componentInstance.runCheck();
+      await settle();
+      const rows = fixture.componentInstance.currentRows();
+      expect(rows.map((r) => r.correct)).toEqual([false, false]);
+      expect(rows[0].label).toContain('1/4');
+      expect(rows[0].label).toContain('2/4');
+      expect(rows[1].label).toContain('1');
+      expect(fixture.componentInstance.currentNumberLineFeedback()?.rows.length).toBe(2);
+    });
+  });
+
   describe('regionPaint (#587)', () => {
     const RP_PLAN = JSON.stringify({
       version: 1,

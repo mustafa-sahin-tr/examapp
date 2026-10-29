@@ -557,6 +557,20 @@
           "groupNo": "Number {{n}}",
           "groups": "Question numbers"
         }
+      },
+      "numberLine": {
+        "passageAlt": "Reading passage image",
+        "imageAlt": "Activity image",
+        "invalid": "This activity could not be opened.",
+        "pool": "Cards",
+        "poolEmpty": "All cards are on the line.",
+        "placedAria": "{{card}}, at tick {{tick}}",
+        "return": "Back to pool",
+        "reset": "Clear",
+        "hint": "Tap a card, then tap its place on the line; the card snaps to the nearest tick. Tap a card on the line and use ← / → to move it, or tap it again to put it back.",
+        "resultOk": "Every card is in the right place!",
+        "resultPartial": "{{ok}} of {{total}} cards are right; think again about the red ones.",
+        "solutionShown": "The cards are shown in their correct places; the ones left in the pool did not belong on the line."
       }
     },
     "sharingBadge": {

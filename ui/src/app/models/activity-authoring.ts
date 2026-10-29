@@ -7,7 +7,8 @@
  * boşluklu metin) `activity-authoring-blanks.ts`'te. Issue #585: yol oyunları (`mazeTree` şablonları)
  * `activity-authoring-maze.ts`'te. Issue #586: çengel bulmaca (`crossword`) `activity-authoring-crossword.ts`'te, kelime avı
  * (`wordSearch`) `activity-authoring-word-search.ts`'te, sözel mantık tablosu (`logicGrid`) `activity-authoring-logic-grid.ts`'te.
- * Issue #587: boyama (`regionPaint` ızgara modu) `activity-authoring-region-paint.ts`'te.
+ * Issue #587: boyama (`regionPaint` ızgara modu) `activity-authoring-region-paint.ts`'te. Issue #588: sayı doğrusu (`numberLine`)
+ * `activity-authoring-number-line.ts`'te.
  *
  * Kayıtta backend sürükle-yerleştir kartlarını ve eşleştirme sağ öğelerini karışık sıraya dizip opak id verir (#576
  * H1/M1); düzenlemede formu plan + çözümden geri kurarken id'lere değil, plan sırası ve çözüm eşlemesine bakılır.
@@ -56,6 +57,15 @@ import {
 } from './activity-authoring-region-paint';
 import { REGION_PAINT } from './region-paint';
 import {
+  NumberLineForm,
+  buildNumberLineDefinition,
+  emptyNumberLineForm,
+  isNumberLineForm,
+  parseNumberLineDefinition,
+  validateNumberLineForm,
+} from './activity-authoring-number-line';
+import { NUMBER_LINE } from './number-line';
+import {
   ExitName,
   MAZE_KINDS,
   MazeForm,
@@ -82,7 +92,7 @@ import { MAZE_TREE } from './maze-tree';
 import { SLOT_FILL, parseSlotFillPlan } from './slot-fill';
 import { WORD_SEARCH } from './word-search';
 
-export type AuthoringKind = 'matrix' | 'classify' | 'order' | 'match' | BlankKind | MazeKind | 'crossword' | 'wordSearch' | 'logicGrid' | 'regionPaint';
+export type AuthoringKind = 'matrix' | 'classify' | 'order' | 'match' | BlankKind | MazeKind | 'crossword' | 'wordSearch' | 'logicGrid' | 'regionPaint' | 'numberLine';
 
 export const AUTHORING_KINDS: readonly AuthoringKind[] = [
   'matrix',
@@ -98,6 +108,7 @@ export const AUTHORING_KINDS: readonly AuthoringKind[] = [
   'wordSearch',
   'logicGrid',
   'regionPaint',
+  'numberLine',
 ];
 
 export const AUTHORING_LABEL_MAX = MATRIX_CHOICE_LIMITS.maxLabelLength;
@@ -146,7 +157,7 @@ export interface MatchForm {
   distractors: string[];
 }
 
-export type AuthoringForm = MatrixForm | ClassifyForm | OrderForm | MatchForm | BlankForm | MazeForm | CrosswordForm | WordSearchForm | LogicGridForm | RegionPaintForm;
+export type AuthoringForm = MatrixForm | ClassifyForm | OrderForm | MatchForm | BlankForm | MazeForm | CrosswordForm | WordSearchForm | LogicGridForm | RegionPaintForm | NumberLineForm;
 
 export interface AuthoringDefinition {
   interactionType:
@@ -158,7 +169,8 @@ export interface AuthoringDefinition {
     | typeof CROSSWORD
     | typeof WORD_SEARCH
     | typeof LOGIC_GRID
-    | typeof REGION_PAINT;
+    | typeof REGION_PAINT
+    | typeof NUMBER_LINE;
   plan: string;
   solution: string;
 }
@@ -187,6 +199,7 @@ export function emptyForm(
   if (kind === 'wordSearch') return emptyWordSearchForm();
   if (kind === 'logicGrid') return emptyLogicGridForm();
   if (kind === 'regionPaint') return emptyRegionPaintForm();
+  if (kind === 'numberLine') return emptyNumberLineForm();
   switch (kind) {
     case 'matrix':
       return {
@@ -218,6 +231,7 @@ export function validateForm(form: AuthoringForm): AuthoringError[] {
   if (isWordSearchForm(form)) return validateWordSearchForm(form);
   if (isLogicGridForm(form)) return validateLogicGridForm(form);
   if (isRegionPaintForm(form)) return validateRegionPaintForm(form);
+  if (isNumberLineForm(form)) return validateNumberLineForm(form);
   const errors: AuthoringError[] = [];
   const blank = (values: string[]) => values.some((v) => !v.trim());
   const tooLong = (values: string[]) => values.some((v) => v.trim().length > AUTHORING_LABEL_MAX);
@@ -294,6 +308,7 @@ export function buildDefinition(form: AuthoringForm): AuthoringDefinition {
   if (isWordSearchForm(form)) return buildWordSearchDefinition(form);
   if (isLogicGridForm(form)) return buildLogicGridDefinition(form);
   if (isRegionPaintForm(form)) return buildRegionPaintDefinition(form);
+  if (isNumberLineForm(form)) return buildNumberLineDefinition(form);
   switch (form.kind) {
     case 'matrix': {
       const columns = form.columns.map((label, i) => ({ id: `c${i + 1}`, label: label.trim() }));
@@ -366,6 +381,7 @@ export function parseDefinition(
   if (type === WORD_SEARCH.toLowerCase()) return parseWordSearchDefinition(planJson, solutionJson);
   if (type === LOGIC_GRID.toLowerCase()) return parseLogicGridDefinition(planJson, solutionJson);
   if (type === REGION_PAINT.toLowerCase()) return parseRegionPaintDefinition(planJson, solutionJson);
+  if (type === NUMBER_LINE.toLowerCase()) return parseNumberLineDefinition(planJson, solutionJson);
   return null;
 }
 

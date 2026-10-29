@@ -793,6 +793,19 @@ açınca var olan bölgeler 1. soruya girer; yeni bölge seçili soruya girer, t
 etiketi ve doğru renk; bölgesi olan soru silinmez. Pilot TT MatLab dosya 57 (8 soru, ~65 bölge, 8 renk). Migration yok; Aspire'da exam
 API'yi yeniden başlat.
 
+**Issue #588 dilim a — `numberLine` (bileşen F, sayı doğrusu).** Plan
+`{"version":1,"type":"numberLine","divisions","labels":[{at,text}],"cards":[{id,label}],"tolerance?","hideTicks?"}` (bölme 1–100, çentikler
+0..divisions; etiket çentik başına en çok bir, düz metin ≤ 30; 1–20 kart, etiket zorunlu ≤ 40; tolerans 0–10 çentik ve bölmeden küçük;
+`hideTicks` yalnız görünüm — etiketsiz çentikler çizilmez). Değerler planda yok: öğrenci etiketlerden ve çentik sırasından bulur. Çözüm
+`{"positions":{"k1":3,"k2":null}}` (her kart için çentik ya da `null` = çeldirici, doğruya konmamalı; en az bir hedefli kart). Öğrenci
+payload'u `{"placed":{"k1":3}}` (bir çentikte birden çok kart olabilir; kartsız = cevap yok). Kontrol kart başına (`NumberLineGrader`):
+hedefli kart tolerans içindeyse doğru, çeldirici konmamışsa doğru; geri bildirim `{"rows":[{id,correct}]}` (hedef yazılmaz). Analiz: öğe =
+kart, cevap = çentik (etiketi ya da `3/8`), çeldirici işaretli. Oynatıcı: kart seç → çentiğe ya da doğruya dokun (en yakın çentik); doğrudaki
+kart ← / → ile kayar, ikinci dokunuş / Delete havuza geri koyar. Yazarlık görselsiz editörde (tür **Sayı doğrusu**): bölme, tolerans,
+çentik etiketleri, kart + hedef çentik (boş = çeldirici). Pilotlar: kesir kartları (0–1, 8 bölme), olasılık spektrumu (4 bölme, imkânsız …
+kesin), tahmin (100 bölme + tolerans + gizli çentik). Testte de çözülebilir (puanlanır). Sonraki dilimler: grafik kurma, kareli zeminde
+kural tabanlı çizim. Migration yok; Aspire'da exam API'yi yeniden başlat (yeni kontrolcü).
+
 **Dev sıfırlama — soru bankası.** `deploy/scripts/dev-reset-questions.sh` (dev-only) tüm soruları ve FK ile bağlı
 her şeyi (test-soru bağları, öğrenci cevapları, yorumlar, LabelingPages/Results), öğrencilerin test oturumlarını
 (`TestInstances` — Questions'a FK'sı yok, CASCADE ulaşmaz, açıkça silinir; aksi halde "boş test yapılmış" gibi kalır),

@@ -28,7 +28,8 @@
     "crossword": "Crossword",
     "wordSearch": "Word search",
     "logicGrid": "Logic grid",
-    "regionPaint": "Colouring (grid)"
+    "regionPaint": "Colouring (grid)",
+    "numberLine": "Number line"
   },
   "kindHints": {
     "matrix": "Mark the correct option for each row. The T/F template sets up two columns; with multiple choice a row can have several correct options.",
@@ -43,7 +44,8 @@
     "mazeBoard": "Each row has one correct box; the student steps on boxes from bottom to top to reach the finish. A wrong box breaks.",
     "mazeRooms": "Each room is a question and the doors between rooms are answers. The student follows the correct doors from the start room to the finish.",
     "mazeStones": "The student marks the (wrong) stones that must not be stepped on. Mark those stones with the drop icon.",
-    "regionPaint": "The student paints each colour in the requested share of an equal-square grid; positions are free, the count per colour is checked."
+    "regionPaint": "The student paints each colour in the requested share of an equal-square grid; positions are free, the count per colour is checked.",
+    "numberLine": "Students put the cards (fractions, decimals, events…) on the right tick of the number line; distractor cards stay off the line."
   },
   "instruction": "Instruction (optional)",
   "image": {
@@ -197,7 +199,15 @@
     "paintColorDuplicate": "The same colour is chosen twice.",
     "paintTargetInvalid": "These targets are unreadable or do not give a whole number of the {{total}} squares: {{list}}. Write a fraction (2/5), decimal (0.35), percent (25%) or a square count.",
     "paintTargetMissing": "Give at least one colour a target.",
-    "paintTargetTooMany": "The targets add up to {{sum}} squares; the grid has {{total}}."
+    "paintTargetTooMany": "The targets add up to {{sum}} squares; the grid has {{total}}.",
+    "lineDivisions": "The number of parts must be 1–{{max}}.",
+    "lineTolerance": "Tolerance must be 0–{{max}} ticks and less than the number of parts.",
+    "lineLabelBlank": "Do not leave a label empty.",
+    "lineLabelTick": "A label's tick must be 0–{{max}}.",
+    "lineLabelDuplicate": "A tick can have only one label.",
+    "lineCardCount": "There must be 1–{{max}} cards.",
+    "lineTargetInvalid": "These targets are not a tick between 0 and {{max}}: {{list}}.",
+    "lineTargetMissing": "At least one card needs a target tick."
   },
   "snackbar": {
     "created": "The item was added to the activity.",
@@ -344,5 +354,22 @@
       "black": "Black",
       "gray": "Gray"
     }
+  },
+  "numberLine": {
+    "hint": "Students place the cards on the ticks of a number line. Split the line into equal parts (ticks are numbered from 0 to the number of parts), label the ticks you want (e.g. 0 and 1, or \"impossible\", \"even\", \"certain\"). Enter each card's target tick; a card left empty is a distractor (it should stay off the line). For estimation use many parts + tolerance + \"Hide ticks\".",
+    "divisions": "Number of parts",
+    "tolerance": "Tolerance (ticks)",
+    "hideTicks": "Hide ticks (only labelled ones are drawn)",
+    "labels": "Tick labels",
+    "tick": "Tick",
+    "labelText": "Label",
+    "addLabel": "Add label",
+    "cards": "Cards",
+    "card": "Card {{n}}",
+    "target": "Target tick",
+    "targetName": "= {{name}}",
+    "distractor": "distractor",
+    "targetInvalid": "not a tick",
+    "addCard": "Add card"
   }
 }

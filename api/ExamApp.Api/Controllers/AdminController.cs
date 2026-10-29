@@ -472,8 +472,8 @@ public class AdminController : BaseController
     // ---- Öğrenci okul değişikliği (issue #277 madde 8) ----
 
     /// <summary>
-    /// PUT api/admin/students/{id}/school, gövde <c>{ "schoolId": int }</c> → öğrencinin (Student.Id) okulunu değiştirir
-    /// (öğrenci okulu kayıttan sonra kilitlidir, #259). Yanıt <c>200 { studentId, schoolId, previousSchoolId, changed }</c>;
+    /// PUT api/admin/students/{id}/school, gövde <c>{ "schoolId": int | null }</c> → öğrencinin (Student.Id) okulunu değiştirir
+    /// (öğrenci okulu kayıttan sonra kilitlidir, #259); <c>null</c> okulsuz yapar (#541; öğretmen ucunda yok). Yanıt <c>200 { studentId, schoolId, previousSchoolId, changed }</c>;
     /// zaten o okuldaysa da 200 (<c>changed=false</c>, yan etkisiz). schoolId eksik veya okul yok → 400; öğrenci/hesap yok
     /// → 404; hedef admin/servis hesabı ya da çağıranın kendisi → 403; eşzamanlı değişiklik → 409; auth-api/Keycloak
     /// hatası → 502 (okul değişmez). AdminUserActionLogs'a audit'lenir; admin başına rate limit (429).
@@ -486,8 +486,10 @@ public class AdminController : BaseController
         var actor = KeyCloakId;
         if (string.IsNullOrWhiteSpace(actor))
             return Forbid();
-        if (request?.SchoolId is not int schoolId)
+        // issue #541: açık null okulsuz yapar; alan hiç yoksa 400 (yanlışlıkla boş gövde öğrenciyi okulsuz bırakmasın).
+        if (request is null || !request.HasSchoolId)
             return BadRequest(Message("admin.studentSchool.schoolIdRequired"));
+        var schoolId = request.SchoolId;
 
         var service = _studentSchool
             ?? throw new InvalidOperationException("IAdminStudentSchoolService is not registered.");
@@ -497,7 +499,7 @@ public class AdminController : BaseController
             AdminStudentSchoolChangeStatus.Success => Ok(new AdminStudentSchoolResponseDto
             {
                 StudentId = id,
-                SchoolId = result.SchoolId ?? schoolId,
+                SchoolId = result.SchoolId,
                 PreviousSchoolId = result.PreviousSchoolId,
                 Changed = result.Changed
             }),

@@ -12,21 +12,53 @@
       {{ t('currentSchool', { school: data.currentSchoolName ?? t('noSchool') }) }}
     </p>
 
-    <app-school-select
-      [label]="t('newSchool')"
-      [required]="true"
-      [disabled]="submitting() || conflict()"
-      [excludeSchoolId]="data.currentSchoolId"
-      [(value)]="selectedSchoolId"
-      (selectionChange)="onSchoolSelected($event)"
-    />
+    @if (canRemove) {
+      <mat-button-toggle-group
+        class="ssd-mode"
+        [value]="mode()"
+        (change)="setMode($event.value)"
+        [disabled]="submitting() || conflict()"
+        [attr.aria-label]="t('modeLabel')"
+        data-testid="school-mode"
+      >
+        <mat-button-toggle value="move" data-testid="mode-move">{{ t('modeMove') }}</mat-button-toggle>
+        <mat-button-toggle value="remove" data-testid="mode-remove">{{ t('modeRemove') }}</mat-button-toggle>
+      </mat-button-toggle-group>
+    }
 
-    <p class="ssd-effects-title">{{ t('effectsTitle') }}</p>
-    <ul class="ssd-effects" data-testid="school-effects">
-      <li><mat-icon aria-hidden="true">assignment</mat-icon><span>{{ t('effectAssignments') }}</span></li>
-      <li><mat-icon aria-hidden="true">person_off</mat-icon><span>{{ t('effectOldTeachers') }}</span></li>
-      <li><mat-icon aria-hidden="true">lock</mat-icon><span>{{ t('effectLock') }}</span></li>
-    </ul>
+    @if (mode() === 'move') {
+      <app-school-select
+        [label]="t('newSchool')"
+        [required]="true"
+        [disabled]="submitting() || conflict()"
+        [excludeSchoolId]="data.currentSchoolId"
+        [(value)]="selectedSchoolId"
+        (selectionChange)="onSchoolSelected($event)"
+      />
+
+      <p class="ssd-effects-title">{{ t('effectsTitle') }}</p>
+      <ul class="ssd-effects" data-testid="school-effects">
+        <li><mat-icon aria-hidden="true">assignment</mat-icon><span>{{ t('effectAssignments') }}</span></li>
+        <li><mat-icon aria-hidden="true">person_off</mat-icon><span>{{ t('effectOldTeachers') }}</span></li>
+        <li><mat-icon aria-hidden="true">lock</mat-icon><span>{{ t('effectLock') }}</span></li>
+      </ul>
+    } @else {
+      <p class="ssd-effects-title">{{ t('effectsTitle') }}</p>
+      <ul class="ssd-effects" data-testid="remove-effects">
+        <li><mat-icon aria-hidden="true">assignment_late</mat-icon><span>{{ t('removeEffectAssignments') }}</span></li>
+        <li><mat-icon aria-hidden="true">person_off</mat-icon><span>{{ t('effectOldTeachers') }}</span></li>
+        <li><mat-icon aria-hidden="true">leaderboard</mat-icon><span>{{ t('removeEffectLeaderboard') }}</span></li>
+      </ul>
+      <mat-checkbox
+        class="ssd-remove-confirm"
+        [checked]="removeConfirmed()"
+        (change)="removeConfirmed.set($event.checked)"
+        [disabled]="submitting() || conflict()"
+        data-testid="remove-confirm"
+      >
+        {{ t('removeConfirmCheck') }}
+      </mat-checkbox>
+    }
 
     @if (error()) {
       <div class="ssd-error" role="alert" data-testid="school-error">
@@ -58,7 +90,7 @@
           <mat-spinner diameter="18" class="ssd-spinner"></mat-spinner>
           {{ t('submitting') }}
         } @else {
-          {{ error() ? t('retry') : t('confirm') }}
+          {{ error() ? t('retry') : mode() === 'remove' ? t('confirmRemove') : t('confirm') }}
         }
       </button>
     }

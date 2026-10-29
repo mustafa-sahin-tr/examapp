@@ -2,6 +2,8 @@ import { Component, DestroyRef, computed, inject, signal, ChangeDetectionStrateg
 import { HttpErrorResponse } from '@angular/common/http';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
@@ -30,18 +32,19 @@ export interface AdminStudentSchoolDialogData {
  * (ör. 409 eşzamanlı değişiklik, 502) `{ refresh: true }` → liste yeniden yüklenir. Hatasız iptal → `undefined`.
  */
 export type AdminStudentSchoolDialogResult =
-  | { schoolId: number; schoolName: string | null }
+  | { schoolId: number | null; schoolName: string | null }
   | { refresh: true };
 
 /**
  * Issue #277 (madde 8) — admin öğrencinin okulunu değiştirir (`PUT /api/exam/admin/students/{id}/school`). Öğrenci okulu
  * kayıttan sonra kilitlidir (#259); bu dialog tek değişiklik yoludur. Onay metni etkileri açıklar (yeni okulun atamaları
  * görünür, eski okulun öğretmenleri erişimi kaybeder). İstek dialog içinde atılır; 409'da "Listeyi yenile" ile kapanır.
+ * Issue #541: okullu öğrencide "Okulsuz yap" kipi (`schoolId: null`) — ayrı etki listesi ve onay kutusu işaretlenmeden gönderilmez.
  */
 @Component({
   selector: 'app-admin-student-school-dialog',
   standalone: true,
-  imports: [MatDialogModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule, TranslocoDirective, SchoolSelectComponent],
+  imports: [MatDialogModule, MatButtonModule, MatButtonToggleModule, MatCheckboxModule, MatIconModule, MatProgressSpinnerModule, TranslocoDirective, SchoolSelectComponent],
   providers: [provideTranslocoScope(ADMIN_SCOPE)],
   templateUrl: './admin-student-school-dialog.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
@@ -60,7 +63,14 @@ export class AdminStudentSchoolDialogComponent {
   readonly error = signal<string | null>(null);
   /** 409: öğrencinin okulu bu arada değişti — yeniden denemek yerine listeyi yenilemek gerekir. */
   readonly conflict = signal(false);
-  readonly canSubmit = computed(() => this.selectedSchoolId() != null && !this.submitting() && !this.conflict());
+  /** Issue #541: `move` başka okula taşır, `remove` okulsuz yapar (yalnız okullu öğrencide seçilebilir). */
+  readonly mode = signal<'move' | 'remove'>('move');
+  readonly canRemove = this.data.currentSchoolId != null;
+  /** Okulsuz yapma onay kutusu. */
+  readonly removeConfirmed = signal(false);
+  readonly canSubmit = computed(() =>
+    !this.submitting() && !this.conflict()
+    && (this.mode() === 'remove' ? this.removeConfirmed() : this.selectedSchoolId() != null));
 
   private request?: Subscription;
   /** Bu dialog'da en az bir istek hata aldı mı. */
@@ -78,6 +88,13 @@ export class AdminStudentSchoolDialogComponent {
     if (!this.conflict()) this.error.set(null);
   }
 
+  setMode(mode: 'move' | 'remove'): void {
+    if (this.submitting() || this.conflict()) return;
+    this.mode.set(mode);
+    this.removeConfirmed.set(false);
+    this.error.set(null);
+  }
+
   cancel(): void {
     if (this.submitting()) return;
     this.dialogRef.close(this.failed ? { refresh: true } : undefined);
@@ -90,16 +107,16 @@ export class AdminStudentSchoolDialogComponent {
 
   /** Çift tıklamaya karşı istek sürerken yeni istek atılmaz. */
   confirm(): void {
-    const schoolId = this.selectedSchoolId();
-    if (schoolId == null || this.submitting() || this.conflict()) return;
+    if (!this.canSubmit()) return;
+    const schoolId = this.mode() === 'remove' ? null : this.selectedSchoolId();
     this.submitting.set(true);
     this.error.set(null);
 
     this.request = this.adminService.changeStudentSchool(this.data.id, schoolId).subscribe({
       next: (res) => {
         this.submitting.set(false);
-        const resultId = typeof res?.schoolId === 'number' ? res.schoolId : schoolId;
-        const name = this.selectedSchool()?.id === resultId ? this.selectedSchool()?.name ?? null : null;
+        const resultId = schoolId == null ? null : typeof res?.schoolId === 'number' ? res.schoolId : schoolId;
+        const name = resultId != null && this.selectedSchool()?.id === resultId ? this.selectedSchool()?.name ?? null : null;
         this.dialogRef.close({ schoolId: resultId, schoolName: name });
       },
       error: (err: HttpErrorResponse) => {

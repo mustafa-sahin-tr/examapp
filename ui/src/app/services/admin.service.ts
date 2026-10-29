@@ -236,9 +236,10 @@ export class AdminService {
 
   /**
    * Issue #277 (madde 8) — öğrencinin (Student.Id) okulunu değiştirir; öğrenci okulu kayıttan sonra kilitlidir (#259).
+   * Issue #541: `schoolId = null` öğrenciyi okulsuz yapar.
    * Hatalar: 400, 403, 404, 409 (eşzamanlı değişiklik → listeyi yenileyip tekrar dene), 429 (`Retry-After`), 502.
    */
-  changeStudentSchool(studentId: number, schoolId: number): Observable<AdminStudentSchoolResponse> {
+  changeStudentSchool(studentId: number, schoolId: number | null): Observable<AdminStudentSchoolResponse> {
     const body: AdminStudentSchoolRequest = { schoolId };
     return this.http.put<AdminStudentSchoolResponse>(`${this.baseUrl}/students/${studentId}/school`, body);
   }

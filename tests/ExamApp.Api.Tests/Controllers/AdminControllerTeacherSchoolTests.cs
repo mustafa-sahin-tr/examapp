@@ -147,6 +147,15 @@ public class AdminControllerTeacherSchoolTests
     }
 
     [Fact]
+    public async Task Explicit_null_school_is_400_teachers_cannot_be_made_schoolless_issue541()
+    {
+        var result = await NewController().ChangeTeacherSchool(9, new AdminTeacherSchoolRequestDto { SchoolId = null }, default);
+
+        MessageOf(result.ShouldBeOfType<BadRequestObjectResult>().Value).ShouldBe(Localized("admin.teacherSchool.schoolIdRequired"));
+        await _service.DidNotReceiveWithAnyArgs().ChangeSchoolAsync(default, default, default!, default);
+    }
+
+    [Fact]
     public async Task Missing_sub_is_forbidden_and_service_not_called()
     {
         var result = await NewController(sub: null).ChangeTeacherSchool(9, new AdminTeacherSchoolRequestDto { SchoolId = 4 }, default);

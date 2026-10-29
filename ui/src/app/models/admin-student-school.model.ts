@@ -3,7 +3,8 @@
  * Kaynak: api/ExamApp.Api/Models/Dtos/Admin/AdminStudentSchoolDtos.cs.
  */
 export interface AdminStudentSchoolRequest {
-  schoolId: number;
+  /** Issue #541: `null` öğrenciyi okulsuz yapar (alan gönderilmezse 400). */
+  schoolId: number | null;
 }
 
 /**
@@ -14,8 +15,8 @@ export interface AdminStudentSchoolRequest {
 export interface AdminStudentSchoolResponse {
   /** Student.Id */
   studentId: number;
-  /** Öğrencinin güncel okulu. */
-  schoolId: number;
+  /** Öğrencinin güncel okulu; okulsuz yapıldıysa null (#541). */
+  schoolId: number | null;
   /** Değişiklikten önceki okul; okulsuzdu ise null. */
   previousSchoolId: number | null;
   changed: boolean;

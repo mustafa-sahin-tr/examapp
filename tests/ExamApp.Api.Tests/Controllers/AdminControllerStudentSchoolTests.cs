@@ -59,7 +59,7 @@ public class AdminControllerStudentSchoolTests
     }
 
     private void Returns(AdminStudentSchoolChangeResult result) =>
-        _service.ChangeSchoolAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _service.ChangeSchoolAsync(Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(result);
 
     private static string? MessageOf(object? value) => value?.GetType().GetProperty("message")?.GetValue(value) as string;
@@ -122,6 +122,33 @@ public class AdminControllerStudentSchoolTests
 
         MessageOf(result.ShouldBeOfType<BadRequestObjectResult>().Value).ShouldBe(Localized("admin.studentSchool.schoolIdRequired"));
         await _service.DidNotReceiveWithAnyArgs().ChangeSchoolAsync(default, default, default!, default, default);
+    }
+
+    [Fact]
+    public async Task Explicit_null_school_makes_the_student_schoolless_issue541()
+    {
+        Returns(new AdminStudentSchoolChangeResult(AdminStudentSchoolChangeStatus.Success, 3, null, Changed: true));
+
+        var result = await NewController().ChangeStudentSchool(9, new AdminStudentSchoolRequestDto { SchoolId = null }, default);
+
+        var dto = result.ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<AdminStudentSchoolResponseDto>();
+        dto.SchoolId.ShouldBeNull();
+        dto.PreviousSchoolId.ShouldBe(3);
+        dto.Changed.ShouldBeTrue();
+        await _service.Received(1).ChangeSchoolAsync(9, null, "kc-admin-sub", AdminUserId, Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("""{"schoolId":null}""", true, null)]
+    [InlineData("""{"schoolId":4}""", true, 4)]
+    [InlineData("""{}""", false, null)]
+    public void Json_body_distinguishes_explicit_null_from_a_missing_field_issue541(string json, bool hasSchoolId, int? schoolId)
+    {
+        var dto = System.Text.Json.JsonSerializer.Deserialize<AdminStudentSchoolRequestDto>(json,
+            new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))!;
+
+        dto.HasSchoolId.ShouldBe(hasSchoolId);
+        dto.SchoolId.ShouldBe(schoolId);
     }
 
     [Fact]

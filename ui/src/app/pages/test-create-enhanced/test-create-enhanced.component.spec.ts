@@ -225,6 +225,18 @@ describe('TestCreateEnhancedComponent', () => {
 
             expect(router.navigate).toHaveBeenCalledWith(['/exam', 42]);
         });
+
+        it('onSubmit_SuccessFalseResponse_ShowsServerMessageWithoutSuccessToastOrNavigation (#598)', () => {
+            const c = configure(null).componentInstance;
+            c.testForm.patchValue({ name: 'Yeni Test', gradeId: 1 });
+            testService.create.mockReturnValue(of({ success: false, message: 'Kitap testi seçilmedi!', examId: 0 }));
+
+            c.onSubmit();
+
+            expect(router.navigate).not.toHaveBeenCalled();
+            expect(snackBar.open).toHaveBeenCalledTimes(1);
+            expect(snackBar.open.mock.lastCall![0]).toBe('Kitap testi seçilmedi!');
+        });
     });
 
     describe('isMiniform', () => {

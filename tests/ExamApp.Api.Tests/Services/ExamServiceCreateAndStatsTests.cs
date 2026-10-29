@@ -39,17 +39,46 @@ public class ExamServiceCreateAndStatsTests : IDisposable
     }
 
     [Fact]
-    public async Task A_book_and_book_test_must_be_identified()
+    public async Task A_book_without_a_book_test_is_rejected()
     {
         var gradeId = await AddGradeAsync();
         await using var ctx = _db.NewContext();
         var svc = NewAuthoring(ctx);
 
-        (await svc.CreateOrUpdateAsync(Dto(gradeId), 1, isAdmin: true)).Message.ShouldContain("Kitap seçilmedi");
-
         var d = Dto(gradeId);
         d.NewBookName = "Yeni Kitap";
         (await svc.CreateOrUpdateAsync(d, 1, isAdmin: true)).Message.ShouldContain("Test seçilmedi");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(0)]
+    public async Task Creates_a_worksheet_without_a_book(int? bookId)
+    {
+        // #610: soru tuvalinin hızlı formu kitap sormaz; eskiden 200 + Success=false ("Kitap seçilmedi") dönüyordu.
+        var gradeId = await AddGradeAsync();
+        var saved = new List<ExamSavedDto>();
+        await using (var ctx = _db.NewContext())
+        {
+            for (var i = 0; i < 2; i++)
+            {
+                var d = Dto(gradeId, "Etkinlik");
+                d.BookId = bookId;
+                d.BookTestId = bookId;
+                d.Kind = WorksheetKind.Activity;
+                saved.Add(await NewAuthoring(ctx).CreateOrUpdateAsync(d, userId: 9, isAdmin: false));
+            }
+        }
+
+        saved.ShouldAllBe(s => s.Success && s.ExamId > 0 && s.BookTestId == null);
+        // Kitapsız sayfada ad kimlik değil: aynı adla ikinci oluşturma yeni kayıttır, ilkinin üzerine yazmaz.
+        saved[1].ExamId.ShouldNotBe(saved[0].ExamId);
+
+        await using var check = _db.NewContext();
+        (await check.Books.AnyAsync()).ShouldBeFalse();
+        var ws = await check.Worksheets.FirstAsync(w => w.Id == saved[0].ExamId);
+        ws.BookTestId.ShouldBeNull();
+        ws.Kind.ShouldBe(WorksheetKind.Activity);
     }
 
     [Fact]

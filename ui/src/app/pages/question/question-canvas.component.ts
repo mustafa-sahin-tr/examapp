@@ -607,7 +607,8 @@ export class QuestionCanvasComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (testData) => {
-          this.questionForm.get('testId')?.setValue(testData.subtitle, { emitEvent: false });
+          // #610: alt başlık boşsa üst çubukta ad görünsün (yoksa "Çalışma sayfası seç" kalıyordu).
+          this.questionForm.get('testId')?.setValue(testData.subtitle || testData.name, { emitEvent: false });
           this.questionForm.get('testValue')?.setValue(testData.id, { emitEvent: false });
           this.syncWorksheetContext(testData.kind);
         },

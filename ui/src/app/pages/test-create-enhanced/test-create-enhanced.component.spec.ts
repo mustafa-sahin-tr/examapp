@@ -297,6 +297,32 @@ describe('TestCreateEnhancedComponent', () => {
 
             expect(testService.create).toHaveBeenCalledTimes(1);
         });
+
+        it('onCreateAsync_SuccessFalseResponse_ErrorsWithServerMessage (#610)', () => {
+            const c = configure(null).componentInstance;
+            testService.create.mockReturnValue(of({ success: false, message: 'Kitap testi seçilmedi!', examId: 0 }));
+
+            let message: string | undefined;
+            c.onCreateAsync(false).subscribe({ error: (e) => (message = e.error?.message) });
+
+            expect(message).toBe('Kitap testi seçilmedi!');
+        });
+    });
+
+    describe('createAndContinue (#610)', () => {
+        it('createAndContinue_SuccessFalseResponse_DoesNotEmitAndShowsMessage', () => {
+            const c = configure(null).componentInstance;
+            testService.create.mockReturnValue(of({ success: false, message: 'Kitap testi seçilmedi!', examId: 0 }));
+            const snack = vi.spyOn(c.snackBar, 'open');
+            const emitted = vi.fn();
+            c.createdAndContinue.subscribe(emitted);
+
+            c.createAndContinue();
+
+            expect(emitted).not.toHaveBeenCalled();
+            expect(c.creatingInline).toBe(false);
+            expect(snack.mock.lastCall![0]).toBe('Kitap testi seçilmedi!');
+        });
     });
 
     describe('onVisibilityChange', () => {

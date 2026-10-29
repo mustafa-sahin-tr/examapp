@@ -19,10 +19,10 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { TestFormComponent } from '../test-form/test-form.component';
-import { TestService } from '../../services/test.service';
+import { TestService, WorksheetSaveResult } from '../../services/test.service';
 import { Test, WorksheetStudentVisibility, WorksheetTeacherSharing } from '../../models/test-instance';
 import { ActivatedRoute, NavigationExtras, Router } from '@angular/router';
-import { EMPTY, Observable, of, switchMap, tap, throwError } from 'rxjs';
+import { EMPTY, MonoTypeOperatorFunction, Observable, of, switchMap, tap, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
   VisibilityChange,
@@ -38,6 +38,18 @@ import { ACTIVITY_ERROR_CODES, WorksheetKind, activityErrorCode, activityErrorMe
  * `public/i18n/test-create/<lang>.json`. `app-test-form` alt komponenti bunu devralır.
  */
 const TEST_CREATE_SCOPE = 'test-create';
+
+/**
+ * Issue #610: backend doğrulama hatalarını (ör. eksik kitap testi) 200 + `success: false` olarak döner. Bunlar başarı
+ * sayılırsa hızlı form `examId` olmadan kapanıyordu; hata olarak iletilir, mesaj `toUserErrorMessage` ile gösterilir.
+ */
+export function failOnUnsuccessfulSave(): MonoTypeOperatorFunction<WorksheetSaveResult> {
+  return switchMap((res) =>
+    res?.success === false || !res?.examId
+      ? throwError(() => new HttpErrorResponse({ status: 400, error: { message: res?.message } }))
+      : of(res)
+  );
+}
 
 @Component({
   selector: 'app-test-create-enhanced',
@@ -662,7 +674,7 @@ export class TestCreateEnhancedComponent implements OnInit {
 
     this.testService
       .create(this.createTestPayload())
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(failOnUnsuccessfulSave(), takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
           this.snackBar.open(
@@ -708,7 +720,7 @@ export class TestCreateEnhancedComponent implements OnInit {
       );
     }
     payload = { ...payload, id: null }; // id'yi null yaparak yeni bir test oluşturulacağını belirt
-    return this.testService.create(payload);
+    return this.testService.create(payload).pipe(failOnUnsuccessfulSave());
   }
 
   navigateToTestList() {

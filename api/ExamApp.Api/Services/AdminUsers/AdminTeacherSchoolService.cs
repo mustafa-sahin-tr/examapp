@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos.Admin;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Foundation.Contracts;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -172,12 +173,17 @@ public class AdminTeacherSchoolService : IAdminTeacherSchoolService
         // kuralı sahibin GÜNCEL okuluna baktığı için (WorksheetAccess.IsSchoolOnlyMatch) aksi halde yeni okula açılırlardı.
         // Öğrenci erişimi (atama) TeacherSharing'e bakmaz; eski okula yapılmış atamalar çözülmeye devam eder.
         var schoolChanges = previousSchoolId != schoolId;
+        // issue #542: okul gerçekten değişince öğretmene bildirim event'i aynı transaction'da (talep temizliği tek başına değil).
+        var (fromSchoolName, toSchoolName) = schoolChanges
+            ? await SchoolChangeNotifications.SchoolNamesAsync(_context, previousSchoolId, schoolId, ct)
+            : (string.Empty, string.Empty);
         var affected = 0;
         var privatizedWorksheets = 0;
         var strategy = _context.Database.CreateExecutionStrategy();
         await strategy.ExecuteAsync(async () =>
         {
             privatizedWorksheets = 0;
+            _context.ChangeTracker.Clear();
             await using var tx = await _context.Database.BeginTransactionAsync(CancellationToken.None);
             affected = await _context.Teachers
                 .Where(t => t.Id == teacherId
@@ -208,6 +214,22 @@ public class AdminTeacherSchoolService : IAdminTeacherSchoolService
                     await _context.AdminUserActionLogs
                         .Where(a => a.Id == auditId)
                         .ExecuteUpdateAsync(set => set.SetProperty(a => a.AffectedCount, privatizedWorksheets), CancellationToken.None);
+
+                SchoolChangeNotifications.Add(_context, new SchoolChangedEvent
+                {
+                    EventId = Guid.NewGuid(),
+                    Audience = SchoolChangedEvent.TeacherAudience,
+                    RecipientUserId = current.UserId,
+                    RecipientKeycloakId = sub,
+                    SubjectUserId = current.UserId,
+                    FromSchoolId = previousSchoolId,
+                    FromSchoolName = fromSchoolName,
+                    ToSchoolId = schoolId,
+                    ToSchoolName = toSchoolName,
+                    PrivatizedWorksheetCount = privatizedWorksheets,
+                    ChangedAtUtc = now
+                });
+                await _context.SaveChangesAsync(CancellationToken.None);
             }
 
             await tx.CommitAsync(CancellationToken.None);

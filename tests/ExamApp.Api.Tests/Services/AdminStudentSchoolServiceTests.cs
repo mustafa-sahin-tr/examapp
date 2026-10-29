@@ -29,10 +29,14 @@ public class AdminStudentSchoolServiceTests : IDisposable
     private readonly IAdminAccountTargetResolver _targets = Substitute.For<IAdminAccountTargetResolver>();
     private readonly IKeycloakService _keycloak = Substitute.For<IKeycloakService>();
     private readonly IDistributedCache _cache = new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions()));
+    private readonly IAuthApiClient _authApi = Substitute.For<IAuthApiClient>();
 
     public AdminStudentSchoolServiceTests()
     {
         Target(AdminAccountTargetStatus.Resolved, TargetSub);
+        _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(ci => (IReadOnlyList<UserLookupResultDto>)ci.Arg<IEnumerable<int>>()
+                .Select(id => new UserLookupResultDto { Id = id, FullName = $"Ayşe Kaya{id}", KeycloakId = $"kc-{id}" }).ToList());
     }
 
     public void Dispose() => _db.Dispose();
@@ -61,7 +65,7 @@ public class AdminStudentSchoolServiceTests : IDisposable
     {
         await using var ctx = interceptors.Length > 0 ? _db.NewContext(interceptors) : _db.NewContext();
         var service = new AdminStudentSchoolService(ctx, _targets, new AdminUserActionAuditService(ctx), _keycloak,
-            new UserProfileCacheService(_cache, NullLogger<UserProfileCacheService>.Instance));
+            new UserProfileCacheService(_cache, NullLogger<UserProfileCacheService>.Instance), authApi: _authApi);
         return await service.ChangeSchoolAsync(studentId, schoolId, ActorSub);
     }
 
@@ -125,6 +129,105 @@ public class AdminStudentSchoolServiceTests : IDisposable
         r.Status.ShouldBe(AdminStudentSchoolChangeStatus.Success);
         r.PreviousSchoolId.ShouldBeNull();
         (await SchoolOfAsync(s.StudentId)).ShouldBe(s.SchoolB);
+    }
+
+    // ---- issue #542: okul değişimi bildirimi ----
+
+    private async Task<List<ExamApp.Foundation.Contracts.SchoolChangedEvent>> SchoolEventsAsync()
+    {
+        await using var ctx = _db.NewContext();
+        var type = ExamApp.Foundation.Contracts.OutboxEventRegistry.NameFor<ExamApp.Foundation.Contracts.SchoolChangedEvent>();
+        return (await ctx.OutboxMessages.AsNoTracking().Where(m => m.Type == type).Select(m => m.Content).ToListAsync())
+            .Select(c => System.Text.Json.JsonSerializer.Deserialize<ExamApp.Foundation.Contracts.SchoolChangedEvent>(c)!)
+            .ToList();
+    }
+
+    private async Task LinkParentAsync(int studentId, int parentUserId, ParentStudentLinkStatus status)
+    {
+        await using var ctx = _db.NewContext();
+        var parent = new Parent { UserId = parentUserId };
+        ctx.Parents.Add(parent);
+        await ctx.SaveChangesAsync();
+        ctx.ParentStudentLinks.Add(new ParentStudentLink
+        {
+            Origin = ParentStudentLinkOrigin.ParentCreated,
+            ParentId = parent.Id,
+            StudentId = studentId,
+            Status = status,
+            CreatedAt = DateTime.UtcNow.AddDays(-3),
+            ActivatedAt = status == ParentStudentLinkStatus.Pending ? null : DateTime.UtcNow.AddDays(-3),
+            RevokedAt = status == ParentStudentLinkStatus.Revoked ? DateTime.UtcNow.AddDays(-1) : null
+        });
+        await ctx.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task School_change_writes_one_event_for_the_student_and_one_per_active_parent_issue542()
+    {
+        var s = await SeedAsync();
+        await LinkParentAsync(s.StudentId, 900, ParentStudentLinkStatus.Active);
+        await LinkParentAsync(s.StudentId, 901, ParentStudentLinkStatus.Revoked);
+        await LinkParentAsync(s.StudentId, 902, ParentStudentLinkStatus.Pending);
+
+        (await RunAsync(s.StudentId, s.SchoolB)).Changed.ShouldBeTrue();
+
+        var events = await SchoolEventsAsync();
+        events.Count.ShouldBe(2);
+        events.ShouldAllBe(e => e.FromSchoolId == s.SchoolA && e.FromSchoolName == "A" && e.ToSchoolId == s.SchoolB
+            && e.ToSchoolName == "B" && e.SubjectUserId == 50 && e.StudentId == s.StudentId && e.EventId != Guid.Empty);
+        var self = events.Single(e => e.Audience == ExamApp.Foundation.Contracts.SchoolChangedEvent.StudentAudience);
+        self.RecipientUserId.ShouldBe(50);
+        self.RecipientKeycloakId.ShouldBe(TargetSub);
+        self.StudentDisplayName.ShouldBeEmpty();
+        var parent = events.Single(e => e.Audience == ExamApp.Foundation.Contracts.SchoolChangedEvent.ParentAudience);
+        parent.RecipientUserId.ShouldBe(900);
+        parent.RecipientKeycloakId.ShouldBe("kc-900");
+        parent.StudentDisplayName.ShouldNotBeNullOrWhiteSpace();
+        events.Select(e => e.EventId).Distinct().Count().ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task Making_schoolless_and_assigning_a_school_write_events_with_null_side_issue542()
+    {
+        var s = await SeedAsync();
+
+        await RunAsync(s.StudentId, null);
+        var removed = (await SchoolEventsAsync()).ShouldHaveSingleItem();
+        removed.ToSchoolId.ShouldBeNull();
+        removed.FromSchoolId.ShouldBe(s.SchoolA);
+
+        await RunAsync(s.StudentId, s.SchoolB);
+        (await SchoolEventsAsync()).Count(e => e.FromSchoolId == null && e.ToSchoolId == s.SchoolB).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task No_event_for_same_school_verification_only_conflict_or_audit_failure_issue542()
+    {
+        var s = await SeedAsync();
+        await RunAsync(s.StudentId, s.SchoolA); // aynı okul, doğrulanmış → yan etkisiz
+        await using (var ctx = _db.NewContext())
+            await ctx.Students.Where(x => x.Id == s.StudentId).ExecuteUpdateAsync(x => x.SetProperty(st => st.SchoolVerifiedAt, (DateTime?)null));
+        (await RunAsync(s.StudentId, s.SchoolA)).Changed.ShouldBeTrue(); // yalnız üyelik doğrulandı
+        (await RunAsync(s.StudentId, s.SchoolB, new ConcurrentSchoolWriter(s.StudentId, s.SchoolB))).Status
+            .ShouldBe(AdminStudentSchoolChangeStatus.Conflict);
+
+        (await SchoolEventsAsync()).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Parent_lookup_failure_still_writes_events_with_empty_parent_sub_issue542()
+    {
+        var s = await SeedAsync();
+        await LinkParentAsync(s.StudentId, 900, ParentStudentLinkStatus.Active);
+        _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns<IReadOnlyList<UserLookupResultDto>>(_ => throw new HttpRequestException("down"));
+
+        (await RunAsync(s.StudentId, s.SchoolB)).Status.ShouldBe(AdminStudentSchoolChangeStatus.Success);
+
+        var events = await SchoolEventsAsync();
+        events.Count.ShouldBe(2);
+        events.Single(e => e.RecipientUserId == 900).RecipientKeycloakId.ShouldBeEmpty();
+        events.Single(e => e.RecipientUserId == 50).RecipientKeycloakId.ShouldBe(TargetSub);
     }
 
     // ---- issue #541: okulsuz yapma ----

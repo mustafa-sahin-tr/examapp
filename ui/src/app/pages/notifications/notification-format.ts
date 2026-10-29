@@ -128,6 +128,15 @@ const PARENT_REQUIREMENT_NOTIFICATIONS: Readonly<Record<string, { icon: string; 
   StudentParentGraceReminder: { icon: 'schedule', route: PARENT_REQUIRED_URL },
 };
 
+/** Issue #542: okul değişimi bildirimleri (kişinin kendisi). Velininkiler PARENT_NOTIFICATION_PRESENTATION'da. */
+const SCHOOL_CHANGE_SELF_NOTIFICATIONS: ReadonlySet<string> = new Set([
+  'SchoolChangedToStudent',
+  'SchoolAssignedToStudent',
+  'SchoolRemovedToStudent',
+  'SchoolChangedToTeacher',
+  'SchoolAssignedToTeacher',
+]);
+
 export function describeNotification(
   notification: Pick<AppNotification, 'type' | 'data'>,
   viewer: NotificationViewer = {}
@@ -185,6 +194,10 @@ export function describeNotification(
       questionOrder: null,
     };
   }
+  if (SCHOOL_CHANGE_SELF_NOTIFICATIONS.has(notification.type)) {
+    // Issue #542: öğrencinin / öğretmenin kendi okul değişimi — yalnız bilgi, hedef yok.
+    return { icon: 'school', badge: null, route: null, questionOrder: null };
+  }
   const requirement = PARENT_REQUIREMENT_NOTIFICATIONS[notification.type];
   if (requirement) {
     return { icon: requirement.icon, badge: null, route: { commands: [requirement.route] }, questionOrder: null };
@@ -232,6 +245,10 @@ const PARENT_NOTIFICATION_PRESENTATION: Readonly<
   ParentBookingRescheduleProposed: { icon: 'update', toParentPage: true },
   ParentBookingRescheduleAccepted: { icon: 'event_available', toParentPage: true },
   ParentBookingNoShowReported: { icon: 'person_off', toParentPage: true },
+  // Issue #542: çocuğun okulu değişti / belirlendi / kaldırıldı → o çocuğun paneli.
+  SchoolChangedToParent: { icon: 'school', toParentPage: true },
+  SchoolAssignedToParent: { icon: 'school', toParentPage: true },
+  SchoolRemovedToParent: { icon: 'school', toParentPage: true },
 };
 
 /** Issue #439: öğrenciye giden veli kararı bildirimleri → ikon (hepsi `/my-bookings`). */

@@ -120,7 +120,11 @@ public class ParentLinkChangedConsumer :
     [
         ParentChildTestCompletedConsumer.NotificationType,
         ParentHomeworkOverdueConsumer.NotificationType,
-        LinkedToParentType
+        LinkedToParentType,
+        // issue #542: çocuğun okul değişimi
+        SchoolChangedConsumer.ChangedToParentType,
+        SchoolChangedConsumer.AssignedToParentType,
+        SchoolChangedConsumer.RemovedToParentType
     ];
 
     /// <summary>

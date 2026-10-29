@@ -11,7 +11,8 @@
       "rejectionReasonSuffix": " Reason: {0}",
       "defaultChild": "Your child",
       "defaultParent": "Your parent",
-      "defaultCoParent": "Another parent"
+      "defaultCoParent": "Another parent",
+      "schoolChangePrivatized": " {0} exam(s) you shared with \"My school\" are now private to you; you can share them again."
     },
     "BadgeEarned": {
       "title": "You earned a new badge!",
@@ -236,6 +237,38 @@
     "StudentParentGraceReminder": {
       "title": "Add your parent",
       "body": "Add your parent: {0} day(s) left before your account is restricted."
+    },
+    "SchoolChangedToStudent": {
+      "title": "Your school has changed",
+      "body": "Your school was changed from {0} to {1}. You will now see your new school's assignments and school ranking."
+    },
+    "SchoolAssignedToStudent": {
+      "title": "Your school is set",
+      "body": "Your school is now {1}. You will see your school's assignments and school ranking."
+    },
+    "SchoolRemovedToStudent": {
+      "title": "Your school was removed",
+      "body": "Your enrolment at {0} was removed. You will no longer see your school's assignments or school ranking; your past results are kept."
+    },
+    "SchoolChangedToTeacher": {
+      "title": "Your school has changed",
+      "body": "Your school was changed from {0} to {1}.{2}"
+    },
+    "SchoolAssignedToTeacher": {
+      "title": "You were linked to a school",
+      "body": "Your account is now linked to {1}."
+    },
+    "SchoolChangedToParent": {
+      "title": "Your child's school has changed",
+      "body": "The school of your child {2} was changed from {0} to {1}."
+    },
+    "SchoolAssignedToParent": {
+      "title": "Your child's school is set",
+      "body": "The school of your child {2} is now {1}."
+    },
+    "SchoolRemovedToParent": {
+      "title": "Your child's school was removed",
+      "body": "Your child {2} is no longer enrolled at {0}."
     }
   }
 }

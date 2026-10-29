@@ -119,13 +119,13 @@ public class MoreEndpointsTests(IntegrationApiFactory factory) : IntegrationTest
             await db.SaveChangesAsync();
         });
 
-        (await Anonymous().GetAsync("/api/study-pages")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await Anonymous().GetAsync("/api/study-items")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
 
         var parent = await ClientAsAsync(2, "Parent", "kc-p", "Parent");
-        (await parent.GetAsync("/api/study-pages")).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await parent.GetAsync("/api/study-items")).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
 
         var student = await ClientAsAsync(3, "Student", "kc-s", "Student");
-        var page = await student.GetFromJsonAsync<Paged<StudyItemDto>>("/api/study-pages?pageNumber=1&pageSize=10", Json);
+        var page = await student.GetFromJsonAsync<Paged<StudyItemDto>>("/api/study-items?pageNumber=1&pageSize=10", Json);
         page!.Items.Select(i => i.Title).ShouldBe(new[] { "Yayında" });
     }
 
@@ -143,7 +143,7 @@ public class MoreEndpointsTests(IntegrationApiFactory factory) : IntegrationTest
             { new StringContent("https://www.youtube.com/watch?v=x"), "Url" },
             { new StringContent(StudyItemLinkPlatform.YouTube.ToString()), "Platform" },
         };
-        var createResponse = await teacher.PostAsync("/api/study-pages", createForm);
+        var createResponse = await teacher.PostAsync("/api/study-items", createForm);
         createResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
         var created = await createResponse.Content.ReadFromJsonAsync<StudyItemDto>(Json);
         created!.Title.ShouldBe("Alias ile olusturuldu");
@@ -156,12 +156,12 @@ public class MoreEndpointsTests(IntegrationApiFactory factory) : IntegrationTest
             { new StringContent("https://www.youtube.com/watch?v=y"), "Url" },
             { new StringContent(StudyItemLinkPlatform.YouTube.ToString()), "Platform" },
         };
-        var updateResponse = await teacher.PutAsync($"/api/study-pages/{created.Id}", updateForm);
+        var updateResponse = await teacher.PutAsync($"/api/study-items/{created.Id}", updateForm);
         updateResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
         var updated = await updateResponse.Content.ReadFromJsonAsync<StudyItemDto>(Json);
         updated!.Title.ShouldBe("Alias ile guncellendi");
 
-        var deleteResponse = await teacher.DeleteAsync($"/api/study-pages/{created.Id}");
+        var deleteResponse = await teacher.DeleteAsync($"/api/study-items/{created.Id}");
         deleteResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 }

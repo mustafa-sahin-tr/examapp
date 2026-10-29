@@ -105,6 +105,6 @@ public class TeacherAccountApprovalGateEndpointsTests(IntegrationApiFactory fact
         (await admin.GetAsync("/api/question-transfer/jobs")).StatusCode.ShouldBe(HttpStatusCode.OK);
 
         var student = await ClientAsAsync(7003, "Student", NewSub("kc-student"), "Student");
-        (await student.GetAsync("/api/study-pages?pageNumber=1&pageSize=10")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await student.GetAsync("/api/study-items?pageNumber=1&pageSize=10")).StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 }

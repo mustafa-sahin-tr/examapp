@@ -243,8 +243,6 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
     {
         if (examDto == null)
         {
-            // TODO: bu kontrolleri contrrollerda yapabilirsin
-            // return BadRequest(new { error = "Sınav bilgileri eksik!" });
             return new ExamSavedDto
             {
                 Success = false,

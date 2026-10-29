@@ -1,8 +1,9 @@
 namespace ExamApp.Api.Data;
 
 /// <summary>
-/// Öğrenciye görünürlük ekseni. Bu issue'da (#9) yalnızca taşınır;
-/// Restricted davranışı #11/#12/#13'te aktifleşir.
+/// Öğrenciye görünürlük ekseni (#9). <see cref="Restricted"/> sınav keşfedilemez: öğrenci yalnız atamayla başlatır
+/// (<see cref="ExamApp.Api.Helpers.WorksheetAccess.CanStudentStartTest"/>, keşif listesi) ve soruları serbest pratiğe girmez
+/// (<c>PracticeQuestionPool</c>). Öğretmen ekseni (görüntüleme / atama / düzenleme) bundan bağımsızdır.
 /// </summary>
 public enum WorksheetStudentVisibility
 {

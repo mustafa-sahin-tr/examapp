@@ -19,7 +19,6 @@ namespace ExamApp.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/study-items")]
-[Route("api/study-pages")] // TODO(#140): api/study-pages alias'ı frontend rename tamamlanınca kaldırılacak
 public class StudyItemsController : BaseController
 {
     private readonly IStudyItemService _studyItemService;

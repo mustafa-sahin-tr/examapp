@@ -1,0 +1,191 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.cs-root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+}
+
+.cs-passage {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+
+  &__title {
+    font-weight: 700;
+    font-family: var(--mainFontFamily);
+  }
+
+  &__image {
+    display: block;
+    max-width: 100%;
+    max-height: 35vh;
+    object-fit: contain;
+  }
+}
+
+.cs-image-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+}
+
+.cs-image {
+  display: block;
+  max-width: 100%;
+  max-height: 45vh;
+}
+
+.cs-hand-toggle {
+  align-self: flex-start;
+}
+
+.cs-clocks {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+}
+
+.cs-clock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 10px;
+  border-radius: 16px;
+  border: 2px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+
+  &.is-ok {
+    border-color: var(--ms-success-border);
+  }
+
+  &.is-bad {
+    border-color: var(--ms-danger-border);
+  }
+}
+
+.cs-dial {
+  display: block;
+  width: min(220px, 70vw);
+  height: auto;
+  touch-action: none;
+  user-select: none;
+  cursor: pointer;
+
+  .is-fixed &,
+  .is-solution & {
+    cursor: default;
+  }
+
+  &__face {
+    fill: var(--ms-surface-weak);
+    stroke: var(--ms-border-strong);
+    stroke-width: 3;
+  }
+
+  &__tick {
+    stroke: var(--ms-text-weak);
+    stroke-width: 1;
+
+    &.is-major {
+      stroke: var(--ms-text);
+      stroke-width: 2.5;
+    }
+  }
+
+  &__number {
+    fill: var(--ms-text);
+    font-family: var(--mainFontFamily);
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  &__pin {
+    fill: var(--ms-text);
+  }
+}
+
+.cs-hand {
+  outline: none;
+
+  &__hit {
+    stroke: transparent;
+    stroke-width: 18;
+    stroke-linecap: round;
+  }
+
+  &__line {
+    stroke: var(--ms-text);
+    stroke-linecap: round;
+  }
+
+  &--hour .cs-hand__line {
+    stroke-width: 7;
+  }
+
+  &--minute .cs-hand__line {
+    stroke-width: 4;
+  }
+
+  &.is-active .cs-hand__line {
+    stroke: var(--ms-action-border);
+  }
+
+  &:focus-visible .cs-hand__hit {
+    stroke: var(--ms-focus-ring);
+  }
+
+  .is-unset & .cs-hand__line {
+    opacity: 0.55;
+  }
+}
+
+.cs-caption {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+
+  &__fixed {
+    font-weight: 400;
+    font-size: 0.85em;
+    color: var(--ms-text-medium);
+  }
+
+  &__result {
+    .is-ok & {
+      color: var(--ms-success-border);
+    }
+
+    .is-bad & {
+      color: var(--ms-danger-border);
+    }
+  }
+}
+
+.cs-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cs-hint {
+  margin: 0;
+  color: var(--ms-text-medium);
+}

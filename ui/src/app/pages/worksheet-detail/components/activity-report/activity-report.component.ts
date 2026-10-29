@@ -32,6 +32,7 @@ const KNOWN_TYPES = new Set([
   'barChart',
   'gridDraw',
   'balanceScale',
+  'clockSet',
 ]);
 
 /**

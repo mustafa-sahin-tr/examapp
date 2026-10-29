@@ -32,7 +32,8 @@
     "numberLine": "Number line",
     "barChart": "Graph drawing",
     "gridDraw": "Draw on grid",
-    "balanceScale": "Balance scale"
+    "balanceScale": "Balance scale",
+    "clockSet": "Set the clock"
   },
   "kindHints": {
     "matrix": "Mark the correct option for each row. The T/F template sets up two columns; with multiple choice a row can have several correct options.",
@@ -51,7 +52,8 @@
     "numberLine": "Students put the cards (fractions, decimals, events…) on the right tick of the number line; distractor cards stay off the line.",
     "barChart": "Students draw a bar (or line) graph from the data; each category's value is checked. Put the data in the instruction or the image.",
     "gridDraw": "The student draws rectangles that satisfy the rule on square (or dot) paper; position and orientation are free, every size that fits the rule is correct.",
-    "balanceScale": "Students balance the scale by putting weights on the two pans; equal pans are correct (several arrangements may be correct)."
+    "balanceScale": "Students balance the scale by putting weights on the two pans; equal pans are correct (several arrangements may be correct).",
+    "clockSet": "The student turns the hour and minute hands separately on an analog clock; correct when both are in place (at 3:45 the hour hand is between 3 and 4)."
   },
   "instruction": "Instruction (optional)",
   "image": {
@@ -235,7 +237,12 @@
     "balanceFixedCount": "A pan may hold at most {{max}} given loads.",
     "balanceValueInvalid": "Weight values must be whole numbers from 1 to {{max}}.",
     "balanceUnsolvableAll": "The scale cannot be balanced using all weights; change the values or turn off \"Use all\".",
-    "balanceUnsolvable": "The scale cannot be balanced with these weights; change the values."
+    "balanceUnsolvable": "The scale cannot be balanced with these weights; change the values.",
+    "clockStepInvalid": "Minute hand step must be 1, 5 or 15 minutes.",
+    "clockCount": "There must be 1–{{max}} clocks.",
+    "clockNoFree": "At least one clock must be set by the student (not pre-set).",
+    "clockTimeInvalid": "Enter a valid time for every clock (e.g. 3.45, 15:45).",
+    "clockTimeStep": "Minutes of the clocks to set must be a multiple of {{step}} (minute hand step)."
   },
   "snackbar": {
     "created": "The item was added to the activity.",
@@ -458,5 +465,17 @@
     "addFixed": "Add given load",
     "example": "Example: {{left}} = {{right}}",
     "noExample": "No balancing arrangement."
+  },
+  "clockSet": {
+    "hint": "Clocks use a 12-hour dial (15:45 equals 3:45). A \"pre-set\" clock is shown already set and is not checked (e.g. the start time of a duration question). The time itself is not shown to the student; give it in the instruction.",
+    "step": "Minute hand step",
+    "stepMinutes": "{{n}} min",
+    "numbers": "Show numbers",
+    "minuteTicks": "Show minute ticks",
+    "clocks": "Clocks",
+    "label": "Label of clock {{n}} (optional)",
+    "time": "Time",
+    "fixed": "Pre-set",
+    "addClock": "Add clock"
   }
 }

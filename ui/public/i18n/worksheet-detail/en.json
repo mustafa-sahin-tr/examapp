@@ -303,7 +303,8 @@
         "numberLine": "Number line",
         "barChart": "Graph drawing",
         "gridDraw": "Draw on grid",
-        "balanceScale": "Balance scale"
+        "balanceScale": "Balance scale",
+        "clockSet": "Set the clock"
       }
     },
     "addTextItem": "Add text-only item"

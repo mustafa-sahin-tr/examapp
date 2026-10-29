@@ -861,6 +861,21 @@ toplamlar yazılmaz; çözüm açıkken kurala uyan bir yerleşim. Yazarlık gö
 Mat s.203 2a/2b. "?" bilinmeyenli teraziler (1. soru) sayı cevabıdır (`slotFill`). Testte de çözülebilir (puanlanır). Migration yok; Aspire'da
 exam API'yi yeniden başlat (yeni kontrolcü).
 
+**Issue #634 — `clockSet` (saat kurma; analog saat, akrep + yelkovan).** Plan
+`{"version":1,"type":"clockSet","step?":1|5|15,"numbers?","minuteTicks?","clocks":[{id,label?,fixed?}]}` (1–6 saat; `step` yelkovan adımı,
+varsayılan 5; `numbers` / `minuteTicks` yalnız görünüm, varsayılan açık; `label` düz metin ≤ 40; `fixed` = `"HH:MM"` önceden kurulmuş,
+oynatılamaz, kontrol edilmeyen saat — ör. süre sorusunun başlangıcı; en az bir saat serbest). Çözüm `{"times":{"c1":"03:45"}}` (her serbest
+saate, dakika adımın katı; 12 saatlik kadran: 15:45 = 3:45). Öğrenci payload'u `{"clocks":{"c1":{"h":225,"m":45}}}` — `h` akrebin konumu
+12 saatlik kadranda dakika cinsinden (0..719), `m` yelkovan (adımın katı); kurulmamış saat yazılmaz, saatsiz = cevap yok. Karar #634:
+akrep yelkovana bağlı **değil**, öğrenci ikisini ayrı çevirir. Kontrol saat başına (`ClockSetGrader`): yelkovan hedef dakikada ve akrep
+hedef konumun ±15 birimi (±7,5°, saat aralığının çeyreği) içinde; geri bildirim `{"rows":[{id,correct}]}` (hedef yazılmaz). Analiz: öğe =
+serbest saat, cevap = gösterilen saat (`"3:45"`; saat yelkovana göre akrebin en yakın tam konumundan, kabul aralığı dışında `"?:45"`).
+Oynatıcı: SVG kadran; Akrep / Yelkovan seçici, kadrana dokunmak / sürüklemek seçili eli çevirir (ele dokunmak onu seçer), akrep 2,5° adımla
+oturur; her el klavyede kaydırıcı (← / → bir adım, PageUp / PageDown yelkovanda 15 dk, akrepte bir saat). Etkinlikte kurulmamış saat
+"eksik" sayılır. Yazarlık görselsiz editörde (tür **Saat kurma**): adım, rakam / dakika çizgisi, saat başına etiket + saat (`3.45`,
+`15:45`) + "Kurulu". Dijital gösterim ve saati okuma `slotFill` ile kalır. Testte de çözülebilir (puanlanır). Migration yok; Aspire'da exam
+API'yi yeniden başlat (yeni kontrolcü).
+
 **Dev sıfırlama — soru bankası.** `deploy/scripts/dev-reset-questions.sh` (dev-only) tüm soruları ve FK ile bağlı
 her şeyi (test-soru bağları, öğrenci cevapları, yorumlar, LabelingPages/Results), öğrencilerin test oturumlarını
 (`TestInstances` — Questions'a FK'sı yok, CASCADE ulaşmaz, açıkça silinir; aksi halde "boş test yapılmış" gibi kalır),

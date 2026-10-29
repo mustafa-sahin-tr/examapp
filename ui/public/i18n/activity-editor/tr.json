@@ -32,7 +32,8 @@
     "numberLine": "Sayı doğrusu",
     "barChart": "Grafik kurma",
     "gridDraw": "Kareli zeminde çizim",
-    "balanceScale": "Terazi dengeleme"
+    "balanceScale": "Terazi dengeleme",
+    "clockSet": "Saat kurma"
   },
   "kindHints": {
     "matrix": "Her satır için doğru seçeneği işaretle. D/Y şablonu iki kolon kurar; çoklu seçimde satırda birden çok doğru olabilir.",
@@ -51,7 +52,8 @@
     "numberLine": "Öğrenci kartları (kesir, ondalık, olay…) sayı doğrusunda doğru çentiğe koyar; çeldirici kart doğruya konmamalı.",
     "barChart": "Öğrenci verilere göre sütun (ya da çizgi) grafiğini çizer; her kategorinin değeri kontrol edilir. Verileri yönergeye ya da görsele yazın.",
     "gridDraw": "Öğrenci kareli (ya da noktalı) zemine kurala uyan dikdörtgenleri çizer; yer ve yön serbest, kurala uyan her boyut doğru sayılır.",
-    "balanceScale": "Öğrenci ağırlıkları iki kefeye koyarak teraziyi dengeler; kefeler eşitse doğru (birden çok doğru yerleşim olabilir)."
+    "balanceScale": "Öğrenci ağırlıkları iki kefeye koyarak teraziyi dengeler; kefeler eşitse doğru (birden çok doğru yerleşim olabilir).",
+    "clockSet": "Öğrenci analog saatte akrebi ve yelkovanı ayrı ayrı çevirerek saati kurar; ikisi de doğru yerdeyse doğru (akrep 3.45'te 3 ile 4 arasında)."
   },
   "instruction": "Yönerge (isteğe bağlı)",
   "image": {
@@ -235,7 +237,12 @@
     "balanceFixedCount": "Bir kefede en çok {{max}} hazır yük olabilir.",
     "balanceValueInvalid": "Ağırlık değerleri 1–{{max}} arası tam sayı olmalı.",
     "balanceUnsolvableAll": "Bütün ağırlıklarla terazi dengelenemiyor; değerleri değiştir ya da \"Hepsini kullansın\"ı kapat.",
-    "balanceUnsolvable": "Bu ağırlıklarla terazi dengelenemiyor; değerleri değiştir."
+    "balanceUnsolvable": "Bu ağırlıklarla terazi dengelenemiyor; değerleri değiştir.",
+    "clockStepInvalid": "Yelkovan adımı 1, 5 ya da 15 dakika olmalı.",
+    "clockCount": "1–{{max}} saat olmalı.",
+    "clockNoFree": "En az bir saat öğrenci tarafından kurulmalı (kurulu olmayan).",
+    "clockTimeInvalid": "Her saate geçerli bir saat yaz (ör. 3.45, 15:45).",
+    "clockTimeStep": "Kurulacak saatlerin dakikası {{step}}'in katı olmalı (yelkovan adımı)."
   },
   "snackbar": {
     "created": "Madde etkinliğe eklendi.",
@@ -458,5 +465,17 @@
     "addFixed": "Hazır yük ekle",
     "example": "Örnek çözüm: {{left}} = {{right}}",
     "noExample": "Dengeyi sağlayan yerleşim yok."
+  },
+  "clockSet": {
+    "hint": "Saat 12 saatlik kadranda kurulur (15.45 ile 3.45 aynı). \"Kurulu\" saat öğrenciye hazır gösterilir, kontrol edilmez (ör. süre sorusunun başlangıç saati). Saatin kendisi öğrenciye yazılmaz; yönergede verin.",
+    "step": "Yelkovan adımı",
+    "stepMinutes": "{{n}} dk",
+    "numbers": "Rakamlar görünsün",
+    "minuteTicks": "Dakika çizgileri görünsün",
+    "clocks": "Saatler",
+    "label": "{{n}}. saatin etiketi (isteğe bağlı)",
+    "time": "Saat",
+    "fixed": "Kurulu",
+    "addClock": "Saat ekle"
   }
 }

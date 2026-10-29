@@ -53,7 +53,9 @@
     "drawNone": "Nothing drawn yet",
     "drawShape": "Drawing {{n}}: {{size}}",
     "balance": "Scale: {{left}} | {{right}}",
-    "balanceEmpty": "Pans are empty"
+    "balanceEmpty": "Pans are empty",
+    "clock": "{{name}}: {{time}}",
+    "clockN": "Clock {{n}}"
   },
   "saveFailed": "Your last answer could not be saved; it will be sent again when you check.",
   "finishCheckRequired": "Check your answers once before finishing.",

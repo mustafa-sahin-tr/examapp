@@ -640,6 +640,25 @@
         "resultUnused": "Terazi dengede ama {{n}} ağırlık kullanılmadı; hepsini kullanın.",
         "resultEmpty": "Kefelere ağırlık koyun.",
         "solutionShown": "Dengeyi sağlayan bir yerleşim gösteriliyor (başka doğru yerleşimler de olabilir)."
+      },
+      "clockSet": {
+        "passageAlt": "Okuma parçası görseli",
+        "imageAlt": "Etkinlik görseli",
+        "invalid": "Bu etkinlik açılamadı.",
+        "handToggle": "Çevrilecek el",
+        "hand": {
+          "hour": "Akrep",
+          "minute": "Yelkovan"
+        },
+        "clockAria": "{{n}}. saat",
+        "fixed": "(kurulu)",
+        "hourValue": "Akrep {{at}} üzerinde",
+        "minuteValue": "Yelkovan {{m}}. dakikada",
+        "correct": "Doğru",
+        "wrong": "Yanlış",
+        "reset": "Temizle",
+        "hint": "Akrebi ya da yelkovanı seçin, sonra kadrana dokunun ya da eli sürükleyin. Klavyede eli seçip ok tuşlarıyla çevirin.",
+        "solutionShown": "Doğru saatler gösteriliyor."
       }
     },
     "sharingBadge": {

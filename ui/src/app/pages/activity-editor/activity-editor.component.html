@@ -1051,6 +1051,46 @@
           </div>
         }
 
+        @if (clockSet(); as cs) {
+          <div class="ae__block" data-testid="clock-set-form">
+            <p class="ae__hint">{{ t('clockSet.hint') }}</p>
+            <div class="ae__row ae__row--wrap">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__narrow">
+                <mat-label>{{ t('clockSet.step') }}</mat-label>
+                <mat-select data-testid="cs-step" [value]="cs.step" (selectionChange)="setClockOption({ step: $event.value })">
+                  @for (step of clockLimits.steps; track step) {
+                    <mat-option [value]="step">{{ t('clockSet.stepMinutes', { n: step }) }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-checkbox [checked]="cs.numbers" (change)="setClockOption({ numbers: $event.checked })">{{ t('clockSet.numbers') }}</mat-checkbox>
+              <mat-checkbox [checked]="cs.minuteTicks" (change)="setClockOption({ minuteTicks: $event.checked })">{{ t('clockSet.minuteTicks') }}</mat-checkbox>
+            </div>
+
+            <span class="ae__label">{{ t('clockSet.clocks') }}</span>
+            @for (c of cs.clocks; track $index; let i = $index) {
+              <div class="ae__row ae__row--wrap" [attr.data-clock]="i">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                  <mat-label>{{ t('clockSet.label', { n: i + 1 }) }}</mat-label>
+                  <input matInput [value]="c.label" [attr.maxlength]="clockLimits.maxLabel"
+                    (input)="setClock(i, { label: $any($event.target).value })" />
+                </mat-form-field>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__narrow">
+                  <mat-label>{{ t('clockSet.time') }}</mat-label>
+                  <input matInput inputmode="decimal" placeholder="3.45" [value]="c.time" [attr.maxlength]="5"
+                    (input)="setClock(i, { time: $any($event.target).value })" />
+                </mat-form-field>
+                <mat-checkbox [checked]="c.fixed" (change)="setClock(i, { fixed: $event.checked })">{{ t('clockSet.fixed') }}</mat-checkbox>
+                <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="cs.clocks.length <= 1"
+                  (click)="removeClock(i)"><mat-icon>close</mat-icon></button>
+              </div>
+            }
+            <button mat-button type="button" [disabled]="cs.clocks.length >= clockLimits.maxClocks" (click)="addClock()">
+              <mat-icon>add</mat-icon>{{ t('clockSet.addClock') }}
+            </button>
+          </div>
+        }
+
         @if (wordSearch(); as ws) {
           <div class="ae__block" data-testid="word-search-form">
             <p class="ae__hint">{{ t('wordSearch.hint') }}</p>
@@ -1171,6 +1211,11 @@
             }
             @case ('barChart') {
               <app-question-canvas-bar-chart [questionRegion]="previewRegion()"
+                [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
+                [showSolution]="showSolution()" [activityMode]="true" />
+            }
+            @case ('clockSet') {
+              <app-question-canvas-clock-set [questionRegion]="previewRegion()"
                 [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
                 [showSolution]="showSolution()" [activityMode]="true" />
             }

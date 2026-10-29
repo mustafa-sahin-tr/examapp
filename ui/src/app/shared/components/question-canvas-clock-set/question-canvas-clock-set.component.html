@@ -1,0 +1,99 @@
+<div class="cs-root" [class.is-solution]="solutionShown()" *transloco="let t; prefix: 'shared.questionCanvas.clockSet'">
+  @if (!hidePassage && passageImageUrl(); as pUrl) {
+    <div class="cs-passage">
+      @if (passageTitle(); as title) {
+        <div class="cs-passage__title">{{ title }}</div>
+      }
+      <img class="cs-passage__image" [src]="pUrl" [alt]="t('passageAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  @if (imageUrl(); as url) {
+    <div class="cs-image-wrap">
+      <img class="cs-image" [src]="url" [alt]="t('imageAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  @if (plan(); as p) {
+    @if (!readOnly()) {
+      <mat-button-toggle-group class="cs-hand-toggle" [value]="activeHand()" (change)="setActiveHand($event.value)"
+        [attr.aria-label]="t('handToggle')" data-testid="cs-hand-toggle">
+        <mat-button-toggle value="hour" data-testid="cs-hand-hour">{{ t('hand.hour') }}</mat-button-toggle>
+        <mat-button-toggle value="minute" data-testid="cs-hand-minute">{{ t('hand.minute') }}</mat-button-toggle>
+      </mat-button-toggle-group>
+    }
+
+    <div class="cs-clocks">
+      @for (face of faces(); track face.clock.id) {
+        <figure class="cs-clock" [attr.data-clock]="face.clock.id" [class.is-fixed]="face.fixed" [class.is-unset]="!face.set"
+          [class.is-ok]="face.result === true" [class.is-bad]="face.result === false">
+          <svg class="cs-dial" viewBox="0 0 200 200" role="group"
+            [attr.aria-label]="face.clock.label ?? t('clockAria', { n: face.number })"
+            (pointerdown)="onPointerDown($event, face.clock.id)" (pointermove)="onPointerMove($event, face.clock.id)"
+            (pointerup)="onPointerUp($event)" (pointercancel)="onPointerUp($event)">
+            <circle class="cs-dial__face" cx="100" cy="100" r="96" />
+            @for (tick of ticks; track $index) {
+              @if (tick.major || p.minuteTicks) {
+                <line class="cs-dial__tick" [class.is-major]="tick.major" [attr.x1]="tick.x1" [attr.y1]="tick.y1"
+                  [attr.x2]="tick.x2" [attr.y2]="tick.y2" />
+              }
+            }
+            @if (p.numbers) {
+              @for (num of numbers; track num.n) {
+                <text class="cs-dial__number" [attr.x]="num.x" [attr.y]="num.y" text-anchor="middle"
+                  dominant-baseline="central">{{ num.n }}</text>
+              }
+            }
+            <g class="cs-hand cs-hand--hour" data-hand="hour" [class.is-active]="activeHand() === 'hour' && !face.fixed && !readOnly()"
+              [attr.transform]="'rotate(' + hourDeg(face.hands) + ' 100 100)'"
+              [attr.tabindex]="face.fixed || readOnly() ? null : 0" [attr.role]="face.fixed ? null : 'slider'"
+              [attr.aria-label]="t('hand.hour')" [attr.aria-valuemin]="face.fixed ? null : 0" [attr.aria-valuemax]="face.fixed ? null : 719"
+              [attr.aria-valuenow]="face.fixed ? null : face.hands.h"
+              [attr.aria-valuetext]="face.fixed ? null : t('hourValue', { at: hourValueText(face.hands) })"
+              [attr.data-testid]="'cs-hour-' + face.clock.id" (keydown)="onHandKeydown($event, face.clock.id, 'hour')">
+              <line class="cs-hand__hit" x1="100" y1="112" x2="100" y2="48" />
+              <line class="cs-hand__line" x1="100" y1="108" x2="100" y2="52" />
+            </g>
+            <g class="cs-hand cs-hand--minute" data-hand="minute"
+              [class.is-active]="activeHand() === 'minute' && !face.fixed && !readOnly()"
+              [attr.transform]="'rotate(' + minuteDeg(face.hands) + ' 100 100)'"
+              [attr.tabindex]="face.fixed || readOnly() ? null : 0" [attr.role]="face.fixed ? null : 'slider'"
+              [attr.aria-label]="t('hand.minute')" [attr.aria-valuemin]="face.fixed ? null : 0" [attr.aria-valuemax]="face.fixed ? null : 59"
+              [attr.aria-valuenow]="face.fixed ? null : face.hands.m"
+              [attr.aria-valuetext]="face.fixed ? null : t('minuteValue', { m: face.hands.m })"
+              [attr.data-testid]="'cs-minute-' + face.clock.id" (keydown)="onHandKeydown($event, face.clock.id, 'minute')">
+              <line class="cs-hand__hit" x1="100" y1="114" x2="100" y2="16" />
+              <line class="cs-hand__line" x1="100" y1="112" x2="100" y2="20" />
+            </g>
+            <circle class="cs-dial__pin" cx="100" cy="100" r="5" />
+          </svg>
+          <figcaption class="cs-caption">
+            <span class="cs-caption__label">{{ face.clock.label ?? t('clockAria', { n: face.number }) }}</span>
+            @if (face.fixed) {
+              <span class="cs-caption__fixed">{{ t('fixed') }}</span>
+            }
+            @if (face.result !== null) {
+              <mat-icon class="cs-caption__result" [attr.data-testid]="'cs-result-' + face.clock.id"
+                [attr.aria-label]="face.result ? t('correct') : t('wrong')">{{ face.result ? 'check_circle' : 'cancel' }}</mat-icon>
+            }
+          </figcaption>
+        </figure>
+      }
+    </div>
+
+    @if (!solutionShown()) {
+      <div class="cs-actions">
+        <button mat-stroked-button type="button" data-testid="cs-reset" [disabled]="!canReset()" (click)="reset()">
+          <mat-icon>restart_alt</mat-icon>{{ t('reset') }}
+        </button>
+      </div>
+      <p class="cs-hint">{{ t('hint') }}</p>
+    }
+  } @else {
+    <p class="cs-hint" data-testid="cs-invalid">{{ t('invalid') }}</p>
+  }
+
+  @if (solutionShown()) {
+    <p class="cs-hint" data-testid="cs-solution-hint">{{ t('solutionShown') }}</p>
+  }
+</div>

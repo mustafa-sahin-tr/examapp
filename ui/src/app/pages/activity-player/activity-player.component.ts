@@ -134,6 +134,16 @@ import {
   weightText,
 } from '../../models/balance-scale';
 import {
+  ClockSetPlanV1,
+  clockMatches,
+  formatClockTime,
+  isClockSetType,
+  parseClockSetAnswer,
+  parseClockSetFeedback,
+  parseClockSetPlan,
+  parseClockSetSolution,
+} from '../../models/clock-set';
+import {
   RegionPaintFeedback,
   RegionPaintPlanV1,
   RegionPaintRegionsPlanV1,
@@ -231,6 +241,7 @@ import { QuestionCanvasNumberLineComponent } from '../../shared/components/quest
 import { QuestionCanvasBarChartComponent } from '../../shared/components/question-canvas-bar-chart/question-canvas-bar-chart.component';
 import { QuestionCanvasGridDrawComponent } from '../../shared/components/question-canvas-grid-draw/question-canvas-grid-draw.component';
 import { QuestionCanvasBalanceScaleComponent } from '../../shared/components/question-canvas-balance-scale/question-canvas-balance-scale.component';
+import { QuestionCanvasClockSetComponent } from '../../shared/components/question-canvas-clock-set/question-canvas-clock-set.component';
 import { QuestionCanvasWordSearchComponent } from '../../shared/components/question-canvas-word-search/question-canvas-word-search.component';
 import { QuestionCanvasMazeTreeComponent } from '../../shared/components/question-canvas-maze-tree/question-canvas-maze-tree.component';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
@@ -311,6 +322,7 @@ export type ActivityAction = 'check' | 'reveal' | 'finish';
     QuestionCanvasBarChartComponent,
     QuestionCanvasGridDrawComponent,
     QuestionCanvasBalanceScaleComponent,
+    QuestionCanvasClockSetComponent,
     QuestionCanvasViewComponentv5,
     QuestionLiteViewComponent,
   ],
@@ -458,6 +470,7 @@ export class ActivityPlayerComponent {
   private readonly barChartPlans = new Map<number, BarChartPlanV1 | null>();
   private readonly gridDrawPlans = new Map<number, GridDrawPlanV1 | null>();
   private readonly balanceScalePlans = new Map<number, BalanceScalePlanV1 | null>();
+  private readonly clockSetPlans = new Map<number, ClockSetPlanV1 | null>();
 
   readonly title = computed(() => this.instance()?.testName ?? '');
   readonly currentItem = computed(() => this.items()[this.currentIndex()] ?? null);
@@ -585,6 +598,13 @@ export class ActivityPlayerComponent {
     return parseBalanceScaleFeedback(this.results()[item.id]?.feedback);
   });
 
+  /** Issue #634: saat başına kontrol sonucu; çözüm açıkken ya da kontrol yoksa null. */
+  readonly currentClockSetFeedback = computed<Record<string, boolean> | null>(() => {
+    const item = this.currentItem();
+    if (!item || this.revealed()) return null;
+    return parseClockSetFeedback(this.results()[item.id]?.feedback);
+  });
+
   readonly currentRegionPaintFeedback = computed<RegionPaintFeedback | null>(() => {
     const item = this.currentItem();
     if (!item || this.revealed()) return null;
@@ -642,6 +662,7 @@ export class ActivityPlayerComponent {
     if (this.isBarChart(item)) return this.barChartRows(item, result, solution);
     if (this.isGridDraw(item)) return this.gridDrawRows(item, result, solution);
     if (this.isBalanceScale(item)) return this.balanceScaleRows(item, result, solution);
+    if (this.isClockSet(item)) return this.clockSetRows(item, result, solution);
     if (this.isOpenText(item)) return this.openTextRows(item, result);
     return this.isDragDrop(item)
       ? this.dragDropRows(item, result, solution)
@@ -811,6 +832,7 @@ export class ActivityPlayerComponent {
     this.barChartPlans.clear();
     this.gridDrawPlans.clear();
     this.balanceScalePlans.clear();
+    this.clockSetPlans.clear();
   }
 
   // ---------------------------------------------------------------------------
@@ -1447,6 +1469,10 @@ export class ActivityPlayerComponent {
     return isBalanceScaleType(item.question?.interactionType);
   }
 
+  isClockSet(item: TestInstanceQuestion): boolean {
+    return isClockSetType(item.question?.interactionType);
+  }
+
   isRegionPaint(item: TestInstanceQuestion): boolean {
     return isRegionPaintType(item.question?.interactionType);
   }
@@ -1473,7 +1499,8 @@ export class ActivityPlayerComponent {
       this.isNumberLine(item) ||
       this.isBarChart(item) ||
       this.isGridDraw(item) ||
-      this.isBalanceScale(item)
+      this.isBalanceScale(item) ||
+      this.isClockSet(item)
     );
   }
 
@@ -1553,6 +1580,13 @@ export class ActivityPlayerComponent {
       this.balanceScalePlans.set(item.id, parseBalanceScalePlan(item.question?.interactionPlan));
     }
     return this.balanceScalePlans.get(item.id) ?? null;
+  }
+
+  private clockSetPlanFor(item: TestInstanceQuestion): ClockSetPlanV1 | null {
+    if (!this.clockSetPlans.has(item.id)) {
+      this.clockSetPlans.set(item.id, parseClockSetPlan(item.question?.interactionPlan));
+    }
+    return this.clockSetPlans.get(item.id) ?? null;
   }
 
   private regionPaintPlanFor(item: TestInstanceQuestion): RegionPaintPlanV1 | null {
@@ -1662,6 +1696,9 @@ export class ActivityPlayerComponent {
       const pans = parseBalanceScaleAnswer(answer?.answerPayload, this.balanceScalePlanFor(item));
       return pans.left.length + pans.right.length > 0;
     }
+    if (this.isClockSet(item)) {
+      return Object.keys(parseClockSetAnswer(answer?.answerPayload, this.clockSetPlanFor(item))).length > 0;
+    }
     if (this.isRegionPaint(item)) {
       const regionsPlan = this.regionPaintRegionsPlanFor(item);
       if (regionsPlan) return Object.keys(parseRegionPaintFills(answer?.answerPayload, regionsPlan)).length > 0;
@@ -1729,6 +1766,12 @@ export class ActivityPlayerComponent {
     if (this.isBalanceScale(item)) {
       const pans = parseBalanceScaleAnswer(answer?.answerPayload, this.balanceScalePlanFor(item));
       return pans.left.length + pans.right.length === 0;
+    }
+    // Issue #634: kurulmamış saat var (her serbest saat kurulmalı).
+    if (this.isClockSet(item)) {
+      const plan = this.clockSetPlanFor(item);
+      const set = parseClockSetAnswer(answer?.answerPayload, plan);
+      return (plan?.clocks ?? []).some((c) => c.fixed == null && !set[c.id]);
     }
     // Issue #587: boyamada hiç boyanmış kare yok (hedef sayılar öğrenciye gitmez).
     if (this.isRegionPaint(item)) {
@@ -2052,6 +2095,38 @@ export class ActivityPlayerComponent {
         solution: null,
       };
     });
+  }
+
+  /**
+   * Issue #634: saat başına satır — öğrencinin kurduğu saat ("Bitiş: 10:00"; akrep bir saatin kabul aralığında değilse "?:MM"),
+   * kontrol sonucuna göre işaretli; çözüm açıkken doğru saat.
+   */
+  private clockSetRows(item: TestInstanceQuestion, result: ItemResult | undefined, solution: ActivitySolution | null): ActivityResultRow[] {
+    const plan = this.clockSetPlanFor(item);
+    if (!plan || (!result && !solution)) return [];
+    const answer = parseClockSetAnswer(this.answers()[item.id]?.answerPayload, plan);
+    const targets = solution ? parseClockSetSolution(solution.interactionSolution) : null;
+    const feedback = result ? parseClockSetFeedback(result.feedback) : null;
+    return plan.clocks.flatMap((clock, index) => {
+      if (clock.fixed != null) return [];
+      const hands = answer[clock.id];
+      const name = clock.label ?? this.tr('rows.clockN', { n: index + 1 });
+      const target = targets?.[clock.id];
+      return [{
+        label: this.tr('rows.clock', { name, time: hands ? this.clockText(hands) : '—' }),
+        correct: result ? (target != null ? !!hands && clockMatches(hands, target) : (feedback?.[clock.id] ?? false)) : null,
+        solution: target != null ? formatClockTime(target) : null,
+      }];
+    });
+  }
+
+  /** Yelkovana göre akrebin gösterdiği saat; backend analiziyle aynı kural (aralık dışında "?"). */
+  private clockText(hands: { h: number; m: number }): string {
+    const hour = Math.round((hands.h - hands.m) / 60);
+    const exact = (((hour * 60 + hands.m) % 720) + 720) % 720;
+    const diff = Math.abs(hands.h - exact) % 720;
+    const shown = ((hour % 12) + 12) % 12 || 12;
+    return `${Math.min(diff, 720 - diff) <= 15 ? shown : '?'}:${String(hands.m).padStart(2, '0')}`;
   }
 
   /**

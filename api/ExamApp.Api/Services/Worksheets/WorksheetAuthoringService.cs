@@ -235,6 +235,10 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
             Message = _localizer["worksheets.authoring.kindLocked"]
         };
 
+    /// <summary>Kitabın istenen testi, yoksa ilk testi; kitapsız sayfada (#610) null.</summary>
+    private static int? ResolveBookTestId(Book? book, int? bookTestId)
+        => book is null ? null : book.BookTests.FirstOrDefault(bt => bt.Id == bookTestId)?.Id ?? book.BookTests.First().Id;
+
     public async Task<ExamSavedDto> CreateOrUpdateAsync(ExamDto examDto, int userId, bool isAdmin)
     {
         if (examDto == null)
@@ -272,17 +276,11 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
 
         try
         {
-            if (examDto.BookId == 0 && string.IsNullOrWhiteSpace(examDto.NewBookName))
-            {
-                // return BadRequest(new { error = "Kitap seçilmedi!" });
-                return new ExamSavedDto
-                {
-                    Success = false,
-                    Message = _localizer["worksheets.authoring.bookNotSelected"]
-                };
-            }
+            // issue #610: kitap isteğe bağlı — hiç kitap verilmezse sayfa kitapsız (BookTestId null) oluşur/kaydedilir.
+            // Soru tuvalinin hızlı oluşturma formu kitap sormaz; eskiden 200 + Success=false dönüp form sessizce kapanıyordu.
+            var hasBook = examDto.BookId is > 0 || !string.IsNullOrWhiteSpace(examDto.NewBookName);
 
-            if (examDto.BookTestId == 0 && string.IsNullOrWhiteSpace(examDto.NewBookTestName))
+            if (hasBook && (examDto.BookTestId is null or 0) && string.IsNullOrWhiteSpace(examDto.NewBookTestName))
             {
                 // return BadRequest(new { error = "Kipta Test seçilmedi!" });
                 return new ExamSavedDto
@@ -293,7 +291,11 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
             }
 
             Book? book = null;
-            if (examDto.BookId is null || examDto.BookId == 0)
+            if (!hasBook)
+            {
+                // kitapsız sayfa: kitap / kitap testi oluşturulmaz
+            }
+            else if (examDto.BookId is null || examDto.BookId == 0)
             {
                 if (string.IsNullOrWhiteSpace(examDto.NewBookName))
                 {
@@ -437,7 +439,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
                 if (examDto.CommentsEnabled.HasValue)
                     examination.CommentsEnabled = examDto.CommentsEnabled.Value;
                 examination.Subtitle = examDto.Subtitle;
-                examination.BookTestId = book.BookTests.FirstOrDefault(bt => bt.Id == examDto.BookTestId)?.Id ?? book.BookTests.First().Id;
+                examination.BookTestId = ResolveBookTestId(book, examDto.BookTestId);
                 examination.SubjectId = examDto.SubjectId;
                 examination.TopicId = examDto.TopicId;
                 examination.SubTopicId = examDto.SubTopicId;
@@ -456,9 +458,12 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
             else
             {
                 // 📌 Yeni Soru Oluştur (INSERT)
-                var bookTestId = book.BookTests.FirstOrDefault(bt => bt.Id == examDto.BookTestId)?.Id ?? book.BookTests.First().Id;
-                var existingExam = await _context.Worksheets
-                    .FirstOrDefaultAsync(e => e.Name == examDto.Name && e.BookTestId == bookTestId);
+                var bookTestId = ResolveBookTestId(book, examDto.BookTestId);
+                // Aynı ad + kitap testi var olan kayda yazılır; kitapsız sayfada (#610) ad tek başına kimlik değil, hep yeni kayıt.
+                var existingExam = bookTestId is null
+                    ? null
+                    : await _context.Worksheets
+                        .FirstOrDefaultAsync(e => e.Name == examDto.Name && e.BookTestId == bookTestId);
                 // 📌 Eğer yeni resim varsa, güncelle
                 var newImageUrl = string.Empty;
                 if (!string.IsNullOrEmpty(examDto.ImageUrl) &&

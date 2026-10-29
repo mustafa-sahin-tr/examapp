@@ -31,7 +31,8 @@
     "regionPaint": "Colouring (grid / pie)",
     "numberLine": "Number line",
     "barChart": "Graph drawing",
-    "gridDraw": "Draw on grid"
+    "gridDraw": "Draw on grid",
+    "balanceScale": "Balance scale"
   },
   "kindHints": {
     "matrix": "Mark the correct option for each row. The T/F template sets up two columns; with multiple choice a row can have several correct options.",
@@ -49,7 +50,8 @@
     "regionPaint": "The student paints each colour in the requested share of an equal-square grid; positions are free, the count per colour is checked.",
     "numberLine": "Students put the cards (fractions, decimals, events…) on the right tick of the number line; distractor cards stay off the line.",
     "barChart": "Students draw a bar (or line) graph from the data; each category's value is checked. Put the data in the instruction or the image.",
-    "gridDraw": "The student draws rectangles that satisfy the rule on square (or dot) paper; position and orientation are free, every size that fits the rule is correct."
+    "gridDraw": "The student draws rectangles that satisfy the rule on square (or dot) paper; position and orientation are free, every size that fits the rule is correct.",
+    "balanceScale": "Students balance the scale by putting weights on the two pans; equal pans are correct (several arrangements may be correct)."
   },
   "instruction": "Instruction (optional)",
   "image": {
@@ -227,7 +229,13 @@
     "drawRuleMissing": "Enter at least one condition: area or perimeter.",
     "drawRuleInvalid": "Area and perimeter must be positive whole numbers that fit the grid.",
     "drawNoTarget": "No rectangle that satisfies these conditions fits the grid.",
-    "drawTooManyTargets": "With \"all\" selected at most {{max}} sizes may satisfy the rule; shrink the grid or change the condition."
+    "drawTooManyTargets": "With \"all\" selected at most {{max}} sizes may satisfy the rule; shrink the grid or change the condition.",
+    "balanceUnitTooLong": "The unit may be at most {{max}} characters.",
+    "balanceCardCount": "There must be 1–{{max}} weights.",
+    "balanceFixedCount": "A pan may hold at most {{max}} given loads.",
+    "balanceValueInvalid": "Weight values must be whole numbers from 1 to {{max}}.",
+    "balanceUnsolvableAll": "The scale cannot be balanced using all weights; change the values or turn off \"Use all\".",
+    "balanceUnsolvable": "The scale cannot be balanced with these weights; change the values."
   },
   "snackbar": {
     "created": "The item was added to the activity.",
@@ -433,5 +441,22 @@
     "all": "Draw all",
     "targets": "Matching sizes: {{list}}",
     "noTargets": "No matching size."
+  },
+  "balanceScale": {
+    "hint": "Weight values are visible to students (as in the book). Checking uses the rule: equal pan totals mean balance. An empty label shows value + unit; you can also write an expression (e.g. \"(7+3)+2\").",
+    "unit": "Unit",
+    "useAll": "Use all",
+    "hideTilt": "Keep the scale level until checked",
+    "cards": "Student's weights",
+    "card": "Weight {{n}}",
+    "value": "Value",
+    "label": "Label (optional)",
+    "addCard": "Add weight",
+    "left": "Given loads on the left pan",
+    "right": "Given loads on the right pan",
+    "fixed": "Given load",
+    "addFixed": "Add given load",
+    "example": "Example: {{left}} = {{right}}",
+    "noExample": "No balancing arrangement."
   }
 }

@@ -31,6 +31,7 @@ const KNOWN_TYPES = new Set([
   'numberLine',
   'barChart',
   'gridDraw',
+  'balanceScale',
 ]);
 
 /**

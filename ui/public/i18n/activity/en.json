@@ -51,7 +51,9 @@
     "chartUnset": "not drawn",
     "drawAny": "A rectangle that fits the rule",
     "drawNone": "Nothing drawn yet",
-    "drawShape": "Drawing {{n}}: {{size}}"
+    "drawShape": "Drawing {{n}}: {{size}}",
+    "balance": "Scale: {{left}} | {{right}}",
+    "balanceEmpty": "Pans are empty"
   },
   "saveFailed": "Your last answer could not be saved; it will be sent again when you check.",
   "finishCheckRequired": "Check your answers once before finishing.",

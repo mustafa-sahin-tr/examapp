@@ -302,7 +302,8 @@
         "regionPaint": "Boyama",
         "numberLine": "Sayı doğrusu",
         "barChart": "Grafik kurma",
-        "gridDraw": "Kareli zeminde çizim"
+        "gridDraw": "Kareli zeminde çizim",
+        "balanceScale": "Terazi dengeleme"
       }
     },
     "addTextItem": "Görselsiz madde ekle"

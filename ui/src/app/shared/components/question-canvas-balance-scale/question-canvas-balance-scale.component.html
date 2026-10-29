@@ -1,0 +1,94 @@
+<div class="bs-root" [class.is-solution]="solutionShown()" *transloco="let t; prefix: 'shared.questionCanvas.balanceScale'">
+  @if (!hidePassage && passageImageUrl(); as pUrl) {
+    <div class="bs-passage">
+      @if (passageTitle(); as title) {
+        <div class="bs-passage__title">{{ title }}</div>
+      }
+      <img class="bs-passage__image" [src]="pUrl" [alt]="t('passageAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  @if (imageUrl(); as url) {
+    <div class="bs-image-wrap">
+      <img class="bs-image" [src]="url" [alt]="t('imageAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  @if (plan(); as p) {
+    <div class="bs-scale" data-testid="bs-scale" [attr.data-tilt]="tilt()" [style.--bs-tilt]="tiltDeg() + 'deg'" [style.--bs-drop]="tiltDeg() * 2.9 + 'px'">
+      <span class="bs-sr" aria-live="polite" data-testid="bs-tilt-status">{{ t('tilt.' + tilt()) }}</span>
+      <div class="bs-beam" aria-hidden="true"></div>
+      <div class="bs-post" aria-hidden="true"></div>
+      @for (side of ['left', 'right']; track side) {
+        <div class="bs-pan" [class.bs-pan--left]="side === 'left'" [class.bs-pan--right]="side === 'right'"
+          [class.is-armed]="selected() !== null && !readOnly()" [attr.data-testid]="'bs-pan-' + side"
+          (click)="place($any(side))">
+          <div class="bs-pan__load">
+            @for (w of side === 'left' ? p.left : p.right; track w.id) {
+              <span class="bs-weight bs-weight--fixed" [attr.data-fixed]="w.id">{{ text(w) }}</span>
+            }
+            @for (card of side === 'left' ? leftCards() : rightCards(); track card.id) {
+              <button type="button" class="bs-weight" [attr.data-card]="card.id" [attr.aria-pressed]="selected() === card.id"
+                [attr.aria-label]="t('placedAria', { weight: text(card), pan: t('pan.' + side) })"
+                [class.is-selected]="selected() === card.id" [disabled]="readOnly()"
+                (click)="$event.stopPropagation(); toggleCard(card.id)">
+                {{ text(card) }}
+              </button>
+            }
+          </div>
+          <div class="bs-pan__dish" aria-hidden="true"></div>
+        </div>
+      }
+    </div>
+
+    <div class="bs-pool" role="group" [attr.aria-label]="t('pool')" data-testid="bs-pool">
+      @for (card of pool(); track card.id) {
+        <button type="button" class="bs-weight" [attr.data-card]="card.id" [attr.aria-pressed]="selected() === card.id"
+          [class.is-selected]="selected() === card.id" [disabled]="readOnly()" (click)="toggleCard(card.id)">
+          {{ text(card) }}
+        </button>
+      } @empty {
+        <span class="bs-pool__empty">{{ t('poolEmpty') }}</span>
+      }
+    </div>
+
+    @if (!solutionShown()) {
+      <div class="bs-actions">
+        <button mat-stroked-button type="button" data-testid="bs-to-left" [disabled]="readOnly() || selected() === null" (click)="place('left')">
+          <mat-icon>west</mat-icon>{{ t('toLeft') }}
+        </button>
+        <button mat-stroked-button type="button" data-testid="bs-to-right" [disabled]="readOnly() || selected() === null" (click)="place('right')">
+          {{ t('toRight') }}<mat-icon iconPositionEnd>east</mat-icon>
+        </button>
+        <button mat-stroked-button type="button" data-testid="bs-return" [disabled]="readOnly() || !selectedPlaced()" (click)="returnSelected()">
+          <mat-icon>undo</mat-icon>{{ t('return') }}
+        </button>
+        <button mat-stroked-button type="button" data-testid="bs-reset" [disabled]="!canReset()" (click)="reset()">
+          <mat-icon>restart_alt</mat-icon>{{ t('reset') }}
+        </button>
+      </div>
+      <p class="bs-hint">{{ p.hideTilt ? t('hintHidden') : t('hint') }}</p>
+    }
+  } @else {
+    <p class="bs-hint" data-testid="bs-invalid">{{ t('invalid') }}</p>
+  }
+
+  @if (feedbackState(); as fb) {
+    <p class="bs-result" role="status" data-testid="bs-result" [class.is-ok]="fb.correct" [class.is-bad]="!fb.correct">
+      <mat-icon aria-hidden="true">{{ fb.correct ? 'check_circle' : 'error' }}</mat-icon>
+      @if (fb.correct) {
+        {{ t('resultOk') }}
+      } @else if (fb.tilt === 'level' && fb.unused) {
+        {{ t('resultUnused', { n: fb.unused }) }}
+      } @else if (fb.tilt === 'level') {
+        {{ t('resultEmpty') }}
+      } @else {
+        {{ t('resultTilt', { pan: t('pan.' + fb.tilt) }) }}
+      }
+    </p>
+  }
+
+  @if (solutionShown()) {
+    <p class="bs-hint" data-testid="bs-solution-hint">{{ t('solutionShown') }}</p>
+  }
+</div>

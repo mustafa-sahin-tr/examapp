@@ -31,7 +31,8 @@
     "regionPaint": "Boyama (ızgara / daire)",
     "numberLine": "Sayı doğrusu",
     "barChart": "Grafik kurma",
-    "gridDraw": "Kareli zeminde çizim"
+    "gridDraw": "Kareli zeminde çizim",
+    "balanceScale": "Terazi dengeleme"
   },
   "kindHints": {
     "matrix": "Her satır için doğru seçeneği işaretle. D/Y şablonu iki kolon kurar; çoklu seçimde satırda birden çok doğru olabilir.",
@@ -49,7 +50,8 @@
     "regionPaint": "Öğrenci eş karelere ayrılmış ızgarada her rengi istenen oranda boyar; karelerin yeri serbesttir, renk başına sayı kontrol edilir.",
     "numberLine": "Öğrenci kartları (kesir, ondalık, olay…) sayı doğrusunda doğru çentiğe koyar; çeldirici kart doğruya konmamalı.",
     "barChart": "Öğrenci verilere göre sütun (ya da çizgi) grafiğini çizer; her kategorinin değeri kontrol edilir. Verileri yönergeye ya da görsele yazın.",
-    "gridDraw": "Öğrenci kareli (ya da noktalı) zemine kurala uyan dikdörtgenleri çizer; yer ve yön serbest, kurala uyan her boyut doğru sayılır."
+    "gridDraw": "Öğrenci kareli (ya da noktalı) zemine kurala uyan dikdörtgenleri çizer; yer ve yön serbest, kurala uyan her boyut doğru sayılır.",
+    "balanceScale": "Öğrenci ağırlıkları iki kefeye koyarak teraziyi dengeler; kefeler eşitse doğru (birden çok doğru yerleşim olabilir)."
   },
   "instruction": "Yönerge (isteğe bağlı)",
   "image": {
@@ -227,7 +229,13 @@
     "drawRuleMissing": "Alan ya da çevre koşulundan en az birini yaz.",
     "drawRuleInvalid": "Alan ve çevre zemine uygun pozitif tam sayı olmalı.",
     "drawNoTarget": "Bu koşullara uyan ve zemine sığan dikdörtgen yok.",
-    "drawTooManyTargets": "\"Hepsi\" seçiliyken kurala uyan en çok {{max}} boyut olabilir; zemini küçült ya da koşulu değiştir."
+    "drawTooManyTargets": "\"Hepsi\" seçiliyken kurala uyan en çok {{max}} boyut olabilir; zemini küçült ya da koşulu değiştir.",
+    "balanceUnitTooLong": "Birim en çok {{max}} karakter olabilir.",
+    "balanceCardCount": "1–{{max}} ağırlık olmalı.",
+    "balanceFixedCount": "Bir kefede en çok {{max}} hazır yük olabilir.",
+    "balanceValueInvalid": "Ağırlık değerleri 1–{{max}} arası tam sayı olmalı.",
+    "balanceUnsolvableAll": "Bütün ağırlıklarla terazi dengelenemiyor; değerleri değiştir ya da \"Hepsini kullansın\"ı kapat.",
+    "balanceUnsolvable": "Bu ağırlıklarla terazi dengelenemiyor; değerleri değiştir."
   },
   "snackbar": {
     "created": "Madde etkinliğe eklendi.",
@@ -433,5 +441,22 @@
     "all": "Hepsini çizsin",
     "targets": "Kurala uyan boyutlar: {{list}}",
     "noTargets": "Kurala uyan boyut yok."
+  },
+  "balanceScale": {
+    "hint": "Ağırlıkların değeri öğrenciye görünür (kitaptaki gibi). Kontrol kurala bakar: kefe toplamları eşitse denge. Etiket boşsa değer + birim yazılır; işlem (ör. \"(7+3)+2\") de yazılabilir.",
+    "unit": "Birim",
+    "useAll": "Hepsini kullansın",
+    "hideTilt": "Terazi kontrol edilene dek düz dursun",
+    "cards": "Öğrencinin ağırlıkları",
+    "card": "{{n}}. ağırlık",
+    "value": "Değer",
+    "label": "Etiket (isteğe bağlı)",
+    "addCard": "Ağırlık ekle",
+    "left": "Sol kefedeki hazır yükler",
+    "right": "Sağ kefedeki hazır yükler",
+    "fixed": "Hazır yük",
+    "addFixed": "Hazır yük ekle",
+    "example": "Örnek çözüm: {{left}} = {{right}}",
+    "noExample": "Dengeyi sağlayan yerleşim yok."
   }
 }

@@ -1388,6 +1388,61 @@ describe('ActivityPlayerComponent (#573)', () => {
     });
   });
 
+  describe('balanceScale (#632)', () => {
+    const BS_PLAN = JSON.stringify({
+      version: 1,
+      type: 'balanceScale',
+      unit: 'kg',
+      cards: [
+        { id: 'k1', value: 5 },
+        { id: 'k2', value: 9 },
+        { id: 'k3', value: 10 },
+        { id: 'k4', value: 14 },
+      ],
+    });
+    const bsAnswer = (left: string[], right: string[]) => JSON.stringify({ version: 1, type: 'balanceScale', left, right });
+    const base = () => instance().testInstanceQuestions[0].question;
+    const typed = (answer: string) =>
+      instance({}, [{ answerPayload: answer, question: { ...base(), interactionType: 'BalanceScale', interactionPlan: BS_PLAN } }]);
+
+    it('rendersPlayer_BlankIsIncomplete_RowAndFeedback', async () => {
+      await create(typed(bsAnswer([], [])));
+      fixture.componentInstance.goTo(0);
+      await settle();
+
+      expect(el().querySelector('app-question-canvas-balance-scale')).not.toBeNull();
+      expect(fixture.componentInstance.blankItems()).toContain('a');
+
+      fixture.componentInstance.onDragDropChange(bsAnswer(['k1', 'k2'], ['k4']), fixture.componentInstance.items()[0]);
+      await settle();
+      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+
+      activityService.check.mockReturnValue(
+        of({
+          success: true,
+          correctCount: 0,
+          totalCount: 2,
+          questions: [
+            {
+              instanceQuestionId: 101,
+              isCorrect: false,
+              correctCount: 0,
+              totalCount: 1,
+              feedback: '{"rows":[{"id":"balance","correct":false}],"tilt":"level","unused":1}',
+            },
+            { instanceQuestionId: 102, isCorrect: false, correctCount: 0, totalCount: 1, feedback: null },
+          ],
+        })
+      );
+      await fixture.componentInstance.runCheck();
+      await settle();
+      const rows = fixture.componentInstance.currentRows();
+      expect(rows.map((r) => r.correct)).toEqual([false]);
+      expect(rows[0].label).toContain('5 kg + 9 kg');
+      expect(fixture.componentInstance.currentBalanceScaleFeedback()?.unused).toBe(1);
+    });
+  });
+
   describe('gridDraw (#588 dilim c)', () => {
     const GD_PLAN = JSON.stringify({ version: 1, type: 'gridDraw', rows: 10, cols: 16 });
     const gdAnswer = (shapes: object[]) => JSON.stringify({ version: 1, type: 'gridDraw', shapes });

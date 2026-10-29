@@ -39,6 +39,7 @@ import { isRegionPaintType } from '../../models/region-paint';
 import { isNumberLineType } from '../../models/number-line';
 import { isBarChartType } from '../../models/bar-chart';
 import { isGridDrawType } from '../../models/grid-draw';
+import { isBalanceScaleType } from '../../models/balance-scale';
 import { isMazeTreeType } from '../../models/maze-tree';
 import { isTextSelectType } from '../../models/text-select';
 import { isOpenTextType } from '../../models/open-text';
@@ -50,6 +51,7 @@ import { QuestionCanvasRegionPaintComponent } from '../../shared/components/ques
 import { QuestionCanvasNumberLineComponent } from '../../shared/components/question-canvas-number-line/question-canvas-number-line.component';
 import { QuestionCanvasBarChartComponent } from '../../shared/components/question-canvas-bar-chart/question-canvas-bar-chart.component';
 import { QuestionCanvasGridDrawComponent } from '../../shared/components/question-canvas-grid-draw/question-canvas-grid-draw.component';
+import { QuestionCanvasBalanceScaleComponent } from '../../shared/components/question-canvas-balance-scale/question-canvas-balance-scale.component';
 import { QuestionCanvasWordSearchComponent } from '../../shared/components/question-canvas-word-search/question-canvas-word-search.component';
 import { QuestionCanvasCrosswordComponent } from '../../shared/components/question-canvas-crossword/question-canvas-crossword.component';
 import { QuestionCanvasMazeTreeComponent } from '../../shared/components/question-canvas-maze-tree/question-canvas-maze-tree.component';
@@ -97,6 +99,7 @@ import { StorageImageRetryDirective } from '../../shared/directives/storage-imag
     QuestionCanvasNumberLineComponent,
     QuestionCanvasBarChartComponent,
     QuestionCanvasGridDrawComponent,
+    QuestionCanvasBalanceScaleComponent,
     QuestionCanvasTextSelectComponent,
     QuestionCanvasOpenTextComponent,
     TranslocoDirective,
@@ -197,7 +200,7 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
    */
   public interactionKind(
     type: string | null | undefined
-  ): 'mcq' | 'dragDropLabeling' | 'matrixChoice' | 'slotFill' | 'dragPlace' | 'match' | 'textSelect' | 'openText' | 'mazeTree' | 'crossword' | 'wordSearch' | 'logicGrid' | 'regionPaint' | 'numberLine' | 'barChart' | 'gridDraw' {
+  ): 'mcq' | 'dragDropLabeling' | 'matrixChoice' | 'slotFill' | 'dragPlace' | 'match' | 'textSelect' | 'openText' | 'mazeTree' | 'crossword' | 'wordSearch' | 'logicGrid' | 'regionPaint' | 'numberLine' | 'barChart' | 'gridDraw' | 'balanceScale' {
     const normalized = (type ?? '').toLowerCase();
     if (normalized === 'dragdroplabeling') return 'dragDropLabeling';
     if (isSlotFillType(type)) return 'slotFill';
@@ -213,6 +216,7 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
     if (isNumberLineType(type)) return 'numberLine';
     if (isBarChartType(type)) return 'barChart';
     if (isGridDrawType(type)) return 'gridDraw';
+    if (isBalanceScaleType(type)) return 'balanceScale';
     return isMatrixChoiceType(type) ? 'matrixChoice' : 'mcq';
   }
 

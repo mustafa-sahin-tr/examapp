@@ -263,6 +263,39 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(JSON.parse(q.interactionSolution)).toEqual({ perimeter: 14, all: true });
   });
 
+  it('terazi: ağırlıkları plana, kuralı çözüme kaydeder; dengelenemeyen formu reddeder (#632)', async () => {
+    await setup({ testId: '9' });
+    component.selectKind('balanceScale');
+    fixture.detectChanges();
+    expect(el('[data-testid="balance-scale-form"]')).not.toBeNull();
+
+    ['5', '9', '10', '15'].forEach((value, i) => component.setBalanceWeight('cards', i, { value }));
+    fixture.detectChanges();
+    expect(component.errors().map((e) => e.key)).toContain('balanceUnsolvableAll');
+
+    component.setBalanceWeight('cards', 3, { value: '14' });
+    fixture.detectChanges();
+    expect(component.errors()).toEqual([]);
+    expect(el('[data-testid="bs-example"]')?.textContent).toContain('5 kg + 14 kg = 9 kg + 10 kg');
+    expect(el('[data-testid="preview"] app-question-canvas-balance-scale')).not.toBeNull();
+
+    component.save(false);
+    const q = questions.saveBulk.mock.calls[0][0].questions[0];
+    expect(q.interactionType).toBe('balanceScale');
+    expect(JSON.parse(q.interactionPlan)).toEqual({
+      version: 1,
+      type: 'balanceScale',
+      unit: 'kg',
+      cards: [
+        { id: 'k1', value: 5 },
+        { id: 'k2', value: 9 },
+        { id: 'k3', value: 10 },
+        { id: 'k4', value: 14 },
+      ],
+    });
+    expect(JSON.parse(q.interactionSolution)).toEqual({ useAll: true });
+  });
+
   it('kelime avı: ızgarayı kelimelerden üretir, önizlemede çizer ve çözümü ayrı kaydeder (#586)', async () => {
     await setup({ testId: '9' });
     component.selectKind('wordSearch');

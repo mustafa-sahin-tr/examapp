@@ -1,0 +1,266 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.bs-root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+}
+
+.bs-passage {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+
+  &__title {
+    font-weight: 700;
+    font-family: var(--mainFontFamily);
+  }
+
+  &__image {
+    display: block;
+    max-width: 100%;
+    max-height: 35vh;
+    object-fit: contain;
+  }
+}
+
+.bs-image-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+}
+
+.bs-image {
+  display: block;
+  max-width: 100%;
+  max-height: 45vh;
+}
+
+// Terazi: iki kefe yan yana, ortada direk; kol eğim kadar döner, ağır kefe aşağı iner.
+.bs-scale {
+  --bs-tilt: 0deg;
+  --bs-drop: 0px;
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 16px 1fr;
+  align-items: start;
+  gap: 0 12px;
+  max-width: 560px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px 0 56px;
+}
+
+// Eğim yalnız ekran okuyucuya yazılır (görsel olarak terazi gösterir).
+.bs-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.bs-beam {
+  position: absolute;
+  top: 16px;
+  // Uçlar kefe ortalarının üstünde (kolon ortaları ≈ %24 / %76).
+  left: 22%;
+  right: 22%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--ms-text-strong);
+  transform: rotate(var(--bs-tilt));
+  transition: transform var(--ms-motion-speed-normal, 0.25s) ease;
+}
+
+.bs-post {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: stretch;
+  position: relative;
+  width: 8px;
+  justify-self: center;
+  margin-top: -8px;
+  margin-bottom: -40px;
+  border-radius: 4px;
+  background: var(--ms-text-medium);
+
+  // Taban.
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 96px;
+    height: 10px;
+    border-radius: 4px;
+    background: var(--ms-text-strong);
+    transform: translateX(-50%);
+  }
+}
+
+.bs-pan {
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  position: relative;
+  min-width: 0;
+  max-width: 220px;
+  width: 100%;
+  justify-self: center;
+  margin-top: 26px;
+  transition: transform var(--ms-motion-speed-normal, 0.25s) ease;
+
+  &--left {
+    grid-column: 1;
+    transform: translateY(calc(var(--bs-drop) * -1));
+  }
+
+  &--right {
+    grid-column: 3;
+    transform: translateY(var(--bs-drop));
+  }
+
+  // Askı: kolun ucundan kefeye.
+  &::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    width: 2px;
+    height: 26px;
+    background: var(--ms-text-medium);
+    transform: translateX(-50%);
+  }
+
+  &.is-armed {
+    cursor: pointer;
+
+    .bs-pan__dish {
+      background: var(--ms-action-background-weak);
+      border-color: var(--ms-action-border-focus);
+    }
+  }
+
+  &__load {
+    display: flex;
+    flex-wrap: wrap-reverse;
+    justify-content: center;
+    align-content: flex-start;
+    gap: 6px;
+    min-height: 44px;
+    padding: 4px;
+    border-left: 2px solid var(--ms-border-strong);
+    border-right: 2px solid var(--ms-border-strong);
+  }
+
+  &__dish {
+    height: 22px;
+    border: 2px solid var(--ms-border-strong);
+    border-radius: 0 0 50% 50% / 0 0 100% 100%;
+    background: var(--ms-surface-strong);
+  }
+}
+
+.bs-pool {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px dashed var(--ms-border-strong);
+  background: var(--ms-surface);
+
+  &__empty {
+    align-self: center;
+    color: var(--ms-text-medium);
+    font-size: 13px;
+  }
+}
+
+// Ağırlık: üstü yuvarlak blok (kitaptaki kulplu ağırlık).
+.bs-weight {
+  min-width: 48px;
+  min-height: 36px;
+  padding: 4px 10px;
+  border: 2px solid var(--ms-border-strong);
+  border-radius: 14px 14px 6px 6px;
+  background: var(--ms-info-surface);
+  color: var(--ms-text-strong);
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &.is-selected {
+    border-color: var(--ms-action-border-focus);
+    box-shadow: 0 0 0 2px var(--ms-focus-ring);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ms-action-border-focus);
+    outline-offset: 2px;
+  }
+
+  &--fixed {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ms-surface-strong);
+    border-style: dashed;
+    cursor: default;
+  }
+}
+
+.bs-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 12px;
+}
+
+.bs-hint {
+  margin: 0;
+  color: var(--ms-text-medium);
+}
+
+.bs-result {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+
+  &.is-ok {
+    background: var(--ms-success-surface);
+    color: var(--ms-success-text);
+  }
+
+  &.is-bad {
+    background: var(--ms-danger-surface);
+    color: var(--ms-danger-text);
+  }
+}

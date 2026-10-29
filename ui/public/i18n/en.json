@@ -612,6 +612,34 @@
         "solutionAll": "All matching sizes: {{list}}.",
         "solutionAny": "Matching sizes (one was enough): {{list}}.",
         "solutionShown": "The matching rectangles are shown."
+      },
+      "balanceScale": {
+        "passageAlt": "Reading passage image",
+        "imageAlt": "Activity image",
+        "invalid": "This activity could not be opened.",
+        "pool": "Weights",
+        "poolEmpty": "All weights are on the pans.",
+        "pan": {
+          "left": "left",
+          "right": "right"
+        },
+        "placedAria": "{{weight}}, on the {{pan}} pan",
+        "tilt": {
+          "level": "The scale is balanced",
+          "left": "The left pan is heavier",
+          "right": "The right pan is heavier"
+        },
+        "toLeft": "To left pan",
+        "toRight": "To right pan",
+        "return": "Back to pool",
+        "reset": "Clear",
+        "hint": "Pick a weight, then tap a pan. Tap a weight on a pan twice to take it back.",
+        "hintHidden": "Pick a weight, then tap a pan. The scale moves when you check; balance it by calculating.",
+        "resultOk": "The scale is balanced!",
+        "resultTilt": "The scale is not balanced; the {{pan}} pan is heavier.",
+        "resultUnused": "The scale is balanced but {{n}} weights are unused; use all of them.",
+        "resultEmpty": "Put weights on the pans.",
+        "solutionShown": "One balancing arrangement is shown (other arrangements may also be correct)."
       }
     },
     "sharingBadge": {

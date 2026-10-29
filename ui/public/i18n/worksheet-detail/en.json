@@ -302,7 +302,8 @@
         "regionPaint": "Colouring",
         "numberLine": "Number line",
         "barChart": "Graph drawing",
-        "gridDraw": "Draw on grid"
+        "gridDraw": "Draw on grid",
+        "balanceScale": "Balance scale"
       }
     },
     "addTextItem": "Add text-only item"

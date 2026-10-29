@@ -74,6 +74,13 @@ import {
 import { BAR_CHART_FORM_LIMITS, BarChartCategoryForm, BarChartForm } from '../../models/activity-authoring-bar-chart';
 import { GRID_DRAW_FORM_LIMITS, GridDrawForm, gridDrawFormTargets } from '../../models/activity-authoring-grid-draw';
 import {
+  BALANCE_SCALE_FORM_LIMITS,
+  BalanceScaleForm,
+  BalanceWeightForm,
+  balanceFormWeights,
+} from '../../models/activity-authoring-balance-scale';
+import { findBalance, weightText } from '../../models/balance-scale';
+import {
   LOGIC_GRID_FORM_LIMITS,
   LogicGridForm,
   addLogicCategory,
@@ -106,6 +113,7 @@ import { QuestionCanvasRegionPaintComponent } from '../../shared/components/ques
 import { QuestionCanvasNumberLineComponent } from '../../shared/components/question-canvas-number-line/question-canvas-number-line.component';
 import { QuestionCanvasBarChartComponent } from '../../shared/components/question-canvas-bar-chart/question-canvas-bar-chart.component';
 import { QuestionCanvasGridDrawComponent } from '../../shared/components/question-canvas-grid-draw/question-canvas-grid-draw.component';
+import { QuestionCanvasBalanceScaleComponent } from '../../shared/components/question-canvas-balance-scale/question-canvas-balance-scale.component';
 import { QuestionCanvasWordSearchComponent } from '../../shared/components/question-canvas-word-search/question-canvas-word-search.component';
 import { QuestionCanvasDragPlaceComponent } from '../../shared/components/question-canvas-drag-place/question-canvas-drag-place.component';
 import { QuestionCanvasMatchComponent } from '../../shared/components/question-canvas-match/question-canvas-match.component';
@@ -171,6 +179,7 @@ interface EditableItem {
     QuestionCanvasNumberLineComponent,
     QuestionCanvasBarChartComponent,
     QuestionCanvasGridDrawComponent,
+    QuestionCanvasBalanceScaleComponent,
   ],
   providers: [provideTranslocoScope(ACTIVITY_EDITOR_SCOPE)],
   templateUrl: './activity-editor.component.html',
@@ -202,6 +211,7 @@ export class ActivityEditorComponent {
   readonly lineLimits = NUMBER_LINE_FORM_LIMITS;
   readonly chartLimits = BAR_CHART_FORM_LIMITS;
   readonly drawLimits = GRID_DRAW_FORM_LIMITS;
+  readonly balanceLimits = BALANCE_SCALE_FORM_LIMITS;
   /** Otomatik yerleştirmenin son sonucu: kesiştirilemeyip ayrı satıra konan kelimeler (1 tabanlı). */
   readonly crosswordUnplaced = signal<number[] | null>(null);
   /**
@@ -263,6 +273,21 @@ export class ActivityEditorComponent {
   readonly gridDrawTargets = computed(() => {
     const f = this.gridDraw();
     return f ? gridDrawFormTargets(f).map((t) => `${t.short} × ${t.long}`) : [];
+  });
+  readonly balanceScale = computed(() => (this.form().kind === 'balanceScale' ? (this.form() as BalanceScaleForm) : null));
+  /** Terazi: kurala uyan bir yerleşim ("5 kg + 14 kg" / "9 kg + 10 kg"); form geçersiz ya da dengelenemiyorsa null. */
+  readonly balanceExample = computed(() => {
+    const f = this.balanceScale();
+    if (!f) return null;
+    const weights = balanceFormWeights(f);
+    const all = [...weights.cards, ...weights.left, ...weights.right];
+    if (!weights.cards.length || all.some((w) => w.value === 0)) return null;
+    const pans = findBalance(weights, f.useAll);
+    if (!pans) return null;
+    const unit = f.unit.trim() || null;
+    const side = (fixed: typeof weights.cards, ids: string[]) =>
+      [...fixed, ...weights.cards.filter((c) => ids.includes(c.id))].map((w) => weightText(w, unit)).join(' + ');
+    return { left: side(weights.left, pans.left), right: side(weights.right, pans.right) };
   });
   readonly wordSearch = computed(() => (this.form().kind === 'wordSearch' ? (this.form() as WordSearchForm) : null));
   /** D/Y ağacının düzeyleri: genişlik öncelikli sırada her düzeyin ifade dizinleri. */
@@ -1001,6 +1026,27 @@ export class ActivityEditorComponent {
     if (f) this.form.set({ ...f, ...patch });
   }
 
+  // ---- Terazi ----
+
+  setBalanceOption(patch: Partial<Pick<BalanceScaleForm, 'unit' | 'useAll' | 'hideTilt'>>): void {
+    this.updateBalanceScale((f) => ({ ...f, ...patch }));
+  }
+
+  setBalanceWeight(list: 'cards' | 'left' | 'right', index: number, patch: Partial<BalanceWeightForm>): void {
+    this.updateBalanceScale((f) => ({ ...f, [list]: f[list].map((w, i) => (i === index ? { ...w, ...patch } : w)) }));
+  }
+
+  addBalanceWeight(list: 'cards' | 'left' | 'right'): void {
+    const max = list === 'cards' ? BALANCE_SCALE_FORM_LIMITS.maxCards : BALANCE_SCALE_FORM_LIMITS.maxFixedPerPan;
+    this.updateBalanceScale((f) => (f[list].length < max ? { ...f, [list]: [...f[list], { value: '', label: '' }] } : f));
+  }
+
+  removeBalanceWeight(list: 'cards' | 'left' | 'right', index: number): void {
+    this.updateBalanceScale((f) =>
+      list === 'cards' && f.cards.length <= 1 ? f : { ...f, [list]: f[list].filter((_, i) => i !== index) }
+    );
+  }
+
   // ---- Kelime avı ----
 
   setWordSearchOption(patch: Partial<Pick<WordSearchForm, 'rows' | 'cols' | 'diagonal' | 'reverse'>>): void {
@@ -1340,6 +1386,11 @@ export class ActivityEditorComponent {
     if (f) this.form.set(update(f));
   }
 
+  private updateBalanceScale(update: (f: BalanceScaleForm) => BalanceScaleForm): void {
+    const f = this.balanceScale();
+    if (f) this.form.set(update(f));
+  }
+
   private updateNumberLine(update: (f: NumberLineForm) => NumberLineForm): void {
     const f = this.numberLine();
     if (f) this.form.set(update(f));
@@ -1434,6 +1485,8 @@ function itemTitle(form: AuthoringForm, instruction: string | null | undefined):
       return form.cards.map((c) => c.label).filter(Boolean).join(', ').slice(0, 80);
     case 'barChart':
       return form.title || form.categories.map((c) => c.label).filter(Boolean).join(', ').slice(0, 80);
+    case 'balanceScale':
+      return form.cards.map((c) => c.label.trim() || c.value.trim()).filter(Boolean).join(', ').slice(0, 80);
     case 'gridDraw':
       return [form.area && `A=${form.area}`, form.perimeter && `Ç=${form.perimeter}`].filter(Boolean).join(', ');
     case 'logicGrid':

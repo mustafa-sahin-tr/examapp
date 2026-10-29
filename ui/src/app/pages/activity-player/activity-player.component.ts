@@ -121,6 +121,19 @@ import {
   sizeOf,
 } from '../../models/grid-draw';
 import {
+  BalanceScaleFeedback,
+  BalanceScalePlanV1,
+  BalanceWeight,
+  findBalance,
+  isBalanceScaleType,
+  isBalanced,
+  parseBalanceScaleAnswer,
+  parseBalanceScaleFeedback,
+  parseBalanceScalePlan,
+  parseBalanceScaleSolution,
+  weightText,
+} from '../../models/balance-scale';
+import {
   RegionPaintFeedback,
   RegionPaintPlanV1,
   RegionPaintRegionsPlanV1,
@@ -217,6 +230,7 @@ import { QuestionCanvasRegionPaintComponent } from '../../shared/components/ques
 import { QuestionCanvasNumberLineComponent } from '../../shared/components/question-canvas-number-line/question-canvas-number-line.component';
 import { QuestionCanvasBarChartComponent } from '../../shared/components/question-canvas-bar-chart/question-canvas-bar-chart.component';
 import { QuestionCanvasGridDrawComponent } from '../../shared/components/question-canvas-grid-draw/question-canvas-grid-draw.component';
+import { QuestionCanvasBalanceScaleComponent } from '../../shared/components/question-canvas-balance-scale/question-canvas-balance-scale.component';
 import { QuestionCanvasWordSearchComponent } from '../../shared/components/question-canvas-word-search/question-canvas-word-search.component';
 import { QuestionCanvasMazeTreeComponent } from '../../shared/components/question-canvas-maze-tree/question-canvas-maze-tree.component';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
@@ -296,6 +310,7 @@ export type ActivityAction = 'check' | 'reveal' | 'finish';
     QuestionCanvasNumberLineComponent,
     QuestionCanvasBarChartComponent,
     QuestionCanvasGridDrawComponent,
+    QuestionCanvasBalanceScaleComponent,
     QuestionCanvasViewComponentv5,
     QuestionLiteViewComponent,
   ],
@@ -442,6 +457,7 @@ export class ActivityPlayerComponent {
   private readonly numberLinePlans = new Map<number, NumberLinePlanV1 | null>();
   private readonly barChartPlans = new Map<number, BarChartPlanV1 | null>();
   private readonly gridDrawPlans = new Map<number, GridDrawPlanV1 | null>();
+  private readonly balanceScalePlans = new Map<number, BalanceScalePlanV1 | null>();
 
   readonly title = computed(() => this.instance()?.testName ?? '');
   readonly currentItem = computed(() => this.items()[this.currentIndex()] ?? null);
@@ -562,6 +578,13 @@ export class ActivityPlayerComponent {
     return parseGridDrawFeedback(this.results()[item.id]?.feedback);
   });
 
+  /** Issue #632: terazinin kontrol sonucu (denge, eğim, kalan); çözüm açıkken ya da kontrol yoksa null. */
+  readonly currentBalanceScaleFeedback = computed<BalanceScaleFeedback | null>(() => {
+    const item = this.currentItem();
+    if (!item || this.revealed()) return null;
+    return parseBalanceScaleFeedback(this.results()[item.id]?.feedback);
+  });
+
   readonly currentRegionPaintFeedback = computed<RegionPaintFeedback | null>(() => {
     const item = this.currentItem();
     if (!item || this.revealed()) return null;
@@ -618,6 +641,7 @@ export class ActivityPlayerComponent {
     if (this.isNumberLine(item)) return this.numberLineRows(item, result, solution);
     if (this.isBarChart(item)) return this.barChartRows(item, result, solution);
     if (this.isGridDraw(item)) return this.gridDrawRows(item, result, solution);
+    if (this.isBalanceScale(item)) return this.balanceScaleRows(item, result, solution);
     if (this.isOpenText(item)) return this.openTextRows(item, result);
     return this.isDragDrop(item)
       ? this.dragDropRows(item, result, solution)
@@ -786,6 +810,7 @@ export class ActivityPlayerComponent {
     this.numberLinePlans.clear();
     this.barChartPlans.clear();
     this.gridDrawPlans.clear();
+    this.balanceScalePlans.clear();
   }
 
   // ---------------------------------------------------------------------------
@@ -1418,6 +1443,10 @@ export class ActivityPlayerComponent {
     return isGridDrawType(item.question?.interactionType);
   }
 
+  isBalanceScale(item: TestInstanceQuestion): boolean {
+    return isBalanceScaleType(item.question?.interactionType);
+  }
+
   isRegionPaint(item: TestInstanceQuestion): boolean {
     return isRegionPaintType(item.question?.interactionType);
   }
@@ -1443,7 +1472,8 @@ export class ActivityPlayerComponent {
       this.isRegionPaint(item) ||
       this.isNumberLine(item) ||
       this.isBarChart(item) ||
-      this.isGridDraw(item)
+      this.isGridDraw(item) ||
+      this.isBalanceScale(item)
     );
   }
 
@@ -1516,6 +1546,13 @@ export class ActivityPlayerComponent {
       this.gridDrawPlans.set(item.id, parseGridDrawPlan(item.question?.interactionPlan));
     }
     return this.gridDrawPlans.get(item.id) ?? null;
+  }
+
+  private balanceScalePlanFor(item: TestInstanceQuestion): BalanceScalePlanV1 | null {
+    if (!this.balanceScalePlans.has(item.id)) {
+      this.balanceScalePlans.set(item.id, parseBalanceScalePlan(item.question?.interactionPlan));
+    }
+    return this.balanceScalePlans.get(item.id) ?? null;
   }
 
   private regionPaintPlanFor(item: TestInstanceQuestion): RegionPaintPlanV1 | null {
@@ -1621,6 +1658,10 @@ export class ActivityPlayerComponent {
     if (this.isNumberLine(item)) return Object.keys(parseNumberLineAnswer(answer?.answerPayload, this.numberLinePlanFor(item))).length > 0;
     if (this.isBarChart(item)) return Object.keys(parseBarChartAnswer(answer?.answerPayload, this.barChartPlanFor(item))).length > 0;
     if (this.isGridDraw(item)) return parseGridDrawAnswer(answer?.answerPayload, this.gridDrawPlanFor(item)).length > 0;
+    if (this.isBalanceScale(item)) {
+      const pans = parseBalanceScaleAnswer(answer?.answerPayload, this.balanceScalePlanFor(item));
+      return pans.left.length + pans.right.length > 0;
+    }
     if (this.isRegionPaint(item)) {
       const regionsPlan = this.regionPaintRegionsPlanFor(item);
       if (regionsPlan) return Object.keys(parseRegionPaintFills(answer?.answerPayload, regionsPlan)).length > 0;
@@ -1683,6 +1724,11 @@ export class ActivityPlayerComponent {
     // Issue #588 (dilim c): zeminde hiç çizim yok.
     if (this.isGridDraw(item)) {
       return parseGridDrawAnswer(answer?.answerPayload, this.gridDrawPlanFor(item)).length === 0;
+    }
+    // Issue #632: kefelerde hiç ağırlık yok.
+    if (this.isBalanceScale(item)) {
+      const pans = parseBalanceScaleAnswer(answer?.answerPayload, this.balanceScalePlanFor(item));
+      return pans.left.length + pans.right.length === 0;
     }
     // Issue #587: boyamada hiç boyanmış kare yok (hedef sayılar öğrenciye gitmez).
     if (this.isRegionPaint(item)) {
@@ -2006,6 +2052,29 @@ export class ActivityPlayerComponent {
         solution: null,
       };
     });
+  }
+
+  /**
+   * Issue #632: terazi tek satır — öğrencinin yerleşimi ("Terazi: 5 kg + 14 kg | 9 kg + 10 kg"), kontrol sonucuna göre işaretli; çözüm
+   * açıkken kurala uyan bir yerleşim.
+   */
+  private balanceScaleRows(item: TestInstanceQuestion, result: ItemResult | undefined, solution: ActivitySolution | null): ActivityResultRow[] {
+    const plan = this.balanceScalePlanFor(item);
+    if (!plan || (!result && !solution)) return [];
+    const pans = parseBalanceScaleAnswer(this.answers()[item.id]?.answerPayload, plan);
+    const cards = new Map(plan.cards.map((c) => [c.id, c]));
+    const side = (fixed: BalanceWeight[], ids: string[]) =>
+      [...fixed, ...ids.flatMap((id) => cards.get(id) ?? [])].map((w) => weightText(w, plan.unit)).join(' + ') || '—';
+    const rule = solution ? parseBalanceScaleSolution(solution.interactionSolution) : null;
+    const example = rule ? findBalance(plan, rule.useAll) : null;
+    const placed = pans.left.length + pans.right.length > 0;
+    return [{
+      label: placed
+        ? this.tr('rows.balance', { left: side(plan.left, pans.left), right: side(plan.right, pans.right) })
+        : this.tr('rows.balanceEmpty'),
+      correct: result ? (rule ? isBalanced(plan, pans, rule.useAll) : (parseBalanceScaleFeedback(result.feedback)?.correct ?? false)) : null,
+      solution: example ? `${side(plan.left, example.left)} = ${side(plan.right, example.right)}` : null,
+    }];
   }
 
   /** Issue #587: boyamada renk başına satır ("Mavi: 35 kare"); çözüm açıkken hedef sayı. */

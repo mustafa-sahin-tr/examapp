@@ -9,7 +9,8 @@
  * (`wordSearch`) `activity-authoring-word-search.ts`'te, sözel mantık tablosu (`logicGrid`) `activity-authoring-logic-grid.ts`'te.
  * Issue #587: boyama (`regionPaint` ızgara modu) `activity-authoring-region-paint.ts`'te. Issue #588: sayı doğrusu (`numberLine`)
  * `activity-authoring-number-line.ts`'te, grafik kurma (`barChart`) `activity-authoring-bar-chart.ts`'te, kareli zeminde çizim
- * (`gridDraw`) `activity-authoring-grid-draw.ts`'te.
+ * (`gridDraw`) `activity-authoring-grid-draw.ts`'te. Issue #632: terazi dengeleme (`balanceScale`)
+ * `activity-authoring-balance-scale.ts`'te.
  *
  * Kayıtta backend sürükle-yerleştir kartlarını ve eşleştirme sağ öğelerini karışık sıraya dizip opak id verir (#576
  * H1/M1); düzenlemede formu plan + çözümden geri kurarken id'lere değil, plan sırası ve çözüm eşlemesine bakılır.
@@ -85,6 +86,15 @@ import {
 } from './activity-authoring-grid-draw';
 import { GRID_DRAW } from './grid-draw';
 import {
+  BalanceScaleForm,
+  buildBalanceScaleDefinition,
+  emptyBalanceScaleForm,
+  isBalanceScaleForm,
+  parseBalanceScaleDefinition,
+  validateBalanceScaleForm,
+} from './activity-authoring-balance-scale';
+import { BALANCE_SCALE } from './balance-scale';
+import {
   ExitName,
   MAZE_KINDS,
   MazeForm,
@@ -111,7 +121,7 @@ import { MAZE_TREE } from './maze-tree';
 import { SLOT_FILL, parseSlotFillPlan } from './slot-fill';
 import { WORD_SEARCH } from './word-search';
 
-export type AuthoringKind = 'matrix' | 'classify' | 'order' | 'match' | BlankKind | MazeKind | 'crossword' | 'wordSearch' | 'logicGrid' | 'regionPaint' | 'numberLine' | 'barChart' | 'gridDraw';
+export type AuthoringKind = 'matrix' | 'classify' | 'order' | 'match' | BlankKind | MazeKind | 'crossword' | 'wordSearch' | 'logicGrid' | 'regionPaint' | 'numberLine' | 'barChart' | 'gridDraw' | 'balanceScale';
 
 export const AUTHORING_KINDS: readonly AuthoringKind[] = [
   'matrix',
@@ -130,6 +140,7 @@ export const AUTHORING_KINDS: readonly AuthoringKind[] = [
   'numberLine',
   'barChart',
   'gridDraw',
+  'balanceScale',
 ];
 
 export const AUTHORING_LABEL_MAX = MATRIX_CHOICE_LIMITS.maxLabelLength;
@@ -178,7 +189,7 @@ export interface MatchForm {
   distractors: string[];
 }
 
-export type AuthoringForm = MatrixForm | ClassifyForm | OrderForm | MatchForm | BlankForm | MazeForm | CrosswordForm | WordSearchForm | LogicGridForm | RegionPaintForm | NumberLineForm | BarChartForm | GridDrawForm;
+export type AuthoringForm = MatrixForm | ClassifyForm | OrderForm | MatchForm | BlankForm | MazeForm | CrosswordForm | WordSearchForm | LogicGridForm | RegionPaintForm | NumberLineForm | BarChartForm | GridDrawForm | BalanceScaleForm;
 
 export interface AuthoringDefinition {
   interactionType:
@@ -193,7 +204,8 @@ export interface AuthoringDefinition {
     | typeof REGION_PAINT
     | typeof NUMBER_LINE
     | typeof BAR_CHART
-    | typeof GRID_DRAW;
+    | typeof GRID_DRAW
+    | typeof BALANCE_SCALE;
   plan: string;
   solution: string;
 }
@@ -225,6 +237,7 @@ export function emptyForm(
   if (kind === 'numberLine') return emptyNumberLineForm();
   if (kind === 'barChart') return emptyBarChartForm();
   if (kind === 'gridDraw') return emptyGridDrawForm();
+  if (kind === 'balanceScale') return emptyBalanceScaleForm();
   switch (kind) {
     case 'matrix':
       return {
@@ -259,6 +272,7 @@ export function validateForm(form: AuthoringForm): AuthoringError[] {
   if (isNumberLineForm(form)) return validateNumberLineForm(form);
   if (isBarChartForm(form)) return validateBarChartForm(form);
   if (isGridDrawForm(form)) return validateGridDrawForm(form);
+  if (isBalanceScaleForm(form)) return validateBalanceScaleForm(form);
   const errors: AuthoringError[] = [];
   const blank = (values: string[]) => values.some((v) => !v.trim());
   const tooLong = (values: string[]) => values.some((v) => v.trim().length > AUTHORING_LABEL_MAX);
@@ -338,6 +352,7 @@ export function buildDefinition(form: AuthoringForm): AuthoringDefinition {
   if (isNumberLineForm(form)) return buildNumberLineDefinition(form);
   if (isBarChartForm(form)) return buildBarChartDefinition(form);
   if (isGridDrawForm(form)) return buildGridDrawDefinition(form);
+  if (isBalanceScaleForm(form)) return buildBalanceScaleDefinition(form);
   switch (form.kind) {
     case 'matrix': {
       const columns = form.columns.map((label, i) => ({ id: `c${i + 1}`, label: label.trim() }));
@@ -413,6 +428,7 @@ export function parseDefinition(
   if (type === NUMBER_LINE.toLowerCase()) return parseNumberLineDefinition(planJson, solutionJson);
   if (type === BAR_CHART.toLowerCase()) return parseBarChartDefinition(planJson, solutionJson);
   if (type === GRID_DRAW.toLowerCase()) return parseGridDrawDefinition(planJson, solutionJson);
+  if (type === BALANCE_SCALE.toLowerCase()) return parseBalanceScaleDefinition(planJson, solutionJson);
   return null;
 }
 

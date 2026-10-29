@@ -846,6 +846,21 @@ yüzde `%37,5`, ondalık ya da dilim sayısı; tam dilime inmeyen hedef reddedil
 nokta kaldırır (klavye ↑ / ↓ aynı). Kontrol değişmedi. Editörde **Grafik kurma** → Görünüm **Nokta grafiği**. Pilotlar: TT MatLab
 dosya 162 (16 eş dilim), dosya 160 (nokta grafiği). Migration yok; Aspire'da exam API'yi yeniden başlat.
 
+**Issue #632 — `balanceScale` (terazi dengeleme; karar #589).** Plan
+`{"version":1,"type":"balanceScale","unit?","left?":[{id,value,label?}],"right?":[...],"cards":[{id,value,label?}],"hideTilt?"}`
+(`left`/`right` kefelerdeki hazır, oynatılamaz yükler, kefe başına 0–6; `cards` öğrencinin ağırlıkları 1–12; `value` tam sayı 1–10000 ve
+öğrenciye gider — kitapta ağırlığın üstünde yazar; `label` isteğe bağlı düz metin ≤ 30, yoksa değer + birim; `unit` ≤ 10; bütün id'ler
+tekil; `hideTilt` yalnız görünüm — terazi kontrol edilene dek düz durur). Çözüm kuraldır: `{"useAll":bool}` — kefe toplamları eşitse denge
+(birden çok geçerli yerleşim), `useAll`'da bütün kartlar kefede, değilse en az bir kart. Kayıtta kurala uyan bir yerleşim aranır
+(`BalanceScaleGrader.ValidateDefinition`, ulaşılabilir farklar kümesi); yoksa reddedilir. Öğrenci payload'u `{"left":[kart],"right":[kart]}`
+(kart en çok bir kefede; iki kefe boş = cevap yok). Kontrol tek satır (`balance`), geri bildirim `{"rows":[{id:"balance",correct}],"tilt":"level|left|right","unused"?}`
+(`unused` yalnız `useAll`'da). Analiz: tek öğe, cevap = yerleşim ("5 kg + 14 kg | 9 kg + 10 kg"; hazır yük yoksa ayna yerleşim aynı cevap).
+Oynatıcı: ağırlık seç → kefeye dokun (ya da "Sol/Sağ kefeye"), kefedeki ağırlığa ikinci dokunuş havuza geri koyar; terazi canlı eğilir,
+toplamlar yazılmaz; çözüm açıkken kurala uyan bir yerleşim. Yazarlık görselsiz editörde (tür **Terazi dengeleme**): birim, ağırlıklar
+(değer + etiket), hazır yükler, "Hepsini kullansın", "Terazi kontrol edilene dek düz dursun"; form örnek çözümü gösterir. Pilot Süper Combo
+Mat s.203 2a/2b. "?" bilinmeyenli teraziler (1. soru) sayı cevabıdır (`slotFill`). Testte de çözülebilir (puanlanır). Migration yok; Aspire'da
+exam API'yi yeniden başlat (yeni kontrolcü).
+
 **Dev sıfırlama — soru bankası.** `deploy/scripts/dev-reset-questions.sh` (dev-only) tüm soruları ve FK ile bağlı
 her şeyi (test-soru bağları, öğrenci cevapları, yorumlar, LabelingPages/Results), öğrencilerin test oturumlarını
 (`TestInstances` — Questions'a FK'sı yok, CASCADE ulaşmaz, açıkça silinir; aksi halde "boş test yapılmış" gibi kalır),

@@ -195,6 +195,21 @@
                     (answerPayloadChange)="onDragDropChange($event, item)"
                   />
                 }
+              } @else if (isBalanceScale(item)) {
+                @if (currentRegion(); as region) {
+                  <app-question-canvas-balance-scale
+                    [questionRegion]="region"
+                    [imageRefresh]="imageRefresh"
+                    [interactionPlanJson]="item.question.interactionPlan || null"
+                    [interactionSolutionJson]="currentSolution()?.interactionSolution ?? null"
+                    [answerPayloadJson]="answerFor(item)?.answerPayload ?? null"
+                    [feedback]="currentBalanceScaleFeedback()"
+                    [showSolution]="revealed()"
+                    [activityMode]="true"
+                    [disabled]="contentLocked()"
+                    (answerPayloadChange)="onDragDropChange($event, item)"
+                  />
+                }
               } @else if (isGridDraw(item)) {
                 @if (currentRegion(); as region) {
                   <app-question-canvas-grid-draw

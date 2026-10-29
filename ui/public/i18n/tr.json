@@ -612,6 +612,34 @@
         "solutionAll": "Kurala uyan bütün boyutlar: {{list}}.",
         "solutionAny": "Kurala uyan boyutlar (biri yeterdi): {{list}}.",
         "solutionShown": "Kurala uyan dikdörtgenler gösteriliyor."
+      },
+      "balanceScale": {
+        "passageAlt": "Okuma parçası görseli",
+        "imageAlt": "Etkinlik görseli",
+        "invalid": "Bu etkinlik açılamadı.",
+        "pool": "Ağırlıklar",
+        "poolEmpty": "Bütün ağırlıklar kefelerde.",
+        "pan": {
+          "left": "sol",
+          "right": "sağ"
+        },
+        "placedAria": "{{weight}}, {{pan}} kefede",
+        "tilt": {
+          "level": "Terazi dengede",
+          "left": "Sol kefe ağır basıyor",
+          "right": "Sağ kefe ağır basıyor"
+        },
+        "toLeft": "Sol kefeye",
+        "toRight": "Sağ kefeye",
+        "return": "Havuza geri",
+        "reset": "Temizle",
+        "hint": "Bir ağırlık seçin, sonra bir kefeye dokunun. Kefedeki ağırlığa iki kez dokunmak onu geri alır.",
+        "hintHidden": "Bir ağırlık seçin, sonra bir kefeye dokunun. Terazi kontrol edince hareket eder; hesaplayarak dengeleyin.",
+        "resultOk": "Terazi dengede!",
+        "resultTilt": "Terazi dengede değil; {{pan}} kefe ağır basıyor.",
+        "resultUnused": "Terazi dengede ama {{n}} ağırlık kullanılmadı; hepsini kullanın.",
+        "resultEmpty": "Kefelere ağırlık koyun.",
+        "solutionShown": "Dengeyi sağlayan bir yerleşim gösteriliyor (başka doğru yerleşimler de olabilir)."
       }
     },
     "sharingBadge": {

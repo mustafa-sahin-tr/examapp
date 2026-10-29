@@ -965,6 +965,92 @@
           </div>
         }
 
+        @if (balanceScale(); as bs) {
+          <div class="ae__block" data-testid="balance-scale-form">
+            <p class="ae__hint">{{ t('balanceScale.hint') }}</p>
+            <div class="ae__row ae__row--wrap">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__narrow">
+                <mat-label>{{ t('balanceScale.unit') }}</mat-label>
+                <input matInput data-testid="bs-unit" [value]="bs.unit" [attr.maxlength]="balanceLimits.maxUnit"
+                  (input)="setBalanceOption({ unit: $any($event.target).value })" />
+              </mat-form-field>
+              <mat-checkbox [checked]="bs.useAll" (change)="setBalanceOption({ useAll: $event.checked })">{{ t('balanceScale.useAll') }}</mat-checkbox>
+              <mat-checkbox [checked]="bs.hideTilt" (change)="setBalanceOption({ hideTilt: $event.checked })">{{ t('balanceScale.hideTilt') }}</mat-checkbox>
+            </div>
+
+            <span class="ae__label">{{ t('balanceScale.cards') }}</span>
+            @for (w of bs.cards; track $index; let i = $index) {
+              <div class="ae__row ae__row--wrap" [attr.data-balance-cards]="i">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__narrow">
+                  <mat-label>{{ t('balanceScale.card', { n: i + 1 }) }}</mat-label>
+                  <input matInput inputmode="numeric" [value]="w.value" [attr.maxlength]="5"
+                    (input)="setBalanceWeight('cards', i, { value: $any($event.target).value })" />
+                </mat-form-field>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                  <mat-label>{{ t('balanceScale.label') }}</mat-label>
+                  <input matInput [value]="w.label" [attr.maxlength]="balanceLimits.maxLabel"
+                    (input)="setBalanceWeight('cards', i, { label: $any($event.target).value })" />
+                </mat-form-field>
+                <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="bs.cards.length <= 1"
+                  (click)="removeBalanceWeight('cards', i)"><mat-icon>close</mat-icon></button>
+              </div>
+            }
+            <button mat-button type="button" [disabled]="bs.cards.length >= balanceLimits.maxCards" (click)="addBalanceWeight('cards')">
+              <mat-icon>add</mat-icon>{{ t('balanceScale.addCard') }}
+            </button>
+
+            <span class="ae__label">{{ t('balanceScale.left') }}</span>
+            @for (w of bs.left; track $index; let i = $index) {
+              <div class="ae__row ae__row--wrap" [attr.data-balance-left]="i">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__narrow">
+                  <mat-label>{{ t('balanceScale.fixed') }}</mat-label>
+                  <input matInput inputmode="numeric" [value]="w.value" [attr.maxlength]="5"
+                    (input)="setBalanceWeight('left', i, { value: $any($event.target).value })" />
+                </mat-form-field>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                  <mat-label>{{ t('balanceScale.label') }}</mat-label>
+                  <input matInput [value]="w.label" [attr.maxlength]="balanceLimits.maxLabel"
+                    (input)="setBalanceWeight('left', i, { label: $any($event.target).value })" />
+                </mat-form-field>
+                <button mat-icon-button type="button" [attr.aria-label]="t('remove')"
+                  (click)="removeBalanceWeight('left', i)"><mat-icon>close</mat-icon></button>
+              </div>
+            }
+            <button mat-button type="button" [disabled]="bs.left.length >= balanceLimits.maxFixedPerPan" (click)="addBalanceWeight('left')">
+              <mat-icon>add</mat-icon>{{ t('balanceScale.addFixed') }}
+            </button>
+
+            <span class="ae__label">{{ t('balanceScale.right') }}</span>
+            @for (w of bs.right; track $index; let i = $index) {
+              <div class="ae__row ae__row--wrap" [attr.data-balance-right]="i">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__narrow">
+                  <mat-label>{{ t('balanceScale.fixed') }}</mat-label>
+                  <input matInput inputmode="numeric" [value]="w.value" [attr.maxlength]="5"
+                    (input)="setBalanceWeight('right', i, { value: $any($event.target).value })" />
+                </mat-form-field>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                  <mat-label>{{ t('balanceScale.label') }}</mat-label>
+                  <input matInput [value]="w.label" [attr.maxlength]="balanceLimits.maxLabel"
+                    (input)="setBalanceWeight('right', i, { label: $any($event.target).value })" />
+                </mat-form-field>
+                <button mat-icon-button type="button" [attr.aria-label]="t('remove')"
+                  (click)="removeBalanceWeight('right', i)"><mat-icon>close</mat-icon></button>
+              </div>
+            }
+            <button mat-button type="button" [disabled]="bs.right.length >= balanceLimits.maxFixedPerPan" (click)="addBalanceWeight('right')">
+              <mat-icon>add</mat-icon>{{ t('balanceScale.addFixed') }}
+            </button>
+
+            <p class="ae__hint" data-testid="bs-example">
+              @if (balanceExample(); as ex) {
+                {{ t('balanceScale.example', { left: ex.left, right: ex.right }) }}
+              } @else {
+                {{ t('balanceScale.noExample') }}
+              }
+            </p>
+          </div>
+        }
+
         @if (wordSearch(); as ws) {
           <div class="ae__block" data-testid="word-search-form">
             <p class="ae__hint">{{ t('wordSearch.hint') }}</p>
@@ -1085,6 +1171,11 @@
             }
             @case ('barChart') {
               <app-question-canvas-bar-chart [questionRegion]="previewRegion()"
+                [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
+                [showSolution]="showSolution()" [activityMode]="true" />
+            }
+            @case ('balanceScale') {
+              <app-question-canvas-balance-scale [questionRegion]="previewRegion()"
                 [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
                 [showSolution]="showSolution()" [activityMode]="true" />
             }

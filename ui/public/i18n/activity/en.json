@@ -44,7 +44,9 @@
     "paintRegionExtra": "{{name}}: {{content}} (extra)",
     "paintRegionFallback": "Region {{n}}",
     "paintNone": "No region painted yet",
-    "paintGroup": "Question {{name}}: {{content}}"
+    "paintGroup": "Question {{name}}: {{content}}",
+    "lineCard": "{{card}}: {{content}}",
+    "lineUnplaced": "not on the line"
   },
   "saveFailed": "Your last answer could not be saved; it will be sent again when you check.",
   "finishCheckRequired": "Check your answers once before finishing.",

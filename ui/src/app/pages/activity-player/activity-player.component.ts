@@ -89,6 +89,16 @@ import {
   ticks,
 } from '../../models/logic-grid';
 import {
+  NumberLineFeedback,
+  NumberLinePlanV1,
+  isNumberLineType,
+  parseNumberLineAnswer,
+  parseNumberLineFeedback,
+  parseNumberLinePlan,
+  parseNumberLineSolution,
+  tickName,
+} from '../../models/number-line';
+import {
   RegionPaintFeedback,
   RegionPaintPlanV1,
   RegionPaintRegionsPlanV1,
@@ -182,6 +192,7 @@ import { QuestionCanvasOpenTextComponent } from '../../shared/components/questio
 import { QuestionCanvasCrosswordComponent } from '../../shared/components/question-canvas-crossword/question-canvas-crossword.component';
 import { QuestionCanvasLogicGridComponent } from '../../shared/components/question-canvas-logic-grid/question-canvas-logic-grid.component';
 import { QuestionCanvasRegionPaintComponent } from '../../shared/components/question-canvas-region-paint/question-canvas-region-paint.component';
+import { QuestionCanvasNumberLineComponent } from '../../shared/components/question-canvas-number-line/question-canvas-number-line.component';
 import { QuestionCanvasWordSearchComponent } from '../../shared/components/question-canvas-word-search/question-canvas-word-search.component';
 import { QuestionCanvasMazeTreeComponent } from '../../shared/components/question-canvas-maze-tree/question-canvas-maze-tree.component';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
@@ -258,6 +269,7 @@ export type ActivityAction = 'check' | 'reveal' | 'finish';
     QuestionCanvasWordSearchComponent,
     QuestionCanvasLogicGridComponent,
     QuestionCanvasRegionPaintComponent,
+    QuestionCanvasNumberLineComponent,
     QuestionCanvasViewComponentv5,
     QuestionLiteViewComponent,
   ],
@@ -401,6 +413,7 @@ export class ActivityPlayerComponent {
   private readonly logicGridPlans = new Map<number, LogicGridPlanV1 | null>();
   private readonly regionPaintPlans = new Map<number, RegionPaintPlanV1 | null>();
   private readonly regionPaintRegionsPlans = new Map<number, RegionPaintRegionsPlanV1 | null>();
+  private readonly numberLinePlans = new Map<number, NumberLinePlanV1 | null>();
 
   readonly title = computed(() => this.instance()?.testName ?? '');
   readonly currentItem = computed(() => this.items()[this.currentIndex()] ?? null);
@@ -500,6 +513,13 @@ export class ActivityPlayerComponent {
   });
 
   /** Issue #587: boyamanın kontrol sonucu (renk başına); çözüm açıkken ya da kontrol yoksa null. */
+  /** Issue #588: sayı doğrusunun kontrol sonucu (kart başına); çözüm açıkken ya da kontrol yoksa null. */
+  readonly currentNumberLineFeedback = computed<NumberLineFeedback | null>(() => {
+    const item = this.currentItem();
+    if (!item || this.revealed()) return null;
+    return parseNumberLineFeedback(this.results()[item.id]?.feedback);
+  });
+
   readonly currentRegionPaintFeedback = computed<RegionPaintFeedback | null>(() => {
     const item = this.currentItem();
     if (!item || this.revealed()) return null;
@@ -553,6 +573,7 @@ export class ActivityPlayerComponent {
     if (this.isWordSearch(item)) return this.wordSearchRows(item, result);
     if (this.isLogicGrid(item)) return this.logicGridRows(item, result, solution);
     if (this.isRegionPaint(item)) return this.regionPaintRows(item, result, solution);
+    if (this.isNumberLine(item)) return this.numberLineRows(item, result, solution);
     if (this.isOpenText(item)) return this.openTextRows(item, result);
     return this.isDragDrop(item)
       ? this.dragDropRows(item, result, solution)
@@ -718,6 +739,7 @@ export class ActivityPlayerComponent {
     this.logicGridPlans.clear();
     this.regionPaintPlans.clear();
     this.regionPaintRegionsPlans.clear();
+    this.numberLinePlans.clear();
   }
 
   // ---------------------------------------------------------------------------
@@ -1338,6 +1360,10 @@ export class ActivityPlayerComponent {
     return isLogicGridType(item.question?.interactionType);
   }
 
+  isNumberLine(item: TestInstanceQuestion): boolean {
+    return isNumberLineType(item.question?.interactionType);
+  }
+
   isRegionPaint(item: TestInstanceQuestion): boolean {
     return isRegionPaintType(item.question?.interactionType);
   }
@@ -1360,7 +1386,8 @@ export class ActivityPlayerComponent {
       this.isCrossword(item) ||
       this.isWordSearch(item) ||
       this.isLogicGrid(item) ||
-      this.isRegionPaint(item)
+      this.isRegionPaint(item) ||
+      this.isNumberLine(item)
     );
   }
 
@@ -1412,6 +1439,13 @@ export class ActivityPlayerComponent {
       this.regionPaintRegionsPlans.set(item.id, parseRegionPaintRegionsPlan(item.question?.interactionPlan));
     }
     return this.regionPaintRegionsPlans.get(item.id) ?? null;
+  }
+
+  private numberLinePlanFor(item: TestInstanceQuestion): NumberLinePlanV1 | null {
+    if (!this.numberLinePlans.has(item.id)) {
+      this.numberLinePlans.set(item.id, parseNumberLinePlan(item.question?.interactionPlan));
+    }
+    return this.numberLinePlans.get(item.id) ?? null;
   }
 
   private regionPaintPlanFor(item: TestInstanceQuestion): RegionPaintPlanV1 | null {
@@ -1514,6 +1548,7 @@ export class ActivityPlayerComponent {
     }
     if (this.isOpenText(item)) return !isBlankOpenText(parseOpenTextAnswer(answer?.answerPayload));
     if (this.isMazeTree(item)) return !isEmptyMazeAnswer(parseMazeAnswer(answer?.answerPayload, this.mazePlanFor(item)));
+    if (this.isNumberLine(item)) return Object.keys(parseNumberLineAnswer(answer?.answerPayload, this.numberLinePlanFor(item))).length > 0;
     if (this.isRegionPaint(item)) {
       const regionsPlan = this.regionPaintRegionsPlanFor(item);
       if (regionsPlan) return Object.keys(parseRegionPaintFills(answer?.answerPayload, regionsPlan)).length > 0;
@@ -1564,6 +1599,10 @@ export class ActivityPlayerComponent {
       if (!plan) return false;
       const parsed = parseMazeAnswer(answer?.answerPayload, plan);
       return plan.variant === 'stones' ? parsed.marked.length === 0 : !walkMaze(plan, parsed.path).finished;
+    }
+    // Issue #588: doğruya hiç kart konmadı (hangi kartın çeldirici olduğu öğrenciye gitmez).
+    if (this.isNumberLine(item)) {
+      return Object.keys(parseNumberLineAnswer(answer?.answerPayload, this.numberLinePlanFor(item))).length === 0;
     }
     // Issue #587: boyamada hiç boyanmış kare yok (hedef sayılar öğrenciye gitmez).
     if (this.isRegionPaint(item)) {
@@ -1816,6 +1855,21 @@ export class ActivityPlayerComponent {
         };
       })
     );
+  }
+
+  /** Issue #588: sayı doğrusunda kart başına satır ("3/8: 1/2 çentiğinde"); çözüm açıkken hedef çentik. */
+  private numberLineRows(item: TestInstanceQuestion, result: ItemResult | undefined, solution: ActivitySolution | null): ActivityResultRow[] {
+    const plan = this.numberLinePlanFor(item);
+    if (!plan || (!result && !solution)) return [];
+    const placed = parseNumberLineAnswer(this.answers()[item.id]?.answerPayload, plan);
+    const targets = solution ? parseNumberLineSolution(solution.interactionSolution, plan) : null;
+    const rowMarks = new Map((result?.rows ?? []).map((row) => [row.id, row.correct]));
+    const where = (at: number | null | undefined) => (at === null || at === undefined ? this.tr('rows.lineUnplaced') : tickName(plan, at));
+    return plan.cards.map((card) => ({
+      label: this.tr('rows.lineCard', { card: card.label, content: where(placed[card.id]) }),
+      correct: rowMarks.has(card.id) ? rowMarks.get(card.id)! : null,
+      solution: targets && Object.hasOwn(targets, card.id) ? this.tr('rows.lineCard', { card: card.label, content: where(targets[card.id]) }) : null,
+    }));
   }
 
   /** Issue #587: boyamada renk başına satır ("Mavi: 35 kare"); çözüm açıkken hedef sayı. */

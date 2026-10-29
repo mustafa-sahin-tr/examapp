@@ -1,0 +1,248 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.nl-root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+}
+
+.nl-passage {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+
+  &__title {
+    font-weight: 700;
+    font-family: var(--mainFontFamily);
+  }
+
+  &__image {
+    display: block;
+    max-width: 100%;
+    max-height: 35vh;
+    object-fit: contain;
+  }
+}
+
+.nl-image-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+}
+
+.nl-image {
+  display: block;
+  max-width: 100%;
+  max-height: 45vh;
+}
+
+.nl-pool {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px dashed var(--ms-border-strong);
+  background: var(--ms-surface);
+
+  &__empty {
+    align-self: center;
+    color: var(--ms-text-medium);
+    font-size: 13px;
+  }
+}
+
+.nl-card {
+  min-height: 32px;
+  padding: 2px 10px;
+  border: 2px solid var(--ms-border-strong);
+  border-radius: 8px;
+  background: var(--whiteColor);
+  color: var(--ms-text-strong);
+  font: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &.is-selected {
+    border-color: var(--ms-action-border-focus);
+    box-shadow: 0 0 0 2px var(--ms-focus-ring);
+  }
+
+  &.is-ok {
+    border-color: var(--ms-success-border, var(--ms-success-text));
+    background: var(--ms-success-surface);
+  }
+
+  &.is-bad {
+    border-color: var(--ms-danger-border);
+    background: var(--ms-danger-surface);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ms-action-border-focus);
+    outline-offset: 2px;
+  }
+
+  &--placed {
+    min-height: 28px;
+    padding: 0 8px;
+    font-size: 14px;
+  }
+}
+
+// Sık çentikli doğru dar ekranda kendi içinde yatay kayar; sayfa kaymaz.
+.nl-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.nl-track {
+  --nl-stack: 1;
+  // Uç kartlar / etiketler taşmasın.
+  padding: 0 32px;
+  box-sizing: border-box;
+}
+
+.nl-axis {
+  position: relative;
+  width: 100%;
+
+  &--stacks {
+    height: calc(var(--nl-stack) * 32px + 8px);
+  }
+
+  &--line {
+    height: 36px;
+
+    &.is-armed {
+      cursor: crosshair;
+    }
+  }
+
+  &--labels {
+    height: 28px;
+  }
+}
+
+.nl-stack {
+  position: absolute;
+  bottom: 4px;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 4px;
+  transform: translateX(-50%);
+}
+
+.nl-line {
+  position: absolute;
+  top: 50%;
+  left: -16px;
+  right: -16px;
+  height: 3px;
+  background: var(--ms-text-strong);
+  transform: translateY(-50%);
+}
+
+.nl-tick {
+  position: absolute;
+  top: 50%;
+  width: 20px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+
+  // Çentik çizgisi; düğme dokunma alanı.
+  &::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 2px;
+    height: 14px;
+    background: var(--ms-text-strong);
+    transform: translate(-50%, -50%);
+  }
+
+  &.is-major::before {
+    width: 3px;
+    height: 22px;
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &:not(:disabled):hover::before {
+    background: var(--ms-action-border-focus);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ms-action-border-focus);
+    outline-offset: 0;
+    border-radius: 4px;
+  }
+}
+
+.nl-label {
+  position: absolute;
+  top: 2px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.nl-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.nl-hint {
+  margin: 0;
+  color: var(--ms-text-medium);
+}
+
+.nl-result {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+
+  &.is-ok {
+    background: var(--ms-success-surface);
+    color: var(--ms-success-text);
+  }
+
+  &.is-bad {
+    background: var(--ms-danger-surface);
+    color: var(--ms-danger-text);
+  }
+}

@@ -427,6 +427,18 @@
           (answerPayloadChange)="saveDragDropAnswerForQuestion($event, questionData.index)"
           (answered)="focusOnQuestion(questionData.index)"></app-question-canvas-region-paint>
         }
+        } @else if (interactionKind(questionData.question.question.interactionType) === 'numberLine') {
+        <!-- Issue #588: sayı doğrusu (ayrı parça). -->
+        @defer (on immediate) {
+        <app-question-canvas-number-line class="canvas-stage" [questionRegion]="questionData.region"
+          [imageRefresh]="imageRefresh"
+          [interactionPlanJson]="questionData.question.question.interactionPlan || null"
+          [interactionSolutionJson]="questionData.question.question.interactionSolution || null"
+          [answerPayloadJson]="questionData.question.answerPayload || null"
+          [hidePassage]="isPassageFirstActive(questionData.index)"
+          (answerPayloadChange)="saveDragDropAnswerForQuestion($event, questionData.index)"
+          (answered)="focusOnQuestion(questionData.index)"></app-question-canvas-number-line>
+        }
         } @else if (interactionKind(questionData.question.question.interactionType) === 'wordSearch') {
         <!-- Issue #586: kelime avı (ayrı parça). -->
         @defer (on immediate) {

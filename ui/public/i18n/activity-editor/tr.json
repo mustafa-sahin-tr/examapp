@@ -28,7 +28,8 @@
     "crossword": "Çengel bulmaca",
     "wordSearch": "Kelime avı",
     "logicGrid": "Mantık tablosu",
-    "regionPaint": "Boyama (ızgara)"
+    "regionPaint": "Boyama (ızgara)",
+    "numberLine": "Sayı doğrusu"
   },
   "kindHints": {
     "matrix": "Her satır için doğru seçeneği işaretle. D/Y şablonu iki kolon kurar; çoklu seçimde satırda birden çok doğru olabilir.",
@@ -43,7 +44,8 @@
     "mazeBoard": "Her satırda tek doğru kutu var; öğrenci alttan üste kutulara basarak bitişe ulaşır. Yanlış kutu kırılır.",
     "mazeRooms": "Her oda bir soru; odalar arası kapılar cevaplardır. Öğrenci başlangıç odasından doğru kapıları izleyerek bitişe varır.",
     "mazeStones": "Öğrenci basılmaması gereken (yanlış) taşları işaretler. Basılmaması gereken taşları damla simgesiyle işaretle.",
-    "regionPaint": "Öğrenci eş karelere ayrılmış ızgarada her rengi istenen oranda boyar; karelerin yeri serbesttir, renk başına sayı kontrol edilir."
+    "regionPaint": "Öğrenci eş karelere ayrılmış ızgarada her rengi istenen oranda boyar; karelerin yeri serbesttir, renk başına sayı kontrol edilir.",
+    "numberLine": "Öğrenci kartları (kesir, ondalık, olay…) sayı doğrusunda doğru çentiğe koyar; çeldirici kart doğruya konmamalı."
   },
   "instruction": "Yönerge (isteğe bağlı)",
   "image": {
@@ -197,7 +199,15 @@
     "paintColorDuplicate": "Aynı renk iki kez seçilmiş.",
     "paintTargetInvalid": "Şu hedefler {{total}} kareye tam bölünmüyor ya da okunamadı: {{list}}. Kesir (2/5), ondalık (0,35), yüzde (%25) ya da kare sayısı yazın.",
     "paintTargetMissing": "En az bir renge hedef verin.",
-    "paintTargetTooMany": "Hedefler toplam {{sum}} kare; ızgarada {{total}} kare var."
+    "paintTargetTooMany": "Hedefler toplam {{sum}} kare; ızgarada {{total}} kare var.",
+    "lineDivisions": "Bölme sayısı 1–{{max}} olmalı.",
+    "lineTolerance": "Tolerans 0–{{max}} çentik ve bölme sayısından küçük olmalı.",
+    "lineLabelBlank": "Boş etiket bırakma.",
+    "lineLabelTick": "Etiket çentiği 0–{{max}} olmalı.",
+    "lineLabelDuplicate": "Bir çentikte tek etiket olabilir.",
+    "lineCardCount": "1–{{max}} kart olmalı.",
+    "lineTargetInvalid": "Şu hedefler 0–{{max}} arasında bir çentik değil: {{list}}.",
+    "lineTargetMissing": "En az bir kartın hedef çentiği olmalı."
   },
   "snackbar": {
     "created": "Madde etkinliğe eklendi.",
@@ -344,5 +354,22 @@
       "black": "Siyah",
       "gray": "Gri"
     }
+  },
+  "numberLine": {
+    "hint": "Öğrenci kartları sayı doğrusunun çentiklerine yerleştirir. Doğruyu eş parçalara bölün (çentikler 0'dan bölme sayısına kadar numaralanır), istediğiniz çentiklere etiket koyun (ör. 0 ve 1; ya da \"imkânsız\", \"eşit\", \"kesin\"). Her kartın hedef çentiğini yazın; boş bırakılan kart çeldiricidir (doğruya konmamalı). Tahmin sorularında çok bölme + tolerans + \"Çentikleri gizle\" kullanın.",
+    "divisions": "Bölme sayısı",
+    "tolerance": "Tolerans (çentik)",
+    "hideTicks": "Çentikleri gizle (yalnız etiketliler çizilir)",
+    "labels": "Çentik etiketleri",
+    "tick": "Çentik",
+    "labelText": "Etiket",
+    "addLabel": "Etiket ekle",
+    "cards": "Kartlar",
+    "card": "{{n}}. kart",
+    "target": "Hedef çentik",
+    "targetName": "= {{name}}",
+    "distractor": "çeldirici",
+    "targetInvalid": "çentik değil",
+    "addCard": "Kart ekle"
   }
 }

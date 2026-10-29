@@ -764,6 +764,71 @@
           </div>
         }
 
+        @if (numberLine(); as nl) {
+          <div class="ae__block" data-testid="number-line-form">
+            <p class="ae__hint">{{ t('numberLine.hint') }}</p>
+            <div class="ae__row ae__row--wrap">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                <mat-label>{{ t('numberLine.divisions') }}</mat-label>
+                <input matInput type="number" data-testid="nl-divisions" min="1" [max]="lineLimits.maxDivisions" [value]="nl.divisions"
+                  (input)="setLineOption({ divisions: $any($event.target).valueAsNumber })" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                <mat-label>{{ t('numberLine.tolerance') }}</mat-label>
+                <input matInput type="number" data-testid="nl-tolerance" min="0" [max]="lineLimits.maxTolerance" [value]="nl.tolerance"
+                  (input)="setLineOption({ tolerance: $any($event.target).valueAsNumber })" />
+              </mat-form-field>
+              <mat-checkbox [checked]="nl.hideTicks" (change)="setLineOption({ hideTicks: $event.checked })">{{ t('numberLine.hideTicks') }}</mat-checkbox>
+            </div>
+
+            <span class="ae__label">{{ t('numberLine.labels') }}</span>
+            @for (label of nl.labels; track $index; let i = $index) {
+              <div class="ae__row" [attr.data-line-label]="i">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__narrow">
+                  <mat-label>{{ t('numberLine.tick') }}</mat-label>
+                  <input matInput type="number" min="0" [max]="nl.divisions" [value]="label.at"
+                    (input)="setLineLabel(i, { at: $any($event.target).valueAsNumber })" />
+                </mat-form-field>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                  <mat-label>{{ t('numberLine.labelText') }}</mat-label>
+                  <input matInput [value]="label.text" [attr.maxlength]="lineLimits.maxLabel" (input)="setLineLabel(i, { text: $any($event.target).value })" />
+                </mat-form-field>
+                <button mat-icon-button type="button" [attr.aria-label]="t('remove')" (click)="removeLineLabel(i)"><mat-icon>close</mat-icon></button>
+              </div>
+            }
+            <button mat-button type="button" [disabled]="nl.labels.length > nl.divisions" (click)="addLineLabel()">
+              <mat-icon>add</mat-icon>{{ t('numberLine.addLabel') }}
+            </button>
+
+            <span class="ae__label">{{ t('numberLine.cards') }}</span>
+            @for (card of nl.cards; track $index; let i = $index) {
+              <div class="ae__row ae__row--wrap" [attr.data-line-card]="i">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                  <mat-label>{{ t('numberLine.card', { n: i + 1 }) }}</mat-label>
+                  <input matInput [value]="card.label" [attr.maxlength]="lineLimits.maxCard" (input)="setLineCard(i, { label: $any($event.target).value })" />
+                </mat-form-field>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                  <mat-label>{{ t('numberLine.target') }}</mat-label>
+                  <input matInput inputmode="numeric" [value]="card.target" [attr.maxlength]="3"
+                    (input)="setLineCard(i, { target: $any($event.target).value })" />
+                </mat-form-field>
+                <span class="ae__index" [attr.data-line-target]="i">
+                  @if (lineTargetName(card.target, nl); as name) {
+                    {{ name.value === null ? t('numberLine.distractor') : t('numberLine.targetName', { name: name.value }) }}
+                  } @else {
+                    {{ t('numberLine.targetInvalid') }}
+                  }
+                </span>
+                <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="nl.cards.length <= 1"
+                  (click)="removeLineCard(i)"><mat-icon>close</mat-icon></button>
+              </div>
+            }
+            <button mat-button type="button" [disabled]="nl.cards.length >= lineLimits.maxCards" (click)="addLineCard()">
+              <mat-icon>add</mat-icon>{{ t('numberLine.addCard') }}
+            </button>
+          </div>
+        }
+
         @if (wordSearch(); as ws) {
           <div class="ae__block" data-testid="word-search-form">
             <p class="ae__hint">{{ t('wordSearch.hint') }}</p>
@@ -874,6 +939,11 @@
             }
             @case ('regionPaint') {
               <app-question-canvas-region-paint [questionRegion]="previewRegion()"
+                [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
+                [showSolution]="showSolution()" [activityMode]="true" />
+            }
+            @case ('numberLine') {
+              <app-question-canvas-number-line [questionRegion]="previewRegion()"
                 [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
                 [showSolution]="showSolution()" [activityMode]="true" />
             }

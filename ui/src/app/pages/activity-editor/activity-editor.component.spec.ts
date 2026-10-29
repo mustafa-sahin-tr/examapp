@@ -197,6 +197,29 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(JSON.parse(q.interactionSolution)).toEqual({ counts: { p1: 35, p2: 25 } });
   });
 
+  it('sayı doğrusu: kartları hedef çentikleriyle kaydeder, önizlemede doğruyu çizer (#588)', async () => {
+    await setup({ testId: '9' });
+    component.selectKind('numberLine');
+    fixture.detectChanges();
+    expect(el('[data-testid="number-line-form"]')).not.toBeNull();
+
+    component.setLineCard(0, { label: '3/8', target: '3' });
+    component.addLineCard();
+    component.setLineCard(1, { label: '5/4', target: '' });
+    fixture.detectChanges();
+    expect(el('[data-line-target="0"]')?.textContent).toContain('3/8');
+    expect(el('[data-testid="preview"] app-question-canvas-number-line')).not.toBeNull();
+
+    component.save(false);
+    const q = questions.saveBulk.mock.calls[0][0].questions[0];
+    expect(q.interactionType).toBe('numberLine');
+    expect(JSON.parse(q.interactionPlan).cards).toEqual([
+      { id: 'k1', label: '3/8' },
+      { id: 'k2', label: '5/4' },
+    ]);
+    expect(JSON.parse(q.interactionSolution)).toEqual({ positions: { k1: 3, k2: null } });
+  });
+
   it('kelime avı: ızgarayı kelimelerden üretir, önizlemede çizer ve çözümü ayrı kaydeder (#586)', async () => {
     await setup({ testId: '9' });
     component.selectKind('wordSearch');

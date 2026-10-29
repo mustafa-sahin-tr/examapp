@@ -28,6 +28,7 @@ const KNOWN_TYPES = new Set([
   'wordSearch',
   'logicGrid',
   'regionPaint',
+  'numberLine',
 ]);
 
 /**

@@ -963,7 +963,10 @@ export class ActivityPlayerComponent {
     // Değişen maddenin kontrol sonucu artık geçerli değil (backend de yeniden yüklemede döndürmez).
     const previousRows = this.results()[item.id]?.rows;
     if (previousRows && (this.isDragPlace(item) || this.isMatch(item))) {
-      this.retainedRows.update((all) => ({ ...all, [item.id]: previousRows }));
+      // Yerinde kalan kartların ✓/✗'si korunur; "hedefte kart eksik" satırları (`t:`) cevap değişince bayattır (Temizle sonrası
+      // yanlış kartın sırasında "eksik" kalıyordu).
+      const kept = previousRows.filter((row) => !(this.isDragPlace(item) && row.id.endsWith(':')));
+      this.retainedRows.update((all) => ({ ...all, [item.id]: kept }));
     }
     if (this.results()[item.id]) {
       this.results.update((all) => {

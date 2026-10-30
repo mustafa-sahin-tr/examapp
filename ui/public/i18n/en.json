@@ -343,7 +343,7 @@
         "hintIdle": "Pick a card, then tap its target (or drag it). Keyboard: Enter to pick, Tab or arrows to a target, Enter to drop, Esc to cancel.",
         "hintTap": "Tap a card, then tap its target. Tap a placed card to return it to the pool.",
         "hintSelected": "{{card}} picked. Tap a target or press Enter; Esc to cancel.",
-        "hintOrder": "Tap or drag the cards in order; reorder with the arrows or by dragging.",
+        "hintOrder": "Tap a card to put it in the first empty place. To put it in a specific place, tap that place first or drag the card; dropping on a filled place swaps the cards.",
         "solutionShownHint": "Showing the correct placement.",
         "targetAria": "{{name}}, {{count}}/{{capacity}} cards",
         "targetDropAria": "Drop the picked card here",

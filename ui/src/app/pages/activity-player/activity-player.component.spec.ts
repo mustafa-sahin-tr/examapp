@@ -1282,8 +1282,10 @@ describe('ActivityPlayerComponent (#573)', () => {
         expect.objectContaining({ testQuestionId: 101, answerPayload: JSON.stringify({ version: 1, type: 'dragPlace', placements: [{ targetId: 't1', cardId: 'c1' }] }) })
       );
       expect(fixture.componentInstance.results()[101]).toBeUndefined();
-      // Diğer kartların işaretleri kalır; taşınan kart havuzda işaretsiz.
+      // Diğer kartların işaretleri kalır; taşınan kart havuzda işaretsiz. Bayat "eksik" işaretleri (t1:, t2:) kalkar.
       expect(el().querySelector('[data-placed="t1:c1"]')?.classList).toContain('is-correct');
+      expect(el().querySelector('[data-group="t2"]')?.classList).not.toContain('is-incomplete');
+      expect(fixture.componentInstance.retainedRows()[101].map((r) => r.id)).toEqual(['t1:c1', 't1:c3']);
       expect(el().querySelector('[data-testid="dp-pool"] [data-card="c3"]')).not.toBeNull();
       expect(fixture.componentInstance.stale()).toBe(true);
     });

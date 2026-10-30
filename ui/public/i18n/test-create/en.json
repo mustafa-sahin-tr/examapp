@@ -72,6 +72,8 @@
     "questionsLabel": "Questions",
     "saveChanges": "Save Changes",
     "addQuestion": "Add Question",
+    "addImageItem": "Add image item",
+    "addTextItem": "Add text-only item",
     "defaultName": "Test Name",
     "gradePlaceholder": "Select Grade",
     "activity": "Activity"

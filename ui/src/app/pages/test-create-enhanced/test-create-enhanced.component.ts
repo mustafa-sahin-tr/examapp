@@ -776,6 +776,15 @@ export class TestCreateEnhancedComponent implements OnInit {
     return this.imagePreviewUrl || this.testForm?.value.imageUrl || null;
   }
 
+  /** Etkinlikte görselsiz madde editörü (#590); detay sayfasındaki "Görselsiz madde ekle" ile aynı yol. */
+  openActivityEditor() {
+    if (!this.id) return;
+    const gradeId = this.testForm.value.gradeId;
+    this.router.navigate(['/activity-editor'], {
+      queryParams: { testId: this.id, ...(gradeId ? { gradeId } : {}) },
+    });
+  }
+
   navigateToQuestionCanvas() {
     // Form valid ise soru ekleme adımına geçiş
     if (this.testForm.valid) {

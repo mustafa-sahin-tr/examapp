@@ -72,6 +72,8 @@
     "questionsLabel": "Sorular",
     "saveChanges": "Değişiklikleri Kaydet",
     "addQuestion": "Soru Ekle",
+    "addImageItem": "Görselli madde ekle",
+    "addTextItem": "Görselsiz madde ekle",
     "defaultName": "Test Adı",
     "gradePlaceholder": "Sınıf Seçin",
     "activity": "Etkinlik"

@@ -916,3 +916,18 @@
     color: var(--ms-text-strong);
   }
 }
+
+/* Çıkışlar ifadeden ayrı görünür: bayrak, kesikli çerçeve, küçük yazı. */
+.ae__tree-exit-icon {
+  color: var(--ms-text-weak);
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.ae__tree-text--exit {
+  border-style: dashed;
+  background: transparent;
+  font-size: 0.85rem;
+  padding: 4px 6px;
+}

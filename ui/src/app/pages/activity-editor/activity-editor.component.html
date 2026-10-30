@@ -33,7 +33,7 @@
                 <button type="button" class="ae__item" [class.is-active]="editingId() === item.id"
                   [attr.aria-pressed]="editingId() === item.id" (click)="edit(item)">
                   <span class="ae__item-no">{{ item.order }}</span>
-                  <span class="ae__item-text">{{ t('kinds.' + item.kind) }} · {{ item.title }}</span>
+                  <span class="ae__item-text" [attr.title]="item.title">{{ t('kinds.' + item.kind) }} · {{ item.title }}</span>
                 </button>
               }
               @if (editingId()) {
@@ -51,12 +51,21 @@
 
         <div class="ae__field">
           <span class="ae__label" id="ae-kind-label">{{ t('kind') }}</span>
-          <mat-button-toggle-group class="ae__kinds" aria-labelledby="ae-kind-label" [value]="kind()"
-            [disabled]="!!editingId()" (change)="selectKind($event.value)">
-            @for (k of kinds; track k) {
-              <mat-button-toggle [value]="k" [attr.data-kind]="k">{{ t('kinds.' + k) }}</mat-button-toggle>
-            }
-          </mat-button-toggle-group>
+          @if (editingId()) {
+            <!-- Kayıtlı maddenin türü değişmez: bütün seçenekleri pasif göstermek yerine yalnız türü yaz. -->
+            <p class="ae__kind-locked" data-testid="kind-locked" aria-labelledby="ae-kind-label">
+              <mat-icon aria-hidden="true">lock</mat-icon>
+              <strong>{{ t('kinds.' + kind()) }}</strong>
+              <span class="ae__hint">{{ t('kindLocked') }}</span>
+            </p>
+          } @else {
+            <mat-button-toggle-group class="ae__kinds" aria-labelledby="ae-kind-label" [value]="kind()"
+              (change)="selectKind($event.value)">
+              @for (k of kinds; track k) {
+                <mat-button-toggle [value]="k" [attr.data-kind]="k">{{ t('kinds.' + k) }}</mat-button-toggle>
+              }
+            </mat-button-toggle-group>
+          }
           <p class="ae__hint">{{ t('kindHints.' + kind()) }}</p>
         </div>
 

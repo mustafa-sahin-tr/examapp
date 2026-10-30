@@ -475,6 +475,9 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(component.editingId()).toBe(31);
     expect(component.match()).toEqual({ kind: 'match', pairs: [{ left: 'Ankara', right: 'Türkiye' }], distractors: ['Fransa'] });
     expect(component.items().map((i) => i.id)).toEqual([31]); // MCQ formla düzenlenemez, listede yok
+    fixture.detectChanges();
+    expect(el('[data-testid="kind-locked"]')?.textContent).toContain('Eşleştirme');
+    expect(el('.ae__kinds')).toBeNull(); // pasif tür seçenekleri gösterilmez
 
     component.setPair(0, 'right', 'Türkiye Cumhuriyeti');
     component.save(false);

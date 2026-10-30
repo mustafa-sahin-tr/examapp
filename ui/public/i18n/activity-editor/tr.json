@@ -13,6 +13,7 @@
     "new": "Yeni madde"
   },
   "kind": "Madde türü",
+  "kindLocked": "Kayıtlı maddenin türü değiştirilemez; başka tür için yeni madde ekle.",
   "kinds": {
     "matrix": "Doğru/Yanlış · Matris",
     "classify": "Sınıflandırma",

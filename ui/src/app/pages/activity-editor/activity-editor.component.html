@@ -43,6 +43,12 @@
           </div>
         }
 
+        @if (!editingId() && startedCount() > 0) {
+          <p class="ae__started" role="note" data-testid="started-warning">
+            <mat-icon aria-hidden="true">info</mat-icon>{{ t('startedWarning', { count: startedCount() }) }}
+          </p>
+        }
+
         <div class="ae__field">
           <span class="ae__label" id="ae-kind-label">{{ t('kind') }}</span>
           <mat-button-toggle-group class="ae__kinds" aria-labelledby="ae-kind-label" [value]="kind()"

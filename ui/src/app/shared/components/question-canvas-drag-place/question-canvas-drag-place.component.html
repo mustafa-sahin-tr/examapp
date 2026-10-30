@@ -156,7 +156,8 @@
                   {{ targetText(target) }}
                 </span>
                 @if (target.capacity > 1) {
-                  <span class="dp-bucket__count" aria-hidden="true">{{ cardsOf(target.id).length }}/{{ target.capacity }}</span>
+                  <!-- Kapasite kart sayısına eşitse (görselsiz sınıflandırma, ipucu vermesin diye) gerçek sınır değildir: payda yazılmaz. -->
+                  <span class="dp-bucket__count" aria-hidden="true">{{ cardsOf(target.id).length }}@if (target.capacity < cardCount()) {/{{ target.capacity }}}</span>
                 }
                 @if (incomplete) {
                   <span class="dp-incomplete" aria-hidden="true" [attr.data-incomplete]="target.id">

@@ -236,6 +236,7 @@
     "notFound": "Seçilen sorulardan biri bu teste eklenemiyor (silinmiş ya da artık erişiminiz olmayabilir). Seçiminizi değiştirip tekrar deneyin."
   },
   "activity": {
+    "startedNote": "{{count}} öğrenci bu etkinliğe başladı: yeni eklediğin maddeleri yalnız bundan sonra başlayanlar görür.",
     "chip": "Etkinlik sayfası",
     "items": "Madde",
     "itemCount": "{{count}} madde",

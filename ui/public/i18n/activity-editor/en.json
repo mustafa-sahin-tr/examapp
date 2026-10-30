@@ -7,6 +7,7 @@
   "loadError": "The activity could not be loaded.",
   "retry": "Retry",
   "formAria": "Item content",
+  "startedWarning": "{{count}} students have started this activity. A new item is shown only to students who start from now on; students who started or finished keep their list.",
   "items": {
     "title": "Text-only items in this activity",
     "new": "New item"

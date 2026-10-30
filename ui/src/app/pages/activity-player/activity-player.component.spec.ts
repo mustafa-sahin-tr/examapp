@@ -172,7 +172,7 @@ describe('ActivityPlayerComponent (#573)', () => {
     // İlk boş madde (b) açılır.
     expect(q('item-count')?.textContent?.trim()).toBe('Madde 2 / 2');
     const steps = Array.from(el().querySelectorAll('.apf__step'));
-    expect(steps[0].getAttribute('aria-label')).toBe('Madde a: cevaplandı');
+    expect(steps[0].getAttribute('aria-label')).toBe('Madde 1: cevaplandı');
     // b'nin kapsam yönergesi yok → sayfa yönergesi (açıklama).
     expect(q('instruction')?.textContent).toContain('Sayfa yönergesi');
     // Yedek yönerge oturum yanıtından gelir; ayrı worksheet isteği yok.
@@ -243,7 +243,7 @@ describe('ActivityPlayerComponent (#573)', () => {
     ]);
     expect(q('check-summary')?.textContent).toContain('2 / 3 doğru');
     const steps = Array.from(el().querySelectorAll('.apf__step'));
-    expect(steps[0].getAttribute('aria-label')).toBe('Madde a: yanlış');
+    expect(steps[0].getAttribute('aria-label')).toBe('Madde 1: yanlış');
 
     fixture.componentInstance.goTo(0);
     await settle();
@@ -367,7 +367,7 @@ describe('ActivityPlayerComponent (#573)', () => {
     );
 
     const steps = Array.from(el().querySelectorAll('.apf__step'));
-    expect(steps[0].getAttribute('aria-label')).toBe('Madde a: doğru');
+    expect(steps[0].getAttribute('aria-label')).toBe('Madde 1: doğru');
     expect(q('check-summary')?.textContent).toContain('2 / 3 doğru');
     expect((q('reveal') as HTMLButtonElement).disabled).toBe(false);
   });
@@ -589,10 +589,24 @@ describe('ActivityPlayerComponent (#573)', () => {
     expect(q('check-summary')).toBeNull();
   });
 
-  it('s9_ItemAriaUsesStepLetter', async () => {
+  it('exit_WaitsForSavesThenGoesToActivityList_StaysWhenSaveFailed', async () => {
+    await create(instance());
+    await settle();
+    vi.mocked(router.navigate).mockClear();
+
+    await fixture.componentInstance.exit();
+    expect(router.navigate).toHaveBeenCalledWith(['/tests'], { queryParams: { type: 'activities' } });
+
+    vi.mocked(router.navigate).mockClear();
+    fixture.componentInstance.saveFailed.set(true);
+    await fixture.componentInstance.exit();
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it('s9_ItemAriaUsesStepNumber', async () => {
     await create();
 
-    expect(q('item-content')?.getAttribute('aria-label')).toBe('Madde b içeriği');
+    expect(q('item-content')?.getAttribute('aria-label')).toBe('Madde 2 içeriği');
   });
 
   // ---------------------------------------------------------------------------
@@ -758,7 +772,7 @@ describe('ActivityPlayerComponent (#573)', () => {
       expect(el().querySelector('app-question-canvas-slot-fill')).not.toBeNull();
       expect(el().querySelector('app-question-canvas-matrix-choice')).toBeNull();
       expect(fixture.componentInstance.steps()[0].state).toBe('answered');
-      expect(fixture.componentInstance.blankItems()).toContain('a');
+      expect(fixture.componentInstance.blankItems()).toContain('1');
       expect(fixture.componentInstance.blankKind()).toBe('generic');
     });
 
@@ -771,7 +785,7 @@ describe('ActivityPlayerComponent (#573)', () => {
       fixture.componentInstance.onDragDropChange(both, item);
       await settle();
       expect(testService['saveAnswer']).toHaveBeenCalledWith(expect.objectContaining({ testQuestionId: 101, answerPayload: both }));
-      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+      expect(fixture.componentInstance.blankItems()).not.toContain('1');
 
       activityService.check.mockReturnValue(
         of({
@@ -905,7 +919,7 @@ describe('ActivityPlayerComponent (#573)', () => {
 
       expect(el().querySelector('app-question-canvas-text-select')).not.toBeNull();
       expect(fixture.componentInstance.steps()[0].state).toBe('answered');
-      expect(fixture.componentInstance.blankItems()).toContain('a');
+      expect(fixture.componentInstance.blankItems()).toContain('1');
 
       const item = fixture.componentInstance.items()[0];
       const fixed = JSON.stringify({ version: 1, type: 'textSelect', selected: ['t2', 't3'], values: { t2: 'Sonunda' } });
@@ -948,7 +962,7 @@ describe('ActivityPlayerComponent (#573)', () => {
       await create(textInstance(CORRECT_PLAN, answer));
       fixture.componentInstance.goTo(0);
       await settle();
-      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+      expect(fixture.componentInstance.blankItems()).not.toContain('1');
 
       activityService.check.mockReturnValue(
         of({
@@ -989,7 +1003,7 @@ describe('ActivityPlayerComponent (#573)', () => {
       await create(textInstance(PUNCT_PLAN, partial, { checkCount: 1 }));
       fixture.componentInstance.goTo(0);
       await settle();
-      expect(fixture.componentInstance.blankItems()).toContain('a');
+      expect(fixture.componentInstance.blankItems()).toContain('1');
 
       activityService.getSolutions.mockReturnValue(
         of({
@@ -1037,7 +1051,7 @@ describe('ActivityPlayerComponent (#573)', () => {
       expect(el().querySelector('app-question-canvas-matrix-choice')).not.toBeNull();
       expect(el().querySelector('app-question-canvas-dragdrop-labeling')).toBeNull();
       expect(fixture.componentInstance.steps()[0].state).toBe('answered');
-      expect(fixture.componentInstance.blankItems()).toContain('a');
+      expect(fixture.componentInstance.blankItems()).toContain('1');
     });
 
     it('blankWarning_MatrixUsesNeutralWording_DragDropOnlyKeepsPlacementText', async () => {
@@ -1063,7 +1077,7 @@ describe('ActivityPlayerComponent (#573)', () => {
       fixture.componentInstance.onDragDropChange(both, item);
       await settle();
       expect(testService['saveAnswer']).toHaveBeenCalledWith(expect.objectContaining({ testQuestionId: 101, answerPayload: both }));
-      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+      expect(fixture.componentInstance.blankItems()).not.toContain('1');
 
       activityService.check.mockReturnValue(
         of({
@@ -1106,6 +1120,39 @@ describe('ActivityPlayerComponent (#573)', () => {
       expect(fixture.componentInstance.currentRows()).toEqual([]);
       expect(el().querySelector('[data-cell="r1:c1"]')?.getAttribute('aria-pressed')).toBe('true');
       expect(el().querySelector('[data-cell="r1:c2"]')?.getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('fixWrong_ClearsOnlyWrongRows_KeepsCorrectAndBlank_GoesToFirstWrongItem', async () => {
+      const both = JSON.stringify({ version: 1, type: 'matrixChoice', selections: { r1: ['c2'], r2: ['c1'] } });
+      await create(
+        instance({}, [
+          { answerPayload: both, question: { ...instance().testInstanceQuestions[0].question, interactionType: 'matrixChoice', interactionPlan: MATRIX_PLAN } },
+        ])
+      );
+      activityService.check.mockReturnValue(
+        of({
+          success: true,
+          correctCount: 1,
+          totalCount: 3,
+          questions: [
+            { instanceQuestionId: 101, isCorrect: false, correctCount: 1, totalCount: 2, feedback: '{"rows":[{"id":"r1","correct":false},{"id":"r2","correct":true}]}' },
+            { instanceQuestionId: 102, isCorrect: false, correctCount: 0, totalCount: 1, feedback: null },
+          ],
+        })
+      );
+      await fixture.componentInstance.runCheck();
+      fixture.componentInstance.goTo(1);
+      await settle();
+
+      fixture.componentInstance.fixWrong();
+      await settle();
+
+      expect(testService['saveAnswer']).toHaveBeenLastCalledWith(
+        expect.objectContaining({ testQuestionId: 101, answerPayload: JSON.stringify({ version: 1, type: 'matrixChoice', selections: { r2: ['c1'] } }) })
+      );
+      expect(fixture.componentInstance.currentIndex()).toBe(0);
+      // MCQ maddesi (102) bu sürümde yalnız gezinilir; cevabına dokunulmaz.
+      expect(testService['saveAnswer']).not.toHaveBeenCalledWith(expect.objectContaining({ testQuestionId: 102 }));
     });
 
     it('cellMode_PanelRowsShowSelectionWithArrowAndSolution', async () => {
@@ -1177,11 +1224,11 @@ describe('ActivityPlayerComponent (#573)', () => {
       expect(el().querySelector('app-question-canvas-dragdrop-labeling')).toBeNull();
       expect(fixture.componentInstance.steps()[0].state).toBe('answered');
       // Boş kalan kova (çeldirici / boş olması doğru olabilir) eksik sayılmaz.
-      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+      expect(fixture.componentInstance.blankItems()).not.toContain('1');
       const item = fixture.componentInstance.items()[0];
       fixture.componentInstance.onDragDropChange(JSON.stringify({ version: 1, type: 'dragPlace', placements: [] }), item);
       await settle();
-      expect(fixture.componentInstance.blankItems()).toContain('a');
+      expect(fixture.componentInstance.blankItems()).toContain('1');
       expect(fixture.componentInstance.blankKind()).toBe('generic');
     });
 
@@ -1194,7 +1241,7 @@ describe('ActivityPlayerComponent (#573)', () => {
         cards: [{ id: 'c1', label: 'A' }, { id: 'c2', label: 'B' }],
       });
       await create(typed('dragPlace', order, JSON.stringify({ version: 1, type: 'dragPlace', placements: [{ targetId: 't1', cardId: 'c2' }] })));
-      expect(fixture.componentInstance.blankItems()).toContain('a');
+      expect(fixture.componentInstance.blankItems()).toContain('1');
     });
 
     it('dragPlace_CheckSendsPayload_RowsAggregatePerTarget_IncludingMissingCardRow', async () => {
@@ -1222,17 +1269,14 @@ describe('ActivityPlayerComponent (#573)', () => {
       await settle();
 
       expect(activityService.check.mock.lastCall![1][0]).toEqual({ instanceQuestionId: 101, selectedAnswerId: null, answerPayload: DP_PARTIAL });
-      const rows = fixture.componentInstance.currentRows();
-      expect(rows.map((r) => [r.label, r.correct])).toEqual([
-        ['Erime: Buz, Su', false],
-        ['Donma: boş', false],
-      ]);
-      expect(rowTexts()[0]).toContain('Erime: Buz, Su');
+      // Kutusuz hedefler (görselsiz sınıflandırma): kartlar ✓/✗'yi yerinde gösterir, panelde tekrar liste yok.
+      expect(fixture.componentInstance.currentRows()).toEqual([]);
+      expect(rowTexts()).toEqual([]);
       expect(el().querySelector('[data-placed="t1:c3"]')?.classList).toContain('is-wrong');
       expect(el().querySelector('[data-group="t2"]')?.classList).toContain('is-incomplete');
 
-      // Yanlış kart havuza alınınca madde değişir: sonucu düşer, yeni cevap kaydedilir.
-      (el().querySelector('[data-return="t1:c3"]') as HTMLElement).click();
+      // "Yanlışları düzelt": yalnız yanlış yerleşen kart havuza döner, madde değişir: sonucu düşer, yeni cevap kaydedilir.
+      fixture.componentInstance.fixWrong();
       await settle();
       expect(testService['saveAnswer']).toHaveBeenLastCalledWith(
         expect.objectContaining({ testQuestionId: 101, answerPayload: JSON.stringify({ version: 1, type: 'dragPlace', placements: [{ targetId: 't1', cardId: 'c1' }] }) })
@@ -1271,7 +1315,7 @@ describe('ActivityPlayerComponent (#573)', () => {
       await fixture.componentInstance.reveal();
       await settle();
 
-      expect(fixture.componentInstance.currentRows().map((r) => r.solution)).toEqual(['Buz, Mum', 'Su']);
+      expect(fixture.componentInstance.currentRows()).toEqual([]);
       expect(el().querySelector('[data-placed="t2:c3"]')).not.toBeNull();
     });
 
@@ -1281,7 +1325,7 @@ describe('ActivityPlayerComponent (#573)', () => {
       await settle();
 
       expect(el().querySelector('app-question-canvas-match')).not.toBeNull();
-      expect(fixture.componentInstance.blankItems()).toContain('a');
+      expect(fixture.componentInstance.blankItems()).toContain('1');
       expect(fixture.componentInstance.blankKind()).toBe('generic');
 
       activityService.check.mockReturnValue(
@@ -1305,7 +1349,7 @@ describe('ActivityPlayerComponent (#573)', () => {
       const full = JSON.stringify({ version: 1, type: 'match', pairs: [{ leftId: 'l2', rightId: 'r2' }, { leftId: 'l3', rightId: 'r3' }] });
       fixture.componentInstance.onDragDropChange(full, fixture.componentInstance.items()[0]);
       await settle();
-      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+      expect(fixture.componentInstance.blankItems()).not.toContain('1');
     });
   });
 
@@ -1329,11 +1373,11 @@ describe('ActivityPlayerComponent (#573)', () => {
       await settle();
 
       expect(el().querySelector('app-question-canvas-logic-grid')).not.toBeNull();
-      expect(fixture.componentInstance.blankItems()).toContain('a');
+      expect(fixture.componentInstance.blankItems()).toContain('1');
 
       fixture.componentInstance.onDragDropChange(lgCells(['p1', 'o2', 'yes'], ['p2', 'o2', 'yes']), fixture.componentInstance.items()[0]);
       await settle();
-      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+      expect(fixture.componentInstance.blankItems()).not.toContain('1');
 
       activityService.check.mockReturnValue(
         of({
@@ -1387,11 +1431,11 @@ describe('ActivityPlayerComponent (#573)', () => {
       await settle();
 
       expect(el().querySelector('app-question-canvas-number-line')).not.toBeNull();
-      expect(fixture.componentInstance.blankItems()).toContain('a');
+      expect(fixture.componentInstance.blankItems()).toContain('1');
 
       fixture.componentInstance.onDragDropChange(nlAnswer({ k1: 2, k2: 4 }), fixture.componentInstance.items()[0]);
       await settle();
-      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+      expect(fixture.componentInstance.blankItems()).not.toContain('1');
 
       activityService.check.mockReturnValue(
         of({
@@ -1438,11 +1482,11 @@ describe('ActivityPlayerComponent (#573)', () => {
       await settle();
 
       expect(el().querySelector('app-question-canvas-clock-set')).not.toBeNull();
-      expect(fixture.componentInstance.blankItems()).toContain('a'); // c2 kurulmadı
+      expect(fixture.componentInstance.blankItems()).toContain('1'); // c2 kurulmadı
 
       fixture.componentInstance.onDragDropChange(csAnswer({ c1: { h: 600, m: 0 }, c2: { h: 180, m: 45 } }), fixture.componentInstance.items()[0]);
       await settle();
-      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+      expect(fixture.componentInstance.blankItems()).not.toContain('1');
 
       activityService.check.mockReturnValue(
         of({
@@ -1494,11 +1538,11 @@ describe('ActivityPlayerComponent (#573)', () => {
       await settle();
 
       expect(el().querySelector('app-question-canvas-balance-scale')).not.toBeNull();
-      expect(fixture.componentInstance.blankItems()).toContain('a');
+      expect(fixture.componentInstance.blankItems()).toContain('1');
 
       fixture.componentInstance.onDragDropChange(bsAnswer(['k1', 'k2'], ['k4']), fixture.componentInstance.items()[0]);
       await settle();
-      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+      expect(fixture.componentInstance.blankItems()).not.toContain('1');
 
       activityService.check.mockReturnValue(
         of({
@@ -1539,7 +1583,7 @@ describe('ActivityPlayerComponent (#573)', () => {
       await settle();
 
       expect(el().querySelector('app-question-canvas-grid-draw')).not.toBeNull();
-      expect(fixture.componentInstance.blankItems()).toContain('a');
+      expect(fixture.componentInstance.blankItems()).toContain('1');
 
       const drawn = gdAnswer([
         { row: 0, col: 0, width: 4, height: 3 },
@@ -1547,7 +1591,7 @@ describe('ActivityPlayerComponent (#573)', () => {
       ]);
       fixture.componentInstance.onDragDropChange(drawn, fixture.componentInstance.items()[0]);
       await settle();
-      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+      expect(fixture.componentInstance.blankItems()).not.toContain('1');
 
       activityService.check.mockReturnValue(
         of({
@@ -1600,11 +1644,11 @@ describe('ActivityPlayerComponent (#573)', () => {
       await settle();
 
       expect(el().querySelector('app-question-canvas-bar-chart')).not.toBeNull();
-      expect(fixture.componentInstance.blankItems()).toContain('a');
+      expect(fixture.componentInstance.blankItems()).toContain('1');
 
       fixture.componentInstance.onDragDropChange(bcAnswer({ c2: 4 }), fixture.componentInstance.items()[0]);
       await settle();
-      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+      expect(fixture.componentInstance.blankItems()).not.toContain('1');
 
       activityService.check.mockReturnValue(
         of({
@@ -1657,11 +1701,11 @@ describe('ActivityPlayerComponent (#573)', () => {
       await settle();
 
       expect(el().querySelector('app-question-canvas-region-paint')).not.toBeNull();
-      expect(fixture.componentInstance.blankItems()).toContain('a');
+      expect(fixture.componentInstance.blankItems()).toContain('1');
 
       fixture.componentInstance.onDragDropChange(rpGrid('11', '1.'), fixture.componentInstance.items()[0]);
       await settle();
-      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+      expect(fixture.componentInstance.blankItems()).not.toContain('1');
 
       activityService.check.mockReturnValue(
         of({
@@ -1704,11 +1748,11 @@ describe('ActivityPlayerComponent (#573)', () => {
       await create(instance({}, [{ answerPayload: fills({}), question: { ...base(), interactionType: 'regionPaint', interactionPlan: plan } }]));
       fixture.componentInstance.goTo(0);
       await settle();
-      expect(fixture.componentInstance.blankItems()).toContain('a');
+      expect(fixture.componentInstance.blankItems()).toContain('1');
 
       fixture.componentInstance.onDragDropChange(fills({ r2: 'p1' }), fixture.componentInstance.items()[0]);
       await settle();
-      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+      expect(fixture.componentInstance.blankItems()).not.toContain('1');
 
       activityService.check.mockReturnValue(
         of({
@@ -1753,11 +1797,11 @@ describe('ActivityPlayerComponent (#573)', () => {
       );
       fixture.componentInstance.goTo(0);
       await settle();
-      expect(fixture.componentInstance.blankItems()).toContain('a');
+      expect(fixture.componentInstance.blankItems()).toContain('1');
 
       fixture.componentInstance.onDragDropChange(fills({ g1: 'p1', g2: 'p1' }), fixture.componentInstance.items()[0]);
       await settle();
-      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+      expect(fixture.componentInstance.blankItems()).not.toContain('1');
 
       activityService.check.mockReturnValue(
         of({
@@ -1808,11 +1852,11 @@ describe('ActivityPlayerComponent (#573)', () => {
       await settle();
 
       expect(el().querySelector('app-question-canvas-word-search')).not.toBeNull();
-      expect(fixture.componentInstance.blankItems()).toContain('a');
+      expect(fixture.componentInstance.blankItems()).toContain('1');
 
       fixture.componentInstance.onDragDropChange(wsLines([0, 0, 0, 3], [1, 0, 1, 2]), fixture.componentInstance.items()[0]);
       await settle();
-      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+      expect(fixture.componentInstance.blankItems()).not.toContain('1');
 
       activityService.check.mockReturnValue(
         of({
@@ -1865,11 +1909,11 @@ describe('ActivityPlayerComponent (#573)', () => {
       await settle();
 
       expect(el().querySelector('app-question-canvas-crossword')).not.toBeNull();
-      expect(fixture.componentInstance.blankItems()).toContain('a');
+      expect(fixture.componentInstance.blankItems()).toContain('1');
 
       fixture.componentInstance.onDragDropChange(cwGrid('KALP', 'I   ', 'RAF '), fixture.componentInstance.items()[0]);
       await settle();
-      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+      expect(fixture.componentInstance.blankItems()).not.toContain('1');
 
       activityService.check.mockReturnValue(
         of({
@@ -1935,11 +1979,11 @@ describe('ActivityPlayerComponent (#573)', () => {
       await settle();
 
       expect(el().querySelector('app-question-canvas-maze-tree')).not.toBeNull();
-      expect(fixture.componentInstance.blankItems()).toContain('a');
+      expect(fixture.componentInstance.blankItems()).toContain('1');
 
       fixture.componentInstance.onDragDropChange(mzPath('e2', 'e5'), fixture.componentInstance.items()[0]);
       await settle();
-      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+      expect(fixture.componentInstance.blankItems()).not.toContain('1');
 
       activityService.check.mockReturnValue(
         of({
@@ -2159,7 +2203,7 @@ describe('ActivityPlayerComponent (#573)', () => {
       fixture.componentInstance.goTo(0);
       await settle();
       expect(fixture.componentInstance.steps()[0].state).toBe('empty');
-      expect(fixture.componentInstance.blankItems()).toContain('a');
+      expect(fixture.componentInstance.blankItems()).toContain('1');
 
       const field = q('ot-text') as HTMLTextAreaElement;
       field.value = 'yazdım ama beklemedim';
@@ -2252,7 +2296,7 @@ describe('ActivityPlayerComponent (#573)', () => {
       );
 
       const item = q('summary-open-text-item');
-      expect(item?.textContent).toContain('Madde a');
+      expect(item?.textContent).toContain('Madde 1');
       expect(item?.textContent).toContain('Yeterli');
       expect(item?.querySelector('[data-testid="ot-feedback"]')?.textContent).toContain('Harika <b>iş</b>');
       expect(item?.querySelector('b b')).toBeNull();

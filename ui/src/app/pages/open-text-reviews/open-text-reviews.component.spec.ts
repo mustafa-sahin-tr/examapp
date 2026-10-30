@@ -113,10 +113,10 @@ describe('OpenTextReviewsComponent (#583)', () => {
     const [card] = cards();
     expect(card.textContent).toContain('1203');
     expect(card.textContent).toContain('5-A');
-    expect(q('otq-activity', card)?.textContent).toBe('Okuma etkinliği · Madde b');
+    expect(q('otq-activity', card)?.textContent).toBe('Okuma etkinliği · Madde 2');
     const img = card.querySelector('img')!;
     expect(img.getAttribute('src')).toBe('https://cdn.example.test/q7.webp?sig=abc');
-    expect(img.getAttribute('alt')).toBe('Madde b görseli');
+    expect(img.getAttribute('alt')).toBe('Madde 2 görseli');
     expect(fixture.componentInstance.imageRefresh).toEqual(expect.any(Function));
     expect(q('otq-rubric', card)).not.toBeNull();
     expect(q('otq-text', card)?.textContent).toBe('Birinci satır\nİkinci satır');

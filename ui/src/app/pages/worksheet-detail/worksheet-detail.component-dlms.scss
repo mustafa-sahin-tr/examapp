@@ -306,6 +306,21 @@ h3 {
   flex-wrap: wrap;
 }
 
+.started-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--ms-warning-text);
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
 /* ---------- layout ---------- */
 .cols {
   display: grid;

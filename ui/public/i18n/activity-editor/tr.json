@@ -7,6 +7,7 @@
   "loadError": "Etkinlik yüklenemedi.",
   "retry": "Yeniden dene",
   "formAria": "Madde içeriği",
+  "startedWarning": "Bu etkinliğe {{count}} öğrenci başladı. Yeni madde yalnız etkinliğe bundan sonra başlayanlara görünür; başlamış ya da bitirmiş öğrencilerin listesi değişmez.",
   "items": {
     "title": "Bu etkinlikteki görselsiz maddeler",
     "new": "Yeni madde"
@@ -37,7 +38,7 @@
   },
   "kindHints": {
     "matrix": "Her satır için doğru seçeneği işaretle. D/Y şablonu iki kolon kurar; çoklu seçimde satırda birden çok doğru olabilir.",
-    "classify": "Kartları kovalara ayır. Hiçbir kovaya ait olmayan kart çeldiricidir.",
+    "classify": "Kartları sınıflara ayır. Hiçbir sınıfa ait olmayan kart çeldiricidir.",
     "order": "Öğeleri doğru sırayla yaz; öğrenciye karışık gelir.",
     "match": "Çiftleri yaz; çeldirici sağ öğeler isteğe bağlı. Sağ taraf öğrenciye karışık gelir.",
     "fillText": "Metni yaz, cevabın yerine [[cevap]] koy. Sayı cevaplar (3/4, 2 1/2, 0,75) sayı kutusu olur; diğerleri metin olarak karşılaştırılır (büyük/küçük harf ve sondaki noktalama önemsiz).",
@@ -80,12 +81,12 @@
     "addRow": "İfade ekle"
   },
   "classify": {
-    "buckets": "Kovalar",
-    "bucket": "Kova {{n}}",
-    "addBucket": "Kova ekle",
+    "buckets": "Sınıflar",
+    "bucket": "Sınıf {{n}}",
+    "addBucket": "Sınıf ekle",
     "cards": "Kartlar",
     "card": "Kart {{n}}",
-    "belongsTo": "Ait olduğu kova",
+    "belongsTo": "Ait olduğu sınıf",
     "distractor": "Çeldirici (hiçbiri)",
     "addCard": "Kart ekle"
   },
@@ -126,12 +127,12 @@
     "blankRow": "Boş ifade bırakma.",
     "labelTooLong": "Her metin en çok {{max}} karakter olabilir.",
     "rowWithoutAnswer": "Her ifadenin doğru cevabını işaretle (tekli seçimde tam bir tane).",
-    "bucketCount": "{{min}}–{{max}} kova olmalı.",
+    "bucketCount": "{{min}}–{{max}} sınıf olmalı.",
     "cardCount": "{{min}}–{{max}} kart olmalı.",
-    "blankBucket": "Boş kova adı bırakma.",
+    "blankBucket": "Boş sınıf adı bırakma.",
     "blankCard": "Boş kart bırakma.",
-    "noPlacedCard": "En az bir kart bir kovaya ait olmalı.",
-    "bucketOverCapacity": "Bir kovada en çok {{max}} kart olabilir.",
+    "noPlacedCard": "En az bir kart bir sınıfa ait olmalı.",
+    "bucketOverCapacity": "Bir sınıfta en çok {{max}} kart olabilir.",
     "orderCount": "{{min}}–{{max}} öğe olmalı.",
     "blankItem": "Boş öğe bırakma.",
     "pairCount": "{{min}}–{{max}} çift olmalı.",

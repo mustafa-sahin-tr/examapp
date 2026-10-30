@@ -236,6 +236,7 @@
     "notFound": "One of the selected questions can't be added to this test (it may have been deleted or is no longer available to you). Change your selection and try again."
   },
   "activity": {
+    "startedNote": "{{count}} students have started this activity: items you add now are shown only to students who start later.",
     "chip": "Activity page",
     "items": "Items",
     "itemCount": "{{count}} items",

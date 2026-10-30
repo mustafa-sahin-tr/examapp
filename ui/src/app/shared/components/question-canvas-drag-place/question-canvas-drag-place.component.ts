@@ -221,6 +221,7 @@ export class QuestionCanvasDragPlaceComponent {
   readonly passageImageUrl = computed(() => this._region()?.passage?.imageUrl ?? null);
   readonly passageTitle = computed(() => this._region()?.passage?.title ?? null);
   readonly orderMode = computed(() => this._plan()?.mode === 'order');
+  readonly cardCount = computed(() => this._plan()?.cards.length ?? 0);
   readonly reuse = computed(() => this._plan()?.reuse === true);
   readonly targets = computed(() => this._plan()?.targets ?? []);
   readonly cards = computed(() => this._plan()?.cards ?? []);

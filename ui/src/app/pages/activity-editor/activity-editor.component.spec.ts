@@ -182,6 +182,53 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(el('[data-testid="preview"]')).not.toBeNull();
   });
 
+  it('ışıklı pano oyundaki gibi yukarıdan aşağı, doğru kutu ampulle seçilir; ayrı önizleme yok', async () => {
+    await setup({ testId: '9' });
+    component.selectKind('mazeBoard');
+    fixture.detectChanges();
+    expect(el('[data-testid="maze-board-canvas"]')).not.toBeNull();
+    expect(el('[data-testid="preview"]')).toBeNull();
+    const before = component.mazeBoard()!.rows.length;
+
+    (el('[data-testid="board-add-row"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const rows = [...fixture.nativeElement.querySelectorAll('.ae__board-row')].map((r: Element) => Number(r.getAttribute('data-row')));
+    expect(rows[0]).toBe(before); // yeni satır bitişe en yakın, en üstte
+    expect(rows[rows.length - 1]).toBe(0);
+
+    (el(`[data-box="0:1"] .ae__tree-branch`) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(component.mazeBoard()!.rows[0].correct).toBe(1);
+  });
+
+  it('odalı labirent ızgarada: kapı yuvası yazınca kapı açılır, odada doğru kapı ve başlangıç / bitiş seçilir', async () => {
+    await setup({ testId: '9' });
+    component.selectKind('mazeRooms');
+    component.setRoomsSize(2, 2);
+    fixture.detectChanges();
+    expect(el('[data-testid="maze-rooms-canvas"]')).not.toBeNull();
+    expect(el('[data-testid="preview"]')).toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('.ae__room').length).toBe(4);
+
+    const f = component.mazeRooms()!;
+    const right = f.doors.findIndex((d) => d.a === 0 && d.b === 1);
+    const input = el(`[data-door="${right}"]`) as HTMLInputElement;
+    input.value = '24';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(component.mazeRooms()!.doors[right].label).toBe('24');
+
+    const chip = el('[data-room="0"] .ae__room-answers .ae__tree-branch') as HTMLButtonElement;
+    expect(chip.textContent).toContain('→ 24');
+    chip.click();
+    fixture.detectChanges();
+    expect(component.mazeRooms()!.rooms[0].answer).toBe(right);
+
+    (el('[data-room="3"] .ae__room-flag:last-of-type') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(component.mazeRooms()!.finish).toBe(3);
+  });
+
   it('D/Y ağacı: tek ifadeyle başlar, düzey ekleyince ağaç büyür, ayrı önizleme yok, doğru çıkış vurgulanır', async () => {
     await setup({ testId: '9' });
     component.selectKind('mazeTree');

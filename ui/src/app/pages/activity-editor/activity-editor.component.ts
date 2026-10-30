@@ -159,7 +159,16 @@ interface EditableItem {
  *
  * Rota: `/activity-editor?testId=&gradeId=` (yeni) ve `&questionId=` (düzenleme). Yönerge düz metindir (#573).
  */
-const INLINE_PREVIEW_KINDS: ReadonlySet<AuthoringKind> = new Set<AuthoringKind>(['matrix', 'order', 'mazeTree', 'mazeStones']);
+/** Odadan komşu odaya yön oku (satır satır dizinlerden). */
+function roomArrow(cols: number, from: number, to: number): string {
+  const dr = Math.sign(Math.floor(to / cols) - Math.floor(from / cols));
+  const dc = Math.sign((to % cols) - (from % cols));
+  return ({ '-1,-1': '↖', '-1,0': '↑', '-1,1': '↗', '0,-1': '←', '0,1': '→', '1,-1': '↙', '1,0': '↓', '1,1': '↘' } as Record<string, string>)[
+    `${dr},${dc}`
+  ] ?? '';
+}
+
+const INLINE_PREVIEW_KINDS: ReadonlySet<AuthoringKind> = new Set<AuthoringKind>(['matrix', 'order', 'mazeTree', 'mazeBoard', 'mazeRooms', 'mazeStones']);
 
 @Component({
   selector: 'app-activity-editor',
@@ -322,6 +331,41 @@ export class ActivityEditorComponent {
   });
   /** Form öğrencinin göreceği ekranla aynıysa (ağaç, pano, odalar, matris, sıralama, taşlar) ayrı önizleme kolonu yok. */
   readonly inlinePreview = computed(() => INLINE_PREVIEW_KINDS.has(this.form().kind));
+  /**
+   * Odalı labirent ızgarası: odalar tek, kapı yuvaları çift satır/kolonlarda; yatay / dikey yuvada bir, dörtlünün ortasında iki
+   * çapraz kapı adayı (en çok biri açık olabilir).
+   */
+  readonly roomsLayout = computed(() => {
+    const f = this.mazeRooms();
+    if (!f) return null;
+    const byPair = new Map(f.doors.map((d, i) => [`${Math.min(d.a, d.b)}-${Math.max(d.a, d.b)}`, i]));
+    const door = (a: number, b: number) => byPair.get(`${Math.min(a, b)}-${Math.max(a, b)}`);
+    const rooms: { index: number; row: number; col: number }[] = [];
+    const doors: { key: string; row: number; col: number; diag: boolean; doors: { index: number; arrow: string }[] }[] = [];
+    const slot = (key: string, row: number, col: number, diag: boolean, list: [number, number][]) => {
+      const found = list.flatMap(([a, b]) => {
+        const index = door(a, b);
+        return index === undefined ? [] : [{ index, arrow: roomArrow(f.cols, a, b) }];
+      });
+      if (found.length) doors.push({ key, row, col, diag, doors: found });
+    };
+    for (let r = 0; r < f.rows; r++) {
+      for (let c = 0; c < f.cols; c++) {
+        const a = r * f.cols + c;
+        rooms.push({ index: a, row: 2 * r + 1, col: 2 * c + 1 });
+        if (c + 1 < f.cols) slot(`h${a}`, 2 * r + 1, 2 * c + 2, false, [[a, a + 1]]);
+        if (r + 1 < f.rows) slot(`v${a}`, 2 * r + 2, 2 * c + 1, false, [[a, a + f.cols]]);
+        if (r + 1 < f.rows && c + 1 < f.cols) slot(`d${a}`, 2 * r + 2, 2 * c + 2, true, [[a, a + f.cols + 1], [a + 1, a + f.cols]]);
+      }
+    }
+    const columns = Array.from({ length: f.cols }, () => 'minmax(150px, 1fr)').join(' 64px ');
+    return { rooms, doors, columns };
+  });
+  /** Pano satırları oyundaki gibi yukarıdan aşağı: son satır (bitişe en yakın) üstte. */
+  readonly boardRowsTopDown = computed(() => {
+    const f = this.mazeBoard();
+    return f ? f.rows.map((_, i) => i).reverse() : [];
+  });
   /** Doğru dalları izleyen rota: üzerindeki ifadeler ve vardığı çıkış (ağaçta vurgulanır). */
   readonly treeExit = computed(() => {
     const f = this.mazeTree();
@@ -736,14 +780,15 @@ export class ActivityEditorComponent {
     return door ? `${this.roomName(door.a)} ↔ ${this.roomName(door.b)}` : '';
   }
 
-  /** Odanın doğru kapı seçenekleri: "<etiket> → <öbür oda>". */
-  roomDoorOptions(room: number): { index: number; label: string }[] {
+  /** Odanın doğru kapı seçenekleri: kısa "<yön> <etiket>", uzun "<etiket> → <öbür oda>". */
+  roomDoorOptions(room: number): { index: number; label: string; short: string }[] {
     const f = this.mazeRooms();
     if (!f) return [];
-    return roomDoors(f, room).map((i) => ({
-      index: i,
-      label: `${f.doors[i].label.trim()} → ${this.roomName(otherRoom(f.doors[i], room))}`,
-    }));
+    return roomDoors(f, room).map((i) => {
+      const other = otherRoom(f.doors[i], room);
+      const label = f.doors[i].label.trim();
+      return { index: i, label: `${label} → ${this.roomName(other)}`, short: `${roomArrow(f.cols, room, other)} ${label}` };
+    });
   }
 
   // ---- Irmak taşları ----

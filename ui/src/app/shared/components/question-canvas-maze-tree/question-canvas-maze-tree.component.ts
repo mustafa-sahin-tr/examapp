@@ -203,6 +203,15 @@ export class QuestionCanvasMazeTreeComponent {
     if (fb?.status !== 'deviated' || this._plan()?.variant === 'stones') return null;
     return this.path()[fb.rows.length - 1] ?? null;
   });
+  /** Kontrol sonrası varılan bitiş: doğru yoldan ulaşıldıysa yeşil, yol sapmışsa kırmızı çerçeve. */
+  readonly reachedEnd = computed(() => {
+    const fb = this._feedback();
+    return fb?.status === 'reached' ? fb.at : null;
+  });
+  readonly wrongEnd = computed(() => {
+    const fb = this._feedback();
+    return fb?.status === 'deviated' && this.finished() && this._plan()?.variant !== 'stones' ? this.current() : null;
+  });
   readonly okNodes = computed(() => new Set((this._feedback()?.rows ?? []).filter((r) => r.correct).map((r) => r.id)));
   readonly stoneMarks = computed(() => new Map((this._feedback()?.rows ?? []).map((r) => [r.id, r.correct])));
 
@@ -277,10 +286,14 @@ export class QuestionCanvasMazeTreeComponent {
 
   /** Yol işaretçisi: bulunulan kartın sol kenarında; yeni düğüme geçişte kayar (ağaç / odalar). */
   readonly token = computed(() => {
-    const layout = this.tree() ?? this.rooms();
+    // Kartın sol kenarının içine oturur (kart en çok 280px; ağaçta 10px, odada 44px boşluk payı), kart o kadar sağdan başlar.
+    const tree = this.tree();
+    const layout = tree ?? this.rooms();
     const current = this.current();
     const n = layout?.nodes.find((p) => p.node.id === current);
-    return n ? { left: n.left - n.width / 2, top: n.top } : null;
+    if (!n) return null;
+    const gap = tree ? 10 : 44;
+    return { left: `calc(${n.left}% - min(${n.width}% - ${gap}px, 280px) / 2 + 17px)`, top: n.top };
   });
 
   // ---- Pano ----

@@ -11,7 +11,7 @@
     "zone": "Hedef {{n}}: {{content}}",
     "choice": "Seçimin: {{content}}",
     "empty": "boş",
-    "matrixRow": "{{name}}: {{content}}",
+    "matrixRow": "{{name}} → {{content}}",
     "matrixRowFallback": "Satır {{n}}",
     "slot": "Kutu {{n}}: {{content}}",
     "place": "{{name}}: {{content}}",

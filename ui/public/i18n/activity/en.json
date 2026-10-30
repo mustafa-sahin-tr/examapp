@@ -11,7 +11,7 @@
     "zone": "Target {{n}}: {{content}}",
     "choice": "Your choice: {{content}}",
     "empty": "empty",
-    "matrixRow": "{{name}}: {{content}}",
+    "matrixRow": "{{name}} → {{content}}",
     "matrixRowFallback": "Row {{n}}",
     "slot": "Box {{n}}: {{content}}",
     "place": "{{name}}: {{content}}",

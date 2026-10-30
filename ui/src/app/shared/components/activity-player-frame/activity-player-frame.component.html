@@ -18,6 +18,7 @@
     </div>
   }
 
+  @if (steps().length > 1) {
   <nav class="apf__steps" [attr.aria-label]="t('stepsAria')">
     <ol>
       @for (step of steps(); track $index; let i = $index) {
@@ -31,6 +32,7 @@
             [class.apf__step--wrong]="step.state === 'wrong'"
             [attr.aria-current]="i === displayIndex() ? 'step' : null"
             [attr.aria-label]="t('stepAria', { label: label(i), state: t(stateKey(i, step.state)) })"
+            [attr.title]="t('stepAria', { label: label(i), state: t(stateKey(i, step.state)) })"
             (click)="select(i)"
           >
             <span>{{ label(i) }}</span>
@@ -44,6 +46,7 @@
       }
     </ol>
   </nav>
+  }
 
   <div class="apf__content">
     <ng-content />

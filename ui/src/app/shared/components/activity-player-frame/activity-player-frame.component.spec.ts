@@ -79,6 +79,15 @@ describe('ActivityPlayerFrameComponent (#573)', () => {
     expect(steps()[4].getAttribute('aria-label')).toBe('Madde e: boş');
   });
 
+  it('stepper_TitleExplainsChip_HiddenWhenSingleItem', () => {
+    expect(steps()[2].getAttribute('title')).toBe('Madde c: yanlış');
+
+    fixture.componentInstance.steps.set([{ state: 'wrong' }]);
+    fixture.componentInstance.index.set(0);
+    fixture.detectChanges();
+    expect(q('.apf__steps')).toBeNull();
+  });
+
   it('navigation_PrevNextAndStepEmitIndices_CurrentStepDoesNotEmit', () => {
     q('[data-testid="prev"]')!.click();
     q('[data-testid="next"]')!.click();

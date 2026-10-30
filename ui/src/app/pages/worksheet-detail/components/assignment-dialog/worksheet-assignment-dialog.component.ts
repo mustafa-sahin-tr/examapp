@@ -101,7 +101,7 @@ export class WorksheetAssignmentDialogComponent {
     gradeId: [this.initialScope === 'grade' ? this.data.grades[0]?.id ?? null : null],
     studentId: [null as number | null],
     startDate: [new Date(), Validators.required],
-    startTime: ['09:00', [Validators.required, Validators.pattern(/^\d{2}:\d{2}$/)]],
+    startTime: [currentTimeOfDay(), [Validators.required, Validators.pattern(/^\d{2}:\d{2}$/)]],
     hasEndDate: [false],
     endDate: [null as Date | null],
     endTime: ['23:59', Validators.pattern(/^\d{2}:\d{2}$/)],
@@ -213,7 +213,8 @@ export class WorksheetAssignmentDialogComponent {
     }
 
     const [hours, minutes] = time.split(':').map(Number);
-    return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), hours, minutes));
+    // Saat öğretmenin yerel saatidir (TR 09:00 → 06:00Z); Date.UTC 3 saat kaydırıyordu.
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours, minutes);
   }
 
   protected gradeLabel(gradeId?: number | null): string | null {
@@ -224,4 +225,9 @@ export class WorksheetAssignmentDialogComponent {
     const grade = this.grades.find((g) => g.id === gradeId);
     return grade?.name ?? gradeId.toString();
   }
+}
+
+/** Varsayılan başlangıç: şimdi (yerel saat, dakika). Sabit 09:00 gün içinde atanan sayfayı "planlandı"da bırakıyordu. */
+function currentTimeOfDay(now = new Date()): string {
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 }

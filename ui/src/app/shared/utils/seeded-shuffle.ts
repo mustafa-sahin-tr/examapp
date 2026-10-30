@@ -10,6 +10,11 @@ export function seededShuffle<T>(items: readonly T[], seed: string): T[] {
     const j = Math.floor(random() * (i + 1));
     [result[i], result[j]] = [result[j], result[i]];
   }
+  // Karıştırma plan sırasını aynen verdiyse (4 öğede 1/24) öğrenci "karışmadı" sanır ve sıra cevabı ele verebilir:
+  // bir adım döndür. Kararlılık korunur (aynı tohum → aynı sıra).
+  if (result.length > 1 && result.every((item, index) => item === items[index])) {
+    result.push(result.shift()!);
+  }
   return result;
 }
 

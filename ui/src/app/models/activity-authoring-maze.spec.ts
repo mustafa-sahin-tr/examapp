@@ -78,6 +78,14 @@ describe('activity-authoring-maze', () => {
     expect(resizeTree(tree, 9, exitName).depth).toBe(4);
   });
 
+  it('carries custom exit texts into the new level when one level is added', () => {
+    const root = emptyMazeForm('mazeTree', ['D', 'Y'], exitName) as MazeTreeForm;
+    const typed = { ...root, nodes: [{ text: 'Kök', correct: 0 as const }], exits: ['Ay ışık üretir', '2. çıkış'] };
+    const deeper = resizeTree(typed, 2, exitName);
+    expect(deeper.nodes.map((n) => n.text)).toEqual(['Kök', 'Ay ışık üretir', '']);
+    expect(deeper.exits).toEqual(['1. çıkış', '2. çıkış', '3. çıkış', '4. çıkış']);
+  });
+
   it('keeps rooms and door labels at the same position when the grid grows', () => {
     const rooms = filledRooms();
     const grown = resizeRooms(rooms, 3, 3);

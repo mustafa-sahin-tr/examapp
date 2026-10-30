@@ -292,12 +292,13 @@
     "distractors": "Çeldirici kelimeler"
   },
   "maze": {
+    "exitTitle": "Çıkış adı (öğrenci yolun sonunda bunu görür). Yeni ifade için Düzey ekle.",
     "roomsHint": "Oyundaki gibi: odaların arasındaki kutuya kapının cevabını yaz (boş = duvar; bir dörtlüde tek çapraz kapı). Yürüyen adamla başlangıcı, bayrakla bitişi seç; her odada doğru kapıya tıkla.",
     "noDoors": "Önce bir kapı yaz",
     "doorAria": "Kapı {{door}}",
     "boardRowPlaceholder": "{{n}}. satır (ör. Gaz)",
     "start": "Başlangıç",
-    "treeHint": "İfadeleri doğrudan ağaca yaz; her ifadenin altında doğru dalı seç. Vurgulu yol doğru rotadır.",
+    "treeHint": "İfadeleri doğrudan ağaca yaz; her ifadenin altında doğru dalı seç. Bayraklı kutular çıkıştır, yeni ifade satırı için Düzey ekle. Vurgulu yol doğru rotadır.",
     "statementPlaceholder": "İfade yaz",
     "markCorrect": "Doğru dal: {{label}}",
     "correctExit": "Doğru çıkış",

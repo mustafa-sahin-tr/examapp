@@ -145,7 +145,6 @@ export function emptyMazeForm(kind: MazeKind, branches: [string, string], exitNa
   }
 }
 
-/** Ağaç derinliğini değiştirir; genişlik öncelikli sıra sayesinde üst düzeyler korunur, çıkış adları yeniden numaralanır. */
 /** Doğru dalları izleyen rotanın vardığı çıkışın dizini (soldan, 0'dan). */
 export function treeCorrectExit(form: MazeTreeForm): number {
   let i = 0;
@@ -153,10 +152,21 @@ export function treeCorrectExit(form: MazeTreeForm): number {
   return i - (2 ** form.depth - 1);
 }
 
+/**
+ * Ağaç derinliğini değiştirir; genişlik öncelikli sıra sayesinde üst düzeyler korunur, çıkış adları yeniden numaralanır.
+ * Bir düzey eklenince çıkışlara elle yazılmış metin (varsayılan addan farklı) aynı yerdeki yeni ifadeye geçer — çıkış satırı
+ * ifade satırının hemen altında durduğundan öğretmen oraya bir sonraki düzeyin ifadelerini yazmış olabilir.
+ */
 export function resizeTree(form: MazeTreeForm, depth: number, exitName: ExitName): MazeTreeForm {
   const d = Math.min(MAZE_FORM_LIMITS.maxDepth, Math.max(MAZE_FORM_LIMITS.minDepth, depth));
   const internal = 2 ** d - 1;
-  const nodes = Array.from({ length: internal }, (_, i) => form.nodes[i] ?? { text: '', correct: 0 as const });
+  const firstNewNode = 2 ** form.depth - 1;
+  const carried = (i: number) => {
+    if (d !== form.depth + 1 || i < firstNewNode) return '';
+    const exit = form.exits[i - firstNewNode]?.trim() ?? '';
+    return exit && exit !== exitName(i - firstNewNode + 1) ? exit : '';
+  };
+  const nodes = Array.from({ length: internal }, (_, i) => form.nodes[i] ?? { text: carried(i), correct: 0 as const });
   const leaves = 2 ** d;
   const keep = d === form.depth;
   const exits = Array.from({ length: leaves }, (_, i) => (keep && form.exits[i] !== undefined ? form.exits[i] : exitName(i + 1)));

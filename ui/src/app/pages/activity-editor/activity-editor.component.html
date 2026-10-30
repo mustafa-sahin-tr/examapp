@@ -460,8 +460,10 @@
                 @for (x of mt.exits; track $index; let xi = $index) {
                   <div class="ae__tree-exit" [attr.data-exit]="xi" [class.is-route]="xi === treeExit()"
                     [style.grid-row]="mt.depth + 1">
-                    <input class="ae__tree-text" [value]="x" [attr.maxlength]="mazeLabelMax"
-                      [attr.aria-label]="t('maze.exit', { n: xi + 1 })" (input)="setTreeExit(xi, $any($event.target).value)" />
+                    <mat-icon class="ae__tree-exit-icon" aria-hidden="true">flag</mat-icon>
+                    <input class="ae__tree-text ae__tree-text--exit" [value]="x" [attr.maxlength]="mazeLabelMax"
+                      [attr.aria-label]="t('maze.exit', { n: xi + 1 })" [attr.title]="t('maze.exitTitle')"
+                      (input)="setTreeExit(xi, $any($event.target).value)" />
                     @if (xi === treeExit()) {
                       <span class="ae__tree-flag">{{ t('maze.correctExit') }}</span>
                     }

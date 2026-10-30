@@ -159,6 +159,8 @@ interface EditableItem {
  *
  * Rota: `/activity-editor?testId=&gradeId=` (yeni) ve `&questionId=` (düzenleme). Yönerge düz metindir (#573).
  */
+const INLINE_PREVIEW_KINDS: ReadonlySet<AuthoringKind> = new Set<AuthoringKind>(['matrix', 'order', 'mazeTree', 'mazeStones']);
+
 @Component({
   selector: 'app-activity-editor',
   standalone: true,
@@ -318,8 +320,8 @@ export class ActivityEditorComponent {
       indices: Array.from({ length: 2 ** depth }, (_, i) => 2 ** depth - 1 + i),
     }));
   });
-  /** Form önizlemeyle aynı görünümdeyse (D/Y ağacı) ayrı önizleme kolonu yok. */
-  readonly inlinePreview = computed(() => this.form().kind === 'mazeTree');
+  /** Form öğrencinin göreceği ekranla aynıysa (ağaç, pano, odalar, matris, sıralama, taşlar) ayrı önizleme kolonu yok. */
+  readonly inlinePreview = computed(() => INLINE_PREVIEW_KINDS.has(this.form().kind));
   /** Doğru dalları izleyen rota: üzerindeki ifadeler ve vardığı çıkış (ağaçta vurgulanır). */
   readonly treeExit = computed(() => {
     const f = this.mazeTree();

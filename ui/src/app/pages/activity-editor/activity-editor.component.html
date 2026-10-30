@@ -106,46 +106,60 @@
                 {{ t('matrix.trueFalsePreset') }}
               </button>
             </div>
-            @for (col of m.columns; track $index; let ci = $index) {
-              <div class="ae__row">
-                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
-                  <mat-label>{{ t('matrix.column', { n: ci + 1 }) }}</mat-label>
-                  <input matInput [value]="col" [attr.maxlength]="labelMax" (input)="setColumn(ci, $any($event.target).value)" />
-                </mat-form-field>
-                <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="m.columns.length <= 2"
-                  (click)="removeColumn(ci)"><mat-icon>close</mat-icon></button>
-              </div>
-            }
-            <button mat-button type="button" [disabled]="m.columns.length >= 10" (click)="addColumn()">
-              <mat-icon>add</mat-icon>{{ t('matrix.addColumn') }}
-            </button>
             <div class="ae__toggles">
               <mat-slide-toggle [checked]="m.multiPerRow" (change)="setMultiPerRow($event.checked)">{{ t('matrix.multi') }}</mat-slide-toggle>
               <mat-slide-toggle [checked]="m.shuffleRows" (change)="setShuffleRows($event.checked)">{{ t('matrix.shuffle') }}</mat-slide-toggle>
             </div>
-
-            <span class="ae__label">{{ t('matrix.rows') }}</span>
-            @for (row of m.rows; track $index; let ri = $index) {
-              <div class="ae__matrix-row" [attr.data-row]="ri">
-                <div class="ae__row">
-                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
-                    <mat-label>{{ t('matrix.row', { n: ri + 1 }) }}</mat-label>
-                    <input matInput [value]="row.text" [attr.maxlength]="labelMax" (input)="setRowText(ri, $any($event.target).value)" />
-                  </mat-form-field>
-                  <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="m.rows.length <= 1"
-                    (click)="removeRow(ri)"><mat-icon>close</mat-icon></button>
-                </div>
-                <div class="ae__answers" role="group" [attr.aria-label]="t('matrix.correctFor', { n: ri + 1 })">
-                  @for (col of m.columns; track $index; let ci = $index) {
-                    <button type="button" class="ae__chip" [class.is-on]="isRowCorrect(row, ci)"
-                      [attr.aria-pressed]="isRowCorrect(row, ci)" [attr.data-cell]="ri + ':' + ci" (click)="toggleRowCorrect(ri, ci)">
-                      @if (isRowCorrect(row, ci)) { <mat-icon aria-hidden="true">check</mat-icon> }
-                      {{ col || t('matrix.column', { n: ci + 1 }) }}
-                    </button>
+            <p class="ae__hint">{{ t('matrix.tableHint') }}</p>
+            <div class="ae__mx-scroll">
+              <table class="ae__mx" data-testid="matrix-table">
+                <thead>
+                  <tr>
+                    <th class="ae__mx-corner">{{ t('matrix.rows') }}</th>
+                    @for (col of m.columns; track $index; let ci = $index) {
+                      <th>
+                        <div class="ae__mx-head">
+                          <input class="ae__mx-input" [value]="col" [attr.maxlength]="labelMax"
+                            [attr.aria-label]="t('matrix.column', { n: ci + 1 })" [placeholder]="t('matrix.column', { n: ci + 1 })"
+                            (input)="setColumn(ci, $any($event.target).value)" />
+                          <button mat-icon-button type="button" class="ae__mx-remove" [attr.aria-label]="t('remove')"
+                            [disabled]="m.columns.length <= 2" (click)="removeColumn(ci)"><mat-icon>close</mat-icon></button>
+                        </div>
+                      </th>
+                    }
+                    <th class="ae__mx-add">
+                      <button mat-icon-button type="button" [attr.aria-label]="t('matrix.addColumn')" [attr.title]="t('matrix.addColumn')"
+                        [disabled]="m.columns.length >= 10" (click)="addColumn()"><mat-icon>add</mat-icon></button>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of m.rows; track $index; let ri = $index) {
+                    <tr [attr.data-row]="ri">
+                      <td>
+                        <input class="ae__mx-input ae__mx-input--row" [value]="row.text" [attr.maxlength]="labelMax"
+                          [attr.aria-label]="t('matrix.row', { n: ri + 1 })" [placeholder]="t('matrix.row', { n: ri + 1 })"
+                          (input)="setRowText(ri, $any($event.target).value)" />
+                      </td>
+                      @for (col of m.columns; track $index; let ci = $index) {
+                        <td class="ae__mx-cell">
+                          <button type="button" class="ae__mx-mark" [class.is-on]="isRowCorrect(row, ci)"
+                            [attr.aria-pressed]="isRowCorrect(row, ci)" [attr.data-cell]="ri + ':' + ci"
+                            [attr.aria-label]="t('matrix.correctFor', { n: ri + 1 }) + ': ' + (col || t('matrix.column', { n: ci + 1 }))"
+                            (click)="toggleRowCorrect(ri, ci)">
+                            @if (isRowCorrect(row, ci)) { <mat-icon aria-hidden="true">check</mat-icon> }
+                          </button>
+                        </td>
+                      }
+                      <td class="ae__mx-add">
+                        <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="m.rows.length <= 1"
+                          (click)="removeRow(ri)"><mat-icon>close</mat-icon></button>
+                      </td>
+                    </tr>
                   }
-                </div>
-              </div>
-            }
+                </tbody>
+              </table>
+            </div>
             <button mat-button type="button" [disabled]="m.rows.length >= 60" (click)="addRow()">
               <mat-icon>add</mat-icon>{{ t('matrix.addRow') }}
             </button>

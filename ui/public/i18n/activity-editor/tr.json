@@ -70,6 +70,7 @@
   },
   "remove": "Kaldır",
   "matrix": {
+    "tableHint": "Kolon adlarını başlığa, ifadeleri satırlara yaz; her satırda doğru hücreye tıkla.",
     "columns": "Seçenekler (kolonlar)",
     "trueFalsePreset": "D/Y şablonu",
     "column": "Seçenek {{n}}",

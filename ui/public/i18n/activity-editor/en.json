@@ -70,6 +70,7 @@
   },
   "remove": "Remove",
   "matrix": {
+    "tableHint": "Type column names in the header and statements in the rows; click the correct cell in each row.",
     "columns": "Options (columns)",
     "trueFalsePreset": "T/F template",
     "column": "Option {{n}}",

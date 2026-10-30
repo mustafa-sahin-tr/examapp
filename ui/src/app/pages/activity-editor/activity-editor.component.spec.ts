@@ -161,6 +161,27 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(el('[data-testid="preview"] app-question-canvas-match')).not.toBeNull();
   });
 
+  it('D/Y matris tablo olarak düzenlenir, hücreye tık doğruyu seçer; sıralama ve taşlarda da ayrı önizleme yok', async () => {
+    await setup({ testId: '9' });
+    component.selectKind('matrix');
+    fixture.detectChanges();
+    expect(el('[data-testid="matrix-table"]')).not.toBeNull();
+    expect(el('[data-testid="preview"]')).toBeNull();
+
+    (el('[data-cell="0:1"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el('[data-cell="0:1"]')?.getAttribute('aria-pressed')).toBe('true');
+
+    for (const kind of ['order', 'mazeStones'] as const) {
+      component.selectKind(kind);
+      fixture.detectChanges();
+      expect(el('[data-testid="preview"]')).toBeNull();
+    }
+    component.selectKind('classify');
+    fixture.detectChanges();
+    expect(el('[data-testid="preview"]')).not.toBeNull();
+  });
+
   it('D/Y ağacı: tek ifadeyle başlar, düzey ekleyince ağaç büyür, ayrı önizleme yok, doğru çıkış vurgulanır', async () => {
     await setup({ testId: '9' });
     component.selectKind('mazeTree');

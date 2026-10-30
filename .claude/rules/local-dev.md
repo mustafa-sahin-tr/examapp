@@ -713,8 +713,11 @@ hücrede aynı harf). Kayıt kuralları (`CrosswordGrader.ValidateDefinition`): 
 başlangıçtaki ipuçlarının numarası aynı. Öğrenci payload'u `{"grid":["KA  ",...]}` (satır başına `cols` karakter, boş hücre boşluk, siyah
 hücrede harf yok; harfsiz ızgara = cevap yok). Kontrol ipucu başına (tr-TR büyük harfle karşılaştırma), geri bildirim `{"rows":[{id,correct}]}`
 (harf / yanlış hücre yazılmaz). Analiz (#584): öğe = ipucu, cevap = yazılan kelime (`·` boş hücre). Yazarlık görselsiz editörde
-(`/activity-editor`, tür **Çengel bulmaca**): kelime + ipucu, yön ve başlangıç hücresi; **Otomatik yerleştir** kelimeleri kesiştirir (40
-tohumlu deneme, kesişemeyen kelime ayrı satıra) ve ızgarayı kırpar. Oynatıcı ızgarayı HTML olarak çizer (yazınca ilerler, Backspace, ok
+(`/activity-editor`, tür **Çengel bulmaca**): varsayılan 10×10 ızgarada hücre seçilir, yön (→ / ↓) + soru + cevap yazılır, harfler hücrelere
+düşer (çakışan harf kırmızı, sığmayan / aynı yönde üst üste binen kelime eklenmez; kelimenin ilk hücresine tık onu düzenler). Yer yetmezse
+dört kenara satır / sütun eklenir (editörde en çok 30); kayıtta boş kenarlar kırpılır, kelimelerin alanı ≤ 20×20 (`crosswordAreaTooLarge`).
+Form öğrenci ekranıyla aynı olduğundan ayrı önizleme yok. **Otomatik yerleştir** kelimeleri kesiştirir (40
+tohumlu deneme, kesişemeyen kelime ayrı satıra). Oynatıcı ızgarayı HTML olarak çizer (yazınca ilerler, Backspace, ok
 tuşları, boşluk / aynı hücreye ikinci tık yön değiştirir; görsel varsa etkileşimsiz üstte). Testte de çözülebilir (puanlanır). Claude ızgara
 çıkarımı dilim e'de (aşağıda). Migration yok; Aspire'da exam API'yi yeniden başlat
 (yeni kontrolcü).

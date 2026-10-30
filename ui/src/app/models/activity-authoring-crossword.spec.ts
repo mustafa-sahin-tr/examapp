@@ -3,7 +3,10 @@ import {
   CrosswordForm,
   autoLayout,
   buildCrosswordDefinition,
+  crosswordBoard,
   crosswordFormFromDraft,
+  emptyCrosswordForm,
+  insertCrosswordLine,
   parseCrosswordDefinition,
   validateCrosswordForm,
 } from './activity-authoring-crossword';
@@ -39,7 +42,11 @@ describe('activity-authoring-crossword (#586)', () => {
     expect(keys(entry(0, { answer: '' }))).toContain('crosswordAnswerRequired');
     expect(keys(entry(0, { answer: 'k-p' }))).toContain('crosswordAnswerChars');
     expect(keys(entry(0, { clue: ' ' }))).toContain('crosswordClueRequired');
-    expect(keys({ ...FORM, rows: 21 })).toContain('crosswordGridSize');
+    expect(keys({ ...FORM, rows: 31 })).toContain('crosswordGridSize');
+    expect(keys({ ...FORM, rows: 21 })).not.toContain('crosswordGridSize');
+    expect(keys({ ...FORM, rows: 25, entries: [...FORM.entries, { answer: 'ab', clue: 'x', dir: 'down', row: 20, col: 3 }] })).toContain(
+      'crosswordAreaTooLarge'
+    );
   });
 
   it('build_ProducesNumberedPlanAndUppercaseSolution_RoundTrips', () => {
@@ -55,6 +62,39 @@ describe('activity-authoring-crossword (#586)', () => {
     expect(back.entries.map((e) => e.answer)).toEqual(['KALP', 'KİR', 'RAF']);
     expect(back.entries[1]).toEqual(expect.objectContaining({ dir: 'down', row: 0, col: 0, clue: 'Kirli' }));
     expect(parseCrosswordDefinition('{"type":"crossword","rows":3,"cols":3,"clues":[]}', null)).toBeNull();
+  });
+
+  it('editor_DefaultsTo10x10_InsertsLinesAndTrimsEmptyEdgesOnSave', () => {
+    const empty = emptyCrosswordForm();
+    expect([empty.rows, empty.cols, empty.entries.length]).toEqual([10, 10, 0]);
+
+    const placed: CrosswordForm = {
+      ...empty,
+      entries: [
+        { answer: 'kalp', clue: 'Organ', dir: 'across', row: 3, col: 2 },
+        { answer: 'kir', clue: 'Kirli', dir: 'down', row: 3, col: 2 },
+      ],
+    };
+    const top = insertCrosswordLine(placed, 'top');
+    expect([top.rows, top.entries[0].row, top.entries[0].col]).toEqual([11, 4, 2]);
+    const left = insertCrosswordLine(top, 'left');
+    expect([left.cols, left.entries[1].row, left.entries[1].col]).toEqual([11, 4, 3]);
+    expect(insertCrosswordLine({ ...placed, rows: 30 }, 'bottom').rows).toBe(30);
+
+    const plan = JSON.parse(buildCrosswordDefinition(left).plan);
+    expect([plan.rows, plan.cols]).toEqual([3, 4]);
+    expect(plan.clues.map((c: { row: number; col: number }) => [c.row, c.col])).toEqual([[0, 0], [0, 0]]);
+
+    const back = parseCrosswordDefinition(buildCrosswordDefinition(left).plan, buildCrosswordDefinition(left).solution)!;
+    expect([back.rows, back.cols]).toEqual([10, 10]);
+  });
+
+  it('board_WritesLettersNumbersAndConflicts', () => {
+    const { cells, numbers } = crosswordBoard({ ...FORM, entries: [...FORM.entries.slice(0, 2), { ...FORM.entries[2], answer: 'Xaf' }] });
+    expect(cells.get('0,0')).toEqual(expect.objectContaining({ letter: 'K', number: 1, entries: [0, 1] }));
+    expect(cells.get('0,3')!.letter).toBe('P');
+    expect(cells.get('2,0')!.conflict).toBe(true);
+    expect(numbers).toEqual([1, 1, 2]);
   });
 
   it('autoLayout_CrossesWordsAndProducesValidGrid', () => {

@@ -487,27 +487,67 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(Object.keys(JSON.parse(q.interactionSolution).lines)).toEqual(['w1', 'w2', 'w3']);
   });
 
-  it('çengel bulmaca: otomatik yerleştirir, önizlemede ızgara çizer ve çözümü ayrı kaydeder (#586)', async () => {
+  it('çengel bulmaca: hücre seçip kelime yazılır, harfler ızgaraya düşer, kayıtta boş kenarlar kırpılır (#586)', async () => {
     await setup({ testId: '9' });
     component.selectKind('crossword');
     fixture.detectChanges();
     expect(el('[data-testid="crossword-form"]')).not.toBeNull();
+    expect(component.crossword()!.rows).toBe(10);
+    expect(el('[data-testid="preview"]')).toBeNull();
 
-    component.setCrosswordEntry(0, { answer: 'kalp', clue: 'Kanı pompalar' });
-    component.setCrosswordEntry(1, { answer: 'kir', clue: 'Temizliğin zıttı' });
-    component.autoLayoutCrossword();
+    component.selectCrosswordCell(4, 3);
+    component.setCrosswordDraft({ clue: 'Kanı pompalar', answer: 'kalp' });
     fixture.detectChanges();
-    expect(component.crosswordUnplaced()).toEqual([]);
-    expect(el('[data-testid="preview"] app-question-canvas-crossword')).not.toBeNull();
-    expect(el('[data-testid="cw-auto-result"]')).not.toBeNull();
+    expect(el('[data-cell="4,6"]')!.textContent).toContain('P');
+    component.addCrosswordDraft();
+    fixture.detectChanges();
+    expect(el('[data-cell="4,3"]')!.textContent).toContain('K');
+
+    // KALP'in L'sinden aşağı: hücre yatay kelimenin içinde olduğundan yön kendiliğinden aşağı.
+    component.selectCrosswordCell(4, 5);
+    expect(component.cwDraft().dir).toBe('down');
+    component.setCrosswordDraft({ clue: 'Yanardağdan akar', answer: 'mav' });
+    expect(component.cwDraftProblem()).toBe('crossword.letterConflict');
+    component.setCrosswordDraft({ answer: 'lav' });
+    expect(component.cwDraftProblem()).toBeNull();
+    component.addCrosswordDraft();
+
+    // İlk hücreye tık kelimeyi düzenlemeye açar.
+    component.selectCrosswordCell(4, 3);
+    expect(component.cwEditing()).toBe(0);
+    component.addCrosswordLine('top');
+    expect(component.crossword()!.entries[0].row).toBe(5);
+    expect(component.cwCell()).toEqual({ row: 5, col: 3 });
+    expect(component.errors()).toEqual([]);
 
     component.save(false);
     const q = questions.saveBulk.mock.calls[0][0].questions[0];
     expect(q.interactionType).toBe('crossword');
     const plan = JSON.parse(q.interactionPlan);
-    expect(plan.clues.map((c: { dir: string }) => c.dir).sort()).toEqual(['across', 'down']);
+    expect([plan.rows, plan.cols]).toEqual([3, 4]);
+    expect(plan.clues.map((c: { dir: string; row: number; col: number }) => [c.dir, c.row, c.col])).toEqual([
+      ['across', 0, 0],
+      ['down', 0, 2],
+    ]);
     expect(q.interactionPlan).not.toContain('KALP');
-    expect(JSON.parse(q.interactionSolution)).toEqual({ answers: { k1: 'KALP', k2: 'KİR' } });
+    expect(JSON.parse(q.interactionSolution)).toEqual({ answers: { k1: 'KALP', k2: 'LAV' } });
+  });
+
+  it('çengel bulmaca: otomatik yerleştirme kelimeleri kesiştirir (#586)', async () => {
+    await setup({ testId: '9' });
+    component.selectKind('crossword');
+    component.selectCrosswordCell(0, 0);
+    component.setCrosswordDraft({ clue: 'Kanı pompalar', answer: 'kalp' });
+    component.addCrosswordDraft();
+    component.selectCrosswordCell(5, 0);
+    component.setCrosswordDraft({ clue: 'Temizliğin zıttı', answer: 'kir' });
+    component.addCrosswordDraft();
+    component.autoLayoutCrossword();
+    fixture.detectChanges();
+    expect(component.crosswordUnplaced()).toEqual([]);
+    expect(el('[data-testid="cw-auto-result"]')).not.toBeNull();
+    expect(component.crossword()!.entries.map((e) => e.dir).sort()).toEqual(['across', 'down']);
+    expect(component.errors()).toEqual([]);
   });
 
   it('çengel bulmaca: görselden Claude ile ızgara + ipuçlarını okur, cevaplar öğretmende (#586 dilim e)', async () => {
@@ -556,7 +596,7 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(request.model).toBe('claude-haiku-5-5');
     expect(request.blocks).toEqual([{ key: 'crossword', x: 0, y: 0, width: 400, height: 300, interactionType: 'crossword' }]);
     const cw = component.crossword()!;
-    expect(cw.rows).toBe(4);
+    expect(cw.rows).toBe(10);
     expect(cw.entries.map((e) => [e.answer, e.clue, e.dir, e.row, e.col, e.length])).toEqual([
       ['', 'Kanı pompalar', 'across', 0, 0, 4],
       ['', 'Temizliğin zıttı', 'down', 0, 2, 3],

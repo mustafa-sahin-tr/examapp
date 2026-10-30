@@ -42,15 +42,21 @@ import {
   cellToBlank,
 } from '../../models/activity-authoring-blanks';
 import {
+  CROSSWORD_EDITOR,
   CROSSWORD_FORM_LIMITS,
   CrosswordEntryForm,
+  CrosswordBoardCell,
   CrosswordForm,
+  CrosswordSide,
   answerLetters,
   autoLayout,
+  crosswordBoard,
   crosswordFormFromDraft,
   entryLength,
+  insertCrosswordLine,
+  padCrosswordForm,
 } from '../../models/activity-authoring-crossword';
-import { CROSSWORD } from '../../models/crossword';
+import { CROSSWORD, CrosswordDir, isCellChar } from '../../models/crossword';
 import { LabelingAiModel } from '../../models/labeling';
 import {
   WORD_SEARCH_FORM_LIMITS,
@@ -168,7 +174,7 @@ function roomArrow(cols: number, from: number, to: number): string {
   ] ?? '';
 }
 
-const INLINE_PREVIEW_KINDS: ReadonlySet<AuthoringKind> = new Set<AuthoringKind>(['matrix', 'order', 'mazeTree', 'mazeBoard', 'mazeRooms', 'mazeStones', 'logicGrid']);
+const INLINE_PREVIEW_KINDS: ReadonlySet<AuthoringKind> = new Set<AuthoringKind>(['matrix', 'order', 'mazeTree', 'mazeBoard', 'mazeRooms', 'mazeStones', 'logicGrid', 'crossword']);
 
 @Component({
   selector: 'app-activity-editor',
@@ -237,6 +243,76 @@ export class ActivityEditorComponent {
   readonly clockSet = computed(() => (this.form().kind === 'clockSet' ? (this.form() as ClockSetForm) : null));
   /** Otomatik yerleştirmenin son sonucu: kesiştirilemeyip ayrı satıra konan kelimeler (1 tabanlı). */
   readonly crosswordUnplaced = signal<number[] | null>(null);
+  /** Çengel bulmaca editöründe seçili hücre (0 tabanlı) ve düzenlenen kelime (null = seçili hücreden yeni kelime). */
+  readonly cwCell = signal<{ row: number; col: number } | null>(null);
+  readonly cwEditing = signal<number | null>(null);
+  readonly cwDraft = signal<{ dir: CrosswordDir; clue: string; answer: string }>({ dir: 'across', clue: '', answer: '' });
+  readonly crosswordEditorMax = CROSSWORD_EDITOR.maxSize;
+  readonly cwBoard = computed(() => {
+    const f = this.crossword();
+    return f ? crosswordBoard(f) : { cells: new Map<string, CrosswordBoardCell>(), numbers: [] as number[] };
+  });
+  /** Yeni kelimenin hücreleri (seçili hücreden yöne doğru) ve harfleri; ızgarada soluk gösterilir. */
+  readonly cwGhost = computed(() => {
+    const f = this.crossword();
+    const cell = this.cwCell();
+    const out = new Map<string, { letter: string; conflict: boolean }>();
+    if (!f || !cell || this.cwEditing() !== null) return out;
+    const d = this.cwDraft();
+    const word = answerLetters(d.answer);
+    const [dr, dc] = d.dir === 'across' ? [0, 1] : [1, 0];
+    word.forEach((ch, i) => {
+      const key = `${cell.row + dr * i},${cell.col + dc * i}`;
+      const existing = this.cwBoard().cells.get(key)?.letter;
+      out.set(key, { letter: ch, conflict: !!existing && existing !== ch });
+    });
+    return out;
+  });
+  /** Yeni kelime neden eklenemez (çeviri anahtarı) ya da null. */
+  readonly cwDraftProblem = computed<string | null>(() => {
+    const f = this.crossword();
+    const cell = this.cwCell();
+    if (!f || !cell) return 'crossword.selectCell';
+    const d = this.cwDraft();
+    const word = answerLetters(d.answer);
+    if (word.length < CROSSWORD_FORM_LIMITS.minLength) return 'crossword.needAnswer';
+    if (word.some((ch) => !isCellChar(ch))) return 'crossword.badChars';
+    if (!d.clue.trim()) return 'crossword.needClue';
+    const end = d.dir === 'across' ? cell.col + word.length : cell.row + word.length;
+    if (end > (d.dir === 'across' ? f.cols : f.rows)) return d.dir === 'across' ? 'crossword.noRoomRight' : 'crossword.noRoomDown';
+    if ([...this.cwGhost().values()].some((g) => g.conflict)) return 'crossword.letterConflict';
+    const { cells } = this.cwBoard();
+    const sameDir = [...this.cwGhost().keys()].some((key) => cells.get(key)?.entries.some((i) => f.entries[i].dir === d.dir));
+    if (sameDir) return 'crossword.sameDirTaken';
+    return null;
+  });
+  /** Izgara satırları: her hücrede harf, numara, durum. */
+  readonly cwRows = computed(() => {
+    const f = this.crossword();
+    if (!f) return [];
+    const { cells } = this.cwBoard();
+    const ghost = this.cwGhost();
+    const sel = this.cwCell();
+    const editing = this.cwEditing();
+    return Array.from({ length: f.rows }, (_, row) =>
+      Array.from({ length: f.cols }, (_, col) => {
+        const key = `${row},${col}`;
+        const cell = cells.get(key);
+        const g = ghost.get(key);
+        return {
+          row,
+          col,
+          used: !!cell,
+          letter: cell?.letter || g?.letter || '',
+          ghost: !!g && !cell?.letter,
+          conflict: !!cell?.conflict || !!g?.conflict,
+          number: cell?.number ?? null,
+          selected: sel?.row === row && sel?.col === col,
+          active: editing !== null && (cell?.entries.includes(editing) ?? false),
+        };
+      })
+    );
+  });
   /**
    * Issue #586 (dilim e): görselden Claude ile bulmaca çıkarma (`labeling/activity-structure`, yalnız Admin + QuestionTrainer;
    * izinli model yoksa düğme görünmez). Kayıtlı sonuç (aynı görsel + model) ücretsiz döner.
@@ -467,6 +543,7 @@ export class ActivityEditorComponent {
     if (kind === this.kind() || this.editingId()) return;
     this.form.set(emptyForm(kind, this.trueFalseLabels(), this.mazeDefaults()));
     this.crosswordUnplaced.set(null);
+    this.closeCrosswordCell();
     this.resetTableSelection();
     this.submitted.set(false);
   }
@@ -824,8 +901,65 @@ export class ActivityEditorComponent {
 
   // ---- Çengel bulmaca ----
 
-  setCrosswordSize(rows: number, cols: number): void {
-    this.updateCrossword((f) => ({ ...f, rows, cols }));
+  /** Kenara satır / sütun ekler; seçili hücre de kayar. */
+  addCrosswordLine(side: CrosswordSide): void {
+    const f = this.crossword();
+    if (!f) return;
+    const next = insertCrosswordLine(f, side);
+    if (next === f) return;
+    this.form.set(next);
+    const cell = this.cwCell();
+    if (cell) this.cwCell.set({ row: cell.row + (side === 'top' ? 1 : 0), col: cell.col + (side === 'left' ? 1 : 0) });
+  }
+
+  /**
+   * Hücreye tık: oradan başlayan kelime varsa onu düzenlemeye açar (her tık sıradakine geçer, sonuncudan sonra o hücreden yeni
+   * kelime); yoksa o hücreden yeni kelime başlatır. Yeni kelimenin yönü, hücreden yatay bir kelime geçiyorsa aşağı, değilse sağa.
+   */
+  selectCrosswordCell(row: number, col: number): void {
+    const f = this.crossword();
+    if (!f) return;
+    const starting = f.entries.flatMap((e, i) => (e.row === row && e.col === col ? [i] : []));
+    const editing = this.cwEditing();
+    this.cwCell.set({ row, col });
+    const pos = editing === null ? -1 : starting.indexOf(editing);
+    if (pos < starting.length - 1) {
+      this.cwEditing.set(starting[pos + 1]);
+      return;
+    }
+    const crossing = this.cwBoard().cells.get(`${row},${col}`)?.entries ?? [];
+    const dir: CrosswordDir = crossing.some((i) => f.entries[i].dir === 'across') ? 'down' : 'across';
+    this.cwEditing.set(null);
+    this.cwDraft.set({ dir, clue: '', answer: '' });
+  }
+
+  setCrosswordDraft(patch: Partial<{ dir: CrosswordDir; clue: string; answer: string }>): void {
+    this.cwDraft.update((d) => ({ ...d, ...patch }));
+  }
+
+  /** Yeni kelimeyi ekler (yer, yön ve harfler uygunsa); seçim kapanır. */
+  addCrosswordDraft(): void {
+    const f = this.crossword();
+    const cell = this.cwCell();
+    if (!f || !cell || this.cwDraftProblem() !== null) return;
+    const d = this.cwDraft();
+    this.crosswordUnplaced.set(null);
+    this.form.set({ ...f, entries: [...f.entries, { answer: d.answer.trim(), clue: d.clue.trim(), dir: d.dir, row: cell.row, col: cell.col }] });
+    this.closeCrosswordCell();
+  }
+
+  /** Listeden ya da ızgaradan bir kelimeyi düzenlemeye açar. */
+  editCrosswordEntry(index: number): void {
+    const entry = this.crossword()?.entries[index];
+    if (!entry) return;
+    this.cwCell.set({ row: entry.row, col: entry.col });
+    this.cwEditing.set(index);
+  }
+
+  closeCrosswordCell(): void {
+    this.cwCell.set(null);
+    this.cwEditing.set(null);
+    this.cwDraft.set({ dir: 'across', clue: '', answer: '' });
   }
 
   setCrosswordEntry(index: number, patch: Partial<CrosswordEntryForm>): void {
@@ -833,26 +967,20 @@ export class ActivityEditorComponent {
     this.updateCrossword((f) => ({ ...f, entries: f.entries.map((e, i) => (i === index ? { ...e, ...patch } : e)) }));
   }
 
-  /** Satır / sütun alanı 1 tabanlı gösterilir. */
-  setCrosswordPosition(index: number, field: 'row' | 'col', value: string): void {
-    const n = Number.parseInt(value, 10);
-    if (Number.isFinite(n)) this.setCrosswordEntry(index, { [field]: n - 1 });
-  }
-
-  addCrosswordEntry(): void {
-    this.updateCrossword((f) => ({ ...f, entries: [...f.entries, { answer: '', clue: '', dir: 'across', row: 0, col: 0 }] }));
-  }
-
   removeCrosswordEntry(index: number): void {
     this.updateCrossword((f) => ({ ...f, entries: f.entries.filter((_, i) => i !== index) }));
+    const editing = this.cwEditing();
+    if (editing === index) this.closeCrosswordCell();
+    else if (editing !== null && editing > index) this.cwEditing.set(editing - 1);
   }
 
   autoLayoutCrossword(): void {
     const f = this.crossword();
     if (!f) return;
     const result = autoLayout(f);
-    this.form.set(result.form);
+    this.form.set(padCrosswordForm(result.form));
     this.crosswordUnplaced.set(result.unplaced);
+    this.closeCrosswordCell();
   }
 
   crosswordLength(entry: CrosswordEntryForm): number {
@@ -916,6 +1044,7 @@ export class ActivityEditorComponent {
           }
           this.form.set(form);
           this.crosswordUnplaced.set(null);
+          this.closeCrosswordCell();
           if (result.instruction && !this.instruction().trim()) this.instruction.set(result.instruction);
           this.snackBar.open(this.t('crossword.extracted', { n: form.entries.length }), undefined, { duration: 4000 });
         },
@@ -1571,6 +1700,7 @@ export class ActivityEditorComponent {
     this.originalImage = null;
     this.form.set(emptyForm(kind, this.trueFalseLabels(), this.mazeDefaults()));
     this.crosswordUnplaced.set(null);
+    this.closeCrosswordCell();
     this.resetTableSelection();
     this.instruction.set('');
     this.image.set(null);

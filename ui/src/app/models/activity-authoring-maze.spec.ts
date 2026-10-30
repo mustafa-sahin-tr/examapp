@@ -16,7 +16,7 @@ import { mazeRoute, parseMazeSolution, parseMazeTreePlan } from './maze-tree';
 const exitName = (n: number) => `${n}. çıkış`;
 
 function filledTree(): MazeTreeForm {
-  const form = emptyMazeForm('mazeTree', ['D', 'Y'], exitName) as MazeTreeForm;
+  const form = resizeTree(emptyMazeForm('mazeTree', ['D', 'Y'], exitName) as MazeTreeForm, 3, exitName);
   return { ...form, nodes: form.nodes.map((n, i) => ({ text: `İfade ${i + 1}`, correct: (i % 2) as 0 | 1 })) };
 }
 

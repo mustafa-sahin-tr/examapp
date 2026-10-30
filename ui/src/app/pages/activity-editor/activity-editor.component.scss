@@ -55,6 +55,10 @@
   @media (max-width: 960px) {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  &--single {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .ae__card {
@@ -226,51 +230,6 @@
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
-}
-
-.ae__matrix-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding-bottom: 8px;
-  border-bottom: 1px dashed var(--ms-border-weak);
-}
-
-.ae__answers {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.ae__chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 36px;
-  padding: 0 12px;
-  border-radius: 18px;
-  border: 1px solid var(--ms-border-strong);
-  background: transparent;
-  color: var(--ms-text);
-  font: inherit;
-  cursor: pointer;
-
-  mat-icon {
-    font-size: 18px;
-    width: 18px;
-    height: 18px;
-  }
-
-  &.is-on {
-    border-color: var(--ms-success-border);
-    background: var(--ms-success-surface);
-    color: var(--ms-success-text);
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--ms-action-border-focus);
-    outline-offset: 2px;
-  }
 }
 
 .ae__image {
@@ -522,4 +481,416 @@
   vertical-align: middle;
   border-radius: 50%;
   border: 1px solid var(--ms-border-strong);
+}
+
+/* D/Y ağacı: önizlemedeki gibi ağaç; kolon sayısı = çıkış sayısı, her ifade altındaki çıkış kadar kolona yayılır. */
+.ae__tree-scroll {
+  overflow-x: auto;
+}
+
+.ae__tree {
+  display: grid;
+  grid-template-columns: repeat(var(--leaves), minmax(0, 1fr));
+  gap: 28px 8px;
+  padding: 4px 2px 8px;
+}
+
+.ae__tree-node,
+.ae__tree-exit {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* Bir alt düzeye inen bağlantı çizgisi. */
+.ae__tree-node::after {
+  content: '';
+  position: absolute;
+  left: 25%;
+  right: 25%;
+  bottom: -18px;
+  height: 12px;
+  border: 2px solid var(--ms-border-strong);
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+}
+
+.ae__tree-text {
+  width: 100%;
+  max-width: 260px;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 10px;
+  background: var(--ms-surface);
+  color: var(--ms-text-strong);
+  font: inherit;
+  text-align: center;
+  resize: vertical;
+
+  &::placeholder {
+    color: var(--ms-text-weak);
+  }
+
+  &:focus {
+    outline: 2px solid var(--primaryColor);
+    outline-offset: 1px;
+  }
+}
+
+.ae__tree-node.is-route .ae__tree-text,
+.ae__tree-exit.is-route .ae__tree-text {
+  border-color: var(--primaryColor);
+  border-width: 2px;
+}
+
+.ae__tree-branches {
+  display: flex;
+  width: 100%;
+  max-width: 260px;
+  justify-content: space-between;
+}
+
+.ae__tree-branch {
+  min-width: 40px;
+  padding: 2px 10px;
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 999px;
+  background: var(--ms-surface);
+  color: var(--ms-text-strong);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+
+  &.is-correct {
+    background: var(--ms-action-background);
+    border-color: var(--ms-action-background);
+    color: var(--ms-action-text-inverse);
+  }
+}
+
+.ae__tree-flag {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primaryColor);
+}
+
+/* D/Y matris: öğrencinin gördüğü tablo; başlıkta kolon adları, hücreye tık doğruyu işaretler. */
+.ae__mx-scroll {
+  overflow-x: auto;
+}
+
+.ae__mx {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    border: 1px solid var(--ms-border-weak);
+    padding: 4px;
+    vertical-align: middle;
+  }
+
+  th {
+    background: var(--ms-surface-medium);
+    color: var(--ms-text-strong);
+    font-weight: 600;
+  }
+}
+
+.ae__mx-corner {
+  text-align: left;
+  min-width: 200px;
+}
+
+.ae__mx-head {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 96px;
+}
+
+.ae__mx-input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: var(--ms-surface);
+  color: var(--ms-text-strong);
+  font: inherit;
+  text-align: center;
+
+  &--row {
+    text-align: left;
+  }
+
+  &::placeholder {
+    color: var(--ms-text-weak);
+  }
+
+  &:focus {
+    outline: 2px solid var(--primaryColor);
+    outline-offset: -1px;
+  }
+}
+
+.ae__mx-remove {
+  flex: none;
+  transform: scale(0.8);
+}
+
+.ae__mx-cell {
+  text-align: center;
+}
+
+.ae__mx-add {
+  width: 40px;
+  text-align: center;
+  border-color: transparent !important;
+  background: transparent !important;
+}
+
+.ae__mx-mark {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--ms-border-strong);
+  border-radius: 50%;
+  background: var(--ms-surface);
+  color: var(--ms-success-text);
+  cursor: pointer;
+
+  &.is-on {
+    border-color: var(--ms-success-border);
+    background: var(--ms-success-surface);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ms-action-border-focus);
+    outline-offset: 2px;
+  }
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* Işıklı pano: oyundaki gibi bitiş üstte, başlangıç altta; doğru kutu ampulle işaretlenir. */
+.ae__board {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 12px;
+  background: var(--ms-surface-weak);
+}
+
+.ae__board-end {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-weight: 700;
+  color: var(--ms-text-strong);
+
+  .ae__tree-text {
+    max-width: 220px;
+  }
+}
+
+.ae__board-add-row {
+  align-self: center;
+}
+
+.ae__board-row {
+  display: grid;
+  grid-template-columns: minmax(96px, 160px) 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border: 1px dashed var(--ms-border-weak);
+  border-radius: 10px;
+}
+
+.ae__board-label {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.ae__board-boxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 6px;
+}
+
+.ae__board-box {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 4px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+
+  &.is-correct {
+    border-color: var(--ms-warning-border);
+  }
+}
+
+.ae__board-box-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ae__board-add-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  border: 2px dashed var(--ms-border-weak);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ms-text-weak);
+  cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.5;
+  }
+}
+
+/* Odalı labirent: oyundaki ızgara; odalar arasındaki yuvaya yazılan cevap kapıyı açar (boş = duvar). */
+.ae__rooms-scroll {
+  overflow-x: auto;
+}
+
+.ae__rooms {
+  display: grid;
+  gap: 4px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 12px;
+  background: var(--ms-surface-weak);
+}
+
+.ae__room {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 2px solid var(--ms-border-strong);
+  border-radius: 10px;
+  background: var(--ms-surface-medium);
+
+  &.is-start {
+    border-color: var(--ms-action-background);
+  }
+
+  &.is-finish {
+    border-color: var(--ms-success-border);
+  }
+
+  .ae__tree-text {
+    max-width: none;
+  }
+}
+
+.ae__room-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ae__room-name {
+  flex: 1;
+  font-weight: 700;
+  color: var(--ms-text-strong);
+}
+
+.ae__room-flag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 50%;
+  background: var(--ms-surface);
+  color: var(--ms-text-weak);
+  cursor: pointer;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  &.is-on {
+    background: var(--ms-action-background);
+    border-color: var(--ms-action-background);
+    color: var(--ms-action-text-inverse);
+  }
+}
+
+.ae__room-answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ae__door {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+
+  &--diag {
+    flex-direction: row;
+  }
+}
+
+.ae__door-input {
+  width: 56px;
+  box-sizing: border-box;
+  padding: 4px;
+  border: 1px dashed var(--ms-border-weak);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ms-text-strong);
+  font: inherit;
+  font-weight: 600;
+  text-align: center;
+
+  &::placeholder {
+    color: var(--ms-text-weak);
+  }
+
+  &.is-open {
+    border-style: solid;
+    border-color: var(--ms-warning-border);
+    background: var(--ms-surface);
+  }
+
+  &:focus {
+    outline: 2px solid var(--primaryColor);
+    outline-offset: 1px;
+  }
+}
+
+.ae__door--diag .ae__door-input {
+  width: 44px;
 }

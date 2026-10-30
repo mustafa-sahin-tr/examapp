@@ -161,6 +161,102 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(el('[data-testid="preview"] app-question-canvas-match')).not.toBeNull();
   });
 
+  it('D/Y matris tablo olarak düzenlenir, hücreye tık doğruyu seçer; sıralama ve taşlarda da ayrı önizleme yok', async () => {
+    await setup({ testId: '9' });
+    component.selectKind('matrix');
+    fixture.detectChanges();
+    expect(el('[data-testid="matrix-table"]')).not.toBeNull();
+    expect(el('[data-testid="preview"]')).toBeNull();
+
+    (el('[data-cell="0:1"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el('[data-cell="0:1"]')?.getAttribute('aria-pressed')).toBe('true');
+
+    for (const kind of ['order', 'mazeStones'] as const) {
+      component.selectKind(kind);
+      fixture.detectChanges();
+      expect(el('[data-testid="preview"]')).toBeNull();
+    }
+    component.selectKind('classify');
+    fixture.detectChanges();
+    expect(el('[data-testid="preview"]')).not.toBeNull();
+  });
+
+  it('ışıklı pano oyundaki gibi yukarıdan aşağı, doğru kutu ampulle seçilir; ayrı önizleme yok', async () => {
+    await setup({ testId: '9' });
+    component.selectKind('mazeBoard');
+    fixture.detectChanges();
+    expect(el('[data-testid="maze-board-canvas"]')).not.toBeNull();
+    expect(el('[data-testid="preview"]')).toBeNull();
+    const before = component.mazeBoard()!.rows.length;
+
+    (el('[data-testid="board-add-row"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const rows = [...fixture.nativeElement.querySelectorAll('.ae__board-row')].map((r: Element) => Number(r.getAttribute('data-row')));
+    expect(rows[0]).toBe(before); // yeni satır bitişe en yakın, en üstte
+    expect(rows[rows.length - 1]).toBe(0);
+
+    (el(`[data-box="0:1"] .ae__tree-branch`) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(component.mazeBoard()!.rows[0].correct).toBe(1);
+  });
+
+  it('odalı labirent ızgarada: kapı yuvası yazınca kapı açılır, odada doğru kapı ve başlangıç / bitiş seçilir', async () => {
+    await setup({ testId: '9' });
+    component.selectKind('mazeRooms');
+    component.setRoomsSize(2, 2);
+    fixture.detectChanges();
+    expect(el('[data-testid="maze-rooms-canvas"]')).not.toBeNull();
+    expect(el('[data-testid="preview"]')).toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('.ae__room').length).toBe(4);
+
+    const f = component.mazeRooms()!;
+    const right = f.doors.findIndex((d) => d.a === 0 && d.b === 1);
+    const input = el(`[data-door="${right}"]`) as HTMLInputElement;
+    input.value = '24';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(component.mazeRooms()!.doors[right].label).toBe('24');
+
+    const chip = el('[data-room="0"] .ae__room-answers .ae__tree-branch') as HTMLButtonElement;
+    expect(chip.textContent).toContain('→ 24');
+    chip.click();
+    fixture.detectChanges();
+    expect(component.mazeRooms()!.rooms[0].answer).toBe(right);
+
+    (el('[data-room="3"] .ae__room-flag:last-of-type') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(component.mazeRooms()!.finish).toBe(3);
+  });
+
+  it('D/Y ağacı: tek ifadeyle başlar, düzey ekleyince ağaç büyür, ayrı önizleme yok, doğru çıkış vurgulanır', async () => {
+    await setup({ testId: '9' });
+    component.selectKind('mazeTree');
+    fixture.detectChanges();
+    expect(el('[data-testid="maze-tree-canvas"]')).not.toBeNull();
+    expect(el('[data-testid="preview"]')).toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('.ae__tree-node').length).toBe(1);
+    expect(fixture.nativeElement.querySelectorAll('.ae__tree-exit').length).toBe(2);
+
+    (el('[data-testid="tree-add-level"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.ae__tree-node').length).toBe(3);
+    expect(fixture.nativeElement.querySelectorAll('.ae__tree-exit').length).toBe(4);
+
+    // Kök Y (sağ), sağ çocuk D (sol) → soldan 3. çıkış (dizin 2).
+    component.setTreeCorrect(0, 1);
+    component.setTreeCorrect(2, 0);
+    fixture.detectChanges();
+    expect(component.treeExit()).toBe(2);
+    expect(el('[data-exit="2"]')?.classList).toContain('is-route');
+    expect([...component.treeRoute()]).toEqual([0, 2]);
+
+    (el('[data-testid="tree-remove-level"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.ae__tree-node').length).toBe(1);
+    expect((el('[data-testid="tree-remove-level"]') as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it('mantık tablosu: satır/kategori/çözümü kaydeder, önizlemede tabloyu çizer (#586)', async () => {
     await setup({ testId: '9' });
     component.selectKind('logicGrid');

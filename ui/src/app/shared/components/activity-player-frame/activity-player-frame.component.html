@@ -1,4 +1,11 @@
 <section class="apf" *transloco="let t; prefix: 'shared.activity.frame'">
+  <div class="apf__exit">
+    <button mat-button type="button" data-testid="exit" [disabled]="exitBusy()" aria-describedby="apf-exit-hint" (click)="exit.emit()">
+      <mat-icon>arrow_back</mat-icon>{{ t('exit') }}
+    </button>
+    <small id="apf-exit-hint" class="apf__exit-hint">{{ t('exitHint') }}</small>
+  </div>
+
   <header class="apf__head">
     <h1 class="apf__title">{{ title() }}</h1>
     <span class="apf__count" data-testid="item-count">{{ t('itemOf', { current: displayIndex() + 1, total: total() }) }}</span>

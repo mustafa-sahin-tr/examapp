@@ -14,7 +14,9 @@ import { translocoTestingModule } from '../../testing/transloco-testing';
       [currentIndex]="index()"
       [steps]="steps()"
       [instruction]="instruction()"
+      [exitBusy]="exitBusy()"
       (stepSelected)="selected.push($event)"
+      (exit)="exits = exits + 1"
     >
       <p class="html-stim">I have a <span class="gap"></span> and a dog.</p>
       <div activityFooter class="footer-slot">footer</div>
@@ -33,6 +35,8 @@ class HostComponent {
   ]);
   readonly instruction = signal<string | null>('Resimleri doğru kelimelerle eşleştir.');
   readonly selected: number[] = [];
+  readonly exitBusy = signal(false);
+  exits = 0;
 }
 
 describe('ActivityPlayerFrameComponent (#573)', () => {
@@ -68,19 +72,19 @@ describe('ActivityPlayerFrameComponent (#573)', () => {
   });
 
   it('stepper_LettersCurrentStepAndStatesAreNotColorOnly', () => {
-    expect(steps().map((s) => s.textContent?.replace(/check|close/g, '').trim())).toEqual(['a', 'b', 'c', 'd', 'e']);
+    expect(steps().map((s) => s.textContent?.replace(/check|close/g, '').trim())).toEqual(['1', '2', '3', '4', '5']);
     expect(steps()[1].getAttribute('aria-current')).toBe('step');
     expect(steps()[1].classList.contains('apf__step--current')).toBe(true);
     // Yanlış: ✗ ikonu + metinli aria etiketi (renk tek sinyal değil).
     expect(steps()[2].querySelector('mat-icon')?.textContent).toBe('close');
-    expect(steps()[2].getAttribute('aria-label')).toBe('Madde c: yanlış');
-    expect(steps()[3].getAttribute('aria-label')).toBe('Madde d: doğru');
-    expect(steps()[0].getAttribute('aria-label')).toBe('Madde a: cevaplandı');
-    expect(steps()[4].getAttribute('aria-label')).toBe('Madde e: boş');
+    expect(steps()[2].getAttribute('aria-label')).toBe('Madde 3: yanlış');
+    expect(steps()[3].getAttribute('aria-label')).toBe('Madde 4: doğru');
+    expect(steps()[0].getAttribute('aria-label')).toBe('Madde 1: cevaplandı');
+    expect(steps()[4].getAttribute('aria-label')).toBe('Madde 5: boş');
   });
 
   it('stepper_TitleExplainsChip_HiddenWhenSingleItem', () => {
-    expect(steps()[2].getAttribute('title')).toBe('Madde c: yanlış');
+    expect(steps()[2].getAttribute('title')).toBe('Madde 3: yanlış');
 
     fixture.componentInstance.steps.set([{ state: 'wrong' }]);
     fixture.componentInstance.index.set(0);
@@ -119,9 +123,21 @@ describe('ActivityPlayerFrameComponent (#573)', () => {
     expect(el().textContent).not.toMatch(/%|puan|XP/i);
   });
 
-  it('activityStepLabel_LettersThenNumbers', () => {
-    expect(activityStepLabel(0)).toBe('a');
-    expect(activityStepLabel(25)).toBe('z');
-    expect(activityStepLabel(26)).toBe('27');
+  it('activityStepLabel_NumbersLikeHeaderCounter', () => {
+    expect(activityStepLabel(0)).toBe('1');
+    expect(activityStepLabel(25)).toBe('26');
+  });
+
+  it('exit_EmitsAndDisablesWhileBusy_HintExplainsAnswersAreSaved', () => {
+    const host = fixture.componentInstance;
+    const exit = q('[data-testid="exit"]') as HTMLButtonElement;
+    expect(exit.textContent).toContain('Etkinliklerim');
+    expect(q('#apf-exit-hint')?.textContent).toContain('kaldığın yerden');
+    exit.click();
+    expect(host.exits).toBe(1);
+
+    host.exitBusy.set(true);
+    fixture.detectChanges();
+    expect(exit.disabled).toBe(true);
   });
 });

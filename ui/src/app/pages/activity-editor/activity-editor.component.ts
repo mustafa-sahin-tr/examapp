@@ -103,6 +103,7 @@ import { Question } from '../../models/question';
 import { AuthService } from '../../services/auth.service';
 import { LabelingService } from '../../services/labeling.service';
 import { QuestionService } from '../../services/question.service';
+import { TestService } from '../../services/test.service';
 import {
   ClassificationSelection,
   ClassificationSelectorComponent,
@@ -193,6 +194,7 @@ export class ActivityEditorComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly questionService = inject(QuestionService);
+  private readonly testService = inject(TestService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly transloco = inject(TranslocoService);
   private readonly auth = inject(AuthService);
@@ -340,6 +342,12 @@ export class ActivityEditorComponent {
     };
   });
 
+  /**
+   * Etkinliğe başlamış öğrenci sayısı: oturum madde listesini başlarken kopyalar, yeni madde yalnız bundan sonra başlayanlara
+   * görünür (bilinçli karar); öğretmen yeni maddeyi yazarken uyarılır.
+   */
+  readonly startedCount = signal(0);
+
   constructor() {
     this.load();
     this.loadAiModel();
@@ -353,6 +361,10 @@ export class ActivityEditorComponent {
     }
     this.loading.set(true);
     this.loadError.set(false);
+    this.testService.get(this.testId).subscribe({
+      next: (exam) => this.startedCount.set(exam?.instanceCount ?? 0),
+      error: () => this.startedCount.set(0),
+    });
     this.questionService.getAll(this.testId).subscribe({
       next: (questions) => {
         this.items.set(this.editableItems(questions));

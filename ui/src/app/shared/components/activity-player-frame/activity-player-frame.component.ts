@@ -11,9 +11,10 @@ export interface ActivityStep {
   state: ActivityStepState;
 }
 
-/** Adım etiketi: a, b, c … z, sonra 27, 28 … (adımlayıcı 26'dan uzun etkinlikte sayıya döner). */
+/** Adım etiketi: 1, 2, 3 … */
 export function activityStepLabel(index: number): string {
-  return index < 26 ? String.fromCharCode(97 + index) : String(index + 1);
+  // Başlıktaki "Madde n / N" ile aynı numara (eskiden a, b, c…).
+  return String(index + 1);
 }
 
 /**
@@ -39,8 +40,13 @@ export class ActivityPlayerFrameComponent {
   /** Geçerli maddenin yönergesi (yoksa sayfa yönergesi); boşsa kutu çizilmez. */
   readonly instruction = input<string | null>(null);
 
+  /** Çıkış sürerken (bekleyen kayıtlar yazılıyor) düğme pasif. */
+  readonly exitBusy = input(false);
+
   /** Adım / Önceki / Sonraki ile seçilen madde (0 tabanlı, sınırlar içinde). */
   readonly stepSelected = output<number>();
+  /** "← Etkinliklerim": cevaplar kayıtlı, etkinlik sonra kaldığı yerden sürer (sahibi kayıtları bekleyip listeye döner). */
+  readonly exit = output<void>();
 
   readonly total = computed(() => this.steps().length);
   readonly displayIndex = computed(() => Math.min(this.currentIndex(), Math.max(0, this.total() - 1)));

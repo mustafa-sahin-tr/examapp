@@ -36,12 +36,14 @@ import { AssignedWorksheet } from '../../models/assignment';
 import { AnswerChoice, QuestionRegion } from '../../models/draws';
 import {
   MatrixChoicePlanV1,
+  buildMatrixChoicePayload,
   isMatrixChoiceType,
   matrixHasAllCells,
   parseMatrixChoicePlan,
   parseMatrixChoiceSelections,
   parseMatrixChoiceSolution,
   selectionOf,
+  withSelection,
 } from '../../models/matrix-choice';
 import {
   SlotFillPlanV1,
@@ -57,12 +59,15 @@ import {
 } from '../../models/slot-fill';
 import {
   DragPlacePlanV1,
+  buildDragPlacePayload,
   cardsIn,
+  dragPlaceRowId,
   isDragPlaceType,
   parseDragPlacePlacements,
   parseDragPlacePlan,
   parseDragPlaceSolution,
   placementCount,
+  withCards,
 } from '../../models/drag-place';
 import { MatchPlanV1, isMatchType, openLefts, parseMatchPairs, parseMatchPlan, parseMatchSolution, rightOf } from '../../models/match';
 import {
@@ -364,6 +369,7 @@ export class ActivityPlayerComponent {
 
   readonly answers = signal<Record<number, ItemAnswer>>({});
   readonly results = signal<Record<number, ItemResult>>({});
+  readonly exiting = signal(false);
   /**
    * Issue #576: kontrolden sonra değişen sürükle-yerleştir / eşleştirme maddesinin son kontrol satırları. Sonuç (özet, adım
    * durumu) yine düşer; oynatıcı işaretleri satır id'siyle (`hedef:kart` / sol id) arar, böylece "Havuza geri al" sonrası
@@ -849,10 +855,69 @@ export class ActivityPlayerComponent {
   }
 
   /** "Yanlışları düzelt": ilk yanlış maddeye geçer ve içeriğe odaklar. */
+  /**
+   * "Yanlışları düzelt": D/Y (matris) ve sürükle-yerleştirde yanlış satırların seçimi / yanlış yerleştirilen kartlar geri alınır
+   * (kart havuza döner), doğrular yerinde kalır; sonra ilk yanlış maddeye gidilir. Diğer türler yalnız ilk yanlışa gider
+   * (kendi turlarında ele alınacak).
+   */
+  fixWrong(): void {
+    if (this.revealed() || this.finished() || this.contentLocked()) return;
+    const results = this.results();
+    // Hedef, cevaplar değişmeden (sonuçlar düşmeden) bulunur.
+    const firstWrong = this.firstWrongIndex();
+    for (const item of this.items()) {
+      const result = results[item.id];
+      if (result?.isCorrect !== false) continue;
+      const wrong = new Set(result.rows.filter((row) => !row.correct).map((row) => row.id));
+      if (wrong.size === 0) continue;
+      const payload = this.answers()[item.id]?.answerPayload ?? null;
+      const next = this.isMatrix(item)
+        ? this.withoutWrongMatrixRows(item, payload, wrong)
+        : this.isDragPlace(item)
+          ? this.withoutWrongPlacements(item, payload, wrong)
+          : null;
+      if (next !== null && next !== payload) this.updateAnswer(item, { selectedAnswerId: null, answerPayload: next });
+    }
+    this.panelCollapsed.set(true);
+    this.focusItem(firstWrong);
+  }
+
+  private withoutWrongMatrixRows(item: TestInstanceQuestion, payload: string | null, wrong: Set<string>): string | null {
+    const plan = this.matrixPlanFor(item);
+    if (!plan) return null;
+    let selections = parseMatrixChoiceSelections(payload, plan);
+    const answered = [...wrong].filter((rowId) => selectionOf(selections, rowId).length > 0);
+    if (answered.length === 0) return null;
+    answered.forEach((rowId) => (selections = withSelection(selections, rowId, [])));
+    return buildMatrixChoicePayload(selections);
+  }
+
+  private withoutWrongPlacements(item: TestInstanceQuestion, payload: string | null, wrong: Set<string>): string | null {
+    const plan = this.dragPlacePlanFor(item);
+    if (!plan) return null;
+    const placements = parseDragPlacePlacements(payload, plan);
+    let next = placements;
+    let removed = 0;
+    Object.keys(placements).forEach((targetId) => {
+      const cards = cardsIn(placements, targetId);
+      const kept = cards.filter((cardId) => !wrong.has(dragPlaceRowId(targetId, cardId)));
+      removed += cards.length - kept.length;
+      next = withCards(next, targetId, kept);
+    });
+    return removed > 0 ? buildDragPlacePayload(next, plan) : null;
+  }
+
   focusFirstWrong(): void {
     this.panelCollapsed.set(true);
+    this.focusItem(this.firstWrongIndex());
+  }
+
+  private firstWrongIndex(): number {
     const results = this.results();
-    const index = this.items().findIndex((item) => !this.isOpenText(item) && results[item.id]?.isCorrect === false);
+    return this.items().findIndex((item) => !this.isOpenText(item) && results[item.id]?.isCorrect === false);
+  }
+
+  private focusItem(index: number): void {
     if (index < 0) return;
     this.goTo(index);
     queueMicrotask(() => this.contentRef()?.nativeElement.focus());
@@ -1406,6 +1471,20 @@ export class ActivityPlayerComponent {
     this.activityLauncher.retake(this.instanceId(), this.instance()?.worksheetId, () => void this.load());
   }
 
+  /** Oynatıcıdan çıkış: bekleyen cevaplar yazılınca listeye döner; kayıt başarısızsa kalır (panel hatayı gösterir). */
+  async exit(): Promise<void> {
+    if (this.exiting()) return;
+    this.exiting.set(true);
+    try {
+      this.flushPlayers();
+      await this.flushSaves();
+    } finally {
+      this.exiting.set(false);
+    }
+    if (this.saveFailed()) return;
+    this.backToList();
+  }
+
   backToList(): void {
     void this.router.navigate(['/tests'], { queryParams: { type: 'activities' } });
   }
@@ -1904,7 +1983,8 @@ export class ActivityPlayerComponent {
    */
   private dragPlaceRows(item: TestInstanceQuestion, result: ItemResult | undefined, solution: ActivitySolution | null): ActivityResultRow[] {
     const plan = this.dragPlacePlanFor(item);
-    if (!plan) return [];
+    // Görselsiz (kutusuz hedefler: kova, sıra, boşluklu metin) kartlar ✓/✗'yi ve çözümü yerinde gösterir; panel listesi tekrar olurdu.
+    if (!plan || plan.targets.every((target) => !target.box)) return [];
     // "Kart n" numarası oynatıcıdaki karışık havuz sırasıyla aynı (tohum = madde id'si).
     const cardName = new Map(
       seededShuffle(plan.cards, `${item.id}`).map((c, i) => [c.id, c.label?.trim() || this.tr('rows.cardFallback', { n: i + 1 })])

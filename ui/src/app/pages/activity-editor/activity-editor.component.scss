@@ -130,6 +130,19 @@
   color: var(--ms-text-weak);
 }
 
+.ae__started {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--ms-warning-border);
+  border-radius: 8px;
+  background: var(--ms-warning-surface-weak);
+  color: var(--ms-warning-text);
+  font-size: 0.9rem;
+}
+
 .ae__error {
   margin: 0;
   color: var(--ms-danger-text-weak);

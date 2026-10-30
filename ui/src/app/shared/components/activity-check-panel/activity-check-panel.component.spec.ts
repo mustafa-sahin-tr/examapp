@@ -29,19 +29,19 @@ describe('ActivityCheckPanelComponent (#573)', () => {
   });
 
   it('blankItems_ShowNonBlockingWarning_CheckStaysEnabled', () => {
-    setup({ blankItems: ['c', 'e'] });
+    setup({ blankItems: ['3', '5'] });
 
     const warning = q('blank-warning');
     expect(warning?.getAttribute('role')).toBe('status');
-    expect(warning?.textContent).toContain('2 maddede boş yerleştirme var (c, e)');
+    expect(warning?.textContent).toContain('2 maddede boş yerleştirme var (madde 3, 5)');
     expect(warning?.textContent).toContain('Boş bırakılan satırlar boş sayılır');
     expect(btn('check')?.disabled).toBe(false);
   });
 
   it('blankKindGeneric_UsesNeutralWording', () => {
-    setup({ blankItems: ['a'], blankKind: 'generic' });
+    setup({ blankItems: ['1'], blankKind: 'generic' });
 
-    expect(q('blank-warning')?.textContent).toContain('1 maddede boş bırakılan yer var (a)');
+    expect(q('blank-warning')?.textContent).toContain('1 maddede boş bırakılan yer var (madde 1)');
     expect(q('blank-warning')?.textContent).not.toContain('yerleştirme');
   });
 
@@ -137,7 +137,7 @@ describe('ActivityCheckPanelComponent (#573)', () => {
   });
 
   it('revealed_InfoBandAndRestoreButton_NoCheckButton', () => {
-    setup({ checkCount: 1, revealed: true, blankItems: ['a'] });
+    setup({ checkCount: 1, revealed: true, blankItems: ['1'] });
     const restores: void[] = [];
     fixture.componentInstance.restore.subscribe(() => restores.push(undefined));
 

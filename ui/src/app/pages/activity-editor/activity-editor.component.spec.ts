@@ -9,6 +9,7 @@ import { ActivityEditorComponent } from './activity-editor.component';
 import { AuthService } from '../../services/auth.service';
 import { LabelingService } from '../../services/labeling.service';
 import { QuestionService } from '../../services/question.service';
+import { TestService } from '../../services/test.service';
 import { StudentService } from '../../services/student.service';
 import { SubjectService } from '../../services/subject.service';
 import { PassageKind } from '../../models/activity';
@@ -34,7 +35,7 @@ describe('ActivityEditorComponent (#590)', () => {
   let router: Router;
   let labeling: { getAiModels: Mock; activityStructure: Mock };
 
-  async function setup(query: Record<string, string>, list: unknown[] = [], trainer = false) {
+  async function setup(query: Record<string, string>, list: unknown[] = [], trainer = false, startedCount = 0) {
     labeling = {
       getAiModels: vi.fn().mockReturnValue(
         of([{ id: 'claude-haiku-5-5', displayName: 'Haiku', inputUsdPerMTok: 1, outputUsdPerMTok: 5, isDefault: true }])
@@ -58,6 +59,7 @@ describe('ActivityEditorComponent (#590)', () => {
       providers: [
         provideRouter([]),
         { provide: QuestionService, useValue: questions },
+        { provide: TestService, useValue: { get: vi.fn().mockReturnValue(of({ id: 7, instanceCount: startedCount })) } },
         { provide: AuthService, useValue: { hasRealmRole: vi.fn((role: string) => trainer && role === 'QuestionTrainer') } },
         { provide: LabelingService, useValue: labeling },
         { provide: StudentService, useValue: { loadGrades: vi.fn().mockReturnValue(of([])) } },
@@ -103,6 +105,17 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(JSON.parse(q.interactionSolution)).toEqual({ r1: ['c1'] });
     expect(q.classification).toBeNull();
     expect(router.navigate).toHaveBeenCalledWith(['/test', 9]);
+  });
+
+  it('başlamış öğrenci varsa yeni madde yalnız yeni başlayanlara görünür uyarısı (#10 gezinti); yoksa uyarı yok', async () => {
+    await setup({ testId: '9', gradeId: '5' }, [], false, 3);
+    expect(component.startedCount()).toBe(3);
+    expect(el('[data-testid="started-warning"]')?.textContent).toContain('3 öğrenci');
+
+    fixture.destroy();
+    TestBed.resetTestingModule();
+    await setup({ testId: '9', gradeId: '5' });
+    expect(el('[data-testid="started-warning"]')).toBeNull();
   });
 
   it('seçilen konu kilitli sınıflandırma olarak gider', async () => {

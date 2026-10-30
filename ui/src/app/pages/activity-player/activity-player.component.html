@@ -43,7 +43,9 @@
           [currentIndex]="currentIndex()"
           [steps]="steps()"
           [instruction]="instruction()"
+          [exitBusy]="exiting()"
           (stepSelected)="goTo($event)"
+          (exit)="exit()"
         >
           @if (currentItem(); as item) {
             <!-- CRITICAL 1: kontrol/bitirme sürerken içerik salt okunur (inert: fare + klavye). -->
@@ -368,7 +370,7 @@
             (retry)="retryFailed()"
             (reveal)="reveal()"
             (restore)="restoreOwnAnswer()"
-            (fixWrong)="focusFirstWrong()"
+            (fixWrong)="fixWrong()"
             (finish)="finish()"
           />
         </app-activity-player-frame>

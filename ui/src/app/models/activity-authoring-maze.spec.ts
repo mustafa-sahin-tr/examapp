@@ -122,5 +122,8 @@ describe('activity-authoring-maze', () => {
     expect(
       validateMazeForm({ kind: 'mazeStones', stones: [{ text: 'a', marked: false }, { text: 'b', marked: false }] }).map((e) => e.key)
     ).toContain('mazeNoMarkedStone');
+    expect(
+      validateMazeForm({ kind: 'mazeStones', stones: [{ text: 'a', marked: true }, { text: 'b', marked: true }] }).map((e) => e.key)
+    ).toContain('mazeNoSteppableStone');
   });
 });

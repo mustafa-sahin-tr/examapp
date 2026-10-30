@@ -461,15 +461,18 @@
         "resultReached": "Doğru yoldan bitişe ulaştın.",
         "resultDeviated": "Yolun bir yerinde yanlış yöne saptın; işaretli yerden yeniden dene.",
         "resultIncomplete": "Yol yarım kaldı; bitişe kadar ilerle.",
-        "resultStonesOk": "Bütün taşları doğru işaretledin.",
-        "resultStonesWrong": "İşaretli taşa kadar doğru gittin; kırmızı çerçeveli taşa yeniden bak.",
-        "stonesHint": "Basılmaması gereken taşlara dokunarak işaretle.",
+        "resultStonesOk": "Doğru taşlara basarak karşıya geçtin!",
+        "resultStonesWrong": "Kırmızı çerçeveli taşa kadar doğru gittin; o taşa yeniden bak.",
+        "stonesHint": "Yalnız doğru bilgilerin yazdığı taşlara dokunarak karşıya geç; dokunduğun taşa basarsın. Yeniden dokunursan geri çekilirsin.",
         "routeShown": "Doğru yol yeşil kesik çizgiyle gösteriliyor.",
         "branchTrue": "D",
         "branchFalse": "Y",
         "exitName": "{{n}}. çıkış",
         "stepOk": "doğru",
-        "stoneWrong": "yanlış"
+        "stoneWrong": "yanlış",
+        "stoneStepped": "Bastın",
+        "riverNear": "Buradan başla",
+        "riverFar": "Karşı kıyı"
       },
       "crossword": {
         "passageAlt": "Okuma metni görseli",

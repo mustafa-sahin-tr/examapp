@@ -11,12 +11,13 @@ namespace ExamApp.Api.Services.Interactions;
 /// <item>Plan v1: <c>{version:1,type:"mazeTree",variant,start?,nodes:[{id,label?,end?,row?,col?}],edges:[{id,from,to,label?}]}</c>.
 /// Düğüm = ifade / oda / pano satırı / taş; kenar = seçenek (D/Y dalı, kapı, pano kutusu). Seçilen kenar öğrenciyi
 /// <c>to</c> düğümüne götürür; <c>rooms</c>'ta kapılar iki yönlüdür. <c>end</c> düğümü (çıkış, bitiş) yolu bitirir.
-/// <c>stones</c> yolsuzdur: kenar ve başlangıç yok, öğrenci taşları işaretler.</item>
+/// <c>stones</c> yolsuzdur: kenar ve başlangıç yok, öğrenci basılabilir taşlara basarak karşıya geçer.</item>
 /// <item>Çözüm (#570): yol varyantlarında <c>{"choices":{"n1":"e2",...}}</c> — düğüm başına doğru kenar (rota dışı düğümler de
 /// olabilir: ağaçta her ifadenin doğrusu); rota = başlangıçtan seçimleri izleyerek bir <c>end</c> düğümüne varan yol.
-/// <c>stones</c>: <c>{"marked":["s2",...]}</c> — işaretlenmesi gereken taşlar.</item>
+/// <c>stones</c>: <c>{"marked":["s2",...]}</c> — basılmaması gereken taşlar (öğretmenin «Basılmaz»ı).</item>
 /// <item>Öğrenci payload'u: yol varyantlarında <c>{version:1,type:"mazeTree",path:["e1","e4"]}</c> (başlangıçtan seçilen
-/// kenarlar, kesintisiz; <c>end</c>'den sonra adım yok); <c>stones</c>'ta <c>{version:1,type:"mazeTree",marked:["s1"]}</c>.</item>
+/// kenarlar, kesintisiz; <c>end</c>'den sonra adım yok); <c>stones</c>'ta <c>{version:1,type:"mazeTree",stepped:["s1"]}</c> —
+/// öğrencinin bastığı taşlar; taş doğru ⇔ basılmaması gerekenlerden değilse basılmış, öyleyse basılmamış.</item>
 /// </list>
 /// Yol kontrolü ilk sapmada durur: satırlar = öğrencinin geçtiği düğümler (sapma düğümü yanlış), toplam = rota uzunluğu, doğru ⇔
 /// rotanın sonuna varıldı. Geri bildirim <c>{"rows":[{id,correct}],"status":"reached|deviated|incomplete","at"}</c> yalnız
@@ -80,8 +81,8 @@ public sealed class MazeTreeGrader : IInteractionGrader
             return false;
 
         if (maze.IsStones)
-            return answer.Path == null && answer.Marked!.All(maze.Nodes.ContainsKey);
-        return answer.Marked == null && TryWalk(maze, answer.Path!, out _);
+            return answer.Path == null && answer.Stepped!.All(maze.Nodes.ContainsKey);
+        return answer.Stepped == null && TryWalk(maze, answer.Path!, out _);
     }
 
     /// <summary>Adımsız / işaretsiz payload = cevap yok → null.</summary>
@@ -116,7 +117,7 @@ public sealed class MazeTreeGrader : IInteractionGrader
 
     /// <summary>
     /// issue #584: yol varyantlarında öğe = rotadaki karar düğümü (rota sırası), cevap = öğrencinin o düğümde seçtiği kenar (yalnız
-    /// ilk sapmaya kadar geçtiği düğümler; sonrası cevapsız). Taşlarda öğe = taş, cevap = işaretli / işaretsiz.
+    /// ilk sapmaya kadar geçtiği düğümler; sonrası cevapsız). Taşlarda öğe = taş, cevap = basıldı / basılmadı.
     /// </summary>
     public IReadOnlyList<InteractionItemResponse> Analyze(InteractionGradeInput input)
     {
@@ -128,14 +129,14 @@ public sealed class MazeTreeGrader : IInteractionGrader
         {
             if (!TryReadMarkedSolution(input.Solution, maze, out var expected))
                 return [];
-            var marked = answer.Marked?.ToHashSet(StringComparer.Ordinal);
+            var stepped = answer.Stepped?.ToHashSet(StringComparer.Ordinal);
             return maze.Order.Select((id, i) =>
             {
-                var isMarked = marked?.Contains(id);
+                var isStepped = stepped?.Contains(id);
                 return new InteractionItemResponse(id, LabelOf(maze.Nodes[id], i),
-                    marked != null && isMarked == expected.Contains(id),
-                    marked == null ? null : isMarked == true ? "marked" : "unmarked",
-                    marked == null ? null : isMarked == true ? "✓" : "–");
+                    stepped != null && isStepped != expected.Contains(id),
+                    stepped == null ? null : isStepped == true ? "stepped" : "skipped",
+                    stepped == null ? null : isStepped == true ? "✓" : "–");
             }).ToList();
         }
 
@@ -191,8 +192,9 @@ public sealed class MazeTreeGrader : IInteractionGrader
                         || !maze.Nodes.ContainsKey(id) || !seen.Add(id))
                         return false;
                 }
-                // Hiç işaretsiz çözüm çözülemezdi: işaretsiz cevap boş cevaptır (Normalize → null).
-                return seen.Count > 0;
+                // En az bir basılmaz ve en az bir basılır taş: hepsi basılmaz olsaydı doğru cevap "hiç basmamak" olurdu, o da boş
+                // cevaptır (Normalize → null); hiç basılmazsız taş da kuralsız olurdu.
+                return seen.Count > 0 && seen.Count < maze.Nodes.Count;
             }
 
             if (!HasOnlyKeys(root, ["choices"]) || !root.TryGetProperty("choices", out var choicesElement)
@@ -232,11 +234,11 @@ public sealed class MazeTreeGrader : IInteractionGrader
         public bool IsStones => Variant == VariantStones;
     }
 
-    private sealed record Answer(List<string>? Path, List<string>? Marked)
+    private sealed record Answer(List<string>? Path, List<string>? Stepped)
     {
         public static Answer Empty { get; } = new(null, null);
 
-        public bool IsEmpty => (Path?.Count ?? 0) == 0 && (Marked?.Count ?? 0) == 0;
+        public bool IsEmpty => (Path?.Count ?? 0) == 0 && (Stepped?.Count ?? 0) == 0;
     }
 
     private sealed record Step(string NodeId, string EdgeId, bool Correct);
@@ -304,10 +306,11 @@ public sealed class MazeTreeGrader : IInteractionGrader
     private static List<(string Id, bool Correct)> StoneRows(Maze maze, HashSet<string> expected, Answer answer)
     {
         // Boş cevap: hiçbir taş doğru sayılmaz ("hiçbir şey yapmamak" kısmen doğru görünmesin).
-        if (answer.Marked == null)
+        if (answer.Stepped == null)
             return maze.Order.Select(id => (id, false)).ToList();
-        var marked = answer.Marked.ToHashSet(StringComparer.Ordinal);
-        return maze.Order.Select(id => (id, marked.Contains(id) == expected.Contains(id))).ToList();
+        // expected = basılmaması gereken taşlar: taş doğru ⇔ basıldı XOR basılmamalı.
+        var stepped = answer.Stepped.ToHashSet(StringComparer.Ordinal);
+        return maze.Order.Select(id => (id, stepped.Contains(id) != expected.Contains(id))).ToList();
     }
 
     // ---- Okuma ----
@@ -657,8 +660,8 @@ public sealed class MazeTreeGrader : IInteractionGrader
     private static bool HasOnlyKeys(JsonElement obj, string[] allowed) => HasOnlyKeys(obj, allowed.ToHashSet(StringComparer.Ordinal));
 
     /// <summary>
-    /// Katı payload ayrıştırma: nesne, <c>type</c> = <see cref="Type"/>, varsa <c>version</c> = 1, ya <c>path</c> ya <c>marked</c> (string
-    /// id dizisi, id deseni); <c>marked</c>'ta tekrar yasak.
+    /// Katı payload ayrıştırma: nesne, <c>type</c> = <see cref="Type"/>, varsa <c>version</c> = 1, ya <c>path</c> ya <c>stepped</c> (string
+    /// id dizisi, id deseni); <c>stepped</c>'de tekrar yasak.
     /// </summary>
     private static bool TryParsePayload(string payload, out Answer answer)
     {
@@ -667,7 +670,7 @@ public sealed class MazeTreeGrader : IInteractionGrader
         {
             using var doc = JsonDocument.Parse(payload, StrictOptions);
             var root = doc.RootElement;
-            if (root.ValueKind != JsonValueKind.Object || !HasOnlyKeys(root, ["version", "type", "path", "marked"]))
+            if (root.ValueKind != JsonValueKind.Object || !HasOnlyKeys(root, ["version", "type", "path", "stepped"]))
                 return false;
             if (!root.TryGetProperty("type", out var type) || type.ValueKind != JsonValueKind.String
                 || !string.Equals(type.GetString(), Type, StringComparison.Ordinal))
@@ -677,10 +680,10 @@ public sealed class MazeTreeGrader : IInteractionGrader
                 return false;
 
             var hasPath = root.TryGetProperty("path", out var path);
-            var hasMarked = root.TryGetProperty("marked", out var marked);
-            if (hasPath == hasMarked)
+            var hasStepped = root.TryGetProperty("stepped", out var stepped);
+            if (hasPath == hasStepped)
                 return false;
-            if (!TryReadIds(hasPath ? path : marked, out var ids))
+            if (!TryReadIds(hasPath ? path : stepped, out var ids))
                 return false;
             if (hasPath)
             {

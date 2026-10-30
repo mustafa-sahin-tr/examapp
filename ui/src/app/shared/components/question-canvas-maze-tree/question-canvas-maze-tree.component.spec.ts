@@ -224,10 +224,10 @@ describe('QuestionCanvasMazeTreeComponent (#585)', () => {
   it('stones_ToggleMarks_AndShowPerStoneFeedback', () => {
     setup(STONES);
     click(node('s2'));
-    expect(emitted.at(-1)).toBe(JSON.stringify({ version: 1, type: 'mazeTree', marked: ['s2'] }));
+    expect(emitted.at(-1)).toBe(JSON.stringify({ version: 1, type: 'mazeTree', stepped: ['s2'] }));
     expect(node('s2').getAttribute('aria-pressed')).toBe('true');
     click(node('s2'));
-    expect(emitted.at(-1)).toBe(JSON.stringify({ version: 1, type: 'mazeTree', marked: [] }));
+    expect(emitted.at(-1)).toBe(JSON.stringify({ version: 1, type: 'mazeTree', stepped: [] }));
 
     fixture.componentRef.setInput('feedback', {
       rows: [

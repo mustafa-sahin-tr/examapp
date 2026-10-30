@@ -11,7 +11,7 @@ import {
   MazeNode,
   MazeTreePlanV1,
   boardRows,
-  buildMazeMarkedPayload,
+  buildMazeSteppedPayload,
   buildMazePathPayload,
   edgeTarget,
   mazeRoute,
@@ -132,8 +132,8 @@ export class QuestionCanvasMazeTreeComponent {
 
   /** Seçilen kenarlar (yol varyantları). */
   readonly path = signal<string[]>([]);
-  /** İşaretli taşlar. */
-  readonly marked = signal<string[]>([]);
+  /** Öğrencinin bastığı taşlar. */
+  readonly stepped = signal<string[]>([]);
 
   readonly rowPx = MAZE_TREE_ROW_PX;
   readonly roomRowPx = MAZE_ROOM_ROW_PX;
@@ -319,8 +319,13 @@ export class QuestionCanvasMazeTreeComponent {
     const plan = this._plan();
     return plan && plan.variant === 'stones' ? plan.nodes : [];
   });
-  readonly markedSet = computed(() => new Set(this.marked()));
-  readonly expectedMarked = computed(() => new Set(this._showSolution() ? this.solution().marked : []));
+  readonly steppedSet = computed(() => new Set(this.stepped()));
+  /** Çözümde basılacak taşlar: basılmaz olarak kaydedilmeyenler. */
+  readonly expectedStepped = computed(() => {
+    if (!this._showSolution()) return new Set<string>();
+    const unsafe = new Set(this.solution().marked);
+    return new Set(this.stones().filter((s) => !unsafe.has(s.id)).map((s) => s.id));
+  });
 
   readonly canUndo = computed(() => !this.readOnly() && this.path().length > 0);
 
@@ -345,7 +350,7 @@ export class QuestionCanvasMazeTreeComponent {
 
   toggleStone(id: string): void {
     if (this.readOnly()) return;
-    this.marked.update((marked) => (marked.includes(id) ? marked.filter((m) => m !== id) : [...marked, id]));
+    this.stepped.update((stepped) => (stepped.includes(id) ? stepped.filter((m) => m !== id) : [...stepped, id]));
     this.emit();
   }
 
@@ -361,7 +366,7 @@ export class QuestionCanvasMazeTreeComponent {
   private emit(): void {
     const plan = this._plan();
     if (!plan) return;
-    const payload = plan.variant === 'stones' ? buildMazeMarkedPayload(this.marked()) : buildMazePathPayload(this.path());
+    const payload = plan.variant === 'stones' ? buildMazeSteppedPayload(this.stepped()) : buildMazePathPayload(this.path());
     this.lastEmitted = payload;
     this.answerPayloadChange.emit(payload);
     this.answered.emit();
@@ -372,6 +377,6 @@ export class QuestionCanvasMazeTreeComponent {
     if (this.lastEmitted !== null && json === this.lastEmitted) return;
     const answer = parseMazeAnswer(json, this._plan());
     this.path.set(answer.path);
-    this.marked.set(answer.marked);
+    this.stepped.set(answer.stepped);
   }
 }

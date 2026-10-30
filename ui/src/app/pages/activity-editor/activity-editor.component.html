@@ -610,9 +610,11 @@
             <p class="ae__hint">{{ t('maze.stonesHint') }}</p>
             @for (stone of ms.stones; track $index; let si = $index) {
               <div class="ae__row" [attr.data-stone]="si">
-                <button mat-icon-button type="button" [attr.aria-pressed]="stone.marked"
-                  [attr.aria-label]="t('maze.markStone', { n: si + 1 })" (click)="toggleStoneMarked(si)">
-                  <mat-icon>{{ stone.marked ? 'water_drop' : 'circle' }}</mat-icon>
+                <button mat-stroked-button type="button" class="ae__stone-mark" [class.ae__stone-mark--on]="stone.marked"
+                  [attr.aria-pressed]="stone.marked" [attr.aria-label]="t('maze.markStone', { n: si + 1 })"
+                  (click)="toggleStoneMarked(si)">
+                  <mat-icon>{{ stone.marked ? 'block' : 'check_circle' }}</mat-icon>
+                  {{ t(stone.marked ? 'maze.stoneNoStep' : 'maze.stoneStep') }}
                 </button>
                 <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
                   <mat-label>{{ t('maze.stone', { n: si + 1 }) }}</mat-label>

@@ -160,18 +160,18 @@
 
     @case ('stones') {
       <div class="mz-river" data-testid="mz-stones">
-        <div class="mz-river__bank mz-river__bank--far"><mat-icon aria-hidden="true">home</mat-icon></div>
+        <div class="mz-river__bank mz-river__bank--far"><mat-icon aria-hidden="true">home</mat-icon>{{ t('riverFar') }}</div>
         <div class="mz-river__stones">
           @for (stone of stones(); track stone.id; let i = $index) {
-            <button type="button" class="mz-stone" [attr.data-node]="stone.id" [class.is-marked]="markedSet().has(stone.id)"
+            <button type="button" class="mz-stone" [attr.data-node]="stone.id" [class.is-stepped]="steppedSet().has(stone.id)"
               [class.is-ok]="stoneMarks().get(stone.id) === true" [class.is-bad]="stoneMarks().get(stone.id) === false"
-              [class.is-first-wrong]="deviatedAt() === stone.id" [class.is-expected]="expectedMarked().has(stone.id)"
-              [class.is-odd]="i % 2 === 1" [disabled]="readOnly()" [attr.aria-pressed]="markedSet().has(stone.id)"
+              [class.is-first-wrong]="deviatedAt() === stone.id" [class.is-expected]="expectedStepped().has(stone.id)"
+              [class.is-odd]="i % 2 === 1" [disabled]="readOnly()" [attr.aria-pressed]="steppedSet().has(stone.id)"
               (click)="toggleStone(stone.id)">
-              @if (markedSet().has(stone.id)) {
-                <mat-icon class="mz-stone__icon" aria-hidden="true">water_drop</mat-icon>
+              @if (steppedSet().has(stone.id)) {
+                <span class="mz-stone__badge"><mat-icon aria-hidden="true">directions_walk</mat-icon>{{ t('stoneStepped') }}</span>
               }
-              <span>{{ stone.label }}</span>
+              <span class="mz-stone__text">{{ stone.label }}</span>
               @if (stoneMarks().get(stone.id) === true) {
                 <mat-icon class="mz-stone__icon" aria-hidden="true">check</mat-icon><span class="mz-sr">{{ t('stepOk') }}</span>
               } @else if (stoneMarks().get(stone.id) === false) {
@@ -180,7 +180,7 @@
             </button>
           }
         </div>
-        <div class="mz-river__bank"><mat-icon aria-hidden="true">directions_walk</mat-icon></div>
+        <div class="mz-river__bank mz-river__bank--near"><mat-icon aria-hidden="true">directions_walk</mat-icon>{{ t('riverNear') }}</div>
       </div>
       <p class="mz-hint">{{ t('stonesHint') }}</p>
     }

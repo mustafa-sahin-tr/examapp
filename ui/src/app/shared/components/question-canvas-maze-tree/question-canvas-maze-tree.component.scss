@@ -367,52 +367,88 @@
 }
 
 // Irmak taşları: zikzak dizilen taşlar, karşı kıyı (ev) üstte, başlangıç (yürüyen) altta.
+// Irmak taşları bir sahne gibi çizilir: kıyılar, su ve taşlar temadan bağımsız sabit boya token'larıyla
+// (resim gibi; açık / koyu temada aynı görünür). Öğrenci basacağı taşlara dokunur; basılan taş "Bastın" taşır.
 .mz-river {
+  --river-water: color-mix(in srgb, var(--paint-blue) 70%, var(--paint-black));
+  --river-wave: color-mix(in srgb, var(--paint-blue) 45%, white);
+  --river-land: color-mix(in srgb, var(--paint-green) 75%, var(--paint-brown));
+  --river-stone: color-mix(in srgb, var(--paint-gray) 55%, white);
+  --river-stone-shade: color-mix(in srgb, var(--paint-gray) 70%, var(--paint-black));
+
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
   border-radius: 12px;
-  border: 1px solid var(--ms-info-border);
-  background: var(--ms-info-surface-weak);
+  overflow: hidden;
+  border: 1px solid var(--ms-border-weak);
 
   &__bank {
     display: flex;
+    align-items: center;
     justify-content: center;
-    color: var(--ms-info-text);
+    gap: 6px;
+    padding: 8px 12px;
+    background: var(--river-land);
+    color: white;
+    font: 700 0.9rem var(--paragraphFontFamily);
 
     mat-icon {
-      font-size: 32px;
-      width: 32px;
-      height: 32px;
+      font-size: 28px;
+      width: 28px;
+      height: 28px;
     }
   }
 
+  // Taş 1 başlangıç kıyısına en yakın: satırlar alttan üste dizilir (wrap-reverse), her satırda tek sıra solda.
   &__stones {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px 16px;
+    display: flex;
+    flex-wrap: wrap-reverse;
+    gap: 14px 28px;
+    padding: 34px 16px 18px;
+    background:
+      radial-gradient(ellipse 40px 6px at 20% 30%, color-mix(in srgb, var(--river-wave) 35%, transparent) 60%, transparent 62%),
+      radial-gradient(ellipse 50px 6px at 75% 65%, color-mix(in srgb, var(--river-wave) 30%, transparent) 60%, transparent 62%),
+      repeating-linear-gradient(170deg, transparent 0 22px, color-mix(in srgb, var(--river-wave) 18%, transparent) 22px 24px),
+      var(--river-water);
+    background-size: 160px 90px, 200px 110px, auto, auto;
   }
 }
 
 .mz-stone {
+  position: relative;
+  flex: 0 0 calc(50% - 14px);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-height: 52px;
-  padding: 8px 12px;
-  border-radius: 24px 18px 26px 16px;
-  border: 2px solid var(--ms-border-weak);
-  background: var(--ms-surface-strong);
-  color: var(--ms-text-strong);
-  font: 600 0.82rem var(--paragraphFontFamily);
+  gap: 4px;
+  min-height: 60px;
+  padding: 10px 14px;
+  border-radius: 46% 54% 42% 58% / 58% 46% 54% 42%;
+  border: 3px solid transparent;
+  background: radial-gradient(circle at 35% 30%, white -40%, var(--river-stone) 45%, var(--river-stone-shade) 120%);
+  box-shadow: 0 5px 0 var(--river-stone-shade), 0 9px 12px color-mix(in srgb, var(--paint-black) 45%, transparent);
+  color: var(--paint-black);
+  font: 600 0.85rem var(--paragraphFontFamily);
   text-align: center;
   overflow-wrap: anywhere;
   cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+
+  &:nth-child(3n + 1) {
+    border-radius: 58% 42% 55% 45% / 45% 55% 45% 55%;
+  }
+
+  &:nth-child(3n + 2) {
+    border-radius: 40% 60% 48% 52% / 55% 42% 58% 45%;
+  }
 
   &.is-odd {
-    transform: translateY(18px);
+    transform: translateY(-22px);
+  }
+
+  &:not(:disabled):hover {
+    filter: brightness(1.06);
   }
 
   &:disabled {
@@ -421,30 +457,55 @@
 
   &:focus-visible {
     outline: 3px solid var(--ms-action-border-focus);
-    outline-offset: 2px;
+    outline-offset: 3px;
   }
 
-  &.is-marked {
-    border-color: var(--ms-info-border);
-    background: var(--ms-info-surface);
-    color: var(--ms-info-text);
+  // Basılan taş: öne çıkar (ışık halkası), üstünde "Bastın". Henüz doğru / yanlış demez; renk kontrolden sonra gelir.
+  &.is-stepped {
+    background: radial-gradient(circle at 35% 30%, white -10%, color-mix(in srgb, var(--paint-yellow) 30%, var(--river-stone)) 50%, var(--river-stone-shade) 125%);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--paint-yellow) 70%, transparent), 0 5px 0 var(--river-stone-shade);
   }
 
   &.is-ok {
-    border-color: var(--ms-success-border);
+    border-color: var(--paint-green);
+
+    .mz-stone__icon {
+      color: var(--paint-green);
+    }
   }
 
   &.is-bad {
-    border-color: var(--ms-danger-border);
+    border-color: var(--paint-red);
+
+    .mz-stone__icon {
+      color: var(--paint-red);
+    }
   }
 
   &.is-first-wrong {
-    box-shadow: 0 0 0 4px var(--ms-danger-surface);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--paint-red) 55%, transparent);
   }
 
   &.is-expected {
-    outline: 3px dashed var(--ms-success-border);
-    outline-offset: 2px;
+    outline: 3px dashed var(--paint-green);
+    outline-offset: 3px;
+  }
+
+  &__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 8px 1px 4px;
+    border-radius: 999px;
+    background: var(--paint-black);
+    color: var(--paint-yellow);
+    font: 700 0.75rem var(--paragraphFontFamily);
+
+    mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
   }
 
   &__icon {

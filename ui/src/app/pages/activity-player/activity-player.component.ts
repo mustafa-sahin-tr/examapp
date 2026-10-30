@@ -1826,12 +1826,12 @@ export class ActivityPlayerComponent {
     }
     // Issue #583: açık uçlu maddede metin yok = boş (sözcük sınırı uyarısı oynatıcıda).
     if (this.isOpenText(item)) return isBlankOpenText(parseOpenTextAnswer(answer?.answerPayload));
-    // Issue #585: yol bitişe varmadı; taşlarda hiç işaret yok.
+    // Issue #585: yol bitişe varmadı; taşlarda hiç taşa basılmadı.
     if (this.isMazeTree(item)) {
       const plan = this.mazePlanFor(item);
       if (!plan) return false;
       const parsed = parseMazeAnswer(answer?.answerPayload, plan);
-      return plan.variant === 'stones' ? parsed.marked.length === 0 : !walkMaze(plan, parsed.path).finished;
+      return plan.variant === 'stones' ? parsed.stepped.length === 0 : !walkMaze(plan, parsed.path).finished;
     }
     // Issue #588: doğruya hiç kart konmadı (hangi kartın çeldirici olduğu öğrenciye gitmez).
     if (this.isNumberLine(item)) {
@@ -2354,13 +2354,14 @@ export class ActivityPlayerComponent {
     const edgeName = (id: string | null | undefined) => (id ? edgeOf(plan, id)?.label ?? id : this.tr('rows.empty'));
 
     if (plan.variant === 'stones') {
-      const marked = new Set(answer.marked);
-      const expected = solved ? new Set(solved.marked) : null;
-      const state = (on: boolean) => this.tr(on ? 'rows.mazeMarked' : 'rows.mazeUnmarked');
+      // Çözüm basılmaz taşları tutar; satır öğrencinin basıp basmadığını, çözüm de basılması gerekip gerekmediğini söyler.
+      const stepped = new Set(answer.stepped);
+      const unsafe = solved ? new Set(solved.marked) : null;
+      const state = (on: boolean) => this.tr(on ? 'rows.mazeStepped' : 'rows.mazeSkipped');
       return plan.nodes.map((stone) => ({
-        label: this.tr('rows.mazeStep', { name: nodeName(stone.id), content: state(marked.has(stone.id)) }),
+        label: this.tr('rows.mazeStone', { name: nodeName(stone.id), content: state(stepped.has(stone.id)) }),
         correct: marks.has(stone.id) ? marks.get(stone.id)! : null,
-        solution: expected ? state(expected.has(stone.id)) : null,
+        solution: unsafe ? state(!unsafe.has(stone.id)) : null,
       }));
     }
 

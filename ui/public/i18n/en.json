@@ -461,15 +461,18 @@
         "resultReached": "You reached the finish on the right path.",
         "resultDeviated": "You took a wrong turn somewhere; try again from the marked spot.",
         "resultIncomplete": "The path is unfinished; keep going to the finish.",
-        "resultStonesOk": "You marked every stone correctly.",
-        "resultStonesWrong": "You were right up to the marked stone; look again at the one with a red border.",
-        "stonesHint": "Tap the stones that must not be stepped on to mark them.",
+        "resultStonesOk": "You crossed by stepping on the right stones!",
+        "resultStonesWrong": "You were right up to the stone with the red border; look at that one again.",
+        "stonesHint": "Cross by tapping only the stones with true statements; you step on the stone you tap. Tap it again to step back.",
         "routeShown": "The correct path is shown with a green dashed line.",
         "branchTrue": "T",
         "branchFalse": "F",
         "exitName": "Exit {{n}}",
         "stepOk": "correct",
-        "stoneWrong": "wrong"
+        "stoneWrong": "wrong",
+        "stoneStepped": "Stepped",
+        "riverNear": "Start here",
+        "riverFar": "Other bank"
       },
       "crossword": {
         "passageAlt": "Reading passage image",

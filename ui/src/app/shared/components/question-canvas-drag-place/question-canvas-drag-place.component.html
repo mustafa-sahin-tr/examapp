@@ -110,7 +110,7 @@
                 @let incomplete = targetIncomplete()(target.id);
                 <span class="dp-blank" [class.is-incomplete]="incomplete" [class.is-pending]="pendingTarget() === target.id"
                   [class.is-filled]="cardsOf(target.id).length > 0"
-                  cdkDropList [id]="listId(target.id)" [cdkDropListData]="target.id"
+                  cdkDropList dpListInjector #blankList="dpListInjector" [id]="listId(target.id)" [cdkDropListData]="target.id"
                   [cdkDropListConnectedTo]="targetConnectedTo()" [cdkDropListEnterPredicate]="canEnter"
                   [cdkDropListSortingDisabled]="true" [cdkDropListDisabled]="locked()"
                   (cdkDropListDropped)="onDrop($event)" [attr.data-group]="target.id">
@@ -122,7 +122,7 @@
                       @if (incomplete) { <mat-icon class="dp-blank__warn" aria-hidden="true">priority_high</mat-icon> }
                     </button>
                   } @else {
-                    <ng-container *ngTemplateOutlet="placedCards; context: { $implicit: target, compact: true }" />
+                    <ng-container *ngTemplateOutlet="placedCards; context: { $implicit: target, compact: true }; injector: blankList.injector" />
                   }
                 </span>
               }
@@ -144,7 +144,7 @@
             @let incomplete = targetIncomplete()(target.id);
             <section class="dp-bucket" [class.is-full]="isFull(target)" [class.is-incomplete]="incomplete"
               [class.is-pending]="pendingTarget() === target.id"
-              cdkDropList [id]="groupListId(target)" [cdkDropListData]="target.id"
+              cdkDropList dpListInjector #groupList="dpListInjector" [id]="groupListId(target)" [cdkDropListData]="target.id"
               [cdkDropListConnectedTo]="targetConnectedTo()" [cdkDropListEnterPredicate]="canEnter"
               [cdkDropListSortingDisabled]="true" [cdkDropListDisabled]="locked()"
               (cdkDropListDropped)="onDrop($event)" [attr.data-group]="target.id">
@@ -166,7 +166,7 @@
                 }
               </button>
               <div class="dp-bucket__cards" (click)="onTarget(target, $event)">
-                <ng-container *ngTemplateOutlet="placedCards; context: { $implicit: target, compact: false }" />
+                <ng-container *ngTemplateOutlet="placedCards; context: { $implicit: target, compact: false }; injector: groupList.injector" />
                 @if (cardsOf(target.id).length === 0) {
                   <span class="dp-bucket__empty" aria-hidden="true">{{ t('dragPlace.dropHere') }}</span>
                 }

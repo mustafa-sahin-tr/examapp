@@ -19,7 +19,7 @@ describe('ActivitySummaryComponent (#573, #572)', () => {
     setup({ result: { correct: 8, total: 10 } });
 
     expect(el().textContent).toContain('Etkinlik bitti');
-    expect(q('summary-info')?.textContent?.trim()).toBe('8 / 10 doğru');
+    expect(q('summary-info')?.textContent?.trim()).toBe('10 cevap yerinden 8 doğru');
     expect(el().textContent).not.toMatch(/%|puan|XP/i);
   });
 

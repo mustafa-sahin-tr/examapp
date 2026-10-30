@@ -91,17 +91,27 @@
   }
 
   // Doğru: düz yeşil kenar; yanlış: kesik kırmızı kenar (renk tek sinyal değil, köşede ✓ / ✗ da var).
-  &.is-correct .sf-input,
-  &.is-correct .sf-fraction {
+  &.is-correct .sf-input {
     border-color: var(--ms-success-border);
     box-shadow: 0 0 0 2px var(--ms-success-border);
   }
 
-  &.is-wrong .sf-input,
-  &.is-wrong .sf-fraction {
+  &.is-wrong .sf-input {
     border-style: dashed;
     border-color: var(--ms-danger-border);
     box-shadow: 0 0 0 2px var(--ms-danger-border);
+  }
+
+  // Kesirde çerçeve yok: durum rengi pay / payda kutularına geçer (fraction-input bu değişkenleri okur).
+  &.is-correct .sf-fraction {
+    --fi-field-border: var(--ms-success-border);
+    --fi-field-ring: var(--ms-success-border);
+  }
+
+  &.is-wrong .sf-fraction {
+    --fi-field-border: var(--ms-danger-border);
+    --fi-field-border-style: dashed;
+    --fi-field-ring: var(--ms-danger-border);
   }
 }
 
@@ -150,10 +160,6 @@
   flex: 1 0 auto;
   min-width: 100%;
   height: 100%;
-  padding: 2px;
-  border: 2px solid var(--ms-action-border);
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--ms-surface) 92%, transparent);
 }
 
 .sf-input.is-not-number {
@@ -306,6 +312,10 @@
 
 .sf-root.is-activity .sf-slot--flow {
   height: 44px;
+
+  &.sf-slot--fraction {
+    height: auto;
+  }
 }
 
 .sf-flow {
@@ -385,15 +395,10 @@
   }
 }
 
-// Düzendeki kesir: alanların genişliği tarayıcının varsayılan input genişliğinden gelmesin (tablo hücresini aşıyordu).
+// Düzendeki kesir içeriği kadar yer kaplar (pay / payda kutuları sabit genişlikte).
 .sf-slot--flow .sf-fraction {
   flex: none;
-  width: 3.5em;
   min-width: 0;
-
-  &.sf-fraction--mixed {
-    width: 6em;
-  }
 }
 
 // ---- #586 (dilim d): şifre şeridi

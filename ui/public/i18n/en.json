@@ -917,7 +917,7 @@
         "finishing": "Finishing…",
         "finishLockedHint": "Check your answers once before finishing.",
         "blankWarning": "{{count}} items have empty placements (item {{items}}). Empty rows count as empty. You can still check.",
-        "summary": "{{correct}} / {{total}} correct",
+        "summary": "{{correct}} of {{total}} answer spots correct",
         "summaryFix": "Fix the wrong ones and check again.",
         "summaryAllCorrect": "All correct, great!",
         "staleNote": "You changed your answer after checking; you can check again.",
@@ -946,7 +946,7 @@
       },
       "summary": {
         "title": "Activity finished",
-        "info": "{{correct}} / {{total}} correct",
+        "info": "{{correct}} of {{total}} answer spots correct",
         "todayTitle": "Today",
         "todayLine": "{{activities}} activities · {{minutes}} min active time · {{streak}} days in a row",
         "badgeLine": "{{name}} badge: {{current}}/{{target}} activities",

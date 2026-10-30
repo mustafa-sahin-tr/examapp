@@ -93,7 +93,7 @@ describe('ActivityListComponent (#573)', () => {
     expect((cards[1].querySelector('.wcard__progress span') as HTMLElement).style.width).toBe('50%');
     // Tamamlanan: skor halkası/yüzde yok.
     expect(cards[2].querySelector('.wcard__ring')).toBeNull();
-    expect(cards[2].textContent).toContain('8 / 10 doğru');
+    expect(cards[2].textContent).toContain('10 cevap yerinden 8 doğru');
     expect(el().textContent).not.toMatch(/%|puan|XP/i);
   });
 

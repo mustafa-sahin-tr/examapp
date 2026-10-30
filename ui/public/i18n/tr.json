@@ -917,7 +917,7 @@
         "finishing": "Bitiriliyor…",
         "finishLockedHint": "Bitirmeden önce cevaplarını bir kez kontrol et.",
         "blankWarning": "{{count}} maddede boş yerleştirme var (madde {{items}}). Boş bırakılan satırlar boş sayılır. Yine de kontrol edebilirsin.",
-        "summary": "{{correct}} / {{total}} doğru",
+        "summary": "{{total}} cevap yerinden {{correct}} doğru",
         "summaryFix": "Yanlışları düzeltip yeniden kontrol edebilirsin.",
         "summaryAllCorrect": "Hepsi doğru, harika!",
         "staleNote": "Kontrolden sonra cevabını değiştirdin; yeniden kontrol edebilirsin.",
@@ -946,7 +946,7 @@
       },
       "summary": {
         "title": "Etkinlik bitti",
-        "info": "{{correct}} / {{total}} doğru",
+        "info": "{{total}} cevap yerinden {{correct}} doğru",
         "todayTitle": "Bugün",
         "todayLine": "{{activities}} etkinlik · {{minutes}} dk etkin süre · {{streak}} gün üst üste",
         "badgeLine": "{{name}} rozeti: {{current}}/{{target}} etkinlik",

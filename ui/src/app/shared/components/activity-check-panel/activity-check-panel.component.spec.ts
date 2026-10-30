@@ -50,7 +50,7 @@ describe('ActivityCheckPanelComponent (#573)', () => {
 
     const live = q('check-live');
     expect(live?.getAttribute('aria-live')).toBe('polite');
-    expect(q('check-summary')?.textContent).toContain('8 / 10 doğru');
+    expect(q('check-summary')?.textContent).toContain('10 cevap yerinden 8 doğru');
     expect(q('check-summary')?.textContent).toContain('Yanlışları düzeltip yeniden kontrol edebilirsin.');
     expect(btn('check')?.textContent).toContain('Yeniden kontrol et');
     expect(btn('fix-wrong')).not.toBeNull();
@@ -182,7 +182,7 @@ describe('ActivityCheckPanelComponent (#573)', () => {
       fixture.componentInstance.check.subscribe(check);
 
       expect(q('check-compact')).not.toBeNull();
-      expect(q('check-summary')?.textContent).toContain('6 / 15 doğru');
+      expect(q('check-summary')?.textContent).toContain('15 cevap yerinden 6 doğru');
       expect(el().querySelectorAll('[data-testid="result-row"]').length).toBe(0);
       expect(q('finish')).toBeNull();
       expect(btn('check')?.textContent).toContain('Yeniden kontrol et');

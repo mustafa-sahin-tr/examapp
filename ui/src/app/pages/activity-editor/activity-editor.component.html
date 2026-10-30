@@ -122,8 +122,10 @@
                           <input class="ae__mx-input" [value]="col" [attr.maxlength]="labelMax"
                             [attr.aria-label]="t('matrix.column', { n: ci + 1 })" [placeholder]="t('matrix.column', { n: ci + 1 })"
                             (input)="setColumn(ci, $any($event.target).value)" />
-                          <button mat-icon-button type="button" class="ae__mx-remove" [attr.aria-label]="t('remove')"
-                            [disabled]="m.columns.length <= 2" (click)="removeColumn(ci)"><mat-icon>close</mat-icon></button>
+                          @if (m.columns.length > 2) {
+                            <button mat-icon-button type="button" class="ae__mx-remove" [attr.aria-label]="t('remove')"
+                              (click)="removeColumn(ci)"><mat-icon>close</mat-icon></button>
+                          }
                         </div>
                       </th>
                     }
@@ -152,8 +154,10 @@
                         </td>
                       }
                       <td class="ae__mx-add">
-                        <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="m.rows.length <= 1"
-                          (click)="removeRow(ri)"><mat-icon>close</mat-icon></button>
+                        @if (m.rows.length > 1) {
+                          <button mat-icon-button type="button" [attr.aria-label]="t('remove')"
+                            (click)="removeRow(ri)"><mat-icon>close</mat-icon></button>
+                        }
                       </td>
                     </tr>
                   }
@@ -754,21 +758,45 @@
             </button>
 
             <span class="ae__label">{{ t('logicGrid.answer') }}</span>
-            @for (s of lg.subjects; track $index; let si = $index) {
-              <div class="ae__row ae__row--wrap" [attr.data-answer]="si">
-                <span class="ae__index">{{ s || t('logicGrid.subject', { n: si + 1 }) }}</span>
-                @for (category of lg.categories; track $index; let ci = $index) {
-                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
-                    <mat-label>{{ category.label || t('logicGrid.category', { n: ci + 1 }) }}</mat-label>
-                    <mat-select [value]="lg.answer[si][ci]" (selectionChange)="setLogicAnswer(si, ci, $event.value)">
+            <p class="ae__hint">{{ t('logicGrid.answerHint') }}</p>
+            <div class="ae__mx-scroll">
+              <table class="ae__mx ae__lg" data-testid="logic-answer-grid">
+                <thead>
+                  <tr>
+                    <th rowspan="2" class="ae__mx-corner">{{ lg.subjectLabel }}</th>
+                    @for (category of lg.categories; track $index; let ci = $index) {
+                      <th [attr.colspan]="category.options.length" class="ae__lg-cat">{{ category.label || t('logicGrid.category', { n: ci + 1 }) }}</th>
+                    }
+                  </tr>
+                  <tr>
+                    @for (category of lg.categories; track $index; let ci = $index) {
                       @for (o of category.options; track $index; let oi = $index) {
-                        <mat-option [value]="oi">{{ o || t('logicGrid.option', { n: oi + 1 }) }}</mat-option>
+                        <th class="ae__lg-opt" [class.ae__lg-first]="oi === 0">{{ o || t('logicGrid.option', { n: oi + 1 }) }}</th>
                       }
-                    </mat-select>
-                  </mat-form-field>
-                }
-              </div>
-            }
+                    }
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (s of lg.subjects; track $index; let si = $index) {
+                    <tr [attr.data-answer]="si">
+                      <td class="ae__lg-subject">{{ s || t('logicGrid.subject', { n: si + 1 }) }}</td>
+                      @for (category of lg.categories; track $index; let ci = $index) {
+                        @for (o of category.options; track $index; let oi = $index) {
+                          <td class="ae__mx-cell" [class.ae__lg-first]="oi === 0">
+                            <button type="button" class="ae__mx-mark" [class.is-on]="lg.answer[si][ci] === oi"
+                              [attr.aria-pressed]="lg.answer[si][ci] === oi" [attr.data-logic-cell]="si + ':' + ci + ':' + oi"
+                              [attr.aria-label]="(s || t('logicGrid.subject', { n: si + 1 })) + ' — ' + (o || t('logicGrid.option', { n: oi + 1 }))"
+                              (click)="setLogicAnswer(si, ci, lg.answer[si][ci] === oi ? null : oi)">
+                              @if (lg.answer[si][ci] === oi) { <mat-icon aria-hidden="true">check</mat-icon> }
+                            </button>
+                          </td>
+                        }
+                      }
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
 
             <span class="ae__label">{{ t('logicGrid.clues') }}</span>
             @for (clue of lg.clues; track $index; let qi = $index) {

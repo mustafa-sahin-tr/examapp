@@ -714,7 +714,7 @@
 
 .ae__board-row {
   display: grid;
-  grid-template-columns: minmax(96px, 160px) 1fr;
+  grid-template-columns: minmax(140px, 200px) 1fr;
   align-items: center;
   gap: 8px;
   padding: 6px;
@@ -893,4 +893,26 @@
 
 .ae__door--diag .ae__door-input {
   width: 44px;
+}
+
+/* Mantık tablosu çözümü: öğrencinin ızgarası; satırda kategori başına bir ✓. */
+.ae__lg {
+  .ae__lg-cat {
+    text-align: center;
+  }
+
+  .ae__lg-opt {
+    font-weight: 500;
+    font-size: 0.85rem;
+    text-align: center;
+  }
+
+  .ae__lg-first {
+    border-left: 2px solid var(--ms-border-strong);
+  }
+
+  .ae__lg-subject {
+    font-weight: 600;
+    color: var(--ms-text-strong);
+  }
 }

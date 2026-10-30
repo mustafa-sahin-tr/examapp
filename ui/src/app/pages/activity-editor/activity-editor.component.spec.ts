@@ -257,7 +257,7 @@ describe('ActivityEditorComponent (#590)', () => {
     expect((el('[data-testid="tree-remove-level"]') as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('mantık tablosu: satır/kategori/çözümü kaydeder, önizlemede tabloyu çizer (#586)', async () => {
+  it('mantık tablosu: satır/kategori/çözümü kaydeder, çözüm ızgarada birebir girilir (#586)', async () => {
     await setup({ testId: '9' });
     component.selectKind('logicGrid');
     fixture.detectChanges();
@@ -274,7 +274,17 @@ describe('ActivityEditorComponent (#590)', () => {
     component.setLogicAnswer(1, 0, 0);
     component.setLogicClue(0, 'Ali maviyi sevmez.');
     fixture.detectChanges();
-    expect(el('[data-testid="preview"] app-question-canvas-logic-grid')).not.toBeNull();
+    // Çözüm öğrencinin ızgarasında girilir; ayrı önizleme yok.
+    expect(el('[data-testid="logic-answer-grid"]')).not.toBeNull();
+    expect(el('[data-testid="preview"]')).toBeNull();
+    expect(el('[data-logic-cell="0:0:1"]')?.getAttribute('aria-pressed')).toBe('true');
+
+    // Birebir: Ayşe'ye Kırmızı verilince Ali ile yer değiştirir, sonra geri alınır.
+    (el('[data-logic-cell="1:0:1"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(component.logicGrid()!.answer.map((r) => r[0])).toEqual([0, 1]);
+    (el('[data-logic-cell="0:0:1"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
 
     component.save(false);
     const q = questions.saveBulk.mock.calls[0][0].questions[0];

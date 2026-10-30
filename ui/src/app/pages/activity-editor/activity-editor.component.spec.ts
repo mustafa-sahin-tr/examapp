@@ -161,6 +161,34 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(el('[data-testid="preview"] app-question-canvas-match')).not.toBeNull();
   });
 
+  it('D/Y ağacı: tek ifadeyle başlar, düzey ekleyince ağaç büyür, ayrı önizleme yok, doğru çıkış vurgulanır', async () => {
+    await setup({ testId: '9' });
+    component.selectKind('mazeTree');
+    fixture.detectChanges();
+    expect(el('[data-testid="maze-tree-canvas"]')).not.toBeNull();
+    expect(el('[data-testid="preview"]')).toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('.ae__tree-node').length).toBe(1);
+    expect(fixture.nativeElement.querySelectorAll('.ae__tree-exit').length).toBe(2);
+
+    (el('[data-testid="tree-add-level"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.ae__tree-node').length).toBe(3);
+    expect(fixture.nativeElement.querySelectorAll('.ae__tree-exit').length).toBe(4);
+
+    // Kök Y (sağ), sağ çocuk D (sol) → soldan 3. çıkış (dizin 2).
+    component.setTreeCorrect(0, 1);
+    component.setTreeCorrect(2, 0);
+    fixture.detectChanges();
+    expect(component.treeExit()).toBe(2);
+    expect(el('[data-exit="2"]')?.classList).toContain('is-route');
+    expect([...component.treeRoute()]).toEqual([0, 2]);
+
+    (el('[data-testid="tree-remove-level"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.ae__tree-node').length).toBe(1);
+    expect((el('[data-testid="tree-remove-level"]') as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it('mantık tablosu: satır/kategori/çözümü kaydeder, önizlemede tabloyu çizer (#586)', async () => {
     await setup({ testId: '9' });
     component.selectKind('logicGrid');

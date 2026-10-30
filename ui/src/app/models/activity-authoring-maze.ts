@@ -131,7 +131,7 @@ export type ExitName = (n: number) => string;
 export function emptyMazeForm(kind: MazeKind, branches: [string, string], exitName: ExitName): MazeForm {
   switch (kind) {
     case 'mazeTree':
-      return resizeTree({ kind, depth: 0, branches: [...branches], nodes: [], exits: [] }, 3, exitName);
+      return resizeTree({ kind, depth: 0, branches: [...branches], nodes: [], exits: [] }, 1, exitName);
     case 'mazeBoard':
       return {
         kind,
@@ -146,6 +146,13 @@ export function emptyMazeForm(kind: MazeKind, branches: [string, string], exitNa
 }
 
 /** Ağaç derinliğini değiştirir; genişlik öncelikli sıra sayesinde üst düzeyler korunur, çıkış adları yeniden numaralanır. */
+/** Doğru dalları izleyen rotanın vardığı çıkışın dizini (soldan, 0'dan). */
+export function treeCorrectExit(form: MazeTreeForm): number {
+  let i = 0;
+  for (let d = 0; d < form.depth; d++) i = 2 * i + 1 + (form.nodes[i]?.correct ?? 0);
+  return i - (2 ** form.depth - 1);
+}
+
 export function resizeTree(form: MazeTreeForm, depth: number, exitName: ExitName): MazeTreeForm {
   const d = Math.min(MAZE_FORM_LIMITS.maxDepth, Math.max(MAZE_FORM_LIMITS.minDepth, depth));
   const internal = 2 ** d - 1;

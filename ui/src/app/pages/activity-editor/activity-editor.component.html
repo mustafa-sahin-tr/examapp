@@ -23,7 +23,7 @@
       }
     </div>
   } @else {
-    <div class="ae__layout">
+    <div class="ae__layout" [class.ae__layout--single]="inlinePreview()">
       <section class="ae__card ae__form" [attr.aria-label]="t('formAria')">
         @if (items().length > 0) {
           <div class="ae__items" data-testid="editable-items">
@@ -411,14 +411,6 @@
         @if (mazeTree(); as mt) {
           <div class="ae__block" data-testid="maze-tree-form">
             <div class="ae__row ae__row--wrap">
-              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
-                <mat-label>{{ t('maze.depth') }}</mat-label>
-                <mat-select [value]="mt.depth" (selectionChange)="setTreeDepth($event.value)">
-                  @for (d of treeDepths; track d) {
-                    <mat-option [value]="d">{{ t('maze.depthOption', { n: d, count: 2 ** d - 1 }) }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
               @for (b of mt.branches; track $index; let bi = $index) {
                 <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
                   <mat-label>{{ t(bi === 0 ? 'maze.branchLeft' : 'maze.branchRight') }}</mat-label>
@@ -426,31 +418,45 @@
                 </mat-form-field>
               }
             </div>
-            @for (level of treeLevels(); track level.depth) {
-              <span class="ae__label">{{ t('maze.level', { n: level.depth + 1 }) }}</span>
-              @for (ni of level.indices; track ni) {
-                <div class="ae__row ae__row--wrap" [attr.data-node]="ni">
-                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
-                    <mat-label>{{ t('maze.statement', { path: treePath(ni) }) }}</mat-label>
-                    <input matInput [value]="mt.nodes[ni].text" [attr.maxlength]="mazeLabelMax"
-                      (input)="setTreeNode(ni, $any($event.target).value)" />
-                  </mat-form-field>
-                  <mat-button-toggle-group [value]="mt.nodes[ni].correct" [attr.aria-label]="t('maze.correctBranch')"
-                    (change)="setTreeCorrect(ni, $event.value)">
-                    <mat-button-toggle [value]="0">{{ mt.branches[0] }}</mat-button-toggle>
-                    <mat-button-toggle [value]="1">{{ mt.branches[1] }}</mat-button-toggle>
-                  </mat-button-toggle-group>
-                </div>
-              }
-            }
-            <span class="ae__label">{{ t('maze.exits') }}</span>
-            <div class="ae__maze-grid">
-              @for (x of mt.exits; track $index; let xi = $index) {
-                <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                  <mat-label>{{ t('maze.exit', { n: xi + 1 }) }}</mat-label>
-                  <input matInput [value]="x" [attr.maxlength]="mazeLabelMax" (input)="setTreeExit(xi, $any($event.target).value)" />
-                </mat-form-field>
-              }
+            <p class="ae__hint">{{ t('maze.treeHint') }}</p>
+            <div class="ae__tree-scroll">
+              <div class="ae__tree" data-testid="maze-tree-canvas" [style.--leaves]="mt.exits.length"
+                [style.min-width.px]="mt.exits.length * 132">
+                @for (level of treeLevels(); track level.depth) {
+                  @for (ni of level.indices; track ni) {
+                    <div class="ae__tree-node" [attr.data-node]="ni" [class.is-route]="treeRoute().has(ni)"
+                      [style.grid-row]="level.depth + 1" [style.grid-column]="'span ' + (2 ** (mt.depth - level.depth))">
+                      <textarea class="ae__tree-text" rows="2" [value]="mt.nodes[ni].text" [attr.maxlength]="mazeLabelMax"
+                        [attr.aria-label]="t('maze.statement', { path: treePath(ni) })" [placeholder]="t('maze.statementPlaceholder')"
+                        (input)="setTreeNode(ni, $any($event.target).value)"></textarea>
+                      <div class="ae__tree-branches" role="radiogroup" [attr.aria-label]="t('maze.correctBranch')">
+                        @for (b of mt.branches; track $index; let bi = $index) {
+                          <button type="button" class="ae__tree-branch" role="radio" [attr.aria-checked]="mt.nodes[ni].correct === bi"
+                            [class.is-correct]="mt.nodes[ni].correct === bi" [attr.title]="t('maze.markCorrect', { label: b })"
+                            (click)="setTreeCorrect(ni, $any(bi))">{{ b }}</button>
+                        }
+                      </div>
+                    </div>
+                  }
+                }
+                @for (x of mt.exits; track $index; let xi = $index) {
+                  <div class="ae__tree-exit" [attr.data-exit]="xi" [class.is-route]="xi === treeExit()"
+                    [style.grid-row]="mt.depth + 1">
+                    <input class="ae__tree-text" [value]="x" [attr.maxlength]="mazeLabelMax"
+                      [attr.aria-label]="t('maze.exit', { n: xi + 1 })" (input)="setTreeExit(xi, $any($event.target).value)" />
+                    @if (xi === treeExit()) {
+                      <span class="ae__tree-flag">{{ t('maze.correctExit') }}</span>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+            <div class="ae__row ae__row--wrap">
+              <button mat-stroked-button type="button" data-testid="tree-add-level" [disabled]="mt.depth >= treeMaxDepth"
+                (click)="setTreeDepth(mt.depth + 1)"><mat-icon>add</mat-icon>{{ t('maze.addLevel') }}</button>
+              <button mat-button type="button" data-testid="tree-remove-level" [disabled]="mt.depth <= 1"
+                (click)="setTreeDepth(mt.depth - 1)"><mat-icon>remove</mat-icon>{{ t('maze.removeLevel') }}</button>
+              <span class="ae__hint">{{ t('maze.depthOption', { n: mt.depth, count: 2 ** mt.depth - 1 }) }}</span>
             </div>
           </div>
         }
@@ -1207,6 +1213,7 @@
         </div>
       </section>
 
+      @if (!inlinePreview()) {
       <section class="ae__card ae__preview" [attr.aria-label]="t('preview.title')">
         <div class="ae__block-head">
           <h2>{{ t('preview.title') }}</h2>
@@ -1291,6 +1298,7 @@
         </div>
         <p class="ae__hint">{{ t('preview.hint') }}</p>
       </section>
+      }
     </div>
   }
 </div>

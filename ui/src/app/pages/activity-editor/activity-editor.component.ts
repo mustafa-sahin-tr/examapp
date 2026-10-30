@@ -99,6 +99,7 @@ import {
   otherRoom,
   resizeRooms,
   resizeTree,
+  treeCorrectExit,
   roomDoors,
 } from '../../models/activity-authoring-maze';
 import { QuestionRegion } from '../../models/draws';
@@ -210,7 +211,7 @@ export class ActivityEditorComponent {
   readonly cellHasBlank = cellHasBlank;
   readonly mazeLimits = MAZE_FORM_LIMITS;
   readonly mazeLabelMax = MAZE_FORM_LIMITS.maxLabel;
-  readonly treeDepths = [1, 2, 3, 4];
+  readonly treeMaxDepth = MAZE_FORM_LIMITS.maxDepth;
   readonly gridSizes = [2, 3, 4];
   readonly crosswordLimits = CROSSWORD_FORM_LIMITS;
   readonly wordSearchLimits = WORD_SEARCH_FORM_LIMITS;
@@ -316,6 +317,23 @@ export class ActivityEditorComponent {
       depth,
       indices: Array.from({ length: 2 ** depth }, (_, i) => 2 ** depth - 1 + i),
     }));
+  });
+  /** Form önizlemeyle aynı görünümdeyse (D/Y ağacı) ayrı önizleme kolonu yok. */
+  readonly inlinePreview = computed(() => this.form().kind === 'mazeTree');
+  /** Doğru dalları izleyen rota: üzerindeki ifadeler ve vardığı çıkış (ağaçta vurgulanır). */
+  readonly treeExit = computed(() => {
+    const f = this.mazeTree();
+    return f ? treeCorrectExit(f) : -1;
+  });
+  readonly treeRoute = computed(() => {
+    const f = this.mazeTree();
+    const route = new Set<number>();
+    if (!f) return route;
+    for (let i = 0, d = 0; d < f.depth; d++) {
+      route.add(i);
+      i = 2 * i + 1 + (f.nodes[i]?.correct ?? 0);
+    }
+    return route;
   });
   /** Metindeki boşluk sayısı (boşluk doldurma / kelime havuzu ipucu). */
   readonly blankCount = computed(() => {

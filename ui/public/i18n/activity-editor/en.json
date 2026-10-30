@@ -276,7 +276,13 @@
     "removeRow": "Remove row {{n}}",
     "removeColumn": "Remove column {{n}}",
     "addRow": "Add row",
-    "addColumn": "Add column"
+    "addColumn": "Add column",
+    "selectMode": "Select cells",
+    "makeBlank": "Make blank",
+    "removeBlank": "Remove blank",
+    "clearSelection": "Clear selection ({{n}})",
+    "focusHint": "Click a cell and press \"Make blank\": the whole cell becomes the answer; if you select part of the text, only that part. For several cells use \"Select cells\".",
+    "selectHint": "Click cells or drag to select (Space on the keyboard), then \"Make blank\" / \"Remove blank\". Turn \"Select cells\" off to type."
   },
   "wordPool": {
     "text": "Text with blanks",

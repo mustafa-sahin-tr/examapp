@@ -165,6 +165,7 @@
           @if (slot.input.entry === 'plain') {
             <!-- inputmode=text: iOS ondalık klavyesinde / % - ve birim harfleri yok. -->
             <input class="sf-input" type="text" inputmode="text" autocomplete="off" spellcheck="false"
+              [class.is-not-number]="notNumberIds().has(slot.id)" [attr.aria-invalid]="notNumberIds().has(slot.id) || null"
               [attr.maxlength]="limits.maxValueLength" [value]="valueFor(slot.id)"
               [attr.aria-label]="slotAria(slot, i)" [attr.data-slot-input]="slot.id"
               (input)="onInput(slot.id, $event)" (change)="onCommit(slot.id, $event)" />

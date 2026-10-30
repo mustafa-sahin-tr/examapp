@@ -2272,7 +2272,9 @@ button:disabled {
 
 
 /* ---- Styles from /mnt/data/app_extracted/app/pages/student-profile/student-profile.component.scss ---- */
-mat-select {
+/* Yalnız form alanı dışındaki çıplak mat-select (profil sınıfı, test listesi sıralama): mat-form-field içindekine ikinci
+   çerçeve çizmesin (gezinti notu C1 — atama dialog'u / kayıt formu "Sınıf"). */
+mat-select:not(.mat-mdc-form-field mat-select) {
   display: block;
   width: 100%;
   margin-top: 10px;
@@ -4014,6 +4016,11 @@ input:-webkit-autofill:focus {
   to {
     opacity: 1;
   }
+}
+
+/* Gezinti notu (C1): koyu temada dialog arka plandan ayrışsın — bütün Material dialog yüzeylerine ince çerçeve. */
+.mat-mdc-dialog-surface {
+  border: 1px solid var(--ms-border-weak);
 }
 
 .custom-dialog-container {

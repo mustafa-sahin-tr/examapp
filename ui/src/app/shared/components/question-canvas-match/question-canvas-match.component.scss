@@ -153,10 +153,13 @@
     background: color-mix(in srgb, var(--ms-action-border) 10%, var(--ms-surface));
   }
 
+  // Gezinti notu (E1): seçili öğe diğer adaylardan açıkça ayrılsın — dolu aksiyon zemini, kalın halka, hafif kalkış.
   &.is-selected {
     border-color: var(--ms-action-border-focus);
-    background: color-mix(in srgb, var(--ms-action-border-focus) 16%, var(--ms-surface));
-    box-shadow: 0 0 0 3px var(--ms-focus-ring);
+    background: var(--ms-action-background);
+    color: var(--ms-action-text-inverse);
+    box-shadow: 0 0 0 4px var(--ms-focus-ring), 0 4px 12px color-mix(in srgb, var(--ms-action-background) 45%, transparent);
+    transform: translateY(-1px);
   }
 
   &.is-example {
@@ -196,7 +199,9 @@
   }
 }
 
+// Seçim sürerken eşleşebilecek öğeler kesik çerçeveyle aday olarak görünür (seçili öğeyle aynı çerçeveyi almaz).
 .mt-root.is-picking .mt-item:not(:disabled):not(.is-selected) {
+  border-style: dashed;
   border-color: var(--ms-action-border-focus);
 }
 

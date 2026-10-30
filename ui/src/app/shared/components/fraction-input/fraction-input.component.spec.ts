@@ -50,6 +50,23 @@ describe('FractionInputComponent (#575)', () => {
         expect((fixture.nativeElement as HTMLElement).getAttribute('role')).toBe('group');
     });
 
+    it('lettersAreDropped_MinusKeptOnlyAtStartOfWholeAndNumerator', () => {
+        setup(true);
+        const typed: string[] = [];
+        fixture.componentInstance.valueInput.subscribe((v) => typed.push(v));
+        const [whole, num, den] = inputs();
+
+        whole.value = '-2a';
+        whole.dispatchEvent(new Event('input'));
+        num.value = 'üç3';
+        num.dispatchEvent(new Event('input'));
+        den.value = '-5x';
+        den.dispatchEvent(new Event('input'));
+
+        expect([whole.value, num.value, den.value]).toEqual(['-2', '3', '5']);
+        expect(typed.at(-1)).toBe('-2 3/5');
+    });
+
     it('externalValue_RestoresParts_PartialStateKeptWhenUnchanged', () => {
         setup(false, '5/8');
         expect(inputs().map((i) => i.value)).toEqual(['5', '8']);

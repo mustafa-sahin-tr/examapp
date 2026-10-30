@@ -84,6 +84,28 @@ export interface BlankDefinition {
 const AUTHOR_BLANK = /\[\[([^[\]]*)\]\]/g;
 const ALTERNATIVE_SEPARATOR = '|';
 
+/** Tablo hücresinde en az bir `[[...]]` boşluğu var mı. */
+export function cellHasBlank(cell: string): boolean {
+  return new RegExp(AUTHOR_BLANK.source).test(cell);
+}
+
+/**
+ * Hücreyi boşluk yapar: zaten boşluk içeriyorsa dokunmaz, yoksa kırpılmış metnin tamamı cevap olur (`7` → `[[7]]`, boş
+ * hücre → `[[]]`). Metnin kenarındaki boşluklar dışarıda kalır.
+ */
+export function cellToBlank(cell: string): string {
+  if (cellHasBlank(cell)) return cell;
+  const inner = cell.trim();
+  const lead = cell.slice(0, cell.length - cell.trimStart().length);
+  const trail = cell.slice(cell.trimEnd().length);
+  return `${lead}[[${inner}]]${trail}`;
+}
+
+/** Hücredeki boşlukları düz metne çevirir; alternatifli boşlukta ilk cevap kalır (`[[bir|1]] metre` → `bir metre`). */
+export function cellFromBlank(cell: string): string {
+  return cell.replace(AUTHOR_BLANK, (_, inner: string) => inner.split(ALTERNATIVE_SEPARATOR)[0].trim());
+}
+
 export const BLANK_TABLE_LIMITS = { maxRows: LAYOUT_LIMITS.maxTableRows, maxColumns: LAYOUT_LIMITS.maxTableColumns } as const;
 
 export function emptyBlankForm(kind: BlankKind): BlankForm {

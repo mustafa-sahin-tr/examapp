@@ -390,6 +390,31 @@
     font-weight: 700;
     background: var(--ms-surface-weak);
   }
+
+  // Cevap hücresi: tablo çizilmeden de hangi hücrelerin boşluk olduğu görülsün.
+  td.has-blank .ae__cell {
+    background: var(--ms-info-surface-weak);
+    color: var(--ms-info-text);
+  }
+
+  td.is-selected {
+    outline: 2px solid var(--ms-action-border-focus);
+    outline-offset: -2px;
+
+    .ae__cell {
+      background: color-mix(in srgb, var(--ms-action-border-focus) 22%, var(--ms-surface));
+    }
+  }
+}
+
+.ae__table-tools {
+  flex-wrap: wrap;
+  gap: 8px;
+
+  .is-active {
+    border-color: var(--ms-action-border-focus);
+    color: var(--ms-action-border-focus);
+  }
 }
 
 .ae__table-action {
@@ -409,6 +434,13 @@
 
   &:focus-visible {
     outline: 2px solid var(--ms-action-border-focus);
+  }
+
+  // Seçme kipi: hücre yazılmaz, tık / sürükleme seçer.
+  &.is-selecting {
+    cursor: pointer;
+    user-select: none;
+    touch-action: none;
   }
 }
 

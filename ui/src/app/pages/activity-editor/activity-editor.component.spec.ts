@@ -525,6 +525,62 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(JSON.parse(q.interactionSolution)).toEqual({ s1: { accept: ['Ankara'], optionalSuffixes: [] } });
   });
 
+  it('tablo: odaktaki hücreyi ya da hücrede seçili metni boşluk yapar, boşluktan çıkarır', async () => {
+    await setup({ testId: '9' });
+    component.selectKind('fillTable');
+    component.setTableHeader(false);
+    component.setCell(0, 0, '7');
+    component.setCell(0, 1, '5 cm');
+    fixture.detectChanges();
+
+    const first = el('[data-cell="0:0"]') as HTMLInputElement;
+    first.dispatchEvent(new Event('focus'));
+    fixture.detectChanges();
+    (el('[data-testid="table-make-blank"]') as HTMLButtonElement).click();
+    expect(component.fillTable()?.cells[0][0]).toBe('[[7]]');
+    expect(component.blankCount()).toBe(1);
+
+    const second = el('[data-cell="0:1"]') as HTMLInputElement;
+    second.dispatchEvent(new Event('focus'));
+    second.setSelectionRange(0, 1);
+    fixture.detectChanges();
+    (el('[data-testid="table-make-blank"]') as HTMLButtonElement).click();
+    expect(component.fillTable()?.cells[0][1]).toBe('[[5]] cm');
+
+    component.setCell(0, 1, '[[bir|1]] metre');
+    component.removeTableBlanks();
+    expect(component.fillTable()?.cells[0][1]).toBe('bir metre');
+  });
+
+  it('tablo: seçme kipinde sürükleyerek birden çok hücre seçer, başlığı atlar ve hepsini tek seferde boşluk yapar', async () => {
+    await setup({ testId: '9' });
+    component.selectKind('fillTable');
+    component.setTableHeader(true);
+    component.addTableRow();
+    component.setCell(1, 0, 'a');
+    component.setCell(2, 1, '[[b]]');
+    component.toggleTableSelectMode();
+    fixture.detectChanges();
+
+    expect((el('[data-cell="1:0"]') as HTMLInputElement).readOnly).toBe(true);
+    const down = new PointerEvent('pointerdown', { bubbles: true, cancelable: true });
+    el('[data-cell="0:0"]')!.dispatchEvent(down);
+    expect(component.tableSelection().size).toBe(0);
+
+    el('[data-cell="1:0"]')!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+    el('[data-cell="2:1"]')!.dispatchEvent(new PointerEvent('pointerenter'));
+    component.endTableDrag();
+    expect([...component.tableSelection()].sort()).toEqual(['1:0', '1:1', '2:0', '2:1']);
+
+    component.makeTableBlanks();
+    const cells = component.fillTable()!.cells;
+    expect([cells[1][0], cells[1][1], cells[2][0], cells[2][1]]).toEqual(['[[a]]', '[[]]', '[[]]', '[[b]]']);
+    expect(cells[0].every((c) => !c.includes('[['))).toBe(true);
+
+    component.removeTableColumn(1);
+    expect(component.tableSelection().size).toBe(0);
+  });
+
   it('kayıtlı kelime havuzu maddesini düzenlemek için forma açar', async () => {
     const plan = JSON.stringify({
       version: 1,

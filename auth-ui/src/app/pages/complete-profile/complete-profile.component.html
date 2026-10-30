@@ -143,7 +143,7 @@
 
           <div class="form-field">
             <label for="parentPhone">Veli Cep Telefonu</label>
-            <input id="parentPhone" type="tel" formControlName="parentPhone" autocomplete="off" inputmode="tel"
+            <input id="parentPhone" type="tel" formControlName="parentPhone" appPhoneMask autocomplete="off" inputmode="tel"
               placeholder="05xx xxx xx xx" [attr.maxlength]="parentPhoneMaxLength" />
             @if (hasError('parentPhone', 'required')) {
             <span class="field-error">Veli telefonu gerekli.</span>

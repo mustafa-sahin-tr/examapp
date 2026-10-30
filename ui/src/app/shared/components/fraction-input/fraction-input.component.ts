@@ -91,13 +91,16 @@ export class FractionInputComponent {
     this.valueCommit.emit(this.composed());
   }
 
+  /** Gezinti notu (B1): payda yalnız rakam, pay ve tam kısım rakam + baştaki eksi alır; harf ekrana da yazılmaz. */
   private syncFromDom(): void {
     const current = this.parts();
-    this.parts.set({
-      whole: this.mixed() ? (this.wholeEl()?.nativeElement.value ?? current.whole) : '',
-      numerator: this.numeratorEl()?.nativeElement.value ?? current.numerator,
-      denominator: this.denominatorEl()?.nativeElement.value ?? current.denominator,
-    });
+    const next: FractionParts = {
+      whole: this.mixed() ? signedDigits(this.wholeEl()?.nativeElement.value ?? current.whole) : '',
+      numerator: signedDigits(this.numeratorEl()?.nativeElement.value ?? current.numerator),
+      denominator: digitsOnly(this.denominatorEl()?.nativeElement.value ?? current.denominator),
+    };
+    this.parts.set(next);
+    this.writeDom(next);
   }
 
   private writeDom(parts: FractionParts): void {
@@ -113,4 +116,14 @@ export class FractionInputComponent {
     const base = this.ariaLabel();
     return base && part ? `${base}, ${part}` : base || part;
   }
+}
+
+function digitsOnly(value: string): string {
+  return value.replace(/[^0-9]/g, '');
+}
+
+function signedDigits(value: string): string {
+  const trimmed = value.trimStart();
+  const negative = trimmed.startsWith('-') || trimmed.startsWith('\u2212');
+  return (negative ? '-' : '') + digitsOnly(trimmed);
 }

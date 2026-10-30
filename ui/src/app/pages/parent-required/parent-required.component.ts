@@ -24,6 +24,7 @@ import {
   parentPhoneValidator,
 } from '../../shared/utils/parent-contact.util';
 import { describeParentInvitationError } from '../../shared/utils/parent-invitation-error';
+import { PhoneMaskDirective } from '../../shared/directives/phone-mask.directive';
 
 /** Başarılı davetten sonra (kısıtlı mod) gidilen ana sayfa. */
 export const PARENT_REQUIRED_DONE_URL = '/dashboard';
@@ -47,6 +48,7 @@ export const PARENT_REQUIRED_DONE_URL = '/dashboard';
     RouterLink,
     TranslocoDirective,
     TranslocoPipe,
+    PhoneMaskDirective,
   ],
   templateUrl: './parent-required.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,

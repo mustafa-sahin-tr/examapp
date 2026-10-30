@@ -276,7 +276,13 @@
     "removeRow": "{{n}}. satırı sil",
     "removeColumn": "{{n}}. kolonu sil",
     "addRow": "Satır ekle",
-    "addColumn": "Kolon ekle"
+    "addColumn": "Kolon ekle",
+    "selectMode": "Hücre seç",
+    "makeBlank": "Boşluk yap",
+    "removeBlank": "Boşluktan çıkar",
+    "clearSelection": "Seçimi temizle ({{n}})",
+    "focusHint": "Bir hücreye tıklayıp \"Boşluk yap\"a bas: hücrenin tamamı cevap olur; hücrede metnin bir kısmını seçersen yalnız o kısım. Birden çok hücre için \"Hücre seç\".",
+    "selectHint": "Hücrelere tıkla ya da sürükleyerek seç (klavyede Boşluk), sonra \"Boşluk yap\" / \"Boşluktan çıkar\". Yazmak için \"Hücre seç\"i kapat."
   },
   "wordPool": {
     "text": "Boşluklu metin",

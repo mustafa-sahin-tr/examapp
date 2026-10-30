@@ -1,6 +1,7 @@
 import { FormControl } from '@angular/forms';
 
 import {
+  formatParentPhoneInput,
   normalizeParentEmail,
   normalizeParentName,
   normalizeParentPhone,
@@ -53,5 +54,16 @@ describe('parent-contact.util', () => {
     expect(parentEmailValidator(new FormControl('nope'))).toEqual({ parentEmail: true });
     expect(parentPhoneValidator(new FormControl('0532 123 45 67'))).toBeNull();
     expect(parentPhoneValidator(new FormControl('123'))).toEqual({ parentPhone: true });
+  });
+
+  it('formatParentPhoneInput yazarken 05xx xxx xx xx biçimine sokar, fazlasını keser, +90 / 5 ile başlayanı çevirir', () => {
+    expect(formatParentPhoneInput('05326827412999')).toBe('0532 682 74 12');
+    expect(formatParentPhoneInput('053a2')).toBe('0532');
+    expect(formatParentPhoneInput('05326')).toBe('0532 6');
+    expect(formatParentPhoneInput('5326827412')).toBe('0532 682 74 12');
+    expect(formatParentPhoneInput('+90 532')).toBe('90532');
+    expect(formatParentPhoneInput('+90 (532) 682-74-12')).toBe('0532 682 74 12');
+    expect(formatParentPhoneInput('')).toBe('');
+    expect(normalizeParentPhone(formatParentPhoneInput('5326827412'))).toBe('+905326827412');
   });
 });

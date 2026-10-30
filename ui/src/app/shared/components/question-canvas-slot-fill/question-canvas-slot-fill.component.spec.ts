@@ -112,6 +112,23 @@ describe('QuestionCanvasSlotFillComponent (#575)', () => {
         expect(emitted.length).toBe(2);
     });
 
+    it('plainNumber_WordAnswerMarkedAfterLeavingBox_UnitAnswerAccepted', () => {
+        setup();
+
+        type(field('s1'), 'yedi', false);
+        expect(field('s1').classList).not.toContain('is-not-number');
+        field('s1').dispatchEvent(new Event('change'));
+        fixture.detectChanges();
+        expect(field('s1').classList).toContain('is-not-number');
+        expect(field('s1').getAttribute('aria-invalid')).toBe('true');
+        expect(el().querySelector('.sf-hint')?.textContent).toContain('Kutu 1: cevabı sayıyla yaz');
+
+        type(field('s1'), '5 cm');
+        expect(field('s1').classList).not.toContain('is-not-number');
+        type(field('s2'), 'Ankara');
+        expect(field('s2').classList).not.toContain('is-not-number');
+    });
+
     it('flush_EmitsPendingTypedValue_NoOpWhenNothingPending', () => {
         setup();
         type(field('s2'), 'Ankara', false);

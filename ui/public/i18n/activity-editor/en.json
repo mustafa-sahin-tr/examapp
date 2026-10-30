@@ -367,6 +367,7 @@
     "addWord": "Add word"
   },
   "logicGrid": {
+    "answerHint": "Tick the correct option of each category in every row; an option already used by another row swaps places.",
     "hint": "Enter the row group (e.g. Child: Ali, Ayşe, Can) and the categories (e.g. Colour); each category has as many options as there are rows. In the answer, give every row a different option from each category, then add the clues.",
     "subjectLabel": "Row group name (e.g. Child)",
     "subject": "Row {{n}}",

@@ -168,7 +168,7 @@ function roomArrow(cols: number, from: number, to: number): string {
   ] ?? '';
 }
 
-const INLINE_PREVIEW_KINDS: ReadonlySet<AuthoringKind> = new Set<AuthoringKind>(['matrix', 'order', 'mazeTree', 'mazeBoard', 'mazeRooms', 'mazeStones']);
+const INLINE_PREVIEW_KINDS: ReadonlySet<AuthoringKind> = new Set<AuthoringKind>(['matrix', 'order', 'mazeTree', 'mazeBoard', 'mazeRooms', 'mazeStones', 'logicGrid']);
 
 @Component({
   selector: 'app-activity-editor',
@@ -958,11 +958,18 @@ export class ActivityEditorComponent {
     this.updateLogicGrid((f) => removeLogicCategory(f, index));
   }
 
+  /** Kategoride eşleme birebir: seçenek başka satırdaysa o satırla yer değiştirir (onun eski seçimi buraya geçer). */
   setLogicAnswer(subject: number, category: number, option: number | null): void {
-    this.updateLogicGrid((f) => ({
-      ...f,
-      answer: f.answer.map((row, i) => (i === subject ? row.map((c, j) => (j === category ? option : c)) : row)),
-    }));
+    this.updateLogicGrid((f) => {
+      const previous = f.answer[subject][category];
+      const holder = option === null ? -1 : f.answer.findIndex((row, i) => i !== subject && row[category] === option);
+      return {
+        ...f,
+        answer: f.answer.map((row, i) =>
+          i === subject ? row.map((c, j) => (j === category ? option : c)) : i === holder ? row.map((c, j) => (j === category ? previous : c)) : row
+        ),
+      };
+    });
   }
 
   setLogicClue(index: number, value: string): void {

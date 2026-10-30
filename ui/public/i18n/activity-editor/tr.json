@@ -367,6 +367,7 @@
     "addWord": "Kelime ekle"
   },
   "logicGrid": {
+    "answerHint": "Her satırda her kategoriden doğru seçeneğe ✓ koy; bir seçenek başka satırdaysa yer değiştirir.",
     "hint": "Satırlara gelecek grubu (ör. Çocuk: Ali, Ayşe, Can) ve kategorileri (ör. Renk) yazın; her kategoride satır sayısı kadar seçenek olur. Çözümde her satıra her kategoriden farklı bir seçenek verin, ipuçlarını ekleyin.",
     "subjectLabel": "Satır grubu adı (ör. Çocuk)",
     "subject": "{{n}}. satır",

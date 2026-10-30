@@ -1,7 +1,10 @@
+// Ders kitabındaki kesir: iki küçük kare kutu, aralarında kutulardan taşan kalın kesir çizgisi; dış çerçeve yok.
+// Durum rengi (doğru / yanlış) dışarıdan --fi-field-border, --fi-field-border-style ve --fi-field-ring ile gelir.
 :host {
   display: inline-flex;
   align-items: center;
-  gap: 0.25em;
+  justify-content: center;
+  gap: 0.3em;
   box-sizing: border-box;
   // Kutu dardaysa bileşen kutudan taşar (kırpılmaz): rakamlar her zaman okunur kalsın.
   width: max-content;
@@ -12,31 +15,34 @@
 
 .fi-stack {
   display: inline-flex;
+  flex: none;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
   justify-content: center;
-  flex: 1 1 auto;
-  min-width: 1.8em;
   height: 100%;
-  gap: 0.1em;
+  gap: 0.15em;
+  padding: 0 0.3em;
 }
 
 .fi-bar {
   display: block;
-  height: 2px;
-  border-radius: 1px;
+  align-self: stretch;
+  height: 3px;
+  border-radius: 2px;
   background: var(--ms-text-strong);
 }
 
 .fi-field {
   box-sizing: border-box;
-  width: 100%;
+  // Sabit yükseklik: esneyen kutular boş alanı eşit paylaşmıyor, payda çizgiden uzak duruyordu.
+  width: 2.4em;
   min-width: 0;
-  min-height: 1.6em;
-  flex: 1 1 0;
-  padding: 0 0.2em;
-  border: 1px solid var(--ms-border);
-  border-radius: 4px;
+  height: 1.7em;
+  flex: none;
+  padding: 0 0.1em;
+  border: 2px var(--fi-field-border-style, solid) var(--fi-field-border, var(--ms-action-border));
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px var(--fi-field-ring, transparent);
   background: var(--ms-surface);
   color: var(--ms-text-strong);
   font: inherit;
@@ -53,10 +59,6 @@
   }
 
   &--whole {
-    flex: 0 0 auto;
-    width: 2.2em;
-    min-width: 1.6em;
-    height: 100%;
-    max-height: 2.4em;
+    height: 2em;
   }
 }

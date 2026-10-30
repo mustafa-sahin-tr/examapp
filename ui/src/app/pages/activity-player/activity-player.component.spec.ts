@@ -241,7 +241,7 @@ describe('ActivityPlayerComponent (#573)', () => {
       { instanceQuestionId: 101, selectedAnswerId: null, answerPayload: PLACED_Z1 },
       { instanceQuestionId: 102, selectedAnswerId: null, answerPayload: null },
     ]);
-    expect(q('check-summary')?.textContent).toContain('2 / 3 doğru');
+    expect(q('check-summary')?.textContent).toContain('3 cevap yerinden 2 doğru');
     const steps = Array.from(el().querySelectorAll('.apf__step'));
     expect(steps[0].getAttribute('aria-label')).toBe('Madde 1: yanlış');
 
@@ -368,7 +368,7 @@ describe('ActivityPlayerComponent (#573)', () => {
 
     const steps = Array.from(el().querySelectorAll('.apf__step'));
     expect(steps[0].getAttribute('aria-label')).toBe('Madde 1: doğru');
-    expect(q('check-summary')?.textContent).toContain('2 / 3 doğru');
+    expect(q('check-summary')?.textContent).toContain('3 cevap yerinden 2 doğru');
     expect((q('reveal') as HTMLButtonElement).disabled).toBe(false);
   });
 
@@ -570,7 +570,7 @@ describe('ActivityPlayerComponent (#573)', () => {
       ])
     );
 
-    expect(q('check-summary')?.textContent).toContain('1 / 2 doğru');
+    expect(q('check-summary')?.textContent).toContain('2 cevap yerinden 1 doğru');
     expect(q('fix-wrong')).not.toBeNull();
     expect(el().textContent).toContain('Kontrolden sonra cevabını değiştirdin');
   });
@@ -580,7 +580,7 @@ describe('ActivityPlayerComponent (#573)', () => {
     testServiceAssignments = [{ worksheetId: 9, kind: 1, isCompleted: true, firstCheckCorrectCount: 1, firstCheckTotalCount: 1 }];
     await create(instance({ status: TestStatus.Completed, checkCount: 2, firstCheckCorrectCount: 7, firstCheckTotalCount: 10 }));
 
-    expect(q('summary-info')?.textContent?.trim()).toBe('7 / 10 doğru');
+    expect(q('summary-info')?.textContent?.trim()).toBe('10 cevap yerinden 7 doğru');
   });
 
   it('s6_InProgressIgnoresFirstCheckCounts', async () => {
@@ -2036,7 +2036,7 @@ describe('ActivityPlayerComponent (#573)', () => {
       (q('fix-wrong') as HTMLButtonElement).click();
       await settle();
       expect(q('check-compact')).not.toBeNull();
-      expect(q('check-summary')?.textContent).toContain('0 / 2 doğru');
+      expect(q('check-summary')?.textContent).toContain('2 cevap yerinden 0 doğru');
 
       (q('expand') as HTMLButtonElement).click();
       await settle();
@@ -2127,7 +2127,7 @@ describe('ActivityPlayerComponent (#573)', () => {
       expect(row.textContent).toContain('Cevabın: 3 sözcük');
       expect(row.textContent).not.toContain('Yanlış');
       expect(q('ot-pending')?.textContent).toContain('Öğretmen değerlendirmesi bekliyor');
-      expect(q('check-summary')?.textContent).toContain('1 / 1 doğru');
+      expect(q('check-summary')?.textContent).toContain('1 cevap yerinden 1 doğru');
       expect(q('fix-wrong')).toBeNull();
       expect(el().textContent).not.toMatch(/%|puan|XP/i);
     });
@@ -2302,7 +2302,7 @@ describe('ActivityPlayerComponent (#573)', () => {
       expect(item?.textContent).toContain('Yeterli');
       expect(item?.querySelector('[data-testid="ot-feedback"]')?.textContent).toContain('Harika <b>iş</b>');
       expect(item?.querySelector('b b')).toBeNull();
-      expect(q('summary-info')?.textContent).toContain('1 / 1 doğru');
+      expect(q('summary-info')?.textContent).toContain('1 cevap yerinden 1 doğru');
     });
 
     it('finishWithoutReview_MarksAnsweredOpenTextPending', async () => {

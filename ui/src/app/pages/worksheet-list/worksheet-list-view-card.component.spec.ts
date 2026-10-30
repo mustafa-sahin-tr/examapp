@@ -195,7 +195,7 @@ describe('WorksheetListViewCardComponent', () => {
             fixture.detectChanges();
             const el = fixture.nativeElement as HTMLElement;
 
-            expect(el.querySelector('[data-testid="activity-first-check"]')?.textContent?.trim()).toBe('İlk kontrol: 8 / 10 doğru');
+            expect(el.querySelector('[data-testid="activity-first-check"]')?.textContent?.trim()).toBe('İlk kontrol: 10 cevap yerinden 8 doğru');
             expect(el.querySelector('.wcard__ring')).toBeNull();
             expect(el.textContent).not.toMatch(/%/);
         });

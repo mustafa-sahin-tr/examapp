@@ -170,7 +170,7 @@
               [attr.aria-label]="slotAria(slot, i)" [attr.data-slot-input]="slot.id"
               (input)="onInput(slot.id, $event)" (change)="onCommit(slot.id, $event)" />
           } @else {
-            <app-fraction-input class="sf-fraction" [class.sf-fraction--mixed]="slot.input.entry === 'mixed'" [mixed]="slot.input.entry === 'mixed'"
+            <app-fraction-input class="sf-fraction" [mixed]="slot.input.entry === 'mixed'"
               [value]="valueFor(slot.id)" [ariaLabel]="slotAria(slot, i)"
               [wholeLabel]="t('slotFill.whole')" [numeratorLabel]="t('slotFill.numerator')"
               [denominatorLabel]="t('slotFill.denominator')" [attr.data-slot-input]="slot.id"

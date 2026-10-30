@@ -153,7 +153,7 @@
     "primaryStartActivity": "Start",
     "primaryContinueActivity": "Continue",
     "primaryViewActivity": "View details",
-    "activityFirstCheck": "First check: {{correct}} / {{total}} correct",
+    "activityFirstCheck": "First check: {{correct}} of {{total}} answer spots correct",
     "tagRetaking": "Solving again"
   },
   "enhanced": {

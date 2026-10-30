@@ -37,6 +37,7 @@ import { AnswerChoice, QuestionRegion } from '../../models/draws';
 import {
   MatrixChoicePlanV1,
   isMatrixChoiceType,
+  matrixHasAllCells,
   parseMatrixChoicePlan,
   parseMatrixChoiceSelections,
   parseMatrixChoiceSolution,
@@ -1861,7 +1862,8 @@ export class ActivityPlayerComponent {
   /** Issue #574: matris satırları — satır adı + öğrencinin seçimi, ✓/✗ ve (çözüm açıkken) doğru kolonlar. */
   private matrixRows(item: TestInstanceQuestion, result: ItemResult | undefined, solution: ActivitySolution | null): ActivityResultRow[] {
     const plan = this.matrixPlanFor(item);
-    if (!plan) return [];
+    // Liste kipinde (görselsiz D/Y) her satır ✓/✗'yi ve çözümü kendi üstünde gösterir; panel listesi aynısının tekrarı olurdu.
+    if (!plan || !matrixHasAllCells(plan)) return [];
     const labels = new Map(plan.columns.map((c) => [c.id, c.label]));
     const selections = parseMatrixChoiceSelections(this.answers()[item.id]?.answerPayload, plan);
     const solved = solution ? parseMatrixChoiceSolution(solution.interactionSolution, plan) : {};

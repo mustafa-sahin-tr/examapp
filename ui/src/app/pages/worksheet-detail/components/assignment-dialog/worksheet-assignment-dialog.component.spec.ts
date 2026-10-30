@@ -104,6 +104,24 @@ describe('WorksheetAssignmentDialogComponent', () => {
         expect(result.request.gradeId).toBeUndefined();
     });
 
+    it('saat yerel saattir: 09:00 girilince istek yerel 09:00 olur; varsayılan başlangıç şimdi', () => {
+        const before = new Date();
+        const fixture = create({ isIndependentTutor: true });
+        const form = fixture.componentInstance['form'];
+        const [h, m] = form.controls.startTime.value.split(':').map(Number);
+        const shown = new Date(before);
+        shown.setHours(h, m, 0, 0);
+        expect(Math.abs(shown.getTime() - before.getTime())).toBeLessThan(2 * 60_000);
+
+        form.controls.studentId.setValue(11);
+        form.controls.startDate.setValue(new Date(2026, 9, 30));
+        form.controls.startTime.setValue('09:00');
+        fixture.componentInstance['submit']();
+
+        const request = (vi.mocked(dialogRef.close).mock.lastCall![0] as { request: { startAt: string } }).request;
+        expect(new Date(request.startAt).getTime()).toBe(new Date(2026, 9, 30, 9, 0).getTime());
+    });
+
     describe('boş öğrenci listesi (issue #223)', () => {
         const q = (fixture: {
             nativeElement: HTMLElement;

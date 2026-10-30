@@ -1080,9 +1080,8 @@ describe('ActivityPlayerComponent (#573)', () => {
       await settle();
 
       expect(activityService.check.mock.lastCall![1][0]).toEqual({ instanceQuestionId: 101, selectedAnswerId: null, answerPayload: both });
-      const rows = rowTexts();
-      expect(rows[0]).toContain('Kuşlar uçar.: Y');
-      expect(rows[1]).toContain('Satır 2: D');
+      // Liste kipinde satırlar ✓/✗'yi kendi üstünde gösterir; panelde tekrar liste yok.
+      expect(rowTexts()).toEqual([]);
       expect(el().querySelectorAll('.mc-list__row.is-wrong').length).toBe(1);
       expect(el().querySelectorAll('.mc-list__row.is-correct').length).toBe(1);
       expect(el().textContent).not.toMatch(/%|puan|XP/i);
@@ -1104,11 +1103,45 @@ describe('ActivityPlayerComponent (#573)', () => {
       await fixture.componentInstance.reveal();
       await settle();
 
-      const rows = fixture.componentInstance.currentRows();
-      expect(rows.map((r) => r.solution)).toEqual(['D', 'Y']);
-      expect(rows[1].label).toBe('Satır 2: boş');
+      expect(fixture.componentInstance.currentRows()).toEqual([]);
       expect(el().querySelector('[data-cell="r1:c1"]')?.getAttribute('aria-pressed')).toBe('true');
       expect(el().querySelector('[data-cell="r1:c2"]')?.getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('cellMode_PanelRowsShowSelectionWithArrowAndSolution', async () => {
+      const box = (y: number) => ({ x: 0, y, width: 10, height: 10 });
+      const cellPlan = JSON.stringify({
+        version: 1,
+        type: 'matrixChoice',
+        multiPerRow: false,
+        columns: [{ id: 'c1', label: 'D' }, { id: 'c2', label: 'Y' }],
+        rows: [
+          { id: 'r1', label: 'Kuşlar uçar.', cells: { c1: box(0), c2: box(0) } },
+          { id: 'r2', cells: { c1: box(20), c2: box(20) } },
+        ],
+      });
+      await create(
+        instance({ checkCount: 1 }, [
+          { answerPayload: ANSWER_R1, question: { ...instance().testInstanceQuestions[0].question, interactionType: 'matrixChoice', interactionPlan: cellPlan } },
+        ])
+      );
+      activityService.getSolutions.mockReturnValue(
+        of({
+          success: true,
+          questions: [
+            { instanceQuestionId: 101, questionId: 1, correctAnswerId: null, interactionSolution: '{"r1":["c1"],"r2":["c2"]}' },
+            { instanceQuestionId: 102, questionId: 2, correctAnswerId: 11, interactionSolution: null },
+          ],
+        })
+      );
+      fixture.componentInstance.goTo(0);
+
+      await fixture.componentInstance.reveal();
+      await settle();
+
+      const rows = fixture.componentInstance.currentRows();
+      expect(rows.map((r) => r.label)).toEqual(['Kuşlar uçar. → Y', 'Satır 2 → boş']);
+      expect(rows.map((r) => r.solution)).toEqual(['D', 'Y']);
     });
   });
 

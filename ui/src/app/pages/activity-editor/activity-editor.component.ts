@@ -1188,6 +1188,8 @@ export class ActivityEditorComponent {
 
   onCellFocus(row: number, column: number): void {
     this.tableFocus.set(this.isHeaderCell(row) ? null : { row, column });
+    // Yazma kipinde hücreye girmek çoklu seçimi bırakır: araçlar artık bu hücreye (ve içindeki seçili metne) uygulanır.
+    if (!this.tableSelectMode()) this.tableSelection.set(new Set());
   }
 
   /** Seçme kipinde hücreye basış: hücreyi seçer / seçimden çıkarır; basılı sürükleme aynı işlemi dikdörtgene yayar. */

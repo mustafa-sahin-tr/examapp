@@ -122,8 +122,10 @@
                           <input class="ae__mx-input" [value]="col" [attr.maxlength]="labelMax"
                             [attr.aria-label]="t('matrix.column', { n: ci + 1 })" [placeholder]="t('matrix.column', { n: ci + 1 })"
                             (input)="setColumn(ci, $any($event.target).value)" />
-                          <button mat-icon-button type="button" class="ae__mx-remove" [attr.aria-label]="t('remove')"
-                            [disabled]="m.columns.length <= 2" (click)="removeColumn(ci)"><mat-icon>close</mat-icon></button>
+                          @if (m.columns.length > 2) {
+                            <button mat-icon-button type="button" class="ae__mx-remove" [attr.aria-label]="t('remove')"
+                              (click)="removeColumn(ci)"><mat-icon>close</mat-icon></button>
+                          }
                         </div>
                       </th>
                     }
@@ -152,8 +154,10 @@
                         </td>
                       }
                       <td class="ae__mx-add">
-                        <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="m.rows.length <= 1"
-                          (click)="removeRow(ri)"><mat-icon>close</mat-icon></button>
+                        @if (m.rows.length > 1) {
+                          <button mat-icon-button type="button" [attr.aria-label]="t('remove')"
+                            (click)="removeRow(ri)"><mat-icon>close</mat-icon></button>
+                        }
                       </td>
                     </tr>
                   }

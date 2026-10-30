@@ -132,8 +132,14 @@
             </button>
             <button class="btn btn-ghost" type="button" [disabled]="testForm.invalid"
               (click)="navigateToQuestionCanvas()">
-              <mat-icon>add</mat-icon>{{ t('preview.addQuestion') }}
+              <mat-icon>add</mat-icon>{{ t(isActivity ? 'preview.addImageItem' : 'preview.addQuestion') }}
             </button>
+            @if (isActivity) {
+              <button class="btn btn-ghost" type="button" data-testid="add-text-activity-btn"
+                (click)="openActivityEditor()">
+                <mat-icon>edit_note</mat-icon>{{ t('preview.addTextItem') }}
+              </button>
+            }
           </div>
         }
       </div>

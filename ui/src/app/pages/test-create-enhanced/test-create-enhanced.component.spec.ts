@@ -226,6 +226,17 @@ describe('TestCreateEnhancedComponent', () => {
             expect(router.navigate).toHaveBeenCalledWith(['/exam', 42]);
         });
 
+        it('openActivityEditor navigates to the text-only item editor with test and grade', () => {
+            const c = configure('5').componentInstance;
+            c.testForm.patchValue({ gradeId: 3 });
+
+            c.openActivityEditor();
+
+            expect(router.navigate).toHaveBeenCalledWith(['/activity-editor'], {
+                queryParams: { testId: 5, gradeId: 3 },
+            });
+        });
+
         it('onSubmit_SuccessFalseResponse_ShowsServerMessageWithoutSuccessToastOrNavigation (#598)', () => {
             const c = configure(null).componentInstance;
             c.testForm.patchValue({ name: 'Yeni Test', gradeId: 1 });

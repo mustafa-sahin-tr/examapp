@@ -408,7 +408,6 @@
     margin: 0;
     padding: 0;
     list-style: none;
-    min-height: 44px;
   }
 }
 
@@ -456,15 +455,56 @@
   }
 }
 
-.dp-seq-empty {
+.dp-slot {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 44px;
-  padding: 4px 10px;
-  border: 2px dashed var(--ms-border-weak);
+  min-height: 52px;
+  padding: 2px 0 2px 10px;
+  border: 2px dashed transparent;
   border-radius: 10px;
-  opacity: 0.7;
+
+  &.is-empty {
+    border-color: var(--ms-border-weak);
+  }
+
+  &.is-pending {
+    border-style: solid;
+    border-color: var(--ms-action-border-focus);
+    box-shadow: 0 0 0 2px var(--ms-focus-ring);
+  }
+
+  // Yuvanın üstüne gelen sürükleme: bırakılacak yer belli olsun.
+  &.cdk-drop-list-receiving,
+  &.cdk-drop-list-dragging {
+    border-color: var(--ms-action-border-focus);
+  }
+
+  > .dp-seq-item {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  &__empty {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 4px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--ms-text-weak);
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--ms-action-border-focus);
+      outline-offset: 1px;
+    }
+  }
 }
 
 .dp-pool {
@@ -520,9 +560,6 @@
   opacity: 0.4;
 }
 
-.dp-sequence__list.cdk-drop-list-dragging .dp-seq-item:not(.cdk-drag-placeholder) {
-  transition: transform 200ms ease;
-}
 
 @media (min-width: 720px) {
   .dp-root.is-activity .dp-card:not(.dp-card--compact) {
@@ -546,7 +583,7 @@
 
 // Beklenen kartı eksik hedef (kontrol sonrası): kalın kesik kenar + "!" / "eksik" (hangi kart eksik söylenmez).
 .dp-bucket.is-incomplete,
-.dp-seq-empty.is-incomplete {
+.dp-slot.is-incomplete {
   border-style: dashed;
   border-color: var(--ms-danger-border);
 }

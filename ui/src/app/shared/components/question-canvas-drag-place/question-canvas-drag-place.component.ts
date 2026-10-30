@@ -47,9 +47,8 @@ import { seededShuffle } from '../../utils/seeded-shuffle';
 
 /** Dokunmatik / dar ekranda sürükleme kapalı, yalnız dokun-dokun (#573 ile aynı kural). */
 const TAP_ONLY_QUERY = '(pointer: coarse), (max-width: 640px)';
-/** Havuz / sıra listesinin cdk id'leri; hedefler `dp-target-<id>`. */
+/** Havuz listesinin cdk verisi; hedefler (kova, alan, boşluk, sıra yuvası) kendi id'leriyle. */
 const POOL = 'pool';
-const SEQUENCE = 'sequence';
 /** Sayfada birden çok oynatıcı olabilir (test ekranı): cdk liste id'leri bileşen başına ayrı. */
 let nextInstance = 0;
 
@@ -60,19 +59,17 @@ interface CardSelection {
   cardId: string;
 }
 
-/** Sürüklenen kartın verisi: kart ve nereden alındığı (`pool`, `sequence` ya da hedef id'si). */
+/** Sürüklenen kartın verisi: kart ve nereden alındığı (`pool` ya da hedef id'si). */
 export interface DragPlaceDragData {
   cardId: string;
   from: string;
-  /** Sıra modunda listedeki konum. */
-  index?: number;
 }
 
 /**
  * Issue #576: sürükle-yerleştir oynatıcısı. `place` modunda kartlar havuzdan görsel üstündeki bırakma alanlarına
  * (kutulu hedef) ya da görselin altındaki kovalara (kutusuz hedef) taşınır; hedef kapasitesi kadar kart alır, tekrar
- * kullanımda kart havuzda kalır. `order` modunda kartlar bir sıra listesine eklenir, sürükleyerek ya da yukarı/aşağı ile
- * sıralanır. Her yerde dokun-dokun (kartı seç, hedefe dokun; yerleşmiş karta dokununca havuza döner) ve klavye
+ * kullanımda kart havuzda kalır. `order` modunda sıra sabit yuvalardır (n. hedef = n. sıra): kart istenen yuvaya sürüklenir ya da
+ * önce yuva seçilir; havuzdaki karta dokunmak ilk boş yuvaya koyar, dolu yuvaya bırakmada / yukarı-aşağıda kartlar yer değiştirir. Her yerde dokun-dokun (kartı seç, hedefe dokun; yerleşmiş karta dokununca havuza döner) ve klavye
  * (Enter/Boşluk seç, Tab/oklarla hedefe git, Enter bırak, Esc vazgeç) çalışır; dokunmatik / dar ekranda sürükleme kapalı.
  *
  * Kontrolden sonra (`feedbackRows`, satır id = `hedef:kart`) yerleşen her kart ✓/✗ alır; yanlış kartın "Havuza geri al"
@@ -276,37 +273,22 @@ export class QuestionCanvasDragPlaceComponent {
     return cards.filter((c) => !used.has(c.id));
   });
 
-  /** Sıra modunda listedeki kartlar (hedef sırasıyla, boşluksuz). */
-  readonly sequence = computed<string[]>(() => {
+  /** Sıra modunda yuvalar: n. sıradaki kart ya da boş (null). Boşluklar korunur (kart istenen sıraya doğrudan konur). */
+  readonly slots = computed<(string | null)[]>(() => {
     const shown = this.displayMap();
-    return this.targets()
-      .map((t) => cardsIn(shown, t.id)[0])
-      .filter((id): id is string => !!id);
+    return this.targets().map((t) => cardsIn(shown, t.id)[0] ?? null);
   });
 
   private readonly uid = `dp${++nextInstance}`;
   readonly poolListId = `${this.uid}-pool`;
-  readonly sequenceListId = `${this.uid}-sequence`;
-  /**
-   * Sıra listesi öğeleri ve kalıcı anahtar (kart id'si + kaçıncı kez geçtiği): taşımada `<li>` yeniden kurulmaz, odak kalır.
-   */
-  readonly sequenceItems = computed(() => {
-    const seen = new Map<string, number>();
-    return this.sequence().map((cardId) => {
-      const n = (seen.get(cardId) ?? 0) + 1;
-      seen.set(cardId, n);
-      return { cardId, key: `${cardId}#${n}` };
-    });
-  });
 
   readonly targetListIds = computed(() => [
     ...this.zoneTargets().map((t) => this.listId(t.id)),
     ...this.groupTargets().map((t) => this.groupListId(t)),
-    ...(this.clozeMode() ? this.targets().map((t) => this.listId(t.id)) : []),
+    ...(this.clozeMode() || this.orderMode() ? this.targets().map((t) => this.listId(t.id)) : []),
   ]);
-  readonly poolConnectedTo = computed(() => (this.orderMode() ? [this.sequenceListId] : this.targetListIds()));
+  readonly poolConnectedTo = computed(() => this.targetListIds());
   readonly targetConnectedTo = computed(() => [this.poolListId, ...this.targetListIds()]);
-  readonly sequenceConnectedTo = computed(() => [this.poolListId]);
   readonly placedCount = computed(() => placementCount(this.placed()));
 
   /** Yerleşen kartın işareti: sunucu kontrolü, yoksa örnek soruda çözümle karşılaştırma. */
@@ -360,12 +342,12 @@ export class QuestionCanvasDragPlaceComponent {
     const announcement = this.announcement();
     if (announcement) return announcement;
     if (this._showSolution()) return this.t('solutionShownHint');
-    if (this.orderMode()) return this.t('hintOrder');
     const selection = this.selected();
     if (selection) return this.t('hintSelected', { card: this.cardText(selection.cardId) });
     const pending = this.pendingTarget();
     const pendingTarget = pending ? this.targetIndex().get(pending)?.target : null;
     if (pendingTarget) return this.t('hintTargetSelected', { target: this.targetText(pendingTarget) });
+    if (this.orderMode()) return this.t('hintOrder');
     return this.t(this.coarsePointer() ? 'hintTap' : 'hintIdle');
   });
 
@@ -410,13 +392,6 @@ export class QuestionCanvasDragPlaceComponent {
     return target ? this.pairMark()(target.id, cardId) : null;
   }
 
-  /** Sıra modunda boş kalan konumlar (yer tutucu). */
-  readonly emptyPositions = computed(() => {
-    const filled = this.sequence().length;
-    return this.targets()
-      .map((_, i) => i)
-      .filter((i) => i >= filled);
-  });
 
   cardsOf(targetId: string): string[] {
     return cardsIn(this.displayMap(), targetId);
@@ -487,8 +462,8 @@ export class QuestionCanvasDragPlaceComponent {
     };
   }
 
-  dragData(cardId: string, from: string, index?: number): DragPlaceDragData {
-    return { cardId, from, index };
+  dragData(cardId: string, from: string): DragPlaceDragData {
+    return { cardId, from };
   }
 
   /** Kapasitesi dolu (ve tek kartlık olmayan) hedefe sürükleme girmez. */
@@ -520,11 +495,17 @@ export class QuestionCanvasDragPlaceComponent {
     event.stopPropagation();
     if (event instanceof KeyboardEvent) event.preventDefault();
     if (this.consumeSuppressedClick() || this.locked()) return;
-    if (this.orderMode()) {
-      this.insertInSequence(cardId, this.sequence().length);
+    const pending = this.pendingTarget();
+    if (this.orderMode() && !pending) {
+      // Hızlı yol: ilk boş yuvaya. Belirli bir sıraya koymak için önce yuvaya dokunulur (ya da sürüklenir).
+      const free = this.slots().indexOf(null);
+      if (free < 0) {
+        this.announcement.set(this.t('sequenceFull'));
+        return;
+      }
+      this.place(cardId, POOL, this.targets()[free].id);
       return;
     }
-    const pending = this.pendingTarget();
     if (pending) {
       this.pendingTarget.set(null);
       this.place(cardId, POOL, pending);
@@ -602,31 +583,40 @@ export class QuestionCanvasDragPlaceComponent {
     const data = event.item.data;
     if (!data) return;
     const to = event.container.data;
-    if (to === SEQUENCE) {
-      if (data.from === SEQUENCE) this.moveInSequence(data.index ?? event.previousIndex, event.currentIndex);
-      else this.insertInSequence(data.cardId, event.currentIndex);
-      return;
-    }
     if (to === POOL) {
-      if (data.from === SEQUENCE) this.removeFromSequence(data.index ?? event.previousIndex);
-      else if (data.from !== POOL) this.returnToPool(data.from, data.cardId);
+      if (data.from !== POOL) this.returnToPool(data.from, data.cardId);
       return;
     }
     if (data.from === to) return;
     this.place(data.cardId, data.from, to);
   }
 
-  /** Sıra modunda yukarı / aşağı. */
+  /** Sıra modunda yukarı / aşağı: komşu yuvayla yer değiştirir (komşu boşsa oraya geçer). */
   moveBy(index: number, delta: number): void {
     if (this.locked()) return;
-    this.moveInSequence(index, index + delta);
-    const to = Math.max(0, Math.min(index + delta, this.sequence().length - 1));
+    const targets = this.targets();
+    const cardId = this.slots()[index];
+    const to = index + delta;
+    if (!cardId || to < 0 || to >= targets.length) return;
+    this.place(cardId, targets[index].id, targets[to].id);
+    this.announcement.set(this.t('announceMoved', { card: this.cardText(cardId), n: to + 1 }));
     afterNextRender(() => this.focusSequenceControl(to, delta < 0 ? 'up' : 'down'), { injector: this.injector });
   }
 
   removeAt(index: number): void {
     if (this.locked()) return;
-    this.removeFromSequence(index);
+    const cardId = this.slots()[index];
+    if (cardId) this.returnToPool(this.targets()[index].id, cardId);
+  }
+
+  /** Yuvadaki karta dokunma: önce boş bir yuva seçildiyse kart oraya taşınır. */
+  onSlotCard(index: number, event: Event): void {
+    event.stopPropagation();
+    if (this.consumeSuppressedClick() || this.locked()) return;
+    const pending = this.pendingTarget();
+    const cardId = this.slots()[index];
+    if (!pending || !cardId) return;
+    this.place(cardId, this.targets()[index].id, pending);
   }
 
   clearAll(): void {
@@ -652,7 +642,7 @@ export class QuestionCanvasDragPlaceComponent {
     const target = this.targetIndex().get(targetId)?.target;
     if (!target || !this.cardIndex().has(cardId)) return;
     let next = this.placed();
-    const fromTarget = from !== POOL && from !== SEQUENCE && this.targetIndex().has(from) ? from : null;
+    const fromTarget = from !== POOL && this.targetIndex().has(from) ? from : null;
     if (fromTarget) next = withCards(next, fromTarget, cardsIn(next, fromTarget).filter((id) => id !== cardId));
     if (!this.reuse()) {
       Object.keys(next).forEach((key) => {
@@ -691,47 +681,6 @@ export class QuestionCanvasDragPlaceComponent {
     this.selected.set(null);
     this.announcement.set(this.t('announceReturned', { card: this.cardText(cardId) }));
     this.commit(withCards(this.placed(), targetId, current.filter((id) => id !== cardId)));
-  }
-
-  private setSequence(sequence: string[]): void {
-    let next = emptyDragPlaceMap();
-    this.targets().forEach((target, i) => {
-      if (sequence[i]) next = withCards(next, target.id, [sequence[i]]);
-    });
-    this.commit(next);
-  }
-
-  private insertInSequence(cardId: string, index: number): void {
-    const sequence = [...this.sequence()];
-    if (!this.cardIndex().has(cardId)) return;
-    if (sequence.length >= this.targets().length) {
-      this.announcement.set(this.t('sequenceFull'));
-      return;
-    }
-    if (!this.reuse() && sequence.includes(cardId)) return;
-    const at = Math.max(0, Math.min(index, sequence.length));
-    sequence.splice(at, 0, cardId);
-    this.announcement.set(this.t('announceMoved', { card: this.cardText(cardId), n: at + 1 }));
-    this.setSequence(sequence);
-  }
-
-  private moveInSequence(from: number, to: number): void {
-    const sequence = [...this.sequence()];
-    if (from < 0 || from >= sequence.length) return;
-    const at = Math.max(0, Math.min(to, sequence.length - 1));
-    if (at === from) return;
-    const [cardId] = sequence.splice(from, 1);
-    sequence.splice(at, 0, cardId);
-    this.announcement.set(this.t('announceMoved', { card: this.cardText(cardId), n: at + 1 }));
-    this.setSequence(sequence);
-  }
-
-  private removeFromSequence(index: number): void {
-    const sequence = [...this.sequence()];
-    if (index < 0 || index >= sequence.length) return;
-    const [cardId] = sequence.splice(index, 1);
-    this.announcement.set(this.t('announceReturned', { card: this.cardText(cardId) }));
-    this.setSequence(sequence);
   }
 
   private commit(next: DragPlaceMap): void {

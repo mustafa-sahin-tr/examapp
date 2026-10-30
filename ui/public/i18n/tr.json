@@ -343,7 +343,7 @@
         "hintIdle": "Bir kart seç, sonra hedefine dokun (ya da sürükle). Klavyede: Enter ile seç, Tab ya da oklarla hedefe git, Enter ile bırak, Esc ile vazgeç.",
         "hintTap": "Bir karta dokun, sonra hedefine dokun. Yerleşmiş karta dokununca kart havuza döner.",
         "hintSelected": "{{card}} seçildi. Bir hedefe dokun ya da Enter'a bas; vazgeçmek için Esc.",
-        "hintOrder": "Kartlara sırayla dokun ya da sürükle; sırayı oklarla ya da sürükleyerek değiştir.",
+        "hintOrder": "Karta dokun: ilk boş sıraya gider. Belirli bir sıraya koymak için önce o sıraya dokun ya da kartı sürükle; dolu sıraya bırakınca kartlar yer değiştirir.",
         "solutionShownHint": "Doğru yerleşim gösteriliyor.",
         "targetAria": "{{name}}, {{count}}/{{capacity}} kart",
         "targetDropAria": "Seçili kartı buraya bırak",

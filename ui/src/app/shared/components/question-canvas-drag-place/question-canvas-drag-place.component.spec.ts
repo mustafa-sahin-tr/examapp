@@ -84,8 +84,8 @@ describe('QuestionCanvasDragPlaceComponent (#576)', () => {
         fixture.detectChanges();
     }
 
-    function drop(data: DragPlaceDragData, to: string, currentIndex = 0) {
-        cmp().onDrop({ item: { data }, container: { data: to }, previousIndex: data.index ?? 0, currentIndex } as unknown as CdkDragDrop<string, string, DragPlaceDragData>);
+    function drop(data: DragPlaceDragData, to: string) {
+        cmp().onDrop({ item: { data }, container: { data: to }, previousIndex: 0, currentIndex: 0 } as unknown as CdkDragDrop<string, string, DragPlaceDragData>);
         fixture.detectChanges();
     }
 
@@ -269,24 +269,65 @@ describe('QuestionCanvasDragPlaceComponent (#576)', () => {
         expect(containers).toEqual(['t2', 't3']);
     });
 
-    it('orderMode_TapAppends_MoveUpDown_Remove_AndDragSorts', () => {
+    it('orderMode_SlotsKeepGaps_TapFillsFirstFree_SlotFirstPlacesThere_DropAndMoveSwap', () => {
         setup(ORDER_PLAN);
-        expect(el().querySelector('[data-testid="dp-sequence"]')).not.toBeNull();
+        const slots = () => cmp().slots();
+        expect(el().querySelectorAll('.dp-slot').length).toBe(3);
+
+        // Dokununca ilk boş yuvaya.
         tap(poolCard('c3'));
         tap(poolCard('c1'));
         expect(last()).toEqual([{ targetId: 't1', cardId: 'c3' }, { targetId: 't2', cardId: 'c1' }]);
-        expect(el().querySelectorAll('.dp-seq-empty').length).toBe(1);
+        expect(el().querySelectorAll('.dp-slot.is-empty').length).toBe(1);
 
+        // Yukarı: komşuyla yer değiştirir.
         tap(el().querySelector('[data-sequence-index="1"] [data-move="up"]'));
-        expect(last()).toEqual([{ targetId: 't1', cardId: 'c1' }, { targetId: 't2', cardId: 'c3' }]);
+        expect(slots()).toEqual(['c1', 'c3', null]);
 
-        drop({ cardId: 'c2', from: 'pool' }, 'sequence', 0);
-        expect(last().map((p: { cardId: string }) => p.cardId)).toEqual(['c2', 'c1', 'c3']);
-        drop({ cardId: 'c3', from: 'sequence', index: 2 }, 'sequence', 0);
-        expect(last().map((p: { cardId: string }) => p.cardId)).toEqual(['c3', 'c2', 'c1']);
+        // Havuzdan istenen yuvaya sürükle; yuvadan dolu yuvaya sürükle = yer değiştir.
+        drop({ cardId: 'c2', from: 'pool' }, 't3');
+        expect(slots()).toEqual(['c1', 'c3', 'c2']);
+        drop({ cardId: 'c2', from: 't3' }, 't1');
+        expect(slots()).toEqual(['c2', 'c3', 'c1']);
 
+        // Havuza almak boşluk bırakır (diğerleri kaymaz).
         tap(el().querySelector('[data-sequence-index="0"] [data-testid="seq-remove"]'));
-        expect(last()).toEqual([{ targetId: 't1', cardId: 'c2' }, { targetId: 't2', cardId: 'c1' }]);
+        expect(slots()).toEqual([null, 'c3', 'c1']);
+        expect(last()).toEqual([{ targetId: 't2', cardId: 'c3' }, { targetId: 't3', cardId: 'c1' }]);
+    });
+
+    it('orderMode_PickEmptySlotThenCard_PutsCardStraightIntoThatPosition', () => {
+        setup(ORDER_PLAN);
+        tap(target('t3'));
+        expect(el().querySelector('[data-sequence-index="2"]')?.classList).toContain('is-pending');
+        tap(poolCard('c1'));
+        expect(cmp().slots()).toEqual([null, null, 'c1']);
+
+        // Önce boş yuva, sonra başka yuvadaki kart: kart oraya taşınır.
+        tap(target('t1'));
+        tap(el().querySelector('[data-card="c1"].dp-seq-item'));
+        expect(cmp().slots()).toEqual(['c1', null, null]);
+    });
+
+    it('orderMode_PlacedCardDrag_IsRegisteredWithItsSlot', () => {
+        setup(ORDER_PLAN, { answer: { version: 1, type: 'dragPlace', placements: [{ targetId: 't2', cardId: 'c2' }] } });
+        const slotCard = fixture.debugElement.query(By.css('.dp-seq-item'));
+        expect(slotCard.injector.get(CdkDrag).dropContainer?.data).toBe('t2');
+    });
+
+    it('orderMode_StaleIncompleteNotShownOnFilledSlot_EmptySlotFlagged', () => {
+        setup(ORDER_PLAN, {
+            answer: { version: 1, type: 'dragPlace', placements: [{ targetId: 't1', cardId: 'c2' }] },
+            feedbackRows: [
+                { id: 't1:c2', correct: false },
+                { id: 't1:', correct: false },
+                { id: 't2:', correct: false },
+            ],
+        });
+        // Dolu yuvada yanlış kart ✗; "eksik" yalnız boş yuvada.
+        expect(el().querySelector('[data-sequence-index="0"] .dp-seq-item')?.classList).toContain('is-wrong');
+        expect(el().querySelector('[data-incomplete="t1"]')).toBeNull();
+        expect(el().querySelector('[data-incomplete="t2"]')).not.toBeNull();
     });
 
     it('feedback_MarksPairs_WrongCardCanBeReturned_IncompleteTargetFlagged', () => {
@@ -379,22 +420,21 @@ describe('QuestionCanvasDragPlaceComponent (#576)', () => {
         expect(last()).toEqual([{ targetId: 't1', cardId: 'c2' }, { targetId: 't2', cardId: 'c1' }]);
     });
 
-    it('orderMode_KeyboardMoveKeepsFocusOnTheMovedRow (#576 review)', async () => {
+    it('orderMode_KeyboardMoveKeepsFocusOnTheMovedCard (#576 review)', async () => {
         setup(ORDER_PLAN);
         tap(poolCard('c1'));
         tap(poolCard('c2'));
         tap(poolCard('c3'));
         const down = () => el().querySelector('[data-sequence-index="0"] [data-move="down"]') as HTMLButtonElement;
-        const li = el().querySelector('[data-card="c1"].dp-seq-item');
         down().focus();
         down().click();
         fixture.detectChanges();
         await fixture.whenStable();
 
         expect(last().map((p: { cardId: string }) => p.cardId)).toEqual(['c2', 'c1', 'c3']);
-        // Aynı <li> (yeniden kurulmadı) ve odak taşınan satırın "aşağı" düğmesinde.
-        expect(el().querySelector('[data-card="c1"].dp-seq-item')).toBe(li);
+        // Odak taşınan kartın yeni yuvasındaki "aşağı" düğmesinde.
         expect(document.activeElement).toBe(el().querySelector('[data-sequence-index="1"] [data-move="down"]'));
+        expect(el().querySelector('[data-sequence-index="1"] [data-card="c1"]')).not.toBeNull();
     });
 
     it('pool_IsShuffledStablyBySeed_PlanOrderNotShown (#576 review)', () => {

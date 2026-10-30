@@ -178,56 +178,66 @@
     }
 
     @if (orderMode()) {
+      <!-- Sıra = sabit yuvalar (hedef n. sıra): kart herhangi bir yuvaya sürüklenir ya da önce yuva, sonra kart seçilir; dolu yuvaya
+           bırakmada kartlar yer değiştirir. Havuzdaki karta dokunmak ilk boş yuvaya koyar. Boş yuva bırakılabilir (kontrolde eksik). -->
       <section class="dp-sequence" data-testid="dp-sequence">
         <div class="dp-section-title">{{ t('dragPlace.sequenceTitle') }}</div>
-        <ol class="dp-sequence__list" cdkDropList [id]="sequenceListId" [cdkDropListData]="'sequence'"
-          [cdkDropListConnectedTo]="sequenceConnectedTo()" [cdkDropListDisabled]="locked()"
-          (cdkDropListDropped)="onDrop($event)">
-          @for (entry of sequenceItems(); track entry.key; let i = $index; let first = $first; let last = $last) {
-            @let cardId = entry.cardId;
-            @let mark = sequenceMark(i, cardId);
-            <li class="dp-seq-item" [class.is-correct]="mark === 'correct'" [class.is-wrong]="mark === 'wrong'"
-              cdkDrag [cdkDragData]="dragData(cardId, 'sequence', i)" [cdkDragDisabled]="dragDisabled()"
-              (cdkDragStarted)="onDragStarted()" (cdkDragEnded)="onDragEnded()" [attr.data-sequence-index]="i"
-              [attr.data-card]="cardId">
+        <ol class="dp-sequence__list">
+          @for (target of targets(); track target.id; let i = $index; let first = $first; let last = $last) {
+            @let cardId = slots()[i];
+            @let mark = cardId ? sequenceMark(i, cardId) : null;
+            @let incomplete = !cardId && targetIncomplete()(target.id);
+            <li class="dp-slot" [class.is-empty]="!cardId" [class.is-pending]="pendingTarget() === target.id"
+              [class.is-incomplete]="incomplete"
+              cdkDropList [id]="listId(target.id)" [cdkDropListData]="target.id"
+              [cdkDropListConnectedTo]="targetConnectedTo()" [cdkDropListEnterPredicate]="canEnter"
+              [cdkDropListSortingDisabled]="true" [cdkDropListDisabled]="locked()"
+              (cdkDropListDropped)="onDrop($event)" [attr.data-sequence-index]="i" [attr.data-group]="target.id">
               <span class="dp-seq-item__no">{{ positionText(i) }}</span>
-              <span class="dp-seq-item__card">
-                <ng-container *ngTemplateOutlet="cardBody; context: { $implicit: cardId, compact: true }" />
-              </span>
-              @if (mark) {
-                <span class="dp-mark dp-mark--inline" [class.dp-mark--wrong]="mark === 'wrong'" [attr.data-mark]="i + ':' + cardId">
-                  <mat-icon aria-hidden="true">{{ mark === 'correct' ? 'check' : 'close' }}</mat-icon>
-                  <span class="dp-visually-hidden">{{ t(mark === 'correct' ? 'dragPlace.markCorrect' : 'dragPlace.markWrong') }}</span>
-                </span>
+              @if (cardId) {
+                <div class="dp-seq-item" [class.is-correct]="mark === 'correct'" [class.is-wrong]="mark === 'wrong'"
+                  cdkDrag [cdkDragData]="dragData(cardId, target.id)" [cdkDragDisabled]="dragDisabled()"
+                  (cdkDragStarted)="onDragStarted()" (cdkDragEnded)="onDragEnded()" [attr.data-card]="cardId"
+                  [attr.data-placed]="target.id + ':' + cardId" (click)="onSlotCard(i, $event)">
+                  <span class="dp-seq-item__card">
+                    <ng-container *ngTemplateOutlet="cardBody; context: { $implicit: cardId, compact: true }" />
+                  </span>
+                  @if (mark) {
+                    <span class="dp-mark dp-mark--inline" [class.dp-mark--wrong]="mark === 'wrong'" [attr.data-mark]="i + ':' + cardId">
+                      <mat-icon aria-hidden="true">{{ mark === 'correct' ? 'check' : 'close' }}</mat-icon>
+                      <span class="dp-visually-hidden">{{ t(mark === 'correct' ? 'dragPlace.markCorrect' : 'dragPlace.markWrong') }}</span>
+                    </span>
+                  }
+                  <span class="dp-seq-item__actions">
+                    <button mat-icon-button type="button" data-move="up" [disabled]="first || locked()"
+                      [attr.aria-label]="t('dragPlace.moveUp', { card: cardText(cardId) })" (click)="moveBy(i, -1); $event.stopPropagation()">
+                      <mat-icon>arrow_upward</mat-icon>
+                    </button>
+                    <button mat-icon-button type="button" data-move="down" [disabled]="last || locked()"
+                      [attr.aria-label]="t('dragPlace.moveDown', { card: cardText(cardId) })" (click)="moveBy(i, 1); $event.stopPropagation()">
+                      <mat-icon>arrow_downward</mat-icon>
+                    </button>
+                    <button mat-icon-button type="button" data-testid="seq-remove" [disabled]="locked()"
+                      [attr.aria-label]="t('dragPlace.returnToPoolAria', { card: cardText(cardId) })" (click)="removeAt(i); $event.stopPropagation()">
+                      <mat-icon>undo</mat-icon>
+                    </button>
+                  </span>
+                </div>
+              } @else {
+                <button type="button" class="dp-slot__empty" data-target-button [attr.data-for]="target.id" [disabled]="locked()"
+                  [attr.aria-pressed]="pendingTarget() === target.id" [attr.aria-label]="targetAria(target)"
+                  (click)="onTarget(target, $event)" (keydown)="onTargetKeydown($event)">
+                  <span>{{ t('dragPlace.sequenceEmpty') }}</span>
+                  @if (incomplete) {
+                    <span class="dp-incomplete" [attr.data-incomplete]="target.id">
+                      <mat-icon>priority_high</mat-icon>{{ t('dragPlace.targetIncomplete') }}
+                    </span>
+                  }
+                </button>
               }
-              <span class="dp-seq-item__actions">
-                <button mat-icon-button type="button" data-move="up" [disabled]="first || locked()"
-                  [attr.aria-label]="t('dragPlace.moveUp', { card: cardText(cardId) })" (click)="moveBy(i, -1)">
-                  <mat-icon>arrow_upward</mat-icon>
-                </button>
-                <button mat-icon-button type="button" data-move="down" [disabled]="last || locked()"
-                  [attr.aria-label]="t('dragPlace.moveDown', { card: cardText(cardId) })" (click)="moveBy(i, 1)">
-                  <mat-icon>arrow_downward</mat-icon>
-                </button>
-                <button mat-icon-button type="button" data-testid="seq-remove" [disabled]="locked()"
-                  [attr.aria-label]="t('dragPlace.returnToPoolAria', { card: cardText(cardId) })" (click)="removeAt(i)">
-                  <mat-icon>undo</mat-icon>
-                </button>
-              </span>
             </li>
           }
         </ol>
-        @for (i of emptyPositions(); track i) {
-          <div class="dp-seq-empty" aria-hidden="true" [class.is-incomplete]="targets()[i] && targetIncomplete()(targets()[i].id)">
-            <span class="dp-seq-item__no">{{ positionText(i) }}</span>
-            <span>{{ t('dragPlace.sequenceEmpty') }}</span>
-            @if (targets()[i] && targetIncomplete()(targets()[i].id)) {
-              <span class="dp-incomplete" [attr.data-incomplete]="targets()[i].id">
-                <mat-icon>priority_high</mat-icon>{{ t('dragPlace.targetIncomplete') }}
-              </span>
-            }
-          </div>
-        }
       </section>
     }
 

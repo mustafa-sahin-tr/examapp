@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  Directive,
   ElementRef,
   EventEmitter,
   Injector,
@@ -77,6 +78,17 @@ export interface DragPlaceDragData {
  * Kontrolden sonra (`feedbackRows`, satır id = `hedef:kart`) yerleşen her kart ✓/✗ alır; yanlış kartın "Havuza geri al"
  * düğmesi vardır. Girdi/çıktılar diğer etkileşim oynatıcılarıyla aynı sözleşmede (#570: çözüm yalnız verilirse).
  */
+/**
+ * Yerleşen kartlar ortak bir şablondan (`#placedCards`, `ngTemplateOutlet`) çizilir; şablon hedef listelerinin dışında tanımlı
+ * olduğundan gömülü görünümün enjektörü `cdkDropList`'i görmez ve kartın `cdkDrag`'i listeye kaydolmaz (serbest sürükleme:
+ * bırakılınca kart kaydırılmış kalıp kutunun dışında kaybolur, başka hedefe taşınamaz). Bu yönerge listenin enjektörünü
+ * şablona taşır (`ngTemplateOutletInjector`).
+ */
+@Directive({ selector: '[dpListInjector]', exportAs: 'dpListInjector', standalone: true })
+export class DragPlaceListInjectorDirective {
+  readonly injector = inject(Injector);
+}
+
 @Component({
   selector: 'app-question-canvas-drag-place',
   standalone: true,
@@ -84,6 +96,7 @@ export interface DragPlaceDragData {
     NgStyle,
     NgTemplateOutlet,
     DragDropModule,
+    DragPlaceListInjectorDirective,
     MatButtonModule,
     MatIconModule,
     TranslocoDirective,

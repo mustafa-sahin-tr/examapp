@@ -1,7 +1,8 @@
 // Issue #576: sürükle-yerleştir oynatıcısı — dokun-dokun, klavye, kapasite, tekrar kullanım, sıra modu, cdk bırakma,
 // kontrol işaretleri (yanlış kart ✗ + havuza geri al, eksik hedef "t:"), çözüm gösterimi ve yankı koruması.
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { CdkDragDrop } from '@angular/cdk/drag-drop';
+import { CdkDrag, CdkDragDrop } from '@angular/cdk/drag-drop';
+import { By } from '@angular/platform-browser';
 
 import { DragPlaceDragData, QuestionCanvasDragPlaceComponent } from './question-canvas-drag-place.component';
 import { QuestionRegion } from '../../../models/draws';
@@ -257,6 +258,17 @@ describe('QuestionCanvasDragPlaceComponent (#576)', () => {
         expect(cmp().canEnter({ data: { cardId: 'c1', from: 'pool' } } as never, { data: 't1' } as never)).toBe(true);
     });
 
+    it('placedCardDrag_IsRegisteredWithItsTargetList_NotFreeDrag (gezinti: sürüklenen kart kayboluyordu)', () => {
+        setup();
+        drop({ cardId: 'c2', from: 'pool' }, 't2');
+        drop({ cardId: 'c4', from: 'pool' }, 't3');
+        const containers = fixture.debugElement
+            .queryAll(By.css('.dp-placed'))
+            .map((d) => d.injector.get(CdkDrag).dropContainer?.data);
+        // Kart kendi hedefinin listesine bağlı: CDK bırakmada onDrop'u çağırır ve kartı yerine oturtur (serbest sürükleme değil).
+        expect(containers).toEqual(['t2', 't3']);
+    });
+
     it('orderMode_TapAppends_MoveUpDown_Remove_AndDragSorts', () => {
         setup(ORDER_PLAN);
         expect(el().querySelector('[data-testid="dp-sequence"]')).not.toBeNull();
@@ -457,6 +469,12 @@ describe('QuestionCanvasDragPlaceComponent boşluklu metin (#590)', () => {
         if (extra.feedbackRows) fixture.componentRef.setInput('feedbackRows', extra.feedbackRows);
         fixture.detectChanges();
     }
+
+    it('placed word in a blank is registered with the blank list', () => {
+        setup({ answer: { version: 1, type: 'dragPlace', placements: [{ targetId: 't2', cardId: 'k2' }] } });
+        const placed = fixture.debugElement.query(By.css('.dp-placed'));
+        expect(placed.injector.get(CdkDrag).dropContainer?.data).toBe('t2');
+    });
 
     it('renders blanks inside the text instead of buckets', () => {
         setup();

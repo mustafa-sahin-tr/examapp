@@ -577,6 +577,7 @@
                         <div class="ae__room-answers" role="radiogroup" [attr.aria-label]="t('maze.roomAnswer')">
                           @for (d of roomDoorOptions(cell.index); track d.index) {
                             <button type="button" class="ae__tree-branch" role="radio" [class.is-correct]="room.answer === d.index"
+                              [class.is-error]="d.duplicate"
                               [attr.aria-checked]="room.answer === d.index" [attr.title]="t('maze.roomAnswer') + ': ' + d.label"
                               (click)="setRoomAnswer(cell.index, room.answer === d.index ? null : d.index)">{{ d.short }}</button>
                           } @empty {
@@ -587,9 +588,11 @@
                     </div>
                   }
                   @for (slot of lay.doors; track slot.key) {
-                    <div class="ae__door" [class.ae__door--diag]="slot.diag" [style.grid-row]="slot.row" [style.grid-column]="slot.col">
+                    <div class="ae__door" [class.ae__door--diag]="slot.diag" [class.is-error]="slot.conflict"
+                      [attr.title]="slot.conflict ? t('maze.doubleDiagonalHere') : null" [style.grid-row]="slot.row" [style.grid-column]="slot.col">
                       @for (dd of slot.doors; track dd.index) {
                         <input class="ae__door-input" [class.is-open]="!!mr.doors[dd.index].label.trim()" [attr.data-door]="dd.index"
+                          [disabled]="dd.locked" [attr.title]="dd.locked ? t('maze.diagonalLocked') : null"
                           [value]="mr.doors[dd.index].label" [attr.maxlength]="mazeLabelMax" [placeholder]="dd.arrow"
                           [attr.aria-label]="t('maze.doorAria', { door: doorName(dd.index) })"
                           (input)="setDoorLabel(dd.index, $any($event.target).value)" />

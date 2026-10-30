@@ -167,8 +167,8 @@
     "mazeDuplicateBox": "Bir satırda aynı metinli iki kutu olamaz.",
     "mazeStartIsFinish": "Başlangıç ve bitiş odası farklı olmalı.",
     "mazeBlankRoom": "Bitiş dışındaki her odaya soru yaz.",
-    "mazeDoubleDiagonal": "Bir dörtlüde iki çapraz kapı olamaz.",
-    "mazeDuplicateDoor": "Bir odanın iki kapısında aynı cevap olamaz.",
+    "mazeDoubleDiagonal": "Bir dörtlüde iki çapraz kapı olamaz (kırmızı işaretli yuva).",
+    "mazeDuplicateDoor": "Bir odanın iki kapısında aynı cevap olamaz (kırmızı çipler).",
     "mazeUnreachable": "Her odaya başlangıçtan kapılarla varılabilmeli.",
     "mazeNoRoute": "Başlangıçtan doğru kapılar izlenince bitişe varılmıyor; odaların doğru kapılarını kontrol et.",
     "mazeStoneCount": "{{min}}–{{max}} taş olmalı.",
@@ -292,6 +292,8 @@
     "distractors": "Çeldirici kelimeler"
   },
   "maze": {
+    "doubleDiagonalHere": "Bu dörtlüde iki çapraz kapı var; birini sil.",
+    "diagonalLocked": "Bu dörtlüde öbür çapraz kapı açık; önce onu sil.",
     "exitTitle": "Çıkış adı (öğrenci yolun sonunda bunu görür). Yeni ifade için Düzey ekle.",
     "roomsHint": "Oyundaki gibi: odaların arasındaki kutuya kapının cevabını yaz (boş = duvar; bir dörtlüde tek çapraz kapı). Yürüyen adamla başlangıcı, bayrakla bitişi seç; her odada doğru kapıya tıkla.",
     "noDoors": "Önce bir kapı yaz",

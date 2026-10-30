@@ -229,6 +229,25 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(component.mazeRooms()!.finish).toBe(3);
   });
 
+  it('odalı labirent: çift çapraz kapı ve aynı cevaplı kapılar kırmızı, çaprazlardan biri doluyken öbürü kapalı', async () => {
+    await setup({ testId: '9' });
+    component.selectKind('mazeRooms');
+    component.setRoomsSize(2, 2);
+    const f = component.mazeRooms()!;
+    const idx = (a: number, b: number) => f.doors.findIndex((d) => d.a === a && d.b === b);
+    component.setDoorLabel(idx(0, 3), '15');
+    fixture.detectChanges();
+    expect((el(`[data-door="${idx(1, 2)}"]`) as HTMLInputElement).disabled).toBe(true);
+    expect(el('.ae__door.is-error')).toBeNull();
+
+    // Eski kayıt gibi ikisi birden dolu: yuva hatalı, B1'in iki kapısı (A1'e 15, A2'ye 15) kırmızı.
+    component.setDoorLabel(idx(1, 2), '15');
+    component.setDoorLabel(idx(0, 2), '15');
+    fixture.detectChanges();
+    expect(el('.ae__door.is-error')).not.toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('[data-room="2"] .ae__tree-branch.is-error').length).toBe(2);
+  });
+
   it('D/Y ağacı: tek ifadeyle başlar, düzey ekleyince ağaç büyür, ayrı önizleme yok, doğru çıkış vurgulanır', async () => {
     await setup({ testId: '9' });
     component.selectKind('mazeTree');

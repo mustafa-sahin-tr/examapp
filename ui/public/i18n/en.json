@@ -320,6 +320,7 @@
       "slotFill": {
         "hint": "Type your answer in the boxes. For fractions, write the numerator on top and the denominator below. Your answer is saved when you leave a box.",
         "solutionShownHint": "Showing the accepted answers.",
+        "notNumberHint": "Box {{boxes}}: write the answer as a number (e.g. 7, 2.5, 3/4). Numbers written in words are not accepted.",
         "slotAria": "Box {{n}}",
         "slotAriaLabeled": "Box {{n}}: {{label}}",
         "whole": "whole",

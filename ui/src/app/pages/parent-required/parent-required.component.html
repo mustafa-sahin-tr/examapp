@@ -106,7 +106,7 @@
 
             <mat-form-field appearance="outline">
               <mat-label>{{ t('page.phone') }}</mat-label>
-              <input matInput type="tel" inputmode="tel" formControlName="parentPhone" autocomplete="off"
+              <input matInput type="tel" inputmode="tel" formControlName="parentPhone" appPhoneMask autocomplete="off"
                 [placeholder]="t('page.phonePlaceholder')" [attr.maxlength]="phoneMaxLength" data-test="prq-phone" />
               @if (hasError('parentPhone', 'required')) {
                 <mat-error>{{ t('validation.phoneRequired') }}</mat-error>

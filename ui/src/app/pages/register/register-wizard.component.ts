@@ -46,6 +46,7 @@ import { describeParentInvitationError } from '../../shared/utils/parent-invitat
 import { SchoolSelectComponent } from '../../shared/components/school-select/school-select.component';
 import { REGISTER_SCOPE } from './register-scope';
 import { TEACHER_APPROVAL_PENDING_URL } from '../../models/teacher-approval.model';
+import { PhoneMaskDirective } from '../../shared/directives/phone-mask.directive';
 
 type Role = 'student' | 'teacher' | 'parent';
 
@@ -93,8 +94,9 @@ interface RegistrationResult {
     MatSelectModule,
     MatSnackBarModule,
     TranslocoDirective,
-    SchoolSelectComponent
-],
+    SchoolSelectComponent,
+    PhoneMaskDirective,
+  ],
   providers: [provideTranslocoScope(REGISTER_SCOPE)],
   templateUrl: './register-wizard.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,

@@ -46,6 +46,24 @@ export function normalizeParentPhone(phone: string | null | undefined): string |
   return TR_MOBILE_NATIONAL.test(national) ? `+90${national}` : null;
 }
 
+/**
+ * Gezinti notu (K1): veli telefonu alanı yazarken `05xx xxx xx xx` biçimine sokulur — rakam dışı atılır, 11 haneyle sınırlanır,
+ * `5` ile başlayana `0` eklenir; `+90` / `90` ile başlayan (yapıştırılan) numara 12 hane dolunca `0`'lı biçime çevrilir.
+ * Doğrulama değişmedi ({@link normalizeParentPhone}); bu yalnız giriş kolaylığı.
+ */
+export function formatParentPhoneInput(raw: string | null | undefined): string {
+  let digits = (raw ?? '').replace(/\D/g, '');
+  if (digits.startsWith('90')) {
+    // Ülke kodlu numara tamamlanana dek olduğu gibi kalır (erken kesilmesin), tamamlanınca ulusal biçime döner.
+    if (digits.length < 12) return digits;
+    digits = `0${digits.slice(2, 12)}`;
+  } else if (digits.startsWith('5')) {
+    digits = `0${digits}`;
+  }
+  digits = digits.slice(0, 11);
+  return [digits.slice(0, 4), digits.slice(4, 7), digits.slice(7, 9), digits.slice(9, 11)].filter(Boolean).join(' ');
+}
+
 /** Ad karakterleri: harf (Türkçe dahil), birleşik işaret, boşluk, `.`, `-`, `'`, `’` (sunucu `NameCharacters`). */
 const NAME_CHARACTERS = /^[\p{L}\p{M} .'’-]+$/u;
 /** Alan adı / bağlantı benzeri: "www." ya da harf + nokta + en az iki harf ("site.com", "x.co") — sunucu `LinkLike`. */

@@ -320,6 +320,7 @@
       "slotFill": {
         "hint": "Kutulara cevabını yaz. Kesirde payı üste, paydayı alta yaz. Kutudan çıkınca cevabın kaydedilir.",
         "solutionShownHint": "Kabul edilen cevaplar gösteriliyor.",
+        "notNumberHint": "Kutu {{boxes}}: cevabı sayıyla yaz (ör. 7, 2,5, 3/4). Yazıyla yazılan sayı kabul edilmez.",
         "slotAria": "Kutu {{n}}",
         "slotAriaLabeled": "Kutu {{n}}: {{label}}",
         "whole": "tam",

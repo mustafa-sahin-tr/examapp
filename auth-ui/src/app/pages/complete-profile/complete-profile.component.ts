@@ -29,6 +29,7 @@ import {
   parentNameValidator,
   parentPhoneValidator,
 } from '../../shared/utils/parent-contact.util';
+import { PhoneMaskDirective } from '../../shared/directives/phone-mask.directive';
 
 type AppRole = 'Student' | 'Teacher' | 'Parent';
 
@@ -63,7 +64,7 @@ interface RoleOption {
 @Component({
   selector: 'app-complete-profile',
   standalone: true,
-  imports: [ReactiveFormsModule, MatSnackBarModule],
+  imports: [ReactiveFormsModule, MatSnackBarModule, PhoneMaskDirective],
   templateUrl: './complete-profile.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './complete-profile.component.scss',

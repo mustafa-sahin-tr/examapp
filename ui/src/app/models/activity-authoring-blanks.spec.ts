@@ -1,5 +1,5 @@
 import { AuthoringForm, buildDefinition, parseDefinition, validateForm } from './activity-authoring';
-import { FillTableForm, FillTextForm, ShortAnswerForm, WordPoolForm, blankAlternatives } from './activity-authoring-blanks';
+import { FillTableForm, FillTextForm, ShortAnswerForm, WordPoolForm, blankAlternatives, cellFromBlank, cellHasBlank, cellToBlank } from './activity-authoring-blanks';
 import { parseDragPlacePlan } from './drag-place';
 import { parseSlotFillPlan } from './slot-fill';
 
@@ -172,5 +172,20 @@ describe('activity-authoring-blanks (#590 dilim b)', () => {
       expect(keys({ ...base, cipher: 'K' })).toContain('cipherWordShort');
       expect(keys({ ...base, cipher: 'KA!' })).toContain('cipherWordChars');
     });
+  });
+});
+
+describe('tablo hücresi boşluk yardımcıları', () => {
+  it('cellToBlank hücrenin tamamını boşluk yapar, boşluklu hücreye dokunmaz', () => {
+    expect(cellToBlank(' 7 ')).toBe(' [[7]] ');
+    expect(cellToBlank('')).toBe('[[]]');
+    expect(cellToBlank('[[5]] cm')).toBe('[[5]] cm');
+  });
+
+  it('cellFromBlank boşlukları düz metne çevirir, alternatifte ilk cevap kalır', () => {
+    expect(cellFromBlank('[[bir|1]] metre')).toBe('bir metre');
+    expect(cellFromBlank('[[5]] + [[3]]')).toBe('5 + 3');
+    expect(cellHasBlank('düz')).toBe(false);
+    expect(cellHasBlank('[[x]]')).toBe(true);
   });
 });

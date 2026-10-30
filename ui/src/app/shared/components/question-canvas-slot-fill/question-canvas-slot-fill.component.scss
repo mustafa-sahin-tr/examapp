@@ -156,6 +156,11 @@
   background: color-mix(in srgb, var(--ms-surface) 92%, transparent);
 }
 
+.sf-input.is-not-number {
+  border-style: dashed;
+  border-color: var(--ms-warning-border);
+}
+
 .sf-unit {
   flex: none;
   padding: 0 0.2em;

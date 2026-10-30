@@ -28,6 +28,7 @@ import {
   SlotValues,
   buildSlotFillPayload,
   emptySlotValues,
+  isBlankSlotValue,
   parseSlotFillLetters,
   parseSlotFillPlan,
   parseSlotFillSolution,
@@ -38,7 +39,7 @@ import {
   withValue,
 } from '../../../models/slot-fill';
 import { StorageImageRetryDirective } from '../../directives/storage-image-retry.directive';
-import { isSlotAnswerCorrect } from '../../utils/slot-normalizer';
+import { isSlotAnswerCorrect, parseTrNumber } from '../../utils/slot-normalizer';
 import { StorageImageResolver } from '../../utils/storage-image-refresh.util';
 import { FractionInputComponent } from '../fraction-input/fraction-input.component';
 
@@ -264,9 +265,36 @@ export class QuestionCanvasSlotFillComponent {
     return this.slots().filter((slot) => !!valueOf(values, slot.id).trim()).length;
   });
 
+  /** Bırakılmış (en az bir kez `change` almış) düz sayı kutuları — uyarı yazarken değil, kutudan çıkınca görünür. */
+  private readonly committedNumberIds = signal<ReadonlySet<string>>(new Set());
+
+  /**
+   * Gezinti notu (B1): düz sayı kutusunda sayıya çevrilemeyen cevap ("yedi") — harf engellenmez (birimli cevap "5 cm"
+   * geçerli), kutu işaretlenir ve ipucu sayıyla yazmayı söyler. Kesir alanları zaten yalnız rakam alır.
+   */
+  readonly notNumberIds = computed(() => {
+    const committed = this.committedNumberIds();
+    const ids = new Set<string>();
+    if (this._showSolution()) return ids;
+    for (const slot of this.slots()) {
+      if (slot.input.kind !== 'number' || slot.input.entry !== 'plain' || !committed.has(slot.id)) continue;
+      const value = this.valueFor(slot.id);
+      if (!isBlankSlotValue(value) && parseTrNumber(value) === null) ids.add(slot.id);
+    }
+    return ids;
+  });
+
   readonly hint = computed(() => {
     this.i18nTick();
     if (this._showSolution()) return this.t('solutionShownHint');
+    const notNumber = this.notNumberIds();
+    if (notNumber.size > 0) {
+      const boxes = this.slots()
+        .map((slot, index) => (notNumber.has(slot.id) ? index + 1 : 0))
+        .filter((n) => n > 0)
+        .join(', ');
+      return this.t('notNumberHint', { boxes });
+    }
     return this.t('hint');
   });
 
@@ -320,6 +348,7 @@ export class QuestionCanvasSlotFillComponent {
   /** Alan bırakıldı / Enter / seçim: değer kaydedilir. */
   onCommit(slotId: string, event?: Event): void {
     if (event) this.setValue(slotId, (event.target as HTMLInputElement | HTMLSelectElement | null)?.value ?? '');
+    if (!this.committedNumberIds().has(slotId)) this.committedNumberIds.update((ids) => new Set(ids).add(slotId));
     this.commit();
   }
 
@@ -392,6 +421,7 @@ export class QuestionCanvasSlotFillComponent {
   /** Madde değişince palet odağı sıfırlanır. */
   private resetTransientState(): void {
     this.focusedPaletteId.set(null);
+    this.committedNumberIds.set(new Set());
   }
 
   private restoreFromAnswerPayload(): void {

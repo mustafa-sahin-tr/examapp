@@ -305,15 +305,43 @@
             <span class="ae__label">{{ t('table.cells') }}</span>
             <p class="ae__hint">{{ t('table.hint') }}</p>
             <mat-slide-toggle [checked]="tb.hasHeader" (change)="setTableHeader($event.checked)">{{ t('table.header') }}</mat-slide-toggle>
-            <div class="ae__table-wrap">
+            <div class="ae__block-head ae__table-tools">
+              <button mat-stroked-button type="button" data-testid="table-select-mode" [class.is-active]="tableSelectMode()"
+                [attr.aria-pressed]="tableSelectMode()" (click)="toggleTableSelectMode()">
+                <mat-icon>{{ tableSelectMode() ? 'check_box' : 'select_all' }}</mat-icon>{{ t('table.selectMode') }}
+              </button>
+              <button mat-stroked-button type="button" data-testid="table-make-blank" [disabled]="!tableHasTarget()"
+                (mousedown)="$event.preventDefault()" (click)="makeTableBlanks()">
+                <mat-icon>space_bar</mat-icon>{{ t('table.makeBlank') }}
+              </button>
+              <button mat-stroked-button type="button" data-testid="table-remove-blank" [disabled]="!tableTargetsHaveBlank()"
+                (mousedown)="$event.preventDefault()" (click)="removeTableBlanks()">
+                <mat-icon>format_clear</mat-icon>{{ t('table.removeBlank') }}
+              </button>
+              @if (tableSelection().size > 0) {
+                <button mat-button type="button" data-testid="table-clear-selection" (click)="clearTableSelection()">
+                  {{ t('table.clearSelection', { n: tableSelection().size }) }}
+                </button>
+              }
+              <span class="ae__hint" aria-live="polite">{{ t('blanks.count', { n: blankCount() }) }}</span>
+            </div>
+            <p class="ae__hint">{{ tableSelectMode() ? t('table.selectHint') : t('table.focusHint') }}</p>
+            <div class="ae__table-wrap" (pointerup)="endTableDrag()" (pointerleave)="endTableDrag()">
               <table class="ae__table">
                 <tbody>
                   @for (row of tb.cells; track $index; let ri = $index) {
                     <tr [class.is-header]="tb.hasHeader && ri === 0">
                       @for (cell of row; track $index; let ci = $index) {
-                        <td>
+                        <td [class.is-selected]="isCellSelected(ri, ci)" [class.has-blank]="cellHasBlank(cell)">
                           <input class="ae__cell" [value]="cell" [attr.data-cell]="ri + ':' + ci"
+                            [class.is-selecting]="tableSelectMode() && !(tb.hasHeader && ri === 0)"
+                            [readOnly]="tableSelectMode()"
                             [attr.aria-label]="t('table.cell', { row: ri + 1, column: ci + 1 })"
+                            [attr.aria-selected]="tableSelectMode() ? isCellSelected(ri, ci) : null"
+                            (focus)="onCellFocus(ri, ci)"
+                            (pointerdown)="onCellPointerDown(ri, ci, $event)"
+                            (pointerenter)="onCellPointerEnter(ri, ci)"
+                            (keydown)="onCellKeydown(ri, ci, $event)"
                             (input)="setCell(ri, ci, $any($event.target).value)" />
                         </td>
                       }

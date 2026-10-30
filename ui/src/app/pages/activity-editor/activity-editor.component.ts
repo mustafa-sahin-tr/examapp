@@ -37,6 +37,9 @@ import {
   ShortAnswerForm,
   WordPoolForm,
   authorBlanks,
+  cellFromBlank,
+  cellHasBlank,
+  cellToBlank,
 } from '../../models/activity-authoring-blanks';
 import {
   CROSSWORD_FORM_LIMITS,
@@ -204,6 +207,7 @@ export class ActivityEditorComponent {
   readonly instructionMax = PASSAGE_INSTRUCTION_MAX_LENGTH;
   readonly labelMax = AUTHORING_LABEL_MAX;
   readonly tableLimits = BLANK_TABLE_LIMITS;
+  readonly cellHasBlank = cellHasBlank;
   readonly mazeLimits = MAZE_FORM_LIMITS;
   readonly mazeLabelMax = MAZE_FORM_LIMITS.maxLabel;
   readonly treeDepths = [1, 2, 3, 4];
@@ -265,6 +269,13 @@ export class ActivityEditorComponent {
   readonly fillText = computed(() => (this.form().kind === 'fillText' ? (this.form() as FillTextForm) : null));
   readonly shortAnswer = computed(() => (this.form().kind === 'shortAnswer' ? (this.form() as ShortAnswerForm) : null));
   readonly fillTable = computed(() => (this.form().kind === 'fillTable' ? (this.form() as FillTableForm) : null));
+  /** Tablo: hücre seçme kipi (açıkken hücreye tık / sürükleme seçer, yazılmaz). */
+  readonly tableSelectMode = signal(false);
+  /** Seçili hücreler (`satır:kolon`); başlık satırı seçilmez. */
+  readonly tableSelection = signal<ReadonlySet<string>>(new Set());
+  /** Son odaklanan hücre: seçim yokken "Boşluk yap" ona uygulanır (hücrede seçili metin varsa yalnız o kısım). */
+  readonly tableFocus = signal<{ row: number; column: number } | null>(null);
+  private tableDrag: { row: number; column: number; adding: boolean; base: ReadonlySet<string> } | null = null;
   readonly wordPool = computed(() => (this.form().kind === 'wordPool' ? (this.form() as WordPoolForm) : null));
   readonly mazeTree = computed(() => (this.form().kind === 'mazeTree' ? (this.form() as MazeTreeForm) : null));
   readonly mazeBoard = computed(() => (this.form().kind === 'mazeBoard' ? (this.form() as MazeBoardForm) : null));
@@ -309,6 +320,7 @@ export class ActivityEditorComponent {
   /** Metindeki boşluk sayısı (boşluk doldurma / kelime havuzu ipucu). */
   readonly blankCount = computed(() => {
     const f = this.form();
+    if (f.kind === 'fillTable') return f.cells.flat().reduce((n, cell) => n + authorBlanks(cell).length, 0);
     return f.kind === 'fillText' || f.kind === 'wordPool' ? authorBlanks(f.text).length : 0;
   });
 
@@ -386,6 +398,7 @@ export class ActivityEditorComponent {
     if (kind === this.kind() || this.editingId()) return;
     this.form.set(emptyForm(kind, this.trueFalseLabels(), this.mazeDefaults()));
     this.crosswordUnplaced.set(null);
+    this.resetTableSelection();
     this.submitted.set(false);
   }
 
@@ -1151,6 +1164,145 @@ export class ActivityEditorComponent {
 
   setTableHeader(value: boolean): void {
     this.updateFillTable((f) => ({ ...f, hasHeader: value }));
+    if (value) {
+      this.tableSelection.update((sel) => new Set([...sel].filter((key) => !key.startsWith('0:'))));
+      if (this.tableFocus()?.row === 0) this.tableFocus.set(null);
+    }
+  }
+
+  isHeaderCell(row: number): boolean {
+    return !!this.fillTable()?.hasHeader && row === 0;
+  }
+
+  isCellSelected(row: number, column: number): boolean {
+    return this.tableSelection().has(`${row}:${column}`);
+  }
+
+  toggleTableSelectMode(): void {
+    this.tableSelectMode.update((on) => !on);
+  }
+
+  clearTableSelection(): void {
+    this.tableSelection.set(new Set());
+  }
+
+  onCellFocus(row: number, column: number): void {
+    this.tableFocus.set(this.isHeaderCell(row) ? null : { row, column });
+  }
+
+  /** Seçme kipinde hücreye basış: hücreyi seçer / seçimden çıkarır; basılı sürükleme aynı işlemi dikdörtgene yayar. */
+  onCellPointerDown(row: number, column: number, event: PointerEvent): void {
+    if (!this.tableSelectMode() || this.isHeaderCell(row)) return;
+    event.preventDefault();
+    // Dokunmatikte işaretçi ilk öğeye bağlanır; bırakınca sürükleme diğer hücrelerin pointerenter'ını alır.
+    const target = event.target as Element;
+    if (target.hasPointerCapture?.(event.pointerId)) target.releasePointerCapture(event.pointerId);
+    const base = this.tableSelection();
+    this.tableDrag = { row, column, adding: !base.has(`${row}:${column}`), base };
+    this.applyTableDrag(row, column);
+  }
+
+  onCellPointerEnter(row: number, column: number): void {
+    if (this.tableDrag) this.applyTableDrag(row, column);
+  }
+
+  endTableDrag(): void {
+    this.tableDrag = null;
+  }
+
+  /** Seçme kipinde klavye: Boşluk / Enter odaktaki hücreyi seçer / seçimden çıkarır. */
+  onCellKeydown(row: number, column: number, event: KeyboardEvent): void {
+    if (!this.tableSelectMode() || this.isHeaderCell(row) || (event.key !== ' ' && event.key !== 'Enter')) return;
+    event.preventDefault();
+    const key = `${row}:${column}`;
+    this.tableSelection.update((sel) => {
+      const next = new Set(sel);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
+  }
+
+  /**
+   * Seçili hücreleri boşluk yapar (hücrenin tamamı cevap, zaten boşluklu hücreye dokunmaz). Seçim yoksa odaktaki hücreye:
+   * hücrede seçili metin varsa yalnız o kısım boşluk olur ("5 cm" içinde "5" → `[[5]] cm`).
+   */
+  makeTableBlanks(): void {
+    const targets = this.tableTargets();
+    if (targets.length === 0) return;
+    const focus = this.tableFocus();
+    const input = focus && this.tableSelection().size === 0 ? this.cellInput(focus.row, focus.column) : null;
+    if (input && focus && (input.selectionStart ?? 0) < (input.selectionEnd ?? 0) && !cellHasBlank(input.value)) {
+      const value = input.value;
+      const start = input.selectionStart!;
+      const end = input.selectionEnd!;
+      const selected = value.slice(start, end);
+      const lead = selected.length - selected.trimStart().length;
+      const trail = selected.length - selected.trimEnd().length;
+      this.setCell(focus.row, focus.column, `${value.slice(0, start + lead)}[[${selected.trim()}]]${value.slice(end - trail)}`);
+      return;
+    }
+    this.mapTableCells(targets, cellToBlank);
+  }
+
+  /** Seçili (ya da odaktaki) hücrelerin boşluklarını düz metne çevirir; alternatifli boşlukta ilk cevap kalır. */
+  removeTableBlanks(): void {
+    this.mapTableCells(this.tableTargets(), cellFromBlank);
+  }
+
+  /** Seçili hücrelerden en az biri boşluklu mu (seçim yoksa odaktaki hücre). */
+  readonly tableTargetsHaveBlank = computed(() => {
+    const f = this.fillTable();
+    return !!f && this.tableTargets().some(({ row, column }) => cellHasBlank(f.cells[row]?.[column] ?? ''));
+  });
+
+  readonly tableHasTarget = computed(() => this.tableTargets().length > 0);
+
+  private tableTargets(): { row: number; column: number }[] {
+    const f = this.fillTable();
+    if (!f) return [];
+    const selection = this.tableSelection();
+    const cells =
+      selection.size > 0
+        ? [...selection].map((key) => {
+            const [row, column] = key.split(':').map(Number);
+            return { row, column };
+          })
+        : this.tableFocus()
+          ? [this.tableFocus()!]
+          : [];
+    return cells.filter(({ row, column }) => row < f.cells.length && column < f.cells[0].length && !this.isHeaderCell(row));
+  }
+
+  private mapTableCells(targets: { row: number; column: number }[], map: (cell: string) => string): void {
+    const keys = new Set(targets.map(({ row, column }) => `${row}:${column}`));
+    this.updateFillTable((f) => ({
+      ...f,
+      cells: f.cells.map((r, ri) => r.map((c, ci) => (keys.has(`${ri}:${ci}`) ? map(c) : c))),
+    }));
+  }
+
+  private applyTableDrag(row: number, column: number): void {
+    const drag = this.tableDrag;
+    if (!drag) return;
+    const next = new Set(drag.base);
+    for (let r = Math.min(drag.row, row); r <= Math.max(drag.row, row); r++) {
+      if (this.isHeaderCell(r)) continue;
+      for (let c = Math.min(drag.column, column); c <= Math.max(drag.column, column); c++) {
+        if (drag.adding) next.add(`${r}:${c}`);
+        else next.delete(`${r}:${c}`);
+      }
+    }
+    this.tableSelection.set(next);
+  }
+
+  private cellInput(row: number, column: number): HTMLInputElement | null {
+    return document.querySelector<HTMLInputElement>(`[data-testid="fill-table-form"] [data-cell="${row}:${column}"]`);
+  }
+
+  /** Satır / kolon değişince indeksler kayar: seçim ve odak sıfırlanır. */
+  private resetTableSelection(): void {
+    this.tableSelection.set(new Set());
+    this.tableFocus.set(null);
   }
 
   setCell(row: number, column: number, value: string): void {
@@ -1162,18 +1314,22 @@ export class ActivityEditorComponent {
 
   addTableRow(): void {
     this.updateFillTable((f) => ({ ...f, cells: [...f.cells, f.cells[0].map(() => '')] }));
+    this.resetTableSelection();
   }
 
   removeTableRow(row: number): void {
     this.updateFillTable((f) => ({ ...f, cells: f.cells.filter((_, i) => i !== row) }));
+    this.resetTableSelection();
   }
 
   addTableColumn(): void {
     this.updateFillTable((f) => ({ ...f, cells: f.cells.map((r) => [...r, '']) }));
+    this.resetTableSelection();
   }
 
   removeTableColumn(column: number): void {
     this.updateFillTable((f) => ({ ...f, cells: f.cells.map((r) => r.filter((_, i) => i !== column)) }));
+    this.resetTableSelection();
   }
 
   // ---- Madde listesi, kayıt ----
@@ -1303,6 +1459,7 @@ export class ActivityEditorComponent {
     this.editingId.set(question.id);
     this.editingPassageId = question.passage?.id ?? null;
     this.form.set(form);
+    this.resetTableSelection();
     this.instruction.set(question.passage?.instruction ?? '');
     this.originalImage = question.imageUrl ? { dataUrl: null, src: question.imageUrl, width: 0, height: 0 } : null;
     this.image.set(this.originalImage);
@@ -1327,6 +1484,7 @@ export class ActivityEditorComponent {
     this.originalImage = null;
     this.form.set(emptyForm(kind, this.trueFalseLabels(), this.mazeDefaults()));
     this.crosswordUnplaced.set(null);
+    this.resetTableSelection();
     this.instruction.set('');
     this.image.set(null);
     this.imageError.set(null);

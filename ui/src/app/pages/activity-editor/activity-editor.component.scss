@@ -965,3 +965,151 @@
     border-color: var(--ms-danger-border);
   }
 }
+
+// Issue #586: çengel bulmaca editörü — hücre seçilip yön + ipucu + cevap yazılır, harfler ızgaraya düşer.
+.ae__cw {
+  --cw-cell: 34px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.ae__cw-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.ae__cw-grid {
+  display: grid;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 10px;
+  background: var(--ms-surface-weak);
+}
+
+.ae__cw-cell {
+  position: relative;
+  width: var(--cw-cell);
+  height: var(--cw-cell);
+  padding: 0;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: var(--cw-cell);
+  text-align: center;
+  color: var(--ms-text-strong);
+  cursor: pointer;
+  background: transparent;
+  border: 1px dashed var(--ms-border);
+  border-radius: 4px;
+
+  &:hover {
+    border-color: var(--ms-border-strong);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ms-action-border-focus);
+    outline-offset: 1px;
+  }
+
+  &--used {
+    background: var(--ms-surface);
+    border: 1px solid var(--ms-border-strong);
+  }
+
+  &--ghost {
+    color: var(--ms-text-weak);
+    background: var(--ms-action-background-weak);
+    border: 1px dashed var(--ms-action-border);
+  }
+
+  &--active {
+    background: var(--ms-action-background-weak);
+    border-color: var(--ms-action-border);
+  }
+
+  &--conflict {
+    color: var(--ms-danger-text);
+    background: var(--ms-danger-surface);
+    border-color: var(--ms-danger-border);
+  }
+
+  &--selected {
+    outline: 3px solid var(--ms-action-border-focus);
+    outline-offset: -1px;
+  }
+}
+
+.ae__cw-num {
+  position: absolute;
+  top: 1px;
+  left: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ms-text-medium);
+}
+
+.ae__cw-panel {
+  display: flex;
+  flex: 1 1 260px;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 240px;
+  padding: 12px;
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 10px;
+  background: var(--ms-surface);
+}
+
+.ae__cw-spacer {
+  flex: 1;
+}
+
+.ae__cw-delete {
+  color: var(--ms-danger-text);
+}
+
+.ae__cw-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ae__cw-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 4px 2px 10px;
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 8px;
+
+  &--active {
+    border-color: var(--ms-action-border);
+    background: var(--ms-action-background-weak);
+  }
+}
+
+.ae__cw-item-num {
+  min-width: 20px;
+  font-weight: 700;
+  color: var(--ms-text-strong);
+}
+
+.ae__cw-item-dir {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: var(--ms-text-medium);
+}
+
+.ae__cw-item-clue {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

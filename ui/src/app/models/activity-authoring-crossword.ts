@@ -1,9 +1,11 @@
 /**
- * Issue #586: çengel bulmacanın (`crossword`) görselsiz formu — öğretmen kelime + ipucu yazar; her kelimenin yönü ve başlangıç
- * hücresi elle girilir ya da **Otomatik yerleştir** ({@link autoLayout}) kelimeleri kesiştirerek yerleştirir ve ızgarayı
- * kelimelere göre boyutlandırır. Numaralar kayıtta başlangıç hücrelerine göre verilir (aynı hücreden başlayanlar aynı numara).
+ * Issue #586: çengel bulmacanın (`crossword`) görselsiz formu — öğretmen 10×10'luk ({@link CROSSWORD_EDITOR}) ızgarada bir hücre
+ * seçer, yön + ipucu + cevap yazar; cevap harfleri hücrelere yazılır. Yer yetmezse dört kenara satır / sütun eklenir
+ * ({@link insertCrosswordLine}); kayıtta kelimelerin kapladığı alana kırpılır ({@link trimCrosswordForm}), öğrenci yalnız o alanı
+ * görür. **Otomatik yerleştir** ({@link autoLayout}) kelimeleri kesiştirerek yeniden dizer. Numaralar kayıtta başlangıç
+ * hücrelerine göre verilir (aynı hücreden başlayanlar aynı numara).
  *
- * Kurallar backend `CrosswordGrader.ValidateDefinition` ile aynı: ızgara 2..20, 1..80 kelime, kelime 2..20 harf/rakam, ipucu
+ * Kurallar backend `CrosswordGrader.ValidateDefinition` ile aynı: kırpılmış ızgara 2..20 (editör ızgarası en çok 30), 1..80 kelime, kelime 2..20 harf/rakam, ipucu
  * zorunlu, aynı yönde iki kelime hücre paylaşmaz ve uç uca değmez, kesişen hücrelerde harfler aynı.
  */
 import { CROSSWORD, CROSSWORD_LIMITS, CrosswordDir, clueCells, clueNumbers, isCellChar, parseCrosswordPlan, parseCrosswordSolution } from './crossword';
@@ -48,6 +50,11 @@ export const CROSSWORD_FORM_LIMITS = {
   maxClue: CROSSWORD_LIMITS.maxClueText,
 } as const;
 
+/** Editör ızgarası: varsayılan boyut ve kenarlara eklemeyle varılabilecek en büyük boyut (kayıtta kırpılan alan yine ≤ 20). */
+export const CROSSWORD_EDITOR = { defaultSize: 10, maxSize: 30 } as const;
+
+export type CrosswordSide = 'top' | 'bottom' | 'left' | 'right';
+
 export function isCrosswordForm(form: { kind: string }): form is CrosswordForm {
   return form.kind === 'crossword';
 }
@@ -55,12 +62,60 @@ export function isCrosswordForm(form: { kind: string }): form is CrosswordForm {
 export function emptyCrosswordForm(): CrosswordForm {
   return {
     kind: 'crossword',
-    rows: 5,
-    cols: 5,
-    entries: [
-      { answer: '', clue: '', dir: 'across', row: 0, col: 0 },
-      { answer: '', clue: '', dir: 'down', row: 0, col: 0 },
-    ],
+    rows: CROSSWORD_EDITOR.defaultSize,
+    cols: CROSSWORD_EDITOR.defaultSize,
+    entries: [],
+  };
+}
+
+/** Kenara bir satır / sütun ekler; üste / sola eklenince kelimeler kayar. Editör sınırındaysa form değişmez. */
+export function insertCrosswordLine(form: CrosswordForm, side: CrosswordSide): CrosswordForm {
+  const vertical = side === 'top' || side === 'bottom';
+  if ((vertical ? form.rows : form.cols) >= CROSSWORD_EDITOR.maxSize) return form;
+  const dr = side === 'top' ? 1 : 0;
+  const dc = side === 'left' ? 1 : 0;
+  return {
+    ...form,
+    rows: form.rows + (vertical ? 1 : 0),
+    cols: form.cols + (vertical ? 0 : 1),
+    entries: form.entries.map((e) => ({ ...e, row: e.row + dr, col: e.col + dc })),
+  };
+}
+
+/**
+ * Kelimelerin kapladığı alan (en az 2×2); yalnız ızgaraya sığan, uzunluğu olan kelimeler sayılır. Kelime yoksa null.
+ */
+function usedArea(form: CrosswordForm): { top: number; left: number; rows: number; cols: number } | null {
+  const cells = form.entries.flatMap(entryCells);
+  if (cells.length === 0) return null;
+  const top = Math.min(...cells.map(([r]) => r));
+  const left = Math.min(...cells.map(([, c]) => c));
+  return {
+    top,
+    left,
+    rows: Math.max(CROSSWORD_LIMITS.minSize, Math.max(...cells.map(([r]) => r)) - top + 1),
+    cols: Math.max(CROSSWORD_LIMITS.minSize, Math.max(...cells.map(([, c]) => c)) - left + 1),
+  };
+}
+
+/** Tamamen boş üst / alt satırları ve sol / sağ sütunları atar (kayıtta; öğrenci yalnız kelimelerin olduğu alanı görür). */
+export function trimCrosswordForm(form: CrosswordForm): CrosswordForm {
+  const area = usedArea(form);
+  if (!area) return form;
+  return {
+    ...form,
+    rows: area.rows,
+    cols: area.cols,
+    entries: form.entries.map((e) => ({ ...e, row: e.row - area.top, col: e.col - area.left })),
+  };
+}
+
+/** Kayıtlı / okunan bulmacayı editörde en az varsayılan boyuta (sağa ve alta boş hücre) genişletir. */
+export function padCrosswordForm(form: CrosswordForm): CrosswordForm {
+  return {
+    ...form,
+    rows: Math.max(form.rows, CROSSWORD_EDITOR.defaultSize),
+    cols: Math.max(form.cols, CROSSWORD_EDITOR.defaultSize),
   };
 }
 
@@ -78,6 +133,45 @@ function entryCells(entry: CrosswordEntryForm): [number, number][] {
   return clueCells({ dir: entry.dir, row: entry.row, col: entry.col, length: entryLength(entry) });
 }
 
+/** Editör ızgarasında bir hücre: yazılan harf (boş kelime yerinde ''), çakışma, başlangıç numarası, geçen kelimeler. */
+export interface CrosswordBoardCell {
+  letter: string;
+  conflict: boolean;
+  number: number | null;
+  entries: number[];
+}
+
+/**
+ * Editör ızgarasının dolu hücreleri (anahtar `satır,sütun`) ve kelime başına numara (form sırasıyla; kayıttaki numaralandırmayla
+ * aynı kural: başlangıç hücreleri satır, sonra sütun sırasıyla, aynı hücreden başlayanlar aynı numara).
+ */
+export function crosswordBoard(form: CrosswordForm): { cells: Map<string, CrosswordBoardCell>; numbers: number[] } {
+  const cells = new Map<string, CrosswordBoardCell>();
+  form.entries.forEach((entry, index) => {
+    const word = answerLetters(entry.answer);
+    entryCells(entry).forEach(([r, c], i) => {
+      const key = `${r},${c}`;
+      const cell = cells.get(key) ?? { letter: '', conflict: false, number: null, entries: [] };
+      const ch = word[i] ?? '';
+      if (ch && cell.letter && cell.letter !== ch) cell.conflict = true;
+      if (ch && !cell.letter) cell.letter = ch;
+      cell.entries.push(index);
+      cells.set(key, cell);
+    });
+  });
+  const starts = [...new Set(form.entries.filter((e) => entryLength(e) > 0).map((e) => `${e.row},${e.col}`))].sort((a, b) => {
+    const [ar, ac] = a.split(',').map(Number);
+    const [br, bc] = b.split(',').map(Number);
+    return ar - br || ac - bc;
+  });
+  const byStart = new Map(starts.map((key, i) => [key, i + 1]));
+  for (const [key, n] of byStart) {
+    const cell = cells.get(key);
+    if (cell) cell.number = n;
+  }
+  return { cells, numbers: form.entries.map((e) => byStart.get(`${e.row},${e.col}`) ?? 0) };
+}
+
 export function validateCrosswordForm(form: CrosswordForm): CrosswordError[] {
   const errors: CrosswordError[] = [];
   const { minSize, maxSize, maxEntries, minLength, maxClue } = CROSSWORD_FORM_LIMITS;
@@ -85,8 +179,11 @@ export function validateCrosswordForm(form: CrosswordForm): CrosswordError[] {
     if (!errors.some((e) => e.key === key)) errors.push(params ? { key, params } : { key });
   };
 
-  if (form.rows < minSize || form.rows > maxSize || form.cols < minSize || form.cols > maxSize)
-    push('crosswordGridSize', { min: minSize, max: maxSize });
+  const editorMax = CROSSWORD_EDITOR.maxSize;
+  if (form.rows < minSize || form.rows > editorMax || form.cols < minSize || form.cols > editorMax)
+    push('crosswordGridSize', { min: minSize, max: editorMax });
+  const area = usedArea(form);
+  if (area && (area.rows > maxSize || area.cols > maxSize)) push('crosswordAreaTooLarge', { max: maxSize });
   if (form.entries.length < 1 || form.entries.length > maxEntries) push('crosswordEntryCount', { min: 1, max: maxEntries });
 
   const letters = new Map<string, string>();
@@ -127,10 +224,11 @@ export function validateCrosswordForm(form: CrosswordForm): CrosswordError[] {
 }
 
 /**
- * Form → plan + çözüm. Önce {@link validateCrosswordForm} geçmeli; geçersiz formda da çalışır (önizleme ayrıştırıcısı ızgaraya
+ * Form → plan + çözüm; ızgara kelimelerin kapladığı alana kırpılır. Önce {@link validateCrosswordForm} geçmeli; geçersiz formda da çalışır (önizleme ayrıştırıcısı ızgaraya
  * sığmayan kelimeyi atlar). Numara yalnız ızgaraya sığan kelimelere verilir.
  */
-export function buildCrosswordDefinition(form: CrosswordForm): CrosswordDefinition {
+export function buildCrosswordDefinition(editorForm: CrosswordForm): CrosswordDefinition {
+  const form = trimCrosswordForm(editorForm);
   const rows = clamp(form.rows, CROSSWORD_LIMITS.minSize, CROSSWORD_LIMITS.maxSize);
   const cols = clamp(form.cols, CROSSWORD_LIMITS.minSize, CROSSWORD_LIMITS.maxSize);
   const clues = form.entries.map((entry, i) => ({
@@ -164,7 +262,7 @@ export function buildCrosswordDefinition(form: CrosswordForm): CrosswordDefiniti
 export function crosswordFormFromDraft(planJson: string | null | undefined): CrosswordForm | null {
   const plan = parseCrosswordPlan(planJson);
   if (!plan || plan.clues.length === 0) return null;
-  return {
+  return padCrosswordForm({
     kind: 'crossword',
     rows: plan.rows,
     cols: plan.cols,
@@ -176,7 +274,7 @@ export function crosswordFormFromDraft(planJson: string | null | undefined): Cro
       col: clue.col,
       length: clue.length,
     })),
-  };
+  });
 }
 
 /** Kayıtlı plan + çözüm → form (düzenleme). Bozuk plan null. */
@@ -187,7 +285,7 @@ export function parseCrosswordDefinition(
   const plan = parseCrosswordPlan(planJson);
   if (!plan || plan.clues.length === 0) return null;
   const answers = parseCrosswordSolution(solutionJson, plan);
-  return {
+  return padCrosswordForm({
     kind: 'crossword',
     rows: plan.rows,
     cols: plan.cols,
@@ -198,7 +296,7 @@ export function parseCrosswordDefinition(
       row: clue.row,
       col: clue.col,
     })),
-  };
+  });
 }
 
 export interface AutoLayoutResult {

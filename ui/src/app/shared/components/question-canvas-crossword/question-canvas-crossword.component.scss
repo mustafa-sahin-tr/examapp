@@ -113,10 +113,18 @@
     pointer-events: none;
   }
 
+  // Harf hücrenin tam ortasında: kutu hücreye eşit (border-box). Büyük harfler satırın ortasından aşağıda durur (alt uzantı
+  // payı boş kalır), alttaki pay bunu dengeler.
   &__input {
+    display: block;
+    box-sizing: border-box;
     width: 100%;
     height: 100%;
-    padding: 6px 0 0;
+    // Global `input { min-height: 48px }` (styles.scss) hücreyi taşırıyordu.
+    min-height: 0;
+    margin: 0;
+    padding: 0 0 0.15em;
+    line-height: calc(var(--cw-cell) - 2px - 0.15em);
     border: 0;
     background: transparent;
     text-align: center;

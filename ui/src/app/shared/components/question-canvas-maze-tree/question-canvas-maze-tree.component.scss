@@ -125,12 +125,26 @@
   }
 
   &.is-current {
+    // Yürüyen adam kartın solunda durur; yazı onun altında kalmasın.
+    padding-left: 38px;
     border-color: var(--ms-action-background);
     box-shadow: 0 0 0 4px var(--ms-action-border-focus);
   }
 
   &.is-ok {
     border-color: var(--ms-success-border);
+  }
+
+  &.is-reached {
+    border-color: var(--ms-success-border);
+    background: var(--ms-success-surface);
+    color: var(--ms-success-text);
+    box-shadow: 0 0 0 4px var(--ms-success-border);
+  }
+
+  &.is-wrong-end {
+    border-color: var(--ms-danger-border);
+    box-shadow: none;
   }
 
   &.is-route {

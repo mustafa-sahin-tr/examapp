@@ -131,6 +131,33 @@ describe('QuestionCanvasMazeTreeComponent (#585)', () => {
     expect(q('mz-status')?.textContent).toContain('2. çıkış');
   });
 
+  it('tree_CheckedEnd_GreenWhenReached_RedWhenPathDeviated', () => {
+    setup(TREE, { answer: path('e1', 'e3') });
+    fixture.componentRef.setInput('feedback', {
+      rows: [
+        { id: 'n1', correct: true },
+        { id: 'n2', correct: true },
+      ],
+      status: 'reached',
+      at: 'x1',
+    });
+    fixture.detectChanges();
+    expect(node('x1').classList).toContain('is-reached');
+    expect(node('x1').classList).not.toContain('is-wrong-end');
+
+    fixture.componentRef.setInput('feedback', {
+      rows: [
+        { id: 'n1', correct: true },
+        { id: 'n2', correct: false },
+      ],
+      status: 'deviated',
+      at: 'n2',
+    });
+    fixture.detectChanges();
+    expect(node('x1').classList).not.toContain('is-reached');
+    expect(node('x1').classList).toContain('is-wrong-end');
+  });
+
   it('tree_UndoAndReset', () => {
     setup(TREE, { answer: path('e1', 'e4') });
     click(q('mz-undo')!);

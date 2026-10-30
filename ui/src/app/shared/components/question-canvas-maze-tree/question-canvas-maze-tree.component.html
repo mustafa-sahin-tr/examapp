@@ -34,6 +34,7 @@
             </svg>
             @for (n of tr.nodes; track n.node.id) {
               <div class="mz-node" [attr.data-node]="n.node.id" [class.is-end]="n.node.end"
+                [class.is-reached]="reachedEnd() === n.node.id" [class.is-wrong-end]="wrongEnd() === n.node.id"
                 [class.is-visited]="visitedNodes().has(n.node.id)" [class.is-current]="current() === n.node.id"
                 [class.is-ok]="okNodes().has(n.node.id)" [class.is-deviated]="deviatedAt() === n.node.id"
                 [class.is-route]="routeNodes().has(n.node.id)" [style.left.%]="n.left" [style.top.px]="n.top"
@@ -48,7 +49,7 @@
               </div>
             }
             @if (token(); as tk) {
-              <span class="mz-token" aria-hidden="true" [style.left]="'calc(' + tk.left + '% + 4px)'" [style.top.px]="tk.top">
+              <span class="mz-token" aria-hidden="true" [style.left]="tk.left" [style.top.px]="tk.top">
                 <mat-icon>directions_walk</mat-icon>
               </span>
             }
@@ -84,6 +85,7 @@
             </svg>
             @for (n of rm.nodes; track n.node.id) {
               <div class="mz-room" [attr.data-node]="n.node.id" [class.is-end]="n.node.end"
+                [class.is-reached]="reachedEnd() === n.node.id" [class.is-wrong-end]="wrongEnd() === n.node.id"
                 [class.is-start]="plan()?.start === n.node.id" [class.is-visited]="visitedNodes().has(n.node.id)"
                 [class.is-current]="current() === n.node.id" [class.is-ok]="okNodes().has(n.node.id)"
                 [class.is-deviated]="deviatedAt() === n.node.id" [class.is-route]="routeNodes().has(n.node.id)"
@@ -103,7 +105,7 @@
               </div>
             }
             @if (token(); as tk) {
-              <span class="mz-token" aria-hidden="true" [style.left]="'calc(' + tk.left + '% + 4px)'" [style.top.px]="tk.top">
+              <span class="mz-token" aria-hidden="true" [style.left]="tk.left" [style.top.px]="tk.top">
                 <mat-icon>directions_walk</mat-icon>
               </span>
             }

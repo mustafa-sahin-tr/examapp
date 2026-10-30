@@ -56,7 +56,7 @@ export interface MazeTreePlanV1 {
   edges: MazeEdge[];
 }
 
-/** Yol varyantlarında düğüm → doğru kenar; taşlarda işaretlenmesi gereken taşlar. */
+/** Yol varyantlarında düğüm → doğru kenar; taşlarda basılmaması gereken taşlar (öğrenci diğerlerine basar). */
 export interface MazeSolution {
   choices: Record<string, string>;
   marked: string[];
@@ -233,12 +233,13 @@ function uniqueIds(value: unknown, allowed: Set<string> | null): string[] {
 
 export interface MazeAnswer {
   path: string[];
-  marked: string[];
+  /** Taşlarda öğrencinin bastığı taşlar. */
+  stepped: string[];
 }
 
-/** Öğrenci cevabı (`{"type":"mazeTree","path":[...]}` ya da `marked`) — başka tür / bozuksa boş. Yol plana göre kırpılır. */
+/** Öğrenci cevabı (`{"type":"mazeTree","path":[...]}` ya da `stepped`) — başka tür / bozuksa boş. Yol plana göre kırpılır. */
 export function parseMazeAnswer(json: string | null | undefined, plan?: MazeTreePlanV1 | null): MazeAnswer {
-  const empty: MazeAnswer = { path: [], marked: [] };
+  const empty: MazeAnswer = { path: [], stepped: [] };
   if (!json) return empty;
   try {
     const parsed = JSON.parse(json) as Record<string, unknown> | null;
@@ -247,8 +248,8 @@ export function parseMazeAnswer(json: string | null | undefined, plan?: MazeTree
       ? (parsed['path'] as unknown[]).filter((id): id is string => isValidInteractionId(id))
       : [];
     const path = plan && plan.variant !== 'stones' ? walkMaze(plan, rawPath).edges : plan ? [] : rawPath;
-    const marked = plan && plan.variant !== 'stones' ? [] : uniqueIds(parsed['marked'], plan ? new Set(plan.nodes.map((n) => n.id)) : null);
-    return { path, marked };
+    const stepped = plan && plan.variant !== 'stones' ? [] : uniqueIds(parsed['stepped'], plan ? new Set(plan.nodes.map((n) => n.id)) : null);
+    return { path, stepped };
   } catch {
     return empty;
   }
@@ -258,12 +259,12 @@ export function buildMazePathPayload(path: readonly string[]): string {
   return JSON.stringify({ version: 1, type: MAZE_TREE, path: [...path] });
 }
 
-export function buildMazeMarkedPayload(marked: readonly string[]): string {
-  return JSON.stringify({ version: 1, type: MAZE_TREE, marked: [...marked] });
+export function buildMazeSteppedPayload(stepped: readonly string[]): string {
+  return JSON.stringify({ version: 1, type: MAZE_TREE, stepped: [...stepped] });
 }
 
 export function isEmptyMazeAnswer(answer: MazeAnswer): boolean {
-  return answer.path.length === 0 && answer.marked.length === 0;
+  return answer.path.length === 0 && answer.stepped.length === 0;
 }
 
 /** Adımsız / işaretsiz cevap: sunucu boş cevap sayar, ekranlar da cevapsız saymalı. Başka tür false. */

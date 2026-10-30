@@ -953,3 +953,15 @@
   background: var(--ms-danger-surface);
   color: var(--ms-danger-text);
 }
+
+// Irmak taşları: basılmaz taş metinle ve tehlike rengiyle ayrışır (yalnız simge yetmiyordu).
+.ae__stone-mark {
+  flex: 0 0 auto;
+  min-width: 128px;
+
+  &--on {
+    color: var(--ms-danger-text);
+    background: var(--ms-danger-surface);
+    border-color: var(--ms-danger-border);
+  }
+}

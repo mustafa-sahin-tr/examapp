@@ -1,6 +1,6 @@
 import {
   boardRows,
-  buildMazeMarkedPayload,
+  buildMazeSteppedPayload,
   buildMazePathPayload,
   isBlankMazePayload,
   mazeRoute,
@@ -128,13 +128,13 @@ describe('maze-tree model', () => {
     const stones = parseMazeTreePlan(
       JSON.stringify({ version: 1, type: 'mazeTree', variant: 'stones', nodes: [{ id: 's1', label: 'a' }, { id: 's2', label: 'b' }] })
     )!;
-    expect(parseMazeAnswer(buildMazeMarkedPayload(['s2', 's2', 'zz']), stones).marked).toEqual(['s2']);
+    expect(parseMazeAnswer(buildMazeSteppedPayload(['s2', 's2', 'zz']), stones).stepped).toEqual(['s2']);
   });
 
   it('detects blank payloads', () => {
     expect(isBlankMazePayload(null)).toBe(true);
     expect(isBlankMazePayload(buildMazePathPayload([]))).toBe(true);
-    expect(isBlankMazePayload(buildMazeMarkedPayload([]))).toBe(true);
+    expect(isBlankMazePayload(buildMazeSteppedPayload([]))).toBe(true);
     expect(isBlankMazePayload(buildMazePathPayload(['e1']))).toBe(false);
     expect(isBlankMazePayload('{"type":"match","pairs":[]}')).toBe(false);
   });

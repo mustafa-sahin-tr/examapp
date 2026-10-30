@@ -39,7 +39,7 @@ public class MazeTreeGraderTests
 
     private static string Path(params string[] edges) => JsonSerializer.Serialize(new { version = 1, type = "mazeTree", path = edges });
 
-    private static string Marked(params string[] nodes) => JsonSerializer.Serialize(new { version = 1, type = "mazeTree", marked = nodes });
+    private static string Stepped(params string[] nodes) => JsonSerializer.Serialize(new { version = 1, type = "mazeTree", stepped = nodes });
 
     private static InteractionGradeInput Input(string plan, string? solution, string? payload)
         => new(plan, solution, payload, SelectedAnswerId: null, CorrectAnswerId: null);
@@ -171,6 +171,7 @@ public class MazeTreeGraderTests
     [InlineData("""{"marked":["s1","s1"]}""")]
     [InlineData("""{"marked":[]}""")] // hiç işaretsiz çözülemez
     [InlineData("""{"marked":["zz"]}""")]
+    [InlineData("""{"marked":["s1","s2","s3","s4"]}""")] // basılır taş yok: doğru cevap boş cevap olurdu
     [InlineData("""{"choices":{}}""")]
     public void ValidateDefinition_InvalidStonesSolution_Rejected(string solution)
         => Grader.ValidateDefinition(StonesPlan, solution).ShouldBeFalse();
@@ -185,7 +186,7 @@ public class MazeTreeGraderTests
         Grader.Validate(TreePlan, Path("e1", "e5")).ShouldBeFalse(); // e5 n2'den değil
         Grader.Validate(TreePlan, Path("e1", "e4", "e3")).ShouldBeFalse(); // bitişten sonra adım
         Grader.Validate(TreePlan, Path("zz")).ShouldBeFalse();
-        Grader.Validate(TreePlan, Marked("n1")).ShouldBeFalse(); // yol varyantında işaret yok
+        Grader.Validate(TreePlan, Stepped("n1")).ShouldBeFalse(); // yol varyantında taş yok
         Grader.Validate(TreePlan, null).ShouldBeTrue();
     }
 
@@ -197,7 +198,7 @@ public class MazeTreeGraderTests
     }
 
     [Theory]
-    [InlineData("""{"version":1,"type":"mazeTree","path":["e1"],"marked":["n1"]}""")]
+    [InlineData("""{"version":1,"type":"mazeTree","path":["e1"],"stepped":["n1"]}""")]
     [InlineData("""{"version":1,"type":"mazeTree"}""")]
     [InlineData("""{"version":2,"type":"mazeTree","path":["e1"]}""")]
     [InlineData("""{"version":1,"type":"match","path":["e1"]}""")]
@@ -209,9 +210,11 @@ public class MazeTreeGraderTests
     [Fact]
     public void Validate_Stones()
     {
-        Grader.Validate(StonesPlan, Marked("s1", "s3")).ShouldBeTrue();
-        Grader.Validate(StonesPlan, Marked("s1", "s1")).ShouldBeFalse();
-        Grader.Validate(StonesPlan, Marked("zz")).ShouldBeFalse();
+        Grader.Validate(StonesPlan, Stepped("s1", "s3")).ShouldBeTrue();
+        Grader.Validate(StonesPlan, Stepped("s1", "s1")).ShouldBeFalse();
+        Grader.Validate(StonesPlan, Stepped("zz")).ShouldBeFalse();
+        // Eski işaretleme payload'u artık kabul edilmez.
+        Grader.Validate(StonesPlan, """{"version":1,"type":"mazeTree","marked":["s2"]}""").ShouldBeFalse();
         Grader.Validate(StonesPlan, Path("s1")).ShouldBeFalse();
     }
 
@@ -226,7 +229,7 @@ public class MazeTreeGraderTests
     public void Normalize_EmptyAnswer_IsNull()
     {
         Grader.Normalize(Path()).ShouldBeNull();
-        Grader.Normalize(Marked()).ShouldBeNull();
+        Grader.Normalize(Stepped()).ShouldBeNull();
         Grader.Normalize(Path("e1")).ShouldNotBeNull();
     }
 
@@ -320,8 +323,8 @@ public class MazeTreeGraderTests
     [Fact]
     public void Grade_StonesPerStoneWithFirstWrongStone()
     {
-        // s2 doğru işaretli, s3 yanlış işaretli, s4 eksik.
-        var result = Grader.Grade(Input(StonesPlan, StonesSolution, Marked("s2", "s3")));
+        // Basılmaz: s2, s4. s1'e basıldı (doğru), s2'ye basılmadı (doğru), s3'e basılmadı (yanlış), s4'e basıldı (yanlış).
+        var result = Grader.Grade(Input(StonesPlan, StonesSolution, Stepped("s1", "s4")));
 
         result.IsCorrect.ShouldBeFalse();
         result.CorrectCount.ShouldBe(2);
@@ -336,7 +339,7 @@ public class MazeTreeGraderTests
     [Fact]
     public void Grade_StonesAllCorrect_Reached()
     {
-        var result = Grader.Grade(Input(StonesPlan, StonesSolution, Marked("s4", "s2")));
+        var result = Grader.Grade(Input(StonesPlan, StonesSolution, Stepped("s3", "s1")));
         result.IsCorrect.ShouldBeTrue();
         Feedback(result.Feedback).Status.ShouldBe(MazeTreeGrader.StatusReached);
     }
@@ -359,7 +362,7 @@ public class MazeTreeGraderTests
 
     [Fact]
     public void Grade_StonesNoSolution_Ungradable()
-        => Grader.Grade(Input(StonesPlan, null, Marked("s1"))).ShouldBe(InteractionGradeResult.Ungradable);
+        => Grader.Grade(Input(StonesPlan, null, Stepped("s1"))).ShouldBe(InteractionGradeResult.Ungradable);
 
     // ---- Analiz ----
 
@@ -386,11 +389,11 @@ public class MazeTreeGraderTests
     [Fact]
     public void Analyze_Stones()
     {
-        var items = ((IInteractionGrader)Grader).Analyze(Input(StonesPlan, StonesSolution, Marked("s2")));
+        var items = ((IInteractionGrader)Grader).Analyze(Input(StonesPlan, StonesSolution, Stepped("s1", "s2")));
 
         items.Select(i => (i.ItemId, i.Correct, i.AnswerKey)).ShouldBe(new[]
         {
-            ("s1", true, (string?)"unmarked"), ("s2", true, "marked"), ("s3", true, "unmarked"), ("s4", false, "unmarked"),
+            ("s1", true, (string?)"stepped"), ("s2", false, "stepped"), ("s3", false, "skipped"), ("s4", true, "skipped"),
         });
     }
 

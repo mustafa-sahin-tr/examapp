@@ -1,4 +1,4 @@
-import { Directive, HostListener, inject } from '@angular/core';
+import { Directive, ElementRef, HostListener, inject } from '@angular/core';
 import { NgControl } from '@angular/forms';
 
 import { formatParentPhoneInput } from '../utils/parent-contact.util';
@@ -10,9 +10,12 @@ import { formatParentPhoneInput } from '../utils/parent-contact.util';
 @Directive({ selector: 'input[appPhoneMask]', standalone: true })
 export class PhoneMaskDirective {
   private readonly control = inject(NgControl, { self: true });
+  private readonly input = inject<ElementRef<HTMLInputElement>>(ElementRef);
 
-  @HostListener('input', ['$event.target'])
-  onInput(target: HTMLInputElement): void {
+  // Host binding tip denetimi `$event.target`'ı `EventTarget | null` sayar; eleman ElementRef'ten okunur.
+  @HostListener('input')
+  onInput(): void {
+    const target = this.input.nativeElement;
     const formatted = formatParentPhoneInput(target.value);
     if (formatted === target.value) return;
     target.value = formatted;

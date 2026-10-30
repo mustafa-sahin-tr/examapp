@@ -305,6 +305,8 @@ export function validateMazeForm(form: MazeForm): MazeError[] {
       if (form.stones.some((s) => !s.text.trim())) errors.push({ key: 'mazeBlankStone' });
       // Hiç işaretsiz çözüm çözülemezdi (işaretsiz cevap boş cevap sayılır); backend de reddeder.
       if (!form.stones.some((s) => s.marked)) errors.push({ key: 'mazeNoMarkedStone' });
+      // Öğrenci basarak geçer: hepsi basılmaz olsaydı doğru cevap hiç basmamak (boş cevap) olurdu.
+      if (form.stones.every((s) => s.marked)) errors.push({ key: 'mazeNoSteppableStone' });
       tooLong(form.stones.map((s) => s.text));
       break;
     }

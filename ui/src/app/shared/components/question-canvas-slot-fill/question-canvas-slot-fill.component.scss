@@ -379,6 +379,21 @@
   .sf-slot--flow {
     width: 7em;
   }
+
+  .sf-slot--flow.sf-slot--fraction {
+    width: auto;
+  }
+}
+
+// Düzendeki kesir: alanların genişliği tarayıcının varsayılan input genişliğinden gelmesin (tablo hücresini aşıyordu).
+.sf-slot--flow .sf-fraction {
+  flex: none;
+  width: 3.5em;
+  min-width: 0;
+
+  &.sf-fraction--mixed {
+    width: 6em;
+  }
 }
 
 // ---- #586 (dilim d): şifre şeridi

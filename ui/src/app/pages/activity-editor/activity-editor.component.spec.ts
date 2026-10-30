@@ -581,6 +581,30 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(component.tableSelection().size).toBe(0);
   });
 
+  it('tablo: seçme kipinden çıkıp hücreye girince eski çoklu seçim bırakılır, seçili metin boşluk olur', async () => {
+    await setup({ testId: '9' });
+    component.selectKind('fillTable');
+    component.setTableHeader(false);
+    component.setCell(0, 0, '6');
+    component.setCell(0, 1, '50 cm');
+    component.toggleTableSelectMode();
+    fixture.detectChanges();
+    el('[data-cell="0:0"]')!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+    component.endTableDrag();
+    component.makeTableBlanks();
+    component.toggleTableSelectMode();
+    fixture.detectChanges();
+
+    const cell = el('[data-cell="0:1"]') as HTMLInputElement;
+    cell.dispatchEvent(new Event('focus'));
+    cell.setSelectionRange(0, 2);
+    fixture.detectChanges();
+    expect(component.tableSelection().size).toBe(0);
+    (el('[data-testid="table-make-blank"]') as HTMLButtonElement).click();
+
+    expect(component.fillTable()?.cells[0]).toEqual(['[[6]]', '[[50]] cm']);
+  });
+
   it('kayıtlı kelime havuzu maddesini düzenlemek için forma açar', async () => {
     const plan = JSON.stringify({
       version: 1,

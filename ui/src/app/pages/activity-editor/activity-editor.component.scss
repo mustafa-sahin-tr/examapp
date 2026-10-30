@@ -931,3 +931,25 @@
   font-size: 0.85rem;
   padding: 4px 6px;
 }
+
+/* Labirent hata yerleri: dörtlüde iki çapraz kapı, odanın iki kapısında aynı cevap. */
+.ae__door.is-error {
+  border-radius: 8px;
+  outline: 2px solid var(--ms-danger-border);
+  outline-offset: 2px;
+
+  .ae__door-input.is-open {
+    border-color: var(--ms-danger-border);
+  }
+}
+
+.ae__door-input:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.ae__tree-branch.is-error {
+  border-color: var(--ms-danger-border);
+  background: var(--ms-danger-surface);
+  color: var(--ms-danger-text);
+}

@@ -341,13 +341,18 @@ export class ActivityEditorComponent {
     const byPair = new Map(f.doors.map((d, i) => [`${Math.min(d.a, d.b)}-${Math.max(d.a, d.b)}`, i]));
     const door = (a: number, b: number) => byPair.get(`${Math.min(a, b)}-${Math.max(a, b)}`);
     const rooms: { index: number; row: number; col: number }[] = [];
-    const doors: { key: string; row: number; col: number; diag: boolean; doors: { index: number; arrow: string }[] }[] = [];
+    type DoorCell = { index: number; arrow: string; locked: boolean };
+    const doors: { key: string; row: number; col: number; diag: boolean; conflict: boolean; doors: DoorCell[] }[] = [];
+    const open = (index: number) => !!f.doors[index].label.trim();
     const slot = (key: string, row: number, col: number, diag: boolean, list: [number, number][]) => {
       const found = list.flatMap(([a, b]) => {
         const index = door(a, b);
-        return index === undefined ? [] : [{ index, arrow: roomArrow(f.cols, a, b) }];
+        return index === undefined ? [] : [{ index, arrow: roomArrow(f.cols, a, b), locked: false }];
       });
-      if (found.length) doors.push({ key, row, col, diag, doors: found });
+      // Dörtlüde tek çapraz kapı: biri açıkken öbürü kapalı; ikisi birden açıksa (eski kayıt) yuva hatalı görünür.
+      const openCount = found.filter((d) => open(d.index)).length;
+      const cells = diag && openCount === 1 ? found.map((d) => ({ ...d, locked: !open(d.index) })) : found;
+      if (cells.length) doors.push({ key, row, col, diag, conflict: diag && openCount > 1, doors: cells });
     };
     for (let r = 0; r < f.rows; r++) {
       for (let c = 0; c < f.cols; c++) {
@@ -781,13 +786,21 @@ export class ActivityEditorComponent {
   }
 
   /** Odanın doğru kapı seçenekleri: kısa "<yön> <etiket>", uzun "<etiket> → <öbür oda>". */
-  roomDoorOptions(room: number): { index: number; label: string; short: string }[] {
+  roomDoorOptions(room: number): { index: number; label: string; short: string; duplicate: boolean }[] {
     const f = this.mazeRooms();
     if (!f) return [];
-    return roomDoors(f, room).map((i) => {
+    const doors = roomDoors(f, room);
+    const labels = doors.map((i) => f.doors[i].label.trim());
+    return doors.map((i, k) => {
       const other = otherRoom(f.doors[i], room);
-      const label = f.doors[i].label.trim();
-      return { index: i, label: `${label} → ${this.roomName(other)}`, short: `${roomArrow(f.cols, room, other)} ${label}` };
+      const label = labels[k];
+      return {
+        index: i,
+        label: `${label} → ${this.roomName(other)}`,
+        short: `${roomArrow(f.cols, room, other)} ${label}`,
+        // Aynı cevap odanın iki kapısında: öğrenci hangisinden geçeceğini bilemez.
+        duplicate: labels.indexOf(label) !== k || labels.lastIndexOf(label) !== k,
+      };
     });
   }
 

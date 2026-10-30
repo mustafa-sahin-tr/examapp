@@ -292,6 +292,8 @@
     "distractors": "Distractor words"
   },
   "maze": {
+    "doubleDiagonalHere": "Two diagonal doors in this square; remove one.",
+    "diagonalLocked": "The other diagonal door of this square is open; remove it first.",
     "exitTitle": "Exit name (the student sees it at the end of the path). Use Add level for a new statement.",
     "roomsHint": "As in the game: type the door answer in the slot between rooms (empty = wall; one diagonal door per square of four). Pick the start with the walker and the finish with the flag; click the correct door in each room.",
     "noDoors": "Type a door first",

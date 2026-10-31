@@ -1,5 +1,5 @@
 <div class="lg-root" [class.is-solution]="solutionShown()" *transloco="let t; prefix: 'shared.questionCanvas.logicGrid'">
-  @if (!hidePassage && passageImageUrl(); as pUrl) {
+  @if (!authoringMode() && !hidePassage && passageImageUrl(); as pUrl) {
     <div class="lg-passage">
       @if (passageTitle(); as title) {
         <div class="lg-passage__title">{{ title }}</div>
@@ -8,14 +8,14 @@
     </div>
   }
 
-  @if (imageUrl(); as url) {
+  @if (!authoringMode() && imageUrl(); as url) {
     <div class="lg-image-wrap">
       <img class="lg-image" [src]="url" [alt]="t('imageAlt')" [appStorageImageRetry]="imageRefresh" />
     </div>
   }
 
   @if (plan(); as p) {
-    @if (p.clues.length) {
+    @if (!authoringMode() && p.clues.length) {
       <section class="lg-clues">
         <h4 class="lg-clues__title">{{ t('clues') }}</h4>
         <ol class="lg-clues__list">
@@ -31,14 +31,34 @@
         <thead>
           <tr>
             <th class="lg-corner" colspan="2" rowspan="2"></th>
-            @for (category of p.categories; track category.id) {
-              <th class="lg-cat is-block-start" scope="colgroup" [attr.colspan]="category.items.length">{{ category.label }}</th>
+            @for (category of p.categories; track category.id; let ci = $index) {
+              <th class="lg-cat is-block-start" scope="colgroup" [attr.colspan]="category.items.length">
+                <span class="lg-cat__label">{{ category.label }}</span>
+                @if (authoringMode()) {
+                  <button mat-icon-button type="button" class="lg-tool" [attr.data-shuffle]="ci" [attr.aria-label]="t('shuffle', { name: category.label })"
+                    (click)="categoryShuffle.emit(ci)"><mat-icon>shuffle</mat-icon></button>
+                }
+              </th>
             }
           </tr>
           <tr>
-            @for (category of p.categories; track category.id) {
-              @for (option of category.items; track option.id; let first = $first) {
-                <th class="lg-option" scope="col" [class.is-block-start]="first"><span class="lg-vertical">{{ option.label }}</span></th>
+            @for (category of p.categories; track category.id; let ci = $index) {
+              @for (option of category.items; track option.id; let first = $first, last = $last, k = $index) {
+                <th class="lg-option" scope="col" [class.is-block-start]="first">
+                  @if (authoringMode()) {
+                    <button type="button" class="lg-move" [attr.data-move]="ci + ':' + k + ':-1'" [disabled]="first"
+                      [attr.aria-label]="t('moveLeft', { name: option.label })" (click)="optionMove.emit({ category: ci, position: k, delta: -1 })">
+                      <mat-icon aria-hidden="true">chevron_left</mat-icon>
+                    </button>
+                  }
+                  <span class="lg-vertical">{{ option.label }}</span>
+                  @if (authoringMode()) {
+                    <button type="button" class="lg-move" [attr.data-move]="ci + ':' + k + ':1'" [disabled]="last"
+                      [attr.aria-label]="t('moveRight', { name: option.label })" (click)="optionMove.emit({ category: ci, position: k, delta: 1 })">
+                      <mat-icon aria-hidden="true">chevron_right</mat-icon>
+                    </button>
+                  }
+                </th>
               }
             }
           </tr>
@@ -89,7 +109,7 @@
       </p>
     }
 
-    @if (!solutionShown()) {
+    @if (!solutionShown() && !authoringMode()) {
       <div class="lg-actions">
         <mat-slide-toggle [checked]="autoCross()" (change)="autoCross.set($event.checked)">{{ t('autoCross') }}</mat-slide-toggle>
         <button mat-stroked-button type="button" data-testid="lg-reset" [disabled]="!canReset()" (click)="reset()">
@@ -99,6 +119,7 @@
       <p class="lg-hint">{{ t(p.categories.length > 1 ? 'hint' : 'hintSingle') }}</p>
     }
 
+    @if (!authoringMode()) {
     <section class="lg-summary" data-testid="lg-summary">
       <h4 class="lg-summary__title">{{ t('summary') }}</h4>
       <div class="lg-scroll">
@@ -129,6 +150,7 @@
         <p class="lg-hint">{{ t('summaryHint') }}</p>
       }
     </section>
+    }
   } @else {
     <p class="lg-hint" data-testid="lg-invalid">{{ t('invalid') }}</p>
   }
@@ -141,7 +163,7 @@
     </p>
   }
 
-  @if (solutionShown()) {
+  @if (solutionShown() && !authoringMode()) {
     <p class="lg-hint" data-testid="lg-solution-hint">{{ t('solutionShown') }}</p>
   }
 </div>

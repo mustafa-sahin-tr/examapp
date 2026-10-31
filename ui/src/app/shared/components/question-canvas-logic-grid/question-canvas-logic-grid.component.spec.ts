@@ -178,4 +178,27 @@ describe('QuestionCanvasLogicGridComponent (#586)', () => {
     // Karalama bloğunda da çözüm: Tenis ↔ Kırmızı (Ayşe).
     expect(cell('o6', 'o2').classList).toContain('is-yes');
   });
+
+  it('authoring_ShowsSolutionReadOnly_HeaderControlsEmit_NoStudentChrome', () => {
+    setup({ plan: STAIR_PLAN, solution: STAIR_SOLUTION });
+    fixture.componentRef.setInput('authoring', true);
+    fixture.detectChanges();
+    const moves: unknown[] = [];
+    const shuffles: number[] = [];
+    fixture.componentInstance.optionMove.subscribe((e) => moves.push(e));
+    fixture.componentInstance.categoryShuffle.subscribe((c) => shuffles.push(c));
+
+    expect(cell('p1', 'o3').classList).toContain('is-yes');
+    expect(cell('o6', 'o2').classList).toContain('is-yes');
+    expect(cell('p1', 'o1').disabled).toBe(true);
+    expect(el().querySelector('.lg-clues')).toBeNull();
+    expect(q('lg-summary')).toBeNull();
+    expect(q('lg-reset')).toBeNull();
+    expect((el().querySelector('[data-move="0:0:-1"]') as HTMLButtonElement).disabled).toBe(true);
+
+    (el().querySelector('[data-move="1:0:1"]') as HTMLButtonElement).click();
+    (el().querySelector('[data-shuffle="0"]') as HTMLButtonElement).click();
+    expect(moves).toEqual([{ category: 1, position: 0, delta: 1 }]);
+    expect(shuffles).toEqual([0]);
+  });
 });

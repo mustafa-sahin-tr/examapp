@@ -744,9 +744,10 @@ grupları konu, sonra `Cn`..`C2`; `Ci`'nin sütunları `C1..C(i-1)`; tek kategor
 okunur **cevap tablosu**. Karalama blokları puanlanmaz; payload'da isteğe bağlı `notes:{"c2:c1":"y..n....."}` (satır kategorisi planda
 sonra, satır öncelikli n × n karakter `.`/`y`/`n`; 16 KB payload sınırına sığsın diye kompakt); yalnız karalama içeren cevap da saklanır.
 Hücre döngüsü boş → ✓ → ✗; "✓ koyunca satırı ve sütunu ✗ ile doldur" (varsayılan açık) ve teklik denetimi (iki ✓ ya da hepsi ✗ → kırmızı
-çerçeve) her blokta. Yazarlık görselsiz editörde (tür **Mantık tablosu**): öğretmen kitabın **cevap tablosunu** doldurur (başlıkta satır
-grubu + kategori adları, her satırda öğe + kategori başına cevabı); seçenekler ve çözüm bu tablodan çıkar. Öğrencinin gördüğü seçenek
-sırası ayrıca belirlenir (oklar / Karıştır); sıra satırlarla aynıysa köşegen uyarısı. Plan / çözüm biçimi değişmedi. Migration yok; Aspire'da
+çerçeve) her blokta. Yazarlık görselsiz editörde (tür **Mantık tablosu**), ayrı önizleme yok — öğretmen öğrencinin ekranında yazar: ipuçları,
+çözümle dolu salt okunur merdiven tablo (oynatıcının `authoring` kipi) ve altta yazılabilir **cevap tablosu** (başlıkta satır grubu +
+kategori adları, her satırda öğe + kategori başına cevabı); seçenekler ve çözüm bu tablodan çıkar. Öğrencinin gördüğü seçenek sırası
+merdiven tablonun başlığında belirlenir (seçenek başlığında ‹ ›, kategori başlığında karıştır); sıra satırlarla aynıysa köşegen uyarısı. Plan / çözüm biçimi değişmedi. Migration yok; Aspire'da
 exam API'yi yeniden başlat.
 
 **Issue #586 dilim d — şifre katmanı (`slotFill` + `cipher`).** Yeni tip yok: `slotFill` planına isteğe bağlı

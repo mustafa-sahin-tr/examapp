@@ -30,7 +30,8 @@ import { StorageImageResolver } from '../../utils/storage-image-refresh.util';
 /**
  * Issue #586: sözel mantık tablosu oynatıcısı (bileşen G, `logicGrid`). Kitaptaki merdiven tablo: üstte konu öğeleri (kişiler) ×
  * bütün kategoriler, altında kategori × kategori karalama blokları ({@link staircase}; tek kategoride yalnız üst blok), en altta
- * üstteki ✓'lerden dolan salt okunur cevap tablosu. Hücreye dokunmak boş → ✓ → ✗ → boş döngüsü; "Otomatik ✗" açıkken ✓ konunca
+ * üstteki ✓'lerden dolan salt okunur cevap tablosu. `authoring` kipinde (görselsiz editör) yalnız merdiven tablo çizilir, çözümle
+ * dolu ve salt okunurdur; seçenek başlıklarında ‹ › sırayı, kategori başlığındaki düğme karıştırmayı ister (editör uygular). Hücreye dokunmak boş → ✓ → ✗ → boş döngüsü; "Otomatik ✗" açıkken ✓ konunca
  * aynı bloğun satırına ve sütununa ✗ yazılır. Satır / sütun tekliği anında denetlenir (iki ✓ ya da hepsi ✗ → kırmızı çerçeve). Kontrol sonrası (konu,
  * kategori) çiftleri yeşil / kırmızı; çözüm açıkken doğru hücrelerde ✓. OnPush: tüm durum signal.
  */
@@ -85,7 +86,16 @@ export class QuestionCanvasLogicGridComponent {
     this._disabled.set(!!value);
   }
 
+  /** Editörde öğretmenin yüzeyi: çözüm gösterilir, işaretlenmez; ipucu / görsel / cevap tablosu editörde. */
+  @Input() set authoring(value: boolean) {
+    this._authoring.set(!!value);
+  }
+
   @Output() answerPayloadChange = new EventEmitter<string>();
+  /** Yazarlık: `category` kategorisinde `position`'daki seçeneği bir adım taşı. */
+  @Output() optionMove = new EventEmitter<{ category: number; position: number; delta: -1 | 1 }>();
+  /** Yazarlık: kategorinin seçeneklerini karıştır. */
+  @Output() categoryShuffle = new EventEmitter<number>();
   @Output() answered = new EventEmitter<void>();
 
   private lastEmitted: string | null = null;
@@ -98,6 +108,7 @@ export class QuestionCanvasLogicGridComponent {
   private readonly _showSolution = signal(false);
   private readonly _activityMode = signal(false);
   private readonly _disabled = signal(false);
+  private readonly _authoring = signal(false);
 
   readonly marks = signal<LogicMarks>(Object.create(null) as LogicMarks);
   readonly autoCross = signal(true);
@@ -108,7 +119,8 @@ export class QuestionCanvasLogicGridComponent {
   readonly imageUrl = computed(() => this._region()?.imageUrl || null);
   readonly passageImageUrl = computed(() => this._region()?.passage?.imageUrl ?? null);
   readonly passageTitle = computed(() => this._region()?.passage?.title ?? null);
-  readonly readOnly = computed(() => this._showSolution() || this._disabled());
+  readonly authoringMode = this._authoring.asReadonly();
+  readonly readOnly = computed(() => this._showSolution() || this._disabled() || this._authoring());
   readonly feedbackState = this._feedback.asReadonly();
 
   readonly solution = computed(() => parseLogicGridSolution(this._solutionJson(), this._plan()));
@@ -119,7 +131,7 @@ export class QuestionCanvasLogicGridComponent {
   /** Gösterilen işaretler: çözüm açıkken çözümünkiler (karalama blokları dahil), değilse öğrencinin. */
   readonly shownMarks = computed<LogicMarks>(() => {
     const plan = this._plan();
-    if (!plan || !this._showSolution()) return this.marks();
+    if (!plan || !(this._showSolution() || this._authoring())) return this.marks();
     const marks = solutionMarks(plan, this.solution());
     for (const group of staircase(plan).slice(1)) {
       for (const category of group.cols) {

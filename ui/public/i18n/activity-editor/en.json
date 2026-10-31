@@ -398,7 +398,7 @@
     "addWord": "Add word"
   },
   "logicGrid": {
-    "hint": "Fill in the book's answer table: the row group (e.g. Child) and category names (e.g. Colour, Sport) in the header, then one item per row (e.g. Ali) with its answer in every category. Options and the solution come from this table.",
+    "hint": "This area is the student's screen. Write the clues, then fill in the answer table below as in the book (row group and categories in the header, each row's item and answers); options and the solution come from the table. Set the option order the student sees with the ‹ › and shuffle buttons in the grid header.",
     "subjectLabel": "Row group (e.g. Child)",
     "subject": "Row {{n}}",
     "addSubject": "Add row",
@@ -407,15 +407,11 @@
     "removeCategory": "Delete category {{n}}",
     "addCategory": "Add category",
     "value": "Answer of {{subject}} – {{category}}",
-    "order": "Option order",
-    "orderHint": "Students see the options in this order. Move them with the arrows or shuffle.",
-    "moveLeft": "Move left",
-    "moveRight": "Move right",
-    "shuffle": "Shuffle",
-    "rowOrderWarning": "The order matches the rows: the correct answers line up on the diagonal of the student's grid. Consider changing it.",
+    "rowOrderWarning": "The options of “{{name}}” follow the row order: the correct answers line up on the diagonal. Change the order with ‹ › or shuffle in the header.",
     "clues": "Clues",
     "clue": "Clue {{n}}",
-    "addClue": "Add clue"
+    "addClue": "Add clue",
+    "answerTable": "Answer table"
   },
   "regionPaint": {
     "hint": "Choose the grid size and colours. Write each colour's target as in the book: fraction (2/5), decimal (0.35), percent (25%) or a square count. A colour with no target is a distractor (must stay unused). Optionally give the label shown on its palette button (e.g. \"2/5\").",

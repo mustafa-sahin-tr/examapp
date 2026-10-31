@@ -378,6 +378,14 @@ describe('ActivityEditorComponent (#590)', () => {
     component.addPaintEntry();
     component.setPaintEntry(1, { target: '%25' });
     fixture.detectChanges();
+    expect(el('[data-testid="rp-sum"]')?.classList).not.toContain('ae__warn');
+
+    // Hedefler toplamı ızgarayı aşınca canlı uyarı.
+    component.setPaintEntry(1, { target: '%70' });
+    fixture.detectChanges();
+    expect(el('[data-testid="rp-sum"]')?.classList).toContain('ae__warn');
+    component.setPaintEntry(1, { target: '%25' });
+    fixture.detectChanges();
     expect(el('[data-paint-cells="0"]')?.textContent).toContain('35');
     expect(el('[data-testid="preview"] app-question-canvas-region-paint')).not.toBeNull();
     expect(el('[data-paint-entry="0"] .ae__invalid')).toBeNull();

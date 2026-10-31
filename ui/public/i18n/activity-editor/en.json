@@ -433,6 +433,9 @@
     "cellsInvalid": "not a whole number of squares",
     "cellsPie": "= {{n}} slices",
     "cellsPieInvalid": "not a whole number of slices",
+    "used": "To paint: {{sum}} / {{total}} squares",
+    "usedPie": "To paint: {{sum}} / {{total}} slices",
+    "over": "targets add up to too many, cannot be saved",
     "addColor": "Add colour",
     "colors": {
       "red": "Red",

@@ -433,6 +433,9 @@
     "cellsInvalid": "tam kareye inmiyor",
     "cellsPie": "= {{n}} dilim",
     "cellsPieInvalid": "tam dilime inmiyor",
+    "used": "Boyanacak: {{sum}} / {{total}} kare",
+    "usedPie": "Boyanacak: {{sum}} / {{total}} dilim",
+    "over": "hedefler toplamı fazla, kaydedilemez",
     "addColor": "Renk ekle",
     "colors": {
       "red": "Kırmızı",

@@ -1178,3 +1178,132 @@
 .ae__lg-row-tools {
   white-space: nowrap;
 }
+
+/* Sayı doğrusu: yazarlık doğrunun üstünde (oynatıcıyla aynı ölçüler); çentiğe dokunmak paneli o çentiğe açar. */
+.ae__nl-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.ae__nl-track {
+  --nl-stack: 1;
+  padding: 0 32px;
+  box-sizing: border-box;
+}
+
+.ae__nl-stacks,
+.ae__nl-axis,
+.ae__nl-labels {
+  position: relative;
+  width: 100%;
+}
+
+.ae__nl-stacks {
+  height: calc(var(--nl-stack) * 32px + 8px);
+}
+
+.ae__nl-axis {
+  height: 36px;
+}
+
+.ae__nl-labels {
+  height: 28px;
+}
+
+.ae__nl-stack {
+  position: absolute;
+  bottom: 4px;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 4px;
+  transform: translateX(-50%);
+}
+
+.ae__nl-card {
+  min-height: 28px;
+  padding: 0 8px;
+  border: 2px solid var(--ms-border-strong);
+  border-radius: 8px;
+  background: var(--ms-surface);
+  color: var(--ms-text-strong);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+
+  &.is-selected {
+    border-color: var(--ms-action-border-focus);
+    box-shadow: 0 0 0 2px var(--ms-focus-ring);
+  }
+}
+
+.ae__nl-line {
+  position: absolute;
+  top: 50%;
+  left: -16px;
+  right: -16px;
+  height: 3px;
+  background: var(--ms-text-strong);
+  transform: translateY(-50%);
+}
+
+.ae__nl-tick {
+  position: absolute;
+  top: 50%;
+  width: 20px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 2px;
+    height: 14px;
+    background: var(--ms-text-strong);
+    transform: translate(-50%, -50%);
+  }
+
+  &.is-major::before {
+    width: 3px;
+    height: 22px;
+  }
+
+  // "Çentikleri gizle": öğrenci görmez, editörde soluk.
+  &.is-hidden::before {
+    opacity: 0.3;
+  }
+
+  &:hover::before {
+    background: var(--ms-action-border-focus);
+  }
+
+  &.is-selected {
+    background: var(--ms-focus-ring);
+
+    &::before {
+      background: var(--ms-action-border-focus);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ms-action-border-focus);
+  }
+}
+
+.ae__nl-label {
+  position: absolute;
+  top: 2px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+}

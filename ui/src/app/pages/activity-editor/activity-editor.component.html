@@ -972,51 +972,103 @@
               <mat-checkbox [checked]="nl.hideTicks" (change)="setLineOption({ hideTicks: $event.checked })">{{ t('numberLine.hideTicks') }}</mat-checkbox>
             </div>
 
-            <span class="ae__label">{{ t('numberLine.labels') }}</span>
-            @for (label of nl.labels; track $index; let i = $index) {
-              <div class="ae__row" [attr.data-line-label]="i">
-                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__narrow">
-                  <mat-label>{{ t('numberLine.tick') }}</mat-label>
-                  <input matInput type="number" min="0" [max]="nl.divisions" [value]="label.at"
-                    (input)="setLineLabel(i, { at: $any($event.target).valueAsNumber })" />
-                </mat-form-field>
-                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
-                  <mat-label>{{ t('numberLine.labelText') }}</mat-label>
-                  <input matInput [value]="label.text" [attr.maxlength]="lineLimits.maxLabel" (input)="setLineLabel(i, { text: $any($event.target).value })" />
-                </mat-form-field>
-                <button mat-icon-button type="button" [attr.aria-label]="t('remove')" (click)="removeLineLabel(i)"><mat-icon>close</mat-icon></button>
-              </div>
-            }
-            <button mat-button type="button" [disabled]="nl.labels.length > nl.divisions" (click)="addLineLabel()">
-              <mat-icon>add</mat-icon>{{ t('numberLine.addLabel') }}
-            </button>
-
-            <span class="ae__label">{{ t('numberLine.cards') }}</span>
-            @for (card of nl.cards; track $index; let i = $index) {
-              <div class="ae__row ae__row--wrap" [attr.data-line-card]="i">
-                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
-                  <mat-label>{{ t('numberLine.card', { n: i + 1 }) }}</mat-label>
-                  <input matInput [value]="card.label" [attr.maxlength]="lineLimits.maxCard" (input)="setLineCard(i, { label: $any($event.target).value })" />
-                </mat-form-field>
-                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
-                  <mat-label>{{ t('numberLine.target') }}</mat-label>
-                  <input matInput inputmode="numeric" [value]="card.target" [attr.maxlength]="3"
-                    (input)="setLineCard(i, { target: $any($event.target).value })" />
-                </mat-form-field>
-                <span class="ae__index" [attr.data-line-target]="i">
-                  @if (lineTargetName(card.target, nl); as name) {
-                    {{ name.value === null ? t('numberLine.distractor') : t('numberLine.targetName', { name: name.value }) }}
-                  } @else {
-                    {{ t('numberLine.targetInvalid') }}
+            <!-- Yazarlık doğrunun üstünde: çentiğe dokunulur, etiketi ve o çentiğin kartları alttaki panelde yazılır. -->
+            <div class="ae__nl-scroll">
+              <div class="ae__nl-track" data-testid="nl-editor" [style.width]="lineTrackWidth(nl)" [style.--nl-stack]="lineTallest()">
+                <div class="ae__nl-stacks">
+                  @for (stack of lineStacks(); track stack.at) {
+                    <div class="ae__nl-stack" [style.left]="lineLeft(stack.at, nl)">
+                      @for (card of stack.cards; track card.index) {
+                        <button type="button" class="ae__nl-card" [attr.data-line-card]="card.index" [class.is-selected]="lineTick() === stack.at"
+                          (click)="selectLineTick(stack.at)">{{ card.label || '…' }}</button>
+                      }
+                    </div>
                   }
-                </span>
-                <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="nl.cards.length <= 1"
-                  (click)="removeLineCard(i)"><mat-icon>close</mat-icon></button>
+                </div>
+                <div class="ae__nl-axis">
+                  <span class="ae__nl-line" aria-hidden="true"></span>
+                  @for (at of lineTicks(nl); track at) {
+                    <button type="button" class="ae__nl-tick" [attr.data-line-tick]="at" [style.left]="lineLeft(at, nl)"
+                      [class.is-major]="lineLabelAt(at, nl) !== ''" [class.is-hidden]="nl.hideTicks && lineLabelAt(at, nl) === ''"
+                      [class.is-selected]="lineTick() === at" [attr.aria-pressed]="lineTick() === at"
+                      [attr.aria-label]="t('numberLine.tickTitle', { at, total: nl.divisions })" (click)="selectLineTick(at)"></button>
+                  }
+                </div>
+                <div class="ae__nl-labels" aria-hidden="true">
+                  @for (label of nl.labels; track $index) {
+                    @if (label.at <= nl.divisions) {
+                      <span class="ae__nl-label" [style.left]="lineLeft(label.at, nl)">{{ label.text }}</span>
+                    }
+                  }
+                </div>
+              </div>
+            </div>
+
+            @if (lineTick() === null) {
+              <p class="ae__hint">{{ t('numberLine.pickTick') }}</p>
+            } @else {
+              @let at = lineTick()!;
+              <div class="ae__cw-panel" data-testid="nl-panel">
+                <div class="ae__row">
+                  <button mat-icon-button type="button" [attr.aria-label]="t('numberLine.prevTick')" [disabled]="at <= 0"
+                    (click)="selectLineTick(at - 1)"><mat-icon>chevron_left</mat-icon></button>
+                  <strong>{{ t('numberLine.tickTitle', { at, total: nl.divisions }) }}</strong>
+                  <button mat-icon-button type="button" [attr.aria-label]="t('numberLine.nextTick')" [disabled]="at >= nl.divisions"
+                    (click)="selectLineTick(at + 1)"><mat-icon>chevron_right</mat-icon></button>
+                  <span class="ae__cw-spacer"></span>
+                  <button mat-icon-button type="button" [attr.aria-label]="t('numberLine.close')" (click)="selectLineTick(null)">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </div>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__full">
+                  <mat-label>{{ t('numberLine.labelText') }}</mat-label>
+                  <input matInput data-testid="nl-tick-label" [value]="lineLabelAt(at, nl)" [attr.maxlength]="lineLimits.maxLabel"
+                    (input)="setLineTickLabel(at, $any($event.target).value)" />
+                </mat-form-field>
+                @for (card of lineCardsAt(at, nl); track card.index) {
+                  <div class="ae__row" [attr.data-line-panel-card]="card.index">
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                      <mat-label>{{ t('numberLine.cardHere') }}</mat-label>
+                      <input matInput [value]="card.label" [attr.maxlength]="lineLimits.maxCard"
+                        (input)="setLineCard(card.index, { label: $any($event.target).value })" />
+                    </mat-form-field>
+                    <button mat-icon-button type="button" [attr.aria-label]="t('numberLine.moveLeft')" [disabled]="at <= 0"
+                      (click)="moveLineCard(card.index, -1)"><mat-icon>arrow_back</mat-icon></button>
+                    <button mat-icon-button type="button" [attr.aria-label]="t('numberLine.moveRight')" [disabled]="at >= nl.divisions"
+                      (click)="moveLineCard(card.index, 1)"><mat-icon>arrow_forward</mat-icon></button>
+                    <button mat-icon-button type="button" [attr.aria-label]="t('numberLine.toDistractor')" (click)="setLineCard(card.index, { target: '' })">
+                      <mat-icon>south</mat-icon></button>
+                    <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="nl.cards.length <= 1"
+                      (click)="removeLineCard(card.index)"><mat-icon>close</mat-icon></button>
+                  </div>
+                }
+                <button mat-button type="button" data-testid="nl-add-card-here" [disabled]="nl.cards.length >= lineLimits.maxCards"
+                  (click)="addLineCard(at)"><mat-icon>add</mat-icon>{{ t('numberLine.addCardHere') }}</button>
               </div>
             }
-            <button mat-button type="button" [disabled]="nl.cards.length >= lineLimits.maxCards" (click)="addLineCard()">
-              <mat-icon>add</mat-icon>{{ t('numberLine.addCard') }}
-            </button>
+
+            <span class="ae__label">{{ t('numberLine.distractors') }}</span>
+            <p class="ae__hint">{{ t('numberLine.distractorsHint') }}</p>
+            @for (card of lineOffCards(nl); track card.index) {
+              <div class="ae__row" [attr.data-line-off-card]="card.index">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                  <mat-label>{{ t('numberLine.distractor') }}</mat-label>
+                  <input matInput [value]="card.label" [attr.maxlength]="lineLimits.maxCard"
+                    (input)="setLineCard(card.index, { label: $any($event.target).value })" />
+                </mat-form-field>
+                @if (card.invalid) {
+                  <span class="ae__warn">{{ t('numberLine.targetInvalid') }}</span>
+                }
+                @if (lineTick() !== null) {
+                  <button mat-stroked-button type="button" (click)="setLineCard(card.index, { target: '' + lineTick() })">
+                    <mat-icon>north</mat-icon>{{ t('numberLine.placeAt', { at: lineTick() }) }}</button>
+                }
+                <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="nl.cards.length <= 1"
+                  (click)="removeLineCard(card.index)"><mat-icon>close</mat-icon></button>
+              </div>
+            }
+            <button mat-button type="button" data-testid="nl-add-distractor" [disabled]="nl.cards.length >= lineLimits.maxCards"
+              (click)="addLineCard(null)"><mat-icon>add</mat-icon>{{ t('numberLine.addDistractor') }}</button>
           </div>
         }
 

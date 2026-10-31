@@ -179,7 +179,7 @@ function roomArrow(cols: number, from: number, to: number): string {
   ] ?? '';
 }
 
-const INLINE_PREVIEW_KINDS: ReadonlySet<AuthoringKind> = new Set<AuthoringKind>(['matrix', 'order', 'mazeTree', 'mazeBoard', 'mazeRooms', 'mazeStones', 'logicGrid', 'crossword']);
+const INLINE_PREVIEW_KINDS: ReadonlySet<AuthoringKind> = new Set<AuthoringKind>(['matrix', 'order', 'mazeTree', 'mazeBoard', 'mazeRooms', 'mazeStones', 'logicGrid', 'crossword', 'numberLine']);
 
 @Component({
   selector: 'app-activity-editor',
@@ -250,6 +250,8 @@ export class ActivityEditorComponent {
   readonly crosswordUnplaced = signal<number[] | null>(null);
   /** Çengel bulmaca editöründe seçili hücre (0 tabanlı) ve düzenlenen kelime (null = seçili hücreden yeni kelime). */
   readonly cwCell = signal<{ row: number; col: number } | null>(null);
+  /** Sayı doğrusu editöründe seçili çentik (panel onu düzenler); null = panel kapalı. */
+  readonly lineTick = signal<number | null>(null);
   readonly cwEditing = signal<number | null>(null);
   readonly cwDraft = signal<{ dir: CrosswordDir; clue: string; answer: string }>({ dir: 'across', clue: '', answer: '' });
   readonly crosswordEditorMax = CROSSWORD_EDITOR.maxSize;
@@ -549,6 +551,7 @@ export class ActivityEditorComponent {
     this.form.set(emptyForm(kind, this.trueFalseLabels(), this.mazeDefaults()));
     this.crosswordUnplaced.set(null);
     this.closeCrosswordCell();
+    this.lineTick.set(null);
     this.resetTableSelection();
     this.submitted.set(false);
   }
@@ -1240,34 +1243,85 @@ export class ActivityEditorComponent {
       if (value !== undefined) patch[key] = Math.round(value);
     }
     this.updateNumberLine((f) => ({ ...f, ...patch }));
+    const at = this.lineTick();
+    if (at !== null && patch.divisions !== undefined && at > patch.divisions) this.lineTick.set(null);
   }
 
-  setLineLabel(index: number, patch: Partial<NumberLineForm['labels'][number]>): void {
-    if (patch.at !== undefined && !Number.isFinite(patch.at)) return;
-    this.updateNumberLine((f) => ({ ...f, labels: f.labels.map((l, i) => (i === index ? { ...l, ...patch } : l)) }));
+  /** Doğrudaki kartlar çentik başına (hedefi okunabilen kartlar). */
+  readonly lineStacks = computed(() => {
+    const f = this.numberLine();
+    if (!f) return [];
+    const byTick = new Map<number, { index: number; label: string }[]>();
+    f.cards.forEach((c, index) => {
+      const at = targetTick(c.target, f.divisions);
+      if (typeof at === 'number') byTick.set(at, [...(byTick.get(at) ?? []), { index, label: c.label.trim() }]);
+    });
+    return [...byTick.entries()].sort((a, b) => a[0] - b[0]).map(([at, cards]) => ({ at, cards }));
+  });
+  readonly lineTallest = computed(() => Math.max(1, ...this.lineStacks().map((s) => s.cards.length)));
+
+  lineTicks(form: NumberLineForm): number[] {
+    const n = form.divisions;
+    return Number.isInteger(n) && n >= 1 && n <= NUMBER_LINE_FORM_LIMITS.maxDivisions ? Array.from({ length: n + 1 }, (_, i) => i) : [];
   }
 
-  /** Yeni etiket: etiketsiz ilk çentik. */
-  addLineLabel(): void {
-    this.updateNumberLine((f) => {
-      const used = new Set(f.labels.map((l) => l.at));
-      const at = Array.from({ length: f.divisions + 1 }, (_, i) => i).find((i) => !used.has(i));
-      return at === undefined ? f : { ...f, labels: [...f.labels, { at, text: '' }].sort((a, b) => a.at - b.at) };
+  lineLeft(at: number, form: NumberLineForm): string {
+    return form.divisions > 0 ? `${(at / form.divisions) * 100}%` : '0%';
+  }
+
+  /** Editörde gizli çentikler de soluk çizilir: çentik başına en az 28 px. */
+  lineTrackWidth(form: NumberLineForm): string {
+    return `max(100%, ${Math.max(1, form.divisions) * 28 + 48}px)`;
+  }
+
+  lineLabelAt(at: number, form: NumberLineForm): string {
+    return form.labels.find((l) => l.at === at)?.text ?? '';
+  }
+
+  lineCardsAt(at: number, form: NumberLineForm): { index: number; label: string }[] {
+    return form.cards.flatMap((c, index) => (targetTick(c.target, form.divisions) === at ? [{ index, label: c.label }] : []));
+  }
+
+  /** Doğruda olmayan kartlar: çeldiriciler (boş hedef) ve hedefi çentik dışına düşenler (ör. bölme azalınca). */
+  lineOffCards(form: NumberLineForm): { index: number; label: string; invalid: boolean }[] {
+    return form.cards.flatMap((c, index) => {
+      const at = targetTick(c.target, form.divisions);
+      return typeof at === 'number' ? [] : [{ index, label: c.label, invalid: at === undefined }];
     });
   }
 
-  removeLineLabel(index: number): void {
-    this.updateNumberLine((f) => ({ ...f, labels: f.labels.filter((_, i) => i !== index) }));
+  selectLineTick(at: number | null): void {
+    const f = this.numberLine();
+    this.lineTick.set(at === null || !f ? null : Math.min(f.divisions, Math.max(0, at)));
+  }
+
+  /** Çentiğin etiketi: yoksa eklenir, boşaltılınca kalkar. */
+  setLineTickLabel(at: number, text: string): void {
+    this.updateNumberLine((f) => {
+      const rest = f.labels.filter((l) => l.at !== at);
+      return { ...f, labels: text === '' ? rest : [...rest, { at, text }].sort((a, b) => a.at - b.at) };
+    });
   }
 
   setLineCard(index: number, patch: Partial<NumberLineCardForm>): void {
     this.updateNumberLine((f) => ({ ...f, cards: f.cards.map((c, i) => (i === index ? { ...c, ...patch } : c)) }));
   }
 
-  addLineCard(): void {
+  /** Yeni kart: verilen çentikte ya da (null) çeldirici. */
+  addLineCard(at: number | null = null): void {
     this.updateNumberLine((f) =>
-      f.cards.length < NUMBER_LINE_FORM_LIMITS.maxCards ? { ...f, cards: [...f.cards, { label: '', target: '' }] } : f
+      f.cards.length < NUMBER_LINE_FORM_LIMITS.maxCards ? { ...f, cards: [...f.cards, { label: '', target: at === null ? '' : String(at) }] } : f
     );
+  }
+
+  /** Kartı bir çentik kaydırır; panel kartla birlikte yeni çentiğe geçer. */
+  moveLineCard(index: number, step: number): void {
+    const f = this.numberLine();
+    const at = f ? targetTick(f.cards[index]?.target ?? '', f.divisions) : null;
+    if (!f || typeof at !== 'number') return;
+    const next = Math.min(f.divisions, Math.max(0, at + step));
+    this.setLineCard(index, { target: String(next) });
+    this.lineTick.set(next);
   }
 
   removeLineCard(index: number): void {

@@ -201,4 +201,11 @@ describe('QuestionCanvasLogicGridComponent (#586)', () => {
     expect(moves).toEqual([{ category: 1, position: 0, delta: 1 }]);
     expect(shuffles).toEqual([0]);
   });
+
+  it('readOnlyCells_KeepOwnBackground_NotGlobalDisabledGray', () => {
+    // Global `button:disabled` gri zemini salt okunur hücrelerin (çözüm, editör) kendi zeminini ezmemeli.
+    setup({ showSolution: true });
+    expect(cell('p1', 'o1').disabled).toBe(true);
+    expect(getComputedStyle(cell('p1', 'o1')).backgroundColor).not.toBe('rgb(204, 204, 204)');
+  });
 });

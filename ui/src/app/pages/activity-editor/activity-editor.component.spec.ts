@@ -332,11 +332,19 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(el('[data-testid="preview"]')).toBeNull();
     const grid = '[data-testid="logic-staircase"]';
     expect(el(`${grid} [data-cell="p1:o1"]`)?.classList).toContain('is-yes');
-    expect(el('[data-row-order="0"]')).not.toBeNull();
+    expect(el('[data-testid="logic-row-order"]')?.textContent).toContain('Renk');
     // Başlıktaki › ile Kırmızı sağa: sıra Mavi, Kırmızı; köşegen uyarısı kalkar.
     (el(`${grid} [data-move="0:0:1"]`) as HTMLButtonElement).click();
     fixture.detectChanges();
-    expect(el('[data-row-order="0"]')).toBeNull();
+    expect(el('[data-testid="logic-row-order"]')).toBeNull();
+    // Satır taşıma: Ayşe yukarı, cevabıyla birlikte; öğrencinin seçenek sırası (Mavi, Kırmızı) aynı kalır.
+    (el('[data-subject-move="1:-1"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(component.logicGrid()!.subjects).toEqual(['Ayşe', 'Ali']);
+    expect(component.logicGrid()!.categories[0].values).toEqual(['Mavi', 'Kırmızı']);
+    expect((el('[data-subject-move="0:-1"]') as HTMLButtonElement).disabled).toBe(true);
+    (el('[data-subject-move="0:1"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
     expect([...fixture.nativeElement.querySelectorAll(`${grid} .lg-option .lg-vertical`)].map((e) => (e as HTMLElement).textContent?.trim()))
       .toEqual(['Mavi', 'Kırmızı']);
 

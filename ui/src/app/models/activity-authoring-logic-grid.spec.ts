@@ -7,6 +7,7 @@ import {
   buildLogicGridDefinition,
   isRowOrder,
   moveLogicOption,
+  moveLogicSubject,
   removeLogicCategory,
   removeLogicSubject,
   shuffleLogicOptions,
@@ -71,6 +72,17 @@ describe('activity-authoring-logic-grid (#586)', () => {
     const two = addLogicCategory(FORM);
     expect(two.categories[1]).toEqual({ label: '', values: ['', '', ''], order: [0, 1, 2] });
     expect(removeLogicCategory(two, 0).categories).toEqual([two.categories[1]]);
+  });
+
+  it('moveSubject_CarriesAnswers_KeepsStudentOptionOrder', () => {
+    const moved = moveLogicSubject(FORM, 0, 1); // Ali aşağı
+    expect(moved.subjects).toEqual(['Ayşe', 'Ali', 'Can']);
+    expect(moved.categories[0].values).toEqual(['Kırmızı', 'Yeşil', 'Mavi']);
+    // Seçenek sırası etiketlerle aynı: Mavi, Kırmızı, Yeşil.
+    expect(moved.categories[0].order.map((s) => moved.categories[0].values[s])).toEqual(['Mavi', 'Kırmızı', 'Yeşil']);
+    expect(JSON.parse(buildLogicGridDefinition(moved).solution)).toEqual({ assign: { p1: { c1: 'o2' }, p2: { c1: 'o3' }, p3: { c1: 'o1' } } });
+    expect(moveLogicSubject(FORM, 0, -1)).toBe(FORM);
+    expect(moveLogicSubject(FORM, 2, 1)).toBe(FORM);
   });
 
   it('order_MoveAndShuffle_RowOrderWarning', () => {

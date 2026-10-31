@@ -92,6 +92,22 @@ export function removeLogicCategory(form: LogicGridForm, index: number): LogicGr
   return { ...form, categories: form.categories.filter((_, i) => i !== index) };
 }
 
+/**
+ * Satırı (cevaplarıyla) bir adım yukarı (-1) / aşağı (+1) taşır. Öğrencinin seçenek sırası değişmez: `order` satır dizinleriyle
+ * tutulduğundan iki satırın dizinleri yer değiştirir.
+ */
+export function moveLogicSubject(form: LogicGridForm, index: number, delta: -1 | 1): LogicGridForm {
+  const target = index + delta;
+  if (index < 0 || target < 0 || index >= form.subjects.length || target >= form.subjects.length) return form;
+  const swap = <T>(list: T[]) => list.map((v, i) => (i === index ? list[target] : i === target ? list[index] : v));
+  const remap = (s: number) => (s === index ? target : s === target ? index : s);
+  return {
+    ...form,
+    subjects: swap(form.subjects),
+    categories: form.categories.map((c) => ({ ...c, values: swap(c.values), order: c.order.map(remap) })),
+  };
+}
+
 /** Seçenek sırasında `position`'daki seçeneği bir adım sola (-1) / sağa (+1) taşır. */
 export function moveLogicOption(form: LogicGridForm, category: number, position: number, delta: -1 | 1): LogicGridForm {
   const target = position + delta;

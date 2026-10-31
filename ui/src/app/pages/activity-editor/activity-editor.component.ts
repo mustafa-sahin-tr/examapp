@@ -97,6 +97,7 @@ import {
   addLogicSubject,
   isRowOrder,
   moveLogicOption,
+  moveLogicSubject,
   removeLogicSubject,
   shuffleLogicOptions,
 } from '../../models/activity-authoring-logic-grid';
@@ -1108,8 +1109,18 @@ export class ActivityEditorComponent {
     this.updateLogicGrid((f) => shuffleLogicOptions(f, category));
   }
 
-  logicRowOrder(order: number[]): boolean {
-    return order.length > 1 && isRowOrder(order);
+  /** Seçenekleri satır sırasında kalan kategorilerin adları (virgüllü); yoksa boş (bilgi satırı gizli). */
+  readonly logicRowOrderNames = computed(() => {
+    const f = this.logicGrid();
+    if (!f || f.subjects.length < 2) return '';
+    return f.categories
+      .map((c, i) => (isRowOrder(c.order) ? c.label.trim() || String(i + 1) : null))
+      .filter((name): name is string => name !== null)
+      .join(', ');
+  });
+
+  moveLogicSubject(index: number, delta: -1 | 1): void {
+    this.updateLogicGrid((f) => moveLogicSubject(f, index, delta));
   }
 
   /**

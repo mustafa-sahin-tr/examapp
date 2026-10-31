@@ -3967,6 +3967,16 @@ a:hover {
   padding: 0 0 0 0 !important;
 }
 
+// Sıfır iç boşlukta input alanı doldurup ortalanıyor, mat-select ise kendi yüksekliğinde kalıp üste yapışıyordu.
+.mdc-text-field--outlined .mat-mdc-form-field-infix:has(> .mat-mdc-select) {
+  display: flex;
+  align-items: center;
+
+  > .mat-mdc-select {
+    flex: 1 1 auto;
+  }
+}
+
 // Yukarıdaki sıfır iç boşlukla çok satırlı alanın ilk satırı üst çerçevedeki etikete yapışıyordu; tek satırlı input dikeyde ortalanır.
 .mdc-text-field--outlined textarea.mat-mdc-input-element {
   padding-top: 14px;

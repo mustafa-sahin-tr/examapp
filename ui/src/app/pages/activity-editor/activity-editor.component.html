@@ -878,27 +878,25 @@
           <div class="ae__block" data-testid="region-paint-form">
             <p class="ae__hint">{{ t(rp.shape === 'pie' ? 'regionPaint.hintPie' : 'regionPaint.hint') }}</p>
             <div class="ae__row ae__row--wrap">
-              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
-                <mat-label>{{ t('regionPaint.shape') }}</mat-label>
-                <mat-select data-testid="rp-shape" [value]="rp.shape" (selectionChange)="setPaintShape($event.value)">
-                  <mat-option value="grid">{{ t('regionPaint.shapeGrid') }}</mat-option>
-                  <mat-option value="pie">{{ t('regionPaint.shapePie') }}</mat-option>
-                </mat-select>
-              </mat-form-field>
+              <mat-button-toggle-group data-testid="rp-shape" [value]="rp.shape" [attr.aria-label]="t('regionPaint.shape')"
+                (change)="setPaintShape($event.value)">
+                <mat-button-toggle value="grid"><mat-icon>grid_on</mat-icon> {{ t('regionPaint.shapeGrid') }}</mat-button-toggle>
+                <mat-button-toggle value="pie"><mat-icon>pie_chart</mat-icon> {{ t('regionPaint.shapePie') }}</mat-button-toggle>
+              </mat-button-toggle-group>
               @if (rp.shape === 'pie') {
-                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__narrow">
                   <mat-label>{{ t('regionPaint.slices') }}</mat-label>
                   <input matInput type="number" data-testid="rp-slices" [min]="paintLimits.minSlices" [max]="paintLimits.maxSlices"
                     [value]="rp.slices" (input)="setPaintSize('slices', $any($event.target).valueAsNumber)" />
                 </mat-form-field>
                 <span class="ae__hint">{{ t('regionPaint.totalPie', { total: rp.slices }) }}</span>
               } @else {
-              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__narrow">
                 <mat-label>{{ t('regionPaint.rows') }}</mat-label>
                 <input matInput type="number" data-testid="rp-rows" [min]="paintLimits.minSize" [max]="paintLimits.maxSize" [value]="rp.rows"
                   (input)="setPaintSize('rows', $any($event.target).valueAsNumber)" />
               </mat-form-field>
-              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__narrow">
                 <mat-label>{{ t('regionPaint.cols') }}</mat-label>
                 <input matInput type="number" data-testid="rp-cols" [min]="paintLimits.minSize" [max]="paintLimits.maxSize" [value]="rp.cols"
                   (input)="setPaintSize('cols', $any($event.target).valueAsNumber)" />
@@ -908,10 +906,15 @@
             </div>
 
             @for (entry of rp.entries; track $index; let i = $index) {
+              @let cells = paintCells(entry.target, rp);
               <div class="ae__row ae__row--wrap" [attr.data-paint-entry]="i">
-                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__paint-color">
                   <mat-label>{{ t('regionPaint.color') }}</mat-label>
                   <mat-select [value]="entry.color" (selectionChange)="setPaintEntry(i, { color: $event.value })">
+                    <mat-select-trigger>
+                      <span class="ae__swatch" [style.background]="paintCss(entry.color)" aria-hidden="true"></span>
+                      {{ t('regionPaint.colors.' + entry.color) }}
+                    </mat-select-trigger>
                     @for (c of paintColors; track c) {
                       <mat-option [value]="c" [disabled]="c !== entry.color && paintColorUsed(c)">
                         <span class="ae__swatch" [style.background]="paintCss(c)" aria-hidden="true"></span>
@@ -920,18 +923,19 @@
                     }
                   </mat-select>
                 </mat-form-field>
-                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
-                  <mat-label>{{ t('regionPaint.target') }}</mat-label>
-                  <input matInput [value]="entry.target" [attr.maxlength]="20" (input)="setPaintEntry(i, { target: $any($event.target).value })" />
-                </mat-form-field>
-                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__paint-label">
                   <mat-label>{{ t('regionPaint.label') }}</mat-label>
                   <input matInput [value]="entry.label" [attr.maxlength]="paintLimits.maxLabel"
                     (input)="setPaintEntry(i, { label: $any($event.target).value })" />
                 </mat-form-field>
-                <span class="ae__index" [attr.data-paint-cells]="i">
-                  @if (paintCells(entry.target, rp); as n) {
-                    {{ t(rp.shape === 'pie' ? 'regionPaint.cellsPie' : 'regionPaint.cells', { n: n.value }) }}
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__paint-target" [class.ae__invalid]="!cells">
+                  <mat-label>{{ t('regionPaint.target') }}</mat-label>
+                  <input matInput [value]="entry.target" [attr.maxlength]="20" [placeholder]="rp.shape === 'pie' ? '1/4' : '2/5'"
+                    [attr.aria-invalid]="!cells" (input)="setPaintEntry(i, { target: $any($event.target).value })" />
+                </mat-form-field>
+                <span class="ae__paint-cells" [class.ae__warn]="!cells" [attr.data-paint-cells]="i">
+                  @if (cells) {
+                    {{ t(rp.shape === 'pie' ? 'regionPaint.cellsPie' : 'regionPaint.cells', { n: cells.value }) }}
                   } @else {
                     {{ t(rp.shape === 'pie' ? 'regionPaint.cellsPieInvalid' : 'regionPaint.cellsInvalid') }}
                   }

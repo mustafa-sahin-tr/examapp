@@ -380,6 +380,15 @@ describe('ActivityEditorComponent (#590)', () => {
     fixture.detectChanges();
     expect(el('[data-paint-cells="0"]')?.textContent).toContain('35');
     expect(el('[data-testid="preview"] app-question-canvas-region-paint')).not.toBeNull();
+    expect(el('[data-paint-entry="0"] .ae__invalid')).toBeNull();
+
+    // Tam kareye inmeyen hedef: alan ve uyarı kırmızı.
+    component.setPaintEntry(1, { target: '1/3' });
+    fixture.detectChanges();
+    expect(el('[data-paint-entry="1"] .ae__paint-target')?.classList).toContain('ae__invalid');
+    expect(el('[data-paint-cells="1"]')?.classList).toContain('ae__warn');
+    component.setPaintEntry(1, { target: '%25' });
+    fixture.detectChanges();
 
     component.save(false);
     const q = questions.saveBulk.mock.calls[0][0].questions[0];

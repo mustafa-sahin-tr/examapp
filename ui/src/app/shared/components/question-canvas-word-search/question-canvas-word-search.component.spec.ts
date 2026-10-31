@@ -123,4 +123,22 @@ describe('QuestionCanvasWordSearchComponent (#586)', () => {
     expect(cell(0, 0).disabled).toBe(true);
     expect(q('ws-undo')).toBeNull();
   });
+
+  it('disabledUndoAndReset_KeepMaterialDisabledLook_NotGlobalGrayFill', () => {
+    // Global `button:disabled` gri zemini çerçeveli Material butonunu ezince açık pasif yazı okunmuyordu.
+    setup();
+    for (const id of ['ws-undo', 'ws-reset']) {
+      const button = q(id) as HTMLButtonElement;
+      expect(button.disabled).toBe(true);
+      expect(getComputedStyle(button).backgroundColor, id).not.toBe('rgb(204, 204, 204)');
+    }
+    const plain = document.createElement('button');
+    plain.disabled = true;
+    document.body.appendChild(plain);
+    try {
+      expect(getComputedStyle(plain).backgroundColor).toBe('rgb(204, 204, 204)');
+    } finally {
+      plain.remove();
+    }
+  });
 });

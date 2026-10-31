@@ -825,7 +825,8 @@ canvas {
   background-color: purple;
 }
 
-button:disabled {
+// Material butonları kendi pasif görünümünü çizer (çerçeveli butonun zemini saydam kalmalı, yoksa pasif yazı kaybolur).
+button:disabled:not(.mat-mdc-button-base) {
   background-color: #ccc;
 }
 
@@ -1891,7 +1892,8 @@ button:hover {
   background-color: #135ba1;
 }
 
-button:disabled {
+// Material butonları kendi pasif görünümünü çizer (çerçeveli butonun zemini saydam kalmalı, yoksa pasif yazı kaybolur).
+button:disabled:not(.mat-mdc-button-base) {
   background-color: #ccc;
   cursor: not-allowed;
 }

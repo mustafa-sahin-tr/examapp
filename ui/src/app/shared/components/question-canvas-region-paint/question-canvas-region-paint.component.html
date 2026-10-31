@@ -23,7 +23,7 @@
         @if (!readOnly()) {
           <button type="button" role="radio" class="rp-swatch rp-swatch--eraser" data-testid="rp-eraser" [attr.aria-checked]="selected() === null"
             [class.is-selected]="selected() === null" (click)="select(null)">
-            <mat-icon aria-hidden="true">ink_eraser</mat-icon>
+            <mat-icon aria-hidden="true">format_color_reset</mat-icon>
             <span class="rp-swatch__label">{{ t('eraser') }}</span>
           </button>
         }
@@ -132,7 +132,7 @@
       @if (!readOnly()) {
         <button type="button" role="radio" class="rp-swatch rp-swatch--eraser" data-testid="rp-eraser" [attr.aria-checked]="selected() === null"
           [class.is-selected]="selected() === null" (click)="select(null)">
-          <mat-icon aria-hidden="true">ink_eraser</mat-icon>
+          <mat-icon aria-hidden="true">format_color_reset</mat-icon>
           <span class="rp-swatch__label">{{ t('eraser') }}</span>
         </button>
       }

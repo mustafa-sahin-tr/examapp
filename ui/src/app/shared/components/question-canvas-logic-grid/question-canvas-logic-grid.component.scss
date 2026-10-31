@@ -97,29 +97,57 @@
 
 .lg-corner,
 .lg-cat,
-.lg-subject {
+.lg-subject,
+.lg-group-label {
   padding: 6px 10px;
   font-family: var(--mainFontFamily);
   font-weight: 700;
 }
 
-.lg-cat {
+.lg-corner {
+  border-top-color: transparent !important;
+  border-left-color: transparent !important;
+}
+
+.lg-cat,
+.lg-group-label {
   background: var(--ms-surface-strong);
 }
 
+.lg-group-label {
+  padding: 6px 4px;
+}
+
+// Kitaptaki gibi dikey başlık (alttan üste okunur).
+.lg-vertical {
+  display: inline-block;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+}
+
 .lg-subject {
-  text-align: left;
+  text-align: right;
   white-space: nowrap;
 }
 
 .lg-option {
-  padding: 4px 6px;
-  min-width: 44px;
-  max-width: 96px;
+  padding: 6px 2px;
   font-size: 13px;
   font-weight: 600;
   line-height: 1.2;
   vertical-align: bottom;
+}
+
+// Bloklar arası kalın çizgi: satır grupları arasında da.
+.lg-group + .lg-group tr:first-child > * {
+  border-top: 2px solid var(--ms-text-medium);
+}
+
+// Merdivenin boş köşesi: çizgisiz.
+.lg-void {
+  border: 0 !important;
+  background: var(--ms-surface-weak, transparent);
 }
 
 .lg-td {
@@ -136,8 +164,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border: 0;
   background: transparent;
   color: var(--ms-text-strong);
@@ -205,5 +233,43 @@
   &.is-bad {
     background: var(--ms-danger-surface);
     color: var(--ms-danger-text);
+  }
+}
+
+.lg-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  &__title {
+    margin: 0;
+    font-family: var(--mainFontFamily);
+    font-size: 14px;
+  }
+
+  &__table {
+    border-collapse: collapse;
+    background: var(--ms-surface);
+
+    th,
+    td {
+      min-width: 72px;
+      padding: 6px 10px;
+      border: 1px solid var(--ms-border-weak);
+      text-align: left;
+    }
+
+    thead th {
+      background: var(--ms-surface-strong);
+      font-family: var(--mainFontFamily);
+    }
+
+    td.is-pair-ok {
+      background: var(--ms-success-surface);
+    }
+
+    td.is-pair-bad {
+      background: var(--ms-danger-surface);
+    }
   }
 }

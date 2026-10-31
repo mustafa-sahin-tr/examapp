@@ -100,6 +100,34 @@ public class LogicGridGraderTests
         Grader.Normalize(payload).ShouldBe(payload);
     }
 
+    private static string WithNotes(string notesJson, params (string Row, string Col, string Mark)[] cells)
+        => Cells(cells)[..^1] + ",\"notes\":" + notesJson + "}";
+
+    [Fact]
+    public void Validate_Notes_StaircaseBlocksOnly()
+    {
+        // Hayvan (c2) satır, Renk (c1) sütun: 3 × 3.
+        Grader.Validate(Plan, WithNotes("""{"c2:c1":"y..n....."}""", AllCorrect)).ShouldBeTrue();
+        Grader.Validate(Plan, WithNotes("""{"c2:c9":"y..n....."}""")).ShouldBeFalse(); // bilinmeyen kategori
+        Grader.Validate(Plan, WithNotes("""{"c1:c2":"y..n....."}""")).ShouldBeFalse(); // yön ters (satır kategorisi sonra gelmeli)
+        Grader.Validate(Plan, WithNotes("""{"c2:c2":"........."}""")).ShouldBeFalse(); // aynı kategori
+        Grader.Validate(Plan, WithNotes("""{"c2:c1":"y..n"}""")).ShouldBeFalse(); // boyut
+        Grader.Validate(Plan, WithNotes("""{"c2:c1":"y..x....."}""")).ShouldBeFalse(); // karakter
+        Grader.Validate(Plan, WithNotes("""{"c2:c1":["y"]}""")).ShouldBeFalse();
+        Grader.Validate(Plan, WithNotes("[]")).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Notes_NotGraded_ButKeepAnswer()
+    {
+        var notes = WithNotes("""{"c2:c1":"y........"}""");
+        Grader.Normalize(notes).ShouldBe(notes); // yalnız karalama da saklanır
+        Grader.Normalize(WithNotes("""{"c2:c1":"........."}""")).ShouldBeNull();
+        var result = Grader.Grade(Input(Solution, WithNotes("""{"c2:c1":"nnnnnnnnn"}""", AllCorrect)));
+        result.IsCorrect.ShouldBeTrue();
+        result.TotalCount.ShouldBe(6);
+    }
+
     // ---- Kontrol ----
 
     [Fact]

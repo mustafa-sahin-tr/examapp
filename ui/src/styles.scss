@@ -3965,6 +3965,12 @@ a:hover {
   padding: 0 0 0 0 !important;
 }
 
+// Yukarıdaki sıfır iç boşlukla çok satırlı alanın ilk satırı üst çerçevedeki etikete yapışıyordu; tek satırlı input dikeyde ortalanır.
+.mdc-text-field--outlined textarea.mat-mdc-input-element {
+  padding-top: 14px;
+  padding-bottom: 8px;
+}
+
 /* if you put this in styles.scss */
 mat-form-field.hide-subscript .mat-mdc-form-field-subscript-wrapper {
   display: none !important;

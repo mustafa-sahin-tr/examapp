@@ -1,7 +1,8 @@
 /**
- * Issue #586: sözel mantık tablosunun (`logicGrid`) görselsiz formu — konu (ör. "Çocuk": Ali, Ayşe, Can), kategoriler (ör. "Renk":
- * mavi, kırmızı, yeşil; her kategoride konu öğesi kadar seçenek), ipuçları ve çözüm (konu öğesi başına kategori başına seçenek,
- * kategoride birebir). Konu öğesi sayısı değişince kategorilerin seçenek listesi aynı uzunluğa getirilir.
+ * Issue #586: sözel mantık tablosunun (`logicGrid`) görselsiz formu. Öğretmen kitabın cevap tablosunu doldurur: başlıkta satır
+ * grubunun (ör. "Çocuk") ve kategorilerin (ör. "Renk") adı, her satırda konu öğesi (ör. Ali) ve onun her kategorideki cevabı.
+ * Kategoride her seçenek tam bir satıra gittiğinden seçenekler ve çözüm bu tablodan çıkar. Öğrencinin gördüğü seçenek sırası
+ * ayrıca öğretmence belirlenir (`order`); satır sırasıyla aynı kalırsa çözüm köşegende görünür ({@link isRowOrder} uyarısı).
  *
  * Kurallar backend `LogicGridGrader.ValidateDefinition` ile aynı.
  */
@@ -9,7 +10,10 @@ import { LOGIC_GRID, LOGIC_GRID_LIMITS, parseLogicGridPlan, parseLogicGridSoluti
 
 export interface LogicCategoryForm {
   label: string;
-  options: string[];
+  /** `values[s]` = konu öğesi `s`'nin bu kategorideki cevabı (cevap tablosunun sütunu). */
+  values: string[];
+  /** Öğrencinin gördüğü seçenek sırası: konu öğesi dizinlerinin permütasyonu (`values[order[k]]` k. seçenek). */
+  order: number[];
 }
 
 export interface LogicGridForm {
@@ -18,8 +22,6 @@ export interface LogicGridForm {
   subjects: string[];
   categories: LogicCategoryForm[];
   clues: string[];
-  /** `answer[s][c]` = konu öğesi `s`'nin `c` kategorisindeki seçeneğinin dizini; null = seçilmedi. */
-  answer: (number | null)[][];
 }
 
 export interface LogicGridError {
@@ -39,47 +41,93 @@ export function isLogicGridForm(form: { kind: string }): form is LogicGridForm {
   return form.kind === 'logicGrid';
 }
 
+const range = (n: number) => Array.from({ length: n }, (_, i) => i);
+
+function emptyCategory(subjects: number): LogicCategoryForm {
+  return { label: '', values: range(subjects).map(() => ''), order: range(subjects) };
+}
+
 export function emptyLogicGridForm(): LogicGridForm {
   return {
     kind: 'logicGrid',
     subjectLabel: '',
     subjects: ['', '', ''],
-    categories: [{ label: '', options: ['', '', ''] }],
+    categories: [emptyCategory(3)],
     clues: [''],
-    answer: [[null], [null], [null]],
   };
 }
 
-/** Konu öğesi sayısını değiştirir; kategorilerin seçenekleri ve çözüm tablosu aynı boyuta getirilir. */
-export function resizeLogicSubjects(form: LogicGridForm, count: number): LogicGridForm {
-  const n = Math.min(LOGIC_GRID_LIMITS.maxItems, Math.max(LOGIC_GRID_LIMITS.minItems, count));
-  const fit = <T>(list: T[], fill: () => T) => (list.length >= n ? list.slice(0, n) : [...list, ...Array.from({ length: n - list.length }, fill)]);
+/** Sona boş satır ekler; her kategoride yeni seçenek sıranın sonuna girer. */
+export function addLogicSubject(form: LogicGridForm): LogicGridForm {
+  const n = form.subjects.length;
+  if (n >= LOGIC_GRID_LIMITS.maxItems) return form;
   return {
     ...form,
-    subjects: fit(form.subjects, () => ''),
-    categories: form.categories.map((c) => ({ ...c, options: fit(c.options, () => '') })),
-    answer: fit(form.answer, () => form.categories.map(() => null)).map((row) =>
-      row.map((choice) => (choice !== null && choice < n ? choice : null))
-    ),
+    subjects: [...form.subjects, ''],
+    categories: form.categories.map((c) => ({ ...c, values: [...c.values, ''], order: [...c.order, n] })),
+  };
+}
+
+/** Satırı (ve her kategorideki cevabını) siler; seçenek sırası kalan satırlara göre yeniden numaralanır. */
+export function removeLogicSubject(form: LogicGridForm, index: number): LogicGridForm {
+  if (form.subjects.length <= LOGIC_GRID_LIMITS.minItems || index < 0 || index >= form.subjects.length) return form;
+  return {
+    ...form,
+    subjects: form.subjects.filter((_, i) => i !== index),
+    categories: form.categories.map((c) => ({
+      ...c,
+      values: c.values.filter((_, i) => i !== index),
+      order: c.order.filter((s) => s !== index).map((s) => (s > index ? s - 1 : s)),
+    })),
   };
 }
 
 export function addLogicCategory(form: LogicGridForm): LogicGridForm {
   if (form.categories.length >= LOGIC_GRID_LIMITS.maxCategories) return form;
-  return {
-    ...form,
-    categories: [...form.categories, { label: '', options: form.subjects.map(() => '') }],
-    answer: form.answer.map((row) => [...row, null]),
-  };
+  return { ...form, categories: [...form.categories, emptyCategory(form.subjects.length)] };
 }
 
 export function removeLogicCategory(form: LogicGridForm, index: number): LogicGridForm {
   if (form.categories.length <= 1) return form;
+  return { ...form, categories: form.categories.filter((_, i) => i !== index) };
+}
+
+/** Seçenek sırasında `position`'daki seçeneği bir adım sola (-1) / sağa (+1) taşır. */
+export function moveLogicOption(form: LogicGridForm, category: number, position: number, delta: -1 | 1): LogicGridForm {
+  const target = position + delta;
   return {
     ...form,
-    categories: form.categories.filter((_, i) => i !== index),
-    answer: form.answer.map((row) => row.filter((_, i) => i !== index)),
+    categories: form.categories.map((c, i) => {
+      if (i !== category || target < 0 || target >= c.order.length) return c;
+      const order = [...c.order];
+      [order[position], order[target]] = [order[target], order[position]];
+      return { ...c, order };
+    }),
   };
+}
+
+/** Seçenek sırasını karıştırır (satır sırasıyla aynı kalmaz; `random` testte sabitlenir). */
+export function shuffleLogicOptions(form: LogicGridForm, category: number, random: () => number = Math.random): LogicGridForm {
+  return {
+    ...form,
+    categories: form.categories.map((c, i) => {
+      if (i !== category || c.order.length < 2) return c;
+      let order = c.order;
+      for (let attempt = 0; attempt < 10 && (order === c.order || isRowOrder(order)); attempt++) {
+        order = [...c.order];
+        for (let k = order.length - 1; k > 0; k--) {
+          const j = Math.floor(random() * (k + 1));
+          [order[k], order[j]] = [order[j], order[k]];
+        }
+      }
+      return { ...c, order };
+    }),
+  };
+}
+
+/** Seçenekler satır sırasında mı (öğrencinin tablosunda çözüm köşegende görünür)? */
+export function isRowOrder(order: number[]): boolean {
+  return order.every((s, k) => s === k);
 }
 
 export function validateLogicGridForm(form: LogicGridForm): LogicGridError[] {
@@ -100,41 +148,33 @@ export function validateLogicGridForm(form: LogicGridForm): LogicGridError[] {
   labels([form.subjectLabel]);
   labels(form.subjects);
   labels(form.categories.map((c) => c.label));
-  for (const category of form.categories) labels(category.options);
+  for (const category of form.categories) labels(category.values);
 
   const clues = form.clues.filter((c) => c.trim());
   if (clues.length > maxClues) push('logicClueCount', { max: maxClues });
   if (clues.some((c) => c.trim().length > maxClue)) push('labelTooLong', { max: maxClue });
 
-  form.categories.forEach((category, ci) => {
-    const chosen = form.subjects.map((_, si) => form.answer[si]?.[ci] ?? null);
-    if (chosen.some((c) => c === null)) push('logicAnswerMissing');
-    else if (new Set(chosen).size !== chosen.length) push('logicAnswerDuplicate', { category: category.label.trim() || ci + 1 });
-  });
   return errors;
 }
 
-/** Form → plan + çözüm. Önce {@link validateLogicGridForm} geçmeli; eksik seçimler çözüme yazılmaz. */
+/** Form → plan + çözüm. Önce {@link validateLogicGridForm} geçmeli. Seçenekler öğretmenin sırasıyla, id'ler bu sırayla. */
 export function buildLogicGridDefinition(form: LogicGridForm): LogicGridDefinition {
   let optionId = 0;
-  const categories = form.categories.map((category, ci) => ({
-    id: `c${ci + 1}`,
-    label: category.label.trim(),
-    items: category.options.map((label) => ({ id: `o${++optionId}`, label: label.trim() })),
-  }));
   const subjects = form.subjects.map((label, si) => ({ id: `p${si + 1}`, label: label.trim() }));
+  const assign: Record<string, Record<string, string>> = {};
+  const categories = form.categories.map((category, ci) => {
+    const id = `c${ci + 1}`;
+    const items = category.order.map((si) => {
+      const option = { id: `o${++optionId}`, label: (category.values[si] ?? '').trim() };
+      if (subjects[si]) (assign[subjects[si].id] ??= {})[id] = option.id;
+      return option;
+    });
+    return { id, label: category.label.trim(), items };
+  });
   const clues = form.clues
     .map((text) => text.trim())
     .filter(Boolean)
     .map((text, i) => ({ id: `q${i + 1}`, text }));
-  const assign: Record<string, Record<string, string>> = {};
-  subjects.forEach((subject, si) => {
-    categories.forEach((category, ci) => {
-      const choice = form.answer[si]?.[ci];
-      if (choice === null || choice === undefined || !category.items[choice]) return;
-      (assign[subject.id] ??= {})[category.id] = category.items[choice].id;
-    });
-  });
   return {
     interactionType: LOGIC_GRID,
     plan: JSON.stringify({
@@ -156,18 +196,31 @@ export function parseLogicGridDefinition(
   const plan = parseLogicGridPlan(planJson);
   if (!plan || plan.categories.some((c) => c.items.length !== plan.subject.items.length)) return null;
   const assign = parseLogicGridSolution(solutionJson, plan);
+  const n = plan.subject.items.length;
+  const categories = plan.categories.map((c) => {
+    const values = range(n).map(() => '');
+    const order: number[] = [];
+    const loose: string[] = [];
+    for (const item of c.items) {
+      const owner = plan.subject.items.findIndex((s) => Object.hasOwn(assign, s.id) && assign[s.id][c.id] === item.id);
+      if (owner >= 0 && !order.includes(owner)) {
+        values[owner] = item.label;
+        order.push(owner);
+      } else loose.push(item.label);
+    }
+    // Çözümü eksik (taslak) kayıt: sahipsiz seçenekler boş kalan satırlara sırayla.
+    for (const label of loose) {
+      const free = range(n).find((s) => !order.includes(s))!;
+      values[free] = label;
+      order.push(free);
+    }
+    return { label: c.label, values, order };
+  });
   return {
     kind: 'logicGrid',
     subjectLabel: plan.subject.label,
     subjects: plan.subject.items.map((s) => s.label),
-    categories: plan.categories.map((c) => ({ label: c.label, options: c.items.map((i) => i.label) })),
+    categories,
     clues: plan.clues.length ? plan.clues.map((c) => c.text) : [''],
-    answer: plan.subject.items.map((s) =>
-      plan.categories.map((c) => {
-        const option = Object.hasOwn(assign, s.id) ? assign[s.id][c.id] : undefined;
-        const index = c.items.findIndex((i) => i.id === option);
-        return index >= 0 ? index : null;
-      })
-    ),
   };
 }

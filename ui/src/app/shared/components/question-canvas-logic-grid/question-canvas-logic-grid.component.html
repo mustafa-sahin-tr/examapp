@@ -27,48 +27,59 @@
     }
 
     <div class="lg-scroll">
-      <table class="lg-table" data-testid="lg-table">
+      <table class="lg-table" data-testid="lg-table" [class.is-staircase]="p.categories.length > 1">
         <thead>
           <tr>
-            <th class="lg-corner" rowspan="2" scope="col">{{ p.subject.label }}</th>
+            <th class="lg-corner" colspan="2" rowspan="2"></th>
             @for (category of p.categories; track category.id) {
-              <th class="lg-cat" scope="colgroup" [attr.colspan]="category.items.length">{{ category.label }}</th>
+              <th class="lg-cat is-block-start" scope="colgroup" [attr.colspan]="category.items.length">{{ category.label }}</th>
             }
           </tr>
           <tr>
             @for (category of p.categories; track category.id) {
               @for (option of category.items; track option.id; let first = $first) {
-                <th class="lg-option" scope="col" [class.is-block-start]="first">{{ option.label }}</th>
+                <th class="lg-option" scope="col" [class.is-block-start]="first"><span class="lg-vertical">{{ option.label }}</span></th>
               }
             }
           </tr>
         </thead>
-        <tbody>
-          @for (subject of p.subject.items; track subject.id) {
-            <tr>
-              <th class="lg-subject" scope="row">{{ subject.label }}</th>
-              @for (category of p.categories; track category.id) {
-                @for (option of category.items; track option.id; let first = $first) {
-                  @let m = mark(subject.id, category.id, option.id);
-                  <td class="lg-td" [class.is-block-start]="first"
-                    [class.is-pair-ok]="pairState(subject.id, category.id) === 'ok'"
-                    [class.is-pair-bad]="pairState(subject.id, category.id) === 'bad'">
-                    <button type="button" class="lg-cell" [attr.data-cell]="subject.id + ':' + option.id"
-                      [class.is-yes]="m === 'yes'" [class.is-no]="m === 'no'"
-                      [class.is-conflict]="conflictCells().has(subject.id + ':' + option.id)" [disabled]="readOnly()"
-                      [attr.aria-label]="cellAria(subject.label, option.label, m)" (click)="cycle(subject.id, option.id)">
-                      @if (m === 'yes') {
-                        <mat-icon aria-hidden="true">check</mat-icon>
-                      } @else if (m === 'no') {
-                        <mat-icon aria-hidden="true">close</mat-icon>
-                      }
-                    </button>
-                  </td>
+        @for (group of groups(); track group.category?.id ?? 'subject'; let top = $first) {
+          <tbody class="lg-group" [attr.data-group]="group.category?.id ?? 'subject'">
+            @for (item of group.items; track item.id; let firstRow = $first) {
+              <tr>
+                @if (firstRow) {
+                  <th class="lg-group-label" scope="rowgroup" [attr.rowspan]="group.items.length">
+                    <span class="lg-vertical">{{ group.label }}</span>
+                  </th>
                 }
-              }
-            </tr>
-          }
-        </tbody>
+                <th class="lg-subject" scope="row">{{ item.label }}</th>
+                @for (category of group.cols; track category.id) {
+                  @for (option of category.items; track option.id; let first = $first) {
+                    @let m = mark(item.id, option.id);
+                    <td class="lg-td" [class.is-block-start]="first"
+                      [class.is-pair-ok]="top && pairState(item.id, category.id) === 'ok'"
+                      [class.is-pair-bad]="top && pairState(item.id, category.id) === 'bad'">
+                      <button type="button" class="lg-cell" [attr.data-cell]="item.id + ':' + option.id"
+                        [class.is-yes]="m === 'yes'" [class.is-no]="m === 'no'"
+                        [class.is-conflict]="conflictCells().has(item.id + ':' + option.id)" [disabled]="readOnly()"
+                        [attr.aria-label]="cellAria(item.label, option.label, m)" (click)="cycle(item.id, option.id)">
+                        @if (m === 'yes') {
+                          <mat-icon aria-hidden="true">check</mat-icon>
+                        } @else if (m === 'no') {
+                          <mat-icon aria-hidden="true">close</mat-icon>
+                        }
+                      </button>
+                    </td>
+                  }
+                }
+                @if (firstRow && group.cols.length < p.categories.length) {
+                  <td class="lg-void" aria-hidden="true" [attr.rowspan]="group.items.length"
+                    [attr.colspan]="(p.categories.length - group.cols.length) * p.subject.items.length"></td>
+                }
+              </tr>
+            }
+          </tbody>
+        }
       </table>
     </div>
 
@@ -85,8 +96,39 @@
           <mat-icon>restart_alt</mat-icon>{{ t('reset') }}
         </button>
       </div>
-      <p class="lg-hint">{{ t('hint') }}</p>
+      <p class="lg-hint">{{ t(p.categories.length > 1 ? 'hint' : 'hintSingle') }}</p>
     }
+
+    <section class="lg-summary" data-testid="lg-summary">
+      <h4 class="lg-summary__title">{{ t('summary') }}</h4>
+      <div class="lg-scroll">
+        <table class="lg-summary__table">
+          <thead>
+            <tr>
+              <th scope="col">{{ p.subject.label }}</th>
+              @for (category of p.categories; track category.id) {
+                <th scope="col">{{ category.label }}</th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of summary(); track row.subject.id) {
+              <tr>
+                <th scope="row">{{ row.subject.label }}</th>
+                @for (category of p.categories; track category.id; let ci = $index) {
+                  <td [attr.data-summary]="row.subject.id + ':' + category.id"
+                    [class.is-pair-ok]="pairState(row.subject.id, category.id) === 'ok'"
+                    [class.is-pair-bad]="pairState(row.subject.id, category.id) === 'bad'">{{ row.values[ci] }}</td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (!solutionShown()) {
+        <p class="lg-hint">{{ t('summaryHint') }}</p>
+      }
+    </section>
   } @else {
     <p class="lg-hint" data-testid="lg-invalid">{{ t('invalid') }}</p>
   }

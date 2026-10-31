@@ -514,10 +514,13 @@
         "conflict": "A row or column with a red frame has more than one ✓ or no place left.",
         "autoCross": "Fill the row and column with ✗ when I tick",
         "reset": "Clear",
-        "hint": "Tap a cell: first ✓, then ✗, then empty. Each row and column of a category has exactly one ✓.",
+        "hint": "Tap a cell: first ✓, then ✗, then empty. Each block allows one ✓ per row and per column. The lower blocks are for working out; only the top rows are checked.",
         "resultOk": "The whole grid is correct!",
         "resultPartial": "{{ok}} of {{total}} matches are correct; check the red rows again.",
-        "solutionShown": "The correct matches are shown with ✓."
+        "solutionShown": "The correct matches are shown with ✓.",
+        "hintSingle": "Tap a cell: first ✓, then ✗, then empty. Each row and column allows only one ✓.",
+        "summary": "Answer table",
+        "summaryHint": "The answer table fills itself from the ✓ marks above."
       },
       "regionPaint": {
         "passageAlt": "Reading passage image",

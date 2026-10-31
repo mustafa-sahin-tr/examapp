@@ -13,7 +13,9 @@ namespace ExamApp.Api.Services.Interactions;
 /// <item>Çözüm: <c>{"assign":{"p1":{"c1":"o2",...},...}}</c> — her konu öğesine her kategoriden tek seçenek; bir kategoride her seçenek
 /// tek konu öğesine ait (birebir).</item>
 /// <item>Öğrenci payload'u: <c>{version:1,type:"logicGrid",cells:[{row:"p1",col:"o2",mark:"yes"|"no"}]}</c> — ✓ / ✗ işaretleri
-/// (✗ öğrencinin notudur, kontrolde yalnız ✓ sayılır).</item>
+/// (✗ öğrencinin notudur, kontrolde yalnız ✓ sayılır). İsteğe bağlı <c>notes</c>: kitaptaki merdiven tablonun kategori × kategori
+/// karalama blokları, <c>{"c3:c1":"y..n...."}</c> — anahtar satır kategorisi : sütun kategorisi (satır kategorisi planda sonra gelir),
+/// değer satır öncelikli n × n karakter (<c>.</c> boş, <c>y</c> ✓, <c>n</c> ✗). Notlar puanlanmaz, yalnız saklanır.</item>
 /// </list>
 /// Kontrol: satır = (konu öğesi, kategori) çifti (konu sırası × kategori sırası, id <c>p1:c1</c>); doğru ⇔ o kategoride tam bir ✓ var ve
 /// çözümdeki seçenek. Geri bildirim <c>{"rows":[{id,correct}]}</c>; doğru seçenek yazılmaz. Çözümü olmayan soru puanlanamaz (0/0).
@@ -51,13 +53,27 @@ public sealed class LogicGridGrader : IInteractionGrader
             return false;
         if (!TryReadPlan(plan, ReadOptions, strict: false, out var grid))
             return false;
-        return TryParsePayload(payload, out var cells)
-            && cells.All(c => grid.Subjects.Any(s => s.Id == c.Row) && grid.OptionCategory.ContainsKey(c.Col));
+        return TryParsePayload(payload, out var cells, out var notes)
+            && cells.All(c => grid.Subjects.Any(s => s.Id == c.Row) && grid.OptionCategory.ContainsKey(c.Col))
+            && notes.All(n => IsNoteBlock(grid, n.Key, n.Value));
     }
 
-    /// <summary>İşaretsiz payload = cevap yok → null.</summary>
+    /// <summary>İşaretsiz payload (ne ✓/✗ ne karalama işareti) = cevap yok → null.</summary>
     public string? Normalize(string? payload)
-        => payload != null && TryParsePayload(payload, out var cells) && cells.Count == 0 ? null : payload;
+        => payload != null && TryParsePayload(payload, out var cells, out var notes) && cells.Count == 0
+            && notes.Values.All(text => text.All(ch => ch == NoteEmpty)) ? null : payload;
+
+    /// <summary>Karalama bloğu: iki farklı kategori, satır kategorisi planda sonra; metin n × n karakter.</summary>
+    private static bool IsNoteBlock(Grid grid, string key, string text)
+    {
+        var parts = key.Split(':');
+        if (parts.Length != 2)
+            return false;
+        var row = grid.Categories.FindIndex(c => c.Id == parts[0]);
+        var col = grid.Categories.FindIndex(c => c.Id == parts[1]);
+        return row > col && col >= 0
+            && text.Length == grid.Categories[row].Items.Count * grid.Categories[col].Items.Count;
+    }
 
     public InteractionGradeResult Grade(InteractionGradeInput input)
     {
@@ -151,7 +167,7 @@ public sealed class LogicGridGrader : IInteractionGrader
     private static Dictionary<(string, string), List<string>> Chosen(Grid grid, string? payload)
     {
         var chosen = new Dictionary<(string, string), List<string>>();
-        if (payload == null || !TryParsePayload(payload, out var cells))
+        if (payload == null || !TryParsePayload(payload, out var cells, out _))
             return chosen;
         foreach (var cell in cells.Where(c => c.Yes))
         {
@@ -306,15 +322,21 @@ public sealed class LogicGridGrader : IInteractionGrader
 
     private static bool HasOnlyKeys(JsonElement obj, string[] allowed) => HasOnlyKeys(obj, allowed.ToHashSet(StringComparer.Ordinal));
 
-    /// <summary>Katı payload: <c>cells</c> en çok 8 × 32 işaret, her biri <c>{row,col,mark}</c>, aynı hücre iki kez yok.</summary>
-    private static bool TryParsePayload(string payload, out List<Mark> cells)
+    private const char NoteEmpty = '.';
+
+    /// <summary>
+    /// Katı payload: <c>cells</c> en çok 8 × 32 işaret, her biri <c>{row,col,mark}</c>, aynı hücre iki kez yok; <c>notes</c> en çok
+    /// 6 blok (4 kategoride kategori çiftleri), değer yalnız <c>. y n</c> ve en çok 8 × 8 karakter (plana uyum <see cref="Validate"/>'te).
+    /// </summary>
+    private static bool TryParsePayload(string payload, out List<Mark> cells, out Dictionary<string, string> notes)
     {
         cells = new List<Mark>();
+        notes = new Dictionary<string, string>(StringComparer.Ordinal);
         try
         {
             using var doc = JsonDocument.Parse(payload, StrictOptions);
             var root = doc.RootElement;
-            if (root.ValueKind != JsonValueKind.Object || !HasOnlyKeys(root, ["version", "type", "cells"]))
+            if (root.ValueKind != JsonValueKind.Object || !HasOnlyKeys(root, ["version", "type", "cells", "notes"]))
                 return false;
             if (!root.TryGetProperty("type", out var type) || type.ValueKind != JsonValueKind.String
                 || !string.Equals(type.GetString(), Type, StringComparison.Ordinal))
@@ -335,11 +357,24 @@ public sealed class LogicGridGrader : IInteractionGrader
                     return false;
                 cells.Add(new Mark(row, col, mark == Yes));
             }
+            if (root.TryGetProperty("notes", out var notesElement))
+            {
+                if (notesElement.ValueKind != JsonValueKind.Object)
+                    return false;
+                foreach (var block in notesElement.EnumerateObject())
+                {
+                    if (block.Value.ValueKind != JsonValueKind.String || block.Value.GetString() is not { } text
+                        || text.Length > MaxItems * MaxItems || text.Any(ch => ch is not (NoteEmpty or 'y' or 'n'))
+                        || notes.Count >= MaxCategories * (MaxCategories - 1) / 2 || !notes.TryAdd(block.Name, text))
+                        return false;
+                }
+            }
             return true;
         }
         catch (Exception ex) when (ex is JsonException or ArgumentException or InvalidOperationException)
         {
             cells.Clear();
+            notes.Clear();
             return false;
         }
     }

@@ -514,10 +514,13 @@
         "conflict": "Kırmızı çerçeveli satır ya da sütunda birden çok ✓ var ya da hiç yer kalmadı.",
         "autoCross": "✓ koyunca satırı ve sütunu ✗ ile doldur",
         "reset": "Temizle",
-        "hint": "Hücreye dokun: önce ✓, sonra ✗, sonra boş. Her satır ve sütunda bir kategoride yalnız bir ✓ olur.",
+        "hint": "Hücreye dokun: önce ✓, sonra ✗, sonra boş. Her blokta bir satırda ve bir sütunda yalnız bir ✓ olur. Alttaki bloklar karalama içindir; kontrolde en üstteki satırlar sayılır.",
         "resultOk": "Tablonun tamamı doğru!",
         "resultPartial": "{{total}} eşleştirmeden {{ok}} tanesi doğru; kırmızı satırlara yeniden bak.",
-        "solutionShown": "Doğru eşleştirmeler ✓ ile gösteriliyor."
+        "solutionShown": "Doğru eşleştirmeler ✓ ile gösteriliyor.",
+        "hintSingle": "Hücreye dokun: önce ✓, sonra ✗, sonra boş. Her satır ve sütunda yalnız bir ✓ olur.",
+        "summary": "Cevap tablosu",
+        "summaryHint": "Cevap tablosu üstteki ✓'lerden kendiliğinden dolar."
       },
       "regionPaint": {
         "passageAlt": "Okuma metni görseli",

@@ -739,9 +739,15 @@ yok; Aspire'da exam API'yi yeniden başlat.
 ipucu ≤ 300). Çözüm `{"assign":{"p1":{"c1":"o2"}}}` (her satıra her kategoriden bir seçenek, kategoride birebir). Öğrenci payload'u
 `{"cells":[{row,col,mark:"yes"|"no"}]}` (✗ öğrencinin notu, kontrolde yalnız ✓ sayılır; işaretsiz = cevap yok). Kontrol (satır, kategori)
 çifti başına (`p1:c1`): o kategoride tek ✓ ve doğru seçenek. Geri bildirim `{"rows":[{id,correct}]}`. Analiz: öğe = çift, cevap = ✓ konan
-seçenek. Oynatıcı: hücre döngüsü boş → ✓ → ✗; "✓ koyunca satırı ve sütunu ✗ ile doldur" (varsayılan açık); satır/sütun tekliği anında
-denetlenir (iki ✓ ya da hepsi ✗ → kırmızı çerçeve). Yazarlık görselsiz editörde (tür **Mantık tablosu**). Migration yok; Aspire'da exam
-API'yi yeniden başlat.
+seçenek. Oynatıcı kitaptaki **merdiven tablo**: üstte konu × bütün kategoriler, altında kategori × kategori karalama blokları (satır
+grupları konu, sonra `Cn`..`C2`; `Ci`'nin sütunları `C1..C(i-1)`; tek kategoride yalnız üst blok), en altta üstteki ✓'lerden dolan salt
+okunur **cevap tablosu**. Karalama blokları puanlanmaz; payload'da isteğe bağlı `notes:{"c2:c1":"y..n....."}` (satır kategorisi planda
+sonra, satır öncelikli n × n karakter `.`/`y`/`n`; 16 KB payload sınırına sığsın diye kompakt); yalnız karalama içeren cevap da saklanır.
+Hücre döngüsü boş → ✓ → ✗; "✓ koyunca satırı ve sütunu ✗ ile doldur" (varsayılan açık) ve teklik denetimi (iki ✓ ya da hepsi ✗ → kırmızı
+çerçeve) her blokta. Yazarlık görselsiz editörde (tür **Mantık tablosu**): öğretmen kitabın **cevap tablosunu** doldurur (başlıkta satır
+grubu + kategori adları, her satırda öğe + kategori başına cevabı); seçenekler ve çözüm bu tablodan çıkar. Öğrencinin gördüğü seçenek
+sırası ayrıca belirlenir (oklar / Karıştır); sıra satırlarla aynıysa köşegen uyarısı. Plan / çözüm biçimi değişmedi. Migration yok; Aspire'da
+exam API'yi yeniden başlat.
 
 **Issue #586 dilim d — şifre katmanı (`slotFill` + `cipher`).** Yeni tip yok: `slotFill` planına isteğe bağlı
 `cipher:{cells:["s2",null,"s1",...]}` (gizli kelimenin hücreleri: kutu id'si ya da `null` = boşluk; 2–40 hücre, en az 2 harf hücresi,

@@ -276,40 +276,57 @@ describe('ActivityEditorComponent (#590)', () => {
     expect((el('[data-testid="tree-remove-level"]') as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('mantık tablosu: satır/kategori/çözümü kaydeder, çözüm ızgarada birebir girilir (#586)', async () => {
+  it('yönerge kutusunda ilk satır üst çerçevedeki etiketten ayrık (iç boşluk)', async () => {
+    await setup({ testId: '9' });
+    const textarea = el('[data-testid="instruction"]') as HTMLTextAreaElement;
+    expect(parseFloat(getComputedStyle(textarea).paddingTop)).toBeGreaterThanOrEqual(12);
+  });
+
+  it('mantık tablosu: cevap tablosundan seçenek ve çözüm, öğretmenin seçenek sırası, önizlemede merdiven tablo (#586)', async () => {
     await setup({ testId: '9' });
     component.selectKind('logicGrid');
     fixture.detectChanges();
     expect(el('[data-testid="logic-grid-form"]')).not.toBeNull();
 
-    component.resizeLogicSubjects(-1);
-    component.setLogicSubjectLabel('Çocuk');
-    component.setLogicSubject(0, 'Ali');
-    component.setLogicSubject(1, 'Ayşe');
-    component.setLogicCategoryLabel(0, 'Renk');
-    component.setLogicOption(0, 0, 'Mavi');
-    component.setLogicOption(0, 1, 'Kırmızı');
-    component.setLogicAnswer(0, 0, 1);
-    component.setLogicAnswer(1, 0, 0);
+    component.removeLogicSubject(2);
+    const type = (selector: string, value: string) => {
+      const input = el(`[data-logic="${selector}"]`) as HTMLInputElement;
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+    };
+    fixture.detectChanges();
+    type('subjectLabel', 'Çocuk');
+    type('category:0', 'Renk');
+    type('subject:0', 'Ali');
+    type('subject:1', 'Ayşe');
+    type('value:0:0', 'Kırmızı');
+    type('value:1:0', 'Mavi');
     component.setLogicClue(0, 'Ali maviyi sevmez.');
     fixture.detectChanges();
-    // Çözüm öğrencinin ızgarasında girilir; ayrı önizleme yok.
-    expect(el('[data-testid="logic-answer-grid"]')).not.toBeNull();
-    expect(el('[data-testid="preview"]')).toBeNull();
-    expect(el('[data-logic-cell="0:0:1"]')?.getAttribute('aria-pressed')).toBe('true');
+    // Sıra satırlarla aynı: köşegen uyarısı; bir adım taşıyınca kalkar.
+    expect(el('[data-row-order="0"]')).not.toBeNull();
+    component.moveLogicOption(0, 0, 1);
+    fixture.detectChanges();
+    expect(el('[data-row-order="0"]')).toBeNull();
+    expect([...fixture.nativeElement.querySelectorAll('[data-order="0"] .ae__lg-chip-text')].map((e) => (e as HTMLElement).textContent?.trim()))
+      .toEqual(['Mavi', 'Kırmızı']);
 
-    // Birebir: Ayşe'ye Kırmızı verilince Ali ile yer değiştirir, sonra geri alınır.
-    (el('[data-logic-cell="1:0:1"]') as HTMLButtonElement).click();
+    // İkinci kategori: önizleme merdiven tabloya geçer (Renk × Spor bloğu).
+    (el('[data-testid="logic-add-category"]') as HTMLButtonElement).click();
     fixture.detectChanges();
-    expect(component.logicGrid()!.answer.map((r) => r[0])).toEqual([0, 1]);
-    (el('[data-logic-cell="0:0:1"]') as HTMLButtonElement).click();
+    type('category:1', 'Spor');
+    type('value:0:1', 'Tenis');
+    type('value:1:1', 'Yüzme');
     fixture.detectChanges();
+    expect(el('[data-testid="preview"] app-question-canvas-logic-grid')).not.toBeNull();
+    expect(el('[data-testid="preview"] [data-group="c2"]')).not.toBeNull();
 
     component.save(false);
     const q = questions.saveBulk.mock.calls[0][0].questions[0];
     expect(q.interactionType).toBe('logicGrid');
-    expect(JSON.parse(q.interactionPlan).categories[0].items.length).toBe(2);
-    expect(JSON.parse(q.interactionSolution)).toEqual({ assign: { p1: { c1: 'o2' }, p2: { c1: 'o1' } } });
+    const plan = JSON.parse(q.interactionPlan);
+    expect(plan.categories[0].items.map((o: { label: string }) => o.label)).toEqual(['Mavi', 'Kırmızı']);
+    expect(JSON.parse(q.interactionSolution)).toEqual({ assign: { p1: { c1: 'o2', c2: 'o3' }, p2: { c1: 'o1', c2: 'o4' } } });
   });
 
   it('boyama: hedefleri kare sayısına çevirip kaydeder, önizlemede ızgarayı çizer (#587)', async () => {

@@ -5,6 +5,11 @@
  * Çözüm (`{"assign":{"p1":{"c1":"o2"}}}`) öğrenciye gitmez (#570). Öğrenci hücrelere ✓ / ✗ koyar
  * (`{"cells":[{row,col,mark}]}`); kontrolde yalnız ✓ sayılır: (konu öğesi, kategori) çifti doğru ⇔ o kategoride tek ✓ ve doğru
  * seçenek (backend `LogicGridGrader`). Satır / sütun tekliği oynatıcıda anında denetlenir ({@link conflicts}). Puansız.
+ *
+ * Merdiven tablo (kitaptaki gibi, 2+ kategoride): konu satırlarının altında kategori × kategori blokları — satır grupları konu,
+ * sonra son kategoriden ikinciye; `Ci` satır grubunun sütunları `C1..C(i-1)` ({@link staircase}). Bu bloklar öğrencinin karalama
+ * alanıdır, puanlanmaz; payload'da `notes` olarak blok başına kompakt dizi gider: anahtar `"satırKategori:sütunKategori"`, değer
+ * satır öncelikli `n × n` karakter (`.` boş, `y` ✓, `n` ✗).
  */
 import { isInteractionType, isValidInteractionId } from './interaction-ids';
 
@@ -46,6 +51,14 @@ export type LogicMarks = Record<string, Record<string, LogicMark>>;
 
 /** Çözüm: konu öğesi → kategori → seçenek. */
 export type LogicAssign = Record<string, Record<string, string>>;
+
+/** Merdiven tablonun bir satır grubu: konu (`category` null) ya da bir kategori; `cols` bu grubun blok sütunları. */
+export interface LogicRowGroup {
+  category: LogicCategory | null;
+  label: string;
+  items: LogicItem[];
+  cols: LogicCategory[];
+}
 
 export interface LogicGridFeedback {
   rows: { id: string; correct: boolean }[];
@@ -113,6 +126,31 @@ function categoryOf(plan: LogicGridPlanV1, optionId: string): LogicCategory | nu
   return plan.categories.find((c) => c.items.some((i) => i.id === optionId)) ?? null;
 }
 
+/** Satır grupları: konu (bütün kategoriler), sonra `Cn`..`C2` (her biri kendinden önceki kategorilerle). */
+export function staircase(plan: LogicGridPlanV1): LogicRowGroup[] {
+  const groups: LogicRowGroup[] = [{ category: null, label: plan.subject.label, items: plan.subject.items, cols: plan.categories }];
+  for (let i = plan.categories.length - 1; i >= 1; i--) {
+    const category = plan.categories[i];
+    groups.push({ category, label: category.label, items: category.items, cols: plan.categories.slice(0, i) });
+  }
+  return groups;
+}
+
+/** Hücrenin bloğu: satır öğesinin grubu ve sütun seçeneğinin kategorisi (grubun sütunlarında değilse null). */
+function blockOf(plan: LogicGridPlanV1, row: string, col: string): { group: LogicRowGroup; category: LogicCategory } | null {
+  const category = categoryOf(plan, col);
+  if (!category) return null;
+  const group = staircase(plan).find((g) => g.items.some((i) => i.id === row));
+  return group && group.cols.includes(category) ? { group, category } : null;
+}
+
+export function noteKey(rowCategoryId: string, colCategoryId: string): string {
+  return `${rowCategoryId}:${colCategoryId}`;
+}
+
+const NOTE_CHARS: Record<string, LogicMark | null> = { '.': null, y: 'yes', n: 'no' };
+const NOTE_CODES: Record<LogicMark | 'none', string> = { none: '.', yes: 'y', no: 'n' };
+
 /** Öğrenci cevabı → işaretler; plana uymayan hücre atlanır. Başka tür / bozuksa boş. */
 export function parseLogicGridAnswer(json: string | null | undefined, plan: LogicGridPlanV1 | null): LogicMarks {
   const out = Object.create(null) as LogicMarks;
@@ -127,6 +165,21 @@ export function parseLogicGridAnswer(json: string | null | undefined, plan: Logi
       if (!isValidInteractionId(row) || !isValidInteractionId(col) || (mark !== 'yes' && mark !== 'no')) continue;
       if (plan && (!rows!.has(row) || !categoryOf(plan, col))) continue;
       (out[row] ??= Object.create(null) as Record<string, LogicMark>)[col] = mark;
+    }
+    const notes = parsed['notes'];
+    if (plan && notes && typeof notes === 'object' && !Array.isArray(notes)) {
+      for (const group of staircase(plan).slice(1)) {
+        for (const category of group.cols) {
+          const text = (notes as Record<string, unknown>)[noteKey(group.category!.id, category.id)];
+          if (typeof text !== 'string' || text.length !== group.items.length * category.items.length) continue;
+          group.items.forEach((item, r) =>
+            category.items.forEach((option, c) => {
+              const mark = NOTE_CHARS[text[r * category.items.length + c]];
+              if (mark) (out[item.id] ??= Object.create(null) as Record<string, LogicMark>)[option.id] = mark;
+            })
+          );
+        }
+      }
     }
     return out;
   } catch {
@@ -153,24 +206,38 @@ export function buildLogicGridPayload(plan: LogicGridPlanV1, marks: LogicMarks):
       }
     }
   }
-  return JSON.stringify({ version: 1, type: LOGIC_GRID, cells });
+  const notes: Record<string, string> = {};
+  for (const group of staircase(plan).slice(1)) {
+    for (const category of group.cols) {
+      const text = group.items
+        .flatMap((item) => category.items.map((option) => NOTE_CODES[markOf(marks, item.id, option.id) ?? 'none']))
+        .join('');
+      if (/[yn]/.test(text)) notes[noteKey(group.category!.id, category.id)] = text;
+    }
+  }
+  return JSON.stringify(Object.keys(notes).length ? { version: 1, type: LOGIC_GRID, cells, notes } : { version: 1, type: LOGIC_GRID, cells });
 }
 
 /**
- * ✓ konunca aynı kategori bloğunda o satırın ve o sütunun boş hücrelerine ✗ yazılır (öğrencinin el işi azalır; mevcut ✓ / ✗
- * değişmez). Döner: yeni işaretler.
+ * ✓ konunca aynı blokta o satırın ve o sütunun boş hücrelerine ✗ yazılır (öğrencinin el işi azalır; mevcut ✓ / ✗ değişmez).
+ * Döner: yeni işaretler.
  */
 export function withAutoCrosses(plan: LogicGridPlanV1, marks: LogicMarks, row: string, col: string): LogicMarks {
-  const category = categoryOf(plan, col);
-  if (!category) return marks;
+  const block = blockOf(plan, row, col);
+  if (!block) return marks;
   const next = cloneMarks(marks);
   const set = (r: string, c: string) => {
     if (markOf(next, r, c)) return;
     (next[r] ??= Object.create(null) as Record<string, LogicMark>)[c] = 'no';
   };
-  for (const option of category.items) if (option.id !== col) set(row, option.id);
-  for (const subject of plan.subject.items) if (subject.id !== row) set(subject.id, col);
+  for (const option of block.category.items) if (option.id !== col) set(row, option.id);
+  for (const item of block.group.items) if (item.id !== row) set(item.id, col);
   return next;
+}
+
+/** Hücre merdiven tablonun bir bloğunda mı (konu satırı ya da izinli kategori × kategori)? */
+export function isLogicCell(plan: LogicGridPlanV1, row: string, col: string): boolean {
+  return blockOf(plan, row, col) !== null;
 }
 
 export function cloneMarks(marks: LogicMarks): LogicMarks {
@@ -185,14 +252,10 @@ export function cloneMarks(marks: LogicMarks): LogicMarks {
  */
 export function conflicts(plan: LogicGridPlanV1, marks: LogicMarks): Set<string> {
   const out = new Set<string>();
-  for (const category of plan.categories) {
-    for (const subject of plan.subject.items) {
-      const cells = category.items.map((o) => [subject.id, o.id] as const);
-      flag(cells);
-    }
-    for (const option of category.items) {
-      const cells = plan.subject.items.map((s) => [s.id, option.id] as const);
-      flag(cells);
+  for (const group of staircase(plan)) {
+    for (const category of group.cols) {
+      for (const item of group.items) flag(category.items.map((o) => [item.id, o.id] as const));
+      for (const option of category.items) flag(group.items.map((i) => [i.id, option.id] as const));
     }
   }
   return out;
@@ -233,7 +296,9 @@ export function isBlankLogicGridPayload(json: string | null | undefined): boolea
   try {
     const parsed = JSON.parse(json) as Record<string, unknown> | null;
     if (!parsed || typeof parsed !== 'object' || !isLogicGridType(parsed['type'])) return false;
-    return !Array.isArray(parsed['cells']) || parsed['cells'].length === 0;
+    const notes = parsed['notes'];
+    const noted = !!notes && typeof notes === 'object' && Object.values(notes).some((v) => typeof v === 'string' && /[yn]/.test(v));
+    return (!Array.isArray(parsed['cells']) || parsed['cells'].length === 0) && !noted;
   } catch {
     return false;
   }
@@ -260,4 +325,27 @@ export function parseLogicGridFeedback(json: string | null | undefined): LogicGr
 export function ticks(plan: LogicGridPlanV1, marks: LogicMarks, row: string, categoryId: string): string[] {
   const category = plan.categories.find((c) => c.id === categoryId);
   return category ? category.items.filter((o) => markOf(marks, row, o.id) === 'yes').map((o) => o.id) : [];
+}
+
+/**
+ * Özet (cevap) tablosu: konu öğesi × kategori → konu bloğunda ✓ konan seçeneğin etiketi; ✓ yoksa boş, birden çoksa `?`.
+ */
+export function summaryRows(plan: LogicGridPlanV1, marks: LogicMarks): { subject: LogicItem; values: string[] }[] {
+  return plan.subject.items.map((subject) => ({
+    subject,
+    values: plan.categories.map((category) => {
+      const picks = ticks(plan, marks, subject.id, category.id);
+      return picks.length === 1 ? (category.items.find((o) => o.id === picks[0])?.label ?? '') : picks.length > 1 ? '?' : '';
+    }),
+  }));
+}
+
+/** Çözümün işaretleri (konu bloğunda doğru seçenekler ✓): çözüm gösteriminde özet ve tablo bunu kullanır. */
+export function solutionMarks(plan: LogicGridPlanV1, assign: LogicAssign): LogicMarks {
+  const out = Object.create(null) as LogicMarks;
+  for (const subject of plan.subject.items) {
+    if (!Object.hasOwn(assign, subject.id)) continue;
+    for (const option of Object.values(assign[subject.id])) (out[subject.id] ??= Object.create(null) as Record<string, LogicMark>)[option] = 'yes';
+  }
+  return out;
 }

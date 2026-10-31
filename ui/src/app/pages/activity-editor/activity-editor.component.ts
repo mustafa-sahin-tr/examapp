@@ -1189,6 +1189,13 @@ export class ActivityEditorComponent {
     return value === null ? null : { value };
   }
 
+  /** Okunabilen hedeflerin toplamı; ızgarayı / daireyi aşıyorsa formda canlı uyarı. */
+  paintUsed(form: RegionPaintForm): { sum: number; total: number; over: boolean } {
+    const total = regionPaintTotal(form);
+    const sum = form.entries.reduce((acc, e) => acc + (targetCells(e.target, total) ?? 0), 0);
+    return { sum, total, over: sum > total };
+  }
+
   setPaintShape(shape: RegionPaintShape): void {
     this.updateRegionPaint((f) => ({ ...f, shape }));
   }

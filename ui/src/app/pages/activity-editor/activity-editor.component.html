@@ -944,6 +944,11 @@
                   (click)="removePaintEntry(i)"><mat-icon>close</mat-icon></button>
               </div>
             }
+            @let used = paintUsed(rp);
+            <p class="ae__paint-sum" [class.ae__warn]="used.over" data-testid="rp-sum" aria-live="polite">
+              {{ t(rp.shape === 'pie' ? 'regionPaint.usedPie' : 'regionPaint.used', used) }}
+              @if (used.over) { — {{ t('regionPaint.over') }} }
+            </p>
             <button mat-button type="button" [disabled]="rp.entries.length >= paintLimits.maxPalette || !canAddPaintColor()" (click)="addPaintEntry()">
               <mat-icon>add</mat-icon>{{ t('regionPaint.addColor') }}
             </button>

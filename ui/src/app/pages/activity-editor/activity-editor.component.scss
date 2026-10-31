@@ -498,8 +498,13 @@
   --mat-form-field-outlined-focus-label-text-color: var(--ms-danger-text-weak);
 }
 
+.ae__paint-sum {
+  margin: 0;
+  font-weight: 600;
+}
+
 .ae__paint-cells {
-  min-width: 64px;
+  flex: 0 0 140px;
   font-weight: 700;
 }
 

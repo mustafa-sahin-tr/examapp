@@ -1297,20 +1297,30 @@
                 <mat-icon>shuffle</mat-icon>{{ t('wordSearch.shuffle') }}
               </button>
             </div>
+            <div class="ae__row ae__row--wrap">
+              <span class="ae__label" id="ae-ws-show">{{ t('wordSearch.show') }}</span>
+              <mat-button-toggle-group aria-labelledby="ae-ws-show" [value]="ws.show" data-testid="ws-show"
+                (change)="setWordSearchOption({ show: $event.value })">
+                <mat-button-toggle value="words">{{ t('wordSearch.showWords') }}</mat-button-toggle>
+                <mat-button-toggle value="clues">{{ t('wordSearch.showClues') }}</mat-button-toggle>
+              </mat-button-toggle-group>
+            </div>
             @for (entry of ws.words; track $index; let wi = $index) {
-              <div class="ae__row ae__row--wrap" [attr.data-word]="wi">
+              <div class="ae__row ae__ws-entry" [attr.data-word]="wi">
                 <span class="ae__index">{{ wi + 1 }}.</span>
-                <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__ws-word">
                   <mat-label>{{ t('wordSearch.word') }}</mat-label>
                   <input matInput [value]="entry.word" [attr.maxlength]="wordSearchLimits.maxSize + 10"
                     (input)="setWordSearchEntry(wi, { word: $any($event.target).value })" />
-                  <mat-hint>{{ t('crossword.length', { n: wordSearchLength(entry) }) }}</mat-hint>
+                  <span matTextSuffix class="ae__ws-letters">{{ t('wordSearch.letters', { n: wordSearchLength(entry) }) }}</span>
                 </mat-form-field>
-                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
-                  <mat-label>{{ t('wordSearch.label') }}</mat-label>
-                  <input matInput [value]="entry.label" [attr.maxlength]="wordSearchLimits.maxLabel"
-                    (input)="setWordSearchEntry(wi, { label: $any($event.target).value })" />
-                </mat-form-field>
+                @if (ws.show === 'clues') {
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                    <mat-label>{{ t('wordSearch.label') }}</mat-label>
+                    <input matInput [value]="entry.label" [attr.maxlength]="wordSearchLimits.maxLabel"
+                      (input)="setWordSearchEntry(wi, { label: $any($event.target).value })" />
+                  </mat-form-field>
+                }
                 <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="ws.words.length <= 1"
                   (click)="removeWordSearchEntry(wi)"><mat-icon>close</mat-icon></button>
               </div>

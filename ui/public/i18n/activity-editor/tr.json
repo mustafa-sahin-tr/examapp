@@ -191,6 +191,8 @@
     "wordSearchWordRequired": "Her satıra bir kelime yazın.",
     "wordSearchWordLength": "Kelimeler en az {{min}} harf olmalı.",
     "wordSearchWordChars": "Kelimelerde yalnız harf ve rakam kullanın.",
+    "wordSearchClueRequired": "İpucu kipinde her kelimenin ipucunu yazın.",
+    "wordSearchClueIsWord": "İpucu kelimenin kendisi olamaz; kelimeyi göstermek için \"Kelimeleri göster\"i seçin.",
     "wordSearchDuplicate": "Aynı kelime iki kez yazılmış.",
     "wordSearchUnplaced": "Şu kelimeler ızgaraya sığmadı: {{list}}. Izgarayı büyütün, yön ekleyin ya da \"Karıştır\"ı deneyin.",
     "logicSubjectCount": "{{min}}–{{max}} satır olmalı.",
@@ -380,14 +382,18 @@
     "sameDirTaken": "Bu hücrelerde aynı yönde başka bir kelime var."
   },
   "wordSearch": {
-    "hint": "Kelimeleri yazın; ızgara kelimelerden otomatik oluşur, boş hücreler harfle dolar. Beğenmezseniz \"Karıştır\" ile yeniden yerleştirin. İpucu boşsa listede kelimenin kendisi görünür.",
+    "hint": "Kelimeleri yazın; ızgara kelimelerden otomatik oluşur, boş hücreler harfle dolar. Beğenmezseniz \"Karıştır\" ile yeniden yerleştirin. Öğrenci listede ya kelimeleri ya da ipuçlarını görür.",
     "rows": "Satır",
     "cols": "Sütun",
     "diagonal": "Çapraz",
     "reverse": "Ters yönde",
     "shuffle": "Karıştır",
     "word": "Kelime",
-    "label": "Listede görünen (isteğe bağlı ipucu)",
+    "label": "İpucu",
+    "show": "Listede görünen",
+    "showWords": "Kelimeleri göster",
+    "showClues": "İpuçlarını göster",
+    "letters": "{{n}} harf",
     "addWord": "Kelime ekle"
   },
   "logicGrid": {

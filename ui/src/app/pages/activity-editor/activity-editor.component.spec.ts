@@ -471,7 +471,17 @@ describe('ActivityEditorComponent (#590)', () => {
 
     component.setWordSearchEntry(0, { word: 'kalp' });
     component.setWordSearchEntry(1, { word: 'mide' });
-    component.setWordSearchEntry(2, { word: 'akciğer', label: 'Solunum organı' });
+    component.setWordSearchEntry(2, { word: 'akciğer' });
+    fixture.detectChanges();
+    // Kelime kipinde ipucu alanı yok; ipucu kipine geçince her kelimeye ipucu gerekir.
+    expect(el('[data-word="0"] input:nth-of-type(2)')).toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('[data-word="0"] input').length).toBe(1);
+    component.setWordSearchOption({ show: 'clues' });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('[data-word="0"] input').length).toBe(2);
+    component.setWordSearchEntry(0, { label: 'Kanı pompalar' });
+    component.setWordSearchEntry(1, { label: 'Besinleri sindirir' });
+    component.setWordSearchEntry(2, { label: 'Solunum organı' });
     fixture.detectChanges();
     expect(el('[data-testid="preview"] app-question-canvas-word-search')).not.toBeNull();
     const before = component.definition().plan;
@@ -483,7 +493,7 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(q.interactionType).toBe('wordSearch');
     const plan = JSON.parse(q.interactionPlan);
     expect(plan.letters.length).toBe(8);
-    expect(plan.words.map((w: { label: string }) => w.label)).toEqual(['KALP', 'MİDE', 'Solunum organı']);
+    expect(plan.words.map((w: { label: string }) => w.label)).toEqual(['Kanı pompalar', 'Besinleri sindirir', 'Solunum organı']);
     expect(Object.keys(JSON.parse(q.interactionSolution).lines)).toEqual(['w1', 'w2', 'w3']);
   });
 

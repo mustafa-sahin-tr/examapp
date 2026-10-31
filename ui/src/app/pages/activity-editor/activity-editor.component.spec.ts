@@ -282,6 +282,30 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(parseFloat(getComputedStyle(textarea).paddingTop)).toBeGreaterThanOrEqual(12);
   });
 
+  it('mantık tablosu: cevap tablosunda Tab sütun sütun ilerler, Shift+Tab geri gider (#586)', async () => {
+    await setup({ testId: '9' });
+    component.selectKind('logicGrid');
+    fixture.detectChanges();
+    const input = (key: string) => el(`[data-logic="${key}"]`) as HTMLInputElement;
+    const tab = (key: string, shiftKey = false) => {
+      const event = new KeyboardEvent('keydown', { key: 'Tab', shiftKey, bubbles: true, cancelable: true });
+      input(key).dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+    // 3 satır, 1 kategori: Çocuk → Ali → Ayşe → Can → Renk → cevaplar aşağı.
+    expect(tab('subjectLabel')).toBe(true);
+    expect(document.activeElement).toBe(input('subject:0'));
+    tab('subject:2');
+    expect(document.activeElement).toBe(input('category:0'));
+    tab('value:0:0');
+    expect(document.activeElement).toBe(input('value:1:0'));
+    tab('value:1:0', true);
+    expect(document.activeElement).toBe(input('value:0:0'));
+    // Son hücre: varsayılan Tab tablodan çıkar.
+    expect(tab('value:2:0')).toBe(false);
+    expect(tab('subjectLabel', true)).toBe(false);
+  });
+
   it('mantık tablosu: öğrencinin ekranında yazılır — cevap tablosundan seçenek ve çözüm, başlıkta seçenek sırası (#586)', async () => {
     await setup({ testId: '9' });
     component.selectKind('logicGrid');

@@ -407,11 +407,13 @@
     "removeCategory": "{{n}}. kategoriyi sil",
     "addCategory": "Kategori ekle",
     "value": "{{subject}} – {{category}} cevabı",
-    "rowOrderWarning": "«{{name}}» seçenekleri satırlarla aynı sırada: doğru cevaplar köşegende dizilir. Başlıktaki ‹ › ya da karıştır düğmesiyle sırayı değiştirin.",
     "clues": "İpuçları",
     "clue": "{{n}}. ipucu",
     "addClue": "İpucu ekle",
-    "answerTable": "Cevap tablosu"
+    "answerTable": "Cevap tablosu",
+    "rowOrderInfo": "Seçenekleri satırlarla aynı sırada olan kategoriler: {{names}}. Doğru cevaplar köşegende dizilir; tablonun başlığındaki ‹ › ya da karıştır düğmesiyle sırayı değiştirebilirsiniz.",
+    "moveUp": "{{n}}. satırı yukarı taşı",
+    "moveDown": "{{n}}. satırı aşağı taşı"
   },
   "regionPaint": {
     "hint": "Izgara boyutunu ve renkleri seçin. Her rengin hedefini kitaptaki gibi yazın: kesir (2/5), ondalık (0,35), yüzde (%25) ya da kare sayısı. Hedefi boş renk çeldiricidir (boyanmamalı). İsterseniz palet düğmesinde görünecek bir etiket verin (ör. \"2/5\").",

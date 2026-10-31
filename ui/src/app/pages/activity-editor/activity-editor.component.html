@@ -807,12 +807,8 @@
               [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
               (optionMove)="moveLogicOption($event.category, $event.position, $event.delta)"
               (categoryShuffle)="shuffleLogicOptions($event)" />
-            @for (category of lg.categories; track $index; let ci = $index) {
-              @if (logicRowOrder(category.order)) {
-                <p class="ae__warn" [attr.data-row-order]="ci">
-                  {{ t('logicGrid.rowOrderWarning', { name: category.label || t('logicGrid.category', { n: ci + 1 }) }) }}
-                </p>
-              }
+            @if (logicRowOrderNames(); as names) {
+              <p class="ae__hint" data-testid="logic-row-order">{{ t('logicGrid.rowOrderInfo', { names }) }}</p>
             }
 
             <span class="ae__label">{{ t('logicGrid.answerTable') }}</span>
@@ -859,7 +855,11 @@
                             (input)="setLogicValue(ci, si, $any($event.target).value)" />
                         </td>
                       }
-                      <td class="ae__table-action">
+                      <td class="ae__table-action ae__lg-row-tools">
+                        <button mat-icon-button type="button" [attr.data-subject-move]="si + ':-1'" [attr.aria-label]="t('logicGrid.moveUp', { n: si + 1 })"
+                          [disabled]="si === 0" (click)="moveLogicSubject(si, -1)"><mat-icon>arrow_upward</mat-icon></button>
+                        <button mat-icon-button type="button" [attr.data-subject-move]="si + ':1'" [attr.aria-label]="t('logicGrid.moveDown', { n: si + 1 })"
+                          [disabled]="si === lg.subjects.length - 1" (click)="moveLogicSubject(si, 1)"><mat-icon>arrow_downward</mat-icon></button>
                         <button mat-icon-button type="button" [attr.aria-label]="t('logicGrid.removeSubject', { n: si + 1 })"
                           [disabled]="lg.subjects.length <= logicLimits.minItems" (click)="removeLogicSubject(si)"><mat-icon>close</mat-icon></button>
                       </td>

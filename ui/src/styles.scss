@@ -826,7 +826,8 @@ canvas {
 }
 
 // Material butonları kendi pasif görünümünü çizer (çerçeveli butonun zemini saydam kalmalı, yoksa pasif yazı kaybolur).
-button:disabled:not(.mat-mdc-button-base) {
+// `:where` önceliği `button:disabled` düzeyinde tutar: bileşenlerin kendi buton stilleri (oynatıcı hücreleri) bu gri zemini ezer.
+button:disabled:not(:where(.mat-mdc-button-base)) {
   background-color: #ccc;
 }
 
@@ -1893,7 +1894,8 @@ button:hover {
 }
 
 // Material butonları kendi pasif görünümünü çizer (çerçeveli butonun zemini saydam kalmalı, yoksa pasif yazı kaybolur).
-button:disabled:not(.mat-mdc-button-base) {
+// `:where` önceliği `button:disabled` düzeyinde tutar: bileşenlerin kendi buton stilleri (oynatıcı hücreleri) bu gri zemini ezer.
+button:disabled:not(:where(.mat-mdc-button-base)) {
   background-color: #ccc;
   cursor: not-allowed;
 }

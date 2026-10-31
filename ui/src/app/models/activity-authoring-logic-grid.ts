@@ -120,6 +120,8 @@ export function shuffleLogicOptions(form: LogicGridForm, category: number, rando
           [order[k], order[j]] = [order[j], order[k]];
         }
       }
+      // Şans eseri yine satır sırası (2 seçenekte yarı yarıya): bir adım döndür.
+      if (isRowOrder(order)) order = [...order.slice(1), order[0]];
       return { ...c, order };
     }),
   };

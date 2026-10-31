@@ -519,6 +519,9 @@
         "resultPartial": "{{total}} eşleştirmeden {{ok}} tanesi doğru; kırmızı satırlara yeniden bak.",
         "solutionShown": "Doğru eşleştirmeler ✓ ile gösteriliyor.",
         "hintSingle": "Hücreye dokun: önce ✓, sonra ✗, sonra boş. Her satır ve sütunda yalnız bir ✓ olur.",
+        "shuffle": "«{{name}}» seçeneklerini karıştır",
+        "moveLeft": "«{{name}}» sola",
+        "moveRight": "«{{name}}» sağa",
         "summary": "Cevap tablosu",
         "summaryHint": "Cevap tablosu üstteki ✓'lerden kendiliğinden dolar."
       },

@@ -519,6 +519,9 @@
         "resultPartial": "{{ok}} of {{total}} matches are correct; check the red rows again.",
         "solutionShown": "The correct matches are shown with ✓.",
         "hintSingle": "Tap a cell: first ✓, then ✗, then empty. Each row and column allows only one ✓.",
+        "shuffle": "Shuffle the options of “{{name}}”",
+        "moveLeft": "Move “{{name}}” left",
+        "moveRight": "Move “{{name}}” right",
         "summary": "Answer table",
         "summaryHint": "The answer table fills itself from the ✓ marks above."
       },

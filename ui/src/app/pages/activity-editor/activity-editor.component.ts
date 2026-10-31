@@ -178,7 +178,7 @@ function roomArrow(cols: number, from: number, to: number): string {
   ] ?? '';
 }
 
-const INLINE_PREVIEW_KINDS: ReadonlySet<AuthoringKind> = new Set<AuthoringKind>(['matrix', 'order', 'mazeTree', 'mazeBoard', 'mazeRooms', 'mazeStones', 'crossword']);
+const INLINE_PREVIEW_KINDS: ReadonlySet<AuthoringKind> = new Set<AuthoringKind>(['matrix', 'order', 'mazeTree', 'mazeBoard', 'mazeRooms', 'mazeStones', 'logicGrid', 'crossword']);
 
 @Component({
   selector: 'app-activity-editor',

@@ -398,7 +398,7 @@
     "addWord": "Kelime ekle"
   },
   "logicGrid": {
-    "hint": "Kitaptaki cevap tablosunu doldurun: başlıkta satır grubunun (ör. Çocuk) ve kategorilerin (ör. Renk, Spor) adı, her satırda bir öğe (ör. Ali) ve onun her kategorideki cevabı. Seçenekler ve çözüm bu tablodan çıkar.",
+    "hint": "Bu alan öğrencinin ekranıdır. İpuçlarını yazın, alttaki cevap tablosunu kitaptaki gibi doldurun (başlıkta satır grubu ve kategoriler, her satırda öğe ve cevapları); seçenekler ve çözüm tablodan çıkar. Öğrencinin seçenek sırasını tablonun başlığındaki ‹ › ve karıştır düğmeleriyle belirleyin.",
     "subjectLabel": "Satır grubu (ör. Çocuk)",
     "subject": "{{n}}. satır",
     "addSubject": "Satır ekle",
@@ -407,15 +407,11 @@
     "removeCategory": "{{n}}. kategoriyi sil",
     "addCategory": "Kategori ekle",
     "value": "{{subject}} – {{category}} cevabı",
-    "order": "Seçenek sırası",
-    "orderHint": "Öğrenci tabloda seçenekleri bu sırayla görür. Oklarla taşıyın ya da karıştırın.",
-    "moveLeft": "Sola taşı",
-    "moveRight": "Sağa taşı",
-    "shuffle": "Karıştır",
-    "rowOrderWarning": "Sıra satırlarla aynı: öğrencinin tablosunda doğru cevaplar köşegende dizilir. Sırayı değiştirmeniz önerilir.",
+    "rowOrderWarning": "«{{name}}» seçenekleri satırlarla aynı sırada: doğru cevaplar köşegende dizilir. Başlıktaki ‹ › ya da karıştır düğmesiyle sırayı değiştirin.",
     "clues": "İpuçları",
     "clue": "{{n}}. ipucu",
-    "addClue": "İpucu ekle"
+    "addClue": "İpucu ekle",
+    "answerTable": "Cevap tablosu"
   },
   "regionPaint": {
     "hint": "Izgara boyutunu ve renkleri seçin. Her rengin hedefini kitaptaki gibi yazın: kesir (2/5), ondalık (0,35), yüzde (%25) ya da kare sayısı. Hedefi boş renk çeldiricidir (boyanmamalı). İsterseniz palet düğmesinde görünecek bir etiket verin (ör. \"2/5\").",

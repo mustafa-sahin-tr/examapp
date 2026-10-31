@@ -789,6 +789,33 @@
         @if (logicGrid(); as lg) {
           <div class="ae__block" data-testid="logic-grid-form">
             <p class="ae__hint">{{ t('logicGrid.hint') }}</p>
+            <span class="ae__label">{{ t('logicGrid.clues') }}</span>
+            @for (clue of lg.clues; track $index; let qi = $index) {
+              <div class="ae__row">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                  <mat-label>{{ t('logicGrid.clue', { n: qi + 1 }) }}</mat-label>
+                  <input matInput [value]="clue" [attr.maxlength]="logicLimits.maxClue" (input)="setLogicClue(qi, $any($event.target).value)" />
+                </mat-form-field>
+                <button mat-icon-button type="button" [attr.aria-label]="t('remove')" (click)="removeLogicClue(qi)"><mat-icon>close</mat-icon></button>
+              </div>
+            }
+            <button mat-button type="button" [disabled]="lg.clues.length >= logicLimits.maxClues" (click)="addLogicClue()">
+              <mat-icon>add</mat-icon>{{ t('logicGrid.addClue') }}
+            </button>
+
+            <app-question-canvas-logic-grid data-testid="logic-staircase" [questionRegion]="previewRegion()" [authoring]="true"
+              [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
+              (optionMove)="moveLogicOption($event.category, $event.position, $event.delta)"
+              (categoryShuffle)="shuffleLogicOptions($event)" />
+            @for (category of lg.categories; track $index; let ci = $index) {
+              @if (logicRowOrder(category.order)) {
+                <p class="ae__warn" [attr.data-row-order]="ci">
+                  {{ t('logicGrid.rowOrderWarning', { name: category.label || t('logicGrid.category', { n: ci + 1 }) }) }}
+                </p>
+              }
+            }
+
+            <span class="ae__label">{{ t('logicGrid.answerTable') }}</span>
             <div class="ae__table-wrap">
               <table class="ae__table ae__lg-table" data-testid="logic-answer-table">
                 <thead>
@@ -844,46 +871,6 @@
             <button mat-button type="button" data-testid="logic-add-subject" [disabled]="lg.subjects.length >= logicLimits.maxItems"
               (click)="addLogicSubject()"><mat-icon>add</mat-icon>{{ t('logicGrid.addSubject') }}</button>
 
-            <span class="ae__label">{{ t('logicGrid.order') }}</span>
-            <p class="ae__hint">{{ t('logicGrid.orderHint') }}</p>
-            @for (category of lg.categories; track $index; let ci = $index) {
-              <div class="ae__lg-order" [attr.data-order]="ci">
-                <div class="ae__lg-order-head">
-                  <span class="ae__lg-order-name">{{ category.label || t('logicGrid.category', { n: ci + 1 }) }}</span>
-                  <button mat-button type="button" [attr.data-shuffle]="ci" (click)="shuffleLogicOptions(ci)">
-                    <mat-icon>shuffle</mat-icon>{{ t('logicGrid.shuffle') }}
-                  </button>
-                </div>
-                <div class="ae__lg-chips">
-                  @for (si of category.order; track si; let k = $index, first = $first, last = $last) {
-                    <span class="ae__lg-chip">
-                      <button mat-icon-button type="button" class="ae__lg-move" [disabled]="first"
-                        [attr.aria-label]="t('logicGrid.moveLeft')" (click)="moveLogicOption(ci, k, -1)"><mat-icon>chevron_left</mat-icon></button>
-                      <span class="ae__lg-chip-text">{{ category.values[si] || '—' }}</span>
-                      <button mat-icon-button type="button" class="ae__lg-move" [disabled]="last"
-                        [attr.aria-label]="t('logicGrid.moveRight')" (click)="moveLogicOption(ci, k, 1)"><mat-icon>chevron_right</mat-icon></button>
-                    </span>
-                  }
-                </div>
-                @if (logicRowOrder(category.order)) {
-                  <p class="ae__warn" [attr.data-row-order]="ci">{{ t('logicGrid.rowOrderWarning') }}</p>
-                }
-              </div>
-            }
-
-            <span class="ae__label">{{ t('logicGrid.clues') }}</span>
-            @for (clue of lg.clues; track $index; let qi = $index) {
-              <div class="ae__row">
-                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
-                  <mat-label>{{ t('logicGrid.clue', { n: qi + 1 }) }}</mat-label>
-                  <input matInput [value]="clue" [attr.maxlength]="logicLimits.maxClue" (input)="setLogicClue(qi, $any($event.target).value)" />
-                </mat-form-field>
-                <button mat-icon-button type="button" [attr.aria-label]="t('remove')" (click)="removeLogicClue(qi)"><mat-icon>close</mat-icon></button>
-              </div>
-            }
-            <button mat-button type="button" [disabled]="lg.clues.length >= logicLimits.maxClues" (click)="addLogicClue()">
-              <mat-icon>add</mat-icon>{{ t('logicGrid.addClue') }}
-            </button>
           </div>
         }
 

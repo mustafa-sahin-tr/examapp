@@ -273,3 +273,48 @@
     }
   }
 }
+
+// Yazarlık: başlıklarda sıra / karıştır düğmeleri.
+.lg-cat__label {
+  vertical-align: middle;
+}
+
+.lg-tool.mat-mdc-icon-button {
+  --mat-icon-button-state-layer-size: 28px;
+  width: 28px;
+  height: 28px;
+  padding: 2px;
+  vertical-align: middle;
+
+  .mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.lg-move {
+  display: block;
+  margin: 0 auto;
+  padding: 0;
+  width: 24px;
+  height: 22px;
+  border: 0;
+  background: transparent;
+  color: var(--ms-text-medium);
+  cursor: pointer;
+
+  .mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  &:disabled {
+    visibility: hidden;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ms-action-border-focus);
+  }
+}

@@ -1128,7 +1128,7 @@
   opacity: 0.6;
 }
 
-// Mantık tablosu: cevap tablosu + seçenek sırası.
+// Mantık tablosu: yazılabilir cevap tablosu (seçenek sırası merdiven tablonun başlığında).
 .ae__lg-head {
   display: flex;
   align-items: center;
@@ -1138,45 +1138,3 @@
   font-weight: 600;
 }
 
-.ae__lg-order {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.ae__lg-order-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.ae__lg-order-name {
-  font-weight: 600;
-}
-
-.ae__lg-chips {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-
-.ae__lg-chip {
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid var(--ms-border-weak);
-  border-radius: 999px;
-  background: var(--ms-surface);
-}
-
-.ae__lg-chip-text {
-  padding: 0 2px;
-  white-space: nowrap;
-}
-
-.ae__lg-move.mat-mdc-icon-button {
-  --mat-icon-button-state-layer-size: 32px;
-  width: 32px;
-  height: 32px;
-  padding: 4px;
-}

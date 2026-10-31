@@ -83,5 +83,7 @@ describe('activity-authoring-logic-grid (#586)', () => {
     const shuffled = shuffleLogicOptions(rowOrder, 0, () => [0.1, 0.9, 0.5, 0.3][seed++ % 4]);
     expect([...shuffled.categories[0].order].sort()).toEqual([0, 1, 2]);
     expect(isRowOrder(shuffled.categories[0].order)).toBe(false);
+    // Hep satır sırası üreten rastgele (her takas kendisiyle): yine de sıra değişir.
+    expect(isRowOrder(shuffleLogicOptions(rowOrder, 0, () => 0.999).categories[0].order)).toBe(false);
   });
 });

@@ -282,7 +282,7 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(parseFloat(getComputedStyle(textarea).paddingTop)).toBeGreaterThanOrEqual(12);
   });
 
-  it('mantık tablosu: cevap tablosundan seçenek ve çözüm, öğretmenin seçenek sırası, önizlemede merdiven tablo (#586)', async () => {
+  it('mantık tablosu: öğrencinin ekranında yazılır — cevap tablosundan seçenek ve çözüm, başlıkta seçenek sırası (#586)', async () => {
     await setup({ testId: '9' });
     component.selectKind('logicGrid');
     fixture.detectChanges();
@@ -304,29 +304,36 @@ describe('ActivityEditorComponent (#590)', () => {
     component.setLogicClue(0, 'Ali maviyi sevmez.');
     fixture.detectChanges();
     // Sıra satırlarla aynı: köşegen uyarısı; bir adım taşıyınca kalkar.
+    // Tek yüzey: ayrı önizleme yok; merdiven tablo editörün içinde, çözümle dolu.
+    expect(el('[data-testid="preview"]')).toBeNull();
+    const grid = '[data-testid="logic-staircase"]';
+    expect(el(`${grid} [data-cell="p1:o1"]`)?.classList).toContain('is-yes');
     expect(el('[data-row-order="0"]')).not.toBeNull();
-    component.moveLogicOption(0, 0, 1);
+    // Başlıktaki › ile Kırmızı sağa: sıra Mavi, Kırmızı; köşegen uyarısı kalkar.
+    (el(`${grid} [data-move="0:0:1"]`) as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(el('[data-row-order="0"]')).toBeNull();
-    expect([...fixture.nativeElement.querySelectorAll('[data-order="0"] .ae__lg-chip-text')].map((e) => (e as HTMLElement).textContent?.trim()))
+    expect([...fixture.nativeElement.querySelectorAll(`${grid} .lg-option .lg-vertical`)].map((e) => (e as HTMLElement).textContent?.trim()))
       .toEqual(['Mavi', 'Kırmızı']);
 
-    // İkinci kategori: önizleme merdiven tabloya geçer (Renk × Spor bloğu).
+    // İkinci kategori: merdiven tabloda Spor × Renk bloğu.
     (el('[data-testid="logic-add-category"]') as HTMLButtonElement).click();
     fixture.detectChanges();
     type('category:1', 'Spor');
     type('value:0:1', 'Tenis');
     type('value:1:1', 'Yüzme');
     fixture.detectChanges();
-    expect(el('[data-testid="preview"] app-question-canvas-logic-grid')).not.toBeNull();
-    expect(el('[data-testid="preview"] [data-group="c2"]')).not.toBeNull();
+    expect(el(`${grid} [data-group="c2"]`)).not.toBeNull();
+    (el(`${grid} [data-shuffle="1"]`) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(component.logicGrid()!.categories[1].order).toEqual([1, 0]);
 
     component.save(false);
     const q = questions.saveBulk.mock.calls[0][0].questions[0];
     expect(q.interactionType).toBe('logicGrid');
     const plan = JSON.parse(q.interactionPlan);
     expect(plan.categories[0].items.map((o: { label: string }) => o.label)).toEqual(['Mavi', 'Kırmızı']);
-    expect(JSON.parse(q.interactionSolution)).toEqual({ assign: { p1: { c1: 'o2', c2: 'o3' }, p2: { c1: 'o1', c2: 'o4' } } });
+    expect(JSON.parse(q.interactionSolution)).toEqual({ assign: { p1: { c1: 'o2', c2: 'o4' }, p2: { c1: 'o1', c2: 'o3' } } });
   });
 
   it('boyama: hedefleri kare sayısına çevirip kaydeder, önizlemede ızgarayı çizer (#587)', async () => {

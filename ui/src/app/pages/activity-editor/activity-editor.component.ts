@@ -1112,6 +1112,31 @@ export class ActivityEditorComponent {
     return order.length > 1 && isRowOrder(order);
   }
 
+  /**
+   * Cevap tablosunda Tab sütun sütun ilerler (başlık, sonra satırlar aşağı, sonra sonraki sütunun başlığı): öğretmen bir
+   * kategorinin cevaplarını art arda yazar. Shift+Tab geri; tablonun ucunda varsayılan Tab tablodan çıkar.
+   * `column` 0 = satır grubu sütunu, k = k. kategori; `row` -1 = başlık.
+   */
+  onLogicTableKeydown(event: KeyboardEvent, column: number, row: number): void {
+    const f = this.logicGrid();
+    if (!f || event.key !== 'Tab' || event.altKey || event.ctrlKey || event.metaKey) return;
+    const rows = f.subjects.length;
+    // Sütun içi sıra: -1 (başlık), 0..rows-1; sütunlar soldan sağa.
+    let index = column * (rows + 1) + row + 1 + (event.shiftKey ? -1 : 1);
+    if (index < 0 || index >= (f.categories.length + 1) * (rows + 1)) return;
+    const nextColumn = Math.floor(index / (rows + 1));
+    const nextRow = (index % (rows + 1)) - 1;
+    const key =
+      nextColumn === 0
+        ? nextRow < 0 ? 'subjectLabel' : `subject:${nextRow}`
+        : nextRow < 0 ? `category:${nextColumn - 1}` : `value:${nextRow}:${nextColumn - 1}`;
+    const target = (event.target as HTMLElement).closest('table')?.querySelector<HTMLInputElement>(`[data-logic="${key}"]`);
+    if (!target) return;
+    event.preventDefault();
+    target.focus();
+    target.select();
+  }
+
   addLogicCategory(): void {
     this.updateLogicGrid((f) => addLogicCategory(f));
   }

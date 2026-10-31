@@ -821,14 +821,14 @@
                 <thead>
                   <tr class="is-header">
                     <td>
-                      <input class="ae__cell" data-logic="subjectLabel" [value]="lg.subjectLabel" [attr.maxlength]="logicLimits.maxLabel"
+                      <input class="ae__cell" data-logic="subjectLabel" (keydown)="onLogicTableKeydown($event, 0, -1)" [value]="lg.subjectLabel" [attr.maxlength]="logicLimits.maxLabel"
                         [placeholder]="t('logicGrid.subjectLabel')" [attr.aria-label]="t('logicGrid.subjectLabel')"
                         (input)="setLogicSubjectLabel($any($event.target).value)" />
                     </td>
                     @for (category of lg.categories; track $index; let ci = $index) {
                       <td>
                         <div class="ae__lg-head">
-                          <input class="ae__cell" [attr.data-logic]="'category:' + ci" [value]="category.label"
+                          <input class="ae__cell" [attr.data-logic]="'category:' + ci" (keydown)="onLogicTableKeydown($event, ci + 1, -1)" [value]="category.label"
                             [attr.maxlength]="logicLimits.maxLabel" [placeholder]="t('logicGrid.category', { n: ci + 1 })"
                             [attr.aria-label]="t('logicGrid.category', { n: ci + 1 })"
                             (input)="setLogicCategoryLabel(ci, $any($event.target).value)" />
@@ -847,13 +847,13 @@
                   @for (s of lg.subjects; track $index; let si = $index) {
                     <tr [attr.data-subject]="si">
                       <td>
-                        <input class="ae__cell ae__lg-subject" [attr.data-logic]="'subject:' + si" [value]="s"
+                        <input class="ae__cell ae__lg-subject" [attr.data-logic]="'subject:' + si" (keydown)="onLogicTableKeydown($event, 0, si)" [value]="s"
                           [attr.maxlength]="logicLimits.maxLabel" [placeholder]="t('logicGrid.subject', { n: si + 1 })"
                           [attr.aria-label]="t('logicGrid.subject', { n: si + 1 })" (input)="setLogicSubject(si, $any($event.target).value)" />
                       </td>
                       @for (category of lg.categories; track $index; let ci = $index) {
                         <td>
-                          <input class="ae__cell" [attr.data-logic]="'value:' + si + ':' + ci" [value]="category.values[si]"
+                          <input class="ae__cell" [attr.data-logic]="'value:' + si + ':' + ci" (keydown)="onLogicTableKeydown($event, ci + 1, si)" [value]="category.values[si]"
                             [attr.maxlength]="logicLimits.maxLabel"
                             [attr.aria-label]="t('logicGrid.value', { subject: s || si + 1, category: category.label || ci + 1 })"
                             (input)="setLogicValue(ci, si, $any($event.target).value)" />

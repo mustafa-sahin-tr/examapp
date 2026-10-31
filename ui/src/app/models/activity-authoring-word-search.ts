@@ -1,6 +1,7 @@
 /**
- * Issue #586: kelime avının (`wordSearch`) görselsiz formu — öğretmen kelimeleri (isteğe bağlı listede görünen ipucuyla), ızgara
- * boyutunu ve izinli yönleri (çapraz, ters) seçer; ızgara bunların ve bir tohumun saf fonksiyonudur ({@link generateWordSearch}):
+ * Issue #586: kelime avının (`wordSearch`) görselsiz formu — öğretmen kelimeleri, ızgara boyutunu, izinli yönleri (çapraz, ters)
+ * ve listede ne görüneceğini seçer: ya kelimelerin kendisi ya da (her kelime için zorunlu) ipuçları — ikisi karışık değil. Plan
+ * yalnız görünen metni (`label`) taşır; düzenlemede kip etiketlerden çıkarılır (hepsi kelimenin kendisi = kelime kipi); ızgara bunların ve bir tohumun saf fonksiyonudur ({@link generateWordSearch}):
  * aynı girdi hep aynı ızgarayı verir, **Karıştır** tohumu değiştirir. Kayıtlı madde düzenlenirken kelimeler / boyut / yönler
  * değişmedikçe kaydedilmiş ızgara korunur (`fixed`).
  *
@@ -14,7 +15,7 @@ export const FILL_ALPHABET = [...'ABCÇDEFGĞHIİJKLMNOÖPRSŞTUÜVYZ'];
 
 export interface WordSearchEntryForm {
   word: string;
-  /** Listede görünen metin; boşsa kelimenin kendisi. */
+  /** İpucu kipinde listede görünen metin; kelime kipinde kullanılmaz (kip değişince kaybolmasın diye tutulur). */
   label: string;
 }
 
@@ -25,8 +26,12 @@ export interface WordSearchFixedGrid {
   lines: WordSearchLine[];
 }
 
+/** Listede ne görünür: kelimelerin kendisi ya da ipuçları. */
+export type WordSearchShow = 'words' | 'clues';
+
 export interface WordSearchForm {
   kind: 'wordSearch';
+  show: WordSearchShow;
   rows: number;
   cols: number;
   diagonal: boolean;
@@ -69,6 +74,7 @@ export function isWordSearchForm(form: { kind: string }): form is WordSearchForm
 export function emptyWordSearchForm(): WordSearchForm {
   return {
     kind: 'wordSearch',
+    show: 'words',
     rows: 8,
     cols: 8,
     diagonal: false,
@@ -162,8 +168,12 @@ export function validateWordSearchForm(form: WordSearchForm): WordSearchError[] 
     if (letters.length === 0) push('wordSearchWordRequired');
     else if (letters.length < minLength) push('wordSearchWordLength', { min: minLength });
     if (letters.some((ch) => !/^[\p{L}\p{N}]$/u.test(ch))) push('wordSearchWordChars');
-    const label = (entry.label.trim() || letters.join('')).trim();
-    if (label.length > maxLabel) push('labelTooLong', { max: maxLabel });
+    if (form.show === 'clues') {
+      const clue = entry.label.trim();
+      if (!clue) push('wordSearchClueRequired');
+      else if (clue.length > maxLabel) push('labelTooLong', { max: maxLabel });
+      else if (letters.length && wordLetters(clue).join('') === letters.join('')) push('wordSearchClueIsWord');
+    } else if (letters.length > maxLabel) push('labelTooLong', { max: maxLabel });
     const key = letters.join('');
     if (key && seen.has(key)) push('wordSearchDuplicate');
     seen.add(key);
@@ -182,7 +192,7 @@ export function buildWordSearchDefinition(form: WordSearchForm): WordSearchDefin
   const grid = wordSearchGrid(form);
   const words = form.words.map((entry, i) => ({
     id: `w${i + 1}`,
-    label: entry.label.trim() || wordLetters(entry.word).join(''),
+    label: form.show === 'clues' ? entry.label.trim() : wordLetters(entry.word).join(''),
   }));
   const lines: Record<string, WordSearchLine> = {};
   grid.lines.forEach((line, i) => {
@@ -206,13 +216,17 @@ export function parseWordSearchDefinition(
   if (plan.words.some((w) => !solution[w.id])) return null;
   const words = plan.words.map((w) => {
     const word = spell(plan, solution[w.id]);
-    return { word, label: w.label && w.label !== word ? w.label : '' };
+    const label = w.label && wordLetters(w.label).join('') !== word ? w.label : '';
+    return { word, label };
   });
+  // Eski (#586) kayıtlarda kelime ile ipucu karışık olabilir: tek ipucu bile varsa ipucu kipi, eksikler doğrulamada istenir.
+  const show: WordSearchShow = words.some((w) => w.label) ? 'clues' : 'words';
   const lines = plan.words.map((w) => solution[w.id]);
   const isDiagonal = (l: WordSearchLine) => l.from[0] !== l.to[0] && l.from[1] !== l.to[1];
   const isReverse = (l: WordSearchLine) => l.to[1] < l.from[1] || (l.to[1] === l.from[1] && l.to[0] < l.from[0]);
   const form: WordSearchForm = {
     kind: 'wordSearch',
+    show,
     rows: plan.rows,
     cols: plan.cols,
     diagonal: lines.some(isDiagonal),

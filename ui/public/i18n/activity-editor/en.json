@@ -191,6 +191,8 @@
     "wordSearchWordRequired": "Enter a word on every row.",
     "wordSearchWordLength": "Words must have at least {{min}} letters.",
     "wordSearchWordChars": "Use only letters and digits in words.",
+    "wordSearchClueRequired": "In clue mode, write a clue for every word.",
+    "wordSearchClueIsWord": "A clue cannot be the word itself; choose \"Show words\" to list the words.",
     "wordSearchDuplicate": "The same word is entered twice.",
     "wordSearchUnplaced": "These words did not fit on the grid: {{list}}. Enlarge the grid, allow more directions or try \"Shuffle\".",
     "logicSubjectCount": "Add {{min}}–{{max}} rows.",
@@ -380,14 +382,18 @@
     "sameDirTaken": "Another word in the same direction uses these cells."
   },
   "wordSearch": {
-    "hint": "Enter the words; the grid is built from them automatically and empty cells are filled with letters. Use \"Shuffle\" to place them again. If the clue is empty, the word itself is listed.",
+    "hint": "Enter the words; the grid is built from them automatically and empty cells are filled with letters. Use \"Shuffle\" to place them again. Students see either the words or the clues in the list.",
     "rows": "Rows",
     "cols": "Columns",
     "diagonal": "Diagonal",
     "reverse": "Backwards",
     "shuffle": "Shuffle",
     "word": "Word",
-    "label": "Shown in the list (optional clue)",
+    "label": "Clue",
+    "show": "Shown in the list",
+    "showWords": "Show words",
+    "showClues": "Show clues",
+    "letters": "{{n}} letters",
     "addWord": "Add word"
   },
   "logicGrid": {

@@ -1113,3 +1113,17 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
+
+// Kelime avı: kelime + ipucu aynı hizada; harf sayısı alanın içinde (alt yazı satırları kaydırmasın).
+.ae__ws-word {
+  flex: 0 1 240px;
+  min-width: 0;
+}
+
+.ae__ws-letters {
+  padding-left: 8px;
+  font-size: 0.8em;
+  white-space: nowrap;
+  color: var(--main-foreground-color);
+  opacity: 0.6;
+}

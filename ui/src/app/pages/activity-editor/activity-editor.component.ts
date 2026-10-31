@@ -1293,7 +1293,7 @@ export class ActivityEditorComponent {
 
   // ---- Kelime avı ----
 
-  setWordSearchOption(patch: Partial<Pick<WordSearchForm, 'rows' | 'cols' | 'diagonal' | 'reverse'>>): void {
+  setWordSearchOption(patch: Partial<Pick<WordSearchForm, 'show' | 'rows' | 'cols' | 'diagonal' | 'reverse'>>): void {
     this.updateWordSearch((f) => ({ ...f, ...patch }));
   }
 

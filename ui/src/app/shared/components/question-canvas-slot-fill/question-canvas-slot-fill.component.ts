@@ -205,13 +205,25 @@ export class QuestionCanvasSlotFillComponent {
     return index < 0 ? null : { slot: slots[index], index };
   });
 
+  /** #679: çözüm açık ve öğrenci bir kutu doldurmuş — kutuda öğrencinin cevabı yeşil / kırmızı, yanlışta doğrusu yanında. */
+  readonly compare = computed(
+    () => this._showSolution() && !!this._solutionJson() && this.slots().some((slot) => !isBlankSlotValue(valueOf(this.values(), slot.id)))
+  );
+
   readonly slotMark = computed(() => {
     const feedback = this._feedback();
     const showSolution = this._showSolution();
     const practice = this._practiceFeedback();
     const solution = this.solution();
     const committed = this.committed();
+    const compare = this.compare();
+    const values = this.values();
     return (slot: SlotFillSlot): SlotMark => {
+      if (compare) {
+        const expected = solutionOf(solution, slot.id);
+        const actual = valueOf(values, slot.id);
+        return expected && !isBlankSlotValue(actual) && isSlotAnswerCorrect(slot.input.kind, expected, actual) ? 'correct' : 'wrong';
+      }
       if (showSolution) return null;
       if (feedback) {
         if (!feedback.has(slot.id)) return null;
@@ -286,7 +298,7 @@ export class QuestionCanvasSlotFillComponent {
 
   readonly hint = computed(() => {
     this.i18nTick();
-    if (this._showSolution()) return this.t('solutionShownHint');
+    if (this._showSolution()) return this.t(this.compare() ? 'solutionCompareHint' : 'solutionShownHint');
     const notNumber = this.notNumberIds();
     if (notNumber.size > 0) {
       const boxes = this.slots()
@@ -312,6 +324,13 @@ export class QuestionCanvasSlotFillComponent {
 
   valueFor(slotId: string): string {
     return valueOf(this.values(), slotId);
+  }
+
+  /** Karşılaştırmada kutuda gösterilen öğrencinin cevabı (seçimde seçeneğin etiketi; boşsa "—"). */
+  ownText(slot: SlotFillSlot): string {
+    const value = this.valueFor(slot.id);
+    if (isBlankSlotValue(value)) return '—';
+    return slot.input.kind === 'select' ? (slot.input.options.find((o) => o.id === value)?.label ?? value) : value;
   }
 
   /** Çözüm açıkken kutuda gösterilen kabul edilen değer (çözüm yoksa boş). */

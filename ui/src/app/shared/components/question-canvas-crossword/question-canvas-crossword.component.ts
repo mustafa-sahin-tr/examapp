@@ -151,7 +151,7 @@ export class QuestionCanvasCrosswordComponent {
   });
 
   /** #679: çözüm açık ve öğrenci harf yazmış — öğrencinin ızgarası kalır, hücre doğru / yanlış, yanlışta doğru harf köşede. */
-  readonly compare = computed(() => this._showSolution() && this.grid().some((row) => row.some((ch) => ch.trim() !== '')));
+  readonly compare = computed(() => this._showSolution() && !!this._solutionJson() && this.grid().some((row) => row.some((ch) => ch.trim() !== '')));
 
   /** Gösterilen harfler: öğrencinin ızgarası (karşılaştırmada da); çözüm açık ama harf yoksa çözümden. */
   readonly shown = computed(() => (this._showSolution() && !this.compare() ? this.solution() : this.grid()));

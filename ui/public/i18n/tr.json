@@ -307,6 +307,7 @@
         "hintSingle": "Her satır için bir seçeneğe dokun. Aynı seçeneğe yeniden dokunursan seçim kalkar.",
         "hintMulti": "Her satırda uyan seçeneklerin hepsini seç; yeniden dokununca seçim kalkar.",
         "solutionShownHint": "Doğru cevaplar gösteriliyor.",
+        "solutionCompareHint": "Senin seçimlerin gösteriliyor: doğrular yeşil, yanlışlar kırmızı; kesikli yeşil çerçeve seçmediğin doğru cevabı gösteriyor.",
         "rowFallback": "Satır {{n}}",
         "rowAria": "Satır {{n}}: {{label}}",
         "cellAria": "{{row}} — {{column}}",
@@ -320,6 +321,8 @@
       "slotFill": {
         "hint": "Kutulara cevabını yaz. Kesirde payı üste, paydayı alta yaz. Kutudan çıkınca cevabın kaydedilir.",
         "solutionShownHint": "Kabul edilen cevaplar gösteriliyor.",
+        "solutionCompareHint": "Senin cevapların gösteriliyor: doğrular yeşil, yanlışlar kırmızı; yanlış kutunun yanında doğru cevap yeşil yazıyor.",
+        "targetAria": "doğrusu {{value}}",
         "notNumberHint": "Kutu {{boxes}}: cevabı sayıyla yaz (ör. 7, 2,5, 3/4). Yazıyla yazılan sayı kabul edilmez.",
         "slotAria": "Kutu {{n}}",
         "slotAriaLabeled": "Kutu {{n}}: {{label}}",

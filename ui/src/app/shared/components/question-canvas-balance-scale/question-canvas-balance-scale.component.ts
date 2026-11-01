@@ -113,7 +113,7 @@ export class QuestionCanvasBalanceScaleComponent {
   readonly feedbackState = this._feedback.asReadonly();
 
   /** #679: çözüm açık ve öğrenci kefeye ağırlık koymuş — terazide öğrencinin yerleşimi, yanlışsa altında örnek doğru yerleşim. */
-  readonly compare = computed(() => this._showSolution() && this.pans().left.length + this.pans().right.length > 0);
+  readonly compare = computed(() => this._showSolution() && !!this._solutionJson() && this.pans().left.length + this.pans().right.length > 0);
   private readonly example = computed<BalancePans>(() => {
     const plan = this._plan();
     const rule = this._showSolution() ? parseBalanceScaleSolution(this._solutionJson()) : null;

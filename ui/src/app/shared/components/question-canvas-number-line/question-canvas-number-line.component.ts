@@ -120,7 +120,7 @@ export class QuestionCanvasNumberLineComponent {
     return plan && this._showSolution() ? parseNumberLineSolution(this._solutionJson(), plan) : null;
   });
   /** #679: çözüm açık ve öğrenci kart koymuş — kartlar öğrencinin yerinde yeşil / kırmızı, yanlışların doğru yeri kesikli. */
-  readonly compare = computed(() => this.targets() !== null && Object.keys(this.placement()).length > 0);
+  readonly compare = computed(() => this.targets() !== null && !!this._solutionJson() && Object.keys(this.placement()).length > 0);
 
   /** Çizilen yerleşim: öğrencinin (karşılaştırmada da); çözüm açık ama kart yoksa hedefler. */
   readonly shown = computed<NumberLinePlacement>(() => {

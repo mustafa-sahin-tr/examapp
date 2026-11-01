@@ -177,21 +177,32 @@ describe('QuestionCanvasMatrixChoiceComponent (#574)', () => {
         expect(el().querySelectorAll('.mc-mark').length).toBe(2);
     });
 
-    it('showSolution_DisplaysSolutionReadOnlyAndRestoresOwnAnswer', () => {
+    it('showSolution_ComparesOwnAnswerReadOnly_AndRestoresOwnAnswer', () => {
         setup({ solution: SOLUTION, answer: { version: 1, type: 'matrixChoice', selections: { r1: ['c2'] } } });
         fixture.componentRef.setInput('showSolution', true);
         fixture.detectChanges();
 
-        expect(cell('r1', 'c1').getAttribute('aria-pressed')).toBe('true');
-        expect(cell('r1', 'c1').classList.contains('is-solution')).toBe(true);
-        expect(cell('r2', 'c2').getAttribute('aria-pressed')).toBe('true');
+        // r1: yanlış seçim (c2) + kaçırılan doğru (c1); r2: cevapsız, doğrusu c2 kesikli.
+        expect(cell('r1', 'c2').getAttribute('aria-pressed')).toBe('true');
+        expect(cell('r1', 'c2').classList.contains('is-wrong')).toBe(true);
+        expect(cell('r1', 'c1').classList.contains('is-missed')).toBe(true);
+        expect(cell('r2', 'c2').classList.contains('is-missed')).toBe(true);
         expect(cell('r1', 'c1').disabled).toBe(true);
-        expect(el().querySelector('.mc-hint')?.textContent?.trim()).toBe(m.solutionShownHint);
+        expect(el().querySelectorAll('.mc-list__mark--wrong').length).toBe(2);
+        expect(el().querySelector('.mc-hint')?.textContent?.trim()).toBe(m.solutionCompareHint);
 
         fixture.componentRef.setInput('showSolution', false);
         fixture.detectChanges();
         expect(cell('r1', 'c2').getAttribute('aria-pressed')).toBe('true');
         expect(cell('r1', 'c1').getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('showSolution_WithoutAnswer_DisplaysSolution', () => {
+        setup({ solution: SOLUTION, showSolution: true });
+        expect(cell('r1', 'c1').getAttribute('aria-pressed')).toBe('true');
+        expect(cell('r1', 'c1').classList.contains('is-solution')).toBe(true);
+        expect(cell('r2', 'c2').getAttribute('aria-pressed')).toBe('true');
+        expect(el().querySelector('.mc-hint')?.textContent?.trim()).toBe(m.solutionShownHint);
     });
 
     it('noSolutionInput_ShowSolutionSelectsNothingAndPracticeMarksNothing', () => {

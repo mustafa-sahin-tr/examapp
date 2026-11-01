@@ -157,7 +157,13 @@
 <ng-template #slotField let-slot let-i="index">
   <ng-container *transloco="let t; prefix: 'shared.questionCanvas'">
     @let mark = slotMark()(slot);
-    @if (solutionShown()) {
+    @if (compare()) {
+      <span class="sf-solution sf-solution--own" [class.is-correct]="mark === 'correct'" [class.is-wrong]="mark === 'wrong'"
+        [attr.aria-label]="slotAria(slot, i)" [attr.data-own]="slot.id">{{ ownText(slot) }}</span>
+      @if (mark === 'wrong') {
+        <span class="sf-target" [attr.data-solution]="slot.id" [attr.aria-label]="t('slotFill.targetAria', { value: solutionText(slot) })">{{ solutionText(slot) }}</span>
+      }
+    } @else if (solutionShown()) {
       <span class="sf-solution" [attr.aria-label]="slotAria(slot, i)" [attr.data-solution]="slot.id">{{ solutionText(slot) }}</span>
     } @else {
       @switch (slot.input.kind) {

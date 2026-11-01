@@ -130,7 +130,7 @@ export class QuestionCanvasLogicGridComponent {
     return plan ? staircase(plan) : [];
   });
   /** #679: çözüm açık ve öğrenci işaret koymuş — öğrencinin tablosu kalır, üst blokta doğru / yanlış / kaçırılan hücre işaretli. */
-  readonly compare = computed(() => this._showSolution() && !this._authoring() && countMarks(this.marks()) > 0);
+  readonly compare = computed(() => this._showSolution() && !!this._solutionJson() && !this._authoring() && countMarks(this.marks()) > 0);
 
   /** Gösterilen işaretler: çözüm açıkken (cevap yoksa) çözümünkiler (karalama blokları dahil), değilse öğrencinin. */
   readonly shownMarks = computed<LogicMarks>(() => {

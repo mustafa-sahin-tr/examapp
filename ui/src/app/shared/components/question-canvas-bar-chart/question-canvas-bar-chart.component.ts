@@ -116,7 +116,7 @@ export class QuestionCanvasBarChartComponent {
   readonly correctCount = computed(() => [...this.rowMarks().values()].filter(Boolean).length);
 
   /** Çözüm açık ve öğrencinin çizdiği bir şey var: öğrencinin sütunları yeşil / kırmızı, doğru değer kesikli çizgiyle üstünde. */
-  readonly compare = computed(() => this._showSolution() && Object.keys(this.values()).length > 0);
+  readonly compare = computed(() => this._showSolution() && !!this._solutionJson() && Object.keys(this.values()).length > 0);
 
   /**
    * Çizilen değerler: öğrencinin (karşılaştırmada da); çözüm açık ama cevap yoksa (ör. editör önizlemesi) hedefler.

@@ -307,6 +307,7 @@
         "hintSingle": "Tap one option for each row. Tap the same option again to clear it.",
         "hintMulti": "Select every option that fits in each row; tap again to clear.",
         "solutionShownHint": "Showing the correct answers.",
+        "solutionCompareHint": "Your choices are shown: correct ones green, wrong ones red; a dashed green frame shows a correct answer you did not choose.",
         "rowFallback": "Row {{n}}",
         "rowAria": "Row {{n}}: {{label}}",
         "cellAria": "{{row}} — {{column}}",
@@ -320,6 +321,8 @@
       "slotFill": {
         "hint": "Type your answer in the boxes. For fractions, write the numerator on top and the denominator below. Your answer is saved when you leave a box.",
         "solutionShownHint": "Showing the accepted answers.",
+        "solutionCompareHint": "Your answers are shown: correct ones green, wrong ones red; the correct answer is shown in green next to a wrong box.",
+        "targetAria": "correct: {{value}}",
         "notNumberHint": "Box {{boxes}}: write the answer as a number (e.g. 7, 2.5, 3/4). Numbers written in words are not accepted.",
         "slotAria": "Box {{n}}",
         "slotAriaLabeled": "Box {{n}}: {{label}}",

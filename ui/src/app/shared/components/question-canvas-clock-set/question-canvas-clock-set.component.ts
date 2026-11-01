@@ -143,7 +143,7 @@ export class QuestionCanvasClockSetComponent {
   });
 
   /** #679: çözüm açık ve öğrenci bir saat kurmuş — öğrencinin elleri yeşil / kırmızı çerçeveyle, yanlışta doğru saat kesikli eller. */
-  readonly compare = computed(() => this._showSolution() && Object.keys(this.answer()).length > 0);
+  readonly compare = computed(() => this._showSolution() && !!this._solutionJson() && Object.keys(this.answer()).length > 0);
 
   /** Çizilen eller: sabit saatte sabit, çözüm açıkken (cevap yoksa) hedef, değilse öğrencinin (kurulmamış = 12.00). */
   readonly faces = computed(() => {

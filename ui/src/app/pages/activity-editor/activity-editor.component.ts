@@ -1366,7 +1366,7 @@ export class ActivityEditorComponent {
   }
 
   removeLineCard(index: number): void {
-    this.updateNumberLine((f) => (f.cards.length > 1 ? { ...f, cards: f.cards.filter((_, i) => i !== index) } : f));
+    this.updateNumberLine((f) => ({ ...f, cards: f.cards.filter((_, i) => i !== index) }));
   }
 
   // ---- Grafik kurma ----

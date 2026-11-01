@@ -458,22 +458,23 @@ describe('ActivityEditorComponent (#590)', () => {
     component.setLineTickLabel(4, '1/2');
     (el('[data-testid="nl-add-card-here"]') as HTMLButtonElement).click();
     fixture.detectChanges();
-    // Varsayılan boş kart çeldirici, yeni kart 4. çentikte.
-    expect(component.numberLine()!.cards[1].target).toBe('4');
-    component.setLineCard(1, { label: '3/8' });
-    component.moveLineCard(1, -1);
+    // Varsayılan form kartsız; yeni kart 4. çentikte.
+    expect(component.numberLine()!.cards.map((c) => c.target)).toEqual(['4']);
+    component.setLineCard(0, { label: '3/8' });
+    component.moveLineCard(0, -1);
     fixture.detectChanges();
     expect(component.lineTick()).toBe(3);
-    expect(el('[data-line-card="1"]')?.textContent).toContain('3/8');
-    component.setLineCard(0, { label: '5/4' });
+    expect(el('[data-line-card="0"]')?.textContent).toContain('3/8');
+    (el('[data-testid="nl-add-distractor"]') as HTMLButtonElement).click();
+    component.setLineCard(1, { label: '5/4' });
     fixture.detectChanges();
-    expect(el('[data-line-off-card="0"]')).not.toBeNull();
+    expect(el('[data-line-off-card="1"]')).not.toBeNull();
 
     // Bölme azalınca çentik dışına düşen kart çeldiriciler arasında uyarıyla görünür.
     component.setLineOption({ divisions: 2 });
     fixture.detectChanges();
     expect(component.lineTick()).toBeNull();
-    expect(el('[data-line-off-card="1"]')?.textContent).toContain('çentik dışında');
+    expect(el('[data-line-off-card="0"]')?.textContent).toContain('çentik dışında');
     component.setLineOption({ divisions: 8 });
     fixture.detectChanges();
 
@@ -482,15 +483,15 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(q.interactionType).toBe('numberLine');
     const plan = JSON.parse(q.interactionPlan);
     expect(plan.cards).toEqual([
-      { id: 'k1', label: '5/4' },
-      { id: 'k2', label: '3/8' },
+      { id: 'k1', label: '3/8' },
+      { id: 'k2', label: '5/4' },
     ]);
     expect(plan.labels).toEqual([
       { at: 0, text: '0' },
       { at: 4, text: '1/2' },
       { at: 8, text: '1' },
     ]);
-    expect(JSON.parse(q.interactionSolution)).toEqual({ positions: { k1: null, k2: 3 } });
+    expect(JSON.parse(q.interactionSolution)).toEqual({ positions: { k1: 3, k2: null } });
   });
 
   it('grafik kurma: kategorileri değer ve hazır sütunla kaydeder, önizlemede grafiği çizer (#588)', async () => {

@@ -1044,7 +1044,7 @@
                       (click)="moveLineCard(card.index, 1)"><mat-icon>arrow_forward</mat-icon></button>
                     <button mat-icon-button type="button" [attr.aria-label]="t('numberLine.toDistractor')" (click)="setLineCard(card.index, { target: '' })">
                       <mat-icon>south</mat-icon></button>
-                    <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="nl.cards.length <= 1"
+                    <button mat-icon-button type="button" [attr.aria-label]="t('remove')"
                       (click)="removeLineCard(card.index)"><mat-icon>close</mat-icon></button>
                   </div>
                 }
@@ -1069,7 +1069,7 @@
                   <button mat-stroked-button type="button" (click)="setLineCard(card.index, { target: '' + lineTick() })">
                     <mat-icon>north</mat-icon>{{ t('numberLine.placeAt', { at: lineTick() }) }}</button>
                 }
-                <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="nl.cards.length <= 1"
+                <button mat-icon-button type="button" [attr.aria-label]="t('remove')"
                   (click)="removeLineCard(card.index)"><mat-icon>close</mat-icon></button>
               </div>
             }

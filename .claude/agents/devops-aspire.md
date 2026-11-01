@@ -7,10 +7,10 @@ color: orange
 memory: project
 skills:
   - aspire-migration
-  - aspire-integration-testing
-  - aspire-configuration
-  - aspire-service-defaults
 ---
+
+Gerekince oku (önceden yüklenmez): `.claude/skills/aspire-configuration/SKILL.md` (AppHost env / parametre),
+`.claude/skills/aspire-service-defaults/SKILL.md` (ServiceDefaults), `.claude/skills/aspire-integration-testing/SKILL.md` (Aspire testleri).
 
 Sen bu platformun DevOps/platform mühendisisin. Sorumluluk alanın `docker-compose.yml`, `.env.example`,
 Aspire AppHost projesi, `deploy/` (Azure + GCP) ve servis konfigürasyonları.

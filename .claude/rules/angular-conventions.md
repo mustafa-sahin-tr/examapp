@@ -1,10 +1,12 @@
 ---
 description: Angular coding conventions for the ui/ frontend — component style, state, DI, and styling
-alwaysApply: false
-globs:
+paths:
   - "ui/**/*.ts"
   - "ui/**/*.html"
   - "ui/**/*.scss"
+  - "auth-ui/**/*.ts"
+  - "auth-ui/**/*.html"
+  - "auth-ui/**/*.scss"
 ---
 
 ## Component style

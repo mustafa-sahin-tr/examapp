@@ -318,3 +318,42 @@
     outline: 2px solid var(--ms-action-border-focus);
   }
 }
+
+/* #679 çözüm karşılaştırması (üst blok): doğru ✓ yeşil, yanlış ✓ kırmızı, kaçırılan doğru seçenek kesikli yeşil ✓. */
+.lg-root.is-solution .lg-cell {
+  &.is-hit {
+    background: var(--ms-success-surface);
+    color: var(--ms-success-text);
+  }
+
+  &.is-wrong {
+    background: var(--ms-danger-surface);
+    color: var(--ms-danger-text);
+  }
+
+  &.is-missed {
+    outline: 2px dashed var(--ms-success-text);
+    outline-offset: -4px;
+    color: var(--ms-success-text);
+
+    .mat-icon {
+      opacity: 0.6;
+    }
+  }
+}
+
+.lg-summary__target {
+  display: block;
+  color: var(--ms-success-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.lg-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

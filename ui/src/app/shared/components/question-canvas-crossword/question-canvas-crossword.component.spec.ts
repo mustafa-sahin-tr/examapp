@@ -126,13 +126,22 @@ describe('QuestionCanvasCrosswordComponent (#586)', () => {
     expect(q('cw-result')?.classList).toContain('is-bad');
   });
 
-  it('showSolution_ShowsSolutionLetters_ReadOnly_MarksDifferentCells', () => {
+  it('showSolution_ComparesStudentLetters_wrongCellShowsCorrectLetter', () => {
     setup({ answer: grid('KALP', 'I   ', '    '), showSolution: true });
-    expect(cell(1, 0).value).toBe('İ');
+    // Öğrencinin harfi kalır; yanlış hücrede doğru harf köşede, boş hücre de kırmızı.
+    expect(cell(1, 0).value).toBe('I');
     expect(cell(1, 0).readOnly).toBe(true);
-    expect(cell(1, 0).parentElement!.classList).toContain('is-fixed');
-    expect(cell(0, 0).parentElement!.classList).not.toContain('is-fixed');
+    expect(cell(1, 0).parentElement!.classList).toContain('is-bad');
+    expect(el().querySelector('[data-target="1,0"]')!.textContent).toContain('İ');
+    expect(cell(0, 0).parentElement!.classList).toContain('is-ok');
+    expect(el().querySelector('[data-target="0,0"]')).toBeNull();
     expect(q('cw-reset')).toBeNull();
+  });
+
+  it('showSolution_WithoutAnswer_ShowsSolutionLetters', () => {
+    setup({ showSolution: true });
+    expect(cell(1, 0).value).toBe('İ');
+    expect(el().querySelector('[data-target]')).toBeNull();
   });
 
   it('disabled_IgnoresTyping', () => {

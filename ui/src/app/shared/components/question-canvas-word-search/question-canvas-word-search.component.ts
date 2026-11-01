@@ -28,7 +28,7 @@ interface DrawnLine {
   y1: number;
   x2: number;
   y2: number;
-  state: 'pending' | 'ok' | 'bad' | 'solution';
+  state: 'pending' | 'ok' | 'bad' | 'solution' | 'missed';
 }
 
 /**
@@ -129,7 +129,28 @@ export class QuestionCanvasWordSearchComponent {
   readonly colIndexes = computed(() => Array.from({ length: this._plan()?.cols ?? 0 }, (_, i) => i));
 
   readonly solution = computed(() => parseWordSearchSolution(this._solutionJson(), this._plan()));
-  readonly foundWords = computed(() => new Map((this._feedback()?.rows ?? []).map((r) => [r.id, r.correct])));
+  /** #679: çözüm açık ve öğrenci çizgi çekmiş — öğrencinin çizgileri yeşil / kırmızı, bulunamayan kelimeler kesikli yeşil. */
+  readonly compare = computed(() => this._showSolution() && this.lines().length > 0);
+  /** Karşılaştırma: kelime başına bulundu mu, çizgi başına bir kelime mi (kontrolcü gibi harflere bakar, iki yön). */
+  private readonly compareMarks = computed(() => {
+    const plan = this._plan();
+    const words = new Map<string, boolean>();
+    const lines: boolean[] = [];
+    if (!plan || !this.compare()) return { words, lines };
+    const spelled = this.lines().map((line) => spell(plan, line));
+    const reversed = spelled.map((text) => [...text].reverse().join(''));
+    for (const w of plan.words) {
+      const target = this.solution()[w.id];
+      const text = target ? spell(plan, target) : null;
+      words.set(w.id, text !== null && spelled.some((s, i) => s === text || reversed[i] === text));
+    }
+    const texts = new Set(plan.words.flatMap((w) => (this.solution()[w.id] ? [spell(plan, this.solution()[w.id])] : [])));
+    spelled.forEach((s, i) => lines.push(texts.has(s) || texts.has(reversed[i])));
+    return { words, lines };
+  });
+  readonly foundWords = computed(() =>
+    this.compare() ? this.compareMarks().words : new Map((this._feedback()?.rows ?? []).map((r) => [r.id, r.correct]))
+  );
   readonly foundCount = computed(() => [...this.foundWords().values()].filter(Boolean).length);
   readonly limitReached = computed(() => this.lines().length >= maxWordSearchLines(this._plan()?.words.length ?? 0));
 
@@ -166,6 +187,14 @@ export class QuestionCanvasWordSearchComponent {
       y2: line.to[0] + 0.5,
       state,
     });
+    if (this.compare()) {
+      const { words, lines } = this.compareMarks();
+      const own = this.lines().map((line, i) => toView(line, `l-${i}`, lines[i] ? 'ok' : 'bad'));
+      const missed = plan.words.flatMap((w) =>
+        this.solution()[w.id] && !words.get(w.id) ? [toView(this.solution()[w.id], `s-${w.id}`, 'missed')] : []
+      );
+      return [...own, ...missed];
+    }
     if (this._showSolution()) {
       return plan.words.flatMap((w) => (this.solution()[w.id] ? [toView(this.solution()[w.id], `s-${w.id}`, 'solution')] : []));
     }

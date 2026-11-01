@@ -106,6 +106,6 @@
   }
 
   @if (solutionShown()) {
-    <p class="ws-hint" data-testid="ws-solution-hint">{{ t('solutionShown') }}</p>
+    <p class="ws-hint" data-testid="ws-solution-hint">{{ t(compare() ? 'solutionCompare' : 'solutionShown') }}</p>
   }
 </div>

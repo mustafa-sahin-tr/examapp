@@ -150,17 +150,44 @@ export class QuestionCanvasCrosswordComponent {
     return plan ? solutionGrid(plan, parseCrosswordSolution(this._solutionJson(), plan)) : [];
   });
 
-  /** Gösterilen harfler: çözüm açıkken çözümden, değilse öğrencinin ızgarası. */
-  readonly shown = computed(() => (this._showSolution() ? this.solution() : this.grid()));
+  /** #679: çözüm açık ve öğrenci harf yazmış — öğrencinin ızgarası kalır, hücre doğru / yanlış, yanlışta doğru harf köşede. */
+  readonly compare = computed(() => this._showSolution() && this.grid().some((row) => row.some((ch) => ch.trim() !== '')));
+
+  /** Gösterilen harfler: öğrencinin ızgarası (karşılaştırmada da); çözüm açık ama harf yoksa çözümden. */
+  readonly shown = computed(() => (this._showSolution() && !this.compare() ? this.solution() : this.grid()));
+
+  /** Karşılaştırmada öğrencinin harfi çözümle aynı mı (tr-TR büyük harf). */
+  private sameLetter(r: number, c: number): boolean {
+    const mine = (this.grid()[r]?.[c] ?? ' ').toLocaleUpperCase('tr-TR');
+    return mine !== ' ' && mine === (this.solution()[r]?.[c] ?? ' ');
+  }
 
   readonly feedbackState = this._feedback.asReadonly();
-  readonly clueMarks = computed(() => new Map((this._feedback()?.rows ?? []).map((r) => [r.id, r.correct])));
+  readonly clueMarks = computed(() => {
+    const plan = this._plan();
+    if (!plan || !this.compare()) return new Map((this._feedback()?.rows ?? []).map((r) => [r.id, r.correct]));
+    return new Map(plan.clues.map((clue) => [clue.id, clueCells(clue).every(([r, c]) => this.sameLetter(r, c))]));
+  });
 
-  /** Kontrol sonrası hücre durumu: doğru bir kelimenin hücresi `ok`, yalnız yanlış kelimelerde kalan hücre `bad`. */
+  /** Yanlış ya da boş hücrede gösterilen doğru harf (karşılaştırma); değilse null. */
+  targetLetter(cell: CrosswordCellView): string | null {
+    if (!this.compare() || this.sameLetter(cell.row, cell.col)) return null;
+    const ch = this.solution()[cell.row]?.[cell.col] ?? ' ';
+    return ch === ' ' ? null : ch;
+  }
+
+  /**
+   * Hücre durumu. Karşılaştırmada harf başına; kontrol sonrası doğru bir kelimenin hücresi `ok`, yalnız yanlış kelimelerde kalan
+   * hücre `bad`.
+   */
   readonly cellMarks = computed(() => {
     const plan = this._plan();
     const marks = this.clueMarks();
     const out = new Map<string, 'ok' | 'bad'>();
+    if (plan && this.compare()) {
+      for (const clue of plan.clues) for (const [r, c] of clueCells(clue)) out.set(cellKey(r, c), this.sameLetter(r, c) ? 'ok' : 'bad');
+      return out;
+    }
     if (!plan || marks.size === 0) return out;
     for (const clue of plan.clues) {
       const mark = marks.get(clue.id);
@@ -175,21 +202,6 @@ export class QuestionCanvasCrosswordComponent {
   });
 
   readonly correctCount = computed(() => [...this.clueMarks().values()].filter(Boolean).length);
-
-  /** Çözüm açıkken öğrencinin farklı yazdığı hücreler. */
-  readonly fixedCells = computed(() => {
-    const out = new Set<string>();
-    if (!this._showSolution()) return out;
-    const solution = this.solution();
-    const grid = this.grid();
-    solution.forEach((row, r) =>
-      row.forEach((ch, c) => {
-        const mine = grid[r]?.[c] ?? ' ';
-        if (mine !== ' ' && mine !== ch) out.add(cellKey(r, c));
-      })
-    );
-    return out;
-  });
 
   readonly activeCells = computed(() => {
     const clue = this.clueById(this.activeClue());

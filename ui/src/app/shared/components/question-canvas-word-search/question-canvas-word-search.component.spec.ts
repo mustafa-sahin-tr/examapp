@@ -117,8 +117,19 @@ describe('QuestionCanvasWordSearchComponent (#586)', () => {
     expect(q('ws-result')?.classList).toContain('is-bad');
   });
 
+  it('showSolution_ComparesStudentLines_missedWordDashed', () => {
+    // KALP ters yönden bulundu, ikinci çizgi kelime değil; KEDİ bulunamadı.
+    setup({ answer: payload([0, 3, 0, 0], [1, 0, 1, 2]), showSolution: true });
+    expect(el().querySelectorAll('line.is-ok').length).toBe(1);
+    expect(el().querySelectorAll('line.is-bad').length).toBe(1);
+    expect(el().querySelectorAll('line.is-missed').length).toBe(1);
+    expect(el().querySelector('[data-word="w1"]')!.classList).toContain('is-found');
+    expect(el().querySelector('[data-word="w2"]')!.classList).toContain('is-missing');
+    expect(q('ws-solution-hint')!.textContent).toContain('kesikli');
+  });
+
   it('showSolution_DrawsWordLines_ReadOnly', () => {
-    setup({ answer: payload([1, 0, 1, 2]), showSolution: true });
+    setup({ showSolution: true });
     expect(el().querySelectorAll('line.is-solution').length).toBe(2);
     expect(cell(0, 0).disabled).toBe(true);
     expect(q('ws-undo')).toBeNull();

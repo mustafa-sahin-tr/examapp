@@ -486,7 +486,9 @@
         "clueWrong": "yanlış",
         "resultOk": "Bütün kelimeler doğru!",
         "resultPartial": "{{total}} kelimeden {{ok}} tanesi doğru; kırmızı kelimelere yeniden bak.",
-        "solutionShown": "Doğru harfler gösteriliyor; kırmızı harfler senin farklı yazdıkların."
+        "solutionShown": "Doğru harfler gösteriliyor; kırmızı harfler senin farklı yazdıkların.",
+        "targetAria": "doğrusu {{letter}}",
+        "solutionCompare": "Senin bulmacan gösteriliyor: doğru harfler yeşil, yanlış ya da boş hücreler kırmızı; doğru harf hücrenin sağ alt köşesinde yeşil yazıyor."
       },
       "wordSearch": {
         "passageAlt": "Okuma metni görseli",
@@ -504,7 +506,8 @@
         "notFound": "bulunamadı",
         "resultOk": "Bütün kelimeleri buldun!",
         "resultPartial": "{{total}} kelimeden {{ok}} tanesini buldun; kırmızı seçimler kelime değil.",
-        "solutionShown": "Kelimelerin yerleri yeşil çizgiyle gösteriliyor."
+        "solutionShown": "Kelimelerin yerleri yeşil çizgiyle gösteriliyor.",
+        "solutionCompare": "Senin çizgilerin gösteriliyor: kelime bulanlar yeşil, kelime olmayanlar kırmızı; kesikli yeşil çizgi bulamadığın kelimenin yerini gösteriyor."
       },
       "logicGrid": {
         "passageAlt": "Okuma metni görseli",
@@ -518,6 +521,9 @@
         "resultOk": "Tablonun tamamı doğru!",
         "resultPartial": "{{total}} eşleştirmeden {{ok}} tanesi doğru; kırmızı satırlara yeniden bak.",
         "solutionShown": "Doğru eşleştirmeler ✓ ile gösteriliyor.",
+        "missedAria": "doğru cevap (işaretlenmemiş)",
+        "targetValue": "doğrusu {{value}}",
+        "solutionCompare": "Senin tablon gösteriliyor: doğru ✓ yeşil, yanlış ✓ kırmızı; kesikli yeşil ✓ işaretlemediğin doğru cevabı gösteriyor. Cevap tablosunda yanlışların altında doğrusu yazıyor.",
         "hintSingle": "Hücreye dokun: önce ✓, sonra ✗, sonra boş. Her satır ve sütunda yalnız bir ✓ olur.",
         "shuffle": "«{{name}}» seçeneklerini karıştır",
         "moveLeft": "«{{name}}» sola",

@@ -117,8 +117,23 @@ describe('QuestionCanvasLogicGridComponent (#586)', () => {
     expect(q('lg-result')?.classList).toContain('is-bad');
   });
 
+  it('showSolution_ComparesStudentTable_hitWrongMissed', () => {
+    // p1: yanlış (o1, doğrusu o3); p2: doğru (o2); p3: işaretsiz (doğrusu o1).
+    setup({ answer: cells(['p1', 'o1', 'yes'], ['p2', 'o2', 'yes'], ['p2', 'o1', 'no']), showSolution: true });
+    expect(cell('p1', 'o1').classList).toContain('is-wrong');
+    expect(cell('p1', 'o3').classList).toContain('is-missed');
+    expect(cell('p2', 'o2').classList).toContain('is-hit');
+    expect(cell('p2', 'o1').classList).toContain('is-no');
+    expect(cell('p3', 'o1').classList).toContain('is-missed');
+    expect(el().querySelector('[data-summary="p1:c1"]')!.classList).toContain('is-pair-bad');
+    expect(el().querySelector('[data-summary-target="p1:c1"]')!.textContent).toContain('Yeşil');
+    expect(el().querySelector('[data-summary="p2:c1"]')!.classList).toContain('is-pair-ok');
+    expect(el().querySelector('[data-summary-target="p2:c1"]')).toBeNull();
+    expect(q('lg-solution-hint')!.textContent).toContain('kesikli');
+  });
+
   it('showSolution_ShowsCorrectTicks_ReadOnly', () => {
-    setup({ answer: cells(['p1', 'o1', 'yes']), showSolution: true });
+    setup({ showSolution: true });
     expect(cell('p1', 'o3').classList).toContain('is-yes');
     expect(cell('p1', 'o1').classList).not.toContain('is-yes');
     expect(cell('p1', 'o1').disabled).toBe(true);

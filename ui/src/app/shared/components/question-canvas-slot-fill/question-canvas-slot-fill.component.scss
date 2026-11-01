@@ -461,3 +461,52 @@
 .sf-cipher__gap {
   width: 18px;
 }
+
+/* #679 çözüm karşılaştırması: kutuda öğrencinin cevabı yeşil / kırmızı, yanlışta doğrusu kutunun altında (metin içinde yanında). */
+.sf-solution--own {
+  &.is-correct {
+    border-color: var(--ms-success-border, var(--ms-success-text));
+    background: var(--ms-success-surface);
+    color: var(--ms-success-text);
+  }
+
+  &.is-wrong {
+    border-color: var(--ms-danger-border);
+    background: var(--ms-danger-surface);
+    color: var(--ms-danger-text);
+    text-decoration: line-through;
+  }
+}
+
+.sf-target {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 2;
+  margin-top: 2px;
+  padding: 0 4px;
+  border: 1px dashed var(--ms-success-text);
+  border-radius: 4px;
+  background: var(--ms-success-surface);
+  color: var(--ms-success-text);
+  font-size: 0.8em;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.sf-slot--flow:has(.sf-target) {
+  width: auto;
+  min-width: 9em;
+
+  .sf-solution--own {
+    width: auto;
+    flex: 1 1 auto;
+  }
+
+  .sf-target {
+    position: static;
+    align-self: center;
+    margin: 0 0 0 4px;
+  }
+}

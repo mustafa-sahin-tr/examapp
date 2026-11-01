@@ -163,10 +163,26 @@ export class QuestionCanvasMatrixChoiceComponent {
   readonly cellMode = computed(() => matrixHasAllCells(this._plan()));
   readonly solution = computed(() => parseMatrixChoiceSolution(this._solutionJson(), this._plan()));
 
-  /** Ekrandaki seçimler: çözüm açıkken doğru cevap, değilse öğrencinin seçimi. */
-  readonly displaySelections = computed<MatrixSelections>(() =>
-    this._showSolution() ? this.solution() : this.selections()
+  /** #679: çözüm açık ve öğrenci seçim yapmış — öğrencinin seçimleri yeşil / kırmızı, kaçırılan doğru seçenek kesikli. */
+  readonly compare = computed(
+    () =>
+      this._showSolution() &&
+      Object.keys(this.solution()).length > 0 &&
+      this.rows().some((row) => selectionOf(this.selections(), row.id).length > 0)
   );
+
+  /** Ekrandaki seçimler: öğrencinin (karşılaştırmada da); çözüm açık ama seçim yoksa doğru cevap. */
+  readonly displaySelections = computed<MatrixSelections>(() =>
+    this._showSolution() && !this.compare() ? this.solution() : this.selections()
+  );
+
+  /** Karşılaştırmada hücre: doğru seçim (hit), yanlış seçim (wrong), seçilmemiş doğru seçenek (missed). */
+  compareCell(rowId: string, columnId: string): 'hit' | 'wrong' | 'missed' | null {
+    if (!this.compare()) return null;
+    const expected = selectionOf(this.solution(), rowId).includes(columnId);
+    const actual = selectionOf(this.selections(), rowId).includes(columnId);
+    return expected ? (actual ? 'hit' : 'missed') : actual ? 'wrong' : null;
+  }
 
   readonly rowMark = computed(() => {
     const feedback = this._feedback();
@@ -174,7 +190,9 @@ export class QuestionCanvasMatrixChoiceComponent {
     const practice = this._practiceFeedback();
     const solution = this.solution();
     const selections = this.selections();
+    const compare = this.compare();
     return (rowId: string): MatrixRowMark => {
+      if (compare) return sameSet(selectionOf(solution, rowId), selectionOf(selections, rowId)) ? 'correct' : 'wrong';
       if (showSolution) return null;
       if (feedback) {
         if (!feedback.has(rowId)) return null;
@@ -196,7 +214,7 @@ export class QuestionCanvasMatrixChoiceComponent {
 
   readonly hint = computed(() => {
     this.i18nTick();
-    if (this._showSolution()) return this.t('solutionShownHint');
+    if (this._showSolution()) return this.t(this.compare() ? 'solutionCompareHint' : 'solutionShownHint');
     const announcement = this.announcement();
     if (announcement) return announcement;
     return this.t(this.multi() ? 'hintMulti' : 'hintSingle');

@@ -107,11 +107,17 @@
 
   @if (solutionShown()) {
     <p class="gd-hint" data-testid="gd-solution-hint">
+      @if (compare()) {
+        {{ t('solutionCompare') }}
+      }
       @if (targets().length) {
         {{ t(rule()?.all ? 'solutionAll' : 'solutionAny', { list: sizeList() }) }}
       } @else {
         {{ t('solutionShown') }}
       }
     </p>
+    @if (missingSizes(); as missing) {
+      <p class="gd-missing" data-testid="gd-missing">{{ t('missingSizes', { list: missing }) }}</p>
+    }
   }
 </div>

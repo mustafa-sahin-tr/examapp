@@ -366,3 +366,23 @@
     }
   }
 }
+
+/* #679 çözüm karşılaştırması. */
+.rp-region__target {
+  fill: none;
+  stroke-width: 3;
+  stroke-dasharray: 6 4;
+  pointer-events: none;
+}
+
+.rp-swatch__target,
+.rp-group__target {
+  color: var(--ms-success-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.rp-swatch__chip--target {
+  outline: 2px dashed var(--ms-success-text);
+  outline-offset: 1px;
+}

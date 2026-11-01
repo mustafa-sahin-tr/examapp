@@ -21,7 +21,9 @@
                   @for (col of columns(); track col.id) {
                     <button type="button" class="mc-cell"
                       [class.is-selected]="isSelected(row.id, col.id)"
-                      [class.is-solution]="solutionShown() && isSelected(row.id, col.id)"
+                      [class.is-solution]="solutionShown() && !compare() && isSelected(row.id, col.id)"
+                      [class.is-hit]="compareCell(row.id, col.id) === 'hit'" [class.is-wrong]="compareCell(row.id, col.id) === 'wrong'"
+                      [class.is-missed]="compareCell(row.id, col.id) === 'missed'"
                       [ngStyle]="boxStyle(cell(row, col.id))"
                       [disabled]="solutionShown()"
                       [attr.aria-pressed]="isSelected(row.id, col.id)"
@@ -71,7 +73,9 @@
               @for (col of columns(); track col.id) {
                 <button type="button" class="mc-option"
                   [class.is-selected]="isSelected(row.id, col.id)"
-                  [class.is-solution]="solutionShown() && isSelected(row.id, col.id)"
+                  [class.is-solution]="solutionShown() && !compare() && isSelected(row.id, col.id)"
+                  [class.is-hit]="compareCell(row.id, col.id) === 'hit'" [class.is-wrong]="compareCell(row.id, col.id) === 'wrong'"
+                  [class.is-missed]="compareCell(row.id, col.id) === 'missed'"
                   [disabled]="solutionShown()"
                   [attr.aria-pressed]="isSelected(row.id, col.id)"
                   [attr.aria-label]="cellAria(row, ri, col.label)"

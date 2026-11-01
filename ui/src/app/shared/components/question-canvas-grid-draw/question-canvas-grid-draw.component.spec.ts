@@ -126,8 +126,28 @@ describe('QuestionCanvasGridDrawComponent (#588)', () => {
   it('çözümde kurala uyan boyutları örnek yerleşimle çizer, salt okunur', () => {
     setup({ showSolution: true });
     expect(shapes().length).toBe(3);
+    expect(q('gd-missing')).toBeNull();
     expect(q('gd-solution-hint')?.textContent).toContain('1 × 6, 2 × 5, 3 × 4');
     drag([8, 0], [9, 1]);
     expect(emitted.length).toBe(0);
+  });
+
+  it('showSolution_ComparesOwnShapes_listsMissingSizes', () => {
+    // 3×4 doğru, tekrarı turuncu, 2×2 kurala uymuyor; 1×6 ve 2×5 eksik.
+    setup({
+      answer: answer([
+        { row: 0, col: 0, width: 3, height: 4 },
+        { row: 0, col: 5, width: 4, height: 3 },
+        { row: 6, col: 0, width: 2, height: 2 },
+      ]),
+      showSolution: true,
+    });
+    const s = shapes();
+    expect(s.length).toBe(3);
+    expect(s[0].classList).toContain('is-ok');
+    expect(s[1].classList).toContain('is-dup');
+    expect(s[2].classList).toContain('is-bad');
+    expect(q('gd-missing')?.textContent).toContain('1 × 6, 2 × 5');
+    expect(q('gd-solution-hint')?.textContent).toContain('Senin çizimlerin');
   });
 });

@@ -213,7 +213,28 @@ export class QuestionCanvasMazeTreeComponent {
     return fb?.status === 'deviated' && this.finished() && this._plan()?.variant !== 'stones' ? this.current() : null;
   });
   readonly okNodes = computed(() => new Set((this._feedback()?.rows ?? []).filter((r) => r.correct).map((r) => r.id)));
-  readonly stoneMarks = computed(() => new Map((this._feedback()?.rows ?? []).map((r) => [r.id, r.correct])));
+
+  /** #679: çözüm açık ve öğrenci yürümüş / taşa basmış — öğrencinin yolu doğru yolla birlikte, saptığı adımlar kırmızı. */
+  readonly compare = computed(
+    () => this._showSolution() && !!this._solutionJson() && (this.path().length > 0 || this.stepped().length > 0)
+  );
+  /** Karşılaştırmada öğrencinin doğru yol dışında seçtiği kenarlar. */
+  private readonly offRoute = computed(() => {
+    if (!this.compare()) return new Set<string>();
+    return new Set([...this.chosenEdges()].filter((id) => !this.routeEdges().has(id)));
+  });
+
+  /** Kırmızı kenar / kutu: kontrolde sapılan ya da karşılaştırmada doğru yol dışında seçilen. */
+  isWrongEdge(id: string): boolean {
+    return this.wrongEdge() === id || this.offRoute().has(id);
+  }
+
+  readonly stoneMarks = computed(() => {
+    if (!this.compare()) return new Map((this._feedback()?.rows ?? []).map((r) => [r.id, r.correct]));
+    // Taş doğru ⇔ basılır taşa basıldı ya da basılmaz taşa basılmadı (kontrolcü gibi, ama hepsi açık).
+    const expected = this.expectedStepped();
+    return new Map(this.stones().map((stone) => [stone.id, this.steppedSet().has(stone.id) === expected.has(stone.id)]));
+  });
 
   // ---- Ağaç ----
 

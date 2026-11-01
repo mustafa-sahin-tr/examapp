@@ -220,9 +220,29 @@ export class QuestionCanvasDragDropLabelingComponent {
     };
   });
 
-  /** Ekranda gösterilen hedef içerikleri: çözüm açıkken doğru yerleşim, değilse öğrencinin yerleşimi. */
+  /** #679: çözüm açık ve öğrenci etiket koymuş — hedeflerde öğrencinin etiketi yeşil / kırmızı, yanlışta doğru etiket altında. */
+  public compare = computed(
+    () => this._showSolution() && this._solution().length > 0 && Object.values(this.zoneState()).some((items) => items.length > 0)
+  );
+
+  /** Karşılaştırmada hedefin durumu (boş hedef de yanlış); değilse null. */
+  private compareMark(zoneId: string): 'correct' | 'wrong' | null {
+    if (!this.compare()) return null;
+    const expected = this._solution().find((p) => p.dropZoneId === zoneId)?.draggableId ?? null;
+    if (!expected) return null;
+    return this.zoneState()[zoneId]?.[0] === expected ? 'correct' : 'wrong';
+  }
+
+  /** Karşılaştırmada yanlış hedefin doğru etiketi; değilse null. */
+  zoneTarget(zoneId: string): string | null {
+    if (this.compareMark(zoneId) !== 'wrong') return null;
+    const expected = this._solution().find((p) => p.dropZoneId === zoneId)?.draggableId;
+    return expected ? this.draggableLabel()(expected) : null;
+  }
+
+  /** Ekranda gösterilen hedef içerikleri: öğrencinin yerleşimi (karşılaştırmada da); çözüm açık ama etiket yoksa doğru yerleşim. */
   public displayZones = computed<Record<string, string[]>>(() => {
-    if (!this._showSolution()) return this.zoneState();
+    if (!this._showSolution() || this.compare()) return this.zoneState();
     const zones: Record<string, string[]> = {};
     this.zones().forEach((z) => (zones[z.id] = []));
     this._solution().forEach((p) => {
@@ -233,7 +253,7 @@ export class QuestionCanvasDragDropLabelingComponent {
 
   /** Ekranda gösterilen havuz: çözüm açıkken yerleşmeyen etiketler, değilse öğrencinin havuzu. */
   public displayPool = computed<string[]>(() => {
-    if (!this._showSolution()) return this.pool();
+    if (!this._showSolution() || this.compare()) return this.pool();
     const used = new Set(this._solution().map((p) => p.draggableId));
     return (this._plan()?.draggables ?? []).map((d) => d.id).filter((id) => !used.has(id));
   });
@@ -244,7 +264,9 @@ export class QuestionCanvasDragDropLabelingComponent {
   /** Hedefin geri bildirim işareti: `correct` / `wrong` / null (işaret yok). */
   public zoneMark = computed(() => {
     const feedback = this._feedback();
+    const compare = this.compare();
     return (zoneId: string): 'correct' | 'wrong' | null => {
+      if (compare) return this.compareMark(zoneId);
       if (this._showSolution() || !feedback || !feedback.has(zoneId)) return null;
       return feedback.get(zoneId) ? 'correct' : 'wrong';
     };
@@ -254,7 +276,7 @@ export class QuestionCanvasDragDropLabelingComponent {
   public hint = computed(() => {
     this.i18nTick();
     const selection = this.selected();
-    if (this._showSolution()) return this.t('solutionShownHint');
+    if (this._showSolution()) return this.t(this.compare() ? 'labelingCompareHint' : 'solutionShownHint');
     if (!selection) return this.t(this.tapOnly() ? 'tapHintIdle' : 'keyboardHint');
     const label = this.draggableLabel()(selection.id);
     return this.t(selection.from === 'pool' ? 'tapHintSelected' : 'tapHintSelectedPlaced', { label });
@@ -262,7 +284,12 @@ export class QuestionCanvasDragDropLabelingComponent {
 
   public zoneClass = computed(() => {
     const feedback = this._feedback();
+    const compare = this.compare();
     return (zoneId: string) => {
+      if (compare) {
+        const mark = this.compareMark(zoneId);
+        return mark === 'correct' ? 'is-correct' : mark === 'wrong' ? 'is-incorrect' : '';
+      }
       if (this._showSolution()) return 'is-solution';
       // Issue #573: sunucu kontrolü (etkinlik) varsa yalnız ondan.
       if (feedback) {

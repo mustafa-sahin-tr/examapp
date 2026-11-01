@@ -130,7 +130,7 @@ export class QuestionCanvasWordSearchComponent {
 
   readonly solution = computed(() => parseWordSearchSolution(this._solutionJson(), this._plan()));
   /** #679: çözüm açık ve öğrenci çizgi çekmiş — öğrencinin çizgileri yeşil / kırmızı, bulunamayan kelimeler kesikli yeşil. */
-  readonly compare = computed(() => this._showSolution() && this.lines().length > 0);
+  readonly compare = computed(() => this._showSolution() && !!this._solutionJson() && this.lines().length > 0);
   /** Karşılaştırma: kelime başına bulundu mu, çizgi başına bir kelime mi (kontrolcü gibi harflere bakar, iki yön). */
   private readonly compareMarks = computed(() => {
     const plan = this._plan();

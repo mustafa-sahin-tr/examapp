@@ -51,6 +51,11 @@
                     [attr.aria-label]="regionAria(v, t)" [attr.aria-disabled]="readOnly()"
                     (click)="toggleRegion(v.region.id)" (keydown.enter)="$event.preventDefault(); toggleRegion(v.region.id)"
                     (keydown.space)="$event.preventDefault(); toggleRegion(v.region.id)" />
+                  @if (v.target !== null) {
+                    <!-- #679: doğru boyanmamış hedef bölgenin beklenen rengi — kesikli çerçeve. -->
+                    <polygon class="rp-region__target" [attr.points]="v.points" [attr.data-target]="v.region.id"
+                      [style.stroke]="regionPaintCss(v.target)" vector-effect="non-scaling-stroke" aria-hidden="true" />
+                  }
                 </g>
               }
             </svg>
@@ -67,6 +72,10 @@
             [disabled]="readOnly()" [attr.aria-label]="groupAria(g, t)" (click)="toggleRegion(g.id)">
             <span class="rp-group__no">{{ g.name }}</span>
             <span class="rp-swatch__chip" [class.is-empty]="g.paint === null" [style.background]="regionPaintCss(g.paint)" aria-hidden="true"></span>
+            @if (g.target !== null) {
+              <span class="rp-group__target" [attr.data-group-target]="g.id">{{ t('targetColor') }}</span>
+              <span class="rp-swatch__chip rp-swatch__chip--target" [style.background]="regionPaintCss(g.target)" aria-hidden="true"></span>
+            }
             @if (g.mark === 'ok') {
               <mat-icon class="rp-swatch__mark" aria-hidden="true">check</mat-icon>
             } @else if (g.mark === 'bad') {
@@ -122,6 +131,9 @@
           <span class="rp-swatch__chip" [style.background]="css(entry.color)" aria-hidden="true"></span>
           <span class="rp-swatch__label">{{ entry.label || t('colors.' + entry.color) }}</span>
           <span class="rp-swatch__count" [attr.data-count]="i">{{ counts()[i] }}</span>
+          @if (entryTarget(entry.id) !== null) {
+            <span class="rp-swatch__target" [attr.data-target-count]="i">{{ t('targetCount', { n: entryTarget(entry.id) }) }}</span>
+          }
           @if (entryState(entry.id) === 'ok') {
             <mat-icon class="rp-swatch__mark" aria-hidden="true">check</mat-icon>
           } @else if (entryState(entry.id) === 'bad') {
@@ -191,6 +203,12 @@
   }
 
   @if (solutionShown()) {
-    <p class="rp-hint" data-testid="rp-solution-hint">{{ regionsPlan() ? t('regions.solutionShown') : plan()?.mode === 'pie' ? t('pie.solutionShown') : t('solutionShown') }}</p>
+    <p class="rp-hint" data-testid="rp-solution-hint">
+      @if (compare()) {
+        {{ regionsPlan() ? t('regions.solutionCompare') : t('solutionCompare') }}
+      } @else {
+        {{ regionsPlan() ? t('regions.solutionShown') : plan()?.mode === 'pie' ? t('pie.solutionShown') : t('solutionShown') }}
+      }
+    </p>
   }
 </div>

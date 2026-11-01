@@ -366,17 +366,30 @@ describe('QuestionCanvasDragPlaceComponent (#576)', () => {
 
         fixture.componentRef.setInput('showSolution', true);
         fixture.detectChanges();
-        expect(placed('t1', 'c1')).not.toBeNull();
-        expect(placed('t2', 'c4')).not.toBeNull();
-        expect(poolCard('c3')).not.toBeNull();
+        // #679: öğrencinin yerleşimi kalır; yanlış kartın yanında doğru hedefi, havuzda kalan kartların durumu.
+        expect(placed('t1', 'c2')!.classList).toContain('is-wrong');
+        expect(el().querySelector('[data-target-hint="c2"]')!.textContent).toContain('Geri dönüşüm');
+        expect(el().querySelector('[data-return]')).toBeNull();
+        expect(poolCard('c1')!.classList).toContain('is-wrong');
+        expect(el().querySelector('[data-target-hint="c1"]')!.textContent).toContain('Erime');
+        expect(poolCard('c3')!.classList).toContain('is-correct');
         expect(target('t1').disabled).toBe(true);
-        tap(placed('t1', 'c1'));
+        tap(placed('t1', 'c2'));
         expect(emitted.length).toBe(0);
-        expect(hint()).toBe('Doğru yerleşim gösteriliyor.');
+        expect(hint()).toContain('Senin yerleştirmen');
 
         fixture.componentRef.setInput('showSolution', false);
         fixture.detectChanges();
         expect(placed('t1', 'c2')).not.toBeNull();
+    });
+
+    it('showSolution_WithoutAnswer_ShowsCorrectPlacement', () => {
+        setup(PLACE_PLAN, { solution: { t1: ['c1'], t2: ['c2', 'c4'], t3: [] }, showSolution: true });
+        expect(placed('t1', 'c1')).not.toBeNull();
+        expect(placed('t2', 'c4')).not.toBeNull();
+        expect(poolCard('c3')).not.toBeNull();
+        expect(el().querySelector('[data-target-hint]')).toBeNull();
+        expect(hint()).toBe('Doğru yerleşim gösteriliyor.');
     });
 
     it('restore_IgnoresUnknownAndOverCapacity_ParentEchoKeepsScreen_ClearEmptiesAll', () => {

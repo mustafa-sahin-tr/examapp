@@ -243,8 +243,26 @@ describe('QuestionCanvasSlotFillComponent (#575)', () => {
         expect(el().querySelector('[data-mark="s5"]')).toBeNull();
     });
 
+    it('showSolution_ComparesOwnAnswers_wrongShowsAcceptedValue', () => {
+        setup({ solution: SOLUTION, showSolution: true, answer: { version: 1, type: 'slotFill', values: { s1: '5', s2: 'İstanbul', s3: 'o1' } } });
+
+        const own = (id: string) => el().querySelector(`[data-own="${id}"]`) as HTMLElement;
+        const target = (id: string) => el().querySelector(`[data-solution="${id}"]`)?.textContent?.trim() ?? null;
+        expect(own('s1').textContent?.trim()).toBe('5');
+        expect(own('s1').classList).toContain('is-correct');
+        expect(target('s1')).toBeNull();
+        expect(own('s2').classList).toContain('is-wrong');
+        expect(target('s2')).toBe('Ankara');
+        expect(own('s3').textContent?.trim()).toBe('artar');
+        expect(target('s3')).toBe('azalır');
+        expect(own('s4').textContent?.trim()).toBe('—');
+        expect(target('s4')).toBe('∠ABC');
+        expect(el().querySelectorAll('input, select').length).toBe(0);
+        expect(el().querySelector('.sf-hint, [aria-live]')?.textContent).toContain('Senin cevapların');
+    });
+
     it('showSolution_DisplaysAcceptedValues_ReadOnly', () => {
-        setup({ solution: SOLUTION, showSolution: true, answer: { version: 1, type: 'slotFill', values: { s1: '9' } } });
+        setup({ solution: SOLUTION, showSolution: true });
 
         const text = (id: string) => el().querySelector(`[data-solution="${id}"]`)?.textContent?.trim();
         expect(text('s1')).toBe('5 cm');

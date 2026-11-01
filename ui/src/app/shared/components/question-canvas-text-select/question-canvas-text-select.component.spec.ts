@@ -216,12 +216,45 @@ describe('QuestionCanvasTextSelectComponent (#582)', () => {
     expect(q('ts-counter')!.textContent).toBe('Bulunan 1 · Kalan 1 · Fazla 1');
   });
 
-  it('showSolution_ShowsTargetsAndAcceptedCorrection_ReadOnly', () => {
+  it('showSolution_ComparesOwnMarks_missedTargetDashed_extraRed', () => {
     setup(
       { ...SELECT_PLAN, mode: 'correct' },
       {
         solution: { targets: [{ tokenIds: ['t1', 't2'], accept: ['Sonunda'] }] },
         answer: { version: 1, type: 'textSelect', selected: ['t4'], values: {} },
+        showSolution: true,
+      }
+    );
+
+    // #679: öğrencinin seçimi kalır (fazla, kırmızı); kaçırılan hedef kesikli.
+    expect(tokenBox('t4').classList).toContain('is-selected');
+    expect(tokenBox('t4').classList).toContain('is-extra');
+    expect(tokenBox('t1').classList).toContain('is-solution');
+    expect(tokenBox('t2').classList).toContain('is-solution');
+    expect(q('ts-counter')).toBeNull();
+    click(tokenBox('t3'));
+    expect(emitted.length).toBe(0);
+  });
+
+  it('showSolution_Compare_wrongCorrectionShowsAccepted', () => {
+    setup(
+      { ...SELECT_PLAN, mode: 'correct' },
+      {
+        solution: { targets: [{ tokenIds: ['t1', 't2'], accept: ['Sonunda'] }] },
+        answer: { version: 1, type: 'textSelect', selected: ['t1'], values: { t1: 'Sonra' } },
+        showSolution: true,
+      }
+    );
+    expect(tokenBox('t1').classList).toContain('is-value');
+    expect(tokenBox('t1').querySelector('.ts-box__fix')?.textContent).toBe('Sonra');
+    expect(tokenBox('t1').querySelector('[data-target]')?.textContent).toBe('Sonunda');
+  });
+
+  it('showSolution_ShowsTargetsAndAcceptedCorrection_ReadOnly', () => {
+    setup(
+      { ...SELECT_PLAN, mode: 'correct' },
+      {
+        solution: { targets: [{ tokenIds: ['t1', 't2'], accept: ['Sonunda'] }] },
         showSolution: true,
       }
     );
@@ -233,6 +266,20 @@ describe('QuestionCanvasTextSelectComponent (#582)', () => {
     expect(q('ts-counter')).toBeNull();
     click(tokenBox('t3'));
     expect(emitted.length).toBe(0);
+  });
+
+  it('showSolution_Punctuation_ComparesOwnSymbols', () => {
+    setup(PUNCT_PLAN, {
+      solution: { gaps: { g1: { accept: ['!'] }, g2: { accept: ['.', ','] } } },
+      answer: { version: 1, type: 'textSelect', selected: [], values: { g1: '!', g2: '!' } },
+      showSolution: true,
+      narrow: true,
+    });
+    expect(word('g1').textContent).toContain('( ! )');
+    expect(word('g1').classList).toContain('is-correct');
+    expect(word('g2').textContent).toContain('( ! )');
+    expect(word('g2').classList).toContain('is-wrong');
+    expect(word('g2').querySelector('[data-target]')?.textContent).toBe('. / ,');
   });
 
   it('showSolution_Punctuation_ShowsAcceptedSymbolsInGaps', () => {

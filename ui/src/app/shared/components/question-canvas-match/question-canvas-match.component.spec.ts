@@ -158,15 +158,26 @@ describe('QuestionCanvasMatchComponent (#576)', () => {
         expect(el().querySelector('[data-mark="l1"]')).toBeNull();
     });
 
-    it('showSolution_ShowsCorrectPairsReadOnly_RestoresOwnAfter', async () => {
+    it('showSolution_WithoutAnswer_ShowsCorrectPairs', async () => {
+        setup({ solution: { l2: 'r2', l3: 'r3' } });
+        fixture.componentRef.setInput('showSolution', true);
+        await settle();
+        expect(el().querySelector('[data-line="l3:r3"]')?.classList).toContain('mt-line--solution');
+        expect(el().querySelector('.mt-line--missed')).toBeNull();
+    });
+
+    it('showSolution_ComparesOwnPairsReadOnly_RestoresOwnAfter', async () => {
         setup({
             solution: { l2: 'r2', l3: 'r3' },
             answer: { version: 1, type: 'match', pairs: [{ leftId: 'l2', rightId: 'r4' }] },
         });
         fixture.componentRef.setInput('showSolution', true);
         await settle();
-        expect(el().querySelector('[data-line="l3:r3"]')?.classList).toContain('mt-line--solution');
-        expect(el().querySelector('[data-line="l2:r4"]')).toBeNull();
+        // #679: öğrencinin yanlış çizgisi kalır; doğrular ince kesikli yeşil.
+        expect(el().querySelector('[data-line="l2:r4"]')?.classList).toContain('mt-line--wrong');
+        expect(el().querySelector('[data-line="l2:r2"]')?.classList).toContain('mt-line--missed');
+        expect(el().querySelector('[data-line="l3:r3"]')?.classList).toContain('mt-line--missed');
+        expect(item('left', 'l2').classList).toContain('is-wrong');
         expect(item('left', 'l2').disabled).toBe(true);
 
         fixture.componentRef.setInput('showSolution', false);

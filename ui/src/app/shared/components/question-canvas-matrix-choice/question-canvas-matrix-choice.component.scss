@@ -322,3 +322,24 @@
   font-size: 13px;
   color: var(--ms-text-medium);
 }
+
+/* #679 çözüm karşılaştırması: öğrencinin doğru seçimi yeşil, yanlışı kırmızı, seçmediği doğru seçenek kesikli yeşil. */
+.mc-cell,
+.mc-option {
+  &.is-hit {
+    border-color: var(--ms-success-border, var(--ms-success-text));
+    background: var(--ms-success-surface);
+    color: var(--ms-success-text);
+  }
+
+  &.is-wrong {
+    border-color: var(--ms-danger-border);
+    background: var(--ms-danger-surface);
+    color: var(--ms-danger-text);
+  }
+
+  &.is-missed {
+    border: 2px dashed var(--ms-success-text);
+    color: var(--ms-success-text);
+  }
+}

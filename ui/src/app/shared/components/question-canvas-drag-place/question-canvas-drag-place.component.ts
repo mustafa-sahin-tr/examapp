@@ -254,8 +254,27 @@ export class QuestionCanvasDragPlaceComponent {
   private readonly cardIndex = computed(() => new Map(this.shuffledCards().map((c, i) => [c.id, { card: c, index: i }])));
   private readonly targetIndex = computed(() => new Map(this.targets().map((t, i) => [t.id, { target: t, index: i }])));
 
-  /** Ekrandaki yerleşim: çözüm açıkken doğru yerleşim. */
-  readonly displayMap = computed<DragPlaceMap>(() => (this._showSolution() ? this.solution() : this.placed()));
+  /** #679: çözüm açık ve öğrenci kart yerleştirmiş — kartlar öğrencinin yerinde yeşil / kırmızı, yanlışta doğru hedefin adı. */
+  readonly compare = computed(() => this._showSolution() && !!this._solutionJson() && placementCount(this.placed()) > 0);
+
+  /** Ekrandaki yerleşim: öğrencinin (karşılaştırmada da); çözüm açık ama kart yoksa doğru yerleşim. */
+  readonly displayMap = computed<DragPlaceMap>(() =>
+    this._showSolution() && !this.compare() ? this.solution() : this.placed()
+  );
+
+  /** Karşılaştırmada kartın doğru hedef(ler)inin adı; çeldiricide "çeldirici". Yanlış yerleşen ya da havuzda kalan kartta gösterilir. */
+  cardTarget(cardId: string): string {
+    const names = this.targets()
+      .filter((t) => cardsIn(this.solution(), t.id).includes(cardId))
+      .map((t) => this.targetText(t));
+    return names.length ? this.t('targetHint', { target: names.join(', ') }) : this.t('distractorHint');
+  }
+
+  /** Karşılaştırmada havuzdaki kartın durumu: bir hedefe aitse (konmamış) yanlış, çeldiriciyse doğru. */
+  poolMark(cardId: string): PlacementMark {
+    if (!this.compare() || this.reuse()) return null;
+    return this.targets().some((t) => cardsIn(this.solution(), t.id).includes(cardId)) ? 'wrong' : 'correct';
+  }
 
   /** Kartların ekran sırası: tohuma göre karıştırılmış, aynı maddede sabit. */
   private readonly shuffledCards = computed<DragPlaceCard[]>(() => {
@@ -298,7 +317,9 @@ export class QuestionCanvasDragPlaceComponent {
     const practice = this._practiceFeedback();
     const solution = this.solution();
     const hasSolution = Object.keys(solution).length > 0;
+    const compare = this.compare();
     return (targetId: string, cardId: string): PlacementMark => {
+      if (compare) return cardsIn(solution, targetId).includes(cardId) ? 'correct' : 'wrong';
       if (showSolution) return null;
       if (feedback) {
         const key = dragPlaceRowId(targetId, cardId);
@@ -341,7 +362,7 @@ export class QuestionCanvasDragPlaceComponent {
     this.i18nTick();
     const announcement = this.announcement();
     if (announcement) return announcement;
-    if (this._showSolution()) return this.t('solutionShownHint');
+    if (this._showSolution()) return this.t(this.compare() ? 'solutionCompareHint' : 'solutionShownHint');
     const selection = this.selected();
     if (selection) return this.t('hintSelected', { card: this.cardText(selection.cardId) });
     const pending = this.pendingTarget();

@@ -495,3 +495,25 @@
   color: var(--ms-warning-text);
   font-weight: 600;
 }
+
+/* #679 çözüm karşılaştırması: yanlış gap / düzeltmenin doğrusu. */
+.ts-target {
+  margin-left: 4px;
+  padding: 0 4px;
+  border: 1px dashed var(--ms-success-text);
+  border-radius: 4px;
+  background: var(--ms-success-surface);
+  color: var(--ms-success-text);
+  font-size: 0.85em;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ts-box .ts-target {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 2;
+  margin: 2px 0 0;
+  pointer-events: none;
+}

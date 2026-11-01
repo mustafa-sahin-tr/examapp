@@ -246,3 +246,59 @@
     color: var(--ms-danger-text);
   }
 }
+
+/* Doğrudaki kart + köşesinde havuza geri ✕ (hover / odak / seçiliyken; dokunmatikte hep görünür). */
+.nl-placed {
+  position: relative;
+  display: inline-flex;
+
+  &:hover .nl-remove,
+  &:focus-within .nl-remove,
+  &.is-selected .nl-remove {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.nl-remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--ms-border-strong);
+  border-radius: 50%;
+  background: var(--ms-surface);
+  color: var(--ms-text-strong);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s;
+
+  .mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+    line-height: 14px;
+  }
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--ms-danger-border, var(--ms-danger-text));
+    color: var(--ms-danger-text);
+  }
+
+  &:focus-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  @media (hover: none) {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}

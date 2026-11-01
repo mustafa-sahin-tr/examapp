@@ -78,7 +78,7 @@ describe('activity-authoring-number-line (#588)', () => {
   it('isWiredIntoAuthoring', () => {
     const form = emptyForm('numberLine', ['D', 'Y']);
     expect(form.kind).toBe('numberLine');
-    expect(validateForm(form).map((e) => e.key)).toContain('blankCard');
+    expect(validateForm(form).map((e) => e.key)).toContain('lineCardCount');
     const def = buildDefinition(pilot());
     expect(parseDefinition('numberLine', def.plan, def.solution)).toEqual(pilot());
   });

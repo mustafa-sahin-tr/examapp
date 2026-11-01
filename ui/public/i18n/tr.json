@@ -582,9 +582,10 @@
         "pool": "Kartlar",
         "poolEmpty": "Bütün kartlar doğruda.",
         "placedAria": "{{card}}, {{tick}} çentiğinde",
+        "removeAria": "{{card}} kartını havuza geri koy",
         "return": "Havuza geri",
         "reset": "Temizle",
-        "hint": "Bir karta dokun, sonra doğrunun üzerinde yerini seç; kart en yakın çentiğe oturur. Doğrudaki karta dokunup ← / → ile kaydırabilir, ikinci dokunuşla havuza geri koyabilirsin.",
+        "hint": "Bir karta dokun, sonra doğrunun üzerinde yerini seç; kart en yakın çentiğe oturur. Doğrudaki karta dokunup ← / → ile kaydırabilirsin; köşesindeki ✕ kartı havuza geri koyar.",
         "resultOk": "Bütün kartlar doğru yerde!",
         "resultPartial": "{{total}} karttan {{ok}} tanesi doğru; kırmızı kartları yeniden düşün.",
         "solutionShown": "Kartlar doğru yerlerinde gösteriliyor; havuzda kalanlar doğruya konmamalıydı."

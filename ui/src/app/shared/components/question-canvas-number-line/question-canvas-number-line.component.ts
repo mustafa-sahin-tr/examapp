@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, EventEmitter, Injector, Input, Output, afterNextRender, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoDirective } from '@jsverse/transloco';
@@ -27,8 +27,8 @@ interface TickStack {
 
 /**
  * Issue #588: sayı doğrusu oynatıcısı (`numberLine`). Kart seçilir (havuzdan ya da doğrudan), sonra çentiğe ya da doğrunun üstüne
- * dokunulur: kart en yakın çentiğe oturur. Doğrudaki seçili kart ok tuşlarıyla bir çentik kayar; ikinci dokunuş ya da "Havuza geri"
- * kartı kaldırır. Bir çentikte birden çok kart durabilir (üst üste). Kontrol sonrası kartlar yeşil / kırmızı; çözüm açıkken hedefli
+ * dokunulur: kart en yakın çentiğe oturur. Doğrudaki seçili kart ok tuşlarıyla kayar (odak kartta kalır); kartın köşesindeki ✕,
+ * Delete ya da "Havuza geri" kartı kaldırır, ikinci dokunuş yalnız seçimi bırakır. Bir çentikte birden çok kart durabilir (üst üste). Kontrol sonrası kartlar yeşil / kırmızı; çözüm açıkken hedefli
  * kartlar hedef çentikte, çeldiriciler havuzda. Her değişiklikte bir kez emit edilir. OnPush: tüm durum signal.
  */
 @Component({
@@ -40,6 +40,9 @@ interface TickStack {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class QuestionCanvasNumberLineComponent {
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
+
   @Input({ required: true }) set questionRegion(value: QuestionRegion) {
     const changed = value !== this._region();
     this._region.set(value);
@@ -169,15 +172,17 @@ export class QuestionCanvasNumberLineComponent {
     return mark === undefined ? null : mark ? 'ok' : 'bad';
   }
 
-  /** Karta dokunma: seçer; zaten seçili ve doğrudaysa havuza geri koyar, havuzdaysa seçimi kaldırır. */
+  /** Karta dokunma: seçer; zaten seçiliyse seçimi bırakır (havuza geri koymak köşedeki ✕ ile). */
   toggleCard(id: string): void {
     if (this.readOnly()) return;
-    if (this.selected() !== id) {
-      this.selected.set(id);
-      return;
-    }
-    if (Object.hasOwn(this.placement(), id)) this.unplace(id);
-    this.selected.set(null);
+    this.selected.set(this.selected() === id ? null : id);
+  }
+
+  /** Doğrudaki kartın köşesindeki ✕: kartı havuza geri koyar. */
+  removeCard(id: string): void {
+    if (this.readOnly()) return;
+    this.unplace(id);
+    if (this.selected() === id) this.selected.set(null);
   }
 
   /** Seçili kartı çentiğe koyar. */
@@ -221,6 +226,8 @@ export class QuestionCanvasNumberLineComponent {
     this.selected.set(id);
     this.placement.set({ ...this.placement(), [id]: next });
     this.emit();
+    // Kart başka çentiğin yığınına geçince düğmesi yeniden çizilir; odak yeni düğmeye taşınır ki ok tuşları sürsün.
+    afterNextRender(() => this.host.nativeElement.querySelector<HTMLElement>(`.nl-stack [data-card="${id}"]`)?.focus(), { injector: this.injector });
   }
 
   returnSelected(): void {

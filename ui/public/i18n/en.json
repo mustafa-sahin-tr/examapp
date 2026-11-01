@@ -582,9 +582,10 @@
         "pool": "Cards",
         "poolEmpty": "All cards are on the line.",
         "placedAria": "{{card}}, at tick {{tick}}",
+        "removeAria": "Return {{card}} to the pool",
         "return": "Back to pool",
         "reset": "Clear",
-        "hint": "Tap a card, then tap its place on the line; the card snaps to the nearest tick. Tap a card on the line and use ← / → to move it, or tap it again to put it back.",
+        "hint": "Tap a card, then tap its place on the line; the card snaps to the nearest tick. Tap a card on the line and use ← / → to move it; the ✕ on its corner puts it back in the pool.",
         "resultOk": "Every card is in the right place!",
         "resultPartial": "{{ok}} of {{total}} cards are right; think again about the red ones.",
         "solutionShown": "The cards are shown in their correct places; the ones left in the pool did not belong on the line."

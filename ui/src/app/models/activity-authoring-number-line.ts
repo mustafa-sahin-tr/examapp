@@ -44,7 +44,7 @@ export function isNumberLineForm(form: { kind: string }): form is NumberLineForm
   return form.kind === 'numberLine';
 }
 
-/** Varsayılan: 0–1 arası 8 bölme, uçlar etiketli, bir kart. */
+/** Varsayılan: 0–1 arası 8 bölme, uçlar etiketli, kartsız (boş çeldirici "Boş kart bırakma" hatası veriyordu). */
 export function emptyNumberLineForm(): NumberLineForm {
   return {
     kind: 'numberLine',
@@ -55,7 +55,7 @@ export function emptyNumberLineForm(): NumberLineForm {
       { at: 0, text: '0' },
       { at: 8, text: '1' },
     ],
-    cards: [{ label: '', target: '' }],
+    cards: [],
   };
 }
 

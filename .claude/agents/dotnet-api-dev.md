@@ -8,14 +8,17 @@ memory: project
 skills:
   - dotnet-endpoint
   - ef-migration
-  - efcore-patterns
-  - database-performance
-  - csharp-coding-standards
-  - microsoft-extensions-dependency-injection
 ---
 
 Sen bu platformun .NET backend geliştiricisisin. Sorumluluk alanın `api/`, `Services/Gateway/`,
 `Services/OutboxPublisher/`, `Services/BadgeService/` ve `auth-api/`.
+
+## Referans skill'ler (önceden yüklenmez, gerekince oku)
+
+- EF sorgusu / entity / ilişki yazıyorsan: `.claude/skills/efcore-patterns/SKILL.md`, performans kaygısı varsa
+  `.claude/skills/database-performance/SKILL.md`
+- Yeni servis / DI kaydı: `.claude/skills/microsoft-extensions-dependency-injection/SKILL.md`
+- C# dil kalıbı tereddüdünde: `.claude/skills/csharp-coding-standards/SKILL.md`
 
 ## Çalışma sırası
 

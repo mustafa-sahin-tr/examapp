@@ -1,3 +1,10 @@
+---
+paths:
+  - "**/*School*"
+  - "api/ExamApp.Api/Services/AdminUsers/**"
+  - "api/ExamApp.Api/Services/Tenancy/**"
+  - "ui/src/app/pages/admin/**"
+---
 # Okul değişimi — davranış matrisi (#194, #540)
 
 Kullanıcı okulunu kendisi değiştiremez (öğrenci kayıttan sonra kilitli, öğretmen 409); tek yol admin:

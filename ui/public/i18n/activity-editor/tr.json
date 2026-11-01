@@ -455,6 +455,8 @@
     "divisions": "Bölme sayısı",
     "tolerance": "Tolerans (çentik)",
     "hideTicks": "Çentikleri gizle (yalnız etiketliler çizilir)",
+    "rescaled": "Etiketler ve kartlar {{from}} bölmeden {{to}} bölmeye orantılı taşındı.",
+    "notRescaled": "{{to}}, {{from}} bölmenin katı olmadığından etiketler ve kartlar çentik numarasıyla yerinde kaldı; gerekirse yeniden yerleştirin (ör. 0–1 için son çentiğe 1 yazın).",
     "labelText": "Etiket",
     "distractor": "çeldirici",
     "targetInvalid": "çentik dışında kaldı",

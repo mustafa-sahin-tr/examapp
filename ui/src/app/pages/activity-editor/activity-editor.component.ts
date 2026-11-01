@@ -1247,6 +1247,47 @@ export class ActivityEditorComponent {
     if (at !== null && patch.divisions !== undefined && at > patch.divisions) this.lineTick.set(null);
   }
 
+  /** Bölme alanına girilirken (ya da son taşımada) geçerli bölme; yazarken ara değerler (8 → 1 → 16) taşımaya girmez. */
+  private lineDivisionsFrom: number | null = null;
+  /** Son bölme değişiminin sonucu: etiketler / kartlar orantılı taşındı mı. */
+  readonly lineRescale = signal<{ from: number; to: number; scaled: boolean } | null>(null);
+
+  beginLineDivisions(): void {
+    this.lineDivisionsFrom ??= this.numberLine()?.divisions ?? null;
+  }
+
+  /**
+   * Bölme değişince (alan bırakılınca / ok tuşu) etiketler ve kartlar orantılı taşınır — yalnız hepsi tam çentiğe
+   * düşüyorsa (8 → 16: 4. çentik 8. olur). Düşmüyorsa (8 → 21) çentik numarasıyla yerinde kalır, not gösterilir.
+   */
+  commitLineDivisions(): void {
+    const f = this.numberLine();
+    const from = this.lineDivisionsFrom;
+    this.lineDivisionsFrom = f?.divisions ?? null;
+    if (!f || from === null || from < 1 || from === f.divisions || !this.lineTicks(f).length) return;
+    const to = f.divisions;
+    const cardTicks = f.cards.map((c) => targetTick(c.target, from));
+    const positions = [...f.labels.map((l) => l.at), ...cardTicks.filter((at): at is number => typeof at === 'number')];
+    if (!positions.some((at) => at > 0)) {
+      this.lineRescale.set(null);
+      return;
+    }
+    const scaled = positions.every((at) => (at * to) % from === 0);
+    this.lineRescale.set({ from, to, scaled });
+    if (!scaled) return;
+    const move = (at: number) => (at * to) / from;
+    this.updateNumberLine((g) => ({
+      ...g,
+      labels: g.labels.filter((l) => l.at <= from).map((l) => ({ ...l, at: move(l.at) })),
+      cards: g.cards.map((c, i) => {
+        const at = cardTicks[i];
+        return typeof at === 'number' ? { ...c, target: String(move(at)) } : c;
+      }),
+    }));
+    const at = this.lineTick();
+    if (at !== null && at <= from) this.lineTick.set(move(at));
+  }
+
   /** Doğrudaki kartlar çentik başına (hedefi okunabilen kartlar). */
   readonly lineStacks = computed(() => {
     const f = this.numberLine();

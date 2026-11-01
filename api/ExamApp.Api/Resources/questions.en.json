@@ -24,6 +24,12 @@
       "rateLimited": "Too many add-question requests in a short time. Please wait a moment and try again."
     },
 
+    "reorder": {
+      "invalidRequest": "Invalid request: send every item of the test exactly once (at most {0}).",
+      "mismatch": "The item list is out of date: refresh the page and try again.",
+      "forbidden": "Only the owner can change the order of this test."
+    },
+
     "bulk": {
       "saveFailed": "The question set could not be saved.",
       "imageTooLarge": "The page image is too large (at most {0} megapixels, longest edge at most {1} px). Shrink the image and try again.",

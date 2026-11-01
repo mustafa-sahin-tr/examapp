@@ -898,13 +898,27 @@ API'yi yeniden başlat (yeni kontrolcü).
 üstünde) **Maddeler** kartı (`app-activity-item-list`): `GET api/questions/bytest/{id}` ile sıra no, küçük resim, tür rozeti, yönerge
 önizlemesi; düzenleyebilene görselsiz maddede Düzenle (`/activity-editor?...&questionId=`), görselli maddede yalnız "Görselli,
 düzenlenemez"; Kaldır = `DELETE api/questions/test/{testId}/question/{questionId}` (bağ soft-delete, soru havuzda kalır, yalnız sahip /
-admin). Sıralama yok (#685). `WorksheetQuestion`'ın soft-delete filtresi artık **adlı** (`WorksheetQuestionQueryFilter.SoftDeleteKey`,
+admin). Sıralama: #685 (aşağıda). `WorksheetQuestion`'ın soft-delete filtresi artık **adlı** (`WorksheetQuestionQueryFilter.SoftDeleteKey`,
 #376 slot kalıbı): zorunlu `WorksheetInstanceQuestion.WorksheetQuestion` gezinmesi kaldırılan maddeyi başlamış / bitmiş oturumdan
 düşürüyordu. Oturum satırından okuyan sorgular (oynatıcı, save-answer, kontrol, çözümler, sonuç, öğrenci / veli puanları, detay
 istatistikleri, "yanlışlarım", #584 analiz, açık uçlu kuyruk, çalışma bağlantıları) `.WithRemovedWorksheetItems()` kullanır; sayfanın
 güncel maddelerini okuyanlar (start-test kopyası, liste, numaralama, ekleme / bağlama) kullanmaz. Yeni bir oturum okuma yolu yazarken
 aynısını yap, yoksa kaldırılan madde o yoldan kaybolur. Analizde kaldırılan madde yalnız onu çözmüş analiz oturumu varsa görünür.
 Migration yok.
+
+**Issue #685 — etkinlik maddelerini yeniden sıralama, oturum sırası sabit.** Madde listesinde (#684) düzenleyebilen
+öğretmen maddeyi tutaçtan sürükler (`cdkDragHandle`; 480 px altında gizli) ya da ↑ / ↓ ile taşır (uçta pasif, `disabledInteractive`:
+odak düğmede kalır; `aria-live` "Madde 2, 3. sıraya taşındı"). Liste iyimser güncellenir; `PUT api/questions/test/{testId}/order`
+`{questionIds}` bütün sırayı yazar (`QuestionTestLinkService.ReorderAsync`: tek transaction, bağlamayla aynı test kilidi
+`AcquireWorksheetQuestionLinkLockAsync`, `Order` = 1..n). Liste testin sorusu silinmemiş bütün maddeleriyle birebir eşleşmeli
+(eksik / fazla / yinelenen → 400, `TestQuestionsMismatch`); sorusu silinmiş madde sona gider. Yetki: sahip / admin; görebilen ama
+sahibi olmayan 403, göremeyen 404. Hata olursa eski sıra geri gelir, snackbar "Sıra kaydedilemedi" [Tekrar dene]; ilk değişimde
+"yalnız bundan sonra başlayan öğrencilere" notu. **Oturum sırası:** `WorksheetInstanceQuestion.Order` start-test'te sayfanın o anki
+`(Order, Id)` sırasından 1..n kopyalanır; oturum okuma yolları (oynatıcı, sonuç, çözümler, açık uçlu kuyruk `ItemNumber`, "yanlışlarım",
+çalışma bağlantıları) `(tiq.Order, tiq.Id)` ile sıralar — yeni bir oturum okuma yolu yazarken sayfanın `WorksheetQuestion.Order`'ını
+değil bunu kullan. #584 analizi madde kolonlarını sayfanın güncel sırasıyla gösterir (oturum başına değil). Migration
+`AddTestInstanceQuestionOrder` mevcut oturumları o anki görüntü sırasıyla doldurur (silinmiş / kaldırılmış satırlar dahil);
+exam API açılışında uygulanır (Aspire'da exam API'yi yeniden başlat).
 
 **Issue #501 — profil sayıları ve veli rozet backfill'i.** Öğrenci profilindeki (`GET api/student/profile`) çözülen / doğru / yanlış
 ve tamamlanan test sayıları artık istatistik ekranıyla aynı kuraldan (`GetGroupedStudentStatistics`: tamamlanmış, etkinlik olmayan

@@ -264,7 +264,51 @@ public class QuestionsControllerAuthorizationTests : IDisposable
         (HttpMethod.Put, $"/api/questions/{_legacyQuestion}/classification", new { subjectId = 1 }),
         (HttpMethod.Delete, $"/api/questions/test/{_worksheet}/question/{_legacyQuestion}", null),
         (HttpMethod.Post, $"/api/questions/test/{_worksheet}/bank-questions", new { questionIds = new[] { _legacyQuestion } }),
+        (HttpMethod.Put, $"/api/questions/test/{_worksheet}/order", new { questionIds = new[] { _legacyQuestion } }), // issue #685
     };
+
+    [Fact]
+    public async Task Reorder_by_a_teacher_who_can_view_but_not_own_the_test_is_403_issue685()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            var w = await ctx.Worksheets.SingleAsync(x => x.Id == _worksheet);
+            w.TeacherSharing = WorksheetTeacherSharing.PublicView;
+            await ctx.SaveChangesAsync();
+        }
+
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+        (await SendAsync(client, Copier, HttpMethod.Put, $"/api/questions/test/{_worksheet}/order",
+            new { questionIds = new[] { _legacyQuestion } })).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        await _testLinks.DidNotReceive().ReorderAsync(Arg.Any<int>(), Arg.Any<IReadOnlyList<int>>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("[1,1]")]
+    [InlineData("[0]")]
+    public async Task Reorder_with_an_empty_duplicate_or_invalid_list_is_400_issue685(string ids)
+    {
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+        var response = await SendAsync(client, Owner, HttpMethod.Put, $"/api/questions/test/{_worksheet}/order",
+            new { questionIds = System.Text.Json.JsonSerializer.Deserialize<int[]>(ids) });
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Reorder_mismatching_the_test_items_is_400_issue685()
+    {
+        using var host = await StartHostAsync();
+        _testLinks.ReorderAsync(Arg.Any<int>(), Arg.Any<IReadOnlyList<int>>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(ReorderTestQuestionsResult.Mismatch);
+        using var client = host.GetTestClient();
+        var response = await SendAsync(client, Owner, HttpMethod.Put, $"/api/questions/test/{_worksheet}/order",
+            new { questionIds = new[] { _legacyQuestion, 999 } });
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).ShouldContain("TestQuestionsMismatch");
+    }
 
     [Fact]
     public async Task Bulk_save_rejected_as_invalid_input_returns_400_with_the_localized_message()
@@ -394,6 +438,7 @@ public class QuestionsControllerAuthorizationTests : IDisposable
             (HttpMethod.Put, $"/api/questions/{_legacyQuestion}/classification", new { subjectId = 1 }),
             (HttpMethod.Delete, $"/api/questions/test/{_worksheet}/question/{_legacyQuestion}", null),
             (HttpMethod.Post, $"/api/questions/test/{_worksheet}/bank-questions", new { questionIds = new[] { _copierQuestion } }),
+            (HttpMethod.Put, $"/api/questions/test/{_worksheet}/order", new { questionIds = new[] { _legacyQuestion } }), // W özel → görünmez
             // Owner, Copier'ın kendi sorusunu da değiştiremez.
         };
         foreach (var (method, path, body) in writes)

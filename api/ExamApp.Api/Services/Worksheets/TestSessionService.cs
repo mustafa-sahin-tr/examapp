@@ -164,9 +164,11 @@ public class TestSessionService : ITestSessionService
                 WorksheetId = testId,
                 StudentId = student.Id,
                 Status = WorksheetInstanceStatus.Started,
-                WorksheetInstanceQuestions = testQuestionIds.Select(id => new WorksheetInstanceQuestion
+                // issue #685: sıra oturuma kopyalanır (sonraki yeniden sıralama başlamış oturumu kaydırmaz).
+                WorksheetInstanceQuestions = testQuestionIds.Select((id, index) => new WorksheetInstanceQuestion
                 {
                     WorksheetQuestionId = id,
+                    Order = index + 1,
                     IsCorrect = false,
                     TimeTaken = 0
                 }).ToList(),
@@ -339,11 +341,11 @@ public class TestSessionService : ITestSessionService
             MaxDurationSeconds = DisplayedLimit(instance),
             RemainingSeconds = TestTimeLimit.RemainingSeconds(status, instance.StartTime, instance.MaxDurationSeconds, now),
             IsPracticeTest = instance.Worksheet.IsPracticeTest,
-            // issue #309: açık sıra — kaynak WorksheetQuestion'ın (Order, Id)'si (instance satırının kendi sıra alanı yok).
+            // issue #309 / #685: açık sıra — oturum satırının kopyalanmış sırası.
             TestInstanceQuestions = OrderedForDisplay(instance.WorksheetInstanceQuestions).Select(tiq => new WorksheetInstanceQuestionDto
             {
                 Id = tiq.Id,
-                Order = tiq.WorksheetQuestion.Order,
+                Order = tiq.Order,
                 SelectedAnswerId = tiq.SelectedAnswerId,
                 Question = new QuestionDto
                 {
@@ -523,7 +525,7 @@ public class TestSessionService : ITestSessionService
                 return new WorksheetInstanceQuestionDto
                 {
                     Id = tiq.Id,
-                    Order = tiq.WorksheetQuestion.Order,
+                    Order = tiq.Order,
                     Question = questionDto,
                     SelectedAnswerId = tiq.SelectedAnswerId,
                     AnswerPayload = tiq.AnswerPayload,
@@ -545,9 +547,8 @@ public class TestSessionService : ITestSessionService
     }
 
     /// <summary>
-    /// issue #309: UI soru numarasını bu listenin konumundan (index + 1) üretir; sıra kaynak <see cref="WorksheetQuestion"/>'ın
-    /// <c>(Order, Id)</c>'si — <see cref="Helpers.WorksheetQuestionNumbering"/> ile aynı kural. Önceden açık sıra yoktu
-    /// (Include'un döndüğü sıra); fark yalnız eşit Order'da görülür.
+    /// issue #309: UI soru numarasını bu listenin konumundan (index + 1) üretir. issue #685: sıra oturum satırının kendi
+    /// <see cref="WorksheetInstanceQuestion.Order"/>'ı (başlarken kopyalanır), eşitlikte satır Id'si.
     /// </summary>
     private static bool IsMcq(string? interactionType)
         => string.IsNullOrWhiteSpace(interactionType)
@@ -555,8 +556,8 @@ public class TestSessionService : ITestSessionService
 
     private static IEnumerable<WorksheetInstanceQuestion> OrderedForDisplay(IEnumerable<WorksheetInstanceQuestion> questions) =>
         questions
-            .OrderBy(tiq => tiq.WorksheetQuestion.Order)
-            .ThenBy(tiq => tiq.WorksheetQuestion.Id);
+            .OrderBy(tiq => tiq.Order)
+            .ThenBy(tiq => tiq.Id);
 
     public async Task<TestSessionResultDto> SaveAnswer(SaveAnswerDto dto, UserProfileDto user, CancellationToken ct = default)
     {
@@ -1209,7 +1210,7 @@ public class TestSessionService : ITestSessionService
             .Select(t => new
             {
                 t.Id,
-                t.WorksheetQuestion.Order,
+                t.Order,
                 WorksheetQuestionId = t.WorksheetQuestion.Id,
                 t.WorksheetQuestion.QuestionId,
                 t.WorksheetQuestion.Question.InteractionType,
@@ -1223,7 +1224,7 @@ public class TestSessionService : ITestSessionService
         {
             Success = true,
             Questions = rows
-                .OrderBy(r => r.Order).ThenBy(r => r.WorksheetQuestionId) // issue #309 görüntü sırası
+                .OrderBy(r => r.Order).ThenBy(r => r.Id) // issue #309 / #685 oturumun sırası
                 .Select(r =>
                 {
                     var mcq = IsMcq(r.InteractionType);

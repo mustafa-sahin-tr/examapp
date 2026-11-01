@@ -20,6 +20,13 @@ public class WorksheetInstanceQuestion : BaseEntity
     [ForeignKey("WorksheetQuestionId")]
     public WorksheetQuestion WorksheetQuestion { get; set; }
 
+    /// <summary>
+    /// issue #685: oturumdaki madde sırası (1 tabanlı) — oturum başlarken sayfanın o anki <c>(WorksheetQuestion.Order, Id)</c>
+    /// sırasından kopyalanır. Oturum okuma yolları sırayı buradan alır (<c>(Order, Id)</c>): öğretmen sonradan maddeleri
+    /// yeniden sıralasa da başlamış oturumun sırası değişmez. Mevcut oturumlar migration'da o anki sırayla dolduruldu.
+    /// </summary>
+    public int Order { get; set; }
+
     public int? SelectedAnswerId { get; set; }
 
     // Non-MCQ answers (e.g. drag-drop) stored as JSON payload

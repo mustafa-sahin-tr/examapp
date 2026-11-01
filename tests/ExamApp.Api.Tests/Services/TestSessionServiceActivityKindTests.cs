@@ -96,7 +96,7 @@ public class TestSessionServiceActivityKindTests : IDisposable
         ctx.TestInstances.Add(instance);
         await ctx.SaveChangesAsync();
 
-        var rows = wqs.Select(wq => new WorksheetInstanceQuestion { WorksheetInstanceId = instance.Id, WorksheetQuestionId = wq.Id }).ToList();
+        var rows = wqs.Select((wq, i) => new WorksheetInstanceQuestion { WorksheetInstanceId = instance.Id, WorksheetQuestionId = wq.Id, Order = i + 1 }).ToList();
         ctx.TestInstanceQuestions.AddRange(rows);
         await ctx.SaveChangesAsync();
 
@@ -458,4 +458,61 @@ public class TestSessionServiceActivityKindTests : IDisposable
         questionIds.ShouldNotContain(dragQuestionId);
     }
 
+    // ---------------------------------------------------------------- issue #685: yeniden sıralama
+
+    private async Task<int> WorksheetIdAsync(int instanceId)
+    {
+        await using var ctx = _db.NewContext();
+        return await ctx.TestInstances.Where(ti => ti.Id == instanceId).Select(ti => ti.WorksheetId).SingleAsync();
+    }
+
+    private async Task ReverseItemsAsync(int worksheetId)
+    {
+        await using var ctx = _db.NewContext();
+        var ids = await ctx.TestQuestions.Where(wq => wq.TestId == worksheetId)
+            .OrderByDescending(wq => wq.Order).Select(wq => wq.QuestionId).ToListAsync();
+        (await new QuestionTestLinkService(ctx).ReorderAsync(worksheetId, ids, 1)).ShouldBe(ReorderTestQuestionsResult.Reordered);
+    }
+
+    [Fact]
+    public async Task Reorder_StartedSession_KeepsItsOrder_issue685()
+    {
+        var s = await SeedAsync(WorksheetKind.Activity);
+        await ReverseItemsAsync(await WorksheetIdAsync(s.InstanceId));
+
+        await using var ctx = _db.NewContext();
+        var player = (await NewService(ctx).GetTestInstanceQuestionsAsync(s.InstanceId, StudentUserId)).ShouldNotBeNull();
+        player.TestInstanceQuestions.Select(r => r.Id).ShouldBe(new[] { s.McqRowId, s.DragRowId, s.BlankRowId });
+        player.TestInstanceQuestions.Select(r => r.Order).ShouldBe(new[] { 1, 2, 3 });
+        (await CanvasAsync(s.InstanceId)).TestInstanceQuestions.Select(r => r.Id)
+            .ShouldBe(new[] { s.McqRowId, s.DragRowId, s.BlankRowId });
+    }
+
+    [Fact]
+    public async Task Reorder_SessionStartedAfterwards_SeesTheNewOrder_issue685()
+    {
+        var s = await SeedAsync(WorksheetKind.Activity);
+        var worksheetId = await WorksheetIdAsync(s.InstanceId);
+        await ReverseItemsAsync(worksheetId);
+
+        await using var ctx = _db.NewContext();
+        var gradeId = await ctx.Grades.Select(g => g.Id).SingleAsync();
+        var late = new Student { UserId = 4403, StudentNumber = "S4403", SchoolName = "Sch", GradeId = gradeId };
+        ctx.Students.Add(late);
+        await ctx.SaveChangesAsync();
+        (await NewService(ctx).StartTestAsync(worksheetId, new StudentProfileDto { Id = late.Id, GradeId = gradeId })).ShouldNotBeNull();
+        var lateInstanceId = await ctx.TestInstances.Where(ti => ti.StudentId == late.Id).Select(ti => ti.Id).SingleAsync();
+
+        var player = (await NewService(ctx).GetTestInstanceQuestionsAsync(lateInstanceId, 4403)).ShouldNotBeNull();
+        var original = await ctx.TestInstanceQuestions.Where(r => r.WorksheetInstanceId == s.InstanceId)
+            .OrderBy(r => r.Order).Select(r => r.WorksheetQuestion.QuestionId).ToListAsync();
+        player.TestInstanceQuestions.Select(r => r.Question.Id).ShouldBe(Enumerable.Reverse(original).ToList());
+        player.TestInstanceQuestions.Select(r => r.Order).ShouldBe(new[] { 1, 2, 3 });
+
+        // Sonradan bir kez daha sıralama ikinci oturumu da kaydırmaz.
+        await ReverseItemsAsync(worksheetId);
+        await using var ctx2 = _db.NewContext();
+        (await NewService(ctx2).GetTestInstanceQuestionsAsync(lateInstanceId, 4403))!.TestInstanceQuestions
+            .Select(r => r.Question.Id).ShouldBe(Enumerable.Reverse(original).ToList());
+    }
 }

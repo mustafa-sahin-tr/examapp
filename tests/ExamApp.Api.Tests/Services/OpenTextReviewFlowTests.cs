@@ -525,11 +525,16 @@ public class OpenTextReviewFlowTests : IDisposable
         await CheckTextAsync(s, "Su ısınınca buharlaşır.");
         (await QueueAsync(TeacherScope(s, TeacherUserId))).Items.Single().ItemNumber.ShouldBe(1);
 
+        // issue #685: sayfanın sırası değişse de başlamış oturumun madde numarası değişmez — numara oturumun kendi sırasından.
         await using (var ctx = _db.NewContext())
         {
             var openWq = await ctx.TestInstanceQuestions.Where(q => q.Id == s.OpenRow).Select(q => q.WorksheetQuestionId).SingleAsync();
             await ctx.TestQuestions.Where(wq => wq.Id == openWq).ExecuteUpdateAsync(u => u.SetProperty(wq => wq.Order, 9));
         }
+        (await QueueAsync(TeacherScope(s, TeacherUserId))).Items.Single().ItemNumber.ShouldBe(1);
+
+        await using (var ctx = _db.NewContext())
+            await ctx.TestInstanceQuestions.Where(q => q.Id == s.OpenRow).ExecuteUpdateAsync(u => u.SetProperty(q => q.Order, 9));
 
         var item = (await QueueAsync(TeacherScope(s, TeacherUserId))).Items.Single();
         item.ItemNumber.ShouldBe(2);

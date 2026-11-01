@@ -42,8 +42,34 @@
   background: var(--ms-surface-medium);
 }
 
-.ail__row--busy {
+.ail__row--editable {
+  grid-template-columns: 44px 28px 56px minmax(0, 1fr) auto;
+  padding-left: 2px;
+}
+
+.ail__row--busy,
+.ail__list--saving .ail__row {
   opacity: 0.6;
+}
+
+// Issue #685: sürükleme önizlemesi / yer tutucu (topic-study-link-manager ile aynı).
+.ail__row.cdk-drag-preview {
+  box-shadow: var(--ms-shadow-overlay);
+}
+
+.ail__row.cdk-drag-placeholder {
+  opacity: 0.4;
+}
+
+.cdk-drop-list-dragging .ail__row:not(.cdk-drag-placeholder) {
+  transition: transform 200ms ease;
+}
+
+.ail__handle {
+  width: 44px;
+  height: 44px;
+  cursor: grab;
+  color: var(--ms-text-weak);
 }
 
 .ail__no {
@@ -157,10 +183,16 @@
   opacity: 0.7;
 }
 
-// Mobil: küçük resim gizli, eylemler satırın altında (dokunma hedefi 44 px kalır).
+// Mobil: küçük resim ve sürükleme tutacı gizli (sıralama yalnız ↑/↓), eylemler satırın altında (dokunma hedefi 44 px kalır).
 @media (max-width: 480px) {
-  .ail__row {
+  .ail__row,
+  .ail__row--editable {
     grid-template-columns: 24px minmax(0, 1fr);
+    padding-left: 10px;
+  }
+
+  .ail__handle {
+    display: none;
   }
 
   .ail__thumb {

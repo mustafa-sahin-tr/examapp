@@ -67,6 +67,11 @@ export class QuestionService {
     return this.http.post<LinkBankQuestionsResult>(`${this.apiUrl}/test/${testId}/bank-questions`, { questionIds });
   }
 
+  /** Issue #685: testin bütün maddelerinin yeni sırası (yalnız bundan sonra başlayan oturumlara uygulanır). */
+  reorderTestQuestions(testId: number, questionIds: number[]): Observable<{ success: boolean }> {
+    return this.http.put<{ success: boolean }>(`${this.apiUrl}/test/${testId}/order`, { questionIds });
+  }
+
   removeQuestionFromTest(testId: number, questionId: number): Observable<any> {
     return this.http.delete<any>(`${this.apiUrl}/test/${testId}/question/${questionId}`);
   }

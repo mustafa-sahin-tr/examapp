@@ -159,7 +159,7 @@ public class QuestionQueryService : IQuestionQueryService
                 .ThenInclude(q => q.QuestionSubTopics)
                     .ThenInclude(qst => qst.SubTopic)
             .Where(tq => tq.TestId == testid && !tq.IsDeleted)
-            .OrderBy(tq => tq.Order)
+            .OrderBy(tq => tq.Order).ThenBy(tq => tq.Id) // issue #685: oturum kopyasıyla aynı kararlı sıra
             .Select(tq => new
             {
                 tq.Question.InteractionSolution,

@@ -296,7 +296,7 @@ public class TopicStudyLinkService : ITopicStudyLinkService
             .WithRemovedWorksheetItems() // issue #684
             .Where(wiq => wiq.WorksheetInstanceId == testInstanceId)
             .Where(WorksheetScoring.IsWrongRow)
-            .Select(wiq => new { wiq.Id, wiq.WorksheetQuestion.QuestionId, wiq.WorksheetQuestion.Order })
+            .Select(wiq => new { wiq.Id, wiq.WorksheetQuestion.QuestionId, wiq.Order }) // issue #685: oturumun sırası
             .ToListAsync(ct);
 
         if (wrong.Count == 0)

@@ -408,6 +408,7 @@
           "punctuation": "Parantezli boşluğa dokun, alttaki paletten uygun işareti seç."
         },
         "solutionShownHint": "Doğru cevaplar gösteriliyor.",
+        "solutionCompareHint": "Senin işaretlemen gösteriliyor: doğrular yeşil, yanlışlar kırmızı; kesikli çerçeve işaretlemediğin hedefi, yeşil kutu doğru cevabı gösteriyor.",
         "viewAria": "Görünüm",
         "viewImage": "Görsel",
         "viewText": "Metin",
@@ -474,6 +475,8 @@
         "resultStonesWrong": "Kırmızı çerçeveli taşa kadar doğru gittin; o taşa yeniden bak.",
         "stonesHint": "Yalnız doğru bilgilerin yazdığı taşlara dokunarak karşıya geç; dokunduğun taşa basarsın. Yeniden dokunursan geri çekilirsin.",
         "routeShown": "Doğru yol yeşil kesik çizgiyle gösteriliyor.",
+        "routeCompare": "Senin yolun gösteriliyor; kesikli yeşil çizgi doğru yolu, kırmızı adımlar doğru yoldan saptığın yerleri gösteriyor.",
+        "stonesCompare": "Senin bastığın taşlar gösteriliyor: doğru taşlar yeşil, yanlışlar kırmızı; kesikli yeşil çerçeveli taşlar basılması gerekenler.",
         "branchTrue": "D",
         "branchFalse": "Y",
         "exitName": "{{n}}. çıkış",
@@ -552,6 +555,9 @@
         "resultOk": "Bütün renkler doğru sayıda!",
         "resultPartial": "{{total}} renkten {{ok}} tanesi doğru sayıda; kırmızı renklerin kare sayısına yeniden bak.",
         "solutionShown": "Her renkten boyanması gereken kare sayısı örnek bir dolguyla gösteriliyor (kareler başka yerde de olabilir).",
+        "solutionCompare": "Senin boyaman gösteriliyor: sayısı tutan renkler yeşil, tutmayanlar kırmızı; yanlarında hedef sayı yazıyor.",
+        "targetCount": "hedef {{n}}",
+        "targetColor": "doğrusu",
         "colors": {
           "red": "Kırmızı",
           "orange": "Turuncu",
@@ -578,6 +584,7 @@
           "counter": "Bulunan {{found}} · Kalan {{missing}} · Fazla {{extra}}",
           "tooMany": "Çok fazla bölge işaretledin; işaretler gösterilmiyor. Seçimini azaltıp yeniden kontrol et.",
           "solutionShown": "Doğru bölgeler gösteriliyor.",
+          "solutionCompare": "Senin boyaman gösteriliyor: doğru bölgeler yeşil, yanlış renk turuncu, fazlalar kırmızı çerçeveli; kesikli renkli çerçeve doğru boyanmamış bölgenin rengini gösteriyor.",
           "hintNumbered": "Bir renk seç ve numaralı bölgeye dokun: o numaralı bütün bölgeler boyanır. Aynı renkle yeniden dokunursan boya kalkar. Aşağıdaki numaralardan da boyayabilirsin.",
           "groupNo": "{{n}} numara",
           "groups": "Soru numaraları"
@@ -640,7 +647,9 @@
         "resultPartial": "Bulunan {{found}} · Kalan {{missing}} · Fazla {{extra}} — kırmızılar kurala uymuyor, turuncular aynı boyutun tekrarı.",
         "solutionAll": "Kurala uyan bütün boyutlar: {{list}}.",
         "solutionAny": "Kurala uyan boyutlar (biri yeterdi): {{list}}.",
-        "solutionShown": "Kurala uyan dikdörtgenler gösteriliyor."
+        "solutionShown": "Kurala uyan dikdörtgenler gösteriliyor.",
+        "solutionCompare": "Senin çizimlerin gösteriliyor: kurala uyanlar yeşil, uymayanlar kırmızı, tekrarlar turuncu.",
+        "missingSizes": "Çizmediğin boyutlar: {{list}}."
       },
       "balanceScale": {
         "passageAlt": "Okuma parçası görseli",

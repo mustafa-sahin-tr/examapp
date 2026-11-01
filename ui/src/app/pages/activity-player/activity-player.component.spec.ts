@@ -318,7 +318,9 @@ describe('ActivityPlayerComponent (#573)', () => {
     await settle();
 
     expect(q('revealed-info')).not.toBeNull();
-    expect(el().querySelector('#zone-z1 .dd-chip')?.textContent?.trim()).toBe('cat');
+    // #679: öğrencinin etiketi kalır, hedefin altında doğrusu.
+    expect(el().querySelector('#zone-z1 .dd-chip')?.textContent?.trim()).toBe('dog');
+    expect(el().querySelector('#zone-z1 [data-zone-target]')?.textContent).toContain('cat');
 
     (q('restore') as HTMLButtonElement).click();
     await settle();
@@ -1022,7 +1024,9 @@ describe('ActivityPlayerComponent (#573)', () => {
         ['Boşluk 1: !', '!'],
         ['Boşluk 2: boş', '.'],
       ]);
-      expect(token('g2')?.classList).toContain('is-solution');
+      // #679: öğrencinin boş bıraktığı gap kırmızı, yanında kabul edilen sembol.
+      expect(token('g2')?.classList).toContain('is-wrong');
+      expect(token('g2')?.querySelector('[data-target]')?.textContent).toBe('.');
     });
   });
 
@@ -1118,8 +1122,10 @@ describe('ActivityPlayerComponent (#573)', () => {
       await settle();
 
       expect(fixture.componentInstance.currentRows()).toEqual([]);
-      expect(el().querySelector('[data-cell="r1:c1"]')?.getAttribute('aria-pressed')).toBe('true');
-      expect(el().querySelector('[data-cell="r1:c2"]')?.getAttribute('aria-pressed')).toBe('false');
+      // #679: öğrencinin seçimi (r1 → c2) kalır, yanlış; doğrusu (c1) kesikli.
+      expect(el().querySelector('[data-cell="r1:c2"]')?.getAttribute('aria-pressed')).toBe('true');
+      expect(el().querySelector('[data-cell="r1:c2"]')?.classList).toContain('is-wrong');
+      expect(el().querySelector('[data-cell="r1:c1"]')?.classList).toContain('is-missed');
     });
 
     it('fixWrong_ClearsOnlyWrongRows_KeepsCorrectAndBlank_GoesToFirstWrongItem', async () => {
@@ -1318,7 +1324,9 @@ describe('ActivityPlayerComponent (#573)', () => {
       await settle();
 
       expect(fixture.componentInstance.currentRows()).toEqual([]);
-      expect(el().querySelector('[data-placed="t2:c3"]')).not.toBeNull();
+      // #679: öğrencinin yerleşimi kalır; t1'deki c3 yanlış, yanında doğru hedef.
+      expect(el().querySelector('[data-placed="t1:c3"]')?.classList).toContain('is-wrong');
+      expect(el().querySelector('[data-target-hint="c3"]')).not.toBeNull();
     });
 
     it('match_RendersPlayer_UnpairedLeftIsIncomplete_RowsSkipExample', async () => {

@@ -122,8 +122,20 @@ describe('QuestionCanvasRegionPaintComponent (#587)', () => {
     expect(q('rp-result')?.classList).toContain('is-bad');
   });
 
-  it('showSolution_SampleFill_ReadOnly', () => {
+  it('showSolution_ComparesOwnCounts_wrongShowsTarget', () => {
+    // Öğrenci: p2 (kırmızı) 1 kare doğru, p1 hiç yok (hedef 3).
     setup({ answer: grid('2..', '...'), showSolution: true });
+    expect(cell(0, 0).style.background).toContain('--paint-red');
+    expect(count(0)).toBe('0');
+    expect(swatch(0).classList).toContain('is-bad');
+    expect(el().querySelector('[data-target-count="0"]')?.textContent).toContain('3');
+    expect(swatch(1).classList).toContain('is-ok');
+    expect(el().querySelector('[data-target-count="1"]')).toBeNull();
+    expect(q('rp-solution-hint')?.textContent).toContain('Senin boyaman');
+  });
+
+  it('showSolution_SampleFill_ReadOnly', () => {
+    setup({ showSolution: true });
     expect(count(0)).toBe('3');
     expect(count(1)).toBe('1');
     expect(cell(1, 0).style.background).toContain('--paint-red');
@@ -233,8 +245,18 @@ describe('QuestionCanvasRegionPaintComponent regions (#587 dilim b)', () => {
     expect(q('rp-result')?.classList.contains('is-bad')).toBe(true);
   });
 
-  it('solution_ShowsTargets_ReadOnly', () => {
+  it('solution_ComparesOwnFills_missedTargetDashed_extraMarked', () => {
     setup({ answer: fills({ r2: 'p2' }), showSolution: true });
+    expect(group('r2').classList.contains('is-painted')).toBe(true);
+    expect(group('r2').getAttribute('data-mark')).toBe('extra');
+    expect(group('r1').classList.contains('is-painted')).toBe(false);
+    expect(el().querySelector('[data-target="r1"]')).not.toBeNull();
+    click('r2');
+    expect(emitted).toEqual([]);
+  });
+
+  it('solution_ShowsTargets_ReadOnly', () => {
+    setup({ showSolution: true });
     expect(group('r1').classList.contains('is-painted')).toBe(true);
     expect(group('r2').classList.contains('is-painted')).toBe(false);
     click('r2');

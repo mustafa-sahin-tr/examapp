@@ -44,10 +44,13 @@
                     [class.is-value]="v.mark === 'value'" [class.is-wrong]="v.mark === 'wrong'"
                     [attr.data-token]="token.id" [attr.aria-pressed]="isPressed(token)" [attr.aria-label]="tokenAria(token)"
                     [disabled]="isDisabled()" (click)="onToken(token)">
-                    @if (token.gap && (solutionShown() ? v.solutionText : v.value); as symbol) {
+                    @if (token.gap && (solutionOnly() ? v.solutionText : v.value); as symbol) {
                       <span class="ts-box__symbol">{{ symbol }}</span>
-                    } @else if (!token.gap && (solutionShown() ? v.solutionText : (mode() === 'correct' && v.selected ? v.value : '')); as fix) {
+                    } @else if (!token.gap && (solutionOnly() ? v.solutionText : (mode() === 'correct' && v.selected ? v.value : '')); as fix) {
                       <span class="ts-box__fix">{{ fix }}</span>
+                    }
+                    @if (compare() && v.solutionText) {
+                      <span class="ts-target" [attr.data-target]="token.id">{{ v.solutionText }}</span>
                     }
                     @if (v.mark === 'extra') {
                       <span class="ts-box__tag" aria-hidden="true">{{ t('textSelect.extraTag') }}</span>
@@ -85,8 +88,11 @@
                 [attr.data-word]="token.id" [attr.aria-pressed]="isPressed(token)" [attr.aria-label]="tokenAria(token)"
                 [disabled]="isDisabled()" (click)="onToken(token)">
                 <span class="ts-word__text">{{ token.gap ? gapLabel(token) : token.text }}</span>
-                @if (!token.gap && (solutionShown() ? v.solutionText : (mode() === 'correct' && v.selected ? v.value : '')); as fix) {
+                @if (!token.gap && (solutionOnly() ? v.solutionText : (mode() === 'correct' && v.selected ? v.value : '')); as fix) {
                   <span class="ts-word__fix">→ {{ fix }}</span>
+                }
+                @if (compare() && v.solutionText) {
+                  <span class="ts-target" [attr.data-target]="token.id">{{ v.solutionText }}</span>
                 }
                 @if (v.mark === 'extra') {
                   <span class="ts-word__tag" aria-hidden="true">{{ t('textSelect.extraTag') }}</span>

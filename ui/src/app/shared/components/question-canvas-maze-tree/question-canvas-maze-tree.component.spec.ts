@@ -196,6 +196,10 @@ describe('QuestionCanvasMazeTreeComponent (#585)', () => {
     expect(node('x2').classList).toContain('is-route');
     expect(edge('e5').disabled).toBe(true);
     expect(q('mz-undo')).toBeNull();
+    // #679: öğrencinin doğru yol dışındaki adımı kırmızı.
+    expect(edge('e2').classList).toContain('is-wrong');
+    expect(edge('e1').classList).not.toContain('is-wrong');
+    expect(q('mz-route-hint')!.textContent).toContain('Senin yolun');
   });
 
   it('board_OnlyActiveRowSelectable_AndChosenBoxLights', () => {
@@ -219,6 +223,15 @@ describe('QuestionCanvasMazeTreeComponent (#585)', () => {
     click(edge('d1'));
     expect(node('a').classList).toContain('is-current');
     expect(emitted.at(-1)).toBe(path('d1', 'd1'));
+  });
+
+  it('stones_SolutionComparesSteppedStones', () => {
+    // s1 basılmaz; öğrenci s1'e bastı, s2'ye basmadı → ikisi de yanlış; s2 basılması gereken (kesikli).
+    setup(STONES, { answer: JSON.stringify({ version: 1, type: 'mazeTree', stepped: ['s1'] }), solution: { marked: ['s1'] }, showSolution: true });
+    expect(node('s1').classList).toContain('is-bad');
+    expect(node('s2').classList).toContain('is-bad');
+    expect(node('s2').classList).toContain('is-expected');
+    expect(q('mz-route-hint')!.textContent).toContain('bastığın taşlar');
   });
 
   it('stones_ToggleMarks_AndShowPerStoneFeedback', () => {

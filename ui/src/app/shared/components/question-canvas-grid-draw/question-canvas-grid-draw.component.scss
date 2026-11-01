@@ -183,3 +183,13 @@
     color: var(--ms-danger-text);
   }
 }
+
+/* #679 çözüm karşılaştırması: çizmediğin geçerli boyutlar. */
+.gd-missing {
+  margin: 4px 0 0;
+  padding: 6px 10px;
+  border: 1px dashed var(--ms-success-text);
+  border-radius: 8px;
+  color: var(--ms-success-text);
+  font-weight: 600;
+}

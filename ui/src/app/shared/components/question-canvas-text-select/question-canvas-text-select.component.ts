@@ -213,16 +213,25 @@ export class QuestionCanvasTextSelectComponent implements FlushablePlayer {
     return empty ? null : gradeTextSelect(plan, this.solution(), committed);
   });
 
+  /** #679: çözüm açık ve öğrenci işaretlemiş — öğrencinin seçimleri yeşil / kırmızı, kaçırılan hedef kesikli, yanlışta doğrusu. */
+  readonly compare = computed(() => {
+    const answer = this.answer();
+    return this._showSolution() && !!this._solutionJson() && (answer.selected.length > 0 || Object.keys(answer.values).length > 0);
+  });
+  /** Yalnız doğru hâl çiziliyor (çözüm açık, karşılaştırma yok). */
+  readonly solutionOnly = computed(() => this._showSolution() && !this.compare());
+
   readonly tokenViews = computed(() => {
     const plan = this._plan();
     const views = new Map<string, TokenView>();
     if (!plan) return views;
     const answer = this.answer();
     const selected = new Set(answer.selected);
-    const result = this.result();
+    const compare = this.compare();
+    const result = compare ? gradeTextSelect(plan, this.solution(), answer) : this.result();
     const rows = new Map((result?.rows ?? []).map((row) => [row.id, row]));
     const solution = this.solution();
-    const showSolution = this._showSolution();
+    const showSolution = this._showSolution() && !compare;
     const targetText = new Map<string, string>();
     const inTarget = new Set<string>();
     solution.targets.forEach((target) => {
@@ -241,6 +250,17 @@ export class QuestionCanvasTextSelectComponent implements FlushablePlayer {
           mark: null,
           solution: token.gap ? accept.length > 0 : inTarget.has(token.id),
           solutionText: token.gap ? accept.join(' / ') : targetText.get(token.id) ?? '',
+        });
+      } else if (compare) {
+        // Kaçırılan hedef kesikli; yanlış gap'te kabul edilen sembol, yanlış düzeltmede kabul edilen düzeltme.
+        const wrong = mark !== null && mark !== 'correct';
+        const accept = token.gap ? gapAcceptOf(solution, token.id) : [];
+        views.set(token.id, {
+          selected: selected.has(token.id),
+          value: textValueOf(answer, token.id),
+          mark: token.gap && !mark ? 'wrong' : mark,
+          solution: !token.gap && inTarget.has(token.id) && !selected.has(token.id),
+          solutionText: token.gap ? (wrong || !mark ? accept.join(' / ') : '') : mark === 'value' ? (targetText.get(token.id) ?? '') : '',
         });
       } else {
         views.set(token.id, {
@@ -290,7 +310,7 @@ export class QuestionCanvasTextSelectComponent implements FlushablePlayer {
 
   readonly hint = computed(() => {
     this.i18nTick();
-    if (this._showSolution()) return this.t('solutionShownHint');
+    if (this._showSolution()) return this.t(this.compare() ? 'solutionCompareHint' : 'solutionShownHint');
     return this.t(`hint.${this.mode()}`);
   });
 
@@ -327,7 +347,7 @@ export class QuestionCanvasTextSelectComponent implements FlushablePlayer {
   /** Gap'te görünen içerik: çözüm / öğrencinin sembolü ya da boş parantez. */
   gapLabel(token: TextSelectToken): string {
     const view = this.viewOf(token);
-    const inner = this._showSolution() ? view.solutionText : view.value;
+    const inner = this.solutionOnly() ? view.solutionText : view.value;
     return inner ? `( ${inner} )` : '(   )';
   }
 
@@ -341,11 +361,16 @@ export class QuestionCanvasTextSelectComponent implements FlushablePlayer {
     const parts: string[] = [];
     if (token.gap) {
       parts.push(this.t('gapAria', { n: this.gapNo(token) }));
-      const shown = this._showSolution() ? view.solutionText : view.value;
+      const shown = this.solutionOnly() ? view.solutionText : view.value;
       parts.push(shown ? this.t('gapValue', { value: shown }) : this.t('gapEmpty'));
+      if (this.compare() && view.solutionText) parts.push(this.t('acceptedCorrection', { value: view.solutionText }));
     } else {
       parts.push(token.text);
-      if (this._showSolution()) {
+      if (this.compare()) {
+        if (view.selected) parts.push(this.t('selected'));
+        if (view.solution) parts.push(this.t('solutionTarget'));
+        if (view.solutionText) parts.push(this.t('acceptedCorrection', { value: view.solutionText }));
+      } else if (this._showSolution()) {
         if (view.solution) parts.push(this.t('solutionTarget'));
         if (view.solutionText) parts.push(this.t('acceptedCorrection', { value: view.solutionText }));
       } else {

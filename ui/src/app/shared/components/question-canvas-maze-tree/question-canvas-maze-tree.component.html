@@ -29,7 +29,7 @@
               @for (e of tr.edges; track e.edge.id) {
                 <line [attr.x1]="e.x1" [attr.y1]="e.y1" [attr.x2]="e.x2" [attr.y2]="e.y2"
                   [class.is-chosen]="chosenEdges().has(e.edge.id)" [class.is-route]="routeEdges().has(e.edge.id)"
-                  [class.is-wrong]="wrongEdge() === e.edge.id" vector-effect="non-scaling-stroke" />
+                  [class.is-wrong]="isWrongEdge(e.edge.id)" vector-effect="non-scaling-stroke" />
               }
             </svg>
             @for (n of tr.nodes; track n.node.id) {
@@ -56,7 +56,7 @@
             @for (e of tr.edges; track e.edge.id) {
               <button type="button" class="mz-branch" [attr.data-edge]="e.edge.id" [style.left.%]="e.left"
                 [style.top.px]="e.top" [class.is-chosen]="chosenEdges().has(e.edge.id)"
-                [class.is-route]="routeEdges().has(e.edge.id)" [class.is-wrong]="wrongEdge() === e.edge.id"
+                [class.is-route]="routeEdges().has(e.edge.id)" [class.is-wrong]="isWrongEdge(e.edge.id)"
                 [class.is-available]="availableEdges().has(e.edge.id)" [disabled]="!availableEdges().has(e.edge.id)"
                 [attr.aria-label]="t('branchAria', { label: e.edge.label, node: nodeLabel(nodeById(e.edge.from)) })"
                 (click)="choose(e.edge.id)">
@@ -79,7 +79,7 @@
                 @if (chosenEdges().has(e.edge.id) || routeEdges().has(e.edge.id)) {
                   <line [attr.x1]="e.x1" [attr.y1]="e.y1" [attr.x2]="e.x2" [attr.y2]="e.y2"
                     [class.is-chosen]="chosenEdges().has(e.edge.id)" [class.is-route]="routeEdges().has(e.edge.id)"
-                    [class.is-wrong]="wrongEdge() === e.edge.id" vector-effect="non-scaling-stroke" />
+                    [class.is-wrong]="isWrongEdge(e.edge.id)" vector-effect="non-scaling-stroke" />
                 }
               }
             </svg>
@@ -112,7 +112,7 @@
             @for (e of rm.edges; track e.edge.id) {
               <button type="button" class="mz-door" [attr.data-edge]="e.edge.id" [style.left.%]="e.left"
                 [style.top.px]="e.top" [class.is-chosen]="chosenEdges().has(e.edge.id)"
-                [class.is-route]="routeEdges().has(e.edge.id)" [class.is-wrong]="wrongEdge() === e.edge.id"
+                [class.is-route]="routeEdges().has(e.edge.id)" [class.is-wrong]="isWrongEdge(e.edge.id)"
                 [class.is-available]="availableEdges().has(e.edge.id)" [disabled]="!availableEdges().has(e.edge.id)"
                 [attr.aria-label]="t('doorAria', { label: e.edge.label })" (click)="choose(e.edge.id)">
                 {{ e.edge.label }}
@@ -136,10 +136,10 @@
               <div class="mz-board__boxes">
                 @for (box of row.boxes; track box.id) {
                   <button type="button" class="mz-box" [attr.data-edge]="box.id" [class.is-lit]="row.chosen === box.id"
-                    [class.is-wrong]="wrongEdge() === box.id" [class.is-route]="routeEdges().has(box.id)"
+                    [class.is-wrong]="isWrongEdge(box.id)" [class.is-route]="routeEdges().has(box.id)"
                     [disabled]="!availableEdges().has(box.id)" [attr.aria-pressed]="row.chosen === box.id"
                     (click)="choose(box.id)">
-                    @if (wrongEdge() === box.id) {
+                    @if (isWrongEdge(box.id)) {
                       <mat-icon class="mz-box__icon" aria-hidden="true">heart_broken</mat-icon>
                     } @else if (row.chosen === box.id) {
                       <mat-icon class="mz-box__icon" aria-hidden="true">lightbulb</mat-icon>
@@ -226,6 +226,8 @@
   }
 
   @if (solutionShown() && variant() !== 'stones') {
-    <p class="mz-hint" data-testid="mz-route-hint">{{ t('routeShown') }}</p>
+    <p class="mz-hint" data-testid="mz-route-hint">{{ t(compare() ? 'routeCompare' : 'routeShown') }}</p>
+  } @else if (compare()) {
+    <p class="mz-hint" data-testid="mz-route-hint">{{ t('stonesCompare') }}</p>
   }
 </div>

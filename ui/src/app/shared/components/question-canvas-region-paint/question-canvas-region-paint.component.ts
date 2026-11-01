@@ -42,6 +42,8 @@ export interface PaintRegionView {
   /** Gösterilen boya (çözüm açıkken çözüm) — palet dizini ya da null. */
   paint: number | null;
   mark: 'correct' | RegionPaintReason | null;
+  /** #679 karşılaştırma: doğru boyanmamış hedef bölgenin beklenen rengi (palet dizini); değilse null. */
+  target: number | null;
 }
 import { StorageImageRetryDirective } from '../../directives/storage-image-retry.directive';
 import { StorageImageResolver } from '../../utils/storage-image-refresh.util';
@@ -146,11 +148,22 @@ export class QuestionCanvasRegionPaintComponent {
   readonly readOnly = computed(() => this._showSolution() || this._disabled());
   readonly feedbackState = this._feedback.asReadonly();
 
-  /** Çizilen ızgara: çözüm açıkken örnek dolgu, değilse öğrencinin boyası. */
+  /**
+   * #679: çözüm açık ve öğrenci boyamış — öğrencinin boyası kalır. Izgara / daire: renk sayacı yeşil / kırmızı, yanlışta hedef sayı;
+   * bölge: yanlış ya da boyanmamış hedef bölgede doğru renk kesikli çerçeve.
+   */
+  readonly compare = computed(() => {
+    if (!this._showSolution() || !this._solutionJson()) return false;
+    return this._regionsPlan() ? Object.keys(this.fills()).length > 0 : !!this._plan() && !isEmptyPaint(this.cells());
+  });
+  /** Izgara / daire hedefi: renk başına sayı. */
+  private readonly targetCounts = computed(() => parseRegionPaintSolution(this._solutionJson(), this._plan()));
+
+  /** Çizilen ızgara: öğrencinin boyası (karşılaştırmada da); çözüm açık ama boya yoksa örnek dolgu. */
   readonly shown = computed<PaintCells>(() => {
     const plan = this._plan();
     if (!plan) return [];
-    return this._showSolution() ? solutionCells(plan, parseRegionPaintSolution(this._solutionJson(), plan)) : this.cells();
+    return this._showSolution() && !this.compare() ? solutionCells(plan, this.targetCounts()) : this.cells();
   });
   readonly counts = computed(() => countPainted(this.shown(), this._plan()?.palette.length ?? 0));
   readonly total = computed(() => {
@@ -175,8 +188,20 @@ export class QuestionCanvasRegionPaintComponent {
   private readonly shownFills = computed<PaintFills>(() => {
     const plan = this._regionsPlan();
     if (!plan) return {};
-    return this._showSolution() ? parseRegionPaintFillsSolution(this._solutionJson(), plan) : this.fills();
+    return this._showSolution() && !this.compare() ? parseRegionPaintFillsSolution(this._solutionJson(), plan) : this.fills();
   });
+  private readonly solutionFills = computed<PaintFills>(() => parseRegionPaintFillsSolution(this._solutionJson(), this._regionsPlan()));
+
+  /** Karşılaştırmada anahtarın (bölge / grup) durumu ve beklenen renk dizini. */
+  private compareKey(key: string, grouped: boolean): { mark: PaintRegionView['mark']; target: number | null } {
+    const plan = this._regionsPlan()!;
+    const solution = this.solutionFills();
+    const own = Object.hasOwn(this.fills(), key) ? this.fills()[key] : null;
+    if (!Object.hasOwn(solution, key)) return { mark: own !== null ? 'extra' : null, target: null };
+    if (own === solution[key]) return { mark: 'correct', target: null };
+    const target = plan.palette.findIndex((p) => p.id === solution[key]);
+    return { mark: own !== null || grouped ? 'color' : null, target: target < 0 ? null : target };
+  }
 
   readonly regionViews = computed<PaintRegionView[]>(() => {
     const plan = this._regionsPlan();
@@ -194,6 +219,7 @@ export class QuestionCanvasRegionPaintComponent {
       const row = this._showSolution() ? undefined : marks.get(key);
       // Numaralı boyamada yanlış grup "yanlış renk" gibi işaretlenir (boyanmamış da olsa).
       const wrong: RegionPaintReason = grouped ? 'color' : (row?.reason ?? 'extra');
+      const cmp = this.compare() ? this.compareKey(key, grouped) : null;
       return {
         region,
         no: i + 1,
@@ -201,7 +227,8 @@ export class QuestionCanvasRegionPaintComponent {
         points: region.points.map(([x, y]) => `${x},${y}`).join(' '),
         ellipse: { cx: b.x + b.width / 2, cy: b.y + b.height / 2, rx: b.width / 2 + pad, ry: b.height / 2 + pad },
         paint: paintId === null ? null : (index.get(paintId) ?? null),
-        mark: row ? (row.correct ? 'correct' : wrong) : null,
+        mark: cmp ? cmp.mark : row ? (row.correct ? 'correct' : wrong) : null,
+        target: cmp?.target ?? null,
       };
     });
   });
@@ -215,12 +242,14 @@ export class QuestionCanvasRegionPaintComponent {
     const marks = this.rowMarks();
     return plan.groups.map((group) => {
       const paintId = Object.hasOwn(fills, group.id) ? fills[group.id] : null;
-      const mark = this._showSolution() ? undefined : marks.get(group.id);
+      const cmp = this.compare() ? this.compareKey(group.id, true) : null;
+      const mark = cmp ? cmp.mark === 'correct' : this._showSolution() ? undefined : marks.get(group.id);
       return {
         id: group.id,
         name: groupName(plan, group.id),
         paint: paintId === null ? null : (index.get(paintId) ?? null),
         mark: mark === undefined ? null : mark ? ('ok' as const) : ('bad' as const),
+        target: cmp?.target ?? null,
       };
     });
   });
@@ -302,7 +331,17 @@ export class QuestionCanvasRegionPaintComponent {
     return value === null || !plan || !plan.palette[value] ? null : paintCss(plan.palette[value].color);
   }
 
+  /** Karşılaştırmada yanlış rengin hedef sayısı; değilse null. */
+  entryTarget(id: string): number | null {
+    return this.compare() && this.entryState(id) === 'bad' ? (this.targetCounts()[id] ?? 0) : null;
+  }
+
   entryState(id: string): 'ok' | 'bad' | null {
+    const plan = this._plan();
+    if (plan && this.compare()) {
+      const index = plan.palette.findIndex((p) => p.id === id);
+      return this.counts()[index] === (this.targetCounts()[id] ?? 0) ? 'ok' : 'bad';
+    }
     const mark = this.rowMarks().get(id);
     return mark === undefined ? null : mark ? 'ok' : 'bad';
   }

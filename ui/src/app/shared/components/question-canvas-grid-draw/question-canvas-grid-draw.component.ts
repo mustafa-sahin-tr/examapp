@@ -12,6 +12,8 @@ import {
   GridRect,
   buildGridDrawPayload,
   exampleLayout,
+  sizeKey,
+  sizeOf,
   gridDrawTargets,
   overlaps,
   parseGridDrawAnswer,
@@ -133,10 +135,36 @@ export class QuestionCanvasGridDrawComponent {
     return plan && rule ? gridDrawTargets(plan, rule) : [];
   });
 
-  /** Gösterilen çizimler: çözüm açıkken örnek yerleşim, değilse öğrencinin (kontrol sonucu sayısı tutuyorsa işaretli). */
+  /** #679: çözüm açık ve öğrenci çizmiş — öğrencinin dikdörtgenleri yeşil / kırmızı / turuncu (tekrar), eksik boyutlar altta. */
+  readonly compare = computed(() => this._showSolution() && !!this.rule() && this.shapes().length > 0);
+
+  /** Karşılaştırma: kontrolcü gibi — geçerli boyutun ilk çizimi doğru, tekrarı `duplicate`, kurala uymayan yanlış. */
+  private readonly compareStates = computed(() => {
+    const valid = new Set(this.targets().map(sizeKey));
+    const seen = new Set<string>();
+    return this.shapes().map((shape) => {
+      const key = sizeKey(sizeOf(shape));
+      if (!valid.has(key)) return 'wrong' as const;
+      if (seen.has(key)) return 'duplicate' as const;
+      seen.add(key);
+      return 'ok' as const;
+    });
+  });
+
+  /** Karşılaştırmada eksik kalan boyutlar ("3 × 4"); "biri yeterdi"de geçerli çizim varsa boş. */
+  readonly missingSizes = computed(() => {
+    if (!this.compare()) return '';
+    const found = new Set(this.shapes().map((shape) => sizeKey(sizeOf(shape))));
+    const targets = this.targets();
+    const missing = this.rule()?.all ? targets.filter((t) => !found.has(sizeKey(t))) : targets.some((t) => found.has(sizeKey(t))) ? [] : targets;
+    return missing.map((t) => `${t.short} × ${t.long}`).join(', ');
+  });
+
+  /** Gösterilen çizimler: öğrencinin (karşılaştırmada da; kontrol sonucu sayısı tutuyorsa işaretli); çözüm açık ama çizim yoksa örnek yerleşim. */
   readonly drawn = computed<DrawnShape[]>(() => {
     const plan = this._plan();
     if (!plan) return [];
+    if (this.compare()) return this.shapes().map((s, i) => ({ ...s, state: this.compareStates()[i] }));
     if (this._showSolution()) return exampleLayout(plan, this.targets()).map((r) => ({ ...r, state: 'ok' as const }));
     const marks = this._feedback()?.shapes;
     const shapes = this.shapes();

@@ -280,3 +280,26 @@
     color: var(--ms-danger-text);
   }
 }
+
+/* Çözüm karşılaştırması: yanlış sütunda doğru değer kesikli çizgi + sayı (öğrencinin sütunu altında yeşil / kırmızı). */
+.bc-target {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  border-top: 2px dashed var(--ms-success-text);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.bc-target__value {
+  position: absolute;
+  right: 0;
+  bottom: 2px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--ms-success-surface);
+  color: var(--ms-success-text);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
+}

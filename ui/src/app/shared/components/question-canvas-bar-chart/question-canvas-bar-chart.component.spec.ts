@@ -140,11 +140,25 @@ describe('QuestionCanvasBarChartComponent (#588)', () => {
     expect(q('bc-result')!.classList).toContain('is-bad');
   });
 
-  it('solutionShowsTargetsReadOnly', () => {
-    setup({ answer: answer({ c2: 1 }), showSolution: true });
+  it('solutionWithoutAnswerShowsTargets', () => {
+    setup({ showSolution: true });
     expect(bar('c2')!.style.height).toBe('40%');
     expect(bar('c3')!.style.height).toBe('70%');
     expect(q('bc-reset')).toBeNull();
+    expect(col('c2').querySelector('[data-target]')).toBeNull();
+  });
+
+  it('solutionComparesStudentAnswerWithTargets_readOnly', () => {
+    setup({ answer: answer({ c2: 1, c3: 7 }), showSolution: true });
+    // Öğrencinin sütunları kalır: yanlış kırmızı + kesikli doğru değer, doğru yeşil ve çizgisiz.
+    expect(bar('c2')!.style.height).toBe('10%');
+    expect(col('c2').classList).toContain('is-bad');
+    const target = col('c2').querySelector('[data-target]') as HTMLElement;
+    expect(target.style.bottom).toBe('40%');
+    expect(target.textContent).toContain('4');
+    expect(col('c3').classList).toContain('is-ok');
+    expect(col('c3').querySelector('[data-target]')).toBeNull();
+    expect(q('bc-solution-hint')!.textContent).toContain('kesikli');
     clickAt('c2', 0.9);
     expect(emitted.length).toBe(0);
   });

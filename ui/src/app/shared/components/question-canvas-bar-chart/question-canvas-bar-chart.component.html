@@ -59,6 +59,11 @@
                     <span class="bc-bar" [style.height]="percent(col.value)"></span>
                   }
                 }
+                @if (col.target !== null && col.state === 'bad') {
+                  <span class="bc-target" [attr.data-target]="col.id" [style.bottom]="percent(col.target)">
+                    <span class="bc-target__value">{{ col.target }}</span>
+                  </span>
+                }
               </div>
             }
           </div>
@@ -95,6 +100,6 @@
   }
 
   @if (solutionShown()) {
-    <p class="bc-hint" data-testid="bc-solution-hint">{{ t('solutionShown') }}</p>
+    <p class="bc-hint" data-testid="bc-solution-hint">{{ t(compare() ? 'solutionCompare' : 'solutionShown') }}</p>
   }
 </div>

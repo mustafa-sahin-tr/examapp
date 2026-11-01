@@ -24,6 +24,8 @@ interface Column {
   fixed: boolean;
   /** Çizilen değer; çizilmemişse null. */
   value: number | null;
+  /** Karşılaştırmada doğru değer (çözümde yoksa 0); değilse null. */
+  target: number | null;
   state: 'ok' | 'bad' | null;
 }
 
@@ -113,16 +115,28 @@ export class QuestionCanvasBarChartComponent {
   readonly rowMarks = computed(() => new Map((this._feedback()?.rows ?? []).map((r) => [r.id, r.correct])));
   readonly correctCount = computed(() => [...this.rowMarks().values()].filter(Boolean).length);
 
-  /** Çizilen değerler: çözüm açıkken hedefler, değilse öğrencinin; sabit sütunlar her zaman. */
+  /** Çözüm açık ve öğrencinin çizdiği bir şey var: öğrencinin sütunları yeşil / kırmızı, doğru değer kesikli çizgiyle üstünde. */
+  readonly compare = computed(() => this._showSolution() && Object.keys(this.values()).length > 0);
+
+  /**
+   * Çizilen değerler: öğrencinin (karşılaştırmada da); çözüm açık ama cevap yoksa (ör. editör önizlemesi) hedefler.
+   * Sabit sütunlar her zaman. `target` yalnız karşılaştırmada dolu.
+   */
   readonly columns = computed<Column[]>(() => {
     const plan = this._plan();
     if (!plan) return [];
-    const shown = this._showSolution() ? parseBarChartSolution(this._solutionJson(), plan) : this.values();
+    const solution = this._showSolution() ? parseBarChartSolution(this._solutionJson(), plan) : null;
+    const compare = this.compare();
+    const shown = solution && !compare ? solution : this.values();
     return plan.categories.map((c) => {
       const fixed = Object.hasOwn(plan.fixed, c.id);
       const value = fixed ? plan.fixed[c.id] : Object.hasOwn(shown, c.id) ? shown[c.id] : null;
+      if (compare && !fixed && solution) {
+        const target = Object.hasOwn(solution, c.id) ? solution[c.id] : 0;
+        return { id: c.id, label: c.label, fixed, value, target, state: (value ?? 0) === target ? 'ok' : 'bad' };
+      }
       const mark = this.rowMarks().get(c.id);
-      return { id: c.id, label: c.label, fixed, value, state: mark === undefined ? null : mark ? 'ok' : 'bad' };
+      return { id: c.id, label: c.label, fixed, value, target: null, state: mark === undefined ? null : mark ? 'ok' : 'bad' };
     });
   });
 

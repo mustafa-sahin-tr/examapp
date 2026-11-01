@@ -33,13 +33,19 @@
           @for (stack of stacks(); track stack.at) {
             <div class="nl-stack" [style.left]="left(stack.at)" [attr.data-stack]="stack.at">
               @for (card of stack.cards; track card.id) {
-                <button type="button" class="nl-card nl-card--placed" [attr.data-card]="card.id" [attr.aria-pressed]="selected() === card.id"
-                  [attr.aria-label]="t('placedAria', { card: card.label, tick: tickAria(stack.at) })"
-                  [class.is-selected]="selected() === card.id" [class.is-ok]="cardState(card.id) === 'ok'"
-                  [class.is-bad]="cardState(card.id) === 'bad'" [disabled]="readOnly()" (click)="toggleCard(card.id)"
-                  (keydown)="onCardKey($event, card.id)">
-                  {{ card.label }}
-                </button>
+                <span class="nl-placed" [class.is-selected]="selected() === card.id">
+                  <button type="button" class="nl-card nl-card--placed" [attr.data-card]="card.id" [attr.aria-pressed]="selected() === card.id"
+                    [attr.aria-label]="t('placedAria', { card: card.label, tick: tickAria(stack.at) })"
+                    [class.is-selected]="selected() === card.id" [class.is-ok]="cardState(card.id) === 'ok'"
+                    [class.is-bad]="cardState(card.id) === 'bad'" [disabled]="readOnly()" (click)="toggleCard(card.id)"
+                    (keydown)="onCardKey($event, card.id)">
+                    {{ card.label }}
+                  </button>
+                  @if (!readOnly()) {
+                    <button type="button" class="nl-remove" [attr.data-remove]="card.id" [attr.aria-label]="t('removeAria', { card: card.label })"
+                      (click)="removeCard(card.id)"><mat-icon aria-hidden="true">close</mat-icon></button>
+                  }
+                </span>
               }
             </div>
           }

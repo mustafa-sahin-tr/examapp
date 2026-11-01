@@ -119,13 +119,28 @@ describe('QuestionCanvasNumberLineComponent (#588)', () => {
     expect(poolCard('k1')).not.toBeNull();
   });
 
-  it('secondTapOnPlacedCardReturnsItToPool', () => {
+  it('secondTapOnPlacedCardOnlyDeselects_cornerXReturnsItToPool', () => {
     setup({ answer: answer({ k1: 1 }) });
     click(placedCard('k1')!);
     expect((q('nl-return') as HTMLButtonElement).disabled).toBe(false);
     click(placedCard('k1')!);
+    expect(placedCard('k1')).not.toBeNull();
+    expect((q('nl-return') as HTMLButtonElement).disabled).toBe(true);
+    click(q('nl-track')!.querySelector('[data-remove="k1"]')!);
     expect(poolCard('k1')).not.toBeNull();
     expect(last()).toEqual({});
+  });
+
+  it('focusFollowsCardAcrossTicks', async () => {
+    setup({ answer: answer({ k1: 2 }) });
+    placedCard('k1')!.focus();
+    placedCard('k1')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(document.activeElement).toBe(placedCard('k1'));
+    document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    fixture.detectChanges();
+    expect(last()).toEqual({ k1: 4 });
   });
 
   it('returnButtonAndReset', () => {

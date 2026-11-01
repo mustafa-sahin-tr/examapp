@@ -602,6 +602,7 @@
         "resultOk": "The graph is right!",
         "resultPartial": "{{ok}} of {{total}} bars are right; check the red ones again.",
         "solutionShown": "The correct graph is shown.",
+        "solutionCompare": "Your graph is shown: correct columns are green, wrong ones red; the dashed green line shows the correct value.",
         "hintDot": "Tap the height a column should reach to stack that many dots; tapping the top dot removes it. With the keyboard, ↑ / ↓ adds or removes one dot. Grey dots are already drawn."
       },
       "gridDraw": {

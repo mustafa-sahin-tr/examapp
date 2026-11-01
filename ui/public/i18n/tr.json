@@ -602,6 +602,7 @@
         "resultOk": "Grafik doğru!",
         "resultPartial": "{{total}} sütundan {{ok}} tanesi doğru; kırmızıları yeniden kontrol et.",
         "solutionShown": "Grafiğin doğru hâli gösteriliyor.",
+        "solutionCompare": "Senin grafiğin gösteriliyor: doğru sütunlar yeşil, yanlışlar kırmızı; kesikli yeşil çizgi doğru değeri gösteriyor.",
         "hintDot": "Bir sütunda kaç nokta olacaksa o yüksekliğe dokun; en üstteki noktaya dokunursan o nokta kalkar. Klavyede ↑ / ↓ ile bir nokta ekle ya da çıkar. Gri noktalar hazır çizilmiştir."
       },
       "gridDraw": {

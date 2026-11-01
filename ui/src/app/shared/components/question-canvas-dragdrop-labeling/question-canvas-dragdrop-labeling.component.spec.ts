@@ -340,12 +340,21 @@ describe('QuestionCanvasDragDropLabelingComponent (#545)', () => {
         expect(zone('z1').querySelector('.dd-zone__mark')).toBeNull();
     });
 
-    it('showSolution_DisplaysSolutionReadOnly_TogglingBackRestoresOwnAnswer', () => {
+    it('showSolution_WithoutAnswer_DisplaysSolution', () => {
+        setup({ activityMode: true, showSolution: true });
+        expect(zone('z1').querySelector('.dd-chip')?.textContent?.trim()).toBe('Kalp');
+        expect(zone('z1').classList.contains('is-solution')).toBe(true);
+        expect(zone('z1').querySelector('[data-zone-target]')).toBeNull();
+    });
+
+    it('showSolution_ComparesOwnAnswerReadOnly_TogglingBackRestoresOwnAnswer', () => {
         setup({ activityMode: true, answer: SWAPPED, showSolution: true });
 
-        expect(zone('z1').querySelector('.dd-chip')?.textContent?.trim()).toBe('Kalp');
-        expect(zone('z2').querySelector('.dd-chip')?.textContent?.trim()).toBe('Beyin');
-        expect(zone('z1').classList.contains('is-solution')).toBe(true);
+        // #679: öğrencinin (ters) yerleşimi kalır, hedefler kırmızı ve altında doğru etiket.
+        expect(zone('z1').querySelector('.dd-chip')?.textContent?.trim()).toBe('Beyin');
+        expect(zone('z1').classList.contains('is-incorrect')).toBe(true);
+        expect(zone('z1').querySelector('[data-zone-target]')?.textContent).toContain('Kalp');
+        expect(zone('z2').querySelector('[data-zone-target]')?.textContent).toContain('Beyin');
         expect(zone('z1').querySelector('.dd-chip')?.getAttribute('tabindex')).toBeNull();
         const emitted = collect();
         (zone('z1').querySelector('.dd-chip') as HTMLElement).click();

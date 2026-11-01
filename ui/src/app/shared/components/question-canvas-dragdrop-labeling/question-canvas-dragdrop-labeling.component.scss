@@ -252,3 +252,22 @@
     min-height: 44px;
   }
 }
+
+/* #679 çözüm karşılaştırması: yanlış / boş hedefin doğru etiketi — hedefin altında kesikli yeşil. */
+.dd-zone__target-hint {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 3;
+  margin-top: 2px;
+  padding: 0 6px;
+  border: 1px dashed var(--ms-success-text);
+  border-radius: 6px;
+  background: var(--ms-success-surface);
+  color: var(--ms-success-text);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
+  pointer-events: none;
+}

@@ -54,7 +54,7 @@ export interface MatchLine {
   y1: number;
   x2: number;
   y2: number;
-  kind: 'example' | 'own' | 'solution';
+  kind: 'example' | 'own' | 'solution' | 'missed';
   mark: MatchMark;
 }
 
@@ -200,16 +200,28 @@ export class QuestionCanvasMatchComponent {
   private readonly leftIndex = computed(() => new Map(this.left().map((item, i) => [item.id, i])));
   private readonly rightIndex = computed(() => new Map(this.right().map((item, i) => [item.id, i])));
 
-  /** Ekranda bağlı görünen çiftler: örnek çift + (çözüm açıkken doğru, değilse öğrencinin) eşleşmeler. */
+  /** #679: çözüm açık ve öğrenci eşleştirmiş — öğrencinin çizgileri yeşil / kırmızı, yanlış ya da eksik eşin doğrusu kesikli yeşil. */
+  readonly compare = computed(() => this._showSolution() && !!this._solutionJson() && Object.keys(this.pairs()).length > 0);
+
+  /** Ekranda bağlı görünen çiftler: örnek çift + öğrencinin (karşılaştırmada da) eşleşmeleri; çözüm açık ama eşleşme yoksa doğrular. */
   readonly displayPairs = computed<DisplayPair[]>(() => {
     const prelinked = this._plan()?.prelinked ?? [];
-    const own = this._showSolution() ? this.solution() : this.pairs();
-    const kind: DisplayPair['kind'] = this._showSolution() ? 'solution' : 'own';
+    const compare = this.compare();
+    const solutionOnly = this._showSolution() && !compare;
+    const own = solutionOnly ? this.solution() : this.pairs();
+    const kind: DisplayPair['kind'] = solutionOnly ? 'solution' : 'own';
+    const missed = compare
+      ? this.left()
+          .filter((item) => !Object.hasOwn(this.prelinkedMap(), item.id))
+          .map((item) => ({ leftId: item.id, rightId: rightOf(this.solution(), item.id) ?? '', kind: 'missed' as const }))
+          .filter((p) => !!p.rightId && rightOf(this.pairs(), p.leftId) !== p.rightId)
+      : [];
     return [
       ...prelinked.map((p) => ({ ...p, kind: 'example' as const })),
       ...this.left()
         .map((item) => ({ leftId: item.id, rightId: rightOf(own, item.id) ?? '', kind }))
         .filter((p) => !!p.rightId),
+      ...missed,
     ];
   });
 
@@ -222,8 +234,11 @@ export class QuestionCanvasMatchComponent {
     const solution = this.solution();
     const pairs = this.pairs();
     const prelinked = this.prelinkedMap();
+    const compare = this.compare();
     return (leftId: string): MatchMark => {
-      if (showSolution || Object.hasOwn(prelinked, leftId)) return null;
+      if (Object.hasOwn(prelinked, leftId)) return null;
+      if (compare) return rightOf(pairs, leftId) === rightOf(solution, leftId) ? 'correct' : 'wrong';
+      if (showSolution) return null;
       if (feedback) {
         if (!feedback.has(leftId)) return null;
         return feedback.get(leftId) ? 'correct' : 'wrong';
@@ -239,7 +254,7 @@ export class QuestionCanvasMatchComponent {
     this.i18nTick();
     const announcement = this.announcement();
     if (announcement) return announcement;
-    if (this._showSolution()) return this.t('solutionShownHint');
+    if (this._showSolution()) return this.t(this.compare() ? 'solutionCompareHint' : 'solutionShownHint');
     const selection = this.selected();
     if (selection) {
       return this.t(selection.side === 'left' ? 'hintPickRight' : 'hintPickLeft', { item: this.itemText(selection.side, selection.id) });

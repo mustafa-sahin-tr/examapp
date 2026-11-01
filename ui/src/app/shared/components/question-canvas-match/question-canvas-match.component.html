@@ -21,9 +21,10 @@
       <svg class="mt-lines" aria-hidden="true" data-testid="mt-lines"
         [attr.width]="boardSize().width" [attr.height]="boardSize().height"
         [attr.viewBox]="'0 0 ' + boardSize().width + ' ' + boardSize().height">
-        @for (line of lines(); track line.leftId) {
+        @for (line of lines(); track line.leftId + ':' + line.kind) {
           <line class="mt-line" [attr.x1]="line.x1" [attr.y1]="line.y1" [attr.x2]="line.x2" [attr.y2]="line.y2"
             [class.mt-line--example]="line.kind === 'example'" [class.mt-line--solution]="line.kind === 'solution'"
+            [class.mt-line--missed]="line.kind === 'missed'"
             [class.mt-line--correct]="line.mark === 'correct'" [class.mt-line--wrong]="line.mark === 'wrong'"
             [attr.data-line]="line.leftId + ':' + line.rightId" />
           <circle class="mt-dot" [attr.cx]="line.x1" [attr.cy]="line.y1" r="4"

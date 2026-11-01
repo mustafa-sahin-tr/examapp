@@ -44,7 +44,10 @@
             </span>
           }
         </div>
-        @if (mark === 'wrong') {
+        @if (compare() && mark === 'wrong') {
+          <span class="dp-target-hint" [attr.data-target-hint]="cardId">{{ cardTarget(cardId) }}</span>
+        }
+        @if (mark === 'wrong' && !compare()) {
           <button type="button" class="dp-return" [class.dp-return--icon]="compact" data-testid="return-to-pool"
             [attr.data-return]="target.id + ':' + cardId" [disabled]="locked()"
             [attr.aria-label]="t('dragPlace.returnToPoolAria', { card: cardText(cardId) })"
@@ -202,6 +205,9 @@
                   <span class="dp-seq-item__card">
                     <ng-container *ngTemplateOutlet="cardBody; context: { $implicit: cardId, compact: true }" />
                   </span>
+                  @if (compare() && mark === 'wrong') {
+                    <span class="dp-target-hint" [attr.data-target-hint]="cardId">{{ cardTarget(cardId) }}</span>
+                  }
                   @if (mark) {
                     <span class="dp-mark dp-mark--inline" [class.dp-mark--wrong]="mark === 'wrong'" [attr.data-mark]="i + ':' + cardId">
                       <mat-icon aria-hidden="true">{{ mark === 'correct' ? 'check' : 'close' }}</mat-icon>
@@ -250,7 +256,8 @@
         [cdkDropListConnectedTo]="poolConnectedTo()" [cdkDropListSortingDisabled]="true"
         [cdkDropListDisabled]="locked()" (cdkDropListDropped)="onDrop($event)" data-testid="dp-pool">
         @for (c of poolCards(); track c.id) {
-          <div class="dp-card" [class.is-selected]="isSelected(c.id)"
+          @let pm = poolMark(c.id);
+          <div class="dp-card" [class.is-selected]="isSelected(c.id)" [class.is-correct]="pm === 'correct'" [class.is-wrong]="pm === 'wrong'"
             cdkDrag [cdkDragData]="dragData(c.id, 'pool')" [cdkDragDisabled]="dragDisabled()"
             (cdkDragStarted)="onDragStarted()" (cdkDragEnded)="onDragEnded()"
             role="button" [attr.tabindex]="locked() ? null : 0" [attr.aria-disabled]="locked() ? 'true' : null"
@@ -259,6 +266,9 @@
             [attr.data-card]="c.id"
             (click)="onPoolCard(c.id, $event)" (keydown.enter)="onPoolCard(c.id, $event)" (keydown.space)="onPoolCard(c.id, $event)">
             <ng-container *ngTemplateOutlet="cardBody; context: { $implicit: c.id, compact: false }" />
+            @if (pm === 'wrong') {
+              <span class="dp-target-hint" [attr.data-target-hint]="c.id">{{ cardTarget(c.id) }}</span>
+            }
           </div>
         } @empty {
           <span class="dp-pool__empty">{{ t('dragPlace.poolEmpty') }}</span>

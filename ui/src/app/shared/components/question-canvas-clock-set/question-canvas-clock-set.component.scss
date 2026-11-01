@@ -189,3 +189,24 @@
   margin: 0;
   color: var(--ms-text-medium);
 }
+
+/* #679 çözüm karşılaştırması: doğru saatin kesikli elleri + başlıkta doğru saat. */
+.cs-ghost line {
+  stroke: var(--ms-success-text);
+  stroke-dasharray: 5 4;
+  stroke-linecap: round;
+  fill: none;
+}
+
+.cs-ghost__hour {
+  stroke-width: 5;
+}
+
+.cs-ghost__minute {
+  stroke-width: 3;
+}
+
+.cs-caption__target {
+  color: var(--ms-success-text);
+  font-weight: 600;
+}

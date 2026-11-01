@@ -15,7 +15,7 @@
   }
 
   @if (plan(); as p) {
-    <div class="bs-scale" data-testid="bs-scale" [attr.data-tilt]="tilt()" [style.--bs-tilt]="tiltDeg() + 'deg'" [style.--bs-drop]="tiltDeg() * 2.9 + 'px'">
+    <div class="bs-scale" data-testid="bs-scale" [class.is-ok]="compareOk() === true" [class.is-bad]="compareOk() === false" [attr.data-tilt]="tilt()" [style.--bs-tilt]="tiltDeg() + 'deg'" [style.--bs-drop]="tiltDeg() * 2.9 + 'px'">
       <span class="bs-sr" aria-live="polite" data-testid="bs-tilt-status">{{ t('tilt.' + tilt()) }}</span>
       <div class="bs-beam" aria-hidden="true"></div>
       <div class="bs-post" aria-hidden="true"></div>
@@ -89,6 +89,9 @@
   }
 
   @if (solutionShown()) {
-    <p class="bs-hint" data-testid="bs-solution-hint">{{ t('solutionShown') }}</p>
+    @if (exampleText(); as ex) {
+      <p class="bs-example" data-testid="bs-example">{{ t('example', { arrangement: ex }) }}</p>
+    }
+    <p class="bs-hint" data-testid="bs-solution-hint">{{ t(compare() ? 'solutionCompare' : 'solutionShown') }}</p>
   }
 </div>

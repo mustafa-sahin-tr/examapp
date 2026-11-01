@@ -19,10 +19,11 @@ import {
 import { StorageImageRetryDirective } from '../../directives/storage-image-retry.directive';
 import { StorageImageResolver } from '../../utils/storage-image-refresh.util';
 
-/** Doğrunun üstündeki bir çentikte duran kartlar. */
+/** Doğrunun üstündeki bir çentikte duran kartlar; `ghosts` çözüm karşılaştırmasında o çentiğe ait olup başka yere konmuş kartlar. */
 interface TickStack {
   at: number;
   cards: NumberLineCard[];
+  ghosts: NumberLineCard[];
 }
 
 /**
@@ -113,25 +114,48 @@ export class QuestionCanvasNumberLineComponent {
   readonly readOnly = computed(() => this._showSolution() || this._disabled());
   readonly feedbackState = this._feedback.asReadonly();
 
-  /** Çizilen yerleşim: çözüm açıkken hedefler, değilse öğrencinin. */
-  readonly shown = computed<NumberLinePlacement>(() => {
+  /** Çözümün hedef çentikleri (çeldirici null); çözüm kapalıyken null. */
+  private readonly targets = computed(() => {
     const plan = this._plan();
-    if (!plan) return {};
-    return this._showSolution() ? solutionPlacement(parseNumberLineSolution(this._solutionJson(), plan)) : this.placement();
+    return plan && this._showSolution() ? parseNumberLineSolution(this._solutionJson(), plan) : null;
+  });
+  /** #679: çözüm açık ve öğrenci kart koymuş — kartlar öğrencinin yerinde yeşil / kırmızı, yanlışların doğru yeri kesikli. */
+  readonly compare = computed(() => this.targets() !== null && Object.keys(this.placement()).length > 0);
+
+  /** Çizilen yerleşim: öğrencinin (karşılaştırmada da); çözüm açık ama kart yoksa hedefler. */
+  readonly shown = computed<NumberLinePlacement>(() => {
+    const targets = this.targets();
+    return targets && !this.compare() ? solutionPlacement(targets) : this.placement();
+  });
+  /** Karşılaştırmada kartın durumu: hedefli kart tolerans içinde, çeldirici doğruda değilse doğru. */
+  private readonly compareStates = computed(() => {
+    const plan = this._plan();
+    const targets = this.targets();
+    const states = new Map<string, boolean>();
+    if (!plan || !targets || !this.compare()) return states;
+    for (const card of plan.cards) {
+      const target = targets[card.id] ?? null;
+      const at = this.placement()[card.id];
+      states.set(card.id, target === null ? at === undefined : at !== undefined && Math.abs(at - target) <= plan.tolerance);
+    }
+    return states;
   });
   readonly pool = computed(() => (this._plan()?.cards ?? []).filter((c) => !Object.hasOwn(this.shown(), c.id)));
   readonly stacks = computed<TickStack[]>(() => {
     const plan = this._plan();
     if (!plan) return [];
-    const byTick = new Map<number, NumberLineCard[]>();
+    const byTick = new Map<number, TickStack>();
+    const at = (tick: number) => byTick.get(tick) ?? byTick.set(tick, { at: tick, cards: [], ghosts: [] }).get(tick)!;
+    const targets = this.targets();
     for (const card of plan.cards) {
-      const at = this.shown()[card.id];
-      if (at === undefined) continue;
-      byTick.set(at, [...(byTick.get(at) ?? []), card]);
+      const placed = this.shown()[card.id];
+      if (placed !== undefined) at(placed).cards.push(card);
+      const target = targets?.[card.id] ?? null;
+      if (target !== null && this.compareStates().get(card.id) === false) at(target).ghosts.push(card);
     }
-    return [...byTick.entries()].sort((a, b) => a[0] - b[0]).map(([at, cards]) => ({ at, cards }));
+    return [...byTick.values()].sort((a, b) => a.at - b.at);
   });
-  readonly tallest = computed(() => Math.max(1, ...this.stacks().map((s) => s.cards.length)));
+  readonly tallest = computed(() => Math.max(1, ...this.stacks().map((s) => s.cards.length + s.ghosts.length)));
   /** Çizilen (ve klavyeyle seçilebilen) çentikler: gizliyse yalnız etiketliler. */
   readonly ticks = computed(() => {
     const plan = this._plan();
@@ -168,7 +192,7 @@ export class QuestionCanvasNumberLineComponent {
   }
 
   cardState(id: string): 'ok' | 'bad' | null {
-    const mark = this.rowMarks().get(id);
+    const mark = this.compare() ? this.compareStates().get(id) : this.rowMarks().get(id);
     return mark === undefined ? null : mark ? 'ok' : 'bad';
   }
 

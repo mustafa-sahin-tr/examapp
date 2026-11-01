@@ -44,6 +44,13 @@
                   dominant-baseline="central">{{ num.n }}</text>
               }
             }
+            @if (face.ghost; as g) {
+              <!-- #679: yanlış kurulmuş saatin doğru hâli — kesikli eller, öğrencinin ellerinin altında. -->
+              <g class="cs-ghost" [attr.data-testid]="'cs-ghost-' + face.clock.id" aria-hidden="true">
+                <line class="cs-ghost__hour" x1="100" y1="100" x2="100" y2="52" [attr.transform]="'rotate(' + hourDeg(g) + ' 100 100)'" />
+                <line class="cs-ghost__minute" x1="100" y1="100" x2="100" y2="20" [attr.transform]="'rotate(' + minuteDeg(g) + ' 100 100)'" />
+              </g>
+            }
             <g class="cs-hand cs-hand--hour" data-hand="hour" [class.is-active]="activeHand() === 'hour' && !face.fixed && !readOnly()"
               [attr.transform]="'rotate(' + hourDeg(face.hands) + ' 100 100)'"
               [attr.tabindex]="face.fixed || readOnly() ? null : 0" [attr.role]="face.fixed ? null : 'slider'"
@@ -72,6 +79,9 @@
             @if (face.fixed) {
               <span class="cs-caption__fixed">{{ t('fixed') }}</span>
             }
+            @if (face.ghost; as g) {
+              <span class="cs-caption__target" [attr.data-testid]="'cs-target-' + face.clock.id">{{ t('targetTime', { time: targetText(g) }) }}</span>
+            }
             @if (face.result !== null) {
               <mat-icon class="cs-caption__result" [attr.data-testid]="'cs-result-' + face.clock.id"
                 [attr.aria-label]="face.result ? t('correct') : t('wrong')">{{ face.result ? 'check_circle' : 'cancel' }}</mat-icon>
@@ -94,6 +104,6 @@
   }
 
   @if (solutionShown()) {
-    <p class="cs-hint" data-testid="cs-solution-hint">{{ t('solutionShown') }}</p>
+    <p class="cs-hint" data-testid="cs-solution-hint">{{ t(compare() ? 'solutionCompare' : 'solutionShown') }}</p>
   }
 </div>

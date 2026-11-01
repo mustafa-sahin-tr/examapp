@@ -101,6 +101,23 @@ describe('QuestionCanvasClockSetComponent (#634)', () => {
     expect(last()).toEqual({});
   });
 
+  it('solution compares the student clock: wrong clock red with dashed target hands', () => {
+    setup({ answer: JSON.stringify({ version: 1, type: 'clockSet', clocks: { c1: { h: 135, m: 15 } } }), showSolution: true });
+    // Öğrencinin elleri kalır (2.15), doğrusu 10.00 kesikli.
+    expect(rotation('cs-hour-c1')).toBe('rotate(67.5 100 100)');
+    expect(el().querySelector('[data-clock="c1"]')!.classList).toContain('is-bad');
+    expect(q('cs-ghost-c1')).not.toBeNull();
+    expect(q('cs-target-c1')!.textContent).toContain('10:00');
+    expect(q('cs-ghost-c0')).toBeNull();
+    expect(q('cs-solution-hint')!.textContent).toContain('kesikli');
+  });
+
+  it('solution compare: correct clock green without ghost', () => {
+    setup({ answer: JSON.stringify({ version: 1, type: 'clockSet', clocks: { c1: { h: 600, m: 0 } } }), showSolution: true });
+    expect(el().querySelector('[data-clock="c1"]')!.classList).toContain('is-ok');
+    expect(q('cs-ghost-c1')).toBeNull();
+  });
+
   it('solution shows target hands and is read-only', () => {
     setup({ showSolution: true });
     expect(rotation('cs-hour-c1')).toBe('rotate(300 100 100)');

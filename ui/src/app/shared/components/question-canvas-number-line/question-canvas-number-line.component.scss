@@ -302,3 +302,14 @@
     pointer-events: auto;
   }
 }
+
+/* #679 çözüm karşılaştırması: yanlış yere konmuş (ya da konmamış) kartın doğru yeri — kesikli yeşil hayalet kart. */
+.nl-card--ghost {
+  display: inline-flex;
+  align-items: center;
+  border-style: dashed;
+  border-color: var(--ms-success-text);
+  background: transparent;
+  color: var(--ms-success-text);
+  cursor: default;
+}

@@ -47,6 +47,11 @@
                   }
                 </span>
               }
+              @for (card of stack.ghosts; track card.id) {
+                <span class="nl-card nl-card--ghost" [attr.data-ghost]="card.id" [attr.aria-label]="t('ghostAria', { card: card.label, tick: tickAria(stack.at) })">
+                  {{ card.label }}
+                </span>
+              }
             </div>
           }
         </div>
@@ -93,6 +98,6 @@
   }
 
   @if (solutionShown()) {
-    <p class="nl-hint" data-testid="nl-solution-hint">{{ t('solutionShown') }}</p>
+    <p class="nl-hint" data-testid="nl-solution-hint">{{ t(compare() ? 'solutionCompare' : 'solutionShown') }}</p>
   }
 </div>

@@ -132,6 +132,14 @@
     stroke: var(--ms-danger-border);
   }
 
+  // #679: öğrencinin bulamadığı kelimenin yeri — kesikli yeşil.
+  &.is-missed {
+    stroke: var(--ms-success-border);
+    stroke-width: 0.12;
+    stroke-opacity: 1;
+    stroke-dasharray: 0.3 0.2;
+  }
+
   &.is-preview {
     stroke: var(--ms-action-border-focus);
     stroke-opacity: 0.25;

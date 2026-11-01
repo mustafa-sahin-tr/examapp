@@ -76,15 +76,19 @@
                 @for (category of group.cols; track category.id) {
                   @for (option of category.items; track option.id; let first = $first) {
                     @let m = mark(item.id, option.id);
+                    @let cmp = top ? compareCell(item.id, category.id, option.id) : null;
                     <td class="lg-td" [class.is-block-start]="first"
                       [class.is-pair-ok]="top && pairState(item.id, category.id) === 'ok'"
                       [class.is-pair-bad]="top && pairState(item.id, category.id) === 'bad'">
                       <button type="button" class="lg-cell" [attr.data-cell]="item.id + ':' + option.id"
-                        [class.is-yes]="m === 'yes'" [class.is-no]="m === 'no'"
+                        [class.is-yes]="m === 'yes'" [class.is-no]="m === 'no'" [class.is-hit]="cmp === 'hit'"
+                        [class.is-wrong]="cmp === 'wrong'" [class.is-missed]="cmp === 'missed'"
                         [class.is-conflict]="conflictCells().has(item.id + ':' + option.id)" [disabled]="readOnly()"
                         [attr.aria-label]="cellAria(item.label, option.label, m)" (click)="cycle(item.id, option.id)">
                         @if (m === 'yes') {
                           <mat-icon aria-hidden="true">check</mat-icon>
+                        } @else if (cmp === 'missed') {
+                          <mat-icon aria-hidden="true">check</mat-icon><span class="lg-sr">{{ t('missedAria') }}</span>
                         } @else if (m === 'no') {
                           <mat-icon aria-hidden="true">close</mat-icon>
                         }
@@ -139,7 +143,11 @@
                 @for (category of p.categories; track category.id; let ci = $index) {
                   <td [attr.data-summary]="row.subject.id + ':' + category.id"
                     [class.is-pair-ok]="pairState(row.subject.id, category.id) === 'ok'"
-                    [class.is-pair-bad]="pairState(row.subject.id, category.id) === 'bad'">{{ row.values[ci] }}</td>
+                    [class.is-pair-bad]="pairState(row.subject.id, category.id) === 'bad'">{{ row.values[ci] }}
+                    @if (summaryTarget(row.subject.id, category.id); as target) {
+                      <span class="lg-summary__target" [attr.data-summary-target]="row.subject.id + ':' + category.id">{{ t('targetValue', { value: target }) }}</span>
+                    }
+                  </td>
                 }
               </tr>
             }
@@ -164,6 +172,6 @@
   }
 
   @if (solutionShown() && !authoringMode()) {
-    <p class="lg-hint" data-testid="lg-solution-hint">{{ t('solutionShown') }}</p>
+    <p class="lg-hint" data-testid="lg-solution-hint">{{ t(compare() ? 'solutionCompare' : 'solutionShown') }}</p>
   }
 </div>

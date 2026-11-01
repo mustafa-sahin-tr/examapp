@@ -25,10 +25,12 @@
             @for (cell of row; track cell.key) {
               @if (cell.white) {
                 <div class="cw-cell" role="gridcell" [class.is-active]="activeCells().has(cell.key)"
-                  [class.is-ok]="cellMarks().get(cell.key) === 'ok'" [class.is-bad]="cellMarks().get(cell.key) === 'bad'"
-                  [class.is-fixed]="fixedCells().has(cell.key)">
+                  [class.is-ok]="cellMarks().get(cell.key) === 'ok'" [class.is-bad]="cellMarks().get(cell.key) === 'bad'">
                   @if (cell.number !== null) {
                     <span class="cw-cell__num" aria-hidden="true">{{ cell.number }}</span>
+                  }
+                  @if (targetLetter(cell); as target) {
+                    <span class="cw-cell__target" [attr.data-target]="cell.key" [attr.aria-label]="t('targetAria', { letter: target })">{{ target }}</span>
                   }
                   <input class="cw-cell__input" type="text" inputmode="text" autocomplete="off" autocapitalize="characters"
                     spellcheck="false" maxlength="2" [attr.data-cell]="cell.key" [value]="letter(cell)"
@@ -95,6 +97,6 @@
   }
 
   @if (solutionShown()) {
-    <p class="cw-hint" data-testid="cw-solution-hint">{{ t('solutionShown') }}</p>
+    <p class="cw-hint" data-testid="cw-solution-hint">{{ t(compare() ? 'solutionCompare' : 'solutionShown') }}</p>
   }
 </div>

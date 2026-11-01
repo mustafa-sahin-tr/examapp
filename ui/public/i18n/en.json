@@ -486,7 +486,9 @@
         "clueWrong": "wrong",
         "resultOk": "All words are correct!",
         "resultPartial": "{{ok}} of {{total}} words are correct; check the red words again.",
-        "solutionShown": "The correct letters are shown; red letters are where you wrote something else."
+        "solutionShown": "The correct letters are shown; red letters are where you wrote something else.",
+        "targetAria": "correct: {{letter}}",
+        "solutionCompare": "Your puzzle is shown: correct letters green, wrong or empty cells red; the correct letter is in green at the bottom-right of the cell."
       },
       "wordSearch": {
         "passageAlt": "Reading passage image",
@@ -504,7 +506,8 @@
         "notFound": "not found",
         "resultOk": "You found all the words!",
         "resultPartial": "You found {{ok}} of {{total}} words; red selections are not words.",
-        "solutionShown": "The words are marked with green lines."
+        "solutionShown": "The words are marked with green lines.",
+        "solutionCompare": "Your lines are shown: lines that found a word are green, others red; a dashed green line shows where a word you missed is."
       },
       "logicGrid": {
         "passageAlt": "Reading passage image",
@@ -518,6 +521,9 @@
         "resultOk": "The whole grid is correct!",
         "resultPartial": "{{ok}} of {{total}} matches are correct; check the red rows again.",
         "solutionShown": "The correct matches are shown with ✓.",
+        "missedAria": "correct answer (not marked)",
+        "targetValue": "correct: {{value}}",
+        "solutionCompare": "Your table is shown: correct ✓ green, wrong ✓ red; a dashed green ✓ shows a correct answer you did not mark. The answer table shows the correct value under wrong cells.",
         "hintSingle": "Tap a cell: first ✓, then ✗, then empty. Each row and column allows only one ✓.",
         "shuffle": "Shuffle the options of “{{name}}”",
         "moveLeft": "Move “{{name}}” left",

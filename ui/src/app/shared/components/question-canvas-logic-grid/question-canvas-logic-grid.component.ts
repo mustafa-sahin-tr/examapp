@@ -22,6 +22,7 @@ import {
   solutionMarks,
   staircase,
   summaryRows,
+  ticks,
   withAutoCrosses,
 } from '../../../models/logic-grid';
 import { StorageImageRetryDirective } from '../../directives/storage-image-retry.directive';
@@ -128,10 +129,13 @@ export class QuestionCanvasLogicGridComponent {
     const plan = this._plan();
     return plan ? staircase(plan) : [];
   });
-  /** Gösterilen işaretler: çözüm açıkken çözümünkiler (karalama blokları dahil), değilse öğrencinin. */
+  /** #679: çözüm açık ve öğrenci işaret koymuş — öğrencinin tablosu kalır, üst blokta doğru / yanlış / kaçırılan hücre işaretli. */
+  readonly compare = computed(() => this._showSolution() && !this._authoring() && countMarks(this.marks()) > 0);
+
+  /** Gösterilen işaretler: çözüm açıkken (cevap yoksa) çözümünkiler (karalama blokları dahil), değilse öğrencinin. */
   readonly shownMarks = computed<LogicMarks>(() => {
     const plan = this._plan();
-    if (!plan || !(this._showSolution() || this._authoring())) return this.marks();
+    if (!plan || this.compare() || !(this._showSolution() || this._authoring())) return this.marks();
     const marks = solutionMarks(plan, this.solution());
     for (const group of staircase(plan).slice(1)) {
       for (const category of group.cols) {
@@ -152,13 +156,41 @@ export class QuestionCanvasLogicGridComponent {
     const plan = this._plan();
     return plan && !this._showSolution() ? conflicts(plan, this.marks()) : new Set<string>();
   });
-  readonly pairMarks = computed(() => new Map((this._feedback()?.rows ?? []).map((r) => [r.id, r.correct])));
+  readonly pairMarks = computed(() => {
+    const plan = this._plan();
+    if (!plan || !this.compare()) return new Map((this._feedback()?.rows ?? []).map((r) => [r.id, r.correct]));
+    // Karşılaştırma: kontrolcü gibi — kategoride tek ✓ ve doğru seçenek.
+    const out = new Map<string, boolean>();
+    for (const subject of plan.subject.items) {
+      for (const category of plan.categories) {
+        const picks = ticks(plan, this.marks(), subject.id, category.id);
+        out.set(pairKey(subject.id, category.id), picks.length === 1 && picks[0] === this.solution()[subject.id]?.[category.id]);
+      }
+    }
+    return out;
+  });
   readonly correctCount = computed(() => [...this.pairMarks().values()].filter(Boolean).length);
   readonly canReset = computed(() => !this.readOnly() && countMarks(this.marks()) > 0);
 
   /** Hücrede gösterilen işaret: çözüm açıkken doğru eşleşme ✓, değilse öğrencinin işareti. */
   mark(row: string, col: string): LogicMark | null {
     return markOf(this.shownMarks(), row, col);
+  }
+
+  /** Karşılaştırmada üst bloğun hücresi: doğru ✓ (hit), yanlış ✓ (wrong), ✓ konmamış doğru seçenek (missed). */
+  compareCell(row: string, categoryId: string, option: string): 'hit' | 'wrong' | 'missed' | null {
+    if (!this.compare()) return null;
+    const yes = markOf(this.marks(), row, option) === 'yes';
+    if (this.solution()[row]?.[categoryId] === option) return yes ? 'hit' : 'missed';
+    return yes ? 'wrong' : null;
+  }
+
+  /** Karşılaştırmada yanlış özet hücresinin doğrusu (etiket); değilse null. */
+  summaryTarget(row: string, categoryId: string): string | null {
+    const plan = this._plan();
+    if (!plan || !this.compare() || this.pairMarks().get(pairKey(row, categoryId)) !== false) return null;
+    const option = this.solution()[row]?.[categoryId];
+    return plan.categories.find((c) => c.id === categoryId)?.items.find((o) => o.id === option)?.label ?? null;
   }
 
   pairState(row: string, categoryId: string): 'ok' | 'bad' | null {

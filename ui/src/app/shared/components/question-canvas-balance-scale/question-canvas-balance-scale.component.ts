@@ -16,6 +16,7 @@ import {
   panTotals,
   parseBalanceScaleAnswer,
   parseBalanceScalePlan,
+  isBalanced,
   parseBalanceScaleSolution,
   tiltOf,
   weightText,
@@ -111,14 +112,29 @@ export class QuestionCanvasBalanceScaleComponent {
   readonly readOnly = computed(() => this._showSolution() || this._disabled());
   readonly feedbackState = this._feedback.asReadonly();
 
-  /** Çizilen yerleşim: çözüm açıkken kurala uyan bir yerleşim, değilse öğrencinin. */
-  readonly shown = computed<BalancePans>(() => {
+  /** #679: çözüm açık ve öğrenci kefeye ağırlık koymuş — terazide öğrencinin yerleşimi, yanlışsa altında örnek doğru yerleşim. */
+  readonly compare = computed(() => this._showSolution() && this.pans().left.length + this.pans().right.length > 0);
+  private readonly example = computed<BalancePans>(() => {
     const plan = this._plan();
-    if (!plan) return { left: [], right: [] };
-    if (!this._showSolution()) return this.pans();
-    const rule = parseBalanceScaleSolution(this._solutionJson());
-    return (rule && findBalance(plan, rule.useAll)) ?? { left: [], right: [] };
+    const rule = this._showSolution() ? parseBalanceScaleSolution(this._solutionJson()) : null;
+    return (plan && rule && findBalance(plan, rule.useAll)) ?? { left: [], right: [] };
   });
+  /** Karşılaştırmada öğrencinin yerleşimi kurala uyuyor mu; değilse null. */
+  readonly compareOk = computed<boolean | null>(() => {
+    const plan = this._plan();
+    const rule = parseBalanceScaleSolution(this._solutionJson());
+    return plan && rule && this.compare() ? isBalanced(plan, this.pans(), rule.useAll) : null;
+  });
+  /** Yanlış yerleşimin altında gösterilen örnek: "5 kg + 14 kg | 9 kg + 10 kg" (hazır yükler dahil). */
+  readonly exampleText = computed(() => {
+    const plan = this._plan();
+    if (!plan || this.compareOk() !== false) return null;
+    const side = (fixed: BalanceWeight[], ids: string[]) => [...fixed, ...this.cardsFor(ids)].map((w) => this.text(w)).join(' + ') || '—';
+    return `${side(plan.left, this.example().left)} | ${side(plan.right, this.example().right)}`;
+  });
+
+  /** Çizilen yerleşim: öğrencinin (karşılaştırmada da); çözüm açık ama kefeler boşsa kurala uyan bir yerleşim. */
+  readonly shown = computed<BalancePans>(() => (this._showSolution() && !this.compare() ? this.example() : this.pans()));
   readonly pool = computed(() => {
     const used = new Set([...this.shown().left, ...this.shown().right]);
     return (this._plan()?.cards ?? []).filter((c) => !used.has(c.id));

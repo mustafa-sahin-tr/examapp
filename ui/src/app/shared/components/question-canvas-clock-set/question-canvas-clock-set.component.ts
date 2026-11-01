@@ -10,6 +10,8 @@ import {
   ClockHands,
   ClockSetPlanV1,
   buildClockSetPayload,
+  clockMatches,
+  formatClockTime,
   handsFor,
   hourAngle,
   minuteAngle,
@@ -140,24 +142,34 @@ export class QuestionCanvasClockSetComponent {
     };
   });
 
-  /** Çizilen eller: sabit saatte sabit, çözüm açıkken hedef, değilse öğrencinin (kurulmamış = 12.00). */
+  /** #679: çözüm açık ve öğrenci bir saat kurmuş — öğrencinin elleri yeşil / kırmızı çerçeveyle, yanlışta doğru saat kesikli eller. */
+  readonly compare = computed(() => this._showSolution() && Object.keys(this.answer()).length > 0);
+
+  /** Çizilen eller: sabit saatte sabit, çözüm açıkken (cevap yoksa) hedef, değilse öğrencinin (kurulmamış = 12.00). */
   readonly faces = computed(() => {
     const plan = this._plan();
     if (!plan) return [];
     const solution = this._showSolution() ? parseClockSetSolution(this._solutionJson()) : null;
+    const compare = this.compare();
     const answer = this.answer();
     const feedback = this._feedback();
     return plan.clocks.map((clock, index) => {
       const fixed = clock.fixed != null;
       const target = solution?.[clock.id];
-      const hands = fixed ? handsFor(clock.fixed!) : target != null ? handsFor(target) : (answer[clock.id] ?? START);
+      const own = answer[clock.id];
+      if (compare && !fixed && target != null) {
+        const ok = own != null && clockMatches(own, target);
+        return { clock, number: index + 1, fixed, hands: own ?? START, set: own != null, result: ok, ghost: ok ? null : handsFor(target) };
+      }
+      const hands = fixed ? handsFor(clock.fixed!) : target != null ? handsFor(target) : (own ?? START);
       return {
         clock,
         number: index + 1,
         fixed,
         hands,
-        set: fixed || target != null || answer[clock.id] != null,
+        set: fixed || target != null || own != null,
         result: fixed || !feedback || this._showSolution() ? null : (feedback[clock.id] ?? false),
+        ghost: null as ClockHands | null,
       };
     });
   });
@@ -171,6 +183,11 @@ export class QuestionCanvasClockSetComponent {
   }
 
   /** Akrebin ekran okuyucu değeri: tam saatte "3", arada "3–4". */
+  /** Doğru saat yazısı ("3:45"; 0 → 12). */
+  targetText(hands: ClockHands): string {
+    return formatClockTime(hands.h).replace(/^0/, '');
+  }
+
   hourValueText(hands: ClockHands): string {
     const at = hands.h / 60;
     const low = Math.floor(at) % 12 || 12;

@@ -264,3 +264,27 @@
     color: var(--ms-danger-text);
   }
 }
+
+/* #679 çözüm karşılaştırması: öğrencinin terazisi yeşil / kırmızı çerçeve, yanlışta örnek doğru yerleşim. */
+.bs-scale.is-ok,
+.bs-scale.is-bad {
+  border: 2px dashed transparent;
+  border-radius: 12px;
+}
+
+.bs-scale.is-ok {
+  border-color: var(--ms-success-border, var(--ms-success-text));
+}
+
+.bs-scale.is-bad {
+  border-color: var(--ms-danger-border);
+}
+
+.bs-example {
+  margin: 8px 0 0;
+  padding: 6px 10px;
+  border: 1px dashed var(--ms-success-text);
+  border-radius: 8px;
+  color: var(--ms-success-text);
+  font-weight: 600;
+}

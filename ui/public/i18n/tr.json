@@ -582,6 +582,8 @@
         "pool": "Kartlar",
         "poolEmpty": "Bütün kartlar doğruda.",
         "placedAria": "{{card}}, {{tick}} çentiğinde",
+        "ghostAria": "{{card}} kartının doğru yeri: {{tick}}",
+        "solutionCompare": "Senin yerleştirmen gösteriliyor: doğru kartlar yeşil, yanlışlar kırmızı; kesikli yeşil kart yanlış konan kartın doğru yerini gösteriyor. Havuzda kalan yeşil kartlar doğruya konmamalıydı.",
         "removeAria": "{{card}} kartını havuza geri koy",
         "return": "Havuza geri",
         "reset": "Temizle",
@@ -651,7 +653,9 @@
         "resultTilt": "Terazi dengede değil; {{pan}} kefe ağır basıyor.",
         "resultUnused": "Terazi dengede ama {{n}} ağırlık kullanılmadı; hepsini kullanın.",
         "resultEmpty": "Kefelere ağırlık koyun.",
-        "solutionShown": "Dengeyi sağlayan bir yerleşim gösteriliyor (başka doğru yerleşimler de olabilir)."
+        "solutionShown": "Dengeyi sağlayan bir yerleşim gösteriliyor (başka doğru yerleşimler de olabilir).",
+        "example": "Örnek doğru yerleşim (sol | sağ): {{arrangement}}",
+        "solutionCompare": "Senin yerleşimin gösteriliyor: dengedeyse yeşil, değilse kırmızı çerçeveli; altta örnek bir doğru yerleşim var (başka doğru yerleşimler de olabilir)."
       },
       "clockSet": {
         "passageAlt": "Okuma parçası görseli",
@@ -670,7 +674,9 @@
         "wrong": "Yanlış",
         "reset": "Temizle",
         "hint": "Akrebi ya da yelkovanı seçin, sonra kadrana dokunun ya da eli sürükleyin. Klavyede eli seçip ok tuşlarıyla çevirin.",
-        "solutionShown": "Doğru saatler gösteriliyor."
+        "solutionShown": "Doğru saatler gösteriliyor.",
+        "targetTime": "doğrusu {{time}}",
+        "solutionCompare": "Senin kurduğun saatler gösteriliyor: doğrular yeşil, yanlışlar kırmızı çerçeveli; kesikli yeşil eller doğru saati gösteriyor."
       }
     },
     "sharingBadge": {

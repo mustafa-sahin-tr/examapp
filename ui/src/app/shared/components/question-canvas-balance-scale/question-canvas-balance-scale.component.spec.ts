@@ -148,8 +148,23 @@ describe('QuestionCanvasBalanceScaleComponent (#632)', () => {
     expect(q('bs-result')!.classList).toContain('is-ok');
   });
 
+  it('solutionComparesStudentArrangement_wrongShowsExample', () => {
+    setup({ answer: answer(['k1'], ['k2']), showSolution: true });
+    expect(q('bs-pan-left')!.querySelector('[data-card="k1"]')).not.toBeNull();
+    expect(q('bs-pan-right')!.querySelector('[data-card="k2"]')).not.toBeNull();
+    expect(q('bs-scale')!.classList).toContain('is-bad');
+    expect(q('bs-example')!.textContent).toContain('|');
+    expect(q('bs-solution-hint')!.textContent).toContain('Senin yerleşimin');
+  });
+
+  it('solutionCompare_balancedArrangementGreenWithoutExample', () => {
+    setup({ answer: answer(['k1', 'k4'], ['k2', 'k3']), showSolution: true });
+    expect(q('bs-scale')!.classList).toContain('is-ok');
+    expect(q('bs-example')).toBeNull();
+  });
+
   it('solutionShowsBalancingArrangementReadOnly', () => {
-    setup({ answer: answer(['k1'], []), showSolution: true });
+    setup({ showSolution: true });
     const left = [...q('bs-pan-left')!.querySelectorAll('[data-card]')].map((b) => b.getAttribute('data-card'));
     const right = [...q('bs-pan-right')!.querySelectorAll('[data-card]')].map((b) => b.getAttribute('data-card'));
     expect(left.length + right.length).toBe(4);

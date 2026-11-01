@@ -582,6 +582,8 @@
         "pool": "Cards",
         "poolEmpty": "All cards are on the line.",
         "placedAria": "{{card}}, at tick {{tick}}",
+        "ghostAria": "Correct place of {{card}}: {{tick}}",
+        "solutionCompare": "Your placement is shown: correct cards are green, wrong ones red; a dashed green card shows where a wrong card belongs. Green cards left in the pool should not go on the line.",
         "removeAria": "Return {{card}} to the pool",
         "return": "Back to pool",
         "reset": "Clear",
@@ -651,7 +653,9 @@
         "resultTilt": "The scale is not balanced; the {{pan}} pan is heavier.",
         "resultUnused": "The scale is balanced but {{n}} weights are unused; use all of them.",
         "resultEmpty": "Put weights on the pans.",
-        "solutionShown": "One balancing arrangement is shown (other arrangements may also be correct)."
+        "solutionShown": "One balancing arrangement is shown (other arrangements may also be correct).",
+        "example": "Example correct arrangement (left | right): {{arrangement}}",
+        "solutionCompare": "Your arrangement is shown: framed green if balanced, red if not; an example correct arrangement is below (others may exist)."
       },
       "clockSet": {
         "passageAlt": "Reading passage image",
@@ -670,7 +674,9 @@
         "wrong": "Wrong",
         "reset": "Clear",
         "hint": "Pick the hour or minute hand, then tap the dial or drag the hand. With the keyboard, focus a hand and turn it with the arrow keys.",
-        "solutionShown": "The correct times are shown."
+        "solutionShown": "The correct times are shown.",
+        "targetTime": "correct: {{time}}",
+        "solutionCompare": "Your clocks are shown: correct ones framed green, wrong ones red; the dashed green hands show the correct time."
       }
     },
     "sharingBadge": {

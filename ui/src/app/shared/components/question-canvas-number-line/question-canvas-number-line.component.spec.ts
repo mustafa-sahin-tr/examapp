@@ -180,8 +180,29 @@ describe('QuestionCanvasNumberLineComponent (#588)', () => {
     expect(q('nl-result')!.classList).toContain('is-bad');
   });
 
-  it('solutionShowsTargetsAndKeepsDistractorInPool', () => {
-    setup({ answer: answer({ k3: 4 }), showSolution: true });
+  it('solutionComparesPlacement_ghostAtCorrectTick', () => {
+    // k1 doğru, k2 yanlış çentikte, çeldirici k3 doğruda.
+    setup({ answer: answer({ k1: 1, k2: 3, k3: 4 }), showSolution: true });
+    expect(placedCard('k1')!.classList).toContain('is-ok');
+    expect(placedCard('k2')!.classList).toContain('is-bad');
+    expect(placedCard('k3')!.classList).toContain('is-bad');
+    expect(stack(3)!.querySelector('[data-card="k2"]')).not.toBeNull();
+    expect(stack(2)!.querySelector('[data-ghost="k2"]')).not.toBeNull();
+    expect(el().querySelector('[data-ghost="k1"]')).toBeNull();
+    expect(el().querySelector('[data-ghost="k3"]')).toBeNull();
+    expect(el().querySelector('[data-remove]')).toBeNull();
+    expect(q('nl-solution-hint')!.textContent).toContain('kesikli');
+  });
+
+  it('solutionCompare_unplacedTargetCardRedInPoolWithGhost_distractorInPoolGreen', () => {
+    setup({ answer: answer({ k1: 1 }), showSolution: true });
+    expect(poolCard('k2')!.classList).toContain('is-bad');
+    expect(stack(2)!.querySelector('[data-ghost="k2"]')).not.toBeNull();
+    expect(poolCard('k3')!.classList).toContain('is-ok');
+  });
+
+  it('solutionWithoutAnswerShowsTargetsAndKeepsDistractorInPool', () => {
+    setup({ showSolution: true });
     expect(stack(1)!.textContent).toContain('1/4');
     expect(stack(2)!.textContent).toContain('2/4');
     expect(poolCard('k3')).not.toBeNull();

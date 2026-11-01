@@ -408,6 +408,41 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(JSON.parse(q.interactionSolution)).toEqual({ counts: { p1: 35, p2: 25 } });
   });
 
+  it('sayı doğrusu: bölme katına çıkınca etiket ve kartlar orantılı taşınır, kat değilse yerinde kalır', async () => {
+    await setup({ testId: '9' });
+    component.selectKind('numberLine');
+    component.setLineTickLabel(4, '1/2');
+    component.addLineCard(3);
+    component.selectLineTick(4);
+    fixture.detectChanges();
+
+    // Yazarken ara değer (8 → 1 → 16) taşımaya girmez; alan bırakılınca 8 → 16.
+    const input = el('[data-testid="nl-divisions"]') as HTMLInputElement;
+    input.dispatchEvent(new Event('focus'));
+    for (const value of ['1', '16']) {
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+    }
+    input.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    const nl = component.numberLine()!;
+    expect(nl.labels).toEqual([
+      { at: 0, text: '0' },
+      { at: 8, text: '1/2' },
+      { at: 16, text: '1' },
+    ]);
+    expect(nl.cards.map((c) => c.target)).toEqual(['', '6']);
+    expect(el('[data-testid="nl-rescale"]')?.textContent).toContain('8 bölmeden 16 bölmeye');
+
+    // 16 → 21 tam çentiğe düşmez: yerinde kalır, not gösterilir.
+    input.value = '21';
+    input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(component.numberLine()!.labels.map((l) => l.at)).toEqual([0, 8, 16]);
+    expect(el('[data-testid="nl-rescale"]')?.textContent).toContain('katı olmadığından');
+  });
+
   it('sayı doğrusu: doğrunun üstünde çentiğe dokunup etiket ve kart yazılır, çeldirici ayrı; kaydeder (#588)', async () => {
     await setup({ testId: '9' });
     component.selectKind('numberLine');

@@ -455,6 +455,8 @@
     "divisions": "Number of parts",
     "tolerance": "Tolerance (ticks)",
     "hideTicks": "Hide ticks (only labelled ones are drawn)",
+    "rescaled": "Labels and cards were moved proportionally from {{from}} to {{to}} divisions.",
+    "notRescaled": "{{to}} is not a multiple of {{from}}, so labels and cards kept their tick numbers; move them if needed (e.g. put 1 on the last tick for 0–1).",
     "labelText": "Label",
     "distractor": "distractor",
     "targetInvalid": "off the line",

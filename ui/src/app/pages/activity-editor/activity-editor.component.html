@@ -962,7 +962,8 @@
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
                 <mat-label>{{ t('numberLine.divisions') }}</mat-label>
                 <input matInput type="number" data-testid="nl-divisions" min="1" [max]="lineLimits.maxDivisions" [value]="nl.divisions"
-                  (input)="setLineOption({ divisions: $any($event.target).valueAsNumber })" />
+                  (focus)="beginLineDivisions()" (input)="beginLineDivisions(); setLineOption({ divisions: $any($event.target).valueAsNumber })"
+                  (change)="commitLineDivisions()" />
               </mat-form-field>
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
                 <mat-label>{{ t('numberLine.tolerance') }}</mat-label>
@@ -971,6 +972,11 @@
               </mat-form-field>
               <mat-checkbox [checked]="nl.hideTicks" (change)="setLineOption({ hideTicks: $event.checked })">{{ t('numberLine.hideTicks') }}</mat-checkbox>
             </div>
+            @if (lineRescale(); as r) {
+              <p [class]="r.scaled ? 'ae__hint' : 'ae__warn'" role="status" data-testid="nl-rescale">
+                {{ t(r.scaled ? 'numberLine.rescaled' : 'numberLine.notRescaled', r) }}
+              </p>
+            }
 
             <!-- Yazarlık doğrunun üstünde: çentiğe dokunulur, etiketi ve o çentiğin kartları alttaki panelde yazılır. -->
             <div class="ae__nl-scroll">

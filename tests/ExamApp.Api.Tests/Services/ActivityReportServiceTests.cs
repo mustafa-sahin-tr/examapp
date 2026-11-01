@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Services.Interactions;
@@ -203,4 +204,39 @@ public class ActivityReportServiceTests : IDisposable
         await other.SeedAsync(WorksheetKind.Test);
         (await other.ReportAsync()).ShouldBeNull();
     }
+
+    // issue #684: sayfadan kaldırılan madde, onu çözmüş oturum analizdeyse analizde kalır; kimse çözmediyse düşer.
+    [Fact]
+    public async Task Removed_item_stays_in_report_for_sessions_that_solved_it_issue684()
+    {
+        await SeedAsync();
+        await using (var ctx = _db.NewContext())
+        {
+            var wq = await ctx.TestQuestions.SingleAsync(x => x.Id == _mcqId);
+            wq.IsDeleted = true;
+            await ctx.SaveChangesAsync();
+        }
+
+        var report = (await ReportAsync()).ShouldNotBeNull();
+        report.Questions.Select(q => q.WorksheetQuestionId).ShouldBe(new[] { _dragId, _mcqId, _openId });
+        report.Questions[1].FullyCorrectCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Removed_item_nobody_solved_is_not_in_report_issue684()
+    {
+        await SeedAsync();
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.SetCurrentUser(TeacherUserId);
+            var extra = new Question { Text = "Sonradan", Point = 0 };
+            ctx.Questions.Add(extra);
+            await ctx.SaveChangesAsync();
+            ctx.TestQuestions.Add(new WorksheetQuestion { TestId = _worksheetId, QuestionId = extra.Id, Order = 4, IsDeleted = true });
+            await ctx.SaveChangesAsync();
+        }
+
+        (await ReportAsync()).ShouldNotBeNull().Questions.Select(q => q.WorksheetQuestionId).ShouldBe(new[] { _dragId, _mcqId, _openId });
+    }
+
 }

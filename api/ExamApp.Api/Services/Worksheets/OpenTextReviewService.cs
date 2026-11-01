@@ -206,6 +206,7 @@ public sealed class OpenTextReviewService : IOpenTextReviewService
     {
         var students = _schoolAccessPolicy.ApplyScope(_context.Students.AsNoTracking(), requester);
         var rows = _context.TestInstanceQuestions.AsNoTracking()
+            .WithRemovedWorksheetItems() // issue #684: kaldırılan maddeye verilmiş cevap da değerlendirilir
             .Where(q => q.WorksheetQuestion.Question.InteractionType == OpenTextGrader.Type
                 && q.WorksheetInstance.Worksheet.Kind == WorksheetKind.Activity
                 && students.Any(s => s.Id == q.WorksheetInstance.StudentId));

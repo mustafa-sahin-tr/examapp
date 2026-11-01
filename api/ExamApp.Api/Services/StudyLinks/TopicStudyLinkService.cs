@@ -293,6 +293,7 @@ public class TopicStudyLinkService : ITopicStudyLinkService
         // "Yanlış" = WorksheetScoring.IsWrongRow (issue #571 hibrit kuralı: yanlış şık ya da tamamı doğru olmayan etkileşim
         // cevabı; WorksheetDetailService.CreateWorksheetFromMistakesAsync ile aynı tanım). Boş bırakılan sorular yanlış sayılmaz.
         var wrong = await _context.TestInstanceQuestions.AsNoTracking()
+            .WithRemovedWorksheetItems() // issue #684
             .Where(wiq => wiq.WorksheetInstanceId == testInstanceId)
             .Where(WorksheetScoring.IsWrongRow)
             .Select(wiq => new { wiq.Id, wiq.WorksheetQuestion.QuestionId, wiq.WorksheetQuestion.Order })

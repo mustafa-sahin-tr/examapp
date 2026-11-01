@@ -1,0 +1,87 @@
+<section class="ail" *transloco="let t; prefix: 'worksheet-detail.activity.items'" data-testid="activity-item-list">
+  <header class="ail__head">
+    <h3><span class="dot"></span>{{ t('title') }}</h3>
+    @if (state() === 'loaded') {
+      <span class="ail__chip">{{ t('count', { count: rows().length }) }}</span>
+    }
+  </header>
+
+  @switch (state()) {
+    @case ('loading') {
+      <div role="status" [attr.aria-label]="t('loading')" data-testid="activity-items-loading">
+        <div class="ail__sk"></div>
+        <div class="ail__sk"></div>
+        <div class="ail__sk"></div>
+      </div>
+    }
+    @case ('error') {
+      <div class="ail__state ail__state--error" role="alert" data-testid="activity-items-error">
+        <mat-icon aria-hidden="true">error_outline</mat-icon>
+        <span>{{ t('error') }}</span>
+        <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+      </div>
+    }
+    @case ('loaded') {
+      @if (rows().length === 0) {
+        <div class="ail__state" data-testid="activity-items-empty">
+          <mat-icon aria-hidden="true">playlist_add</mat-icon>
+          <strong>{{ t('emptyTitle') }}</strong>
+          @if (canEdit()) {
+            <span>{{ t('emptyHint') }}</span>
+            <div class="ail__empty-actions">
+              <button mat-flat-button type="button" (click)="addTextItem.emit()" data-testid="activity-items-add-text">
+                <mat-icon>edit_note</mat-icon>{{ t('addTextItem') }}
+              </button>
+              <button mat-stroked-button type="button" (click)="addFromBank.emit()" data-testid="activity-items-add-bank">
+                <mat-icon>library_add</mat-icon>{{ t('addFromBank') }}
+              </button>
+            </div>
+          }
+        </div>
+      } @else {
+        <ol class="ail__list" [attr.aria-label]="t('listLabel')">
+          @for (row of rows(); track row.questionId) {
+            <li class="ail__row" [class.ail__row--busy]="removingId() === row.questionId" data-testid="activity-item-row">
+              <span class="ail__no">{{ row.number }}</span>
+              <span class="ail__thumb" aria-hidden="true">
+                @if (row.imageUrl) {
+                  <img [src]="row.imageUrl" alt="" loading="lazy" />
+                } @else {
+                  Aa
+                }
+              </span>
+              <div class="ail__body">
+                <div class="ail__badges">
+                  @if (row.visual) {
+                    <span class="ail__badge ail__badge--visual">{{ t('visual') }}</span>
+                  }
+                  <span class="ail__badge">{{ typeName(row) }}</span>
+                </div>
+                <p class="ail__preview" [title]="row.preview">{{ row.preview || t('noPreview') }}</p>
+                @if (canEdit() && row.visual) {
+                  <span class="ail__hint" data-testid="activity-item-visual-hint">{{ t('visualHint') }}</span>
+                }
+              </div>
+              @if (canEdit()) {
+                <div class="ail__actions">
+                  @if (row.formEditable) {
+                    <button mat-icon-button type="button" (click)="edit(row)" [disabled]="removingId() !== null"
+                      [matTooltip]="t('edit')" [attr.aria-label]="t('editAria', { number: row.number })"
+                      data-testid="activity-item-edit">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                  }
+                  <button mat-icon-button type="button" class="ail__remove" (click)="remove(row)" [disabled]="removingId() !== null"
+                    [matTooltip]="t('remove')" [attr.aria-label]="t('removeAria', { number: row.number })"
+                    data-testid="activity-item-remove">
+                    <mat-icon>delete_outline</mat-icon>
+                  </button>
+                </div>
+              }
+            </li>
+          }
+        </ol>
+      }
+    }
+  }
+</section>

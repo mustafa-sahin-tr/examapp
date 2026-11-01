@@ -798,6 +798,7 @@ public class ExamService : IExamService
             .Distinct()
             .ToList();
         var correctMap = await _context.TestQuestions.AsNoTracking()
+            .WithRemovedWorksheetItems() // issue #684: sayfadan kaldırılan madde çözülmüş oturumda puanlanır
             .Where(wq => worksheetQuestionIds.Contains(wq.Id))
             .Select(wq => new { wq.Id, wq.Question.CorrectAnswerId, wq.Question.InteractionType })
             .ToListAsync();

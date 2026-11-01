@@ -175,6 +175,23 @@ public class WorksheetDetailService : IWorksheetDetailService
             })
             .ToList();
 
+        // issue #684: sayfadan kaldırılmış madde güncel listede yok ama onu çözmüş oturumlarda puanlanır — doğru şıkkı ayrıca okunur.
+        var removedIds = instances.SelectMany(i => i.Answers).Select(a => a.WorksheetQuestionId)
+            .Where(id => !correctMap.ContainsKey(id)).Distinct().ToList();
+        if (removedIds.Count > 0)
+        {
+            var removed = await _context.TestQuestions.AsNoTracking().WithRemovedWorksheetItems()
+                .Where(wq => removedIds.Contains(wq.Id))
+                .Select(wq => new { wq.Id, wq.Question.CorrectAnswerId, wq.Question.InteractionType })
+                .ToListAsync(ct);
+            foreach (var wq in removed)
+            {
+                correctMap[wq.Id] = wq.CorrectAnswerId;
+                if (wq.InteractionType == ExamApp.Api.Services.Interactions.OpenTextGrader.Type)
+                    openTextIds.Add(wq.Id);
+            }
+        }
+
         // issue #396: kitle istatistikleri (ortalama, öğretmen içgörüleri) yalnız puanlı tamamlanmış oturumları sayar;
         // öğrencinin kendi denemeleri/sonucu bitmiş oturumların hepsini (Completed + süresi dolan Expired) gösterir —
         // süresi dolan testin sonucu da öğrencinin sonucudur. Kural: WorksheetInstanceStatusRules.
@@ -351,6 +368,7 @@ public class WorksheetDetailService : IWorksheetDetailService
         var isScoredRow = WorksheetScoring.IsScoredRow(_context); // issue #583: açık uçlu satır toplama girmez
         var perInstance = await _context.TestInstances
             .AsNoTracking()
+            .WithRemovedWorksheetItems() // issue #684: kaldırılan madde çözülmüş oturumun puanında kalır
             // issue #396: benzer testlerin ortalaması yalnız puanlı tamamlanmış oturumlardan (Expired sayılmaz).
             // issue #571: etkinlik puansız — ortalaması yok.
             .Where(ti => ids.Contains(ti.WorksheetId) && ti.Status == WorksheetInstanceStatus.Completed
@@ -570,6 +588,7 @@ public class WorksheetDetailService : IWorksheetDetailService
         var isScoredRow = WorksheetScoring.IsScoredRow(_context); // issue #583: açık uçlu satır toplama girmez
         var scored = (await _context.TestInstances
             .AsNoTracking()
+            .WithRemovedWorksheetItems() // issue #684
             // issue #396: sıralama/sınıf ortalaması yalnız puanlı tamamlanmış oturumlardan (Expired sayılmaz).
             .Where(ti => ti.WorksheetId == worksheetId
                 && ti.Status == WorksheetInstanceStatus.Completed
@@ -611,6 +630,7 @@ public class WorksheetDetailService : IWorksheetDetailService
     public async Task<WorksheetFromMistakesResultDto?> CreateWorksheetFromMistakesAsync(int instanceId, int studentId, int userId, CancellationToken ct = default)
     {
         var instance = await _context.TestInstances
+            .WithRemovedWorksheetItems() // issue #684: kaldırılan maddedeki yanlış da "yanlışlarım"a girer
             .Include(ti => ti.Worksheet)
             .Include(ti => ti.WorksheetInstanceQuestions).ThenInclude(wiq => wiq.WorksheetQuestion).ThenInclude(wq => wq.Question)
             .FirstOrDefaultAsync(ti => ti.Id == instanceId, ct);

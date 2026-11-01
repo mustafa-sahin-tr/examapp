@@ -1258,6 +1258,13 @@ public class AppDbContext : DbContext
             return;
         }
 
+        // issue #684: madde bağının filtresi de ADLI — oturum okumaları kaldırılan maddeyi görsün (WithRemovedWorksheetItems).
+        if (typeof(T) == typeof(WorksheetQuestion))
+        {
+            modelBuilder.Entity<T>().HasQueryFilter(WorksheetQuestionQueryFilter.SoftDeleteKey, e => !e.IsDeleted);
+            return;
+        }
+
         modelBuilder.Entity<T>().HasQueryFilter(e => !e.IsDeleted);
     }
 }

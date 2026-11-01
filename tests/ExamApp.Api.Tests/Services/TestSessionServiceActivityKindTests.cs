@@ -4,6 +4,7 @@ using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Worksheets;
 using ExamApp.Api.Tests.Support;
 using ExamApp.Api.Services;
+using ExamApp.Api.Services.Questions;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.Tests.Services;
@@ -383,4 +384,78 @@ public class TestSessionServiceActivityKindTests : IDisposable
         passage.Kind.ShouldBe(PassageKind.Activity);
         passage.Instruction.ShouldBe(Instruction);
     }
+
+    // ---------------------------------------------------------------- issue #684: maddeyi sayfadan kaldırma
+
+    private async Task RemoveItemAsync(int questionId)
+    {
+        await using var ctx = _db.NewContext();
+        var worksheetId = await ctx.TestQuestions.Where(wq => wq.QuestionId == questionId).Select(wq => wq.TestId).SingleAsync();
+        (await new QuestionClassificationService(ctx).RemoveQuestionFromTest(worksheetId, questionId)).Success.ShouldBeTrue();
+    }
+
+    private async Task<int> DragQuestionIdAsync(int dragRowId)
+    {
+        await using var ctx = _db.NewContext();
+        return await ctx.TestInstanceQuestions.Where(r => r.Id == dragRowId).Select(r => r.WorksheetQuestion.QuestionId).SingleAsync();
+    }
+
+    [Fact]
+    public async Task RemovedItem_StartedSession_KeepsItInItsOriginalPlace_issue684()
+    {
+        var s = await SeedAsync(WorksheetKind.Activity);
+        await RemoveItemAsync(await DragQuestionIdAsync(s.DragRowId));
+
+        await using var ctx = _db.NewContext();
+        var player = (await NewService(ctx).GetTestInstanceQuestionsAsync(s.InstanceId, StudentUserId)).ShouldNotBeNull();
+        player.TestInstanceQuestions.Select(r => r.Id).ShouldBe(new[] { s.McqRowId, s.DragRowId, s.BlankRowId });
+        (await CanvasAsync(s.InstanceId)).TestInstanceQuestions.Select(r => r.Id)
+            .ShouldBe(new[] { s.McqRowId, s.DragRowId, s.BlankRowId });
+    }
+
+    [Fact]
+    public async Task RemovedItem_StartedSession_CanBeAnsweredCheckedAndFinished_issue684()
+    {
+        var s = await SeedAsync(WorksheetKind.Activity);
+        await RemoveItemAsync(await DragQuestionIdAsync(s.DragRowId));
+
+        await SaveAsync(s, s.DragRowId, new SaveAnswerDto { AnswerPayload = FullPayload });
+        var check = await CheckAsync(s.InstanceId, Mcq(s.McqRowId, s.CorrectAnswerId), Drag(s.DragRowId, FullPayload));
+        check.Success.ShouldBeTrue();
+        check.Questions.Single(q => q.InstanceQuestionId == s.DragRowId).IsCorrect.ShouldBeTrue();
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).EndTest(s.InstanceId, StudentUserId)).Success.ShouldBeTrue();
+
+        var result = await CanvasAsync(s.InstanceId, includeCorrectAnswer: true);
+        result.TestInstanceQuestions.Count.ShouldBe(3);
+        result.TestInstanceQuestions.Single(r => r.Id == s.DragRowId).IsCorrect.ShouldBe(true);
+        (await InstanceAsync(s.InstanceId)).FirstCheckTotalCount.ShouldBe(3); // MCQ 1 + drag 2
+    }
+
+    [Fact]
+    public async Task RemovedItem_SessionStartedAfterwards_DoesNotContainIt_issue684()
+    {
+        var s = await SeedAsync(WorksheetKind.Activity);
+        var dragQuestionId = await DragQuestionIdAsync(s.DragRowId);
+        await RemoveItemAsync(dragQuestionId);
+
+        await using var ctx = _db.NewContext();
+        var gradeId = await ctx.Grades.Select(g => g.Id).SingleAsync();
+        var worksheetId = await ctx.TestInstances.Where(ti => ti.Id == s.InstanceId).Select(ti => ti.WorksheetId).SingleAsync();
+        var late = new Student { UserId = 4402, StudentNumber = "S4402", SchoolName = "Sch", GradeId = gradeId };
+        ctx.Students.Add(late);
+        await ctx.SaveChangesAsync();
+
+        var started = await NewService(ctx).StartTestAsync(worksheetId, new StudentProfileDto { Id = late.Id, GradeId = gradeId });
+        started.ShouldNotBeNull();
+
+        var questionIds = await ctx.TestInstanceQuestions
+            .Where(r => r.WorksheetInstance.StudentId == late.Id)
+            .Select(r => r.WorksheetQuestion.QuestionId)
+            .ToListAsync();
+        questionIds.Count.ShouldBe(2);
+        questionIds.ShouldNotContain(dragQuestionId);
+    }
+
 }

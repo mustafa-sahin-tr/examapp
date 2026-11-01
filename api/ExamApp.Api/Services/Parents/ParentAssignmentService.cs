@@ -296,6 +296,7 @@ public sealed class ParentAssignmentService : IParentAssignmentService
             return new Dictionary<int, QuestionMeta>();
 
         return await _context.TestQuestions.AsNoTracking()
+            .WithRemovedWorksheetItems() // issue #684: sayfadan kaldırılan madde çözülmüş oturumda puanlanır
             .Where(wq => ids.Contains(wq.Id))
             .Select(wq => new
             {

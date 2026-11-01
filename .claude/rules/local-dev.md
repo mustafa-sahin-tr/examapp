@@ -894,6 +894,18 @@ oturur; her el klavyede kaydırıcı (← / → bir adım, PageUp / PageDown yel
 `15:45`) + "Kurulu". Dijital gösterim ve saati okuma `slotFill` ile kalır. Testte de çözülebilir (puanlanır). Migration yok; Aspire'da exam
 API'yi yeniden başlat (yeni kontrolcü).
 
+**Issue #684 — etkinlik madde listesi, kaldırma başlamış oturumu etkilemez.** Etkinlik detayında (öğretmen, "Çalışma takibi"nin
+üstünde) **Maddeler** kartı (`app-activity-item-list`): `GET api/questions/bytest/{id}` ile sıra no, küçük resim, tür rozeti, yönerge
+önizlemesi; düzenleyebilene görselsiz maddede Düzenle (`/activity-editor?...&questionId=`), görselli maddede yalnız "Görselli,
+düzenlenemez"; Kaldır = `DELETE api/questions/test/{testId}/question/{questionId}` (bağ soft-delete, soru havuzda kalır, yalnız sahip /
+admin). Sıralama yok (#685). `WorksheetQuestion`'ın soft-delete filtresi artık **adlı** (`WorksheetQuestionQueryFilter.SoftDeleteKey`,
+#376 slot kalıbı): zorunlu `WorksheetInstanceQuestion.WorksheetQuestion` gezinmesi kaldırılan maddeyi başlamış / bitmiş oturumdan
+düşürüyordu. Oturum satırından okuyan sorgular (oynatıcı, save-answer, kontrol, çözümler, sonuç, öğrenci / veli puanları, detay
+istatistikleri, "yanlışlarım", #584 analiz, açık uçlu kuyruk, çalışma bağlantıları) `.WithRemovedWorksheetItems()` kullanır; sayfanın
+güncel maddelerini okuyanlar (start-test kopyası, liste, numaralama, ekleme / bağlama) kullanmaz. Yeni bir oturum okuma yolu yazarken
+aynısını yap, yoksa kaldırılan madde o yoldan kaybolur. Analizde kaldırılan madde yalnız onu çözmüş analiz oturumu varsa görünür.
+Migration yok.
+
 **Issue #501 — profil sayıları ve veli rozet backfill'i.** Öğrenci profilindeki (`GET api/student/profile`) çözülen / doğru / yanlış
 ve tamamlanan test sayıları artık istatistik ekranıyla aynı kuraldan (`GetGroupedStudentStatistics`: tamamlanmış, etkinlik olmayan
 oturumlar, açık uçlu hariç), sıra genel liderlik tablosundan (#193) gelir; diğer uçların döndüğü `StudentProfileDto`'da bu alanlar 0.

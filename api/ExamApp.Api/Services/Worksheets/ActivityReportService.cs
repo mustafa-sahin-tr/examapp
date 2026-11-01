@@ -71,8 +71,19 @@ public sealed class ActivityReportService : IActivityReportService
             RetakingCount = byStudent.Values.Count(s => Rank(s) == 1)
         };
 
+        var instanceIds = analyzed.Select(s => s.InstanceId!.Value).ToList();
+        var rows = instanceIds.Count == 0
+            ? []
+            : await _context.TestInstanceQuestions.AsNoTracking()
+                .Where(r => instanceIds.Contains(r.WorksheetInstanceId))
+                .Select(r => new { r.WorksheetInstanceId, r.WorksheetQuestionId, r.SelectedAnswerId, r.AnswerPayload })
+                .ToListAsync(ct);
+        // issue #684: sayfadan kaldırılmış madde, onu çözmüş analiz oturumu varsa analizde kalır (sırası yerinde).
+        var answeredItemIds = rows.Select(r => r.WorksheetQuestionId).Distinct().ToList();
+
         var questions = await _context.TestQuestions.AsNoTracking()
-            .Where(wq => wq.TestId == worksheetId)
+            .WithRemovedWorksheetItems()
+            .Where(wq => wq.TestId == worksheetId && (!wq.IsDeleted || answeredItemIds.Contains(wq.Id)))
             .OrderBy(wq => wq.Order).ThenBy(wq => wq.Id)
             .Select(wq => new
             {
@@ -88,13 +99,6 @@ public sealed class ActivityReportService : IActivityReportService
             })
             .ToListAsync(ct);
 
-        var instanceIds = analyzed.Select(s => s.InstanceId!.Value).ToList();
-        var rows = instanceIds.Count == 0
-            ? []
-            : await _context.TestInstanceQuestions.AsNoTracking()
-                .Where(r => instanceIds.Contains(r.WorksheetInstanceId))
-                .Select(r => new { r.WorksheetInstanceId, r.WorksheetQuestionId, r.SelectedAnswerId, r.AnswerPayload })
-                .ToListAsync(ct);
         var rowByKey = rows
             .GroupBy(r => (r.WorksheetInstanceId, r.WorksheetQuestionId))
             .ToDictionary(g => g.Key, g => g.First());

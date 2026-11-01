@@ -1750,6 +1750,7 @@ public class WorksheetCommentService : IWorksheetCommentService
         var qid = questionId.Value;
         var answered = await _context.TestInstanceQuestions
             .AsNoTracking()
+            .WithRemovedWorksheetItems() // issue #684: kaldırılan maddeyi çözmüş öğrenci de cevaplamış sayılır
             .AnyAsync(q => q.WorksheetInstance.StudentId == studentId
                 && q.WorksheetInstance.WorksheetId == worksheetId
                 && q.WorksheetQuestion.QuestionId == qid

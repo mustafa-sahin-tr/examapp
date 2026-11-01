@@ -47,6 +47,7 @@ public class TestSessionService : ITestSessionService
     {
         var isScoredRow = WorksheetScoring.IsScoredRow(_context); // issue #583: açık uçlu satır toplama girmez
         var query = await _context.TestInstances
+            .WithRemovedWorksheetItems() // issue #684: kaldırılan madde de oturumun sayımında kalır
             // issue #396: öğrencinin kendi geçmişi bitmiş oturumları listeler (Completed + Expired) — süresi dolan test de
             // sonuç sayfasına buradan ulaşılır. Puan, cevaplananlar üzerinden aynı formülle hesaplanır.
             .Where(wi => wi.StudentId == student.Id
@@ -310,6 +311,7 @@ public class TestSessionService : ITestSessionService
     public async Task<WorksheetInstanceDto?> GetTestInstanceQuestionsAsync(int testInstanceId, int userId)
     {
         var instance = await _context.TestInstances
+            .WithRemovedWorksheetItems() // issue #684: sayfadan kaldırılan madde başlamış oturumda kalır
             .Include(ti => ti.Worksheet)
             .Include(ti => ti.WorksheetInstanceQuestions)
                 .ThenInclude(tiq => tiq.WorksheetQuestion)
@@ -390,6 +392,7 @@ public class TestSessionService : ITestSessionService
         CancellationToken ct = default)
     {
         var testInstance = await _context.TestInstances
+            .WithRemovedWorksheetItems() // issue #684: sayfadan kaldırılan madde başlamış / bitmiş oturumda kalır
             .Include(ti => ti.Worksheet)
             .Include(ti => ti.WorksheetInstanceQuestions)
                 .ThenInclude(tiq => tiq.WorksheetQuestion)
@@ -575,6 +578,7 @@ public class TestSessionService : ITestSessionService
             _context.ChangeTracker.Clear();
 
             var testInstanceQuestion = await _context.TestInstanceQuestions
+                        .WithRemovedWorksheetItems() // issue #684: kaldırılan maddeye de cevap yazılır
                         .Include(t => t.WorksheetQuestion)
                             .ThenInclude(wq => wq.Question)
                                 .ThenInclude(q => q.Subject)
@@ -1044,6 +1048,7 @@ public class TestSessionService : ITestSessionService
             _context.ChangeTracker.Clear();
 
             var rows = await _context.TestInstanceQuestions
+                .WithRemovedWorksheetItems() // issue #684
                 .Include(t => t.WorksheetQuestion)
                     .ThenInclude(wq => wq.Question)
                 .Where(t => t.WorksheetInstanceId == instanceId && ids.Contains(t.Id))
@@ -1199,6 +1204,7 @@ public class TestSessionService : ITestSessionService
                 .SetProperty(ti => ti.UpdateUserId, (int?)userId), ct);
 
         var rows = await _context.TestInstanceQuestions.AsNoTracking()
+            .WithRemovedWorksheetItems() // issue #684
             .Where(t => t.WorksheetInstanceId == instanceId)
             .Select(t => new
             {
@@ -1679,6 +1685,7 @@ public class TestSessionService : ITestSessionService
         // Toplam + doğru (öğrencinin sonuç ekranıyla aynı formül; issue #571: WorksheetScoring hibrit kuralı — etkileşimli
         // cevaplar da sayılır). UPDATE satır kilidi tutulduğu için iki sayım tutarlı.
         var rows = _context.TestInstanceQuestions.AsNoTracking()
+            .WithRemovedWorksheetItems() // issue #684
             .Where(q => q.WorksheetInstanceId == testInstanceId);
         var total = await rows.CountAsync(WorksheetScoring.IsScoredRow(_context), ct); // issue #583: açık uçlu hariç
         var correct = await rows.CountAsync(WorksheetScoring.IsCorrectRow, ct);

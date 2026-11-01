@@ -72,6 +72,7 @@ import { WorksheetCommentRef, toPositiveId } from '../../models/worksheet-commen
 import { WorksheetKind, activityRoute } from '../../models/activity';
 import { ActivityTrackingTableComponent } from './components/activity-tracking-table/activity-tracking-table.component';
 import { ActivityReportComponent } from './components/activity-report/activity-report.component';
+import { ActivityItemListComponent } from './components/activity-item-list/activity-item-list.component';
 import { ActivityLauncherService } from '../../services/activity-launcher.service';
 
 interface AssignmentPanelState {
@@ -112,6 +113,7 @@ const WORKSHEET_DETAIL_SCOPE = 'worksheet-detail';
     StorageImageRetryDirective,
     ActivityTrackingTableComponent,
     ActivityReportComponent,
+    ActivityItemListComponent,
     RouterLink,
   ],
   providers: [provideTranslocoScope(WORKSHEET_DETAIL_SCOPE)],
@@ -306,6 +308,7 @@ export class WorksheetDetailComponent implements OnInit {
   protected readonly commentLink = signal<WorksheetCommentRef | null>(null);
   private appliedCommentLinkId: number | null = null;
   private readonly questionNavigator = viewChild(QuestionNavigatorComponent);
+  private readonly activityItemList = viewChild(ActivityItemListComponent);
 
   /** Worksheet seviyesi yoruma derin link (questionId yok). */
   protected readonly worksheetCommentLink = computed(() => {
@@ -423,7 +426,7 @@ export class WorksheetDetailComponent implements OnInit {
   }
 
   /** Detayı (completedResult) ve instance durumunu taşıyan worksheet'i yeniden yükler. */
-  private reloadWorksheet(): void {
+  protected reloadWorksheet(): void {
     this.loadDetail();
     this.testService
       .get(this.testId)
@@ -580,6 +583,7 @@ export class WorksheetDetailComponent implements OnInit {
         this.snackBar.open(message, this.tr('snackbar.dismiss'), { duration: 3000 });
         if (added > 0) {
           this.reloadWorksheet();
+          this.activityItemList()?.load();
         }
       });
   }

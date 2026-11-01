@@ -431,7 +431,7 @@ describe('ActivityEditorComponent (#590)', () => {
       { at: 8, text: '1/2' },
       { at: 16, text: '1' },
     ]);
-    expect(nl.cards.map((c) => c.target)).toEqual(['', '6']);
+    expect(nl.cards.map((c) => c.target)).toEqual(['6']);
     expect(el('[data-testid="nl-rescale"]')?.textContent).toContain('8 bölmeden 16 bölmeye');
 
     // 16 → 21 tam çentiğe düşmez: yerinde kalır, not gösterilir.

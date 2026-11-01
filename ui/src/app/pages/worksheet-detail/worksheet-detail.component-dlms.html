@@ -47,7 +47,7 @@
               <div class="stat">
                 <mat-icon>menu_book</mat-icon>
                 <span class="st-val">{{ d.worksheet.questionCount ?? 0 }}</span>
-                <span class="st-lbl">{{ t(isActivity() ? 'activity.items' : 'stats.questions') }}</span>
+                <span class="st-lbl">{{ t(isActivity() ? 'activity.itemsStat' : 'stats.questions') }}</span>
               </div>
               <!-- Issue #573: etkinlikte süre, çözen sayısı ve ortalama puan gösterilmez. -->
               @if (!isActivity()) {
@@ -539,6 +539,13 @@
 
         <div class="cols">
           <div class="stack">
+            <!-- Issue #684: etkinlik maddeleri (liste, görselsiz düzenle, kaldır). -->
+            @if (isActivity() && d.worksheet.id) {
+              <div class="card">
+                <app-activity-item-list [worksheetId]="d.worksheet.id" [gradeId]="d.worksheet.gradeId" [canEdit]="canEditWorksheet()"
+                  (addTextItem)="openActivityEditor()" (addFromBank)="openBankQuestionDialog()" (removed)="reloadWorksheet()" />
+              </div>
+            }
             <div class="card">
               <h3><span class="dot"></span>{{ t(isActivity() ? 'activity.trackingTitle' : 'teacher.classProgressTitle') }}</h3>
 

@@ -25,6 +25,7 @@ import {
   MatchForm,
   MatrixForm,
   OrderForm,
+  authoringItemTitle,
   buildDefinition,
   emptyForm,
   parseDefinition,
@@ -1859,7 +1860,7 @@ export class ActivityEditorComponent {
     return questions.flatMap((q, index) => {
       const form = parseDefinition(q.interactionType, q.interactionPlan, q.interactionSolution);
       if (!form) return [];
-      return [{ id: q.id, order: index + 1, kind: form.kind, title: itemTitle(form, q.passage?.instruction) }];
+      return [{ id: q.id, order: index + 1, kind: form.kind, title: authoringItemTitle(form, q.passage?.instruction) }];
     });
   }
 
@@ -2010,51 +2011,3 @@ function classificationKey(selection: ClassificationSelection): string {
   return [selection.subjectId ?? '', selection.topicId ?? '', [...selection.subtopicIds].sort((a, b) => a - b).join(',')].join('|');
 }
 
-/** Listede maddenin adı: yönerge, yoksa ilk öğe metni. */
-function itemTitle(form: AuthoringForm, instruction: string | null | undefined): string {
-  const own = instruction?.trim();
-  if (own) return own;
-  switch (form.kind) {
-    case 'matrix':
-      return form.rows[0]?.text ?? '';
-    case 'classify':
-      return form.buckets.join(' / ');
-    case 'order':
-      return form.items[0] ?? '';
-    case 'match':
-      return form.pairs[0]?.left ?? '';
-    case 'fillText':
-    case 'wordPool':
-      return form.text.replace(/\[\[[^[\]]*\]\]/g, '___').slice(0, 80);
-    case 'shortAnswer':
-      return form.rows[0]?.question ?? '';
-    case 'fillTable':
-      return form.cells[0]?.join(' / ') ?? '';
-    case 'mazeTree':
-      return form.nodes[0]?.text ?? '';
-    case 'mazeBoard':
-      return form.rows.map((r) => r.label).filter(Boolean).join(' / ');
-    case 'mazeRooms':
-      return form.rooms[form.start]?.text ?? '';
-    case 'mazeStones':
-      return form.stones[0]?.text ?? '';
-    case 'crossword':
-      return form.entries[0]?.clue ?? '';
-    case 'regionPaint':
-      return form.entries.map((e) => e.label || e.target).filter(Boolean).join(', ');
-    case 'numberLine':
-      return form.cards.map((c) => c.label).filter(Boolean).join(', ').slice(0, 80);
-    case 'barChart':
-      return form.title || form.categories.map((c) => c.label).filter(Boolean).join(', ').slice(0, 80);
-    case 'balanceScale':
-      return form.cards.map((c) => c.label.trim() || c.value.trim()).filter(Boolean).join(', ').slice(0, 80);
-    case 'clockSet':
-      return form.clocks.map((c) => c.label.trim() || c.time.trim()).filter(Boolean).join(', ').slice(0, 80);
-    case 'gridDraw':
-      return [form.area && `A=${form.area}`, form.perimeter && `Ç=${form.perimeter}`].filter(Boolean).join(', ');
-    case 'logicGrid':
-      return form.clues.find((c) => c.trim()) ?? form.subjects.join(', ');
-    case 'wordSearch':
-      return form.words.map((w) => w.label || w.word).filter(Boolean).join(', ').slice(0, 80);
-  }
-}

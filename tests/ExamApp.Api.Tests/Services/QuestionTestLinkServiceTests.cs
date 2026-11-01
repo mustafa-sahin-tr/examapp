@@ -333,4 +333,58 @@ public class QuestionTestLinkServiceTests : IDisposable
         await using var ctx = _db.NewContext();
         (await ctx.TestQuestions.CountAsync(tq => tq.TestId == _otherA)).ShouldBe(1);
     }
+
+    // ---------------------------------------------------------------- issue #685: yeniden sıralama
+
+    private async Task<ReorderTestQuestionsResult> ReorderAsync(params int[] ids)
+    {
+        await using var ctx = _db.NewContext();
+        return await new QuestionTestLinkService(ctx).ReorderAsync(_target, ids, TeacherA);
+    }
+
+    [Fact]
+    public async Task ReorderAsync_RenumbersLiveItemsInRequestOrder_issue685()
+    {
+        (await ReorderAsync(_qInTarget2, _qInTarget1)).ShouldBe(ReorderTestQuestionsResult.Reordered);
+
+        (await TargetMembershipsAsync()).ShouldBe(new[] { (_qInTarget2, 1), (_qInTarget1, 2) });
+        await using var ctx = _db.NewContext();
+        // Testten çıkarılmış üyeliğe dokunulmaz.
+        (await ctx.TestQuestions.IgnoreQueryFilters().SingleAsync(tq => tq.TestId == _target && tq.QuestionId == _qRemoved)).Order.ShouldBe(9);
+    }
+
+    [Theory]
+    [InlineData(false, true)]  // eksik
+    [InlineData(true, true)]   // fazla (testte olmayan soru)
+    [InlineData(true, false)]  // testten çıkarılmış madde
+    public async Task ReorderAsync_ListNotMatchingTheTestItems_IsMismatchAndWritesNothing_issue685(bool includeBoth, bool foreign)
+    {
+        var ids = includeBoth ? new List<int> { _qInTarget1, _qInTarget2 } : new List<int> { _qInTarget2 };
+        if (includeBoth)
+            ids.Add(foreign ? _qOwnFree : _qRemoved);
+
+        (await ReorderAsync(ids.ToArray())).ShouldBe(ReorderTestQuestionsResult.Mismatch);
+        (await TargetMembershipsAsync()).ShouldBe(new[] { (_qInTarget1, 1), (_qInTarget2, 5) });
+    }
+
+    [Fact]
+    public async Task ReorderAsync_ItemWhoseQuestionIsDeleted_IsNotExpectedAndGoesLast_issue685()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.TestQuestions.Add(new WorksheetQuestion { TestId = _target, QuestionId = _qDeleted, Order = 2 });
+            await ctx.SaveChangesAsync();
+        }
+
+        (await ReorderAsync(_qInTarget2, _qInTarget1)).ShouldBe(ReorderTestQuestionsResult.Reordered);
+        (await TargetMembershipsAsync()).ShouldBe(new[] { (_qInTarget2, 1), (_qInTarget1, 2), (_qDeleted, 3) });
+    }
+
+    [Fact]
+    public async Task ReorderAsync_UnknownTest_IsNotFound_issue685()
+    {
+        await using var ctx = _db.NewContext();
+        (await new QuestionTestLinkService(ctx).ReorderAsync(987654, new[] { _qInTarget1 }, TeacherA))
+            .ShouldBe(ReorderTestQuestionsResult.NotFound);
+    }
 }

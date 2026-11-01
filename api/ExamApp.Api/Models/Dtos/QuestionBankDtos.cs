@@ -137,6 +137,31 @@ public class LinkBankQuestionsRequest
         QuestionIds is { Length: > 0 and <= MaxQuestions } && QuestionIds.All(id => id > 0);
 }
 
+/// <summary>
+/// issue #685: <c>PUT api/questions/test/{testId}/order</c> — testin maddelerinin yeni sırası. Liste testin (sorusu silinmemiş)
+/// bütün maddelerini tam bir kez içermeli; eksik / fazla / yinelenen → 400.
+/// </summary>
+public class ReorderTestQuestionsRequest
+{
+    public const int MaxQuestions = 500;
+
+    /// <summary>Soru id'leri yeni sırayla.</summary>
+    public int[]? QuestionIds { get; set; }
+
+    public bool IsValid() =>
+        QuestionIds is { Length: > 0 and <= MaxQuestions }
+        && QuestionIds.All(id => id > 0)
+        && QuestionIds.Distinct().Count() == QuestionIds.Length;
+}
+
+public enum ReorderTestQuestionsResult
+{
+    Reordered = 0,
+    NotFound = 1,
+    /// <summary>İstek testin güncel madde kümesiyle eşleşmiyor (eksik / fazla).</summary>
+    Mismatch = 2
+}
+
 public class LinkBankQuestionsResultDto
 {
     /// <summary>Teste yeni bağlanan soru id'leri (eklenme sırasıyla).</summary>

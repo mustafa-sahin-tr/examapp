@@ -672,7 +672,7 @@ public class WorksheetDetailService : IWorksheetDetailService
                 && !WorksheetScoring.IsBlank(wiq.SelectedAnswerId, wiq.AnswerPayload != null)
                 && !WorksheetScoring.IsCorrect(wiq.SelectedAnswerId, wiq.WorksheetQuestion.Question.CorrectAnswerId,
                     wiq.AnswerPayload != null, wiq.IsCorrect))
-            .OrderBy(wiq => wiq.WorksheetQuestion.Order)
+            .OrderBy(wiq => wiq.Order).ThenBy(wiq => wiq.Id) // issue #685: oturumun sırası
             .Select(wiq => wiq.WorksheetQuestion.Question)
             .GroupBy(q => q.Id)
             .Select(g => g.First())

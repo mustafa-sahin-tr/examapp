@@ -24,6 +24,12 @@
       "rateLimited": "Kısa sürede çok fazla soru ekleme isteği yapıldı. Lütfen biraz bekleyip tekrar deneyin."
     },
 
+    "reorder": {
+      "invalidRequest": "Geçersiz istek: testin bütün maddeleri, her biri bir kez (en çok {0}).",
+      "mismatch": "Madde listesi güncel değil: sayfayı yenileyip tekrar deneyin.",
+      "forbidden": "Bu testin sırasını yalnız sahibi değiştirebilir."
+    },
+
     "bulk": {
       "saveFailed": "Soru seti kaydedilemedi.",
       "imageTooLarge": "Sayfa görseli çok büyük (en çok {0} megapiksel, uzun kenar en çok {1} px). Görseli küçültüp yeniden deneyin.",

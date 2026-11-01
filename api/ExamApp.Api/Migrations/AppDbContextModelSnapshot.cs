@@ -4944,6 +4944,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("SelectedAnswerId")
                         .HasColumnType("integer");
 

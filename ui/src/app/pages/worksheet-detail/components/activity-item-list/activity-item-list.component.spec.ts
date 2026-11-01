@@ -3,7 +3,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { MockedObject, vi } from 'vitest';
 
 import { ActivityItemListComponent, toRows } from './activity-item-list.component';
@@ -15,7 +15,11 @@ import worksheetDetailTr from '../../../../../../public/i18n/worksheet-detail/tr
 
 const translocoTesting = TranslocoTestingModule.forRoot({
   langs: { tr: { ...rootTr, 'worksheet-detail': worksheetDetailTr }, 'worksheet-detail/tr': worksheetDetailTr },
-  translocoConfig: { availableLangs: [...SUPPORTED_LOCALE_CODES], defaultLang: DEFAULT_LOCALE, scopes: { keepCasing: true } },
+  translocoConfig: {
+    availableLangs: [...SUPPORTED_LOCALE_CODES],
+    defaultLang: DEFAULT_LOCALE,
+    scopes: { keepCasing: true },
+  },
   preloadLangs: true,
 });
 
@@ -60,7 +64,12 @@ describe('toRows (#684)', () => {
 
     expect(rows.map((r) => r.number)).toEqual([1, 2, 3]);
     expect(rows.map((r) => r.typeKey)).toEqual(['dragPlace', 'regionPaint', 'mcq']);
-    expect(rows[0]).toMatchObject({ formEditable: true, visual: false, preview: 'Büyüme sırasına diziniz.', imageUrl: null });
+    expect(rows[0]).toMatchObject({
+      formEditable: true,
+      visual: false,
+      preview: 'Büyüme sırasına diziniz.',
+      imageUrl: null,
+    });
     expect(rows[1]).toMatchObject({ formEditable: false, visual: true, preview: 'Boyayınız' });
     expect(rows[2]).toMatchObject({ formEditable: false, visual: true, preview: '2 + 2 = ?' });
   });
@@ -70,6 +79,8 @@ describe('ActivityItemListComponent (#684)', () => {
   let fixture: ComponentFixture<ActivityItemListComponent>;
   let questions: MockedObject<QuestionService>;
   let dialogResult: boolean | undefined;
+  let snackBar: { open: ReturnType<typeof vi.fn> };
+  let snackAction: Subject<void>;
   const navigate = vi.fn();
 
   const el = () => fixture.nativeElement as HTMLElement;
@@ -79,14 +90,17 @@ describe('ActivityItemListComponent (#684)', () => {
     questions = {
       getAll: vi.fn().mockReturnValue(list === 'error' ? throwError(() => new Error('x')) : of(list)),
       removeQuestionFromTest: vi.fn().mockReturnValue(of({ success: true })),
+      reorderTestQuestions: vi.fn().mockReturnValue(of({ success: true })),
     } as unknown as MockedObject<QuestionService>;
+    snackAction = new Subject<void>();
+    snackBar = { open: vi.fn(() => ({ onAction: () => snackAction })) };
     dialogResult = true;
     TestBed.configureTestingModule({
       imports: [ActivityItemListComponent, translocoTesting],
       providers: [
         { provide: QuestionService, useValue: questions },
         { provide: MatDialog, useValue: { open: vi.fn(() => ({ afterClosed: () => of(dialogResult) })) } },
-        { provide: MatSnackBar, useValue: { open: vi.fn() } },
+        { provide: MatSnackBar, useValue: snackBar },
         { provide: Router, useValue: { navigate } },
       ],
     });
@@ -107,8 +121,12 @@ describe('ActivityItemListComponent (#684)', () => {
     expect(rows()[0].querySelector('[data-testid="activity-item-edit"]')).not.toBeNull();
     expect(rows()[1].textContent).toContain('Görselli');
     expect(rows()[1].querySelector('[data-testid="activity-item-edit"]')).toBeNull();
-    expect(rows()[1].querySelector('[data-testid="activity-item-visual-hint"]')?.textContent).toContain('Görselli, düzenlenemez');
-    expect(rows()[0].querySelector('[data-testid="activity-item-remove"]')?.getAttribute('aria-label')).toBe("Madde 1'i kaldır");
+    expect(rows()[1].querySelector('[data-testid="activity-item-visual-hint"]')?.textContent).toContain(
+      'Görselli, düzenlenemez'
+    );
+    expect(rows()[0].querySelector('[data-testid="activity-item-remove"]')?.getAttribute('aria-label')).toBe(
+      "Madde 1'i kaldır"
+    );
   });
 
   it('is read-only without edit permission', async () => {
@@ -124,7 +142,9 @@ describe('ActivityItemListComponent (#684)', () => {
 
     (el().querySelector('[data-testid="activity-item-edit"]') as HTMLButtonElement).click();
 
-    expect(navigate).toHaveBeenCalledWith(['/activity-editor'], { queryParams: { testId: 7, gradeId: 5, questionId: 21 } });
+    expect(navigate).toHaveBeenCalledWith(['/activity-editor'], {
+      queryParams: { testId: 7, gradeId: 5, questionId: 21 },
+    });
   });
 
   it('remove after confirm deletes, renumbers and emits', async () => {
@@ -169,5 +189,101 @@ describe('ActivityItemListComponent (#684)', () => {
     (alert?.querySelector('button') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(rows().length).toBe(1);
+  });
+
+  // ---------------------------------------------------------------- #685: yeniden sıralama
+
+  const numbers = () => rows().map((r) => r.querySelector('.ail__no')?.textContent?.trim());
+  const ids = () => rows().map((r) => Number(r.getAttribute('data-question-id')));
+  const button = (index: number, id: string) =>
+    rows()[index].querySelector(`[data-testid="${id}"]`) as HTMLButtonElement;
+
+  it('↓ moves the item, saves the full order, announces it and keeps focus on the same button', async () => {
+    await setup([textItem, visualItem, mcqItem]);
+
+    button(0, 'activity-item-move-down').focus();
+    button(0, 'activity-item-move-down').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(ids()).toEqual([22, 21, 23]);
+    expect(numbers()).toEqual(['1', '2', '3']);
+    expect(questions.reorderTestQuestions).toHaveBeenCalledWith(7, [22, 21, 23]);
+    expect(el().querySelector('[data-testid="activity-items-live"]')?.textContent).toContain(
+      'Madde 1, 2. sıraya taşındı'
+    );
+    expect(document.activeElement).toBe(button(1, 'activity-item-move-down'));
+    expect(button(1, 'activity-item-move-down').getAttribute('aria-label')).toBe("Madde 2'i aşağı taşı");
+  });
+
+  it('moving to the edge keeps focus on the other arrow; first ↑ and last ↓ are disabled', async () => {
+    await setup([textItem, visualItem]);
+
+    // disabledInteractive: pasif ama odaklanabilir (aria-disabled).
+    expect(button(0, 'activity-item-move-up').getAttribute('aria-disabled')).toBe('true');
+    expect(button(1, 'activity-item-move-down').getAttribute('aria-disabled')).toBe('true');
+
+    button(1, 'activity-item-move-up').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(ids()).toEqual([22, 21]);
+    expect(document.activeElement).toBe(button(0, 'activity-item-move-down'));
+  });
+
+  it('shows the started-sessions note only on the first change', async () => {
+    await setup([textItem, visualItem, mcqItem]);
+
+    button(0, 'activity-item-move-down').click();
+    fixture.detectChanges();
+    button(2, 'activity-item-move-up').click();
+    fixture.detectChanges();
+
+    const notes = snackBar.open.mock.calls.filter((c) => String(c[0]).startsWith('Bu değişiklik yalnız'));
+    expect(notes.length).toBe(1);
+  });
+
+  it('while saving the list is busy and the arrows are inactive', async () => {
+    await setup([textItem, visualItem, mcqItem]);
+    const pending = new Subject<{ success: boolean }>();
+    questions.reorderTestQuestions.mockReturnValue(pending);
+
+    button(0, 'activity-item-move-down').click();
+    fixture.detectChanges();
+
+    expect(el().querySelector('ol')?.getAttribute('aria-busy')).toBe('true');
+    expect(button(1, 'activity-item-move-up').getAttribute('aria-disabled')).toBe('true');
+    button(1, 'activity-item-move-up').click();
+    expect(questions.reorderTestQuestions).toHaveBeenCalledTimes(1);
+
+    pending.next({ success: true });
+    pending.complete();
+    fixture.detectChanges();
+    expect(el().querySelector('ol')?.getAttribute('aria-busy')).toBe('false');
+  });
+
+  it('on error restores the old order and retries from the snackbar', async () => {
+    await setup([textItem, visualItem]);
+    questions.reorderTestQuestions.mockReturnValue(throwError(() => new Error('x')));
+
+    button(0, 'activity-item-move-down').click();
+    fixture.detectChanges();
+
+    expect(ids()).toEqual([21, 22]);
+    expect(snackBar.open).toHaveBeenCalledWith('Sıra kaydedilemedi', 'Tekrar dene', expect.anything());
+
+    questions.reorderTestQuestions.mockReturnValue(of({ success: true }));
+    snackAction.next();
+    fixture.detectChanges();
+
+    expect(ids()).toEqual([22, 21]);
+    expect(questions.reorderTestQuestions).toHaveBeenLastCalledWith(7, [22, 21]);
+  });
+
+  it('read-only users get no handle or arrows', async () => {
+    await setup([textItem, visualItem], false);
+
+    expect(el().querySelector('[data-testid="activity-item-drag"]')).toBeNull();
+    expect(el().querySelector('[data-testid="activity-item-move-up"]')).toBeNull();
   });
 });

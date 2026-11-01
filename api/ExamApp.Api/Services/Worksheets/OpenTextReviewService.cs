@@ -255,7 +255,7 @@ public sealed class OpenTextReviewService : IOpenTextReviewService
         string? StudentNumber, string? GradeName, string? AnswerPayload, DateTime? AnsweredAt, OpenTextReview? Review);
 
     /// <summary>
-    /// <c>ItemNumber</c> = oynatıcının madde sırası (1 tabanlı): oturumun satırları <c>(WorksheetQuestion.Order, WorksheetQuestion.Id)</c>
+    /// <c>ItemNumber</c> = oynatıcının madde sırası (1 tabanlı): oturumun satırları kendi <c>(Order, Id)</c>'leriyle (#685)
     /// ile sıralanır (<c>TestSessionService.OrderedForDisplay</c>); oynatıcı satırları soru zinciriyle yüklediği için sorusu / bağı
     /// silinmiş satırlar sayılmaz (aynı filtreli JOIN).
     /// </summary>
@@ -268,8 +268,7 @@ public sealed class OpenTextReviewService : IOpenTextReviewService
             q.WorksheetQuestion.QuestionId,
             _context.TestInstanceQuestions.Count(o => o.WorksheetInstanceId == q.WorksheetInstanceId
                 && o.WorksheetQuestion.Question.Id > 0
-                && (o.WorksheetQuestion.Order < q.WorksheetQuestion.Order
-                    || (o.WorksheetQuestion.Order == q.WorksheetQuestion.Order && o.WorksheetQuestion.Id < q.WorksheetQuestion.Id))) + 1,
+                && (o.Order < q.Order || (o.Order == q.Order && o.Id < q.Id))) + 1,
             q.WorksheetQuestion.Question.Text,
             q.WorksheetQuestion.Question.ImageUrl,
             q.WorksheetQuestion.Question.InteractionPlan,

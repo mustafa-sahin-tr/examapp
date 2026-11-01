@@ -392,6 +392,35 @@ public class QuestionsController : BaseController
         return Ok(result);
     }
 
+    // PUT /api/questions/test/{testId}/order — issue #685: maddelerin yeni sırası (testin bütün maddeleri, her biri bir kez).
+    // Yalnız sahibi/admin: görebilen ama sahibi olmayan 403, göremeyen 404. Başlamış oturumlar etkilenmez (sıra kopyası).
+    [HttpPut("test/{testId}/order")]
+    [Authorize(Roles = AuthoringRoles)]
+    public async Task<IActionResult> ReorderTestQuestions(int testId, [FromBody] ReorderTestQuestionsRequest request)
+    {
+        if (request == null || !request.IsValid())
+            return BadRequest(new { success = false, message = _localizer["questions.reorder.invalidRequest", ReorderTestQuestionsRequest.MaxQuestions].Value });
+
+        var user = await GetAuthenticatedUserAsync(HttpContext.RequestAborted);
+        var ct = HttpContext.RequestAborted;
+        var access = await _ownership.CanModifyWorksheetAsync(testId, user.Id, IsAdmin, ct);
+        if (access != QuestionAccessResult.Allowed)
+        {
+            return access == QuestionAccessResult.Forbidden
+                && await _ownership.CanViewWorksheetAsync(testId, user.Id, IsAdmin, ct) == QuestionAccessResult.Allowed
+                ? StatusCode(StatusCodes.Status403Forbidden, new { success = false, message = _localizer["questions.reorder.forbidden"].Value })
+                : NotFound(new { success = false, message = _localizer["questions.testNotFound"].Value });
+        }
+
+        return await _testLinks.ReorderAsync(testId, request.QuestionIds!, user.Id, ct) switch
+        {
+            ReorderTestQuestionsResult.Reordered => Ok(new { success = true }),
+            ReorderTestQuestionsResult.Mismatch => BadRequest(new { success = false, errorCode = "TestQuestionsMismatch",
+                message = _localizer["questions.reorder.mismatch"].Value }),
+            _ => NotFound(new { success = false, message = _localizer["questions.testNotFound"].Value })
+        };
+    }
+
     // ---------------- issue #287 H1: kaynak sahipliği ----------------
 
     /// <summary>

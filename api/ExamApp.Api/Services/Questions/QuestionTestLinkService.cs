@@ -17,6 +17,15 @@ public interface IQuestionTestLinkService
     /// da çağıranın kullanamadığı) tek bir soru bile varsa hiçbir şey yazılmaz ve <c>null</c> döner (varlık sızdırılmaz → 404).
     /// </summary>
     Task<LinkBankQuestionsResultDto?> LinkAsync(int worksheetId, IReadOnlyList<int> questionIds, int userId, bool isAdmin, CancellationToken ct = default);
+
+    /// <summary>
+    /// issue #685: testin maddelerini <paramref name="questionIds"/> sırasıyla yeniden numaralar (<c>Order</c> = 1..n), tek
+    /// transaction'da ve bağlamayla aynı test kilidinin altında. Liste testin sorusu silinmemiş bütün maddeleriyle birebir
+    /// eşleşmeli (<see cref="ReorderTestQuestionsResult.Mismatch"/>); sorusu silinmiş (listede görünmeyen) maddeler sona eklenir.
+    /// Başlamış oturumlar etkilenmez: oturum sırası başlarken kopyalanır (<c>WorksheetInstanceQuestion.Order</c>).
+    /// Test yazma yetkisi çağıranın (controller) sorumluluğundadır.
+    /// </summary>
+    Task<ReorderTestQuestionsResult> ReorderAsync(int worksheetId, IReadOnlyList<int> questionIds, int userId, CancellationToken ct = default);
 }
 
 public sealed class QuestionTestLinkService(AppDbContext context) : IQuestionTestLinkService
@@ -87,6 +96,55 @@ public sealed class QuestionTestLinkService(AppDbContext context) : IQuestionTes
 
             await transaction.CommitAsync(ct);
             return result;
+        });
+    }
+
+    public async Task<ReorderTestQuestionsResult> ReorderAsync(int worksheetId, IReadOnlyList<int> questionIds, int userId, CancellationToken ct = default)
+    {
+        var strategy = context.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            context.ChangeTracker.Clear();
+            await using var transaction = await context.Database.BeginTransactionAsync(ct);
+            await context.Database.AcquireWorksheetQuestionLinkLockAsync(worksheetId, ct);
+
+            if (!await context.Worksheets.AsNoTracking().AnyAsync(w => w.Id == worksheetId, ct))
+                return ReorderTestQuestionsResult.NotFound;
+
+            // Silinmemiş bütün maddeler; "görünür" = sorusu silinmemiş (madde listesi / bytest ile aynı küme).
+            var items = await context.TestQuestions
+                .Where(tq => tq.TestId == worksheetId)
+                .OrderBy(tq => tq.Order).ThenBy(tq => tq.Id)
+                .ToListAsync(ct);
+            var visibleIds = (await context.TestQuestions.AsNoTracking()
+                .Where(tq => tq.TestId == worksheetId && tq.Question.Id > 0)
+                .Select(tq => tq.Id)
+                .ToListAsync(ct)).ToHashSet();
+
+            var visible = items.Where(i => visibleIds.Contains(i.Id)).ToList();
+            var visibleQuestionIds = visible.Select(i => i.QuestionId).ToHashSet();
+            if (visibleQuestionIds.Count != questionIds.Count || !questionIds.All(visibleQuestionIds.Contains))
+                return ReorderTestQuestionsResult.Mismatch;
+
+            // Aynı soru birden çok kez bağlıysa (legacy) kendi aralarındaki sırası korunur.
+            var position = questionIds.Select((id, index) => (id, index)).ToDictionary(x => x.id, x => x.index);
+            var ordered = visible
+                .OrderBy(i => position[i.QuestionId])
+                .Concat(items.Where(i => !visibleIds.Contains(i.Id)))
+                .ToList();
+
+            var order = 1;
+            foreach (var item in ordered)
+                item.Order = order++;
+
+            if (context.ChangeTracker.HasChanges())
+            {
+                context.SetCurrentUser(userId);
+                await context.SaveChangesAsync(ct);
+            }
+
+            await transaction.CommitAsync(ct);
+            return ReorderTestQuestionsResult.Reordered;
         });
     }
 

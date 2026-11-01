@@ -39,9 +39,39 @@
           }
         </div>
       } @else {
-        <ol class="ail__list" [attr.aria-label]="t('listLabel')">
-          @for (row of rows(); track row.questionId) {
-            <li class="ail__row" [class.ail__row--busy]="removingId() === row.questionId" data-testid="activity-item-row">
+        <ol
+          class="ail__list"
+          [class.ail__list--saving]="saving()"
+          [attr.aria-label]="t('listLabel')"
+          [attr.aria-busy]="saving()"
+          cdkDropList
+          [cdkDropListData]="rows()"
+          [cdkDropListDisabled]="!canEdit() || busy()"
+          cdkDropListLockAxis="y"
+          (cdkDropListDropped)="drop($event)"
+        >
+          @for (row of rows(); track row.questionId; let i = $index, first = $first, last = $last) {
+            <li
+              class="ail__row"
+              [class.ail__row--editable]="canEdit()"
+              [class.ail__row--busy]="removingId() === row.questionId"
+              [attr.data-question-id]="row.questionId"
+              cdkDrag
+              data-testid="activity-item-row"
+            >
+              @if (canEdit()) {
+                <button
+                  mat-icon-button
+                  type="button"
+                  class="ail__handle"
+                  cdkDragHandle
+                  tabindex="-1"
+                  [attr.aria-label]="t('dragAria', { number: row.number })"
+                  data-testid="activity-item-drag"
+                >
+                  <mat-icon>drag_indicator</mat-icon>
+                </button>
+              }
               <span class="ail__no">{{ row.number }}</span>
               <span class="ail__thumb" aria-hidden="true">
                 @if (row.imageUrl) {
@@ -64,14 +94,24 @@
               </div>
               @if (canEdit()) {
                 <div class="ail__actions">
+                  <button mat-icon-button type="button" (click)="moveBy(i, -1)" [disabled]="first || busy()" disabledInteractive
+                    [attr.data-edge]="first" [matTooltip]="t('moveUp')" [attr.aria-label]="t('moveUpAria', { number: row.number })"
+                    data-testid="activity-item-move-up">
+                    <mat-icon>arrow_upward</mat-icon>
+                  </button>
+                  <button mat-icon-button type="button" (click)="moveBy(i, 1)" [disabled]="last || busy()" disabledInteractive
+                    [attr.data-edge]="last" [matTooltip]="t('moveDown')" [attr.aria-label]="t('moveDownAria', { number: row.number })"
+                    data-testid="activity-item-move-down">
+                    <mat-icon>arrow_downward</mat-icon>
+                  </button>
                   @if (row.formEditable) {
-                    <button mat-icon-button type="button" (click)="edit(row)" [disabled]="removingId() !== null"
+                    <button mat-icon-button type="button" (click)="edit(row)" [disabled]="busy()"
                       [matTooltip]="t('edit')" [attr.aria-label]="t('editAria', { number: row.number })"
                       data-testid="activity-item-edit">
                       <mat-icon>edit</mat-icon>
                     </button>
                   }
-                  <button mat-icon-button type="button" class="ail__remove" (click)="remove(row)" [disabled]="removingId() !== null"
+                  <button mat-icon-button type="button" class="ail__remove" (click)="remove(row)" [disabled]="busy()"
                     [matTooltip]="t('remove')" [attr.aria-label]="t('removeAria', { number: row.number })"
                     data-testid="activity-item-remove">
                     <mat-icon>delete_outline</mat-icon>
@@ -81,6 +121,10 @@
             </li>
           }
         </ol>
+      }
+      <span class="cdk-visually-hidden" aria-live="polite" data-testid="activity-items-live">{{ announcement() }}</span>
+      @if (saving()) {
+        <span class="cdk-visually-hidden" role="status">{{ t('saving') }}</span>
       }
     }
   }

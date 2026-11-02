@@ -1,3 +1,4 @@
+import { SidenavService } from '../../services/sidenav.service';
 import type { Mock } from "vitest";
 import { Component, WritableSignal, signal, ChangeDetectionStrategy } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -1108,4 +1109,39 @@ describe('EnhancedLayoutComponent tutor profile entry (issue #384)', () => {
             expect(config?.canActivate).toContain(independentTeacherGuard);
         });
     }
+});
+
+/** Issue #706: mobilde ve daraltılmış kenar çubuğunda toolbar yok; çıkış kenar çubuğunda da bulunur. */
+describe('EnhancedLayoutComponent sidebar logout (issue #706)', () => {
+    afterEach(() => localStorage.removeItem('user'));
+
+    function logoutItem(fixture: ComponentFixture<EnhancedLayoutComponent>): HTMLElement | null {
+        return (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('.sidebar-logout-item');
+    }
+
+    it('mobile_ShowsLogoutInSidebar_AndClickLogsOut', () => {
+        const fixture = renderLayout(['Student'], true);
+        const logoutSpy = vi.spyOn(fixture.componentInstance, 'logout').mockImplementation(() => undefined);
+
+        const item = logoutItem(fixture);
+        expect(item?.textContent).toContain('Çıkış Yap');
+        item?.click();
+        expect(logoutSpy).toHaveBeenCalledOnce();
+    });
+
+    it('collapsedDesktop_ShowsIconOnlyLogout', () => {
+        const fixture = renderLayout(['Teacher'], false);
+        TestBed.inject(SidenavService).setSidenavCollapsed(true);
+        fixture.detectChanges();
+
+        const item = logoutItem(fixture);
+        expect(item).not.toBeNull();
+        expect(item?.querySelector('.menu-text')).toBeNull();
+        expect(item?.getAttribute('title')).toBe('Çıkış Yap');
+    });
+
+    it('expandedDesktop_KeepsLogoutInProfileMenuOnly', () => {
+        const fixture = renderLayout(['Student'], false);
+        expect(logoutItem(fixture)).toBeNull();
+    });
 });

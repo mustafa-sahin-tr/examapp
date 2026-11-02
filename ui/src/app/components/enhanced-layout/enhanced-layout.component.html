@@ -51,6 +51,20 @@
             <div class="menu-divider" [class.collapsed]="isSidenavCollapsed()"></div>
           }
         }
+        <!-- Issue #706: profil menüsü yalnız açık masaüstü toolbar'ında; mobilde ve daraltılmış kenar çubuğunda çıkış burada. -->
+        @if ((isAuthenticated | async) && (isMobile() || isSidenavCollapsed())) {
+          <div class="menu-divider" [class.collapsed]="isSidenavCollapsed()"></div>
+          <div class="menu-item sidebar-logout-item" role="button" tabindex="0"
+            (click)="logout()" (keydown.enter)="logout()" (keydown.space)="logout()"
+            [title]="isSidenavCollapsed() ? t('profile.logout') : ''"
+            [matTooltip]="isSidenavCollapsed() ? t('profile.logout') : ''" matTooltipPosition="right">
+            <mat-icon class="menu-icon">logout</mat-icon>
+            @if (!isSidenavCollapsed()) {
+              <span class="menu-text">{{ t('profile.logout') }}</span>
+            }
+            <div class="ripple-effect"></div>
+          </div>
+        }
       </nav>
 
       <!-- Sidebar Footer -->

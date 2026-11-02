@@ -73,7 +73,7 @@
       "questionTransfer": "Soru Transferi",
       "labeling": "İşaretleme",
       "labelingBooks": "Kitaplar",
-      "reports": "Raporlar",
+      "badges": "Rozetler",
       "settings": "Ayarlar",
       "admin": "Yönetim",
       "teacherApprovals": "Öğretmen Başvuruları",
@@ -129,7 +129,7 @@
       "step": "Adım {{step}}"
     },
     "badgeThropy": {
-      "title": "Başarı Rozetleri",
+      "title": "Rozetler",
       "subtitle": "Çalışma alışkanlıklarınıza göre rozetlerin durumunu takip edin.",
       "loading": "Rozetler yükleniyor...",
       "error": "Rozet bilgisi alınırken bir hata oluştu.",

@@ -181,7 +181,8 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
         expect(status.length).toBe(1);
         expect(status[0].route).toBe('/teacher-approval-pending');
         // Rolsüz (herkese açık) öğeler kalır; baştaki/sondaki ayırıcılar temizlenir.
-        expect(routesShown).toContain('/certificates');
+        // Issue #713: rozet sayfası artık yalnız öğrencinin menüsünde.
+        expect(routesShown).not.toContain('/certificates');
         // Issue #373: /student-profile yalnız öğrenciye; #417: onay bekleyen öğretmen de Ayarlar'a (/settings) ulaşır.
         expect(routesShown).not.toContain('/student-profile');
         expect(routesShown).toContain('/settings');
@@ -1144,4 +1145,23 @@ describe('EnhancedLayoutComponent sidebar logout (issue #706)', () => {
         const fixture = renderLayout(['Student'], false);
         expect(logoutItem(fixture)).toBeNull();
     });
+});
+
+/** Issue #713: "Raporlar" rozet sayfasını açıyordu; öğrencide Rozetler, diğer rollerde yok. */
+describe('EnhancedLayoutComponent badges menu item (issue #713)', () => {
+    afterEach(() => localStorage.removeItem('user'));
+
+    function ids(roles: string[]): string[] {
+        return renderLayout(roles, false).componentInstance.visibleMenuItems().map((item) => item.id);
+    }
+
+    it('student_SeesBadges', () => {
+        expect(ids(['Student'])).toContain('badges');
+    });
+
+    for (const role of ['Teacher', 'Parent', 'Admin']) {
+        it(`${role}_DoesNotSeeBadges`, () => {
+            expect(ids([role])).not.toContain('badges');
+        });
+    }
 });

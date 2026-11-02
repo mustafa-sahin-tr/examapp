@@ -158,10 +158,8 @@ describe('approvedTeacherGuard (issue #287)', () => {
         for (const path of [
             'dashboard',
             'tests',
-            'tests-enhanced',
             'test/:testId',
             'testsolve/:testInstanceId',
-            'testsolve/v2/:testInstanceId',
             'exam',
             'exam/:id',
             'study-pages',

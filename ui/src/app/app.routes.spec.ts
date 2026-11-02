@@ -10,14 +10,9 @@ function flatten(list: Route[]): Route[] {
 /** Issue #709: öğrenci adresi yazarak soru yazma ekranlarını açamaz. */
 describe('authoring routes (issue #709)', () => {
     const authoringPaths = [
-        'question',
         'question/:id',
         'questioncanvas',
         'questioncanvas/:id',
-        'questioncanvas/preview',
-        'questioncanvas/preview/:testId',
-        'imageselect',
-        'questions/view',
     ];
 
     for (const path of authoringPaths) {

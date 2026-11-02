@@ -52,7 +52,6 @@
       "teacherApprovalStatus": "Başvuru durumu",
       "exams": "Sınavlar",
       "practice": "Soru Çöz",
-      "study": "Ders Çalışma",
       "programs": "Programlarım",
       "myCalendar": "Planım",
       "tutors": "Özel Ders Öğretmeni Ara",
@@ -86,7 +85,6 @@
     },
     "bottomNav": {
       "home": "Ana Sayfa",
-      "study": "Çalışma",
       "menu": "Menü"
     },
     "toolbar": {

@@ -78,32 +78,6 @@
     <section class="question-panel" #questionPanel [class.fullwidth]="focusMode()"
       [class]="'questions-' + questionsPerView()">
       <!-- Görünüm Seçici -->
-      <!-- <div class="view-selector">
-        <button
-          mat-icon-button
-          [class.active]="questionsPerView() === 1"
-          (click)="setQuestionsPerView(1)"
-          [attr.aria-label]="'Tek soru görünümü'"
-        >
-          <mat-icon>crop_16_9</mat-icon>
-        </button>
-        <button
-          mat-icon-button
-          [class.active]="questionsPerView() === 2"
-          (click)="setQuestionsPerView(2)"
-          [attr.aria-label]="'İki soru görünümü'"
-        >
-          <mat-icon>view_column</mat-icon>
-        </button>
-        <button
-          mat-icon-button
-          [class.active]="questionsPerView() === 4"
-          (click)="setQuestionsPerView(4)"
-          [attr.aria-label]="'Dört soru görünümü'"
-        >
-          <mat-icon>grid_view</mat-icon>
-        </button>
-      </div> -->
 
       <!-- Çoklu Soru Container -->
       <div class="multi-question-container" [class]="'layout-' + questionsPerView()"
@@ -267,10 +241,6 @@
               <div class="legend-color answered"></div>
               <span>{{ t('classic.legendAnswered') }}</span>
             </div>
-            <!-- <div class="legend-item">
-              <div class="legend-color current"></div>
-              <span>Mevcut Soru</span>
-            </div> -->
             <div class="legend-item">
               <div class="legend-color bookmarked"></div>
               <span>{{ t('classic.legendBookmarked') }}</span>

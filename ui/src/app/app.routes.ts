@@ -12,19 +12,14 @@ import { parentRequirementGuard } from './shared/guards/parent-requirement.guard
 import { PARENT_REQUIRED_PATH } from './models/parent-status.model';
 import { TEACHER_APPROVAL_PENDING_PATH } from './models/teacher-approval.model';
 import { QuestionComponent } from './pages/question/question.component';
-import { QuestionViewComponent } from './pages/question-view/question-view.component';
 import { StudentProfileComponent } from './pages/student-profile/student-profile.component';
 import { WorksheetListComponent } from './pages/worksheet-list/worksheet-list.component';
-import { WorksheetListEnhancedComponent } from './pages/worksheet-list/worksheet-list-enhanced.component';
 import { worksheetListResolver } from './shared/resolvers/worksheet-resolver';
-import { ImageSelectorComponent } from './pages/image-selector/image-selector.component';
 import { QuestionCanvasComponent } from './pages/question/question-canvas.component';
-import { QuestionCanvasPreviewComponent } from './pages/question/question-canvas-preview.component';
 import { WorksheetDetailComponent } from './pages/worksheet-detail/worksheet-detail.component';
 import { ProgramCreateComponent } from './pages/program-create/program-create.component';
 import { MyProgramsComponent } from './pages/my-programs/my-programs.component';
 import { BadgeThropyComponent } from './shared/components/badge-thropy/badge-thropy.component';
-import { TestSolveCanvasComponentv2 } from './pages/test-solve/test-solve-canvas-enhanced.component';
 import { EnhancedLayoutComponent } from './components/enhanced-layout/enhanced-layout.component';
 import { TestCreateEnhancedComponent } from './pages/test-create-enhanced/test-create-enhanced.component';
 import { DashboardSwitchComponent } from './pages/dashboard/dashboard-switch.component';
@@ -89,12 +84,6 @@ export const routes: Routes = [
       { path: 'register', component: RegisterWizardComponent },
       { path: 'question/:id', component: QuestionComponent, canActivate: [authGuard, ...authoringGuards] },
       { path: 'questioncanvas', component: QuestionCanvasComponent, canActivate: [authGuard, ...authoringGuards] },
-      { path: 'questioncanvas/preview', component: QuestionCanvasPreviewComponent, canActivate: [authGuard, ...authoringGuards] },
-      {
-        path: 'questioncanvas/preview/:testId',
-        component: QuestionCanvasPreviewComponent,
-        canActivate: [authGuard, ...authoringGuards],
-      },
       { path: 'questioncanvas/:id', component: QuestionCanvasComponent, canActivate: [authGuard, ...authoringGuards] },
       {
         // Soru tespit modeli için işaretleme modu: yalnız eğitim verisi (send-to-fix), test/soru kaydı yok.
@@ -109,7 +98,6 @@ export const routes: Routes = [
         canActivate: [authGuard, roleGuard('Admin', 'QuestionTrainer')],
         loadComponent: () => import('./pages/books/books.component').then((m) => m.BooksComponent),
       },
-      { path: 'question', component: QuestionComponent, canActivate: [authGuard, ...authoringGuards] },
       {
         // Issue #471: soru bankası araması — backend Teacher/Admin + onaylı öğretmen.
         path: 'question-bank',
@@ -123,21 +111,7 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./pages/activity-editor/activity-editor.component').then((m) => m.ActivityEditorComponent),
       },
-      { path: 'imageselect', component: ImageSelectorComponent, canActivate: [authGuard, ...authoringGuards] },
-      {
-        path: 'tests-enhanced',
-        component: WorksheetListEnhancedComponent,
-        // Issue #287: teacher girişi /tests'e düşer; onaysız öğretmen resolver (exam/list) çalışmadan durum sayfasına gider.
-        canActivate: [authGuard, approvedTeacherGuard],
-        resolve: { worksheets: worksheetListResolver },
-      },
-      { path: 'questions/view', component: QuestionViewComponent, canActivate: [authGuard, ...authoringGuards] },
       { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponentv3, canActivate: [authGuard, approvedTeacherGuard] },
-      {
-        path: 'testsolve/v2/:testInstanceId',
-        component: TestSolveCanvasComponentv2,
-        canActivate: [authGuard, approvedTeacherGuard],
-      },
       {
         // Issue #573: etkinlik sayfası oynatıcısı (madde madde, kontrol/çözüm; puansız). Test oturumu gelirse /testsolve'a döner.
         path: 'activity/:testInstanceId',

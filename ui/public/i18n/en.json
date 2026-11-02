@@ -52,7 +52,6 @@
       "teacherApprovalStatus": "Application status",
       "exams": "Exams",
       "practice": "Practice",
-      "study": "Study",
       "programs": "My Programs",
       "myCalendar": "My Plan",
       "tutors": "Find a Tutor",
@@ -86,7 +85,6 @@
     },
     "bottomNav": {
       "home": "Home",
-      "study": "Study",
       "menu": "Menu"
     },
     "toolbar": {

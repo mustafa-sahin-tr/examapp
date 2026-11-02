@@ -258,8 +258,8 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
     it('menuLabel_TeacherApprovalStatus_TranslatedTrAndEn', () => {
         create(['Teacher'], true);
         const transloco = TestBed.inject(TranslocoService);
-        expect(transloco.translate('layout.menu.teacherApprovalStatus')).toBe('Başvuru durumu');
-        expect(transloco.translate('layout.menu.teacherApprovalStatus', {}, 'en')).toBe('Application status');
+        expect(transloco.translate('layout.menu.teacherApprovalStatus')).toBe('Başvuru Durumu');
+        expect(transloco.translate('layout.menu.teacherApprovalStatus', {}, 'en')).toBe('Application Status');
     });
 
     it('routes_TeacherApprovalPendingRoute_Exists', () => {
@@ -583,8 +583,8 @@ describe('EnhancedLayoutComponent direct messages menu (issue #106)', () => {
     it('menuLabels_TranslatedTrAndEn', () => {
         create(['Student']);
         const transloco = TestBed.inject(TranslocoService);
-        expect(transloco.translate('layout.menu.teacherMessages')).toBe('Öğretmenime Yaz');
-        expect(transloco.translate('layout.menu.studentMessages', {}, 'en')).toBe('Student Messages');
+        expect(transloco.translate('layout.menu.teacherMessages')).toBe('Mesajlar');
+        expect(transloco.translate('layout.menu.studentMessages', {}, 'en')).toBe('Messages');
     });
 
     it('routes_DirectMessagePagesExist', () => {

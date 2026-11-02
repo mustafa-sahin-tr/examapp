@@ -4,17 +4,17 @@
     "error": "Something went wrong while loading the overview.",
     "empty": "You have not created any exams yet. Your overview will appear here once you create your first exam.",
     "cards": {
-      "worksheets": "Total Exams",
+      "worksheets": "Tests and Activities",
       "students": "Unique Students"
     }
   },
   "worksheets": {
-    "title": "My Exams",
-    "loading": "Loading exams...",
-    "error": "Something went wrong while loading the exam list.",
+    "title": "My Tests and Activities",
+    "loading": "Loading...",
+    "error": "Something went wrong while loading the list.",
     "empty": "You have no exams yet. They will be listed here once you create one.",
     "columns": {
-      "name": "Exam name",
+      "name": "Name",
       "assignedStudents": "Assigned students",
       "completion": "Completion"
     },
@@ -29,7 +29,7 @@
     "empty": "No students are falling behind, great job!",
     "columns": {
       "student": "Student name",
-      "worksheet": "Exam name",
+      "worksheet": "Name",
       "flags": "Tags"
     },
     "flags": {
@@ -51,7 +51,7 @@
     "own": {
       "title": "My Activity",
       "error": "Something went wrong while loading your activity.",
-      "worksheetsCreated": "New Exams",
+      "worksheetsCreated": "New Tests and Activities",
       "assignmentsCreated": "New Assignments",
       "activeStudents": "Active Students"
     },

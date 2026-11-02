@@ -1,7 +1,7 @@
 {
   "header": {
     "titleTeacher": "Testlerim",
-    "titleStudent": "Sınav Kütüphanesi",
+    "titleStudent": "Testler",
     "subtitleTeacher": "Oluşturduğun testleri yönet, düzenle ve öğrencilere ata.",
     "subtitleStudent": "Konu ve zorluğa göre test bul, çöz ve ilerlemeni takip et.",
     "newTest": "Yeni Test",
@@ -28,7 +28,7 @@
     "type": "Tür",
     "practiceOnly": "Sadece çalışma testi",
     "sharing": "Paylaşım",
-    "includeShared": "Başkalarının sınavları",
+    "includeShared": "Başkalarının testleri",
     "clearAll": "Filtreleri temizle"
   },
   "status": {
@@ -96,10 +96,10 @@
     "assignmentsLoadFailed": "Atanmış testler yüklenirken bir sorun oluştu."
   },
   "discover": {
-    "assignedTitle": "Atanan sınavlar",
-    "assignedEmpty": "Sana atanmış aktif bir sınav yok.",
+    "assignedTitle": "Atanan testler",
+    "assignedEmpty": "Sana atanmış aktif bir test yok.",
     "exploreTitle": "Keşfet",
-    "exploreEmpty": "Şu an keşfedilecek yeni sınav yok."
+    "exploreEmpty": "Şu an keşfedilecek yeni test yok."
   },
   "listHead": {
     "test": "Test",
@@ -111,7 +111,7 @@
   "snackbar": {
     "dismiss": "Tamam",
     "close": "Kapat",
-    "copySuccess": "Sınav kendi hesabına kopyalandı.",
+    "copySuccess": "Test kendi hesabına kopyalandı.",
     "copyFailed": "Kopyalama başarısız.",
     "deleted": "{{count}} test silindi.",
     "deletedPartial": "{{ok}} test silindi, {{fail}} tanesi başarısız."

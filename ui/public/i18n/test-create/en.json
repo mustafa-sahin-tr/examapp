@@ -50,7 +50,7 @@
     "retry": "Try again",
     "readOnly": "Only the teacher who created this test or an administrator can edit it. You are in read-only mode.",
     "titleEdit": "Edit Test",
-    "titleNew": "Create New Test",
+    "titleNew": "New Test",
     "subtitleEdit": "Update the details and classification. Changes are not applied until you save.",
     "subtitleNew": "Fill in the test details; you can add questions once it is created.",
     "coverTitle": "Cover Image",

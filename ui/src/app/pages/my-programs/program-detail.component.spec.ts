@@ -166,6 +166,20 @@ describe('ProgramDetailComponent date range header (issue #386)', () => {
         return (fixture.nativeElement as HTMLElement).querySelector('.program-meta')?.textContent ?? '';
     }
 
+    // Issue #717: mock program kaldırıldı; hedef, başlık ve tarih yalnız gerçek programdan gelir.
+    it('dailyTarget_NotShownWithoutRealTarget', () => {
+        const el = create('tr', { questionsPerDay: undefined }).nativeElement as HTMLElement;
+
+        expect(el.querySelector('.program-meta')?.textContent).not.toContain('soru');
+        expect(el.textContent).not.toContain('TYT Deneme');
+    });
+
+    it('dailyTarget_ShowsRealProgramValues', () => {
+        const el = create('tr', { questionsPerDay: 30, subjectsPerDay: 3 }).nativeElement as HTMLElement;
+
+        expect(el.querySelector('.program-meta')?.textContent).toContain('Günde 30 soru, 3 konu');
+    });
+
     it('turkish_UtcMidnightDates_FormattedWithoutShiftOrRawIso', () => {
         const fixture = create('tr', { startDate: '2026-09-09T00:00:00Z', endDate: '2026-09-30T00:00:00Z' });
         const text = metaText(fixture);

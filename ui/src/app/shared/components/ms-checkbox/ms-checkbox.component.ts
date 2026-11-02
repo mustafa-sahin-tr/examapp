@@ -17,7 +17,6 @@ export class CustomCheckboxComponent {
   @Output() checkedChange = new EventEmitter<{ checked: boolean; value: any }>();
 
   toggleCheckbox() {
-    console.log('Toggle checkbox');
     this.checked = !this.checked;
     this.checkedChange.emit({ checked: this.checked, value: this.value });
   }

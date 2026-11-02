@@ -27,7 +27,6 @@ export class QuestionListComponent implements OnInit {
   constructor() {
     effect(() => {
       if (this.testId()) {  // `userId` değişirse çalışır
-        console.log('Test ID Değişti : ', this.testId()); 
         this.questionService.getAll(this.testId()).subscribe(questions => {
           this.questions = [];
           let questionNumner = 1;

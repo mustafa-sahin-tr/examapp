@@ -146,7 +146,6 @@ export class AuthService {
 
     try {
       const stored = window.localStorage.getItem('user');
-      console.log('LocalStorage user verisi:', stored);
       if (!stored) {
         return null;
       }
@@ -154,7 +153,6 @@ export class AuthService {
       const parsed = JSON.parse(stored);
       const userId = Number(parsed?.id);
       const finalId = Number.isFinite(userId) && userId > 0 ? userId : null;
-      console.log('Çözümlenen userId:', finalId);
       return finalId;
     } catch (error) {
       console.warn('LocalStorage user bilgisi okunamadı', error);
@@ -214,7 +212,6 @@ export class AuthService {
   }
 
   hasRole(role: string): boolean {
-    console.log(this.getUserRole(), role);
     return this.getUserRole() === role;
   }
 
@@ -311,7 +308,6 @@ export class AuthService {
     try {
       const decoded: any = jwtDecode(token);
       const now = Math.floor(Date.now() / 1000);
-      console.log(' kalan süre : ', decoded.exp - now);
       // token süresi bitmeden 60 saniye içinde yenileme işlemi yap
       return decoded.exp - now < 100; // 60 saniye içinde bitiyorsa yenile
     } catch {

@@ -360,7 +360,6 @@ export class QuestionComponent implements OnInit {
       }
     }
 
-    console.log('Gönderilen Form:', formData);
 
     // ✅ Base64'ten Temizlenmiş Bir Soru Nesnesi Hazırlıyoruz
     const questionPayload = {
@@ -402,7 +401,6 @@ export class QuestionComponent implements OnInit {
     // ✅ Backend API'ye POST isteği gönderiyoruz
     this.questionService.saveQuestion(questionPayload).subscribe({
       next: (response) => {
-        console.log('Soru Kaydedildi:', response);
         alert(this.tr('form.saveSuccess'));
         if (!this.testInstance.testInstanceQuestions.find((q) => q.id === response.questionId)) {
           this.testInstance.testInstanceQuestions.push({

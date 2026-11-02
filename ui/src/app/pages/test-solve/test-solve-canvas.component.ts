@@ -121,8 +121,6 @@ export class TestSolveCanvasComponent implements OnInit, AfterViewInit, OnDestro
       }
     });
 
-    console.log('Left Column:', this.leftColumn);
-    console.log('Right Column:', this.rightColumn);
   }
 
   // Örnek bir tahmini yükseklik hesaplama metodu
@@ -166,7 +164,6 @@ async loadTest(testId: number) {
   try {
     // 📥 Test verisini asenkron olarak al
     this.testInstance = await lastValueFrom(this.testService.getCanvasTestWithAnswers(testId));
-    console.log('Test loaded', this.testInstance);
 
     // 📥 Soruları yükle ve resimleri bekle
     
@@ -196,7 +193,6 @@ async loadTest(testId: number) {
       }
     });
 
-    console.log('TestInstance', this.testInstance.testInstanceQuestions);
 
     // 🚀 Eğer test tamamlandıysa, öğrenci profiline yönlendir
     if (this.testInstance.status === TestStatus.Completed) {

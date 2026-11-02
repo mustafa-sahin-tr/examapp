@@ -122,11 +122,12 @@ export class SignalRService {
         transport: signalR.HttpTransportType.WebSockets,
         skipNegotiation: true,
       }) // BadgeService adresi
+      // Issue #708: Information düzeyi bağlantı adresini (access_token dahil) konsola yazar.
+      .configureLogging(signalR.LogLevel.Warning)
       .build();
 
     this.hubConnection
       .start()
-      .then(() => console.log('SignalR bağlantısı kuruldu'))
       .catch((err) => console.error('SignalR bağlantı hatası:', err));
 
     // Issue #149: emoji'li düz metin yerine medalyonlu toast; "Rozetlerim" eylemi /certificates.

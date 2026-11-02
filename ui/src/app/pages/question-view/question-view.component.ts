@@ -44,7 +44,6 @@ export class QuestionViewComponent implements OnInit {
 
   showCorrectAnswer() {
     // if (this.selectedAnswerIndex !== null) return; // Kullanıcı sadece 1 kez seçim yapabilir
-    console.log('selected index: ',this.selectedAnswerIndex);
     this.correctAnswerVisible = true;
     this.answerOpened.emit(1); // 🆕 Seçilen cevap üst componente gönderiliyor
   }
@@ -54,7 +53,6 @@ export class QuestionViewComponent implements OnInit {
     // if (this.selectedAnswerIndex !== null) return; // Kullanıcı sadece 1 kez seçim yapabilir
     this.selectedAnswerIndex = index;
 
-    console.log('selected index: ',this.selectedAnswerIndex);
     this.answerSelected.emit(index); // 🆕 Seçilen cevap üst componente gönderiliyor
     // API'ye kullanıcı cevabının doğru olup olmadığını sorma
     // this.questionService.check(this.questionId,index)

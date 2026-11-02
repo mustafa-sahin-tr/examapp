@@ -68,6 +68,13 @@ describe('SignalRService — admin öğretmen bildirimleri', () => {
         service.startConnection();
     }
 
+    // Issue #708: Information düzeyinde SignalR, access_token'lı bağlantı adresini konsola yazar.
+    it('startConnection_SetsLogLevelToWarning', () => {
+        const loggingSpy = vi.spyOn(signalR.HubConnectionBuilder.prototype, 'configureLogging');
+        setup(false);
+        expect(loggingSpy).toHaveBeenCalledWith(signalR.LogLevel.Warning);
+    });
+
     it('teacherSchoolRequestSubmitted_Admin_EmitsStreamAndShowsToastThatNavigatesToApprovals', () => {
         setup(true);
         const received: TeacherSchoolRequestSubmittedPayload[] = [];

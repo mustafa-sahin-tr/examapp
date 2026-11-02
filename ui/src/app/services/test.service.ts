@@ -148,7 +148,6 @@ export class TestService {
     const bookTestIdParam = booktestId ? `&bookTestId=${booktestId}` : '';
     // Arama metni kodlanır: "#574" gibi bir ad sorguyu "#"ta kesip pageNumber/pageSize'ı düşürüyordu (#574 E2E).
     var reqUrl = `${this.baseUrl}/list?search=${encodeURIComponent(query ?? '')}&pageNumber=${pageNumber}&pageSize=${pageSize}${subjectIdsParam}${gradeIdParam}${bookTestIdParam}`;
-    console.log(reqUrl);
     return this.http.get<Paged<Test>>(reqUrl);
   }
 

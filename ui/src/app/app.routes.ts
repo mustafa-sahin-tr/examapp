@@ -33,6 +33,9 @@ import { QuestionTransferComponent } from './pages/question-transfer/question-tr
 import { StudyPagesComponent } from './pages/study-pages/study-pages.component';
 import { StudyPageEditorComponent } from './pages/study-pages/study-page-editor.component';
 
+/** Issue #709: soru yazma ekranları; API de yalnız Teacher/Admin + onaylı öğretmen kabul eder (QuestionsController). */
+const authoringGuards = [roleGuard('Teacher', 'Admin'), approvedTeacherGuard];
+
 export const routes: Routes = [
   // Public landing and legal pages (top-level)
   {
@@ -84,15 +87,15 @@ export const routes: Routes = [
       // Two-step onboarding: step 1 role picker (skipped when the role is known
       // from ?role= or an already-assigned realm role), step 2 the role form.
       { path: 'register', component: RegisterWizardComponent },
-      { path: 'question/:id', component: QuestionComponent, canActivate: [authGuard] },
-      { path: 'questioncanvas', component: QuestionCanvasComponent, canActivate: [authGuard] },
-      { path: 'questioncanvas/preview', component: QuestionCanvasPreviewComponent, canActivate: [authGuard] },
+      { path: 'question/:id', component: QuestionComponent, canActivate: [authGuard, ...authoringGuards] },
+      { path: 'questioncanvas', component: QuestionCanvasComponent, canActivate: [authGuard, ...authoringGuards] },
+      { path: 'questioncanvas/preview', component: QuestionCanvasPreviewComponent, canActivate: [authGuard, ...authoringGuards] },
       {
         path: 'questioncanvas/preview/:testId',
         component: QuestionCanvasPreviewComponent,
-        canActivate: [authGuard],
+        canActivate: [authGuard, ...authoringGuards],
       },
-      { path: 'questioncanvas/:id', component: QuestionCanvasComponent, canActivate: [authGuard] },
+      { path: 'questioncanvas/:id', component: QuestionCanvasComponent, canActivate: [authGuard, ...authoringGuards] },
       {
         // Soru tespit modeli için işaretleme modu: yalnız eğitim verisi (send-to-fix), test/soru kaydı yok.
         // Gateway send-to-fix'i de yalnız bu iki realm rolüne açar.
@@ -106,7 +109,7 @@ export const routes: Routes = [
         canActivate: [authGuard, roleGuard('Admin', 'QuestionTrainer')],
         loadComponent: () => import('./pages/books/books.component').then((m) => m.BooksComponent),
       },
-      { path: 'question', component: QuestionComponent, canActivate: [authGuard] },
+      { path: 'question', component: QuestionComponent, canActivate: [authGuard, ...authoringGuards] },
       {
         // Issue #471: soru bankası araması — backend Teacher/Admin + onaylı öğretmen.
         path: 'question-bank',
@@ -120,7 +123,7 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./pages/activity-editor/activity-editor.component').then((m) => m.ActivityEditorComponent),
       },
-      { path: 'imageselect', component: ImageSelectorComponent, canActivate: [authGuard] },
+      { path: 'imageselect', component: ImageSelectorComponent, canActivate: [authGuard, ...authoringGuards] },
       {
         path: 'tests-enhanced',
         component: WorksheetListEnhancedComponent,
@@ -128,7 +131,7 @@ export const routes: Routes = [
         canActivate: [authGuard, approvedTeacherGuard],
         resolve: { worksheets: worksheetListResolver },
       },
-      { path: 'questions/view', component: QuestionViewComponent, canActivate: [authGuard] },
+      { path: 'questions/view', component: QuestionViewComponent, canActivate: [authGuard, ...authoringGuards] },
       { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponentv3, canActivate: [authGuard, approvedTeacherGuard] },
       {
         path: 'testsolve/v2/:testInstanceId',

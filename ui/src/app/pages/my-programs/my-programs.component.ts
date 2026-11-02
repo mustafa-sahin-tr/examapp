@@ -8,7 +8,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
-import { MatDividerModule } from '@angular/material/divider';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
@@ -35,7 +34,6 @@ type ProgramFilter = 'all' | 'active' | 'completed';
     MatProgressBarModule,
     MatProgressSpinnerModule,
     MatChipsModule,
-    MatDividerModule,
     MatMenuModule,
     MatDialogModule,
     MatSnackBarModule,
@@ -192,10 +190,6 @@ export class MyProgramsComponent implements OnInit {
       exam: 'quiz',
     };
     return icons[(studyType ?? '').toLowerCase()] || 'assignment';
-  }
-
-  editProgram(program: UserProgram): void {
-    this.router.navigate(['/programs/edit', program.id]);
   }
 
   deleteProgram(program: UserProgram): void {

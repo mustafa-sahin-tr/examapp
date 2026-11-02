@@ -151,6 +151,11 @@ describe('MyProgramsComponent', () => {
         });
     });
 
+    // Issue #707: API'de program düzenleme ucu ve bu rota yok; seçenek kullanıcıyı landing'e atıyordu.
+    it('programMenu_HasNoEditAction', () => {
+        expect('editProgram' in component).toBe(false);
+    });
+
     describe('deleteProgram', () => {
         let program: UserProgram;
 

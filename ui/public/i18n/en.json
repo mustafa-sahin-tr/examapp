@@ -73,7 +73,7 @@
       "questionTransfer": "Question Transfer",
       "labeling": "Labeling",
       "labelingBooks": "Books",
-      "reports": "Reports",
+      "badges": "Badges",
       "settings": "Settings",
       "admin": "Administration",
       "teacherApprovals": "Teacher Applications",
@@ -129,7 +129,7 @@
       "step": "Step {{step}}"
     },
     "badgeThropy": {
-      "title": "Achievement Badges",
+      "title": "Badges",
       "subtitle": "Track your badge progress based on your study habits.",
       "loading": "Loading badges...",
       "error": "Badge information could not be loaded.",

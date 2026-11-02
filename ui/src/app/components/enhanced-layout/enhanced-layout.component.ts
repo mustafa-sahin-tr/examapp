@@ -262,7 +262,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'question-bank', labelKey: 'menu.questionBank', icon: 'inventory_2', route: '/question-bank', type: 'menu', roles: ['Teacher', 'Admin'] },
     // Issue #583: açık uçlu etkinlik cevaplarını değerlendirme kuyruğu.
     { id: 'open-text-reviews', labelKey: 'menu.openTextReviews', icon: 'rate_review', route: '/open-text-reviews', type: 'menu', roles: ['Teacher', 'Admin'] },
-    { id: 'reports', labelKey: 'menu.reports', icon: 'analytics', route: '/certificates', type: 'menu' },
+    // Issue #713: sayfa rozet sayfasıdır, rapor değil; yalnız öğrencide anlamlı.
+    { id: 'badges', labelKey: 'menu.badges', icon: 'military_tech', route: '/certificates', type: 'menu', roles: ['Student'] },
     // Issue #417: tüm roller (onay bekleyen öğretmen dahil — dil/hesap ayarı); rota role göre (#373: öğrenci /student-profile).
     { id: 'settings', labelKey: 'menu.settings', icon: 'settings', route: this.settingsRoute, type: 'menu' },
     { id: 'admin-dashboard', labelKey: 'menu.dashboard', icon: 'insights', route: '/admin/dashboard', type: 'menu', roles: ['Admin'] },

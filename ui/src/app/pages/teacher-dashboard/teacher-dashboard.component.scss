@@ -4,6 +4,13 @@
   gap: 24px;
 }
 
+// Issue #711: mobilde başlık ve kartlar ekran kenarına yapışmasın.
+@media (max-width: 768px) {
+  .teacher-dashboard {
+    padding-inline: var(--ms-page-gutter-mobile);
+  }
+}
+
 .dashboard-section {
   display: flex;
   flex-direction: column;

@@ -161,7 +161,18 @@ describe('TutorSearchComponent (issue #196 — kompakt filtre)', () => {
     it('boş durum aria-live="polite" ile duyurulur', () => {
         const empty = el().querySelector('.ts__state');
         expect(empty?.getAttribute('aria-live')).toBe('polite');
+        expect(empty?.textContent).toContain('Şu an listelenecek öğretmen yok');
+        expect(empty?.querySelector('button')).toBeNull();
+    });
+
+    it('issue #712: filtreli boş sonuçta filtre mesajı ve temizleme düğmesi görünür', () => {
+        component.filterForm.patchValue({ online: true });
+        component.search();
+        fixture.detectChanges();
+
+        const empty = el().querySelector('.ts__state');
         expect(empty?.textContent).toContain('Bu filtrelere uygun öğretmen bulunamadı');
+        expect(empty?.querySelector('button')?.textContent).toContain('Temizle');
     });
 
     /**

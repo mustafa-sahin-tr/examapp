@@ -278,8 +278,19 @@
             <p>{{ t('empty.completed') }}</p>
           } @else if (tab() === 'assigned') {
             <p>{{ t('empty.assigned') }}</p>
-          } @else {
+          } @else if (hasActiveFilters()) {
             <p>{{ t('empty.default') }}</p>
+          } @else if (isTeacher) {
+            <!-- Issue #712: filtre yokken "ölçütlere uyan yok" yanıltıcı; yeni kullanıcıya sonraki adım. -->
+            <p>{{ t(pageKind() === 'activities' ? 'empty.noneTeacherActivities' : 'empty.noneTeacher') }}</p>
+            <button type="button" class="wl__btn wl__btn--primary" (click)="onCreate()">
+              {{ t(pageKind() === 'activities' ? 'header.newActivity' : 'header.newTest') }}
+            </button>
+          } @else {
+            <p>{{ t(pageKind() === 'activities' ? 'empty.noneStudentActivities' : 'empty.noneStudent') }}</p>
+            @if (isStudent) {
+              <a class="wl__btn wl__btn--primary" routerLink="/practice">{{ t('empty.goPractice') }}</a>
+            }
           }
           @if (hasActiveFilters() || search()) {
             <button type="button" class="wl__btn wl__btn--ghost" (click)="resetAll()">{{ t('empty.clearFilters') }}</button>

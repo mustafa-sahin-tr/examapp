@@ -94,7 +94,11 @@
   } @else if (isEmpty()) {
     <div class="ts__state" aria-live="polite">
       <mat-icon class="ts__state-icon">person_search</mat-icon>
-      <span>{{ t('empty') }}</span>
+      <!-- Issue #712: filtre yokken "filtrelere uygun değil" yanıltıcı. -->
+      <span>{{ t(searchedWithFilters() ? 'empty' : 'emptyNoFilter') }}</span>
+      @if (searchedWithFilters()) {
+        <button mat-stroked-button type="button" (click)="resetFilters()">{{ t('reset') }}</button>
+      }
     </div>
   } @else {
     <div class="ts__grid">

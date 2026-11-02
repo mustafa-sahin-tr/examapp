@@ -18,7 +18,8 @@
     "loading": "Öğretmenler aranıyor...",
     "error": "Öğretmenler aranırken bir sorun oluştu.",
     "retry": "Tekrar dene",
-    "empty": "Bu filtrelere uygun öğretmen bulunamadı"
+    "empty": "Bu filtrelere uygun öğretmen bulunamadı",
+    "emptyNoFilter": "Şu an listelenecek öğretmen yok"
   },
   "profile": {
     "back": "Geri",

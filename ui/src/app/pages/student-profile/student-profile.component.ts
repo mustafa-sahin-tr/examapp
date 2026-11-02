@@ -215,14 +215,6 @@ export class StudentProfileComponent implements OnInit {
     private badgeService: BadgeService
   ) {}
 
-  onSelect(event: any) {
-    console.log(event);
-  }
-
-  public chartClicked(e: any): void {
-    console.log(e);
-  }
-
   ngOnInit() {
     this.reportUserId = currentUserId();
 

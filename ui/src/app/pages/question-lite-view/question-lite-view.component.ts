@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnInit, Output, ChangeDetectionStrategy } from '@angular/core';
+import { Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { Question } from '../../models/question';
@@ -17,7 +17,7 @@ import { StorageImageRetryDirective } from '../../shared/directives/storage-imag
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './question-lite-view.component.scss',
 })
-export class QuestionLiteViewComponent implements OnInit {
+export class QuestionLiteViewComponent {
   @Input() correctAnswerVisible: boolean = false;
   @Output() answerOpened = new EventEmitter<number>(); // 🆕 Event tanımlandı
   @Output() answerSelected = new EventEmitter<number>(); // 🆕 Event tanımlandı
@@ -29,22 +29,16 @@ export class QuestionLiteViewComponent implements OnInit {
   showFeedback: boolean = false; // Kullanıcının seçim yaptığı anı kontrol etme
   correctAnswerIndex: number | null = null; // Doğru şık (API'den dönecek)
 
-  ngOnInit() {
-    console.log('Lite : ', this.question);
-  }
-
   getAnswerLabel(i: number) {
     return String.fromCharCode(65 + i);
   }
 
   showCorrectAnswer() {
-    console.log('selected index: ', this.selectedAnswerId);
     this.answerOpened.emit(1); // 🆕 Seçilen cevap üst componente gönderiliyor
   }
 
   selectAnswer(id: number) {
     this.selectedAnswerId = id;
-    console.log('selected index: ', this.selectedAnswerId);
     this.answerSelected.emit(id); // 🆕 Seçilen cevap üst componente gönderiliyor
   }
 

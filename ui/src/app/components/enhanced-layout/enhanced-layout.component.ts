@@ -685,7 +685,6 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   onSearch() {
     const searchValue = this.searchControl.value;
     if (searchValue) {
-      console.log('Searching for:', searchValue);
       // Implement search logic here
     }
   }
@@ -696,7 +695,6 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   }
 
   logout() {
-    console.log('Logging out...');
     // Implement logout logic here
     window.location.href = '/app/logout';
   }

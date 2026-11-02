@@ -1511,7 +1511,6 @@ export class QuestionCanvasComponent implements OnInit {
     if (this.busy()) {
       return;
     }
-    console.log('Çalışma sayfasına gönderiliyor...');
     this.imageSelector.sendToStudyPage();
   }
 
@@ -1578,7 +1577,6 @@ export class QuestionCanvasComponent implements OnInit {
     this.questionService.saveBulk(payload).subscribe({
       next: (data) => {
         this.saving.set(false);
-        console.log('Soru Kaydedildi:', data);
         this.notify('canvas.bulkSaveSuccess', 2000);
         // Eğitim verisi üretimi (Python question-detector) yan etkidir; yalnız Admin/QuestionTrainer için çalışır.
         if (sendToFix && this.canTrain) {
@@ -1601,7 +1599,6 @@ export class QuestionCanvasComponent implements OnInit {
       },
       error: (err) => {
         this.saving.set(false);
-        console.log(err);
         // Issue #287: yetkisiz rol / başkasının sorusu → gövdesiz 403; sessiz kalmasın.
         if (err?.status === 403) {
           this.notify('common.forbidden', 4000);

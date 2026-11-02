@@ -381,8 +381,6 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       }
     });
 
-    console.log('Left Column:', this.leftColumn);
-    console.log('Right Column:', this.rightColumn);
   }
 
   // Örnek bir tahmini yükseklik hesaplama metodu
@@ -429,7 +427,6 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     try {
       // 📥 Test verisini asenkron olarak al
       this.testInstance = await lastValueFrom(this.testService.getCanvasTestWithAnswers(testId));
-      console.log('Test loaded', this.testInstance);
 
       // Issue #573: etkinlik oturumu test ekranında çözülmez; kendi oynatıcısına (kontrol/çözüm, puansız) gider.
       if (this.testInstance?.kind === WorksheetKind.Activity) {
@@ -468,7 +465,6 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
         }
       });
 
-      console.log('TestInstance', this.testInstance.testInstanceQuestions);
 
       // Issue #383: devam etmeyen (Completed/Expired/...) teste /testsolve ile girilirse sonuç sayfasına yönlendir.
       if (this.testInstance.status !== TestStatus.Started) {
@@ -1496,7 +1492,6 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
             const updatedChoices = new Map(this.selectedChoices());
             updatedChoices.set(q.question.id, selectedChoice);
             this.selectedChoices.set(updatedChoices);
-            console.log('Seçilen şık yüklendi:', selectedChoice);
           }
         }
       });
@@ -1865,7 +1860,6 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
 
   // YENİ: Görünüm modunu değiştir
   setQuestionsPerView(count: 1 | 2 | 4) {
-    console.log(`Görünüm modu değiştiriliyor: ${count} soru`);
     this.questionsPerView.set(count);
 
     // Mevcut pozisyonu yeni görünüme göre ayarla
@@ -1874,7 +1868,6 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     this.viewStartIndex.set(newStartIndex);
     void this.preloadQuestionRange(newStartIndex, count);
 
-    console.log(`Yeni başlangıç indeksi: ${newStartIndex}, Mevcut sorular: ${this.currentQuestions().length}`);
 
     // CSS'i manuel olarak zorla
     setTimeout(() => {
@@ -1887,13 +1880,11 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
           container.style.gap = '16px';
           container.style.gridColumnGap = '0px';
           container.style.gridRowGap = '16px';
-          console.log("2'li mod CSS zorlandı:", container.style.cssText);
         } else if (count === 4) {
           container.style.display = 'grid';
           container.style.gridTemplateColumns = '1fr 1fr';
           container.style.gridTemplateRows = '1fr 1fr';
           container.style.gap = '12px';
-          console.log("4'lü mod CSS zorlandı:", container.style.cssText);
         }
       }
     }, 0);

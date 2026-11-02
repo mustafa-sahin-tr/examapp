@@ -726,7 +726,6 @@ export class ImageSelectorComponent {
   // Sayfa içinde herhangi bir yere tıklandığında menüyü kapat
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent) {
-    console.log('Entered onDocumentClick. IsDrawing :', this.isDrawing);
     const target = event.target as HTMLElement;
     // Eğer tıklanan yer menünün içi değilse menüyü kapat
     if (!target.closest('.custom-context-menu')) {
@@ -735,7 +734,6 @@ export class ImageSelectorComponent {
 
     this.warningMenuVisible = false;
     this.contextMenuVisible = false;
-    console.log('Exited  onDocumentClick. IsDrawing :', this.isDrawing);
   }
 
   openWarningContextMenu(marker: WarningMarker, event: MouseEvent) {
@@ -1069,7 +1067,6 @@ export class ImageSelectorComponent {
   }
 
   onRightClick(event: MouseEvent) {
-    console.log('Entered onRightClick. IsDrawing :', this.isDrawing);
     event.preventDefault();
 
     const { x: clickX, y: clickY } = this.toCanvasPoint(event);
@@ -1089,7 +1086,6 @@ export class ImageSelectorComponent {
       this.selectedRegion = null;
       this.selectedAnswer = null;
       this.selectedDropZoneId = null;
-      console.log('Exited  onRightClick hit === null. IsDrawing :', this.isDrawing);
       this.selectedPassageId = null;
       this.contextMenuVisible = true;
       return;
@@ -1162,7 +1158,6 @@ export class ImageSelectorComponent {
       this.selectedAnswer = null;
       this.selectedDropZoneId = null;
     }
-    console.log('Exited  onRightClick hit.type === question. IsDrawing :', this.isDrawing);
 
     this.contextMenuVisible = true;
 
@@ -1196,7 +1191,6 @@ export class ImageSelectorComponent {
   }
 
   handleMenuAction(action: string, event?: MouseEvent) {
-    console.log('Selected action:', action);
     this.stopEvent(event);
     if (action === 'removeQuestion') {
       this.removeQuestion(this.selectedRegion!);
@@ -1780,9 +1774,7 @@ export class ImageSelectorComponent {
   }
 
   tapCorrectAnswer(event: MouseEvent) {
-    console.log('Entered tapCorrectAnswer.IsDrawing :', this.isDrawing);
     if (this.isDrawing) {
-      console.log('Exited  tapCorrectAnswer isDrawing :', this.isDrawing);
       return;
     }
     // Issue #581: maske çoğu zaman basılı cevabın (şıkkın) üstüne çizilir; çizim bitişindeki tık doğru cevabı değiştirmesin.
@@ -1810,7 +1802,6 @@ export class ImageSelectorComponent {
         }
       }
     }
-    console.log('Exited  tapCorrectAnswer.IsDrawing :', this.isDrawing);
   }
 
   onMouseMove(event: MouseEvent) {
@@ -2742,10 +2733,8 @@ export class ImageSelectorComponent {
   }
 
   startSelection(event: MouseEvent) {
-    console.log('Entered startSelection.IsDrawing :', this.isDrawing);
     // Sağ tık ise hiçbir şey yapma
     if (event.button === 2) {
-      console.log('Exited startSelection event.button === 2 .IsDrawing :', this.isDrawing);
       return;
     }
     const start = this.toCanvasPoint(event);
@@ -2786,12 +2775,10 @@ export class ImageSelectorComponent {
     } else if (!hit) {
       // Boş alanda şık / zone / matris kutusu çizilemez.
       if (mode && BOX_MODES.has(mode)) {
-        console.log('Exited startSelection hit === null. IsDrawing :', this.isDrawing);
         return;
       }
     }
     if (this.selectionMode()) this.isDrawing = true;
-    console.log('Exited startSelection. IsDrawing :', this.isDrawing);
   }
 
   generateFirstAvailableName() {
@@ -2817,7 +2804,6 @@ export class ImageSelectorComponent {
   }
 
   endSelection(event: MouseEvent) {
-    console.log('Entered EndSelection.IsDrawing :', this.isDrawing);
     this.stopEvent(event);
     const questionWidthThreshold = 250;
     const questionHeightThreshold = 100;
@@ -2902,10 +2888,6 @@ export class ImageSelectorComponent {
 
     if (this.selectionMode() === 'passage') {
       if (questionWidthThreshold > width || questionHeightThreshold > height) {
-        console.log(
-          'Exited  EndSelection questionWidthThreshold > width || questionHeightThreshold > height. IsDrawing :',
-          this.isDrawing
-        );
         this.isDrawing = false;
         this.drawImage();
         return;
@@ -2918,10 +2900,6 @@ export class ImageSelectorComponent {
     } else if (this.selectionMode() === 'question') {
       const name = this.generateFirstAvailableName();
       if (questionWidthThreshold > width || questionHeightThreshold > height) {
-        console.log(
-          'Exited  EndSelection questionWidthThreshold > width || questionHeightThreshold > height. IsDrawing :',
-          this.isDrawing
-        );
         this.isDrawing = false;
         this.drawImage();
         return;
@@ -2948,10 +2926,6 @@ export class ImageSelectorComponent {
       /// this.selectQuestion(this.regions().length - 1);
     } else if (this.selectionMode() === 'answer' && this.selectedQuestionIndex !== -1) {
       if (answerWidthThreshold > width || answerHeightThreshold > height) {
-        console.log(
-          'Exited  EndSelection questionWidthThreshold > width || questionHeightThreshold > height. IsDrawing :',
-          this.isDrawing
-        );
         this.isDrawing = false;
         this.drawImage();
         return;
@@ -3028,7 +3002,6 @@ export class ImageSelectorComponent {
     this.isDrawing = false;
     this.drawImage();
 
-    console.log('Exited  EndSelection. IsDrawing :', this.isDrawing);
   }
 
   toggleSelectionMode(mode: CanvasSelectionMode | null) {
@@ -4991,7 +4964,6 @@ export class ImageSelectorComponent {
   }
 
   public sendToStudyPage() {
-    console.log('Sending to study page...');
     this.questionService.attachStudyPage(this.imageData()).subscribe((response) => {
       if (response.success) {
         this.snackBar.open(`Successfully attached study page with ${response.imageFile}`, 'Tamam', {
@@ -5146,9 +5118,6 @@ export class ImageSelectorComponent {
       .readQrData(imageData)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (data) => {
-          console.log(data);
-        },
         error: (err) => {
           // QR sonucu yalnız loglanır; kullanıcıya bildirim yok, analizi (inProgress) etkilemez.
           // Sayfada QR yoksa question-detector 404 döner — olağan durum, sessiz geçilir.
@@ -5343,7 +5312,6 @@ export class ImageSelectorComponent {
       return;
     }
 
-    console.log(questions);
     const imageWidth = Math.max(...questions.predictions.map((q) => q.x + q.width));
     // soruları sırala
     const sorted = questions.predictions
@@ -5419,20 +5387,6 @@ export class ImageSelectorComponent {
       this.alignAnswers(i);
     }
     this.appliedSnapshot = this.serializeBoxes();
-
-    console.log(`${this.regions().length} Adet Soru bulundu`);
-    console.log(`Auto Mode: ${this.autoMode()}`);
-    console.log(`Q Mode:  ${this.onlyQuestionMode()}`);
-
-    if (
-      this.autoMode() &&
-      this.regions().length > 2 &&
-      (this.onlyQuestionMode() || this.regions().every((region) => region.answers && region.answers.length >= 3))
-    ) {
-      console.log(`Condition: true`);
-    } else {
-      console.log(`Condition: false`);
-    }
 
     this.snackBar.open(this.tr('messages.analysisCompleted'), this.tr('common.ok'), { duration: 2000 });
     if (!this.autoMode()) {
@@ -5853,7 +5807,6 @@ export class ImageSelectorComponent {
 
     // 0.a Temizle: Üst üste binen benzer kutuları ayıkla
     region.answers = this.removeDuplicateAnswers(region.answers);
-    console.log(JSON.stringify(region.answers));
     // 0.b En yoğun y'ye sahip grubu al (dağılmışları at)
     region.answers = this.filterOutFarAnswersByRow(region.answers);
 

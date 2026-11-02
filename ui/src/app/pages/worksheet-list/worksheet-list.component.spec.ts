@@ -108,6 +108,33 @@ describe('WorksheetListComponent', () => {
 
     afterEach(() => TestBed.resetTestingModule());
 
+    // Issue #712: filtre yokken "kriterlere uygun değil" denmez, sonraki adım önerilir.
+    describe('empty states (issue #712)', () => {
+        function empty(): HTMLElement | null {
+            fixture.detectChanges();
+            return (fixture.nativeElement as HTMLElement).querySelector('.wl__empty');
+        }
+
+        it('student_NoFilter_OffersPractice', () => {
+            expect(empty()?.textContent).toContain('Şu an gösterilecek test yok');
+            expect(empty()?.querySelector('a')?.getAttribute('href')).toBe('/practice');
+        });
+
+        it('activeFilter_ShowsFilterMessageAndClear', () => {
+            component.selectedSubjectIds.set([1]);
+            expect(empty()?.textContent).toContain('Bu kriterlere uygun test yok');
+            expect(empty()?.querySelector('.wl__btn--ghost')).not.toBeNull();
+        });
+
+        it('teacher_NoFilter_OffersCreate', () => {
+            TestBed.resetTestingModule();
+            fixture = configure(false);
+            component = fixture.componentInstance;
+            expect(empty()?.textContent).toContain('Henüz test oluşturmadın');
+            expect(empty()?.querySelector('.wl__btn--primary')).not.toBeNull();
+        });
+    });
+
     it('should create', () => {
         expect(component).toBeTruthy();
     });

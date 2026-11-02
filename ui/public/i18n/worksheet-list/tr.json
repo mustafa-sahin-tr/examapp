@@ -83,7 +83,12 @@
     "completed": "Henüz bir test tamamlamadın.",
     "assigned": "Sana atanmış test yok.",
     "default": "Bu kriterlere uygun test yok.",
-    "clearFilters": "Filtreleri temizle"
+    "clearFilters": "Filtreleri temizle",
+    "noneTeacher": "Henüz test oluşturmadın.",
+    "noneTeacherActivities": "Henüz etkinlik oluşturmadın.",
+    "noneStudent": "Şu an gösterilecek test yok. Bu arada soru çözerek pratik yapabilirsin.",
+    "noneStudentActivities": "Öğretmenin bir etkinlik sayfası atadığında burada görünür.",
+    "goPractice": "Soru çöz"
   },
   "error": {
     "retry": "Tekrar dene",

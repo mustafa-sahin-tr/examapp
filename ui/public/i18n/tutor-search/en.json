@@ -18,7 +18,8 @@
     "loading": "Searching for teachers...",
     "error": "Something went wrong while searching for teachers.",
     "retry": "Try again",
-    "empty": "No teachers match these filters"
+    "empty": "No teachers match these filters",
+    "emptyNoFilter": "There are no teachers to show right now"
   },
   "profile": {
     "back": "Back",

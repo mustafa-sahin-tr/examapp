@@ -80,6 +80,9 @@ export class TutorSearchComponent implements OnInit {
   /** Velinin Active bağlı çocuğu; bulunamazsa (bağlantı yok/kaldırılmış) null. */
   readonly child = signal<BookingSlotDialogChild | null>(null);
 
+  /** Son aramada filtre var mıydı (form sonradan değişmiş olabilir). */
+  readonly searchedWithFilters = signal(false);
+
   readonly isEmpty = computed(
     () => this.searched() && !this.loading() && !this.error() && this.results().length === 0,
   );
@@ -136,6 +139,13 @@ export class TutorSearchComponent implements OnInit {
 
   search(): void {
     const value = this.filterForm.getRawValue();
+    this.searchedWithFilters.set(
+      value.subjectId !== null ||
+        value.minPrice !== null ||
+        value.maxPrice !== null ||
+        value.online ||
+        value.inPerson,
+    );
     this.loading.set(true);
     this.error.set(null);
 

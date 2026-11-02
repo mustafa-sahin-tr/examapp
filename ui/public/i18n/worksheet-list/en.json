@@ -83,7 +83,12 @@
     "completed": "You have not completed any tests yet.",
     "assigned": "No tests have been assigned to you.",
     "default": "No tests match these criteria.",
-    "clearFilters": "Clear filters"
+    "clearFilters": "Clear filters",
+    "noneTeacher": "You have not created a test yet.",
+    "noneTeacherActivities": "You have not created an activity yet.",
+    "noneStudent": "There are no tests to show right now. You can practise questions in the meantime.",
+    "noneStudentActivities": "Activity pages appear here when your teacher assigns one.",
+    "goPractice": "Practice questions"
   },
   "error": {
     "retry": "Try again",

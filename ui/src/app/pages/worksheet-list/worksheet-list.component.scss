@@ -693,3 +693,10 @@
     min-height: 44px;
   }
 }
+
+// Issue #711: mobilde başlık ve kartlar ekran kenarına yapışmasın.
+@media (max-width: 768px) {
+  .wl {
+    padding-inline: var(--ms-page-gutter-mobile);
+  }
+}

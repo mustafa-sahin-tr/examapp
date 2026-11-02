@@ -16,6 +16,8 @@
 // Varsayılan (localStorage boşken) dark'tır.
 // ---------------------------------------------------------------------------
 :root {
+  // Issue #711: mobilde sayfa içeriğinin ekran kenarına uzaklığı.
+  --ms-page-gutter-mobile: 16px;
   // Literal renk adları — her iki temada da aynı anlamı taşır (beyaz beyazdır).
   --darkColor: #000000;
   --whiteColor: #ffffff;

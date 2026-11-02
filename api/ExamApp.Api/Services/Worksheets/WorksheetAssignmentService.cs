@@ -1,6 +1,7 @@
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Tenancy;
 using Microsoft.EntityFrameworkCore;
 using ExamApp.Foundation.Localization;
@@ -23,14 +24,19 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
     // verir; parametre yalnizca DI'siz kurulan (birim test) senaryolar icin opsiyonel.
     private readonly IStringLocalizer<Messages> _localizer;
 
+    // issue #715: öğrenci adları auth-api'de; yanıt yoksa görünüm öğrenci numarasına düşer.
+    private readonly IAuthApiClient? _authApiClient;
+
     public WorksheetAssignmentService(
         AppDbContext context,
         ISchoolAccessPolicy schoolAccessPolicy,
-        IStringLocalizer<Messages>? localizer = null)
+        IStringLocalizer<Messages>? localizer = null,
+        IAuthApiClient? authApiClient = null)
     {
         _context = context;
         _schoolAccessPolicy = schoolAccessPolicy;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
+        _authApiClient = authApiClient;
     }
 
     public async Task<ResponseBaseDto> AssignWorksheetAsync(
@@ -329,6 +335,19 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         return result;
     }
 
+    private async Task<Dictionary<int, string>> LoadStudentNamesAsync(IReadOnlyCollection<Student> students)
+    {
+        if (_authApiClient is null || students.Count == 0)
+        {
+            return new Dictionary<int, string>();
+        }
+
+        var users = await _authApiClient.GetUsersByIdsAsync(students.Select(s => s.UserId).Distinct());
+        return users
+            .Where(u => !string.IsNullOrWhiteSpace(u.FullName))
+            .ToDictionary(u => u.Id, u => u.FullName);
+    }
+
     public async Task<TeacherWorksheetAssignmentsDto> GetWorksheetAssignmentsForTeacherAsync(int worksheetId, SchoolScope requester)
     {
         var teacherUserId = requester.UserId;
@@ -399,6 +418,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
 
         var students = await studentsQuery.ToListAsync();
         var studentsById = students.ToDictionary(s => s.Id);
+        var studentNames = await LoadStudentNamesAsync(students);
 
         var gradeMap = gradeIds.Any()
             ? await _context.Grades
@@ -476,6 +496,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
                     StudentId = student.Id,
                     UserId = student.UserId,
                     StudentNumber = student.StudentNumber,
+                    StudentName = studentNames.GetValueOrDefault(student.UserId),
                     GradeId = student.GradeId,
                     GradeName = student.GradeId.HasValue && gradeMap.TryGetValue(student.GradeId.Value, out var gradeName)
                         ? gradeName
@@ -497,9 +518,11 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
             var isActive = assignment.StartAt <= now && (!assignment.EndAt.HasValue || assignment.EndAt.Value > now);
 
             var targetName = assignment.StudentId.HasValue
-                ? studentDtos.FirstOrDefault()?.StudentNumber is { Length: > 0 } studentNumber
-                    ? _localizer["worksheets.assignment.studentWithNumber", studentNumber].Value
-                    : _localizer["worksheets.assignment.studentWithId", assignment.StudentId].Value
+                ? studentDtos.FirstOrDefault()?.StudentName is { Length: > 0 } studentName
+                    ? studentName
+                    : studentDtos.FirstOrDefault()?.StudentNumber is { Length: > 0 } studentNumber
+                        ? _localizer["worksheets.assignment.studentWithNumber", studentNumber].Value
+                        : _localizer["worksheets.assignment.studentWithId", assignment.StudentId].Value
                 : assignment.GradeId.HasValue && gradeMap.TryGetValue(assignment.GradeId.Value, out var resolvedGradeName)
                     ? resolvedGradeName
                     : assignment.Grade?.Name ?? _localizer["worksheets.assignment.unnamedGrade"].Value;

@@ -53,6 +53,7 @@ export interface TeacherAssignmentStudentSummary {
   studentId: number;
   userId: number;
   studentNumber: string;
+  studentName?: string | null;
   gradeId?: number | null;
   gradeName?: string | null;
   status: AssignmentStudentStatus;

@@ -636,7 +636,7 @@
                           <tbody>
                             @for (student of assignment.students; track student.studentId) {
                               <tr>
-                                <td>{{ t('teacher.studentRow', { studentNumber: student.studentNumber, grade: studentGradeLabel(student) }) }}</td>
+                                <td>{{ t('teacher.studentRow', { studentNumber: student.studentName || student.studentNumber, grade: studentGradeLabel(student) }) }}</td>
                                 <td><span [class]="statusClass(student.status)">{{ statusLabel(student.status) }}</span></td>
                                 <td>{{ lastActivityLabel(student.lastActivity) }}</td>
                               </tr>

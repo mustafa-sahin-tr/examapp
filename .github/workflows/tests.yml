@@ -19,6 +19,9 @@ concurrency:
 env:
   DOTNET_NOLOGO: "true"
   DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  # Tests start many in-process hosts. Without this, each watches its config files and the
+  # runner can hit the inotify instance limit (128), which fails Gateway.Tests unrelated to the PR.
+  DOTNET_hostBuilder__reloadConfigOnChange: "false"
   # Kurumsal nexus feed'i CI'da yok; csproj klasörlerindeki nuget.config'ler zaten
   # yalnız api.nuget.org'u gösteriyor (<clear/> + nuget.org), ekstra ayar gerekmez.
 

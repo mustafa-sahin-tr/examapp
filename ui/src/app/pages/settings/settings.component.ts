@@ -62,7 +62,7 @@ export class SettingsComponent implements OnInit {
   protected readonly isTeacher = this.authService.hasRealmRole('Teacher');
   protected readonly isAdmin = this.authService.hasRealmRole('Admin');
   /** Rol rozeti: admin yetkisi öğretmenliği bastırır (her iki rolde de admin yazılır). */
-  protected readonly primaryRole: SettingsRole = this.isAdmin ? 'Admin' : 'Teacher';
+  protected readonly primaryRole: SettingsRole = this.isAdmin ? 'Admin' : this.isTeacher ? 'Teacher' : 'Parent';
 
   /** Okul adı; bağımsız/okulsuz öğretmende null. */
   protected readonly schoolName = computed(() => this.profile()?.teacher?.schoolName?.trim() || null);

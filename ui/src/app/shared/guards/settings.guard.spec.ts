@@ -15,7 +15,7 @@ describe('settingsGuard (issue #417)', () => {
         return result instanceof UrlTree ? TestBed.inject(Router).serializeUrl(result) : (result as boolean);
     }
 
-    for (const roles of [['Teacher'], ['Admin'], ['Admin', 'Teacher'], ['Student', 'Teacher']]) {
+    for (const roles of [['Teacher'], ['Admin'], ['Admin', 'Teacher'], ['Student', 'Teacher'], ['Parent']]) {
         it(`${roles.join('+')}_Allowed`, () => {
             expect(run(roles)).toBe(true);
         });
@@ -36,6 +36,8 @@ describe('settingsGuard (issue #417)', () => {
         expect(urlFor(['Student', 'Teacher'])).toBe('/settings');
         expect(urlFor(['Student', 'Admin'])).toBe('/settings');
         expect(urlFor(['Student'])).toBe('/student-profile');
+        expect(urlFor(['Parent'])).toBe('/settings');
+        expect(urlFor(['Student', 'Parent'])).toBe('/student-profile');
         expect(urlFor([])).toBeNull();
     });
 });

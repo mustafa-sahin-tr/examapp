@@ -4,7 +4,8 @@
   "retry": "Try again",
   "roles": {
     "Teacher": "Teacher",
-    "Admin": "Administrator"
+    "Admin": "Administrator",
+    "Parent": "Parent"
   },
   "profile": {
     "title": "Profile",

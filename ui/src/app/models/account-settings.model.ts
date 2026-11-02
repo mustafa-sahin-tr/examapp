@@ -6,4 +6,4 @@
 export const KEYCLOAK_ACCOUNT_CONSOLE_PATH = '/realms/exam-realm/account';
 
 /** Ayarlar sayfasında gösterilen birincil rol (çeviri anahtarı `settings.roles.<rol>`). */
-export type SettingsRole = 'Admin' | 'Teacher';
+export type SettingsRole = 'Admin' | 'Teacher' | 'Parent';

@@ -4,7 +4,8 @@
   "retry": "Tekrar dene",
   "roles": {
     "Teacher": "Öğretmen",
-    "Admin": "Yönetici"
+    "Admin": "Yönetici",
+    "Parent": "Veli"
   },
   "profile": {
     "title": "Profil",

@@ -56,7 +56,6 @@
       "typeAria": "Type: {{type}}",
       "progressLabel": "Progress",
       "pageProgress": "{{completed}}/{{total}} pages completed",
-      "edit": "Edit",
       "delete": "Delete",
       "restart": "Start Again",
       "continue": "Continue",

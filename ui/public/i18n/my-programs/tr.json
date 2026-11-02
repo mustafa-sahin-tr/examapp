@@ -56,7 +56,6 @@
       "typeAria": "Tür: {{type}}",
       "progressLabel": "İlerleme Durumu",
       "pageProgress": "{{completed}}/{{total}} sayfa tamamlandı",
-      "edit": "Düzenle",
       "delete": "Sil",
       "restart": "Tekrar Başla",
       "continue": "Devam Et",

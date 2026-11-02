@@ -200,11 +200,6 @@
                   <mat-icon>more_vert</mat-icon>
                 </button>
                 <mat-menu #menu="matMenu">
-                  <button mat-menu-item (click)="editProgram(program)">
-                    <mat-icon>edit</mat-icon>
-                    {{ t('card.edit') }}
-                  </button>
-                  <mat-divider></mat-divider>
                   <button mat-menu-item (click)="deleteProgram(program)" class="danger-item">
                     <mat-icon>delete</mat-icon>
                     {{ t('card.delete') }}

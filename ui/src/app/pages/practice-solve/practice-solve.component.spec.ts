@@ -122,6 +122,7 @@ describe('PracticeSolveComponent', () => {
     beforeEach(() => {
         practiceService = {
             startSession: vi.fn().mockName("PracticeService.startSession"),
+            getDueReview: vi.fn().mockName("PracticeService.getDueReview"),
             getSession: vi.fn().mockName("PracticeService.getSession"),
             getNextQuestion: vi.fn().mockName("PracticeService.getNextQuestion"),
             submitAnswer: vi.fn().mockName("PracticeService.submitAnswer"),
@@ -147,6 +148,7 @@ describe('PracticeSolveComponent', () => {
         studentService.getProfile.mockReturnValue(of(profile));
         subjectService.getSubjectsByGrade.mockReturnValue(of(subjects));
         practiceService.listSessions.mockReturnValue(of(emptyHistory));
+        practiceService.getDueReview.mockReturnValue(of({ totalCount: 0, items: [] }));
         practiceService.toQuestionRegion.mockImplementation((q: Question, correctAnswerId?: number | null) => ({
             id: q.id,
             name: 'Soru',
@@ -605,6 +607,38 @@ describe('PracticeSolveComponent', () => {
     });
 
     // ── Günün soruları (daily modu, issue #99) ──────────────────────────────────
+    // Issue #529: tekrar zamanı gelen sorular kartı.
+    describe('due review card', () => {
+        const card = () => (fixture.nativeElement as HTMLElement).querySelector('[data-test="due-review-card"]');
+
+        it('hidden_WhenNothingIsDue', () => {
+            setup();
+            fixture.detectChanges();
+            expect(card()).toBeNull();
+        });
+
+        it('shown_WithCount_AndStartsADueReviewSession', () => {
+            practiceService.getDueReview.mockReturnValue(of({ totalCount: 4, items: [] }));
+            practiceService.startSession.mockReturnValue(of({ ...session, id: 9, isDueReview: true }));
+            practiceService.getNextQuestion.mockReturnValue(of({ sessionId: 9, question: null, poolExhausted: true, answeredCount: 0, correctCount: 0 }));
+            setup();
+            fixture.detectChanges();
+
+            expect(card()?.textContent).toContain('Bugün tekrar: 4 soru');
+            card()?.querySelector('button')?.click();
+
+            expect(practiceService.startSession).toHaveBeenCalledWith({ dueReview: true });
+        });
+
+        it('loadFailure_DoesNotBlockPractice', () => {
+            practiceService.getDueReview.mockReturnValue(throwError(() => new Error('x')));
+            setup();
+            fixture.detectChanges();
+            expect(card()).toBeNull();
+            expect(component.error()).toBeNull();
+        });
+    });
+
     describe('daily mode', () => {
         function dailySet(overrides: Partial<DailySet> = {}): DailySet {
             return {

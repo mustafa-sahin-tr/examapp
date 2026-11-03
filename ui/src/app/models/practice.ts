@@ -9,11 +9,31 @@ import { Question } from './question';
 export interface PracticeSessionStartRequest {
   subjectIds?: number[];
   topicIds?: number[];
+  /** Issue #529: tekrar zamanı gelen sorulardan sabit listeli oturum. */
+  dueReview?: boolean;
+}
+
+/** Issue #529: tekrar zamanı gelen sorular; `items` listenin ilk bölümüdür. */
+export interface DueReviewSummary {
+  totalCount: number;
+  items: DueReviewItem[];
+}
+
+export interface DueReviewItem {
+  questionId: number;
+  subjectId: number | null;
+  subjectName: string | null;
+  topicName: string | null;
+  dueSince: string;
+  step: number;
+  wrongCount: number;
 }
 
 export type PracticeSessionStatus = 'Active' | 'Ended';
 
 export interface PracticeSession {
+  /** Issue #529: tekrar oturumu. */
+  isDueReview?: boolean;
   id: number;
   gradeId: number;
   startTime: string;

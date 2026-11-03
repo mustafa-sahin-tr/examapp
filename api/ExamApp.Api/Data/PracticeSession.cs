@@ -41,5 +41,8 @@ public class PracticeSession : BaseEntity
     /// <summary>Seçilen konu id'leri, JSON dizi; null/boş = konu filtresi yok.</summary>
     public string? TopicIdsJson { get; set; }
 
+    /// <summary>Issue #529: tekrar oturumunun sabit soru listesi (JSON, sıralı); serbest pratikte null.</summary>
+    public string? FixedQuestionIdsJson { get; set; }
+
     public ICollection<PracticeSessionQuestion> Questions { get; set; } = new List<PracticeSessionQuestion>();
 }

@@ -1,6 +1,13 @@
 {
   "title": "Soru Çöz",
   "subtitle": "Kapsamını seç, rastgele sorularla pratik yap; her cevaptan sonra sonucu anında gör.",
+  "dueReview": {
+    "title": "Bugün tekrar: {{count}} soru",
+    "text": "Daha önce yanlış yaptığın sorular unutulmadan geri geliyor.",
+    "start": "Tekrara başla",
+    "doneTitle": "Tekrarı bitirdin",
+    "doneText": "Doğru çözdüğün sorular daha sonra yeniden gelecek."
+  },
   "common": {
     "close": "Kapat",
     "retry": "Tekrar dene",

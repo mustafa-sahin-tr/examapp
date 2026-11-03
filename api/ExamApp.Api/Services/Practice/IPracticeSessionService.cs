@@ -20,6 +20,9 @@ public interface IPracticeSessionService
     /// <summary>Öğrencinin kendi oturumları, en yeni önce (<c>StartTime desc</c>). Sayfa/boyut sınırları serviste normalize edilir.</summary>
     Task<Paged<PracticeSessionDto>> ListAsync(int studentId, int page, int pageSize, CancellationToken ct = default);
 
+    /// <summary>Issue #529: öğrencinin tekrar zamanı gelen soruları, en çok geciken önce.</summary>
+    Task<DueReviewDto> GetDueReviewAsync(StudentProfileDto student, int? subjectId, int take, CancellationToken ct = default);
+
     /// <summary>Oturumda gösterilen soruların tek tek sonucu (doğru şık dahil). Aktif oturum için de çağrılabilir.</summary>
     /// <returns>null: oturum yok ya da bu öğrenciye ait değil.</returns>
     Task<PracticeSessionReviewDto?> GetReviewAsync(int sessionId, int studentId, CancellationToken ct = default);

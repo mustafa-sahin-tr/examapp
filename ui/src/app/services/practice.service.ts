@@ -14,6 +14,7 @@ import {
   PracticeSession,
   PracticeSessionReview,
   PracticeSessionStartRequest,
+  DueReviewSummary,
 } from '../models/practice';
 import { storageImageKey } from '../shared/utils/storage-image-url.util';
 
@@ -27,6 +28,11 @@ import { storageImageKey } from '../shared/utils/storage-image-url.util';
 export class PracticeService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = '/api/exam/practice';
+
+  /** Issue #529: tekrar zamanı gelen sorular. */
+  getDueReview(): Observable<DueReviewSummary> {
+    return this.http.get<DueReviewSummary>(`${this.baseUrl}/due-review`);
+  }
 
   startSession(request: PracticeSessionStartRequest): Observable<PracticeSession> {
     return this.http.post<PracticeSession>(`${this.baseUrl}/sessions`, request);

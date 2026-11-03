@@ -48,6 +48,7 @@ import {
   PracticeAnswerResult,
   PracticeSession,
   PracticeSessionReview,
+  PracticeSessionStartRequest,
   PracticeSessionReviewQuestion,
 } from '../../models/practice';
 import { Question } from '../../models/question';
@@ -183,6 +184,8 @@ export class PracticeSolveComponent implements OnInit {
   readonly hasScope = computed(() => this.selectedSubjectIds().length > 0 || this.selectedTopicIds().length > 0);
 
   // ── Geçmiş oturumlar (kurulum ekranında) ────────────────────────────────────
+  /** Issue #529: tekrar zamanı gelen soru sayısı. */
+  readonly dueReviewCount = signal(0);
   readonly historyLoading = signal(false);
   readonly historyError = signal<string | null>(null);
   readonly historyPaged = signal<Paged<PracticeSession>>(EMPTY_HISTORY);
@@ -331,6 +334,7 @@ export class PracticeSolveComponent implements OnInit {
 
     this.loadSetupData();
     this.loadHistory(1);
+    this.loadDueReview();
 
     const sessionParam = Number(this.route.snapshot.queryParamMap.get(SESSION_QUERY_PARAM));
     if (Number.isInteger(sessionParam) && sessionParam > 0) {
@@ -615,11 +619,27 @@ export class PracticeSolveComponent implements OnInit {
   // ── Oturum akışı ────────────────────────────────────────────────────────────
 
   startSession(): void {
-    const request = {
-      subjectIds: this.selectedSubjectIds(),
-      topicIds: this.selectedTopicIds(),
-    };
-    this.run(this.practiceService.startSession(request), () => this.startSession(), (session) => {
+    this.openSession({ subjectIds: this.selectedSubjectIds(), topicIds: this.selectedTopicIds() }, () => this.startSession());
+  }
+
+  /** Issue #529: tekrar zamanı gelen sorularla oturum. */
+  startDueReview(): void {
+    this.openSession({ dueReview: true }, () => this.startDueReview());
+  }
+
+  private loadDueReview(): void {
+    this.practiceService
+      .getDueReview()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (due) => this.dueReviewCount.set(due.totalCount),
+        // Kart isteğe bağlı: hata pratiği engellemez, yalnız kart görünmez.
+        error: () => this.dueReviewCount.set(0),
+      });
+  }
+
+  private openSession(request: PracticeSessionStartRequest, retry: () => void): void {
+    this.run(this.practiceService.startSession(request), retry, (session) => {
       this.session.set(session);
       this.answeredCount.set(session.answeredCount);
       this.correctCount.set(session.correctCount);
@@ -1083,6 +1103,7 @@ export class PracticeSolveComponent implements OnInit {
     this.clearSessionParam();
     // Yeni biten/başlayan oturum listede görünsün.
     this.loadHistory(1);
+    this.loadDueReview();
   }
 
   private clearSessionParam(): void {

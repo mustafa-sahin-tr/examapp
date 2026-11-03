@@ -1,0 +1,23 @@
+{
+  "back": "Back to test",
+  "print": "Print / Save as PDF",
+  "includeKey": "Include answer key (separate page)",
+  "hint": "In the dialog that opens, choose \"Save as PDF\" as the destination.",
+  "retry": "Try again",
+  "loadError": "The test could not be loaded.",
+  "activityNotPrintable": "Activities cannot be printed; only tests can.",
+  "nothingToPrint": "This test has no questions that can be printed.",
+  "excludedTitle": "Some questions were left out (positions in the test):",
+  "excluded": {
+    "unpublished": "Unpublished: {{positions}}",
+    "licenseExpired": "Licence expired: {{positions}}",
+    "publisherLicense": "Publisher licence does not allow printing: {{positions}}",
+    "interactive": "Interactive question, cannot be printed: {{positions}}"
+  },
+  "brokenImages": "{{count}} images could not be loaded. Press the button again to print anyway.",
+  "fieldName": "Name:",
+  "fieldClass": "Class:",
+  "fieldDate": "Date:",
+  "keyTitle": "Answer Key: {{name}}",
+  "noKey": "—"
+}

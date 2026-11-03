@@ -163,6 +163,9 @@ public class QuestionQueryService : IQuestionQueryService
             .Select(tq => new
             {
                 tq.Question.InteractionSolution,
+                tq.Question.SourceType,
+                tq.Question.IsUnpublished,
+                tq.Question.LicenseEndsAt,
                 Dto = new QuestionDto
                 {
                     Id = tq.Question.Id,
@@ -183,7 +186,8 @@ public class QuestionQueryService : IQuestionQueryService
                     InteractionType = tq.Question.InteractionType,
                     InteractionPlan = tq.Question.InteractionPlan,
                     ShowPassageFirst = tq.Question.ShowPassageFirst,
-                    Answers = tq.Question.Answers.Select(a => new AnswerDto
+                    // Issue #701: cevap anahtarındaki harf şık sırasından gelir; sıra kararlı olmalı.
+                    Answers = tq.Question.Answers.OrderBy(a => a.Order).ThenBy(a => a.Id).Select(a => new AnswerDto
                     {
                         Id = a.Id,
                         Text = a.Text,
@@ -245,8 +249,12 @@ public class QuestionQueryService : IQuestionQueryService
                 .Select(q => q.Id)
                 .ToListAsync(ct)).ToHashSet();
 
+        var now = DateTime.UtcNow;
         foreach (var row in rows)
+        {
             ApplyInteractionSolution(row.Dto, row.InteractionSolution, visibleSolutionIds.Contains(row.Dto.Id));
+            row.Dto.PrintBlock = QuestionPrintPolicy.BlockReason(row.SourceType, row.IsUnpublished, row.LicenseEndsAt, now);
+        }
 
         return rows.Select(r => r.Dto).ToList();
     }

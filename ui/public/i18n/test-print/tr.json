@@ -1,0 +1,23 @@
+{
+  "back": "Teste dön",
+  "print": "Yazdır / PDF olarak kaydet",
+  "includeKey": "Cevap anahtarını ekle (ayrı sayfa)",
+  "hint": "Açılan pencerede hedef olarak \"PDF olarak kaydet\"i seçin.",
+  "retry": "Tekrar dene",
+  "loadError": "Test yüklenemedi.",
+  "activityNotPrintable": "Etkinlikler yazdırılamaz; yalnız testler yazdırılır.",
+  "nothingToPrint": "Bu testte yazdırılabilecek soru yok.",
+  "excludedTitle": "Bazı sorular çıktıya alınmadı (testteki sıra numaraları):",
+  "excluded": {
+    "unpublished": "Yayından kaldırıldı: {{positions}}",
+    "licenseExpired": "Lisans süresi doldu: {{positions}}",
+    "publisherLicense": "Yayıncı lisansı baskıya izin vermiyor: {{positions}}",
+    "interactive": "Etkileşimli soru, kağıda basılamaz: {{positions}}"
+  },
+  "brokenImages": "{{count}} görsel yüklenemedi. Yine de yazdırmak için düğmeye tekrar basın.",
+  "fieldName": "Ad Soyad:",
+  "fieldClass": "Sınıf:",
+  "fieldDate": "Tarih:",
+  "keyTitle": "Cevap Anahtarı: {{name}}",
+  "noKey": "—"
+}

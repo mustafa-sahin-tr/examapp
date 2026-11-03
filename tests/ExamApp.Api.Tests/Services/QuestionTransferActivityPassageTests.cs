@@ -15,6 +15,7 @@ namespace ExamApp.Api.Tests.Services;
 /// issue #573: soru aktarımı — kapsam tür (<c>kind</c>) ve yönerge (<c>instruction</c>) export manifestine yazılır ve import'ta
 /// geri okunur. Eski paketlerde alan yok → Reading / null; geçersiz tür → Reading; yönerge uzunluğu 2000 ile sınırlanır.
 /// </summary>
+[Collection(HangfireJobStorageCollection.Name)]
 public class QuestionTransferActivityPassageTests : IDisposable
 {
     private const string SourceKey = "src";

@@ -1,6 +1,20 @@
-import { Injectable } from '@angular/core';
-import { HttpClient, HttpResponse } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
+import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
+
+export interface QuestionTransferImportResult {
+  imported: number;
+  matched: number;
+  alreadyImported: number;
+  conflicts: number;
+  failed: number;
+  missingTaxonomy: number;
+  unpublished: number;
+  unpublishedQuestionIds: number[];
+  conflictSamples: string[];
+  failedSamples: string[];
+  warnings: string[];
+}
 
 export interface QuestionTransferJob {
   id: string;
@@ -11,48 +25,68 @@ export interface QuestionTransferJob {
   processedItems: number;
   fileUrl?: string | null;
   message?: string | null;
-}
-
-export interface QuestionTransferExportBundle {
-  sourceKey: string;
-  bundleNo: number;
-  questionCount: number;
-  fileUrl?: string | null;
+  result?: QuestionTransferImportResult | null;
 }
 
 export interface QuestionTransferImportPreview {
   sourceKey: string;
   questionCount: number;
   alreadyImportedCount: number;
+  newCount: number;
+  matchedCount: number;
+  conflictCount: number;
+  missingTaxonomyCount: number;
+  missingImageCount: number;
+  unpublishCount: number;
+  targetUnhashedCount: number;
+  conflictSamples: string[];
+}
+
+/** Boş bırakılırsa sorular kapsamla seçilir; kapsam da yoksa tüm sorular çıkar. Kaynak adını sunucu üretir. */
+export interface QuestionExportRequest {
+  questionIds: number[];
+  gradeId?: number | null;
+  subjectId?: number | null;
+  topicId?: number | null;
+  bookId?: number | null;
+}
+
+export interface CatalogImportCounts {
+  created: number;
+  updated: number;
+  unchanged: number;
+}
+
+export interface CatalogImportResult {
+  dryRun: boolean;
+  grades: CatalogImportCounts;
+  subjects: CatalogImportCounts;
+  gradeSubjects: CatalogImportCounts;
+  topics: CatalogImportCounts;
+  subTopics: CatalogImportCounts;
+  learningOutcomes: CatalogImportCounts;
+  errors: string[];
 }
 
 @Injectable({ providedIn: 'root' })
 export class QuestionTransferService {
-  private apiUrl = '/api/exam/question-transfer';
+  private readonly http = inject(HttpClient);
+  private readonly apiUrl = '/api/exam/question-transfer';
+  private readonly catalogUrl = '/api/exam/admin/catalog';
 
-  constructor(private http: HttpClient) {}
-
-  startExport(questionIds: number[], sourceKey?: string | null): Observable<QuestionTransferJob> {
-    return this.http.post<QuestionTransferJob>(`${this.apiUrl}/exports`, {
-      questionIds,
-      sourceKey,
-    });
+  startExport(request: QuestionExportRequest): Observable<QuestionTransferJob> {
+    return this.http.post<QuestionTransferJob>(`${this.apiUrl}/exports`, request);
   }
 
-  startImport(file: File, sourceKey?: string | null): Observable<QuestionTransferJob> {
+  /** Kaynak adı gönderilmez: sunucu paketin içinden okur. */
+  startImport(file: File): Observable<QuestionTransferJob> {
     const form = new FormData();
-    if (sourceKey && sourceKey.trim().length > 0) {
-      form.append('sourceKey', sourceKey.trim());
-    }
     form.append('file', file);
     return this.http.post<QuestionTransferJob>(`${this.apiUrl}/imports`, form);
   }
 
-  previewImport(file: File, sourceKeyOverride?: string | null): Observable<QuestionTransferImportPreview> {
+  previewImport(file: File): Observable<QuestionTransferImportPreview> {
     const form = new FormData();
-    if (sourceKeyOverride && sourceKeyOverride.trim().length > 0) {
-      form.append('sourceKey', sourceKeyOverride.trim());
-    }
     form.append('file', file);
     return this.http.post<QuestionTransferImportPreview>(`${this.apiUrl}/imports/preview`, form);
   }
@@ -61,67 +95,32 @@ export class QuestionTransferService {
     return this.http.get<QuestionTransferJob[]>(`${this.apiUrl}/jobs?take=${take}`);
   }
 
-  getJob(id: string): Observable<QuestionTransferJob> {
-    return this.http.get<QuestionTransferJob>(`${this.apiUrl}/jobs/${id}`);
-  }
-
-  downloadUrl(id: string): string {
-    return `${this.apiUrl}/jobs/${id}/download`;
-  }
-
-  download(id: string): Observable<HttpResponse<Blob>> {
-    return this.http.get(`${this.apiUrl}/jobs/${id}/download`, {
+  downloadPackage(sourceKey: string): Observable<HttpResponse<Blob>> {
+    return this.http.get(`${this.apiUrl}/exports/${encodeURIComponent(sourceKey)}/package`, {
       observe: 'response',
       responseType: 'blob',
     });
   }
 
-  listExportBundles(sourceKey: string): Observable<QuestionTransferExportBundle[]> {
-    const sk = (sourceKey ?? 'default').trim() || 'default';
-    return this.http.get<QuestionTransferExportBundle[]>(`${this.apiUrl}/exports/${encodeURIComponent(sk)}/bundles`);
-  }
-
-  listSourceKeys(): Observable<string[]> {
-    return this.http.get<string[]>(`${this.apiUrl}/exports/sources`);
-  }
-
-  downloadBundle(sourceKey: string, bundleNo: number): Observable<HttpResponse<Blob>> {
-    const sk = (sourceKey ?? 'default').trim() || 'default';
-    return this.http.get(`${this.apiUrl}/exports/${encodeURIComponent(sk)}/bundles/${bundleNo}/download`, {
-      observe: 'response',
-      responseType: 'blob',
-    });
-  }
-
-  downloadBundleMap(sourceKey: string, bundleNo: number): Observable<HttpResponse<Blob>> {
-    const sk = (sourceKey ?? 'default').trim() || 'default';
-    return this.http.get(`${this.apiUrl}/exports/${encodeURIComponent(sk)}/bundles/${bundleNo}/map`, {
-      observe: 'response',
-      responseType: 'blob',
-    });
-  }
-
-  downloadSourceIndex(sourceKey: string): Observable<HttpResponse<Blob>> {
-    const sk = (sourceKey ?? 'default').trim() || 'default';
-    return this.http.get(`${this.apiUrl}/exports/${encodeURIComponent(sk)}/index`, {
-      observe: 'response',
-      responseType: 'blob',
-    });
-  }
-
-  downloadSourcePackage(sourceKey: string): Observable<HttpResponse<Blob>> {
-    const sk = (sourceKey ?? 'default').trim() || 'default';
-    return this.http.get(`${this.apiUrl}/exports/${encodeURIComponent(sk)}/package`, {
-      observe: 'response',
-      responseType: 'blob',
-    });
-  }
-
-  hangfireLogin(): Observable<any> {
+  hangfireLogin(): Observable<unknown> {
     return this.http.post(`${this.apiUrl}/hangfire/login`, {});
   }
 
   hangfireUrl(): string {
     return `/hangfire`;
+  }
+
+  downloadCatalog(): Observable<HttpResponse<Blob>> {
+    return this.http.get(`${this.catalogUrl}/export`, {
+      observe: 'response',
+      responseType: 'blob',
+    });
+  }
+
+  /** `dryRun`: hiçbir şey yazmadan ne değişeceğini sayar. Geçersiz dosyada 400 + `errors` döner. */
+  importCatalog(bundle: unknown, dryRun: boolean): Observable<CatalogImportResult> {
+    return this.http.post<CatalogImportResult>(`${this.catalogUrl}/import`, bundle, {
+      params: new HttpParams().set('dryRun', dryRun),
+    });
   }
 }

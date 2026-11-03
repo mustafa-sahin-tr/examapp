@@ -770,9 +770,41 @@ public class QuestionTransferHashMatchingTests : IDisposable
     }
 
     [Fact]
-    public void Text_question_with_a_passage_or_answer_image_gets_no_identity()
+    public void Text_question_is_identified_together_with_its_passage()
     {
-        using var withPassage = JsonDocument.Parse("""{"text":"Buna göre hangisi doğrudur?","passage":{"text":"Parça"},"answers":[]}""");
+        using var first = JsonDocument.Parse("""{"text":"Buna göre hangisi doğrudur?","passage":{"title":"B","text":"Parça bir"},"answers":[]}""");
+        using var second = JsonDocument.Parse("""{"text":"Buna göre hangisi doğrudur?","passage":{"title":"B","text":"Parça iki"},"answers":[]}""");
+        var stored = new Question { Text = "Buna göre hangisi doğrudur?", PassageId = 3, Passage = new Passage { Title = "B", Text = "Parça bir" } };
+
+        var hash = QuestionContentHash.ForManifest(first.RootElement, null);
+
+        hash.ContentHash.ShouldNotBeNull();
+        hash.ContentHash.ShouldNotBe(QuestionContentHash.ForManifest(second.RootElement, null).ContentHash);
+        QuestionContentHash.ForQuestion(stored, null).ShouldBe(hash);
+    }
+
+    [Fact]
+    public async Task Same_passage_question_in_two_packages_does_not_become_a_copy()
+    {
+        object Question(int id) => new
+        {
+            externalKey = $"question:{id}", id, text = "Buna göre hangisi doğrudur?",
+            passage = new { externalKey = "passage:1", id = 1, title = "B", text = "Parça" },
+            answers = new[] { Answer(id * 10 + 1, "Evet", true, 1) },
+        };
+
+        await ImportAsync(Zip([Question(5)], sourceKey: "first"), "first");
+        var job = await ImportAsync(Zip([Question(5)], sourceKey: "second"), "second");
+
+        Result(job).Matched.ShouldBe(1);
+        await using var check = _db.NewContext();
+        (await check.Questions.CountAsync()).ShouldBe(1);
+    }
+
+    [Fact]
+    public void Text_question_with_an_empty_passage_or_answer_image_gets_no_identity()
+    {
+        using var withPassage = JsonDocument.Parse("""{"text":"Buna göre hangisi doğrudur?","passage":{"imageUrl":"/img/b/p.jpg"},"answers":[]}""");
         using var withAnswerImage = JsonDocument.Parse("""{"text":"Hangisi üçgendir?","answers":[{"text":"","imageUrl":"/img/b/a.jpg"}]}""");
         using var plain = JsonDocument.Parse("""{"text":"Hangisi üçgendir?","answers":[]}""");
 
@@ -859,13 +891,62 @@ public class QuestionTransferHashMatchingTests : IDisposable
 
         var result = Result(job);
         result.Matched.ShouldBe(1);
-        result.Warnings.ShouldHaveSingleItem().ShouldContain("unpublished");
+        result.Unpublished.ShouldBe(1);
+        result.UnpublishedQuestionIds.ShouldBe([id]);
         await using var check = _db.NewContext();
         var saved = await check.Questions.SingleAsync(q => q.Id == id);
         saved.SourceType.ShouldBe(QuestionSourceType.Publisher);
         saved.RightsHolder.ShouldBe("Yayınevi");
         saved.IsUnpublished.ShouldBeTrue();
     }
+
+    [Fact]
+    public async Task Unpublish_reaches_a_question_imported_earlier_from_the_same_source_and_is_logged()
+    {
+        await ImportAsync(Zip([RightsQuestion(5, unpublished: false)]));
+
+        var job = await ImportAsync(Zip([RightsQuestion(5, unpublished: true)]));
+
+        Result(job).AlreadyImported.ShouldBe(1);
+        Result(job).Unpublished.ShouldBe(1);
+        await using var check = _db.NewContext();
+        (await check.Questions.SingleAsync()).IsUnpublished.ShouldBeTrue();
+        var log = await check.QuestionSourceActionLogs.SingleAsync();
+        log.AffectedCount.ShouldBe(1);
+        log.Reason!.ShouldContain(job.Id.ToString());
+    }
+
+    [Fact]
+    public async Task Preview_counts_the_questions_that_would_be_unpublished()
+    {
+        await ImportAsync(Zip([RightsQuestion(5, unpublished: false)]));
+        var zip = Zip([RightsQuestion(5, unpublished: true)]);
+
+        await using var ctx = _db.NewContext();
+        var sameSource = await Service(ctx).PreviewImportAsync(new FormFile(new MemoryStream(zip), 0, zip.Length, "file", "p.zip"), null, default);
+        var otherSource = await Service(ctx).PreviewImportAsync(new FormFile(new MemoryStream(zip), 0, zip.Length, "file", "p.zip"), "other", default);
+
+        sameSource.UnpublishCount.ShouldBe(1);
+        otherSource.UnpublishCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public void Package_source_is_the_stable_origin_when_it_has_one()
+    {
+        using var withOrigin = JsonDocument.Parse("""{"sourceKey":"transfer-1","originKey":"origin-a"}""");
+        using var old = JsonDocument.Parse("""{"sourceKey":"kitap-7"}""");
+
+        QuestionContentHash.ReadPackageSourceKey(withOrigin.RootElement).ShouldBe("origin-a");
+        QuestionContentHash.ReadPackageSourceKey(old.RootElement).ShouldBe("kitap-7");
+    }
+
+    [Fact]
+    public void Text_cleaned_on_save_gives_the_same_fingerprint_as_the_raw_text()
+    {
+        Hash(null, "Isi 5 < 7 & artar").Fingerprint.ShouldBe(Hash(null, RichTextSanitizerText("Isi 5 < 7 & artar")).Fingerprint);
+    }
+
+    private static string RichTextSanitizerText(string text) => ExamApp.Api.Helpers.RichTextSanitizer.Sanitize(text)!;
 
     [Fact]
     public async Task Package_does_not_republish_a_question_unpublished_in_the_target()
@@ -938,7 +1019,7 @@ public class QuestionTransferHashMatchingTests : IDisposable
         }
 
         await using var ctx = _db.NewContext();
-        var refused = await Service(ctx).StartExportAsync(new StartQuestionExportDto { SubjectId = subjectId }, new QuestionTransferOwner(1, true), default);
+        var refused = await Service(ctx).StartExportAsync(new StartQuestionExportDto { SubjectId = subjectId, SourceKey = "default" }, new QuestionTransferOwner(1, true), default);
         refused.Status.ShouldBe(nameof(QuestionTransferJobStatus.Failed));
         refused.Message!.ShouldContain("new source name");
         _jobs.ReceivedCalls().ShouldBeEmpty();
@@ -946,6 +1027,33 @@ public class QuestionTransferHashMatchingTests : IDisposable
         var allowed = await Service(ctx).StartExportAsync(new StartQuestionExportDto { SubjectId = subjectId, SourceKey = "subset" }, new QuestionTransferOwner(1, true), default);
         allowed.Status.ShouldNotBe(nameof(QuestionTransferJobStatus.Failed));
         _jobs.ReceivedCalls().ShouldNotBeEmpty();
+    }
+
+    [Fact]
+    public async Task Export_without_a_source_name_gets_its_own_so_its_package_holds_only_its_questions()
+    {
+        await using (var seed = _db.NewContext())
+        {
+            var subject = new Subject { Name = "Kapsam dersi" };
+            seed.Subjects.Add(subject);
+            await seed.SaveChangesAsync();
+            var question = new Question { Text = "İçinde", SubjectId = subject.Id, Point = 1, DifficultyLevel = 1 };
+            var outside = new Question { Text = "Dışında", Point = 1, DifficultyLevel = 1 };
+            seed.Questions.AddRange(question, outside);
+            await seed.SaveChangesAsync();
+            seed.Add(new QuestionTransferExportMap { SourceKey = "default", QuestionId = outside.Id, BundleNo = 1 });
+            await seed.SaveChangesAsync();
+
+            await using var ctx = _db.NewContext();
+            var request = new StartQuestionExportDto { SubjectId = subject.Id };
+            var first = await Service(ctx).StartExportAsync(request, new QuestionTransferOwner(1, true), default);
+            var second = await Service(ctx).StartExportAsync(new StartQuestionExportDto { SubjectId = subject.Id }, new QuestionTransferOwner(1, true), default);
+
+            first.Status.ShouldBe(nameof(QuestionTransferJobStatus.Queued));
+            first.SourceKey.ShouldStartWith("transfer-");
+            first.SourceKey.ShouldNotBe(second.SourceKey);
+            request.SourceKey.ShouldBe(first.SourceKey);
+        }
     }
 
     [Fact]

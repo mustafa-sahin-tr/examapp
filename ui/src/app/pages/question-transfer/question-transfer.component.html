@@ -1,76 +1,172 @@
 <div class="qt-root" *transloco="let t; prefix: 'question-transfer'">
   <div class="qt-top">
     <div>
-      <div class="qt-title">{{ t('title') }}</div>
-      <div class="qt-subtitle"></div>
+      <h1 class="qt-title">{{ t('title') }}</h1>
+      <div class="qt-subtitle">{{ t('subtitle') }}</div>
     </div>
 
-    <div class="qt-actions">
-      <button
-        mat-stroked-button
-        (click)="refreshBundles()"
-        [disabled]="isBusy()"
-        [matTooltip]="t('actions.bundlesTooltip')"
-      >
-        <mat-icon>refresh</mat-icon>
-        {{ t('actions.bundles') }}
-      </button>
-      <button
-        mat-stroked-button
-        (click)="openHangfire()"
-        [disabled]="isBusy()"
-        [matTooltip]="t('actions.hangfireTooltip')"
-      >
-        <mat-icon>launch</mat-icon>
-        {{ t('actions.hangfire') }}
-      </button>
-    </div>
+    <button mat-stroked-button (click)="openHangfire()" [matTooltip]="t('actions.hangfireTooltip')">
+      <mat-icon>launch</mat-icon>
+      {{ t('actions.hangfire') }}
+    </button>
   </div>
+
+  <mat-card class="qt-card qt-catalog">
+    <mat-card-header>
+      <mat-card-title>{{ t('catalog.title') }}</mat-card-title>
+      <mat-card-subtitle>{{ t('catalog.subtitle') }}</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <div class="qt-actions">
+        <button mat-stroked-button (click)="downloadCatalog()" [disabled]="catalogBusy()">
+          <mat-icon>download</mat-icon>
+          {{ t('catalog.download') }}
+        </button>
+        <button mat-stroked-button (click)="catalogInput.click()" [disabled]="catalogBusy()">
+          <mat-icon>upload_file</mat-icon>
+          {{ t('catalog.chooseFile') }}
+        </button>
+        <input #catalogInput class="qt-file" type="file" accept=".json" (change)="onCatalogFileSelected($event)" [attr.aria-label]="t('catalog.chooseFile')" />
+        @if (catalogFileName()) {
+          <span class="qt-muted">{{ catalogFileName() }}</span>
+        }
+      </div>
+
+      @if (catalogBusy()) {
+        <mat-progress-bar class="qt-gap" mode="indeterminate"></mat-progress-bar>
+      }
+
+      @if (catalogFileInvalid()) {
+        <div class="qt-error qt-gap" role="alert">{{ t('catalog.invalidFile') }}</div>
+      }
+
+      @if (catalogErrors().length > 0) {
+        <div class="qt-error qt-gap" role="alert">
+          <div>{{ t('catalog.failed') }}</div>
+          <ul class="qt-samples">
+            @for (error of catalogErrors(); track $index) {
+              @if (error) {
+                <li>{{ error }}</li>
+              }
+            }
+          </ul>
+        </div>
+      }
+
+      @if (catalogPreview() ?? catalogResult(); as counts) {
+        <table class="qt-table qt-gap">
+          <caption class="qt-table-caption">{{ catalogResult() ? t('catalog.applied') : t('catalog.previewCaption') }}</caption>
+          <thead>
+            <tr>
+              <th scope="col"></th>
+              <th scope="col">{{ t('catalog.created') }}</th>
+              <th scope="col">{{ t('catalog.updated') }}</th>
+              <th scope="col">{{ t('catalog.unchanged') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of catalogRows; track row) {
+              <tr>
+                <th scope="row">{{ t('catalog.rows.' + row) }}</th>
+                <td>{{ counts[row].created }}</td>
+                <td>{{ counts[row].updated }}</td>
+                <td>{{ counts[row].unchanged }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+
+      @if (catalogPreview()) {
+        <div class="qt-actions qt-end qt-gap">
+          <button mat-raised-button color="primary" (click)="applyCatalog()" [disabled]="catalogBusy()">
+            <mat-icon>check</mat-icon>
+            {{ t('catalog.apply') }}
+          </button>
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
 
   <div class="qt-grid2">
     <mat-card class="qt-card">
       <mat-card-header>
         <mat-card-title>{{ t('export.title') }}</mat-card-title>
+        <mat-card-subtitle>{{ t('export.subtitle') }}</mat-card-subtitle>
       </mat-card-header>
 
       <mat-card-content>
-        <div class="qt-row">
-          <mat-form-field appearance="outline" class="qt-field">
-            <mat-label>{{ t('export.sourceKeyLabel') }}</mat-label>
-            <input matInput [formControl]="exportSourceKey" [matAutocomplete]="sourceKeyAuto" autocomplete="off" />
-            <mat-icon matSuffix>arrow_drop_down</mat-icon>
+        <div class="qt-scope">
+          <mat-form-field appearance="outline">
+            <mat-label>{{ t('export.grade') }}</mat-label>
+            <mat-select [value]="gradeId()" (selectionChange)="onGradeChange($event.value)">
+              <mat-option [value]="null">{{ t('export.any') }}</mat-option>
+              @for (grade of grades(); track grade.id) {
+                <mat-option [value]="grade.id">{{ grade.name }}</mat-option>
+              }
+            </mat-select>
           </mat-form-field>
 
-          <mat-autocomplete #sourceKeyAuto="matAutocomplete">
-            @for (sk of filteredSourceKeys(); track sk) {
-              <mat-option [value]="sk">{{ sk }}</mat-option>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ t('export.subject') }}</mat-label>
+            <mat-select [value]="subjectId()" (selectionChange)="onSubjectChange($event.value)">
+              <mat-option [value]="null">{{ t('export.any') }}</mat-option>
+              @for (subject of subjects(); track subject.id) {
+                <mat-option [value]="subject.id">{{ subject.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>{{ t('export.topic') }}</mat-label>
+            <mat-select [value]="topicId()" (selectionChange)="topicId.set($event.value)" [disabled]="subjectId() === null">
+              <mat-option [value]="null">{{ t('export.any') }}</mat-option>
+              @for (topic of topics(); track topic.id) {
+                <mat-option [value]="topic.id">{{ topic.name }}</mat-option>
+              }
+            </mat-select>
+            @if (subjectId() === null) {
+              <mat-hint>{{ t('export.topicHint') }}</mat-hint>
             }
-          </mat-autocomplete>
-        </div>
+          </mat-form-field>
 
-        <div class="qt-row">
-          <mat-form-field appearance="outline" class="qt-field">
-            <mat-label>{{ t('export.questionIdsLabel') }}</mat-label>
-            <textarea
-              matInput
-              rows="4"
-              [formControl]="exportQuestionIds"
-              [placeholder]="t('export.questionIdsPlaceholder')"
-            ></textarea>
-            <mat-hint align="start">{{ t('export.questionIdsHint') }}</mat-hint>
-            <mat-hint align="end">
-              {{ exportAllSelected() ? t('export.allSelected') : t('export.idCount', { count: exportIdCount() }) }}
-            </mat-hint>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ t('export.book') }}</mat-label>
+            <mat-select [value]="bookId()" (selectionChange)="bookId.set($event.value)">
+              <mat-option [value]="null">{{ t('export.any') }}</mat-option>
+              @for (book of books(); track book.id) {
+                <mat-option [value]="book.id">{{ book.name }}</mat-option>
+              }
+            </mat-select>
           </mat-form-field>
         </div>
+
+        @if (!hasScope()) {
+          <mat-form-field appearance="outline" class="qt-field">
+            <mat-label>{{ t('export.questionIds') }}</mat-label>
+            <input matInput [ngModel]="questionIdsText()" (ngModelChange)="questionIdsText.set($event)" [placeholder]="t('export.questionIdsPlaceholder')" autocomplete="off" />
+            <mat-hint>{{ t('export.questionIdsHint') }}</mat-hint>
+          </mat-form-field>
+        }
+
+        @if (exportFailed()) {
+          <div class="qt-error qt-gap" role="alert">{{ t('export.failed') }}</div>
+        }
       </mat-card-content>
 
       <mat-divider></mat-divider>
 
-      <mat-card-actions class="qt-actions" align="end">
-        <button mat-raised-button color="primary" (click)="startExport()" [disabled]="isBusy()">
-          <mat-icon>upload</mat-icon>
-          {{ t('export.start') }}
+      <mat-card-actions class="qt-actions qt-end">
+        <button class="qt-export-start" mat-raised-button color="primary" (click)="startExport()" [disabled]="exportBusy()">
+          <mat-icon>outbox</mat-icon>
+          @if (exportsEverything()) {
+            {{ t('export.startAll') }}
+          } @else if (hasScope()) {
+            {{ t('export.startScope') }}
+          } @else {
+            {{ t('export.startIds', { count: questionIds().length }) }}
+          }
         </button>
       </mat-card-actions>
     </mat-card>
@@ -78,36 +174,68 @@
     <mat-card class="qt-card">
       <mat-card-header>
         <mat-card-title>{{ t('import.title') }}</mat-card-title>
+        <mat-card-subtitle>{{ t('import.subtitle') }}</mat-card-subtitle>
       </mat-card-header>
 
       <mat-card-content>
-        <div class="qt-file-row">
-          <input class="qt-file" type="file" accept=".zip" (change)="onFileSelected($event)" />
-          <div class="qt-muted">{{ importFile()?.name ?? t('import.noFile') }}</div>
+        <div class="qt-actions">
+          <button mat-stroked-button (click)="importInput.click()" [disabled]="importBusy()">
+            <mat-icon>upload_file</mat-icon>
+            {{ t('import.chooseFile') }}
+          </button>
+          <input #importInput class="qt-file" type="file" accept=".zip" (change)="onImportFileSelected($event)" [attr.aria-label]="t('import.chooseFile')" />
+          <span class="qt-muted">{{ importFile()?.name ?? t('import.noFile') }}</span>
         </div>
 
-        @if (importPreview()) {
-          <div class="qt-preview">
-            <mat-chip-set>
-              <mat-chip selected color="primary">
-                {{ t('import.sourceChip', { sourceKey: importPreview()!.sourceKey }) }}
-              </mat-chip>
-              <mat-chip selected color="accent">
-                {{ t('import.questionChip', { count: importPreview()!.questionCount }) }}
-              </mat-chip>
-              <mat-chip selected>
-                {{ t('import.alreadyChip', { count: importPreview()!.alreadyImportedCount }) }}
-              </mat-chip>
-            </mat-chip-set>
+        @if (previewLoading()) {
+          <div class="qt-gap">
+            <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+            <div class="qt-muted qt-gap-small">{{ t('import.previewLoading') }}</div>
           </div>
+        }
+
+        @if (previewError() !== null) {
+          <div class="qt-error qt-gap" role="alert">{{ previewError() || t('import.previewFailed') }}</div>
+        }
+
+        @if (importPreview(); as preview) {
+          <div class="qt-preview qt-gap">
+            <div class="qt-muted">{{ t('import.total', { count: preview.questionCount }) }}</div>
+            <dl class="qt-counts">
+              <div><dt>{{ t('import.new') }}</dt><dd>{{ preview.newCount }}</dd></div>
+              <div><dt>{{ t('import.matched') }}</dt><dd>{{ preview.matchedCount }}</dd></div>
+              <div><dt>{{ t('import.already') }}</dt><dd>{{ preview.alreadyImportedCount }}</dd></div>
+              <div [class.qt-count-warn]="preview.conflictCount > 0"><dt>{{ t('import.conflicts') }}</dt><dd>{{ preview.conflictCount }}</dd></div>
+              <div [class.qt-count-warn]="preview.missingTaxonomyCount > 0"><dt>{{ t('import.missingTaxonomy') }}</dt><dd>{{ preview.missingTaxonomyCount }}</dd></div>
+              <div [class.qt-count-warn]="preview.missingImageCount > 0"><dt>{{ t('import.missingImage') }}</dt><dd>{{ preview.missingImageCount }}</dd></div>
+              <div [class.qt-count-warn]="preview.unpublishCount > 0"><dt>{{ t('import.unpublish') }}</dt><dd>{{ preview.unpublishCount }}</dd></div>
+            </dl>
+
+            @if (preview.unpublishCount > 0) {
+              <div class="qt-note qt-count-warn">{{ t('import.unpublishNote', { count: preview.unpublishCount }) }}</div>
+            }
+            @if (preview.conflictCount > 0) {
+              <div class="qt-note">{{ t('import.conflictsNote') }}</div>
+            }
+            @if (preview.missingTaxonomyCount > 0) {
+              <div class="qt-note">{{ t('import.missingTaxonomyNote') }}</div>
+            }
+            @if (preview.targetUnhashedCount > 0) {
+              <div class="qt-note">{{ t('import.unhashedNote', { count: preview.targetUnhashedCount }) }}</div>
+            }
+          </div>
+        }
+
+        @if (importFailed()) {
+          <div class="qt-error qt-gap" role="alert">{{ t('import.failed') }}</div>
         }
       </mat-card-content>
 
       <mat-divider></mat-divider>
 
-      <mat-card-actions class="qt-actions" align="end">
-        <button mat-raised-button color="accent" (click)="startImport()" [disabled]="isBusy() || !importFile()">
-          <mat-icon>download</mat-icon>
+      <mat-card-actions class="qt-actions qt-end">
+        <button class="qt-import-start" mat-raised-button color="primary" (click)="startImport()" [disabled]="importBusy() || !importPreview()">
+          <mat-icon>move_to_inbox</mat-icon>
           {{ t('import.start') }}
         </button>
       </mat-card-actions>
@@ -116,144 +244,87 @@
 
   <mat-card class="qt-card">
     <mat-card-header>
-      <mat-card-title>{{ t('bundles.title') }}</mat-card-title>
-      <mat-card-subtitle>{{ t('bundles.subtitle', { sourceKey: exportSourceKey.value }) }}</mat-card-subtitle>
+      <mat-card-title>{{ t('jobs.title') }}</mat-card-title>
     </mat-card-header>
 
     <mat-card-content>
-      <div class="qt-actions qt-bundles-actions">
-        <button mat-stroked-button (click)="downloadIndex()" [disabled]="isBusy()">
-          <mat-icon>description</mat-icon>
-          {{ t('bundles.index') }}
-        </button>
-
-        <button mat-raised-button color="primary" (click)="downloadSourcePackage()" [disabled]="isBusy()">
-          <mat-icon>archive</mat-icon>
-          {{ t('bundles.singleZip') }}
-        </button>
-      </div>
-
-      @if (bundles().length === 0) {
-        <div class="qt-empty">{{ t('bundles.empty') }}</div>
+      @if (jobsFailed()) {
+        <div class="qt-error" role="alert">
+          {{ t('jobs.loadFailed') }}
+          <button mat-button (click)="refreshJobs()">{{ t('jobs.retry') }}</button>
+        </div>
       }
 
-      <div class="qt-bundles">
-        @for (b of bundles(); track b.bundleNo) {
-          <div class="qt-bundle">
-            <div>
-              <div class="qt-bundle-title">{{ t('bundles.bundleTitle', { no: b.bundleNo }) }}</div>
-              <div class="qt-muted">{{ t('bundles.questionCount', { count: b.questionCount }) }}</div>
-            </div>
+      @if (downloadFailed()) {
+        <div class="qt-error" role="alert">{{ t('jobs.downloadFailed') }}</div>
+      }
 
-            <div class="qt-actions">
-              <button mat-stroked-button (click)="downloadBundle(b)" [disabled]="isBusy()">
-                <mat-icon>download</mat-icon>
-                {{ t('bundles.zip') }}
-              </button>
-              <button mat-stroked-button (click)="downloadBundleMap(b)" [disabled]="isBusy()">
-                <mat-icon>map</mat-icon>
-                {{ t('bundles.map') }}
-              </button>
-            </div>
-          </div>
-        }
-      </div>
-    </mat-card-content>
-  </mat-card>
-
-  <mat-card class="qt-card">
-    <mat-card-header>
-      <mat-card-title>{{ t('jobs.title') }}</mat-card-title>
-      <mat-card-subtitle>{{ t('jobs.subtitle') }}</mat-card-subtitle>
-    </mat-card-header>
-
-    <mat-card-content>
-      <div class="qt-actions qt-bundles-actions">
-        <button mat-stroked-button (click)="refreshJobsNow()" [disabled]="isBusy()">
-          <mat-icon>refresh</mat-icon>
-          {{ t('jobs.refreshNow') }}
-        </button>
-      </div>
-
-      @if (jobs().length === 0) {
+      @if (jobs().length === 0 && !jobsFailed()) {
         <div class="qt-empty">{{ t('jobs.empty') }}</div>
-      } @else {
-        <div class="qt-jobs-grid">
-          <div class="qt-jobs-col">
-            <div class="qt-jobs-col-title">
-              <mat-icon>upload</mat-icon>
-              {{ t('jobs.exportColumn') }}
+      }
+
+      @for (job of jobs(); track job.id) {
+        <div class="qt-job">
+          <div class="qt-job-head">
+            <div class="qt-job-left">
+              <div class="qt-job-title">
+                <b>{{ t('jobs.kind.' + job.kind) }}</b>
+                <mat-chip class="qt-chip" [color]="jobChipColor(job)" selected>{{ t('jobs.status.' + job.status) }}</mat-chip>
+              </div>
+              @if (jobMessage(job); as message) {
+                <div class="qt-msg" [class.qt-error]="job.status === 'Failed'">{{ message }}</div>
+              }
             </div>
 
-            @if (exportJobs().length === 0) {
-              <div class="qt-empty">{{ t('jobs.exportEmpty') }}</div>
-            }
-
-            @for (job of exportJobs(); track job.id) {
-              <div class="qt-job">
-                <div class="qt-job-head">
-                  <div class="qt-job-left">
-                    <div class="qt-job-title">
-                      <b>{{ job.kind }}</b>
-                      <mat-chip class="qt-chip" [color]="jobChipColor(job)" selected>{{ job.status }}</mat-chip>
-                      <span class="qt-muted">{{ job.sourceKey }}</span>
-                    </div>
-                    <div class="qt-muted qt-msg">{{ job.message }}</div>
-                  </div>
-
-                  <div class="qt-job-right">
-                    <div class="qt-mono">{{ job.processedItems }}/{{ job.totalItems }} · {{ progress(job) }}%</div>
-                    @if (canDownloadJob(job)) {
-                      <button mat-stroked-button (click)="download(job)" [disabled]="isBusy()">
-                        <mat-icon>download</mat-icon>
-                        {{ t(jobDownloadLabelKey(job)) }}
-                      </button>
-                    }
-                  </div>
-                </div>
-
-                <mat-progress-bar mode="determinate" [value]="progress(job)"></mat-progress-bar>
-              </div>
-            }
-          </div>
-
-          <div class="qt-jobs-col">
-            <div class="qt-jobs-col-title">
-              <mat-icon>download</mat-icon>
-              {{ t('jobs.importColumn') }}
+            <div class="qt-job-right">
+              @if (isJobRunning(job)) {
+                <div class="qt-mono">{{ job.processedItems }}/{{ job.totalItems }} · {{ progress(job) }}%</div>
+              }
+              @if (canDownloadPackage(job)) {
+                <button mat-stroked-button (click)="downloadPackage(job)" [disabled]="downloadingJobId() === job.id">
+                  <mat-icon>download</mat-icon>
+                  {{ t('jobs.downloadPackage') }}
+                </button>
+              }
             </div>
-
-            @if (importJobs().length === 0) {
-              <div class="qt-empty">{{ t('jobs.importEmpty') }}</div>
-            }
-
-            @for (job of importJobs(); track job.id) {
-              <div class="qt-job">
-                <div class="qt-job-head">
-                  <div class="qt-job-left">
-                    <div class="qt-job-title">
-                      <b>{{ job.kind }}</b>
-                      <mat-chip class="qt-chip" [color]="jobChipColor(job)" selected>{{ job.status }}</mat-chip>
-                      <span class="qt-muted">{{ job.sourceKey }}</span>
-                    </div>
-                    <div class="qt-muted qt-msg">{{ job.message }}</div>
-                  </div>
-
-                  <div class="qt-job-right">
-                    <div class="qt-mono">{{ job.processedItems }}/{{ job.totalItems }} · {{ progress(job) }}%</div>
-                    @if (canDownloadJob(job)) {
-                      <button mat-stroked-button (click)="download(job)" [disabled]="isBusy()">
-                        <mat-icon>download</mat-icon>
-                        {{ t(jobDownloadLabelKey(job)) }}
-                      </button>
-                    }
-                  </div>
-                </div>
-
-                <mat-progress-bar mode="determinate" [value]="progress(job)"></mat-progress-bar>
-              </div>
-            }
           </div>
+
+          @if (isJobRunning(job)) {
+            <mat-progress-bar mode="determinate" [value]="progress(job)"></mat-progress-bar>
+          }
+
+          @if (job.result; as result) {
+            <dl class="qt-counts">
+              <div><dt>{{ t('import.new') }}</dt><dd>{{ result.imported }}</dd></div>
+              <div><dt>{{ t('import.matched') }}</dt><dd>{{ result.matched }}</dd></div>
+              <div><dt>{{ t('import.already') }}</dt><dd>{{ result.alreadyImported }}</dd></div>
+              <div [class.qt-count-warn]="result.conflicts > 0"><dt>{{ t('import.conflicts') }}</dt><dd>{{ result.conflicts }}</dd></div>
+              <div [class.qt-count-warn]="result.missingTaxonomy > 0"><dt>{{ t('import.missingTaxonomy') }}</dt><dd>{{ result.missingTaxonomy }}</dd></div>
+              <div [class.qt-count-warn]="result.failed > 0"><dt>{{ t('jobs.failedCount') }}</dt><dd>{{ result.failed }}</dd></div>
+              <div [class.qt-count-warn]="result.unpublished > 0"><dt>{{ t('import.unpublish') }}</dt><dd>{{ result.unpublished }}</dd></div>
+            </dl>
+
+            @if (result.unpublished > 0) {
+              <div class="qt-note">{{ t('jobs.unpublishedIds', { ids: result.unpublishedQuestionIds.join(', ') }) }}</div>
+            }
+
+            @if (result.conflictSamples.length + result.failedSamples.length + result.warnings.length > 0) {
+              <details class="qt-details">
+                <summary>{{ t('jobs.details') }}</summary>
+                <ul class="qt-samples">
+                  @for (sample of result.failedSamples; track $index) {
+                    <li>{{ sample }}</li>
+                  }
+                  @for (sample of result.conflictSamples; track $index) {
+                    <li>{{ sample }}</li>
+                  }
+                  @for (warning of result.warnings; track $index) {
+                    <li>{{ warning }}</li>
+                  }
+                </ul>
+              </details>
+            }
+          }
         </div>
       }
     </mat-card-content>

@@ -429,6 +429,9 @@ public class QuestionTransferJobRunner
         await _db.SaveChangesAsync();
     }
 
+    internal static bool IsUnpublishedInPackage(JsonElement qEl) =>
+        qEl.TryGetProperty("isUnpublished", out var unpublished) && unpublished.ValueKind == JsonValueKind.True;
+
     private static void DeleteTempFile(string path)
     {
         try
@@ -454,6 +457,7 @@ public class QuestionTransferJobRunner
         }
 
         var questions = await LoadQuestionsAsync(bundleQuestionIds);
+        var originKey = await QuestionTransferOriginStore.GetOrCreateAsync(_db);
 
         // issue #570: plan/çözüm soru başına bir kez ayrılır (taşınmamış eski satırın planındaki çözüm de ayrı alana gider).
         var interactionById = questions
@@ -464,6 +468,7 @@ public class QuestionTransferJobRunner
         {
             version = 3,
             sourceKey = sourceKey,
+            originKey,
             bundleNo = bundleNo,
             exportedAtUtc = DateTime.UtcNow,
             questions = questions.Select(q => new
@@ -697,6 +702,7 @@ public class QuestionTransferJobRunner
             // review #574 (L1): tanımı geçersiz etkileşim (soru yine içe alınır, çözüm/plan düşürülür). Anahtar = dış soru
             // anahtarı (yeniden denenen transaction aynı uyarıyı iki kez saymasın).
             var interactionWarnings = new Dictionary<string, string>(StringComparer.Ordinal);
+            var unpublishedQuestionIds = new HashSet<int>();
 
             // In-memory maps for this import run
             var taxonomy = new QuestionImportTaxonomy(_db);
@@ -722,10 +728,18 @@ public class QuestionTransferJobRunner
                 }
 
                 // Fast-path skip when already imported (idempotent).
-                var already = await _db.Set<QuestionTransferImportMap>()
-                    .AnyAsync(m => m.SourceKey == job.SourceKey && m.ExternalQuestionKey == externalKey);
-                if (already)
+                var alreadyImportedAs = await _db.Set<QuestionTransferImportMap>()
+                    .Where(m => m.SourceKey == job.SourceKey && m.ExternalQuestionKey == externalKey)
+                    .Select(m => (int?)m.TargetQuestionId)
+                    .FirstOrDefaultAsync();
+                if (alreadyImportedAs is not null)
                 {
+                    // Daha önce alınmış soru kaynakta sonradan kaldırılmış olabilir: yayından kaldırma bu yolda da taşınır.
+                    if (IsUnpublishedInPackage(qEl) && await _db.Questions.FirstOrDefaultAsync(q => q.Id == alreadyImportedAs && !q.IsUnpublished) is { } alreadyImported)
+                    {
+                        alreadyImported.IsUnpublished = true;
+                        unpublishedQuestionIds.Add(alreadyImported.Id);
+                    }
                     skippedCount++;
                     job.ProcessedItems = importedCount + matchedCount + skippedCount + conflictCount + failedCount;
                     job.Message = $"Import progress {job.ProcessedItems}/{job.TotalItems} (Imported {importedCount}, Matched {matchedCount}, Skipped {skippedCount}, Conflicts {conflictCount}, Failed {failedCount})";
@@ -794,11 +808,12 @@ public class QuestionTransferJobRunner
 
                     if (match.Kind == QuestionMatchKind.Exact)
                     {
-                        if (await FillBlanksAsync(match.TargetQuestionId!.Value, resolvedTaxonomy, qEl))
-                            interactionWarnings[externalKey] = $"{externalKey}: unpublished in the source, so question {match.TargetQuestionId} was unpublished here too";
+                        var unpublishedHere = await FillBlanksAsync(match.TargetQuestionId!.Value, resolvedTaxonomy, qEl);
                         lockRow.TargetQuestionId = match.TargetQuestionId.Value;
                         await _db.SaveChangesAsync();
                         await tx.CommitAsync();
+                        if (unpublishedHere)
+                            unpublishedQuestionIds.Add(match.TargetQuestionId.Value);
 
                         matchedCount++;
                         job.ProcessedItems = importedCount + matchedCount + skippedCount + conflictCount + failedCount;
@@ -851,14 +866,14 @@ public class QuestionTransferJobRunner
                         ShowPassageFirst = qEl.TryGetProperty("showPassageFirst", out var spf) && spf.ValueKind == JsonValueKind.True,
                         IsExample = qEl.TryGetProperty("isExample", out var ie) && ie.ValueKind == JsonValueKind.True,
                         PracticeCorrectAnswer = qEl.TryGetProperty("practiceCorrectAnswer", out var pca) ? pca.GetString() : null,
-                        AnswerColCount = qEl.TryGetProperty("answerColCount", out var acc) ? acc.GetInt32() : 3,
+                        AnswerColCount = qEl.TryGetProperty("answerColCount", out var acc) && acc.ValueKind == JsonValueKind.Number ? acc.GetInt32() : 3,
                         InteractionType = importedType,
                         InteractionPlan = importedPlan,
                         InteractionSolution = importedSolution,
-                        X = qEl.TryGetProperty("x", out var x) ? x.GetDouble() : null,
-                        Y = qEl.TryGetProperty("y", out var y) ? y.GetDouble() : null,
-                        Width = qEl.TryGetProperty("width", out var w) ? w.GetInt32() : null,
-                        Height = qEl.TryGetProperty("height", out var h) ? h.GetInt32() : null,
+                        X = qEl.TryGetProperty("x", out var x) && x.ValueKind == JsonValueKind.Number ? x.GetDouble() : null,
+                        Y = qEl.TryGetProperty("y", out var y) && y.ValueKind == JsonValueKind.Number ? y.GetDouble() : null,
+                        Width = qEl.TryGetProperty("width", out var w) && w.ValueKind == JsonValueKind.Number ? w.GetInt32() : null,
+                        Height = qEl.TryGetProperty("height", out var h) && h.ValueKind == JsonValueKind.Number ? h.GetInt32() : null,
                         IsCanvasQuestion = true,
                     };
 
@@ -878,8 +893,8 @@ public class QuestionTransferJobRunner
                                 {
                                     Title = passageEl.TryGetProperty("title", out var pt) ? pt.GetString() : null,
                                     Text = passageEl.TryGetProperty("text", out var ptxt) ? ptxt.GetString() : null,
-                                    X = passageEl.TryGetProperty("x", out var px) ? px.GetDouble() : null,
-                                    Y = passageEl.TryGetProperty("y", out var py) ? py.GetDouble() : null,
+                                    X = passageEl.TryGetProperty("x", out var px) && px.ValueKind == JsonValueKind.Number ? px.GetDouble() : null,
+                                    Y = passageEl.TryGetProperty("y", out var py) && py.ValueKind == JsonValueKind.Number ? py.GetDouble() : null,
                                     Width = passageEl.TryGetProperty("width", out var pw) && pw.ValueKind != JsonValueKind.Null ? pw.GetInt32() : null,
                                     Height = passageEl.TryGetProperty("height", out var ph) && ph.ValueKind != JsonValueKind.Null ? ph.GetInt32() : null,
                                     IsCanvasQuestion = true,
@@ -894,10 +909,7 @@ public class QuestionTransferJobRunner
                                     var passageImgEntry = zip.GetEntry($"passages/{sourcePassageId}.jpg");
                                     if (passageImgEntry != null)
                                     {
-                                        await using var imgStream = passageImgEntry.Open();
-                                        await using var mem = new MemoryStream();
-                                        await imgStream.CopyToAsync(mem);
-                                        mem.Position = 0;
+                                        await using var mem = new MemoryStream(await QuestionContentHash.ReadPackageEntryAsync(passageImgEntry, QuestionContentHash.MaxPackageImageBytes));
                                         passage.ImageUrl = await _minio.UploadFileAsync(mem, $"passages/{Guid.NewGuid()}.jpg");
                                     }
                                 }
@@ -923,20 +935,14 @@ public class QuestionTransferJobRunner
                     var qImgEntry = zip.GetEntry($"questions/{sourceQuestionId}/question.jpg");
                     if (qImgEntry != null)
                     {
-                        await using var imgStream = qImgEntry.Open();
-                        await using var mem = new MemoryStream();
-                        await imgStream.CopyToAsync(mem);
-                        mem.Position = 0;
+                        await using var mem = new MemoryStream(await QuestionContentHash.ReadPackageEntryAsync(qImgEntry, QuestionContentHash.MaxPackageImageBytes));
                         question.ImageUrl = await _minio.UploadFileAsync(mem, $"{folder}/question.jpg");
                     }
 
                     var qV2Entry = zip.GetEntry($"questions/{sourceQuestionId}/question-v2.jpg");
                     if (qV2Entry != null)
                     {
-                        await using var imgStream = qV2Entry.Open();
-                        await using var mem = new MemoryStream();
-                        await imgStream.CopyToAsync(mem);
-                        mem.Position = 0;
+                        await using var mem = new MemoryStream(await QuestionContentHash.ReadPackageEntryAsync(qV2Entry, QuestionContentHash.MaxPackageImageBytes));
                         await _minio.UploadFileAsync(mem, $"{folder}/question-v2.jpg");
                     }
 
@@ -953,8 +959,8 @@ public class QuestionTransferJobRunner
                                 Text = aEl.GetProperty("text").GetString() ?? string.Empty,
                                 Tag = aEl.TryGetProperty("tag", out var tag) ? tag.GetString() : null,
                                 Order = aEl.TryGetProperty("order", out var order) && order.ValueKind != JsonValueKind.Null ? order.GetInt32() : null,
-                                X = aEl.TryGetProperty("x", out var ax) ? ax.GetDouble() : null,
-                                Y = aEl.TryGetProperty("y", out var ay) ? ay.GetDouble() : null,
+                                X = aEl.TryGetProperty("x", out var ax) && ax.ValueKind == JsonValueKind.Number ? ax.GetDouble() : null,
+                                Y = aEl.TryGetProperty("y", out var ay) && ay.ValueKind == JsonValueKind.Number ? ay.GetDouble() : null,
                                 Width = aEl.TryGetProperty("width", out var aw) && aw.ValueKind != JsonValueKind.Null ? aw.GetInt32() : null,
                                 Height = aEl.TryGetProperty("height", out var ah) && ah.ValueKind != JsonValueKind.Null ? ah.GetInt32() : null,
                                 IsCanvasQuestion = true,
@@ -971,10 +977,7 @@ public class QuestionTransferJobRunner
                             var entry = zip.GetEntry($"questions/{sourceQuestionId}/answers/{srcAnswerId}.jpg");
                             if (entry == null) continue;
 
-                            await using var imgStream = entry.Open();
-                            await using var mem = new MemoryStream();
-                            await imgStream.CopyToAsync(mem);
-                            mem.Position = 0;
+                            await using var mem = new MemoryStream(await QuestionContentHash.ReadPackageEntryAsync(entry, QuestionContentHash.MaxPackageImageBytes));
                             answers[i].ImageUrl = await _minio.UploadFileAsync(mem, $"{folder}/{answers[i].Id}.jpg");
                         }
 
@@ -1078,6 +1081,18 @@ public class QuestionTransferJobRunner
                 summary += $" Warnings {interactionWarnings.Count}: " + string.Join(" | ", interactionWarnings.Values.Take(10));
             }
             job.Message = summary;
+            // Normal yolda (#690) olduğu gibi yayından kaldırmanın izi kalır; hangi soruların kalktığı iş sonucundadır.
+            if (unpublishedQuestionIds.Count > 0)
+            {
+                _db.QuestionSourceActionLogs.Add(new QuestionSourceActionLog
+                {
+                    RightsHolder = string.Empty,
+                    Unpublished = true,
+                    AffectedCount = unpublishedQuestionIds.Count,
+                    Reason = $"Question transfer job {job.Id}, started by user {job.CreateUserId}",
+                });
+            }
+
             job.ResultJson = JsonSerializer.Serialize(new QuestionTransferImportResultDto
             {
                 Imported = importedCount,
@@ -1086,6 +1101,8 @@ public class QuestionTransferJobRunner
                 Conflicts = conflictCount,
                 Failed = failedCount,
                 MissingTaxonomy = missingTaxonomyCount,
+                Unpublished = unpublishedQuestionIds.Count,
+                UnpublishedQuestionIds = unpublishedQuestionIds.Order().ToList(),
                 ConflictSamples = conflictSamples,
                 FailedSamples = failedSamples,
                 Warnings = interactionWarnings.Values.Take(MaxResultSamples).ToList(),
@@ -1190,8 +1207,8 @@ public class QuestionTransferJobRunner
 
     /// <summary>
     /// Hedefteki aynı soru değiştirilmez: yalnız boş sınıflandırma ve kaynağı bilinmeyen sorunun lisans bilgisi doldurulur, eksik alt konu ve
-    /// kazanım bağları eklenir. Tek istisna yayından kaldırmadır: hak sahibi talebi hedefte de geçerli olmalı, soru kaldırılır ve true döner
-    /// (uyarı yazılır). Ters yön yoktur, paket hedefte kaldırılmış soruyu yeniden yayına almaz.
+    /// kazanım bağları eklenir. Tek istisna yayından kaldırmadır: hak sahibi talebi hedefte de geçerli olmalı, soru kaldırılır ve true döner.
+    /// Ters yön yoktur, paket hedefte kaldırılmış soruyu yeniden yayına almaz.
     /// </summary>
     private async Task<bool> FillBlanksAsync(int questionId, QuestionImportTaxonomy.Resolved taxonomy, JsonElement qEl)
     {
@@ -1225,7 +1242,7 @@ public class QuestionTransferJobRunner
                 _db.QuestionLearningOutcomes.Add(new QuestionLearningOutcome { QuestionId = questionId, LearningOutcomeId = id });
         }
 
-        var unpublishedHere = !target.IsUnpublished && qEl.TryGetProperty("isUnpublished", out var unpublished) && unpublished.ValueKind == JsonValueKind.True;
+        var unpublishedHere = !target.IsUnpublished && IsUnpublishedInPackage(qEl);
         if (unpublishedHere)
             target.IsUnpublished = true;
 

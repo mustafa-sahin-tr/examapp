@@ -58,6 +58,10 @@ public class QuestionTransferImportResultDto
     public int Conflicts { get; set; }
     public int Failed { get; set; }
     public int MissingTaxonomy { get; set; }
+
+    /// <summary>Paket yüzünden burada yayından kaldırılan sorular: sayı sınırı yok, geri almak için hepsi gerekir.</summary>
+    public int Unpublished { get; set; }
+    public List<int> UnpublishedQuestionIds { get; set; } = new();
     public List<string> ConflictSamples { get; set; } = new();
     public List<string> FailedSamples { get; set; } = new();
     public List<string> Warnings { get; set; } = new();
@@ -84,6 +88,9 @@ public class QuestionTransferImportPreviewDto
 
     /// <summary>Görseli pakette bulunmayan soru sayısı: içe aktarımda alınmaz, hata olarak yazılır.</summary>
     public int MissingImageCount { get; set; }
+
+    /// <summary>İçe alınırsa burada yayından kalkacak soru sayısı.</summary>
+    public int UnpublishCount { get; set; }
 
     /// <summary>Hedefte hash'i henüz hesaplanmamış soru sayısı: sıfır değilse eşleşme sayıları eksik olabilir.</summary>
     public int TargetUnhashedCount { get; set; }

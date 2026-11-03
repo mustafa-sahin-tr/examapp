@@ -27,7 +27,7 @@ public class QuestionTransferServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task StartExport_persists_a_queued_job_and_defaults_the_source_key()
+    public async Task StartExport_persists_a_queued_job_and_generates_a_source_key()
     {
         QuestionTransferJobDto dto;
         await using (var ctx = _db.NewContext())
@@ -35,7 +35,7 @@ public class QuestionTransferServiceTests : IDisposable
 
         dto.Kind.ShouldBe("Export");
         dto.Status.ShouldBe("Queued");
-        dto.SourceKey.ShouldBe("default");
+        dto.SourceKey.ShouldStartWith("transfer-");
         dto.TotalItems.ShouldBe(3);
 
         await using var check = _db.NewContext();

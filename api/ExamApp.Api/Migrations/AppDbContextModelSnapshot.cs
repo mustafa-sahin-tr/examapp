@@ -2783,6 +2783,21 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("QuestionTransferJobs");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.QuestionTransferOrigin", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("QuestionTransferOrigins");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.RecurringAvailabilityRule", b =>
                 {
                     b.Property<int>("Id")

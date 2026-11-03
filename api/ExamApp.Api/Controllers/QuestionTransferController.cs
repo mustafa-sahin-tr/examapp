@@ -75,6 +75,7 @@ public class QuestionTransferController : ControllerBase
 
     [HttpPost("imports")]
     [RequestSizeLimit(200_000_000)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 200_000_000)]
     [Consumes("multipart/form-data")]
     public async Task<ActionResult<QuestionTransferJobDto>> StartImport([FromForm] StartQuestionImportFormDto request, CancellationToken ct)
     {
@@ -104,6 +105,7 @@ public class QuestionTransferController : ControllerBase
 
     [HttpPost("imports/preview")]
     [RequestSizeLimit(200_000_000)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 200_000_000)]
     [Consumes("multipart/form-data")]
     public async Task<ActionResult<QuestionTransferImportPreviewDto>> PreviewImport([FromForm] StartQuestionImportFormDto request, CancellationToken ct)
     {
@@ -265,6 +267,7 @@ public class QuestionTransferController : ControllerBase
                         {
                             version = 3,
                             sourceKey = sourceKey,
+                            originKey = await _service.GetOriginKeyAsync(ct),
                             bundleNo = 0,
                             exportedAtUtc = DateTime.UtcNow,
                             questions = await _service.WithCurrentRightsAsync(mergedQuestionsJson, ct),
@@ -298,9 +301,8 @@ public class QuestionTransferController : ControllerBase
         var manifestEntry = zip.GetEntry("manifest.json");
         if (manifestEntry == null) return null;
 
-        using var manifestStream = manifestEntry.Open();
-        using var doc = await JsonDocument.ParseAsync(manifestStream, cancellationToken: ct);
-        return doc.RootElement.TryGetProperty("sourceKey", out var sk) ? sk.GetString() : null;
+        using var doc = JsonDocument.Parse(await QuestionContentHash.ReadPackageEntryAsync(manifestEntry, QuestionContentHash.MaxPackageManifestBytes, ct));
+        return QuestionContentHash.ReadPackageSourceKey(doc.RootElement);
     }
 
     [HttpGet("jobs")]

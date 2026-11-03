@@ -57,7 +57,7 @@ public class PracticeSessionService : IPracticeSessionService
         string? fixedQuestionIdsJson = null;
         if (request.DueReview)
         {
-            var due = await LoadDueReviewAsync(student, subjectIds, ct);
+            var due = await DueReviewQueries.LoadAsync(_context, _calendar, student, subjectIds, ct);
             if (due.Count == 0)
                 throw new InvalidOperationException(_localizer["practice.noDueReview"]);
 
@@ -87,112 +87,12 @@ public class PracticeSessionService : IPracticeSessionService
             return new DueReviewDto();
 
         var subjectIds = subjectId.HasValue ? new List<int> { subjectId.Value } : new List<int>();
-        var due = await LoadDueReviewAsync(student, subjectIds, ct);
+        var due = await DueReviewQueries.LoadAsync(_context, _calendar, student, subjectIds, ct);
         return new DueReviewDto
         {
             TotalCount = due.Count,
             Items = due.Take(Math.Clamp(take, 1, MaxDueReviewCount)).ToList()
         };
-    }
-
-    /// <summary>
-    /// Issue #529: tekrar zamanı gelen sorular. Geçmiş, pratik cevapları ve tamamlanmış testlerdir (etkinlik puansız, sayılmaz).
-    /// Havuz kuralından geçmeyen, bitmemiş test/atamada olan ve bugünün günlük setinde bekleyen soru dönmez: tekrar
-    /// oturumu doğru şıkkı gösterdiği için bunlar önceden çözdürülmüş olurdu (security O1, #99).
-    /// </summary>
-    private async Task<List<DueReviewItemDto>> LoadDueReviewAsync(
-        StudentProfileDto student, IReadOnlyCollection<int> subjectIds, CancellationToken ct)
-    {
-        var practice = await _context.PracticeSessionQuestions
-            .AsNoTracking()
-            .Where(p => p.PracticeSession.StudentId == student.Id && p.AnsweredAt != null)
-            .Select(p => new { p.QuestionId, At = p.AnsweredAt!.Value, p.IsCorrect })
-            .ToListAsync(ct);
-
-        var tests = await _context.TestInstanceQuestions
-            .AsNoTracking()
-            .Where(q => q.WorksheetInstance.StudentId == student.Id
-                && q.WorksheetInstance.Status == WorksheetInstanceStatus.Completed
-                && q.WorksheetInstance.Worksheet.Kind == WorksheetKind.Test)
-            .Select(q => new
-            {
-                q.WorksheetQuestion.QuestionId,
-                At = q.UpdateTime ?? q.WorksheetInstance.EndTime ?? q.WorksheetInstance.StartTime,
-                q.IsCorrect
-            })
-            .ToListAsync(ct);
-
-        var today = _calendar.Today;
-        var statuses = practice
-            .Select(p => (p.QuestionId, Attempt: new DueReviewAttempt(p.At, p.IsCorrect)))
-            .Concat(tests.Select(t => (t.QuestionId, Attempt: new DueReviewAttempt(t.At, t.IsCorrect))))
-            .GroupBy(a => a.QuestionId)
-            .Select(g => (QuestionId: g.Key, Status: DueReviewSchedule.Evaluate(g.Select(a => a.Attempt), _calendar.TimeZone)))
-            .Where(x => x.Status is { } status && status.DueDay <= today)
-            .ToDictionary(x => x.QuestionId, x => x.Status!.Value);
-
-        if (statuses.Count == 0)
-            return new List<DueReviewItemDto>();
-
-        var blocked = await LoadBlockedForDueReviewAsync(student, ct);
-        var candidateIds = statuses.Keys.Where(id => !blocked.Contains(id)).ToList();
-
-        var questions = await PracticeQuestionPool.Build(_context, student.GradeId!.Value, subjectIds, Array.Empty<int>())
-            .Where(q => candidateIds.Contains(q.Id))
-            .Select(q => new
-            {
-                q.Id,
-                q.SubjectId,
-                SubjectName = q.Subject != null ? q.Subject.Name : null,
-                TopicName = q.Topic != null ? q.Topic.Name : null
-            })
-            .ToListAsync(ct);
-
-        return questions
-            .Select(q => new DueReviewItemDto
-            {
-                QuestionId = q.Id,
-                SubjectId = q.SubjectId,
-                SubjectName = q.SubjectName,
-                TopicName = q.TopicName,
-                DueSince = _calendar.StartOfDayUtc(statuses[q.Id].DueDay),
-                Step = statuses[q.Id].Step,
-                WrongCount = statuses[q.Id].WrongCount
-            })
-            .OrderBy(i => i.DueSince)
-            .ThenByDescending(i => i.WrongCount)
-            .ThenBy(i => i.QuestionId)
-            .ToList();
-    }
-
-    private async Task<HashSet<int>> LoadBlockedForDueReviewAsync(StudentProfileDto student, CancellationToken ct)
-    {
-        var now = DateTime.UtcNow;
-        var completed = _context.TestInstances
-            .Where(i => i.StudentId == student.Id && i.Status == WorksheetInstanceStatus.Completed)
-            .Select(i => i.WorksheetId);
-
-        var started = _context.TestInstances
-            .Where(i => i.StudentId == student.Id && i.Status == WorksheetInstanceStatus.Started)
-            .Select(i => i.WorksheetId);
-
-        var assigned = _context.WorksheetAssignments
-            .Where(a => a.StartAt <= now && (a.EndAt == null || a.EndAt > now))
-            .Where(a => a.StudentId == student.Id
-                || a.GradeId == student.GradeId
-                || a.IsPlatformWide
-                || (student.SchoolId != null && a.SchoolId == student.SchoolId))
-            .Where(a => !completed.Contains(a.WorksheetId))
-            .Select(a => a.WorksheetId);
-
-        var blocked = await _context.TestQuestions
-            .AsNoTracking()
-            .Where(wq => started.Contains(wq.TestId) || assigned.Contains(wq.TestId))
-            .Select(wq => wq.QuestionId)
-            .ToListAsync(ct);
-
-        blocked.AddRange(await LoadTodaysUnansweredDailyQuestionIdsAsync(student.Id, ct));
-        return blocked.ToHashSet();
     }
 
     public async Task<PracticeSessionDto?> GetAsync(int sessionId, int studentId, CancellationToken ct = default)
@@ -334,7 +234,7 @@ public class PracticeSessionService : IPracticeSessionService
             {
                 // Security O1 (#99): bugünün günlük setinde olup günlük oturumda henüz cevaplanmamış sorular serbest pratikten
                 // dışlanır — aksi halde serbest pratik review'u doğru şıkkı gösterip günlük seti "önceden çözdürürdü".
-                var reserved = await LoadTodaysUnansweredDailyQuestionIdsAsync(session.StudentId, ct);
+                var reserved = await DailySetQueries.LoadTodaysUnansweredQuestionIdsAsync(_context, _calendar, session.StudentId, ct);
 
                 var pool = PracticeQuestionPool.Build(_context, session.GradeId, ParseIds(session.SubjectIdsJson), ParseIds(session.TopicIdsJson))
                     .Where(q => !shownIds.Contains(q.Id) && !reserved.Contains(q.Id));
@@ -512,21 +412,6 @@ public class PracticeSessionService : IPracticeSessionService
 
         var live = await DailySetQueries.LoadLiveQuestionIdsAsync(_context, set.Id, ct);
         return new DailySession(set.Id, set.Day, live);
-    }
-
-    /// <summary>Bugünün setinde olup günlük oturumda henüz cevaplanmamış soru id'leri (serbest pratik dışlaması, security O1).</summary>
-    private async Task<List<int>> LoadTodaysUnansweredDailyQuestionIdsAsync(int studentId, CancellationToken ct)
-    {
-        var today = _calendar.Today;
-        return await _context.DailyQuestionSetItems
-            .AsNoTracking()
-            .Where(i => i.DailyQuestionSet.StudentId == studentId && i.DailyQuestionSet.Day == today)
-            .Where(i => !_context.PracticeSessionQuestions.Any(p =>
-                p.PracticeSessionId == i.DailyQuestionSet.PracticeSessionId
-                && p.QuestionId == i.QuestionId
-                && p.AnsweredAt != null))
-            .Select(i => i.QuestionId)
-            .ToListAsync(ct);
     }
 
     /// <summary>

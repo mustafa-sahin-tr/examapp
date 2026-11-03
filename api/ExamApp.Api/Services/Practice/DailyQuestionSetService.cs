@@ -21,6 +21,7 @@ namespace ExamApp.Api.Services.Practice;
 /// <item>Gün: <see cref="ILocalDayCalendar.Today"/> (Europe/Istanbul; dashboard'larla aynı gün sınırı, #265/#294).</item>
 /// <item>Havuz: serbest pratikle aynı kural (<see cref="PracticeQuestionPool"/>) — öğrencinin sınıfı, Normal görünürlük.</item>
 /// <item>Seçim: öğrenci+gün tohumlu deterministik karıştırma (<see cref="SeedFor"/>); son
+/// en çok <see cref="DailyQuestionsOptions.DueReviewShare"/> soru tekrar zamanı gelenlerden gelir (#697), son çalışılan konu geriye düşer;
 /// <see cref="DailyQuestionsOptions.RecentAnswerExclusionDays"/> günde cevaplananlar sona itilir (havuz yetmezse kullanılır).</item>
 /// <item>Yarış: (StudentId, Day) unique index; kaybeden unique ihlalini yakalayıp kazananın setini okur.</item>
 /// <item>Havuz boşsa set KAYDEDİLMEZ (Empty döner) — gün içinde soru eklenirse sonraki istekte set üretilebilir.</item>
@@ -136,7 +137,7 @@ public sealed class DailyQuestionSetService : IDailyQuestionSetService
         if (!student.GradeId.HasValue)
             return null;
 
-        var questionIds = await PickQuestionIdsAsync(student.Id, student.GradeId.Value, day, ct);
+        var questionIds = await PickQuestionIdsAsync(student, student.GradeId.Value, day, ct);
         if (questionIds.Count == 0)
             return null;
 
@@ -183,19 +184,78 @@ public sealed class DailyQuestionSetService : IDailyQuestionSetService
         return new SetSnapshot(row.Id, row.StudentId, row.GradeId, row.TargetCount, row.PracticeSessionId, row.ScopeJson, live);
     }
 
-    private async Task<List<int>> PickQuestionIdsAsync(int studentId, int gradeId, DateOnly day, CancellationToken ct)
+    private async Task<List<int>> PickQuestionIdsAsync(StudentProfileDto student, int gradeId, DateOnly day, CancellationToken ct)
     {
         // Yalnız id'ler çekilir (deterministik karıştırma bellekte; sıralı okuma tohumu sabit tutar).
-        var poolIds = await PracticeQuestionPool.Build(_context, gradeId, Array.Empty<int>(), Array.Empty<int>())
-            .Select(q => q.Id)
-            .OrderBy(id => id)
+        var pool = await PracticeQuestionPool.Build(_context, gradeId, Array.Empty<int>(), Array.Empty<int>())
+            .Select(q => new { q.Id, q.TopicId })
+            .OrderBy(q => q.Id)
             .ToListAsync(ct);
 
-        if (poolIds.Count == 0)
-            return poolIds;
+        if (pool.Count == 0)
+            return new List<int>();
 
-        var recent = await LoadRecentlyAnsweredAsync(studentId, day, ct);
-        return SelectQuestions(poolIds, recent, _options.QuestionCount, SeedFor(studentId, day));
+        var recent = await LoadRecentlyAnsweredAsync(student.Id, day, ct);
+        var due = _options.DueReviewShare > 0
+            ? await DueReviewQueries.LoadAsync(_context, _calendar, student, Array.Empty<int>(), ct)
+            : new List<DueReviewItemDto>();
+        var lastTopicId = await LoadLastPracticedTopicIdAsync(student.Id, ct);
+
+        return SelectMixedQuestions(
+            pool.Select(q => new DailyPoolQuestion(q.Id, q.TopicId)).ToList(),
+            recent,
+            due.Select(d => d.QuestionId).ToList(),
+            _options.DueReviewShare,
+            lastTopicId,
+            _options.QuestionCount,
+            SeedFor(student.Id, day));
+    }
+
+    /// <summary>Öğrencinin en son pratik yaptığı sorunun konusu (#697: set başka konulara ağırlık verir).</summary>
+    private Task<int?> LoadLastPracticedTopicIdAsync(int studentId, CancellationToken ct) =>
+        _context.PracticeSessionQuestions
+            .AsNoTracking()
+            .Where(p => p.PracticeSession.StudentId == studentId && p.AnsweredAt != null)
+            .OrderByDescending(p => p.AnsweredAt)
+            .Select(p => p.Question.TopicId)
+            .FirstOrDefaultAsync(ct);
+
+    /// <summary>
+    /// Issue #697 saf karışık seçim (test edilebilir). Tekrar zamanı gelenlerden en çok <paramref name="dueShare"/> soru alınır,
+    /// kalan yer yeni sorularla dolar: önce son çalışılan konunun dışındakiler, sonra o konu, en son yakın zamanda cevaplananlar.
+    /// Sonuç karıştırılır; tekrar soruları başa yığılmaz. Tekrar sorusu yoksa davranış eskisiyle aynıdır (yalnız konu önceliği eklenir).
+    /// </summary>
+    internal static List<int> SelectMixedQuestions(
+        IReadOnlyList<DailyPoolQuestion> pool,
+        IReadOnlySet<int> recentlyAnswered,
+        IReadOnlyList<int> dueQuestionIds,
+        int dueShare,
+        int? lastTopicId,
+        int count,
+        int seed)
+    {
+        var target = Math.Max(0, count);
+        var poolIds = pool.Select(q => q.Id).ToHashSet();
+        var due = dueQuestionIds.Where(poolIds.Contains).Distinct().Take(Math.Min(Math.Max(0, dueShare), target)).ToList();
+        var taken = due.ToHashSet();
+
+        var rng = new Random(seed);
+        var rest = pool.Where(q => !taken.Contains(q.Id)).OrderBy(q => q.Id).ToList();
+
+        List<int> Tier(Func<DailyPoolQuestion, bool> predicate)
+        {
+            var ids = rest.Where(predicate).Select(q => q.Id).ToList();
+            Shuffle(ids, rng);
+            return ids;
+        }
+
+        var otherTopics = Tier(q => !recentlyAnswered.Contains(q.Id) && (lastTopicId == null || q.TopicId != lastTopicId));
+        var sameTopic = Tier(q => !recentlyAnswered.Contains(q.Id) && lastTopicId != null && q.TopicId == lastTopicId);
+        var recent = Tier(q => recentlyAnswered.Contains(q.Id));
+
+        var selected = due.Concat(otherTopics).Concat(sameTopic).Concat(recent).Take(target).ToList();
+        Shuffle(selected, rng);
+        return selected;
     }
 
     /// <summary>

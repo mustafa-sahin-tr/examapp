@@ -17,4 +17,8 @@ public sealed class DailyQuestionsOptions
     /// </summary>
     [Range(0, 365)]
     public int RecentAnswerExclusionDays { get; set; } = 14;
+
+    /// <summary>Issue #697: sette en çok kaç soru tekrar zamanı gelen sorulardan gelir. 0 = kapalı.</summary>
+    [Range(0, 50)]
+    public int DueReviewShare { get; set; } = 2;
 }

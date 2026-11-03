@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
+using ExamApp.Api.Services.Dashboard;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.Services.Practice;
@@ -21,4 +22,20 @@ internal static class DailySetQueries
             .OrderBy(i => i.Order)
             .Select(i => i.QuestionId)
             .ToListAsync(ct);
+
+    /// <summary>Bugünün setinde olup günlük oturumda henüz cevaplanmamış soru id'leri (serbest pratik ve tekrar dışlaması, security O1).</summary>
+    internal static Task<List<int>> LoadTodaysUnansweredQuestionIdsAsync(
+        AppDbContext context, ILocalDayCalendar calendar, int studentId, CancellationToken ct)
+    {
+        var today = calendar.Today;
+        return context.DailyQuestionSetItems
+            .AsNoTracking()
+            .Where(i => i.DailyQuestionSet.StudentId == studentId && i.DailyQuestionSet.Day == today)
+            .Where(i => !context.PracticeSessionQuestions.Any(p =>
+                p.PracticeSessionId == i.DailyQuestionSet.PracticeSessionId
+                && p.QuestionId == i.QuestionId
+                && p.AnsweredAt != null))
+            .Select(i => i.QuestionId)
+            .ToListAsync(ct);
+    }
 }

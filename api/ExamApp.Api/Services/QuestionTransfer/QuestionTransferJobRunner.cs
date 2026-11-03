@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Questions;
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Services.Interactions;
@@ -468,6 +469,15 @@ public class QuestionTransferJobRunner
                         gradeName = st.SubTopic.Topic?.Grade?.Name,
                     })
                     .ToList(),
+                // Issue #692: hedefte (müfredat, kod) ile eşleşir; hedefte olmayan kazanım atlanır.
+                learningOutcomes = q.QuestionLearningOutcomes
+                    .Where(link => link.LearningOutcome != null)
+                    .Select(link => new
+                    {
+                        code = link.LearningOutcome.Code,
+                        curriculumVersion = link.LearningOutcome.CurriculumVersion.ToString(),
+                    })
+                    .ToList(),
                 passage = q.PassageId.HasValue && q.Passage != null
                     ? new
                     {
@@ -542,6 +552,8 @@ public class QuestionTransferJobRunner
             .Include(q => q.QuestionSubTopics)
                 .ThenInclude(qst => qst.SubTopic)
                     .ThenInclude(st => st.Topic)
+            .Include(q => q.QuestionLearningOutcomes)
+                .ThenInclude(link => link.LearningOutcome)
             .Include(q => q.Passage)
             .Where(q => ids.Contains(q.Id))
             .ToListAsync();
@@ -887,6 +899,19 @@ public class QuestionTransferJobRunner
                         await _db.SaveChangesAsync();
                     }
 
+                    if (qEl.TryGetProperty("learningOutcomes", out var outcomesEl) && outcomesEl.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var outcomeId in await ResolveLearningOutcomesAsync(_db, outcomesEl))
+                        {
+                            _db.QuestionLearningOutcomes.Add(new QuestionLearningOutcome
+                            {
+                                QuestionId = question.Id,
+                                LearningOutcomeId = outcomeId
+                            });
+                        }
+                        await _db.SaveChangesAsync();
+                    }
+
                     lockRow.TargetQuestionId = question.Id;
                     await _db.SaveChangesAsync();
 
@@ -1086,6 +1111,32 @@ public class QuestionTransferJobRunner
         }
 
         return (subjectId, topicId);
+    }
+
+    /// <summary>Issue #692: paketteki kazanımların hedefteki kimlikleri; hedefte olmayan ya da tanımsız müfredatlı olan atlanır.</summary>
+    internal static async Task<List<int>> ResolveLearningOutcomesAsync(AppDbContext db, JsonElement outcomesEl)
+    {
+        var ids = new List<int>();
+        foreach (var el in outcomesEl.EnumerateArray())
+        {
+            if (el.ValueKind != JsonValueKind.Object
+                || !el.TryGetProperty("code", out var codeEl) || codeEl.ValueKind != JsonValueKind.String
+                || !el.TryGetProperty("curriculumVersion", out var versionEl) || versionEl.ValueKind != JsonValueKind.String
+                || !CurriculumVersionParser.TryParse(versionEl.GetString(), out var version))
+            {
+                continue;
+            }
+
+            var code = codeEl.GetString();
+            var id = await db.LearningOutcomes
+                .Where(lo => lo.CurriculumVersion == version && lo.Code == code)
+                .Select(lo => (int?)lo.Id)
+                .FirstOrDefaultAsync();
+            if (id.HasValue && !ids.Contains(id.Value))
+                ids.Add(id.Value);
+        }
+
+        return ids;
     }
 
     private async Task<List<int>> ResolveSubTopicsAsync(

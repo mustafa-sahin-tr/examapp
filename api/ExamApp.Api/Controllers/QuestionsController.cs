@@ -42,6 +42,7 @@ public class QuestionsController : BaseController
     private readonly IClassifierCacheService _classifierCache;
     private readonly IQuestionOwnershipGuard _ownership;
     private readonly IQuestionTestLinkService _testLinks;
+    private readonly ILearningOutcomeService _learningOutcomes;
 
     private const string AuthoringRoles = "Teacher,Admin";
 
@@ -58,9 +59,11 @@ public class QuestionsController : BaseController
         IClassifierCacheService classifierCache,
         IStringLocalizer<Messages> localizer,
         IQuestionOwnershipGuard ownership,
-        IQuestionTestLinkService testLinks)
+        IQuestionTestLinkService testLinks,
+        ILearningOutcomeService learningOutcomes)
         : base()
     {
+        _learningOutcomes = learningOutcomes;
         _ownership = ownership;
         _testLinks = testLinks;
         _localizer = localizer;
@@ -292,6 +295,33 @@ public class QuestionsController : BaseController
         }
 
         return Ok(response);
+    }
+
+    // GET /api/questions/{id}/learning-outcomes — issue #692: sorunun bağlı kazanımları.
+    [HttpGet("{id}/learning-outcomes")]
+    [Authorize(Roles = AuthoringRoles)]
+    public async Task<IActionResult> GetLearningOutcomes(int id)
+    {
+        var user = await GetAuthenticatedUserAsync(HttpContext.RequestAborted);
+        if (await DenyUnlessQuestionViewerAsync(id, user.Id) is { } denied)
+            return denied;
+
+        return Ok(await _learningOutcomes.GetForQuestionAsync(id, HttpContext.RequestAborted));
+    }
+
+    // PUT /api/questions/{id}/learning-outcomes — issue #692: bağları verilen listeyle değiştirir (yalnız soru sahibi/admin).
+    [HttpPut("{id}/learning-outcomes")]
+    [Authorize(Roles = AuthoringRoles)]
+    public async Task<IActionResult> SetLearningOutcomes(int id, [FromBody] SetQuestionLearningOutcomesDto request)
+    {
+        var user = await GetAuthenticatedUserAsync(HttpContext.RequestAborted);
+        if (await DenyUnlessQuestionOwnerAsync(id, user.Id) is { } denied)
+            return denied;
+
+        if (!await _learningOutcomes.SetForQuestionAsync(id, request.LearningOutcomeIds, user.Id, HttpContext.RequestAborted))
+            return BadRequest();
+
+        return Ok(await _learningOutcomes.GetForQuestionAsync(id, HttpContext.RequestAborted));
     }
 
     // GET /api/questions/{id}/image?variant=v1|v2 — raw question image bytes.

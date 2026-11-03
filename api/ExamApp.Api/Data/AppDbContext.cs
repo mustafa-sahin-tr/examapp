@@ -148,6 +148,7 @@ public class AppDbContext : DbContext
     public DbSet<TopicStudyLinkAudit> TopicStudyLinkAudits { get; set; } // Çalışma linki denetim kaydı (issue #61)
     public DbSet<LearningOutcomeDetail> LearningOutcomeDetails { get; set; } // LearningOutcomeDetail tablosu
     public DbSet<LearningOutcome> LearningOutcomes { get; set; } // LearningOutcome tablosu
+    public DbSet<QuestionLearningOutcome> QuestionLearningOutcomes { get; set; } // Issue #692
 
     public DbSet<QuestionTransferJob> QuestionTransferJobs { get; set; }
     public DbSet<QuestionTransferImportMap> QuestionTransferImportMaps { get; set; }
@@ -1252,6 +1253,26 @@ public class AppDbContext : DbContext
             .HasOne(lo => lo.SubTopic)
             .WithMany() // SubTopic içinde LearningOutcomes kolleksiyonu yoksa WithMany() kullanabiliriz
             .HasForeignKey(lo => lo.SubTopicId);
+
+        // Issue #692: içe aktarım (müfredat, kod) ile eşleşir; tekrar çalıştırmak kopya üretmez.
+        modelBuilder.Entity<LearningOutcome>()
+            .HasIndex(lo => new { lo.CurriculumVersion, lo.Code })
+            .IsUnique()
+            .HasFilter("NOT \"IsDeleted\"");
+
+        modelBuilder.Entity<LearningOutcome>()
+            .HasIndex(lo => new { lo.GradeId, lo.SubjectId });
+
+        modelBuilder.Entity<LearningOutcome>()
+            .HasOne(lo => lo.Subject)
+            .WithMany()
+            .HasForeignKey(lo => lo.SubjectId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<QuestionLearningOutcome>()
+            .HasIndex(qlo => new { qlo.QuestionId, qlo.LearningOutcomeId })
+            .IsUnique()
+            .HasFilter("NOT \"IsDeleted\"");
 
         modelBuilder.Entity<LearningOutcomeDetail>()
             .HasOne(lod => lod.LearningOutcome)

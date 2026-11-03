@@ -29,6 +29,8 @@ public class Question : BaseEntity
 
     public ICollection<QuestionSubTopic> QuestionSubTopics { get; set; } = new List<QuestionSubTopic>(); // New collection for many-to-many relationship
 
+    public ICollection<QuestionLearningOutcome> QuestionLearningOutcomes { get; set; } = new List<QuestionLearningOutcome>(); // Issue #692
+
     public ICollection<Answer> Answers { get; set; } = new List<Answer>();  // Şıklar
 
     public int? CorrectAnswerId { get; set; }

@@ -1314,6 +1314,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("CreateUserId")
                         .HasColumnType("integer");
 
+                    b.Property<int>("CurriculumVersion")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime?>("DeleteTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -1330,7 +1333,14 @@ namespace ExamApp.Api.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
-                    b.Property<int>("SubTopicId")
+                    b.Property<string>("SourceReference")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<int?>("SubTopicId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("SubjectId")
                         .HasColumnType("integer");
 
                     b.Property<DateTime?>("UpdateTime")
@@ -1342,6 +1352,14 @@ namespace ExamApp.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("SubTopicId");
+
+                    b.HasIndex("SubjectId");
+
+                    b.HasIndex("CurriculumVersion", "Code")
+                        .IsUnique()
+                        .HasFilter("NOT \"IsDeleted\"");
+
+                    b.HasIndex("GradeId", "SubjectId");
 
                     b.ToTable("LearningOutcomes");
                 });
@@ -2355,6 +2373,52 @@ namespace ExamApp.Api.Migrations
                         .HasFilter("\"InteractionType\" = 'openText'");
 
                     b.ToTable("Questions");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.QuestionLearningOutcome", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("LearningOutcomeId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("QuestionId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LearningOutcomeId");
+
+                    b.HasIndex("QuestionId", "LearningOutcomeId")
+                        .IsUnique()
+                        .HasFilter("NOT \"IsDeleted\"");
+
+                    b.ToTable("QuestionLearningOutcomes");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.QuestionSource", b =>
@@ -5471,11 +5535,16 @@ namespace ExamApp.Api.Migrations
                 {
                     b.HasOne("SubTopic", "SubTopic")
                         .WithMany()
-                        .HasForeignKey("SubTopicId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("SubTopicId");
+
+                    b.HasOne("Subject", "Subject")
+                        .WithMany()
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("SubTopic");
+
+                    b.Navigation("Subject");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.LearningOutcomeDetail", b =>
@@ -5677,6 +5746,25 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Subject");
 
                     b.Navigation("Topic");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.QuestionLearningOutcome", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.LearningOutcome", "LearningOutcome")
+                        .WithMany()
+                        .HasForeignKey("LearningOutcomeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ExamApp.Api.Data.Question", "Question")
+                        .WithMany("QuestionLearningOutcomes")
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("LearningOutcome");
+
+                    b.Navigation("Question");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.QuestionSource", b =>
@@ -6397,6 +6485,8 @@ namespace ExamApp.Api.Migrations
             modelBuilder.Entity("ExamApp.Api.Data.Question", b =>
                 {
                     b.Navigation("Answers");
+
+                    b.Navigation("QuestionLearningOutcomes");
 
                     b.Navigation("QuestionSubTopics");
 

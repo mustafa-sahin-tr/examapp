@@ -45,6 +45,7 @@ public class QuestionsControllerAuthorizationTests : IDisposable
     private readonly TestDb _db = TestDb.Create();
     private IQuestionQueryService _questionQuery = null!; // StartHostAsync'te atanır (çağrı doğrulaması için)
     private IQuestionTestLinkService _testLinks = null!;  // issue #472
+    private readonly ILearningOutcomeService _learningOutcomes = Substitute.For<ILearningOutcomeService>(); // issue #692
     private readonly int _worksheet;
     private readonly int _copyWorksheet;
     private readonly int _legacyQuestion;   // CreateUserId=0, W + W2'de
@@ -209,6 +210,7 @@ public class QuestionsControllerAuthorizationTests : IDisposable
                     services.AddSingleton(classification);
                     services.AddSingleton(query);
                     services.AddSingleton(testLinks);
+                    services.AddSingleton(_learningOutcomes);
                     services.AddSingleton(minio);
                     services.AddSingleton(classifierCache);
                     services.AddSingleton<ImageHelper>();
@@ -266,6 +268,16 @@ public class QuestionsControllerAuthorizationTests : IDisposable
         (HttpMethod.Post, $"/api/questions/test/{_worksheet}/bank-questions", new { questionIds = new[] { _legacyQuestion } }),
         (HttpMethod.Put, $"/api/questions/test/{_worksheet}/order", new { questionIds = new[] { _legacyQuestion } }), // issue #685
     };
+
+    [Fact]
+    public async Task Setting_learning_outcomes_on_someone_elses_question_is_404_issue692()
+    {
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+        (await SendAsync(client, Copier, HttpMethod.Put, $"/api/questions/{_legacyQuestion}/learning-outcomes",
+            new { learningOutcomeIds = new[] { 1 } })).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        await _learningOutcomes.DidNotReceive().SetForQuestionAsync(Arg.Any<int>(), Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
 
     [Fact]
     public async Task Reorder_by_a_teacher_who_can_view_but_not_own_the_test_is_403_issue685()

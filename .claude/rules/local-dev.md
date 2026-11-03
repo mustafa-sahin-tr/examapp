@@ -37,7 +37,7 @@ dev defaults; never reuse them outside local dev.
 | Veli: çocuk hesabı (#438), davet / aktivasyon / grace (#440, #441) | `docs/parent-accounts.md` |
 | İşaretleme + Claude (#578, #579, #582), QuestionTrainer, soru bankasına kayıt (#470, #472), büyük görsel (#597), tuvalde Claude (#473), kitaplar (#577), sınıflandırıcı (#469) | `docs/labeling.md` |
 | Etkinlik tipleri ve oturumlar: yeniden çöz (#609), openText (#583), analiz (#584), görselsiz editör (#590), mazeTree (#585), crossword / wordSearch / logicGrid / şifre (#586), regionPaint (#587), numberLine / barChart / gridDraw / grafikler (#588), terazi (#632), saat (#634), madde listesi / sıra (#684, #685) | `docs/activities.md` |
-| Profil sayıları (#501), öğretmen transferi (#539), testi yazdırma (#701) | `docs/feature-notes.md` |
+| Profil sayıları (#501), öğretmen transferi (#539), testi yazdırma (#701), MEB kazanımları (#692) | `docs/feature-notes.md` |
 | Ürün dili: menü ve başlıklarda kullanılacak kelimeler (#718) | `docs/glossary.md` |
 
 Yeni bir özellik notu bu dosyaya değil ilgili `docs/` dosyasına yazılır; burada yalnız tablo satırı / tuzak güncellenir.

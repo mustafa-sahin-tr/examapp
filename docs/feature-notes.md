@@ -25,3 +25,11 @@ tarayıcının yazdırma penceresinden kaydedilir; sunucuda PDF üretimi ve yeni
 soruları çıktıya alınmaz; etkileşimli sorular (`mcq` dışı) da çıkarılır ve hepsi sayfada testteki sıra numarasıyla raporlanır. Yayıncı sözleşmelerinde baskı izni
 alanı yok; ilk sözleşme gelince alan eklenip kural gevşetilir. Kaynağı bilinmeyen (`Unknown`) soru engellenmez. Şıkları görselin içinde olan
 işaretlenmiş soruda tam görsel basılır ve anahtardaki harf şık etiketinden gelir. Migration yok; yeni alan için exam API yeniden başlatılır.
+
+**Issue #692 — MEB kazanımları.** `LearningOutcomes` artık müfredat (`Previous`, `Maarif`), ders ve kaynak belge taşır; (müfredat, kod) benzersizdir, iki müfredat
+birlikte yaşar. Soru bağı `QuestionLearningOutcomes` (çoka çok); kazanımı olmayan soru her yerde çalışır. İçe aktarım `POST api/admin/learning-outcomes/import`
+(yalnız admin): `{ curriculumVersion, sourceReference, items: [{ code, description, gradeName, subjectName }] }`; sınıf ve ders adla eşleşir, tek hatalı satırda hiçbir şey
+yazılmaz (400 + satır numaralı hatalar), yeniden çalıştırmak kopya üretmez. Liste: `GET api/learning-outcomes?gradeId&subjectId[&curriculumVersion&search]` (en çok 200).
+Bağlama: `GET/PUT api/questions/{id}/learning-outcomes` (yazma yalnız soru sahibi/admin). Test kopyası aynı soru satırını kullandığı için bağlar korunur; soru aktarımı (paket)
+ bağları (müfredat, kod) ile taşır, hedefte olmayan kazanım atlanır. Migration `AddLearningOutcomeVersionAndQuestionLinks` mevcut satırların sınıf ve dersini alt konudan
+doldurur, yinelenen kod varsa durur; exam API yeniden başlatılır.

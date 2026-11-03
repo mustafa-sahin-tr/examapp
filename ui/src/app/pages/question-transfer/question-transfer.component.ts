@@ -2,7 +2,9 @@ import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, signal
 import { HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -12,7 +14,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
-import { catchError, EMPTY, filter, interval, Subscription, switchMap } from 'rxjs';
+import { catchError, EMPTY, filter, interval, Subscription, switchMap, timer } from 'rxjs';
 import { LabelingBook } from '../../models/labeling-book';
 import { Grade } from '../../models/student';
 import { Subject } from '../../models/subject';
@@ -24,6 +26,9 @@ import {
   QuestionTransferImportPreview,
   QuestionTransferJob,
   QuestionTransferService,
+  QuestionTransferWorksheetListItem,
+  QuestionTransferWorksheetResult,
+  WorksheetKind,
 } from '../../services/question-transfer.service';
 import { SubjectService } from '../../services/subject.service';
 
@@ -34,6 +39,11 @@ const JOB_POLL_MS = 5_000;
 /** Süren iş yokken liste daha seyrek yenilenir (12 x 5 sn). */
 const IDLE_POLL_EVERY = 12;
 const MAX_QUESTION_IDS = 5000;
+/** Sunucunun bir seferde verdiği en çok kayıt; daha fazlası filtreyle bulunur. */
+const WORKSHEET_LIST_TAKE = 200;
+const WORKSHEET_SEARCH_DEBOUNCE_MS = 300;
+
+export type ExportMode = 'questions' | 'worksheets';
 
 const CATALOG_ROWS = ['grades', 'subjects', 'gradeSubjects', 'topics', 'subTopics', 'learningOutcomes'] as const;
 
@@ -47,6 +57,8 @@ const CATALOG_ROWS = ['grades', 'subjects', 'gradeSubjects', 'topics', 'subTopic
     MatInputModule,
     MatSelectModule,
     MatButtonModule,
+    MatButtonToggleModule,
+    MatCheckboxModule,
     MatProgressBarModule,
     MatIconModule,
     MatTooltipModule,
@@ -66,6 +78,17 @@ export class QuestionTransferComponent implements OnDestroy {
   private readonly bookService = inject(LabelingBookService);
 
   readonly catalogRows = CATALOG_ROWS;
+  readonly worksheetListTake = WORKSHEET_LIST_TAKE;
+
+  // ---- dışa aktarılacak test ve etkinlikler
+  readonly exportMode = signal<ExportMode>('questions');
+  readonly worksheetKind = signal<WorksheetKind | null>(null);
+  readonly worksheetSearch = signal('');
+  readonly worksheets = signal<QuestionTransferWorksheetListItem[]>([]);
+  readonly worksheetsLoading = signal(false);
+  readonly worksheetsFailed = signal(false);
+  /** Seçim filtre değişince korunur: farklı sınıflardan kayıtlar aynı pakete girebilir. */
+  readonly selectedWorksheetIds = signal<ReadonlySet<number>>(new Set());
 
   // ---- dışa aktarma kapsamı
   readonly grades = signal<Grade[]>([]);
@@ -111,6 +134,8 @@ export class QuestionTransferComponent implements OnDestroy {
   private previewSub?: Subscription;
   private subjectsSub?: Subscription;
   private topicsSub?: Subscription;
+  private worksheetsSub?: Subscription;
+  private worksheetSearchSub?: Subscription;
 
   constructor() {
     this.startPolling();
@@ -124,6 +149,83 @@ export class QuestionTransferComponent implements OnDestroy {
     this.previewSub?.unsubscribe();
     this.subjectsSub?.unsubscribe();
     this.topicsSub?.unsubscribe();
+    this.worksheetsSub?.unsubscribe();
+    this.worksheetSearchSub?.unsubscribe();
+  }
+
+  // ---- test ve etkinlik seçimi
+
+  setExportMode(mode: ExportMode): void {
+    this.exportMode.set(mode);
+    this.exportFailed.set(false);
+    this.reloadWorksheets();
+  }
+
+  onWorksheetKindChange(kind: WorksheetKind | null): void {
+    this.worksheetKind.set(kind);
+    this.reloadWorksheets();
+  }
+
+  onWorksheetSearchChange(search: string): void {
+    this.worksheetSearch.set(search);
+    this.worksheetSearchSub?.unsubscribe();
+    this.worksheetSearchSub = timer(WORKSHEET_SEARCH_DEBOUNCE_MS).subscribe(() => this.reloadWorksheets());
+  }
+
+  isWorksheetSelected(id: number): boolean {
+    return this.selectedWorksheetIds().has(id);
+  }
+
+  toggleWorksheet(id: number, selected: boolean): void {
+    const next = new Set(this.selectedWorksheetIds());
+    if (selected) {
+      next.add(id);
+    } else {
+      next.delete(id);
+    }
+    this.selectedWorksheetIds.set(next);
+  }
+
+  clearWorksheetSelection(): void {
+    this.selectedWorksheetIds.set(new Set());
+  }
+
+  /** Sorular sekmesindeyken listeye gerek yok: sekmeye dönünce güncel filtreyle yüklenir. */
+  reloadWorksheets(): void {
+    this.worksheetSearchSub?.unsubscribe();
+    // Önceki filtrenin geç gelen yanıtı listeyi ezmesin.
+    this.worksheetsSub?.unsubscribe();
+    if (this.exportMode() !== 'worksheets') {
+      this.worksheetsLoading.set(false);
+      return;
+    }
+
+    this.worksheetsLoading.set(true);
+    this.worksheetsFailed.set(false);
+    this.worksheetsSub = this.transfer
+      .listWorksheets({
+        kind: this.worksheetKind(),
+        gradeId: this.gradeId(),
+        subjectId: this.subjectId(),
+        search: this.worksheetSearch().trim(),
+        take: WORKSHEET_LIST_TAKE,
+      })
+      .subscribe({
+        next: (worksheets) => {
+          this.worksheetsLoading.set(false);
+          this.worksheets.set(worksheets ?? []);
+        },
+        error: () => {
+          this.worksheetsLoading.set(false);
+          this.worksheets.set([]);
+          this.worksheetsFailed.set(true);
+        },
+      });
+  }
+
+  /** Paketinde test ya da etkinlik olmayan iş bu bölümü göstermez. */
+  hasWorksheetCounts(result: QuestionTransferWorksheetResult | null | undefined): boolean {
+    return !!result && result.imported + result.alreadyImported + result.blocked > 0;
   }
 
   // ---- kapsam
@@ -132,20 +234,26 @@ export class QuestionTransferComponent implements OnDestroy {
     this.gradeId.set(id);
     this.topicId.set(null);
     this.loadTopics();
+    this.reloadWorksheets();
     const subjects$ = id === null ? this.subjectService.loadCategories() : this.subjectService.getSubjectsByGrade(id);
     // Önceki sınıfın geç gelen yanıtı listeyi ezmesin.
     this.subjectsSub?.unsubscribe();
     this.subjectsSub = subjects$.subscribe({
       next: (subjects) => {
         this.subjects.set(subjects ?? []);
-        if (!(subjects ?? []).some((s) => s.id === this.subjectId())) {
+        if (this.subjectId() !== null && !(subjects ?? []).some((s) => s.id === this.subjectId())) {
           this.clearSubject();
+          this.reloadWorksheets();
         }
       },
       error: () => {
         // Görünmeyen seçim kapsamı daraltmaya devam etmesin.
         this.subjects.set([]);
+        const hadSubject = this.subjectId() !== null;
         this.clearSubject();
+        if (hadSubject) {
+          this.reloadWorksheets();
+        }
       },
     });
   }
@@ -154,6 +262,7 @@ export class QuestionTransferComponent implements OnDestroy {
     this.subjectId.set(id);
     this.topicId.set(null);
     this.loadTopics();
+    this.reloadWorksheets();
   }
 
   private clearSubject(): void {
@@ -178,20 +287,29 @@ export class QuestionTransferComponent implements OnDestroy {
   }
 
   startExport(): void {
+    const worksheetIds = this.exportMode() === 'worksheets' ? Array.from(this.selectedWorksheetIds()) : null;
+    if (worksheetIds?.length === 0) return;
+
     this.exportBusy.set(true);
     this.exportFailed.set(false);
     this.transfer
-      .startExport({
-        // Kapsam seçiliyse sunucu listeyi kendi çıkarır.
-        questionIds: this.hasScope() ? [] : this.questionIds(),
-        gradeId: this.gradeId(),
-        subjectId: this.subjectId(),
-        topicId: this.topicId(),
-        bookId: this.bookId(),
-      })
+      .startExport(worksheetIds
+        // Sınıf ve ders burada yalnız listeyi süzer: paket seçilen kayıtların sorularını taşır.
+        ? { questionIds: [], worksheetIds }
+        : {
+            // Kapsam seçiliyse sunucu listeyi kendi çıkarır.
+            questionIds: this.hasScope() ? [] : this.questionIds(),
+            gradeId: this.gradeId(),
+            subjectId: this.subjectId(),
+            topicId: this.topicId(),
+            bookId: this.bookId(),
+          })
       .subscribe({
         next: () => {
           this.exportBusy.set(false);
+          if (worksheetIds) {
+            this.clearWorksheetSelection();
+          }
           this.refreshJobs();
         },
         error: () => {

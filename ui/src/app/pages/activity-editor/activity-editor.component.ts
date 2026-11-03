@@ -573,6 +573,7 @@ export class ActivityEditorComponent {
   /** Issue #692: maddeye bağlanacak kazanımlar. */
   readonly learningOutcomes = signal<LearningOutcome[]>([]);
   readonly learningOutcomeGradeId = computed(() => this.classification()?.gradeId ?? this.gradeId);
+  readonly learningOutcomesLoadFailed = signal(false);
   private initialLearningOutcomeIds: number[] = [];
 
   onImageSelected(event: Event): void {
@@ -1829,6 +1830,7 @@ export class ActivityEditorComponent {
   }
 
   private saveLearningOutcomesIfChanged(questionId: number): void {
+    if (this.learningOutcomesLoadFailed()) return;
     const ids = this.learningOutcomes().map((outcome) => outcome.id);
     const same = ids.length === this.initialLearningOutcomeIds.length && ids.every((id) => this.initialLearningOutcomeIds.includes(id));
     if (same) return;
@@ -1860,11 +1862,17 @@ export class ActivityEditorComponent {
     this.initialClassificationKey = selection ? classificationKey(selection) : '';
     this.learningOutcomes.set([]);
     this.initialLearningOutcomeIds = [];
+    this.learningOutcomesLoadFailed.set(false);
     this.learningOutcomeService.getForQuestion(question.id).subscribe({
       next: (outcomes) => {
         if (this.editingId() !== question.id) return;
         this.learningOutcomes.set(outcomes);
         this.initialLearningOutcomeIds = outcomes.map((outcome) => outcome.id);
+      },
+      // Mevcut bağlar bilinmeden yazmak onları silerdi; bu düzenlemede kazanımlar kaydedilmez.
+      error: () => {
+        if (this.editingId() !== question.id) return;
+        this.learningOutcomesLoadFailed.set(true);
       },
     });
     this.submitted.set(false);
@@ -1888,6 +1896,7 @@ export class ActivityEditorComponent {
     this.initialClassificationKey = '';
     this.learningOutcomes.set([]);
     this.initialLearningOutcomeIds = [];
+    this.learningOutcomesLoadFailed.set(false);
   }
 
   private editableItems(questions: Question[]): EditableItem[] {

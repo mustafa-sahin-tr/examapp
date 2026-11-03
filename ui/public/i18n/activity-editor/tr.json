@@ -114,6 +114,7 @@
   },
   "classification": {
     "learningOutcomes": "Kazanımlar",
+    "learningOutcomesLoadError": "Kazanımlar yüklenemedi; bu kayıtta değiştirilmeyecek.",
     "title": "Ders / konu (isteğe bağlı)",
     "hint": "Konu seçersen o konu korunur. Seçmezsen madde metninden otomatik sınıflandırılır.",
     "topicRequired": "Ders seçtiysen konuyu da seç."

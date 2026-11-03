@@ -1392,8 +1392,12 @@
 
         <div class="ae__field">
           <span class="ae__label">{{ t('classification.learningOutcomes') }}</span>
-          <app-learning-outcome-picker [gradeId]="learningOutcomeGradeId()" [subjectId]="classification()?.subjectId"
-            [selected]="learningOutcomes()" (selectedChange)="learningOutcomes.set($event)" />
+          @if (learningOutcomesLoadFailed()) {
+            <p class="ae__error" data-testid="learning-outcomes-load-error">{{ t('classification.learningOutcomesLoadError') }}</p>
+          } @else {
+            <app-learning-outcome-picker [gradeId]="learningOutcomeGradeId()" [subjectId]="classification()?.subjectId"
+              [selected]="learningOutcomes()" (selectedChange)="learningOutcomes.set($event)" />
+          }
         </div>
 
         @if (submitted() && errors().length > 0) {

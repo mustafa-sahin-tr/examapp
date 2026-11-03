@@ -114,6 +114,7 @@
   },
   "classification": {
     "learningOutcomes": "Learning outcomes",
+    "learningOutcomesLoadError": "Learning outcomes could not be loaded; this save will not change them.",
     "title": "Subject / topic (optional)",
     "hint": "If you pick a topic it is kept. Otherwise the item is classified automatically from its text.",
     "topicRequired": "You picked a subject; pick a topic too."

@@ -966,6 +966,517 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("Districts");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.ExamTemplate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("SourceReference")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("WrongAnswersPerCorrect")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("ExamTemplates");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Code = "lgs",
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "LGS",
+                            SourceReference = "T.C. MEB, Sınavla Öğrenci Alacak Ortaöğretim Kurumlarına İlişkin Merkezî Sınav Başvuru ve Uygulama Kılavuzu, 2026",
+                            WrongAnswersPerCorrect = 3
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Code = "tyt",
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "YKS TYT",
+                            SourceReference = "T.C. ÖSYM, 2026 Yükseköğretim Kurumları Sınavı (YKS) Kılavuzu, Tablo 1A ve 1B",
+                            WrongAnswersPerCorrect = 4
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Code = "ayt",
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "YKS AYT",
+                            SourceReference = "T.C. ÖSYM, 2026 Yükseköğretim Kurumları Sınavı (YKS) Kılavuzu, Tablo 1A ve 1B",
+                            WrongAnswersPerCorrect = 4
+                        });
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.ExamTemplateSection", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ExamTemplateSessionId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("GroupName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("QuestionCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExamTemplateSessionId");
+
+                    b.ToTable("ExamTemplateSections");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ExamTemplateSessionId = 1,
+                            IsDeleted = false,
+                            Name = "Türkçe",
+                            Order = 1,
+                            QuestionCount = 20
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ExamTemplateSessionId = 1,
+                            IsDeleted = false,
+                            Name = "T.C. İnkılap Tarihi ve Atatürkçülük",
+                            Order = 2,
+                            QuestionCount = 10
+                        },
+                        new
+                        {
+                            Id = 3,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ExamTemplateSessionId = 1,
+                            IsDeleted = false,
+                            Name = "Din Kültürü ve Ahlak Bilgisi",
+                            Order = 3,
+                            QuestionCount = 10
+                        },
+                        new
+                        {
+                            Id = 4,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ExamTemplateSessionId = 1,
+                            IsDeleted = false,
+                            Name = "Yabancı Dil",
+                            Order = 4,
+                            QuestionCount = 10
+                        },
+                        new
+                        {
+                            Id = 5,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ExamTemplateSessionId = 2,
+                            IsDeleted = false,
+                            Name = "Matematik",
+                            Order = 1,
+                            QuestionCount = 20
+                        },
+                        new
+                        {
+                            Id = 6,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ExamTemplateSessionId = 2,
+                            IsDeleted = false,
+                            Name = "Fen Bilimleri",
+                            Order = 2,
+                            QuestionCount = 20
+                        },
+                        new
+                        {
+                            Id = 7,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ExamTemplateSessionId = 3,
+                            IsDeleted = false,
+                            Name = "Türkçe",
+                            Order = 1,
+                            QuestionCount = 40
+                        },
+                        new
+                        {
+                            Id = 8,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ExamTemplateSessionId = 3,
+                            GroupName = "Sosyal Bilimler",
+                            IsDeleted = false,
+                            Name = "Tarih",
+                            Order = 2,
+                            QuestionCount = 5
+                        },
+                        new
+                        {
+                            Id = 9,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ExamTemplateSessionId = 3,
+                            GroupName = "Sosyal Bilimler",
+                            IsDeleted = false,
+                            Name = "Coğrafya",
+                            Order = 3,
+                            QuestionCount = 5
+                        },
+                        new
+                        {
+                            Id = 10,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ExamTemplateSessionId = 3,
+                            GroupName = "Sosyal Bilimler",
+                            IsDeleted = false,
+                            Name = "Felsefe",
+                            Order = 4,
+                            QuestionCount = 5
+                        },
+                        new
+                        {
+                            Id = 11,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ExamTemplateSessionId = 3,
+                            GroupName = "Sosyal Bilimler",
+                            IsDeleted = false,
+                            Name = "Din Kültürü ve Ahlak Bilgisi",
+                            Order = 5,
+                            QuestionCount = 5
+                        },
+                        new
+                        {
+                            Id = 12,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ExamTemplateSessionId = 3,
+                            IsDeleted = false,
+                            Name = "Temel Matematik",
+                            Order = 6,
+                            QuestionCount = 40
+                        },
+                        new
+                        {
+                            Id = 13,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ExamTemplateSessionId = 3,
+                            GroupName = "Fen Bilimleri",
+                            IsDeleted = false,
+                            Name = "Fizik",
+                            Order = 7,
+                            QuestionCount = 7
+                        },
+                        new
+                        {
+                            Id = 14,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ExamTemplateSessionId = 3,
+                            GroupName = "Fen Bilimleri",
+                            IsDeleted = false,
+                            Name = "Kimya",
+                            Order = 8,
+                            QuestionCount = 7
+                        },
+                        new
+                        {
+                            Id = 15,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ExamTemplateSessionId = 3,
+                            GroupName = "Fen Bilimleri",
+                            IsDeleted = false,
+                            Name = "Biyoloji",
+                            Order = 9,
+                            QuestionCount = 6
+                        },
+                        new
+                        {
+                            Id = 16,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ExamTemplateSessionId = 4,
+                            GroupName = "Türk Dili ve Edebiyatı-Sosyal Bilimler-1",
+                            IsDeleted = false,
+                            Name = "Türk Dili ve Edebiyatı",
+                            Order = 1,
+                            QuestionCount = 24
+                        },
+                        new
+                        {
+                            Id = 17,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ExamTemplateSessionId = 4,
+                            GroupName = "Türk Dili ve Edebiyatı-Sosyal Bilimler-1",
+                            IsDeleted = false,
+                            Name = "Tarih-1",
+                            Order = 2,
+                            QuestionCount = 10
+                        },
+                        new
+                        {
+                            Id = 18,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ExamTemplateSessionId = 4,
+                            GroupName = "Türk Dili ve Edebiyatı-Sosyal Bilimler-1",
+                            IsDeleted = false,
+                            Name = "Coğrafya-1",
+                            Order = 3,
+                            QuestionCount = 6
+                        },
+                        new
+                        {
+                            Id = 19,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ExamTemplateSessionId = 4,
+                            GroupName = "Sosyal Bilimler-2",
+                            IsDeleted = false,
+                            Name = "Tarih-2",
+                            Order = 4,
+                            QuestionCount = 11
+                        },
+                        new
+                        {
+                            Id = 20,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ExamTemplateSessionId = 4,
+                            GroupName = "Sosyal Bilimler-2",
+                            IsDeleted = false,
+                            Name = "Coğrafya-2",
+                            Order = 5,
+                            QuestionCount = 11
+                        },
+                        new
+                        {
+                            Id = 21,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ExamTemplateSessionId = 4,
+                            GroupName = "Sosyal Bilimler-2",
+                            IsDeleted = false,
+                            Name = "Felsefe Grubu",
+                            Order = 6,
+                            QuestionCount = 12
+                        },
+                        new
+                        {
+                            Id = 22,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ExamTemplateSessionId = 4,
+                            GroupName = "Sosyal Bilimler-2",
+                            IsDeleted = false,
+                            Name = "Din Kültürü ve Ahlak Bilgisi",
+                            Order = 7,
+                            QuestionCount = 6
+                        },
+                        new
+                        {
+                            Id = 23,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ExamTemplateSessionId = 4,
+                            IsDeleted = false,
+                            Name = "Matematik",
+                            Order = 8,
+                            QuestionCount = 40
+                        },
+                        new
+                        {
+                            Id = 24,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ExamTemplateSessionId = 4,
+                            GroupName = "Fen Bilimleri",
+                            IsDeleted = false,
+                            Name = "Fizik",
+                            Order = 9,
+                            QuestionCount = 14
+                        },
+                        new
+                        {
+                            Id = 25,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ExamTemplateSessionId = 4,
+                            GroupName = "Fen Bilimleri",
+                            IsDeleted = false,
+                            Name = "Kimya",
+                            Order = 10,
+                            QuestionCount = 13
+                        },
+                        new
+                        {
+                            Id = 26,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ExamTemplateSessionId = 4,
+                            GroupName = "Fen Bilimleri",
+                            IsDeleted = false,
+                            Name = "Biyoloji",
+                            Order = 11,
+                            QuestionCount = 13
+                        });
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.ExamTemplateSession", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DurationSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ExamTemplateId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExamTemplateId");
+
+                    b.ToTable("ExamTemplateSessions");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DurationSeconds = 4500,
+                            ExamTemplateId = 1,
+                            IsDeleted = false,
+                            Name = "Sözel Bölüm",
+                            Order = 1
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DurationSeconds = 4800,
+                            ExamTemplateId = 1,
+                            IsDeleted = false,
+                            Name = "Sayısal Bölüm",
+                            Order = 2
+                        },
+                        new
+                        {
+                            Id = 3,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DurationSeconds = 9900,
+                            ExamTemplateId = 2,
+                            IsDeleted = false,
+                            Name = "Temel Yeterlilik Testi",
+                            Order = 1
+                        },
+                        new
+                        {
+                            Id = 4,
+                            CreateTime = new DateTime(2026, 11, 4, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DurationSeconds = 10800,
+                            ExamTemplateId = 3,
+                            IsDeleted = false,
+                            Name = "Alan Yeterlilik Testleri",
+                            Order = 1
+                        });
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.LabelingActivityPromptVersion", b =>
                 {
                     b.Property<int>("Id")
@@ -1462,6 +1973,161 @@ namespace ExamApp.Api.Migrations
                     b.HasIndex("OccurredAtUtc", "Role", "Success");
 
                     b.ToTable("LoginEvents");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.MockExam", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ExamTemplateId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("GradeId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExamTemplateId");
+
+                    b.HasIndex("GradeId");
+
+                    b.ToTable("MockExams");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.MockExamQuestion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ExamTemplateSectionId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("MockExamSessionId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("WorksheetQuestionId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExamTemplateSectionId");
+
+                    b.HasIndex("MockExamSessionId");
+
+                    b.HasIndex("WorksheetQuestionId")
+                        .IsUnique();
+
+                    b.ToTable("MockExamQuestions");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.MockExamSession", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ExamTemplateSessionId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("MockExamId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("WorksheetId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExamTemplateSessionId");
+
+                    b.HasIndex("MockExamId");
+
+                    b.HasIndex("WorksheetId")
+                        .IsUnique();
+
+                    b.ToTable("MockExamSessions");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.OpenTextReview", b =>
@@ -5621,6 +6287,28 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Province");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.ExamTemplateSection", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.ExamTemplateSession", "Session")
+                        .WithMany("Sections")
+                        .HasForeignKey("ExamTemplateSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Session");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.ExamTemplateSession", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.ExamTemplate", "ExamTemplate")
+                        .WithMany("Sessions")
+                        .HasForeignKey("ExamTemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ExamTemplate");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.LabelingResult", b =>
                 {
                     b.HasOne("ExamApp.Api.Data.LabelingPage", "Page")
@@ -5668,6 +6356,79 @@ namespace ExamApp.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("LearningOutcome");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.MockExam", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.ExamTemplate", "ExamTemplate")
+                        .WithMany()
+                        .HasForeignKey("ExamTemplateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Grade", "Grade")
+                        .WithMany()
+                        .HasForeignKey("GradeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ExamTemplate");
+
+                    b.Navigation("Grade");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.MockExamQuestion", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.ExamTemplateSection", "Section")
+                        .WithMany()
+                        .HasForeignKey("ExamTemplateSectionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ExamApp.Api.Data.MockExamSession", "MockExamSession")
+                        .WithMany("Questions")
+                        .HasForeignKey("MockExamSessionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ExamApp.Api.Data.WorksheetQuestion", "WorksheetQuestion")
+                        .WithMany()
+                        .HasForeignKey("WorksheetQuestionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("MockExamSession");
+
+                    b.Navigation("Section");
+
+                    b.Navigation("WorksheetQuestion");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.MockExamSession", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.ExamTemplateSession", "TemplateSession")
+                        .WithMany()
+                        .HasForeignKey("ExamTemplateSessionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ExamApp.Api.Data.MockExam", "MockExam")
+                        .WithMany("Sessions")
+                        .HasForeignKey("MockExamId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Worksheet", "Worksheet")
+                        .WithMany()
+                        .HasForeignKey("WorksheetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("MockExam");
+
+                    b.Navigation("TemplateSession");
+
+                    b.Navigation("Worksheet");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.OpenTextReview", b =>
@@ -6557,6 +7318,16 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Items");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.ExamTemplate", b =>
+                {
+                    b.Navigation("Sessions");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.ExamTemplateSession", b =>
+                {
+                    b.Navigation("Sections");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.LabelingPage", b =>
                 {
                     b.Navigation("Results");
@@ -6565,6 +7336,16 @@ namespace ExamApp.Api.Migrations
             modelBuilder.Entity("ExamApp.Api.Data.LearningOutcome", b =>
                 {
                     b.Navigation("Details");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.MockExam", b =>
+                {
+                    b.Navigation("Sessions");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.MockExamSession", b =>
+                {
+                    b.Navigation("Questions");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Parent", b =>

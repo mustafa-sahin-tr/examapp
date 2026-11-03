@@ -419,6 +419,7 @@ builder.Services.AddScoped<ExamApp.Api.Services.Labeling.IBookRegistryService, E
 builder.Services.AddSingleton<ExamApp.Api.Services.Labeling.IActivityStructureExtractor, ExamApp.Api.Services.Labeling.ClaudeActivityStructureExtractor>();
 builder.Services.AddScoped<ExamApp.Api.Services.Labeling.IActivityStructureService, ExamApp.Api.Services.Labeling.ActivityStructureService>();
 // Kazanımdan görselsiz soru: işaretlemenin Claude ayarları ve kotası; anahtar boşsa üretim ucu 503.
+builder.Services.AddScoped<ExamApp.Api.Services.MockExams.IMockExamService, ExamApp.Api.Services.MockExams.MockExamService>(); // issue #693
 builder.Services.AddSingleton<ExamApp.Api.Services.QuestionGeneration.IQuestionDraftGenerator, ExamApp.Api.Services.QuestionGeneration.ClaudeQuestionDraftGenerator>();
 builder.Services.AddScoped<ExamApp.Api.Services.QuestionGeneration.IQuestionGenerationService, ExamApp.Api.Services.QuestionGeneration.QuestionGenerationService>();
 // issue #262: audit saklama süresi (KVKK) — AdminDataAccessLog:RetentionDays (varsayılan 180), günlük Hangfire temizliği.

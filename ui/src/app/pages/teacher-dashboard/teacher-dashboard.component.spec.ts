@@ -123,7 +123,7 @@ describe('TeacherDashboardComponent', () => {
         fixture.detectChanges();
 
         expect(component.worksheets()).toEqual([]);
-        expect(component.worksheetsError()).toBe('Sınav listesi alınırken bir sorun oluştu.');
+        expect(component.worksheetsError()).toBe('Liste alınırken bir sorun oluştu.');
     });
 
     it('completionClass_PercentageAtOrAboveFifty_ReturnsSuccessClass', () => {

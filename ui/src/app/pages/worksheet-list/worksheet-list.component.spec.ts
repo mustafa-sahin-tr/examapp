@@ -334,7 +334,7 @@ describe('WorksheetListComponent', () => {
             setPaged([exploreTest]);
             fixture.detectChanges();
 
-            expect(section(0).querySelector('.wl__empty--section p')?.textContent?.trim()).toBe('Sana atanmış aktif bir sınav yok.');
+            expect(section(0).querySelector('.wl__empty--section p')?.textContent?.trim()).toBe('Sana atanmış aktif bir test yok.');
             expect(compactCards(section(0)).length).toBe(0);
         });
 

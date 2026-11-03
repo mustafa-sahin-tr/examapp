@@ -261,6 +261,10 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
    */
   readonly sectionTabs: MenuItem[][] = [
     [
+      { id: 'tab-practice', labelKey: 'menu.practice', icon: '', route: '/practice', type: 'menu', roles: ['Student'] },
+      { id: 'tab-mistakes', labelKey: 'menu.mistakes', icon: '', route: '/mistakes', type: 'menu', roles: ['Student'] },
+    ],
+    [
       { id: 'tab-calendar', labelKey: 'menu.calendar', icon: '', route: '/my-calendar', type: 'menu', roles: ['Student'] },
       { id: 'tab-programs', labelKey: 'menu.programs', icon: '', route: '/programs', type: 'menu', roles: ['Student'] },
     ],

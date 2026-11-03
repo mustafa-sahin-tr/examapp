@@ -11,6 +11,8 @@ export interface PracticeSessionStartRequest {
   topicIds?: number[];
   /** Issue #529: tekrar zamanı gelen sorulardan sabit listeli oturum. */
   dueReview?: boolean;
+  /** Issue #698: yanlış defterinden sabit listeli oturum. */
+  mistakes?: boolean;
 }
 
 /** Issue #529: tekrar zamanı gelen sorular; `items` listenin ilk bölümüdür. */
@@ -27,6 +29,26 @@ export interface DueReviewItem {
   dueSince: string;
   step: number;
   wrongCount: number;
+}
+
+/** Issue #698: yanlış nedeni etiketleri. */
+export const MISTAKE_REASONS = ['DidNotKnow', 'Calculation', 'Attention', 'Time'] as const;
+export type MistakeReason = (typeof MISTAKE_REASONS)[number];
+
+export interface MistakeNotebook {
+  totalCount: number;
+  items: MistakeItem[];
+}
+
+export interface MistakeItem {
+  questionId: number;
+  subjectId: number | null;
+  subjectName: string | null;
+  topicId: number | null;
+  topicName: string | null;
+  lastWrongAt: string;
+  wrongCount: number;
+  reason: MistakeReason | null;
 }
 
 export type PracticeSessionStatus = 'Active' | 'Ended';

@@ -263,6 +263,13 @@ export const routes: Routes = [
           import('./pages/practice-solve/practice-solve.component').then((m) => m.PracticeSolveComponent),
       },
       {
+        // Issue #698: yanlış defteri.
+        path: 'mistakes',
+        canActivate: [authGuard, studentGuard],
+        loadComponent: () =>
+          import('./pages/mistake-notebook/mistake-notebook.component').then((m) => m.MistakeNotebookComponent),
+      },
+      {
         // Issue #417: öğretmen/admin Ayarlar sayfası (dil, hesap/şifre, öğretmen profili bağlantıları).
         // Öğrenci /student-profile'a yönlenir; onay bekleyen öğretmene de açık (approvedTeacherGuard yok).
         path: 'settings',

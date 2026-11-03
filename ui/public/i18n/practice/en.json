@@ -8,6 +8,31 @@
     "doneTitle": "Review finished",
     "doneText": "Questions you got right will come back later."
   },
+  "mistakes": {
+    "title": "My Mistakes",
+    "subtitle": "Questions you got wrong in tests and practice. They leave the list after two correct answers in a row.",
+    "start": "Practise these",
+    "startError": "Could not start practice.",
+    "saveError": "Could not save the reason.",
+    "loadError": "Could not load the list.",
+    "retry": "Try again",
+    "emptyTitle": "No mistakes to review",
+    "emptyText": "Questions you get wrong will collect here.",
+    "goPractice": "Practice questions",
+    "subject": "Subject",
+    "allSubjects": "All subjects",
+    "noSubject": "No subject",
+    "wrongInfo": "Wrong {{count}} times, last: {{date}}",
+    "reasonLabel": "Why?",
+    "reasonNone": "Not set",
+    "truncated": "Showing {{shown}} of {{total}} questions.",
+    "reason": {
+      "DidNotKnow": "Did not know",
+      "Calculation": "Calculation error",
+      "Attention": "Attention",
+      "Time": "Time"
+    }
+  },
   "common": {
     "close": "Close",
     "retry": "Try again",

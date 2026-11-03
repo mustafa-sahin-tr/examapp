@@ -29,6 +29,7 @@ public class PracticeSessionService : IPracticeSessionService
 {
     private const int MaxPageSize = 100;
     private const int MaxDueReviewCount = 15;
+    private const int MaxMistakeItems = 200;
 
     private readonly AppDbContext _context;
 
@@ -64,6 +65,15 @@ public class PracticeSessionService : IPracticeSessionService
             fixedQuestionIdsJson = JsonSerializer.Serialize(due.Take(MaxDueReviewCount).Select(d => d.QuestionId));
         }
 
+        if (request.Mistakes)
+        {
+            var mistakes = await MistakeNotebookQueries.LoadAsync(_context, _calendar, student, subjectIds, topicIds, ct);
+            if (mistakes.Count == 0)
+                throw new InvalidOperationException(_localizer["practice.noMistakes"]);
+
+            fixedQuestionIdsJson = JsonSerializer.Serialize(mistakes.Take(MaxDueReviewCount).Select(m => m.QuestionId));
+        }
+
         var session = new PracticeSession
         {
             StudentId = student.Id,
@@ -93,6 +103,57 @@ public class PracticeSessionService : IPracticeSessionService
             TotalCount = due.Count,
             Items = due.Take(Math.Clamp(take, 1, MaxDueReviewCount)).ToList()
         };
+    }
+
+    public async Task<MistakeNotebookDto> GetMistakesAsync(StudentProfileDto student, int? subjectId, int? topicId, CancellationToken ct = default)
+    {
+        if (!student.GradeId.HasValue)
+            return new MistakeNotebookDto();
+
+        var mistakes = await MistakeNotebookQueries.LoadAsync(
+            _context,
+            _calendar,
+            student,
+            subjectId.HasValue ? new[] { subjectId.Value } : Array.Empty<int>(),
+            topicId.HasValue ? new[] { topicId.Value } : Array.Empty<int>(),
+            ct);
+
+        return new MistakeNotebookDto { TotalCount = mistakes.Count, Items = mistakes.Take(MaxMistakeItems).ToList() };
+    }
+
+    public async Task<bool> SetMistakeReasonAsync(StudentProfileDto student, int questionId, MistakeReason? reason, CancellationToken ct = default)
+    {
+        if (!student.GradeId.HasValue)
+            return false;
+
+        var mistakes = await MistakeNotebookQueries.LoadAsync(_context, _calendar, student, Array.Empty<int>(), Array.Empty<int>(), ct);
+        if (mistakes.All(m => m.QuestionId != questionId))
+            return false;
+
+        // Silme soft-delete'tir; benzersiz indeks silinen satırı da sayar, bu yüzden yeniden etiketlemede o satır canlanır.
+        var existing = await _context.StudentMistakeReasons
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(r => r.StudentId == student.Id && r.QuestionId == questionId, ct);
+
+        if (reason == null)
+        {
+            if (existing is { IsDeleted: false })
+                _context.StudentMistakeReasons.Remove(existing);
+        }
+        else if (existing != null)
+        {
+            existing.Reason = reason.Value;
+            existing.IsDeleted = false;
+            existing.DeleteTime = null;
+            existing.DeleteUserId = null;
+        }
+        else
+        {
+            _context.StudentMistakeReasons.Add(new StudentMistakeReason { StudentId = student.Id, QuestionId = questionId, Reason = reason.Value });
+        }
+
+        await _context.SaveChangesAsync(ct);
+        return true;
     }
 
     public async Task<PracticeSessionDto?> GetAsync(int sessionId, int studentId, CancellationToken ct = default)

@@ -1,3 +1,4 @@
+using ExamApp.Api.Data;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos;
@@ -22,6 +23,13 @@ public interface IPracticeSessionService
 
     /// <summary>Issue #529: öğrencinin tekrar zamanı gelen soruları, en çok geciken önce.</summary>
     Task<DueReviewDto> GetDueReviewAsync(StudentProfileDto student, int? subjectId, int take, CancellationToken ct = default);
+
+    /// <summary>Issue #698: öğrencinin aktif yanlışları, en yeni yanlış önce.</summary>
+    Task<MistakeNotebookDto> GetMistakesAsync(StudentProfileDto student, int? subjectId, int? topicId, CancellationToken ct = default);
+
+    /// <summary>Issue #698: yanlış nedeni etiketi. null etiketi kaldırır.</summary>
+    /// <returns>false: soru bu öğrencinin defterinde değil.</returns>
+    Task<bool> SetMistakeReasonAsync(StudentProfileDto student, int questionId, MistakeReason? reason, CancellationToken ct = default);
 
     /// <summary>Oturumda gösterilen soruların tek tek sonucu (doğru şık dahil). Aktif oturum için de çağrılabilir.</summary>
     /// <returns>null: oturum yok ya da bu öğrenciye ait değil.</returns>

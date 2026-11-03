@@ -1,3 +1,4 @@
+using ExamApp.Api.Data;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -72,6 +73,36 @@ public class PracticeController : BaseController
             return error;
 
         return Ok(await _practice.GetDueReviewAsync(student!, subjectId, take, ct));
+    }
+
+    /// <summary>Issue #698: yanlış defteri; sınıfı olmayan öğrencide boş döner.</summary>
+    [HttpGet("mistakes")]
+    public async Task<IActionResult> GetMistakes([FromQuery] int? subjectId, [FromQuery] int? topicId, CancellationToken ct = default)
+    {
+        var (student, error) = await ResolveStudentAsync();
+        if (error != null)
+            return error;
+
+        return Ok(await _practice.GetMistakesAsync(student!, subjectId, topicId, ct));
+    }
+
+    /// <summary>Issue #698: yanlış nedeni etiketi; soru öğrencinin defterinde değilse 404.</summary>
+    [HttpPut("mistakes/{questionId:int}/reason")]
+    public async Task<IActionResult> SetMistakeReason(int questionId, [FromBody] MistakeReasonUpdateDto request, CancellationToken ct = default)
+    {
+        var (student, error) = await ResolveStudentAsync();
+        if (error != null)
+            return error;
+
+        MistakeReason? reason = null;
+        if (request.Reason != null)
+        {
+            if (!Enum.TryParse<MistakeReason>(request.Reason, ignoreCase: false, out var parsed) || !Enum.IsDefined(parsed))
+                return BadRequest();
+            reason = parsed;
+        }
+
+        return await _practice.SetMistakeReasonAsync(student!, questionId, reason, ct) ? NoContent() : NotFound();
     }
 
     /// <summary>

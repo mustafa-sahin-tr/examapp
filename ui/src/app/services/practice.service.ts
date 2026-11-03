@@ -15,6 +15,8 @@ import {
   PracticeSessionReview,
   PracticeSessionStartRequest,
   DueReviewSummary,
+  MistakeNotebook,
+  MistakeReason,
 } from '../models/practice';
 import { storageImageKey } from '../shared/utils/storage-image-url.util';
 
@@ -32,6 +34,15 @@ export class PracticeService {
   /** Issue #529: tekrar zamanı gelen sorular. */
   getDueReview(): Observable<DueReviewSummary> {
     return this.http.get<DueReviewSummary>(`${this.baseUrl}/due-review`);
+  }
+
+  /** Issue #698: yanlış defteri. */
+  getMistakes(): Observable<MistakeNotebook> {
+    return this.http.get<MistakeNotebook>(`${this.baseUrl}/mistakes`);
+  }
+
+  setMistakeReason(questionId: number, reason: MistakeReason | null): Observable<void> {
+    return this.http.put<void>(`${this.baseUrl}/mistakes/${questionId}/reason`, { reason });
   }
 
   startSession(request: PracticeSessionStartRequest): Observable<PracticeSession> {

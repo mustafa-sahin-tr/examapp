@@ -25,6 +25,7 @@ const ROUTE_ALIASES: ReadonlyArray<readonly [prefix: string, target: string]> = 
   ['/my-bookings', '/tutors'],
   ['/testsolve', '/tests'],
   ['/programs', '/my-calendar'],
+  ['/mistakes', '/practice'],
   ['/activity', '/tests'],
   ['/question', '/tests'],
   ['/exam', '/tests'],

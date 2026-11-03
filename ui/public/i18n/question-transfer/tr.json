@@ -59,6 +59,8 @@
     "conflicts": "Çakışma",
     "missingTaxonomy": "Konusu bulunamadı",
     "missingImage": "Görseli eksik",
+    "unpublish": "Yayından kalkacak",
+    "unpublishNote": "Kaynakta yayından kaldırılmış {{count}} soru burada da yayından kalkar. Eski bir paketse devam etmeyin.",
     "conflictsNote": "Çakışma: aynı görsel burada başka içerikle var. Bu sorular alınmaz, buradaki soru değişmez.",
     "missingTaxonomyNote": "Konusu bulunamayan sorular konusuz gelir. Önce kataloğu taşıyın.",
     "unhashedNote": "Burada {{count}} soru henüz taranmadı, sayılar eksik olabilir. Tarama arka planda sürüyor.",
@@ -73,6 +75,7 @@
     "downloadPackage": "Paketi indir",
     "failedCount": "Hatalı",
     "details": "Ayrıntılar",
+    "unpublishedIds": "Yayından kaldırılan sorular: {{ids}}",
     "kind": {
       "Export": "Dışa aktarma",
       "Import": "İçe alma"

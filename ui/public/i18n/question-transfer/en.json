@@ -59,6 +59,8 @@
     "conflicts": "Conflicts",
     "missingTaxonomy": "Topic not found",
     "missingImage": "Image missing",
+    "unpublish": "Will be unpublished",
+    "unpublishNote": "{{count}} questions unpublished in the source will be unpublished here too. Do not continue if this is an old package.",
     "conflictsNote": "Conflict: the same image is here with different content. These questions are not imported and the question here does not change.",
     "missingTaxonomyNote": "Questions whose topic is not found arrive without one. Move the catalog first.",
     "unhashedNote": "{{count}} questions here have not been scanned yet, so the counts may be low. The scan is running in the background.",
@@ -73,6 +75,7 @@
     "downloadPackage": "Download package",
     "failedCount": "Failed",
     "details": "Details",
+    "unpublishedIds": "Unpublished questions: {{ids}}",
     "kind": {
       "Export": "Export",
       "Import": "Import"

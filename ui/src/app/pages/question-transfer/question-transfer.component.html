@@ -208,8 +208,12 @@
               <div [class.qt-count-warn]="preview.conflictCount > 0"><dt>{{ t('import.conflicts') }}</dt><dd>{{ preview.conflictCount }}</dd></div>
               <div [class.qt-count-warn]="preview.missingTaxonomyCount > 0"><dt>{{ t('import.missingTaxonomy') }}</dt><dd>{{ preview.missingTaxonomyCount }}</dd></div>
               <div [class.qt-count-warn]="preview.missingImageCount > 0"><dt>{{ t('import.missingImage') }}</dt><dd>{{ preview.missingImageCount }}</dd></div>
+              <div [class.qt-count-warn]="preview.unpublishCount > 0"><dt>{{ t('import.unpublish') }}</dt><dd>{{ preview.unpublishCount }}</dd></div>
             </dl>
 
+            @if (preview.unpublishCount > 0) {
+              <div class="qt-note qt-count-warn">{{ t('import.unpublishNote', { count: preview.unpublishCount }) }}</div>
+            }
             @if (preview.conflictCount > 0) {
               <div class="qt-note">{{ t('import.conflictsNote') }}</div>
             }
@@ -297,7 +301,12 @@
               <div [class.qt-count-warn]="result.conflicts > 0"><dt>{{ t('import.conflicts') }}</dt><dd>{{ result.conflicts }}</dd></div>
               <div [class.qt-count-warn]="result.missingTaxonomy > 0"><dt>{{ t('import.missingTaxonomy') }}</dt><dd>{{ result.missingTaxonomy }}</dd></div>
               <div [class.qt-count-warn]="result.failed > 0"><dt>{{ t('jobs.failedCount') }}</dt><dd>{{ result.failed }}</dd></div>
+              <div [class.qt-count-warn]="result.unpublished > 0"><dt>{{ t('import.unpublish') }}</dt><dd>{{ result.unpublished }}</dd></div>
             </dl>
+
+            @if (result.unpublished > 0) {
+              <div class="qt-note">{{ t('jobs.unpublishedIds', { ids: result.unpublishedQuestionIds.join(', ') }) }}</div>
+            }
 
             @if (result.conflictSamples.length + result.failedSamples.length + result.warnings.length > 0) {
               <details class="qt-details">

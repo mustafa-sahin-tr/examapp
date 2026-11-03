@@ -9,6 +9,8 @@ export interface QuestionTransferImportResult {
   conflicts: number;
   failed: number;
   missingTaxonomy: number;
+  unpublished: number;
+  unpublishedQuestionIds: number[];
   conflictSamples: string[];
   failedSamples: string[];
   warnings: string[];
@@ -35,6 +37,7 @@ export interface QuestionTransferImportPreview {
   conflictCount: number;
   missingTaxonomyCount: number;
   missingImageCount: number;
+  unpublishCount: number;
   targetUnhashedCount: number;
   conflictSamples: string[];
 }

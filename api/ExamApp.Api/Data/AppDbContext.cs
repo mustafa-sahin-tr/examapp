@@ -173,6 +173,7 @@ public class AppDbContext : DbContext
     public DbSet<Topic> Topics { get; set; }
     public DbSet<SubTopic> SubTopics { get; set; }
     public DbSet<ClassifierCacheConfig> ClassifierCacheConfigs { get; set; }
+    public DbSet<QuestionTransferOrigin> QuestionTransferOrigins { get; set; }
     public DbSet<WorksheetInstance> TestInstances { get; set; }
     public DbSet<WorksheetInstanceQuestion> TestInstanceQuestions { get; set; }
     public DbSet<WorksheetPrototype> TestPrototypes { get; set; }

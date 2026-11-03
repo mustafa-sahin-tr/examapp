@@ -28,7 +28,7 @@ public sealed record QuestionMatch(QuestionMatchKind Kind, int? TargetQuestionId
 
 public static class QuestionContentHash
 {
-    private const int FormatVersion = 2;
+    private const int FormatVersion = 3;
 
     /// <summary>Paketteki tek görselin üst sınırı. Yüklenen zip belleğe açıldığı için sınırsız okunmaz.</summary>
     internal const int MaxPackageImageBytes = 50 * 1024 * 1024;
@@ -53,9 +53,10 @@ public static class QuestionContentHash
             .ToList();
         var type = Normalize(interactionType);
         var (canonicalPlan, canonicalSolution) = CanonicalInteraction(type, plan, solution);
-        var normalizedText = Normalize(text);
-        var normalizedSubText = Normalize(subText);
-        var normalizedPractice = Normalize(practiceAnswer);
+        // Kayıt metni temizleyerek yazar: paket ham, satır temiz olsa da aynı parmak izi çıksın.
+        var normalizedText = NormalizeRichText(text);
+        var normalizedSubText = NormalizeRichText(subText);
+        var normalizedPractice = NormalizeRichText(practiceAnswer);
 
         var canonical = JsonSerializer.Serialize(new
         {
@@ -118,6 +119,16 @@ public static class QuestionContentHash
             identifiedByText: (!hasPassage || passageText.Length > 0) && !hasAnswerImage, passageText: passageText);
     }
 
+    /// <summary>
+    /// Paketin kaynağı: daha önce alınan soru bununla tanınır. Her dışa aktarımın adı farklıdır, bu yüzden önce ortamın kalıcı kimliğine bakılır;
+    /// eski pakette ad kullanılır.
+    /// </summary>
+    public static string? ReadPackageSourceKey(JsonElement manifest)
+    {
+        var origin = ReadString(manifest, "originKey");
+        return string.IsNullOrWhiteSpace(origin) ? ReadString(manifest, "sourceKey") : origin;
+    }
+
     /// <summary>Manifest görsel gösteriyor ama zipte yok. Böyle bir soru metninden kimlik alırsa görselsiz başka sorularla birleşir.</summary>
     public static bool IsImageMissing(JsonElement question, byte[]? image) =>
         image is not { Length: > 0 } && !string.IsNullOrWhiteSpace(ReadString(question, "imageUrl"));
@@ -169,7 +180,9 @@ public static class QuestionContentHash
 
     private static string Normalize(string? value) => value?.Trim() ?? string.Empty;
 
-    private static string PassageText(string? title, string? text) => $"{Normalize(title)}\n{Normalize(text)}".Trim();
+    private static string NormalizeRichText(string? value) => Normalize(RichTextSanitizer.Sanitize(value));
+
+    private static string PassageText(string? title, string? text) => $"{NormalizeRichText(title)}\n{NormalizeRichText(text)}".Trim();
 
     /// <summary>
     /// dragPlace ve match kayıtta karıştırılır ve opak id alır: aynı soru her ortamda başka sıra ve id taşır. Parmak izi bu yüzden

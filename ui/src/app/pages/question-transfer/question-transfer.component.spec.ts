@@ -2,7 +2,7 @@ import type { MockedObject } from "vitest";
 import { HttpErrorResponse, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { of, throwError } from 'rxjs';
+import { of, Subject as RxSubject, throwError } from 'rxjs';
 
 import { QuestionTransferComponent } from './question-transfer.component';
 import { GradesService } from '../../services/grades.service';
@@ -39,6 +39,7 @@ function preview(overrides: Partial<QuestionTransferImportPreview> = {}): Questi
         conflictCount: 0,
         missingTaxonomyCount: 0,
         missingImageCount: 0,
+        unpublishCount: 0,
         targetUnhashedCount: 0,
         conflictSamples: [],
         ...overrides,
@@ -170,6 +171,33 @@ describe('QuestionTransferComponent', () => {
         expect(component.subjects().map((s) => s.id)).toEqual([8]);
     });
 
+    it('gradeChange_LateAnswerOfThePreviousGrade_DoesNotOverwriteTheList', () => {
+        setup();
+        const subjects = TestBed.inject(SubjectService);
+        const firstGrade = new RxSubject<{ id: number; name: string }[]>();
+        const secondGrade = new RxSubject<{ id: number; name: string }[]>();
+        subjects.getSubjectsByGrade = vi.fn().mockReturnValueOnce(firstGrade).mockReturnValueOnce(secondGrade);
+
+        component.onGradeChange(1);
+        component.onGradeChange(2);
+        secondGrade.next([{ id: 2, name: 'İkinci' }]);
+        firstGrade.next([{ id: 1, name: 'Birinci' }]);
+
+        expect(component.subjects().map((s) => s.id)).toEqual([2]);
+    });
+
+    it('gradeChange_SubjectListFails_ClearsTheHiddenSubjectFilter', () => {
+        setup();
+        component.onSubjectChange(7);
+        TestBed.inject(SubjectService).getSubjectsByGrade = vi.fn().mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+
+        component.onGradeChange(1);
+
+        expect(component.subjectId()).toBeNull();
+        expect(component.hasScope()).toBe(true);
+        expect(component.gradeId()).toBe(1);
+    });
+
     it('startExport_RequestFails_ShowsErrorAndEnablesTheButtonAgain', () => {
         setup();
         transfer.startExport.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
@@ -219,6 +247,47 @@ describe('QuestionTransferComponent', () => {
         expect(text()).toContain(T.import.conflictsNote);
         expect(text()).toContain(T.import.missingTaxonomyNote);
         expect(text()).toContain(T.import.unhashedNote.replace('{{count}}', '4'));
+    });
+
+    it('preview_WithQuestionsToUnpublish_WarnsBeforeImport', () => {
+        setup();
+        transfer.previewImport.mockReturnValue(of(preview({ unpublishCount: 6 })));
+
+        component.onImportFileSelected(fileEvent(zip()));
+        fixture.detectChanges();
+
+        expect(text()).toContain(T.import.unpublishNote.replace('{{count}}', '6'));
+    });
+
+    it('preview_SecondFileChosen_IgnoresTheLateAnswerOfTheFirst', () => {
+        setup();
+        const first = new RxSubject<QuestionTransferImportPreview>();
+        const second = new RxSubject<QuestionTransferImportPreview>();
+        transfer.previewImport.mockReturnValueOnce(first).mockReturnValueOnce(second);
+
+        component.onImportFileSelected(fileEvent(new File(['a'], 'a.zip')));
+        component.onImportFileSelected(fileEvent(new File(['b'], 'b.zip')));
+        first.next(preview({ newCount: 111 }));
+
+        expect(component.importPreview()).toBeNull();
+        expect(component.previewLoading()).toBe(true);
+
+        second.next(preview({ newCount: 222 }));
+
+        expect(component.importPreview()?.newCount).toBe(222);
+        expect(component.previewLoading()).toBe(false);
+    });
+
+    it('fileInputs_AreClearedSoTheSameFileCanBeChosenAgain', async () => {
+        setup();
+        const importEvent = fileEvent(zip());
+        const catalogEvent = fileEvent(new File(['{}'], 'catalog.json'));
+
+        component.onImportFileSelected(importEvent);
+        await component.onCatalogFileSelected(catalogEvent);
+
+        expect((importEvent.target as HTMLInputElement).value).toBe('');
+        expect((catalogEvent.target as HTMLInputElement).value).toBe('');
     });
 
     it('preview_Fails_ShowsErrorAndKeepsImportDisabled', () => {
@@ -283,6 +352,18 @@ describe('QuestionTransferComponent', () => {
 
         expect(text()).toContain('Konu adı başka kodla var');
         expect(button(T.catalog.apply)).toBeUndefined();
+    });
+
+    it('catalogApply_ServerFails_KeepsThePreviewSoItCanBeRetried', async () => {
+        setup();
+        await component.onCatalogFileSelected(fileEvent(new File(['{}'], 'catalog.json')));
+        transfer.importCatalog.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+
+        component.applyCatalog();
+        fixture.detectChanges();
+
+        expect(text()).toContain(T.catalog.failed);
+        expect(button(T.catalog.apply)).toBeDefined();
     });
 
     // ---- işler
@@ -354,6 +435,7 @@ describe('QuestionTransferComponent', () => {
             fileUrl: 'x.zip',
             result: {
                 imported: 3, matched: 2, alreadyImported: 0, conflicts: 1, failed: 1, missingTaxonomy: 0,
+                unpublished: 2, unpublishedQuestionIds: [11, 12],
                 conflictSamples: ['question:9: same image'], failedSamples: ['question:8: image missing'], warnings: ['question:7: unpublished'],
             },
         })]);
@@ -363,6 +445,7 @@ describe('QuestionTransferComponent', () => {
         expect(row).toContain('question:9: same image');
         expect(row).toContain('question:8: image missing');
         expect(row).toContain('question:7: unpublished');
+        expect(row).toContain(T.jobs.unpublishedIds.replace('{{ids}}', '11, 12'));
         expect(row).not.toContain(T.jobs.downloadPackage);
     });
 });

@@ -108,6 +108,9 @@ export class QuestionTransferComponent implements OnDestroy {
   readonly downloadFailed = signal(false);
   private readonly hasActiveJob = computed(() => this.jobs().some((j) => j.status === 'Queued' || j.status === 'Running'));
   private pollSub?: Subscription;
+  private previewSub?: Subscription;
+  private subjectsSub?: Subscription;
+  private topicsSub?: Subscription;
 
   constructor() {
     this.startPolling();
@@ -118,6 +121,9 @@ export class QuestionTransferComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.pollSub?.unsubscribe();
+    this.previewSub?.unsubscribe();
+    this.subjectsSub?.unsubscribe();
+    this.topicsSub?.unsubscribe();
   }
 
   // ---- kapsam
@@ -127,15 +133,20 @@ export class QuestionTransferComponent implements OnDestroy {
     this.topicId.set(null);
     this.loadTopics();
     const subjects$ = id === null ? this.subjectService.loadCategories() : this.subjectService.getSubjectsByGrade(id);
-    subjects$.subscribe({
+    // Önceki sınıfın geç gelen yanıtı listeyi ezmesin.
+    this.subjectsSub?.unsubscribe();
+    this.subjectsSub = subjects$.subscribe({
       next: (subjects) => {
         this.subjects.set(subjects ?? []);
         if (!(subjects ?? []).some((s) => s.id === this.subjectId())) {
-          this.subjectId.set(null);
-          this.topics.set([]);
+          this.clearSubject();
         }
       },
-      error: () => this.subjects.set([]),
+      error: () => {
+        // Görünmeyen seçim kapsamı daraltmaya devam etmesin.
+        this.subjects.set([]);
+        this.clearSubject();
+      },
     });
   }
 
@@ -145,7 +156,15 @@ export class QuestionTransferComponent implements OnDestroy {
     this.loadTopics();
   }
 
+  private clearSubject(): void {
+    this.topicsSub?.unsubscribe();
+    this.subjectId.set(null);
+    this.topicId.set(null);
+    this.topics.set([]);
+  }
+
   private loadTopics(): void {
+    this.topicsSub?.unsubscribe();
     const subjectId = this.subjectId();
     const gradeId = this.gradeId();
     if (subjectId === null) {
@@ -155,7 +174,7 @@ export class QuestionTransferComponent implements OnDestroy {
     const topics$ = gradeId === null
       ? this.subjectService.getTopicsBySubject(subjectId)
       : this.subjectService.getTopicsBySubjectAndGrade(subjectId, gradeId);
-    topics$.subscribe({ next: (t) => this.topics.set(t ?? []), error: () => this.topics.set([]) });
+    this.topicsSub = topics$.subscribe({ next: (t) => this.topics.set(t ?? []), error: () => this.topics.set([]) });
   }
 
   startExport(): void {
@@ -187,6 +206,10 @@ export class QuestionTransferComponent implements OnDestroy {
   onImportFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.item(0) ?? null;
+    // Aynı dosya yeniden seçilebilsin: değer kalırsa tarayıcı change olayı üretmez.
+    input.value = '';
+    this.previewSub?.unsubscribe();
+    this.previewLoading.set(false);
     this.importFile.set(file);
     this.importPreview.set(null);
     this.previewError.set(null);
@@ -194,7 +217,8 @@ export class QuestionTransferComponent implements OnDestroy {
     if (!file) return;
 
     this.previewLoading.set(true);
-    this.transfer.previewImport(file).subscribe({
+    // Önceki dosyanın yanıtı bu dosyanın sayıları gibi görünmesin.
+    this.previewSub = this.transfer.previewImport(file).subscribe({
       next: (preview) => {
         this.previewLoading.set(false);
         this.importPreview.set(preview);
@@ -246,6 +270,7 @@ export class QuestionTransferComponent implements OnDestroy {
   async onCatalogFileSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.item(0) ?? null;
+    input.value = '';
     this.catalogFileName.set(file?.name ?? null);
     this.catalogPreview.set(null);
     this.catalogResult.set(null);
@@ -283,7 +308,10 @@ export class QuestionTransferComponent implements OnDestroy {
       },
       error: (err: HttpErrorResponse) => {
         this.catalogBusy.set(false);
-        this.catalogPreview.set(null);
+        // Yükleme başarısızsa önizleme kalır, tekrar denenebilir.
+        if (dryRun) {
+          this.catalogPreview.set(null);
+        }
         const errors = (err.error as Partial<CatalogImportResult> | null)?.errors;
         this.catalogErrors.set(errors?.length ? errors : [this.serverMessage(err) ?? '']);
       },
@@ -292,7 +320,7 @@ export class QuestionTransferComponent implements OnDestroy {
 
   // ---- işler
 
-  /** Dışa aktarma bittiyse paket hazırdır; dosya yalnız seçilen sorulardan oluşur. */
+  /** Dışa aktarma bittiyse paket hazırdır. */
   canDownloadPackage(job: QuestionTransferJob): boolean {
     return job.kind === 'Export' && job.status === 'Completed' && !!job.fileUrl;
   }
@@ -358,7 +386,10 @@ export class QuestionTransferComponent implements OnDestroy {
         // Tek bir başarısız yenileme aboneliği bitirmesin.
         switchMap(() => this.transfer.listJobs(10).pipe(catchError(() => EMPTY))),
       )
-      .subscribe((jobs) => this.jobs.set(jobs ?? []));
+      .subscribe((jobs) => {
+        this.jobsFailed.set(false);
+        this.jobs.set(jobs ?? []);
+      });
   }
 
   private serverMessage(err: HttpErrorResponse): string | null {

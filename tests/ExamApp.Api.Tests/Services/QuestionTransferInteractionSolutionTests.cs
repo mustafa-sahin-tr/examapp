@@ -16,6 +16,7 @@ namespace ExamApp.Api.Tests.Services;
 /// çözümsüz yazılır (eski satırda plan içindeki çözüm ayrılır). Import ayrı alanı okur; yoksa eski manifestin plan içindeki
 /// <c>solution</c>'ını ayırır; geçersiz ayrı çözüm yok sayılır.
 /// </summary>
+[Collection(HangfireJobStorageCollection.Name)]
 public class QuestionTransferInteractionSolutionTests : IDisposable
 {
     private const string SourceKey = "src";

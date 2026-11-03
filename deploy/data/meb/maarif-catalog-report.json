@@ -1,0 +1,659 @@
+{
+ "specialEducation": [
+  {
+   "pid": 2135,
+   "title": "BAĞIMSIZ YAŞAM BECERİLERİ DERSİ (III. Kademe) (2025)",
+   "outcomes": 35
+  },
+  {
+   "pid": 2130,
+   "title": "SAĞLIKLI YAŞAM VE GÜVENLİK BECERİLERİ DERSİ (I, II ve III. Kademeler) (2025)",
+   "outcomes": 31
+  },
+  {
+   "pid": 2124,
+   "title": "MATEMATİK DERSİ (I, II ve III. Kademeler) (2025)",
+   "outcomes": 29
+  },
+  {
+   "pid": 2129,
+   "title": "DİN KÜLTÜRÜ VE AHLAK BİLGİSİ DERSİ (I, II ve III. Kademeler) (2025)",
+   "outcomes": 28
+  },
+  {
+   "pid": 2126,
+   "title": "HAYAT BİLGİSİ VE GÜNLÜK YAŞAM BECERİLERİ DERSİ (I ve II. Kademeler) (2025)",
+   "outcomes": 23
+  },
+  {
+   "pid": 2125,
+   "title": "TÜRKÇE DERSİ (I, II VE III. Kademeler) (2025)",
+   "outcomes": 23
+  },
+  {
+   "pid": 2132,
+   "title": "MÜZİK DERSİ (I, II ve III. Kademeler) (2025)",
+   "outcomes": 20
+  },
+  {
+   "pid": 2134,
+   "title": "BEDEN EĞİTİMİ, OYUN VE SPOR DERSİ (I, II ve III. Kademeler) (2025)",
+   "outcomes": 19
+  },
+  {
+   "pid": 2127,
+   "title": "İLETİŞİM BECERİLERİ DERSİ (I ve II. Kademeler) (2025)",
+   "outcomes": 17
+  },
+  {
+   "pid": 2131,
+   "title": "GÖRSEL SANATLAR DERSİ (I, II ve III. Kademeler) (2025)",
+   "outcomes": 15
+  },
+  {
+   "pid": 2128,
+   "title": "SOSYAL BECERİLER DERSİ (I, II ve III. Kademeler) (2025)",
+   "outcomes": 14
+  }
+ ],
+ "noGrade": {
+  "1950": {
+   "title": "ANADOLU İMAM HATİP LİSESİ EBRU DERSİ (I, II, III) (2025)",
+   "count": 24,
+   "sample": "EBRU.III.3.3 Türk ebrusunda tasarım unsurlarını çözümleyebilme"
+  },
+  "1951": {
+   "title": "ANADOLU İMAM HATİP LİSESİ TEZHİP DERSİ (I, II, III) (2025)",
+   "count": 24,
+   "sample": "TZHP.III.4.1 Tezhip eseri yapabilme"
+  },
+  "1953": {
+   "title": "ANADOLU İMAM HATİP LİSESİ DİNÎ MUSİKİ DERSİ (I, II, III) (2025)",
+   "count": 39,
+   "sample": "DMUS.III.3.4 Farklı kültürlere ait bansuri ve yan flüt çalgılarını karşılaştırabilm"
+  },
+  "1954": {
+   "title": "ANADOLU İMAM HATİP LİSESİ HÜSNÜHAT DERSİ (I, II, III) (2025)",
+   "count": 35,
+   "sample": "HH.III.4.3 Sülüs eserinin bezenmesi ve çerçeveletilmesiyle sanatsal ürün oluştura"
+  },
+  "1956": {
+   "title": "GSL TÜRK DÜNYASI VE TÜRK İSLAM MUSİKİSİ DERSİ (2025)",
+   "count": 15,
+   "sample": "TDTİM.4.4 Türk dünyası ve Türk İslam musikisinden seviyesine uygun olarak belirl"
+  },
+  "1963": {
+   "title": "GSL ENDÜSTRİYEL TASARIM DERSİ (2025)",
+   "count": 14,
+   "sample": "ET.4.4 Endüstriyel tasarımda fayda sağlayacak bir tasarımı ürüne dönüştürebil"
+  },
+  "1966": {
+   "title": "GSL GELENEKSEL TÜRK SANATLARI DERSİ (2025)",
+   "count": 86,
+   "sample": "GTSE.3.1 Ebru uygulamaları ile sanatsal ürün oluşturabilme"
+  },
+  "1968": {
+   "title": "TOPLUMSAL UYUM BECERİLERİ DERSİ (2025)",
+   "count": 25,
+   "sample": "TUB4.6 Sağlığı ile ilgili durumlarda iş birliği yapabilme"
+  },
+  "2067": {
+   "title": "KAPSAMLI SPOR EĞİTİMİ DERSİ (5-8) (2025)",
+   "count": 20,
+   "sample": "KSE.5.3 Seçilen kış sporlarına özgü hareketleri sergileyebilme"
+  },
+  "2144": {
+   "title": "ANADOLU İMAM HATİP LİSESİ DİN EĞİTİMİ DERSİ (2025)",
+   "count": 10,
+   "sample": "DE.4.2 Türkiye’de yürütülen yaygın din eğitimi örneklerini mesleki olarak uyg"
+  },
+  "2145": {
+   "title": "ANADOLU İMAM HATİP LİSESİ İSLAM'DA ÇOCUK EĞİTİMİ DERSİ (2025)",
+   "count": 11,
+   "sample": "İÇE.4.2 İslam’daki ahlaki değerleri yaş gruplarının özelliklerine göre yorumla"
+  },
+  "2146": {
+   "title": "ANADOLU İMAM HATİP LİSESİ İSLAM FELSEFESİ DERSİ (2025)",
+   "count": 11,
+   "sample": "İF.4.4 İslam felsefesinin Batı’ya etkisi konusunda eleştirel düşünebilme"
+  },
+  "2147": {
+   "title": "ANADOLU İMAM HATİP LİSESİ KUR'AN'IN ANA KONULARI (I-II) (2025)",
+   "count": 27,
+   "sample": "KAK-II.4.3 Enam suresinin 32. ayetini yorumlayabilme"
+  },
+  "2149": {
+   "title": "ANADOLU İMAM HATİP LİSESİ TASAVVUF KÜLTÜRÜ DERSİ (2025)",
+   "count": 8,
+   "sample": "TK.4.2 Tasavvufun günlük hayata etkisini gözleme dayalı tahmin edebilme"
+  },
+  "2170": {
+   "title": "ORTAÖĞRETİM PSİKOLOJİ DERSİ (2026)",
+   "count": 13,
+   "sample": "PSK.4.4 Tutum ve olumlu-olumsuz sosyal davranışları gözlemleyebilme"
+  },
+  "2171": {
+   "title": "İSLAM BİLİM TARİHİ DERSİ (2026)",
+   "count": 28,
+   "sample": "İBT.6.2 Cumhuriyet Dönemi bilim insanlarının çalışmaları hakkında kaynaklardan"
+  },
+  "2172": {
+   "title": "ORTAÖĞRETİM MANTIK DERSİ (2026)",
+   "count": 17,
+   "sample": "MAN.4.6 Örnek metinleri mantıksal açıdan denetleyebilme"
+  },
+  "2173": {
+   "title": "ORTAÖĞRETİM ÇAĞDAŞ TÜRK VE DÜNYA TARİHİ DERSİ (2026)",
+   "count": 9,
+   "sample": "ÇTDT.3.3 1991 ve sonrasında yaşanan bilimsel, kültürel ve teknolojik gelişmeler"
+  },
+  "2175": {
+   "title": "ORTAÖĞRETİM TÜRK KÜLTÜR VE MEDENİYET TARİHİ DERSİ (2026)",
+   "count": 6,
+   "sample": "TKMT.3.2 Türkistan’dan Türkiye’ye Türklerde sanat ve spor alanlarında yaşanan g"
+  },
+  "2176": {
+   "title": "ORTAÖĞRETİM DEMOKRASİ VE İNSAN HAKLARI DERSİ (2026)",
+   "count": 6,
+   "sample": "DİH2.3 Demokrasinin sürdürülebilirliğini sınırlayan bir soruna alternatif çöz"
+  },
+  "2178": {
+   "title": "ORTAÖĞRETİM İKLİM, ÇEVRE VE YENİLİKÇİ ÇÖZÜMLER DERSİ (2026)",
+   "count": 18,
+   "sample": "İÇYÇ.5.4 Çevre sorunlarının çözümünde tanımladığı problem için geliştirdiği yen"
+  },
+  "2180": {
+   "title": "ORTAÖĞRETİM MATEMATİK UYGULAMALARI DERSİ (2026)",
+   "count": 21,
+   "sample": "MAT.U.2.5.4 Tangram uygulamalarında şekli oluşturan parçaları belirleyerek bu parç"
+  },
+  "2182": {
+   "title": "ORTAÖĞRETİM SOSYAL BİLİM ÇALIŞMALARI DERSİ (2026)",
+   "count": 38,
+   "sample": "SBÇ.III.6.1 Toplumsal bütünleşmeyi ve toplumsal çözülmeyi sorgulayabilme"
+  },
+  "2214": {
+   "title": "ORTAÖĞRETİM TEMEL DİNÎ BİLGİLER (İslam 1-2) DERSİ (2026)",
+   "count": 25,
+   "sample": "TDB.2.4.4 Rabia Adeviyye’nin örnekliğini müşahede edebilme"
+  },
+  "2215": {
+   "title": "ORTAOKUL VE İMAM HATİP ORTAOKULU TEMEL DİNÎ BİLGİLER (İslam 1-2) DERSİ (2026)",
+   "count": 32,
+   "sample": "TDB.2.4.4 Allah’ın (cc) güzel isimlerini ayırt edebilme"
+  },
+  "2217": {
+   "title": "ORTAÖĞRETİM SAĞLIK BİLGİSİ VE TRAFİK KÜLTÜRÜ DERSİ (2026)",
+   "count": 19,
+   "sample": "SBTK.5.6 Trafiğin çevre üzerindeki etkileri ile ilgili tümevarımsal akıl yürüte"
+  },
+  "2290": {
+   "title": "ORAÖĞRETİM ASTRONOMİ VE UZAY BİLİMLERİ DERSİ (2026)",
+   "count": 24,
+   "sample": "AST.5.5 Dünya dışı yaşamı sorgulayabilme"
+  },
+  "2311": {
+   "title": "MASAL VE DESTANLARIMIZ DERSİ (2026)",
+   "count": 40,
+   "sample": "MD.2.3.6 Yapma destanın özelliklerine uygun yazacağı destan hakkında içerik olu"
+  },
+  "2330": {
+   "title": "AFET BİLİNCİ DERSİ (2026)",
+   "count": 22,
+   "sample": "AB.2.4.2 Küresel iklim değişikliği mücadelesinde ulusal ve uluslararası kuruluş"
+  },
+  "2331": {
+   "title": "ÇEVRE EĞİTİMİ VE İKLİM DEĞİŞİKLİĞİ DERSİ (2026)",
+   "count": 24,
+   "sample": "ÇEİD.6.5 Çevre, iklim ve sürdürülebilir kalkınma ile ilgili farklı kariyer alan"
+  },
+  "2332": {
+   "title": "DİJİTAL SANATLAR DERSİ (2026)",
+   "count": 24,
+   "sample": "DS.2.6.2 Animasyon geliştirme sürecinde üç boyutlu modelleme araçlarından yarar"
+  },
+  "2333": {
+   "title": "DÜŞÜNME EĞİTİMİ DERSİ (2026)",
+   "count": 10,
+   "sample": "DE.2.4.1 Yaratıcı düşünmenin bireyin yaşamına etkisini yorumlayabilme"
+  },
+  "2335": {
+   "title": "GELENEKSEL SANATLAR DERSİ (2026)",
+   "count": 26,
+   "sample": "GS.2.4.3 Türk ahşap sanatı tekniklerini uygulayarak sanatsal ürün oluşturabilme"
+  },
+  "2336": {
+   "title": "GÖRGÜ KURALLARI VE NEZAKET DERSİ (2026)",
+   "count": 16,
+   "sample": "GKN.2.4.2 Farklı kültürlerde görgü kuralları ve nezakete uygun davranmanın hayat"
+  },
+  "2337": {
+   "title": "HALK OYUNLARI DERSİ (2026)",
+   "count": 11,
+   "sample": "HO.3.2 Seçilen halk oyununun sahneleme sürecinde eşle/grupla hareket edebilme"
+  },
+  "2338": {
+   "title": "HUKUK VE ADALET DERSİ (2026)",
+   "count": 12,
+   "sample": "HA.4.3 Yargı sistemindeki kurumlar ile meslekleri sentezleyebilme"
+  },
+  "2341": {
+   "title": "MATEMATİK VE BİLİM UYGULAMALARI DERSİ (2026)",
+   "count": 67,
+   "sample": "MBU.BU.2.5.2 Bilimsel gelişmeler ışığında gelecekteki mesleklerin neler olabileceği"
+  },
+  "2342": {
+   "title": "MEDYA OKURYAZARLIĞI DERSİ (2026)",
+   "count": 10,
+   "sample": "MOY.4.2 Dijital vatandaşlık kavramını sorgulayabilme"
+  },
+  "2343": {
+   "title": "OKUL TEMELLİ SOSYAL SORUMLULUK ÇALIŞMALARI DERSİ (2026)",
+   "count": 43,
+   "sample": "OTSSÇ.3.6.2 Uluslararası sorunların çözümünde ülkemizin rolünü özetleyebilme"
+  },
+  "2344": {
+   "title": "OKUMA BECERİLERİ DERSİ (2026)",
+   "count": 9,
+   "sample": "OB.4.1 Okuma bilinci ve alışkanlığı kazanmaya dair çıkarım yapabilme"
+  },
+  "2345": {
+   "title": "PROJE TASARIMI VE UYGULAMALARI DERSİ (2026)",
+   "count": 16,
+   "sample": "PTU.6.2 Projede yaygın etkinin neleri içerdiğini sorgulayabilme"
+  },
+  "2346": {
+   "title": "ROBOTİK KODLAMA DERSİ (2026)",
+   "count": 20,
+   "sample": "RK2.4.2 Yapay zekâ destekli robotik sistemler ile entegre bir ürün geliştirebi"
+  },
+  "2348": {
+   "title": "SPOR VE FİZİKİ ETKİNLİKLER DERSİ (2026)",
+   "count": 8,
+   "sample": "SFE.3.3 Seçilen spor branşında takım/grup liderliği sergileme"
+  },
+  "2349": {
+   "title": "TEMEL YAŞAM BECERİLERİ DERSİ (2026)",
+   "count": 30,
+   "sample": "TYB.2.4.4 Çevrim içi anket ve grafik verilerini tüketim kararları bağlamında yor"
+  },
+  "2350": {
+   "title": "TÜRK SOSYAL HAYATINDA AİLE DERSİ (2026)",
+   "count": 15,
+   "sample": "TSHA.4.4 Yaşadığı çevredeki aile ve akrabalık ilişkilerinin toplumsal birliktel"
+  },
+  "2353": {
+   "title": "YAPAY ZEKÂ UYGULAMALARI DERSİ (2026)",
+   "count": 15,
+   "sample": "YZU2.3.2 Metin tabanlı ortamda yapay zekâ modeli geliştirme"
+  },
+  "2354": {
+   "title": "YAZARLIK VE YAZMA BECERİLERİ DERSİ (2026)",
+   "count": 16,
+   "sample": "YYB.2.3.1 Yazısının sunum içeriğini sentezleyebilme"
+  },
+  "2355": {
+   "title": "AHLAK VE VATANDAŞLIK EĞİTİMİ DERSİ (2026)",
+   "count": 21,
+   "sample": "AVE.2.4.2 Vatandaşlıkla ilgili güncel konulara ilişkin kanıta dayalı ürün oluştu"
+  },
+  "2356": {
+   "title": "SEÇMELİ MÜZİK DERSİ BAĞLAMA MODÜLÜ (5-8) (2026)",
+   "count": 21,
+   "sample": "SMBAĞ.4.2.2 Azeri yöresine ait eserleri çalabilme"
+  },
+  "2357": {
+   "title": "SEÇMELİ MÜZİK DERSİ GENEL MÜZİK EĞİTİMİ MODÜLÜ (5-8) (2026)",
+   "count": 37,
+   "sample": "SMGME.4.2.5 Dijital ve yapay zekâ destekli müzik teknolojilerini kullanarak özgün "
+  },
+  "2358": {
+   "title": "SEÇMELİ MÜZİK DERSİ GİTAR MODÜLÜ (5-8) (2026)",
+   "count": 51,
+   "sample": "SMGTR.4.4.2 İki gitar için yazılmış/düzenlenmiş eserlerden örnekler çalabilme"
+  },
+  "2359": {
+   "title": "SEÇMELİ MÜZİK DERSİ KEMAN MODÜLÜ (5-8) (2026)",
+   "count": 63,
+   "sample": "SMKMN.4.3.9 Taksim formunda eser çalabilme"
+  },
+  "2360": {
+   "title": "SEÇMELİ MÜZİK DERSİ PİYANO MODÜLÜ (5-8) (2026)",
+   "count": 38,
+   "sample": "SMPYN.4.3.3 Konser etkinliklerinde düzeyine uygun eserleri çalabilme"
+  },
+  "2361": {
+   "title": "SEÇMELİ MÜZİK DERSİ UD MODÜLÜ (5-8) (2026)",
+   "count": 32,
+   "sample": "SMUD.4.3.2 Hicaz makamının özelliklerini kullanarak bu makama yönelik etüt ve ese"
+  },
+  "2362": {
+   "title": "SEÇMELİ MÜZİK DERSİ TÜRK HALK MÜZİĞİ KORO MODÜLÜ (5-8) (2026)",
+   "count": 37,
+   "sample": "SMTHMK.IV.5.4 Semah türüne ait eserleri söyleyebilme"
+  },
+  "2363": {
+   "title": "KÜLTÜR VE MEDENİYETİMİZE YÖN VERENLER (2026)",
+   "count": 18,
+   "sample": "KMYV.2.4.2 Kültür ve medeniyetimize yön veren sanat önderlerinin kültür ve medeni"
+  },
+  "2364": {
+   "title": "ŞEHRİMİZ... DERSİ (2026)",
+   "count": 13,
+   "sample": "Ş.6.3 Yaşadığı şehrin kültürel miras unsurlarına ilişkin kanıta dayalı ürün "
+  },
+  "2365": {
+   "title": "OYUN VE OYUN ETKİNLİKLERİ DERSİ DRAMA MODÜLÜ (2026)",
+   "count": 47,
+   "sample": "OOED.2.7.1 Okul dışı öğrenme ortamlarının özelliklerinden yararlanarak drama çalı"
+  },
+  "2366": {
+   "title": "OYUN VE OYUN ETKİNLİKLERİ DERSİ GELENEKSEL OYUNLAR MODÜLÜ (2026)",
+   "count": 13,
+   "sample": "OOEGO.3.5 Farklı yörelere ait geleneksel oyunlardaki hareket becerilerini sergil"
+  },
+  "2367": {
+   "title": "OYUN VE OYUN ETKİNLİKLERİ DERSİ SATRANÇ MODÜLÜ (2026)",
+   "count": 34,
+   "sample": "OOEST.12.3 Satranç oyununda edindiği bilgileri öğretmen denetimli ve güvenli çevr"
+  },
+  "2368": {
+   "title": "OYUN VE OYUN ETKİNLİKLERİ DERSİ ZEKÂ OYUNLARI MODÜLÜ (2026)",
+   "count": 53,
+   "sample": "OOEZO.2.6.4 Yeni zekâ soruları tasarlayabilme"
+  }
+ },
+ "replaced": {},
+ "replacedAcrossSubjects": [],
+ "suspect": [
+  {
+   "pid": 2252,
+   "code": "TDE.12.2.3.2",
+   "description": "Toplumsal sorunları anlama ve bu sorunlara çözüm üretme ile ilgili konuşması"
+  },
+  {
+   "pid": 2252,
+   "code": "TDE.12.2.3.3",
+   "description": "Toplumsal sorunları anlama ve bu sorunlara çözüm üretme ile ilgili konuşması"
+  },
+  {
+   "pid": 2339,
+   "code": "MAT.1.5.1",
+   "description": "İlkokul Matematik Dersi Öğretim Programı’nın İçerik Tasarımı İçerik tasarımında kavramsal beceriler ile matematik alan becerilerini temel alan İlkokul Matematik"
+  },
+  {
+   "pid": 2339,
+   "code": "MAT.1.5.2",
+   "description": "İlkokul Matematik Dersi Öğretim Programı’nın Temaları İlkokul Matematik Dersi Öğretim Programı’nda yer alan temaların öne çıkan özellikleri, içerikleri ve öğren"
+  },
+  {
+   "pid": 2339,
+   "code": "MAT.1.5.2.2",
+   "description": "“Nesnelerin Geometrisi” Teması"
+  },
+  {
+   "pid": 2373,
+   "code": "KUR.8.1.DBS",
+   "description": "“Merhaba, Başlıyoruz” temasına yönelik dil bilgisi seçme-kullanma süreci; sesler, sayı adları; selamlaşma, tanışma ve vedalaşma unsurlarını yansıtan görsellerin"
+  },
+  {
+   "pid": 2256,
+   "code": "MAT.11.3.1",
+   "description": "f (x) = sinx (x ∈ ℝ), f (x) = cosx (x ∈ ℝ), f (x) = tanx (x ∈ ℝ, x ≠ π2 + kπ, k ∈ ℤ ) ve f (x) = cotx (x ∈ ℝ, x ≠ kπ, k ∈ ℤ) şeklinde tanımlı trigonometrik refe"
+  },
+  {
+   "pid": 2390,
+   "code": "TAKB.4",
+   "description": "Konuşma sürecini değerlendirebilme 36-48 ay: Bu yaş grubuna yönelik süreç bileşenleri, çocuğun konuşma deneyimine ilişkin duygularını basit düzeyde ifade etmeye"
+  },
+  {
+   "pid": 2390,
+   "code": "SAB.15",
+   "description": "Toplumsal yaşama yönelik merak ettiği konuyu sorgulayabilme 36-48 ay: Bu yaş grubunun özellikleri gereği süreç bileşenleri yer almamaktadır. 48-60 ay: Bu yaş gr"
+  },
+  {
+   "pid": 2183,
+   "code": "PYN.9.1.2",
+   "description": "a) Piyanonun yapısal özelliklerine ilişkin parçaları belirler"
+  },
+  {
+   "pid": 2183,
+   "code": "PYN.9.1.3",
+   "description": "Piyanonun tarihsel gelişim sürecinde değişim ve sürekliliğini neden ve"
+  },
+  {
+   "pid": 2183,
+   "code": "PYN.9.1.5",
+   "description": "a) Piyanonun tarihsel gelişim sürecinde piyanonun değişim ve sürekliliğine"
+  },
+  {
+   "pid": 2183,
+   "code": "PYN.9.1.6",
+   "description": "neden olan unsurları inceler"
+  },
+  {
+   "pid": 2368,
+   "code": "OOEZO.2.2.5",
+   "description": "Yeni sözel oyunlar tasarlar"
+  },
+  {
+   "pid": 2368,
+   "code": "OOEZO.2.3.4",
+   "description": "Akıl yürütme ve işlem oyunlarında kendine özgü stratejiler geliştirir"
+  },
+  {
+   "pid": 2230,
+   "code": "TT.7.8.3",
+   "description": "Öğrencilerin proje belirlemede problem, proje kavramı ve proje türleri ile ilgili araştırma yapmaları sağlanır. Elde edilen verilerin kaydedilmesi istenir (KB2."
+  },
+  {
+   "pid": 2230,
+   "code": "TT.7.8.4",
+   "description": "Öğrencilerden çevresel sürdürülebilirliği dikkate alarak kendisi, ailesi, toplumu, ülkesi ve tüm insanlar ile diğer canlıları ilgilendiren bir problemi yapıland"
+  },
+  {
+   "pid": 2362,
+   "code": "SMTHMK.I.1",
+   "description": "Ses ve Ses"
+  },
+  {
+   "pid": 2362,
+   "code": "SMTHMK.II.1",
+   "description": "Yöre SMTHMK.III.1. Doğu SMTHMK.IV.1. Müzik Kavramı ve Marmara Anadolu Türküleri Kültürü"
+  },
+  {
+   "pid": 2362,
+   "code": "SMTHMK.III.2",
+   "description": "Akdeniz SMTHMK.IV.2. Türkmen"
+  },
+  {
+   "pid": 2362,
+   "code": "SMTHMK.II.2",
+   "description": "İç Anadolu Türküleri Türküleri Türküleri"
+  },
+  {
+   "pid": 2362,
+   "code": "SMTHMK.I.3",
+   "description": "Koro Bilgisi SMTHMK.II.3. Güneydoğu SMTHMK.III.3. Ege SMTHMK.IV.3. Anadolu Türküleri Türküleri Azerbaycan Türküleri"
+  },
+  {
+   "pid": 2362,
+   "code": "SMTHMK.IV.4",
+   "description": "Türk Karadeniz Türküleri Halk Müziğinde Sohbet Geleneği"
+  },
+  {
+   "pid": 2362,
+   "code": "SMTHMK.IV.5",
+   "description": "Tasavvufi Türk Halk Müziği Aşağıdaki tablolarda Seçmeli Müzik Dersi Öğretim Programı Türk Halk Müziği Koro Modülü’nün temalara ait öğrenme çıktısı sayıları, der"
+  },
+  {
+   "pid": 2343,
+   "code": "OTSSÇ.3.2.3",
+   "description": "Toplumsal değerler ve ahlak ilkelerine ilişkin oluşturduğu ürünü paylaşabil-"
+  },
+  {
+   "pid": 2346,
+   "code": "RK2.1.2",
+   "description": "Robotik sistemlerde yapay zekâya ilişkin etik ve güvenlik-gizlilik önlemlerini yönetebilm e"
+  },
+  {
+   "pid": 2336,
+   "code": "GKN.2.3.2",
+   "description": "Dijital iletişimde etik ve nazik davranmanın günlük hayata et-"
+  },
+  {
+   "pid": 2181,
+   "code": "MAT.T.11.1.2",
+   "description": "Niceliklerin ters orantılı değişimlerini ℝ - {0} da tanımlı g(x) = b fonksiyonları bağlamında yorumlayabilme x"
+  },
+  {
+   "pid": 2026,
+   "code": "ARP.2.1.1",
+   "description": "DİNLEME/İZLEME-ANLAMLANDIRMA ken yönlerinin öğretmenlerin öğrenme fırsatları sunan, onların Uygulamaları kendileri tarafından değerbilgi ve becerilerini gelişti"
+  },
+  {
+   "pid": 1967,
+   "code": "TİD3.3.3",
+   "description": "Öğrencilerin evin yerine ilişkin kavramların TİD işaretlerini kullanabildikleri kabul edilmektedir"
+  },
+  {
+   "pid": 2084,
+   "code": "BSE.7.4.1",
+   "description": "İstiklal Marşı”nı çok sesli notasyonda kendi ses sınırına uygun seslendirebilme”"
+  },
+  {
+   "pid": 1966,
+   "code": "GS.1.1",
+   "description": "Geleneksel sanatların Türk kültüründeki Dersin kodu öğrenciye kazandırılması VE yerini ve önemini kültürel, tarihî ve sosyal bağamaçlanan bilgi, beceri ve lamda"
+  },
+  {
+   "pid": 1966,
+   "code": "GTSÇ.1.1",
+   "description": "Öğrencilerin ön bilgi ve becerilerini ölçmek ve derse dikkatlerini çekmek için çini belirlenmesini ifabeceriler arasında ilişki Uygulamaları sanatına dair zihin"
+  },
+  {
+   "pid": 2085,
+   "code": "ÇT.3.1.1",
+   "description": "Birlikte müzik çalmanın eski çağlara dayandı-"
+  },
+  {
+   "pid": 1968,
+   "code": "TUB1.2",
+   "description": "Sözlü ya da sözsüz olarak duygu ve düşüncelerini ifade edebilme (KB.1)"
+  },
+  {
+   "pid": 1968,
+   "code": "TUB1.3",
+   "description": "Bedensel yetersizliği olan öğrenciler için onların fiziksel özelliklerine uygun yönerge ve hedeflerin seçilmesine dikkat edilmesi gerekir. Ayrıca öğrenci yine f"
+  },
+  {
+   "pid": 1968,
+   "code": "TUB1.4",
+   "description": "Öğrencilerden farklı ortamlarda ilk kez karşılaştığı bireylerle tanışma ve bireyleri tanıma maksatlı iletişim becerilerini kazanması (KB1) beklenir. Öğrencileri"
+  },
+  {
+   "pid": 1968,
+   "code": "TUB1.5",
+   "description": "Başkalarıyla iyi bir iletişim kurmak için nezaket ifadelerini kullanabilme (Teşekkür eder, özür diler, rica eder, afiyet olsun/eline sağlık der, geçmiş olsun de"
+  },
+  {
+   "pid": 1968,
+   "code": "TUB2.5",
+   "description": "Kişisel temizlik ve bakımını yapabilme (KB1) TOPLUMSAL UYUM BECERİLERİ DERSİ ÖĞRETİM PROGRAMI"
+  },
+  {
+   "pid": 1968,
+   "code": "TUB3.4",
+   "description": "Bulunduğu ortamın yerini silebilme (KB1) TOPLUMSAL UYUM BECERİLERİ DERSİ ÖĞRETİM PROGRAMI"
+  },
+  {
+   "pid": 2005,
+   "code": "TG.4.1.2",
+   "description": "Tçr)afTikrakfuikrailellailrgıniliıntegmeerel kğai vveraömnleamrainaiitöuzleatşleılayenbbiillmgieleri kaydeder"
+  },
+  {
+   "pid": 2027,
+   "code": "ARP.5.1.3.1",
+   "description": "Selamlaşma, tanışma ve vedalaşmayla ilgili dinlediği/izlediği içerikteki hedef"
+  },
+  {
+   "pid": 2027,
+   "code": "ARP.5.4.4.1",
+   "description": "Evin bölümleri, ev eşyaları, sayılarla ilgili dinlediği/izlediği içerikteki hedef"
+  },
+  {
+   "pid": 2027,
+   "code": "ARP.6.2.4.1",
+   "description": "Okul, okulun bölümleri ve okulda bulunan eşyalarla ilgili dinlediği/izlediği"
+  },
+  {
+   "pid": 2027,
+   "code": "ARP.6.3.3.1",
+   "description": "Organlar ve duyularla ilgili dinlediği/izlediği içerikteki hedef dil yapılarını"
+  },
+  {
+   "pid": 2027,
+   "code": "ARP.8.1.3.1",
+   "description": "Günlük etkinliklerle ilgili dinlediği/izlediği içerikteki hedef dil yapılarını"
+  },
+  {
+   "pid": 2027,
+   "code": "ARP.8.4.4.1",
+   "description": "Mezuniyet ve sonrasındaki süreçle ilgili dinlediği/izlediği içerikteki hedef"
+  },
+  {
+   "pid": 2028,
+   "code": "ARP.10.3.3.1",
+   "description": "Seyahat ve ulaşım araçlarıyla ilgili dinlediği/izlediği içerikteki hedef dil yapılarını"
+  },
+  {
+   "pid": 1954,
+   "code": "HH.III.1.1",
+   "description": "Kalem ve harf bünyeleriyle ilgili kavramlar, harfler haricindeki unsurlar"
+  }
+ ],
+ "droppedProgrammes": [
+  {
+   "pid": 2184,
+   "title": "GSL PİYANO DERSİ (9-10) (2026)",
+   "outcomes": 28,
+   "reason": "20 codes belong to 2183 with other text"
+  },
+  {
+   "pid": 2292,
+   "title": "GSL BAĞLAMA DERSİ (11-12) (2026)",
+   "outcomes": 19,
+   "reason": "9 codes belong to 2293 with other text"
+  },
+  {
+   "pid": 2213,
+   "title": "ANADOLU İMAM HATİP LİSESİ KUR'AN-I KERİM DERSİ (Hazırlık, 9-12. Sınıflar) (2026)",
+   "outcomes": 51,
+   "reason": "27 codes belong to 2155 with other text"
+  },
+  {
+   "pid": 1906,
+   "title": "ORTAÖĞRETİM İNGİLİZCE DERSİ (9-12) (2025)",
+   "outcomes": 693,
+   "reason": "689 codes belong to 1905 with other text"
+  },
+  {
+   "pid": 1904,
+   "title": "ÇOKLU YABANCI DİL EĞİTİM MODELİ İNGİLİZCE DERSİ (5-8) (2025)",
+   "outcomes": 929,
+   "reason": "722 codes belong to 1903 with other text"
+  },
+  {
+   "pid": 1979,
+   "title": "ORTAOKUL TÜRKÇE DERSİ (5-8) (2024)",
+   "outcomes": 406,
+   "reason": "older than 2352"
+  },
+  {
+   "pid": 1982,
+   "title": "ANADOLU İMAM HATİP LİSESİ TEMEL DİNÎ BİLGİLER (9. Sınıf) (2024)",
+   "outcomes": 11,
+   "reason": "older than 2156"
+  }
+ ]
+}

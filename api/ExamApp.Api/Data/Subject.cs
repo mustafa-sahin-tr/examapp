@@ -11,6 +11,10 @@ public class Subject : BaseEntity
     [MaxLength(100)]
     public string Name { get; set; } // Örn: "Matematik", "Türkçe", "Fen Bilimleri"
 
+    /// <summary>Ortamlar arasında değişmeyen kod; ad değişse de korunur (bkz. CatalogCode).</summary>
+    [MaxLength(400)]
+    public string? Code { get; set; }
+
     public ICollection<GradeSubject> GradeSubjects { get; set; }
 
     public ICollection<Question> Questions { get; set; } = new List<Question>();

@@ -11,6 +11,10 @@ public class Topic : BaseEntity
     [Required]
     public string Name { get; set; } // Örn: "Okuduğunu Anlama"
 
+    /// <summary>Ortamlar arasında değişmeyen kod; ad değişse de korunur (bkz. CatalogCode).</summary>
+    [MaxLength(400)]
+    public string? Code { get; set; }
+
     [Required]
     public int SubjectId { get; set; } // Hangi derse ait?
 

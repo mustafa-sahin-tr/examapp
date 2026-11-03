@@ -135,6 +135,7 @@ public class TaxonomyService : ITaxonomyService
         var subject = new Subject
         {
             Name = name,
+            Code = await ExamApp.Api.Services.Catalog.CatalogCode.ForNewSubjectAsync(_context, name, ct),
             GradeSubjects = gradeIds
                 .Select(gradeId => new GradeSubject { GradeId = gradeId })
                 .ToList(),
@@ -336,7 +337,13 @@ public class TaxonomyService : ITaxonomyService
             return Fail(_localizer["taxonomy.topic.subjectNotLinkedToGrade"], TaxonomyErrorCodes.SubjectGradeNotLinked);
 
         _context.SetCurrentUser(userId);
-        var topic = new Topic { Name = name, SubjectId = dto.SubjectId, GradeId = dto.GradeId };
+        var topic = new Topic
+        {
+            Name = name,
+            SubjectId = dto.SubjectId,
+            GradeId = dto.GradeId,
+            Code = await ExamApp.Api.Services.Catalog.CatalogCode.ForNewTopicAsync(_context, dto.GradeId, dto.SubjectId, name, ct),
+        };
         _context.Topics.Add(topic);
         await _context.SaveChangesAsync(ct);
         return Ok(_localizer["taxonomy.topic.created"], topic.Id, userId);
@@ -400,7 +407,12 @@ public class TaxonomyService : ITaxonomyService
             return Fail(_localizer["taxonomy.topic.invalid"]);
 
         _context.SetCurrentUser(userId);
-        var subTopic = new SubTopic { Name = name, TopicId = dto.TopicId };
+        var subTopic = new SubTopic
+        {
+            Name = name,
+            TopicId = dto.TopicId,
+            Code = await ExamApp.Api.Services.Catalog.CatalogCode.ForNewSubTopicAsync(_context, dto.TopicId, name, ct),
+        };
         _context.SubTopics.Add(subTopic);
         await _context.SaveChangesAsync(ct);
         return Ok(_localizer["taxonomy.subTopic.created"], subTopic.Id, userId);

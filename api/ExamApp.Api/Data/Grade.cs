@@ -11,5 +11,9 @@ public class Grade : BaseEntity
     [MaxLength(50)]
     public string Name { get; set; } // Örn: "1. Sınıf", "5. Sınıf", "9. Sınıf"
 
+    /// <summary>Ortamlar arasında değişmeyen kod; ad değişse de korunur (bkz. CatalogCode).</summary>
+    [MaxLength(400)]
+    public string? Code { get; set; }
+
     public ICollection<GradeSubject> GradeSubjects { get; set; }
 }

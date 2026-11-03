@@ -10,6 +10,10 @@ public class SubTopic : BaseEntity
     [Required]
     public string Name { get; set; } // Örn: "Görsel Yorumlama 1"
 
+    /// <summary>Ortamlar arasında değişmeyen kod; ad değişse de korunur (bkz. CatalogCode).</summary>
+    [MaxLength(400)]
+    public string? Code { get; set; }
+
     [Required]
     public int TopicId { get; set; }
 

@@ -1263,6 +1263,12 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<LearningOutcome>()
             .HasIndex(lo => new { lo.GradeId, lo.SubjectId });
 
+        // Katalog aktarımı kodla eşleşir: aynı kod iki etkin kayıtta olamaz.
+        modelBuilder.Entity<Grade>().HasIndex(g => g.Code).IsUnique().HasFilter("NOT \"IsDeleted\"");
+        modelBuilder.Entity<Subject>().HasIndex(s => s.Code).IsUnique().HasFilter("NOT \"IsDeleted\"");
+        modelBuilder.Entity<Topic>().HasIndex(t => t.Code).IsUnique().HasFilter("NOT \"IsDeleted\"");
+        modelBuilder.Entity<SubTopic>().HasIndex(s => s.Code).IsUnique().HasFilter("NOT \"IsDeleted\"");
+
         modelBuilder.Entity<LearningOutcome>()
             .HasOne(lo => lo.Subject)
             .WithMany()

@@ -73,28 +73,6 @@
               <div class="badge newly-launched">{{ t('list.newBadge') }}</div>
             }
             <!-- Action Menu -->
-            <!-- <div class="card-actions">
-            <button
-              mat-icon-button
-              [matMenuTriggerFor]="pageMenu"
-              (click)="$event.stopPropagation()"
-              [disabled]="deletingId() === page.id"
-              class="action-button"
-              >
-              <mat-icon *ngIf="deletingId() !== page.id">more_vert</mat-icon>
-              <mat-icon *ngIf="deletingId() === page.id" class="loading-icon">hourglass_empty</mat-icon>
-            </button>
-            <mat-menu #pageMenu="matMenu">
-              <button mat-menu-item (click)="onEdit(page)">
-                <mat-icon>edit</mat-icon>
-                <span>Düzenle</span>
-              </button>
-              <button mat-menu-item (click)="onDelete(page)">
-                <mat-icon>delete</mat-icon>
-                <span>Sil</span>
-              </button>
-            </mat-menu>
-          </div> -->
         </div>
         <div class="card-content">
           <h3 class="card-title">{{ page.title }}</h3>
@@ -107,13 +85,8 @@
                 class="star">star</mat-icon>
               }
             </div>
-            <!-- <span class="rating-score">{{ getRatingScore(page) }}</span>
-            <span class="review-count">({{ page.imageCount }} sayfa)</span> -->
           </div>
           <!-- Price/Status -->
-          <!-- <div class="card-price">
-          <span class="current-price">{{ page.isPublished ? 'Aktif' : 'Taslak' }}</span>
-        </div> -->
         <!-- Meta Information -->
         <div class="card-meta">
           @if (isLink(page)) {

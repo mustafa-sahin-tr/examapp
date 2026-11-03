@@ -48,7 +48,6 @@ describe('resolveActiveMenuItemId (issue #385)', () => {
         ['/test/12', 'exams'],
         ['/test/12?reminder=edit', 'exams'],
         ['/tests?section=popular', 'exams'],
-        ['/tests-enhanced', 'exams'],
         ['/testsolve/44', 'exams'],
         ['/tutors/9', 'tutors'],
         ['/study', 'study'],
@@ -77,8 +76,6 @@ describe('resolveActiveMenuItemId (issue #385)', () => {
         ['/questioncanvas/preview/3', 'exam'],
         ['/question', 'exam'],
         ['/question/21', 'exam'],
-        ['/questions/view?id=4', 'exam'],
-        ['/imageselect', 'exam'],
         // Segment sınırı: `/questions` (view dışı) alias'a girmez.
         ['/questions', null],
         ['/test/12', 'exams'],

@@ -2254,6 +2254,14 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("ClassificationSource")
                         .HasColumnType("integer");
 
+                    b.Property<string>("ContentFingerprint")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ContentHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<int?>("CorrectAnswerId")
                         .HasColumnType("integer");
 
@@ -2356,6 +2364,10 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("double precision");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ContentFingerprint");
+
+                    b.HasIndex("ContentHash");
 
                     b.HasIndex("CorrectAnswerId");
 
@@ -2744,6 +2756,9 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer");
 
                     b.Property<string>("RequestJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ResultJson")
                         .HasColumnType("text");
 
                     b.Property<string>("SourceKey")

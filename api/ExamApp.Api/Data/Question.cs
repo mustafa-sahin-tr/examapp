@@ -92,6 +92,13 @@ public class Question : BaseEntity
     /// <summary>Hak sahibi talebiyle yeni test ve pratiklerden çekildi; başlamış oturumlar etkilenmez.</summary>
     public bool IsUnpublished { get; set; }
 
+    /// <summary>Ortamlar arası eşleşme kimliği (bkz. QuestionContentHash). İçerik değişince sıfırlanır, Hangfire işi yeniden hesaplar.</summary>
+    [MaxLength(64)]
+    public string? ContentHash { get; set; }
+
+    /// <summary>Metin, şıklar, doğru cevap, plan ve çözümün hash'i. Aynı <see cref="ContentHash"/> farklı içerikle çakışma demektir.</summary>
+    [MaxLength(64)]
+    public string? ContentFingerprint { get; set; }
 }
 
 /// <summary>Issue #690: sorunun kaynağı.</summary>

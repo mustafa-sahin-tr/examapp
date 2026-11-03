@@ -33,8 +33,63 @@ public class AppDbContext : DbContext
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
 
+    private static readonly string[] QuestionHashedProperties =
+    [
+        nameof(Question.ImageUrl), nameof(Question.Text), nameof(Question.SubText), nameof(Question.InteractionType),
+        nameof(Question.InteractionPlan), nameof(Question.InteractionSolution), nameof(Question.CorrectAnswerId),
+        nameof(Question.PracticeCorrectAnswer), nameof(Question.PassageId),
+    ];
+
+    private static readonly string[] AnswerHashedProperties =
+    [
+        nameof(Answer.Text), nameof(Answer.Tag), nameof(Answer.Order), nameof(Answer.IsDeleted), nameof(Answer.ImageUrl),
+    ];
+
+    /// <summary>
+    /// Soru hangi yoldan değişirse değişsin eski hash kalmaz; Hangfire işi yeniden hesaplar. Şık değişikliğinde soru bu kayıtta
+    /// izlenmiyorsa sıfırlanamaz: şıkları soruyu yüklemeden değiştiren bir yazma yolu eklenirse hash'i de sıfırlamalıdır.
+    /// Değer karşılaştırılır: <c>DbSet.Update()</c> her alanı değişmiş işaretlediği için IsModified tek başına bir şey söylemez.
+    /// </summary>
+    private void ResetQuestionContentHashes()
+    {
+        var questions = ChangeTracker.Entries<Question>().ToList();
+        foreach (var entry in questions.Where(e => e.State == EntityState.Modified))
+        {
+            if (!ValueChanged(entry, nameof(Question.ContentFingerprint))
+                && QuestionHashedProperties.Any(name => ValueChanged(entry, name)))
+            {
+                entry.Entity.ContentHash = null;
+                entry.Entity.ContentFingerprint = null;
+            }
+        }
+
+        var changedQuestionIds = ChangeTracker.Entries<Answer>()
+            .Where(e => e.State is EntityState.Added or EntityState.Deleted
+                || (e.State == EntityState.Modified && AnswerHashedProperties.Any(name => ValueChanged(e, name))))
+            .Select(e => e.Entity.QuestionId)
+            .ToHashSet();
+        if (changedQuestionIds.Count == 0)
+            return;
+
+        foreach (var entry in questions.Where(e => changedQuestionIds.Contains(e.Entity.Id)))
+        {
+            if (!ValueChanged(entry, nameof(Question.ContentFingerprint)))
+            {
+                entry.Entity.ContentHash = null;
+                entry.Entity.ContentFingerprint = null;
+            }
+        }
+    }
+
+    private static bool ValueChanged(Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry entry, string name)
+    {
+        var property = entry.Property(name);
+        return property.IsModified && !Equals(property.OriginalValue, property.CurrentValue);
+    }
+
     private void ApplyAuditInfo()
     {
+        ResetQuestionContentHashes();
         SanitizeRichText();
 
         var entries = ChangeTracker.Entries<BaseEntity>();
@@ -1262,6 +1317,10 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<LearningOutcome>()
             .HasIndex(lo => new { lo.GradeId, lo.SubjectId });
+
+        // Soru aktarımı hash ile eşleşir. Benzersiz değildir: aynı görselli soru hedefte zaten birden çok kez bulunabilir.
+        modelBuilder.Entity<Question>().HasIndex(q => q.ContentHash);
+        modelBuilder.Entity<Question>().HasIndex(q => q.ContentFingerprint);
 
         // Katalog aktarımı kodla eşleşir: aynı kod iki etkin kayıtta olamaz.
         modelBuilder.Entity<Grade>().HasIndex(g => g.Code).IsUnique().HasFilter("NOT \"IsDeleted\"");

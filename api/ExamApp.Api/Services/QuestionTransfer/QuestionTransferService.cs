@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -31,6 +32,12 @@ public interface IQuestionTransferService
     Task<List<string>> ListSourceKeysAsync(CancellationToken ct);
 
     Task<List<QuestionTransferExportBundleDto>> ListExportBundlesAsync(string sourceKey, CancellationToken ct);
+
+    /// <summary>
+    /// Paketteki sorulara kaynak, lisans ve yayın durumunun bugünkü değerini yazar. Dosyalar soru ilk çıkarıldığında üretilir:
+    /// sonradan yayından kaldırılan soru paketle yayında görünmesin.
+    /// </summary>
+    Task<List<JsonNode>> WithCurrentRightsAsync(IReadOnlyList<JsonElement> questions, CancellationToken ct);
     Task<Stream?> GetExportBundleStreamAsync(string sourceKey, int bundleNo, CancellationToken ct);
     Task<Stream?> GetExportBundleMapStreamAsync(string sourceKey, int bundleNo, CancellationToken ct);
     Task<Stream?> GetExportSourceIndexStreamAsync(string sourceKey, CancellationToken ct);
@@ -62,6 +69,22 @@ public class QuestionTransferService : IQuestionTransferService
         ArgumentNullException.ThrowIfNull(owner);
         // QuestionIds may be empty to indicate "export all".
 
+        // Kapsam boş sonuç verirse işe başlanmaz: boş kimlik listesi "hepsi" demektir, yanlışlıkla tüm sorular çıkar.
+        if (request.HasScope)
+        {
+            var scopeIds = await ResolveScopeAsync(request, ct);
+            request.QuestionIds = scopeIds;
+            var scopeSourceKey = string.IsNullOrWhiteSpace(request.SourceKey) ? "default" : request.SourceKey.Trim();
+            if (scopeIds.Count == 0)
+                return await SaveUnstartedExportAsync(request, owner, scopeSourceKey, QuestionTransferJobStatus.Completed, "No questions match the selected scope.", ct);
+
+            // Paket kaynak adının bütün dosyalarını birleştirir: kapsam dışı soru varsa indirilen paket seçilenden fazlasını, çözümleriyle taşır.
+            var hasOutsideQuestions = await _db.Set<QuestionTransferExportMap>()
+                .AnyAsync(m => m.SourceKey == scopeSourceKey && !scopeIds.Contains(m.QuestionId), ct);
+            if (hasOutsideQuestions)
+                return await SaveUnstartedExportAsync(request, owner, scopeSourceKey, QuestionTransferJobStatus.Failed, "This source name already holds questions outside the selected scope. Use a new source name.", ct);
+        }
+
         var job = new QuestionTransferJob
         {
             Id = Guid.NewGuid(),
@@ -83,6 +106,21 @@ public class QuestionTransferService : IQuestionTransferService
         _jobs.Enqueue<QuestionTransferJobRunner>(r => r.RunExportAsync(job.Id, ownerIsAdmin));
 
         return ToDto(job);
+    }
+
+    private async Task<List<int>> ResolveScopeAsync(StartQuestionExportDto request, CancellationToken ct)
+    {
+        var query = _db.Questions.AsNoTracking();
+        if (request.SubjectId is int subjectId)
+            query = query.Where(q => q.SubjectId == subjectId);
+        if (request.TopicId is int topicId)
+            query = query.Where(q => q.TopicId == topicId);
+        if (request.GradeId is int gradeId)
+            query = query.Where(q => (q.TopicId != null && q.Topic.GradeId == gradeId)
+                || q.WorksheetQuestions.Any(wq => wq.Worksheet.GradeId == gradeId));
+        if (request.BookId is int bookId)
+            query = query.Where(q => _db.QuestionSources.Any(s => s.QuestionId == q.Id && s.BookId == bookId));
+        return await query.OrderBy(q => q.Id).Select(q => q.Id).ToListAsync(ct);
     }
 
     public async Task<QuestionTransferJobDto> StartImportAsync(string sourceKey, string uploadedFileUrl, QuestionTransferOwner owner, CancellationToken ct)
@@ -211,6 +249,52 @@ public class QuestionTransferService : IQuestionTransferService
         return await _minio.GetFileStreamAsync(url);
     }
 
+    private async Task<QuestionTransferJobDto> SaveUnstartedExportAsync(StartQuestionExportDto request, QuestionTransferOwner owner, string sourceKey,
+        QuestionTransferJobStatus status, string message, CancellationToken ct)
+    {
+        var job = new QuestionTransferJob
+        {
+            Id = Guid.NewGuid(),
+            Kind = QuestionTransferJobKind.Export,
+            Status = status,
+            SourceKey = sourceKey,
+            RequestJson = JsonSerializer.Serialize(request),
+            Message = message,
+        };
+        _db.SetCurrentUser(owner.UserId);
+        _db.Add(job);
+        await _db.SaveChangesAsync(ct);
+        return ToDto(job);
+    }
+
+    public async Task<List<JsonNode>> WithCurrentRightsAsync(IReadOnlyList<JsonElement> questions, CancellationToken ct)
+    {
+        var ids = questions
+            .Where(q => q.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.Number)
+            .Select(q => q.GetProperty("id").GetInt32())
+            .ToList();
+        var rights = await _db.Questions.AsNoTracking()
+            .Where(q => ids.Contains(q.Id))
+            .Select(q => new { q.Id, q.SourceType, q.RightsHolder, q.LicenseReference, q.LicenseEndsAt, q.IsUnpublished })
+            .ToDictionaryAsync(q => q.Id, ct);
+
+        var result = new List<JsonNode>(questions.Count);
+        foreach (var question in questions)
+        {
+            var node = JsonNode.Parse(question.GetRawText())!;
+            if (question.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.Number && rights.TryGetValue(id.GetInt32(), out var current))
+            {
+                node["sourceType"] = current.SourceType.ToString();
+                node["rightsHolder"] = current.RightsHolder;
+                node["licenseReference"] = current.LicenseReference;
+                node["licenseEndsAt"] = JsonSerializer.SerializeToNode(current.LicenseEndsAt);
+                node["isUnpublished"] = current.IsUnpublished;
+            }
+            result.Add(node);
+        }
+        return result;
+    }
+
     public async Task<QuestionTransferImportPreviewDto> PreviewImportAsync(IFormFile file, string? sourceOverride, CancellationToken ct)
     {
         if (file == null || file.Length == 0)
@@ -223,8 +307,7 @@ public class QuestionTransferService : IQuestionTransferService
         var manifestEntry = zip.GetEntry("manifest.json")
             ?? throw new InvalidOperationException("manifest.json not found in zip.");
 
-        using var manifestStream = manifestEntry.Open();
-        using var doc = await JsonDocument.ParseAsync(manifestStream, cancellationToken: ct);
+        using var doc = JsonDocument.Parse(await QuestionContentHash.ReadPackageEntryAsync(manifestEntry, QuestionContentHash.MaxPackageManifestBytes, ct));
 
         var sourceKeyFromManifest = doc.RootElement.TryGetProperty("sourceKey", out var sk)
             ? (sk.GetString() ?? string.Empty)
@@ -236,6 +319,72 @@ public class QuestionTransferService : IQuestionTransferService
 
         var questions = doc.RootElement.GetProperty("questions").EnumerateArray().ToList();
         var questionCount = questions.Count;
+
+        // Görseller zipten okunup hash'lenir; hedefte hash'i eksik soru varsa arka planda tamamlanır ve sayısı gösterilir.
+        var unhashed = await _db.Questions.AsNoTracking().CountAsync(q => q.ContentFingerprint == null, ct);
+        if (unhashed > 0)
+            _jobs.Enqueue<QuestionContentHashService>(s => s.RunAsync());
+
+        var taxonomy = new QuestionImportTaxonomy(_db);
+        var newCount = 0;
+        var matchedCount = 0;
+        var conflictCount = 0;
+        var missingTaxonomyCount = 0;
+        var missingImageCount = 0;
+        var alreadyImportedInFile = 0;
+        var conflictSamples = new List<string>();
+        var seenInFile = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var question in questions)
+        {
+            var key = question.TryGetProperty("externalKey", out var keyEl) ? keyEl.GetString() ?? string.Empty : string.Empty;
+            if (await _db.Set<QuestionTransferImportMap>().AnyAsync(m => m.SourceKey == sourceKey && m.ExternalQuestionKey == key, ct))
+            {
+                alreadyImportedInFile++;
+                continue;
+            }
+
+            byte[]? image = null;
+            if (question.TryGetProperty("id", out var idEl) && idEl.ValueKind == JsonValueKind.Number
+                && zip.GetEntry($"questions/{idEl.GetInt32()}/question.jpg") is { } imageEntry)
+            {
+                image = await QuestionContentHash.ReadPackageEntryAsync(imageEntry, QuestionContentHash.MaxPackageImageBytes, ct);
+            }
+
+            if (QuestionContentHash.IsImageMissing(question, image))
+            {
+                missingImageCount++;
+                continue;
+            }
+
+            var hashes = QuestionContentHash.ForManifest(question, image);
+            var match = await QuestionContentHash.FindMatchAsync(_db, hashes, ct);
+            // Aynı dosyada ikinci kez geçen içerik: import sırasında ilki yazılmış olacağı için onunla karşılaştırılır.
+            if (match.Kind == QuestionMatchKind.New && hashes.ContentHash is not null)
+            {
+                if (seenInFile.TryGetValue(hashes.ContentHash, out var fingerprint))
+                    match = new QuestionMatch(fingerprint == hashes.Fingerprint ? QuestionMatchKind.Exact : QuestionMatchKind.Conflict, null);
+                else
+                    seenInFile[hashes.ContentHash] = hashes.Fingerprint;
+            }
+
+            switch (match.Kind)
+            {
+                case QuestionMatchKind.New:
+                    newCount++;
+                    break;
+                case QuestionMatchKind.Exact:
+                    matchedCount++;
+                    break;
+                default:
+                    conflictCount++;
+                    if (conflictSamples.Count < 10)
+                        conflictSamples.Add(key);
+                    continue;
+            }
+
+            if ((await taxonomy.ResolveAsync(question, ct)).Missing)
+                missingTaxonomyCount++;
+        }
 
         var externalKeys = questions
             .Select(q => q.TryGetProperty("externalKey", out var ek) ? (ek.GetString() ?? string.Empty) : string.Empty)
@@ -257,6 +406,13 @@ public class QuestionTransferService : IQuestionTransferService
             SourceKey = sourceKey,
             QuestionCount = questionCount,
             AlreadyImportedCount = alreadyImported,
+            NewCount = newCount,
+            MatchedCount = matchedCount,
+            ConflictCount = conflictCount,
+            MissingTaxonomyCount = missingTaxonomyCount,
+            MissingImageCount = missingImageCount,
+            TargetUnhashedCount = unhashed,
+            ConflictSamples = conflictSamples,
         };
     }
 
@@ -272,6 +428,9 @@ public class QuestionTransferService : IQuestionTransferService
             ProcessedItems = job.ProcessedItems,
             FileUrl = job.FileUrl,
             Message = job.Message,
+            Result = string.IsNullOrWhiteSpace(job.ResultJson)
+                ? null
+                : JsonSerializer.Deserialize<QuestionTransferImportResultDto>(job.ResultJson),
         };
     }
 

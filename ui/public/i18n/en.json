@@ -1019,6 +1019,21 @@
     }
   },
   "dashboard": {
+    "nextStep": {
+      "label": "Next step",
+      "dueSoonTitle": "Due soon: {{name}}",
+      "dueSoonText": "We suggest finishing this assignment first.",
+      "dueSoonAction": "Open assignment",
+      "reviewTitle": "Review today: {{count}} questions",
+      "reviewText": "Questions you got wrong come back before you forget them.",
+      "reviewAction": "Start review",
+      "assignmentTitle": "Next assignment: {{name}}",
+      "assignmentText": "This assignment is your next step.",
+      "assignmentAction": "Open assignment",
+      "practiceTitle": "Want to study a bit more?",
+      "practiceText": "You can practise questions from a topic you choose.",
+      "practiceAction": "Practice questions"
+    },
     "welcome": {
       "title": "Welcome",
       "lastLogin": "Last login: {{value}}"
@@ -1151,6 +1166,7 @@
       "resending": "Sending...",
       "resent": "The invitation was sent again.",
       "resendsLeft": "Resends left: {{count}}",
+        "details": "Details",
       "nextResendAt": "You can send it again after {{date}}.",
       "noResendsLeft": "You have no resends left. Check and fix your parent's email address.",
       "fixEmail": "Fix email",

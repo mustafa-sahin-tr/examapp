@@ -131,7 +131,7 @@
 }
 
 .qt-error {
-  color: var(--ms-danger-background);
+  color: var(--ms-danger-text-medium);
 }
 
 .qt-note {
@@ -166,7 +166,7 @@
 }
 
 .qt-count-warn {
-  color: var(--ms-danger-background);
+  color: var(--ms-danger-text-medium);
 }
 
 .qt-table {
@@ -192,7 +192,7 @@
 }
 
 .qt-samples {
-  margin: 6px 0 0;
+  margin: 6px 0 12px;
   padding-left: 18px;
   font-size: 13px;
 }
@@ -216,12 +216,16 @@
 
 .qt-ws-row {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px 12px;
+  flex-direction: column;
+  padding: 2px 0 6px;
 }
 
+/* Onay kutusunun genişliği kadar içeride: bilgi satırı adın altına hizalanır. */
 .qt-ws-meta {
+  padding-left: 40px;
   font-size: 13px;
+}
+
+.qt-ws-selected {
+  margin-bottom: 12px;
 }

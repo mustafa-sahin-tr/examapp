@@ -5,8 +5,6 @@
   "tabs": {
     "info": "Info",
     "badges": "Badges",
-    "assignments": "Assignments and Exams",
-    "weeklyCalendar": "Weekly Calendar",
     "theme": "Theme Settings"
   },
   "profile": {
@@ -24,36 +22,5 @@
   "points": {
     "myBadges": "My Badges",
     "leaderboards": "Leaderboards"
-  },
-  "goal": {
-    "title": "Weekly Goal",
-    "monthly": "Monthly",
-    "current": "Current",
-    "streak": "{{count}} weeks",
-    "streakLabel": "Longest weekly goal streak",
-    "noActivity": "No activity"
-  },
-  "heatmap": {
-    "title": "Activity Heatmap",
-    "loading": "Loading activity data...",
-    "error": "Something went wrong while fetching activity data.",
-    "empty": "No activity data found for the last year.",
-    "tooltip": {
-      "questions": "Questions",
-      "correct": "Correct",
-      "duration": "Duration",
-      "activityScore": "Activity Score"
-    }
-  },
-  "duration": {
-    "minutesAndSeconds": "{{minutes}} min {{seconds}} s",
-    "minutes": "{{minutes}} min",
-    "seconds": "{{seconds}} s"
-  },
-  "stats": {
-    "completedTests": "Tests Completed",
-    "studyMinutes": "Study Time (min)",
-    "solvedQuestions": "Questions Solved",
-    "correctAnswers": "Correct Answers"
   }
 }

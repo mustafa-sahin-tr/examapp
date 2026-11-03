@@ -1,0 +1,80 @@
+.qg-root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.qg-title {
+  margin: 0;
+  font-size: 22px;
+}
+
+.qg-subtitle,
+.qg-note {
+  margin: 0;
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.qg-section {
+  margin: 8px 0 0;
+  font-size: 16px;
+}
+
+.qg-warning {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ms-warning-text-medium);
+}
+
+.qg-card {
+  padding: 8px;
+}
+
+.qg-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.qg-field {
+  width: 100%;
+}
+
+.qg-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.qg-error {
+  margin: 8px 0;
+  color: var(--ms-danger-text-medium);
+}
+
+.qg-saved {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.qg-draft-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.qg-option {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.qg-option-field {
+  flex: 1;
+}

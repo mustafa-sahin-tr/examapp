@@ -1,0 +1,39 @@
+{
+  "title": "Soru Üret",
+  "subtitle": "Seçilen kazanımdan görselsiz çoktan seçmeli soru taslakları hazırlar. Taslaklar siz kaydedene kadar hiçbir yere yazılmaz.",
+  "grade": "Sınıf",
+  "subject": "Ders",
+  "search": "Kazanımda ara",
+  "outcome": "Kazanım",
+  "outcomesFailed": "Kazanımlar yüklenemedi.",
+  "retry": "Tekrar dene",
+  "noOutcomes": "Bu sınıf ve derste kazanım yok. Kataloğu Soru Aktarımı ekranından yükleyebilirsiniz.",
+  "count": "Soru sayısı",
+  "difficulty": "Zorluk",
+  "difficulties": {
+    "easy": "Kolay",
+    "medium": "Orta",
+    "hard": "Zor"
+  },
+  "generate": "Taslak üret",
+  "generating": "Taslaklar hazırlanıyor. Bu işlem yaklaşık bir dakika sürebilir.",
+  "errors": {
+    "unavailable": "Soru üretimi şu an kapalı: Claude anahtarı tanımlı değil.",
+    "limit": "Saatlik üretim sınırına ulaşıldı. Biraz sonra tekrar deneyin.",
+    "budget": "Günlük üretim bütçesi doldu. Yarın tekrar deneyin.",
+    "failed": "Taslak üretilemedi. Tekrar deneyin."
+  },
+  "rejected": "Kurallara uymayan {{count}} taslak gösterilmedi.",
+  "reviewNote": "Taslaklar yapay zekâ ile üretildi ve hata içerebilir. Kaydetmeden önce soruyu, şıkları ve doğru cevabı kontrol edin.",
+  "include": "Kaydedilecek",
+  "remove": "Sil",
+  "questionText": "Soru",
+  "correctOption": "Doğru şık",
+  "correctOptionFor": "{{label}} şıkkı doğru",
+  "explanation": "Gerekçe",
+  "incomplete": "Soru ve şıklar dolu olmalı, iki şık aynı olmamalı.",
+  "save": "Seçilenleri kaydet ({{count}})",
+  "saveFailed": "Kaydedilemedi.",
+  "saved": "{{count}} soru kaydedildi.",
+  "openBank": "Soru Havuzu"
+}

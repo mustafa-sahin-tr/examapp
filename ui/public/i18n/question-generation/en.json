@@ -1,0 +1,39 @@
+{
+  "title": "Generate Questions",
+  "subtitle": "Drafts multiple choice questions without images from the selected outcome. Nothing is stored until you save it.",
+  "grade": "Grade",
+  "subject": "Subject",
+  "search": "Search outcomes",
+  "outcome": "Outcome",
+  "outcomesFailed": "Outcomes could not be loaded.",
+  "retry": "Try again",
+  "noOutcomes": "This grade and subject have no outcomes. You can load the catalog from Question Transfer.",
+  "count": "Number of questions",
+  "difficulty": "Difficulty",
+  "difficulties": {
+    "easy": "Easy",
+    "medium": "Medium",
+    "hard": "Hard"
+  },
+  "generate": "Generate drafts",
+  "generating": "Preparing drafts. This can take about a minute.",
+  "errors": {
+    "unavailable": "Question generation is off: no Claude key is set.",
+    "limit": "The hourly limit was reached. Try again a little later.",
+    "budget": "The daily budget is used up. Try again tomorrow.",
+    "failed": "Drafts could not be generated. Try again."
+  },
+  "rejected": "{{count}} drafts that broke the rules were not shown.",
+  "reviewNote": "These drafts were written by AI and may contain errors. Check the question, the options and the correct answer before saving.",
+  "include": "Save this",
+  "remove": "Delete",
+  "questionText": "Question",
+  "correctOption": "Correct option",
+  "correctOptionFor": "Option {{label}} is correct",
+  "explanation": "Reasoning",
+  "incomplete": "The question and options must be filled in, and no two options can be the same.",
+  "save": "Save selected ({{count}})",
+  "saveFailed": "Could not be saved.",
+  "saved": "{{count}} questions saved.",
+  "openBank": "Question Pool"
+}

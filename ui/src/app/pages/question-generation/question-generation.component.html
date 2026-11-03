@@ -1,0 +1,156 @@
+<div class="qg-root" *transloco="let t; prefix: 'question-generation'">
+  <h1 class="qg-title">{{ t('title') }}</h1>
+  <p class="qg-subtitle">{{ t('subtitle') }}</p>
+
+  <mat-card class="qg-card">
+    <mat-card-content>
+      <div class="qg-filters">
+        <mat-form-field appearance="outline">
+          <mat-label>{{ t('grade') }}</mat-label>
+          <mat-select [value]="gradeId()" (selectionChange)="onGradeChange($event.value)">
+            @for (grade of grades(); track grade.id) {
+              <mat-option [value]="grade.id">{{ grade.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>{{ t('subject') }}</mat-label>
+          <mat-select [value]="subjectId()" (selectionChange)="onSubjectChange($event.value)" [disabled]="gradeId() === null">
+            @for (subject of subjects(); track subject.id) {
+              <mat-option [value]="subject.id">{{ subject.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>{{ t('search') }}</mat-label>
+          <input matInput [ngModel]="search()" (ngModelChange)="onSearchChange($event)" [disabled]="subjectId() === null" autocomplete="off" />
+        </mat-form-field>
+      </div>
+
+      @if (outcomesLoading()) {
+        <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+      }
+      @if (outcomesFailed()) {
+        <div class="qg-error" role="alert">
+          {{ t('outcomesFailed') }}
+          <button mat-button (click)="reloadOutcomes()">{{ t('retry') }}</button>
+        </div>
+      } @else if (subjectId() !== null && !outcomesLoading() && outcomes().length === 0) {
+        <div class="qg-note">{{ t('noOutcomes') }}</div>
+      }
+
+      <mat-form-field appearance="outline" class="qg-field">
+        <mat-label>{{ t('outcome') }}</mat-label>
+        <mat-select class="qg-outcome-select" [value]="outcomeId()" (selectionChange)="outcomeId.set($event.value)" [disabled]="outcomes().length === 0">
+          @for (outcome of outcomes(); track outcome.id) {
+            <mat-option [value]="outcome.id">{{ outcome.code }} · {{ outcome.description }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <div class="qg-filters">
+        <mat-form-field appearance="outline">
+          <mat-label>{{ t('count') }}</mat-label>
+          <mat-select [value]="count()" (selectionChange)="count.set($event.value)">
+            @for (value of counts; track value) {
+              <mat-option [value]="value">{{ value }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>{{ t('difficulty') }}</mat-label>
+          <mat-select [value]="difficulty()" (selectionChange)="difficulty.set($event.value)">
+            @for (option of difficulties; track option.level) {
+              <mat-option [value]="option.level">{{ t('difficulties.' + option.key) }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      @if (generating()) {
+        <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+        <div class="qg-note">{{ t('generating') }}</div>
+      }
+      @if (generateError(); as error) {
+        <div class="qg-error" role="alert">{{ t('errors.' + error) }}</div>
+      }
+    </mat-card-content>
+
+    <mat-card-actions class="qg-actions">
+      <button class="qg-generate" mat-raised-button color="primary" (click)="generate()" [disabled]="outcomeId() === null || generating()">
+        <mat-icon>auto_awesome</mat-icon>
+        {{ t('generate') }}
+      </button>
+    </mat-card-actions>
+  </mat-card>
+
+  @if (savedCount() > 0) {
+    <div class="qg-saved" role="status">
+      {{ t('saved', { count: savedCount() }) }}
+      <a mat-button routerLink="/question-bank">{{ t('openBank') }}</a>
+    </div>
+  }
+
+  @if (rejected() > 0) {
+    <div class="qg-note">{{ t('rejected', { count: rejected() }) }}</div>
+  }
+
+  @if (draftOutcome(); as outcome) {
+    @if (drafts().length > 0) {
+      <h2 class="qg-section">{{ outcome.code }} · {{ outcome.description }}</h2>
+      <p class="qg-warning">{{ t('reviewNote') }}</p>
+
+      @for (draft of drafts(); track $index; let i = $index) {
+        <mat-card class="qg-card qg-draft">
+          <mat-card-content>
+            <div class="qg-draft-head">
+              <mat-checkbox [checked]="draft.selected" (change)="setSelected(i, $event.checked)">{{ t('include') }}</mat-checkbox>
+              <button mat-button class="qg-remove" (click)="removeDraft(i)">
+                <mat-icon>delete</mat-icon>
+                {{ t('remove') }}
+              </button>
+            </div>
+
+            <mat-form-field appearance="outline" class="qg-field">
+              <mat-label>{{ t('questionText') }}</mat-label>
+              <textarea matInput rows="3" [ngModel]="draft.text" (ngModelChange)="setText(i, $event)"></textarea>
+            </mat-form-field>
+
+            <mat-radio-group [value]="draft.correctIndex" (change)="setCorrect(i, $event.value)" [attr.aria-label]="t('correctOption')">
+              @for (option of draft.options; track $index; let o = $index) {
+                <div class="qg-option">
+                  <mat-radio-button [value]="o" [attr.aria-label]="t('correctOptionFor', { label: optionLabel(o) })"></mat-radio-button>
+                  <mat-form-field appearance="outline" class="qg-field qg-option-field" subscriptSizing="dynamic">
+                    <mat-label>{{ optionLabel(o) }}</mat-label>
+                    <input matInput [ngModel]="option" (ngModelChange)="setOption(i, o, $event)" autocomplete="off" />
+                  </mat-form-field>
+                </div>
+              }
+            </mat-radio-group>
+
+            @if (draft.explanation) {
+              <div class="qg-note"><b>{{ t('explanation') }}:</b> {{ draft.explanation }}</div>
+            }
+            @if (draft.selected && !isDraftComplete(draft)) {
+              <div class="qg-error" role="alert">{{ t('incomplete') }}</div>
+            }
+          </mat-card-content>
+        </mat-card>
+      }
+
+      @if (saveFailed() !== null) {
+        <div class="qg-error" role="alert">{{ t('saveFailed') }} {{ saveFailed() }}</div>
+      }
+
+      <div class="qg-actions">
+        <button class="qg-save" mat-raised-button color="primary" (click)="save()" [disabled]="!canSave() || saving()">
+          <mat-icon>save</mat-icon>
+          {{ t('save', { count: selectedCount() }) }}
+        </button>
+      </div>
+    }
+  }
+</div>

@@ -27,6 +27,11 @@ SECTION_LABEL = re.compile(
 # TDE2.1. | PSK.2.1. | MAT.5.1.1. | G.J.9.1.1. | ARN.5.1.D. | ENG.2.1.L1. | EBRU.I.1.1. | TADB.1.
 CODE = rf"[{UPPER}]{{1,8}}\d{{0,2}}(?:\.[{UPPER}0-9]{{1,5}}){{1,5}}"
 OUTCOME = re.compile(rf"^({CODE})\.\s+(\S.*)$")
+# Sonunda nokta olmayan (MARP11.3.1 “İbadetler” ...) ve boşluklu (KAK-I 1.1. ..., TKMT 3.1. ...) kodlar.
+OUTCOME_NO_DOT = re.compile(rf"^({CODE})\s+([{UPPER}“\"'].*)$")
+OUTCOME_SPACED = re.compile(rf"^([{UPPER}]{{2,8}}(?:-[IVX]+)?)\s(\d{{1,2}}(?:\.\d{{1,2}}){{1,3}})\.?\s+(\S.*)$")
+# Arapça: "ARP.5.3.1. DİNLEME/İZLEME" başlığı altında "5.3.1.1. Aile üyeleri ... yapabilme".
+NUMBERED = re.compile(r"^(\d{1,2}(?:\.\d{1,2}){2,3})\.?\s+(\S.*)$")
 BULLET = re.compile(rf"^(?:[{LOWER}]\)|[{LOWER}]\s*\.\s|[•\-–]\s|{CODE}\.[{LOWER}]\.)")
 PAGE_NUMBER = re.compile(r"^\d{1,4}$")
 TURKISH_ENDING = re.compile(r"(?:ebilme|abilme|bilme|ama|eme|ma|me)(?:si|sı)?$", re.IGNORECASE)
@@ -44,18 +49,37 @@ SHARED_CODES = re.compile(rf"^(?:/\s*{CODE}\.\s*)+")
 SENTENCE_END = re.compile(rf"\b([{LOWER}]*(?:ebilme|abilme))\s+(?=[{UPPER}])")
 
 
+CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f]")
+GLUED_SPINE_START = re.compile(r"^\d{3,4}(?:\s*-\s*\d)?(?=\s*[^\d.\s])\s*")
+GLUED_SPINE_END = re.compile(r"(?<=[^\d\s.])\d{3,4}(?:\s*-\s*\d)?$")
+
+
 def clean_line(raw):
     """Sütun boşluğunu teke indirir, sol sütun etiketini atar."""
-    line = SPINE_NUMBER.sub("  ", raw.replace("\u00ad", "").replace("\f", ""))
+    line = CONTROL.sub("", raw.replace("\u00ad", ""))
+    line = SPINE_NUMBER.sub("  ", line)
     line = re.sub(r"\s{2,}", "  ", line).strip()
+    line = GLUED_SPINE_START.sub("", line)
+    line = GLUED_SPINE_END.sub("", line)
+    # Etiket metne yapışabilir: "ÖĞRENME ÇIKTILARIEBRU.I.3.1.", "VE SÜREÇ BİLEŞENLERİa)".
+    line = re.sub(r"(ÇIKTILARI|BİLEŞENLERİ)(?=\S)", r"\1 ", line)
     return SECTION_LABEL.sub("", line).strip()
+
+
+def match_outcome(line):
+    """(kod, açıklama) ya da None. Boşluklu kod noktayla yazılır: KAK-I 1.1 -> KAK-I.1.1."""
+    hit = OUTCOME.match(line) or OUTCOME_NO_DOT.match(line)
+    if hit:
+        return hit.group(1), hit.group(2)
+    hit = OUTCOME_SPACED.match(line)
+    return (f"{hit.group(1)}.{hit.group(2)}", hit.group(3)) if hit else None
 
 
 def right_column(line):
     """İki sütunlu satırda kod sağda kalır: 'Sınıf düzeyi  ARN.5.1.D. Ben ve Sen'."""
     parts = line.split("  ")
     for index, part in enumerate(parts):
-        if OUTCOME.match(part.strip()):
+        if match_outcome(part.strip()):
             return "  ".join(parts[index:]).strip()
     return line
 
@@ -92,6 +116,7 @@ def extract(text):
     outcomes = {}
     in_section = False
     current = None
+    parent_head = None
     lines = text.splitlines()
 
     def flush():
@@ -122,10 +147,19 @@ def extract(text):
             in_section = False
             continue
 
-        hit = OUTCOME.match(line)
-        if hit and not BULLET.match(line):
+        hit = match_outcome(line) if not BULLET.match(line) else None
+        if hit:
             flush()
-            current = {"code": hit.group(1), "parts": [hit.group(2)], "line": number}
+            code, description = hit
+            parent_head = code.split(".")[0]
+            # Tamamı büyük harfli metin kazanım değil, altındaki numaralı kazanımların başlığıdır.
+            if description.upper() != description:
+                current = {"code": code, "parts": [description], "line": number}
+            continue
+        numbered = NUMBERED.match(line)
+        if numbered and parent_head:
+            flush()
+            current = {"code": f"{parent_head}.{numbered.group(1)}", "parts": [numbered.group(2)], "line": number}
             continue
 
         if current is None:
@@ -141,7 +175,9 @@ def extract(text):
 
 def filter_noise(rows):
     """Beceri çerçevesi kodlarını, tek kelimelik satırları ve programın kod biçimine uymayanları eler."""
-    rows = [r for r in rows if not FRAMEWORK_HEAD.match(r["code"].split(".")[0]) and len(r["description"].split()) >= MIN_DESCRIPTION_WORDS]
+    rows = [r for r in rows if len(r["description"].split()) >= MIN_DESCRIPTION_WORDS]
+    # Okuma Becerileri dersinin kodu da OB: yalnız beceri koduna benzeyen program kendi koduyla kalır.
+    rows = [r for r in rows if not FRAMEWORK_HEAD.match(r["code"].split(".")[0])] or rows
     families = collections.Counter(code_family(r["code"]) for r in rows)
     return [r for r in rows if families[code_family(r["code"])] >= MIN_FAMILY_SHARE * len(rows)]
 

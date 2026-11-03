@@ -90,7 +90,7 @@
     "blocked": "Alınamayacak",
     "notImported": "Alınamadı",
     "missingTaxonomy": "Dersi veya konusu bulunamadı",
-    "closedNote": "Test ve etkinlikler kapalı gelir: başka öğretmen görmez, öğrenci yalnız atamayla başlatır, soruları serbest pratiğe girmez. Sahibi siz olursunuz. Burada zaten olan sorular kopyalanmaz.",
+    "closedNote": "Test ve etkinlikler kapalı gelir: başka öğretmen görmez, öğrenci yalnız atamayla başlatır, bu kayıtlar serbest pratiğe soru eklemez. Sahibi siz olursunuz. Burada zaten olan sorular kopyalanmaz.",
     "blockedNote": "Alınamayan test veya etkinlik hiç oluşmaz, soruları yine alınır:"
   },
   "jobs": {

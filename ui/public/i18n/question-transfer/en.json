@@ -90,7 +90,7 @@
     "blocked": "Cannot be imported",
     "notImported": "Not imported",
     "missingTaxonomy": "Subject or topic not found",
-    "closedNote": "Tests and activities arrive closed: other teachers do not see them, students start them only through an assignment, and their questions stay out of free practice. You become their owner. Questions already here are not copied.",
+    "closedNote": "Tests and activities arrive closed: other teachers do not see them, students start them only through an assignment, and they add no questions to free practice. You become their owner. Questions already here are not copied.",
     "blockedNote": "A blocked test or activity is not created, its questions are still imported:"
   },
   "jobs": {

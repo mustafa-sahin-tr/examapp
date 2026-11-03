@@ -36,3 +36,9 @@ doldurur, yinelenen kod varsa durur; exam API yeniden başlatılır.
 
 Öğretmen kazanımı soru tuvali önizlemesinde ve etkinlik editöründe seçer (`learningOutcomeIds`, toplu kayıtla aynı işlemde yazılır; bilinmeyen kimlikte depoya bir şey yüklenmeden kayıt reddedilir); kayıtlı sorunun
 kazanımları Soru Havuzu kartındaki "Kazanımlar" ile ve etkinlik editöründe değişir. Kazanım seçmek zorunlu değildir; liste yüklenmemişse seçici bunu söyler, kayıt engellenmez.
+
+**Katalog aktarımı (sınıf, ders, konu, alt konu, kazanım).** Bu dört tablo kalıcı `Code` taşır (ör. `5-sinif.matematik.dogal-sayilar`): kayıt oluşurken addan üretilir, ad değişse de korunur
+(`CatalogCode`; migration `AddCatalogCodes` mevcut satırlara aynı kuralla kod verir, `CatalogCode.Slug` ile migration'daki SQL aynı kalmalı). Gateway yolları: `GET /api/exam/admin/catalog/export` dosyayı indirir,
+`POST /api/exam/admin/catalog/import[?dryRun=true]` yükler (yalnız admin). Dosyada veritabanı kimliği yoktur. Eşleşme koda göredir: yoksa oluşturur, varsa adı ve üst kaydı günceller; dosyada olmayana dokunmaz, hiçbir şey silmez.
+Kodu olmayan eski kayıt aynı adla eşleşip kodu alır. Aynı ad başka kodla varsa hata verir ve hiçbir şey yazılmaz. Kazanım (müfredat, kod) ile eşleşir; dosyada alt konu yoksa mevcut bağ korunur. Taksonomi değişirse sınıflandırıcı önbelleği yenilenir.
+Yeni ortama taşırken önce `dryRun` ile sayılara bak. Yukarıdaki kazanım içe aktarımının gateway yolu da `/api/exam/admin/learning-outcomes/import`'tur.

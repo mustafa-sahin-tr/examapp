@@ -859,5 +859,25 @@ public class TaxonomyServiceTests : IDisposable
         (await check.Topics.FindAsync(topicId))!.Name.ShouldBe("Toplama 2");
     }
 
+    [Fact]
+    public async Task New_rows_get_a_code_and_a_rename_keeps_it()
+    {
+        var gradeId = await AddGradeAsync("3. Sınıf");
+        await using var ctx = _db.NewContext();
+        var service = NewService(ctx);
+
+        var subject = await service.CreateSubjectAsync(new UpsertSubjectDto { Name = "Fen Bilimleri", GradeIds = new List<int> { gradeId } }, userId: 1);
+        var topic = await service.CreateTopicAsync(new UpsertTopicDto { Name = "Canlılar", SubjectId = subject.ObjectId, GradeId = gradeId }, userId: 1);
+        var subTopic = await service.CreateSubTopicAsync(new UpsertSubTopicDto { Name = "Bitki Örtüsü", TopicId = topic.ObjectId }, userId: 1);
+        await service.UpdateTopicAsync(topic.ObjectId, new UpsertTopicDto { Name = "Yeni Ad", SubjectId = subject.ObjectId, GradeId = gradeId }, userId: 1);
+
+        await using var check = _db.NewContext();
+        (await check.Subjects.FindAsync(subject.ObjectId))!.Code.ShouldBe("fen-bilimleri");
+        var savedTopic = (await check.Topics.FindAsync(topic.ObjectId))!;
+        savedTopic.Name.ShouldBe("Yeni Ad");
+        savedTopic.Code.ShouldBe("3-sinif.fen-bilimleri.canlilar");
+        (await check.SubTopics.FindAsync(subTopic.ObjectId))!.Code.ShouldBe("3-sinif.fen-bilimleri.canlilar.bitki-ortusu");
+    }
+
     public void Dispose() => _db.Dispose();
 }

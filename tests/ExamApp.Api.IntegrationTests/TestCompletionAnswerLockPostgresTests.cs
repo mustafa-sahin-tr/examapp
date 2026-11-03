@@ -323,15 +323,17 @@ public class TestCompletionAnswerLockPostgresTests(IntegrationApiFactory factory
             await using (var ctx = new AppDbContext(options))
             {
                 await ctx.GetService<IMigrator>().MigrateAsync(PreviousMigration);
-                var grade = new Grade { Name = "5" };
-                ctx.Grades.Add(grade);
-                await ctx.SaveChangesAsync();
+                // Raw SQL, not the EF model: the current Grade model has Code, which this migration point lacks.
+                var gradeId = (await ctx.Database.SqlQueryRaw<int>("""
+                    INSERT INTO "Grades" ("Name", "CreateTime", "IsDeleted")
+                    VALUES ('5', now(), FALSE) RETURNING "Id" AS "Value"
+                    """).ToListAsync()).Single();
                 // Raw SQL, not the EF model: the current Worksheet model has Kind (issue #571 Worksheets.Kind), which
                 // this migration point lacks.
                 var worksheetId = (await ctx.Database.SqlQueryRaw<int>("""
                     INSERT INTO "Worksheets" ("Name", "Description", "GradeId", "MaxDurationSeconds", "IsPracticeTest", "CreateTime", "IsDeleted")
                     VALUES ('W', '', {0}, 0, FALSE, now(), FALSE) RETURNING "Id" AS "Value"
-                    """, grade.Id).ToListAsync()).Single();
+                    """, gradeId).ToListAsync()).Single();
                 // Student via raw SQL too: the current model has Students columns the old schema lacks (issue #361
                 // SchoolVerifiedAt / LastRejectedSchoolId ...).
                 var student = new

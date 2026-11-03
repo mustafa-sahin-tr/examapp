@@ -3,6 +3,7 @@ using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interactions;
 using ExamApp.Api.Services.MockExams;
 using ExamApp.Api.Services.Questions;
+using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Worksheets;
 using ExamApp.Api.Tests.Support;
 using Microsoft.EntityFrameworkCore;
@@ -212,7 +213,7 @@ public class MockExamServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Complete_exam_can_be_published_and_opens_its_sessions()
+    public async Task Published_sessions_stay_out_of_test_lists_and_the_practice_pool()
     {
         var exam = await FilledAsync(ExamTemplateSeed.LgsId);
         exam.Problems.ShouldBeEmpty();
@@ -220,7 +221,132 @@ public class MockExamServiceTests : IDisposable
         var published = (await UseAsync(s => s.PublishAsync(exam.Id, true, TeacherId, false, default)))!;
 
         published.PublishedAt.ShouldNotBeNull();
-        (await ExamWorksheetVisibilityAsync(exam)).ShouldBe((int)WorksheetStudentVisibility.Normal);
+        (await ExamWorksheetVisibilityAsync(exam)).ShouldBe((int)WorksheetStudentVisibility.Restricted);
+    }
+
+    [Fact]
+    public async Task Exam_open_to_the_grade_can_be_started_without_an_assignment()
+    {
+        var exam = await FilledAsync(ExamTemplateSeed.LgsId);
+        await UseAsync(s => s.PublishAsync(exam.Id, true, TeacherId, false, default));
+
+        await using var ctx = _db.NewContext();
+        (await new TestSessionService(ctx).StartTestAsync(exam.Sessions[0].WorksheetId, _student)).InstanceId.ShouldBeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task Draft_or_closed_exam_session_cannot_be_started()
+    {
+        var exam = await FilledAsync(ExamTemplateSeed.LgsId);
+        await using (var draft = _db.NewContext())
+            await Should.ThrowAsync<UnauthorizedAccessException>(() => new TestSessionService(draft).StartTestAsync(exam.Sessions[0].WorksheetId, _student));
+
+        await UseAsync(s => s.PublishAsync(exam.Id, false, TeacherId, false, default));
+
+        await using var closed = _db.NewContext();
+        await Should.ThrowAsync<UnauthorizedAccessException>(() => new TestSessionService(closed).StartTestAsync(exam.Sessions[0].WorksheetId, _student));
+    }
+
+    [Fact]
+    public async Task Exam_of_another_grade_cannot_be_started()
+    {
+        var exam = await FilledAsync(ExamTemplateSeed.LgsId);
+        await UseAsync(s => s.PublishAsync(exam.Id, true, TeacherId, false, default));
+
+        await using var ctx = _db.NewContext();
+        var otherGrade = new StudentProfileDto { Id = _student.Id, GradeId = _gradeId + 100, SchoolId = _student.SchoolId };
+        await Should.ThrowAsync<UnauthorizedAccessException>(() => new TestSessionService(ctx).StartTestAsync(exam.Sessions[0].WorksheetId, otherGrade));
+    }
+
+    [Fact]
+    public async Task Sessions_cannot_be_changed_through_the_test_screens()
+    {
+        var exam = await FilledAsync(ExamTemplateSeed.LgsId);
+        var worksheetId = exam.Sessions[0].WorksheetId;
+
+        await using var ctx = _db.NewContext();
+        (await new QuestionOwnershipGuard(ctx).CanModifyWorksheetAsync(worksheetId, TeacherId, false, default)).ShouldBe(QuestionAccessResult.Forbidden);
+        (await new QuestionOwnershipGuard(ctx).CanModifyWorksheetAsync(worksheetId, 1, true, default)).ShouldBe(QuestionAccessResult.Forbidden);
+    }
+
+    [Fact]
+    public async Task Ids_that_are_not_positive_change_nothing()
+    {
+        var exam = await CreateAsync(ExamTemplateSeed.LgsId);
+        var ids = await QuestionsAsync(1);
+
+        (await Should.ThrowAsync<MockExamRuleException>(() => UseAsync(s => s.SetSectionQuestionsAsync(exam.Id, exam.Sessions[0].Sections[0].SectionId, [ids[0], -1], TeacherId, false, default)))).Message.ShouldBe(MockExamService.QuestionNotUsable);
+
+        await using var ctx = _db.NewContext();
+        (await ctx.TestQuestions.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Item_without_a_section_blocks_publishing_and_is_cleaned_on_the_next_change()
+    {
+        var exam = await FilledAsync(ExamTemplateSeed.LgsId);
+        var stray = await QuestionsAsync(1);
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.TestQuestions.Add(new WorksheetQuestion { TestId = exam.Sessions[0].WorksheetId, QuestionId = stray[0], Order = 99 });
+            await ctx.SaveChangesAsync();
+        }
+
+        var blocked = (await UseAsync(s => s.PublishAsync(exam.Id, true, TeacherId, false, default)))!;
+        blocked.PublishedAt.ShouldBeNull();
+        blocked.Problems.ShouldContain(p => p.Code == "Unmapped" && p.QuestionId == stray[0]);
+
+        var section = exam.Sessions[0].Sections[0];
+        var cleaned = (await UseAsync(s => s.SetSectionQuestionsAsync(exam.Id, section.SectionId, section.QuestionIds, TeacherId, false, default)))!;
+        cleaned.Problems.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Example_question_blocks_publishing_because_it_shows_its_answer()
+    {
+        var exam = await FilledAsync(ExamTemplateSeed.LgsId);
+        var id = exam.Sessions[0].Sections[0].QuestionIds[0];
+        await using (var ctx = _db.NewContext())
+        {
+            (await ctx.Questions.SingleAsync(q => q.Id == id)).IsExample = true;
+            await ctx.SaveChangesAsync();
+        }
+
+        (await UseAsync(s => s.PublishAsync(exam.Id, true, TeacherId, false, default)))!.Problems.ShouldContain(p => p.Code == "ExampleQuestion" && p.QuestionId == id);
+    }
+
+    [Fact]
+    public async Task Question_deleted_after_answering_counts_as_wrong_so_net_does_not_grow()
+    {
+        var exam = await FilledAsync(ExamTemplateSeed.LgsId);
+        await UseAsync(s => s.PublishAsync(exam.Id, true, TeacherId, false, default));
+        await SolveAsync(exam.Sessions[0], new() { ["Türkçe"] = (0, 3) });
+        var id = exam.Sessions[0].Sections[0].QuestionIds[0];
+        await using (var ctx = _db.NewContext())
+        {
+            (await ctx.Questions.SingleAsync(q => q.Id == id)).IsDeleted = true;
+            await ctx.SaveChangesAsync();
+        }
+
+        var turkish = (await UseAsync(s => s.GetResultAsync(exam.Id, _student, default)))!.Sections.Single(s => s.Name == "Türkçe");
+
+        (turkish.Correct, turkish.Wrong, turkish.Blank).ShouldBe((0, 3, 17));
+        turkish.Net.ShouldBe(-1m);
+    }
+
+    [Fact]
+    public async Task Finished_exam_stays_with_the_student_after_changing_grade()
+    {
+        var exam = await FilledAsync(ExamTemplateSeed.LgsId);
+        await UseAsync(s => s.PublishAsync(exam.Id, true, TeacherId, false, default));
+        await SolveAsync(exam.Sessions[0], new() { ["Türkçe"] = (2, 0) });
+        var moved = new StudentProfileDto { Id = _student.Id, GradeId = _gradeId + 100, SchoolId = null };
+
+        (await UseAsync(s => s.GetResultAsync(exam.Id, moved, default)))!.Correct.ShouldBe(2);
+
+        var item = (await UseAsync(s => s.ListForStudentAsync(moved, default))).ShouldHaveSingleItem();
+        item.Sessions[0].CanStart.ShouldBeTrue();
+        item.Sessions[1].CanStart.ShouldBeFalse();
     }
 
     [Fact]

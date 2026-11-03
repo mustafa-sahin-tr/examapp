@@ -47,6 +47,12 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         var userId = requester.UserId;
         var isAdmin = requester.IsUnrestricted;
 
+        // Issue #693: taslak deneme oturumu atanamaz: yayın denetimi aşılır, eksik sorularla çözülür.
+        if (await _context.MockExamSessions.AnyAsync(s => s.WorksheetId == request.WorksheetId && s.MockExam.PublishedAt == null, ct))
+        {
+            return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.authoring.editForbidden"] };
+        }
+
         if (!request.StudentId.HasValue && !request.GradeId.HasValue)
         {
             return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.targetRequired"] };

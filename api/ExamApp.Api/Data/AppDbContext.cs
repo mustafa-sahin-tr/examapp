@@ -769,6 +769,10 @@ public class AppDbContext : DbContext
 
         // Issue #693: sonuçlar şablona ve oturum kayıtlarına bağlıdır; zincirleme silme yok.
         modelBuilder.Entity<ExamTemplate>().HasIndex(t => t.Code).IsUnique();
+        // Seed kimlikleri sayacı ilerletmez: yeni kayıt 1'den başlasa birincil anahtar çakışırdı.
+        modelBuilder.Entity<ExamTemplate>().Property(t => t.Id).HasIdentityOptions(startValue: 1000);
+        modelBuilder.Entity<ExamTemplateSession>().Property(s => s.Id).HasIdentityOptions(startValue: 1000);
+        modelBuilder.Entity<ExamTemplateSection>().Property(s => s.Id).HasIdentityOptions(startValue: 1000);
         modelBuilder.Entity<ExamTemplateSession>().HasOne(s => s.ExamTemplate).WithMany(t => t.Sessions).HasForeignKey(s => s.ExamTemplateId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<ExamTemplateSection>().HasOne(s => s.Session).WithMany(t => t.Sections).HasForeignKey(s => s.ExamTemplateSessionId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<MockExam>().HasOne(e => e.ExamTemplate).WithMany().HasForeignKey(e => e.ExamTemplateId).OnDelete(DeleteBehavior.Restrict);

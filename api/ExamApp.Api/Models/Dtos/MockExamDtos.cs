@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 
 namespace ExamApp.Api.Models.Dtos;
 
@@ -58,7 +59,7 @@ public class CreateMockExamDto
 {
     public int ExamTemplateId { get; set; }
 
-    [Required, MaxLength(150)]
+    [Required, MaxLength(150), PlainText]
     public string Name { get; set; } = string.Empty;
 
     public int GradeId { get; set; }
@@ -72,8 +73,8 @@ public class SetSectionQuestionsDto
 
 public class PublishMockExamDto
 {
-    /// <summary>true: sınıftaki öğrenciler görür. false: yalnız atanan öğrenciler başlatır.</summary>
-    public bool OpenToGrade { get; set; } = true;
+    /// <summary>true: bu sınıftaki bütün öğrenciler (bütün okullar) başlatır. false: yalnız atanan öğrenciler. Varsayılan kapalıdır.</summary>
+    public bool OpenToGrade { get; set; }
 }
 
 public class MockExamSectionDetailDto
@@ -138,6 +139,9 @@ public class StudentMockExamSessionDto
     /// <summary>NotStarted, InProgress, Finished.</summary>
     public string Status { get; set; } = string.Empty;
     public int? InstanceId { get; set; }
+
+    /// <summary>Atama yalnız bir oturumu kapsıyorsa diğerleri başlatılamaz.</summary>
+    public bool CanStart { get; set; }
 }
 
 public class StudentMockExamDto

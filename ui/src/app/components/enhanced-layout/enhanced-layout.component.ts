@@ -249,6 +249,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     // Issue #305: yorum şikayetleri (moderasyon).
     { id: 'admin-comment-reports', labelKey: 'menu.adminCommentReports', icon: 'flag', route: '/admin/comment-reports', type: 'menu', roles: ['Admin'] },
     // Issue #365: soru aktarımı (export/import) yalnız Admin.
+    { id: 'mock-exams', labelKey: 'menu.mockExams', icon: 'assignment_turned_in', route: '/mock-exams', type: 'menu', roles: ['Admin'] },
+    { id: 'exam-templates', labelKey: 'menu.examTemplates', icon: 'rule', route: '/exam-templates', type: 'menu', roles: ['Admin'] },
     { id: 'questiongeneration', labelKey: 'menu.questionGeneration', icon: 'auto_awesome', route: '/question-generation', type: 'menu', roles: ['Admin', 'QuestionTrainer'] },
     { id: 'questiontransfer', labelKey: 'menu.questionTransfer', icon: 'swap_horiz', route: '/question-transfer', type: 'menu', roles: ['Admin'] },
     // Soru tespit modeli için işaretleme modu (test/soru kaydı yok, yalnız eğitim verisi); send-to-fix ile aynı roller.
@@ -261,6 +263,12 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
    * tek sekme kalırsa çubuk çizilmez.
    */
   readonly sectionTabs: MenuItem[][] = [
+    // Issue #693: deneme testlerin yanında; ana menü #719 sınırında kalır.
+    [
+      { id: 'tab-tests', labelKey: 'menu.exams', icon: '', route: '/tests', type: 'menu', roles: ['Student', 'Teacher'] },
+      { id: 'tab-my-mock-exams', labelKey: 'menu.mockExams', icon: '', route: '/my-mock-exams', type: 'menu', roles: ['Student'] },
+      { id: 'tab-mock-exams', labelKey: 'menu.mockExams', icon: '', route: '/mock-exams', type: 'menu', roles: ['Teacher'] },
+    ],
     [
       { id: 'tab-practice', labelKey: 'menu.practice', icon: '', route: '/practice', type: 'menu', roles: ['Student'] },
       { id: 'tab-mistakes', labelKey: 'menu.mistakes', icon: '', route: '/mistakes', type: 'menu', roles: ['Student'] },

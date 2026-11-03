@@ -125,6 +125,10 @@ public sealed class QuestionOwnershipGuard : IQuestionOwnershipGuard
         if (worksheet == null)
             return QuestionAccessResult.NotFound;
 
+        // Issue #693: deneme oturumunun maddeleri yalnız deneme ekranından değişir; ders sayıları ve net hesabı bunlara bağlıdır.
+        if (await _context.MockExamSessions.AnyAsync(s => s.WorksheetId == worksheetId, ct))
+            return QuestionAccessResult.Forbidden;
+
         return WorksheetAccess.CanModify(worksheet.CreateUserId, userId, isAdmin)
             ? QuestionAccessResult.Allowed
             : QuestionAccessResult.Forbidden;

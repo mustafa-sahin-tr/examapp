@@ -31,6 +31,7 @@ public sealed class MockExamRuleException(string code) : Exception(code);
 public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService links) : IMockExamService
 {
     public const string WrongTemplate = "UnknownTemplate";
+    public const string InvalidTemplate = "InvalidTemplate";
     public const string WrongGrade = "UnknownGrade";
     public const string TemplateInUse = "TemplateInUse";
     public const string CodeTaken = "TemplateCodeTaken";
@@ -53,6 +54,9 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
 
     public async Task<ExamTemplateDto> SaveTemplateAsync(ExamTemplateDto dto, int? id, int userId, CancellationToken ct)
     {
+        if (dto.Sessions.Any(s => s is null || s.Sections is null || s.Sections.Any(x => x is null)))
+            throw new MockExamRuleException(InvalidTemplate);
+
         var code = dto.Code.Trim().ToLowerInvariant();
         if (await db.Set<ExamTemplate>().AnyAsync(t => t.Code == code && t.Id != id, ct))
             throw new MockExamRuleException(CodeTaken);
@@ -192,6 +196,10 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
         if (section is null || session is null)
             return null;
 
+        // Bağlama sıfır ve eksi kimlikleri sessizce atar: liste eksik yazılırdı.
+        if (questionIds.Any(q => q <= 0))
+            throw new MockExamRuleException(QuestionNotUsable);
+
         var wanted = questionIds.Distinct().ToList();
         if (wanted.Count != questionIds.Count)
             throw new MockExamRuleException(QuestionTwice);
@@ -235,12 +243,17 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
             var questionOfItem = await db.TestQuestions.AsNoTracking()
                 .Where(i => itemIds.Contains(i.Id))
                 .ToDictionaryAsync(i => i.Id, i => i.QuestionId, ct);
-            var dropped = mapped.Where(q => !wanted.Contains(questionOfItem[q.WorksheetQuestionId])).ToList();
+            // Bağı kalmış ama maddesi silinmiş satır da düşer.
+            var dropped = mapped.Where(q => !questionOfItem.TryGetValue(q.WorksheetQuestionId, out var questionId) || !wanted.Contains(questionId)).ToList();
             var droppedItemIds = dropped.Select(q => q.WorksheetQuestionId).ToList();
             db.RemoveRange(dropped);
             await db.SaveChangesAsync(ct);
             db.ChangeTracker.Clear();
-            db.TestQuestions.RemoveRange(await db.TestQuestions.Where(i => droppedItemIds.Contains(i.Id)).ToListAsync(ct));
+            // Yarıda kalmış eski bir kayıt bağsız madde bırakmış olabilir: öğrenciye sayılmayan soru gitmesin.
+            var allMapped = db.Set<MockExamQuestion>().Where(q => q.MockExamSessionId == session.Id).Select(q => q.WorksheetQuestionId);
+            db.TestQuestions.RemoveRange(await db.TestQuestions
+                .Where(i => i.TestId == session.WorksheetId && (droppedItemIds.Contains(i.Id) || (!allMapped.Contains(i.Id) && !wanted.Contains(i.QuestionId))))
+                .ToListAsync(ct));
             await db.SaveChangesAsync(ct);
             db.ChangeTracker.Clear();
 
@@ -283,7 +296,10 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
         var items = await db.TestQuestions.Where(i => i.TestId == worksheetId).ToDictionaryAsync(i => i.Id, ct);
         var order = 0;
         foreach (var itemId in ordered)
-            items[itemId].Order = ++order;
+        {
+            if (items.TryGetValue(itemId, out var item))
+                item.Order = ++order;
+        }
         await db.SaveChangesAsync(ct);
     }
 
@@ -301,8 +317,7 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
         db.SetCurrentUser(userId);
         var exam = await db.Set<MockExam>().Include(e => e.Sessions).ThenInclude(s => s.Worksheet).FirstAsync(e => e.Id == id, ct);
         exam.PublishedAt = DateTime.UtcNow;
-        foreach (var session in exam.Sessions)
-            session.Worksheet.StudentVisibility = openToGrade ? WorksheetStudentVisibility.Normal : WorksheetStudentVisibility.Restricted;
+        exam.OpenToGrade = openToGrade;
         await db.SaveChangesAsync(ct);
         return await ReadDetailAsync(id, ct);
     }
@@ -386,7 +401,7 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
         var ids = sections.SelectMany(s => s.QuestionIds).ToList();
         var questions = await db.Questions.AsNoTracking()
             .Where(q => ids.Contains(q.Id))
-            .Select(q => new { q.Id, q.IsUnpublished, q.LicenseEndsAt, q.CorrectAnswerId, q.InteractionType })
+            .Select(q => new { q.Id, q.IsUnpublished, q.LicenseEndsAt, q.CorrectAnswerId, q.InteractionType, q.IsExample })
             .ToDictionaryAsync(q => q.Id, ct);
         var now = DateTime.UtcNow;
         foreach (var section in sections)
@@ -400,10 +415,22 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
                     problems.Add(new MockExamProblemDto { Code = "Unpublished", Section = section.Name, QuestionId = id });
                 else if (question.LicenseEndsAt <= now)
                     problems.Add(new MockExamProblemDto { Code = "LicenseEnded", Section = section.Name, QuestionId = id });
+                // Örnek soru oturumda cevabını gösterir.
+                else if (question.IsExample)
+                    problems.Add(new MockExamProblemDto { Code = "ExampleQuestion", Section = section.Name, QuestionId = id });
                 else if (question.CorrectAnswerId is null && question.InteractionType is null or Interactions.McqGrader.Type)
                     problems.Add(new MockExamProblemDto { Code = "NoCorrectAnswer", Section = section.Name, QuestionId = id });
             }
         }
+
+        // Bağı olmayan madde öğrenciye gider ama hiçbir derse sayılmaz.
+        var worksheetIds = detail.Sessions.Select(s => s.WorksheetId).ToList();
+        var mappedItems = db.Set<MockExamQuestion>().AsNoTracking().Select(q => q.WorksheetQuestionId);
+        var unmapped = await db.TestQuestions.AsNoTracking()
+            .Where(i => worksheetIds.Contains(i.TestId) && !mappedItems.Contains(i.Id))
+            .Select(i => i.QuestionId)
+            .ToListAsync(ct);
+        problems.AddRange(unmapped.Select(id => new MockExamProblemDto { Code = "Unmapped", Section = string.Empty, QuestionId = id }));
         return problems;
     }
 
@@ -411,9 +438,12 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
 
     private IQueryable<MockExam> VisibleTo(StudentProfileDto student, DateTime now)
     {
+        // Başladığı deneme öğrencinin kalır: atama bitse ya da okul değişse de geçmiş sonucu görür (bkz. school-change.md).
         var assigned = db.ActiveAssignmentsFor(student.Id, student.GradeId, student.SchoolId, now).Select(a => a.WorksheetId);
-        return db.Set<MockExam>().AsNoTracking().Where(e => e.PublishedAt != null && e.Sessions.Any(s =>
-            (e.GradeId == student.GradeId && s.Worksheet.StudentVisibility == WorksheetStudentVisibility.Normal) || assigned.Contains(s.WorksheetId)));
+        var started = db.TestInstances.Where(i => i.StudentId == student.Id).Select(i => i.WorksheetId);
+        return db.Set<MockExam>().AsNoTracking().Where(e => e.PublishedAt != null && (
+            (e.OpenToGrade && e.GradeId == student.GradeId)
+            || e.Sessions.Any(s => assigned.Contains(s.WorksheetId) || started.Contains(s.WorksheetId))));
     }
 
     public async Task<List<StudentMockExamDto>> ListForStudentAsync(StudentProfileDto student, CancellationToken ct)
@@ -429,6 +459,11 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
         var instances = await db.TestInstances.AsNoTracking()
             .Where(i => i.StudentId == student.Id && worksheetIds.Contains(i.WorksheetId))
             .Select(i => new { i.Id, i.WorksheetId, i.Status, i.StartTime, i.MaxDurationSeconds })
+            .ToListAsync(ct);
+
+        var assigned = await db.ActiveAssignmentsFor(student.Id, student.GradeId, student.SchoolId, now)
+            .Where(a => worksheetIds.Contains(a.WorksheetId))
+            .Select(a => a.WorksheetId)
             .ToListAsync(ct);
 
         return exams.Select(exam => new StudentMockExamDto
@@ -447,6 +482,7 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
                     DurationSeconds = session.TemplateSession.DurationSeconds,
                     QuestionCount = session.TemplateSession.Sections.Sum(s => s.QuestionCount),
                     InstanceId = instance?.Id,
+                    CanStart = instance is not null || assigned.Contains(session.WorksheetId) || (exam.OpenToGrade && exam.GradeId == student.GradeId),
                     Status = status switch
                     {
                         null => "NotStarted",
@@ -483,8 +519,9 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
         // Oturum satırından okuma kuralı (#684): sonradan kaldırılan madde de sayılır.
         var rows = db.TestInstanceQuestions.AsNoTracking().WithRemovedWorksheetItems().Where(r => finishedIds.Contains(r.WorksheetInstanceId));
         var correct = await CountBySectionAsync(rows.Where(WorksheetScoring.IsCorrectRow), ct);
-        var wrong = await CountBySectionAsync(rows.Where(WorksheetScoring.IsWrongRow), ct);
         var blank = await CountBySectionAsync(rows.Where(WorksheetScoring.IsBlankRow), ct);
+        // Yanlış = toplam − doğru − boş (WorksheetScoring): sorusu sonradan silinen cevaplı satır yanlış sayılır, net şişmez.
+        var total = await CountBySectionAsync(rows, ct);
 
         var penalty = exam.ExamTemplate.WrongAnswersPerCorrect;
         var scores = new List<MockExamScoreDto>();
@@ -494,7 +531,7 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
             foreach (var section in session.TemplateSession.Sections.OrderBy(s => s.Order))
             {
                 var c = done ? correct.GetValueOrDefault(section.Id) : 0;
-                var w = done ? wrong.GetValueOrDefault(section.Id) : 0;
+                var w = done ? total.GetValueOrDefault(section.Id) - c - blank.GetValueOrDefault(section.Id) : 0;
                 scores.Add(new MockExamScoreDto
                 {
                     GroupName = section.GroupName,

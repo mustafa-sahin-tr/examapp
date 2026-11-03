@@ -76,6 +76,12 @@ public class MockExam : BaseEntity
     /// <summary>Boşsa taslaktır: öğrenci görmez, sorular değişebilir.</summary>
     public DateTime? PublishedAt { get; set; }
 
+    /// <summary>
+    /// Sınıftaki öğrenciler atama olmadan başlatabilir. Oturum kayıtları her durumda <see cref="WorksheetStudentVisibility.Restricted"/> kalır:
+    /// normal test listesine ve pratik havuzuna girmez, sınav soruları açığa çıkmaz.
+    /// </summary>
+    public bool OpenToGrade { get; set; }
+
     public ICollection<MockExamSession> Sessions { get; set; } = new List<MockExamSession>();
 }
 

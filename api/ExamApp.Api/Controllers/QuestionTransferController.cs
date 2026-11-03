@@ -168,7 +168,7 @@ public class QuestionTransferController : ControllerBase
             // IMPORTANT: ZipArchive writes central directory synchronously when disposed.
             // Kestrel disallows synchronous writes to Response.Body by default.
             // Build ZIP into a temp file stream (sync allowed), then CopyToAsync to the response.
-            var tmpPath = Path.Combine(Path.GetTempPath(), $"question-transfer-{sourceKey}-package-{Guid.NewGuid():N}.zip");
+            var tmpPath = Path.Combine(Path.GetTempPath(), $"question-transfer-package-{Guid.NewGuid():N}.zip");
             try
             {
                 await using (var fs = new FileStream(tmpPath, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None))
@@ -192,7 +192,7 @@ public class QuestionTransferController : ControllerBase
                                 continue;
                             }
 
-                            var bundleTmpPath = Path.Combine(Path.GetTempPath(), $"question-transfer-{sourceKey}-bundle-{b.BundleNo:D4}-{Guid.NewGuid():N}.zip");
+                            var bundleTmpPath = Path.Combine(Path.GetTempPath(), $"question-transfer-bundle-{b.BundleNo:D4}-{Guid.NewGuid():N}.zip");
                             try
                             {
                                 await using (bundleStream)
@@ -263,11 +263,11 @@ public class QuestionTransferController : ControllerBase
                         // Write merged manifest.json (root)
                         var manifest = new
                         {
-                            version = 2,
+                            version = 3,
                             sourceKey = sourceKey,
                             bundleNo = 0,
                             exportedAtUtc = DateTime.UtcNow,
-                            questions = mergedQuestionsJson,
+                            questions = await _service.WithCurrentRightsAsync(mergedQuestionsJson, ct),
                         };
 
                         var mergedManifestEntry = zip.CreateEntry("manifest.json", CompressionLevel.Fastest);

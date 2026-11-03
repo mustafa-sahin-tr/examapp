@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -31,6 +32,12 @@ public interface IQuestionTransferService
     Task<List<string>> ListSourceKeysAsync(CancellationToken ct);
 
     Task<List<QuestionTransferExportBundleDto>> ListExportBundlesAsync(string sourceKey, CancellationToken ct);
+
+    /// <summary>
+    /// Paketteki sorulara kaynak, lisans ve yayın durumunun bugünkü değerini yazar. Dosyalar soru ilk çıkarıldığında üretilir:
+    /// sonradan yayından kaldırılan soru paketle yayında görünmesin.
+    /// </summary>
+    Task<List<JsonNode>> WithCurrentRightsAsync(IReadOnlyList<JsonElement> questions, CancellationToken ct);
     Task<Stream?> GetExportBundleStreamAsync(string sourceKey, int bundleNo, CancellationToken ct);
     Task<Stream?> GetExportBundleMapStreamAsync(string sourceKey, int bundleNo, CancellationToken ct);
     Task<Stream?> GetExportSourceIndexStreamAsync(string sourceKey, CancellationToken ct);
@@ -65,23 +72,17 @@ public class QuestionTransferService : IQuestionTransferService
         // Kapsam boş sonuç verirse işe başlanmaz: boş kimlik listesi "hepsi" demektir, yanlışlıkla tüm sorular çıkar.
         if (request.HasScope)
         {
-            request.QuestionIds = await ResolveScopeAsync(request, ct);
-            if (request.QuestionIds.Count == 0)
-            {
-                var emptyJob = new QuestionTransferJob
-                {
-                    Id = Guid.NewGuid(),
-                    Kind = QuestionTransferJobKind.Export,
-                    Status = QuestionTransferJobStatus.Completed,
-                    SourceKey = string.IsNullOrWhiteSpace(request.SourceKey) ? "default" : request.SourceKey.Trim(),
-                    RequestJson = JsonSerializer.Serialize(request),
-                    Message = "No questions match the selected scope.",
-                };
-                _db.SetCurrentUser(owner.UserId);
-                _db.Add(emptyJob);
-                await _db.SaveChangesAsync(ct);
-                return ToDto(emptyJob);
-            }
+            var scopeIds = await ResolveScopeAsync(request, ct);
+            request.QuestionIds = scopeIds;
+            var scopeSourceKey = string.IsNullOrWhiteSpace(request.SourceKey) ? "default" : request.SourceKey.Trim();
+            if (scopeIds.Count == 0)
+                return await SaveUnstartedExportAsync(request, owner, scopeSourceKey, QuestionTransferJobStatus.Completed, "No questions match the selected scope.", ct);
+
+            // Paket kaynak adının bütün dosyalarını birleştirir: kapsam dışı soru varsa indirilen paket seçilenden fazlasını, çözümleriyle taşır.
+            var hasOutsideQuestions = await _db.Set<QuestionTransferExportMap>()
+                .AnyAsync(m => m.SourceKey == scopeSourceKey && !scopeIds.Contains(m.QuestionId), ct);
+            if (hasOutsideQuestions)
+                return await SaveUnstartedExportAsync(request, owner, scopeSourceKey, QuestionTransferJobStatus.Failed, "This source name already holds questions outside the selected scope. Use a new source name.", ct);
         }
 
         var job = new QuestionTransferJob
@@ -248,6 +249,52 @@ public class QuestionTransferService : IQuestionTransferService
         return await _minio.GetFileStreamAsync(url);
     }
 
+    private async Task<QuestionTransferJobDto> SaveUnstartedExportAsync(StartQuestionExportDto request, QuestionTransferOwner owner, string sourceKey,
+        QuestionTransferJobStatus status, string message, CancellationToken ct)
+    {
+        var job = new QuestionTransferJob
+        {
+            Id = Guid.NewGuid(),
+            Kind = QuestionTransferJobKind.Export,
+            Status = status,
+            SourceKey = sourceKey,
+            RequestJson = JsonSerializer.Serialize(request),
+            Message = message,
+        };
+        _db.SetCurrentUser(owner.UserId);
+        _db.Add(job);
+        await _db.SaveChangesAsync(ct);
+        return ToDto(job);
+    }
+
+    public async Task<List<JsonNode>> WithCurrentRightsAsync(IReadOnlyList<JsonElement> questions, CancellationToken ct)
+    {
+        var ids = questions
+            .Where(q => q.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.Number)
+            .Select(q => q.GetProperty("id").GetInt32())
+            .ToList();
+        var rights = await _db.Questions.AsNoTracking()
+            .Where(q => ids.Contains(q.Id))
+            .Select(q => new { q.Id, q.SourceType, q.RightsHolder, q.LicenseReference, q.LicenseEndsAt, q.IsUnpublished })
+            .ToDictionaryAsync(q => q.Id, ct);
+
+        var result = new List<JsonNode>(questions.Count);
+        foreach (var question in questions)
+        {
+            var node = JsonNode.Parse(question.GetRawText())!;
+            if (question.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.Number && rights.TryGetValue(id.GetInt32(), out var current))
+            {
+                node["sourceType"] = current.SourceType.ToString();
+                node["rightsHolder"] = current.RightsHolder;
+                node["licenseReference"] = current.LicenseReference;
+                node["licenseEndsAt"] = JsonSerializer.SerializeToNode(current.LicenseEndsAt);
+                node["isUnpublished"] = current.IsUnpublished;
+            }
+            result.Add(node);
+        }
+        return result;
+    }
+
     public async Task<QuestionTransferImportPreviewDto> PreviewImportAsync(IFormFile file, string? sourceOverride, CancellationToken ct)
     {
         if (file == null || file.Length == 0)
@@ -260,8 +307,7 @@ public class QuestionTransferService : IQuestionTransferService
         var manifestEntry = zip.GetEntry("manifest.json")
             ?? throw new InvalidOperationException("manifest.json not found in zip.");
 
-        using var manifestStream = manifestEntry.Open();
-        using var doc = await JsonDocument.ParseAsync(manifestStream, cancellationToken: ct);
+        using var doc = JsonDocument.Parse(await QuestionContentHash.ReadPackageEntryAsync(manifestEntry, QuestionContentHash.MaxPackageManifestBytes, ct));
 
         var sourceKeyFromManifest = doc.RootElement.TryGetProperty("sourceKey", out var sk)
             ? (sk.GetString() ?? string.Empty)
@@ -284,6 +330,7 @@ public class QuestionTransferService : IQuestionTransferService
         var matchedCount = 0;
         var conflictCount = 0;
         var missingTaxonomyCount = 0;
+        var missingImageCount = 0;
         var alreadyImportedInFile = 0;
         var conflictSamples = new List<string>();
         var seenInFile = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -300,10 +347,13 @@ public class QuestionTransferService : IQuestionTransferService
             if (question.TryGetProperty("id", out var idEl) && idEl.ValueKind == JsonValueKind.Number
                 && zip.GetEntry($"questions/{idEl.GetInt32()}/question.jpg") is { } imageEntry)
             {
-                await using var imageStream = imageEntry.Open();
-                await using var buffer = new MemoryStream();
-                await imageStream.CopyToAsync(buffer, ct);
-                image = buffer.ToArray();
+                image = await QuestionContentHash.ReadPackageEntryAsync(imageEntry, QuestionContentHash.MaxPackageImageBytes, ct);
+            }
+
+            if (QuestionContentHash.IsImageMissing(question, image))
+            {
+                missingImageCount++;
+                continue;
             }
 
             var hashes = QuestionContentHash.ForManifest(question, image);
@@ -360,6 +410,7 @@ public class QuestionTransferService : IQuestionTransferService
             MatchedCount = matchedCount,
             ConflictCount = conflictCount,
             MissingTaxonomyCount = missingTaxonomyCount,
+            MissingImageCount = missingImageCount,
             TargetUnhashedCount = unhashed,
             ConflictSamples = conflictSamples,
         };

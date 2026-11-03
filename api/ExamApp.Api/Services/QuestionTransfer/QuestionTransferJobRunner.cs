@@ -332,9 +332,22 @@ public class QuestionTransferJobRunner
             .FirstOrDefaultAsync(b => b.SourceKey == sourceKey && b.BundleNo == bundleNo)
             ?? throw new InvalidOperationException("Bundle not found");
 
-        var objectName = BundleObjectName(sourceKey, bundleNo);
         // Ad işe özgü: aynı kaynak adıyla çalışan iki iş aynı dosyaya yazmasın. Kaynak adı kullanıcıdan gelir, yola girmez.
         var tmpPath = Path.Combine(Path.GetTempPath(), $"export-{Guid.NewGuid():N}.zip");
+        try
+        {
+            await WriteBundleAsync(sourceKey, bundleNo, bundle, questionIdsToAdd, tmpPath);
+        }
+        finally
+        {
+            // Dosya doğru cevapları ve çözümleri taşır: temp'te kalmaz.
+            DeleteTempFile(tmpPath);
+        }
+    }
+
+    private async Task WriteBundleAsync(string sourceKey, int bundleNo, QuestionTransferExportBundle bundle, List<int> questionIdsToAdd, string tmpPath)
+    {
+        var objectName = BundleObjectName(sourceKey, bundleNo);
 
         // Download existing bundle if present
         if (!string.IsNullOrWhiteSpace(bundle.FileUrl))
@@ -414,6 +427,22 @@ public class QuestionTransferJobRunner
         bundle.FileUrl = fileUrl;
         bundle.UpdateTime = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+    }
+
+    private static void DeleteTempFile(string path)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch (IOException)
+        {
+            // Temp temizliği işi düşürmez.
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Temp temizliği işi düşürmez.
+        }
     }
 
     private async Task RewriteBundleManifestAsync(ZipArchive zip, string sourceKey, int bundleNo, List<int> bundleQuestionIds, bool allowDeleteExisting)
@@ -640,7 +669,9 @@ public class QuestionTransferJobRunner
             // Eşleşme hedefteki hash'lere bakar: eksikleri tamamlanmadan başlanırsa kopya oluşabilir.
             job.Message = "Preparing question hashes";
             await _db.SaveChangesAsync();
-            await _hashes.FillMissingAsync();
+            var hashFill = await _hashes.FillMissingAsync();
+            if (hashFill.Unresolved > 0)
+                throw new InvalidOperationException($"{hashFill.Unresolved} questions in this environment have no hash yet because storage could not be read. Try again later: importing now could create copies.");
 
             await using var zipStream = await _minio.GetFileStreamAsync(job.FileUrl)
                 ?? throw new InvalidOperationException("Import file not found.");
@@ -648,8 +679,7 @@ public class QuestionTransferJobRunner
             using var zip = new ZipArchive(zipStream, ZipArchiveMode.Read, leaveOpen: false);
             var manifestEntry = zip.GetEntry("manifest.json") ?? throw new InvalidOperationException("manifest.json not found in zip.");
 
-            using var manifestStream = manifestEntry.Open();
-            using var doc = await JsonDocument.ParseAsync(manifestStream);
+            using var doc = JsonDocument.Parse(await QuestionContentHash.ReadPackageEntryAsync(manifestEntry, QuestionContentHash.MaxPackageManifestBytes));
 
             var questions = doc.RootElement.GetProperty("questions").EnumerateArray().ToList();
             job.TotalItems = questions.Count;
@@ -708,7 +738,10 @@ public class QuestionTransferJobRunner
                 QuestionContentHashes contentHashes;
                 try
                 {
-                    contentHashes = QuestionContentHash.ForManifest(qEl, await ReadQuestionImageAsync(zip, qEl));
+                    var image = await ReadQuestionImageAsync(zip, qEl);
+                    if (QuestionContentHash.IsImageMissing(qEl, image))
+                        throw new InvalidOperationException("the question image is missing from the package");
+                    contentHashes = QuestionContentHash.ForManifest(qEl, image);
                     match = await QuestionContentHash.FindMatchAsync(_db, contentHashes);
                 }
                 catch (Exception ex) when (ex is JsonException or InvalidOperationException or KeyNotFoundException or FormatException)
@@ -716,6 +749,8 @@ public class QuestionTransferJobRunner
                     failedCount++;
                     if (failedSamples.Count < MaxResultSamples)
                         failedSamples.Add($"{externalKey}: {ex.Message}");
+                    job.ProcessedItems = importedCount + matchedCount + skippedCount + conflictCount + failedCount;
+                    await _db.SaveChangesAsync();
                     continue;
                 }
 
@@ -759,7 +794,8 @@ public class QuestionTransferJobRunner
 
                     if (match.Kind == QuestionMatchKind.Exact)
                     {
-                        await FillBlanksAsync(match.TargetQuestionId!.Value, resolvedTaxonomy, qEl);
+                        if (await FillBlanksAsync(match.TargetQuestionId!.Value, resolvedTaxonomy, qEl))
+                            interactionWarnings[externalKey] = $"{externalKey}: unpublished in the source but still published here (question {match.TargetQuestionId})";
                         lockRow.TargetQuestionId = match.TargetQuestionId.Value;
                         await _db.SaveChangesAsync();
                         await tx.CommitAsync();
@@ -803,7 +839,7 @@ public class QuestionTransferJobRunner
                         SubText = qEl.TryGetProperty("subText", out var st) ? st.GetString() : null,
                         SubjectId = resolvedTaxonomy.SubjectId,
                         TopicId = resolvedTaxonomy.TopicId,
-                        Point = qEl.TryGetProperty("point", out var pointEl) && pointEl.ValueKind == JsonValueKind.Number ? pointEl.GetInt32() : 0,
+                        Point = qEl.TryGetProperty("point", out var pointEl) && pointEl.ValueKind == JsonValueKind.Number && pointEl.TryGetInt32(out var pointValue) ? Math.Clamp(pointValue, 0, 100) : 0,
                         BookName = qEl.TryGetProperty("bookName", out var bookNameEl) && bookNameEl.ValueKind == JsonValueKind.String ? bookNameEl.GetString() : null,
                         SourceType = ParseSourceType(qEl),
                         RightsHolder = qEl.TryGetProperty("rightsHolder", out var rightsEl) && rightsEl.ValueKind == JsonValueKind.String ? rightsEl.GetString() : null,
@@ -1149,16 +1185,14 @@ public class QuestionTransferJobRunner
     private static async Task<byte[]?> ReadQuestionImageAsync(ZipArchive zip, JsonElement qEl)
     {
         var entry = zip.GetEntry($"questions/{qEl.GetProperty("id").GetInt32()}/question.jpg");
-        if (entry is null)
-            return null;
-        await using var stream = entry.Open();
-        await using var buffer = new MemoryStream();
-        await stream.CopyToAsync(buffer);
-        return buffer.ToArray();
+        return entry is null ? null : await QuestionContentHash.ReadPackageEntryAsync(entry, QuestionContentHash.MaxPackageImageBytes);
     }
 
-    /// <summary>Hedefteki aynı soru değiştirilmez: yalnız boş sınıflandırma doldurulur, eksik alt konu ve kazanım bağları eklenir.</summary>
-    private async Task FillBlanksAsync(int questionId, QuestionImportTaxonomy.Resolved taxonomy, JsonElement qEl)
+    /// <summary>
+    /// Hedefteki aynı soru değiştirilmez: yalnız boş sınıflandırma ve kaynağı bilinmeyen sorunun lisans bilgisi doldurulur, eksik alt konu ve
+    /// kazanım bağları eklenir. Yayın durumu değiştirilmez; kaynakta yayından kalkmış ama hedefte yayındaysa true döner, uyarı yazılır.
+    /// </summary>
+    private async Task<bool> FillBlanksAsync(int questionId, QuestionImportTaxonomy.Resolved taxonomy, JsonElement qEl)
     {
         var target = await _db.Questions
             .Include(q => q.QuestionSubTopics)
@@ -1167,6 +1201,17 @@ public class QuestionTransferJobRunner
 
         target.SubjectId ??= taxonomy.SubjectId;
         target.TopicId ??= taxonomy.TopicId;
+
+        if (target.SourceType == QuestionSourceType.Unknown)
+        {
+            target.SourceType = ParseSourceType(qEl);
+            if (qEl.TryGetProperty("rightsHolder", out var rights) && rights.ValueKind == JsonValueKind.String)
+                target.RightsHolder ??= rights.GetString();
+            if (qEl.TryGetProperty("licenseReference", out var license) && license.ValueKind == JsonValueKind.String)
+                target.LicenseReference ??= license.GetString();
+            if (qEl.TryGetProperty("licenseEndsAt", out var licenseEnds) && licenseEnds.ValueKind == JsonValueKind.String)
+                target.LicenseEndsAt ??= licenseEnds.GetDateTime();
+        }
 
         var subTopicIds = target.QuestionSubTopics.Select(s => s.SubTopicId).ToHashSet();
         foreach (var id in taxonomy.SubTopicIds.Where(subTopicIds.Add))
@@ -1180,6 +1225,7 @@ public class QuestionTransferJobRunner
         }
 
         await _db.SaveChangesAsync();
+        return !target.IsUnpublished && qEl.TryGetProperty("isUnpublished", out var unpublished) && unpublished.ValueKind == JsonValueKind.True;
     }
 
     /// <summary>

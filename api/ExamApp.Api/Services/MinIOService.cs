@@ -16,6 +16,9 @@ public interface IMinIoService
 
     Task<Stream?> GetFileStreamAsync(string fileUrl);
 
+    /// <summary>Nesne yoksa false. Depoya ulaşılamıyorsa istisna atar: "yok" ile "şu an okunamıyor" ayrılsın diye.</summary>
+    Task<bool> FileExistsAsync(string fileUrl, CancellationToken ct = default);
+
     Task<bool> DeleteFileByUrlAsync(string fileUrl);
 
     /// <summary>
@@ -75,6 +78,12 @@ public class MinIoService : IMinIoService
             _logger.LogError(e, "[MinIO] operation failed");
             return null;
         }
+    }
+
+    public Task<bool> FileExistsAsync(string fileUrl, CancellationToken ct = default)
+    {
+        var (bucketName, objectName) = GetBucketAndObjectNameFromUrl(fileUrl);
+        return ObjectExistsAsync(bucketName, objectName, ct);
     }
 
     private (string BucketName, string ObjectName) GetBucketAndObjectNameFromUrl(string fileUrl)

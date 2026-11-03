@@ -502,7 +502,9 @@ public class QuestionTransferHashMatchingTests : IDisposable
 
     // ---- backfill
 
-    private async Task<int> FillAsync()
+    private async Task<int> FillAsync() => (await FillResultAsync()).Filled;
+
+    private async Task<QuestionHashFillResult> FillResultAsync()
     {
         await using var ctx = _db.NewContext();
         return await new QuestionContentHashService(ctx, _minio, NullLogger<QuestionContentHashService>.Instance).FillMissingAsync();
@@ -558,7 +560,7 @@ public class QuestionTransferHashMatchingTests : IDisposable
     }
 
     [Fact]
-    public async Task Question_with_an_unreadable_image_gets_no_identity_and_is_not_retried()
+    public async Task Question_whose_image_is_gone_gets_no_identity_and_is_not_retried()
     {
         await using (var seed = _db.NewContext())
         {
@@ -586,11 +588,368 @@ public class QuestionTransferHashMatchingTests : IDisposable
             await seed.SaveChangesAsync();
         }
         _minio.GetFileStreamAsync(Arg.Any<string>()).Returns(Task.FromResult<Stream?>(null));
+        _minio.FileExistsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await FillResultAsync();
+
+        result.Filled.ShouldBe(0);
+        result.Unresolved.ShouldBe(25);
+        await _minio.Received(20).GetFileStreamAsync(Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task Many_missing_images_do_not_stop_the_questions_after_them()
+    {
+        await using (var seed = _db.NewContext())
+        {
+            for (var i = 0; i < 25; i++)
+                seed.Questions.Add(new Question { Text = $"S{i}", ImageUrl = $"http://minio/gone/{i}.jpg", Point = 1, DifficultyLevel = 1 });
+            seed.Questions.Add(new Question { Text = "Sonraki", Point = 1, DifficultyLevel = 1 });
+            await seed.SaveChangesAsync();
+        }
+        _minio.GetFileStreamAsync(Arg.Any<string>()).Returns(Task.FromResult<Stream?>(null));
+        _minio.FileExistsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await FillResultAsync();
+
+        result.Filled.ShouldBe(26);
+        result.Unresolved.ShouldBe(0);
+        await using var check = _db.NewContext();
+        (await check.Questions.SingleAsync(q => q.Text == "Sonraki")).ContentHash.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task Short_storage_outage_is_retried_and_the_question_gets_its_identity()
+    {
+        await using (var seed = _db.NewContext())
+        {
+            seed.Questions.Add(new Question { Text = "Soru", ImageUrl = "http://minio/a.jpg", Point = 1, DifficultyLevel = 1 });
+            await seed.SaveChangesAsync();
+        }
+        _minio.GetFileStreamAsync("http://minio/a.jpg").Returns(Task.FromResult<Stream?>(null));
+        _minio.FileExistsAsync("http://minio/a.jpg", Arg.Any<CancellationToken>()).Returns(true);
+
+        (await FillResultAsync()).ShouldBe(new QuestionHashFillResult(0, 1));
+
+        _minio.GetFileStreamAsync("http://minio/a.jpg").Returns(_ => Task.FromResult<Stream?>(new MemoryStream(ImageA)));
+
+        (await FillResultAsync()).ShouldBe(new QuestionHashFillResult(1, 0));
+        await using var check = _db.NewContext();
+        (await check.Questions.SingleAsync()).ContentHash.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task Malformed_image_url_does_not_break_the_backfill()
+    {
+        await using (var seed = _db.NewContext())
+        {
+            seed.Questions.Add(new Question { Text = "Bozuk", ImageUrl = "bad", Point = 1, DifficultyLevel = 1 });
+            seed.Questions.Add(new Question { Text = "Sağlam", Point = 1, DifficultyLevel = 1 });
+            await seed.SaveChangesAsync();
+        }
+        _minio.GetFileStreamAsync("bad").Returns<Task<Stream?>>(_ => throw new ArgumentException("Invalid fileUrl format"));
+
+        (await FillResultAsync()).ShouldBe(new QuestionHashFillResult(2, 0));
+
+        await using var check = _db.NewContext();
+        (await check.Questions.SingleAsync(q => q.Text == "Bozuk")).ContentHash.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Question_edited_while_its_image_is_read_does_not_get_the_old_hash()
+    {
+        int id;
+        await using (var seed = _db.NewContext())
+        {
+            var question = new Question { Text = "Eski", ImageUrl = "http://minio/a.jpg", Point = 1, DifficultyLevel = 1 };
+            seed.Questions.Add(question);
+            await seed.SaveChangesAsync();
+            id = question.Id;
+        }
+        _minio.GetFileStreamAsync("http://minio/a.jpg").Returns(_ =>
+        {
+            using var edit = _db.NewContext();
+            edit.Questions.Single(q => q.Id == id).Text = "Yeni";
+            edit.SaveChanges();
+            return Task.FromResult<Stream?>(new MemoryStream(ImageA));
+        });
 
         (await FillAsync()).ShouldBe(0);
 
         await using var check = _db.NewContext();
-        (await check.Questions.CountAsync(q => q.ContentFingerprint == null)).ShouldBe(25);
+        (await check.Questions.SingleAsync()).ContentFingerprint.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Import_fails_rather_than_create_copies_when_target_hashes_cannot_be_completed()
+    {
+        await using (var seed = _db.NewContext())
+        {
+            seed.Questions.Add(new Question { Text = "Soru", ImageUrl = "http://minio/a.jpg", Point = 1, DifficultyLevel = 1 });
+            await seed.SaveChangesAsync();
+        }
+        _minio.GetFileStreamAsync("http://minio/a.jpg").Returns(Task.FromResult<Stream?>(null));
+        _minio.FileExistsAsync("http://minio/a.jpg", Arg.Any<CancellationToken>()).Returns(true);
+
+        var job = await ImportAsync(Zip([TextQuestion(5, "Metin")]));
+
+        job.Status.ShouldBe(QuestionTransferJobStatus.Failed);
+        job.Message!.ShouldContain("no hash yet");
+        await using var check = _db.NewContext();
+        (await check.Questions.CountAsync()).ShouldBe(1);
+    }
+
+    // ---- review: tracked Update(), identity limits, chained transfer
+
+    [Fact]
+    public async Task DbSet_Update_with_changed_content_clears_the_hash()
+    {
+        var id = await SeedHashedQuestionAsync();
+
+        await using (var ctx = _db.NewContext())
+        {
+            var question = await ctx.Questions.SingleAsync(q => q.Id == id);
+            question.Text = "Değişti";
+            ctx.Questions.Update(question);
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var check = _db.NewContext();
+        (await check.Questions.SingleAsync(q => q.Id == id)).ContentFingerprint.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task DbSet_Update_with_only_classification_changed_keeps_the_hash()
+    {
+        var id = await SeedHashedQuestionAsync();
+
+        await using (var ctx = _db.NewContext())
+        {
+            var question = await ctx.Questions.Include(q => q.Answers).SingleAsync(q => q.Id == id);
+            question.DifficultyLevel = 5;
+            ctx.Questions.Update(question);
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var check = _db.NewContext();
+        (await check.Questions.SingleAsync(q => q.Id == id)).ContentHash.ShouldBe("h");
+    }
+
+    [Fact]
+    public async Task Changing_an_answer_image_clears_the_hash()
+    {
+        var id = await SeedHashedQuestionAsync();
+
+        await using (var ctx = _db.NewContext())
+        {
+            var question = await ctx.Questions.Include(q => q.Answers).SingleAsync(q => q.Id == id);
+            question.Answers.Single().ImageUrl = "http://minio/answer.jpg";
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var check = _db.NewContext();
+        (await check.Questions.SingleAsync(q => q.Id == id)).ContentFingerprint.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Package_question_whose_image_is_not_in_the_zip_fails_and_does_not_merge()
+    {
+        object Question(int id) => new
+        {
+            externalKey = $"question:{id}", id, text = (string?)null, imageUrl = $"/img/b/{id}.jpg",
+            answers = new[] { Answer(id * 10 + 1, "A", true, 1), Answer(id * 10 + 2, "B", false, 2) },
+        };
+
+        var job = await ImportAsync(Zip([Question(5), Question(6)]));
+
+        var result = Result(job);
+        result.Failed.ShouldBe(2);
+        result.Matched.ShouldBe(0);
+        await using var check = _db.NewContext();
+        (await check.Questions.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public void Text_question_with_a_passage_or_answer_image_gets_no_identity()
+    {
+        using var withPassage = JsonDocument.Parse("""{"text":"Buna göre hangisi doğrudur?","passage":{"text":"Parça"},"answers":[]}""");
+        using var withAnswerImage = JsonDocument.Parse("""{"text":"Hangisi üçgendir?","answers":[{"text":"","imageUrl":"/img/b/a.jpg"}]}""");
+        using var plain = JsonDocument.Parse("""{"text":"Hangisi üçgendir?","answers":[]}""");
+
+        QuestionContentHash.ForManifest(withPassage.RootElement, null).ContentHash.ShouldBeNull();
+        QuestionContentHash.ForManifest(withAnswerImage.RootElement, null).ContentHash.ShouldBeNull();
+        QuestionContentHash.ForManifest(plain.RootElement, null).ContentHash.ShouldNotBeNull();
+        QuestionContentHash.ForQuestion(new Question { Text = "Buna göre?", PassageId = 3 }, null).ContentHash.ShouldBeNull();
+        // Görsel kimliği belirlediği için paragraf görselli soruyu etkilemez.
+        QuestionContentHash.ForManifest(withPassage.RootElement, ImageA).ContentHash.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void Manifest_and_stored_question_give_the_same_hashes()
+    {
+        var question = new Question
+        {
+            Text = "Soru", SubText = "Alt", InteractionType = "fillBlank", PracticeCorrectAnswer = "x",
+            InteractionPlan = """{"b":1,"a":[1,2]}""", InteractionSolution = """{"s":"y"}""", CorrectAnswerId = 2,
+            Answers = [new Answer { Id = 1, Text = "A", Tag = "t1", Order = 1 }, new Answer { Id = 2, Text = "B", Tag = "t2", Order = 2 }],
+        };
+        var manifest = JsonSerializer.Serialize(new
+        {
+            text = "Soru", subText = "Alt", interactionType = "fillBlank", practiceCorrectAnswer = "x",
+            interactionPlan = """{"a":[1,2],"b":1}""", interactionSolution = """{"s":"y"}""",
+            answers = new object[] { new { text = "B", tag = "t2", order = 2, isCorrect = true }, new { text = "A", tag = "t1", order = 1, isCorrect = false } },
+        });
+        using var doc = JsonDocument.Parse(manifest);
+
+        QuestionContentHash.ForManifest(doc.RootElement, ImageA).ShouldBe(QuestionContentHash.ForQuestion(question, ImageA));
+    }
+
+    private const string MatchPlan = """{"version":1,"type":"match","left":[{"id":"l1","label":"Bir"},{"id":"l2","label":"İki"}],"right":[{"id":"r1","label":"1"},{"id":"r2","label":"2"}],"prelinked":[{"leftId":"l1","rightId":"r1"}]}""";
+    private const string MatchSolution = """{"l1":"r1","l2":"r2"}""";
+    private const string DragPlan = """{"version":1,"type":"dragPlace","mode":"order","targets":[{"id":"t1","label":"Sıra"}],"cards":[{"id":"c1","label":"Önce"},{"id":"c2","label":"Sonra"}]}""";
+    private const string DragSolution = """{"t1":["c1","c2"]}""";
+
+    private static QuestionContentHashes Interaction(string type, string plan, string solution) =>
+        QuestionContentHash.Compute(ImageA, "Soru", null, type, plan, solution, null, []);
+
+    [Fact]
+    public void Scrambling_on_storage_does_not_change_the_fingerprint()
+    {
+        var (matchPlan, matchSolution) = new ExamApp.Api.Services.Interactions.MatchGrader().PrepareForStorage(MatchPlan, MatchSolution);
+        var (dragPlan, dragSolution) = new ExamApp.Api.Services.Interactions.DragPlaceGrader().PrepareForStorage(DragPlan, DragSolution);
+
+        matchPlan.ShouldNotBe(MatchPlan);
+        dragPlan.ShouldNotBe(DragPlan);
+        Interaction("match", matchPlan!, matchSolution!).Fingerprint.ShouldBe(Interaction("match", MatchPlan, MatchSolution).Fingerprint);
+        Interaction("dragPlace", dragPlan!, dragSolution!).Fingerprint.ShouldBe(Interaction("dragPlace", DragPlan, DragSolution).Fingerprint);
+    }
+
+    [Fact]
+    public void Different_answer_key_still_changes_the_fingerprint_of_a_scrambled_type()
+    {
+        Interaction("match", MatchPlan, """{"l1":"r2","l2":"r1"}""").Fingerprint.ShouldNotBe(Interaction("match", MatchPlan, MatchSolution).Fingerprint);
+        Interaction("dragPlace", DragPlan, """{"t1":["c2","c1"]}""").Fingerprint.ShouldNotBe(Interaction("dragPlace", DragPlan, DragSolution).Fingerprint);
+    }
+
+    // ---- review: rights, limits, scope
+
+    private static object RightsQuestion(int id, bool unpublished) => new
+    {
+        externalKey = $"question:{id}", id, text = "Soru",
+        sourceType = "Publisher", rightsHolder = "Yayınevi", licenseReference = "L-1", isUnpublished = unpublished, point = 500,
+        answers = new[] { Answer(id * 10 + 1, "Evet", true, 1) },
+    };
+
+    private async Task<int> SeedMatchingTextQuestionAsync(QuestionSourceType sourceType = QuestionSourceType.Unknown)
+    {
+        await ImportAsync(Zip([new { externalKey = "question:9", id = 9, text = "Soru", answers = new[] { Answer(91, "Evet", true, 1) } }]), "seed");
+        await using var ctx = _db.NewContext();
+        var question = await ctx.Questions.SingleAsync();
+        question.SourceType = sourceType;
+        await ctx.SaveChangesAsync();
+        return question.Id;
+    }
+
+    [Fact]
+    public async Task Match_fills_rights_of_an_unknown_source_and_warns_about_unpublished_without_changing_it()
+    {
+        var id = await SeedMatchingTextQuestionAsync();
+
+        var job = await ImportAsync(Zip([RightsQuestion(5, unpublished: true)]));
+
+        var result = Result(job);
+        result.Matched.ShouldBe(1);
+        result.Warnings.ShouldHaveSingleItem().ShouldContain("unpublished");
+        await using var check = _db.NewContext();
+        var saved = await check.Questions.SingleAsync(q => q.Id == id);
+        saved.SourceType.ShouldBe(QuestionSourceType.Publisher);
+        saved.RightsHolder.ShouldBe("Yayınevi");
+        saved.IsUnpublished.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Match_keeps_rights_the_target_already_knows()
+    {
+        var id = await SeedMatchingTextQuestionAsync(QuestionSourceType.Teacher);
+
+        await ImportAsync(Zip([RightsQuestion(5, unpublished: false)]));
+
+        await using var check = _db.NewContext();
+        var saved = await check.Questions.SingleAsync(q => q.Id == id);
+        saved.SourceType.ShouldBe(QuestionSourceType.Teacher);
+        saved.RightsHolder.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Package_point_is_kept_in_range()
+    {
+        await ImportAsync(Zip([RightsQuestion(5, unpublished: false)]));
+
+        await using var check = _db.NewContext();
+        (await check.Questions.SingleAsync()).Point.ShouldBe(100);
+    }
+
+    [Fact]
+    public async Task Package_entry_over_the_limit_is_rejected()
+    {
+        var zipBytes = Zip([TextQuestion(5, "Metin")], new() { [5] = new byte[2048] });
+        using var zip = new ZipArchive(new MemoryStream(zipBytes), ZipArchiveMode.Read);
+        var entry = zip.GetEntry("questions/5/question.jpg")!;
+
+        await Should.ThrowAsync<InvalidOperationException>(() => QuestionContentHash.ReadPackageEntryAsync(entry, 1024));
+        (await QuestionContentHash.ReadPackageEntryAsync(entry, 4096)).Length.ShouldBe(2048);
+    }
+
+    [Fact]
+    public async Task Scoped_export_is_refused_when_the_source_holds_questions_outside_the_scope()
+    {
+        int subjectId, inScope, outside;
+        await using (var seed = _db.NewContext())
+        {
+            var subject = new Subject { Name = "Kapsam dersi" };
+            seed.Subjects.Add(subject);
+            await seed.SaveChangesAsync();
+            subjectId = subject.Id;
+            var first = new Question { Text = "İçinde", SubjectId = subject.Id, Point = 1, DifficultyLevel = 1 };
+            var second = new Question { Text = "Dışında", Point = 1, DifficultyLevel = 1 };
+            seed.Questions.AddRange(first, second);
+            await seed.SaveChangesAsync();
+            (inScope, outside) = (first.Id, second.Id);
+            seed.Add(new QuestionTransferExportMap { SourceKey = "default", QuestionId = outside, BundleNo = 1 });
+            seed.Add(new QuestionTransferExportMap { SourceKey = "subset", QuestionId = inScope, BundleNo = 1 });
+            await seed.SaveChangesAsync();
+        }
+
+        await using var ctx = _db.NewContext();
+        var refused = await Service(ctx).StartExportAsync(new StartQuestionExportDto { SubjectId = subjectId }, new QuestionTransferOwner(1, true), default);
+        refused.Status.ShouldBe(nameof(QuestionTransferJobStatus.Failed));
+        refused.Message!.ShouldContain("new source name");
+        _jobs.ReceivedCalls().ShouldBeEmpty();
+
+        var allowed = await Service(ctx).StartExportAsync(new StartQuestionExportDto { SubjectId = subjectId, SourceKey = "subset" }, new QuestionTransferOwner(1, true), default);
+        allowed.Status.ShouldNotBe(nameof(QuestionTransferJobStatus.Failed));
+        _jobs.ReceivedCalls().ShouldNotBeEmpty();
+    }
+
+    [Fact]
+    public async Task Downloaded_package_carries_the_current_rights_of_a_question()
+    {
+        int id;
+        await using (var seed = _db.NewContext())
+        {
+            var question = new Question { Text = "Soru", SourceType = QuestionSourceType.Publisher, IsUnpublished = true, Point = 1, DifficultyLevel = 1 };
+            seed.Questions.Add(question);
+            await seed.SaveChangesAsync();
+            id = question.Id;
+        }
+        using var doc = JsonDocument.Parse(JsonSerializer.Serialize(new[] { new { id, text = "Soru", isUnpublished = false, sourceType = "Unknown" } }));
+
+        await using var ctx = _db.NewContext();
+        var refreshed = (await Service(ctx).WithCurrentRightsAsync(doc.RootElement.EnumerateArray().ToList(), default)).Single();
+
+        refreshed["isUnpublished"]!.GetValue<bool>().ShouldBeTrue();
+        refreshed["sourceType"]!.GetValue<string>().ShouldBe("Publisher");
+        refreshed["text"]!.GetValue<string>().ShouldBe("Soru");
     }
 
     // ---- export scope

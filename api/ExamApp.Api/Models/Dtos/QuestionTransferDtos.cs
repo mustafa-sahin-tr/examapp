@@ -82,6 +82,9 @@ public class QuestionTransferImportPreviewDto
     public int ConflictCount { get; set; }
     public int MissingTaxonomyCount { get; set; }
 
+    /// <summary>Görseli pakette bulunmayan soru sayısı: içe aktarımda alınmaz, hata olarak yazılır.</summary>
+    public int MissingImageCount { get; set; }
+
     /// <summary>Hedefte hash'i henüz hesaplanmamış soru sayısı: sıfır değilse eşleşme sayıları eksik olabilir.</summary>
     public int TargetUnhashedCount { get; set; }
     public List<string> ConflictSamples { get; set; } = new();

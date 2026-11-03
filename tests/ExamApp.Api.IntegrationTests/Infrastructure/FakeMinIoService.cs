@@ -31,6 +31,9 @@ public sealed class FakeMinIoService : IMinIoService
         => Task.FromResult<string?>(null);
 
     /// <summary>issue #365 (S3): only objects seeded via <see cref="Put"/> (as <c>/img/{bucket}/{key}</c>) exist.</summary>
+    public Task<bool> FileExistsAsync(string fileUrl, CancellationToken ct = default)
+        => Task.FromResult(_objects.ContainsKey(fileUrl));
+
     public Task<bool> ObjectExistsAsync(string bucketName, string objectName, CancellationToken ct = default)
         => Task.FromResult(_objects.ContainsKey($"/img/{bucketName}/{objectName}"));
 }

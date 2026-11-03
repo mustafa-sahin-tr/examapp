@@ -6,7 +6,8 @@ namespace ExamApp.Api.Services.QuestionTransfer;
 
 /// <summary>
 /// Paketteki ders, konu ve alt konuyu hedefte bulur: önce kataloğun kalıcı koduyla, kod yoksa (eski paket) adla.
-/// Bulunamayan sınıflandırma <see cref="Missing"/> olarak işaretlenir, sessizce boş kalmaz.
+/// Bulunamayan sınıflandırma <see cref="Resolved.Missing"/> olarak işaretlenir, sessizce boş kalmaz. Ad önce tam eşleşir: küçültme
+/// uygulamanın kültürüne (tr-TR) bağlıyken SQL lower() veritabanının yerel ayarına bağlıdır, "Isı" gibi adlarda ayrışabilirler.
 /// </summary>
 public sealed class QuestionImportTaxonomy(AppDbContext db)
 {
@@ -64,7 +65,7 @@ public sealed class QuestionImportTaxonomy(AppDbContext db)
         if (id is null && name is not null)
         {
             var lowered = name.ToLower();
-            id = await db.Subjects.AsNoTracking().Where(s => s.Name.ToLower() == lowered).Select(s => (int?)s.Id).FirstOrDefaultAsync(ct);
+            id = await db.Subjects.AsNoTracking().Where(s => s.Name == name || s.Name.ToLower() == lowered).Select(s => (int?)s.Id).FirstOrDefaultAsync(ct);
         }
 
         return _subjects[key] = id;
@@ -85,13 +86,13 @@ public sealed class QuestionImportTaxonomy(AppDbContext db)
         if (id is null && name is not null)
         {
             var lowered = name.ToLower();
-            var query = db.Topics.AsNoTracking().Where(t => t.Name.ToLower() == lowered);
+            var query = db.Topics.AsNoTracking().Where(t => t.Name == name || t.Name.ToLower() == lowered);
             if (subjectId is not null)
                 query = query.Where(t => t.SubjectId == subjectId);
             if (gradeName is not null)
             {
                 var loweredGrade = gradeName.ToLower();
-                query = query.Where(t => t.Grade.Name.ToLower() == loweredGrade);
+                query = query.Where(t => t.Grade.Name == gradeName || t.Grade.Name.ToLower() == loweredGrade);
             }
             id = await query.OrderBy(t => t.Id).Select(t => (int?)t.Id).FirstOrDefaultAsync(ct);
         }
@@ -115,16 +116,16 @@ public sealed class QuestionImportTaxonomy(AppDbContext db)
         if (id is null && name is not null)
         {
             var lowered = name.ToLower();
-            var query = db.SubTopics.AsNoTracking().Where(s => s.Name.ToLower() == lowered);
+            var query = db.SubTopics.AsNoTracking().Where(s => s.Name == name || s.Name.ToLower() == lowered);
             if (topicName is not null)
             {
                 var loweredTopic = topicName.ToLower();
-                query = query.Where(s => s.Topic.Name.ToLower() == loweredTopic);
+                query = query.Where(s => s.Topic.Name == topicName || s.Topic.Name.ToLower() == loweredTopic);
             }
             if (gradeName is not null)
             {
                 var loweredGrade = gradeName.ToLower();
-                query = query.Where(s => s.Topic.Grade.Name.ToLower() == loweredGrade);
+                query = query.Where(s => s.Topic.Grade.Name == gradeName || s.Topic.Grade.Name.ToLower() == loweredGrade);
             }
             id = await query.OrderBy(s => s.Id).Select(s => (int?)s.Id).FirstOrDefaultAsync(ct);
         }

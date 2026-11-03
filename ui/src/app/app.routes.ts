@@ -263,6 +263,13 @@ export const routes: Routes = [
           import('./pages/practice-solve/practice-solve.component').then((m) => m.PracticeSolveComponent),
       },
       {
+        // Issue #532: kaydedilen sorular.
+        path: 'saved-questions',
+        canActivate: [authGuard, studentGuard],
+        loadComponent: () =>
+          import('./pages/saved-questions/saved-questions.component').then((m) => m.SavedQuestionsComponent),
+      },
+      {
         // Issue #698: yanlış defteri.
         path: 'mistakes',
         canActivate: [authGuard, studentGuard],

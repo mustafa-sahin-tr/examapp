@@ -200,6 +200,7 @@ public class AppDbContext : DbContext
     public DbSet<PracticeSession> PracticeSessions { get; set; }
     public DbSet<PracticeSessionQuestion> PracticeSessionQuestions { get; set; }
     public DbSet<StudentMistakeReason> StudentMistakeReasons { get; set; }
+    public DbSet<SavedQuestion> SavedQuestions { get; set; }
 
     // "Günün soruları" (issue #99)
     public DbSet<DailyQuestionSet> DailyQuestionSets { get; set; }
@@ -983,6 +984,23 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<PracticeSession>()
             .HasIndex(ps => new { ps.StudentId, ps.Status });
+
+        // Issue #532: öğrenci + soru başına tek kayıt.
+        modelBuilder.Entity<SavedQuestion>()
+            .HasIndex(q => new { q.StudentId, q.QuestionId })
+            .IsUnique();
+
+        modelBuilder.Entity<SavedQuestion>()
+            .HasOne(q => q.Student)
+            .WithMany()
+            .HasForeignKey(q => q.StudentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<SavedQuestion>()
+            .HasOne(q => q.Question)
+            .WithMany()
+            .HasForeignKey(q => q.QuestionId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // Issue #698: öğrenci + soru başına tek etiket.
         modelBuilder.Entity<StudentMistakeReason>()

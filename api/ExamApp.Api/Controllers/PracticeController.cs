@@ -75,6 +75,45 @@ public class PracticeController : BaseController
         return Ok(await _practice.GetDueReviewAsync(student!, subjectId, take, ct));
     }
 
+    /// <summary>Issue #532: kaydedilen sorular.</summary>
+    [HttpGet("saved")]
+    public async Task<IActionResult> GetSavedQuestions(CancellationToken ct = default)
+    {
+        var (student, error) = await ResolveStudentAsync();
+        if (error != null)
+            return error;
+
+        return Ok(await _practice.GetSavedQuestionsAsync(student!, ct));
+    }
+
+    /// <summary>Issue #532: soruyu kaydeder (idempotent). Görülmemiş ya da bitmemiş testteki soru 403, sınır dolduysa 409.</summary>
+    [HttpPut("saved/{questionId:int}")]
+    public async Task<IActionResult> SaveQuestion(int questionId, CancellationToken ct = default)
+    {
+        var (student, error) = await ResolveStudentAsync();
+        if (error != null)
+            return error;
+
+        return await _practice.SaveQuestionAsync(student!, questionId, ct) switch
+        {
+            SaveQuestionResult.Saved => NoContent(),
+            SaveQuestionResult.LimitReached => Conflict(new { message = _localizer["practice.savedLimitReached"].Value }),
+            _ => StatusCode(StatusCodes.Status403Forbidden),
+        };
+    }
+
+    /// <summary>Issue #532: kaydı kaldırır.</summary>
+    [HttpDelete("saved/{questionId:int}")]
+    public async Task<IActionResult> UnsaveQuestion(int questionId, CancellationToken ct = default)
+    {
+        var (student, error) = await ResolveStudentAsync();
+        if (error != null)
+            return error;
+
+        await _practice.UnsaveQuestionAsync(student!.Id, questionId, ct);
+        return NoContent();
+    }
+
     /// <summary>Issue #698: yanlış defteri; sınıfı olmayan öğrencide boş döner.</summary>
     [HttpGet("mistakes")]
     public async Task<IActionResult> GetMistakes([FromQuery] int? subjectId, [FromQuery] int? topicId, CancellationToken ct = default)

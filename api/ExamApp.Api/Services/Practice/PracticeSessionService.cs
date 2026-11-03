@@ -30,6 +30,8 @@ public class PracticeSessionService : IPracticeSessionService
     private const int MaxPageSize = 100;
     private const int MaxDueReviewCount = 15;
     private const int MaxMistakeItems = 200;
+    private const int MaxSavedSessionCount = 30;
+    private const int MaxSavedQuestions = 500;
 
     private readonly AppDbContext _context;
 
@@ -72,6 +74,15 @@ public class PracticeSessionService : IPracticeSessionService
                 throw new InvalidOperationException(_localizer["practice.noMistakes"]);
 
             fixedQuestionIdsJson = JsonSerializer.Serialize(mistakes.Take(MaxDueReviewCount).Select(m => m.QuestionId));
+        }
+
+        if (request.Saved)
+        {
+            var saved = await LoadSavedQuestionsAsync(student, onlyPracticable: true, ct);
+            if (saved.Count == 0)
+                throw new InvalidOperationException(_localizer["practice.noSavedQuestions"]);
+
+            fixedQuestionIdsJson = JsonSerializer.Serialize(saved.Take(MaxSavedSessionCount).Select(q => q.QuestionId));
         }
 
         var session = new PracticeSession
@@ -154,6 +165,98 @@ public class PracticeSessionService : IPracticeSessionService
 
         await _context.SaveChangesAsync(ct);
         return true;
+    }
+
+    public async Task<SavedQuestionsDto> GetSavedQuestionsAsync(StudentProfileDto student, CancellationToken ct = default)
+    {
+        var saved = await LoadSavedQuestionsAsync(student, onlyPracticable: false, ct);
+        return new SavedQuestionsDto { TotalCount = saved.Count, Items = saved };
+    }
+
+    public async Task<SaveQuestionResult> SaveQuestionAsync(StudentProfileDto student, int questionId, CancellationToken ct = default)
+    {
+        var attempts = await DueReviewQueries.LoadAttemptsAsync(_context, student.Id, ct);
+        var blocked = await DueReviewQueries.LoadBlockedAsync(_context, _calendar, student, ct);
+        if (!attempts.ContainsKey(questionId) || blocked.Contains(questionId)
+            || !await _context.Questions.AnyAsync(q => q.Id == questionId, ct))
+        {
+            return SaveQuestionResult.NotAllowed;
+        }
+
+        // Silme soft-delete'tir; benzersiz indeks silinen satırı da sayar, bu yüzden yeniden kayıtta o satır canlanır.
+        var existing = await _context.SavedQuestions
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(q => q.StudentId == student.Id && q.QuestionId == questionId, ct);
+
+        if (existing is { IsDeleted: false })
+            return SaveQuestionResult.Saved;
+
+        if (await _context.SavedQuestions.CountAsync(q => q.StudentId == student.Id, ct) >= MaxSavedQuestions)
+            return SaveQuestionResult.LimitReached;
+
+        if (existing != null)
+        {
+            existing.IsDeleted = false;
+            existing.DeleteTime = null;
+            existing.DeleteUserId = null;
+            existing.CreateTime = DateTime.UtcNow;
+        }
+        else
+        {
+            _context.SavedQuestions.Add(new SavedQuestion { StudentId = student.Id, QuestionId = questionId });
+        }
+
+        try
+        {
+            await _context.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (DbUpdateExceptionClassifier.IsUniqueViolation(ex))
+        {
+            // Eşzamanlı iki kayıt: diğeri yazdı, sonuç aynı.
+        }
+        return SaveQuestionResult.Saved;
+    }
+
+    public async Task UnsaveQuestionAsync(int studentId, int questionId, CancellationToken ct = default)
+    {
+        var existing = await _context.SavedQuestions
+            .FirstOrDefaultAsync(q => q.StudentId == studentId && q.QuestionId == questionId, ct);
+
+        if (existing != null)
+        {
+            _context.SavedQuestions.Remove(existing);
+            await _context.SaveChangesAsync(ct);
+        }
+    }
+
+    /// <param name="onlyPracticable">true: havuz kuralına uyan ve kopya riski taşımayan sorular (oturum için).</param>
+    private async Task<List<SavedQuestionDto>> LoadSavedQuestionsAsync(StudentProfileDto student, bool onlyPracticable, CancellationToken ct)
+    {
+        var rows = await _context.SavedQuestions
+            .AsNoTracking()
+            .Where(q => q.StudentId == student.Id && !q.Question.IsDeleted)
+            .OrderByDescending(q => q.CreateTime)
+            .ThenByDescending(q => q.Id)
+            .Select(q => new SavedQuestionDto
+            {
+                QuestionId = q.QuestionId,
+                SubjectId = q.Question.SubjectId,
+                SubjectName = q.Question.Subject != null ? q.Question.Subject.Name : null,
+                TopicName = q.Question.Topic != null ? q.Question.Topic.Name : null,
+                SavedAt = q.CreateTime
+            })
+            .ToListAsync(ct);
+
+        if (!onlyPracticable || rows.Count == 0 || !student.GradeId.HasValue)
+            return onlyPracticable ? new List<SavedQuestionDto>() : rows;
+
+        var blocked = await DueReviewQueries.LoadBlockedAsync(_context, _calendar, student, ct);
+        var ids = rows.Select(r => r.QuestionId).Where(id => !blocked.Contains(id)).ToList();
+        var allowed = await PracticeQuestionPool.Build(_context, student.GradeId.Value, Array.Empty<int>(), Array.Empty<int>())
+            .Where(q => ids.Contains(q.Id))
+            .Select(q => q.Id)
+            .ToListAsync(ct);
+        return rows.Where(r => allowed.Contains(r.QuestionId)).ToList();
     }
 
     public async Task<PracticeSessionDto?> GetAsync(int sessionId, int studentId, CancellationToken ct = default)

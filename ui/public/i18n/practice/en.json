@@ -33,6 +33,24 @@
       "Time": "Time"
     }
   },
+  "savedQuestions": {
+    "title": "Saved Questions",
+    "subtitle": "Questions you saved to solve again later.",
+    "start": "Practise these",
+    "startError": "Could not start practice.",
+    "removeError": "Could not remove it.",
+    "loadError": "Could not load the list.",
+    "retry": "Try again",
+    "emptyTitle": "No saved questions yet",
+    "emptyText": "You can save a question after you solve it in practice.",
+    "goPractice": "Practice questions",
+    "noSubject": "No subject",
+    "savedAt": "Saved: {{date}}",
+    "remove": "Remove",
+    "save": "Save",
+    "saved": "Saved",
+    "saveError": "Could not save the question."
+  },
   "common": {
     "close": "Close",
     "retry": "Try again",

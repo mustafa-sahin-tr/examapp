@@ -705,6 +705,15 @@
 
   <div class="practice__actions practice__actions--stage">
     @if (phase() === 'feedback') {
+    <!-- Issue #532: çözülen soruyu sonra yeniden çözmek için kaydet. -->
+    <button mat-stroked-button type="button" data-test="save-question" [disabled]="saveBusy()" (click)="toggleSaved()"
+      [attr.aria-pressed]="isSaved()">
+      <mat-icon>{{ isSaved() ? 'bookmark' : 'bookmark_border' }}</mat-icon>
+      {{ t(isSaved() ? 'savedQuestions.saved' : 'savedQuestions.save') }}
+    </button>
+    @if (saveError()) {
+    <p class="practice__save-error" role="alert">{{ t('savedQuestions.saveError') }}</p>
+    }
     <button mat-raised-button color="primary" type="button" (click)="advance()" [disabled]="busy()">
       {{ t('stage.nextQuestion') }}
       <mat-icon iconPositionEnd>arrow_forward</mat-icon>

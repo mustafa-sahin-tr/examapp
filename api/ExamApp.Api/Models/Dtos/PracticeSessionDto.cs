@@ -18,6 +18,25 @@ public class PracticeSessionStartDto
 
     /// <summary>Issue #698: oturum, yanlış defterinden (kapsam filtresiyle) sabit bir listeyle açılır.</summary>
     public bool Mistakes { get; set; }
+
+    /// <summary>Issue #532: oturum, öğrencinin kaydettiği sorulardan sabit bir listeyle açılır.</summary>
+    public bool Saved { get; set; }
+}
+
+/// <summary>GET api/practice/saved: kaydedilen sorular, en yeni önce.</summary>
+public class SavedQuestionsDto
+{
+    public int TotalCount { get; set; }
+    public List<SavedQuestionDto> Items { get; set; } = new();
+}
+
+public class SavedQuestionDto
+{
+    public int QuestionId { get; set; }
+    public int? SubjectId { get; set; }
+    public string? SubjectName { get; set; }
+    public string? TopicName { get; set; }
+    public DateTime SavedAt { get; set; }
 }
 
 /// <summary>GET api/practice/mistakes: aktif yanlışlar, en yeni yanlış önce.</summary>

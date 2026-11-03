@@ -18,6 +18,7 @@ const ROUTE_ALIASES: ReadonlyArray<readonly [prefix: string, target: string]> = 
   ['/student-school-requests', '/assignment-permission-requests'],
   ['/open-text-reviews', '/assignment-permission-requests'],
   ['/booking-requests', '/assignment-permission-requests'],
+  ['/saved-questions', '/practice'],
   ['/questioncanvas', '/tests'],
   ['/program-create', '/my-calendar'],
   ['/availability', '/tutor-profile'],

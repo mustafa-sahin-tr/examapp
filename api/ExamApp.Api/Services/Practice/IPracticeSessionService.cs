@@ -31,6 +31,15 @@ public interface IPracticeSessionService
     /// <returns>false: soru bu öğrencinin defterinde değil.</returns>
     Task<bool> SetMistakeReasonAsync(StudentProfileDto student, int questionId, MistakeReason? reason, CancellationToken ct = default);
 
+    /// <summary>Issue #532: öğrencinin kaydettiği sorular, en yeni önce. Silinmiş soru dönmez.</summary>
+    Task<SavedQuestionsDto> GetSavedQuestionsAsync(StudentProfileDto student, CancellationToken ct = default);
+
+    /// <summary>Issue #532: idempotent; soru görülmüş ve kopya riski taşımıyor olmalı.</summary>
+    Task<SaveQuestionResult> SaveQuestionAsync(StudentProfileDto student, int questionId, CancellationToken ct = default);
+
+    /// <summary>Issue #532: kaydı kaldırır; kayıt yoksa etkisizdir.</summary>
+    Task UnsaveQuestionAsync(int studentId, int questionId, CancellationToken ct = default);
+
     /// <summary>Oturumda gösterilen soruların tek tek sonucu (doğru şık dahil). Aktif oturum için de çağrılabilir.</summary>
     /// <returns>null: oturum yok ya da bu öğrenciye ait değil.</returns>
     Task<PracticeSessionReviewDto?> GetReviewAsync(int sessionId, int studentId, CancellationToken ct = default);

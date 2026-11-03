@@ -186,6 +186,14 @@ export class PracticeSolveComponent implements OnInit {
   // ── Geçmiş oturumlar (kurulum ekranında) ────────────────────────────────────
   /** Issue #529: tekrar zamanı gelen soru sayısı. */
   readonly dueReviewCount = signal(0);
+  /** Issue #532: bu oturumda kaydedilen sorular. */
+  private readonly savedIds = signal<ReadonlySet<number>>(new Set());
+  readonly saveBusy = signal(false);
+  readonly saveError = signal(false);
+  readonly isSaved = computed(() => {
+    const id = this.question()?.id;
+    return id !== undefined && this.savedIds().has(id);
+  });
   readonly historyLoading = signal(false);
   readonly historyError = signal<string | null>(null);
   readonly historyPaged = signal<Paged<PracticeSession>>(EMPTY_HISTORY);
@@ -622,6 +630,36 @@ export class PracticeSolveComponent implements OnInit {
     this.openSession({ subjectIds: this.selectedSubjectIds(), topicIds: this.selectedTopicIds() }, () => this.startSession());
   }
 
+  /** Issue #532: çözülen soruyu kaydeder ya da kaydı kaldırır. */
+  toggleSaved(): void {
+    const id = this.question()?.id;
+    if (id === undefined) {
+      return;
+    }
+    const saved = this.isSaved();
+    const request = saved ? this.practiceService.unsaveQuestion(id) : this.practiceService.saveQuestion(id);
+    this.saveBusy.set(true);
+    this.saveError.set(false);
+    request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.savedIds.update((ids) => {
+          const next = new Set(ids);
+          if (saved) {
+            next.delete(id);
+          } else {
+            next.add(id);
+          }
+          return next;
+        });
+        this.saveBusy.set(false);
+      },
+      error: () => {
+        this.saveBusy.set(false);
+        this.saveError.set(true);
+      },
+    });
+  }
+
   /** Issue #529: tekrar zamanı gelen sorularla oturum. */
   startDueReview(): void {
     this.openSession({ dueReview: true }, () => this.startDueReview());
@@ -975,6 +1013,7 @@ export class PracticeSolveComponent implements OnInit {
 
   /** Geri bildirimden sonraki adım: set bittiyse bitiş, değilse sonraki soru. */
   advance(): void {
+    this.saveError.set(false);
     if (this.dailyMode() && this.dailyResults().length >= this.dailyTotal()) {
       this.finishDaily();
       return;

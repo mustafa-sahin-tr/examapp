@@ -13,6 +13,8 @@ export interface PracticeSessionStartRequest {
   dueReview?: boolean;
   /** Issue #698: yanlış defterinden sabit listeli oturum. */
   mistakes?: boolean;
+  /** Issue #532: kaydedilen sorulardan sabit listeli oturum. */
+  saved?: boolean;
 }
 
 /** Issue #529: tekrar zamanı gelen sorular; `items` listenin ilk bölümüdür. */
@@ -49,6 +51,20 @@ export interface MistakeItem {
   lastWrongAt: string;
   wrongCount: number;
   reason: MistakeReason | null;
+}
+
+/** Issue #532: kaydedilen sorular. */
+export interface SavedQuestions {
+  totalCount: number;
+  items: SavedQuestion[];
+}
+
+export interface SavedQuestion {
+  questionId: number;
+  subjectId: number | null;
+  subjectName: string | null;
+  topicName: string | null;
+  savedAt: string;
 }
 
 export type PracticeSessionStatus = 'Active' | 'Ended';

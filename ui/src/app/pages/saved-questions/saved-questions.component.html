@@ -1,0 +1,52 @@
+<section class="mnb" *transloco="let t; prefix: 'practice.savedQuestions'">
+  <header class="mnb__head">
+    <div>
+      <h1>{{ t('title') }}</h1>
+      <p>{{ t('subtitle') }}</p>
+    </div>
+    @if (items().length > 0) {
+      <button mat-raised-button color="primary" type="button" data-test="saved-start" [disabled]="starting()" (click)="startPractice()">
+        <mat-icon>replay</mat-icon>
+        {{ t('start') }}
+      </button>
+    }
+  </header>
+
+  @if (actionError(); as failed) {
+    <p class="mnb__error" role="alert">{{ t(failed === 'start' ? 'startError' : 'removeError') }}</p>
+  }
+
+  @if (loading()) {
+    <div class="mnb__state" role="status">
+      <mat-progress-spinner mode="indeterminate" diameter="40" />
+    </div>
+  } @else if (loadFailed()) {
+    <div class="mnb__state" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <p>{{ t('loadError') }}</p>
+      <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+    </div>
+  } @else if (items().length === 0) {
+    <div class="mnb__state" data-test="saved-empty">
+      <mat-icon>bookmark_border</mat-icon>
+      <h2>{{ t('emptyTitle') }}</h2>
+      <p>{{ t('emptyText') }}</p>
+      <a mat-stroked-button routerLink="/practice">{{ t('goPractice') }}</a>
+    </div>
+  } @else {
+    <ul class="mnb__list">
+      @for (item of items(); track item.questionId) {
+        <li class="mnb__item" data-test="saved-item">
+          <div class="mnb__meta">
+            <strong>{{ item.subjectName || t('noSubject') }}</strong>
+            @if (item.topicName) {
+              <span>{{ item.topicName }}</span>
+            }
+            <span class="mnb__sub">{{ t('savedAt', { date: (item.savedAt | date: 'd MMM') }) }}</span>
+          </div>
+          <button mat-stroked-button type="button" (click)="remove(item)">{{ t('remove') }}</button>
+        </li>
+      }
+    </ul>
+  }
+</section>

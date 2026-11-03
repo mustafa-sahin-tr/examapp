@@ -263,6 +263,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     [
       { id: 'tab-practice', labelKey: 'menu.practice', icon: '', route: '/practice', type: 'menu', roles: ['Student'] },
       { id: 'tab-mistakes', labelKey: 'menu.mistakes', icon: '', route: '/mistakes', type: 'menu', roles: ['Student'] },
+      { id: 'tab-saved-questions', labelKey: 'menu.savedQuestions', icon: '', route: '/saved-questions', type: 'menu', roles: ['Student'] },
     ],
     [
       { id: 'tab-calendar', labelKey: 'menu.calendar', icon: '', route: '/my-calendar', type: 'menu', roles: ['Student'] },

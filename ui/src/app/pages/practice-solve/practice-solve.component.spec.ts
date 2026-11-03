@@ -123,6 +123,8 @@ describe('PracticeSolveComponent', () => {
         practiceService = {
             startSession: vi.fn().mockName("PracticeService.startSession"),
             getDueReview: vi.fn().mockName("PracticeService.getDueReview"),
+            saveQuestion: vi.fn().mockName("PracticeService.saveQuestion"),
+            unsaveQuestion: vi.fn().mockName("PracticeService.unsaveQuestion"),
             getSession: vi.fn().mockName("PracticeService.getSession"),
             getNextQuestion: vi.fn().mockName("PracticeService.getNextQuestion"),
             submitAnswer: vi.fn().mockName("PracticeService.submitAnswer"),
@@ -607,6 +609,36 @@ describe('PracticeSolveComponent', () => {
     });
 
     // ── Günün soruları (daily modu, issue #99) ──────────────────────────────────
+    // Issue #532: çözülen soruyu kaydetme.
+    describe('save question', () => {
+        beforeEach(() => {
+            setup();
+            component.question.set({ id: 5 } as never);
+        });
+
+        it('toggleSaved_SavesThenRemoves', () => {
+            practiceService.saveQuestion.mockReturnValue(of(undefined));
+            practiceService.unsaveQuestion.mockReturnValue(of(undefined));
+
+            component.toggleSaved();
+            expect(practiceService.saveQuestion).toHaveBeenCalledWith(5);
+            expect(component.isSaved()).toBe(true);
+
+            component.toggleSaved();
+            expect(practiceService.unsaveQuestion).toHaveBeenCalledWith(5);
+            expect(component.isSaved()).toBe(false);
+        });
+
+        it('saveError_DoesNotMarkAsSaved', () => {
+            practiceService.saveQuestion.mockReturnValue(throwError(() => new Error('x')));
+
+            component.toggleSaved();
+
+            expect(component.isSaved()).toBe(false);
+            expect(component.saveError()).toBe(true);
+        });
+    });
+
     // Issue #529: tekrar zamanı gelen sorular kartı.
     describe('due review card', () => {
         const card = () => (fixture.nativeElement as HTMLElement).querySelector('[data-test="due-review-card"]');

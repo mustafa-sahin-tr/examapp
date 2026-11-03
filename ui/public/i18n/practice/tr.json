@@ -33,6 +33,24 @@
       "Time": "Süre"
     }
   },
+  "savedQuestions": {
+    "title": "Kaydettiklerim",
+    "subtitle": "Sonra yeniden çözmek için kaydettiğin sorular.",
+    "start": "Bu soruları çöz",
+    "startError": "Pratik başlatılamadı.",
+    "removeError": "Kayıt kaldırılamadı.",
+    "loadError": "Liste yüklenemedi.",
+    "retry": "Tekrar dene",
+    "emptyTitle": "Henüz kayıtlı sorun yok",
+    "emptyText": "Pratikte bir soruyu çözdükten sonra kaydedebilirsin.",
+    "goPractice": "Soru çöz",
+    "noSubject": "Ders belirtilmemiş",
+    "savedAt": "Kaydedildi: {{date}}",
+    "remove": "Kaydı kaldır",
+    "save": "Kaydet",
+    "saved": "Kaydedildi",
+    "saveError": "Soru kaydedilemedi."
+  },
   "common": {
     "close": "Kapat",
     "retry": "Tekrar dene",

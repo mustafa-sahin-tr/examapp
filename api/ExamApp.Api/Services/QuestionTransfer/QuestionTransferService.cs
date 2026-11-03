@@ -62,6 +62,28 @@ public class QuestionTransferService : IQuestionTransferService
         ArgumentNullException.ThrowIfNull(owner);
         // QuestionIds may be empty to indicate "export all".
 
+        // Kapsam boş sonuç verirse işe başlanmaz: boş kimlik listesi "hepsi" demektir, yanlışlıkla tüm sorular çıkar.
+        if (request.HasScope)
+        {
+            request.QuestionIds = await ResolveScopeAsync(request, ct);
+            if (request.QuestionIds.Count == 0)
+            {
+                var emptyJob = new QuestionTransferJob
+                {
+                    Id = Guid.NewGuid(),
+                    Kind = QuestionTransferJobKind.Export,
+                    Status = QuestionTransferJobStatus.Completed,
+                    SourceKey = string.IsNullOrWhiteSpace(request.SourceKey) ? "default" : request.SourceKey.Trim(),
+                    RequestJson = JsonSerializer.Serialize(request),
+                    Message = "No questions match the selected scope.",
+                };
+                _db.SetCurrentUser(owner.UserId);
+                _db.Add(emptyJob);
+                await _db.SaveChangesAsync(ct);
+                return ToDto(emptyJob);
+            }
+        }
+
         var job = new QuestionTransferJob
         {
             Id = Guid.NewGuid(),
@@ -83,6 +105,21 @@ public class QuestionTransferService : IQuestionTransferService
         _jobs.Enqueue<QuestionTransferJobRunner>(r => r.RunExportAsync(job.Id, ownerIsAdmin));
 
         return ToDto(job);
+    }
+
+    private async Task<List<int>> ResolveScopeAsync(StartQuestionExportDto request, CancellationToken ct)
+    {
+        var query = _db.Questions.AsNoTracking();
+        if (request.SubjectId is int subjectId)
+            query = query.Where(q => q.SubjectId == subjectId);
+        if (request.TopicId is int topicId)
+            query = query.Where(q => q.TopicId == topicId);
+        if (request.GradeId is int gradeId)
+            query = query.Where(q => (q.TopicId != null && q.Topic.GradeId == gradeId)
+                || q.WorksheetQuestions.Any(wq => wq.Worksheet.GradeId == gradeId));
+        if (request.BookId is int bookId)
+            query = query.Where(q => _db.QuestionSources.Any(s => s.QuestionId == q.Id && s.BookId == bookId));
+        return await query.OrderBy(q => q.Id).Select(q => q.Id).ToListAsync(ct);
     }
 
     public async Task<QuestionTransferJobDto> StartImportAsync(string sourceKey, string uploadedFileUrl, QuestionTransferOwner owner, CancellationToken ct)
@@ -237,6 +274,68 @@ public class QuestionTransferService : IQuestionTransferService
         var questions = doc.RootElement.GetProperty("questions").EnumerateArray().ToList();
         var questionCount = questions.Count;
 
+        // Görseller zipten okunup hash'lenir; hedefte hash'i eksik soru varsa arka planda tamamlanır ve sayısı gösterilir.
+        var unhashed = await _db.Questions.AsNoTracking().CountAsync(q => q.ContentFingerprint == null, ct);
+        if (unhashed > 0)
+            _jobs.Enqueue<QuestionContentHashService>(s => s.RunAsync());
+
+        var taxonomy = new QuestionImportTaxonomy(_db);
+        var newCount = 0;
+        var matchedCount = 0;
+        var conflictCount = 0;
+        var missingTaxonomyCount = 0;
+        var alreadyImportedInFile = 0;
+        var conflictSamples = new List<string>();
+        var seenInFile = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var question in questions)
+        {
+            var key = question.TryGetProperty("externalKey", out var keyEl) ? keyEl.GetString() ?? string.Empty : string.Empty;
+            if (await _db.Set<QuestionTransferImportMap>().AnyAsync(m => m.SourceKey == sourceKey && m.ExternalQuestionKey == key, ct))
+            {
+                alreadyImportedInFile++;
+                continue;
+            }
+
+            byte[]? image = null;
+            if (question.TryGetProperty("id", out var idEl) && idEl.ValueKind == JsonValueKind.Number
+                && zip.GetEntry($"questions/{idEl.GetInt32()}/question.jpg") is { } imageEntry)
+            {
+                await using var imageStream = imageEntry.Open();
+                await using var buffer = new MemoryStream();
+                await imageStream.CopyToAsync(buffer, ct);
+                image = buffer.ToArray();
+            }
+
+            var hashes = QuestionContentHash.ForManifest(question, image);
+            var match = await QuestionContentHash.FindMatchAsync(_db, hashes, ct);
+            // Aynı dosyada ikinci kez geçen içerik: import sırasında ilki yazılmış olacağı için onunla karşılaştırılır.
+            if (match.Kind == QuestionMatchKind.New && hashes.ContentHash is not null)
+            {
+                if (seenInFile.TryGetValue(hashes.ContentHash, out var fingerprint))
+                    match = new QuestionMatch(fingerprint == hashes.Fingerprint ? QuestionMatchKind.Exact : QuestionMatchKind.Conflict, null);
+                else
+                    seenInFile[hashes.ContentHash] = hashes.Fingerprint;
+            }
+
+            switch (match.Kind)
+            {
+                case QuestionMatchKind.New:
+                    newCount++;
+                    break;
+                case QuestionMatchKind.Exact:
+                    matchedCount++;
+                    break;
+                default:
+                    conflictCount++;
+                    if (conflictSamples.Count < 10)
+                        conflictSamples.Add(key);
+                    continue;
+            }
+
+            if ((await taxonomy.ResolveAsync(question, ct)).Missing)
+                missingTaxonomyCount++;
+        }
+
         var externalKeys = questions
             .Select(q => q.TryGetProperty("externalKey", out var ek) ? (ek.GetString() ?? string.Empty) : string.Empty)
             .Where(x => !string.IsNullOrWhiteSpace(x))
@@ -257,6 +356,12 @@ public class QuestionTransferService : IQuestionTransferService
             SourceKey = sourceKey,
             QuestionCount = questionCount,
             AlreadyImportedCount = alreadyImported,
+            NewCount = newCount,
+            MatchedCount = matchedCount,
+            ConflictCount = conflictCount,
+            MissingTaxonomyCount = missingTaxonomyCount,
+            TargetUnhashedCount = unhashed,
+            ConflictSamples = conflictSamples,
         };
     }
 
@@ -272,6 +377,9 @@ public class QuestionTransferService : IQuestionTransferService
             ProcessedItems = job.ProcessedItems,
             FileUrl = job.FileUrl,
             Message = job.Message,
+            Result = string.IsNullOrWhiteSpace(job.ResultJson)
+                ? null
+                : JsonSerializer.Deserialize<QuestionTransferImportResultDto>(job.ResultJson),
         };
     }
 

@@ -613,6 +613,8 @@ if (rabbitMqEnabled)
 // Question export/import
 builder.Services.AddScoped<IQuestionTransferService, QuestionTransferService>();
 builder.Services.AddScoped<QuestionTransferJobRunner>();
+builder.Services.AddScoped<QuestionContentHashService>();
+builder.Services.AddScoped<IQuestionContentHashService>(sp => sp.GetRequiredService<QuestionContentHashService>());
 
 // İstek kültürü çözümlemesi (issue #181). Desteklenen diller tek kaynaktan gelir:
 // ExamApp.Foundation.Localization.SupportedLocales (tr → tr-TR, en → en-US).
@@ -765,6 +767,12 @@ RecurringJob.AddOrUpdate<ExamApp.Api.Services.Classifier.IClassifierCacheService
     "classifier-cache-reconcile",
     s => s.RefreshIfStaleAsync(0),
     app.Configuration.GetValue<string>("Classifier:ReconcileCron") ?? "0 * * * *");
+
+// Yeni ve değişen soruların aktarım hash'i; yalnız eksik olanları okur.
+RecurringJob.AddOrUpdate<QuestionContentHashService>(
+    QuestionContentHashService.RecurringJobId,
+    s => s.RunAsync(),
+    app.Configuration.GetValue<string>("QuestionTransfer:HashCron") ?? "30 * * * *");
 
 // issue #262: AdminDataAccessLogs saklama süresi (KVKK) — süresi dolan satırları günlük, parti parti siler.
 RecurringJob.AddOrUpdate<ExamApp.Api.Services.AdminUsers.IAdminDataAccessLogRetentionJob>(

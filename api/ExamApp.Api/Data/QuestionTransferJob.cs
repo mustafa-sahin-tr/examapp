@@ -43,4 +43,7 @@ public class QuestionTransferJob : BaseEntity
     public string? FileUrl { get; set; }
 
     public string? Message { get; set; }
+
+    /// <summary>İçe aktarım işinin sayıları ve örnekleri (QuestionTransferImportResultDto, JSON).</summary>
+    public string? ResultJson { get; set; }
 }

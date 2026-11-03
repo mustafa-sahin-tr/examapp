@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging.Abstractions;
+using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Questions;
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
@@ -23,19 +25,22 @@ public class QuestionTransferJobRunner
     private readonly IApprovedTeacherGuard _teacherGuard;
     // review #574 (L1): içe alınan etkileşim tanımı kayıt yoluyla aynı kontrolcüyle doğrulanır.
     private readonly IInteractionGraderRegistry _graders;
+    private readonly IQuestionContentHashService _hashes;
 
     private const int ExportBundleSize = 2000;
+    private const int MaxResultSamples = 10;
 
     /// <summary>issue #289 (security D2): sahibi artık onaylı öğretmen olmayan işin sonlandırma mesajı.</summary>
     public const string OwnerNotApprovedMessage = "Job owner's teacher account is not approved (or is suspended); job was not run.";
 
     public QuestionTransferJobRunner(AppDbContext db, IMinIoService minio, IApprovedTeacherGuard teacherGuard,
-        IInteractionGraderRegistry? graders = null)
+        IInteractionGraderRegistry? graders = null, IQuestionContentHashService? hashes = null)
     {
         _db = db;
         _minio = minio;
         _teacherGuard = teacherGuard;
         _graders = graders ?? InteractionGraderRegistry.Default;
+        _hashes = hashes ?? new QuestionContentHashService(db, minio, NullLogger<QuestionContentHashService>.Instance);
     }
 
     /// <summary>
@@ -328,7 +333,8 @@ public class QuestionTransferJobRunner
             ?? throw new InvalidOperationException("Bundle not found");
 
         var objectName = BundleObjectName(sourceKey, bundleNo);
-        var tmpPath = Path.Combine(Path.GetTempPath(), $"export-{sourceKey}-bundle-{bundleNo:D4}.zip");
+        // Ad işe özgü: aynı kaynak adıyla çalışan iki iş aynı dosyaya yazmasın. Kaynak adı kullanıcıdan gelir, yola girmez.
+        var tmpPath = Path.Combine(Path.GetTempPath(), $"export-{Guid.NewGuid():N}.zip");
 
         // Download existing bundle if present
         if (!string.IsNullOrWhiteSpace(bundle.FileUrl))
@@ -427,7 +433,7 @@ public class QuestionTransferJobRunner
 
         var manifest = new
         {
-            version = 2,
+            version = 3,
             sourceKey = sourceKey,
             bundleNo = bundleNo,
             exportedAtUtc = DateTime.UtcNow,
@@ -438,6 +444,14 @@ public class QuestionTransferJobRunner
                 text = q.Text,
                 subText = q.SubText,
                 imageUrl = q.ImageUrl,
+                point = q.Point,
+                bookName = q.BookName,
+                // Issue #690: kaynak, lisans ve yayın durumu hedefte de geçerli olmalı (#701 baskı kuralı buna bakar).
+                sourceType = q.SourceType.ToString(),
+                rightsHolder = q.RightsHolder,
+                licenseReference = q.LicenseReference,
+                licenseEndsAt = q.LicenseEndsAt,
+                isUnpublished = q.IsUnpublished,
                 difficultyLevel = q.DifficultyLevel,
                 classificationSource = q.ClassificationSource?.ToString(),
                 showPassageFirst = q.ShowPassageFirst,
@@ -454,16 +468,17 @@ public class QuestionTransferJobRunner
                 height = q.Height,
                 sanitizedHeight = q.SanitizedHeight,
                 subject = q.SubjectId.HasValue && q.Subject != null
-                    ? new { id = q.SubjectId, name = q.Subject.Name }
+                    ? new { id = q.SubjectId, code = q.Subject.Code, name = q.Subject.Name }
                     : null,
                 topic = q.TopicId.HasValue && q.Topic != null
-                    ? new { id = q.TopicId, name = q.Topic.Name, gradeId = q.Topic.GradeId, gradeName = q.Topic.Grade?.Name }
+                    ? new { id = q.TopicId, code = q.Topic.Code, name = q.Topic.Name, gradeId = q.Topic.GradeId, gradeName = q.Topic.Grade?.Name }
                     : null,
                 subTopics = q.QuestionSubTopics
                     .Where(st => st.SubTopic != null)
                     .Select(st => new
                     {
                         id = st.SubTopicId,
+                        code = st.SubTopic.Code,
                         name = st.SubTopic.Name,
                         topicName = st.SubTopic.Topic?.Name,
                         gradeName = st.SubTopic.Topic?.Grade?.Name,
@@ -519,7 +534,7 @@ public class QuestionTransferJobRunner
     /// issue #570: manifestten plan + çözüm. Ayrı <c>interactionSolution</c> (string) varsa o kullanılır; yoksa eski manifest
     /// planındaki <c>solution</c> ayrılır. Plan her durumda çözümsüz yazılır.
     /// </summary>
-    private static (string? Plan, string? Solution) ReadInteractionPlanAndSolution(JsonElement qEl)
+    internal static (string? Plan, string? Solution) ReadInteractionPlanAndSolution(JsonElement qEl)
     {
         var plan = qEl.TryGetProperty("interactionPlan", out var ip) && ip.ValueKind == JsonValueKind.String ? ip.GetString() : null;
         var explicitSolution = qEl.TryGetProperty("interactionSolution", out var isol) && isol.ValueKind == JsonValueKind.String
@@ -622,6 +637,11 @@ public class QuestionTransferJobRunner
                 throw new InvalidOperationException("Import file URL is missing.");
             }
 
+            // Eşleşme hedefteki hash'lere bakar: eksikleri tamamlanmadan başlanırsa kopya oluşabilir.
+            job.Message = "Preparing question hashes";
+            await _db.SaveChangesAsync();
+            await _hashes.FillMissingAsync();
+
             await using var zipStream = await _minio.GetFileStreamAsync(job.FileUrl)
                 ?? throw new InvalidOperationException("Import file not found.");
 
@@ -639,15 +659,17 @@ public class QuestionTransferJobRunner
             var importedCount = 0;
             var skippedCount = 0;
             var failedCount = 0;
+            var matchedCount = 0;
+            var conflictCount = 0;
+            var missingTaxonomyCount = 0;
             var failedSamples = new List<string>();
+            var conflictSamples = new List<string>();
             // review #574 (L1): tanımı geçersiz etkileşim (soru yine içe alınır, çözüm/plan düşürülür). Anahtar = dış soru
             // anahtarı (yeniden denenen transaction aynı uyarıyı iki kez saymasın).
             var interactionWarnings = new Dictionary<string, string>(StringComparer.Ordinal);
 
             // In-memory maps for this import run
-            var subjectIdByName = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            var topicIdByKey = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            var subTopicIdByKey = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var taxonomy = new QuestionImportTaxonomy(_db);
             var passageIdByExternalKey = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
             // Reused across iterations for the per-question transaction below.
@@ -663,8 +685,8 @@ public class QuestionTransferJobRunner
                     {
                         failedSamples.Add("Missing externalKey");
                     }
-                    job.ProcessedItems = importedCount + skippedCount + failedCount;
-                    job.Message = $"Import progress {job.ProcessedItems}/{job.TotalItems} (Imported {importedCount}, Skipped {skippedCount}, Failed {failedCount})";
+                    job.ProcessedItems = importedCount + matchedCount + skippedCount + conflictCount + failedCount;
+                    job.Message = $"Import progress {job.ProcessedItems}/{job.TotalItems} (Imported {importedCount}, Matched {matchedCount}, Skipped {skippedCount}, Conflicts {conflictCount}, Failed {failedCount})";
                     await _db.SaveChangesAsync();
                     continue;
                 }
@@ -675,11 +697,42 @@ public class QuestionTransferJobRunner
                 if (already)
                 {
                     skippedCount++;
-                    job.ProcessedItems = importedCount + skippedCount + failedCount;
-                    job.Message = $"Import progress {job.ProcessedItems}/{job.TotalItems} (Imported {importedCount}, Skipped {skippedCount}, Failed {failedCount})";
+                    job.ProcessedItems = importedCount + matchedCount + skippedCount + conflictCount + failedCount;
+                    job.Message = $"Import progress {job.ProcessedItems}/{job.TotalItems} (Imported {importedCount}, Matched {matchedCount}, Skipped {skippedCount}, Conflicts {conflictCount}, Failed {failedCount})";
                     await _db.SaveChangesAsync();
                     continue;
                 }
+
+                // Aynı içerik hedefte varsa kopya oluşturulmaz. Aynı görsel farklı cevapla varsa ikisine de dokunulmaz.
+                QuestionMatch match;
+                QuestionContentHashes contentHashes;
+                try
+                {
+                    contentHashes = QuestionContentHash.ForManifest(qEl, await ReadQuestionImageAsync(zip, qEl));
+                    match = await QuestionContentHash.FindMatchAsync(_db, contentHashes);
+                }
+                catch (Exception ex) when (ex is JsonException or InvalidOperationException or KeyNotFoundException or FormatException)
+                {
+                    failedCount++;
+                    if (failedSamples.Count < MaxResultSamples)
+                        failedSamples.Add($"{externalKey}: {ex.Message}");
+                    continue;
+                }
+
+                if (match.Kind == QuestionMatchKind.Conflict)
+                {
+                    conflictCount++;
+                    if (conflictSamples.Count < MaxResultSamples)
+                        conflictSamples.Add($"{externalKey}: same image as question {match.TargetQuestionId} with different content");
+                    job.ProcessedItems = importedCount + matchedCount + skippedCount + conflictCount + failedCount;
+                    await _db.SaveChangesAsync();
+                    continue;
+                }
+
+                var resolvedTaxonomy = await taxonomy.ResolveAsync(qEl);
+                if (resolvedTaxonomy.Missing)
+                    missingTaxonomyCount++;
+                var createdPassageKeys = new List<string>();
 
                 // Acquire an idempotency lock row inside a transaction to prevent concurrent imports of the same key.
                 // Wrapped in CreateExecutionStrategy so EF Core's retry-on-failure
@@ -704,7 +757,19 @@ public class QuestionTransferJobRunner
                     _db.Set<QuestionTransferImportMap>().Add(lockRow);
                     await _db.SaveChangesAsync();
 
-                    var (subjectId, topicId) = await ResolveTaxonomyAsync(qEl, subjectIdByName, topicIdByKey);
+                    if (match.Kind == QuestionMatchKind.Exact)
+                    {
+                        await FillBlanksAsync(match.TargetQuestionId!.Value, resolvedTaxonomy, qEl);
+                        lockRow.TargetQuestionId = match.TargetQuestionId.Value;
+                        await _db.SaveChangesAsync();
+                        await tx.CommitAsync();
+
+                        matchedCount++;
+                        job.ProcessedItems = importedCount + matchedCount + skippedCount + conflictCount + failedCount;
+                        job.Message = $"Import progress {job.ProcessedItems}/{job.TotalItems} (Imported {importedCount}, Matched {matchedCount}, Skipped {skippedCount}, Conflicts {conflictCount}, Failed {failedCount})";
+                        await _db.SaveChangesAsync();
+                        return;
+                    }
 
                     // issue #570: interactionSolution ayrı alan (manifest v2+); yoksa (eski manifest) plan içindeki solution ayrılır.
                     var (importedPlan, importedSolution) = ReadInteractionPlanAndSolution(qEl);
@@ -736,8 +801,15 @@ public class QuestionTransferJobRunner
                     {
                         Text = qEl.GetProperty("text").GetString(),
                         SubText = qEl.TryGetProperty("subText", out var st) ? st.GetString() : null,
-                        SubjectId = subjectId,
-                        TopicId = topicId,
+                        SubjectId = resolvedTaxonomy.SubjectId,
+                        TopicId = resolvedTaxonomy.TopicId,
+                        Point = qEl.TryGetProperty("point", out var pointEl) && pointEl.ValueKind == JsonValueKind.Number ? pointEl.GetInt32() : 0,
+                        BookName = qEl.TryGetProperty("bookName", out var bookNameEl) && bookNameEl.ValueKind == JsonValueKind.String ? bookNameEl.GetString() : null,
+                        SourceType = ParseSourceType(qEl),
+                        RightsHolder = qEl.TryGetProperty("rightsHolder", out var rightsEl) && rightsEl.ValueKind == JsonValueKind.String ? rightsEl.GetString() : null,
+                        LicenseReference = qEl.TryGetProperty("licenseReference", out var licenseEl) && licenseEl.ValueKind == JsonValueKind.String ? licenseEl.GetString() : null,
+                        LicenseEndsAt = qEl.TryGetProperty("licenseEndsAt", out var licenseEndsEl) && licenseEndsEl.ValueKind == JsonValueKind.String ? licenseEndsEl.GetDateTime() : null,
+                        IsUnpublished = qEl.TryGetProperty("isUnpublished", out var unpublishedEl) && unpublishedEl.ValueKind == JsonValueKind.True,
                         DifficultyLevel = ParseDifficultyLevel(qEl),
                         ClassificationSource = ParseClassificationSource(qEl),
                         ShowPassageFirst = qEl.TryGetProperty("showPassageFirst", out var spf) && spf.ValueKind == JsonValueKind.True,
@@ -799,6 +871,7 @@ public class QuestionTransferJobRunner
 
                                 targetPassageId = passage.Id;
                                 passageIdByExternalKey[passageExternalKey!] = targetPassageId;
+                                createdPassageKeys.Add(passageExternalKey!);
                             }
 
                             question.PassageId = targetPassageId;
@@ -884,20 +957,15 @@ public class QuestionTransferJobRunner
                         await _db.SaveChangesAsync();
                     }
 
-                    // Subtopic join records (best-effort mapping by name)
-                    if (qEl.TryGetProperty("subTopics", out var subTopicsEl) && subTopicsEl.ValueKind == JsonValueKind.Array)
+                    foreach (var stId in resolvedTaxonomy.SubTopicIds)
                     {
-                        var resolved = await ResolveSubTopicsAsync(subTopicsEl, subTopicIdByKey);
-                        foreach (var stId in resolved.Distinct())
+                        _db.QuestionSubTopics.Add(new QuestionSubTopic
                         {
-                            _db.QuestionSubTopics.Add(new QuestionSubTopic
-                            {
-                                QuestionId = question.Id,
-                                SubTopicId = stId
-                            });
-                        }
-                        await _db.SaveChangesAsync();
+                            QuestionId = question.Id,
+                            SubTopicId = stId
+                        });
                     }
+                    await _db.SaveChangesAsync();
 
                     if (qEl.TryGetProperty("learningOutcomes", out var outcomesEl) && outcomesEl.ValueKind == JsonValueKind.Array)
                     {
@@ -913,41 +981,58 @@ public class QuestionTransferJobRunner
                     }
 
                     lockRow.TargetQuestionId = question.Id;
+                    // Kaynağın hash'i saklanır: plan kayıtta yeniden karıştırılsa da aynı paket tekrar eşleşir.
+                    question.ContentHash = contentHashes.ContentHash;
+                    question.ContentFingerprint = contentHashes.Fingerprint;
                     await _db.SaveChangesAsync();
 
                     await tx.CommitAsync();
 
                     importedCount++;
-                    job.ProcessedItems = importedCount + skippedCount + failedCount;
-                    job.Message = $"Import progress {job.ProcessedItems}/{job.TotalItems} (Imported {importedCount}, Skipped {skippedCount}, Failed {failedCount})";
+                    job.ProcessedItems = importedCount + matchedCount + skippedCount + conflictCount + failedCount;
+                    job.Message = $"Import progress {job.ProcessedItems}/{job.TotalItems} (Imported {importedCount}, Matched {matchedCount}, Skipped {skippedCount}, Conflicts {conflictCount}, Failed {failedCount})";
                     await _db.SaveChangesAsync();
                 }
-                catch (DbUpdateException)
+                catch (DbUpdateException ex)
                 {
-                    // Most likely: another import job already inserted the same (SourceKey, ExternalQuestionKey).
                     await tx.RollbackAsync();
-                    skippedCount++;
-                    job.ProcessedItems = importedCount + skippedCount + failedCount;
-                    job.Message = $"Import progress {job.ProcessedItems}/{job.TotalItems} (Imported {importedCount}, Skipped {skippedCount}, Failed {failedCount})";
+                    job = await ForgetFailedAttemptAsync(jobId, createdPassageKeys, passageIdByExternalKey);
+
+                    // Yalnız başka bir iş aynı anahtarı yazmışsa "zaten aktarıldı" denir; diğer veritabanı hataları soruyu sessizce kaybettirmesin.
+                    var importedElsewhere = await _db.Set<QuestionTransferImportMap>()
+                        .AnyAsync(m => m.SourceKey == job.SourceKey && m.ExternalQuestionKey == externalKey);
+                    if (importedElsewhere)
+                    {
+                        skippedCount++;
+                    }
+                    else
+                    {
+                        failedCount++;
+                        if (failedSamples.Count < MaxResultSamples)
+                            failedSamples.Add($"{externalKey}: {ex.InnerException?.Message ?? ex.Message}");
+                    }
+                    job.ProcessedItems = importedCount + matchedCount + skippedCount + conflictCount + failedCount;
+                    job.Message = $"Import progress {job.ProcessedItems}/{job.TotalItems} (Imported {importedCount}, Matched {matchedCount}, Skipped {skippedCount}, Conflicts {conflictCount}, Failed {failedCount})";
                     await _db.SaveChangesAsync();
                 }
                 catch (Exception ex)
                 {
                     await tx.RollbackAsync();
+                    job = await ForgetFailedAttemptAsync(jobId, createdPassageKeys, passageIdByExternalKey);
                     failedCount++;
                     if (failedSamples.Count < 10)
                     {
                         failedSamples.Add($"{externalKey}: {ex.Message}");
                     }
-                    job.ProcessedItems = importedCount + skippedCount + failedCount;
-                    job.Message = $"Import progress {job.ProcessedItems}/{job.TotalItems} (Imported {importedCount}, Skipped {skippedCount}, Failed {failedCount})";
+                    job.ProcessedItems = importedCount + matchedCount + skippedCount + conflictCount + failedCount;
+                    job.Message = $"Import progress {job.ProcessedItems}/{job.TotalItems} (Imported {importedCount}, Matched {matchedCount}, Skipped {skippedCount}, Conflicts {conflictCount}, Failed {failedCount})";
                     await _db.SaveChangesAsync();
                 }
                 });
             }
 
             job.Status = QuestionTransferJobStatus.Completed;
-            var summary = $"Completed. Imported {importedCount}, Skipped {skippedCount}, Failed {failedCount}.";
+            var summary = $"Completed. Imported {importedCount}, Matched {matchedCount}, Skipped {skippedCount}, Conflicts {conflictCount}, Failed {failedCount}, Missing taxonomy {missingTaxonomyCount}.";
             if (failedSamples.Count > 0)
             {
                 summary += " Samples: " + string.Join(" | ", failedSamples);
@@ -957,6 +1042,18 @@ public class QuestionTransferJobRunner
                 summary += $" Warnings {interactionWarnings.Count}: " + string.Join(" | ", interactionWarnings.Values.Take(10));
             }
             job.Message = summary;
+            job.ResultJson = JsonSerializer.Serialize(new QuestionTransferImportResultDto
+            {
+                Imported = importedCount,
+                Matched = matchedCount,
+                AlreadyImported = skippedCount,
+                Conflicts = conflictCount,
+                Failed = failedCount,
+                MissingTaxonomy = missingTaxonomyCount,
+                ConflictSamples = conflictSamples,
+                FailedSamples = failedSamples,
+                Warnings = interactionWarnings.Values.Take(MaxResultSamples).ToList(),
+            });
             await _db.SaveChangesAsync();
         }
         catch (Exception ex)
@@ -1043,75 +1140,60 @@ public class QuestionTransferJobRunner
         await stream.CopyToAsync(entryStream);
     }
 
-    private async Task<(int? subjectId, int? topicId)> ResolveTaxonomyAsync(
-        JsonElement qEl,
-        Dictionary<string, int> subjectIdByName,
-        Dictionary<string, int> topicIdByKey)
+    private static QuestionSourceType ParseSourceType(JsonElement qEl) =>
+        qEl.TryGetProperty("sourceType", out var el) && el.ValueKind == JsonValueKind.String
+            && Enum.TryParse<QuestionSourceType>(el.GetString(), ignoreCase: true, out var value) && Enum.IsDefined(value) && !int.TryParse(el.GetString(), out _)
+            ? value
+            : QuestionSourceType.Unknown;
+
+    private static async Task<byte[]?> ReadQuestionImageAsync(ZipArchive zip, JsonElement qEl)
     {
-        int? subjectId = null;
-        if (qEl.TryGetProperty("subject", out var subjEl) && subjEl.ValueKind == JsonValueKind.Object)
-        {
-            var subjectName = subjEl.TryGetProperty("name", out var sn) ? sn.GetString() : null;
-            if (!string.IsNullOrWhiteSpace(subjectName))
-            {
-                if (!subjectIdByName.TryGetValue(subjectName!, out var foundSubjectId))
-                {
-                    foundSubjectId = await _db.Subjects
-                        .Where(s => s.Name != null && s.Name.ToLower() == subjectName!.ToLower())
-                        .Select(s => s.Id)
-                        .FirstOrDefaultAsync();
-
-                    if (foundSubjectId != 0)
-                    {
-                        subjectIdByName[subjectName!] = foundSubjectId;
-                    }
-                }
-
-                if (subjectIdByName.TryGetValue(subjectName!, out var cachedSubj))
-                {
-                    subjectId = cachedSubj;
-                }
-            }
-        }
-
-        int? topicId = null;
-        if (qEl.TryGetProperty("topic", out var topicEl) && topicEl.ValueKind == JsonValueKind.Object)
-        {
-            var topicName = topicEl.TryGetProperty("name", out var tn) ? tn.GetString() : null;
-            var gradeName = topicEl.TryGetProperty("gradeName", out var gn) ? gn.GetString() : null;
-
-            if (!string.IsNullOrWhiteSpace(topicName))
-            {
-                var key = string.IsNullOrWhiteSpace(gradeName) ? topicName! : $"{gradeName}|{topicName}";
-                if (!topicIdByKey.TryGetValue(key, out var foundTopicId))
-                {
-                    var q = _db.Topics.AsQueryable();
-                    if (!string.IsNullOrWhiteSpace(gradeName))
-                    {
-                        q = q.Include(t => t.Grade)
-                            .Where(t => t.Grade != null && t.Grade.Name != null && t.Grade.Name.ToLower() == gradeName!.ToLower());
-                    }
-
-                    foundTopicId = await q
-                        .Where(t => t.Name != null && t.Name.ToLower() == topicName!.ToLower())
-                        .Select(t => t.Id)
-                        .FirstOrDefaultAsync();
-
-                    if (foundTopicId != 0)
-                    {
-                        topicIdByKey[key] = foundTopicId;
-                    }
-                }
-
-                if (topicIdByKey.TryGetValue(key, out var cachedTopic))
-                {
-                    topicId = cachedTopic;
-                }
-            }
-        }
-
-        return (subjectId, topicId);
+        var entry = zip.GetEntry($"questions/{qEl.GetProperty("id").GetInt32()}/question.jpg");
+        if (entry is null)
+            return null;
+        await using var stream = entry.Open();
+        await using var buffer = new MemoryStream();
+        await stream.CopyToAsync(buffer);
+        return buffer.ToArray();
     }
+
+    /// <summary>Hedefteki aynı soru değiştirilmez: yalnız boş sınıflandırma doldurulur, eksik alt konu ve kazanım bağları eklenir.</summary>
+    private async Task FillBlanksAsync(int questionId, QuestionImportTaxonomy.Resolved taxonomy, JsonElement qEl)
+    {
+        var target = await _db.Questions
+            .Include(q => q.QuestionSubTopics)
+            .Include(q => q.QuestionLearningOutcomes)
+            .FirstAsync(q => q.Id == questionId);
+
+        target.SubjectId ??= taxonomy.SubjectId;
+        target.TopicId ??= taxonomy.TopicId;
+
+        var subTopicIds = target.QuestionSubTopics.Select(s => s.SubTopicId).ToHashSet();
+        foreach (var id in taxonomy.SubTopicIds.Where(subTopicIds.Add))
+            _db.QuestionSubTopics.Add(new QuestionSubTopic { QuestionId = questionId, SubTopicId = id });
+
+        if (qEl.TryGetProperty("learningOutcomes", out var outcomesEl) && outcomesEl.ValueKind == JsonValueKind.Array)
+        {
+            var outcomeIds = target.QuestionLearningOutcomes.Select(l => l.LearningOutcomeId).ToHashSet();
+            foreach (var id in (await ResolveLearningOutcomesAsync(_db, outcomesEl)).Where(outcomeIds.Add))
+                _db.QuestionLearningOutcomes.Add(new QuestionLearningOutcome { QuestionId = questionId, LearningOutcomeId = id });
+        }
+
+        await _db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Geri alınan denemenin izleri temizlenir: takipte kalan satırlar sonraki kayıtta yeniden yazılmaya çalışılır,
+    /// geri alınan paragrafın kimliği de sonraki soruda yabancı anahtar hatası verirdi.
+    /// </summary>
+    private async Task<QuestionTransferJob> ForgetFailedAttemptAsync(Guid jobId, List<string> createdPassageKeys, Dictionary<string, int> passageIdByExternalKey)
+    {
+        foreach (var key in createdPassageKeys)
+            passageIdByExternalKey.Remove(key);
+        _db.ChangeTracker.Clear();
+        return await _db.Set<QuestionTransferJob>().FirstAsync(j => j.Id == jobId);
+    }
+
 
     /// <summary>Issue #692: paketteki kazanımların hedefteki kimlikleri; hedefte olmayan ya da tanımsız müfredatlı olan atlanır.</summary>
     internal static async Task<List<int>> ResolveLearningOutcomesAsync(AppDbContext db, JsonElement outcomesEl)
@@ -1137,64 +1219,5 @@ public class QuestionTransferJobRunner
         }
 
         return ids;
-    }
-
-    private async Task<List<int>> ResolveSubTopicsAsync(
-        JsonElement subTopicsEl,
-        Dictionary<string, int> subTopicIdByKey)
-    {
-        var result = new List<int>();
-
-        foreach (var stEl in subTopicsEl.EnumerateArray())
-        {
-            if (stEl.ValueKind != JsonValueKind.Object) continue;
-
-            var name = stEl.TryGetProperty("name", out var n) ? n.GetString() : null;
-            var topicName = stEl.TryGetProperty("topicName", out var tn) ? tn.GetString() : null;
-            var gradeName = stEl.TryGetProperty("gradeName", out var gn) ? gn.GetString() : null;
-
-            if (string.IsNullOrWhiteSpace(name)) continue;
-
-            var key = string.IsNullOrWhiteSpace(topicName)
-                ? name!
-                : string.IsNullOrWhiteSpace(gradeName)
-                    ? $"{topicName}|{name}"
-                    : $"{gradeName}|{topicName}|{name}";
-
-            if (!subTopicIdByKey.TryGetValue(key, out var foundId))
-            {
-                var q = _db.SubTopics
-                    .Include(st => st.Topic)
-                        .ThenInclude(t => t.Grade)
-                    .AsQueryable();
-
-                if (!string.IsNullOrWhiteSpace(topicName))
-                {
-                    q = q.Where(st => st.Topic != null && st.Topic.Name != null && st.Topic.Name.ToLower() == topicName!.ToLower());
-                }
-
-                if (!string.IsNullOrWhiteSpace(gradeName))
-                {
-                    q = q.Where(st => st.Topic != null && st.Topic.Grade != null && st.Topic.Grade.Name != null && st.Topic.Grade.Name.ToLower() == gradeName!.ToLower());
-                }
-
-                foundId = await q
-                    .Where(st => st.Name != null && st.Name.ToLower() == name!.ToLower())
-                    .Select(st => st.Id)
-                    .FirstOrDefaultAsync();
-
-                if (foundId != 0)
-                {
-                    subTopicIdByKey[key] = foundId;
-                }
-            }
-
-            if (subTopicIdByKey.TryGetValue(key, out var cachedId) && cachedId != 0)
-            {
-                result.Add(cachedId);
-            }
-        }
-
-        return result;
     }
 }

@@ -20,6 +20,7 @@ import {
   ClassificationSelection,
   ClassificationSelectorComponent,
 } from '../classification-selector/classification-selector.component';
+import { LearningOutcomeDialogComponent } from '../learning-outcome-picker/learning-outcome-dialog.component';
 import { QuestionBankPreviewDialogComponent } from './question-bank-preview-dialog.component';
 
 /** Çeviriler kendi Transloco scope'unda: `public/i18n/question-bank/<lang>.json`. */
@@ -223,6 +224,16 @@ export class QuestionBankPanelComponent {
   clearSelection(): void {
     this.selectedIds.set(new Set());
     this.selectionChange.emit([]);
+  }
+
+  /** Issue #692: kayıtlı sorunun kazanımları. */
+  editLearningOutcomes(item: QuestionBankItem): void {
+    this.dialog.open(LearningOutcomeDialogComponent, {
+      data: { questionId: item.id, gradeId: item.gradeId ?? null, subjectId: item.subjectId ?? null },
+      width: '560px',
+      maxWidth: '90vw',
+      autoFocus: false,
+    });
   }
 
   preview(item: QuestionBankItem): void {

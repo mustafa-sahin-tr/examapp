@@ -1390,6 +1390,12 @@
           @if (classificationIncomplete()) { <p class="ae__error">{{ t('classification.topicRequired') }}</p> }
         </div>
 
+        <div class="ae__field">
+          <span class="ae__label">{{ t('classification.learningOutcomes') }}</span>
+          <app-learning-outcome-picker [gradeId]="learningOutcomeGradeId()" [subjectId]="classification()?.subjectId"
+            [selected]="learningOutcomes()" (selectedChange)="learningOutcomes.set($event)" />
+        </div>
+
         @if (submitted() && errors().length > 0) {
           <ul class="ae__errors" role="alert" data-testid="form-errors">
             @for (e of errors(); track e.key) { <li>{{ errorText(e) }}</li> }

@@ -1,3 +1,4 @@
+import { LearningOutcome } from './learning-outcome';
 export interface AnswerChoice {
   label: string; // "A", "B", "C", "D"
   tag?: string; // Backend tag (A,B,C,D,E)
@@ -58,6 +59,8 @@ export interface QuestionRegion {
   subtopicId?: number;
   // Optional multi-subtopic ids (used for preview classification selector)
   subtopicIds?: number[];
+  /** Issue #692: kayıtla birlikte yazılacak MEB kazanımları. */
+  learningOutcomes?: LearningOutcome[];
   answers: AnswerChoice[];
   passage?: PassageRegion;
   // Optional authoring/solve hint: show passage first, then reveal question.

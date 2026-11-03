@@ -1,0 +1,44 @@
+<div class="lop" *transloco="let t; prefix: 'learning-outcomes'">
+  @if (selected().length) {
+    <mat-chip-set class="lop__chips" [attr.aria-label]="t('selected')">
+      @for (outcome of selected(); track outcome.id) {
+        <mat-chip data-testid="outcome-chip" [removable]="true" (removed)="toggle(outcome)" [title]="outcome.description">
+          {{ outcome.code }}
+          <button matChipRemove type="button" [attr.aria-label]="t('remove', { code: outcome.code })">
+            <mat-icon>cancel</mat-icon>
+          </button>
+        </mat-chip>
+      }
+    </mat-chip-set>
+  }
+
+  @if (!hasScope()) {
+    <p class="lop__note" data-testid="outcome-no-scope">{{ t('chooseGradeAndSubject') }}</p>
+  } @else {
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="lop__search">
+      <mat-label>{{ t('search') }}</mat-label>
+      <input matInput type="search" data-testid="outcome-search" [value]="term()" (input)="onSearch($any($event.target).value)" />
+    </mat-form-field>
+
+    @if (failed()) {
+      <p class="lop__note" role="alert" data-testid="outcome-error">{{ t('loadError') }}</p>
+      <button mat-button type="button" (click)="retry()">{{ t('retry') }}</button>
+    } @else if (loading()) {
+      <p class="lop__note">{{ t('loading') }}</p>
+    } @else if (!results().length) {
+      <p class="lop__note" data-testid="outcome-empty">{{ t(term() ? 'noMatch' : 'empty') }}</p>
+    } @else {
+      <ul class="lop__list">
+        @for (outcome of results(); track outcome.id) {
+          <li>
+            <mat-checkbox data-testid="outcome-option" [checked]="isSelected(outcome)"
+              [disabled]="!isSelected(outcome) && selected().length >= maxLinked" (change)="toggle(outcome)">
+              <b>{{ outcome.code }}</b> {{ outcome.description }}
+              <span class="lop__version">{{ t('curriculum.' + outcome.curriculumVersion) }}</span>
+            </mat-checkbox>
+          </li>
+        }
+      </ul>
+    }
+  }
+</div>

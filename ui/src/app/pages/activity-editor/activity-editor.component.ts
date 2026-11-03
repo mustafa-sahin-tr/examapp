@@ -1,3 +1,6 @@
+import { LearningOutcome } from '../../models/learning-outcome';
+import { LearningOutcomeService } from '../../services/learning-outcome.service';
+import { LearningOutcomePickerComponent } from '../../shared/components/learning-outcome-picker/learning-outcome-picker.component';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
@@ -186,6 +189,7 @@ const INLINE_PREVIEW_KINDS: ReadonlySet<AuthoringKind> = new Set<AuthoringKind>(
   selector: 'app-activity-editor',
   standalone: true,
   imports: [
+    LearningOutcomePickerComponent,
     MatButtonModule,
     MatButtonToggleModule,
     MatCheckboxModule,
@@ -221,6 +225,7 @@ export class ActivityEditorComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly questionService = inject(QuestionService);
+  private readonly learningOutcomeService = inject(LearningOutcomeService);
   private readonly testService = inject(TestService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly transloco = inject(TranslocoService);
@@ -564,6 +569,11 @@ export class ActivityEditorComponent {
   onClassificationChange(selection: ClassificationSelection): void {
     this.classification.set(selection);
   }
+
+  /** Issue #692: maddeye bağlanacak kazanımlar. */
+  readonly learningOutcomes = signal<LearningOutcome[]>([]);
+  readonly learningOutcomeGradeId = computed(() => this.classification()?.gradeId ?? this.gradeId);
+  private initialLearningOutcomeIds: number[] = [];
 
   onImageSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -1730,7 +1740,10 @@ export class ActivityEditorComponent {
     const request$ = editingId ? this.questionService.saveQuestion(this.updateBody(editingId)) : this.questionService.saveBulk(this.createBody());
     request$.subscribe({
       next: () => {
-        if (editingId) this.saveClassificationIfChanged(editingId);
+        if (editingId) {
+          this.saveClassificationIfChanged(editingId);
+          this.saveLearningOutcomesIfChanged(editingId);
+        }
         this.saving.set(false);
         this.snackBar.open(this.t(editingId ? 'snackbar.updated' : 'snackbar.created'), undefined, { duration: 3000 });
         if (addAnother) {
@@ -1772,6 +1785,7 @@ export class ActivityEditorComponent {
           interactionSolution: def.solution,
           passageId: 'p1',
           answers: [],
+          learningOutcomeIds: this.learningOutcomes().map((outcome) => outcome.id),
           classification: locked
             ? {
                 subjectId: selection!.subjectId,
@@ -1814,6 +1828,15 @@ export class ActivityEditorComponent {
       .subscribe({ error: () => this.snackBar.open(this.t('snackbar.classificationError'), undefined, { duration: 4000 }) });
   }
 
+  private saveLearningOutcomesIfChanged(questionId: number): void {
+    const ids = this.learningOutcomes().map((outcome) => outcome.id);
+    const same = ids.length === this.initialLearningOutcomeIds.length && ids.every((id) => this.initialLearningOutcomeIds.includes(id));
+    if (same) return;
+    this.learningOutcomeService
+      .setForQuestion(questionId, ids)
+      .subscribe({ error: () => this.snackBar.open(this.t('snackbar.learningOutcomesError'), undefined, { duration: 4000 }) });
+  }
+
   private startEdit(question: Question): void {
     const form = parseDefinition(question.interactionType, question.interactionPlan, question.interactionSolution);
     if (!form) return;
@@ -1835,6 +1858,15 @@ export class ActivityEditorComponent {
     this.initialClassification.set(selection);
     this.classification.set(selection);
     this.initialClassificationKey = selection ? classificationKey(selection) : '';
+    this.learningOutcomes.set([]);
+    this.initialLearningOutcomeIds = [];
+    this.learningOutcomeService.getForQuestion(question.id).subscribe({
+      next: (outcomes) => {
+        if (this.editingId() !== question.id) return;
+        this.learningOutcomes.set(outcomes);
+        this.initialLearningOutcomeIds = outcomes.map((outcome) => outcome.id);
+      },
+    });
     this.submitted.set(false);
     this.showSolution.set(false);
   }
@@ -1854,6 +1886,8 @@ export class ActivityEditorComponent {
     this.submitted.set(false);
     this.showSolution.set(false);
     this.initialClassificationKey = '';
+    this.learningOutcomes.set([]);
+    this.initialLearningOutcomeIds = [];
   }
 
   private editableItems(questions: Question[]): EditableItem[] {

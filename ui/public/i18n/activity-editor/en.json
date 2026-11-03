@@ -113,6 +113,7 @@
     "addDistractor": "Add distractor"
   },
   "classification": {
+    "learningOutcomes": "Learning outcomes",
     "title": "Subject / topic (optional)",
     "hint": "If you pick a topic it is kept. Otherwise the item is classified automatically from its text.",
     "topicRequired": "You picked a subject; pick a topic too."
@@ -256,7 +257,8 @@
     "created": "The item was added to the activity.",
     "updated": "The item was updated.",
     "saveError": "The item could not be saved.",
-    "classificationError": "The item was saved but its subject/topic could not be updated."
+    "classificationError": "The item was saved but its subject/topic could not be updated.",
+    "learningOutcomesError": "The item was saved but its learning outcomes could not be updated."
   },
   "blanks": {
     "text": "Text with blanks",

@@ -1,0 +1,22 @@
+{
+  "title": "Kazanımlar",
+  "hint": "İsteğe bağlı. Raporlar kazanımlara göre hazırlanır.",
+  "selected": "Seçilen kazanımlar",
+  "remove": "{{code}} kazanımını kaldır",
+  "search": "Kod ya da metin ara",
+  "chooseGradeAndSubject": "Kazanımları görmek için önce sınıf ve ders seçin.",
+  "loading": "Kazanımlar yükleniyor...",
+  "loadError": "Kazanımlar yüklenemedi.",
+  "saveError": "Kazanımlar kaydedilemedi.",
+  "retry": "Tekrar dene",
+  "empty": "Bu sınıf ve ders için henüz kazanım yüklenmedi. Soruyu kazanımsız kaydedebilirsiniz.",
+  "noMatch": "Aramayla eşleşen kazanım yok.",
+  "curriculum": {
+    "Previous": "Önceki müfredat",
+    "Maarif": "Maarif Modeli"
+  },
+  "openDialog": "Kazanımlar",
+  "dialogTitle": "{{id}} numaralı sorunun kazanımları",
+  "cancel": "Vazgeç",
+  "save": "Kaydet"
+}

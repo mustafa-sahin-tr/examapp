@@ -53,6 +53,11 @@ public class BulkPassageDto
 public class BulkQuestionDto
 {
     public string Name { get; set; }
+
+    /// <summary>Issue #692: öğretmenin seçtiği MEB kazanımları; biri bile yoksa kayıt yapılmaz.</summary>
+    [MaxLength(20)]
+    public List<int>? LearningOutcomeIds { get; set; }
+
     public string? BookName { get; set; }
     public double X { get; set; }
     public double Y { get; set; }

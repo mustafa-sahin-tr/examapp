@@ -33,6 +33,7 @@
     "paginator": "Pages"
   },
   "card": {
+    "learningOutcomes": "Learning outcomes",
     "preview": "Enlarge question {{id}}",
     "noImage": "No image",
     "noSubject": "No subject",

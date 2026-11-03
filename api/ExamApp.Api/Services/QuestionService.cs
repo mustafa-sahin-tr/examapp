@@ -770,6 +770,14 @@ public class QuestionService : IQuestionService
 
                     questionClassifications[questionDto] = effective;
                 }
+                // Issue #692: görseller yüklenmeden önce; hatalı kimlikte depoda artık kalmaz.
+                var requestedOutcomeIds = soruDto.Questions.SelectMany(q => q.LearningOutcomeIds ?? new List<int>()).Distinct().ToList();
+                if (requestedOutcomeIds.Count > 0
+                    && await _context.LearningOutcomes.CountAsync(lo => requestedOutcomeIds.Contains(lo.Id)) != requestedOutcomeIds.Count)
+                {
+                    throw new InvalidOperationException(_localizer["questions.bulk.invalidLearningOutcome"]);
+                }
+
                 string imageUrl = string.Empty;
                 // 🔹 1. Resmi MinIO'ya kaydetmeden önce, her Question ve Passage için crop işlemi yapıp ayrı dosya olarak sakla
                 // Ana görseli byte[] olarak hazırla
@@ -967,7 +975,10 @@ public class QuestionService : IQuestionService
                         SubjectId = questionClassification != null ? questionClassification.SubjectId : soruDto.Header.SubjectId,
                         TopicId = questionClassification != null ? questionClassification.TopicId : soruDto.Header.TopicId,
                         PassageId = matchedPassage?.Id,
-                        ClassificationSource = classificationSource
+                        ClassificationSource = classificationSource,
+                        QuestionLearningOutcomes = (questionDto.LearningOutcomeIds ?? new List<int>()).Distinct()
+                            .Select(id => new QuestionLearningOutcome { LearningOutcomeId = id })
+                            .ToList()
                     };
 
                     if (questionClassification != null)

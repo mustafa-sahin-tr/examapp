@@ -7,6 +7,7 @@
     "answerNumbered": "Şık {{number}}"
   },
   "preview": {
+    "learningOutcomes": "Kazanımlar",
     "questions": "Sorular",
     "combinedView": "Birleşik görünüm",
     "splitView": "Ayrık görünüm — soru + şıklar",

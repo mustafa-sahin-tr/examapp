@@ -1,0 +1,22 @@
+{
+  "title": "Learning outcomes",
+  "hint": "Optional. Reports are built on learning outcomes.",
+  "selected": "Selected learning outcomes",
+  "remove": "Remove outcome {{code}}",
+  "search": "Search code or text",
+  "chooseGradeAndSubject": "Choose a grade and subject first to see learning outcomes.",
+  "loading": "Loading learning outcomes...",
+  "loadError": "Learning outcomes could not be loaded.",
+  "saveError": "Learning outcomes could not be saved.",
+  "retry": "Try again",
+  "empty": "No learning outcomes have been loaded for this grade and subject yet. You can save the question without them.",
+  "noMatch": "No learning outcome matches your search.",
+  "curriculum": {
+    "Previous": "Previous curriculum",
+    "Maarif": "Maarif Model"
+  },
+  "openDialog": "Learning outcomes",
+  "dialogTitle": "Learning outcomes of question {{id}}",
+  "cancel": "Cancel",
+  "save": "Save"
+}

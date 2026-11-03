@@ -133,6 +133,11 @@
               <span class="qb-tag">{{ t('card.shared') }}</span>
             }
           </div>
+          @if (item.isOwn) {
+            <button mat-button type="button" data-testid="edit-learning-outcomes" (click)="editLearningOutcomes(item)">
+              <mat-icon>flag</mat-icon>{{ t('card.learningOutcomes') }}
+            </button>
+          }
         </mat-card-content>
 
         @if (selectable()) {

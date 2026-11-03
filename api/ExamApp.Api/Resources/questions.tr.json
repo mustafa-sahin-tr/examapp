@@ -39,6 +39,7 @@
       "gradeMismatch": "GradeId ({0}) testin sınıfıyla ({1}) uyuşmuyor.",
       "invalidGradeId": "Geçersiz GradeId: {0}",
       "invalidTopicId": "Geçersiz TopicId: {0}",
+      "invalidLearningOutcome": "Seçilen kazanımlardan biri bulunamadı.",
       "invalidSubjectId": "Geçersiz SubjectId: {0}",
       "invalidSubTopicIds": "Geçersiz SubTopicId(ler): {0}",
       "subjectTopicMismatch": "Topic.SubjectId ile Question.SubjectId uyumsuz. Question.SubjectId={0} ('{1}'), Topic(Id={2}, Name='{3}') SubjectId={4} ('{5}').",

@@ -7,6 +7,7 @@
     "answerNumbered": "Choice {{number}}"
   },
   "preview": {
+    "learningOutcomes": "Learning outcomes",
     "questions": "Questions",
     "combinedView": "Combined view",
     "splitView": "Split view — question + choices",

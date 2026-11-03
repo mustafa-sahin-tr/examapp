@@ -113,6 +113,8 @@
     "addDistractor": "Çeldirici ekle"
   },
   "classification": {
+    "learningOutcomes": "Kazanımlar",
+    "learningOutcomesLoadError": "Kazanımlar yüklenemedi; bu kayıtta değiştirilmeyecek.",
     "title": "Ders / konu (isteğe bağlı)",
     "hint": "Konu seçersen o konu korunur. Seçmezsen madde metninden otomatik sınıflandırılır.",
     "topicRequired": "Ders seçtiysen konuyu da seç."
@@ -256,7 +258,8 @@
     "created": "Madde etkinliğe eklendi.",
     "updated": "Madde güncellendi.",
     "saveError": "Madde kaydedilemedi.",
-    "classificationError": "Madde kaydedildi ama ders/konu güncellenemedi."
+    "classificationError": "Madde kaydedildi ama ders/konu güncellenemedi.",
+    "learningOutcomesError": "Madde kaydedildi ama kazanımlar güncellenemedi."
   },
   "blanks": {
     "text": "Boşluklu metin",

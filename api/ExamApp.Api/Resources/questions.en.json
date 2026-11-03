@@ -39,6 +39,7 @@
       "gradeMismatch": "GradeId ({0}) does not match the test's grade ({1}).",
       "invalidGradeId": "Invalid GradeId: {0}",
       "invalidTopicId": "Invalid TopicId: {0}",
+      "invalidLearningOutcome": "One of the selected learning outcomes was not found.",
       "invalidSubjectId": "Invalid SubjectId: {0}",
       "invalidSubTopicIds": "Invalid SubTopicId(s): {0}",
       "subjectTopicMismatch": "Topic.SubjectId does not match Question.SubjectId. Question.SubjectId={0} ('{1}'), Topic(Id={2}, Name='{3}') SubjectId={4} ('{5}').",

@@ -33,6 +33,7 @@
     "paginator": "Sayfalar"
   },
   "card": {
+    "learningOutcomes": "Kazanımlar",
     "preview": "{{id}} numaralı soruyu büyüt",
     "noImage": "Görsel yok",
     "noSubject": "Ders belirlenmemiş",

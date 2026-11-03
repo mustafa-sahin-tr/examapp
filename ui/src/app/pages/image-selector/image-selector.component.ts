@@ -1,3 +1,5 @@
+import { LearningOutcome } from '../../models/learning-outcome';
+import { LearningOutcomePickerComponent } from '../../shared/components/learning-outcome-picker/learning-outcome-picker.component';
 import {
   Component,
   DestroyRef,
@@ -469,6 +471,7 @@ export interface ActiveInspector {
     QuestionCanvasViewComponent,
     QuestionCanvasViewComponentv5,
     ClassificationSelectorComponent,
+    LearningOutcomePickerComponent,
     TranslocoDirective,
   ],
   providers: [provideTranslocoScope(IMAGE_SELECTOR_SCOPE)],
@@ -818,6 +821,14 @@ export class ImageSelectorComponent {
         });
       }
     }
+  }
+
+  /** Issue #692: önizlenen sorunun seçili kazanımları. */
+  readonly currentLearningOutcomes = computed(() => this.regions()[this.previewCurrentIndex()]?.learningOutcomes ?? []);
+
+  onLearningOutcomesChange(outcomes: LearningOutcome[]) {
+    const index = this.previewCurrentIndex();
+    this.regions.update((regions) => regions.map((region, i) => (i === index ? { ...region, learningOutcomes: outcomes } : region)));
   }
 
   onClassificationChange(selection: ClassificationSelection) {
@@ -5503,6 +5514,7 @@ export class ImageSelectorComponent {
         ...this.roundBox(region),
         answers: region.answers?.map((a) => this.roundBox(a)),
         ...(region.passage ? { passage: this.roundBox(region.passage) } : {}),
+        learningOutcomeIds: (region.learningOutcomes ?? []).map((outcome) => outcome.id),
         bookName: this.bookName(),
         isExample: this.isExample(region.name),
         exampleAnswer: this.isExample(region.name) ? this.getExampleAnswer(region.name) : null,

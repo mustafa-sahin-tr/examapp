@@ -33,3 +33,6 @@ yazılmaz (400 + satır numaralı hatalar), yeniden çalıştırmak kopya üretm
 Bağlama: `GET/PUT api/questions/{id}/learning-outcomes` (yazma yalnız soru sahibi/admin). Test kopyası aynı soru satırını kullandığı için bağlar korunur; soru aktarımı (paket)
  bağları (müfredat, kod) ile taşır, hedefte olmayan kazanım atlanır. Migration `AddLearningOutcomeVersionAndQuestionLinks` mevcut satırların sınıf ve dersini alt konudan
 doldurur, yinelenen kod varsa durur; exam API yeniden başlatılır.
+
+Öğretmen kazanımı soru tuvali önizlemesinde ve etkinlik editöründe seçer (`learningOutcomeIds`, toplu kayıtla aynı işlemde yazılır; bilinmeyen kimlikte depoya bir şey yüklenmeden kayıt reddedilir); kayıtlı sorunun
+kazanımları Soru Havuzu kartındaki "Kazanımlar" ile ve etkinlik editöründe değişir. Kazanım seçmek zorunlu değildir; liste yüklenmemişse seçici bunu söyler, kayıt engellenmez.

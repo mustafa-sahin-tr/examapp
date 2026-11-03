@@ -8,6 +8,7 @@ import { of, throwError } from 'rxjs';
 import { ActivityEditorComponent } from './activity-editor.component';
 import { AuthService } from '../../services/auth.service';
 import { LabelingService } from '../../services/labeling.service';
+import { LearningOutcomeService } from '../../services/learning-outcome.service';
 import { QuestionService } from '../../services/question.service';
 import { TestService } from '../../services/test.service';
 import { StudentService } from '../../services/student.service';
@@ -34,6 +35,12 @@ describe('ActivityEditorComponent (#590)', () => {
   let questions: { getAll: Mock; saveBulk: Mock; saveQuestion: Mock; updateClassification: Mock };
   let router: Router;
   let labeling: { getAiModels: Mock; activityStructure: Mock };
+  let outcomes: { search: Mock; getForQuestion: Mock; setForQuestion: Mock };
+  let failOutcomeLoad = false;
+
+  afterEach(() => {
+    failOutcomeLoad = false;
+  });
 
   async function setup(query: Record<string, string>, list: unknown[] = [], trainer = false, startedCount = 0) {
     labeling = {
@@ -47,6 +54,11 @@ describe('ActivityEditorComponent (#590)', () => {
       saveBulk: vi.fn().mockReturnValue(of({ success: true })),
       saveQuestion: vi.fn().mockReturnValue(of({ success: true })),
       updateClassification: vi.fn().mockReturnValue(of({ success: true })),
+    };
+    outcomes = {
+      search: vi.fn().mockReturnValue(of([])),
+      getForQuestion: vi.fn().mockReturnValue(failOutcomeLoad ? throwError(() => new Error('down')) : of([])),
+      setForQuestion: vi.fn().mockReturnValue(of([])),
     };
     TestBed.configureTestingModule({
       imports: [
@@ -62,6 +74,7 @@ describe('ActivityEditorComponent (#590)', () => {
         { provide: TestService, useValue: { get: vi.fn().mockReturnValue(of({ id: 7, instanceCount: startedCount })) } },
         { provide: AuthService, useValue: { hasRealmRole: vi.fn((role: string) => trainer && role === 'QuestionTrainer') } },
         { provide: LabelingService, useValue: labeling },
+        { provide: LearningOutcomeService, useValue: outcomes },
         { provide: StudentService, useValue: { loadGrades: vi.fn().mockReturnValue(of([])) } },
         {
           provide: SubjectService,
@@ -938,5 +951,58 @@ describe('ActivityEditorComponent (#590)', () => {
 
     expect(component.wordPool()).toEqual({ kind: 'wordPool', text: 'Su [[0]] derecede donar.', distractors: ['50'] });
     expect(component.items()[0].kind).toBe('wordPool');
+  });
+
+  describe('learning outcomes (#692)', () => {
+    const outcome = { id: 1, code: 'MAT.5.1', description: 'x', curriculumVersion: 'Maarif', gradeId: 5, subjectId: 2, subTopicId: null } as const;
+
+    async function editItem(): Promise<void> {
+    const plan = JSON.stringify({
+      version: 1,
+      type: 'dragPlace',
+      mode: 'place',
+      reuse: false,
+      layout: { kind: 'text', text: 'Su [[t1]] derecede donar.' },
+      targets: [{ id: 't1', capacity: 1 }],
+      cards: [
+        { id: 'ab12cd34', label: '50' },
+        { id: 'ef56gh78', label: '0' },
+      ],
+    });
+          await setup({ testId: '9', questionId: '41' }, [
+        { id: 41, interactionType: 'dragPlace', interactionPlan: plan, interactionSolution: '{"t1":["ef56gh78"]}', passage: null },
+      ]);
+    }
+
+    it('saves changed outcomes when editing an item', async () => {
+      await editItem();
+
+      component.learningOutcomes.set([outcome]);
+      component.save(false);
+
+      expect(questions.saveQuestion).toHaveBeenCalled();
+      expect(outcomes.setForQuestion).toHaveBeenCalledWith(41, [1]);
+    });
+
+    it('does not touch outcomes when they did not change', async () => {
+      await editItem();
+
+      component.save(false);
+
+      expect(questions.saveQuestion).toHaveBeenCalled();
+      expect(outcomes.setForQuestion).not.toHaveBeenCalled();
+    });
+
+    it('never overwrites links it could not load', async () => {
+      failOutcomeLoad = true;
+      await editItem();
+
+      expect(fixture.nativeElement.querySelector('[data-testid="learning-outcomes-load-error"]')).not.toBeNull();
+      component.learningOutcomes.set([outcome]);
+      component.save(false);
+
+      expect(questions.saveQuestion).toHaveBeenCalled();
+      expect(outcomes.setForQuestion).not.toHaveBeenCalled();
+    });
   });
 });

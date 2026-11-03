@@ -49,6 +49,11 @@
               <app-classification-selector [initialSelection]="currentClassification()"
               (selectionChange)="onClassificationChange($event)"></app-classification-selector>
             </div>
+            <div class="ms-preview__card" data-testid="learning-outcomes-card">
+              <div class="ms-preview__card-head"><span class="ins-dot"></span>{{ t('preview.learningOutcomes') }}</div>
+              <app-learning-outcome-picker [gradeId]="currentClassification()?.gradeId" [subjectId]="currentClassification()?.subjectId"
+                [selected]="currentLearningOutcomes()" (selectedChange)="onLearningOutcomesChange($event)" />
+            </div>
           </aside>
         </div>
       }

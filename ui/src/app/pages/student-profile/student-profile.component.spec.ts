@@ -220,17 +220,6 @@ describe('StudentProfileComponent', () => {
             return debugEl.componentInstance as BadgeThropyComponent;
         }
 
-        it('getProfile_ReturnsStudentRecordId3_DoesNotOverrideStoredUserId7', async () => {
-            studentService.getProfile.mockReturnValue(of(profileWithStudentRecordId3));
-
-            fixture.detectChanges();
-
-            expect(component.reportUserId).toBe(7);
-            expect(badgeService.getUserActivity).toHaveBeenCalledTimes(1);
-            expect(badgeService.getUserActivity).toHaveBeenCalledWith(7);
-            expect(badgeService.getUserActivity).not.toHaveBeenCalledWith(3);
-        });
-
         it('activeTab_SetToBadgesTab_PassesStoredUserIdToBadgeThropy', async () => {
             studentService.getProfile.mockReturnValue(of(profileWithStudentRecordId3));
 
@@ -241,14 +230,6 @@ describe('StudentProfileComponent', () => {
             expect(badgeService.getUserBadgeProgress).not.toHaveBeenCalledWith(3);
         });
 
-        it('noStoredUser_DoesNotRequestActivityReport', () => {
-            localStorage.removeItem('user');
-
-            fixture.detectChanges();
-
-            expect(component.reportUserId).toBeNull();
-            expect(badgeService.getUserActivity).not.toHaveBeenCalled();
-        });
     });
 
     // ── Issue #381 ───────────────────────────────────────────────────────────
@@ -313,6 +294,12 @@ describe('StudentProfileComponent', () => {
         expect(card?.querySelector('[data-test="generate"]')).toBeNull();
     });
 
+    // Issue #722: ödev ve haftalık takvim sekmeleri Planım ve Ana Sayfa'nın kopyasıydı.
+    it('tabs_OnlyInfoBadgesAndTheme', () => {
+        fixture.detectChanges();
+        expect(tabLabels().length).toBe(3);
+    });
+
     it('tabs_NoWhatsNewTab_InfoTabIsFirst', () => {
         fixture.detectChanges();
 
@@ -346,114 +333,6 @@ describe('StudentProfileComponent', () => {
                 expect(src, `tab ${index}`).not.toMatch(missing);
             }
         }
-    });
-
-    it('statistics_LabelsComeFromDictionary_NotRawKeys', () => {
-        fixture.detectChanges();
-
-        expect(component.single.map((c) => c.name)).toEqual([
-            studentProfileTr.stats.completedTests,
-            studentProfileTr.stats.studyMinutes,
-            studentProfileTr.stats.solvedQuestions,
-            studentProfileTr.stats.correctAnswers,
-        ]);
-        expect(component.single.some((c) => c.name.startsWith('stats.') || c.name.startsWith('student-profile.'))).toBe(false);
-    });
-
-    it('statistics_LanguageChange_RelabelsCards', () => {
-        fixture.detectChanges();
-
-        TestBed.inject(TranslocoService).setActiveLang('en');
-
-        expect(component.single.map((c) => c.name)).toEqual([
-            studentProfileEn.stats.completedTests,
-            studentProfileEn.stats.studyMinutes,
-            studentProfileEn.stats.solvedQuestions,
-            studentProfileEn.stats.correctAnswers,
-        ]);
-    });
-
-    describe('real-data charts only', () => {
-        let previousUser: string | null;
-
-        beforeEach(() => {
-            previousUser = localStorage.getItem('user');
-            localStorage.setItem('user', JSON.stringify({ id: 7 }));
-        });
-
-        afterEach(() => {
-            if (previousUser === null) {
-                localStorage.removeItem('user');
-            }
-            else {
-                localStorage.setItem('user', previousUser);
-            }
-        });
-
-        it('weeklyCalendarTab_RendersOnlyTheBadgeServiceHeatmap', async () => {
-            fixture.detectChanges();
-            await selectTab(3);
-            const host = fixture.nativeElement as HTMLElement;
-
-            expect(host.querySelectorAll('ngx-charts-heat-map').length).toBe(1);
-            expect(host.querySelectorAll('.heatmap-container h2').length).toBe(1);
-            expect(host.querySelector('.heatmap-container h2')?.textContent?.trim()).toBe(studentProfileTr.heatmap.title);
-            expect(component.activityDataFromApi.length).toBe(52);
-        });
-
-        it('assignmentsTab_NoMockBubbleChart', async () => {
-            fixture.detectChanges();
-            await selectTab(2);
-
-            expect((fixture.nativeElement as HTMLElement).querySelector('app-bubble-chart, ngx-charts-bubble-chart')).toBeNull();
-        });
-
-        function shortDayNames(locale: string): Set<string> {
-            return new Set(Array.from({ length: 7 }, (_, i) => new Date(2024, 0, 1 + i).toLocaleDateString(locale, { weekday: 'short' })));
-        }
-
-        function expectHeatmapIn(locale: string): void {
-            const dayNames = shortDayNames(locale);
-            for (const week of component.activityDataFromApi) {
-                expect(week.name).not.toContain('Week');
-                for (const day of week.series) {
-                    expect(dayNames.has(day.name), `${locale}: ${day.name}`).toBe(true);
-                }
-            }
-        }
-
-        it('apiHeatmap_DayNamesInActiveLanguage_WeekNamesNotEnglishWeekN', () => {
-            fixture.detectChanges();
-
-            expect(TestBed.inject(TranslocoService).getActiveLang()).toBe('tr');
-            expectHeatmapIn('tr');
-            expect(component.activityDataFromApi.some((w) => w.series.some((d) => d.name === 'Pzt'))).toBe(true);
-        });
-
-        it('apiHeatmap_LanguageChange_RegeneratesLabels_WithoutRefetch', () => {
-            fixture.detectChanges();
-
-            TestBed.inject(TranslocoService).setActiveLang('en');
-
-            expectHeatmapIn('en-US');
-            expect(component.activityDataFromApi.some((w) => w.series.some((d) => d.name === 'Mon'))).toBe(true);
-            expect(badgeService.getUserActivity).toHaveBeenCalledTimes(1);
-            // Tikler de yeni dilin hafta adlarıyla eşleşir.
-            const ticks = component.activityDataFromApi.map((w) => component.xAxisTickFormatting(w.name)).filter((t) => t);
-            expect(ticks.length).toBeGreaterThanOrEqual(11);
-        });
-
-        it('xAxisTickFormatting_MonthOnlyOnFirstWeekOfMonth_AndStateless', () => {
-            fixture.detectChanges();
-            const names = component.activityDataFromApi.map((w) => w.name);
-            const ticks = names.map((n) => component.xAxisTickFormatting(n));
-            const nonEmpty = ticks.filter((t) => t !== '');
-
-            // 52 haftada 11-13 ay başı; ikinci tur aynı sonucu verir (önceki çizime bağlı durum yok).
-            expect(nonEmpty.length).toBeGreaterThanOrEqual(11);
-            expect(nonEmpty.length).toBeLessThanOrEqual(13);
-            expect(names.map((n) => component.xAxisTickFormatting(n))).toEqual(ticks);
-        });
     });
 
     describe('Rozetlerim box states', () => {

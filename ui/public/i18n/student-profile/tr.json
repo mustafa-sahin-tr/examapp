@@ -5,8 +5,6 @@
   "tabs": {
     "info": "Bilgilerim",
     "badges": "Rozetler",
-    "assignments": "Ödevler ve Sınavlar",
-    "weeklyCalendar": "Haftalık Takvim",
     "theme": "Tema Ayarları"
   },
   "profile": {
@@ -24,36 +22,5 @@
   "points": {
     "myBadges": "Rozetlerim",
     "leaderboards": "Liderlik Tabloları"
-  },
-  "goal": {
-    "title": "Haftalık Hedef",
-    "monthly": "Aylık",
-    "current": "Bu hafta",
-    "streak": "{{count}} hafta",
-    "streakLabel": "En uzun haftalık hedef serisi",
-    "noActivity": "Aktivite yok"
-  },
-  "heatmap": {
-    "title": "Aktivite Isı Haritası",
-    "loading": "Aktivite verisi yükleniyor...",
-    "error": "Aktivite verisi alınırken bir hata oluştu.",
-    "empty": "Son bir yıl için aktivite verisi bulunamadı.",
-    "tooltip": {
-      "questions": "Soru",
-      "correct": "Doğru",
-      "duration": "Süre",
-      "activityScore": "Aktivite Skoru"
-    }
-  },
-  "duration": {
-    "minutesAndSeconds": "{{minutes}} dk {{seconds}} sn",
-    "minutes": "{{minutes}} dk",
-    "seconds": "{{seconds}} sn"
-  },
-  "stats": {
-    "completedTests": "Çözülen Test",
-    "studyMinutes": "Çalışma Süresi (dk)",
-    "solvedQuestions": "Çözülen Soru",
-    "correctAnswers": "Doğru Cevap"
   }
 }

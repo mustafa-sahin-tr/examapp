@@ -397,8 +397,6 @@ describe('EnhancedLayoutComponent notification badge (issue #146)', () => {
         const el = fixture.nativeElement as HTMLElement;
         expect(fixture.componentInstance.isParentOnly).toBe(true);
         expect(el.querySelector('mat-toolbar .section-nav')).not.toBeNull(); // masaüstü araç çubuğu çizildi
-        expect(el.querySelector('[data-test="toolbar-newest"]')).toBeNull();
-        expect(el.querySelector('[data-test="toolbar-popular"]')).toBeNull();
         expect(el.querySelector('[data-test="toolbar-search"]')).toBeNull();
     });
 
@@ -407,8 +405,6 @@ describe('EnhancedLayoutComponent notification badge (issue #146)', () => {
         fixture.detectChanges();
         const el = fixture.nativeElement as HTMLElement;
         expect(fixture.componentInstance.isParentOnly).toBe(false);
-        expect(el.querySelector('[data-test="toolbar-newest"]')).not.toBeNull();
-        expect(el.querySelector('[data-test="toolbar-popular"]')).not.toBeNull();
         expect(el.querySelector('[data-test="toolbar-search"]')).not.toBeNull();
     });
 
@@ -1236,5 +1232,36 @@ describe('EnhancedLayoutComponent role navigation (issue #719)', () => {
         (TestBed.inject(WorksheetAccessRequestService).pendingCount as WritableSignal<number>).set(2);
         (TestBed.inject(StudentSchoolRequestService).pendingCount as WritableSignal<number>).set(3);
         expect(component.menuBadgeCount('teacher-requests')).toBe(5);
+    });
+});
+
+/** Issue #720: üst çubukta sahte öğe yok; arama yalnız testleri arar ve avatar gerçek. */
+describe('EnhancedLayoutComponent header (issue #720)', () => {
+    afterEach(() => localStorage.removeItem('user'));
+
+    it('search_HasTestLabel_AndNoSampleSuggestions', () => {
+        const el = renderLayout(['Student'], false).nativeElement as HTMLElement;
+        const input = el.querySelector<HTMLInputElement>('[data-test="toolbar-search"] input');
+
+        expect(input?.placeholder).toBe('Test ara...');
+        input?.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+        expect(el.querySelector('.ms-search-dropdown')).toBeNull();
+    });
+
+    it('newAndPopularButtons_AreRemoved', () => {
+        const el = renderLayout(['Student'], false).nativeElement as HTMLElement;
+        expect(el.querySelector('.section-nav-btn')).toBeNull();
+    });
+
+    it('avatar_UsesUserImage_AndFallsBackOnError', () => {
+        const fixture = renderLayout(['Student'], false);
+        fixture.componentInstance.userAvatarUrl.set('https://example.test/a.png');
+        fixture.detectChanges();
+        const img = (fixture.nativeElement as HTMLElement).querySelector<HTMLImageElement>('.preview-image');
+        expect(img?.getAttribute('src')).toBe('https://example.test/a.png');
+
+        img?.dispatchEvent(new Event('error'));
+        fixture.detectChanges();
+        expect(img?.getAttribute('src')).toBe('default-avatar.png');
     });
 });

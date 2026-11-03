@@ -95,27 +95,9 @@
       "menu": "Menu"
     },
     "toolbar": {
-      "newest": "New",
-      "popular": "Popular",
-      "searchPlaceholder": "Search ...",
+      "searchPlaceholder": "Search tests...",
       "notifications": "Notifications",
       "notificationsUnread": "Notifications ({{count}} unread)"
-    },
-    "search": {
-      "recentTitle": "Recent searches",
-      "remove": "Remove from search history",
-      "history": {
-        "math": "Maths",
-        "turkish": "Turkish",
-        "life": "Life Studies",
-        "science": "Science"
-      },
-      "suggestions": {
-        "naturalNumbers": "Natural Numbers",
-        "ourPlanet": "Our Planet",
-        "multiplication": "Multiplication",
-        "antonyms": "Antonyms"
-      }
     },
     "profile": {
       "fallbackName": "User",

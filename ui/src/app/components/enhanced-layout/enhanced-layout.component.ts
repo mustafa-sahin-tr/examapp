@@ -146,7 +146,6 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
       ? EnhancedLayoutComponent.SIDENAV_WIDTH_COLLAPSED
       : EnhancedLayoutComponent.SIDENAV_WIDTH_EXPANDED;
   });
-  isSearchFocused = signal(false);
   authService = inject(AuthService);
   private readonly isTeacher = this.authService.hasRealmRole('Teacher');
   private readonly signalR = inject(SignalRService);
@@ -180,7 +179,6 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   userThemeService = inject(UserThemeService);
   themeConfigService = inject(ThemeConfigService);
   // Search functionality
-  searchControl = new FormControl('');
   globalSearchControl = new FormControl('');
   // User info
   userName = signal('');
@@ -188,29 +186,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   userAvatarUrl = signal('');
   userThemePreset = signal<string>('standard');
   userThemeCustomConfig = signal<string | null>(null);
-  isInputFocused: boolean = false;
-  /**
-   * Örnek arama geçmişi/önerileri sözlükten gelir (issue #183): anahtarlar sabit, metinler aktif
-   * dile göre `layout.search.*` altından çözülür. Kullanıcının yazdığı aramalar da aynı listeye
-   * eklendiği için dizi anahtar değil, çevrilmiş metin tutar.
-   */
-  private static readonly SEARCH_HISTORY_KEYS = [
-    'layout.search.history.math',
-    'layout.search.history.turkish',
-    'layout.search.history.life',
-    'layout.search.history.science',
-  ];
-  private static readonly SEARCH_SUGGESTION_KEYS = [
-    'layout.search.suggestions.naturalNumbers',
-    'layout.search.suggestions.ourPlanet',
-    'layout.search.suggestions.multiplication',
-    'layout.search.suggestions.antonyms',
-  ];
   private readonly transloco = inject(TranslocoService);
-  searchHistory: string[] = [];
   isAuthenticated = this.authService.isAuthenticated();
-  allSuggestions: string[] = [];
-  currentSection = signal<'newest' | 'hot'>('newest');
 
   // Realm roles the current user holds (used to filter the menu).
   // Issue #419: Parent rolü — veli menü öğeleri.
@@ -516,19 +493,11 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
 
   // Computed values
 
-  filteredSuggestions: string[] = [];
 
   ngOnInit() {
     this.signalR.startConnection();
     this.initNotificationBadge();
     this.initDirectMessageBadge();
-
-    // Sözlük yüklendiğinde (ve dil değiştiğinde) örnek arama metinlerini tazele.
-    this.transloco.langChanges$.pipe(takeUntil(this.destroy$)).subscribe(() => {
-      this.searchHistory = this.translateAll(EnhancedLayoutComponent.SEARCH_HISTORY_KEYS);
-      this.allSuggestions = this.translateAll(EnhancedLayoutComponent.SEARCH_SUGGESTION_KEYS);
-      this.filteredSuggestions = [...this.searchHistory];
-    });
 
     // Issue #361: admin için bekleyen öğrenci okul başvurusu rozeti (öğretmende onay bilinince çekilir).
     if (this.authService.hasRealmRole('Admin')) {
@@ -552,18 +521,6 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
           this.isMobileSidenavOpen.set(false);
         }
       });
-
-    // Abone olarak değer değişimini takip et
-    this.globalSearchControl.valueChanges.subscribe((value) => {
-      // Eğer input boşsa, geçmiş aramalar gösterilsin
-      if (!value || !value.trim()) {
-        this.filteredSuggestions = [...this.searchHistory];
-      } else {
-        // Girilen değere göre öneriler filtrelensin (küçük/büyük harf duyarsız)
-        const filterValue = value.toLowerCase();
-        this.filteredSuggestions = this.allSuggestions.filter((item) => item.toLowerCase().includes(filterValue));
-      }
-    });
 
     var profile = localStorage.getItem('user_role');
     var user = localStorage.getItem('user');
@@ -650,10 +607,6 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
       .subscribe();
   }
 
-  private translateAll(keys: readonly string[]): string[] {
-    return keys.map((key) => this.transloco.translate<string>(key) ?? '');
-  }
-
   public setUserInfo() {
     var user = localStorage.getItem('user');
     if (user) {
@@ -715,34 +668,6 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   onGlobalSearch() {
     const query = this.globalSearchControl.value?.trim() || '';
     this.navigateTo('/tests', { queryParams: { search: query } });
-    // this.router.navigate(['/tests'], { queryParams: { search: query } });
-
-    // Aramayı search history'e ekle (varsa yinelenmeyen)
-    if (query && !this.searchHistory.includes(query)) {
-      this.searchHistory.unshift(query);
-    }
-  }
-
-  onSearchFocus() {
-    this.isSearchFocused.set(true);
-  }
-
-  onSearchBlur() {
-    setTimeout(() => {
-      this.isSearchFocused.set(false);
-    }, 200);
-  }
-
-  onSearch() {
-    const searchValue = this.searchControl.value;
-    if (searchValue) {
-      // Implement search logic here
-    }
-  }
-
-  onSelectSuggestion(suggestion: string) {
-    this.globalSearchControl.setValue(suggestion);
-    this.onGlobalSearch();
   }
 
   logout() {
@@ -758,36 +683,6 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   // Track by function for ngFor performance
   trackByItemId(index: number, item: MenuItem): string {
     return item.id;
-  }
-
-  onFocus() {
-    this.isInputFocused = true;
-    const value = this.globalSearchControl.value;
-    // if (!value || !value.trim()) {
-    //   this.filteredSuggestions
-    // }
-  }
-
-  onDelete(item: string) {
-    this.searchHistory = this.searchHistory.filter((i) => i !== item);
-    // this.filteredSuggestions = this.filteredSuggestions.filter((i) => i !== item);
-  }
-
-  // Blur olduğunda belirli bir gecikme sonrası listeyi kapat (click eventi için)
-  onBlur() {
-    setTimeout(() => {
-      this.isInputFocused = false;
-    }, 150);
-  }
-
-  showSection(section: 'newest' | 'hot') {
-    this.currentSection.set(section);
-    // Header'daki Yeni / Popüler butonları test listesine yönlendirir.
-    // Yeni  -> en güncel sınavlar üstte
-    // Popüler -> son zamanlarda öğrenciler tarafından çözülenler (öğrencinin sınıfına göre)
-    this.navigateTo('/tests', {
-      queryParams: { section: section === 'hot' ? 'popular' : 'newest' },
-    });
   }
 
   private updateUserProfileInLocalStorage(themePreset: string, themeCustomConfig: string | null) {

@@ -95,27 +95,9 @@
       "menu": "Menü"
     },
     "toolbar": {
-      "newest": "Yeni",
-      "popular": "Popüler",
-      "searchPlaceholder": "Ara ...",
+      "searchPlaceholder": "Test ara...",
       "notifications": "Bildirimler",
       "notificationsUnread": "Bildirimler ({{count}} okunmamış)"
-    },
-    "search": {
-      "recentTitle": "Son aramalar",
-      "remove": "Aramayı listeden kaldır",
-      "history": {
-        "math": "Matematik",
-        "turkish": "Türkçe",
-        "life": "Hayat Bilgisi",
-        "science": "Fen Bilimleri"
-      },
-      "suggestions": {
-        "naturalNumbers": "Doğal Sayılar",
-        "ourPlanet": "Gezegenimiz",
-        "multiplication": "Çarpma",
-        "antonyms": "Zıt Anlamlı"
-      }
     },
     "profile": {
       "fallbackName": "Kullanıcı",

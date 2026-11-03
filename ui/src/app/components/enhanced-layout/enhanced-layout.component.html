@@ -101,42 +101,10 @@
         <mat-toolbar color="primary">
           <div class="section-nav">
             @if (!isParentOnly) {
-              <button class="section-nav-btn" data-test="toolbar-newest" [class.active]="currentSection() === 'newest'"
-                (click)="showSection('newest')">
-                <mat-icon>new_releases</mat-icon>
-                {{ t('toolbar.newest') }}
-              </button>
-              <button class="section-nav-btn" data-test="toolbar-popular" [class.active]="currentSection() === 'hot'" (click)="showSection('hot')">
-                <mat-icon>local_fire_department</mat-icon>
-                {{ t('toolbar.popular') }}
-              </button>
-              <div class="search-box" data-test="toolbar-search" (focusin)="onFocus()" (focusout)="onBlur()">
+              <div class="search-box" data-test="toolbar-search">
                 <mat-icon class="search-icon">search</mat-icon>
                 <input matInput [formControl]="globalSearchControl" (keyup.enter)="onGlobalSearch()"
                   [placeholder]="t('toolbar.searchPlaceholder')" [attr.aria-label]="t('toolbar.searchPlaceholder')" />
-                  @if (isInputFocused) {
-                    <div class="ms-search-dropdown">
-                      @if (!globalSearchControl.value) {
-                        <p class="ms-recent-title">{{ t('search.recentTitle') }}</p>
-                      }
-                      <ul class="ms-dropdown-list">
-                        @for (item of filteredSuggestions; track item) {
-                          <li (click)="onSelectSuggestion(item)"
-                            class="ms-dropdown-item">
-                            <div class="ms-item-content">
-                              @if (!globalSearchControl.value) {
-                                <mat-icon class="ms-history-icon">history</mat-icon>
-                              }
-                              <span class="ms-item-text">{{ item }}</span>
-                            </div>
-                            <button class="ms-delete-btn" (click)="onDelete(item)" [attr.aria-label]="t('search.remove')">
-                              <mat-icon>close</mat-icon>
-                            </button>
-                          </li>
-                        }
-                      </ul>
-                    </div>
-                  }
                 </div>
               }
             </div>
@@ -145,8 +113,8 @@
             @if( isAuthenticated | async) {
               <ng-container *ngTemplateOutlet="notificationBell; context: { $implicit: 'toolbar-notifications' }" />
               <div class="profile-menu" mat-button [matMenuTriggerFor]="profileMenu">
-                <img [src]="'default-avatar.png'" ngSrcset="100w, 200w" class="preview-image"
-                  [alt]="t('profile.avatarAlt')" />
+                <img [src]="userAvatarUrl() || 'default-avatar.png'" class="preview-image"
+                  [alt]="t('profile.avatarAlt')" (error)="userAvatarUrl.set('')" />
                   <span class="username">{{ userName() }}</span>
                 </div>
                 <mat-menu #profileMenu="matMenu" class="ms-menu-panel">

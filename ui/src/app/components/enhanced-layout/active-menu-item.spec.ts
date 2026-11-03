@@ -10,7 +10,6 @@ describe('resolveActiveMenuItemId (issue #385)', () => {
         menu('exams', '/tests'),
         menu('practice', '/practice'),
         menu('study', '/study'),
-        menu('programsm', '/programs'),
         menu('my-calendar', '/my-calendar'),
         menu('tutors', '/tutors'),
         divider,
@@ -24,8 +23,7 @@ describe('resolveActiveMenuItemId (issue #385)', () => {
         menu('my-calendar', '/my-calendar'),
         divider,
         menu('study-pages', '/study-pages'),
-        menu('study-links', '/study-links'),
-        menu('exam', '/exam'),
+        menu('teacher-requests', '/assignment-permission-requests'),
         menu('reports', '/certificates'),
     ];
 
@@ -35,6 +33,7 @@ describe('resolveActiveMenuItemId (issue #385)', () => {
         menu('admin', '/admin'),
         menu('admin-teachers', '/admin/teachers'),
         menu('questiontransfer', '/question-transfer'),
+        menu('open-text-reviews', '/open-text-reviews'),
     ];
 
     const STUDENT_CASES: Array<[
@@ -42,9 +41,10 @@ describe('resolveActiveMenuItemId (issue #385)', () => {
         expected: string | null
     ]> = [
         ['/dashboard', 'dashboard'],
-        ['/programs', 'programsm'],
-        ['/programs/5/detail', 'programsm'],
-        ['/program-create', 'programsm'],
+        ['/programs', 'my-calendar'],
+        ['/programs/5/detail', 'my-calendar'],
+        ['/program-create', 'my-calendar'],
+        ['/my-bookings', 'tutors'],
         ['/test/12', 'exams'],
         ['/test/12?reminder=edit', 'exams'],
         ['/tests?section=popular', 'exams'],
@@ -69,23 +69,21 @@ describe('resolveActiveMenuItemId (issue #385)', () => {
         url: string,
         expected: string | null
     ]> = [
-        ['/exam', 'exam'],
-        ['/exam/7', 'exam'],
-        ['/questioncanvas', 'exam'],
-        ['/questioncanvas/15', 'exam'],
-        ['/questioncanvas/preview/3', 'exam'],
-        ['/question', 'exam'],
-        ['/question/21', 'exam'],
+        ['/exam', 'exams'],
+        ['/exam/7', 'exams'],
+        ['/questioncanvas', 'exams'],
+        ['/questioncanvas/15', 'exams'],
+        ['/question/21', 'exams'],
+        ['/student-school-requests', 'teacher-requests'],
+        ['/open-text-reviews', 'teacher-requests'],
         // Segment sınırı: `/questions` (view dışı) alias'a girmez.
         ['/questions', null],
         ['/test/12', 'exams'],
         ['/study-pages/new', 'study-pages'],
         ['/study-pages/4', 'study-pages'],
-        ['/study-links', 'study-links'],
+        ['/study-links', 'study-pages'],
         // Segment sınırı: /study, /study-pages öğesinin öneki sayılmaz.
         ['/study', null],
-        // Rolüne kapalı öğe seçilmez: öğretmen menüsünde Programlarım yok.
-        ['/programs/5/detail', null],
     ];
 
     for (const [url, expected] of TEACHER_CASES) {
@@ -103,6 +101,8 @@ describe('resolveActiveMenuItemId (issue #385)', () => {
         ['/admin/teachers?page=2', 'admin-teachers'],
         ['/admin/schools', 'admin'],
         ['/question-transfer', 'questiontransfer'],
+        // Takma adın hedefi Admin menüsünde yok; kendi öğesi seçilir.
+        ['/open-text-reviews', 'open-text-reviews'],
         ['/dashboard', null],
     ];
 

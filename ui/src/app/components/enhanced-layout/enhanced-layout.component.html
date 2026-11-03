@@ -185,6 +185,18 @@
 
           <!-- Main Content -->
           <main class="main-content" [class.no-bottom-nav]="isExamRoute()">
+            @if (activeSectionTabs().length && !isExamRoute() && !isFullScreen()) {
+              <nav class="section-tabs" [attr.aria-label]="t('sectionTabs.label')">
+                @for (tab of activeSectionTabs(); track tab.id) {
+                  <a class="section-tab" [routerLink]="tab.route" routerLinkActive="is-active" ariaCurrentWhenActive="page">
+                    {{ t(tab.labelKey) }}
+                    @if (menuBadgeCount(tab.id) > 0) {
+                      <span class="section-tab__badge">{{ menuBadgeCount(tab.id) > 99 ? '99+' : menuBadgeCount(tab.id) }}</span>
+                    }
+                  </a>
+                }
+              </nav>
+            }
             <router-outlet></router-outlet>
             <!-- Issue #441: hoşgörünün son günlerinde kapatılamaz "velini ekle" modalı (görünür bir şey çizmez). -->
             <app-parent-final-warning />

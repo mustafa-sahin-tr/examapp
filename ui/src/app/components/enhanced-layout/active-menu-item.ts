@@ -8,19 +8,26 @@ export interface RoutedMenuEntry {
 /**
  * Issue #385: menüde kendi öğesi olmayan alt/detay sayfaları, üst menü öğesinin rotasına eşlenir.
  * Anahtar URL yolu öneki (segment sınırında eşleşir), değer menü öğesinin rotası.
- * - `/test/:id` (worksheet detayı), `/testsolve/...`, `/activity/...` (#573) → Sınavlar (`/tests`)
- * - `/program-create` → Programlarım (`/programs`); `/programs/:id/detail` önek eşleşmesiyle zaten bulunur
- * - Öğretmen soru akışı `/questioncanvas...`, `/question...`, `/questions/view`, `/imageselect` → Test Ekleme (`/exam`):
- *   soru ekleme, test oluşturma/detay akışından açılır
+ * - `/test/:id`, `/testsolve/...`, `/activity/...` (#573) ve öğretmen soru akışı (`/exam`, `/questioncanvas...`,
+ *   `/question...`) → Testler (`/tests`)
+ * - Bölüm sekmeleri (#719) → bölümün menü öğesi
  *
  * Değişmez: önek uzunluğuna göre AZALAN sırada tutulur — `find` ilk (en uzun) eşleşmeyi döndürür.
  */
 const ROUTE_ALIASES: ReadonlyArray<readonly [prefix: string, target: string]> = [
-  ['/questioncanvas', '/exam'],
-  ['/program-create', '/programs'],
+  ['/student-school-requests', '/assignment-permission-requests'],
+  ['/open-text-reviews', '/assignment-permission-requests'],
+  ['/booking-requests', '/assignment-permission-requests'],
+  ['/questioncanvas', '/tests'],
+  ['/program-create', '/my-calendar'],
+  ['/availability', '/tutor-profile'],
+  ['/study-links', '/study-pages'],
+  ['/my-bookings', '/tutors'],
   ['/testsolve', '/tests'],
+  ['/programs', '/my-calendar'],
   ['/activity', '/tests'],
-  ['/question', '/exam'],
+  ['/question', '/tests'],
+  ['/exam', '/tests'],
   ['/test', '/tests'],
 ];
 
@@ -42,7 +49,10 @@ function normalizePath(url: string): string {
  */
 export function resolveActiveMenuItemId(url: string, items: readonly RoutedMenuEntry[]): string | null {
   let path = normalizePath(url);
-  const alias = ROUTE_ALIASES.find(([prefix]) => matchesPrefix(path, prefix));
+  // Issue #719: hedefi görünmeyen takma ad atlanır (Admin'de /open-text-reviews'in kendi öğesi var).
+  const alias = ROUTE_ALIASES.find(
+    ([prefix, target]) => matchesPrefix(path, prefix) && items.some((item) => item.route === target),
+  );
   if (alias) {
     path = alias[1];
   }

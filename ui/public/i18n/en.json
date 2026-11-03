@@ -47,6 +47,9 @@
       "close": "Close menu",
       "open": "Open menu"
     },
+    "sectionTabs": {
+      "label": "Section pages"
+    },
     "menu": {
       "dashboard": "Home",
       "teacherApprovalStatus": "Application Status",
@@ -74,6 +77,10 @@
       "labelingBooks": "Books",
       "badges": "Badges",
       "settings": "Settings",
+      "calendar": "Calendar",
+      "findTutor": "Find a Tutor",
+      "studyContent": "Study Content",
+      "requests": "Requests",
       "admin": "Administration",
       "teacherApprovals": "Teacher Applications",
       "adminTeachers": "Teachers",

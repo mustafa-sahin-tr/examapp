@@ -47,6 +47,9 @@
       "close": "Menüyü Kapat",
       "open": "Menüyü Aç"
     },
+    "sectionTabs": {
+      "label": "Bölüm sayfaları"
+    },
     "menu": {
       "dashboard": "Ana Sayfa",
       "teacherApprovalStatus": "Başvuru Durumu",
@@ -74,6 +77,10 @@
       "labelingBooks": "Kitaplar",
       "badges": "Rozetler",
       "settings": "Ayarlar",
+      "calendar": "Takvim",
+      "findTutor": "Öğretmen Ara",
+      "studyContent": "Çalışma İçerikleri",
+      "requests": "Talepler",
       "admin": "Yönetim",
       "teacherApprovals": "Öğretmen Başvuruları",
       "adminTeachers": "Öğretmenler",

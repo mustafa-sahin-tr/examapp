@@ -51,6 +51,7 @@ public class QuestionContentHashService(AppDbContext db, IMinIoService minio, IL
         {
             var batch = await db.Questions.AsNoTracking()
                 .Include(q => q.Answers)
+                .Include(q => q.Passage)
                 .Where(q => q.ContentFingerprint == null && q.Id > lastId)
                 .OrderBy(q => q.Id)
                 .Take(BatchSize)

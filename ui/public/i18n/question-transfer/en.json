@@ -1,51 +1,87 @@
 {
   "title": "Question Transfer",
+  "subtitle": "Moves questions and the catalog between environments. Move the catalog first, then the questions: questions reach their topics through the catalog.",
   "actions": {
-    "bundles": "Bundles",
-    "bundlesTooltip": "Refreshes the bundle list",
     "hangfire": "Hangfire",
-    "hangfireTooltip": "Open the Hangfire dashboard"
+    "hangfireTooltip": "Opens the background jobs dashboard"
+  },
+  "catalog": {
+    "title": "Catalog",
+    "subtitle": "Grades, subjects, topics, subtopics and outcomes. Records missing from the file are not deleted.",
+    "download": "Download catalog",
+    "chooseFile": "Choose catalog file",
+    "invalidFile": "This file could not be read. Choose a file saved with Download catalog.",
+    "failed": "The catalog could not be loaded. Nothing was written.",
+    "previewCaption": "What loading it would change",
+    "applied": "Catalog loaded",
+    "apply": "Load catalog",
+    "created": "New",
+    "updated": "To update",
+    "unchanged": "Same",
+    "rows": {
+      "grades": "Grade",
+      "subjects": "Subject",
+      "gradeSubjects": "Grade-subject link",
+      "topics": "Topic",
+      "subTopics": "Subtopic",
+      "learningOutcomes": "Outcome"
+    }
   },
   "export": {
-    "title": "Export Questions",
-    "sourceKeyLabel": "Package Key",
-    "questionIdsLabel": "Question Numbers",
-    "questionIdsPlaceholder": "e.g. 12, 15, 99, 100-200",
-    "questionIdsHint": "Leave empty to export all questions",
-    "allSelected": "All",
-    "idCount": "{{count}} ids",
-    "start": "Start Export"
+    "title": "Export",
+    "subtitle": "Choose the questions. When the job finishes, download the package from the list below.",
+    "grade": "Grade",
+    "subject": "Subject",
+    "topic": "Topic",
+    "topicHint": "Choose a subject first",
+    "book": "Book",
+    "any": "All",
+    "questionIds": "Question numbers (optional)",
+    "questionIdsPlaceholder": "e.g. 12, 15, 100-200",
+    "questionIdsHint": "To take only these questions",
+    "failed": "The export could not start. Try again.",
+    "startAll": "Export all questions",
+    "startScope": "Export selected questions",
+    "startIds": "Export {{count}} questions"
   },
   "import": {
-    "title": "Import Questions",
-    "noFile": "No zip selected",
-    "sourceChip": "Source: {{sourceKey}}",
-    "questionChip": "Questions: {{count}}",
-    "alreadyChip": "Already imported: {{count}}",
-    "start": "Start Import"
-  },
-  "bundles": {
-    "title": "Export Bundles",
-    "subtitle": "Packages for {{sourceKey}}",
-    "index": "Index (json)",
-    "singleZip": "Single ZIP (package)",
-    "empty": "There are no bundles for this source yet.",
-    "bundleTitle": "Bundle {{no}}",
-    "questionCount": "{{count}} questions",
-    "zip": "ZIP",
-    "map": "Map"
+    "title": "Import",
+    "subtitle": "Choose a package, see what will happen, then import it.",
+    "chooseFile": "Choose package",
+    "noFile": "No package chosen",
+    "previewLoading": "Checking the package. A large one can take a few minutes.",
+    "previewFailed": "The package could not be checked. Choose a zip downloaded from an export.",
+    "failed": "The import could not start. Try again.",
+    "total": "The package has {{count}} questions",
+    "new": "New",
+    "matched": "Already here",
+    "already": "Imported before",
+    "conflicts": "Conflicts",
+    "missingTaxonomy": "Topic not found",
+    "missingImage": "Image missing",
+    "conflictsNote": "Conflict: the same image is here with different content. These questions are not imported and the question here does not change.",
+    "missingTaxonomyNote": "Questions whose topic is not found arrive without one. Move the catalog first.",
+    "unhashedNote": "{{count}} questions here have not been scanned yet, so the counts may be low. The scan is running in the background.",
+    "start": "Import"
   },
   "jobs": {
-    "title": "Jobs",
-    "subtitle": "Last 10 jobs (auto-refreshed)",
-    "refreshNow": "Refresh now",
-    "empty": "There are no jobs yet.",
-    "exportColumn": "Export",
-    "importColumn": "Import",
-    "exportEmpty": "No export jobs.",
-    "importEmpty": "No import jobs.",
-    "downloadIndex": "Index",
-    "downloadZip": "ZIP",
-    "downloadFile": "File"
+    "title": "Recent Jobs",
+    "empty": "No jobs yet.",
+    "loadFailed": "Jobs could not be loaded.",
+    "retry": "Try again",
+    "downloadFailed": "The package could not be downloaded. Try again.",
+    "downloadPackage": "Download package",
+    "failedCount": "Failed",
+    "details": "Details",
+    "kind": {
+      "Export": "Export",
+      "Import": "Import"
+    },
+    "status": {
+      "Queued": "Queued",
+      "Running": "Running",
+      "Completed": "Completed",
+      "Failed": "Failed"
+    }
   }
 }

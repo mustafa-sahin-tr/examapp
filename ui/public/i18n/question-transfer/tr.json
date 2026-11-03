@@ -1,51 +1,87 @@
 {
-  "title": "Soru Transferi",
+  "title": "Soru Aktarımı",
+  "subtitle": "Soruları ve kataloğu bir ortamdan diğerine taşır. Önce kataloğu, sonra soruları taşıyın: sorular konularına katalog üzerinden bağlanır.",
   "actions": {
-    "bundles": "Bundle’lar",
-    "bundlesTooltip": "Bundle listesini yeniler",
     "hangfire": "Hangfire",
-    "hangfireTooltip": "Hangfire dashboard aç"
+    "hangfireTooltip": "Arka plan işleri panelini açar"
+  },
+  "catalog": {
+    "title": "Katalog",
+    "subtitle": "Sınıf, ders, konu, alt konu ve kazanımlar. Dosyada olmayan kayıtlar silinmez.",
+    "download": "Kataloğu indir",
+    "chooseFile": "Katalog dosyası seç",
+    "invalidFile": "Bu dosya okunamadı. Kataloğu indir ile alınmış bir dosya seçin.",
+    "failed": "Katalog yüklenemedi, hiçbir şey yazılmadı.",
+    "previewCaption": "Yüklenirse ne değişir",
+    "applied": "Katalog yüklendi",
+    "apply": "Kataloğu yükle",
+    "created": "Yeni",
+    "updated": "Güncellenecek",
+    "unchanged": "Aynı",
+    "rows": {
+      "grades": "Sınıf",
+      "subjects": "Ders",
+      "gradeSubjects": "Sınıf-ders bağı",
+      "topics": "Konu",
+      "subTopics": "Alt konu",
+      "learningOutcomes": "Kazanım"
+    }
   },
   "export": {
-    "title": "Soruları Dışa Aktar",
-    "sourceKeyLabel": "Paket Kodu",
-    "questionIdsLabel": "Soru Numaraları",
-    "questionIdsPlaceholder": "örn: 12, 15, 99, 100-200",
-    "questionIdsHint": "Boş bırakırsan tüm sorular export edilir",
-    "allSelected": "Tümü",
-    "idCount": "{{count}} id",
-    "start": "Export Başlat"
+    "title": "Dışa Aktar",
+    "subtitle": "Soruları seçin. İş bitince paket aşağıdaki listeden indirilir.",
+    "grade": "Sınıf",
+    "subject": "Ders",
+    "topic": "Konu",
+    "topicHint": "Önce ders seçin",
+    "book": "Kitap",
+    "any": "Tümü",
+    "questionIds": "Soru numaraları (isteğe bağlı)",
+    "questionIdsPlaceholder": "örn: 12, 15, 100-200",
+    "questionIdsHint": "Yalnız bu soruları almak için",
+    "failed": "Dışa aktarma başlatılamadı. Tekrar deneyin.",
+    "startAll": "Tüm soruları dışa aktar",
+    "startScope": "Seçilen soruları dışa aktar",
+    "startIds": "{{count}} soruyu dışa aktar"
   },
   "import": {
-    "title": "Soruları İçe Aktar",
-    "noFile": "Zip seçilmedi",
-    "sourceChip": "Kaynak: {{sourceKey}}",
-    "questionChip": "Soru: {{count}}",
-    "alreadyChip": "Zaten: {{count}}",
-    "start": "Import Başlat"
-  },
-  "bundles": {
-    "title": "Export Bundle’ları",
-    "subtitle": "{{sourceKey}} için paketler",
-    "index": "Index (json)",
-    "singleZip": "Tek ZIP (package)",
-    "empty": "Bu kaynak için henüz bundle yok.",
-    "bundleTitle": "Bundle {{no}}",
-    "questionCount": "{{count}} soru",
-    "zip": "ZIP",
-    "map": "Map"
+    "title": "İçe Al",
+    "subtitle": "Paket seçin, ne olacağını görün, sonra içe alın.",
+    "chooseFile": "Paket seç",
+    "noFile": "Paket seçilmedi",
+    "previewLoading": "Paket inceleniyor. Büyük pakette birkaç dakika sürebilir.",
+    "previewFailed": "Paket incelenemedi. Dışa aktarmadan indirilen bir zip seçin.",
+    "failed": "İçe alma başlatılamadı. Tekrar deneyin.",
+    "total": "Pakette {{count}} soru var",
+    "new": "Yeni",
+    "matched": "Zaten var",
+    "already": "Daha önce alındı",
+    "conflicts": "Çakışma",
+    "missingTaxonomy": "Konusu bulunamadı",
+    "missingImage": "Görseli eksik",
+    "conflictsNote": "Çakışma: aynı görsel burada başka içerikle var. Bu sorular alınmaz, buradaki soru değişmez.",
+    "missingTaxonomyNote": "Konusu bulunamayan sorular konusuz gelir. Önce kataloğu taşıyın.",
+    "unhashedNote": "Burada {{count}} soru henüz taranmadı, sayılar eksik olabilir. Tarama arka planda sürüyor.",
+    "start": "İçe al"
   },
   "jobs": {
-    "title": "İşler",
-    "subtitle": "Son 10 iş (otomatik yenilenir)",
-    "refreshNow": "Şimdi yenile",
+    "title": "Son İşler",
     "empty": "Henüz iş yok.",
-    "exportColumn": "Export",
-    "importColumn": "Import",
-    "exportEmpty": "Export işi yok.",
-    "importEmpty": "Import işi yok.",
-    "downloadIndex": "Index",
-    "downloadZip": "ZIP",
-    "downloadFile": "Dosya"
+    "loadFailed": "İşler yüklenemedi.",
+    "retry": "Tekrar dene",
+    "downloadFailed": "Paket indirilemedi. Tekrar deneyin.",
+    "downloadPackage": "Paketi indir",
+    "failedCount": "Hatalı",
+    "details": "Ayrıntılar",
+    "kind": {
+      "Export": "Dışa aktarma",
+      "Import": "İçe alma"
+    },
+    "status": {
+      "Queued": "Sırada",
+      "Running": "Sürüyor",
+      "Completed": "Tamamlandı",
+      "Failed": "Başarısız"
+    }
   }
 }

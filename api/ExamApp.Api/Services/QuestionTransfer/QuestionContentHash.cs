@@ -37,11 +37,12 @@ public static class QuestionContentHash
     internal const int MaxPackageManifestBytes = 256 * 1024 * 1024;
 
     /// <param name="identifiedByText">
-    /// Görsel yoksa kimlik metinden gelir. Paragrafı ya da şık görseli olan soruda metin soruyu tanımlamaz ("Buna göre hangisi doğrudur?"):
+    /// Görsel yoksa kimlik metinden gelir. Metni olmayan paragrafa ya da şık görseline bağlı soruda metin soruyu tanımlamaz:
     /// false verilirse kimlik oluşmaz, farklı sorular tek soruda birleşmez.
     /// </param>
+    /// <param name="passageText">Görselsiz soruda parmak izine girer: "Buna göre hangisi doğrudur?" paragrafıyla birlikte tanımlıdır.</param>
     public static QuestionContentHashes Compute(byte[]? image, string? text, string? subText, string? interactionType, string? plan, string? solution,
-        string? practiceAnswer, IEnumerable<QuestionContentAnswer> answers, bool identifiedByText = true)
+        string? practiceAnswer, IEnumerable<QuestionContentAnswer> answers, bool identifiedByText = true, string? passageText = null)
     {
         var answerRows = answers
             .Select(a => new { Text = Normalize(a.Text), Tag = Normalize(a.Tag), a.Order, a.IsCorrect })
@@ -65,6 +66,7 @@ public static class QuestionContentHash
             plan = canonicalPlan,
             solution = canonicalSolution,
             practice = normalizedPractice,
+            passage = image is { Length: > 0 } ? string.Empty : Normalize(passageText),
             answers = answerRows,
         });
         var fingerprint = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(canonical)));
@@ -82,10 +84,12 @@ public static class QuestionContentHash
     public static QuestionContentHashes ForQuestion(Question question, byte[]? image)
     {
         var (plan, embeddedSolution) = InteractionPlanSolution.Split(question.InteractionPlan);
+        var passageText = PassageText(question.Passage?.Title, question.Passage?.Text);
         return Compute(image, question.Text, question.SubText, question.InteractionType, plan, question.InteractionSolution ?? embeddedSolution,
             question.PracticeCorrectAnswer,
             question.Answers.Select(a => new QuestionContentAnswer(a.Text, a.Tag, a.Order, question.CorrectAnswerId == a.Id)),
-            identifiedByText: question.PassageId is null && !question.Answers.Any(a => !string.IsNullOrWhiteSpace(a.ImageUrl)));
+            identifiedByText: (question.PassageId is null || passageText.Length > 0) && !question.Answers.Any(a => !string.IsNullOrWhiteSpace(a.ImageUrl)),
+            passageText: passageText);
     }
 
     /// <summary>Paketteki soru: içe aktarım öncesi, hedefle karşılaştırmak için.</summary>
@@ -108,8 +112,10 @@ public static class QuestionContentHash
         }
 
         var hasPassage = question.TryGetProperty("passage", out var passage) && passage.ValueKind == JsonValueKind.Object;
+        var passageText = hasPassage ? PassageText(ReadString(passage, "title"), ReadString(passage, "text")) : string.Empty;
         return Compute(image, ReadString(question, "text"), ReadString(question, "subText"), ReadString(question, "interactionType"), plan, solution,
-            ReadString(question, "practiceCorrectAnswer"), answers, identifiedByText: !hasPassage && !hasAnswerImage);
+            ReadString(question, "practiceCorrectAnswer"), answers,
+            identifiedByText: (!hasPassage || passageText.Length > 0) && !hasAnswerImage, passageText: passageText);
     }
 
     /// <summary>Manifest görsel gösteriyor ama zipte yok. Böyle bir soru metninden kimlik alırsa görselsiz başka sorularla birleşir.</summary>
@@ -162,6 +168,8 @@ public static class QuestionContentHash
         element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
 
     private static string Normalize(string? value) => value?.Trim() ?? string.Empty;
+
+    private static string PassageText(string? title, string? text) => $"{Normalize(title)}\n{Normalize(text)}".Trim();
 
     /// <summary>
     /// dragPlace ve match kayıtta karıştırılır ve opak id alır: aynı soru her ortamda başka sıra ve id taşır. Parmak izi bu yüzden

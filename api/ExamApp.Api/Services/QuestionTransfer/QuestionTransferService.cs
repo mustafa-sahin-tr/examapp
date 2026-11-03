@@ -69,12 +69,17 @@ public class QuestionTransferService : IQuestionTransferService
         ArgumentNullException.ThrowIfNull(owner);
         // QuestionIds may be empty to indicate "export all".
 
+        // Ad verilmezse her dışa aktarım kendi kaynağıdır: paket kaynağın bütün dosyalarını birleştirir, başka iş karışmasın.
+        request.SourceKey = string.IsNullOrWhiteSpace(request.SourceKey)
+            ? $"transfer-{DateTime.UtcNow:yyyyMMdd-HHmmss}-{Guid.NewGuid().ToString("N")[..6]}"
+            : request.SourceKey.Trim();
+
         // Kapsam boş sonuç verirse işe başlanmaz: boş kimlik listesi "hepsi" demektir, yanlışlıkla tüm sorular çıkar.
         if (request.HasScope)
         {
             var scopeIds = await ResolveScopeAsync(request, ct);
             request.QuestionIds = scopeIds;
-            var scopeSourceKey = string.IsNullOrWhiteSpace(request.SourceKey) ? "default" : request.SourceKey.Trim();
+            var scopeSourceKey = request.SourceKey;
             if (scopeIds.Count == 0)
                 return await SaveUnstartedExportAsync(request, owner, scopeSourceKey, QuestionTransferJobStatus.Completed, "No questions match the selected scope.", ct);
 
@@ -90,7 +95,7 @@ public class QuestionTransferService : IQuestionTransferService
             Id = Guid.NewGuid(),
             Kind = QuestionTransferJobKind.Export,
             Status = QuestionTransferJobStatus.Queued,
-            SourceKey = string.IsNullOrWhiteSpace(request.SourceKey) ? "default" : request.SourceKey.Trim(),
+            SourceKey = request.SourceKey,
             RequestJson = JsonSerializer.Serialize(request),
             TotalItems = request.QuestionIds?.Count ?? 0,
             ProcessedItems = 0,

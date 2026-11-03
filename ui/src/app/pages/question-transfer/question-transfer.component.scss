@@ -35,11 +35,6 @@
   border-radius: 14px;
 }
 
-.qt-row {
-  display: flex;
-  gap: 12px;
-}
-
 .qt-field {
   width: 100%;
 }
@@ -51,28 +46,12 @@
   align-items: center;
 }
 
-.qt-bundles-actions {
-  justify-content: flex-end;
-  margin-bottom: 10px;
-}
-
 .qt-muted {
   opacity: 0.7;
 }
 
 .qt-mono {
   font-variant-numeric: tabular-nums;
-}
-
-.qt-file-row {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.qt-file {
-  max-width: 100%;
 }
 
 .qt-preview {
@@ -82,44 +61,6 @@
 .qt-empty {
   opacity: 0.7;
   padding: 8px 0;
-}
-
-.qt-bundles {
-  display: grid;
-  gap: 10px;
-}
-
-.qt-jobs-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 14px;
-}
-
-.qt-jobs-col {
-  // display: grid;
-  gap: 10px;
-}
-
-.qt-jobs-col-title {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  font-weight: 600;
-  opacity: 0.9;
-}
-
-.qt-bundle {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 12px;
-}
-
-.qt-bundle-title {
-  font-weight: 600;
 }
 
 .qt-job {
@@ -164,4 +105,99 @@
 
 .qt-msg {
   opacity: 0.75;
+}
+
+.qt-file {
+  display: none;
+}
+
+.qt-end {
+  justify-content: flex-end;
+}
+
+.qt-gap {
+  margin-top: 12px;
+}
+
+.qt-gap-small {
+  margin-top: 6px;
+}
+
+.qt-scope {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0 12px;
+  margin-top: 12px;
+}
+
+.qt-error {
+  color: var(--ms-danger-background);
+}
+
+.qt-note {
+  margin-top: 6px;
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.qt-counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+  margin: 8px 0 0;
+
+  > div {
+    padding: 8px 10px;
+    border: 1px solid currentColor;
+    border-radius: 8px;
+    border-color: color-mix(in srgb, currentColor 20%, transparent);
+  }
+
+  dt {
+    font-size: 12px;
+    opacity: 0.7;
+  }
+
+  dd {
+    margin: 2px 0 0;
+    font-size: 18px;
+    font-weight: 600;
+  }
+}
+
+.qt-count-warn {
+  color: var(--ms-danger-background);
+}
+
+.qt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+
+  th,
+  td {
+    padding: 6px 8px;
+    text-align: left;
+  }
+
+  tbody th {
+    font-weight: 400;
+  }
+}
+
+.qt-table-caption {
+  padding-bottom: 6px;
+  text-align: left;
+  font-weight: 600;
+}
+
+.qt-samples {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+
+.qt-details {
+  margin-top: 8px;
+  font-size: 13px;
 }

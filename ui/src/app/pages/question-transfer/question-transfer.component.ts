@@ -1,385 +1,331 @@
-
-import { Component, OnDestroy, signal, ChangeDetectionStrategy } from '@angular/core';
-import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, signal } from '@angular/core';
+import { HttpErrorResponse, HttpResponse } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
-import { interval, Subscription, switchMap } from 'rxjs';
+import { catchError, EMPTY, filter, interval, Subscription, switchMap } from 'rxjs';
+import { LabelingBook } from '../../models/labeling-book';
+import { Grade } from '../../models/student';
+import { Subject } from '../../models/subject';
+import { Topic } from '../../models/topic';
+import { GradesService } from '../../services/grades.service';
+import { LabelingBookService } from '../../services/labeling-book.service';
 import {
-  QuestionTransferExportBundle,
+  CatalogImportResult,
   QuestionTransferImportPreview,
   QuestionTransferJob,
   QuestionTransferService,
 } from '../../services/question-transfer.service';
+import { SubjectService } from '../../services/subject.service';
 
 /** Çeviriler kendi Transloco scope'unda: `public/i18n/question-transfer/<lang>.json` (issue #183). */
 const QUESTION_TRANSFER_SCOPE = 'question-transfer';
+
+const JOB_POLL_MS = 5_000;
+/** Süren iş yokken liste daha seyrek yenilenir (12 x 5 sn). */
+const IDLE_POLL_EVERY = 12;
+const MAX_QUESTION_IDS = 5000;
+
+const CATALOG_ROWS = ['grades', 'subjects', 'gradeSubjects', 'topics', 'subTopics', 'learningOutcomes'] as const;
 
 @Component({
   selector: 'app-question-transfer',
   standalone: true,
   imports: [
     FormsModule,
-    ReactiveFormsModule,
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSelectModule,
     MatButtonModule,
     MatProgressBarModule,
     MatIconModule,
     MatTooltipModule,
     MatChipsModule,
     MatDividerModule,
-    MatAutocompleteModule,
-    TranslocoDirective
-],
+    TranslocoDirective,
+  ],
   providers: [provideTranslocoScope(QUESTION_TRANSFER_SCOPE)],
   templateUrl: './question-transfer.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./question-transfer.component.scss'],
 })
 export class QuestionTransferComponent implements OnDestroy {
-  private readonly sourceKeyStorageKey = 'questionTransfer.sourceKeys';
+  private readonly transfer = inject(QuestionTransferService);
+  private readonly gradesService = inject(GradesService);
+  private readonly subjectService = inject(SubjectService);
+  private readonly bookService = inject(LabelingBookService);
 
-  public exportSourceKey = new FormControl<string>('default', { nonNullable: true });
-  public exportQuestionIds = new FormControl<string>('', { nonNullable: true });
+  readonly catalogRows = CATALOG_ROWS;
 
-  public sourceKeyOptions = signal<string[]>([]);
+  // ---- dışa aktarma kapsamı
+  readonly grades = signal<Grade[]>([]);
+  readonly subjects = signal<Subject[]>([]);
+  readonly topics = signal<Topic[]>([]);
+  readonly books = signal<LabelingBook[]>([]);
+  readonly gradeId = signal<number | null>(null);
+  readonly subjectId = signal<number | null>(null);
+  readonly topicId = signal<number | null>(null);
+  readonly bookId = signal<number | null>(null);
+  readonly questionIdsText = signal('');
+  readonly hasScope = computed(() => this.gradeId() !== null || this.subjectId() !== null || this.topicId() !== null || this.bookId() !== null);
+  readonly questionIds = computed(() => this.parseIds(this.questionIdsText()));
+  /** Kapsam ve numara yoksa tüm sorular çıkar: düğme bunu açıkça söyler. */
+  readonly exportsEverything = computed(() => !this.hasScope() && this.questionIds().length === 0);
+  readonly exportBusy = signal(false);
+  readonly exportFailed = signal(false);
 
-  public importFile = signal<File | null>(null);
-  public importPreview = signal<QuestionTransferImportPreview | null>(null);
+  // ---- içe alma
+  readonly importFile = signal<File | null>(null);
+  readonly importPreview = signal<QuestionTransferImportPreview | null>(null);
+  readonly previewLoading = signal(false);
+  readonly previewError = signal<string | null>(null);
+  readonly importBusy = signal(false);
+  readonly importFailed = signal(false);
 
-  public bundles = signal<QuestionTransferExportBundle[]>([]);
+  // ---- katalog
+  readonly catalogBusy = signal(false);
+  readonly catalogFileName = signal<string | null>(null);
+  readonly catalogPreview = signal<CatalogImportResult | null>(null);
+  readonly catalogResult = signal<CatalogImportResult | null>(null);
+  readonly catalogErrors = signal<string[]>([]);
+  readonly catalogFileInvalid = signal(false);
+  private catalogBundle: unknown = null;
 
-  public jobs = signal<QuestionTransferJob[]>([]);
-  public isBusy = signal<boolean>(false);
+  // ---- işler
+  readonly jobs = signal<QuestionTransferJob[]>([]);
+  readonly jobsFailed = signal(false);
+  readonly downloadingJobId = signal<string | null>(null);
+  readonly downloadFailed = signal(false);
+  private readonly hasActiveJob = computed(() => this.jobs().some((j) => j.status === 'Queued' || j.status === 'Running'));
   private pollSub?: Subscription;
-  private sourceKeySub?: Subscription;
 
-  constructor(private transfer: QuestionTransferService) {
+  constructor() {
     this.startPolling();
-    this.refreshBundles();
-
-    this.loadSourceKeys();
-
-    this.sourceKeySub = this.exportSourceKey.valueChanges.subscribe(() => {
-      this.rememberSourceKey(this.exportSourceKey.value);
-      this.refreshBundles();
-    });
+    this.gradesService.getGrades().subscribe({ next: (g) => this.grades.set(g ?? []), error: () => this.grades.set([]) });
+    this.subjectService.loadCategories().subscribe({ next: (s) => this.subjects.set(s ?? []), error: () => this.subjects.set([]) });
+    this.bookService.list().subscribe({ next: (b) => this.books.set(b ?? []), error: () => this.books.set([]) });
   }
 
   ngOnDestroy(): void {
     this.pollSub?.unsubscribe();
-    this.sourceKeySub?.unsubscribe();
   }
 
-  onFileSelected(event: Event) {
+  // ---- kapsam
+
+  onGradeChange(id: number | null): void {
+    this.gradeId.set(id);
+    this.topicId.set(null);
+    this.loadTopics();
+    const subjects$ = id === null ? this.subjectService.loadCategories() : this.subjectService.getSubjectsByGrade(id);
+    subjects$.subscribe({
+      next: (subjects) => {
+        this.subjects.set(subjects ?? []);
+        if (!(subjects ?? []).some((s) => s.id === this.subjectId())) {
+          this.subjectId.set(null);
+          this.topics.set([]);
+        }
+      },
+      error: () => this.subjects.set([]),
+    });
+  }
+
+  onSubjectChange(id: number | null): void {
+    this.subjectId.set(id);
+    this.topicId.set(null);
+    this.loadTopics();
+  }
+
+  private loadTopics(): void {
+    const subjectId = this.subjectId();
+    const gradeId = this.gradeId();
+    if (subjectId === null) {
+      this.topics.set([]);
+      return;
+    }
+    const topics$ = gradeId === null
+      ? this.subjectService.getTopicsBySubject(subjectId)
+      : this.subjectService.getTopicsBySubjectAndGrade(subjectId, gradeId);
+    topics$.subscribe({ next: (t) => this.topics.set(t ?? []), error: () => this.topics.set([]) });
+  }
+
+  startExport(): void {
+    this.exportBusy.set(true);
+    this.exportFailed.set(false);
+    this.transfer
+      .startExport({
+        // Kapsam seçiliyse sunucu listeyi kendi çıkarır.
+        questionIds: this.hasScope() ? [] : this.questionIds(),
+        gradeId: this.gradeId(),
+        subjectId: this.subjectId(),
+        topicId: this.topicId(),
+        bookId: this.bookId(),
+      })
+      .subscribe({
+        next: () => {
+          this.exportBusy.set(false);
+          this.refreshJobs();
+        },
+        error: () => {
+          this.exportBusy.set(false);
+          this.exportFailed.set(true);
+        },
+      });
+  }
+
+  // ---- içe alma
+
+  onImportFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.item(0) ?? null;
     this.importFile.set(file);
+    this.importPreview.set(null);
+    this.previewError.set(null);
+    this.importFailed.set(false);
+    if (!file) return;
 
-    if (!file) {
-      this.importPreview.set(null);
-      return;
-    }
-
+    this.previewLoading.set(true);
     this.transfer.previewImport(file).subscribe({
-      next: (p) => this.importPreview.set(p),
-      error: () => this.importPreview.set(null),
-    });
-  }
-
-  startExport() {
-    const ids = this.parseIds(this.exportQuestionIds.value);
-
-    this.isBusy.set(true);
-    this.rememberSourceKey(this.exportSourceKey.value);
-    this.transfer.startExport(ids, this.exportSourceKey.value).subscribe({
-      next: () => {
-        this.isBusy.set(false);
-        this.refreshJobs();
-        this.refreshBundles();
+      next: (preview) => {
+        this.previewLoading.set(false);
+        this.importPreview.set(preview);
       },
-      error: () => this.isBusy.set(false),
+      error: (err: HttpErrorResponse) => {
+        this.previewLoading.set(false);
+        this.previewError.set(this.serverMessage(err) ?? '');
+      },
     });
   }
 
-  exportIdCount(): number {
-    try {
-      return this.parseIds(this.exportQuestionIds.value).length;
-    } catch {
-      return 0;
-    }
-  }
-
-  exportAllSelected(): boolean {
-    return this.exportIdCount() === 0;
-  }
-
-  startImport() {
+  startImport(): void {
     const file = this.importFile();
     if (!file) return;
 
-    this.isBusy.set(true);
-    // Do not send sourceKey: backend will infer from manifest.json
-    this.transfer.startImport(file, null).subscribe({
+    this.importBusy.set(true);
+    this.importFailed.set(false);
+    this.transfer.startImport(file).subscribe({
       next: () => {
-        this.isBusy.set(false);
+        this.importBusy.set(false);
+        this.importFile.set(null);
+        this.importPreview.set(null);
         this.refreshJobs();
       },
-      error: () => this.isBusy.set(false),
+      error: () => {
+        this.importBusy.set(false);
+        this.importFailed.set(true);
+      },
     });
   }
 
-  refreshBundles() {
-    const sourceKey = this.exportSourceKey.value;
-    this.transfer.listExportBundles(sourceKey).subscribe({
-      next: (b) => this.bundles.set(b ?? []),
-      error: () => this.bundles.set([]),
+  // ---- katalog
+
+  downloadCatalog(): void {
+    this.catalogBusy.set(true);
+    this.catalogErrors.set([]);
+    this.transfer.downloadCatalog().subscribe({
+      next: (resp) => {
+        this.catalogBusy.set(false);
+        this.saveBlob(resp, 'catalog.json');
+      },
+      error: (err: HttpErrorResponse) => {
+        this.catalogBusy.set(false);
+        this.catalogErrors.set([this.serverMessage(err) ?? '']);
+      },
     });
   }
 
-  filteredSourceKeys(): string[] {
-    const options = this.sourceKeyOptions() ?? [];
-    const q = (this.exportSourceKey.value ?? '').trim().toLowerCase();
-    if (!q) return options;
-    return options.filter((x) => x.toLowerCase().includes(q));
-  }
+  async onCatalogFileSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.item(0) ?? null;
+    this.catalogFileName.set(file?.name ?? null);
+    this.catalogPreview.set(null);
+    this.catalogResult.set(null);
+    this.catalogErrors.set([]);
+    this.catalogFileInvalid.set(false);
+    this.catalogBundle = null;
+    if (!file) return;
 
-  private loadSourceKeys() {
-    const fromStorage = this.readSourceKeysFromStorage();
-    if (fromStorage.length) {
-      this.sourceKeyOptions.set(fromStorage);
+    try {
+      this.catalogBundle = JSON.parse(await file.text());
+    } catch {
+      this.catalogFileInvalid.set(true);
+      return;
     }
+    this.sendCatalog(true);
+  }
 
-    this.transfer.listSourceKeys().subscribe({
-      next: (keys) => {
-        const merged = this.mergeSourceKeys(fromStorage, keys ?? []);
-        this.sourceKeyOptions.set(merged);
-        this.writeSourceKeysToStorage(merged);
+  applyCatalog(): void {
+    this.sendCatalog(false);
+  }
+
+  private sendCatalog(dryRun: boolean): void {
+    this.catalogBusy.set(true);
+    this.catalogErrors.set([]);
+    this.transfer.importCatalog(this.catalogBundle, dryRun).subscribe({
+      next: (result) => {
+        this.catalogBusy.set(false);
+        if (dryRun) {
+          this.catalogPreview.set(result);
+          return;
+        }
+        this.catalogPreview.set(null);
+        this.catalogBundle = null;
+        this.catalogResult.set(result);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.catalogBusy.set(false);
+        this.catalogPreview.set(null);
+        const errors = (err.error as Partial<CatalogImportResult> | null)?.errors;
+        this.catalogErrors.set(errors?.length ? errors : [this.serverMessage(err) ?? '']);
+      },
+    });
+  }
+
+  // ---- işler
+
+  /** Dışa aktarma bittiyse paket hazırdır; dosya yalnız seçilen sorulardan oluşur. */
+  canDownloadPackage(job: QuestionTransferJob): boolean {
+    return job.kind === 'Export' && job.status === 'Completed' && !!job.fileUrl;
+  }
+
+  downloadPackage(job: QuestionTransferJob): void {
+    this.downloadingJobId.set(job.id);
+    this.downloadFailed.set(false);
+    this.transfer.downloadPackage(job.sourceKey).subscribe({
+      next: (resp) => {
+        this.downloadingJobId.set(null);
+        this.saveBlob(resp, `question-transfer-${job.sourceKey}-package.zip`);
       },
       error: () => {
-        // keep local options
+        this.downloadingJobId.set(null);
+        this.downloadFailed.set(true);
       },
     });
   }
 
-  private rememberSourceKey(value: string) {
-    const key = (value ?? '').trim();
-    if (!key) return;
-
-    const existing = this.readSourceKeysFromStorage();
-    const merged = this.mergeSourceKeys([key], existing);
-    this.sourceKeyOptions.set(this.mergeSourceKeys(merged, this.sourceKeyOptions()));
-    this.writeSourceKeysToStorage(merged);
+  /** Başarısız iş ve dosyasız biten iş (kapsamda soru yok) sunucunun açıklamasını gösterir. */
+  jobMessage(job: QuestionTransferJob): string | null {
+    const unfinishedOutcome = job.status === 'Failed' || (job.kind === 'Export' && job.status === 'Completed' && !job.fileUrl);
+    return unfinishedOutcome ? (job.message ?? null) : null;
   }
 
-  private mergeSourceKeys(a: string[], b: string[]): string[] {
-    const result: string[] = [];
-    const seen = new Set<string>();
-
-    const push = (x: string) => {
-      const v = (x ?? '').trim();
-      if (!v) return;
-      const k = v.toLowerCase();
-      if (seen.has(k)) return;
-      seen.add(k);
-      result.push(v);
-    };
-
-    (a ?? []).forEach(push);
-    (b ?? []).forEach(push);
-
-    // Keep it reasonably small.
-    return result.slice(0, 50);
-  }
-
-  private readSourceKeysFromStorage(): string[] {
-    try {
-      const raw = window.localStorage.getItem(this.sourceKeyStorageKey);
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed)
-        ? parsed
-            .map(String)
-            .map((x) => x.trim())
-            .filter(Boolean)
-        : [];
-    } catch {
-      return [];
-    }
-  }
-
-  private writeSourceKeysToStorage(keys: string[]) {
-    try {
-      window.localStorage.setItem(this.sourceKeyStorageKey, JSON.stringify(keys ?? []));
-    } catch {
-      // ignore
-    }
-  }
-
-  refreshJobsNow() {
-    this.refreshJobs();
-  }
-
-  downloadIndex() {
-    const sourceKey = this.exportSourceKey.value;
-    this.isBusy.set(true);
-    this.transfer.downloadSourceIndex(sourceKey).subscribe({
-      next: (resp) => {
-        const blob = resp.body;
-        if (!blob) {
-          this.isBusy.set(false);
-          return;
-        }
-        const filename = `question-transfer-${(sourceKey ?? 'default').trim() || 'default'}-index.json`;
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.click();
-        window.URL.revokeObjectURL(url);
-        this.isBusy.set(false);
-      },
-      error: () => this.isBusy.set(false),
-    });
-  }
-
-  downloadBundle(bundle: QuestionTransferExportBundle) {
-    this.isBusy.set(true);
-    this.transfer.downloadBundle(bundle.sourceKey, bundle.bundleNo).subscribe({
-      next: (resp) => {
-        const blob = resp.body;
-        if (!blob) {
-          this.isBusy.set(false);
-          return;
-        }
-        const filename = `question-transfer-${bundle.sourceKey}-bundle-${String(bundle.bundleNo).padStart(4, '0')}.zip`;
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.click();
-        window.URL.revokeObjectURL(url);
-        this.isBusy.set(false);
-      },
-      error: () => this.isBusy.set(false),
-    });
-  }
-
-  downloadBundleMap(bundle: QuestionTransferExportBundle) {
-    this.isBusy.set(true);
-    this.transfer.downloadBundleMap(bundle.sourceKey, bundle.bundleNo).subscribe({
-      next: (resp) => {
-        const blob = resp.body;
-        if (!blob) {
-          this.isBusy.set(false);
-          return;
-        }
-        const filename = `question-transfer-${bundle.sourceKey}-bundle-${String(bundle.bundleNo).padStart(4, '0')}.map.json`;
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.click();
-        window.URL.revokeObjectURL(url);
-        this.isBusy.set(false);
-      },
-      error: () => this.isBusy.set(false),
-    });
-  }
-
-  downloadSourcePackage() {
-    const sk = (this.exportSourceKey.value ?? '').trim() || 'default';
-    this.isBusy.set(true);
-    this.transfer.downloadSourcePackage(sk).subscribe({
-      next: (resp) => {
-        const blob = resp.body;
-        if (!blob) {
-          this.isBusy.set(false);
-          return;
-        }
-
-        const contentDisposition = resp.headers.get('content-disposition');
-        const fallbackName = `question-transfer-${sk}-package.zip`;
-        const filename = this.extractFilename(contentDisposition) ?? fallbackName;
-
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.click();
-        window.URL.revokeObjectURL(url);
-        this.isBusy.set(false);
-      },
-      error: () => this.isBusy.set(false),
-    });
-  }
-
-  openHangfire() {
-    this.isBusy.set(true);
-    this.transfer.hangfireLogin().subscribe({
-      next: () => {
-        this.isBusy.set(false);
-        window.open(this.transfer.hangfireUrl(), '_blank');
-      },
-      error: () => this.isBusy.set(false),
-    });
-  }
-
-  download(job: QuestionTransferJob) {
-    if (!job?.id) return;
-
-    this.isBusy.set(true);
-    this.transfer.download(job.id).subscribe({
-      next: (resp) => {
-        const blob = resp.body;
-        if (!blob) {
-          this.isBusy.set(false);
-          return;
-        }
-
-        const contentDisposition = resp.headers.get('content-disposition');
-        const fallbackName = `question-transfer-${job.id}.zip`;
-        const filename = this.extractFilename(contentDisposition) ?? fallbackName;
-
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.click();
-        window.URL.revokeObjectURL(url);
-        this.isBusy.set(false);
-      },
-      error: () => this.isBusy.set(false),
-    });
-  }
-
-  canDownloadJob(job: QuestionTransferJob): boolean {
-    return !!job?.fileUrl && job.status === 'Completed';
-  }
-
-  /** İndirme butonunun çeviri anahtarı (scope'a göreli; şablonda `t()` ile çözülür). */
-  jobDownloadLabelKey(job: QuestionTransferJob): string {
-    const url = (job?.fileUrl ?? '').toLowerCase();
-    if (url.endsWith('.json')) return 'jobs.downloadIndex';
-    if (url.endsWith('.zip')) return 'jobs.downloadZip';
-    return 'jobs.downloadFile';
+  isJobRunning(job: QuestionTransferJob): boolean {
+    return job.status === 'Queued' || job.status === 'Running';
   }
 
   jobChipColor(job: QuestionTransferJob): 'primary' | 'accent' | 'warn' | undefined {
-    const status = (job?.status ?? '').toLowerCase();
-    if (status === 'completed') return 'primary';
-    if (status === 'running') return 'accent';
-    if (status === 'failed') return 'warn';
+    if (job.status === 'Completed') return 'primary';
+    if (job.status === 'Running') return 'accent';
+    if (job.status === 'Failed') return 'warn';
     return undefined;
   }
 
@@ -388,76 +334,65 @@ export class QuestionTransferComponent implements OnDestroy {
     return Math.round((job.processedItems / job.totalItems) * 100);
   }
 
-  private startPolling() {
-    this.refreshJobs();
-    this.pollSub = interval(60_000)
-      .pipe(switchMap(() => this.transfer.listJobs(10)))
-      .subscribe({
-        next: (jobs) => this.jobs.set(jobs ?? []),
-      });
-  }
-
-  private refreshJobs() {
+  refreshJobs(): void {
     this.transfer.listJobs(10).subscribe({
-      next: (jobs) => this.jobs.set(jobs ?? []),
+      next: (jobs) => {
+        this.jobsFailed.set(false);
+        this.jobs.set(jobs ?? []);
+      },
+      error: () => this.jobsFailed.set(true),
     });
   }
 
-  exportJobs(): QuestionTransferJob[] {
-    return (this.jobs() ?? []).filter((j) => j.kind === 'Export');
+  openHangfire(): void {
+    this.transfer.hangfireLogin().subscribe({
+      next: () => window.open(this.transfer.hangfireUrl(), '_blank'),
+    });
   }
 
-  importJobs(): QuestionTransferJob[] {
-    return (this.jobs() ?? []).filter((j) => j.kind === 'Import');
+  private startPolling(): void {
+    this.refreshJobs();
+    this.pollSub = interval(JOB_POLL_MS)
+      .pipe(
+        filter((tick) => this.hasActiveJob() || (tick + 1) % IDLE_POLL_EVERY === 0),
+        // Tek bir başarısız yenileme aboneliği bitirmesin.
+        switchMap(() => this.transfer.listJobs(10).pipe(catchError(() => EMPTY))),
+      )
+      .subscribe((jobs) => this.jobs.set(jobs ?? []));
+  }
+
+  private serverMessage(err: HttpErrorResponse): string | null {
+    const message = (err.error as { message?: unknown } | null)?.message;
+    return typeof message === 'string' && message.length > 0 ? message : null;
+  }
+
+  private saveBlob(resp: HttpResponse<Blob>, fallbackName: string): void {
+    if (!resp.body) return;
+    const url = window.URL.createObjectURL(resp.body);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = this.extractFilename(resp.headers.get('content-disposition')) ?? fallbackName;
+    link.click();
+    window.URL.revokeObjectURL(url);
   }
 
   private parseIds(value: string): number[] {
-    const text = (value ?? '').trim();
-    if (!text) return [];
-
-    // Safety cap to avoid accidentally expanding huge ranges.
-    const maxIds = 5000;
-
-    const result: number[] = [];
-    const push = (n: number) => {
-      if (!Number.isFinite(n) || n <= 0) return;
-      if (result.length >= maxIds) return;
-      result.push(n);
-    };
-
-    // Split by common delimiters but keep ranges like 100-200 as one token.
-    const tokens = text
-      .split(/[\s,;\n\r\t]+/g)
-      .map((t) => t.trim())
-      .filter(Boolean);
+    const result = new Set<number>();
+    const tokens = (value ?? '').split(/[\s,;]+/g).filter(Boolean);
 
     for (const token of tokens) {
-      if (result.length >= maxIds) break;
-
-      const rangeMatch = /^\s*(\d+)\s*-\s*(\d+)\s*$/.exec(token);
-      if (rangeMatch) {
-        const a = Number(rangeMatch[1]);
-        const b = Number(rangeMatch[2]);
-        if (!Number.isFinite(a) || !Number.isFinite(b) || a <= 0 || b <= 0) continue;
-
-        const start = Math.min(a, b);
-        const end = Math.max(a, b);
-        for (let i = start; i <= end && result.length < maxIds; i++) {
-          push(i);
-        }
+      const range = /^(\d+)-(\d+)$/.exec(token);
+      if (range) {
+        const start = Math.min(Number(range[1]), Number(range[2]));
+        const end = Math.max(Number(range[1]), Number(range[2]));
+        for (let i = Math.max(start, 1); i <= end && result.size < MAX_QUESTION_IDS; i++) result.add(i);
         continue;
       }
-
-      // If token contains non-digits (like "12|13"), fall back to extracting numbers.
-      const nums = token.match(/\d+/g);
-      if (!nums) continue;
-      for (const n of nums) {
-        if (result.length >= maxIds) break;
-        push(Number(n));
+      for (const n of token.match(/\d+/g) ?? []) {
+        if (Number(n) > 0 && result.size < MAX_QUESTION_IDS) result.add(Number(n));
       }
     }
-
-    return Array.from(new Set(result));
+    return Array.from(result);
   }
 
   private extractFilename(contentDisposition: string | null): string | null {

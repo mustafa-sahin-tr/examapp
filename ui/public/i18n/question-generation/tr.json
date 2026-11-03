@@ -34,6 +34,7 @@
   "incomplete": "Soru ve şıklar dolu olmalı, iki şık aynı olmamalı.",
   "save": "Seçilenleri kaydet ({{count}})",
   "saveFailed": "Kaydedilemedi.",
-  "saved": "{{count}} soru kaydedildi.",
-  "openBank": "Soru Havuzu"
+  "saved": "{{count}} soru kaydedildi. Teste Soru Havuzu'ndan ekleyebilirsiniz.",
+  "finishDraftsFirst": "Aşağıdaki taslaklar başka bir kazanım ya da zorluk için. Yeniden üretmeden önce kaydedin ya da silin.",
+  "clearDrafts": "Taslakları sil"
 }

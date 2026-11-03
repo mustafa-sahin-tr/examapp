@@ -16,7 +16,7 @@ public interface IQuestionGenerationService
 {
     Task<QuestionDraftsResponseDto?> GenerateAsync(GenerateQuestionDraftsDto request, LabelingActor actor, CancellationToken ct);
 
-    Task<SavedQuestionDraftsDto?> SaveAsync(SaveQuestionDraftsDto request, int userId, CancellationToken ct);
+    Task<SavedQuestionDraftsDto?> SaveAsync(SaveQuestionDraftsDto request, LabelingActor actor, int userId, CancellationToken ct);
 }
 
 /// <summary>Taslak ya da kaydedilecek soru kurallara uymuyor.</summary>
@@ -43,8 +43,11 @@ public sealed class QuestionGenerationService(
 
     // Görsel olmadan anlaşılmayan soru öğrenciye eksik görünür.
     private static readonly Regex ReferenceToVisual = new(
-        @"\b(yukarıdaki|aşağıdaki|yandaki|verilen)\s+(görsel|şek[il]l?|tablo|grafi[kğ]|res[im]m?|harita)\w*|\b(görselde|grafikte|tabloda|resimde|haritada)\b|\b(the\s+)?(picture|image|table|chart|graph|map)\s+(above|below)\b",
+        // "Periyodik tabloda", "ölçekli haritada", "aşağıdaki şekilde" (= bu biçimde), "resmi kurumlar", "görsel sanatlar" atıf değildir.
+        @"\b(yukarıdaki|aşağıdaki|yandaki|verilen)\s+(görsel(?!\s+sanat)|şek(il(?!de\b)|l)|tablo|grafi[kğ]|resim|resm(e|in)\b|harita)\w*|\b(görselde|resimde|grafikte)\b|\b(şekilde|tabloda|haritada)\s+(verilen|gösterilen|görülen)\b|\b(the\s+)?(picture|image|table|chart|graph|map)\s+(above|below)\b",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
+    private static readonly Regex InvisibleCharacters = new(@"[\u200B-\u200D\u2060\uFEFF]", RegexOptions.Compiled);
 
     private sealed record OutcomeInfo(int Id, string Code, string Description, int GradeId, string GradeName, int? SubjectId, string? SubjectName);
 
@@ -83,7 +86,8 @@ public sealed class QuestionGenerationService(
         }
         catch (Exception ex) when (ex is LabelingAiException or OperationCanceledException)
         {
-            var spent = (ex as LabelingAiException)?.Usage is { } paid ? LabelingAiQuota.Cost(model, paid.Input, paid.Output) : 0m;
+            // Kullanım bilinmiyorsa (zaman aşımı, bağlantı) Claude yine ücretlendirmiş olabilir: ayrılan bütçe iade edilmez.
+            var spent = (ex as LabelingAiException)?.Usage is { } paid ? LabelingAiQuota.Cost(model, paid.Input, paid.Output) : estimate;
             await LabelingAiQuota.SettleAsync(rateLimitStore, actor, reserved, spent);
             throw new QuestionDraftGenerationException("Question drafts could not be generated.", ex);
         }
@@ -95,19 +99,20 @@ public sealed class QuestionGenerationService(
             OutcomeCode = outcome.Code,
             OutcomeDescription = outcome.Description,
         };
-        foreach (var question in generated.Questions.Take(request.Count))
+        var questions = generated.Questions ?? [];
+        foreach (var question in questions.Take(request.Count))
         {
             var draft = ToDraft(question);
-            if (Problem(draft, optionCount) is null)
+            if (Problem(draft, optionCount, checkVisuals: true) is null)
                 response.Drafts.Add(draft);
             else
                 response.Rejected++;
         }
-        response.Rejected += Math.Max(0, generated.Questions.Count - request.Count);
+        response.Rejected += Math.Max(0, questions.Count - request.Count);
         return response;
     }
 
-    public async Task<SavedQuestionDraftsDto?> SaveAsync(SaveQuestionDraftsDto request, int userId, CancellationToken ct)
+    public async Task<SavedQuestionDraftsDto?> SaveAsync(SaveQuestionDraftsDto request, LabelingActor actor, int userId, CancellationToken ct)
     {
         var outcome = await ReadOutcomeAsync(request.LearningOutcomeId, ct);
         if (outcome is null)
@@ -115,24 +120,35 @@ public sealed class QuestionGenerationService(
 
         foreach (var question in request.Questions)
         {
-            // İnceleyen şıkları düzenlemiş olabilir: şık sayısı değil, kuralları denetlenir.
-            if (Problem(question, optionCount: null) is { } problem)
+            // İnceleyen şıkları düzenlemiş olabilir; görsele atıf kararı da onundur, kural yanlış alarm verebilir.
+            if (Problem(question, optionCount: null, checkVisuals: false) is { } problem)
                 throw new QuestionDraftInvalidException(problem);
         }
 
+        // Her kayıt ücretli sınıflandırmayı tetikler: üretimle aynı saatlik kota.
+        await LabelingAiQuota.AcquireCallsAsync(rateLimitStore, actor, options.Value, request.Questions.Count, ct);
+
         var saved = new List<int>();
         var strategy = db.Database.CreateExecutionStrategy();
-        await strategy.ExecuteAsync(async () =>
+        try
         {
-            // Yeniden denemede önceki denemenin satırları izleyicide kalmasın.
-            db.ChangeTracker.Clear();
-            saved.Clear();
-            db.SetCurrentUser(userId);
-            await using var tx = await db.Database.BeginTransactionAsync(ct);
-            foreach (var draft in request.Questions)
-                saved.Add(await WriteQuestionAsync(draft, outcome, request.DifficultyLevel, ct));
-            await tx.CommitAsync(ct);
-        });
+            await strategy.ExecuteAsync(async () =>
+            {
+                // Yeniden denemede önceki denemenin satırları izleyicide kalmasın.
+                db.ChangeTracker.Clear();
+                saved.Clear();
+                db.SetCurrentUser(userId);
+                await using var tx = await db.Database.BeginTransactionAsync(ct);
+                foreach (var draft in request.Questions)
+                    saved.Add(await WriteQuestionAsync(draft, outcome, request.DifficultyLevel, ct));
+                await tx.CommitAsync(ct);
+            });
+        }
+        catch
+        {
+            await LabelingAiQuota.RefundCallsAsync(rateLimitStore, actor, request.Questions.Count);
+            throw;
+        }
         return new SavedQuestionDraftsDto { QuestionIds = saved };
     }
 
@@ -140,7 +156,7 @@ public sealed class QuestionGenerationService(
     {
         var question = new Question
         {
-            Text = draft.Text.Trim(),
+            Text = ToStoredText(Clean(draft.Text)),
             Point = QuestionPoint,
             DifficultyLevel = difficultyLevel,
             SubjectId = outcome.SubjectId,
@@ -151,7 +167,7 @@ public sealed class QuestionGenerationService(
         db.Questions.Add(question);
         await db.SaveChangesAsync(ct);
 
-        var answers = draft.Options.Select((text, index) => new Answer { QuestionId = question.Id, Text = text.Trim(), Order = index + 1 }).ToList();
+        var answers = draft.Options.Select((text, index) => new Answer { QuestionId = question.Id, Text = Clean(text), Order = index + 1 }).ToList();
         db.Answers.AddRange(answers);
         db.QuestionLearningOutcomes.Add(new QuestionLearningOutcome { QuestionId = question.Id, LearningOutcomeId = outcome.Id });
         await db.SaveChangesAsync(ct);
@@ -182,6 +198,17 @@ public sealed class QuestionGenerationService(
          select new OutcomeInfo(outcome.Id, outcome.Code, outcome.Description, outcome.GradeId, grade.Name, outcome.SubjectId, outcome.Subject != null ? outcome.Subject.Name : null))
         .FirstOrDefaultAsync(ct);
 
+    /// <summary>Oynatıcı soru metnini HTML olarak basar: düz metindeki "a&lt;b" etiket sanılıp metni yutmasın, satır sonu kaybolmasın.</summary>
+    internal static string ToStoredText(string text) =>
+        text.Replace("&", "&amp;", StringComparison.Ordinal)
+            .Replace("<", "&lt;", StringComparison.Ordinal)
+            .Replace(">", "&gt;", StringComparison.Ordinal)
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace("\n", "<br>", StringComparison.Ordinal);
+
+    /// <summary>Görünmez karakter boş ve yinelenen şık denetimini aşmasın.</summary>
+    private static string Clean(string? value) => InvisibleCharacters.Replace(value ?? string.Empty, string.Empty).Trim();
+
     /// <summary>LGS'ye kadar 4, lisede 5 şık: sınav biçimiyle aynı.</summary>
     internal static int OptionCountFor(string gradeName)
     {
@@ -192,7 +219,7 @@ public sealed class QuestionGenerationService(
     }
 
     /// <summary>Modelin çoğunlukla aynı şıkkı doğru yazmasından kaçınmak için şıklar sunucuda karıştırılır.</summary>
-    private static QuestionDraftDto ToDraft(GeneratedQuestion question)
+    internal static QuestionDraftDto ToDraft(GeneratedQuestion question)
     {
         var options = question.Options ?? [];
         var correct = question.CorrectOptionIndex >= 0 && question.CorrectOptionIndex < options.Count ? options[question.CorrectOptionIndex] : null;
@@ -207,12 +234,16 @@ public sealed class QuestionGenerationService(
     }
 
     /// <summary>Uymayan kuralın adı; uygunsa null.</summary>
-    internal static string? Problem(QuestionDraftDto draft, int? optionCount)
+    internal static string? Problem(QuestionDraftDto? draft, int? optionCount, bool checkVisuals)
     {
-        var text = draft.Text?.Trim() ?? string.Empty;
+        if (draft is null)
+            return "the question is empty";
+        var text = Clean(draft.Text);
         if (text.Length == 0 || text.Length > MaxTextLength)
             return "the question text is empty or too long";
-        var options = (draft.Options ?? []).Select(o => o?.Trim() ?? string.Empty).ToList();
+        var options = (draft.Options ?? []).Select(Clean).ToList();
+        if (text.Any(c => char.IsControl(c) && c is not ('\n' or '\r' or '\t')) || options.Any(o => o.Any(char.IsControl)))
+            return "the text has control characters";
         if (optionCount is int expected ? options.Count != expected : options.Count is < 2 or > 6)
             return "the number of options is not valid";
         if (options.Any(o => o.Length == 0 || o.Length > MaxOptionLength))
@@ -221,7 +252,7 @@ public sealed class QuestionGenerationService(
             return "two options are the same";
         if (draft.CorrectIndex < 0 || draft.CorrectIndex >= options.Count)
             return "the correct option is not valid";
-        if (ReferenceToVisual.IsMatch(text) || options.Any(o => ReferenceToVisual.IsMatch(o)))
+        if (checkVisuals && (ReferenceToVisual.IsMatch(text) || options.Any(o => ReferenceToVisual.IsMatch(o))))
             return "the question refers to a visual";
         return null;
     }

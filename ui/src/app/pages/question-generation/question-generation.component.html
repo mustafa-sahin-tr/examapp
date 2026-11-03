@@ -77,10 +77,16 @@
       @if (generateError(); as error) {
         <div class="qg-error" role="alert">{{ t('errors.' + error) }}</div>
       }
+      @if (selectionDiffersFromDrafts()) {
+        <div class="qg-note">
+          {{ t('finishDraftsFirst') }}
+          <button mat-button class="qg-clear" (click)="clearDrafts()">{{ t('clearDrafts') }}</button>
+        </div>
+      }
     </mat-card-content>
 
     <mat-card-actions class="qg-actions">
-      <button class="qg-generate" mat-raised-button color="primary" (click)="generate()" [disabled]="outcomeId() === null || generating()">
+      <button class="qg-generate" mat-raised-button color="primary" (click)="generate()" [disabled]="outcomeId() === null || generating() || saving() || selectionDiffersFromDrafts()">
         <mat-icon>auto_awesome</mat-icon>
         {{ t('generate') }}
       </button>
@@ -90,7 +96,6 @@
   @if (savedCount() > 0) {
     <div class="qg-saved" role="status">
       {{ t('saved', { count: savedCount() }) }}
-      <a mat-button routerLink="/question-bank">{{ t('openBank') }}</a>
     </div>
   }
 
@@ -122,7 +127,7 @@
             <mat-radio-group [value]="draft.correctIndex" (change)="setCorrect(i, $event.value)" [attr.aria-label]="t('correctOption')">
               @for (option of draft.options; track $index; let o = $index) {
                 <div class="qg-option">
-                  <mat-radio-button [value]="o" [attr.aria-label]="t('correctOptionFor', { label: optionLabel(o) })"></mat-radio-button>
+                  <mat-radio-button [value]="o" [aria-label]="t('correctOptionFor', { label: optionLabel(o) })"></mat-radio-button>
                   <mat-form-field appearance="outline" class="qg-field qg-option-field" subscriptSizing="dynamic">
                     <mat-label>{{ optionLabel(o) }}</mat-label>
                     <input matInput [ngModel]="option" (ngModelChange)="setOption(i, o, $event)" autocomplete="off" />
@@ -146,7 +151,7 @@
       }
 
       <div class="qg-actions">
-        <button class="qg-save" mat-raised-button color="primary" (click)="save()" [disabled]="!canSave() || saving()">
+        <button class="qg-save" mat-raised-button color="primary" (click)="save()" [disabled]="!canSave() || saving() || generating()">
           <mat-icon>save</mat-icon>
           {{ t('save', { count: selectedCount() }) }}
         </button>

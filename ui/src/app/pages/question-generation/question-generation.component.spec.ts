@@ -215,17 +215,99 @@ describe('QuestionGenerationComponent', () => {
     expect(component.drafts().length).toBe(4);
   });
 
-  it('generateAgain_OtherOutcome_ReplacesDraftsSoTheyAreNotSavedUnderIt', () => {
+  it('otherOutcomeWithDraftsOpen_BlocksGeneratingSoEditsAreNotLost', () => {
     generated();
-    generation.generate.mockReturnValue(of(response({ learningOutcomeId: 12, drafts: [{ text: 'Başka?', options: ['a', 'b', 'c', 'd'], correctIndex: 0 }] })));
+    component.setText(0, 'Düzeltilmiş?');
+    generation.generate.mockClear();
+    component.outcomeId.set(12);
+    fixture.detectChanges();
+
+    expect((el().querySelector('.qg-generate') as HTMLButtonElement).disabled).toBe(true);
+    expect(text()).toContain(tr.finishDraftsFirst);
+    component.generate();
+    expect(generation.generate).not.toHaveBeenCalled();
+    expect(component.drafts()[0].text).toBe('Düzeltilmiş?');
+  });
+
+  it('otherDifficultyWithDraftsOpen_BlocksGeneratingToo', () => {
+    generated();
+
+    component.difficulty.set(8);
+
+    expect(component.selectionDiffersFromDrafts()).toBe(true);
+  });
+
+  it('draftsSaveToTheirOwnOutcomeEvenIfTheSelectionMoved', () => {
+    generated();
     component.outcomeId.set(12);
 
-    component.generate();
     component.save();
 
-    expect(component.drafts().length).toBe(0);
-    expect(generation.save.mock.calls[0][0]).toBe(12);
-    expect(generation.save.mock.calls[0][2].map((q) => q.text)).toEqual(['Başka?']);
+    expect(generation.save.mock.calls[0][0]).toBe(11);
+  });
+
+  it('clearDrafts_AllowsGeneratingForTheNewOutcome', () => {
+    generated();
+    component.outcomeId.set(12);
+    generation.generate.mockReturnValue(of(response({ learningOutcomeId: 12, outcomeCode: 'MAT.5.1.2' })));
+
+    component.clearDrafts();
+    component.generate();
+
+    expect(generation.generate).toHaveBeenLastCalledWith(12, 3, 5);
+    expect(component.draftOutcome()?.id).toBe(12);
+    expect(component.drafts().length).toBe(2);
+  });
+
+  it('generateReturningNothing_KeepsExistingDrafts', () => {
+    generated();
+    generation.generate.mockReturnValue(of(response({ drafts: [], rejected: 2 })));
+
+    component.generate();
+
+    expect(component.drafts().length).toBe(2);
+  });
+
+  it('generateFinishingDuringSave_DoesNotLoseFreshDrafts', () => {
+    generated();
+    const pendingSave = new RxSubject<{ questionIds: number[] }>();
+    generation.save.mockReturnValue(pendingSave);
+    component.save();
+    component.setSelected(0, false);
+
+    pendingSave.next({ questionIds: [1, 2] });
+
+    expect(component.drafts()).toEqual([]);
+  });
+
+  it('saveAndGenerate_CannotRunTogether', () => {
+    generated();
+    generation.save.mockReturnValue(new RxSubject<{ questionIds: number[] }>());
+    generation.generate.mockClear();
+
+    component.save();
+    component.generate();
+
+    expect(generation.generate).not.toHaveBeenCalled();
+  });
+
+  it('correctOptionRadios_HaveNames', () => {
+    generated();
+
+    const radio = el().querySelector('.qg-option input[type=radio]') as HTMLInputElement;
+
+    expect(radio.getAttribute('aria-label')).toBe(tr.correctOptionFor.replace('{{label}}', 'A'));
+  });
+
+  it('gradeChange_ClearsTheLoadFailure', () => {
+    setup();
+    outcomes.search.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 500 })));
+    component.onGradeChange(5);
+    component.onSubjectChange(7);
+
+    component.onGradeChange(5);
+
+    expect(component.outcomesFailed()).toBe(false);
   });
 
   it.each([

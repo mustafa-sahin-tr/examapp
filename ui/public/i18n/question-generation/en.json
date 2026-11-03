@@ -34,6 +34,7 @@
   "incomplete": "The question and options must be filled in, and no two options can be the same.",
   "save": "Save selected ({{count}})",
   "saveFailed": "Could not be saved.",
-  "saved": "{{count}} questions saved.",
-  "openBank": "Question Pool"
+  "saved": "{{count}} questions saved. You can add them to a test from the Question Pool.",
+  "finishDraftsFirst": "The drafts below are for another outcome or difficulty. Save or delete them before generating again.",
+  "clearDrafts": "Delete drafts"
 }

@@ -244,6 +244,27 @@ public class QuestionTransferRoundTripTests : IDisposable
     }
 
     [Fact]
+    public async Task Text_question_stays_a_text_question_after_moving()
+    {
+        await using (var seed = _source.NewContext())
+        {
+            var text = new Question { Text = "Metin soru", Point = 5, DifficultyLevel = 1, IsCanvasQuestion = false };
+            var canvas = new Question { Text = "Kanvas soru", ImageUrl = ImageUrl, Point = 5, DifficultyLevel = 1, IsCanvasQuestion = true };
+            seed.Questions.AddRange(text, canvas);
+            await seed.SaveChangesAsync();
+            seed.Answers.AddRange(new Answer { QuestionId = text.Id, Text = "A", Order = 1 }, new Answer { QuestionId = canvas.Id, Text = "B", Order = 1 });
+            await seed.SaveChangesAsync();
+        }
+
+        await ExportFromSourceAsync(_source);
+        await ImportToAsync(_target, "first");
+
+        var imported = await QuestionsAsync(_target);
+        imported.Single(q => q.Text == "Metin soru").IsCanvasQuestion.ShouldBeFalse();
+        imported.Single(q => q.Text == "Kanvas soru").IsCanvasQuestion.ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task Export_writes_a_zip_with_the_question_image()
     {
         await SeedSourceAsync();

@@ -100,6 +100,12 @@ public class QuestionClassificationService : IQuestionClassificationService
                 return new ResponseBaseDto { Success = false, Message = _localizer["questions.notFound"] };
             }
 
+            // Kazanımdan üretilen soruda zorluğu inceleyen seçti, dersi kazanımdan geldi: sınıflandırıcı yalnız konu ekler, bunları değiştirmez.
+            var reviewedByPerson = question.SourceType == QuestionSourceType.Generated
+                && string.Equals(classificationSourceStr, nameof(ClassificationSource.AI), StringComparison.OrdinalIgnoreCase);
+            if (reviewedByPerson)
+                difficulty = null;
+
             // Resolve effective subtopic IDs: subTopicIds takes precedence over subTopicId.
             int[] effectiveSubTopicIds;
             if (subTopicIds != null)
@@ -126,6 +132,9 @@ public class QuestionClassificationService : IQuestionClassificationService
                 // Derive topicId and subjectId from the first subtopic's topic.
                 // Topic.SubjectId is already scoped to Topic.GradeId, so no extra lookup needed.
                 var derivedTopic = foundSubTopics.First().Topic;
+                if (reviewedByPerson && question.SubjectId is not null && derivedTopic.SubjectId != question.SubjectId)
+                    return new ResponseBaseDto { Success = true, Message = _localizer["questions.classification.updated"] };
+
                 question.TopicId = derivedTopic.Id;
                 question.SubjectId = derivedTopic.SubjectId;
 

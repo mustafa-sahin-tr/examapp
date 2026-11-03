@@ -556,6 +556,7 @@ public class QuestionTransferJobRunner
                 isExample = q.IsExample,
                 practiceCorrectAnswer = q.PracticeCorrectAnswer,
                 answerColCount = q.AnswerColCount,
+                isCanvasQuestion = q.IsCanvasQuestion,
                 interactionType = q.InteractionType,
                 // issue #570: çözüm ayrı alan; plan çözümsüz.
                 interactionPlan = interactionById[q.Id].Plan,
@@ -938,7 +939,8 @@ public class QuestionTransferJobRunner
                         Y = qEl.TryGetProperty("y", out var y) && y.ValueKind == JsonValueKind.Number ? y.GetDouble() : null,
                         Width = qEl.TryGetProperty("width", out var w) && w.ValueKind == JsonValueKind.Number ? w.GetInt32() : null,
                         Height = qEl.TryGetProperty("height", out var h) && h.ValueKind == JsonValueKind.Number ? h.GetInt32() : null,
-                        IsCanvasQuestion = true,
+                        // Metin soru kanvas sayılırsa oynatıcıda boş görünür. Alan eski pakette yoktur: o paketler kanvas sorusu taşır.
+                        IsCanvasQuestion = !qEl.TryGetProperty("isCanvasQuestion", out var isCanvas) || isCanvas.ValueKind != JsonValueKind.False,
                     };
 
                     // Passage (dedupe within this import)

@@ -16,11 +16,16 @@ public class GenerateQuestionDraftsDto
 
 public class QuestionDraftDto
 {
+    [MaxLength(4000)]
     public string Text { get; set; } = string.Empty;
+
+    [MaxLength(10)]
     public List<string> Options { get; set; } = [];
+
     public int CorrectIndex { get; set; }
 
     /// <summary>İnceleyen için doğru cevabın gerekçesi; soruyla kaydedilmez.</summary>
+    [MaxLength(4000)]
     public string? Explanation { get; set; }
 }
 

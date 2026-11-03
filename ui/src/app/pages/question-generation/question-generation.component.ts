@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -33,6 +32,8 @@ export const DIFFICULTIES = [
 
 /** Düzenlenen taslak: kaydedilecekler işaretlenir. */
 export interface EditableDraft extends QuestionDraft {
+  /** Düzenlemede nesne değişir; kaydedilenler bu anahtarla tanınır. */
+  key: number;
   selected: boolean;
 }
 
@@ -41,7 +42,6 @@ export interface EditableDraft extends QuestionDraft {
   standalone: true,
   imports: [
     FormsModule,
-    RouterLink,
     MatButtonModule,
     MatCardModule,
     MatCheckboxModule,
@@ -87,6 +87,11 @@ export class QuestionGenerationComponent implements OnDestroy {
   /** Taslaklar üretildikleri kazanıma aittir: seçim sonradan değişse de kayıt bu kazanıma yapılır. */
   readonly draftOutcome = signal<{ id: number; code: string; description: string; difficulty: number } | null>(null);
   readonly drafts = signal<EditableDraft[]>([]);
+  /** Taslak başka kazanım ya da zorluk için: yeni üretim önce bunların kaydedilmesini ya da silinmesini ister, düzenleme kaybolmasın. */
+  readonly selectionDiffersFromDrafts = computed(() => {
+    const outcome = this.draftOutcome();
+    return this.drafts().length > 0 && !!outcome && (outcome.id !== this.outcomeId() || outcome.difficulty !== this.difficulty());
+  });
   readonly selectedCount = computed(() => this.drafts().filter((d) => d.selected).length);
   readonly canSave = computed(() => {
     const selected = this.drafts().filter((d) => d.selected);
@@ -97,6 +102,7 @@ export class QuestionGenerationComponent implements OnDestroy {
   readonly saveFailed = signal<string | null>(null);
   readonly savedCount = signal(0);
 
+  private nextDraftKey = 1;
   private subjectsSub?: Subscription;
   private outcomesSub?: Subscription;
   private searchSub?: Subscription;
@@ -145,6 +151,7 @@ export class QuestionGenerationComponent implements OnDestroy {
     this.outcomes.set([]);
     this.outcomesSub?.unsubscribe();
     this.outcomesLoading.set(false);
+    this.outcomesFailed.set(false);
   }
 
   reloadOutcomes(): void {
@@ -175,7 +182,7 @@ export class QuestionGenerationComponent implements OnDestroy {
 
   generate(): void {
     const outcomeId = this.outcomeId();
-    if (outcomeId === null || this.generating()) return;
+    if (outcomeId === null || this.generating() || this.saving() || this.selectionDiffersFromDrafts()) return;
 
     const difficulty = this.difficulty();
     this.generating.set(true);
@@ -185,11 +192,8 @@ export class QuestionGenerationComponent implements OnDestroy {
       next: (response) => {
         this.generating.set(false);
         this.rejected.set(response.rejected);
-        const fresh = response.drafts.map((d) => ({ ...d, selected: true }));
-        // Aynı kazanım ve zorlukta yeni taslaklar eklenir; başka seçimde önceki taslaklar başka kazanıma kaydedilmesin diye değişir.
-        const current = this.draftOutcome();
-        const same = current?.id === response.learningOutcomeId && current.difficulty === difficulty;
-        this.drafts.set(same ? [...this.drafts(), ...fresh] : fresh);
+        const fresh = response.drafts.map((d) => ({ ...d, key: this.nextDraftKey++, selected: true }));
+        this.drafts.update((drafts) => [...drafts, ...fresh]);
         this.draftOutcome.set({ id: response.learningOutcomeId, code: response.outcomeCode, description: response.outcomeDescription, difficulty });
       },
       error: (err: HttpErrorResponse) => {
@@ -231,6 +235,11 @@ export class QuestionGenerationComponent implements OnDestroy {
     this.drafts.update((drafts) => drafts.filter((_, i) => i !== index));
   }
 
+  clearDrafts(): void {
+    this.drafts.set([]);
+    this.rejected.set(0);
+  }
+
   optionLabel(index: number): string {
     return String.fromCharCode(65 + index);
   }
@@ -248,7 +257,7 @@ export class QuestionGenerationComponent implements OnDestroy {
 
   save(): void {
     const outcome = this.draftOutcome();
-    if (!outcome || !this.canSave() || this.saving()) return;
+    if (!outcome || !this.canSave() || this.saving() || this.generating()) return;
 
     const chosen = this.drafts().filter((d) => d.selected);
     this.saving.set(true);
@@ -260,8 +269,9 @@ export class QuestionGenerationComponent implements OnDestroy {
         next: (saved) => {
           this.saving.set(false);
           this.savedCount.set(saved.questionIds.length);
-          // Kaydedilen taslak ekranda kalırsa ikinci kez kaydedilebilir.
-          this.drafts.update((drafts) => drafts.filter((d) => !d.selected));
+          // Kaydedilen taslak ekranda kalırsa ikinci kez kaydedilebilir. Seçim istek sürerken değişmiş olabilir: gönderilenler silinir.
+          const sent = new Set(chosen.map((d) => d.key));
+          this.drafts.update((drafts) => drafts.filter((d) => !sent.has(d.key)));
           this.rejected.set(0);
         },
         error: (err: HttpErrorResponse) => {

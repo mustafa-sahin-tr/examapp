@@ -3,6 +3,7 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Labeling;
 using ExamApp.Api.Services.QuestionGeneration;
+using ExamApp.Api.Services.Questions;
 using ExamApp.Api.Tests.Support;
 using ExamApp.Foundation.Contracts;
 using Microsoft.EntityFrameworkCore;
@@ -62,7 +63,7 @@ public class QuestionGenerationServiceTests : IDisposable
     private static QuestionDraftDto Draft(string text = "Hangisi en büyüktür?") => new() { Text = text, Options = ["10", "20", "30", "40"], CorrectIndex = 3 };
 
     private async Task<SavedQuestionDraftsDto?> SaveAsync(AppDbContext ctx, params QuestionDraftDto[] questions) =>
-        await Service(ctx).SaveAsync(new SaveQuestionDraftsDto { LearningOutcomeId = _outcomeId, DifficultyLevel = 4, Questions = questions.ToList() }, TeacherId, default);
+        await Service(ctx).SaveAsync(new SaveQuestionDraftsDto { LearningOutcomeId = _outcomeId, DifficultyLevel = 4, Questions = questions.ToList() }, _actor, TeacherId, default);
 
     [Fact]
     public async Task Drafts_write_nothing_and_stay_correct_after_the_options_are_shuffled()
@@ -99,10 +100,11 @@ public class QuestionGenerationServiceTests : IDisposable
         new GeneratedQuestion("Soru?", ["a", "b", "c", "d"], 4, ""),
         new GeneratedQuestion("Soru?", ["a", "b", "c", "d"], -1, ""),
         new GeneratedQuestion("Yukarıdaki grafiğe göre hangisi doğrudur?", ["a", "b", "c", "d"], 0, ""),
-        new GeneratedQuestion("Tabloda en büyük değer hangisidir?", ["a", "b", "c", "d"], 0, ""),
+        new GeneratedQuestion("Tabloda verilen en büyük değer hangisidir?", ["a", "b", "c", "d"], 0, ""),
         new GeneratedQuestion("Aşağıdaki şekli inceleyiniz. Kaç kenarı vardır?", ["a", "b", "c", "d"], 0, ""),
         new GeneratedQuestion("Verilen resme göre hangisi doğrudur?", ["a", "b", "c", "d"], 0, ""),
         new GeneratedQuestion("Which is true about the picture above?", ["a", "b", "c", "d"], 0, ""),
+        new GeneratedQuestion("Şekilde verilen üçgenin alanı kaçtır?", ["a", "b", "c", "d"], 0, ""),
     };
 
     [Theory]
@@ -115,6 +117,35 @@ public class QuestionGenerationServiceTests : IDisposable
 
         response.Drafts.ShouldHaveSingleItem().Text.ShouldBe("Hangisi en büyüktür?");
         response.Rejected.ShouldBe(1);
+    }
+
+    [Theory]
+    [InlineData("Periyodik tabloda aynı grupta olan elementlerin ortak özelliği nedir?")]
+    [InlineData("Daha büyük ölçekli haritada hangisi daha ayrıntılı gösterilir?")]
+    [InlineData("Aşağıdaki şekilde sıralanan sayılardan hangisi en büyüktür?")]
+    [InlineData("Aşağıdaki resmi kurumlardan hangisi eğitimle ilgilidir?")]
+    [InlineData("Verilen görsel sanatlar türlerinden hangisi Türk sanatıdır?")]
+    public void Ordinary_wording_is_not_taken_as_a_reference_to_a_visual(string text) =>
+        QuestionGenerationService.Problem(new QuestionDraftDto { Text = text, Options = ["a", "b", "c", "d"], CorrectIndex = 0 }, 4, checkVisuals: true).ShouldBeNull();
+
+    [Fact]
+    public void Options_are_really_shuffled_and_the_correct_one_is_followed()
+    {
+        var question = new GeneratedQuestion("Soru?", ["doğru", "b", "c", "d"], 0, "");
+
+        var drafts = Enumerable.Range(0, 200).Select(_ => QuestionGenerationService.ToDraft(question)).ToList();
+
+        drafts.ShouldAllBe(d => d.Options[d.CorrectIndex] == "doğru");
+        drafts.Select(d => d.CorrectIndex).Distinct().Count().ShouldBe(4);
+    }
+
+    [Fact]
+    public async Task Claude_returning_no_list_counts_as_no_drafts()
+    {
+        _generator.GenerateAsync(Arg.Any<QuestionDraftPrompt>(), Arg.Any<LabelingAiModelOption>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult((new GeneratedQuestionSet(null!), new LabelingAiUsage(1, 1))));
+
+        (await GenerateAsync()).Drafts.ShouldBeEmpty();
     }
 
     [Fact]
@@ -166,6 +197,96 @@ public class QuestionGenerationServiceTests : IDisposable
         await Should.ThrowAsync<LabelingRateLimitException>(() => GenerateAsync(1));
 
         await _generator.ReceivedWithAnyArgs(1).GenerateAsync(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task Budget_is_charged_with_the_real_cost_after_a_good_call()
+    {
+        ClaudeReturns(Valid());
+
+        await GenerateAsync(1);
+
+        (await _store.PeekAsync(LabelingAiQuota.UserBudgetKey(_actor))).Count.ShouldBe(14_000); // 1000 x $4 + 500 x $20 / MTok
+    }
+
+    [Fact]
+    public async Task Limit_reached_gives_the_reserved_budget_back()
+    {
+        _options.LiveCallsPerHour = 0;
+
+        await Should.ThrowAsync<LabelingRateLimitException>(() => GenerateAsync(1));
+
+        (await _store.PeekAsync(LabelingAiQuota.UserBudgetKey(_actor))).Count.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Timeout_keeps_the_reservation_because_claude_may_still_charge()
+    {
+        _generator.GenerateAsync(Arg.Any<QuestionDraftPrompt>(), Arg.Any<LabelingAiModelOption>(), Arg.Any<CancellationToken>())
+            .Returns<Task<(GeneratedQuestionSet, LabelingAiUsage)>>(_ => throw new TaskCanceledException());
+
+        await Should.ThrowAsync<QuestionDraftGenerationException>(() => GenerateAsync(1));
+
+        (await _store.PeekAsync(LabelingAiQuota.UserBudgetKey(_actor))).Count.ShouldBeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task Each_saved_question_counts_against_the_hourly_limit()
+    {
+        _options.LiveCallsPerHour = 1;
+        await using var ctx = _db.NewContext();
+
+        await Should.ThrowAsync<LabelingRateLimitException>(() => SaveAsync(ctx, Draft("Birinci?"), Draft("İkinci?")));
+
+        (await ctx.Questions.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Failed_save_gives_the_quota_back()
+    {
+        await using (var ctx = _db.NewContext(new FailOnSecondOutcomeLink()))
+            await Should.ThrowAsync<DbUpdateException>(() => SaveAsync(ctx, Draft("Birinci?"), Draft("İkinci?")));
+
+        (await _store.PeekAsync(LabelingAiQuota.UserCallsKey(_actor))).Count.ShouldBe(0);
+    }
+
+    [Theory]
+    [InlineData("a<b ise hangisi doğrudur?", "a&lt;b ise hangisi doğrudur?")]
+    [InlineData("<script>alert(1)</script> doğru mu?", "&lt;script&gt;alert(1)&lt;/script&gt; doğru mu?")]
+    [InlineData("Birinci satır\nİkinci satır", "Birinci satır<br>İkinci satır")]
+    public async Task Text_stays_readable_in_the_player_which_renders_html(string typed, string stored)
+    {
+        await using (var ctx = _db.NewContext())
+            await SaveAsync(ctx, Draft(typed.Replace("\\n", "\n")));
+
+        await using var check = _db.NewContext();
+        (await check.Questions.SingleAsync()).Text.ShouldBe(stored);
+    }
+
+    [Theory]
+    [InlineData("\u200B")]
+    [InlineData("\u200B \uFEFF")]
+    public void Invisible_characters_do_not_pass_as_content(string invisible)
+    {
+        QuestionGenerationService.Problem(new QuestionDraftDto { Text = invisible, Options = ["a", "b"], CorrectIndex = 0 }, null, false).ShouldNotBeNull();
+        QuestionGenerationService.Problem(new QuestionDraftDto { Text = "Soru?", Options = ["a", "a" + invisible], CorrectIndex = 0 }, null, false).ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void Control_characters_and_empty_entries_are_refused()
+    {
+        QuestionGenerationService.Problem(new QuestionDraftDto { Text = "So\0ru?", Options = ["a", "b"], CorrectIndex = 0 }, null, false).ShouldNotBeNull();
+        QuestionGenerationService.Problem(null, null, false).ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task Reviewer_decides_when_the_visual_rule_is_wrong()
+    {
+        await using var ctx = _db.NewContext();
+
+        var saved = await SaveAsync(ctx, Draft("Tabloda verilen değerlerden hangisi doğrudur?"));
+
+        saved!.QuestionIds.ShouldHaveSingleItem();
     }
 
     [Fact]
@@ -273,11 +394,99 @@ public class QuestionGenerationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Question_pool_shows_the_text_and_options_without_the_correct_answer()
+    {
+        await using (var ctx = _db.NewContext())
+            await SaveAsync(ctx, Draft());
+
+        await using var read = _db.NewContext();
+        var item = (await new QuestionQueryService(read).SearchBankAsync(new QuestionBankQuery { Scope = "all" }, TeacherId, true)).Items.ShouldHaveSingleItem();
+
+        item.Text.ShouldBe("Hangisi en büyüktür?");
+        item.AnswerTexts.ShouldBe(["10", "20", "30", "40"]);
+    }
+
+    private async Task<int> SubTopicOfSubjectAsync(int? subjectId)
+    {
+        await using var ctx = _db.NewContext();
+        var outcome = await ctx.LearningOutcomes.AsNoTracking().SingleAsync(o => o.Id == _outcomeId);
+        if (subjectId is null)
+        {
+            var other = new Subject { Name = "Başka ders" };
+            ctx.Add(other);
+            await ctx.SaveChangesAsync();
+            subjectId = other.Id;
+        }
+        var topic = new Topic { Name = "Konu", SubjectId = subjectId.Value, GradeId = outcome.GradeId };
+        ctx.Add(topic);
+        await ctx.SaveChangesAsync();
+        var subTopic = new SubTopic { Name = "Alt konu", TopicId = topic.Id };
+        ctx.Add(subTopic);
+        await ctx.SaveChangesAsync();
+        return subTopic.Id;
+    }
+
+    [Fact]
+    public async Task Classifier_adds_the_topic_and_keeps_the_reviewers_difficulty()
+    {
+        int questionId, subjectId;
+        await using (var ctx = _db.NewContext())
+            questionId = (await SaveAsync(ctx, Draft()))!.QuestionIds[0];
+        await using (var ctx = _db.NewContext())
+            subjectId = (await ctx.Questions.AsNoTracking().SingleAsync()).SubjectId!.Value;
+        var subTopicId = await SubTopicOfSubjectAsync(subjectId);
+
+        await using (var ctx = _db.NewContext())
+            (await new QuestionClassificationService(ctx).UpdateQuestionClassification(questionId, subTopicIds: [subTopicId], classificationSourceStr: "AI", difficulty: 9)).Success.ShouldBeTrue();
+
+        await using var check = _db.NewContext();
+        var question = await check.Questions.AsNoTracking().SingleAsync();
+        question.TopicId.ShouldNotBeNull();
+        question.DifficultyLevel.ShouldBe(4);
+    }
+
+    [Fact]
+    public async Task Classifier_cannot_move_the_question_to_another_subject()
+    {
+        int questionId, subjectId;
+        await using (var ctx = _db.NewContext())
+            questionId = (await SaveAsync(ctx, Draft()))!.QuestionIds[0];
+        await using (var ctx = _db.NewContext())
+            subjectId = (await ctx.Questions.AsNoTracking().SingleAsync()).SubjectId!.Value;
+        var otherSubTopic = await SubTopicOfSubjectAsync(null);
+
+        await using (var ctx = _db.NewContext())
+            await new QuestionClassificationService(ctx).UpdateQuestionClassification(questionId, subTopicIds: [otherSubTopic], classificationSourceStr: "AI");
+
+        await using var check = _db.NewContext();
+        var question = await check.Questions.AsNoTracking().SingleAsync();
+        question.SubjectId.ShouldBe(subjectId);
+        question.TopicId.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task A_person_can_still_change_a_generated_question()
+    {
+        int questionId;
+        await using (var ctx = _db.NewContext())
+            questionId = (await SaveAsync(ctx, Draft()))!.QuestionIds[0];
+        var otherSubTopic = await SubTopicOfSubjectAsync(null);
+
+        await using (var ctx = _db.NewContext())
+            (await new QuestionClassificationService(ctx).UpdateQuestionClassification(questionId, subTopicIds: [otherSubTopic], classificationSourceStr: "Human", difficulty: 9)).Success.ShouldBeTrue();
+
+        await using var check = _db.NewContext();
+        var question = await check.Questions.AsNoTracking().SingleAsync();
+        question.TopicId.ShouldNotBeNull();
+        question.DifficultyLevel.ShouldBe(9);
+    }
+
+    [Fact]
     public async Task Unknown_outcome_saves_nothing()
     {
         await using var ctx = _db.NewContext();
 
-        var saved = await Service(ctx).SaveAsync(new SaveQuestionDraftsDto { LearningOutcomeId = 9999, Questions = [Draft()] }, TeacherId, default);
+        var saved = await Service(ctx).SaveAsync(new SaveQuestionDraftsDto { LearningOutcomeId = 9999, Questions = [Draft()] }, _actor, TeacherId, default);
 
         saved.ShouldBeNull();
         (await ctx.Questions.CountAsync()).ShouldBe(0);

@@ -209,7 +209,7 @@ public class LearningOutcomeServiceTests : IDisposable
     public void Import_IsAdminOnly_AndListIsForAuthoringRoles()
     {
         typeof(AdminLearningOutcomesController).GetCustomAttributes<AuthorizeAttribute>().Select(a => a.Roles).ShouldContain("Admin");
-        typeof(LearningOutcomesController).GetCustomAttributes<AuthorizeAttribute>().Select(a => a.Roles).ShouldContain("Teacher,Admin");
+        typeof(LearningOutcomesController).GetCustomAttributes<AuthorizeAttribute>().Select(a => a.Roles).ShouldContain("Teacher,Admin,QuestionTrainer");
     }
 
     public void Dispose() => _db.Dispose();

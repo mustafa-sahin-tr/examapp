@@ -11,10 +11,10 @@ namespace ExamApp.Api.Services.QuestionTransfer;
 /// </summary>
 public sealed class QuestionImportTaxonomy(AppDbContext db)
 {
-    private readonly Dictionary<string, int?> _grades = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, int?> _subjects = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, int?> _topics = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, int?> _subTopics = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, int?> _grades = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, int?> _subjects = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, int?> _topics = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, int?> _subTopics = new(StringComparer.Ordinal);
 
     public sealed record Resolved(int? SubjectId, int? TopicId, List<int> SubTopicIds, bool Missing);
 

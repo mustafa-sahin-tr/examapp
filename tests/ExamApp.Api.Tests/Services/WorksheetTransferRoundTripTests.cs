@@ -5,6 +5,7 @@ using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interactions;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.QuestionTransfer;
+using ExamApp.Api.Services.Storage;
 using ExamApp.Api.Services.Teachers;
 using ExamApp.Api.Tests.Support;
 using Hangfire;
@@ -172,7 +173,10 @@ public class WorksheetTransferRoundTripTests : IDisposable
         return QuestionContentHash.ReadPackageSourceKey(doc.RootElement)!;
     }
 
-    private async Task<QuestionTransferImportResultDto> ImportAsync(byte[] package, params IInterceptor[] interceptors)
+    private Task<QuestionTransferImportResultDto> ImportAsync(byte[] package, params IInterceptor[] interceptors) =>
+        ImportWithAsync(package, () => _target.NewContext(interceptors));
+
+    private async Task<QuestionTransferImportResultDto> ImportWithAsync(byte[] package, Func<AppDbContext> newContext)
     {
         _storage[PackageUrl] = package;
         var job = new QuestionTransferJob { Id = Guid.NewGuid(), Kind = QuestionTransferJobKind.Import, SourceKey = OriginOf(package), FileUrl = PackageUrl, Message = "Queued" };
@@ -182,7 +186,7 @@ public class WorksheetTransferRoundTripTests : IDisposable
             seed.Add(job);
             await seed.SaveChangesAsync();
         }
-        await using (var ctx = _target.NewContext(interceptors))
+        await using (var ctx = newContext())
             await new QuestionTransferJobRunner(ctx, _minio, new ApprovedTeacherGuard(ctx)).RunImportAsync(job.Id, ownerIsAdmin: true);
 
         await using var check = _target.NewContext();
@@ -524,6 +528,8 @@ public class WorksheetTransferRoundTripTests : IDisposable
         imported.ImageUrl.ShouldNotBeNull();
         imported.ImageUrl.ShouldNotBe(coverUrl);
         _storage[imported.ImageUrl].ShouldBe(cover);
+        // Kapak başka bucket'ta olursa imzalanmaz, ekranda görünmez.
+        await _minio.Received().UploadFileAsync(Arg.Any<Stream>(), Arg.Any<string>(), MinioBucketPolicies.WorksheetsBucket, "image/jpeg");
     }
 
     [Fact]
@@ -647,6 +653,266 @@ public class WorksheetTransferRoundTripTests : IDisposable
 
         (await Service(ctx).ListWorksheetsAsync(null, null, subject, null, 50, default)).ShouldHaveSingleItem().Name.ShouldBe("Dersli test");
         (await Service(ctx).ListWorksheetsAsync(null, null, null, "etkinlik", 50, default)).ShouldHaveSingleItem().Name.ShouldBe("Derssiz etkinlik");
+    }
+
+    [Theory]
+    [InlineData(typeof(Worksheet))]
+    [InlineData(typeof(WorksheetQuestion))]
+    public async Task Transient_failure_while_saving_a_test_is_retried_without_leaving_an_extra_row(Type failingEntity)
+    {
+        var grade = await GradeAsync(_source);
+        await GradeAsync(_target);
+        var question = await QuestionAsync(_source, "Tek soru");
+        var worksheet = await WorksheetAsync(_source, "Yeniden denenen test", grade, [question]);
+        var interceptor = new FailOnceWhenAdding(failingEntity);
+
+        var result = await ImportWithAsync(await ExportAsync(worksheet), () => _target.NewContextWithTransientRetry(interceptor));
+
+        interceptor.Fired.ShouldBeTrue();
+        result.Worksheets.Imported.ShouldBe(1, JsonSerializer.Serialize(result.Worksheets));
+        await using var ctx = _target.NewContext();
+        (await ctx.Worksheets.CountAsync()).ShouldBe(1);
+        (await ctx.TestQuestions.CountAsync()).ShouldBe(1);
+        (await ctx.WorksheetTransferImportMaps.CountAsync()).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Storage_error_on_a_cover_stops_only_that_test_and_hides_the_detail()
+    {
+        var grade = await GradeAsync(_source);
+        await GradeAsync(_target);
+        const string coverUrl = "/img/exam-questions/broken-cover.jpg";
+        _storage[coverUrl] = [5, 5, 5];
+        var question = await QuestionAsync(_source, "Tek soru");
+        var covered = await WorksheetAsync(_source, "Kapağı yüklenemeyen", grade, [question], configure: w => w.ImageUrl = coverUrl);
+        var plain = await WorksheetAsync(_source, "Kapaksız", grade, [question]);
+        var package = await ExportAsync(covered, plain);
+        _minio.UploadFileAsync(Arg.Any<Stream>(), Arg.Any<string>(), MinioBucketPolicies.WorksheetsBucket, Arg.Any<string>())
+            .Returns<Task<string>>(_ => throw new IOException("secret-storage-host refused"));
+
+        var result = await ImportAsync(package);
+
+        result.Imported.ShouldBe(1);
+        result.Worksheets.Imported.ShouldBe(1);
+        result.Worksheets.Blocked.ShouldBe(1);
+        result.Worksheets.BlockedSamples.ShouldHaveSingleItem().ShouldNotContain("secret-storage-host");
+        (await TargetHasWorksheetAsync("Kapaksız")).ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Deleted_worksheet_does_not_send_its_questions()
+    {
+        var grade = await GradeAsync(_source);
+        var kept = await QuestionAsync(_source, "Kalan testin sorusu");
+        var hidden = await QuestionAsync(_source, "Silinen testin sorusu");
+        var keptWorksheet = await WorksheetAsync(_source, "Kalan", grade, [kept]);
+        var deleted = await WorksheetAsync(_source, "Silinen", grade, [hidden]);
+        await using (var edit = _source.NewContext())
+        {
+            (await edit.Worksheets.SingleAsync(w => w.Id == deleted)).IsDeleted = true;
+            await edit.SaveChangesAsync();
+        }
+
+        var package = await ExportAsync(keptWorksheet, deleted);
+
+        using var zip = new ZipArchive(new MemoryStream(package), ZipArchiveMode.Read);
+        using var manifest = JsonDocument.Parse(zip.GetEntry("manifest.json")!.Open());
+        manifest.RootElement.GetProperty("questions").EnumerateArray().Select(q => q.GetProperty("id").GetInt32()).ShouldBe([kept]);
+        manifest.RootElement.GetProperty("worksheets").EnumerateArray().Select(w => w.GetProperty("name").GetString()).ShouldBe(["Kalan"]);
+    }
+
+    [Fact]
+    public async Task Exporting_worksheets_always_uses_a_new_source_so_an_earlier_selection_is_not_overwritten()
+    {
+        var grade = await GradeAsync(_source);
+        var question = await QuestionAsync(_source, "Tek soru");
+        var worksheet = await WorksheetAsync(_source, "Test", grade, [question]);
+
+        await using var ctx = _source.NewContext();
+        var first = await Service(ctx).StartExportAsync(new StartQuestionExportDto { SourceKey = "sabit", WorksheetIds = [worksheet] }, new QuestionTransferOwner(1, true), default);
+        var second = await Service(ctx).StartExportAsync(new StartQuestionExportDto { SourceKey = "sabit", WorksheetIds = [worksheet] }, new QuestionTransferOwner(1, true), default);
+
+        first.SourceKey.ShouldStartWith("transfer-");
+        second.SourceKey.ShouldNotBe(first.SourceKey);
+    }
+
+    [Fact]
+    public async Task Package_download_fails_when_the_worksheet_file_cannot_be_read()
+    {
+        var grade = await GradeAsync(_source);
+        var question = await QuestionAsync(_source, "Tek soru");
+        var worksheet = await WorksheetAsync(_source, "Test", grade, [question]);
+        QuestionTransferJobDto started;
+        await using (var ctx = _source.NewContext())
+            started = await Service(ctx).StartExportAsync(new StartQuestionExportDto { WorksheetIds = [worksheet] }, new QuestionTransferOwner(1, true), default);
+        await using (var ctx = _source.NewContext())
+            await new QuestionTransferJobRunner(ctx, _minio, new ApprovedTeacherGuard(ctx)).RunExportAsync(started.Id, ownerIsAdmin: true);
+        _minio.GetFileStreamAsync(Arg.Is<string>(u => u.EndsWith("/worksheets.zip", StringComparison.Ordinal))).Returns(Task.FromResult<Stream?>(null));
+
+        await using var read = _source.NewContext();
+        using var output = new MemoryStream();
+        await Should.ThrowAsync<InvalidOperationException>(() => Service(read).WritePackageAsync(started.SourceKey, output, default));
+    }
+
+    [Fact]
+    public async Task Settings_follow_the_rules_of_creating_a_test_by_hand()
+    {
+        var grade = await GradeAsync(_source);
+        await GradeAsync(_target);
+        var question = await QuestionAsync(_source, "Tek soru");
+        var longTest = await WorksheetAsync(_source, "Çok uzun test", grade, [question], configure: w => w.MaxDurationSeconds = WorksheetDurationLimits.MaxSeconds + 1000);
+        var activity = await WorksheetAsync(_source, "Süreli etkinlik", grade, [question], WorksheetKind.Activity, w =>
+        {
+            w.MaxDurationSeconds = 600;
+            w.IsPracticeTest = true;
+        });
+
+        await ImportAsync(await ExportAsync(longTest, activity));
+
+        (await TargetWorksheetAsync("Çok uzun test")).MaxDurationSeconds.ShouldBe(WorksheetDurationLimits.MaxSeconds);
+        var importedActivity = await TargetWorksheetAsync("Süreli etkinlik");
+        importedActivity.MaxDurationSeconds.ShouldBe(0);
+        importedActivity.IsPracticeTest.ShouldBeFalse();
+    }
+
+    private async Task FillTargetHashesAsync()
+    {
+        await using var fill = _target.NewContext();
+        await new QuestionContentHashService(fill, _minio, Microsoft.Extensions.Logging.Abstractions.NullLogger<QuestionContentHashService>.Instance).FillMissingAsync();
+    }
+
+    [Fact]
+    public async Task Preview_sees_the_ended_licence_that_import_will_copy_onto_a_matched_question()
+    {
+        var grade = await GradeAsync(_source);
+        await GradeAsync(_target);
+        var question = await QuestionAsync(_source, "Ortak soru", configure: q => q.LicenseEndsAt = DateTime.UtcNow.AddDays(-1));
+        await QuestionAsync(_target, "Ortak soru");
+        await FillTargetHashesAsync();
+        var worksheet = await WorksheetAsync(_source, "Lisansı paketten biten", grade, [question]);
+        var package = await ExportAsync(worksheet);
+
+        var preview = await PreviewAsync(package);
+        var result = await ImportAsync(package);
+
+        result.Worksheets.Blocked.ShouldBe(1, JsonSerializer.Serialize(result.Worksheets));
+        preview.Worksheets.Blocked.ShouldBe(1, JsonSerializer.Serialize(preview.Worksheets));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Preview_stops_every_test_using_a_question_unpublished_through_another_copy(bool alreadyInTarget)
+    {
+        var grade = await GradeAsync(_source);
+        await GradeAsync(_target);
+        var published = await QuestionAsync(_source, "Aynı içerik");
+        var unpublished = await QuestionAsync(_source, "Aynı içerik", configure: q => q.IsUnpublished = true);
+        if (alreadyInTarget)
+            await QuestionAsync(_target, "Aynı içerik");
+        await FillTargetHashesAsync();
+        var first = await WorksheetAsync(_source, "Yayındaki kopyayı kullanan", grade, [published]);
+        var second = await WorksheetAsync(_source, "Kaldırılan kopyayı kullanan", grade, [unpublished]);
+        var package = await ExportAsync(first, second);
+
+        var preview = await PreviewAsync(package);
+        var result = await ImportAsync(package);
+
+        result.Worksheets.Blocked.ShouldBe(2, JsonSerializer.Serialize(result.Worksheets));
+        preview.Worksheets.Blocked.ShouldBe(2, JsonSerializer.Serialize(preview.Worksheets));
+    }
+
+    private static byte[] CraftedPackage(string worksheetsJson)
+    {
+        using var output = new MemoryStream();
+        using (var zip = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            using var writer = new StreamWriter(zip.CreateEntry("manifest.json").Open());
+            writer.Write($$"""{"originKey":"crafted","questions":[],"worksheets":{{worksheetsJson}}}""");
+        }
+        return output.ToArray();
+    }
+
+    public static TheoryData<string> BrokenWorksheets() => new()
+    {
+        """[{"externalKey":"worksheet:1","kind":"Test","name":"Bozuk","grade":{"code":"G5"},"items":[{"questionKey":"question:1","order":1.5},{"questionKey":"question:2","order":2}]}]""",
+        """[{"externalKey":"worksheet:1","kind":"Test","name":"Bozuk","grade":{"code":"G5"},"items":[5]}]""",
+        $$"""[{"externalKey":"{{new string('k', 300)}}","kind":"Test","name":"Bozuk","grade":{"code":"G5"},"items":[{"questionKey":"question:1","order":1}]}]""",
+        $$"""[{"externalKey":"worksheet:1","kind":"Test","name":"{{new string('n', 5000)}}","grade":{"code":"G5"},"items":[{"questionKey":"question:1","order":1}]}]""",
+    };
+
+    [Theory]
+    [MemberData(nameof(BrokenWorksheets))]
+    public async Task Broken_package_entry_is_blocked_in_preview_and_import_alike(string worksheetsJson)
+    {
+        await GradeAsync(_target);
+        var package = CraftedPackage(worksheetsJson);
+
+        var preview = await PreviewAsync(package);
+        var result = await ImportAsync(package);
+
+        preview.Worksheets.Blocked.ShouldBe(1);
+        result.Worksheets.Blocked.ShouldBe(1);
+        result.Worksheets.BlockedSamples.ShouldHaveSingleItem().Length.ShouldBeLessThan(400);
+        await using var ctx = _target.NewContext();
+        (await ctx.Worksheets.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Package_with_too_many_worksheets_writes_nothing()
+    {
+        await GradeAsync(_target);
+        var entries = Enumerable.Range(1, QuestionTransferWorksheetImporter.MaxWorksheetsPerPackage + 1)
+            .Select(i => $$"""{"externalKey":"worksheet:{{i}}","kind":"Test","name":"T{{i}}","grade":{"code":"G5"},"items":[]}""");
+        var package = CraftedPackage($"[{string.Join(',', entries)}]");
+
+        var preview = await PreviewAsync(package);
+        var result = await ImportAsync(package);
+
+        preview.Worksheets.Blocked.ShouldBe(QuestionTransferWorksheetImporter.MaxWorksheetsPerPackage + 1);
+        result.Worksheets.Blocked.ShouldBe(QuestionTransferWorksheetImporter.MaxWorksheetsPerPackage + 1);
+        result.Worksheets.BlockedSamples.ShouldHaveSingleItem();
+    }
+
+    [Fact]
+    public async Task Entries_sharing_an_image_id_upload_it_once()
+    {
+        var grade = await GradeAsync(_target);
+        var question = await QuestionAsync(_target, "Hedefteki soru");
+        await using (var ctx = _target.NewContext())
+        {
+            ctx.Add(new QuestionTransferImportMap { SourceKey = "crafted", ExternalQuestionKey = "question:1", TargetQuestionId = question });
+            await ctx.SaveChangesAsync();
+        }
+        using var output = new MemoryStream();
+        using (var zip = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            await using (var image = zip.CreateEntry("worksheets/7.jpg").Open())
+                await image.WriteAsync(new byte[] { 1, 2, 3 });
+            var entries = Enumerable.Range(1, 3).Select(i => $$"""{"externalKey":"worksheet:{{i}}","id":7,"kind":"Test","name":"T{{i}}","grade":{"code":"G5"},"items":[{"questionKey":"question:1","order":1}]}""");
+            using var writer = new StreamWriter(zip.CreateEntry("manifest.json").Open());
+            await writer.WriteAsync($$"""{"originKey":"crafted","questions":[],"worksheets":[{{string.Join(',', entries)}}]}""");
+        }
+
+        var result = await ImportAsync(output.ToArray());
+
+        result.Worksheets.Imported.ShouldBe(3, JsonSerializer.Serialize(result.Worksheets));
+        await _minio.Received(1).UploadFileAsync(Arg.Any<Stream>(), Arg.Any<string>(), MinioBucketPolicies.WorksheetsBucket, Arg.Any<string>());
+    }
+
+    private sealed class FailOnceWhenAdding(Type entity) : SaveChangesInterceptor
+    {
+        public bool Fired { get; private set; }
+
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (!Fired && eventData.Context!.ChangeTracker.Entries().Any(e => e.State == EntityState.Added && e.Entity.GetType() == entity))
+            {
+                Fired = true;
+                throw new TransientTestException("simulated");
+            }
+            return ValueTask.FromResult(result);
+        }
     }
 
     private sealed class FailOnNewWorksheet : SaveChangesInterceptor

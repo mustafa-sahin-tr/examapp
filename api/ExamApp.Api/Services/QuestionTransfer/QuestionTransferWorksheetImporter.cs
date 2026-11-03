@@ -3,7 +3,10 @@ using System.Text.Json;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interactions;
+using ExamApp.Api.Services.Storage;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ExamApp.Api.Services.QuestionTransfer;
 
@@ -13,10 +16,17 @@ namespace ExamApp.Api.Services.QuestionTransfer;
 /// Yeni kayıt kapalı gelir (<see cref="WorksheetTeacherSharing.Private"/> + <see cref="WorksheetStudentVisibility.Restricted"/>): prod'a taşınan test
 /// kendiliğinden yayına çıkmaz. Atama, oturum, sonuç ve yorum taşınmaz. İkinci kez gelen kayıt güncellenmez: hedefte oturum başlamış olabilir.
 /// </summary>
-public sealed class QuestionTransferWorksheetImporter(AppDbContext db, IMinIoService minio)
+public sealed class QuestionTransferWorksheetImporter(AppDbContext db, IMinIoService minio, ILogger? logger = null)
 {
     public const string WorksheetsFileName = "worksheets.json";
+    /// <summary>Paket başına kayıt sınırı. Paket güvenilmez içeriktir: her madde sorgu, her kapak depoya yazma demektir.</summary>
+    public const int MaxWorksheetsPerPackage = 2000;
+    private const int MaxItemsPerWorksheet = 1000;
+    private const int MaxKeyLength = 200;
+    private const int MaxTextLength = 4000;
+    private const int MaxSampleNameLength = 200;
     private const int MaxSamples = 10;
+    private readonly ILogger _logger = logger ?? NullLogger.Instance;
 
     /// <summary>Maddenin hedefteki durumu. <paramref name="BlockedReason"/> doluysa kayıt alınamaz.</summary>
     public sealed record ItemState(int? TargetQuestionId, string? BlockedReason, bool WillBeUnpublished, DateTime? LicenseEndsAt, string? InteractionType);
@@ -28,19 +38,22 @@ public sealed class QuestionTransferWorksheetImporter(AppDbContext db, IMinIoSer
         var result = new QuestionTransferWorksheetResultDto();
         if (!TryReadWorksheets(manifest, out var worksheets))
             return result;
+        if (worksheets.Count > MaxWorksheetsPerPackage)
+            return TooManyWorksheets(worksheets.Count);
 
         // Sahibi içe alan admindir; soruların sahipliğini değiştirmemek için yalnız bu aşamada ayarlanır.
         db.SetCurrentUser(ownerUserId ?? 0);
         var taxonomy = new QuestionImportTaxonomy(db);
         var strategy = db.Database.CreateExecutionStrategy();
+        var uploadedImages = new Dictionary<int, string>();
 
         foreach (var worksheet in worksheets)
         {
             var name = ReadName(worksheet);
             var key = ReadString(worksheet, "externalKey");
-            if (string.IsNullOrWhiteSpace(key))
+            if (KeyProblem(key) is { } keyProblem)
             {
-                AddBlocked(result, name, "the package entry has no key");
+                AddBlocked(result, name, keyProblem);
                 continue;
             }
             if (await db.WorksheetTransferImportMaps.AsNoTracking().AnyAsync(m => m.SourceKey == sourceKey && m.ExternalWorksheetKey == key, ct))
@@ -49,6 +62,7 @@ public sealed class QuestionTransferWorksheetImporter(AppDbContext db, IMinIoSer
                 continue;
             }
 
+            // Tek kaydın hatası diğerlerini ve iş sonucunu götürmez; ayrıntı yanıta değil günlüğe yazılır.
             try
             {
                 var (plan, reason) = await BuildPlanAsync(worksheet, taxonomy, itemKey => ReadImportedItemAsync(sourceKey, itemKey, ct), ct);
@@ -58,9 +72,11 @@ public sealed class QuestionTransferWorksheetImporter(AppDbContext db, IMinIoSer
                     continue;
                 }
 
-                var imageUrl = await UploadImageAsync(zip, worksheet, ct);
+                var imageUrl = await UploadImageAsync(zip, worksheet, uploadedImages, ct);
                 await strategy.ExecuteAsync(async () =>
                 {
+                    // Yeniden denemede önceki denemenin satırları izleyicide kalmasın: ikinci kez yazılır ya da geri alınmış kimliğe bağlanır.
+                    db.ChangeTracker.Clear();
                     await using var tx = await db.Database.BeginTransactionAsync(ct);
                     var entity = NewWorksheet(worksheet, plan, imageUrl);
                     db.Add(entity);
@@ -69,7 +85,7 @@ public sealed class QuestionTransferWorksheetImporter(AppDbContext db, IMinIoSer
                     var order = 0;
                     foreach (var questionId in plan.TargetQuestionIds)
                         db.TestQuestions.Add(new WorksheetQuestion { TestId = entity.Id, QuestionId = questionId, Order = ++order });
-                    db.WorksheetTransferImportMaps.Add(new WorksheetTransferImportMap { SourceKey = sourceKey, ExternalWorksheetKey = key, TargetWorksheetId = entity.Id });
+                    db.WorksheetTransferImportMaps.Add(new WorksheetTransferImportMap { SourceKey = sourceKey, ExternalWorksheetKey = key!, TargetWorksheetId = entity.Id });
                     await db.SaveChangesAsync(ct);
                     await tx.CommitAsync(ct);
                 });
@@ -79,10 +95,11 @@ public sealed class QuestionTransferWorksheetImporter(AppDbContext db, IMinIoSer
                 if (plan.HadDuplicates && result.Warnings.Count < MaxSamples)
                     result.Warnings.Add($"{name}: two items are the same question here, it was kept once");
             }
-            catch (Exception ex) when (ex is DbUpdateException or JsonException or InvalidOperationException or FormatException)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 db.ChangeTracker.Clear();
-                AddBlocked(result, name, ex.InnerException?.Message ?? ex.Message);
+                _logger.LogWarning(ex, "Worksheet {WorksheetKey} from {SourceKey} could not be imported", key, sourceKey);
+                AddBlocked(result, name, "it could not be saved, see the server log");
             }
         }
 
@@ -90,27 +107,27 @@ public sealed class QuestionTransferWorksheetImporter(AppDbContext db, IMinIoSer
     }
 
     /// <summary>Hiçbir şey yazmaz. <paramref name="readItem"/> pakette sorunun ne olacağını söyler; hedefteki durumu çağıran bilir.</summary>
-    public async Task<QuestionTransferWorksheetResultDto> PreviewAsync(JsonElement manifest, string sourceKey, Func<string, Task<ItemState>> readItem, CancellationToken ct = default)
+    public async Task<QuestionTransferWorksheetResultDto> PreviewAsync(ZipArchive zip, JsonElement manifest, string sourceKey, Func<string, Task<ItemState>> readItem, CancellationToken ct = default)
     {
         var result = new QuestionTransferWorksheetResultDto();
         if (!TryReadWorksheets(manifest, out var worksheets))
             return result;
+        if (worksheets.Count > MaxWorksheetsPerPackage)
+            return TooManyWorksheets(worksheets.Count);
 
         var taxonomy = new QuestionImportTaxonomy(db);
         foreach (var worksheet in worksheets)
         {
             var name = ReadName(worksheet);
             var key = ReadString(worksheet, "externalKey");
-            if (!string.IsNullOrWhiteSpace(key)
+            if (KeyProblem(key) is null
                 && await db.WorksheetTransferImportMaps.AsNoTracking().AnyAsync(m => m.SourceKey == sourceKey && m.ExternalWorksheetKey == key, ct))
             {
                 result.AlreadyImported++;
                 continue;
             }
 
-            var (plan, reason) = string.IsNullOrWhiteSpace(key)
-                ? (null, "the package entry has no key")
-                : await BuildPlanAsync(worksheet, taxonomy, readItem, ct);
+            var (plan, reason) = await PreviewPlanAsync(zip, worksheet, key, taxonomy, readItem, ct);
             if (plan is null)
             {
                 AddBlocked(result, name, reason!);
@@ -124,16 +141,38 @@ public sealed class QuestionTransferWorksheetImporter(AppDbContext db, IMinIoSer
         return result;
     }
 
-    /// <summary>Hedefte var olan sorunun, kayda bağlanmayı etkileyen durumu.</summary>
-    public async Task<ItemState> ReadTargetAsync(int questionId, bool unpublishedByPackage, CancellationToken ct = default)
+    /// <summary>İçe aktarmada hata sayılıp kaydı durduran paket kusurları önizlemede de kaydı durdurur, önizlemeyi düşürmez.</summary>
+    private async Task<(Plan? Plan, string? Reason)> PreviewPlanAsync(ZipArchive zip, JsonElement worksheet, string? key, QuestionImportTaxonomy taxonomy, Func<string, Task<ItemState>> readItem, CancellationToken ct)
+    {
+        if (KeyProblem(key) is { } keyProblem)
+            return (null, keyProblem);
+        try
+        {
+            var (plan, reason) = await BuildPlanAsync(worksheet, taxonomy, readItem, ct);
+            return plan is not null && ImageEntry(zip, worksheet) is { Length: > QuestionContentHash.MaxPackageImageBytes }
+                ? (null, "its image is too large")
+                : (plan, reason);
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            return (null, "it could not be saved, the package entry is not valid");
+        }
+    }
+
+    /// <summary>
+    /// Hedefte var olan sorunun, kayda bağlanmayı etkileyen durumu. <paramref name="packageLicenseEndsAt"/>: eşleşen soruda
+    /// içe aktarma, kaynağı bilinmeyen hedefin boş lisans bitişini paketten doldurur; önizleme aynı sonucu görmeli.
+    /// </summary>
+    public async Task<ItemState> ReadTargetAsync(int questionId, bool unpublishedByPackage, CancellationToken ct = default, DateTime? packageLicenseEndsAt = null)
     {
         var target = await db.Questions.AsNoTracking()
             .Where(q => q.Id == questionId)
-            .Select(q => new { q.IsUnpublished, q.LicenseEndsAt, q.InteractionType })
+            .Select(q => new { q.IsUnpublished, q.LicenseEndsAt, q.InteractionType, q.SourceType })
             .FirstOrDefaultAsync(ct);
         return target is null
             ? new ItemState(null, "a question was deleted here", false, null, null)
-            : new ItemState(questionId, null, target.IsUnpublished || unpublishedByPackage, target.LicenseEndsAt, target.InteractionType);
+            : new ItemState(questionId, null, target.IsUnpublished || unpublishedByPackage,
+                target.LicenseEndsAt ?? (target.SourceType == QuestionSourceType.Unknown ? packageLicenseEndsAt : null), target.InteractionType);
     }
 
     private async Task<ItemState> ReadImportedItemAsync(string sourceKey, string itemKey, CancellationToken ct)
@@ -164,9 +203,14 @@ public sealed class QuestionTransferWorksheetImporter(AppDbContext db, IMinIoSer
             : [];
         if (items.Count == 0)
             return (null, "it has no questions");
+        if (items.Count > MaxItemsPerWorksheet)
+            return (null, "it has too many questions");
+        if (new[] { "name", "description", "subtitle", "badgeText" }.Any(field => ReadString(worksheet, field)?.Length > MaxTextLength))
+            return (null, "a text field is too long");
 
         var now = DateTime.UtcNow;
         var targets = new List<int>();
+        var seenTargets = new HashSet<int>();
         var hadDuplicates = false;
         foreach (var item in items.OrderBy(i => i.TryGetProperty("order", out var o) && o.ValueKind == JsonValueKind.Number ? o.GetInt32() : int.MaxValue))
         {
@@ -183,15 +227,15 @@ public sealed class QuestionTransferWorksheetImporter(AppDbContext db, IMinIoSer
             if (state.LicenseEndsAt <= now)
                 return (null, "the licence of a question has ended");
             // Açık uçlu soru puanlanamaz, yalnız etkinlikte olur.
-            if (kind == WorksheetKind.Test && state.InteractionType == OpenTextGrader.Type)
+            if (kind == WorksheetKind.Test && string.Equals(state.InteractionType, OpenTextGrader.Type, StringComparison.OrdinalIgnoreCase))
                 return (null, "a test cannot have an open text question");
 
             if (state.TargetQuestionId is not int targetId)
                 continue;
-            if (targets.Contains(targetId))
-                hadDuplicates = true;
-            else
+            if (seenTargets.Add(targetId))
                 targets.Add(targetId);
+            else
+                hadDuplicates = true;
         }
 
         var missing = false;
@@ -211,42 +255,70 @@ public sealed class QuestionTransferWorksheetImporter(AppDbContext db, IMinIoSer
         return id;
     }
 
-    private static Worksheet NewWorksheet(JsonElement worksheet, Plan plan, string? imageUrl) => new()
+    private static Worksheet NewWorksheet(JsonElement worksheet, Plan plan, string? imageUrl)
     {
-        Name = plan.Name,
-        Description = ReadString(worksheet, "description") ?? string.Empty,
-        Subtitle = ReadString(worksheet, "subtitle"),
-        BadgeText = ReadString(worksheet, "badgeText"),
-        ImageUrl = imageUrl,
-        Kind = Enum.Parse<WorksheetKind>(plan.Kind),
-        GradeId = plan.GradeId,
-        SubjectId = plan.SubjectId,
-        TopicId = plan.TopicId,
-        SubTopicId = plan.SubTopicId,
-        MaxDurationSeconds = worksheet.TryGetProperty("maxDurationSeconds", out var duration) && duration.ValueKind == JsonValueKind.Number && duration.TryGetInt32(out var seconds) ? Math.Max(0, seconds) : 0,
-        IsPracticeTest = worksheet.TryGetProperty("isPracticeTest", out var practice) && practice.ValueKind == JsonValueKind.True,
-        CommentsEnabled = !worksheet.TryGetProperty("commentsEnabled", out var comments) || comments.ValueKind != JsonValueKind.False,
-        TeacherSharing = WorksheetTeacherSharing.Private,
-        StudentVisibility = WorksheetStudentVisibility.Restricted,
-    };
+        var kind = Enum.Parse<WorksheetKind>(plan.Kind);
+        // Elle oluşturmadaki kurallar (#396, #573): süre 0-24 saat; etkinlikte süre ve çalışma testi yoktur.
+        var isActivity = kind == WorksheetKind.Activity;
+        var duration = worksheet.TryGetProperty("maxDurationSeconds", out var durationEl) && durationEl.ValueKind == JsonValueKind.Number && durationEl.TryGetInt32(out var seconds)
+            ? Math.Clamp(seconds, 0, WorksheetDurationLimits.MaxSeconds)
+            : 0;
+        return new Worksheet
+        {
+            Name = plan.Name,
+            Description = ReadString(worksheet, "description") ?? string.Empty,
+            Subtitle = ReadString(worksheet, "subtitle"),
+            BadgeText = ReadString(worksheet, "badgeText"),
+            ImageUrl = imageUrl,
+            Kind = kind,
+            GradeId = plan.GradeId,
+            SubjectId = plan.SubjectId,
+            TopicId = plan.TopicId,
+            SubTopicId = plan.SubTopicId,
+            MaxDurationSeconds = isActivity ? 0 : duration,
+            IsPracticeTest = !isActivity && worksheet.TryGetProperty("isPracticeTest", out var practice) && practice.ValueKind == JsonValueKind.True,
+            CommentsEnabled = !worksheet.TryGetProperty("commentsEnabled", out var comments) || comments.ValueKind != JsonValueKind.False,
+            TeacherSharing = WorksheetTeacherSharing.Private,
+            StudentVisibility = WorksheetStudentVisibility.Restricted,
+        };
+    }
 
-    private async Task<string?> UploadImageAsync(ZipArchive zip, JsonElement worksheet, CancellationToken ct)
+    private static ZipArchiveEntry? ImageEntry(ZipArchive zip, JsonElement worksheet) =>
+        worksheet.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.Number && id.TryGetInt32(out var worksheetId)
+            ? zip.GetEntry($"worksheets/{worksheetId}.jpg")
+            : null;
+
+    /// <summary>Kapak, kapakların bucket'ına yazılır: başka yerdeki nesne imzalanmaz, görünmez. Aynı girdi iki kez yüklenmez.</summary>
+    private async Task<string?> UploadImageAsync(ZipArchive zip, JsonElement worksheet, Dictionary<int, string> uploaded, CancellationToken ct)
     {
-        if (!worksheet.TryGetProperty("id", out var id) || id.ValueKind != JsonValueKind.Number)
+        if (ImageEntry(zip, worksheet) is not { } entry)
             return null;
-        var entry = zip.GetEntry($"worksheets/{id.GetInt32()}.jpg");
-        if (entry is null)
-            return null;
+        var id = worksheet.GetProperty("id").GetInt32();
+        if (uploaded.TryGetValue(id, out var existing))
+            return existing;
 
         await using var image = new MemoryStream(await QuestionContentHash.ReadPackageEntryAsync(entry, QuestionContentHash.MaxPackageImageBytes, ct));
-        return await minio.UploadFileAsync(image, $"worksheets/imported/{Guid.NewGuid()}.jpg");
+        var url = await minio.UploadFileAsync(image, $"{Guid.NewGuid()}.jpg", MinioBucketPolicies.WorksheetsBucket, "image/jpeg");
+        uploaded[id] = url;
+        return url;
     }
+
+    private static string? KeyProblem(string? key) =>
+        string.IsNullOrWhiteSpace(key) ? "the package entry has no key"
+        : key.Length > MaxKeyLength ? "the package entry has an invalid key"
+        : null;
+
+    private static QuestionTransferWorksheetResultDto TooManyWorksheets(int count) => new()
+    {
+        Blocked = count,
+        BlockedSamples = [$"the package has {count} tests and activities, the limit is {MaxWorksheetsPerPackage}"],
+    };
 
     private static void AddBlocked(QuestionTransferWorksheetResultDto result, string name, string reason)
     {
         result.Blocked++;
         if (result.BlockedSamples.Count < MaxSamples)
-            result.BlockedSamples.Add($"{name}: {reason}");
+            result.BlockedSamples.Add($"{(name.Length > MaxSampleNameLength ? name[..MaxSampleNameLength] : name)}: {reason}");
     }
 
     private static bool TryReadWorksheets(JsonElement manifest, out List<JsonElement> worksheets)

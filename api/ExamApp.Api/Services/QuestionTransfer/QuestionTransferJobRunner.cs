@@ -26,6 +26,7 @@ public class QuestionTransferJobRunner
     // review #574 (L1): içe alınan etkileşim tanımı kayıt yoluyla aynı kontrolcüyle doğrulanır.
     private readonly IInteractionGraderRegistry _graders;
     private readonly IQuestionContentHashService _hashes;
+    private readonly ILogger<QuestionTransferJobRunner> _logger;
 
     private const int ExportBundleSize = 2000;
     private const int MaxResultSamples = 10;
@@ -34,13 +35,14 @@ public class QuestionTransferJobRunner
     public const string OwnerNotApprovedMessage = "Job owner's teacher account is not approved (or is suspended); job was not run.";
 
     public QuestionTransferJobRunner(AppDbContext db, IMinIoService minio, IApprovedTeacherGuard teacherGuard,
-        IInteractionGraderRegistry? graders = null, IQuestionContentHashService? hashes = null)
+        IInteractionGraderRegistry? graders = null, IQuestionContentHashService? hashes = null, ILogger<QuestionTransferJobRunner>? logger = null)
     {
         _db = db;
         _minio = minio;
         _teacherGuard = teacherGuard;
         _graders = graders ?? InteractionGraderRegistry.Default;
         _hashes = hashes ?? new QuestionContentHashService(db, minio, NullLogger<QuestionContentHashService>.Instance);
+        _logger = logger ?? NullLogger<QuestionTransferJobRunner>.Instance;
     }
 
     /// <summary>
@@ -1134,7 +1136,7 @@ public class QuestionTransferJobRunner
 
             // Sorular işlendi: test ve etkinlikler bulunan kimliklere bağlanır. Hata alan kayıt izleyiciyi temizler:
             // işin durumu bundan sonra yazılır, yoksa iş "çalışıyor" olarak kalır.
-            var worksheetResult = await new QuestionTransferWorksheetImporter(_db, _minio).ImportAsync(zip, doc.RootElement, job.SourceKey, job.CreateUserId);
+            var worksheetResult = await new QuestionTransferWorksheetImporter(_db, _minio, _logger).ImportAsync(zip, doc.RootElement, job.SourceKey, job.CreateUserId);
             job = await _db.Set<QuestionTransferJob>().FirstAsync(j => j.Id == jobId);
 
             job.Status = QuestionTransferJobStatus.Completed;
@@ -1180,6 +1182,9 @@ public class QuestionTransferJobRunner
         }
         catch (Exception ex)
         {
+            // İzleyici temizlenmiş olabilir: eski nesneye yazılan "başarısız" kaydedilmez, iş çalışıyor görünür.
+            _db.ChangeTracker.Clear();
+            job = await _db.Set<QuestionTransferJob>().FirstAsync(j => j.Id == jobId);
             job.Status = QuestionTransferJobStatus.Failed;
             job.Message = ex.Message;
             await _db.SaveChangesAsync();

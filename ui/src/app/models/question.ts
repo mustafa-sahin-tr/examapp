@@ -56,4 +56,6 @@ export interface Question {
   correctAnswerId?: number;
   order?: number;
   classificationSource?: ClassificationSource;
+  /** Issue #701: basılamıyorsa nedeni; yalnız test soruları listesinde (`bytest`) dolar. */
+  printBlock?: 'unpublished' | 'licenseExpired' | 'publisherLicense' | null;
 }

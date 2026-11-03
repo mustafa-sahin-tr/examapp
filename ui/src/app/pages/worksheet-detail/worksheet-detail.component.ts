@@ -477,6 +477,13 @@ export class WorksheetDetailComponent implements OnInit {
     }
   }
 
+  /** Issue #701: testi görebilen her öğretmen yazdırabilir. */
+  printWorksheet(id: number | null) {
+    if (id) {
+      this.router.navigate(['/exam', id, 'print']);
+    }
+  }
+
   navigateToQuestionCanvas() {
     const navigationExtras: NavigationExtras = {
       state: {

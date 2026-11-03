@@ -18,3 +18,10 @@ Herhangi bir adım başarısızsa ne okul ne görünürlük değişir. Öğrenci
 çözülmeye devam eder. Admin dialog'u onaydan önce sayıyı `GET api/admin/teachers/{id}/school-change-impact` (`schoolOnlyWorksheetCount`,
 silinmemişler) ile gösterir. Yeniden paylaşım öğretmenin elinde (elle tekrar "Okulum"). Migration `AddAdminUserActionAffectedCount` exam API
 açılışında uygulanır (Aspire'da exam API'yi yeniden başlat).
+
+**Issue #701 — testi yazdırma.** Öğretmen Test detayındaki "Yazdır" ile `/exam/:id/print` sayfasına gider (uygulama kabuğu dışında). PDF
+tarayıcının yazdırma penceresinden kaydedilir; sunucuda PDF üretimi ve yeni bağımlılık yok. Cevap anahtarı isteğe bağlı, ayrı sayfada.
+`GET api/questions/bytest/{id}` soru başına `printBlock` döner (`QuestionPrintPolicy`): yayından kaldırılan, lisansı biten ve yayıncı (`Publisher`)
+soruları çıktıya alınmaz; etkileşimli sorular (`mcq` dışı) da çıkarılır ve hepsi sayfada testteki sıra numarasıyla raporlanır. Yayıncı sözleşmelerinde baskı izni
+alanı yok; ilk sözleşme gelince alan eklenip kural gevşetilir. Kaynağı bilinmeyen (`Unknown`) soru engellenmez. Şıkları görselin içinde olan
+işaretlenmiş soruda tam görsel basılır ve anahtardaki harf şık etiketinden gelir. Migration yok; yeni alan için exam API yeniden başlatılır.

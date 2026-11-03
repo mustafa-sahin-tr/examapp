@@ -1137,6 +1137,22 @@ describe('WorksheetDetailComponent add from bank (issue #472)', () => {
         readOnly.fixture.detectChanges();
         expect(readOnly.fixture.debugElement.query(By.css('[data-testid="add-from-bank-btn"]'))).toBeNull();
     });
+
+    it('printButton_IsOfferedToTeacherWhoCanOnlyView', async () => {
+        const readOnly = setup({ canEdit: false });
+        readOnly.component.ngOnInit();
+        await settle();
+        readOnly.fixture.detectChanges();
+        expect(readOnly.fixture.debugElement.query(By.css('[data-testid="print-test-btn"]'))).not.toBeNull();
+    });
+
+    it('printButton_IsOfferedToTeacherWhoCanEdit', async () => {
+        const editable = setup();
+        editable.component.ngOnInit();
+        await settle();
+        editable.fixture.detectChanges();
+        expect(editable.fixture.debugElement.query(By.css('[data-testid="print-test-btn"]'))).not.toBeNull();
+    });
 });
 
 // Issue #573: etkinlik sayfası — öğrenci ve öğretmen ekranlarında puan/yüzde/sıralama yok; öğretmende "Çalışma takibi".

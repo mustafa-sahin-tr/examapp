@@ -51,6 +51,12 @@ export const routes: Routes = [
   { path: 'student-register', redirectTo: () => '/register?role=student' },
   { path: 'teacher-register', redirectTo: () => '/register?role=teacher' },
   { path: 'parent-register', redirectTo: () => '/register?role=parent' },
+  {
+    // Issue #701: kağıt çıktısı; uygulama kabuğu baskıya girmesin diye layout dışında.
+    path: 'exam/:id/print',
+    canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],
+    loadComponent: () => import('./pages/test-print/test-print.component').then((m) => m.TestPrintComponent),
+  },
   // Main app (protected) routes — all nested under a single EnhancedLayoutComponent
   // instance so the sidenav is not destroyed/recreated on every navigation.
   {

@@ -4370,3 +4370,18 @@ app-root,
   color: var(--ms-text-strong);
   border-radius: 20px 20px 0 0;
 }
+
+// Issue #701: kağıt çıktısı. Koyu tema zemini baskıya geçmesin.
+@page {
+  size: A4;
+  margin: 14mm;
+}
+
+@media print {
+  html,
+  body {
+    height: auto;
+    background: var(--whiteColor);
+    color: var(--darkColor);
+  }
+}

@@ -1,0 +1,138 @@
+<div class="tp" *transloco="let t; prefix: 'test-print'">
+  <div class="tp-panel">
+    <a mat-button [routerLink]="['/test', testId]">
+      <mat-icon>arrow_back</mat-icon>{{ t('back') }}
+    </a>
+
+    @if (loadFailed()) {
+      <p class="tp-note tp-note--error" data-testid="print-load-error">
+        <mat-icon aria-hidden="true">error_outline</mat-icon>{{ t('loadError') }}
+      </p>
+      <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+    } @else if (!loading()) {
+      @if (isActivity()) {
+        <p class="tp-note" data-testid="print-activity-note">
+          <mat-icon aria-hidden="true">info</mat-icon>{{ t('activityNotPrintable') }}
+        </p>
+      } @else {
+        <div class="tp-actions">
+          <button mat-flat-button type="button" data-testid="print-btn" [disabled]="!canPrint() || preparing()" (click)="print()">
+            <mat-icon>print</mat-icon>{{ t('print') }}
+          </button>
+          <mat-checkbox data-testid="print-key-toggle" [checked]="includeKey()" (change)="includeKey.set($event.checked)">
+            {{ t('includeKey') }}
+          </mat-checkbox>
+        </div>
+        <p class="tp-hint">{{ t('hint') }}</p>
+
+        @if (!items().length) {
+          <p class="tp-note tp-note--error" data-testid="print-empty">
+            <mat-icon aria-hidden="true">block</mat-icon>{{ t('nothingToPrint') }}
+          </p>
+        }
+        @if (exclusions().length) {
+          <div class="tp-note tp-note--warn" data-testid="print-exclusions">
+            <mat-icon aria-hidden="true">warning_amber</mat-icon>
+            <div>
+              <strong>{{ t('excludedTitle') }}</strong>
+              <ul>
+                @for (exclusion of exclusions(); track exclusion.reason) {
+                  <li>{{ t('excluded.' + exclusion.reason, { positions: exclusion.positions.join(', ') }) }}</li>
+                }
+              </ul>
+            </div>
+          </div>
+        }
+        @if (brokenImages() > 0) {
+          <p class="tp-note tp-note--warn" data-testid="print-broken-images">
+            <mat-icon aria-hidden="true">broken_image</mat-icon>{{ t('brokenImages', { count: brokenImages() }) }}
+          </p>
+        }
+      }
+    }
+  </div>
+
+  @if (canPrint()) {
+    <article class="sheet">
+      <header class="sheet-head">
+        <h1>{{ test()?.name }}</h1>
+        @if (test()?.subtitle) {
+          <p class="sheet-sub">{{ test()?.subtitle }}</p>
+        }
+        <div class="sheet-fields">
+          <span>{{ t('fieldName') }}</span>
+          <span>{{ t('fieldClass') }}</span>
+          <span>{{ t('fieldDate') }}</span>
+        </div>
+      </header>
+
+      @for (item of items(); track item.question.id) {
+        <section class="q" data-testid="print-question">
+          @if (item.showPassage && item.question.passage; as passage) {
+            <div class="q-passage" data-testid="print-passage">
+              @if (passage.title) {
+                <h2>{{ passage.title }}</h2>
+              }
+              @if (passage.instruction) {
+                <p>{{ passage.instruction }}</p>
+              }
+              @if (passage.text) {
+                <div [innerHTML]="passage.text"></div>
+              }
+              @if (passage.imageUrl) {
+                <img [src]="passage.imageUrl" alt="" [appStorageImageRetry]="imageRefresh" />
+              }
+            </div>
+          }
+          <div class="q-body">
+            <span class="q-number">{{ item.number }}.</span>
+            <div class="q-content">
+              @if (item.question.text) {
+                <div [innerHTML]="item.question.text"></div>
+              }
+              @if (item.imageUrl) {
+                <img [src]="item.imageUrl" alt="" [appStorageImageRetry]="imageRefresh" />
+              }
+              @if (item.question.subText) {
+                <div [innerHTML]="item.question.subText"></div>
+              }
+              @if (!item.answersInImage && item.question.answers.length) {
+                <div class="q-answers" [style.grid-template-columns]="answerColumns(item.question)">
+                  @for (answer of item.question.answers; track answer.id; let i = $index) {
+                    <div class="q-answer" data-testid="print-answer">
+                      <b>{{ answerLetter(i) }})</b>
+                      <span>{{ answer.text }}</span>
+                      @if (answer.imageUrl) {
+                        <img [src]="answer.imageUrl" alt="" [appStorageImageRetry]="imageRefresh" />
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        </section>
+      }
+
+      @if (includeKey()) {
+        <section class="key" data-testid="print-key">
+          <h2>{{ t('keyTitle', { name: test()?.name }) }}</h2>
+          <ol class="key-grid">
+            @for (item of items(); track item.question.id) {
+              <li data-testid="print-key-item">
+                <b>{{ item.number }}.</b>
+                @if (item.keyLetter) {
+                  <span>{{ item.keyLetter }}</span>
+                } @else if (item.keyText) {
+                  <span [innerHTML]="item.keyText"></span>
+                } @else {
+                  <span>{{ t('noKey') }}</span>
+                }
+              </li>
+            }
+          </ol>
+        </section>
+      }
+    </article>
+  }
+</div>

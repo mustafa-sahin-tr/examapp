@@ -47,6 +47,9 @@ public class QuestionDto
     // If true, the UI may show only the passage first and reveal the question on demand.
     public bool ShowPassageFirst { get; set; }
 
+    /// <summary>Issue #701: basılamıyorsa nedeni (<see cref="Services.Questions.QuestionPrintPolicy"/>); yalnız test soruları listesinde dolar.</summary>
+    public string? PrintBlock { get; set; }
+
     public List<AnswerDto> Answers { get; set; } = new();
 
     // Many-to-many: QuestionSubTopics -> SubTopic

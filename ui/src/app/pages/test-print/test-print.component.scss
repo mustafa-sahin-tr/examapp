@@ -1,0 +1,186 @@
+.tp {
+  min-height: 100vh;
+  padding: var(--ms-layout-spacing-xsmall, 16px);
+  background: var(--main-bg-color);
+  color: var(--ms-text);
+}
+
+.tp-panel {
+  max-width: 210mm;
+  margin: 0 auto 16px;
+}
+
+.tp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.tp-hint {
+  margin: 8px 0 0;
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.tp-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 12px 0 0;
+
+  ul {
+    margin: 4px 0 0;
+    padding-left: 18px;
+  }
+
+  mat-icon {
+    flex: none;
+  }
+}
+
+.tp-note--warn mat-icon {
+  color: var(--paint-orange);
+}
+
+.tp-note--error mat-icon {
+  color: var(--paint-red);
+}
+
+// Kağıt her temada beyazdır: ekrandaki önizleme baskıyla aynı görünür.
+.sheet {
+  max-width: 210mm;
+  margin: 0 auto;
+  padding: 14mm;
+  background: var(--whiteColor);
+  color: var(--darkColor);
+  font-family: var(--paragraphFontFamily);
+  font-size: 12pt;
+  line-height: 1.4;
+
+  img {
+    display: block;
+    max-width: 100%;
+    // Tek sayfaya sığmayan görsel bölünürdü; A4 içerik yüksekliğinin altında tutulur.
+    max-height: 230mm;
+    height: auto;
+    object-fit: contain;
+  }
+}
+
+.sheet-head {
+  margin-bottom: 8mm;
+  padding-bottom: 4mm;
+  border-bottom: 1px solid var(--darkColor);
+
+  h1 {
+    margin: 0;
+    font-size: 16pt;
+  }
+}
+
+.sheet-sub {
+  margin: 2mm 0 0;
+}
+
+.sheet-fields {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 4mm;
+  margin-top: 5mm;
+}
+
+.q {
+  margin-bottom: 7mm;
+  break-inside: avoid;
+}
+
+.q-passage {
+  margin-bottom: 3mm;
+
+  h2 {
+    margin: 0 0 2mm;
+    font-size: 12pt;
+  }
+
+  p {
+    margin: 0 0 2mm;
+  }
+}
+
+.q-body {
+  display: flex;
+  gap: 2mm;
+}
+
+.q-number {
+  flex: none;
+  font-weight: 700;
+}
+
+.q-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.q-answers {
+  display: grid;
+  gap: 2mm 4mm;
+  margin-top: 2mm;
+}
+
+.q-answer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1mm 2mm;
+  min-width: 0;
+}
+
+.key {
+  margin-top: 8mm;
+  break-before: page;
+
+  h2 {
+    margin: 0 0 5mm;
+    font-size: 14pt;
+  }
+}
+
+.key-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 2mm 4mm;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    gap: 1.5mm;
+    min-width: 0;
+    break-inside: avoid;
+  }
+}
+
+@media print {
+  .tp {
+    min-height: 0;
+    padding: 0;
+    background: none;
+  }
+
+  .tp-panel {
+    display: none;
+  }
+
+  .sheet {
+    max-width: none;
+    padding: 0;
+  }
+
+  .key {
+    margin-top: 0;
+  }
+}

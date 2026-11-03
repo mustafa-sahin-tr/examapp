@@ -795,7 +795,7 @@ public class QuestionTransferJobRunner
                     if (match.Kind == QuestionMatchKind.Exact)
                     {
                         if (await FillBlanksAsync(match.TargetQuestionId!.Value, resolvedTaxonomy, qEl))
-                            interactionWarnings[externalKey] = $"{externalKey}: unpublished in the source but still published here (question {match.TargetQuestionId})";
+                            interactionWarnings[externalKey] = $"{externalKey}: unpublished in the source, so question {match.TargetQuestionId} was unpublished here too";
                         lockRow.TargetQuestionId = match.TargetQuestionId.Value;
                         await _db.SaveChangesAsync();
                         await tx.CommitAsync();
@@ -1190,7 +1190,8 @@ public class QuestionTransferJobRunner
 
     /// <summary>
     /// Hedefteki aynı soru değiştirilmez: yalnız boş sınıflandırma ve kaynağı bilinmeyen sorunun lisans bilgisi doldurulur, eksik alt konu ve
-    /// kazanım bağları eklenir. Yayın durumu değiştirilmez; kaynakta yayından kalkmış ama hedefte yayındaysa true döner, uyarı yazılır.
+    /// kazanım bağları eklenir. Tek istisna yayından kaldırmadır: hak sahibi talebi hedefte de geçerli olmalı, soru kaldırılır ve true döner
+    /// (uyarı yazılır). Ters yön yoktur, paket hedefte kaldırılmış soruyu yeniden yayına almaz.
     /// </summary>
     private async Task<bool> FillBlanksAsync(int questionId, QuestionImportTaxonomy.Resolved taxonomy, JsonElement qEl)
     {
@@ -1224,8 +1225,12 @@ public class QuestionTransferJobRunner
                 _db.QuestionLearningOutcomes.Add(new QuestionLearningOutcome { QuestionId = questionId, LearningOutcomeId = id });
         }
 
+        var unpublishedHere = !target.IsUnpublished && qEl.TryGetProperty("isUnpublished", out var unpublished) && unpublished.ValueKind == JsonValueKind.True;
+        if (unpublishedHere)
+            target.IsUnpublished = true;
+
         await _db.SaveChangesAsync();
-        return !target.IsUnpublished && qEl.TryGetProperty("isUnpublished", out var unpublished) && unpublished.ValueKind == JsonValueKind.True;
+        return unpublishedHere;
     }
 
     /// <summary>

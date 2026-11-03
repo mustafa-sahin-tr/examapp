@@ -851,7 +851,7 @@ public class QuestionTransferHashMatchingTests : IDisposable
     }
 
     [Fact]
-    public async Task Match_fills_rights_of_an_unknown_source_and_warns_about_unpublished_without_changing_it()
+    public async Task Match_fills_rights_of_an_unknown_source_and_carries_the_unpublish_with_a_warning()
     {
         var id = await SeedMatchingTextQuestionAsync();
 
@@ -864,7 +864,24 @@ public class QuestionTransferHashMatchingTests : IDisposable
         var saved = await check.Questions.SingleAsync(q => q.Id == id);
         saved.SourceType.ShouldBe(QuestionSourceType.Publisher);
         saved.RightsHolder.ShouldBe("Yayınevi");
-        saved.IsUnpublished.ShouldBeFalse();
+        saved.IsUnpublished.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Package_does_not_republish_a_question_unpublished_in_the_target()
+    {
+        var id = await SeedMatchingTextQuestionAsync();
+        await using (var ctx = _db.NewContext())
+        {
+            (await ctx.Questions.SingleAsync(q => q.Id == id)).IsUnpublished = true;
+            await ctx.SaveChangesAsync();
+        }
+
+        var job = await ImportAsync(Zip([RightsQuestion(5, unpublished: false)]));
+
+        Result(job).Warnings.ShouldBeEmpty();
+        await using var check = _db.NewContext();
+        (await check.Questions.SingleAsync(q => q.Id == id)).IsUnpublished.ShouldBeTrue();
     }
 
     [Fact]

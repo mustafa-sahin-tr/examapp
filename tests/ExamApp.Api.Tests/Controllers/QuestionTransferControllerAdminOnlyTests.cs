@@ -37,8 +37,8 @@ public class QuestionTransferControllerAdminOnlyTests
     public void Every_endpoint_requires_the_admin_role()
     {
         var actions = Actions();
-        // exports, imports, imports/preview, exports/sources, 6 export içerik GET'i, jobs, jobs/{id}
-        actions.Count.ShouldBe(12);
+        // worksheets, exports, imports, imports/preview, exports/sources, 6 export içerik GET'i, jobs, jobs/{id}
+        actions.Count.ShouldBe(13);
 
         foreach (var m in actions.Where(m => !Exceptions.Contains(m.Name)))
         {

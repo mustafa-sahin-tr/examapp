@@ -103,6 +103,9 @@ public class QuestionTransferJobRunner
             var requestedIds = request?.QuestionIds?.Distinct().ToList() ?? new List<int>();
             requestedIds = requestedIds.Where(x => x > 0).Distinct().ToList();
 
+            if (request?.WorksheetIds is { Count: > 0 } worksheetIds)
+                await WriteWorksheetsAsync(sourceKey, worksheetIds);
+
             async Task ProcessNewIdsAsync(List<int> ids, HashSet<int> touched)
             {
                 var remaining = new Queue<int>(ids);
@@ -267,6 +270,65 @@ public class QuestionTransferJobRunner
             job.Status = QuestionTransferJobStatus.Failed;
             job.Message = ex.Message;
             await _db.SaveChangesAsync();
+        }
+    }
+
+    /// <summary>Seçilen test ve etkinlikler ayrı dosyaya yazılır: soru dosyaları kapasiteye göre bölünür, paket indirilirken birleştirilir.</summary>
+    private async Task WriteWorksheetsAsync(string sourceKey, List<int> worksheetIds)
+    {
+        var worksheets = await _db.Set<Worksheet>().AsNoTracking()
+            .Include(w => w.Grade)
+            .Include(w => w.Subject)
+            .Include(w => w.Topic).ThenInclude(t => t!.Grade)
+            .Include(w => w.SubTopic).ThenInclude(s => s!.Topic).ThenInclude(t => t.Grade)
+            .Where(w => worksheetIds.Contains(w.Id))
+            .OrderBy(w => w.Id)
+            .ToListAsync();
+        var items = (await _db.TestQuestions.AsNoTracking()
+                .Where(i => worksheetIds.Contains(i.TestId))
+                .OrderBy(i => i.Order).ThenBy(i => i.Id)
+                .Select(i => new { i.TestId, i.QuestionId })
+                .ToListAsync())
+            .GroupBy(i => i.TestId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var tmpPath = Path.Combine(Path.GetTempPath(), $"export-worksheets-{Guid.NewGuid():N}.zip");
+        try
+        {
+            await using (var file = new FileStream(tmpPath, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None))
+            using (var zip = new ZipArchive(file, ZipArchiveMode.Create, leaveOpen: true))
+            {
+                foreach (var worksheet in worksheets)
+                    await TryAddFromMinioAsync(zip, worksheet.ImageUrl, $"worksheets/{worksheet.Id}.jpg");
+
+                var entry = zip.CreateEntry(QuestionTransferWorksheetImporter.WorksheetsFileName, CompressionLevel.Fastest);
+                await using var entryStream = entry.Open();
+                await JsonSerializer.SerializeAsync(entryStream, worksheets.Select(w => new
+                {
+                    externalKey = $"worksheet:{w.Id}",
+                    id = w.Id,
+                    kind = w.Kind.ToString(),
+                    name = w.Name,
+                    description = w.Description,
+                    subtitle = w.Subtitle,
+                    badgeText = w.BadgeText,
+                    maxDurationSeconds = w.MaxDurationSeconds,
+                    isPracticeTest = w.IsPracticeTest,
+                    commentsEnabled = w.CommentsEnabled,
+                    grade = new { code = w.Grade?.Code, name = w.Grade?.Name },
+                    subject = w.Subject == null ? null : new { code = w.Subject.Code, name = w.Subject.Name },
+                    topic = w.Topic == null ? null : new { code = w.Topic.Code, name = w.Topic.Name, gradeName = w.Topic.Grade?.Name },
+                    subTopic = w.SubTopic == null ? null : new { code = w.SubTopic.Code, name = w.SubTopic.Name, topicName = w.SubTopic.Topic?.Name, gradeName = w.SubTopic.Topic?.Grade?.Name },
+                    items = (items.TryGetValue(w.Id, out var rows) ? rows : []).Select((row, index) => new { questionKey = $"question:{row.QuestionId}", order = index + 1 }).ToList(),
+                }).ToList());
+            }
+
+            await using var upload = new FileStream(tmpPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            await _minio.UploadFileAsync(upload, QuestionTransferService.WorksheetsObjectName(sourceKey), contentType: "application/zip");
+        }
+        finally
+        {
+            DeleteTempFile(tmpPath);
         }
     }
 
@@ -1081,6 +1143,10 @@ public class QuestionTransferJobRunner
                 summary += $" Warnings {interactionWarnings.Count}: " + string.Join(" | ", interactionWarnings.Values.Take(10));
             }
             job.Message = summary;
+            // Sorular işlendi: test ve etkinlikler bulunan kimliklere bağlanır.
+            var worksheetResult = await new QuestionTransferWorksheetImporter(_db, _minio).ImportAsync(zip, doc.RootElement, job.SourceKey, job.CreateUserId);
+            job = await _db.Set<QuestionTransferJob>().FirstAsync(j => j.Id == jobId);
+
             // Normal yolda (#690) olduğu gibi yayından kaldırmanın izi kalır; hangi soruların kalktığı iş sonucundadır.
             if (unpublishedQuestionIds.Count > 0)
             {
@@ -1095,6 +1161,7 @@ public class QuestionTransferJobRunner
 
             job.ResultJson = JsonSerializer.Serialize(new QuestionTransferImportResultDto
             {
+                Worksheets = worksheetResult,
                 Imported = importedCount,
                 Matched = matchedCount,
                 AlreadyImported = skippedCount,

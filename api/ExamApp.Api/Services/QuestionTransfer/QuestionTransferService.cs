@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.IO.Compression;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
@@ -41,6 +42,12 @@ public interface IQuestionTransferService
 
     /// <summary>Bu ortamın kalıcı kimliği: birleştirilen paketin manifestine yazılır.</summary>
     Task<string> GetOriginKeyAsync(CancellationToken ct);
+
+    /// <summary>Dışa aktarma için seçilebilecek test ve etkinlikler, en yeniden eskiye.</summary>
+    Task<List<QuestionTransferWorksheetListItemDto>> ListWorksheetsAsync(WorksheetKind? kind, int? gradeId, int? subjectId, string? search, int take, CancellationToken ct);
+
+    /// <summary>İndirilecek paketi yazar.</summary>
+    Task WritePackageAsync(string sourceKey, Stream output, CancellationToken ct);
     Task<Stream?> GetExportBundleStreamAsync(string sourceKey, int bundleNo, CancellationToken ct);
     Task<Stream?> GetExportBundleMapStreamAsync(string sourceKey, int bundleNo, CancellationToken ct);
     Task<Stream?> GetExportSourceIndexStreamAsync(string sourceKey, CancellationToken ct);
@@ -78,9 +85,10 @@ public class QuestionTransferService : IQuestionTransferService
             : request.SourceKey.Trim();
 
         // Kapsam boş sonuç verirse işe başlanmaz: boş kimlik listesi "hepsi" demektir, yanlışlıkla tüm sorular çıkar.
-        if (request.HasScope)
+        var hasWorksheets = request.WorksheetIds is { Count: > 0 };
+        if (hasWorksheets || request.HasScope)
         {
-            var scopeIds = await ResolveScopeAsync(request, ct);
+            var scopeIds = hasWorksheets ? await ResolveWorksheetQuestionsAsync(request.WorksheetIds, ct) : await ResolveScopeAsync(request, ct);
             request.QuestionIds = scopeIds;
             var scopeSourceKey = request.SourceKey;
             if (scopeIds.Count == 0)
@@ -114,6 +122,150 @@ public class QuestionTransferService : IQuestionTransferService
         _jobs.Enqueue<QuestionTransferJobRunner>(r => r.RunExportAsync(job.Id, ownerIsAdmin));
 
         return ToDto(job);
+    }
+
+    /// <summary>Kaldırılmış madde (soft-delete) pakete girmez: bundan sonra başlayan oturum da görmez.</summary>
+    private Task<List<int>> ResolveWorksheetQuestionsAsync(List<int> worksheetIds, CancellationToken ct) =>
+        _db.TestQuestions.AsNoTracking()
+            .Where(i => worksheetIds.Contains(i.TestId))
+            .Select(i => i.QuestionId)
+            .Distinct()
+            .OrderBy(id => id)
+            .ToListAsync(ct);
+
+    public async Task<List<QuestionTransferWorksheetListItemDto>> ListWorksheetsAsync(WorksheetKind? kind, int? gradeId, int? subjectId, string? search, int take, CancellationToken ct)
+    {
+        var query = _db.Set<Worksheet>().AsNoTracking();
+        if (kind is not null)
+            query = query.Where(w => w.Kind == kind);
+        if (gradeId is not null)
+            query = query.Where(w => w.GradeId == gradeId);
+        if (subjectId is not null)
+            query = query.Where(w => w.SubjectId == subjectId);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var text = search.Trim();
+            var lowered = text.ToLower();
+            query = query.Where(w => w.Name.Contains(text) || w.Name.ToLower().Contains(lowered));
+        }
+
+        return await query
+            .OrderByDescending(w => w.Id)
+            .Take(Math.Clamp(take, 1, 200))
+            .Select(w => new QuestionTransferWorksheetListItemDto
+            {
+                Id = w.Id,
+                Name = w.Name,
+                Kind = w.Kind.ToString(),
+                GradeName = w.Grade.Name,
+                SubjectName = w.Subject.Name,
+                QuestionCount = w.WorksheetQuestions.Count,
+            })
+            .ToListAsync(ct);
+    }
+
+    internal static string WorksheetsObjectName(string sourceKey) => $"question-transfer/exports/{sourceKey}/worksheets.zip";
+
+    /// <summary>
+    /// İçe aktarılabilir tek zip: kök manifest ve dosyalar. Bu kaynağın bütün soru dosyalarını ve varsa test / etkinlik dosyasını birleştirir.
+    /// ZipArchive kapanırken zaman uyumlu yazar: <paramref name="output"/> yanıt gövdesi değil, geçici dosya olmalı.
+    /// </summary>
+    public async Task WritePackageAsync(string sourceKey, Stream output, CancellationToken ct)
+    {
+        using var zip = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true);
+        var seenEntries = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var questions = new List<JsonElement>();
+        var seenExternalKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var bundle in (await ListExportBundlesAsync(sourceKey, ct)).OrderBy(b => b.BundleNo))
+        {
+            var bundleStream = await GetExportBundleStreamAsync(sourceKey, bundle.BundleNo, ct);
+            if (bundleStream is null)
+                continue;
+
+            await CopyZipAsync(bundleStream, zip, seenEntries, async manifestEntry =>
+            {
+                await using var manifestStream = manifestEntry.Open();
+                using var doc = await JsonDocument.ParseAsync(manifestStream, cancellationToken: ct);
+                if (!doc.RootElement.TryGetProperty("questions", out var items) || items.ValueKind != JsonValueKind.Array)
+                    return;
+                foreach (var question in items.EnumerateArray())
+                {
+                    var key = question.TryGetProperty("externalKey", out var externalKey) ? externalKey.GetString() : null;
+                    if (!string.IsNullOrWhiteSpace(key) && seenExternalKeys.Add(key))
+                        questions.Add(question.Clone());
+                }
+            }, "manifest.json", ct);
+        }
+
+        var worksheets = new List<JsonElement>();
+        var worksheetsUrl = $"/img/{_minioBucket}/{WorksheetsObjectName(sourceKey)}";
+        if (await _minio.FileExistsAsync(worksheetsUrl, ct) && await _minio.GetFileStreamAsync(worksheetsUrl) is { } worksheetsStream)
+        {
+            await CopyZipAsync(worksheetsStream, zip, seenEntries, async entry =>
+            {
+                await using var stream = entry.Open();
+                using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+                worksheets.AddRange(doc.RootElement.EnumerateArray().Select(w => w.Clone()));
+            }, QuestionTransferWorksheetImporter.WorksheetsFileName, ct);
+        }
+
+        var manifest = new
+        {
+            version = 4,
+            sourceKey,
+            originKey = await GetOriginKeyAsync(ct),
+            bundleNo = 0,
+            exportedAtUtc = DateTime.UtcNow,
+            questions = await WithCurrentRightsAsync(questions, ct),
+            worksheets,
+        };
+
+        var manifestOut = zip.CreateEntry("manifest.json", CompressionLevel.Fastest);
+        await using var manifestOutStream = manifestOut.Open();
+        await JsonSerializer.SerializeAsync(manifestOutStream, manifest, cancellationToken: ct);
+    }
+
+    /// <summary>Kaynak zip'i geçici dosyadan okur; <paramref name="dataEntry"/> dışındaki girdileri kopyalar, onu <paramref name="readData"/>'ya verir.</summary>
+    private static async Task CopyZipAsync(Stream source, ZipArchive target, HashSet<string> seenEntries, Func<ZipArchiveEntry, Task> readData, string dataEntry, CancellationToken ct)
+    {
+        var tmpPath = Path.Combine(Path.GetTempPath(), $"question-transfer-part-{Guid.NewGuid():N}.zip");
+        try
+        {
+            await using (source)
+            await using (var write = new FileStream(tmpPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                await source.CopyToAsync(write, ct);
+
+            await using var read = new FileStream(tmpPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            using var zip = new ZipArchive(read, ZipArchiveMode.Read, leaveOpen: false);
+            if (zip.GetEntry(dataEntry) is { } data)
+                await readData(data);
+
+            foreach (var entry in zip.Entries)
+            {
+                // Dizin girdisi, veri dosyası ve zaten eklenen ortak dosya (paylaşılan paragraf) atlanır.
+                if (string.IsNullOrWhiteSpace(entry.Name)
+                    || entry.FullName.Equals(dataEntry, StringComparison.OrdinalIgnoreCase)
+                    || !seenEntries.Add(entry.FullName))
+                    continue;
+
+                var outEntry = target.CreateEntry(entry.FullName, CompressionLevel.Fastest);
+                await using var outStream = outEntry.Open();
+                await using var inStream = entry.Open();
+                await inStream.CopyToAsync(outStream, ct);
+            }
+        }
+        finally
+        {
+            try
+            {
+                File.Delete(tmpPath);
+            }
+            catch (IOException)
+            {
+                // Temp temizliği indirmeyi düşürmez.
+            }
+        }
     }
 
     private async Task<List<int>> ResolveScopeAsync(StartQuestionExportDto request, CancellationToken ct)
@@ -257,6 +409,14 @@ public class QuestionTransferService : IQuestionTransferService
         return await _minio.GetFileStreamAsync(url);
     }
 
+    /// <summary>Henüz hedefte olmayan soru: durumu paketten okunur, kimliği içe alınınca belli olur.</summary>
+    private static QuestionTransferWorksheetImporter.ItemState NewQuestionState(JsonElement question)
+    {
+        DateTime? licenseEndsAt = question.TryGetProperty("licenseEndsAt", out var license) && license.ValueKind == JsonValueKind.String && license.TryGetDateTime(out var ends) ? ends : null;
+        var type = question.TryGetProperty("interactionType", out var interactionType) && interactionType.ValueKind == JsonValueKind.String ? interactionType.GetString() : null;
+        return new QuestionTransferWorksheetImporter.ItemState(null, null, QuestionTransferJobRunner.IsUnpublishedInPackage(question), licenseEndsAt, type);
+    }
+
     private async Task<bool> WouldUnpublishAsync(JsonElement question, int targetQuestionId, CancellationToken ct) =>
         QuestionTransferJobRunner.IsUnpublishedInPackage(question)
         && await _db.Questions.AsNoTracking().AnyAsync(q => q.Id == targetQuestionId && !q.IsUnpublished, ct);
@@ -344,6 +504,8 @@ public class QuestionTransferService : IQuestionTransferService
         var missingTaxonomyCount = 0;
         var missingImageCount = 0;
         var unpublishCount = 0;
+        var worksheetImporter = new QuestionTransferWorksheetImporter(_db, _minio);
+        var itemStates = new Dictionary<string, Func<Task<QuestionTransferWorksheetImporter.ItemState>>>(StringComparer.Ordinal);
         var alreadyImportedInFile = 0;
         var conflictSamples = new List<string>();
         var seenInFile = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -359,6 +521,8 @@ public class QuestionTransferService : IQuestionTransferService
                 alreadyImportedInFile++;
                 if (await WouldUnpublishAsync(question, alreadyImportedAs.Value, ct))
                     unpublishCount++;
+                var alreadyTargetId = alreadyImportedAs.Value;
+                itemStates[key] = () => worksheetImporter.ReadTargetAsync(alreadyTargetId, QuestionTransferJobRunner.IsUnpublishedInPackage(question), ct);
                 continue;
             }
 
@@ -372,6 +536,7 @@ public class QuestionTransferService : IQuestionTransferService
             if (QuestionContentHash.IsImageMissing(question, image))
             {
                 missingImageCount++;
+                itemStates[key] = () => Task.FromResult(new QuestionTransferWorksheetImporter.ItemState(null, "a question could not be imported", false, null, null));
                 continue;
             }
 
@@ -390,16 +555,27 @@ public class QuestionTransferService : IQuestionTransferService
             {
                 case QuestionMatchKind.New:
                     newCount++;
+                    itemStates[key] = () => Task.FromResult(NewQuestionState(question));
                     break;
                 case QuestionMatchKind.Exact:
                     matchedCount++;
-                    if (match.TargetQuestionId is int targetId && await WouldUnpublishAsync(question, targetId, ct))
-                        unpublishCount++;
+                    if (match.TargetQuestionId is int targetId)
+                    {
+                        if (await WouldUnpublishAsync(question, targetId, ct))
+                            unpublishCount++;
+                        itemStates[key] = () => worksheetImporter.ReadTargetAsync(targetId, QuestionTransferJobRunner.IsUnpublishedInPackage(question), ct);
+                    }
+                    else
+                    {
+                        // Aynı dosyada önce gelen yeni soruyla aynı içerik: henüz hedefte yok.
+                        itemStates[key] = () => Task.FromResult(NewQuestionState(question));
+                    }
                     break;
                 default:
                     conflictCount++;
                     if (conflictSamples.Count < 10)
                         conflictSamples.Add(key);
+                    itemStates[key] = () => Task.FromResult(new QuestionTransferWorksheetImporter.ItemState(null, "a question conflicts with one here", false, null, null));
                     continue;
             }
 
@@ -422,8 +598,15 @@ public class QuestionTransferService : IQuestionTransferService
                 .CountAsync(m => m.SourceKey == sourceKey && chunk.Contains(m.ExternalQuestionKey), ct);
         }
 
+        var worksheetPreview = await worksheetImporter.PreviewAsync(doc.RootElement, sourceKey,
+            itemKey => itemStates.TryGetValue(itemKey, out var state)
+                ? state()
+                : Task.FromResult(new QuestionTransferWorksheetImporter.ItemState(null, "a question is not in the package", false, null, null)),
+            ct);
+
         return new QuestionTransferImportPreviewDto
         {
+            Worksheets = worksheetPreview,
             SourceKey = sourceKey,
             QuestionCount = questionCount,
             AlreadyImportedCount = alreadyImported,

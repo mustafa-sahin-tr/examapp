@@ -107,5 +107,8 @@ public enum QuestionSourceType
     Unknown = 0,
     Commissioned = 1,
     Publisher = 2,
-    Teacher = 3
+    Teacher = 3,
+
+    /// <summary>Kazanımdan Claude ile üretildi, kaydeden öğretmen ya da admin inceledi.</summary>
+    Generated = 4
 }

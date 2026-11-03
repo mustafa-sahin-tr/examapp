@@ -39,19 +39,32 @@ internal static class LabelingClaude
         IChatClient chat, LabelingAiOptions options, ILogger logger, LabelingAiModelOption model, int maxOutputTokens,
         string systemPrompt, EncodedRegion region, string instruction, CancellationToken ct)
     {
-        var chatOptions = new ChatOptions
-        {
-            ModelId = model.Id,
-            MaxOutputTokens = maxOutputTokens,
-            Reasoning = ParseEffort(options.Effort) is { } effort ? new ReasoningOptions { Effort = effort } : null,
-        };
-
         // Görsel metinden önce: Claude görsel + talimat sırasında daha isabetli.
         List<ChatMessage> messages =
         [
             new(ChatRole.System, systemPrompt),
             new(ChatRole.User, [new DataContent(region.Jpeg, "image/jpeg"), new TextContent(instruction)]),
         ];
+        return await CompleteAsync<T>(chat, options, logger, model, maxOutputTokens, messages, ct);
+    }
+
+    /// <summary>Görselsiz çağrı: talimat → <typeparamref name="T"/>. Hata davranışı <see cref="AskAsync{T}"/> ile aynıdır.</summary>
+    public static Task<(T Result, LabelingAiUsage Usage)> AskTextAsync<T>(
+        IChatClient chat, LabelingAiOptions options, ILogger logger, LabelingAiModelOption model, int maxOutputTokens,
+        string systemPrompt, string instruction, CancellationToken ct) =>
+        CompleteAsync<T>(chat, options, logger, model, maxOutputTokens,
+            [new(ChatRole.System, systemPrompt), new(ChatRole.User, instruction)], ct);
+
+    private static async Task<(T Result, LabelingAiUsage Usage)> CompleteAsync<T>(
+        IChatClient chat, LabelingAiOptions options, ILogger logger, LabelingAiModelOption model, int maxOutputTokens,
+        List<ChatMessage> messages, CancellationToken ct)
+    {
+        var chatOptions = new ChatOptions
+        {
+            ModelId = model.Id,
+            MaxOutputTokens = maxOutputTokens,
+            Reasoning = ParseEffort(options.Effort) is { } effort ? new ReasoningOptions { Effort = effort } : null,
+        };
 
         ChatResponse<T> response;
         try

@@ -23,6 +23,16 @@ public sealed class GatewayRouteRoleWiringTests : IClassFixture<GatewayWebSocket
     }
 
     [Theory]
+    [InlineData("/api/exam/question-generation/drafts")]
+    [InlineData("/api/exam/question-generation/save")]
+    public async Task QuestionGeneration_IsClosedToOrdinaryAccounts(string path)
+    {
+        (await PostAsync(path, null)).ShouldBe(HttpStatusCode.Unauthorized);
+        (await PostAsync(path, _factory.CreateToken("Teacher"))).ShouldBe(HttpStatusCode.Forbidden);
+        (await PostAsync(path, _factory.CreateToken("Student"))).ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    [Theory]
     [InlineData("/api/exam/question-transfer/imports")]
     [InlineData("/api/exam/question-transfer/imports/preview")]
     [InlineData("/api/exam/question-transfer/worksheets")]

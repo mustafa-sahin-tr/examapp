@@ -38,6 +38,8 @@ public static class RouteRoleAuthExtensions
             new(["send-to-fix", "labeled-pages"], ["Admin", "QuestionTrainer"]),
         ]),
         new("/api/exam/labeling", ["Admin", "QuestionTrainer"], []),
+        // Soru üretimi işaretlemenin Claude kotasını kullanır, aynı kişilere açıktır.
+        new("/api/exam/question-generation", ["Admin", "QuestionTrainer"], []),
         // issue #583: açık uçlu değerlendirme kuyruğu (GET liste, PUT {id}) -> yalnız Teacher + Admin (backend ayrıca onaylı öğretmen
         // policy'si ve atama kapsamı uygular; öğrenci / veli token'ı gateway'de 403).
         new("/api/exam/open-text-reviews", ["Teacher", "Admin"], []),

@@ -2,6 +2,7 @@
   "practice": {
     "sessionNotFound": "Pratik oturumu bulunamadı",
     "gradeRequired": "Pratik yapabilmek için sınıf bilginizin tanımlı olması gerekir",
+    "noDueReview": "Şu an tekrar zamanı gelen soru yok.",
     "questionNotShown": "Bu soru bu oturumda gösterilmedi",
     "questionAlreadyAnswered": "Bu soru zaten cevaplandı",
     "questionNotFound": "Soru bulunamadı",

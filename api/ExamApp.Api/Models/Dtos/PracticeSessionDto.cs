@@ -12,6 +12,28 @@ public class PracticeSessionStartDto
 
     [MaxLength(50)]
     public List<int>? TopicIds { get; set; }
+
+    /// <summary>Issue #529: oturum, tekrar zamanı gelen sorulardan sabit bir listeyle açılır.</summary>
+    public bool DueReview { get; set; }
+}
+
+/// <summary>GET api/practice/due-review: tekrar zamanı gelen sorular, en çok geciken önce.</summary>
+public class DueReviewDto
+{
+    /// <summary>Tekrar zamanı gelen toplam soru; <see cref="Items"/> bunun ilk bölümüdür.</summary>
+    public int TotalCount { get; set; }
+    public List<DueReviewItemDto> Items { get; set; } = new();
+}
+
+public class DueReviewItemDto
+{
+    public int QuestionId { get; set; }
+    public int? SubjectId { get; set; }
+    public string? SubjectName { get; set; }
+    public string? TopicName { get; set; }
+    public DateTime DueSince { get; set; }
+    public int Step { get; set; }
+    public int WrongCount { get; set; }
 }
 
 public class PracticeSessionDto
@@ -30,6 +52,9 @@ public class PracticeSessionDto
     public int AnsweredCount { get; set; }
     public int CorrectCount { get; set; }
     public int SkippedCount { get; set; }
+
+    /// <summary>Issue #529: tekrar oturumu; soruları sabit listeden gelir.</summary>
+    public bool IsDueReview { get; set; }
 }
 
 /// <summary>

@@ -1942,6 +1942,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<DateTime?>("EndTime")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("FixedQuestionIdsJson")
+                        .HasColumnType("text");
+
                     b.Property<int>("GradeId")
                         .HasColumnType("integer");
 

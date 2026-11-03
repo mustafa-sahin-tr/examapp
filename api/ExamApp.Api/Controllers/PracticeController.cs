@@ -63,6 +63,17 @@ public class PracticeController : BaseController
         }
     }
 
+    /// <summary>Issue #529: tekrar zamanı gelen sorular. Hesaplanır; sınıfı olmayan öğrencide boş döner.</summary>
+    [HttpGet("due-review")]
+    public async Task<IActionResult> GetDueReview([FromQuery] int? subjectId, [FromQuery] int take = 15, CancellationToken ct = default)
+    {
+        var (student, error) = await ResolveStudentAsync();
+        if (error != null)
+            return error;
+
+        return Ok(await _practice.GetDueReviewAsync(student!, subjectId, take, ct));
+    }
+
     /// <summary>
     /// "Günün soruları" (issue #99): bugünün (Europe/Istanbul) seti ve ilerlemesi; set yoksa ilk istekte üretilir.
     /// Havuz boşsa ya da sınıf tanımlı değilse 200 + <c>status: "Empty"</c> (hata değil).

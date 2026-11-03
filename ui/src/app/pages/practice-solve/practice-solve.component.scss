@@ -820,3 +820,21 @@ $bp-mobile: 640px;
     width: 100%;
   }
 }
+
+// Issue #529: tekrar zamanı gelen sorular kartı.
+.practice__due-review {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--ms-layout-spacing-medium);
+
+  h2,
+  p {
+    margin: 0;
+  }
+
+  p {
+    color: var(--ms-text-weak);
+  }
+}

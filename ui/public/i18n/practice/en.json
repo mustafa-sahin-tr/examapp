@@ -1,6 +1,13 @@
 {
   "title": "Practice Questions",
   "subtitle": "Pick your scope, practise with random questions and see the result right after each answer.",
+  "dueReview": {
+    "title": "Review today: {{count}} questions",
+    "text": "Questions you got wrong come back before you forget them.",
+    "start": "Start review",
+    "doneTitle": "Review finished",
+    "doneText": "Questions you got right will come back later."
+  },
   "common": {
     "close": "Close",
     "retry": "Try again",

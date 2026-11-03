@@ -53,6 +53,18 @@
 
   <!-- ── Kurulum ─────────────────────────────────────────────────────────── -->
   @case ('setup') {
+  @if (dueReviewCount() > 0 && !setupLoading()) {
+  <div class="practice__card practice__due-review" data-test="due-review-card">
+    <div class="practice__due-review-text">
+      <h2>{{ t('dueReview.title', { count: dueReviewCount() }) }}</h2>
+      <p>{{ t('dueReview.text') }}</p>
+    </div>
+    <button mat-raised-button color="primary" type="button" (click)="startDueReview()" [disabled]="busy()">
+      <mat-icon>replay</mat-icon>
+      {{ t('dueReview.start') }}
+    </button>
+  </div>
+  }
   <div class="practice__card practice__card--setup" [attr.aria-busy]="setupLoading() ? 'true' : null">
     @if (setupLoading()) {
     <div class="practice__loading">
@@ -403,7 +415,10 @@
   <ng-container *ngTemplateOutlet="statsBar" />
   <div class="practice__card practice__state practice__state--empty">
     <mat-icon>inbox</mat-icon>
-    @if (answeredCount() > 0) {
+    @if (session()?.isDueReview) {
+    <h2>{{ t('dueReview.doneTitle') }}</h2>
+    <p>{{ t('dueReview.doneText') }}</p>
+    } @else if (answeredCount() > 0) {
     <h2>{{ t('empty.allSolvedTitle') }}</h2>
     <p>{{ t('empty.allSolvedText') }}</p>
     } @else {

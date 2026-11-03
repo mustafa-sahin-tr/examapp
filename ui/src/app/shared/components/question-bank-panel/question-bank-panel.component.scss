@@ -163,3 +163,12 @@
     color: var(--ms-text-strong);
   }
 }
+
+.qb-card__text {
+  display: -webkit-box;
+  overflow: hidden;
+  padding: 8px;
+  text-align: left;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+}

@@ -9,7 +9,8 @@ namespace ExamApp.Api.Controllers;
 /// <summary>Issue #692: öğretmenin soruya bağlayacağı kazanımların listesi.</summary>
 [ApiController]
 [Route("api/learning-outcomes")]
-[Authorize(Roles = "Teacher,Admin")]
+// QuestionTrainer: soru üretme ekranı kazanım seçer; Teacher rolü taşımayabilir.
+[Authorize(Roles = "Teacher,Admin,QuestionTrainer")]
 [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)]
 public class LearningOutcomesController : ControllerBase
 {

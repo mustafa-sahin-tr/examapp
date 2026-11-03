@@ -22,6 +22,13 @@ const QUESTION_BANK_SCOPE = 'question-bank';
       <mat-dialog-content class="qb-preview">
         @if (item.imageUrl) {
           <img [src]="item.imageUrl" [alt]="t('preview.imageAlt', { id: item.id })" />
+        } @else if (item.text) {
+          <div class="qb-preview__text" [innerHTML]="item.text"></div>
+          <ol class="qb-preview__answers" type="A">
+            @for (answer of item.answerTexts ?? []; track $index) {
+              <li>{{ answer }}</li>
+            }
+          </ol>
         } @else {
           <p class="qb-preview__empty">{{ t('card.noImage') }}</p>
         }
@@ -48,6 +55,10 @@ const QUESTION_BANK_SCOPE = 'question-bank';
       max-height: 70vh;
       margin: 0 auto;
       background: var(--whiteColor);
+    }
+    .qb-preview__text {
+      white-space: normal;
+      font-family: var(--paragraphFontFamily);
     }
     .qb-preview__meta,
     .qb-preview__empty {

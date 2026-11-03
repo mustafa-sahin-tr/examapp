@@ -249,6 +249,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     // Issue #305: yorum şikayetleri (moderasyon).
     { id: 'admin-comment-reports', labelKey: 'menu.adminCommentReports', icon: 'flag', route: '/admin/comment-reports', type: 'menu', roles: ['Admin'] },
     // Issue #365: soru aktarımı (export/import) yalnız Admin.
+    { id: 'questiongeneration', labelKey: 'menu.questionGeneration', icon: 'auto_awesome', route: '/question-generation', type: 'menu', roles: ['Admin', 'QuestionTrainer'] },
     { id: 'questiontransfer', labelKey: 'menu.questionTransfer', icon: 'swap_horiz', route: '/question-transfer', type: 'menu', roles: ['Admin'] },
     // Soru tespit modeli için işaretleme modu (test/soru kaydı yok, yalnız eğitim verisi); send-to-fix ile aynı roller.
     { id: 'labeling', labelKey: 'menu.labeling', icon: 'model_training', route: '/labeling', type: 'menu', roles: ['Admin', 'QuestionTrainer'] },

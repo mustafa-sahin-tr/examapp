@@ -348,6 +348,7 @@ public class QuestionQueryService : IQuestionQueryService
             {
                 Id = q.Id,
                 ImageUrl = q.ImageUrl,
+                Text = q.Text,
                 SubjectId = q.SubjectId,
                 SubjectName = q.SubjectId != null ? q.Subject.Name : null,
                 TopicId = q.TopicId,
@@ -372,6 +373,19 @@ public class QuestionQueryService : IQuestionQueryService
                 CreateTime = q.CreateTime
             })
             .ToListAsync(ct);
+
+        // Görselsiz soruda öğretmen şıkları görmeden soruyu değerlendiremez; görselli soruda şıklar görselin içindedir.
+        var textQuestions = page.Items.Where(i => string.IsNullOrEmpty(i.ImageUrl)).ToDictionary(i => i.Id);
+        if (textQuestions.Count > 0)
+        {
+            var answers = await _context.Answers.AsNoTracking()
+                .Where(a => textQuestions.Keys.Contains(a.QuestionId))
+                .OrderBy(a => a.Order).ThenBy(a => a.Id)
+                .Select(a => new { a.QuestionId, a.Text })
+                .ToListAsync(ct);
+            foreach (var answer in answers)
+                textQuestions[answer.QuestionId].AnswerTexts.Add(answer.Text);
+        }
 
         return page;
     }

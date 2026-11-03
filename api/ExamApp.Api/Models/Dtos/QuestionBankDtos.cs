@@ -85,6 +85,12 @@ public class QuestionBankItemDto
     [StorageUrl(StorageArea.QuestionImage)]
     public string? ImageUrl { get; set; }
 
+    /// <summary>Görselsiz soruda kartta ve önizlemede gösterilir; öğretmen soruyu başka türlü değerlendiremez.</summary>
+    public string? Text { get; set; }
+
+    /// <summary>Görselsiz sorunun şıkları, sırasıyla. Doğru şık bu listede belirtilmez.</summary>
+    public List<string> AnswerTexts { get; set; } = new();
+
     public int? SubjectId { get; set; }
     public string? SubjectName { get; set; }
     public int? TopicId { get; set; }

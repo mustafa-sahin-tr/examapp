@@ -24,6 +24,9 @@ export interface QuestionBankFilter {
 export interface QuestionBankItem {
   id: number;
   imageUrl: string | null;
+  /** Görselsiz soruda kart ve önizleme bunu gösterir (temizlenmiş HTML). */
+  text?: string | null;
+  answerTexts?: string[];
   subjectId: number | null;
   subjectName: string | null;
   topicId: number | null;

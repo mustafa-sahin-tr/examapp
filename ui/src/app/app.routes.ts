@@ -25,6 +25,7 @@ import { TestCreateEnhancedComponent } from './pages/test-create-enhanced/test-c
 import { DashboardSwitchComponent } from './pages/dashboard/dashboard-switch.component';
 import { TestSolveCanvasComponentv3 } from './pages/test-solve/test-solve-canvas-v3.component';
 import { QuestionTransferComponent } from './pages/question-transfer/question-transfer.component';
+import { QuestionGenerationComponent } from './pages/question-generation/question-generation.component';
 import { StudyPagesComponent } from './pages/study-pages/study-pages.component';
 import { StudyPageEditorComponent } from './pages/study-pages/study-page-editor.component';
 
@@ -168,6 +169,12 @@ export const routes: Routes = [
       },
       {
         // Issue #365: soru aktarımı (soru bankası export/import) yalnız Admin — backend de Admin-only.
+        // Kazanımdan görselsiz soru: işaretlemenin Claude kotasını kullanır, aynı kişilere açıktır.
+        path: 'question-generation',
+        component: QuestionGenerationComponent,
+        canActivate: [authGuard, roleGuard('Admin', 'QuestionTrainer')],
+      },
+      {
         path: 'question-transfer',
         component: QuestionTransferComponent,
         canActivate: [authGuard, adminGuard],

@@ -2,7 +2,7 @@
 <app-school-pending-banner />
 
 <!-- Issue #440/#441: veli daveti kartı (kısıtlı mod) ya da hoşgörü banner'ı (durum yoksa render edilmez). -->
-<app-parent-status-card />
+<app-parent-status-card [compact]="true" />
 
 <!-- Karşılama alanı: son giriş bilgisi (issue #126). İlk girişte lastLoginLabel null → chip hiç render edilmez. -->
 <div class="dashboard-welcome">
@@ -14,10 +14,67 @@
   }
 </div>
 
+<!-- Issue #721: tek "sıradaki iş". Günlük set bekliyorsa onun kartı zaten sıradaki iştir, bu alan çizilmez. -->
+@if (nextStep(); as step) {
+  <section class="dashboard-next" data-test="next-step" [attr.aria-label]="'dashboard.nextStep.label' | transloco">
+    <div class="dashboard-next__text">
+      <h3>{{ 'dashboard.nextStep.' + step.kind + 'Title' | transloco: { name: step.name, count: step.count } }}</h3>
+      <p>{{ 'dashboard.nextStep.' + step.kind + 'Text' | transloco }}</p>
+    </div>
+    <button mat-raised-button color="primary" type="button" (click)="onNextStep(step)">
+      {{ 'dashboard.nextStep.' + step.kind + 'Action' | transloco }}
+    </button>
+  </section>
+}
+
 <!-- Günün soruları (issue #99): karşılamanın hemen altı; kendi yükleniyor/hata durumu diğer bölümleri etkilemez -->
 <app-daily-questions-card class="dashboard-daily" [dailySet]="dailySet()" [loading]="dailyLoading()"
   [error]="dailyError()" [streak]="dailyStreak()" (start)="onDailyStart($event)" (retry)="loadDailySet()"
   (freePractice)="onDailyFreePractice()" (goToProfile)="onDailyGoToProfile()" />
+
+
+      <!-- 2. Atanmış testler — kompakt kartlar -->
+      <div class="dashboard-section">
+        <app-section-header [title]="'dashboard.assignments.title' | transloco" icon="/icons/18.svg"></app-section-header>
+        @if (loading()) {
+          <p class="info">{{ 'dashboard.assignments.loading' | transloco }}</p>
+        } @else {
+          @if (assignmentCards().length > 0) {
+            <div class="list-container compact-tests">
+              @if (canScrollLeft()) {
+                <button class="nav-btn left" type="button" (click)="handleLeftNavigation()">❮</button>
+              }
+              <div class="cards hidden-scrollable" #assignmentContainer (scroll)="onAssignmentScroll()">
+                <!-- Kompakt kart ortak komponent (issue #188): thumb + başlık + bitiş, tek satır; zengin worksheet-card kullanılmaz -->
+                <ul class="psds-carousel__track">
+                  @for (vm of assignmentCards(); track trackAssignment($index, vm)) {
+                    <li class="mini-test-item">
+                      <app-compact-test-card
+                        [title]="vm.test.name"
+                        [thumbUrl]="vm.test.imageUrl"
+                        [dueDate]="vm.assignment.endAt"
+                        (activated)="onCardClick(vm)"
+                      ></app-compact-test-card>
+                    </li>
+                  }
+                </ul>
+              </div>
+              @if (canScrollRight()) {
+                <button class="nav-btn right" type="button" (click)="handleRightNavigation()">
+                  ❯
+                </button>
+              }
+            </div>
+          } @else {
+            <p class="info">{{ 'dashboard.assignments.empty' | transloco }}</p>
+          }
+        }
+
+
+        @if (error(); as errorMessage) {
+          <p class="error">{{ errorMessage }}</p>
+        }
+      </div>
 
   <!-- 1. Aktivite (heat map) + rozet ilerleme — öncelikli bölüm -->
   <div class="dashboard-section">
@@ -32,7 +89,8 @@
             @if (activityDataFromApi().length > 0) {
               @if (showActivitySummary()) {
                 <!-- Issue #197: sabit boyutlu ngx-charts number-card yerine genişliğe göre sütun değiştiren kart grid'i -->
-                @if (activityNumberCardData().length > 0) {
+                <!-- Issue #721: yeni kullanıcıya sıfırlardan oluşan kartlar gösterilmez. -->
+                @if (hasActivityStats()) {
                   <ul class="activity-stats">
                     @for (card of activityNumberCardData(); track trackStatCard($index, card)) {
                       <li class="stat-card"
@@ -152,47 +210,4 @@
 
           </div>
         </div>
-      </div>
-
-      <!-- 2. Atanmış testler — kompakt kartlar -->
-      <div class="dashboard-section">
-        <app-section-header [title]="'dashboard.assignments.title' | transloco" icon="/icons/18.svg"></app-section-header>
-        @if (loading()) {
-          <p class="info">{{ 'dashboard.assignments.loading' | transloco }}</p>
-        } @else {
-          @if (assignmentCards().length > 0) {
-            <div class="list-container compact-tests">
-              @if (canScrollLeft()) {
-                <button class="nav-btn left" type="button" (click)="handleLeftNavigation()">❮</button>
-              }
-              <div class="cards hidden-scrollable" #assignmentContainer (scroll)="onAssignmentScroll()">
-                <!-- Kompakt kart ortak komponent (issue #188): thumb + başlık + bitiş, tek satır; zengin worksheet-card kullanılmaz -->
-                <ul class="psds-carousel__track">
-                  @for (vm of assignmentCards(); track trackAssignment($index, vm)) {
-                    <li class="mini-test-item">
-                      <app-compact-test-card
-                        [title]="vm.test.name"
-                        [thumbUrl]="vm.test.imageUrl"
-                        [dueDate]="vm.assignment.endAt"
-                        (activated)="onCardClick(vm)"
-                      ></app-compact-test-card>
-                    </li>
-                  }
-                </ul>
-              </div>
-              @if (canScrollRight()) {
-                <button class="nav-btn right" type="button" (click)="handleRightNavigation()">
-                  ❯
-                </button>
-              }
-            </div>
-          } @else {
-            <p class="info">{{ 'dashboard.assignments.empty' | transloco }}</p>
-          }
-        }
-
-
-        @if (error(); as errorMessage) {
-          <p class="error">{{ errorMessage }}</p>
-        }
       </div>

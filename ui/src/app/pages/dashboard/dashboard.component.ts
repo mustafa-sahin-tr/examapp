@@ -1,3 +1,4 @@
+import { MatButtonModule } from '@angular/material/button';
 import { CommonModule } from '@angular/common';
 import {
   AfterViewInit,
@@ -56,6 +57,20 @@ interface AssignmentCardViewModel {
   test: Test;
 }
 
+/** Issue #721: öğrenci ana sayfasının "sıradaki iş" alanı. */
+interface NextStep {
+  kind: 'dueSoon' | 'review' | 'assignment' | 'practice';
+  name: string;
+  count: number;
+  assignment: AssignmentCardViewModel | null;
+}
+
+const NEXT_STEP_DUE_SOON_MS = 2 * 24 * 60 * 60 * 1000;
+
+function dueTime(vm: AssignmentCardViewModel): number {
+  return vm.assignment.endAt ? new Date(vm.assignment.endAt).getTime() : Number.MAX_SAFE_INTEGER;
+}
+
 /** Issue #197 — aktivite özet kartı (soru/doğru/dakika/skor); ngx-charts number-card yerine yerel grid kartı. */
 export interface ActivityStatCard {
   key: 'questions' | 'correct' | 'minutes' | 'activityScore';
@@ -87,6 +102,7 @@ export interface EarnedBadgeViewModel {
   selector: 'app-dashboard',
   standalone: true,
   imports: [
+    MatButtonModule,
     CommonModule,
     MatIconModule,
     MatTooltipModule,
@@ -229,6 +245,35 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   );
 
   readonly assignmentCards = computed(() => this.assignments());
+  /** Issue #529: tekrar zamanı gelen soru sayısı. */
+  readonly dueReviewCount = signal(0);
+  readonly hasActivityStats = computed(() => this.activityNumberCardData().some((card) => card.value > 0));
+
+  /**
+   * Issue #721: öğrencinin tek sıradaki işi. Sıra: teslimi yaklaşan ödev → günlük set (kendi kartı var, burada çizilmez) →
+   * tekrar zamanı gelen sorular → sıradaki ödev → serbest pratik.
+   */
+  readonly nextStep = computed<NextStep | null>(() => {
+    if (this.loading() || this.dailyLoading()) {
+      return null;
+    }
+    const assignments = [...this.assignments()].sort((a, b) => dueTime(a) - dueTime(b));
+    const first = assignments[0];
+    if (first && dueTime(first) - Date.now() <= NEXT_STEP_DUE_SOON_MS) {
+      return { kind: 'dueSoon', name: first.test.name, count: 0, assignment: first };
+    }
+    const status = this.dailySet()?.status;
+    if (status === 'NotStarted' || status === 'InProgress') {
+      return null;
+    }
+    if (this.dueReviewCount() > 0) {
+      return { kind: 'review', name: '', count: this.dueReviewCount(), assignment: null };
+    }
+    if (first) {
+      return { kind: 'assignment', name: first.test.name, count: 0, assignment: first };
+    }
+    return { kind: 'practice', name: '', count: 0, assignment: null };
+  });
   readonly canScrollLeft = signal(false);
   readonly canScrollRight = signal(false);
   readonly viewportWidth = signal(typeof window !== 'undefined' ? window.innerWidth : 1280);
@@ -363,6 +408,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loadReportsIfUserKnown();
     this.loadLastLogin();
     this.loadDailySet();
+    this.practiceService.getDueReview().subscribe({
+      next: (due) => this.dueReviewCount.set(due.totalCount),
+      // Alan isteğe bağlı: hata ana sayfayı etkilemez.
+      error: () => this.dueReviewCount.set(0),
+    });
   }
 
   /** Yalnız kartın isteğini (yeniden) yapar; "Tekrar dene" de bunu çağırır. */
@@ -495,6 +545,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   trackUpcomingBadge(index: number, item: UpcomingBadgeViewModel): string {
     return item.badge.badgeDefinitionId;
+  }
+
+  onNextStep(step: NextStep): void {
+    if (step.assignment) {
+      this.onCardClick(step.assignment);
+      return;
+    }
+    void this.router.navigate(['/practice']);
   }
 
   onCardClick(assignment: AssignmentCardViewModel): void {

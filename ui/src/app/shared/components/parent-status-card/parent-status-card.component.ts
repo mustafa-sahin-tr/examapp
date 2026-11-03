@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal, ChangeDetectionStrategy, input } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -53,6 +53,15 @@ export class ParentStatusCardComponent {
   protected readonly daysLeft = this.store.daysLeft;
   protected readonly awaitingDeadline = this.store.awaitingDeadline;
 
+  /** Issue #721: ana sayfada, süre kritik değilse ayrıntılar kapalı başlar; kısıtlar hep görünür. */
+  readonly compact = input(false);
+  readonly expandedByUser = signal(false);
+  readonly showDetails = computed(() => {
+    if (!this.compact() || this.expandedByUser()) {
+      return true;
+    }
+    return !!this.invitation()?.expired || !!this.awaitingDeadline()?.warning;
+  });
   readonly resending = signal(false);
   readonly resendError = signal<string | null>(null);
   readonly resendDone = signal(false);

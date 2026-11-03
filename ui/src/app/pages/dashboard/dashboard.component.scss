@@ -442,3 +442,28 @@ $bp-narrow: 480px; // dar telefon: özet kartları sabit 2 sütun
   color: var(--ms-danger-text-medium);
   font-size: 14px;
 }
+
+// Issue #721: sıradaki iş.
+.dashboard-next {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 12px;
+  background: var(--ms-surface-weak);
+
+  h3,
+  p {
+    margin: 0;
+    padding: 0;
+    text-align: start;
+  }
+
+  p {
+    color: var(--ms-text-medium);
+  }
+}

@@ -128,9 +128,11 @@ describe('DashboardComponent', () => {
         badgeServiceSpy.getUserBadgeProgress.mockReturnValue(of(badgeProgressResponse([])));
         studentServiceSpy.getLastLogin.mockReturnValue(of({ lastLoginAtUtc: null }));
         practiceServiceSpy = {
-            getDailySet: vi.fn().mockName("PracticeService.getDailySet")
+            getDailySet: vi.fn().mockName("PracticeService.getDailySet"),
+            getDueReview: vi.fn().mockName("PracticeService.getDueReview")
         } as unknown as MockedObject<PracticeService>;
         practiceServiceSpy.getDailySet.mockReturnValue(of(dailySetFixture()));
+        practiceServiceSpy.getDueReview.mockReturnValue(of({ totalCount: 0, items: [] }));
 
         TestBed.configureTestingModule({
             imports: [DashboardComponent, translocoTesting],
@@ -435,6 +437,51 @@ describe('DashboardComponent', () => {
                 '8 / 10',
                 'Kilitli · 0 / 10',
             ]);
+        });
+    });
+
+    // Issue #721: tek "sıradaki iş".
+    describe('nextStep (issue #721)', () => {
+        function vm(endAt: string | null): never {
+            return { assignment: { endAt, worksheetId: 7 }, test: { name: 'Ödev' } } as never;
+        }
+
+        function setup(status: DailySet['status'], assignments: never[], due = 0): DashboardComponent {
+            component.loading.set(false);
+            component.dailyLoading.set(false);
+            component.dailySet.set(dailySetFixture({ status }));
+            component['assignments'].set(assignments);
+            component.dueReviewCount.set(due);
+            return component;
+        }
+
+        const soon = () => new Date(Date.now() + 60 * 60 * 1000).toISOString();
+        const later = () => new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString();
+
+        it('assignmentDueSoon_ComesBeforeTheDailySet', () => {
+            expect(setup('NotStarted', [vm(later()), vm(soon())]).nextStep()?.kind).toBe('dueSoon');
+        });
+
+        it('dailySetPending_ShowsNoSeparateStep', () => {
+            expect(setup('InProgress', [vm(later())], 3).nextStep()).toBeNull();
+        });
+
+        it('dailyDone_ReviewComesBeforeAssignment', () => {
+            expect(setup('Completed', [vm(later())], 3).nextStep()).toMatchObject({ kind: 'review', count: 3 });
+        });
+
+        it('dailyDone_NoReview_NextAssignment', () => {
+            expect(setup('Completed', [vm(null)]).nextStep()?.kind).toBe('assignment');
+        });
+
+        it('nothingLeft_OffersPractice', () => {
+            expect(setup('Empty', []).nextStep()?.kind).toBe('practice');
+        });
+
+        it('stillLoading_ShowsNothing', () => {
+            setup('Completed', []);
+            component.dailyLoading.set(true);
+            expect(component.nextStep()).toBeNull();
         });
     });
 

@@ -1019,6 +1019,21 @@
     }
   },
   "dashboard": {
+    "nextStep": {
+      "label": "Sıradaki iş",
+      "dueSoonTitle": "Teslimi yaklaşıyor: {{name}}",
+      "dueSoonText": "Bu ödevi önce bitirmeni öneririz.",
+      "dueSoonAction": "Ödeve git",
+      "reviewTitle": "Bugün tekrar: {{count}} soru",
+      "reviewText": "Daha önce yanlış yaptığın sorular unutulmadan geri geliyor.",
+      "reviewAction": "Tekrara başla",
+      "assignmentTitle": "Sıradaki ödev: {{name}}",
+      "assignmentText": "Sıradaki işin bu ödev.",
+      "assignmentAction": "Ödeve git",
+      "practiceTitle": "Biraz daha çalışmak ister misin?",
+      "practiceText": "Kendi seçtiğin konudan soru çözebilirsin.",
+      "practiceAction": "Soru çöz"
+    },
     "welcome": {
       "title": "Hoş geldin",
       "lastLogin": "Son giriş: {{value}}"
@@ -1151,6 +1166,7 @@
       "resending": "Gönderiliyor...",
       "resent": "Davet yeniden gönderildi.",
       "resendsLeft": "Kalan yeniden gönderim hakkı: {{count}}",
+        "details": "Ayrıntılar",
       "nextResendAt": "Bir sonraki gönderim {{date}} sonrasında mümkün.",
       "noResendsLeft": "Yeniden gönderim hakkın doldu. Velinin e-postasını kontrol edip düzeltebilirsin.",
       "fixEmail": "E-postayı düzelt",

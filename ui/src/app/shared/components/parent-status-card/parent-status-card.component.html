@@ -13,9 +13,11 @@
           <p>{{ t('card.expiredBody') }}</p>
         } @else {
           <h3 id="psc-title" class="psc__title">{{ t('card.title') }}</h3>
-          <p data-test="invitation-sent-to">{{ t('card.sentTo', { email: inv.maskedEmail }) }}</p>
-          @if (expiresAtText()) {
-            <p class="psc__meta">{{ t('card.expiresAt', { date: expiresAtText() }) }}</p>
+          @if (showDetails()) {
+            <p data-test="invitation-sent-to">{{ t('card.sentTo', { email: inv.maskedEmail }) }}</p>
+            @if (expiresAtText()) {
+              <p class="psc__meta">{{ t('card.expiresAt', { date: expiresAtText() }) }}</p>
+            }
           }
         }
         <p class="psc__meta">{{ t('card.restrictedInfo') }}</p>
@@ -30,6 +32,7 @@
           </p>
         }
 
+        @if (showDetails()) {
         @if (resendDone()) {
           <p class="psc__meta psc__meta--ok" role="status" data-test="invitation-resent">{{ t('card.resent') }}</p>
         }
@@ -68,6 +71,11 @@
             </a>
           }
         </div>
+        } @else {
+          <button mat-button type="button" data-test="invitation-details" (click)="expandedByUser.set(true)">
+            {{ t('card.details') }}
+          </button>
+        }
 
         @if (devActivationUrl(); as devUrl) {
           <p class="psc__dev" data-test="invitation-dev-link">

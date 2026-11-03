@@ -165,6 +165,40 @@ describe('ParentStatusCardComponent', () => {
         expect(deadline?.classList).not.toContain('psc__deadline--warning');
     });
 
+    // Issue #721: ana sayfada ayrıntılar kapalı başlar, kısıtlar ve süre görünür kalır.
+    describe('compact (issue #721)', () => {
+        function compact(status: ParentStatus): ComponentFixture<ParentStatusCardComponent> {
+            const fixture = create(status);
+            fixture.componentRef.setInput('compact', true);
+            fixture.detectChanges();
+            return fixture;
+        }
+
+        it('hidesDetails_KeepsRestrictionsAndDeadline', () => {
+            const fixture = compact({ ...awaitingStatusOf(), daysLeft: 20 });
+
+            expect(q(fixture, '[data-test="invitation-resend"]')).toBeNull();
+            expect(q(fixture, '[data-test="invitation-sent-to"]')).toBeNull();
+            expect(q(fixture, '[data-test="invitation-deadline"]')).not.toBeNull();
+            expect(q(fixture, '.psc__meta')).not.toBeNull();
+        });
+
+        it('detailsButton_ShowsActions', () => {
+            const fixture = compact(awaitingStatusOf());
+
+            q(fixture, '[data-test="invitation-details"]')?.click();
+            fixture.detectChanges();
+
+            expect(q(fixture, '[data-test="invitation-resend"]')).not.toBeNull();
+        });
+
+        it('finalWarning_StaysExpanded', () => {
+            const fixture = compact({ ...awaitingStatusOf(), daysLeft: 3, isFinalWarning: true });
+
+            expect(q(fixture, '[data-test="invitation-resend"]')).not.toBeNull();
+        });
+    });
+
     it('awaiting_FinalWarning_WarningColoredCardNoModal', () => {
         const fixture = create({ ...awaitingStatusOf(), daysLeft: 3, isFinalWarning: true });
         expect(q(fixture, '[data-test="invitation-deadline"]')?.classList).toContain('psc__deadline--warning');

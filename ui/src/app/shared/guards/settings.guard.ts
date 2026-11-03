@@ -4,7 +4,7 @@ import { AuthService } from '../../services/auth.service';
 
 /** Öğrencinin ayarlar sayfası (öğrenciye özel sekmeler taşır, issue #373). */
 export const STUDENT_SETTINGS_URL = '/student-profile';
-/** Öğretmen ve admin için rol bazlı ayarlar sayfası (issue #417). */
+/** Öğretmen, admin ve veli için rol bazlı ayarlar sayfası (issue #417, #714). */
 export const SETTINGS_URL = '/settings';
 
 /**
@@ -15,7 +15,11 @@ export function settingsUrlFor(auth: Pick<AuthService, 'hasRealmRole'>): string 
   if (auth.hasRealmRole('Teacher') || auth.hasRealmRole('Admin')) {
     return SETTINGS_URL;
   }
-  return auth.hasRealmRole('Student') ? STUDENT_SETTINGS_URL : null;
+  if (auth.hasRealmRole('Student')) {
+    return STUDENT_SETTINGS_URL;
+  }
+  // Issue #714: yalnız velinin de dil ve hesap ayarları burada.
+  return auth.hasRealmRole('Parent') ? SETTINGS_URL : null;
 }
 
 /**

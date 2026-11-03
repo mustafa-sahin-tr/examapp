@@ -54,6 +54,7 @@ public class TeacherAssignmentStudentDto
     public int StudentId { get; set; }
     public int UserId { get; set; }
     public string StudentNumber { get; set; } = string.Empty;
+    public string? StudentName { get; set; }
     public int? GradeId { get; set; }
     public string? GradeName { get; set; }
     public string Status { get; set; } = AssignmentStudentStatuses.NotStarted;

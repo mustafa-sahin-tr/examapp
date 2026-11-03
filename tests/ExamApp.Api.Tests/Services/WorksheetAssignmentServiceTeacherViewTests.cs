@@ -1,5 +1,7 @@
+using NSubstitute;
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
+using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services;
 using ExamApp.Api.Services.Tenancy;
 using ExamApp.Api.Services.Worksheets;
@@ -177,6 +179,48 @@ public class WorksheetAssignmentServiceTeacherViewTests : IDisposable
         var a = new WorksheetAssignment { GradeId = gradeId, StudentId = studentId };
         a.IsGradeScoped.ShouldBe(grade);
         a.IsStudentScoped.ShouldBe(student);
+    }
+
+    // issue #715: öğretmen atama satırında öğrenci numarası yerine adı görür; auth-api yanıt vermezse numaraya düşer.
+    [Theory]
+    [InlineData("Ayşe Yılmaz", "Ayşe Yılmaz")]
+    [InlineData(null, "581")]
+    public async Task Student_assignment_shows_the_name_and_falls_back_to_the_number(string? fullName, string expectedTarget)
+    {
+        int wsId, schoolId;
+        await using (var ctx = _db.NewContext())
+        {
+            var g = new Grade { Name = "6" };
+            var school = new School { Name = "Okul" };
+            ctx.AddRange(g, school);
+            await ctx.SaveChangesAsync();
+            schoolId = school.Id;
+
+            var ws = new Worksheet { Name = "W", Description = "", GradeId = g.Id };
+            ctx.Worksheets.Add(ws);
+            var student = new Student { UserId = 7, StudentNumber = "581", SchoolName = "s", SchoolId = school.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = g.Id };
+            ctx.Students.Add(student);
+            await ctx.SaveChangesAsync();
+            wsId = ws.Id;
+
+            ctx.SetCurrentUser(TeacherUserId);
+            ctx.WorksheetAssignments.Add(new WorksheetAssignment { WorksheetId = ws.Id, StudentId = student.Id, StartAt = DateTime.UtcNow.AddDays(-1) });
+            await ctx.SaveChangesAsync();
+        }
+
+        var authApi = Substitute.For<IAuthApiClient>();
+        IReadOnlyList<UserLookupResultDto> users = fullName is null
+            ? []
+            : [new UserLookupResultDto { Id = 7, FullName = fullName }];
+        authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>()).Returns(users);
+
+        await using var read = _db.NewContext();
+        var service = new WorksheetAssignmentService(read, new SchoolAccessPolicy(read), authApiClient: authApi);
+        var result = await service.GetWorksheetAssignmentsForTeacherAsync(wsId, SchoolScope.For(TeacherUserId, schoolId));
+
+        var assignment = result.Assignments.ShouldHaveSingleItem();
+        assignment.TargetName.ShouldContain(expectedTarget);
+        assignment.Students.ShouldHaveSingleItem().StudentName.ShouldBe(fullName);
     }
 
     public void Dispose() => _db.Dispose();

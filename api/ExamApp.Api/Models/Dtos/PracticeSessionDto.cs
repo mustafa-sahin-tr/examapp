@@ -15,6 +15,36 @@ public class PracticeSessionStartDto
 
     /// <summary>Issue #529: oturum, tekrar zamanı gelen sorulardan sabit bir listeyle açılır.</summary>
     public bool DueReview { get; set; }
+
+    /// <summary>Issue #698: oturum, yanlış defterinden (kapsam filtresiyle) sabit bir listeyle açılır.</summary>
+    public bool Mistakes { get; set; }
+}
+
+/// <summary>GET api/practice/mistakes: aktif yanlışlar, en yeni yanlış önce.</summary>
+public class MistakeNotebookDto
+{
+    /// <summary>Aktif toplam; <see cref="Items"/> bunun ilk bölümüdür.</summary>
+    public int TotalCount { get; set; }
+    public List<MistakeItemDto> Items { get; set; } = new();
+}
+
+public class MistakeItemDto
+{
+    public int QuestionId { get; set; }
+    public int? SubjectId { get; set; }
+    public string? SubjectName { get; set; }
+    public int? TopicId { get; set; }
+    public string? TopicName { get; set; }
+    public DateTime LastWrongAt { get; set; }
+    public int WrongCount { get; set; }
+    /// <summary>DidNotKnow | Calculation | Attention | Time; etiket yoksa null.</summary>
+    public string? Reason { get; set; }
+}
+
+public class MistakeReasonUpdateDto
+{
+    /// <summary>DidNotKnow | Calculation | Attention | Time; null etiketi kaldırır.</summary>
+    public string? Reason { get; set; }
 }
 
 /// <summary>GET api/practice/due-review: tekrar zamanı gelen sorular, en çok geciken önce.</summary>

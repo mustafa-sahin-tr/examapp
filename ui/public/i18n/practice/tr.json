@@ -8,6 +8,31 @@
     "doneTitle": "Tekrarı bitirdin",
     "doneText": "Doğru çözdüğün sorular daha sonra yeniden gelecek."
   },
+  "mistakes": {
+    "title": "Yanlışlarım",
+    "subtitle": "Testlerde ve pratikte yanlış yaptığın sorular burada. İki kez art arda doğru çözünce listeden çıkar.",
+    "start": "Bu soruları çöz",
+    "startError": "Pratik başlatılamadı.",
+    "saveError": "Neden kaydedilemedi.",
+    "loadError": "Liste yüklenemedi.",
+    "retry": "Tekrar dene",
+    "emptyTitle": "Çözülecek yanlışın yok",
+    "emptyText": "Yanlış yaptığın sorular burada toplanır.",
+    "goPractice": "Soru çöz",
+    "subject": "Ders",
+    "allSubjects": "Tüm dersler",
+    "noSubject": "Ders belirtilmemiş",
+    "wrongInfo": "{{count}} kez yanlış, son: {{date}}",
+    "reasonLabel": "Neden?",
+    "reasonNone": "Seçilmedi",
+    "truncated": "{{total}} sorudan {{shown}} tanesi gösteriliyor.",
+    "reason": {
+      "DidNotKnow": "Bilmiyordum",
+      "Calculation": "İşlem hatası",
+      "Attention": "Dikkat",
+      "Time": "Süre"
+    }
+  },
   "common": {
     "close": "Kapat",
     "retry": "Tekrar dene",

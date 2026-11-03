@@ -3,6 +3,7 @@
     "sessionNotFound": "Practice session not found",
     "gradeRequired": "You need a grade set on your profile before you can practise",
     "noDueReview": "There are no questions due for review right now.",
+    "noMistakes": "There are no questions to practise in your notebook.",
     "questionNotShown": "This question was not shown in this session",
     "questionAlreadyAnswered": "This question has already been answered",
     "questionNotFound": "Question not found",

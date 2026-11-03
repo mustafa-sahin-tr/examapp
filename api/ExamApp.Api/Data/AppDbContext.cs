@@ -200,6 +200,7 @@ public class AppDbContext : DbContext
     public DbSet<PracticeSession> PracticeSessions { get; set; }
     public DbSet<PracticeSessionQuestion> PracticeSessionQuestions { get; set; }
     public DbSet<StudentMistakeReason> StudentMistakeReasons { get; set; }
+    public DbSet<QuestionSourceActionLog> QuestionSourceActionLogs { get; set; }
     public DbSet<SavedQuestion> SavedQuestions { get; set; }
 
     // "Günün soruları" (issue #99)
@@ -984,6 +985,9 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<PracticeSession>()
             .HasIndex(ps => new { ps.StudentId, ps.Status });
+
+        // Issue #690: hak sahibine göre listeleme ve toplu işlem.
+        modelBuilder.Entity<Question>().HasIndex(q => q.RightsHolder);
 
         // Issue #532: öğrenci + soru başına tek kayıt.
         modelBuilder.Entity<SavedQuestion>()

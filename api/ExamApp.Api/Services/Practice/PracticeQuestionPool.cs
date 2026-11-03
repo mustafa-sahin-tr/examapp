@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExamApp.Api.Data;
@@ -20,6 +21,7 @@ internal static class PracticeQuestionPool
         IReadOnlyCollection<int> topicIds,
         IReadOnlyCollection<int>? subTopicIds = null)
     {
+        var now = DateTime.UtcNow;
         var pool = context.Questions
             .AsNoTracking()
             // Havuz filtresi: sınıfı eşleşen ve Normal görünürlükte en az bir worksheet'te olmalı.
@@ -30,7 +32,9 @@ internal static class PracticeQuestionPool
             .Where(q => q.TopicId == null || q.Topic.GradeId == gradeId)
             // Pratik değerlendirmesi SelectedAnswerId <-> CorrectAnswerId karşılaştırmasına dayanır;
             // sürükle-bırak gibi CorrectAnswerId'siz etkileşim tipleri bu MVP'de değerlendirilemez.
-            .Where(q => q.CorrectAnswerId != null);
+            .Where(q => q.CorrectAnswerId != null)
+            // Issue #690: yayından kaldırılan ve lisansı biten soru yeni pratiğe girmez.
+            .Where(q => !q.IsUnpublished && (q.LicenseEndsAt == null || q.LicenseEndsAt > now));
 
         if (subjectIds.Count > 0)
             pool = pool.Where(q => q.SubjectId != null && subjectIds.Contains(q.SubjectId.Value));

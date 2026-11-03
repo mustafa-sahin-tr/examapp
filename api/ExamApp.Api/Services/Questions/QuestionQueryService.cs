@@ -282,7 +282,10 @@ public class QuestionQueryService : IQuestionQueryService
             .Select(tq => tq.QuestionId);
         var hasLegacyOwned = userId > 0 && await legacyOwnedIds.AnyAsync(ct);
 
-        var query = _context.Questions.AsNoTracking();
+        // Issue #690: yayından kaldırılan ve lisansı biten soru bankada görünmez.
+        var now = DateTime.UtcNow;
+        var query = _context.Questions.AsNoTracking()
+            .Where(q => !q.IsUnpublished && (q.LicenseEndsAt == null || q.LicenseEndsAt > now));
         if (!filter.IsAllScope)
         {
             query = hasLegacyOwned

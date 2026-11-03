@@ -76,5 +76,27 @@ public class Question : BaseEntity
 
     public ClassificationSource? ClassificationSource { get; set; }
 
+    // Issue #690: içeriğin kaynağı ve lisansı. Mevcut sorular Unknown kalır; lisanslı sayılmaz.
+    public QuestionSourceType SourceType { get; set; } = QuestionSourceType.Unknown;
+
+    [MaxLength(200)]
+    public string? RightsHolder { get; set; }
+
+    [MaxLength(200)]
+    public string? LicenseReference { get; set; }
+
+    public DateTime? LicenseEndsAt { get; set; }
+
+    /// <summary>Hak sahibi talebiyle yeni test ve pratiklerden çekildi; başlamış oturumlar etkilenmez.</summary>
+    public bool IsUnpublished { get; set; }
+
 }
 
+/// <summary>Issue #690: sorunun kaynağı.</summary>
+public enum QuestionSourceType
+{
+    Unknown = 0,
+    Commissioned = 1,
+    Publisher = 2,
+    Teacher = 3
+}

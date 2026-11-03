@@ -7,7 +7,15 @@ import { of, Subject as RxSubject, throwError } from 'rxjs';
 import { QuestionTransferComponent } from './question-transfer.component';
 import { GradesService } from '../../services/grades.service';
 import { LabelingBookService } from '../../services/labeling-book.service';
-import { CatalogImportResult, QuestionTransferImportPreview, QuestionTransferJob, QuestionTransferService } from '../../services/question-transfer.service';
+import {
+    CatalogImportResult,
+    QuestionTransferImportPreview,
+    QuestionTransferImportResult,
+    QuestionTransferJob,
+    QuestionTransferService,
+    QuestionTransferWorksheetListItem,
+    QuestionTransferWorksheetResult,
+} from '../../services/question-transfer.service';
 import { SubjectService } from '../../services/subject.service';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import qtEn from '../../../../public/i18n/question-transfer/en.json';
@@ -51,6 +59,17 @@ function catalogCounts(): CatalogImportResult {
     return { dryRun: true, grades: counts, subjects: counts, gradeSubjects: counts, topics: counts, subTopics: counts, learningOutcomes: counts, errors: [] };
 }
 
+function worksheetRows(): QuestionTransferWorksheetListItem[] {
+    return [
+        { id: 31, name: 'Kesirler testi', kind: 'Test', gradeName: '5. Sınıf', subjectName: 'Matematik', questionCount: 10 },
+        { id: 32, name: 'Boyama etkinliği', kind: 'Activity', gradeName: '5. Sınıf', subjectName: null, questionCount: 3 },
+    ];
+}
+
+function worksheetCounts(overrides: Partial<QuestionTransferWorksheetResult> = {}): QuestionTransferWorksheetResult {
+    return { imported: 2, alreadyImported: 1, blocked: 1, missingTaxonomy: 1, blockedSamples: ['Çakışan test: a question conflicts with one here'], warnings: ['Kopyalı test: kept once'], ...overrides };
+}
+
 const fileEvent = (file: File) => ({ target: { files: { item: () => file } } }) as unknown as Event;
 const zip = () => new File(['zip'], 'paket.zip', { type: 'application/zip' });
 
@@ -70,6 +89,7 @@ describe('QuestionTransferComponent', () => {
             previewImport: vi.fn().mockReturnValue(of(preview())),
             startImport: vi.fn().mockReturnValue(of(job({ kind: 'Import' }))),
             startExport: vi.fn().mockReturnValue(of(job())),
+            listWorksheets: vi.fn().mockReturnValue(of(worksheetRows())),
             downloadPackage: vi.fn(),
             importCatalog: vi.fn().mockReturnValue(of(catalogCounts())),
             downloadCatalog: vi.fn(),
@@ -112,6 +132,272 @@ describe('QuestionTransferComponent', () => {
         for (const term of ['Bundle', 'Paket Kodu', 'Index', 'Export Başlat']) {
             expect(text()).not.toContain(term);
         }
+    });
+
+    // ---- test ve etkinlik seçimi
+
+    describe('worksheet selection', () => {
+        function openWorksheets(): void {
+            setup();
+            component.setExportMode('worksheets');
+            fixture.detectChanges();
+        }
+
+        it('questionsMode_DoesNotLoadTheList', () => {
+            setup();
+
+            expect(transfer.listWorksheets).not.toHaveBeenCalled();
+        });
+
+        it('opening_LoadsAndShowsTheRecordsWithTheirKindAndWithoutAnEmptySubject', () => {
+            openWorksheets();
+
+            expect(transfer.listWorksheets).toHaveBeenCalledTimes(1);
+            expect(text()).toContain('Kesirler testi');
+            expect(text()).toContain(T.export.kind.Activity);
+            expect(el().querySelectorAll('.qt-ws-row')[1].textContent).not.toContain('null');
+        });
+
+        it('startButton_NothingSelected_IsDisabledAndSendsNothing', () => {
+            openWorksheets();
+
+            expect((el().querySelector('.qt-export-start') as HTMLButtonElement).disabled).toBe(true);
+            component.startExport();
+            expect(transfer.startExport).not.toHaveBeenCalled();
+        });
+
+        it('checkbox_SelectsTheRecordAndNamesItEvenWhenAFilterHidesIt', () => {
+            openWorksheets();
+
+            (el().querySelector('.qt-ws-row input[type=checkbox]') as HTMLInputElement).click();
+            fixture.detectChanges();
+
+            expect(component.isWorksheetSelected(31)).toBe(true);
+
+            transfer.listWorksheets.mockReturnValue(of([]));
+            component.onWorksheetKindChange('Activity');
+            fixture.detectChanges();
+
+            expect(el().querySelector('.qt-ws-selected')?.textContent).toContain('Kesirler testi');
+            expect((el().querySelector('.qt-export-start') as HTMLButtonElement).disabled).toBe(false);
+        });
+
+        it('recordWithoutQuestions_CannotBeSelected', () => {
+            setup();
+            transfer.listWorksheets.mockReturnValue(of([{ ...worksheetRows()[0], questionCount: 0 }]));
+            component.setExportMode('worksheets');
+            fixture.detectChanges();
+
+            expect((el().querySelector('.qt-ws-row input[type=checkbox]') as HTMLInputElement).disabled).toBe(true);
+        });
+
+        it('jobThatDidNotStart_KeepsTheSelection', () => {
+            openWorksheets();
+            transfer.startExport.mockReturnValue(of(job({ status: 'Failed', fileUrl: null, message: 'Select at most 2000' })));
+            component.toggleWorksheet(31, true);
+
+            component.startExport();
+
+            expect(component.isWorksheetSelected(31)).toBe(true);
+        });
+
+        it('gradeChangeThatDropsTheSubject_EndsWithARequestWithoutIt', () => {
+            openWorksheets();
+            component.onSubjectChange(7);
+
+            component.onGradeChange(5);
+
+            expect(transfer.listWorksheets).toHaveBeenLastCalledWith(expect.objectContaining({ gradeId: 5, subjectId: null }));
+        });
+
+        it('pendingSearch_IsCancelledBySwitchingModeAndByLeaving', async () => {
+            vi.useFakeTimers();
+            try {
+                openWorksheets();
+                transfer.listWorksheets.mockClear();
+
+                component.onWorksheetSearchChange('kes');
+                component.setExportMode('questions');
+                await vi.advanceTimersByTimeAsync(300);
+                expect(transfer.listWorksheets).not.toHaveBeenCalled();
+
+                component.setExportMode('worksheets');
+                transfer.listWorksheets.mockClear();
+                component.onWorksheetSearchChange('kesir');
+                fixture.destroy();
+                await vi.advanceTimersByTimeAsync(300);
+                expect(transfer.listWorksheets).not.toHaveBeenCalled();
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('startExport_SendsTheSelectionWithoutScopeAndClearsIt', () => {
+            openWorksheets();
+            transfer.startExport.mockReturnValue(of(job({ status: 'Queued' })));
+            component.onGradeChange(5);
+            component.toggleWorksheet(31, true);
+            component.toggleWorksheet(32, true);
+            component.toggleWorksheet(32, false);
+
+            component.startExport();
+
+            expect(transfer.startExport).toHaveBeenCalledWith({ questionIds: [], worksheetIds: [31] });
+            expect(component.selectedWorksheetIds().size).toBe(0);
+        });
+
+        it('startExport_Failure_KeepsTheSelection', () => {
+            openWorksheets();
+            transfer.startExport.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+            component.toggleWorksheet(31, true);
+
+            component.startExport();
+
+            expect(component.exportFailed()).toBe(true);
+            expect(component.isWorksheetSelected(31)).toBe(true);
+        });
+
+        it('questionsMode_IgnoresTheSelection', () => {
+            openWorksheets();
+            component.toggleWorksheet(31, true);
+            component.setExportMode('questions');
+
+            component.startExport();
+
+            expect(transfer.startExport.mock.calls[0][0].worksheetIds).toBeUndefined();
+        });
+
+        it('filterChange_ReloadsWithTheFilterAndKeepsTheSelection', () => {
+            openWorksheets();
+            component.toggleWorksheet(31, true);
+
+            component.onWorksheetKindChange('Activity');
+            component.onSubjectChange(7);
+
+            expect(transfer.listWorksheets).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'Activity', subjectId: 7, take: 200 }));
+            expect(component.isWorksheetSelected(31)).toBe(true);
+        });
+
+        it('search_WaitsForTypingToStop', async () => {
+            vi.useFakeTimers();
+            try {
+                openWorksheets();
+                transfer.listWorksheets.mockClear();
+
+                component.onWorksheetSearchChange('kes');
+                component.onWorksheetSearchChange('kesir ');
+                await vi.advanceTimersByTimeAsync(299);
+                expect(transfer.listWorksheets).not.toHaveBeenCalled();
+
+                await vi.advanceTimersByTimeAsync(1);
+                expect(transfer.listWorksheets).toHaveBeenCalledTimes(1);
+                expect(transfer.listWorksheets).toHaveBeenCalledWith(expect.objectContaining({ search: 'kesir' }));
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('lateResponseOfAnOldFilter_DoesNotOverwriteTheList', () => {
+            setup();
+            const slow = new RxSubject<QuestionTransferWorksheetListItem[]>();
+            transfer.listWorksheets.mockReturnValueOnce(slow);
+            component.setExportMode('worksheets');
+            transfer.listWorksheets.mockReturnValueOnce(of([worksheetRows()[1]]));
+
+            component.onWorksheetKindChange('Activity');
+            slow.next(worksheetRows());
+
+            expect(component.worksheets().map((w) => w.id)).toEqual([32]);
+        });
+
+        it('loadFailure_ShowsRetryWhichLoadsAgain', () => {
+            setup();
+            transfer.listWorksheets.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 500 })));
+            component.setExportMode('worksheets');
+            fixture.detectChanges();
+
+            expect(text()).toContain(T.export.worksheetsFailed);
+            button(T.jobs.retry)!.click();
+            fixture.detectChanges();
+
+            expect(text()).not.toContain(T.export.worksheetsFailed);
+            expect(text()).toContain('Kesirler testi');
+        });
+
+        it('emptyList_SaysSo', () => {
+            setup();
+            transfer.listWorksheets.mockReturnValue(of([]));
+            component.setExportMode('worksheets');
+            fixture.detectChanges();
+
+            expect(text()).toContain(T.export.worksheetsEmpty);
+        });
+
+        it('fullPage_TellsToNarrowTheList', () => {
+            setup();
+            transfer.listWorksheets.mockReturnValue(of(Array.from({ length: 200 }, (_, i) => ({ ...worksheetRows()[0], id: i + 1 }))));
+            component.setExportMode('worksheets');
+            fixture.detectChanges();
+
+            expect(el().textContent).toContain(T.export.worksheetsTruncated.split('{{count}}')[1].trim());
+        });
+    });
+
+    describe('worksheet counts', () => {
+        const result = (worksheets: QuestionTransferWorksheetResult): QuestionTransferImportResult => ({
+            worksheets, imported: 0, matched: 0, alreadyImported: 0, conflicts: 0, failed: 0, missingTaxonomy: 0, unpublished: 0,
+            unpublishedQuestionIds: [], conflictSamples: [], failedSamples: [], warnings: [],
+        });
+
+        it('preview_ShowsWhatWillHappenAndWhyARecordIsBlocked', () => {
+            setup();
+            transfer.previewImport.mockReturnValue(of(preview({ worksheets: worksheetCounts() })));
+
+            component.onImportFileSelected(fileEvent(zip()));
+            fixture.detectChanges();
+
+            expect(el().querySelector('.qt-ws-preview')).not.toBeNull();
+            expect(text()).toContain(T.worksheets.blocked);
+            expect(text()).toContain(T.worksheets.closedNote);
+            expect(text()).toContain('Çakışan test');
+        });
+
+        it('preview_PackageWithoutRecords_HidesTheSection', () => {
+            setup();
+            transfer.previewImport.mockReturnValue(of(preview({ worksheets: worksheetCounts({ imported: 0, alreadyImported: 0, blocked: 0 }) })));
+
+            component.onImportFileSelected(fileEvent(zip()));
+            fixture.detectChanges();
+
+            expect(el().querySelector('.qt-ws-preview')).toBeNull();
+        });
+
+        it('preview_NothingBlocked_HidesTheBlockedNote', () => {
+            setup();
+            transfer.previewImport.mockReturnValue(of(preview({ worksheets: worksheetCounts({ blocked: 0, blockedSamples: [] }) })));
+
+            component.onImportFileSelected(fileEvent(zip()));
+            fixture.detectChanges();
+
+            expect(el().querySelector('.qt-ws-preview')).not.toBeNull();
+            expect(text()).not.toContain(T.worksheets.blockedNote);
+        });
+
+        it('jobResult_ShowsCountsSamplesAndWarnings', () => {
+            setup([job({ kind: 'Import', result: result(worksheetCounts()) })]);
+
+            expect(text()).toContain(T.worksheets.notImported);
+            expect(text()).toContain('Çakışan test');
+            expect(text()).toContain('Kopyalı test');
+        });
+
+        it('jobResult_WithoutWorksheetField_StillRenders', () => {
+            const { worksheets: _, ...old } = result(worksheetCounts());
+            setup([job({ kind: 'Import', result: old })]);
+
+            expect(jobRows().length).toBe(1);
+            expect(el().querySelector('.qt-ws-preview')).toBeNull();
+        });
     });
 
     // ---- dışa aktarma

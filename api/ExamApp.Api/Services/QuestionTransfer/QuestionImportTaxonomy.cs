@@ -11,9 +11,10 @@ namespace ExamApp.Api.Services.QuestionTransfer;
 /// </summary>
 public sealed class QuestionImportTaxonomy(AppDbContext db)
 {
-    private readonly Dictionary<string, int?> _subjects = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, int?> _topics = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, int?> _subTopics = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, int?> _grades = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, int?> _subjects = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, int?> _topics = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, int?> _subTopics = new(StringComparer.Ordinal);
 
     public sealed record Resolved(int? SubjectId, int? TopicId, List<int> SubTopicIds, bool Missing);
 
@@ -51,7 +52,27 @@ public sealed class QuestionImportTaxonomy(AppDbContext db)
         return new Resolved(subjectId, topicId, subTopicIds, missing);
     }
 
-    private async Task<int?> ResolveSubjectAsync(JsonElement el, CancellationToken ct)
+    public async Task<int?> ResolveGradeAsync(JsonElement el, CancellationToken ct = default)
+    {
+        var code = Read(el, "code");
+        var name = Read(el, "name");
+        var key = $"{code}|{name}";
+        if (_grades.TryGetValue(key, out var cached))
+            return cached;
+
+        int? id = null;
+        if (code is not null)
+            id = await db.Grades.AsNoTracking().Where(g => g.Code == code).Select(g => (int?)g.Id).FirstOrDefaultAsync(ct);
+        if (id is null && name is not null)
+        {
+            var lowered = name.ToLower();
+            id = await db.Grades.AsNoTracking().Where(g => g.Name == name || g.Name.ToLower() == lowered).OrderBy(g => g.Id).Select(g => (int?)g.Id).FirstOrDefaultAsync(ct);
+        }
+
+        return _grades[key] = id;
+    }
+
+    public async Task<int?> ResolveSubjectAsync(JsonElement el, CancellationToken ct)
     {
         var code = Read(el, "code");
         var name = Read(el, "name");
@@ -71,7 +92,7 @@ public sealed class QuestionImportTaxonomy(AppDbContext db)
         return _subjects[key] = id;
     }
 
-    private async Task<int?> ResolveTopicAsync(JsonElement el, int? subjectId, CancellationToken ct)
+    public async Task<int?> ResolveTopicAsync(JsonElement el, int? subjectId, CancellationToken ct)
     {
         var code = Read(el, "code");
         var name = Read(el, "name");
@@ -100,7 +121,7 @@ public sealed class QuestionImportTaxonomy(AppDbContext db)
         return _topics[key] = id;
     }
 
-    private async Task<int?> ResolveSubTopicAsync(JsonElement el, CancellationToken ct)
+    public async Task<int?> ResolveSubTopicAsync(JsonElement el, CancellationToken ct)
     {
         var code = Read(el, "code");
         var name = Read(el, "name");

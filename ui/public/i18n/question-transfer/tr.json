@@ -1,6 +1,6 @@
 {
   "title": "Soru Aktarımı",
-  "subtitle": "Soruları ve kataloğu bir ortamdan diğerine taşır. Önce kataloğu, sonra soruları taşıyın: sorular konularına katalog üzerinden bağlanır.",
+  "subtitle": "Soruları, testleri, etkinlikleri ve kataloğu bir ortamdan diğerine taşır. Önce kataloğu, sonra diğerlerini taşıyın: sorular konularına, testler sınıflarına katalog üzerinden bağlanır.",
   "actions": {
     "hangfire": "Hangfire",
     "hangfireTooltip": "Arka plan işleri panelini açar"
@@ -42,7 +42,24 @@
     "failed": "Dışa aktarma başlatılamadı. Tekrar deneyin.",
     "startAll": "Tüm soruları dışa aktar",
     "startScope": "Seçilen soruları dışa aktar",
-    "startIds": "{{count}} soruyu dışa aktar"
+    "startIds": "{{count}} soruyu dışa aktar",
+    "modeLabel": "Ne taşınacak",
+    "modeQuestions": "Sorular",
+    "modeWorksheets": "Testler ve etkinlikler",
+    "worksheetKind": "Tür",
+    "worksheetSearch": "Ada göre ara",
+    "kind": {
+      "Test": "Test",
+      "Activity": "Etkinlik"
+    },
+    "questionCount": "Soru: {{count}}",
+    "worksheetsNote": "Seçilen test ve etkinlikler sorularıyla birlikte taşınır. Atama, oturum ve sonuçlar taşınmaz.",
+    "worksheetsFailed": "Testler ve etkinlikler yüklenemedi.",
+    "worksheetsEmpty": "Bu seçime uyan test veya etkinlik yok.",
+    "worksheetsTruncated": "İlk {{count}} kayıt gösteriliyor. Aradığınızı bulamadıysanız listeyi daraltın.",
+    "selectedCount": "Seçilen: {{count}}",
+    "clearSelection": "Seçimi temizle",
+    "startWorksheets": "Test ve etkinlikleri dışa aktar ({{count}})"
   },
   "import": {
     "title": "İçe Al",
@@ -65,6 +82,16 @@
     "missingTaxonomyNote": "Konusu bulunamayan sorular konusuz gelir. Önce kataloğu taşıyın.",
     "unhashedNote": "Burada {{count}} soru henüz taranmadı, sayılar eksik olabilir. Tarama arka planda sürüyor.",
     "start": "İçe al"
+  },
+  "worksheets": {
+    "title": "Testler ve etkinlikler",
+    "willImport": "Alınacak",
+    "imported": "Alındı",
+    "blocked": "Alınamayacak",
+    "notImported": "Alınamadı",
+    "missingTaxonomy": "Dersi veya konusu bulunamadı",
+    "closedNote": "Test ve etkinlikler kapalı gelir: başka öğretmen görmez, öğrenci yalnız atamayla başlatır, bu kayıtlar serbest pratiğe soru eklemez. Sahibi siz olursunuz. Burada zaten olan sorular kopyalanmaz.",
+    "blockedNote": "Alınamayan test veya etkinlik hiç oluşmaz, soruları yine alınır:"
   },
   "jobs": {
     "title": "Son İşler",

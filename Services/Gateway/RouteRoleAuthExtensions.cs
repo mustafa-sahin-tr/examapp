@@ -41,6 +41,9 @@ public static class RouteRoleAuthExtensions
         // issue #583: açık uçlu değerlendirme kuyruğu (GET liste, PUT {id}) -> yalnız Teacher + Admin (backend ayrıca onaylı öğretmen
         // policy'si ve atama kapsamı uygular; öğrenci / veli token'ı gateway'de 403).
         new("/api/exam/open-text-reviews", ["Teacher", "Admin"], []),
+        // Soru, test ve etkinlik aktarımı yalnız admin (backend de zorunlu kılar); paket yükleme sınırı burada yükselir,
+        // admin olmayanın gövdesi okunmadan reddedilir.
+        new("/api/exam/question-transfer", ["Admin"], []),
     ];
 
     public static IApplicationBuilder UseRouteRoleAuth(

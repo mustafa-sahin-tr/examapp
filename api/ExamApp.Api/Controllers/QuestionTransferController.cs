@@ -62,6 +62,11 @@ public class QuestionTransferController : ControllerBase
         return new QuestionTransferOwner(profile is { Id: > 0 } ? profile.Id : 0, IsAdmin: true);
     }
 
+    [HttpGet("worksheets")]
+    public async Task<ActionResult<List<QuestionTransferWorksheetListItemDto>>> ListWorksheets([FromQuery] WorksheetKind? kind, [FromQuery] int? gradeId,
+        [FromQuery] int? subjectId, [FromQuery] string? search, [FromQuery] int take = 50, CancellationToken ct = default) =>
+        Ok(await _service.ListWorksheetsAsync(kind, gradeId, subjectId, search, take, ct));
+
     [HttpPost("exports")]
     public async Task<ActionResult<QuestionTransferJobDto>> StartExport([FromBody] StartQuestionExportDto request, CancellationToken ct)
     {
@@ -165,7 +170,6 @@ public class QuestionTransferController : ControllerBase
         return new FileCallbackResult("application/zip", async (output, ctx) =>
         {
             var ct = ctx.HttpContext.RequestAborted;
-            var bundles = await _service.ListExportBundlesAsync(sourceKey, ct);
 
             // IMPORTANT: ZipArchive writes central directory synchronously when disposed.
             // Kestrel disallows synchronous writes to Response.Body by default.
@@ -175,110 +179,7 @@ public class QuestionTransferController : ControllerBase
             {
                 await using (var fs = new FileStream(tmpPath, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None))
                 {
-                    using (var zip = new ZipArchive(fs, ZipArchiveMode.Create, leaveOpen: true))
-                    {
-                        // We intentionally generate an IMPORT-COMPATIBLE zip here:
-                        // - root manifest.json
-                        // - questions/... and passages/... files directly at root paths
-                        // This lets /imports and /imports/preview work with the package zip.
-
-                        var seenEntries = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                        var mergedQuestionsJson = new List<JsonElement>();
-                        var seenExternalKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-                        foreach (var b in bundles.OrderBy(x => x.BundleNo))
-                        {
-                            var bundleStream = await _service.GetExportBundleStreamAsync(sourceKey, b.BundleNo, ct);
-                            if (bundleStream == null)
-                            {
-                                continue;
-                            }
-
-                            var bundleTmpPath = Path.Combine(Path.GetTempPath(), $"question-transfer-bundle-{b.BundleNo:D4}-{Guid.NewGuid():N}.zip");
-                            try
-                            {
-                                await using (bundleStream)
-                                {
-                                    await using var bundleFsWrite = new FileStream(bundleTmpPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-                                    await bundleStream.CopyToAsync(bundleFsWrite, ct);
-                                }
-
-                                await using var bundleFsRead = new FileStream(bundleTmpPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-                                using var bundleZip = new ZipArchive(bundleFsRead, ZipArchiveMode.Read, leaveOpen: false);
-
-                                // Merge questions from the bundle manifest.json
-                                var manifestEntry = bundleZip.GetEntry("manifest.json");
-                                if (manifestEntry != null)
-                                {
-                                    using var ms = manifestEntry.Open();
-                                    using var doc = await JsonDocument.ParseAsync(ms, cancellationToken: ct);
-                                    if (doc.RootElement.TryGetProperty("questions", out var qArr) && qArr.ValueKind == JsonValueKind.Array)
-                                    {
-                                        foreach (var q in qArr.EnumerateArray())
-                                        {
-                                            var externalKey = q.TryGetProperty("externalKey", out var ek)
-                                                ? (ek.GetString() ?? string.Empty)
-                                                : string.Empty;
-
-                                            if (string.IsNullOrWhiteSpace(externalKey))
-                                            {
-                                                continue;
-                                            }
-
-                                            if (seenExternalKeys.Add(externalKey))
-                                            {
-                                                mergedQuestionsJson.Add(q.Clone());
-                                            }
-                                        }
-                                    }
-                                }
-
-                                // Copy all files except manifest.json (we’ll write a merged root manifest).
-                                foreach (var entry in bundleZip.Entries)
-                                {
-                                    if (string.IsNullOrWhiteSpace(entry.Name))
-                                    {
-                                        continue; // directory
-                                    }
-                                    if (entry.FullName.Equals("manifest.json", StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        continue;
-                                    }
-
-                                    if (!seenEntries.Add(entry.FullName))
-                                    {
-                                        continue; // already added (e.g., shared passage)
-                                    }
-
-                                    var outEntry = zip.CreateEntry(entry.FullName, CompressionLevel.Fastest);
-                                    await using var outStream = outEntry.Open();
-                                    await using var inStream = entry.Open();
-                                    await inStream.CopyToAsync(outStream, ct);
-                                }
-                            }
-                            finally
-                            {
-                                try { System.IO.File.Delete(bundleTmpPath); } catch { /* best effort */ }
-                            }
-                        }
-
-                        // Write merged manifest.json (root)
-                        var manifest = new
-                        {
-                            version = 3,
-                            sourceKey = sourceKey,
-                            originKey = await _service.GetOriginKeyAsync(ct),
-                            bundleNo = 0,
-                            exportedAtUtc = DateTime.UtcNow,
-                            questions = await _service.WithCurrentRightsAsync(mergedQuestionsJson, ct),
-                        };
-
-                        var mergedManifestEntry = zip.CreateEntry("manifest.json", CompressionLevel.Fastest);
-                        await using (var manifestStream = mergedManifestEntry.Open())
-                        {
-                            await JsonSerializer.SerializeAsync(manifestStream, manifest, cancellationToken: ct);
-                        }
-                    }
+                    await _service.WritePackageAsync(sourceKey, fs, ct);
 
                     fs.Position = 0;
                     await fs.CopyToAsync(output, ct);

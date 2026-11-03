@@ -2,7 +2,37 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
+/** Paketteki test ve etkinlikler: önizlemede "ne olacak", iş sonucunda "ne oldu". */
+export interface QuestionTransferWorksheetResult {
+  imported: number;
+  alreadyImported: number;
+  blocked: number;
+  missingTaxonomy: number;
+  blockedSamples: string[];
+  warnings: string[];
+}
+
+export type WorksheetKind = 'Test' | 'Activity';
+
+export interface QuestionTransferWorksheetListItem {
+  id: number;
+  name: string;
+  kind: WorksheetKind | string;
+  gradeName?: string | null;
+  subjectName?: string | null;
+  questionCount: number;
+}
+
+export interface WorksheetListFilter {
+  kind?: WorksheetKind | null;
+  gradeId?: number | null;
+  subjectId?: number | null;
+  search?: string | null;
+  take?: number;
+}
+
 export interface QuestionTransferImportResult {
+  worksheets?: QuestionTransferWorksheetResult | null;
   imported: number;
   matched: number;
   alreadyImported: number;
@@ -40,11 +70,16 @@ export interface QuestionTransferImportPreview {
   unpublishCount: number;
   targetUnhashedCount: number;
   conflictSamples: string[];
+  worksheets?: QuestionTransferWorksheetResult | null;
 }
 
-/** Boş bırakılırsa sorular kapsamla seçilir; kapsam da yoksa tüm sorular çıkar. Kaynak adını sunucu üretir. */
+/**
+ * Boş bırakılırsa sorular kapsamla seçilir; kapsam da yoksa tüm sorular çıkar. Kaynak adını sunucu üretir.
+ * `worksheetIds` doluysa sorular seçilen test ve etkinliklerin maddelerinden gelir, kapsam kullanılmaz.
+ */
 export interface QuestionExportRequest {
   questionIds: number[];
+  worksheetIds?: number[];
   gradeId?: number | null;
   subjectId?: number | null;
   topicId?: number | null;
@@ -76,6 +111,16 @@ export class QuestionTransferService {
 
   startExport(request: QuestionExportRequest): Observable<QuestionTransferJob> {
     return this.http.post<QuestionTransferJob>(`${this.apiUrl}/exports`, request);
+  }
+
+  listWorksheets(filter: WorksheetListFilter): Observable<QuestionTransferWorksheetListItem[]> {
+    let params = new HttpParams();
+    for (const [key, value] of Object.entries(filter)) {
+      if (value !== null && value !== undefined && value !== '') {
+        params = params.set(key, value);
+      }
+    }
+    return this.http.get<QuestionTransferWorksheetListItem[]>(`${this.apiUrl}/worksheets`, { params });
   }
 
   /** Kaynak adı gönderilmez: sunucu paketin içinden okur. */

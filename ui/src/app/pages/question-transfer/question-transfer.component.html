@@ -97,6 +97,11 @@
       </mat-card-header>
 
       <mat-card-content>
+        <mat-button-toggle-group class="qt-mode" [value]="exportMode()" (change)="setExportMode($event.value)" [attr.aria-label]="t('export.modeLabel')">
+          <mat-button-toggle value="questions">{{ t('export.modeQuestions') }}</mat-button-toggle>
+          <mat-button-toggle value="worksheets">{{ t('export.modeWorksheets') }}</mat-button-toggle>
+        </mat-button-toggle-group>
+
         <div class="qt-scope">
           <mat-form-field appearance="outline">
             <mat-label>{{ t('export.grade') }}</mat-label>
@@ -118,31 +123,89 @@
             </mat-select>
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>{{ t('export.topic') }}</mat-label>
-            <mat-select [value]="topicId()" (selectionChange)="topicId.set($event.value)" [disabled]="subjectId() === null">
-              <mat-option [value]="null">{{ t('export.any') }}</mat-option>
-              @for (topic of topics(); track topic.id) {
-                <mat-option [value]="topic.id">{{ topic.name }}</mat-option>
+          @if (exportMode() === 'questions') {
+            <mat-form-field appearance="outline">
+              <mat-label>{{ t('export.topic') }}</mat-label>
+              <mat-select [value]="topicId()" (selectionChange)="topicId.set($event.value)" [disabled]="subjectId() === null">
+                <mat-option [value]="null">{{ t('export.any') }}</mat-option>
+                @for (topic of topics(); track topic.id) {
+                  <mat-option [value]="topic.id">{{ topic.name }}</mat-option>
+                }
+              </mat-select>
+              @if (subjectId() === null) {
+                <mat-hint>{{ t('export.topicHint') }}</mat-hint>
               }
-            </mat-select>
-            @if (subjectId() === null) {
-              <mat-hint>{{ t('export.topicHint') }}</mat-hint>
-            }
-          </mat-form-field>
+            </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>{{ t('export.book') }}</mat-label>
-            <mat-select [value]="bookId()" (selectionChange)="bookId.set($event.value)">
-              <mat-option [value]="null">{{ t('export.any') }}</mat-option>
-              @for (book of books(); track book.id) {
-                <mat-option [value]="book.id">{{ book.name }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>{{ t('export.book') }}</mat-label>
+              <mat-select [value]="bookId()" (selectionChange)="bookId.set($event.value)">
+                <mat-option [value]="null">{{ t('export.any') }}</mat-option>
+                @for (book of books(); track book.id) {
+                  <mat-option [value]="book.id">{{ book.name }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          } @else {
+            <mat-form-field appearance="outline">
+              <mat-label>{{ t('export.worksheetKind') }}</mat-label>
+              <mat-select [value]="worksheetKind()" (selectionChange)="onWorksheetKindChange($event.value)">
+                <mat-option [value]="null">{{ t('export.any') }}</mat-option>
+                <mat-option value="Test">{{ t('export.kind.Test') }}</mat-option>
+                <mat-option value="Activity">{{ t('export.kind.Activity') }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>{{ t('export.worksheetSearch') }}</mat-label>
+              <input class="qt-ws-search" matInput [ngModel]="worksheetSearch()" (ngModelChange)="onWorksheetSearchChange($event)" autocomplete="off" />
+            </mat-form-field>
+          }
         </div>
 
-        @if (!hasScope()) {
+        @if (exportMode() === 'worksheets') {
+          <div class="qt-note">{{ t('export.worksheetsNote') }}</div>
+
+          @if (worksheetsLoading()) {
+            <mat-progress-bar class="qt-gap-small" mode="indeterminate"></mat-progress-bar>
+          }
+
+          @if (worksheetsFailed()) {
+            <div class="qt-error qt-gap" role="alert">
+              {{ t('export.worksheetsFailed') }}
+              <button mat-button (click)="reloadWorksheets()">{{ t('jobs.retry') }}</button>
+            </div>
+          } @else if (worksheets().length === 0 && !worksheetsLoading()) {
+            <div class="qt-empty">{{ t('export.worksheetsEmpty') }}</div>
+          } @else {
+            <div class="qt-ws-list qt-gap">
+              @for (worksheet of worksheets(); track worksheet.id) {
+                <div class="qt-ws-row">
+                  <mat-checkbox [checked]="isWorksheetSelected(worksheet.id)" [disabled]="worksheet.questionCount === 0" [aria-describedby]="'qt-ws-meta-' + worksheet.id" (change)="toggleWorksheet(worksheet.id, $event.checked)">
+                    {{ worksheet.name }}
+                  </mat-checkbox>
+                  <span class="qt-muted qt-ws-meta" [id]="'qt-ws-meta-' + worksheet.id">
+                    {{ t('export.kind.' + worksheet.kind) }}
+                    @if (worksheet.gradeName) { · {{ worksheet.gradeName }} }
+                    @if (worksheet.subjectName) { · {{ worksheet.subjectName }} }
+                    · {{ t('export.questionCount', { count: worksheet.questionCount }) }}
+                  </span>
+                </div>
+              }
+            </div>
+            @if (worksheets().length >= worksheetListTake) {
+              <div class="qt-note">{{ t('export.worksheetsTruncated', { count: worksheetListTake }) }}</div>
+            }
+          }
+
+          @if (selectedWorksheetIds().size > 0) {
+            <div class="qt-actions qt-gap">
+              <span>{{ t('export.selectedCount', { count: selectedWorksheetIds().size }) }}</span>
+              <button mat-button (click)="clearWorksheetSelection()">{{ t('export.clearSelection') }}</button>
+            </div>
+            <div class="qt-note qt-ws-selected">{{ selectedWorksheetNames() }}</div>
+          }
+        } @else if (!hasScope()) {
           <mat-form-field appearance="outline" class="qt-field">
             <mat-label>{{ t('export.questionIds') }}</mat-label>
             <input matInput [ngModel]="questionIdsText()" (ngModelChange)="questionIdsText.set($event)" [placeholder]="t('export.questionIdsPlaceholder')" autocomplete="off" />
@@ -158,9 +221,11 @@
       <mat-divider></mat-divider>
 
       <mat-card-actions class="qt-actions qt-end">
-        <button class="qt-export-start" mat-raised-button color="primary" (click)="startExport()" [disabled]="exportBusy()">
+        <button class="qt-export-start" mat-raised-button color="primary" (click)="startExport()" [disabled]="exportBusy() || (exportMode() === 'worksheets' && selectedWorksheetIds().size === 0)">
           <mat-icon>outbox</mat-icon>
-          @if (exportsEverything()) {
+          @if (exportMode() === 'worksheets') {
+            {{ t('export.startWorksheets', { count: selectedWorksheetIds().size }) }}
+          } @else if (exportsEverything()) {
             {{ t('export.startAll') }}
           } @else if (hasScope()) {
             {{ t('export.startScope') }}
@@ -222,6 +287,27 @@
             }
             @if (preview.targetUnhashedCount > 0) {
               <div class="qt-note">{{ t('import.unhashedNote', { count: preview.targetUnhashedCount }) }}</div>
+            }
+
+            @if (hasWorksheetCounts(preview.worksheets)) {
+              <div class="qt-ws-preview qt-gap">
+                <b>{{ t('worksheets.title') }}</b>
+                <dl class="qt-counts">
+                  <div><dt>{{ t('worksheets.willImport') }}</dt><dd>{{ preview.worksheets!.imported }}</dd></div>
+                  <div><dt>{{ t('import.already') }}</dt><dd>{{ preview.worksheets!.alreadyImported }}</dd></div>
+                  <div [class.qt-count-warn]="preview.worksheets!.blocked > 0"><dt>{{ t('worksheets.blocked') }}</dt><dd>{{ preview.worksheets!.blocked }}</dd></div>
+                  <div [class.qt-count-warn]="preview.worksheets!.missingTaxonomy > 0"><dt>{{ t('worksheets.missingTaxonomy') }}</dt><dd>{{ preview.worksheets!.missingTaxonomy }}</dd></div>
+                </dl>
+                <div class="qt-note">{{ t('worksheets.closedNote') }}</div>
+                @if (preview.worksheets!.blocked > 0) {
+                  <div class="qt-note">{{ t('worksheets.blockedNote') }}</div>
+                  <ul class="qt-samples">
+                    @for (sample of preview.worksheets!.blockedSamples; track $index) {
+                      <li>{{ sample }}</li>
+                    }
+                  </ul>
+                }
+              </div>
             }
           </div>
         }
@@ -306,6 +392,31 @@
 
             @if (result.unpublished > 0) {
               <div class="qt-note">{{ t('jobs.unpublishedIds', { ids: result.unpublishedQuestionIds.join(', ') }) }}</div>
+            }
+
+            @if (hasWorksheetCounts(result.worksheets)) {
+              <div class="qt-ws-preview qt-gap">
+                <b>{{ t('worksheets.title') }}</b>
+                <dl class="qt-counts">
+                  <div><dt>{{ t('worksheets.imported') }}</dt><dd>{{ result.worksheets!.imported }}</dd></div>
+                  <div><dt>{{ t('import.already') }}</dt><dd>{{ result.worksheets!.alreadyImported }}</dd></div>
+                  <div [class.qt-count-warn]="result.worksheets!.blocked > 0"><dt>{{ t('worksheets.notImported') }}</dt><dd>{{ result.worksheets!.blocked }}</dd></div>
+                  <div [class.qt-count-warn]="result.worksheets!.missingTaxonomy > 0"><dt>{{ t('worksheets.missingTaxonomy') }}</dt><dd>{{ result.worksheets!.missingTaxonomy }}</dd></div>
+                </dl>
+                @if (result.worksheets!.blockedSamples.length + result.worksheets!.warnings.length > 0) {
+                  <details class="qt-details">
+                    <summary>{{ t('jobs.details') }}</summary>
+                    <ul class="qt-samples">
+                      @for (sample of result.worksheets!.blockedSamples; track $index) {
+                        <li>{{ sample }}</li>
+                      }
+                      @for (warning of result.worksheets!.warnings; track $index) {
+                        <li>{{ warning }}</li>
+                      }
+                    </ul>
+                  </details>
+                }
+              </div>
             }
 
             @if (result.conflictSamples.length + result.failedSamples.length + result.warnings.length > 0) {

@@ -1,6 +1,6 @@
 {
   "title": "Question Transfer",
-  "subtitle": "Moves questions and the catalog between environments. Move the catalog first, then the questions: questions reach their topics through the catalog.",
+  "subtitle": "Moves questions, tests, activities and the catalog between environments. Move the catalog first, then the rest: questions reach their topics and tests reach their grades through the catalog.",
   "actions": {
     "hangfire": "Hangfire",
     "hangfireTooltip": "Opens the background jobs dashboard"
@@ -42,7 +42,24 @@
     "failed": "The export could not start. Try again.",
     "startAll": "Export all questions",
     "startScope": "Export selected questions",
-    "startIds": "Export {{count}} questions"
+    "startIds": "Export {{count}} questions",
+    "modeLabel": "What to move",
+    "modeQuestions": "Questions",
+    "modeWorksheets": "Tests and activities",
+    "worksheetKind": "Type",
+    "worksheetSearch": "Search by name",
+    "kind": {
+      "Test": "Test",
+      "Activity": "Activity"
+    },
+    "questionCount": "Questions: {{count}}",
+    "worksheetsNote": "Selected tests and activities move with their questions. Assignments, sessions and results do not move.",
+    "worksheetsFailed": "Tests and activities could not be loaded.",
+    "worksheetsEmpty": "No test or activity matches this selection.",
+    "worksheetsTruncated": "Showing the first {{count}} records. If you cannot find one, narrow the list.",
+    "selectedCount": "Selected: {{count}}",
+    "clearSelection": "Clear selection",
+    "startWorksheets": "Export tests and activities ({{count}})"
   },
   "import": {
     "title": "Import",
@@ -65,6 +82,16 @@
     "missingTaxonomyNote": "Questions whose topic is not found arrive without one. Move the catalog first.",
     "unhashedNote": "{{count}} questions here have not been scanned yet, so the counts may be low. The scan is running in the background.",
     "start": "Import"
+  },
+  "worksheets": {
+    "title": "Tests and activities",
+    "willImport": "Will be imported",
+    "imported": "Imported",
+    "blocked": "Cannot be imported",
+    "notImported": "Not imported",
+    "missingTaxonomy": "Subject or topic not found",
+    "closedNote": "Tests and activities arrive closed: other teachers do not see them, students start them only through an assignment, and they add no questions to free practice. You become their owner. Questions already here are not copied.",
+    "blockedNote": "A blocked test or activity is not created, its questions are still imported:"
   },
   "jobs": {
     "title": "Recent Jobs",

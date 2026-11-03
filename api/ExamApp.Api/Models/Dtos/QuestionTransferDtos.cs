@@ -10,6 +10,9 @@ public class StartQuestionExportDto
 {
     public List<int> QuestionIds { get; set; } = new();
 
+    // Seçilen test ve etkinlikler: içindeki sorularla birlikte taşınır, verilirse kapsam ve soru listesi yok sayılır.
+    public List<int> WorksheetIds { get; set; } = new();
+
     // Used for idempotent imports: (SourceKey, ExternalQuestionKey)
     public string? SourceKey { get; set; }
 
@@ -50,8 +53,30 @@ public class QuestionTransferJobDto
     public QuestionTransferImportResultDto? Result { get; set; }
 }
 
+/// <summary>Test ve etkinlik sayıları: önizlemede ne olacağı, iş sonucunda ne olduğu.</summary>
+public class QuestionTransferWorksheetResultDto
+{
+    public int Imported { get; set; }
+    public int AlreadyImported { get; set; }
+    public int Blocked { get; set; }
+    public int MissingTaxonomy { get; set; }
+    public List<string> BlockedSamples { get; set; } = new();
+    public List<string> Warnings { get; set; } = new();
+}
+
+public class QuestionTransferWorksheetListItemDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Kind { get; set; } = string.Empty;
+    public string? GradeName { get; set; }
+    public string? SubjectName { get; set; }
+    public int QuestionCount { get; set; }
+}
+
 public class QuestionTransferImportResultDto
 {
+    public QuestionTransferWorksheetResultDto Worksheets { get; set; } = new();
     public int Imported { get; set; }
     public int Matched { get; set; }
     public int AlreadyImported { get; set; }
@@ -78,6 +103,7 @@ public class QuestionTransferExportBundleDto
 
 public class QuestionTransferImportPreviewDto
 {
+    public QuestionTransferWorksheetResultDto Worksheets { get; set; } = new();
     public string SourceKey { get; set; } = "default";
     public int QuestionCount { get; set; }
     public int AlreadyImportedCount { get; set; }

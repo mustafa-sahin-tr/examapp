@@ -126,7 +126,7 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
     });
     it('visibleMenuItems_StudyLinksEntry_OnlyForTeacherWithTranslatedLabel (issue #61)', () => {
         const component = create(['Teacher']);
-        const item = component.visibleMenuItems().find((i) => i.id === 'study-links');
+        const item = component.visibleSectionTabs().flat().find((i) => i.id === 'tab-study-links');
         expect(item?.route).toBe('/study-links');
         expect(TestBed.inject(TranslocoService).translate('layout.menu.studyLinks')).toBe('Çalışma Linkleri');
 
@@ -212,7 +212,7 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
         const component = create(['Teacher'], false);
         const ids = component.visibleMenuItems().map((i) => i.id);
 
-        expect(ids).toContain('exam');
+        expect(ids).toContain('exams');
         expect(ids).toContain('study-pages');
         expect(ids).not.toContain('teacher-approval-status');
         expect(component.visibleBottomNavItems().map((i) => i.id)).not.toContain('teacher-approval-status');
@@ -248,11 +248,11 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
             ],
         });
         const component = TestBed.createComponent(EnhancedLayoutComponent).componentInstance;
-        expect(component.visibleMenuItems().map((i) => i.id)).not.toContain('exam');
+        expect(component.visibleMenuItems().map((i) => i.id)).not.toContain('exams');
 
         unapproved.set(false);
 
-        expect(component.visibleMenuItems().map((i) => i.id)).toContain('exam');
+        expect(component.visibleMenuItems().map((i) => i.id)).toContain('exams');
     });
 
     it('menuLabel_TeacherApprovalStatus_TranslatedTrAndEn', () => {
@@ -270,7 +270,7 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
     // ── Issue #361: bekleyen öğrenci okul başvuruları ───────────────────────────
 
     it('visibleMenuItems_StudentSchoolRequests_TeacherAndAdminOnly (issue #361)', () => {
-        expect(create(['Teacher']).visibleMenuItems().map((i) => i.route)).toContain('/student-school-requests');
+        expect(create(['Teacher']).visibleSectionTabs().flat().map((i) => i.route)).toContain('/student-school-requests');
 
         TestBed.resetTestingModule();
         const admin = create(['Admin']).visibleMenuItems().map((i) => i.route);
@@ -771,13 +771,11 @@ describe('EnhancedLayoutComponent menu routes (issues #374, #373)', () => {
     ];
 
     for (const c of SETTINGS_CASES) {
-        it(`settings_${c.name}_VisibleInSidenavAndBottomNav_WithRoleRoute (issue #417)`, () => {
+        it(`settings_${c.name}_VisibleInSidenav_WithRoleRoute (issue #417)`, () => {
             const component = create(c.roles, c.unapproved);
-            for (const items of [component.visibleMenuItems(), component.visibleBottomNavItems()]) {
-                const settings = items.filter((i) => i.id === 'settings');
-                expect(settings.length, c.name).toBe(1);
-                expect(settings[0].route, c.name).toBe(c.route);
-            }
+            const settings = component.visibleMenuItems().filter((i) => i.id === 'settings');
+            expect(settings.length, c.name).toBe(1);
+            expect(settings[0].route, c.name).toBe(c.route);
             expect(component.settingsRoute).toBe(c.route);
         });
     }
@@ -860,19 +858,19 @@ describe('EnhancedLayoutComponent active menu item (issue #385)', () => {
     it('student_DetailPagesSelectParentItem_AndUnknownPageSelectsNothing', async () => {
         await expectActive(create(['Student']), [
             ['/dashboard', 'dashboard'],
-            ['/programs/5/detail', 'programsm'],
-            ['/program-create', 'programsm'],
+            ['/programs/5/detail', 'my-calendar'],
+            ['/program-create', 'my-calendar'],
             ['/test/12', 'exams'],
             ['/notifications', null],
             ['/student-profile', 'settings'],
         ]);
     });
 
-    it('teacher_ExamAndQuestionCanvasSelectExamAuthoring', async () => {
+    it('teacher_ExamAndQuestionCanvasSelectTests', async () => {
         await expectActive(create(['Teacher']), [
-            ['/exam', 'exam'],
-            ['/exam/3', 'exam'],
-            ['/questioncanvas', 'exam'],
+            ['/exam', 'exams'],
+            ['/exam/3', 'exams'],
+            ['/questioncanvas', 'exams'],
             ['/test/12', 'exams'],
             ['/study-pages/new', 'study-pages'],
             ['/student-profile', null],
@@ -1090,18 +1088,20 @@ describe('EnhancedLayoutComponent tutor profile entry (issue #384)', () => {
         expect(route?.canActivate).toContain(independentTeacherGuard);
     });
 
+    const tabRoutesOf = (component: EnhancedLayoutComponent) => component.visibleSectionTabs().flat().map((i) => i.route);
+
     // Issue #418: randevu (müsaitlik + gelen talepler) da bağımsız öğretmen özelliği — aynı kural.
     for (const route of ['/availability', '/booking-requests']) {
         it(`visibleMenuItems_NotIndependentTeacher_Hides_${route}`, () => {
-            expect(routesOf(create(['Teacher'], teacherProfile(false, 7)))).not.toContain(route);
+            expect(tabRoutesOf(create(['Teacher'], teacherProfile(false, 7)))).not.toContain(route);
         });
 
         it(`visibleMenuItems_IndependentTeacher_Shows_${route}`, () => {
-            expect(routesOf(create(['Teacher'], teacherProfile(true)))).toContain(route);
+            expect(tabRoutesOf(create(['Teacher'], teacherProfile(true)))).toContain(route);
         });
 
         it(`visibleMenuItems_FlagUnknown_Shows_${route}`, () => {
-            expect(routesOf(create(['Teacher'], teacherProfile(undefined, 7)))).toContain(route);
+            expect(tabRoutesOf(create(['Teacher'], teacherProfile(undefined, 7)))).toContain(route);
         });
 
         it(`routes_${route}_UsesIndependentTeacherGuard`, () => {
@@ -1164,4 +1164,77 @@ describe('EnhancedLayoutComponent badges menu item (issue #713)', () => {
             expect(ids([role])).not.toContain('badges');
         });
     }
+});
+
+/** Issue #719: rol başına menü, alt çubuk ve bölüm sekmeleri. */
+describe('EnhancedLayoutComponent role navigation (issue #719)', () => {
+    afterEach(() => localStorage.removeItem('user'));
+
+    function labels(ids: { id: string }[]): string[] {
+        return ids.map((i) => i.id);
+    }
+
+    it('student_SixPrimaryItemsPlusBadgesAndSettings', () => {
+        const items = renderLayout(['Student'], false).componentInstance.visibleMenuItems().filter((i) => i.type === 'menu');
+        expect(labels(items)).toEqual(['dashboard', 'exams', 'practice', 'my-calendar', 'tutors', 'teacher-messages', 'badges', 'settings']);
+    });
+
+    it('teacher_GroupsSectionsAndDropsCreateTest', () => {
+        const items = renderLayout(['Teacher'], false).componentInstance.visibleMenuItems().filter((i) => i.type === 'menu');
+        expect(labels(items)).toEqual([
+            'dashboard', 'exams', 'question-bank', 'study-pages', 'my-calendar', 'teacher-requests', 'student-messages', 'tutor-profile', 'settings',
+        ]);
+    });
+
+    it('bottomNav_StudentAndTeacher_HavePrimaryTasksInsteadOfSettings', () => {
+        expect(labels(renderLayout(['Student'], true).componentInstance.visibleBottomNavItems())).toEqual([
+            'dashboard', 'exams', 'practice', 'my-calendar',
+        ]);
+        TestBed.resetTestingModule();
+        expect(labels(renderLayout(['Teacher'], true).componentInstance.visibleBottomNavItems())).toEqual([
+            'dashboard', 'exams', 'question-bank', 'my-calendar',
+        ]);
+    });
+
+    it('bottomNav_Parent_KeepsSettings', () => {
+        expect(labels(renderLayout(['Parent'], true).componentInstance.visibleBottomNavItems())).toContain('settings');
+    });
+
+    async function goTo(fixture: ComponentFixture<EnhancedLayoutComponent>, url: string): Promise<void> {
+        const router = TestBed.inject(Router);
+        router.resetConfig([{ path: '**', children: [] }]);
+        await router.navigateByUrl(url);
+        fixture.detectChanges();
+    }
+
+    it('sectionTabs_ShowOnlyInTheCurrentSection', async () => {
+        const fixture = renderLayout(['Student'], false);
+        const component = fixture.componentInstance;
+
+        await goTo(fixture, '/my-bookings');
+        expect(labels(component.activeSectionTabs())).toEqual(['tab-tutors', 'tab-bookings']);
+        expect((fixture.nativeElement as HTMLElement).querySelectorAll('.section-tab').length).toBe(2);
+
+        await goTo(fixture, '/dashboard');
+        expect(component.activeSectionTabs()).toEqual([]);
+    });
+
+    it('sectionTabs_HiddenOnExamRoutes', async () => {
+        const fixture = renderLayout(['Student'], false);
+        await goTo(fixture, '/testsolve/4');
+        expect((fixture.nativeElement as HTMLElement).querySelector('.section-tabs')).toBeNull();
+    });
+
+    it('sectionTabs_SingleVisibleTab_NoBar', async () => {
+        const fixture = renderLayout(['Teacher'], false);
+        await goTo(fixture, '/my-calendar');
+        expect((fixture.nativeElement as HTMLElement).querySelector('.section-tabs')).toBeNull();
+    });
+
+    it('requestsBadge_SumsPendingCounts', () => {
+        const component = renderLayout(['Teacher'], false).componentInstance;
+        (TestBed.inject(WorksheetAccessRequestService).pendingCount as WritableSignal<number>).set(2);
+        (TestBed.inject(StudentSchoolRequestService).pendingCount as WritableSignal<number>).set(3);
+        expect(component.menuBadgeCount('teacher-requests')).toBe(5);
+    });
 });

@@ -10,7 +10,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
+import { RouterLink, RouterLinkActive, RouterOutlet, Router, NavigationEnd } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { BreakpointObserver } from '@angular/cdk/layout';
@@ -72,6 +72,8 @@ interface MenuItem {
     MatDividerModule,
     MatTooltipModule,
     RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
     ReactiveFormsModule,
     ColorSchemeToggleComponent,
     LanguageSwitcherComponent,
@@ -234,34 +236,25 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'dashboard', labelKey: 'menu.dashboard', icon: 'dashboard', route: '/dashboard', type: 'menu', roles: ['Student', 'Teacher'] },
     { id: 'exams', labelKey: 'menu.exams', icon: 'quiz', route: '/tests', type: 'menu', roles: ['Student', 'Teacher'] },
     { id: 'practice', labelKey: 'menu.practice', icon: 'bolt', route: '/practice', type: 'menu', roles: ['Student'] },
-    // Issue #382: 'study' (/study, Ders Çalışma) örnek veriyle çalıştığı için menüden ve alt navigasyondan kaldırıldı.
-    { id: 'programsm', labelKey: 'menu.programs', icon: 'assignment_ind', route: '/programs', type: 'menu', roles: ['Student'] },
+    // Issue #471: hazır soruları ders/konu/alt konuya göre arama.
+    { id: 'question-bank', labelKey: 'menu.questionBank', icon: 'inventory_2', route: '/question-bank', type: 'menu', roles: ['Teacher', 'Admin'] },
+    // Issue #719: alt sayfalar `sectionTabs` sekmelerinde; öğede yalnız bölümün girişi kalır.
+    { id: 'study-pages', labelKey: 'menu.studyContent', icon: 'library_add', route: '/study-pages', type: 'menu', roles: ['Teacher'] },
     { id: 'my-calendar', labelKey: 'menu.myCalendar', icon: 'event_note', route: '/my-calendar', type: 'menu', roles: ['Student', 'Teacher'] },
     { id: 'tutors', labelKey: 'menu.tutors', icon: 'person_search', route: '/tutors', type: 'menu', roles: ['Student'] },
-    { id: 'my-bookings', labelKey: 'menu.myBookings', icon: 'event_available', route: '/my-bookings', type: 'menu', roles: ['Student'] },
+    { id: 'teacher-requests', labelKey: 'menu.requests', icon: 'inbox', route: '/assignment-permission-requests', type: 'menu', roles: ['Teacher'] },
     // Issue #106: öğrenci → öğretmen mesajlaşma (booking ile aynı "öğrenci → öğretmen" ailesi).
     { id: 'teacher-messages', labelKey: 'menu.teacherMessages', icon: 'forum', route: '/teacher-messages', type: 'menu', roles: ['Student'] },
+    // Issue #106: öğretmenin öğrenci mesajları gelen kutusu.
+    { id: 'student-messages', labelKey: 'menu.studentMessages', icon: 'forum', route: '/student-messages', type: 'menu', roles: ['Teacher'] },
     // Issue #420: veli paneli (çocuk özeti) — velinin ana sayfası.
     { id: 'parent-home', labelKey: 'menu.parentHome', icon: 'home', route: '/parent', type: 'menu', roles: ['Parent'] },
     // Issue #419: velinin çocukları (davet koduyla ekleme + liste).
     { id: 'my-children', labelKey: 'menu.myChildren', icon: 'family_restroom', route: '/my-children', type: 'menu', roles: ['Parent'] },
-    { id: 'tutor-profile', labelKey: 'menu.tutorProfile', icon: 'cast_for_education', route: '/tutor-profile', type: 'menu', roles: ['Teacher'], allowUnapprovedTeacher: true, onlyIndependentTeacher: true },
-    { id: 'availability', labelKey: 'menu.availability', icon: 'event_available', route: '/availability', type: 'menu', roles: ['Teacher'], onlyIndependentTeacher: true },
-    { id: 'booking-requests', labelKey: 'menu.bookingRequests', icon: 'inbox', route: '/booking-requests', type: 'menu', roles: ['Teacher'], onlyIndependentTeacher: true },
-    { id: 'access-requests', labelKey: 'menu.accessRequests', icon: 'how_to_reg', route: '/assignment-permission-requests', type: 'menu', roles: ['Teacher'] },
-    // Issue #361: okulunu seçen öğrencilerin üyelik onayı (bağımsız öğretmende liste boş döner).
-    { id: 'student-school-requests', labelKey: 'menu.studentSchoolRequests', icon: 'person_add', route: '/student-school-requests', type: 'menu', roles: ['Teacher'] },
-    // Issue #106: öğretmenin öğrenci mesajları gelen kutusu.
-    { id: 'student-messages', labelKey: 'menu.studentMessages', icon: 'forum', route: '/student-messages', type: 'menu', roles: ['Teacher'] },
+    { id: 'tutor-profile', labelKey: 'menu.tutors', icon: 'cast_for_education', route: '/tutor-profile', type: 'menu', roles: ['Teacher'], allowUnapprovedTeacher: true, onlyIndependentTeacher: true },
     { id: 'divider1', labelKey: '', icon: '', route: '', type: 'divider' },
-    { id: 'study-pages', labelKey: 'menu.studyPages', icon: 'library_add', route: '/study-pages', type: 'menu', roles: ['Teacher'] },
-    // Issue #61: öğretmen konu/alt konu çalışma linkleri yönetimi.
-    { id: 'study-links', labelKey: 'menu.studyLinks', icon: 'video_library', route: '/study-links', type: 'menu', roles: ['Teacher'] },
-    { id: 'exam', labelKey: 'menu.examAuthoring', icon: 'app_registration', route: '/exam', type: 'menu', roles: ['Teacher'] },
-    // Issue #471: hazır soruları ders/konu/alt konuya göre arama.
-    { id: 'question-bank', labelKey: 'menu.questionBank', icon: 'inventory_2', route: '/question-bank', type: 'menu', roles: ['Teacher', 'Admin'] },
     // Issue #583: açık uçlu etkinlik cevaplarını değerlendirme kuyruğu.
-    { id: 'open-text-reviews', labelKey: 'menu.openTextReviews', icon: 'rate_review', route: '/open-text-reviews', type: 'menu', roles: ['Teacher', 'Admin'] },
+    { id: 'open-text-reviews', labelKey: 'menu.openTextReviews', icon: 'rate_review', route: '/open-text-reviews', type: 'menu', roles: ['Admin'] },
     // Issue #713: sayfa rozet sayfasıdır, rapor değil; yalnız öğrencide anlamlı.
     { id: 'badges', labelKey: 'menu.badges', icon: 'military_tech', route: '/certificates', type: 'menu', roles: ['Student'] },
     // Issue #417: tüm roller (onay bekleyen öğretmen dahil — dil/hesap ayarı); rota role göre (#373: öğrenci /student-profile).
@@ -285,11 +278,45 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     // Issue #577: işaretleme kitap kaydı (sayfa ofseti, cevap anahtarı, içindekiler).
     { id: 'labeling-books', labelKey: 'menu.labelingBooks', icon: 'menu_book', route: '/books', type: 'menu', roles: ['Admin', 'QuestionTrainer'] },
   ];
+  /**
+   * Issue #719: menüde tek girişi olan bölümlerin alt sayfaları. Görünürlük menü öğeleriyle aynı kuraldan geçer;
+   * tek sekme kalırsa çubuk çizilmez.
+   */
+  readonly sectionTabs: MenuItem[][] = [
+    [
+      { id: 'tab-calendar', labelKey: 'menu.calendar', icon: '', route: '/my-calendar', type: 'menu', roles: ['Student'] },
+      { id: 'tab-programs', labelKey: 'menu.programs', icon: '', route: '/programs', type: 'menu', roles: ['Student'] },
+    ],
+    [
+      { id: 'tab-tutors', labelKey: 'menu.findTutor', icon: '', route: '/tutors', type: 'menu', roles: ['Student'] },
+      { id: 'tab-bookings', labelKey: 'menu.myBookings', icon: '', route: '/my-bookings', type: 'menu', roles: ['Student'] },
+    ],
+    [
+      { id: 'tab-study-pages', labelKey: 'menu.studyPages', icon: '', route: '/study-pages', type: 'menu', roles: ['Teacher'] },
+      // Issue #61: öğretmen konu/alt konu çalışma linkleri yönetimi.
+      { id: 'tab-study-links', labelKey: 'menu.studyLinks', icon: '', route: '/study-links', type: 'menu', roles: ['Teacher'] },
+    ],
+    [
+      { id: 'access-requests', labelKey: 'menu.accessRequests', icon: '', route: '/assignment-permission-requests', type: 'menu', roles: ['Teacher'] },
+      // Issue #361: okulunu seçen öğrencilerin üyelik onayı (bağımsız öğretmende liste boş döner).
+      { id: 'student-school-requests', labelKey: 'menu.studentSchoolRequests', icon: '', route: '/student-school-requests', type: 'menu', roles: ['Teacher'] },
+      { id: 'tab-booking-requests', labelKey: 'menu.bookingRequests', icon: '', route: '/booking-requests', type: 'menu', roles: ['Teacher'], onlyIndependentTeacher: true },
+      // Issue #583: açık uçlu etkinlik cevaplarını değerlendirme kuyruğu.
+      { id: 'tab-open-text-reviews', labelKey: 'menu.openTextReviews', icon: '', route: '/open-text-reviews', type: 'menu', roles: ['Teacher'] },
+    ],
+    [
+      { id: 'tab-tutor-profile', labelKey: 'menu.tutorProfile', icon: '', route: '/tutor-profile', type: 'menu', roles: ['Teacher'], allowUnapprovedTeacher: true, onlyIndependentTeacher: true },
+      { id: 'tab-availability', labelKey: 'menu.availability', icon: '', route: '/availability', type: 'menu', roles: ['Teacher'], onlyIndependentTeacher: true },
+    ],
+  ];
   // Bottom navigation items for mobile (max 4 primary items + menu trigger)
   bottomNavItems: MenuItem[] = [
     { id: 'teacher-approval-status', labelKey: 'menu.teacherApprovalStatus', icon: 'hourglass_top', route: TEACHER_APPROVAL_PENDING_URL, type: 'menu', onlyUnapprovedTeacher: true },
     { id: 'dashboard', labelKey: 'bottomNav.home', icon: 'home', route: '/dashboard', type: 'menu', roles: ['Student', 'Teacher'] },
     { id: 'exams', labelKey: 'menu.exams', icon: 'quiz', route: '/tests', type: 'menu', roles: ['Student', 'Teacher'] },
+    { id: 'practice', labelKey: 'menu.practice', icon: 'bolt', route: '/practice', type: 'menu', roles: ['Student'] },
+    { id: 'question-bank', labelKey: 'menu.questionBank', icon: 'inventory_2', route: '/question-bank', type: 'menu', roles: ['Teacher'] },
+    { id: 'my-calendar', labelKey: 'menu.myCalendar', icon: 'event_note', route: '/my-calendar', type: 'menu', roles: ['Student', 'Teacher'] },
     { id: 'parent-home', labelKey: 'bottomNav.home', icon: 'home', route: '/parent', type: 'menu', roles: ['Parent'] },
     { id: 'my-children', labelKey: 'menu.myChildren', icon: 'family_restroom', route: '/my-children', type: 'menu', roles: ['Parent'] },
     // Issue #417: tüm roller (onay bekleyen öğretmen dahil — dil/hesap ayarı); rota role göre (#373: öğrenci /student-profile).
@@ -343,7 +370,28 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   readonly visibleBottomNavItems = computed<MenuItem[]>(() => {
     const unapprovedTeacher = this.authService.isUnapprovedTeacher();
     const notIndependent = this.isKnownNotIndependent();
-    return this.bottomNavItems.filter((item) => this.isItemAllowed(item, unapprovedTeacher, notIndependent));
+    const items = this.bottomNavItems.filter((item) => this.isItemAllowed(item, unapprovedTeacher, notIndependent));
+    // Issue #719: öğrenci ve öğretmende birincil işler alt çubukta; Ayarlar "Menü"nün içinde.
+    return items.some((item) => item.id === 'dashboard') ? items.filter((item) => item.id !== 'settings') : items;
+  });
+
+  /** Issue #719: kullanıcının görebildiği bölüm sekmeleri. */
+  readonly visibleSectionTabs = computed<MenuItem[][]>(() => {
+    const unapprovedTeacher = this.authService.isUnapprovedTeacher();
+    const notIndependent = this.isKnownNotIndependent();
+    return this.sectionTabs.map((group) =>
+      group.filter((tab) => this.isItemAllowed(tab, unapprovedTeacher, notIndependent)),
+    );
+  });
+
+  /** Issue #719: geçerli sayfanın bölüm sekmeleri (en az iki görünür sekme varsa). */
+  readonly activeSectionTabs = computed<MenuItem[]>(() => {
+    const path = this.currentUrl().split(/[?#]/)[0];
+    return (
+      this.visibleSectionTabs().find(
+        (tabs) => tabs.length > 1 && tabs.some((tab) => path === tab.route || path.startsWith(`${tab.route}/`)),
+      ) ?? []
+    );
   });
 
   /** Issue #384: profil bağımsız olmadığını söylüyor mu (reaktif — `user` signal'ı profil yenilenince değişir). */
@@ -407,6 +455,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   /** Menü öğesinin rozet sayısı (0 → gizli). */
   menuBadgeCount(itemId: string): number {
     switch (itemId) {
+      case 'teacher-requests':
+        return this.accessRequestCount() + this.studentSchoolRequestCount();
       case 'access-requests':
         return this.accessRequestCount();
       case 'student-school-requests':

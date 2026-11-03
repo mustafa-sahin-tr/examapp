@@ -504,3 +504,47 @@
 .nav-menu:hover::-webkit-scrollbar-thumb {
     background: var(--sidenav-scrollbar-thumb);
 }
+
+// Issue #719: tek menü girişi olan bölümün alt sayfaları.
+.section-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 8px var(--ms-page-gutter-mobile) 0;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--ms-border-weak);
+
+    .section-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex: none;
+        min-height: 44px;
+        padding: 0 14px;
+        border-bottom: 2px solid transparent;
+        color: var(--ms-text);
+        font-weight: 500;
+        text-decoration: none;
+        white-space: nowrap;
+
+        &.is-active {
+            border-bottom-color: var(--ms-action-background);
+            font-weight: 600;
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--ms-action-background);
+            outline-offset: -2px;
+        }
+    }
+
+    .section-tab__badge {
+        min-width: 18px;
+        padding: 0 5px;
+        border-radius: 9px;
+        background: var(--ms-danger-background);
+        color: var(--heading-on-dark);
+        font-size: 11px;
+        line-height: 18px;
+        text-align: center;
+    }
+}

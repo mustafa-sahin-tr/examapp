@@ -156,6 +156,11 @@ public sealed class QuestionTestLinkService(AppDbContext context) : IQuestionTes
     /// </summary>
     private async Task<bool> AllLinkableAsync(int[] ids, int userId, bool isAdmin, int ownerId, bool grantsLegacyOwnership, CancellationToken ct)
     {
+        // Issue #690: yayından kaldırılan ve lisansı biten soru yeni teste eklenmez.
+        var now = DateTime.UtcNow;
+        if (await context.Questions.AnyAsync(q => ids.Contains(q.Id) && (q.IsUnpublished || q.LicenseEndsAt <= now), ct))
+            return false;
+
         var questions = context.Questions.AsNoTracking().Where(q => ids.Contains(q.Id));
 
         int linkable;

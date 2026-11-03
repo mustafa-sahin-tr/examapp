@@ -2278,6 +2278,16 @@ namespace ExamApp.Api.Migrations
                     b.Property<bool>("IsExample")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsUnpublished")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LicenseEndsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LicenseReference")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<int?>("PassageId")
                         .HasColumnType("integer");
 
@@ -2287,11 +2297,18 @@ namespace ExamApp.Api.Migrations
                     b.Property<string>("PracticeCorrectAnswer")
                         .HasColumnType("text");
 
+                    b.Property<string>("RightsHolder")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<int?>("SanitizedHeight")
                         .HasColumnType("integer");
 
                     b.Property<bool>("ShowPassageFirst")
                         .HasColumnType("boolean");
+
+                    b.Property<int>("SourceType")
+                        .HasColumnType("integer");
 
                     b.Property<string>("SubText")
                         .HasColumnType("text");
@@ -2327,6 +2344,8 @@ namespace ExamApp.Api.Migrations
                     b.HasIndex("CreateUserId");
 
                     b.HasIndex("PassageId");
+
+                    b.HasIndex("RightsHolder");
 
                     b.HasIndex("SubjectId");
 
@@ -2382,6 +2401,55 @@ namespace ExamApp.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("QuestionSources");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.QuestionSourceActionLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AffectedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("RightsHolder")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("Unpublished")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("QuestionSourceActionLogs");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.QuestionSubTopic", b =>

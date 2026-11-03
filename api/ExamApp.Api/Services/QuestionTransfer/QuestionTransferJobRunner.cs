@@ -1132,6 +1132,11 @@ public class QuestionTransferJobRunner
                 });
             }
 
+            // Sorular işlendi: test ve etkinlikler bulunan kimliklere bağlanır. Hata alan kayıt izleyiciyi temizler:
+            // işin durumu bundan sonra yazılır, yoksa iş "çalışıyor" olarak kalır.
+            var worksheetResult = await new QuestionTransferWorksheetImporter(_db, _minio).ImportAsync(zip, doc.RootElement, job.SourceKey, job.CreateUserId);
+            job = await _db.Set<QuestionTransferJob>().FirstAsync(j => j.Id == jobId);
+
             job.Status = QuestionTransferJobStatus.Completed;
             var summary = $"Completed. Imported {importedCount}, Matched {matchedCount}, Skipped {skippedCount}, Conflicts {conflictCount}, Failed {failedCount}, Missing taxonomy {missingTaxonomyCount}.";
             if (failedSamples.Count > 0)
@@ -1143,9 +1148,6 @@ public class QuestionTransferJobRunner
                 summary += $" Warnings {interactionWarnings.Count}: " + string.Join(" | ", interactionWarnings.Values.Take(10));
             }
             job.Message = summary;
-            // Sorular işlendi: test ve etkinlikler bulunan kimliklere bağlanır.
-            var worksheetResult = await new QuestionTransferWorksheetImporter(_db, _minio).ImportAsync(zip, doc.RootElement, job.SourceKey, job.CreateUserId);
-            job = await _db.Set<QuestionTransferJob>().FirstAsync(j => j.Id == jobId);
 
             // Normal yolda (#690) olduğu gibi yayından kaldırmanın izi kalır; hangi soruların kalktığı iş sonucundadır.
             if (unpublishedQuestionIds.Count > 0)

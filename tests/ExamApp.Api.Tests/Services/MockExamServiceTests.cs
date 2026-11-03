@@ -314,6 +314,23 @@ public class MockExamServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task A_removed_question_can_be_added_again()
+    {
+        var exam = await CreateAsync(ExamTemplateSeed.LgsId);
+        var turkish = exam.Sessions[0].Sections[0];
+        var ids = await QuestionsAsync(2);
+        await UseAsync(s => s.SetSectionQuestionsAsync(exam.Id, turkish.SectionId, ids, TeacherId, false, default));
+        await UseAsync(s => s.SetSectionQuestionsAsync(exam.Id, turkish.SectionId, [ids[1]], TeacherId, false, default));
+
+        var detail = (await UseAsync(s => s.SetSectionQuestionsAsync(exam.Id, turkish.SectionId, [ids[0], ids[1]], TeacherId, false, default)))!;
+
+        detail.Sessions[0].Sections[0].QuestionIds.ShouldBe([ids[0], ids[1]]);
+        await using var ctx = _db.NewContext();
+        var worksheetId = exam.Sessions[0].WorksheetId;
+        (await ctx.TestQuestions.AsNoTracking().Where(i => i.TestId == worksheetId).OrderBy(i => i.Order).Select(i => i.QuestionId).ToListAsync()).ShouldBe([ids[0], ids[1]]);
+    }
+
+    [Fact]
     public async Task A_question_that_stops_being_usable_blocks_publishing()
     {
         var exam = await FilledAsync(ExamTemplateSeed.LgsId);

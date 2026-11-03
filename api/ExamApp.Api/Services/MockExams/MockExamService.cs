@@ -227,7 +227,7 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
             db.SetCurrentUser(userId);
             await using var tx = await db.Database.BeginTransactionAsync(ct);
 
-            // Bağ ve madde ayrı silinir: ikisi aynı izleyicideyse EF zorunlu ilişkinin koptuğunu söyler.
+            // Silme yumuşaktır (AppDbContext): silinen bağ izleyicide kalır. Madde aynı izleyicide silinirse EF zorunlu ilişkinin koptuğunu söyler.
             var mapped = await db.Set<MockExamQuestion>()
                 .Where(q => q.MockExamSessionId == session.Id && q.ExamTemplateSectionId == sectionId)
                 .ToListAsync(ct);
@@ -239,13 +239,18 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
             var droppedItemIds = dropped.Select(q => q.WorksheetQuestionId).ToList();
             db.RemoveRange(dropped);
             await db.SaveChangesAsync(ct);
+            db.ChangeTracker.Clear();
             db.TestQuestions.RemoveRange(await db.TestQuestions.Where(i => droppedItemIds.Contains(i.Id)).ToListAsync(ct));
             await db.SaveChangesAsync(ct);
+            db.ChangeTracker.Clear();
 
             var items = await db.TestQuestions.AsNoTracking()
                 .Where(i => i.TestId == session.WorksheetId && wanted.Contains(i.QuestionId))
                 .ToDictionaryAsync(i => i.QuestionId, i => i.Id, ct);
-            var kept = mapped.Except(dropped).ToDictionary(q => questionOfItem[q.WorksheetQuestionId]);
+            var kept = (await db.Set<MockExamQuestion>()
+                    .Where(q => q.MockExamSessionId == session.Id && q.ExamTemplateSectionId == sectionId)
+                    .ToListAsync(ct))
+                .ToDictionary(q => questionOfItem[q.WorksheetQuestionId]);
             for (var index = 0; index < wanted.Count; index++)
             {
                 var questionId = wanted[index];

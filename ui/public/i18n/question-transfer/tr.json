@@ -52,14 +52,14 @@
       "Test": "Test",
       "Activity": "Etkinlik"
     },
-    "questionCount": "{{count}} soru",
-    "worksheetsNote": "Seçilen kayıtlar sorularıyla birlikte taşınır. Atama, oturum ve sonuçlar taşınmaz.",
+    "questionCount": "Soru: {{count}}",
+    "worksheetsNote": "Seçilen test ve etkinlikler sorularıyla birlikte taşınır. Atama, oturum ve sonuçlar taşınmaz.",
     "worksheetsFailed": "Testler ve etkinlikler yüklenemedi.",
     "worksheetsEmpty": "Bu seçime uyan test veya etkinlik yok.",
     "worksheetsTruncated": "İlk {{count}} kayıt gösteriliyor. Aradığınızı bulamadıysanız listeyi daraltın.",
-    "selectedCount": "{{count}} kayıt seçildi",
+    "selectedCount": "Seçilen: {{count}}",
     "clearSelection": "Seçimi temizle",
-    "startWorksheets": "{{count}} kaydı dışa aktar"
+    "startWorksheets": "Test ve etkinlikleri dışa aktar ({{count}})"
   },
   "import": {
     "title": "İçe Al",
@@ -90,8 +90,8 @@
     "blocked": "Alınamayacak",
     "notImported": "Alınamadı",
     "missingTaxonomy": "Dersi veya konusu bulunamadı",
-    "closedNote": "Kayıtlar kapalı gelir ve sahibi siz olursunuz. Burada zaten olan sorular kopyalanmaz.",
-    "blockedNote": "Alınamayan kayıt hiç oluşmaz, soruları yine alınır:"
+    "closedNote": "Test ve etkinlikler kapalı gelir: başka öğretmen görmez, öğrenci yalnız atamayla başlatır, soruları serbest pratiğe girmez. Sahibi siz olursunuz. Burada zaten olan sorular kopyalanmaz.",
+    "blockedNote": "Alınamayan test veya etkinlik hiç oluşmaz, soruları yine alınır:"
   },
   "jobs": {
     "title": "Son İşler",

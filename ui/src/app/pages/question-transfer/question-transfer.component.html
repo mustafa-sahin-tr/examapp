@@ -181,10 +181,10 @@
             <div class="qt-ws-list qt-gap">
               @for (worksheet of worksheets(); track worksheet.id) {
                 <div class="qt-ws-row">
-                  <mat-checkbox [checked]="isWorksheetSelected(worksheet.id)" (change)="toggleWorksheet(worksheet.id, $event.checked)">
+                  <mat-checkbox [checked]="isWorksheetSelected(worksheet.id)" [disabled]="worksheet.questionCount === 0" [aria-describedby]="'qt-ws-meta-' + worksheet.id" (change)="toggleWorksheet(worksheet.id, $event.checked)">
                     {{ worksheet.name }}
                   </mat-checkbox>
-                  <span class="qt-muted qt-ws-meta">
+                  <span class="qt-muted qt-ws-meta" [id]="'qt-ws-meta-' + worksheet.id">
                     {{ t('export.kind.' + worksheet.kind) }}
                     @if (worksheet.gradeName) { · {{ worksheet.gradeName }} }
                     @if (worksheet.subjectName) { · {{ worksheet.subjectName }} }
@@ -203,6 +203,7 @@
               <span>{{ t('export.selectedCount', { count: selectedWorksheetIds().size }) }}</span>
               <button mat-button (click)="clearWorksheetSelection()">{{ t('export.clearSelection') }}</button>
             </div>
+            <div class="qt-note qt-ws-selected">{{ selectedWorksheetNames() }}</div>
           }
         } @else if (!hasScope()) {
           <mat-form-field appearance="outline" class="qt-field">

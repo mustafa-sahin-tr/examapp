@@ -52,14 +52,14 @@
       "Test": "Test",
       "Activity": "Activity"
     },
-    "questionCount": "{{count}} questions",
-    "worksheetsNote": "Selected records move with their questions. Assignments, sessions and results do not move.",
+    "questionCount": "Questions: {{count}}",
+    "worksheetsNote": "Selected tests and activities move with their questions. Assignments, sessions and results do not move.",
     "worksheetsFailed": "Tests and activities could not be loaded.",
     "worksheetsEmpty": "No test or activity matches this selection.",
     "worksheetsTruncated": "Showing the first {{count}} records. If you cannot find one, narrow the list.",
-    "selectedCount": "{{count}} records selected",
+    "selectedCount": "Selected: {{count}}",
     "clearSelection": "Clear selection",
-    "startWorksheets": "Export {{count}} records"
+    "startWorksheets": "Export tests and activities ({{count}})"
   },
   "import": {
     "title": "Import",
@@ -90,8 +90,8 @@
     "blocked": "Cannot be imported",
     "notImported": "Not imported",
     "missingTaxonomy": "Subject or topic not found",
-    "closedNote": "Records arrive closed and you become their owner. Questions already here are not copied.",
-    "blockedNote": "A blocked record is not created, its questions are still imported:"
+    "closedNote": "Tests and activities arrive closed: other teachers do not see them, students start them only through an assignment, and their questions stay out of free practice. You become their owner. Questions already here are not copied.",
+    "blockedNote": "A blocked test or activity is not created, its questions are still imported:"
   },
   "jobs": {
     "title": "Recent Jobs",

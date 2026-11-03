@@ -87,8 +87,10 @@ export class QuestionTransferComponent implements OnDestroy {
   readonly worksheets = signal<QuestionTransferWorksheetListItem[]>([]);
   readonly worksheetsLoading = signal(false);
   readonly worksheetsFailed = signal(false);
-  /** Seçim filtre değişince korunur: farklı sınıflardan kayıtlar aynı pakete girebilir. */
-  readonly selectedWorksheetIds = signal<ReadonlySet<number>>(new Set());
+  /** Seçim filtre değişince korunur: farklı sınıflardan kayıtlar aynı pakete girebilir. Süzülüp görünmeyenin adı da gösterilir. */
+  private readonly selectedWorksheets = signal<ReadonlyMap<number, string>>(new Map());
+  readonly selectedWorksheetIds = computed<ReadonlySet<number>>(() => new Set(this.selectedWorksheets().keys()));
+  readonly selectedWorksheetNames = computed(() => Array.from(this.selectedWorksheets().values()).join(', '));
 
   // ---- dışa aktarma kapsamı
   readonly grades = signal<Grade[]>([]);
@@ -177,17 +179,17 @@ export class QuestionTransferComponent implements OnDestroy {
   }
 
   toggleWorksheet(id: number, selected: boolean): void {
-    const next = new Set(this.selectedWorksheetIds());
+    const next = new Map(this.selectedWorksheets());
     if (selected) {
-      next.add(id);
+      next.set(id, this.worksheets().find((w) => w.id === id)?.name ?? String(id));
     } else {
       next.delete(id);
     }
-    this.selectedWorksheetIds.set(next);
+    this.selectedWorksheets.set(next);
   }
 
   clearWorksheetSelection(): void {
-    this.selectedWorksheetIds.set(new Set());
+    this.selectedWorksheets.set(new Map());
   }
 
   /** Sorular sekmesindeyken listeye gerek yok: sekmeye dönünce güncel filtreyle yüklenir. */
@@ -305,9 +307,10 @@ export class QuestionTransferComponent implements OnDestroy {
             bookId: this.bookId(),
           })
       .subscribe({
-        next: () => {
+        next: (job) => {
           this.exportBusy.set(false);
-          if (worksheetIds) {
+          // Başlamayan işte seçim kalır: sunucunun açıklaması iş listesinde görünür, admin düzeltip yeniden dener.
+          if (worksheetIds && job.status === 'Queued') {
             this.clearWorksheetSelection();
           }
           this.refreshJobs();

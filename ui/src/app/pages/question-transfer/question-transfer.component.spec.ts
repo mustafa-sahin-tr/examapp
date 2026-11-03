@@ -166,8 +166,75 @@ describe('QuestionTransferComponent', () => {
             expect(transfer.startExport).not.toHaveBeenCalled();
         });
 
+        it('checkbox_SelectsTheRecordAndNamesItEvenWhenAFilterHidesIt', () => {
+            openWorksheets();
+
+            (el().querySelector('.qt-ws-row input[type=checkbox]') as HTMLInputElement).click();
+            fixture.detectChanges();
+
+            expect(component.isWorksheetSelected(31)).toBe(true);
+
+            transfer.listWorksheets.mockReturnValue(of([]));
+            component.onWorksheetKindChange('Activity');
+            fixture.detectChanges();
+
+            expect(el().querySelector('.qt-ws-selected')?.textContent).toContain('Kesirler testi');
+            expect((el().querySelector('.qt-export-start') as HTMLButtonElement).disabled).toBe(false);
+        });
+
+        it('recordWithoutQuestions_CannotBeSelected', () => {
+            setup();
+            transfer.listWorksheets.mockReturnValue(of([{ ...worksheetRows()[0], questionCount: 0 }]));
+            component.setExportMode('worksheets');
+            fixture.detectChanges();
+
+            expect((el().querySelector('.qt-ws-row input[type=checkbox]') as HTMLInputElement).disabled).toBe(true);
+        });
+
+        it('jobThatDidNotStart_KeepsTheSelection', () => {
+            openWorksheets();
+            transfer.startExport.mockReturnValue(of(job({ status: 'Failed', fileUrl: null, message: 'Select at most 2000' })));
+            component.toggleWorksheet(31, true);
+
+            component.startExport();
+
+            expect(component.isWorksheetSelected(31)).toBe(true);
+        });
+
+        it('gradeChangeThatDropsTheSubject_EndsWithARequestWithoutIt', () => {
+            openWorksheets();
+            component.onSubjectChange(7);
+
+            component.onGradeChange(5);
+
+            expect(transfer.listWorksheets).toHaveBeenLastCalledWith(expect.objectContaining({ gradeId: 5, subjectId: null }));
+        });
+
+        it('pendingSearch_IsCancelledBySwitchingModeAndByLeaving', async () => {
+            vi.useFakeTimers();
+            try {
+                openWorksheets();
+                transfer.listWorksheets.mockClear();
+
+                component.onWorksheetSearchChange('kes');
+                component.setExportMode('questions');
+                await vi.advanceTimersByTimeAsync(300);
+                expect(transfer.listWorksheets).not.toHaveBeenCalled();
+
+                component.setExportMode('worksheets');
+                transfer.listWorksheets.mockClear();
+                component.onWorksheetSearchChange('kesir');
+                fixture.destroy();
+                await vi.advanceTimersByTimeAsync(300);
+                expect(transfer.listWorksheets).not.toHaveBeenCalled();
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
         it('startExport_SendsTheSelectionWithoutScopeAndClearsIt', () => {
             openWorksheets();
+            transfer.startExport.mockReturnValue(of(job({ status: 'Queued' })));
             component.onGradeChange(5);
             component.toggleWorksheet(31, true);
             component.toggleWorksheet(32, true);

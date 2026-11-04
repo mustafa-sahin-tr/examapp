@@ -54,6 +54,18 @@
         }
       </div>
     }
+    @if (explore().length) {
+      <h2 class="al__section-title">{{ t('activities.exploreTitle') }}</h2>
+      <div class="al__grid" data-testid="activity-explore">
+        @for (item of explore(); track item.id) {
+          <app-worksheet-list-view-card
+            [course]="item"
+            [subjectName]="subjectName(item.subjectId)"
+            [gradeName]="gradeName(item.gradeId)"
+          />
+        }
+      </div>
+    }
     @if (completed().length) {
       <h2 class="al__section-title">{{ t('activities.completedTitle') }}</h2>
       <div class="al__grid">

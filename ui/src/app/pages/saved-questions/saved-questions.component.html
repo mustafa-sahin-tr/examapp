@@ -1,16 +1,12 @@
 <section class="mnb" *transloco="let t; prefix: 'practice.savedQuestions'">
-  <header class="mnb__head">
-    <div>
-      <h1>{{ t('title') }}</h1>
-      <p>{{ t('subtitle') }}</p>
-    </div>
+  <app-page-header [title]="t('title')" [description]="t('subtitle')">
     @if (items().length > 0) {
       <button mat-raised-button color="primary" type="button" data-test="saved-start" [disabled]="starting()" (click)="startPractice()">
         <mat-icon>replay</mat-icon>
         {{ t('start') }}
       </button>
     }
-  </header>
+  </app-page-header>
 
   @if (actionError(); as failed) {
     <p class="mnb__error" role="alert">{{ t(failed === 'start' ? 'startError' : 'removeError') }}</p>

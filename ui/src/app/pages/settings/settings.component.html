@@ -1,8 +1,5 @@
 <section class="stg" *transloco="let t; prefix: 'settings'">
-  <header class="stg__head">
-    <h1>{{ t('title') }}</h1>
-    <p>{{ t('subtitle') }}</p>
-  </header>
+  <app-page-header [title]="t('title')" [description]="t('subtitle')" />
 
   <!-- Profil (salt-okunur) + öğretmen bilgisi: güncel profile bağlı olduğu için yükleme/hata/boş burada ele alınır. -->
   <article class="stg__card stg-profile" aria-labelledby="stg-profile-title">

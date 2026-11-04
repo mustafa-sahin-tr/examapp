@@ -10,12 +10,14 @@ import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { MISTAKE_REASONS, MistakeItem, MistakeReason } from '../../models/practice';
 import { PracticeService } from '../../services/practice.service';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 /** Issue #698: testler ve pratikteki yanlışlar tek listede; ders süzülür, süzülen yanlışlardan pratik açılır. */
 @Component({
   selector: 'app-mistake-notebook',
   standalone: true,
   imports: [
+    PageHeaderComponent,
     DatePipe,
     RouterLink,
     MatButtonModule,

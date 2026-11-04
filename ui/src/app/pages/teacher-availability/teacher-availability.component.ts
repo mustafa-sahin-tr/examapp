@@ -19,6 +19,7 @@ import { AvailabilityWeekGridComponent } from '../../shared/components/availabil
 import { DraftRange } from '../../shared/components/availability-week-grid/availability-draft.util';
 import { slotStatus } from '../../shared/components/availability-week-grid/availability-week-grid.util';
 import { isPastSlot, slotEndsNextDay } from '../../shared/utils/booking-format.util';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 /** Listede tek satır — slotun türetilmiş gösterim alanlarıyla. */
 interface SlotRow {
@@ -54,6 +55,7 @@ const TEACHER_AVAILABILITY_SCOPE = 'teacher-availability';
   selector: 'app-teacher-availability',
   standalone: true,
   imports: [
+    PageHeaderComponent,
     AvailabilityWeekGridComponent,
     DatePipe,
     RouterLink,

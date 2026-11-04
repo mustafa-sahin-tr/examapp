@@ -1,14 +1,10 @@
 <section class="avail" *transloco="let t; prefix: 'teacher-availability'">
-  <header class="avail__head">
-    <div>
-      <h1>{{ t('title') }}</h1>
-      <p>{{ t('subtitle') }}</p>
-    </div>
+  <app-page-header [title]="t('title')" [description]="t('subtitle')">
     <a mat-stroked-button routerLink="/booking-requests">
       <mat-icon>inbox</mat-icon>
       {{ t('bookingRequests') }}
     </a>
-  </header>
+  </app-page-header>
 
   @if (!error() || slots().length) {
     <app-availability-week-grid

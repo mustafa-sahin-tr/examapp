@@ -1,16 +1,12 @@
 <section class="pdb" *transloco="let t; prefix: 'parent-dashboard'">
-  <header class="pdb__head">
-    <div class="pdb__title">
-      <h1>{{ t('title') }}</h1>
-      <p>{{ t('subtitle') }}</p>
-    </div>
+  <app-page-header [title]="t('title')" [description]="t('subtitle')">
     @if (children().length > 0) {
       <a mat-stroked-button routerLink="/my-children" data-test="manage-children">
         <mat-icon>family_restroom</mat-icon>
         {{ t('manageChildren') }}
       </a>
     }
-  </header>
+  </app-page-header>
 
   @if (childrenLoading()) {
     <div class="pdb__state" aria-busy="true" data-test="children-loading">

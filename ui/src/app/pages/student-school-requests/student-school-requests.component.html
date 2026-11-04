@@ -1,14 +1,10 @@
 <section class="ssr" *transloco="let t; prefix: 'student-school-requests'">
-  <header class="ssr__head">
-    <div>
-      <h1>{{ t('title') }}</h1>
-      <p>{{ t('subtitle') }}</p>
-    </div>
+  <app-page-header [title]="t('title')" [description]="t('subtitle')">
     <button mat-stroked-button (click)="load()" [disabled]="loading()">
       <mat-icon>refresh</mat-icon>
       {{ t('actions.refresh') }}
     </button>
-  </header>
+  </app-page-header>
 
   @if (loading() && rows().length === 0) {
     <div class="ssr__state">

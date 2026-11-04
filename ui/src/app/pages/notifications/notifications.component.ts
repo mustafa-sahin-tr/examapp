@@ -15,6 +15,7 @@ import { NotificationService } from '../../services/notification.service';
 import { LocaleService } from '../../services/locale.service';
 import { NotificationBadgeIcon, describeNotification, formatRelativeTime } from './notification-format';
 import { BadgeMedallionComponent } from '../../shared/components/badge-medallion/badge-medallion.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 export { BADGE_PROGRESS_ROUTE } from './notification-format';
 
@@ -49,6 +50,7 @@ const SCOPE = 'notifications';
   selector: 'app-notifications',
   standalone: true,
   imports: [
+    PageHeaderComponent,
     MatButtonModule,
     MatButtonToggleModule,
     MatIconModule,

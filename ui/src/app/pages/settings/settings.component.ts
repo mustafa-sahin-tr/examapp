@@ -14,6 +14,7 @@ import { AuthService } from '../../services/auth.service';
 import { LocaleService } from '../../services/locale.service';
 import { LocalePreferenceService } from '../../services/locale-preference.service';
 import { AccountSecurityCardComponent } from '../../shared/components/account-security-card/account-security-card.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 const SCOPE = 'settings';
 
@@ -29,6 +30,7 @@ const SCOPE = 'settings';
   selector: 'app-settings',
   standalone: true,
   imports: [
+    PageHeaderComponent,
     MatButtonModule,
     MatButtonToggleModule,
     MatIconModule,

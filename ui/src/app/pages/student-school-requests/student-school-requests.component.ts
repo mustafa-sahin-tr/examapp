@@ -17,6 +17,7 @@ import {
   ConfirmDialogComponent,
   ConfirmDialogData,
 } from '../../shared/components/confirm-dialog/confirm-dialog.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 /** Çeviriler kendi Transloco scope'unda: `public/i18n/student-school-requests/<lang>.json`. */
 export const STUDENT_SCHOOL_REQUESTS_SCOPE = 'student-school-requests';
@@ -30,6 +31,7 @@ export const STUDENT_SCHOOL_REQUESTS_SCOPE = 'student-school-requests';
   selector: 'app-student-school-requests',
   standalone: true,
   imports: [
+    PageHeaderComponent,
     MatButtonModule,
     MatIconModule,
     MatPaginatorModule,

@@ -1,9 +1,5 @@
 <section class="sbk" *transloco="let t; prefix: 'student-bookings'">
-  <header class="sbk__head">
-    <div>
-      <h1>{{ t('title') }}</h1>
-      <p>{{ t('subtitle') }}</p>
-    </div>
+  <app-page-header [title]="t('title')" [description]="t('subtitle')">
     <div class="sbk__head-actions">
       <mat-button-toggle-group
         [value]="filter()"
@@ -18,7 +14,7 @@
         {{ t('findTeacher') }}
       </a>
     </div>
-  </header>
+  </app-page-header>
 
   @if (loading()) {
     <div class="sbk__state" aria-busy="true" aria-live="polite">

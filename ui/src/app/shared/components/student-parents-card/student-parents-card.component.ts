@@ -12,7 +12,7 @@ import { ParentLinkService } from '../../../services/parent-link.service';
 import { PARENT_LINKS_SCOPE, ParentLinkUi } from '../../utils/parent-link-ui';
 
 /** "Velim ne görüyor?" bölümündeki görebildikleri / göremedikleri (çeviri anahtarları `parents.sees.*`, `parents.hidden.*`). */
-export const PARENT_SEES_KEYS = ['summary', 'assignments', 'progress', 'schedule'] as const;
+export const PARENT_SEES_KEYS = ['summary', 'assignments', 'topics', 'progress', 'schedule'] as const;
 export const PARENT_HIDDEN_KEYS = ['messages', 'comments', 'answers', 'contact'] as const;
 
 /**

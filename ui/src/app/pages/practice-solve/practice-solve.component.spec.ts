@@ -4,7 +4,7 @@ import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angul
 import { By } from '@angular/platform-browser';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { HttpErrorResponse } from '@angular/common/http';
-import { of, throwError } from 'rxjs';
+import { Subject as RxSubject, of, throwError } from 'rxjs';
 
 import { PracticeSolveComponent } from './practice-solve.component';
 import { PracticeService } from '../../services/practice.service';
@@ -15,6 +15,7 @@ import { BadgeService, BadgeProgressResponse } from '../../services/badge.servic
 import { StudentProfile } from '../../models/student-profile';
 import { Question } from '../../models/question';
 import { Subject } from '../../models/subject';
+import { Topic } from '../../models/topic';
 import { Paged } from '../../models/test-instance';
 
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
@@ -610,6 +611,79 @@ describe('PracticeSolveComponent', () => {
 
     // ── Günün soruları (daily modu, issue #99) ──────────────────────────────────
     // Issue #532: çözülen soruyu kaydetme.
+    describe('scope from a link (#521)', () => {
+        const topics = [{ id: 30, name: 'Kesirler' }, { id: 31, name: 'Açılar' }] as Topic[];
+
+        beforeEach(() => {
+            subjectService.getTopicsBySubjectAndGrade.mockReturnValue(of(topics));
+        });
+
+        it('preselects the subject and the topic', () => {
+            setup({ subjectId: '1', topicId: '30' });
+            fixture.detectChanges();
+
+            expect(subjectService.getTopicsBySubjectAndGrade).toHaveBeenCalledWith(1, 5);
+            expect(component.selectedSubjectIds()).toEqual([1]);
+            expect(component.selectedTopicIds()).toEqual([30]);
+            expect(component.dailyMode()).toBe(false);
+        });
+
+        it('keeps the subject but drops a topic outside the grade', () => {
+            setup({ subjectId: '1', topicId: '999' });
+            fixture.detectChanges();
+
+            expect(component.selectedSubjectIds()).toEqual([1]);
+            expect(component.selectedTopicIds()).toEqual([]);
+        });
+
+        it('ignores a subject outside the grade', () => {
+            setup({ subjectId: '99', topicId: '30' });
+            fixture.detectChanges();
+
+            expect(component.selectedSubjectIds()).toEqual([]);
+            expect(component.selectedTopicIds()).toEqual([]);
+            expect(subjectService.getTopicsBySubjectAndGrade).not.toHaveBeenCalled();
+        });
+
+        it('does not select the topic when the subject was removed while topics were loading', () => {
+            const pending = new RxSubject<Topic[]>();
+            subjectService.getTopicsBySubjectAndGrade.mockReturnValue(pending);
+            setup({ subjectId: '1', topicId: '30' });
+            fixture.detectChanges();
+            expect(component.topicsLoading()).toBe(true);
+
+            component.removeSubject(1);
+            pending.next(topics);
+            pending.complete();
+
+            expect(component.selectedTopicIds()).toEqual([]);
+            expect(component.hasScope()).toBe(false);
+        });
+
+        it('keeps start disabled until the linked topic is selected', () => {
+            const pending = new RxSubject<Topic[]>();
+            subjectService.getTopicsBySubjectAndGrade.mockReturnValue(pending);
+            setup({ subjectId: '1', topicId: '30' });
+            fixture.detectChanges();
+            const start = () => fixture.debugElement.query(By.css('.practice__actions button')).nativeElement as HTMLButtonElement;
+            expect(start().disabled).toBe(true);
+
+            pending.next(topics);
+            pending.complete();
+            fixture.detectChanges();
+
+            expect(start().disabled).toBe(false);
+            expect(component.selectedTopicIds()).toEqual([30]);
+        });
+
+        it('selects nothing without a query', () => {
+            setup();
+            fixture.detectChanges();
+
+            expect(component.selectedSubjectIds()).toEqual([]);
+        });
+    });
+
     describe('save question', () => {
         beforeEach(() => {
             setup();
@@ -1059,6 +1133,20 @@ describe('PracticeSolveComponent', () => {
 
             expect(practiceService.endSession).not.toHaveBeenCalled();
             expect(router.navigate).toHaveBeenCalledWith(['/dashboard']);
+        });
+
+        it('goFreePractice_FromScopedDaily_OpensAnEmptySetup (#521)', () => {
+            setup({ daily: '1', subjectId: '1', topicId: '30' });
+            practiceService.getDailySet.mockReturnValue(of(dailySet({ status: 'Completed', answered: 5, correct: 5 })));
+            fixture.detectChanges();
+
+            component.goFreePractice();
+            fixture.detectChanges();
+
+            expect(component.dailyMode()).toBe(false);
+            expect(component.subjects().length).toBeGreaterThan(0);
+            expect(component.selectedSubjectIds()).toEqual([]);
+            expect(component.selectedTopicIds()).toEqual([]);
         });
 
         it('goFreePractice_FromDailyEnd_SwitchesToSetupAndDropsDailyParam', () => {

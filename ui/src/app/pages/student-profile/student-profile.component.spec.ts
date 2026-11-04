@@ -245,6 +245,11 @@ describe('StudentProfileComponent', () => {
         fixture.detectChanges();
     }
 
+    it('infoTab_ShowsWeakTopicsCard (#521)', () => {
+        fixture.detectChanges();
+        expect((fixture.nativeElement as HTMLElement).querySelector('app-weak-topics-card')).not.toBeNull();
+    });
+
     it('infoTab_ShowsAccountSecurityCard_LinkingKeycloakAccountConsole (issue #417)', () => {
         fixture.detectChanges();
         const el = fixture.nativeElement as HTMLElement;

@@ -6,7 +6,7 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { TranslocoService } from '@jsverse/transloco';
-import { Subject, of, throwError } from 'rxjs';
+import { EMPTY, Subject, of, throwError } from 'rxjs';
 
 import { ParentDashboardComponent, parseChildParam, parseLocalDate } from './parent-dashboard.component';
 import { ParentDashboardService } from '../../services/parent-dashboard.service';
@@ -15,6 +15,7 @@ import { BookingService } from '../../services/booking.service';
 import { LocaleService } from '../../services/locale.service';
 import { LinkedChild } from '../../models/parent-link.model';
 import { ParentChildAssignmentList, ParentChildSummary } from '../../models/parent-dashboard.model';
+import { TopicPerformanceService } from '../../services/topic-performance.service';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import parentDashboardTr from '../../../../public/i18n/parent-dashboard/tr.json';
 import parentDashboardEn from '../../../../public/i18n/parent-dashboard/en.json';
@@ -122,6 +123,8 @@ describe('ParentDashboardComponent (issue #420)', () => {
                 { provide: ParentDashboardService, useValue: dashboardService },
                 // Issue #439: "Onay bekleyen ders talepleri" kartı (kendi spec'inde ayrıntılı test edilir).
                 { provide: BookingService, useValue: bookingService },
+                // Issue #521: zayıf konular kartı (kendi spec'inde ayrıntılı test edilir).
+                { provide: TopicPerformanceService, useValue: { getChild: () => EMPTY } },
                 { provide: LocaleService, useValue: { localeDefinition: signal({ angularLocale: lang === 'tr' ? 'tr-TR' : 'en-US' }) } },
             ],
         });
@@ -397,6 +400,14 @@ describe('ParentDashboardComponent (issue #420)', () => {
         await settle();
         expect(dashboardService.getChildAssignments).toHaveBeenCalledTimes(1);
         expect(dashboardService.getChildAssignments).toHaveBeenCalledWith(12, null, 1);
+    });
+
+    it('weakTopicsCard_GetsTheSelectedChild (#521)', async () => {
+        await setup([ayse, mert]);
+        const card = harness.routeDebugElement!.query((d) => d.name === 'app-weak-topics-card')!.componentInstance as unknown as {
+            childId(): number | null;
+        };
+        expect(card.childId()).toBe(11);
     });
 
     it('progressAndScheduleSections_FollowTheSelectedChild', async () => {

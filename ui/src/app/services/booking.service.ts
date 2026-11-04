@@ -14,6 +14,7 @@ import {
   CreateRecurringRuleRequest,
   LiveSessionStatus,
   ParentBookingRequestList,
+  ParentRescheduleRequestList,
   RecurringRuleDeleteResult,
   RecurringRuleResult,
   VideoSessionResult,
@@ -199,6 +200,21 @@ export class BookingService {
     return this.http.post<BookingResult>(`${this.parentBaseUrl}/booking-requests/${id}/reject`, {
       note: note?.trim() || null,
     });
+  }
+
+  /** Issue #486: karşı tarafça kabul edilmiş, veli onayı bekleyen ertelemeler. */
+  getParentRescheduleRequests(): Observable<ParentRescheduleRequestList> {
+    return this.http.get<ParentRescheduleRequestList>(`${this.parentBaseUrl}/reschedule-requests`);
+  }
+
+  /** Issue #486: veli onaylar, ders yeni saate taşınır. */
+  parentApproveReschedule(id: number, proposedSlotId: number): Observable<BookingResult> {
+    return this.http.post<BookingResult>(`${this.parentBaseUrl}/reschedule-requests/${id}/approve`, { proposedSlotId });
+  }
+
+  /** Issue #486: veli reddeder, ders eski saatinde kalır. */
+  parentRejectReschedule(id: number, proposedSlotId: number): Observable<BookingResult> {
+    return this.http.post<BookingResult>(`${this.parentBaseUrl}/reschedule-requests/${id}/reject`, { proposedSlotId });
   }
 
   /** Veli çocuğu adına doğrudan talep açar; veli onayı atlanır (`Pending`, öğretmene bildirim). 201. */

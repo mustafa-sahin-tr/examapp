@@ -48,6 +48,7 @@
   },
   "reschedule": {
     "propose": "Ertele",
+    "proposalAwaitingParent": "Erteleme kabul edildi: {{when}} (veli onayı bekleniyor)",
     "proposalTheirs": "Öğretmenin erteleme önerisi: {{when}}",
     "proposalMine": "Erteleme önerin: {{when}} (öğretmenin yanıtı bekleniyor)",
     "accept": "Kabul et",

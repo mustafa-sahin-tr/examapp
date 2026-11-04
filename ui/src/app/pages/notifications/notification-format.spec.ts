@@ -313,6 +313,9 @@ describe('describeNotification (issue #105)', () => {
         'BookingRescheduleAccepted',
         'BookingRescheduleDeclined',
         'BookingRescheduleWithdrawn',
+        'BookingRescheduleAwaitingParent',
+        'BookingRescheduleParentApproved',
+        'BookingRescheduleParentRejected',
         'BookingNoShowReported',
     ];
     const lifecycleData = JSON.stringify({ bookingId: 9, studentId: 21, kind: 'Cancelled' });
@@ -338,6 +341,11 @@ describe('describeNotification (issue #105)', () => {
             'ParentBookingCancelled',
             'ParentBookingRescheduleProposed',
             'ParentBookingRescheduleAccepted',
+            'ParentBookingRescheduleAwaitingParent',
+            'ParentBookingRescheduleWithdrawn',
+            'ParentBookingRescheduleDeclined',
+            'ParentBookingRescheduleParentApproved',
+            'ParentBookingRescheduleParentRejected',
             'ParentBookingNoShowReported',
         ]) {
             const result = describeNotification({ type, data: lifecycleData }, { role: 'Parent' });

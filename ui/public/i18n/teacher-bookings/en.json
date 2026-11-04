@@ -53,6 +53,7 @@
   },
   "reschedule": {
     "propose": "Reschedule",
+    "proposalAwaitingParent": "Reschedule accepted: {{when}} (awaiting parent approval)",
     "proposalTheirs": "Student's reschedule proposal: {{when}}",
     "proposalMine": "Your reschedule proposal: {{when}} (awaiting the student's reply)",
     "accept": "Accept",

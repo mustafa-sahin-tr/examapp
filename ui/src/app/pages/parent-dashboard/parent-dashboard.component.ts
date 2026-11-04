@@ -17,6 +17,7 @@ import { ParentDashboardService } from '../../services/parent-dashboard.service'
 import { LocaleService } from '../../services/locale.service';
 import { ParentLinkService } from '../../services/parent-link.service';
 import { ParentBookingRequestsComponent } from './booking-requests/parent-booking-requests.component';
+import { ParentRescheduleRequestsComponent } from './reschedule-requests/parent-reschedule-requests.component';
 import { ParentChildAssignmentsComponent } from './child-assignments/parent-child-assignments.component';
 import { ParentChildProgressComponent } from './child-progress/parent-child-progress.component';
 import { ParentChildScheduleComponent } from './child-schedule/parent-child-schedule.component';
@@ -66,6 +67,7 @@ export function parseChildParam(value: string | null): number | null {
     MatProgressSpinnerModule,
     MatSelectModule,
     ParentBookingRequestsComponent,
+    ParentRescheduleRequestsComponent,
     ParentChildAssignmentsComponent,
     ParentChildProgressComponent,
     ParentChildScheduleComponent,

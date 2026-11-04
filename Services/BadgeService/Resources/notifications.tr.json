@@ -42,6 +42,18 @@
       "title": "Erteleme kabul edildi",
       "body": "{0}, {1} tarihli dersin {2} tarihine ertelenmesini kabul etti."
     },
+    "BookingRescheduleAwaitingParent": {
+      "title": "Erteleme veli onayında",
+      "body": "{0}, {1} tarihli dersin {2} tarihine ertelenmesini kabul etti. Veli onaylayınca ders taşınır."
+    },
+    "BookingRescheduleParentApproved": {
+      "title": "Erteleme onaylandı",
+      "body": "Veli onayladı: {1} tarihli ders {2} tarihine taşındı."
+    },
+    "BookingRescheduleParentRejected": {
+      "title": "Erteleme onaylanmadı",
+      "body": "Veli, {1} tarihli dersin {2} tarihine ertelenmesini onaylamadı. Ders eski zamanında kalıyor."
+    },
     "BookingRescheduleDeclined": {
       "title": "Erteleme reddedildi",
       "body": "{0}, {1} tarihli dersin {2} tarihine ertelenmesi önerinizi reddetti."
@@ -61,6 +73,26 @@
     "ParentBookingRescheduleProposed": {
       "title": "Özel ders için erteleme önerisi",
       "body": "{4} ile {0} arasındaki {1} tarihli dersin {2} tarihine ertelenmesi önerildi."
+    },
+    "ParentBookingRescheduleAwaitingParent": {
+      "title": "Erteleme onayınızı bekliyor",
+      "body": "{4} ile {0} arasındaki {1} tarihli dersin {2} tarihine ertelenmesi onayınızı bekliyor."
+    },
+    "ParentBookingRescheduleParentApproved": {
+      "title": "Özel ders ertelendi",
+      "body": "Diğer veli onayladı: {4} ile {0} arasındaki {1} tarihli ders {2} tarihine taşındı."
+    },
+    "ParentBookingRescheduleParentRejected": {
+      "title": "Erteleme onaylanmadı",
+      "body": "Diğer veli, {4} ile {0} arasındaki {1} tarihli dersin ertelenmesini onaylamadı. Ders eski zamanında kalıyor."
+    },
+    "ParentBookingRescheduleWithdrawn": {
+      "title": "Erteleme geri çekildi",
+      "body": "{4} ile {0} arasındaki {1} tarihli dersin ertelenmesi geri çekildi. Onayınız gerekmiyor, ders eski zamanında kalıyor."
+    },
+    "ParentBookingRescheduleDeclined": {
+      "title": "Erteleme geri çekildi",
+      "body": "{4} ile {0} arasındaki {1} tarihli dersin ertelenmesinden vazgeçildi. Onayınız gerekmiyor, ders eski zamanında kalıyor."
     },
     "ParentBookingRescheduleAccepted": {
       "title": "Özel ders ertelendi",

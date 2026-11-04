@@ -1010,6 +1010,25 @@ describe('BookingService', () => {
             req.flush({ items: [] });
         });
 
+        it('parentReschedule_UsesTheRescheduleRequestRoutes (#486)', () => {
+            service.getParentRescheduleRequests().subscribe();
+            const list = httpMock.expectOne('/api/exam/parent/reschedule-requests');
+            expect(list.request.method).toBe('GET');
+            list.flush({ items: [] });
+
+            service.parentApproveReschedule(7, 55).subscribe();
+            const approve = httpMock.expectOne('/api/exam/parent/reschedule-requests/7/approve');
+            expect(approve.request.method).toBe('POST');
+            expect(approve.request.body).toEqual({ proposedSlotId: 55 });
+            approve.flush({ success: true, message: '', objectId: 7 });
+
+            service.parentRejectReschedule(7, 55).subscribe();
+            const reject = httpMock.expectOne('/api/exam/parent/reschedule-requests/7/reject');
+            expect(reject.request.method).toBe('POST');
+            expect(reject.request.body).toEqual({ proposedSlotId: 55 });
+            reject.flush({ success: true, message: '', objectId: 7 });
+        });
+
         it('parentApproveBooking_SendsPostWithoutBody', () => {
             service.parentApproveBooking(7).subscribe();
 

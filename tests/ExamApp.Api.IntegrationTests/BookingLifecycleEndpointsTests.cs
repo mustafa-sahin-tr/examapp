@@ -151,6 +151,19 @@ public class BookingLifecycleEndpointsTests(IntegrationApiFactory factory) : Int
         var accept = await teacher.PostAsJsonAsync($"/api/booking/requests/{id}/reschedule/respond", new { accept = true });
 
         accept.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await BookingAsync(id)).AvailabilitySlotId.ShouldBe(w.SlotId, "issue #486: veli onaylayana kadar randevu eski slotta");
+        (await JsonAsync(accept)).GetProperty("booking").GetProperty("rescheduleAwaitingParent").GetBoolean().ShouldBeTrue();
+
+        var parent = await ParentAsync(w.ParentUserId);
+        var waiting = (await JsonAsync(await parent.GetAsync("/api/parent/reschedule-requests"))).GetProperty("items");
+        waiting.GetArrayLength().ShouldBe(1);
+        waiting[0].GetProperty("id").GetInt32().ShouldBe(id);
+        waiting[0].GetProperty("proposedSlotId").GetInt32().ShouldBe(w.SlotId2);
+        var decision = new { proposedSlotId = w.SlotId2 };
+        (await student.PostAsJsonAsync($"/api/parent/reschedule-requests/{id}/approve", decision)).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await parent.PostAsJsonAsync($"/api/parent/reschedule-requests/{id}/approve", new { proposedSlotId = w.SlotId })).StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        (await parent.PostAsJsonAsync($"/api/parent/reschedule-requests/{id}/approve", decision)).StatusCode.ShouldBe(HttpStatusCode.OK);
+
         var stored = await BookingAsync(id);
         stored.Status.ShouldBe(BookingStatus.Approved);
         stored.AvailabilitySlotId.ShouldBe(w.SlotId2);
@@ -160,8 +173,8 @@ public class BookingLifecycleEndpointsTests(IntegrationApiFactory factory) : Int
 
         var events = (await LifecycleEventsAsync()).Where(x => x.BookingId == id).ToList();
         events.Select(x => x.Kind).OrderBy(k => k, StringComparer.Ordinal)
-            .ShouldBe(new[] { BookingLifecycleKinds.RescheduleAccepted, BookingLifecycleKinds.RescheduleProposed });
-        var accepted = events.Single(x => x.Kind == BookingLifecycleKinds.RescheduleAccepted);
+            .ShouldBe(new[] { BookingLifecycleKinds.RescheduleAwaitingParent, BookingLifecycleKinds.RescheduleParentApproved, BookingLifecycleKinds.RescheduleProposed });
+        var accepted = events.Single(x => x.Kind == BookingLifecycleKinds.RescheduleAwaitingParent);
         accepted.ActorRole.ShouldBe(BookingParty.Teacher);
         accepted.NotifyStudent.ShouldBeTrue();
         accepted.NotifyTeacher.ShouldBeFalse();

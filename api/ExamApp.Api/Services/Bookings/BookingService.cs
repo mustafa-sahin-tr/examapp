@@ -1412,6 +1412,7 @@ public partial class BookingService : IBookingService
                 ProposedEndTime = b.ProposedSlot != null ? b.ProposedSlot.EndTime : null,
                 ProposedSlotDeleted = b.ProposedSlot != null && b.ProposedSlot.IsDeleted,
                 ProposedByRole = b.ProposedByRole,
+                RescheduleAcceptedAt = b.RescheduleAcceptedAt,
                 RescheduleCount = b.RescheduleCount,
                 RescheduleProposalCount = b.RescheduleProposalCount,
                 NoShowParty = b.NoShowParty,
@@ -1466,10 +1467,11 @@ public partial class BookingService : IBookingService
                     ProposedStartUtc = proposed?.Range.StartUtc,
                     ProposedEndUtc = proposed?.Range.EndUtc,
                     ProposedByRole = proposed == null ? null : r.ProposedByRole,
+                    RescheduleAwaitingParent = proposed != null && r.RescheduleAcceptedAt != null,
                     RescheduleCount = r.RescheduleCount,
                     // Öneri hâlâ kabul edilebilir mi (code review U2): slot silinmemiş, yeterince ileride ve mevcut ders
                     // bildirim penceresinin dışında. Değilse UI yalnız ret / geri çekmeyi sunar.
-                    CanRespondReschedule = approved && proposed != null && !r.ProposedSlotDeleted
+                    CanRespondReschedule = approved && proposed != null && !r.ProposedSlotDeleted && r.RescheduleAcceptedAt == null
                         && proposed.Range.StartUtc >= now.AddHours(policy.RescheduleMinNoticeHours)
                         && now <= range.StartUtc.AddHours(-policy.RescheduleMinNoticeHours),
                     RescheduleEarliestStartUtc = approved ? now.AddHours(policy.RescheduleMinNoticeHours) : null,
@@ -1614,6 +1616,7 @@ public partial class BookingService : IBookingService
         public TimeOnly? ProposedStartTime { get; init; }
         public TimeOnly? ProposedEndTime { get; init; }
         public bool ProposedSlotDeleted { get; init; }
+        public DateTime? RescheduleAcceptedAt { get; init; }
         public string? ProposedByRole { get; init; }
         public int RescheduleCount { get; init; }
         public int RescheduleProposalCount { get; init; }

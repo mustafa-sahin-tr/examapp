@@ -71,4 +71,10 @@ public static class ParentAccessEndpoints
 
     /// <summary><c>POST api/parent/children/{studentId}/bookings</c> (issue #439) — yazma; ResourceId = Booking.Id, tekilleştirme yok.</summary>
     public const string ChildBookingCreate = "children.booking-create";
+
+    /// <summary><c>POST api/parent/reschedule-requests/{id}/approve</c> (issue #486) — yazma; ResourceId = Booking.Id, tekilleştirme yok.</summary>
+    public const string ChildRescheduleApprove = "children.reschedule-approve";
+
+    /// <summary><c>POST api/parent/reschedule-requests/{id}/reject</c> (issue #486) — yazma; ResourceId = Booking.Id, tekilleştirme yok.</summary>
+    public const string ChildRescheduleReject = "children.reschedule-reject";
 }

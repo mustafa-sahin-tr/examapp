@@ -102,6 +102,15 @@ public static class ParentEndpointCatalog
             "request; unrelated/Pending/Revoked 404, first decision wins (409 AlreadyDecided); ParentBookingApprovalEndpointsTests.",
         [$"{nameof(ParentBookingsController)}.{nameof(ParentBookingsController.RejectBookingRequest)}"] =
             "Parent write (#439): same authorization as ApproveBookingRequest; optional note; ParentBookingApprovalEndpointsTests.",
+        [$"{nameof(ParentBookingsController)}.{nameof(ParentBookingsController.GetRescheduleRequests)}"] =
+            "Parent-scoped list (#486): accepted reschedules of the caller's OWN Active children only (no studentId in the URL); " +
+            "only names and lesson times; not audited (like booking-requests); BookingRescheduleParentApprovalTests.",
+        [$"{nameof(ParentBookingsController)}.{nameof(ParentBookingsController.ApproveRescheduleRequest)}"] =
+            "Parent write (#486): any Active parent of the booking's student approves an accepted reschedule; unrelated 404, " +
+            "link re-checked under lock, audited as children.reschedule-approve; BookingRescheduleParentApprovalTests.",
+        [$"{nameof(ParentBookingsController)}.{nameof(ParentBookingsController.RejectRescheduleRequest)}"] =
+            "Parent write (#486): same authorization as ApproveRescheduleRequest, audited as children.reschedule-reject; " +
+            "BookingRescheduleParentApprovalTests.",
         [$"{nameof(ParentBookingsController)}.{nameof(ParentBookingsController.CreateBookingForChild)}"] =
             "Parent write (#439): Active-link gate on studentId (unlinked 404, IDOR), same slot/teacher rules as the student " +
             "request; returns the created booking of the parent's own child; ParentBookingApprovalEndpointsTests.",

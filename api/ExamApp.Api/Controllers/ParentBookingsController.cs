@@ -78,6 +78,45 @@ public class ParentBookingsController : BaseController
         return result.Success ? Ok(result) : MapFailure(result);
     }
 
+    /// <summary>issue #486: karşı tarafça kabul edilmiş, veli onayı bekleyen ertelemeler (ders zamanına göre artan, en fazla 200).</summary>
+    [HttpGet("reschedule-requests")]
+    [ProducesResponseType(typeof(ParentRescheduleRequestListDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetRescheduleRequests(CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync(ct);
+        if (!IsResolvedUser(user))
+            return UserNotResolved(new { message = _localizer["auth.userNotResolved"].Value });
+
+        return Ok(await _bookings.GetParentRescheduleRequestsAsync(user.Id, ct));
+    }
+
+    /// <summary>
+    /// issue #486: ertelemeyi onaylar, randevu yeni slota taşınır. Gövde velinin gördüğü <c>proposedSlotId</c>; öneri değiştiyse 409. 404 bağlı olmayan çocuk / randevu yok; 409 <c>NoPendingReschedule</c>,
+    /// <c>RescheduleWindowClosed</c>, <c>ProposedSlotUnavailable</c>, <c>TeacherUnavailable</c> ya da ödeme kapısının kodu.
+    /// </summary>
+    [HttpPost("reschedule-requests/{id:int}/approve")]
+    public async Task<IActionResult> ApproveRescheduleRequest(int id, [FromBody] ParentRescheduleDecisionDto request, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync(ct);
+        if (!IsResolvedUser(user))
+            return UserNotResolved(new { message = _localizer["auth.userNotResolved"].Value });
+
+        var result = await _bookings.ParentApproveRescheduleAsync(user.Id, id, request.ProposedSlotId, ct);
+        return result.Success ? Ok(result) : MapFailure(result);
+    }
+
+    /// <summary>issue #486: ertelemeyi reddeder, randevu eski slotta kalır, taraflara bildirim gider. 404 / 409 <c>NoPendingReschedule</c>.</summary>
+    [HttpPost("reschedule-requests/{id:int}/reject")]
+    public async Task<IActionResult> RejectRescheduleRequest(int id, [FromBody] ParentRescheduleDecisionDto request, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync(ct);
+        if (!IsResolvedUser(user))
+            return UserNotResolved(new { message = _localizer["auth.userNotResolved"].Value });
+
+        var result = await _bookings.ParentRejectRescheduleAsync(user.Id, id, request.ProposedSlotId, ct);
+        return result.Success ? Ok(result) : MapFailure(result);
+    }
+
     /// <summary>
     /// Veli çocuğu adına doğrudan talep açar (öğretmen seçimi: <c>GET teacher/search</c>, <c>GET teacher/{id}/public-profile</c>,
     /// <c>GET booking/teachers/{teacherId}/slots</c>). AwaitingParent atlanır: Pending + ParentApprovedAt dolu, öğretmene bildirim.

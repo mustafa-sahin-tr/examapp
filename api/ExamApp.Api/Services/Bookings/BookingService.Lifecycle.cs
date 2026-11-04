@@ -24,7 +24,7 @@ namespace ExamApp.Api.Services.Bookings;
 /// <item><b>Erteleme:</b> onaylı randevuda taraflardan biri aynı öğretmenin boş, gelecekteki, AYNI SÜRELİ bir slotunu önerir
 /// (velinin onayladığı dersin süresi değişmez; veliler öneriden haberdar edilir); karşı taraf kabul edene kadar randevu eski
 /// slotta kalır (öneri slotu tutmaz). Öneri sayısı (<c>MaxProposalsPerBooking</c>) ve kabul sayısı sınırlıdır. Kabulde öğretmen müsaitlik kilidi altında slotun hâlâ boş
-/// olduğu doğrulanır ve randevu yeni slota taşınır. Öneren taraf önerisini geri çekebilir.</item>
+/// olduğu doğrulanır ve randevu yeni slota taşınır; öğrencinin Active velisi varsa önce veli onaylar (#486). Öneren taraf önerisini geri çekebilir.</item>
 /// <item><b>No-show:</b> ders bitişinden sonra <c>NoShowReportWindowDays</c> içinde taraflardan biri karşı tarafı "katılmadı"
 /// olarak işaretler; ilk bildirim kalıcıdır. Durum Approved kalır.</item>
 /// </list>
@@ -51,7 +51,9 @@ public partial class BookingService
         string? ProposedByRole,
         int RescheduleCount,
         int RescheduleProposalCount,
-        string? NoShowParty)
+        string? NoShowParty,
+        DateTime? RescheduleAcceptedAt,
+        DateTime? ParentApprovedAt)
     {
         public SlotTimeRange Range => SlotTimeRange.From(Date, StartTime, EndTime);
     }
@@ -63,15 +65,7 @@ public partial class BookingService
     private async Task<(LifecycleBooking? Booking, string? Party, BookingResultDto? Failure)> LoadLifecycleBookingAsync(
         int callerUserId, int bookingId, CancellationToken ct)
     {
-        var booking = await _context.Bookings
-            .WithSoftDeletedSlots()
-            .AsNoTracking()
-            .Where(b => b.Id == bookingId)
-            .Select(b => new LifecycleBooking(
-                b.Id, b.Status, b.CancelledFromStatus, b.TeacherId, b.Teacher.UserId, b.StudentId, b.Student.UserId,
-                b.AvailabilitySlotId, b.AvailabilitySlot.Date, b.AvailabilitySlot.StartTime, b.AvailabilitySlot.EndTime,
-                b.ProposedSlotId, b.ProposedByRole, b.RescheduleCount, b.RescheduleProposalCount, b.NoShowParty))
-            .FirstOrDefaultAsync(ct);
+        var booking = await QueryLifecycleBookingAsync(bookingId, ct);
 
         string? party = booking == null ? null
             : booking.StudentUserId == callerUserId ? BookingParty.Student
@@ -83,6 +77,18 @@ public partial class BookingService
 
         return (booking, party, null);
     }
+
+    private Task<LifecycleBooking?> QueryLifecycleBookingAsync(int bookingId, CancellationToken ct)
+        => _context.Bookings
+            .WithSoftDeletedSlots()
+            .AsNoTracking()
+            .Where(b => b.Id == bookingId)
+            .Select(b => new LifecycleBooking(
+                b.Id, b.Status, b.CancelledFromStatus, b.TeacherId, b.Teacher.UserId, b.StudentId, b.Student.UserId,
+                b.AvailabilitySlotId, b.AvailabilitySlot.Date, b.AvailabilitySlot.StartTime, b.AvailabilitySlot.EndTime,
+                b.ProposedSlotId, b.ProposedByRole, b.RescheduleCount, b.RescheduleProposalCount, b.NoShowParty,
+                b.RescheduleAcceptedAt, b.ParentApprovedAt))
+            .FirstOrDefaultAsync(ct);
 
     /// <summary>Öğretmenin görebildiği randevu: Pending/Approved/Rejected ya da öğretmene ulaşmış talebin iptali.</summary>
     internal static bool IsTeacherVisible(BookingStatus status, BookingStatus? cancelledFrom)
@@ -149,6 +155,7 @@ public partial class BookingService
                     .SetProperty(b => b.CancelledByRole, party)
                     .SetProperty(b => b.CancellationReason, storedReason)
                     .SetProperty(b => b.CancelledFromStatus, previous)
+                    .SetProperty(b => b.RescheduleAcceptedAt, (DateTime?)null)
                     .SetProperty(b => b.ProposedSlotId, (int?)null)
                     .SetProperty(b => b.ProposedByRole, (string?)null)
                     .SetProperty(b => b.ProposedByUserId, (int?)null)
@@ -233,6 +240,7 @@ public partial class BookingService
                 .ExecuteUpdateAsync(set => set
                     .SetProperty(b => b.RescheduleProposalCount, proposals + 1)
                     .SetProperty(b => b.ProposedSlotId, slot.Id)
+                    .SetProperty(b => b.RescheduleAcceptedAt, (DateTime?)null)
                     .SetProperty(b => b.ProposedByRole, party)
                     .SetProperty(b => b.ProposedByUserId, callerUserId)
                     .SetProperty(b => b.ProposedAt, now)
@@ -264,61 +272,145 @@ public partial class BookingService
         var ownProposal = booking.ProposedByRole == party;
         if (ownProposal && accept)
             return LifecycleFail(BookingErrorCodes.CannotRespondOwnProposal, "booking.reschedule.ownProposal", forbidden: true);
+        if (accept && booking.RescheduleAcceptedAt != null)
+            return LifecycleFail(BookingErrorCodes.RescheduleAwaitingParent, "booking.reschedule.awaitingParent", conflict: true);
 
-        // Silinmiş slot da okunur (olay metni için); kabulde ayrıca kilit altında "silinmemiş + boş" doğrulanır.
-        var slot = await _context.TeacherAvailabilitySlots
+        var slot = await LoadProposedSlotAsync(proposedSlotId, ct);
+        var now = UtcNow();
+
+        void Configure(BookingLifecycleEvent e)
+        {
+            if (slot != null)
+                SetNewSlot(e, slot.Date, slot.StartTime, slot.EndTime);
+            // Kabul/ret öneren tarafa, geri çekme karşı tarafa bildirilir.
+            NotifyCounterparty(e, party!);
+        }
+
+        if (!accept)
+        {
+            // issue #486: veli onayı beklerken de geri çekilebilir / reddedilebilir.
+            var dropKind = ownProposal ? BookingLifecycleKinds.RescheduleWithdrawn : BookingLifecycleKinds.RescheduleDeclined;
+            var dropped = await WriteLifecycleAsync(booking, callerUserId, party!, dropKind,
+                update: q => ClearProposalAsync(
+                    q.Where(b => b.Status == BookingStatus.Approved && b.ProposedSlotId == proposedSlotId), callerUserId, now, ct),
+                configure: e =>
+                {
+                    Configure(e);
+                    // Veliye "onayınızı bekliyor" denmişti: öneri düşünce de haber verilir.
+                    e.WasAwaitingParent = booking.RescheduleAcceptedAt != null;
+                },
+                now, ct);
+            if (!dropped)
+                return LifecycleFail(BookingErrorCodes.NoPendingReschedule, "booking.reschedule.noPending", conflict: true);
+
+            _logger.LogInformation("Erteleme yanıtlandı. BookingId={BookingId}, By={Party}, Kind={Kind}", bookingId, party, dropKind);
+            return await LifecycleSuccessAsync(bookingId, ownProposal ? "booking.reschedule.withdrawn" : "booking.reschedule.declined", ct);
+        }
+
+        var windowFailure = RescheduleWindowFailure(booking, slot, now);
+        if (windowFailure != null)
+            return windowFailure;
+
+        // issue #486: Active velisi olan öğrencide tarih/saat de veli onayının parçası: kabul randevuyu taşımaz, veliye düşer. Olay türü
+        // yazımdan önce gerektiği için burada okunur, karar kilit altında doğrulanır.
+        var awaitParent = await _context.ParentStudentLinks.AsNoTracking()
+            .Where(l => l.StudentId == booking.StudentId)
+            .Where(ParentChildAccess.GrantsAccess)
+            .AnyAsync(ct);
+
+        // #441: özel ders her zaman veli onayından geçer. Veli onayıyla açılmış dersin velisi kalmadıysa onaysız taşınmaz.
+        if (!awaitParent && booking.ParentApprovedAt != null)
+            return LifecycleFail(BookingErrorCodes.RescheduleParentRequired, "booking.reschedule.parentRequired", conflict: true);
+
+        var kind = awaitParent ? BookingLifecycleKinds.RescheduleAwaitingParent : BookingLifecycleKinds.RescheduleAccepted;
+        var parentLinksChanged = false;
+
+        var writeFailure = await WriteProposedSlotAsync(booking, callerUserId, party!, kind, proposedSlotId,
+            apply: async q =>
+            {
+                // Kilit sırası talep oluşturmayla aynı (öğretmen → öğrenci): bağlantı yazımlarıyla serileşir. FOR SHARE tek başına yeni
+                // Active satırı engellemez. Okuma ile kilit arasında veli durumu değiştiyse yazılmaz, kullanıcı yeniden dener.
+                parentLinksChanged = false;
+                await _context.Database.AcquireStudentParentLinkLockAsync(booking.StudentId, ct);
+                var hasActiveParent = (await ParentNotificationSupport.ActiveParentIdsLockedAsync(_context, booking.StudentId, ct)).Count > 0;
+                if (hasActiveParent != awaitParent)
+                {
+                    parentLinksChanged = true;
+                    return 0;
+                }
+
+                return awaitParent
+                    ? await q.Where(b => b.Status == BookingStatus.Approved && b.ProposedSlotId == proposedSlotId && b.RescheduleAcceptedAt == null)
+                        .ExecuteUpdateAsync(set => set
+                            .SetProperty(b => b.RescheduleAcceptedAt, now)
+                            .SetProperty(b => b.UpdateTime, now)
+                            .SetProperty(b => b.UpdateUserId, callerUserId), ct)
+                    : await MoveToProposedSlotAsync(q.Where(b => b.RescheduleAcceptedAt == null), proposedSlotId, callerUserId, now, ct);
+            },
+            Configure, now, ct);
+
+        if (parentLinksChanged)
+            return LifecycleFail(BookingErrorCodes.RescheduleParentChanged, "booking.reschedule.parentChanged", conflict: true);
+        if (writeFailure != null)
+            return writeFailure;
+
+        _logger.LogInformation("Erteleme yanıtlandı. BookingId={BookingId}, By={Party}, Kind={Kind}", bookingId, party, kind);
+        return await LifecycleSuccessAsync(bookingId, awaitParent ? "booking.reschedule.awaitingParent" : "booking.reschedule.accepted", ct);
+    }
+
+    private sealed record ProposedSlot(int Id, DateOnly Date, TimeOnly StartTime, TimeOnly EndTime);
+
+    /// <summary>Silinmiş slot da okunur (olay metni için); kabulde ayrıca kilit altında "silinmemiş + boş" doğrulanır.</summary>
+    private Task<ProposedSlot?> LoadProposedSlotAsync(int slotId, CancellationToken ct)
+        => _context.TeacherAvailabilitySlots
             .IgnoreQueryFilters()
             .AsNoTracking()
-            .Where(s => s.Id == proposedSlotId)
-            .Select(s => new { s.Id, s.Date, s.StartTime, s.EndTime })
+            .Where(s => s.Id == slotId)
+            .Select(s => new ProposedSlot(s.Id, s.Date, s.StartTime, s.EndTime))
             .FirstOrDefaultAsync(ct);
 
-        var now = UtcNow();
-        string kind;
-        if (accept)
-        {
-            if (now > booking.Range.StartUtc.AddHours(-Policy.RescheduleMinNoticeHours))
-                return LifecycleFail(BookingErrorCodes.RescheduleWindowClosed, "booking.reschedule.windowClosed", conflict: true,
-                    arg: Policy.RescheduleMinNoticeHours);
-            if (slot == null || ToUtc(slot.Date, slot.StartTime) < now.AddHours(Policy.RescheduleMinNoticeHours))
-                return LifecycleFail(BookingErrorCodes.ProposedSlotUnavailable, "booking.reschedule.slotUnavailable", conflict: true);
-            kind = BookingLifecycleKinds.RescheduleAccepted;
-        }
-        else
-        {
-            kind = ownProposal ? BookingLifecycleKinds.RescheduleWithdrawn : BookingLifecycleKinds.RescheduleDeclined;
-        }
+    private BookingResultDto? RescheduleWindowFailure(LifecycleBooking booking, ProposedSlot? slot, DateTime now)
+    {
+        if (now > booking.Range.StartUtc.AddHours(-Policy.RescheduleMinNoticeHours))
+            return LifecycleFail(BookingErrorCodes.RescheduleWindowClosed, "booking.reschedule.windowClosed", conflict: true,
+                arg: Policy.RescheduleMinNoticeHours);
+        if (slot == null || ToUtc(slot.Date, slot.StartTime) < now.AddHours(Policy.RescheduleMinNoticeHours))
+            return LifecycleFail(BookingErrorCodes.ProposedSlotUnavailable, "booking.reschedule.slotUnavailable", conflict: true);
+        return null;
+    }
 
+    /// <summary>
+    /// Önerilen slotu kilit altında doğrular, sonra <paramref name="apply"/> ile yazar. Başarıda null, aksi halde istemciye dönecek hata.
+    /// </summary>
+    private async Task<BookingResultDto?> WriteProposedSlotAsync(
+        LifecycleBooking booking,
+        int actorUserId,
+        string actor,
+        string kind,
+        int proposedSlotId,
+        Func<IQueryable<Booking>, Task<int>> apply,
+        Action<BookingLifecycleEvent> configure,
+        DateTime now,
+        CancellationToken ct)
+    {
         var slotTaken = false;
         var teacherUnavailable = false;
         bool written;
         try
         {
-            written = await WriteLifecycleAsync(booking, callerUserId, party!, kind,
+            written = await WriteLifecycleAsync(booking, actorUserId, actor, kind,
                 update: async q =>
                 {
                     // Execution strategy yeniden denerse önceki denemenin bayrakları taşınmasın.
                     slotTaken = false;
                     teacherUnavailable = false;
-                    if (!accept)
-                    {
-                        return await q
-                            .Where(b => b.Status == BookingStatus.Approved && b.ProposedSlotId == proposedSlotId)
-                            .ExecuteUpdateAsync(set => set
-                                .SetProperty(b => b.ProposedSlotId, (int?)null)
-                                .SetProperty(b => b.ProposedByRole, (string?)null)
-                                .SetProperty(b => b.ProposedByUserId, (int?)null)
-                                .SetProperty(b => b.ProposedAt, (DateTime?)null)
-                                .SetProperty(b => b.UpdateTime, now)
-                                .SetProperty(b => b.UpdateUserId, callerUserId), ct);
-                    }
 
                     // Slot silme / yeni talep yollarıyla serileşir (#323/#376 öğretmen müsaitlik kilidi): slot hâlâ var ve
                     // başka aktif randevusu yok. Unique index yine son güvencedir (DbUpdateException → 409).
                     await _context.Database.AcquireTeacherAvailabilityLockAsync(booking.TeacherId, ct);
                     var free = await _context.TeacherAvailabilitySlots.AsNoTracking().AnyAsync(s => s.Id == proposedSlotId, ct)
                                && !await _context.Bookings.AsNoTracking().AnyAsync(
-                                   b => b.AvailabilitySlotId == proposedSlotId && b.Id != bookingId && ActiveStatuses.Contains(b.Status), ct);
+                                   b => b.AvailabilitySlotId == proposedSlotId && b.Id != booking.Id && ActiveStatuses.Contains(b.Status), ct);
                     if (!free)
                     {
                         slotTaken = true;
@@ -333,36 +425,19 @@ public partial class BookingService
                         return 0;
                     }
 
-                    return await q
-                        .Where(b => b.Status == BookingStatus.Approved && b.ProposedSlotId == proposedSlotId)
-                        .ExecuteUpdateAsync(set => set
-                            .SetProperty(b => b.AvailabilitySlotId, proposedSlotId)
-                            .SetProperty(b => b.RescheduleCount, b => b.RescheduleCount + 1)
-                            .SetProperty(b => b.ProposedSlotId, (int?)null)
-                            .SetProperty(b => b.ProposedByRole, (string?)null)
-                            .SetProperty(b => b.ProposedByUserId, (int?)null)
-                            .SetProperty(b => b.ProposedAt, (DateTime?)null)
-                            .SetProperty(b => b.UpdateTime, now)
-                            .SetProperty(b => b.UpdateUserId, callerUserId), ct);
+                    return await apply(q);
                 },
-                configure: e =>
-                {
-                    if (slot != null)
-                        SetNewSlot(e, slot.Date, slot.StartTime, slot.EndTime);
-                    // Kabul/ret öneren tarafa, geri çekme karşı tarafa bildirilir.
-                    NotifyCounterparty(e, party!);
-                },
-                now, ct);
+                configure, now, ct);
         }
         catch (TeacherAvailabilityLockTimeoutException ex)
         {
-            _logger.LogWarning(ex, "Erteleme kabulü: öğretmen müsaitlik kilidi zaman aşımı. BookingId={BookingId}", bookingId);
+            _logger.LogWarning(ex, "Erteleme kabulü: öğretmen müsaitlik kilidi zaman aşımı. BookingId={BookingId}", booking.Id);
             return new BookingResultDto { Success = false, Conflict = true, Message = _localizer["booking.slot.busy"] };
         }
         catch (Exception ex) when (IsUniqueViolation(ex))
         {
             // Filtreli unique index: önerilen slot aynı anda başka bir talebe gitti.
-            _logger.LogInformation(ex, "Erteleme kabulü: önerilen slot dolu (unique index). BookingId={BookingId}", bookingId);
+            _logger.LogInformation(ex, "Erteleme kabulü: önerilen slot dolu (unique index). BookingId={BookingId}", booking.Id);
             slotTaken = true;
             written = false;
         }
@@ -371,17 +446,32 @@ public partial class BookingService
             return LifecycleFail(BookingErrorCodes.ProposedSlotUnavailable, "booking.reschedule.slotUnavailable", conflict: true);
         if (teacherUnavailable)
             return LifecycleFail(BookingErrorCodes.TeacherUnavailable, "booking.reschedule.teacherUnavailable", conflict: true);
-        if (!written)
-            return LifecycleFail(BookingErrorCodes.NoPendingReschedule, "booking.reschedule.noPending", conflict: true);
-
-        _logger.LogInformation("Erteleme yanıtlandı. BookingId={BookingId}, By={Party}, Kind={Kind}", bookingId, party, kind);
-        return await LifecycleSuccessAsync(bookingId, kind switch
-        {
-            BookingLifecycleKinds.RescheduleAccepted => "booking.reschedule.accepted",
-            BookingLifecycleKinds.RescheduleWithdrawn => "booking.reschedule.withdrawn",
-            _ => "booking.reschedule.declined"
-        }, ct);
+        return written ? null : LifecycleFail(BookingErrorCodes.NoPendingReschedule, "booking.reschedule.noPending", conflict: true);
     }
+
+    private Task<int> MoveToProposedSlotAsync(IQueryable<Booking> query, int proposedSlotId, int actorUserId, DateTime now, CancellationToken ct)
+        => query
+            .Where(b => b.Status == BookingStatus.Approved && b.ProposedSlotId == proposedSlotId)
+            .ExecuteUpdateAsync(set => set
+                .SetProperty(b => b.AvailabilitySlotId, proposedSlotId)
+                .SetProperty(b => b.RescheduleCount, b => b.RescheduleCount + 1)
+                .SetProperty(b => b.RescheduleAcceptedAt, (DateTime?)null)
+                .SetProperty(b => b.ProposedSlotId, (int?)null)
+                .SetProperty(b => b.ProposedByRole, (string?)null)
+                .SetProperty(b => b.ProposedByUserId, (int?)null)
+                .SetProperty(b => b.ProposedAt, (DateTime?)null)
+                .SetProperty(b => b.UpdateTime, now)
+                .SetProperty(b => b.UpdateUserId, actorUserId), ct);
+
+    private static Task<int> ClearProposalAsync(IQueryable<Booking> query, int actorUserId, DateTime now, CancellationToken ct)
+        => query.ExecuteUpdateAsync(set => set
+            .SetProperty(b => b.RescheduleAcceptedAt, (DateTime?)null)
+            .SetProperty(b => b.ProposedSlotId, (int?)null)
+            .SetProperty(b => b.ProposedByRole, (string?)null)
+            .SetProperty(b => b.ProposedByUserId, (int?)null)
+            .SetProperty(b => b.ProposedAt, (DateTime?)null)
+            .SetProperty(b => b.UpdateTime, now)
+            .SetProperty(b => b.UpdateUserId, actorUserId), ct);
 
     // ------------------------------------------------------------------
     // No-show

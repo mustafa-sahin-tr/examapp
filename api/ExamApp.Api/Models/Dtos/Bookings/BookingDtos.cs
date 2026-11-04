@@ -232,6 +232,15 @@ public static class BookingErrorCodes
     /// <summary>issue #315: yanıtlanacak erteleme önerisi yok (409).</summary>
     public const string NoPendingReschedule = "NoPendingReschedule";
 
+    /// <summary>issue #486: öneri kabul edildi, veli onayı bekleniyor; yeniden kabul edilemez (409).</summary>
+    public const string RescheduleAwaitingParent = "RescheduleAwaitingParent";
+
+    /// <summary>issue #486: veli onayıyla açılmış dersin Active velisi kalmadı; onaysız taşınmaz (409).</summary>
+    public const string RescheduleParentRequired = "RescheduleParentRequired";
+
+    /// <summary>issue #486: kabul sırasında öğrencinin veli bağlantıları değişti; yeniden denenir (409).</summary>
+    public const string RescheduleParentChanged = "RescheduleParentChanged";
+
     /// <summary>issue #315: öneriyi yapan taraf kendi önerisini kabul edemez (yalnız geri çekebilir) → 403.</summary>
     public const string CannotRespondOwnProposal = "CannotRespondOwnProposal";
 
@@ -359,6 +368,9 @@ public class BookingDto
     /// <summary>"Teacher" | "Student" — öneriyi yapan taraf.</summary>
     public string? ProposedByRole { get; set; }
 
+    /// <summary>issue #486: karşı taraf kabul etti, velinin onayı bekleniyor.</summary>
+    public bool RescheduleAwaitingParent { get; set; }
+
     /// <summary>Kabul edilmiş erteleme sayısı.</summary>
     public int RescheduleCount { get; set; }
 
@@ -412,6 +424,43 @@ public class ParentBookingRequestDto
 
     /// <summary>Bu andan sonra talep otomatik Expired olur (UTC).</summary>
     public DateTime ExpiresAt { get; set; }
+}
+
+/// <summary>issue #486: veli panelinde onay bekleyen erteleme (<c>GET /api/parent/reschedule-requests</c>).</summary>
+public class ParentRescheduleRequestDto
+{
+    /// <summary>Randevu id'si.</summary>
+    public int Id { get; set; }
+    public int StudentId { get; set; }
+    public string? StudentName { get; set; }
+    public int TeacherId { get; set; }
+    public string? TeacherName { get; set; }
+    public DateTime StartUtc { get; set; }
+    public DateTime EndUtc { get; set; }
+
+    /// <summary>Karar isteğinde geri gönderilir: öneri o arada değiştiyse karar geçmez.</summary>
+    public int ProposedSlotId { get; set; }
+    public DateTime ProposedStartUtc { get; set; }
+    public DateTime ProposedEndUtc { get; set; }
+
+    /// <summary>"Teacher" | "Student" — öneriyi yapan taraf.</summary>
+    public string? ProposedByRole { get; set; }
+
+    /// <summary>false iken öneri bayattır (slot dolu ya da silinmiş, süre geçti): yalnız ret anlamlıdır.</summary>
+    public bool CanApprove { get; set; }
+}
+
+/// <summary><c>POST /api/parent/reschedule-requests/{id}/approve|reject</c> gövdesi: velinin ekranda gördüğü önerilen slot.</summary>
+public class ParentRescheduleDecisionDto
+{
+    [Range(1, int.MaxValue)]
+    public int ProposedSlotId { get; set; }
+}
+
+/// <summary><c>GET /api/parent/reschedule-requests</c> gövdesi.</summary>
+public class ParentRescheduleRequestListDto
+{
+    public List<ParentRescheduleRequestDto> Items { get; set; } = new();
 }
 
 /// <summary><c>GET /api/parent/booking-requests</c> gövdesi.</summary>

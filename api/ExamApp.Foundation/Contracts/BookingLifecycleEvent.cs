@@ -22,8 +22,14 @@ public class BookingLifecycleEvent
     /// <summary><see cref="BookingLifecycleKinds"/> değeri.</summary>
     public string Kind { get; set; } = string.Empty;
 
-    /// <summary>İşlemi yapan taraf: "Teacher" | "Student".</summary>
+    /// <summary>İşlemi yapan taraf: "Teacher" | "Student" | "Parent" (#486).</summary>
     public string ActorRole { get; set; } = string.Empty;
+
+    /// <summary>issue #486: kararı veren veli; aynı olay diğer velilere bildirilir, ona değil.</summary>
+    public int? ActorParentUserId { get; set; }
+
+    /// <summary>issue #486: geri çekilen / reddedilen öneri veli onayı bekliyordu; velilere de bildirilir.</summary>
+    public bool WasAwaitingParent { get; set; }
 
     public int TeacherId { get; set; }
     public int TeacherUserId { get; set; }
@@ -71,5 +77,10 @@ public static class BookingLifecycleKinds
     public const string RescheduleAccepted = "RescheduleAccepted";
     public const string RescheduleDeclined = "RescheduleDeclined";
     public const string RescheduleWithdrawn = "RescheduleWithdrawn";
+
+    /// <summary>issue #486: karşı taraf kabul etti, veli onayı bekleniyor; randevu henüz taşınmadı.</summary>
+    public const string RescheduleAwaitingParent = "RescheduleAwaitingParent";
+    public const string RescheduleParentApproved = "RescheduleParentApproved";
+    public const string RescheduleParentRejected = "RescheduleParentRejected";
     public const string NoShowReported = "NoShowReported";
 }

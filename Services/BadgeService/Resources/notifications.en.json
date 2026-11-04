@@ -42,6 +42,18 @@
       "title": "Reschedule accepted",
       "body": "{0} accepted moving the lesson on {1} to {2}."
     },
+    "BookingRescheduleAwaitingParent": {
+      "title": "Reschedule awaits parent approval",
+      "body": "{0} accepted moving the lesson on {1} to {2}. The lesson moves once a parent approves."
+    },
+    "BookingRescheduleParentApproved": {
+      "title": "Reschedule approved",
+      "body": "A parent approved: the lesson on {1} was moved to {2}."
+    },
+    "BookingRescheduleParentRejected": {
+      "title": "Reschedule not approved",
+      "body": "A parent did not approve moving the lesson on {1} to {2}. The lesson stays at its original time."
+    },
     "BookingRescheduleDeclined": {
       "title": "Reschedule declined",
       "body": "{0} declined your proposal to move the lesson on {1} to {2}."
@@ -61,6 +73,26 @@
     "ParentBookingRescheduleProposed": {
       "title": "Reschedule proposed for a private lesson",
       "body": "Moving the lesson between {4} and {0} on {1} to {2} was proposed."
+    },
+    "ParentBookingRescheduleAwaitingParent": {
+      "title": "A reschedule needs your approval",
+      "body": "Moving the lesson between {4} and {0} on {1} to {2} needs your approval."
+    },
+    "ParentBookingRescheduleParentApproved": {
+      "title": "Private lesson rescheduled",
+      "body": "Another parent approved: the lesson between {4} and {0} on {1} was moved to {2}."
+    },
+    "ParentBookingRescheduleParentRejected": {
+      "title": "Reschedule not approved",
+      "body": "Another parent did not approve moving the lesson between {4} and {0} on {1}. It stays at its original time."
+    },
+    "ParentBookingRescheduleWithdrawn": {
+      "title": "Reschedule withdrawn",
+      "body": "Moving the lesson between {4} and {0} on {1} was withdrawn. Your approval is not needed; it stays at its original time."
+    },
+    "ParentBookingRescheduleDeclined": {
+      "title": "Reschedule withdrawn",
+      "body": "Moving the lesson between {4} and {0} on {1} was called off. Your approval is not needed; it stays at its original time."
     },
     "ParentBookingRescheduleAccepted": {
       "title": "Private lesson rescheduled",

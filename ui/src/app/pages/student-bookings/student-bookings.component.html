@@ -87,9 +87,11 @@
                 <span class="sbk__proposal-text">
                   <mat-icon>update</mat-icon>
                   {{
-                    row.lifecycle.proposal.mine
-                      ? t('reschedule.proposalMine', { when: row.proposalWhen })
-                      : t('reschedule.proposalTheirs', { when: row.proposalWhen })
+                    row.lifecycle.proposal.awaitingParent
+                      ? t('reschedule.proposalAwaitingParent', { when: row.proposalWhen })
+                      : row.lifecycle.proposal.mine
+                        ? t('reschedule.proposalMine', { when: row.proposalWhen })
+                        : t('reschedule.proposalTheirs', { when: row.proposalWhen })
                   }}
                 </span>
                 <div class="sbk__actions">

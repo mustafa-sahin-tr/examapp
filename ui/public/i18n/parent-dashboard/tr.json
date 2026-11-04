@@ -139,6 +139,16 @@
     "percent": "%{{value}}",
     "approxTime": "{{date}}, yaklaşık {{time}}"
   },
+  "rescheduleRequests": {
+    "title": "Onay bekleyen ertelemeler",
+    "subtitle": "Öğretmen ve öğrenci anlaştı; ders onayınızla yeni saate taşınır.",
+    "loadError": "Ertelemeler yüklenemedi.",
+    "when": "{{current}} → {{proposed}}",
+    "stale": "Bu saat artık uygun değil; yalnız reddedebilirsiniz.",
+    "approved": "Erteleme onaylandı, ders yeni saate taşındı.",
+    "rejected": "Erteleme reddedildi, ders eski saatinde kalıyor.",
+    "actionError": "İşlem tamamlanamadı."
+  },
   "bookingRequests": {
     "title": "Onay bekleyen ders talepleri",
     "subtitle": "Çocuklarınızın özel ders talepleri onayınızdan sonra öğretmene gider.",

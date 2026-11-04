@@ -157,7 +157,7 @@
     }
 
     <div class="practice__actions">
-      <button mat-raised-button color="primary" type="button" (click)="startSession()" [disabled]="busy() || topicsLoading()">
+      <button mat-raised-button color="primary" class="practice__start" type="button" (click)="startSession()" [disabled]="busy() || topicsLoading()">
         <mat-icon>play_arrow</mat-icon>
         {{ t('common.start') }}
       </button>

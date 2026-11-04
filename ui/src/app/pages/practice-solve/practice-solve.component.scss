@@ -843,3 +843,9 @@ $bp-mobile: 640px;
   margin: 0;
   color: var(--ms-danger-text);
 }
+
+// #725: başlat düğmesi her iki temada AA kontrastlı.
+.practice__start:not(:disabled) {
+  --mat-button-protected-container-color: var(--ms-action-background);
+  --mat-button-protected-label-text-color: var(--ms-action-text-inverse);
+}

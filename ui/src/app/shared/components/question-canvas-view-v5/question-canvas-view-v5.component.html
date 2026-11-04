@@ -6,12 +6,12 @@
   }
   <div class="qcv4-container" [class]="'layout-' + currentLayout()">
     <div class="qcv4-question-image-wrapper">
-      <div #questionImageBox [style.marginLeft.px]="currentMarginLeft()" class="qcv4-main-image-box">
+      <div #questionImageBox class="qcv4-main-image-box">
         <img #questionImage class="qcv4-question-image" [src]="questionImageSource()" [alt]="t('questionAlt')"
           [style.width.px]="questionImageWidth()" (load)="updateVisualScale()" [appStorageImageRetry]="imageRefresh" />
         </div>
       </div>
-      <div class="qcv4-answers-grid" [style.marginLeft.px]="answerMarginLeft()">
+      <div class="qcv4-answers-grid">
         @for (answer of _questionRegion().answers; track $index) {
           <div class="qcv4-answer-card" [ngClass]="getAnswerClasses(answer)" role="button" tabindex="0"
             [attr.aria-pressed]="isSelected(answer)" [attr.aria-label]="t('choiceAria', { label: answer.label || $index + 1 })"

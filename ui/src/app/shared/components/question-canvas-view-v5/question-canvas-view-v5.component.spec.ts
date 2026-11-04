@@ -134,8 +134,6 @@ describe('QuestionCanvasViewComponentv5', () => {
 
             expect(result.layout).toBe('side-1col');
             expect(result.answerMinWidth).toBe(20 + 605);
-            expect(result.currentMarginLeft).toBe(0);
-            expect(result.answerMarginLeft).toBe(0);
         });
 
         // Doküman id: 7957 — qW×qH 471×810, oran 0.58, maxAnsW 157
@@ -223,12 +221,10 @@ describe('QuestionCanvasViewComponentv5', () => {
             const result = (component as any).calculateBestLayout(region);
 
             expect(result.layout).toBe('top-4row');
-            expect(result.currentMarginLeft).toBe(0);
-            expect(result.answerMarginLeft).toBe(0);
         });
 
         // Doküman id: 7301 — qW×qH 583×489, oran 1.19, şıklar dar (74-82px, maxAnsW 82)
-        it('calculateBestLayout_HorizontalQuestionWithNarrowAnswers_ReturnsTop1RowAndCentersAnswers', () => {
+        it('calculateBestLayout_HorizontalQuestionWithNarrowAnswers_ReturnsTop1Row', () => {
             const region = buildRegion({
                 width: 583,
                 height: 489,
@@ -242,11 +238,9 @@ describe('QuestionCanvasViewComponentv5', () => {
 
             const result = (component as any).calculateBestLayout(region);
 
-            // aW = 20+82 = 102; totalWidth4 = 102*4+36 = 444 < 583 -> answerMarginLeft merkezler
+            // aW = 20+82 = 102; totalWidth4 = 102*4+36 = 444 < 583 -> 4 şık yan yana sığar
             expect(result.layout).toBe('top-1row');
             expect(result.answerMinWidth).toBe(102);
-            expect(result.currentMarginLeft).toBe(0);
-            expect(result.answerMarginLeft).toBe((583 - 444) / 2);
         });
 
         // Doküman id: 7259 — qW×qH 594×470, oran 1.26, şıklar [202,202,342,342] -> maxAns=342
@@ -300,6 +294,68 @@ describe('QuestionCanvasViewComponentv5', () => {
 
             expect(result.layout).toBe('top-2row');
             expect(result.answerMinWidth).toBe(20 + 283);
+        });
+    });
+
+    // issue #776: yüksek çözünürlüklü kırpmalarda kaynak piksel cinsinden hesaplanan kenar boşluğu
+    // ekrana piksel olarak yazılınca şıklar sağa itiliyor, genişlikleri sıfıra iniyordu.
+    describe('high-resolution crops (issue #776)', () => {
+        const CONTAINER_WIDTH = 700;
+
+        function svgUrl(width: number, height: number): string {
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="100%" height="100%" fill="#ccc"/></svg>`;
+            return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+        }
+
+        async function renderCrop(qW: number, qH: number, answerWidth: number): Promise<HTMLElement> {
+            const host = fixture.nativeElement as HTMLElement;
+            host.style.display = 'block';
+            host.style.width = `${CONTAINER_WIDTH}px`;
+
+            component.questionRegion = buildRegion({
+                width: qW,
+                height: qH,
+                imageUrl: svgUrl(qW, qH),
+                answers: fourEqualAnswers(answerWidth).map((a) => ({ ...a, imageUrl: svgUrl(answerWidth, 40) })),
+            });
+            fixture.detectChanges();
+
+            const images = Array.from(host.querySelectorAll('img'));
+            await Promise.all(images.map((img) => img.decode()));
+            component.updateVisualScale();
+            fixture.detectChanges();
+            return host;
+        }
+
+        function expectEverythingInside(host: HTMLElement, minAnswerWidth: number): void {
+            const { left, right } = host.getBoundingClientRect();
+            const question = host.querySelector('.qcv4-question-image')!.getBoundingClientRect();
+            expect(question.left).toBeGreaterThanOrEqual(left);
+            expect(question.right).toBeLessThanOrEqual(right);
+
+            const answers = Array.from(host.querySelectorAll('.qcv4-answer-image'));
+            expect(answers.length).toBe(4);
+            for (const answer of answers) {
+                const rect = answer.getBoundingClientRect();
+                expect(rect.left).toBeGreaterThanOrEqual(left);
+                expect(rect.right).toBeLessThanOrEqual(right);
+                expect(rect.width).toBeGreaterThanOrEqual(minAnswerWidth);
+            }
+            expect(host.querySelector('.qcv4-container')!.scrollWidth).toBeLessThanOrEqual(CONTAINER_WIDTH);
+        }
+
+        it('narrowChoicesOnWideCrop_Top1Row_KeepsChoicesVisibleWithReadableWidth', async () => {
+            const host = await renderCrop(3800, 800, 320);
+
+            expect(component.currentLayout()).toBe('top-1row');
+            expectEverythingInside(host, 40);
+        });
+
+        it('narrowChoicesOnWideCrop_Top2Row_KeepsChoicesVisibleWithReadableWidth', async () => {
+            const host = await renderCrop(4500, 1000, 1300);
+
+            expect(component.currentLayout()).toBe('top-2row');
+            expectEverythingInside(host, 40);
         });
     });
 

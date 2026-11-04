@@ -18,7 +18,7 @@ import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@js
 
 import { PASSAGE_INSTRUCTION_MAX_LENGTH, PassageKind, saveValidationMessage } from '../../models/activity';
 import {
-  AUTHORING_KINDS,
+  AUTHORING_KIND_GROUPS,
   AUTHORING_LABEL_MAX,
   AuthoringError,
   AuthoringForm,
@@ -232,7 +232,7 @@ export class ActivityEditorComponent {
   private readonly auth = inject(AuthService);
   private readonly labelingApi = inject(LabelingService);
 
-  readonly kinds = AUTHORING_KINDS;
+  readonly kindGroups = AUTHORING_KIND_GROUPS;
   readonly instructionMax = PASSAGE_INSTRUCTION_MAX_LENGTH;
   readonly labelMax = AUTHORING_LABEL_MAX;
   readonly tableLimits = BLANK_TABLE_LIMITS;

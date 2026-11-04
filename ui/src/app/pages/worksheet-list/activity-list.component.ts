@@ -44,6 +44,8 @@ export class ActivityListComponent implements OnInit {
   readonly assignments = signal<AssignedWorksheet[]>([]);
   readonly inProgress = signal<Test[]>([]);
   readonly completed = signal<Test[]>([]);
+  /** #648: öğrencinin hiç başlamadığı, sınıfına açık etkinlikler (atanmış olanlar sunucudan da gelir, burada elenir). */
+  private readonly notStarted = signal<Test[]>([]);
   readonly progress = signal<ActivityProgressView>({ today: null, badge: null });
 
   /** Atanmış ama başlanmamış etkinlikler (başlananlar "Devam ediyor"da). */
@@ -54,8 +56,18 @@ export class ActivityListComponent implements OnInit {
       .map((a) => this.toTest(a));
   });
 
+  /** #648: atanmamış, keşfedilebilir etkinlikler. Atanmış olan "Yeni"de durur; atama isteği düşse de `isAssigned` eler. */
+  readonly explore = computed<Test[]>(() => {
+    const shown = new Set(this.fresh().map((t) => t.id));
+    return this.notStarted().filter((t) => t.isAssigned !== true && !shown.has(t.id));
+  });
+
   readonly isEmpty = computed(
-    () => this.fresh().length === 0 && this.inProgress().length === 0 && this.completed().length === 0
+    () =>
+      this.fresh().length === 0 &&
+      this.inProgress().length === 0 &&
+      this.explore().length === 0 &&
+      this.completed().length === 0
   );
 
   ngOnInit(): void {
@@ -89,15 +101,19 @@ export class ActivityListComponent implements OnInit {
       completed: this.testService
         .listWorksheets({ statuses: [1], kind, pageSize: 50, sortBy: 'recent' })
         .pipe(catchError(() => of(null))),
+      notStarted: this.testService
+        .listWorksheets({ statuses: [-1], kind, pageSize: 50, sortBy: 'recent' })
+        .pipe(catchError(() => of(null))),
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(({ assignments, inProgress, completed }) => {
+      .subscribe(({ assignments, inProgress, completed, notStarted }) => {
         this.loading.set(false);
-        if (!assignments && !inProgress && !completed) {
+        if (!assignments && !inProgress && !completed && !notStarted) {
           this.error.set(true);
           return;
         }
-        this.partialError.set(!assignments || !inProgress || !completed);
+        this.partialError.set(!assignments || !inProgress || !completed || !notStarted);
+        this.notStarted.set(notStarted?.items ?? []);
         this.assignments.set((assignments ?? []).filter((a) => (a.kind ?? kind) === kind));
         this.inProgress.set(inProgress?.items ?? []);
         this.completed.set(completed?.items ?? []);

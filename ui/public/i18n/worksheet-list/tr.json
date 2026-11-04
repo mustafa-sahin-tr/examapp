@@ -218,9 +218,10 @@
     "loading": "Etkinlikler yükleniyor",
     "error": "Etkinlikler yüklenemedi.",
     "emptyTitle": "Henüz etkinlik yok",
-    "emptyText": "Öğretmenin bir etkinlik sayfası atadığında burada görünür.",
+    "emptyText": "Öğretmenin bir etkinlik atadığında ya da sınıfına yeni etkinlik açıldığında burada görünür.",
     "newTitle": "Yeni",
     "inProgressTitle": "Devam ediyor",
+    "exploreTitle": "Keşfet",
     "completedTitle": "Tamamlandı",
     "partialError": "Bazı etkinlikler yüklenemedi; liste eksik olabilir."
   }

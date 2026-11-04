@@ -14,6 +14,12 @@
   },
   "kind": "Item type",
   "kindLocked": "A saved item’s type can’t be changed; add a new item for another type.",
+  "kindGroups": {
+    "place": "Select and place",
+    "write": "Answer by writing",
+    "game": "Games and puzzles",
+    "math": "Math tools"
+  },
   "kinds": {
     "matrix": "True/False · Matrix",
     "classify": "Sort into groups",

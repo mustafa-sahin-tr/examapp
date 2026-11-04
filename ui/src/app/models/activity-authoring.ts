@@ -153,6 +153,20 @@ export const AUTHORING_KINDS: readonly AuthoringKind[] = [
   'clockSet',
 ];
 
+export interface AuthoringKindGroup {
+  /** Çeviri anahtarı: `activity-editor` kapsamında `kindGroups.<id>`. */
+  id: 'place' | 'write' | 'game' | 'math';
+  kinds: readonly AuthoringKind[];
+}
+
+/** #649: editörün tür seçicisi, öğrencinin yapacağı işe göre gruplanır. Yeni tür buraya da eklenir (spec tam kapsamı denetler). */
+export const AUTHORING_KIND_GROUPS: readonly AuthoringKindGroup[] = [
+  { id: 'place', kinds: ['matrix', 'classify', 'order', 'match', 'wordPool'] },
+  { id: 'write', kinds: ['fillText', 'shortAnswer', 'fillTable'] },
+  { id: 'game', kinds: [...MAZE_KINDS, 'crossword', 'wordSearch', 'logicGrid'] },
+  { id: 'math', kinds: ['regionPaint', 'numberLine', 'barChart', 'gridDraw', 'balanceScale', 'clockSet'] },
+];
+
 export const AUTHORING_LABEL_MAX = MATRIX_CHOICE_LIMITS.maxLabelLength;
 
 export interface MatrixRowForm {

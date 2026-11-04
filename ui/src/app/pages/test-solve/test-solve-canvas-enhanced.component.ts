@@ -28,6 +28,7 @@ import {
   ViewChild,
   ViewChildren,
   computed,
+  effect,
   ChangeDetectionStrategy
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -67,6 +68,13 @@ import { Answer } from '../../models/answer';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { questionCanvasImageUrl, storageImageKey } from '../../shared/utils/storage-image-url.util';
+import {
+  clearSolveLocalState,
+  readAutoAdvance,
+  readSolveLocalState,
+  writeAutoAdvance,
+  writeSolveLocalState,
+} from './test-solve-local-state';
 import { createStorageImageResolver } from '../../shared/utils/storage-image-refresh.util';
 import { WorksheetKind, activityRoute } from '../../models/activity';
 
@@ -82,6 +90,14 @@ export const TEST_SOLVE_SCOPE = 'test-solve';
  * reddetti (#367) — sonuç sayfasına geçilir.
  */
 export type AnswerSaveOutcome = 'saved' | 'failed' | 'completed';
+/** Issue #777: ekranda gösterilen kayıt durumu. */
+export type SaveStatus = 'idle' | 'saving' | 'saved' | 'failed';
+
+/** Issue #777: süre uyarısının eşiği; toplam süresi bundan kısa testte uyarı yok. */
+const LOW_TIME_SECONDS = 300;
+const LOW_TIME_NOTICE_MS = 15000;
+/** Issue #777: görsel bu süreden uzun yüklenirse ilerleme gösterilir. */
+const SLOW_QUESTION_MS = 300;
 
 /**
  * Backend'in "test artık devam etmiyor, cevap/bitirme reddedildi" yanıtını tanır (issue #367/#383):
@@ -213,6 +229,45 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   private readonly failedSaveIndices = new Set<number>();
   /** Cevabı değişip henüz başarıyla kaydedilmemiş soru indeksleri; bitirirken hepsi yeniden gönderilir. */
   private readonly dirtyQuestionIndices = new Set<number>();
+  /**
+   * Issue #777: soru başına son gönderilen cevap. Her `AnswerSubmittedEvent` istatistiğe yazıldığından aynı cevap yeniden
+   * gönderilmez; başarısız kayıtta silinir.
+   */
+  private readonly sentSignatures = new Map<number, string>();
+  /** Issue #777: soru başına kayıtları sırayla gönderir; önce gönderilen geç dönüp yeni cevabı ezmesin. */
+  private readonly saveQueues = new Map<number, Promise<unknown>>();
+  private readonly pendingSaveCount = signal(0);
+  private readonly failedSaveCount = signal(0);
+  private readonly hasSavedAnswer = signal(false);
+  public readonly saveStatus = computed<SaveStatus>(() => {
+    if (this.pendingSaveCount() > 0) return 'saving';
+    if (this.failedSaveCount() > 0) return 'failed';
+    return this.hasSavedAnswer() ? 'saved' : 'idle';
+  });
+  /** Issue #777: ilk yükleme, yükleme hatası ve yavaş soru görseli durumları. */
+  public readonly loadingTest = signal(false);
+  public readonly loadError = signal(false);
+  public readonly questionLoading = signal(false);
+  public readonly lowTimeNoticeVisible = signal(false);
+  private readonly lowTimeNotified = signal(false);
+  private readonly localStateReady = signal(false);
+  private lowTimeNoticeTimer?: ReturnType<typeof setTimeout>;
+  private autoAdvanceTimer?: ReturnType<typeof setTimeout>;
+  private readonly keyboardShortcutHandler = (event: KeyboardEvent) => this.handleKeyboardShortcut(event);
+
+  /** Issue #777: konum, işaretler ve süre uyarısı bu cihazda oturum başına saklanır. */
+  private readonly persistLocalState = effect(() => {
+    if (!this.localStateReady()) return;
+    const index = this.currentIndex();
+    const bookmarks = this.bookmarkedQuestions();
+    const lowTimeNotified = this.lowTimeNotified();
+    const questions = this.testInstance?.testInstanceQuestions ?? [];
+    writeSolveLocalState(this.testInstance.id, {
+      questionId: questions[index]?.id ?? null,
+      bookmarkedQuestionIds: [...bookmarks].map((i) => questions[i]?.id).filter((id) => id !== undefined),
+      lowTimeNotified,
+    });
+  });
   /** Sonuç sayfasına yönlendirme başladı mı (tekrarlı yönlendirme/bildirimi engeller). */
   private redirectedToResult = false;
   protected readonly snackBar = inject(MatSnackBar);
@@ -227,19 +282,21 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   public progressPercentage = computed(() => {
     const total = this.testInstance?.testInstanceQuestions?.length || 1;
     const answered = this.answeredCount();
-    return Math.round((answered / total) * 100);
+    return Math.round((answered / Math.max(1, total - this.exampleCount())) * 100);
   });
 
   public answeredCount = computed(() => {
     // Signal'dan değeri al, böylece reaktif olur
     this.answeredQuestionsCount();
     // Gerçek sayımı yap
-    return this.testInstance?.testInstanceQuestions?.filter((q) => this.isQuestionAnswered(q)).length || 0;
+    return (
+      this.testInstance?.testInstanceQuestions?.filter((q) => !q.question?.isExample && this.isQuestionAnswered(q)).length || 0
+    );
   });
 
   public remainingCount = computed(() => {
     const total = this.testInstance?.testInstanceQuestions?.length || 0;
-    return total - this.answeredCount();
+    return total - this.exampleCount() - this.answeredCount();
   });
 
   public bookmarkedCount = computed(() => {
@@ -359,6 +416,9 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   }
 
   ngOnDestroy(): void {
+    document.removeEventListener('keydown', this.keyboardShortcutHandler);
+    clearTimeout(this.autoAdvanceTimer);
+    clearTimeout(this.lowTimeNoticeTimer);
     if (this.testTimerSubscription) this.testTimerSubscription.unsubscribe();
     if (this.questionTimerSubscription) this.questionTimerSubscription.unsubscribe();
     this.sidenavService.toggleFullScreen();
@@ -424,6 +484,8 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   }
 
   async loadTest(testId: number) {
+    this.loadingTest.set(true);
+    this.loadError.set(false);
     try {
       // 📥 Test verisini asenkron olarak al
       this.testInstance = await lastValueFrom(this.testService.getCanvasTestWithAnswers(testId));
@@ -433,17 +495,6 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
         this.redirectedToResult = true;
         void this.router.navigate(activityRoute(this.testInstance.id ?? testId), { replaceUrl: true });
         return;
-      }
-
-      // 📥 Soruları yükle ve resimleri bekle
-
-      let lastAnsweredQuestionIndex = this.testInstance.testInstanceQuestions.findIndex((q) => q.selectedAnswerId);
-      if (lastAnsweredQuestionIndex === -1) {
-        this.currentIndex.set(0);
-      }
-      if (lastAnsweredQuestionIndex < this.testInstance.testInstanceQuestions.length - 1) {
-        const newIndex = lastAnsweredQuestionIndex + 1;
-        this.currentIndex.set(newIndex);
       }
 
       // 📜 Passage gruplarını oluştur
@@ -472,6 +523,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
         return;
       }
 
+      this.restoreLocalState();
       await this.loadQuestions();
       await this.ensureQuestionAssetsLoaded(this.currentIndex());
 
@@ -484,7 +536,45 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       this.updateAnsweredCount();
     } catch (error) {
       console.error('Test yüklenirken hata oluştu:', error);
+      this.loadError.set(true);
+    } finally {
+      // Yönlendirmede iskelet kalır; test ekranı bir an için görünmesin.
+      if (!this.redirectedToResult) {
+        this.loadingTest.set(false);
+      }
     }
+  }
+
+  /** Issue #777: "Tekrar dene" düğmesi. */
+  retryLoadTest(): void {
+    void this.loadTest(this.testInstanceId);
+  }
+
+  backToTests(): void {
+    void this.router.navigate(['/tests']);
+  }
+
+  /**
+   * Issue #777: bu cihazdaki son soruya döner; kayıt yoksa (başka cihaz, ilk açılış) ilk boş soruya. Örnek sorular "boş"
+   * sayılmaz.
+   */
+  private restoreLocalState(): void {
+    const questions = this.testInstance.testInstanceQuestions;
+    const saved = readSolveLocalState(this.testInstance.id);
+    const savedIndex = questions.findIndex((q) => q.id === saved.questionId);
+    const firstEmpty = questions.findIndex((q) => !q.question?.isExample && !this.isQuestionAnswered(q));
+    const index = savedIndex >= 0 ? savedIndex : Math.max(firstEmpty, 0);
+    this.currentIndex.set(index);
+    this.viewStartIndex.set(index);
+
+    const bookmarked = new Set(saved.bookmarkedQuestionIds);
+    const bookmarks = new Set<number>();
+    questions.forEach((q, i) => {
+      if (bookmarked.has(q.id)) bookmarks.add(i);
+    });
+    this.bookmarkedQuestions.set(bookmarks);
+    this.lowTimeNotified.set(saved.lowTimeNotified);
+    this.localStateReady.set(true);
   }
 
   formatString(format: string, args: number[]): string {
@@ -520,11 +610,13 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       } else {
         this.testDuration++;
       }
+      this.checkLowTimeNotice();
       if (this.isTimeUp()) {
         // Süre doldu: onay sormadan bitir (issue #383).
         void this.completeTest();
       }
     });
+    this.checkLowTimeNotice();
     if (this.isTimeUp()) {
       // Issue #396: sayfa süre bittikten sonra açıldı/yenilendi (sunucu kalan süreyi 0 verdi) — beklemeden bitir.
       void this.completeTest();
@@ -1072,6 +1164,26 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     this.navigateToResult();
   }
 
+  /** Issue #777: süreli testte son 5 dakika. Toplam süresi 5 dakikadan kısa testte hiç true olmaz. */
+  public isTimeLow(): boolean {
+    const max = this.testInstance?.maxDurationSeconds ?? 0;
+    return max > LOW_TIME_SECONDS && max - this.testDuration <= LOW_TIME_SECONDS;
+  }
+
+  /** Oturum başına tek bildirim: yenileme yeniden göstermez, 5 dakikanın altında geri dönen öğrenci bir kez görür. */
+  private checkLowTimeNotice(): void {
+    if (this.lowTimeNotified() || !this.isTimeLow() || this.isTimeUp()) return;
+    this.lowTimeNotified.set(true);
+    this.lowTimeNoticeVisible.set(true);
+    clearTimeout(this.lowTimeNoticeTimer);
+    this.lowTimeNoticeTimer = setTimeout(() => this.lowTimeNoticeVisible.set(false), LOW_TIME_NOTICE_MS);
+  }
+
+  dismissLowTimeNotice(): void {
+    clearTimeout(this.lowTimeNoticeTimer);
+    this.lowTimeNoticeVisible.set(false);
+  }
+
   /** Süre doldu mu (sayaç `maxDurationSeconds`'a ulaştı). Issue #396: süre sınırı yoksa (0) hiçbir zaman. */
   protected isTimeUp(): boolean {
     return (
@@ -1117,42 +1229,48 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   private async flushPendingAnswers(): Promise<AnswerSaveOutcome[]> {
     if (!this.testInstance.isPracticeTest) {
       // Kaydı başarısız olan ve cevabı değişip henüz kaydedilmemiş (dirty) TÜM sorular — görünür olmasalar da
-      // (önceki görünüm, görünüm boyutu değişimi) — yeniden gönderilir.
+      // (önceki görünüm, görünüm boyutu değişimi) — yeniden gönderilir. Uçuştaki aynı cevap yeniden gönderilmez.
       const indices = new Set<number>([...this.failedSaveIndices, ...this.dirtyQuestionIndices]);
-      if (this.questionsPerView() === 1) {
-        // Tek soru görünümü: aktif soru (süresiyle) her zaman gönderilir.
-        this.endQuestionTimer();
-        const idx = this.currentIndex();
-        const current = this.testInstance.testInstanceQuestions[idx];
-        if (current) {
-          current.timeTaken = this.questionDurations().get(idx) ?? current.timeTaken;
-        }
-        indices.add(idx);
-      }
-      indices.forEach((index) => this.persistQuestionState(index));
+      indices.forEach((index) => this.saveQuestionIfChanged(index));
     }
 
     return Promise.all(Array.from(this.pendingSaves));
   }
 
-  /** Sorunun mevcut cevabını (MCQ veya drag-drop payload) kaydeder; cevap yoksa istek göndermez. */
+  /** Issue #777: cevap değiştiyse ya da kaydı başarısız olduysa gönderir; aynı cevabı yeniden göndermez. */
+  private saveQuestionIfChanged(index: number): void {
+    const question = this.testInstance.testInstanceQuestions[index];
+    if (!question || question.question.isExample || this.testInstance.isPracticeTest) return;
+    if (!this.dirtyQuestionIndices.has(index) && !this.failedSaveIndices.has(index)) return;
+    if (this.sentSignatures.get(index) === this.answerSignature(index)) return;
+    this.persistQuestionState(index);
+  }
+
+  /** Sorunun mevcut cevabını (MCQ, payload ya da temizleme) kaydeder. */
   private persistQuestionState(index: number): void {
     const question = this.testInstance.testInstanceQuestions[index];
-    if (!question || question.question.isExample) return;
-
-    if (question.selectedAnswerId) {
-      void this.trackAnswerSave(
-        index,
-        this.testService.saveAnswer({
-          testQuestionId: question.id,
-          selectedAnswerId: question.selectedAnswerId,
-          testInstanceId: this.testInstance.id,
-          timeTaken: question.timeTaken,
-        })
-      );
-    } else if (this.isNonEmptyPayload(question.answerPayload)) {
-      this.persistDragDropPayloadForQuestion(question.answerPayload!, index);
+    if (index === this.currentIndex()) {
+      this.endQuestionTimer();
     }
+    const timeTaken = this.questionDurations().get(index) ?? question.timeTaken;
+    question.timeTaken = timeTaken;
+    const hasPayload = !question.selectedAnswerId && this.isNonEmptyPayload(question.answerPayload);
+
+    void this.trackAnswerSave(
+      index,
+      this.testService.saveAnswer({
+        testQuestionId: question.id,
+        selectedAnswerId: question.selectedAnswerId || 0,
+        ...(hasPayload ? { answerPayload: question.answerPayload } : {}),
+        testInstanceId: this.testInstance.id,
+        timeTaken,
+      })
+    );
+  }
+
+  /** Issue #777: "Tekrar dene"; başarısız tüm sorular güncel cevaplarıyla yeniden gönderilir. */
+  retryFailedSaves(): void {
+    [...this.failedSaveIndices].forEach((index) => this.saveQuestionIfChanged(index));
   }
 
   /**
@@ -1162,7 +1280,9 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
    */
   private trackAnswerSave(questionIndex: number, request$: Observable<TestSessionResult>): Promise<AnswerSaveOutcome> {
     const sentSignature = this.answerSignature(questionIndex);
-    const outcome = firstValueFrom(request$).then(
+    this.sentSignatures.set(questionIndex, sentSignature);
+    const previous = this.saveQueues.get(questionIndex) ?? Promise.resolve();
+    const outcome = previous.then(() => firstValueFrom(request$)).then(
       (response): AnswerSaveOutcome => {
         if (response?.success === false) {
           if (!isTestCompletedRejection(response)) return 'failed';
@@ -1183,7 +1303,9 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
 
     const tracked: Promise<AnswerSaveOutcome> = outcome.then((result) => {
       this.pendingSaves.delete(tracked);
+      this.pendingSaveCount.set(this.pendingSaves.size);
       if (result === 'saved') {
+        this.hasSavedAnswer.set(true);
         this.failedSaveIndices.delete(questionIndex);
         // İstek uçuştayken cevap yeniden değiştiyse soru dirty kalır.
         if (this.answerSignature(questionIndex) === sentSignature) {
@@ -1191,12 +1313,18 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
         }
       } else if (result === 'failed') {
         this.failedSaveIndices.add(questionIndex);
+        if (this.sentSignatures.get(questionIndex) === sentSignature) {
+          this.sentSignatures.delete(questionIndex);
+        }
       } else if (!this.finishing()) {
         this.handleTestAlreadyCompleted();
       }
+      this.failedSaveCount.set(this.failedSaveIndices.size);
       return result;
     });
+    this.saveQueues.set(questionIndex, tracked);
     this.pendingSaves.add(tracked);
+    this.pendingSaveCount.set(this.pendingSaves.size);
     return tracked;
   }
 
@@ -1227,6 +1355,10 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
    */
   protected navigateToResult(): void {
     this.redirectedToResult = true;
+    this.localStateReady.set(false);
+    if (this.testInstance?.id) {
+      clearSolveLocalState(this.testInstance.id);
+    }
     this.testTimerSubscription?.unsubscribe();
     const worksheetId = this.testInstance?.worksheetId ?? this.navigationWorksheetId;
     if (worksheetId) {
@@ -1250,20 +1382,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
 
   // Cevap kaydet
   selectAnswer(selectedIndex: any) {
-    this.testInstance.testInstanceQuestions[this.currentIndex()].selectedAnswerId = selectedIndex;
-    this.markQuestionDirty(this.currentIndex());
-    if (selectedIndex) {
-      this.testInstance.testInstanceQuestions[this.currentIndex()].answerPayload = undefined;
-    }
-
-    // Cevaplanan soru sayısını güncelle
-    this.updateAnsweredCount();
-
-    if (this.autoNextQuestion()) {
-      setTimeout(() => {
-        void this.nextQuestion();
-      }, 300); // Kısa bir gecikme ile otomatik geçiş
-    }
+    this.selectAnswerForQuestion(selectedIndex, this.currentIndex());
   }
 
   closeDialog() {
@@ -1310,22 +1429,6 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
           console.error('Error saving answer', error);
         },
       });
-  }
-
-  persistAnswer(selectedAnswerId: number) {
-    if (this.testInstance.testInstanceQuestions[this.currentIndex()].question.isExample) return;
-    this.testInstance.testInstanceQuestions[this.currentIndex()].selectedAnswerId = selectedAnswerId;
-
-    const index = this.currentIndex();
-    void this.trackAnswerSave(
-      index,
-      this.testService.saveAnswer({
-        testQuestionId: this.testInstance.testInstanceQuestions[index].id,
-        selectedAnswerId: selectedAnswerId,
-        testInstanceId: this.testInstance.id,
-        timeTaken: this.testInstance.testInstanceQuestions[index].timeTaken,
-      })
-    );
   }
 
   // Önceki soruya git - Çoklu görünüm desteği ile
@@ -1397,45 +1500,12 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       if (this.testInstance.isPracticeTest) {
         this.persistPracticetime();
       } else {
-        if (currentQuestion.selectedAnswerId) {
-          this.persistAnswer(currentQuestion.selectedAnswerId);
-        } else if (this.isNonEmptyPayload(currentQuestion.answerPayload)) {
-          this.persistDragDropPayloadForQuestion(currentQuestion.answerPayload!, this.currentIndex());
-        }
+        this.saveQuestionIfChanged(this.currentIndex());
       }
     } else {
       // Çoklu soru için tüm görünürdeki soruları kaydet
-      const currentQuestions = this.currentQuestions();
-      currentQuestions.forEach(({ question, index }) => {
-        if (this.testInstance.isPracticeTest) {
-          return;
-        }
-
-        if (question.selectedAnswerId) {
-          this.persistAnswerForQuestion(question.selectedAnswerId, index);
-          return;
-        }
-
-        if (this.isNonEmptyPayload(question.answerPayload)) {
-          this.persistDragDropPayloadForQuestion(question.answerPayload!, index);
-        }
-      });
+      this.currentQuestions().forEach(({ index }) => this.saveQuestionIfChanged(index));
     }
-  }
-
-  // YENİ: Belirli bir soru için cevap kaydet
-  private persistAnswerForQuestion(selectedAnswerId: number, questionIndex: number) {
-    if (this.testInstance.testInstanceQuestions[questionIndex].question.isExample) return;
-
-    void this.trackAnswerSave(
-      questionIndex,
-      this.testService.saveAnswer({
-        testQuestionId: this.testInstance.testInstanceQuestions[questionIndex].id,
-        selectedAnswerId: selectedAnswerId,
-        testInstanceId: this.testInstance.id,
-        timeTaken: this.questionDuration, // Bu her soru için ayrı tutulmalı
-      })
-    );
   }
 
   public saveDragDropAnswerForQuestion(answerPayloadJson: string, questionIndex: number) {
@@ -1447,28 +1517,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
 
     this.updateAnsweredCount();
 
-    if (this.testInstance.isPracticeTest || question.question.isExample) {
-      return;
-    }
-
-    this.persistDragDropPayloadForQuestion(answerPayloadJson, questionIndex);
-  }
-
-  private persistDragDropPayloadForQuestion(answerPayloadJson: string, questionIndex: number) {
-    if (this.testInstance.testInstanceQuestions[questionIndex].question.isExample) return;
-
-    const timeTaken = this.questionDurations().get(questionIndex) ?? this.questionDuration;
-
-    void this.trackAnswerSave(
-      questionIndex,
-      this.testService.saveAnswer({
-        testQuestionId: this.testInstance.testInstanceQuestions[questionIndex].id,
-        selectedAnswerId: 0,
-        answerPayload: answerPayloadJson,
-        testInstanceId: this.testInstance.id,
-        timeTaken,
-      })
-    );
+    this.saveQuestionIfChanged(questionIndex);
   }
 
   // Testi durdur (opsiyonel)
@@ -1522,7 +1571,18 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       tasks.push(this.preloadImage(passageKey, passageUrl));
     }
 
-    await Promise.all(tasks);
+    await this.whileQuestionLoads(Promise.all(tasks));
+  }
+
+  /** Issue #777: görsel yavaşsa ilerleme gösterilir ve gezinme düğmeleri kapanır; hızlı yüklemede titreme olmaz. */
+  private async whileQuestionLoads(task: Promise<unknown>): Promise<void> {
+    const timer = setTimeout(() => this.questionLoading.set(true), SLOW_QUESTION_MS);
+    try {
+      await task;
+    } finally {
+      clearTimeout(timer);
+      this.questionLoading.set(false);
+    }
   }
 
   private preloadImage(cacheKey: string, url: string | null | undefined): Promise<void> {
@@ -1595,46 +1655,29 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   // YENİ: Gelişmiş UX metodları
 
   private setupKeyboardShortcuts() {
-    document.addEventListener('keydown', (event) => {
-      if (event.ctrlKey || event.metaKey) {
-        switch (event.key) {
-          case 'ArrowLeft':
-            event.preventDefault();
-            void this.prevQuestion();
-            break;
-          case 'ArrowRight':
-            event.preventDefault();
-            void this.nextQuestion();
-            break;
-          case 'b':
-            event.preventDefault();
-            this.toggleBookmark();
-            break;
-          case 'f':
-            event.preventDefault();
-            this.toggleFocusMode();
-            break;
-          case 'h':
-            event.preventDefault();
-            if (this.testInstance?.isPracticeTest) {
-              this.showHint();
-            }
-            break;
-          case '1':
-            event.preventDefault();
-            this.setQuestionsPerView(1);
-            break;
-          case '2':
-            event.preventDefault();
-            this.setQuestionsPerView(2);
-            break;
-          case '4':
-            event.preventDefault();
-            this.setQuestionsPerView(4);
-            break;
-        }
-      }
-    });
+    document.addEventListener('keydown', this.keyboardShortcutHandler);
+  }
+
+  private handleKeyboardShortcut(event: KeyboardEvent): void {
+    if (!event.ctrlKey && !event.metaKey) return;
+    switch (event.key) {
+      case 'ArrowLeft':
+        event.preventDefault();
+        void this.prevQuestion();
+        break;
+      case 'ArrowRight':
+        event.preventDefault();
+        void this.nextQuestion();
+        break;
+      case 'b':
+        event.preventDefault();
+        this.toggleBookmark();
+        break;
+      case 'f':
+        event.preventDefault();
+        this.toggleFocusMode();
+        break;
+    }
   }
 
   toggleFocusMode() {
@@ -1690,7 +1733,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
 
     // Sonraki boş soruyu bul
     for (let i = current + 1; i < questions.length; i++) {
-      if (!this.isQuestionAnswered(questions[i])) {
+      if (!questions[i].question?.isExample && !this.isQuestionAnswered(questions[i])) {
         this.goToQuestion(i);
         return;
       }
@@ -1698,7 +1741,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
 
     // Baştan boş soru bul
     for (let i = 0; i < current; i++) {
-      if (!this.isQuestionAnswered(questions[i])) {
+      if (!questions[i].question?.isExample && !this.isQuestionAnswered(questions[i])) {
         this.goToQuestion(i);
         return;
       }
@@ -1708,18 +1751,29 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   }
 
   clearAnswer() {
-    const currentQuestion = this.testInstance.testInstanceQuestions[this.currentIndex()];
-    if (this.isQuestionAnswered(currentQuestion)) {
-      currentQuestion.selectedAnswerId = undefined as any;
-      currentQuestion.answerPayload = undefined;
-
-      // Cevaplanan soru sayısını güncelle
-      this.updateAnsweredCount();
-
-      this.showToastMessage(this.tr('toast.answerCleared'), 'info');
-      // Save to backend
-      this.saveAnswer(null);
+    const index = this.currentIndex();
+    if (this.isQuestionAnswered(this.testInstance.testInstanceQuestions[index])) {
+      this.clearQuestionAnswer(index);
     }
+  }
+
+  /** Issue #777: temizleme de kayda girer; yoksa yenileme ve teslim eski cevabı geri getirirdi. */
+  private clearQuestionAnswer(index: number): void {
+    const question = this.testInstance.testInstanceQuestions[index];
+    question.selectedAnswerId = undefined as any;
+    question.answerPayload = undefined;
+
+    const regionId = this.regions()[index]?.id;
+    if (regionId !== undefined && this.selectedChoices().has(regionId)) {
+      const updatedChoices = new Map(this.selectedChoices());
+      updatedChoices.delete(regionId);
+      this.selectedChoices.set(updatedChoices);
+    }
+
+    this.markQuestionDirty(index);
+    this.updateAnsweredCount();
+    this.showToastMessage(this.tr('toast.answerCleared'), 'info');
+    this.saveQuestionIfChanged(index);
   }
 
   hasAnswer(): boolean {
@@ -1750,16 +1804,12 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     return this.testInstance?.isPracticeTest || false;
   }
 
-  reportQuestion() {
-    // Backend'e soru bildirimi gönder
-    this.showToastMessage(this.tr('toast.questionReported'), 'success');
-  }
-
   // Otomatik sonraki soruya geçiş özelliği
-  public autoNextQuestion = signal(true);
+  public autoNextQuestion = signal(readAutoAdvance());
 
   toggleAutoNextQuestion() {
     this.autoNextQuestion.set(!this.autoNextQuestion());
+    writeAutoAdvance(this.autoNextQuestion());
     this.showToastMessage(
       this.autoNextQuestion() ? this.tr('toast.autoNextOn') : this.tr('toast.autoNextOff'),
       'info'
@@ -1767,25 +1817,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   }
 
   clearCanvasAnswer() {
-    if (this.canvasViewComponent) {
-      // Canvas component'indeki seçimi temizle
-      this.canvasViewComponent.selectedChoice = undefined;
-      // Canvas'ı yeniden çiz
-      // this.canvasViewComponent.drawImageSection();
-
-      // Test instance'daki seçimi de temizle
-      const currentQuestion = this.testInstance.testInstanceQuestions[this.currentIndex()];
-      currentQuestion.selectedAnswerId = undefined as any;
-      currentQuestion.answerPayload = undefined;
-
-      // Cevaplanan soru sayısını güncelle
-      this.updateAnsweredCount();
-
-      this.showToastMessage(this.tr('toast.canvasAnswerCleared'), 'success');
-
-      // Save to backend
-      this.saveAnswer(null);
-    }
+    this.clearAnswer();
   }
 
   enlargeImage() {
@@ -1807,12 +1839,17 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   }
 
   // Cevaplanan soru sayısını güncelle
+  private exampleCount(): number {
+    return this.testInstance?.testInstanceQuestions?.filter((q) => q.question?.isExample).length || 0;
+  }
+
   private updateAnsweredCount() {
-    const count = this.testInstance?.testInstanceQuestions?.filter((q) => this.isQuestionAnswered(q)).length || 0;
+    const count =
+      this.testInstance?.testInstanceQuestions?.filter((q) => !q.question?.isExample && this.isQuestionAnswered(q)).length || 0;
     this.answeredQuestionsCount.set(count);
   }
 
-  private isQuestionAnswered(question: TestInstanceQuestion): boolean {
+  protected isQuestionAnswered(question: TestInstanceQuestion): boolean {
     // Issue #574 / #575 / #576 / #582 / #583: seçimsiz matris / boş kutulu / yerleşimsiz / eşleşmesiz / seçimsiz metin cevabı (Temizle)
     // gönderilir ama cevapsız sayılır (sunucu da boş sayar).
     const payload = question.answerPayload;
@@ -1894,6 +1931,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
 
   // YENİ: Belirli bir soruya odaklan (çoklu görünümde)
   async focusOnQuestion(questionIndex: number): Promise<void> {
+    const previousIndex = this.currentIndex();
     if (this.questionsPerView() === 1) {
       await this.ensureQuestionAssetsLoaded(questionIndex);
       this.currentIndex.set(questionIndex);
@@ -1905,12 +1943,16 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       this.viewStartIndex.set(newStartIndex);
       this.currentIndex.set(questionIndex);
     }
-    this.startQuestionTimer();
+    // Aynı soruda kalan çağrılar (işaretleme, etkileşimli cevap) süreyi sıfırlamaz.
+    if (questionIndex !== previousIndex) {
+      this.startQuestionTimer();
+    }
   }
 
   // YENİ: Çoklu görünümde belirli bir soruya cevap seç
   selectAnswerForQuestion(selectedAnswerId: number, questionIndex: number) {
     const question = this.testInstance.testInstanceQuestions[questionIndex];
+    const wasAnswered = this.isQuestionAnswered(question);
     question.selectedAnswerId = selectedAnswerId;
     this.markQuestionDirty(questionIndex);
     // MCQ seçildiyse varsa payload'u temizle.
@@ -1932,11 +1974,16 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       }
     }
 
-    // Multi-question görünümünde de auto-advance çalışsın
-    if (this.autoNextQuestion()) {
-      setTimeout(() => {
+    this.saveQuestionIfChanged(questionIndex);
+
+    // Issue #777: cevap değiştirilirken ilerlenmez; öğrenci başka soruya geçtiyse de ilerlenmez.
+    if (this.autoNextQuestion() && !wasAnswered) {
+      clearTimeout(this.autoAdvanceTimer);
+      this.autoAdvanceTimer = setTimeout(() => {
         if (this.questionsPerView() === 1) {
-          void this.nextQuestion();
+          if (this.currentIndex() === questionIndex) {
+            void this.nextQuestion();
+          }
         } else {
           // Multi-question görünümünde bir sonraki soruya odaklan
           const nextIndex = questionIndex + 1;
@@ -1976,13 +2023,5 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
 
   hideToast() {
     this.showToast.set(false);
-  }
-
-  private saveAnswer(answerId: number | null) {
-    // Backend'e cevap kaydet
-    if (this.testInstance && this.testInstanceId) {
-      const currentQuestion = this.testInstance.testInstanceQuestions[this.currentIndex()];
-      // API call implementation
-    }
   }
 }

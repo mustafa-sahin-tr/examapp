@@ -82,3 +82,11 @@ Deneme her oturum için sıradan bir test kaydı açar: süre sınırı, oturum,
 **Yayın öncesi:** örnek sayılar ve temsili yorumlar bu notlar olmadan yayımlanmaz; gerçekmiş gibi sunulursa yanıltıcı reklam sayılır.
 
 **Test çözme görüntüsü:** `assets/images/landing/test-solve.png` gerçek ekrandandır, ekran değişince yenilenir. SVG'lerdeki metinler Türkçedir, İngilizce sürümü yok.
+
+## Test çözme: kayıt ve devam (#777)
+
+**Kayıt:** cevap seçilince ya da temizlenince hemen gönderilir (`selectedAnswerId: 0` + payload yok = temizleme). Soru değiştirmek aynı cevabı yeniden göndermez: BadgeService her `AnswerSubmittedEvent`'i istatistiğe yazar (toplam soru, doğru, seri), bu yüzden gereksiz kayıt sayaçları şişirir. Aynı sorunun kayıtları sırayla gider. Başarısız kayıt kalıcı uyarı ve "Tekrar dene" gösterir; bitirmede de yeniden denenir.
+
+**Bu cihazda (localStorage):** `testSolve.instance.<oturum>` son soru, işaretler ve 5 dakika uyarısının gösterildiğini tutar; oturum bitince silinir. `testSolve.autoAdvance` otomatik geçiş tercihidir (varsayılan kapalı). Kayıt yoksa ilk boş soru açılır.
+
+**Otomatik geçiş** yalnız boş soruya ilk cevapta ilerler, cevap değiştirilirken ilerlemez.

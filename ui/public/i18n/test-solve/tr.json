@@ -8,30 +8,30 @@
     "questionPositionAria": "Soru {{current}} / {{total}}",
     "questionActions": "Soru işlemleri",
     "pauseTest": "Testi duraklat",
-    "finishTest": "Sınavı Bitir",
-    "finishTestAria": "Sınavı bitir",
+    "finishTest": "Testi Bitir",
+    "finishTestAria": "Testi bitir",
     "answeredRatio": "Cevaplanma oranı",
-    "answeredPercent": "%{{percent}} tamamlandı"
+    "answeredPercent": "%{{percent}} tamamlandı",
+    "elapsedTime": "Geçen Süre"
   },
   "finish": {
-    "dialogTitle": "Sınavı bitir",
-    "dialogUnanswered": "{{count}} soru boş. Yine de sınavı bitirmek istiyor musun? Bitirdikten sonra cevaplarını değiştiremezsin.",
-    "dialogAllAnswered": "Tüm soruları cevapladın. Sınavı bitirmek istiyor musun? Bitirdikten sonra cevaplarını değiştiremezsin.",
-    "dialogConfirm": "Sınavı Bitir",
+    "dialogTitle": "Testi bitir",
+    "dialogUnanswered": "{{count}} soru boş. Yine de testi bitirmek istiyor musun? Bitirdikten sonra cevaplarını değiştiremezsin.",
+    "dialogAllAnswered": "Tüm soruları cevapladın. Testi bitirmek istiyor musun? Bitirdikten sonra cevaplarını değiştiremezsin.",
+    "dialogConfirm": "Testi Bitir",
     "dialogCancel": "Vazgeç",
-    "saveFailed": "Son cevabın kaydedilemedi, sınav bitirilmedi. Bağlantını kontrol edip tekrar dene.",
-    "completeFailed": "Sınav bitirilemedi. Lütfen tekrar dene.",
-    "alreadyCompleted": "Bu sınav artık devam etmiyor (tamamlanmış ya da süresi dolmuş); sonuç sayfasına yönlendirildin.",
+    "saveFailed": "Son cevabın kaydedilemedi, test bitirilmedi. Bağlantını kontrol edip tekrar dene.",
+    "completeFailed": "Test bitirilemedi. Lütfen tekrar dene.",
+    "alreadyCompleted": "Bu test artık devam etmiyor (tamamlanmış ya da süresi dolmuş); sonuç sayfasına yönlendirildin.",
     "dismiss": "Tamam",
     "timeUpTitle": "Süre doldu",
-    "timeUp": "Sınav süren doldu; süre dolduktan sonraki cevaplar kaydedilmedi. Sonuç sayfasına yönlendirildin.",
+    "timeUp": "Testin süresi doldu; süre dolduktan sonraki cevaplar kaydedilmedi. Sonuç sayfasına yönlendirildin.",
     "retry": "Tekrar dene"
   },
   "question": {
     "bookmark": "Soruyu işaretle",
     "removeBookmark": "İşareti kaldır",
     "bookmarkActive": "Aktif soruyu işaretle",
-    "report": "Soruyu bildir",
     "fullscreen": "Tam ekran",
     "fullscreenAria": "Soruyu tam ekran göster",
     "exitFullscreen": "Tam ekrandan çık (Esc)",
@@ -46,7 +46,8 @@
     "backToPassage": "Pasaja Dön",
     "showHint": "İpucu Göster",
     "passageAlt": "Pasaj görseli",
-    "numberAria": "Soru {{number}}"
+    "numberAria": "Soru {{number}}",
+    "exampleAria": "Soru {{number}} (örnek)"
   },
   "dock": {
     "navigation": "Soru gezinme",
@@ -84,13 +85,11 @@
     "bookmarkAdded": "Soru işaretlendi",
     "allAnswered": "Tüm sorular cevaplanmış",
     "answerCleared": "Cevap temizlendi",
-    "canvasAnswerCleared": "Canvas cevabı temizlendi",
-    "questionReported": "Soru bildirildi",
     "autoNextOn": "Cevaplayınca otomatik sonraki soruya geçiş aktif",
     "autoNextOff": "Otomatik geçiş kapalı",
     "highContrastOn": "Yüksek kontrast açıldı",
     "highContrastOff": "Normal renk modu",
-    "help": "Yardım: Ctrl+← ← grup, Ctrl+→ → grup, Ctrl+B işaretle, Ctrl+1/2/4 görünüm değiştir",
+    "help": "Yardım: Ctrl+← önceki soru, Ctrl+→ sonraki soru, Ctrl+B işaretle, Ctrl+F tam ekran",
     "settingsComingSoon": "Ayarlar geliştiriliyor...",
     "viewChanged": "{{count}} soru görünümü aktifleştirildi"
   },
@@ -105,7 +104,6 @@
     "viewCounter": "Görünüm {{current}}/{{total}} ({{start}}-{{end}})",
     "bookmark": "İşaretle",
     "hint": "İpucu",
-    "report": "Bildir",
     "zoomIn": "Büyüt (+%5)",
     "resetZoom": "Orijinal",
     "zoomOut": "Küçült (-%5)",
@@ -133,5 +131,23 @@
     "switchToFocusMode": "Odaklanma moduna geç",
     "help": "Yardım",
     "settings": "Ayarlar"
+  },
+  "save": {
+    "saving": "Kaydediliyor",
+    "saved": "Kaydedildi",
+    "failed": "Kaydedilemedi",
+    "failedBanner": "Son cevabın kaydedilemedi. Bağlantını kontrol et, sayfadan çıkma.",
+    "retry": "Tekrar dene"
+  },
+  "load": {
+    "opening": "Test açılıyor",
+    "errorTitle": "Test açılamadı",
+    "errorBody": "Bağlantını kontrol edip tekrar dene. Kaydedilen cevapların duruyor.",
+    "retry": "Tekrar dene",
+    "backToTests": "Test listesine dön",
+    "question": "Soru yükleniyor"
+  },
+  "time": {
+    "lowNotice": "5 dakika kaldı. Süre bitince test kendiliğinden teslim edilir."
   }
 }

@@ -100,10 +100,6 @@
                 <mat-icon>{{ isQuestionBookmarked(questionData.index) ? 'bookmark' : 'bookmark_border' }}</mat-icon>
               </button>
 
-              <button mat-mini-fab (click)="reportQuestion()" class="overlay-report-btn"
-                [attr.aria-label]="t('question.report')">
-                <mat-icon>flag</mat-icon>
-              </button>
               {{ currentScale() }}
             </div>
 
@@ -201,10 +197,6 @@
         </button>
         }
 
-        <button mat-button (click)="reportQuestion()" class="report-btn">
-          <mat-icon>flag</mat-icon>
-          {{ t('classic.report') }}
-        </button>
       </div>
       }
     </section>

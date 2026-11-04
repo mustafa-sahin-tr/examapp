@@ -1,0 +1,115 @@
+{
+  "draft": "Taslak",
+  "published": "Yayında",
+  "retry": "Tekrar dene",
+  "minutes": "{{count}} dakika",
+  "list": {
+    "title": "Denemeler",
+    "subtitle": "LGS ve YKS biçiminde deneme kurun. Her oturumun süresi sunucuda işler, sonuçta ders başına net gösterilir.",
+    "template": "Sınav",
+    "grade": "Sınıf",
+    "name": "Deneme adı",
+    "create": "Deneme oluştur",
+    "createFailed": "Deneme oluşturulamadı. Tekrar deneyin.",
+    "loadFailed": "Denemeler yüklenemedi.",
+    "empty": "Henüz deneme yok."
+  },
+  "builder": {
+    "loadFailed": "Deneme yüklenemedi.",
+    "addQuestions": "Soru ekle",
+    "addSelected": "Ekle ({{count}})",
+    "cancel": "Vazgeç",
+    "removeQuestion": "{{id}} numaralı soruyu çıkar",
+    "problemsTitle": "Yayınlamak için tamamlanmalı:",
+    "openToGrade": "Bütün okullardaki {{grade}} öğrencilerine açık olsun",
+    "openToGradeHint": "İşaretli değilse yalnız atanan öğrenciler başlatabilir. Yayından sonra her oturumu ayrı atayın.",
+    "publish": "Yayınla",
+    "deleteDraft": "Taslağı sil",
+    "assign": "Bu oturumu ata",
+    "questionImage": "{{id}} numaralı sorunun görseli",
+    "remaining": "Bu derse {{count}} soru daha eklenebilir.",
+    "publishConfirm": {
+      "title": "Deneme yayınlansın mı?",
+      "message": "Yayınlanan deneme değiştirilemez. Öğrenciler ancak oturumları atadıktan sonra çözebilir.",
+      "confirm": "Yayınla"
+    },
+    "publishOpenConfirm": {
+      "title": "Deneme bütün okullara açılsın mı?",
+      "message": "Yayınlanan deneme değiştirilemez. Bütün okullardaki {{grade}} öğrencileri denemeyi görüp başlatabilir.",
+      "confirm": "Yayınla"
+    },
+    "deleteConfirm": {
+      "title": "Taslak silinsin mi?",
+      "message": "Seçtiğiniz sorular silinmez, yalnız bu deneme taslağı kaldırılır.",
+      "confirm": "Sil"
+    },
+    "openToGradeHintAdmin": "Yöneticiler oturum atayamaz. Öğrencilerin çözebilmesi için bu kutuyu işaretleyin."
+  },
+  "problems": {
+    "WrongCount": "{{section}}: {{required}} soru gerekli, {{actual}} soru var.",
+    "Unpublished": "{{section}}: #{{id}} numaralı soru yayında değil.",
+    "LicenseEnded": "{{section}}: #{{id}} numaralı sorunun lisansı bitti.",
+    "NoCorrectAnswer": "{{section}}: #{{id}} numaralı sorunun doğru cevabı yok.",
+    "ExampleQuestion": "{{section}}: #{{id}} numaralı soru örnek soru, oturumda cevabını gösterir.",
+    "Unmapped": "#{{id}} numaralı soru hiçbir derse bağlı değil. Bir dersi kaydedince temizlenir."
+  },
+  "errors": {
+    "AlreadyPublished": "Deneme yayınlandı, artık değiştirilemez.",
+    "TooManyQuestions": "Bu derse gerekenden fazla soru seçtiniz.",
+    "QuestionUsedTwice": "Seçtiğiniz soru bu denemede zaten kullanılıyor.",
+    "QuestionNotUsable": "Seçilen sorulardan biri teste eklenemez: açık uçlu, yayında değil ya da size ait değil.",
+    "TemplateCodeTaken": "Bu kod başka bir şablonda kullanılıyor.",
+    "TemplateInUse": "Bu şablondan deneme kuruldu, değiştirilemez.",
+    "Failed": "İşlem tamamlanamadı. Tekrar deneyin."
+  },
+  "student": {
+    "title": "Denemeler",
+    "empty": "Şu an çözebileceğiniz deneme yok.",
+    "failed": "Denemeler yüklenemedi.",
+    "startFailed": "Oturum başlatılamadı. Tekrar deneyin.",
+    "questions": "{{count}} soru",
+    "start": "Başla",
+    "resume": "Devam et",
+    "finished": "Bitti",
+    "result": "Sonucu gör",
+    "notAssigned": "Size atanmadı"
+  },
+  "result": {
+    "failed": "Sonuç yüklenemedi.",
+    "rule": "{{count}} yanlış 1 doğruyu götürür",
+    "incomplete": "Bitmemiş oturum var. Sonuç yalnız biten oturumları içerir.",
+    "subject": "Ders",
+    "correct": "Doğru",
+    "wrong": "Yanlış",
+    "blank": "Boş",
+    "net": "Net",
+    "total": "Toplam",
+    "pending": "Oturum bitmedi",
+    "back": "Denemelere dön"
+  },
+  "templates": {
+    "title": "Sınav Şablonları",
+    "subtitle": "Oturumları, süreleri, dersleri ve yanlış kuralını tanımlar. Deneme kurulmuş şablon değişmez.",
+    "loadFailed": "Şablonlar yüklenemedi.",
+    "summary": "{{questions}} soru, {{sessions}} oturum, ceza: {{penalty}}",
+    "inUse": "Kullanımda",
+    "edit": "Düzenle",
+    "new": "Yeni şablon",
+    "code": "Kod",
+    "name": "Ad",
+    "penalty": "Kaç yanlış bir doğruyu götürür",
+    "penaltyHint": "0: yanlış cezası yok",
+    "source": "Kaynak",
+    "sessionName": "Oturum adı",
+    "sessionMinutes": "Süre (dakika)",
+    "group": "Test (isteğe bağlı)",
+    "subject": "Ders",
+    "questionCount": "Soru sayısı",
+    "addSubject": "Ders ekle",
+    "addSession": "Oturum ekle",
+    "save": "Şablonu kaydet",
+    "removeSubject": "Dersi kaldır",
+    "removeSession": "Oturumu kaldır",
+    "incomplete": "Kaydetmek için kod, ad, oturum ve ders adları dolu olmalı. Ceza 0 ile 10, soru sayısı 1 ile 200 arasında tam sayı, süre en az 1 dakika olmalı."
+  }
+}

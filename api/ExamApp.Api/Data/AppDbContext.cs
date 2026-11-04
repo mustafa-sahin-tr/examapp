@@ -210,6 +210,14 @@ public class AppDbContext : DbContext
     public DbSet<QuestionTransferImportMap> QuestionTransferImportMaps { get; set; }
     public DbSet<WorksheetTransferImportMap> WorksheetTransferImportMaps { get; set; }
 
+    // Issue #693: deneme sınavları.
+    public DbSet<ExamTemplate> ExamTemplates { get; set; }
+    public DbSet<ExamTemplateSession> ExamTemplateSessions { get; set; }
+    public DbSet<ExamTemplateSection> ExamTemplateSections { get; set; }
+    public DbSet<MockExam> MockExams { get; set; }
+    public DbSet<MockExamSession> MockExamSessions { get; set; }
+    public DbSet<MockExamQuestion> MockExamQuestions { get; set; }
+
     public DbSet<QuestionTransferExportBundle> QuestionTransferExportBundles { get; set; }
     public DbSet<QuestionTransferExportMap> QuestionTransferExportMaps { get; set; }
 
@@ -758,6 +766,26 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<WorksheetTransferImportMap>()
             .HasIndex(m => new { m.SourceKey, m.ExternalWorksheetKey })
             .IsUnique();
+
+        // Issue #693: sonuçlar şablona ve oturum kayıtlarına bağlıdır; zincirleme silme yok.
+        modelBuilder.Entity<ExamTemplate>().HasIndex(t => t.Code).IsUnique();
+        // Seed kimlikleri sayacı ilerletmez: yeni kayıt 1'den başlasa birincil anahtar çakışırdı.
+        modelBuilder.Entity<ExamTemplate>().Property(t => t.Id).HasIdentityOptions(startValue: 1000);
+        modelBuilder.Entity<ExamTemplateSession>().Property(s => s.Id).HasIdentityOptions(startValue: 1000);
+        modelBuilder.Entity<ExamTemplateSection>().Property(s => s.Id).HasIdentityOptions(startValue: 1000);
+        modelBuilder.Entity<ExamTemplateSession>().HasOne(s => s.ExamTemplate).WithMany(t => t.Sessions).HasForeignKey(s => s.ExamTemplateId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ExamTemplateSection>().HasOne(s => s.Session).WithMany(t => t.Sections).HasForeignKey(s => s.ExamTemplateSessionId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<MockExam>().HasOne(e => e.ExamTemplate).WithMany().HasForeignKey(e => e.ExamTemplateId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<MockExam>().HasOne(e => e.Grade).WithMany().HasForeignKey(e => e.GradeId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<MockExamSession>().HasOne(s => s.MockExam).WithMany(e => e.Sessions).HasForeignKey(s => s.MockExamId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<MockExamSession>().HasOne(s => s.TemplateSession).WithMany().HasForeignKey(s => s.ExamTemplateSessionId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<MockExamSession>().HasOne(s => s.Worksheet).WithMany().HasForeignKey(s => s.WorksheetId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<MockExamSession>().HasIndex(s => s.WorksheetId).IsUnique();
+        modelBuilder.Entity<MockExamQuestion>().HasOne(q => q.MockExamSession).WithMany(s => s.Questions).HasForeignKey(q => q.MockExamSessionId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<MockExamQuestion>().HasOne(q => q.Section).WithMany().HasForeignKey(q => q.ExamTemplateSectionId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<MockExamQuestion>().HasOne(q => q.WorksheetQuestion).WithMany().HasForeignKey(q => q.WorksheetQuestionId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<MockExamQuestion>().HasIndex(q => q.WorksheetQuestionId).IsUnique();
+        ExamTemplateSeed.Apply(modelBuilder);
 
         modelBuilder.Entity<QuestionTransferExportBundle>()
             .HasIndex(b => new { b.SourceKey, b.BundleNo })

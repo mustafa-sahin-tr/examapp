@@ -225,7 +225,9 @@ public class WorksheetDetailService : IWorksheetDetailService
                 StudentVisibility = worksheet.StudentVisibility,
                 IsOwner = isWorksheetOwner,
                 OwnerName = ownerName,
-                CanEdit = isTeacher && WorksheetAccess.CanModify(worksheet.CreateUserId, userId, isAdmin),
+                // Issue #693: deneme oturumu buradan atanır ama değişmez; düzenleme düğmeleri gösterilmez.
+                CanEdit = isTeacher && WorksheetAccess.CanModify(worksheet.CreateUserId, userId, isAdmin)
+                    && !await _context.MockExamSessions.AnyAsync(s => s.WorksheetId == worksheet.Id, ct),
                 CanAssign = isTeacher && WorksheetAccess.CanAssign(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, hasApprovedGrant,
                     requesterSchoolId, ownerSchoolId)
             },

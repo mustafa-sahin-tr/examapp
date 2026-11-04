@@ -75,6 +75,8 @@
       "examAuthoring": "New Test",
       "questionBank": "Question Pool",
       "questionGeneration": "Generate Questions",
+      "mockExams": "Mock Exams",
+      "examTemplates": "Exam Templates",
       "questionTransfer": "Question Transfer",
       "labeling": "Labeling",
       "labelingBooks": "Books",

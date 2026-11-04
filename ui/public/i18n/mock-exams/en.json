@@ -1,0 +1,115 @@
+{
+  "draft": "Draft",
+  "published": "Published",
+  "retry": "Try again",
+  "minutes": "{{count}} minutes",
+  "list": {
+    "title": "Mock Exams",
+    "subtitle": "Build mock exams in the LGS and YKS format. Each session's time runs on the server, and the result shows the net per subject.",
+    "template": "Exam",
+    "grade": "Grade",
+    "name": "Mock exam name",
+    "create": "Create mock exam",
+    "createFailed": "The mock exam could not be created. Try again.",
+    "loadFailed": "Mock exams could not be loaded.",
+    "empty": "No mock exams yet."
+  },
+  "builder": {
+    "loadFailed": "The mock exam could not be loaded.",
+    "addQuestions": "Add questions",
+    "addSelected": "Add ({{count}})",
+    "cancel": "Cancel",
+    "removeQuestion": "Remove question {{id}}",
+    "problemsTitle": "Complete these to publish:",
+    "openToGrade": "Open to {{grade}} students in all schools",
+    "openToGradeHint": "If unchecked, only assigned students can start it. After publishing, assign each session.",
+    "publish": "Publish",
+    "deleteDraft": "Delete draft",
+    "assign": "Assign this session",
+    "questionImage": "Image of question {{id}}",
+    "remaining": "{{count}} more questions can be added to this subject.",
+    "publishConfirm": {
+      "title": "Publish this mock exam?",
+      "message": "A published mock exam cannot be changed. Students can solve it only after you assign its sessions.",
+      "confirm": "Publish"
+    },
+    "publishOpenConfirm": {
+      "title": "Open this mock exam to all schools?",
+      "message": "A published mock exam cannot be changed. {{grade}} students in all schools can see and start it.",
+      "confirm": "Publish"
+    },
+    "deleteConfirm": {
+      "title": "Delete this draft?",
+      "message": "Your questions are kept. Only this mock exam draft is removed.",
+      "confirm": "Delete"
+    },
+    "openToGradeHintAdmin": "Admins cannot assign sessions. Check this box so students can solve it."
+  },
+  "problems": {
+    "WrongCount": "{{section}}: needs {{required}} questions, has {{actual}}.",
+    "Unpublished": "{{section}}: question #{{id}} is not published.",
+    "LicenseEnded": "{{section}}: the licence of question #{{id}} has ended.",
+    "NoCorrectAnswer": "{{section}}: question #{{id}} has no correct answer.",
+    "ExampleQuestion": "{{section}}: question #{{id}} is an example question and shows its answer during the session.",
+    "Unmapped": "Question #{{id}} belongs to no subject. Saving a subject clears it."
+  },
+  "errors": {
+    "AlreadyPublished": "This mock exam is published and can no longer be changed.",
+    "TooManyQuestions": "You chose more questions than this subject needs.",
+    "QuestionUsedTwice": "A question you chose is already used in this mock exam.",
+    "QuestionNotUsable": "One of the questions cannot be added: it is open text, unpublished or not yours.",
+    "TemplateCodeTaken": "Another template uses this code.",
+    "TemplateInUse": "Mock exams use this template, so it cannot be changed.",
+    "Failed": "That did not work. Try again."
+  },
+  "student": {
+    "title": "Mock Exams",
+    "empty": "There are no mock exams for you right now.",
+    "failed": "Mock exams could not be loaded.",
+    "startFailed": "The session could not be started. Try again.",
+    "questions": "{{count}} questions",
+    "start": "Start",
+    "resume": "Resume",
+    "finished": "Finished",
+    "result": "See result",
+    "notAssigned": "Not assigned to you"
+  },
+  "result": {
+    "failed": "The result could not be loaded.",
+    "rule": "{{count}} wrong answers cancel 1 correct",
+    "incomplete": "A session is not finished. The result covers finished sessions only.",
+    "subject": "Subject",
+    "correct": "Correct",
+    "wrong": "Wrong",
+    "blank": "Blank",
+    "net": "Net",
+    "total": "Total",
+    "pending": "Session not finished",
+    "back": "Back to mock exams"
+  },
+  "templates": {
+    "title": "Exam Templates",
+    "subtitle": "Defines sessions, durations, subjects and the wrong answer rule. A template in use cannot change.",
+    "loadFailed": "Templates could not be loaded.",
+    "summary": "{{questions}} questions, {{sessions}} sessions, penalty: {{penalty}}",
+    "inUse": "In use",
+    "edit": "Edit",
+    "new": "New template",
+    "code": "Code",
+    "name": "Name",
+    "penalty": "Wrong answers per correct",
+    "penaltyHint": "0: no penalty",
+    "source": "Source",
+    "sessionName": "Session name",
+    "sessionMinutes": "Duration (minutes)",
+    "group": "Test (optional)",
+    "subject": "Subject",
+    "questionCount": "Number of questions",
+    "addSubject": "Add subject",
+    "addSession": "Add session",
+    "save": "Save template",
+    "removeSubject": "Remove subject",
+    "removeSession": "Remove session",
+    "incomplete": "To save, fill in the code, name, session and subject names. The penalty must be a whole number from 0 to 10, the question count from 1 to 200, and the duration at least 1 minute."
+  }
+}

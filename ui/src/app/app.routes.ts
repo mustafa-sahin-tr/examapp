@@ -26,6 +26,10 @@ import { DashboardSwitchComponent } from './pages/dashboard/dashboard-switch.com
 import { TestSolveCanvasComponentv3 } from './pages/test-solve/test-solve-canvas-v3.component';
 import { QuestionTransferComponent } from './pages/question-transfer/question-transfer.component';
 import { QuestionGenerationComponent } from './pages/question-generation/question-generation.component';
+import { MockExamsComponent } from './pages/mock-exams/mock-exams.component';
+import { MockExamBuilderComponent } from './pages/mock-exams/mock-exam-builder.component';
+import { ExamTemplatesComponent } from './pages/mock-exams/exam-templates.component';
+import { MockExamResultComponent, StudentMockExamsComponent } from './pages/mock-exams/student-mock-exams.component';
 import { StudyPagesComponent } from './pages/study-pages/study-pages.component';
 import { StudyPageEditorComponent } from './pages/study-pages/study-page-editor.component';
 
@@ -169,6 +173,16 @@ export const routes: Routes = [
       },
       {
         // Issue #365: soru aktarımı (soru bankası export/import) yalnız Admin — backend de Admin-only.
+        // Issue #693: denemeler. Kurulum öğretmen ve admin, şablonlar admin, çözüm öğrenci.
+        path: 'mock-exams',
+        component: MockExamsComponent,
+        canActivate: [authGuard, ...authoringGuards],
+      },
+      { path: 'mock-exams/:id', component: MockExamBuilderComponent, canActivate: [authGuard, ...authoringGuards] },
+      { path: 'exam-templates', component: ExamTemplatesComponent, canActivate: [authGuard, adminGuard] },
+      { path: 'my-mock-exams', component: StudentMockExamsComponent, canActivate: [authGuard, roleGuard('Student')] },
+      { path: 'my-mock-exams/:id/result', component: MockExamResultComponent, canActivate: [authGuard, roleGuard('Student')] },
+      {
         // Kazanımdan görselsiz soru: işaretlemenin Claude kotasını kullanır, aynı kişilere açıktır.
         path: 'question-generation',
         component: QuestionGenerationComponent,

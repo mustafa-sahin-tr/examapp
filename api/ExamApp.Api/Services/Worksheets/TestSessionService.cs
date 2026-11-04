@@ -116,7 +116,12 @@ public class TestSessionService : ITestSessionService
 
         var isGradeMatch = student.GradeId.HasValue && worksheet.GradeId == student.GradeId.Value;
 
-        if (!WorksheetAccess.CanStudentStartTest(hasActiveAssignment, isGradeMatch, worksheet.StudentVisibility))
+        // Issue #693: sınıfa açık deneme oturumu kapalı kayıttır (listeye ve havuza girmez) ama sınıftaki öğrenci başlatır.
+        // Taslak ya da kapalı denemenin oturumu buradan açılmaz.
+        var openMockExamSession = isGradeMatch && await _context.MockExamSessions
+            .AnyAsync(s => s.WorksheetId == testId && s.MockExam.PublishedAt != null && s.MockExam.OpenToGrade);
+
+        if (!openMockExamSession && !WorksheetAccess.CanStudentStartTest(hasActiveAssignment, isGradeMatch, worksheet.StudentVisibility))
         {
             throw new UnauthorizedAccessException(_localizer["worksheets.session.accessDenied"]);
         }

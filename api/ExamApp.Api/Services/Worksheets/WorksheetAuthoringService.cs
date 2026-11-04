@@ -422,6 +422,18 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
                     };
                 }
 
+                // Issue #693: deneme oturumunun süresi şablondan gelir, testler ekranından değişmez.
+                if (await _context.MockExamSessions.AnyAsync(s => s.WorksheetId == examination.Id))
+                {
+                    return new ExamSavedDto
+                    {
+                        Success = false,
+                        Forbidden = true,
+                        ErrorCode = "MockExamLocked",
+                        Message = _localizer["worksheets.authoring.editForbidden"]
+                    };
+                }
+
                 if (await KindChangeLockedAsync(examination, examDto.Kind) is { } kindLocked)
                     return kindLocked;
                 if (IsKindChange(examination, examDto.Kind))
@@ -604,6 +616,15 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
             return response;
         }
 
+        // Issue #693: oturum tek başına silinmez: deneme eksik kalır, sonuç hiç tamamlanmaz.
+        if (await _context.MockExamSessions.AnyAsync(s => s.WorksheetId == worksheetId))
+        {
+            response.Success = false;
+            response.Forbidden = true;
+            response.Message = _localizer["worksheets.authoring.editForbidden"];
+            return response;
+        }
+
         if (!WorksheetAccess.CanModify(worksheet.CreateUserId, userId, isAdmin))
         {
             response.Success = false;
@@ -642,6 +663,15 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
         // Bu endpoint için (issue #10) yetkisiz çağrı 403 döner — diğer authoring metotlarındaki
         // "varlık sızmasın" amaçlı NotFound kalıbından bilinçli olarak farklı.
         if (!WorksheetAccess.CanModify(worksheet.CreateUserId, userId, isAdmin))
+        {
+            response.Success = false;
+            response.Forbidden = true;
+            response.Message = _localizer["worksheets.authoring.visibilityForbidden"];
+            return response;
+        }
+
+        // Issue #693: oturum herkese açılırsa yayın denetimi aşılır, sorular havuza karışır.
+        if (await _context.MockExamSessions.AnyAsync(s => s.WorksheetId == worksheetId))
         {
             response.Success = false;
             response.Forbidden = true;
@@ -740,6 +770,15 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
             result.Success = false;
             result.NotFound = true;
             result.Message = _localizer["worksheets.authoring.worksheetNotFound"];
+            return result;
+        }
+
+        // Issue #693: oturumun kopyası sınıfa açık sıradan bir test olurdu; deneme soruları böyle dışarı çıkmaz.
+        if (await _context.MockExamSessions.AnyAsync(s => s.WorksheetId == source.Id, ct))
+        {
+            result.Success = false;
+            result.ErrorCode = "MockExamLocked";
+            result.Message = _localizer["worksheets.authoring.editForbidden"];
             return result;
         }
 

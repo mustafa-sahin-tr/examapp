@@ -1,0 +1,162 @@
+.me-root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.me-title {
+  margin: 0;
+  font-size: 22px;
+}
+
+.me-note {
+  margin: 0;
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.me-warning {
+  color: var(--ms-warning-text-medium);
+  opacity: 1;
+}
+
+.me-error {
+  color: var(--ms-danger-text-medium);
+}
+
+// Genel mat-card-title kuralı başlığı ortalar ve sabit mavi yapar; bu kartlarda satırlarla hizalı olmalı.
+.me-card mat-card-title {
+  padding-bottom: 4px;
+  font-size: 18px;
+  text-align: start;
+  color: inherit;
+}
+
+.me-card {
+  padding: 8px;
+}
+
+.me-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.me-field {
+  width: 100%;
+}
+
+.me-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.me-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--ms-border, currentColor);
+  border-radius: 12px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.me-section {
+  padding: 8px 0;
+}
+
+.me-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.me-count {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  color: var(--ms-warning-text-medium);
+}
+
+.me-count-done {
+  color: inherit;
+  opacity: 0.8;
+}
+
+.me-questions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.me-question {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--ms-border, currentColor);
+  border-radius: 8px;
+}
+
+.me-question-image {
+  flex: none;
+  width: 96px;
+  height: 64px;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.me-question-text {
+  flex: 1;
+  min-width: 0;
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 13px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.me-dialog-limit {
+  margin-inline-end: auto;
+}
+
+.me-problems {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.me-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.me-table th,
+.me-table td {
+  padding: 8px;
+  text-align: right;
+  border-bottom: 1px solid var(--ms-border, currentColor);
+}
+
+.me-table th:first-child {
+  font-weight: 400;
+  text-align: left;
+}
+
+.me-total th:first-child,
+.me-total td {
+  font-weight: 600;
+}

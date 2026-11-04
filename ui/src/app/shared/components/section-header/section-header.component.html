@@ -16,7 +16,12 @@
       </span>
     }
     <div class="title-container">
-      <h2 class="section-title"><ng-content select="[sectionTitlePrefix]"></ng-content>{{ title }}</h2>
+      @if (headingLevel === 1) {
+        <h1 class="section-title"><ng-container [ngTemplateOutlet]="titleContent" /></h1>
+      } @else {
+        <h2 class="section-title"><ng-container [ngTemplateOutlet]="titleContent" /></h2>
+      }
+      <ng-template #titleContent><ng-content select="[sectionTitlePrefix]"></ng-content>{{ title }}</ng-template>
       @if (subtitle) {
         <p class="section-subtitle">{{ subtitle }}</p>
       }

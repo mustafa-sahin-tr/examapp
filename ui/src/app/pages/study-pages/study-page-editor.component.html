@@ -2,6 +2,7 @@
   class="section-container"
   [title]="(isEditMode() ? 'study-pages.editor.titleEdit' : 'study-pages.editor.titleNew') | transloco"
   icon="/icons/18.svg"
+  [headingLevel]="1"
 ></app-section-header>
 
 <div class="form-container editor-grid" *transloco="let t; prefix: 'study-pages.editor'">

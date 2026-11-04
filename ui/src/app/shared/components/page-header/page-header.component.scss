@@ -12,6 +12,9 @@
 }
 
 .ph__title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin: 0 0 0.25rem;
   font-family: var(--mainFontFamily);
   font-size: 1.375rem;
@@ -33,4 +36,9 @@
   &:empty {
     display: none;
   }
+}
+
+.ph__icon {
+  flex: none;
+  color: var(--primaryColor);
 }

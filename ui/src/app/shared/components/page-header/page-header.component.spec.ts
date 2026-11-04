@@ -29,6 +29,10 @@ describe('PageHeaderComponent (#724)', () => {
     expect(el.querySelector('.ph__actions button')?.textContent).toContain('Eylem');
   });
 
+  it('noIcon_RendersNoIcon', () => {
+    expect(render('').querySelector('.ph__icon')).toBeNull();
+  });
+
   it('emptyDescription_RendersNoParagraph', () => {
     expect(render('').querySelector('.ph__description')).toBeNull();
   });

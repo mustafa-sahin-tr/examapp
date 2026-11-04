@@ -49,6 +49,7 @@ import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@js
 import { WorksheetListViewCardComponent } from './worksheet-list-view-card.component';
 import { ActivityListComponent } from './activity-list.component';
 import { WorksheetKind } from '../../models/activity';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 /** Issue #573: üst düzey sekme — Testler | Etkinlikler (`?type=activities`). */
 export type WorksheetPageKind = 'tests' | 'activities';
@@ -71,6 +72,7 @@ interface GradeOption {
   styleUrls: ['./worksheet-list.component.scss'],
   standalone: true,
   imports: [
+    PageHeaderComponent,
     RouterModule,
     MatIconModule,
     MatMenuModule,

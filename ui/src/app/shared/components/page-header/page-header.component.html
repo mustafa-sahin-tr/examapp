@@ -1,6 +1,11 @@
 <header class="ph">
   <div class="ph__text">
-    <h1 class="ph__title">{{ title() }}</h1>
+    <h1 class="ph__title">
+      @if (icon()) {
+        <mat-icon class="ph__icon" aria-hidden="true">{{ icon() }}</mat-icon>
+      }
+      {{ title() }}
+    </h1>
     @if (description()) {
       <p class="ph__description">{{ description() }}</p>
     }

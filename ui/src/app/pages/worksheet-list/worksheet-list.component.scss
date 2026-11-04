@@ -13,30 +13,6 @@
 }
 
 /* ---------- header ---------- */
-.wl__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.wl__heading {
-  h1 {
-    margin: 0;
-    font-family: var(--mainFontFamily);
-    font-weight: 800;
-    font-size: 26px;
-    color: var(--ms-text-strong);
-  }
-
-  p {
-    margin: 4px 0 0;
-    font-size: 13.5px;
-    color: var(--ms-text-medium);
-  }
-}
-
 .wl__header-actions {
   display: flex;
   align-items: center;
@@ -699,4 +675,9 @@
   .wl {
     padding-inline: var(--ms-page-gutter-mobile);
   }
+}
+
+// #724: boşluğu kapsayıcının flex `gap`'i verir.
+.wl app-page-header {
+  margin-bottom: 0;
 }

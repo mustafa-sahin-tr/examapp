@@ -1,13 +1,6 @@
 <section class="my-calendar" *transloco="let t; prefix: 'my-calendar'">
-  <header class="my-calendar__hero">
-    <div class="my-calendar__hero-title">
-      <mat-icon>event_note</mat-icon>
-      <h1>{{ t('title') }}</h1>
-    </div>
-    <p class="my-calendar__hero-subtitle">
-      {{ isTeacher ? t('subtitle.teacher') : t('subtitle.student') }}
-    </p>
-  </header>
+  <app-page-header icon="event_note" [title]="t('title')"
+    [description]="isTeacher ? t('subtitle.teacher') : t('subtitle.student')" />
 
   <span aria-live="polite" class="sr-only">{{ monthLabel() }}</span>
 

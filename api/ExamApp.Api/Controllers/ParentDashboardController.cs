@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos.ParentLinks;
 using ExamApp.Api.Services.Parents;
+using ExamApp.Api.Services.TopicPerformance;
 using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -29,6 +30,7 @@ public class ParentDashboardController : BaseController
     private readonly IParentAssignmentService _assignments;
     private readonly IParentProgressService _progress;
     private readonly IParentScheduleService _schedule;
+    private readonly IParentTopicPerformanceService _topicPerformance;
     private readonly IStringLocalizer<Messages> _localizer;
 
     public ParentDashboardController(
@@ -36,12 +38,14 @@ public class ParentDashboardController : BaseController
         IParentAssignmentService assignments,
         IParentProgressService progress,
         IParentScheduleService schedule,
+        IParentTopicPerformanceService topicPerformance,
         IStringLocalizer<Messages>? localizer = null)
     {
         _service = service;
         _assignments = assignments;
         _progress = progress;
         _schedule = schedule;
+        _topicPerformance = topicPerformance;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
@@ -175,6 +179,32 @@ public class ParentDashboardController : BaseController
 
     /// <summary>Sayfa üst sınırı: satır tavanı / sayfa boyutu (500 / 20 = 25); daha büyük sayfa her zaman boş olurdu.</summary>
     internal const int MaxPage = ParentAssignmentScope.MaxRows / ParentAssignmentService.PageSize;
+
+    /// <summary>
+    /// Issue #498: çocuğun konu performansı, öğrencinin kendi ucuyla aynı parametre ve sayılar. Yalnız toplamlar: soru, şık,
+    /// cevap yok; süren test okunmaz. Başka velinin ya da Active olmayan bağlantının çocuğu 404.
+    /// </summary>
+    [HttpGet("{studentId:int}/topic-performance")]
+    [EnableRateLimiting(ParentLinkRateLimiting.ChildActivityPolicy)]
+    public async Task<IActionResult> GetChildTopicPerformance(
+        int studentId,
+        [FromQuery] int days = TopicPerformanceQuery.DefaultDays,
+        [FromQuery] int? subjectId = null,
+        [FromQuery] string groupBy = TopicPerformanceQuery.DefaultGroupBy,
+        [FromQuery] int minQuestions = TopicPerformanceQuery.DefaultMinQuestions,
+        CancellationToken ct = default)
+    {
+        // Parametre doğrulaması veri okumaz (kapıdan önce yapılması bir şey sızdırmaz).
+        if (!TopicPerformanceQuery.TryParse(days, groupBy, minQuestions, out var grouping, out var problem))
+            return BadRequest(new { message = _localizer[problem!.MessageKey].Value, errorCode = problem.ErrorCode });
+
+        var user = await GetAuthenticatedUserAsync(ct);
+        if (!IsResolvedUser(user))
+            return UserNotResolved(new { message = _localizer["auth.userNotResolved"].Value });
+
+        var result = await _topicPerformance.GetAsync(user.Id, studentId, days, subjectId, grouping, minQuestions, ct);
+        return result == null ? ChildNotFound() : Ok(result);
+    }
 
     private NotFoundObjectResult ChildNotFound() => NotFound(new
     {

@@ -357,6 +357,7 @@ builder.Services.AddSingleton<ExamApp.Api.Services.Parents.IParentTestResultProb
 // projeksiyonlarından (StudentBadgeProjections / StudentDailyXps; BadgeService event'leriyle beslenir) — servisler arası HTTP yok.
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentProgressService, ExamApp.Api.Services.Parents.ParentProgressService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentScheduleService, ExamApp.Api.Services.Parents.ParentScheduleService>();
+builder.Services.AddScoped<ExamApp.Api.Services.TopicPerformance.IParentTopicPerformanceService, ExamApp.Api.Services.TopicPerformance.ParentTopicPerformanceService>(); // issue #498
 builder.Services.AddScoped<ExamApp.Api.Services.UserRoles.IUserRoleChangeRecorder, ExamApp.Api.Services.UserRoles.UserRoleChangeRecorder>();
 // issue #419: veli ↔ öğrenci/öğretmen rol dışlaması (student/teacher/parent register).
 builder.Services.AddScoped<ExamApp.Api.Services.UserRoles.IUserRoleExclusivity, ExamApp.Api.Services.UserRoles.UserRoleExclusivity>();

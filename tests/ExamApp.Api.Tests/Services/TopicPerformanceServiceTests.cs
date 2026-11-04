@@ -1,8 +1,10 @@
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Services.Parents;
 using ExamApp.Api.Services.TopicPerformance;
 using ExamApp.Api.Tests.Support;
 using Microsoft.EntityFrameworkCore;
+using NSubstitute;
 
 namespace ExamApp.Api.Tests.Services;
 
@@ -382,6 +384,23 @@ public sealed class TopicPerformanceServiceTests : IDisposable
         await PracticeAsync(q.Id, correct: true);
 
         (await GetAsync(TopicPerformanceGroupBy.SubTopic)).Items.ShouldHaveSingleItem().Total.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task A_parents_window_is_cut_to_the_hour_so_polling_cannot_reveal_when_an_answer_was_given()
+    {
+        var access = Substitute.For<IParentChildAccess>();
+        access.EnsureActiveChildAsync(1, 2, Arg.Any<CancellationToken>()).Returns(new ParentChildAccessGrant(1, 9, 2, 3, null, null));
+        var performance = Substitute.For<ITopicPerformanceService>();
+        var service = new ParentTopicPerformanceService(access, Substitute.For<IParentAccessAuditLog>(), performance);
+
+        await service.GetAsync(1, 2, 7, null, TopicPerformanceGroupBy.Topic, 1);
+
+        var call = performance.ReceivedCalls().ShouldHaveSingleItem().GetArguments();
+        call[0].ShouldBe(2);
+        var (from, to) = ((DateTime)call[1]!, (DateTime)call[2]!);
+        (to.Minute, to.Second, to.Millisecond).ShouldBe((0, 0, 0));
+        (to - from).ShouldBe(TimeSpan.FromDays(7));
     }
 
     [Fact]

@@ -622,4 +622,100 @@ public class AdminStudentSchoolServiceTests : IDisposable
         r.Changed.ShouldBeFalse();
         (await VerificationOfAsync(s.StudentId)).ShouldBe(before);
     }
+
+    private async Task<(int WorksheetId, int AssignmentId)> SeedRestrictedAssignedWorksheetAsync(Seed s)
+    {
+        await using var ctx = _db.NewContext();
+        var question = new Question { Text = "1 + 1 = ?", Point = 10 };
+        var worksheet = new Worksheet { Name = "A", Description = "", GradeId = s.GradeId, StudentVisibility = WorksheetStudentVisibility.Restricted };
+        ctx.AddRange(question, worksheet);
+        await ctx.SaveChangesAsync();
+        ctx.TestQuestions.Add(new WorksheetQuestion { TestId = worksheet.Id, QuestionId = question.Id, Order = 1 });
+        var assignment = new WorksheetAssignment { WorksheetId = worksheet.Id, GradeId = s.GradeId, SchoolId = s.SchoolA, StartAt = DateTime.UtcNow.AddDays(-1) };
+        ctx.WorksheetAssignments.Add(assignment);
+        await ctx.SaveChangesAsync();
+        return (worksheet.Id, assignment.Id);
+    }
+
+    [Fact]
+    public async Task Restricted_session_started_before_the_transfer_can_be_resumed_after_it_issue643()
+    {
+        var s = await SeedAsync();
+        var (worksheetId, _) = await SeedRestrictedAssignedWorksheetAsync(s);
+        StudentProfileDto Profile(int schoolId) => new() { Id = s.StudentId, GradeId = s.GradeId, SchoolId = schoolId };
+        int instanceId;
+        await using (var ctx = _db.NewContext())
+            instanceId = (await new TestSessionService(ctx).StartTestAsync(worksheetId, Profile(s.SchoolA))).InstanceId;
+
+        (await RunAsync(s.StudentId, s.SchoolB)).Status.ShouldBe(AdminStudentSchoolChangeStatus.Success);
+
+        await using var after = _db.NewContext();
+        var resumed = await new TestSessionService(after).StartTestAsync(worksheetId, Profile(s.SchoolB));
+
+        resumed.Success.ShouldBeTrue(resumed.Message);
+        resumed.InstanceId.ShouldBe(instanceId);
+        (await after.TestInstances.CountAsync(i => i.WorksheetId == worksheetId)).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Restricted_session_can_be_resumed_after_the_assignment_ended_issue643()
+    {
+        var s = await SeedAsync();
+        var (worksheetId, assignmentId) = await SeedRestrictedAssignedWorksheetAsync(s);
+        var profile = new StudentProfileDto { Id = s.StudentId, GradeId = s.GradeId, SchoolId = s.SchoolA };
+        int instanceId;
+        await using (var ctx = _db.NewContext())
+        {
+            instanceId = (await new TestSessionService(ctx).StartTestAsync(worksheetId, profile)).InstanceId;
+            var assignment = await ctx.WorksheetAssignments.AsTracking().SingleAsync(a => a.Id == assignmentId);
+            assignment.EndAt = DateTime.UtcNow.AddMinutes(-1);
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var after = _db.NewContext();
+        (await new TestSessionService(after).StartTestAsync(worksheetId, profile)).InstanceId.ShouldBe(instanceId);
+    }
+
+    [Fact]
+    public async Task Without_an_open_session_a_student_who_lost_access_is_still_refused_issue643()
+    {
+        var s = await SeedAsync();
+        var (worksheetId, _) = await SeedRestrictedAssignedWorksheetAsync(s);
+        StudentProfileDto Profile(int schoolId) => new() { Id = s.StudentId, GradeId = s.GradeId, SchoolId = schoolId };
+
+        // Hiç başlamamış: başka okulun ataması yeni oturum açmaz.
+        await using (var ctx = _db.NewContext())
+            await Should.ThrowAsync<UnauthorizedAccessException>(() => new TestSessionService(ctx).StartTestAsync(worksheetId, Profile(s.SchoolB)));
+
+        // Tamamlanmış: davranış değişmez, erişim kalkınca yine reddedilir (#367).
+        await using (var ctx = _db.NewContext())
+        {
+            var instanceId = (await new TestSessionService(ctx).StartTestAsync(worksheetId, Profile(s.SchoolA))).InstanceId;
+            (await new TestSessionService(ctx).EndTest(instanceId, 50)).Success.ShouldBeTrue();
+        }
+
+        await using var after = _db.NewContext();
+        await Should.ThrowAsync<UnauthorizedAccessException>(() => new TestSessionService(after).StartTestAsync(worksheetId, Profile(s.SchoolB)));
+    }
+
+    [Fact]
+    public async Task An_overrun_session_is_not_reopened_by_resuming_issue643()
+    {
+        var s = await SeedAsync();
+        var (worksheetId, _) = await SeedRestrictedAssignedWorksheetAsync(s);
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.TestInstances.Add(new WorksheetInstance
+            {
+                StudentId = s.StudentId, WorksheetId = worksheetId, Status = WorksheetInstanceStatus.Started,
+                StartTime = DateTime.UtcNow.AddHours(-2), MaxDurationSeconds = 60,
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var after = _db.NewContext();
+        var result = await new TestSessionService(after).StartTestAsync(worksheetId, new StudentProfileDto { Id = s.StudentId, GradeId = s.GradeId, SchoolId = s.SchoolB });
+
+        result.Success.ShouldBeFalse();
+    }
 }

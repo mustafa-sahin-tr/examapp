@@ -109,6 +109,18 @@ public class TestSessionService : ITestSessionService
             return null!;
         }
 
+        // Issue #643: kendi süren oturumuna dönmek yeni erişim açmaz, erişim denetiminden önce gelir. Okul değişince ya da
+        // atamanın bitişi geçince Restricted sayfada öğrenci yarım oturumuna dönebilir: cevap kaydı zaten yalnız sahipliğe
+        // bakar, süre sınırı oturumda korunur. Tamamlanmış oturum için kural aşağıda, değişmedi (#367).
+        var hasOpenSession = await _context.TestInstances
+            .AnyAsync(ti => ti.StudentId == student.Id && ti.WorksheetId == testId && ti.Status == WorksheetInstanceStatus.Started);
+        if (hasOpenSession)
+        {
+            var resumed = await ExistingInstanceResultAsync(student.Id, testId);
+            if (resumed != null)
+                return resumed;
+        }
+
         var now = DateTime.UtcNow;
 
         var hasActiveAssignment = await _context.ActiveAssignmentsFor(student.Id, student.GradeId, student.SchoolId, now)

@@ -41,6 +41,12 @@ public class PracticeSession : BaseEntity
     /// <summary>Seçilen konu id'leri, JSON dizi; null/boş = konu filtresi yok.</summary>
     public string? TopicIdsJson { get; set; }
 
+    /// <summary>Issue #500: alt konu kapsamı.</summary>
+    public string? SubTopicIdsJson { get; set; }
+
+    /// <summary>Issue #500: bu kadar soru gösterilince oturumun havuzu biter. Boşsa sınır yok.</summary>
+    public int? TargetCount { get; set; }
+
     /// <summary>Issue #529: tekrar oturumunun sabit soru listesi (JSON, sıralı); serbest pratikte null.</summary>
     public string? FixedQuestionIdsJson { get; set; }
 

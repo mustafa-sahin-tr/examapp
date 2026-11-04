@@ -100,6 +100,98 @@ public class PracticeSessionServiceTests : IDisposable
         ex.Message.ShouldContain("sınıf");
     }
 
+    private async Task<int> AddSubTopicAsync(int topicId)
+    {
+        await using var ctx = _db.NewContext();
+        var subTopic = new SubTopic { Name = "A", TopicId = topicId };
+        ctx.Add(subTopic);
+        await ctx.SaveChangesAsync();
+        return subTopic.Id;
+    }
+
+    [Fact]
+    public async Task StartAsync_SubTopicFromAnotherGrade_IsRefused()
+    {
+        var w = await SeedWorldAsync();
+        var other = await AddSubTopicAsync(await AddTopicAsync(w.SubjectId, w.OtherGradeId));
+        var own = await AddSubTopicAsync(await AddTopicAsync(w.SubjectId, w.GradeId));
+        await using var ctx = _db.NewContext();
+
+        await Should.ThrowAsync<InvalidOperationException>(() =>
+            NewService(ctx).StartAsync(Profile(w), new PracticeSessionStartDto { SubTopicIds = new() { own, other } }));
+        (await ctx.PracticeSessions.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task StartAsync_InvalidSubTopicId_DoesNotOpenAnUnscopedSession()
+    {
+        var w = await SeedWorldAsync();
+        await using var ctx = _db.NewContext();
+
+        await Should.ThrowAsync<InvalidOperationException>(() =>
+            NewService(ctx).StartAsync(Profile(w), new PracticeSessionStartDto { SubTopicIds = new() { -1 } }));
+    }
+
+    [Fact]
+    public async Task StartAsync_SubTopicWithAFixedList_IsRefusedRatherThanIgnored()
+    {
+        var w = await SeedWorldAsync();
+        var own = await AddSubTopicAsync(await AddTopicAsync(w.SubjectId, w.GradeId));
+        await using var ctx = _db.NewContext();
+
+        await Should.ThrowAsync<InvalidOperationException>(() =>
+            NewService(ctx).StartAsync(Profile(w), new PracticeSessionStartDto { SubTopicIds = new() { own }, Saved = true }));
+    }
+
+    [Fact]
+    public async Task SubTopicScope_ServesOnlyThatSubTopic()
+    {
+        var w = await SeedWorldAsync();
+        var worksheet = await AddWorksheetAsync(w.GradeId, w.SubjectId);
+        var topic = await AddTopicAsync(w.SubjectId, w.GradeId);
+        var subTopic = await AddSubTopicAsync(topic);
+        var wanted = await AddQuestionAsync(w.SubjectId, topic, worksheet);
+        await AddQuestionAsync(w.SubjectId, topic, worksheet);
+        await using var ctx = _db.NewContext();
+        ctx.Add(new QuestionSubTopic { QuestionId = wanted.QuestionId, SubTopicId = subTopic });
+        await ctx.SaveChangesAsync();
+
+        var session = await NewService(ctx).StartAsync(Profile(w), new PracticeSessionStartDto { SubTopicIds = new() { subTopic } });
+        session.SubTopicIds.ShouldBe(new List<int> { subTopic });
+
+        (await NewService(ctx).NextQuestionAsync(session.Id, w.StudentId))!.Question!.Id.ShouldBe(wanted.QuestionId);
+        await NewService(ctx).SubmitAnswerAsync(session.Id, w.StudentId, new PracticeAnswerSubmitDto { QuestionId = wanted.QuestionId, Skipped = true, TimeTaken = 1 });
+
+        var end = await NewService(ctx).NextQuestionAsync(session.Id, w.StudentId);
+        (end!.Question, end.PoolExhausted, end.TargetReached).ShouldBe((null, true, false));
+    }
+
+    [Fact]
+    public async Task TargetCount_EndsTheSessionWhenReached_AndSaysSo()
+    {
+        var w = await SeedWorldAsync();
+        var worksheet = await AddWorksheetAsync(w.GradeId, w.SubjectId);
+        var first = await AddQuestionAsync(w.SubjectId, null, worksheet);
+        var second = await AddQuestionAsync(w.SubjectId, null, worksheet);
+        await AddQuestionAsync(w.SubjectId, null, worksheet);
+        await using var ctx = _db.NewContext();
+        var service = NewService(ctx);
+
+        var session = await service.StartAsync(Profile(w), new PracticeSessionStartDto { TargetCount = 2 });
+        session.TargetCount.ShouldBe(2);
+
+        for (var i = 0; i < 2; i++)
+        {
+            var next = await service.NextQuestionAsync(session.Id, w.StudentId);
+            next!.TargetReached.ShouldBeFalse();
+            await service.SubmitAnswerAsync(session.Id, w.StudentId, new PracticeAnswerSubmitDto { QuestionId = next.Question!.Id, Skipped = true, TimeTaken = 1 });
+        }
+
+        var end = await service.NextQuestionAsync(session.Id, w.StudentId);
+        (end!.Question, end.PoolExhausted, end.TargetReached).ShouldBe((null, false, true));
+        first.QuestionId.ShouldNotBe(second.QuestionId);
+    }
+
     [Fact]
     public async Task StartAsync_PersistsScopeAndGrade()
     {

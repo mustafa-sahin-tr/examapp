@@ -903,7 +903,7 @@ export class PracticeSolveComponent implements OnInit {
             return;
           }
           // NotStarted'da `sessionId` dolu olabilir; start idempotent olduğu için yine çağrılır.
-          // #66: kapsam yalnız oturumu açılmamış sette gönderilir (başlamış sette sunucu zaten yok sayar).
+          // #66: kapsam yalnız oturumu açılmamış sette gönderilir.
           this.startDaily(set, set.sessionId == null ? this.dailyScopeFromQuery() : null);
         },
         error: (err: unknown) => {
@@ -961,6 +961,12 @@ export class PracticeSolveComponent implements OnInit {
         },
         error: (err: unknown) => {
           this.dailyLoading.set(false);
+          // #500: sayfa açıkken başka sekmede cevap verildiyse kapsam artık değişmez: set boş değil, kapsamsız devam edilir.
+          if (scope && err instanceof HttpErrorResponse && err.status === 409 && err.error?.errorCode === 'DailySetAlreadyStarted') {
+            this.dailyLoading.set(true);
+            this.startDaily(set, null);
+            return;
+          }
           if (err instanceof HttpErrorResponse && err.status === 409) {
             // Set boş: havuz boş durumu (faz `daily`).
             this.daily.set({ ...set, status: 'Empty' });

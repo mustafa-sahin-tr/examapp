@@ -342,27 +342,26 @@ public class DailyQuestionSetScopeTests : IDisposable
     // ---- gün içi değişmezlik / ertesi gün ----
 
     [Fact]
-    public async Task Start_SecondCallWithDifferentScope_SameDay_IsIgnored()
+    public async Task Start_AlreadyScoped_AnotherScope_IsRefused_SoAnEarlierSetCannotBeBroughtBack()
     {
         var w = await SeedWorldAsync();
         var math = await AddQuestionsAsync(w, 6, w.MathId);
         await AddQuestionsAsync(w, 6, w.TurkishId);
         var s = await AddStudentAsync(w, 101);
 
-        var first = await StartAsync(s, new DailyStartRequestDto { SubjectId = w.MathId });
+        await StartAsync(s, new DailyStartRequestDto { SubjectId = w.MathId });
         var ids = await SetQuestionIdsAsync(s.Id, Today);
 
         _clock.Now = _clock.Now.AddHours(8); // aynı İstanbul günü
-        var second = await StartAsync(s, new DailyStartRequestDto { SubjectId = w.TurkishId });
+        await Should.ThrowAsync<DailySetAlreadyStartedException>(() => StartAsync(s, new DailyStartRequestDto { SubjectId = w.TurkishId }));
 
-        second!.SessionId.ShouldBe(first!.SessionId);
-        second.Scope!.SubjectId.ShouldBe(w.MathId);
-        (await SetQuestionIdsAsync(s.Id, Today)).ShouldBe(ids);
         ids.ShouldAllBe(id => math.Contains(id));
+        (await SetQuestionIdsAsync(s.Id, Today)).ShouldBe(ids);
     }
 
+    /// <summary>#99: A'dan B'ye geçince A serbest pratiğe açılır. A'nın cevabı görülse de set A'ya dönemez, puan alınamaz.</summary>
     [Fact]
-    public async Task Start_RandomFirst_ThenScopeSameDay_IsIgnored()
+    public async Task Start_RandomToScoped_CannotReturnAfterSeeingTheOldQuestionsInFreePractice()
     {
         var w = await SeedWorldAsync();
         await AddQuestionsAsync(w, 6, w.MathId);
@@ -370,12 +369,84 @@ public class DailyQuestionSetScopeTests : IDisposable
         var s = await AddStudentAsync(w, 101);
 
         await StartAsync(s, null);
+        var scoped = await StartAsync(s, new DailyStartRequestDto { SubjectId = w.TurkishId });
+        scoped!.Scope!.SubjectId.ShouldBe(w.TurkishId);
         var ids = await SetQuestionIdsAsync(s.Id, Today);
+
+        await Should.ThrowAsync<DailySetAlreadyStartedException>(() => StartAsync(s, new DailyStartRequestDto { SubjectId = w.MathId }));
+
+        (await SetQuestionIdsAsync(s.Id, Today)).ShouldBe(ids);
+    }
+
+    [Fact]
+    public async Task Start_SameScopeAgain_ChangesNothing()
+    {
+        var w = await SeedWorldAsync();
+        await AddQuestionsAsync(w, 8, w.MathId);
+        var s = await AddStudentAsync(w, 101);
+
+        var first = await StartAsync(s, new DailyStartRequestDto { SubjectId = w.MathId });
+        var ids = await SetQuestionIdsAsync(s.Id, Today);
+        await using (var ctx = _db.NewContext())
+            await NewPractice(ctx).NextQuestionAsync(first!.SessionId, s.Id);
+
+        var again = await StartAsync(s, new DailyStartRequestDto { SubjectId = w.MathId });
+
+        again!.SessionId.ShouldBe(first.SessionId);
+        (await SetQuestionIdsAsync(s.Id, Today)).ShouldBe(ids);
+        await using var check = _db.NewContext();
+        (await check.PracticeSessionQuestions.CountAsync(p => p.PracticeSessionId == first.SessionId)).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Start_Rescope_DropsAShownButUnansweredQuestion()
+    {
+        var w = await SeedWorldAsync();
+        await AddQuestionsAsync(w, 6, w.MathId);
+        var turkish = await AddQuestionsAsync(w, 6, w.TurkishId);
+        var s = await AddStudentAsync(w, 101);
+
+        var first = await StartAsync(s, null);
+        await using (var ctx = _db.NewContext())
+            await NewPractice(ctx).NextQuestionAsync(first!.SessionId, s.Id);
+
+        await StartAsync(s, new DailyStartRequestDto { SubjectId = w.TurkishId });
+
+        await using var after = _db.NewContext();
+        var next = await NewPractice(after).NextQuestionAsync(first.SessionId, s.Id);
+        turkish.ShouldContain(next!.Question!.Id);
+    }
+
+    [Fact]
+    public async Task Start_Rescope_InvalidScope_IsRejected_AndTheSetStays()
+    {
+        var w = await SeedWorldAsync();
+        await AddQuestionsAsync(w, 6, w.MathId);
+        var s = await AddStudentAsync(w, 101);
+        var first = await StartAsync(s, null);
+        var ids = await SetQuestionIdsAsync(s.Id, Today);
+
+        await Should.ThrowAsync<DailyScopeInvalidException>(() =>
+            StartAsync(s, new DailyStartRequestDto { SubjectId = w.MathId, TopicId = w.OtherGradeTopicId }));
+
+        first.ShouldNotBeNull();
+        (await SetQuestionIdsAsync(s.Id, Today)).ShouldBe(ids);
+    }
+
+    [Fact]
+    public async Task Start_RandomFirst_ThenScopeSameDay_NoAnswers_AppliesTheScope()
+    {
+        var w = await SeedWorldAsync();
+        await AddQuestionsAsync(w, 6, w.MathId);
+        var turkish = await AddQuestionsAsync(w, 6, w.TurkishId);
+        var s = await AddStudentAsync(w, 101);
+
+        await StartAsync(s, null);
 
         var again = await StartAsync(s, new DailyStartRequestDto { SubjectId = w.TurkishId });
 
-        again!.Scope.ShouldBeNull();
-        (await SetQuestionIdsAsync(s.Id, Today)).ShouldBe(ids);
+        again!.Scope!.SubjectId.ShouldBe(w.TurkishId);
+        (await SetQuestionIdsAsync(s.Id, Today)).ShouldAllBe(id => turkish.Contains(id));
     }
 
     [Fact]
@@ -399,9 +470,12 @@ public class DailyQuestionSetScopeTests : IDisposable
                 new PracticeAnswerSubmitDto { QuestionId = ids[0], Skipped = true, TimeTaken = 3 }, "kc-101");
         }
 
-        var again = await StartAsync(s, new DailyStartRequestDto { SubjectId = w.TurkishId });
-        again!.Status.ShouldBe(DailySetStatus.InProgress);
+        await Should.ThrowAsync<DailySetAlreadyStartedException>(() => StartAsync(s, new DailyStartRequestDto { SubjectId = w.TurkishId }));
         (await SetQuestionIdsAsync(s.Id, Today)).ShouldBe(ids);
+
+        // Kapsamsız ve aynı kapsamlı istek devam eden seti açar: mevcut ekran bozulmaz.
+        (await StartAsync(s, null))!.Status.ShouldBe(DailySetStatus.InProgress);
+        (await StartAsync(s, new DailyStartRequestDto { SubjectId = w.MathId }))!.Status.ShouldBe(DailySetStatus.InProgress);
     }
 
     [Fact]
@@ -520,7 +594,7 @@ public class DailyQuestionSetScopeTests : IDisposable
     }
 
     [Fact]
-    public async Task Start_StartedSet_ScopeNoLongerValid_IsIgnored_NotRejected()
+    public async Task Start_StartedSet_SameScopeNoLongerValid_IsIgnored_NotRejected()
     {
         var w = await SeedWorldAsync();
         var fractions = await AddQuestionsAsync(w, 6, w.MathId, w.FractionsTopicId);

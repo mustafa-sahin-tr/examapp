@@ -56,6 +56,18 @@ public class PracticeSessionService : IPracticeSessionService
 
         var subjectIds = Normalize(request.SubjectIds);
         var topicIds = Normalize(request.TopicIds);
+        var subTopicIds = Normalize(request.SubTopicIds);
+
+        // Issue #500: alt konu öğrencinin sınıfından olmalı; başka sınıfın alt konusu boş oturum açmasın. Geçersiz kimlik
+        // (Normalize atar) sessizce kapsamsız oturum açmasın, sabit listeli oturumda da yok sayılmasın: öğrenci o konuyu istedi.
+        if (request.SubTopicIds is { Count: > 0 })
+        {
+            var gradeId = student.GradeId.Value;
+            var known = await _context.SubTopics.AsNoTracking()
+                .CountAsync(s => subTopicIds.Contains(s.Id) && s.Topic.GradeId == gradeId, ct);
+            if (known != request.SubTopicIds.Distinct().Count() || request.DueReview || request.Mistakes || request.Saved)
+                throw new InvalidOperationException(_localizer["practice.subTopicInvalid"]);
+        }
 
         string? fixedQuestionIdsJson = null;
         if (request.DueReview)
@@ -93,6 +105,8 @@ public class PracticeSessionService : IPracticeSessionService
             Status = PracticeSessionStatus.Active,
             SubjectIdsJson = subjectIds.Count > 0 ? JsonSerializer.Serialize(subjectIds) : null,
             TopicIdsJson = topicIds.Count > 0 ? JsonSerializer.Serialize(topicIds) : null,
+            SubTopicIdsJson = subTopicIds.Count > 0 ? JsonSerializer.Serialize(subTopicIds) : null,
+            TargetCount = request.TargetCount,
             FixedQuestionIdsJson = fixedQuestionIdsJson
         };
 
@@ -298,6 +312,8 @@ public class PracticeSessionService : IPracticeSessionService
                 s.Status,
                 s.SubjectIdsJson,
                 s.TopicIdsJson,
+                s.SubTopicIdsJson,
+                s.TargetCount,
                 IsDueReview = s.FixedQuestionIdsJson != null,
                 AnsweredCount = s.Questions.Count(q => q.AnsweredAt != null),
                 CorrectCount = s.Questions.Count(q => q.IsCorrect),
@@ -319,6 +335,8 @@ public class PracticeSessionService : IPracticeSessionService
                 Status = r.Status.ToString(),
                 SubjectIds = ParseIds(r.SubjectIdsJson),
                 TopicIds = ParseIds(r.TopicIdsJson),
+                SubTopicIds = ParseIds(r.SubTopicIdsJson),
+                TargetCount = r.TargetCount,
                 IsDueReview = r.IsDueReview,
                 AnsweredCount = r.AnsweredCount,
                 CorrectCount = r.CorrectCount,
@@ -389,7 +407,12 @@ public class PracticeSessionService : IPracticeSessionService
             var shownIds = session.Questions.Select(q => q.QuestionId).ToList();
 
             int? nextId;
-            if (fixedLive != null)
+            var targetReached = session.TargetCount is { } target && shownIds.Count >= target;
+            if (targetReached)
+            {
+                nextId = null;
+            }
+            else if (fixedLive != null)
             {
                 // Havuzdan rastgele değil, listenin sıradaki gösterilmemiş sorusu; liste bitince havuz bitti cevabı döner.
                 nextId = fixedLive.Where(id => !shownIds.Contains(id)).Select(id => (int?)id).FirstOrDefault();
@@ -400,7 +423,7 @@ public class PracticeSessionService : IPracticeSessionService
                 // dışlanır — aksi halde serbest pratik review'u doğru şıkkı gösterip günlük seti "önceden çözdürürdü".
                 var reserved = await DailySetQueries.LoadTodaysUnansweredQuestionIdsAsync(_context, _calendar, session.StudentId, ct);
 
-                var pool = PracticeQuestionPool.Build(_context, session.GradeId, ParseIds(session.SubjectIdsJson), ParseIds(session.TopicIdsJson))
+                var pool = PracticeQuestionPool.Build(_context, session.GradeId, ParseIds(session.SubjectIdsJson), ParseIds(session.TopicIdsJson), ParseIds(session.SubTopicIdsJson))
                     .Where(q => !shownIds.Contains(q.Id) && !reserved.Contains(q.Id));
 
                 var count = await pool.CountAsync(ct);
@@ -421,7 +444,8 @@ public class PracticeSessionService : IPracticeSessionService
                 {
                     SessionId = session.Id,
                     Question = null,
-                    PoolExhausted = true,
+                    PoolExhausted = !targetReached,
+                    TargetReached = targetReached,
                     AnsweredCount = session.Questions.Count(q => q.AnsweredAt != null),
                     CorrectCount = session.Questions.Count(q => q.IsCorrect)
                 };
@@ -788,6 +812,8 @@ public class PracticeSessionService : IPracticeSessionService
         Status = s.Status.ToString(),
         SubjectIds = ParseIds(s.SubjectIdsJson),
         TopicIds = ParseIds(s.TopicIdsJson),
+        SubTopicIds = ParseIds(s.SubTopicIdsJson),
+        TargetCount = s.TargetCount,
         IsDueReview = s.FixedQuestionIdsJson != null,
         AnsweredCount = s.Questions.Count(q => q.AnsweredAt != null),
         CorrectCount = s.Questions.Count(q => q.IsCorrect),

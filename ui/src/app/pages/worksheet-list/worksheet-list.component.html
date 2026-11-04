@@ -1,11 +1,6 @@
 <section class="wl" *transloco="let t; prefix: 'worksheet-list'">
   <!-- ============ HEADER ============ -->
-  <header class="wl__header">
-    <div class="wl__heading">
-      <h1>{{ headerTitle() }}</h1>
-      <p>{{ headerSubtitle() }}</p>
-    </div>
-
+  <app-page-header [title]="headerTitle()" [description]="headerSubtitle()">
     @if (isTeacher) {
       <div class="wl__header-actions">
         <button type="button" class="wl__btn wl__btn--primary" (click)="onCreate()">
@@ -13,7 +8,7 @@
         </button>
       </div>
     }
-  </header>
+  </app-page-header>
 
   <!-- ============ TÜR SEKMELERİ (issue #573): Testler | Etkinlikler ============ -->
   <nav mat-tab-nav-bar class="wl__kind-tabs" [tabPanel]="kindPanel" mat-stretch-tabs="false" [attr.aria-label]="t('kindTabs.aria')">

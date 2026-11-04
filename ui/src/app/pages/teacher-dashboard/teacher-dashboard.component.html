@@ -1,6 +1,6 @@
 <div class="teacher-dashboard" *transloco="let t; prefix: 'teacher-dashboard'">
   <div class="dashboard-section">
-    <app-section-header [title]="t('summary.title')" iconName="dashboard"></app-section-header>
+    <app-section-header [title]="t('summary.title')" iconName="dashboard" [headingLevel]="1"></app-section-header>
 
     @if (loading()) {
       <div class="summary-grid" aria-busy="true" aria-live="polite">

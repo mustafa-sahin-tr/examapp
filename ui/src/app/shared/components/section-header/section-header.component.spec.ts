@@ -20,4 +20,17 @@ describe('SectionHeaderComponent', () => {
     it('should create', () => {
         expect(component).toBeTruthy();
     });
+
+    it('i724_DefaultsToH2_HeadingLevelOneRendersH1', () => {
+        const el = fixture.nativeElement as HTMLElement;
+        fixture.componentRef.setInput('title', 'Başlık');
+        fixture.detectChanges();
+        expect(el.querySelector('h2.section-title')?.textContent).toContain('Başlık');
+        expect(el.querySelector('h1')).toBeNull();
+
+        fixture.componentRef.setInput('headingLevel', 1);
+        fixture.detectChanges();
+        expect(el.querySelector('h1.section-title')?.textContent).toContain('Başlık');
+        expect(el.querySelector('h2')).toBeNull();
+    });
 });

@@ -6,7 +6,7 @@
 
 <!-- Karşılama alanı: son giriş bilgisi (issue #126). İlk girişte lastLoginLabel null → chip hiç render edilmez. -->
 <div class="dashboard-welcome">
-  <h2 class="dashboard-welcome-title">{{ 'dashboard.welcome.title' | transloco }}</h2>
+  <h1 class="dashboard-welcome-title">{{ 'dashboard.welcome.title' | transloco }}</h1>
   @if (lastLoginLabel(); as lastLogin) {
     <span class="last-login-chip">{{
       'dashboard.welcome.lastLogin' | transloco: { value: lastLogin }

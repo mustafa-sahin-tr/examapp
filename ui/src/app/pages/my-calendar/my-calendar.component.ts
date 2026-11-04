@@ -19,6 +19,7 @@ import {
   CalendarDayDialogComponent,
   CalendarDayDialogData,
 } from '../../shared/components/calendar-day-dialog/calendar-day-dialog.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 /** Sayfanın Transloco scope'u: `public/i18n/my-calendar/<lang>.json` (issue #183). */
 const SCOPE = 'my-calendar';
@@ -41,6 +42,7 @@ interface CalendarResult {
   selector: 'app-my-calendar',
   standalone: true,
   imports: [
+    PageHeaderComponent,
     RouterLink,
     MatIconModule,
     MatButtonModule,

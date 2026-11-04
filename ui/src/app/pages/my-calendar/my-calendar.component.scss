@@ -18,28 +18,6 @@
   font-family: var(--mainFontFamily);
   color: var(--ms-text);
 
-  &__hero-title {
-    display: flex;
-    align-items: center;
-    gap: var(--ms-layout-spacing-small);
-
-    h1 {
-      margin: 0;
-      font-size: var(--ms-type-font-size-xlarge);
-      color: var(--ms-text-strong);
-    }
-
-    mat-icon {
-      color: var(--primaryColor);
-    }
-  }
-
-  &__hero-subtitle {
-    margin: var(--ms-layout-spacing-xsmall) 0 0;
-    color: var(--ms-text-weak);
-    font-family: var(--paragraphFontFamily);
-  }
-
   &__card {
     display: flex;
     flex-direction: column;
@@ -133,4 +111,9 @@
   .my-calendar__today-btn {
     margin-left: var(--ms-layout-spacing-xsmall);
   }
+}
+
+// #724: boşluğu kapsayıcının flex `gap`'i verir.
+.my-calendar app-page-header {
+  margin-bottom: 0;
 }

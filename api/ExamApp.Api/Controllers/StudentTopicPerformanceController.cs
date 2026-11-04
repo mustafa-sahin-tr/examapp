@@ -19,32 +19,17 @@ public class StudentTopicPerformanceController(
     IStudentService students,
     IStringLocalizer<Messages> localizer) : BaseController
 {
-    private const int MaxDays = 90;
-    private const int MaxMinQuestions = 1000;
-
-    private static readonly Dictionary<string, TopicPerformanceGroupBy> GroupByValues = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["topic"] = TopicPerformanceGroupBy.Topic,
-        ["subtopic"] = TopicPerformanceGroupBy.SubTopic,
-        ["difficulty"] = TopicPerformanceGroupBy.Difficulty,
-        ["interactionType"] = TopicPerformanceGroupBy.InteractionType,
-    };
-
     [HttpGet]
     [EnableRateLimiting(TopicPerformanceRateLimiting.Policy)]
     public async Task<IActionResult> Get(
-        [FromQuery] int days = 30,
+        [FromQuery] int days = TopicPerformanceQuery.DefaultDays,
         [FromQuery] int? subjectId = null,
-        [FromQuery] string groupBy = "topic",
-        [FromQuery] int minQuestions = 5,
+        [FromQuery] string groupBy = TopicPerformanceQuery.DefaultGroupBy,
+        [FromQuery] int minQuestions = TopicPerformanceQuery.DefaultMinQuestions,
         CancellationToken ct = default)
     {
-        if (days is < 1 or > MaxDays)
-            return Invalid("InvalidDays", "student.topicPerformance.invalidDays");
-        if (!GroupByValues.TryGetValue(groupBy, out var grouping))
-            return Invalid("InvalidGroupBy", "student.topicPerformance.invalidGroupBy");
-        if (minQuestions is < 1 or > MaxMinQuestions)
-            return Invalid("InvalidMinQuestions", "student.topicPerformance.invalidMinQuestions");
+        if (!TopicPerformanceQuery.TryParse(days, groupBy, minQuestions, out var grouping, out var problem))
+            return BadRequest(new { message = localizer[problem!.MessageKey].Value, errorCode = problem.ErrorCode });
 
         var user = await GetAuthenticatedUserAsync(ct);
         if (!IsResolvedUser(user))
@@ -56,7 +41,4 @@ public class StudentTopicPerformanceController(
         var to = DateTime.UtcNow;
         return Ok(await service.GetAsync(student.Id, to.AddDays(-days), to, subjectId, grouping, minQuestions, ct));
     }
-
-    private BadRequestObjectResult Invalid(string errorCode, string messageKey) =>
-        BadRequest(new { message = localizer[messageKey].Value, errorCode });
 }

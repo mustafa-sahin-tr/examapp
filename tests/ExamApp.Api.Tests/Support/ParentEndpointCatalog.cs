@@ -53,6 +53,10 @@ public static class ParentEndpointCatalog
         new($"{nameof(ParentDashboardController)}.{nameof(ParentDashboardController.GetChildTestResult)}",
             ParentEndpointScope.Child, ParentAccessEndpoints.ChildTestResult,
             (s, t) => $"/api/parent/children/{s}/test-results/{t}"),
+        new($"{nameof(ParentDashboardController)}.{nameof(ParentDashboardController.GetChildTopicPerformance)}",
+            ParentEndpointScope.Child, ParentAccessEndpoints.ChildTopicPerformance,
+            // minQuestions=1: içerik taraması boş listeyle geçmesin; tohum verideki birkaç cevap da görünsün.
+            (s, _) => $"/api/parent/children/{s}/topic-performance?minQuestions=1"),
         new($"{nameof(ParentDashboardController)}.{nameof(ParentDashboardController.GetChildProgress)}",
             ParentEndpointScope.Child, ParentAccessEndpoints.ChildProgress,
             (s, _) => $"/api/parent/children/{s}/progress"),

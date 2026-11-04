@@ -182,6 +182,10 @@ public class PracticeController : BaseController
         {
             return BadRequest(new { message = _localizer["practice.dailyScopeInvalid"].Value });
         }
+        catch (DailySetAlreadyStartedException)
+        {
+            return Conflict(new { message = _localizer["practice.dailyAlreadyStarted"].Value, errorCode = "DailySetAlreadyStarted" });
+        }
 
         if (result == null)
             return Conflict(new { message = _localizer["practice.dailyEmpty"].Value });

@@ -896,6 +896,21 @@ describe('PracticeSolveComponent', () => {
             expect(practiceService.getSessionReview).toHaveBeenCalledWith(88);
         });
 
+        it('startDaily_ScopeRefusedBecauseSetAlreadyStarted_ContinuesWithoutScope', () => {
+            setup({ daily: '1', subjectId: '3' });
+            practiceService.getDailySet.mockReturnValue(of(dailySet()));
+            practiceService.startDailySet
+                .mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 409, error: { errorCode: 'DailySetAlreadyStarted' } })))
+                .mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+
+            fixture.detectChanges();
+
+            expect(practiceService.startDailySet).toHaveBeenCalledTimes(2);
+            expect(practiceService.startDailySet).toHaveBeenNthCalledWith(1, { subjectId: 3, topicId: null, subTopicId: null });
+            expect(practiceService.startDailySet).toHaveBeenNthCalledWith(2, null);
+            expect(component.daily()?.status).not.toBe('Empty');
+        });
+
         it('startDaily_Server409_ShowsEmptyState', () => {
             setup({ daily: '1' });
             practiceService.getDailySet.mockReturnValue(of(dailySet()));

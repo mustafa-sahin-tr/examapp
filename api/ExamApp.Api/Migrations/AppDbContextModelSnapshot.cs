@@ -2650,8 +2650,14 @@ namespace ExamApp.Api.Migrations
                     b.Property<int>("StudentId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("SubTopicIdsJson")
+                        .HasColumnType("text");
+
                     b.Property<string>("SubjectIdsJson")
                         .HasColumnType("text");
+
+                    b.Property<int?>("TargetCount")
+                        .HasColumnType("integer");
 
                     b.Property<string>("TopicIdsJson")
                         .HasColumnType("text");

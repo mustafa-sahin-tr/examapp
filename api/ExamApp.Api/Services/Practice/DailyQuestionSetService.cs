@@ -27,7 +27,12 @@ namespace ExamApp.Api.Services.Practice;
 /// <item>Havuz boşsa set KAYDEDİLMEZ (Empty döner) — gün içinde soru eklenirse sonraki istekte set üretilebilir.</item>
 /// <item>Kapsam (#66): GET seti yine rastgele üretir; öğrenci "Başla"da ders/konu/alt konu seçerse ve setin oturumu henüz
 /// açılmamışsa set, oturumu bağlayan aynı transaction'da kapsamdan (eksiği sınıf havuzundan) yeniden üretilir ve kapsam
-/// <see cref="DailyQuestionSet.ScopeJson"/>'a yazılır. Oturum açıldıktan sonra kapsam değişmez.</item>
+/// <see cref="DailyQuestionSet.ScopeJson"/>'a yazılır.</item>
+/// <item>Yeniden kapsam (#500): oturum açılmış ama cevapsız RASTGELE set, kapsam gelince aynı oturumda BİR KEZ yeniden üretilir;
+/// asistandan gelen "açılar" isteği, panoda açılmış set yüzünden yok sayılmasın. Cevap varsa ya da set zaten kapsamlıysa
+/// <see cref="DailySetAlreadyStartedException"/>. Tek seferlik olması güvenlik kuralıdır (#99): set A'dan B'ye geçince A'nın
+/// soruları serbest pratiğe açılır; A'ya geri dönülebilseydi öğrenci cevaplarını görüp bildiği sorulardan puan alırdı.
+/// Aynı kapsamı yeniden göndermek hiçbir şeyi değiştirmez.</item>
 /// </list>
 /// </summary>
 public sealed class DailyQuestionSetService : IDailyQuestionSetService
@@ -82,8 +87,7 @@ public sealed class DailyQuestionSetService : IDailyQuestionSetService
 
         if (set.PracticeSessionId == null)
         {
-            // Kapsam yalnız oturum açılmadan doğrulanır/uygulanır; açılmış sette istek kapsamı yok sayılır (gün içi
-            // değişmezlik — sonradan silinen konu, devam eden seti 400'e düşürmez). Sınıf = setin sınıfı (havuzla aynı).
+            // Sınıf = setin sınıfı (havuzla aynı).
             var scope = await ValidateScopeAsync(scopeRequest, set.GradeId, ct);
             var selection = scope == null ? null : await SelectScopedAsync(set, scope, today, ct);
             await LinkNewSessionAsync(set, selection, ct);
@@ -91,6 +95,10 @@ public sealed class DailyQuestionSetService : IDailyQuestionSetService
             // Kazanan istek (bizimki ya da eşzamanlı rakip) seti yeniden üretmiş olabilir: canlı listeyi ve kapsamı tazele.
             set = await LoadSetAsync(student.Id, today, ct)
                 ?? throw new InvalidOperationException("Daily question set disappeared after session link.");
+        }
+        else if (HasScope(scopeRequest))
+        {
+            set = await RescopeStartedSetAsync(set, scopeRequest!, today, ct);
         }
 
         var sessionId = set.PracticeSessionId
@@ -436,6 +444,96 @@ public sealed class DailyQuestionSetService : IDailyQuestionSetService
             ?? throw new InvalidOperationException("Daily question set session link lost.");
     }
 
+    // --- yeniden kapsam (#500) ---
+
+    private static bool HasScope(DailyStartRequestDto? request) =>
+        request != null && (request.SubjectId != null || request.TopicId != null || request.SubTopicId != null);
+
+    private static bool IsSameScope(string? scopeJson, DailyStartRequestDto request)
+    {
+        if (scopeJson == null)
+            return false;
+
+        try
+        {
+            var stored = JsonSerializer.Deserialize<StoredScope>(scopeJson, ScopeJsonOptions);
+            return stored != null && stored.SubjectId == request.SubjectId && stored.TopicId == request.TopicId && stored.SubTopicId == request.SubTopicId;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Atlanan soru da cevap sayılır: öğrenci seti görüp ilerlemiştir.</summary>
+    private Task<bool> HasAnswersAsync(int sessionId, CancellationToken ct) =>
+        _context.PracticeSessionQuestions.AsNoTracking()
+            .AnyAsync(p => p.PracticeSessionId == sessionId && (p.AnsweredAt != null || p.IsSkipped), ct);
+
+    /// <summary>
+    /// Aynı kapsam ilk bakılan şeydir: öğrenci aynı bağlantıyla döndüğünde, konu sonradan taşınmış olsa da devam eden set
+    /// 400 almaz. Tohum ve son-cevap kuralı ilk üretimle aynıdır (<see cref="SelectScopedAsync"/>).
+    /// </summary>
+    private async Task<SetSnapshot> RescopeStartedSetAsync(SetSnapshot set, DailyStartRequestDto request, DateOnly day, CancellationToken ct)
+    {
+        if (IsSameScope(set.ScopeJson, request))
+            return set;
+
+        var sessionId = set.PracticeSessionId!.Value;
+        if (set.ScopeJson != null || await HasAnswersAsync(sessionId, ct))
+            throw new DailySetAlreadyStartedException();
+
+        var scope = await ValidateScopeAsync(request, set.GradeId, ct);
+        var selection = scope == null ? null : await SelectScopedAsync(set, scope, day, ct);
+        if (selection == null)
+            return set;
+
+        var newItems = new List<DailyQuestionSetItem>();
+        var strategy = _context.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            foreach (var item in newItems)
+                _context.Entry(item).State = EntityState.Detached;
+
+            await using var tx = await _context.Database.BeginTransactionAsync(ct);
+
+            // Gösterilip cevaplanmayan eski soru kalsa akış onu "bekleyen" sayar; cevabı olmayan satırda veri kaybı yok.
+            await _context.PracticeSessionQuestions
+                .IgnoreQueryFilters()
+                .Where(p => p.PracticeSessionId == sessionId && p.AnsweredAt == null && !p.IsSkipped)
+                .ExecuteDeleteAsync(ct);
+
+            // Silmeden SONRA bakılır: silmeden önce kaydedilen cevabın satırı kalır, burada görünür ve iş geri alınır;
+            // sonra gelen cevap ise satırını bulamaz. Önce bakılsaydı arada gelen cevap set değişiminden sağ çıkardı.
+            if (await HasAnswersAsync(sessionId, ct))
+                throw new DailySetAlreadyStartedException();
+
+            // Eşzamanlı iki istekten yalnız biri kapsam yazar: tek seferlik kuralı yarışla delinmez.
+            var scopeJson = selection.ScopeJson;
+            var claimed = await _context.DailyQuestionSets
+                .Where(d => d.Id == set.Id && d.ScopeJson == null)
+                .ExecuteUpdateAsync(u => u.SetProperty(d => d.ScopeJson, scopeJson), ct);
+            if (claimed == 0)
+                throw new DailySetAlreadyStartedException();
+
+            await _context.DailyQuestionSetItems
+                .IgnoreQueryFilters()
+                .Where(i => i.DailyQuestionSetId == set.Id)
+                .ExecuteDeleteAsync(ct);
+
+            newItems = selection.QuestionIds
+                .Select((id, i) => new DailyQuestionSetItem { DailyQuestionSetId = set.Id, QuestionId = id, Order = i })
+                .ToList();
+            _context.DailyQuestionSetItems.AddRange(newItems);
+            await _context.SaveChangesAsync(ct);
+
+            await tx.CommitAsync(ct);
+        });
+
+        return await LoadSetAsync(set.StudentId, day, ct)
+            ?? throw new InvalidOperationException("Daily question set disappeared after rescope.");
+    }
+
     // --- kapsam (#66) ---
 
     /// <summary><see cref="DailyQuestionSet.ScopeJson"/> şekli. Adlar saklanmaz (okumada çözülür).</summary>
@@ -586,6 +684,12 @@ public sealed class DailyQuestionSetService : IDailyQuestionSetService
 }
 
 /// <summary>#66: günlük set kapsam isteği geçersiz (tutarsız ders/konu/alt konu ya da başka sınıfın konusu) — 400.</summary>
+/// <summary>Cevaplanmış günlük setin kapsamı değişmez (#500); uç 409 döner.</summary>
+public sealed class DailySetAlreadyStartedException : Exception
+{
+    public DailySetAlreadyStartedException() : base("Daily question set already has answers.") { }
+}
+
 public sealed class DailyScopeInvalidException : Exception
 {
     public DailyScopeInvalidException() : base("Invalid daily question scope.") { }

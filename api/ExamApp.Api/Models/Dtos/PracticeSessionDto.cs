@@ -13,6 +13,14 @@ public class PracticeSessionStartDto
     [MaxLength(50)]
     public List<int>? TopicIds { get; set; }
 
+    /// <summary>Issue #500: öğrencinin sınıfından olmalı; başka sınıfın alt konusu 400.</summary>
+    [MaxLength(50)]
+    public List<int>? SubTopicIds { get; set; }
+
+    /// <summary>Issue #500: "10 soru getir". Boşsa havuz bitene kadar sürer.</summary>
+    [Range(1, 50)]
+    public int? TargetCount { get; set; }
+
     /// <summary>Issue #529: oturum, tekrar zamanı gelen sorulardan sabit bir listeyle açılır.</summary>
     public bool DueReview { get; set; }
 
@@ -97,6 +105,8 @@ public class PracticeSessionDto
 
     public List<int> SubjectIds { get; set; } = new();
     public List<int> TopicIds { get; set; } = new();
+    public List<int> SubTopicIds { get; set; } = new();
+    public int? TargetCount { get; set; }
 
     public int AnsweredCount { get; set; }
     public int CorrectCount { get; set; }
@@ -117,6 +127,9 @@ public class PracticeNextQuestionDto
     public QuestionDto? Question { get; set; }
 
     public bool PoolExhausted { get; set; }
+
+    /// <summary>Issue #500: oturum istenen soru sayısına ulaştı; havuz bitmiş değil.</summary>
+    public bool TargetReached { get; set; }
 
     public int AnsweredCount { get; set; }
     public int CorrectCount { get; set; }

@@ -20,6 +20,7 @@ import { ParentBookingRequestsComponent } from './booking-requests/parent-bookin
 import { ParentChildAssignmentsComponent } from './child-assignments/parent-child-assignments.component';
 import { ParentChildProgressComponent } from './child-progress/parent-child-progress.component';
 import { ParentChildScheduleComponent } from './child-schedule/parent-child-schedule.component';
+import { WeakTopicsCardComponent } from '../../shared/components/weak-topics-card/weak-topics-card.component';
 
 /** Veli paneli ekranlarının Transloco scope'u (`public/i18n/parent-dashboard/<lang>.json`). */
 export const PARENT_DASHBOARD_SCOPE = 'parent-dashboard';
@@ -68,6 +69,7 @@ export function parseChildParam(value: string | null): number | null {
     ParentChildAssignmentsComponent,
     ParentChildProgressComponent,
     ParentChildScheduleComponent,
+    WeakTopicsCardComponent,
     RouterLink,
     TranslocoDirective,
   ],

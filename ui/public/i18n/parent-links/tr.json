@@ -24,6 +24,7 @@
     "sees": {
       "summary": "Genel özetin (son etkinlik, haftalık çalışma)",
       "assignments": "Ödevlerin ve test sonuçların (puan, doğru/yanlış sayısı)",
+      "topics": "Konulara göre doğru oranın (testler ve Soru Çöz dahil; tek tek sorular görünmez)",
       "progress": "Puanın ve rozetlerin",
       "schedule": "Ders programın ve randevuların"
     },

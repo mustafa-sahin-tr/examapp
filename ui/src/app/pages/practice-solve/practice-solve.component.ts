@@ -162,6 +162,9 @@ export class PracticeSolveComponent implements OnInit {
   readonly selectedTopicIds = signal<number[]>([]);
   readonly topicsLoading = signal(false);
   private readonly topicsBySubject = signal<Map<number, Topic[]>>(new Map());
+  /** #521: bağlantının kapsamı; kurulum açılınca bir kez uygulanır. Günlük setten geçişte kurulum boş açılır (bkz. ngOnInit). */
+  private linkScope: DailyStartScope | null = null;
+  private pendingTopicId: number | null = null;
 
   readonly selectedSubjects = computed(() => {
     const ids = new Set(this.selectedSubjectIds());
@@ -340,6 +343,7 @@ export class PracticeSolveComponent implements OnInit {
       return;
     }
 
+    this.linkScope = this.scopeFromQuery();
     this.loadSetupData();
     this.loadHistory(1);
     this.loadDueReview();
@@ -375,6 +379,7 @@ export class PracticeSolveComponent implements OnInit {
               next: (subjects) => {
                 this.subjects.set(subjects);
                 this.setupLoading.set(false);
+                this.applyScopeFromQuery();
               },
               error: (err: unknown) => {
                 this.setupError.set(this.messageOf(err, this.text('setup.loadError')));
@@ -387,6 +392,18 @@ export class PracticeSolveComponent implements OnInit {
           this.setupLoading.set(false);
         },
       });
+  }
+
+  /**
+   * #521: "Bu konuda pratik yap" bağlantısı (`?subjectId=..&topicId=..`) kurulumu önceden doldurur. Öğrencinin sınıfında
+   * olmayan ders ya da konu seçilmez (konu, sınıf değiştirmeden önceki performanstan gelebilir).
+   */
+  private applyScopeFromQuery(): void {
+    const scope = this.linkScope;
+    this.linkScope = null;
+    if (!scope || !this.subjects().some((s) => s.id === scope.subjectId)) return;
+    this.pendingTopicId = scope.topicId ?? null;
+    this.setSelectedSubjects([scope.subjectId]);
   }
 
   onSubjectsChange(event: MatSelectChange): void {
@@ -433,6 +450,13 @@ export class PracticeSolveComponent implements OnInit {
           for (const r of results) next.set(r.subjectId, r.topics);
           return next;
         });
+        const pendingTopicId = this.pendingTopicId;
+        this.pendingTopicId = null;
+        // Öğrenci konular yüklenirken dersi kaldırdıysa konu seçilmez: görünmeyen bir filtre kalırdı.
+        const selected = new Set(this.selectedSubjectIds());
+        if (pendingTopicId != null && results.some((r) => selected.has(r.subjectId) && r.topics.some((t) => t.id === pendingTopicId))) {
+          this.selectedTopicIds.set([pendingTopicId]);
+        }
         this.topicsLoading.set(false);
       });
   }
@@ -904,7 +928,7 @@ export class PracticeSolveComponent implements OnInit {
           }
           // NotStarted'da `sessionId` dolu olabilir; start idempotent olduğu için yine çağrılır.
           // #66: kapsam yalnız oturumu açılmamış sette gönderilir.
-          this.startDaily(set, set.sessionId == null ? this.dailyScopeFromQuery() : null);
+          this.startDaily(set, set.sessionId == null ? this.scopeFromQuery() : null);
         },
         error: (err: unknown) => {
           this.dailyLoading.set(false);
@@ -978,10 +1002,10 @@ export class PracticeSolveComponent implements OnInit {
   }
 
   /**
-   * #66: dashboard kartının taşıdığı kapsam (`?daily=1&subjectId=..&topicId=..&subTopicId=..`). Konu ders olmadan,
+   * #66, #521: bağlantının taşıdığı kapsam (`?subjectId=..&topicId=..&subTopicId=..`, günlük sette `daily=1` ile). Konu ders olmadan,
    * alt konu konu olmadan dikkate alınmaz; geçersiz sayılar yok sayılır (sunucu da doğrular).
    */
-  private dailyScopeFromQuery(): DailyStartScope | null {
+  private scopeFromQuery(): DailyStartScope | null {
     const params = this.route.snapshot.queryParamMap;
     const positive = (name: string): number | null => {
       const value = Number(params.get(name));

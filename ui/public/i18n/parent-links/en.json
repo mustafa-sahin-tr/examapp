@@ -24,6 +24,7 @@
     "sees": {
       "summary": "Your overview (recent activity, weekly study)",
       "assignments": "Your homework and test results (score, correct/wrong counts)",
+      "topics": "Your accuracy by topic (tests and practice included; individual questions are not shown)",
       "progress": "Your points and badges",
       "schedule": "Your schedule and lessons"
     },

@@ -1,0 +1,56 @@
+@if (!hidden()) {
+  <section *transloco="let t; prefix: 'weak-topics'" aria-labelledby="weak-topics-title" data-test="weak-topics">
+    <mat-card appearance="outlined" class="wt__card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar aria-hidden="true">trending_down</mat-icon>
+        <mat-card-title id="weak-topics-title">{{ t(audience() + '.title') }}</mat-card-title>
+        <mat-card-subtitle>{{ t(audience() + '.subtitle', { days }) }}</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        @if (loading()) {
+          <div class="wt__state" aria-busy="true" data-test="weak-topics-loading">
+            <mat-spinner diameter="28" />
+            <span>{{ t('loading') }}</span>
+          </div>
+        } @else if (error()) {
+          <div class="wt__state" role="alert" data-test="weak-topics-error">
+            <span>{{ t('loadError') }}</span>
+            <button mat-stroked-button type="button" (click)="reload()">{{ t('retry') }}</button>
+          </div>
+        } @else if (topics().length > 0) {
+          <ul class="wt__list">
+            @for (topic of topics(); track topic.topicId) {
+              <li class="wt__item" data-test="weak-topic">
+                <div class="wt__text">
+                  <span class="wt__name" data-test="weak-topic-name">{{ topic.name }}</span>
+                  <span class="wt__meta">
+                    @if (topic.subjectName) {
+                      <span>{{ topic.subjectName }} · </span>
+                    }
+                    <span data-test="weak-topic-stats">{{ t('stats', { accuracy: topic.accuracy, count: topic.answered }) }}</span>
+                  </span>
+                </div>
+                @if (audience() === 'self' && topic.subjectId != null) {
+                  <a
+                    mat-stroked-button
+                    data-test="weak-topic-practice"
+                    routerLink="/practice"
+                    [queryParams]="{ subjectId: topic.subjectId, topicId: topic.topicId }"
+                    [attr.aria-label]="t('practiceLabel', { topic: topic.name })"
+                  >
+                    {{ t('practice') }}
+                  </a>
+                }
+              </li>
+            }
+          </ul>
+        } @else if (hasData()) {
+          <p class="wt__state" data-test="weak-topics-none">{{ t(audience() + '.noWeak', { days }) }}</p>
+        } @else {
+          <p class="wt__state" data-test="weak-topics-empty">{{ t(audience() + '.noData', { min: minQuestions }) }}</p>
+        }
+      </mat-card-content>
+    </mat-card>
+  </section>
+}

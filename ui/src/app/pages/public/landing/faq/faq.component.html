@@ -1,60 +1,18 @@
-<div class="faq-area ptb-140" *transloco="let t; prefix: 'landing'">
-    <div class="container">
-        <div class="row justify-content-center align-items-center g-4">
-            <div class="col-lg-6 col-md-12">
-                <div class="faq-image"><img src="assets/images/faq.png" alt=""></div>
-            </div>
-            <div class="col-lg-6 col-md-12">
-                <div class="faq-content">
-                    <div class="title"><span class="sub">{{ t('faq.sub') }}</span>
-                        <h2>{{ t('faq.titleLead') }} <span>{{ t('faq.titleHighlight') }}
-                                <img src="assets/images/title-line.png" alt=""></span></h2>
-                    </div>
-                    <div class="faq-accordion">
-                        <mat-accordion class="accordion">
-                            <mat-expansion-panel class="accordion-item" hideToggle #membershipPanel>
-                                <mat-expansion-panel-header class="accordion-button"
-                                    [class.open]="membershipPanel.expanded">
-                                    {{ t('faq.membership.question') }}
-                                </mat-expansion-panel-header>
-                                <div class="accordion-body">
-                                    <p>{{ t('faq.membership.answer') }}</p>
-                                </div>
-                            </mat-expansion-panel>
-
-                            <mat-expansion-panel class="accordion-item" hideToggle #worksheetPanel>
-                                <mat-expansion-panel-header class="accordion-button"
-                                    [class.open]="worksheetPanel.expanded">
-                                    {{ t('faq.pricing.question') }}
-                                </mat-expansion-panel-header>
-                                <div class="accordion-body">
-                                    <p>{{ t('faq.pricing.answer') }}</p>
-                                </div>
-                            </mat-expansion-panel>
-
-                            <mat-expansion-panel class="accordion-item" [expanded]="true" hideToggle #teacherPanel>
-                                <mat-expansion-panel-header class="accordion-button"
-                                    [class.open]="teacherPanel.expanded">
-                                    {{ t('faq.teacher.question') }}
-                                </mat-expansion-panel-header>
-                                <div class="accordion-body">
-                                    <p>{{ t('faq.teacher.answer') }}</p>
-                                </div>
-                            </mat-expansion-panel>
-
-                            <mat-expansion-panel class="accordion-item" hideToggle #parentPanel>
-                                <mat-expansion-panel-header class="accordion-button"
-                                    [class.open]="parentPanel.expanded">
-                                    {{ t('faq.parent.question') }}
-                                </mat-expansion-panel-header>
-                                <div class="accordion-body">
-                                    <p>{{ t('faq.parent.answer') }}</p>
-                                </div>
-                            </mat-expansion-panel>
-                        </mat-accordion>
-                    </div>
-                </div>
-            </div>
-        </div>
+<section class="sec alt" id="sss" *transloco="let t; prefix: 'landing'">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">{{ t('faq.kicker') }}</span>
+      <h2>{{ t('faq.title') }}</h2>
     </div>
-</div>
+    <mat-accordion class="faq">
+      @for (key of keys; track key; let first = $first) {
+        <mat-expansion-panel [expanded]="first">
+          <mat-expansion-panel-header>
+            <mat-panel-title>{{ t('faq.items.' + key + '.question') }}</mat-panel-title>
+          </mat-expansion-panel-header>
+          <p>{{ t('faq.items.' + key + '.answer') }}</p>
+        </mat-expansion-panel>
+      }
+    </mat-accordion>
+  </div>
+</section>

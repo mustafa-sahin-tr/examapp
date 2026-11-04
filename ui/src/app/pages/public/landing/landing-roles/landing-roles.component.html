@@ -1,0 +1,31 @@
+<section class="sec alt" id="kimler-icin" *transloco="let t; prefix: 'landing'">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">{{ t('roles.kicker') }}</span>
+      <h2>{{ t('roles.title') }}</h2>
+      <p>{{ t('roles.description') }}</p>
+    </div>
+    <div class="roles">
+      @for (role of roles; track role.key) {
+        <article class="role" [class]="role.tone">
+          <div class="role-icon"><mat-icon fontSet="material-symbols-outlined" aria-hidden="true">{{ role.icon }}</mat-icon></div>
+          <h3>{{ t('roles.' + role.key + '.title') }}</h3>
+          <p>{{ t('roles.' + role.key + '.description') }}</p>
+          <ul class="checks">
+            @for (i of items; track i) {
+              <li><mat-icon fontSet="material-symbols-outlined" aria-hidden="true">check</mat-icon>{{ t('roles.' + role.key + '.item' + i) }}</li>
+            }
+          </ul>
+          <div class="role-foot">
+            @if (role.primary) {
+              <a mat-flat-button class="btn btn-primary btn-sm" [href]="role.ctaUrl">{{ t('roles.' + role.key + '.cta') }}</a>
+            } @else {
+              <a mat-stroked-button class="btn btn-outline btn-sm" [href]="role.ctaUrl">{{ t('roles.' + role.key + '.cta') }}</a>
+            }
+            <span class="note"><mat-icon fontSet="material-symbols-outlined" aria-hidden="true">info</mat-icon>{{ t('roles.' + role.key + '.note') }}</span>
+          </div>
+        </article>
+      }
+    </div>
+  </div>
+</section>

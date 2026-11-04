@@ -48,10 +48,10 @@ describe('Brand name i18n key (issue #409)', () => {
     });
 
     it('landingTexts_ResolveBrandReference', () => {
-        expect(transloco.translate('landing.about.sub', {}, 'tr')).toBe(`${BRAND} Hakkında`);
-        expect(transloco.translate('landing.news.title', {}, 'tr')).toBe(`${BRAND}'dan Haberler`);
-        expect(transloco.translate('landing.about.sub', {}, 'en')).toBe(`About ${BRAND}`);
-        expect(transloco.translate('landing.meta.title', {}, 'en')).toBe(`${BRAND} | Online Exam and Worksheet Platform`);
+        expect(transloco.translate('landing.faq.items.pricing.question', {}, 'tr')).toBe(`${BRAND} ücretli mi?`);
+        expect(transloco.translate('landing.testimonials.title', {}, 'tr')).toBe(`${BRAND}'u kullananlar ne diyor?`);
+        expect(transloco.translate('landing.faq.items.pricing.question', {}, 'en')).toBe(`Does ${BRAND} cost anything?`);
+        expect(transloco.translate('landing.meta.title', {}, 'en')).toBe(`${BRAND} | Test creation, solving and private lessons`);
     });
 
     it('legalPageTitles_ResolveBrandReference', () => {

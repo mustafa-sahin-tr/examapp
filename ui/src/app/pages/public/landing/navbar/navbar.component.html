@@ -1,67 +1,56 @@
-<header
-    class="navbar-area education-navbar-area"
-    [class.sticky]="isSticky"
-    *transloco="let t; prefix: 'landing'">
-    <div class="container-fluid">
-        <nav class="navbar navbar-expand-xl">
-
-            <a class="navbar-brand" routerLink="/welcome">
-                <img src="assets/images/banner/logo.svg" [alt]="'brand.name' | transloco" height="38">
-            </a>
-
-            <button class="navbar-toggler" type="button" (click)="toggleMenu()" [attr.aria-expanded]="isMenuOpen"
-                [attr.aria-label]="t('nav.toggleMenu')">
-                <span class="toggler-icon"></span>
-                <span class="toggler-icon"></span>
-                <span class="toggler-icon"></span>
-            </button>
-
-            <div class="navbar-collapse" [class.show]="isMenuOpen">
-                <ul class="navbar-nav m-auto">
-                    <li class="nav-item">
-                        <a href="#anasayfa" class="nav-link" (click)="closeMenu()">{{ t('nav.home') }}</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="#ozellikler" class="nav-link" (click)="closeMenu()">{{ t('nav.features') }}</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="#dersler" class="nav-link" (click)="closeMenu()">{{ t('nav.courses') }}</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="#nasil-calisir" class="nav-link" (click)="closeMenu()">{{ t('nav.howItWorks') }}</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="#fiyatlandirma" class="nav-link" (click)="closeMenu()">{{ t('nav.pricing') }}</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="#sss" class="nav-link" (click)="closeMenu()">{{ t('nav.faq') }}</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="#blog" class="nav-link" (click)="closeMenu()">{{ t('nav.blog') }}</a>
-                    </li>
-
-                    <li class="nav-item nav-item-register" [class.open]="isRegisterOpen">
-                        <a href="#" class="nav-link" (click)="toggleRegister($event)">
-                            {{ t('nav.register') }} <span class="caret" aria-hidden="true">▾</span>
-                        </a>
-                        <ul class="register-submenu">
-                            <li><a href="/app/login?intent=student">{{ t('nav.registerStudent') }}</a></li>
-                            <li><a href="/app/login?intent=teacher">{{ t('nav.registerTeacher') }}</a></li>
-                            <li><a href="/app/login?intent=parent">{{ t('nav.registerParent') }}</a></li>
-                        </ul>
-                    </li>
-                    <li class="nav-item">
-                        <a href="/app/login" class="nav-link">{{ t('nav.login') }}</a>
-                    </li>
-
-                    <li class="nav-item nav-item-language">
-                        <app-language-switcher />
-                    </li>
-
-                </ul>
-
-            </div>
-
-        </nav>
+<ng-container *transloco="let t; prefix: 'landing'">
+  <header class="nav">
+    <div class="wrap">
+      <a class="brand" appLandingAnchor="anasayfa" [attr.aria-label]="t('nav.home')">
+        <img src="assets/images/landing/brand-mark.svg" width="36" height="36" alt="" />
+        <span>{{ 'brand.name' | transloco }}</span>
+      </a>
+      <ul class="nav-links">
+        @for (link of links; track link.id) {
+          <li><a [appLandingAnchor]="link.id">{{ t('nav.' + link.key) }}</a></li>
+        }
+      </ul>
+      <div class="nav-actions">
+        <span class="hide-sm"><app-language-switcher /></span>
+        <button mat-icon-button type="button" class="hide-sm" [attr.aria-label]="t('nav.toggleTheme')" (click)="colorScheme.toggle()">
+          <mat-icon fontSet="material-symbols-outlined" aria-hidden="true">{{ colorScheme.colorScheme() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
+        </button>
+        <a mat-button class="btn btn-ghost btn-sm hide-sm" [href]="loginUrl">{{ t('nav.login') }}</a>
+        <button mat-flat-button type="button" class="btn btn-primary btn-sm" [matMenuTriggerFor]="registerMenu">{{ t('nav.register') }}</button>
+        <mat-menu #registerMenu="matMenu">
+          <a mat-menu-item [href]="registerStudentUrl">{{ t('nav.registerStudent') }}</a>
+          <a mat-menu-item [href]="registerTeacherUrl">{{ t('nav.registerTeacher') }}</a>
+        </mat-menu>
+        <button mat-icon-button type="button" class="menu-btn" [attr.aria-label]="t(menuOpen() ? 'nav.closeMenu' : 'nav.openMenu')"
+          [attr.aria-expanded]="menuOpen()" aria-controls="landing-mobile-menu" (click)="toggleMenu()">
+          <mat-icon fontSet="material-symbols-outlined" aria-hidden="true">{{ menuOpen() ? 'close' : 'menu' }}</mat-icon>
+        </button>
+      </div>
     </div>
-</header>
+  </header>
+
+  @if (menuOpen()) {
+    <nav class="mobile-menu" id="landing-mobile-menu" data-testid="landing-mobile-menu" [attr.aria-label]="t('nav.mobileMenu')">
+      <ul>
+        @for (link of links; track link.id) {
+          <li>
+            <a [appLandingAnchor]="link.id" (click)="closeMenu()">
+              <mat-icon fontSet="material-symbols-outlined" aria-hidden="true">{{ link.icon }}</mat-icon>{{ t('nav.' + link.key) }}
+            </a>
+          </li>
+        }
+      </ul>
+      <div class="mm-actions">
+        <a mat-flat-button class="btn btn-primary" [href]="registerStudentUrl">{{ t('nav.registerStudentLong') }}</a>
+        <a mat-stroked-button class="btn btn-outline" [href]="registerTeacherUrl">{{ t('nav.registerTeacherLong') }}</a>
+        <a mat-button class="btn btn-ghost" [href]="loginUrl">{{ t('nav.login') }}</a>
+        <div class="mm-row">
+          <app-language-switcher />
+          <button mat-icon-button type="button" [attr.aria-label]="t('nav.toggleTheme')" (click)="colorScheme.toggle()">
+            <mat-icon fontSet="material-symbols-outlined" aria-hidden="true">contrast</mat-icon>
+          </button>
+        </div>
+      </div>
+    </nav>
+  }
+</ng-container>

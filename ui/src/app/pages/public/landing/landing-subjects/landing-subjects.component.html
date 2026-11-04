@@ -1,0 +1,17 @@
+<section class="sec alt" id="dersler" *transloco="let t; prefix: 'landing'">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">{{ t('subjects.kicker') }}</span>
+      <h2>{{ t('subjects.title') }}</h2>
+      <p>{{ t('subjects.description') }}</p>
+    </div>
+    @for (group of groups; track group.key) {
+      <h3 class="subj-group">{{ t('subjects.groups.' + group.key) }}</h3>
+      <ul class="subjects" [attr.data-subject-group]="group.key">
+        @for (subject of group.subjects; track subject) {
+          <li class="subj">{{ t('subjects.items.' + subject) }}</li>
+        }
+      </ul>
+    }
+  </div>
+</section>

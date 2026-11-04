@@ -1,0 +1,32 @@
+<section class="sec" id="yorumlar" *transloco="let t; prefix: 'landing'">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">{{ t('testimonials.kicker') }}</span>
+      <h2>{{ t('testimonials.title') }}</h2>
+      <p>{{ t('testimonials.description') }}</p>
+    </div>
+    <div class="quotes">
+      @for (item of testimonials; track item.key) {
+        <figure class="quote">
+          <mat-icon class="qi" fontSet="material-symbols-outlined" aria-hidden="true">format_quote</mat-icon>
+          <blockquote>{{ t('testimonials.items.' + item.key + '.quote') }}</blockquote>
+          <figcaption>
+            <svg class="av" [class]="item.tone" viewBox="0 0 44 44" aria-hidden="true">
+              <circle class="bg" cx="22" cy="22" r="22" />
+              <text x="22" y="28.5" text-anchor="middle">{{ item.initial }}</text>
+            </svg>
+            <div>
+              <b>{{ t('testimonials.items.' + item.key + '.name') }}</b>
+              <span>{{ t('testimonials.items.' + item.key + '.role') }}</span>
+            </div>
+          </figcaption>
+        </figure>
+      }
+    </div>
+    @if (showDisclaimer) {
+      <p class="disclaimer" data-testid="landing-testimonials-disclaimer">
+        <mat-icon fontSet="material-symbols-outlined" aria-hidden="true">info</mat-icon>{{ t('testimonials.disclaimer') }}
+      </p>
+    }
+  </div>
+</section>

@@ -1,367 +1,251 @@
 {
   "meta": {
-    "title": "{{ brand.name }} | Online Sınav ve Çalışma Yaprağı Platformu",
-    "description": "{{ brand.name }}, 3-8. sınıf öğrencileri için müfredata uygun çalışma yaprakları, online sınavlar ve yapay zekâ destekli soru tespiti sunan Türkiye'nin eğitim platformu.",
-    "ogTitle": "{{ brand.name }} | Online Sınav ve Çalışma Yaprağı Platformu",
-    "ogDescription": "3-8. sınıf öğrencileri için müfredata uygun çalışma yaprakları ve sınavlarla öğrenmeyi kolaylaştırıyoruz."
+    "title": "{{ brand.name }} | Test hazırlama, çözme ve özel ders platformu",
+    "description": "Öğretmenler taranmış sayfalardan soruları otomatik ayıklayıp test hazırlar ve atar; öğrenciler çözer, pratik yapar, rozet kazanır; özel ders öğretmenleriyle görüntülü ders yapılır.",
+    "ogTitle": "{{ brand.name }} | Test hazırlama, çözme ve özel ders platformu",
+    "ogDescription": "Öğretmenler test hazırlar ve atar, öğrenciler çözer ve gelişir, özel dersler görüntülü yapılır."
   },
   "common": {
     "backToTop": "Başa dön"
   },
   "nav": {
-    "toggleMenu": "Menüyü aç/kapat",
-    "home": "Ana Sayfa",
+    "home": "{{ brand.name }} ana sayfa",
     "features": "Özellikler",
-    "courses": "Dersler",
-    "howItWorks": "Nasıl Çalışır?",
-    "pricing": "Fiyatlandırma",
+    "teachers": "Öğretmenler",
+    "students": "Öğrenciler",
+    "tutoring": "Özel ders",
+    "howItWorks": "Nasıl çalışır?",
     "faq": "SSS",
-    "blog": "Blog",
-    "register": "Kayıt Ol",
+    "login": "Giriş yap",
+    "register": "Kayıt ol",
     "registerStudent": "Öğrenci",
     "registerTeacher": "Öğretmen",
-    "registerParent": "Veli",
-    "login": "Giriş Yap"
+    "registerStudentLong": "Öğrenci olarak kaydol",
+    "registerTeacherLong": "Öğretmen olarak başvur",
+    "openMenu": "Menüyü aç",
+    "closeMenu": "Menüyü kapat",
+    "mobileMenu": "Mobil menü",
+    "toggleTheme": "Temayı değiştir"
   },
   "hero": {
-    "titleLead": "Her Sınavda Başarı — Tek",
-    "titleHighlight": "Güçlü Platform.",
-    "description": "{{ brand.name }}, öğrenciler, öğretmenler ve ebeveynler için tasarlanmış kapsamlı bir online sınav ve çalışma yaprağı platformudur. Akıllı soru havuzu, gerçek zamanlı sınavlar ve ilerleme takibi ile hedefine ulaş.",
-    "cta": "Çalışma Yapraklarını Keşfet",
-    "reviewsLabel": "Öğrenci Yorumları",
-    "activeStudents": "10.000+ Aktif Öğrenci"
-  },
-  "discover": {
-    "title": "Sınıf Seviyene Göre En İyi Çalışma Yapraklarını Keşfet",
-    "description": "Öğretmenler tarafından hazırlanan 10.000+ çalışma yaprağı ve sınav — 3. sınıftan 8. sınıfa kadar tüm dersler için.",
-    "cta": "Çalışmaya Başla",
-    "ratingHighlight": "50.000+ öğrenci çalışma yapraklarına 5 yıldız verdi"
-  },
-  "news": {
-    "title": "{{ brand.name }}'dan Haberler",
-    "morePrompt": "Daha fazlasını okumak ister misin?",
-    "allNews": "Tüm haberler",
-    "featureRelease": {
-      "tag": "Yeni Özellik",
-      "title": "Yapay Zekâ Destekli Soru Tespiti Artık Canlıda",
-      "excerpt": "YOLOv8 tabanlı görüntü işleme motoru sayesinde tarayıcıdan yüklenen soru kâğıtları otomatik olarak tanınıyor ve dijital ortama aktarılıyor.",
-      "author": "Geliştirici Ekibi",
-      "date": "2 gün önce"
-    },
-    "parentGuide": {
-      "tag": "Ebeveyn Rehberi",
-      "title": "Çocuğunuzun Sınav Sürecini Takip Etmenin 5 Yolu",
-      "excerpt": "{{ brand.name }}'daki ebeveyn paneli ile çocuğunuzun hangi konularda zorlandığını anlık olarak görün, eksik konulara odaklanın.",
-      "author": "Editör Ekibi",
-      "date": "5 saat önce"
-    },
-    "successStory": {
-      "tag": "Başarı Hikayesi",
-      "title": "\"Matematik Sınavına Hazırlandım, 95 Aldım\"",
-      "excerpt": "4. sınıf öğrencisi Ali, her gün 10 dakika çalışma yaprağı çözerek dönem sonunda sınıfının birincisi oldu.",
-      "date": "1 hafta önce"
-    },
-    "teacherTips": {
-      "tag": "Öğretmen İpuçları",
-      "title": "Etkili Çalışma Yaprağı Nasıl Hazırlanır?",
-      "excerpt": "Soru çeşitliliği, görsel destekler ve zorluk dengesiyle öğrenci motivasyonunu artıran yapraklar oluşturun.",
-      "date": "21 Mart 2026"
+    "eyebrow": "Öğretmenler, öğrenciler ve özel ders öğretmenleri için",
+    "titleLead": "Öğretmen hazırlar, öğrenci çözer,",
+    "titleHighlight": "gelişim görünür olur.",
+    "description": "Öğretmenler taranmış kitap sayfalarındaki soruları otomatik ayıklayıp test hazırlar ve öğrencilerine atar. Öğrenciler testleri çözer, günün sorularıyla pratik yapar, puan ve rozet kazanır. Gerektiğinde özel ders öğretmeninden görüntülü ders alır.",
+    "ctaStudent": "Öğrenci olarak kaydol",
+    "ctaTeacher": "Öğretmen olarak başvur",
+    "haveAccount": "Hesabın var mı?",
+    "login": "Giriş yap",
+    "imageAlt": "Tablette çözülen bir test sorusu; yanında günlük seri, puan tablosu ve özel ders randevusu kartları.",
+    "facts": {
+      "free": "Kayıt ücretsiz",
+      "grades": "2.–11. sınıf konuları",
+      "languages": "Türkçe ve İngilizce",
+      "themes": "Açık ve koyu tema"
     }
   },
-  "funfacts": {
-    "students": {
-      "value": "50.000+",
-      "label": "Aktif Öğrenci"
-    },
-    "teachers": {
-      "value": "2.000+",
-      "label": "Kayıtlı Öğretmen"
-    },
-    "questions": {
-      "value": "500.000+",
-      "label": "Çözülen Soru"
-    },
-    "worksheets": {
-      "value": "10.000+",
-      "label": "Çalışma Yaprağı"
+  "stats": {
+    "ariaLabel": "Platform rakamları",
+    "sampleNote": "Örnek veriler",
+    "items": {
+      "teachers": { "label": "Öğretmen" },
+      "students": { "label": "Öğrenci" },
+      "questions": { "label": "Soru havuzunda soru" },
+      "solvedTests": { "label": "Çözülen test" }
     }
   },
-  "categories": {
-    "title": "Ders Kategorileri",
-    "description": "Tüm sınıf düzeyleri için müfredata uygun çalışma yaprakları ve sınavlar.",
-    "viewAll": "Tümünü Görüntüle",
-    "turkish": "Türkçe",
-    "math": "Matematik",
-    "science": "Fen Bilimleri",
-    "social": "Sosyal Bilgiler",
-    "english": "İngilizce",
-    "life": "Hayat Bilgisi",
-    "religion": "Din Kültürü",
-    "history": "İnkılâp Tarihi",
-    "physicalEducation": "Beden Eğitimi"
+  "roles": {
+    "kicker": "Kimler için?",
+    "title": "Her rol için ayrı bir çalışma alanı",
+    "description": "Kayıt olurken rolünü seçersin; menüler ve ekranlar o role göre açılır.",
+    "student": {
+      "title": "Öğrenci",
+      "description": "Sana atanan testleri çöz, sonucunu hemen gör, eksik konularını pratikle kapat.",
+      "item1": "Atanan, devam eden ve tamamlanan testler",
+      "item2": "Günün soruları ve serbest pratik",
+      "item3": "Çalışma programı ve Planım takvimi",
+      "item4": "Puan, rozet ve liderlik tablosu",
+      "cta": "Öğrenci olarak kaydol",
+      "note": "Kayıtta sınıfını girersin, veliyi de davet edersin."
+    },
+    "teacher": {
+      "title": "Okul öğretmeni",
+      "description": "Soru havuzunu kur, test oluştur, sınıfına ya da seçtiğin öğrencilere ata.",
+      "item1": "Otomatik soru tespiti ve yapay zekâ ile sınıflandırma",
+      "item2": "Test oluşturma, görünürlük ve paylaşım",
+      "item3": "Bitiş tarihli atama ve hatırlatma",
+      "item4": "Raporlar, yorumlar ve moderasyon",
+      "cta": "Öğretmen olarak başvur",
+      "note": "Öğretmen hesapları yönetici onayından sonra açılır."
+    },
+    "tutor": {
+      "title": "Özel ders öğretmeni",
+      "description": "Profilini oluştur, müsait saatlerini aç, ders taleplerini onayla, dersi platformda yap.",
+      "item1": "Branş, ücret ve ders şekliyle özel ders profili",
+      "item2": "Haftalık müsait saatler",
+      "item3": "Ders taleplerini onaylama veya reddetme",
+      "item4": "Görüntülü ders ve ortak tahta",
+      "cta": "Özel ders öğretmeni olarak başvur",
+      "note": "Başvurular yönetici onayıyla yayına alınır."
+    }
   },
-  "courses": {
-    "sub": "Öne Çıkan Çalışma Yaprakları",
-    "title": "Öğrenme Yolculuğuna Başla",
-    "description": "Uzman öğretmenler tarafından hazırlanan müfredata uygun çalışma yaprakları ve sınavlarla hedefine ulaş.",
-    "tabs": {
+  "features": {
+    "kicker": "Özellikler",
+    "title": "Hazırlamaktan takip etmeye kadar tek platform",
+    "description": "Soru hazırlamak, test atamak, çözmek, pratik yapmak ve özel ders almak aynı hesapta.",
+    "items": {
+      "detect": { "title": "Otomatik soru tespiti", "text": "Taranmış sayfayı yükle; sorular, şıklar ve pasajlar otomatik işaretlensin. Kontrol et, teste kaydet." },
+      "classify": { "title": "Yapay zekâ ile sınıflandırma", "text": "Kaydedilen sorular için ders, konu ve zorluk önerisi gelir. Son kararı öğretmen verir." },
+      "assign": { "title": "Test oluşturma ve atama", "text": "Testi hazırla, kimlerin göreceğini seç, sınıfına ya da öğrencilere bitiş tarihiyle ata." },
+      "solve": { "title": "Odaklı çözüm ekranı", "text": "Kalan süre, soru haritası ve işaretleme. Test bitince sonuç ve konu bazlı başarı hazır." },
+      "daily": { "title": "Günün soruları ve pratik", "text": "Sınıfına göre her gün yeni bir set. Serbest pratikte her cevaptan sonra anında geri bildirim." },
+      "program": { "title": "Program ve takvim", "text": "Çalışma programını oluştur, Planım takviminde günü gününe takip et." },
+      "badges": { "title": "Puan, rozet, liderlik", "text": "Çözdükçe puan topla, rozet yollarında ilerle, liderlik tablosunda yerini gör." },
+      "notifications": { "title": "Anlık bildirimler", "text": "Yeni atama, onaylanan ders, kazanılan rozet ve yorumlar anında bildirim olarak gelir." }
+    }
+  },
+  "teachers": {
+    "kicker": "Öğretmenler için",
+    "title": "Kitaptaki sorular, tek tek yazmadan testinde",
+    "body": "Soru ekleme ekranına taranmış sayfaları sürükle. Otomatik Algıla, sayfadaki soru, şık ve pasaj bölgelerini bulur; sen yalnızca kontrol edip düzeltirsin. Kaydettiğin sorulara yapay zekâ ders, konu ve zorluk önerir.",
+    "item1": "Dosya veya klasörle toplu sayfa yükleme",
+    "item2": "Çoktan seçmeli ve sürükle-bırak soru tipleri",
+    "item3": "Örnek/çözümlü soru ve pasaj desteği",
+    "item4": "Soruları başka bir teste aktarma",
+    "cta": "Öğretmen olarak başvur",
+    "imageAlt": "Taranmış kitap sayfasında işaretlenmiş soru ve şık bölgeleri."
+  },
+  "students": {
+    "kicker": "Öğrenciler için",
+    "title": "Sınav gibi çöz, sonucu hemen gör",
+    "body": "Çözüm ekranında kalan süreyi, soru haritasını ve işaretlediğin soruları tek bakışta görürsün. Test bitince başarı yüzden, konu bazlı sonuçların ve soru soru inceleme hazır. Yanlışlarından tek tıkla yeni bir test oluşturabilirsin.",
+    "item1": "Atanan, devam eden ve tamamlanan testler, Keşfet",
+    "item2": "Otomatik geçiş, işaretleme ve cevap temizleme",
+    "item3": "Konu bazlı başarı ve sıradaki adım önerisi",
+    "cta": "Öğrenci olarak kaydol",
+    "imageAlt": "Uygulama görüntüsü: test çözme ekranı, soru, şıklar ve sağda soru haritası.",
+    "chips": {
+      "resultLabel": "Test tamamlandı",
+      "resultValue": "17 / 20 doğru",
+      "retryLabel": "Yanlışlarından",
+      "retryValue": "Yeni test oluştur"
+    }
+  },
+  "motivation": {
+    "kicker": "Motivasyon",
+    "title": "Düzenli çalışmak görünür olsun",
+    "body": "Doğru cevaplar puan kazandırır. Rozet yollarında adım adım ilerler, günün sorularıyla serini korur, liderlik tablosunda yerini görürsün. Ana sayfandaki ısı haritası bir yıllık çalışmanı gösterir.",
+    "item1": "Rozet yolları ve tekil rozetler",
+    "item2": "Günlük seri ve tahmini süre",
+    "item3": "Toplam soru, doğru cevap ve çalışma süresi",
+    "imageAlt": "Rozetler, günlük seri ve çalışma ısı haritası."
+  },
+  "tutoring": {
+    "kicker": "Özel ders",
+    "title": "Öğretmenini bul, dersi burada yap",
+    "body": "Onaylı özel ders öğretmenlerini branşa, saatlik ücrete ve online ya da yüz yüze seçeneğine göre filtrele. Müsait bir saat seç ve talebini gönder; öğretmen onaylayınca bildirim gelir. Ders saati geldiğinde görüntülü derse tarayıcından katıl, ortak tahtada birlikte çalış.",
+    "item1": "Ek program kurmadan, tarayıcıdan görüntülü ders",
+    "item2": "Ders boyunca ortak çizim tahtası",
+    "item3": "Derslerim ekranında tüm dersler",
+    "cta": "Öğretmen aramaya başla",
+    "footnote": "Saatlik ücreti öğretmen bilgi amaçlı yazar; ödeme platform üzerinden alınmaz.",
+    "imageAlt": "Özel ders öğretmeni profili ve ortak tahtalı görüntülü ders."
+  },
+  "howItWorks": {
+    "kicker": "Nasıl çalışır?",
+    "title": "Dört adımda başla",
+    "tabs": { "teacher": "Öğretmen", "student": "Öğrenci", "tutor": "Özel ders öğretmeni" },
+    "teacher": {
+      "step1": { "title": "Başvur", "text": "Öğretmen olarak kaydol ve okulunu seç. Hesabın yönetici onayıyla açılır." },
+      "step2": { "title": "Soruları hazırla", "text": "Sayfaları yükle, Otomatik Algıla ile soruları ayıkla, teste kaydet." },
+      "step3": { "title": "Ata", "text": "Testi sınıfına ya da seçtiğin öğrencilere bitiş tarihiyle ata." },
+      "step4": { "title": "Takip et", "text": "Raporlarda kimin çözdüğünü ve sonuçları gör, yorumları yönet." }
+    },
+    "student": {
+      "step1": { "title": "Kaydol", "text": "Öğrenci olarak kaydol, sınıfını ve okulunu seç." },
+      "step2": { "title": "Çöz", "text": "Sana atanan testleri çöz ya da Keşfet'ten yeni testler bul." },
+      "step3": { "title": "Pratik yap", "text": "Günün sorularını çöz, eksik konularda serbest pratik yap." },
+      "step4": { "title": "Gelişimini gör", "text": "Puan topla, rozet kazan, ısı haritanda ilerlemeni izle." }
+    },
+    "tutor": {
+      "step1": { "title": "Başvur", "text": "Kayıtta bağımsız özel ders verdiğini işaretle." },
+      "step2": { "title": "Profilini doldur", "text": "Branşlarını, saatlik ücretini ve ders şeklini yaz." },
+      "step3": { "title": "Saatlerini aç", "text": "Müsait saatlerini takvime ekle, gelen talepleri onayla." },
+      "step4": { "title": "Dersini ver", "text": "Ders saatinde görüntülü odaya katıl, ortak tahtayı kullan." }
+    }
+  },
+  "subjects": {
+    "kicker": "Dersler",
+    "title": "Müfredat konularına göre düzenli soru havuzu",
+    "description": "Ders ve konu sınıflandırması 2. sınıftan 11. sınıfa kadar uzanır. Her soru ders, sınıf ve konuya göre etiketlenir; öğrenciler kendi sınıflarına uygun testleri ve pratik sorularını görür.",
+    "groups": { "primary": "İlkokul · 2.–4. sınıf", "middle": "Ortaokul · 5.–8. sınıf", "high": "Lise · 9.–11. sınıf" },
+    "items": {
       "turkish": "Türkçe",
       "math": "Matematik",
+      "life": "Hayat Bilgisi",
       "science": "Fen Bilimleri",
       "social": "Sosyal Bilgiler",
       "english": "İngilizce",
-      "life": "Hayat Bilgisi"
-    },
-    "topics": {
-      "phonetics": { "name": "Ses Bilgisi", "students": "1.200+ Öğrenci" },
-      "semantics": { "name": "Anlam Bilgisi", "students": "3.500+ Öğrenci" },
-      "reading": { "name": "Okuma Anlama", "students": "5.100+ Öğrenci" },
-      "spelling": { "name": "Yazım Kuralları", "students": "2.800+ Öğrenci" },
-      "punctuation": { "name": "Noktalama İşaretleri", "students": "1.900+ Öğrenci" },
-      "paragraph": { "name": "Paragraf", "students": "4.300+ Öğrenci" },
-      "wordTypes": { "name": "Sözcük Türleri", "students": "2.100+ Öğrenci" }
-    },
-    "price": "Ücretsiz",
-    "cta": "Çalışmaya Başla",
-    "reading4": {
-      "badge": "En Çok Beğenilen",
-      "title": "4. Sınıf Türkçe Okuma Anlama",
-      "description": "Metni anlama, ana fikir bulma, olayları sıralamayla öğrencilerin Türkçe okuma anlama becerilerini geliştirin.",
-      "rating": "4.9",
-      "reviews": "(1.240 Değerlendirme)",
-      "questions": "20 Soru",
-      "questionsExtended": "25 Soru",
-      "students": "7.820 Öğrenci"
-    },
-    "math3": {
-      "badge": "Trend",
-      "title": "3. Sınıf Matematik İşlemler",
-      "description": "Dört işlem, basamak değeri ve örüntüler konularında öğrencilerin temel matematik becerilerini geliştirir.",
-      "rating": "4.0",
-      "reviews": "(980 Değerlendirme)",
-      "questions": "18 Soru",
-      "students": "5.645 Öğrenci"
-    },
-    "geometry5": {
-      "badge": "Öğrenci Favorisi",
-      "title": "5. Sınıf Matematik Geometri",
-      "description": "Yüzey alanları, çevre hesaplama ve geometrik şekiller konularında öğrencilerin problem çözme becerilerini geliştirir.",
-      "rating": "4.5",
-      "reviews": "(1.560 Değerlendirme)",
-      "questions": "22 Soru",
-      "students": "5.985 Öğrenci"
-    },
-    "science4": {
-      "badge": "Yeni Eklendi",
-      "title": "4. Sınıf Fen Bilimleri Madde",
-      "description": "Maddenin özellikleri, hal değişimleri ve karışımlar konularında öğrencilerin fen bilgisi temellerini güçlendirir.",
-      "rating": "4.7",
-      "reviews": "(2.180 Değerlendirme)",
-      "questions": "28 Soru",
-      "students": "8.735 Öğrenci"
-    },
-    "bottomText": "Tüm derslerde müfredata uygun, uzman öğretmenler tarafından hazırlanmış içeriklerle öğrenme yolculuğuna devam et.",
-    "bottomCta": "Tüm Çalışma Yapraklarını Gör"
-  },
-  "howItWorks": {
-    "sub": "Nasıl Çalışır?",
-    "title": "{{ brand.name }} Nasıl Çalışır?",
-    "register": {
-      "title": "Kayıt Ol",
-      "description": "Öğrenci, öğretmen veya ebeveyn olarak"
-    },
-    "choose": {
-      "title": "Sınavı Seç veya Oluştur",
-      "description": "Çalışma yaprağına katıl veya kendin oluştur"
-    },
-    "track": {
-      "title": "Takip Et & Rozet Kazan",
-      "description": "Gelişimini izle ve başarılarını rozetlerle ödüllendir"
+      "religion": "Din Kültürü ve Ahlak Bilgisi",
+      "history": "T.C. İnkılap Tarihi ve Atatürkçülük",
+      "literature": "Türk Dili ve Edebiyatı",
+      "physics": "Fizik",
+      "chemistry": "Kimya",
+      "biology": "Biyoloji",
+      "historyHigh": "Tarih",
+      "geography": "Coğrafya",
+      "philosophy": "Felsefe"
     }
   },
-  "overview": {
-    "students": { "value": "50.000+", "label": "AKTİF ÖĞRENCİ" },
-    "worksheets": { "value": "10.000+", "label": "ÇALIŞMA YAPRAĞI" },
-    "subjects": { "value": "10+", "label": "DERS KONUSU" },
-    "rating": { "value": "4.8", "label": "ORTALAMA PUAN" },
-    "titleLead": "Sınav Yolculuğuna Başla ve",
-    "titleHighlight": "Hedeflediğin",
-    "titleTrail": "Başarıya Ulaş",
-    "description": "Uzman öğretmenlerin hazırladığı çalışma yapraklarıyla daha hızlı, daha akıllıca çalış.",
-    "cta": "Hemen Başla",
-    "communityTitle": "Tüm Derslerde Öğrencilerinize Erişin",
-    "communityDescription": "Öğrencilerinizin gelişimini takip edin, çalışma yapraklarını yönetin ve başarılarını anında görün.",
-    "communityCta": "Topluluğumuza Katıl"
-  },
-  "blog": {
-    "sub": "Blogumuz",
-    "titleLead": "{{ brand.name }}'dan",
-    "titleHighlight": "Bilgi, İpucu",
-    "titleTrail": "ve İlham",
-    "description": "Öğrenci, öğretmen ve ebeveynler için hazırlanmış çalışma tüyoları, başarı hikayeleri ve eğitim rehberleriyle her zaman bir adım önde ol.",
-    "cta": "Tüm Yazıları Gör",
-    "motivation": {
-      "tag": "Öğrenme İpuçları",
-      "title": "Sınavlara Hazırlanırken Motivasyonunu Nasıl Yüksek Tutarsın?",
-      "date": "10 Mart 2026",
-      "readTime": "4 dk okuma",
-      "excerpt": "Sınavlara hazırlanırken odağını kaybetme! Bu basit yöntemlerle düzenli ve motive bir çalışma alışkanlığı edinebilirsin."
-    },
-    "success": {
-      "tag": "Başarı Hikayeleri",
-      "title": "{{ brand.name }} ile Sınav Başarısına Ulaşan Öğrenciler",
-      "date": "5 Mart 2026",
-      "readTime": "7 dk okuma",
-      "excerpt": "Platforma üye olan öğrencilerin çalışma yapraklarıyla nasıl sınav başarısı yakaladıklarını gerçek hikayelerle keşfet."
+  "testimonials": {
+    "kicker": "Kullanıcı yorumları",
+    "title": "{{ brand.name }}'u kullananlar ne diyor?",
+    "description": "Öğrenci, öğretmen ve özel ders öğretmenlerinin gözünden günlük kullanım.",
+    "disclaimer": "Temsili kullanıcı yorumlarıdır.",
+    "items": {
+      "elif": { "quote": "Günün sorularını her sabah çözüyorum. Serim 12 güne çıktı, rozet yolunda bir sonraki adıma az kaldı.", "name": "Elif", "role": "7. sınıf öğrencisi" },
+      "murat": { "quote": "Deneme kitabının sayfalarını tarayıp yüklüyorum, Otomatik Algıla soruları ayırıyor. Bana kalan iş kontrol edip teste kaydetmek.", "name": "Murat", "role": "Matematik öğretmeni" },
+      "zeynep": { "quote": "Müsait saatlerimi açıyorum, öğrenciler ders talep ediyor. Dersi görüntülü yapıyoruz, ortak tahtada birlikte çalışıyoruz.", "name": "Zeynep", "role": "İngilizce özel ders öğretmeni" },
+      "deniz": { "quote": "Test bitince hangi konuda yanlış yaptığımı görüyorum. Yanlışlarımdan yeni bir test oluşturup aynı konuyu tekrar çalışıyorum.", "name": "Deniz", "role": "10. sınıf öğrencisi" },
+      "selin": { "quote": "Testi sınıfıma bitiş tarihiyle atıyorum. Raporlarda kimin çözdüğünü ve sonuçları tek ekranda görüyorum.", "name": "Selin", "role": "Türkçe öğretmeni" },
+      "can": { "quote": "Öğretmenimin atadığı testler ana sayfamda çıkıyor. Bitirince puanımı ve liderlik tablosundaki yerimi görüyorum.", "name": "Can", "role": "4. sınıf öğrencisi" }
     }
-  },
-  "about": {
-    "sub": "{{ brand.name }} Hakkında",
-    "titleLead": "Tek Platform. Sınırsız",
-    "titleHighlight": "Başarı",
-    "titleTrail": "Fırsatları.",
-    "description": "{{ brand.name }}'da kaliteli eğitimin tüm öğrenciler için ulaşılabilir, eğlenceli ve güçlendirici olması gerektiğine inanıyoruz.",
-    "students": { "value": "50.000+", "label": "Aktif Öğrenci" },
-    "teachers": { "value": "2.000+", "label": "Uzman Öğretmen" },
-    "anywhere": {
-      "title": "Her Yerden Erişin",
-      "description": "Ev, okul veya hareket halindeyken — istediğin cihazda, istediğin zaman çalış."
-    },
-    "teach": {
-      "title": "Güvenle Öğret",
-      "description": "Sınavları oluşturmak, takip etmek ve yönetmek için gereken tüm araçlar parmak ucunda."
-    },
-    "badges": {
-      "title": "Rozet Kazan",
-      "description": "Sınavları tamamla ve başarılarını gösteren dijital rozetler kazan."
-    },
-    "cta": "Hakkımızda Daha Fazlası"
   },
   "faq": {
-    "sub": "Sıkça Sorulan Sorular",
-    "titleLead": "{{ brand.name }} Hakkında",
-    "titleHighlight": "Merak Ettikleriniz",
-    "membership": {
-      "question": "{{ brand.name }}'a nasıl üye olabilirim?",
-      "answer": "Siteye girerek \"Kayıt Ol\" butonuna tıklayın, e-posta adresiniz ve şifrenizle birkaç saniyede ücretsiz hesap oluşturun. Kayıt sonrasında tüm çalışma yapraklarına ve sınavlara anında erişebilirsiniz."
-    },
-    "pricing": {
-      "question": "Çalışma yaprakları ücretli mi?",
-      "answer": "Platformdaki çalışma yapraklarının büyük çoğunluğu ücretsizdir. Tüm öğrenciler kayıt olmadan önizleme yapabilir; kayıt sonrasında ise içerikleri tam olarak kullanabilir."
-    },
-    "teacher": {
-      "question": "Öğretmen olarak kendi sınavımı oluşturabilir miyim?",
-      "answer": "Evet! Öğretmen hesabıyla giriş yaparak ders, konu ve sınıf seviyesine göre özelleştirilmiş sınavlar ve çalışma yaprakları hazırlayabilir, öğrencilerinize atayabilirsiniz. Yapay zekâ destekli soru tespiti de bu süreçte size yardımcı olur."
-    },
-    "parent": {
-      "question": "Ebeveyn olarak çocuğumun ilerlemesini takip edebilir miyim?",
-      "answer": "Evet, ebeveyn hesabıyla çocuğunuzun tamamladığı sınavları, aldığı puanları ve kazandığı rozetleri gerçek zamanlı olarak takip edebilirsiniz. Böylece öğrenme sürecinin her adımında yanında olabilirsiniz."
+    "kicker": "SSS",
+    "title": "Sık sorulan sorular",
+    "items": {
+      "pricing": { "question": "{{ brand.name }} ücretli mi?", "answer": "Kayıt ve kullanım ücretsizdir. Özel ders öğretmenlerinin profilinde yazan saatlik ücret bilgi amaçlıdır; ödeme platform üzerinden alınmaz." },
+      "parent": { "question": "Veliler için bir panel var mı?", "answer": "Evet. Veli kendi hesabıyla çocuğunun çalışmalarını izler ve özel ders taleplerini onaylar. Öğrenci kayıt olurken velisini davet eder." },
+      "teacherApproval": { "question": "Öğretmen hesabım neden hemen açılmıyor?", "answer": "Öğretmen ve özel ders öğretmeni başvuruları platform yöneticisi tarafından incelenir. Onaya kadar başvuru durumu ekranını görürsün; onaydan sonra öğretmen menüsünün tamamı açılır." },
+      "detection": { "question": "Soru tespiti nasıl çalışıyor?", "answer": "Soru ekleme ekranına taranmış kitap sayfalarını yüklersin. Otomatik Algıla, bir görüntü işleme modeliyle soru, şık ve pasaj bölgelerini işaretler. Bölgeleri düzeltip kaydedersin; kaydedilen sorular için yapay zekâ ders, konu ve zorluk önerir." },
+      "access": { "question": "Öğrenciler testlere nasıl ulaşır?", "answer": "Öğretmenin atadığı testler öğrencinin Testler sayfasına ve ana sayfasına düşer. Sınıfına açık testler Keşfet bölümünde listelenir." },
+      "video": { "question": "Görüntülü ders için ne gerekiyor?", "answer": "Ek bir program gerekmez. Onaylı dersin saati geldiğinde Derslerim ekranından derse katılman ve tarayıcına kamera ve mikrofon izni vermen yeterli. Ders sırasında ortak tahtada birlikte çizim yapabilirsiniz." },
+      "languages": { "question": "Hangi dilleri destekliyor?", "answer": "Arayüz Türkçe ve İngilizce kullanılabilir. Açık ve koyu tema arasında da geçiş yapabilirsin." }
     }
   },
-  "pricing": {
-    "title": "Planınızı Seçin",
-    "description": "Öğrenci, öğretmen ve okullar için uygun fiyatlı planlarla sınırsız öğrenme deneyimi.",
-    "monthly": "Aylık",
-    "yearly": "Yıllık (%15 İndirim)",
-    "perMonth": "/aylık",
-    "free": {
-      "name": "Ücretsiz",
-      "price": "0 ₺",
-      "cta": "Ücretsiz Başla",
-      "worksheetLimit": "10 çalışma yaprağına erişim",
-      "basicProgress": "Temel ilerleme takibi",
-      "limitedExams": "Sınırlı sınav oluşturma",
-      "emailNotifications": "E-posta bildirimleri",
-      "freeArchive": "Ücretsiz içerik arşivi",
-      "community": "Topluluk forumlarına erişim",
-      "mobile": "Mobil uyumlu kullanım"
-    },
-    "teacher": {
-      "name": "Öğretmen",
-      "price": "99 ₺",
-      "cta": "Öğretmen Planı Al",
-      "unlimitedWorksheets": "Sınırsız çalışma yaprağı erişimi",
-      "customExams": "Özel sınav ve çalışma yaprağı oluşturma",
-      "aiDetection": "YZ destekli soru tespiti",
-      "progressReports": "Öğrenci ilerleme raporları",
-      "badges": "Rozet ve ödül sistemi",
-      "downloads": "Materyal indirme",
-      "prioritySupport": "Öncelikli destek",
-      "parentNotifications": "Ebeveyn bildirim sistemi",
-      "classAnalytics": "Sınıf bazlı analitik"
-    },
-    "school": {
-      "name": "Okul",
-      "price": "499 ₺",
-      "cta": "Teklif Al",
-      "multiTeacher": "Çoklu öğretmen yönetimi",
-      "classReports": "Sınıf ve şube bazlı raporlar",
-      "customContent": "Özelleştirilmiş içerik havuzu",
-      "advancedAnalytics": "Gelişmiş analitik ve raporlama",
-      "bulkEnrollment": "Toplu öğrenci kaydı",
-      "branding": "Özel okul markalaşması",
-      "api": "API entegrasyonu",
-      "rbac": "Rol bazlı erişim kontrolü",
-      "sla": "SLA & öncelikli teknik destek"
-    }
-  },
-  "services": {
-    "titleLead": "Neden",
-    "titleHighlight": "{{ brand.name }}",
-    "titleTrail": "ile öğrenmelisiniz?",
-    "description": "Öğrenci, öğretmen ve ebeveynler için tasarlanmış, her ihtiyaca cevap veren bir platform.",
-    "worksheets": {
-      "titleTop": "10.000+",
-      "titleBottom": "Çalışma Yaprağı",
-      "description": "3. sınıftan 8. sınıfa kadar tüm dersler için müfredata uygun içerikler."
-    },
-    "badges": {
-      "titleTop": "Rozet &",
-      "titleBottom": "Ödül Sistemi",
-      "description": "Öğrenciler tamamladıkları sınavlarda rozet kazanarak motivasyonlarını canlı tutar."
-    },
-    "panels": {
-      "titleTop": "Öğretmen &",
-      "titleBottom": "Ebeveyn Paneli",
-      "description": "Öğretmenler sınav oluşturur, ebeveynler çocuklarının ilerlemesini anlık takip eder."
-    },
-    "ai": {
-      "titleTop": "YZ Destekli",
-      "titleBottom": "Soru Tespiti",
-      "description": "YOLOv8 tabanlı yapay zekâ ile fotoğraftan soru algılama ve otomatik sınav oluşturma."
-    }
+  "cta": {
+    "title": "Hazırsan başlayalım",
+    "description": "Rolünü seç, birkaç adımda hesabını oluştur.",
+    "student": "Öğrenci olarak kaydol",
+    "teacher": "Öğretmen olarak başvur"
   },
   "footer": {
-    "about": "Öğrencilere, öğretmenlere ve ebeveynlere yönelik müfredata uygun çalışma yaprakları ve sınavlarla öğrenmeyi her yerde, her zaman mümkün kılıyoruz.",
-    "followUs": "Bizi Takip Edin",
-    "newsletterTitle": "Bültenimize Abone Ol",
-    "newsletterDescription": "En yeni çalışma yaprakları, ipuçları ve başarı hikayelerini doğrudan gelen kutunuza alın.",
-    "emailPlaceholder": "E-posta adresiniz",
-    "subscribe": "Abone Ol",
-    "quickLinksTitle": "Hızlı Bağlantılar",
-    "quickLinks": {
-      "about": "Hakkımızda",
-      "worksheets": "Tüm Çalışma Yaprakları",
-      "becomeTeacher": "Öğretmen Ol",
-      "blog": "Blog",
-      "contact": "İletişim",
-      "help": "Yardım Merkezi"
-    },
-    "categoriesTitle": "Ders Kategorileri",
-    "legalTitle": "Yasal",
-    "legal": {
+    "about": "Öğretmenlerin test hazırlayıp atadığı, öğrencilerin çözüp geliştiği, özel derslerin görüntülü yapıldığı eğitim platformu.",
+    "platformTitle": "Platform",
+    "accountTitle": "Hesap",
+    "legalTitle": "Yasal ve iletişim",
+    "copyright": "© {{ year }} {{ brand.name }}. Tüm hakları saklıdır.",
+    "links": {
+      "features": "Özellikler",
+      "howItWorks": "Nasıl çalışır?",
+      "tutoring": "Özel ders",
+      "faq": "SSS",
+      "login": "Giriş yap",
+      "registerStudent": "Öğrenci kaydı",
+      "registerTeacher": "Öğretmen başvurusu",
       "terms": "Kullanım Koşulları",
-      "privacy": "Gizlilik Politikası",
-      "teachers": "Öğretmenler",
-      "successStories": "Başarı Hikayeleri"
-    },
-    "contactTitle": "İletişim",
-    "contact": {
-      "emailLabel": "E-posta:",
-      "phoneLabel": "Telefon:",
-      "addressLabel": "Adres:",
-      "address": "Ankara, Türkiye"
-    },
-    "copyright": "Tüm hakları saklıdır."
+      "privacy": "Gizlilik Politikası"
+    }
   }
 }

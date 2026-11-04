@@ -1,104 +1,48 @@
-<app-navbar></app-navbar>
+<div class="lp" *transloco="let t; prefix: 'landing'">
+  <app-navbar />
+  <main>
+    <app-landing-hero />
+    <app-landing-stats />
+    <app-landing-roles />
+    <app-landing-features />
 
-<!-- JSON-LD Structured Data -->
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "Organization",
-      "@id": "https://hedefokul.com/#organization",
-      "name": "Hedef Okul",
-      "url": "https://hedefokul.com",
-      "logo": "https://hedefokul.com/assets/images/logo.svg",
-      "description": "3-8. sınıf öğrencileri için müfredata uygun çalışma yaprakları ve online sınav platformu.",
-      "contactPoint": {
-        "@type": "ContactPoint",
-        "email": "destek@hedefokul.com",
-        "contactType": "customer support",
-        "availableLanguage": "Turkish"
-      },
-      "sameAs": [
-        "https://www.instagram.com/hedefokul",
-        "https://www.facebook.com/hedefokul",
-        "https://x.com/hedefokul"
-      ]
-    },
-    {
-      "@type": "WebSite",
-      "@id": "https://hedefokul.com/#website",
-      "url": "https://hedefokul.com",
-      "name": "Hedef Okul",
-      "inLanguage": "tr",
-      "publisher": { "@id": "https://hedefokul.com/#organization" }
-    },
-    {
-      "@type": "EducationalOrganization",
-      "@id": "https://hedefokul.com/#edu",
-      "name": "Hedef Okul",
-      "url": "https://hedefokul.com",
-      "description": "Türkiye'nin K-12 online sınav ve çalışma yaprağı platformu. YZ destekli soru tespiti, rozet sistemi ve ebeveyn takip paneli.",
-      "hasOfferCatalog": {
-        "@type": "OfferCatalog",
-        "name": "Çalışma Yaprakları",
-        "itemListElement": [
-          { "@type": "Offer", "itemOffered": { "@type": "Course", "name": "Türkçe Çalışma Yaprakları", "educationalLevel": "İlkokul - Ortaokul" } },
-          { "@type": "Offer", "itemOffered": { "@type": "Course", "name": "Matematik Çalışma Yaprakları", "educationalLevel": "İlkokul - Ortaokul" } },
-          { "@type": "Offer", "itemOffered": { "@type": "Course", "name": "Fen Bilimleri Çalışma Yaprakları", "educationalLevel": "İlkokul - Ortaokul" } }
-        ]
-      }
-    }
-  ]
-}
-</script>
+    <app-landing-spotlight anchor="ogretmenler" section="teachers" kickerIcon="co_present" [itemCount]="4" [alt]="true"
+      [ctaUrl]="registerTeacherUrl">
+      <img src="assets/images/landing/detect.svg" width="600" height="440" loading="lazy" [alt]="t('teachers.imageAlt')" />
+    </app-landing-spotlight>
 
-<main>
+    <app-landing-spotlight anchor="ogrenciler" section="students" kickerIcon="backpack" [itemCount]="3" [flip]="true"
+      [ctaUrl]="registerStudentUrl">
+      <div class="art-stack">
+        <div class="frame">
+          <div class="frame-bar" aria-hidden="true"><i></i><i></i><i></i></div>
+          <img src="assets/images/landing/test-solve.png" width="1440" height="860" loading="lazy" decoding="async" [alt]="t('students.imageAlt')" />
+        </div>
+        <div class="chip-float cf-1"><div>{{ t('students.chips.resultLabel') }}<strong>{{ t('students.chips.resultValue') }}</strong></div></div>
+        <div class="chip-float cf-2"><div>{{ t('students.chips.retryLabel') }}<strong>{{ t('students.chips.retryValue') }}</strong></div></div>
+      </div>
+    </app-landing-spotlight>
 
+    <app-landing-spotlight anchor="motivasyon" section="motivation" kickerIcon="military_tech" [itemCount]="3" [alt]="true">
+      <img src="assets/images/landing/motivation.svg" width="560" height="420" loading="lazy" [alt]="t('motivation.imageAlt')" />
+    </app-landing-spotlight>
 
-  <section id="anasayfa"><app-education-banner></app-education-banner></section>
+    <app-landing-spotlight anchor="ozel-ders" section="tutoring" kickerIcon="video_chat" [itemCount]="3" [flip]="true"
+      [ctaUrl]="registerStudentUrl" [showFootnote]="true">
+      <img src="assets/images/landing/tutor.svg" width="600" height="440" loading="lazy" [alt]="t('tutoring.imageAlt')" />
+    </app-landing-spotlight>
 
-  <section id="kesfet"><app-discover></app-discover></section>
+    <app-how-it-works />
+    <app-landing-subjects />
+    <app-landing-testimonials />
+    <app-faq />
+    <app-landing-cta />
+  </main>
+  <app-landing-footer />
 
-  <section id="haberler"><app-news></app-news></section>
-
-  <section id="istatistikler"><app-funfacts></app-funfacts></section>
-
-  <section id="ozellikler"><app-categories></app-categories></section>
-
-  <section id="dersler"><app-landing-courses></app-landing-courses></section>
-
-  <!-- <app-partners></app-partners> -->
-
-  <section id="nasil-calisir"><app-how-it-works></app-how-it-works></section>
-
-  <section id="genel-bakis"><app-overview></app-overview></section>
-
-  <section id="blog"><app-edu-blog></app-edu-blog></section>
-
-  <section id="hakkimizda"><app-about-us></app-about-us></section>
-
-  <section id="sss"><app-faq></app-faq></section>
-
-  <section id="fiyatlandirma"><app-pricing></app-pricing></section>
-
-  <section id="servisler"><app-service-area></app-service-area></section>
-
-  <app-landing-footer></app-landing-footer>
-
-  <!-- Back to Top -->
-  @if (showBackToTop) {
-  <button
-    class="back-to-top"
-    (click)="scrollToTop()"
-    *transloco="let t; prefix: 'landing'"
-    [attr.aria-label]="t('common.backToTop')">
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="18 15 12 9 6 15" />
-    </svg>
-  </button>
+  @if (showBackToTop()) {
+    <button mat-mini-fab type="button" class="back-to-top" [attr.aria-label]="t('common.backToTop')" (click)="scrollToTop()">
+      <mat-icon fontSet="material-symbols-outlined" aria-hidden="true">arrow_upward</mat-icon>
+    </button>
   }
-
-
-</main>
-
+</div>

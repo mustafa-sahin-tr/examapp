@@ -456,10 +456,12 @@ public class WorksheetDetailService : IWorksheetDetailService
         var distribution = new DifficultyDistributionDto();
         foreach (var wq in questions)
         {
-            var level = wq.Question.DifficultyLevel;
-            if (level <= 3) distribution.Easy++;
-            else if (level <= 6) distribution.Medium++;
-            else distribution.Hard++;
+            switch (DifficultyBands.Of(wq.Question.DifficultyLevel))
+            {
+                case DifficultyBands.Easy: distribution.Easy++; break;
+                case DifficultyBands.Medium: distribution.Medium++; break;
+                default: distribution.Hard++; break;
+            }
         }
 
         var classified = questions.Count(wq => wq.Question.ClassificationSource != null);

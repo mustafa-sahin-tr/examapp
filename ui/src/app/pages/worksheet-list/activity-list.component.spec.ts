@@ -77,7 +77,9 @@ describe('ActivityListComponent (#573)', () => {
       ] as AssignedWorksheet[])
     );
     testService.listWorksheets.mockImplementation((f: { statuses: number[] }) =>
-      f.statuses[0] === 0
+      f.statuses[0] === -1
+        ? paged([])
+        : f.statuses[0] === 0
         ? paged([{ id: 2, name: 'Başlanmış', kind: 1, questionCount: 4, instance: { status: 0, answeredQuestions: 2, totalQuestions: 4 } as Test['instance'] }])
         : paged([{ id: 3, name: 'Biten', kind: 1, questionCount: 10, instance: { status: 1, score: 0, correctAnswers: 0, wrongAnswers: 0, firstCheckCorrectCount: 8, firstCheckTotalCount: 10 } as Test['instance'] }])
     );
@@ -95,6 +97,39 @@ describe('ActivityListComponent (#573)', () => {
     expect(cards[2].querySelector('.wcard__ring')).toBeNull();
     expect(cards[2].textContent).toContain('10 cevap yerinden 8 doğru');
     expect(el().textContent).not.toMatch(/%|puan|XP/i);
+  });
+
+  it('i648_NotStartedUnassigned_ShowsExploreSection_AssignedStaysInNew', () => {
+    testService.getActiveAssignments.mockReturnValue(
+      of([{ worksheetId: 1, name: 'Atanan', kind: 1, hasStarted: false, isCompleted: false, questionCount: 5 }] as AssignedWorksheet[])
+    );
+    testService.listWorksheets.mockImplementation((f: { statuses: number[] }) =>
+      f.statuses[0] === -1
+        ? paged([
+            { id: 1, name: 'Atanan', kind: 1, isAssigned: true },
+            { id: 4, name: 'Açık etkinlik', kind: 1, isAssigned: false },
+          ])
+        : paged([])
+    );
+    setup();
+
+    const titles = Array.from(el().querySelectorAll('.al__section-title')).map((h) => h.textContent?.trim());
+    expect(titles).toEqual(['Yeni', 'Keşfet']);
+    const explore = el().querySelectorAll('[data-testid="activity-explore"] app-worksheet-list-view-card');
+    expect(explore.length).toBe(1);
+    expect(explore[0].textContent).toContain('Açık etkinlik');
+    expect(el().querySelector('[data-testid="activity-empty"]')).toBeNull();
+  });
+
+  it('i648_AssignmentsFail_AssignedActivityDoesNotLeakIntoExplore', () => {
+    testService.getActiveAssignments.mockReturnValue(throwError(() => new Error('x')));
+    testService.listWorksheets.mockImplementation((f: { statuses: number[] }) =>
+      f.statuses[0] === -1 ? paged([{ id: 1, name: 'Atanan', kind: 1, isAssigned: true }]) : paged([])
+    );
+    setup();
+
+    expect(el().querySelector('[data-testid="activity-explore"]')).toBeNull();
+    expect(el().querySelector('[data-testid="activity-partial-error"]')).not.toBeNull();
   });
 
   it('partialFailure_ShowsNonBlockingWarningAndStillRendersLoadedSections', () => {

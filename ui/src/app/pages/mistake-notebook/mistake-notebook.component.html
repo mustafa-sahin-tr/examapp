@@ -1,16 +1,12 @@
 <section class="mnb" *transloco="let t; prefix: 'practice.mistakes'">
-  <header class="mnb__head">
-    <div>
-      <h1>{{ t('title') }}</h1>
-      <p>{{ t('subtitle') }}</p>
-    </div>
+  <app-page-header [title]="t('title')" [description]="t('subtitle')">
     @if (visibleItems().length > 0) {
       <button mat-raised-button color="primary" type="button" data-test="mistakes-start" [disabled]="starting()" (click)="startPractice()">
         <mat-icon>replay</mat-icon>
         {{ t('start') }}
       </button>
     }
-  </header>
+  </app-page-header>
 
   @if (startFailed()) {
     <p class="mnb__error" role="alert">{{ t('startError') }}</p>

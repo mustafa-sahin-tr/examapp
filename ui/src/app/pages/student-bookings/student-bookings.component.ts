@@ -24,6 +24,7 @@ import {
 import { JOIN_WINDOW_TICK_MS, JoinWindowInfo, getJoinWindow } from '../../shared/utils/booking-join-window';
 import { SLOT_NEXT_DAY_KEY, endsOnNextLocalDay } from '../../shared/utils/booking-format.util';
 import { BookingLifecycleView, bookingLifecycleView } from '../../shared/utils/booking-lifecycle.util';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 type BookingFilter = 'active' | 'all';
 
@@ -78,6 +79,7 @@ const SCOPE = 'student-bookings';
   selector: 'app-student-bookings',
   standalone: true,
   imports: [
+    PageHeaderComponent,
     RouterLink,
     MatButtonModule,
     MatButtonToggleModule,

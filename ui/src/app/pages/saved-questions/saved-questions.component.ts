@@ -8,12 +8,13 @@ import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { SavedQuestion } from '../../models/practice';
 import { PracticeService } from '../../services/practice.service';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 /** Issue #532: kaydedilen sorular; buradan pratik açılır, kayıt kaldırılır. */
 @Component({
   selector: 'app-saved-questions',
   standalone: true,
-  imports: [DatePipe, RouterLink, MatButtonModule, MatIconModule, MatProgressSpinnerModule, TranslocoDirective],
+  imports: [PageHeaderComponent, DatePipe, RouterLink, MatButtonModule, MatIconModule, MatProgressSpinnerModule, TranslocoDirective],
   providers: [provideTranslocoScope('practice')],
   templateUrl: './saved-questions.component.html',
   styleUrl: '../mistake-notebook/mistake-notebook.component.scss',

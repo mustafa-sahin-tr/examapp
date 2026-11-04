@@ -5,23 +5,6 @@
   padding: 16px var(--ms-page-gutter-mobile) 48px;
 }
 
-.mnb__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-
-  h1,
-  p {
-    margin: 0;
-  }
-
-  p {
-    color: var(--ms-text-medium);
-  }
-}
-
 .mnb__state {
   display: flex;
   flex-direction: column;

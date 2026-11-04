@@ -1,13 +1,9 @@
 <section class="otq" *transloco="let t; prefix: 'open-text-reviews'">
-  <header class="otq__head">
-    <div>
-      <h1>{{ t('title') }}</h1>
-      <p>{{ t('subtitle') }}</p>
-    </div>
+  <app-page-header [title]="t('title')" [description]="t('subtitle')">
     <button mat-stroked-button type="button" class="otq__btn" data-testid="otq-refresh" (click)="load()" [disabled]="loading()">
       <mat-icon>refresh</mat-icon>{{ t('actions.refresh') }}
     </button>
-  </header>
+  </app-page-header>
 
   <div class="otq__filters">
     <mat-button-toggle-group class="otq__status" [value]="status()" (change)="setStatus($event.value)" hideSingleSelectionIndicator

@@ -1,0 +1,11 @@
+<header class="ph">
+  <div class="ph__text">
+    <h1 class="ph__title">{{ title() }}</h1>
+    @if (description()) {
+      <p class="ph__description">{{ description() }}</p>
+    }
+  </div>
+  <div class="ph__actions">
+    <ng-content />
+  </div>
+</header>

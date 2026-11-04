@@ -12,20 +12,6 @@
   max-width: 48rem;
 }
 
-.stg__head {
-  h1 {
-    margin: 0 0 0.25rem;
-    font-family: var(--mainFontFamily);
-    font-size: 1.375rem;
-  }
-
-  p {
-    margin: 0;
-    opacity: 0.75;
-    font-size: 0.875rem;
-  }
-}
-
 .stg__card {
   background: var(--ms-surface-weak);
   border: 1px solid var(--ms-border);

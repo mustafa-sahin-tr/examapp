@@ -18,6 +18,7 @@ import {
   WorksheetAccessRequest,
   WorksheetAccessRequestStatus,
 } from '../../models/worksheet-access-request.model';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 type Filter = 'pending' | 'all';
 
@@ -28,6 +29,7 @@ const ASSIGNMENT_REQUESTS_SCOPE = 'assignment-requests';
   selector: 'app-assignment-permission-requests',
   standalone: true,
   imports: [
+    PageHeaderComponent,
     MatButtonModule,
     MatButtonToggleModule,
     MatChipsModule,

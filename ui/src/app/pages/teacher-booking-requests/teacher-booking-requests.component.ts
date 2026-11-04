@@ -30,6 +30,7 @@ import {
 } from '../../shared/utils/booking-join-window';
 import { SLOT_NEXT_DAY_KEY, formatSlotDay, formatSlotRange, slotEndsNextDay } from '../../shared/utils/booking-format.util';
 import { BookingLifecycleView, bookingLifecycleView } from '../../shared/utils/booking-lifecycle.util';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 type RequestFilter = 'pending' | 'all';
 
@@ -87,6 +88,7 @@ const TEACHER_BOOKINGS_SCOPE = 'teacher-bookings';
   selector: 'app-teacher-booking-requests',
   standalone: true,
   imports: [
+    PageHeaderComponent,
     DatePipe,
     FormsModule,
     RouterLink,

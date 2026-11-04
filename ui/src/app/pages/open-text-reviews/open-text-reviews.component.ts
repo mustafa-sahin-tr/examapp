@@ -33,6 +33,7 @@ import {
 import { LocaleService } from '../../services/locale.service';
 import { OpenTextReviewService } from '../../services/open-text-review.service';
 import { OpenTextReviewStatusComponent } from '../../shared/components/open-text-review-status/open-text-review-status.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 /** Çeviriler kendi Transloco scope'unda: `public/i18n/open-text-reviews/<lang>.json`. */
 export const OPEN_TEXT_REVIEWS_SCOPE = 'open-text-reviews';
@@ -57,6 +58,7 @@ export interface OpenTextReviewDraft {
   selector: 'app-open-text-reviews',
   standalone: true,
   imports: [
+    PageHeaderComponent,
     MatButtonModule,
     MatButtonToggleModule,
     MatExpansionModule,

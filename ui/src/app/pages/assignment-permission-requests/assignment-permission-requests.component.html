@@ -1,9 +1,5 @@
 <section class="apr" *transloco="let t; prefix: 'assignment-requests'">
-  <header class="apr__head">
-    <div>
-      <h1>{{ t('title') }}</h1>
-      <p>{{ t('subtitle') }}</p>
-    </div>
+  <app-page-header [title]="t('title')" [description]="t('subtitle')">
     <mat-button-toggle-group
       [value]="filter()"
       (change)="setFilter($event.value)"
@@ -12,7 +8,7 @@
       <mat-button-toggle value="pending">{{ t('filter.pending') }}</mat-button-toggle>
       <mat-button-toggle value="all">{{ t('filter.all') }}</mat-button-toggle>
     </mat-button-toggle-group>
-  </header>
+  </app-page-header>
 
   @if (loading()) {
     <div class="apr__state">

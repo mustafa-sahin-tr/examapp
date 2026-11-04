@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { TranslocoService } from '@jsverse/transloco';
-import { EMPTY, Observable, defer, expand, map, toArray } from 'rxjs';
+import { EMPTY, Observable, defer, expand, map, tap, toArray } from 'rxjs';
 import {
   AvailabilitySlot,
   AvailabilitySlotListResult,
@@ -127,6 +127,15 @@ export class BookingService {
 
   createBooking(body: CreateBookingRequest): Observable<BookingResult> {
     return this.http.post<BookingResult>(`${this.baseUrl}/requests`, body);
+  }
+
+  /** #723: menü rozeti için karar bekleyen ders talebi sayısı. */
+  readonly pendingCount = signal(0);
+
+  refreshPendingCount(): Observable<number> {
+    return this.http
+      .get<number>(`${this.baseUrl}/requests/teacher/pending-count`)
+      .pipe(tap((count) => this.pendingCount.set(count ?? 0)));
   }
 
   getTeacherRequests(skip = 0, take = DEFAULT_TAKE): Observable<BookingListResult> {

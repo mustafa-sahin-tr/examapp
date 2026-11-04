@@ -66,6 +66,9 @@ public interface IBookingService
     /// <summary>Öğretmene gelen randevu talepleri (issue #439: AwaitingParent / ParentRejected / Expired hariç).</summary>
     Task<BookingListResultDto> GetTeacherBookingsAsync(int teacherUserId, int skip, int take, CancellationToken ct = default);
 
+    /// <summary>issue #723: öğretmenin karar bekleyen talep sayısı (menü rozeti). Bağımsız olmayan öğretmende 0.</summary>
+    Task<int> GetTeacherPendingBookingCountAsync(int teacherUserId, CancellationToken ct = default);
+
     /// <summary>Öğrencinin kendi randevu talepleri.</summary>
     Task<BookingListResultDto> GetStudentBookingsAsync(int studentUserId, int skip, int take, CancellationToken ct = default);
 

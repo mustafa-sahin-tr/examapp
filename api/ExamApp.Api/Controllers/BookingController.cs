@@ -196,6 +196,19 @@ public class BookingController : BaseController
         return result.Success ? Ok(result) : MapFailure(result);
     }
 
+    /// <summary>issue #723: karar bekleyen talep sayısı (menü rozeti); bağımsız olmayan öğretmende 0.</summary>
+    [HttpGet("requests/teacher/pending-count")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)]
+    [Authorize(Roles = "Teacher")]
+    public async Task<IActionResult> GetTeacherPendingCount(CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+            return UserNotResolved(_localizer["booking.unauthorized"].Value);
+
+        return Ok(await _bookingService.GetTeacherPendingBookingCountAsync(user.Id, ct));
+    }
+
     /// <summary>Öğrencinin kendi randevu talepleri.</summary>
     [HttpGet("requests/student")]
     [Authorize(Roles = "Student")]

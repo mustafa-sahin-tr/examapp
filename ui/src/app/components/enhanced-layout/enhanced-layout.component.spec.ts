@@ -1,3 +1,5 @@
+import { BookingService } from '../../services/booking.service';
+import { OpenTextReviewService } from '../../services/open-text-review.service';
 import { SidenavService } from '../../services/sidenav.service';
 import type { Mock } from "vitest";
 import { Component, WritableSignal, signal, ChangeDetectionStrategy } from '@angular/core';
@@ -64,6 +66,8 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
                 { provide: StudentSchoolRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
                 { provide: DirectMessageService, useValue: directMessageStub() },
                 { provide: NotificationService, useValue: { unreadCount: signal(0) } },
+                { provide: BookingService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
+                { provide: OpenTextReviewService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
                 { provide: UserThemeService, useValue: {} },
                 { provide: ThemeConfigService, useValue: {} },
             ],
@@ -243,6 +247,8 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
                 { provide: StudentSchoolRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
                 { provide: DirectMessageService, useValue: directMessageStub() },
                 { provide: NotificationService, useValue: { unreadCount: signal(0) } },
+                { provide: BookingService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
+                { provide: OpenTextReviewService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
                 { provide: UserThemeService, useValue: {} },
                 { provide: ThemeConfigService, useValue: {} },
             ],
@@ -300,6 +306,20 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
         expect(component.menuBadgeCount('student-school-requests')).toBe(3);
         expect(component.menuBadgeCount('admin-student-school-requests')).toBe(3);
         expect(component.menuBadgeCount('access-requests')).toBe(0);
+    });
+
+    it('menuBadgeCount_Requests_SumsAllFourTypes (issue #723)', () => {
+        const component = create(['Teacher']);
+        const set = (token: unknown, value: number) =>
+            (TestBed.inject(token as never) as unknown as { pendingCount: WritableSignal<number> }).pendingCount.set(value);
+        set(WorksheetAccessRequestService, 1);
+        set(StudentSchoolRequestService, 2);
+        set(BookingService, 3);
+        set(OpenTextReviewService, 4);
+
+        expect(component.menuBadgeCount('teacher-requests')).toBe(10);
+        expect(component.menuBadgeCount('tab-booking-requests')).toBe(3);
+        expect(component.menuBadgeCount('tab-open-text-reviews')).toBe(4);
     });
 
     it('menuLabel_StudentSchoolRequests_TranslatedTrAndEn (issue #361)', () => {
@@ -541,6 +561,8 @@ describe('EnhancedLayoutComponent direct messages menu (issue #106)', () => {
                 { provide: StudentSchoolRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
                 { provide: DirectMessageService, useValue: directMessageStub(dmCount) },
                 { provide: NotificationService, useValue: { unreadCount: signal(0) } },
+                { provide: BookingService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
+                { provide: OpenTextReviewService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
                 { provide: UserThemeService, useValue: {} },
                 { provide: ThemeConfigService, useValue: {} },
             ],

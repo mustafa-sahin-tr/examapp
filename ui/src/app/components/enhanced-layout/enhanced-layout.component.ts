@@ -22,6 +22,8 @@ import { catchError, debounceTime, distinctUntilChanged, filter, map, switchMap,
 import { SidenavService } from '../../services/sidenav.service';
 import { TEACHER_APPROVAL_PENDING_URL, teacherAccountApprovalOf } from '../../models/teacher-approval.model';
 import { SignalRService } from '../../services/signalr.service';
+import { BookingService } from '../../services/booking.service';
+import { OpenTextReviewService } from '../../services/open-text-review.service';
 import { WorksheetAccessRequestService } from '../../services/worksheet-access-request.service';
 import { StudentSchoolRequestService } from '../../services/student-school-request.service';
 import { NotificationService } from '../../services/notification.service';
@@ -156,6 +158,11 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   private readonly studentSchoolRequestService = inject(StudentSchoolRequestService);
   readonly studentSchoolRequestCount = this.studentSchoolRequestService.pendingCount;
   private studentSchoolRequestCountLoaded = false;
+  // #723: "Talepler" menüsünün dört türü de sayılır; ders talebi yalnız bağımsız öğretmende çekilir.
+  private readonly bookingService = inject(BookingService);
+  readonly bookingRequestCount = this.bookingService.pendingCount;
+  private readonly openTextReviewService = inject(OpenTextReviewService);
+  readonly openTextReviewCount = this.openTextReviewService.pendingCount;
   private readonly notificationService = inject(NotificationService);
   /** Issue #146: zil rozetindeki okunmamış kalıcı bildirim sayısı. */
   readonly unreadNotificationCount = this.notificationService.unreadCount;
@@ -419,6 +426,10 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     this.accessRequestCountLoaded = true;
     this.accessRequestService.refreshPendingCount().subscribe({ error: () => {} });
     this.loadStudentSchoolRequestCount();
+    this.openTextReviewService.refreshPendingCount().subscribe({ error: () => {} });
+    if (!this.isKnownNotIndependent()) {
+      this.bookingService.refreshPendingCount().subscribe({ error: () => {} });
+    }
     // Issue #106: onay bilgisi geç geldiyse (init'te bilinmiyordu) DM rozeti şimdi çekilir — init çektiyse tekrar etmez.
     if (!this.directMessageBadgeLoaded) {
       this.directMessageBadgeLoaded = true;
@@ -447,12 +458,18 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   menuBadgeCount(itemId: string): number {
     switch (itemId) {
       case 'teacher-requests':
-        return this.accessRequestCount() + this.studentSchoolRequestCount();
+        return (
+          this.accessRequestCount() + this.studentSchoolRequestCount() + this.bookingRequestCount() + this.openTextReviewCount()
+        );
       case 'access-requests':
         return this.accessRequestCount();
       case 'student-school-requests':
       case 'admin-student-school-requests':
         return this.studentSchoolRequestCount();
+      case 'tab-booking-requests':
+        return this.bookingRequestCount();
+      case 'tab-open-text-reviews':
+        return this.openTextReviewCount();
       case 'teacher-messages':
       case 'student-messages':
         return this.directMessageUnreadCount();

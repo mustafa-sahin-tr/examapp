@@ -76,6 +76,7 @@ describe('TestSolveCanvasComponentv3 — finish flow (issue #383)', () => {
     }
 
     beforeEach(async () => {
+        localStorage.clear();
         testService = {
             saveAnswer: vi.fn().mockName("TestService.saveAnswer"),
             completeTest: vi.fn().mockName("TestService.completeTest"),
@@ -110,6 +111,8 @@ describe('TestSolveCanvasComponentv3 — finish flow (issue #383)', () => {
         // ngOnInit/loadTest çalıştırılmaz (detectChanges yok); state doğrudan kurulur.
         component.testInstance = buildInstance();
         component.currentIndex.set(0);
+        // Bitirme testleri: aktif sorunun cevabı henüz kaydedilmedi.
+        component['markQuestionDirty'](0);
     });
 
     afterEach(() => fixture.destroy());
@@ -161,7 +164,6 @@ describe('TestSolveCanvasComponentv3 — finish flow (issue #383)', () => {
         // Önceki sorudan (ör. otomatik geçiş) kalan uçuştaki kayıt.
         component.autoNextQuestion.set(false);
         component.selectAnswerForQuestion(22, 1);
-        component['persistAnswerForQuestion'](22, 1);
 
         const done = component.completeTest();
         await settle();
@@ -218,7 +220,7 @@ describe('TestSolveCanvasComponentv3 — finish flow (issue #383)', () => {
     it('a background save rejected as completed (outside finish) redirects to the result page', async () => {
         testService.saveAnswer.mockReturnValue(throwError(conflict409));
 
-        component.persistAnswer(11);
+        component['persistQuestionState'](0);
         await settle();
 
         expect(snackBar.open).toHaveBeenCalledTimes(1);
@@ -342,6 +344,7 @@ describe('TestSolveCanvasComponentv3 — finish flow (issue #383)', () => {
         component.currentIndex.set(0);
         component.setQuestionsPerView(2);
         // Soru 1 (index 0) yüklemeden cevaplı geldi (dirty değil); soru 2 bu görünümde cevaplandı.
+        component['dirtyQuestionIndices'].delete(0);
         component.selectAnswerForQuestion(22, 1);
 
         await component.completeTest();
@@ -452,6 +455,378 @@ describe('TestSolveCanvasComponentv3 — finish flow (issue #383)', () => {
         await component.completeTest();
 
         expect(vi.mocked(snackBar.open).mock.lastCall![0]).toBe(testSolveTr.finish.alreadyCompleted);
+    });
+
+    describe('saving, resume, and timing (issue #777)', () => {
+        const sentQuestionIds = () => vi.mocked(testService.saveAnswer).mock.calls.map(([req]) => req.testQuestionId);
+
+        beforeEach(() => {
+            component['dirtyQuestionIndices'].clear();
+        });
+
+        it('choosing an answer saves it at once, and jumping from the map sends nothing more', async () => {
+            component.selectAnswerForQuestion(22, 1);
+            expect(testService.saveAnswer).toHaveBeenCalledTimes(1);
+            expect(testService.saveAnswer).toHaveBeenCalledWith(
+                expect.objectContaining({ testQuestionId: 102, selectedAnswerId: 22, testInstanceId: 7 })
+            );
+
+            await settle();
+            await component.focusOnQuestion(2);
+            expect(testService.saveAnswer).toHaveBeenCalledTimes(1);
+        });
+
+        it('moving on does not send an unchanged answer again, because every save counts in the statistics', async () => {
+            component.regions.set([{}, {}, {}, {}] as never);
+            component.selectAnswerForQuestion(22, 0);
+            await settle();
+
+            await component.nextQuestion();
+            await component.prevQuestion();
+            component.selectAnswerForQuestion(22, 0);
+            await settle();
+
+            expect(testService.saveAnswer).toHaveBeenCalledTimes(1);
+        });
+
+        it('an example question and a practice test send nothing', () => {
+            component.selectAnswerForQuestion(44, 3);
+            expect(testService.saveAnswer).not.toHaveBeenCalled();
+
+            component.testInstance = buildInstance({ isPracticeTest: true });
+            component.selectAnswerForQuestion(22, 1);
+            expect(testService.saveAnswer).not.toHaveBeenCalled();
+        });
+
+        it('saves for one question run in order, so a late reply cannot overwrite a newer answer', async () => {
+            const first$ = new Subject<TestSessionResult>();
+            const second$ = new Subject<TestSessionResult>();
+            testService.saveAnswer.mockReturnValueOnce(first$).mockReturnValueOnce(second$);
+
+            component.selectAnswerForQuestion(21, 1);
+            component.selectAnswerForQuestion(22, 1);
+            await settle();
+            expect(first$.observed).toBe(true);
+            expect(second$.observed).toBe(false);
+
+            first$.next(OK);
+            first$.complete();
+            await settle();
+            expect(second$.observed).toBe(true);
+
+            second$.next(OK);
+            second$.complete();
+            await settle();
+            expect(component.saveStatus()).toBe('saved');
+        });
+
+        it('shows saving and saved', async () => {
+            const save$ = new Subject<TestSessionResult>();
+            testService.saveAnswer.mockReturnValue(save$);
+            expect(component.saveStatus()).toBe('idle');
+
+            component.selectAnswerForQuestion(22, 1);
+            expect(component.saveStatus()).toBe('saving');
+
+            await settle();
+            save$.next(OK);
+            save$.complete();
+            await settle();
+            expect(component.saveStatus()).toBe('saved');
+        });
+
+        it('a failed save stays visible until a retry succeeds', async () => {
+            testService.saveAnswer.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 500 })));
+
+            component.selectAnswerForQuestion(22, 1);
+            await settle();
+            await vi.advanceTimersByTimeAsync(60000);
+            expect(component.saveStatus()).toBe('failed');
+
+            component.retryFailedSaves();
+            expect(testService.saveAnswer).toHaveBeenCalledTimes(2);
+            await settle();
+            expect(component.saveStatus()).toBe('saved');
+        });
+
+        it('clearing an answer reaches the server and removes the choice', async () => {
+            component.regions.set([{ id: 1, answers: [] }] as never);
+            component.selectedChoices.set(new Map([[1, { id: 11 } as never]]));
+
+            component.clearAnswer();
+            await settle();
+
+            const [request] = vi.mocked(testService.saveAnswer).mock.lastCall!;
+            expect(request).toEqual(expect.objectContaining({ testQuestionId: 101, selectedAnswerId: 0 }));
+            expect(request.answerPayload).toBeUndefined();
+            expect(component.selectedChoices().has(1)).toBe(false);
+            expect(component.testInstance.testInstanceQuestions[0].selectedAnswerId).toBeFalsy();
+        });
+
+        it('a clear that failed is sent again on finish', async () => {
+            component.regions.set([{ id: 1, answers: [] }] as never);
+            testService.saveAnswer.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 500 })));
+            component.clearAnswer();
+            await settle();
+
+            await component.completeTest();
+
+            expect(sentQuestionIds()).toEqual([101, 101]);
+            expect(testService.completeTest).toHaveBeenCalledTimes(1);
+        });
+
+        describe('resume', () => {
+            function loaded(overrides: Partial<TestInstance> = {}) {
+                testService.getCanvasTestWithAnswers.mockReturnValue(of(buildInstance(overrides)));
+                testService.convertTestInstanceToRegions.mockReturnValue([]);
+            }
+
+            it('reload returns to the question the student was on, with bookmarks', async () => {
+                localStorage.setItem(
+                    'testSolve.instance.7',
+                    JSON.stringify({ questionId: 103, bookmarkedQuestionIds: [102, 999], lowTimeNotified: false })
+                );
+                loaded();
+
+                await component.loadTest(7);
+                TestBed.tick();
+
+                expect(component.currentIndex()).toBe(2);
+                expect(component.viewStartIndex()).toBe(2);
+                expect([...component.bookmarkedQuestions()]).toEqual([1]);
+            });
+
+            it('without a saved position it opens the first empty question, skipping answered and example ones', async () => {
+                loaded();
+
+                await component.loadTest(7);
+
+                expect(component.currentIndex()).toBe(1);
+                expect(component.viewStartIndex()).toBe(1);
+            });
+
+            it('remembers the position and bookmarks on this device, and forgets them after the finish', async () => {
+                loaded();
+                await component.loadTest(7);
+
+                await component.focusOnQuestion(2);
+                component.toggleBookmark();
+                TestBed.tick();
+                expect(JSON.parse(localStorage.getItem('testSolve.instance.7')!)).toEqual({
+                    questionId: 103,
+                    bookmarkedQuestionIds: [103],
+                    lowTimeNotified: false,
+                });
+
+                await component.completeTest();
+                TestBed.tick();
+                expect(localStorage.getItem('testSolve.instance.7')).toBeNull();
+            });
+
+            it('broken saved data falls back to the defaults', async () => {
+                localStorage.setItem('testSolve.instance.7', '{not json');
+                loaded();
+
+                await component.loadTest(7);
+
+                expect(component.currentIndex()).toBe(1);
+                expect(component.bookmarkedQuestions().size).toBe(0);
+            });
+        });
+
+        describe('auto-advance', () => {
+            it('is off by default', () => {
+                expect(component.autoNextQuestion()).toBe(false);
+            });
+
+            it('is remembered on this device', () => {
+                component.toggleAutoNextQuestion();
+                const next = TestBed.createComponent(TestSolveCanvasComponentv3);
+                expect(next.componentInstance.autoNextQuestion()).toBe(true);
+                next.destroy();
+            });
+
+            it('moves on after a first answer, but not when an answer is changed', async () => {
+                component.autoNextQuestion.set(true);
+                component.regions.set([{}, {}, {}, {}] as never);
+                component.currentIndex.set(1);
+                component.viewStartIndex.set(1);
+
+                component.selectAnswerForQuestion(22, 1);
+                await vi.advanceTimersByTimeAsync(300);
+                expect(component.currentIndex()).toBe(2);
+
+                component.currentIndex.set(1);
+                component.viewStartIndex.set(1);
+                component.selectAnswerForQuestion(23, 1);
+                await vi.advanceTimersByTimeAsync(300);
+                expect(component.currentIndex()).toBe(1);
+            });
+
+            it('does not move on if the student already went to another question', async () => {
+                component.autoNextQuestion.set(true);
+                component.regions.set([{}, {}, {}, {}] as never);
+                component.currentIndex.set(1);
+
+                component.selectAnswerForQuestion(22, 1);
+                component.currentIndex.set(0);
+                await vi.advanceTimersByTimeAsync(300);
+
+                expect(component.currentIndex()).toBe(0);
+            });
+        });
+
+        describe('shortcuts', () => {
+            const press = (key: string) => {
+                const event = new KeyboardEvent('keydown', { key, ctrlKey: true, cancelable: true });
+                document.dispatchEvent(event);
+                return event;
+            };
+
+            it('stop working when the screen closes', () => {
+                component.ngOnInit();
+                expect(press('b').defaultPrevented).toBe(true);
+                expect(component.isQuestionBookmarked(0)).toBe(true);
+
+                fixture.destroy();
+
+                expect(press('b').defaultPrevented).toBe(false);
+                expect(press('f').defaultPrevented).toBe(false);
+            });
+
+            it('have no entries for views without a visible control', () => {
+                component.ngOnInit();
+                for (const key of ['1', '2', '4', 'h']) {
+                    expect(press(key).defaultPrevented).toBe(false);
+                }
+                expect(component.questionsPerView()).toBe(1);
+            });
+        });
+
+        describe('low time notice', () => {
+            it('appears once at 5 minutes left, then hides', async () => {
+                component.testInstance = buildInstance({ maxDurationSeconds: 302 });
+
+                component.startTimer();
+                await vi.advanceTimersByTimeAsync(1000);
+                expect(component.lowTimeNoticeVisible()).toBe(false);
+                expect(component.isTimeLow()).toBe(false);
+
+                await vi.advanceTimersByTimeAsync(1000);
+                expect(component.lowTimeNoticeVisible()).toBe(true);
+                expect(component.isTimeLow()).toBe(true);
+
+                component.dismissLowTimeNotice();
+                await vi.advanceTimersByTimeAsync(5000);
+                expect(component.lowTimeNoticeVisible()).toBe(false);
+                component.testTimerSubscription.unsubscribe();
+            });
+
+            it('is not shown again after a reload', async () => {
+                localStorage.setItem(
+                    'testSolve.instance.7',
+                    JSON.stringify({ questionId: 101, bookmarkedQuestionIds: [], lowTimeNotified: true })
+                );
+                testService.getCanvasTestWithAnswers.mockReturnValue(
+                    of(buildInstance({ maxDurationSeconds: 3600, remainingSeconds: 120 } as Partial<TestInstance>))
+                );
+                testService.convertTestInstanceToRegions.mockReturnValue([]);
+
+                await component.loadTest(7);
+
+                expect(component.isTimeLow()).toBe(true);
+                expect(component.lowTimeNoticeVisible()).toBe(false);
+                component.testTimerSubscription.unsubscribe();
+            });
+
+            it('is not shown in a test of 5 minutes or less, or in an untimed test', async () => {
+                component.testInstance = buildInstance({ maxDurationSeconds: 300 });
+                component.startTimer();
+                await vi.advanceTimersByTimeAsync(1000);
+                expect(component.lowTimeNoticeVisible()).toBe(false);
+                component.testTimerSubscription.unsubscribe();
+
+                component.testInstance = buildInstance({ maxDurationSeconds: 0 });
+                component.testDuration = 0;
+                component.startTimer();
+                await vi.advanceTimersByTimeAsync(1000);
+                expect(component.lowTimeNoticeVisible()).toBe(false);
+                component.testTimerSubscription.unsubscribe();
+            });
+        });
+
+        describe('counts', () => {
+            function withPayloadAndExample() {
+                const instance = buildInstance();
+                instance.testInstanceQuestions[1].answerPayload = '{"answers":["a"]}';
+                instance.testInstanceQuestions[3].selectedAnswerId = 44;
+                component.testInstance = instance;
+            }
+
+            it('map, counts, and the finish dialog agree for payload and example questions', () => {
+                withPayloadAndExample();
+                component['updateAnsweredCount']();
+
+                expect(component.answeredCount()).toBe(2);
+                expect(component.remainingCount()).toBe(1);
+                expect(component.unansweredCount()).toBe(1);
+                expect(component.progressPercentage()).toBe(67);
+                expect(component['isQuestionAnswered'](component.testInstance.testInstanceQuestions[1])).toBe(true);
+            });
+
+            it('"Go to empty" skips example questions', async () => {
+                component.testInstance = buildInstance();
+                component.currentIndex.set(2);
+                component.testInstance.testInstanceQuestions[1].selectedAnswerId = 22;
+                component.testInstance.testInstanceQuestions[2].selectedAnswerId = 33;
+                const focus = vi.spyOn(component, 'focusOnQuestion');
+
+                component.goToNextUnanswered();
+
+                expect(focus).not.toHaveBeenCalled();
+                expect(component.toastMessage()).toBe(testSolveTr.toast.allAnswered);
+            });
+        });
+
+        describe('loading', () => {
+            it('a load error offers a retry that opens the test', async () => {
+                vi.spyOn(console, 'error').mockImplementation(() => undefined);
+                component.testInstanceId = 7;
+                testService.getCanvasTestWithAnswers.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 500 })));
+                await component.loadTest(7);
+                expect(component.loadError()).toBe(true);
+                expect(component.loadingTest()).toBe(false);
+
+                testService.getCanvasTestWithAnswers.mockReturnValue(of(buildInstance()));
+                testService.convertTestInstanceToRegions.mockReturnValue([]);
+                component.retryLoadTest();
+                expect(component.loadingTest()).toBe(true);
+                expect(component.loadError()).toBe(false);
+                await settle();
+                expect(component.loadingTest()).toBe(false);
+                component.testTimerSubscription.unsubscribe();
+            });
+
+            it('a slow question image shows progress; a fast one does not', async () => {
+                let finish!: () => void;
+                const slow = new Promise<void>((resolve) => (finish = resolve));
+                const waiting = component['whileQuestionLoads'](slow);
+
+                await vi.advanceTimersByTimeAsync(299);
+                expect(component.questionLoading()).toBe(false);
+                await vi.advanceTimersByTimeAsync(1);
+                expect(component.questionLoading()).toBe(true);
+
+                finish();
+                await waiting;
+                expect(component.questionLoading()).toBe(false);
+            });
+        });
+
+        it('the "Report question" action and the old copy are gone', () => {
+            expect('reportQuestion' in component).toBe(false);
+            expect(JSON.stringify(testSolveTr)).not.toMatch(/Sınav|sınav|Canvas|bildir(ildi)?"/);
+        });
     });
 });
 

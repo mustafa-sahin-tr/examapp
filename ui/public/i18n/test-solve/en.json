@@ -11,7 +11,8 @@
     "finishTest": "Finish test",
     "finishTestAria": "Finish the test",
     "answeredRatio": "Completion rate",
-    "answeredPercent": "{{percent}}% complete"
+    "answeredPercent": "{{percent}}% complete",
+    "elapsedTime": "Elapsed time"
   },
   "finish": {
     "dialogTitle": "Finish test",
@@ -31,7 +32,6 @@
     "bookmark": "Bookmark question",
     "removeBookmark": "Remove bookmark",
     "bookmarkActive": "Bookmark the current question",
-    "report": "Report question",
     "fullscreen": "Full screen",
     "fullscreenAria": "Show the question full screen",
     "exitFullscreen": "Exit full screen (Esc)",
@@ -46,7 +46,8 @@
     "backToPassage": "Back to passage",
     "showHint": "Show hint",
     "passageAlt": "Passage image",
-    "numberAria": "Question {{number}}"
+    "numberAria": "Question {{number}}",
+    "exampleAria": "Question {{number}} (example)"
   },
   "dock": {
     "navigation": "Question navigation",
@@ -84,13 +85,11 @@
     "bookmarkAdded": "Question bookmarked",
     "allAnswered": "All questions are answered",
     "answerCleared": "Answer cleared",
-    "canvasAnswerCleared": "Canvas answer cleared",
-    "questionReported": "Question reported",
     "autoNextOn": "Auto advance to the next question after answering is on",
     "autoNextOff": "Auto advance is off",
     "highContrastOn": "High contrast is on",
     "highContrastOff": "Normal colour mode",
-    "help": "Help: Ctrl+← previous group, Ctrl+→ next group, Ctrl+B bookmark, Ctrl+1/2/4 change layout",
+    "help": "Help: Ctrl+← previous question, Ctrl+→ next question, Ctrl+B bookmark, Ctrl+F fullscreen",
     "settingsComingSoon": "Settings are still in the works…",
     "viewChanged": "Switched to the {{count}}-question layout"
   },
@@ -105,7 +104,6 @@
     "viewCounter": "View {{current}}/{{total}} ({{start}}-{{end}})",
     "bookmark": "Bookmark",
     "hint": "Hint",
-    "report": "Report",
     "zoomIn": "Zoom in (+5%)",
     "resetZoom": "Original size",
     "zoomOut": "Zoom out (-5%)",
@@ -133,5 +131,23 @@
     "switchToFocusMode": "Switch to focus mode",
     "help": "Help",
     "settings": "Settings"
+  },
+  "save": {
+    "saving": "Saving",
+    "saved": "Saved",
+    "failed": "Not saved",
+    "failedBanner": "Your last answer was not saved. Check your connection and stay on this page.",
+    "retry": "Try again"
+  },
+  "load": {
+    "opening": "Opening the test",
+    "errorTitle": "The test could not be opened",
+    "errorBody": "Check your connection and try again. Your saved answers are safe.",
+    "retry": "Try again",
+    "backToTests": "Back to tests",
+    "question": "Loading question"
+  },
+  "time": {
+    "lowNotice": "5 minutes left. The test is submitted automatically when time runs out."
   }
 }

@@ -19,6 +19,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
 import { MatBottomSheet, MatBottomSheetModule, MatBottomSheetRef } from '@angular/material/bottom-sheet';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { TEST_SOLVE_SCOPE, TestSolveCanvasComponentv2 } from './test-solve-canvas-enhanced.component';
 import { TestService } from '../../services/test.service';
@@ -85,6 +86,7 @@ import { StorageImageRetryDirective } from '../../shared/directives/storage-imag
     MatIconModule,
     MatTooltipModule,
     MatBottomSheetModule,
+    MatProgressBarModule,
     QuestionLiteViewComponent,
     CountdownComponent,
     QuestionCanvasViewComponentv5,

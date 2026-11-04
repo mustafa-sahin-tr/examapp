@@ -1,4 +1,21 @@
-@if (testInstance) {
+@if (loadError()) {
+<div class="solve-state" role="alert" *transloco="let t; prefix: 'test-solve'">
+  <h1 class="solve-state__title">{{ t('load.errorTitle') }}</h1>
+  <p class="solve-state__body">{{ t('load.errorBody') }}</p>
+  <div class="solve-state__actions">
+    <button mat-flat-button color="primary" type="button" (click)="retryLoadTest()">
+      <mat-icon>refresh</mat-icon>
+      {{ t('load.retry') }}
+    </button>
+    <button mat-stroked-button type="button" (click)="backToTests()">{{ t('load.backToTests') }}</button>
+  </div>
+</div>
+} @else if (loadingTest() || !testInstance) {
+<div class="solve-state" aria-busy="true" *transloco="let t; prefix: 'test-solve'">
+  <p class="solve-state__title" role="status">{{ t('load.opening') }}</p>
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+</div>
+} @else {
 <!-- Aktif soru: header'daki soru aksiyonları ve dock aynı referansı kullanır. -->
 @let activeQuestion = currentQuestions().length ? currentQuestions()[0] : null;
 <div class="solve-v3" [class.solve-v3--mobile]="isMobileViewport()" [class.solve-v3--fullscreen]="fullscreenOpen()"
@@ -14,7 +31,9 @@
     <div class="header-status">
       <app-countdown class="header-countdown" [durationInSeconds]="testDuration"
         [totalDurationInSeconds]="testInstance.maxDurationSeconds" [showProgressBar]="false" [size]="'small'"
-        [showLabel]="!isMobileViewport()" [label]="t('header.remainingTime')"></app-countdown>
+        [showLabel]="!isMobileViewport()"
+        [class.header-countdown--low]="isTimeLow()"
+        [label]="testInstance.maxDurationSeconds > 0 ? t('header.remainingTime') : t('header.elapsedTime')"></app-countdown>
       <span class="header-counter" [matTooltip]="t('header.questionOrder')"
         [attr.aria-label]="
           t('header.questionPositionAria', {
@@ -24,9 +43,26 @@
         ">
         {{ currentIndex() + 1 }}/{{ testInstance.testInstanceQuestions.length }}
       </span>
+      <span class="save-status" [class.save-status--failed]="saveStatus() === 'failed'"
+        [class.save-status--saved]="saveStatus() === 'saved'" role="status">
+        @switch (saveStatus()) {
+          @case ('saving') {
+            <mat-icon aria-hidden="true">cloud_upload</mat-icon>
+            <span class="save-status__label">{{ t('save.saving') }}</span>
+          }
+          @case ('saved') {
+            <mat-icon aria-hidden="true">check_circle</mat-icon>
+            <span class="save-status__label">{{ t('save.saved') }}</span>
+          }
+          @case ('failed') {
+            <mat-icon aria-hidden="true">error</mat-icon>
+            <span class="save-status__label">{{ t('save.failed') }}</span>
+          }
+        }
+      </span>
     </div>
 
-    <!-- Tek soru görünümünde kartın üstündeki bookmark / bildir / tam ekran buraya taşınır;
+    <!-- Tek soru görünümünde kartın üstündeki bookmark / tam ekran buraya taşınır;
          çoklu kart (2/4), fullscreen ve MOBİL'de (header'a sığmaz) kart kendi aksiyonlarını gösterir. -->
     @if (questionsPerView() === 1 && !fullscreenOpen() && !isMobileViewport() && activeQuestion) {
     <div class="header-question-actions" role="group" [attr.aria-label]="t('header.questionActions')">
@@ -38,10 +74,6 @@
         [attr.aria-pressed]="isQuestionBookmarked(activeQuestion.index)"
         (click)="focusOnQuestion(activeQuestion.index); toggleBookmark()">
         <mat-icon>{{ isQuestionBookmarked(activeQuestion.index) ? 'bookmark' : 'bookmark_border' }}</mat-icon>
-      </button>
-      <button mat-icon-button [matTooltip]="t('question.report')" [attr.aria-label]="t('question.report')"
-        (click)="focusOnQuestion(activeQuestion.index); reportQuestion()">
-        <mat-icon>flag</mat-icon>
       </button>
       <button mat-icon-button [matTooltip]="t('question.fullscreen')" [attr.aria-label]="t('question.fullscreenAria')"
         (click)="openFullscreen(activeQuestion.index)">
@@ -69,8 +101,32 @@
     </div>
   </header>
 
+  @if (saveStatus() === 'failed') {
+  <div class="solve-banner solve-banner--error" role="alert">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <span class="solve-banner__text">{{ t('save.failedBanner') }}</span>
+    <button mat-stroked-button type="button" (click)="retryFailedSaves()">
+      <mat-icon>refresh</mat-icon>
+      {{ t('save.retry') }}
+    </button>
+  </div>
+  }
+  @if (lowTimeNoticeVisible()) {
+  <div class="solve-banner solve-banner--warning" role="status">
+    <mat-icon aria-hidden="true">schedule</mat-icon>
+    <span class="solve-banner__text">{{ t('time.lowNotice') }}</span>
+    <button mat-icon-button type="button" (click)="dismissLowTimeNotice()" [attr.aria-label]="t('toast.close')">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+  }
+
   <div class="solve-v3__body" #testContent>
-    <section class="main-stage" #questionPanel>
+    <section class="main-stage" #questionPanel [attr.aria-busy]="questionLoading()">
+      @if (questionLoading()) {
+      <mat-progress-bar class="main-stage__loading" mode="indeterminate"
+        [attr.aria-label]="t('load.question')"></mat-progress-bar>
+      }
       <div class="question-grid" [attr.data-layout]="questionsPerView()">
         @for (questionData of currentQuestions(); track questionData.index) {
         @if (!isFullscreenCard(questionData.index)) {
@@ -82,7 +138,7 @@
       <!-- Tek birleşik dock: tüm genişliklerde ekranın altına yapışık sabit bar -->
       <nav class="solve-dock" [attr.aria-label]="t('dock.navigation')">
         <button mat-icon-button class="solve-dock__nav" [matTooltip]="t('dock.previous')"
-          [attr.aria-label]="t('question.previous')" (click)="prevQuestion()" [disabled]="!canGoPrev()">
+          [attr.aria-label]="t('question.previous')" (click)="prevQuestion()" [disabled]="!canGoPrev() || questionLoading()">
           <mat-icon>chevron_left</mat-icon>
         </button>
 
@@ -126,7 +182,7 @@
         </div>
 
         <button mat-icon-button class="solve-dock__nav solve-dock__nav--next" [matTooltip]="t('dock.next')"
-          [attr.aria-label]="t('question.next')" (click)="nextQuestion()" [disabled]="!canGoNext()">
+          [attr.aria-label]="t('question.next')" (click)="nextQuestion()" [disabled]="!canGoNext() || questionLoading()">
           <mat-icon>chevron_right</mat-icon>
         </button>
       </nav>
@@ -164,10 +220,11 @@
     <div class="question-map-grid">
       @for (question of testInstance.testInstanceQuestions; track question.id; let i = $index) {
       <button type="button" class="map-cell" (click)="selectFromMap(i)" [class.is-current]="i === currentIndex()"
-        [class.is-answered]="question.selectedAnswerId" [class.is-bookmarked]="isQuestionBookmarked(i)"
+        [class.is-answered]="!question.question?.isExample && isQuestionAnswered(question)"
+        [class.is-example]="question.question?.isExample" [class.is-bookmarked]="isQuestionBookmarked(i)"
         [attr.aria-current]="i === currentIndex() ? 'true' : null"
-        [matTooltip]="t('question.numberAria', { number: i + 1 })"
-        [attr.aria-label]="t('question.numberAria', { number: i + 1 })">
+        [matTooltip]="t(question.question?.isExample ? 'question.exampleAria' : 'question.numberAria', { number: i + 1 })"
+        [attr.aria-label]="t(question.question?.isExample ? 'question.exampleAria' : 'question.numberAria', { number: i + 1 })">
         {{ i + 1 }}
       </button>
       }
@@ -288,16 +345,12 @@
           <mat-icon>chevron_right</mat-icon>
         </button>
         }
-        <!-- Bookmark / bildir / tam ekran: tek soru görünümünde header'a taşındı (issue #74) -->
+        <!-- Bookmark / tam ekran: tek soru görünümünde header'a taşındı (issue #74) -->
         @if (!cardActionsInHeader) {
         <button mat-icon-button [matTooltip]="t('question.bookmark')" [attr.aria-label]="t('question.bookmark')"
           [class.is-active]="isQuestionBookmarked(questionData.index)"
           (click)="focusOnQuestion(questionData.index); toggleBookmark()">
           <mat-icon>{{ isQuestionBookmarked(questionData.index) ? 'bookmark' : 'bookmark_border' }}</mat-icon>
-        </button>
-        <button mat-icon-button [matTooltip]="t('question.report')" [attr.aria-label]="t('question.report')"
-          (click)="focusOnQuestion(questionData.index); reportQuestion()">
-          <mat-icon>flag</mat-icon>
         </button>
         }
         @if (isFullscreenCard(questionData.index)) {

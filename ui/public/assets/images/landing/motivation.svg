@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="420" viewBox="0 0 560 420" role="img" aria-labelledby="t d">
+  <title id="t">Puan, rozet ve seri</title>
+  <desc id="d">Üç rozet madalyası, günlük seri kartı, haftalık aktivite ısı haritası ve kazanılan puan göstergesi.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFF4D6"/>
+      <stop offset="1" stop-color="#FFE9F1"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE4A1"/><stop offset="1" stop-color="#FFBA0D"/></linearGradient>
+    <linearGradient id="violet" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8677E0"/><stop offset="1" stop-color="#4A33D1"/></linearGradient>
+    <linearGradient id="teal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#84F0E1"/><stop offset="1" stop-color="#00A894"/></linearGradient>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#130F25" flood-opacity=".16"/>
+    </filter>
+  </defs>
+  <rect width="560" height="420" rx="28" fill="url(#bg)"/>
+
+  <!-- medals -->
+  <g transform="translate(88 70)">
+    <path d="M-16 34 L-24 92 L0 80 L24 92 L16 34z" fill="#4A33D1"/>
+    <circle cy="30" r="40" fill="url(#violet)"/>
+    <circle cy="30" r="29" fill="none" stroke="#E1DDF7" stroke-width="2.5"/>
+    <path d="M-12 30l8 8 16-17" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g transform="translate(206 52)">
+    <path d="M-18 40 L-28 108 L0 94 L28 108 L18 40z" fill="#FE3F10"/>
+    <circle cy="36" r="50" fill="url(#gold)"/>
+    <circle cy="36" r="37" fill="none" stroke="#FFF6E0" stroke-width="3"/>
+    <path d="M0 14l6.5 13.4 14.7 2.1-10.6 10.3 2.5 14.6L0 47.5l-13.1 6.9 2.5-14.6-10.6-10.3 14.7-2.1z" fill="#FFFFFF"/>
+  </g>
+  <g transform="translate(324 70)">
+    <path d="M-16 34 L-24 92 L0 80 L24 92 L16 34z" fill="#009380"/>
+    <circle cy="30" r="40" fill="url(#teal)"/>
+    <circle cy="30" r="29" fill="none" stroke="#D5FAF5" stroke-width="2.5"/>
+    <path d="M-14 42 v-10 M-4 42 v-18 M6 42 v-26 M16 42 v-14" stroke="#fff" stroke-width="5" stroke-linecap="round" transform="translate(-1 -2)"/>
+  </g>
+
+  <!-- streak card -->
+  <g filter="url(#sh)" transform="translate(410 46)">
+    <rect width="122" height="128" rx="18" fill="#FFFFFF"/>
+    <path d="M61 22 C72 38 82 46 80 64 C78 80 68 88 61 88 C50 88 40 80 40 66 C40 54 48 50 50 40 C56 48 58 52 61 52 C62 42 60 32 61 22Z" fill="#FE3F10"/>
+    <path d="M61 56 C67 64 70 68 69 75 C68 82 64 85 61 85 C56 85 52 81 52 75 C52 70 56 67 61 56Z" fill="#FFBA0D"/>
+    <text x="61" y="108" text-anchor="middle" font-family="Manrope, 'Segoe UI', sans-serif" font-size="15" font-weight="800" fill="#211D3A">Seri: 7 gün</text>
+  </g>
+
+  <!-- heatmap card -->
+  <g filter="url(#sh)" transform="translate(30 196)">
+    <rect width="300" height="186" rx="18" fill="#FFFFFF"/>
+    <text x="20" y="32" font-family="Inter, 'Segoe UI', sans-serif" font-size="11" font-weight="700" fill="#5C5A78" letter-spacing=".5">ÇALIŞMA ISI HARİTASI</text>
+    <g transform="translate(22 50)"><rect x="0" y="0" width="14" height="14" rx="3.5" fill="#ECEAF8"/><rect x="0" y="17" width="14" height="14" rx="3.5" fill="#ECEAF8"/><rect x="0" y="34" width="14" height="14" rx="3.5" fill="#A499E8"/><rect x="0" y="51" width="14" height="14" rx="3.5" fill="#ECEAF8"/><rect x="0" y="68" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="0" y="85" width="14" height="14" rx="3.5" fill="#ECEAF8"/><rect x="0" y="102" width="14" height="14" rx="3.5" fill="#ECEAF8"/><rect x="17" y="0" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="17" y="17" width="14" height="14" rx="3.5" fill="#ECEAF8"/><rect x="17" y="34" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="17" y="51" width="14" height="14" rx="3.5" fill="#ECEAF8"/><rect x="17" y="68" width="14" height="14" rx="3.5" fill="#ECEAF8"/><rect x="17" y="85" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="17" y="102" width="14" height="14" rx="3.5" fill="#6855D9"/><rect x="34" y="0" width="14" height="14" rx="3.5" fill="#ECEAF8"/><rect x="34" y="17" width="14" height="14" rx="3.5" fill="#ECEAF8"/><rect x="34" y="34" width="14" height="14" rx="3.5" fill="#A499E8"/><rect x="34" y="51" width="14" height="14" rx="3.5" fill="#4A33D1"/><rect x="34" y="68" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="34" y="85" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="34" y="102" width="14" height="14" rx="3.5" fill="#4A33D1"/><rect x="51" y="0" width="14" height="14" rx="3.5" fill="#ECEAF8"/><rect x="51" y="17" width="14" height="14" rx="3.5" fill="#4A33D1"/><rect x="51" y="34" width="14" height="14" rx="3.5" fill="#ECEAF8"/><rect x="51" y="51" width="14" height="14" rx="3.5" fill="#ECEAF8"/><rect x="51" y="68" width="14" height="14" rx="3.5" fill="#ECEAF8"/><rect x="51" y="85" width="14" height="14" rx="3.5" fill="#ECEAF8"/><rect x="51" y="102" width="14" height="14" rx="3.5" fill="#6855D9"/><rect x="68" y="0" width="14" height="14" rx="3.5" fill="#ECEAF8"/><rect x="68" y="17" width="14" height="14" rx="3.5" fill="#A499E8"/><rect x="68" y="34" width="14" height="14" rx="3.5" fill="#A499E8"/><rect x="68" y="51" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="68" y="68" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="68" y="85" width="14" height="14" rx="3.5" fill="#ECEAF8"/><rect x="68" y="102" width="14" height="14" rx="3.5" fill="#ECEAF8"/><rect x="85" y="0" width="14" height="14" rx="3.5" fill="#ECEAF8"/><rect x="85" y="17" width="14" height="14" rx="3.5" fill="#A499E8"/><rect x="85" y="34" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="85" y="51" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="85" y="68" width="14" height="14" rx="3.5" fill="#A499E8"/><rect x="85" y="85" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="85" y="102" width="14" height="14" rx="3.5" fill="#ECEAF8"/><rect x="102" y="0" width="14" height="14" rx="3.5" fill="#6855D9"/><rect x="102" y="17" width="14" height="14" rx="3.5" fill="#6855D9"/><rect x="102" y="34" width="14" height="14" rx="3.5" fill="#ECEAF8"/><rect x="102" y="51" width="14" height="14" rx="3.5" fill="#A499E8"/><rect x="102" y="68" width="14" height="14" rx="3.5" fill="#A499E8"/><rect x="102" y="85" width="14" height="14" rx="3.5" fill="#4A33D1"/><rect x="102" y="102" width="14" height="14" rx="3.5" fill="#6855D9"/><rect x="119" y="0" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="119" y="17" width="14" height="14" rx="3.5" fill="#4A33D1"/><rect x="119" y="34" width="14" height="14" rx="3.5" fill="#ECEAF8"/><rect x="119" y="51" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="119" y="68" width="14" height="14" rx="3.5" fill="#6855D9"/><rect x="119" y="85" width="14" height="14" rx="3.5" fill="#ECEAF8"/><rect x="119" y="102" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="136" y="0" width="14" height="14" rx="3.5" fill="#ECEAF8"/><rect x="136" y="17" width="14" height="14" rx="3.5" fill="#6855D9"/><rect x="136" y="34" width="14" height="14" rx="3.5" fill="#6855D9"/><rect x="136" y="51" width="14" height="14" rx="3.5" fill="#A499E8"/><rect x="136" y="68" width="14" height="14" rx="3.5" fill="#4A33D1"/><rect x="136" y="85" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="136" y="102" width="14" height="14" rx="3.5" fill="#6855D9"/><rect x="153" y="0" width="14" height="14" rx="3.5" fill="#A499E8"/><rect x="153" y="17" width="14" height="14" rx="3.5" fill="#A499E8"/><rect x="153" y="34" width="14" height="14" rx="3.5" fill="#A499E8"/><rect x="153" y="51" width="14" height="14" rx="3.5" fill="#4A33D1"/><rect x="153" y="68" width="14" height="14" rx="3.5" fill="#4A33D1"/><rect x="153" y="85" width="14" height="14" rx="3.5" fill="#A499E8"/><rect x="153" y="102" width="14" height="14" rx="3.5" fill="#6855D9"/><rect x="170" y="0" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="170" y="17" width="14" height="14" rx="3.5" fill="#6855D9"/><rect x="170" y="34" width="14" height="14" rx="3.5" fill="#6855D9"/><rect x="170" y="51" width="14" height="14" rx="3.5" fill="#4A33D1"/><rect x="170" y="68" width="14" height="14" rx="3.5" fill="#4A33D1"/><rect x="170" y="85" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="170" y="102" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="187" y="0" width="14" height="14" rx="3.5" fill="#6855D9"/><rect x="187" y="17" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="187" y="34" width="14" height="14" rx="3.5" fill="#A499E8"/><rect x="187" y="51" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="187" y="68" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="187" y="85" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="187" y="102" width="14" height="14" rx="3.5" fill="#4A33D1"/><rect x="204" y="0" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="204" y="17" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="204" y="34" width="14" height="14" rx="3.5" fill="#A499E8"/><rect x="204" y="51" width="14" height="14" rx="3.5" fill="#4A33D1"/><rect x="204" y="68" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="204" y="85" width="14" height="14" rx="3.5" fill="#A499E8"/><rect x="204" y="102" width="14" height="14" rx="3.5" fill="#A499E8"/><rect x="221" y="0" width="14" height="14" rx="3.5" fill="#4A33D1"/><rect x="221" y="17" width="14" height="14" rx="3.5" fill="#4A33D1"/><rect x="221" y="34" width="14" height="14" rx="3.5" fill="#4A33D1"/><rect x="221" y="51" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="221" y="68" width="14" height="14" rx="3.5" fill="#A499E8"/><rect x="221" y="85" width="14" height="14" rx="3.5" fill="#A499E8"/><rect x="221" y="102" width="14" height="14" rx="3.5" fill="#4A33D1"/><rect x="238" y="0" width="14" height="14" rx="3.5" fill="#4A33D1"/><rect x="238" y="17" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="238" y="34" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="238" y="51" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="238" y="68" width="14" height="14" rx="3.5" fill="#D6CEF6"/><rect x="238" y="85" width="14" height="14" rx="3.5" fill="#A499E8"/><rect x="238" y="102" width="14" height="14" rx="3.5" fill="#6855D9"/></g>
+  </g>
+
+  <!-- points card -->
+  <g filter="url(#sh)" transform="translate(350 210)">
+    <rect width="182" height="160" rx="18" fill="#FFFFFF"/>
+    <text x="20" y="34" font-family="Inter, 'Segoe UI', sans-serif" font-size="11" font-weight="700" fill="#5C5A78" letter-spacing=".5">BU HAFTA</text>
+    <text x="20" y="74" font-family="Manrope, 'Segoe UI', sans-serif" font-size="34" font-weight="800" fill="#4A33D1">1.240</text>
+    <text x="20" y="96" font-family="Inter, 'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#5C5A78">puan</text>
+    <rect x="20" y="114" width="142" height="10" rx="5" fill="#ECEAF8"/>
+    <rect x="20" y="114" width="98" height="10" rx="5" fill="#1C43FE"/>
+    <text x="20" y="144" font-family="Inter, 'Segoe UI', sans-serif" font-size="11" font-weight="600" fill="#5C5A78">Sıradaki rozete 3 test</text>
+  </g>
+</svg>

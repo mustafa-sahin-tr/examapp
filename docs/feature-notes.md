@@ -70,3 +70,15 @@ Deneme her oturum için sıradan bir test kaydı açar: süre sınırı, oturum,
 **Issue #499 — taksonomi araması.** `GET /api/subject/search?q=&gradeId&take=10` (giriş yapmak yeterli, dakikada 60, `take` en çok 20, `q` 2-100 karakter). Öğrencide `gradeId` varsayılanı kendi sınıfı, diğer rollerde bütün sınıflar. Eşleşme bellekte: `TaxonomySearchService.Normalize` Türkçe harfleri sadeleştirir, DB harmanlaması ya da `unaccent` kullanılmaz, migration yok; her arama adları okur, katalog büyürse önbellek gerekebilir. Her sorgu sözcüğü yolda geçmeli, son parçada en az biri: "matematik açılar" Açılar konusunu bulur, altındaki her alt konuyu dökmez. Önek ("aci") ve ek almış sözcük ("açıları" → "Açılar", ad en az 4 harf) eşleşir.
 
 **Issue #500 — pratik kapsamı.** `POST practice/daily/start` kapsamla gelirse: oturumu açılmış, cevabı olmayan RASTGELE set aynı oturumda BİR KEZ yeniden üretilir, gösterilip cevaplanmayan satırlar silinir; cevap (atlama dahil) varsa ya da set zaten kapsamlıysa 409 `DailySetAlreadyStarted`; aynı kapsam hiçbir şeyi değiştirmez, konu sonradan taşınmış olsa da 400 almaz. Tek seferlik olması güvenlik kuralıdır (#99): A'dan B'ye geçince A serbest pratiğe açılır, A'ya dönülebilseydi öğrenci cevapları görüp puan alırdı. Kapsamsız istek eskisi gibi. Bu #66'daki "oturum açıldıktan sonra kapsam değişmez" kuralını yumuşatır: asistan isteği panoda açılmış set yüzünden yok sayılmasın. Ekran kapsamı yalnız oturum yokken gönderdiği için davranışı değişmez. `POST practice/sessions` `SubTopicIds` (en çok 50, öğrencinin sınıfından, değilse 400) ve `TargetCount` (1-50) alır; sayıya ulaşınca `TargetReached=true`, `PoolExhausted=false`. Migration `AddPracticeSessionSubTopicsAndTarget`.
+
+## Karşılama sayfası (#395)
+
+`/welcome` statiktir, backend çağrısı yapmaz. Veri `ui/src/app/pages/public/landing/landing-content.ts`, metin `ui/public/i18n/landing/{tr,en}.json`.
+
+**Rakamları güncelleme:** `LANDING_STATS` değerlerini yuvarlayarak yaz, gerçek sayılara geçince `LANDING_STATS_ARE_SAMPLE = false` yap. "Örnek veriler" notu yalnız o zaman kalkar.
+
+**Yorumları güncelleme:** `LANDING_TESTIMONIALS` dizisine bir satır, iki sözlüğe `testimonials.items.<key>.{quote,name,role}` ekle (1–6 kart; soyad, okul, fotoğraf yok). Hepsi izinli gerçek yorum olunca `LANDING_TESTIMONIALS_ARE_FICTIONAL = false` yap. İzin kaydı (kimden, ne zaman) kodda değil, ürün sahibinde tutulur.
+
+**Yayın öncesi:** örnek sayılar ve temsili yorumlar bu notlar olmadan yayımlanmaz; gerçekmiş gibi sunulursa yanıltıcı reklam sayılır.
+
+**Test çözme görüntüsü:** `assets/images/landing/test-solve.png` gerçek ekrandandır, ekran değişince yenilenir. SVG'lerdeki metinler Türkçedir, İngilizce sürümü yok.

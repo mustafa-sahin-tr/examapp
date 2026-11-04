@@ -1,0 +1,21 @@
+<section class="sec spot" [id]="anchor()" [class.alt]="alt()" [class.flip]="flip()" *transloco="let t; prefix: 'landing'">
+  <div class="wrap">
+    <div>
+      <span class="kicker"><mat-icon fontSet="material-symbols-outlined" aria-hidden="true">{{ kickerIcon() }}</mat-icon>{{ t(section() + '.kicker') }}</span>
+      <h2>{{ t(section() + '.title') }}</h2>
+      <p class="body">{{ t(section() + '.body') }}</p>
+      <ul class="checks">
+        @for (i of itemNumbers(); track i) {
+          <li><mat-icon fontSet="material-symbols-outlined" aria-hidden="true">check</mat-icon>{{ t(section() + '.item' + i) }}</li>
+        }
+      </ul>
+      @if (ctaUrl()) {
+        <a mat-flat-button class="btn btn-primary" [href]="ctaUrl()">{{ t(section() + '.cta') }}</a>
+      }
+      @if (showFootnote()) {
+        <p class="footnote"><mat-icon fontSet="material-symbols-outlined" aria-hidden="true">info</mat-icon>{{ t(section() + '.footnote') }}</p>
+      }
+    </div>
+    <div class="spot-art"><ng-content /></div>
+  </div>
+</section>

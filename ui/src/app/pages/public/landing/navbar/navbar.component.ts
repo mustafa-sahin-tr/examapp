@@ -1,46 +1,53 @@
-import { Component, ElementRef, HostListener, inject, ChangeDetectionStrategy } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ChangeDetectionStrategy, Component, HostListener, inject, signal } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { TranslocoDirective, TranslocoPipe } from '@jsverse/transloco';
 
+import { ColorSchemeService } from '../../../../services/color-scheme.service';
 import { LanguageSwitcherComponent } from '../../../../shared/components/language-switcher/language-switcher.component';
+import { LandingAnchorDirective } from '../landing-anchor.directive';
+import {
+  LANDING_LOGIN_URL,
+  LANDING_NAV_LINKS,
+  LANDING_REGISTER_STUDENT_URL,
+  LANDING_REGISTER_TEACHER_URL,
+} from '../landing-content';
 
 @Component({
   selector: 'app-navbar',
-  imports: [RouterLink, TranslocoDirective, TranslocoPipe, LanguageSwitcherComponent],
+  standalone: true,
+  imports: [
+    MatButtonModule,
+    MatIconModule,
+    MatMenuModule,
+    TranslocoDirective,
+    TranslocoPipe,
+    LanguageSwitcherComponent,
+    LandingAnchorDirective,
+  ],
   templateUrl: './navbar.component.html',
-  changeDetection: ChangeDetectionStrategy.Eager,
-  styleUrl: './navbar.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NavbarComponent {
-  isMenuOpen = false;
-  isSticky = false;
-  isRegisterOpen = false;
+  readonly colorScheme = inject(ColorSchemeService);
 
-  toggleMenu() {
-    this.isMenuOpen = !this.isMenuOpen;
+  readonly links = LANDING_NAV_LINKS;
+  readonly loginUrl = LANDING_LOGIN_URL;
+  readonly registerStudentUrl = LANDING_REGISTER_STUDENT_URL;
+  readonly registerTeacherUrl = LANDING_REGISTER_TEACHER_URL;
+  readonly menuOpen = signal(false);
+
+  toggleMenu(): void {
+    this.menuOpen.update((open) => !open);
   }
 
-  closeMenu() {
-    this.isMenuOpen = false;
-    this.isRegisterOpen = false;
+  closeMenu(): void {
+    this.menuOpen.set(false);
   }
 
-  private host = inject(ElementRef<HTMLElement>);
-
-  toggleRegister(event: Event) {
-    event.preventDefault();
-    this.isRegisterOpen = !this.isRegisterOpen;
-  }
-
-  @HostListener('document:click', ['$event'])
-  onDocumentClick(event: MouseEvent) {
-    if (this.isRegisterOpen && !this.host.nativeElement.contains(event.target as Node)) {
-      this.isRegisterOpen = false;
-    }
-  }
-
-  @HostListener('window:scroll')
-  onScroll() {
-    this.isSticky = window.scrollY > 80;
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    this.closeMenu();
   }
 }

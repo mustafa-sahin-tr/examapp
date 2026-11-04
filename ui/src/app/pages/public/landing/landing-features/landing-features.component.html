@@ -1,0 +1,18 @@
+<section class="sec" id="ozellikler" *transloco="let t; prefix: 'landing'">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">{{ t('features.kicker') }}</span>
+      <h2>{{ t('features.title') }}</h2>
+      <p>{{ t('features.description') }}</p>
+    </div>
+    <div class="features">
+      @for (feature of features; track feature.key) {
+        <article class="feat">
+          <mat-icon fontSet="material-symbols-outlined" aria-hidden="true">{{ feature.icon }}</mat-icon>
+          <h3>{{ t('features.items.' + feature.key + '.title') }}</h3>
+          <p>{{ t('features.items.' + feature.key + '.text') }}</p>
+        </article>
+      }
+    </div>
+  </div>
+</section>

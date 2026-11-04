@@ -1,0 +1,28 @@
+<section class="hero" id="anasayfa" *transloco="let t; prefix: 'landing'">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow">
+        <span class="dot"><mat-icon fontSet="material-symbols-outlined" aria-hidden="true">school</mat-icon></span>{{ t('hero.eyebrow') }}
+      </span>
+      <h1>{{ t('hero.titleLead') }} <em>{{ t('hero.titleHighlight') }}</em></h1>
+      <p class="lead">{{ t('hero.description') }}</p>
+      <div class="hero-ctas">
+        <a mat-flat-button class="btn btn-primary" [href]="registerStudentUrl">
+          <mat-icon fontSet="material-symbols-outlined" aria-hidden="true">person_add</mat-icon>{{ t('hero.ctaStudent') }}
+        </a>
+        <a mat-stroked-button class="btn btn-outline" [href]="registerTeacherUrl">
+          <mat-icon fontSet="material-symbols-outlined" aria-hidden="true">co_present</mat-icon>{{ t('hero.ctaTeacher') }}
+        </a>
+      </div>
+      <p class="hero-login">{{ t('hero.haveAccount') }} <a class="link" [href]="loginUrl">{{ t('hero.login') }}</a></p>
+      <ul class="facts">
+        @for (fact of facts; track fact) {
+          <li><mat-icon fontSet="material-symbols-outlined" aria-hidden="true">check_circle</mat-icon>{{ t('hero.facts.' + fact) }}</li>
+        }
+      </ul>
+    </div>
+    <div class="hero-art">
+      <img src="assets/images/landing/hero.svg" width="640" height="540" [alt]="t('hero.imageAlt')" />
+    </div>
+  </div>
+</section>

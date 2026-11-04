@@ -1,0 +1,18 @@
+<section class="stats" *transloco="let t; prefix: 'landing'" [attr.aria-label]="t('stats.ariaLabel')">
+  <div class="wrap">
+    <div class="stats-box">
+      @for (stat of stats; track stat.key) {
+        <div class="stat">
+          <mat-icon fontSet="material-symbols-outlined" aria-hidden="true">{{ stat.icon }}</mat-icon>
+          <div class="num">{{ format(stat.value) }}</div>
+          <div class="lbl">{{ t('stats.items.' + stat.key + '.label') }}</div>
+        </div>
+      }
+      @if (showSampleNote) {
+        <span class="sample-note" data-testid="landing-stats-sample">
+          <mat-icon fontSet="material-symbols-outlined" aria-hidden="true">info</mat-icon>{{ t('stats.sampleNote') }}
+        </span>
+      }
+    </div>
+  </div>
+</section>

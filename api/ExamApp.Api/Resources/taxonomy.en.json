@@ -43,6 +43,11 @@
       "updated": "Subtopic updated.",
       "deleted": "Subtopic deleted.",
       "hasQuestions": "This subtopic has questions assigned to it and cannot be deleted."
+    },
+    "search": {
+      "invalidQuery": "The search must be 2 to 100 characters and contain a letter or digit.",
+      "invalidTake": "The number of results must be between 1 and 20.",
+      "rateLimited": "Too many searches in a short time. Please wait a moment and try again."
     }
   }
 }

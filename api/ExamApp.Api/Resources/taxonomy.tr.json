@@ -43,6 +43,11 @@
       "updated": "Alt konu güncellendi.",
       "deleted": "Alt konu silindi.",
       "hasQuestions": "Bu alt konuya atanmış sorular var, silinemez."
+    },
+    "search": {
+      "invalidQuery": "Arama en az 2, en çok 100 karakter olmalı ve harf ya da rakam içermeli.",
+      "invalidTake": "Sonuç sayısı 1 ile 20 arasında olmalı.",
+      "rateLimited": "Kısa sürede çok fazla arama yapıldı. Lütfen biraz bekleyip tekrar deneyin."
     }
   }
 }

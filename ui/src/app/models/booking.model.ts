@@ -149,6 +149,8 @@ export interface Booking {
   proposedEndUtc?: string | null;
   /** Öneriyi yapan taraf. */
   proposedByRole?: BookingParty | null;
+  /** Issue #486: karşı taraf kabul etti, velinin onayı bekleniyor. */
+  rescheduleAwaitingParent?: boolean;
   /** Kabul edilmiş erteleme sayısı. */
   rescheduleCount?: number;
   /** Yeni erteleme önerisi yapılabilir mi (sunucu: durum, bekleyen öneri yok, sınır dolmadı, başlangıca yeterli süre var). */
@@ -241,6 +243,28 @@ export interface ParentBookingRequest {
   expiresAt: string;
 }
 
+/** Issue #486: `ParentRescheduleRequestDto`; `id` randevunun id'si. `canApprove` false iken öneri bayattır, yalnız ret anlamlıdır. */
+export interface ParentRescheduleRequest {
+  id: number;
+  studentId: number;
+  studentName: string | null;
+  teacherId: number;
+  teacherName: string | null;
+  startUtc: string;
+  endUtc: string;
+  /** Karar isteğinde geri gönderilir: öneri o arada değiştiyse sunucu 409 verir. */
+  proposedSlotId: number;
+  proposedStartUtc: string;
+  proposedEndUtc: string;
+  proposedByRole: BookingParty | null;
+  canApprove: boolean;
+}
+
+/** GET /parent/reschedule-requests yanıtı. */
+export interface ParentRescheduleRequestList {
+  items: ParentRescheduleRequest[];
+}
+
 /** GET /parent/booking-requests yanıtı. */
 export interface ParentBookingRequestList {
   items: ParentBookingRequest[];
@@ -294,6 +318,8 @@ export const BOOKING_ERROR_CODES = {
   rescheduleAlreadyProposed: 'RescheduleAlreadyProposed',
   /** 409 — yanıtlanacak öneri yok. */
   noPendingReschedule: 'NoPendingReschedule',
+  /** 409 — öneri kabul edildi, veli onayı bekleniyor (#486). */
+  rescheduleAwaitingParent: 'RescheduleAwaitingParent',
   /** 403 — öneren taraf kendi önerisini kabul edemez. */
   cannotRespondOwnProposal: 'CannotRespondOwnProposal',
   /** 400/409 — önerilen slot uygun değil (dolu, geçmiş, başka öğretmenin). */

@@ -14,7 +14,7 @@ export interface BookingLifecycleView {
   /** Sunucu yeni erteleme önerisine izin veriyor (`canProposeReschedule`). */
   showPropose: boolean;
   /** Bekleyen erteleme önerisi (yalnız onaylı randevuda); yoksa null. */
-  proposal: { startUtc: string; endUtc: string; mine: boolean; canAccept: boolean } | null;
+  proposal: { startUtc: string; endUtc: string; mine: boolean; canAccept: boolean; awaitingParent: boolean } | null;
   /** Ders bitti, pencere açık, henüz bildirim yok → "Karşı taraf katılmadı". */
   showNoShow: boolean;
 }
@@ -42,6 +42,7 @@ export function bookingLifecycleView(booking: Booking, viewer: BookingParty, now
           mine: booking.proposedByRole === viewer,
           // Bayat öneri (slot silindi / süre geçti) kabul edilemez; ret / geri çekme açık kalır.
           canAccept: booking.canRespondReschedule === true,
+          awaitingParent: booking.rescheduleAwaitingParent === true,
         }
       : null;
 

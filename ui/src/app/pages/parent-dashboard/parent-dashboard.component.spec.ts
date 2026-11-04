@@ -100,9 +100,11 @@ describe('ParentDashboardComponent (issue #420)', () => {
         dashboardService.getChildSummary.mockImplementation((id: number) => of(summaryFor(id)));
         bookingService = {
             getParentBookingRequests: vi.fn().mockName("BookingService.getParentBookingRequests"),
+            getParentRescheduleRequests: vi.fn().mockName("BookingService.getParentRescheduleRequests"),
             extractError: vi.fn().mockName("BookingService.extractError")
         } as unknown as MockedObject<BookingService>;
         bookingService.getParentBookingRequests.mockReturnValue(of({ items: [] }));
+        bookingService.getParentRescheduleRequests.mockReturnValue(of({ items: [] }));
         dashboardService.getChildAssignments.mockImplementation((id: number) => of(emptyList(id)));
         dashboardService.getChildProgress.mockImplementation((id: number) => of({ studentId: id, totalXp: 0, level: 1, weekStart: '2026-10-05', weeklyXp: 0, badges: [], ranks: [] }));
         dashboardService.getChildSchedule.mockImplementation((id: number) => of({ studentId: id, from: '2026-10-05', to: '2026-10-11', plans: [], lessons: [] }));

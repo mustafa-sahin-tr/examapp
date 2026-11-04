@@ -139,6 +139,16 @@
     "percent": "{{value}}%",
     "approxTime": "{{date}}, around {{time}}"
   },
+  "rescheduleRequests": {
+    "title": "Reschedules awaiting approval",
+    "subtitle": "The teacher and the student agreed; the lesson moves once you approve.",
+    "loadError": "Reschedules could not be loaded.",
+    "when": "{{current}} → {{proposed}}",
+    "stale": "This time is no longer available; you can only reject it.",
+    "approved": "Reschedule approved, the lesson was moved.",
+    "rejected": "Reschedule rejected, the lesson stays at its original time.",
+    "actionError": "The action could not be completed."
+  },
   "bookingRequests": {
     "title": "Lesson requests awaiting approval",
     "subtitle": "Your children's private lesson requests go to the teacher after you approve them.",

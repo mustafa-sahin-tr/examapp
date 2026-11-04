@@ -24,7 +24,7 @@ namespace ExamApp.Api.Tests.Services;
 /// en fazla 2 erteleme, no-show penceresi 7 gün) gelir. Zaman <see cref="FixedTimeProvider"/> ile sabitlenir.
 /// SQLite (TestDb); Postgres'e özgü ExecuteUpdate çevirisi ve gerçek transaction davranışı IntegrationTests'te.
 /// </summary>
-public class BookingLifecycleTests : IDisposable
+public partial class BookingLifecycleTests : IDisposable
 {
     private const int TeacherUserId = 43100;
     private const int OtherTeacherUserId = 43150;
@@ -60,11 +60,11 @@ public class BookingLifecycleTests : IDisposable
     /// <summary>Olay metinlerindeki kısa görünen ad ("Ad S."): sahte dizinde "User 43200" → "User 4.".</summary>
     private static string Short(int userId) => $"User {userId.ToString()[0]}.";
 
-    private BookingService NewService(AppDbContext ctx, IWhiteboardSessionCloser? closer = null)
+    private BookingService NewService(AppDbContext ctx, IWhiteboardSessionCloser? closer = null, IBookingParentApprovalGate? parentApprovalGate = null)
     {
         var recurring = new RecurringAvailabilityService(ctx, _clock, NullLogger<RecurringAvailabilityService>.Instance);
         return new BookingService(ctx, _authApi, Substitute.For<IVideoSessionProvider>(), Options.Create(new VideoOptions()), _clock,
-            recurring, NullLogger<BookingService>.Instance, localizer: null, parentApprovalGate: null,
+            recurring, NullLogger<BookingService>.Instance, localizer: null, parentApprovalGate: parentApprovalGate,
             policyOptions: Options.Create(new BookingPolicyOptions()), whiteboardCloser: closer);
     }
 
@@ -165,11 +165,19 @@ public class BookingLifecycleTests : IDisposable
             .ToList();
     }
 
-    /// <summary>Öğrenci önerir, öğretmen kabul eder (erteleme sayacını bir artırır).</summary>
+    /// <summary>Öğrenci önerir, öğretmen kabul eder, veli onaylar (erteleme sayacını bir artırır).</summary>
     private async Task ProposeAndAcceptByTeacherAsync(int bookingId, int slotId)
     {
         (await WithServiceAsync(s => s.ProposeRescheduleAsync(StudentUserId, bookingId, slotId))).Success.ShouldBeTrue();
         (await WithServiceAsync(s => s.RespondRescheduleAsync(TeacherUserId, bookingId, true))).Success.ShouldBeTrue();
+        (await WithServiceAsync(s => s.ParentApproveRescheduleAsync(ParentUserId, bookingId, slotId))).Success.ShouldBeTrue();
+    }
+
+    /// <summary>issue #486: Active velisi olmayan öğrencide kabul dersi doğrudan taşır.</summary>
+    private async Task RemoveParentLinksAsync(int studentId)
+    {
+        await using var ctx = _db.NewContext();
+        await ctx.ParentStudentLinks.Where(l => l.StudentId == studentId).ExecuteDeleteAsync();
     }
 
     // ------------------------------------------------------------------
@@ -558,10 +566,11 @@ public class BookingLifecycleTests : IDisposable
     // ------------------------------------------------------------------
 
     [Fact]
-    public async Task RespondRescheduleAsync_CounterpartyAccepts_MovesBookingToNewSlot_AndFreesOldSlot()
+    public async Task RespondRescheduleAsync_StudentWithoutActiveParent_CounterpartyAccepts_MovesBookingToNewSlot_AndFreesOldSlot()
     {
         var w = await SeedAsync();
         var id = await ApprovedAsync(w.SlotId);
+        await RemoveParentLinksAsync(w.StudentId);
         (await WithServiceAsync(s => s.ProposeRescheduleAsync(StudentUserId, id, w.SlotId2))).Success.ShouldBeTrue();
 
         var result = await WithServiceAsync(s => s.RespondRescheduleAsync(TeacherUserId, id, true));
@@ -579,7 +588,7 @@ public class BookingLifecycleTests : IDisposable
         e.NotifyStudent.ShouldBeTrue();
         e.NotifyTeacher.ShouldBeFalse();
         e.NewStartTime.ShouldBe(new TimeOnly(14, 0));
-        e.Parents.Select(p => p.ParentUserId).OrderBy(x => x).ShouldBe(new[] { ParentUserId, SecondParentUserId }.OrderBy(x => x));
+        e.Parents.ShouldBeEmpty();
 
         (await StudentRequestAsync(w.SlotId, studentUserId: OtherStudentUserId)).Success.ShouldBeTrue("eski slot serbest");
         (await StudentRequestAsync(w.SlotId2, studentUserId: OtherStudentUserId)).Conflict.ShouldBeTrue("yeni slot dolu");

@@ -54,6 +54,15 @@ public interface IBookingService
     /// <summary>issue #439: veli AwaitingParent talebi reddeder (opsiyonel not, en fazla 500) → ParentRejected.</summary>
     Task<BookingResultDto> ParentRejectBookingAsync(int parentUserId, int bookingId, string? note, CancellationToken ct = default);
 
+    /// <summary>issue #486: velinin Active bağlı çocuklarının, karşı tarafça kabul edilmiş ve onay bekleyen ertelemeleri.</summary>
+    Task<ParentRescheduleRequestListDto> GetParentRescheduleRequestsAsync(int parentUserId, CancellationToken ct = default);
+
+    /// <summary>issue #486: veli ertelemeyi onaylar; randevu kilit altında yeni slota taşınır.</summary>
+    Task<BookingResultDto> ParentApproveRescheduleAsync(int parentUserId, int bookingId, int proposedSlotId, CancellationToken ct = default);
+
+    /// <summary>issue #486: veli ertelemeyi reddeder; öneri düşer, randevu eski slotta kalır.</summary>
+    Task<BookingResultDto> ParentRejectRescheduleAsync(int parentUserId, int bookingId, int proposedSlotId, CancellationToken ct = default);
+
     /// <summary>Öğretmene gelen randevu talepleri (issue #439: AwaitingParent / ParentRejected / Expired hariç).</summary>
     Task<BookingListResultDto> GetTeacherBookingsAsync(int teacherUserId, int skip, int take, CancellationToken ct = default);
 

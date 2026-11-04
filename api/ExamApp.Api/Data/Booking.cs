@@ -138,6 +138,11 @@ public class Booking : BaseEntity
 
     public DateTime? ProposedAt { get; set; }
 
+    /// <summary>
+    /// issue #486: karşı taraf öneriyi kabul etti, velinin onayı bekleniyor. Doluyken randevu eski slotta kalır; öneri düşünce temizlenir.
+    /// </summary>
+    public DateTime? RescheduleAcceptedAt { get; set; }
+
     /// <summary>Kabul edilmiş erteleme sayısı (<c>BookingPolicy:MaxReschedulesPerBooking</c> sınırı).</summary>
     public int RescheduleCount { get; set; }
 

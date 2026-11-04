@@ -28,7 +28,8 @@ public class BookingLifecycleConsumer : IConsumer<BookingLifecycleEvent>
     internal static readonly IReadOnlySet<string> ParentKinds = new HashSet<string>(StringComparer.Ordinal)
     {
         BookingLifecycleKinds.Cancelled, BookingLifecycleKinds.RescheduleProposed, BookingLifecycleKinds.RescheduleAccepted,
-        BookingLifecycleKinds.NoShowReported
+        BookingLifecycleKinds.RescheduleAwaitingParent, BookingLifecycleKinds.RescheduleParentApproved,
+        BookingLifecycleKinds.RescheduleParentRejected, BookingLifecycleKinds.NoShowReported
     };
 
     private readonly BadgeDbContext _db;
@@ -105,11 +106,11 @@ public class BookingLifecycleConsumer : IConsumer<BookingLifecycleEvent>
                 excludeParentUserId: null, ct));
         }
 
-        if (ParentKinds.Contains(e.Kind) && e.Parents is { Count: > 0 })
+        if ((ParentKinds.Contains(e.Kind) || e.WasAwaitingParent) && e.Parents is { Count: > 0 })
         {
             await Run(() => BookingParentNotifier.NotifyAsync(_db, _hub, _localeResolver, _logger, e.Parents,
                 ParentTypeFor(e.Kind), scope, culture => ParentText(e, culture, when, newWhen), data, log,
-                excludeParentUserId: null, ct));
+                excludeParentUserId: e.ActorParentUserId, ct));
         }
 
         if (failure != null)
@@ -119,6 +120,8 @@ public class BookingLifecycleConsumer : IConsumer<BookingLifecycleEvent>
     internal static bool IsKnownKind(string kind) => kind is BookingLifecycleKinds.Cancelled
         or BookingLifecycleKinds.RescheduleProposed or BookingLifecycleKinds.RescheduleAccepted
         or BookingLifecycleKinds.RescheduleDeclined or BookingLifecycleKinds.RescheduleWithdrawn
+        or BookingLifecycleKinds.RescheduleAwaitingParent or BookingLifecycleKinds.RescheduleParentApproved
+        or BookingLifecycleKinds.RescheduleParentRejected
         or BookingLifecycleKinds.NoShowReported;
 
     /// <summary>{0} işlemi yapan, {1} mevcut zaman, {2} yeni zaman, {3} gerekçe eki.</summary>

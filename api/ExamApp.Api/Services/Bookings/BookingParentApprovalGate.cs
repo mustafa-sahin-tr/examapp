@@ -10,7 +10,10 @@ public enum BookingParentApprovalKind
     ApproveRequest,
 
     /// <summary>Veli, çocuk için doğrudan talep oluşturuyor (henüz booking yok, <c>BookingId</c> null).</summary>
-    DirectCreate
+    DirectCreate,
+
+    /// <summary>issue #486: veli, kabul edilmiş ertelemeyi onaylıyor (<c>AvailabilitySlotId</c> önerilen slot).</summary>
+    ApproveReschedule
 }
 
 /// <summary>issue #439: ödeme/yetkilendirme kapısına verilen bağlam (#408 ödeme yetkilendirmesi bunlarla karar verecek).</summary>

@@ -107,6 +107,10 @@ const BOOKING_LIFECYCLE_ICONS: Readonly<Record<string, string>> = {
   BookingRescheduleAccepted: 'event_available',
   BookingRescheduleDeclined: 'event_busy',
   BookingRescheduleWithdrawn: 'undo',
+  // Issue #486: kabul edilen erteleme veli onayına düştü / veli karar verdi.
+  BookingRescheduleAwaitingParent: 'hourglass_top',
+  BookingRescheduleParentApproved: 'event_available',
+  BookingRescheduleParentRejected: 'event_busy',
   BookingNoShowReported: 'person_off',
 };
 
@@ -244,6 +248,11 @@ const PARENT_NOTIFICATION_PRESENTATION: Readonly<
   ParentBookingCancelled: { icon: 'event_busy', toParentPage: true },
   ParentBookingRescheduleProposed: { icon: 'update', toParentPage: true },
   ParentBookingRescheduleAccepted: { icon: 'event_available', toParentPage: true },
+  ParentBookingRescheduleAwaitingParent: { icon: 'hourglass_top', toParentPage: true },
+  ParentBookingRescheduleWithdrawn: { icon: 'undo', toParentPage: true },
+  ParentBookingRescheduleDeclined: { icon: 'event_busy', toParentPage: true },
+  ParentBookingRescheduleParentApproved: { icon: 'event_available', toParentPage: true },
+  ParentBookingRescheduleParentRejected: { icon: 'event_busy', toParentPage: true },
   ParentBookingNoShowReported: { icon: 'person_off', toParentPage: true },
   // Issue #542: çocuğun okulu değişti / belirlendi / kaldırıldı → o çocuğun paneli.
   SchoolChangedToParent: { icon: 'school', toParentPage: true },

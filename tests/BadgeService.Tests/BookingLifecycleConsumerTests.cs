@@ -278,6 +278,69 @@ public class BookingLifecycleConsumerTests : IDisposable
     }
 
     [Fact]
+    public async Task RescheduleAwaitingParent_AsksParentsForApproval_AndTellsTheProposer()
+    {
+        var hub = NewHub();
+        var e = Lifecycle("RescheduleAwaitingParent", c =>
+        {
+            ToStudent(c);
+            WithNewTime(c, new TimeOnly(14, 0), new TimeOnly(15, 0));
+        });
+
+        await Consumer(hub).Consume(Context(e));
+
+        var rows = await AllAsync();
+        rows.Single(n => n.UserId == StudentUser).Type.ShouldBe("BookingRescheduleAwaitingParent");
+        var parents = rows.Where(n => n.Type == "ParentBookingRescheduleAwaitingParent").ToList();
+        parents.Select(n => n.UserId).OrderBy(x => x).ShouldBe(new[] { ParentA, ParentB });
+        parents.ShouldAllBe(n => n.Body.Contains("25.06.2026 14:00-15:00") && n.Body.Contains("onay"));
+    }
+
+    [Theory]
+    [InlineData("RescheduleWithdrawn", true, 2)]
+    [InlineData("RescheduleDeclined", true, 2)]
+    [InlineData("RescheduleWithdrawn", false, 0)]
+    public async Task DroppedProposal_TellsParentsOnlyIfTheyWereAskedToApprove(string kind, bool wasAwaiting, int parentRows)
+    {
+        var hub = NewHub();
+        var e = Lifecycle(kind, c =>
+        {
+            ToStudent(c);
+            c.WasAwaitingParent = wasAwaiting;
+            WithNewTime(c, new TimeOnly(14, 0), new TimeOnly(15, 0));
+        });
+
+        await Consumer(hub).Consume(Context(e));
+
+        var parents = (await AllAsync()).Where(n => n.Type == "ParentBooking" + kind).ToList();
+        parents.Count.ShouldBe(parentRows);
+        parents.ShouldAllBe(n => !n.Body.Contains("{"));
+    }
+
+    [Theory]
+    [InlineData("RescheduleParentApproved")]
+    [InlineData("RescheduleParentRejected")]
+    public async Task ParentDecision_NotifiesBothSidesAndOnlyTheOtherParent(string kind)
+    {
+        var hub = NewHub();
+        var e = Lifecycle(kind, c =>
+        {
+            c.NotifyStudent = true;
+            c.NotifyTeacher = true;
+            c.ActorParentUserId = ParentA;
+            WithNewTime(c, new TimeOnly(14, 0), new TimeOnly(15, 0));
+        });
+
+        await Consumer(hub).Consume(Context(e));
+
+        var rows = await AllAsync();
+        rows.Where(n => n.Type == "Booking" + kind).Count().ShouldBe(2);
+        rows.Single(n => n.Type == "ParentBooking" + kind).UserId.ShouldBe(ParentB);
+        rows.ShouldNotContain(n => n.UserId == ParentA);
+        rows.ShouldAllBe(n => !n.Body.Contains("{"));
+    }
+
+    [Fact]
     public async Task NoShowReported_StudentReportsTeacherAbsent_UsesTeacherAbsentParentText()
     {
         var hub = NewHub();

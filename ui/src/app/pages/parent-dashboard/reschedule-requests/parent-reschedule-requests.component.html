@@ -1,0 +1,69 @@
+@if (visible()) {
+  <section class="prr" *transloco="let t; prefix: 'parent-dashboard'" aria-labelledby="prr-title" data-test="reschedule-requests-section">
+    <mat-card appearance="outlined" class="prr__card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar aria-hidden="true">update</mat-icon>
+        <mat-card-title id="prr-title">{{ t('rescheduleRequests.title') }}</mat-card-title>
+        <mat-card-subtitle>{{ t('rescheduleRequests.subtitle') }}</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        @if (notice()) {
+          <p class="prr__notice" role="status" data-test="reschedule-requests-notice">{{ notice() }}</p>
+        }
+
+        @if (error()) {
+          <div class="prr__state" role="alert" data-test="reschedule-requests-error">
+            <span>{{ error() }}</span>
+            <button mat-stroked-button type="button" [disabled]="loading()" (click)="load()">{{ t('retry') }}</button>
+          </div>
+        } @else {
+          <ul class="prr__list">
+            @for (row of rows(); track row.request.id) {
+              <li class="prr__row" data-test="reschedule-request-row">
+                <div class="prr__main">
+                  <span class="prr__names">
+                    {{ row.request.studentName || t('bookingRequests.childFallback') }} ·
+                    {{ row.request.teacherName || t('bookingRequests.teacherFallback') }}
+                  </span>
+                  <span data-test="reschedule-request-when">
+                    {{ t('rescheduleRequests.when', { current: row.current, proposed: row.proposed }) }}
+                  </span>
+                  @if (!row.request.canApprove) {
+                    <span class="prr__stale" data-test="reschedule-request-stale">{{ t('rescheduleRequests.stale') }}</span>
+                  }
+                </div>
+                <div class="prr__actions">
+                  @if (row.request.canApprove) {
+                    <button
+                      mat-flat-button
+                      color="primary"
+                      type="button"
+                      data-test="reschedule-request-approve"
+                      [disabled]="actingId() !== null"
+                      (click)="approve(row.request)"
+                    >
+                      @if (actingId() === row.request.id) {
+                        <mat-spinner diameter="18" />
+                      }
+                      {{ t('bookingRequests.approve') }}
+                    </button>
+                  }
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    data-test="reschedule-request-reject"
+                    [disabled]="actingId() !== null"
+                    (click)="reject(row.request)"
+                  >
+                    {{ t('bookingRequests.reject') }}
+                  </button>
+                </div>
+              </li>
+            }
+          </ul>
+        }
+      </mat-card-content>
+    </mat-card>
+  </section>
+}

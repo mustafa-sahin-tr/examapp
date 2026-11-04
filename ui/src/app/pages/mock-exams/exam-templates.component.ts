@@ -17,6 +17,11 @@ const emptyTemplate = (): ExamTemplate => ({
   sessions: [{ name: '', durationSeconds: 3600, sections: [{ name: '', questionCount: 10 }] }],
 });
 
+/** Sunucudaki WorksheetDurationLimits.MaxSeconds. */
+const MAX_DURATION_SECONDS = 86_400;
+
+const wholeBetween = (value: number, min: number, max: number): boolean => Number.isInteger(value) && value >= min && value <= max;
+
 /** Issue #693: admin sınav şablonlarını tanımlar. Deneme kurulmuş şablon değişmez: sonuçlar bu yapıya bağlıdır. */
 @Component({
   selector: 'app-exam-templates',
@@ -65,7 +70,7 @@ const emptyTemplate = (): ExamTemplate => ({
               </mat-form-field>
               <mat-form-field appearance="outline">
                 <mat-label>{{ t('templates.penalty') }}</mat-label>
-                <input matInput type="number" min="0" max="10" [ngModel]="form.wrongAnswersPerCorrect" (ngModelChange)="change({ wrongAnswersPerCorrect: +$event })" />
+                <input matInput type="number" min="0" max="10" [ngModel]="form.wrongAnswersPerCorrect" (ngModelChange)="change({ wrongAnswersPerCorrect: toNumber($event) })" />
                 <mat-hint>{{ t('templates.penaltyHint') }}</mat-hint>
               </mat-form-field>
             </div>
@@ -83,8 +88,11 @@ const emptyTemplate = (): ExamTemplate => ({
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>{{ t('templates.sessionMinutes') }}</mat-label>
-                    <input matInput type="number" min="1" [ngModel]="session.durationSeconds / 60" (ngModelChange)="changeSession(s, { durationSeconds: $event * 60 })" />
+                    <input matInput type="number" min="1" [ngModel]="session.durationSeconds / 60" (ngModelChange)="changeSession(s, { durationSeconds: toNumber($event) * 60 })" />
                   </mat-form-field>
+                  @if (form.sessions.length > 1) {
+                    <button mat-button class="me-remove-session" (click)="removeSession(s)">{{ t('templates.removeSession') }}</button>
+                  }
                 </div>
                 @for (section of session.sections; track $index; let x = $index) {
                   <div class="me-grid">
@@ -98,15 +106,21 @@ const emptyTemplate = (): ExamTemplate => ({
                     </mat-form-field>
                     <mat-form-field appearance="outline">
                       <mat-label>{{ t('templates.questionCount') }}</mat-label>
-                      <input matInput type="number" min="1" max="200" [ngModel]="section.questionCount" (ngModelChange)="changeSection(s, x, { questionCount: +$event })" />
+                      <input matInput type="number" min="1" max="200" [ngModel]="section.questionCount" (ngModelChange)="changeSection(s, x, { questionCount: toNumber($event) })" />
                     </mat-form-field>
+                    @if (session.sections.length > 1) {
+                      <button mat-button class="me-remove-section" (click)="removeSection(s, x)">{{ t('templates.removeSubject') }}</button>
+                    }
                   </div>
                 }
-                <button mat-button class="me-add-section" (click)="addSection(s)">{{ t('templates.addSubject') }}</button>
+                <button mat-button class="me-add-section" (click)="addSection(s)" [disabled]="session.sections.length >= 30">{{ t('templates.addSubject') }}</button>
               </div>
             }
-            <button mat-button class="me-add-session" (click)="addSession()">{{ t('templates.addSession') }}</button>
+            <button mat-button class="me-add-session" (click)="addSession()" [disabled]="form.sessions.length >= 10">{{ t('templates.addSession') }}</button>
 
+            @if (!canSave()) {
+              <p class="me-note me-incomplete">{{ t('templates.incomplete') }}</p>
+            }
             @if (errorKey(); as key) {
               <div class="me-error" role="alert">{{ t('errors.' + key) }}</div>
             }
@@ -118,7 +132,7 @@ const emptyTemplate = (): ExamTemplate => ({
         </mat-card>
       } @else {
         <div class="me-actions">
-          <button class="me-new" mat-stroked-button (click)="draft.set(newTemplate())">
+          <button class="me-new" mat-stroked-button (click)="startNew()">
             <mat-icon>add</mat-icon>
             {{ t('templates.new') }}
           </button>
@@ -142,10 +156,11 @@ export class ExamTemplatesComponent {
     return !!form
       && form.code.trim().length > 0
       && form.name.trim().length > 0
-      && form.wrongAnswersPerCorrect >= 0
+      && wholeBetween(form.wrongAnswersPerCorrect, 0, 10)
       && form.sessions.length > 0
-      && form.sessions.every((s) => s.name.trim().length > 0 && s.durationSeconds >= 60 && s.sections.length > 0
-        && s.sections.every((x) => x.name.trim().length > 0 && x.questionCount >= 1 && x.questionCount <= 200));
+      && form.sessions.length <= 10
+      && form.sessions.every((s) => s.name.trim().length > 0 && wholeBetween(s.durationSeconds, 60, MAX_DURATION_SECONDS) && s.sections.length > 0 && s.sections.length <= 30
+        && s.sections.every((x) => x.name.trim().length > 0 && wholeBetween(x.questionCount, 1, 200)));
   });
 
   constructor() {
@@ -158,6 +173,16 @@ export class ExamTemplatesComponent {
 
   questionCount(template: ExamTemplate): number {
     return template.sessions.flatMap((s) => s.sections).reduce((sum, s) => sum + s.questionCount, 0);
+  }
+
+  /** Boş kutu 0 sayılmaz: yanlış cezası sessizce kapanırdı. */
+  toNumber(value: number | string | null): number {
+    return value === null || value === '' ? Number.NaN : Number(value);
+  }
+
+  startNew(): void {
+    this.errorKey.set(null);
+    this.draft.set(this.newTemplate());
   }
 
   edit(template: ExamTemplate): void {
@@ -189,6 +214,17 @@ export class ExamTemplatesComponent {
 
   addSession(): void {
     this.draft.update((d) => d && { ...d, sessions: [...d.sessions, { name: '', durationSeconds: 3600, sections: [{ name: '', questionCount: 10 }] }] });
+  }
+
+  removeSection(session: number, index: number): void {
+    this.draft.update((d) => d && {
+      ...d,
+      sessions: d.sessions.map((s, i) => (i === session ? { ...s, sections: s.sections.filter((_, j) => j !== index) } : s)),
+    });
+  }
+
+  removeSession(index: number): void {
+    this.draft.update((d) => d && { ...d, sessions: d.sessions.filter((_, i) => i !== index) });
   }
 
   save(): void {

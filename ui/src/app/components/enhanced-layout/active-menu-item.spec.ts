@@ -112,6 +112,12 @@ describe('resolveActiveMenuItemId (issue #385)', () => {
         });
     }
 
+    it('mockExamTabs_KeepTestsSelected_ButAdminHasItsOwnItem', () => {
+        expect(resolveActiveMenuItemId('/my-mock-exams/5/result', STUDENT_ITEMS)).toBe('exams');
+        expect(resolveActiveMenuItemId('/mock-exams/5', [menu('exams', '/tests')])).toBe('exams');
+        expect(resolveActiveMenuItemId('/mock-exams/5', [menu('mock-exams', '/mock-exams')])).toBe('mock-exams');
+    });
+
     it('studyPrefix_DoesNotMatchStudyPagesForStudent', () => {
         const items = [menu('study', '/study'), menu('study-pages', '/study-pages')];
         expect(resolveActiveMenuItemId('/study-pages/1', items)).toBe('study-pages');

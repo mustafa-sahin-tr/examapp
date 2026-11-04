@@ -4,10 +4,12 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
-import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+import { filter } from 'rxjs';
+import { AuthService } from '../../services/auth.service';
+import { ConfirmDialogComponent, ConfirmDialogData } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { MockExamDetail, MockExamProblem, MockExamSection, MockExamService } from '../../services/mock-exam.service';
 import { QuestionBankPanelComponent } from '../../shared/components/question-bank-panel/question-bank-panel.component';
 
@@ -15,6 +17,8 @@ export interface SectionQuestionsDialogData {
   title: string;
   /** Dersin ya da başka dersin kullandığı sorular seçilemez. */
   usedIds: number[];
+  /** Bu derste kalan yer: fazlası seçimi kaybettirmeden önce engellenir. */
+  remaining: number;
 }
 
 @Component({
@@ -23,6 +27,7 @@ export interface SectionQuestionsDialogData {
   imports: [MatButtonModule, MatDialogModule, QuestionBankPanelComponent, TranslocoDirective],
   providers: [provideTranslocoScope('mock-exams')],
   changeDetection: ChangeDetectionStrategy.Eager,
+  styleUrls: ['./mock-exams.scss'],
   template: `
     <ng-container *transloco="let t; prefix: 'mock-exams'">
       <h2 mat-dialog-title>{{ data.title }}</h2>
@@ -30,8 +35,9 @@ export interface SectionQuestionsDialogData {
         <app-question-bank-panel filterLayout="selects" [selectable]="true" [disabledIds]="data.usedIds" (selectionChange)="selected.set($event)" />
       </mat-dialog-content>
       <mat-dialog-actions align="end">
+        <span class="me-note me-dialog-limit" [class.me-error]="overLimit()" [attr.role]="overLimit() ? 'alert' : null">{{ t('builder.remaining', { count: data.remaining }) }}</span>
         <button mat-button (click)="dialogRef.close()">{{ t('builder.cancel') }}</button>
-        <button mat-flat-button color="primary" (click)="dialogRef.close(selected())" [disabled]="selected().length === 0">{{ t('builder.addSelected', { count: selected().length }) }}</button>
+        <button mat-flat-button color="primary" (click)="dialogRef.close(selected())" [disabled]="selected().length === 0 || overLimit()">{{ t('builder.addSelected', { count: selected().length }) }}</button>
       </mat-dialog-actions>
     </ng-container>
   `,
@@ -40,13 +46,14 @@ export class SectionQuestionsDialogComponent {
   readonly data = inject<SectionQuestionsDialogData>(MAT_DIALOG_DATA);
   readonly dialogRef = inject<MatDialogRef<SectionQuestionsDialogComponent, number[]>>(MatDialogRef);
   readonly selected = signal<number[]>([]);
+  readonly overLimit = computed(() => this.selected().length > this.data.remaining);
 }
 
 /** Issue #693: şablondaki dersleri Soru Havuzu'ndan doldurur, sayılar tamamsa yayınlar. */
 @Component({
   selector: 'app-mock-exam-builder',
   standalone: true,
-  imports: [RouterLink, MatButtonModule, MatCardModule, MatCheckboxModule, MatChipsModule, MatDialogModule, MatIconModule, TranslocoDirective],
+  imports: [RouterLink, MatButtonModule, MatCardModule, MatCheckboxModule, MatDialogModule, MatIconModule, TranslocoDirective],
   providers: [provideTranslocoScope('mock-exams')],
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./mock-exams.scss'],
@@ -69,7 +76,7 @@ export class SectionQuestionsDialogComponent {
               <mat-card-title>{{ session.name }}</mat-card-title>
               <mat-card-subtitle>{{ t('minutes', { count: session.durationSeconds / 60 }) }}</mat-card-subtitle>
             </mat-card-header>
-            @if (current.publishedAt) {
+            @if (current.publishedAt && !isAdmin) {
               <a mat-button class="me-assign" [routerLink]="['/test', session.worksheetId]">{{ t('builder.assign') }}</a>
             }
             <mat-card-content>
@@ -92,17 +99,26 @@ export class SectionQuestionsDialogComponent {
                       </button>
                     }
                   </div>
-                  @if (section.questionIds.length > 0) {
-                    <mat-chip-set [attr.aria-label]="section.name">
-                      @for (questionId of section.questionIds; track questionId) {
-                        <mat-chip [removable]="!current.publishedAt" (removed)="removeQuestion(section, questionId)">
-                          #{{ questionId }}
-                          @if (!current.publishedAt) {
-                            <button matChipRemove [attr.aria-label]="t('builder.removeQuestion', { id: questionId })"><mat-icon>cancel</mat-icon></button>
+                  @if (section.questions.length > 0) {
+                    <ul class="me-questions" [attr.aria-label]="section.name">
+                      @for (question of section.questions; track question.id) {
+                        <li class="me-question">
+                          @if (question.imageUrl) {
+                            <img class="me-question-image" [src]="question.imageUrl" [alt]="t('builder.questionImage', { id: question.id })" loading="lazy" />
                           }
-                        </mat-chip>
+                          <span class="me-question-text">
+                            <b>#{{ question.id }}</b>
+                            @if (question.text) {
+                              <!-- Soru metni HTML olabilir; Soru Havuzu gibi Angular'ın temizlediği innerHTML ile. -->
+                              <span [innerHTML]="question.text"></span>
+                            }
+                          </span>
+                          @if (!current.publishedAt) {
+                            <button mat-icon-button class="me-remove" (click)="removeQuestion(section, question.id)" [disabled]="busy()" [attr.aria-label]="t('builder.removeQuestion', { id: question.id })"><mat-icon>close</mat-icon></button>
+                          }
+                        </li>
                       }
-                    </mat-chip-set>
+                    </ul>
                   }
                 </div>
               }
@@ -123,7 +139,7 @@ export class SectionQuestionsDialogComponent {
           }
 
           <mat-checkbox [checked]="openToGrade()" (change)="openToGrade.set($event.checked)">{{ t('builder.openToGrade', { grade: current.gradeName }) }}</mat-checkbox>
-          <div class="me-note">{{ t('builder.openToGradeHint') }}</div>
+          <div class="me-note">{{ t(isAdmin ? 'builder.openToGradeHintAdmin' : 'builder.openToGradeHint') }}</div>
 
           <div class="me-actions">
             <button mat-button class="me-delete" (click)="deleteDraft()" [disabled]="busy()">{{ t('builder.deleteDraft') }}</button>
@@ -141,8 +157,10 @@ export class MockExamBuilderComponent implements OnInit {
   private readonly service = inject(MockExamService);
   private readonly dialog = inject(MatDialog);
   private readonly router = inject(Router);
-
   private readonly route = inject(ActivatedRoute);
+  private readonly transloco = inject(TranslocoService);
+  /** Test ayrıntı sayfası yöneticiye kapalı: atama bağlantısı 403 verirdi. */
+  readonly isAdmin = inject(AuthService).hasRole('Admin');
 
   readonly exam = signal<MockExamDetail | null>(null);
   readonly loadFailed = signal(false);
@@ -161,7 +179,8 @@ export class MockExamBuilderComponent implements OnInit {
   }
 
   addQuestions(section: MockExamSection): void {
-    const data: SectionQuestionsDialogData = { title: section.name, usedIds: this.usedIds() };
+    if (this.busy()) return;
+    const data: SectionQuestionsDialogData = { title: section.name, usedIds: this.usedIds(), remaining: section.requiredCount - section.questionIds.length };
     this.dialog
       .open<SectionQuestionsDialogComponent, SectionQuestionsDialogData, number[]>(SectionQuestionsDialogComponent, { data, width: '960px', maxWidth: '95vw' })
       .afterClosed()
@@ -171,6 +190,8 @@ export class MockExamBuilderComponent implements OnInit {
   }
 
   removeQuestion(section: MockExamSection, questionId: number): void {
+    // Önceki kayıt dönmeden `section` eskidir: ikinci çıkarma ilk soruyu geri eklerdi.
+    if (this.busy()) return;
     this.save(section, section.questionIds.filter((id) => id !== questionId));
   }
 
@@ -191,9 +212,14 @@ export class MockExamBuilderComponent implements OnInit {
   publish(): void {
     const exam = this.exam();
     if (!exam || exam.problems.length > 0 || this.busy()) return;
+    const open = this.openToGrade();
+    this.confirm(open ? 'publishOpenConfirm' : 'publishConfirm', 'publish', 'primary', { grade: exam.gradeName }, () => this.doPublish(exam, open));
+  }
+
+  private doPublish(exam: MockExamDetail, open: boolean): void {
     this.busy.set(true);
     this.errorKey.set(null);
-    this.service.publish(exam.id, this.openToGrade()).subscribe({
+    this.service.publish(exam.id, open).subscribe({
       next: (updated) => {
         this.busy.set(false);
         this.exam.set(updated);
@@ -214,12 +240,21 @@ export class MockExamBuilderComponent implements OnInit {
   deleteDraft(): void {
     const exam = this.exam();
     if (!exam || this.busy()) return;
-    this.busy.set(true);
-    this.errorKey.set(null);
-    this.service.deleteDraft(exam.id).subscribe({
-      next: () => void this.router.navigate(['/mock-exams']),
-      error: (err: HttpErrorResponse) => this.fail(err),
+    this.confirm('deleteConfirm', 'delete', 'warn', {}, () => {
+      this.busy.set(true);
+      this.errorKey.set(null);
+      this.service.deleteDraft(exam.id).subscribe({
+        next: () => void this.router.navigate(['/mock-exams']),
+        error: (err: HttpErrorResponse) => this.fail(err),
+      });
     });
+  }
+
+  /** Yayın geri alınamaz, silinen taslak geri gelmez. */
+  private confirm(key: string, icon: string, confirmColor: string, params: Record<string, unknown>, then: () => void): void {
+    const text = (part: string) => this.transloco.translate<string>(`mock-exams.builder.${key}.${part}`, params);
+    const data: ConfirmDialogData = { title: text('title'), message: text('message'), confirmText: text('confirm'), icon, confirmColor };
+    this.dialog.open(ConfirmDialogComponent, { data }).afterClosed().pipe(filter((ok) => !!ok)).subscribe(() => then());
   }
 
   problemArgs(problem: MockExamProblem): Record<string, unknown> {

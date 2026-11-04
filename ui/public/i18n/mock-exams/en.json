@@ -25,7 +25,25 @@
     "openToGradeHint": "If unchecked, only assigned students can start it. After publishing, assign each session.",
     "publish": "Publish",
     "deleteDraft": "Delete draft",
-    "assign": "Assign this session"
+    "assign": "Assign this session",
+    "questionImage": "Image of question {{id}}",
+    "remaining": "{{count}} more questions can be added to this subject.",
+    "publishConfirm": {
+      "title": "Publish this mock exam?",
+      "message": "A published mock exam cannot be changed. Students can solve it only after you assign its sessions.",
+      "confirm": "Publish"
+    },
+    "publishOpenConfirm": {
+      "title": "Open this mock exam to all schools?",
+      "message": "A published mock exam cannot be changed. {{grade}} students in all schools can see and start it.",
+      "confirm": "Publish"
+    },
+    "deleteConfirm": {
+      "title": "Delete this draft?",
+      "message": "Your questions are kept. Only this mock exam draft is removed.",
+      "confirm": "Delete"
+    },
+    "openToGradeHintAdmin": "Admins cannot assign sessions. Check this box so students can solve it."
   },
   "problems": {
     "WrongCount": "{{section}}: needs {{required}} questions, has {{actual}}.",
@@ -89,6 +107,9 @@
     "questionCount": "Number of questions",
     "addSubject": "Add subject",
     "addSession": "Add session",
-    "save": "Save template"
+    "save": "Save template",
+    "removeSubject": "Remove subject",
+    "removeSession": "Remove session",
+    "incomplete": "To save, fill in the code, name, session and subject names. The penalty must be a whole number from 0 to 10, the question count from 1 to 200, and the duration at least 1 minute."
   }
 }

@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Storage;
 using System.ComponentModel.DataAnnotations;
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
@@ -77,6 +78,16 @@ public class PublishMockExamDto
     public bool OpenToGrade { get; set; }
 }
 
+/// <summary>Kurulum ekranında soruyu ayırt etmeye yeter: görsel ya da metin.</summary>
+public class MockExamQuestionCardDto
+{
+    public int Id { get; set; }
+    public string? Text { get; set; }
+
+    [StorageUrl(StorageArea.QuestionImage)]
+    public string? ImageUrl { get; set; }
+}
+
 public class MockExamSectionDetailDto
 {
     public int SectionId { get; set; }
@@ -84,6 +95,7 @@ public class MockExamSectionDetailDto
     public string Name { get; set; } = string.Empty;
     public int RequiredCount { get; set; }
     public List<int> QuestionIds { get; set; } = [];
+    public List<MockExamQuestionCardDto> Questions { get; set; } = [];
 }
 
 public class MockExamSessionDetailDto

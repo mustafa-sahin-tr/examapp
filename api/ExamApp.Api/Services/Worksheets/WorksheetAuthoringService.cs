@@ -773,6 +773,15 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
             return result;
         }
 
+        // Issue #693: oturumun kopyası sınıfa açık sıradan bir test olurdu; deneme soruları böyle dışarı çıkmaz.
+        if (await _context.MockExamSessions.AnyAsync(s => s.WorksheetId == source.Id, ct))
+        {
+            result.Success = false;
+            result.ErrorCode = "MockExamLocked";
+            result.Message = _localizer["worksheets.authoring.editForbidden"];
+            return result;
+        }
+
         // issue #583: (eski/kaçak veride) açık uçlu maddesi olan test kopyalanmaz — kopya da test olurdu.
         if (source.Kind == WorksheetKind.Test && await OpenTextTestGuard.WorksheetHasOpenTextAsync(_context, source.Id, ct))
         {

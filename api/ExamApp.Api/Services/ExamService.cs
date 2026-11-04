@@ -214,6 +214,9 @@ public class ExamService : IExamService
             }
         }
 
+        // Issue #693: deneme oturumu kendi ekranından yönetilir; testler listesinde düzenlenebilir görünmez.
+        query = query.Where(t => !_context.MockExamSessions.Any(s => s.WorksheetId == t.Id));
+
         query = ApplyCommonFilters(query, dto);
 
         var totalCount = await query.CountAsync(); // Toplam kayıt sayısı
@@ -499,7 +502,7 @@ public class ExamService : IExamService
 
     public async Task<List<WorksheetDto>> GetLatestWorksheetsAsync(int pageNumber, int pageSize, int? ownerUserId = null)
     {
-        var query = _context.Worksheets.AsQueryable();
+        var query = _context.Worksheets.Where(t => !_context.MockExamSessions.Any(s => s.WorksheetId == t.Id)); // Issue #693
         // Öğretmen (admin değil) yalnızca kendi worksheet'lerini görür.
         if (ownerUserId.HasValue)
             query = query.Where(t => t.CreateUserId == ownerUserId.Value);
@@ -566,7 +569,7 @@ public class ExamService : IExamService
         var popMap = popularity.ToDictionary(p => p.WorksheetId);
         var worksheetIds = popMap.Keys.ToList();
 
-        var worksheetQuery = _context.Worksheets.Where(w => worksheetIds.Contains(w.Id));
+        var worksheetQuery = _context.Worksheets.Where(w => worksheetIds.Contains(w.Id) && !_context.MockExamSessions.Any(s => s.WorksheetId == w.Id)); // Issue #693
         if (gradeId.HasValue)
             worksheetQuery = worksheetQuery.Where(w => w.GradeId == gradeId.Value);
         // Öğretmen (admin değil) yalnızca kendi worksheet'lerini görür.
@@ -668,7 +671,9 @@ public class ExamService : IExamService
             BookTestId = worksheet.BookTestId,
             BookId = worksheet.BookTest?.BookId,
             QuestionCount = worksheet.WorksheetQuestions.Count(),
-            CanEdit = WorksheetAccess.CanModify(worksheet.CreateUserId, userProfile.Id, isAdmin),
+            // Issue #693: deneme oturumu testler ekranından değişmez.
+            CanEdit = WorksheetAccess.CanModify(worksheet.CreateUserId, userProfile.Id, isAdmin)
+                && !await _context.MockExamSessions.AnyAsync(s => s.WorksheetId == worksheet.Id),
             // İç user id enumerasyonunu önlemek için sadece admin veya sahibine dön.
             CreatedByUserId = (isAdmin || worksheet.CreateUserId == userProfile.Id) ? worksheet.CreateUserId : null,
             CreatedByName = createdByName

@@ -126,6 +126,13 @@ public class MockExamsPostgresTests : IntegrationTestBase
         await ReadAsync(await teacher.PutAsJsonAsync(path, new SetSectionQuestionsDto { QuestionIds = [questions[1]] }));
         var filled = await ReadAsync(await teacher.PutAsJsonAsync(path, new SetSectionQuestionsDto { QuestionIds = [questions[0], questions[1]] }));
         filled.Problems.ShouldBeEmpty();
+        filled.Sessions[0].Sections[0].Questions.Select(q => q.Text).ShouldBe(["Soru 0", "Soru 1"], ignoreOrder: true);
+
+        // Oturum testler ekranında düzenlenebilir görünmez ve kopyayla dışarı çıkmaz; ayrıntısı atama için açık kalır.
+        (await (await teacher.GetAsync("/api/worksheet/list?pageNumber=1&pageSize=50")).Content.ReadAsStringAsync()).ShouldNotContain("Deneme");
+        var sessionDetail = await teacher.GetFromJsonAsync<System.Text.Json.JsonElement>($"/api/worksheet/{worksheetId}/detail", Json);
+        sessionDetail.GetProperty("worksheet").GetProperty("canEdit").GetBoolean().ShouldBeFalse();
+        (await teacher.PostAsync($"/api/worksheet/{worksheetId}/copy", null)).IsSuccessStatusCode.ShouldBeFalse();
 
         // Taslak oturum başka ekranlardan değişmez.
         (await teacher.DeleteAsync($"/api/worksheet/{worksheetId}")).IsSuccessStatusCode.ShouldBeFalse();

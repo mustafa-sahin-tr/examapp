@@ -27,6 +27,14 @@
   color: var(--ms-danger-text-medium);
 }
 
+// Genel mat-card-title kuralı başlığı ortalar ve sabit mavi yapar; bu kartlarda satırlarla hizalı olmalı.
+.me-card mat-card-title {
+  padding-bottom: 4px;
+  font-size: 18px;
+  text-align: start;
+  color: inherit;
+}
+
 .me-card {
   padding: 8px;
 }
@@ -82,6 +90,47 @@
 .me-count-done {
   color: inherit;
   opacity: 0.8;
+}
+
+.me-questions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.me-question {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--ms-border, currentColor);
+  border-radius: 8px;
+}
+
+.me-question-image {
+  flex: none;
+  width: 96px;
+  height: 64px;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.me-question-text {
+  flex: 1;
+  min-width: 0;
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 13px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.me-dialog-limit {
+  margin-inline-end: auto;
 }
 
 .me-problems {

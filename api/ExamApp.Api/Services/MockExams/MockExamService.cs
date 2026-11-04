@@ -357,7 +357,7 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
         var mapped = await db.Set<MockExamQuestion>().AsNoTracking()
             .Where(q => sessionIds.Contains(q.MockExamSessionId))
             .OrderBy(q => q.Order)
-            .Select(q => new { q.ExamTemplateSectionId, q.WorksheetQuestion.QuestionId })
+            .Select(q => new { q.ExamTemplateSectionId, q.WorksheetQuestion.QuestionId, q.WorksheetQuestion.Question.Text, q.WorksheetQuestion.Question.ImageUrl })
             .ToListAsync(ct);
 
         var detail = new MockExamDetailDto
@@ -382,6 +382,8 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
                     Name = x.Name,
                     RequiredCount = x.QuestionCount,
                     QuestionIds = mapped.Where(q => q.ExamTemplateSectionId == x.Id).Select(q => q.QuestionId).ToList(),
+                    Questions = mapped.Where(q => q.ExamTemplateSectionId == x.Id)
+                        .Select(q => new MockExamQuestionCardDto { Id = q.QuestionId, Text = q.Text, ImageUrl = q.ImageUrl }).ToList(),
                 }).ToList(),
             }).ToList(),
         };

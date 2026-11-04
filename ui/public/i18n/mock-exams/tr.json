@@ -25,7 +25,25 @@
     "openToGradeHint": "İşaretli değilse yalnız atanan öğrenciler başlatabilir. Yayından sonra her oturumu ayrı atayın.",
     "publish": "Yayınla",
     "deleteDraft": "Taslağı sil",
-    "assign": "Bu oturumu ata"
+    "assign": "Bu oturumu ata",
+    "questionImage": "{{id}} numaralı sorunun görseli",
+    "remaining": "Bu derse {{count}} soru daha eklenebilir.",
+    "publishConfirm": {
+      "title": "Deneme yayınlansın mı?",
+      "message": "Yayınlanan deneme değiştirilemez. Öğrenciler ancak oturumları atadıktan sonra çözebilir.",
+      "confirm": "Yayınla"
+    },
+    "publishOpenConfirm": {
+      "title": "Deneme bütün okullara açılsın mı?",
+      "message": "Yayınlanan deneme değiştirilemez. Bütün okullardaki {{grade}} öğrencileri denemeyi görüp başlatabilir.",
+      "confirm": "Yayınla"
+    },
+    "deleteConfirm": {
+      "title": "Taslak silinsin mi?",
+      "message": "Seçtiğiniz sorular silinmez, yalnız bu deneme taslağı kaldırılır.",
+      "confirm": "Sil"
+    },
+    "openToGradeHintAdmin": "Yöneticiler oturum atayamaz. Öğrencilerin çözebilmesi için bu kutuyu işaretleyin."
   },
   "problems": {
     "WrongCount": "{{section}}: {{required}} soru gerekli, {{actual}} soru var.",
@@ -89,6 +107,9 @@
     "questionCount": "Soru sayısı",
     "addSubject": "Ders ekle",
     "addSession": "Oturum ekle",
-    "save": "Şablonu kaydet"
+    "save": "Şablonu kaydet",
+    "removeSubject": "Dersi kaldır",
+    "removeSession": "Oturumu kaldır",
+    "incomplete": "Kaydetmek için kod, ad, oturum ve ders adları dolu olmalı. Ceza 0 ile 10, soru sayısı 1 ile 200 arasında tam sayı, süre en az 1 dakika olmalı."
   }
 }

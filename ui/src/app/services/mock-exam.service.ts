@@ -35,12 +35,19 @@ export interface MockExamListItem {
   publishedAt: string | null;
 }
 
+export interface MockExamQuestionCard {
+  id: number;
+  text: string | null;
+  imageUrl: string | null;
+}
+
 export interface MockExamSection {
   sectionId: number;
   groupName: string | null;
   name: string;
   requiredCount: number;
   questionIds: number[];
+  questions: MockExamQuestionCard[];
 }
 
 export interface MockExamSession {

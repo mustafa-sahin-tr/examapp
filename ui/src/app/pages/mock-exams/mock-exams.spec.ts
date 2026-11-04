@@ -1,15 +1,17 @@
 import type { MockedObject } from 'vitest';
 import { HttpErrorResponse } from '@angular/common/http';
+import { createComponent, EnvironmentInjector, Injector } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { MatDialog } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { ActivatedRoute, provideRouter, Router } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { NEVER, of, throwError } from 'rxjs';
 
 import { ExamTemplatesComponent } from './exam-templates.component';
-import { MockExamBuilderComponent } from './mock-exam-builder.component';
+import { MockExamBuilderComponent, SectionQuestionsDialogComponent } from './mock-exam-builder.component';
 import { MockExamsComponent } from './mock-exams.component';
 import { MockExamResultComponent, StudentMockExamsComponent } from './student-mock-exams.component';
+import { AuthService } from '../../services/auth.service';
 import { GradesService } from '../../services/grades.service';
 import { ExamTemplate, MockExamDetail, MockExamResult, MockExamService, StudentMockExam } from '../../services/mock-exam.service';
 import { TestService } from '../../services/test.service';
@@ -26,8 +28,8 @@ function detail(overrides: Partial<MockExamDetail> = {}): MockExamDetail {
   return {
     id: 5, name: 'Deneme', examTemplateId: 1, templateName: 'LGS', gradeId: 8, gradeName: '8. Sınıf', publishedAt: null,
     sessions: [{ id: 1, name: 'Sözel', durationSeconds: 4500, worksheetId: 30, sections: [
-      { sectionId: 1, groupName: null, name: 'Türkçe', requiredCount: 2, questionIds: [101, 102] },
-      { sectionId: 2, groupName: 'Sosyal', name: 'Tarih', requiredCount: 1, questionIds: [103] },
+      { sectionId: 1, groupName: null, name: 'Türkçe', requiredCount: 2, questionIds: [101, 102], questions: [{ id: 101, text: 'Birinci soru', imageUrl: null }, { id: 102, text: null, imageUrl: 'https://img.test/102.webp' }] },
+      { sectionId: 2, groupName: 'Sosyal', name: 'Tarih', requiredCount: 1, questionIds: [103], questions: [{ id: 103, text: 'Üçüncü', imageUrl: null }] },
     ] }],
     problems: [],
     ...overrides,
@@ -54,7 +56,7 @@ describe('mock exam screens', () => {
       getResult: vi.fn(),
     } as unknown as MockedObject<MockExamService>;
     tests = { startTest: vi.fn().mockReturnValue(of({ instanceId: 77 })) };
-    dialog = { open: vi.fn() };
+    dialog = { open: vi.fn().mockReturnValue({ afterClosed: () => of(true) }) };
 
     TestBed.configureTestingModule({
       imports: [NoopAnimationsModule, translocoTestingModule({ langs: { 'mock-exams/tr': tr } })],
@@ -122,6 +124,29 @@ describe('mock exam screens', () => {
       expect(component.creating()).toBe(false);
     });
 
+    it('gradesFailure_SaysSoAndRetryLoadsEverythingAgain', () => {
+      const grades = TestBed.inject(GradesService);
+      const getGrades = vi.spyOn(grades, 'getGrades').mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 500 })));
+      const fixture = TestBed.createComponent(MockExamsComponent);
+      fixture.detectChanges();
+      expect(fixture.componentInstance.loadFailed()).toBe(true);
+
+      fixture.componentInstance.load();
+
+      expect(getGrades).toHaveBeenCalledTimes(2);
+      expect(service.listTemplates).toHaveBeenCalledTimes(2);
+      expect(fixture.componentInstance.loadFailed()).toBe(false);
+      expect(fixture.componentInstance.grades().length).toBe(1);
+    });
+
+    it('whileLoading_DoesNotClaimThereAreNoExams', () => {
+      service.listMine.mockReturnValue(NEVER);
+      const fixture = TestBed.createComponent(MockExamsComponent);
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.textContent).not.toContain(tr.list.empty);
+    });
+
     it('showsDraftAndPublishedState', () => {
       const fixture = TestBed.createComponent(MockExamsComponent);
       fixture.detectChanges();
@@ -143,6 +168,13 @@ describe('mock exam screens', () => {
       const { el } = builder(detail({ publishedAt: '2026-11-04' }));
 
       expect(el.querySelector('.me-assign')?.getAttribute('href')).toBe('/test/30');
+    });
+
+    it('admin_IsNotSentToTheAssignPageItCannotOpen', () => {
+      vi.spyOn(TestBed.inject(AuthService), 'hasRole').mockImplementation((role) => role === 'Admin');
+      const { el } = builder(detail({ publishedAt: '2026-11-04' }));
+
+      expect(el.querySelector('.me-assign')).toBeNull();
     });
 
     it('complete_AllowsPublishingWithTheChosenAudience', () => {
@@ -195,6 +227,7 @@ describe('mock exam screens', () => {
       component.addQuestions(exam.sessions[0].sections[0]);
 
       expect(dialog.open.mock.calls[0][1].data.usedIds).toEqual([101, 103]);
+      expect(dialog.open.mock.calls[0][1].data.remaining).toBe(1);
       expect(service.setSectionQuestions).toHaveBeenCalledWith(5, 1, [101, 200]);
     });
 
@@ -206,6 +239,54 @@ describe('mock exam screens', () => {
       component.addQuestions(exam.sessions[0].sections[0]);
 
       expect(service.setSectionQuestions).not.toHaveBeenCalled();
+    });
+
+    it('questions_CanBeToldApart_WithoutRunningRawHtml', () => {
+      const exam = detail();
+      exam.sessions[0].sections[0].questions[0].text = 'Metin <img src=x onerror="alert(1)">';
+      const { el } = builder(exam);
+
+      expect(el.textContent).toContain('Metin');
+      expect(el.querySelector('.me-question-image')?.getAttribute('src')).toBe('https://img.test/102.webp');
+      expect(el.querySelector('[onerror]')).toBeNull();
+    });
+
+    it('removeQuestion_WhileSaving_DoesNotUseTheStaleList', () => {
+      const exam = detail();
+      const { component } = builder(exam);
+      service.setSectionQuestions.mockReturnValue(NEVER);
+
+      component.removeQuestion(exam.sessions[0].sections[0], 101);
+      component.removeQuestion(exam.sessions[0].sections[0], 102);
+
+      expect(service.setSectionQuestions).toHaveBeenCalledTimes(1);
+    });
+
+    it('publishAndDelete_Declined_DoNothing', () => {
+      const { component } = builder();
+      dialog.open.mockReturnValue({ afterClosed: () => of(false) });
+
+      component.publish();
+      component.deleteDraft();
+
+      expect(dialog.open).toHaveBeenCalledTimes(2);
+      expect(service.publish).not.toHaveBeenCalled();
+      expect(service.deleteDraft).not.toHaveBeenCalled();
+    });
+
+    it('dialog_RefusesMoreThanTheSubjectNeeds', () => {
+      const component = createComponent(SectionQuestionsDialogComponent, {
+        environmentInjector: TestBed.inject(EnvironmentInjector),
+        elementInjector: Injector.create({ providers: [
+          { provide: MAT_DIALOG_DATA, useValue: { title: 'Türkçe', usedIds: [], remaining: 1 } },
+          { provide: MatDialogRef, useValue: { close: vi.fn() } },
+        ] }),
+      }).instance;
+
+      component.selected.set([1]);
+      expect(component.overLimit()).toBe(false);
+      component.selected.set([1, 2]);
+      expect(component.overLimit()).toBe(true);
     });
 
     it('removeQuestion_SendsTheRest', () => {
@@ -396,6 +477,46 @@ describe('mock exam screens', () => {
 
       expect(component.draft()!.sessions.length).toBe(2);
       expect(component.draft()!.sessions[0].sections.length).toBe(2);
+    });
+
+    it('emptyOrPartialNumbers_CannotBeSaved', () => {
+      const { component } = view();
+      component.edit(TEMPLATE);
+      expect(component.canSave()).toBe(true);
+
+      component.change({ wrongAnswersPerCorrect: component.toNumber(null) });
+      expect(component.canSave()).toBe(false);
+      component.change({ wrongAnswersPerCorrect: 0 });
+      expect(component.canSave()).toBe(true);
+      component.change({ wrongAnswersPerCorrect: 11 });
+      expect(component.canSave()).toBe(false);
+      component.change({ wrongAnswersPerCorrect: 3 });
+
+      component.changeSession(0, { durationSeconds: 33.33 * 60 });
+      expect(component.canSave()).toBe(false);
+    });
+
+    it('extraBlankRows_CanBeRemoved', () => {
+      const { component } = view();
+      component.edit(TEMPLATE);
+      component.addSection(0);
+      component.addSession();
+      expect(component.canSave()).toBe(false);
+
+      component.removeSection(0, 1);
+      component.removeSession(1);
+
+      expect(component.canSave()).toBe(true);
+    });
+
+    it('startNew_ClearsTheOldError', () => {
+      const { component } = view();
+      component.errorKey.set('Failed');
+
+      component.startNew();
+
+      expect(component.errorKey()).toBeNull();
+      expect(component.draft()).not.toBeNull();
     });
 
     it('editingACopy_DoesNotChangeTheList', () => {

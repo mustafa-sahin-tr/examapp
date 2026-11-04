@@ -67,7 +67,7 @@ import { ExamTemplate, MockExamListItem, MockExamService } from '../../services/
           {{ t('list.loadFailed') }}
           <button mat-button (click)="load()">{{ t('retry') }}</button>
         </div>
-      } @else if (exams().length === 0) {
+      } @else if (!loading() && exams().length === 0) {
         <p class="me-note">{{ t('list.empty') }}</p>
       }
 
@@ -94,16 +94,29 @@ export class MockExamsComponent {
   readonly creating = signal(false);
   readonly createFailed = signal(false);
   readonly loadFailed = signal(false);
+  readonly loading = signal(true);
 
   constructor() {
-    this.service.listTemplates().subscribe({ next: (t) => this.templates.set(t ?? []), error: () => this.loadFailed.set(true) });
-    this.gradesService.getGrades().subscribe({ next: (g) => this.grades.set(g ?? []), error: () => this.grades.set([]) });
     this.load();
   }
 
+  /** Şablon ya da sınıf gelmezse deneme kurulamaz: üçü de hata gösterir ve yeniden denenir. */
   load(): void {
     this.loadFailed.set(false);
-    this.service.listMine().subscribe({ next: (e) => this.exams.set(e ?? []), error: () => this.loadFailed.set(true) });
+    this.loading.set(true);
+    const failed = () => this.loadFailed.set(true);
+    this.service.listTemplates().subscribe({ next: (t) => this.templates.set(t ?? []), error: failed });
+    this.gradesService.getGrades().subscribe({ next: (g) => this.grades.set(g ?? []), error: failed });
+    this.service.listMine().subscribe({
+      next: (e) => {
+        this.exams.set(e ?? []);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.loading.set(false);
+        failed();
+      },
+    });
   }
 
   canCreate(): boolean {

@@ -1076,6 +1076,12 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<PracticeSession>()
             .HasIndex(ps => new { ps.StudentId, ps.Status });
 
+        // Issue #497: konu performansı öğrencinin belli bir tarihten sonra biten oturumlarını okur.
+        modelBuilder.Entity<PracticeSession>()
+            .HasIndex(ps => new { ps.StudentId, ps.EndTime });
+        modelBuilder.Entity<WorksheetInstance>()
+            .HasIndex(ti => new { ti.StudentId, ti.EndTime });
+
         // Issue #690: hak sahibine göre listeleme ve toplu işlem.
         modelBuilder.Entity<Question>().HasIndex(q => q.RightsHolder);
 

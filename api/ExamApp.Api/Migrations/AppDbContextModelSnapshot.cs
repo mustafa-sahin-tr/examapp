@@ -2666,6 +2666,8 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("GradeId");
 
+                    b.HasIndex("StudentId", "EndTime");
+
                     b.HasIndex("StudentId", "Status");
 
                     b.ToTable("PracticeSessions");
@@ -5904,6 +5906,8 @@ namespace ExamApp.Api.Migrations
                         .HasFilter("\"Status\" = 0 AND NOT \"IsDeleted\" AND \"MaxDurationSeconds\" > 0");
 
                     b.HasIndex("WorksheetId");
+
+                    b.HasIndex("StudentId", "EndTime");
 
                     b.HasIndex("StudentId", "WorksheetId")
                         .IsUnique()

@@ -39,6 +39,12 @@
       "rejected": "Öğrencinin okul başvurusu reddedildi.",
       "alreadyDecided": "Bu başvuru az önce başka bir işlemle güncellendi. Listeyi yenileyip tekrar deneyin.",
       "rateLimited": "Kısa sürede çok fazla istek yapıldı. Lütfen biraz bekleyip tekrar deneyin."
+    },
+    "topicPerformance": {
+      "invalidDays": "Gün sayısı 1 ile 90 arasında olmalı.",
+      "invalidGroupBy": "Gruplama topic, subtopic, difficulty ya da interactionType olmalı.",
+      "invalidMinQuestions": "En az soru sayısı 1 ile 1000 arasında olmalı.",
+      "rateLimited": "Kısa sürede çok fazla istek yapıldı. Lütfen biraz bekleyip tekrar deneyin."
     }
   }
 }

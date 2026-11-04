@@ -39,6 +39,12 @@
       "rejected": "The student's school request was rejected.",
       "alreadyDecided": "This request was just updated by another action. Refresh the list and try again.",
       "rateLimited": "Too many requests in a short time. Please wait a moment and try again."
+    },
+    "topicPerformance": {
+      "invalidDays": "Days must be between 1 and 90.",
+      "invalidGroupBy": "Group by must be topic, subtopic, difficulty or interactionType.",
+      "invalidMinQuestions": "Minimum questions must be between 1 and 1000.",
+      "rateLimited": "Too many requests in a short time. Please wait a moment and try again."
     }
   }
 }

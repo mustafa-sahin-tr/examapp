@@ -165,6 +165,8 @@ public static class ParentEndpointCatalog
             "Self registration; a parent account is rejected with 409 (#419).",
         ["StudentController.UpdateTheme"] =
             "Self-scoped: the CALLER's own student theme (parent has no Student record).",
+        ["TaxonomySearchController.Search"] =
+            "Global taxonomy names (issue #499); no student data. Same content as the other subject lookups.",
         ["SubjectController.GetSubTopicsByTopic"] =
             "Reference data (taxonomy).",
         ["SubjectController.GetSubjectAsync"] =

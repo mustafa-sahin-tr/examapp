@@ -267,6 +267,7 @@ export class OpenTextReviewsComponent {
           }
           this.snackBar.open(this.text('messages.saved'), this.text('messages.ok'), { duration: 3000 });
           this.afterSaved(item);
+          this.service.refreshPendingCount().subscribe({ error: () => {} });
         },
         error: (err: unknown) => this.onSaveError(err),
       });

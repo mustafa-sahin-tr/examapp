@@ -65,6 +65,7 @@ describe('TeacherBookingRequestsComponent (issue #315)', () => {
     async function setup(items: Booking[], dialogResult: unknown = undefined, showAll = true): Promise<HTMLElement> {
         service = {
             getTeacherRequests: vi.fn().mockName("BookingService.getTeacherRequests"),
+            refreshPendingCount: vi.fn().mockReturnValue(of(0)),
             extractError: vi.fn().mockName("BookingService.extractError"),
             respondReschedule: vi.fn().mockName("BookingService.respondReschedule"),
             reportNoShow: vi.fn().mockName("BookingService.reportNoShow")

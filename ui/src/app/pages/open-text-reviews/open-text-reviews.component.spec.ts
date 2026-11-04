@@ -48,7 +48,7 @@ function page(items: OpenTextReviewItem[], totalCount = items.length): OpenTextR
 
 describe('OpenTextReviewsComponent (#583)', () => {
   let fixture: ComponentFixture<OpenTextReviewsComponent>;
-  let service: { list: Mock; review: Mock };
+  let service: { list: Mock; review: Mock; refreshPendingCount: Mock };
   let queryParams: BehaviorSubject<ParamMap>;
   let router: Router;
   let snackOpen: Mock;
@@ -64,6 +64,7 @@ describe('OpenTextReviewsComponent (#583)', () => {
     service = {
       list: vi.fn().mockReturnValue('error' in first ? throwError(() => first.error) : of(first)),
       review: vi.fn(),
+      refreshPendingCount: vi.fn().mockReturnValue(of(0)),
     };
     queryParams = new BehaviorSubject(convertToParamMap(params));
     TestBed.configureTestingModule({

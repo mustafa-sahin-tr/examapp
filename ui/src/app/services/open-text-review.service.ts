@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Injectable, inject, signal } from '@angular/core';
+import { Observable, map, tap } from 'rxjs';
 
 import {
   OpenTextQueueQuery,
@@ -18,6 +18,16 @@ import {
 export class OpenTextReviewService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = '/api/exam/open-text-reviews';
+
+  /** #723: menü rozeti için değerlendirme bekleyen cevap sayısı. */
+  readonly pendingCount = signal(0);
+
+  refreshPendingCount(): Observable<number> {
+    return this.list({ status: 'pending', page: 1, pageSize: 1 }).pipe(
+      map((page) => page?.totalCount ?? 0),
+      tap((count) => this.pendingCount.set(count))
+    );
+  }
 
   /** Kuyruk (sayfalı): pending en eski cevaptan, diğerleri en yeniden. 400 `OpenTextInvalidReview` geçersiz sorgu. */
   list(query: OpenTextQueueQuery): Observable<OpenTextReviewPage> {

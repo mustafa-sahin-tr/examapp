@@ -298,6 +298,7 @@ export class TeacherBookingRequestsComponent implements OnInit {
           });
           this.cancelReject();
           this.load();
+          this.bookingService.refreshPendingCount().subscribe({ error: () => {} });
         },
         error: (err: HttpErrorResponse) => {
           this.snackBar.open(

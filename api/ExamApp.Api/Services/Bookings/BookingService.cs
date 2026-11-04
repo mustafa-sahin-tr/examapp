@@ -1023,6 +1023,17 @@ public partial class BookingService : IBookingService
             skip, take, ct);
     }
 
+    public async Task<int> GetTeacherPendingBookingCountAsync(int teacherUserId, CancellationToken ct = default)
+    {
+        var teacher = await FindTeacherAsync(teacherUserId, ct);
+        if (teacher is not { IsIndependent: true })
+            return 0;
+
+        var teacherId = teacher.Id;
+        return await _context.Bookings.AsNoTracking()
+            .CountAsync(b => b.TeacherId == teacherId && b.Status == BookingStatus.Pending, ct);
+    }
+
     public async Task<BookingListResultDto> GetStudentBookingsAsync(
         int studentUserId, int skip, int take, CancellationToken ct = default)
     {

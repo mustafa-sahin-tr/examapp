@@ -118,6 +118,39 @@ public class BookingServiceTests : IDisposable
     // ------ Slot oluşturma (öğretmen) ------
 
     [Fact]
+    public async Task GetTeacherPendingBookingCountAsync_CountsOnlyPendingOfThatTeacher()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        var (otherTeacherId, _) = await SeedTeacherAsync(TeacherId + 1, TeacherUserId + 1);
+        await SeedStudentAsync(StudentId, 7001);
+        var date = DateOnly.FromDateTime(Now.AddDays(1));
+        Task<int> Slot(int teacherId, int hour) => SeedSlotAsync(teacherId, date, new TimeOnly(hour, 0), new TimeOnly(hour + 1, 0));
+        var pending = await Slot(TeacherId, 9);
+        var approved = await Slot(TeacherId, 10);
+        var awaitingParent = await Slot(TeacherId, 11);
+        var otherPending = await Slot(otherTeacherId, 12);
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.Bookings.AddRange(
+                new Booking { TeacherId = TeacherId, StudentId = StudentId, AvailabilitySlotId = pending, Status = BookingStatus.Pending, CreatedAt = Now },
+                new Booking { TeacherId = TeacherId, StudentId = StudentId, AvailabilitySlotId = approved, Status = BookingStatus.Approved, CreatedAt = Now },
+                new Booking { TeacherId = TeacherId, StudentId = StudentId, AvailabilitySlotId = awaitingParent, Status = BookingStatus.AwaitingParent, CreatedAt = Now },
+                new Booking { TeacherId = otherTeacherId, StudentId = StudentId, AvailabilitySlotId = otherPending, Status = BookingStatus.Pending, CreatedAt = Now });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var read = _db.NewContext();
+        (await NewService(read).GetTeacherPendingBookingCountAsync(TeacherUserId)).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task GetTeacherPendingBookingCountAsync_UnknownTeacher_ReturnsZero()
+    {
+        await using var read = _db.NewContext();
+        (await NewService(read).GetTeacherPendingBookingCountAsync(987654)).ShouldBe(0);
+    }
+
+    [Fact]
     public async Task CreateSlotAsync_ValidFutureSlot_SucceedsAndReturnsSlot()
     {
         await SeedTeacherAsync(TeacherId, TeacherUserId);

@@ -61,8 +61,16 @@
           } @else {
             <mat-button-toggle-group class="ae__kinds" aria-labelledby="ae-kind-label" [value]="kind()"
               (change)="selectKind($event.value)">
-              @for (k of kinds; track k) {
-                <mat-button-toggle [value]="k" [attr.data-kind]="k">{{ t('kinds.' + k) }}</mat-button-toggle>
+              @for (group of kindGroups; track group.id) {
+                <div class="ae__kind-group" role="group" [attr.aria-labelledby]="'ae-kind-group-' + group.id"
+                  [attr.data-kind-group]="group.id">
+                  <span class="ae__kind-group-title" [id]="'ae-kind-group-' + group.id">{{ t('kindGroups.' + group.id) }}</span>
+                  <div class="ae__kind-options">
+                    @for (k of group.kinds; track k) {
+                      <mat-button-toggle [value]="k" [attr.data-kind]="k">{{ t('kinds.' + k) }}</mat-button-toggle>
+                    }
+                  </div>
+                </div>
               }
             </mat-button-toggle-group>
           }

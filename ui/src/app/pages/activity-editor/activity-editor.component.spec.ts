@@ -5,6 +5,7 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
+import { AUTHORING_KIND_GROUPS, AUTHORING_KINDS } from '../../models/activity-authoring';
 import { ActivityEditorComponent } from './activity-editor.component';
 import { AuthService } from '../../services/auth.service';
 import { LabelingService } from '../../services/labeling.service';
@@ -951,6 +952,28 @@ describe('ActivityEditorComponent (#590)', () => {
 
     expect(component.wordPool()).toEqual({ kind: 'wordPool', text: 'Su [[0]] derecede donar.', distractors: ['50'] });
     expect(component.items()[0].kind).toBe('wordPool');
+  });
+
+  it('i649_KindGroups_ListEveryKindOnce', () => {
+    const grouped = AUTHORING_KIND_GROUPS.flatMap((g) => g.kinds);
+    expect([...grouped].sort()).toEqual([...AUTHORING_KINDS].sort());
+  });
+
+  it('i649_Picker_ShowsKindsUnderLabelledGroups_AndSelectsAcrossGroups', async () => {
+    await setup({ testId: '7' });
+
+    const groups = Array.from(fixture.nativeElement.querySelectorAll('[data-kind-group]')) as HTMLElement[];
+    expect(groups.map((g) => g.getAttribute('data-kind-group'))).toEqual(['place', 'write', 'game', 'math']);
+    for (const group of groups) {
+      const label = group.querySelector(`#${group.getAttribute('aria-labelledby')}`);
+      expect(label?.textContent?.trim()).toBeTruthy();
+    }
+
+    (el('[data-kind="clockSet"] button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(component.kind()).toBe('clockSet');
+    expect(el('[data-kind="clockSet"]')?.classList).toContain('mat-button-toggle-checked');
+    expect(el('[data-kind="matrix"]')?.classList).not.toContain('mat-button-toggle-checked');
   });
 
   describe('learning outcomes (#692)', () => {

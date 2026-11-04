@@ -202,8 +202,37 @@
 }
 
 .ae__kinds {
-  flex-wrap: wrap;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   max-width: 100%;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+}
+
+.ae__kind-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ae__kind-group-title {
+  color: var(--ms-text-weak);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.ae__kind-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+
+  mat-button-toggle {
+    overflow: hidden;
+    border: 1px solid var(--ms-border-weak);
+    border-radius: 10px;
+  }
 }
 
 .ae__kind-locked {

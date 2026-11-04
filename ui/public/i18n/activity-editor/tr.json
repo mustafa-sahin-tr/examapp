@@ -14,6 +14,12 @@
   },
   "kind": "Madde türü",
   "kindLocked": "Kayıtlı maddenin türü değiştirilemez; başka tür için yeni madde ekle.",
+  "kindGroups": {
+    "place": "Seç ve yerleştir",
+    "write": "Yazarak cevapla",
+    "game": "Oyun ve bulmaca",
+    "math": "Matematik araçları"
+  },
   "kinds": {
     "matrix": "Doğru/Yanlış · Matris",
     "classify": "Sınıflandırma",

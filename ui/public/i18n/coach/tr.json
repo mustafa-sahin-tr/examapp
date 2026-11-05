@@ -1,0 +1,102 @@
+{
+  "students": {
+    "title": "Koçluk",
+    "subtitle": "Okulundaki ve özel ders verdiğin öğrencilerin haftası, hedefleri ve ders notların.",
+    "search": "Öğrenci ara",
+    "relationship": {
+      "School": "Okul",
+      "PrivateLesson": "Özel ders"
+    },
+    "open": "Aç",
+    "emptyTitle": "Henüz öğrenci yok",
+    "emptyText": "Okuluna doğrulanmış öğrenciler ve onaylı özel ders verdiğin öğrenciler burada görünür.",
+    "noMatch": "Aramaya uyan öğrenci yok.",
+    "loadError": "Öğrenciler yüklenemedi.",
+    "retry": "Tekrar dene"
+  },
+  "student": {
+    "back": "Öğrencilere dön",
+    "title": "Öğrenci",
+    "outcomes": "Kazanım haritası",
+    "notFound": "Öğrenci bulunamadı ya da bu öğrenciye erişimin yok.",
+    "loadError": "Öğrencinin özeti yüklenemedi.",
+    "retry": "Tekrar dene",
+    "plan": {
+      "title": "Bu haftanın planı",
+      "value": "{{planned}} işten {{completed}} tamamlandı",
+      "empty": "Bu hafta için plan yok.",
+      "onlyTests": "Yalnız \"Planım\"daki testler sayıldı; kişisel program okunamadı."
+    },
+    "mocks": {
+      "title": "Son denemeler",
+      "net": "{{net}} net",
+      "stats": "{{correct}} doğru · {{wrong}} yanlış · {{blank}} boş",
+      "empty": "Tamamlanmış deneme yok."
+    },
+    "weak": {
+      "title": "Zorlandığı konular",
+      "subtitle": "Son 30 gün, en az 5 soru",
+      "stats": "%{{accuracy}} doğru · {{count}} soru",
+      "empty": "Zorlandığı konu görünmüyor."
+    },
+    "mistakes": {
+      "title": "Yanlış defteri",
+      "count": "{{count}} çözülmemiş yanlış"
+    }
+  },
+  "goals": {
+    "title": "Haftalık hedefler",
+    "subtitle": "Öğrenci ve velisi bu haftanın hedeflerini görür.",
+    "week": "Hafta",
+    "thisWeek": "Bu hafta",
+    "weekOf": "{{date}} haftası",
+    "newGoal": "Yeni hedef",
+    "add": "Ekle",
+    "save": "Kaydet",
+    "cancel": "Vazgeç",
+    "edit": "Hedefi düzenle",
+    "delete": "Hedefi sil",
+    "empty": "Seçili hafta için hedef yok.",
+    "limit": "Bir haftaya en çok {{max}} hedef yazılabilir.",
+    "loadError": "Hedefler yüklenemedi."
+  },
+  "notes": {
+    "title": "Ders notlarım",
+    "private": "Notları yalnız sen görürsün; öğrenci ve veli görmez.",
+    "newNote": "Sonraki ders için not",
+    "add": "Notu kaydet",
+    "save": "Kaydet",
+    "cancel": "Vazgeç",
+    "edit": "Notu düzenle",
+    "delete": "Notu sil",
+    "deleteTitle": "Not silinsin mi?",
+    "deleteText": "Not kalıcı olarak silinecek. Bu işlem geri alınamaz.",
+    "edited": "düzenlendi",
+    "empty": "Henüz not yok.",
+    "loadError": "Notlar yüklenemedi."
+  },
+  "errors": {
+    "EmptyText": "Metin boş olamaz.",
+    "TooLong": "Metin çok uzun.",
+    "MarkupNotAllowed": "Hedefte bağlantı ya da görsel kullanılamaz.",
+    "InvalidWeek": "Hedef yalnız bu hafta ile önümüzdeki 4 hafta için yazılabilir.",
+    "TooManyGoals": "Bu haftanın hedef sınırı doldu.",
+    "TooManyNotes": "Not sınırı doldu; eski notlardan bazılarını sil.",
+    "generic": "İşlem tamamlanamadı. Tekrar dene."
+  },
+  "card": {
+    "self": {
+      "title": "Bu haftanın hedefleri",
+      "subtitle": "Öğretmeninin bu hafta için koyduğu hedefler"
+    },
+    "child": {
+      "title": "Haftalık hedefler",
+      "subtitle": "Öğretmenlerinin bu hafta için koyduğu hedefler",
+      "plan": "Planım: {{planned}} testten {{completed}} tamamlandı",
+      "noGoals": "Bu hafta için hedef yok."
+    },
+    "loading": "Yükleniyor…",
+    "loadError": "Hedefler yüklenemedi.",
+    "retry": "Tekrar dene"
+  }
+}

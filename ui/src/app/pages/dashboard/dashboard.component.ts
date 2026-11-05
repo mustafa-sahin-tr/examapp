@@ -40,6 +40,7 @@ import { FlashcardService } from '../../services/flashcard.service';
 import { PracticeService } from '../../services/practice.service';
 import { DailySet, DailyStartScope } from '../../models/practice';
 import { DailyQuestionsCardComponent } from '../../shared/components/daily-questions-card/daily-questions-card.component';
+import { CoachGoalsCardComponent } from '../../shared/components/coach-goals-card/coach-goals-card.component';
 import { dailyStreakFrom } from '../../shared/utils/daily-streak.util';
 import { currentUserId } from '../../shared/utils/current-user-id.util';
 import { stripInvisibleControls } from '../../shared/utils/display-text.util';
@@ -113,6 +114,7 @@ export interface EarnedBadgeViewModel {
     NgxChartsModule,
     TranslocoPipe,
     DailyQuestionsCardComponent,
+    CoachGoalsCardComponent,
     SchoolPendingBannerComponent,
     ParentStatusCardComponent,
   ],

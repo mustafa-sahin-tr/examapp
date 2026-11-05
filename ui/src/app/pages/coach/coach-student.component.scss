@@ -1,0 +1,205 @@
+.cs {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 16px var(--ms-page-gutter-mobile) 48px;
+
+  h2 {
+    margin: 0;
+    font-size: 16px;
+  }
+}
+
+.cs__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cs__title {
+  margin: 0;
+  font-size: 1.5rem;
+  overflow-wrap: anywhere;
+}
+
+.cs__state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 48px 16px;
+  text-align: center;
+
+  p {
+    margin: 0;
+  }
+}
+
+.cs__tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 12px;
+}
+
+.cs__tile,
+.cs__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 12px;
+  background: var(--ms-surface-weak);
+}
+
+.cs__panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cs__week {
+  width: min(100%, 220px);
+}
+
+.cs__value {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.cs__muted,
+.cs__hint {
+  margin: 0;
+  color: var(--ms-text-medium);
+}
+
+.cs__hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.cs__lock {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+}
+
+.cs__error {
+  margin: 0;
+  color: var(--ms-danger-text);
+}
+
+.cs__rows,
+.cs__notes {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cs__rows > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--ms-border-weak);
+
+  &:first-child {
+    border-top: 0;
+  }
+}
+
+.cs__row-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 12rem;
+}
+
+.cs__text {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.cs__sub {
+  color: var(--ms-text-medium);
+  font-size: 13px;
+}
+
+.cs__badge {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.cs__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cs__grow {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+// Genel `form` kuralı sütun düzeni verir; yön burada açıkça yazılır.
+.cs__add {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.cs__note-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+// Sütun düzeninde `flex-basis` yükseklik olur: alan tam genişlik, doğal yükseklik.
+.cs__note-form,
+.cs__note {
+  .cs__grow {
+    flex: none;
+    width: 100%;
+  }
+}
+
+.cs__note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 0;
+  border-top: 1px solid var(--ms-border-weak);
+
+  &:first-child {
+    border-top: 0;
+  }
+}
+
+.cs__note-body {
+  margin: 0;
+}
+
+.cs__note-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}

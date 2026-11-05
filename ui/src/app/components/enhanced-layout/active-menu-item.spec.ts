@@ -24,6 +24,7 @@ describe('resolveActiveMenuItemId (issue #385)', () => {
         divider,
         menu('study-pages', '/study-pages'),
         menu('teacher-requests', '/assignment-permission-requests'),
+        menu('student-messages', '/student-messages'),
         menu('reports', '/certificates'),
     ];
 
@@ -83,6 +84,7 @@ describe('resolveActiveMenuItemId (issue #385)', () => {
         ['/study-pages/4', 'study-pages'],
         ['/study-links', 'study-pages'],
         ['/teacher/flashcards/4', 'study-pages'],
+        ['/teacher/coach/7', 'student-messages'],
         // Segment sınırı: /study, /study-pages öğesinin öneki sayılmaz.
         ['/study', null],
     ];

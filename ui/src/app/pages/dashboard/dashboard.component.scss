@@ -84,6 +84,15 @@ $bp-narrow: 480px; // dar telefon: özet kartları sabit 2 sütun
   margin-bottom: 16px;
 }
 
+.dashboard-coach-goals {
+  margin: 0 0 16px;
+
+  // Hedef yoksa kart içini çizmez; boş alan da kalmasın.
+  &:empty {
+    display: none;
+  }
+}
+
 .last-login-chip {
   display: inline-flex;
   align-items: center;

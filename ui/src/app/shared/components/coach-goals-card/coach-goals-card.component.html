@@ -1,0 +1,51 @@
+@if (visible()) {
+  <section *transloco="let t; prefix: 'coach.card'" aria-labelledby="coach-goals-title" data-test="coach-goals-card">
+    <mat-card appearance="outlined" class="cg__card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar aria-hidden="true">flag</mat-icon>
+        <mat-card-title id="coach-goals-title">{{ t(audience() + '.title') }}</mat-card-title>
+        <mat-card-subtitle>{{ t(audience() + '.subtitle') }}</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        @if (audience() === 'self') {
+          <ul class="cg__list">
+            @for (goal of myGoals(); track $index) {
+              <li class="cg__item" data-test="coach-goal-item">
+                <span class="cg__title">{{ goal.title }}</span>
+                @if (goal.coachName) {
+                  <span class="cg__meta" data-test="coach-goal-coach">{{ goal.coachName }}</span>
+                }
+              </li>
+            }
+          </ul>
+        } @else if (loading()) {
+          <div class="cg__state" aria-busy="true">
+            <mat-spinner diameter="28" />
+            <span>{{ t('loading') }}</span>
+          </div>
+        } @else if (error()) {
+          <div class="cg__state" role="alert" data-test="coach-goals-error">
+            <span>{{ t('loadError') }}</span>
+            <button mat-stroked-button type="button" (click)="reload()">{{ t('retry') }}</button>
+          </div>
+        } @else if (summary(); as s) {
+          @if (s.plannedCount > 0) {
+            <p class="cg__plan" data-test="coach-summary-plan">{{ t('child.plan', { planned: s.plannedCount, completed: s.completedCount }) }}</p>
+          }
+          @if (s.goals.length === 0) {
+            <p class="cg__state" data-test="coach-summary-no-goals">{{ t('child.noGoals') }}</p>
+          } @else {
+            <ul class="cg__list">
+              @for (goal of s.goals; track $index) {
+                <li class="cg__item" data-test="coach-goal-item">
+                  <span class="cg__title">{{ goal.title }}</span>
+                </li>
+              }
+            </ul>
+          }
+        }
+      </mat-card-content>
+    </mat-card>
+  </section>
+}

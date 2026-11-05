@@ -42,6 +42,9 @@
   [error]="dailyError()" [streak]="dailyStreak()" (start)="onDailyStart($event)" (retry)="loadDailySet()"
   (freePractice)="onDailyFreePractice()" (goToProfile)="onDailyGoToProfile()" />
 
+<!-- Issue #700: koçların bu haftaki hedefleri; hedef yoksa kart çizilmez. -->
+<app-coach-goals-card class="dashboard-coach-goals" />
+
 
       <!-- 2. Atanmış testler — kompakt kartlar -->
       <div class="dashboard-section">

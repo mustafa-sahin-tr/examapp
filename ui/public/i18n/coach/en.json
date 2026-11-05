@@ -1,0 +1,102 @@
+{
+  "students": {
+    "title": "Coaching",
+    "subtitle": "The week, goals, and your lesson notes for students at your school and students you tutor.",
+    "search": "Search students",
+    "relationship": {
+      "School": "School",
+      "PrivateLesson": "Private lesson"
+    },
+    "open": "Open",
+    "emptyTitle": "No students yet",
+    "emptyText": "Verified students at your school and students with an approved private lesson appear here.",
+    "noMatch": "No students match your search.",
+    "loadError": "Students could not be loaded.",
+    "retry": "Try again"
+  },
+  "student": {
+    "back": "Back to students",
+    "title": "Student",
+    "outcomes": "Outcome map",
+    "notFound": "The student was not found, or you cannot access this student.",
+    "loadError": "The student's overview could not be loaded.",
+    "retry": "Try again",
+    "plan": {
+      "title": "This week's plan",
+      "value": "{{completed}} of {{planned}} items done",
+      "empty": "No plan for this week.",
+      "onlyTests": "Only tests in \"My Plan\" were counted; the personal programme could not be read."
+    },
+    "mocks": {
+      "title": "Recent mock exams",
+      "net": "{{net}} net",
+      "stats": "{{correct}} correct · {{wrong}} wrong · {{blank}} blank",
+      "empty": "No completed mock exams."
+    },
+    "weak": {
+      "title": "Weak topics",
+      "subtitle": "Last 30 days, at least 5 questions",
+      "stats": "{{accuracy}}% correct · {{count}} questions",
+      "empty": "No weak topics showing."
+    },
+    "mistakes": {
+      "title": "Mistake notebook",
+      "count": "{{count}} unresolved mistakes"
+    }
+  },
+  "goals": {
+    "title": "Weekly goals",
+    "subtitle": "The student and their parent see this week's goals.",
+    "week": "Week",
+    "thisWeek": "This week",
+    "weekOf": "Week of {{date}}",
+    "newGoal": "New goal",
+    "add": "Add",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit goal",
+    "delete": "Delete goal",
+    "empty": "No goals for the selected week.",
+    "limit": "A week can have at most {{max}} goals.",
+    "loadError": "Goals could not be loaded."
+  },
+  "notes": {
+    "title": "My lesson notes",
+    "private": "Only you can see your notes; the student and parent cannot.",
+    "newNote": "Note for the next lesson",
+    "add": "Save note",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit note",
+    "delete": "Delete note",
+    "deleteTitle": "Delete this note?",
+    "deleteText": "The note will be deleted permanently. This cannot be undone.",
+    "edited": "edited",
+    "empty": "No notes yet.",
+    "loadError": "Notes could not be loaded."
+  },
+  "errors": {
+    "EmptyText": "The text cannot be empty.",
+    "TooLong": "The text is too long.",
+    "MarkupNotAllowed": "Goals cannot contain links or images.",
+    "InvalidWeek": "Goals can only be set for this week and the next 4 weeks.",
+    "TooManyGoals": "This week's goal limit is reached.",
+    "TooManyNotes": "The note limit is reached; delete some older notes.",
+    "generic": "Something went wrong. Try again."
+  },
+  "card": {
+    "self": {
+      "title": "This week's goals",
+      "subtitle": "Goals your teacher set for this week"
+    },
+    "child": {
+      "title": "Weekly goals",
+      "subtitle": "Goals their teachers set for this week",
+      "plan": "My Plan: {{completed}} of {{planned}} tests done",
+      "noGoals": "No goals for this week."
+    },
+    "loading": "Loading…",
+    "loadError": "Goals could not be loaded.",
+    "retry": "Try again"
+  }
+}

@@ -317,6 +317,11 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
       // Issue #583: açık uçlu etkinlik cevaplarını değerlendirme kuyruğu.
       { id: 'tab-open-text-reviews', labelKey: 'menu.openTextReviews', icon: '', route: '/open-text-reviews', type: 'menu', roles: ['Teacher'] },
     ],
+    // Issue #700: koç paneli öğrenci mesajlarının yanında; ana menü #719 sınırında kalır.
+    [
+      { id: 'tab-student-messages', labelKey: 'menu.studentMessages', icon: '', route: '/student-messages', type: 'menu', roles: ['Teacher'] },
+      { id: 'tab-teacher-coach', labelKey: 'menu.coach', icon: '', route: '/teacher/coach', type: 'menu', roles: ['Teacher'] },
+    ],
     [
       { id: 'tab-tutor-profile', labelKey: 'menu.tutorProfile', icon: '', route: '/tutor-profile', type: 'menu', roles: ['Teacher'], allowUnapprovedTeacher: true, onlyIndependentTeacher: true },
       { id: 'tab-availability', labelKey: 'menu.availability', icon: '', route: '/availability', type: 'menu', roles: ['Teacher'], onlyIndependentTeacher: true },

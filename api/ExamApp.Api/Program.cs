@@ -423,6 +423,7 @@ builder.Services.AddScoped<ExamApp.Api.Services.Labeling.IActivityStructureServi
 // Kazanımdan görselsiz soru: işaretlemenin Claude ayarları ve kotası; anahtar boşsa üretim ucu 503.
 builder.Services.AddScoped<ExamApp.Api.Services.TaxonomySearch.ITaxonomySearchService, ExamApp.Api.Services.TaxonomySearch.TaxonomySearchService>(); // issue #499
 builder.Services.AddScoped<ExamApp.Api.Services.TopicPerformance.ITopicPerformanceService, ExamApp.Api.Services.TopicPerformance.TopicPerformanceService>(); // issue #497
+builder.Services.AddScoped<ExamApp.Api.Services.TopicPerformance.ITopicProgressTimelineService, ExamApp.Api.Services.TopicPerformance.TopicProgressTimelineService>(); // issue #531
 builder.Services.AddOptions<ExamApp.Api.Services.TopicPerformance.LearningOutcomeMasteryOptions>() // issue #696
     .BindConfiguration(ExamApp.Api.Services.TopicPerformance.LearningOutcomeMasteryOptions.SectionName)
     .ValidateDataAnnotations()

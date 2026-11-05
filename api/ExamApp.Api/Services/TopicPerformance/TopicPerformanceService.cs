@@ -41,7 +41,7 @@ public sealed class TopicPerformanceService(AppDbContext db) : ITopicPerformance
             .Where(s => subjectIds.Contains(s.Id))
             .ToDictionaryAsync(s => s.Id, s => s.Name, ct);
 
-        int? TopicOf(AnsweredQuestion q) => q.TopicId ?? q.SubTopics.OrderBy(s => s.Id).Select(s => (int?)s.TopicId).FirstOrDefault();
+        int? TopicOf(AnsweredQuestion q) => q.EffectiveTopicId;
         int? SubjectOf(AnsweredQuestion q) => TopicOf(q) is { } topicId && topics.TryGetValue(topicId, out var topic) ? topic.SubjectId : q.SubjectId;
 
         var attempts = answers

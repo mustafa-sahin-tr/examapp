@@ -16,6 +16,7 @@ namespace ExamApp.Api.Controllers;
 [Authorize(Roles = "Student")]
 public class StudentTopicPerformanceController(
     ITopicPerformanceService service,
+    ITopicProgressTimelineService timeline,
     IStudentService students,
     IStringLocalizer<Messages> localizer) : BaseController
 {
@@ -40,5 +41,27 @@ public class StudentTopicPerformanceController(
 
         var to = DateTime.UtcNow;
         return Ok(await service.GetAsync(student.Id, to.AddDays(-days), to, subjectId, grouping, minQuestions, ct));
+    }
+
+    /// <summary>Issue #531: bir konu ya da alt konunun haftalık doğruluğu.</summary>
+    [HttpGet("timeline")]
+    [EnableRateLimiting(TopicPerformanceRateLimiting.Policy)]
+    public async Task<IActionResult> GetTimeline(
+        [FromQuery] int? topicId = null,
+        [FromQuery] int? subTopicId = null,
+        [FromQuery] int weeks = TopicPerformanceQuery.DefaultTimelineWeeks,
+        CancellationToken ct = default)
+    {
+        if (!TopicPerformanceQuery.TryParseTimeline(topicId, subTopicId, weeks, out var problem))
+            return BadRequest(new { message = localizer[problem!.MessageKey].Value, errorCode = problem.ErrorCode });
+
+        var user = await GetAuthenticatedUserAsync(ct);
+        if (!IsResolvedUser(user))
+            return Unauthorized();
+        var student = await students.GetStudentProfile(user.Id);
+        if (student is null)
+            return NotFound(new { message = localizer["student.profileNotFound"].Value });
+
+        return Ok(await timeline.GetAsync(student.Id, topicId, subTopicId, weeks, ct));
     }
 }

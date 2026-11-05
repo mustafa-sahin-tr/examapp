@@ -12,7 +12,8 @@
     "finishTestAria": "Finish the test",
     "answeredRatio": "Completion rate",
     "answeredPercent": "{{percent}}% complete",
-    "elapsedTime": "Elapsed time"
+    "elapsedTime": "Elapsed time",
+    "finishShort": "Finish"
   },
   "finish": {
     "dialogTitle": "Finish test",
@@ -47,7 +48,9 @@
     "showHint": "Show hint",
     "passageAlt": "Passage image",
     "numberAria": "Question {{number}}",
-    "exampleAria": "Question {{number}} (example)"
+    "exampleAria": "Question {{number}} (example)",
+    "bookmarkShort": "Bookmark",
+    "fullscreenShort": "Full screen"
   },
   "dock": {
     "navigation": "Question navigation",
@@ -62,7 +65,9 @@
     "openMap": "Open the question map",
     "closeMap": "Close the question map",
     "clearAnswer": "Clear answer",
-    "clearAnswerLabel": "Clear answer"
+    "clearAnswerLabel": "Clear answer",
+    "autoNextShort": "Auto next",
+    "clearShort": "Clear"
   },
   "insight": {
     "panelAria": "Question map and tools",
@@ -74,8 +79,13 @@
     "averageTime": "Average time",
     "secondsSuffix": "s",
     "toolsTitle": "Quick tools",
-    "goToBookmarked": "Go to a bookmarked question",
-    "goToUnanswered": "Go to an unanswered question"
+    "goToBookmarked": "Next bookmarked",
+    "goToUnanswered": "Next empty",
+    "legendAria": "Question map legend",
+    "legendCurrent": "Current",
+    "legendAnswered": "Answered",
+    "legendEmpty": "Empty",
+    "legendBookmarked": "Bookmarked"
   },
   "toast": {
     "close": "Dismiss notification",
@@ -149,5 +159,23 @@
   },
   "time": {
     "lowNotice": "5 minutes left. The test is submitted automatically when time runs out."
+  },
+  "review": {
+    "action": "Review",
+    "title": "Review",
+    "summary": "{{answered}} answered, {{empty}} empty, {{bookmarked}} bookmarked.",
+    "emptyHeading": "Empty questions",
+    "bookmarkedHeading": "Bookmarked questions",
+    "allAnswered": "You answered every question.",
+    "warning": "You can't change your answers after finishing the test.",
+    "keepSolving": "Keep solving"
+  },
+  "leave": {
+    "title": "Leave and continue later",
+    "messageTimed": "Your answers are saved. Time keeps running while you are away.",
+    "message": "Your answers are saved. You can continue where you left off.",
+    "confirm": "Leave",
+    "cancel": "Cancel",
+    "saveFailed": "Your last answer wasn't saved, so you haven't left. Check your connection and try again."
   }
 }

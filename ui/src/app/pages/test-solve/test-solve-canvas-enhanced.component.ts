@@ -395,8 +395,8 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   constructor(
     private route: ActivatedRoute,
     private testService: TestService,
-    private router: Router,
-    private dialog: MatDialog
+    protected router: Router,
+    protected dialog: MatDialog
   ) {
     this.sidenavService.setSidenavState(false);
     this.sidenavService.setFullScreen(true);
@@ -1226,7 +1226,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   }
 
   /** Bitirmeden önce kaydedilmesi gerekenleri gönderir ve uçuştaki tüm kayıtların sonucunu bekler. */
-  private async flushPendingAnswers(): Promise<AnswerSaveOutcome[]> {
+  protected async flushPendingAnswers(): Promise<AnswerSaveOutcome[]> {
     if (!this.testInstance.isPracticeTest) {
       // Kaydı başarısız olan ve cevabı değişip henüz kaydedilmemiş (dirty) TÜM sorular — görünür olmasalar da
       // (önceki görünüm, görünüm boyutu değişimi) — yeniden gönderilir. Uçuştaki aynı cevap yeniden gönderilmez.
@@ -2010,7 +2010,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     return Math.min(a, b);
   }
 
-  private showToastMessage(message: string, type: 'success' | 'warning' | 'error' | 'info') {
+  protected showToastMessage(message: string, type: 'success' | 'warning' | 'error' | 'info') {
     this.toastMessage.set(message);
     this.toastType.set(type);
     this.showToast.set(true);

@@ -147,12 +147,19 @@
 
 // Görselin üstünde durur; metnin üzerine binse de okunması için odaklanılana kadar yarı saydam.
 .qcv4-zoom-button {
+  --mat-button-text-label-text-color: var(--primaryColor);
   position: absolute;
   top: 4px;
   right: 4px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 8px;
   background: color-mix(in srgb, var(--whiteColor) 85%, transparent);
-  color: var(--primaryColor);
   opacity: 0.7;
+
+  mat-icon {
+    margin: 0;
+  }
 
   &:hover,
   &:focus-visible {
@@ -256,8 +263,27 @@
 }
 
 .qcv4-answer-card.is-selected {
-  border: 2px solid #1976d2;
-  background: #e3f0fd;
+  border: 2px solid var(--primaryColor);
+  background: color-mix(in srgb, var(--primaryColor) 10%, var(--whiteColor));
+
+  // Şık görselinin beyaz zemini seçim renginin üstünde kutu gibi durmasın.
+  img {
+    mix-blend-mode: multiply;
+  }
+}
+
+.qcv4-answer-card {
+  position: relative;
+}
+
+.qcv4-answer-check {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+  color: var(--primaryColor);
 }
 
 

@@ -22,7 +22,6 @@ import { questionCanvasImageUrl } from '../../utils/storage-image-url.util';
 import { StorageImageResolver } from '../../utils/storage-image-refresh.util';
 import { StorageImageRetryDirective } from '../../directives/storage-image-retry.directive';
 import {
-  COMPACT_WIDTH_PX,
   PassageLayoutPlan,
   planPassageLayout,
   planQuestionLayout,
@@ -72,6 +71,7 @@ const ZOOM_OFFER_SCALE = 0.75;
 const ZOOM_FACTOR = 2;
 /** Düğme kendi satırındayken soru için kullanılamayan yükseklik (px). */
 const ZOOM_ROW_HEIGHT_PX = 48;
+const ZOOM_ROW_MAX_WIDTH_PX = 900;
 /** Sekme satırının soru için kullanılamayan yüksekliği (px). */
 const PANE_TABS_HEIGHT_PX = 60;
 
@@ -119,7 +119,7 @@ export class QuestionCanvasViewComponentv5 {
   readonly answerMinWidth = signal<number>(0);
   /** Yükseklik-bazlı sığdırmada ekrandaki alana göre seçilen düzen; diğer tüketicilerde null. */
   readonly plan = signal<QuestionLayoutPlan | null>(null);
-  /** Dar alanda büyütme düğmesi metni kapatmasın diye görselin üstünde kendi satırındadır. */
+  /** Büyütme düğmesi metni kapatmasın diye görselin üstünde kendi satırında mı. */
   readonly zoomInOwnRow = signal(false);
   readonly passagePlan = signal<PassageLayoutPlan | null>(null);
   readonly activePane = signal<'passage' | 'question'>('question');
@@ -296,7 +296,8 @@ export class QuestionCanvasViewComponentv5 {
     const isHovered = this.hoveredChoice() === answer;
     return {
       'is-selected': isSelected,
-      'is-correct': mode === 'exam' ? isCorrect || isSelected : isCorrect,
+      // Seçim tek başına doğru cevap gibi görünmemeli (issue #779).
+      'is-correct': isCorrect,
       'is-hovered': mode === 'exam' && !isCorrect && !isSelected && isHovered,
       'is-incorrect': mode === 'result' && isSelected && !isCorrect,
     };
@@ -305,6 +306,11 @@ export class QuestionCanvasViewComponentv5 {
   /** Klavye/ekran okuyucu için `aria-pressed` durumu. */
   isSelected(answer: AnswerChoice): boolean {
     return this._selectedChoice() === answer;
+  }
+
+  /** Çözerken seçili şıkta işaret gösterilir; sonuç ekranında renkler yeterlidir. */
+  showSelectionMark(answer: AnswerChoice): boolean {
+    return this._mode() === 'exam' && this.isSelected(answer);
   }
 
   hoverAnswer(answer: AnswerChoice | null) {
@@ -355,12 +361,13 @@ export class QuestionCanvasViewComponentv5 {
     const overflowY = getComputedStyle(hostEl).overflowY;
     const bounded = (overflowY === 'auto' || overflowY === 'scroll') && hostEl.clientHeight > 0;
     const hostWidth = hostEl.clientWidth;
-    const compact = hostWidth < COMPACT_WIDTH_PX;
     const hostHeight = bounded ? hostEl.clientHeight : null;
     const passagePlan = this.isPassageVisible() ? this.planPassage(hostWidth, hostHeight) : null;
     let availableHeight = passagePlan ? passagePlan.questionHeight : hostHeight;
     if (availableHeight !== null) {
-      availableHeight -= (compact ? ZOOM_ROW_HEIGHT_PX : 0) + (passagePlan?.arrangement === 'tabs' ? PANE_TABS_HEIGHT_PX : 0);
+      availableHeight -=
+        (this.needsZoomRow(hostWidth) ? ZOOM_ROW_HEIGHT_PX : 0) +
+        (passagePlan?.arrangement === 'tabs' ? PANE_TABS_HEIGHT_PX : 0);
     }
 
     const plan = planQuestionLayout({
@@ -375,11 +382,16 @@ export class QuestionCanvasViewComponentv5 {
     });
 
     this.plan.set(plan);
-    this.zoomInOwnRow.set(compact);
+    this.zoomInOwnRow.set(this.needsZoomRow(hostWidth));
     // Soru genişliğe uyar; kısa şıklar çok geniş sorunun ölçeğiyle okunmaz hâle gelmesin (kart genişliği yine sınırlar).
     this.visualScale.set(clampVisualScale(plan.scale));
     this.questionImageWidth.set(Math.round(region.width * plan.scale));
     this.passagePlan.set(passagePlan);
+  }
+
+  /** Dar alanda ve dokunmatik ekranda ipucu çıkmaz; düğme yazısıyla kendi satırında durur. */
+  private needsZoomRow(hostWidth: number): boolean {
+    return hostWidth < ZOOM_ROW_MAX_WIDTH_PX || window.matchMedia('(hover: none)').matches;
   }
 
   /**

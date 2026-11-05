@@ -12,7 +12,8 @@
     "finishTestAria": "Testi bitir",
     "answeredRatio": "Cevaplanma oranı",
     "answeredPercent": "%{{percent}} tamamlandı",
-    "elapsedTime": "Geçen Süre"
+    "elapsedTime": "Geçen Süre",
+    "finishShort": "Bitir"
   },
   "finish": {
     "dialogTitle": "Testi bitir",
@@ -47,7 +48,9 @@
     "showHint": "İpucu Göster",
     "passageAlt": "Pasaj görseli",
     "numberAria": "Soru {{number}}",
-    "exampleAria": "Soru {{number}} (örnek)"
+    "exampleAria": "Soru {{number}} (örnek)",
+    "bookmarkShort": "İşaretle",
+    "fullscreenShort": "Tam ekran"
   },
   "dock": {
     "navigation": "Soru gezinme",
@@ -62,7 +65,9 @@
     "openMap": "Soru haritasını aç",
     "closeMap": "Soru haritasını kapat",
     "clearAnswer": "Cevabı temizle",
-    "clearAnswerLabel": "Cevabı Temizle"
+    "clearAnswerLabel": "Cevabı Temizle",
+    "autoNextShort": "Oto geçiş",
+    "clearShort": "Temizle"
   },
   "insight": {
     "panelAria": "Soru haritası ve araçlar",
@@ -74,8 +79,13 @@
     "averageTime": "Ortalama Süre",
     "secondsSuffix": "sn",
     "toolsTitle": "Hızlı Araçlar",
-    "goToBookmarked": "İşaretliye git",
-    "goToUnanswered": "Boş soruya git"
+    "goToBookmarked": "Sonraki işaretli",
+    "goToUnanswered": "Sonraki boş",
+    "legendAria": "Soru haritası göstergesi",
+    "legendCurrent": "Şu anki",
+    "legendAnswered": "Cevaplı",
+    "legendEmpty": "Boş",
+    "legendBookmarked": "İşaretli"
   },
   "toast": {
     "close": "Bildirimi kapat",
@@ -149,5 +159,23 @@
   },
   "time": {
     "lowNotice": "5 dakika kaldı. Süre bitince test kendiliğinden teslim edilir."
+  },
+  "review": {
+    "action": "Gözden geçir",
+    "title": "Gözden geçir",
+    "summary": "{{answered}} cevaplı, {{empty}} boş, {{bookmarked}} işaretli soru.",
+    "emptyHeading": "Boş sorular",
+    "bookmarkedHeading": "İşaretli sorular",
+    "allAnswered": "Tüm soruları cevapladın.",
+    "warning": "Testi bitirdikten sonra cevaplarını değiştiremezsin.",
+    "keepSolving": "Çözmeye devam et"
+  },
+  "leave": {
+    "title": "Çık, sonra devam et",
+    "messageTimed": "Cevapların kayıtlı. Süre sen yokken de işlemeye devam eder.",
+    "message": "Cevapların kayıtlı. Kaldığın yerden devam edebilirsin.",
+    "confirm": "Çık",
+    "cancel": "Vazgeç",
+    "saveFailed": "Son cevabın kaydedilemedi, çıkılmadı. Bağlantını kontrol edip tekrar dene."
   }
 }

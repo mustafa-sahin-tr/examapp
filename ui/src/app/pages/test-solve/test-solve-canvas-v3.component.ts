@@ -18,6 +18,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
+import { ConfirmDialogComponent, ConfirmDialogData } from '../../shared/components/confirm-dialog/confirm-dialog.component';
+import {
+  ReviewDialogData,
+  ReviewDialogResult,
+  TestSolveReviewDialogComponent,
+} from './test-solve-review-dialog.component';
 import { MatBottomSheet, MatBottomSheetModule, MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
@@ -116,6 +122,8 @@ import { StorageImageRetryDirective } from '../../shared/directives/storage-imag
 export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
   private static readonly MOBILE_VIEWPORT_QUERY =
     '(max-width: 640px), ((max-height: 500px) and (orientation: landscape))';
+  /** Bu genişlikte yan panel yoktur; harita alttan açılır, araçlar yazılıdır (issue #779). SCSS'teki $bp-compact. */
+  private static readonly COMPACT_VIEWPORT_QUERY = '(max-width: 1024px)';
 
   private readonly bottomSheet = inject(MatBottomSheet);
   private readonly overlay = inject(Overlay);
@@ -129,12 +137,22 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
   private mobileViewportQuery: MediaQueryList | null = null;
   private readonly mobileViewportQueryListener = (event: MediaQueryListEvent) => {
     this.isMobileViewport.set(event.matches);
-    if (!event.matches) {
+    if (!event.matches && !this.isCompactViewport()) {
       this.closeMobileMapSheet();
     }
   };
 
   public isMobileViewport = signal(false);
+  private compactViewportQuery: MediaQueryList | null = null;
+  private readonly compactViewportQueryListener = (event: MediaQueryListEvent) => {
+    this.isCompactViewport.set(event.matches);
+    if (!event.matches && !this.isMobileViewport()) {
+      this.closeMobileMapSheet();
+    }
+  };
+  public isCompactViewport = signal(false);
+  /** Yan panel yerine alttan açılan harita mı kullanılıyor (telefon ve tablet). */
+  public readonly usesMapSheet = computed(() => this.isMobileViewport() || this.isCompactViewport());
   /** Mobil soru haritası bottom-sheet'i açık mı (dock butonunun aktif görünümü için). */
   public mobileMapSheetOpen = signal(false);
   /** Aktif soru kartı tam ekran overlay modunda mı. */
@@ -159,6 +177,9 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
       this.mobileViewportQuery = window.matchMedia(TestSolveCanvasComponentv3.MOBILE_VIEWPORT_QUERY);
       this.isMobileViewport.set(this.mobileViewportQuery.matches);
       this.mobileViewportQuery.addEventListener('change', this.mobileViewportQueryListener);
+      this.compactViewportQuery = window.matchMedia(TestSolveCanvasComponentv3.COMPACT_VIEWPORT_QUERY);
+      this.isCompactViewport.set(this.compactViewportQuery.matches);
+      this.compactViewportQuery.addEventListener('change', this.compactViewportQueryListener);
     }
   }
 
@@ -359,6 +380,92 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
     }
   }
 
+  /** Son soruda "Gözden geçir" gösterilir. */
+  public readonly isOnLastQuestion = computed(
+    () => !this.canGoNext() && (this.testInstance?.testInstanceQuestions?.length ?? 0) > 0,
+  );
+
+  /** Issue #779: bitirmeden önce boş ve işaretli soruları listeler; soruya gitmek test bitirmez. */
+  public override confirmFinishTest(): void {
+    if (this.finishing() || !this.testInstance) return;
+
+    const questions = this.testInstance.testInstanceQuestions;
+    const emptyIndexes = questions.flatMap((question, index) =>
+      !question.question?.isExample && !this.isQuestionAnswered(question) ? [index] : [],
+    );
+    const bookmarkedIndexes = [...this.bookmarkedQuestions()].sort((a, b) => a - b);
+    const data: ReviewDialogData = {
+      emptyIndexes,
+      bookmarkedIndexes,
+      labels: {
+        title: this.tr('review.title'),
+        summary: this.tr('review.summary', {
+          answered: this.answeredCount(),
+          empty: emptyIndexes.length,
+          bookmarked: bookmarkedIndexes.length,
+        }),
+        emptyHeading: this.tr('review.emptyHeading'),
+        bookmarkedHeading: this.tr('review.bookmarkedHeading'),
+        allAnswered: this.tr('review.allAnswered'),
+        warning: this.tr('review.warning'),
+        questionAria: (number) => this.tr('question.numberAria', { number }),
+        finish: this.tr('finish.dialogConfirm'),
+        keepSolving: this.tr('review.keepSolving'),
+      },
+    };
+
+    this.dialog
+      .open<TestSolveReviewDialogComponent, ReviewDialogData, ReviewDialogResult>(TestSolveReviewDialogComponent, {
+        data,
+        restoreFocus: true,
+        maxWidth: 'min(560px, 96vw)',
+        width: '560px',
+      })
+      .afterClosed()
+      .subscribe((result) => {
+        if (result === true) {
+          void this.completeTest();
+        } else if (result) {
+          this.selectFromMap(result.goTo);
+        }
+      });
+  }
+
+  /** Issue #779: oturum sürer, cevaplar kayıtlıdır; süreli testte süre işlemeye devam eder. */
+  public leaveAndContinueLater(): void {
+    if (!this.testInstance) return;
+    const timed = this.testInstance.maxDurationSeconds > 0;
+    const data: ConfirmDialogData = {
+      title: this.tr('leave.title'),
+      message: this.tr(timed ? 'leave.messageTimed' : 'leave.message'),
+      confirmText: this.tr('leave.confirm'),
+      cancelText: this.tr('leave.cancel'),
+      icon: 'logout',
+      confirmColor: 'primary',
+    };
+
+    this.dialog
+      .open(ConfirmDialogComponent, { data, restoreFocus: true })
+      .afterClosed()
+      .subscribe((confirmed) => {
+        if (confirmed === true) {
+          void this.saveAndLeave();
+        }
+      });
+  }
+
+  private async saveAndLeave(): Promise<void> {
+    this.closeMobileMapSheet();
+    this.flushInteractivePlayers();
+    const outcomes = await this.flushPendingAnswers();
+    if (outcomes.includes('failed')) {
+      this.showToastMessage(this.tr('leave.saveFailed'), 'error');
+      return;
+    }
+    const worksheetId = this.testInstance?.worksheetId;
+    void this.router.navigate(worksheetId ? ['/test', worksheetId] : ['/tests']);
+  }
+
   @HostListener('document:keydown.escape')
   public onEscape() {
     if (this.fullscreenOpen()) {
@@ -370,6 +477,7 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
     if (this.mobileViewportQuery) {
       this.mobileViewportQuery.removeEventListener('change', this.mobileViewportQueryListener);
     }
+    this.compactViewportQuery?.removeEventListener('change', this.compactViewportQueryListener);
     this.closeMobileMapSheet();
     this.detachFullscreenOverlay();
 

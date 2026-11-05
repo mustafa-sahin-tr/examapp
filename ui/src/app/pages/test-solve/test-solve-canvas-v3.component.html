@@ -64,7 +64,7 @@
 
     <!-- Tek soru görünümünde kartın üstündeki bookmark / tam ekran buraya taşınır;
          çoklu kart (2/4), fullscreen ve MOBİL'de (header'a sığmaz) kart kendi aksiyonlarını gösterir. -->
-    @if (questionsPerView() === 1 && !fullscreenOpen() && !isMobileViewport() && activeQuestion) {
+    @if (questionsPerView() === 1 && !fullscreenOpen() && !usesMapSheet() && activeQuestion) {
     <div class="header-question-actions" role="group" [attr.aria-label]="t('header.questionActions')">
       <button mat-icon-button [class.is-active]="isQuestionBookmarked(activeQuestion.index)"
         [matTooltip]="isQuestionBookmarked(activeQuestion.index) ? t('question.removeBookmark') : t('question.bookmark')"
@@ -90,7 +90,7 @@
       }
       <button mat-raised-button color="primary" class="header-finish" (click)="confirmFinishTest()" [disabled]="finishing()" [attr.aria-label]="t('header.finishTestAria')">
         <mat-icon>done_all</mat-icon>
-        <span class="header-finish__label">{{ t('header.finishTest') }}</span>
+        <span class="header-finish__label">{{ isMobileViewport() ? t('header.finishShort') : t('header.finishTest') }}</span>
       </button>
     </div>
 
@@ -137,21 +137,27 @@
 
       <!-- Tek birleşik dock: tüm genişliklerde ekranın altına yapışık sabit bar -->
       <nav class="solve-dock" [attr.aria-label]="t('dock.navigation')">
-        <button mat-icon-button class="solve-dock__nav" [matTooltip]="t('dock.previous')"
+        <button mat-button class="solve-dock__nav" [matTooltip]="t('dock.previous')"
           [attr.aria-label]="t('question.previous')" (click)="prevQuestion()" [disabled]="!canGoPrev() || questionLoading()">
           <mat-icon>chevron_left</mat-icon>
+          @if (usesMapSheet()) {
+          <span class="solve-dock__nav-label">{{ t('dock.previous') }}</span>
+          }
         </button>
 
         <div class="solve-dock__tools">
           <button mat-stroked-button class="solve-dock__tool" [class.is-active]="autoNextQuestion()"
             (click)="toggleAutoNextQuestion()"
             [matTooltip]="autoNextQuestion() ? t('dock.autoNextDisable') : t('dock.autoNextEnable')"
-            [attr.aria-label]="autoNextQuestion() ? t('dock.autoNextDisable') : t('dock.autoNextEnable')">
-            <mat-icon>{{ autoNextQuestion() ? 'play_arrow' : 'pause' }}</mat-icon>
-            <span class="solve-dock__label">{{ autoNextQuestion() ? t('dock.autoNextOn') : t('dock.autoNextOff') }}</span>
+            [attr.aria-label]="autoNextQuestion() ? t('dock.autoNextDisable') : t('dock.autoNextEnable')"
+            [attr.aria-pressed]="autoNextQuestion()">
+            <mat-icon>{{ autoNextQuestion() ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+            <span class="solve-dock__label">
+              {{ usesMapSheet() ? t('dock.autoNextShort') : autoNextQuestion() ? t('dock.autoNextOn') : t('dock.autoNextOff') }}
+            </span>
           </button>
 
-          @if (isMobileViewport()) {
+          @if (usesMapSheet()) {
           <button mat-stroked-button class="solve-dock__tool" [class.is-active]="mobileMapSheetOpen()"
             (click)="toggleMobileMapSheet()" [matTooltip]="t('dock.mapTooltip')" [attr.aria-label]="t('dock.openMap')"
             [attr.aria-expanded]="mobileMapSheetOpen()">
@@ -167,7 +173,7 @@
             (click)="focusOnQuestion(activeQuestion.index); clearCanvasAnswer()"
             [disabled]="!activeQuestion.question.selectedAnswerId">
             <mat-icon>check_box_outline_blank</mat-icon>
-            <span class="solve-dock__label">{{ t('dock.clearAnswerLabel') }}</span>
+            <span class="solve-dock__label">{{ usesMapSheet() ? t('dock.clearShort') : t('dock.clearAnswerLabel') }}</span>
           </button>
           } @else {
           <button mat-stroked-button class="solve-dock__tool" [matTooltip]="t('dock.clearAnswer')"
@@ -175,21 +181,30 @@
             (click)="focusOnQuestion(activeQuestion.index); clearAnswer()"
             [disabled]="!activeQuestion.question.selectedAnswerId">
             <mat-icon>backspace</mat-icon>
-            <span class="solve-dock__label">{{ t('dock.clearAnswerLabel') }}</span>
+            <span class="solve-dock__label">{{ usesMapSheet() ? t('dock.clearShort') : t('dock.clearAnswerLabel') }}</span>
           </button>
           }
           }
         </div>
 
-        <button mat-icon-button class="solve-dock__nav solve-dock__nav--next" [matTooltip]="t('dock.next')"
+        @if (isOnLastQuestion()) {
+        <button mat-flat-button class="solve-dock__review" (click)="confirmFinishTest()" [disabled]="finishing()">
+          {{ t('review.action') }}
+        </button>
+        } @else {
+        <button mat-button class="solve-dock__nav solve-dock__nav--next" [matTooltip]="t('dock.next')"
           [attr.aria-label]="t('question.next')" (click)="nextQuestion()" [disabled]="!canGoNext() || questionLoading()">
           <mat-icon>chevron_right</mat-icon>
+          @if (usesMapSheet()) {
+          <span class="solve-dock__nav-label">{{ t('dock.next') }}</span>
+          }
         </button>
+        }
       </nav>
     </section>
 
-    <!-- Masaüstü: insight paneli her zaman görünür. Mobilde DOM'da yok; bottom-sheet ile açılır. -->
-    @if (!isMobileViewport()) {
+    <!-- Masaüstü: insight paneli her zaman görünür. Telefon ve tablette DOM'da yok; bottom-sheet ile açılır. -->
+    @if (!usesMapSheet()) {
     <aside class="insight-panel" #toolsPanel [attr.aria-label]="t('insight.panelAria')">
       <ng-container *ngTemplateOutlet="insightContent"></ng-container>
     </aside>
@@ -229,6 +244,12 @@
       </button>
       }
     </div>
+    <ul class="map-legend" [attr.aria-label]="t('insight.legendAria')">
+      <li><span class="map-legend__swatch is-current" aria-hidden="true"></span>{{ t('insight.legendCurrent') }}</li>
+      <li><span class="map-legend__swatch is-answered" aria-hidden="true"></span>{{ t('insight.legendAnswered') }}</li>
+      <li><span class="map-legend__swatch" aria-hidden="true"></span>{{ t('insight.legendEmpty') }}</li>
+      <li><span class="map-legend__swatch is-bookmarked" aria-hidden="true"></span>{{ t('insight.legendBookmarked') }}</li>
+    </ul>
   </section>
 
   <section class="insight-panel__section">
@@ -249,10 +270,6 @@
         <span class="stat-label">{{ t('insight.bookmarked') }}</span>
         <span class="stat-value">{{ bookmarkedCount() }}</span>
       </div>
-      <div class="stat-card">
-        <span class="stat-label">{{ t('insight.averageTime') }}</span>
-        <span class="stat-value">{{ averageTimePerQuestion() }} {{ t('insight.secondsSuffix') }}</span>
-      </div>
     </div>
   </section>
 
@@ -261,28 +278,26 @@
       <mat-icon>build</mat-icon>
       <span>{{ t('insight.toolsTitle') }}</span>
     </div>
-    <div class="tool-grid">
-      <button mat-icon-button type="button" (click)="toggleBookmark()"
-        [matTooltip]="isQuestionBookmarked(currentIndex()) ? t('question.removeBookmark') : t('question.bookmarkActive')"
-        [attr.aria-label]="
-          isQuestionBookmarked(currentIndex()) ? t('question.removeBookmark') : t('question.bookmarkActive')
-        "
-        [class.is-active]="isQuestionBookmarked(currentIndex())">
+    <div class="tool-list">
+      <button mat-stroked-button type="button" class="tool-list__item" (click)="toggleBookmark()"
+        [class.is-active]="isQuestionBookmarked(currentIndex())"
+        [attr.aria-pressed]="isQuestionBookmarked(currentIndex())">
         <mat-icon>{{ isQuestionBookmarked(currentIndex()) ? 'bookmark' : 'bookmark_border' }}</mat-icon>
+        {{ isQuestionBookmarked(currentIndex()) ? t('question.removeBookmark') : t('question.bookmarkActive') }}
       </button>
-      <button mat-icon-button type="button" (click)="closeMobileMapSheet(); goToNextBookmarked()"
-        [matTooltip]="t('insight.goToBookmarked')" [attr.aria-label]="t('insight.goToBookmarked')">
-        <mat-icon>turn_slight_right</mat-icon>
-      </button>
-      <button mat-icon-button type="button" (click)="closeMobileMapSheet(); goToNextUnanswered()"
-        [matTooltip]="t('insight.goToUnanswered')" [attr.aria-label]="t('insight.goToUnanswered')">
+      <button mat-stroked-button type="button" class="tool-list__item" [disabled]="!remainingCount()"
+        (click)="closeMobileMapSheet(); goToNextUnanswered()">
         <mat-icon>help_outline</mat-icon>
+        {{ t('insight.goToUnanswered') }}
       </button>
-      <button mat-icon-button type="button" (click)="toggleAutoNextQuestion()"
-        [matTooltip]="autoNextQuestion() ? t('dock.autoNextDisable') : t('dock.autoNextEnable')"
-        [attr.aria-label]="autoNextQuestion() ? t('dock.autoNextDisable') : t('dock.autoNextEnable')"
-        [class.is-active]="autoNextQuestion()">
-        <mat-icon>{{ autoNextQuestion() ? 'pause_circle' : 'play_circle' }}</mat-icon>
+      <button mat-stroked-button type="button" class="tool-list__item" [disabled]="!bookmarkedCount()"
+        (click)="closeMobileMapSheet(); goToNextBookmarked()">
+        <mat-icon>bookmark</mat-icon>
+        {{ t('insight.goToBookmarked') }}
+      </button>
+      <button mat-stroked-button type="button" class="tool-list__item" (click)="leaveAndContinueLater()">
+        <mat-icon>logout</mat-icon>
+        {{ t('leave.title') }}
       </button>
     </div>
   </section>
@@ -314,7 +329,7 @@
     [attr.role]="isFullscreenCard(questionData.index) ? 'dialog' : null">
     <header class="question-card__header">
       @let cardActionsInHeader =
-        questionsPerView() === 1 && !isFullscreenCard(questionData.index) && !isMobileViewport();
+        questionsPerView() === 1 && !isFullscreenCard(questionData.index) && !usesMapSheet();
       <div class="question-card__meta">
         <!-- Tek soru görünümünde sıra bilgisi header'daki sayaçta; fullscreen ve 2/4 kart modunda kartta kalır. -->
         @if (!cardActionsInHeader) {
@@ -347,10 +362,13 @@
         }
         <!-- Bookmark / tam ekran: tek soru görünümünde header'a taşındı (issue #74) -->
         @if (!cardActionsInHeader) {
-        <button mat-icon-button [matTooltip]="t('question.bookmark')" [attr.aria-label]="t('question.bookmark')"
+        <button mat-button class="card-action" [matTooltip]="t('question.bookmark')" [attr.aria-label]="t('question.bookmark')"
           [class.is-active]="isQuestionBookmarked(questionData.index)"
           (click)="focusOnQuestion(questionData.index); toggleBookmark()">
           <mat-icon>{{ isQuestionBookmarked(questionData.index) ? 'bookmark' : 'bookmark_border' }}</mat-icon>
+          @if (usesMapSheet()) {
+          <span class="card-action__label">{{ t('question.bookmarkShort') }}</span>
+          }
         </button>
         }
         @if (isFullscreenCard(questionData.index)) {
@@ -359,9 +377,12 @@
           <mat-icon>fullscreen_exit</mat-icon>
         </button>
         } @else if (!cardActionsInHeader) {
-        <button mat-icon-button [matTooltip]="t('question.fullscreen')" [attr.aria-label]="t('question.fullscreenAria')"
+        <button mat-button class="card-action" [matTooltip]="t('question.fullscreen')" [attr.aria-label]="t('question.fullscreenAria')"
           (click)="openFullscreen(questionData.index)">
           <mat-icon>fullscreen</mat-icon>
+          @if (usesMapSheet()) {
+          <span class="card-action__label">{{ t('question.fullscreenShort') }}</span>
+          }
         </button>
         }
       </div>

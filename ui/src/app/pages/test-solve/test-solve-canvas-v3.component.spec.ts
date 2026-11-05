@@ -12,6 +12,7 @@ import { isTestCompletedRejection, isTimeExpiredRejection } from './test-solve-c
 import { TestService } from '../../services/test.service';
 import { TestInstance, TestSessionResult, TestStatus } from '../../models/test-instance';
 import { ConfirmDialogData } from '../../shared/components/confirm-dialog/confirm-dialog.component';
+import { ReviewDialogData } from './test-solve-review-dialog.component';
 import { TestFinishRetryDialogComponent } from './test-finish-retry-dialog.component';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALE_CODES } from '../../models/locale';
 import testSolveTr from '../../../../public/i18n/test-solve/tr.json';
@@ -71,7 +72,7 @@ describe('TestSolveCanvasComponentv3 — finish flow (issue #383)', () => {
     let snackBar: MockedObject<MatSnackBar>;
     let navigateSpy: Mock;
 
-    function dialogReturns(result: boolean) {
+    function dialogReturns(result: unknown) {
         dialog.open.mockReturnValue({ afterClosed: () => of(result) } as ReturnType<MatDialog['open']>);
     }
 
@@ -117,20 +118,75 @@ describe('TestSolveCanvasComponentv3 — finish flow (issue #383)', () => {
 
     afterEach(() => fixture.destroy());
 
-    it('confirm dialog shows the unanswered count; cancel keeps the test running', async () => {
-        dialogReturns(false);
+    it('review dialog lists empty and bookmarked questions; cancel keeps the test running', async () => {
+        dialogReturns(undefined);
+        component.bookmarkedQuestions.set(new Set([1]));
 
         component.confirmFinishTest();
         await settle();
 
         expect(dialog.open).toHaveBeenCalledTimes(1);
-        const data = vi.mocked(dialog.open).mock.lastCall![1]?.data as ConfirmDialogData;
-        expect(data.message).toContain('2 soru boş');
-        expect(data.cancelText).toBe('Vazgeç');
+        const data = vi.mocked(dialog.open).mock.lastCall![1]?.data as ReviewDialogData;
+        expect(data.emptyIndexes).toEqual([1, 2]);
+        expect(data.bookmarkedIndexes).toEqual([1]);
+        expect(data.labels.summary).toContain('2 boş');
         expect(testService.saveAnswer).not.toHaveBeenCalled();
         expect(testService.completeTest).not.toHaveBeenCalled();
         expect(navigateSpy).not.toHaveBeenCalled();
         expect(component.finishing()).toBe(false);
+    });
+
+    it('review dialog: choosing a question goes there without finishing the test', async () => {
+        dialogReturns({ goTo: 1 });
+        const select = vi.spyOn(component, 'selectFromMap').mockImplementation(() => undefined);
+
+        component.confirmFinishTest();
+        await settle();
+
+        expect(select).toHaveBeenCalledWith(1);
+        expect(testService.completeTest).not.toHaveBeenCalled();
+    });
+
+    it('review action replaces next only on the last question', () => {
+        component.currentIndex.set(0);
+        expect(component.isOnLastQuestion()).toBe(component.canGoNext() === false);
+    });
+
+    it('leave: untimed test explains answers are saved and navigates to the test', async () => {
+        dialogReturns(true);
+        component.testInstance.maxDurationSeconds = 0;
+        component.testInstance.worksheetId = 77;
+
+        component.leaveAndContinueLater();
+        await settle();
+
+        const data = vi.mocked(dialog.open).mock.lastCall![1]?.data as ConfirmDialogData;
+        expect(data.message).toBe(testSolveTr.leave.message);
+        expect(navigateSpy).toHaveBeenCalledWith(['/test', 77]);
+        expect(testService.completeTest).not.toHaveBeenCalled();
+    });
+
+    it('leave: timed test says time keeps running; cancel stays', async () => {
+        dialogReturns(false);
+        component.testInstance.maxDurationSeconds = 600;
+
+        component.leaveAndContinueLater();
+        await settle();
+
+        const data = vi.mocked(dialog.open).mock.lastCall![1]?.data as ConfirmDialogData;
+        expect(data.message).toBe(testSolveTr.leave.messageTimed);
+        expect(navigateSpy).not.toHaveBeenCalled();
+    });
+
+    it('leave: failed save keeps the student on the screen', async () => {
+        testService.saveAnswer.mockReturnValue(of({ success: false } as TestSessionResult));
+        dialogReturns(true);
+        component.testInstance.maxDurationSeconds = 600;
+
+        component.leaveAndContinueLater();
+        await settle();
+
+        expect(navigateSpy).not.toHaveBeenCalled();
     });
 
     it('confirm: completeTest is sent only after the pending last-answer save resolves', async () => {

@@ -228,6 +228,11 @@ public class ParentForbiddenContentTests(IntegrationApiFactory factory) : Integr
                     Status = WorksheetReminderStatus.Pending, RemindBeforeMinutes = 4321, HangfireJobId = "GIZLI-JOB-RAKIP",
                     StudentKeycloakId = $"kc-{OtherStudentUser}"
                 });
+
+            // ---- koç paneli (#700): hedef veliye gider, özel not ve öğretmen kimliği gitmez
+            var weekStart = LocalToday.AddDays(-(((int)LocalToday.DayOfWeek + 6) % 7));
+            db.CoachWeeklyGoals.Add(new CoachWeeklyGoal { StudentId = student.Id, TeacherUserId = TeacherUser, WeekStart = weekStart, Title = "Paragraf", CreatedAt = now, UpdatedAt = now });
+            db.CoachNotes.Add(new CoachNote { StudentId = student.Id, TeacherUserId = TeacherUser, Body = "GIZLI-KOC-NOTU", CreatedAt = now, UpdatedAt = now });
             await db.SaveChangesAsync();
 
             var lessons = new (int StudentId, int Hour, BookingStatus Status, string? Reason)[]

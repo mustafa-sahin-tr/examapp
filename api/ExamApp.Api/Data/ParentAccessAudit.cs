@@ -63,6 +63,9 @@ public static class ParentAccessEndpoints
     /// <summary><c>GET api/parent/children/{studentId}/target-goal</c> (issue #695).</summary>
     public const string ChildTargetGoal = "children.target-goal";
 
+    /// <summary><c>GET api/parent/children/{studentId}/coach-summary</c> (issue #700).</summary>
+    public const string ChildCoachSummary = "children.coach-summary";
+
     /// <summary>
     /// <c>POST api/parent/children/{studentId}/reset-password</c> (issue #438) — veri okuma değil, velinin çocuk hesabındaki yazma
     /// işlemi; her başarılı sıfırlama ayrı satır (tekilleştirme yok).

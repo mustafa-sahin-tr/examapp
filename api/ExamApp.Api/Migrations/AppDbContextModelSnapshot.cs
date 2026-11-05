@@ -608,6 +608,77 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("ClassifierCacheConfigs");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.CoachNote", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TeacherUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentId");
+
+                    b.HasIndex("TeacherUserId", "StudentId", "CreatedAt");
+
+                    b.ToTable("CoachNotes");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.CoachWeeklyGoal", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TeacherUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(600)
+                        .HasColumnType("character varying(600)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("WeekStart")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentId", "WeekStart");
+
+                    b.HasIndex("TeacherUserId", "StudentId", "WeekStart");
+
+                    b.ToTable("CoachWeeklyGoals");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.Conversation", b =>
                 {
                     b.Property<int>("Id")
@@ -6606,6 +6677,28 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Student");
 
                     b.Navigation("Teacher");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.CoachNote", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.CoachWeeklyGoal", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Student");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.DailyQuestionSet", b =>

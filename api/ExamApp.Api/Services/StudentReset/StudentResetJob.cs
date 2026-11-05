@@ -161,6 +161,10 @@ public sealed class StudentResetJob
 
         // 6) issue #699: kart tekrar durumu ilerlemedir; kartlar yeniden "yeni" olur.
         await _db.FlashcardReviews.Where(r => r.StudentId == studentId).ExecuteDeleteAsync(cancellationToken);
+
+        // 7) issue #700: sıfırlanan ilerlemeye dayanan hedef ve notlar da gider; özel not gerekenden uzun saklanmaz.
+        await _db.CoachWeeklyGoals.Where(g => g.StudentId == studentId).ExecuteDeleteAsync(cancellationToken);
+        await _db.CoachNotes.Where(n => n.StudentId == studentId).ExecuteDeleteAsync(cancellationToken);
     }
 
     private static async Task SoftDeleteByStudentIdAsync<TEntity>(DbSet<TEntity> set, int studentId, CancellationToken ct)

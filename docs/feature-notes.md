@@ -165,3 +165,16 @@ BadgeService `TotalQuestions`, `CorrectQuestions`, `TotalTimeSeconds`, `Question
 - **Tekrar:** `Hatırlamadım` denen kart aynı oturumda sona eklenir; ikinci değerlendirmede gelen 409 `NotDue` ve kart / atama kalktıysa 404 sessizce geçilir. Kuyruk bitince sunucuya yeniden sorulur (liste en çok 50).
 - **İlk sürümde yok:** öğretmenler arası paylaşım, veli uçları, arka yüz görseli.
 
+
+## Koç paneli (#700)
+
+Yeni rol yok. Koç, öğrenciyi #696 kuralıyla görebilen öğretmendir: kendi okulunun doğrulanmış öğrencisi ya da onaylı özel ders (Approved Booking) verdiği öğrenci (`SchoolAccessPolicyCoachExtensions.CanAccessAsTeacherOrTutorAsync`, kazanım ucu da bunu kullanır). Kapsam dışı öğrenci her uçta 404. Outbox event'i yok.
+
+- **Uçlar:** öğretmen `api/teacher/coach/students` (liste; `relationship` = `School` | `PrivateLesson`), `{id}/overview`, `{id}/goals` (`?weekStart=`), `{id}/notes`, hedef ve not için POST / PUT / DELETE. Öğrenci `api/student/me/coach-goals` (bu hafta, bütün koçlar). Veli `api/parent/children/{id}/coach-summary` (kapı → erişim kaydı → veri, `children.coach-summary`). Gateway joker route'u kapsar. İş kuralı hatası 400 `{ errorCode }` (`EmptyText`, `TooLong`, `MarkupNotAllowed`, `InvalidWeek`); hafta başına 10 hedef 409 `TooManyGoals`, öğretmen + öğrenci başına 200 not 409 `TooManyNotes`. Uzunluk sınırı temizlenmiş (kodlanmış) metne de uygulanır.
+- **Özet:** hafta planı ("Planım" testleri, bitmiş oturumu olan tamamlandı sayılır; Keycloak kimliği çözülürse kişisel programın günleri ve sayfaları da), son denemeler (şablon başına en son tamamlanan, en çok 5), zayıf konular (son 30 gün, en az 5 soru, doğruluk %70 altı, en çok 5), aktif yanlış sayısı (yanlış defteri kuralı), öğretmenin bu haftaki hedefleri. Soru ve cevap içeriği yok. Veli özeti yalnız "Planım"ı sayar.
+- **Hedef:** hafta Pazartesi başlar (yerel takvim); bu hafta ile 4 hafta sonrası arası. Öğretmen yalnız kendi hedeflerini görür ve değiştirir. Hedef düz metindir: bağlantı ve görsel etiketi 400. Öğrenci ve veli bu haftanın hedeflerini görür; veliye öğretmen kimliği gitmez.
+- **Not:** yalnız yazan öğretmen okur; öğrenci, veli ve özet yanıtlarına girmez (`ParentForbiddenContentTests` tohumu). Silme gerçek silmedir, soft-delete yok. Liste en yeni 100.
+- **Metin:** `AppDbContext`'te `RichTextSanitizer`; yalnız etiketten oluşan metin boş sayılır. Ekran #699 gibi gidişte kodlamalı.
+- **Okul değişimi ve sıfırlama:** satırlar kalır, erişim her istekte yeniden denetlenir: ilişki biten öğretmen hedef ve notlarına da ulaşamaz, ilişki geri gelirse görür. İlerleme sıfırlamada hedef ve notlar silinir.
+- **Bilinçli:** Admin + Teacher hesabı sınırsız kapsamla her öğrenciyi açar (#696 ile aynı). Hedef sınırı sayıp yazar, eşzamanlı istekte aşılabilir (yalnız öğretmenin kendi satırları).
+- **Açık:** notların saklama süresi (öneri PR'da), velinin bu özeti kapatabilmesi (bağlantıda izin alanı yok, Active bağlantı yeterli).

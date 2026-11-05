@@ -439,6 +439,8 @@ builder.Services.AddOptions<ExamApp.Api.Services.TargetGoals.TargetGoalsOptions>
     .BindConfiguration(ExamApp.Api.Services.TargetGoals.TargetGoalsOptions.SectionName);
 builder.Services.AddScoped<ExamApp.Api.Services.Flashcards.IFlashcardDeckService, ExamApp.Api.Services.Flashcards.FlashcardDeckService>(); // issue #699
 builder.Services.AddScoped<ExamApp.Api.Services.Flashcards.IFlashcardStudyService, ExamApp.Api.Services.Flashcards.FlashcardStudyService>(); // issue #699
+builder.Services.AddScoped<ExamApp.Api.Services.Coaching.ICoachService, ExamApp.Api.Services.Coaching.CoachService>(); // issue #700
+builder.Services.AddScoped<ExamApp.Api.Services.Coaching.IParentCoachSummaryService, ExamApp.Api.Services.Coaching.ParentCoachSummaryService>(); // issue #700
 builder.Services.AddScoped<ExamApp.Api.Services.TargetGoals.ITargetProgramService, ExamApp.Api.Services.TargetGoals.TargetProgramService>(); // issue #695
 builder.Services.AddScoped<ExamApp.Api.Services.TargetGoals.ITargetGoalService, ExamApp.Api.Services.TargetGoals.TargetGoalService>(); // issue #695
 builder.Services.AddScoped<ExamApp.Api.Services.TargetGoals.IParentTargetGoalService, ExamApp.Api.Services.TargetGoals.ParentTargetGoalService>(); // issue #695

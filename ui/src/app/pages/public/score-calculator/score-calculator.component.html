@@ -1,0 +1,75 @@
+<main class="calc" *transloco="let t; prefix: 'public-pages.scoreCalculator'">
+  <a class="back" routerLink="/welcome">{{ t('back') }}</a>
+  <h1>{{ t('title') }}</h1>
+  <p class="intro">{{ t('intro') }}</p>
+
+  <mat-button-toggle-group [value]="examId()" (change)="selectExam($event.value)" [attr.aria-label]="t('examPicker')">
+    @for (item of exams; track item.id) {
+      <mat-button-toggle [value]="item.id">{{ t('exams.' + item.id) }}</mat-button-toggle>
+    }
+  </mat-button-toggle-group>
+
+  <p class="privacy" data-testid="calc-privacy">{{ t('privacy') }}</p>
+
+  @for (session of sessions(); track session.id) {
+    <section class="session">
+      <h2>{{ t('sessions.' + session.id) }}</h2>
+      <div class="row head" aria-hidden="true">
+        <span>{{ t('test') }}</span><span>{{ t('correct') }}</span><span>{{ t('wrong') }}</span><span>{{ t('net') }}</span>
+      </div>
+      @for (test of session.tests; track test.id) {
+        <div class="row" [class.invalid]="!isValid(test)">
+          <span class="name">{{ t('tests.' + test.id) }} <small>{{ t('questionCount', { count: test.questions }) }}</small></span>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <input matInput type="number" min="0" step="1" [max]="test.questions" inputmode="numeric"
+                 [attr.data-testid]="test.id + '-correct'"
+                 [attr.aria-label]="t('tests.' + test.id) + ': ' + t('correct')"
+                 [value]="fieldValue(test, 'correct')"
+                 (input)="setField(test, 'correct', $any($event.target).value)" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <input matInput type="number" min="0" step="1" [max]="test.questions" inputmode="numeric"
+                 [attr.data-testid]="test.id + '-wrong'"
+                 [attr.aria-label]="t('tests.' + test.id) + ': ' + t('wrong')"
+                 [value]="fieldValue(test, 'wrong')"
+                 (input)="setField(test, 'wrong', $any($event.target).value)" />
+          </mat-form-field>
+          <output [attr.data-testid]="test.id + '-net'">{{ netDisplay(test) }}</output>
+          @if (!isValid(test)) {
+            <p class="error" role="alert">{{ t('invalid', { count: test.questions }) }}</p>
+          }
+        </div>
+      }
+    </section>
+  }
+
+  <section class="result" aria-live="polite" data-testid="calc-result">
+    <h2>{{ t('resultTitle', { year: exam().year }) }}</h2>
+    @if (!hasInput()) {
+      <p data-testid="calc-empty">{{ t('enterAnswers') }}</p>
+    } @else if (hasInvalid()) {
+      <p>{{ t('fixInput') }}</p>
+    } @else {
+      <div class="scores">
+        @for (estimate of estimates(); track estimate.id) {
+          <div class="score" [attr.data-testid]="'score-' + estimate.id">
+            <span class="score-name">{{ t('scores.' + estimate.id) }}</span>
+            @if (estimate.value !== null) {
+              <strong>≈ {{ estimate.value }}</strong>
+              <span class="range">{{ t('range', { low: estimate.low, high: estimate.high }) }}</span>
+            } @else {
+              <span class="range">{{ t('notCalculated') }}</span>
+            }
+          </div>
+        }
+      </div>
+    }
+    <p class="estimate" data-testid="calc-estimate">{{ t('estimateNote', { year: exam().year }) }}</p>
+    <button mat-stroked-button type="button" data-testid="calc-info" (click)="openInfo()">{{ t('info.open') }}</button>
+  </section>
+
+  <section class="cta">
+    <p>{{ t('ctaText') }}</p>
+    <a mat-flat-button [href]="registerUrl">{{ t('ctaButton') }}</a>
+  </section>
+</main>

@@ -27,6 +27,7 @@
       <div>
         <h3>{{ t('footer.legalTitle') }}</h3>
         <ul>
+          <li><a routerLink="/score-calculator">{{ t('footer.links.scoreCalculator') }}</a></li>
           <li><a routerLink="/terms">{{ t('footer.links.terms') }}</a></li>
           <li><a routerLink="/privacy-policy">{{ t('footer.links.privacy') }}</a></li>
           <li><a data-testid="landing-email" [href]="'mailto:' + email">{{ email }}</a></li>

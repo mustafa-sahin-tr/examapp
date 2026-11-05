@@ -18,5 +18,102 @@
     "purpose": "{{ brand.name }} is designed to improve the exam experience of its users.",
     "misuse": "Misuse of our services is prohibited.",
     "updates": "Check this page regularly for updated terms and conditions."
+  },
+  "scoreCalculator": {
+    "meta": {
+      "title": "LGS and YKS Score Calculator | {{ brand.name }}",
+      "description": "Estimate your LGS and YKS score from your correct and wrong answers. No account needed, and nothing you enter is stored."
+    },
+    "back": "Back to home",
+    "title": "LGS and YKS score calculator",
+    "intro": "Enter your correct and wrong answers to see your net scores and an estimated exam score. No account needed.",
+    "examPicker": "Choose an exam",
+    "exams": {
+      "lgs": "LGS",
+      "yks": "YKS"
+    },
+    "privacy": "The calculation runs in your browser. What you enter is not sent to a server and is not stored.",
+    "sessions": {
+      "lgs": "Central exam",
+      "tyt": "TYT",
+      "ayt": "AYT"
+    },
+    "test": "Test",
+    "correct": "Correct",
+    "wrong": "Wrong",
+    "net": "Net",
+    "questionCount": "{{ count }} questions",
+    "tests": {
+      "turkish": "Turkish",
+      "revolutionHistory": "History of the Turkish Revolution",
+      "religion": "Religious Culture and Ethics",
+      "foreignLanguage": "Foreign Language",
+      "mathematics": "Mathematics",
+      "science": "Science",
+      "tytTurkish": "Turkish",
+      "tytSocial": "Social Sciences",
+      "tytMathematics": "Basic Mathematics",
+      "tytScience": "Science",
+      "aytLiterature": "Turkish Language and Literature",
+      "aytHistory1": "History-1",
+      "aytGeography1": "Geography-1",
+      "aytHistory2": "History-2",
+      "aytGeography2": "Geography-2",
+      "aytPhilosophy": "Philosophy Group",
+      "aytReligion": "Religious Culture and Ethics / Additional Philosophy",
+      "aytMathematics": "Mathematics",
+      "aytPhysics": "Physics",
+      "aytChemistry": "Chemistry",
+      "aytBiology": "Biology"
+    },
+    "invalid": "Correct and wrong must be whole numbers, and together they cannot exceed {{ count }} questions.",
+    "fixInput": "Fix the marked rows to see your score.",
+    "resultTitle": "Estimated score (using {{ year }} data)",
+    "scores": {
+      "lgs": "Central exam score",
+      "tyt": "TYT",
+      "say": "Science and maths",
+      "ea": "Equal weight",
+      "soz": "Humanities"
+    },
+    "range": "Likely range: {{ low }}–{{ high }}",
+    "notCalculated": "No score is calculated for these nets (at least 0.5 net is required).",
+    "estimateNote": "This is an estimate, not an official result. It uses data from the {{ year }} exam, and real scores depend on the means and standard deviations announced each year.",
+    "excluded": {
+      "lgs": "School achievement scores and foreign language or religious culture exemptions are not included.",
+      "yks": "Secondary school achievement score, placement score, and the DİL score type are not included."
+    },
+    "ctaText": "You can open a free account to work on the topics you are missing.",
+    "ctaButton": "Open a free account",
+    "enterAnswers": "Enter your correct and wrong answers to see your score.",
+    "info": {
+      "open": "How is this calculated?",
+      "title": "How we calculate the {{ exam }} score ({{ year }} data)",
+      "close": "Close",
+      "stepsTitle": "Steps",
+      "steps": {
+        "net": "Net = correct − wrong ÷ {{ penalty }}.",
+        "standard": "Standard score = 50 + 10 × (net − mean) ÷ standard deviation.",
+        "weighted": "Weighted score = the standard scores added up with their subject weights.",
+        "scale": "Score = 100 + 400 × (weighted score − lowest) ÷ (highest − lowest)."
+      },
+      "officialTitle": "What is official",
+      "official": {
+        "lgs": "The formula, net calculation, and subject weights come from MEB's 2026 report.",
+        "yks": "The formula, net calculation, weights, 0.5 raw score requirement, and the means and standard deviations of final-year candidates come from ÖSYM documents."
+      },
+      "estimatedTitle": "What we estimate",
+      "estimated": {
+        "lgs": "MEB does not publish a mean and standard deviation per subject. We derive the standard deviation from the report's item analysis: questions × discrimination × √(difficulty × (1 − difficulty)) × 1.17. The last factor assumes that half of the answers that were not correct were wrong rather than blank. The means use the same assumption but do not change the result. For the lowest value we assume every question is wrong, and for the highest that every question is correct. This has not been compared with real exam results.",
+        "yks": "ÖSYM does not publish the lowest and highest weighted scores. For the highest we assume all valid questions are correct. For the lowest we assume blank tests with a 0.5 raw score in one required test. For TYT this scale roughly fits ÖSYM's score distribution; the AYT score types could not be checked directly."
+      },
+      "margin": "The likely range is our judgement, not a measured margin of error: LGS ±25, TYT ±10, AYT score types ±15.",
+      "valuesTitle": "Values used ({{ year }})",
+      "questions": "Valid questions",
+      "mean": "Mean",
+      "standardDeviation": "Standard deviation",
+      "weightsTitle": "Weights",
+      "sourcesTitle": "Sources"
+    }
   }
 }

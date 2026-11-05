@@ -51,6 +51,11 @@ export const routes: Routes = [
     path: 'terms',
     loadComponent: () => import('./pages/public/terms/terms.component').then((m) => m.TermsComponent),
   },
+  {
+    path: 'score-calculator',
+    loadComponent: () =>
+      import('./pages/public/score-calculator/score-calculator.component').then((m) => m.ScoreCalculatorComponent),
+  },
   { path: '', redirectTo: 'welcome', pathMatch: 'full' },
   // Back-compat: the old per-role routes now land on the wizard at step 2.
   { path: 'student-register', redirectTo: () => '/register?role=student' },

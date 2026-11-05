@@ -5,12 +5,30 @@
   align-items: flex-start;
   width: 100%;
   min-width: 0;
+
+  // Paragraf yanda kalırken soru alta düşmesin. Karar pencereye değil host genişliğine göre
+  // component'te verilir (PASSAGE_SIDE_*): önizleme çerçevesinde de aynı sonuç çıkar.
+  &--passage-beside {
+    flex-wrap: nowrap;
+
+    > .qcv4-passage {
+      flex: 0 0 auto;
+      width: min(45%, 560px);
+    }
+  }
+
+  &--passage-stacked > .qcv4-passage {
+    max-width: 100%;
+    flex-basis: 100%;
+  }
 }
 
 .qcv4-passage {
   flex: 0 1 auto;
   min-width: 0;
   max-width: min(45%, 560px);
+  // Yükseklik sınırı verildiğinde (issue #778) paragraf kendi içinde kayar; soru yerinde kalır.
+  overflow: auto;
 
   &__image {
     max-width: 100%;
@@ -57,6 +75,26 @@
     }
   }
 
+  // --- Ekrandaki alana göre seçilen düzen (issue #778) ---
+  // Boşluklar question-layout-planner.ts'teki BLOCK_GAP_PX / CHOICE_GAP_PX ile aynı olmalı.
+  &.layout-planned {
+    gap: 16px;
+    align-items: start;
+    .qcv4-answers-grid {
+      display: grid;
+      grid-template-columns: repeat(var(--qcv-answer-cols, 1), minmax(0, 1fr));
+      gap: 12px;
+    }
+  }
+
+  &.layout-planned-top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  &.layout-planned-side {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
   // --- Yan Yana Düzenler (Soru Solda) ---
   &.layout-side-1col {
     grid-template-columns: minmax(0, 1fr) 300px;
@@ -86,6 +124,75 @@
   display: block;
   max-width: 100%;
   height: auto;
+}
+
+.qcv4-main-image-box,
+.qcv4-passage {
+  position: relative;
+}
+
+// Görselin üstünde durur; metnin üzerine binse de okunması için odaklanılana kadar yarı saydam.
+.qcv4-zoom-button {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: color-mix(in srgb, var(--whiteColor) 85%, transparent);
+  color: var(--primaryColor);
+  opacity: 0.7;
+
+  &:hover,
+  &:focus-visible {
+    opacity: 1;
+  }
+}
+
+// Dar alanda görsel tüm genişliği kullanır: düğme metni kapatmasın diye üstte kendi satırında.
+.qcv4-main-image-box--zoom-row {
+  display: flex;
+  flex-direction: column;
+
+  .qcv4-zoom-button {
+    position: static;
+    order: -1;
+    align-self: flex-end;
+    opacity: 1;
+  }
+}
+
+.qcv4-zoom {
+  width: min(96vw, 1200px);
+  height: 92vh;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--whiteColor);
+
+  &[open] {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__close {
+    align-self: flex-end;
+    flex: 0 0 auto;
+    color: var(--primaryColor);
+  }
+
+  &__scroller {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding: 0 8px 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  &__image {
+    display: block;
+    max-width: none;
+    height: auto;
+    margin: 0 auto 12px;
+  }
 }
 
 // Şık Kartı Tasarımı
@@ -135,6 +242,7 @@
   border: 2px solid #e53935;
   background: #ffebee;
 }
+
 
 @media (max-width: 768px) {
   .qcv4-root {

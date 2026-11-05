@@ -1,14 +1,28 @@
-<div #qcvRoot class="qcv4-root" *transloco="let t; prefix: 'shared.questionCanvas'">
+<div class="qcv4-root" [class.qcv4-root--passage-beside]="passageArrangement() === 'beside'"
+  [class.qcv4-root--passage-stacked]="passageArrangement() === 'stacked'" *transloco="let t; prefix: 'shared.questionCanvas'">
   @if (!hidePassage && passageImageSource(); as pUrl) {
-    <div class="qcv4-passage">
-      <img class="qcv4-passage__image" [src]="pUrl" [alt]="t('passageAlt')" [appStorageImageRetry]="imageRefresh" />
+    <div class="qcv4-passage" [style.max-height.px]="passageMaxHeight()">
+      <img #passageImage class="qcv4-passage__image" [src]="pUrl" [alt]="t('passageAlt')" [appStorageImageRetry]="imageRefresh" />
+      @if (enableHeightFit) {
+        <button mat-icon-button type="button" class="qcv4-zoom-button" [attr.aria-label]="t('zoomPassage')"
+          (click)="openPassageZoom(passageImage, t('passageAlt'))">
+          <mat-icon>zoom_in</mat-icon>
+        </button>
+      }
     </div>
   }
-  <div class="qcv4-container" [class]="'layout-' + currentLayout()">
+  <div class="qcv4-container" [class]="containerClass()" [style.--qcv-answer-cols]="plan()?.answerColumns ?? null">
     <div class="qcv4-question-image-wrapper">
-      <div #questionImageBox class="qcv4-main-image-box">
+      <div #questionImageBox class="qcv4-main-image-box" [class.qcv4-main-image-box--zoom-row]="questionZoomAvailable() && zoomInOwnRow()">
         <img #questionImage class="qcv4-question-image" [src]="questionImageSource()" [alt]="t('questionAlt')"
-          [style.width.px]="questionImageWidth()" (load)="updateVisualScale()" [appStorageImageRetry]="imageRefresh" />
+          [style.width.px]="questionImageWidth()" [style.aspect-ratio]="questionAspectRatio()"
+          (load)="updateVisualScale()" [appStorageImageRetry]="imageRefresh" />
+        @if (questionZoomAvailable()) {
+          <button mat-icon-button type="button" class="qcv4-zoom-button" [attr.aria-label]="t('zoomQuestion')"
+            (click)="openQuestionZoom(questionImage, t('questionAlt'), choiceAlt(t))">
+            <mat-icon>zoom_in</mat-icon>
+          </button>
+        }
         </div>
       </div>
       <div class="qcv4-answers-grid">
@@ -18,9 +32,23 @@
             (mouseenter)="hoverAnswer(answer)" (mouseleave)="hoverAnswer(null)" (click)="selectAnswer($index)"
             (keydown.enter)="selectAnswer($index)" (keydown.space)="$event.preventDefault(); selectAnswer($index)">
             <img class="qcv4-answer-image" [src]="answer.imageUrl" [alt]="t('choiceAria', { label: $index + 1 })"
-              [style.width.px]="getScaledAnswerWidth(answer)" [appStorageImageRetry]="imageRefresh" />
+              [style.width.px]="getScaledAnswerWidth(answer)" [style.aspect-ratio]="answerAspectRatio(answer)"
+              [appStorageImageRetry]="imageRefresh" />
             </div>
           }
 
         </div>
       </div>
+  <dialog #zoomDialog class="qcv4-zoom" (close)="zoomImages.set([])" (click)="closeZoomOnBackdrop($event)">
+    @if (zoomImages().length) {
+      <button mat-icon-button type="button" class="qcv4-zoom__close" [attr.aria-label]="t('closeZoom')" (click)="closeZoom()">
+        <mat-icon>close</mat-icon>
+      </button>
+      <div class="qcv4-zoom__scroller" tabindex="0">
+        @for (image of zoomImages(); track $index) {
+          <img class="qcv4-zoom__image" [src]="image.src" [alt]="image.alt" [style.width.px]="image.width" />
+        }
+      </div>
+    }
+  </dialog>
+</div>

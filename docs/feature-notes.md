@@ -90,3 +90,12 @@ Deneme her oturum için sıradan bir test kaydı açar: süre sınırı, oturum,
 **Bu cihazda (localStorage):** `testSolve.instance.<oturum>` son soru, işaretler ve 5 dakika uyarısının gösterildiğini tutar; oturum bitince silinir. `testSolve.autoAdvance` otomatik geçiş tercihidir (varsayılan kapalı). Kayıt yoksa ilk boş soru açılır.
 
 **Otomatik geçiş** yalnız boş soruya ilk cevapta ilerler, cevap değiştirilirken ilerlemez.
+
+## Test çözme: ekrana göre düzen (#778)
+
+`question-layout-planner.ts` soru ve şık düzenini kaynak piksele değil host'un alanına göre seçer: her düzenin (soru üstte 4/2/1 sütun, soru yanda 2/1 sütun) sığabildiği en büyük ölçeği hesaplar, küçültmeden önce düzeni değiştirir. Yalnız kayıtlı boyutları kullandığı için görsel yüklenmesini beklemez; bir sorunun ilk ve sonraki açılışı aynıdır. Düzen pencereye değil host genişliğine baktığı için önizleme çerçevesinde de (#780) aynı sonucu verir.
+
+- Yalnız `enableHeightFit` veren tüketicide (test çözme) çalışır; `practice-solve`, `activity-player`, `image-selector` eski hesapla kalır.
+- Yükseklik yüzünden soru 400 px genişliğin altına küçültülmez, içerik kaydırılır. Sayfa genişliği kayıtlı olmadığı için bu kaba bir sınırdır; gövde metnine göre sınır #778'in kaynak sayfa genişliği adımında gelir.
+- Dar alanda (600 px altı) soru hep üstte, şıklar en çok iki sütundur. Küçük kalan soru ve şıklar büyütme penceresinde birlikte açılır.
+

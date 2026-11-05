@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { planQuestionLayout, QuestionLayoutInput } from './question-layout-planner';
+import { planPassageLayout, planQuestionLayout, QuestionLayoutInput } from './question-layout-planner';
 
 const fourAnswers = (width: number, height: number) => Array.from({ length: 4 }, () => ({ width, height }));
 
@@ -133,5 +133,48 @@ describe('planQuestionLayout', () => {
 
     expect(plan.scale).toBeCloseTo(0.5, 1);
     expect(plan.fits).toBe(true);
+  });
+});
+
+describe('planPassageLayout', () => {
+  it('widePassage_StaysOnTopAndLeavesRoomForQuestion', () => {
+    const plan = planPassageLayout({ passage: { width: 4000, height: 1000 }, width: 1000, height: 700 });
+
+    expect(plan.arrangement).toBe('top');
+    expect(plan.boxWidth).toBe(1000);
+    expect(plan.questionHeight).toBe(700 - 250 - 16);
+  });
+
+  it('widePassageOnShortScreen_IsLimitedSoQuestionStaysVisible', () => {
+    const plan = planPassageLayout({ passage: { width: 2000, height: 1000 }, width: 1000, height: 400 });
+
+    expect(plan.boxWidth / 2).toBeCloseTo(400 * 0.45, 5);
+    expect(plan.questionHeight).toBeCloseTo(400 - 180 - 16, 5);
+  });
+
+  it('widePassageOnPhone_UsesFullWidthOnTop', () => {
+    const plan = planPassageLayout({ passage: { width: 4000, height: 1000 }, width: 358, height: null });
+
+    expect(plan).toMatchObject({ arrangement: 'top', boxWidth: 358, questionHeight: null });
+  });
+
+  it('longPassageOnWideScreen_StaysBesideAndScrollsInsideHeight', () => {
+    const plan = planPassageLayout({ passage: { width: 3800, height: 3400 }, width: 1112, height: 700 });
+
+    expect(plan.arrangement).toBe('beside');
+    expect(plan.boxWidth).toBeCloseTo(500.4, 1);
+    expect(plan.boxHeight).toBe(700);
+    expect(plan.questionWidth).toBeCloseTo(1112 - 500.4 - 16, 1);
+  });
+
+  it('longPassageOnNarrowScreen_UsesTabs', () => {
+    const plan = planPassageLayout({ passage: { width: 3800, height: 3400 }, width: 764, height: 600 });
+
+    expect(plan).toMatchObject({ arrangement: 'tabs', questionWidth: 764, questionHeight: 600 });
+  });
+
+  it('passageWithoutRecordedSize_IsTreatedAsLongText', () => {
+    expect(planPassageLayout({ passage: null, width: 1112, height: 700 }).arrangement).toBe('beside');
+    expect(planPassageLayout({ passage: null, width: 358, height: null }).arrangement).toBe('tabs');
   });
 });

@@ -98,4 +98,4 @@ Deneme her oturum için sıradan bir test kaydı açar: süre sınırı, oturum,
 - Yalnız `enableHeightFit` veren tüketicide (test çözme) çalışır; `practice-solve`, `activity-player`, `image-selector` eski hesapla kalır.
 - Yükseklik yüzünden soru 400 px genişliğin altına küçültülmez, içerik kaydırılır. Sayfa genişliği kayıtlı olmadığı için bu kaba bir sınırdır; gövde metnine göre sınır #778'in kaynak sayfa genişliği adımında gelir.
 - Dar alanda (600 px altı) soru hep üstte, şıklar en çok iki sütundur. Küçük kalan soru ve şıklar büyütme penceresinde birlikte açılır.
-
+- Okuma parçası yerleşimi yalnız parçaya ve alana bakar (`planPassageLayout`): en/boy oranı 1,6 ve üstü geniş şekil üstte, uzun metin 840 px'ten geniş alanda solda kendi içinde kayar, daha dar alanda Metin/Soru sekmeleri çıkar. Kaydırma konumu ve "görüldü" bilgisi parça bazında bellekte tutulur; sekme ilk görüşte metinle, aynı grubun sonraki sorularında soruyla açılır.

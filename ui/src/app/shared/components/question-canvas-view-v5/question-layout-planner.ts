@@ -146,3 +146,65 @@ export function planQuestionLayout(input: QuestionLayoutInput): QuestionLayoutPl
   const heightOf = (plan: QuestionLayoutPlan) => contentHeightAt(plan, input, plan.scale);
   return readable.reduce((shortest, plan) => (heightOf(plan) < heightOf(shortest) ? plan : shortest));
 }
+
+/** En/boy oranı bundan büyük okuma parçası geniş şekil sayılır ve sorunun üstünde durur. */
+const WIDE_PASSAGE_RATIO = 1.6;
+/** Geniş şekil, soruya yer kalsın diye yüksekliğin bu oranını geçmez. */
+const WIDE_PASSAGE_MAX_HEIGHT_RATIO = 0.45;
+/** Uzun metin bu genişliğin altında yana sığmaz, sekmeyle gösterilir. */
+const PASSAGE_BESIDE_MIN_WIDTH_PX = 840;
+const PASSAGE_BESIDE_RATIO = 0.45;
+const PASSAGE_BESIDE_MAX_WIDTH_PX = 560;
+
+export interface PassageLayoutInput {
+  /** Kayıtlı boyut; eski kayıtlarda null olabilir, uzun metin gibi davranılır. */
+  passage: PlanSize | null;
+  width: number;
+  height: number | null;
+}
+
+export interface PassageLayoutPlan {
+  arrangement: 'beside' | 'top' | 'tabs';
+  /** Parça kutusunun genişliği (px). */
+  boxWidth: number;
+  /** Kutunun yüksekliği (px); aşan içerik kutunun içinde kayar. Null: sınır yok. */
+  boxHeight: number | null;
+  /** Soru ve şıklara kalan alan. */
+  questionWidth: number;
+  questionHeight: number | null;
+}
+
+/**
+ * Yerleşim yalnız parçaya ve alana bakar, soruya bakmaz: aynı gruptaki sorular arasında geçerken
+ * parça yerinden oynamaz.
+ */
+export function planPassageLayout({ passage, width, height }: PassageLayoutInput): PassageLayoutPlan {
+  const ratio = passage && passage.height > 0 ? passage.width / passage.height : 0;
+
+  if (passage && ratio >= WIDE_PASSAGE_RATIO) {
+    const heightLimit = height === null ? Number.POSITIVE_INFINITY : height * WIDE_PASSAGE_MAX_HEIGHT_RATIO;
+    const compact = width < COMPACT_WIDTH_PX;
+    const boxWidth = compact ? width : Math.min(width, passage.width, heightLimit * ratio);
+    const boxHeight = boxWidth / ratio;
+    return {
+      arrangement: 'top',
+      boxWidth,
+      boxHeight: null,
+      questionWidth: width,
+      questionHeight: height === null ? null : Math.max(0, height - boxHeight - BLOCK_GAP_PX),
+    };
+  }
+
+  if (width >= PASSAGE_BESIDE_MIN_WIDTH_PX) {
+    const boxWidth = Math.min(width * PASSAGE_BESIDE_RATIO, PASSAGE_BESIDE_MAX_WIDTH_PX);
+    return {
+      arrangement: 'beside',
+      boxWidth,
+      boxHeight: height,
+      questionWidth: width - boxWidth - BLOCK_GAP_PX,
+      questionHeight: height,
+    };
+  }
+
+  return { arrangement: 'tabs', boxWidth: width, boxHeight: null, questionWidth: width, questionHeight: height };
+}

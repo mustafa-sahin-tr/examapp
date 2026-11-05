@@ -493,6 +493,9 @@ public class QuestionTransferJobRunner
         await _db.SaveChangesAsync();
     }
 
+    internal static bool IsContextBasedInPackage(JsonElement qEl) =>
+        qEl.TryGetProperty("isContextBased", out var contextBased) && contextBased.ValueKind == JsonValueKind.True;
+
     internal static bool IsUnpublishedInPackage(JsonElement qEl) =>
         qEl.TryGetProperty("isUnpublished", out var unpublished) && unpublished.ValueKind == JsonValueKind.True;
 
@@ -550,6 +553,7 @@ public class QuestionTransferJobRunner
                 licenseReference = q.LicenseReference,
                 licenseEndsAt = q.LicenseEndsAt,
                 isUnpublished = q.IsUnpublished,
+                isContextBased = q.IsContextBased,
                 difficultyLevel = q.DifficultyLevel,
                 classificationSource = q.ClassificationSource?.ToString(),
                 showPassageFirst = q.ShowPassageFirst,
@@ -593,6 +597,11 @@ public class QuestionTransferJobRunner
                         code = link.LearningOutcome.Code,
                         curriculumVersion = link.LearningOutcome.CurriculumVersion.ToString(),
                     })
+                    .ToList(),
+                // Issue #703: beceri kodla eşleşir; hedefte olmayan kod atlanır.
+                skills = q.QuestionSkills
+                    .Where(link => link.Skill != null)
+                    .Select(link => link.Skill.Code)
                     .ToList(),
                 passage = q.PassageId.HasValue && q.Passage != null
                     ? new
@@ -670,6 +679,8 @@ public class QuestionTransferJobRunner
                     .ThenInclude(st => st.Topic)
             .Include(q => q.QuestionLearningOutcomes)
                 .ThenInclude(link => link.LearningOutcome)
+            .Include(q => q.QuestionSkills)
+                .ThenInclude(link => link.Skill)
             .Include(q => q.Passage)
             .Where(q => ids.Contains(q.Id))
             .ToListAsync();
@@ -928,6 +939,7 @@ public class QuestionTransferJobRunner
                         LicenseReference = qEl.TryGetProperty("licenseReference", out var licenseEl) && licenseEl.ValueKind == JsonValueKind.String ? licenseEl.GetString() : null,
                         LicenseEndsAt = qEl.TryGetProperty("licenseEndsAt", out var licenseEndsEl) && licenseEndsEl.ValueKind == JsonValueKind.String ? licenseEndsEl.GetDateTime() : null,
                         IsUnpublished = qEl.TryGetProperty("isUnpublished", out var unpublishedEl) && unpublishedEl.ValueKind == JsonValueKind.True,
+                        IsContextBased = IsContextBasedInPackage(qEl),
                         DifficultyLevel = ParseDifficultyLevel(qEl),
                         ClassificationSource = ParseClassificationSource(qEl),
                         ShowPassageFirst = qEl.TryGetProperty("showPassageFirst", out var spf) && spf.ValueKind == JsonValueKind.True,
@@ -1084,6 +1096,13 @@ public class QuestionTransferJobRunner
                                 LearningOutcomeId = outcomeId
                             });
                         }
+                        await _db.SaveChangesAsync();
+                    }
+
+                    if (qEl.TryGetProperty("skills", out var skillsEl) && skillsEl.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var skillId in await ResolveSkillsAsync(_db, skillsEl))
+                            _db.QuestionSkills.Add(new QuestionSkill { QuestionId = question.Id, SkillId = skillId });
                         await _db.SaveChangesAsync();
                     }
 
@@ -1293,6 +1312,7 @@ public class QuestionTransferJobRunner
         var target = await _db.Questions
             .Include(q => q.QuestionSubTopics)
             .Include(q => q.QuestionLearningOutcomes)
+            .Include(q => q.QuestionSkills)
             .FirstAsync(q => q.Id == questionId);
 
         target.SubjectId ??= taxonomy.SubjectId;
@@ -1320,6 +1340,16 @@ public class QuestionTransferJobRunner
                 _db.QuestionLearningOutcomes.Add(new QuestionLearningOutcome { QuestionId = questionId, LearningOutcomeId = id });
         }
 
+        // Issue #703: etiket boşsa doldurulur; hedefte verilmiş etiket ezilmez.
+        if (!target.IsContextBased && IsContextBasedInPackage(qEl))
+            target.IsContextBased = true;
+        if (qEl.TryGetProperty("skills", out var skillsEl) && skillsEl.ValueKind == JsonValueKind.Array)
+        {
+            var skillIds = target.QuestionSkills.Select(l => l.SkillId).ToHashSet();
+            foreach (var id in (await ResolveSkillsAsync(_db, skillsEl)).Where(skillIds.Add))
+                _db.QuestionSkills.Add(new QuestionSkill { QuestionId = questionId, SkillId = id });
+        }
+
         var unpublishedHere = !target.IsUnpublished && IsUnpublishedInPackage(qEl);
         if (unpublishedHere)
             target.IsUnpublished = true;
@@ -1340,6 +1370,19 @@ public class QuestionTransferJobRunner
         return await _db.Set<QuestionTransferJob>().FirstAsync(j => j.Id == jobId);
     }
 
+
+    /// <summary>Issue #703: paketteki beceri kodlarının hedefteki kimlikleri; bilinmeyen kod atlanır.</summary>
+    internal static async Task<List<int>> ResolveSkillsAsync(AppDbContext db, JsonElement skillsEl)
+    {
+        var codes = skillsEl.EnumerateArray()
+            .Where(el => el.ValueKind == JsonValueKind.String)
+            .Select(el => el.GetString()!)
+            .Distinct()
+            .ToList();
+        if (codes.Count == 0)
+            return [];
+        return await db.Skills.Where(s => codes.Contains(s.Code)).Select(s => s.Id).ToListAsync();
+    }
 
     /// <summary>Issue #692: paketteki kazanımların hedefteki kimlikleri; hedefte olmayan ya da tanımsız müfredatlı olan atlanır.</summary>
     internal static async Task<List<int>> ResolveLearningOutcomesAsync(AppDbContext db, JsonElement outcomesEl)

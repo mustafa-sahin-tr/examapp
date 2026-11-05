@@ -37,8 +37,9 @@ dev defaults; never reuse them outside local dev.
 | Veli: çocuk hesabı (#438), davet / aktivasyon / grace (#440, #441) | `docs/parent-accounts.md` |
 | İşaretleme + Claude (#578, #579, #582), QuestionTrainer, soru bankasına kayıt (#470, #472), büyük görsel (#597), tuvalde Claude (#473), kitaplar (#577), sınıflandırıcı (#469) | `docs/labeling.md` |
 | Etkinlik tipleri ve oturumlar: yeniden çöz (#609), openText (#583), analiz (#584), görselsiz editör (#590), mazeTree (#585), crossword / wordSearch / logicGrid / şifre (#586), regionPaint (#587), numberLine / barChart / gridDraw / grafikler (#588), terazi (#632), saat (#634), madde listesi / sıra (#684, #685) | `docs/activities.md` |
-| Profil sayıları (#501), öğretmen transferi (#539), testi yazdırma (#701), MEB kazanımları (#692), denemeler (#693), konu performansı (#497), haftalık gelişim (#531), puan hesaplayıcı (#694), hedef okul (#695), karışık mini deneme (#534), cevap istatistikleri (#785), bilgi kartları (#699), koç paneli (#700) | `docs/feature-notes.md` |
+| Profil sayıları (#501), öğretmen transferi (#539), testi yazdırma (#701), MEB kazanımları (#692), denemeler (#693), konu performansı (#497), haftalık gelişim (#531), puan hesaplayıcı (#694), hedef okul (#695), karışık mini deneme (#534), cevap istatistikleri (#785), bilgi kartları (#699), koç paneli (#700), beceri etiketleri (#703) | `docs/feature-notes.md` |
 | Ürün dili: menü ve başlıklarda kullanılacak kelimeler (#718) | `docs/glossary.md` |
+| Bağlam temelli sorular: MEB soru yazım kılavuzu özeti, TYMM beceri listesi (#703) | `docs/context-based-questions.md` |
 
 Yeni bir özellik notu bu dosyaya değil ilgili `docs/` dosyasına yazılır; burada yalnız tablo satırı / tuzak güncellenir.
 Kod / config yorumlarındaki "bkz. local-dev.md" referanslarının (RabbitMQ parola hash'i, Keycloak, grace süresi …) ayrıntısı

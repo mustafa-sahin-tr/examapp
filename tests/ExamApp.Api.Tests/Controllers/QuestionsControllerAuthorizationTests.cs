@@ -46,6 +46,7 @@ public class QuestionsControllerAuthorizationTests : IDisposable
     private IQuestionQueryService _questionQuery = null!; // StartHostAsync'te atanır (çağrı doğrulaması için)
     private IQuestionTestLinkService _testLinks = null!;  // issue #472
     private readonly ILearningOutcomeService _learningOutcomes = Substitute.For<ILearningOutcomeService>(); // issue #692
+    private readonly ISkillService _skills = Substitute.For<ISkillService>(); // issue #703
     private readonly int _worksheet;
     private readonly int _copyWorksheet;
     private readonly int _legacyQuestion;   // CreateUserId=0, W + W2'de
@@ -211,6 +212,7 @@ public class QuestionsControllerAuthorizationTests : IDisposable
                     services.AddSingleton(query);
                     services.AddSingleton(testLinks);
                     services.AddSingleton(_learningOutcomes);
+                    services.AddSingleton(_skills);
                     services.AddSingleton(minio);
                     services.AddSingleton(classifierCache);
                     services.AddSingleton<ImageHelper>();
@@ -277,6 +279,16 @@ public class QuestionsControllerAuthorizationTests : IDisposable
         (await SendAsync(client, Copier, HttpMethod.Put, $"/api/questions/{_legacyQuestion}/learning-outcomes",
             new { learningOutcomeIds = new[] { 1 } })).StatusCode.ShouldBe(HttpStatusCode.NotFound);
         await _learningOutcomes.DidNotReceive().SetForQuestionAsync(Arg.Any<int>(), Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Setting_context_tags_on_someone_elses_question_is_404_issue703()
+    {
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+        (await SendAsync(client, Copier, HttpMethod.Put, $"/api/questions/{_legacyQuestion}/context-tags",
+            new { isContextBased = true, skillIds = new[] { 8 } })).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        await _skills.DidNotReceive().SetForQuestionAsync(Arg.Any<int>(), Arg.Any<SetQuestionContextTagsDto>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

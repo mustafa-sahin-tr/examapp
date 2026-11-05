@@ -43,6 +43,7 @@ public class QuestionsController : BaseController
     private readonly IQuestionOwnershipGuard _ownership;
     private readonly IQuestionTestLinkService _testLinks;
     private readonly ILearningOutcomeService _learningOutcomes;
+    private readonly ISkillService _skills;
 
     private const string AuthoringRoles = "Teacher,Admin";
 
@@ -60,10 +61,12 @@ public class QuestionsController : BaseController
         IStringLocalizer<Messages> localizer,
         IQuestionOwnershipGuard ownership,
         IQuestionTestLinkService testLinks,
-        ILearningOutcomeService learningOutcomes)
+        ILearningOutcomeService learningOutcomes,
+        ISkillService skills)
         : base()
     {
         _learningOutcomes = learningOutcomes;
+        _skills = skills;
         _ownership = ownership;
         _testLinks = testLinks;
         _localizer = localizer;
@@ -322,6 +325,33 @@ public class QuestionsController : BaseController
             return BadRequest();
 
         return Ok(await _learningOutcomes.GetForQuestionAsync(id, HttpContext.RequestAborted));
+    }
+
+    // GET /api/questions/{id}/context-tags — issue #703: bağlam temelli bayrağı ve beceri etiketleri.
+    [HttpGet("{id}/context-tags")]
+    [Authorize(Roles = AuthoringRoles)]
+    public async Task<IActionResult> GetContextTags(int id)
+    {
+        var user = await GetAuthenticatedUserAsync(HttpContext.RequestAborted);
+        if (await DenyUnlessQuestionViewerAsync(id, user.Id) is { } denied)
+            return denied;
+
+        return Ok(await _skills.GetForQuestionAsync(id, HttpContext.RequestAborted));
+    }
+
+    // PUT /api/questions/{id}/context-tags — issue #703: bayrağı ve becerileri değiştirir (yalnız soru sahibi/admin).
+    [HttpPut("{id}/context-tags")]
+    [Authorize(Roles = AuthoringRoles)]
+    public async Task<IActionResult> SetContextTags(int id, [FromBody] SetQuestionContextTagsDto request)
+    {
+        var user = await GetAuthenticatedUserAsync(HttpContext.RequestAborted);
+        if (await DenyUnlessQuestionOwnerAsync(id, user.Id) is { } denied)
+            return denied;
+
+        if (!await _skills.SetForQuestionAsync(id, request, user.Id, HttpContext.RequestAborted))
+            return BadRequest();
+
+        return Ok(await _skills.GetForQuestionAsync(id, HttpContext.RequestAborted));
     }
 
     // PUT /api/questions/{id}/layout-choice — issue #778: çözüm ekranı düzeni (yalnız soru sahibi/admin); null = otomatik

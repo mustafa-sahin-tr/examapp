@@ -102,6 +102,11 @@ public class Question : BaseEntity
     /// <summary>Hak sahibi talebiyle yeni test ve pratiklerden çekildi; başlamış oturumlar etkilenmez.</summary>
     public bool IsUnpublished { get; set; }
 
+    /// <summary>Issue #703: öğretmenin beyanıyla bağlam temelli soru (bkz. docs/context-based-questions.md); doğrulanmaz.</summary>
+    public bool IsContextBased { get; set; }
+
+    public ICollection<QuestionSkill> QuestionSkills { get; set; } = new List<QuestionSkill>(); // Issue #703
+
     /// <summary>Ortamlar arası eşleşme kimliği (bkz. QuestionContentHash). İçerik değişince sıfırlanır, Hangfire işi yeniden hesaplar.</summary>
     [MaxLength(64)]
     public string? ContentHash { get; set; }

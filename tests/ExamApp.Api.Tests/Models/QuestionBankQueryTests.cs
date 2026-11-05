@@ -218,4 +218,11 @@ public class QuestionBankQueryTests
         page.Skip.ShouldBe(0);
         page.Take.ShouldBe(0);
     }
+
+    [Fact]
+    public void IsValid_TooManySkillIds_ReturnsFalse_issue703()
+    {
+        new QuestionBankQuery { SkillIds = Enumerable.Range(1, QuestionBankQuery.MaxSkillIds + 1).ToArray() }.IsValid().ShouldBeFalse();
+        new QuestionBankQuery { SkillIds = Enumerable.Range(1, QuestionBankQuery.MaxSkillIds).ToArray() }.IsValid().ShouldBeTrue();
+    }
 }

@@ -22,7 +22,11 @@
     "answerNo": "Belirlenmemiş",
     "inTest": "Bağlı test",
     "inTestYes": "Var",
-    "inTestNo": "Yok"
+    "inTestNo": "Yok",
+    "contextBased": "Bağlam temelli",
+    "contextBasedYes": "İşaretli",
+    "contextBasedNo": "İşaretsiz",
+    "skills": "Beceriler"
   },
   "results": {
     "total": "{{count}} soru",
@@ -47,11 +51,56 @@
     "alreadyAdded": "Testte var",
     "cannotLink": "Eklenemez",
     "cannotLinkTooltip": "Sahibi belli olmayan eski bir soru; teste eklenemez. Testi kopyalayarak kullanabilirsiniz.",
-    "bookTooltip": "Kitap içindekilerinden sınıflandırıldı"
+    "bookTooltip": "Kitap içindekilerinden sınıflandırıldı",
+    "contextBased": "Bağlam temelli",
+    "skills": "Beceriler"
   },
   "preview": {
     "title": "Soru #{{id}}",
     "imageAlt": "{{id}} numaralı sorunun görseli",
     "close": "Kapat"
+  },
+  "contextTags": {
+    "dialogTitle": "{{id}} numaralı sorunun becerileri",
+    "isContextBased": "Bağlam temelli soru",
+    "hint": "Soru, verilen bağlam (metin, tablo, görsel, durum) okunmadan çözülemiyorsa işaretleyin. Etiketler sizin beyanınızdır; Soru Havuzu'nda filtrelemek için kullanılır.",
+    "selectedCount": "{{count}} / {{max}} beceri seçildi",
+    "category": {
+      "2": "Bütünleşik beceriler",
+      "3": "Üst düzey düşünme becerileri"
+    },
+    "loadError": "Etiketler yüklenemedi.",
+    "saveError": "Etiketler kaydedilemedi.",
+    "cancel": "Vazgeç",
+    "save": "Kaydet"
+  },
+  "skills": {
+    "KB2": {
+      "1": "Çelişki giderme",
+      "2": "Gözlemleme",
+      "3": "Özetleme",
+      "4": "Çözümleme",
+      "5": "Sınıflandırma",
+      "6": "Bilgi toplama",
+      "7": "Karşılaştırma",
+      "8": "Sorgulama",
+      "9": "Genelleme",
+      "10": "Çıkarım yapma",
+      "11": "Gözleme dayalı tahmin etme",
+      "12": "Mevcut bilgiye/veriye dayalı tahmin etme",
+      "13": "Yapılandırma",
+      "14": "Yorumlama",
+      "15": "Yansıtma",
+      "16": "Muhakeme (akıl yürütme)",
+      "17": "Değerlendirme",
+      "18": "Tartışma",
+      "19": "Mantıksal denetleme",
+      "20": "Sentezleme"
+    },
+    "KB3": {
+      "1": "Karar verme",
+      "2": "Problem çözme",
+      "3": "Eleştirel düşünme"
+    }
   }
 }

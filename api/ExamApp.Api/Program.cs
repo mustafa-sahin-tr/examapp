@@ -430,6 +430,10 @@ builder.Services.AddOptions<ExamApp.Api.Services.TopicPerformance.LearningOutcom
 builder.Services.AddScoped<ExamApp.Api.Services.TopicPerformance.ILearningOutcomeMasteryService, ExamApp.Api.Services.TopicPerformance.LearningOutcomeMasteryService>(); // issue #696
 builder.Services.AddScoped<ExamApp.Api.Services.TopicPerformance.IParentLearningOutcomeMasteryService, ExamApp.Api.Services.TopicPerformance.ParentLearningOutcomeMasteryService>(); // issue #696
 builder.Services.AddScoped<ExamApp.Api.Services.MockExams.IMockExamService, ExamApp.Api.Services.MockExams.MockExamService>(); // issue #693
+builder.Services.AddOptions<ExamApp.Api.Services.Practice.MixedReviewOptions>() // issue #534
+    .BindConfiguration(ExamApp.Api.Services.Practice.MixedReviewOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 builder.Services.AddOptions<ExamApp.Api.Services.TargetGoals.TargetGoalsOptions>() // issue #695
     .BindConfiguration(ExamApp.Api.Services.TargetGoals.TargetGoalsOptions.SectionName);
 builder.Services.AddScoped<ExamApp.Api.Services.TargetGoals.ITargetProgramService, ExamApp.Api.Services.TargetGoals.TargetProgramService>(); // issue #695

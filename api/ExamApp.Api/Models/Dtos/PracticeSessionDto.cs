@@ -29,6 +29,9 @@ public class PracticeSessionStartDto
 
     /// <summary>Issue #532: oturum, öğrencinin kaydettiği sorulardan sabit bir listeyle açılır.</summary>
     public bool Saved { get; set; }
+
+    /// <summary>Issue #534: oturum, tekrar, yanlış defteri ve zayıf konulardan karışık sabit bir listeyle açılır.</summary>
+    public bool MixedReview { get; set; }
 }
 
 /// <summary>GET api/practice/saved: kaydedilen sorular, en yeni önce.</summary>

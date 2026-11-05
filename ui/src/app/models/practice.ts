@@ -15,6 +15,8 @@ export interface PracticeSessionStartRequest {
   mistakes?: boolean;
   /** Issue #532: kaydedilen sorulardan sabit listeli oturum. */
   saved?: boolean;
+  /** Issue #534: tekrar, yanlış defteri ve zayıf konulardan karışık sabit listeli oturum. */
+  mixedReview?: boolean;
 }
 
 /** Issue #529: tekrar zamanı gelen sorular; `items` listenin ilk bölümüdür. */

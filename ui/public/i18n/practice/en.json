@@ -1,6 +1,13 @@
 {
   "title": "Practice Questions",
   "subtitle": "Pick your scope, practise with random questions and see the result right after each answer.",
+  "mixedReview": {
+    "title": "Mixed mini exam",
+    "text": "Questions due for review, your mistakes, and new questions from your weak topics in one session.",
+    "start": "Start",
+    "doneTitle": "You finished the mini exam",
+    "doneText": "Questions you got wrong join your review list."
+  },
   "dueReview": {
     "title": "Review today: {{count}} questions",
     "text": "Questions you got wrong come back before you forget them.",

@@ -3,6 +3,7 @@
     "sessionNotFound": "Practice session not found",
     "gradeRequired": "You need a grade set on your profile before you can practise",
     "noDueReview": "There are no questions due for review right now.",
+    "noMixedReview": "You have not practised enough for a mixed review yet. Solve some questions first.",
     "noMistakes": "There are no questions to practise in your notebook.",
     "noSavedQuestions": "There are no saved questions to practise.",
     "savedLimitReached": "You can save up to 500 questions.",

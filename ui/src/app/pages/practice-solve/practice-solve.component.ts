@@ -189,6 +189,8 @@ export class PracticeSolveComponent implements OnInit {
   // ── Geçmiş oturumlar (kurulum ekranında) ────────────────────────────────────
   /** Issue #529: tekrar zamanı gelen soru sayısı. */
   readonly dueReviewCount = signal(0);
+  /** Issue #534: bitiş metni tekrardan farklıdır: oturumda yeni sorular da vardır. */
+  readonly mixedReviewSession = signal(false);
   /** Issue #532: bu oturumda kaydedilen sorular. */
   private readonly savedIds = signal<ReadonlySet<number>>(new Set());
   readonly saveBusy = signal(false);
@@ -689,6 +691,11 @@ export class PracticeSolveComponent implements OnInit {
     this.openSession({ dueReview: true }, () => this.startDueReview());
   }
 
+  /** Issue #534: tekrar, yanlış defteri ve zayıf konulardan karışık mini deneme. Kaynak yoksa sunucu mesajı gösterilir. */
+  startMixedReview(): void {
+    this.openSession({ mixedReview: true }, () => this.startMixedReview());
+  }
+
   private loadDueReview(): void {
     this.practiceService
       .getDueReview()
@@ -701,6 +708,7 @@ export class PracticeSolveComponent implements OnInit {
   }
 
   private openSession(request: PracticeSessionStartRequest, retry: () => void): void {
+    this.mixedReviewSession.set(request.mixedReview === true);
     this.run(this.practiceService.startSession(request), retry, (session) => {
       this.session.set(session);
       this.answeredCount.set(session.answeredCount);

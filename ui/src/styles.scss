@@ -35,6 +35,16 @@
   --paint-brown: #795548;
   --paint-black: #212121;
   --paint-gray: #9e9e9e;
+  // Issue #725: Planım takviminde ders renkleri. Üzerinde beyaz yazı var; hepsi beyazla en az 5:1 (WCAG AA), iki temada aynı.
+  --ms-subject-blue: #1D4ED8;
+  --ms-subject-red: #B91C1C;
+  --ms-subject-green: #047857;
+  --ms-subject-amber: #B45309;
+  --ms-subject-purple: #6D28D9;
+  --ms-subject-pink: #BE185D;
+  --ms-subject-teal: #0F766E;
+  --ms-subject-orange: #C2410C;
+  --ms-subject-default: #4338CA;
   // Tema'dan bağımsız türetilen token'lar (var() ile bağlı oldukları için class'a göre otomatik çözülür)
   --sidenav-active-bg: color-mix(in srgb, var(--primaryColor) 16%, transparent);
   --sidenav-active-accent: var(--primaryColor);

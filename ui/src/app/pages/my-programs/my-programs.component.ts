@@ -17,6 +17,7 @@ import { UserProgram } from '../../models/program.interfaces';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { MY_PROGRAMS_SCOPE } from './my-programs-scope';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 /** Sözlükte karşılığı olan program türleri; bunun dışındaki değer backend'den geldiği gibi gösterilir. */
 const KNOWN_STUDY_TYPES = ['intensive', 'regular', 'flexible', 'weekend', 'exam', 'question'];
@@ -27,6 +28,7 @@ type ProgramFilter = 'all' | 'active' | 'completed';
   selector: 'app-my-programs',
   standalone: true,
   imports: [
+    PageHeaderComponent,
     CommonModule,
     MatCardModule,
     MatButtonModule,

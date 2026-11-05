@@ -122,6 +122,7 @@
                   class="mini-day"
                   [class.empty]="!day"
                   [class.clickable]="day"
+                  [class.filled]="day && getSchedulesForDay(day).length > 0"
                   [style.background]="getDayGradient(day)"
                   (click)="onDayClick(day, $event)"
                   >

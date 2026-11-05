@@ -13,6 +13,8 @@ using ExamApp.Foundation.Localization;
 using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
+using ExamApp.Api.Services.TopicPerformance;
+using Microsoft.Extensions.Options;
 
 namespace ExamApp.Api.Services.Practice;
 
@@ -42,11 +44,16 @@ public class PracticeSessionService : IPracticeSessionService
     // "Günün soruları" (issue #99) gün sınırı: set günü = bugün mü, serbest pratikte bugünün seti dışlaması.
     private readonly ILocalDayCalendar _calendar;
 
-    public PracticeSessionService(AppDbContext context, IStringLocalizer<Messages>? localizer = null, ILocalDayCalendar? calendar = null)
+    private readonly ITopicPerformanceService _topicPerformance;
+    private readonly IOptionsMonitor<MixedReviewOptions>? _mixedReview;
+
+    public PracticeSessionService(AppDbContext context, IStringLocalizer<Messages>? localizer = null, ILocalDayCalendar? calendar = null, ITopicPerformanceService? topicPerformance = null, IOptionsMonitor<MixedReviewOptions>? mixedReview = null)
     {
         _context = context;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         _calendar = calendar ?? LocalDayCalendar.Default;
+        _topicPerformance = topicPerformance ?? new TopicPerformanceService(context);
+        _mixedReview = mixedReview;
     }
 
     public async Task<PracticeSessionDto> StartAsync(StudentProfileDto student, PracticeSessionStartDto request, CancellationToken ct = default)
@@ -65,7 +72,7 @@ public class PracticeSessionService : IPracticeSessionService
             var gradeId = student.GradeId.Value;
             var known = await _context.SubTopics.AsNoTracking()
                 .CountAsync(s => subTopicIds.Contains(s.Id) && s.Topic.GradeId == gradeId, ct);
-            if (known != request.SubTopicIds.Distinct().Count() || request.DueReview || request.Mistakes || request.Saved)
+            if (known != request.SubTopicIds.Distinct().Count() || request.DueReview || request.Mistakes || request.Saved || request.MixedReview)
                 throw new InvalidOperationException(_localizer["practice.subTopicInvalid"]);
         }
 
@@ -95,6 +102,17 @@ public class PracticeSessionService : IPracticeSessionService
                 throw new InvalidOperationException(_localizer["practice.noSavedQuestions"]);
 
             fixedQuestionIdsJson = JsonSerializer.Serialize(saved.Take(MaxSavedSessionCount).Select(q => q.QuestionId));
+        }
+
+        if (request.MixedReview)
+        {
+            var options = _mixedReview?.CurrentValue ?? new MixedReviewOptions();
+            var mixed = await MixedReviewQueries.LoadAsync(
+                _context, _calendar, _topicPerformance, options, student, subjectIds, request.TargetCount ?? options.Count, ct);
+            if (mixed.Count == 0)
+                throw new InvalidOperationException(_localizer["practice.noMixedReview"]);
+
+            fixedQuestionIdsJson = JsonSerializer.Serialize(mixed);
         }
 
         var session = new PracticeSession

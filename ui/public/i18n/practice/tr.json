@@ -1,6 +1,13 @@
 {
   "title": "Soru Çöz",
   "subtitle": "Kapsamını seç, rastgele sorularla pratik yap; her cevaptan sonra sonucu anında gör.",
+  "mixedReview": {
+    "title": "Karışık mini deneme",
+    "text": "Tekrar zamanı gelen sorular, yanlışların ve zayıf konularından yeni sorular tek oturumda.",
+    "start": "Başla",
+    "doneTitle": "Mini denemeyi bitirdin",
+    "doneText": "Yanlış yaptığın sorular tekrar listene eklenir."
+  },
   "dueReview": {
     "title": "Bugün tekrar: {{count}} soru",
     "text": "Daha önce yanlış yaptığın sorular unutulmadan geri geliyor.",

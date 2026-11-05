@@ -3,6 +3,7 @@
     "sessionNotFound": "Pratik oturumu bulunamadı",
     "gradeRequired": "Pratik yapabilmek için sınıf bilginizin tanımlı olması gerekir",
     "noDueReview": "Şu an tekrar zamanı gelen soru yok.",
+    "noMixedReview": "Karışık deneme için henüz yeterli çalışman yok. Önce biraz soru çöz.",
     "noMistakes": "Defterinde çözülecek soru yok.",
     "noSavedQuestions": "Çözülebilecek kayıtlı soru yok.",
     "savedLimitReached": "En çok 500 soru kaydedebilirsin.",

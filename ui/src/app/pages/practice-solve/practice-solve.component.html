@@ -65,6 +65,18 @@
     </button>
   </div>
   }
+  @if (!setupLoading()) {
+  <div class="practice__card practice__due-review" data-test="mixed-review-card">
+    <div class="practice__due-review-text">
+      <h2>{{ t('mixedReview.title') }}</h2>
+      <p>{{ t('mixedReview.text') }}</p>
+    </div>
+    <button mat-stroked-button type="button" (click)="startMixedReview()" [disabled]="busy()">
+      <mat-icon>shuffle</mat-icon>
+      {{ t('mixedReview.start') }}
+    </button>
+  </div>
+  }
   <div class="practice__card practice__card--setup" [attr.aria-busy]="setupLoading() ? 'true' : null">
     @if (setupLoading()) {
     <div class="practice__loading">
@@ -415,7 +427,10 @@
   <ng-container *ngTemplateOutlet="statsBar" />
   <div class="practice__card practice__state practice__state--empty">
     <mat-icon>inbox</mat-icon>
-    @if (session()?.isDueReview) {
+    @if (mixedReviewSession()) {
+    <h2>{{ t('mixedReview.doneTitle') }}</h2>
+    <p>{{ t('mixedReview.doneText') }}</p>
+    } @else if (session()?.isDueReview) {
     <h2>{{ t('dueReview.doneTitle') }}</h2>
     <p>{{ t('dueReview.doneText') }}</p>
     } @else if (answeredCount() > 0) {

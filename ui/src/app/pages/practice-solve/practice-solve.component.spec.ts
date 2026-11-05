@@ -736,6 +736,20 @@ describe('PracticeSolveComponent', () => {
             expect(practiceService.startSession).toHaveBeenCalledWith({ dueReview: true });
         });
 
+        it('mixedReviewCard_StartsAMixedSession', () => {
+            practiceService.startSession.mockReturnValue(of({ ...session, id: 9, isDueReview: true }));
+            practiceService.getNextQuestion.mockReturnValue(of({ sessionId: 9, question: null, poolExhausted: true, answeredCount: 0, correctCount: 0, skippedCount: 0 }));
+            setup();
+            fixture.detectChanges();
+
+            const mixed = (fixture.nativeElement as HTMLElement).querySelector('[data-test="mixed-review-card"]');
+            expect(mixed?.textContent).toContain('Karışık mini deneme');
+            mixed?.querySelector('button')?.click();
+
+            expect(practiceService.startSession).toHaveBeenCalledWith({ mixedReview: true });
+            expect(component.mixedReviewSession()).toBe(true);
+        });
+
         it('loadFailure_DoesNotBlockPractice', () => {
             practiceService.getDueReview.mockReturnValue(throwError(() => new Error('x')));
             setup();

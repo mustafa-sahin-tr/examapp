@@ -1,0 +1,72 @@
+<section class="fcr" *transloco="let t; prefix: 'flashcards.review'">
+  <app-page-header [title]="t('title')" [description]="t('subtitle')" />
+
+  @if (loading()) {
+    <div class="fcr__state" role="status">
+      <mat-progress-spinner mode="indeterminate" diameter="40" />
+    </div>
+  } @else if (loadFailed()) {
+    <div class="fcr__state" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <p>{{ t('loadError') }}</p>
+      <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+    </div>
+  } @else {
+    @if (current(); as card) {
+      <p class="fcr__progress" data-test="review-progress">{{ t('remaining', { count: queue().length }) }}</p>
+      <article class="fcr__card" data-test="review-card">
+        <span class="fcr__deck">{{ card.deckTitle }}</span>
+        @if (card.imageUrl) {
+          <img class="fcr__image" [src]="card.imageUrl" [alt]="t('imageAlt')" />
+        }
+        @if (card.front) {
+          <p class="fcr__text" data-test="review-front">{{ card.front }}</p>
+        }
+        @if (revealed()) {
+          <hr class="fcr__divider" />
+          <p class="fcr__text" data-test="review-back">{{ card.back }}</p>
+        }
+      </article>
+
+      @if (saveFailed()) {
+        <p class="fcr__error" role="alert">{{ t('saveError') }}</p>
+      }
+
+      @if (revealed()) {
+        <div class="fcr__actions" role="group" [attr.aria-label]="t('rateLabel')">
+          @for (recall of recalls; track recall) {
+            <button
+              mat-stroked-button
+              type="button"
+              class="fcr__rate"
+              [attr.data-test]="'rate-' + recall"
+              [disabled]="saving()"
+              (click)="rate(recall)"
+            >
+              <strong>{{ t('recall.' + recall) }}</strong>
+              <small>{{ t('recallHint.' + recall) }}</small>
+            </button>
+          }
+        </div>
+      } @else {
+        <div class="fcr__actions">
+          <button mat-raised-button color="primary" type="button" data-test="review-reveal" (click)="revealed.set(true)">
+            {{ t('reveal') }}
+          </button>
+        </div>
+      }
+    } @else {
+      <div class="fcr__state" data-test="review-done">
+        <mat-icon>task_alt</mat-icon>
+        @if (reviewedCount() > 0) {
+          <h2>{{ t('doneTitle') }}</h2>
+          <p>{{ t('doneText', { count: reviewedCount() }) }}</p>
+        } @else {
+          <h2>{{ t('emptyTitle') }}</h2>
+          <p>{{ t('emptyText') }}</p>
+        }
+        <a mat-stroked-button routerLink="/flashcards">{{ t('backToDecks') }}</a>
+      </div>
+    }
+  }
+</section>

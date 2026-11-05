@@ -14,5 +14,6 @@ Menü, sayfa başlığı ve metinlerde aynı kavram için aynı kelime kullanıl
 | Soru deposu | Soru Havuzu | Question Pool | Soru Bankası |
 | Öğrencinin yetişkini | Veli | Parent | Ebeveyn |
 | Yazışma | Mesajlar | Messages | Öğretmenime Yaz |
+| Tekrar kartı (#699) | Bilgi Kartları, deste | Flashcards, deck | Flashcard, Kart destesi |
 
 "Sınav" yalnız gerçek sınavlar için kullanılır: LGS, YKS, okul sınavı.

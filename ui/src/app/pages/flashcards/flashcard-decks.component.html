@@ -1,0 +1,97 @@
+<ng-container *transloco="let root; prefix: 'flashcards'">
+  <section class="fcd" *transloco="let t; prefix: 'flashcards.decks'">
+    <app-page-header [title]="t('title')" [description]="isStudent ? t('subtitleStudent') : t('subtitleTeacher')">
+      @if (isStudent && totalDue() > 0) {
+        <a mat-raised-button color="primary" routerLink="/flashcards/review" data-test="decks-review-all">
+          <mat-icon>replay</mat-icon>
+          {{ t('reviewAll', { count: totalDue() }) }}
+        </a>
+      }
+      @if (!creating()) {
+        <button mat-stroked-button type="button" data-test="deck-new" (click)="creating.set(true)">
+          <mat-icon>add</mat-icon>
+          {{ t('newDeck') }}
+        </button>
+      }
+    </app-page-header>
+
+    @if (errorKey(); as key) {
+      <p class="fcd__error" role="alert">{{ root('errors.' + key) }}</p>
+    }
+
+    @if (creating()) {
+      <app-flashcard-deck-form [mode]="mode" [saving]="saving()" (saved)="create($event)" (cancelled)="creating.set(false)" />
+    }
+
+    @if (loading()) {
+      <div class="fcd__state" role="status">
+        <mat-progress-spinner mode="indeterminate" diameter="40" />
+      </div>
+    } @else if (loadFailed()) {
+      <div class="fcd__state" role="alert">
+        <mat-icon>error_outline</mat-icon>
+        <p>{{ t('loadError') }}</p>
+        <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+      </div>
+    } @else if (decks().length === 0) {
+      <div class="fcd__state" data-test="decks-empty">
+        <mat-icon>style</mat-icon>
+        <h2>{{ t('emptyTitle') }}</h2>
+        <p>{{ isStudent ? t('emptyTextStudent') : t('emptyTextTeacher') }}</p>
+      </div>
+    } @else {
+      @if (assignedDecks().length > 0) {
+        <h2 class="fcd__heading">{{ t('assignedHeading') }}</h2>
+        <ul class="fcd__list">
+          @for (deck of assignedDecks(); track deck.id) {
+            <ng-container *ngTemplateOutlet="deckRow; context: { $implicit: deck }" />
+          }
+        </ul>
+      }
+      @if (ownDecks().length > 0) {
+        @if (isStudent) {
+          <h2 class="fcd__heading">{{ t('ownHeading') }}</h2>
+        }
+        <ul class="fcd__list">
+          @for (deck of ownDecks(); track deck.id) {
+            <ng-container *ngTemplateOutlet="deckRow; context: { $implicit: deck }" />
+          }
+        </ul>
+      }
+    }
+
+    <ng-template #deckRow let-deck>
+      <li class="fcd__item" data-test="deck-item">
+        <div class="fcd__meta">
+          <strong>{{ deck.title }}</strong>
+          <span class="fcd__sub">
+            @if (deck.gradeName) {
+              {{ deck.gradeName }} ·
+            }
+            @if (deck.subjectName) {
+              {{ deck.subjectName }} ·
+            }
+            @if (deck.topicName) {
+              {{ deck.topicName }} ·
+            }
+            {{ t('cardCount', { count: deck.cardCount }) }}
+            @if (isStudent) {
+              · {{ t('dueCount', { count: deck.dueCount ?? 0 }) }}
+            }
+          </span>
+        </div>
+        <div class="fcd__actions">
+          @if (isStudent && (deck.dueCount ?? 0) > 0) {
+            <a mat-stroked-button routerLink="/flashcards/review" [queryParams]="{ deck: deck.id }" data-test="deck-review">{{ t('review') }}</a>
+          }
+          @if (deck.isOwner) {
+            <a mat-stroked-button [routerLink]="deckRoute(deck)" data-test="deck-edit">{{ t('edit') }}</a>
+            <button mat-icon-button type="button" data-test="deck-delete" [attr.aria-label]="t('delete')" (click)="confirmDelete(deck)">
+              <mat-icon>delete</mat-icon>
+            </button>
+          }
+        </div>
+      </li>
+    </ng-template>
+  </section>
+</ng-container>

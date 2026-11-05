@@ -11,6 +11,7 @@ import { BadgeService, BadgeProgressItem, BadgeProgressResponse } from '../../se
 import { StudentResetService } from '../../services/student-reset.service';
 import { StudentService } from '../../services/student.service';
 import { LocaleService } from '../../services/locale.service';
+import { FlashcardService } from '../../services/flashcard.service';
 import { PracticeService } from '../../services/practice.service';
 import { AuthService, UserProfile } from '../../services/auth.service';
 import { StudentParentService } from '../../services/student-parent.service';
@@ -101,6 +102,7 @@ describe('DashboardComponent', () => {
     let testServiceSpy: MockedObject<TestService>;
     let badgeServiceSpy: MockedObject<BadgeService>;
     let studentServiceSpy: MockedObject<StudentService>;
+    let flashcardServiceSpy: { getDueCount: ReturnType<typeof vi.fn> };
     let practiceServiceSpy: MockedObject<PracticeService>;
     let authUser: WritableSignal<UserProfile | null>;
 
@@ -133,11 +135,13 @@ describe('DashboardComponent', () => {
         } as unknown as MockedObject<PracticeService>;
         practiceServiceSpy.getDailySet.mockReturnValue(of(dailySetFixture()));
         practiceServiceSpy.getDueReview.mockReturnValue(of({ totalCount: 0, items: [] }));
+        flashcardServiceSpy = { getDueCount: vi.fn().mockReturnValue(of(0)) };
 
         TestBed.configureTestingModule({
             imports: [DashboardComponent, translocoTesting],
             providers: [
                 { provide: TestService, useValue: testServiceSpy },
+                { provide: FlashcardService, useValue: flashcardServiceSpy },
                 { provide: BadgeService, useValue: badgeServiceSpy },
                 { provide: StudentResetService, useValue: {
                         resetMyData: vi.fn().mockName("StudentResetService.resetMyData")
@@ -441,6 +445,30 @@ describe('DashboardComponent', () => {
     });
 
     // Issue #721: tek "sıradaki iş".
+    describe('flashcards due (issue #699)', () => {
+        function render(load: () => void): HTMLElement {
+            load();
+            const fixture = TestBed.createComponent(DashboardComponent);
+            fixture.detectChanges();
+            return fixture.nativeElement as HTMLElement;
+        }
+
+        it('dueCards_ShowTheCount', () => {
+            const el = render(() => flashcardServiceSpy.getDueCount.mockReturnValue(of(4)));
+            expect(el.querySelector('[data-test="flashcards-due"]')?.textContent).toContain('4');
+        });
+
+        it('noDueCards_HidesTheBand', () => {
+            const el = render(() => flashcardServiceSpy.getDueCount.mockReturnValue(of(0)));
+            expect(el.querySelector('[data-test="flashcards-due"]')).toBeNull();
+        });
+
+        it('countError_DoesNotBreakThePage', () => {
+            const el = render(() => flashcardServiceSpy.getDueCount.mockReturnValue(throwError(() => new Error('x'))));
+            expect(el.querySelector('[data-test="flashcards-due"]')).toBeNull();
+        });
+    });
+
     describe('nextStep (issue #721)', () => {
         function vm(endAt: string | null): never {
             return { assignment: { endAt, worksheetId: 7 }, test: { name: 'Ödev' } } as never;

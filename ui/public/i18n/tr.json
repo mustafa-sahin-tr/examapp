@@ -57,6 +57,7 @@
       "practice": "Soru Çöz",
       "mistakes": "Yanlışlarım",
       "savedQuestions": "Kaydettiklerim",
+      "flashcards": "Bilgi Kartları",
       "programs": "Programlarım",
       "myCalendar": "Planım",
       "tutors": "Özel Ders",
@@ -1039,6 +1040,10 @@
     }
   },
   "dashboard": {
+    "flashcardsDue": {
+      "title": "Bugün tekrar: {{count}} bilgi kartı",
+      "action": "Tekrar et"
+    },
     "nextStep": {
       "label": "Sıradaki iş",
       "dueSoonTitle": "Teslimi yaklaşıyor: {{name}}",

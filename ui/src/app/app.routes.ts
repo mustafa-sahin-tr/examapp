@@ -316,6 +316,39 @@ export const routes: Routes = [
           import('./pages/mistake-notebook/mistake-notebook.component').then((m) => m.MistakeNotebookComponent),
       },
       {
+        // Issue #699: bilgi kartları (öğrenci); `review` :id'den önce gelir.
+        path: 'flashcards',
+        canActivate: [authGuard, studentGuard],
+        data: { mode: 'student' },
+        loadComponent: () => import('./pages/flashcards/flashcard-decks.component').then((m) => m.FlashcardDecksComponent),
+      },
+      {
+        path: 'flashcards/review',
+        canActivate: [authGuard, studentGuard],
+        loadComponent: () => import('./pages/flashcards/flashcard-review.component').then((m) => m.FlashcardReviewComponent),
+      },
+      {
+        path: 'flashcards/:id',
+        canActivate: [authGuard, studentGuard],
+        data: { mode: 'student' },
+        loadComponent: () =>
+          import('./pages/flashcards/flashcard-deck-detail.component').then((m) => m.FlashcardDeckDetailComponent),
+      },
+      {
+        // Issue #699: öğretmenin desteleri ve atamaları.
+        path: 'teacher/flashcards',
+        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],
+        data: { mode: 'teacher' },
+        loadComponent: () => import('./pages/flashcards/flashcard-decks.component').then((m) => m.FlashcardDecksComponent),
+      },
+      {
+        path: 'teacher/flashcards/:id',
+        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],
+        data: { mode: 'teacher' },
+        loadComponent: () =>
+          import('./pages/flashcards/flashcard-deck-detail.component').then((m) => m.FlashcardDeckDetailComponent),
+      },
+      {
         // Issue #417: öğretmen/admin Ayarlar sayfası (dil, hesap/şifre, öğretmen profili bağlantıları).
         // Öğrenci /student-profile'a yönlenir; onay bekleyen öğretmene de açık (approvedTeacherGuard yok).
         path: 'settings',

@@ -1,0 +1,109 @@
+<ng-container *transloco="let root; prefix: 'flashcards'">
+  <section class="fce" *transloco="let t; prefix: 'flashcards.detail'">
+    @if (loading()) {
+      <div class="fce__state" role="status">
+        <mat-progress-spinner mode="indeterminate" diameter="40" />
+      </div>
+    } @else if (loadFailed()) {
+      <div class="fce__state" role="alert">
+        <mat-icon>error_outline</mat-icon>
+        <p>{{ t('loadError') }}</p>
+        <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+        <a mat-button [routerLink]="backRoute">{{ t('backToDecks') }}</a>
+      </div>
+    } @else if (deck(); as current) {
+      <app-page-header [title]="current.title" [description]="t('cardCount', { count: current.cardCount })">
+        <a mat-stroked-button [routerLink]="backRoute">{{ t('backToDecks') }}</a>
+        @if (!editingDeck()) {
+          <button mat-stroked-button type="button" data-test="deck-edit" (click)="editingDeck.set(true)">{{ t('editDeck') }}</button>
+        }
+      </app-page-header>
+
+      @if (errorKey(); as key) {
+        <p class="fce__error" role="alert">{{ root('errors.' + key) }}</p>
+      }
+
+      @if (editingDeck()) {
+        <app-flashcard-deck-form [mode]="mode" [deck]="current" [saving]="saving()" (saved)="saveDeck($event)" (cancelled)="editingDeck.set(false)" />
+      }
+
+      <form class="fce__form" data-test="card-form" (submit)="$event.preventDefault(); saveCard()">
+        <h2 class="fce__heading">{{ editingCardId() === null ? t('newCard') : t('editCard') }}</h2>
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-label>{{ t('front') }}</mat-label>
+          <textarea
+            matInput
+            name="front"
+            rows="2"
+            data-test="card-front"
+            [attr.maxlength]="maxTextLength"
+            [value]="front()"
+            (input)="front.set($any($event.target).value)"
+          ></textarea>
+        </mat-form-field>
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-label>{{ t('back') }}</mat-label>
+          <textarea
+            matInput
+            name="back"
+            rows="2"
+            data-test="card-back"
+            [attr.maxlength]="maxTextLength"
+            [value]="back()"
+            (input)="back.set($any($event.target).value)"
+          ></textarea>
+        </mat-form-field>
+
+        <div class="fce__image-row">
+          @if (imagePreview(); as preview) {
+            <img class="fce__thumb" [src]="preview" [alt]="t('imageAlt')" />
+            <button mat-button type="button" data-test="card-image-clear" (click)="clearImage()">{{ t('removeImage') }}</button>
+          }
+          <button mat-stroked-button type="button" (click)="imageInput.click()">
+            <mat-icon>image</mat-icon>
+            {{ t('chooseImage') }}
+          </button>
+          <input #imageInput hidden type="file" accept="image/png,image/jpeg,image/webp" data-test="card-image" (change)="onImageSelected($event)" />
+          <span class="fce__hint">{{ t('imageHint') }}</span>
+        </div>
+
+        <div class="fce__actions">
+          <button mat-raised-button color="primary" type="submit" data-test="card-save" [disabled]="!canSaveCard()">{{ t('saveCard') }}</button>
+          @if (editingCardId() !== null) {
+            <button mat-stroked-button type="button" (click)="resetCardForm()">{{ t('cancel') }}</button>
+          }
+        </div>
+      </form>
+
+      @if (current.cards.length === 0) {
+        <p class="fce__empty" data-test="cards-empty">{{ t('empty') }}</p>
+      } @else {
+        <ul class="fce__list">
+          @for (card of current.cards; track card.id) {
+            <li class="fce__item" data-test="card-item">
+              @if (card.imageUrl) {
+                <img class="fce__thumb" [src]="card.imageUrl" [alt]="t('imageAlt')" />
+              }
+              <div class="fce__texts">
+                <strong>{{ card.front }}</strong>
+                <span>{{ card.back }}</span>
+              </div>
+              <div class="fce__actions">
+                <button mat-icon-button type="button" data-test="card-edit" [attr.aria-label]="t('editCard')" (click)="editCard(card)">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button mat-icon-button type="button" data-test="card-delete" [attr.aria-label]="t('deleteCard')" (click)="deleteCard(card)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            </li>
+          }
+        </ul>
+      }
+
+      @if (isTeacher) {
+        <app-flashcard-assignments [deckId]="current.id" />
+      }
+    }
+  </section>
+</ng-container>

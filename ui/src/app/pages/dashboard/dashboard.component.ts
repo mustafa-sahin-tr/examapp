@@ -36,6 +36,7 @@ import { StudentResetService } from '../../services/student-reset.service';
 import { StudentService } from '../../services/student.service';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { LocaleService } from '../../services/locale.service';
+import { FlashcardService } from '../../services/flashcard.service';
 import { PracticeService } from '../../services/practice.service';
 import { DailySet, DailyStartScope } from '../../models/practice';
 import { DailyQuestionsCardComponent } from '../../shared/components/daily-questions-card/daily-questions-card.component';
@@ -128,6 +129,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly transloco = inject(TranslocoService);
   private readonly localeService = inject(LocaleService);
   private readonly practiceService = inject(PracticeService);
+  private readonly flashcardService = inject(FlashcardService);
   private readonly auth = inject(AuthService);
 
   /**
@@ -247,6 +249,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly assignmentCards = computed(() => this.assignments());
   /** Issue #529: tekrar zamanı gelen soru sayısı. */
   readonly dueReviewCount = signal(0);
+  /** Issue #699: bugün gelen bilgi kartı sayısı. */
+  readonly dueFlashcardCount = signal(0);
   readonly hasActivityStats = computed(() => this.activityNumberCardData().some((card) => card.value > 0));
 
   /**
@@ -413,6 +417,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       // Alan isteğe bağlı: hata ana sayfayı etkilemez.
       error: () => this.dueReviewCount.set(0),
     });
+    this.flashcardService.getDueCount().subscribe({
+      next: (count) => this.dueFlashcardCount.set(count),
+      // Alan isteğe bağlı: hata ana sayfayı etkilemez.
+      error: () => this.dueFlashcardCount.set(0),
+    });
   }
 
   /** Yalnız kartın isteğini (yeniden) yapar; "Tekrar dene" de bunu çağırır. */
@@ -553,6 +562,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     void this.router.navigate(['/practice']);
+  }
+
+  onFlashcardReview(): void {
+    void this.router.navigate(['/flashcards/review']);
   }
 
   onCardClick(assignment: AssignmentCardViewModel): void {

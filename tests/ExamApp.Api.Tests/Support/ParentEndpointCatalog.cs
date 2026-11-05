@@ -57,6 +57,9 @@ public static class ParentEndpointCatalog
             ParentEndpointScope.Child, ParentAccessEndpoints.ChildTopicPerformance,
             // minQuestions=1: içerik taraması boş listeyle geçmesin; tohum verideki birkaç cevap da görünsün.
             (s, _) => $"/api/parent/children/{s}/topic-performance?minQuestions=1"),
+        new($"{nameof(ParentLearningOutcomeMasteryController)}.{nameof(ParentLearningOutcomeMasteryController.Get)}",
+            ParentEndpointScope.Child, ParentAccessEndpoints.ChildLearningOutcomeMastery,
+            (s, _) => $"/api/parent/children/{s}/learning-outcome-mastery"),
         new($"{nameof(ParentDashboardController)}.{nameof(ParentDashboardController.GetChildProgress)}",
             ParentEndpointScope.Child, ParentAccessEndpoints.ChildProgress,
             (s, _) => $"/api/parent/children/{s}/progress"),

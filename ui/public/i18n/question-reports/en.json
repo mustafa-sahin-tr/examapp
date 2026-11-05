@@ -1,0 +1,24 @@
+{
+  "title": "Question Reports",
+  "subtitle": "Problems students reported about your questions. The reporter's name is not shown.",
+  "statusLabel": "Report status",
+  "status": {
+    "open": "Open",
+    "reviewed": "Reviewed"
+  },
+  "reason": {
+    "wrongAnswer": "The answer may be wrong",
+    "unreadable": "The question cannot be read",
+    "wrongContent": "The question has a mistake",
+    "other": "Another problem"
+  },
+  "imageAlt": "Reported question",
+  "noImage": "Question without an image",
+  "openQuestion": "Open question",
+  "markReviewed": "Mark reviewed",
+  "emptyOpen": "No open reports.",
+  "emptyReviewed": "No reviewed reports.",
+  "loadError": "Reports could not be loaded.",
+  "retry": "Try again",
+  "actionError": "The report could not be updated. Try again."
+}

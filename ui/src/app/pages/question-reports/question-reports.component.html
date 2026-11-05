@@ -1,0 +1,59 @@
+<section class="reports" *transloco="let t; prefix: 'question-reports'">
+  <header class="reports__head">
+    <mat-icon aria-hidden="true">flag</mat-icon>
+    <div>
+      <h1>{{ t('title') }}</h1>
+      <p>{{ t('subtitle') }}</p>
+    </div>
+  </header>
+
+  <mat-button-toggle-group class="reports__status" [value]="status()" [hideSingleSelectionIndicator]="true"
+    [attr.aria-label]="t('statusLabel')" (change)="changeStatus($event.value)">
+    <mat-button-toggle value="Open">{{ t('status.open') }}</mat-button-toggle>
+    <mat-button-toggle value="Reviewed">{{ t('status.reviewed') }}</mat-button-toggle>
+  </mat-button-toggle-group>
+
+  @if (actionFailed()) {
+    <p class="reports__error" role="alert">{{ t('actionError') }}</p>
+  }
+
+  @if (loadFailed()) {
+    <div class="reports__state" role="alert">
+      <p>{{ t('loadError') }}</p>
+      <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+    </div>
+  } @else if (!loading() && !items().length) {
+    <p class="reports__state">{{ status() === 'Open' ? t('emptyOpen') : t('emptyReviewed') }}</p>
+  } @else {
+    <ul class="reports__list" [attr.aria-busy]="loading()">
+      @for (item of items(); track item.id) {
+        <li class="report-row" data-testid="question-report-row">
+          <div class="report-row__preview">
+            @if (item.questionImageUrl; as url) {
+              <img [src]="url" [alt]="t('imageAlt')" loading="lazy" />
+            } @else {
+              <span>{{ t('noImage') }}</span>
+            }
+          </div>
+          <div class="report-row__body">
+            <h2>{{ t('reason.' + item.reason) }}</h2>
+            @if (item.note) {
+              <p class="report-row__note">{{ item.note }}</p>
+            }
+            <p class="report-row__date">{{ item.createTime | date: 'dd.MM.yyyy HH:mm' }}</p>
+          </div>
+          <div class="report-row__actions">
+            <a mat-stroked-button [routerLink]="['/question', item.questionId]">{{ t('openQuestion') }}</a>
+            @if (item.status === 'open') {
+              <button mat-flat-button type="button" (click)="markReviewed(item)">{{ t('markReviewed') }}</button>
+            }
+          </div>
+        </li>
+      }
+    </ul>
+    @if (total() > pageSize) {
+      <mat-paginator [length]="total()" [pageIndex]="page() - 1" [pageSize]="pageSize" [hidePageSize]="true"
+        (page)="changePage($event)"></mat-paginator>
+    }
+  }
+</section>

@@ -29,6 +29,10 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { TEST_SOLVE_SCOPE, TestSolveCanvasComponentv2 } from './test-solve-canvas-enhanced.component';
 import { TestService } from '../../services/test.service';
+import { AuthService } from '../../services/auth.service';
+import { QuestionReportService } from '../../services/question-report.service';
+import { QuestionReportCreated } from '../../models/question-report';
+import { QuestionReportDialogComponent, QuestionReportDialogData } from './question-report-dialog.component';
 import { QuestionLiteViewComponent } from '../question-lite-view/question-lite-view.component';
 import { CountdownComponent } from '../../shared/components/countdown/countdown.component';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
@@ -126,6 +130,9 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
   private static readonly COMPACT_VIEWPORT_QUERY = '(max-width: 1024px)';
 
   private readonly bottomSheet = inject(MatBottomSheet);
+  private readonly questionReports = inject(QuestionReportService);
+  /** Issue #781: sunucu bildirimi yalnız öğrenciye açar; önizleyen öğretmen düğmeyi görmez. */
+  protected readonly canReportQuestion = inject(AuthService).hasRole('Student');
   private readonly overlay = inject(Overlay);
   private readonly viewContainerRef = inject(ViewContainerRef);
   @ViewChild('mapSheetContent') private mapSheetContent?: TemplateRef<unknown>;
@@ -432,6 +439,40 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
   }
 
   /** Issue #779: oturum sürer, cevaplar kayıtlıdır; süreli testte süre işlemeye devam eder. */
+  /** Issue #781: onay mesajı yalnız kayıttan sonra; kayıt hatasını diyalog kendisi gösterir. */
+  public reportQuestion(): void {
+    const questionId = this.testInstance?.testInstanceQuestions[this.currentIndex()]?.question?.id;
+    if (!questionId) return;
+
+    this.closeMobileMapSheet();
+    const testInstanceId = this.testInstance.id;
+    const data: QuestionReportDialogData = {
+      labels: {
+        title: this.tr('report.title'),
+        message: this.tr('report.message'),
+        reasonLabel: this.tr('report.reasonLabel'),
+        reason: (reason) => this.tr(`report.reason.${reason}`),
+        noteLabel: this.tr('report.noteLabel'),
+        send: this.tr('report.send'),
+        cancel: this.tr('report.cancel'),
+        error: this.tr('report.error'),
+      },
+      submit: (reason, note) => this.questionReports.create(questionId, { testInstanceId, reason, note }),
+    };
+
+    this.dialog
+      .open<QuestionReportDialogComponent, QuestionReportDialogData, QuestionReportCreated>(
+        QuestionReportDialogComponent,
+        { data, width: '480px', maxWidth: '95vw' },
+      )
+      .afterClosed()
+      .subscribe((result) => {
+        if (result) {
+          this.showToastMessage(this.tr(result.alreadyReported ? 'report.alreadyReported' : 'report.saved'), 'success');
+        }
+      });
+  }
+
   public leaveAndContinueLater(): void {
     if (!this.testInstance) return;
     const timed = this.testInstance.maxDurationSeconds > 0;

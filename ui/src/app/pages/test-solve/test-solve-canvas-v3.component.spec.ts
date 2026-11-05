@@ -10,6 +10,8 @@ import { TranslocoTestingModule } from '@jsverse/transloco';
 import { TestSolveCanvasComponentv3 } from './test-solve-canvas-v3.component';
 import { isTestCompletedRejection, isTimeExpiredRejection } from './test-solve-canvas-enhanced.component';
 import { TestService } from '../../services/test.service';
+import { QuestionReportService } from '../../services/question-report.service';
+import { QuestionReportDialogData } from './question-report-dialog.component';
 import { TestInstance, TestSessionResult, TestStatus } from '../../models/test-instance';
 import { ConfirmDialogData } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { ReviewDialogData } from './test-solve-review-dialog.component';
@@ -879,9 +881,48 @@ describe('TestSolveCanvasComponentv3 — finish flow (issue #383)', () => {
             });
         });
 
-        it('the "Report question" action and the old copy are gone', () => {
-            expect('reportQuestion' in component).toBe(false);
-            expect(JSON.stringify(testSolveTr)).not.toMatch(/Sınav|sınav|Canvas|bildir(ildi)?"/);
+        describe('question report (#781)', () => {
+            const reportData = () => dialog.open.mock.calls[0][1]?.data as QuestionReportDialogData;
+
+            it('confirms only after the dialog returns a saved report', async () => {
+                const toast = vi.fn();
+                component['showToastMessage'] = toast;
+                dialogReturns(undefined);
+
+                component.reportQuestion();
+                await settle();
+                expect(dialog.open).toHaveBeenCalledTimes(1);
+                expect(toast).not.toHaveBeenCalled();
+
+                dialogReturns({ alreadyReported: false });
+                component.reportQuestion();
+                await settle();
+                expect(toast).toHaveBeenCalledWith(testSolveTr.report.saved, 'success');
+
+                dialogReturns({ alreadyReported: true });
+                component.reportQuestion();
+                await settle();
+                expect(toast).toHaveBeenCalledWith(testSolveTr.report.alreadyReported, 'success');
+            });
+
+            it('sends the current question and session', () => {
+                const create = vi.spyOn(TestBed.inject(QuestionReportService), 'create').mockReturnValue(of({ alreadyReported: false }));
+                dialogReturns(undefined);
+                component.currentIndex.set(1);
+
+                component.reportQuestion();
+                reportData().submit('unreadable', 'blurry').subscribe();
+
+                expect(create).toHaveBeenCalledWith(component.testInstance.testInstanceQuestions[1].question.id, {
+                    testInstanceId: component.testInstance.id,
+                    reason: 'unreadable',
+                    note: 'blurry',
+                });
+            });
+        });
+
+        it('the old copy is gone', () => {
+            expect(JSON.stringify(testSolveTr)).not.toMatch(/Sınav|sınav|Canvas/);
         });
     });
 });

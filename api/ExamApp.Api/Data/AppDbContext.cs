@@ -236,6 +236,7 @@ public class AppDbContext : DbContext
     public DbSet<DirectMessage> DirectMessages { get; set; }
     public DbSet<DirectMessageBlock> DirectMessageBlocks { get; set; }
     public DbSet<DirectMessageReport> DirectMessageReports { get; set; }
+    public DbSet<QuestionReport> QuestionReports { get; set; } // issue #781
 
     // Veli–öğrenci bağlantısı ve davet kodları (issue #419)
     public DbSet<ParentStudentLink> ParentStudentLinks { get; set; }
@@ -427,6 +428,17 @@ public class AppDbContext : DbContext
 
         // Aynı kullanıcı aynı mesajı (mesajsız şikayette aynı konuşmayı) bir kez şikayet eder: iki kısmi tekil index (NULL
         // MessageId tek index'te birbirinden farklı sayılırdı). Admin Open listesi (Status, CreateTime) ile.
+        modelBuilder.Entity<QuestionReport>(e =>
+        {
+            e.Property(r => r.Reason).HasConversion<string>().HasMaxLength(16);
+            e.Property(r => r.Status).HasConversion<string>().HasMaxLength(16);
+            e.HasOne(r => r.Question).WithMany().HasForeignKey(r => r.QuestionId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(r => new { r.QuestionId, r.ReporterUserId }, "IX_QuestionReports_Question_Reporter")
+                .IsUnique()
+                .HasFilter("NOT \"IsDeleted\"");
+            e.HasIndex(r => new { r.Status, r.CreateTime });
+        });
+
         modelBuilder.Entity<DirectMessageReport>(e =>
         {
             e.Property(r => r.Reason).HasConversion<string>().HasMaxLength(16);

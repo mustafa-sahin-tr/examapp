@@ -1158,7 +1158,7 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
     font-size: 0.74rem;
   }
 
-  .question-card__actions button {
+  .question-card__actions button:not(.card-action) {
     width: 36px;
     height: 36px;
     padding: 6px;

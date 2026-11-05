@@ -295,6 +295,12 @@
         <mat-icon>bookmark</mat-icon>
         {{ t('insight.goToBookmarked') }}
       </button>
+      @if (canReportQuestion) {
+        <button mat-stroked-button type="button" class="tool-list__item" (click)="reportQuestion()">
+          <mat-icon>flag</mat-icon>
+          {{ t('report.action') }}
+        </button>
+      }
       <button mat-stroked-button type="button" class="tool-list__item" (click)="leaveAndContinueLater()">
         <mat-icon>logout</mat-icon>
         {{ t('leave.title') }}

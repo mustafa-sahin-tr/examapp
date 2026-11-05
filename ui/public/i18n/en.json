@@ -57,6 +57,7 @@
       "practice": "Practice",
       "mistakes": "My Mistakes",
       "savedQuestions": "Saved Questions",
+      "flashcards": "Flashcards",
       "programs": "My Programs",
       "myCalendar": "My Plan",
       "tutors": "Private Lessons",
@@ -1039,6 +1040,10 @@
     }
   },
   "dashboard": {
+    "flashcardsDue": {
+      "title": "Due today: {{count}} flashcards",
+      "action": "Review"
+    },
     "nextStep": {
       "label": "Next step",
       "dueSoonTitle": "Due soon: {{name}}",

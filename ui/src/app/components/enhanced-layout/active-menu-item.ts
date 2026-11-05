@@ -16,6 +16,7 @@ export interface RoutedMenuEntry {
  */
 const ROUTE_ALIASES: ReadonlyArray<readonly [prefix: string, target: string]> = [
   ['/student-school-requests', '/assignment-permission-requests'],
+  ['/teacher/flashcards', '/study-pages'],
   ['/open-text-reviews', '/assignment-permission-requests'],
   ['/booking-requests', '/assignment-permission-requests'],
   ['/saved-questions', '/practice'],
@@ -26,6 +27,7 @@ const ROUTE_ALIASES: ReadonlyArray<readonly [prefix: string, target: string]> = 
   ['/study-links', '/study-pages'],
   ['/my-bookings', '/tutors'],
   ['/mock-exams', '/tests'],
+  ['/flashcards', '/practice'],
   ['/testsolve', '/tests'],
   ['/programs', '/my-calendar'],
   ['/mistakes', '/practice'],

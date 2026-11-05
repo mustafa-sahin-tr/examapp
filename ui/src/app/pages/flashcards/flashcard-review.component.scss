@@ -1,0 +1,93 @@
+.fcr {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px var(--ms-page-gutter-mobile) 48px;
+}
+
+.fcr__state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 48px 16px;
+  text-align: center;
+
+  h2,
+  p {
+    margin: 0;
+  }
+}
+
+.fcr__progress {
+  margin: 0;
+  color: var(--ms-text-medium);
+  font-size: 13px;
+}
+
+.fcr__error {
+  margin: 0;
+  color: var(--ms-danger-text);
+}
+
+.fcr__card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 640px;
+  box-sizing: border-box;
+  padding: 24px;
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 12px;
+  background: var(--ms-surface-weak);
+}
+
+.fcr__deck {
+  color: var(--ms-text-medium);
+  font-size: 13px;
+}
+
+.fcr__image {
+  max-width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+  align-self: center;
+}
+
+.fcr__text {
+  margin: 0;
+  font-size: 18px;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+.fcr__divider {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--ms-border-weak);
+}
+
+.fcr__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 640px;
+}
+
+.fcr__rate {
+  flex: 1 1 120px;
+  height: auto;
+  padding-block: 8px;
+
+  strong,
+  small {
+    display: block;
+  }
+
+  small {
+    color: var(--ms-text-medium);
+    font-weight: 400;
+  }
+}

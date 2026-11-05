@@ -1,0 +1,25 @@
+.fcf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 12px;
+  background: var(--ms-surface-weak);
+
+  mat-form-field {
+    flex: 1 1 200px;
+  }
+}
+
+.fcf__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.fcf__error {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--ms-danger-text);
+}

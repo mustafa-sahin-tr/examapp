@@ -160,5 +160,8 @@ BadgeService `TotalQuestions`, `CorrectQuestions`, `TotalTimeSeconds`, `Question
 - **Görünürlük:** `FlashcardAccess.AssignedTo` worksheet kuralıyla aynı, platform geneli yok; zaman penceresi yok. Atama hedefi worksheet ile aynı denetimlerden geçer (`ApplyScope`, öğretmen kaydı, bağımsız öğretmen sınıfa atayamaz). Öğrenci okul değiştirince sınıf ataması düşer, doğrudan atama kalır; kapsam dışı öğrenci öğretmenin listesinde görünmez. Atama geri gelirse ilerleme kaldığı yerden sürer.
 - **İçerik:** metin `AppDbContext`'te `RichTextSanitizer` ile; görsel (yalnız ön yüz, en çok 2 MB, sahip başına 300) çözülüp yeniden yazılır, anahtar `questions/flashcards/` altında: imza allowlist'i değişmez. Değiştirilen görsel depodan silinmez.
 - **Sıfırlama:** `FlashcardReviews` gerçekten silinir, doğrudan atamalar kalkar (worksheet ile aynı), öğrencinin destesi kalır.
+- **Ekranlar:** öğrenci `/flashcards`, `/flashcards/review` (`?deck=` ile tek deste), `/flashcards/:id` (yalnız kendi destesi); öğretmen `/teacher/flashcards`, `/teacher/flashcards/:id` (atamalar burada). Menü: Soru Çöz ve Çalışma Sayfaları sekmeleri. Ana sayfada bugün gelen kart varsa sayı görünür.
+- **Metin kodlaması:** sunucu metni HTML temizleyiciden geçirir; `FlashcardService` gidişte kodlar, gelişte çözer. Ekranlar düz metin görür ve metni `innerHTML` ile basmaz. Sınır kodlanmış metne uygulandığı için istemci de kodlanmış uzunluğu denetler.
+- **Tekrar:** `Hatırlamadım` denen kart aynı oturumda sona eklenir; ikinci değerlendirmede gelen 409 `NotDue` ve kart / atama kalktıysa 404 sessizce geçilir. Kuyruk bitince sunucuya yeniden sorulur (liste en çok 50).
 - **İlk sürümde yok:** öğretmenler arası paylaşım, veli uçları, arka yüz görseli.
 

@@ -287,6 +287,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
       { id: 'tab-practice', labelKey: 'menu.practice', icon: '', route: '/practice', type: 'menu', roles: ['Student'] },
       { id: 'tab-mistakes', labelKey: 'menu.mistakes', icon: '', route: '/mistakes', type: 'menu', roles: ['Student'] },
       { id: 'tab-saved-questions', labelKey: 'menu.savedQuestions', icon: '', route: '/saved-questions', type: 'menu', roles: ['Student'] },
+      // Issue #699: bilgi kartları.
+      { id: 'tab-flashcards', labelKey: 'menu.flashcards', icon: '', route: '/flashcards', type: 'menu', roles: ['Student'] },
     ],
     [
       { id: 'tab-calendar', labelKey: 'menu.calendar', icon: '', route: '/my-calendar', type: 'menu', roles: ['Student'] },
@@ -305,6 +307,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
       { id: 'tab-study-pages', labelKey: 'menu.studyPages', icon: '', route: '/study-pages', type: 'menu', roles: ['Teacher'] },
       // Issue #61: öğretmen konu/alt konu çalışma linkleri yönetimi.
       { id: 'tab-study-links', labelKey: 'menu.studyLinks', icon: '', route: '/study-links', type: 'menu', roles: ['Teacher'] },
+      { id: 'tab-teacher-flashcards', labelKey: 'menu.flashcards', icon: '', route: '/teacher/flashcards', type: 'menu', roles: ['Teacher'] },
     ],
     [
       { id: 'access-requests', labelKey: 'menu.accessRequests', icon: '', route: '/assignment-permission-requests', type: 'menu', roles: ['Teacher'] },

@@ -1,0 +1,49 @@
+<form class="fcf" *transloco="let t; prefix: 'flashcards.deckForm'" (submit)="$event.preventDefault(); submit()">
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>{{ t('title') }}</mat-label>
+    <input
+      matInput
+      name="title"
+      maxlength="150"
+      data-test="deck-title"
+      [value]="title()"
+      (input)="title.set($any($event.target).value)"
+    />
+  </mat-form-field>
+
+  @if (isTeacher()) {
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>{{ t('grade') }}</mat-label>
+      <mat-select data-test="deck-grade" [value]="gradeId()" (valueChange)="onGradeChange($event)">
+        @for (grade of grades(); track grade.id) {
+          <mat-option [value]="grade.id">{{ grade.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>{{ t('subject') }}</mat-label>
+      <mat-select data-test="deck-subject" [value]="subjectId()" [disabled]="gradeId() === null" (valueChange)="onSubjectChange($event)">
+        @for (subject of subjects(); track subject.id) {
+          <mat-option [value]="subject.id">{{ subject.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>{{ t('topic') }}</mat-label>
+      <mat-select data-test="deck-topic" [value]="topicId()" [disabled]="subjectId() === null" (valueChange)="topicId.set($event)">
+        <mat-option [value]="null">{{ t('noTopic') }}</mat-option>
+        @for (topic of topics(); track topic.id) {
+          <mat-option [value]="topic.id">{{ topic.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    @if (lookupFailed()) {
+      <p class="fcf__error" role="alert">{{ t('lookupError') }}</p>
+    }
+  }
+
+  <div class="fcf__actions">
+    <button mat-raised-button color="primary" type="submit" data-test="deck-save" [disabled]="!canSave()">{{ t('save') }}</button>
+    <button mat-stroked-button type="button" (click)="cancelled.emit()">{{ t('cancel') }}</button>
+  </div>
+</form>

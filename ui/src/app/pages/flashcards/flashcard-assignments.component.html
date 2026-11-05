@@ -1,0 +1,64 @@
+<ng-container *transloco="let root; prefix: 'flashcards'">
+  <section class="fca" *transloco="let t; prefix: 'flashcards.assignments'">
+    <h2 class="fca__heading">{{ t('title') }}</h2>
+
+    @if (errorKey(); as key) {
+      <p class="fca__error" role="alert">{{ root('errors.' + key) }}</p>
+    }
+
+    <div class="fca__targets">
+      @if (canAssignGrade) {
+        <div class="fca__target">
+          <mat-form-field subscriptSizing="dynamic">
+            <mat-label>{{ t('grade') }}</mat-label>
+            <mat-select data-test="assign-grade" [value]="gradeId()" (valueChange)="gradeId.set($event)">
+              @for (grade of grades(); track grade.id) {
+                <mat-option [value]="grade.id">{{ grade.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <button mat-stroked-button type="button" data-test="assign-grade-save" [disabled]="gradeId() === null || saving()" (click)="assignGrade()">
+            {{ t('assign') }}
+          </button>
+        </div>
+      }
+      <div class="fca__target">
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-label>{{ t('student') }}</mat-label>
+          <mat-select data-test="assign-student" [value]="studentId()" (valueChange)="studentId.set($event)">
+            @for (student of sortedStudents(); track student.id) {
+              <mat-option [value]="student.id">{{ student.fullName || student.studentNumber }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <button mat-stroked-button type="button" data-test="assign-student-save" [disabled]="studentId() === null || saving()" (click)="assignStudent()">
+          {{ t('assign') }}
+        </button>
+      </div>
+    </div>
+
+    @if (loading()) {
+      <div class="fca__state" role="status">
+        <mat-progress-spinner mode="indeterminate" diameter="32" />
+      </div>
+    } @else if (loadFailed()) {
+      <div class="fca__state" role="alert">
+        <p>{{ t('loadError') }}</p>
+        <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+      </div>
+    } @else if (assignments().length === 0) {
+      <p class="fca__empty" data-test="assignments-empty">{{ t('empty') }}</p>
+    } @else {
+      <ul class="fca__list">
+        @for (assignment of assignments(); track assignment.id) {
+          <li class="fca__item" data-test="assignment-item">
+            <span>{{ assignment.studentName || assignment.gradeName }}</span>
+            <button mat-icon-button type="button" [attr.aria-label]="t('remove')" (click)="remove(assignment)">
+              <mat-icon>close</mat-icon>
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+</ng-container>

@@ -82,6 +82,7 @@ describe('resolveActiveMenuItemId (issue #385)', () => {
         ['/study-pages/new', 'study-pages'],
         ['/study-pages/4', 'study-pages'],
         ['/study-links', 'study-pages'],
+        ['/teacher/flashcards/4', 'study-pages'],
         // Segment sınırı: /study, /study-pages öğesinin öneki sayılmaz.
         ['/study', null],
     ];

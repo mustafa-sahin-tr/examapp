@@ -2,6 +2,7 @@ import type { Mock } from 'vitest';
 import { WritableSignal, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { Subject, of, throwError } from 'rxjs';
@@ -183,6 +184,14 @@ describe('ActivityPlayerComponent (#573)', () => {
     await create(instance({ worksheetDescription: null }));
 
     expect(q('instruction')).toBeNull();
+  });
+
+  it('canvasQuestion_UsesTheSameLayoutPlannerAsTestSolve', async () => {
+    const data = instance();
+    data.testInstanceQuestions[1].question.isCanvasQuestion = true;
+    await create(data);
+    const canvasView = fixture.debugElement.query(By.css('app-question-canvas-view-v5'));
+    expect(canvasView.componentInstance.enableHeightFit).toBe(true);
   });
 
   it('itemInstruction_TakesPrecedenceOverWorksheetDescription', async () => {

@@ -55,13 +55,14 @@ public class AnswerSubmissionAggregationService
     /// cevap değişiklikleri puanı katlamak yerine yalnızca son cevabı yansıtır. Bu katman EventId'den
     /// bağımsızdır: Guid.Empty (eski üretici) mesajları da SubmittedAt/Revision doluysa korunur.
     ///
-    /// Sayaç semantiği (issue #279 review — netleştirme): yalnızca PUAN (TotalPoints alanları) "son cevap
-    /// sayılır" kuralına tabidir. TotalQuestions/CorrectQuestions/CurrentCorrectStreak/BestCorrectStreak/
-    /// QuestionCount/CorrectCount gibi diğer TÜM sayaçlar her stale-olmayan mesajda hâlâ artırılır — yani
-    /// bunların nihai değeri MESAJLARIN VARIŞ SIRASINA bağlıdır (ör. sırasız teslim edilip sonradan stale
-    /// sayılan bir mesaj için sayaçlar da atlanır, ama normal sırayla gelen her farklı revizyon ayrı bir
-    /// "deneme" olarak sayılmaya devam eder). Bu kasıtlı: issue #279 item 4'ün kapsamı yalnızca çift puan,
-    /// deneme/streak sayaçlarının "son cevap" kuralına tabi tutulması ayrı bir ürün kararı gerektirir.
+    /// Sayaç semantiği (issue #785): TotalQuestions/CorrectQuestions/TotalTimeSeconds/QuestionCount/CorrectCount
+    /// de puan gibi (TestInstanceId, QuestionId) başına son cevabı yansıtır; fark <see cref="AnswerPointAward"/>'daki
+    /// sayılmış durumdan hesaplanır ve sorunun ilk sayıldığı günün aktivite satırına uygulanır. Temizlenen cevap
+    /// (<see cref="AnswerSubmittedEvent.IsCleared"/>) sayaçlardan çıkar ve yanlış sayılmaz.
+    ///
+    /// Seri kuralı (issue #785): seriyi yalnız sorunun oturumdaki İLK doğru cevabı artırır, cevabı doğruya çevirmek
+    /// veya temizleyip yeniden doğru vermek artırmaz. Yanlış cevap seriyi sıfırlar; soru zaten yanlış sayılıyorsa
+    /// (yanlıştan yanlışa değişiklik) sıfırlamaz. Temizleme seriye dokunmaz. BestCorrectStreak geri düşmez.
     ///
     /// Yatay ölçekleme (issue #279, item 1): tüm işlem <see cref="ConcurrencyRetry"/> ile sarılır — birden
     /// fazla BadgeService instance'ı aynı aggregate satırını eşzamanlı güncellerse xmin concurrency token'ı
@@ -112,9 +113,16 @@ public class AnswerSubmissionAggregationService
             return false;
         }
 
-        var (questionAggregate, previousPoints) = await UpdateStudentQuestionAggregateAsync(message, award.Delta, cancellationToken);
-        var subjectAggregate = await UpdateStudentSubjectAggregateAsync(message, award.Delta, cancellationToken);
-        var activity = await UpdateDailyActivityAsync(message, award.Delta, cancellationToken);
+        // issue #785: hiç sayılmamış sorunun temizlenmesi: yalnız revizyon kaydedilir, sayaç ve puan değişmez.
+        if (award.Counts.ActivityDate is not { } activityDate)
+        {
+            AddProcessedLedgerEntry(message, dedupe, DateTime.UtcNow);
+            return await SaveAsync(dedupe, cancellationToken);
+        }
+
+        var (questionAggregate, previousPoints) = await UpdateStudentQuestionAggregateAsync(message, award.Delta, award.Counts, cancellationToken);
+        var subjectAggregate = await UpdateStudentSubjectAggregateAsync(message, award.Delta, award.Counts, cancellationToken);
+        var activity = await UpdateDailyActivityAsync(message, award.Delta, award.Counts, activityDate, cancellationToken);
 
         // Zaman damgası tüm okumalardan SONRA, SaveChanges'e olabildiğince yakın alınır (issue #225):
         // StudentPointsChangedEvent'in versiyonu budur; aynı kullanıcının event'leri BadgeService'te
@@ -136,6 +144,12 @@ public class AnswerSubmissionAggregationService
             StudentPointsOutbox.Enqueue(_context, questionAggregate.UserId, questionAggregate.TotalPoints, now);
         }
 
+        AddProcessedLedgerEntry(message, dedupe, now);
+        return await SaveAsync(dedupe, cancellationToken);
+    }
+
+    private void AddProcessedLedgerEntry(AnswerSubmittedEvent message, bool dedupe, DateTime now)
+    {
         if (dedupe)
         {
             _context.ProcessedAnswerSubmissions.Add(new ProcessedAnswerSubmission
@@ -145,7 +159,10 @@ public class AnswerSubmissionAggregationService
                 ProcessedAt = now,
             });
         }
+    }
 
+    private async Task<bool> SaveAsync(bool dedupe, CancellationToken cancellationToken)
+    {
         try
         {
             await _context.SaveChangesAsync(cancellationToken);
@@ -195,7 +212,14 @@ public class AnswerSubmissionAggregationService
         return true;
     }
 
-    private readonly record struct PointAwardResolution(bool IsStale, int Delta);
+    private readonly record struct PointAwardResolution(bool IsStale, int Delta, AnswerCountChange Counts = default);
+
+    /// <summary>
+    /// issue #785: bu mesajın sayaçlara uygulayacağı fark. <see cref="ActivityDate"/>: farkın yazılacağı aktivite günü;
+    /// null ise soru hiç sayılmadı ve sayılmıyor (temizleme), sayaçlara dokunulmaz.
+    /// </summary>
+    private readonly record struct AnswerCountChange(
+        int Questions, int Correct, int TimeSeconds, DateTime? ActivityDate, bool RaisesStreak, bool ResetsStreak);
 
     /// <summary>
     /// (TestInstanceId, QuestionId) başına puan tekilleştirmesi — bkz. <see cref="ProcessAsync"/> XML doc ve
@@ -258,9 +282,11 @@ public class AnswerSubmissionAggregationService
         }
         var cappedPoint = Math.Min(rawPoint, _pointOptions.MaxQuestionPoint);
 
-        var newPoints = message.IsCorrect ? cappedPoint : 0;
+        var isCorrect = message.IsCorrect && !message.IsCleared;
+        var newPoints = isCorrect ? cappedPoint : 0;
         var previousAwarded = award?.PointsAwarded ?? 0;
         var delta = newPoints - previousAwarded;
+        var counts = ResolveCountChange(award, message, isCorrect);
 
         if (award == null)
         {
@@ -285,7 +311,30 @@ public class AnswerSubmissionAggregationService
         award.LastAppliedRevisionUtc = normalizedSubmittedAt;
         award.UpdatedAtUtc = DateTime.UtcNow;
 
-        return new PointAwardResolution(false, delta);
+        award.CountedActivityDate = message.IsCleared ? null : counts.ActivityDate;
+        award.CountedCorrect = isCorrect;
+        award.CountedTimeSeconds = message.IsCleared ? 0 : Math.Max(0, message.TimeTakenInSeconds);
+        award.HasBeenAnswered |= !message.IsCleared;
+
+        return new PointAwardResolution(false, delta, counts);
+    }
+
+    /// <summary>issue #785: sayılmış durumdan (award) yeni cevaba geçişin farkı; kurallar için bkz. <see cref="ProcessAsync"/>.</summary>
+    private static AnswerCountChange ResolveCountChange(AnswerPointAward? award, AnswerSubmittedEvent message, bool isCorrect)
+    {
+        var countedDate = award?.CountedActivityDate;
+        var wasCounted = countedDate != null;
+        var wasCorrect = award?.CountedCorrect == true;
+        var isCounted = !message.IsCleared;
+        var newTime = isCounted ? Math.Max(0, message.TimeTakenInSeconds) : 0;
+
+        return new AnswerCountChange(
+            Questions: (isCounted ? 1 : 0) - (wasCounted ? 1 : 0),
+            Correct: (isCorrect ? 1 : 0) - (wasCorrect ? 1 : 0),
+            TimeSeconds: newTime - (award?.CountedTimeSeconds ?? 0),
+            ActivityDate: countedDate ?? (isCounted ? message.SubmittedAt.Date : null),
+            RaisesStreak: isCorrect && award?.HasBeenAnswered != true,
+            ResetsStreak: isCounted && !isCorrect && (!wasCounted || wasCorrect));
     }
 
     /// <summary>
@@ -308,7 +357,7 @@ public class AnswerSubmissionAggregationService
         };
 
     private async Task<(StudentQuestionAggregate Aggregate, int PreviousPoints)> UpdateStudentQuestionAggregateAsync(
-        AnswerSubmittedEvent message, int pointsDelta, CancellationToken cancellationToken)
+        AnswerSubmittedEvent message, int pointsDelta, AnswerCountChange counts, CancellationToken cancellationToken)
     {
         var aggregate = await _context.StudentQuestionAggregates
             .FirstOrDefaultAsync(x => x.UserId == message.UserId, cancellationToken);
@@ -325,19 +374,19 @@ public class AnswerSubmissionAggregationService
 
         var previousPoints = aggregate.TotalPoints;
 
-        aggregate.TotalQuestions += 1;
-        aggregate.TotalTimeSeconds += Math.Max(0, message.TimeTakenInSeconds);
+        aggregate.TotalQuestions = Math.Max(0, aggregate.TotalQuestions + counts.Questions);
+        aggregate.CorrectQuestions = Math.Max(0, aggregate.CorrectQuestions + counts.Correct);
+        aggregate.TotalTimeSeconds = Math.Max(0, aggregate.TotalTimeSeconds + counts.TimeSeconds);
 
-        if (message.IsCorrect)
+        if (counts.RaisesStreak)
         {
-            aggregate.CorrectQuestions += 1;
             aggregate.CurrentCorrectStreak += 1;
             if (aggregate.CurrentCorrectStreak > aggregate.BestCorrectStreak)
             {
                 aggregate.BestCorrectStreak = aggregate.CurrentCorrectStreak;
             }
         }
-        else
+        else if (counts.ResetsStreak)
         {
             aggregate.CurrentCorrectStreak = 0;
         }
@@ -345,11 +394,14 @@ public class AnswerSubmissionAggregationService
         // issue #279 item 4: mutlak ekleme değil, (TestInstanceId, QuestionId) başına delta uygulanır.
         aggregate.TotalPoints = Math.Max(0, aggregate.TotalPoints + pointsDelta);
 
-        aggregate.LastAnsweredAtUtc = message.SubmittedAt;
+        if (!message.IsCleared)
+        {
+            aggregate.LastAnsweredAtUtc = message.SubmittedAt;
+        }
         return (aggregate, previousPoints);
     }
 
-    private async Task<StudentSubjectAggregate?> UpdateStudentSubjectAggregateAsync(AnswerSubmittedEvent message, int pointsDelta, CancellationToken cancellationToken)
+    private async Task<StudentSubjectAggregate?> UpdateStudentSubjectAggregateAsync(AnswerSubmittedEvent message, int pointsDelta, AnswerCountChange counts, CancellationToken cancellationToken)
     {
         if (!message.SubjectId.HasValue && string.IsNullOrWhiteSpace(message.Subject))
         {
@@ -387,23 +439,18 @@ public class AnswerSubmissionAggregationService
             subjectAggregate.SubjectName = message.Subject;
         }
 
-        subjectAggregate.TotalQuestions += 1;
-        subjectAggregate.TotalTimeSeconds += Math.Max(0, message.TimeTakenInSeconds);
-
-        if (message.IsCorrect)
-        {
-            subjectAggregate.CorrectQuestions += 1;
-        }
+        subjectAggregate.TotalQuestions = Math.Max(0, subjectAggregate.TotalQuestions + counts.Questions);
+        subjectAggregate.CorrectQuestions = Math.Max(0, subjectAggregate.CorrectQuestions + counts.Correct);
+        subjectAggregate.TotalTimeSeconds = Math.Max(0, subjectAggregate.TotalTimeSeconds + counts.TimeSeconds);
 
         subjectAggregate.TotalPoints = Math.Max(0, subjectAggregate.TotalPoints + pointsDelta);
 
         return subjectAggregate;
     }
 
-    private async Task<StudentDailyActivity> UpdateDailyActivityAsync(AnswerSubmittedEvent message, int pointsDelta, CancellationToken cancellationToken)
+    private async Task<StudentDailyActivity> UpdateDailyActivityAsync(
+        AnswerSubmittedEvent message, int pointsDelta, AnswerCountChange counts, DateTime activityDate, CancellationToken cancellationToken)
     {
-        var activityDate = message.SubmittedAt.Date;
-
         var activity = await _context.StudentDailyActivities
             .FirstOrDefaultAsync(x => x.UserId == message.UserId && x.ActivityDate == activityDate, cancellationToken);
 
@@ -418,17 +465,11 @@ public class AnswerSubmissionAggregationService
             _context.StudentDailyActivities.Add(activity);
         }
 
-        activity.QuestionCount += 1;
-        activity.TotalTimeSeconds += Math.Max(0, message.TimeTakenInSeconds);
+        activity.QuestionCount = Math.Max(0, activity.QuestionCount + counts.Questions);
+        activity.CorrectCount = Math.Max(0, activity.CorrectCount + counts.Correct);
+        activity.TotalTimeSeconds = Math.Max(0, activity.TotalTimeSeconds + counts.TimeSeconds);
 
-        if (message.IsCorrect)
-        {
-            activity.CorrectCount += 1;
-        }
-
-        // issue #279 item 4: cevap değişikliğinin puanı, DELTA'nın ait olduğu event'in gününe (bugüne)
-        // yansır — orijinal cevabın günü ayrıca izlenmiyor. Nadir bir uç durum (gece yarısını aşan cevap
-        // değişikliği günü hafifçe kaydırabilir); kabul edilebilir bilinen sınırlama (bkz. rapor).
+        // issue #785: cevap değişikliği yeni bir aktivite günü açmaz; sayaç ve puan farkı sorunun sayıldığı güne yazılır.
         activity.TotalPoints = Math.Max(0, activity.TotalPoints + pointsDelta);
 
         activity.ActivityScore = CalculateActivityScore(activity);

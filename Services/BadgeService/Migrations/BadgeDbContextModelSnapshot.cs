@@ -30,6 +30,18 @@ namespace BadgeService.Migrations
                     b.Property<int>("QuestionId")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("CountedActivityDate")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("CountedCorrect")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("CountedTimeSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("HasBeenAnswered")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("LastAppliedRevision")
                         .HasColumnType("integer");
 

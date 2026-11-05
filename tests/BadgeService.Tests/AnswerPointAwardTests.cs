@@ -54,10 +54,9 @@ public class AnswerPointAwardTests : IDisposable
         await using var check = _db.NewContext();
         var agg = await check.StudentQuestionAggregates.SingleAsync(x => x.UserId == 1);
         agg.TotalPoints.ShouldBe(10);
-        // Scope note (issue #279 item 4): only POINTS are deduped per question — each answer is still a
-        // separate "attempt" for these counters (unchanged, pre-existing behavior).
-        agg.TotalQuestions.ShouldBe(3);
-        agg.CorrectQuestions.ShouldBe(2);
+        // issue #785: the counters follow the last answer too.
+        agg.TotalQuestions.ShouldBe(1);
+        agg.CorrectQuestions.ShouldBe(1);
 
         var award = await check.AnswerPointAwards.SingleAsync();
         award.PointsAwarded.ShouldBe(10);

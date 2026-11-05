@@ -203,6 +203,9 @@ public class BadgeDbContext : DbContext
             .HasKey(x => new { x.TestInstanceId, x.QuestionId });
         modelBuilder.Entity<AnswerPointAward>()
             .HasIndex(x => x.UserId);
+        modelBuilder.Entity<AnswerPointAward>()
+            .Property(x => x.CountedActivityDate)
+            .HasColumnType("date");
 
         // UserId doğal PK: upsert "var mı" kontrolüne gerek bırakmadan tek satır garantiler.
         // ValueGeneratedNever ŞART — UserId auth-api'den (dış kaynak) geliyor, EF'in kendi

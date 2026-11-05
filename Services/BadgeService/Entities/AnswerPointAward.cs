@@ -67,5 +67,20 @@ public class AnswerPointAward
     /// <summary>Bu (TestInstanceId, QuestionId) için şu an aggregate'lere yansımış puan (&gt;= 0).</summary>
     public int PointsAwarded { get; set; }
 
+    /// <summary>
+    /// issue #785: sorunun sayaçlara yazıldığı aktivite günü; null = şu an sayılmıyor (hiç cevaplanmadı ya da temizlendi).
+    /// Temizlemeden sonra yeniden cevaplanırsa sayım o günden başlar.
+    /// </summary>
+    public DateTime? CountedActivityDate { get; set; }
+
+    /// <summary>issue #785: sayaçlara şu an doğru olarak yansımış mı.</summary>
+    public bool CountedCorrect { get; set; }
+
+    /// <summary>issue #785: toplam süreye şu an yansımış saniye.</summary>
+    public int CountedTimeSeconds { get; set; }
+
+    /// <summary>issue #785: bu oturumda en az bir kez cevaplandı mı; doğru cevap seriyi yalnız ilk kez cevaplanıyorsa artırır.</summary>
+    public bool HasBeenAnswered { get; set; }
+
     public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
 }

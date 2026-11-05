@@ -57,5 +57,12 @@ public class AnswerSubmittedEvent
     /// <c>AnswerSubmissionAggregationService</c>'s XML doc for the exact fallback rule.
     /// </summary>
     public int Revision { get; set; }
+
+    /// <summary>
+    /// issue #785: the student removed the answer, so the row now has no selection and no payload. A clear is not a
+    /// wrong answer; the consumer removes the question from the counts. <see cref="IsCorrect"/> alone cannot say this.
+    /// Additive: defaults to false for messages already in flight.
+    /// </summary>
+    public bool IsCleared { get; set; }
 }
 

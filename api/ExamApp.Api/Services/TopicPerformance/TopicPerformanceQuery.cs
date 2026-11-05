@@ -8,9 +8,11 @@ public static class TopicPerformanceQuery
     public const int DefaultDays = 30;
     public const string DefaultGroupBy = "topic";
     public const int DefaultMinQuestions = 5;
+    public const int DefaultTimelineWeeks = 12;
 
     private const int MaxDays = 90;
     private const int MaxMinQuestions = 1000;
+    private const int MaxTimelineWeeks = 26;
 
     private static readonly Dictionary<string, TopicPerformanceGroupBy> GroupByValues = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -28,6 +30,15 @@ public static class TopicPerformanceQuery
         problem = days is < 1 or > MaxDays ? new Problem("InvalidDays", "student.topicPerformance.invalidDays")
             : !GroupByValues.TryGetValue(groupBy, out grouping) ? new Problem("InvalidGroupBy", "student.topicPerformance.invalidGroupBy")
             : minQuestions is < 1 or > MaxMinQuestions ? new Problem("InvalidMinQuestions", "student.topicPerformance.invalidMinQuestions")
+            : null;
+        return problem is null;
+    }
+
+    /// <summary>Issue #531: tam olarak bir konu ya da alt konu.</summary>
+    public static bool TryParseTimeline(int? topicId, int? subTopicId, int weeks, out Problem? problem)
+    {
+        problem = (topicId is null) == (subTopicId is null) ? new Problem("InvalidTimelineTarget", "student.topicPerformance.invalidTimelineTarget")
+            : weeks is < 1 or > MaxTimelineWeeks ? new Problem("InvalidWeeks", "student.topicPerformance.invalidWeeks")
             : null;
         return problem is null;
     }

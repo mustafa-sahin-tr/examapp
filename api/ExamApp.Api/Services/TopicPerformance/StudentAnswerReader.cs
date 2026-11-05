@@ -11,7 +11,11 @@ public enum StudentAnswerOutcome { Correct, Wrong, Blank }
 
 public sealed record AnsweredSubTopic(int Id, string Name, int TopicId);
 
-public sealed record AnsweredQuestion(int Id, bool Deleted, int? SubjectId, int? TopicId, int? CorrectAnswerId, int Difficulty, string? InteractionType, List<AnsweredSubTopic> SubTopics);
+public sealed record AnsweredQuestion(int Id, bool Deleted, int? SubjectId, int? TopicId, int? CorrectAnswerId, int Difficulty, string? InteractionType, List<AnsweredSubTopic> SubTopics)
+{
+    /// <summary>Sorunun konusu; konusu boşsa ilk alt konusunun konusu.</summary>
+    public int? EffectiveTopicId => TopicId ?? SubTopics.OrderBy(s => s.Id).Select(s => (int?)s.TopicId).FirstOrDefault();
+}
 
 public sealed record StudentAnswer(AnsweredQuestion Question, DateTime At, int TimeTaken, StudentAnswerOutcome Outcome);
 

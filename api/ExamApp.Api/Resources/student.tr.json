@@ -44,6 +44,8 @@
       "invalidDays": "Gün sayısı 1 ile 90 arasında olmalı.",
       "invalidGroupBy": "Gruplama topic, subtopic, difficulty ya da interactionType olmalı.",
       "invalidMinQuestions": "En az soru sayısı 1 ile 1000 arasında olmalı.",
+      "invalidTimelineTarget": "Bir konu ya da bir alt konu seçin.",
+      "invalidWeeks": "Hafta sayısı 1 ile 26 arasında olmalı.",
       "rateLimited": "Kısa sürede çok fazla istek yapıldı. Lütfen biraz bekleyip tekrar deneyin."
     }
   }

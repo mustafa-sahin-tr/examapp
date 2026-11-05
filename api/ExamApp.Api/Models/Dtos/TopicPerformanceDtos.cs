@@ -51,6 +51,33 @@ public class TopicPerformanceItemDto
     public decimal? Trend { get; set; }
 }
 
+/// <summary>Issue #531: bir haftanın sayıları.</summary>
+public class TopicProgressWeekDto
+{
+    /// <summary>Haftanın Pazartesi'si (yerel takvim).</summary>
+    public DateOnly WeekStart { get; set; }
+
+    /// <summary>Doğru + yanlış; boşlar girmez.</summary>
+    public int Answered { get; set; }
+    public int Correct { get; set; }
+
+    /// <summary>Cevapsız haftada boş: grafik orada boşluk bırakır, sıfır çizmez.</summary>
+    public decimal? AccuracyPct { get; set; }
+
+    /// <summary>Cevap var ama tek başına eğilim söylemeyecek kadar az.</summary>
+    public bool LowSample { get; set; }
+}
+
+/// <summary>Issue #531: konu ya da alt konunun haftalık serisi.</summary>
+public class TopicProgressTimelineDto
+{
+    public int? TopicId { get; set; }
+    public int? SubTopicId { get; set; }
+
+    /// <summary>Eskiden yeniye, içinde bulunulan hafta sonda. Cevapsız haftalar da listededir.</summary>
+    public List<TopicProgressWeekDto> Weeks { get; set; } = [];
+}
+
 public class TopicPerformanceDto
 {
     public DateTime From { get; set; }

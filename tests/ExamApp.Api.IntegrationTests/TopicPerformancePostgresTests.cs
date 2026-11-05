@@ -115,12 +115,46 @@ public class TopicPerformancePostgresTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Weekly_timeline_counts_tests_and_practice_for_a_topic()
+    {
+        await SeedAsync();
+        var client = await StudentAsync();
+        var bySubject = await client.GetFromJsonAsync<TopicPerformanceDto>($"{Api}?minQuestions=1", Json);
+        var topicId = bySubject!.Items.Single().TopicId;
+
+        var result = await client.GetFromJsonAsync<TopicProgressTimelineDto>($"{Api}/timeline?topicId={topicId}&weeks=3", Json);
+
+        result!.Weeks.Count.ShouldBe(3);
+        result.Weeks.Sum(w => w.Answered).ShouldBe(2);
+        result.Weeks.Sum(w => w.Correct).ShouldBe(1);
+        result.Weeks.ShouldContain(w => w.AccuracyPct != null);
+    }
+
+    [Theory]
+    [InlineData("", "InvalidTimelineTarget")]
+    [InlineData("topicId=1&subTopicId=1", "InvalidTimelineTarget")]
+    [InlineData("topicId=1&weeks=0", "InvalidWeeks")]
+    [InlineData("topicId=1&weeks=27", "InvalidWeeks")]
+    public async Task Timeline_refuses_bad_parameters(string query, string errorCode)
+    {
+        await SeedAsync();
+        var client = await StudentAsync();
+
+        var response = await client.GetAsync($"{Api}/timeline?{query}");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).ShouldContain(errorCode);
+    }
+
+    [Fact]
     public async Task Only_a_student_can_read_it()
     {
         (await Anonymous().GetAsync(Api)).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await Anonymous().GetAsync($"{Api}/timeline?topicId=1")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
 
         await SeedApprovedTeacherAsync(7102);
         var teacher = await ClientAsAsync(7102, "Teacher", "kc-tp-teacher", "Teacher");
         (await teacher.GetAsync(Api)).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await teacher.GetAsync($"{Api}/timeline?topicId=1")).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }
 }

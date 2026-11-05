@@ -1,0 +1,252 @@
+<ng-container *transloco="let root; prefix: 'coach'">
+  <section class="cs" *transloco="let t; prefix: 'coach.student'">
+    <div class="cs__top">
+      <a mat-button routerLink="/teacher/coach"><mat-icon aria-hidden="true">arrow_back</mat-icon>{{ t('back') }}</a>
+      @if (overview()) {
+        <a
+          mat-stroked-button
+          data-test="coach-outcomes"
+          [routerLink]="['/teacher/students', studentId, 'outcomes']"
+          [state]="{ studentName: studentName() }"
+        >
+          {{ t('outcomes') }}
+        </a>
+      }
+    </div>
+    <h1 class="cs__title" data-test="coach-student-title">{{ studentName() ?? t('title') }}</h1>
+
+    @if (loading()) {
+      <div class="cs__state" role="status">
+        <mat-progress-spinner mode="indeterminate" diameter="40" />
+      </div>
+    } @else if (notFound()) {
+      <div class="cs__state" role="alert" data-test="coach-student-not-found">
+        <mat-icon>person_off</mat-icon>
+        <p>{{ t('notFound') }}</p>
+      </div>
+    } @else if (loadFailed()) {
+      <div class="cs__state" role="alert">
+        <mat-icon>error_outline</mat-icon>
+        <p>{{ t('loadError') }}</p>
+        <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+      </div>
+    } @else if (overview(); as o) {
+      <div class="cs__tiles">
+        <section class="cs__tile" data-test="coach-plan">
+          <h2>{{ t('plan.title') }}</h2>
+          @if (o.plan.planned > 0) {
+            <p class="cs__value" data-test="coach-plan-value">{{ t('plan.value', { planned: o.plan.planned, completed: o.plan.completed }) }}</p>
+          } @else {
+            <p class="cs__muted">{{ t('plan.empty') }}</p>
+          }
+          @if (!o.plan.includesProgram) {
+            <p class="cs__hint" data-test="coach-plan-only-tests">{{ t('plan.onlyTests') }}</p>
+          }
+        </section>
+
+        <section class="cs__tile" data-test="coach-mistakes">
+          <h2>{{ t('mistakes.title') }}</h2>
+          <p class="cs__value">{{ t('mistakes.count', { count: o.activeMistakeCount }) }}</p>
+        </section>
+
+        <section class="cs__tile" data-test="coach-mocks">
+          <h2>{{ t('mocks.title') }}</h2>
+          @if (o.recentMockExams.length === 0) {
+            <p class="cs__muted">{{ t('mocks.empty') }}</p>
+          } @else {
+            <ul class="cs__rows">
+              @for (mock of o.recentMockExams; track mock.id) {
+                <li data-test="coach-mock">
+                  <span class="cs__row-main">
+                    <strong>{{ mock.name }}</strong>
+                    <span class="cs__sub">{{ mock.templateName }} · {{ t('mocks.stats', { correct: mock.correct, wrong: mock.wrong, blank: mock.blank }) }}</span>
+                  </span>
+                  <span class="cs__badge" data-test="coach-mock-net">{{ t('mocks.net', { net: formatNumber(mock.net) }) }}</span>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+
+        <section class="cs__tile" data-test="coach-weak">
+          <h2>{{ t('weak.title') }}</h2>
+          <p class="cs__hint">{{ t('weak.subtitle') }}</p>
+          @if (o.weakTopics.length === 0) {
+            <p class="cs__muted">{{ t('weak.empty') }}</p>
+          } @else {
+            <ul class="cs__rows">
+              @for (topic of o.weakTopics; track topic.topicId) {
+                <li data-test="coach-weak-topic">
+                  <span class="cs__row-main">
+                    <strong>{{ topic.topicName }}</strong>
+                    @if (topic.subjectName) {
+                      <span class="cs__sub">{{ topic.subjectName }}</span>
+                    }
+                  </span>
+                  <span class="cs__sub">{{ t('weak.stats', { accuracy: formatNumber(topic.accuracyPct), count: topic.correct + topic.wrong }) }}</span>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+      </div>
+
+      <section class="cs__panel" *transloco="let g; prefix: 'coach.goals'" data-test="coach-goals">
+        <div class="cs__panel-head">
+          <div>
+            <h2>{{ g('title') }}</h2>
+            <p class="cs__hint">{{ g('subtitle') }}</p>
+          </div>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="cs__week">
+            <mat-label>{{ g('week') }}</mat-label>
+            <mat-select data-test="coach-week" [value]="selectedWeek()" (selectionChange)="selectWeek($event.value)">
+              @for (week of weeks(); track week.value) {
+                <mat-option [value]="week.value">{{ week.current ? g('thisWeek') : g('weekOf', { date: week.label }) }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        @if (goalErrorKey(); as key) {
+          <p class="cs__error" role="alert" data-test="coach-goal-error">{{ root('errors.' + key) }}</p>
+        }
+
+        @if (goalsLoading()) {
+          <mat-progress-spinner mode="indeterminate" diameter="28" />
+        } @else if (goalsFailed()) {
+          <p class="cs__error" role="alert">{{ g('loadError') }}</p>
+        } @else {
+          @if (goals().length === 0) {
+            <p class="cs__muted" data-test="coach-goals-empty">{{ g('empty') }}</p>
+          } @else {
+            <ul class="cs__rows">
+              @for (goal of goals(); track goal.id) {
+                <li data-test="coach-goal">
+                  @if (editingGoalId() === goal.id) {
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="cs__grow">
+                      <mat-label>{{ g('edit') }}</mat-label>
+                      <input
+                        matInput
+                        data-test="coach-goal-edit-input"
+                        [attr.maxlength]="goalMaxLength"
+                        [value]="goalEditDraft()"
+                        (input)="goalEditDraft.set($any($event.target).value)"
+                        (keydown.enter)="saveGoal(goal)"
+                      />
+                    </mat-form-field>
+                    <span class="cs__actions">
+                      <button mat-flat-button type="button" data-test="coach-goal-save" [disabled]="goalSaving() || !goalEditDraft().trim()" (click)="saveGoal(goal)">{{ g('save') }}</button>
+                      <button mat-button type="button" (click)="editingGoalId.set(null)">{{ g('cancel') }}</button>
+                    </span>
+                  } @else {
+                    <span class="cs__row-main cs__text" data-test="coach-goal-title">{{ goal.title }}</span>
+                    <span class="cs__actions">
+                      <button mat-icon-button type="button" data-test="coach-goal-edit" [attr.aria-label]="g('edit')" (click)="startGoalEdit(goal)">
+                        <mat-icon>edit</mat-icon>
+                      </button>
+                      <button mat-icon-button type="button" data-test="coach-goal-delete" [attr.aria-label]="g('delete')" (click)="deleteGoal(goal)">
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                    </span>
+                  }
+                </li>
+              }
+            </ul>
+          }
+
+          @if (goalLimitReached()) {
+            <p class="cs__hint" data-test="coach-goal-limit">{{ g('limit', { max: goalsPerWeek }) }}</p>
+          } @else {
+            <form class="cs__add" (submit)="$event.preventDefault(); addGoal()">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="cs__grow">
+                <mat-label>{{ g('newGoal') }}</mat-label>
+                <input
+                  matInput
+                  data-test="coach-goal-input"
+                  [attr.maxlength]="goalMaxLength"
+                  [value]="goalDraft()"
+                  (input)="goalDraft.set($any($event.target).value)"
+                />
+              </mat-form-field>
+              <button mat-flat-button type="submit" data-test="coach-goal-add" [disabled]="goalSaving() || !goalDraft().trim()">{{ g('add') }}</button>
+            </form>
+          }
+        }
+      </section>
+
+      <section class="cs__panel" *transloco="let n; prefix: 'coach.notes'" data-test="coach-notes">
+        <div>
+          <h2>{{ n('title') }}</h2>
+          <p class="cs__hint"><mat-icon class="cs__lock" aria-hidden="true">lock</mat-icon>{{ n('private') }}</p>
+        </div>
+
+        @if (noteErrorKey(); as key) {
+          <p class="cs__error" role="alert" data-test="coach-note-error">{{ root('errors.' + key) }}</p>
+        }
+
+        <form class="cs__note-form" (submit)="$event.preventDefault(); addNote()">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="cs__grow">
+            <mat-label>{{ n('newNote') }}</mat-label>
+            <textarea
+              matInput
+              rows="3"
+              data-test="coach-note-input"
+              [attr.maxlength]="noteMaxLength"
+              [value]="noteDraft()"
+              (input)="noteDraft.set($any($event.target).value)"
+            ></textarea>
+          </mat-form-field>
+          <button mat-flat-button type="submit" data-test="coach-note-add" [disabled]="noteSaving() || !noteDraft().trim()">{{ n('add') }}</button>
+        </form>
+
+        @if (notesFailed()) {
+          <p class="cs__error" role="alert">{{ n('loadError') }}</p>
+        } @else if (notes().length === 0) {
+          <p class="cs__muted" data-test="coach-notes-empty">{{ n('empty') }}</p>
+        } @else {
+          <ul class="cs__notes">
+            @for (note of notes(); track note.id) {
+              <li class="cs__note" data-test="coach-note">
+                @if (editingNoteId() === note.id) {
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="cs__grow">
+                    <mat-label>{{ n('edit') }}</mat-label>
+                    <textarea
+                      matInput
+                      rows="3"
+                      data-test="coach-note-edit-input"
+                      [attr.maxlength]="noteMaxLength"
+                      [value]="noteEditDraft()"
+                      (input)="noteEditDraft.set($any($event.target).value)"
+                    ></textarea>
+                  </mat-form-field>
+                  <span class="cs__actions">
+                    <button mat-flat-button type="button" data-test="coach-note-save" [disabled]="noteSaving() || !noteEditDraft().trim()" (click)="saveNote(note)">{{ n('save') }}</button>
+                    <button mat-button type="button" (click)="editingNoteId.set(null)">{{ n('cancel') }}</button>
+                  </span>
+                } @else {
+                  <p class="cs__text cs__note-body" data-test="coach-note-body">{{ note.body }}</p>
+                  <div class="cs__note-foot">
+                    <span class="cs__sub">
+                      {{ formatDateTime(note.createdAt) }}
+                      @if (note.updatedAt !== note.createdAt) {
+                        · {{ n('edited') }}
+                      }
+                    </span>
+                    <span class="cs__actions">
+                      <button mat-icon-button type="button" data-test="coach-note-edit" [attr.aria-label]="n('edit')" (click)="startNoteEdit(note)">
+                        <mat-icon>edit</mat-icon>
+                      </button>
+                      <button mat-icon-button type="button" data-test="coach-note-delete" [attr.aria-label]="n('delete')" (click)="confirmNoteDelete(note)">
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                    </span>
+                  </div>
+                }
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    }
+  </section>
+</ng-container>

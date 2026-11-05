@@ -1,0 +1,60 @@
+:host {
+  display: block;
+  margin-top: 1.5rem;
+}
+
+.cg__card {
+  border-color: var(--ms-border);
+
+  // `styles.scss`'teki genel `mat-card-title` kuralı (ortalı, mavi) bu kartta geçerli değil.
+  mat-card-title {
+    padding-bottom: 0;
+    color: inherit;
+    font-size: 1.125rem;
+    text-align: start;
+  }
+}
+
+.cg__state {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 1rem 0;
+  font-size: 0.875rem;
+}
+
+.cg__plan {
+  margin: 0.5rem 0 0;
+  font-weight: 500;
+}
+
+.cg__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cg__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--ms-border);
+
+  &:first-child {
+    border-top: 0;
+  }
+}
+
+.cg__title {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.cg__meta {
+  font-size: 0.8125rem;
+  color: var(--ms-text-medium);
+}

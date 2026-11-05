@@ -12,6 +12,7 @@ import { StudentResetService } from '../../services/student-reset.service';
 import { StudentService } from '../../services/student.service';
 import { LocaleService } from '../../services/locale.service';
 import { FlashcardService } from '../../services/flashcard.service';
+import { CoachService } from '../../services/coach.service';
 import { PracticeService } from '../../services/practice.service';
 import { AuthService, UserProfile } from '../../services/auth.service';
 import { StudentParentService } from '../../services/student-parent.service';
@@ -142,6 +143,7 @@ describe('DashboardComponent', () => {
             providers: [
                 { provide: TestService, useValue: testServiceSpy },
                 { provide: FlashcardService, useValue: flashcardServiceSpy },
+                { provide: CoachService, useValue: { getMyGoals: () => of([]) } },
                 { provide: BadgeService, useValue: badgeServiceSpy },
                 { provide: StudentResetService, useValue: {
                         resetMyData: vi.fn().mockName("StudentResetService.resetMyData")
@@ -910,7 +912,9 @@ describe('DashboardComponent', () => {
             const card = host.querySelector('app-daily-questions-card');
             expect(card).toBeTruthy();
             expect(card?.previousElementSibling?.classList.contains('dashboard-welcome')).toBe(true);
-            expect(card?.nextElementSibling?.classList.contains('dashboard-section')).toBe(true);
+            // Issue #700: koç hedefleri kartı arada; hedef yoksa içi boştur.
+            expect(card?.nextElementSibling?.tagName).toBe('APP-COACH-GOALS-CARD');
+            expect(card?.nextElementSibling?.nextElementSibling?.classList.contains('dashboard-section')).toBe(true);
             expect(card?.querySelector('[role="region"]')?.getAttribute('aria-label')).toBe('Günün soruları');
         });
     });

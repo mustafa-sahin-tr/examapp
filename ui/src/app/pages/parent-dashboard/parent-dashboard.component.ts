@@ -23,6 +23,7 @@ import { ParentChildProgressComponent } from './child-progress/parent-child-prog
 import { ParentChildScheduleComponent } from './child-schedule/parent-child-schedule.component';
 import { OutcomeMasteryCardComponent } from '../../shared/components/outcome-mastery-card/outcome-mastery-card.component';
 import { TargetGoalCardComponent } from '../../shared/components/target-goal-card/target-goal-card.component';
+import { CoachGoalsCardComponent } from '../../shared/components/coach-goals-card/coach-goals-card.component';
 import { WeakTopicsCardComponent } from '../../shared/components/weak-topics-card/weak-topics-card.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
@@ -75,7 +76,7 @@ export function parseChildParam(value: string | null): number | null {
     ParentChildAssignmentsComponent,
     ParentChildProgressComponent,
     ParentChildScheduleComponent,
-    OutcomeMasteryCardComponent, TargetGoalCardComponent, WeakTopicsCardComponent,
+    OutcomeMasteryCardComponent, TargetGoalCardComponent, CoachGoalsCardComponent, WeakTopicsCardComponent,
     RouterLink,
     TranslocoDirective,
   ],

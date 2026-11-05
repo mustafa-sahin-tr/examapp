@@ -349,6 +349,17 @@ export const routes: Routes = [
           import('./pages/flashcards/flashcard-deck-detail.component').then((m) => m.FlashcardDeckDetailComponent),
       },
       {
+        // Issue #700: koç paneli; öğrenci kapsamı sunucuda (kendi okulu ya da onaylı özel ders).
+        path: 'teacher/coach',
+        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],
+        loadComponent: () => import('./pages/coach/coach-students.component').then((m) => m.CoachStudentsComponent),
+      },
+      {
+        path: 'teacher/coach/:studentId',
+        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],
+        loadComponent: () => import('./pages/coach/coach-student.component').then((m) => m.CoachStudentComponent),
+      },
+      {
         // Issue #417: öğretmen/admin Ayarlar sayfası (dil, hesap/şifre, öğretmen profili bağlantıları).
         // Öğrenci /student-profile'a yönlenir; onay bekleyen öğretmene de açık (approvedTeacherGuard yok).
         path: 'settings',

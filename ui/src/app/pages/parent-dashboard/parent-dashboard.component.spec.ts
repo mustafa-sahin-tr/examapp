@@ -16,6 +16,7 @@ import { LocaleService } from '../../services/locale.service';
 import { LinkedChild } from '../../models/parent-link.model';
 import { ParentChildAssignmentList, ParentChildSummary } from '../../models/parent-dashboard.model';
 import { TopicPerformanceService } from '../../services/topic-performance.service';
+import { CoachService } from '../../services/coach.service';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import parentDashboardTr from '../../../../public/i18n/parent-dashboard/tr.json';
 import parentDashboardEn from '../../../../public/i18n/parent-dashboard/en.json';
@@ -127,6 +128,8 @@ describe('ParentDashboardComponent (issue #420)', () => {
                 { provide: BookingService, useValue: bookingService },
                 // Issue #521: zayıf konular kartı (kendi spec'inde ayrıntılı test edilir).
                 { provide: TopicPerformanceService, useValue: { getChild: () => EMPTY } },
+                // Issue #700: koç hedefleri kartı (kendi spec'inde).
+                { provide: CoachService, useValue: { getChildSummary: () => EMPTY } },
                 { provide: LocaleService, useValue: { localeDefinition: signal({ angularLocale: lang === 'tr' ? 'tr-TR' : 'en-US' }) } },
             ],
         });

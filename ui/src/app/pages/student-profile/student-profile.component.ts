@@ -21,6 +21,7 @@ import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@js
 import { currentUserId } from '../../shared/utils/current-user-id.util';
 import { AccountSecurityCardComponent } from '../../shared/components/account-security-card/account-security-card.component';
 import { StudentParentsCardComponent } from '../../shared/components/student-parents-card/student-parents-card.component';
+import { OutcomeMasteryCardComponent } from '../../shared/components/outcome-mastery-card/outcome-mastery-card.component';
 import { WeakTopicsCardComponent } from '../../shared/components/weak-topics-card/weak-topics-card.component';
 
 /** Sayfanin Transloco scope'u: `public/i18n/student-profile/<lang>.json` (issue #183). */
@@ -47,7 +48,7 @@ const SCOPE = 'student-profile';
     TranslocoDirective,
     AccountSecurityCardComponent,
     StudentParentsCardComponent,
-    WeakTopicsCardComponent,
+    OutcomeMasteryCardComponent, WeakTopicsCardComponent,
   ],
   changeDetection: ChangeDetectionStrategy.Eager,
   providers: [provideTranslocoScope(SCOPE)],

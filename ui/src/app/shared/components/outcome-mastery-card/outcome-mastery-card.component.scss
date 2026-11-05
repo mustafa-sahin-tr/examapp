@@ -1,0 +1,136 @@
+:host {
+  display: block;
+  margin-top: 1.5rem;
+}
+
+.om__card {
+  border-color: var(--ms-border);
+}
+
+.om__state {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 1rem 0;
+  font-size: 0.875rem;
+}
+
+.om__rules {
+  margin: 0.5rem 0 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--ms-text-medium);
+}
+
+.om__curricula {
+  margin-bottom: 0.75rem;
+}
+
+.om__counts {
+  justify-content: flex-end;
+  font-size: 0.8125rem;
+}
+
+.om__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.om__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--ms-border);
+}
+
+.om__item:first-child {
+  border-top: 0;
+}
+
+.om__text {
+  display: flex;
+  flex: 1 1 16rem;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.om__name {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.om__code {
+  margin-inline-end: 0.25rem;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--ms-text-medium);
+}
+
+.om__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--ms-text-medium);
+}
+
+.om__side {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.om__level {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+
+  mat-icon {
+    width: 1rem;
+    height: 1rem;
+    font-size: 1rem;
+  }
+}
+
+.om__level--notStarted {
+  color: var(--ms-text-medium);
+  border: 1px solid var(--ms-border);
+}
+
+.om__level--familiar {
+  color: var(--ms-warning-text);
+  background: var(--ms-warning-surface);
+}
+
+.om__level--proficient {
+  color: var(--ms-info-text);
+  background: var(--ms-info-surface);
+}
+
+.om__level--mastered {
+  color: var(--ms-success-text);
+  background: var(--ms-success-surface);
+}
+
+.om__tentative {
+  font-size: 0.75rem;
+  color: var(--ms-text-medium);
+}
+
+@media (max-width: 600px) {
+  .om__counts {
+    display: none;
+  }
+}

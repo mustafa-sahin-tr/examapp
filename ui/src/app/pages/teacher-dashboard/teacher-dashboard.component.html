@@ -359,7 +359,9 @@
 
         <ng-container matColumnDef="studentName">
           <th mat-header-cell *matHeaderCellDef>{{ t('topStudents.columns.student') }}</th>
-          <td mat-cell *matCellDef="let row" class="top-students-table__student">{{ row.studentName }}</td>
+          <td mat-cell *matCellDef="let row" class="top-students-table__student">
+            <a [routerLink]="['/teacher/students', row.studentId, 'outcomes']" [state]="{ studentName: row.studentName }" [attr.aria-label]="t('topStudents.outcomesLabel', { name: row.studentName })" data-test="top-student-outcomes">{{ row.studentName }}</a>
+          </td>
         </ng-container>
 
         <ng-container matColumnDef="questionsSolved">
@@ -398,7 +400,7 @@
               <span class="top-student-card__rank">
                 <span aria-hidden="true">{{ rankLabel(i) }}</span><span class="cdk-visually-hidden">{{ i + 1 }}</span>
               </span>
-              <span class="top-student-card__name">{{ row.studentName }}</span>
+              <a class="top-student-card__name" [routerLink]="['/teacher/students', row.studentId, 'outcomes']" [state]="{ studentName: row.studentName }" [attr.aria-label]="t('topStudents.outcomesLabel', { name: row.studentName })">{{ row.studentName }}</a>
             </span>
             @let cardDuration = durationOf(row.timeSeconds);
             <div class="top-student-card__meta">

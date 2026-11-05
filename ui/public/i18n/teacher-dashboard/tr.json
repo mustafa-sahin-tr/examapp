@@ -74,6 +74,7 @@
   "topStudents": {
     "title": "En Aktif Öğrenciler (son {{days}} gün)",
     "sortHint": "Çözülen soruya göre sıralı",
+    "outcomesLabel": "{{name}}: kazanım haritasını aç",
     "loading": "En aktif öğrenciler yükleniyor...",
     "empty": "Son {{days}} günde öğrencileriniz henüz soru çözmedi.",
     "cardCounts": "{{solved}} soru · {{correct}} doğru",

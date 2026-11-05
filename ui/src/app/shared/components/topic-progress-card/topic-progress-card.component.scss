@@ -1,13 +1,6 @@
 :host {
   display: block;
   margin-top: 1.5rem;
-
-  // Koyu temada ana renk yüzeyde 3:1'in altında kalır (2,72); seri rengi temaya göre seçilir.
-  --tp-series: var(--primaryColor);
-}
-
-:host-context(.dark-theme) {
-  --tp-series: #6680ff;
 }
 
 .tp__card {
@@ -44,7 +37,7 @@
   touch-action: pan-y;
 
   &:focus-visible {
-    outline: 2px solid var(--tp-series);
+    outline: 2px solid var(--ms-chart-series);
     outline-offset: 2px;
   }
 
@@ -70,14 +63,14 @@
 
 .tp__line {
   fill: none;
-  stroke: var(--tp-series);
+  stroke: var(--ms-chart-series);
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .tp__marker {
-  fill: var(--tp-series);
+  fill: var(--ms-chart-series);
   stroke: var(--ms-surface);
   stroke-width: 2;
   paint-order: stroke;
@@ -85,7 +78,7 @@
 
 .tp__marker--low {
   fill: var(--ms-surface);
-  stroke: var(--tp-series);
+  stroke: var(--ms-chart-series);
   stroke-width: 2;
   opacity: 0.6;
 }

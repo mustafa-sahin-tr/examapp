@@ -3123,6 +3123,69 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("QuestionLearningOutcomes");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.QuestionReport", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("QuestionId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int>("ReporterUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int>("TestInstanceId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status", "CreateTime");
+
+                    b.HasIndex(new[] { "QuestionId", "ReporterUserId" }, "IX_QuestionReports_Question_Reporter")
+                        .IsUnique()
+                        .HasFilter("NOT \"IsDeleted\"");
+
+                    b.ToTable("QuestionReports");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.QuestionSource", b =>
                 {
                     b.Property<int>("Id")
@@ -6662,6 +6725,17 @@ namespace ExamApp.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("LearningOutcome");
+
+                    b.Navigation("Question");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.QuestionReport", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Question", "Question")
+                        .WithMany()
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Question");
                 });

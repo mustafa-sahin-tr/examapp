@@ -110,6 +110,11 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/books/books.component').then((m) => m.BooksComponent),
       },
       {
+        path: 'question-reports',
+        canActivate: [authGuard, ...authoringGuards],
+        loadComponent: () => import('./pages/question-reports/question-reports.component').then((m) => m.QuestionReportsComponent),
+      },
+      {
         // Issue #471: soru bankası araması — backend Teacher/Admin + onaylı öğretmen.
         path: 'question-bank',
         canActivate: [authGuard, roleGuard('Teacher', 'Admin'), approvedTeacherGuard],

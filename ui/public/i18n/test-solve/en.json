@@ -170,6 +170,24 @@
     "warning": "You can't change your answers after finishing the test.",
     "keepSolving": "Keep solving"
   },
+  "report": {
+    "action": "Report question",
+    "title": "Report question",
+    "message": "Your report goes to the teacher who prepared the question. Your name is not shown.",
+    "reasonLabel": "What is the problem?",
+    "reason": {
+      "wrongAnswer": "The answer may be wrong",
+      "unreadable": "The question cannot be read",
+      "wrongContent": "The question has a mistake",
+      "other": "Another problem"
+    },
+    "noteLabel": "Note (optional)",
+    "send": "Report",
+    "cancel": "Cancel",
+    "saved": "Your report was sent. Thank you.",
+    "alreadyReported": "You already reported this question.",
+    "error": "The report could not be sent. Try again."
+  },
   "leave": {
     "title": "Leave and continue later",
     "messageTimed": "Your answers are saved. Time keeps running while you are away.",

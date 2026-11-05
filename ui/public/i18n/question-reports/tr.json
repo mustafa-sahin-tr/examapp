@@ -1,0 +1,24 @@
+{
+  "title": "Soru Bildirimleri",
+  "subtitle": "Öğrencilerin sorularınla ilgili bildirdiği sorunlar. Bildirenin adı gösterilmez.",
+  "statusLabel": "Bildirim durumu",
+  "status": {
+    "open": "Bekleyen",
+    "reviewed": "İncelenen"
+  },
+  "reason": {
+    "wrongAnswer": "Cevap yanlış olabilir",
+    "unreadable": "Soru okunmuyor",
+    "wrongContent": "Soruda hata var",
+    "other": "Başka bir sorun"
+  },
+  "imageAlt": "Bildirilen soru",
+  "noImage": "Görselsiz soru",
+  "openQuestion": "Soruyu aç",
+  "markReviewed": "İncelendi",
+  "emptyOpen": "Bekleyen bildirim yok.",
+  "emptyReviewed": "İncelenmiş bildirim yok.",
+  "loadError": "Bildirimler yüklenemedi.",
+  "retry": "Tekrar dene",
+  "actionError": "Bildirim güncellenemedi. Tekrar dene."
+}

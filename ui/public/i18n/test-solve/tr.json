@@ -170,6 +170,24 @@
     "warning": "Testi bitirdikten sonra cevaplarını değiştiremezsin.",
     "keepSolving": "Çözmeye devam et"
   },
+  "report": {
+    "action": "Soruyu bildir",
+    "title": "Soruyu bildir",
+    "message": "Bildirimin soruyu hazırlayan öğretmene iletilir. Adın gösterilmez.",
+    "reasonLabel": "Sorun ne?",
+    "reason": {
+      "wrongAnswer": "Cevap yanlış olabilir",
+      "unreadable": "Soru okunmuyor",
+      "wrongContent": "Soruda hata var",
+      "other": "Başka bir sorun"
+    },
+    "noteLabel": "Not (isteğe bağlı)",
+    "send": "Bildir",
+    "cancel": "Vazgeç",
+    "saved": "Bildirimin iletildi. Teşekkürler.",
+    "alreadyReported": "Bu soruyu daha önce bildirmiştin.",
+    "error": "Bildirim gönderilemedi. Tekrar dene."
+  },
   "leave": {
     "title": "Çık, sonra devam et",
     "messageTimed": "Cevapların kayıtlı. Süre sen yokken de işlemeye devam eder.",

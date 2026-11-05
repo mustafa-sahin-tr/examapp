@@ -1,0 +1,125 @@
+.reports {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.reports__head {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  color: var(--ms-text);
+
+  h1 {
+    margin: 0;
+    color: var(--ms-text-strong);
+    font-size: 1.5rem;
+  }
+
+  p {
+    margin: 4px 0 0;
+  }
+}
+
+.reports__status {
+  --mat-button-toggle-label-text-color: var(--ms-text);
+  --mat-button-toggle-selected-state-background-color: var(--primaryColor);
+  --mat-button-toggle-selected-state-text-color: var(--whiteColor);
+  align-self: flex-start;
+}
+
+.reports__error {
+  margin: 0;
+  color: var(--ms-danger-border);
+  font-weight: 600;
+}
+
+.reports__state {
+  margin: 0;
+  padding: 32px 16px;
+  color: var(--ms-text);
+  text-align: center;
+}
+
+.reports__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.report-row {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--ms-border);
+  border-radius: 12px;
+  color: var(--ms-text);
+}
+
+.report-row__preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 72px;
+  overflow: hidden;
+  color: var(--ms-text-weak);
+
+  img {
+    display: block;
+    max-width: 100%;
+    max-height: 140px;
+    object-fit: contain;
+  }
+}
+
+.report-row__body {
+  min-width: 0;
+
+  h2 {
+    margin: 0;
+    color: var(--ms-text-strong);
+    font-size: 1rem;
+  }
+}
+
+.report-row__note {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+.report-row__date {
+  margin: 4px 0 0;
+  color: var(--ms-text-weak);
+  font-size: 0.875rem;
+}
+
+.report-row__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  a,
+  button {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 720px) {
+  .report-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .report-row__actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}

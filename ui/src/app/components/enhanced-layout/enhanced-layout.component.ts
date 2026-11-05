@@ -289,6 +289,11 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
       { id: 'tab-tutors', labelKey: 'menu.findTutor', icon: '', route: '/tutors', type: 'menu', roles: ['Student'] },
       { id: 'tab-bookings', labelKey: 'menu.myBookings', icon: '', route: '/my-bookings', type: 'menu', roles: ['Student'] },
     ],
+    // Issue #781: öğrencilerin bildirdiği sorular; ana menü #719 sınırında kalır.
+    [
+      { id: 'tab-question-bank', labelKey: 'menu.questionBank', icon: '', route: '/question-bank', type: 'menu', roles: ['Teacher', 'Admin'] },
+      { id: 'tab-question-reports', labelKey: 'menu.questionReports', icon: '', route: '/question-reports', type: 'menu', roles: ['Teacher', 'Admin'] },
+    ],
     [
       { id: 'tab-study-pages', labelKey: 'menu.studyPages', icon: '', route: '/study-pages', type: 'menu', roles: ['Teacher'] },
       // Issue #61: öğretmen konu/alt konu çalışma linkleri yönetimi.

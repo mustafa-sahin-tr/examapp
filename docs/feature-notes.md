@@ -109,3 +109,13 @@ Seçili şık nötr mavi ve işaretlidir; yeşil yalnız doğru cevap içindir. 
 
 `QuestionDevicePreviewComponent` soruyu öğrenci ekranındaki soru alanının boyutunda çizer (`PREVIEW_DEVICES`: telefon, tablet, masaüstü) ve seçimi `questionPreview.device` anahtarıyla bu tarayıcıda hatırlar. Boyutlar öğrenci ekranından ölçülmüştür; başlık, alt çubuk veya panel değişirse yeniden ölçülür. Alan sütuna sığmazsa düzen bozulmadan görsel olarak küçültülür. Önizlemede doğru şık yeşil görünür, öğrencide görünmez. Önizlemede tek görünüm budur: şıka tıklamak doğru cevabı kaydeder; sınıflandırmayı uygulama ve soruyu çıkarma düğmeleri altındadır. Eski birleşik görünüm ve elle yakınlaştırma önizlemeden kaldırıldı.
 
+
+## Soru bildirimi (#781)
+
+Öğrenci test çözerken "Soruyu bildir" ile neden (cevap yanlış olabilir, okunmuyor, soruda hata, başka) ve isteğe bağlı not gönderir.
+
+- **Yetki:** `POST api/questions/{id}/report` yalnız `Student`; soru öğrencinin o oturumunda değilse 404 (başka öğrencinin oturumu, var olmayan soru aynı yanıt). `QuestionReportsController` ayrıdır çünkü `QuestionsController` öğretmen yeteneği ister.
+- **Sınır:** yorum yazma ile ortak `WorksheetCommentWriteRateLimiting` kovası (kullanıcı başına dakikada 10). Aynı öğrenci aynı soruyu bir kez bildirir (filtreli unique index); tekrar 200 + `alreadyReported`, ilk kayıt değişmez.
+- **Görünürlük:** `/question-reports` (Soru Havuzu'nun yanındaki sekme); öğretmen kendi sorularını, admin hepsini görür. Yanıtta bildiren yok: öğretmen öğrenciyi tanımayabilir.
+- **Onay:** toast yalnız kayıttan sonra; hata olursa diyalog açık kalır, not kaybolmaz.
+- **Outbox yok:** tek DB yazması, async iş yok. Bildirimi öğretmene anlık haber veren bir bildirim istenirse event o zaman eklenir.

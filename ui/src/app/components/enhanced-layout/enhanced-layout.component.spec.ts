@@ -1237,6 +1237,14 @@ describe('EnhancedLayoutComponent role navigation (issue #719)', () => {
         expect(component.activeSectionTabs()).toEqual([]);
     });
 
+    it('sectionTabs_QuestionReportsSitNextToQuestionPool', async () => {
+        const fixture = renderLayout(['Teacher'], false);
+
+        await goTo(fixture, '/question-reports');
+
+        expect(labels(fixture.componentInstance.activeSectionTabs())).toEqual(['tab-question-bank', 'tab-question-reports']);
+    });
+
     it('sectionTabs_HiddenOnExamRoutes', async () => {
         const fixture = renderLayout(['Student'], false);
         await goTo(fixture, '/testsolve/4');

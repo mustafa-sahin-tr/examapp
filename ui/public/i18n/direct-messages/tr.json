@@ -12,8 +12,8 @@
     "blockedTag": "Engellendi"
   },
   "student": {
-    "title": "Öğretmenime Yaz",
-    "subtitle": "Okulundaki ya da sana sınav atayan öğretmenlerine mesaj gönder.",
+    "title": "Mesajlar",
+    "subtitle": "Okulundaki ya da sana test atayan öğretmenlerine mesaj gönder.",
     "tabs": {
       "conversations": "Konuşmalarım",
       "teachers": "Öğretmenler"

@@ -1,16 +1,9 @@
 <div class="bk" *transloco="let t; prefix: 'books'">
-  <header class="bk-head">
-    <div class="bk-title">
-      <mat-icon aria-hidden="true">menu_book</mat-icon>
-      <div>
-        <h1>{{ t('title') }}</h1>
-        <p>{{ t('subtitle') }}</p>
-      </div>
-    </div>
+  <app-page-header icon="menu_book" [title]="t('title')" [description]="t('subtitle')">
     <button mat-flat-button type="button" (click)="createNew()">
       <mat-icon>add</mat-icon>{{ t('new') }}
     </button>
-  </header>
+  </app-page-header>
 
   <div class="bk-body">
     <!-- Kitap listesi -->

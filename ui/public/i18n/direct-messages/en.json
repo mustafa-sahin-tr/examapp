@@ -12,7 +12,7 @@
     "blockedTag": "Blocked"
   },
   "student": {
-    "title": "Message My Teacher",
+    "title": "Messages",
     "subtitle": "Send a message to teachers at your school or teachers who assigned you a test.",
     "tabs": {
       "conversations": "My conversations",

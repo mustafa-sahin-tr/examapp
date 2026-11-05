@@ -1,11 +1,5 @@
 <section class="reports" *transloco="let t; prefix: 'question-reports'">
-  <header class="reports__head">
-    <mat-icon aria-hidden="true">flag</mat-icon>
-    <div>
-      <h1>{{ t('title') }}</h1>
-      <p>{{ t('subtitle') }}</p>
-    </div>
-  </header>
+  <app-page-header icon="flag" [title]="t('title')" [description]="t('subtitle')" />
 
   <mat-button-toggle-group class="reports__status" [value]="status()" [hideSingleSelectionIndicator]="true"
     [attr.aria-label]="t('statusLabel')" (change)="changeStatus($event.value)">

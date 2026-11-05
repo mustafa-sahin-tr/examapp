@@ -7,22 +7,6 @@
   color: var(--ms-text);
 }
 
-.slp-head {
-  h1 {
-    margin: 0;
-    font-family: var(--mainFontFamily);
-    font-size: 22px;
-    font-weight: 600;
-    color: var(--ms-text-strong);
-  }
-}
-
-.slp-sub {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: var(--ms-text-medium);
-}
-
 .slp-pickers {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

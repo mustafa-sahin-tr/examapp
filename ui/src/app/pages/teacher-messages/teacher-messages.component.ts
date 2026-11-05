@@ -32,6 +32,7 @@ import {
 } from '../../shared/components/dm-conversation-list/dm-conversation-list.component';
 import { directMessageError } from '../../shared/utils/direct-message-error.util';
 import { provideTranslatedPaginatorIntl } from '../../shared/utils/paginator-intl.util';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 /** Panelde açık olan konuşma ya da yeni konuşma hedefi. */
 export interface StudentDmSelection {
@@ -47,7 +48,7 @@ const TAB_TEACHERS = 1;
 const PREVIEW_LENGTH = 120;
 
 /**
- * Issue #106 dilim (c) — öğrencinin "Öğretmenime Yaz" sayfası (maket 8a/8b).
+ * Issue #106 dilim (c) — öğrencinin "Mesajlar" sayfası (eski adı "Öğretmenime Yaz", #718) (maket 8a/8b).
  * Sol: "Konuşmalarım" ve "Öğretmenler" (arama ≥2 karakter, 300 ms debounce, sayfalı, ilişki chip'i) sekmeleri;
  * sağ: konuşma paneli. < 900px'te panel tam ekran açılır, geri butonu listeye döner.
  * Engel öğrenciye hiçbir yerde belli edilmez (nötr metinler sözlükte).
@@ -56,6 +57,7 @@ const PREVIEW_LENGTH = 120;
   selector: 'app-teacher-messages',
   standalone: true,
   imports: [
+    PageHeaderComponent,
     MatButtonModule,
     MatChipsModule,
     MatFormFieldModule,

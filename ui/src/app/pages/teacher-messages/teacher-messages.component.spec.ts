@@ -30,7 +30,7 @@ function teacher(id: number, relation: MessageableTeacher['relation'], conversat
     return { teacherId: id, fullName: `Hoca ${id}`, avatar: '', relation, conversationId };
 }
 
-describe('TeacherMessagesComponent — öğrenci "Öğretmenime Yaz" (issue #106)', () => {
+describe('TeacherMessagesComponent — öğrenci "Mesajlar" (issue #106)', () => {
     beforeEach(() => {
         vi.useFakeTimers();
     });

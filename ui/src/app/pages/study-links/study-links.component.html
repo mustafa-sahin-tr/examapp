@@ -1,8 +1,5 @@
 <section class="slp" *transloco="let t; prefix: 'study-links'">
-  <header class="slp-head">
-    <h1>{{ t('page.title') }}</h1>
-    <p class="slp-sub">{{ t('page.subtitle') }}</p>
-  </header>
+  <app-page-header [title]="t('page.title')" [description]="t('page.subtitle')" />
 
   <div class="slp-pickers">
     <!-- Ders -->

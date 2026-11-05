@@ -1,8 +1,5 @@
 <div class="dmp" *transloco="let t; prefix: 'direct-messages'">
-  <header class="dmp__head">
-    <h1 class="dmp__title">{{ t('teacher.title') }}</h1>
-    <p class="dmp__subtitle">{{ t('teacher.subtitle') }}</p>
-  </header>
+  <app-page-header [title]="t('teacher.title')" [description]="t('teacher.subtitle')" />
 
   <div class="dmp__layout" [class.dmp__layout--open]="selection() !== null">
     <section class="dmp__list" aria-labelledby="sm-inbox-title">

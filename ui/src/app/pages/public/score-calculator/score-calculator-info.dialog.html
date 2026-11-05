@@ -1,0 +1,68 @@
+<ng-container *transloco="let t; prefix: 'public-pages.scoreCalculator'">
+  <h2 mat-dialog-title>{{ t('info.title', { exam: t('exams.' + exam.id), year: exam.year }) }}</h2>
+  <mat-dialog-content>
+    <h3>{{ t('info.stepsTitle') }}</h3>
+    <ol data-testid="info-steps">
+      <li>{{ t('info.steps.net', { penalty: exam.wrongAnswersPerCorrect }) }}</li>
+      <li>{{ t('info.steps.standard') }}</li>
+      <li>{{ t('info.steps.weighted') }}</li>
+      <li>{{ t('info.steps.scale') }}</li>
+    </ol>
+
+    <h3>{{ t('info.officialTitle') }}</h3>
+    <p>{{ t('info.official.' + exam.id) }}</p>
+    <h3>{{ t('info.estimatedTitle') }}</h3>
+    <p>{{ t('info.estimated.' + exam.id) }}</p>
+    <p>{{ t('info.margin') }}</p>
+    <p>{{ t('excluded.' + exam.id) }}</p>
+
+    <h3>{{ t('info.valuesTitle', { year: exam.year }) }}</h3>
+    <div class="table-wrap">
+      <table data-testid="info-values">
+        <thead>
+          <tr>
+            <th scope="col">{{ t('test') }}</th>
+            <th scope="col">{{ t('info.questions') }}</th>
+            <th scope="col">{{ t('info.mean') }}</th>
+            <th scope="col">{{ t('info.standardDeviation') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (test of exam.tests; track test.id) {
+            <tr>
+              <th scope="row">{{ t('sessions.' + test.session) }} · {{ t('tests.' + test.id) }}</th>
+              <td>{{ test.validQuestions ?? test.questions }}</td>
+              <td>{{ decimal(test.mean) }}</td>
+              <td>{{ decimal(test.standardDeviation) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <h3>{{ t('info.weightsTitle') }}</h3>
+    <ul class="weights" data-testid="info-weights">
+      @for (type of exam.scores; track type.id) {
+        <li>
+          <strong>{{ t('scores.' + type.id) }}:</strong>
+          @if (type.tytWeight) {
+            TYT {{ weightLabel(type.tytWeight) }},
+          }
+          @for (entry of weightsOf(type.weights); track entry[0]; let last = $last) {
+            {{ t('tests.' + entry[0]) }} {{ weightLabel(entry[1]) }}{{ last ? '' : ', ' }}
+          }
+        </li>
+      }
+    </ul>
+
+    <h3>{{ t('info.sourcesTitle') }}</h3>
+    <ul class="sources" data-testid="info-sources">
+      @for (source of exam.sources; track source.url) {
+        <li><a [href]="source.url" target="_blank" rel="noopener noreferrer">{{ source.label }}</a></li>
+      }
+    </ul>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button mat-dialog-close>{{ t('info.close') }}</button>
+  </mat-dialog-actions>
+</ng-container>

@@ -18,5 +18,102 @@
     "purpose": "{{ brand.name }}, kullanıcıların sınav deneyimini iyileştirmek için tasarlanmıştır.",
     "misuse": "Hizmetlerimizin kötüye kullanımı yasaktır.",
     "updates": "Güncellenen şartlar ve koşullar için bu sayfayı düzenli olarak kontrol ediniz."
+  },
+  "scoreCalculator": {
+    "meta": {
+      "title": "LGS ve YKS Puan Hesaplama | {{ brand.name }}",
+      "description": "Doğru ve yanlış sayılarınla tahmini LGS ve YKS puanını hesapla. Hesap gerekmez, girdiğin sayılar kaydedilmez."
+    },
+    "back": "Ana sayfaya dön",
+    "title": "LGS ve YKS puan hesaplama",
+    "intro": "Doğru ve yanlış sayılarını gir, netlerini ve tahmini puanını gör. Hesap açman gerekmez.",
+    "examPicker": "Sınav seç",
+    "exams": {
+      "lgs": "LGS",
+      "yks": "YKS"
+    },
+    "privacy": "Hesap tarayıcında yapılır. Girdiğin sayılar sunucuya gönderilmez ve kaydedilmez.",
+    "sessions": {
+      "lgs": "Merkezî sınav",
+      "tyt": "TYT",
+      "ayt": "AYT"
+    },
+    "test": "Test",
+    "correct": "Doğru",
+    "wrong": "Yanlış",
+    "net": "Net",
+    "questionCount": "{{ count }} soru",
+    "tests": {
+      "turkish": "Türkçe",
+      "revolutionHistory": "T.C. İnkılap Tarihi ve Atatürkçülük",
+      "religion": "Din Kültürü ve Ahlak Bilgisi",
+      "foreignLanguage": "Yabancı Dil",
+      "mathematics": "Matematik",
+      "science": "Fen Bilimleri",
+      "tytTurkish": "Türkçe",
+      "tytSocial": "Sosyal Bilimler",
+      "tytMathematics": "Temel Matematik",
+      "tytScience": "Fen Bilimleri",
+      "aytLiterature": "Türk Dili ve Edebiyatı",
+      "aytHistory1": "Tarih-1",
+      "aytGeography1": "Coğrafya-1",
+      "aytHistory2": "Tarih-2",
+      "aytGeography2": "Coğrafya-2",
+      "aytPhilosophy": "Felsefe Grubu",
+      "aytReligion": "Din Kültürü ve Ahlak Bilgisi / Ek Felsefe Grubu",
+      "aytMathematics": "Matematik",
+      "aytPhysics": "Fizik",
+      "aytChemistry": "Kimya",
+      "aytBiology": "Biyoloji"
+    },
+    "invalid": "Doğru ve yanlış tam sayı olmalı, toplamları {{ count }} soruyu geçemez.",
+    "fixInput": "Puanı görmek için hatalı satırları düzelt.",
+    "resultTitle": "Tahmini puan ({{ year }} verisiyle)",
+    "scores": {
+      "lgs": "Merkezî sınav puanı",
+      "tyt": "TYT",
+      "say": "Sayısal",
+      "ea": "Eşit Ağırlık",
+      "soz": "Sözel"
+    },
+    "range": "Olası aralık: {{ low }}–{{ high }}",
+    "notCalculated": "Bu netlerle puan hesaplanmaz (en az 0,5 net gerekir).",
+    "estimateNote": "Bu resmî sonuç değil, tahmindir. {{ year }} sınavının verileriyle hesaplanır; gerçek puan her yıl açıklanan ortalama ve standart sapmalara göre değişir.",
+    "excluded": {
+      "lgs": "Okul başarı puanı ve yabancı dil ya da din kültürü muafiyeti hesaba katılmaz.",
+      "yks": "Ortaöğretim başarı puanı, yerleştirme puanı ve DİL puan türü hesaba katılmaz."
+    },
+    "ctaText": "Eksik konularını çalışmak için ücretsiz hesap açabilirsin.",
+    "ctaButton": "Ücretsiz hesap aç",
+    "enterAnswers": "Puanını görmek için doğru ve yanlış sayılarını gir.",
+    "info": {
+      "open": "Nasıl hesaplıyoruz?",
+      "title": "{{ exam }} puanını nasıl hesaplıyoruz? ({{ year }} verisi)",
+      "close": "Kapat",
+      "stepsTitle": "Adımlar",
+      "steps": {
+        "net": "Net = doğru − yanlış ÷ {{ penalty }}.",
+        "standard": "Standart puan = 50 + 10 × (net − ortalama) ÷ standart sapma.",
+        "weighted": "Ağırlıklı puan = standart puanların ders ağırlıklarıyla toplamı.",
+        "scale": "Puan = 100 + 400 × (ağırlıklı puan − en küçük) ÷ (en büyük − en küçük)."
+      },
+      "officialTitle": "Resmî olanlar",
+      "official": {
+        "lgs": "Formül, net hesabı ve ders ağırlıkları MEB'in 2026 raporundan alınır.",
+        "yks": "Formül, net hesabı, ağırlıklar, 0,5 ham puan koşulu ve son sınıf adaylarının ortalama ile standart sapmaları ÖSYM belgelerinden alınır."
+      },
+      "estimatedTitle": "Bizim tahminimiz olanlar",
+      "estimated": {
+        "lgs": "MEB ders bazında ortalama ve standart sapma yayımlamıyor. Standart sapmayı raporun madde analizinden türetiyoruz: soru sayısı × ayırt edicilik × √(güçlük × (1 − güçlük)) × 1,17. Son çarpan, doğru olmayan cevapların yarısının yanlış, yarısının boş olduğu varsayımıdır. Ortalamalar aynı varsayımla bulunur, ama sonucu değiştirmez. En küçük değer için bütün soruların yanlış, en büyük için bütün soruların doğru yapıldığını varsayıyoruz. Bu hesap gerçek sınav sonuçlarıyla karşılaştırılmadı.",
+        "yks": "ÖSYM en küçük ve en büyük ağırlıklı puanı yayımlamıyor. En büyük için bütün geçerli soruların doğru, en küçük için testlerin boş ve gerekli bir testte 0,5 ham puan olduğunu varsayıyoruz. TYT için bu ölçek ÖSYM'nin puan dağılımıyla kabaca tutarlı; AYT puan türleri doğrudan sınanamadı."
+      },
+      "margin": "Olası aralık kesin bir hata payı değil, bizim yargımızdır: LGS ±25, TYT ±10, AYT puan türleri ±15.",
+      "valuesTitle": "Kullanılan değerler ({{ year }})",
+      "questions": "Geçerli soru",
+      "mean": "Ortalama",
+      "standardDeviation": "Standart sapma",
+      "weightsTitle": "Ağırlıklar",
+      "sourcesTitle": "Kaynaklar"
+    }
   }
 }

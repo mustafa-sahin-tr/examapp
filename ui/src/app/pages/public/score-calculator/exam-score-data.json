@@ -1,0 +1,282 @@
+{
+  "exams": [
+    {
+      "id": "lgs",
+      "year": 2026,
+      "wrongAnswersPerCorrect": 3,
+      "statisticsBasis": "derivedFromItemAnalysis",
+      "sources": [
+        {
+          "label": "MEB, 2026 LGS Kapsamında Merkezî Sınav Raporu (Tablo 7, Tablo 8)",
+          "url": "https://odsgm.meb.gov.tr/meb_iys_dosyalar/2026_07/6a50862c73d81732286292_2026_Merkez%C3%AE_S%C4%B1nav_Raporu.pdf"
+        }
+      ],
+      "tests": [
+        {
+          "id": "turkish",
+          "session": "lgs",
+          "questions": 20,
+          "mean": 7.63,
+          "standardDeviation": 5.59
+        },
+        {
+          "id": "revolutionHistory",
+          "session": "lgs",
+          "questions": 10,
+          "mean": 4.52,
+          "standardDeviation": 3.49
+        },
+        {
+          "id": "religion",
+          "session": "lgs",
+          "questions": 10,
+          "mean": 5.68,
+          "standardDeviation": 2.99
+        },
+        {
+          "id": "foreignLanguage",
+          "session": "lgs",
+          "questions": 10,
+          "mean": 3.47,
+          "standardDeviation": 4.0
+        },
+        {
+          "id": "mathematics",
+          "session": "lgs",
+          "questions": 20,
+          "mean": 3.2,
+          "standardDeviation": 5.45
+        },
+        {
+          "id": "science",
+          "session": "lgs",
+          "questions": 20,
+          "mean": 7.17,
+          "standardDeviation": 6.27
+        }
+      ],
+      "scores": [
+        {
+          "id": "lgs",
+          "weights": {
+            "turkish": 4,
+            "revolutionHistory": 1,
+            "religion": 1,
+            "foreignLanguage": 1,
+            "mathematics": 4,
+            "science": 4
+          },
+          "marginPoints": 25,
+          "scaleMin": 417.35,
+          "scaleMax": 1090.14
+        }
+      ]
+    },
+    {
+      "id": "yks",
+      "year": 2026,
+      "wrongAnswersPerCorrect": 4,
+      "statisticsBasis": "publishedStatistics",
+      "sources": [
+        {
+          "label": "ÖSYM, 2026-YKS Sayısal Bilgiler (ortalama ve standart sapma, son sınıf adayları)",
+          "url": "https://cdn.osym.gov.tr/pdfdokuman/2026/YKS/SB/sayisal_ykdd21072026.pdf"
+        },
+        {
+          "label": "ÖSYM, 2026 YKS Kılavuzu (Tablo 1C, Tablo 1E, bölüm 3.10)",
+          "url": "https://dokuman.osym.gov.tr/pdfdokuman/2026/YKS/basvuru_kilavuz06022026.pdf"
+        }
+      ],
+      "tests": [
+        {
+          "id": "tytTurkish",
+          "session": "tyt",
+          "questions": 40,
+          "mean": 20.5,
+          "standardDeviation": 8.4
+        },
+        {
+          "id": "tytSocial",
+          "session": "tyt",
+          "questions": 20,
+          "mean": 10.2,
+          "standardDeviation": 3.9
+        },
+        {
+          "id": "tytMathematics",
+          "session": "tyt",
+          "questions": 40,
+          "mean": 6.8,
+          "standardDeviation": 8.0
+        },
+        {
+          "id": "tytScience",
+          "session": "tyt",
+          "questions": 20,
+          "mean": 4.3,
+          "standardDeviation": 5.3
+        },
+        {
+          "id": "aytLiterature",
+          "session": "ayt",
+          "questions": 24,
+          "mean": 6.1,
+          "standardDeviation": 5.2,
+          "validQuestions": 23
+        },
+        {
+          "id": "aytHistory1",
+          "session": "ayt",
+          "questions": 10,
+          "mean": 2.6,
+          "standardDeviation": 2.7
+        },
+        {
+          "id": "aytGeography1",
+          "session": "ayt",
+          "questions": 6,
+          "mean": 1.7,
+          "standardDeviation": 1.8
+        },
+        {
+          "id": "aytHistory2",
+          "session": "ayt",
+          "questions": 11,
+          "mean": 1.7,
+          "standardDeviation": 2.3
+        },
+        {
+          "id": "aytGeography2",
+          "session": "ayt",
+          "questions": 11,
+          "mean": 2.1,
+          "standardDeviation": 2.5
+        },
+        {
+          "id": "aytPhilosophy",
+          "session": "ayt",
+          "questions": 12,
+          "mean": 1.6,
+          "standardDeviation": 2.1
+        },
+        {
+          "id": "aytReligion",
+          "session": "ayt",
+          "questions": 6,
+          "mean": 1.9,
+          "standardDeviation": 2.2
+        },
+        {
+          "id": "aytMathematics",
+          "session": "ayt",
+          "questions": 40,
+          "mean": 7.0,
+          "standardDeviation": 9.1,
+          "validQuestions": 39
+        },
+        {
+          "id": "aytPhysics",
+          "session": "ayt",
+          "questions": 14,
+          "mean": 2.7,
+          "standardDeviation": 3.7
+        },
+        {
+          "id": "aytChemistry",
+          "session": "ayt",
+          "questions": 13,
+          "mean": 2.2,
+          "standardDeviation": 3.7
+        },
+        {
+          "id": "aytBiology",
+          "session": "ayt",
+          "questions": 13,
+          "mean": 3.0,
+          "standardDeviation": 3.6
+        }
+      ],
+      "scores": [
+        {
+          "id": "tyt",
+          "weights": {
+            "tytTurkish": 0.33,
+            "tytSocial": 0.17,
+            "tytMathematics": 0.33,
+            "tytScience": 0.17
+          },
+          "marginPoints": 10,
+          "scaleMin": 33.51,
+          "scaleMax": 80.66,
+          "qualifyingTests": [
+            "tytTurkish",
+            "tytMathematics"
+          ]
+        },
+        {
+          "id": "say",
+          "weights": {
+            "aytMathematics": 0.3,
+            "aytPhysics": 0.1,
+            "aytChemistry": 0.1,
+            "aytBiology": 0.1
+          },
+          "tytWeight": 0.4,
+          "marginPoints": 15,
+          "scaleMin": 39.07,
+          "scaleMax": 81.57,
+          "qualifyingTests": [
+            "aytMathematics",
+            "aytPhysics",
+            "aytChemistry",
+            "aytBiology"
+          ]
+        },
+        {
+          "id": "ea",
+          "weights": {
+            "aytMathematics": 0.3,
+            "aytLiterature": 0.18,
+            "aytHistory1": 0.07,
+            "aytGeography1": 0.05
+          },
+          "tytWeight": 0.4,
+          "marginPoints": 15,
+          "scaleMin": 37.97,
+          "scaleMax": 81.78,
+          "qualifyingTests": [
+            "aytMathematics",
+            "aytLiterature",
+            "aytHistory1",
+            "aytGeography1"
+          ]
+        },
+        {
+          "id": "soz",
+          "weights": {
+            "aytLiterature": 0.18,
+            "aytHistory1": 0.07,
+            "aytGeography1": 0.05,
+            "aytHistory2": 0.08,
+            "aytGeography2": 0.08,
+            "aytPhilosophy": 0.09,
+            "aytReligion": 0.05
+          },
+          "tytWeight": 0.4,
+          "marginPoints": 15,
+          "scaleMin": 37.88,
+          "scaleMax": 82.7,
+          "qualifyingTests": [
+            "aytLiterature",
+            "aytHistory1",
+            "aytGeography1",
+            "aytHistory2",
+            "aytGeography2",
+            "aytPhilosophy",
+            "aytReligion"
+          ]
+        }
+      ]
+    }
+  ]
+}

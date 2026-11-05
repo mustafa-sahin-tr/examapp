@@ -1,0 +1,45 @@
+h3 {
+  margin: 1rem 0 0.25rem;
+  color: var(--ms-text-strong);
+  font-size: 1rem;
+}
+
+p,
+ol,
+ul {
+  margin: 0 0 0.5rem;
+  color: var(--ms-text);
+}
+
+a {
+  color: var(--ms-text-strong);
+  text-decoration: underline;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--ms-text);
+  font-size: 0.875rem;
+}
+
+th,
+td {
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid var(--ms-border);
+  text-align: right;
+  font-weight: 400;
+}
+
+th:first-child {
+  text-align: left;
+}
+
+thead th {
+  color: var(--ms-text-strong);
+  font-weight: 600;
+}

@@ -49,8 +49,8 @@ describe('QuestionDevicePreviewComponent', () => {
     fixture.detectChanges();
 
     const canvas = fixture.nativeElement.querySelector('.device-preview__canvas') as HTMLElement;
-    expect(canvas.clientWidth).toBe(PREVIEW_DEVICES.desktop.width);
-    expect(canvas.clientHeight).toBe(PREVIEW_DEVICES.desktop.height);
+    expect(canvas.offsetWidth).toBe(PREVIEW_DEVICES.desktop.width);
+    expect(canvas.offsetHeight).toBe(PREVIEW_DEVICES.desktop.height);
     expect(component.scale()).toBeLessThan(1);
   });
 

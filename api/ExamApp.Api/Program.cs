@@ -395,6 +395,7 @@ builder.Services.AddOptions<ExamApp.Api.Services.TeacherApprovals.TeacherSchoolR
 // Admin kullanıcı listeleri (issue #152 öğretmen; #153 öğrenci aynı IAdminUserDirectory'yi kullanır)
 builder.Services.AddScoped<ExamApp.Api.Services.Questions.IQuestionSourceService, ExamApp.Api.Services.Questions.QuestionSourceService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Questions.ILearningOutcomeService, ExamApp.Api.Services.Questions.LearningOutcomeService>();
+builder.Services.AddScoped<ExamApp.Api.Services.Questions.ISkillService, ExamApp.Api.Services.Questions.SkillService>(); // Issue #703
 builder.Services.AddScoped<ExamApp.Api.Services.Catalog.ICatalogTransferService, ExamApp.Api.Services.Catalog.CatalogTransferService>();
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminUserDirectory, ExamApp.Api.Services.AdminUsers.AdminUserDirectory>();
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminTeacherService, ExamApp.Api.Services.AdminUsers.AdminTeacherService>();

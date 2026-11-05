@@ -339,6 +339,12 @@ public class QuestionQueryService : IQuestionQueryService
             query = hasCorrectAnswer
                 ? query.Where(q => q.CorrectAnswerId != null)
                 : query.Where(q => q.CorrectAnswerId == null);
+        // Issue #703: bağlam temelli bayrak ve beceriler (beceriler kendi içinde VEYA).
+        if (filter.ContextBased is { } contextBased)
+            query = query.Where(q => q.IsContextBased == contextBased);
+        var skillIds = filter.SkillIds?.Where(id => id > 0).Distinct().ToArray() ?? [];
+        if (skillIds.Length > 0)
+            query = query.Where(q => q.QuestionSkills.Any(qs => skillIds.Contains(qs.SkillId)));
 
         page.Total = await query.CountAsync(ct);
         if (page.Total == 0 || page.Skip >= page.Total)
@@ -371,6 +377,8 @@ public class QuestionQueryService : IQuestionQueryService
                 ClassificationSource = q.ClassificationSource,
                 IsClassified = q.SubjectId != null && q.TopicId != null,
                 HasCorrectAnswer = q.CorrectAnswerId != null,
+                IsContextBased = q.IsContextBased,
+                SkillCodes = q.QuestionSkills.OrderBy(qs => qs.Skill.SortOrder).Select(qs => qs.Skill.Code).ToList(),
                 TestCount = visibleMemberships.Count(tq => tq.QuestionId == q.Id),
                 IsOwn = (userId > 0 && q.CreateUserId == userId) || (hasLegacyOwned && legacyOwnedIds.Contains(q.Id)),
                 CanLink = q.CreateUserId > 0 || (hasLegacyOwned && legacyOwnedIds.Contains(q.Id)),

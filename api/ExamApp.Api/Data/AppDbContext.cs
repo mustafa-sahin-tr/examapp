@@ -228,6 +228,8 @@ public class AppDbContext : DbContext
     public DbSet<LearningOutcomeDetail> LearningOutcomeDetails { get; set; } // LearningOutcomeDetail tablosu
     public DbSet<LearningOutcome> LearningOutcomes { get; set; } // LearningOutcome tablosu
     public DbSet<QuestionLearningOutcome> QuestionLearningOutcomes { get; set; } // Issue #692
+    public DbSet<Skill> Skills { get; set; } // Issue #703
+    public DbSet<QuestionSkill> QuestionSkills { get; set; } // Issue #703
 
     public DbSet<QuestionTransferJob> QuestionTransferJobs { get; set; }
     public DbSet<QuestionTransferImportMap> QuestionTransferImportMaps { get; set; }
@@ -1485,6 +1487,16 @@ public class AppDbContext : DbContext
             .HasIndex(qlo => new { qlo.QuestionId, qlo.LearningOutcomeId })
             .IsUnique()
             .HasFilter("NOT \"IsDeleted\"");
+
+        // Issue #703: beceri listesi seed'den gelir; yeni kayıt seed kimlikleriyle çakışmasın.
+        modelBuilder.Entity<Skill>().HasIndex(s => s.Code).IsUnique();
+        modelBuilder.Entity<Skill>().Property(s => s.Id).HasIdentityOptions(startValue: 1000);
+        modelBuilder.Entity<QuestionSkill>()
+            .HasIndex(qs => new { qs.QuestionId, qs.SkillId })
+            .IsUnique()
+            .HasFilter("NOT \"IsDeleted\"");
+        modelBuilder.Entity<QuestionSkill>().HasOne(qs => qs.Skill).WithMany().HasForeignKey(qs => qs.SkillId).OnDelete(DeleteBehavior.Restrict);
+        SkillSeed.Apply(modelBuilder);
 
         modelBuilder.Entity<LearningOutcomeDetail>()
             .HasOne(lod => lod.LearningOutcome)

@@ -42,6 +42,14 @@ public class QuestionBankQuery
     /// </summary>
     public bool? InTest { get; set; }
 
+    /// <summary>Issue #703: true → bağlam temelli işaretli sorular; false → işaretsiz; null → farketmez.</summary>
+    public bool? ContextBased { get; set; }
+
+    /// <summary>Issue #703: sorunun bu becerilerden en az biriyle etiketli olması (VEYA).</summary>
+    public int[]? SkillIds { get; set; }
+
+    public const int MaxSkillIds = 30;
+
     public int Skip { get; set; }
     public int Take { get; set; } = DefaultTake;
 
@@ -60,7 +68,7 @@ public class QuestionBankQuery
             .Select(v => (ClassificationSource?)v)
             .FirstOrDefault();
 
-    /// <summary>Bilinmeyen kapsam/kaynak, aralık dışı zorluk, negatif skip ya da aşırı uzun alt konu listesi → false (400).</summary>
+    /// <summary>Bilinmeyen kapsam/kaynak, aralık dışı zorluk, negatif skip ya da aşırı uzun alt konu / beceri listesi → false (400).</summary>
     public bool IsValid()
     {
         if (!string.IsNullOrEmpty(Scope) && !IsAllScope && !string.Equals(Scope, "mine", StringComparison.OrdinalIgnoreCase))
@@ -71,7 +79,7 @@ public class QuestionBankQuery
             return false;
         if (MinDifficulty is { } min && MaxDifficulty is { } max && min > max)
             return false;
-        if (Skip < 0 || SubTopicIds is { Length: > MaxSubTopicIds })
+        if (Skip < 0 || SubTopicIds is { Length: > MaxSubTopicIds } || SkillIds is { Length: > MaxSkillIds })
             return false;
         return true;
     }
@@ -106,6 +114,12 @@ public class QuestionBankItemDto
     /// <summary>Ders ve konusu belirlenmiş mi.</summary>
     public bool IsClassified { get; set; }
     public bool HasCorrectAnswer { get; set; }
+
+    /// <summary>Issue #703: öğretmenin beyanıyla bağlam temelli.</summary>
+    public bool IsContextBased { get; set; }
+
+    /// <summary>Issue #703: beceri kodları (ör. <c>KB2.8</c>), kılavuz sırasıyla.</summary>
+    public List<string> SkillCodes { get; set; } = new();
 
     /// <summary>Sorunun bağlı olduğu, çağıranın görebildiği (silinmemiş) test sayısı; admin için tümü.</summary>
     public int TestCount { get; set; }

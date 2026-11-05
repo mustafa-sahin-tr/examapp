@@ -3267,6 +3267,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<bool>("IsCanvasQuestion")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsContextBased")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
@@ -3470,6 +3473,52 @@ namespace ExamApp.Api.Migrations
                         .HasFilter("NOT \"IsDeleted\"");
 
                     b.ToTable("QuestionReports");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.QuestionSkill", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("QuestionId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SkillId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SkillId");
+
+                    b.HasIndex("QuestionId", "SkillId")
+                        .IsUnique()
+                        .HasFilter("NOT \"IsDeleted\"");
+
+                    b.ToTable("QuestionSkills");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.QuestionSource", b =>
@@ -4052,6 +4101,292 @@ namespace ExamApp.Api.Migrations
                     b.HasIndex("ProvinceId");
 
                     b.ToTable("Schools");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.Skill", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 1000L, null, null, null, null, null);
+
+                    b.Property<int>("Category")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("Skills");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Category = 2,
+                            Code = "KB2.1",
+                            CreateTime = new DateTime(2026, 11, 5, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Çelişki giderme",
+                            SortOrder = 1
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Category = 2,
+                            Code = "KB2.2",
+                            CreateTime = new DateTime(2026, 11, 5, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Gözlemleme",
+                            SortOrder = 2
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Category = 2,
+                            Code = "KB2.3",
+                            CreateTime = new DateTime(2026, 11, 5, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Özetleme",
+                            SortOrder = 3
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Category = 2,
+                            Code = "KB2.4",
+                            CreateTime = new DateTime(2026, 11, 5, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Çözümleme",
+                            SortOrder = 4
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Category = 2,
+                            Code = "KB2.5",
+                            CreateTime = new DateTime(2026, 11, 5, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Sınıflandırma",
+                            SortOrder = 5
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Category = 2,
+                            Code = "KB2.6",
+                            CreateTime = new DateTime(2026, 11, 5, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Bilgi toplama",
+                            SortOrder = 6
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Category = 2,
+                            Code = "KB2.7",
+                            CreateTime = new DateTime(2026, 11, 5, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Karşılaştırma",
+                            SortOrder = 7
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Category = 2,
+                            Code = "KB2.8",
+                            CreateTime = new DateTime(2026, 11, 5, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Sorgulama",
+                            SortOrder = 8
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Category = 2,
+                            Code = "KB2.9",
+                            CreateTime = new DateTime(2026, 11, 5, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Genelleme",
+                            SortOrder = 9
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Category = 2,
+                            Code = "KB2.10",
+                            CreateTime = new DateTime(2026, 11, 5, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Çıkarım yapma",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 11,
+                            Category = 2,
+                            Code = "KB2.11",
+                            CreateTime = new DateTime(2026, 11, 5, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Gözleme dayalı tahmin etme",
+                            SortOrder = 11
+                        },
+                        new
+                        {
+                            Id = 12,
+                            Category = 2,
+                            Code = "KB2.12",
+                            CreateTime = new DateTime(2026, 11, 5, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Mevcut bilgiye/veriye dayalı tahmin etme",
+                            SortOrder = 12
+                        },
+                        new
+                        {
+                            Id = 13,
+                            Category = 2,
+                            Code = "KB2.13",
+                            CreateTime = new DateTime(2026, 11, 5, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Yapılandırma",
+                            SortOrder = 13
+                        },
+                        new
+                        {
+                            Id = 14,
+                            Category = 2,
+                            Code = "KB2.14",
+                            CreateTime = new DateTime(2026, 11, 5, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Yorumlama",
+                            SortOrder = 14
+                        },
+                        new
+                        {
+                            Id = 15,
+                            Category = 2,
+                            Code = "KB2.15",
+                            CreateTime = new DateTime(2026, 11, 5, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Yansıtma",
+                            SortOrder = 15
+                        },
+                        new
+                        {
+                            Id = 16,
+                            Category = 2,
+                            Code = "KB2.16",
+                            CreateTime = new DateTime(2026, 11, 5, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Muhakeme (akıl yürütme)",
+                            SortOrder = 16
+                        },
+                        new
+                        {
+                            Id = 17,
+                            Category = 2,
+                            Code = "KB2.17",
+                            CreateTime = new DateTime(2026, 11, 5, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Değerlendirme",
+                            SortOrder = 17
+                        },
+                        new
+                        {
+                            Id = 18,
+                            Category = 2,
+                            Code = "KB2.18",
+                            CreateTime = new DateTime(2026, 11, 5, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Tartışma",
+                            SortOrder = 18
+                        },
+                        new
+                        {
+                            Id = 19,
+                            Category = 2,
+                            Code = "KB2.19",
+                            CreateTime = new DateTime(2026, 11, 5, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Mantıksal denetleme",
+                            SortOrder = 19
+                        },
+                        new
+                        {
+                            Id = 20,
+                            Category = 2,
+                            Code = "KB2.20",
+                            CreateTime = new DateTime(2026, 11, 5, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Sentezleme",
+                            SortOrder = 20
+                        },
+                        new
+                        {
+                            Id = 101,
+                            Category = 3,
+                            Code = "KB3.1",
+                            CreateTime = new DateTime(2026, 11, 5, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Karar verme",
+                            SortOrder = 101
+                        },
+                        new
+                        {
+                            Id = 102,
+                            Category = 3,
+                            Code = "KB3.2",
+                            CreateTime = new DateTime(2026, 11, 5, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Problem çözme",
+                            SortOrder = 102
+                        },
+                        new
+                        {
+                            Id = 103,
+                            Category = 3,
+                            Code = "KB3.3",
+                            CreateTime = new DateTime(2026, 11, 5, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsDeleted = false,
+                            Name = "Eleştirel düşünme",
+                            SortOrder = 103
+                        });
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.SpecialEvent", b =>
@@ -7236,6 +7571,25 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Question");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.QuestionSkill", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Question", "Question")
+                        .WithMany("QuestionSkills")
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ExamApp.Api.Data.Skill", "Skill")
+                        .WithMany()
+                        .HasForeignKey("SkillId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Question");
+
+                    b.Navigation("Skill");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.QuestionSource", b =>
                 {
                     b.HasOne("ExamApp.Api.Data.Book", "Book")
@@ -8000,6 +8354,8 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Answers");
 
                     b.Navigation("QuestionLearningOutcomes");
+
+                    b.Navigation("QuestionSkills");
 
                     b.Navigation("QuestionSubTopics");
 

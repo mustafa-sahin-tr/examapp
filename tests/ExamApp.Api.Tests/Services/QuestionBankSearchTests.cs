@@ -595,4 +595,37 @@ public class QuestionBankSearchTests : IDisposable
         a1.ClassificationSource.ShouldBe(ClassificationSource.AI);
         a1.GradeId.ShouldBe(_g5);
     }
+
+    [Fact]
+    public async Task SearchBankAsync_FilterByContextBasedAndSkills_issue703()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            var inquiry = await ctx.Skills.Where(s => s.Code == "KB2.8").Select(s => s.Id).SingleAsync();
+            var problemSolving = await ctx.Skills.Where(s => s.Code == "KB3.2").Select(s => s.Id).SingleAsync();
+            (await ctx.Questions.SingleAsync(q => q.Id == _qA1)).IsContextBased = true;
+            ctx.QuestionSkills.AddRange(
+                new QuestionSkill { QuestionId = _qA1, SkillId = problemSolving },
+                new QuestionSkill { QuestionId = _qA1, SkillId = inquiry },
+                new QuestionSkill { QuestionId = _qB1, SkillId = inquiry },
+                new QuestionSkill { QuestionId = _qC1, SkillId = problemSolving, IsDeleted = true });
+            await ctx.SaveChangesAsync();
+
+            var contextBased = await SearchAsync(Admin, isAdmin: true, new QuestionBankQuery { Scope = "all", ContextBased = true });
+            IdsOf(contextBased).ShouldBe(Expect(_qA1));
+            var a1 = contextBased.Items.Single();
+            a1.IsContextBased.ShouldBeTrue();
+            a1.SkillCodes.ShouldBe(new[] { "KB2.8", "KB3.2" });
+
+            IdsOf(await SearchAsync(Admin, isAdmin: true, new QuestionBankQuery { Scope = "all", ContextBased = false }))
+                .ShouldBe(Sorted(_live.Where(id => id != _qA1)));
+            // Beceriler kendi içinde VEYA; silinmiş bağ sayılmaz.
+            IdsOf(await SearchAsync(Admin, isAdmin: true, new QuestionBankQuery { Scope = "all", SkillIds = [inquiry] }))
+                .ShouldBe(Expect(_qA1, _qB1));
+            IdsOf(await SearchAsync(Admin, isAdmin: true, new QuestionBankQuery { Scope = "all", SkillIds = [problemSolving] }))
+                .ShouldBe(Expect(_qA1));
+            IdsOf(await SearchAsync(Admin, isAdmin: true, new QuestionBankQuery { Scope = "all", ContextBased = false, SkillIds = [inquiry] }))
+                .ShouldBe(Expect(_qB1));
+        }
+    }
 }

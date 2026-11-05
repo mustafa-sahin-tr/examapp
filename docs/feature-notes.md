@@ -179,3 +179,18 @@ Yeni rol yok. Koç, öğrenciyi #696 kuralıyla görebilen öğretmendir: kendi 
 - **Bilinçli:** Admin + Teacher hesabı sınırsız kapsamla her öğrenciyi açar (#696 ile aynı). Hedef sınırı sayıp yazar, eşzamanlı istekte aşılabilir (yalnız öğretmenin kendi satırları).
 - **Ekran:** öğretmende Mesajlar bölümünün "Koçluk" sekmesi (`/teacher/coach`, ana menü #719 sınırında kalır): öğrenci listesi (ad araması, ilişki etiketi), öğrenci sayfası (`/teacher/coach/:studentId`; özet kutuları, kazanım haritası bağlantısı, hafta seçicili hedefler, notlar). Hafta listesi sunucunun `plan.weekStart`'ından türetilir (bu hafta + 4). Öğrenci ana sayfasında günün sorularının altında `app-coach-goals-card` (hedef yoksa çizilmez), velide çocuk kartlarının arasında aynı kart ("Planım" sayıları + hedefler, 404'te gizli). Metin `CoachService`'te gidişte kodlanır: etiket yazan öğretmenin metni düz metin olarak saklanır, `MarkupNotAllowed` ekrandan gelmez.
 - **Açık:** notların saklama süresi (#810), velinin bu özeti kapatabilmesi (bağlantıda izin alanı yok, Active bağlantı yeterli).
+
+## Bağlam temelli sorular ve beceri etiketleri (#703)
+
+Kılavuz özeti ve beceri listesinin kaynağı `docs/context-based-questions.md`.
+
+- **Şema:** `Question.IsContextBased` ve `QuestionSkills` (soru ↔ `Skills`, çoka çok, soft delete). `Skills` seed'den gelir (`SkillSeed`):
+  KB2.1–KB2.20 (kimlik 1–20) ve KB3.1–KB3.3 (101–103); kod kalıcıdır, aktarım ve ekran çevirisi koda bakar. KB1, alan becerileri ve
+  süreç bileşenleri ilk sürümde yok.
+- **Uçlar:** `GET api/skills` (öğretmen/admin), `GET/PUT api/questions/{id}/context-tags` `{ isContextBased, skillIds }` (okuma görebilen,
+  yazma yalnız soru sahibi/admin; en çok 10 beceri; bilinmeyen beceride hiçbir şey yazılmaz, 400). Bayrak ve beceriler bağımsızdır.
+- **Soru Havuzu:** `contextBased` (true/false) ve `skillIds` (VEYA, en çok 30) filtreleri; kartta `isContextBased`, `skillCodes`. Test
+  oluşturucu "Havuzdan ekle" ile aynı aramayı kullanır.
+- **Aktarım:** paket `isContextBased` ve beceri kodlarını taşır; hedefte boşsa doldurulur, bilinmeyen kod atlanır.
+- **Ürün dili:** "Maarif Modeli'ne uygun" gibi uygunluk iddiası yazılmaz; etiket öğretmenin beyanıdır.
+- **Sonraya:** sınıflandırıcının etiket önermesi (Claude, `SchemaRevision`), toplu kayıtta ve etkinlik editöründe etiket.

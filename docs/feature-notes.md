@@ -97,11 +97,11 @@ Deneme her oturum için sıradan bir test kaydı açar: süre sınırı, oturum,
 
 `question-layout-planner.ts` soru ve şık düzenini kaynak piksele değil host'un alanına göre seçer: her düzenin (soru üstte 4/2/1 sütun, soru yanda 2/1 sütun) sığabildiği en büyük ölçeği hesaplar, küçültmeden önce düzeni değiştirir. Yalnız kayıtlı boyutları kullandığı için görsel yüklenmesini beklemez; bir sorunun ilk ve sonraki açılışı aynıdır. Düzen pencereye değil host genişliğine baktığı için önizleme çerçevesinde de (#780) aynı sonucu verir.
 
-- Yalnız `enableHeightFit` veren tüketicide (test çözme) çalışır; `practice-solve`, `activity-player`, `image-selector` eski hesapla kalır.
+- `enableHeightFit` veren tüketicilerde çalışır: test çözme, pratik, etkinlik ve önizleme çerçevesi (#791). Test çözmede host kaydırıldığı için soru yüksekliğe de sığdırılır; pratik ve etkinlikte sayfa kaydırıldığı için düzen ve ölçek yalnız genişlikten gelir, uzun soru sayfayı kaydırır.
 - `Question.SourcePageWidth` kırpılan sayfanın genişliğidir (toplu kayıtta yazılır, eski sorularda null). Gövde metni sayfa genişliğinin %1,8'i sayılır: ölçek metin 12–22 px arasında kalacak şekilde sınırlanır, yer olan aynı sayfa soruları aynı boyutta görünür. Sayfa genişliği yoksa yalnız alt sınır vardır: yükseklik yüzünden soru 400 px genişliğin altına küçültülmez.
 - Dar alanda (600 px altı) soru hep üstte, şıklar en çok iki sütundur. Küçük kalan soru ve şıklar büyütme penceresinde birlikte açılır.
 - Okuma parçası yerleşimi yalnız parçaya ve alana bakar (`planPassageLayout`): en/boy oranı 1,6 ve üstü geniş şekil üstte, uzun metin 840 px'ten geniş alanda solda kendi içinde kayar, daha dar alanda Metin/Soru sekmeleri çıkar. Kaydırma konumu ve "görüldü" bilgisi parça bazında bellekte tutulur; sekme ilk görüşte metinle, aynı grubun sonraki sorularında soruyla açılır.
-- `Question.LayoutChoice` (`top`, `side`, `whole`; null = otomatik) önizlemeden seçilir ve `PUT /api/questions/{id}/layout-choice` ile hemen kaydedilir. `whole` tüm soru görselini gösterir, şıklar A B C D düğmesi olur; bir şıkkın görseli yoksa da bu düzene düşülür. Yalnız test çözme ekranı uygular.
+- `Question.LayoutChoice` (`top`, `side`, `whole`; null = otomatik) önizlemeden seçilir ve `PUT /api/questions/{id}/layout-choice` ile hemen kaydedilir. `whole` tüm soru görselini gösterir, şıklar A B C D düğmesi olur; bir şıkkın görseli yoksa da bu düzene düşülür. `enableHeightFit` veren her ekran uygular.
 
 ## Test çözme: ekran düzeni (#779)
 

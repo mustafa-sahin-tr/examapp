@@ -385,6 +385,7 @@
         @if (entry.region; as region) {
         <div class="canvas-zone">
           <app-question-canvas-view-v5 class="canvas-stage" [questionRegion]="region" [imageRefresh]="reviewImageRefresh"
+            [enableHeightFit]="true"
             [selectedChoice]="entry.selectedChoice" [correctChoice]="entry.correctChoice" [mode]="'result'" />
         </div>
         } @else {
@@ -673,6 +674,7 @@
         </div>
         } @else {
         <app-question-canvas-view-v5 class="canvas-stage" [questionRegion]="region" [imageRefresh]="stageImageRefresh"
+          [enableHeightFit]="true"
           [hidePassage]="isPassageFirstActive()" [selectedChoice]="selectedChoice()" [mode]="canvasMode()"
           (choiceSelected)="selectChoice($event)" />
         }

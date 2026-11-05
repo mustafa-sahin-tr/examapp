@@ -514,6 +514,8 @@ describe('PracticeSolveComponent', () => {
         expect(component.reviewEntry()?.row.question.id).toBe(503);
         const canvasView = fixture.debugElement.query(By.css('app-question-canvas-view-v5'));
         expect(canvasView).toBeTruthy();
+        // #791: inceleme ekranı da test çözmeyle aynı düzen planlayıcısını kullanır.
+        expect(canvasView.componentInstance.enableHeightFit).toBe(true);
         // Sunucu Pending soru için doğru şıkkı hiç göndermez; component de tahmin etmez —
         // dolayısıyla hiçbir şık kartı 'is-correct' sınıfını taşımamalı (mode='result' olsa bile).
         const answerCards = canvasView.queryAll(By.css('.qcv4-answer-card'));

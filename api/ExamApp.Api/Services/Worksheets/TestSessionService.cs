@@ -512,6 +512,7 @@ public class TestSessionService : ITestSessionService
                     Height = questionEntity.Height,
                     SanitizedHeight = questionEntity.SanitizedHeight,
                     SourcePageWidth = questionEntity.SourcePageWidth,
+                    LayoutChoice = questionEntity.LayoutChoice,
                     Answers = questionEntity.Answers.Select(a => new AnswerDto
                     {
                         Id = a.Id,

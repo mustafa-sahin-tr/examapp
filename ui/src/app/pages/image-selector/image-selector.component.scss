@@ -236,3 +236,17 @@
 	}
 }
 
+.layout-choice {
+  width: 100%;
+
+  mat-button-toggle {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+
+.layout-choice__hint {
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  color: var(--ms-text-medium);
+}

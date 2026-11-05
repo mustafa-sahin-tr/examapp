@@ -966,6 +966,7 @@ public class QuestionService : IQuestionService
                         Height = questionDto.Height,
                         SanitizedHeight = effectiveQuestionHeight,
                         SourcePageWidth = mainImage?.Width,
+                        LayoutChoice = questionDto.LayoutChoice,
                         IsExample = questionDto.IsExample,
                         PracticeCorrectAnswer = questionDto.IsExample ? questionDto.ExampleAnswer : null,
                         IsCanvasQuestion = true,

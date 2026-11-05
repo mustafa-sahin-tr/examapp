@@ -145,10 +145,15 @@ export class QuestionCanvasViewComponentv5 {
     return !!plan && plan.scale < ZOOM_OFFER_SCALE;
   });
   readonly questionAspectRatio = computed(() => {
-    const { width, sanitizedHeight, height } = this._questionRegion();
-    const effectiveHeight = sanitizedHeight || height;
-    return this.plan() && width && effectiveHeight ? `auto ${width} / ${effectiveHeight}` : null;
+    const region = this._questionRegion();
+    const effectiveHeight = this.isWholeFigure(region) ? region.height : region.sanitizedHeight || region.height;
+    return this.plan() && region.width && effectiveHeight ? `auto ${region.width} / ${effectiveHeight}` : null;
   });
+  /** Yedek düzen: soru tek görsel, şıklar görselsiz büyük harf düğmeleri. */
+  readonly wholeFigure = computed(() => !!this.plan() && this.isWholeFigure(this._questionRegion()));
+  readonly displayedQuestionSource = computed(() =>
+    this.wholeFigure() ? this._questionRegion().imageUrl : this.questionImageSource(),
+  );
 
   // Sıralı cevaplar getter'ı: order > tag > id
   public get sortedAnswers(): AnswerChoice[] {
@@ -334,7 +339,8 @@ export class QuestionCanvasViewComponentv5 {
 
     const region = this._questionRegion();
     const hostEl = this.host.nativeElement;
-    const questionHeight = region.sanitizedHeight || region.height;
+    const whole = this.isWholeFigure(region);
+    const questionHeight = whole ? region.height : region.sanitizedHeight || region.height;
     if (!region.width || !questionHeight) {
       this.plan.set(null);
       this.passagePlan.set(null);
@@ -359,10 +365,13 @@ export class QuestionCanvasViewComponentv5 {
 
     const plan = planQuestionLayout({
       question: { width: region.width, height: questionHeight },
-      answers: (region.answers ?? []).map((answer) => ({ width: answer.width || 0, height: answer.height || 0 })),
+      answers: (region.answers ?? []).map((answer) =>
+        whole ? { width: 0, height: 0 } : { width: answer.width || 0, height: answer.height || 0 },
+      ),
       width: passagePlan ? passagePlan.questionWidth : hostWidth,
       height: availableHeight,
       ...this.scaleLimits(region),
+      arrangement: region.layoutChoice === 'top' || region.layoutChoice === 'side' ? region.layoutChoice : undefined,
     });
 
     this.plan.set(plan);
@@ -371,6 +380,17 @@ export class QuestionCanvasViewComponentv5 {
     this.visualScale.set(clampVisualScale(plan.scale));
     this.questionImageWidth.set(Math.round(region.width * plan.scale));
     this.passagePlan.set(passagePlan);
+  }
+
+  /**
+   * Seçilirse ya da bir şıkkın görseli yoksa (bilinmeyen tip) tüm soru tek görsel gösterilir.
+   * Tam görsel yoksa düşülecek bir yer de yoktur; mevcut düzen kalır.
+   */
+  private isWholeFigure(region: QuestionRegion): boolean {
+    if (!this.enableHeightFit || !region.imageUrl) {
+      return false;
+    }
+    return region.layoutChoice === 'whole' || (region.answers ?? []).some((answer) => !answer.imageUrl);
   }
 
   /** Aynı sayfanın soruları aynı üst sınırı paylaşır; yer varsa hepsi aynı metin boyutunda görünür. */
@@ -443,7 +463,8 @@ export class QuestionCanvasViewComponentv5 {
   /** Şıklar da küçük kaldığı için soru görseliyle birlikte aynı ölçekte gösterilir. */
   openQuestionZoom(image: HTMLImageElement, questionAlt: string, choiceAlt: (label: string) => string): void {
     const scale = this.visualScale();
-    const answers = this.sortedAnswers.map((answer) => ({
+    const choices = this.wholeFigure() ? [] : this.sortedAnswers;
+    const answers = choices.map((answer) => ({
       src: answer.imageUrl,
       alt: choiceAlt(answer.label),
       width: answer.width ? this.zoomedWidth(answer.width * scale, answer.width) : null,

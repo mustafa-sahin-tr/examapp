@@ -77,6 +77,13 @@ public class Question : BaseEntity
     // Width of the source page this question was cropped from (issue #778). Null for older questions.
     public int? SourcePageWidth { get; set; }
 
+    // Teacher's layout choice while labeling (issue #778): "top", "side", or "whole". Null means automatic.
+    [MaxLength(MaxLayoutChoiceLength)]
+    public string? LayoutChoice { get; set; }
+
+    public const int MaxLayoutChoiceLength = 16;
+    public const string LayoutChoicePattern = "^(top|side|whole)$";
+
     public bool IsCanvasQuestion { get; set; } = false;
 
     public ClassificationSource? ClassificationSource { get; set; }

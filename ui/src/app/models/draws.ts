@@ -1,4 +1,7 @@
 import { LearningOutcome } from './learning-outcome';
+
+export type QuestionLayoutChoice = 'top' | 'side' | 'whole';
+
 export interface AnswerChoice {
   label: string; // "A", "B", "C", "D"
   tag?: string; // Backend tag (A,B,C,D,E)
@@ -52,6 +55,8 @@ export interface QuestionRegion {
   height: number;
   sanitizedHeight?: number;
   sourcePageWidth?: number | null;
+  /** Hazırlayanın düzen seçimi (issue #778); yoksa otomatik. */
+  layoutChoice?: QuestionLayoutChoice | null;
   passageId: string;
   // Optional classification metadata (used to sync preview navigation with UI forms)
   subjectId?: number;

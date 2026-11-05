@@ -183,6 +183,7 @@ public class MockExamResultDto
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string TemplateName { get; set; } = string.Empty;
+    public string TemplateCode { get; set; } = string.Empty;
     public int WrongAnswersPerCorrect { get; set; }
     public bool Complete { get; set; }
     public List<MockExamScoreDto> Sections { get; set; } = [];

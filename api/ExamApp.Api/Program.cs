@@ -430,6 +430,11 @@ builder.Services.AddOptions<ExamApp.Api.Services.TopicPerformance.LearningOutcom
 builder.Services.AddScoped<ExamApp.Api.Services.TopicPerformance.ILearningOutcomeMasteryService, ExamApp.Api.Services.TopicPerformance.LearningOutcomeMasteryService>(); // issue #696
 builder.Services.AddScoped<ExamApp.Api.Services.TopicPerformance.IParentLearningOutcomeMasteryService, ExamApp.Api.Services.TopicPerformance.ParentLearningOutcomeMasteryService>(); // issue #696
 builder.Services.AddScoped<ExamApp.Api.Services.MockExams.IMockExamService, ExamApp.Api.Services.MockExams.MockExamService>(); // issue #693
+builder.Services.AddOptions<ExamApp.Api.Services.TargetGoals.TargetGoalsOptions>() // issue #695
+    .BindConfiguration(ExamApp.Api.Services.TargetGoals.TargetGoalsOptions.SectionName);
+builder.Services.AddScoped<ExamApp.Api.Services.TargetGoals.ITargetProgramService, ExamApp.Api.Services.TargetGoals.TargetProgramService>(); // issue #695
+builder.Services.AddScoped<ExamApp.Api.Services.TargetGoals.ITargetGoalService, ExamApp.Api.Services.TargetGoals.TargetGoalService>(); // issue #695
+builder.Services.AddScoped<ExamApp.Api.Services.TargetGoals.IParentTargetGoalService, ExamApp.Api.Services.TargetGoals.ParentTargetGoalService>(); // issue #695
 builder.Services.AddSingleton<ExamApp.Api.Services.QuestionGeneration.IQuestionDraftGenerator, ExamApp.Api.Services.QuestionGeneration.ClaudeQuestionDraftGenerator>();
 builder.Services.AddScoped<ExamApp.Api.Services.QuestionGeneration.IQuestionGenerationService, ExamApp.Api.Services.QuestionGeneration.QuestionGenerationService>();
 // issue #262: audit saklama süresi (KVKK) — AdminDataAccessLog:RetentionDays (varsayılan 180), günlük Hangfire temizliği.

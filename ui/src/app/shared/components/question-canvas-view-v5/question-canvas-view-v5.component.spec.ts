@@ -359,6 +359,117 @@ describe('QuestionCanvasViewComponentv5', () => {
         });
     });
 
+    describe('layout from available space (issue #778)', () => {
+        function svgUrl(width: number, height: number): string {
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="100%" height="100%" fill="#ccc"/></svg>`;
+            return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+        }
+
+        function tallRegion(): QuestionRegion {
+            return buildRegion({
+                width: 2000,
+                height: 3000,
+                imageUrl: svgUrl(2000, 3000),
+                answers: fourEqualAnswers(800).map((a) => ({ ...a, height: 200, imageUrl: svgUrl(800, 200) })),
+            });
+        }
+
+        function bindHost(width: number, height: number | null): HTMLElement {
+            const host = fixture.nativeElement as HTMLElement;
+            host.style.display = 'block';
+            host.style.width = `${width}px`;
+            if (height !== null) {
+                host.style.height = `${height}px`;
+                host.style.overflow = 'auto';
+            }
+            fixture.componentRef.setInput('enableHeightFit', true);
+            return host;
+        }
+
+        function imageSizes(host: HTMLElement): string {
+            return Array.from(host.querySelectorAll('img'))
+                .map((img) => {
+                    const { width, height } = img.getBoundingClientRect();
+                    return `${Math.round(width)}x${Math.round(height)}`;
+                })
+                .join(',');
+        }
+
+        it('boundedHost_FitsQuestionAndChoicesBeforeImagesLoad', () => {
+            const host = bindHost(1000, 800);
+            fixture.componentRef.setInput('questionRegion', tallRegion());
+            fixture.detectChanges();
+
+            const root = host.querySelector('.qcv4-container')!.getBoundingClientRect();
+            expect(root.height).toBeLessThanOrEqual(800);
+            expect(component.plan()?.fits).toBe(true);
+        });
+
+        it('firstAndLaterRenders_ProduceSameSizes', async () => {
+            const host = bindHost(1000, 600);
+            const region = tallRegion();
+            fixture.componentRef.setInput('questionRegion', region);
+            fixture.detectChanges();
+            const beforeLoad = imageSizes(host);
+
+            await Promise.all(Array.from(host.querySelectorAll('img')).map((img) => img.decode()));
+            component.updateVisualScale();
+            fixture.detectChanges();
+
+            expect(imageSizes(host)).toBe(beforeLoad);
+        });
+
+        it('hostWithoutHeightLimit_UsesFullWidthOnOneColumnStack', () => {
+            const host = bindHost(358, null);
+            fixture.componentRef.setInput('questionRegion', tallRegion());
+            fixture.detectChanges();
+
+            expect(component.plan()?.arrangement).toBe('top');
+            expect(host.querySelector('.qcv4-question-image')!.getBoundingClientRect().width).toBe(358);
+        });
+
+        it('passageOnWideHost_StaysBesideAndScrollsInsideAvailableHeight', () => {
+            const host = bindHost(1100, 600);
+            fixture.componentRef.setInput('questionRegion', {
+                ...tallRegion(),
+                passage: { imageUrl: svgUrl(800, 3000) },
+            } as QuestionRegion);
+            fixture.detectChanges();
+
+            const passage = host.querySelector('.qcv4-passage')!.getBoundingClientRect();
+            const question = host.querySelector('.qcv4-question-image')!.getBoundingClientRect();
+            expect(passage.height).toBeLessThanOrEqual(600);
+            expect(question.left).toBeGreaterThanOrEqual(passage.right);
+        });
+
+        it('zoomButton_OpensDialogWithLargerImageAndCloses', async () => {
+            const host = bindHost(358, null);
+            fixture.componentRef.setInput('questionRegion', tallRegion());
+            fixture.detectChanges();
+            await (host.querySelector('.qcv4-question-image') as HTMLImageElement).decode();
+
+            (host.querySelector('.qcv4-main-image-box .qcv4-zoom-button') as HTMLButtonElement).click();
+            fixture.detectChanges();
+
+            const dialog = host.querySelector('dialog') as HTMLDialogElement;
+            expect(dialog.open).toBe(true);
+            const images = Array.from(dialog.querySelectorAll('img'));
+            expect(images.length).toBe(5);
+            expect(images[0].style.width).toBe('716px');
+
+            component.closeZoom();
+            expect(dialog.open).toBe(false);
+        });
+
+        it('withoutHeightFit_KeepsSourceBasedLayout', () => {
+            component.questionRegion = tallRegion();
+            fixture.detectChanges();
+
+            expect(component.plan()).toBeNull();
+            expect(component.containerClass()).toBe(`layout-${component.currentLayout()}`);
+        });
+    });
+
     describe('question image source (issue #365 S2)', () => {
         const signedV1 = '/img/exam-questions/questions/abc/question.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Signature=v1sig';
         const signedV2 = '/img/exam-questions/questions/abc/question-v2.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Signature=v2sig';

@@ -9,6 +9,7 @@ import {
   AfterViewInit,
   OnDestroy,
   inject,
+  computed,
   ChangeDetectionStrategy
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -19,6 +20,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
 import { questionCanvasImageUrl } from '../../utils/storage-image-url.util';
 import { StorageImageResolver } from '../../utils/storage-image-refresh.util';
 import { StorageImageRetryDirective } from '../../directives/storage-image-retry.directive';
+import { COMPACT_WIDTH_PX, planQuestionLayout, QuestionLayoutPlan } from './question-layout-planner';
 
 const EMPTY_REGION: QuestionRegion = {
   id: 0,
@@ -44,16 +46,25 @@ interface LayoutResult {
 
 /** visualScale güncellemesi için minimum anlamlı fark (~%1). */
 const VISUAL_SCALE_EPSILON = 0.01;
-/**
- * İçerik hâlâ taşarken küçültme adımları için daha ince eşik: küçültme yönü monoton olduğundan
- * salınım riski yoktur; %1 eşiğiyle durulursa birkaç piksellik artık taşma kalabiliyor.
- */
-const VISUAL_SCALE_FINE_EPSILON = 0.002;
 /** Ölçek alt/üst sınırı: 0.2'nin altına inilmez, doğal boyutun üstüne çıkılmaz. */
 const MIN_VISUAL_SCALE = 0.2;
 const MAX_VISUAL_SCALE = 1;
-/** Yükseklik kıyasında piksel yuvarlama toleransı. */
-const HEIGHT_FIT_TOLERANCE_PX = 1;
+/**
+ * Yükseklik yüzünden soru görseli bu genişliğin altına küçültülmez; içerik kaydırılır (issue #778).
+ * Değer, 45 kitap sorusunda gövde metninin okunur kaldığı ölçümden gelir.
+ */
+const MIN_FIT_QUESTION_WIDTH_PX = 400;
+/** Görsel doğal boyutunun bu oranından küçük gösteriliyorsa büyütme düğmesi çıkar. */
+const ZOOM_OFFER_SCALE = 0.75;
+/** Büyütme penceresi görseli ekrandakinin bu katı genişlikte açar (doğal boyutu aşmadan). */
+const ZOOM_FACTOR = 2;
+/** Düğme kendi satırındayken soru için kullanılamayan yükseklik (px). */
+const ZOOM_ROW_HEIGHT_PX = 48;
+/** Paragraf bu host genişliğinin altında yana sığmaz, sorunun üstüne geçer. */
+const PASSAGE_SIDE_MIN_WIDTH_PX = 840;
+const PASSAGE_SIDE_RATIO = 0.45;
+const PASSAGE_SIDE_MAX_WIDTH_PX = 560;
+const ROOT_GAP_PX = 16;
 
 function clampVisualScale(value: number): number {
   return Math.max(MIN_VISUAL_SCALE, Math.min(MAX_VISUAL_SCALE, value));
@@ -70,7 +81,7 @@ function clampVisualScale(value: number): number {
 export class QuestionCanvasViewComponentv5 {
   @ViewChild('questionImage') private questionImageRef?: ElementRef<HTMLImageElement>;
   @ViewChild('questionImageBox') private questionImageBoxRef?: ElementRef<HTMLDivElement>;
-  @ViewChild('qcvRoot') private rootRef?: ElementRef<HTMLDivElement>;
+  @ViewChild('zoomDialog') private zoomDialogRef?: ElementRef<HTMLDialogElement>;
 
   /** Host elementi: tüketici buna yükseklik sınırı verirse içerik dikeyde de sığdırılır. */
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -90,6 +101,27 @@ export class QuestionCanvasViewComponentv5 {
   public _questionRegion = signal<QuestionRegion>(EMPTY_REGION);
   readonly currentLayout = signal<LayoutType>('top-4row');
   readonly answerMinWidth = signal<number>(0);
+  /** Yükseklik-bazlı sığdırmada ekrandaki alana göre seçilen düzen; diğer tüketicilerde null. */
+  readonly plan = signal<QuestionLayoutPlan | null>(null);
+  readonly passageMaxHeight = signal<number | null>(null);
+  /** Dar alanda büyütme düğmesi metni kapatmasın diye görselin üstünde kendi satırındadır. */
+  readonly zoomInOwnRow = signal(false);
+  readonly passageArrangement = signal<'beside' | 'stacked' | null>(null);
+  readonly zoomImages = signal<{ src: string; alt: string; width: number | null }[]>([]);
+
+  readonly containerClass = computed(() => {
+    const plan = this.plan();
+    return plan ? `layout-planned layout-planned-${plan.arrangement}` : `layout-${this.currentLayout()}`;
+  });
+  readonly questionZoomAvailable = computed(() => {
+    const plan = this.plan();
+    return !!plan && plan.scale < ZOOM_OFFER_SCALE;
+  });
+  readonly questionAspectRatio = computed(() => {
+    const { width, sanitizedHeight, height } = this._questionRegion();
+    const effectiveHeight = sanitizedHeight || height;
+    return this.plan() && width && effectiveHeight ? `auto ${width} / ${effectiveHeight}` : null;
+  });
 
   // Sıralı cevaplar getter'ı: order > tag > id
   public get sortedAnswers(): AnswerChoice[] {
@@ -128,13 +160,21 @@ export class QuestionCanvasViewComponentv5 {
   @Input() correctAnswerVisible: boolean = false;
   @Input() isPreviewMode: boolean = false;
   /**
-   * Yükseklik-bazlı sığdırma (issue #74) için açık opt-in. Varsayılan false: ölçek yalnızca
-   * genişlik oranından hesaplanır ve host'un display/clientHeight'ı ne olursa olsun hiçbir
-   * yükseklik ölçümü yapılmaz (practice-solve / image-selector / v2 kod yolu eskisiyle aynı).
-   * Tüketici host'a definite yükseklik veriyorsa (test-solve-canvas-v3) true verir.
+   * Ekrandaki alana göre düzen seçimi (issue #74, #778) için açık opt-in. Varsayılan false: düzen
+   * kaynak boyutlardan, ölçek yalnızca genişlik oranından hesaplanır (practice-solve / image-selector /
+   * v2 kod yolu eskisiyle aynı). Tüketici host'a definite yükseklik veriyorsa (test-solve-canvas-v3)
+   * true verir.
    */
   @Input() enableHeightFit: boolean = false;
-  @Input() hidePassage: boolean = false;
+  private _hidePassage = false;
+  @Input() set hidePassage(value: boolean) {
+    this._hidePassage = value;
+    // Önce-paragraf modu açılıp kapanınca soru alanı değişir; host boyutu değişmediği için observer tetiklenmez.
+    queueMicrotask(() => this.updateVisualScale());
+  }
+  get hidePassage(): boolean {
+    return this._hidePassage;
+  }
   @Input() set selectedChoice(choice: AnswerChoice | undefined) {
     this._selectedChoice.set(choice);
   }
@@ -251,18 +291,9 @@ export class QuestionCanvasViewComponentv5 {
   }
 
   /**
-   * Görsel ölçek = min(genişlik oranı, yükseklik oranı).
-   *
-   * - Genişlik oranı (eski davranış): görselin kutuya sığan genişliği / region genişliği.
-   * - Yükseklik oranı: yalnızca host (app-question-canvas-view-v5) tüketici tarafından dikeyde
-   *   SINIRLANDIRILMIŞSA devreye girer (host.clientHeight < içerik yüksekliği). Sınır yoksa host
-   *   içerikle birlikte büyür, içerik ≤ host olur ve ölçek genişlik oranında kalır; inline host'ta
-   *   clientHeight 0'dır ve yine kısıt yok sayılır. Böylece practice-solve / image-selector / v2
-   *   tüketicilerinin davranışı değişmez (issue #74).
-   *
-   * Yükseklik uyumu iteratiftir: ölçek → içerik yüksekliği → ResizeObserver → yeniden hesap.
-   * İçerik = a·ölçek + b (b: gap/padding gibi ölçeklenmeyen paylar) olduğundan her adım hedefe
-   * üstten yaklaşır, salınım yapmaz; EPSILON altı farklar yok sayılarak döngü durur.
+   * `enableHeightFit` açıkken düzen ve ölçek görsel yüklenmesini beklemeden, kayıtlı boyutlar ve
+   * host'un alanından hesaplanır (issue #778). Host kaydırılmıyorsa (telefon, tam ekran) yükseklik
+   * sınırı yoktur. Diğer tüketiciler yalnız genişlik oranını kullanır.
    */
   public updateVisualScale(): void {
     if (!this.enableHeightFit) {
@@ -270,51 +301,95 @@ export class QuestionCanvasViewComponentv5 {
       return;
     }
 
-    const questionWidth = this._questionRegion().width || 0;
-    if (!questionWidth) {
+    const region = this._questionRegion();
+    const hostEl = this.host.nativeElement;
+    const questionHeight = region.sanitizedHeight || region.height;
+    if (!region.width || !questionHeight) {
+      this.plan.set(null);
+      this.passageArrangement.set(null);
+      this.passageMaxHeight.set(null);
       this.visualScale.set(1);
       this.questionImageWidth.set(null);
       return;
     }
-
-    const img = this.questionImageRef?.nativeElement;
-    const box = this.questionImageBoxRef?.nativeElement;
-    if (!img || !box) {
+    if (!hostEl.clientWidth) {
       return;
     }
 
-    // Açık width uygulanmamışken CSS'in (max-width: 100%, height: auto) ürettiği genişlik.
-    // Uygulanmışsa rect bizim yazdığımız değeri gösterir; o durumda CSS'in üreteceği genişlik
-    // min(doğal genişlik, kutu genişliği) ile yeniden türetilir.
-    const unconstrainedWidth =
-      this.questionImageWidth() === null
-        ? img.getBoundingClientRect().width
-        : Math.min(img.naturalWidth || 0, box.clientWidth || 0);
-    if (!unconstrainedWidth) {
-      return;
+    const overflowY = getComputedStyle(hostEl).overflowY;
+    const bounded = (overflowY === 'auto' || overflowY === 'scroll') && hostEl.clientHeight > 0;
+    const compact = hostEl.clientWidth < COMPACT_WIDTH_PX;
+    const availableHeight = bounded ? hostEl.clientHeight - (compact ? ZOOM_ROW_HEIGHT_PX : 0) : null;
+    const passageBeside = this.isPassageVisible() && hostEl.clientWidth >= PASSAGE_SIDE_MIN_WIDTH_PX;
+    const passageWidth = passageBeside
+      ? Math.min(hostEl.clientWidth * PASSAGE_SIDE_RATIO, PASSAGE_SIDE_MAX_WIDTH_PX) + ROOT_GAP_PX
+      : 0;
+
+    const plan = planQuestionLayout({
+      question: { width: region.width, height: questionHeight },
+      answers: (region.answers ?? []).map((answer) => ({ width: answer.width || 0, height: answer.height || 0 })),
+      width: hostEl.clientWidth - passageWidth,
+      height: availableHeight,
+      minScale: Math.min(1, MIN_FIT_QUESTION_WIDTH_PX / region.width),
+    });
+
+    this.plan.set(plan);
+    this.zoomInOwnRow.set(compact);
+    // Soru genişliğe uyar; kısa şıklar çok geniş sorunun ölçeğiyle okunmaz hâle gelmesin (kart genişliği yine sınırlar).
+    this.visualScale.set(clampVisualScale(plan.scale));
+    this.questionImageWidth.set(Math.round(region.width * plan.scale));
+    this.passageMaxHeight.set(passageBeside ? hostEl.clientHeight : null);
+    this.passageArrangement.set(passageBeside ? 'beside' : 'stacked');
+  }
+
+  private isPassageVisible(): boolean {
+    return !this.hidePassage && !!this.passageImageSource();
+  }
+
+  answerAspectRatio(answer: AnswerChoice): string | null {
+    return this.plan() && answer.width && answer.height ? `auto ${answer.width} / ${answer.height}` : null;
+  }
+
+  /** Okuma metnini ekrandakinin iki katı genişlikte açar. */
+  openPassageZoom(image: HTMLImageElement, alt: string): void {
+    const width = this.zoomedWidth(image.getBoundingClientRect().width, image.naturalWidth);
+    this.showZoom([{ src: image.currentSrc || image.src, alt, width }]);
+  }
+
+  /** Şıklar da küçük kaldığı için soru görseliyle birlikte aynı ölçekte gösterilir. */
+  openQuestionZoom(image: HTMLImageElement, questionAlt: string, choiceAlt: (label: string) => string): void {
+    const scale = this.visualScale();
+    const answers = this.sortedAnswers.map((answer) => ({
+      src: answer.imageUrl,
+      alt: choiceAlt(answer.label),
+      width: answer.width ? this.zoomedWidth(answer.width * scale, answer.width) : null,
+    }));
+    const width = this.zoomedWidth(image.getBoundingClientRect().width, image.naturalWidth);
+    this.showZoom([{ src: image.currentSrc || image.src, alt: questionAlt, width }, ...answers]);
+  }
+
+  private zoomedWidth(shownWidth: number, naturalWidth: number): number {
+    return Math.round(Math.min(naturalWidth || Infinity, shownWidth * ZOOM_FACTOR));
+  }
+
+  private showZoom(images: { src: string; alt: string; width: number | null }[]): void {
+    this.zoomImages.set(images);
+    this.zoomDialogRef?.nativeElement.showModal();
+  }
+
+  choiceAlt(t: (key: string, params: Record<string, unknown>) => string): (label: string) => string {
+    return (label) => t('choiceAria', { label });
+  }
+
+  closeZoom(): void {
+    this.zoomDialogRef?.nativeElement.close();
+  }
+
+  /** Pencerenin dışına (backdrop) tıklama olayının hedefi dialog'un kendisidir. */
+  closeZoomOnBackdrop(event: MouseEvent): void {
+    if (event.target === this.zoomDialogRef?.nativeElement) {
+      this.closeZoom();
     }
-
-    const widthRatio = clampVisualScale(unconstrainedWidth / questionWidth);
-    const fit = this.measureHeightFit();
-    const heightRatio = fit ? this.heightFitRatio(fit, widthRatio) : widthRatio;
-    const ratio = clampVisualScale(Math.min(widthRatio, heightRatio));
-
-    // Eşik altı farklarda signal'ı güncelleme: şık genişliği → sayfa yüksekliği → scrollbar →
-    // konteyner genişliği → ResizeObserver zinciriyle oluşabilecek piksellik salınımı keser
-    // ve (load) + microtask + ResizeObserver'ın aynı değeri art arda yazmasını engeller.
-    // İçerik hâlâ taşıyorsa ve küçülüyorsak (monoton yön) ince eşik kullanılır.
-    const current = this.visualScale();
-    const shrinkingToFit = fit !== null && !fit.fits && ratio < current;
-    const threshold = shrinkingToFit ? VISUAL_SCALE_FINE_EPSILON : VISUAL_SCALE_EPSILON;
-    if (Math.abs(ratio - current) < threshold) {
-      return;
-    }
-    this.visualScale.set(ratio);
-
-    // Soru görseline açık genişlik yalnızca yükseklik sınırlayıcıyken yazılır; aksi hâlde null
-    // bırakılır ki DOM eski davranışla birebir aynı kalsın.
-    const heightLimited = ratio < widthRatio - VISUAL_SCALE_EPSILON;
-    this.questionImageWidth.set(heightLimited ? Math.round((unconstrainedWidth * ratio) / widthRatio) : null);
   }
 
   /**
@@ -341,35 +416,6 @@ export class QuestionCanvasViewComponentv5 {
       return;
     }
     this.visualScale.set(ratio);
-  }
-
-  /**
-   * Host'un kullanılabilir yüksekliği ile içeriğin yüksekliğini ölçer.
-   * Yükseklik kısıtı yoksa (inline host → clientHeight 0, ya da root yok) null döner.
-   */
-  private measureHeightFit(): { available: number; content: number; fits: boolean } | null {
-    const available = this.host.nativeElement.clientHeight;
-    const root = this.rootRef?.nativeElement;
-    if (!root || available <= 0) {
-      return null;
-    }
-    const content = root.getBoundingClientRect().height;
-    if (content <= 0) {
-      return null;
-    }
-    return { available, content, fits: content <= available + HEIGHT_FIT_TOLERANCE_PX };
-  }
-
-  /** Ölçüme göre hedef ölçek; sığıyorsa widthRatio'ya (eski davranış) geri döner. */
-  private heightFitRatio(fit: { available: number; content: number; fits: boolean }, widthRatio: number): number {
-    const current = this.visualScale();
-    const step = current * (fit.available / fit.content);
-    if (fit.fits) {
-      // Sığıyor: daha önce küçültüldüyse boş alana göre geri büyümeyi dene (widthRatio'yu aşma).
-      return current < widthRatio ? Math.min(widthRatio, step) : widthRatio;
-    }
-    // Taşıyor: taşma oranı kadar küçült (clamp çağıran tarafta).
-    return step;
   }
 
   public getScaledAnswerWidth(answer: AnswerChoice): number | null {

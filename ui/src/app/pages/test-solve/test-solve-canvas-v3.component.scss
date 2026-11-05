@@ -488,8 +488,9 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
 }
 
 // v5 host'u: definite yükseklik alır → v5 min(genişlik, yükseklik) oranıyla sığdırır.
-// 0.2 alt sınırında bile sığmayan istisnai içerik burada (header–dock arasında) kaydırılır,
-// dock'un arkasına asla girmez.
+// Okunur alt sınırda bile sığmayan içerik burada (header–dock arasında) kaydırılır, dock'un
+// arkasına asla girmez. Kaydırma çubuğu için yer hep ayrılır: çubuk çıkınca genişlik değişip
+// düzen yeniden hesaplanmasın.
 .canvas-stage {
   display: block;
   width: 100%;
@@ -497,6 +498,7 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
   min-width: 0;
   min-height: 0;
   overflow: auto;
+  scrollbar-gutter: stable;
 }
 
 .text-question {

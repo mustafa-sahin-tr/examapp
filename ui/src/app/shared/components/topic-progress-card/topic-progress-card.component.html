@@ -1,0 +1,136 @@
+<section *transloco="let t; prefix: 'topic-progress'" aria-labelledby="topic-progress-title" data-test="topic-progress">
+  <mat-card appearance="outlined" class="tp__card">
+    <mat-card-header>
+      <mat-icon mat-card-avatar aria-hidden="true">show_chart</mat-icon>
+      <mat-card-title id="topic-progress-title">{{ t('title') }}</mat-card-title>
+      <mat-card-subtitle>{{ t('subtitle', { weeks }) }}</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      @if (loadingTopics()) {
+        <div class="tp__state" aria-busy="true" data-test="topic-progress-loading">
+          <mat-spinner diameter="28" />
+          <span>{{ t('loading') }}</span>
+        </div>
+      } @else if (topics().length === 0 && !error()) {
+        <p class="tp__state" data-test="topic-progress-empty">{{ t('noData') }}</p>
+      } @else {
+        @if (topics().length > 0) {
+          <mat-form-field class="tp__select" subscriptSizing="dynamic">
+            <mat-label>{{ t('topicLabel') }}</mat-label>
+            <mat-select [value]="selectedTopicId()" (selectionChange)="selectTopic($event.value)" data-test="topic-progress-select">
+              @for (topic of topics(); track topic.topicId) {
+                <mat-option [value]="topic.topicId">{{ topic.label }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        }
+
+        @if (error()) {
+          <div class="tp__state" role="alert" data-test="topic-progress-error">
+            <span>{{ t('loadError') }}</span>
+            <button mat-stroked-button type="button" (click)="reload()">{{ t('retry') }}</button>
+          </div>
+        } @else if (loadingTimeline() || !timeline()) {
+          <div class="tp__state" aria-busy="true" data-test="topic-progress-loading">
+            <mat-spinner diameter="28" />
+            <span>{{ t('loading') }}</span>
+          </div>
+        } @else {
+          <p class="tp__summary" data-test="topic-progress-summary">
+            {{ summary() ? t('summary', summary()!) : t('tooFew') }}
+          </p>
+
+          <div
+            #plot
+            class="tp__plot"
+            role="img"
+            tabindex="0"
+            [attr.aria-label]="t('chartLabel', { topic: selectedTopicLabel() })"
+            data-test="topic-progress-chart"
+            (pointermove)="onPointerMove($event)"
+            (pointerdown)="onPointerMove($event)"
+            (pointerleave)="clearActive()"
+            (focus)="onFocus()"
+            (blur)="clearActive()"
+            (keydown)="onKeydown($event)"
+          >
+            <svg [attr.width]="chartWidth()" [attr.height]="chartHeight" [attr.viewBox]="'0 0 ' + chartWidth() + ' ' + chartHeight" aria-hidden="true">
+              @for (tick of yTicks(); track tick.label) {
+                <line class="tp__grid" [attr.x1]="plotLeft" [attr.x2]="plotRight()" [attr.y1]="tick.y" [attr.y2]="tick.y" />
+                <text class="tp__axis" [attr.x]="plotLeft - 8" [attr.y]="tick.y" text-anchor="end" dominant-baseline="middle">{{ tick.label }}</text>
+              }
+              @for (tick of xTicks(); track tick.x) {
+                <text class="tp__axis" [attr.x]="tick.x" [attr.y]="plotBottom + 18" [attr.text-anchor]="tick.anchor">{{ tick.label }}</text>
+              }
+              @if (active(); as point) {
+                <line class="tp__crosshair" [attr.x1]="point.x" [attr.x2]="point.x" [attr.y1]="12" [attr.y2]="plotBottom" />
+              }
+              @for (path of linePaths(); track path) {
+                <path class="tp__line" [attr.d]="path" data-test="topic-progress-line" />
+              }
+              @for (marker of markers(); track marker.index) {
+                <circle
+                  class="tp__marker"
+                  [class.tp__marker--low]="marker.week.lowSample"
+                  [attr.cx]="marker.x"
+                  [attr.cy]="marker.y"
+                  r="4"
+                  data-test="topic-progress-marker"
+                />
+              }
+            </svg>
+
+            @if (active(); as point) {
+              <div
+                class="tp__tooltip"
+                [class.tp__tooltip--left]="tooltipOpensLeft()"
+                [style.left.px]="point.x"
+                data-test="topic-progress-tooltip"
+              >
+                <strong>{{ t('weekOf', { date: point.dateLabel }) }}</strong>
+                @if (point.accuracyLabel) {
+                  <span>{{ point.accuracyLabel }} · {{ t('correctOf', { correct: point.week.correct, answered: point.week.answered }) }}</span>
+                  @if (point.week.lowSample) {
+                    <span>{{ t('lowSampleWeek') }}</span>
+                  }
+                } @else {
+                  <span>{{ t('noAnswers') }}</span>
+                }
+              </div>
+            }
+          </div>
+
+          <p class="tp__legend">
+            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle class="tp__marker tp__marker--low" cx="6" cy="6" r="4" /></svg>
+            <span>{{ t('lowSample') }}</span>
+          </p>
+
+          <details class="tp__details">
+            <summary>{{ t('tableToggle') }}</summary>
+            <table class="tp__table" data-test="topic-progress-table">
+              <thead>
+                <tr>
+                  <th scope="col">{{ t('columns.week') }}</th>
+                  <th scope="col">{{ t('columns.answered') }}</th>
+                  <th scope="col">{{ t('columns.correct') }}</th>
+                  <th scope="col">{{ t('columns.accuracy') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (point of points(); track point.week.weekStart) {
+                  <tr>
+                    <th scope="row">{{ point.dateLabel }}</th>
+                    <td>{{ point.week.answered }}</td>
+                    <td>{{ point.week.correct }}</td>
+                    <td>{{ point.accuracyLabel ?? '–' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </details>
+        }
+      }
+    </mat-card-content>
+  </mat-card>
+</section>

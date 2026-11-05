@@ -245,6 +245,11 @@ describe('StudentProfileComponent', () => {
         fixture.detectChanges();
     }
 
+    it('infoTab_ShowsTopicProgressCard (#531)', () => {
+        fixture.detectChanges();
+        expect((fixture.nativeElement as HTMLElement).querySelector('app-topic-progress-card')).not.toBeNull();
+    });
+
     it('infoTab_ShowsWeakTopicsCard (#521)', () => {
         fixture.detectChanges();
         expect((fixture.nativeElement as HTMLElement).querySelector('app-weak-topics-card')).not.toBeNull();

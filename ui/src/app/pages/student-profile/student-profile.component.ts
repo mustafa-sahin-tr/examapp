@@ -23,6 +23,7 @@ import { AccountSecurityCardComponent } from '../../shared/components/account-se
 import { StudentParentsCardComponent } from '../../shared/components/student-parents-card/student-parents-card.component';
 import { OutcomeMasteryCardComponent } from '../../shared/components/outcome-mastery-card/outcome-mastery-card.component';
 import { TargetGoalCardComponent } from '../../shared/components/target-goal-card/target-goal-card.component';
+import { TopicProgressCardComponent } from '../../shared/components/topic-progress-card/topic-progress-card.component';
 import { WeakTopicsCardComponent } from '../../shared/components/weak-topics-card/weak-topics-card.component';
 
 /** Sayfanin Transloco scope'u: `public/i18n/student-profile/<lang>.json` (issue #183). */
@@ -49,7 +50,7 @@ const SCOPE = 'student-profile';
     TranslocoDirective,
     AccountSecurityCardComponent,
     StudentParentsCardComponent,
-    OutcomeMasteryCardComponent, TargetGoalCardComponent, WeakTopicsCardComponent,
+    OutcomeMasteryCardComponent, TargetGoalCardComponent, TopicProgressCardComponent, WeakTopicsCardComponent,
   ],
   changeDetection: ChangeDetectionStrategy.Eager,
   providers: [provideTranslocoScope(SCOPE)],

@@ -14,6 +14,23 @@ export interface TopicPerformanceItem {
   accuracyPct: number;
 }
 
+/** Issue #531: `TopicProgressWeekDto`. `accuracyPct` cevapsız haftada boştur. */
+export interface TopicProgressWeek {
+  /** Haftanın Pazartesi'si, `YYYY-MM-DD`. */
+  weekStart: string;
+  answered: number;
+  correct: number;
+  accuracyPct: number | null;
+  lowSample: boolean;
+}
+
+/** Issue #531: `TopicProgressTimelineDto`. Eskiden yeniye. */
+export interface TopicProgressTimeline {
+  topicId: number | null;
+  subTopicId: number | null;
+  weeks: TopicProgressWeek[];
+}
+
 /** Issue #497: `TopicPerformanceDto`. `items` en düşük doğruluk önce gelir. */
 export interface TopicPerformance {
   from: string;

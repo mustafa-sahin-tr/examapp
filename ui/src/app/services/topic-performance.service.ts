@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { TopicPerformance } from '../models/topic-performance.model';
+import { TopicPerformance, TopicProgressTimeline } from '../models/topic-performance.model';
 
 /** Sorgu penceresi. */
 export interface TopicPerformanceWindow {
@@ -20,6 +20,13 @@ export class TopicPerformanceService {
 
   getMine(window: TopicPerformanceWindow): Observable<TopicPerformance> {
     return this.http.get<TopicPerformance>('/api/exam/student/me/topic-performance', { params: this.params(window) });
+  }
+
+  /** Issue #531: konunun haftalık doğruluğu. */
+  getMyTimeline(topicId: number, weeks: number): Observable<TopicProgressTimeline> {
+    return this.http.get<TopicProgressTimeline>('/api/exam/student/me/topic-performance/timeline', {
+      params: new HttpParams().set('topicId', topicId).set('weeks', weeks),
+    });
   }
 
   getChild(studentId: number, window: TopicPerformanceWindow): Observable<TopicPerformance> {

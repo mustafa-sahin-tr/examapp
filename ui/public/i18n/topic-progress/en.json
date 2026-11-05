@@ -1,0 +1,24 @@
+{
+  "title": "Topic progress",
+  "subtitle": "Your weekly accuracy in the last {{weeks}} weeks",
+  "topicLabel": "Topic",
+  "noData": "Nothing to show yet. A topic appears here after you solve questions in it.",
+  "summary": "Accuracy: {{from}} → {{to}}",
+  "tooFew": "A few more weeks of answers will show a trend.",
+  "chartLabel": "Weekly accuracy for {{topic}}",
+  "lowSample": "Few answers",
+  "lowSampleWeek": "Few answers this week",
+  "noAnswers": "No answers",
+  "weekOf": "Week of {{date}}",
+  "correctOf": "{{correct}} of {{answered}} correct",
+  "tableToggle": "Show as a table",
+  "columns": {
+    "week": "Week",
+    "answered": "Answered",
+    "correct": "Correct",
+    "accuracy": "Accuracy"
+  },
+  "loading": "Loading…",
+  "loadError": "Progress could not be loaded.",
+  "retry": "Try again"
+}

@@ -34,6 +34,9 @@ import { LanguageSwitcherComponent } from '../../shared/components/language-swit
 import { ParentFinalWarningComponent } from '../../shared/components/parent-final-warning/parent-final-warning.component';
 import { resolveActiveMenuItemId } from './active-menu-item';
 import { SETTINGS_URL, settingsUrlFor } from '../../shared/guards/settings.guard';
+import { TargetGoalService } from '../../services/target-goal.service';
+
+const TARGET_PROGRAMS_MENU_ID = 'target-programs';
 
 interface MenuItem {
   id: string;
@@ -167,6 +170,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   /** Issue #146: zil rozetindeki okunmamış kalıcı bildirim sayısı. */
   readonly unreadNotificationCount = this.notificationService.unreadCount;
   private readonly directMessageService = inject(DirectMessageService);
+  private readonly targetGoalService = inject(TargetGoalService);
+  private readonly targetGoalsEnabled = signal(false);
   private readonly document = inject(DOCUMENT);
   /** Issue #106: DM menü rozeti — okunmamış mesajı olan konuşma sayısı. */
   readonly directMessageUnreadCount = this.directMessageService.unreadCount;
@@ -258,6 +263,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     // Issue #365: soru aktarımı (export/import) yalnız Admin.
     { id: 'mock-exams', labelKey: 'menu.mockExams', icon: 'assignment_turned_in', route: '/mock-exams', type: 'menu', roles: ['Admin'] },
     { id: 'exam-templates', labelKey: 'menu.examTemplates', icon: 'rule', route: '/exam-templates', type: 'menu', roles: ['Admin'] },
+    // Issue #695: `TargetGoals:Enabled` kapalıyken görünmez.
+    { id: TARGET_PROGRAMS_MENU_ID, labelKey: 'menu.targetPrograms', icon: 'flag_circle', route: '/target-programs', type: 'menu', roles: ['Admin'] },
     { id: 'questiongeneration', labelKey: 'menu.questionGeneration', icon: 'auto_awesome', route: '/question-generation', type: 'menu', roles: ['Admin', 'QuestionTrainer'] },
     { id: 'questiontransfer', labelKey: 'menu.questionTransfer', icon: 'swap_horiz', route: '/question-transfer', type: 'menu', roles: ['Admin'] },
     // Soru tespit modeli için işaretleme modu (test/soru kaydı yok, yalnız eğitim verisi); send-to-fix ile aynı roller.
@@ -367,7 +374,9 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     const unapprovedTeacher = this.authService.isUnapprovedTeacher();
     const notIndependent = this.isKnownNotIndependent();
     return this.stripDividers(
-      this.menuItems.filter((item) => this.isItemAllowed(item, unapprovedTeacher, notIndependent))
+      this.menuItems
+        .filter((item) => item.id !== TARGET_PROGRAMS_MENU_ID || this.targetGoalsEnabled())
+        .filter((item) => this.isItemAllowed(item, unapprovedTeacher, notIndependent))
     );
   });
   readonly visibleBottomNavItems = computed<MenuItem[]>(() => {
@@ -531,6 +540,9 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
 
 
   ngOnInit() {
+    if (this.userRoles.includes('Admin')) {
+      this.targetGoalService.getStatus().subscribe({ next: (status) => this.targetGoalsEnabled.set(status.enabled), error: () => undefined });
+    }
     this.signalR.startConnection();
     this.initNotificationBadge();
     this.initDirectMessageBadge();

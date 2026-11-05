@@ -70,6 +70,24 @@ function clampScore(value: number): number {
   return Math.min(MAX_SCORE, Math.max(MIN_SCORE, value));
 }
 
+/** #695: bir netin puan türüne katkısı. `estimateScores` ile aynı formülün türevidir; sınır (100-500) uygulanmaz. */
+export function pointsPerNet(exam: ExamScoreExam, type: ExamScoreType): Record<string, number> {
+  const scale = (MAX_SCORE - MIN_SCORE) / (type.scaleMax - type.scaleMin);
+  const result: Record<string, number> = {};
+  const add = (weights: Record<string, number>, factor: number) => {
+    for (const [testId, weight] of Object.entries(weights)) {
+      const test = exam.tests.find((t) => t.id === testId)!;
+      result[testId] = (result[testId] ?? 0) + (factor * weight * 10 * scale) / test.standardDeviation;
+    }
+  };
+  add(type.weights, 1);
+  const tyt = exam.scores.find((score) => score.id === 'tyt');
+  if (type.tytWeight && tyt) {
+    add(tyt.weights, type.tytWeight);
+  }
+  return result;
+}
+
 /** Doğru veya yanlış eksikse o test boş sayılır. */
 export function estimateScores(exam: ExamScoreExam, answers: Record<string, TestAnswers | undefined>): ScoreEstimate[] {
   const raw = (testId: string) => {

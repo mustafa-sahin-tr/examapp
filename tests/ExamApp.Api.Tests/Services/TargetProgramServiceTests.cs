@@ -111,11 +111,12 @@ public class TargetProgramServiceTests : IDisposable
         var preview = await PreviewAsync(Yks(
             "Program;Üniversite;İl;Puan Türü;Taban Puan\n" +
             "Bilgisayar Mühendisliği;Örnek Üniversitesi;Ankara;SAY;480\n" +
+            "Türk Dili;Örnek Üniversitesi;Ankara;SÖZ;350\n" +
             "Mütercim;Örnek Üniversitesi;Ankara;DİL;400\n" +
             "Hukuk;;Ankara;EA;450\n" +
             "Tarih;Örnek Üniversitesi;Ankara;;300\n"));
 
-        preview.New.ShouldHaveSingleItem().ScoreType.ShouldBe(TargetScoreTypes.Say);
+        preview.New.Select(row => row.ScoreType).ShouldBe([TargetScoreTypes.Say, TargetScoreTypes.Soz]);
         preview.Invalid.Select(e => e.Code).ShouldBe(["ScoreTypeInvalid", "InstitutionRequired", "ScoreTypeInvalid"]);
     }
 

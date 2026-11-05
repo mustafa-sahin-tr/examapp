@@ -25,6 +25,7 @@
       "summary": "Your overview (recent activity, weekly study)",
       "assignments": "Your homework and test results (score, correct/wrong counts)",
       "topics": "Your accuracy by topic (tests and practice included; individual questions are not shown)",
+      "target": "The target school you chose and your estimated gap from your latest mock exam",
       "outcomes": "Your outcome map (your level per outcome; individual questions are not shown)",
       "progress": "Your points and badges",
       "schedule": "Your schedule and lessons"

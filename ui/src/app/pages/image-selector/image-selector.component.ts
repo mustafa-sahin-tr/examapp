@@ -209,8 +209,7 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 import { QuestionNavigatorComponent } from '../../shared/components/question-navigator/question-navigator.component';
-import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
-import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
+import { QuestionDevicePreviewComponent } from '../../shared/components/question-device-preview/question-device-preview.component';
 import { QuestionService } from '../../services/question.service';
 import { TestService } from '../../services/test.service';
 import { SubjectService } from '../../services/subject.service';
@@ -470,8 +469,7 @@ export interface ActiveInspector {
     MatButtonToggleModule,
     MatProgressSpinnerModule,
     QuestionNavigatorComponent,
-    QuestionCanvasViewComponent,
-    QuestionCanvasViewComponentv5,
+    QuestionDevicePreviewComponent,
     ClassificationSelectorComponent,
     LearningOutcomePickerComponent,
     TranslocoDirective,
@@ -833,8 +831,36 @@ export class ImageSelectorComponent {
 
   onLayoutChoiceChange(choice: QuestionLayoutChoice | 'auto') {
     const index = this.previewCurrentIndex();
+    const region = this.regions()[index];
+    if (!region) return;
+    const previous = region.layoutChoice ?? null;
     const layoutChoice = choice === 'auto' ? null : choice;
-    this.regions.update((regions) => regions.map((region, i) => (i === index ? { ...region, layoutChoice } : region)));
+    const setChoice = (value: QuestionLayoutChoice | null) =>
+      this.regions.update((regions) => regions.map((r) => (r.id === region.id ? { ...r, layoutChoice: value } : r)));
+
+    setChoice(layoutChoice);
+    this.questionService
+      .updateLayoutChoice(region.id, layoutChoice)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        error: () => {
+          setChoice(previous);
+          this.snackBar.open(this.tr('messages.layoutChoiceError'), this.tr('common.close'), { duration: 3000 });
+        },
+      });
+  }
+
+  /** Önizlemedeki sınıflandırma seçimini sunucuya yazar. */
+  applyPreviewClassification() {
+    const region = this.regions()[this.previewCurrentIndex()];
+    if (!region) return;
+    const classification = this.currentClassification();
+    this.onApplyClassification({
+      questionId: region.id,
+      subjectId: classification?.subjectId ?? null,
+      topicId: classification?.topicId ?? null,
+      subtopicIds: classification?.subtopicIds ?? [],
+    });
   }
 
   onLearningOutcomesChange(outcomes: LearningOutcome[]) {
@@ -880,8 +906,6 @@ export class ImageSelectorComponent {
 
   onApplyClassification(evt: {
     questionId: number;
-    correctAnswerId: number;
-    scale: number;
     subjectId: number | null;
     topicId: number | null;
     subtopicIds?: number[];

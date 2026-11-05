@@ -23,5 +23,8 @@ public interface IQuestionClassificationService
     /// Issue #590: sınıflandırıcının görseli olmayan soru için okuduğu düz metin (<see cref="QuestionClassificationText"/>);
     /// soru yoksa null.
     /// </summary>
+    /// <summary>Issue #778: çözüm ekranı düzeni; soru yoksa false.</summary>
+    Task<bool> SetLayoutChoiceAsync(int questionId, string? layoutChoice, CancellationToken ct = default);
+
     Task<string?> GetClassificationTextAsync(int questionId, CancellationToken ct = default);
 }

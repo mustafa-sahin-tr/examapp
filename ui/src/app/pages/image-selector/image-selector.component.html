@@ -18,16 +18,20 @@
           </aside>
           <main class="ms-preview__stage">
             <section class="ms-preview__view">
-              <div class="ms-preview__card-head"><span class="ins-dot"></span>{{ t('preview.combinedView') }}</div>
-              <app-question-canvas-view [questionRegion]="regions()[previewCurrentIndex()]"
-                [currentClassification]="currentClassification()" [isPreviewMode]="true"
-                (choiceSelected)="onPreviewChoiceSelected($event)" (questionRemove)="onQuestionRemove($event)"
-              (applyClassification)="onApplyClassification($event)"></app-question-canvas-view>
-            </section>
-            <section class="ms-preview__view">
-              <div class="ms-preview__card-head"><span class="ins-dot"></span>{{ t('preview.splitView') }}</div>
-              <app-question-canvas-view-v5 [questionRegion]="regions()[previewCurrentIndex()]" [isPreviewMode]="true"
-              (questionRemove)="onQuestionRemove($event)"></app-question-canvas-view-v5>
+              <div class="ms-preview__card-head"><span class="ins-dot"></span>{{ t('preview.studentView') }}</div>
+              <app-question-device-preview [questionRegion]="regions()[previewCurrentIndex()]"
+                (choiceSelected)="onPreviewChoiceSelected($event)" />
+              <p class="ms-preview__hint">{{ t('preview.correctAnswerHint') }}</p>
+              <div class="ms-preview__actions">
+                <button mat-flat-button type="button" (click)="applyPreviewClassification()">
+                  <mat-icon>check</mat-icon>
+                  {{ t('preview.applyClassification') }}
+                </button>
+                <button mat-stroked-button type="button" color="warn" (click)="onQuestionRemove(regions()[previewCurrentIndex()].id)">
+                  <mat-icon>delete</mat-icon>
+                  {{ t('preview.removeQuestion') }}
+                </button>
+              </div>
             </section>
           </main>
           <aside class="ms-preview__side">
@@ -46,7 +50,7 @@
             }
             <div class="ms-preview__card" data-testid="layout-choice-card">
               <div class="ms-preview__card-head"><span class="ins-dot"></span>{{ t('preview.layoutChoice') }}</div>
-              <mat-button-toggle-group class="layout-choice" [value]="currentLayoutChoice()" [hideSingleSelectionIndicator]="true"
+              <mat-button-toggle-group class="layout-choice" [vertical]="true" [value]="currentLayoutChoice()" [hideSingleSelectionIndicator]="true"
                 [attr.aria-label]="t('preview.layoutChoice')" (change)="onLayoutChoiceChange($event.value)">
                 <mat-button-toggle value="auto">{{ t('preview.layoutAuto') }}</mat-button-toggle>
                 <mat-button-toggle value="top">{{ t('preview.layoutTop') }}</mat-button-toggle>

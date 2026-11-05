@@ -39,6 +39,28 @@ public class QuestionClassificationServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task SetLayoutChoice_stores_and_clears_the_choice()
+    {
+        var w = await SeedAsync();
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).SetLayoutChoiceAsync(w.QuestionId, "whole")).ShouldBeTrue();
+        await using (var ctx = _db.NewContext())
+            (await ctx.Questions.SingleAsync(q => q.Id == w.QuestionId)).LayoutChoice.ShouldBe("whole");
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).SetLayoutChoiceAsync(w.QuestionId, null)).ShouldBeTrue();
+        await using var read = _db.NewContext();
+        (await read.Questions.SingleAsync(q => q.Id == w.QuestionId)).LayoutChoice.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task SetLayoutChoice_on_unknown_question_returns_false()
+    {
+        await using var ctx = _db.NewContext();
+        (await NewService(ctx).SetLayoutChoiceAsync(404, "top")).ShouldBeFalse();
+    }
+
+    [Fact]
     public async Task Unknown_question_fails()
     {
         await using var ctx = _db.NewContext();

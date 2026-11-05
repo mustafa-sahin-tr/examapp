@@ -160,3 +160,10 @@ public class HeaderInfo
     public string? ClassificationSource { get; set; }
 
 }
+
+/// <summary>Issue #778: çözüm ekranı düzeni; null = otomatik.</summary>
+public class SetQuestionLayoutChoiceDto
+{
+    [RegularExpression(ExamApp.Api.Data.Question.LayoutChoicePattern)]
+    public string? LayoutChoice { get; set; }
+}

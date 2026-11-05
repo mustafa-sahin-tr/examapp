@@ -7,6 +7,10 @@
     "answerNumbered": "Şık {{number}}"
   },
   "preview": {
+    "studentView": "Öğrenci görünümü",
+    "correctAnswerHint": "Doğru cevabı işaretlemek için şıkka tıkla.",
+    "applyClassification": "Sınıflandırmayı uygula",
+    "removeQuestion": "Soruyu testten çıkar",
     "layoutChoice": "Çözüm ekranı düzeni",
     "layoutAuto": "Otomatik",
     "layoutTop": "Üstte",
@@ -15,8 +19,6 @@
     "layoutHint": "Otomatik seçim ekrana göre düzen seçer. Tek görsel, şıkları şeklin içinde olan sorular içindir: öğrenci soruyu tam görür, A B C D düğmeleriyle yanıtlar.",
     "learningOutcomes": "Kazanımlar",
     "questions": "Sorular",
-    "combinedView": "Birleşik görünüm",
-    "splitView": "Ayrık görünüm — soru + şıklar",
     "difficulty": "Zorluk",
     "level": "Seviye",
     "classification": "Sınıflandırma"
@@ -157,6 +159,7 @@
     "removeItem": "Öğeyi sil"
   },
   "messages": {
+    "layoutChoiceError": "Düzen seçimi kaydedilemedi.",
     "classificationApplied": "Sınıflandırma uygulandı.",
     "classificationError": "Uygulama sırasında hata oluştu.",
     "previewLoadError": "Önizleme yüklenemedi.",

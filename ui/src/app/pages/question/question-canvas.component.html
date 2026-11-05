@@ -264,7 +264,7 @@
 
     <!-- 3. MERKEZ TUVAL -->
     <main class="qc-canvas">
-      @if (pageFiles.length === 0) {
+      @if (pageFiles.length === 0 && !previewOn) {
       <div class="qc-dropzone" (click)="fileInput.click()">
         <mat-icon>cloud_upload</mat-icon>
         <div class="qc-dropzone__title">{{ t('canvas.dropzoneTitle') }}</div>

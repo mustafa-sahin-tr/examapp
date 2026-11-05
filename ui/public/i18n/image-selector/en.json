@@ -7,6 +7,10 @@
     "answerNumbered": "Choice {{number}}"
   },
   "preview": {
+    "studentView": "Student view",
+    "correctAnswerHint": "Click a choice to mark it as the correct answer.",
+    "applyClassification": "Apply classification",
+    "removeQuestion": "Remove question from test",
     "layoutChoice": "Solving screen layout",
     "layoutAuto": "Automatic",
     "layoutTop": "On top",
@@ -15,8 +19,6 @@
     "layoutHint": "Automatic picks a layout for each screen. Whole image is for questions with choices inside a figure: students see the full question and answer with A B C D buttons.",
     "learningOutcomes": "Learning outcomes",
     "questions": "Questions",
-    "combinedView": "Combined view",
-    "splitView": "Split view — question + choices",
     "difficulty": "Difficulty",
     "level": "Level",
     "classification": "Classification"
@@ -157,6 +159,7 @@
     "removeItem": "Delete item"
   },
   "messages": {
+    "layoutChoiceError": "The layout choice couldn't be saved.",
     "classificationApplied": "Classification applied.",
     "classificationError": "Something went wrong while applying it.",
     "previewLoadError": "The preview could not be loaded.",

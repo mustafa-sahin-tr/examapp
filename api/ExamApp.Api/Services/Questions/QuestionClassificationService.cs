@@ -28,6 +28,14 @@ public class QuestionClassificationService : IQuestionClassificationService
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
+    public async Task<bool> SetLayoutChoiceAsync(int questionId, string? layoutChoice, CancellationToken ct = default)
+    {
+        var updated = await _context.Questions
+            .Where(q => q.Id == questionId)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(q => q.LayoutChoice, layoutChoice), ct);
+        return updated > 0;
+    }
+
     public async Task<ResponseBaseDto> UpdateCorrectAnswer(
         int questionId,
         int correctAnswerId)

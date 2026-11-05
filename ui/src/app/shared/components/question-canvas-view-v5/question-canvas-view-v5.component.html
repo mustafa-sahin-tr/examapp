@@ -19,9 +19,12 @@
           (load)="restorePassageScroll()" [appStorageImageRetry]="imageRefresh" />
       </div>
       @if (enableHeightFit) {
-        <button mat-icon-button type="button" class="qcv4-zoom-button" [attr.aria-label]="t('zoomPassage')"
+        <button mat-button type="button" class="qcv4-zoom-button" [attr.aria-label]="t('zoomPassage')"
           (click)="openPassageZoom(passageImage, t('passageAlt'))">
           <mat-icon>zoom_in</mat-icon>
+          @if (zoomInOwnRow()) {
+            <span>{{ t('zoomShort') }}</span>
+          }
         </button>
       }
     </div>
@@ -33,9 +36,12 @@
           [style.width.px]="questionImageWidth()" [style.aspect-ratio]="questionAspectRatio()"
           (load)="updateVisualScale()" [appStorageImageRetry]="imageRefresh" />
         @if (questionZoomAvailable()) {
-          <button mat-icon-button type="button" class="qcv4-zoom-button" [attr.aria-label]="t('zoomQuestion')"
+          <button mat-button type="button" class="qcv4-zoom-button" [attr.aria-label]="t('zoomQuestion')"
             (click)="openQuestionZoom(questionImage, t('questionAlt'), choiceAlt(t))">
             <mat-icon>zoom_in</mat-icon>
+            @if (zoomInOwnRow()) {
+              <span>{{ t('zoomShort') }}</span>
+            }
           </button>
         }
         </div>
@@ -46,6 +52,9 @@
             [attr.aria-pressed]="isSelected(answer)" [attr.aria-label]="t('choiceAria', { label: answer.label || $index + 1 })"
             (mouseenter)="hoverAnswer(answer)" (mouseleave)="hoverAnswer(null)" (click)="selectAnswer($index)"
             (keydown.enter)="selectAnswer($index)" (keydown.space)="$event.preventDefault(); selectAnswer($index)">
+            @if (showSelectionMark(answer)) {
+              <mat-icon class="qcv4-answer-check" aria-hidden="true">check_circle</mat-icon>
+            }
             @if (wholeFigure()) {
               <span class="qcv4-answer-letter">{{ answer.label || $index + 1 }}</span>
             } @else {

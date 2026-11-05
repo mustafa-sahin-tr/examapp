@@ -93,6 +93,18 @@ describe('QuestionCanvasViewComponentv5', () => {
             expect(component.isSelected(second)).toBe(false);
         });
 
+        it('selectedChoiceWhileSolving_LooksSelectedNotCorrectAndShowsMark', () => {
+            component.questionRegion = buildRegion({ width: 800, height: 400, answers: fourEqualAnswers(100) });
+            fixture.detectChanges();
+            component.selectAnswer(1);
+            fixture.detectChanges();
+
+            const card = fixture.nativeElement.querySelectorAll('.qcv4-answer-card')[1] as HTMLElement;
+            expect(card.classList).toContain('is-selected');
+            expect(card.classList).not.toContain('is-correct');
+            expect(card.querySelector('.qcv4-answer-check')).toBeTruthy();
+        });
+
         it('selectAnswer_Called_EmitsChoiceSelectedWithChosenAnswer', () => {
             setRegionWithTwoAnswers();
             const emitted = vi.fn().mockName('choiceSelected');

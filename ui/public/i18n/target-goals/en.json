@@ -40,7 +40,7 @@
   "remove": "Remove target",
   "cancel": "Cancel",
   "admin": {
-    "title": "Target Schools",
+    "title": "Minimum Scores",
     "subtitle": "Minimum scores are entered from official sources. Each year is a separate record.",
     "exam": "Exam",
     "year": "Year",

@@ -1,0 +1,155 @@
+:host {
+  display: block;
+  margin-top: 1.5rem;
+
+  // Koyu temada ana renk yüzeyde 3:1'in altında kalır (2,72); seri rengi temaya göre seçilir.
+  --tp-series: var(--primaryColor);
+}
+
+:host-context(.dark-theme) {
+  --tp-series: #6680ff;
+}
+
+.tp__card {
+  border-color: var(--ms-border);
+  color: var(--ms-text);
+}
+
+.tp__state {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 1rem 0;
+  font-size: 0.875rem;
+}
+
+.tp__select {
+  width: 100%;
+  max-width: 28rem;
+  margin-top: 0.75rem;
+}
+
+.tp__summary {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.tp__plot {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 8px;
+  touch-action: pan-y;
+
+  &:focus-visible {
+    outline: 2px solid var(--tp-series);
+    outline-offset: 2px;
+  }
+
+  svg {
+    display: block;
+  }
+}
+
+.tp__grid {
+  stroke: var(--ms-border);
+  stroke-width: 1;
+}
+
+.tp__crosshair {
+  stroke: var(--ms-text-weak);
+  stroke-width: 1;
+}
+
+.tp__axis {
+  font-size: 12px;
+  fill: var(--ms-text-medium);
+}
+
+.tp__line {
+  fill: none;
+  stroke: var(--tp-series);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tp__marker {
+  fill: var(--tp-series);
+  stroke: var(--ms-surface);
+  stroke-width: 2;
+  paint-order: stroke;
+}
+
+.tp__marker--low {
+  fill: var(--ms-surface);
+  stroke: var(--tp-series);
+  stroke-width: 2;
+  opacity: 0.6;
+}
+
+.tp__tooltip {
+  position: absolute;
+  top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin-left: 10px;
+  padding: 0.5rem 0.625rem;
+  max-width: 14rem;
+  border: 1px solid var(--ms-border);
+  border-radius: 8px;
+  background: var(--ms-surface-weak);
+  color: var(--ms-text);
+  font-size: 0.8125rem;
+  pointer-events: none;
+}
+
+.tp__tooltip--left {
+  margin-left: -10px;
+  transform: translateX(-100%);
+}
+
+.tp__legend {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--ms-text-medium);
+}
+
+.tp__details {
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--ms-text-medium);
+
+  summary {
+    cursor: pointer;
+  }
+}
+
+.tp__table {
+  width: 100%;
+  margin-top: 0.5rem;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: 0.25rem 0.5rem;
+    border-top: 1px solid var(--ms-border);
+    font-weight: 400;
+    text-align: right;
+  }
+
+  th:first-child {
+    text-align: left;
+  }
+
+  thead th {
+    border-top: 0;
+    font-weight: 500;
+  }
+}

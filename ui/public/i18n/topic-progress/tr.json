@@ -1,0 +1,24 @@
+{
+  "title": "Konu gelişimi",
+  "subtitle": "Son {{weeks}} haftadaki haftalık doğruluk oranın",
+  "topicLabel": "Konu",
+  "noData": "Henüz gösterilecek bir şey yok. Bir konudan soru çözdüğünde burada görünür.",
+  "summary": "Doğruluk: {{from}} → {{to}}",
+  "tooFew": "Birkaç hafta daha cevap verdiğinde eğilim görünür.",
+  "chartLabel": "{{topic}} için haftalık doğruluk",
+  "lowSample": "Az cevap",
+  "lowSampleWeek": "Bu hafta az cevap var",
+  "noAnswers": "Cevap yok",
+  "weekOf": "{{date}} haftası",
+  "correctOf": "{{answered}} cevapta {{correct}} doğru",
+  "tableToggle": "Tablo olarak göster",
+  "columns": {
+    "week": "Hafta",
+    "answered": "Cevap",
+    "correct": "Doğru",
+    "accuracy": "Doğruluk"
+  },
+  "loading": "Yükleniyor…",
+  "loadError": "Gelişim yüklenemedi.",
+  "retry": "Tekrar dene"
+}

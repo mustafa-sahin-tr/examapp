@@ -511,6 +511,7 @@ public class TestSessionService : ITestSessionService
                     Width = questionEntity.Width,
                     Height = questionEntity.Height,
                     SanitizedHeight = questionEntity.SanitizedHeight,
+                    SourcePageWidth = questionEntity.SourcePageWidth,
                     Answers = questionEntity.Answers.Select(a => new AnswerDto
                     {
                         Id = a.Id,

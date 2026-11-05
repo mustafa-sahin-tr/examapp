@@ -861,6 +861,7 @@ public class PracticeSessionService : IPracticeSessionService
             Width = q.Width,
             Height = q.Height,
             SanitizedHeight = q.SanitizedHeight,
+            SourcePageWidth = q.SourcePageWidth,
             CorrectAnswerId = revealCorrectAnswer ? q.CorrectAnswerId : null,
             Passage = q.PassageId.HasValue && q.Passage != null
                 ? new PassageDto

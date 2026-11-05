@@ -122,6 +122,7 @@ export class PracticeService {
       width: question.width,
       height: question.height,
       sanitizedHeight: question.sanitizedHeight,
+      sourcePageWidth: question.sourcePageWidth,
       classificationSource: question.classificationSource ?? 0,
       isExample: question.isExample,
       subjectId: question.subjectId || 0,

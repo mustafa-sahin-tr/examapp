@@ -88,6 +88,13 @@ describe('planQuestionLayout', () => {
     expect(plan.fits).toBe(false);
   });
 
+  it('maxScale_LimitsScaleEvenWithRoomToGrow', () => {
+    const plan = planQuestionLayout(input({ question: { width: 2000, height: 500 }, answers: fourAnswers(400, 80), maxScale: 0.3 }));
+
+    expect(plan.scale).toBe(0.3);
+    expect(plan.fits).toBe(true);
+  });
+
   it('phoneWidth_NeverPlacesChoicesBesideQuestion', () => {
     const plan = planQuestionLayout(
       input({ question: { width: 800, height: 1600 }, answers: fourAnswers(300, 100), width: 358, height: null }),

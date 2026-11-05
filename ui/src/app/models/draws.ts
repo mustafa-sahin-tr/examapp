@@ -51,6 +51,7 @@ export interface QuestionRegion {
   width: number;
   height: number;
   sanitizedHeight?: number;
+  sourcePageWidth?: number | null;
   passageId: string;
   // Optional classification metadata (used to sync preview navigation with UI forms)
   subjectId?: number;

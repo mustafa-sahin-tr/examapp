@@ -28,6 +28,8 @@ export interface QuestionLayoutInput {
   height: number | null;
   /** Yükseklik yüzünden bunun altına küçültülmez; içerik kaydırılır. */
   minScale: number;
+  /** Bunun üstüne büyütülmez (varsayılan doğal boyut). */
+  maxScale?: number;
 }
 
 export interface QuestionLayoutPlan {
@@ -82,7 +84,7 @@ function contentHeightAt(candidate: Candidate, input: QuestionLayoutInput, scale
 }
 
 function evaluate(candidate: Candidate, input: QuestionLayoutInput): QuestionLayoutPlan {
-  const widthScale = Math.min(1, widthLimitedScale(candidate, input));
+  const widthScale = Math.min(input.maxScale ?? 1, widthLimitedScale(candidate, input));
   if (input.height === null) {
     return { ...candidate, scale: widthScale, fits: true };
   }

@@ -566,6 +566,7 @@ public class QuestionTransferJobRunner
                 width = q.Width,
                 height = q.Height,
                 sanitizedHeight = q.SanitizedHeight,
+                sourcePageWidth = q.SourcePageWidth,
                 subject = q.SubjectId.HasValue && q.Subject != null
                     ? new { id = q.SubjectId, code = q.Subject.Code, name = q.Subject.Name }
                     : null,

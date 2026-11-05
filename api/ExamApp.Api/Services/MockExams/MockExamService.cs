@@ -19,6 +19,9 @@ public interface IMockExamService
     Task<bool> DeleteDraftAsync(int id, int userId, bool isAdmin, CancellationToken ct);
     Task<List<StudentMockExamDto>> ListForStudentAsync(StudentProfileDto student, CancellationToken ct);
     Task<MockExamResultDto?> GetResultAsync(int id, StudentProfileDto student, CancellationToken ct);
+
+    /// <summary>Issue #695: her şablon kodu için öğrencinin bütün oturumlarını bitirdiği en son deneme. Yetki çağıranın sorumluluğundadır.</summary>
+    Task<List<MockExamResultDto>> GetLatestCompleteResultsAsync(int studentId, IReadOnlyCollection<string> templateCodes, CancellationToken ct);
 }
 
 /// <summary>İstek kurallara uymuyor; <see cref="Exception.Message"/> ekranın çevirdiği koddur.</summary>
@@ -506,9 +509,51 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
         if (exam is null)
             return null;
 
+        return await BuildResultAsync(exam, student.Id, now, ct);
+    }
+
+    public async Task<List<MockExamResultDto>> GetLatestCompleteResultsAsync(int studentId, IReadOnlyCollection<string> templateCodes, CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        var sessions = db.Set<MockExamSession>().Where(s => s.MockExam.PublishedAt != null && templateCodes.Contains(s.MockExam.ExamTemplate.Code));
+        var attempts = await db.TestInstances.AsNoTracking()
+            .Where(i => i.StudentId == studentId)
+            .Join(sessions, i => i.WorksheetId, s => s.WorksheetId, (i, s) => new
+            {
+                s.MockExamId,
+                s.MockExam.ExamTemplate.Code,
+                SessionCount = s.MockExam.Sessions.Count,
+                i.Status, i.StartTime, i.EndTime, i.MaxDurationSeconds,
+            })
+            .ToListAsync(ct);
+
+        var latestIds = attempts
+            .GroupBy(a => a.MockExamId)
+            .Where(g => g.Count() == g.First().SessionCount
+                && g.All(a => TestTimeLimit.EffectiveStatus(a.Status, a.StartTime, a.MaxDurationSeconds, now) != WorksheetInstanceStatus.Started))
+            .Select(g => new { Id = g.Key, g.First().Code, FinishedAt = g.Max(a => a.EndTime ?? a.StartTime.AddSeconds(a.MaxDurationSeconds ?? 0)) })
+            .GroupBy(e => e.Code)
+            .Select(g => g.MaxBy(e => e.FinishedAt)!.Id)
+            .ToList();
+
+        var exams = await db.Set<MockExam>().AsNoTracking()
+            .Include(e => e.ExamTemplate)
+            .Include(e => e.Sessions).ThenInclude(s => s.TemplateSession).ThenInclude(s => s.Sections)
+            .Where(e => latestIds.Contains(e.Id))
+            .OrderBy(e => e.Id)
+            .ToListAsync(ct);
+
+        var results = new List<MockExamResultDto>(exams.Count);
+        foreach (var exam in exams)
+            results.Add(await BuildResultAsync(exam, studentId, now, ct));
+        return results;
+    }
+
+    private async Task<MockExamResultDto> BuildResultAsync(MockExam exam, int studentId, DateTime now, CancellationToken ct)
+    {
         var worksheetIds = exam.Sessions.Select(s => s.WorksheetId).ToList();
         var instances = await db.TestInstances.AsNoTracking()
-            .Where(i => i.StudentId == student.Id && worksheetIds.Contains(i.WorksheetId))
+            .Where(i => i.StudentId == studentId && worksheetIds.Contains(i.WorksheetId))
             .Select(i => new { i.Id, i.WorksheetId, i.Status, i.StartTime, i.MaxDurationSeconds })
             .ToListAsync(ct);
         // Süren oturumun sonucu gösterilmez: öğrenci sınav sürerken doğrusunu öğrenmesin.
@@ -553,6 +598,7 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
             Id = exam.Id,
             Name = exam.Name,
             TemplateName = exam.ExamTemplate.Name,
+            TemplateCode = exam.ExamTemplate.Code,
             WrongAnswersPerCorrect = penalty,
             Complete = scores.All(s => !s.Pending),
             Sections = scores,

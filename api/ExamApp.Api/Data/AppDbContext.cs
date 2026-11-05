@@ -217,6 +217,8 @@ public class AppDbContext : DbContext
     public DbSet<MockExam> MockExams { get; set; }
     public DbSet<MockExamSession> MockExamSessions { get; set; }
     public DbSet<MockExamQuestion> MockExamQuestions { get; set; }
+    public DbSet<TargetProgram> TargetPrograms { get; set; }
+    public DbSet<StudentTargetGoal> StudentTargetGoals { get; set; }
 
     public DbSet<QuestionTransferExportBundle> QuestionTransferExportBundles { get; set; }
     public DbSet<QuestionTransferExportMap> QuestionTransferExportMaps { get; set; }
@@ -780,6 +782,11 @@ public class AppDbContext : DbContext
             .IsUnique();
 
         // Issue #693: sonuçlar şablona ve oturum kayıtlarına bağlıdır; zincirleme silme yok.
+        modelBuilder.Entity<TargetProgram>().HasIndex(p => new { p.ScoreType, p.Year, p.NormalizedKey }).IsUnique().HasFilter("NOT \"IsDeleted\"");
+        modelBuilder.Entity<StudentTargetGoal>().HasKey(g => g.StudentId);
+        modelBuilder.Entity<StudentTargetGoal>().HasOne(g => g.Student).WithOne().HasForeignKey<StudentTargetGoal>(g => g.StudentId).OnDelete(DeleteBehavior.Cascade);
+        // Hedef olarak seçilmiş program silinmez (servis engeller, FK son savunma).
+        modelBuilder.Entity<StudentTargetGoal>().HasOne(g => g.TargetProgram).WithMany().HasForeignKey(g => g.TargetProgramId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<ExamTemplate>().HasIndex(t => t.Code).IsUnique();
         // Seed kimlikleri sayacı ilerletmez: yeni kayıt 1'den başlasa birincil anahtar çakışırdı.
         modelBuilder.Entity<ExamTemplate>().Property(t => t.Id).HasIdentityOptions(startValue: 1000);

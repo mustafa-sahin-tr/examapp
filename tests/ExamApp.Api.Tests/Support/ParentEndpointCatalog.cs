@@ -60,6 +60,9 @@ public static class ParentEndpointCatalog
         new($"{nameof(ParentLearningOutcomeMasteryController)}.{nameof(ParentLearningOutcomeMasteryController.Get)}",
             ParentEndpointScope.Child, ParentAccessEndpoints.ChildLearningOutcomeMastery,
             (s, _) => $"/api/parent/children/{s}/learning-outcome-mastery"),
+        new($"{nameof(ParentTargetGoalController)}.{nameof(ParentTargetGoalController.Get)}",
+            ParentEndpointScope.Child, ParentAccessEndpoints.ChildTargetGoal,
+            (s, _) => $"/api/parent/children/{s}/target-goal"),
         new($"{nameof(ParentDashboardController)}.{nameof(ParentDashboardController.GetChildProgress)}",
             ParentEndpointScope.Child, ParentAccessEndpoints.ChildProgress,
             (s, _) => $"/api/parent/children/{s}/progress"),
@@ -147,6 +150,8 @@ public static class ParentEndpointCatalog
     /// </summary>
     public static readonly IReadOnlyDictionary<string, string> ParentReachableAllowlist = new Dictionary<string, string>
     {
+        ["TargetGoalsStatusController.Get"] =
+            "Feature switch only (#695): one boolean, no user data.",
         ["AuthController.GetCurrentCulture"] =
             "Own session: active UI culture.",
         ["AuthController.Logout"] =

@@ -4255,6 +4255,24 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("StudentSpecialEvents");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.StudentTargetGoal", b =>
+                {
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("SelectedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("TargetProgramId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("StudentId");
+
+                    b.HasIndex("TargetProgramId");
+
+                    b.ToTable("StudentTargetGoals");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.StudyItem", b =>
                 {
                     b.Property<int>("Id")
@@ -4401,6 +4419,90 @@ namespace ExamApp.Api.Migrations
                     b.HasIndex("StudyItemId");
 
                     b.ToTable("StudyItemImages");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.TargetProgram", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("City")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("District")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Institution")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("MinimumScore")
+                        .HasPrecision(8, 5)
+                        .HasColumnType("numeric(8,5)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("NormalizedKey")
+                        .IsRequired()
+                        .HasMaxLength(650)
+                        .HasColumnType("character varying(650)");
+
+                    b.Property<decimal?>("Percentile")
+                        .HasPrecision(8, 5)
+                        .HasColumnType("numeric(8,5)");
+
+                    b.Property<string>("ScoreType")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("SourceReference")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ScoreType", "Year", "NormalizedKey")
+                        .IsUnique()
+                        .HasFilter("NOT \"IsDeleted\"");
+
+                    b.ToTable("TargetPrograms");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Teacher", b =>
@@ -6951,6 +7053,25 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("SpecialEvent");
 
                     b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.StudentTargetGoal", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Student", "Student")
+                        .WithOne()
+                        .HasForeignKey("ExamApp.Api.Data.StudentTargetGoal", "StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ExamApp.Api.Data.TargetProgram", "TargetProgram")
+                        .WithMany()
+                        .HasForeignKey("TargetProgramId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Student");
+
+                    b.Navigation("TargetProgram");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.StudyItem", b =>

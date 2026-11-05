@@ -153,6 +153,33 @@ public class TestSessionServiceAnswerTests : IDisposable
     }
 
     [Fact]
+    public async Task Clearing_an_answer_marks_the_event_as_cleared()
+    {
+        var s = await SeedInstanceAsync();
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).SaveAnswer(Dto(s.InstanceId, s.TiqId, selected: 0), User)).Success.ShouldBeTrue();
+
+        await using var check = _db.NewContext();
+        var evt = JsonSerializer.Deserialize<AnswerSubmittedEvent>((await check.OutboxMessages.SingleAsync()).Content)!;
+        evt.IsCleared.ShouldBeTrue();
+        evt.IsCorrect.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task A_selected_answer_does_not_mark_the_event_as_cleared()
+    {
+        var s = await SeedInstanceAsync();
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).SaveAnswer(Dto(s.InstanceId, s.TiqId, selected: s.WrongAnswerId), User)).Success.ShouldBeTrue();
+
+        await using var check = _db.NewContext();
+        JsonSerializer.Deserialize<AnswerSubmittedEvent>((await check.OutboxMessages.SingleAsync()).Content)!
+            .IsCleared.ShouldBeFalse();
+    }
+
+    [Fact]
     public async Task DragDropLabeling_answers_are_never_auto_scored_correct()
     {
         var s = await SeedInstanceAsync(interactionType: "dragDropLabeling");

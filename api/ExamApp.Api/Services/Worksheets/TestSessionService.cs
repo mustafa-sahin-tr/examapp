@@ -741,7 +741,8 @@ public class TestSessionService : ITestSessionService
                 TestInstanceId = dto.TestInstanceId,
                 TestInstanceQuestionId = testInstanceQuestion.Id,
                 Revision = newRevision,
-                SelectedAnswerId = selectedAnswerId
+                SelectedAnswerId = selectedAnswerId,
+                IsCleared = selectedAnswerId == null && payload == null
             };
 
             // 2. Outbox'a yaz

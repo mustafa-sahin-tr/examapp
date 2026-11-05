@@ -423,6 +423,12 @@ builder.Services.AddScoped<ExamApp.Api.Services.Labeling.IActivityStructureServi
 // Kazanımdan görselsiz soru: işaretlemenin Claude ayarları ve kotası; anahtar boşsa üretim ucu 503.
 builder.Services.AddScoped<ExamApp.Api.Services.TaxonomySearch.ITaxonomySearchService, ExamApp.Api.Services.TaxonomySearch.TaxonomySearchService>(); // issue #499
 builder.Services.AddScoped<ExamApp.Api.Services.TopicPerformance.ITopicPerformanceService, ExamApp.Api.Services.TopicPerformance.TopicPerformanceService>(); // issue #497
+builder.Services.AddOptions<ExamApp.Api.Services.TopicPerformance.LearningOutcomeMasteryOptions>() // issue #696
+    .BindConfiguration(ExamApp.Api.Services.TopicPerformance.LearningOutcomeMasteryOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddScoped<ExamApp.Api.Services.TopicPerformance.ILearningOutcomeMasteryService, ExamApp.Api.Services.TopicPerformance.LearningOutcomeMasteryService>(); // issue #696
+builder.Services.AddScoped<ExamApp.Api.Services.TopicPerformance.IParentLearningOutcomeMasteryService, ExamApp.Api.Services.TopicPerformance.ParentLearningOutcomeMasteryService>(); // issue #696
 builder.Services.AddScoped<ExamApp.Api.Services.MockExams.IMockExamService, ExamApp.Api.Services.MockExams.MockExamService>(); // issue #693
 builder.Services.AddSingleton<ExamApp.Api.Services.QuestionGeneration.IQuestionDraftGenerator, ExamApp.Api.Services.QuestionGeneration.ClaudeQuestionDraftGenerator>();
 builder.Services.AddScoped<ExamApp.Api.Services.QuestionGeneration.IQuestionGenerationService, ExamApp.Api.Services.QuestionGeneration.QuestionGenerationService>();

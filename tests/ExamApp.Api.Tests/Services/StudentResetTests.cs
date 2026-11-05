@@ -182,6 +182,35 @@ public class StudentResetJobTests : IDisposable
     }
 
     [Fact]
+    public async Task Coach_goals_and_notes_of_the_student_are_deleted_issue700()
+    {
+        var seed = await SeedProgressAsync();
+        await using (var ctx = _db.NewContext())
+        {
+            var other = new Student { UserId = UserId + 1, StudentNumber = "71" };
+            ctx.Students.Add(other);
+            await ctx.SaveChangesAsync();
+            var now = DateTime.UtcNow;
+            foreach (var studentId in new[] { seed.StudentId, other.Id })
+            {
+                ctx.CoachWeeklyGoals.Add(new CoachWeeklyGoal { StudentId = studentId, TeacherUserId = 9, WeekStart = new DateOnly(2026, 11, 2), Title = "G", CreatedAt = now, UpdatedAt = now });
+                ctx.CoachNotes.Add(new CoachNote { StudentId = studentId, TeacherUserId = 9, Body = "N", CreatedAt = now, UpdatedAt = now });
+            }
+            await ctx.SaveChangesAsync();
+        }
+        _badgeReset.ResetUserAsync(UserId, Arg.Any<DateTime>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+
+        await using (var ctx = _db.NewContext())
+            await NewJob(ctx).RunAsync(UserId, seed.StudentId, KeycloakId);
+
+        await using var check = _db.NewContext();
+        (await check.CoachWeeklyGoals.CountAsync(g => g.StudentId == seed.StudentId)).ShouldBe(0);
+        (await check.CoachNotes.CountAsync(n => n.StudentId == seed.StudentId)).ShouldBe(0);
+        (await check.CoachWeeklyGoals.CountAsync()).ShouldBe(1);
+        (await check.CoachNotes.CountAsync()).ShouldBe(1);
+    }
+
+    [Fact]
     public async Task The_badge_reset_runs_before_the_exam_data_is_deleted()
     {
         var seed = await SeedProgressAsync();

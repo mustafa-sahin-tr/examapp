@@ -151,6 +151,17 @@ public class AppDbContext : DbContext
             SanitizeIfChanged(entry, c => c.Front, (c, v) => c.Front = v ?? string.Empty);
             SanitizeIfChanged(entry, c => c.Back, (c, v) => c.Back = v ?? string.Empty);
         }
+
+        // Issue #700: koçun yazdığı hedef öğrenciye ve veliye gider; not da aynı kuralla temizlenir.
+        foreach (var entry in ChangeTracker.Entries<CoachWeeklyGoal>())
+        {
+            SanitizeIfChanged(entry, g => g.Title, (g, v) => g.Title = v ?? string.Empty);
+        }
+
+        foreach (var entry in ChangeTracker.Entries<CoachNote>())
+        {
+            SanitizeIfChanged(entry, n => n.Body, (n, v) => n.Body = v ?? string.Empty);
+        }
     }
 
     private static void SanitizeIfChanged<T>(
@@ -289,6 +300,10 @@ public class AppDbContext : DbContext
     public DbSet<Flashcard> Flashcards { get; set; }
     public DbSet<FlashcardDeckAssignment> FlashcardDeckAssignments { get; set; }
     public DbSet<FlashcardReview> FlashcardReviews { get; set; }
+
+    // Koç paneli (issue #700)
+    public DbSet<CoachWeeklyGoal> CoachWeeklyGoals { get; set; }
+    public DbSet<CoachNote> CoachNotes { get; set; }
 
     // "Günün soruları" (issue #99)
     public DbSet<DailyQuestionSet> DailyQuestionSets { get; set; }
@@ -1138,6 +1153,23 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(q => q.QuestionId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Issue #700: koç paneli. Öğretmen okuması (öğretmen + öğrenci) ve öğrenci / veli okuması (öğrenci + hafta) ayrı index.
+        modelBuilder.Entity<CoachWeeklyGoal>(e =>
+        {
+            e.Property(g => g.Title).HasMaxLength(CoachWeeklyGoal.MaxStoredTitleLength);
+            e.HasIndex(g => new { g.TeacherUserId, g.StudentId, g.WeekStart });
+            e.HasIndex(g => new { g.StudentId, g.WeekStart });
+            e.HasOne(g => g.Student).WithMany().HasForeignKey(g => g.StudentId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CoachNote>(e =>
+        {
+            e.Property(n => n.Body).HasMaxLength(CoachNote.MaxStoredBodyLength);
+            e.HasIndex(n => new { n.TeacherUserId, n.StudentId, n.CreatedAt });
+            e.HasIndex(n => n.StudentId);
+            e.HasOne(n => n.Student).WithMany().HasForeignKey(n => n.StudentId).OnDelete(DeleteBehavior.Cascade);
+        });
 
         // Issue #699: bilgi kartları. Tekil index'ler NOT IsDeleted: kaldırılan atama yeniden yapılabilir.
         modelBuilder.Entity<FlashcardDeck>(e =>

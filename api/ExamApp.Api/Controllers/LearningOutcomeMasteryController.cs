@@ -2,6 +2,7 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.ParentLinks;
+using ExamApp.Api.Services.Coaching;
 using ExamApp.Api.Services.Questions;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Teachers.Authorization;
@@ -91,10 +92,7 @@ public class TeacherLearningOutcomeMasteryController(
             return BadRequest();
 
         var scope = await GetSchoolScopeAsync(ct);
-        // Okullu öğretmenin kapsamı okul eşitliğidir; özel ders ilişkisi bağımsız kapsamda (#192) tanımlı, ikisi de geçerli.
-        var allowed = await schoolAccess.CanAccessStudentAsync(scope, studentId, ct)
-            || await schoolAccess.CanAccessStudentAsync(SchoolScope.For(scope.UserId, null), studentId, ct);
-        if (!allowed)
+        if (!await schoolAccess.CanAccessAsTeacherOrTutorAsync(scope, studentId, ct))
             return NotFound(new { message = localizer["student.profileNotFound"].Value });
 
         return Ok(await service.GetAsync(studentId, DateTime.UtcNow, subjectId, curriculum, ct));

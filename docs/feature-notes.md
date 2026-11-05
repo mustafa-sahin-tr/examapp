@@ -119,3 +119,12 @@ Seçili şık nötr mavi ve işaretlidir; yeşil yalnız doğru cevap içindir. 
 - **Görünürlük:** `/question-reports` (Soru Havuzu'nun yanındaki sekme); öğretmen kendi sorularını, admin hepsini görür. Yanıtta bildiren yok: öğretmen öğrenciyi tanımayabilir.
 - **Onay:** toast yalnız kayıttan sonra; hata olursa diyalog açık kalır, not kaybolmaz.
 - **Outbox yok:** tek DB yazması, async iş yok. Bildirimi öğretmene anlık haber veren bir bildirim istenirse event o zaman eklenir.
+
+## Test çözme: karalama alanı (#782)
+
+Çözüm ekranında soru başına çizim ve yazı. Puanı etkilemez.
+
+- **Depolama:** yalnız bu cihazın `localStorage`'ı (`testSolve.scratch.<oturum>`), sunucuya gitmez; bu yüzden öğretmen göremez ve başka cihaza geçmez. Test bitince silinir; bu cihazda bitmeyen testin notları 30 gün sonra temizlenir (`test-solve-scratch-store.ts`).
+- **Çizim:** SVG yolu; koordinatlar alan genişliği 1000 sayılarak tutulur, ekran döndüğünde çizim genişliğe göre ölçeklenir, alan kısaldıysa alttaki kısım geri dönene kadar görünmez. Kalem kullanıldıktan sonra dokunma çizmez (avuç içi). Silgi yok: geri al ve temizle var, temizleme de geri alınır.
+- **Yerleşim:** masaüstünde yan paneli kaplar (panel 260 → 360 px), telefon ve tablette dock'un üstünde `42dvh`. Soru görünür ve kaydırılabilir kalır, pad açıkken cevap verilebilir.
+- **Dock:** ≤1024 px otomatik geçiş harita sayfasına taşındı; ≤350 px araçlarda yalnız ikon kalır.

@@ -75,6 +75,7 @@ import {
   writeAutoAdvance,
   writeSolveLocalState,
 } from './test-solve-local-state';
+import { clearScratchNotes } from './test-solve-scratch-store';
 import { createStorageImageResolver } from '../../shared/utils/storage-image-refresh.util';
 import { WorksheetKind, activityRoute } from '../../models/activity';
 
@@ -1358,6 +1359,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     this.localStateReady.set(false);
     if (this.testInstance?.id) {
       clearSolveLocalState(this.testInstance.id);
+      clearScratchNotes(this.testInstance.id);
     }
     this.testTimerSubscription?.unsubscribe();
     const worksheetId = this.testInstance?.worksheetId ?? this.navigationWorksheetId;

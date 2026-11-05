@@ -66,7 +66,6 @@
     "closeMap": "Close the question map",
     "clearAnswer": "Clear answer",
     "clearAnswerLabel": "Clear answer",
-    "autoNextShort": "Auto next",
     "clearShort": "Clear"
   },
   "insight": {
@@ -169,6 +168,20 @@
     "allAnswered": "You answered every question.",
     "warning": "You can't change your answers after finishing the test.",
     "keepSolving": "Keep solving"
+  },
+  "scratch": {
+    "open": "Scratch",
+    "title": "Scratch area",
+    "close": "Close scratch area",
+    "modeLabel": "Scratch type",
+    "draw": "Draw",
+    "write": "Write",
+    "drawingAria": "Drawing area. Draw with a finger, pen, or mouse. Choose Write to use a keyboard.",
+    "undo": "Undo",
+    "clear": "Clear drawing",
+    "writeLabel": "Your notes",
+    "hint": "Stays on this device only, and teachers cannot see it. Deleted when the test ends.",
+    "saveError": "Could not save on this device. Notes are lost when the page closes."
   },
   "report": {
     "action": "Report question",

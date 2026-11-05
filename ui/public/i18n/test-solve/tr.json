@@ -66,7 +66,6 @@
     "closeMap": "Soru haritasını kapat",
     "clearAnswer": "Cevabı temizle",
     "clearAnswerLabel": "Cevabı Temizle",
-    "autoNextShort": "Oto geçiş",
     "clearShort": "Temizle"
   },
   "insight": {
@@ -169,6 +168,20 @@
     "allAnswered": "Tüm soruları cevapladın.",
     "warning": "Testi bitirdikten sonra cevaplarını değiştiremezsin.",
     "keepSolving": "Çözmeye devam et"
+  },
+  "scratch": {
+    "open": "Karalama",
+    "title": "Karalama alanı",
+    "close": "Karalama alanını kapat",
+    "modeLabel": "Karalama türü",
+    "draw": "Çiz",
+    "write": "Yaz",
+    "drawingAria": "Çizim alanı. Parmağınla, kalemle ya da fareyle çiz. Klavye için Yaz'ı seç.",
+    "undo": "Geri al",
+    "clear": "Çizimi temizle",
+    "writeLabel": "Notların",
+    "hint": "Yalnız bu cihazda kalır, öğretmen görmez. Test bitince silinir.",
+    "saveError": "Bu cihazda kaydedilemedi. Notlar sayfa kapanınca kaybolur."
   },
   "report": {
     "action": "Soruyu bildir",

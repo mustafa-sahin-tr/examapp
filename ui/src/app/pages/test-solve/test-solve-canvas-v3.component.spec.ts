@@ -12,6 +12,7 @@ import { isTestCompletedRejection, isTimeExpiredRejection } from './test-solve-c
 import { TestService } from '../../services/test.service';
 import { QuestionReportService } from '../../services/question-report.service';
 import { QuestionReportDialogData } from './question-report-dialog.component';
+import { readScratchNotes, writeScratchNotes } from './test-solve-scratch-store';
 import { TestInstance, TestSessionResult, TestStatus } from '../../models/test-instance';
 import { ConfirmDialogData } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { ReviewDialogData } from './test-solve-review-dialog.component';
@@ -919,6 +920,14 @@ describe('TestSolveCanvasComponentv3 — finish flow (issue #383)', () => {
                     note: 'blurry',
                 });
             });
+        });
+
+        it('finishing removes the scratch notes of this session (#782)', () => {
+            writeScratchNotes(component.testInstance.id, { 1: { strokes: [], text: 'x' } });
+
+            component['navigateToResult']();
+
+            expect(readScratchNotes(component.testInstance.id)).toEqual({});
         });
 
         it('the old copy is gone', () => {

@@ -95,6 +95,20 @@ describe('planQuestionLayout', () => {
     expect(plan.fits).toBe(true);
   });
 
+  it('teacherChoice_OverridesTheProposedArrangement', () => {
+    const tall = { question: { width: 800, height: 1400 }, answers: fourAnswers(400, 150), height: 700 };
+
+    expect(planQuestionLayout(input(tall)).arrangement).toBe('side');
+    expect(planQuestionLayout(input({ ...tall, arrangement: 'top' })).arrangement).toBe('top');
+    expect(planQuestionLayout(input({ arrangement: 'side' })).arrangement).toBe('side');
+  });
+
+  it('sideChoiceOnPhone_StaysOnTop', () => {
+    const plan = planQuestionLayout(input({ width: 358, height: null, arrangement: 'side' }));
+
+    expect(plan.arrangement).toBe('top');
+  });
+
   it('phoneWidth_NeverPlacesChoicesBesideQuestion', () => {
     const plan = planQuestionLayout(
       input({ question: { width: 800, height: 1600 }, answers: fourAnswers(300, 100), width: 358, height: null }),

@@ -2990,6 +2990,10 @@ namespace ExamApp.Api.Migrations
                     b.Property<bool>("IsUnpublished")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("LayoutChoice")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<DateTime?>("LicenseEndsAt")
                         .HasColumnType("timestamp with time zone");
 

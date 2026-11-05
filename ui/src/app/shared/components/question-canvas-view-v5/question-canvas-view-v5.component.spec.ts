@@ -550,6 +550,48 @@ describe('QuestionCanvasViewComponentv5', () => {
             expect(component.questionImageWidth()).toBeGreaterThanOrEqual(380);
         });
 
+        it('wholeChoice_ShowsFullImageWithLetterButtons', () => {
+            const host = bindHost(1000, 800);
+            const region = { ...tallRegion(), layoutChoice: 'whole', imageUrlV2: svgUrl(2000, 1000) } as QuestionRegion;
+            fixture.componentRef.setInput('questionRegion', region);
+            fixture.detectChanges();
+            component.updateVisualScale();
+            fixture.detectChanges();
+
+            expect(component.wholeFigure()).toBe(true);
+            expect((host.querySelector('.qcv4-question-image') as HTMLImageElement).src).toBe(region.imageUrl);
+            expect(host.querySelectorAll('.qcv4-answer-image').length).toBe(0);
+            expect(Array.from(host.querySelectorAll('.qcv4-answer-letter')).map((e) => e.textContent)).toEqual(['A', 'B', 'C', 'D']);
+        });
+
+        it('choiceWithoutImage_FallsBackToWholeFigure', () => {
+            bindHost(1000, 800);
+            const region = tallRegion();
+            region.answers[2] = { ...region.answers[2], imageUrl: '' };
+            fixture.componentRef.setInput('questionRegion', region);
+            fixture.detectChanges();
+            component.updateVisualScale();
+
+            expect(component.wholeFigure()).toBe(true);
+        });
+
+        it('sideChoice_IsHonoredOnWideHost', () => {
+            bindHost(1000, 800);
+            fixture.componentRef.setInput('questionRegion', { ...tallRegion(), layoutChoice: 'side' } as QuestionRegion);
+            fixture.detectChanges();
+            component.updateVisualScale();
+
+            expect(component.plan()?.arrangement).toBe('side');
+        });
+
+        it('withoutHeightFit_IgnoresWholeChoice', () => {
+            fixture.componentRef.setInput('questionRegion', { ...tallRegion(), layoutChoice: 'whole' } as QuestionRegion);
+            fixture.detectChanges();
+
+            expect(component.wholeFigure()).toBe(false);
+            expect(fixture.nativeElement.querySelectorAll('.qcv4-answer-image').length).toBe(4);
+        });
+
         it('withoutHeightFit_KeepsSourceBasedLayout', () => {
             component.questionRegion = tallRegion();
             fixture.detectChanges();

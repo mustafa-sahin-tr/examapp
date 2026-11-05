@@ -1,5 +1,5 @@
 import { Answer } from './answer';
-import { ClassificationSource } from './draws';
+import { ClassificationSource, QuestionLayoutChoice } from './draws';
 import { Subject } from './subject';
 import { SubTopic } from './subtopic';
 import { PassageKind } from './activity';
@@ -54,6 +54,7 @@ export interface Question {
   sanitizedHeight?: number;
   /** Sorunun kırpıldığı sayfanın genişliği (issue #778); eski sorularda yok. */
   sourcePageWidth?: number | null;
+  layoutChoice?: QuestionLayoutChoice | null;
   isCanvasQuestion: boolean;
   correctAnswerId?: number;
   order?: number;

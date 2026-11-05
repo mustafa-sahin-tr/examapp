@@ -123,6 +123,7 @@ export class PracticeService {
       height: question.height,
       sanitizedHeight: question.sanitizedHeight,
       sourcePageWidth: question.sourcePageWidth,
+      layoutChoice: question.layoutChoice,
       classificationSource: question.classificationSource ?? 0,
       isExample: question.isExample,
       subjectId: question.subjectId || 0,

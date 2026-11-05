@@ -44,6 +44,17 @@
                 </div>
               </div>
             }
+            <div class="ms-preview__card" data-testid="layout-choice-card">
+              <div class="ms-preview__card-head"><span class="ins-dot"></span>{{ t('preview.layoutChoice') }}</div>
+              <mat-button-toggle-group class="layout-choice" [value]="currentLayoutChoice()" [hideSingleSelectionIndicator]="true"
+                [attr.aria-label]="t('preview.layoutChoice')" (change)="onLayoutChoiceChange($event.value)">
+                <mat-button-toggle value="auto">{{ t('preview.layoutAuto') }}</mat-button-toggle>
+                <mat-button-toggle value="top">{{ t('preview.layoutTop') }}</mat-button-toggle>
+                <mat-button-toggle value="side">{{ t('preview.layoutSide') }}</mat-button-toggle>
+                <mat-button-toggle value="whole">{{ t('preview.layoutWhole') }}</mat-button-toggle>
+              </mat-button-toggle-group>
+              <p class="layout-choice__hint">{{ t('preview.layoutHint') }}</p>
+            </div>
             <div class="ms-preview__card">
               <div class="ms-preview__card-head"><span class="ins-dot"></span>{{ t('preview.classification') }}</div>
               <app-classification-selector [initialSelection]="currentClassification()"

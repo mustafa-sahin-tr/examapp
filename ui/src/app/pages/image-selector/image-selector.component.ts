@@ -17,7 +17,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { timeout } from 'rxjs';
 import { CommonModule } from '@angular/common';
-import { QuestionRegion, AnswerChoice, RegionOrAnswerHit, ClassificationSource } from '../../models/draws';
+import { QuestionRegion, AnswerChoice, RegionOrAnswerHit, ClassificationSource, QuestionLayoutChoice } from '../../models/draws';
 import { PASSAGE_INSTRUCTION_MAX_LENGTH, PassageKind } from '../../models/activity';
 import {
   MATRIX_CHOICE,
@@ -205,6 +205,7 @@ import { LabelingService } from '../../services/labeling.service';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 import { QuestionNavigatorComponent } from '../../shared/components/question-navigator/question-navigator.component';
@@ -466,6 +467,7 @@ export interface ActiveInspector {
     MatMenuModule,
     MatButtonModule,
     MatSlideToggleModule,
+    MatButtonToggleModule,
     MatProgressSpinnerModule,
     QuestionNavigatorComponent,
     QuestionCanvasViewComponent,
@@ -825,6 +827,15 @@ export class ImageSelectorComponent {
 
   /** Issue #692: önizlenen sorunun seçili kazanımları. */
   readonly currentLearningOutcomes = computed(() => this.regions()[this.previewCurrentIndex()]?.learningOutcomes ?? []);
+
+  /** Issue #778: önizlenen sorunun düzen seçimi; seçim yoksa düzeni çözme ekranı belirler. */
+  readonly currentLayoutChoice = computed(() => this.regions()[this.previewCurrentIndex()]?.layoutChoice ?? 'auto');
+
+  onLayoutChoiceChange(choice: QuestionLayoutChoice | 'auto') {
+    const index = this.previewCurrentIndex();
+    const layoutChoice = choice === 'auto' ? null : choice;
+    this.regions.update((regions) => regions.map((region, i) => (i === index ? { ...region, layoutChoice } : region)));
+  }
 
   onLearningOutcomesChange(outcomes: LearningOutcome[]) {
     const index = this.previewCurrentIndex();

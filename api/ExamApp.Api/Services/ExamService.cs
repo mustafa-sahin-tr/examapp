@@ -750,6 +750,7 @@ public class ExamService : IExamService
                     Height = q.Height,
                     SanitizedHeight = q.SanitizedHeight,
                     SourcePageWidth = q.SourcePageWidth,
+                    LayoutChoice = q.LayoutChoice,
                     ImageUrl = q.ImageUrl,
                     Answers = includeAnswers ? q.Answers.Select(a => new AnswerDto
                     {

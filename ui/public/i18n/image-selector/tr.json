@@ -7,6 +7,12 @@
     "answerNumbered": "Şık {{number}}"
   },
   "preview": {
+    "layoutChoice": "Çözüm ekranı düzeni",
+    "layoutAuto": "Otomatik",
+    "layoutTop": "Üstte",
+    "layoutSide": "Yanda",
+    "layoutWhole": "Tek görsel",
+    "layoutHint": "Otomatik seçim ekrana göre düzen seçer. Tek görsel, şıkları şeklin içinde olan sorular içindir: öğrenci soruyu tam görür, A B C D düğmeleriyle yanıtlar.",
     "learningOutcomes": "Kazanımlar",
     "questions": "Sorular",
     "combinedView": "Birleşik görünüm",

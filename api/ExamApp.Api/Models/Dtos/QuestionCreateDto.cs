@@ -76,6 +76,10 @@ public class BulkQuestionDto
     [MaxLength(ExamApp.Api.Helpers.InteractionPlanSolution.MaxSolutionLength)]
     public string? InteractionSolution { get; set; }
     public bool ShowPassageFirst { get; set; }
+
+    /// <summary>Issue #778: öğretmenin düzen seçimi; null = otomatik.</summary>
+    [RegularExpression(ExamApp.Api.Data.Question.LayoutChoicePattern)]
+    public string? LayoutChoice { get; set; }
     public bool IsExample { get; set; } // EF'de `IsExample`
     public string? ExampleAnswer { get; set; } // EF'de `PracticeCorrectAnswer`
     public List<BulkAnswerDto> Answers { get; set; } = new List<BulkAnswerDto>();

@@ -29,7 +29,7 @@
   <div class="qcv4-container" [class]="containerClass()" [class.qcv4-pane-hidden]="passageArrangement() === 'tabs' && activePane() !== 'question'" [style.--qcv-answer-cols]="plan()?.answerColumns ?? null">
     <div class="qcv4-question-image-wrapper">
       <div #questionImageBox class="qcv4-main-image-box" [class.qcv4-main-image-box--zoom-row]="questionZoomAvailable() && zoomInOwnRow()">
-        <img #questionImage class="qcv4-question-image" [src]="questionImageSource()" [alt]="t('questionAlt')"
+        <img #questionImage class="qcv4-question-image" [src]="displayedQuestionSource()" [alt]="t('questionAlt')"
           [style.width.px]="questionImageWidth()" [style.aspect-ratio]="questionAspectRatio()"
           (load)="updateVisualScale()" [appStorageImageRetry]="imageRefresh" />
         @if (questionZoomAvailable()) {
@@ -46,9 +46,13 @@
             [attr.aria-pressed]="isSelected(answer)" [attr.aria-label]="t('choiceAria', { label: answer.label || $index + 1 })"
             (mouseenter)="hoverAnswer(answer)" (mouseleave)="hoverAnswer(null)" (click)="selectAnswer($index)"
             (keydown.enter)="selectAnswer($index)" (keydown.space)="$event.preventDefault(); selectAnswer($index)">
-            <img class="qcv4-answer-image" [src]="answer.imageUrl" [alt]="t('choiceAria', { label: $index + 1 })"
-              [style.width.px]="getScaledAnswerWidth(answer)" [style.aspect-ratio]="answerAspectRatio(answer)"
-              [appStorageImageRetry]="imageRefresh" />
+            @if (wholeFigure()) {
+              <span class="qcv4-answer-letter">{{ answer.label || $index + 1 }}</span>
+            } @else {
+              <img class="qcv4-answer-image" [src]="answer.imageUrl" [alt]="t('choiceAria', { label: $index + 1 })"
+                [style.width.px]="getScaledAnswerWidth(answer)" [style.aspect-ratio]="answerAspectRatio(answer)"
+                [appStorageImageRetry]="imageRefresh" />
+            }
             </div>
           }
 

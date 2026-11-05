@@ -58,6 +58,7 @@ public class QuestionServiceBulkLearningOutcomeTests : IDisposable
         await using var read = _db.NewContext();
         var question = await read.Questions.SingleAsync();
         question.SourcePageWidth.ShouldBe(100); // issue #778: kırpılan sayfanın genişliği
+        question.LayoutChoice.ShouldBeNull(); // seçim yoksa otomatik
         (await read.QuestionLearningOutcomes.SingleAsync()).ShouldSatisfyAllConditions(
             link => link.QuestionId.ShouldBe(question.Id),
             link => link.LearningOutcomeId.ShouldBe(known));

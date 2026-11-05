@@ -30,6 +30,8 @@ export interface QuestionLayoutInput {
   minScale: number;
   /** Bunun üstüne büyütülmez (varsayılan doğal boyut). */
   maxScale?: number;
+  /** Hazırlayanın seçimi; yoksa en büyük ölçeği veren düzen. Dar alanda soru hep üsttedir. */
+  arrangement?: 'top' | 'side';
 }
 
 export interface QuestionLayoutPlan {
@@ -118,13 +120,13 @@ function candidatesFor(input: QuestionLayoutInput): Candidate[] {
   const unique = [...new Set(columnChoices)];
 
   const top = unique.map((answerColumns): Candidate => ({ arrangement: 'top', answerColumns }));
-  if (compact) {
+  if (compact || input.arrangement === 'top') {
     return top;
   }
   const side = [...new Set([2, 1].map((columns) => Math.min(columns, count)))].map(
     (answerColumns): Candidate => ({ arrangement: 'side', answerColumns }),
   );
-  return [...top, ...side];
+  return input.arrangement === 'side' ? side : [...top, ...side];
 }
 
 /**

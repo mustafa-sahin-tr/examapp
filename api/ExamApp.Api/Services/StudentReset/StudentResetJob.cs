@@ -116,6 +116,16 @@ public sealed class StudentResetJob
             _db.WorksheetAssignments.RemoveRange(personalAssignments);
         }
 
+        // Issue #699: doğrudan deste atamaları worksheet atamalarıyla aynı; öğrencinin kendi destesi içeriktir, kalır.
+        var personalDeckAssignments = await _db.FlashcardDeckAssignments
+            .IgnoreQueryFilters()
+            .Where(x => x.StudentId == studentId && !x.IsDeleted)
+            .ToListAsync(cancellationToken);
+        if (personalDeckAssignments.Count > 0)
+        {
+            _db.FlashcardDeckAssignments.RemoveRange(personalDeckAssignments);
+        }
+
         // 4) Reset personal study programs (keycloak user id)
         var programIds = await _db.UserPrograms
             .IgnoreQueryFilters()
@@ -148,6 +158,9 @@ public sealed class StudentResetJob
         //    BadgeService de rozetleri/puanı sıfırladığından yeniden kazanılan rozet ve yeni puanlar yeniden yazılabilir.
         await _db.StudentBadgeProjections.Where(b => b.StudentId == studentId).ExecuteDeleteAsync(cancellationToken);
         await _db.StudentDailyXps.Where(d => d.StudentId == studentId).ExecuteDeleteAsync(cancellationToken);
+
+        // 6) issue #699: kart tekrar durumu ilerlemedir; kartlar yeniden "yeni" olur.
+        await _db.FlashcardReviews.Where(r => r.StudentId == studentId).ExecuteDeleteAsync(cancellationToken);
     }
 
     private static async Task SoftDeleteByStudentIdAsync<TEntity>(DbSet<TEntity> set, int studentId, CancellationToken ct)

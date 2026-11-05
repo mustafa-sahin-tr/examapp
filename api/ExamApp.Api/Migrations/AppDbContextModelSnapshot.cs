@@ -1483,6 +1483,221 @@ namespace ExamApp.Api.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.Flashcard", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Back")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DeckId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Front")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeckId", "Order");
+
+                    b.ToTable("Flashcards");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.FlashcardDeck", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("GradeId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("OwnerKind")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("OwnerUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("SubjectId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<int?>("TopicId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GradeId");
+
+                    b.HasIndex("SubjectId");
+
+                    b.HasIndex("TopicId");
+
+                    b.HasIndex("OwnerKind", "OwnerUserId");
+
+                    b.ToTable("FlashcardDecks");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.FlashcardDeckAssignment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DeckId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("GradeId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("SchoolId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SchoolId");
+
+                    b.HasIndex("StudentId");
+
+                    b.HasIndex("DeckId", "StudentId")
+                        .IsUnique()
+                        .HasFilter("\"StudentId\" IS NOT NULL AND NOT \"IsDeleted\"");
+
+                    b.HasIndex("GradeId", "SchoolId");
+
+                    b.HasIndex("DeckId", "GradeId", "SchoolId")
+                        .IsUnique()
+                        .HasFilter("\"StudentId\" IS NULL AND NOT \"IsDeleted\"");
+
+                    b.ToTable("FlashcardDeckAssignments");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.FlashcardReview", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("Box")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("DueDay")
+                        .HasColumnType("date");
+
+                    b.Property<int>("FlashcardId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("LastReviewedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ReviewCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FlashcardId");
+
+                    b.HasIndex("StudentId", "DueDay");
+
+                    b.HasIndex("StudentId", "FlashcardId")
+                        .IsUnique();
+
+                    b.ToTable("FlashcardReviews");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.LabelingActivityPromptVersion", b =>
                 {
                     b.Property<int>("Id")
@@ -6500,6 +6715,92 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("ExamTemplate");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.Flashcard", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.FlashcardDeck", "Deck")
+                        .WithMany("Cards")
+                        .HasForeignKey("DeckId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Deck");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.FlashcardDeck", b =>
+                {
+                    b.HasOne("Grade", "Grade")
+                        .WithMany()
+                        .HasForeignKey("GradeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Subject", "Subject")
+                        .WithMany()
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Topic", "Topic")
+                        .WithMany()
+                        .HasForeignKey("TopicId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Grade");
+
+                    b.Navigation("Subject");
+
+                    b.Navigation("Topic");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.FlashcardDeckAssignment", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.FlashcardDeck", "Deck")
+                        .WithMany()
+                        .HasForeignKey("DeckId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Grade", "Grade")
+                        .WithMany()
+                        .HasForeignKey("GradeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ExamApp.Api.Data.School", "School")
+                        .WithMany()
+                        .HasForeignKey("SchoolId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ExamApp.Api.Data.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Deck");
+
+                    b.Navigation("Grade");
+
+                    b.Navigation("School");
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.FlashcardReview", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Flashcard", "Flashcard")
+                        .WithMany()
+                        .HasForeignKey("FlashcardId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ExamApp.Api.Data.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Flashcard");
+
+                    b.Navigation("Student");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.LabelingResult", b =>
                 {
                     b.HasOne("ExamApp.Api.Data.LabelingPage", "Page")
@@ -7547,6 +7848,11 @@ namespace ExamApp.Api.Migrations
             modelBuilder.Entity("ExamApp.Api.Data.ExamTemplateSession", b =>
                 {
                     b.Navigation("Sections");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.FlashcardDeck", b =>
+                {
+                    b.Navigation("Cards");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.LabelingPage", b =>

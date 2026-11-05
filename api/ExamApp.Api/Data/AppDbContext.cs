@@ -139,6 +139,18 @@ public class AppDbContext : DbContext
             SanitizeIfChanged(entry, p => p.Title, (p, v) => p.Title = v);
             SanitizeIfChanged(entry, p => p.Text, (p, v) => p.Text = v);
         }
+
+        // Issue #699: bilgi kartı metni kullanıcı içeriğidir, aynı kuralla temizlenir.
+        foreach (var entry in ChangeTracker.Entries<FlashcardDeck>())
+        {
+            SanitizeIfChanged(entry, d => d.Title, (d, v) => d.Title = v ?? string.Empty);
+        }
+
+        foreach (var entry in ChangeTracker.Entries<Flashcard>())
+        {
+            SanitizeIfChanged(entry, c => c.Front, (c, v) => c.Front = v ?? string.Empty);
+            SanitizeIfChanged(entry, c => c.Back, (c, v) => c.Back = v ?? string.Empty);
+        }
     }
 
     private static void SanitizeIfChanged<T>(
@@ -271,6 +283,12 @@ public class AppDbContext : DbContext
     public DbSet<StudentMistakeReason> StudentMistakeReasons { get; set; }
     public DbSet<QuestionSourceActionLog> QuestionSourceActionLogs { get; set; }
     public DbSet<SavedQuestion> SavedQuestions { get; set; }
+
+    // Bilgi kartları (issue #699)
+    public DbSet<FlashcardDeck> FlashcardDecks { get; set; }
+    public DbSet<Flashcard> Flashcards { get; set; }
+    public DbSet<FlashcardDeckAssignment> FlashcardDeckAssignments { get; set; }
+    public DbSet<FlashcardReview> FlashcardReviews { get; set; }
 
     // "Günün soruları" (issue #99)
     public DbSet<DailyQuestionSet> DailyQuestionSets { get; set; }
@@ -1120,6 +1138,44 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(q => q.QuestionId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Issue #699: bilgi kartları. Tekil index'ler NOT IsDeleted: kaldırılan atama yeniden yapılabilir.
+        modelBuilder.Entity<FlashcardDeck>(e =>
+        {
+            e.Property(d => d.Title).HasMaxLength(150);
+            e.HasIndex(d => new { d.OwnerKind, d.OwnerUserId });
+            e.HasOne(d => d.Grade).WithMany().HasForeignKey(d => d.GradeId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(d => d.Subject).WithMany().HasForeignKey(d => d.SubjectId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(d => d.Topic).WithMany().HasForeignKey(d => d.TopicId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Flashcard>(e =>
+        {
+            e.Property(c => c.Front).HasMaxLength(Flashcard.MaxTextLength * 2);
+            e.Property(c => c.Back).HasMaxLength(Flashcard.MaxTextLength * 2);
+            e.HasIndex(c => new { c.DeckId, c.Order });
+            e.HasOne(c => c.Deck).WithMany(d => d.Cards).HasForeignKey(c => c.DeckId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<FlashcardDeckAssignment>(e =>
+        {
+            e.HasIndex(a => new { a.DeckId, a.StudentId }).IsUnique().HasFilter("\"StudentId\" IS NOT NULL AND NOT \"IsDeleted\"");
+            e.HasIndex(a => new { a.DeckId, a.GradeId, a.SchoolId }).IsUnique().HasFilter("\"StudentId\" IS NULL AND NOT \"IsDeleted\"");
+            e.HasIndex(a => a.StudentId);
+            e.HasIndex(a => new { a.GradeId, a.SchoolId });
+            e.HasOne(a => a.Deck).WithMany().HasForeignKey(a => a.DeckId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(a => a.Student).WithMany().HasForeignKey(a => a.StudentId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(a => a.Grade).WithMany().HasForeignKey(a => a.GradeId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(a => a.School).WithMany().HasForeignKey(a => a.SchoolId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<FlashcardReview>(e =>
+        {
+            e.HasIndex(r => new { r.StudentId, r.FlashcardId }).IsUnique();
+            e.HasIndex(r => new { r.StudentId, r.DueDay });
+            e.HasOne(r => r.Student).WithMany().HasForeignKey(r => r.StudentId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(r => r.Flashcard).WithMany().HasForeignKey(r => r.FlashcardId).OnDelete(DeleteBehavior.Cascade);
+        });
 
         // Issue #698: öğrenci + soru başına tek etiket.
         modelBuilder.Entity<StudentMistakeReason>()

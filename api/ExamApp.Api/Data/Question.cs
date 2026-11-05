@@ -74,6 +74,9 @@ public class Question : BaseEntity
     // Height of question-v2 image (question area without answer block).
     public int? SanitizedHeight { get; set; }
 
+    // Width of the source page this question was cropped from (issue #778). Null for older questions.
+    public int? SourcePageWidth { get; set; }
+
     public bool IsCanvasQuestion { get; set; } = false;
 
     public ClassificationSource? ClassificationSource { get; set; }

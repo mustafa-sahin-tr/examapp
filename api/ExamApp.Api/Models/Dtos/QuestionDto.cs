@@ -80,6 +80,7 @@ public class QuestionDto
     public double? Width { get; set; }
     public double? Height { get; set; }
     public double? SanitizedHeight { get; set; }
+    public int? SourcePageWidth { get; set; }
 
     public int Order { get; set; }
     public ClassificationSource ClassificationSource { get; set; }

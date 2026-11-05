@@ -52,6 +52,8 @@ export interface Question {
   width: number;
   height: number;
   sanitizedHeight?: number;
+  /** Sorunun kırpıldığı sayfanın genişliği (issue #778); eski sorularda yok. */
+  sourcePageWidth?: number | null;
   isCanvasQuestion: boolean;
   correctAnswerId?: number;
   order?: number;

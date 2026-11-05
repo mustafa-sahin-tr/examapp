@@ -965,6 +965,7 @@ public class QuestionService : IQuestionService
                         Width = questionDto.Width,
                         Height = questionDto.Height,
                         SanitizedHeight = effectiveQuestionHeight,
+                        SourcePageWidth = mainImage?.Width,
                         IsExample = questionDto.IsExample,
                         PracticeCorrectAnswer = questionDto.IsExample ? questionDto.ExampleAnswer : null,
                         IsCanvasQuestion = true,
@@ -1241,6 +1242,8 @@ public class QuestionService : IQuestionService
                 question.Height = (int)(question.Height * scale);
             if (question.SanitizedHeight != null)
                 question.SanitizedHeight = (int)(question.SanitizedHeight * scale);
+            if (question.SourcePageWidth != null)
+                question.SourcePageWidth = (int)(question.SourcePageWidth * scale);
 
             foreach (var a in question.Answers)
             {

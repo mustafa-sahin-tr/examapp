@@ -516,6 +516,40 @@ describe('QuestionCanvasViewComponentv5', () => {
             expect(dialog.open).toBe(false);
         });
 
+        it('questionsFromSamePage_ShareScaleWhenTheyHaveRoom', () => {
+            bindHost(1100, 800);
+            const shortQuestion = (width: number, height: number) =>
+                buildRegion({
+                    width,
+                    height,
+                    sourcePageWidth: 5000,
+                    imageUrl: svgUrl(width, height),
+                    answers: fourEqualAnswers(300).map((a) => ({ ...a, height: 60, imageUrl: svgUrl(300, 60) })),
+                });
+
+            fixture.componentRef.setInput('questionRegion', shortQuestion(2000, 500));
+            fixture.detectChanges();
+            component.updateVisualScale();
+            const first = component.plan()!.scale;
+
+            fixture.componentRef.setInput('questionRegion', shortQuestion(1500, 700));
+            fixture.detectChanges();
+            component.updateVisualScale();
+
+            expect(component.plan()!.scale).toBe(first);
+            expect(first).toBeCloseTo(22 / (5000 * 0.018), 5);
+        });
+
+        it('questionWithoutPageWidth_KeepsWidthBasedFloor', () => {
+            bindHost(1000, 600);
+            const region = tallRegion();
+            fixture.componentRef.setInput('questionRegion', region);
+            fixture.detectChanges();
+            component.updateVisualScale();
+
+            expect(component.questionImageWidth()).toBeGreaterThanOrEqual(380);
+        });
+
         it('withoutHeightFit_KeepsSourceBasedLayout', () => {
             component.questionRegion = tallRegion();
             fixture.detectChanges();

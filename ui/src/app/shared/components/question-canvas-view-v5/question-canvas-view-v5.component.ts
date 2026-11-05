@@ -57,10 +57,15 @@ const VISUAL_SCALE_EPSILON = 0.01;
 const MIN_VISUAL_SCALE = 0.2;
 const MAX_VISUAL_SCALE = 1;
 /**
- * Yükseklik yüzünden soru görseli bu genişliğin altına küçültülmez; içerik kaydırılır (issue #778).
- * Değer, 45 kitap sorusunda gövde metninin okunur kaldığı ölçümden gelir.
+ * Sayfa genişliği kayıtlı olmayan eski sorularda yükseklik yüzünden soru görseli bu genişliğin
+ * altına küçültülmez; içerik kaydırılır (issue #778).
  */
 const MIN_FIT_QUESTION_WIDTH_PX = 400;
+/** Gövde metninin sayfa genişliğine oranı: 45 kitap sorusundaki ölçümün varsayımı. */
+const BODY_TEXT_PAGE_RATIO = 0.018;
+/** Sayfa genişliği biliniyorsa hedeflenen gövde metni aralığı (px). */
+const MIN_BODY_TEXT_PX = 12;
+const MAX_BODY_TEXT_PX = 22;
 /** Görsel doğal boyutunun bu oranından küçük gösteriliyorsa büyütme düğmesi çıkar. */
 const ZOOM_OFFER_SCALE = 0.75;
 /** Büyütme penceresi görseli ekrandakinin bu katı genişlikte açar (doğal boyutu aşmadan). */
@@ -357,7 +362,7 @@ export class QuestionCanvasViewComponentv5 {
       answers: (region.answers ?? []).map((answer) => ({ width: answer.width || 0, height: answer.height || 0 })),
       width: passagePlan ? passagePlan.questionWidth : hostWidth,
       height: availableHeight,
-      minScale: Math.min(1, MIN_FIT_QUESTION_WIDTH_PX / region.width),
+      ...this.scaleLimits(region),
     });
 
     this.plan.set(plan);
@@ -366,6 +371,16 @@ export class QuestionCanvasViewComponentv5 {
     this.visualScale.set(clampVisualScale(plan.scale));
     this.questionImageWidth.set(Math.round(region.width * plan.scale));
     this.passagePlan.set(passagePlan);
+  }
+
+  /** Aynı sayfanın soruları aynı üst sınırı paylaşır; yer varsa hepsi aynı metin boyutunda görünür. */
+  private scaleLimits(region: QuestionRegion): { minScale: number; maxScale: number } {
+    const pageWidth = region.sourcePageWidth;
+    if (!pageWidth) {
+      return { minScale: Math.min(1, MIN_FIT_QUESTION_WIDTH_PX / region.width), maxScale: 1 };
+    }
+    const bodyText = pageWidth * BODY_TEXT_PAGE_RATIO;
+    return { minScale: Math.min(1, MIN_BODY_TEXT_PX / bodyText), maxScale: Math.min(1, MAX_BODY_TEXT_PX / bodyText) };
   }
 
   private planPassage(width: number, height: number | null): PassageLayoutPlan {

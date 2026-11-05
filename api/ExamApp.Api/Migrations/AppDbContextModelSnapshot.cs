@@ -3016,6 +3016,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<bool>("ShowPassageFirst")
                         .HasColumnType("boolean");
 
+                    b.Property<int?>("SourcePageWidth")
+                        .HasColumnType("integer");
+
                     b.Property<int>("SourceType")
                         .HasColumnType("integer");
 

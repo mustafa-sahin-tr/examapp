@@ -1,19 +1,11 @@
 <div class="ms-programs-container" *transloco="let t; prefix: 'my-programs.list'">
-  <!-- Hero Section -->
-  <div class="hero-section">
-    <div class="hero-content">
-      <div class="hero-text">
-        <h1 class="hero-title">
-          <mat-icon class="hero-icon">school</mat-icon>
-          {{ t('title') }}
-        </h1>
-        <p class="hero-subtitle">{{ t('subtitle') }}</p>
-      </div>
-      <button mat-fab extended color="primary" (click)="createNewProgram()" class="create-program-btn">
+  <div class="mp-head">
+    <app-page-header icon="school" [title]="t('title')" [description]="t('subtitle')">
+      <button mat-flat-button type="button" (click)="createNewProgram()">
         <mat-icon>add</mat-icon>
         {{ t('create') }}
       </button>
-    </div>
+    </app-page-header>
 
     <!-- Stats Section -->
     @if (!loading && programs.length > 0) {

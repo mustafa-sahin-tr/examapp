@@ -166,6 +166,23 @@ describe('ProgramDetailComponent date range header (issue #386)', () => {
         return (fixture.nativeElement as HTMLElement).querySelector('.program-meta')?.textContent ?? '';
     }
 
+    // Issue #725: takvim renkleri token'dan gelir; planı olmayan gün satır içi renk almaz (temanın yüzeyi kalır).
+    it('dayGradient_UsesSubjectTokensAndLeavesEmptyDaysToTheme', () => {
+        const fixture = create('tr', {
+            studyItemSchedules: [
+                { startDate: '2026-11-02T00:00:00', endDate: '2026-11-03T00:00:00', studyItemTitle: 'Matematik 5' },
+                { startDate: '2026-11-03T00:00:00', endDate: '2026-11-03T00:00:00', studyItemTitle: 'Okuma' },
+            ] as unknown as UserProgram['studyItemSchedules'],
+        });
+        const component = fixture.componentInstance;
+
+        expect(component.getDayGradient(new Date('2026-11-02T00:00:00'))).toBe('var(--ms-subject-blue)');
+        expect(component.getDayGradient(new Date('2026-11-03T00:00:00'))).toBe(
+            'linear-gradient(135deg, var(--ms-subject-blue), var(--ms-subject-default))',
+        );
+        expect(component.getDayGradient(new Date('2026-11-10T00:00:00'))).toBe('');
+    });
+
     // Issue #717: mock program kaldırıldı; hedef, başlık ve tarih yalnız gerçek programdan gelir.
     it('dailyTarget_NotShownWithoutRealTarget', () => {
         const el = create('tr', { questionsPerDay: undefined }).nativeElement as HTMLElement;

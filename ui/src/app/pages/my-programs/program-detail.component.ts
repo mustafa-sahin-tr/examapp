@@ -27,6 +27,7 @@ import { MY_PROGRAMS_SCOPE } from './my-programs-scope';
 
 /** Sözlükte karşılığı olan program türleri; bunun dışındaki değer backend'den geldiği gibi gösterilir. */
 const KNOWN_STUDY_TYPES = ['intensive', 'regular', 'flexible', 'weekend', 'exam', 'question'];
+const DEFAULT_SUBJECT_COLOR = 'var(--ms-subject-default)';
 
 interface ScheduleBar {
   schedule: UserProgramStudyPageSchedule;
@@ -76,16 +77,16 @@ export class ProgramDetailComponent implements OnInit {
   weekStart = this.getWeekStart(new Date());
   currentMonth = new Date();
 
-  // Color mapping for subjects/study-pages
+  // Ders adına göre takvim rengi (styles.scss `--ms-subject-*`, beyaz yazıyla AA).
   subjectColors: { [key: string]: string } = {
-    Matematik: '#3b82f6', // blue
-    Fizik: '#ef4444', // red
-    Kimya: '#10b981', // green
-    Biyoloji: '#f59e0b', // amber
-    Türkçe: '#8b5cf6', // purple
-    Tarih: '#ec4899', // pink
-    Coğrafya: '#14b8a6', // teal
-    İngilizce: '#f97316', // orange
+    Matematik: 'var(--ms-subject-blue)',
+    Fizik: 'var(--ms-subject-red)',
+    Kimya: 'var(--ms-subject-green)',
+    Biyoloji: 'var(--ms-subject-amber)',
+    Türkçe: 'var(--ms-subject-purple)',
+    Tarih: 'var(--ms-subject-pink)',
+    Coğrafya: 'var(--ms-subject-teal)',
+    İngilizce: 'var(--ms-subject-orange)',
   };
 
   constructor() {
@@ -290,7 +291,7 @@ export class ProgramDetailComponent implements OnInit {
         return color;
       }
     }
-    return '#6366f1'; // Default indigo
+    return DEFAULT_SUBJECT_COLOR;
   }
 
   private assignStackPositions(bars: ScheduleBar[]): void {
@@ -368,53 +369,14 @@ export class ProgramDetailComponent implements OnInit {
     this.currentMonth = next;
   }
 
-  getDayColor(date: Date | null): string {
-    if (!date) return 'transparent';
-
-    const schedules = this.getSchedulesForDay(date);
-    if (schedules.length === 0) return 'rgba(15, 23, 42, 0.04)';
-
-    // Collect colors for all schedules
-    const colors: string[] = [];
-    schedules.forEach((schedule) => {
-      let colorFound = false;
-      for (const [subject, color] of Object.entries(this.subjectColors)) {
-        if (schedule.studyItemTitle?.toLowerCase().includes(subject.toLowerCase())) {
-          colors.push(color);
-          colorFound = true;
-          break;
-        }
-      }
-      if (!colorFound) {
-        colors.push('#6366f1'); // Default indigo color
-      }
-    });
-
-    // If multiple colors, use first one (or could create gradient)
-    // For gradient: return `linear-gradient(135deg, ${colors.join(', ')})`;
-    return colors[0];
-  }
-
   getDayGradient(date: Date | null): string {
     if (!date) return 'transparent';
 
+    // Planı olmayan gün satır içi renk almaz, temanın yüzeyini (SCSS) kullanır.
     const schedules = this.getSchedulesForDay(date);
-    if (schedules.length === 0) return 'rgba(15, 23, 42, 0.04)';
+    if (schedules.length === 0) return '';
 
-    const colors: string[] = [];
-    schedules.forEach((schedule) => {
-      let colorFound = false;
-      for (const [subject, color] of Object.entries(this.subjectColors)) {
-        if (schedule.studyItemTitle?.toLowerCase().includes(subject.toLowerCase())) {
-          colors.push(color);
-          colorFound = true;
-          break;
-        }
-      }
-      if (!colorFound) {
-        colors.push('#6366f1');
-      }
-    });
+    const colors = schedules.map((schedule) => this.getScheduleColor(schedule));
 
     if (colors.length === 1) {
       return colors[0];

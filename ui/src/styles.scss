@@ -95,6 +95,8 @@
   --ms-border-strong: #585FA2;
   --ms-surface: #130F25;
   --ms-surface-weak: #1B1834;
+  // Grafik serisi: --primaryColor bu yüzeyde 3:1'in altında kalır (2,72).
+  --ms-chart-series: #6680FF;
   --ms-surface-medium: #242145;
   --ms-surface-strong: #2A2753;
   --ms-surface-inverse: #F3F3F8;
@@ -190,6 +192,7 @@
   --ms-border-strong: #B7B2DE;
   --ms-surface: #FFFFFF;
   --ms-surface-weak: #F5F4FB;
+  --ms-chart-series: #1C43FE;
   --ms-surface-medium: #ECEAF8;
   --ms-surface-strong: #E1DEF3;
   --ms-surface-inverse: #211D3A;
@@ -592,7 +595,7 @@ body {
 
 .main-content {
   padding: var(--ms-layout-spacing-xsmall);
-  color: white;
+  color: var(--ms-text);
   min-height: 100vh;
 
   @media (max-width: 767px) {

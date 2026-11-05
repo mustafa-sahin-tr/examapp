@@ -428,18 +428,73 @@ describe('QuestionCanvasViewComponentv5', () => {
             expect(host.querySelector('.qcv4-question-image')!.getBoundingClientRect().width).toBe(358);
         });
 
-        it('passageOnWideHost_StaysBesideAndScrollsInsideAvailableHeight', () => {
-            const host = bindHost(1100, 600);
-            fixture.componentRef.setInput('questionRegion', {
+        function withPassage(id: number, width: number, height: number): QuestionRegion {
+            return {
                 ...tallRegion(),
-                passage: { imageUrl: svgUrl(800, 3000) },
-            } as QuestionRegion);
+                passage: { id, width, height, imageUrl: svgUrl(width, height) },
+            } as QuestionRegion;
+        }
+
+        it('longPassageOnWideHost_StaysBesideAndScrollsInsideAvailableHeight', () => {
+            const host = bindHost(1100, 600);
+            fixture.componentRef.setInput('questionRegion', withPassage(9001, 800, 3000));
+            fixture.detectChanges();
+            component.updateVisualScale();
             fixture.detectChanges();
 
             const passage = host.querySelector('.qcv4-passage')!.getBoundingClientRect();
             const question = host.querySelector('.qcv4-question-image')!.getBoundingClientRect();
             expect(passage.height).toBeLessThanOrEqual(600);
             expect(question.left).toBeGreaterThanOrEqual(passage.right);
+        });
+
+        it('widePassage_StaysAboveQuestion', () => {
+            const host = bindHost(1100, 800);
+            fixture.componentRef.setInput('questionRegion', withPassage(9002, 4000, 1000));
+            fixture.detectChanges();
+            component.updateVisualScale();
+            fixture.detectChanges();
+
+            const passage = host.querySelector('.qcv4-passage')!.getBoundingClientRect();
+            const question = host.querySelector('.qcv4-question-image')!.getBoundingClientRect();
+            expect(component.passageArrangement()).toBe('top');
+            expect(question.top).toBeGreaterThanOrEqual(passage.bottom);
+        });
+
+        it('longPassageOnNarrowHost_OpensOnPassageThenOnQuestionForSameGroup', () => {
+            const host = bindHost(358, null);
+            fixture.componentRef.setInput('questionRegion', withPassage(9003, 800, 3000));
+            fixture.detectChanges();
+            component.updateVisualScale();
+            fixture.detectChanges();
+
+            expect(component.passageArrangement()).toBe('tabs');
+            expect(component.activePane()).toBe('passage');
+            expect(getComputedStyle(host.querySelector('.qcv4-container')!).display).toBe('none');
+
+            fixture.componentRef.setInput('questionRegion', withPassage(9003, 800, 3000));
+            fixture.detectChanges();
+
+            expect(component.activePane()).toBe('question');
+            expect(getComputedStyle(host.querySelector('.qcv4-passage')!).display).toBe('none');
+        });
+
+        it('passageScroll_IsRestoredForNextQuestionOfSameGroup', async () => {
+            const host = bindHost(1100, 600);
+            fixture.componentRef.setInput('questionRegion', withPassage(9004, 800, 3000));
+            fixture.detectChanges();
+            component.updateVisualScale();
+            fixture.detectChanges();
+            const scroller = host.querySelector('.qcv4-passage__scroller') as HTMLElement;
+            scroller.scrollTop = 300;
+            scroller.dispatchEvent(new Event('scroll'));
+            scroller.scrollTop = 0;
+
+            fixture.componentRef.setInput('questionRegion', withPassage(9004, 800, 3000));
+            fixture.detectChanges();
+            await Promise.resolve();
+
+            expect(scroller.scrollTop).toBe(300);
         });
 
         it('zoomButton_OpensDialogWithLargerImageAndCloses', async () => {

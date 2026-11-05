@@ -1,8 +1,23 @@
 <div class="qcv4-root" [class.qcv4-root--passage-beside]="passageArrangement() === 'beside'"
-  [class.qcv4-root--passage-stacked]="passageArrangement() === 'stacked'" *transloco="let t; prefix: 'shared.questionCanvas'">
+  [class.qcv4-root--passage-top]="passageArrangement() === 'top'"
+  [class.qcv4-root--passage-tabs]="passageArrangement() === 'tabs'" *transloco="let t; prefix: 'shared.questionCanvas'">
+  @if (passageArrangement() === 'tabs') {
+    <mat-button-toggle-group class="qcv4-pane-tabs" [value]="activePane()" [hideSingleSelectionIndicator]="true"
+      [attr.aria-label]="t('paneTabs')" (change)="selectPane($event.value)">
+      <mat-button-toggle value="passage">{{ t('panePassage') }}</mat-button-toggle>
+      <mat-button-toggle value="question">{{ t('paneQuestion') }}</mat-button-toggle>
+    </mat-button-toggle-group>
+  }
   @if (!hidePassage && passageImageSource(); as pUrl) {
-    <div class="qcv4-passage" [style.max-height.px]="passageMaxHeight()">
-      <img #passageImage class="qcv4-passage__image" [src]="pUrl" [alt]="t('passageAlt')" [appStorageImageRetry]="imageRefresh" />
+    <div class="qcv4-passage" [class.qcv4-passage--zoom-row]="enableHeightFit && zoomInOwnRow()"
+      [class.qcv4-pane-hidden]="passageArrangement() === 'tabs' && activePane() !== 'passage'"
+      [style.width.px]="passagePlan()?.boxWidth ?? null">
+      <div #passageScroller class="qcv4-passage__scroller" [style.max-height.px]="passagePlan()?.boxHeight ?? null"
+        (scroll)="rememberPassageScroll($event)">
+        <img #passageImage class="qcv4-passage__image" [src]="pUrl" [alt]="t('passageAlt')"
+          [style.width.px]="passageImageWidth()" [style.aspect-ratio]="passageAspectRatio()"
+          (load)="restorePassageScroll()" [appStorageImageRetry]="imageRefresh" />
+      </div>
       @if (enableHeightFit) {
         <button mat-icon-button type="button" class="qcv4-zoom-button" [attr.aria-label]="t('zoomPassage')"
           (click)="openPassageZoom(passageImage, t('passageAlt'))">
@@ -11,7 +26,7 @@
       }
     </div>
   }
-  <div class="qcv4-container" [class]="containerClass()" [style.--qcv-answer-cols]="plan()?.answerColumns ?? null">
+  <div class="qcv4-container" [class]="containerClass()" [class.qcv4-pane-hidden]="passageArrangement() === 'tabs' && activePane() !== 'question'" [style.--qcv-answer-cols]="plan()?.answerColumns ?? null">
     <div class="qcv4-question-image-wrapper">
       <div #questionImageBox class="qcv4-main-image-box" [class.qcv4-main-image-box--zoom-row]="questionZoomAvailable() && zoomInOwnRow()">
         <img #questionImage class="qcv4-question-image" [src]="questionImageSource()" [alt]="t('questionAlt')"

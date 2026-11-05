@@ -6,20 +6,31 @@
   width: 100%;
   min-width: 0;
 
-  // Paragraf yanda kalırken soru alta düşmesin. Karar pencereye değil host genişliğine göre
-  // component'te verilir (PASSAGE_SIDE_*): önizleme çerçevesinde de aynı sonuç çıkar.
+  // Yerleşim pencereye değil host genişliğine göre component'te seçilir (planPassageLayout):
+  // önizleme çerçevesinde de aynı sonuç çıkar. Kutu genişliği component'ten gelir.
   &--passage-beside {
     flex-wrap: nowrap;
 
     > .qcv4-passage {
       flex: 0 0 auto;
-      width: min(45%, 560px);
+      max-width: none;
     }
   }
 
-  &--passage-stacked > .qcv4-passage {
-    max-width: 100%;
-    flex-basis: 100%;
+  &--passage-top,
+  &--passage-tabs {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+
+    > .qcv4-passage {
+      flex: 0 0 auto;
+      max-width: 100%;
+    }
+
+    > .qcv4-container {
+      flex: 0 0 auto;
+    }
   }
 }
 
@@ -27,8 +38,11 @@
   flex: 0 1 auto;
   min-width: 0;
   max-width: min(45%, 560px);
-  // Yükseklik sınırı verildiğinde (issue #778) paragraf kendi içinde kayar; soru yerinde kalır.
-  overflow: auto;
+
+  // Yükseklik sınırı verildiğinde paragraf kendi içinde kayar; soru ve büyütme düğmesi yerinde kalır.
+  &__scroller {
+    overflow: auto;
+  }
 
   &__image {
     max-width: 100%;
@@ -147,7 +161,8 @@
 }
 
 // Dar alanda görsel tüm genişliği kullanır: düğme metni kapatmasın diye üstte kendi satırında.
-.qcv4-main-image-box--zoom-row {
+.qcv4-main-image-box--zoom-row,
+.qcv4-passage--zoom-row {
   display: flex;
   flex-direction: column;
 
@@ -193,6 +208,16 @@
     height: auto;
     margin: 0 auto 12px;
   }
+}
+
+.qcv4-pane-tabs {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  --mat-button-toggle-label-text-color: var(--primaryColor);
+}
+
+.qcv4-pane-hidden {
+  display: none !important;
 }
 
 // Şık Kartı Tasarımı

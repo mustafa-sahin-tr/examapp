@@ -15,12 +15,19 @@ import {
 import { CommonModule } from '@angular/common';
 import { AnswerChoice, QuestionRegion } from '../../../models/draws';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { questionCanvasImageUrl } from '../../utils/storage-image-url.util';
 import { StorageImageResolver } from '../../utils/storage-image-refresh.util';
 import { StorageImageRetryDirective } from '../../directives/storage-image-retry.directive';
-import { COMPACT_WIDTH_PX, planQuestionLayout, QuestionLayoutPlan } from './question-layout-planner';
+import {
+  COMPACT_WIDTH_PX,
+  PassageLayoutPlan,
+  planPassageLayout,
+  planQuestionLayout,
+  QuestionLayoutPlan,
+} from './question-layout-planner';
 
 const EMPTY_REGION: QuestionRegion = {
   id: 0,
@@ -60,11 +67,14 @@ const ZOOM_OFFER_SCALE = 0.75;
 const ZOOM_FACTOR = 2;
 /** Düğme kendi satırındayken soru için kullanılamayan yükseklik (px). */
 const ZOOM_ROW_HEIGHT_PX = 48;
-/** Paragraf bu host genişliğinin altında yana sığmaz, sorunun üstüne geçer. */
-const PASSAGE_SIDE_MIN_WIDTH_PX = 840;
-const PASSAGE_SIDE_RATIO = 0.45;
-const PASSAGE_SIDE_MAX_WIDTH_PX = 560;
-const ROOT_GAP_PX = 16;
+/** Sekme satırının soru için kullanılamayan yüksekliği (px). */
+const PANE_TABS_HEIGHT_PX = 60;
+
+/**
+ * Okuma parçasının kaydırma konumu ve görülüp görülmediği, parça bazında. v3 her soru için görüntüleyiciyi
+ * yeniden oluşturur; aynı gruptaki sorular arasında geçerken öğrenci kaldığı yerde kalsın diye burada tutulur.
+ */
+const passageViewState = new Map<number, { scrollTop: number; seen: boolean }>();
 
 function clampVisualScale(value: number): number {
   return Math.max(MIN_VISUAL_SCALE, Math.min(MAX_VISUAL_SCALE, value));
@@ -73,7 +83,7 @@ function clampVisualScale(value: number): number {
 @Component({
   selector: 'app-question-canvas-view-v5',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatIconModule, TranslocoDirective, StorageImageRetryDirective],
+  imports: [CommonModule, MatButtonModule, MatButtonToggleModule, MatIconModule, TranslocoDirective, StorageImageRetryDirective],
   templateUrl: './question-canvas-view-v5.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./question-canvas-view-v5.component.scss'],
@@ -82,6 +92,7 @@ export class QuestionCanvasViewComponentv5 {
   @ViewChild('questionImage') private questionImageRef?: ElementRef<HTMLImageElement>;
   @ViewChild('questionImageBox') private questionImageBoxRef?: ElementRef<HTMLDivElement>;
   @ViewChild('zoomDialog') private zoomDialogRef?: ElementRef<HTMLDialogElement>;
+  @ViewChild('passageScroller') private passageScrollerRef?: ElementRef<HTMLDivElement>;
 
   /** Host elementi: tüketici buna yükseklik sınırı verirse içerik dikeyde de sığdırılır. */
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -103,10 +114,21 @@ export class QuestionCanvasViewComponentv5 {
   readonly answerMinWidth = signal<number>(0);
   /** Yükseklik-bazlı sığdırmada ekrandaki alana göre seçilen düzen; diğer tüketicilerde null. */
   readonly plan = signal<QuestionLayoutPlan | null>(null);
-  readonly passageMaxHeight = signal<number | null>(null);
   /** Dar alanda büyütme düğmesi metni kapatmasın diye görselin üstünde kendi satırındadır. */
   readonly zoomInOwnRow = signal(false);
-  readonly passageArrangement = signal<'beside' | 'stacked' | null>(null);
+  readonly passagePlan = signal<PassageLayoutPlan | null>(null);
+  readonly activePane = signal<'passage' | 'question'>('question');
+  readonly passageArrangement = computed(() => this.passagePlan()?.arrangement ?? null);
+  /** Kayıtlı boyuttan görsel genişliği: yüklenmeden yer ayrılır, kaydırma konumu geri yüklenebilir. */
+  readonly passageImageWidth = computed(() => {
+    const plan = this.passagePlan();
+    const size = this._questionRegion().passage;
+    return plan && size?.width ? Math.round(Math.min(plan.boxWidth, size.width)) : null;
+  });
+  readonly passageAspectRatio = computed(() => {
+    const size = this._questionRegion().passage;
+    return this.passagePlan() && size?.width && size?.height ? `auto ${size.width} / ${size.height}` : null;
+  });
   readonly zoomImages = signal<{ src: string; alt: string; width: number | null }[]>([]);
 
   readonly containerClass = computed(() => {
@@ -150,7 +172,11 @@ export class QuestionCanvasViewComponentv5 {
     this.questionImageSource.set(questionCanvasImageUrl(region));
     const passageUrl = region?.passage?.imageUrl ?? null;
     this.passageImageSource.set(passageUrl && passageUrl.trim().length > 0 ? passageUrl : null);
-    queueMicrotask(() => this.updateVisualScale());
+    this.enterPassage(region.passage?.id);
+    queueMicrotask(() => {
+      this.updateVisualScale();
+      this.restorePassageScroll();
+    });
   }
   /**
    * issue #365 (S3): soru/şık/paragraf görseli yüklenemezse (imza süresi doldu) taze imzalı URL'yi bulan fonksiyon.
@@ -306,8 +332,7 @@ export class QuestionCanvasViewComponentv5 {
     const questionHeight = region.sanitizedHeight || region.height;
     if (!region.width || !questionHeight) {
       this.plan.set(null);
-      this.passageArrangement.set(null);
-      this.passageMaxHeight.set(null);
+      this.passagePlan.set(null);
       this.visualScale.set(1);
       this.questionImageWidth.set(null);
       return;
@@ -318,17 +343,19 @@ export class QuestionCanvasViewComponentv5 {
 
     const overflowY = getComputedStyle(hostEl).overflowY;
     const bounded = (overflowY === 'auto' || overflowY === 'scroll') && hostEl.clientHeight > 0;
-    const compact = hostEl.clientWidth < COMPACT_WIDTH_PX;
-    const availableHeight = bounded ? hostEl.clientHeight - (compact ? ZOOM_ROW_HEIGHT_PX : 0) : null;
-    const passageBeside = this.isPassageVisible() && hostEl.clientWidth >= PASSAGE_SIDE_MIN_WIDTH_PX;
-    const passageWidth = passageBeside
-      ? Math.min(hostEl.clientWidth * PASSAGE_SIDE_RATIO, PASSAGE_SIDE_MAX_WIDTH_PX) + ROOT_GAP_PX
-      : 0;
+    const hostWidth = hostEl.clientWidth;
+    const compact = hostWidth < COMPACT_WIDTH_PX;
+    const hostHeight = bounded ? hostEl.clientHeight : null;
+    const passagePlan = this.isPassageVisible() ? this.planPassage(hostWidth, hostHeight) : null;
+    let availableHeight = passagePlan ? passagePlan.questionHeight : hostHeight;
+    if (availableHeight !== null) {
+      availableHeight -= (compact ? ZOOM_ROW_HEIGHT_PX : 0) + (passagePlan?.arrangement === 'tabs' ? PANE_TABS_HEIGHT_PX : 0);
+    }
 
     const plan = planQuestionLayout({
       question: { width: region.width, height: questionHeight },
       answers: (region.answers ?? []).map((answer) => ({ width: answer.width || 0, height: answer.height || 0 })),
-      width: hostEl.clientWidth - passageWidth,
+      width: passagePlan ? passagePlan.questionWidth : hostWidth,
       height: availableHeight,
       minScale: Math.min(1, MIN_FIT_QUESTION_WIDTH_PX / region.width),
     });
@@ -338,8 +365,50 @@ export class QuestionCanvasViewComponentv5 {
     // Soru genişliğe uyar; kısa şıklar çok geniş sorunun ölçeğiyle okunmaz hâle gelmesin (kart genişliği yine sınırlar).
     this.visualScale.set(clampVisualScale(plan.scale));
     this.questionImageWidth.set(Math.round(region.width * plan.scale));
-    this.passageMaxHeight.set(passageBeside ? hostEl.clientHeight : null);
-    this.passageArrangement.set(passageBeside ? 'beside' : 'stacked');
+    this.passagePlan.set(passagePlan);
+  }
+
+  private planPassage(width: number, height: number | null): PassageLayoutPlan {
+    const passage = this._questionRegion().passage;
+    return planPassageLayout({
+      passage: passage?.width && passage?.height ? { width: passage.width, height: passage.height } : null,
+      width,
+      height,
+    });
+  }
+
+  /** İlk kez görülen parçada dar ekran metinle açılır; aynı grubun sonraki sorularında soruyla. */
+  private enterPassage(passageId: number | undefined): void {
+    if (!passageId) {
+      this.activePane.set('question');
+      return;
+    }
+    const state = passageViewState.get(passageId);
+    this.activePane.set(state?.seen ? 'question' : 'passage');
+    passageViewState.set(passageId, { scrollTop: state?.scrollTop ?? 0, seen: true });
+  }
+
+  selectPane(pane: 'passage' | 'question'): void {
+    this.activePane.set(pane);
+    // display:none kaydırma konumunu sıfırlar; görünür olduktan sonra geri yüklenir.
+    setTimeout(() => this.restorePassageScroll());
+  }
+
+  rememberPassageScroll(event: Event): void {
+    const passageId = this._questionRegion().passage?.id;
+    const state = passageId ? passageViewState.get(passageId) : undefined;
+    if (state) {
+      state.scrollTop = (event.target as HTMLElement).scrollTop;
+    }
+  }
+
+  restorePassageScroll(): void {
+    const scroller = this.passageScrollerRef?.nativeElement;
+    const passageId = this._questionRegion().passage?.id;
+    const state = passageId ? passageViewState.get(passageId) : undefined;
+    if (scroller && state) {
+      scroller.scrollTop = state.scrollTop;
+    }
   }
 
   private isPassageVisible(): boolean {

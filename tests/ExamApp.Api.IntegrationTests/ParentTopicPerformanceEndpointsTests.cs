@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using ExamApp.Api.Data;
 using ExamApp.Api.IntegrationTests.Infrastructure;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Services.TopicPerformance;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.IntegrationTests;
@@ -16,7 +17,7 @@ public class ParentTopicPerformanceEndpointsTests(IntegrationApiFactory factory)
     private const int ChildUser = 47303;
     private const int OtherChildUser = 47304;
 
-    private static string Url(int studentId, string query = "?minQuestions=1") => $"/api/parent/children/{studentId}/topic-performance{query}";
+    private static string Url(int studentId, string query = "?minQuestions=5") => $"/api/parent/children/{studentId}/topic-performance{query}";
 
     private Task<HttpClient> ParentAsync(int userId) => ClientAsAsync(userId, "Parent", $"kc-{userId}", "Parent");
 
@@ -48,8 +49,12 @@ public class ParentTopicPerformanceEndpointsTests(IntegrationApiFactory factory)
                 await db.SaveChangesAsync();
             }
 
-            await AnswerAsync(child, angles);
-            await AnswerAsync(other, fractions);
+            // #767: veli eşiği 5 cevap.
+            for (var i = 0; i < TopicPerformanceQuery.ParentMinQuestions; i++)
+            {
+                await AnswerAsync(child, angles);
+                await AnswerAsync(other, fractions);
+            }
             return (child.Id, other.Id);
         });
         await SeedParentLinkAsync(ParentUser, ChildUser, active: true);
@@ -68,7 +73,7 @@ public class ParentTopicPerformanceEndpointsTests(IntegrationApiFactory factory)
         response.Headers.CacheControl!.NoStore.ShouldBeTrue();
         var result = await response.Content.ReadFromJsonAsync<TopicPerformanceDto>(Json);
         var item = result!.Items.ShouldHaveSingleItem();
-        (item.TopicName, item.Correct).ShouldBe(("Açılar", 1));
+        (item.TopicName, item.Correct).ShouldBe(("Açılar", TopicPerformanceQuery.ParentMinQuestions));
 
         await WithDbAsync(async db =>
         {
@@ -102,6 +107,8 @@ public class ParentTopicPerformanceEndpointsTests(IntegrationApiFactory factory)
     [InlineData("?days=91", "InvalidDays")]
     [InlineData("?groupBy=grade", "InvalidGroupBy")]
     [InlineData("?minQuestions=0", "InvalidMinQuestions")]
+    [InlineData("?minQuestions=1", "InvalidMinQuestions")] // #767: veli eşiği
+    [InlineData("?minQuestions=4", "InvalidMinQuestions")]
     public async Task Parameters_follow_the_same_rules_as_the_student_endpoint(string query, string errorCode)
     {
         var (child, _) = await SeedAsync();

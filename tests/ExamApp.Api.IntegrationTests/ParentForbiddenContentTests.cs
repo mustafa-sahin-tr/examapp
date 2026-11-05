@@ -150,7 +150,8 @@ public class ParentForbiddenContentTests(IntegrationApiFactory factory) : Integr
             await db.WorksheetAssignments.Where(a => assignmentIds.Contains(a.Id))
                 .ExecuteUpdateAsync(set => set.SetProperty(a => a.CreateUserId, TeacherUser));
 
-            for (var i = 0; i < 3; i++)
+            // #767: konu performansında veli eşiği 5; konu satırı görünsün diye 5 cevap.
+            for (var i = 0; i < 5; i++)
             {
                 var question = new Question
                 {

@@ -1,0 +1,125 @@
+@if (!hidden()) {
+  <ng-container *transloco="let t; prefix: 'target-goals'">
+    <mat-card appearance="outlined" class="tg__card">
+      <mat-card-header>
+        <mat-card-title class="tg__title">{{ t(readOnly() ? 'child.title' : 'self.title') }}</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        @if (loading()) {
+          <p class="tg__state"><mat-spinner diameter="24" /> {{ t('loading') }}</p>
+        } @else if (failed()) {
+          <p class="tg__state" role="alert">
+            {{ t('loadFailed') }}
+            <button mat-button type="button" (click)="reload()">{{ t('retry') }}</button>
+          </p>
+        } @else {
+          @if (goal()?.target; as target) {
+            <div class="tg__target">
+              <strong class="tg__name">{{ target.name }}</strong>
+              <span class="tg__meta">{{ place(target) }}</span>
+              <span class="tg__meta">{{ t('minimumScore', { year: target.year, score: number(target.minimumScore, 2) }) }}@if (target.percentile !== null) { · {{ t('percentile', { value: number(target.percentile, 2) }) }} }</span>
+              @if (target.sourceReference) {
+                <span class="tg__meta">{{ t('source', { source: target.sourceReference }) }}</span>
+              }
+            </div>
+
+            @if (gap(); as result) {
+              <div class="tg__gap" data-testid="target-gap">
+                @switch (result.status) {
+                  @case ('needsExam') {
+                    <p class="tg__state">{{ t('needsExam') }}</p>
+                  }
+                  @case ('unavailable') {
+                    <p class="tg__state">{{ t('unavailable') }}</p>
+                  }
+                  @case ('notQualified') {
+                    <p class="tg__state">{{ t('notQualified') }}</p>
+                  }
+                  @case ('reached') {
+                    <p class="tg__estimate">{{ t('estimate', { value: result.estimate.value, low: result.estimate.low, high: result.estimate.high }) }}</p>
+                    <p class="tg__state">{{ t('reached') }}</p>
+                  }
+                  @case ('outOfReach') {
+                    <p class="tg__estimate">{{ t('estimate', { value: result.estimate.value, low: result.estimate.low, high: result.estimate.high }) }}</p>
+                    <p class="tg__state">{{ t('outOfReach', { points: result.pointsShort }) }}</p>
+                  }
+                  @case ('gap') {
+                    <p class="tg__estimate">{{ t('estimate', { value: result.estimate.value, low: result.estimate.low, high: result.estimate.high }) }}</p>
+                    <p class="tg__summary">{{ t('gapSummary', { points: result.pointsShort, nets: number(result.totalNets) }) }}</p>
+                    <ul class="tg__subjects">
+                      @for (subject of result.subjects; track subject.testId) {
+                        <li class="tg__subject">
+                          <span>{{ subject.label }}</span>
+                          <span class="tg__nets">{{ t('subjectGap', { current: number(subject.currentNet), add: number(subject.addNets) }) }}</span>
+                        </li>
+                      }
+                    </ul>
+                    <p class="tg__note">{{ t('splitNote') }}</p>
+                  }
+                }
+                @if (result.status === 'reached' || result.status === 'outOfReach' || result.status === 'gap') {
+                  <p class="tg__note">{{ t('estimateNote') }}</p>
+                  @if (target.scoreType !== 'lgs') {
+                    <p class="tg__note">{{ t('obpNote') }}</p>
+                  }
+                  @if (result.modelYear !== target.year) {
+                    <p class="tg__note">{{ t('yearNote', { model: result.modelYear, target: target.year }) }}</p>
+                  }
+                }
+              </div>
+            }
+          } @else {
+            <p class="tg__state">{{ t(readOnly() ? 'child.empty' : 'self.empty') }}</p>
+          }
+
+          @if (!readOnly()) {
+            @if (saveFailed()) {
+              <p class="tg__state" role="alert">{{ t('saveFailed') }}</p>
+            }
+            @if (picking()) {
+              <div class="tg__picker">
+                <mat-button-toggle-group [value]="exam()" (change)="changeExam($event.value)" [attr.aria-label]="t('examLabel')" hideSingleSelectionIndicator>
+                  <mat-button-toggle value="lgs">{{ t('exams.lgs') }}</mat-button-toggle>
+                  <mat-button-toggle value="yks">{{ t('exams.yks') }}</mat-button-toggle>
+                </mat-button-toggle-group>
+                <mat-form-field appearance="outline" class="tg__search">
+                  <mat-label>{{ t(exam() === 'lgs' ? 'searchLgs' : 'searchYks') }}</mat-label>
+                  <input matInput maxlength="100" autocomplete="off" [ngModel]="term()" (ngModelChange)="changeTerm($event)" />
+                </mat-form-field>
+                @if (searchFailed()) {
+                  <p class="tg__state" role="alert">{{ t('searchFailed') }}</p>
+                } @else if (!searching() && options().length === 0) {
+                  <p class="tg__state">{{ t('noResults') }}</p>
+                }
+                <ul class="tg__options">
+                  @for (option of options(); track option.id) {
+                    <li>
+                      <button mat-button type="button" class="tg__option" [disabled]="saving()" (click)="choose(option)">
+                        <span class="tg__option-text">
+                          <strong>{{ option.name }}</strong>
+                          <span class="tg__meta">{{ place(option) }} · {{ t('minimumScore', { year: option.year, score: number(option.minimumScore, 2) }) }}</span>
+                        </span>
+                      </button>
+                    </li>
+                  }
+                </ul>
+                <div class="tg__actions">
+                  <button mat-button type="button" (click)="closePicker()">{{ t('cancel') }}</button>
+                </div>
+              </div>
+            } @else {
+              <div class="tg__actions">
+                @if (goal()?.target) {
+                  <button mat-button type="button" [disabled]="saving()" (click)="remove()">{{ t('remove') }}</button>
+                  <button mat-stroked-button type="button" (click)="openPicker()">{{ t('change') }}</button>
+                } @else {
+                  <button mat-flat-button type="button" (click)="openPicker()">{{ t('choose') }}</button>
+                }
+              </div>
+            }
+          }
+        }
+      </mat-card-content>
+    </mat-card>
+  </ng-container>
+}

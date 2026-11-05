@@ -29,6 +29,7 @@ import { QuestionGenerationComponent } from './pages/question-generation/questio
 import { MockExamsComponent } from './pages/mock-exams/mock-exams.component';
 import { MockExamBuilderComponent } from './pages/mock-exams/mock-exam-builder.component';
 import { ExamTemplatesComponent } from './pages/mock-exams/exam-templates.component';
+import { TargetProgramsComponent } from './pages/mock-exams/target-programs.component';
 import { MockExamResultComponent, StudentMockExamsComponent } from './pages/mock-exams/student-mock-exams.component';
 import { StudyPagesComponent } from './pages/study-pages/study-pages.component';
 import { StudyPageEditorComponent } from './pages/study-pages/study-page-editor.component';
@@ -190,6 +191,7 @@ export const routes: Routes = [
       },
       { path: 'mock-exams/:id', component: MockExamBuilderComponent, canActivate: [authGuard, ...authoringGuards] },
       { path: 'exam-templates', component: ExamTemplatesComponent, canActivate: [authGuard, adminGuard] },
+      { path: 'target-programs', component: TargetProgramsComponent, canActivate: [authGuard, adminGuard] },
       { path: 'my-mock-exams', component: StudentMockExamsComponent, canActivate: [authGuard, roleGuard('Student')] },
       { path: 'my-mock-exams/:id/result', component: MockExamResultComponent, canActivate: [authGuard, roleGuard('Student')] },
       {

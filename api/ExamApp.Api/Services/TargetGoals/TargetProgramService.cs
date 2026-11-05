@@ -258,7 +258,8 @@ public sealed partial class TargetProgramService(AppDbContext db) : ITargetProgr
         var institution = Clean(values.GetValueOrDefault(TargetProgramCsv.Institution));
         var city = Clean(values.GetValueOrDefault(TargetProgramCsv.City));
         var district = Clean(values.GetValueOrDefault(TargetProgramCsv.District));
-        var rawType = Clean(values.GetValueOrDefault(TargetProgramCsv.ScoreType)).ToLowerInvariant();
+        // Resmî dosyalar "SÖZ" yazar: kimlik "soz".
+        var rawType = TaxonomySearchService.Normalize(Clean(values.GetValueOrDefault(TargetProgramCsv.ScoreType)));
         var scoreType = exam == TargetScoreTypes.LgsExam && rawType.Length == 0 ? TargetScoreTypes.Lgs : rawType;
         if (!TargetScoreTypes.OfExam(exam).Contains(scoreType))
             return "ScoreTypeInvalid";

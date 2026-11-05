@@ -182,7 +182,8 @@ public class ParentDashboardController : BaseController
 
     /// <summary>
     /// Issue #498: çocuğun konu performansı, öğrencinin kendi ucuyla aynı parametre ve sayılar. Yalnız toplamlar: soru, şık,
-    /// cevap yok; süren test okunmaz. Başka velinin ya da Active olmayan bağlantının çocuğu 404.
+    /// cevap yok; süren test okunmaz. Başka velinin ya da Active olmayan bağlantının çocuğu 404. #767: <c>minQuestions</c> en az
+    /// <see cref="TopicPerformanceQuery.ParentMinQuestions"/>; daha küçüğü 400 <c>InvalidMinQuestions</c>.
     /// </summary>
     [HttpGet("{studentId:int}/topic-performance")]
     [EnableRateLimiting(ParentLinkRateLimiting.ChildActivityPolicy)]
@@ -194,8 +195,9 @@ public class ParentDashboardController : BaseController
         [FromQuery] int minQuestions = TopicPerformanceQuery.DefaultMinQuestions,
         CancellationToken ct = default)
     {
-        // Parametre doğrulaması veri okumaz (kapıdan önce yapılması bir şey sızdırmaz).
-        if (!TopicPerformanceQuery.TryParse(days, groupBy, minQuestions, out var grouping, out var problem))
+        // Parametre doğrulaması veri okumaz (kapıdan önce yapılması bir şey sızdırmaz). #767: veli 5'in altını isteyemez.
+        if (!TopicPerformanceQuery.TryParse(days, groupBy, minQuestions, out var grouping, out var problem,
+                TopicPerformanceQuery.ParentMinQuestions))
             return BadRequest(new { message = _localizer[problem!.MessageKey].Value, errorCode = problem.ErrorCode });
 
         var user = await GetAuthenticatedUserAsync(ct);

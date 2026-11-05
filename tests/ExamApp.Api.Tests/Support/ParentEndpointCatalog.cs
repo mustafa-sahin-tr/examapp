@@ -55,8 +55,8 @@ public static class ParentEndpointCatalog
             (s, t) => $"/api/parent/children/{s}/test-results/{t}"),
         new($"{nameof(ParentDashboardController)}.{nameof(ParentDashboardController.GetChildTopicPerformance)}",
             ParentEndpointScope.Child, ParentAccessEndpoints.ChildTopicPerformance,
-            // minQuestions=1: içerik taraması boş listeyle geçmesin; tohum verideki birkaç cevap da görünsün.
-            (s, _) => $"/api/parent/children/{s}/topic-performance?minQuestions=1"),
+            // #767: veli için en küçük eşik (5). Tohum veri bir konuda 5 cevap üretir; içerik taraması boş listeyle geçmesin.
+            (s, _) => $"/api/parent/children/{s}/topic-performance?minQuestions=5"),
         new($"{nameof(ParentLearningOutcomeMasteryController)}.{nameof(ParentLearningOutcomeMasteryController.Get)}",
             ParentEndpointScope.Child, ParentAccessEndpoints.ChildLearningOutcomeMastery,
             (s, _) => $"/api/parent/children/{s}/learning-outcome-mastery"),

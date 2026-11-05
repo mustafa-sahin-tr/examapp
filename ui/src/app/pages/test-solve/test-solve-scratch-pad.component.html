@@ -1,0 +1,47 @@
+<section class="scratch" *transloco="let t; prefix: 'test-solve.scratch'" [attr.aria-label]="t('title')">
+  <header class="scratch__head">
+    <mat-button-toggle-group class="scratch__mode" [value]="mode()" [hideSingleSelectionIndicator]="true"
+      [attr.aria-label]="t('modeLabel')" (change)="mode.set($event.value)">
+      <mat-button-toggle value="draw">{{ t('draw') }}</mat-button-toggle>
+      <mat-button-toggle value="write">{{ t('write') }}</mat-button-toggle>
+    </mat-button-toggle-group>
+    @if (mode() === 'draw') {
+      <button mat-icon-button type="button" [attr.aria-label]="t('undo')" [disabled]="!canUndo()" (click)="undo()">
+        <mat-icon>undo</mat-icon>
+      </button>
+      <button mat-icon-button type="button" [attr.aria-label]="t('clear')" [disabled]="!note().strokes.length"
+        (click)="clearDrawing()">
+        <mat-icon>delete_outline</mat-icon>
+      </button>
+    }
+    <button mat-icon-button type="button" class="scratch__close" [attr.aria-label]="t('close')" (click)="closed.emit()">
+      <mat-icon>close</mat-icon>
+    </button>
+  </header>
+
+  @if (mode() === 'draw') {
+    <svg #surface class="scratch__surface" role="img" [attr.aria-label]="t('drawingAria')"
+      [attr.viewBox]="'0 0 ' + viewWidth + ' ' + viewHeight()" preserveAspectRatio="xMinYMin meet"
+      (pointerdown)="startStroke($event)" (pointermove)="extendStroke($event)" (pointerup)="endStroke($event)"
+      (pointercancel)="endStroke($event)">
+      @for (stroke of note().strokes; track $index) {
+        <path class="scratch__stroke" [attr.d]="stroke" />
+      }
+      @if (currentStroke(); as stroke) {
+        <path class="scratch__stroke" [attr.d]="stroke" />
+      }
+    </svg>
+  } @else {
+    <mat-form-field class="scratch__text" appearance="outline" subscriptSizing="dynamic">
+      <mat-label>{{ t('writeLabel') }}</mat-label>
+      <textarea matInput [attr.maxlength]="textMaxLength" [value]="note().text"
+        (input)="changeText($any($event.target).value)"></textarea>
+    </mat-form-field>
+  }
+
+  @if (saveFailed()) {
+    <p class="scratch__notice scratch__notice--error" role="alert">{{ t('saveError') }}</p>
+  } @else {
+    <p class="scratch__notice">{{ t('hint') }}</p>
+  }
+</section>

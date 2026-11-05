@@ -136,6 +136,12 @@
       </div>
 
       <!-- Tek birleşik dock: tüm genişliklerde ekranın altına yapışık sabit bar -->
+      <div class="solve-bottom">
+      <!-- Issue #782: telefon ve tablette karalama alanı dock'un üstünde; soru kaymaya devam eder. -->
+      @if (scratchPadOpen() && usesMapSheet() && !fullscreenOpen() && activeQuestion) {
+      <app-test-solve-scratch-pad class="solve-bottom__scratch" [instanceId]="testInstance.id"
+        [questionId]="activeQuestion.question.id" (closed)="scratchPadOpen.set(false)" />
+      }
       <nav class="solve-dock" [attr.aria-label]="t('dock.navigation')">
         <button mat-button class="solve-dock__nav" [matTooltip]="t('dock.previous')"
           [attr.aria-label]="t('question.previous')" (click)="prevQuestion()" [disabled]="!canGoPrev() || questionLoading()">
@@ -146,16 +152,24 @@
         </button>
 
         <div class="solve-dock__tools">
+          <button mat-stroked-button class="solve-dock__tool" [class.is-active]="scratchPadOpen()"
+            (click)="scratchPadOpen.set(!scratchPadOpen())" [matTooltip]="t('scratch.title')"
+            [attr.aria-label]="t('scratch.title')" [attr.aria-expanded]="scratchPadOpen()">
+            <mat-icon>draw</mat-icon>
+            <span class="solve-dock__label">{{ t('scratch.open') }}</span>
+          </button>
+
+          <!-- Dar ekranda otomatik geçiş harita sayfasında (#782: karalamaya yer açar). -->
+          @if (!usesMapSheet()) {
           <button mat-stroked-button class="solve-dock__tool" [class.is-active]="autoNextQuestion()"
             (click)="toggleAutoNextQuestion()"
             [matTooltip]="autoNextQuestion() ? t('dock.autoNextDisable') : t('dock.autoNextEnable')"
             [attr.aria-label]="autoNextQuestion() ? t('dock.autoNextDisable') : t('dock.autoNextEnable')"
             [attr.aria-pressed]="autoNextQuestion()">
             <mat-icon>{{ autoNextQuestion() ? 'toggle_on' : 'toggle_off' }}</mat-icon>
-            <span class="solve-dock__label">
-              {{ usesMapSheet() ? t('dock.autoNextShort') : autoNextQuestion() ? t('dock.autoNextOn') : t('dock.autoNextOff') }}
-            </span>
+            <span class="solve-dock__label">{{ autoNextQuestion() ? t('dock.autoNextOn') : t('dock.autoNextOff') }}</span>
           </button>
+          }
 
           @if (usesMapSheet()) {
           <button mat-stroked-button class="solve-dock__tool" [class.is-active]="mobileMapSheetOpen()"
@@ -201,12 +215,20 @@
         </button>
         }
       </nav>
+      </div>
     </section>
 
     <!-- Masaüstü: insight paneli her zaman görünür. Telefon ve tablette DOM'da yok; bottom-sheet ile açılır. -->
     @if (!usesMapSheet()) {
-    <aside class="insight-panel" #toolsPanel [attr.aria-label]="t('insight.panelAria')">
+    <aside class="insight-panel" [class.insight-panel--scratch]="scratchPadOpen() && activeQuestion" #toolsPanel
+      [attr.aria-label]="t('insight.panelAria')">
+      @if (scratchPadOpen() && activeQuestion) {
+      <!-- Issue #782: soru yerinden oynamasın diye karalama alanı paneli kaplar. -->
+      <app-test-solve-scratch-pad class="insight-panel__scratch" [instanceId]="testInstance.id"
+        [questionId]="activeQuestion.question.id" (closed)="scratchPadOpen.set(false)" />
+      } @else {
       <ng-container *ngTemplateOutlet="insightContent"></ng-container>
+      }
     </aside>
     }
   </div>
@@ -279,6 +301,13 @@
       <span>{{ t('insight.toolsTitle') }}</span>
     </div>
     <div class="tool-list">
+      @if (usesMapSheet()) {
+      <button mat-stroked-button type="button" class="tool-list__item" [class.is-active]="autoNextQuestion()"
+        [attr.aria-pressed]="autoNextQuestion()" (click)="toggleAutoNextQuestion()">
+        <mat-icon>{{ autoNextQuestion() ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+        {{ autoNextQuestion() ? t('dock.autoNextOn') : t('dock.autoNextOff') }}
+      </button>
+      }
       <button mat-stroked-button type="button" class="tool-list__item" (click)="toggleBookmark()"
         [class.is-active]="isQuestionBookmarked(currentIndex())"
         [attr.aria-pressed]="isQuestionBookmarked(currentIndex())">

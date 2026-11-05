@@ -33,6 +33,7 @@ import { AuthService } from '../../services/auth.service';
 import { QuestionReportService } from '../../services/question-report.service';
 import { QuestionReportCreated } from '../../models/question-report';
 import { QuestionReportDialogComponent, QuestionReportDialogData } from './question-report-dialog.component';
+import { TestSolveScratchPadComponent } from './test-solve-scratch-pad.component';
 import { QuestionLiteViewComponent } from '../question-lite-view/question-lite-view.component';
 import { CountdownComponent } from '../../shared/components/countdown/countdown.component';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
@@ -92,6 +93,7 @@ import { StorageImageRetryDirective } from '../../shared/directives/storage-imag
   styleUrls: ['test-solve-canvas-v3.component.scss'],
   imports: [
     CommonModule,
+    TestSolveScratchPadComponent,
     MatButtonModule,
     MatIconModule,
     MatTooltipModule,
@@ -133,6 +135,8 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
   private readonly questionReports = inject(QuestionReportService);
   /** Issue #781: sunucu bildirimi yalnız öğrenciye açar; önizleyen öğretmen düğmeyi görmez. */
   protected readonly canReportQuestion = inject(AuthService).hasRole('Student');
+  /** Issue #782. */
+  protected readonly scratchPadOpen = signal(false);
   private readonly overlay = inject(Overlay);
   private readonly viewContainerRef = inject(ViewContainerRef);
   @ViewChild('mapSheetContent') private mapSheetContent?: TemplateRef<unknown>;

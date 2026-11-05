@@ -1,0 +1,78 @@
+:host {
+  display: block;
+  min-height: 0;
+}
+
+.scratch {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  min-height: 0;
+  color: var(--solve-panel-ink);
+}
+
+.scratch__head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.scratch__mode {
+  --mat-button-toggle-label-text-color: var(--solve-panel-ink);
+  --mat-button-toggle-selected-state-background-color: var(--primaryColor);
+  --mat-button-toggle-selected-state-text-color: var(--whiteColor);
+  margin-inline-end: auto;
+}
+
+.scratch__close {
+  margin-inline-start: 4px;
+}
+
+.scratch__surface {
+  flex: 1 1 auto;
+  display: block;
+  width: 100%;
+  min-height: 0;
+  border: 1px solid var(--solve-panel-border);
+  border-radius: 12px;
+  background: var(--solve-panel);
+  color: var(--solve-panel-ink);
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+.scratch__stroke {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.scratch__text {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+
+  textarea {
+    min-height: 96px;
+    height: 100%;
+    resize: none;
+  }
+}
+
+.scratch__notice {
+  flex: 0 0 auto;
+  margin: 0;
+  color: var(--solve-panel-muted);
+  font-size: 0.8rem;
+}
+
+.scratch__notice--error {
+  color: var(--ms-danger-border);
+  font-weight: 600;
+}

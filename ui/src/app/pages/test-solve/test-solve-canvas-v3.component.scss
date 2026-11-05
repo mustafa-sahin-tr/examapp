@@ -607,10 +607,23 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
 // (issue #74). position:fixed viewport'a göre konumlanıp masaüstünde insight-panel'in üstüne
 // biniyordu; akışta + sticky olduğu için containing block artık .main-stage'dir.
 // (Not: absolute, scroll container içinde içerikle birlikte kayar; bu yüzden sticky kullanılır.)
-.solve-dock {
+.solve-bottom {
   position: sticky;
   bottom: 0;
   z-index: 12;
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+// Issue #782: soru görünür kalsın diye ekranın yarısını geçmez.
+.solve-bottom__scratch {
+  height: 42dvh;
+  padding: var(--ms-layout-spacing-small);
+  border-block-start: 1px solid var(--solve-panel-border);
+  background: var(--solve-panel);
+}
+
+.solve-dock {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -719,6 +732,20 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
 // ---------------------------------------------------------------------------
 // Insight paneli (masaüstü) — içerik şablonu mobil sheet ile paylaşılır
 // ---------------------------------------------------------------------------
+
+// Çalışma için panel genişler; soru sütunu masaüstünde yine genişliğini korur.
+.solve-v3__body:has(.insight-panel--scratch) {
+  grid-template-columns: minmax(0, 1fr) 360px;
+}
+
+.insight-panel--scratch {
+  height: calc(100% - var(--ms-layout-spacing-medium));
+  overflow: hidden;
+}
+
+.insight-panel__scratch {
+  flex: 1 1 auto;
+}
 
 .insight-panel {
   position: sticky;
@@ -1189,6 +1216,33 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
     left: var(--ms-layout-spacing-small);
     right: var(--ms-layout-spacing-small);
     bottom: calc(var(--solve-dock-height) + env(safe-area-inset-bottom) + var(--ms-layout-spacing-small));
+  }
+}
+
+// Issue #782: dar telefonda üç araç da görünsün; dock'taki taşma kaydırılınca fark edilmiyor.
+@media (max-width: 420px) {
+  .solve-dock {
+    gap: 4px;
+  }
+
+  .solve-dock .solve-dock__nav {
+    min-width: 54px;
+    padding-inline: 4px;
+  }
+
+  .solve-dock__tool {
+    min-width: 58px;
+    padding-inline: 2px;
+  }
+}
+
+@media (max-width: 350px) {
+  .solve-dock__tool {
+    min-width: 48px;
+  }
+
+  .solve-dock__label {
+    display: none;
   }
 }
 

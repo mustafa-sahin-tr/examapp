@@ -12,6 +12,7 @@ import { Subject } from '../../models/subject';
 import { Topic } from '../../models/topic';
 import { SubTopic } from '../../models/subtopic';
 import { TopicStudyLinkManagerComponent } from '../../shared/components/topic-study-link-manager/topic-study-link-manager.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 /** Çalışma linki bileşenlerinin Transloco scope'u: `public/i18n/study-links/<lang>.json`. */
 const STUDY_LINKS_SCOPE = 'study-links';
@@ -34,6 +35,7 @@ const IDLE: ListState<never> = { items: null, loading: false, failed: false };
   selector: 'app-study-links',
   standalone: true,
   imports: [
+    PageHeaderComponent,
     MatFormFieldModule,
     MatSelectModule,
     MatIconModule,

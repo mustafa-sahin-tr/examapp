@@ -22,6 +22,7 @@ import {
 import { CoachService, coachErrorCode } from '../../services/coach.service';
 import { LocaleService } from '../../services/locale.service';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 /** Sunucunun iş kuralı kodları (`coach.errors`); bilinmeyen kod genel mesaja düşer. */
 const ERROR_KEYS = new Set(['EmptyText', 'TooLong', 'MarkupNotAllowed', 'InvalidWeek', 'TooManyGoals', 'TooManyNotes']);
@@ -47,6 +48,7 @@ export function addDays(isoDate: string, days: number): string {
   selector: 'app-coach-student',
   standalone: true,
   imports: [
+    PageHeaderComponent,
     RouterLink,
     MatButtonModule,
     MatFormFieldModule,

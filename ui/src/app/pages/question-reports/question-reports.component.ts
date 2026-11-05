@@ -8,6 +8,7 @@ import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { QuestionReportItem, QuestionReportListStatus } from '../../models/question-report';
 import { QuestionReportService } from '../../services/question-report.service';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 const QUESTION_REPORTS_SCOPE = 'question-reports';
 const PAGE_SIZE = 20;
@@ -16,7 +17,7 @@ const PAGE_SIZE = 20;
 @Component({
   selector: 'app-question-reports',
   standalone: true,
-  imports: [DatePipe, RouterLink, MatButtonModule, MatButtonToggleModule, MatIconModule, MatPaginatorModule, TranslocoDirective],
+  imports: [PageHeaderComponent, DatePipe, RouterLink, MatButtonModule, MatButtonToggleModule, MatIconModule, MatPaginatorModule, TranslocoDirective],
   providers: [provideTranslocoScope(QUESTION_REPORTS_SCOPE)],
   templateUrl: './question-reports.component.html',
   styleUrl: './question-reports.component.scss',

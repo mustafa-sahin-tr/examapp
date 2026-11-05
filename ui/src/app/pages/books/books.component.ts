@@ -41,6 +41,7 @@ import {
   offsetPreview,
   validateBookDraft,
 } from './book-ranges';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 /** Sayfa metinleri kendi Transloco scope'unda: `public/i18n/books/<lang>.json`. */
 const BOOKS_SCOPE = 'books';
@@ -72,6 +73,7 @@ type TocGroup = FormGroup<{
   selector: 'app-books',
   standalone: true,
   imports: [
+    PageHeaderComponent,
     ReactiveFormsModule,
     MatButtonModule,
     MatFormFieldModule,

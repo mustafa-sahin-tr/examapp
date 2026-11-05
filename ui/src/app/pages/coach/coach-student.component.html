@@ -13,7 +13,7 @@
         </a>
       }
     </div>
-    <h1 class="cs__title" data-test="coach-student-title">{{ studentName() ?? t('title') }}</h1>
+    <app-page-header data-test="coach-student-title" [title]="studentName() ?? t('title')" />
 
     @if (loading()) {
       <div class="cs__state" role="status">

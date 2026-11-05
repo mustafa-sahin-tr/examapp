@@ -13,39 +13,6 @@
   padding: 20px 24px 40px;
 }
 
-.bk-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.bk-title {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-
-  mat-icon {
-    margin-top: 2px;
-    color: var(--primaryColor);
-  }
-
-  h1 {
-    margin: 0 0 4px;
-    font-family: var(--mainFontFamily);
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--heading-on-dark);
-  }
-
-  p {
-    margin: 0;
-    font-size: 14px;
-    color: var(--ms-text-medium);
-  }
-}
-
 .bk-body {
   display: grid;
   grid-template-columns: minmax(220px, 280px) 1fr;

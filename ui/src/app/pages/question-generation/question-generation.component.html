@@ -1,6 +1,5 @@
 <div class="qg-root" *transloco="let t; prefix: 'question-generation'">
-  <h1 class="qg-title">{{ t('title') }}</h1>
-  <p class="qg-subtitle">{{ t('subtitle') }}</p>
+  <app-page-header [title]="t('title')" [description]="t('subtitle')" />
 
   <mat-card class="qg-card">
     <mat-card-content>

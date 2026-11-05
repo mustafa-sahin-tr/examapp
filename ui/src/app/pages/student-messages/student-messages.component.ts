@@ -27,6 +27,7 @@ import {
 } from '../../shared/components/dm-conversation-list/dm-conversation-list.component';
 import { directMessageError } from '../../shared/utils/direct-message-error.util';
 import { provideTranslatedPaginatorIntl } from '../../shared/utils/paginator-intl.util';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 export interface TeacherDmSelection {
   conversationId: number;
@@ -46,6 +47,7 @@ const PREVIEW_LENGTH = 120;
   selector: 'app-student-messages',
   standalone: true,
   imports: [
+    PageHeaderComponent,
     MatButtonModule,
     MatButtonToggleModule,
     MatIconModule,

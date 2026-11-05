@@ -19,6 +19,7 @@ import { GradesService } from '../../services/grades.service';
 import { LearningOutcomeService } from '../../services/learning-outcome.service';
 import { QuestionDraft, QuestionGenerationService } from '../../services/question-generation.service';
 import { SubjectService } from '../../services/subject.service';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 const SCOPE = 'question-generation';
 const SEARCH_DEBOUNCE_MS = 300;
@@ -41,6 +42,7 @@ export interface EditableDraft extends QuestionDraft {
   selector: 'app-question-generation',
   standalone: true,
   imports: [
+    PageHeaderComponent,
     FormsModule,
     MatButtonModule,
     MatCardModule,

@@ -16,5 +16,6 @@ Menü, sayfa başlığı ve metinlerde aynı kavram için aynı kelime kullanıl
 | Yazışma | Mesajlar | Messages | Öğretmenime Yaz |
 | Tekrar kartı (#699) | Bilgi Kartları, deste | Flashcards, deck | Flashcard, Kart destesi |
 | Öğretmenin öğrenci takibi (#700) | Koçluk, haftalık hedef, ders notu | Coaching, weekly goal, lesson note | Koç paneli, Mentorluk |
+| Bağlamı okunmadan çözülemeyen soru (#703) | Bağlam temelli, Beceriler | Context-based, Skills | Maarif'e uygun, Yeni nesil soru |
 
 "Sınav" yalnız gerçek sınavlar için kullanılır: LGS, YKS, okul sınavı.

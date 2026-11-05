@@ -1,0 +1,20 @@
+.ct-hint {
+  margin: 0 0 12px;
+  color: var(--ms-text-weak);
+}
+
+.ct-group {
+  display: flex;
+  flex-direction: column;
+  margin-top: 12px;
+
+  h3 {
+    margin: 0 0 4px;
+    font-size: 1rem;
+  }
+}
+
+.ct-code {
+  margin-left: 4px;
+  color: var(--ms-text-weak);
+}

@@ -17,6 +17,10 @@ export interface QuestionBankFilter {
   hasCorrectAnswer?: boolean | null;
   /** true: en az bir teste bağlı; false: hiçbir teste bağlı değil; null: farketmez. */
   inTest?: boolean | null;
+  /** Issue #703: true: bağlam temelli işaretli; false: işaretsiz; null: farketmez. */
+  contextBased?: boolean | null;
+  /** Issue #703: bu becerilerden en az biriyle etiketli (VEYA). */
+  skillIds?: number[];
   skip?: number;
   take?: number;
 }
@@ -37,6 +41,10 @@ export interface QuestionBankItem {
   classificationSource: ClassificationSource | null;
   isClassified: boolean;
   hasCorrectAnswer: boolean;
+  /** Issue #703: öğretmenin beyanıyla bağlam temelli. */
+  isContextBased?: boolean;
+  /** Issue #703: beceri kodları (ör. `KB2.8`), kılavuz sırasıyla. */
+  skillCodes?: string[];
   testCount: number;
   isOwn: boolean;
   /** issue #472: "Havuzdan ekle" ile teste bağlanabilir mi (kendi sorusu ya da sahibi belli soru). */

@@ -11,6 +11,9 @@ import { DIFFICULTY_RANGES, QuestionBankPanelComponent, } from './question-bank-
 import { QuestionBankPreviewDialogComponent } from './question-bank-preview-dialog.component';
 import { ClassificationSelection, ClassificationSelectorComponent } from '../classification-selector/classification-selector.component';
 import { QuestionBankService } from '../../../services/question-bank.service';
+import { SkillService } from '../../../services/skill.service';
+import { Skill, SkillCategory } from '../../../models/skill';
+import { ContextTagsDialogComponent } from './context-tags-dialog.component';
 import { QuestionBankItem, QuestionBankPage } from '../../../models/question-bank';
 import { ClassificationSource } from '../../../models/draws';
 import { translocoTestingModule } from '../../testing/transloco-testing';
@@ -61,6 +64,11 @@ function makePage(items: QuestionBankItem[], total = items.length): QuestionBank
 
 const EMPTY_PAGE = makePage([]);
 
+const SKILLS: Skill[] = [
+    { id: 8, code: 'KB2.8', category: SkillCategory.Integrated, name: 'Sorgulama' },
+    { id: 102, code: 'KB3.2', category: SkillCategory.HigherOrder, name: 'Problem çözme' },
+];
+
 describe('QuestionBankPanelComponent (issue #471)', () => {
     beforeEach(() => {
         vi.useFakeTimers();
@@ -72,10 +80,12 @@ describe('QuestionBankPanelComponent (issue #471)', () => {
     let component: QuestionBankPanelComponent;
     let search: Mock;
     let dialogOpen: Mock;
+    let afterClosed: Subject<unknown>;
 
     beforeEach(() => {
         search = vi.fn().mockName('search').mockReturnValue(of(EMPTY_PAGE));
-        dialogOpen = vi.fn().mockName('open');
+        afterClosed = new Subject<unknown>();
+        dialogOpen = vi.fn().mockName('open').mockReturnValue({ afterClosed: () => afterClosed });
 
         TestBed.overrideComponent(QuestionBankPanelComponent, {
             remove: { imports: [ClassificationSelectorComponent] },
@@ -87,6 +97,7 @@ describe('QuestionBankPanelComponent (issue #471)', () => {
                 provideNoopAnimations(),
                 { provide: QuestionBankService, useValue: { search } },
                 { provide: MatDialog, useValue: { open: dialogOpen } },
+                { provide: SkillService, useValue: { list: () => of(SKILLS) } },
             ],
         });
         fixture = TestBed.createComponent(QuestionBankPanelComponent);
@@ -161,6 +172,8 @@ describe('QuestionBankPanelComponent (issue #471)', () => {
                 classified: null,
                 hasCorrectAnswer: null,
                 inTest: null,
+                contextBased: null,
+                skillIds: [],
                 skip: 0,
                 take: 24,
             });
@@ -608,6 +621,78 @@ describe('QuestionBankPanelComponent (issue #471)', () => {
             await settle();
 
             expect(fixture.nativeElement.querySelectorAll('mat-checkbox').length).toBe(0);
+            fixture.destroy();
+        });
+    });
+
+    describe('context tags (issue #703)', () => {
+        it('filter_ContextBasedAndSkills_SendsFlagAndIdsAndResetsPage', () => {
+            component.pageIndex.set(2);
+            component.setContextBased('yes');
+            expect(component.pageIndex()).toBe(0);
+            component.pageIndex.set(1);
+            component.setSkillIds([8, 102]);
+            expect(component.pageIndex()).toBe(0);
+            expect(component.filter().contextBased).toBe(true);
+            expect(component.filter().skillIds).toEqual([8, 102]);
+
+            component.setContextBased('no');
+            expect(component.filter().contextBased).toBe(false);
+            component.setContextBased('any');
+            expect(component.filter().contextBased).toBeNull();
+        });
+
+        it('skillGroups_GroupsByCategoryInOrder', () => {
+            expect(component.skillGroups().map((g) => [g.category, g.skills.map((s) => s.code)])).toEqual([
+                [SkillCategory.Integrated, ['KB2.8']],
+                [SkillCategory.HigherOrder, ['KB3.2']],
+            ]);
+        });
+
+        it('template_ContextTags_ShowsFlagAndTranslatedSkillNames', async () => {
+            search.mockReturnValue(of(makePage([makeItem(5, { isContextBased: true, skillCodes: ['KB2.8', 'KB3.2'] }), makeItem(6)])));
+            await settle();
+
+            const tags = fixture.nativeElement.querySelectorAll('[data-testid="context-tags"]') as NodeListOf<HTMLElement>;
+            expect(tags.length).toBe(1);
+            expect(tags[0].textContent).toContain(qbTr.card.contextBased);
+            expect(tags[0].textContent).toContain(qbTr.skills.KB2['8']);
+            expect(tags[0].textContent).toContain(qbTr.skills.KB3['2']);
+            fixture.destroy();
+        });
+
+        it('template_EditButton_OnlyOnOwnQuestions', async () => {
+            search.mockReturnValue(of(makePage([makeItem(5), makeItem(6, { isOwn: false })])));
+            await settle();
+
+            expect(fixture.nativeElement.querySelectorAll('[data-testid="edit-context-tags"]').length).toBe(1);
+            fixture.destroy();
+        });
+
+        it('editContextTags_Saved_UpdatesCardInPlace', async () => {
+            search.mockReturnValue(of(makePage([makeItem(5), makeItem(6)])));
+            await settle();
+
+            component.editContextTags(component.page().items[0]);
+            expect(vi.mocked(dialogOpen).mock.lastCall![0]).toBe(ContextTagsDialogComponent);
+            expect(vi.mocked(dialogOpen).mock.lastCall![1].data).toEqual({ questionId: 5 });
+
+            afterClosed.next({ isContextBased: true, skills: [SKILLS[0]] });
+            expect(component.page().items[0].isContextBased).toBe(true);
+            expect(component.page().items[0].skillCodes).toEqual(['KB2.8']);
+            expect(component.page().items[1].isContextBased).toBeUndefined();
+            fixture.destroy();
+        });
+
+        it('editContextTags_Cancelled_LeavesCardUnchanged', async () => {
+            search.mockReturnValue(of(makePage([makeItem(5)])));
+            await settle();
+            const before = component.page();
+
+            component.editContextTags(before.items[0]);
+            afterClosed.next(undefined);
+
+            expect(component.page()).toBe(before);
             fixture.destroy();
         });
     });

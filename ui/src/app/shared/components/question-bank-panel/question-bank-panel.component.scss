@@ -162,6 +162,16 @@
     background: var(--ms-warning-surface-weak);
     color: var(--ms-text-strong);
   }
+
+  &--context {
+    background: var(--ms-action-background);
+    color: var(--ms-text-inverse);
+  }
+}
+
+.qb-card__edit {
+  display: flex;
+  flex-wrap: wrap;
 }
 
 .qb-card__text {

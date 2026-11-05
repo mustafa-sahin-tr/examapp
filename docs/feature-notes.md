@@ -192,5 +192,9 @@ Kılavuz özeti ve beceri listesinin kaynağı `docs/context-based-questions.md`
 - **Soru Havuzu:** `contextBased` (true/false) ve `skillIds` (VEYA, en çok 30) filtreleri; kartta `isContextBased`, `skillCodes`. Test
   oluşturucu "Havuzdan ekle" ile aynı aramayı kullanır.
 - **Aktarım:** paket `isContextBased` ve beceri kodlarını taşır; hedefte boşsa doldurulur, bilinmeyen kod atlanır.
-- **Ürün dili:** "Maarif Modeli'ne uygun" gibi uygunluk iddiası yazılmaz; etiket öğretmenin beyanıdır.
+- **Ürün dili:** "Maarif Modeli'ne uygun" gibi uygunluk iddiası yazılmaz; etiket öğretmenin beyanıdır. `context-tags-dialog.component.spec.ts`
+  `question-bank` sözlüğünde bu kalıpları yasaklar.
+- **Ekran:** Soru Havuzu filtresinde "Bağlam temelli" ve "Beceriler" (çoklu, kategoriye göre); kartta etiketler ve kendi sorusunda
+  "Beceriler" penceresi (`ContextTagsDialogComponent`, kayıttan sonra kart yerinde güncellenir). Beceri adı koddan çevrilir:
+  `skills.KB2.8` (`skillLabelKey`); yeni seed satırı iki dilde çeviri ister (spec yakalar).
 - **Sonraya:** sınıflandırıcının etiket önermesi (Claude, `SchemaRevision`), toplu kayıtta ve etkinlik editöründe etiket.

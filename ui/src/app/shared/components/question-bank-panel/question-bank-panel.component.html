@@ -60,6 +60,30 @@
           <mat-option value="no">{{ t('filters.inTestNo') }}</mat-option>
         </mat-select>
       </mat-form-field>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>{{ t('filters.contextBased') }}</mat-label>
+        <mat-select data-testid="filter-context-based" [value]="contextBased()" (selectionChange)="setContextBased($event.value)">
+          <mat-option value="any">{{ t('filters.any') }}</mat-option>
+          <mat-option value="yes">{{ t('filters.contextBasedYes') }}</mat-option>
+          <mat-option value="no">{{ t('filters.contextBasedNo') }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      @if (skillGroups().length > 0) {
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>{{ t('filters.skills') }}</mat-label>
+          <mat-select data-testid="filter-skills" multiple [value]="skillIds()" (selectionChange)="setSkillIds($event.value)">
+            @for (group of skillGroups(); track group.category) {
+              <mat-optgroup [label]="t('contextTags.category.' + group.category)">
+                @for (skill of group.skills; track skill.id) {
+                  <mat-option [value]="skill.id">{{ t(skillLabelKey(skill.code)) }}</mat-option>
+                }
+              </mat-optgroup>
+            }
+          </mat-select>
+        </mat-form-field>
+      }
     </div>
   </section>
 
@@ -135,10 +159,25 @@
               <span class="qb-tag">{{ t('card.shared') }}</span>
             }
           </div>
+          @if (item.isContextBased || item.skillCodes?.length) {
+            <div class="qb-card__subtopics" data-testid="context-tags">
+              @if (item.isContextBased) {
+                <span class="qb-tag qb-tag--context">{{ t('card.contextBased') }}</span>
+              }
+              @for (code of item.skillCodes ?? []; track code) {
+                <span class="qb-tag" [matTooltip]="code">{{ t(skillLabelKey(code)) }}</span>
+              }
+            </div>
+          }
           @if (item.isOwn) {
-            <button mat-button type="button" data-testid="edit-learning-outcomes" (click)="editLearningOutcomes(item)">
-              <mat-icon>flag</mat-icon>{{ t('card.learningOutcomes') }}
-            </button>
+            <div class="qb-card__edit">
+              <button mat-button type="button" data-testid="edit-learning-outcomes" (click)="editLearningOutcomes(item)">
+                <mat-icon>flag</mat-icon>{{ t('card.learningOutcomes') }}
+              </button>
+              <button mat-button type="button" data-testid="edit-context-tags" (click)="editContextTags(item)">
+                <mat-icon>psychology</mat-icon>{{ t('card.skills') }}
+              </button>
+            </div>
           }
         </mat-card-content>
 

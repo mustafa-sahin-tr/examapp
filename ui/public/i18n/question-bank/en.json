@@ -22,7 +22,11 @@
     "answerNo": "Not set",
     "inTest": "Linked test",
     "inTestYes": "Yes",
-    "inTestNo": "No"
+    "inTestNo": "No",
+    "contextBased": "Context-based",
+    "contextBasedYes": "Marked",
+    "contextBasedNo": "Not marked",
+    "skills": "Skills"
   },
   "results": {
     "total": "{{count}} questions",
@@ -47,11 +51,56 @@
     "alreadyAdded": "Already in test",
     "cannotLink": "Can't add",
     "cannotLinkTooltip": "An older question without a recorded owner; it can't be added to a test. Copy its test to use it.",
-    "bookTooltip": "Classified from the book's table of contents"
+    "bookTooltip": "Classified from the book's table of contents",
+    "contextBased": "Context-based",
+    "skills": "Skills"
   },
   "preview": {
     "title": "Question #{{id}}",
     "imageAlt": "Image of question {{id}}",
     "close": "Close"
+  },
+  "contextTags": {
+    "dialogTitle": "Skills for question {{id}}",
+    "isContextBased": "Context-based question",
+    "hint": "Mark it if the question can't be solved without reading its context (text, table, image, situation). Tags are your own declaration; they are used to filter the Question Pool.",
+    "selectedCount": "{{count}} / {{max}} skills selected",
+    "category": {
+      "2": "Integrated skills",
+      "3": "Higher-order thinking skills"
+    },
+    "loadError": "Tags could not be loaded.",
+    "saveError": "Tags could not be saved.",
+    "cancel": "Cancel",
+    "save": "Save"
+  },
+  "skills": {
+    "KB2": {
+      "1": "Resolving contradictions",
+      "2": "Observing",
+      "3": "Summarising",
+      "4": "Analysing",
+      "5": "Classifying",
+      "6": "Gathering information",
+      "7": "Comparing",
+      "8": "Inquiring",
+      "9": "Generalising",
+      "10": "Drawing inferences",
+      "11": "Predicting from observation",
+      "12": "Predicting from existing knowledge or data",
+      "13": "Structuring",
+      "14": "Interpreting",
+      "15": "Reflecting",
+      "16": "Reasoning",
+      "17": "Evaluating",
+      "18": "Discussing",
+      "19": "Logical checking",
+      "20": "Synthesising"
+    },
+    "KB3": {
+      "1": "Decision making",
+      "2": "Problem solving",
+      "3": "Critical thinking"
+    }
   }
 }

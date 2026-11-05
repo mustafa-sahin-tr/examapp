@@ -1,5 +1,5 @@
 import { Component, DestroyRef, computed, inject, input, linkedSignal, output, signal, ChangeDetectionStrategy } from '@angular/core';
-import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
@@ -15,11 +15,14 @@ import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { catchError, debounceTime, of, switchMap, tap } from 'rxjs';
 import { ClassificationSource } from '../../../models/draws';
 import { QuestionBankFilter, QuestionBankItem, QuestionBankPage } from '../../../models/question-bank';
+import { QuestionContextTags, SkillCategory, skillLabelKey } from '../../../models/skill';
 import { QuestionBankService } from '../../../services/question-bank.service';
+import { SkillService } from '../../../services/skill.service';
 import {
   ClassificationSelection,
   ClassificationSelectorComponent,
 } from '../classification-selector/classification-selector.component';
+import { ContextTagsDialogComponent } from './context-tags-dialog.component';
 import { LearningOutcomeDialogComponent } from '../learning-outcome-picker/learning-outcome-dialog.component';
 import { QuestionBankPreviewDialogComponent } from './question-bank-preview-dialog.component';
 
@@ -32,6 +35,7 @@ export type QuestionBankStatusFilter = 'any' | 'classified' | 'unclassified';
 export type QuestionBankAnswerFilter = 'any' | 'yes' | 'no';
 export type QuestionBankInTestFilter = 'any' | 'yes' | 'no';
 export type QuestionBankDifficultyFilter = 'any' | 'easy' | 'medium' | 'hard';
+export type QuestionBankContextFilter = 'any' | 'yes' | 'no';
 
 /** Zorluk grupları (1-10 ölçeği, iki uç dahil). */
 export const DIFFICULTY_RANGES: Record<Exclude<QuestionBankDifficultyFilter, 'any'>, [number, number]> = {
@@ -72,6 +76,7 @@ const EMPTY_PAGE: QuestionBankPage = { items: [], total: 0, skip: 0, take: 0 };
 export class QuestionBankPanelComponent {
   private readonly bank = inject(QuestionBankService);
   private readonly dialog = inject(MatDialog);
+  private readonly skillService = inject(SkillService);
   private readonly destroyRef = inject(DestroyRef);
 
   /** Seçim modu (#472): kartlarda onay kutusu, seçim `selectionChange` ile bildirilir. */
@@ -85,6 +90,15 @@ export class QuestionBankPanelComponent {
   readonly pageSizeOptions = [12, 24, 48];
   readonly AI = ClassificationSource.AI;
   readonly BOOK = ClassificationSource.Book;
+  readonly skillLabelKey = skillLabelKey;
+
+  /** Issue #703: beceri filtresinin seçenekleri; liste yüklenemezse filtre gizlenir, arama sürer. */
+  private readonly skills = toSignal(this.skillService.list().pipe(catchError(() => of([]))), { initialValue: [] });
+  readonly skillGroups = computed(() =>
+    [SkillCategory.Integrated, SkillCategory.HigherOrder]
+      .map((category) => ({ category, skills: this.skills().filter((skill) => skill.category === category) }))
+      .filter((group) => group.skills.length > 0),
+  );
 
   readonly scope = signal<QuestionBankScope>('mine');
   // Başlangıç değeri input'tan gelir; kullanıcı seçimi (`onClassificationChange`) üzerine yazar.
@@ -100,6 +114,8 @@ export class QuestionBankPanelComponent {
   readonly answer = signal<QuestionBankAnswerFilter>('any');
   readonly inTest = signal<QuestionBankInTestFilter>('any');
   readonly difficulty = signal<QuestionBankDifficultyFilter>('any');
+  readonly contextBased = signal<QuestionBankContextFilter>('any');
+  readonly skillIds = signal<number[]>([]);
   readonly pageIndex = signal(0);
   readonly pageSize = signal(24);
 
@@ -119,6 +135,7 @@ export class QuestionBankPanelComponent {
     const status = this.status();
     const answer = this.answer();
     const inTest = this.inTest();
+    const contextBased = this.contextBased();
     return {
       scope: this.scope(),
       gradeId: c?.gradeId ?? null,
@@ -131,6 +148,8 @@ export class QuestionBankPanelComponent {
       classified: status === 'any' ? null : status === 'classified',
       hasCorrectAnswer: answer === 'any' ? null : answer === 'yes',
       inTest: inTest === 'any' ? null : inTest === 'yes',
+      contextBased: contextBased === 'any' ? null : contextBased === 'yes',
+      skillIds: this.skillIds(),
       skip: this.pageIndex() * this.pageSize(),
       take: this.pageSize(),
     };
@@ -194,6 +213,16 @@ export class QuestionBankPanelComponent {
     this.pageIndex.set(0);
   }
 
+  setContextBased(value: QuestionBankContextFilter): void {
+    this.contextBased.set(value);
+    this.pageIndex.set(0);
+  }
+
+  setSkillIds(value: number[]): void {
+    this.skillIds.set(value);
+    this.pageIndex.set(0);
+  }
+
   onPage(event: PageEvent): void {
     this.pageSize.set(event.pageSize);
     this.pageIndex.set(event.pageIndex);
@@ -234,6 +263,25 @@ export class QuestionBankPanelComponent {
       maxWidth: '90vw',
       autoFocus: false,
     });
+  }
+
+  /** Issue #703: bağlam temelli bayrağı ve beceriler; kayıttan sonra kart yerinde güncellenir. */
+  editContextTags(item: QuestionBankItem): void {
+    this.dialog
+      .open(ContextTagsDialogComponent, { data: { questionId: item.id }, width: '560px', maxWidth: '90vw', autoFocus: false })
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((tags: QuestionContextTags | undefined) => {
+        if (!tags) return;
+        this.page.update((page) => ({
+          ...page,
+          items: page.items.map((current) =>
+            current.id === item.id
+              ? { ...current, isContextBased: tags.isContextBased, skillCodes: tags.skills.map((skill) => skill.code) }
+              : current,
+          ),
+        }));
+      });
   }
 
   preview(item: QuestionBankItem): void {

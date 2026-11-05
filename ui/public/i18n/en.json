@@ -271,6 +271,12 @@
       "next": "Next",
       "pageInfo": "Page {{current}} / {{total}}"
     },
+    "questionDevicePreview": {
+      "selector": "Preview device",
+      "phone": "Phone",
+      "tablet": "Tablet",
+      "desktop": "Desktop"
+    },
     "questionCanvas": {
       "zoomGroup": "Zoom",
       "zoomOut": "Zoom out (-5%)",

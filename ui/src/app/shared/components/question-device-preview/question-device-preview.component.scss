@@ -1,0 +1,44 @@
+.device-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.device-preview__selector {
+  align-self: flex-start;
+  max-width: 100%;
+
+  mat-icon {
+    width: 18px;
+    height: 18px;
+    margin-inline-end: 4px;
+    font-size: 18px;
+    vertical-align: text-bottom;
+  }
+}
+
+.device-preview__area {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.device-preview__frame {
+  overflow: hidden;
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 12px;
+  box-sizing: content-box;
+}
+
+.device-preview__stage {
+  transform-origin: top left;
+}
+
+// Öğrenci ekranındaki .canvas-stage ile aynı: yükseklik sınırlı, taşan içerik burada kayar.
+.device-preview__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}

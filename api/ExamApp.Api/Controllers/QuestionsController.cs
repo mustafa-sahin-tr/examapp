@@ -324,6 +324,20 @@ public class QuestionsController : BaseController
         return Ok(await _learningOutcomes.GetForQuestionAsync(id, HttpContext.RequestAborted));
     }
 
+    // PUT /api/questions/{id}/layout-choice — issue #778: çözüm ekranı düzeni (yalnız soru sahibi/admin); null = otomatik
+    [HttpPut("{id}/layout-choice")]
+    [Authorize(Roles = AuthoringRoles)]
+    public async Task<IActionResult> SetLayoutChoice(int id, [FromBody] SetQuestionLayoutChoiceDto request)
+    {
+        var user = await GetAuthenticatedUserAsync(HttpContext.RequestAborted);
+        if (await DenyUnlessQuestionOwnerAsync(id, user.Id) is { } denied)
+            return denied;
+
+        return await _questionClassification.SetLayoutChoiceAsync(id, request.LayoutChoice, HttpContext.RequestAborted)
+            ? NoContent()
+            : NotFound();
+    }
+
     // GET /api/questions/{id}/image?variant=v1|v2 — raw question image bytes.
     // Used by BadgeService's classifier (service-to-service) so MinIO access stays in this API.
     [HttpGet("{id}/image")]

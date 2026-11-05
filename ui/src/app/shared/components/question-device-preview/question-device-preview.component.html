@@ -1,0 +1,20 @@
+<div class="device-preview" *transloco="let t; prefix: 'shared.questionDevicePreview'">
+  <mat-button-toggle-group class="device-preview__selector" [value]="device()" [hideSingleSelectionIndicator]="true"
+    [attr.aria-label]="t('selector')" (change)="selectDevice($event.value)">
+    @for (id of deviceIds; track id) {
+      <mat-button-toggle [value]="id">
+        <mat-icon>{{ devices[id].icon }}</mat-icon>
+        {{ t(id) }} ({{ devices[id].viewport }} px)
+      </mat-button-toggle>
+    }
+  </mat-button-toggle-group>
+  <div #frameArea class="device-preview__area">
+    <div class="device-preview__frame" [style.width.px]="stage().width * scale()" [style.height.px]="stage().height * scale()">
+      <div class="device-preview__stage" [style.width.px]="stage().width" [style.height.px]="stage().height"
+        [style.transform]="'scale(' + scale() + ')'">
+        <app-question-canvas-view-v5 class="device-preview__canvas" [questionRegion]="questionRegion" [enableHeightFit]="true"
+          [isPreviewMode]="true" (choiceSelected)="choiceSelected.emit($event)" />
+      </div>
+    </div>
+  </div>
+</div>

@@ -99,9 +99,13 @@ Deneme her oturum için sıradan bir test kaydı açar: süre sınırı, oturum,
 - `Question.SourcePageWidth` kırpılan sayfanın genişliğidir (toplu kayıtta yazılır, eski sorularda null). Gövde metni sayfa genişliğinin %1,8'i sayılır: ölçek metin 12–22 px arasında kalacak şekilde sınırlanır, yer olan aynı sayfa soruları aynı boyutta görünür. Sayfa genişliği yoksa yalnız alt sınır vardır: yükseklik yüzünden soru 400 px genişliğin altına küçültülmez.
 - Dar alanda (600 px altı) soru hep üstte, şıklar en çok iki sütundur. Küçük kalan soru ve şıklar büyütme penceresinde birlikte açılır.
 - Okuma parçası yerleşimi yalnız parçaya ve alana bakar (`planPassageLayout`): en/boy oranı 1,6 ve üstü geniş şekil üstte, uzun metin 840 px'ten geniş alanda solda kendi içinde kayar, daha dar alanda Metin/Soru sekmeleri çıkar. Kaydırma konumu ve "görüldü" bilgisi parça bazında bellekte tutulur; sekme ilk görüşte metinle, aynı grubun sonraki sorularında soruyla açılır.
-- `Question.LayoutChoice` (`top`, `side`, `whole`; null = otomatik) işaretleme önizlemesinden seçilir. `whole` tüm soru görselini gösterir, şıklar A B C D düğmesi olur; bir şıkkın görseli yoksa da bu düzene düşülür. Yalnız test çözme ekranı uygular.
+- `Question.LayoutChoice` (`top`, `side`, `whole`; null = otomatik) önizlemeden seçilir ve `PUT /api/questions/{id}/layout-choice` ile hemen kaydedilir. `whole` tüm soru görselini gösterir, şıklar A B C D düğmesi olur; bir şıkkın görseli yoksa da bu düzene düşülür. Yalnız test çözme ekranı uygular.
 
 ## Test çözme: ekran düzeni (#779)
 
 Seçili şık nötr mavi ve işaretlidir; yeşil yalnız doğru cevap içindir. 1024 px ve altında yan panel yoktur: harita alttan açılır, tüm araçlar yazılıdır. Son soruda "Gözden geçir", "Testi Bitir" ile aynı pencereyi açar; boş ve işaretli soruları listeler, soruya gitmek testi bitirmez. "Çık, sonra devam et" oturumu bitirmez, bekleyen cevapları kaydeder, süreli testte sürenin işlediğini söyler; kayıt başarısızsa çıkmaz.
+
+## Soru önizlemesi: cihaz seçici (#780)
+
+`QuestionDevicePreviewComponent` soruyu öğrenci ekranındaki soru alanının boyutunda çizer (`PREVIEW_DEVICES`: telefon, tablet, masaüstü) ve seçimi `questionPreview.device` anahtarıyla bu tarayıcıda hatırlar. Boyutlar öğrenci ekranından ölçülmüştür; başlık, alt çubuk veya panel değişirse yeniden ölçülür. Alan sütuna sığmazsa düzen bozulmadan görsel olarak küçültülür. Önizlemede doğru şık yeşil görünür, öğrencide görünmez. Önizlemede tek görünüm budur: şıka tıklamak doğru cevabı kaydeder; sınıflandırmayı uygulama ve soruyu çıkarma düğmeleri altındadır. Eski birleşik görünüm ve elle yakınlaştırma önizlemeden kaldırıldı.
 

@@ -280,6 +280,17 @@ public class QuestionsControllerAuthorizationTests : IDisposable
     }
 
     [Fact]
+    public async Task SetLayoutChoice_by_a_non_owner_is_rejected_issue778()
+    {
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+        (await SendAsync(client, Copier, HttpMethod.Put, $"/api/questions/{_legacyQuestion}/layout-choice",
+            new { layoutChoice = "whole" })).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        await using var ctx = _db.NewContext();
+        (await ctx.Questions.SingleAsync(q => q.Id == _legacyQuestion)).LayoutChoice.ShouldBeNull();
+    }
+
+    [Fact]
     public async Task Reorder_by_a_teacher_who_can_view_but_not_own_the_test_is_403_issue685()
     {
         await using (var ctx = _db.NewContext())

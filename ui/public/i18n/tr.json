@@ -271,6 +271,12 @@
       "next": "Sonraki",
       "pageInfo": "Sayfa {{current}} / {{total}}"
     },
+    "questionDevicePreview": {
+      "selector": "Önizleme cihazı",
+      "phone": "Telefon",
+      "tablet": "Tablet",
+      "desktop": "Masaüstü"
+    },
     "questionCanvas": {
       "zoomGroup": "Yakınlaştırma",
       "zoomOut": "Küçült (-5%)",

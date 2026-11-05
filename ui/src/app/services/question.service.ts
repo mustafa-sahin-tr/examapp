@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { QuestionLayoutChoice } from '../models/draws';
 import { Passage, Question } from '../models/question';
 import { LinkBankQuestionsResult } from '../models/question-bank';
 
@@ -45,6 +46,11 @@ export class QuestionService {
       correctAnswerId,
       scale,
     });
+  }
+
+  /** Issue #778: öğretmenin düzen seçimi; null = otomatik. */
+  updateLayoutChoice(questionId: number, layoutChoice: QuestionLayoutChoice | null): Observable<void> {
+    return this.http.put<void>(`${this.apiUrl}/${questionId}/layout-choice`, { layoutChoice });
   }
 
   updateClassification(

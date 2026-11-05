@@ -1,0 +1,47 @@
+{
+  "self": {
+    "title": "My outcome map",
+    "subtitle": "Where you stand on each outcome",
+    "empty": "There is no outcome or topic information for your grade yet."
+  },
+  "child": {
+    "title": "Outcome map",
+    "subtitle": "Where your child stands on each outcome",
+    "empty": "There is no outcome or topic information for your child's grade yet."
+  },
+  "teacher": {
+    "title": "Outcome map",
+    "subtitle": "Where the student stands on each outcome",
+    "empty": "There is no outcome or topic information for this student's grade yet.",
+    "notFound": "You cannot view this student. You can only see students in your own school or students you give private lessons to."
+  },
+  "page": {
+    "title": "Student outcome map",
+    "titleNamed": "{{name}}: outcome map",
+    "back": "Back to dashboard"
+  },
+  "level": {
+    "notStarted": "Not started",
+    "familiar": "Familiar",
+    "proficient": "Proficient",
+    "mastered": "Mastered"
+  },
+  "tentative": "Few answers",
+  "tentativeHint": "Under {{min}} answers: this level is not certain yet.",
+  "stats": "{{accuracy}} correct · last {{count}} answers",
+  "topicGeneral": "{{topic}} (general)",
+  "otherSubject": "Other",
+  "subjectCounts": "{{mastered}} mastered · {{proficient}} proficient · {{familiar}} familiar · {{notStarted}} not started",
+  "rules": "Levels use the last {{recent}} answers. Under {{proficient}}% is familiar, {{proficient}}% or more is proficient, and {{mastered}}% or more with at least {{masteredMin}} answers is mastered. Activities and blank answers do not count.",
+  "unclassified": "{{count}} questions with no topic are not included in this map.",
+  "curriculum": {
+    "label": "Curriculum",
+    "Maarif": "Maarif",
+    "Previous": "Previous"
+  },
+  "practice": "Practise",
+  "practiceLabel": "Practise {{name}}",
+  "loading": "Loading…",
+  "loadError": "Outcome information could not be loaded.",
+  "retry": "Try again"
+}

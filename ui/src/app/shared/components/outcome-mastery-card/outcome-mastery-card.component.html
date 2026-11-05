@@ -1,0 +1,119 @@
+@if (!(notFound() && audience() !== 'teacher')) {
+  <section *transloco="let t; prefix: 'outcome-mastery'" aria-labelledby="outcome-mastery-title" data-test="outcome-mastery">
+    <mat-card appearance="outlined" class="om__card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar aria-hidden="true">map</mat-icon>
+        <mat-card-title id="outcome-mastery-title">{{ t(audience() + '.title') }}</mat-card-title>
+        <mat-card-subtitle>{{ t(audience() + '.subtitle') }}</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        @if (loading()) {
+          <div class="om__state" aria-busy="true" data-test="outcome-mastery-loading">
+            <mat-spinner diameter="28" />
+            <span>{{ t('loading') }}</span>
+          </div>
+        } @else if (error()) {
+          <div class="om__state" role="alert" data-test="outcome-mastery-error">
+            <span>{{ t('loadError') }}</span>
+            <button mat-stroked-button type="button" (click)="reload()">{{ t('retry') }}</button>
+          </div>
+        } @else if (notFound()) {
+          <p class="om__state" role="alert" data-test="outcome-mastery-not-found">{{ t('teacher.notFound') }}</p>
+        } @else if (report(); as data) {
+          @if (groups().length > 0) {
+            <p class="om__rules" data-test="outcome-mastery-rules">
+              {{ t('rules', { recent: data.rules.recentAnswers, proficient: data.rules.proficientPct, mastered: data.rules.masteredPct, masteredMin: data.rules.masteredMinAnswers }) }}
+            </p>
+
+            @if (curricula().length > 1) {
+              <mat-button-toggle-group
+                class="om__curricula"
+                [attr.aria-label]="t('curriculum.label')"
+                [value]="curriculum()"
+                (change)="pickCurriculum($event.value)"
+                data-test="outcome-mastery-curricula"
+              >
+                @for (version of curricula(); track version) {
+                  <mat-button-toggle [value]="version">{{ t('curriculum.' + version) }}</mat-button-toggle>
+                }
+              </mat-button-toggle-group>
+            }
+
+            <mat-accordion multi>
+              @for (group of groups(); track group.key; let first = $first) {
+                <mat-expansion-panel [expanded]="first" data-test="outcome-mastery-subject">
+                  <mat-expansion-panel-header>
+                    <mat-panel-title>{{ group.name || t('otherSubject') }}</mat-panel-title>
+                    <mat-panel-description class="om__counts">
+                      {{ t('subjectCounts', { mastered: group.counts.mastered, proficient: group.counts.proficient, familiar: group.counts.familiar, notStarted: group.counts.notStarted }) }}
+                    </mat-panel-description>
+                  </mat-expansion-panel-header>
+
+                  <ng-template matExpansionPanelContent>
+                  <ul class="om__list">
+                    @for (row of group.rows; track row.key) {
+                      @let name =
+                        row.item.kind === 'outcome'
+                          ? row.item.statement
+                          : row.item.kind === 'subTopic'
+                            ? row.item.subTopicName
+                            : t('topicGeneral', { topic: row.item.topicName });
+                      <li class="om__item" data-test="outcome-mastery-row">
+                        <div class="om__text">
+                          <span class="om__name" data-test="outcome-mastery-name">
+                            @if (row.item.code) {
+                              <span class="om__code">{{ row.item.code }}</span>
+                            }
+                            {{ name }}
+                          </span>
+                          <span class="om__meta">
+                            @if (row.item.topicName && row.item.kind !== 'topic') {
+                              <span>{{ row.item.topicName }}</span>
+                            }
+                            @if (row.accuracy) {
+                              <span data-test="outcome-mastery-stats">{{ t('stats', { accuracy: row.accuracy, count: row.item.answered }) }}</span>
+                            }
+                          </span>
+                        </div>
+                        <div class="om__side">
+                          <span class="om__level" [class]="'om__level om__level--' + row.item.level" data-test="outcome-mastery-level">
+                            <mat-icon aria-hidden="true">{{ row.icon }}</mat-icon>
+                            {{ t('level.' + row.item.level) }}
+                          </span>
+                          @if (row.item.isTentative) {
+                            <span class="om__tentative" [title]="t('tentativeHint', { min: data.rules.reliableMinAnswers })" data-test="outcome-mastery-tentative">
+                              {{ t('tentative') }}
+                              <span class="cdk-visually-hidden">{{ t('tentativeHint', { min: data.rules.reliableMinAnswers }) }}</span>
+                            </span>
+                          }
+                          @if (audience() === 'self' && row.item.level === 'familiar' && row.item.subjectId != null) {
+                            <a
+                              mat-stroked-button
+                              data-test="outcome-mastery-practice"
+                              routerLink="/practice"
+                              [queryParams]="practiceParams(row.item)"
+                              [attr.aria-label]="t('practiceLabel', { name })"
+                            >
+                              {{ t('practice') }}
+                            </a>
+                          }
+                        </div>
+                      </li>
+                    }
+                  </ul>
+                  </ng-template>
+                </mat-expansion-panel>
+              }
+            </mat-accordion>
+          } @else {
+            <p class="om__state" data-test="outcome-mastery-empty">{{ t(audience() + '.empty') }}</p>
+          }
+          @if (data.unclassifiedCount > 0) {
+            <p class="om__rules" data-test="outcome-mastery-unclassified">{{ t('unclassified', { count: data.unclassifiedCount }) }}</p>
+          }
+        }
+      </mat-card-content>
+    </mat-card>
+  </section>
+}

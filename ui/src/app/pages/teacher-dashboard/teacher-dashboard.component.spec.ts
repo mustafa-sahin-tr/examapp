@@ -410,6 +410,15 @@ describe('TeacherDashboardComponent', () => {
         expect(component.topStudents()).toEqual(studentsActivity.topStudents);
     });
 
+    it('topStudentsTable_Name_LinksToOutcomeMap_issue696', () => {
+        fixture = configure();
+        component = fixture.componentInstance;
+        fixture.detectChanges();
+
+        const link = topStudentRows()[0].querySelector('[data-test="top-student-outcomes"]') as HTMLAnchorElement;
+        expect(link.getAttribute('href')).toBe('/teacher/students/12/outcomes');
+    });
+
     it('topStudentsTable_Rows_ShowAccuracyAndReadableTime', () => {
         fixture = configure();
         fixture.detectChanges();

@@ -74,6 +74,7 @@
   "topStudents": {
     "title": "Most Active Students (last {{days}} days)",
     "sortHint": "Sorted by questions solved",
+    "outcomesLabel": "{{name}}: open outcome map",
     "loading": "Loading most active students...",
     "empty": "Your students have not solved any questions in the last {{days}} days.",
     "cardCounts": "{{solved}} questions · {{correct}} correct",

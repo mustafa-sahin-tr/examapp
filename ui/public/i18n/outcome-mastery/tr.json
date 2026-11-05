@@ -1,0 +1,47 @@
+{
+  "self": {
+    "title": "Kazanım haritam",
+    "subtitle": "Hangi kazanımlarda ne durumdasın",
+    "empty": "Sınıfın için henüz kazanım ya da konu bilgisi yok."
+  },
+  "child": {
+    "title": "Kazanım haritası",
+    "subtitle": "Çocuğunuz hangi kazanımlarda ne durumda",
+    "empty": "Çocuğunuzun sınıfı için henüz kazanım ya da konu bilgisi yok."
+  },
+  "teacher": {
+    "title": "Kazanım haritası",
+    "subtitle": "Öğrenci hangi kazanımlarda ne durumda",
+    "empty": "Bu öğrencinin sınıfı için henüz kazanım ya da konu bilgisi yok.",
+    "notFound": "Bu öğrencinin bilgilerini göremezsiniz. Yalnız kendi okulunuzdaki ya da özel ders verdiğiniz öğrencileri görebilirsiniz."
+  },
+  "page": {
+    "title": "Öğrenci kazanım haritası",
+    "titleNamed": "{{name}}: kazanım haritası",
+    "back": "Panele dön"
+  },
+  "level": {
+    "notStarted": "Başlanmadı",
+    "familiar": "Tanışık",
+    "proficient": "Yeterli",
+    "mastered": "Ustalaştı"
+  },
+  "tentative": "Az veri",
+  "tentativeHint": "{{min}} cevabın altında: seviye henüz kesin değil.",
+  "stats": "{{accuracy}} doğru · son {{count}} cevap",
+  "topicGeneral": "{{topic}} (genel)",
+  "otherSubject": "Diğer",
+  "subjectCounts": "{{mastered}} ustalaştı · {{proficient}} yeterli · {{familiar}} tanışık · {{notStarted}} başlanmadı",
+  "rules": "Seviye son {{recent}} cevaba bakar. %{{proficient}} altı tanışık, %{{proficient}} ve üstü yeterli; en az {{masteredMin}} cevapta %{{mastered}} ve üstü ustalaştı. Etkinlikler ve boş bırakılan sorular sayılmaz.",
+  "unclassified": "Konusu belirlenmemiş {{count}} soru bu haritaya girmedi.",
+  "curriculum": {
+    "label": "Müfredat",
+    "Maarif": "Maarif",
+    "Previous": "Önceki"
+  },
+  "practice": "Pratik yap",
+  "practiceLabel": "{{name}} için pratik yap",
+  "loading": "Yükleniyor…",
+  "loadError": "Kazanım bilgileri yüklenemedi.",
+  "retry": "Tekrar dene"
+}

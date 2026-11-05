@@ -1,6 +1,6 @@
 import { Component, OnInit, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -68,6 +68,7 @@ const TEACHER_DASHBOARD_SCOPE = 'teacher-dashboard';
   imports: [
     DecimalPipe,
     MatButtonModule,
+    RouterLink,
     MatFormFieldModule,
     MatIconModule,
     MatProgressSpinnerModule,

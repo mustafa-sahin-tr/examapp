@@ -321,6 +321,13 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/settings/settings.component').then((m) => m.SettingsComponent),
       },
       {
+        // Issue #696: öğretmenin baktığı öğrencinin kazanım haritası; kapsam sunucuda.
+        path: 'teacher/students/:studentId/outcomes',
+        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],
+        loadComponent: () =>
+          import('./pages/teacher-student-outcomes/teacher-student-outcomes.component').then((m) => m.TeacherStudentOutcomesComponent),
+      },
+      {
         // Issue #95: bağımsız öğretmenin özel ders profili (dersler, ücret, online/yüz yüze).
         // Issue #287: onay bekleyen öğretmene de açık — bağımsız öğretmen başvurusunun formu (backend izin verir).
         path: 'tutor-profile',

@@ -29,6 +29,7 @@
     "button": "Join lesson"
   },
   "actions": {
+    "outcomes": "Outcome map",
     "approve": "Approve",
     "reject": "Reject",
     "cancel": "Cancel",

@@ -124,6 +124,15 @@
           <span class="breq__chip" [class]="row.statusClass">{{ t(row.statusKey) }}</span>
 
           @if (row.booking.status === 'Approved') {
+            <a
+              mat-stroked-button
+              data-test="booking-student-outcomes"
+              [routerLink]="['/teacher/students', row.booking.studentId, 'outcomes']"
+              [state]="{ studentName: row.booking.studentName }"
+            >
+              <mat-icon aria-hidden="true">map</mat-icon>
+              {{ t('actions.outcomes') }}
+            </a>
             <span
               class="breq__join"
               [matTooltip]="row.join.hint || ''"

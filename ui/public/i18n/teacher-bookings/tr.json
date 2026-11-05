@@ -29,6 +29,7 @@
     "button": "Derse katıl"
   },
   "actions": {
+    "outcomes": "Kazanım haritası",
     "approve": "Onayla",
     "reject": "Reddet",
     "cancel": "Vazgeç",

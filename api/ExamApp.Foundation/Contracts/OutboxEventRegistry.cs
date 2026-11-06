@@ -50,6 +50,7 @@ public static class OutboxEventRegistry
         typeof(BookingLifecycleEvent), // issue #315
         typeof(ActivityCompletedEvent), // issue #572
         typeof(SchoolChangedEvent), // issue #542
+        typeof(OpenTextReviewedEvent), // issue #614
     };
 
     private static readonly Dictionary<string, Type> ByFullName =

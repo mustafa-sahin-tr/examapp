@@ -12,7 +12,8 @@
       "defaultChild": "Çocuğunuz",
       "defaultParent": "Veliniz",
       "defaultCoParent": "Diğer veliniz",
-      "schoolChangePrivatized": " \"Okulum\" ile paylaştığınız {0} sınav artık yalnız size açık; isterseniz yeniden paylaşabilirsiniz."
+      "schoolChangePrivatized": " \"Okulum\" ile paylaştığınız {0} sınav artık yalnız size açık; isterseniz yeniden paylaşabilirsiniz.",
+      "activityFallback": "Etkinlik"
     },
     "BadgeEarned": {
       "title": "Yeni rozet kazandın!",
@@ -301,6 +302,10 @@
     "SchoolRemovedToParent": {
       "title": "Çocuğunuzun okul kaydı kaldırıldı",
       "body": "{2} adlı çocuğunuzun {0} okul kaydı kaldırıldı."
+    },
+    "OpenTextReviewed": {
+      "title": "Cevabın değerlendirildi",
+      "body": "{0}: öğretmenin açık uçlu cevabını değerlendirdi. Geri bildirimi okumak için dokun."
     }
   }
 }

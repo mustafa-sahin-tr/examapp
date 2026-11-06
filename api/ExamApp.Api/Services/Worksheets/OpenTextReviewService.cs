@@ -3,11 +3,17 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.OpenText;
 using ExamApp.Api.Services.Interactions;
+using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Parents;
 using ExamApp.Api.Services.Questions;
 using ExamApp.Api.Services.Tenancy;
+using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Localization;
+using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace ExamApp.Api.Services.Worksheets;
 
@@ -42,12 +48,17 @@ public sealed class OpenTextReviewService : IOpenTextReviewService
     private readonly AppDbContext _context;
     private readonly ISchoolAccessPolicy _schoolAccessPolicy;
     private readonly IStringLocalizer<Messages> _localizer;
+    private readonly IAuthApiClient? _authApi;
+    private readonly ILogger<OpenTextReviewService>? _logger;
 
-    public OpenTextReviewService(AppDbContext context, ISchoolAccessPolicy schoolAccessPolicy, IStringLocalizer<Messages>? localizer = null)
+    public OpenTextReviewService(AppDbContext context, ISchoolAccessPolicy schoolAccessPolicy, IStringLocalizer<Messages>? localizer = null,
+        IAuthApiClient? authApi = null, ILogger<OpenTextReviewService>? logger = null)
     {
         _context = context;
         _schoolAccessPolicy = schoolAccessPolicy;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
+        _authApi = authApi;
+        _logger = logger;
     }
 
     public async Task<Paged<OpenTextReviewItemDto>> GetQueueAsync(SchoolScope requester, OpenTextReviewQueueQuery query,
@@ -92,8 +103,16 @@ public sealed class OpenTextReviewService : IOpenTextReviewService
         if (!TryReadRequest(request, out var evaluation, out var feedback, out var expectedHash))
             return Failure(OpenTextReviewErrorCodes.InvalidReview, "worksheets.openTextReview.invalidReview", invalidInput: true);
 
-        if (instanceQuestionId <= 0 || !await Reviewable(requester).AnyAsync(q => q.Id == instanceQuestionId, ct))
+        var studentUserId = instanceQuestionId <= 0
+            ? (int?)null
+            : await Reviewable(requester).Where(q => q.Id == instanceQuestionId)
+                .Select(q => (int?)q.WorksheetInstance.Student.UserId).FirstOrDefaultAsync(ct);
+        if (studentUserId == null)
             return Failure(OpenTextReviewErrorCodes.NotFound, "worksheets.openTextReview.notFound", notFound: true);
+
+        // Issue #614: bildirim alıcısının sub'ı transaction dışında (auth-api, best-effort); çözülemezse consumer kendi verisinden çözer.
+        var student = ParentNotificationSupport.Of(
+            await ParentNotificationSupport.LookupAsync(_authApi, [studentUserId.Value], _logger, ct), studentUserId.Value);
 
         var strategy = _context.Database.CreateExecutionStrategy();
         var failure = await strategy.ExecuteAsync(async _ =>
@@ -112,7 +131,8 @@ public sealed class OpenTextReviewService : IOpenTextReviewService
                 .Select(q => new
                 {
                     q.AnswerPayload, q.CheckedAnswerRevision, q.AnswerRevision, q.WorksheetInstance.Status,
-                    q.WorksheetInstance.StartTime, q.WorksheetInstance.MaxDurationSeconds
+                    q.WorksheetInstance.StartTime, q.WorksheetInstance.MaxDurationSeconds,
+                    q.WorksheetInstanceId, q.WorksheetInstance.WorksheetId, WorksheetName = q.WorksheetInstance.Worksheet.Name
                 })
                 .FirstOrDefaultAsync(ct);
             if (row == null)
@@ -144,6 +164,9 @@ public sealed class OpenTextReviewService : IOpenTextReviewService
                 await tx.RollbackAsync(ct);
                 return Failure(OpenTextReviewErrorCodes.Forbidden, "worksheets.openTextReview.forbidden", forbidden: true);
             }
+            // Issue #614: öğrenciye yalnız yeni ya da içeriği değişen değerlendirme bildirilir (aynı kaydı yeniden kaydetmek sessiz).
+            var notify = review == null || review.Stale || review.Evaluation != evaluation
+                || !string.Equals(review.Feedback, feedback, StringComparison.Ordinal);
             if (review == null)
             {
                 review = new OpenTextReview { WorksheetInstanceQuestionId = instanceQuestionId, CreatedAt = now };
@@ -156,6 +179,25 @@ public sealed class OpenTextReviewService : IOpenTextReviewService
             review.ReviewedAt = now;
             review.AnswerSha256 = currentHash;
             review.Stale = false;
+
+            if (notify)
+            {
+                _context.OutboxMessages.Add(new OutboxMessage
+                {
+                    Type = OutboxEventRegistry.NameFor<OpenTextReviewedEvent>(),
+                    Content = JsonSerializer.Serialize(new OpenTextReviewedEvent
+                    {
+                        EventId = Guid.NewGuid(),
+                        RecipientUserId = studentUserId.Value,
+                        RecipientKeycloakId = student.KeycloakId,
+                        TestInstanceId = row.WorksheetInstanceId,
+                        InstanceQuestionId = instanceQuestionId,
+                        WorksheetId = row.WorksheetId,
+                        WorksheetName = row.WorksheetName ?? string.Empty,
+                        ReviewedAtUtc = now
+                    })
+                });
+            }
 
             await _context.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);

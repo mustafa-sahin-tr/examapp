@@ -6,6 +6,7 @@ using ExamApp.Api.Services.Interactions;
 using ExamApp.Api.Services.Tenancy;
 using ExamApp.Api.Services.Worksheets;
 using ExamApp.Api.Tests.Support;
+using ExamApp.Foundation.Contracts;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.Tests.Services;
@@ -151,6 +152,12 @@ public class OpenTextReviewFlowTests : IDisposable
             new OpenTextReviewRequestDto { Evaluation = evaluation, Feedback = feedback, AnswerHash = answerHash });
     }
 
+    private async Task<string[]> OutboxTypesAsync()
+    {
+        await using var ctx = _db.NewContext();
+        return await ctx.OutboxMessages.AsNoTracking().OrderBy(m => m.Id).Select(m => m.Type).ToArrayAsync();
+    }
+
     private async Task<int> OutboxCountAsync()
     {
         await using var ctx = _db.NewContext();
@@ -242,7 +249,34 @@ public class OpenTextReviewFlowTests : IDisposable
 
         (await QueueAsync(TeacherScope(s, TeacherUserId))).TotalCount.ShouldBe(0);
         (await QueueAsync(TeacherScope(s, TeacherUserId), "reviewed")).Items.ShouldHaveSingleItem();
-        (await OutboxCountAsync()).ShouldBe(0);
+        // Puan olayı yok; yalnız öğrenci bildirimi (#614).
+        (await OutboxTypesAsync()).ShouldBe(new[] { OutboxEventRegistry.NameFor<OpenTextReviewedEvent>() });
+    }
+
+    [Fact]
+    public async Task Review_NotifiesStudentOnlyWhenTheReviewIsNewOrChanged_issue614()
+    {
+        var s = await SeedAsync();
+        await CheckTextAsync(s, "Su ısınınca buharlaşır.");
+        var hash = (await QueueAsync(TeacherScope(s, TeacherUserId))).Items.Single().AnswerHash;
+
+        await ReviewAsync(TeacherScope(s, TeacherUserId), s.OpenRow, "partial", "Isıyı da yaz.", hash);
+        await ReviewAsync(TeacherScope(s, TeacherUserId), s.OpenRow, "partial", "Isıyı da yaz.", hash);
+        (await OutboxTypesAsync()).Length.ShouldBe(1);
+
+        await ReviewAsync(TeacherScope(s, TeacherUserId), s.OpenRow, "sufficient", "Isıyı da yaz.", hash);
+        await ReviewAsync(TeacherScope(s, TeacherUserId), s.OpenRow, "sufficient", "Tamam.", hash);
+        (await OutboxTypesAsync()).Length.ShouldBe(3);
+
+        await using var ctx = _db.NewContext();
+        var content = (await ctx.OutboxMessages.AsNoTracking().OrderBy(m => m.Id).FirstAsync()).Content;
+        var e = JsonSerializer.Deserialize<OpenTextReviewedEvent>(content)!;
+        (e.RecipientUserId, e.TestInstanceId, e.InstanceQuestionId, e.WorksheetId, e.WorksheetName)
+            .ShouldBe((StudentUserId, s.InstanceId, s.OpenRow, s.WorksheetId, "Su döngüsü"));
+        e.EventId.ShouldNotBe(Guid.Empty);
+        // Cevap metni, değerlendirme ve geri bildirim event'e girmez.
+        content.ShouldNotContain("buharlaş");
+        content.ShouldNotContain("Isıyı");
     }
 
     [Fact]

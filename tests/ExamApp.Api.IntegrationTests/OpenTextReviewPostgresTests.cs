@@ -6,6 +6,7 @@ using ExamApp.Api.IntegrationTests.Infrastructure;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interactions;
 using ExamApp.Api.Services.Worksheets;
+using ExamApp.Foundation.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -15,7 +16,7 @@ namespace ExamApp.Api.IntegrationTests;
 /// issue #583 on real PostgreSQL + HTTP: açık uçlu cevap — öğrenci kontrol eder, atamayı yapan (onaylı, aynı okul) öğretmen
 /// <c>GET/PUT api/open-text-reviews</c> ile değerlendirir, öğrenci <c>test-canvas-instance</c> yanıtında görür; öğrenci kuyruğa
 /// erişemez (403), atamasız öğretmen 404 alır; metin değişince değerlendirme eskir (ExecuteUpdate), yeniden çözme siler
-/// (ExecuteDelete); hiçbir outbox satırı yazılmaz.
+/// (ExecuteDelete); değerlendirme öğrenciye bildirim için tek <c>OpenTextReviewedEvent</c> outbox satırı yazar (#614).
 /// </summary>
 public class OpenTextReviewPostgresTests(IntegrationApiFactory factory) : IntegrationTestBase(factory)
 {
@@ -113,7 +114,8 @@ public class OpenTextReviewPostgresTests(IntegrationApiFactory factory) : Integr
         review.GetProperty("feedback").GetString().ShouldBe("<b>Isıyı</b> anlat.");   // düz metin olarak saklanır; istemci kaçışlar
 
         (await student.GetAsync("/api/open-text-reviews")).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        (await WithDbAsync(db => db.OutboxMessages.CountAsync())).ShouldBe(0);
+        (await WithDbAsync(db => db.OutboxMessages.Select(m => m.Type).ToArrayAsync()))
+            .ShouldBe(new[] { OutboxEventRegistry.NameFor<OpenTextReviewedEvent>() });
     }
 
     [Fact]

@@ -44,6 +44,13 @@ prompt sürümü yeni varsayılanı ezer). Değerlendirme bildirimi (BadgeServic
 `IX_Questions_InteractionType_OpenText` kısmi, `IX_WorksheetAssignments_CreateUserId_WorksheetId`) exam API açılışında uygulanır
 (Aspire'da exam API'yi yeniden başlat).
 
+**Issue #614 — değerlendirme bildirimi (AI yok).** Öğretmen (ya da admin) açık uçlu cevabı ilk kez değerlendirince ya da değerlendirmeyi
+değiştirince (değerlendirme / geri bildirim farklı ya da eski değerlendirme eskimişse; aynısını yeniden kaydetmek sessiz) `OpenTextReviewService`
+değerlendirmeyle aynı transaction'da `OpenTextReviewedEvent` yazar (öğrenci, oturum, madde, etkinlik adı; cevap ve geri bildirim taşınmaz).
+BadgeService `OpenTextReviewedConsumer` öğrenciye `OpenTextReviewed` bildirimi yazar; bildirim `/activity/{oturum}?item={madde}` açar:
+bitmemiş etkinlikte o madde açılır, bitmişte özetteki madde vurgulanır, öğrenci geri bildirimi orada okur. Yeni event = RabbitMQ izni
+(`rabbitmq/definitions.json` + deploy betikleri); Aspire'da `rabbitmq` kaynağını, sonra exam API ve BadgeService'i yeniden başlat.
+
 **Issue #584 — öğretmen etkinlik analizi ve veli özeti.** Etkinlik sayfası detayında (öğretmen, "Çalışma takibi"nin altında)
 **Analizi göster** → `GET /api/exam/worksheet/{id}/activity-report` (onaylı öğretmen; kapsam takip ekranıyla aynı — kendi atamaları,
 okul, atama penceresi; `GetWorksheetAssignmentsForTeacherAsync`'ten alınır). Analize yalnız tamamlanmış ve şu an yeniden çözülmeyen

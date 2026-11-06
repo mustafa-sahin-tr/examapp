@@ -163,6 +163,8 @@ describe('ActivityEditorComponent (#590)', () => {
 
   it('eksik form kaydedilmez, hatalar listelenir; konusuz ders de engeller', async () => {
     await setup({ testId: '9' });
+    component.selectKind('matrix'); // #859: tür galerisi ilk adım
+    fixture.detectChanges();
     component.save(false);
     fixture.detectChanges();
 
@@ -305,6 +307,8 @@ describe('ActivityEditorComponent (#590)', () => {
 
   it('yönerge kutusunda ilk satır üst çerçevedeki etiketten ayrık (iç boşluk)', async () => {
     await setup({ testId: '9' });
+    component.selectKind('matrix'); // #859: tür galerisi ilk adım
+    fixture.detectChanges();
     const textarea = el('[data-testid="instruction"]') as HTMLTextAreaElement;
     expect(parseFloat(getComputedStyle(textarea).paddingTop)).toBeGreaterThanOrEqual(12);
   });
@@ -833,6 +837,8 @@ describe('ActivityEditorComponent (#590)', () => {
 
   it('kayıt hatası formda kalır ve sunucu mesajını gösterir', async () => {
     await setup({ testId: '9' });
+    component.selectKind('matrix'); // #859: tür galerisi ilk adım
+    fixture.detectChanges();
     questions.saveBulk.mockReturnValue(
       throwError(() => new HttpErrorResponse({ status: 500, error: { message: 'Sunucu hatası' } }))
     );
@@ -982,11 +988,21 @@ describe('ActivityEditorComponent (#590)', () => {
       expect(label?.textContent?.trim()).toBeTruthy();
     }
 
-    (el('[data-kind="clockSet"] button') as HTMLButtonElement).click();
+    // #859: her türde bir satır açıklama; seçilince galeri kapanır, "Tür: X · Değiştir" ile geri açılır.
+    expect(el('[data-kind="clockSet"]')?.textContent).toContain('Akrep ve yelkovanı');
+    expect(el('[data-testid="instruction"]')).toBeNull();
+    (el('[data-kind="clockSet"]') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(component.kind()).toBe('clockSet');
-    expect(el('[data-kind="clockSet"]')?.classList).toContain('mat-button-toggle-checked');
-    expect(el('[data-kind="matrix"]')?.classList).not.toContain('mat-button-toggle-checked');
+    expect(el('[data-testid="kind-gallery"]')).toBeNull();
+    expect(el('[data-testid="kind-chosen"]')?.textContent).toContain('Saat kurma');
+    expect(el('[data-testid="instruction"]')).not.toBeNull();
+
+    (el('[data-testid="kind-change"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el('[data-kind="clockSet"]')?.classList).toContain('is-active');
+    expect(el('[data-kind="matrix"]')?.classList).not.toContain('is-active');
+    expect(el('[data-testid="save"]')).toBeNull();
   });
 
   describe('learning outcomes (#692)', () => {

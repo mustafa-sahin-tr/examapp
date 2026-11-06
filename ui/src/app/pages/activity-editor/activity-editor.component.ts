@@ -233,6 +233,12 @@ export class ActivityEditorComponent {
   private readonly labelingApi = inject(LabelingService);
 
   readonly kindGroups = AUTHORING_KIND_GROUPS;
+  /**
+   * Issue #859: yeni maddede tür seçimi ilk adım (açıklamalı galeri); seçilince tek satır "Tür: X · değiştir" ve form.
+   * Düzenlenen maddede tür kilitli, galeri yok.
+   */
+  readonly kindChosen = signal(false);
+  readonly formOpen = computed(() => this.kindChosen() || this.editingId() !== null);
   readonly instructionMax = PASSAGE_INSTRUCTION_MAX_LENGTH;
   readonly labelMax = AUTHORING_LABEL_MAX;
   readonly tableLimits = BLANK_TABLE_LIMITS;
@@ -553,13 +559,21 @@ export class ActivityEditorComponent {
   // ---- Tip ve ortak alanlar ----
 
   selectKind(kind: AuthoringKind): void {
-    if (kind === this.kind() || this.editingId()) return;
+    if (this.editingId()) return;
+    this.kindChosen.set(true);
+    if (kind === this.kind()) return;
     this.form.set(emptyForm(kind, this.trueFalseLabels(), this.mazeDefaults()));
     this.crosswordUnplaced.set(null);
     this.closeCrosswordCell();
     this.lineTick.set(null);
     this.resetTableSelection();
     this.submitted.set(false);
+  }
+
+  /** Issue #859: galeriye dön; seçili tür işaretli kalır, içerik ancak başka tür seçilince sıfırlanır. */
+  changeKind(): void {
+    if (this.editingId()) return;
+    this.kindChosen.set(false);
   }
 
   setInstruction(value: string): void {

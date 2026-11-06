@@ -32,26 +32,32 @@
       }
     </div>
   } @else {
-    <div class="ae__layout" [class.ae__layout--single]="inlinePreview()">
-      <section class="ae__card ae__form" [attr.aria-label]="t('formAria')">
-        @if (items().length > 0) {
-          <div class="ae__items" data-testid="editable-items">
-            <span class="ae__label">{{ t('items.title') }}</span>
-            <div class="ae__item-list">
-              @for (item of items(); track item.id) {
+    <div class="ae__layout" [class.ae__layout--single]="inlinePreview() || !formOpen()"
+      [class.ae__layout--nav]="items().length > 0">
+      <!-- #859: maddeler solda dikey liste, tam başlıkla. -->
+      @if (items().length > 0) {
+        <nav class="ae__card ae__items" data-testid="editable-items" [attr.aria-label]="t('items.title')">
+          <span class="ae__label">{{ t('items.title') }}</span>
+          <ol class="ae__item-list">
+            @for (item of items(); track item.id) {
+              <li>
                 <button type="button" class="ae__item" [class.is-active]="editingId() === item.id"
                   [attr.aria-pressed]="editingId() === item.id" (click)="edit(item)">
                   <span class="ae__item-no">{{ item.order }}</span>
-                  <span class="ae__item-text" [attr.title]="item.title">{{ t('kinds.' + item.kind) }} · {{ item.title }}</span>
+                  <span class="ae__item-body">
+                    <span class="ae__item-kind">{{ t('kinds.' + item.kind) }}</span>
+                    <span class="ae__item-text">{{ item.title }}</span>
+                  </span>
                 </button>
-              }
-              @if (editingId()) {
-                <button mat-button type="button" (click)="newItem()"><mat-icon>add</mat-icon>{{ t('items.new') }}</button>
-              }
-            </div>
-          </div>
-        }
-
+              </li>
+            }
+          </ol>
+          @if (editingId()) {
+            <button mat-button type="button" data-testid="new-item" (click)="newItem()"><mat-icon>add</mat-icon>{{ t('items.new') }}</button>
+          }
+        </nav>
+      }
+      <section class="ae__card ae__form" [attr.aria-label]="t('formAria')">
         @if (!editingId() && startedCount() > 0) {
           <p class="ae__started" role="note" data-testid="started-warning">
             <mat-icon aria-hidden="true">info</mat-icon>{{ t('startedWarning', { count: startedCount() }) }}
@@ -67,24 +73,38 @@
               <strong>{{ t('kinds.' + kind()) }}</strong>
               <span class="ae__hint">{{ t('kindLocked') }}</span>
             </p>
-          } @else {
-            <mat-button-toggle-group class="ae__kinds" aria-labelledby="ae-kind-label" [value]="kind()"
-              (change)="selectKind($event.value)">
+          } @else if (!kindChosen()) {
+            <!-- #859: yeni maddenin ilk adımı — grup başlıklı galeri, her türde bir satır açıklama. -->
+            <p class="ae__hint">{{ t('kindPick') }}</p>
+            <div class="ae__gallery" aria-labelledby="ae-kind-label" data-testid="kind-gallery">
               @for (group of kindGroups; track group.id) {
                 <div class="ae__kind-group" role="group" [attr.aria-labelledby]="'ae-kind-group-' + group.id"
                   [attr.data-kind-group]="group.id">
                   <span class="ae__kind-group-title" [id]="'ae-kind-group-' + group.id">{{ t('kindGroups.' + group.id) }}</span>
-                  <div class="ae__kind-options">
+                  <div class="ae__kind-cards">
                     @for (k of group.kinds; track k) {
-                      <mat-button-toggle [value]="k" [attr.data-kind]="k">{{ t('kinds.' + k) }}</mat-button-toggle>
+                      <button type="button" class="ae__kind-card" [class.is-active]="k === kind()" [attr.data-kind]="k"
+                        (click)="selectKind(k)">
+                        <span class="ae__kind-card-name">{{ t('kinds.' + k) }}</span>
+                        <span class="ae__kind-card-desc">{{ t('kindDescriptions.' + k) }}</span>
+                      </button>
                     }
                   </div>
                 </div>
               }
-            </mat-button-toggle-group>
+            </div>
+          } @else {
+            <p class="ae__kind-chosen" data-testid="kind-chosen" aria-labelledby="ae-kind-label">
+              <span>{{ t('kindChosen') }}</span> <strong>{{ t('kinds.' + kind()) }}</strong>
+              <button mat-button type="button" data-testid="kind-change" (click)="changeKind()">{{ t('kindChange') }}</button>
+            </p>
           }
-          <p class="ae__hint">{{ t('kindHints.' + kind()) }}</p>
+          @if (formOpen()) {
+            <p class="ae__hint">{{ t('kindHints.' + kind()) }}</p>
+          }
         </div>
+
+        @if (formOpen()) {
 
         <mat-form-field appearance="outline" class="ae__full">
           <mat-label>{{ t('instruction') }}</mat-label>
@@ -1424,6 +1444,7 @@
         }
         @if (saveError(); as err) { <p class="ae__error" role="alert" data-testid="save-error">{{ err }}</p> }
 
+        <!-- #859: kaydet çubuğu formun altında sabit (yapışık). -->
         <div class="ae__actions">
           <button mat-flat-button type="button" data-testid="save" [disabled]="saving()" (click)="save(false)">
             <mat-icon>save</mat-icon>{{ t('save') }}
@@ -1432,9 +1453,10 @@
             <mat-icon>playlist_add</mat-icon>{{ editingId() ? t('saveAndNew') : t('saveAndAnother') }}
           </button>
         </div>
+        }
       </section>
 
-      @if (!inlinePreview()) {
+      @if (formOpen() && !inlinePreview()) {
       <section class="ae__card ae__preview" [attr.aria-label]="t('preview.title')">
         <div class="ae__block-head">
           <h2>{{ t('preview.title') }}</h2>

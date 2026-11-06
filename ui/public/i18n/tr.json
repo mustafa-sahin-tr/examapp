@@ -105,7 +105,8 @@
       "groupUsers": "Kullanıcılar",
       "groupSchools": "Okullar",
       "groupContent": "İçerik",
-      "groupModeration": "Moderasyon"
+      "groupModeration": "Moderasyon",
+      "adminPending": "Bekleyenler"
     },
     "bottomNav": {
       "home": "Ana Sayfa",

@@ -15,10 +15,15 @@ export interface RoutedMenuEntry {
  * Değişmez: önek uzunluğuna göre AZALAN sırada tutulur — `find` ilk (en uzun) eşleşmeyi döndürür.
  */
 const ROUTE_ALIASES: ReadonlyArray<readonly [prefix: string, target: string]> = [
+  // Issue #861: admin "Bekleyenler" kuyrukları tek menü öğesinde (hedefi görünmeyen takma ad atlanır: öğretmende yok).
+  ['/admin/student-school-requests', '/admin/teacher-approvals'],
   ['/student-school-requests', '/assignment-permission-requests'],
+  ['/admin/comment-reports', '/admin/teacher-approvals'],
   ['/teacher/flashcards', '/study-pages'],
   ['/open-text-reviews', '/assignment-permission-requests'],
+  ['/open-text-reviews', '/admin/teacher-approvals'],
   ['/booking-requests', '/assignment-permission-requests'],
+  ['/question-reports', '/admin/teacher-approvals'],
   ['/saved-questions', '/practice'],
   ['/questioncanvas', '/tests'],
   ['/program-create', '/my-calendar'],

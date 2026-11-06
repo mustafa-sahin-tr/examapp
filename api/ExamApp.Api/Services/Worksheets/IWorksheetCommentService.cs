@@ -67,6 +67,12 @@ public interface IWorksheetCommentService
     Task<WorksheetCommentReportsResultDto> GetReportsAsync(int? worksheetId, WorksheetCommentReportsQueryDto query, WorksheetCommentActor actor, CancellationToken ct = default);
 
     /// <summary>
+    /// issue #861: admin "Bekleyenler" özeti — şikayet edilmiş ve henüz gizlenmemiş yorum sayısı (karar bekleyenler).
+    /// Global sayım; yalnız admin uçlarından çağrılır.
+    /// </summary>
+    Task<int> CountOpenReportsAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// issue #335: bir yorumun moderasyon geçmişi (salt okunur, yeniden eskiye, sayfalı). Yetki gizleme ile aynı: yorum istek
     /// sahibinin kapsamında olmalı (değilse 404) ve istek sahibi moderatör olmalı (değilse 403 NotModerator + reddedilen deneme
     /// olayı). Admin tüm olayları (<c>DeniedNotModerator</c> dahil), moderatör öğretmen yalnız <c>Hide/Unhide</c>'ı görür.

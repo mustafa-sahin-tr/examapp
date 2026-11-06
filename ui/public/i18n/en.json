@@ -105,7 +105,8 @@
       "groupUsers": "Users",
       "groupSchools": "Schools",
       "groupContent": "Content",
-      "groupModeration": "Moderation"
+      "groupModeration": "Moderation",
+      "adminPending": "Pending"
     },
     "bottomNav": {
       "home": "Home",

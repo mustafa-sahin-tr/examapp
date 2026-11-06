@@ -693,6 +693,11 @@ public class WorksheetCommentService : IWorksheetCommentService
         };
     }
 
+    public Task<int> CountOpenReportsAsync(CancellationToken ct = default) =>
+        _context.WorksheetComments.AsNoTracking()
+            .Where(c => c.HiddenAt == null && _context.WorksheetCommentReports.Any(r => r.CommentId == c.Id))
+            .CountAsync(ct);
+
     public async Task<WorksheetCommentReportsResultDto> GetReportsAsync(
         int? worksheetId, WorksheetCommentReportsQueryDto query, WorksheetCommentActor actor, CancellationToken ct = default)
     {

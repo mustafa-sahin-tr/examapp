@@ -1,5 +1,5 @@
 import { Component, OnInit, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
+import { DecimalPipe, NgTemplateOutlet } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -21,6 +21,12 @@ import {
   TeacherWorksheetOverview,
 } from '../../models/teacher-dashboard.model';
 import { LocaleService } from '../../services/locale.service';
+import { AuthService } from '../../services/auth.service';
+import { BookingService } from '../../services/booking.service';
+import { DirectMessageService } from '../../services/direct-message.service';
+import { OpenTextReviewService } from '../../services/open-text-review.service';
+import { StudentSchoolRequestService } from '../../services/student-school-request.service';
+import { WorksheetAccessRequestService } from '../../services/worksheet-access-request.service';
 import { DurationLabel, accuracyPercent, formatActivityDuration, formatActivityPeriod } from './activity-format';
 
 interface SummaryCardViewModel {
@@ -41,6 +47,17 @@ interface ActivityMetricViewModel {
   /** Doğru sayısının yanındaki doğruluk yüzdesi; 0'a bölme durumunda null. */
   accuracy: number | null;
 }
+
+/** #837: "Bekleyenler" şeridinin bir öğesi; sayılar yan menü rozetleriyle aynı kök servis sinyallerinden. */
+export interface PendingItemViewModel {
+  key: 'reviews' | 'requests' | 'bookings' | 'messages';
+  count: number;
+  route: string;
+  icon: string;
+}
+
+/** #837: panel tablosunda gösterilen en fazla satır; fazlası "Tümünü gör" ile /tests'te. */
+export const DASHBOARD_WORKSHEET_LIMIT = 5;
 
 /** Issue #56: "En Aktif Öğrenciler" ilk üç sıra rozetleri (maket). */
 const RANK_MEDALS: readonly string[] = ['🥇', '🥈', '🥉'];
@@ -67,6 +84,7 @@ const TEACHER_DASHBOARD_SCOPE = 'teacher-dashboard';
   standalone: true,
   imports: [
     DecimalPipe,
+    NgTemplateOutlet,
     MatButtonModule,
     RouterLink,
     MatFormFieldModule,
@@ -116,6 +134,34 @@ export class TeacherDashboardComponent implements OnInit {
   readonly worksheetsError = signal<string | null>(null);
   readonly worksheets = signal<TeacherWorksheetOverview[]>([]);
   readonly worksheetsEmpty = computed(() => this.worksheets().length === 0);
+  readonly visibleWorksheets = computed(() => this.worksheets().slice(0, DASHBOARD_WORKSHEET_LIMIT));
+  readonly hasMoreWorksheets = computed(() => this.worksheets().length > DASHBOARD_WORKSHEET_LIMIT);
+
+  // #837: bekleyen işler. Sayıları enhanced-layout tazeler (giriş, odak, SignalR); burada yalnız okunur.
+  private readonly auth = inject(AuthService);
+  private readonly openTextReviews = inject(OpenTextReviewService);
+  private readonly accessRequests = inject(WorksheetAccessRequestService);
+  private readonly studentSchoolRequests = inject(StudentSchoolRequestService);
+  private readonly bookings = inject(BookingService);
+  private readonly directMessages = inject(DirectMessageService);
+
+  /** Karşılamada adın ilk kelimesi; ad yoksa boş (başlık yalnız "Hoş geldiniz"). */
+  readonly welcomeName = computed(() => (this.auth.user()?.fullName ?? '').trim().split(/\s+/)[0] ?? '');
+
+  readonly pendingItems = computed<PendingItemViewModel[]>(() =>
+    [
+      { key: 'reviews' as const, count: this.openTextReviews.pendingCount(), route: '/open-text-reviews', icon: 'rate_review' },
+      {
+        key: 'requests' as const,
+        count: this.accessRequests.pendingCount() + this.studentSchoolRequests.pendingCount(),
+        route: '/assignment-permission-requests',
+        icon: 'inbox',
+      },
+      { key: 'bookings' as const, count: this.bookings.pendingCount(), route: '/booking-requests', icon: 'event' },
+      { key: 'messages' as const, count: this.directMessages.unreadCount(), route: '/student-messages', icon: 'forum' },
+    ].filter((item) => item.count > 0),
+  );
+  readonly pendingTotal = computed(() => this.pendingItems().reduce((sum, item) => sum + item.count, 0));
 
   readonly displayedColumns: readonly string[] = ['name', 'assignedStudentCount', 'completionPercentage'];
 
@@ -353,6 +399,12 @@ export class TeacherDashboardComponent implements OnInit {
 
   openWorksheet(row: TeacherWorksheetOverview): void {
     void this.router.navigate(['/test', row.worksheetId]);
+  }
+
+  /** #837: atanmamış satırdaki "Ata" bağlantısı; detay `?assign=student` ile atama diyaloğunu açar. Satır tıklamasına yayılmaz. */
+  assignWorksheet(row: TeacherWorksheetOverview, event: Event): void {
+    event.stopPropagation();
+    void this.router.navigate(['/test', row.worksheetId], { queryParams: { assign: 'student' } });
   }
 
   /**

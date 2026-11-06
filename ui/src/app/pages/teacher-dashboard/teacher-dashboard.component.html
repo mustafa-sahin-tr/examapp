@@ -1,6 +1,43 @@
 <div class="teacher-dashboard" *transloco="let t; prefix: 'teacher-dashboard'">
+  <!-- #837: karşılama + tek birincil eylem -->
+  <header class="td-header">
+    <div class="td-header__text">
+      <h1 class="ms-page-title">
+        {{ welcomeName() ? t('header.titleNamed', { name: welcomeName() }) : t('header.title') }}
+      </h1>
+      <p class="ms-page-subtitle">
+        {{ pendingTotal() > 0 ? t('header.subtitlePending', { count: pendingTotal() }) : t('header.subtitleClear') }}
+      </p>
+    </div>
+    <a mat-flat-button routerLink="/exam" class="td-header__action">
+      <mat-icon>add</mat-icon>
+      {{ t('header.newTest') }}
+    </a>
+  </header>
+
+  <!-- #837: Bekleyenler — yan menü rozetleriyle aynı sayılar -->
+  <section class="td-pending" aria-labelledby="td-pending-title">
+    <h2 id="td-pending-title" class="ms-section-title">{{ t('pending.title') }}</h2>
+    @if (pendingItems().length) {
+      <ul class="td-pending__list">
+        @for (item of pendingItems(); track item.key) {
+          <li>
+            <a class="td-pending__item" [routerLink]="item.route" [attr.data-key]="item.key">
+              <mat-icon aria-hidden="true">{{ item.icon }}</mat-icon>
+              <span class="td-pending__count">{{ item.count }}</span>
+              <span class="td-pending__label">{{ t('pending.items.' + item.key) }}</span>
+              <mat-icon class="td-pending__chevron" aria-hidden="true">chevron_right</mat-icon>
+            </a>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="td-pending__empty">{{ t('pending.empty') }}</p>
+    }
+  </section>
+
   <div class="dashboard-section">
-    <app-section-header [title]="t('summary.title')" [headingLevel]="1"></app-section-header>
+    <app-section-header [title]="t('summary.title')"></app-section-header>
 
     @if (loading()) {
       <div class="summary-grid" aria-busy="true" aria-live="polite">
@@ -65,7 +102,7 @@
       </div>
     } @else {
       <!-- Masaüstü: tablo -->
-      <table mat-table [dataSource]="worksheets()" class="worksheets-table">
+      <table mat-table [dataSource]="visibleWorksheets()" class="worksheets-table">
         <ng-container matColumnDef="name">
           <th mat-header-cell *matHeaderCellDef>{{ t('worksheets.columns.name') }}</th>
           <td mat-cell *matCellDef="let row" class="worksheets-table__name">{{ row.name }}</td>
@@ -79,9 +116,7 @@
         <ng-container matColumnDef="completionPercentage">
           <th mat-header-cell *matHeaderCellDef>{{ t('worksheets.columns.completion') }}</th>
           <td mat-cell *matCellDef="let row">
-            <span class="completion-chip" [class]="completionClass(row.completionPercentage)">
-              {{ t('worksheets.completionValue', { value: row.completionPercentage | number: '1.0-2' }) }}
-            </span>
+            <ng-container *ngTemplateOutlet="completion; context: { $implicit: row }"></ng-container>
           </td>
         </ng-container>
 
@@ -100,7 +135,7 @@
 
       <!-- Mobil: kart listesi (aynı veri, CSS ile değişir) -->
       <ul class="worksheet-cards" [attr.aria-label]="t('worksheets.title')">
-        @for (row of worksheets(); track row.worksheetId) {
+        @for (row of visibleWorksheets(); track row.worksheetId) {
           <li
             class="worksheet-card"
             tabindex="0"
@@ -111,9 +146,7 @@
           >
             <div class="worksheet-card__header">
               <span class="worksheet-card__name">{{ row.name }}</span>
-              <span class="completion-chip" [class]="completionClass(row.completionPercentage)">
-                {{ t('worksheets.completionValue', { value: row.completionPercentage | number: '1.0-2' }) }}
-              </span>
+              <ng-container *ngTemplateOutlet="completion; context: { $implicit: row }"></ng-container>
             </div>
             <div class="worksheet-card__meta">
               <mat-icon>groups</mat-icon>
@@ -122,7 +155,41 @@
           </li>
         }
       </ul>
+
+      @if (hasMoreWorksheets()) {
+        <a mat-button routerLink="/tests" class="worksheets-more">
+          {{ t('worksheets.seeAll', { count: worksheets().length }) }}
+          <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+        </a>
+      }
     }
+
+    <!-- #837: tamamlanma yalnız atanmış testte; atanmamışta "—" + Ata -->
+    <ng-template #completion let-row>
+      @if (row.assignedStudentCount > 0) {
+        <span class="completion" [class]="completionClass(row.completionPercentage)">
+          <span class="completion__track" aria-hidden="true">
+            <span class="completion__fill" [style.width.%]="row.completionPercentage"></span>
+          </span>
+          <span class="completion__value">
+            {{ t('worksheets.completionValue', { value: row.completionPercentage | number: '1.0-0' }) }}
+          </span>
+        </span>
+      } @else {
+        <span class="completion completion--none">
+          <span aria-hidden="true">—</span>
+          <button
+            type="button"
+            class="completion__assign"
+            [attr.aria-label]="t('worksheets.assignLabel', { name: row.name })"
+            (click)="assignWorksheet(row, $event)"
+            (keydown.enter)="$event.stopPropagation()"
+          >
+            {{ t('worksheets.assign') }}
+          </button>
+        </span>
+      }
+    </ng-template>
   </div>
 
   <!-- Issue #55: Geride Kalan Öğrenciler -->

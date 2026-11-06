@@ -1,4 +1,21 @@
 {
+  "header": {
+    "title": "Welcome",
+    "titleNamed": "Welcome, {{name}}",
+    "subtitlePending": "{{count}} items need your attention.",
+    "subtitleClear": "Nothing is waiting for you.",
+    "newTest": "New test"
+  },
+  "pending": {
+    "title": "Waiting for you",
+    "empty": "No answers to review, requests or unread messages.",
+    "items": {
+      "reviews": "Answers to review",
+      "requests": "Pending requests",
+      "bookings": "Lesson requests",
+      "messages": "Unread messages"
+    }
+  },
   "summary": {
     "title": "Overview",
     "error": "Something went wrong while loading the overview.",
@@ -20,7 +37,10 @@
     },
     "completionValue": "{{value}}%",
     "studentCount": "{{count}} students",
-    "openDetail": "Go to {{name}} details"
+    "openDetail": "Go to {{name}} details",
+    "assign": "Assign",
+    "assignLabel": "Assign {{name}} to students",
+    "seeAll": "See all ({{count}})"
   },
   "lagging": {
     "title": "Students Falling Behind",

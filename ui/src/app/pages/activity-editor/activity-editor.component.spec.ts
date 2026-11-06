@@ -102,7 +102,12 @@ describe('ActivityEditorComponent (#590)', () => {
   it('etkinlik seçilmeden açılınca nedenini söyler ve testlere döndürür (#876)', async () => {
     await setup({});
 
-    expect(el('[role="alert"]')?.textContent).toContain('Önce bir etkinlik seç');
+    const state = el('[data-testid="ae-load-state"]')!;
+    expect(state.textContent).toContain('Önce bir etkinlik seç');
+    // Hata değil, yol gösterme: nötr kutu; geri dönülecek etkinlik olmadığından başlıkta "Etkinliğe dön" yok.
+    expect(state.getAttribute('role')).toBe('status');
+    expect(state.classList).not.toContain('ae__state--error');
+    expect(el('.ae__header button')).toBeNull();
     el('[data-testid="ae-back-to-tests"]')!.click();
     expect(router.navigate).toHaveBeenCalledWith(['/tests']);
   });

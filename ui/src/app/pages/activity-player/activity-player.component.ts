@@ -382,6 +382,8 @@ export class ActivityPlayerComponent {
    * her kontrolde sunucudan gelir; metin değişince yerelde düşer (değerlendirilmişse "eskidi", değilse gönderilmemiş taslak).
    */
   readonly openTextReviews = signal<Record<number, OpenTextStudentReview | null>>({});
+  /** Issue #614: bildirimden gelinen madde (`?item=` oturum satırı id'si); yoksa null. */
+  readonly linkedItemId = signal<number | null>(null);
   readonly checkCount = signal(0);
   readonly summary = signal<ActivityCheckSummary | null>(null);
   readonly revealed = signal(false);
@@ -638,6 +640,7 @@ export class ActivityPlayerComponent {
         label: activityStepLabel(index),
         answered: this.hasAnswer(item, answers[item.id]),
         review: reviews[item.id] ?? null,
+        highlighted: item.id === this.linkedItemId(),
       }));
   });
 
@@ -714,6 +717,8 @@ export class ActivityPlayerComponent {
         return;
       }
       this.instanceId.set(id);
+      const item = Number(this.route.snapshot.queryParamMap.get('item'));
+      this.linkedItemId.set(Number.isSafeInteger(item) && item > 0 ? item : null);
       void this.load();
     });
   }
@@ -775,8 +780,10 @@ export class ActivityPlayerComponent {
     this.finished.set(instance.status !== TestStatus.Started);
     this.canRetake.set(instance.status === TestStatus.Completed);
     this.summary.set(this.summaryFrom(items, results) ?? this.firstCheckSummary(instance));
+    // Issue #614: değerlendirme bildirimi `?item=<madde>` ile o maddeyi açar; yoksa ilk boş madde.
+    const linked = items.findIndex((item) => item.id === this.linkedItemId());
     const firstEmpty = items.findIndex((item) => !this.hasAnswer(item, answers[item.id]));
-    this.currentIndex.set(firstEmpty >= 0 ? firstEmpty : 0);
+    this.currentIndex.set(linked >= 0 ? linked : firstEmpty >= 0 ? firstEmpty : 0);
     this.itemStartedAt = Date.now();
     if (this.finished()) {
       this.activeTime.stop();

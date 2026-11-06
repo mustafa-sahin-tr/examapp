@@ -68,6 +68,11 @@
   border: 1px solid var(--ms-border-weak);
 }
 
+.asum__open-text-item--highlighted {
+  border-color: var(--ms-action-border-focus);
+  box-shadow: 0 0 0 3px var(--ms-focus-ring);
+}
+
 .asum__open-text-label {
   font-weight: 600;
 }

@@ -14,6 +14,8 @@ export interface ActivitySummaryOpenTextItem {
   label: string;
   answered: boolean;
   review: OpenTextStudentReview | null;
+  /** Issue #614: değerlendirme bildiriminden gelinen madde (vurgulanır). */
+  highlighted?: boolean;
 }
 
 /**

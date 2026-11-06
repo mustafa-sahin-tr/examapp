@@ -234,6 +234,19 @@ describe('describeNotification (issue #105)', () => {
         }
     });
 
+    it('OpenTextReviewed_LinksTheReviewedActivityItem (issue #614)', () => {
+        const result = describeNotification({
+            type: 'OpenTextReviewed',
+            data: JSON.stringify({ testInstanceId: 77, instanceQuestionId: 501, worksheetId: 12 }),
+        });
+        expect(result.icon).toBe('rate_review');
+        expect(result.route).toEqual({ commands: ['/activity', 77], queryParams: { item: 501 } });
+
+        for (const data of [null, '{', JSON.stringify({ testInstanceId: 77 }), JSON.stringify({ testInstanceId: -1, instanceQuestionId: 2 })]) {
+            expect(describeNotification({ type: 'OpenTextReviewed', data }).route, String(data)).toBeNull();
+        }
+    });
+
     it('ParentCoParentLeftToPrimary_LinksParentPageForThatChild (issue #436)', () => {
         const result = describeNotification({
             type: 'ParentCoParentLeftToPrimary',

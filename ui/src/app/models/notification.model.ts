@@ -141,3 +141,38 @@ export function parseBookingTeacherUnavailableData(
   }
   return { teacherId, bookingIds: [...bookingIds] };
 }
+
+/**
+ * Issue #614 — `OpenTextReviewedConsumer.NotificationType`: öğretmen öğrencinin açık uçlu cevabını değerlendirdi.
+ * Bildirim etkinliğin o maddesini açar; öğrenci geri bildirimi orada okur.
+ */
+export const OPEN_TEXT_REVIEWED_NOTIFICATION_TYPE = 'OpenTextReviewed';
+
+/** `OpenTextReviewed` bildiriminin `data` JSON'u (`{ testInstanceId, instanceQuestionId, worksheetId }`). */
+export interface OpenTextReviewedNotificationData {
+  testInstanceId: number;
+  instanceQuestionId: number;
+}
+
+/** `OpenTextReviewed` `data` alanını güvenilmeyen veri olarak ayrıştırır; kimlikler pozitif tam sayı değilse `null`. */
+export function parseOpenTextReviewedData(data: string | null): OpenTextReviewedNotificationData | null {
+  if (!data) {
+    return null;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(data);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return null;
+  }
+  const record = parsed as Record<string, unknown>;
+  const testInstanceId = record['testInstanceId'];
+  const instanceQuestionId = record['instanceQuestionId'];
+  if (!isPositiveSafeInteger(testInstanceId) || !isPositiveSafeInteger(instanceQuestionId)) {
+    return null;
+  }
+  return { testInstanceId, instanceQuestionId };
+}

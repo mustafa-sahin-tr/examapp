@@ -6,8 +6,10 @@ import {
   AppNotification,
   BADGE_EARNED_NOTIFICATION_TYPE,
   BOOKING_TEACHER_UNAVAILABLE_NOTIFICATION_TYPE,
+  OPEN_TEXT_REVIEWED_NOTIFICATION_TYPE,
   parseBadgeEarnedData,
   parseBookingTeacherUnavailableData,
+  parseOpenTextReviewedData,
 } from '../../models/notification.model';
 import {
   AppRouteLink,
@@ -195,6 +197,16 @@ export function describeNotification(
       icon: bookingParentPresentation,
       badge: null,
       route: { commands: [STUDENT_BOOKINGS_ROUTE] },
+      questionOrder: null,
+    };
+  }
+  if (notification.type === OPEN_TEXT_REVIEWED_NOTIFICATION_TYPE) {
+    // Issue #614: etkinliğin değerlendirilen maddesi; bozuk `data` → navigasyon yok.
+    const data = parseOpenTextReviewedData(notification.data);
+    return {
+      icon: 'rate_review',
+      badge: null,
+      route: data ? { commands: ['/activity', data.testInstanceId], queryParams: { item: data.instanceQuestionId } } : null,
       questionOrder: null,
     };
   }

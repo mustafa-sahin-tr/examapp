@@ -93,6 +93,7 @@ describe('ActivityPlayerComponent (#573)', () => {
   beforeEach(() => localStorage.setItem('user', JSON.stringify({ id: 77 })));
   afterEach(() => {
     testServiceAssignments = [];
+    routeQuery = {};
     summaryResponse = { today: { activityCount: 0, activeMinutes: 0, streakDays: 0 }, badges: [] };
     fixture?.destroy();
     sessionStorage.removeItem('activity.activeSeconds:42');
@@ -109,6 +110,8 @@ describe('ActivityPlayerComponent (#573)', () => {
   let router: Router;
   /** `create()` öncesi ayarlanırsa `getActiveAssignments` bunu döner. */
   let testServiceAssignments: unknown[] = [];
+  /** `create()` öncesi ayarlanırsa rotanın sorgu parametreleri (issue #614 `?item=`). */
+  let routeQuery: Record<string, string> = {};
 
   const el = () => fixture.nativeElement as HTMLElement;
   const q = (id: string) => el().querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
@@ -151,7 +154,13 @@ describe('ActivityPlayerComponent (#573)', () => {
         { provide: ActivityService, useValue: activityService },
         { provide: BadgeService, useValue: badgeService },
         { provide: ActivityLauncherService, useValue: launcher },
-        { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ testInstanceId: '42' })) } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            paramMap: of(convertToParamMap({ testInstanceId: '42' })),
+            snapshot: { queryParamMap: convertToParamMap(routeQuery) },
+          },
+        },
       ],
     });
     router = TestBed.inject(Router);
@@ -2320,6 +2329,36 @@ describe('ActivityPlayerComponent (#573)', () => {
       expect(item?.querySelector('[data-testid="ot-feedback"]')?.textContent).toContain('Harika <b>iş</b>');
       expect(item?.querySelector('b b')).toBeNull();
       expect(q('summary-info')?.textContent).toContain('1 cevap yerinden 1 doğru');
+    });
+
+    it('notificationLink_OpensTheReviewedItemInsteadOfTheFirstEmptyOne (issue #614)', async () => {
+      routeQuery = { item: '101' };
+      await create(instance({}, [otQuestion(), {}]));
+
+      expect(fixture.componentInstance.currentIndex()).toBe(0);
+      expect(q('item-count')?.textContent?.trim()).toBe('Madde 1 / 2');
+    });
+
+    it('notificationLink_UnknownItem_FallsBackToFirstEmpty (issue #614)', async () => {
+      routeQuery = { item: '999' };
+      await create(instance({}, [otQuestion(), {}]));
+
+      expect(fixture.componentInstance.currentIndex()).toBe(1);
+    });
+
+    it('notificationLink_FinishedActivity_HighlightsTheReviewedItemInSummary (issue #614)', async () => {
+      routeQuery = { item: '101' };
+      await create(
+        instance({ status: TestStatus.Completed }, [
+          otQuestion({ openTextReview: { status: 'reviewed', evaluation: 'partial', feedback: 'Örnek ekle.', reviewedAt: '2026-11-06T10:00:00Z' } }),
+          { selectedAnswerId: 11 },
+        ])
+      );
+
+      const item = q('summary-open-text-item');
+      expect(item?.classList).toContain('asum__open-text-item--highlighted');
+      expect(item?.getAttribute('aria-current')).toBe('true');
+      expect(item?.textContent).toContain('Örnek ekle.');
     });
 
     it('finishWithoutReview_MarksAnsweredOpenTextPending', async () => {

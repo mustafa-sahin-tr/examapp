@@ -12,7 +12,8 @@
       "defaultChild": "Your child",
       "defaultParent": "Your parent",
       "defaultCoParent": "Another parent",
-      "schoolChangePrivatized": " {0} exam(s) you shared with \"My school\" are now private to you; you can share them again."
+      "schoolChangePrivatized": " {0} exam(s) you shared with \"My school\" are now private to you; you can share them again.",
+      "activityFallback": "Activity"
     },
     "BadgeEarned": {
       "title": "You earned a new badge!",
@@ -301,6 +302,10 @@
     "SchoolRemovedToParent": {
       "title": "Your child's school was removed",
       "body": "Your child {2} is no longer enrolled at {0}."
+    },
+    "OpenTextReviewed": {
+      "title": "Your answer was reviewed",
+      "body": "{0}: your teacher reviewed your open-ended answer. Tap to read the feedback."
     }
   }
 }

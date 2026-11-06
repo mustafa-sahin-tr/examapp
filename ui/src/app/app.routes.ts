@@ -24,6 +24,7 @@ import { EnhancedLayoutComponent } from './components/enhanced-layout/enhanced-l
 import { TestCreateEnhancedComponent } from './pages/test-create-enhanced/test-create-enhanced.component';
 import { DashboardSwitchComponent } from './pages/dashboard/dashboard-switch.component';
 import { TestSolveCanvasComponentv3 } from './pages/test-solve/test-solve-canvas-v3.component';
+import { testSolveLeaveGuard } from './pages/test-solve/test-solve-leave.guard';
 import { QuestionTransferComponent } from './pages/question-transfer/question-transfer.component';
 import { QuestionGenerationComponent } from './pages/question-generation/question-generation.component';
 import { MockExamsComponent } from './pages/mock-exams/mock-exams.component';
@@ -133,7 +134,7 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./pages/activity-editor/activity-editor.component').then((m) => m.ActivityEditorComponent),
       },
-      { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponentv3, canActivate: [authGuard, approvedTeacherGuard] },
+      { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponentv3, canActivate: [authGuard, approvedTeacherGuard], canDeactivate: [testSolveLeaveGuard] },
       {
         // Issue #573: etkinlik sayfası oynatıcısı (madde madde, kontrol/çözüm; puansız). Test oturumu gelirse /testsolve'a döner.
         path: 'activity/:testInstanceId',

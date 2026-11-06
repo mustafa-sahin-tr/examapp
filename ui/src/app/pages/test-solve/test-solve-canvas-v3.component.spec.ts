@@ -192,6 +192,48 @@ describe('TestSolveCanvasComponentv3 — finish flow (issue #383)', () => {
         expect(navigateSpy).not.toHaveBeenCalled();
     });
 
+    // Issue #821: bildirim, menü ya da geri ile ayrılış da aynı pencereden geçer.
+    it('route leave: asks, and allows only after the student confirms', async () => {
+        dialogReturns(false);
+        expect(await component.canLeave()).toBe(false);
+
+        dialogReturns(true);
+        expect(await component.canLeave()).toBe(true);
+        const data = vi.mocked(dialog.open).mock.lastCall![1]?.data as ConfirmDialogData;
+        expect(data.title).toBe(testSolveTr.leave.title);
+    });
+
+    it('route leave: failed save keeps the student on the screen', async () => {
+        testService.saveAnswer.mockReturnValue(of({ success: false } as TestSessionResult));
+        dialogReturns(true);
+        component.testInstance.maxDurationSeconds = 600;
+
+        expect(await component.canLeave()).toBe(false);
+    });
+
+    it('route leave: the leave button does not ask twice', async () => {
+        dialogReturns(true);
+        component.leaveAndContinueLater();
+        await settle();
+        vi.mocked(dialog.open).mockClear();
+
+        expect(component.canLeave()).toBe(true);
+        expect(dialog.open).not.toHaveBeenCalled();
+    });
+
+    it('route leave: a finished session leaves without asking', () => {
+        (component as unknown as { redirectedToResult: boolean }).redirectedToResult = true;
+
+        expect(component.canLeave()).toBe(true);
+        expect(dialog.open).not.toHaveBeenCalled();
+    });
+
+    it('beforeunload: warns only while an answer is unsaved', () => {
+        const idle = new Event('beforeunload', { cancelable: true }) as BeforeUnloadEvent;
+        component.onBeforeUnload(idle);
+        expect(idle.defaultPrevented).toBe(false);
+    });
+
     it('confirm: completeTest is sent only after the pending last-answer save resolves', async () => {
         const save$ = new Subject<TestSessionResult>();
         testService.saveAnswer.mockReturnValue(save$);

@@ -22,6 +22,9 @@
   --darkColor: #000000;
   --whiteColor: #ffffff;
   --blackColor: #131F34;
+  // #841: soru kâğıdı — kitap sayfası görselleri beyaz zeminli; kâğıt her temada beyaz, yazısı koyu.
+  --ms-paper: #ffffff;
+  --ms-paper-ink: #130F25;
   --mainFontFamily: "Manrope", sans-serif;
   --paragraphFontFamily: "Inter", sans-serif;
   // Issue #587: boyama etkinliğinin (regionPaint) palet renkleri — içerik rengi, iki temada aynı ("maviye boya" mavidir).

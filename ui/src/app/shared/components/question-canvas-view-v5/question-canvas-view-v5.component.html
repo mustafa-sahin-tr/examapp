@@ -53,7 +53,11 @@
             (mouseenter)="hoverAnswer(answer)" (mouseleave)="hoverAnswer(null)" (click)="selectAnswer($index)"
             (keydown.enter)="selectAnswer($index)" (keydown.space)="$event.preventDefault(); selectAnswer($index)">
             @if (showSelectionMark(answer)) {
-              <mat-icon class="qcv4-answer-check" aria-hidden="true">check_circle</mat-icon>
+              <!-- #841: seçim renk tek başına değil; dolu harf yuvarlağı + "Seçtin" etiketi. -->
+              <span class="qcv4-answer-check" aria-hidden="true">
+                <span class="qcv4-answer-check__letter">{{ answer.label || choiceLetter($index) }}</span>
+                {{ t('chosen') }}
+              </span>
             }
             @if (wholeFigure()) {
               <span class="qcv4-answer-letter">{{ answer.label || $index + 1 }}</span>

@@ -5,6 +5,7 @@
   "header": {
     "remainingTime": "Time left",
     "questionOrder": "Question position",
+    "questionOf": "Question {{current}} / {{total}}",
     "questionPositionAria": "Question {{current}} of {{total}}",
     "questionActions": "Question actions",
     "pauseTest": "Pause the test",
@@ -66,6 +67,7 @@
     "closeMap": "Close the question map",
     "clearAnswer": "Clear answer",
     "clearAnswerLabel": "Clear answer",
+    "shortcutHint": "A–E picks a choice · ← → changes question",
     "clearShort": "Clear"
   },
   "insight": {

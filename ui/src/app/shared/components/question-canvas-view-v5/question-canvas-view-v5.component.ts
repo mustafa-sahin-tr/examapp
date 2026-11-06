@@ -308,6 +308,11 @@ export class QuestionCanvasViewComponentv5 {
     return this._selectedChoice() === answer;
   }
 
+  /** #841: etiketsiz şıkta sıradan harf (0 → A). */
+  choiceLetter(index: number): string {
+    return String.fromCharCode(65 + index);
+  }
+
   /** Çözerken seçili şıkta işaret gösterilir; sonuç ekranında renkler yeterlidir. */
   showSelectionMark(answer: AnswerChoice): boolean {
     return this._mode() === 'exam' && this.isSelected(answer);

@@ -32,6 +32,8 @@ export interface Question {
   imageUrlV2?: string | null;
   bookName?: string;
   category: Subject;
+  /** Ders adı (QuestionDto.CategoryName; `bytest` listesinde dolar). */
+  categoryName?: string | null;
   answers: Answer[];
   passage?: Passage;
   showPassageFirst?: boolean;

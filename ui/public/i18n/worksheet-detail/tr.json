@@ -141,7 +141,16 @@
     "hard": "Zor",
     "legendItem": "{{label}} · {{count}}",
     "unclassifiedWarn": "{{count}} soru sınıflandırılmadı — konu/zorluk elle atanmalı",
-    "openTextReviews": "Açık uçlu cevapları değerlendir"
+    "openTextReviews": "Açık uçlu cevapları değerlendir",
+    "addQuestionMenu": {
+      "open": "Soru ekle",
+      "book": "Kitaptan işaretle",
+      "bookHint": "Taranmış sayfada soru kutusu çiz",
+      "bank": "Havuzdan seç",
+      "bankHint": "Hazır sorulardan",
+      "text": "Görselsiz yaz",
+      "textHint": "Metinle yeni madde"
+    }
   },
   "status": {
     "completed": "Tamamladı",
@@ -354,7 +363,53 @@
         "clockSet": "Saat kurma"
       }
     },
-    "addTextItem": "Görselsiz madde ekle"
+    "addTextItem": "Görselsiz madde ekle",
+    "testItems": {
+      "title": "Sorular",
+      "count": "{{count}} soru",
+      "warnings": "{{count}} uyarı",
+      "listLabel": "Test soruları",
+      "loading": "Sorular yükleniyor",
+      "error": "Sorular yüklenemedi.",
+      "retry": "Tekrar dene",
+      "emptyTitle": "Bu testte henüz soru yok",
+      "emptyHint": "Kitaptan işaretleyin ya da soru havuzundan ekleyin.",
+      "addTextItem": "Görselsiz soru ekle",
+      "addFromBank": "Havuzdan ekle",
+      "visual": "Görselli",
+      "visualHint": "Görselli, düzenlenemez",
+      "noPreview": "Konu yok",
+      "answer": "Cevap {{letter}}",
+      "noAnswer": "Cevap yok",
+      "noAnswerHint": "Doğru cevabı olmayan soru öğrenciye puansız gider; düzenleyip cevabı seçin.",
+      "edit": "Düzenle",
+      "editAria": "Soru {{number}}'i düzenle",
+      "remove": "Testten çıkar",
+      "removeAria": "Soru {{number}}'i testten çıkar",
+      "removeTitle": "Soru {{number}} testten çıkarılsın mı?",
+      "removeMessage": "Soru testten çıkarılır; kalan sorular yeniden numaralanır. Soru havuzda kalır.",
+      "removeNote": "Bu değişiklik yalnız bundan sonra başlayan öğrencilere uygulanır; çözmeye başlamış öğrenciler testi başladıkları hâliyle bitirir.",
+      "cancel": "Vazgeç",
+      "removed": "Soru {{number}} testten çıkarıldı.",
+      "removeFailed": "Soru çıkarılamadı.",
+      "dragAria": "Soru {{number}}'i sürükleyerek taşı",
+      "more": "Diğer işlemler",
+      "moreAria": "Soru {{number}} için diğer işlemler",
+      "moveUp": "Yukarı taşı",
+      "moveDown": "Aşağı taşı",
+      "moveUpAria": "Soru {{number}}'i yukarı taşı",
+      "moveDownAria": "Soru {{number}}'i aşağı taşı",
+      "moved": "Soru {{from}}, {{to}}. sıraya taşındı",
+      "saving": "Sıra kaydediliyor",
+      "reorderFailed": "Sıra kaydedilemedi",
+      "reorderNote": "Bu değişiklik yalnız bundan sonra başlayan öğrencilere uygulanır; çözmeye başlamış öğrenciler testi başladıkları hâliyle bitirir.",
+      "dismiss": "Kapat",
+      "answerTitle": "{{number}}. sorunun doğru cevabı",
+      "answerPick": "Doğru şıkkı seç",
+      "answerSave": "Kaydet",
+      "answerSaved": "{{number}}. sorunun cevabı kaydedildi.",
+      "answerFailed": "Cevap kaydedilemedi."
+    }
   },
   "adminSharing": {
     "title": "Paylaşım (admin)",

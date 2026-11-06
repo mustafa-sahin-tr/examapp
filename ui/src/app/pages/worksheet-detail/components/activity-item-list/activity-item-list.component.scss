@@ -214,3 +214,23 @@
     justify-content: flex-end;
   }
 }
+
+// Issue #857: test sorusunda doğru cevabı olmayan satırın uyarısı.
+.ail__chip--warn,
+.ail__badge--warn {
+  color: var(--ms-warning-text);
+  background: var(--ms-warning-surface);
+  border: 1px solid var(--ms-warning-border);
+}
+
+.ail__badge--warn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+}

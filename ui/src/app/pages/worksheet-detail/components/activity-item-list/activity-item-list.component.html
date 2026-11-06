@@ -1,8 +1,12 @@
-<section class="ail" *transloco="let t; prefix: 'worksheet-detail.activity.items'" data-testid="activity-item-list">
+<!-- #857: aynı liste normal testin soruları için (`mode="test"`): metinler testItems grubundan. -->
+<section class="ail" *transloco="let t; prefix: scope()" data-testid="activity-item-list" [attr.data-mode]="mode()">
   <header class="ail__head">
     <h2><span class="dot"></span>{{ t('title') }}</h2>
     @if (state() === 'loaded') {
       <span class="ail__chip">{{ t('count', { count: rows().length }) }}</span>
+      @if (warningCount() > 0) {
+        <span class="ail__chip ail__chip--warn" data-testid="test-items-warnings">{{ t('warnings', { count: warningCount() }) }}</span>
+      }
     }
   </header>
 
@@ -29,9 +33,11 @@
           @if (canEdit()) {
             <span>{{ t('emptyHint') }}</span>
             <div class="ail__empty-actions">
-              <button mat-flat-button type="button" (click)="addTextItem.emit()" data-testid="activity-items-add-text">
-                <mat-icon>edit_note</mat-icon>{{ t('addTextItem') }}
-              </button>
+              @if (!isTest()) {
+                <button mat-flat-button type="button" (click)="addTextItem.emit()" data-testid="activity-items-add-text">
+                  <mat-icon>edit_note</mat-icon>{{ t('addTextItem') }}
+                </button>
+              }
               <button mat-stroked-button type="button" (click)="addFromBank.emit()" data-testid="activity-items-add-bank">
                 <mat-icon>library_add</mat-icon>{{ t('addFromBank') }}
               </button>
@@ -81,21 +87,37 @@
                 }
               </span>
               <div class="ail__body">
-                <div class="ail__badges">
-                  @if (row.visual) {
-                    <span class="ail__badge ail__badge--visual">{{ t('visual') }}</span>
+                @if (isTest()) {
+                  <!-- #857: test sorusu — doğru cevap ya da uyarı, konu -->
+                  <div class="ail__badges">
+                    @if (row.noAnswer) {
+                      <span class="ail__badge ail__badge--warn" data-testid="test-item-no-answer" [title]="t('noAnswerHint')">
+                        <mat-icon aria-hidden="true">warning</mat-icon>{{ t('noAnswer') }}
+                      </span>
+                    } @else if (row.answerLetter) {
+                      <span class="ail__badge" data-testid="test-item-answer">{{ t('answer', { letter: row.answerLetter }) }}</span>
+                    } @else {
+                      <span class="ail__badge">{{ typeName(row) }}</span>
+                    }
+                  </div>
+                  <p class="ail__preview" [title]="row.topic">{{ row.topic || t('noPreview') }}</p>
+                } @else {
+                  <div class="ail__badges">
+                    @if (row.visual) {
+                      <span class="ail__badge ail__badge--visual">{{ t('visual') }}</span>
+                    }
+                    <span class="ail__badge">{{ typeName(row) }}</span>
+                  </div>
+                  <p class="ail__preview" [title]="row.preview">{{ row.preview || t('noPreview') }}</p>
+                  @if (canEdit() && row.visual) {
+                    <span class="ail__hint" data-testid="activity-item-visual-hint">{{ t('visualHint') }}</span>
                   }
-                  <span class="ail__badge">{{ typeName(row) }}</span>
-                </div>
-                <p class="ail__preview" [title]="row.preview">{{ row.preview || t('noPreview') }}</p>
-                @if (canEdit() && row.visual) {
-                  <span class="ail__hint" data-testid="activity-item-visual-hint">{{ t('visualHint') }}</span>
                 }
               </div>
               @if (canEdit()) {
                 <!-- #838: düzenle görünür; taşı / kaldır taşma menüsünde (madde başına 4 ikon yerine 2) -->
                 <div class="ail__actions">
-                  @if (row.formEditable) {
+                  @if (row.formEditable || isTest()) {
                     <button mat-icon-button type="button" (click)="edit(row)" [disabled]="busy()"
                       [matTooltip]="t('edit')" [attr.aria-label]="t('editAria', { number: row.number })"
                       data-testid="activity-item-edit">

@@ -48,6 +48,11 @@ export const DIFFICULTY_RANGES: Record<Exclude<QuestionBankDifficultyFilter, 'an
 
 const EMPTY_PAGE: QuestionBankPage = { items: [], total: 0, skip: 0, take: 0 };
 
+/** Issue #863: zorluk puanının (1-10) süzgeçteki dilimi — liste satırı ve seçim özeti "Kolay / Orta / Zor" der. */
+export function difficultyBucket(level: number): Exclude<QuestionBankDifficultyFilter, 'any'> {
+  return level >= DIFFICULTY_RANGES.hard[0] ? 'hard' : level >= DIFFICULTY_RANGES.medium[0] ? 'medium' : 'easy';
+}
+
 /**
  * issue #471: soru bankası arama paneli — sınıf → ders → konu → alt konu kademeli seçim, durum filtreleri, sayfalı
  * sonuç ızgarası ve önizleme. Soru bankası sayfası kullanır; test ekranındaki "Havuzdan ekle" (#472) aynı bileşeni
@@ -99,6 +104,13 @@ export class QuestionBankPanelComponent {
   /** Seçilemeyen (ör. zaten testte olan) soru id'leri. */
   readonly disabledIds = input<number[]>([]);
   readonly selectionChange = output<number[]>();
+  /** Issue #863: seçilen soruların kendisi (sayfalar arası) — diyaloğun seçim çubuğu. */
+  readonly selectedItemsChange = output<QuestionBankItem[]>();
+  /** Issue #863: "Havuzdan soru ekle" okunabilir satır listesi; sayfada kartlar. */
+  readonly layout = input<'cards' | 'list'>('cards');
+  /** Issue #863: açılışta cevap süzgeci (diyalogda "yalnız cevabı olanlar"). */
+  readonly initialAnswerFilter = input<QuestionBankAnswerFilter>('any');
+  readonly difficultyBucket = difficultyBucket;
 
   readonly pageSizeOptions = [12, 24, 48];
   readonly AI = ClassificationSource.AI;
@@ -124,7 +136,7 @@ export class QuestionBankPanelComponent {
 
   readonly source = signal<QuestionBankSourceFilter>('any');
   readonly status = signal<QuestionBankStatusFilter>('any');
-  readonly answer = signal<QuestionBankAnswerFilter>('any');
+  readonly answer = linkedSignal<QuestionBankAnswerFilter>(() => this.initialAnswerFilter());
   readonly inTest = signal<QuestionBankInTestFilter>('any');
   readonly difficulty = signal<QuestionBankDifficultyFilter>('any');
   readonly contextBased = signal<QuestionBankContextFilter>('any');
@@ -156,6 +168,7 @@ export class QuestionBankPanelComponent {
   readonly error = signal(false);
   readonly page = signal<QuestionBankPage>(EMPTY_PAGE);
   readonly selectedIds = signal<ReadonlySet<number>>(new Set());
+  private readonly selectedItems = new Map<number, QuestionBankItem>();
 
   private readonly disabledSet = computed(() => new Set(this.disabledIds()));
 
@@ -325,15 +338,34 @@ export class QuestionBankPanelComponent {
   toggleSelection(item: QuestionBankItem): void {
     if (!this.selectable() || this.isDisabled(item) || this.isLinkBlocked(item)) return;
     const next = new Set(this.selectedIds());
-    if (next.has(item.id)) next.delete(item.id);
-    else next.add(item.id);
-    this.selectedIds.set(next);
-    this.selectionChange.emit([...next]);
+    if (next.has(item.id)) {
+      next.delete(item.id);
+      this.selectedItems.delete(item.id);
+    } else {
+      next.add(item.id);
+      this.selectedItems.set(item.id, item);
+    }
+    this.emitSelection(next);
+  }
+
+  /** Issue #863: seçim çubuğundan çıkarma (soru başka sayfada olabilir). */
+  removeSelection(id: number): void {
+    if (!this.selectedIds().has(id)) return;
+    const next = new Set(this.selectedIds());
+    next.delete(id);
+    this.selectedItems.delete(id);
+    this.emitSelection(next);
   }
 
   clearSelection(): void {
-    this.selectedIds.set(new Set());
-    this.selectionChange.emit([]);
+    this.selectedItems.clear();
+    this.emitSelection(new Set());
+  }
+
+  private emitSelection(next: ReadonlySet<number>): void {
+    this.selectedIds.set(next);
+    this.selectionChange.emit([...next]);
+    this.selectedItemsChange.emit([...this.selectedItems.values()]);
   }
 
   /** Issue #692: kayıtlı sorunun kazanımları. */

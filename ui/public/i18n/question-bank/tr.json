@@ -110,5 +110,11 @@
       "2": "Problem çözme",
       "3": "Eleştirel düşünme"
     }
+  },
+  "list": {
+    "easy": "Kolay",
+    "medium": "Orta",
+    "hard": "Zor",
+    "new": "Testte kullanılmadı"
   }
 }

@@ -150,6 +150,54 @@
     <p class="qb-message">{{ t('results.empty') }}</p>
   }
 
+  @if (layout() === 'list') {
+    <!-- #863: okunabilir satır listesi — görsel ya da ilk iki satır metin, konu · zorluk · test sayısı; cevapsız uyarılı. -->
+    <ul class="qb-list" data-testid="bank-list">
+      @for (item of page().items; track item.id) {
+        <li class="qb-row" data-testid="bank-row" [attr.data-id]="item.id"
+          [class.qb-row--selected]="isSelected(item)"
+          [class.qb-row--disabled]="selectable() && (isDisabled(item) || isLinkBlocked(item))"
+          [class.qb-row--no-answer]="!item.hasCorrectAnswer">
+          @if (selectable()) {
+            <mat-checkbox class="qb-row__check"
+              [checked]="isSelected(item) || isDisabled(item)"
+              [disabled]="isDisabled(item) || isLinkBlocked(item)"
+              (change)="toggleSelection(item)"
+              [attr.aria-label]="t('card.select')" />
+          }
+          <button type="button" class="qb-row__thumb" (click)="preview(item)" [attr.aria-label]="t('card.preview', { id: item.id })">
+            @if (item.imageUrl) {
+              <img [src]="item.imageUrl" alt="" loading="lazy" />
+            } @else {
+              <mat-icon>notes</mat-icon>
+            }
+          </button>
+          <div class="qb-row__body" (click)="toggleSelection(item)">
+            @if (item.text) {
+              <span class="qb-row__text" [innerHTML]="item.text"></span>
+            } @else {
+              <span class="qb-row__text">{{ item.subjectName || t('card.noSubject') }}</span>
+            }
+            <span class="qb-row__meta">
+              @if (item.topicName) { <span>{{ item.topicName }}</span> }
+              <span>{{ t('list.' + difficultyBucket(item.difficultyLevel)) }}</span>
+              <span>{{ item.testCount > 0 ? t('card.testCount', { count: item.testCount }) : t('list.new') }}</span>
+              @if (isActivity(item)) { <span class="qb-tag qb-tag--activity" data-testid="activity-tag">{{ t('card.activity') }}</span> }
+            </span>
+          </div>
+          <span class="qb-row__state">
+            @if (isDisabled(item)) {
+              <span class="qb-tag">{{ t('card.alreadyAdded') }}</span>
+            } @else if (isLinkBlocked(item)) {
+              <span class="qb-tag" [matTooltip]="t('card.cannotLinkTooltip')">{{ t('card.cannotLink') }}</span>
+            } @else if (!item.hasCorrectAnswer) {
+              <span class="qb-tag qb-tag--warning" data-testid="bank-row-no-answer">{{ t('card.noAnswer') }}</span>
+            }
+          </span>
+        </li>
+      }
+    </ul>
+  } @else {
   <div class="qb-grid">
     @for (item of page().items; track item.id) {
       <mat-card
@@ -247,6 +295,7 @@
       </mat-card>
     }
   </div>
+  }
 
   @if (page().total > 0) {
     <mat-paginator

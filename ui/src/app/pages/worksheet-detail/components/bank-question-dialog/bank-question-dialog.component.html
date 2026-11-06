@@ -13,16 +13,35 @@
 
   @if (existingIds(); as existing) {
     <app-question-bank-panel
-      filterLayout="selects"
+      filterLayout="selects" layout="list" initialAnswerFilter="yes"
       [initialClassification]="data.initialClassification ?? null"
-      [selectable]="true" [disabledIds]="existing" (selectionChange)="onSelectionChange($event)" />
+      [selectable]="true" [disabledIds]="existing" (selectionChange)="onSelectionChange($event)"
+      (selectedItemsChange)="selectedItems.set($event)" />
   } @else if (!errorMessage()) {
     <div class="bqd-loading"><mat-spinner diameter="32"></mat-spinner></div>
   }
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-  <span class="bqd-count">{{ t('bankDialog.selectedCount', { count: selectedIds().length }) }}</span>
+  <!-- #863: seçim çubuğu — kaç soru, zorluk dağılımı ve seçilenler (çıkarılabilir). -->
+  <div class="bqd-tray" data-testid="bank-tray">
+    <span class="bqd-count">
+      {{ t('bankDialog.trayCount', { count: selectedIds().length }) }}@if (difficultySummary(); as summary) { · {{ summary }} }
+    </span>
+    @if (selectedItems().length > 0) {
+      <ul class="bqd-tray__list">
+        @for (item of selectedItems(); track item.id) {
+          <li class="bqd-tray__item">
+            @if (item.imageUrl) { <img [src]="item.imageUrl" alt="" /> } @else { <mat-icon>notes</mat-icon> }
+            <button mat-icon-button type="button" class="bqd-tray__remove" data-testid="bank-tray-remove"
+              [attr.aria-label]="t('bankDialog.removeSelected')" (click)="removeSelected(item.id)">
+              <mat-icon>close</mat-icon>
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  </div>
   <button mat-button type="button" (click)="cancel()">{{ t('bankDialog.cancel') }}</button>
   <button
     mat-flat-button
@@ -35,7 +54,7 @@
     @if (submitting()) {
       <mat-spinner diameter="18"></mat-spinner>
     } @else {
-      <span>{{ t('bankDialog.submit') }}</span>
+      <span>{{ selectedIds().length > 0 ? t('bankDialog.submitCount', { count: selectedIds().length }) : t('bankDialog.submit') }}</span>
     }
   </button>
 </mat-dialog-actions>

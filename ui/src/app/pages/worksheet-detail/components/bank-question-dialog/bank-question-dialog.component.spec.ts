@@ -10,12 +10,13 @@ import { Subject, of, throwError } from 'rxjs';
 import { BankQuestionDialogComponent, BankQuestionDialogData } from './bank-question-dialog.component';
 import { QuestionService } from '../../../../services/question.service';
 import { Question } from '../../../../models/question';
-import { LinkBankQuestionsResult } from '../../../../models/question-bank';
+import { LinkBankQuestionsResult, QuestionBankItem } from '../../../../models/question-bank';
 import { QuestionBankPanelComponent } from '../../../../shared/components/question-bank-panel/question-bank-panel.component';
 import { ClassificationSelection } from '../../../../shared/components/classification-selector/classification-selector.component';
 import { translocoTestingModule } from '../../../../shared/testing/transloco-testing';
 import rootTr from '../../../../../../public/i18n/tr.json';
 import worksheetDetailTr from '../../../../../../public/i18n/worksheet-detail/tr.json';
+import questionBankTr from '../../../../../../public/i18n/question-bank/tr.json';
 
 /** Gerçek panel kendi HTTP aramasını yapar; dialog testinde yalnız girdileri ve seçim çıktısı taklit edilir. */
 @Component({ selector: 'app-question-bank-panel', standalone: true, changeDetection: ChangeDetectionStrategy.Eager,
@@ -29,8 +30,14 @@ class QuestionBankPanelStub {
     filterLayout: 'chips' | 'selects' = 'chips';
     @Input()
     initialClassification: ClassificationSelection | null = null;
+    @Input()
+    layout: 'cards' | 'list' = 'cards';
+    @Input()
+    initialAnswerFilter = 'any';
     @Output()
     selectionChange = new EventEmitter<number[]>();
+    @Output()
+    selectedItemsChange = new EventEmitter<QuestionBankItem[]>();
 }
 
 describe('BankQuestionDialogComponent (issue #472)', () => {
@@ -56,7 +63,7 @@ describe('BankQuestionDialogComponent (issue #472)', () => {
             imports: [
                 BankQuestionDialogComponent,
                 translocoTestingModule({
-                    langs: { tr: { ...rootTr, 'worksheet-detail': worksheetDetailTr }, 'worksheet-detail/tr': worksheetDetailTr },
+                    langs: { tr: { ...rootTr, 'worksheet-detail': worksheetDetailTr, 'question-bank': questionBankTr }, 'worksheet-detail/tr': worksheetDetailTr },
                 }),
             ],
             providers: [
@@ -188,5 +195,23 @@ describe('BankQuestionDialogComponent (issue #472)', () => {
 
         expect(dialogRef.close).toHaveBeenCalledWith();
         expect(questions.linkBankQuestions).not.toHaveBeenCalled();
+    });
+
+    // Issue #863: liste düzeni, "yalnız cevabı olanlar" ve seçim çubuğu.
+    it('opens the bank as a list with answered questions first and shows a selection tray', () => {
+        existing$.next([]);
+        fixture.detectChanges();
+        expect(panel()!.layout).toBe('list');
+        expect(panel()!.initialAnswerFilter).toBe('yes');
+
+        const item = (id: number, difficultyLevel: number) => ({ id, difficultyLevel, imageUrl: null } as unknown as QuestionBankItem);
+        panel()!.selectionChange.emit([1, 2, 3]);
+        panel()!.selectedItemsChange.emit([item(1, 2), item(2, 3), item(3, 5)]);
+        fixture.detectChanges();
+
+        const tray = (fixture.nativeElement as HTMLElement).querySelector('[data-testid="bank-tray"]')!;
+        expect(tray.textContent).toContain('3 soru seçildi · 2 Kolay, 1 Orta');
+        expect(tray.querySelectorAll('[data-testid="bank-tray-remove"]').length).toBe(3);
+        expect(submitButton().textContent).toContain('3 soruyu teste ekle');
     });
 });

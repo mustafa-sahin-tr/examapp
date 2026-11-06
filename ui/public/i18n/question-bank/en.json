@@ -110,5 +110,11 @@
       "2": "Problem solving",
       "3": "Critical thinking"
     }
+  },
+  "list": {
+    "easy": "Easy",
+    "medium": "Medium",
+    "hard": "Hard",
+    "new": "Not in a test yet"
   }
 }

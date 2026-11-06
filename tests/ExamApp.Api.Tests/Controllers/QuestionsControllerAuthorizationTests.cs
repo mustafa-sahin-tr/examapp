@@ -160,7 +160,8 @@ public class QuestionsControllerAuthorizationTests : IDisposable
         _testLinks = testLinks;
 
         var minio = Substitute.For<IMinIoService>();
-        minio.GetFileStreamAsync(Arg.Any<string>()).Returns(_ => Task.FromResult<Stream?>(new MemoryStream(new byte[] { 1 })));
+        // WebP imzası: görsel ucu içerik türünü baytlardan verir (anahtar .jpg olsa da).
+        minio.GetFileStreamAsync(Arg.Any<string>()).Returns(_ => Task.FromResult<Stream?>(new MemoryStream("RIFF\0\0\0\0WEBPVP8 "u8.ToArray())));
 
         var classifierCache = Substitute.For<IClassifierCacheService>();
         classifierCache.GetActivePointerAsync(Arg.Any<CancellationToken>()).Returns((null, "m"));
@@ -513,7 +514,10 @@ public class QuestionsControllerAuthorizationTests : IDisposable
         using var host = await StartHostAsync();
         using var client = host.GetTestClient();
 
-        (await SendAsync(client, Service, HttpMethod.Get, $"/api/questions/{_copierQuestion}/image")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        var image = await SendAsync(client, Service, HttpMethod.Get, $"/api/questions/{_copierQuestion}/image");
+        image.StatusCode.ShouldBe(HttpStatusCode.OK);
+        // Sınıflandırıcı türü bu başlıktan alır; WebP'yi image/jpeg diye gönderince Claude isteği reddediyordu.
+        image.Content.Headers.ContentType?.MediaType.ShouldBe("image/webp");
         // Issue #590: görseli olmayan sorunun sınıflandırma metni.
         (await SendAsync(client, Service, HttpMethod.Get, $"/api/questions/{_copierQuestion}/classification-text")).StatusCode.ShouldBe(HttpStatusCode.OK);
         (await SendAsync(client, Service, HttpMethod.Put, $"/api/questions/{_copierQuestion}/classification",

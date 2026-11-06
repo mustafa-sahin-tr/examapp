@@ -103,6 +103,9 @@ describe('QuestionCanvasViewComponentv5', () => {
             expect(card.classList).toContain('is-selected');
             expect(card.classList).not.toContain('is-correct');
             expect(card.querySelector('.qcv4-answer-check')).toBeTruthy();
+            // #841: renk tek ipucu değil — dolu harf yuvarlağı seçilen şıkkın harfini taşır.
+            expect(card.querySelector('.qcv4-answer-check__letter')?.textContent?.trim()).toBe('B');
+            expect(fixture.nativeElement.querySelectorAll('.qcv4-answer-check').length).toBe(1);
         });
 
         it('selectAnswer_Called_EmitsChoiceSelectedWithChosenAnswer', () => {

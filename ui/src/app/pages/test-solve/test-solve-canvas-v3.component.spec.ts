@@ -91,7 +91,8 @@ describe('TestSolveCanvasComponentv3 — finish flow (issue #383)', () => {
         testService.saveAnswer.mockReturnValue(of(OK));
         dialog = {
             open: vi.fn().mockName("MatDialog.open"),
-            closeAll: vi.fn().mockName("MatDialog.closeAll")
+            closeAll: vi.fn().mockName("MatDialog.closeAll"),
+            openDialogs: [],
         } as unknown as MockedObject<MatDialog>;
         snackBar = {
             open: vi.fn().mockName("MatSnackBar.open")
@@ -795,6 +796,41 @@ describe('TestSolveCanvasComponentv3 — finish flow (issue #383)', () => {
                 expect(press('f').defaultPrevented).toBe(false);
             });
 
+            // #841: düz tuşlar — A–E şık seçer, ← → soru değiştirir.
+            const plain = (key: string, target: EventTarget = document) => {
+                const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+                target.dispatchEvent(event);
+                return event;
+            };
+
+            it('letters pick the matching choice and arrows change the question (#841)', async () => {
+                component.regions.set([
+                    { id: 1, answers: [{ id: 31, label: 'A' }, { id: 32, label: 'B' }] },
+                    {}, {}, {},
+                ] as never);
+                const select = vi.spyOn(component, 'selectChoiceForQuestion').mockImplementation(() => undefined);
+
+                expect(plain('b').defaultPrevented).toBe(true);
+                expect(select).toHaveBeenCalledWith(expect.objectContaining({ id: 32 }), 0);
+                expect(plain('x').defaultPrevented).toBe(false);
+
+                expect(plain('ArrowRight').defaultPrevented).toBe(true);
+                await settle();
+                expect(component.currentIndex()).toBe(1);
+            });
+
+            it('plain keys are ignored while typing (#841)', () => {
+                component.regions.set([{ id: 1, answers: [{ id: 31, label: 'A' }] }, {}, {}, {}] as never);
+                const select = vi.spyOn(component, 'selectChoiceForQuestion').mockImplementation(() => undefined);
+                const input = document.createElement('input');
+                document.body.appendChild(input);
+
+                expect(plain('a', input).defaultPrevented).toBe(false);
+                expect(plain('ArrowRight', input).defaultPrevented).toBe(false);
+                expect(select).not.toHaveBeenCalled();
+                input.remove();
+            });
+
             it('have no entries for views without a visible control', () => {
                 component.ngOnInit();
                 for (const key of ['1', '2', '4', 'h']) {
@@ -802,6 +838,14 @@ describe('TestSolveCanvasComponentv3 — finish flow (issue #383)', () => {
                 }
                 expect(component.questionsPerView()).toBe(1);
             });
+        });
+
+        it('finish stays secondary until the last question or no empty question (#841)', async () => {
+            component.regions.set([{}, {}, {}, {}] as never);
+            expect(component.finishReady()).toBe(false);
+
+            await component.focusOnQuestion(3);
+            expect(component.finishReady()).toBe(true);
         });
 
         describe('low time notice', () => {

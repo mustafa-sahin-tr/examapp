@@ -302,6 +302,7 @@
       "paneTabs": "Okuma metni ve soru",
       "panePassage": "Metin",
       "paneQuestion": "Soru",
+      "chosen": "Seçtin",
       "choiceAria": "Şık {{label}}",
       "labels": "Etiketler",
       "tapHintIdle": "Bir etikete dokun, sonra hedefe dokun.",

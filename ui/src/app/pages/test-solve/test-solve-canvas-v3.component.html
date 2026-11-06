@@ -41,7 +41,11 @@
             total: testInstance.testInstanceQuestions.length
           })
         ">
-        {{ currentIndex() + 1 }}/{{ testInstance.testInstanceQuestions.length }}
+        @if (isMobileViewport()) {
+          {{ currentIndex() + 1 }}/{{ testInstance.testInstanceQuestions.length }}
+        } @else {
+          {{ t('header.questionOf', { current: currentIndex() + 1, total: testInstance.testInstanceQuestions.length }) }}
+        }
       </span>
       <span class="save-status" [class.save-status--failed]="saveStatus() === 'failed'"
         [class.save-status--saved]="saveStatus() === 'saved'" role="status">
@@ -88,10 +92,18 @@
         <mat-icon>pause</mat-icon>
       </button>
       }
-      <button mat-raised-button color="primary" class="header-finish" (click)="confirmFinishTest()" [disabled]="finishing()" [attr.aria-label]="t('header.finishTestAria')">
+      <!-- #841: tüm sorular cevaplanana ya da son soruya gelene kadar ikincil; sonra birincil. -->
+      @if (finishReady()) {
+      <button mat-flat-button class="header-finish header-finish--ready" (click)="confirmFinishTest()" [disabled]="finishing()" [attr.aria-label]="t('header.finishTestAria')">
         <mat-icon>done_all</mat-icon>
         <span class="header-finish__label">{{ isMobileViewport() ? t('header.finishShort') : t('header.finishTest') }}</span>
       </button>
+      } @else {
+      <button mat-stroked-button class="header-finish" (click)="confirmFinishTest()" [disabled]="finishing()" [attr.aria-label]="t('header.finishTestAria')">
+        <mat-icon>done_all</mat-icon>
+        <span class="header-finish__label">{{ isMobileViewport() ? t('header.finishShort') : t('header.finishTest') }}</span>
+      </button>
+      }
     </div>
 
     <div class="header-progress" role="progressbar" [attr.aria-label]="t('header.answeredRatio')"
@@ -198,6 +210,11 @@
             <span class="solve-dock__label">{{ usesMapSheet() ? t('dock.clearShort') : t('dock.clearAnswerLabel') }}</span>
           </button>
           }
+          }
+
+          <!-- #841: klavye ipucu (yalnız geniş ekranda ve seçmeli soruda). -->
+          @if (!usesMapSheet() && questionsPerView() === 1 && activeQuestion?.region?.answers?.length) {
+          <span class="solve-dock__hint" data-testid="solve-shortcut-hint">{{ t('dock.shortcutHint') }}</span>
           }
         </div>
 

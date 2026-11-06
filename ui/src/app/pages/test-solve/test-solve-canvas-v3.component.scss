@@ -24,12 +24,14 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
   --solve-accent-soft: color-mix(in srgb, var(--primaryColor) 14%, transparent);
   --solve-accent-strong: var(--ms-action-background);
 
-  --solve-surface: color-mix(in srgb, var(--ms-surface-inverse) 94%, var(--main-bg-color));
-  --solve-card: var(--ms-surface-inverse);
-  --solve-card-alt: color-mix(in srgb, var(--ms-surface-inverse) 90%, var(--main-bg-color));
-  --solve-ink: var(--ms-text-inverse);
-  --solve-ink-muted: color-mix(in srgb, var(--ms-text-inverse) 62%, transparent);
-  --solve-border: color-mix(in srgb, var(--ms-text-inverse) 14%, transparent);
+  // #841: ekran uygulamanın temasında (eskiden ters temaydı: koyu temada açık ekran).
+  // Yalnız soru kâğıdı (.question-card) beyaz kalır; token'lar orada kâğıda göre yeniden tanımlanır.
+  --solve-surface: var(--main-bg-color);
+  --solve-card: var(--ms-surface-medium);
+  --solve-card-alt: var(--ms-surface-strong);
+  --solve-ink: var(--ms-text-strong);
+  --solve-ink-muted: var(--ms-text-medium);
+  --solve-border: var(--ms-border-weak);
   --solve-shadow: 0 18px 44px color-mix(in srgb, var(--main-bg-color) 14%, transparent);
   --solve-shadow-soft: 0 8px 22px color-mix(in srgb, var(--main-bg-color) 8%, transparent);
 
@@ -46,6 +48,16 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
   // 60px = en yüksek içerik 44px (ikon / mobil 44px buton) + 1px alt border + ~15px nefes payı.
   // insight-panel'in top/max-height ve body'nin height hesapları da buna bağlıdır.
   --solve-header-height: 60px;
+}
+
+// #841: soru kâğıdı — kitap sayfası görselleri beyaz; kâğıt ve içindeki çip / ikonlar her temada açık kalır.
+.question-card {
+  --solve-card: var(--ms-paper);
+  --solve-card-alt: color-mix(in srgb, var(--ms-paper-ink) 7%, var(--ms-paper));
+  --solve-ink: var(--ms-paper-ink);
+  --solve-ink-muted: color-mix(in srgb, var(--ms-paper-ink) 62%, transparent);
+  --solve-border: color-mix(in srgb, var(--ms-paper-ink) 14%, transparent);
+  color: var(--solve-ink);
 }
 
 .solve-fullscreen-root {
@@ -229,7 +241,8 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
   padding: 6px 12px;
   border-radius: 999px;
   background: var(--solve-accent-soft);
-  color: var(--solve-accent);
+  // #841: koyu temada --primaryColor yazı olarak soluk; metin için tema-duyarlı --primary-text.
+  color: var(--primary-text);
   font-size: 0.9rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
@@ -964,10 +977,10 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
 }
 
 // Araçlar tek sıra: ikon + kısa etiket; tam ad tooltip ve aria-label'da.
+// #841: araçlar ikon ızgarası değil, etiketli satırlar (ikon + metin, sola dayalı).
 .tool-bar {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 4px;
 }
 
@@ -976,16 +989,14 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
   --mat-button-outlined-outline-color: var(--solve-panel-border);
   --mat-button-outlined-disabled-label-text-color: var(--solve-panel-muted);
   --mat-button-outlined-disabled-outline-color: var(--solve-panel-border);
-  --mat-button-outlined-horizontal-padding: 2px;
-  // Material ikonu etiketin yanına koyar; ikon üstte, etiket altta olsun.
+  --mat-button-outlined-horizontal-padding: 12px;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 3px;
+  justify-content: flex-start;
+  gap: 10px;
   min-width: 0;
   height: auto;
-  min-height: 56px;
-  padding: 6px 2px;
+  min-height: 40px;
+  padding: 6px 12px;
   border-radius: 12px;
 
   mat-icon {
@@ -1003,18 +1014,24 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
 }
 
 .tool-bar__label {
-  display: -webkit-box;
-  max-width: 100%;
+  min-width: 0;
   overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  text-align: center;
-  white-space: normal;
-  font-size: 0.66rem;
-  font-weight: 700;
-  line-height: 1.15;
-  color: var(--solve-panel-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: start;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--solve-panel-ink);
+}
+
+// #841: klavye ipucu — dock'ta araçların yanında, sessiz metin.
+.solve-dock__hint {
+  align-self: center;
+  margin-inline-start: 4px;
+  font-size: 0.75rem;
+  color: var(--solve-ink-muted);
+  white-space: nowrap;
 }
 
 // ---------------------------------------------------------------------------

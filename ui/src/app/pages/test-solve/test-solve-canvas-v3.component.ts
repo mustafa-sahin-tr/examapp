@@ -87,6 +87,22 @@ import { firstValueFrom } from 'rxjs';
  *   `mat-sidenav-content` kendi stacking context'ini (z-index: 1) oluşturduğundan, içerideki
  *   `position: fixed; z-index: 40` kart sidenav'ın (z-index: 4) altında kalıyordu.
  */
+/** #841: şık kısayolları (A–E). */
+const SHORTCUT_LETTERS = ['A', 'B', 'C', 'D', 'E'];
+
+/**
+ * #841: kısayol yazı alanında ve etkileşimli soru bileşenlerinin içinde (sayı doğrusu, bulmaca…) çalışmaz;
+ * oklar ve harfler orada bileşenin kendisine aittir. Seçmeli soru görünümü (v5) istisnadır.
+ */
+function isShortcutBlockedTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+  if (target.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"], .cdk-overlay-container')) {
+    return true;
+  }
+  const body = target.closest('.question-card__body');
+  return !!body && !target.closest('app-question-canvas-view-v5');
+}
+
 @Component({
   selector: 'app-test-solve-v3',
   standalone: true,
@@ -399,6 +415,9 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
     () => !this.canGoNext() && (this.testInstance?.testInstanceQuestions?.length ?? 0) > 0,
   );
 
+  /** #841: "Testi bitir" son soruda ya da boş soru kalmayınca birincil olur. */
+  public readonly finishReady = computed(() => this.isOnLastQuestion() || this.remainingCount() === 0);
+
   /** Issue #779: bitirmeden önce boş ve işaretli soruları listeler; soruya gitmek test bitirmez. */
   public override confirmFinishTest(): void {
     if (this.finishing() || !this.testInstance) return;
@@ -534,6 +553,35 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
       return false;
     }
     return true;
+  }
+
+  /**
+   * #841: tek soru görünümünde A–E şık seçer, ← → soru değiştirir (Ctrl/Cmd'li kısayollar temel sınıfta).
+   * Yazı alanında, etkileşimli bir soru bileşeninin içinde, açık diyalog / karalama / tam ekranda çalışmaz.
+   */
+  @HostListener('document:keydown', ['$event'])
+  public onSolveShortcut(event: KeyboardEvent): void {
+    if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (this.questionsPerView() !== 1 || this.fullscreenOpen() || this.scratchPadOpen()) return;
+    if (this.dialog.openDialogs.length || isShortcutBlockedTarget(event.target)) return;
+    const active = this.currentQuestions()[0];
+    if (!active) return;
+
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      if (this.questionLoading()) return;
+      const forward = event.key === 'ArrowRight';
+      if (forward ? !this.canGoNext() : !this.canGoPrev()) return;
+      event.preventDefault();
+      void (forward ? this.nextQuestion() : this.prevQuestion());
+      return;
+    }
+
+    const letter = event.key.length === 1 ? event.key.toUpperCase() : '';
+    if (!SHORTCUT_LETTERS.includes(letter)) return;
+    const answer = active.region?.answers?.find((a) => (a.tag || a.label || '').trim().toUpperCase().startsWith(letter));
+    if (!answer) return;
+    event.preventDefault();
+    this.selectChoiceForQuestion(answer, active.index);
   }
 
   @HostListener('document:keydown.escape')

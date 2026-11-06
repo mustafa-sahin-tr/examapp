@@ -436,6 +436,12 @@ h2 {
     > i.no {
       background: var(--ms-danger-border);
     }
+
+    // #842: boş soru yanlış gibi kırmızı değil, nötr gri.
+    > i.blank {
+      background: var(--ms-text-weak);
+      opacity: 0.45;
+    }
   }
 }
 
@@ -831,38 +837,6 @@ h2 {
   padding: 26px 28px;
 }
 
-.ring {
-  width: 150px;
-  height: 150px;
-  flex: none;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  .rv {
-    position: absolute;
-    text-align: center;
-
-    b {
-      font-family: var(--mainFontFamily);
-      font-size: 32px;
-      font-weight: 800;
-      color: var(--ms-text-strong);
-      display: block;
-      line-height: 1;
-    }
-
-    span {
-      font-size: 11px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--ms-text-weak);
-      font-weight: 600;
-    }
-  }
-}
-
 .rh-body {
   flex: 1;
   display: flex;
@@ -881,6 +855,19 @@ h2 {
     font-size: 26px;
     font-weight: 800;
     letter-spacing: -0.3px;
+  }
+
+  // #842
+  .rh-meta,
+  .rh-note {
+    margin: 0;
+    padding: 0;
+    font-size: 13px;
+    color: var(--ms-text-weak);
+  }
+
+  .rh-note {
+    color: var(--ms-text-medium);
   }
 }
 
@@ -1009,9 +996,16 @@ h2 {
   }
 }
 
+.next-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
 .next {
   display: flex;
   gap: 11px;
+  text-decoration: none;
   align-items: flex-start;
   font-size: 13px;
   line-height: 1.5;

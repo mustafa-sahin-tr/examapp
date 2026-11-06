@@ -67,15 +67,12 @@
     "average": "{{percent}} ort."
   },
   "completed": {
-    "successLabel": "Başarı",
-    "kicker": "Sınav tamamlandı",
-    "headline": "{{correct}} / {{total}} doğru",
+    "kicker": "Test bitti",
     "correct": "{{count}} doğru",
     "wrong": "{{count}} yanlış",
     "empty": "{{count}} boş",
-    "fromMistakes": "Yanlışlarımdan Test Oluştur",
-    "topicTitle": "Konu Bazlı Başarın",
-    "topicSub": "{{correct}} / {{total}} doğru",
+    "fromMistakes": "Yanlışlarından test oluştur",
+    "topicTitle": "Konulara göre",
     "questionsTitle": "Soru Soru Görünüm",
     "reviewPanel": "Sonuçları İncele",
     "questionsLoading": "Soru dökümü yükleniyor...",
@@ -85,8 +82,19 @@
     "rankSub": "Sınıf ortalaması %{{classAverage}} · sen %{{score}}",
     "badgeTitle": "Kazandığın Rozet",
     "badgeSub": "%{{score}} ile eşiği geçtin",
-    "nextTitle": "Sıradaki Adım",
-    "nextItem": "Benzer sınav: \"{{name}}\""
+    "nextTitle": "Sıradaki adım",
+    "nextItem": "Benzer test: {{name}}",
+    "answeredHeadline": "{{answered}} / {{total}} soruyu cevapladın",
+    "note": {
+      "empty": "Boş bıraktığın {{count}} soruyu da denemeye ne dersin? Doğru cevaplar puanına eklenir.",
+      "wrong": "Yanlışlarına çözümleriyle bakmak bir sonraki testte en çok işine yarar.",
+      "allCorrect": "Hepsi doğru, harika iş!"
+    },
+    "reviewMistakes": "Yanlışlarını incele ({{count}})",
+    "reviewQuestions": "Soruları incele",
+    "topicBreakdown": "{{correct}} doğru · {{wrong}} yanlış · {{empty}} boş",
+    "nextMistakes": "{{count}} yanlışını çözümleriyle incele",
+    "nextTopic": "“{{name}}” konusundan soru çöz"
   },
   "teacher": {
     "moreActions": "Diğer işlemler",

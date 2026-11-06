@@ -115,6 +115,9 @@ public class WorksheetTopicSuccessDto
     public int? TopicId { get; set; }
     public string Name { get; set; } = string.Empty;
     public int CorrectCount { get; set; }
+    /// <summary>#842: sonuç ekranı boş soruyu yanlıştan ayırır (boş gri, yanlış kırmızı).</summary>
+    public int WrongCount { get; set; }
+    public int EmptyCount { get; set; }
     public int TotalCount { get; set; }
     public int SuccessPercent { get; set; }
 }

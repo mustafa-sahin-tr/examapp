@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+import { CommonModule, DOCUMENT } from '@angular/common';
 import {
   afterNextRender,
   Component,
@@ -135,6 +135,7 @@ export class WorksheetDetailComponent implements OnInit {
   private authService = inject(AuthService);
   private studentService = inject(StudentService);
   private destroyRef = inject(DestroyRef);
+  private readonly document = inject(DOCUMENT);
   private injector = inject(Injector);
   private readonly transloco = inject(TranslocoService);
   private readonly localeService = inject(LocaleService);
@@ -444,8 +445,42 @@ export class WorksheetDetailComponent implements OnInit {
   /** Denemelerin skorlarından türetilen sparkline path (viewBox 0 0 100 32). */
   protected readonly sparkline = computed(() => this.sparklinePath(this.detail()?.attempts ?? []));
 
-  /** Skor halkası için stroke-dashoffset. */
-  protected readonly donutDashoffset = computed(() => this.donutOffset(this.completedResult()?.scorePercent ?? 0));
+  /**
+   * #842: sonuca göre kısa cümle — boş varsa denemeye davet, yalnız yanlış varsa incelemeye, hepsi doğruysa övgü.
+   */
+  protected resultNoteKey(): string {
+    const result = this.completedResult();
+    if (!result) return 'completed.note.allCorrect';
+    if (result.emptyCount > 0) return 'completed.note.empty';
+    return result.wrongCount > 0 ? 'completed.note.wrong' : 'completed.note.allCorrect';
+  }
+
+  /** #842: yüzde payı (0'a bölme yok). */
+  protected share(count: number, total: number): number {
+    return total > 0 ? (count / total) * 100 : 0;
+  }
+
+  /**
+   * #842: "Sıradaki adım"daki zayıf konu — yanlışı olan, başarısı en düşük konu. Pratik ekranı konuyu ders olmadan
+   * almaz; test tek derse bağlı değilse (subjectId yok) satır gösterilmez.
+   */
+  protected readonly weakTopicLink = computed(() => {
+    const subjectId = this.detail()?.worksheet.subjectId;
+    const weakest = (this.completedResult()?.topicSuccess ?? [])
+      .filter((t) => t.topicId != null && t.wrongCount > 0)
+      .sort((a, b) => a.successPercent - b.successPercent)[0];
+    if (!subjectId || !weakest) return null;
+    return { name: weakest.name, query: { subjectId, topicId: weakest.topicId } };
+  });
+
+  /** #842: soru dökümünü ilk yanlış soruda açar ve oraya kaydırır (yanlış yoksa ilk soruda). */
+  protected reviewMistakes(): void {
+    const firstWrong = this.questions.findIndex((q) => q.status === 'incorrect');
+    this.currentIndex.set(firstWrong >= 0 ? firstWrong : 0);
+    const card = this.document.getElementById('result-review');
+    card?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    card?.focus({ preventScroll: true });
+  }
 
   public regions = signal<QuestionRegion[]>([]); // Soru bölgeleri
   public selectedChoices = signal<Map<number, AnswerChoice>>(new Map());
@@ -870,14 +905,6 @@ export class WorksheetDetailComponent implements OnInit {
 
   protected percentLabel(value: number | null | undefined): string {
     return value === null || value === undefined ? '—' : this.tr('format.percent', { value });
-  }
-
-  /** Donut halkası için stroke-dashoffset (r = 64, çevre ≈ 402). */
-  protected readonly donutCircumference = 2 * Math.PI * 64;
-
-  protected donutOffset(percent: number): number {
-    const clamped = Math.min(100, Math.max(0, percent ?? 0));
-    return this.donutCircumference * (1 - clamped / 100);
   }
 
   /** Denemelerin skorlarından bir sparkline path (viewBox 0 0 100 32). */

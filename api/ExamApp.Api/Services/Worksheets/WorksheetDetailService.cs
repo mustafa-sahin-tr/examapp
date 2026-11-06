@@ -508,12 +508,14 @@ public class WorksheetDetailService : IWorksheetDetailService
                 .Select(g =>
                 {
                     var gTotal = g.Count();
-                    var gCorrect = WorksheetScoring.Tally(g, Facts).Correct;
+                    var (gCorrect, gWrong, gEmpty) = WorksheetScoring.Tally(g, Facts);
                     return new WorksheetTopicSuccessDto
                     {
                         TopicId = g.Key.TopicId,
                         Name = g.Key.Name,
                         CorrectCount = gCorrect,
+                        WrongCount = gWrong,
+                        EmptyCount = gEmpty,
                         TotalCount = gTotal,
                         SuccessPercent = ScorePercent(gCorrect, gTotal)
                     };

@@ -330,35 +330,34 @@
 
       <!-- ================= STUDENT · COMPLETED ================= -->
       @if (view() === 'completed' && completedResult(); as result) {
+        <!-- #842: büyük "%0 BAŞARI" halkası yok; ne olduğunu ve sırada ne olduğunu söyler. -->
         <div class="result-hero">
-          <div class="ring">
-            <svg width="150" height="150" viewBox="0 0 150 150">
-              <circle cx="75" cy="75" r="64" fill="none" stroke="var(--ms-surface-strong)" stroke-width="14" />
-              <circle cx="75" cy="75" r="64" fill="none" stroke="var(--ms-success-text-medium)" stroke-width="14"
-                stroke-linecap="round" [attr.stroke-dasharray]="donutCircumference"
-                [attr.stroke-dashoffset]="donutDashoffset()" transform="rotate(-90 75 75)" />
-            </svg>
-            <div class="rv"><b>{{ t('format.percent', { value: result.scorePercent }) }}</b><span>{{ t('completed.successLabel') }}</span></div>
-          </div>
           <div class="rh-body">
             <span class="kick">{{ t('completed.kicker') }}</span>
             <h1>{{
-              t('completed.headline', {
-                correct: result.correctCount,
+              t('completed.answeredHeadline', {
+                answered: result.correctCount + result.wrongCount,
                 total: result.correctCount + result.wrongCount + result.emptyCount
               })
             }}</h1>
+            <p class="rh-meta">{{ d.worksheet.name }} · {{ formatDurationDetailed(result.durationSeconds) }}</p>
             <div class="pills">
               <span class="pill g"><mat-icon>check</mat-icon>{{ t('completed.correct', { count: result.correctCount }) }}</span>
               <span class="pill r"><mat-icon>close</mat-icon>{{ t('completed.wrong', { count: result.wrongCount }) }}</span>
-              <span class="pill n">{{ t('completed.empty', { count: result.emptyCount }) }}</span>
-              <span class="pill n"><mat-icon>timer</mat-icon>{{ formatDurationDetailed(result.durationSeconds) }}</span>
+              <span class="pill n"><mat-icon>remove</mat-icon>{{ t('completed.empty', { count: result.emptyCount }) }}</span>
             </div>
+            <p class="rh-note" data-testid="result-note">{{ t(resultNoteKey(), { count: result.emptyCount }) }}</p>
           </div>
           <div class="rh-actions">
-            <button class="btn btn-amber" (click)="createFromMistakes()" [disabled]="fromMistakesLoading()">
-              <mat-icon>add</mat-icon>{{ t('completed.fromMistakes') }}
+            <button class="btn btn-primary" type="button" data-testid="review-mistakes" (click)="reviewMistakes()">
+              <mat-icon>fact_check</mat-icon>
+              {{ result.wrongCount > 0 ? t('completed.reviewMistakes', { count: result.wrongCount }) : t('completed.reviewQuestions') }}
             </button>
+            @if (result.wrongCount + result.emptyCount > 0) {
+              <button class="btn btn-ghost" type="button" (click)="createFromMistakes()" [disabled]="fromMistakesLoading()">
+                <mat-icon>add</mat-icon>{{ t('completed.fromMistakes') }}
+              </button>
+            }
           </div>
         </div>
 
@@ -371,19 +370,21 @@
                   <div class="brk">
                     <div class="b-head">
                       <span class="b-name">{{ topic.name }}</span>
-                      <span class="b-acc" [class.danger]="topic.successPercent < 60">{{ t('format.percent', { value: topic.successPercent }) }}</span>
+                      <span class="b-acc" [class.danger]="topic.wrongCount > 0 && topic.successPercent < 60">{{ t('format.percent', { value: topic.successPercent }) }}</span>
                     </div>
+                    <!-- #842: üç parça — boş gri, yanlış kırmızı; tamamı boş konu kırmızı görünmez. -->
                     <div class="track split">
-                      <i class="ok" [style.width.%]="topic.successPercent"></i>
-                      <i class="no" [style.width.%]="100 - topic.successPercent"></i>
+                      <i class="ok" [style.width.%]="share(topic.correctCount, topic.totalCount)"></i>
+                      <i class="no" [style.width.%]="share(topic.wrongCount, topic.totalCount)"></i>
+                      <i class="blank" [style.width.%]="share(topic.emptyCount, topic.totalCount)"></i>
                     </div>
-                    <span class="b-sub">{{ t('completed.topicSub', { correct: topic.correctCount, total: topic.totalCount }) }}</span>
+                    <span class="b-sub">{{ t('completed.topicBreakdown', { correct: topic.correctCount, wrong: topic.wrongCount, empty: topic.emptyCount }) }}</span>
                   </div>
                 }
               </div>
             }
 
-            <div class="card">
+            <div class="card" id="result-review" tabindex="-1">
               <h2><span class="dot"></span>{{ t('completed.questionsTitle') }}</h2>
               @if (regions().length) {
                 <mat-accordion>
@@ -462,17 +463,36 @@
               </div>
             }
 
-            @if (d.similarWorksheets.length) {
-              <div class="card">
-                <h2><span class="dot"></span>{{ t('completed.nextTitle') }}</h2>
-                @for (similar of d.similarWorksheets; track similar.id) {
-                  <button class="next" type="button" (click)="openSimilarWorksheet(similar.id)">
-                    <mat-icon>arrow_forward</mat-icon>
-                    <span>{{ t('completed.nextItem', { name: similar.name }) }}</span>
-                  </button>
+            <!-- #842: önce kişisel iş (yanlışlar, zayıf konu), sonra en fazla bir benzer test. -->
+            <div class="card" data-testid="next-steps">
+              <h2><span class="dot"></span>{{ t('completed.nextTitle') }}</h2>
+              <ol class="next-steps">
+                @if (result.wrongCount > 0) {
+                  <li>
+                    <button class="next" type="button" (click)="reviewMistakes()">
+                      <mat-icon>fact_check</mat-icon>
+                      <span>{{ t('completed.nextMistakes', { count: result.wrongCount }) }}</span>
+                    </button>
+                  </li>
                 }
-              </div>
-            }
+                @if (weakTopicLink(); as weak) {
+                  <li>
+                    <a class="next" [routerLink]="'/practice'" [queryParams]="weak.query">
+                      <mat-icon>bolt</mat-icon>
+                      <span>{{ t('completed.nextTopic', { name: weak.name }) }}</span>
+                    </a>
+                  </li>
+                }
+                @if (d.similarWorksheets[0]; as similar) {
+                  <li>
+                    <button class="next" type="button" (click)="openSimilarWorksheet(similar.id)">
+                      <mat-icon>arrow_forward</mat-icon>
+                      <span>{{ t('completed.nextItem', { name: similar.name }) }}</span>
+                    </button>
+                  </li>
+                }
+              </ol>
+            </div>
           </div>
         </div>
       }

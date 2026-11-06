@@ -827,6 +827,21 @@ describe('WorksheetDetailComponent comment threads', () => {
         expect(threads(fixture).find((t) => t.questionId() !== null)!.questionId()).toBe(34);
     });
 
+    it('completedResult_HeadlineCountsAnsweredAndReviewOpensFirstWrongQuestion (#842)', async () => {
+        const { fixture, component } = await setup({ role: 'Student', completed: true });
+        const host = fixture.nativeElement as HTMLElement;
+
+        expect(host.querySelector('.ring')).toBeNull();
+        expect(host.querySelector('.result-hero h1')?.textContent?.trim()).toBe('2 / 2 soruyu cevapladın');
+        expect(byTestId(fixture, 'result-note')?.textContent).toContain('Yanlışlarına çözümleriyle bakmak');
+
+        const review = byTestId(fixture, 'review-mistakes')!;
+        expect(review.textContent).toContain('Yanlışlarını incele (1)');
+        review.click();
+        expect(component.currentIndex()).toBe(1);
+        expect(byTestId(fixture, 'next-steps')?.textContent).toContain('1 yanlışını çözümleriyle incele');
+    });
+
     it('teacher_WorksheetThreadOnlyWithTeacherFlags', async () => {
         const { fixture } = await setup({ role: 'Teacher', commentsEnabled: false });
 

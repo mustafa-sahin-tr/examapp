@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { RegisterWizardComponent } from './pages/register/register-wizard.component';
 import { authGuard } from './shared/guards/auth.guard';
 import { adminGuard } from './shared/guards/admin.guard';
+import { adminHomeRedirectGuard } from './shared/guards/admin-home-redirect.guard';
 import { independentTeacherGuard } from './shared/guards/independent-teacher.guard';
 import { studentGuard } from './shared/guards/student.guard';
 import { roleGuard } from './shared/guards/role.guard';
@@ -80,7 +81,12 @@ export const routes: Routes = [
       // Issue #53: Teacher rolü → TeacherDashboardComponent, diğerleri → mevcut DashboardComponent.
       // Issue #287: onaysız öğretmen teacher dashboard yerine başvuru durumu sayfasına gider (öğrenci etkilenmez).
       // Issue #420: veli /dashboard yerine veli paneline (/parent) düşer.
-      { path: 'dashboard', component: DashboardSwitchComponent, canActivate: [authGuard, parentHomeRedirectGuard, approvedTeacherGuard] },
+      // #874: yalnız admin olan hesap öğrenci paneli yerine admin paneline.
+      {
+        path: 'dashboard',
+        component: DashboardSwitchComponent,
+        canActivate: [authGuard, parentHomeRedirectGuard, adminHomeRedirectGuard, approvedTeacherGuard],
+      },
       {
         // Issue #287: öğretmen hesabı onay bekliyor / reddedildi — onaysız öğretmenin tek öğretmen ekranı.
         path: TEACHER_APPROVAL_PENDING_PATH,

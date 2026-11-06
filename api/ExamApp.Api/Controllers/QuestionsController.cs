@@ -400,7 +400,8 @@ public class QuestionsController : BaseController
             return NotFound(new { message = _localizer["questions.imageNotFoundInStorage"].Value });
         }
 
-        return File(stream, "image/jpeg");
+        // Görsel anahtarı .jpg olsa da baytlar kaynak formatında (WebP/PNG) olabilir (#559); Claude yanlış türü reddeder.
+        return File(stream, ImageContentType.Sniff(stream) ?? "image/jpeg");
     }
 
     // GET /api/questions/{id}/classification-text — issue #590: görseli olmayan sorunun sınıflandırıcıya giden düz metni

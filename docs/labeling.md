@@ -165,6 +165,9 @@ output token'ı ve tahmini USD loglanır (`Anthropic:InputUsdPerMTok`/`OutputUsd
 - **Anahtar:** Aspire'da işaretleme ekranıyla aynı `anthropic-api-key` parametresi BadgeService'e de `Anthropic__ApiKey`
   olarak gider (AppHost'u yeniden başlat). Anahtar yoksa sınıflandırma uyarıyla atlanır. docker-compose'da tanımlı değil.
 - `QuestionAnalyzer:AIActive=false` iken sağlayıcıdan bağımsız hiçbir sınıflandırma yapılmaz.
+- **Görsel türü.** `GET /api/questions/{id}/image` içerik türünü baytlardan verir (`ImageContentType.Sniff`, #559): anahtar
+  `.jpg` olsa da görsel WebP / PNG olabilir (etkinlik editörü, `questions/save`). Eskiden hep `image/jpeg` dönüyordu; Claude
+  türü uyuşmayan görseli 400 ile reddediyor, mesaj `badge-service_error`'a düşüyordu. Gemini de aynı türü gönderir.
 - **Sınıf bağlamı (#565).** `QuestionCreatedEvent.GradeId` doluysa Claude sınıflandırıcı taksonomiyi
   `GET /api/questions/classifier-taxonomy?gradeId=` ile yalnız o sınıfa bağlı ders/konu/alt konularla alır ve sınıf başına
   önbellekler (prompt daha küçük, başka sınıfın aynı adlı konusu seçilemez; taksonomi dışı id reddi başka sınıfın id'sini de

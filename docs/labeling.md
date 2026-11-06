@@ -168,6 +168,10 @@ output token'ı ve tahmini USD loglanır (`Anthropic:InputUsdPerMTok`/`OutputUsd
 - **Görsel türü.** `GET /api/questions/{id}/image` içerik türünü baytlardan verir (`ImageContentType.Sniff`, #559): anahtar
   `.jpg` olsa da görsel WebP / PNG olabilir (etkinlik editörü, `questions/save`). Eskiden hep `image/jpeg` dönüyordu; Claude
   türü uyuşmayan görseli 400 ile reddediyor, mesaj `badge-service_error`'a düşüyordu. Gemini de aynı türü gönderir.
+- **Görselle birlikte metin.** Görseli olan soruda da `GET /api/questions/{id}/classification-text` (#590: kapsam, yönerge,
+  kök, şıklar, plan etiketleri; çözüm yok) alınır ve boş değilse görselin hemen arkasından `ImageTextPrefix` ile gider
+  (Claude ve Gemini). Etkinlikte çoğu zaman yalnız tablo kırpılır, yönerge görselde yoktur; yalnız görselle açı tablosu
+  Fen → Kuvvet'e düşüyordu. Prompt'un sabit kısmı (sistem mesajı, taksonomi önbelleği) değişmedi.
 - **Sınıf bağlamı (#565).** `QuestionCreatedEvent.GradeId` doluysa Claude sınıflandırıcı taksonomiyi
   `GET /api/questions/classifier-taxonomy?gradeId=` ile yalnız o sınıfa bağlı ders/konu/alt konularla alır ve sınıf başına
   önbellekler (prompt daha küçük, başka sınıfın aynı adlı konusu seçilemez; taksonomi dışı id reddi başka sınıfın id'sini de

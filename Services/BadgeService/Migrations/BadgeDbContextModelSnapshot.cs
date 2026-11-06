@@ -175,6 +175,9 @@ namespace BadgeService.Migrations
 
                     b.HasIndex("BadgeDefinitionId");
 
+                    b.HasIndex("UserId", "BadgeDefinitionId")
+                        .IsUnique();
+
                     b.ToTable("BadgeEarned");
                 });
 

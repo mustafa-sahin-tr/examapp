@@ -2,6 +2,7 @@ using BadgeService;
 using BadgeService.Entities;
 using BadgeService.Services;
 using BadgeService.Tests.Support;
+using Microsoft.EntityFrameworkCore;
 
 namespace BadgeService.Tests;
 
@@ -160,6 +161,40 @@ public class StudentReportServiceTests : IDisposable
 
         report.BadgeProgress.ShouldNotContain(b => b.BadgeDefinitionId == inactiveNeverStartedId);
         report.BadgeProgress.ShouldContain(b => b.BadgeDefinitionId == inactiveButEarnedId && b.IsCompleted);
+    }
+
+    [Fact]
+    public async Task BadgeProgress_tolerates_duplicate_earned_rows_and_reports_the_first_earned_date()
+    {
+        // Tekil index'ten önce yazılmış çift kazanım satırları raporu 500'e düşürüyordu (ToDictionary yinelenen anahtar).
+        var first = new DateTime(2026, 11, 1, 8, 0, 0, DateTimeKind.Utc);
+        Guid badgeId;
+        await using (var ctx = _db.NewContext())
+        {
+            await ctx.Database.ExecuteSqlRawAsync("""DROP INDEX "IX_BadgeEarned_UserId_BadgeDefinitionId";""");
+            var badge = new BadgeDefinition
+            {
+                Id = Guid.NewGuid(), Code = "dup-earned", Name = "Çift", Description = "d",
+                Category = "c", RuleType = "AnswerCount", RuleConfigJson = "{\"target\":1}", IsActive = true,
+            };
+            badgeId = badge.Id;
+            ctx.BadgeDefinitions.Add(badge);
+            ctx.StudentBadgeProgresses.Add(new StudentBadgeProgress
+            {
+                Id = Guid.NewGuid(), UserId = 1, BadgeDefinitionId = badge.Id, CurrentValue = 1, TargetValue = 1, IsCompleted = true,
+            });
+            ctx.BadgeEarned.AddRange(
+                new BadgeEarned { Id = Guid.NewGuid(), UserId = 1, BadgeDefinitionId = badge.Id, EarnedDate = first.AddMinutes(5) },
+                new BadgeEarned { Id = Guid.NewGuid(), UserId = 1, BadgeDefinitionId = badge.Id, EarnedDate = first });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var read = _db.NewContext();
+        var report = await NewService(read).GetBadgeProgressAsync(1);
+
+        var item = report.BadgeProgress.Single(b => b.BadgeDefinitionId == badgeId);
+        item.IsCompleted.ShouldBeTrue();
+        item.EarnedDateUtc.ShouldBe(first);
     }
 
     [Fact]

@@ -38,10 +38,14 @@ public class StudentReportService
         // raised the threshold after the student had already met the old one) — BadgeEarned is the
         // permanent record, not the recomputed progress row. Fetch it first so both the visibility filter
         // and IsCompleted below key off "was this ever earned", not the possibly-stale progress flag.
-        var earnedByBadgeId = await _context.BadgeEarned
-            .AsNoTracking()
-            .Where(x => x.UserId == userId)
-            .ToDictionaryAsync(x => x.BadgeDefinitionId, x => x.EarnedDate, cancellationToken);
+        // Eski yarışın bıraktığı çift satır (aynı rozet iki kez) raporu düşürmesin: ilk kazanım tarihi geçerli.
+        var earnedByBadgeId = (await _context.BadgeEarned
+                .AsNoTracking()
+                .Where(x => x.UserId == userId)
+                .Select(x => new { x.BadgeDefinitionId, x.EarnedDate })
+                .ToListAsync(cancellationToken))
+            .GroupBy(x => x.BadgeDefinitionId)
+            .ToDictionary(g => g.Key, g => g.Min(x => x.EarnedDate));
 
         var progressRows = await _context.StudentBadgeProgresses
             .AsNoTracking()

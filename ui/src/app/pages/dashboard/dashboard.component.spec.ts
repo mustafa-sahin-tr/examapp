@@ -588,18 +588,18 @@ describe('DashboardComponent', () => {
         });
     });
 
-    describe('loadUserActivityHeatmap error handling', () => {
-        it('loadUserActivityHeatmap_ApiErrors_ActivityApiErrorBecomesTrueAndActivityDataStaysEmpty', () => {
+    describe('loadUserActivity error handling', () => {
+        it('loadUserActivity_ApiErrors_ActivityApiErrorBecomesTrueAndActivityDataStaysEmpty', () => {
             badgeServiceSpy.getUserActivity.mockReturnValue(throwError(() => new Error('boom')));
             component = createComponent();
 
             expect(() => component.ngOnInit()).not.toThrow();
 
             expect(component.activityApiError()).toBe(true);
-            expect(component.activityDataFromApi()).toEqual([]);
+            expect(component.recentActivityDays()).toEqual([]);
         });
 
-        it('loadUserActivityHeatmap_ApiSucceeds_ActivityApiErrorStaysFalse', () => {
+        it('loadUserActivity_ApiSucceeds_ActivityApiErrorStaysFalse', () => {
             component = createComponent();
 
             component.ngOnInit();
@@ -656,30 +656,23 @@ describe('DashboardComponent', () => {
         });
     });
 
-    describe('responsive activity summary (issue #197)', () => {
-        const activityResponse = {
-            userId: 16,
-            startDateUtc: '2026-09-01T00:00:00Z',
-            endDateUtc: NOW_ISO,
-            days: [
-                {
-                    dateUtc: '2026-09-08T00:00:00Z',
-                    questionCount: 12,
-                    correctCount: 9,
-                    totalTimeSeconds: 600,
-                    totalPoints: 30,
-                    activityScore: 4,
-                },
-                {
-                    dateUtc: '2026-09-09T00:00:00Z',
-                    questionCount: 8,
-                    correctCount: 5,
-                    totalTimeSeconds: 300,
-                    totalPoints: 20,
-                    activityScore: 3,
-                },
-            ],
+    describe('activity summary: last 4 weeks (issue #197, #835)', () => {
+        const key = (offsetDays: number) => {
+            const d = new Date();
+            d.setDate(d.getDate() - offsetDays);
+            return `${d.getFullYear()}-${`${d.getMonth() + 1}`.padStart(2, '0')}-${`${d.getDate()}`.padStart(2, '0')}`;
         };
+        const activityResponse = () => ({
+            userId: 16,
+            startDateUtc: `${key(200)}T00:00:00Z`,
+            endDateUtc: `${key(0)}T00:00:00Z`,
+            days: [
+                // 4 haftanın dışında: istatistiğe ve ızgaraya girmez.
+                { dateUtc: `${key(40)}T00:00:00Z`, questionCount: 50, correctCount: 50, totalTimeSeconds: 3000, totalPoints: 0, activityScore: 9 },
+                { dateUtc: `${key(1)}T00:00:00Z`, questionCount: 12, correctCount: 9, totalTimeSeconds: 600, totalPoints: 30, activityScore: 4 },
+                { dateUtc: `${key(0)}T00:00:00Z`, questionCount: 8, correctCount: 5, totalTimeSeconds: 300, totalPoints: 20, activityScore: 3 },
+            ],
+        });
 
         /** Komponent host'unu verilen genişlikte bir kapsayıcıya koyar; grid sütun sayısı kapsayıcı genişliğine bağlıdır. */
         function renderAtWidth(widthPx: number): ComponentFixture<DashboardComponent> {
@@ -703,33 +696,39 @@ describe('DashboardComponent', () => {
         }
 
         beforeEach(() => {
-            badgeServiceSpy.getUserActivity.mockReturnValue(of(activityResponse));
+            badgeServiceSpy.getUserActivity.mockReturnValue(of(activityResponse()));
         });
 
-        it('render_ActivityLoaded_RendersFourNativeStatCardsInsteadOfFixedSizeNumberCardChart', () => {
+        it('render_ActivityLoaded_StatsCoverLastFourWeeksWithAccuracy_issue835', () => {
             const fixture = renderAtWidth(1000);
 
             const cards = statCards(fixture);
-            expect(cards.map((card) => card.getAttribute('data-key'))).toEqual([
-                'questions',
-                'correct',
-                'minutes',
-                'activityScore',
-            ]);
-            expect(cards.map((card) => card.querySelector('.stat-card__value')?.textContent?.trim())).toEqual([
-                '20',
-                '14',
-                '15',
-                '7',
-            ]);
-            expect(cards[0].querySelector('.stat-card__label')?.textContent?.trim()).toBe('Toplam Soru');
-            expect((fixture.nativeElement as HTMLElement).querySelector('ngx-charts-number-card')).toBeNull();
+            expect(cards.map((card) => card.getAttribute('data-key'))).toEqual(['questions', 'accuracy', 'minutes']);
+            // 40 gün önceki gün sayılmaz: 12 + 8 soru, 9 + 5 doğru (%70), 15 dk.
+            const values = cards.map((card) => card.querySelector('.stat-card__value')?.textContent?.replace(/\s+/g, ' ').trim());
+            expect(values[0]).toBe('20');
+            expect(values[1]).toContain('70');
+            expect(values[1]).toContain('20 sorudan 14 doğru');
+            expect(values[2]).toBe('15');
+            expect(cards[0].querySelector('.stat-card__label')?.textContent?.trim()).toBe('Çözülen soru');
+            expect((fixture.nativeElement as HTMLElement).querySelector('ngx-charts-heat-map')).toBeNull();
         });
 
-        it('statGrid_WideContainer_ShowsAllFourCardsInOneRow', () => {
+        it('recentWeeks_RendersFourWeeksWithTodayMarked_issue835', () => {
+            const fixture = renderAtWidth(1000);
+            const host = fixture.nativeElement as HTMLElement;
+
+            expect(host.querySelectorAll('app-recent-weeks .rw__row').length).toBe(4);
+            const today = host.querySelector<HTMLElement>(`[data-key="${key(0)}"]`)!;
+            expect(today.classList).toContain('rw__cell--today');
+            expect(today.getAttribute('data-level')).toBe('2');
+            expect(host.querySelector(`[data-key="${key(40)}"]`)).toBeNull();
+        });
+
+        it('statGrid_WideContainer_ShowsAllCardsInOneRow', () => {
             const fixture = renderAtWidth(1000);
 
-            expect(visibleColumnCount(fixture)).toBe(4);
+            expect(visibleColumnCount(fixture)).toBe(3);
         });
 
         it('statGrid_PhoneWidthContainer_WrapsToTwoColumns', () => {
@@ -755,49 +754,8 @@ describe('DashboardComponent', () => {
             const grid = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('.activity-stats')!;
             expect(grid.scrollWidth).toBeLessThanOrEqual(grid.clientWidth);
         });
-
-        it('heatmapView_ContainerMeasured_WidthFollowsContainerAndWeeksFit', () => {
-            component = createComponent();
-            component.ngOnInit();
-
-            component.heatmapContainerWidth.set(360);
-
-            // (360 - 48 eksen payı) / 22 px en küçük hafta sütunu = 14 hafta; en yeni haftalar kalır.
-            expect(component.activityHeatmapData().length).toBe(14);
-            expect(component.activityHeatmapData()).toEqual(component.activityDataFromApi().slice(-14));
-            expect(component.activityHeatmapView()[0]).toBe(360);
-        });
-
-        it('heatmapView_WideContainer_ShowsAllWeeksAtContainerWidth', () => {
-            component = createComponent();
-            component.ngOnInit();
-
-            component.heatmapContainerWidth.set(1400);
-
-            expect(component.activityHeatmapData().length).toBe(52);
-            expect(component.activityHeatmapView()[0]).toBe(1400);
-        });
-
-        it('heatmapView_VeryNarrowContainer_KeepsMinimumWeeksAndScrollsOnlyInsideContainer', () => {
-            component = createComponent();
-            component.ngOnInit();
-
-            component.heatmapContainerWidth.set(100);
-
-            expect(component.activityHeatmapData().length).toBe(12);
-            expect(component.activityHeatmapView()[0]).toBe(12 * 22 + 48);
-        });
-
-        it('heatmapScroll_Rendered_MeasuresItsContainerWidth', () => {
-            const fixture = renderAtWidth(600);
-
-            const scroll = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('.heatmap-scroll')!;
-            expect(fixture.componentInstance.heatmapContainerWidth()).toBe(scroll.clientWidth);
-            expect(fixture.componentInstance.heatmapContainerWidth()).toBeGreaterThan(0);
-        });
     });
 
-    // ── Günün soruları kartı (issue #99) ─────────────────────────────────────────
     describe('daily questions card', () => {
         it('ngOnInit_DailySetLoaded_StoresSetAndClearsLoading', () => {
             component = createComponent();

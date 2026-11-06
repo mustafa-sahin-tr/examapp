@@ -174,28 +174,34 @@ describe('ParentStatusCardComponent', () => {
             return fixture;
         }
 
-        it('hidesDetails_KeepsRestrictionsAndDeadline', () => {
+        it('oneLine_HidesDetailsAndRestrictions_KeepsDeadline_issue835', () => {
             const fixture = compact({ ...awaitingStatusOf(), daysLeft: 20 });
 
+            expect(q(fixture, '.psc--compact')).not.toBeNull();
             expect(q(fixture, '[data-test="invitation-resend"]')).toBeNull();
             expect(q(fixture, '[data-test="invitation-sent-to"]')).toBeNull();
             expect(q(fixture, '[data-test="invitation-deadline"]')).not.toBeNull();
-            expect(q(fixture, '.psc__meta')).not.toBeNull();
+            expect(fixture.nativeElement.textContent).not.toContain('liderlik tablosu kapalı');
         });
 
-        it('detailsButton_ShowsActions', () => {
+        it('detailsButton_ShowsFullCard', () => {
             const fixture = compact(awaitingStatusOf());
 
             q(fixture, '[data-test="invitation-details"]')?.click();
             fixture.detectChanges();
 
+            expect(q(fixture, '.psc--compact')).toBeNull();
             expect(q(fixture, '[data-test="invitation-resend"]')).not.toBeNull();
+            expect(q(fixture, '[data-test="invitation-sent-to"]')).not.toBeNull();
         });
 
-        it('finalWarning_StaysExpanded', () => {
+        it('finalWarning_ShowsActionsInTheSameLine_issue835', () => {
             const fixture = compact({ ...awaitingStatusOf(), daysLeft: 3, isFinalWarning: true });
 
+            expect(q(fixture, '.psc--compact.psc--expired')).not.toBeNull();
             expect(q(fixture, '[data-test="invitation-resend"]')).not.toBeNull();
+            expect(q(fixture, '[data-test="invitation-details"]')).not.toBeNull();
+            expect(q(fixture, '[data-test="invitation-sent-to"]')).toBeNull();
         });
     });
 

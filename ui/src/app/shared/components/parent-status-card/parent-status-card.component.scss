@@ -22,6 +22,35 @@
   color: var(--ms-warning-text);
 }
 
+// #835: ana sayfada tek satır (başlık + süre, sağda eylemler); dar ekranda eylemler alta iner.
+.psc--compact {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.625rem 0.875rem;
+
+  .psc__line {
+    flex: 1 1 18rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.625rem;
+    margin: 0;
+    font-size: 0.875rem;
+  }
+
+  .psc__title {
+    margin: 0;
+    font-size: 0.9375rem;
+  }
+}
+
+// .psc__actions'ın margin-top'unu ezsin diye iki sınıfla.
+.psc__actions.psc__actions--inline {
+  align-items: center;
+  margin: 0;
+}
+
 .psc--banner {
   padding-right: 3rem;
 }

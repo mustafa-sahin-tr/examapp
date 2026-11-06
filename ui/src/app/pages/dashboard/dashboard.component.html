@@ -6,7 +6,13 @@
 
 <!-- Karşılama alanı: son giriş bilgisi (issue #126). İlk girişte lastLoginLabel null → chip hiç render edilmez. -->
 <div class="dashboard-welcome">
-  <h1 class="dashboard-welcome-title ms-page-title">{{ 'dashboard.welcome.title' | transloco }}</h1>
+  <h1 class="dashboard-welcome-title ms-page-title">
+    @if (welcomeName(); as name) {
+      {{ 'dashboard.welcome.titleNamed' | transloco: { name } }}
+    } @else {
+      {{ 'dashboard.welcome.title' | transloco }}
+    }
+  </h1>
   @if (lastLoginLabel(); as lastLogin) {
     <span class="last-login-chip">{{
       'dashboard.welcome.lastLogin' | transloco: { value: lastLogin }
@@ -96,50 +102,38 @@
     }
 
     <div class="activity-grid">
-      <div class="heatmap-container">
+      <div class="heatmap-container recent-activity">
+        <!-- #835: yıllık ısı haritası yerine son 4 hafta; istatistikler de aynı aralıktan. -->
+        <h2 class="ms-section-title">{{ 'dashboard.activity.title' | transloco }}</h2>
         @if (!activityApiLoading()) {
           @if (!activityApiError()) {
-            @if (activityDataFromApi().length > 0) {
-              @if (showActivitySummary()) {
-                <!-- Issue #197: sabit boyutlu ngx-charts number-card yerine genişliğe göre sütun değiştiren kart grid'i -->
-                <!-- Issue #721: yeni kullanıcıya sıfırlardan oluşan kartlar gösterilmez. -->
-                @if (hasActivityStats()) {
-                  <ul class="activity-stats">
-                    @for (card of activityNumberCardData(); track trackStatCard($index, card)) {
-                      <li class="stat-card"
-                        [attr.data-key]="card.key">
-                        <div class="stat-card__header">
-                          <span class="stat-card__label">{{ card.name }}</span>
-                          <mat-icon class="stat-card__icon" aria-hidden="true">{{ card.icon }}</mat-icon>
-                        </div>
-                        <span class="stat-card__value">{{ card.value | number }}</span>
-                      </li>
-                    }
-                  </ul>
+            <!-- Issue #721: yeni kullanıcıya sıfırlardan oluşan kartlar gösterilmez. -->
+            @if (hasActivityStats()) {
+              <ul class="activity-stats">
+                @for (card of activityNumberCardData(); track trackStatCard($index, card)) {
+                  <li class="stat-card" [attr.data-key]="card.key">
+                    <div class="stat-card__header">
+                      <span class="stat-card__label">{{ card.name }}</span>
+                      <mat-icon class="stat-card__icon" aria-hidden="true">{{ card.icon }}</mat-icon>
+                    </div>
+                    <span class="stat-card__value">
+                      {{ card.display ?? (card.value | number) }}
+                      @if (card.detail) {
+                        <small class="stat-card__detail">{{ card.detail }}</small>
+                      }
+                    </span>
+                  </li>
                 }
-              }
-              <div class="heatmap-scroll" #heatmapScroll>
-                <!-- #197: kapsayıcı genişliği ölçülmeden çizilmez; aksi halde önce tahmini sonra gerçek genişlikle iki kez çizilir -->
-                @if (heatmapContainerWidth() > 0) {
-                  <ngx-charts-heat-map [view]="activityHeatmapView()" [scheme]="activityColorScheme"
-                    [results]="activityHeatmapData()" [xAxis]="true" [yAxis]="showHeatmapYAxis()" [legend]="false"
-                    [showXAxisLabel]="showHeatmapAxisLabels()" [showYAxisLabel]="showHeatmapAxisLabels()" [gradient]="true"
-                    [xAxisTickFormatting]="activityXAxisTickFormatting" [tooltipText]="activityHeatmapTooltip">
-                  </ngx-charts-heat-map>
-                }
-              </div>
-            } @else {
-              <p class="heatmap-state">{{ 'dashboard.activity.empty' | transloco }}</p>
+              </ul>
             }
+            <app-recent-weeks [days]="recentActivityDays()" />
+            <p class="recent-activity__hint">{{ 'dashboard.activity.hint' | transloco }}</p>
           } @else {
             <p class="heatmap-state error">{{ 'dashboard.activity.error' | transloco }}</p>
           }
         } @else {
           <p class="heatmap-state">{{ 'dashboard.activity.loading' | transloco }}</p>
         }
-
-
-
       </div>
 
       <!-- Rozet kartı: kendi yükleniyor/hata/boş durumlarına sahip, heat map durumundan bağımsız -->

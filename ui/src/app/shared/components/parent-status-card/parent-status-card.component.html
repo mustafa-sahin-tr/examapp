@@ -1,5 +1,57 @@
 <ng-container *transloco="let t; prefix: 'parentRequirement'">
   @if (invitation(); as inv) {
+    @if (collapsed()) {
+    <section
+      class="psc psc--compact"
+      [class.psc--expired]="urgent()"
+      aria-labelledby="psc-title"
+      data-test="parent-invitation-card"
+    >
+      <mat-icon class="psc__icon" aria-hidden="true">{{ inv.expired ? 'schedule' : 'mark_email_read' }}</mat-icon>
+      <p class="psc__line">
+        @if (inv.expired) {
+          <strong id="psc-title" class="psc__title" data-test="invitation-expired">{{ t('card.expiredTitle') }}</strong>
+        } @else {
+          <strong id="psc-title" class="psc__title">{{ t('card.title') }}</strong>
+        }
+        @if (awaitingDeadline(); as deadline) {
+          <span
+            class="psc__deadline"
+            [class.psc__deadline--warning]="deadline.warning"
+            [attr.role]="deadline.warning ? 'alert' : null"
+            data-test="invitation-deadline"
+          >
+            {{ deadline.daysLeft > 0 ? t('card.graceDeadline', { days: deadline.daysLeft }) : t('card.graceOver') }}
+          </span>
+        }
+        @if (resendDone()) {
+          <span class="psc__meta psc__meta--ok" role="status" data-test="invitation-resent">{{ t('card.resent') }}</span>
+        }
+        @if (resendError(); as message) {
+          <span class="psc__error" role="alert" data-test="invitation-resend-error">{{ message }}</span>
+        }
+      </p>
+      <div class="psc__actions psc__actions--inline">
+        @if (urgent()) {
+          @if (!emailLockedText()) {
+            <a mat-stroked-button data-test="invitation-fix-email" [routerLink]="parentRequiredUrl">{{ t('card.fixEmail') }}</a>
+          }
+          <button
+            mat-flat-button
+            type="button"
+            data-test="invitation-resend"
+            [disabled]="!inv.canResend || resending()"
+            (click)="resend()"
+          >
+            {{ resending() ? t('card.resending') : t('card.resend') }}
+          </button>
+        }
+        <button mat-button type="button" data-test="invitation-details" (click)="expandedByUser.set(true)">
+          {{ t('card.details') }}
+        </button>
+      </div>
+    </section>
+    } @else {
     <section
       class="psc"
       [class.psc--expired]="inv.expired || awaitingDeadline()?.warning"
@@ -13,11 +65,9 @@
           <p>{{ t('card.expiredBody') }}</p>
         } @else {
           <h3 id="psc-title" class="psc__title">{{ t('card.title') }}</h3>
-          @if (showDetails()) {
-            <p data-test="invitation-sent-to">{{ t('card.sentTo', { email: inv.maskedEmail }) }}</p>
-            @if (expiresAtText()) {
-              <p class="psc__meta">{{ t('card.expiresAt', { date: expiresAtText() }) }}</p>
-            }
+          <p data-test="invitation-sent-to">{{ t('card.sentTo', { email: inv.maskedEmail }) }}</p>
+          @if (expiresAtText()) {
+            <p class="psc__meta">{{ t('card.expiresAt', { date: expiresAtText() }) }}</p>
           }
         }
         <p class="psc__meta">{{ t('card.restrictedInfo') }}</p>
@@ -32,7 +82,6 @@
           </p>
         }
 
-        @if (showDetails()) {
         @if (resendDone()) {
           <p class="psc__meta psc__meta--ok" role="status" data-test="invitation-resent">{{ t('card.resent') }}</p>
         }
@@ -71,11 +120,6 @@
             </a>
           }
         </div>
-        } @else {
-          <button mat-button type="button" data-test="invitation-details" (click)="expandedByUser.set(true)">
-            {{ t('card.details') }}
-          </button>
-        }
 
         @if (devActivationUrl(); as devUrl) {
           <p class="psc__dev" data-test="invitation-dev-link">
@@ -84,6 +128,7 @@
         }
       </div>
     </section>
+    }
   } @else if (showBanner()) {
     <section class="psc psc--banner" role="status" data-test="parent-grace-banner">
       <mat-icon class="psc__icon" aria-hidden="true">family_restroom</mat-icon>

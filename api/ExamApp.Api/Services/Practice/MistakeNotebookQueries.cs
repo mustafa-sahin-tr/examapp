@@ -19,15 +19,17 @@ internal static class MistakeNotebookQueries
 {
     internal const int CorrectToClear = 2;
 
-    /// <returns>null: soru defterde değil.</returns>
-    internal static (DateTime LastWrongAt, int WrongCount)? Evaluate(IEnumerable<DueReviewAttempt> attempts)
+    /// <returns>null: soru defterde değil. <c>CorrectSince</c>: son yanlıştan sonraki doğru sayısı (#862 ilerleme);
+    /// <c>LastWrongAnswerId</c>: son yanlışta seçilen şık (#862 "senin cevabın").</returns>
+    internal static (DateTime LastWrongAt, int WrongCount, int CorrectSince, int? LastWrongAnswerId)? Evaluate(IEnumerable<DueReviewAttempt> attempts)
     {
         var ordered = attempts.OrderBy(a => a.AtUtc).ToList();
         var lastWrong = ordered.FindLastIndex(a => !a.Correct);
-        if (lastWrong < 0 || ordered.Count - lastWrong - 1 >= CorrectToClear)
+        var correctSince = ordered.Count - lastWrong - 1;
+        if (lastWrong < 0 || correctSince >= CorrectToClear)
             return null;
 
-        return (ordered[lastWrong].AtUtc, ordered.Count(a => !a.Correct));
+        return (ordered[lastWrong].AtUtc, ordered.Count(a => !a.Correct), correctSince, ordered[lastWrong].SelectedAnswerId);
     }
 
     internal static async Task<List<MistakeItemDto>> LoadAsync(
@@ -58,7 +60,12 @@ internal static class MistakeNotebookQueries
                 q.SubjectId,
                 SubjectName = q.Subject != null ? q.Subject.Name : null,
                 q.TopicId,
-                TopicName = q.Topic != null ? q.Topic.Name : null
+                TopicName = q.Topic != null ? q.Topic.Name : null,
+                // #862: satırda soru ve "senin cevabın / doğru cevap" (şık harfi sunucu sırasından, çözme ekranıyla aynı).
+                q.ImageUrl,
+                q.Text,
+                q.CorrectAnswerId,
+                AnswerIds = q.Answers.OrderBy(a => a.Order ?? int.MaxValue).ThenBy(a => a.Id).Select(a => a.Id).ToList()
             })
             .ToListAsync(ct);
 
@@ -77,10 +84,25 @@ internal static class MistakeNotebookQueries
                 TopicName = q.TopicName,
                 LastWrongAt = active[q.Id].LastWrongAt,
                 WrongCount = active[q.Id].WrongCount,
-                Reason = reasons.TryGetValue(q.Id, out var reason) ? reason.ToString() : null
+                Reason = reasons.TryGetValue(q.Id, out var reason) ? reason.ToString() : null,
+                ImageUrl = string.IsNullOrWhiteSpace(q.ImageUrl) ? null : q.ImageUrl,
+                Text = string.IsNullOrWhiteSpace(q.Text) ? null : q.Text,
+                YourAnswer = AnswerLetter(q.AnswerIds, active[q.Id].LastWrongAnswerId),
+                CorrectAnswer = AnswerLetter(q.AnswerIds, q.CorrectAnswerId),
+                CorrectSinceWrong = active[q.Id].CorrectSince,
+                CorrectToClear = CorrectToClear
             })
             .OrderByDescending(i => i.LastWrongAt)
             .ThenBy(i => i.QuestionId)
             .ToList();
+    }
+
+    /// <summary>Şıkkın harfi (A, B, …); şık yoksa / bulunamazsa null.</summary>
+    internal static string? AnswerLetter(List<int> answerIds, int? answerId)
+    {
+        if (answerId is not { } id)
+            return null;
+        var index = answerIds.IndexOf(id);
+        return index is >= 0 and < 26 ? ((char)('A' + index)).ToString() : null;
     }
 }

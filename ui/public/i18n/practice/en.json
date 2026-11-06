@@ -18,7 +18,6 @@
   "mistakes": {
     "title": "My Mistakes",
     "subtitle": "Questions you got wrong in tests and practice. They leave the list after two correct answers in a row.",
-    "start": "Practise these",
     "startError": "Could not start practice.",
     "saveError": "Could not save the reason.",
     "loadError": "Could not load the list.",
@@ -30,14 +29,26 @@
     "allSubjects": "All subjects",
     "noSubject": "No subject",
     "wrongInfo": "Wrong {{count}} times, last: {{date}}",
-    "reasonLabel": "Why?",
-    "reasonNone": "Not set",
     "truncated": "Showing {{shown}} of {{total}} questions.",
     "reason": {
       "DidNotKnow": "Did not know",
       "Calculation": "Calculation error",
       "Attention": "Attention",
       "Time": "Time"
+    },
+    "startAll": "Solve all ({{count}})",
+    "yourAnswer": "Your answer {{letter}}",
+    "leftBlank": "Left blank",
+    "correctAnswer": "Correct {{letter}}",
+    "progress": "{{left}} more correct → leaves the list",
+    "progressAria": "{{done}} of {{total}} correct",
+    "whyQuestion": "Why was it wrong?",
+    "retry1": "Solve again",
+    "tip": {
+      "DidNotKnow": "Read the topic once more, then solve a similar question.",
+      "Calculation": "Write each step; check the result once more.",
+      "Attention": "Underline the key words on your first read.",
+      "Time": "Mark a question you are stuck on, leave it for last, then come back."
     }
   },
   "savedQuestions": {

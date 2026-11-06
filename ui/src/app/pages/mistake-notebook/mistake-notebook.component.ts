@@ -2,13 +2,14 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
+import { MatChipsModule } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
-import { MISTAKE_REASONS, MistakeItem, MistakeReason } from '../../models/practice';
+import { MISTAKE_REASONS, MistakeItem, MistakeReason, PracticeSessionStartRequest } from '../../models/practice';
 import { PracticeService } from '../../services/practice.service';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
@@ -21,6 +22,7 @@ import { PageHeaderComponent } from '../../shared/components/page-header/page-he
     DatePipe,
     RouterLink,
     MatButtonModule,
+    MatChipsModule,
     MatFormFieldModule,
     MatIconModule,
     MatProgressSpinnerModule,
@@ -88,10 +90,27 @@ export class MistakeNotebookComponent implements OnInit {
 
   startPractice(): void {
     const subjectId = this.subjectId();
+    this.start({ mistakes: true, subjectIds: subjectId === null ? [] : [subjectId] });
+  }
+
+  /** Issue #862: tek soruyu tekrar çöz. */
+  retry(item: MistakeItem): void {
+    this.start({ mistakes: true, mistakeQuestionId: item.questionId });
+  }
+
+  /** Issue #862: defterden çıkma ilerlemesi — her adım bir nokta (dolu = çözüldü). */
+  steps(item: MistakeItem): boolean[] {
+    const total = item.correctToClear ?? 0;
+    const done = item.correctSinceWrong ?? 0;
+    return Array.from({ length: total }, (_, i) => i < done);
+  }
+
+  private start(request: PracticeSessionStartRequest): void {
+    if (this.starting()) return;
     this.starting.set(true);
     this.startFailed.set(false);
     this.practiceService
-      .startSession({ mistakes: true, subjectIds: subjectId === null ? [] : [subjectId] })
+      .startSession(request)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (session) => void this.router.navigate(['/practice'], { queryParams: { session: session.id } }),

@@ -89,6 +89,8 @@ public class PracticeSessionService : IPracticeSessionService
         if (request.Mistakes)
         {
             var mistakes = await MistakeNotebookQueries.LoadAsync(_context, _calendar, student, subjectIds, topicIds, ct);
+            if (request.MistakeQuestionId is { } only)
+                mistakes = mistakes.Where(m => m.QuestionId == only).ToList();
             if (mistakes.Count == 0)
                 throw new InvalidOperationException(_localizer["practice.noMistakes"]);
 

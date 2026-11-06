@@ -1201,6 +1201,8 @@
       "fixEmail": "E-postayı düzelt",
       "emailLocked": "Çok sayıda farklı e-posta denedin; {{date}} sonrasında tekrar deneyebilirsin.",
       "devLink": "dev: aktivasyon bağlantısı",
+      "graceDeadlineShort": "{{days}} gün kaldı",
+      "graceOverShort": "Süre doldu",
       "graceDeadline": "{{days}} gün içinde veliniz aktive etmezse hesabınız kısıtlanır.",
       "graceOver": "Velini ekleme süren doldu; veliniz hesabını aktive edene kadar hesabın kısıtlı."
     },

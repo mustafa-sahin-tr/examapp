@@ -1,10 +1,23 @@
-import { Component, DestroyRef, computed, inject, signal, ChangeDetectionStrategy, input } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { NgTemplateOutlet } from '@angular/common';
+import {
+  Component,
+  DestroyRef,
+  TemplateRef,
+  computed,
+  inject,
+  signal,
+  ChangeDetectionStrategy,
+  input,
+  viewChild,
+} from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { finalize } from 'rxjs';
+import { finalize, map } from 'rxjs';
 
 import {
   PARENT_INVITATION_ERROR_CODES,
@@ -23,6 +36,9 @@ import { describeParentInvitationError } from '../../utils/parent-invitation-err
 /** Hoşgörü banner'ının kapatıldığını tutan sessionStorage anahtarı (kullanıcı başına; yeni oturumda geri gelir). */
 export const PARENT_GRACE_BANNER_DISMISS_KEY = 'parentGraceBannerDismissed';
 
+/** Alt menülü mobil düzenle aynı eşik (`EnhancedLayoutComponent.MOBILE_LAYOUT_QUERY`). */
+const MOBILE_QUERY = '(max-width: 768px)';
+
 /**
  * Issue #440 / #441: öğrenci panelinin veli durumu alanı.
  * - `AwaitingActivation`: "Velinize davet gönderildi: {maskeli e-posta}" kartı — bitiş, süresi dolunca "Davet süresi doldu,
@@ -35,7 +51,7 @@ export const PARENT_GRACE_BANNER_DISMISS_KEY = 'parentGraceBannerDismissed';
 @Component({
   selector: 'app-parent-status-card',
   standalone: true,
-  imports: [MatButtonModule, MatIconModule, RouterLink, TranslocoDirective],
+  imports: [MatButtonModule, MatIconModule, NgTemplateOutlet, RouterLink, TranslocoDirective],
   templateUrl: './parent-status-card.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './parent-status-card.component.scss',
@@ -47,6 +63,7 @@ export class ParentStatusCardComponent {
   private readonly localeService = inject(LocaleService);
   private readonly transloco = inject(TranslocoService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly bottomSheet = inject(MatBottomSheet);
 
   protected readonly parentRequiredUrl = PARENT_REQUIRED_URL;
   protected readonly invitation = this.store.invitation;
@@ -60,6 +77,14 @@ export class ParentStatusCardComponent {
   readonly compact = input(false);
   readonly expandedByUser = signal(false);
   readonly collapsed = computed(() => this.compact() && !this.expandedByUser());
+  /** #844: mobilde tek satırda eylem yok; ayrıntılar ve eylemler alttan açılan sayfada. */
+  readonly isMobile = toSignal(
+    inject(BreakpointObserver)
+      .observe(MOBILE_QUERY)
+      .pipe(map((state) => state.matches)),
+    { initialValue: false }
+  );
+  private readonly detailsSheet = viewChild<TemplateRef<unknown>>('detailsSheet');
   /** #835: tek satırda eylemler yalnız süre dolduğunda / son günlerde gösterilir. */
   readonly urgent = computed(() => !!this.invitation()?.expired || !!this.awaitingDeadline()?.warning);
   readonly resending = signal(false);
@@ -102,6 +127,19 @@ export class ParentStatusCardComponent {
           }
         },
       });
+  }
+
+  showDetails(): void {
+    const sheet = this.detailsSheet();
+    if (this.isMobile() && sheet) {
+      this.bottomSheet.open(sheet, {
+        panelClass: 'ms-bottom-sheet',
+        restoreFocus: true,
+        ariaLabel: this.transloco.translate<string>('parentRequirement.card.title'),
+      });
+      return;
+    }
+    this.expandedByUser.set(true);
   }
 
   dismissBanner(): void {

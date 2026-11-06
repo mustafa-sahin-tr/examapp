@@ -2093,12 +2093,22 @@ describe('ActivityPlayerComponent (#573)', () => {
       expect(q('collapse')).toBeNull();
     });
 
-    it('beforeAnyCheck_InteractionDoesNotCollapse', async () => {
+    it('narrow_OpensOnContent_ExpandedPanelIsSheetWithScrim (#844)', async () => {
       await create();
       fixture.componentInstance.narrowScreen.set(true);
-      q('item-content')!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
       await settle();
-      expect(fixture.componentInstance.panelCollapsed()).toBe(false);
+      expect(q('check-compact')).not.toBeNull();
+      expect(q('panel-scrim')).toBeNull();
+
+      (q('expand') as HTMLButtonElement).click();
+      await settle();
+      expect(fixture.componentInstance.sheetOpen()).toBe(true);
+      expect(fixture.nativeElement.querySelector('.ap__panel--sheet')).not.toBeNull();
+
+      (q('panel-scrim') as HTMLElement).click();
+      await settle();
+      expect(fixture.componentInstance.sheetOpen()).toBe(false);
+      expect(q('check-compact')).not.toBeNull();
     });
   });
 

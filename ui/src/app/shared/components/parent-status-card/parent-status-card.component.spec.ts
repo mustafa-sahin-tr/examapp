@@ -1,7 +1,9 @@
 import type { Mock } from "vitest";
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { HttpErrorResponse } from '@angular/common/http';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
@@ -24,7 +26,10 @@ describe('ParentStatusCardComponent', () => {
         reload: Mock;
     };
 
-    function create(status: ParentStatus | null): ComponentFixture<ParentStatusCardComponent> {
+    let sheet: { open: Mock };
+
+    function create(status: ParentStatus | null, mobile = false): ComponentFixture<ParentStatusCardComponent> {
+        sheet = { open: vi.fn().mockName('open') };
         service = {
             resend: vi.fn().mockName('resend'),
             reload: vi.fn().mockName('reload').mockReturnValue(of(null)),
@@ -36,6 +41,8 @@ describe('ParentStatusCardComponent', () => {
                 { provide: StudentParentService, useValue: service },
                 { provide: AuthService, useValue: { user: signal({ id: USER_ID }) } },
                 { provide: LocaleService, useValue: { localeDefinition: signal({ angularLocale: 'tr-TR' }) } },
+                { provide: BreakpointObserver, useValue: { observe: () => of({ matches: mobile, breakpoints: {} }) } },
+                { provide: MatBottomSheet, useValue: sheet },
             ],
         });
         store = TestBed.inject(ParentStatusStore);
@@ -167,8 +174,8 @@ describe('ParentStatusCardComponent', () => {
 
     // Issue #721: ana sayfada ayrıntılar kapalı başlar, kısıtlar ve süre görünür kalır.
     describe('compact (issue #721)', () => {
-        function compact(status: ParentStatus): ComponentFixture<ParentStatusCardComponent> {
-            const fixture = create(status);
+        function compact(status: ParentStatus, mobile = false): ComponentFixture<ParentStatusCardComponent> {
+            const fixture = create(status, mobile);
             fixture.componentRef.setInput('compact', true);
             fixture.detectChanges();
             return fixture;
@@ -193,6 +200,20 @@ describe('ParentStatusCardComponent', () => {
             expect(q(fixture, '.psc--compact')).toBeNull();
             expect(q(fixture, '[data-test="invitation-resend"]')).not.toBeNull();
             expect(q(fixture, '[data-test="invitation-sent-to"]')).not.toBeNull();
+        });
+
+        it('mobile_OneLineWithoutActions_DetailsOpenBottomSheet_issue844', () => {
+            const fixture = compact({ ...awaitingStatusOf(), daysLeft: 3, isFinalWarning: true }, true);
+
+            expect(q(fixture, '[data-test="invitation-resend"]')).toBeNull();
+            expect(q(fixture, '[data-test="invitation-deadline"]')?.textContent).toContain('3 gün kaldı');
+
+            q(fixture, '[data-test="invitation-details"]')?.click();
+            fixture.detectChanges();
+
+            expect(sheet.open).toHaveBeenCalledTimes(1);
+            expect(sheet.open.mock.calls[0][1]).toEqual(expect.objectContaining({ panelClass: 'ms-bottom-sheet' }));
+            expect(q(fixture, '.psc--compact')).not.toBeNull();
         });
 
         it('finalWarning_ShowsActionsInTheSameLine_issue835', () => {

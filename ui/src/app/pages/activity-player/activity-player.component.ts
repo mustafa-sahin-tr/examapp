@@ -403,7 +403,12 @@ export class ActivityPlayerComponent {
    * açılır. Yeni kontrol sonucu paneli yeniden açar.
    */
   readonly narrowScreen = signal(false);
-  readonly panelCollapsed = signal(false);
+  /** #844: dar ekranda sayfa etkinlik içeriğiyle açılır; panel önce yalnız çubuk. */
+  readonly panelCollapsed = signal(true);
+  /** #844: mobilde genişletilmiş panel alt sayfa olarak açık (hata / çözüm açıkken panel çubuğa inmez, sayfa olmaz). */
+  readonly sheetOpen = computed(
+    () => this.narrowScreen() && !this.panelCollapsed() && !this.panelError() && !this.revealed()
+  );
 
   /** Kontrol/bitirme sürerken içerik salt okunur (gönderilen cevap ile ekran ayrışmasın). */
   readonly contentLocked = computed(() => this.checking() || this.finishing());
@@ -873,6 +878,7 @@ export class ActivityPlayerComponent {
     const field = this.host.nativeElement.querySelector<HTMLElement>('.is-empty input, .is-empty [contenteditable="true"]');
     field?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     field?.focus({ preventScroll: true });
+    this.panelCollapsed.set(true);
   }
 
   fixWrong(): void {

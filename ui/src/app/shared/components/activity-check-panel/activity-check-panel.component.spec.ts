@@ -233,9 +233,25 @@ describe('ActivityCheckPanelComponent (#573)', () => {
       expect(q('check-compact')).toBeNull();
     });
 
-    it('collapsedIsIgnored_BeforeFirstCheck_OnError_AndWhenRevealed', () => {
+    it('collapsedBeforeFirstCheck_ShowsBarWithCheck (#844)', () => {
       setup({ collapsible: true, collapsed: true });
-      expect(q('check-compact')).toBeNull();
+      expect(q('check-compact')).not.toBeNull();
+      expect(btn('check')?.textContent).toContain('Cevapları kontrol et');
+      expect(q('reveal')).toBeNull();
+      expect(q('finish')).toBeNull();
+    });
+
+    it('collapsedWithBlanks_PrimaryIsFillBlanks (#844)', () => {
+      setup({ ...checked, rows: [{ label: 'a', correct: false, empty: true }], collapsible: true, collapsed: true });
+      const fill = vi.fn();
+      fixture.componentInstance.fillBlanks.subscribe(fill);
+      expect(q('check')).toBeNull();
+      btn('fill-blanks')!.click();
+      expect(fill).toHaveBeenCalledTimes(1);
+    });
+
+    it('collapsedIsIgnored_OnError_AndWhenRevealed', () => {
+      setup({ collapsible: true, collapsed: true });
       fixture.componentRef.setInput('checkCount', 1);
       fixture.componentRef.setInput('error', 'network');
       fixture.detectChanges();

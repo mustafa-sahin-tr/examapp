@@ -128,6 +128,55 @@ describe('QuestionCanvasComponent', () => {
         expect(component).toBeTruthy();
     });
 
+    // Issue #858: testten açılan tuval hedef testi ve mevcut sorularını gösterir; test seçici gizlenir.
+    describe('test context (#858)', () => {
+        beforeEach(() => {
+            (TestBed.inject(SubjectService).loadCategories as ReturnType<typeof vi.fn>).mockReturnValue(of([]));
+        });
+
+        async function openFromTest(questions: unknown[]) {
+            (TestBed.inject(QuestionService).getAll as ReturnType<typeof vi.fn>).mockReturnValue(of(questions));
+            (component as any).route = { snapshot: { paramMap: convertToParamMap({ id: '14' }) } };
+            fixture.detectChanges();
+            await fixture.whenStable();
+            fixture.detectChanges();
+            return fixture.nativeElement as HTMLElement;
+        }
+
+        it('shows the target test, its question count and existing questions', async () => {
+            const el = await openFromTest([
+                { id: 1, imageUrl: 'https://img/1.png', text: '' },
+                { id: 2, imageUrl: '', text: 'Metin sorusu' },
+            ]);
+
+            expect(TestBed.inject(QuestionService).getAll).toHaveBeenCalledWith(14);
+            expect(el.querySelector('[data-testid="canvas-test-context"]')?.textContent).toContain('T-1');
+            expect(el.querySelector('[data-testid="canvas-test-count"]')?.textContent).toContain('2 soru');
+            expect(el.querySelector('.qc-crumb--test')).toBeNull();
+            const items = el.querySelectorAll('[data-testid="canvas-test-questions"] li');
+            expect(items.length).toBe(2);
+            expect(items[1].textContent).toContain('Metin sorusu');
+        });
+
+        it('back to test goes to the test page', async () => {
+            const el = await openFromTest([]);
+
+            (el.querySelector('[data-testid="canvas-back-to-test"]') as HTMLButtonElement).click();
+
+            expect(TestBed.inject(Router).navigate).toHaveBeenCalledWith(['/test', 14]);
+            expect(el.querySelector('[data-testid="canvas-test-questions"]')).toBeNull();
+        });
+
+        it('without a target the test picker stays and no context line shows', async () => {
+            fixture.detectChanges();
+            await fixture.whenStable();
+            const el = fixture.nativeElement as HTMLElement;
+
+            expect(el.querySelector('[data-testid="canvas-test-context"]')).toBeNull();
+            expect(el.querySelector('.qc-crumb--test')).not.toBeNull();
+        });
+    });
+
     // Issue #574 (E2E): hedef sayfa menüsü boş aramada da listeler, adla eşleşir ve etkinlik sayfalarını gösterir.
     describe('target worksheet search (#574)', () => {
         const wait = () => new Promise((resolve) => setTimeout(resolve, 350));
@@ -908,6 +957,7 @@ describe('QuestionCanvasComponent', () => {
                 saveBulk: vi.fn().mockName("QuestionService.saveBulk")
             };
             questionServiceLocal.saveBulk.mockReturnValue(saveBulk$.asObservable() as any);
+            questionServiceLocal.getAll.mockReturnValue(of([]) as any);
 
             const bookServiceLocal = {
                 getAll: vi.fn().mockName("BookService.getAll"),
@@ -1545,10 +1595,9 @@ describe('QuestionCanvasComponent', () => {
                     ctx.fixture.detectChanges();
                     await ctx.fixture.whenStable();
                     const el: HTMLElement = ctx.fixture.nativeElement;
-                    const trainButton = () => Array.from(el.querySelectorAll<HTMLButtonElement>('button.qc-btn--ghost')).find((b) => b.textContent!.includes(questionTr.canvas.train) || b.textContent!.includes(questionTr.canvas.sendingToFix))!;
                     const saveButton = () => el.querySelector<HTMLButtonElement>('.qc-split__main')!;
                     const caretButton = () => el.querySelector<HTMLButtonElement>('.qc-split__caret')!;
-                    return { ...ctx, el, trainButton, saveButton, caretButton };
+                    return { ...ctx, el, saveButton, caretButton };
                 }
 
                 // E2E (#581): kutu 3'e yazılan değer, boş kutu 4'e geçince DOM'da kalıp onunkine ekleniyordu ("29023").
@@ -1660,20 +1709,18 @@ describe('QuestionCanvasComponent', () => {
                 });
 
                 it('buttons_Idle_AreEnabled', async () => {
-                    const { trainButton, saveButton, caretButton } = await render();
+                    const { saveButton, caretButton } = await render();
 
-                    expect(trainButton().disabled).toBe(false);
                     expect(saveButton().disabled).toBe(false);
                     expect(caretButton().disabled).toBe(false);
                 });
 
                 it('buttons_WhileAnalyzing_AreDisabled', async () => {
-                    const { fixture: f, component, trainButton, saveButton, caretButton } = await render();
+                    const { fixture: f, component, saveButton, caretButton } = await render();
 
                     component.imageSelector.inProgress.set(true);
                     f.detectChanges();
 
-                    expect(trainButton().disabled).toBe(true);
                     expect(saveButton().disabled).toBe(true);
                     expect(caretButton().disabled).toBe(true);
                 });
@@ -1688,17 +1735,19 @@ describe('QuestionCanvasComponent', () => {
                     expect(caretButton().disabled).toBe(true);
                 });
 
-                it('trainButton_WhileSending_ShowsSpinnerTextAndAriaBusy', async () => {
-                    const { fixture: f, component, trainButton } = await render();
+                // #858: "Eğit" ve eğitim dışı bırakma üst çubukta değil, kaydet menüsünde (yalnız Admin / QuestionTrainer).
+                it('trainOptions_LiveInSaveMenu_NotInTopbar', async () => {
+                    const { fixture: f, component, el, caretButton } = await render();
 
-                    component.imageSelector.sendingToFix.set(true);
+                    expect(Array.from(el.querySelectorAll('.qc-topbar__actions > button')).some((b) => b.textContent!.trim() === questionTr.canvas.train)).toBe(false);
+                    caretButton().click();
                     f.detectChanges();
-
-                    const button = trainButton();
-                    expect(button.disabled).toBe(true);
-                    expect(button.getAttribute('aria-busy')).toBe('true');
-                    expect(button.querySelector('mat-spinner')).not.toBeNull();
-                    expect(button.textContent).toContain(questionTr.canvas.sendingToFix);
+                    const optOut = document.querySelector<HTMLButtonElement>('.mat-mdc-menu-panel [data-testid="canvas-train-opt-out"]')!;
+                    expect(document.querySelector('.mat-mdc-menu-panel [data-testid="canvas-train"]')).not.toBeNull();
+                    optOut.click();
+                    f.detectChanges();
+                    expect(component.excludeFromTraining()).toBe(true);
+                    expect(optOut.getAttribute('aria-checked')).toBe('true');
                 });
 
                 it('pageNavigation_DuringAdvanceWindow_IsDisabled_ButNotDuringAnalysis', async () => {

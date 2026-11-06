@@ -6,6 +6,21 @@
       <span class="qc-brand__title">{{ t('canvas.title') }}</span>
     </div>
 
+    @if (fromTest()) {
+    <div class="qc-context" data-testid="canvas-test-context">
+      <button type="button" class="qc-btn qc-btn--ghost qc-context__back" (click)="backToTest()" data-testid="canvas-back-to-test">
+        <mat-icon>arrow_back</mat-icon>{{ t('canvas.backToTest') }}
+      </button>
+      <span class="qc-context__text">
+        <span class="qc-context__label">{{ activityContext() ? t('canvas.addingToActivity') : t('canvas.addingToTest') }}</span>
+        <b class="qc-context__name">{{ targetTestName }}</b>
+        @if (testQuestions(); as list) {
+        <span class="qc-context__count" data-testid="canvas-test-count">· {{ t('canvas.testQuestionCount', { n: list.length }) }}</span>
+        }
+      </span>
+    </div>
+    }
+
     <nav class="qc-breadcrumb" [formGroup]="questionForm">
       <button type="button" class="qc-crumb" [matMenuTriggerFor]="bookMenu">
         <mat-icon>menu_book</mat-icon>
@@ -30,6 +45,7 @@
         }
       </mat-menu>
 
+      @if (!fromTest()) {
       <mat-icon class="qc-breadcrumb__sep">chevron_right</mat-icon>
 
       <button type="button" class="qc-crumb qc-crumb--test" [matMenuTriggerFor]="testMenu">
@@ -59,6 +75,7 @@
         <div class="qc-menu-empty">{{ t('canvas.noResults') }}</div>
         }
       </mat-menu>
+      }
     </nav>
 
     <div class="qc-topbar__actions">
@@ -168,23 +185,6 @@
       </button>
       }
 
-      @if (canTrain) {
-      <mat-checkbox class="qc-train-opt-out" [checked]="excludeFromTraining()"
-        (change)="excludeFromTraining.set($event.checked)"
-        [matTooltip]="t('canvas.excludeFromTrainingHint')">
-        {{ t('canvas.excludeFromTraining') }}
-      </mat-checkbox>
-      <button type="button" class="qc-btn qc-btn--ghost" [disabled]="busy()" [attr.aria-busy]="sendingToFix()"
-        (click)="sendToFix()">
-        @if (sendingToFix()) {
-        <mat-spinner class="qc-btn__spinner" diameter="16" aria-hidden="true"></mat-spinner>
-        <span>{{ t('canvas.sendingToFix') }}</span>
-        } @else {
-        {{ t('canvas.train') }}
-        }
-      </button>
-      }
-
       <div class="qc-split">
         <button
           type="button"
@@ -196,6 +196,8 @@
           @if (saving()) {
           <mat-spinner class="qc-btn__spinner" diameter="16"></mat-spinner>
           <span>{{ t('canvas.saving') }}</span>
+          } @else if (pageQuestionCount > 0 && !activityContext()) {
+          {{ t('canvas.saveCount', { n: pageQuestionCount }) }}
           } @else {
           {{ t('canvas.save') }}
           }
@@ -219,8 +221,15 @@
           <mat-icon>send</mat-icon><span>{{ t('canvas.sendToStudyPage') }}</span>
         </button>
         @if (canTrain) {
-        <button mat-menu-item type="button" [disabled]="busy()" (click)="sendToFix()">
+        <button mat-menu-item type="button" [disabled]="busy()" (click)="sendToFix()" data-testid="canvas-train">
           <mat-icon>model_training</mat-icon><span>{{ t('canvas.trainModelOnly') }}</span>
+        </button>
+        <!-- #858: eğitim seçenekleri yalnız Admin / QuestionTrainer'a, bu menüde. -->
+        <button mat-menu-item type="button" role="menuitemcheckbox" [attr.aria-checked]="excludeFromTraining()"
+          (click)="excludeFromTraining.set(!excludeFromTraining()); $event.stopPropagation()" data-testid="canvas-train-opt-out"
+          [matTooltip]="t('canvas.excludeFromTrainingHint')">
+          <mat-icon>{{ excludeFromTraining() ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
+          <span>{{ t('canvas.excludeFromTraining') }}</span>
         </button>
         }
       </mat-menu>
@@ -260,6 +269,26 @@
         <p class="qc-rail__empty">{{ t('canvas.noPages') }}</p>
         }
       </div>
+
+      @if (testQuestions(); as list) {
+      @if (list.length > 0) {
+      <div class="qc-rail__head qc-rail__head--sub">
+        <span class="qc-rail__title">{{ t('canvas.testQuestions', { n: list.length }) }}</span>
+      </div>
+      <ol class="qc-existing" data-testid="canvas-test-questions">
+        @for (q of list; track q.id; let i = $index) {
+        <li class="qc-existing__item">
+          <span class="qc-existing__no">{{ i + 1 }}</span>
+          @if (q.imageUrl) {
+          <img class="qc-existing__img" [src]="q.imageUrl" alt="" loading="lazy" />
+          } @else {
+          <span class="qc-existing__text">{{ q.text }}</span>
+          }
+        </li>
+        }
+      </ol>
+      }
+      }
     </aside>
 
     <!-- 3. MERKEZ TUVAL -->

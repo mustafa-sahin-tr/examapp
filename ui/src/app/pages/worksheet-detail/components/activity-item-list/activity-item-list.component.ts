@@ -3,10 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
-  ElementRef,
-  Injector,
   OnInit,
-  afterNextRender,
   computed,
   inject,
   input,
@@ -16,7 +13,9 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
@@ -78,7 +77,17 @@ export interface ActivityItemRow {
 @Component({
   selector: 'app-activity-item-list',
   standalone: true,
-  imports: [CdkDrag, CdkDragHandle, CdkDropList, MatButtonModule, MatIconModule, MatTooltipModule, TranslocoDirective],
+  imports: [
+    CdkDrag,
+    CdkDragHandle,
+    CdkDropList,
+    MatButtonModule,
+    MatDividerModule,
+    MatIconModule,
+    MatMenuModule,
+    MatTooltipModule,
+    TranslocoDirective,
+  ],
   templateUrl: './activity-item-list.component.html',
   styleUrl: './activity-item-list.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -90,8 +99,6 @@ export class ActivityItemListComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly transloco = inject(TranslocoService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
-  private readonly injector = inject(Injector);
 
   readonly worksheetId = input.required<number>();
   readonly gradeId = input<number | null | undefined>(null);
@@ -175,11 +182,9 @@ export class ActivityItemListComponent implements OnInit {
     this.move(event.previousIndex, event.currentIndex);
   }
 
-  /** ↑/↓: taşımadan sonra odak aynı maddenin aynı düğmesinde (uçta pasifse diğerinde) kalır. */
+  /** #838: taşma menüsünden ↑/↓. Menü kapanınca odak satırın menü düğmesine döner (satır DOM'da taşınır, kaybolmaz). */
   moveBy(index: number, delta: -1 | 1): void {
-    const row = this.rows()[index];
-    if (!this.move(index, index + delta) || !row) return;
-    afterNextRender(() => this.focusMoveButton(row.questionId, delta), { injector: this.injector });
+    this.move(index, index + delta);
   }
 
   private move(from: number, to: number): boolean {
@@ -224,18 +229,6 @@ export class ActivityItemListComponent implements OnInit {
             });
         },
       });
-  }
-
-  private focusMoveButton(questionId: number, delta: -1 | 1): void {
-    const row = this.host.nativeElement.querySelector(`[data-question-id="${questionId}"]`);
-    const same = row?.querySelector<HTMLButtonElement>(
-      `[data-testid="activity-item-move-${delta < 0 ? 'up' : 'down'}"]`
-    );
-    const other = row?.querySelector<HTMLButtonElement>(
-      `[data-testid="activity-item-move-${delta < 0 ? 'down' : 'up'}"]`
-    );
-    const atEdge = same?.getAttribute('data-edge') === 'true';
-    (atEdge ? other : same)?.focus();
   }
 
   typeName(row: ActivityItemRow): string {

@@ -17,6 +17,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { ActivatedRoute, NavigationExtras, ParamMap, Router, RouterLink } from '@angular/router';
 import { Test, TestInstance, TestInstanceQuestion, WorksheetTeacherSharing } from '../../models/test-instance';
 import { finalize, lastValueFrom } from 'rxjs';
@@ -102,6 +103,7 @@ import {
     MatButtonModule,
     MatProgressSpinnerModule,
     MatExpansionModule,
+    MatMenuModule,
     IsTeacherDirective,
     IsStudentDirective,
     QuestionCanvasViewComponent,

@@ -89,7 +89,7 @@
     "nextItem": "Similar test: \"{{name}}\""
   },
   "teacher": {
-    "roleTag": "TEACHER",
+    "moreActions": "More actions",
     "readonlyOwnerFallback": "Another teacher's",
     "readonlyStrip": "{{owner}} test · Read only",
     "copyToMyAccount": "Copy to my account",
@@ -265,6 +265,8 @@
       "removed": "Item {{number}} removed.",
       "removeFailed": "The item could not be removed.",
       "dragAria": "Drag to move item {{number}}",
+      "more": "More actions",
+      "moreAria": "More actions for item {{number}}",
       "moveUp": "Move up",
       "moveDown": "Move down",
       "moveUpAria": "Move item {{number}} up",

@@ -129,9 +129,13 @@
 
 .ail__preview {
   margin: 4px 0 0;
+  // #838: iki satır; uzun metin üçüncü satırda kesilir.
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
   color: var(--ms-text-weak);
 }
 

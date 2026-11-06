@@ -110,15 +110,17 @@ h2 {
   }
 }
 
-.role-tag {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  color: var(--ms-info-text-weak);
-  background: var(--ms-info-surface);
-  border: 1px solid var(--ms-info-border);
-  padding: 3px 8px;
-  border-radius: 6px;
+.type-icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--ms-surface-strong);
+  border: 1px solid var(--ms-border-weak);
+  color: var(--primary-text);
 }
 
 .subtitle {
@@ -304,6 +306,10 @@ h2 {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.hero-more {
+  align-self: center;
 }
 
 .started-note {

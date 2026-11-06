@@ -113,6 +113,16 @@ describe('ActivityItemListComponent (#684)', () => {
     fixture.detectChanges();
   }
 
+  // #838: taşı / kaldır satırın taşma menüsünde; menü overlay'de (document.body) açılır.
+  const moreButton = (index: number) =>
+    rows()[index].querySelector('[data-testid="activity-item-more"]') as HTMLButtonElement;
+  function menuItem(index: number, id: string): HTMLButtonElement {
+    moreButton(index).click();
+    fixture.detectChanges();
+    const items = document.querySelectorAll<HTMLButtonElement>(`.mat-mdc-menu-panel [data-testid="${id}"]`);
+    return items[items.length - 1];
+  }
+
   it('lists items with type badge, visual hint and edit only on form-editable items', async () => {
     await setup([textItem, visualItem]);
 
@@ -124,7 +134,7 @@ describe('ActivityItemListComponent (#684)', () => {
     expect(rows()[1].querySelector('[data-testid="activity-item-visual-hint"]')?.textContent).toContain(
       'Görselli, düzenlenemez'
     );
-    expect(rows()[0].querySelector('[data-testid="activity-item-remove"]')?.getAttribute('aria-label')).toBe(
+    expect(menuItem(0, 'activity-item-remove').getAttribute('aria-label')).toBe(
       "Madde 1'i kaldır"
     );
   });
@@ -133,7 +143,7 @@ describe('ActivityItemListComponent (#684)', () => {
     await setup([textItem, visualItem], false);
 
     expect(el().querySelector('[data-testid="activity-item-edit"]')).toBeNull();
-    expect(el().querySelector('[data-testid="activity-item-remove"]')).toBeNull();
+    expect(el().querySelector('[data-testid="activity-item-more"]')).toBeNull();
     expect(el().querySelector('[data-testid="activity-item-visual-hint"]')).toBeNull();
   });
 
@@ -152,7 +162,7 @@ describe('ActivityItemListComponent (#684)', () => {
     const removed = vi.fn();
     fixture.componentInstance.removed.subscribe(removed);
 
-    (rows()[0].querySelector('[data-testid="activity-item-remove"]') as HTMLButtonElement).click();
+    menuItem(0, 'activity-item-remove').click();
     fixture.detectChanges();
 
     expect(questions.removeQuestionFromTest).toHaveBeenCalledWith(7, 21);
@@ -165,7 +175,7 @@ describe('ActivityItemListComponent (#684)', () => {
     await setup([textItem]);
     dialogResult = false;
 
-    (el().querySelector('[data-testid="activity-item-remove"]') as HTMLButtonElement).click();
+    menuItem(0, 'activity-item-remove').click();
 
     expect(questions.removeQuestionFromTest).not.toHaveBeenCalled();
     fixture.detectChanges();
@@ -195,13 +205,11 @@ describe('ActivityItemListComponent (#684)', () => {
 
   const numbers = () => rows().map((r) => r.querySelector('.ail__no')?.textContent?.trim());
   const ids = () => rows().map((r) => Number(r.getAttribute('data-question-id')));
-  const button = (index: number, id: string) =>
-    rows()[index].querySelector(`[data-testid="${id}"]`) as HTMLButtonElement;
+  const button = (index: number, id: string) => menuItem(index, id);
 
-  it('↓ moves the item, saves the full order, announces it and keeps focus on the same button', async () => {
+  it('↓ moves the item, saves the full order, announces it and returns focus to the row menu', async () => {
     await setup([textItem, visualItem, mcqItem]);
 
-    button(0, 'activity-item-move-down').focus();
     button(0, 'activity-item-move-down').click();
     fixture.detectChanges();
     await fixture.whenStable();
@@ -212,23 +220,21 @@ describe('ActivityItemListComponent (#684)', () => {
     expect(el().querySelector('[data-testid="activity-items-live"]')?.textContent).toContain(
       'Madde 1, 2. sıraya taşındı'
     );
-    expect(document.activeElement).toBe(button(1, 'activity-item-move-down'));
-    expect(button(1, 'activity-item-move-down').getAttribute('aria-label')).toBe("Madde 2'i aşağı taşı");
+    expect(document.activeElement).toBe(moreButton(1));
+    expect(moreButton(1).getAttribute('aria-label')).toBe('Madde 2 için diğer işlemler');
   });
 
-  it('moving to the edge keeps focus on the other arrow; first ↑ and last ↓ are disabled', async () => {
+  it('first ↑ and last ↓ are disabled in the menu', async () => {
     await setup([textItem, visualItem]);
 
-    // disabledInteractive: pasif ama odaklanabilir (aria-disabled).
-    expect(button(0, 'activity-item-move-up').getAttribute('aria-disabled')).toBe('true');
-    expect(button(1, 'activity-item-move-down').getAttribute('aria-disabled')).toBe('true');
+    expect(button(0, 'activity-item-move-up').disabled).toBe(true);
+    expect(button(1, 'activity-item-move-down').disabled).toBe(true);
 
     button(1, 'activity-item-move-up').click();
     fixture.detectChanges();
     await fixture.whenStable();
 
     expect(ids()).toEqual([22, 21]);
-    expect(document.activeElement).toBe(button(0, 'activity-item-move-down'));
   });
 
   it('shows the started-sessions note only on the first change', async () => {
@@ -252,8 +258,10 @@ describe('ActivityItemListComponent (#684)', () => {
     fixture.detectChanges();
 
     expect(el().querySelector('ol')?.getAttribute('aria-busy')).toBe('true');
-    expect(button(1, 'activity-item-move-up').getAttribute('aria-disabled')).toBe('true');
-    button(1, 'activity-item-move-up').click();
+    expect(moreButton(1).getAttribute('aria-disabled')).toBe('true');
+    const moveUp = button(1, 'activity-item-move-up');
+    expect(moveUp.disabled).toBe(true);
+    moveUp.click();
     expect(questions.reorderTestQuestions).toHaveBeenCalledTimes(1);
 
     pending.next({ success: true });
@@ -284,6 +292,6 @@ describe('ActivityItemListComponent (#684)', () => {
     await setup([textItem, visualItem], false);
 
     expect(el().querySelector('[data-testid="activity-item-drag"]')).toBeNull();
-    expect(el().querySelector('[data-testid="activity-item-move-up"]')).toBeNull();
+    expect(el().querySelector('[data-testid="activity-item-more"]')).toBeNull();
   });
 });

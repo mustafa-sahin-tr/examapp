@@ -1156,12 +1156,28 @@ describe('WorksheetDetailComponent add from bank (issue #472)', () => {
         expect(readOnly.fixture.debugElement.query(By.css('[data-testid="print-test-btn"]'))).not.toBeNull();
     });
 
-    it('printButton_IsOfferedToTeacherWhoCanEdit', async () => {
+    it('printButton_IsOfferedToTeacherWhoCanEdit_InTheHeaderMenu', async () => {
         const editable = setup();
         editable.component.ngOnInit();
         await settle();
         editable.fixture.detectChanges();
-        expect(editable.fixture.debugElement.query(By.css('[data-testid="print-test-btn"]'))).not.toBeNull();
+        // #838: yazdır ve ayarlar başlığın taşma menüsünde; birincil eylem tek.
+        expect(editable.fixture.nativeElement.querySelectorAll('.hero .btn-primary').length).toBe(1);
+        (editable.fixture.nativeElement.querySelector('[data-testid="hero-more-btn"]') as HTMLButtonElement).click();
+        editable.fixture.detectChanges();
+        expect(document.querySelector('.mat-mdc-menu-panel [data-testid="print-test-btn"]')).not.toBeNull();
+        expect(document.querySelector('.mat-mdc-menu-panel [data-testid="edit-test-btn"]')).not.toBeNull();
+    });
+
+    it('hero_WithoutCoverImage_ShowsTypeIconAndNoRoleTag', async () => {
+        const editable = setup();
+        editable.component.ngOnInit();
+        await settle();
+        editable.fixture.detectChanges();
+        const host = editable.fixture.nativeElement as HTMLElement;
+        expect(host.querySelector('.hero-media')).toBeNull();
+        expect(host.querySelector('[data-testid="hero-type-icon"]')?.textContent?.trim()).toBe('quiz');
+        expect(host.querySelector('.role-tag')).toBeNull();
     });
 });
 

@@ -40,4 +40,17 @@ export interface AdminTeacherListItem {
 }
 
 /** Sorgu parametreleri; `schoolId` ile `unassigned=true` birlikte gönderilemez. */
-export type AdminTeacherListQuery = AdminSchoolPagedQuery;
+/** Issue #854: durum çipleri — Tümü / Onay bekleyen / Askıda. */
+export type AdminTeacherStatusFilter = 'all' | 'pending' | 'suspended';
+export const ADMIN_TEACHER_STATUS_FILTERS: readonly AdminTeacherStatusFilter[] = ['all', 'pending', 'suspended'];
+
+export interface AdminTeacherListQuery extends AdminSchoolPagedQuery {
+  status?: AdminTeacherStatusFilter;
+}
+
+/** Issue #854: `GET admin/teachers/status-counts` — çip sayıları (okul filtresiyle aynı kapsam). */
+export interface AdminTeacherStatusCounts {
+  all: number;
+  pending: number;
+  suspended: number;
+}

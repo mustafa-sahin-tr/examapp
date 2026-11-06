@@ -13,5 +13,10 @@ public interface IAdminTeacherService
     /// <paramref name="unassigned"/> true ise okul bağlantısı olmayanlar (SchoolId null). İkisi birlikte verilmez
     /// (controller 400 döner). <paramref name="page"/> &lt; 1 → 1; <paramref name="pageSize"/> [1, <see cref="AdminListPaging.MaxPageSize"/>] aralığına kırpılır.
     /// </summary>
-    Task<Paged<AdminTeacherListItemDto>> ListAsync(int page, int pageSize, int? schoolId, bool unassigned, CancellationToken ct = default);
+    /// issue #854: <paramref name="status"/> durum çipine göre süzer (Tümü / Onay bekleyen / Askıda).
+    Task<Paged<AdminTeacherListItemDto>> ListAsync(int page, int pageSize, int? schoolId, bool unassigned, CancellationToken ct = default,
+        AdminTeacherStatusFilter status = AdminTeacherStatusFilter.All);
+
+    /// <summary>issue #854: durum çiplerinin sayıları, okul filtresiyle aynı kapsamda.</summary>
+    Task<AdminTeacherStatusCountsDto> CountByStatusAsync(int? schoolId, bool unassigned, CancellationToken ct = default);
 }

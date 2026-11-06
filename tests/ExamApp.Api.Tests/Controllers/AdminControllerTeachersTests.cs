@@ -63,6 +63,31 @@ public class AdminControllerTeachersTests
     }
 
     [Fact]
+    public async Task Status_filter_is_passed_to_service_issue854()
+    {
+        var paged = new Paged<AdminTeacherListItemDto> { PageNumber = 1, PageSize = 20, TotalCount = 1, Items = [] };
+        _adminTeachers.ListAsync(1, 20, null, false, Arg.Any<CancellationToken>(), AdminTeacherStatusFilter.Suspended).Returns(paged);
+
+        var result = await NewController().GetTeachers(schoolId: null, unassigned: false, page: 1, pageSize: 20,
+            status: AdminTeacherStatusFilter.Suspended, ct: default);
+
+        result.Result.ShouldBeOfType<OkObjectResult>().Value.ShouldBeSameAs(paged);
+    }
+
+    [Fact]
+    public async Task Status_counts_return_200_and_reject_conflicting_filter_issue854()
+    {
+        var counts = new AdminTeacherStatusCountsDto { All = 4, Pending = 2, Suspended = 1 };
+        _adminTeachers.CountByStatusAsync(7, false, Arg.Any<CancellationToken>()).Returns(counts);
+
+        var ok = await NewController().GetTeacherStatusCounts(schoolId: 7, unassigned: false, ct: default);
+        ok.Result.ShouldBeOfType<OkObjectResult>().Value.ShouldBeSameAs(counts);
+
+        var conflict = await NewController().GetTeacherStatusCounts(schoolId: 7, unassigned: true, ct: default);
+        conflict.Result.ShouldBeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
     public void Default_page_size_is_20()
     {
         var parameter = typeof(AdminController).GetMethod(nameof(AdminController.GetTeachers))!

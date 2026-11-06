@@ -65,7 +65,8 @@ public sealed class CheckTeacherTeacherDto
     {
         Id = teacher.Id,
         UserId = teacher.UserId,
-        SchoolName = teacher.SchoolName,
+        // issue #854: bağlı okul yüklüyse onun adı (profil ve admin listesiyle aynı kaynak).
+        SchoolName = teacher.School?.Name ?? teacher.SchoolName,
         SchoolId = teacher.SchoolId,
         IsIndependentTutor = ExamApp.Api.Services.Teachers.TeacherIndependence.IsIndependent(teacher),
         ThemePreset = teacher.ThemePreset,

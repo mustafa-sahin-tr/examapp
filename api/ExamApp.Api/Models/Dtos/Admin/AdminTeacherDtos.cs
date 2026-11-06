@@ -55,3 +55,21 @@ public class AdminTeacherListItemDto
     /// <summary>issue #289: admin'in girdiği askı nedeni; askıda değilse null. Yalnızca admin'e döner.</summary>
     public string? AccountSuspensionReason { get; set; }
 }
+
+/// <summary>issue #854: öğretmen listesi durum filtresi (üstteki çipler).</summary>
+public enum AdminTeacherStatusFilter
+{
+    All = 0,
+    /// <summary>Başvurusu onay bekleyen (<c>ApprovalStatus = Pending</c>).</summary>
+    Pending = 1,
+    /// <summary>Hesabı askıda (<c>AccountSuspendedAt != null</c>).</summary>
+    Suspended = 2
+}
+
+/// <summary>issue #854: durum çiplerinin sayıları — okul filtresiyle aynı kapsamda; kişisel veri yok.</summary>
+public class AdminTeacherStatusCountsDto
+{
+    public int All { get; set; }
+    public int Pending { get; set; }
+    public int Suspended { get; set; }
+}

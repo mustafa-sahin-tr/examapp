@@ -89,47 +89,68 @@
             <span class="cdk-visually-hidden">{{ t('columns.actions') }}</span>
           </th>
           <td mat-cell *matCellDef="let row" class="al__actions-cell">
+            <!-- #854: etiketsiz ikonlar yerine tek "Yönet ▾" menüsü; devre dışı bırakma ayrı grupta, kırmızı. -->
             <button
-              mat-icon-button
+              mat-stroked-button
               type="button"
-              data-testid="reset-password"
-              [matTooltip]="'admin.passwordReset.action' | transloco"
-              [attr.aria-label]="'admin.passwordReset.actionFor' | transloco: { name: rowDisplayName(row) }"
-              [disabled]="resetDialogOpen()"
-              (click)="resetPassword(row)"
+              data-testid="row-menu"
+              [matMenuTriggerFor]="rowMenu"
+              [attr.aria-label]="'admin.rowMenu.manageFor' | transloco: { name: rowDisplayName(row) }"
             >
-              <mat-icon>lock_reset</mat-icon>
+              {{ 'admin.rowMenu.manage' | transloco }}<mat-icon iconPositionEnd>expand_more</mat-icon>
             </button>
-            <button
-              mat-icon-button
-              type="button"
-              data-testid="change-school"
-              [matTooltip]="'admin.studentSchool.action' | transloco"
-              [attr.aria-label]="'admin.studentSchool.actionFor' | transloco: { name: rowDisplayName(row) }"
-              [disabled]="schoolDialogOpen()"
-              (click)="changeSchool(row)"
-            >
-              <mat-icon>swap_horiz</mat-icon>
-            </button>
-            @if (row.accountStatus !== 'unknown') {
-              @let enable = row.accountStatus === 'inactive';
+            <mat-menu #rowMenu="matMenu" xPosition="before" class="al__menu">
               <button
-                mat-icon-button
+                mat-menu-item
                 type="button"
-                class="al__status-action"
-                data-testid="account-status"
-                [class.al__status-action--enable]="enable"
-                [matTooltip]="(enable ? 'admin.accountStatus.enableAction' : 'admin.accountStatus.disableAction') | transloco"
-                [attr.aria-label]="
-                  (enable ? 'admin.accountStatus.enableActionFor' : 'admin.accountStatus.disableActionFor')
-                    | transloco: { name: rowDisplayName(row) }
-                "
-                [disabled]="statusDialogOpen()"
-                (click)="toggleAccountStatus(row)"
+                data-testid="change-school"
+                [attr.aria-label]="'admin.studentSchool.actionFor' | transloco: { name: rowDisplayName(row) }"
+                [disabled]="schoolDialogOpen()"
+                (click)="changeSchool(row)"
               >
-                <mat-icon>{{ enable ? 'check_circle' : 'block' }}</mat-icon>
+                <mat-icon>swap_horiz</mat-icon>
+                <span>{{ 'admin.studentSchool.action' | transloco }}</span>
               </button>
-            }
+              <button
+                mat-menu-item
+                type="button"
+                data-testid="reset-password"
+                [attr.aria-label]="'admin.passwordReset.actionFor' | transloco: { name: rowDisplayName(row) }"
+                [disabled]="resetDialogOpen()"
+                (click)="resetPassword(row)"
+              >
+                <mat-icon>lock_reset</mat-icon>
+                <span>{{ 'admin.passwordReset.action' | transloco }}</span>
+              </button>
+              @if (row.accountStatus === 'inactive') {
+                <button
+                  mat-menu-item
+                  type="button"
+                  class="al__status-action al__status-action--enable"
+                  data-testid="account-status"
+                  [attr.aria-label]="'admin.accountStatus.enableActionFor' | transloco: { name: rowDisplayName(row) }"
+                  [disabled]="statusDialogOpen()"
+                  (click)="toggleAccountStatus(row)"
+                >
+                  <mat-icon>check_circle</mat-icon>
+                  <span>{{ 'admin.accountStatus.enableAction' | transloco }}</span>
+                </button>
+              } @else if (row.accountStatus === 'active') {
+                <mat-divider />
+                <button
+                  mat-menu-item
+                  type="button"
+                  class="al__status-action al__menu-danger"
+                  data-testid="account-status"
+                  [attr.aria-label]="'admin.accountStatus.disableActionFor' | transloco: { name: rowDisplayName(row) }"
+                  [disabled]="statusDialogOpen()"
+                  (click)="toggleAccountStatus(row)"
+                >
+                  <mat-icon>block</mat-icon>
+                  <span>{{ 'admin.accountStatus.disableAction' | transloco }}</span>
+                </button>
+              }
+            </mat-menu>
           </td>
         </ng-container>
 

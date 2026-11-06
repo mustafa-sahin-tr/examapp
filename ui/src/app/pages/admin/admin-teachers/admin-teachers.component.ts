@@ -9,10 +9,21 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatDividerModule } from '@angular/material/divider';
+import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { take } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AdminService } from '../../../services/admin.service';
-import { AdminTeacherApprovalStatus, AdminTeacherListItem } from '../../../models/admin-teacher.model';
+import {
+  ADMIN_TEACHER_STATUS_FILTERS,
+  AdminTeacherApprovalStatus,
+  AdminTeacherListItem,
+  AdminTeacherStatusCounts,
+  AdminTeacherStatusFilter,
+} from '../../../models/admin-teacher.model';
 import { SchoolFilterComponent } from '../../../shared/components/school-filter/school-filter.component';
 import { SchoolFilterValue } from '../../../shared/components/school-filter/school-filter.model';
 import { PAGE_SIZE_OPTIONS } from '../../../shared/utils/paging.util';
@@ -84,6 +95,9 @@ export interface AdminTeacherRow {
     MatProgressSpinnerModule,
     MatTableModule,
     MatTooltipModule,
+    MatMenuModule,
+    MatChipsModule,
+    MatDividerModule,
     TranslocoDirective,
     TranslocoPipe,
     SchoolFilterComponent,
@@ -101,6 +115,17 @@ export class AdminTeachersComponent {
   private readonly transloco = inject(TranslocoService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+
+  /** Issue #854: üstteki durum çipleri; URL'de `?status=pending|suspended` (liste aboneliği yeniden yükler). */
+  readonly statusFilters = ADMIN_TEACHER_STATUS_FILTERS;
+  readonly status = signal<AdminTeacherStatusFilter>('all');
+  readonly statusCounts = signal<AdminTeacherStatusCounts | null>(null);
+  // SIRA BAĞIMLI: liste aboneliğinden ÖNCE abone olur → aynı emisyonda durum, istekten önce güncellenir.
+  private readonly statusSync = this.route.queryParamMap
+    .pipe(takeUntilDestroyed())
+    .subscribe((params) => this.status.set(parseStatusFilter(params.get('status'))));
 
   readonly displayedColumns = ['fullName', 'email', 'school', 'approvalStatus', 'accountStatus', 'actions'];
   readonly pageSizeOptions = PAGE_SIZE_OPTIONS;
@@ -300,9 +325,32 @@ export class AdminTeachersComponent {
     // Hata metinleri şablon dışında senkron `translate()` ile okunur; scope baştan yüklensin.
     this.transloco.load(`${ADMIN_SCOPE}/${this.transloco.getActiveLang()}`).pipe(take(1)).subscribe();
     return new SchoolPagedList<AdminTeacherListItem>({
-      fetch: (query) => this.adminService.getTeachers(query),
+      // Issue #854: durum çipi `statusSync`'ten; çip sayıları aynı okul kapsamıyla her yüklemede yenilenir.
+      fetch: (query) => {
+        this.loadStatusCounts(query);
+        const status = this.status();
+        return this.adminService.getTeachers(status === 'all' ? query : { ...query, status });
+      },
       errorMessage: (err) => adminListErrorMessage(err, (key) => this.text(key)),
     });
+  }
+
+  /** Issue #854: çip seçimi URL'e yazılır, 1. sayfaya dönülür; diğer filtreler korunur. */
+  setStatus(status: AdminTeacherStatusFilter | null | undefined): void {
+    const next = status ?? 'all';
+    if (next === this.status()) return;
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { status: next === 'all' ? null : next, page: null },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  private loadStatusCounts(query: { schoolId?: number | null; unassigned?: boolean }): void {
+    this.adminService
+      .getTeacherStatusCounts({ schoolId: query.schoolId, unassigned: query.unassigned })
+      .pipe(take(1))
+      .subscribe({ next: (counts) => this.statusCounts.set(counts), error: () => this.statusCounts.set(null) });
   }
 
   /** Scope'a göreli anahtarı senkron çözer. */
@@ -339,4 +387,8 @@ function toRow(item: AdminTeacherListItem): AdminTeacherRow {
     suspendedAt: item.accountSuspendedAt ?? null,
     suspensionReason: item.accountSuspensionReason?.trim() || null,
   };
+}
+
+function parseStatusFilter(value: string | null): AdminTeacherStatusFilter {
+  return (ADMIN_TEACHER_STATUS_FILTERS as readonly string[]).includes(value ?? '') ? (value as AdminTeacherStatusFilter) : 'all';
 }

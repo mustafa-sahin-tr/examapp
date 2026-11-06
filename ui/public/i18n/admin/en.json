@@ -348,6 +348,12 @@
       "since": "since {{date}}",
       "tooltip": "Suspended on {{date}} — Reason: {{reason}}",
       "noReason": "No reason given"
+    },
+    "statusFilter": {
+      "aria": "Filter by status",
+      "all": "All",
+      "pending": "Pending approval",
+      "suspended": "Suspended"
     }
   },
   "students": {
@@ -745,5 +751,9 @@
     "title": "Comment reports",
     "subtitle": "Reported comments across all tests. Hidden comments appear as \"removed\" to everyone; content and reason are visible to moderators only.",
     "refresh": "Refresh"
+  },
+  "rowMenu": {
+    "manage": "Manage",
+    "manageFor": "Actions for {{name}}"
   }
 }

@@ -17,7 +17,7 @@ import { AdminTeacherSchoolDialogComponent } from '../../../shared/components/ad
 import { AdminTeacherSchoolResponse } from '../../../models/admin-teacher-school.model';
 import { SchoolService } from '../../../services/school.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTooltip } from '@angular/material/tooltip';
+import { MatMenuTrigger } from '@angular/material/menu';
 
 import { AdminTeachersComponent } from './admin-teachers.component';
 import { AdminService } from '../../../services/admin.service';
@@ -84,6 +84,8 @@ describe('AdminTeachersComponent', () => {
     function configure(initialParams: Params = {}): void {
         adminService = {
             getTeachers: vi.fn().mockName("AdminService.getTeachers"),
+            getTeacherStatusCounts: vi.fn().mockName("AdminService.getTeacherStatusCounts")
+                .mockReturnValue(of({ all: 45, pending: 3, suspended: 1 })),
             getSchools: vi.fn().mockName("AdminService.getSchools"),
             resetPassword: vi.fn().mockName("AdminService.resetPassword"),
             setAccountStatus: vi.fn().mockName("AdminService.setAccountStatus"),
@@ -458,14 +460,69 @@ describe('AdminTeachersComponent', () => {
         });
     });
 
+    // ── Issue #854: durum çipleri ───────────────────────────────────────────
+
+    it('statusChips_ShowCounts_ClickWritesStatusToUrlAndRequestsFiltered (#854)', () => {
+        configure({ schoolId: '5' });
+        create();
+
+        const chips = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="status-chips"] mat-chip-option')) as HTMLElement[];
+        expect(chips.map((c) => c.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['Tümü 45', 'Onay bekleyen 3', 'Askıda 1']);
+        expect(adminService.getTeacherStatusCounts).toHaveBeenCalledWith(expect.objectContaining({ schoolId: 5 }));
+
+        component.setStatus('suspended');
+        fixture.detectChanges();
+
+        expect(queryParams$.value.get('status')).toBe('suspended');
+        expect(queryParams$.value.get('schoolId')).toBe('5');
+        expect(adminService.getTeachers).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, schoolId: 5, status: 'suspended' }));
+    });
+
+    it('statusChips_UnknownStatusInUrl_FallsBackToAll (#854)', () => {
+        configure({ status: 'weird' });
+        create();
+
+        expect(component.status()).toBe('all');
+        expect(adminService.getTeachers.mock.lastCall![0]).not.toHaveProperty('status');
+    });
+
+    it('rowMenu_OneLabelledTrigger_PerRow (#854)', () => {
+        configure();
+        create();
+
+        const triggers = Array.from(fixture.nativeElement.querySelectorAll('button[data-testid="row-menu"]')) as HTMLButtonElement[];
+        expect(triggers.length).toBe(1);
+        expect(triggers[0].textContent).toContain('Yönet');
+        expect(fixture.nativeElement.querySelectorAll('td button[mat-icon-button]').length).toBe(0);
+    });
+
     // ── Şifre sıfırlama (issue #156) ─────────────────────────────────────────
 
     function overlay(): HTMLElement {
         return TestBed.inject(OverlayContainer).getContainerElement();
     }
 
+    /**
+     * #854: satır eylemleri "Yönet" menüsünde. Her satırın menüsü açılıp istenen öğe alınır; öğe satırın görünümüne
+     * ait olduğundan menü kapandıktan sonra da canlıdır (tıklama, öznitelik).
+     */
+    function rowMenuItems(testId: string): HTMLButtonElement[] {
+        const items: HTMLButtonElement[] = [];
+        for (const de of fixture.debugElement.queryAll(By.directive(MatMenuTrigger))) {
+            const trigger = de.injector.get(MatMenuTrigger);
+            trigger.openMenu();
+            fixture.detectChanges();
+            const panel = document.getElementById(trigger.menu!.panelId!);
+            const item = panel?.querySelector<HTMLButtonElement>(`button[data-testid="${testId}"]`);
+            if (item) items.push(item);
+            trigger.closeMenu();
+            fixture.detectChanges();
+        }
+        return items;
+    }
+
     function resetButtons(): HTMLButtonElement[] {
-        return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button[data-testid="reset-password"]'));
+        return rowMenuItems('reset-password');
     }
 
     it('resetPassword_RowAction_OpensConfirmDialogWithRowIdentity', async () => {
@@ -525,7 +582,7 @@ describe('AdminTeachersComponent', () => {
     // ── Hesap durumu: devre dışı bırak / etkinleştir (issue #155) ─────────────
 
     function statusButtons(): HTMLButtonElement[] {
-        return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button[data-testid="account-status"]'));
+        return rowMenuItems('account-status');
     }
 
     function overlayButton(testId: string): HTMLButtonElement {
@@ -675,7 +732,7 @@ describe('AdminTeachersComponent', () => {
     }
 
     function suspensionButtons(): HTMLButtonElement[] {
-        return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button[data-testid="suspension"]'));
+        return rowMenuItems('suspension');
     }
 
     function suspensionResponse(overrides: Partial<AdminTeacherSuspensionResponse> = {}): AdminTeacherSuspensionResponse {
@@ -875,13 +932,13 @@ describe('AdminTeachersComponent', () => {
     const schoolTexts = adminTr.teacherSchool;
 
     function schoolButtons(): HTMLButtonElement[] {
-        return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button[data-testid="change-school"]'));
+        return rowMenuItems('change-school');
     }
 
+    /** #854: menü öğesinde engel nedeni öğenin altında yazar; serbestse öğe metni. */
     function schoolTooltips(): string[] {
-        return fixture.debugElement
-            .queryAll(By.css('button[data-testid="change-school"]'))
-            .map((de) => de.injector.get(MatTooltip).message);
+        return schoolButtons().map((b) =>
+            (b.querySelector('[data-testid="school-blocked-reason"]') ?? b.querySelector('.al__menu-text > span'))?.textContent?.trim() ?? '');
     }
 
     /** Açık dialog'da okul seçer (seçim bileşeninin kendi testi ayrı; burada sayfa entegrasyonu doğrulanır). */
@@ -909,7 +966,7 @@ describe('AdminTeachersComponent', () => {
 
         const labels = schoolButtons().map((b) => b.getAttribute('aria-label'));
         expect(labels).toEqual([actionFor(schoolTexts.changeActionFor), actionFor(schoolTexts.assignActionFor)]);
-        expect(schoolButtons().map((b) => b.getAttribute('aria-disabled'))).toEqual([null, null]);
+        expect(schoolButtons().map((b) => b.disabled)).toEqual([false, false]);
         expect(schoolTooltips()).toEqual([schoolTexts.changeAction, schoolTexts.assignAction]);
     });
 
@@ -924,9 +981,9 @@ describe('AdminTeachersComponent', () => {
         const dialog = fixture.debugElement.injector.get(MatDialog);
         const openSpy = vi.spyOn(dialog, 'open');
 
-        // Gizlenmez: üç satırda da buton var, devre dışı (disabledInteractive → aria-disabled) ve tooltip nedeni söyler.
+        // Gizlenmez: üç satırın menüsünde de öğe var, devre dışı ve altında neden yazar (#854).
         expect(schoolButtons().length).toBe(3);
-        expect(schoolButtons().map((b) => b.getAttribute('aria-disabled'))).toEqual(['true', 'true', 'true']);
+        expect(schoolButtons().map((b) => b.disabled)).toEqual([true, true, true]);
         expect(schoolTooltips()).toEqual([
             schoolTexts.blocked.suspended,
             schoolTexts.blocked.accountNotApproved,

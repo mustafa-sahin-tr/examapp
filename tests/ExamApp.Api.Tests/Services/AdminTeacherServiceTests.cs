@@ -1,5 +1,6 @@
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Models.Dtos.Admin;
 using ExamApp.Api.Services.AdminUsers;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Tests.Support;
@@ -309,4 +310,62 @@ public class AdminTeacherServiceTests : IDisposable
     }
 
     public void Dispose() => _db.Dispose();
+
+    // ---- issue #854: durum çipleri ----
+
+    private async Task<int> SeedStatusesAsync()
+    {
+        await using var ctx = _db.NewContext();
+        var school = new School { Name = "Ankara Lisesi" };
+        ctx.Schools.Add(school);
+        await ctx.SaveChangesAsync();
+        ctx.Teachers.AddRange(
+            new Teacher { UserId = 500, SchoolId = school.Id, ApprovalStatus = TeacherApprovalStatus.Approved },
+            new Teacher { UserId = 501, SchoolId = school.Id, ApprovalStatus = TeacherApprovalStatus.Pending },
+            new Teacher { UserId = 502, SchoolId = school.Id, ApprovalStatus = TeacherApprovalStatus.Approved, AccountSuspendedAt = DateTime.UtcNow },
+            new Teacher { UserId = 503, ApprovalStatus = TeacherApprovalStatus.Pending, IsIndependentTutor = true });
+        await ctx.SaveChangesAsync();
+        return school.Id;
+    }
+
+    [Fact]
+    public async Task Status_filter_lists_only_pending_or_suspended_teachers_issue854()
+    {
+        var schoolId = await SeedStatusesAsync();
+        await using var ctx = _db.NewContext();
+        var service = NewService(ctx);
+
+        var pending = await service.ListAsync(1, 20, schoolId: null, unassigned: false, status: AdminTeacherStatusFilter.Pending);
+        pending.TotalCount.ShouldBe(2);
+        pending.Items.All(t => t.ApprovalStatus == "Pending").ShouldBeTrue();
+
+        var suspended = await service.ListAsync(1, 20, schoolId: null, unassigned: false, status: AdminTeacherStatusFilter.Suspended);
+        suspended.TotalCount.ShouldBe(1);
+        suspended.Items.Single().AccountSuspended.ShouldBeTrue();
+
+        var pendingInSchool = await service.ListAsync(1, 20, schoolId, unassigned: false, status: AdminTeacherStatusFilter.Pending);
+        pendingInSchool.TotalCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Status_counts_follow_the_school_filter_issue854()
+    {
+        var schoolId = await SeedStatusesAsync();
+        await using var ctx = _db.NewContext();
+        var service = NewService(ctx);
+
+        var all = await service.CountByStatusAsync(schoolId: null, unassigned: false);
+        all.All.ShouldBe(4);
+        all.Pending.ShouldBe(2);
+        all.Suspended.ShouldBe(1);
+
+        var school = await service.CountByStatusAsync(schoolId, unassigned: false);
+        (school.All, school.Pending, school.Suspended).ShouldBe((3, 1, 1));
+
+        var unassigned = await service.CountByStatusAsync(null, unassigned: true);
+        (unassigned.All, unassigned.Pending, unassigned.Suspended).ShouldBe((1, 1, 0));
+
+        var empty = await service.CountByStatusAsync(schoolId + 999, unassigned: false);
+        empty.All.ShouldBe(0);
+    }
 }

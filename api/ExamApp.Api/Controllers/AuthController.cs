@@ -117,6 +117,7 @@ namespace ExamApp.Api.Controllers
                 {
                     // Teacher için ek bilgiler eklenebilir
                     var teacher = await _context.Teachers
+                    .Include(t => t.School) // issue #854: okul adı bağlı okuldan (admin listesiyle aynı kaynak)
                     .OrderBy(t => t.Id) // UserId unique değil — Save/SchoolContextResolver ile aynı deterministik seçim
                     .FirstOrDefaultAsync(t => t.UserId == profile.Id);
                     if (teacher == null)
@@ -127,7 +128,8 @@ namespace ExamApp.Api.Controllers
                         Id = teacher.Id,
                         AvatarUrl = profile.Avatar,
                         FullName = profile.FullName,
-                        SchoolName = teacher.SchoolName,
+                        // issue #854: bağlı okulun adı; eski serbest metin alan yalnız okul kaydı yoksa.
+                        SchoolName = teacher.School?.Name ?? teacher.SchoolName,
                         SchoolId = teacher.SchoolId,
                         // issue #384 / #418: UI menü/guard bayrağı — randevu servisleriyle aynı kural (hibrit bağımsız değil).
                         IsIndependentTutor = TeacherIndependence.IsIndependent(teacher),

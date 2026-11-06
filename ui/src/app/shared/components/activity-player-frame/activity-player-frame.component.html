@@ -43,10 +43,9 @@
             (click)="select(i)"
           >
             <span>{{ label(i) }}</span>
-            @if (step.state === 'answered' || step.state === 'correct') {
-              <mat-icon class="apf__step-icon" aria-hidden="true">check</mat-icon>
-            } @else if (step.state === 'wrong') {
-              <mat-icon class="apf__step-icon" aria-hidden="true">close</mat-icon>
+            <!-- #843: durum rengi nokta ile; "×" kapat düğmesi gibi okunuyordu. Durum aria-label'da. -->
+            @if (step.state !== 'empty') {
+              <span class="apf__step-dot" [attr.data-state]="step.state" aria-hidden="true"></span>
             }
           </button>
         </li>

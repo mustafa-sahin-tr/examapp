@@ -43,7 +43,8 @@ import { isSlotAnswerCorrect, parseTrNumber } from '../../utils/slot-normalizer'
 import { StorageImageResolver } from '../../utils/storage-image-refresh.util';
 import { FractionInputComponent } from '../fraction-input/fraction-input.component';
 
-export type SlotMark = 'correct' | 'wrong' | null;
+/** #843: `empty` — kontrol edildi ama kutu boş; yanlış gibi kırmızı değil, kesik gri çizilir. */
+export type SlotMark = 'correct' | 'wrong' | 'empty' | null;
 
 /** Yazarken kayıt gecikmesi (ms): her tuşta sunucu kaydı olmasın, duraksayınca kaydedilsin. */
 export const SLOT_FILL_SAVE_DEBOUNCE_MS = 600;
@@ -227,7 +228,8 @@ export class QuestionCanvasSlotFillComponent {
       if (showSolution) return null;
       if (feedback) {
         if (!feedback.has(slot.id)) return null;
-        return feedback.get(slot.id) ? 'correct' : 'wrong';
+        if (feedback.get(slot.id)) return 'correct';
+        return isBlankSlotValue(valueOf(committed, slot.id)) ? 'empty' : 'wrong';
       }
       // İstemci işareti yalnız örnek soruda ve çözüm geldiyse; boş kutu işaretlenmez.
       if (!practice) return null;

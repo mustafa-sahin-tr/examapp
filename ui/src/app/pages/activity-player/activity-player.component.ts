@@ -47,6 +47,7 @@ import {
 } from '../../models/matrix-choice';
 import {
   SlotFillPlanV1,
+  isBlankSlotValue,
   isSlotFillType,
   parseSlotFillCipherFeedback,
   parseSlotFillPlan,
@@ -867,6 +868,13 @@ export class ActivityPlayerComponent {
    * (kart havuza döner), doğrular yerinde kalır; sonra ilk yanlış maddeye gidilir. Diğer türler yalnız ilk yanlışa gider
    * (kendi turlarında ele alınacak).
    */
+  /** #843: "Boşları doldur" — geçerli maddedeki ilk boş (kontrol edilmiş) kutuya odaklanır. */
+  fillBlanks(): void {
+    const field = this.host.nativeElement.querySelector<HTMLElement>('.is-empty input, .is-empty [contenteditable="true"]');
+    field?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    field?.focus({ preventScroll: true });
+  }
+
   fixWrong(): void {
     if (this.revealed() || this.finished() || this.contentLocked()) return;
     const results = this.results();
@@ -1983,6 +1991,8 @@ export class ActivityPlayerComponent {
         label: this.tr('rows.slot', { n: index + 1, content: own ? valueDisplay(slot.input, own) : this.tr('rows.empty') }),
         correct: marks.has(slot.id) ? marks.get(slot.id)! : null,
         solution: solved ? accepted || this.tr('rows.empty') : null,
+        // #843: boş kutu yanlış sayılmaz (panelde ayrı sayılır, kutuda gri).
+        empty: marks.get(slot.id) === false && isBlankSlotValue(own),
       };
     });
   }

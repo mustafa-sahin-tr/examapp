@@ -997,7 +997,13 @@
           "sufficient": "Sufficient",
           "partial": "Partial",
           "insufficient": "Insufficient"
-        }
+        },
+        "countCorrect": "{{count}} correct",
+        "countWrong": "{{count}} wrong",
+        "countEmpty": "{{count}} blank",
+        "rowEmpty": "Blank",
+        "rowsDetails": "Details per box",
+        "fillBlanks": "Fill the blanks"
       },
       "summary": {
         "title": "Activity finished",

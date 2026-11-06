@@ -113,6 +113,13 @@ public sealed class LabelingBankService(
         if (!await db.Grades.AnyAsync(g => g.Id == gradeId, ct))
             throw new LabelingValidationException("labeling.bank.gradeUnknown");
 
+        // Issue #826: havuz paylaşımı. Admin herkes için içerik üretir (varsayılan Herkes); öğretmenin sorusu kendisine kalır.
+        var sharing = request.Sharing ?? (actor.IsAdmin ? QuestionBankSharing.Everyone : QuestionBankSharing.Private);
+        if (!Enum.IsDefined(sharing))
+            throw new LabelingValidationException("labeling.bank.sharingInvalid");
+        if (sharing == QuestionBankSharing.School && await db.ResolveTeacherSchoolIdAsync(actingUserId, ct) is null)
+            throw new LabelingValidationException("labeling.bank.sharingSchoolRequired");
+
         // İçindekilerin ders/konusu yalnız sınıf onunla aynıysa uygulanır (başka sınıf seçildiyse konusu o sınıfa ait değil).
         var toc = bookPage?.Toc is { } entry && entry.GradeId == gradeId ? entry : null;
         if (bookPage?.Toc is not null && toc is null)
@@ -184,6 +191,7 @@ public sealed class LabelingBankService(
                     ClassificationSource = toc.TopicId is null ? null : nameof(ClassificationSource.Book),
                 },
             GradeId = gradeId,
+            BankSharing = sharing,
         };
 
         ResponseBaseDto? result;

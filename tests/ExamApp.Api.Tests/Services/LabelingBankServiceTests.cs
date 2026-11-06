@@ -305,6 +305,56 @@ public class LabelingBankServiceTests : IDisposable
         _captured.ShouldNotBeNull().GradeId.ShouldBe(_gradeId);
     }
 
+    // Issue #826: havuz paylaşımı — verilmezse admin Herkes, öğretmen Yalnız ben; okul paylaşımı okul ister.
+    [Fact]
+    public async Task SaveToBankAsync_DefaultSharing_IsPrivateForTeachersAndEveryoneForAdmins()
+    {
+        await using (var ctx = _db.NewContext())
+            await NewService(ctx).SaveToBankAsync(ValidRequest(Png(320, 200)), Actor, ActingUserId);
+        _captured.ShouldNotBeNull().BankSharing.ShouldBe(QuestionBankSharing.Private);
+
+        await using (var ctx = _db.NewContext())
+            await NewService(ctx).SaveToBankAsync(ValidRequest(Png(321, 200)), Actor with { IsAdmin = true }, ActingUserId);
+        _captured.ShouldNotBeNull().BankSharing.ShouldBe(QuestionBankSharing.Everyone);
+    }
+
+    [Fact]
+    public async Task SaveToBankAsync_ExplicitSharing_IsPassedToTheBulkDto()
+    {
+        var request = ValidRequest(Png(320, 200));
+        request.Sharing = QuestionBankSharing.Everyone;
+
+        await using var ctx = _db.NewContext();
+        await NewService(ctx).SaveToBankAsync(request, Actor, ActingUserId);
+
+        _captured.ShouldNotBeNull().BankSharing.ShouldBe(QuestionBankSharing.Everyone);
+    }
+
+    [Fact]
+    public async Task SaveToBankAsync_SchoolSharingWithoutSchool_ThrowsAndDoesNotSave()
+    {
+        var request = ValidRequest(Png(320, 200));
+        request.Sharing = QuestionBankSharing.School;
+
+        await using var ctx = _db.NewContext();
+        var ex = await Should.ThrowAsync<LabelingValidationException>(() => NewService(ctx).SaveToBankAsync(request, Actor, ActingUserId));
+
+        ex.Message.ShouldBe("labeling.bank.sharingSchoolRequired");
+        await _questions.DidNotReceiveWithAnyArgs().SaveBulkQuestion(default!, default);
+    }
+
+    [Fact]
+    public async Task SaveToBankAsync_UnknownSharingValue_Throws()
+    {
+        var request = ValidRequest(Png(320, 200));
+        request.Sharing = (QuestionBankSharing)9;
+
+        await using var ctx = _db.NewContext();
+        var ex = await Should.ThrowAsync<LabelingValidationException>(() => NewService(ctx).SaveToBankAsync(request, Actor, ActingUserId));
+
+        ex.Message.ShouldBe("labeling.bank.sharingInvalid");
+    }
+
     [Fact]
     public void GradeId_MissingOrNonPositive_FailsModelValidation()
     {

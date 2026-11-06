@@ -352,6 +352,11 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Question>()
             .HasIndex(q => q.CreateUserId);
 
+        // Issue #826: havuzda paylaşılan sorular (Okulum / Herkes) azınlık; kısmi index "Görebildiğim tüm sorular"ı tarama yapmadan besler.
+        modelBuilder.Entity<Question>()
+            .HasIndex(q => q.BankSharing)
+            .HasFilter("\"BankSharing\" <> 0");
+
         modelBuilder.Entity<Answer>()
             .HasOne(a => a.Question)
             .WithMany(q => q.Answers)

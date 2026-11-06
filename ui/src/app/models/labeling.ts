@@ -127,6 +127,13 @@ export interface LabelingBankQuestion extends LabelingBankBox {
 }
 
 /** `POST /api/exam/labeling/pages/bank`: soruları teste bağlamadan soru bankasına kaydeder. */
+/** Issue #826: havuza kaydedilen sorunun öğretmen havuzunda kime görüneceği (API int: Yalnız ben / Okulum / Herkes). */
+export enum QuestionBankSharing {
+  Private = 0,
+  School = 1,
+  Everyone = 2,
+}
+
 export interface LabelingBankSaveRequest {
   imageBase64: string;
   questions: LabelingBankQuestion[];
@@ -141,6 +148,8 @@ export interface LabelingBankSaveRequest {
    */
   bookId?: number;
   filePage?: number;
+  /** Issue #826: verilmezse sunucu admin için Herkes, öğretmen için Yalnız ben kullanır. Okulum okulsuz kaydedende 400. */
+  sharing?: QuestionBankSharing;
 }
 
 export interface LabelingBankSaveResponse {

@@ -126,6 +126,19 @@
       }
     </span>
 
+    <!-- Havuz paylaşımı (issue #826): Havuza kaydet ile oluşan soruları kimin havuzunda göreceği. -->
+    <span class="lb-group">
+      <span class="lb-group__label" id="lb-sharing-label">{{ t('sharing.label') }}</span>
+      <mat-form-field class="lb-grade" appearance="outline" subscriptSizing="dynamic">
+        <mat-select [value]="sharing()" (selectionChange)="setSharing($event)" aria-labelledby="lb-sharing-label"
+          [matTooltip]="t('sharing.hint')">
+          @for (option of sharingOptions; track option) {
+          <mat-option [value]="option">{{ t('sharing.option' + option) }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </span>
+
     <!-- Kaynak kitap (issue #577): dosya sayfası → basılı sayfa, cevap anahtarı, içindekiler varsayılanı. -->
     @if (books().length > 0) {
     <span class="lb-group lb-book">

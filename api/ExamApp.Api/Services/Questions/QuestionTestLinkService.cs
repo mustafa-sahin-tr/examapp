@@ -178,9 +178,12 @@ public sealed class QuestionTestLinkService(AppDbContext context) : IQuestionTes
         {
             var schoolId = await context.ResolveTeacherSchoolIdAsync(userId, ct);
             var visibleWorksheets = context.Worksheets.Where(WorksheetAccess.VisibleToTeacherPredicate(context, userId, schoolId));
+            // Issue #826: testsiz paylaşılan soru (Okulum / Herkes) da bağlanır; sahibi damgalı olduğu için düzenleme yetkisi vermez.
+            var sharedIds = context.Questions.Where(QuestionBankSharingAccess.SharedWithTeacherPredicate(context, schoolId)).Select(q => q.Id);
             linkable = await questions
                 .Where(q =>
                     q.CreateUserId == userId
+                    || sharedIds.Contains(q.Id)
                     || (q.CreateUserId > 0 && context.TestQuestions.Any(tq => tq.QuestionId == q.Id && visibleWorksheets.Any(w => w.Id == tq.TestId)))
                     || ((q.CreateUserId == null || q.CreateUserId == 0) && context.TestQuestions.Any(tq =>
                         tq.QuestionId == q.Id && tq.Worksheet.SourceWorksheetId == null && tq.Worksheet.CreateUserId == userId)))

@@ -102,6 +102,9 @@ public class Question : BaseEntity
     /// <summary>Hak sahibi talebiyle yeni test ve pratiklerden çekildi; başlamış oturumlar etkilenmez.</summary>
     public bool IsUnpublished { get; set; }
 
+    /// <summary>Issue #826: testten bağımsız havuz paylaşımı (<see cref="QuestionBankSharing"/>); düzenleme yetkisi vermez.</summary>
+    public QuestionBankSharing BankSharing { get; set; } = QuestionBankSharing.Private;
+
     /// <summary>Issue #703: öğretmenin beyanıyla bağlam temelli soru (bkz. docs/context-based-questions.md); doğrulanmaz.</summary>
     public bool IsContextBased { get; set; }
 

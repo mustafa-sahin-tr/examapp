@@ -19,6 +19,10 @@ public class BulkQuestionCreateDto
     /// Yalnız <c>QuestionCreatedEvent.GradeId</c>'ye gider (Question'da kolon yok).
     /// </summary>
     public int? GradeId { get; set; }
+
+    /// <summary>Issue #826: oluşan soruların havuz paylaşımı. Sunucu içi (işaretleme "Havuza kaydet"); istemciden okunmaz.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public QuestionBankSharing BankSharing { get; set; } = QuestionBankSharing.Private;
 }
 
 public class StudyPageAttachImageDto

@@ -1958,6 +1958,8 @@ export class ActivityPlayerComponent {
         label: this.tr('rows.zone', { n: index + 1, content: own ? labels.get(own) ?? own : this.tr('rows.empty') }),
         correct: marks.has(zone.id) ? marks.get(zone.id)! : null,
         solution: solution ? (correctId ? labels.get(correctId) ?? correctId : this.tr('rows.empty')) : null,
+        // #913: boş hedef yanlış sayılmaz (panelde ayrı sayılır).
+        empty: marks.get(zone.id) === false && !own,
       };
     });
   }
@@ -1979,6 +1981,7 @@ export class ActivityPlayerComponent {
         label: this.tr('rows.matrixRow', { name, content: join(selectionOf(selections, row.id)) }),
         correct: marks.has(row.id) ? marks.get(row.id)! : null,
         solution: solution ? join(selectionOf(solved, row.id)) : null,
+        empty: marks.get(row.id) === false && selectionOf(selections, row.id).length === 0,
       };
     });
   }
@@ -2054,6 +2057,7 @@ export class ActivityPlayerComponent {
       label: this.tr('rows.match', { name: leftName(left.id), content: rightName(rightOf(pairs, left.id)) }),
       correct: marks.has(left.id) ? marks.get(left.id)! : null,
       solution: solved ? rightName(rightOf(solved, left.id)) : null,
+      empty: marks.get(left.id) === false && !rightOf(pairs, left.id),
     }));
   }
 

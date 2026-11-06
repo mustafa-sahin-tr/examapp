@@ -43,9 +43,9 @@
                 </div>
               }
               @if (rowMark()(row.id); as mark) {
-                <span class="mc-mark" [class.mc-mark--wrong]="mark === 'wrong'" [ngStyle]="markStyle(row)" aria-hidden="true"
+                <span class="mc-mark" [class.mc-mark--empty]="mark === 'empty'" [class.mc-mark--wrong]="mark === 'wrong'" [ngStyle]="markStyle(row)" aria-hidden="true"
                   [attr.data-mark]="row.id">
-                  <mat-icon>{{ mark === 'correct' ? 'check' : 'close' }}</mat-icon>
+                  <mat-icon>{{ markIcon(mark) }}</mat-icon>
                 </span>
               }
             }
@@ -62,6 +62,7 @@
           <li class="mc-list__row"
             [class.is-correct]="rowMark()(row.id) === 'correct'"
             [class.is-wrong]="rowMark()(row.id) === 'wrong'"
+            [class.is-empty]="rowMark()(row.id) === 'empty'"
             [attr.data-row]="row.id"
             (focusin)="focusedRowId.set(row.id)" (focusout)="focusedRowId.set(null)"
             (mouseenter)="focusedRowId.set(row.id)" (mouseleave)="focusedRowId.set(null)">
@@ -89,9 +90,9 @@
               }
             </span>
             @if (rowMark()(row.id); as mark) {
-              <span class="mc-list__mark" [class.mc-list__mark--wrong]="mark === 'wrong'">
-                <mat-icon aria-hidden="true">{{ mark === 'correct' ? 'check' : 'close' }}</mat-icon>
-                <span>{{ mark === 'correct' ? t('markCorrect') : t('markWrong') }}</span>
+              <span class="mc-list__mark" [class.mc-list__mark--wrong]="mark === 'wrong'" [class.mc-list__mark--empty]="mark === 'empty'">
+                <mat-icon aria-hidden="true">{{ markIcon(mark) }}</mat-icon>
+                <span>{{ markLabel(mark) }}</span>
               </span>
             }
           </li>

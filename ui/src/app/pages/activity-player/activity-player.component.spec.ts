@@ -266,10 +266,13 @@ describe('ActivityPlayerComponent (#573)', () => {
     fixture.componentInstance.goTo(0);
     await settle();
     expect(el().querySelector('#zone-z1')?.classList.contains('is-correct')).toBe(true);
-    expect(el().querySelector('#zone-z2')?.classList.contains('is-incorrect')).toBe(true);
+    // #913: z2 boş — yanlış değil, boş işareti.
+    expect(el().querySelector('#zone-z2')?.classList.contains('is-empty')).toBe(true);
     const rows = Array.from(el().querySelectorAll('[data-testid="result-row"]')).map((r) => r.textContent ?? '');
     expect(rows[0]).toContain('Hedef 1: dog');
     expect(rows[1]).toContain('Hedef 2: boş');
+    // #913: panel sayıları boşu yanlıştan ayırır.
+    expect(q('row-counts')?.textContent?.replace(/\s+/g, ' ')).toMatch(/1 doğru.*0 yanlış.*1 boş/);
     expect(el().textContent).not.toMatch(/%|puan|XP/i);
   });
 

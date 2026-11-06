@@ -66,7 +66,8 @@
                 @if (zoneTarget(z.id); as target) {
                   <span class="dd-zone__target-hint" [attr.data-zone-target]="z.id">{{ t('targetHint', { label: target }) }}</span>
                 }
-                @if (zoneMark()(z.id); as mark) {
+                @let mark = zoneMark()(z.id);
+                @if (mark === 'correct' || mark === 'wrong') {
                   <span class="dd-zone__mark" [class.dd-zone__mark--wrong]="mark === 'wrong'" aria-hidden="true">
                     <mat-icon>{{ mark === 'correct' ? 'check' : 'close' }}</mat-icon>
                   </span>

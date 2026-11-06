@@ -96,6 +96,12 @@
   background: var(--ms-danger-surface-weak);
 }
 
+// #913: boş hedef yanlış değil — kesik gri kenar, işaret yok.
+.dd-zone.is-empty {
+  border-style: dashed;
+  border-color: var(--ms-text-weak);
+}
+
 .dd-zone.is-solution {
   border-style: solid;
   border-color: var(--ms-info-border);

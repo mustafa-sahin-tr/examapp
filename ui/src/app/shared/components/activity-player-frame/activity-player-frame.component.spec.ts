@@ -75,8 +75,10 @@ describe('ActivityPlayerFrameComponent (#573)', () => {
     expect(steps().map((s) => s.textContent?.replace(/check|close/g, '').trim())).toEqual(['1', '2', '3', '4', '5']);
     expect(steps()[1].getAttribute('aria-current')).toBe('step');
     expect(steps()[1].classList.contains('apf__step--current')).toBe(true);
-    // Yanlış: ✗ ikonu + metinli aria etiketi (renk tek sinyal değil).
-    expect(steps()[2].querySelector('mat-icon')?.textContent).toBe('close');
+    // Yanlış: kesik kenar + durum noktası + metinli aria etiketi (renk tek sinyal değil). #843: "×" yok (kapat gibi okunuyordu).
+    expect(steps()[2].classList).toContain('apf__step--wrong');
+    expect(steps()[2].querySelector('.apf__step-dot')?.getAttribute('data-state')).toBe('wrong');
+    expect(steps()[2].querySelector('mat-icon')).toBeNull();
     expect(steps()[2].getAttribute('aria-label')).toBe('Madde 3: yanlış');
     expect(steps()[3].getAttribute('aria-label')).toBe('Madde 4: doğru');
     expect(steps()[0].getAttribute('aria-label')).toBe('Madde 1: cevaplandı');

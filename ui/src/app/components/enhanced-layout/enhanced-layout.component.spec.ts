@@ -796,7 +796,7 @@ describe('EnhancedLayoutComponent menu routes (issues #374, #373)', () => {
         unapproved?: boolean;
         route: string;
     }> = [
-        { name: 'Student', roles: ['Student'], route: '/student-profile' },
+        { name: 'Student', roles: ['Student'], route: '/student-settings' }, // #847
         { name: 'Teacher', roles: ['Teacher'], route: '/settings' },
         { name: 'UnapprovedTeacher', roles: ['Teacher'], unapproved: true, route: '/settings' },
         { name: 'Admin', roles: ['Admin'], route: '/settings' },
@@ -897,7 +897,9 @@ describe('EnhancedLayoutComponent active menu item (issue #385)', () => {
             ['/program-create', 'my-calendar'],
             ['/test/12', 'exams'],
             ['/notifications', null],
-            ['/student-profile', 'settings'],
+            // #847: profil menüde değil (kullanıcı menüsünde); Ayarlar ayrı sayfa.
+            ['/student-profile', null],
+            ['/student-settings', 'settings'],
         ]);
     });
 
@@ -1045,11 +1047,13 @@ describe('EnhancedLayoutComponent profile menu (issue #375, #846)', () => {
         const navigateSpy = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
         const items = openProfileMenu();
 
-        expect(titles(items)).toEqual(['Profilim', 'Rozetlerim', 'Bildirimler', 'Çıkış Yap']);
+        expect(titles(items)).toEqual(['Profilim', 'Rozetlerim', 'Bildirimler', 'Ayarlar', 'Çıkış Yap']);
         items[0].click();
         expect(navigateSpy).toHaveBeenCalledWith(['/student-profile'], {});
         items[1].click();
         expect(navigateSpy).toHaveBeenCalledWith(['/certificates'], {});
+        items[3].click();
+        expect(navigateSpy).toHaveBeenCalledWith(['/student-settings'], {}); // #847
     });
 
     for (const roles of [['Teacher'], ['Admin']]) {

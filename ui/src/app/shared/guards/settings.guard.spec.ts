@@ -22,7 +22,7 @@ describe('settingsGuard (issue #417)', () => {
     }
 
     it('Student_RedirectsToStudentProfile', () => {
-        expect(run(['Student'])).toBe('/student-profile');
+        expect(run(['Student'])).toBe('/student-settings');
     });
 
     it('NoKnownRole_RedirectsToDashboard', () => {
@@ -35,9 +35,9 @@ describe('settingsGuard (issue #417)', () => {
         expect(urlFor(['Admin'])).toBe('/settings');
         expect(urlFor(['Student', 'Teacher'])).toBe('/settings');
         expect(urlFor(['Student', 'Admin'])).toBe('/settings');
-        expect(urlFor(['Student'])).toBe('/student-profile');
+        expect(urlFor(['Student'])).toBe('/student-settings');
         expect(urlFor(['Parent'])).toBe('/settings');
-        expect(urlFor(['Student', 'Parent'])).toBe('/student-profile');
+        expect(urlFor(['Student', 'Parent'])).toBe('/student-settings');
         expect(urlFor([])).toBeNull();
     });
 });

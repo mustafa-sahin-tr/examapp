@@ -146,3 +146,9 @@
     font-weight: 500;
   }
 }
+
+// #847: genel `mat-card-title` kuralı (ortalı, ayrı renk) ikonlu başlığı içeri kaydırıyordu; diğer kart başlıklarıyla aynı.
+.tp__card mat-card-title {
+  text-align: start;
+  color: inherit;
+}

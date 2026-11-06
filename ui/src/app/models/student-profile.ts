@@ -2,6 +2,8 @@ import { Grade } from './student';
 
 export interface StudentProfile {
   fullName: string;
+  /** #847: profil başlığında "5. Sınıf · Okul". */
+  schoolName?: string | null;
   gradeId: number;
   avatarUrl: string;
   xp: number;

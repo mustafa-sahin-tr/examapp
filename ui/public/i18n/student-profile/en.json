@@ -2,25 +2,35 @@
   "actions": {
     "ok": "OK"
   },
-  "tabs": {
-    "info": "Info",
-    "badges": "Badges",
-    "theme": "Theme Settings"
-  },
   "profile": {
-    "changeAvatar": "Change",
+    "changeAvatar": "Change photo",
     "avatarAlt": "Profile photo",
-    "level": "Level: {{level}} ({{xp}} XP)",
-    "questionsSolved": "{{count}} Questions Solved",
-    "correctAnswers": "{{count}} Correct Answers",
-    "wrongAnswers": "{{count}} Wrong Answers",
-    "testsCompleted": "{{count}} Tests Completed",
-    "leaderboardRank": "Leaderboard Rank: {{rank}}",
-    "gradeUpdated": "Grade updated!",
-    "avatarUpdated": "Avatar updated!"
+    "level": "Level {{level}} · {{xp}} points",
+    "avatarUpdated": "Avatar updated!",
+    "settings": "Settings"
   },
   "points": {
-    "myBadges": "My Badges",
     "leaderboards": "Leaderboards"
+  },
+  "stats": {
+    "label": "Totals",
+    "solved": "questions solved",
+    "correct": "correct answers",
+    "tests": "tests finished"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Your class, theme, account and parents.",
+    "theme": "Theme",
+    "grade": {
+      "title": "My class",
+      "change": "Change class",
+      "label": "New class",
+      "note": "After you change your class, suggested questions and tests follow the new class.",
+      "save": "Save",
+      "cancel": "Cancel",
+      "saved": "Your class was updated.",
+      "error": "Could not save the class; try again."
+    }
   }
 }

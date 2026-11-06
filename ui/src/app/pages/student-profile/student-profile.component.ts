@@ -1,26 +1,19 @@
-import { Component, DestroyRef, inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, DestroyRef, OnInit, ChangeDetectionStrategy, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest, take } from 'rxjs';
-import { StudentProfile } from '../../models/student-profile';
-import { StudentService } from '../../services/student.service';
-import { ActivatedRoute, Router } from '@angular/router';
-import { CommonModule } from '@angular/common';
-import { MatCardModule } from '@angular/material/card';
+import { RouterLink } from '@angular/router';
+import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatListModule } from '@angular/material/list';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatSelectModule } from '@angular/material/select';
-import { Grade } from '../../models/student';
-import { LeaderboardComponent } from '../../shared/components/leaderboard/leaderboard.component';
-import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
-import { MatTabsModule } from '@angular/material/tabs';
-import { FormsModule } from '@angular/forms';
-import { BadgeThropyComponent } from '../../shared/components/badge-thropy/badge-thropy.component';
-import { UserThemeSwitcherComponent } from '../../components/user-theme-switcher/user-theme-switcher.component';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+
+import { StudentProfile } from '../../models/student-profile';
+import { BadgeProgressSummary, BadgeService } from '../../services/badge.service';
+import { AuthService } from '../../services/auth.service';
+import { StudentService } from '../../services/student.service';
+import { STUDENT_SETTINGS_URL } from '../../shared/guards/settings.guard';
 import { currentUserId } from '../../shared/utils/current-user-id.util';
-import { AccountSecurityCardComponent } from '../../shared/components/account-security-card/account-security-card.component';
-import { StudentParentsCardComponent } from '../../shared/components/student-parents-card/student-parents-card.component';
+import { LeaderboardComponent } from '../../shared/components/leaderboard/leaderboard.component';
 import { OutcomeMasteryCardComponent } from '../../shared/components/outcome-mastery-card/outcome-mastery-card.component';
 import { TargetGoalCardComponent } from '../../shared/components/target-goal-card/target-goal-card.component';
 import { TopicProgressCardComponent } from '../../shared/components/topic-progress-card/topic-progress-card.component';
@@ -29,80 +22,92 @@ import { WeakTopicsCardComponent } from '../../shared/components/weak-topics-car
 /** Sayfanin Transloco scope'u: `public/i18n/student-profile/<lang>.json` (issue #183). */
 const SCOPE = 'student-profile';
 
+/**
+ * Öğrencinin profili (#847): kim olduğu (avatar, ad, sınıf · okul, seviye) ve gelişimi. Ayarlar (sınıf, tema, hesap, veliler)
+ * ayrı sayfada (`/student-settings`); rozetler kendi sayfasında (`/certificates`).
+ *
+ * Sayılar tek kaynaktan: çözülen soru ve doğru cevap, ana sayfadaki "Son 4 hafta" ile aynı BadgeService özetinden (tüm
+ * zamanlar); biten test sayısı profil ucundan (#501, tamamlanmış oturumlar).
+ */
 @Component({
   selector: 'app-student-profile',
   templateUrl: './student-profile.component.html',
   standalone: true,
   styleUrls: ['./student-profile.component.scss'],
   imports: [
-    CommonModule,
-    MatCardModule,
+    MatButtonModule,
     MatIconModule,
-    MatListModule,
-    MatSnackBarModule,
-    MatSelectModule,
-    FormsModule,
-    LeaderboardComponent,
-    SectionHeaderComponent,
-    MatTabsModule,
-    BadgeThropyComponent,
-    UserThemeSwitcherComponent,
+    RouterLink,
     TranslocoDirective,
-    AccountSecurityCardComponent,
-    StudentParentsCardComponent,
-    OutcomeMasteryCardComponent, TargetGoalCardComponent, TopicProgressCardComponent, WeakTopicsCardComponent,
+    LeaderboardComponent,
+    OutcomeMasteryCardComponent,
+    TargetGoalCardComponent,
+    TopicProgressCardComponent,
+    WeakTopicsCardComponent,
   ],
-  changeDetection: ChangeDetectionStrategy.Eager,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [provideTranslocoScope(SCOPE)],
 })
 export class StudentProfileComponent implements OnInit {
+  private readonly studentService = inject(StudentService);
+  private readonly badgeService = inject(BadgeService);
+  private readonly snackBar = inject(MatSnackBar);
   private readonly transloco = inject(TranslocoService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly auth = inject(AuthService);
 
-  student: StudentProfile | null = null;
-  /**
-   * BadgeService rapor uclari (`reports/users/{userId}/...`) icin AUTH kullanici id'si (localStorage `user.id`).
-   * StudentProfileDto.Id ogrenci kaydinin id'sidir, kullanici id'si degildir; buradan turetilmez (aksi 403).
-   */
-  reportUserId: number | null = null;
-  grades: Grade[] = [];
-  activeTab = 0; // Varsayılan olarak ilk sekme açık
-  constructor(
-    private studentService: StudentService,
-    private route: ActivatedRoute,
-    private router: Router,
-    private snackBar: MatSnackBar
-  ) {}
+  protected readonly settingsUrl = STUDENT_SETTINGS_URL;
+  readonly student = signal<StudentProfile | null>(null);
+  readonly gradeName = signal('');
+  readonly summary = signal<BadgeProgressSummary | null>(null);
 
-  ngOnInit() {
-    this.reportUserId = currentUserId();
+  /** Profil ucu adı boş dönebiliyor; oturumdaki kullanıcının adı yedek. */
+  readonly fullName = computed(() => this.student()?.fullName || this.auth.user()?.fullName || '');
+  readonly initials = computed(() =>
+    this.fullName()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]!.toLocaleUpperCase('tr'))
+      .join('')
+  );
+  /** "5. Sınıf · Okul adı" — eksik parça yazılmaz. */
+  readonly subtitle = computed(() => [this.gradeName(), this.student()?.schoolName].filter(Boolean).join(' · '));
 
-    this.studentService.loadGrades().subscribe((response) => {
-      this.grades = response;
-    });
-
-    this.studentService.getProfile().subscribe((response) => {
-      this.student = response;
-    });
-
-  }
-
-  changeGrade(): void {
-    if (this.student) {
-      this.studentService.updateGrade(this.student.gradeId).subscribe(() => {
-        this.notify('profile.gradeUpdated');
+  ngOnInit(): void {
+    this.studentService
+      .getProfile()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((profile) => {
+        this.student.set(profile);
+        this.loadGradeName(profile?.gradeId);
       });
+
+    const userId = currentUserId();
+    if (userId) {
+      this.badgeService
+        .getUserBadgeProgress(userId)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({ next: (response) => this.summary.set(response?.summary ?? null), error: () => this.summary.set(null) });
     }
   }
 
-  onAvatarChange(event: any): void {
-    const file = event.target.files[0];
+  onAvatarChange(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
     if (file) {
       this.studentService.updateAvatar(file).subscribe((response) => {
-        this.student = response;
+        this.student.set(response);
         this.notify('profile.avatarUpdated');
       });
     }
+  }
+
+  private loadGradeName(gradeId: number | undefined): void {
+    if (!gradeId) return;
+    this.studentService
+      .loadGrades()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((grades) => this.gradeName.set(grades.find((g) => g.id === gradeId)?.name ?? ''));
   }
 
   /**

@@ -2,25 +2,35 @@
   "actions": {
     "ok": "Tamam"
   },
-  "tabs": {
-    "info": "Bilgilerim",
-    "badges": "Rozetler",
-    "theme": "Tema Ayarları"
-  },
   "profile": {
-    "changeAvatar": "Değiştir",
+    "changeAvatar": "Fotoğrafı değiştir",
     "avatarAlt": "Profil fotoğrafı",
-    "level": "Seviye: {{level}} ({{xp}} XP)",
-    "questionsSolved": "{{count}} Soru Çözüldü",
-    "correctAnswers": "{{count}} Doğru Cevap",
-    "wrongAnswers": "{{count}} Yanlış Cevap",
-    "testsCompleted": "{{count}} Tamamlanan Test",
-    "leaderboardRank": "Liderlik Sıralaması: {{rank}}",
-    "gradeUpdated": "Sınıf güncellendi!",
-    "avatarUpdated": "Avatar güncellendi!"
+    "level": "Seviye {{level}} · {{xp}} puan",
+    "avatarUpdated": "Avatar güncellendi!",
+    "settings": "Ayarlar"
   },
   "points": {
-    "myBadges": "Rozetlerim",
     "leaderboards": "Liderlik Tabloları"
+  },
+  "stats": {
+    "label": "Toplam",
+    "solved": "çözülen soru",
+    "correct": "doğru cevap",
+    "tests": "biten test"
+  },
+  "settings": {
+    "title": "Ayarlar",
+    "subtitle": "Sınıfın, temanın, hesabın ve velilerin.",
+    "theme": "Tema",
+    "grade": {
+      "title": "Sınıfım",
+      "change": "Sınıfı değiştir",
+      "label": "Yeni sınıf",
+      "note": "Sınıfını değiştirince sana önerilen sorular ve testler yeni sınıfa göre gelir.",
+      "save": "Kaydet",
+      "cancel": "Vazgeç",
+      "saved": "Sınıfın güncellendi.",
+      "error": "Sınıf kaydedilemedi; yeniden dene."
+    }
   }
 }

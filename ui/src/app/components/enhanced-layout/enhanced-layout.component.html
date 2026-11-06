@@ -167,7 +167,7 @@
                 </div>
                 <mat-divider></mat-divider>
                 @if (isStudentUser) {
-                  <button mat-menu-item data-testid="user-menu-profile" (click)="navigateTo(settingsRoute)">
+                  <button mat-menu-item data-testid="user-menu-profile" (click)="navigateTo('/student-profile')">
                     <mat-icon>person</mat-icon><span>{{ t('profile.myProfile') }}</span>
                   </button>
                   <button mat-menu-item data-testid="user-menu-badges" (click)="navigateTo('/certificates')">
@@ -183,11 +183,9 @@
                     }
                   </span>
                 </button>
-                @if (!isStudentUser) {
-                  <button mat-menu-item class="profile-settings-item" (click)="navigateTo(settingsRoute)">
-                    <mat-icon>settings</mat-icon><span>{{ t('menu.settings') }}</span>
-                  </button>
-                }
+                <button mat-menu-item class="profile-settings-item" (click)="navigateTo(settingsRoute)">
+                  <mat-icon>settings</mat-icon><span>{{ t('menu.settings') }}</span>
+                </button>
                 <mat-divider></mat-divider>
                 <app-user-menu-preferences />
                 <mat-divider></mat-divider>

@@ -1,95 +1,58 @@
-@if (student) {
-  <ng-container *transloco="let t; prefix: 'student-profile'">
-    <mat-tab-group [(selectedIndex)]="activeTab">
-      <mat-tab [label]="t('tabs.info')">
-        <mat-card class="profile-card">
-          <mat-card-header>
-            <div class="profile-header stats-container">
-              <div class="avatar-container">
-                <img [src]="student.avatarUrl || 'default-avatar.png'" class="avatar" [alt]="t('profile.avatarAlt')" />
-                <div class="avatar-overlay" (click)="avatarInput.click()">
-                  <span>{{ t('profile.changeAvatar') }}</span>
-                </div>
-                <input type="file" #avatarInput (change)="onAvatarChange($event)" hidden />
-              </div>
-              <div class="stat">
-                <h2>{{ student.fullName }}</h2>
-              </div>
-
-              <div class="stat">
-                <mat-select [(value)]="student.gradeId" (selectionChange)="changeGrade()">
-                  @for ( grade of grades ; track grade.id ) {
-                    <mat-option [value]="grade.id">{{ grade.name }}</mat-option>
-                  }
-                </mat-select>
-              </div>
-              <div class="stat">
-                <p>{{ t('profile.level', { level: student.level, xp: student.xp }) }}</p>
-              </div>
-            </div>
-          </mat-card-header>
-          <mat-card-content>
-            <div class="stats-container">
-              <div class="stat">
-                <mat-icon>question_answer</mat-icon>
-                <span>{{ t('profile.questionsSolved', { count: student.totalQuestionsSolved }) }}</span>
-              </div>
-              <div class="stat">
-                <mat-icon>check_circle</mat-icon>
-                <span>{{ t('profile.correctAnswers', { count: student.correctAnswers }) }}</span>
-              </div>
-              <div class="stat">
-                <mat-icon>highlight_off</mat-icon>
-                <span>{{ t('profile.wrongAnswers', { count: student.wrongAnswers }) }}</span>
-              </div>
-              <div class="stat">
-                <mat-icon>assignment_turned_in</mat-icon>
-                <span>{{ t('profile.testsCompleted', { count: student.testsCompleted }) }}</span>
-              </div>
-              <div class="stat">
-                <mat-icon>leaderboard</mat-icon>
-                <span>{{ t('profile.leaderboardRank', { rank: student.leaderboardRank || '-' }) }}</span>
-              </div>
-            </div>
-
-          </mat-card-content>
-        </mat-card>
-        <!-- Issue #695: hedef okul ve tabana kalan fark. -->
-        <app-target-goal-card class="profile-account-card" />
-        <!-- Issue #521: en zayıf konular. -->
-        <app-weak-topics-card class="profile-account-card" />
-        <!-- Issue #531: konunun haftalık gelişimi. -->
-        <app-topic-progress-card class="profile-account-card" />
-        <!-- Issue #696: kazanım haritası. -->
-        <app-outcome-mastery-card class="profile-account-card" />
-        <!-- Issue #417: tüm rollerde ortak "Hesabım / Şifre değiştir" kartı (Keycloak hesap konsolu).
-        Issue #438: veli tarafından açılan çocuk hesabı kendi şifresini/e-postasını değiştirmez — kart gizli, şifreyi veli sıfırlar.
-        Profil gelene kadar da gizli: veli yönetimli hesapta bağlantı bir an bile görünmesin. -->
-        @if (student && !student.parentManaged) {
-          <app-account-security-card class="profile-account-card" />
+@if (student(); as s) {
+  <div class="sp" *transloco="let t; prefix: 'student-profile'">
+    <!-- #847: kim olduğu — avatar (fotoğraf ya da baş harfler), ad, sınıf · okul, seviye; ayarlar ayrı sayfada. -->
+    <section class="sp__head" data-testid="profile-head">
+      <div class="sp__avatar">
+        @if (s.avatarUrl) {
+          <img [src]="s.avatarUrl" class="sp__avatar-img" [alt]="t('profile.avatarAlt')" />
+        } @else {
+          <span class="sp__avatar-initials" aria-hidden="true">{{ initials() }}</span>
         }
-        <!-- Issue #419: veli davet kodu + bağlı veliler. -->
-        <app-student-parents-card class="profile-account-card" />
-      </mat-tab>
-      <mat-tab [label]="t('tabs.badges')">
-        <!-- Issue #381: sabit (sahte) puan kartları kaldırıldı; gerçek puan/sıralama verisi ayrı iş. -->
-        <app-section-header [title]="t('points.myBadges')"></app-section-header>
+        <button type="button" class="sp__avatar-change" [attr.aria-label]="t('profile.changeAvatar')" (click)="avatarInput.click()">
+          <mat-icon aria-hidden="true">photo_camera</mat-icon>
+        </button>
+        <input #avatarInput type="file" accept="image/*" (change)="onAvatarChange($event)" hidden />
+      </div>
+      <div class="sp__who">
+        <h1 class="sp__name">{{ fullName() }}</h1>
+        @if (subtitle()) {
+          <p class="sp__sub" data-testid="profile-subtitle">{{ subtitle() }}</p>
+        }
+        <p class="sp__level" data-testid="profile-level">{{ t('profile.level', { level: s.level, xp: s.xp }) }}</p>
+      </div>
+      <a mat-stroked-button class="sp__settings" data-testid="profile-settings-link" [routerLink]="settingsUrl">
+        <mat-icon>settings</mat-icon>{{ t('profile.settings') }}
+      </a>
+    </section>
 
-        <!-- Bölüm başlığı yukarıdaki section-header'da; rozet bileşeni kendi başlığını tekrar etmez (#149 CR Ö1) -->
-        <app-badge-thropy [userId]="reportUserId ?? 0" [showHeading]="false"></app-badge-thropy>
+    <!-- #847: ana sayfadaki "Son 4 hafta" ile aynı kaynak (BadgeService özeti, tüm zamanlar); biten test profil ucundan. -->
+    <ul class="sp__stats" [attr.aria-label]="t('stats.label')">
+      <li class="sp__stat" data-key="solved">
+        <span class="sp__stat-value">{{ summary()?.totalQuestions ?? 0 }}</span>
+        <span class="sp__stat-label">{{ t('stats.solved') }}</span>
+      </li>
+      <li class="sp__stat" data-key="correct">
+        <span class="sp__stat-value">{{ summary()?.correctQuestions ?? 0 }}</span>
+        <span class="sp__stat-label">{{ t('stats.correct') }}</span>
+      </li>
+      <li class="sp__stat" data-key="tests">
+        <span class="sp__stat-value">{{ s.testsCompleted ?? 0 }}</span>
+        <span class="sp__stat-label">{{ t('stats.tests') }}</span>
+      </li>
+    </ul>
 
-        <app-section-header [title]="t('points.leaderboards')"></app-section-header>
+    <!-- Issue #695: hedef okul ve tabana kalan fark. -->
+    <app-target-goal-card class="sp__card" />
+    <!-- Issue #521: en zayıf konular. -->
+    <app-weak-topics-card class="sp__card" />
+    <!-- Issue #531: konunun haftalık gelişimi. -->
+    <app-topic-progress-card class="sp__card" />
+    <!-- Issue #696: kazanım haritası. -->
+    <app-outcome-mastery-card class="sp__card" />
 
-        <div class="leaderboards-container">
-          <app-leaderboard></app-leaderboard>
-        </div>
-      </mat-tab>
-      <!-- User Theme Settings Tab -->
-      <mat-tab [label]="t('tabs.theme')">
-        <div class="theme-settings-container">
-          <app-user-theme-switcher></app-user-theme-switcher>
-        </div>
-      </mat-tab>
-    </mat-tab-group>
-  </ng-container>
+    <h2 class="sp__section">{{ t('points.leaderboards') }}</h2>
+    <div class="sp__leaderboard">
+      <app-leaderboard></app-leaderboard>
+    </div>
+  </div>
 }

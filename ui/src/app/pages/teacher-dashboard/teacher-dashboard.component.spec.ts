@@ -8,6 +8,12 @@ import { NEVER, of, throwError } from 'rxjs';
 import { TeacherDashboardComponent } from './teacher-dashboard.component';
 import { TeacherService } from '../../services/teacher.service';
 import { LocaleService } from '../../services/locale.service';
+import { AuthService } from '../../services/auth.service';
+import { BookingService } from '../../services/booking.service';
+import { DirectMessageService } from '../../services/direct-message.service';
+import { OpenTextReviewService } from '../../services/open-text-review.service';
+import { StudentSchoolRequestService } from '../../services/student-school-request.service';
+import { WorksheetAccessRequestService } from '../../services/worksheet-access-request.service';
 import { localeDefinitionOf } from '../../models/locale';
 import { TeacherDashboardSummary, TeacherLaggingStudent, TeacherOwnActivitySummary, TeacherStudentsActivitySummary, TeacherWorksheetOverview, } from '../../models/teacher-dashboard.model';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
@@ -72,7 +78,18 @@ describe('TeacherDashboardComponent', () => {
         ],
     };
 
+    // #837: bekleyen sayılar — root servislerin sinyalleri; her test kendi değerini set eder.
+    const pending = {
+        reviews: signal(0),
+        access: signal(0),
+        school: signal(0),
+        bookings: signal(0),
+        messages: signal(0),
+    };
+    const user = signal<{ fullName: string } | null>({ fullName: 'Ayşe Öğretmen' });
+
     function configure(): ComponentFixture<TeacherDashboardComponent> {
+        Object.values(pending).forEach((count) => count.set(0));
         teacherService = {
             getDashboardSummary: vi.fn().mockName("TeacherService.getDashboardSummary"),
             getWorksheetsOverview: vi.fn().mockName("TeacherService.getWorksheetsOverview"),
@@ -95,6 +112,12 @@ describe('TeacherDashboardComponent', () => {
             providers: [
                 { provide: TeacherService, useValue: teacherService },
                 { provide: LocaleService, useValue: localeServiceStub },
+                { provide: AuthService, useValue: { user } },
+                { provide: OpenTextReviewService, useValue: { pendingCount: pending.reviews } },
+                { provide: WorksheetAccessRequestService, useValue: { pendingCount: pending.access } },
+                { provide: StudentSchoolRequestService, useValue: { pendingCount: pending.school } },
+                { provide: BookingService, useValue: { pendingCount: pending.bookings } },
+                { provide: DirectMessageService, useValue: { unreadCount: pending.messages } },
                 provideRouter([]),
                 provideNoopAnimations(), // #57: mat-form-field/mat-select
             ],
@@ -553,5 +576,79 @@ describe('TeacherDashboardComponent', () => {
 
         expect(text('.activity-card[data-key="own"] .activity-tiles .cdk-visually-hidden')).toBe('Aktivite bilgileri yükleniyor...');
         expect(text('.activity-card[data-key="students"] .activity-tiles .cdk-visually-hidden')).toBe('Aktivite bilgileri yükleniyor...');
+    });
+    describe('#837 header, pending strip and worksheet rows', () => {
+        function el(selector: string): HTMLElement | null {
+            return (fixture.nativeElement as HTMLElement).querySelector(selector);
+        }
+
+        it('header_GreetsByFirstNameAndLinksNewTest', () => {
+            fixture = configure();
+            fixture.detectChanges();
+
+            expect(el('.td-header h1')?.textContent?.trim()).toBe('Hoş geldiniz, Ayşe');
+            expect(el('.td-header__action')?.getAttribute('href')).toBe('/exam');
+            expect(el('.td-header .ms-page-subtitle')?.textContent?.trim()).toBe('Bekleyen işiniz yok.');
+        });
+
+        it('pendingStrip_ShowsOnlyNonZeroItems_AndSumsRequests', () => {
+            fixture = configure();
+            pending.reviews.set(3);
+            pending.access.set(1);
+            pending.school.set(2);
+            fixture.detectChanges();
+
+            const items = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLAnchorElement>('.td-pending__item'));
+            expect(items.map((a) => a.dataset['key'])).toEqual(['reviews', 'requests']);
+            expect(items[0].getAttribute('href')).toBe('/open-text-reviews');
+            expect(items[1].querySelector('.td-pending__count')?.textContent?.trim()).toBe('3');
+            expect(el('.td-header .ms-page-subtitle')?.textContent?.trim()).toBe('6 iş sizi bekliyor.');
+            expect(el('.td-pending__empty')).toBeNull();
+        });
+
+        it('pendingStrip_NothingPending_ShowsEmptyText', () => {
+            fixture = configure();
+            fixture.detectChanges();
+
+            expect(el('.td-pending__item')).toBeNull();
+            expect(el('.td-pending__empty')).not.toBeNull();
+        });
+
+        it('worksheetRow_NotAssigned_ShowsDashAndAssignNavigatesWithQuery', () => {
+            fixture = configure();
+            teacherService.getWorksheetsOverview.mockReturnValue(
+                of([{ worksheetId: 9, name: 'Yeni', assignedStudentCount: 0, completionPercentage: 0 }]),
+            );
+            const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+            fixture.detectChanges();
+
+            const row = el('.worksheets-table__row') as HTMLElement;
+            expect(row.querySelector('.completion__track')).toBeNull();
+            (row.querySelector('.completion__assign') as HTMLButtonElement).click();
+
+            expect(navigate).toHaveBeenCalledTimes(1);
+            expect(navigate).toHaveBeenCalledWith(['/test', 9], { queryParams: { assign: 'student' } });
+        });
+
+        it('worksheetRow_Assigned_ShowsProgressBar', () => {
+            fixture = configure();
+            fixture.detectChanges();
+
+            const fill = el('.worksheets-table__row .completion__fill') as HTMLElement;
+            expect(fill.style.width).toBe('75%');
+            expect(el('.worksheets-table__row .completion__assign')).toBeNull();
+        });
+
+        it('worksheets_MoreThanFive_ShowsFiveRowsAndSeeAll', () => {
+            fixture = configure();
+            teacherService.getWorksheetsOverview.mockReturnValue(
+                of(Array.from({ length: 7 }, (_, i) => ({ worksheetId: i + 1, name: `WS ${i + 1}`, assignedStudentCount: 1, completionPercentage: 0 }))),
+            );
+            fixture.detectChanges();
+
+            expect((fixture.nativeElement as HTMLElement).querySelectorAll('.worksheets-table__row').length).toBe(5);
+            expect(el('.worksheets-more')?.getAttribute('href')).toBe('/tests');
+            expect(el('.worksheets-more')?.textContent).toContain('Tümünü gör (7)');
+        });
     });
 });

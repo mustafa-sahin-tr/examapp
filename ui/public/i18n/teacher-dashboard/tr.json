@@ -1,4 +1,21 @@
 {
+  "header": {
+    "title": "Hoş geldiniz",
+    "titleNamed": "Hoş geldiniz, {{name}}",
+    "subtitlePending": "{{count}} iş sizi bekliyor.",
+    "subtitleClear": "Bekleyen işiniz yok.",
+    "newTest": "Yeni test"
+  },
+  "pending": {
+    "title": "Bekleyenler",
+    "empty": "Değerlendirilecek cevap, istek ya da okunmamış mesaj yok.",
+    "items": {
+      "reviews": "Değerlendirilecek cevap",
+      "requests": "Bekleyen istek",
+      "bookings": "Ders talebi",
+      "messages": "Okunmamış mesaj"
+    }
+  },
   "summary": {
     "title": "Özet",
     "error": "Özet bilgileri alınırken bir sorun oluştu.",
@@ -20,7 +37,10 @@
     },
     "completionValue": "%{{value}}",
     "studentCount": "{{count}} öğrenci",
-    "openDetail": "{{name}} detayına git"
+    "openDetail": "{{name}} detayına git",
+    "assign": "Ata",
+    "assignLabel": "{{name}} testini öğrenciye ata",
+    "seeAll": "Tümünü gör ({{count}})"
   },
   "lagging": {
     "title": "Geride Kalan Öğrenciler",

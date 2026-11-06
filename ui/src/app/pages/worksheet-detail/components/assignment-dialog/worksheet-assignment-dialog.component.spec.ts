@@ -75,6 +75,53 @@ describe('WorksheetAssignmentDialogComponent', () => {
         expect(fixture.componentInstance['form'].controls.scope.value).toBe('grade');
     });
 
+    // Issue #860: diyalog kimin alacağını söyler — test adı, öğrenci sayılı sınıf kartları, özet ve buton.
+    describe('who gets it (#860)', () => {
+        const grades = [{ id: 1, name: '5-A' }, { id: 2, name: '6-A' }];
+        const students: StudentLookup[] = [
+            ada,
+            { ...ada, id: 12, fullName: 'Bora' },
+            { ...ada, id: 13, fullName: 'Can', gradeId: 2 },
+        ];
+        const text = (el: HTMLElement, id: string) => el.querySelector(`[data-testid="${id}"]`)?.textContent?.trim();
+
+        it('preselects the test grade and shows counts, summary and a counted button', () => {
+            const fixture = create({ grades, students, defaultGradeId: 2, worksheetName: 'Kesirler' });
+            const el: HTMLElement = fixture.nativeElement;
+
+            expect(text(el, 'assign-worksheet-name')).toBe('Kesirler');
+            expect(el.querySelector('[data-grade="1"]')?.textContent).toContain('2 öğrenci');
+            expect(el.querySelector('[data-grade="2"]')?.getAttribute('aria-checked')).toBe('true');
+            expect(text(el, 'assign-summary')).toBe('6-A · 1 öğrenci alacak');
+            expect(text(el, 'assign-submit')).toBe('1 öğrenciye ata');
+
+            (el.querySelector('[data-grade="1"]') as HTMLButtonElement).click();
+            fixture.detectChanges();
+            expect(text(el, 'assign-submit')).toBe('2 öğrenciye ata');
+            fixture.componentInstance['submit']();
+            expect(dialogRef.close).toHaveBeenCalledWith(expect.objectContaining({ request: expect.objectContaining({ gradeId: 1 }) }));
+        });
+
+        it('without loaded students shows no counts and a plain button', () => {
+            const fixture = create({ grades, students: [], studentsStatus: 'loading' });
+            const el: HTMLElement = fixture.nativeElement;
+
+            expect(el.querySelector('[data-grade="1"]')?.textContent).not.toContain('öğrenci');
+            expect(text(el, 'assign-summary')).toBe('');
+            expect(text(el, 'assign-submit')).toBe('Ata');
+        });
+
+        it('student scope names the student', () => {
+            const fixture = create({ grades, students, scope: 'student' });
+            const el: HTMLElement = fixture.nativeElement;
+            fixture.componentInstance['form'].controls.studentId.setValue(12);
+            fixture.detectChanges();
+
+            expect(text(el, 'assign-summary')).toBe('Bora alacak');
+            expect(text(el, 'assign-submit')).toBe('Öğrenciye ata');
+        });
+    });
+
     it('bağımsız öğretmende "Sınıfa ata" seçeneğini render etmez ve scope student olur', () => {
         const fixture = create({ isIndependentTutor: true, scope: 'grade' });
         const el: HTMLElement = fixture.nativeElement;

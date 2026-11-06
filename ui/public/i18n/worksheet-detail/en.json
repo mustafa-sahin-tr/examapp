@@ -191,7 +191,7 @@
     "bankAlreadyInTest": "The selected questions are already in the test."
   },
   "assignDialog": {
-    "title": "Create New Assignment",
+    "title": "Assign",
     "scopeGrade": "Assign to Class",
     "scopeStudent": "Assign to Student",
     "gradeLabel": "Class",
@@ -214,7 +214,7 @@
     "timeInvalid": "Enter a valid time",
     "hasEndDate": "Set an end time",
     "cancel": "Discard",
-    "save": "Save",
+    "save": "Assign",
     "commentsLabel": "Comments and questions",
     "commentsGroupAria": "Comments and questions setting for this assignment",
     "commentsDefault": "Default",
@@ -222,7 +222,12 @@
     "commentsOff": "Off",
     "commentsHelper": "Default uses the test’s current setting: {{state}}.",
     "commentsStateOn": "on",
-    "commentsStateOff": "off"
+    "commentsStateOff": "off",
+    "studentCount": "{{n}} students",
+    "summaryGrade": "{{grade}} · {{n}} students will get it",
+    "summaryStudent": "{{name}} will get it",
+    "submitCount": "Assign to {{n}} students",
+    "submitStudent": "Assign to student"
   },
   "permissionDialog": {
     "title": "Request assign permission",

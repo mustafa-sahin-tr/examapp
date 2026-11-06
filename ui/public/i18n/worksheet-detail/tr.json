@@ -191,7 +191,7 @@
     "bankAlreadyInTest": "Seçilen sorular zaten testte."
   },
   "assignDialog": {
-    "title": "Yeni Atama Oluştur",
+    "title": "Ata",
     "scopeGrade": "Sınıfa Ata",
     "scopeStudent": "Öğrenciye Ata",
     "gradeLabel": "Sınıf",
@@ -214,7 +214,7 @@
     "timeInvalid": "Geçerli bir saat gir",
     "hasEndDate": "Bitiş zamanı belirle",
     "cancel": "Vazgeç",
-    "save": "Kaydet",
+    "save": "Ata",
     "commentsLabel": "Yorum ve soru",
     "commentsGroupAria": "Bu atama için yorum ve soru ayarı",
     "commentsDefault": "Varsayılan",
@@ -222,7 +222,12 @@
     "commentsOff": "Kapalı",
     "commentsHelper": "Varsayılan, testin güncel ayarını kullanır: {{state}}.",
     "commentsStateOn": "açık",
-    "commentsStateOff": "kapalı"
+    "commentsStateOff": "kapalı",
+    "studentCount": "{{n}} öğrenci",
+    "summaryGrade": "{{grade}} · {{n}} öğrenci alacak",
+    "summaryStudent": "{{name}} alacak",
+    "submitCount": "{{n}} öğrenciye ata",
+    "submitStudent": "Öğrenciye ata"
   },
   "permissionDialog": {
     "title": "Atama izni iste",

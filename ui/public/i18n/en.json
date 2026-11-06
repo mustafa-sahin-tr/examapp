@@ -1066,6 +1066,7 @@
     },
     "welcome": {
       "title": "Welcome",
+      "titleNamed": "Welcome, {{name}}",
       "lastLogin": "Last login: {{value}}"
     },
     "dailyQuestions": {
@@ -1123,22 +1124,13 @@
     "activity": {
       "loading": "Loading activity data...",
       "error": "Activity data could not be loaded.",
-      "empty": "No activity data found for the last year.",
-      "totalQuestions": "Total Questions",
-      "correctAnswers": "Correct Answers",
-      "studyMinutes": "Study Time (min)",
-      "activityScore": "Activity Score"
-    },
-    "tooltip": {
-      "questions": "Questions",
-      "correct": "Correct",
-      "duration": "Time",
-      "activityScore": "Activity Score"
-    },
-    "duration": {
-      "minutes": "{{minutes}} min",
-      "seconds": "{{seconds}} sec",
-      "minutesSeconds": "{{minutes}} min {{seconds}} sec"
+      "totalQuestions": "Questions solved",
+      "studyMinutes": "Study time (min)",
+      "title": "Last 4 weeks",
+      "hint": "Solving a little every day grows your streak.",
+      "accuracy": "Accuracy",
+      "correctOf": "{{correct}} of {{total}} correct",
+      "dayCell": "{{date}}: {{count}} questions"
     },
     "badges": {
       "title": "Badges",

@@ -53,15 +53,15 @@ export class ParentStatusCardComponent {
   protected readonly daysLeft = this.store.daysLeft;
   protected readonly awaitingDeadline = this.store.awaitingDeadline;
 
-  /** Issue #721: ana sayfada, süre kritik değilse ayrıntılar kapalı başlar; kısıtlar hep görünür. */
+  /**
+   * Issue #721 / #835: ana sayfada tek satır — başlık, kalan süre ve (süre kritikse) iki eylem. Kısıtlar ve
+   * gönderim ayrıntıları "Ayrıntılar"ın arkasında; ana sayfanın asıl işi (günün soruları) önde kalsın.
+   */
   readonly compact = input(false);
   readonly expandedByUser = signal(false);
-  readonly showDetails = computed(() => {
-    if (!this.compact() || this.expandedByUser()) {
-      return true;
-    }
-    return !!this.invitation()?.expired || !!this.awaitingDeadline()?.warning;
-  });
+  readonly collapsed = computed(() => this.compact() && !this.expandedByUser());
+  /** #835: tek satırda eylemler yalnız süre dolduğunda / son günlerde gösterilir. */
+  readonly urgent = computed(() => !!this.invitation()?.expired || !!this.awaitingDeadline()?.warning);
   readonly resending = signal(false);
   readonly resendError = signal<string | null>(null);
   readonly resendDone = signal(false);

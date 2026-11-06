@@ -24,13 +24,14 @@ import { TestService } from '../../services/test.service';
 import { AuthService } from '../../services/auth.service';
 import { AssignedWorksheet } from '../../models/assignment';
 import { Test } from '../../models/test-instance';
-import { NgxChartsModule, Color, ScaleType } from '@swimlane/ngx-charts';
 import {
   BadgeProgressItem,
   BadgeProgressSummary,
   BadgeService,
+  UserActivityDay,
   UserActivityResponse,
 } from '../../services/badge.service';
+import { RecentWeeksComponent, dayKey } from './recent-weeks.component';
 import { finalize } from 'rxjs';
 import { StudentResetService } from '../../services/student-reset.service';
 import { StudentService } from '../../services/student.service';
@@ -73,13 +74,21 @@ function dueTime(vm: AssignmentCardViewModel): number {
   return vm.assignment.endAt ? new Date(vm.assignment.endAt).getTime() : Number.MAX_SAFE_INTEGER;
 }
 
-/** Issue #197 — aktivite özet kartı (soru/doğru/dakika/skor); ngx-charts number-card yerine yerel grid kartı. */
+/**
+ * Issue #197 / #835 — aktivite özet kartı (son 4 hafta: soru / doğru oranı / dakika). `display` verilirse değer yerine
+ * gösterilir (ör. "%8"), `detail` küçük ek satırdır (ör. "2 / 25").
+ */
 export interface ActivityStatCard {
-  key: 'questions' | 'correct' | 'minutes' | 'activityScore';
+  key: 'questions' | 'accuracy' | 'minutes';
   icon: string;
   name: string;
   value: number;
+  display?: string;
+  detail?: string;
 }
+
+/** #835: panelde istatistik ve ızgara son 4 haftayı (28 gün) kapsar. */
+export const RECENT_ACTIVITY_DAYS = 28;
 
 /** "Sıradaki Rozetler" listesi için görünüm modeli — ilerleme yüzdesi şablonda hesaplanmasın diye burada türetilir. */
 interface UpcomingBadgeViewModel {
@@ -111,7 +120,7 @@ export interface EarnedBadgeViewModel {
     BadgeMedallionComponent,
     CompactTestCardComponent,
     SectionHeaderComponent,
-    NgxChartsModule,
+    RecentWeeksComponent,
     TranslocoPipe,
     DailyQuestionsCardComponent,
     CoachGoalsCardComponent,
@@ -158,9 +167,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly assignments = signal<AssignmentCardViewModel[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
-  readonly activityDataFromApi = signal<
-    Array<{ name: string; series: Array<{ name: string; value: number; extra?: any }> }>
-  >([]);
+  /** #835: son 4 haftanın günleri (ızgara ve istatistik). */
+  readonly recentActivityDays = signal<UserActivityDay[]>([]);
   readonly activityApiLoading = signal(false);
   readonly activityApiError = signal(false);
   readonly activityNumberCardData = signal<ActivityStatCard[]>([]);
@@ -177,6 +185,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   /** Issue #126 — önceki giriş zamanı; null ise chip hiç render edilmez. */
   readonly lastLoginAtUtc = signal<string | null>(null);
   readonly lastLoginLabel = computed(() => this.formatLastLogin(this.lastLoginAtUtc()));
+  /** #835: karşılamada adın ilk kelimesi ("Hoş geldin, Pilot"); ad yoksa yalnız "Hoş geldin". */
+  readonly welcomeName = computed(() => (this.auth.user()?.fullName ?? '').trim().split(/\s+/)[0] ?? '');
 
   /**
    * Issue #99 — "Günün soruları" kartı. Kendi yükleniyor/hata durumuna sahiptir; diğer bölümleri etkilemez.
@@ -282,89 +292,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   });
   readonly canScrollLeft = signal(false);
   readonly canScrollRight = signal(false);
-  readonly viewportWidth = signal(typeof window !== 'undefined' ? window.innerWidth : 1280);
-  readonly isMobileViewport = computed(() => this.viewportWidth() < 768);
-  /**
-   * Issue #197 — heat map sabit piksel yerine kapsayıcısının gerçek genişliğine göre çizilir.
-   * 0 = henüz ölçülmedi; şablon bu durumda grafiği hiç çizmez.
-   */
-  readonly heatmapContainerWidth = signal(0);
-  /**
-   * Bir hafta sütununun en küçük genişliği (px). ngx-charts hücreler arasında 8px iç boşluk bırakır;
-   * 22px ile hücre ~14px kalır (eski masaüstü yoğunluğu); daha dar değerde hücreler çizgiye döner.
-   */
-  private readonly heatmapMinCellPx = 22;
-  /** Y ekseni gün etiketleri + kenar boşluğu için ayrılan pay (px). */
-  private readonly heatmapAxisAllowancePx = 48;
-  private readonly heatmapMinWeeks = 12;
-  /** Kapsayıcıya sığan hafta sayısı; dar ekranda en yeni haftalar gösterilir, eski haftalar düşer. */
-  readonly visibleHeatmapWeeks = computed(() => {
-    const width = this.heatmapContainerWidth();
-    if (width <= 0) {
-      return Number.POSITIVE_INFINITY;
-    }
-
-    const fit = Math.floor((width - this.heatmapAxisAllowancePx) / this.heatmapMinCellPx);
-    return Math.max(this.heatmapMinWeeks, fit);
-  });
-  readonly activityHeatmapData = computed(() => {
-    const data = this.activityDataFromApi();
-    const weeks = this.visibleHeatmapWeeks();
-    return data.length > weeks ? data.slice(-weeks) : data;
-  });
-  readonly showActivitySummary = computed(
-    () =>
-      this.activityNumberCardData().length > 0 ||
-      this.badgeProgressLoading() ||
-      this.badgeProgressError() ||
-      this.earnedBadges().length > 0
-  );
-  /** Kapsayıcıyı doldurur; en az hafta sayısı bile sığmıyorsa yalnızca kendi kapsayıcısında (.heatmap-scroll) kayar. */
-  readonly activityHeatmapView = computed<[number, number]>(() => {
-    const height = this.isMobileViewport() ? 190 : 210;
-    const minWidth = this.heatmapMinWeeks * this.heatmapMinCellPx + this.heatmapAxisAllowancePx;
-    return [Math.max(Math.floor(this.heatmapContainerWidth()), minWidth), height];
-  });
-  readonly showHeatmapYAxis = computed(() => true);
-  readonly showHeatmapAxisLabels = computed(() => !this.isMobileViewport());
-
   readonly scrollDistance = 600;
-  private activityLastMonthDisplayed = '';
   private resizeObserver?: ResizeObserver;
   private assignmentContainerRef?: ElementRef<HTMLDivElement>;
-  private heatmapResizeObserver?: ResizeObserver;
-  private heatmapScrollEl?: HTMLDivElement;
-
-  /** Heat map kapsayıcısı veri gelince render edilir; her yeni element için genişliği izlenir. */
-  @ViewChild('heatmapScroll', { static: false })
-  set heatmapScroll(ref: ElementRef<HTMLDivElement> | undefined) {
-    const element = ref?.nativeElement;
-    if (element === this.heatmapScrollEl) {
-      return;
-    }
-
-    if (this.heatmapScrollEl) {
-      this.heatmapResizeObserver?.unobserve(this.heatmapScrollEl);
-    }
-    this.heatmapScrollEl = element;
-
-    if (!element) {
-      return;
-    }
-
-    this.heatmapContainerWidth.set(element.clientWidth ?? 0);
-    if (typeof ResizeObserver === 'undefined') {
-      return;
-    }
-
-    this.heatmapResizeObserver ??= new ResizeObserver((entries) => {
-      const width = entries[entries.length - 1]?.contentRect.width ?? 0;
-      if (Math.floor(width) !== Math.floor(this.heatmapContainerWidth())) {
-        this.heatmapContainerWidth.set(width);
-      }
-    });
-    this.heatmapResizeObserver.observe(element);
-  }
 
   @ViewChild('assignmentContainer', { static: false })
   set assignmentContainer(ref: ElementRef<HTMLDivElement> | undefined) {
@@ -385,16 +315,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.scheduleScrollIndicatorUpdate();
   }
 
-  readonly activityColorScheme: Color = {
-    name: 'sunset',
-    selectable: false,
-    group: ScaleType.Linear,
-    domain: ['#38346fff', '#5a5a5aff', '#808080ff', '#b3b3b3ff', '#e6e6e6ff', '#ffffff'],
-  };
-
   ngOnInit(): void {
-    this.updateViewportWidth();
-
     this.testService.getActiveAssignments().subscribe({
       next: (assignments) => {
         const viewModels = assignments.map((assignment) => ({
@@ -481,7 +402,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Clear local UI data immediately; backend reset happens async via Hangfire.
     this.assignments.set([]);
-    this.activityDataFromApi.set([]);
+    this.recentActivityDays.set([]);
     this.activityNumberCardData.set([]);
     this.earnedBadges.set([]);
     this.allBadgeProgress.set([]);
@@ -509,7 +430,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
               },
             });
             if (userId !== null) {
-              this.loadUserActivityHeatmap(userId);
+              this.loadUserActivity(userId);
               this.loadUserBadgeProgress(userId);
             }
           }, 2500);
@@ -533,12 +454,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.resizeObserver?.disconnect();
-    this.heatmapResizeObserver?.disconnect();
   }
 
   @HostListener('window:resize')
   onWindowResize(): void {
-    this.updateViewportWidth();
     this.scheduleScrollIndicatorUpdate();
   }
 
@@ -596,41 +515,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.updateScrollIndicators();
   }
 
-  activityXAxisTickFormatting = (value: string): string => {
-    const parts = value.trim().split(' ');
-    if (parts.length < 2) {
-      return value;
-    }
-
-    const monthName = parts[1];
-    if (this.activityLastMonthDisplayed === monthName) {
-      return '';
-    }
-
-    this.activityLastMonthDisplayed = monthName;
-    return monthName;
-  };
-
-  activityHeatmapTooltip = (tooltip: any): string => {
-    if (!tooltip) {
-      return '';
-    }
-
-    const cell = tooltip.cell ?? tooltip.data ?? tooltip;
-    const extra = cell?.extra ?? {};
-    const date = extra.date ? new Date(extra.date) : new Date();
-    const dateLabel = extra.label ?? date.toLocaleDateString(this.intlLocale, { day: '2-digit', month: 'short' });
-    const duration = this.formatDuration(extra.totalTimeSeconds ?? 0);
-    const questionsLabel = this.transloco.translate('dashboard.tooltip.questions');
-    const correctLabel = this.transloco.translate('dashboard.tooltip.correct');
-    const durationLabel = this.transloco.translate('dashboard.tooltip.duration');
-    const activityScoreLabel = this.transloco.translate('dashboard.tooltip.activityScore');
-
-    return `${dateLabel}\n${questionsLabel}: ${extra.questionCount ?? 0}\n${correctLabel}: ${
-      extra.correctCount ?? 0
-    }\n${durationLabel}: ${duration}\n${activityScoreLabel}: ${cell?.value ?? 0}`;
-  };
-
   private mapToTest(assignment: AssignedWorksheet): Test {
     return {
       id: assignment.worksheetId,
@@ -664,11 +548,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     this.reportsLoadedFor = userId;
-    this.loadUserActivityHeatmap(userId);
+    this.loadUserActivity(userId);
     this.loadUserBadgeProgress(userId);
   }
 
-  private loadUserActivityHeatmap(userId: number): void {
+  private loadUserActivity(userId: number): void {
     if (!userId || userId <= 0) {
       return;
     }
@@ -682,14 +566,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       .pipe(finalize(() => this.activityApiLoading.set(false)))
       .subscribe({
         next: (response) => {
-          this.activityLastMonthDisplayed = '';
-          this.activityDataFromApi.set(this.transformActivityToHeatmap(response));
-          this.activityNumberCardData.set(this.buildNumberCardData(response));
+          const recent = recentDays(response, RECENT_ACTIVITY_DAYS);
+          this.recentActivityDays.set(recent);
+          this.activityNumberCardData.set(this.buildNumberCardData(recent));
         },
         error: (error) => {
           console.error('Öğrenci aktivite verisi alınamadı', error);
           this.activityApiError.set(true);
-          this.activityDataFromApi.set([]);
+          this.recentActivityDays.set([]);
           this.activityNumberCardData.set([]);
         },
       });
@@ -806,74 +690,21 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.assignmentContainerRef?.nativeElement;
   }
 
-  private transformActivityToHeatmap(response: UserActivityResponse): Array<{ name: string; series: any[] }> {
-    const totalWeeks = 52;
-    const daysPerWeek = 7;
-
-    const rawEndDate = response?.endDateUtc ? this.normalizeDate(response.endDateUtc) : this.normalizeDate(new Date());
-    const alignedEndDate = this.endOfWeek(rawEndDate);
-    const alignedStartDate = this.addDays(alignedEndDate, -(totalWeeks * daysPerWeek - 1));
-
-    const activityMap = new Map<string, (typeof response.days)[number]>();
-    (response?.days ?? []).forEach((day) => {
-      activityMap.set(this.toIsoDateKey(this.normalizeDate(day.dateUtc)), day);
-    });
-
-    const heatmap: Array<{ name: string; series: any[] }> = [];
-
-    for (let weekIndex = 0; weekIndex < totalWeeks; weekIndex++) {
-      const weekStart = this.addDays(alignedStartDate, weekIndex * daysPerWeek);
-      const weekSeries = Array.from({ length: daysPerWeek }, (_, dayOffset) => {
-        const currentDate = this.addDays(weekStart, dayOffset);
-        const key = this.toIsoDateKey(currentDate);
-        const dayActivity = activityMap.get(key);
-        const activityScore = dayActivity?.activityScore ?? 0;
-
-        if (currentDate > rawEndDate) {
-          return null;
-        }
-
-        return {
-          name: this.formatDayLabel(currentDate),
-          value: activityScore,
-          extra: {
-            date: currentDate.toISOString(),
-            label: currentDate.toLocaleDateString(this.intlLocale, { day: '2-digit', month: 'short' }),
-            questionCount: dayActivity?.questionCount ?? 0,
-            correctCount: dayActivity?.correctCount ?? 0,
-            totalTimeSeconds: dayActivity?.totalTimeSeconds ?? 0,
-            totalPoints: dayActivity?.totalPoints ?? 0,
-          },
-        };
-      }).filter((entry): entry is { name: string; value: number; extra: any } => entry !== null);
-
-      heatmap.push({
-        name: this.formatWeekLabel(weekStart),
-        series: weekSeries.slice().reverse(),
-      });
-    }
-
-    return heatmap;
-  }
-
-  private buildNumberCardData(response: UserActivityResponse): ActivityStatCard[] {
-    const totals = (response?.days ?? []).reduce(
+  private buildNumberCardData(days: readonly UserActivityDay[]): ActivityStatCard[] {
+    const totals = days.reduce(
       (acc, day) => {
-        const questionCount = day?.questionCount ?? 0;
-        const correctCount = day?.correctCount ?? 0;
-        const totalSeconds = day?.totalTimeSeconds ?? 0;
-        const activityScore = day?.activityScore ?? 0;
-
-        acc.questions += questionCount;
-        acc.correct += correctCount;
-        acc.timeSeconds += totalSeconds;
-        acc.activityScore += activityScore;
+        acc.questions += day?.questionCount ?? 0;
+        acc.correct += day?.correctCount ?? 0;
+        acc.timeSeconds += day?.totalTimeSeconds ?? 0;
         return acc;
       },
-      { questions: 0, correct: 0, timeSeconds: 0, activityScore: 0 }
+      { questions: 0, correct: 0, timeSeconds: 0 }
     );
 
     const totalMinutes = totals.timeSeconds > 0 ? Math.max(1, Math.round(totals.timeSeconds / 60)) : 0;
+    const numberFormat = new Intl.NumberFormat(this.intlLocale);
+    // #835: doğru sayısı tek başına anlamsız ("2"); oran + "2 / 25".
+    const accuracy = totals.questions > 0 ? Math.round((totals.correct / totals.questions) * 100) : 0;
 
     return [
       {
@@ -883,10 +714,15 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         value: totals.questions,
       },
       {
-        key: 'correct',
+        key: 'accuracy',
         icon: 'check_circle',
-        name: this.transloco.translate('dashboard.activity.correctAnswers'),
-        value: totals.correct,
+        name: this.transloco.translate('dashboard.activity.accuracy'),
+        value: accuracy,
+        display: new Intl.NumberFormat(this.intlLocale, { style: 'percent' }).format(accuracy / 100),
+        detail: this.transloco.translate('dashboard.activity.correctOf', {
+          correct: numberFormat.format(totals.correct),
+          total: numberFormat.format(totals.questions),
+        }),
       },
       {
         key: 'minutes',
@@ -894,71 +730,13 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         name: this.transloco.translate('dashboard.activity.studyMinutes'),
         value: totalMinutes,
       },
-      {
-        key: 'activityScore',
-        icon: 'bolt',
-        name: this.transloco.translate('dashboard.activity.activityScore'),
-        value: totals.activityScore,
-      },
     ];
   }
+}
 
-  private addDays(date: Date, days: number): Date {
-    const result = new Date(date);
-    result.setDate(result.getDate() + days);
-    result.setHours(0, 0, 0, 0);
-    return result;
-  }
-
-  private normalizeDate(date: string | Date): Date {
-    const normalized = new Date(date);
-    normalized.setHours(0, 0, 0, 0);
-    return normalized;
-  }
-
-  private toIsoDateKey(date: Date): string {
-    const utc = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
-    return new Date(utc).toISOString().split('T')[0];
-  }
-
-  private formatDayLabel(date: Date): string {
-    return date.toLocaleDateString(this.intlLocale, { weekday: 'short' });
-  }
-
-  private formatWeekLabel(weekStart: Date): string {
-    return weekStart.toLocaleDateString(this.intlLocale, { day: '2-digit', month: 'short' });
-  }
-
-  private formatDuration(totalSeconds: number): string {
-    if (!totalSeconds) {
-      return this.transloco.translate('dashboard.duration.seconds', { seconds: 0 });
-    }
-
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-
-    if (minutes && seconds) {
-      return this.transloco.translate('dashboard.duration.minutesSeconds', { minutes, seconds });
-    }
-
-    if (minutes) {
-      return this.transloco.translate('dashboard.duration.minutes', { minutes });
-    }
-
-    return this.transloco.translate('dashboard.duration.seconds', { seconds });
-  }
-
-  private endOfWeek(date: Date): Date {
-    const target = new Date(date);
-    const distanceToSunday = (7 - target.getDay()) % 7;
-    return this.addDays(target, distanceToSunday);
-  }
-
-  private updateViewportWidth(): void {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    this.viewportWidth.set(window.innerWidth);
-  }
+/** #835: yanıttan son `count` günün kayıtları (bugün dahil). */
+export function recentDays(response: UserActivityResponse | null | undefined, count: number, now: Date = new Date()): UserActivityDay[] {
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (count - 1));
+  const from = dayKey(start);
+  return (response?.days ?? []).filter((day) => (day?.dateUtc ?? '').slice(0, 10) >= from);
 }

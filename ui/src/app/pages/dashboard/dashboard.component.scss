@@ -37,8 +37,7 @@ $bp-narrow: 480px; // dar telefon: özet kartları sabit 2 sütun
   scrollbar-width: none;
 }
 
-.cards::-webkit-scrollbar,
-.heatmap-scroll::-webkit-scrollbar {
+.cards::-webkit-scrollbar {
   display: none;
 }
 
@@ -61,6 +60,11 @@ $bp-narrow: 480px; // dar telefon: özet kartları sabit 2 sütun
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+// #835: "Atanmış testler" ile "Son 4 hafta" arasında bölüm boşluğu.
+.dashboard-section + .dashboard-section {
+  margin-top: 20px;
 }
 
 // ===== Karşılama + son giriş (issue #126) =====
@@ -206,6 +210,8 @@ $bp-narrow: 480px; // dar telefon: özet kartları sabit 2 sütun
 .compact-tests .psds-carousel__track {
   gap: 12px;
   padding: 2px 0;
+  // #835: global `.psds-carousel__track` ortalıyor; tek ödev ortada yüzüyor, taşınca soldaki kart kesiliyordu.
+  justify-content: flex-start;
 }
 
 // <li> sade listitem; role="button" içteki app-compact-test-card host'unda. li track içinde büzüşmesin.
@@ -279,18 +285,18 @@ $bp-narrow: 480px; // dar telefon: özet kartları sabit 2 sütun
   }
 }
 
-// Heat map genişliği TS'de kapsayıcıdan ölçülür (activityHeatmapView); kaydırma yalnızca en az hafta sayısı
-// sığmadığında ve yalnızca bu kapsayıcının içinde olur.
-.heatmap-scroll {
-  width: 100%;
-  min-width: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
+.stat-card__detail {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--paragraphFontFamily);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ms-text-weak);
 }
 
-.heatmap-mobile-hint {
-  display: none;
-  margin: -4px 0 4px;
+// #835: son 4 hafta ızgarasının altındaki teşvik cümlesi.
+.recent-activity__hint {
+  margin: 0;
   font-size: 12px;
   color: var(--ms-text-weak);
 }
@@ -409,10 +415,6 @@ $bp-narrow: 480px; // dar telefon: özet kartları sabit 2 sütun
 
   .stat-card {
     padding: 10px 12px;
-  }
-
-  .heatmap-mobile-hint {
-    display: block;
   }
 
   .earned-badges-container {

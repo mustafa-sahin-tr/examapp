@@ -1066,6 +1066,7 @@
     },
     "welcome": {
       "title": "Hoş geldin",
+      "titleNamed": "Hoş geldin, {{name}}",
       "lastLogin": "Son giriş: {{value}}"
     },
     "dailyQuestions": {
@@ -1123,22 +1124,13 @@
     "activity": {
       "loading": "Aktivite verisi yükleniyor...",
       "error": "Aktivite verisi alınırken bir hata oluştu.",
-      "empty": "Son bir yıl için aktivite verisi bulunamadı.",
-      "totalQuestions": "Toplam Soru",
-      "correctAnswers": "Doğru Cevap",
-      "studyMinutes": "Çalışma Süresi (dk)",
-      "activityScore": "Aktivite Skoru"
-    },
-    "tooltip": {
-      "questions": "Soru",
-      "correct": "Doğru",
-      "duration": "Süre",
-      "activityScore": "Aktivite Skoru"
-    },
-    "duration": {
-      "minutes": "{{minutes}} dk",
-      "seconds": "{{seconds}} sn",
-      "minutesSeconds": "{{minutes}} dk {{seconds}} sn"
+      "totalQuestions": "Çözülen soru",
+      "studyMinutes": "Çalışma süresi (dk)",
+      "title": "Son 4 hafta",
+      "hint": "Her gün biraz çözmek serini büyütür.",
+      "accuracy": "Doğru oranı",
+      "correctOf": "{{total}} sorudan {{correct}} doğru",
+      "dayCell": "{{date}}: {{count}} soru"
     },
     "badges": {
       "title": "Rozetler",

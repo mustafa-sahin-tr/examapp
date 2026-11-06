@@ -154,6 +154,13 @@ export const routes: Routes = [
       // Issue #373: yalnız öğrenci verisiyle çalışır; öğretmen/admin boş sayfa + 500 görüyordu → /dashboard'a yönlendirilir.
       { path: 'student-profile', component: StudentProfileComponent, canActivate: [authGuard, studentGuard] },
       {
+        // #847: öğrencinin ayarları (sınıf, tema, hesap, veliler) profilden ayrı.
+        path: 'student-settings',
+        canActivate: [authGuard, studentGuard],
+        loadComponent: () =>
+          import('./pages/student-settings/student-settings.component').then((m) => m.StudentSettingsComponent),
+      },
+      {
         // Issue #440/#441: veli bilgisi ekle / e-postayı düzelt (süre dolunca öğrencinin tek ekranı).
         path: PARENT_REQUIRED_PATH,
         canActivate: [authGuard, studentGuard],

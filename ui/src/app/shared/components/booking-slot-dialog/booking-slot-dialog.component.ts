@@ -38,7 +38,7 @@ export interface BookingSlotDialogData {
 export type BookingSlotDialogResult = BookingResult | false;
 
 /** Issue #439: öğrencinin veli bağlantılarını gördüğü sayfa ("Velilerim" kartı). */
-export const STUDENT_PARENTS_ROUTE = '/student-profile';
+export const STUDENT_PARENTS_ROUTE = '/student-settings'; // #847: Velilerim kartı Ayarlar'da
 
 /** Aynı güne düşen slotlar tek başlık altında. */
 interface SlotGroup {

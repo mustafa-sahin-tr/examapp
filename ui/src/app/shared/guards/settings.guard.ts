@@ -3,7 +3,8 @@ import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 
 /** Öğrencinin ayarlar sayfası (öğrenciye özel sekmeler taşır, issue #373). */
-export const STUDENT_SETTINGS_URL = '/student-profile';
+/** #847: öğrencinin ayarları profilden ayrı sayfada. */
+export const STUDENT_SETTINGS_URL = '/student-settings';
 /** Öğretmen, admin ve veli için rol bazlı ayarlar sayfası (issue #417, #714). */
 export const SETTINGS_URL = '/settings';
 

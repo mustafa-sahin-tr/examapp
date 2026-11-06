@@ -14,7 +14,7 @@ describe('resolveActiveMenuItemId (issue #385)', () => {
         menu('tutors', '/tutors'),
         divider,
         menu('reports', '/certificates'),
-        menu('settings', '/student-profile'),
+        menu('settings', '/student-settings'),
     ];
 
     const TEACHER_ITEMS: RoutedMenuEntry[] = [
@@ -52,7 +52,7 @@ describe('resolveActiveMenuItemId (issue #385)', () => {
         ['/testsolve/44', 'exams'],
         ['/tutors/9', 'tutors'],
         ['/study', 'study'],
-        ['/student-profile#stats', 'settings'],
+        ['/student-settings#stats', 'settings'],
         ['/practice?daily=1', 'practice'],
         // Karşılığı olmayan sayfa: hiçbiri seçili değil — Dashboard'a düşülmez.
         ['/notifications', null],

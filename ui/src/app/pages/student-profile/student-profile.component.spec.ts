@@ -2,19 +2,18 @@ import type { MockedObject } from "vitest";
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient, withXhr } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { TranslocoService } from '@jsverse/transloco';
-import { Subject, of, throwError } from 'rxjs';
+import { of } from 'rxjs';
 
 import { StudentProfileComponent } from './student-profile.component';
 import { StudentService } from '../../services/student.service';
 import { TestService } from '../../services/test.service';
-import { BadgeProgressItem, BadgeService } from '../../services/badge.service';
+import { BadgeService } from '../../services/badge.service';
 import { StudentStatisticsResponse } from '../../models/statistics';
 import { StudentProfile } from '../../models/student-profile';
-import { BadgeThropyComponent } from '../../shared/components/badge-thropy/badge-thropy.component';
 
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import studentProfileTr from '../../../../public/i18n/student-profile/tr.json';
@@ -121,9 +120,7 @@ describe('StudentProfileComponent', () => {
                         errorCode: () => null,
                     },
                 },
-                { provide: Router, useValue: {
-                        navigate: vi.fn().mockName("Router.navigate")
-                    } },
+                provideRouter([]),
                 { provide: MatSnackBar, useValue: {
                         open: vi.fn().mockName("MatSnackBar.open")
                     } },
@@ -138,264 +135,67 @@ describe('StudentProfileComponent', () => {
         component = fixture.componentInstance;
     });
 
-    it('should create', () => {
+    function render(profile: Partial<StudentProfile>, summary?: Partial<{ totalQuestions: number; correctQuestions: number }>): HTMLElement {
+        localStorage.setItem('user', JSON.stringify({ id: 4 }));
+        studentService.getProfile.mockReturnValue(of(profile as StudentProfile));
+        studentService.loadGrades.mockReturnValue(of([{ id: 22, name: '5. Sınıf' }]));
+        if (summary) {
+            badgeService.getUserBadgeProgress.mockReturnValue(of({
+                summary: { ...summary } as never,
+                badgeProgress: [],
+                subjectBreakdown: [],
+            }));
+        }
         fixture.detectChanges();
+        return fixture.nativeElement as HTMLElement;
+    }
+
+    afterEach(() => localStorage.removeItem('user'));
+
+    it('should create', () => {
         expect(component).toBeTruthy();
     });
 
-    // "Badges" is the second mat-tab (index 1; issue #381 removed "Neler Var"); Angular Material lazily renders
-    // tab content, so it must be selected before app-badge-thropy appears in the DOM.
-    async function activateBadgesTab(): Promise<void> {
-        component.activeTab = 1;
-        fixture.detectChanges();
-        await vi.advanceTimersByTimeAsync(500); // mat-tab-group lazy-renders body content after the tab switch animation
-        fixture.detectChanges();
-    }
+    it('head_ShowsInitialsNameClassSchoolAndLevel (#847)', () => {
+        const el = render({ fullName: 'Pilot Öğrenci', gradeId: 22, schoolName: 'Yıldızlar Okulu', level: 3, xp: 261, avatarUrl: '' });
 
-    it('activeTab_SetToBadgesTab_RendersBadgeThropyComponentInsteadOfMockBadgeBox', async () => {
-        await activateBadgesTab();
-
-        const badgeThropyDebugElements = fixture.debugElement.nativeElement.querySelectorAll('app-badge-thropy');
-        expect(badgeThropyDebugElements.length).toBeGreaterThan(0);
-        expect(fixture.debugElement.nativeElement.querySelector('app-badge-box')).toBeNull();
+        expect(el.querySelector('.sp__avatar-initials')?.textContent?.trim()).toBe('PÖ');
+        expect(el.querySelector('h1')?.textContent).toContain('Pilot Öğrenci');
+        expect(el.querySelector('[data-testid="profile-subtitle"]')?.textContent?.trim()).toBe('5. Sınıf · Yıldızlar Okulu');
+        expect(el.querySelector('[data-testid="profile-level"]')?.textContent?.trim()).toBe('Seviye 3 · 261 puan');
+        // Sınıf seçimi artık profilde değil, Ayarlar'da açık bir eylem.
+        expect(el.querySelector('mat-select')).toBeNull();
+        expect(el.querySelector('[data-testid="profile-settings-link"]')?.getAttribute('href')).toBe('/student-settings');
     });
 
-    it('activeTab_SetToBadgesTab_RendersOnlyOneBadgeThropyInstance_NoDuplicateInInfoTab', async () => {
-        await activateBadgesTab();
+    it('stats_SolvedAndCorrectComeFromDashboardSource_TestsFromProfile (#847)', () => {
+        const el = render({ fullName: 'A', gradeId: 22, testsCompleted: 1, totalQuestionsSolved: 3, correctAnswers: 0 }, { totalQuestions: 25, correctQuestions: 2 });
 
-        const badgeThropyInstances = fixture.debugElement.nativeElement.querySelectorAll('app-badge-thropy');
-        expect(badgeThropyInstances.length).toBe(1);
+        const value = (key: string) => el.querySelector(`[data-key="${key}"] .sp__stat-value`)?.textContent?.trim();
+        expect(badgeService.getUserBadgeProgress).toHaveBeenCalledWith(4);
+        expect(value('solved')).toBe('25');
+        expect(value('correct')).toBe('2');
+        expect(value('tests')).toBe('1');
     });
 
-    // #149 CR Ö1: sayfanın "Rozetlerim" bölüm başlığı varken bileşen kendi başlığını tekrar etmez.
-    it('activeTab_SetToBadgesTab_BadgeThropyRendersWithoutOwnHeading', async () => {
-        await activateBadgesTab();
+    it('noTabs_BadgesAndThemeLiveElsewhere_CardsAndLeaderboardStay (#847)', () => {
+        const el = render({ fullName: 'A', gradeId: 22 });
 
-        const thropy = fixture.debugElement.query((debugEl) => debugEl.componentInstance instanceof BadgeThropyComponent);
-        expect((thropy.componentInstance as BadgeThropyComponent).showHeading).toBe(false);
-        expect((thropy.nativeElement as HTMLElement).querySelector('.ms-badge-title')).toBeNull();
-    });
-
-    // #322: "Bilgi" sekmesindeki eski `student.badges[].imageUrl` blogu kaldirildi; rozetler yalnizca
-    // "Rozetler" sekmesindeki app-badge-thropy ile (tek bolum) gosterilir.
-    it('activeTab_SetToInfoTab_DoesNotRenderLegacyBadgeImageBlock', async () => {
-        studentService.getProfile.mockReturnValue(of({ fullName: 'Ada Lovelace', gradeId: 5 } as StudentProfile));
-        fixture.detectChanges();
-        component.activeTab = 0;
-        fixture.detectChanges();
-        await vi.advanceTimersByTimeAsync(500);
-        fixture.detectChanges();
-
-        const host = fixture.nativeElement as HTMLElement;
-        expect(host.textContent).toContain('Ada Lovelace');
-        expect(host.querySelector('.badges-container')).toBeNull();
-        expect(host.querySelector('img.badge')).toBeNull();
-        expect(host.textContent).not.toContain('Kazanılan Rozetler');
-        expect(host.querySelectorAll('app-badge-thropy').length).toBe(0);
-    });
-
-    describe('report user id (auth user id, not StudentProfileDto.id)', () => {
-        let previousUser: string | null;
-
-        beforeEach(() => {
-            previousUser = localStorage.getItem('user');
-            localStorage.setItem('user', JSON.stringify({ id: 7 }));
-        });
-
-        afterEach(() => {
-            if (previousUser === null) {
-                localStorage.removeItem('user');
-            }
-            else {
-                localStorage.setItem('user', previousUser);
-            }
-        });
-
-        // API (StudentProfileDto.Id) ogrenci KAYIT id'sini de gonderir; frontend modelinde alan yok, gercek yuku taklit ediyoruz.
-        const profileWithStudentRecordId3 = { id: 3, fullName: 'Ada' } as unknown as StudentProfile;
-
-        function findBadgeThropy(): BadgeThropyComponent {
-            const debugEl = fixture.debugElement.query((el) => el.componentInstance instanceof BadgeThropyComponent);
-            expect(debugEl).toBeTruthy();
-            return debugEl.componentInstance as BadgeThropyComponent;
+        expect(el.querySelector('mat-tab-group')).toBeNull();
+        expect(el.querySelector('app-badge-thropy')).toBeNull();
+        expect(el.querySelector('app-user-theme-switcher')).toBeNull();
+        for (const card of ['app-target-goal-card', 'app-weak-topics-card', 'app-topic-progress-card', 'app-outcome-mastery-card', 'app-leaderboard']) {
+            expect(el.querySelector(card), card).not.toBeNull();
         }
-
-        it('activeTab_SetToBadgesTab_PassesStoredUserIdToBadgeThropy', async () => {
-            studentService.getProfile.mockReturnValue(of(profileWithStudentRecordId3));
-
-            await activateBadgesTab();
-
-            expect(findBadgeThropy().userId).toBe(7);
-            expect(badgeService.getUserBadgeProgress).toHaveBeenCalledWith(7);
-            expect(badgeService.getUserBadgeProgress).not.toHaveBeenCalledWith(3);
-        });
-
     });
 
-    // ── Issue #381 ───────────────────────────────────────────────────────────
-
-    function tabLabels(): string[] {
-        return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.mat-mdc-tab')).map((tab) => tab.textContent?.trim() ?? '');
-    }
-
-    async function selectTab(index: number): Promise<void> {
-        component.activeTab = index;
-        fixture.detectChanges();
-        await vi.advanceTimersByTimeAsync(500);
-        fixture.detectChanges();
-    }
-
-    it('infoTab_ShowsTopicProgressCard (#531)', () => {
-        fixture.detectChanges();
-        expect((fixture.nativeElement as HTMLElement).querySelector('app-topic-progress-card')).not.toBeNull();
-    });
-
-    it('infoTab_ShowsWeakTopicsCard (#521)', () => {
-        fixture.detectChanges();
-        expect((fixture.nativeElement as HTMLElement).querySelector('app-weak-topics-card')).not.toBeNull();
-    });
-
-    it('infoTab_ShowsAccountSecurityCard_LinkingKeycloakAccountConsole (issue #417)', () => {
-        fixture.detectChanges();
-        const el = fixture.nativeElement as HTMLElement;
-        const link = el.querySelector<HTMLAnchorElement>('app-account-security-card .acc-card__link');
-
-        expect(link).not.toBeNull();
-        expect(link?.getAttribute('href')).toBe('/realms/exam-realm/account');
-        expect(link?.getAttribute('target')).toBe('_blank');
-        expect(link?.textContent).toContain(accountSecurityTr.open);
-    });
-
-    it('infoTab_HidesAccountSecurityCard_ForParentManagedChildAccount (issue #438)', () => {
-        studentService.getProfile.mockReturnValue(of({ fullName: 'Ali Kaya', parentManaged: true } as StudentProfile));
-        fixture.detectChanges();
-        const el = fixture.nativeElement as HTMLElement;
-
-        // Veli yönetimli hesap kendi şifresini/e-postasını değiştirmez: Keycloak hesap konsolu bağlantısı yok.
-        expect(el.querySelector('app-account-security-card')).toBeNull();
-        expect(el.querySelector('a[href="/realms/exam-realm/account"]')).toBeNull();
-        expect(el.querySelector('app-student-parents-card')).not.toBeNull();
-    });
-
-    it('infoTab_HidesAccountSecurityCard_UntilProfileArrives (issue #438)', () => {
-        const profile$ = new Subject<StudentProfile>();
-        studentService.getProfile.mockReturnValue(profile$);
-        fixture.detectChanges();
-        const el = fixture.nativeElement as HTMLElement;
-
-        // Profil gelmeden veli yönetimli olup olmadığı bilinmez: kart gösterilmez (fail-closed).
-        expect(el.querySelector('app-account-security-card')).toBeNull();
-
-        profile$.next({ fullName: 'Ada Lovelace' } as StudentProfile);
-        fixture.detectChanges();
-        expect(el.querySelector('app-account-security-card')).not.toBeNull();
-    });
-
-    it('infoTab_ShowsReadOnlyParentsCard_WithoutInviteCodeGeneration (issue #436)', () => {
-        fixture.detectChanges();
-        const el = fixture.nativeElement as HTMLElement;
-        const card = el.querySelector('app-student-parents-card');
-
-        expect(card).not.toBeNull();
-        expect(card?.textContent).toContain(parentLinksTr.parents.title);
-        expect(card?.querySelector('[data-test="what-parent-sees"]')).not.toBeNull();
-        // Veli-öncelikli model: öğrenci kod üretmez (#419 kartı kaldırıldı).
-        expect(el.querySelector('app-parent-invite-card')).toBeNull();
-        expect(card?.querySelector('[data-test="generate"]')).toBeNull();
-    });
-
-    // Issue #722: ödev ve haftalık takvim sekmeleri Planım ve Ana Sayfa'nın kopyasıydı.
-    it('tabs_OnlyInfoBadgesAndTheme', () => {
-        fixture.detectChanges();
-        expect(tabLabels().length).toBe(3);
-    });
-
-    it('tabs_NoWhatsNewTab_InfoTabIsFirst', () => {
-        fixture.detectChanges();
-
-        expect(tabLabels()[0]).toBe(studentProfileTr.tabs.info);
-        expect(tabLabels()).not.toContain('Neler Var');
-        expect((fixture.nativeElement as HTMLElement).querySelector('.learning-container, .features-container')).toBeNull();
-        expect('what' in studentProfileTr.tabs).toBe(false);
-        expect('learning' in studentProfileTr).toBe(false);
-    });
-
-    it('badgesTab_NoFakePointCards_AndSectionHeadersHaveNoIcons', async () => {
-        await activateBadgesTab();
-        const host = fixture.nativeElement as HTMLElement;
-
-        expect(host.querySelector('app-point-card')).toBeNull();
-        for (const fake of ['2,500', '3rd', '128']) {
-            expect(host.textContent, fake).not.toContain(fake);
-        }
-        // #833: bölüm başlıkları ikonsuz (ortak başlık seti); kırık <img> da yok.
-        expect(host.querySelector('app-section-header img, app-section-header mat-icon')).toBeNull();
-        expect(host.querySelectorAll('app-section-header h2.ms-section-title').length).toBe(2);
-    });
-
-    it('infoAndBadgesTabs_NoImagePointsToMissingAssets', async () => {
-        const missing = /assets\/(experts|certification|learning-path|hands-on|icons\/)/;
-        for (const index of [0, 1]) {
-            await selectTab(index);
-            const sources = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('img')).map((img) => img.getAttribute('src') ?? '');
-            for (const src of sources) {
-                expect(src, `tab ${index}`).not.toMatch(missing);
+    it('allKeysExistInBothLanguages', () => {
+        const transloco = TestBed.inject(TranslocoService);
+        for (const key of ['profile.level', 'profile.settings', 'stats.solved', 'stats.correct', 'stats.tests', 'settings.grade.note']) {
+            for (const lang of ['tr', 'en']) {
+                const full = `student-profile.${key}`;
+                expect(transloco.translate(full, {}, lang), `${lang}:${key}`).not.toBe(full);
             }
         }
-    });
-
-    describe('Rozetlerim box states', () => {
-        const emptySummary = {
-            userId: 1,
-            totalQuestions: 0,
-            correctQuestions: 0,
-            accuracyPercentage: 0,
-            totalPoints: 0,
-            currentCorrectStreak: 0,
-            bestCorrectStreak: 0,
-            totalTimeSeconds: 0,
-            totalActiveDays: 0,
-            currentActivityStreak: 0,
-            bestActivityStreak: 0,
-            lastAnsweredAtUtc: null,
-            lastUpdatedUtc: null,
-        };
-
-        function badgeHost(): HTMLElement {
-            return (fixture.nativeElement as HTMLElement).querySelector('app-badge-thropy') as HTMLElement;
-        }
-
-        it('withBadges_RendersBadgeItems', async () => {
-            const badge = {
-                badgeDefinitionId: 'b1',
-                name: 'İlk Adım',
-                description: 'İlk sorunu çöz',
-                currentValue: 1,
-                targetValue: 1,
-                isCompleted: true,
-                earnedDateUtc: '2026-01-01T00:00:00Z',
-            } as BadgeProgressItem;
-            badgeService.getUserBadgeProgress.mockReturnValue(of({ summary: emptySummary, badgeProgress: [badge], subjectBreakdown: [] }));
-
-            await activateBadgesTab();
-
-            expect(badgeHost().querySelectorAll('.ms-badge-item').length).toBe(1);
-            expect(badgeHost().textContent).toContain('İlk Adım');
-        });
-
-        it('noBadges_RendersEmptyState', async () => {
-            await activateBadgesTab();
-
-            expect(badgeHost().querySelector('.ms-badge-empty')).not.toBeNull();
-        });
-
-        it('loadError_RendersErrorWithRetry', async () => {
-            vi.spyOn(console, 'error').mockReturnValue(undefined);
-            badgeService.getUserBadgeProgress.mockReturnValue(throwError(() => new Error('500')));
-
-            await activateBadgesTab();
-
-            expect(badgeHost().querySelector('.ms-badge-error[role="alert"] button')).not.toBeNull();
-        });
     });
 });

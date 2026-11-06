@@ -1,0 +1,47 @@
+<div class="ss" *transloco="let t; prefix: 'student-profile.settings'">
+  <app-page-header [title]="t('title')" [description]="t('subtitle')" />
+
+  <section class="ss__card" aria-labelledby="ss-grade">
+    <h2 id="ss-grade" class="ss__title">{{ t('grade.title') }}</h2>
+    @if (!editingGrade()) {
+      <div class="ss__row">
+        <span class="ss__value" data-testid="settings-grade">{{ gradeName() || '—' }}</span>
+        <button mat-stroked-button type="button" data-testid="settings-grade-change" [disabled]="!student()"
+          (click)="startGradeChange()">{{ t('grade.change') }}</button>
+      </div>
+      @if (gradeSaved()) {
+        <p class="ss__ok" role="status" data-testid="settings-grade-saved">{{ t('grade.saved') }}</p>
+      }
+    } @else {
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ss__select">
+        <mat-label>{{ t('grade.label') }}</mat-label>
+        <mat-select data-testid="settings-grade-select" [ngModel]="pendingGradeId()" (ngModelChange)="pendingGradeId.set($event)">
+          @for (grade of grades(); track grade.id) {
+            <mat-option [value]="grade.id">{{ grade.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <p class="ss__note">{{ t('grade.note') }}</p>
+      @if (gradeError()) {
+        <p class="ss__error" role="alert">{{ t('grade.error') }}</p>
+      }
+      <div class="ss__actions">
+        <button mat-flat-button type="button" data-testid="settings-grade-save" [disabled]="!canSaveGrade()"
+          (click)="saveGrade()">{{ t('grade.save') }}</button>
+        <button mat-button type="button" data-testid="settings-grade-cancel" (click)="cancelGradeChange()">{{ t('grade.cancel') }}</button>
+      </div>
+    }
+  </section>
+
+  <section class="ss__card" aria-labelledby="ss-theme">
+    <h2 id="ss-theme" class="ss__title">{{ t('theme') }}</h2>
+    <app-user-theme-switcher />
+  </section>
+
+  <!-- Issue #438: veli tarafından açılan çocuk hesabı kendi şifresini/e-postasını değiştirmez; profil gelene kadar da gizli. -->
+  @if (student() && !student()!.parentManaged) {
+    <app-account-security-card />
+  }
+  <!-- Issue #419 / #436: bağlı veliler (salt okunur). -->
+  <app-student-parents-card />
+</div>

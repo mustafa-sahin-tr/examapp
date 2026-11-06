@@ -1,0 +1,65 @@
+:host {
+  display: block;
+}
+
+.ss {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 820px;
+}
+
+.ss__card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+}
+
+.ss__title {
+  margin: 0;
+  font-size: 18px;
+}
+
+.ss__row,
+.ss__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.ss__row {
+  justify-content: space-between;
+}
+
+.ss__value {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.ss__select {
+  max-width: 320px;
+}
+
+.ss__note,
+.ss__ok,
+.ss__error {
+  margin: 0;
+  font-size: 14px;
+}
+
+.ss__note {
+  color: var(--ms-text-medium);
+}
+
+.ss__ok {
+  color: var(--ms-success-text);
+}
+
+.ss__error {
+  color: var(--ms-danger-text);
+}

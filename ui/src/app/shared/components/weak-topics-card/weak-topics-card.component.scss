@@ -54,3 +54,9 @@
   font-size: 0.8125rem;
   color: var(--ms-text-medium);
 }
+
+// #847: genel `mat-card-title` kuralı (ortalı, ayrı renk) ikonlu başlığı içeri kaydırıyordu; diğer kart başlıklarıyla aynı.
+.wt__card mat-card-title {
+  text-align: start;
+  color: inherit;
+}

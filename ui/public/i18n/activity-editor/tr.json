@@ -5,6 +5,8 @@
   "subtitle": "Kitap görseli olmadan içeriği yazarak madde oluştur; öğrenci telefonda da rahatça çözer.",
   "loading": "Yükleniyor…",
   "loadError": "Etkinlik yüklenemedi.",
+  "noActivity": "Önce bir etkinlik seç: madde, etkinliğin sayfasındaki “Görselsiz madde ekle” ile eklenir.",
+  "backToTests": "Testlere dön",
   "retry": "Yeniden dene",
   "formAria": "Madde içeriği",
   "startedWarning": "Bu etkinliğe {{count}} öğrenci başladı. Yeni madde yalnız etkinliğe bundan sonra başlayanlara görünür; başlamış ya da bitirmiş öğrencilerin listesi değişmez.",

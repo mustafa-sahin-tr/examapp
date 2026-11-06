@@ -99,6 +99,14 @@ describe('ActivityEditorComponent (#590)', () => {
 
   const el = (selector: string) => fixture.nativeElement.querySelector(selector) as HTMLElement | null;
 
+  it('etkinlik seçilmeden açılınca nedenini söyler ve testlere döndürür (#876)', async () => {
+    await setup({});
+
+    expect(el('[role="alert"]')?.textContent).toContain('Önce bir etkinlik seç');
+    el('[data-testid="ae-back-to-tests"]')!.click();
+    expect(router.navigate).toHaveBeenCalledWith(['/tests']);
+  });
+
   it('yeni D/Y maddesini görselsiz toplu kayıtla etkinliğe ekler ve etkinliğe döner', async () => {
     await setup({ testId: '9', gradeId: '5' });
     expect(component.matrix()?.columns).toEqual(['Doğru', 'Yanlış']);

@@ -80,8 +80,8 @@ export class ActivityCheckPanelComponent {
 
   /**
    * Issue #576 (E2E): dar ekranda kontrol sonrası panel ekranın çoğunu kaplıyordu. `collapsible` açıkken (sahibi dar ekranda
-   * verir) panel daraltılabilir; `collapsed` iken yalnız kompakt çubuk: özet + "Yeniden kontrol et" + genişlet oku. Hata
-   * varsa ya da henüz kontrol yoksa daraltılmış hal uygulanmaz (uyarı / ilk kontrol düğmesi görünür kalmalı).
+   * verir) panel daraltılabilir; `collapsed` iken yalnız kompakt çubuk: özet + "Kontrol et" / "Boşları doldur" + genişlet oku.
+   * Hata varsa daraltılmış hal uygulanmaz (uyarı görünür kalmalı).
    */
   readonly collapsible = input(false);
   readonly collapsed = input(false);
@@ -126,7 +126,6 @@ export class ActivityCheckPanelComponent {
    */
   readonly rowsOpen = computed(() => this.revealed() || this.rows().some((row) => !!row.status || !!row.solution));
   readonly busy = computed(() => this.checking() || this.revealing() || this.finishing());
-  readonly compact = computed(
-    () => this.collapsible() && this.collapsed() && this.hasChecked() && !this.error() && !this.revealed()
-  );
+  /** #844: mobilde ilk kontrolden önce de yalnız çubuk ("Kontrol et"); etkinlik içeriği önde kalsın. */
+  readonly compact = computed(() => this.collapsible() && this.collapsed() && !this.error() && !this.revealed());
 }

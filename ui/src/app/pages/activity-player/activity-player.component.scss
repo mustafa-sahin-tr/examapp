@@ -73,4 +73,23 @@
     bottom: 0;
     z-index: 2;
   }
+
+  // #844: açık sonuç paneli alttan açılan sayfa; içerik kaydırılır, arka plan karartılır.
+  .ap__panel--sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    z-index: 1001;
+    max-height: 75vh;
+    overflow-y: auto;
+    border-radius: 20px 20px 0 0;
+    box-shadow: var(--ms-shadow-overlay);
+  }
+
+  .ap__scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: var(--ms-scrim);
+  }
 }

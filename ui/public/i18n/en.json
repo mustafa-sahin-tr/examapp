@@ -1201,6 +1201,8 @@
       "fixEmail": "Fix email",
       "emailLocked": "You tried too many different email addresses; try again after {{date}}.",
       "devLink": "dev: activation link",
+      "graceDeadlineShort": "{{days}} days left",
+      "graceOverShort": "Time is up",
       "graceDeadline": "If your parent doesn't activate within {{days}} days, your account will be restricted.",
       "graceOver": "Your time to add a parent is over; your account is restricted until your parent activates their account."
     },

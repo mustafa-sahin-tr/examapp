@@ -45,6 +45,18 @@
   }
 }
 
+// #844: telefonda satır ve "Ayrıntılar" yan yana kalsın (süre kısa metinle).
+@media (max-width: 768px) {
+  .psc--compact {
+    flex-wrap: nowrap;
+
+    .psc__line {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+  }
+}
+
 // .psc__actions'ın margin-top'unu ezsin diye iki sınıfla.
 .psc__actions.psc__actions--inline {
   align-items: center;
@@ -120,4 +132,23 @@
   position: absolute;
   top: 0.375rem;
   right: 0.375rem;
+}
+
+// #844: mobilde ayrıntılı kart alttan açılan sayfada (panel zemini global `.ms-bottom-sheet`).
+.psc-sheet {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem 1.25rem;
+
+  .psc {
+    margin: 0;
+  }
+}
+
+.psc-sheet__grip {
+  justify-self: center;
+  width: 2.25rem;
+  height: 0.25rem;
+  border-radius: 999px;
+  background: var(--ms-border-strong);
 }

@@ -347,9 +347,14 @@
             </p>
           }
 
+          <!-- #844: mobilde açık sonuç paneli alttan açılan sayfa; arka plana dokunmak onu çubuğa indirir. -->
+          @if (sheetOpen()) {
+            <div activityFooter class="ap__scrim" data-testid="panel-scrim" aria-hidden="true" (click)="panelCollapsed.set(true)"></div>
+          }
           <app-activity-check-panel
             activityFooter
             class="ap__panel"
+            [class.ap__panel--sheet]="sheetOpen()"
             [checkCount]="checkCount()"
             [checking]="checking()"
             [revealing]="revealing()"

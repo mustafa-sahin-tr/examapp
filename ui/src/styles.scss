@@ -4410,6 +4410,15 @@ app-root,
   border-radius: 20px 20px 0 0;
 }
 
+// #844: genel mobil alt sayfa paneli (veli kartı ayrıntısı, etkinlik kontrol sonucu).
+.ms-bottom-sheet.mat-bottom-sheet-container {
+  padding: 0;
+  max-height: 80vh;
+  background: var(--ms-surface-strong);
+  color: var(--ms-text-strong);
+  border-radius: 20px 20px 0 0;
+}
+
 // Issue #701: kağıt çıktısı. Koyu tema zemini baskıya geçmesin.
 @page {
   size: A4;

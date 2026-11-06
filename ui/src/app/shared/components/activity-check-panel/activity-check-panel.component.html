@@ -3,24 +3,30 @@
   <section class="acp acp--compact" data-testid="check-compact">
     <p class="acp__compact-summary" aria-live="polite" data-testid="check-summary">
       @if (summary(); as s) { <b>{{ t('summary', { correct: s.correct, total: s.total }) }}</b> }
-      @if (stale()) { <span> · {{ t('staleShort') }}</span> }
+      @if (stale() && hasChecked()) { <span> · {{ t('staleShort') }}</span> }
     </p>
-    <button mat-flat-button type="button" class="acp__btn" data-testid="check" [disabled]="busy()" (click)="check.emit()">
-      @if (checking()) {
-        <mat-spinner diameter="18" aria-hidden="true"></mat-spinner>
-      } @else {
-        <mat-icon>fact_check</mat-icon>
-      }
-      {{ t(checking() ? 'checking' : 'recheck') }}
-    </button>
     <button mat-icon-button type="button" class="acp__toggle" data-testid="expand" aria-expanded="false"
       [attr.aria-label]="t('expand')" (click)="expand.emit()">
       <mat-icon>expand_less</mat-icon>
     </button>
+    @if (hasChecked() && rowCounts().empty > 0) {
+      <button mat-flat-button type="button" class="acp__btn" data-testid="fill-blanks" [disabled]="busy()" (click)="fillBlanks.emit()">
+        <mat-icon>edit_square</mat-icon>{{ t('fillBlanks') }}
+      </button>
+    } @else {
+      <button mat-flat-button type="button" class="acp__btn" data-testid="check" [disabled]="busy()" (click)="check.emit()">
+        @if (checking()) {
+          <mat-spinner diameter="18" aria-hidden="true"></mat-spinner>
+        } @else {
+          <mat-icon>fact_check</mat-icon>
+        }
+        {{ t(checking() ? 'checking' : hasChecked() ? 'recheck' : 'check') }}
+      </button>
+    }
   </section>
 } @else {
-<section class="acp" [class.acp--collapsible]="collapsible() && hasChecked() && !error() && !revealed()">
-  @if (collapsible() && hasChecked() && !error() && !revealed()) {
+<section class="acp" [class.acp--collapsible]="collapsible() && !error() && !revealed()">
+  @if (collapsible() && !error() && !revealed()) {
     <button mat-icon-button type="button" class="acp__toggle acp__toggle--corner" data-testid="collapse" aria-expanded="true"
       [attr.aria-label]="t('collapse')" (click)="collapse.emit()">
       <mat-icon>expand_more</mat-icon>

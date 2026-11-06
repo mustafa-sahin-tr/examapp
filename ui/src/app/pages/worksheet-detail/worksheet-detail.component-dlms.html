@@ -480,17 +480,20 @@
       <!-- ================= TEACHER ================= -->
       @if (view() === 'teacher') {
         <div class="hero">
-          <div class="hero-media small">
-            @if (d.worksheet.imageUrl) {
+          <!-- #838: kapak yalnız görsel varsa; yoksa başlığın yanında küçük tür ikonu (boş saat kutusu yok). -->
+          @if (d.worksheet.imageUrl) {
+            <div class="hero-media small">
               <img [src]="d.worksheet.imageUrl" [alt]="d.worksheet.name" [appStorageImageRetry]="imageRefresh" />
-            } @else {
-              <div class="thumb"><mat-icon>schedule</mat-icon></div>
-            }
-          </div>
+            </div>
+          }
           <div class="hero-body">
             <div class="title-row">
+              @if (!d.worksheet.imageUrl) {
+                <span class="type-icon" aria-hidden="true" data-testid="hero-type-icon">
+                  <mat-icon>{{ isActivity() ? 'extension' : 'quiz' }}</mat-icon>
+                </span>
+              }
               <h1>{{ d.worksheet.name }}</h1>
-              <span class="role-tag">{{ t('teacher.roleTag') }}</span>
             </div>
             @if (isSharedReadOnlyForTeacher()) {
               <div class="readonly-strip">
@@ -555,14 +558,21 @@
                 <button class="btn btn-ghost" data-testid="add-from-bank-btn" (click)="openBankQuestionDialog()">
                   <mat-icon>library_add</mat-icon>{{ t('teacher.addFromBank') }}
                 </button>
-                <button class="btn btn-ghost" (click)="editWorksheet(exam.id)">
-                  <mat-icon>edit</mat-icon>{{ t('teacher.edit') }}
+                <!-- #838: tek birincil eylem; ayarlar ve yazdır taşma menüsünde. -->
+                <button mat-icon-button type="button" class="hero-more" [matMenuTriggerFor]="heroMenu"
+                  [attr.aria-label]="t('teacher.moreActions')" data-testid="hero-more-btn">
+                  <mat-icon>more_vert</mat-icon>
                 </button>
-                @if (!isActivity()) {
-                  <button class="btn btn-ghost" data-testid="print-test-btn" (click)="printWorksheet(exam.id)">
-                    <mat-icon>print</mat-icon>{{ t('teacher.print') }}
+                <mat-menu #heroMenu="matMenu" xPosition="before">
+                  <button mat-menu-item type="button" data-testid="edit-test-btn" (click)="editWorksheet(exam.id)">
+                    <mat-icon>edit</mat-icon>{{ t('teacher.edit') }}
                   </button>
-                }
+                  @if (!isActivity()) {
+                    <button mat-menu-item type="button" data-testid="print-test-btn" (click)="printWorksheet(exam.id)">
+                      <mat-icon>print</mat-icon>{{ t('teacher.print') }}
+                    </button>
+                  }
+                </mat-menu>
               </div>
               @if (isActivity() && (exam?.instanceCount ?? 0) > 0) {
                 <p class="started-note" data-testid="started-note" *appIsTeacher>

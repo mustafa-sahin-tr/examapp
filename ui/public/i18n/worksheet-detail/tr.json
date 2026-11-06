@@ -89,7 +89,7 @@
     "nextItem": "Benzer sınav: \"{{name}}\""
   },
   "teacher": {
-    "roleTag": "ÖĞRETMEN",
+    "moreActions": "Diğer işlemler",
     "readonlyOwnerFallback": "Başka bir öğretmenin",
     "readonlyStrip": "{{owner}} sınavı · Salt görüntüleme",
     "copyToMyAccount": "Kendi hesabıma kopyala",
@@ -265,6 +265,8 @@
       "removed": "Madde {{number}} kaldırıldı.",
       "removeFailed": "Madde kaldırılamadı.",
       "dragAria": "Madde {{number}}'i sürükleyerek taşı",
+      "more": "Diğer işlemler",
+      "moreAria": "Madde {{number}} için diğer işlemler",
       "moveUp": "Yukarı taşı",
       "moveDown": "Aşağı taşı",
       "moveUpAria": "Madde {{number}}'i yukarı taşı",

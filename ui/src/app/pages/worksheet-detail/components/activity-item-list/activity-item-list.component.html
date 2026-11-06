@@ -93,17 +93,8 @@
                 }
               </div>
               @if (canEdit()) {
+                <!-- #838: düzenle görünür; taşı / kaldır taşma menüsünde (madde başına 4 ikon yerine 2) -->
                 <div class="ail__actions">
-                  <button mat-icon-button type="button" (click)="moveBy(i, -1)" [disabled]="first || busy()" disabledInteractive
-                    [attr.data-edge]="first" [matTooltip]="t('moveUp')" [attr.aria-label]="t('moveUpAria', { number: row.number })"
-                    data-testid="activity-item-move-up">
-                    <mat-icon>arrow_upward</mat-icon>
-                  </button>
-                  <button mat-icon-button type="button" (click)="moveBy(i, 1)" [disabled]="last || busy()" disabledInteractive
-                    [attr.data-edge]="last" [matTooltip]="t('moveDown')" [attr.aria-label]="t('moveDownAria', { number: row.number })"
-                    data-testid="activity-item-move-down">
-                    <mat-icon>arrow_downward</mat-icon>
-                  </button>
                   @if (row.formEditable) {
                     <button mat-icon-button type="button" (click)="edit(row)" [disabled]="busy()"
                       [matTooltip]="t('edit')" [attr.aria-label]="t('editAria', { number: row.number })"
@@ -111,16 +102,36 @@
                       <mat-icon>edit</mat-icon>
                     </button>
                   }
-                  <button mat-icon-button type="button" class="ail__remove" (click)="remove(row)" [disabled]="busy()"
-                    [matTooltip]="t('remove')" [attr.aria-label]="t('removeAria', { number: row.number })"
-                    data-testid="activity-item-remove">
-                    <mat-icon>delete_outline</mat-icon>
+                  <button mat-icon-button type="button" [matMenuTriggerFor]="rowMenu"
+                    [matMenuTriggerData]="{ row: row, index: i, first: first, last: last }"
+                    [disabled]="busy()" disabledInteractive
+                    [matTooltip]="t('more')" [attr.aria-label]="t('moreAria', { number: row.number })"
+                    data-testid="activity-item-more">
+                    <mat-icon>more_vert</mat-icon>
                   </button>
                 </div>
               }
             </li>
           }
         </ol>
+
+        <mat-menu #rowMenu="matMenu" xPosition="before">
+          <ng-template matMenuContent let-row="row" let-index="index" let-first="first" let-last="last">
+            <button mat-menu-item type="button" (click)="moveBy(index, -1)" [disabled]="first || busy()"
+              [attr.aria-label]="t('moveUpAria', { number: row.number })" data-testid="activity-item-move-up">
+              <mat-icon>arrow_upward</mat-icon>{{ t('moveUp') }}
+            </button>
+            <button mat-menu-item type="button" (click)="moveBy(index, 1)" [disabled]="last || busy()"
+              [attr.aria-label]="t('moveDownAria', { number: row.number })" data-testid="activity-item-move-down">
+              <mat-icon>arrow_downward</mat-icon>{{ t('moveDown') }}
+            </button>
+            <mat-divider></mat-divider>
+            <button mat-menu-item type="button" class="ail__remove" (click)="remove(row)" [disabled]="busy()"
+              [attr.aria-label]="t('removeAria', { number: row.number })" data-testid="activity-item-remove">
+              <mat-icon>delete_outline</mat-icon>{{ t('remove') }}
+            </button>
+          </ng-template>
+        </mat-menu>
       }
       <span class="cdk-visually-hidden" aria-live="polite" data-testid="activity-items-live">{{ announcement() }}</span>
       @if (saving()) {

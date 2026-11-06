@@ -50,6 +50,13 @@
           @if (item.type === 'divider') {
             <div class="menu-divider" [class.collapsed]="isSidenavCollapsed()"></div>
           }
+          @if (item.type === 'header') {
+            @if (isSidenavCollapsed()) {
+              <div class="menu-divider collapsed"></div>
+            } @else {
+              <div class="menu-group-title" role="heading" aria-level="2" [attr.data-testid]="item.id">{{ t(item.labelKey) }}</div>
+            }
+          }
         }
         <!-- Issue #706: profil menüsü yalnız açık masaüstü toolbar'ında; mobilde ve daraltılmış kenar çubuğunda çıkış burada. -->
         @if ((isAuthenticated | async) && (isMobile() || isSidenavCollapsed())) {

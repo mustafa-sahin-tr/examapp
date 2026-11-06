@@ -44,7 +44,8 @@ interface MenuItem {
   labelKey: string;
   icon: string;
   route: string;
-  type: 'menu' | 'divider';
+  /** `header`: grup başlığı (issue #726); daraltılmış kenar çubuğunda ayırıcı çizilir. */
+  type: 'menu' | 'divider' | 'header';
   /** Realm roles allowed to see this item. Omitted = visible to every role. */
   roles?: string[];
   /** Issue #287: yalnız hesabı onaylanmamış öğretmene görünür (başvuru durumu girişi). */
@@ -220,6 +221,9 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   // Menu items — single source of truth. `roles` omitted = visible to every role.
   // `labelKey` kök sözlükteki `layout.*` anahtarıdır; metin şablonda çevrilir (issue #183).
   menuItems: MenuItem[] = [
+    // Issue #726: admin paneli ve Yönetim menünün başında.
+    { id: 'admin-dashboard', labelKey: 'menu.dashboard', icon: 'insights', route: '/admin/dashboard', type: 'menu', roles: ['Admin'] },
+    { id: 'admin', labelKey: 'menu.admin', icon: 'admin_panel_settings', route: '/admin', type: 'menu', roles: ['Admin'] },
     // Issue #287: onaysız öğretmenin tek öğretmen girişi — öğretmene özel diğer tüm öğeler gizlenir.
     { id: 'teacher-approval-status', labelKey: 'menu.teacherApprovalStatus', icon: 'hourglass_top', route: TEACHER_APPROVAL_PENDING_URL, type: 'menu', onlyUnapprovedTeacher: true },
     { id: 'dashboard', labelKey: 'menu.dashboard', icon: 'dashboard', route: '/dashboard', type: 'menu', roles: ['Student', 'Teacher'] },
@@ -242,35 +246,39 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'my-children', labelKey: 'menu.myChildren', icon: 'family_restroom', route: '/my-children', type: 'menu', roles: ['Parent'] },
     { id: 'tutor-profile', labelKey: 'menu.tutors', icon: 'cast_for_education', route: '/tutor-profile', type: 'menu', roles: ['Teacher'], allowUnapprovedTeacher: true, onlyIndependentTeacher: true },
     { id: 'divider1', labelKey: '', icon: '', route: '', type: 'divider' },
-    // Issue #583: açık uçlu etkinlik cevaplarını değerlendirme kuyruğu.
-    { id: 'open-text-reviews', labelKey: 'menu.openTextReviews', icon: 'rate_review', route: '/open-text-reviews', type: 'menu', roles: ['Admin'] },
     // Issue #713: sayfa rozet sayfasıdır, rapor değil; yalnız öğrencide anlamlı.
     { id: 'badges', labelKey: 'menu.badges', icon: 'military_tech', route: '/certificates', type: 'menu', roles: ['Student'] },
-    // Issue #417: tüm roller (onay bekleyen öğretmen dahil — dil/hesap ayarı); rota role göre (#373: öğrenci /student-profile).
-    { id: 'settings', labelKey: 'menu.settings', icon: 'settings', route: this.settingsRoute, type: 'menu' },
-    { id: 'admin-dashboard', labelKey: 'menu.dashboard', icon: 'insights', route: '/admin/dashboard', type: 'menu', roles: ['Admin'] },
-    { id: 'admin', labelKey: 'menu.admin', icon: 'admin_panel_settings', route: '/admin', type: 'menu', roles: ['Admin'] },
+    // Issue #726: admin öğeleri başlıklı gruplarda (panel ve Yönetim en üstte). Başlık, altında görünen öğe yoksa düşer.
+    { id: 'group-users', labelKey: 'menu.groupUsers', icon: '', route: '', type: 'header', roles: ['Admin'] },
     { id: 'admin-teacher-approvals', labelKey: 'menu.teacherApprovals', icon: 'how_to_reg', route: '/admin/teacher-approvals', type: 'menu', roles: ['Admin'] },
     { id: 'admin-teachers', labelKey: 'menu.adminTeachers', icon: 'groups', route: '/admin/teachers', type: 'menu', roles: ['Admin'] },
     { id: 'admin-students', labelKey: 'menu.adminStudents', icon: 'school', route: '/admin/students', type: 'menu', roles: ['Admin'] },
+    { id: 'group-schools', labelKey: 'menu.groupSchools', icon: '', route: '', type: 'header', roles: ['Admin'] },
+    { id: 'admin-schools', labelKey: 'menu.adminSchools', icon: 'apartment', route: '/admin/schools', type: 'menu', roles: ['Admin'] },
     // Issue #361: tüm okulların bekleyen öğrenci okul üyelikleri.
     { id: 'admin-student-school-requests', labelKey: 'menu.studentSchoolRequests', icon: 'person_add', route: '/admin/student-school-requests', type: 'menu', roles: ['Admin'] },
-    { id: 'admin-schools', labelKey: 'menu.adminSchools', icon: 'apartment', route: '/admin/schools', type: 'menu', roles: ['Admin'] },
-    // Issue #148: rozet tanımları yönetimi.
-    { id: 'admin-badge-definitions', labelKey: 'menu.adminBadgeDefinitions', icon: 'military_tech', route: '/admin/badge-definitions', type: 'menu', roles: ['Admin'] },
-    // Issue #305: yorum şikayetleri (moderasyon).
-    { id: 'admin-comment-reports', labelKey: 'menu.adminCommentReports', icon: 'flag', route: '/admin/comment-reports', type: 'menu', roles: ['Admin'] },
-    // Issue #365: soru aktarımı (export/import) yalnız Admin.
+    { id: 'group-content', labelKey: 'menu.groupContent', icon: '', route: '', type: 'header', roles: ['Admin'] },
     { id: 'mock-exams', labelKey: 'menu.mockExams', icon: 'assignment_turned_in', route: '/mock-exams', type: 'menu', roles: ['Admin'] },
     { id: 'exam-templates', labelKey: 'menu.examTemplates', icon: 'rule', route: '/exam-templates', type: 'menu', roles: ['Admin'] },
     // Issue #695: `TargetGoals:Enabled` kapalıyken görünmez.
     { id: TARGET_PROGRAMS_MENU_ID, labelKey: 'menu.targetPrograms', icon: 'flag_circle', route: '/target-programs', type: 'menu', roles: ['Admin'] },
     { id: 'questiongeneration', labelKey: 'menu.questionGeneration', icon: 'auto_awesome', route: '/question-generation', type: 'menu', roles: ['Admin', 'QuestionTrainer'] },
+    // Issue #365: soru aktarımı (export/import) yalnız Admin.
     { id: 'questiontransfer', labelKey: 'menu.questionTransfer', icon: 'swap_horiz', route: '/question-transfer', type: 'menu', roles: ['Admin'] },
     // Soru tespit modeli için işaretleme modu (test/soru kaydı yok, yalnız eğitim verisi); send-to-fix ile aynı roller.
     { id: 'labeling', labelKey: 'menu.labeling', icon: 'model_training', route: '/labeling', type: 'menu', roles: ['Admin', 'QuestionTrainer'] },
     // Issue #577: işaretleme kitap kaydı (sayfa ofseti, cevap anahtarı, içindekiler).
     { id: 'labeling-books', labelKey: 'menu.labelingBooks', icon: 'menu_book', route: '/books', type: 'menu', roles: ['Admin', 'QuestionTrainer'] },
+    // Issue #148: rozet tanımları yönetimi.
+    { id: 'admin-badge-definitions', labelKey: 'menu.adminBadgeDefinitions', icon: 'military_tech', route: '/admin/badge-definitions', type: 'menu', roles: ['Admin'] },
+    { id: 'group-moderation', labelKey: 'menu.groupModeration', icon: '', route: '', type: 'header', roles: ['Admin'] },
+    // Issue #583: açık uçlu etkinlik cevaplarını değerlendirme kuyruğu.
+    { id: 'open-text-reviews', labelKey: 'menu.openTextReviews', icon: 'rate_review', route: '/open-text-reviews', type: 'menu', roles: ['Admin'] },
+    // Issue #305: yorum şikayetleri (moderasyon).
+    { id: 'admin-comment-reports', labelKey: 'menu.adminCommentReports', icon: 'flag', route: '/admin/comment-reports', type: 'menu', roles: ['Admin'] },
+    { id: 'divider-settings', labelKey: '', icon: '', route: '', type: 'divider', roles: ['Admin'] },
+    // Issue #417: tüm roller (onay bekleyen öğretmen dahil — dil/hesap ayarı); rota role göre (#373: öğrenci /student-profile).
+    { id: 'settings', labelKey: 'menu.settings', icon: 'settings', route: this.settingsRoute, type: 'menu' },
   ];
   /**
    * Issue #719: menüde tek girişi olan bölümlerin alt sayfaları. Görünürlük menü öğeleriyle aynı kuraldan geçer;
@@ -360,10 +368,11 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     return item.roles.some((r) => roles.includes(r));
   }
 
-  /** Drop leading/trailing dividers and collapse consecutive ones. */
+  /** Drop leading/trailing dividers, collapse consecutive ones and drop group headers with no item under them. */
   private stripDividers(items: MenuItem[]): MenuItem[] {
     const result: MenuItem[] = [];
-    for (const item of items) {
+    const withItems = items.filter((item, i) => item.type !== 'header' || items[i + 1]?.type === 'menu');
+    for (const item of withItems) {
       if (item.type === 'divider') {
         if (result.length === 0 || result[result.length - 1].type === 'divider') {
           continue;

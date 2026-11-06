@@ -32,6 +32,10 @@
       "goToProfile": "Profile Git",
       "newComment": "Yeni yorum",
       "view": "Görüntüle"
+    },
+    "routeDenied": {
+      "role": "Bu sayfa hesabın için açık değil; ana sayfaya döndün.",
+      "independentTeacher": "Bu sayfa yalnız bağımsız öğretmenler için; ana sayfaya döndün."
     }
   },
   "layout": {

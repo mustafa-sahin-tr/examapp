@@ -1014,8 +1014,11 @@ describe('EnhancedLayoutComponent brand name (issue #409)', () => {
     });
 });
 
-/** Issue #375: profil menüsünde yalnız çalışan öğeler (Ayarlar, Bildirimler, Çıkış). #417: Ayarlar tüm rollerde. */
-describe('EnhancedLayoutComponent profile menu (issue #375)', () => {
+/**
+ * Issue #375: profil menüsünde yalnız çalışan öğeler. #417: Ayarlar tüm rollerde (öğrencide profil sayfası).
+ * #846: menü kim olduğunu gösterir; öğrencide Profilim + Rozetlerim; tema ve dil menünün içinde; Çıkış ayrı grupta.
+ */
+describe('EnhancedLayoutComponent profile menu (issue #375, #846)', () => {
     let fixture: ComponentFixture<EnhancedLayoutComponent>;
 
     function setup(roles: string[]): void {
@@ -1026,38 +1029,59 @@ describe('EnhancedLayoutComponent profile menu (issue #375)', () => {
     afterEach(() => localStorage.removeItem('user'));
 
     function openProfileMenu(): HTMLElement[] {
-        const trigger = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('.profile-menu');
+        const trigger = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('[data-testid="user-menu-trigger"]');
         expect(trigger, 'profile menu trigger').not.toBeNull();
         trigger?.click();
         fixture.detectChanges();
-        return Array.from(document.querySelectorAll<HTMLElement>('.ms-menu-panel .ms-menu-item'));
+        return Array.from(document.querySelectorAll<HTMLElement>('.user-menu-panel [mat-menu-item]'));
     }
 
     function titles(items: HTMLElement[]): (string | undefined)[] {
-        return items.map((i) => i.querySelector('.ms-item-title')?.textContent?.trim());
+        return items.map((i) => i.querySelector('.mat-mdc-menu-item-text')?.textContent?.replace(/\s+/g, ' ').trim());
     }
 
-    it('student_SeesSettingsNotificationsAndLogoutOnly', () => {
+    it('student_SeesProfileBadgesNotificationsAndLogout (#846)', () => {
         setup(['Student']);
         const navigateSpy = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
         const items = openProfileMenu();
 
-        expect(titles(items)).toEqual(['Ayarlar', 'Bildirimler', 'Çıkış Yap']);
+        expect(titles(items)).toEqual(['Profilim', 'Rozetlerim', 'Bildirimler', 'Çıkış Yap']);
         items[0].click();
         expect(navigateSpy).toHaveBeenCalledWith(['/student-profile'], {});
+        items[1].click();
+        expect(navigateSpy).toHaveBeenCalledWith(['/certificates'], {});
     });
 
     for (const roles of [['Teacher'], ['Admin']]) {
-        it(`${roles[0]}_SeesSettingsNotificationsAndLogout_SettingsOpensSettingsPage (issue #417)`, () => {
+        it(`${roles[0]}_SeesNotificationsSettingsAndLogout_SettingsOpensSettingsPage (issue #417)`, () => {
             setup(roles);
             const navigateSpy = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
             const items = openProfileMenu();
 
-            expect(titles(items)).toEqual(['Ayarlar', 'Bildirimler', 'Çıkış Yap']);
-            items[0].click();
+            expect(titles(items)).toEqual(['Bildirimler', 'Ayarlar', 'Çıkış Yap']);
+            items[1].click();
             expect(navigateSpy).toHaveBeenCalledWith(['/settings'], {});
         });
     }
+
+    it('header_ShowsInitialsRoleGradeAndEmail_PreferencesInside (#846)', () => {
+        setup(['Student']);
+        const c = fixture.componentInstance;
+        c.userName.set('Pilot Öğrenci');
+        c.userEmail.set('student574@hedefokul.com');
+        c.userGradeName.set('5. Sınıf');
+        fixture.detectChanges();
+        openProfileMenu();
+
+        const who = document.querySelector<HTMLElement>('[data-testid="user-menu-who"]')!;
+        expect(who.querySelector('.um-who__avatar--initials')?.textContent?.trim()).toBe('PÖ');
+        expect(who.querySelector('[data-testid="user-menu-role"]')?.textContent?.trim()).toBe('Öğrenci · 5. Sınıf');
+        expect(who.querySelector('.um-who__email')?.getAttribute('title')).toBe('student574@hedefokul.com');
+        expect(document.querySelector('.user-menu-panel [data-testid="ump-theme"]')).not.toBeNull();
+        expect(document.querySelector('.user-menu-panel [data-testid="ump-language"]')).not.toBeNull();
+        // Oturum açmışken tema ve dil üst çubukta değil.
+        expect((fixture.nativeElement as HTMLElement).querySelector('.toolbar-language-switcher')).toBeNull();
+    });
 
     it('deadProfileHandlers_AreRemoved', () => {
         setup(['Student']);
@@ -1327,6 +1351,8 @@ describe('EnhancedLayoutComponent header (issue #720)', () => {
 
         img?.dispatchEvent(new Event('error'));
         fixture.detectChanges();
-        expect(img?.getAttribute('src')).toBe('default-avatar.png');
+        // #846: fotoğraf yüklenemezse baş harfler.
+        expect((fixture.nativeElement as HTMLElement).querySelector('.preview-image')).toBeNull();
+        expect((fixture.nativeElement as HTMLElement).querySelector('.user-initials')).not.toBeNull();
     });
 });

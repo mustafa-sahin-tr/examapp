@@ -20,12 +20,21 @@
           </div>
           @if (!isSidenavCollapsed()) {
             <button mat-icon-button class="toggle-btn" (click)="toggleSidenav()"
-              [matTooltip]="isMobile() ? t('sidebar.close') : t('sidebar.collapse')">
+              [matTooltip]="isMobile() ? t('sidebar.close') : t('sidebar.collapse')"
+              [attr.aria-label]="isMobile() ? t('sidebar.close') : t('sidebar.collapse')">
               <mat-icon>{{ isMobile() ? 'close' : 'chevron_left' }}</mat-icon>
             </button>
           }
         </div>
       </div>
+
+      <!-- #846: daraltılmış kenar çubuğunda görünür "genişlet" düğmesi (logoya tıklamak bir yerde yazmıyordu). -->
+      @if (isSidenavCollapsed()) {
+        <button mat-icon-button type="button" class="expand-btn" data-testid="sidebar-expand" (click)="toggleSidenav()"
+          [matTooltip]="t('sidebar.expand')" matTooltipPosition="right" [attr.aria-label]="t('sidebar.expand')">
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      }
 
       <!-- Navigation Menu -->
       <nav class="nav-menu">
@@ -109,7 +118,8 @@
 
       <!-- Enhanced Toolbar -->
 
-      @if (!isMobile() && !isFullScreen() && !isSidenavCollapsed() && !isQuestionCanvasRoute()) {
+      <!-- #846: kenar çubuğu daraltılınca üst çubuk (arama, zil, kullanıcı) kaybolmaz. -->
+      @if (!isMobile() && !isFullScreen() && !isQuestionCanvasRoute()) {
         <mat-toolbar color="primary">
           <div class="section-nav">
             @if (!isParentOnly) {
@@ -120,45 +130,71 @@
                 </div>
               }
             </div>
-            <app-language-switcher class="toolbar-language-switcher"></app-language-switcher>
-            <app-color-scheme-toggle class="toolbar-scheme-toggle"></app-color-scheme-toggle>
+            <!-- #846: tema ve dil oturum açmış kullanıcıda kullanıcı menüsünün içinde. -->
+            @if (!(isAuthenticated | async)) {
+              <app-language-switcher class="toolbar-language-switcher"></app-language-switcher>
+              <app-color-scheme-toggle class="toolbar-scheme-toggle"></app-color-scheme-toggle>
+            }
             @if( isAuthenticated | async) {
               <ng-container *ngTemplateOutlet="notificationBell; context: { $implicit: 'toolbar-notifications' }" />
-              <div class="profile-menu" mat-button [matMenuTriggerFor]="profileMenu">
-                <img [src]="userAvatarUrl() || 'default-avatar.png'" class="preview-image"
-                  [alt]="t('profile.avatarAlt')" (error)="userAvatarUrl.set('')" />
-                  <span class="username">{{ userName() }}</span>
-                </div>
-                <mat-menu #profileMenu="matMenu" class="ms-menu-panel">
-                  <!-- Başlık Bölümü -->
-                  <div class="ms-menu-header">
-                    <div class="ms-header-info">
-                      <div class="ms-user-name">{{ userName() }}</div>
-                      <div class="ms-user-email">{{ userEmail() }}</div>
-                    </div>
+              <button type="button" class="profile-menu" data-testid="user-menu-trigger" [matMenuTriggerFor]="profileMenu"
+                [attr.aria-label]="t('profile.menuLabel', { name: userName() })">
+                @if (userAvatarUrl()) {
+                  <img [src]="userAvatarUrl()" class="preview-image" [alt]="t('profile.avatarAlt')" (error)="userAvatarUrl.set('')" />
+                } @else {
+                  <span class="user-initials" aria-hidden="true">{{ userInitials() }}</span>
+                }
+                <span class="username">{{ userName() }}</span>
+                <mat-icon class="profile-menu__caret" aria-hidden="true">expand_more</mat-icon>
+              </button>
+              <!-- #846: kim olduğunu gösteren, ayarları toplayan menü. Issue #375: yalnız çalışan sayfaya giden öğeler. -->
+              <mat-menu #profileMenu="matMenu" class="ms-menu-panel user-menu-panel" xPosition="before">
+                <div class="um-who" data-testid="user-menu-who">
+                  @if (userAvatarUrl()) {
+                    <img [src]="userAvatarUrl()" class="um-who__avatar" [alt]="t('profile.avatarAlt')" />
+                  } @else {
+                    <span class="um-who__avatar um-who__avatar--initials" aria-hidden="true">{{ userInitials() }}</span>
+                  }
+                  <div class="um-who__text">
+                    <div class="um-who__name">{{ userName() }}</div>
+                    @if (userRoleKey) {
+                      <div class="um-who__role" data-testid="user-menu-role">
+                        {{ userGradeName() ? t('profile.role.' + userRoleKey) + ' · ' + userGradeName() : t('profile.role.' + userRoleKey) }}
+                      </div>
+                    }
+                    <div class="um-who__email" [title]="userEmail()">{{ userEmail() }}</div>
                   </div>
-                  <!-- Menü Öğeleri (issue #375: yalnız çalışan sayfaya giden öğeler). Issue #417: Ayarlar tüm rollere;
-                  öğrenci /student-profile, öğretmen/admin /settings. -->
-                  <button mat-menu-item class="ms-menu-item profile-settings-item" (click)="navigateTo(settingsRoute)">
-                    <mat-icon>settings</mat-icon>
-                    <div class="ms-item-content">
-                      <span class="ms-item-title">{{ t('menu.settings') }}</span>
-                    </div>
+                </div>
+                <mat-divider></mat-divider>
+                @if (isStudentUser) {
+                  <button mat-menu-item data-testid="user-menu-profile" (click)="navigateTo(settingsRoute)">
+                    <mat-icon>person</mat-icon><span>{{ t('profile.myProfile') }}</span>
                   </button>
-                  <button mat-menu-item class="ms-menu-item profile-notifications-item" (click)="onNotifications()">
-                    <mat-icon>notifications</mat-icon>
-                    <div class="ms-item-content">
-                      <span class="ms-item-title">{{ t('profile.notifications') }}</span>
-                    </div>
+                  <button mat-menu-item data-testid="user-menu-badges" (click)="navigateTo('/certificates')">
+                    <mat-icon>military_tech</mat-icon><span>{{ t('profile.myBadges') }}</span>
                   </button>
-                  <mat-divider class="ms-menu-divider"></mat-divider>
-                  <button mat-menu-item class="ms-menu-item profile-logout-item" (click)="logout()">
-                    <mat-icon>logout</mat-icon>
-                    <div class="ms-item-content">
-                      <span class="ms-item-title">{{ t('profile.logout') }}</span>
-                    </div>
+                }
+                <button mat-menu-item class="profile-notifications-item" (click)="onNotifications()">
+                  <mat-icon>notifications</mat-icon>
+                  <span class="um-item">
+                    {{ t('profile.notifications') }}
+                    @if (unreadNotificationCount() > 0) {
+                      <span class="um-count" data-testid="user-menu-unread">{{ unreadNotificationCount() > 99 ? '99+' : unreadNotificationCount() }}</span>
+                    }
+                  </span>
+                </button>
+                @if (!isStudentUser) {
+                  <button mat-menu-item class="profile-settings-item" (click)="navigateTo(settingsRoute)">
+                    <mat-icon>settings</mat-icon><span>{{ t('menu.settings') }}</span>
                   </button>
-                </mat-menu>
+                }
+                <mat-divider></mat-divider>
+                <app-user-menu-preferences />
+                <mat-divider></mat-divider>
+                <button mat-menu-item class="profile-logout-item um-logout" (click)="logout()">
+                  <mat-icon>logout</mat-icon><span>{{ t('profile.logout') }}</span>
+                </button>
+              </mat-menu>
               }
             </mat-toolbar>
           }

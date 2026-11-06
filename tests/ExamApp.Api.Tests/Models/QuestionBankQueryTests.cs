@@ -225,4 +225,16 @@ public class QuestionBankQueryTests
         new QuestionBankQuery { SkillIds = Enumerable.Range(1, QuestionBankQuery.MaxSkillIds + 1).ToArray() }.IsValid().ShouldBeFalse();
         new QuestionBankQuery { SkillIds = Enumerable.Range(1, QuestionBankQuery.MaxSkillIds).ToArray() }.IsValid().ShouldBeTrue();
     }
+
+    [Theory]
+    [InlineData("question", true)]
+    [InlineData("Activity", true)]
+    [InlineData("", true)]
+    [InlineData(null, true)]
+    [InlineData("mcq", false)]
+    [InlineData("activities", false)]
+    public void IsValid_Kind_AcceptsOnlyQuestionOrActivity_issue819(string? kind, bool expected)
+    {
+        new QuestionBankQuery { Kind = kind }.IsValid().ShouldBe(expected);
+    }
 }

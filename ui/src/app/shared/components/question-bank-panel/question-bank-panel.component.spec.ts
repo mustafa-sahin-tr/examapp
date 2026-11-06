@@ -173,10 +173,22 @@ describe('QuestionBankPanelComponent (issue #471)', () => {
                 hasCorrectAnswer: null,
                 inTest: null,
                 contextBased: null,
+                kind: null,
                 skillIds: [],
                 skip: 0,
                 take: 24,
             });
+        });
+
+        it('filter_Kind_MapsActivityAndQuestionAndResetsPage_issue819', () => {
+            component.pageIndex.set(2);
+            component.setKind('activity');
+            expect(component.filter().kind).toBe('activity');
+            expect(component.pageIndex()).toBe(0);
+            component.setKind('question');
+            expect(component.filter().kind).toBe('question');
+            component.setKind('any');
+            expect(component.filter().kind).toBeNull();
         });
 
         it('filter_EasyDifficulty_MapsToOneToThree', () => {
@@ -477,6 +489,20 @@ describe('QuestionBankPanelComponent (issue #471)', () => {
 
             const tags = Array.from(fixture.nativeElement.querySelectorAll('.qb-tag--warning') as NodeListOf<HTMLElement>).map((t) => t.textContent?.trim());
             expect(tags).toEqual([qbTr.card.unclassified, qbTr.card.noAnswer]);
+            fixture.destroy();
+        });
+
+        it('template_ActivityItem_ShowsActivityTag_issue819', async () => {
+            search.mockReturnValue(of(makePage([
+                makeItem(1, { interactionType: 'matchPairs' }),
+                makeItem(2, { interactionType: 'MCQ' }),
+                makeItem(3),
+            ])));
+            await settle();
+
+            const tags = fixture.nativeElement.querySelectorAll('[data-testid="activity-tag"]') as NodeListOf<HTMLElement>;
+            expect(tags.length).toBe(1);
+            expect(tags[0].textContent?.trim()).toBe(qbTr.card.activity);
             fixture.destroy();
         });
 

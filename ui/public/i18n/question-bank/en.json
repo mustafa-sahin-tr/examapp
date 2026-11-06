@@ -26,7 +26,10 @@
     "contextBased": "Context-based",
     "contextBasedYes": "Marked",
     "contextBasedNo": "Not marked",
-    "skills": "Skills"
+    "skills": "Skills",
+    "kind": "Type",
+    "kindQuestion": "Question",
+    "kindActivity": "Activity"
   },
   "results": {
     "total": "{{count}} questions",
@@ -53,7 +56,8 @@
     "cannotLinkTooltip": "An older question without a recorded owner; it can't be added to a test. Copy its test to use it.",
     "bookTooltip": "Classified from the book's table of contents",
     "contextBased": "Context-based",
-    "skills": "Skills"
+    "skills": "Skills",
+    "activity": "Activity"
   },
   "preview": {
     "title": "Question #{{id}}",

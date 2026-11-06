@@ -16,6 +16,15 @@
       </mat-button-toggle-group>
 
       <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>{{ t('filters.kind') }}</mat-label>
+        <mat-select data-testid="filter-kind" [value]="kind()" (selectionChange)="setKind($event.value)">
+          <mat-option value="any">{{ t('filters.any') }}</mat-option>
+          <mat-option value="question">{{ t('filters.kindQuestion') }}</mat-option>
+          <mat-option value="activity">{{ t('filters.kindActivity') }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
         <mat-label>{{ t('filters.difficulty') }}</mat-label>
         <mat-select [value]="difficulty()" (selectionChange)="setDifficulty($event.value)">
           <mat-option value="any">{{ t('filters.any') }}</mat-option>
@@ -149,6 +158,9 @@
             <span>{{ t('card.testCount', { count: item.testCount }) }}</span>
           </div>
           <div class="qb-card__flags">
+            @if (isActivity(item)) {
+              <span class="qb-tag qb-tag--activity" data-testid="activity-tag">{{ t('card.activity') }}</span>
+            }
             @if (!item.isClassified) {
               <span class="qb-tag qb-tag--warning">{{ t('card.unclassified') }}</span>
             }

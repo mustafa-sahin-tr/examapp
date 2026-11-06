@@ -1,6 +1,8 @@
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Services.Interactions;
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.Services.Questions;
@@ -263,6 +265,13 @@ public class QuestionQueryService : IQuestionQueryService
         return rows.Select(r => r.Dto).ToList();
     }
 
+    // Issue #819: etkinlik maddesi — etkileşim tipi dolu ve mcq değil (QuestionService.IsInteractive ile aynı ayrım).
+    private static readonly Expression<Func<Question, bool>> IsActivity =
+        q => q.InteractionType != null && q.InteractionType != "" && q.InteractionType.ToLower() != McqGrader.Type;
+
+    private static readonly Expression<Func<Question, bool>> IsNotActivity =
+        q => q.InteractionType == null || q.InteractionType == "" || q.InteractionType.ToLower() == McqGrader.Type;
+
     public async Task<QuestionBankPageDto> SearchBankAsync(QuestionBankQuery filter, int userId, bool isAdmin, CancellationToken ct = default)
     {
         var page = new QuestionBankPageDto { Skip = Math.Max(0, filter.Skip), Take = filter.EffectiveTake };
@@ -338,10 +347,19 @@ public class QuestionQueryService : IQuestionQueryService
             query = inTest
                 ? query.Where(q => visibleMemberships.Any(tq => tq.QuestionId == q.Id))
                 : query.Where(q => !visibleMemberships.Any(tq => tq.QuestionId == q.Id));
+        // Issue #819: etkinlik maddesi = etkileşim tipi boş / mcq olmayan; doğruluğu doğru şıkta değil çözümdedir.
+        if (filter.IsActivityKind)
+            query = query.Where(IsActivity);
+        else if (filter.IsQuestionKind)
+            query = query.Where(IsNotActivity);
         if (filter.HasCorrectAnswer is { } hasCorrectAnswer)
             query = hasCorrectAnswer
-                ? query.Where(q => q.CorrectAnswerId != null)
-                : query.Where(q => q.CorrectAnswerId == null);
+                ? query.Where(q => q.InteractionType == null || q.InteractionType == "" || q.InteractionType.ToLower() == McqGrader.Type
+                    ? q.CorrectAnswerId != null
+                    : q.InteractionSolution != null)
+                : query.Where(q => q.InteractionType == null || q.InteractionType == "" || q.InteractionType.ToLower() == McqGrader.Type
+                    ? q.CorrectAnswerId == null
+                    : q.InteractionSolution == null);
         // Issue #703: bağlam temelli bayrak ve beceriler (beceriler kendi içinde VEYA).
         if (filter.ContextBased is { } contextBased)
             query = query.Where(q => q.IsContextBased == contextBased);
@@ -379,7 +397,10 @@ public class QuestionQueryService : IQuestionQueryService
                 DifficultyLevel = q.DifficultyLevel,
                 ClassificationSource = q.ClassificationSource,
                 IsClassified = q.SubjectId != null && q.TopicId != null,
-                HasCorrectAnswer = q.CorrectAnswerId != null,
+                HasCorrectAnswer = q.InteractionType == null || q.InteractionType == "" || q.InteractionType.ToLower() == McqGrader.Type
+                    ? q.CorrectAnswerId != null
+                    : q.InteractionSolution != null,
+                InteractionType = q.InteractionType,
                 IsContextBased = q.IsContextBased,
                 SkillCodes = q.QuestionSkills.OrderBy(qs => qs.Skill.SortOrder).Select(qs => qs.Skill.Code).ToList(),
                 TestCount = visibleMemberships.Count(tq => tq.QuestionId == q.Id),

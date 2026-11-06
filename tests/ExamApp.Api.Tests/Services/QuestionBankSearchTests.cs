@@ -628,4 +628,33 @@ public class QuestionBankSearchTests : IDisposable
                 .ShouldBe(Expect(_qB1));
         }
     }
+
+    [Fact]
+    public async Task SearchBankAsync_FilterByKind_SplitsActivitiesFromQuestions_issue819()
+    {
+        int solved, unsolved;
+        await using (var ctx = _db.NewContext())
+        {
+            (await ctx.Questions.SingleAsync(q => q.Id == _qA2)).InteractionType = "MCQ";
+            solved = Add(ctx, TeacherA, new Question { Text = "eşleştir", InteractionType = "matchPairs", InteractionSolution = "{}" }).Id;
+            unsolved = Add(ctx, TeacherA, new Question { Text = "sırala", InteractionType = "ordering" }).Id;
+            await ctx.SaveChangesAsync();
+        }
+
+        var activities = await SearchAsync(Admin, isAdmin: true, new QuestionBankQuery { Scope = "all", Kind = "activity" });
+        IdsOf(activities).ShouldBe(Sorted(new[] { solved, unsolved }));
+        activities.Items.Single(i => i.Id == solved).ShouldSatisfyAllConditions(
+            i => i.InteractionType.ShouldBe("matchPairs"),
+            i => i.HasCorrectAnswer.ShouldBeTrue());
+        activities.Items.Single(i => i.Id == unsolved).HasCorrectAnswer.ShouldBeFalse();
+
+        // Boş ya da mcq etkileşim tipi klasik sorudur.
+        IdsOf(await SearchAsync(Admin, isAdmin: true, new QuestionBankQuery { Scope = "all", Kind = "question" })).ShouldBe(Sorted(_live));
+
+        // Etkinlikte "doğru cevabı var" kayıtlı çözüme bakar.
+        IdsOf(await SearchAsync(Admin, isAdmin: true, new QuestionBankQuery { Scope = "all", HasCorrectAnswer = true }))
+            .ShouldBe(Sorted(new[] { _qA1, solved }));
+        IdsOf(await SearchAsync(Admin, isAdmin: true, new QuestionBankQuery { Scope = "all", Kind = "activity", HasCorrectAnswer = false }))
+            .ShouldBe(new[] { unsolved });
+    }
 }

@@ -60,8 +60,8 @@ public class ClaudeLabelDetectorTests
         NullLoggerFactory.Instance);
 
     private static object Block(string kind, int x1, int y1, int x2, int y2, string component = "none",
-        string interactionType = "none") =>
-        new { kind, component, interactionType, x1, y1, x2, y2 };
+        string interactionType = "none", bool answerShown = false) =>
+        new { kind, component, interactionType, answerShown, x1, y1, x2, y2 };
 
     private static async Task<(ClaudeDetection Detection, FakeChatClient Chat)> DetectAsync(
         object[] blocks, LabelingPromptSettings? prompt = null, int maxBlocks = 40, int optionCount = 2,
@@ -110,6 +110,31 @@ public class ClaudeLabelDetectorTests
 
         // Token'lar: sayfa + iki kırpma.
         detection.InputTokens.ShouldBe(3 * FakeChatClient.InputTokensPerCall);
+    }
+
+    [Fact]
+    public async Task DetectAsync_AnswerShown_KeptOnlyForQuestionsAndActivities()
+    {
+        // Issue #791: basılı cevap bayrağı kaydedilebilecek bloklarda (soru, etkinlik, şık denemesiyle MCQ'ya dönen etkinlik)
+        // kalır; anlatım / cevap anahtarı / gürültüde atılır, false hiç yazılmaz.
+        var (detection, _) = await DetectAsync(
+        [
+            Block("mcq_question", 60, 100, 900, 300, answerShown: true),
+            Block("mcq_question", 60, 320, 900, 500),
+            Block("activity", 60, 520, 900, 700, "B", "slotFill", answerShown: true),
+            Block("activity", 60, 720, 900, 900, answerShown: true),
+            Block("answer_key", 60, 920, 900, 1100, answerShown: true),
+            Block("info_box", 60, 1120, 900, 1300, answerShown: true),
+        ]);
+
+        var p = detection.Predictions.Predictions;
+        p.Select(x => x.Kind).ShouldBe(["mcq_question", "mcq_question", "activity", "mcq_question", "answer_key", "info_box"]);
+        p.Select(x => x.AnswerShown).ShouldBe([true, null, true, true, null, null]);
+        p.SelectMany(x => x.Subpredictions).ShouldAllBe(o => o.AnswerShown == null);
+
+        var json = JsonSerializer.Serialize(detection.Predictions);
+        json.ShouldContain("\"answer_shown\":true");
+        json.ShouldNotContain("\"answer_shown\":false");
     }
 
     [Fact]

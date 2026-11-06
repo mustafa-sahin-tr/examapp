@@ -30,6 +30,7 @@
     "noSolutionPlacements": "The worked example has no solution placements",
     "answerCountMismatch": "There should be {{count}} choices",
     "noCorrectAnswer": "No correct answer",
+    "printedAnswer": "The page seems to show the answer (a marked choice, \"Answer: B\", a filled-in blank). Draw a mask over it so students do not see it.",
     "questionIssue": "Question {{no}}: {{messages}}",
     "moreQuestions": "and {{count}} more questions",
     "matrixNoRows": "No matrix rows drawn",

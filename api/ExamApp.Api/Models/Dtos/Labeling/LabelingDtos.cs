@@ -58,6 +58,15 @@ public class PredictionDto
     [JsonPropertyName("masks")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<RegionBoxDto>? Masks { get; set; }
+
+    /// <summary>
+    /// Issue #791: Claude bloğun cevabını sayfada basılı gördü (işaretli şık, "Cevap: B", doldurulmuş boşluk); işaretleme
+    /// ekranı maske yoksa uyarır. Yalnız Claude sonucunda, yalnız <c>mcq_question</c> / <c>activity</c> için true; aksi null.
+    /// Manuel kayıtta saklanmaz: kaydeden öğretmen karar vermiştir.
+    /// </summary>
+    [JsonPropertyName("answer_shown")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? AnswerShown { get; set; }
 }
 
 public class PredictionListDto

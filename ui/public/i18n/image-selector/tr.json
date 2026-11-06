@@ -30,6 +30,7 @@
     "noSolutionPlacements": "Örnek soru için solution placements yok",
     "answerCountMismatch": "Şık sayısı {{count}} olmalı",
     "noCorrectAnswer": "Doğru cevap yok",
+    "printedAnswer": "Sayfada cevap basılı görünüyor (işaretli şık, \"Cevap: B\", dolu boşluk). Öğrenci görmesin diye üstüne maske çizin.",
     "questionIssue": "{{no}}. soru: {{messages}}",
     "moreQuestions": "ve {{count}} soru daha",
     "matrixNoRows": "Matris satırı çizilmemiş",

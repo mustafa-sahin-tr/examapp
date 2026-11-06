@@ -136,7 +136,7 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
             if (!NeedsOptionCall(block.Kind))
             {
                 // Etkinlik / anlatım / cevap anahtarı / gürültü: şık aranmaz (2. aşama yok), yalnız pay + sayfa kırpması.
-                return ToPrediction(padded, block.Kind, []);
+                return ToPrediction(padded, block, []);
             }
 
             await gate.WaitAsync(ct);
@@ -157,7 +157,7 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
                     // Bileşensiz etkinliğin şık denemesi başarısız: etkinlik olarak kalır. Ödenmiş token yine sayılır.
                     _logger.LogWarning(ex, "[Labeling] option probe failed for a component-less activity (model {Model})", model.Id);
                     AddUsage(ex.Usage);
-                    return ToPrediction(padded, block.Kind, []);
+                    return ToPrediction(padded, block, []);
                 }
                 catch (LabelingAiException ex)
                 {
@@ -174,14 +174,14 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
                     .Select(r => Rectangle.Intersect(Rectangle.Inflate(r, prompt.OptionPadding, prompt.OptionPadding), pageBounds))
                     .ToList();
                 if (probe && optionRects.Count < MinProbeOptions)
-                    return ToPrediction(padded, block.Kind, []);
-                var kind = probe ? McqClassification : block.Kind;
+                    return ToPrediction(padded, block, []);
+                var detected = probe ? block with { Kind = McqClassification } : block;
                 var question = padded;
                 // Eğitim verisinde şıklar sorunun içinde olmalı: istenirse soru kutusu şıkların birleşimi kadar genişler.
                 if (prompt.ExpandQuestionToOptions)
                     question = optionRects.Aggregate(question, Rectangle.Union);
 
-                return ToPrediction(question, kind, optionRects
+                return ToPrediction(question, detected, optionRects
                     .Select(r => new PredictionDto { ClassId = 0, X = r.X, Y = r.Y, Width = r.Width, Height = r.Height })
                     .ToList());
             }
@@ -203,8 +203,11 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
 
     public void Dispose() => _chat?.Dispose();
 
-    /// <summary>1. aşama bloğunun sayfa uzayındaki dikdörtgeni ve normalleştirilmiş türü.</summary>
-    internal sealed record DetectedBlock(Rectangle Rect, LabelingBlocks.Classification Kind);
+    /// <summary>
+    /// 1. aşama bloğunun sayfa uzayındaki dikdörtgeni, normalleştirilmiş türü ve sayfada cevabının basılı görünüp görünmediği
+    /// (issue #791).
+    /// </summary>
+    internal sealed record DetectedBlock(Rectangle Rect, LabelingBlocks.Classification Kind, bool AnswerShown = false);
 
     /// <summary>
     /// 1. aşama yanıtı → sayfa uzayı: tür normalleştirilir (bilinmeyen → noise, loglanır), çok küçük kutular atılır.
@@ -233,7 +236,7 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
                     continue;
                 candidates++;
             }
-            result.Add(new DetectedBlock(rect, kind));
+            result.Add(new DetectedBlock(rect, kind, b.AnswerShown));
             if (result.Count >= maxBlocks)
                 break;
         }
@@ -244,18 +247,25 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
     private static bool NeedsOptionCall(LabelingBlocks.Classification kind) =>
         kind.Kind == LabelingBlocks.McqQuestion || (kind.Kind == LabelingBlocks.Activity && kind.Component is null);
 
-    private static PredictionDto ToPrediction(Rectangle box, LabelingBlocks.Classification kind, List<PredictionDto> options) => new()
+    private static PredictionDto ToPrediction(Rectangle box, DetectedBlock block, List<PredictionDto> options)
     {
-        ClassId = 0,
-        X = box.X,
-        Y = box.Y,
-        Width = box.Width,
-        Height = box.Height,
-        Subpredictions = options,
-        Kind = kind.Kind,
-        Component = kind.Component,
-        InteractionType = kind.InteractionType,
-    };
+        var kind = block.Kind;
+        // Issue #791: basılı cevap uyarısı yalnız kaydedilebilecek bloklarda anlamlı (soru / etkinlik).
+        var answerable = kind.Kind is LabelingBlocks.McqQuestion or LabelingBlocks.Activity;
+        return new()
+        {
+            ClassId = 0,
+            X = box.X,
+            Y = box.Y,
+            Width = box.Width,
+            Height = box.Height,
+            Subpredictions = options,
+            Kind = kind.Kind,
+            Component = kind.Component,
+            InteractionType = kind.InteractionType,
+            AnswerShown = answerable && block.AnswerShown ? true : null,
+        };
+    }
 
     private static string? Truncate(string? value, int max) =>
         value is null || value.Length <= max ? value : value[..max];
@@ -274,6 +284,10 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
         string Component,
         [property: Description("When kind is activity: matrixChoice, slotFill, dragPlace, match, textSelect, openText or other; otherwise \"none\".")]
         string InteractionType,
+        [property: Description("True when the page already shows this block's answer: a marked, circled, ticked or coloured " +
+            "correct option, an answer printed next to it (for example \"Cevap: B\"), or blanks that are already filled in. " +
+            "False otherwise and for kinds other than mcq_question and activity.")]
+        bool AnswerShown,
         int X1, int Y1, int X2, int Y2);
 
     internal sealed record OptionBoxes(List<OptionBox> Options);

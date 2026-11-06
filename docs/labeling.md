@@ -34,6 +34,11 @@ QuestionTrainer (onaylı, askıda olmayan öğretmen; gateway'de de kural var).
   boşluklarını, yazım yanlışı bulmayı ve düzeltmeyi kapsar; B'den ayrımı prompt'ta).
   **Kaydedilmiş özel prompt sürümü yeni varsayılanı ezer** (eski "yalnız MCQ" talimatıyla Claude yalnız `mcq_question` döner):
   yeni talimatı almak için Prompt penceresinde varsayılanı yükleyip kaydedin.
+- **Basılı cevap uyarısı (#791, `SchemaRevision` 7).** 1. aşama blokları `answerShown` taşır: sayfada cevap basılı/işaretli
+  (işaretli ya da renkli şık, "Cevap: B", dolu boşluk). Kural talimatta değil şema açıklamasında (talimat 4000 sınırında;
+  özel prompt sürümlerinde de geçerli). `PredictionDto.answer_shown` yalnız `mcq_question` / `activity` için ve yalnız `true`
+  yazılır. İşaretleme ekranı o bölgede maske (#581) yoksa uyarı gösterir (`warnings.printedAnswer`); kaydı engellemez, maske
+  çizilince kalkar. Manuel kayda yazılmaz: kaydeden öğretmen kararını vermiştir.
 - **API anahtarı repoya girmez.** Aspire: `dotnet user-secrets set "Parameters:anthropic-api-key" "<anahtar>" --project AppHost`
   (AppHost `anthropic-api-key` secret parametresi → exam API `Anthropic__ApiKey`); AppHost'u yeniden başlat. Anahtar
   yoksa model listesi boş döner, UI Claude seçeneğini kapatır, `ai-detect` 503. docker-compose'da tanımlı değil.

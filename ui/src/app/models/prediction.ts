@@ -51,6 +51,11 @@ export interface Prediction {
      * en çok 20). Manuel kayıtta saklanır, kayıt uygulanınca tuvale geri gelir.
      */
     masks?: PredictionMask[] | null;
+    /**
+     * Issue #791: Claude bloğun cevabını sayfada basılı gördü (işaretli şık, "Cevap: B", dolu boşluk). Yalnız Claude
+     * sonucunda ve yalnız `true` gelir; manuel kayıtta saklanmaz.
+     */
+    answer_shown?: boolean | null;
 }
 
 /** Issue #581: bölgeye göreli maske dikdörtgeni (exam API `RegionBoxDto`). */

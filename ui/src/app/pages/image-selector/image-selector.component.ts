@@ -659,6 +659,8 @@ export class ImageSelectorComponent {
   private draftFingerprints = new Map<string, string>();
   /** Issue #581: bölge adı → basılı cevap maskeleri (bölgeye göreli). */
   public masks = new Map<string, MaskBox[]>();
+  /** Issue #791: Claude'un cevabını sayfada basılı gördüğü bölgeler; maske yoksa uyarılır. */
+  public answerShown = new Set<string>();
   /**
    * Issue #578: bölge adına göre blok türü (+ etkinlik bileşeni). Kayıt yoksa `mcq_question`. `info_box` / `answer_key` /
    * `noise` kırpılmaz (eğitime, bankaya, teste gitmez); `activity` etkileşimli soru gibi eğitime gitmez.
@@ -1955,7 +1957,7 @@ export class ImageSelectorComponent {
     // Issue #581: soru tuvalinde (`authorActivities`) tipli etkinlik yazarlığı yapılır; uyarıları da görünür.
     const kind = this.getBlockKind(region.name);
     const authoredActivity = this.authorActivities && kind === 'activity' && isInteractiveType(type);
-    const messages = kind !== 'mcq_question' && !authoredActivity
+    const typeMessages = kind !== 'mcq_question' && !authoredActivity
       ? []
       : type === 'dragDropLabeling'
         ? this.dragDropIssues(region)
@@ -1974,6 +1976,8 @@ export class ImageSelectorComponent {
                     : type === REGION_PAINT
                       ? this.paintRegionsMessages(region.name)
                     : this.mcqIssues(region, { requireCorrectAnswer: true });
+    const printed = this.printedAnswerMessage(region.name, kind);
+    const messages = printed ? [...typeMessages, printed] : typeMessages;
 
     if (messages.length > 0) {
       this.warningMarkers.push({
@@ -1984,6 +1988,16 @@ export class ImageSelectorComponent {
         type: 'error',
       });
     }
+  }
+
+  /**
+   * Issue #791: Claude cevabı sayfada basılı gördü ve bölgede maske yok. Yalnız uyarı: kaydı engellemez (tahmin yanlış
+   * olabilir); maske çizilince kalkar.
+   */
+  private printedAnswerMessage(regionName: string, kind: BlockKind): string | null {
+    if (kind !== 'mcq_question' && kind !== 'activity') return null;
+    if (!this.answerShown.has(regionName) || this.getMasks(regionName).length > 0) return null;
+    return this.tr('warnings.printedAnswer');
   }
 
   /** MCQ kuralları — uyarı ikonu ve gönderim öncesi doğrulamanın ortak kaynağı. */
@@ -5391,10 +5405,11 @@ export class ImageSelectorComponent {
     this.paintRegionsState.clear();
     this.draftFingerprints.clear();
     this.masks.clear();
+    this.answerShown.clear();
     this.regions.set(
       sorted
         // Issue #578: tür alanları bölgeye kopyalanmaz (soru kaydına gitmesin), `blockKinds`'te tutulur.
-        .map(({ kind: _kind, component: _component, interaction_type: _type, masks: _masks, ...q }, index) => ({
+        .map(({ kind: _kind, component: _component, interaction_type: _type, masks: _masks, answer_shown: _shown, ...q }, index) => ({
           ...q,
           name: `Soru ${index + 1}`,
           answers: q.subpredictions
@@ -5424,6 +5439,8 @@ export class ImageSelectorComponent {
       // Issue #581: manuel kayıttaki maskeler geri yüklenir (geçersizler atlanır).
       const masks = validMasks(prediction.masks);
       if (masks.length > 0) this.masks.set(`Soru ${index + 1}`, masks);
+      // Issue #791: Claude basılı cevap gördüyse maske çizilene kadar uyarılır.
+      if (prediction.answer_shown === true) this.answerShown.add(`Soru ${index + 1}`);
     });
     this.detectionRevision.update((n) => n + 1);
 
@@ -5585,6 +5602,7 @@ export class ImageSelectorComponent {
     this.paintRegionsState.clear();
     this.draftFingerprints.clear();
     this.masks.clear();
+    this.answerShown.clear();
     this.warningMarkers = [];
     this.selectedQuestionIndex = -1;
     this.selectedAnswer = -1;
@@ -5711,6 +5729,7 @@ export class ImageSelectorComponent {
     this.openTextState.delete(regionName);
     this.paintRegionsState.delete(regionName);
     this.masks.delete(regionName);
+    this.answerShown.delete(regionName);
     for (const key of [...this.draftFingerprints.keys()]) {
       if (key.startsWith(`${regionName}\u0000`)) this.draftFingerprints.delete(key);
     }

@@ -33,9 +33,10 @@ public sealed record LabelingPromptSettings(
     /// toplam blok sınırı <c>MaxQuestionsPerPage * 3</c> (yoğun sayfada gürültü son soruları itmez). 5 (issue #582): bileşen D
     /// tanımı genişledi (metindeki "( )" noktalama boşlukları, yazım yanlışı bulma, düzeltme) ve D → <c>textSelect</c>; yanıt
     /// şemasının <c>interactionType</c> açıklamasına <c>textSelect</c> eklendi. 6 (issue #583): H (açık uçlu) → <c>openText</c>;
-    /// "other" yalnız E, F, G, I için; yanıt şemasının <c>interactionType</c> açıklamasına <c>openText</c> eklendi.
+    /// "other" yalnız E, F, G, I için; yanıt şemasının <c>interactionType</c> açıklamasına <c>openText</c> eklendi. 7 (issue #791):
+    /// 1. aşama blokları <c>answerShown</c> taşır (sayfada basılı cevap); kural yalnız şema açıklamasında (talimat 4000 sınırında).
     /// </summary>
-    public const int SchemaRevision = 6;
+    public const int SchemaRevision = 7;
 
     /// <summary>Talimatlar + paylar + <see cref="SchemaRevision"/> SHA-256'sı (hex); AI sonuçlarının önbellek anahtarı.</summary>
     /// Önbelleğe alınmaz: record'un <c>with</c> kopyası alanı da kopyalar ve eski izi taşırdı.

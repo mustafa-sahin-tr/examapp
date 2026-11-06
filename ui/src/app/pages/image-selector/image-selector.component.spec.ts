@@ -2932,6 +2932,34 @@ describe('ImageSelectorComponent', () => {
             expect('masks' in component.regions()[0]).toBe(false);
         });
 
+        // Issue #791: Claude basılı cevap gördüyse maske çizilene kadar uyarı; soru dışı blokta uyarı yok.
+        it('answerShown_WarnsUntilMasked', () => {
+            setup();
+            const [q1, q2] = component.regions() as any[];
+            const box = (r: any) => ({ class_id: 0, x: r.x, y: r.y, width: r.width, height: r.height, subpredictions: [] });
+            component.applyExternalPrediction(component.beginExternalDetection(), {
+                success: true,
+                predictions: [{ ...box(q1), answer_shown: true }, { ...box(q2), kind: 'info_box', answer_shown: true }],
+            } as any, { kind: 'Ai', modelName: 'claude-a' } as any);
+            const printed = imageSelectorTr.warnings.printedAnswer;
+            const messagesOf = (name: string) => {
+                component.recomputeWarnings();
+                const id = component.regions().find((r) => r.name === name)!.id;
+                return component.warningMarkers.find((m) => m.id === id)?.messages ?? [];
+            };
+
+            expect('answer_shown' in component.regions()[0]).toBe(false);
+            expect(messagesOf('Soru 1')).toContain(printed);
+            expect(messagesOf('Soru 2')).not.toContain(printed);
+
+            component.lockSelectionMode('mask');
+            drag(110, 110, 150, 140);
+            expect(messagesOf('Soru 1')).not.toContain(printed);
+
+            component.clearMasks('Soru 1');
+            expect(messagesOf('Soru 1')).toContain(printed);
+        });
+
         it('removeQuestion_DropsItsMasks', () => {
             setup();
             component.lockSelectionMode('mask');

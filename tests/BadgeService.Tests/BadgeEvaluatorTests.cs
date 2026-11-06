@@ -117,6 +117,46 @@ public class BadgeEvaluatorTests : IDisposable
         (await BadgeEarnedCount(1)).ShouldBe(1);
     }
 
+    [Fact]
+    public async Task A_retry_on_the_same_context_does_not_add_a_second_earned_row()
+    {
+        // Çift rozet hatası: consumer retry'ı aynı DbContext'i kullanır. Önceki denemenin eklediği ama yazamadığı
+        // BadgeEarned change tracker'da bekler; değerlendirici onu da kazanılmış saymalı.
+        var badge = Badge("AnswerCount", """{"target": 10}""");
+        await GivenAsync(ctx =>
+        {
+            ctx.BadgeDefinitions.Add(badge);
+            ctx.StudentQuestionAggregates.Add(new StudentQuestionAggregate { Id = Guid.NewGuid(), UserId = 1, TotalQuestions = 12 });
+        });
+
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.BadgeEarned.Add(new BadgeEarned
+            {
+                Id = Guid.NewGuid(), UserId = 1, BadgeDefinitionId = badge.Id, EarnedDate = DateTime.UtcNow,
+            });
+            await NewEvaluator(ctx).EvaluateAnswerSubmittedAsync(1, "c");
+        }
+
+        (await BadgeEarnedCount(1)).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task The_same_badge_cannot_be_stored_twice_for_a_user()
+    {
+        var badge = Badge("AnswerCount", """{"target": 10}""");
+        await GivenAsync(ctx => ctx.BadgeDefinitions.Add(badge));
+
+        await using var ctx = _db.NewContext();
+        for (var i = 0; i < 2; i++)
+            ctx.BadgeEarned.Add(new BadgeEarned
+            {
+                Id = Guid.NewGuid(), UserId = 1, BadgeDefinitionId = badge.Id, EarnedDate = DateTime.UtcNow,
+            });
+
+        await Should.ThrowAsync<DbUpdateException>(() => ctx.SaveChangesAsync());
+    }
+
     [Theory]
     [InlineData("not valid json")]
     [InlineData("")]

@@ -11,6 +11,13 @@ taşımak için BadgeService dizininde bir kez: `dotnet run -- backfill-student-
 `StudentBadgeEarnedEvent`; exam API consumer'ı (öğrenci, rozet) UNIQUE ile idempotent — ikinci çalıştırma çift kayıt üretmez; Production'da
 `backfill-student-points` gibi `--allow-production --confirm`). Migration yok.
 
+**Çift rozet kaydı (2026-11-06).** Aynı (öğrenci, rozet) için iki `BadgeEarned` satırı rozet raporunu (`GetBadgeProgressAsync`,
+`ToDictionary`) 500'e düşürüyordu. Olası kaynak: consumer retry'ı aynı DbContext'le çalışır, düşen denemenin eklediği satır change
+tracker'da kalır ve ikinci denemede bir kopyası daha eklenir. Düzeltme: `BadgeEvaluator` `BadgeEarned.Local`'i de kazanılmış sayar;
+`BadgeEarned (UserId, BadgeDefinitionId)` UNIQUE (`UniqueBadgeEarnedPerUser` migration'ı önce kopyaları siler, en eski kazanım kalır);
+rapor kopyaya dayanıklı (ilk tarih). Bildirim (UserId, kaynak rozet) ve exam API projeksiyonu zaten UNIQUE'ti; kopya oralara geçmedi.
+Mevcut kurulumda BadgeService'i yeniden başlatmak yeter (migration açılışta uygulanır).
+
 **Issue #539 — öğretmen transferinde "Okulum" sınavları özel olur.** `PUT api/admin/teachers/{id}/school` okul gerçekten
 değişince (aynı okul / yalnız bekleyen talebin kapanması değil) öğretmenin `TeacherSharing=SchoolOnly` sınavları (silinmişler dahil)
 okul güncellemesiyle **aynı transaction'da** `Private` olur; sayısı yanıtta `privatizedWorksheetCount` ve `AdminUserActionLogs.AffectedCount`'ta.

@@ -74,6 +74,11 @@ public class BadgeDbContext : DbContext
             .WithMany()
             .HasForeignKey(x => x.BadgeDefinitionId);
 
+        // Bir rozet kullanıcı başına bir kez kazanılır; yarış ya da retry ikinci satır yazamaz.
+        modelBuilder.Entity<BadgeEarned>()
+            .HasIndex(x => new { x.UserId, x.BadgeDefinitionId })
+            .IsUnique();
+
         modelBuilder.Entity<StudentQuestionAggregate>().HasKey(x => x.Id);
         modelBuilder.Entity<StudentQuestionAggregate>()
             .HasIndex(x => x.UserId)

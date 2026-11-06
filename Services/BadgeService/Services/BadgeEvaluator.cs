@@ -130,6 +130,10 @@ public class BadgeEvaluator
             .Select(x => x.BadgeDefinitionId)
             .ToListAsync(cancellationToken))
             .ToHashSet();
+        // Consumer retry'ı aynı scope'ta (aynı DbContext) çalışır: önceki denemede SaveChanges düştüyse eklenmiş ama
+        // yazılmamış rozet change tracker'da bekler. Onu da "kazanılmış" say; yoksa ikinci satır eklenir ve ikisi birlikte
+        // yazılırdı (çift BadgeEarned → rozet raporu 500).
+        earnedBadgeIds.UnionWith(_context.BadgeEarned.Local.Where(x => x.UserId == userId).Select(x => x.BadgeDefinitionId));
 
         var progressEntities = await _context.StudentBadgeProgresses
             .Where(x => x.UserId == userId)

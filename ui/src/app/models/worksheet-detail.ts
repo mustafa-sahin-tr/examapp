@@ -103,9 +103,16 @@ export interface WorksheetReminderRequest {
   remindBeforeMinutes: number;
 }
 
+export interface WorksheetStudentAssignment {
+  assignedByName: string | null;
+  dueAtUtc: string | null;
+}
+
 export interface WorksheetDetail {
   worksheet: Test;
   plannedReminder: WorksheetReminder | null;
+  /** #848: öğrencinin aktif ataması — kim atadı, son tarih (UTC). Öğretmende ve atamasız öğrencide null. */
+  studentAssignment?: WorksheetStudentAssignment | null;
   stats: WorksheetStats;
   topicBreakdown: WorksheetTopicBreakdown[];
   outcomes: string[];

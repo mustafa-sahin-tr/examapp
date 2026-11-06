@@ -47,19 +47,18 @@
 
       <!-- ================= STUDENT · START ================= -->
       @if (view() === 'start') {
-        <div class="hero">
-          <div class="hero-media">
-            @if (d.worksheet.imageUrl) {
+        <!-- #848: kapak yoksa boş saat kutusu yerine ince bir şerit; tek "Başla"; kurallar başlığın altında. -->
+        <div class="hero" [class.hero--no-cover]="!d.worksheet.imageUrl">
+          @if (d.worksheet.imageUrl) {
+            <div class="hero-media">
               <img [src]="d.worksheet.imageUrl" [alt]="d.worksheet.name" [appStorageImageRetry]="imageRefresh" />
-            } @else {
-              <div class="thumb"><mat-icon>schedule</mat-icon></div>
-            }
-          </div>
+            </div>
+          }
           <div class="hero-body">
             <div class="title-row">
               <h1>{{ d.worksheet.name }}</h1>
             </div>
-            @if (d.worksheet.subtitle || d.worksheet.description) {
+            @if ((d.worksheet.subtitle || d.worksheet.description) && (d.worksheet.subtitle || d.worksheet.description) !== d.worksheet.name) {
               <p class="subtitle">{{ d.worksheet.subtitle || d.worksheet.description }}</p>
             }
             <div class="chips">
@@ -73,6 +72,16 @@
                 <span class="chip badge"><mat-icon>military_tech</mat-icon>{{ d.rewardBadgeText }}</span>
               }
             </div>
+            <!-- #848: kim atadı, son gün (öğrencinin aktif ataması). -->
+            @if (d.studentAssignment; as a) {
+              <p class="assign-line" data-testid="assignment-line">
+                <mat-icon aria-hidden="true">assignment_ind</mat-icon>
+                <span>{{ a.assignedByName ? t('start.assignedBy', { name: a.assignedByName }) : t('start.assigned') }}</span>
+                @if (a.dueAtUtc) {
+                  <span class="assign-due" data-testid="assignment-due">{{ t('start.due', { date: formatShortDate(a.dueAtUtc) }) }}</span>
+                }
+              </p>
+            }
 
             <div class="stat-strip">
               <div class="stat">
@@ -80,22 +89,12 @@
                 <span class="st-val">{{ d.worksheet.questionCount ?? 0 }}</span>
                 <span class="st-lbl">{{ t(isActivity() ? 'activity.itemsStat' : 'stats.questions') }}</span>
               </div>
-              <!-- Issue #573: etkinlikte süre, çözen sayısı ve ortalama puan gösterilmez. -->
+              <!-- Issue #573: etkinlikte süre gösterilmez. #848: çözen sayısı ve ortalama başarı öğretmen bilgisi; öğrenciye yok. -->
               @if (!isActivity()) {
               <div class="stat">
                 <mat-icon>timer</mat-icon>
                 <span class="st-val">{{ formatDuration(d.worksheet.maxDurationSeconds) }}</span>
                 <span class="st-lbl">{{ t('stats.duration') }}</span>
-              </div>
-              <div class="stat">
-                <mat-icon>groups</mat-icon>
-                <span class="st-val">{{ d.stats.solverCount }}</span>
-                <span class="st-lbl">{{ t('stats.solvers') }}</span>
-              </div>
-              <div class="stat">
-                <mat-icon>trending_up</mat-icon>
-                <span class="st-val">{{ percentLabel(d.stats.averageScorePercent) }}</span>
-                <span class="st-lbl">{{ t('stats.averageScore') }}</span>
               </div>
               }
             </div>
@@ -120,6 +119,13 @@
                 </button>
               }
             </div>
+            <ul class="hero-rules" data-testid="start-rules">
+              @if (!isActivity()) {
+                <li><mat-icon aria-hidden="true">timer</mat-icon>{{ t('start.ruleAutoComplete') }}</li>
+              }
+              <li><mat-icon aria-hidden="true">swap_horiz</mat-icon>{{ t('start.ruleNavigate') }}</li>
+              <li><mat-icon aria-hidden="true">cloud_done</mat-icon>{{ t('start.offlineSafe') }}</li>
+            </ul>
           </div>
         </div>
 
@@ -182,34 +188,6 @@
           </div>
 
           <div class="stack">
-            <div class="sticky-cta" *appIsStudent>
-              <span class="s-status"><i></i>{{ t('start.ready') }}</span>
-              <div class="s-meta">
-                @if (!isActivity()) {
-                  <div><mat-icon>timer</mat-icon>{{ t('start.autoFinish', { duration: formatDuration(d.worksheet.maxDurationSeconds) }) }}</div>
-                }
-                <div><mat-icon>swap_horiz</mat-icon>{{ t('start.navigateBack', { count: d.worksheet.questionCount ?? 0 }) }}</div>
-                <div><mat-icon>shield</mat-icon>{{ t('start.offlineSafe') }}</div>
-              </div>
-              @if (!exam?.instance) {
-                <button class="btn btn-primary full" (click)="StartTest(exam.id)">
-                  <mat-icon>play_arrow</mat-icon>{{ t(isActivity() ? 'activity.start' : 'cta.start') }}
-                </button>
-              } @else if (instanceStarted) {
-                @if (instanceRetaking) {
-                  <span class="s-status" data-testid="activity-retaking-side"><mat-icon>replay</mat-icon>{{ t('activity.retakingBadge') }}</span>
-                }
-                <button class="btn btn-primary full" (click)="StartTest(exam.id)">
-                  <mat-icon>play_arrow</mat-icon>{{ t(isActivity() ? 'activity.continue' : 'cta.continue') }}
-                </button>
-              } @else if (isActivity() && instanceCompleted) {
-                <span class="s-status" data-testid="activity-done-side"><mat-icon>check_circle</mat-icon>{{ t('activity.completed') }}</span>
-                <button class="btn btn-primary full" data-testid="activity-retake-side" [disabled]="retakeBusy()" (click)="retakeActivity()">
-                  <mat-icon>replay</mat-icon>{{ t('activity.retake') }}
-                </button>
-              }
-            </div>
-
             <div class="card" *appIsStudent id="planla-hatirlat" tabindex="-1">
               <h2><span class="dot"></span>{{ t('reminder.title') }}</h2>
 
@@ -319,13 +297,6 @@
           </div>
         </div>
 
-        <div class="rules">
-          @if (!isActivity()) {
-            <div class="r"><span class="ri"><mat-icon>timer</mat-icon></span>{{ t('start.ruleAutoComplete') }}</div>
-          }
-          <div class="r"><span class="ri"><mat-icon>swap_horiz</mat-icon></span>{{ t('start.ruleNavigate') }}</div>
-          <div class="r"><span class="ri"><mat-icon>check</mat-icon></span>{{ t('start.ruleAutoSave') }}</div>
-        </div>
       }
 
       <!-- ================= STUDENT · COMPLETED ================= -->

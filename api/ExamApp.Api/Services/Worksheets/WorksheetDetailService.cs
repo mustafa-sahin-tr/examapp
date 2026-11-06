@@ -339,9 +339,42 @@ public class WorksheetDetailService : IWorksheetDetailService
 
             if (reminder != null)
                 result.PlannedReminder = WorksheetReminderService.MapToDto(reminder);
+
+            result.StudentAssignment = await BuildStudentAssignmentAsync(worksheetId, studentId!.Value, ct);
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// issue #848: öğrencinin bu worksheet'e AKTİF ataması (görünürlük ve zaman penceresi <see cref="WorksheetAccess.ActiveAssignmentsFor"/>
+    /// ile, başlatma kuralıyla aynı). Birden çoksa öğrenciye özel olan önce, sonra son tarihi en yakın olan.
+    /// </summary>
+    private async Task<WorksheetStudentAssignmentDto?> BuildStudentAssignmentAsync(int worksheetId, int studentId, CancellationToken ct)
+    {
+        var scope = await _context.Students.AsNoTracking()
+            .Where(s => s.Id == studentId)
+            .Select(s => new { s.GradeId, SchoolId = s.SchoolVerifiedAt != null ? s.SchoolId : null }) // issue #361
+            .FirstOrDefaultAsync(ct);
+        if (scope == null)
+            return null;
+
+        var assignment = await _context.ActiveAssignmentsFor(studentId, scope.GradeId, scope.SchoolId, DateTime.UtcNow)
+            .AsNoTracking()
+            .Where(a => a.WorksheetId == worksheetId)
+            .OrderByDescending(a => a.StudentId != null)
+            .ThenBy(a => a.EndAt == null)
+            .ThenBy(a => a.EndAt)
+            .Select(a => new { a.CreateUserId, a.EndAt })
+            .FirstOrDefaultAsync(ct);
+        if (assignment == null)
+            return null;
+
+        return new WorksheetStudentAssignmentDto
+        {
+            AssignedByName = assignment.CreateUserId is > 0 ? await ResolveOwnerNameAsync(assignment.CreateUserId.Value, ct) : null,
+            DueAtUtc = assignment.EndAt.HasValue ? DateTime.SpecifyKind(assignment.EndAt.Value, DateTimeKind.Utc) : null,
+        };
     }
 
     private async Task<List<SimilarWorksheetDto>> BuildSimilarWorksheetsAsync(Worksheet worksheet, CancellationToken ct)

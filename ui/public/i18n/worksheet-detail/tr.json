@@ -18,7 +18,7 @@
     "averageScore": "Ort. başarı"
   },
   "cta": {
-    "start": "Sınava Başla",
+    "start": "Teste başla",
     "continue": "Devam Et"
   },
   "start": {
@@ -31,13 +31,13 @@
     "sampleAlt": "Örnek soru",
     "sampleWaiting": "Sınavda seni {{count}} soru bekliyor",
     "samplePlaceholder": "Başladığında ilk soru burada açılır",
-    "ready": "Başlamaya hazır",
     "autoFinish": "{{duration}} · süre dolunca otomatik biter",
-    "navigateBack": "{{count}} soru · geri dönüp değiştirebilirsin",
     "offlineSafe": "İnternet kesilse bile cevapların kaydedilir",
     "ruleAutoComplete": "Süre dolunca test otomatik olarak tamamlanır",
     "ruleNavigate": "Sorular arasında ileri–geri gezinebilirsin",
-    "ruleAutoSave": "Cevapların anlık kaydedilir, sonra devam edebilirsin"
+    "assignedBy": "{{name}} atadı",
+    "assigned": "Sana atandı",
+    "due": "Son gün: {{date}}"
   },
   "reminder": {
     "title": "Planla & Hatırlat",

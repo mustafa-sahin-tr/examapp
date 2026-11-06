@@ -1302,18 +1302,45 @@ describe('WorksheetDetailComponent activity page (#573)', () => {
         expect(fixture.nativeElement.querySelector('[data-testid="start-cta"]')).toBeNull();
     });
 
-    it('student_CompletedActivity_ShowsRetakeInHeroAndSidePanel (#609)', () => {
+    it('student_TestStart_OneButton_AssignmentLine_NoTeacherStats_RulesUnderTitle (#848)', () => {
+        const { fixture, component } = setup('Student', null, 0);
+        component['detail'].update((d) =>
+            d
+                ? {
+                      ...d,
+                      worksheet: { ...d.worksheet, subtitle: 'Hayvanlar', imageUrl: undefined, maxDurationSeconds: 600 },
+                      completedResult: null,
+                      studentAssignment: { assignedByName: 'Ayşe Öğretmen', dueAtUtc: '2026-11-08T20:59:00Z' },
+                  }
+                : d
+        );
+        fixture.detectChanges();
+        const el = fixture.nativeElement as HTMLElement;
+
+        expect(el.querySelectorAll('[data-testid="start-cta"]').length).toBe(1);
+        expect(el.querySelector('[data-testid="start-cta"]')?.textContent).toContain('Teste başla');
+        expect(el.querySelector('[data-testid="assignment-line"]')?.textContent).toContain('Ayşe Öğretmen atadı');
+        expect(el.querySelector('[data-testid="assignment-due"]')?.textContent).toContain('Son gün:');
+        // Öğretmen istatistikleri öğrenciye gösterilmez.
+        expect(text(fixture)).not.toContain('Çözen');
+        expect(el.querySelector('[data-testid="start-rules"]')?.children.length).toBe(3);
+        // Kapak yoksa boş saat kutusu yok; alt başlık başlığı tekrarlamaz.
+        expect(el.querySelector('.hero.hero--no-cover .hero-media')).toBeNull();
+        expect(el.querySelector('.hero .subtitle')).toBeNull();
+    });
+
+    it('student_CompletedActivity_ShowsRetakeInHero_OnlyOnce (#609, #848)', () => {
         const { fixture, launcher } = setup('Student', 1);
         fixture.detectChanges();
 
         const hero = fixture.nativeElement.querySelector('[data-testid="activity-retake"]') as HTMLButtonElement;
-        const side = fixture.nativeElement.querySelector('[data-testid="activity-retake-side"]') as HTMLButtonElement;
         expect(hero?.textContent).toContain('Yeniden çöz');
-        expect(side?.textContent).toContain('Yeniden çöz');
+        // #848: sağdaki ikinci kart kalktı; tek buton.
+        expect(fixture.nativeElement.querySelector('[data-testid="activity-retake-side"]')).toBeNull();
         // "Tamamlandı" chip'i kalır.
         expect(fixture.nativeElement.querySelector('[data-testid="activity-done"]')).not.toBeNull();
 
-        side.click();
+        hero.click();
         expect(launcher.retake).toHaveBeenCalledWith(55, 12);
     });
 
@@ -1323,7 +1350,6 @@ describe('WorksheetDetailComponent activity page (#573)', () => {
         fixture.detectChanges();
 
         expect((fixture.nativeElement.querySelector('[data-testid="activity-retake"]') as HTMLButtonElement).disabled).toBe(true);
-        expect((fixture.nativeElement.querySelector('[data-testid="activity-retake-side"]') as HTMLButtonElement).disabled).toBe(true);
     });
 
     it('student_StartedActivity_ShowsContinueNotRetake (#609)', () => {
@@ -1337,13 +1363,12 @@ describe('WorksheetDetailComponent activity page (#573)', () => {
         expect(fixture.nativeElement.querySelector('[data-testid="activity-retaking-side"]')).toBeNull();
     });
 
-    it('student_RetakingActivity_ContinueWithRetakingLabelInHeroAndSide (#609)', () => {
+    it('student_RetakingActivity_ContinueWithRetakingLabelInHero (#609)', () => {
         const { fixture } = setup('Student', 0, 1, '2026-10-27T10:00:00Z');
         fixture.detectChanges();
 
         expect(fixture.nativeElement.querySelector('[data-testid="start-cta"]')?.textContent).toContain('Etkinliğe devam et');
         expect(fixture.nativeElement.querySelector('[data-testid="activity-retaking"]')?.textContent).toContain('Yeniden çözüyor');
-        expect(fixture.nativeElement.querySelector('[data-testid="activity-retaking-side"]')?.textContent).toContain('Yeniden çözüyor');
         expect(fixture.nativeElement.querySelector('[data-testid="activity-retake"]')).toBeNull();
     });
 

@@ -97,7 +97,11 @@
       "adminSchools": "Okullar",
       "adminBadgeDefinitions": "Rozetler",
       "adminCommentReports": "Yorum Şikayetleri",
-      "openTextReviews": "Açık Uçlu Cevaplar"
+      "openTextReviews": "Açık Uçlu Cevaplar",
+      "groupUsers": "Kullanıcılar",
+      "groupSchools": "Okullar",
+      "groupContent": "İçerik",
+      "groupModeration": "Moderasyon"
     },
     "bottomNav": {
       "home": "Ana Sayfa",
@@ -1192,7 +1196,7 @@
       "resending": "Gönderiliyor...",
       "resent": "Davet yeniden gönderildi.",
       "resendsLeft": "Kalan yeniden gönderim hakkı: {{count}}",
-        "details": "Ayrıntılar",
+      "details": "Ayrıntılar",
       "nextResendAt": "Bir sonraki gönderim {{date}} sonrasında mümkün.",
       "noResendsLeft": "Yeniden gönderim hakkın doldu. Velinin e-postasını kontrol edip düzeltebilirsin.",
       "fixEmail": "E-postayı düzelt",

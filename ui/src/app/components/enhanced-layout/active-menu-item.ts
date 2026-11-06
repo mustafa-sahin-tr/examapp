@@ -2,7 +2,7 @@
 export interface RoutedMenuEntry {
   id: string;
   route: string;
-  type: 'menu' | 'divider';
+  type: 'menu' | 'divider' | 'header';
 }
 
 /**

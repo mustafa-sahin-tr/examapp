@@ -97,7 +97,11 @@
       "adminSchools": "Schools",
       "adminBadgeDefinitions": "Badges",
       "adminCommentReports": "Comment Reports",
-      "openTextReviews": "Open-Ended Answers"
+      "openTextReviews": "Open-Ended Answers",
+      "groupUsers": "Users",
+      "groupSchools": "Schools",
+      "groupContent": "Content",
+      "groupModeration": "Moderation"
     },
     "bottomNav": {
       "home": "Home",
@@ -1192,7 +1196,7 @@
       "resending": "Sending...",
       "resent": "The invitation was sent again.",
       "resendsLeft": "Resends left: {{count}}",
-        "details": "Details",
+      "details": "Details",
       "nextResendAt": "You can send it again after {{date}}.",
       "noResendsLeft": "You have no resends left. Check and fix your parent's email address.",
       "fixEmail": "Fix email",

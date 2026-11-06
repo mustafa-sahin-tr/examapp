@@ -1204,6 +1204,24 @@ describe('EnhancedLayoutComponent role navigation (issue #719)', () => {
         ]);
     });
 
+    it('admin_DashboardFirstAndItemsGroupedUnderHeaders_issue726', () => {
+        const items = renderLayout(['Admin'], false).componentInstance.visibleMenuItems().filter((i) => i.type !== 'divider');
+        expect(labels(items)).toEqual([
+            'admin-dashboard', 'admin', 'question-bank',
+            'group-users', 'admin-teacher-approvals', 'admin-teachers', 'admin-students',
+            'group-schools', 'admin-schools', 'admin-student-school-requests',
+            'group-content', 'mock-exams', 'exam-templates', 'questiongeneration', 'questiontransfer', 'labeling', 'labeling-books', 'admin-badge-definitions',
+            'group-moderation', 'open-text-reviews', 'admin-comment-reports',
+            'settings',
+        ]);
+    });
+
+    it('questionTrainer_SeesLabelingWithoutAdminGroupHeaders_issue726', () => {
+        const items = renderLayout(['QuestionTrainer'], false).componentInstance.visibleMenuItems();
+        expect(items.some((i) => i.type === 'header')).toBe(false);
+        expect(labels(items.filter((i) => i.type === 'menu'))).toEqual(['questiongeneration', 'labeling', 'labeling-books', 'settings']);
+    });
+
     it('bottomNav_StudentAndTeacher_HavePrimaryTasksInsteadOfSettings', () => {
         expect(labels(renderLayout(['Student'], true).componentInstance.visibleBottomNavItems())).toEqual([
             'dashboard', 'exams', 'practice', 'my-calendar',

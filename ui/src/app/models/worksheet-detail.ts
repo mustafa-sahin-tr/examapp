@@ -65,6 +65,9 @@ export interface WorksheetTopicSuccess {
   topicId: number | null;
   name: string;
   correctCount: number;
+  /** #842 */
+  wrongCount: number;
+  emptyCount: number;
   totalCount: number;
   successPercent: number;
 }

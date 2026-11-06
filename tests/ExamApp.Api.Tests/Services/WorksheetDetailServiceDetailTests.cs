@@ -421,6 +421,22 @@ public class WorksheetDetailServiceDetailTests : IDisposable
     // ---- completed result + rank ----
 
     [Fact]
+    public async Task GetWorksheetDetail_CompletedResult_TopicsSplitWrongFromEmpty()
+    {
+        var w = await SeedAsync();
+        await SeedStandardAttemptsAsync(w);
+
+        await using var ctx = _db.NewContext();
+        // St1: Q1 correct, Q2 wrong, Q3 empty, Q4 correct (#842: blank is not shown as wrong).
+        var topics = (await AsStudent(ctx, w, w.St1))!.CompletedResult!.TopicSuccess;
+
+        topics.Sum(t => t.CorrectCount).ShouldBe(2);
+        topics.Sum(t => t.WrongCount).ShouldBe(1);
+        topics.Sum(t => t.EmptyCount).ShouldBe(1);
+        topics.ShouldAllBe(t => t.CorrectCount + t.WrongCount + t.EmptyCount == t.TotalCount);
+    }
+
+    [Fact]
     public async Task GetWorksheetDetail_GradeScopedAssignment_RanksStudentWithinCohort()
     {
         var w = await SeedAsync();

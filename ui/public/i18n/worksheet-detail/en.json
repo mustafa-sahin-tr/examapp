@@ -67,15 +67,12 @@
     "average": "{{percent}} avg."
   },
   "completed": {
-    "successLabel": "Score",
-    "kicker": "Test completed",
-    "headline": "{{correct}} / {{total}} correct",
+    "kicker": "Test finished",
     "correct": "{{count}} correct",
     "wrong": "{{count}} wrong",
     "empty": "{{count}} blank",
-    "fromMistakes": "Create a Test from My Mistakes",
-    "topicTitle": "Your Score by Topic",
-    "topicSub": "{{correct}} / {{total}} correct",
+    "fromMistakes": "Create a test from your mistakes",
+    "topicTitle": "By topic",
     "questionsTitle": "Question by Question",
     "reviewPanel": "Review Results",
     "questionsLoading": "Loading the question breakdown...",
@@ -85,8 +82,19 @@
     "rankSub": "Class average {{classAverage}}% · you {{score}}%",
     "badgeTitle": "Badge You Earned",
     "badgeSub": "You passed the threshold with {{score}}%",
-    "nextTitle": "Next Step",
-    "nextItem": "Similar test: \"{{name}}\""
+    "nextTitle": "Next step",
+    "nextItem": "Similar test: {{name}}",
+    "answeredHeadline": "You answered {{answered}} / {{total}} questions",
+    "note": {
+      "empty": "How about trying the {{count}} questions you left blank? Correct answers add to your points.",
+      "wrong": "Looking at your wrong answers with solutions helps most for the next test.",
+      "allCorrect": "All correct, great job!"
+    },
+    "reviewMistakes": "Review your mistakes ({{count}})",
+    "reviewQuestions": "Review the questions",
+    "topicBreakdown": "{{correct}} correct · {{wrong}} wrong · {{empty}} blank",
+    "nextMistakes": "Review your {{count}} mistakes with solutions",
+    "nextTopic": "Practise questions from “{{name}}”"
   },
   "teacher": {
     "moreActions": "More actions",

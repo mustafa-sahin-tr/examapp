@@ -4,7 +4,6 @@
     "tabs": {
       "taxonomy": "Taxonomy",
       "classifierCache": "Classification Cache",
-      "teacherApplications": "Teacher Applications",
       "schools": "Schools"
     }
   },
@@ -126,7 +125,8 @@
       "gradesLoadFailed": "The grades could not be loaded",
       "actionFailed": "The action failed",
       "close": "Close"
-    }
+    },
+    "breadcrumbAria": "Selected path"
   },
   "schools": {
     "pageTitle": "School Management",

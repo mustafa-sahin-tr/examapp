@@ -34,6 +34,16 @@
     </mat-button-toggle-group>
   </div>
 
+  <!-- #853: seçili yol tek satırda -->
+  @if (breadcrumb().length) {
+    <nav class="taxonomy-crumbs" [attr.aria-label]="t('breadcrumbAria')" data-testid="taxonomy-breadcrumb">
+      @for (part of breadcrumb(); track $index; let last = $last) {
+        <span [attr.aria-current]="last ? 'location' : null">{{ part }}</span>
+        @if (!last) { <mat-icon aria-hidden="true">chevron_right</mat-icon> }
+      }
+    </nav>
+  }
+
   <div class="columns">
     <!-- Subjects -->
     <mat-card class="column" appearance="outlined">
@@ -99,7 +109,7 @@
               >
                 @if (!isEditing('subject', s.id)) {
                   <span class="name" [title]="s.name">{{ s.name }}</span>
-                  <span class="meta">{{ t('subjects.topicCount', { count: gradeTopics(s).length }) }}</span>
+                  <span class="meta">{{ t('subjects.topicCount', { count: gradeTopics(s).length }) }} · {{ t('subTopics.questionCount', { count: subjectQuestionCount(s) }) }}</span>
                   <span class="actions" (keydown)="$event.stopPropagation()">
                     <button
                       mat-icon-button
@@ -236,8 +246,11 @@
                 (keydown.space)="selectTopic(row.id); $event.preventDefault()"
               >
                 @if (!isEditing('topic', row.id)) {
-                  <span class="name">{{ row.name }}</span>
-                  <span class="meta">{{ t('topics.subTopicCount', { count: row.subTopics.length }) }}</span>
+                  <!-- #853: ad üstte, sayılar altında — dar sütunda ad kesilmesin. -->
+                  <span class="row-text">
+                    <span class="name" [title]="row.name">{{ row.name }}</span>
+                    <span class="meta">{{ t('topics.subTopicCount', { count: row.subTopics.length }) }} · {{ t('subTopics.questionCount', { count: topicQuestionCount(row) }) }}</span>
+                  </span>
                   <span class="actions" (keydown)="$event.stopPropagation()">
                     <button
                       mat-icon-button

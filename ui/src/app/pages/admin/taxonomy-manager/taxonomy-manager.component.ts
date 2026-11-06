@@ -34,6 +34,8 @@ type Level = 'subject' | 'topic' | 'subtopic';
 
 /** Yönetim ekranlarının ortak Transloco scope'u: `public/i18n/admin/<lang>.json` (issue #183). */
 const ADMIN_SCOPE = 'admin';
+/** Issue #853: son seçilen sınıf bu cihazda hatırlanır; açılışta o (yoksa ilk) sınıf seçili gelir. */
+export const TAXONOMY_GRADE_STORAGE_KEY = 'admin.taxonomy.gradeId';
 /** Issue #380: ders satırında gösterilen en fazla sınıf chip'i (fazlası "+N"). */
 export const MAX_VISIBLE_GRADE_CHIPS = 3;
 
@@ -150,6 +152,12 @@ export class TaxonomyManagerComponent implements OnInit {
           grades.map((g) => ({ id: g.id, name: g.name })).sort((a, b) => a.id - b.id)
         );
         this.loading.set(false);
+        // #853: dört boş sütun yerine dolu başlangıç — son seçilen (yoksa ilk) sınıf önceden seçili.
+        if (this.selectedGradeFilter() == null) {
+          const stored = Number(localStorage.getItem(TAXONOMY_GRADE_STORAGE_KEY));
+          const initial = this.grades().find((g) => g.id === stored) ?? this.grades()[0];
+          if (initial) this.setGradeFilter(initial.id);
+        }
       },
       error: () => {
         this.error.set(this.text('messages.gradesLoadFailed'));
@@ -223,6 +231,7 @@ export class TaxonomyManagerComponent implements OnInit {
   setGradeFilter(gradeId: number | null | undefined): void {
     if (gradeId == null || gradeId === this.selectedGradeFilter()) return;
     this.selectedGradeFilter.set(gradeId);
+    localStorage.setItem(TAXONOMY_GRADE_STORAGE_KEY, String(gradeId));
     // AC: filtre değişince Ders → Konu → Alt Konu seçimleri ve eski sınıfın verisi hemen temizlenir;
     // yanıt gelene kadar önceki sınıfın dersine yeni sınıfın gradeId'siyle konu yazılamaz.
     this.subjects.set([]);
@@ -234,6 +243,28 @@ export class TaxonomyManagerComponent implements OnInit {
     this.cancelEdit();
     this.load(false);
   }
+
+  /** Issue #853: konunun soru sayısı — alt konularının soru sayılarının toplamı. */
+  topicQuestionCount(t: TaxonomyTopic): number {
+    return t.subTopics.reduce((sum, st) => sum + (st.questionCount ?? 0), 0);
+  }
+
+  /** Issue #853: dersin seçili sınıftaki soru sayısı. */
+  subjectQuestionCount(s: TaxonomySubject): number {
+    return this.gradeTopics(s).reduce((sum, t) => sum + this.topicQuestionCount(t), 0);
+  }
+
+  /** Issue #853: seçili yol (sınıf › ders › konu › alt konu), üstte tek satır. */
+  readonly breadcrumb = computed(() => {
+    const gradeId = this.selectedGradeFilter();
+    if (gradeId == null) return [] as string[];
+    return [
+      this.gradeName(gradeId),
+      this.selectedSubject()?.name,
+      this.selectedTopic()?.name,
+      this.selectedSubTopic()?.name,
+    ].filter((n): n is string => !!n);
+  });
 
   /** Dersin yalnız seçili sınıfa ait konuları. */
   gradeTopics(s: TaxonomySubject): TaxonomyTopic[] {

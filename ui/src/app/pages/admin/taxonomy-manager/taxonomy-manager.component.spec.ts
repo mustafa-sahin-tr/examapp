@@ -7,7 +7,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { of, Subject, throwError } from 'rxjs';
 
-import { TaxonomyManagerComponent } from './taxonomy-manager.component';
+import { TAXONOMY_GRADE_STORAGE_KEY, TaxonomyManagerComponent } from './taxonomy-manager.component';
 import { AdminService } from '../../../services/admin.service';
 import { GradesService } from '../../../services/grades.service';
 import { ApiResult, TaxonomyFilter, TaxonomySubject, TaxonomyTree } from '../../../models/taxonomy';
@@ -139,6 +139,9 @@ describe('TaxonomyManagerComponent', () => {
     }
 
     /** Issue #151: ilk açılışta sınıf seçili değil; CRUD testleri önce bir sınıf seçer. */
+    beforeEach(() => localStorage.removeItem(TAXONOMY_GRADE_STORAGE_KEY));
+    afterEach(() => localStorage.removeItem(TAXONOMY_GRADE_STORAGE_KEY));
+
     function configureWithGrade(gradeId = 5): ComponentFixture<TaxonomyManagerComponent> {
         const f = configure();
         f.detectChanges();
@@ -367,13 +370,38 @@ describe('TaxonomyManagerComponent', () => {
 
     // ── Sınıf filtresi (Issue #119, #151) ────────────────────────────────────
 
-    it('init_NoGradeSelected_LoadsOnlyGradesAndShowsSelectGradeEmptyState', () => {
+    // #853: açılışta dört boş sütun yok — ilk sınıf (ya da son seçilen) önceden seçili gelir.
+    it('init_PreselectsFirstGrade_LoadsItsTreeAndShowsPath', () => {
         fixture = configure();
         component = fixture.componentInstance;
         fixture.detectChanges();
 
+        expect(component.selectedGradeFilter()).toBe(5);
+        expect(adminService.getTaxonomy).toHaveBeenCalledTimes(1);
+        expect(adminService.getTaxonomy).toHaveBeenCalledWith({ gradeId: 5 });
+        component.selectSubject(1);
+        fixture.detectChanges();
+        expect(fixture.nativeElement.querySelector('[data-testid="taxonomy-breadcrumb"]')?.textContent).toContain('5. Sınıf');
+        expect(fixture.nativeElement.querySelector('[data-testid="taxonomy-breadcrumb"]')?.textContent).toContain('Matematik');
+    });
+
+    it('init_RemembersLastSelectedGrade (#853)', () => {
+        localStorage.setItem(TAXONOMY_GRADE_STORAGE_KEY, '11');
+        fixture = configure();
+        component = fixture.componentInstance;
+        fixture.detectChanges();
+
+        expect(component.selectedGradeFilter()).toBe(11);
+        expect(adminService.getTaxonomy).toHaveBeenCalledWith({ gradeId: 11 });
+    });
+
+    it('init_NoGrades_ShowsSelectGradeEmptyState', () => {
+        fixture = configure();
+        component = fixture.componentInstance;
+        gradesService.getGrades.mockReturnValue(of([]));
+        fixture.detectChanges();
+
         expect(component.selectedGradeFilter()).toBeNull();
-        expect(gradesService.getGrades).toHaveBeenCalledTimes(1);
         expect(adminService.getTaxonomy).not.toHaveBeenCalled();
         expect(component.subjects()).toEqual([]);
 
@@ -523,7 +551,8 @@ describe('TaxonomyManagerComponent', () => {
         fixture.detectChanges();
 
         const meta: HTMLElement = fixture.nativeElement.querySelector('.column:nth-child(2) .item .meta');
-        expect(meta.textContent?.trim()).toBe('1 alt');
+        // #853: alt konu sayısı + soru sayısı (alt konuların toplamı); sınıf adı yok.
+        expect(meta.textContent?.trim()).toMatch(/^1 alt · \d+ soru$/);
     });
 
     // ── Issue #282: ders satırı chip'leri seçili sınıfı tekrarlamaz ─────────
@@ -677,7 +706,9 @@ describe('TaxonomyManagerComponent', () => {
 
     it('breadcrumb_NoGradeSelected_NotRendered', () => {
         fixture = configure();
+        gradesService.getGrades.mockReturnValue(of([]));
         fixture.detectChanges();
+        expect(fixture.nativeElement.querySelector('[data-testid="taxonomy-breadcrumb"]')).toBeNull();
 
         const crumbs = fixture.nativeElement.querySelectorAll('.crumb');
         expect(crumbs.length).toBe(0);
@@ -765,7 +796,8 @@ describe('TaxonomyManagerComponent', () => {
         fixture.detectChanges();
 
         expect(gradesService.getGrades).toHaveBeenCalledTimes(2);
-        expect(adminService.getTaxonomy).not.toHaveBeenCalled();
+        // #853: sınıflar gelince ilk sınıf seçilir ve ağacı yüklenir.
+        expect(adminService.getTaxonomy).toHaveBeenCalledTimes(1);
         expect(component.error()).toBeNull();
     });
 

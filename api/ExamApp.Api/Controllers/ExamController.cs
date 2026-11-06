@@ -202,7 +202,8 @@ public class ExamController : BaseController
 
     [HttpGet("{id:int}/detail")]
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287
-    [Authorize(Roles = "Student,Teacher")]
+    // Issue #819: admin de açar (öğretmen rolü olmadan içe aktarılan kaydın paylaşımını değiştirmek için).
+    [Authorize(Roles = "Student,Teacher,Admin")]
     public async Task<IActionResult> GetWorksheetDetail(int id, CancellationToken ct)
     {
         var user = await GetAuthenticatedUserAsync();
@@ -218,7 +219,10 @@ public class ExamController : BaseController
             studentId = student?.Id;
         }
 
-        var result = await _worksheetDetail.GetWorksheetDetailAsync(id, user.Role, studentId, user.Id, User.IsInRole("Admin"), ct);
+        // Issue #819: öğrenci olmayan admin öğretmen verisini görür (servis admine her kaydı açar).
+        var isAdmin = User.IsInRole("Admin");
+        var role = isAdmin && user.Role != UserRole.Student.ToString() ? UserRole.Teacher.ToString() : user.Role;
+        var result = await _worksheetDetail.GetWorksheetDetailAsync(id, role, studentId, user.Id, isAdmin, ct);
         if (result == null)
             return NotFound();
 

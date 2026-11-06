@@ -345,5 +345,11 @@
       }
     },
     "addTextItem": "Görselsiz madde ekle"
+  },
+  "adminSharing": {
+    "title": "Paylaşım (admin)",
+    "hint": "Öğretmenlerin bu kaydı görüp atayabilmesi ve öğrencilerin kendi başına bulabilmesi buradan ayarlanır. İçe aktarılan kayıtlar Özel gelir.",
+    "saved": "Paylaşım güncellendi.",
+    "failed": "Paylaşım güncellenemedi."
   }
 }

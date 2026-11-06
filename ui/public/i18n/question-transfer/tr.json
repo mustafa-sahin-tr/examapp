@@ -81,7 +81,15 @@
     "conflictsNote": "Çakışma: aynı görsel burada başka içerikle var. Bu sorular alınmaz, buradaki soru değişmez.",
     "missingTaxonomyNote": "Konusu bulunamayan sorular konusuz gelir. Önce kataloğu taşıyın.",
     "unhashedNote": "Burada {{count}} soru henüz taranmadı, sayılar eksik olabilir. Tarama arka planda sürüyor.",
-    "start": "İçe al"
+    "start": "İçe al",
+    "teacherSharing": "Öğretmen paylaşımı",
+    "teacherSharing0": "Özel (yalnız ben)",
+    "teacherSharing1": "Herkese açık (görüntüle)",
+    "teacherSharing2": "Herkese açık (atayabilir)",
+    "studentVisibility": "Öğrenci görünürlüğü",
+    "studentVisibility1": "Kısıtlı (yalnız atanınca)",
+    "studentVisibility0": "Normal (öğrenci kendisi bulabilir)",
+    "sharingHint": "Paketteki test ve etkinliklere uygulanır; daha önce içe alınmış kayıtlar değişmez. Sonradan test sayfasından değiştirilebilir."
   },
   "worksheets": {
     "title": "Testler ve etkinlikler",

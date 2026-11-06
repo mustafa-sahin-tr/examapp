@@ -25,7 +25,7 @@ public sealed record QuestionTransferOwner(int UserId, bool IsAdmin);
 public interface IQuestionTransferService
 {
     Task<QuestionTransferJobDto> StartExportAsync(StartQuestionExportDto request, QuestionTransferOwner owner, CancellationToken ct);
-    Task<QuestionTransferJobDto> StartImportAsync(string sourceKey, string uploadedFileUrl, QuestionTransferOwner owner, CancellationToken ct);
+    Task<QuestionTransferJobDto> StartImportAsync(string sourceKey, string uploadedFileUrl, QuestionTransferOwner owner, QuestionImportWorksheetOptions options, CancellationToken ct);
     Task<QuestionTransferJobDto?> GetJobAsync(Guid id, CancellationToken ct);
     Task<List<QuestionTransferJobDto>> ListJobsAsync(int take, CancellationToken ct);
     Task<Stream?> GetJobFileStreamAsync(Guid jobId, CancellationToken ct);
@@ -294,9 +294,10 @@ public class QuestionTransferService : IQuestionTransferService
         return await query.OrderBy(q => q.Id).Select(q => q.Id).ToListAsync(ct);
     }
 
-    public async Task<QuestionTransferJobDto> StartImportAsync(string sourceKey, string uploadedFileUrl, QuestionTransferOwner owner, CancellationToken ct)
+    public async Task<QuestionTransferJobDto> StartImportAsync(string sourceKey, string uploadedFileUrl, QuestionTransferOwner owner, QuestionImportWorksheetOptions options, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(owner);
+        ArgumentNullException.ThrowIfNull(options);
         var job = new QuestionTransferJob
         {
             Id = Guid.NewGuid(),
@@ -304,6 +305,7 @@ public class QuestionTransferService : IQuestionTransferService
             Status = QuestionTransferJobStatus.Queued,
             SourceKey = string.IsNullOrWhiteSpace(sourceKey) ? "default" : sourceKey.Trim(),
             FileUrl = uploadedFileUrl,
+            RequestJson = JsonSerializer.Serialize(options),
             Message = "Queued"
         };
 

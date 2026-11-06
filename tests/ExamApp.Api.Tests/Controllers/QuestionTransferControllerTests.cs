@@ -1,3 +1,4 @@
+using ExamApp.Api.Data;
 using System.IO.Compression;
 using System.Security.Claims;
 using System.Text;
@@ -105,37 +106,75 @@ public class QuestionTransferControllerTests
     {
         _minio.UploadFileAsync(Arg.Any<Stream>(), Arg.Any<string>()).Returns("http://minio/obj.zip");
         var job = new QuestionTransferJobDto { Id = Guid.NewGuid(), Kind = "import" };
-        _service.StartImportAsync("from-manifest", "http://minio/obj.zip", Arg.Any<QuestionTransferOwner>(), Arg.Any<CancellationToken>()).Returns(job);
+        _service.StartImportAsync("from-manifest", "http://minio/obj.zip", Arg.Any<QuestionTransferOwner>(), Arg.Any<QuestionImportWorksheetOptions>(), Arg.Any<CancellationToken>()).Returns(job);
 
         var result = await NewController().StartImport(
             new StartQuestionImportFormDto { File = ZipFile("from-manifest") }, default);
 
         result.Result.ShouldBeOfType<OkObjectResult>().Value.ShouldBe(job);
-        await _service.Received(1).StartImportAsync("from-manifest", "http://minio/obj.zip", Arg.Any<QuestionTransferOwner>(), Arg.Any<CancellationToken>());
+        await _service.Received(1).StartImportAsync("from-manifest", "http://minio/obj.zip", Arg.Any<QuestionTransferOwner>(), Arg.Any<QuestionImportWorksheetOptions>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task StartImport_falls_back_to_default_when_no_source_key_can_be_determined()
     {
         _minio.UploadFileAsync(Arg.Any<Stream>(), Arg.Any<string>()).Returns("u");
-        _service.StartImportAsync("default", "u", Arg.Any<QuestionTransferOwner>(), Arg.Any<CancellationToken>())
+        _service.StartImportAsync("default", "u", Arg.Any<QuestionTransferOwner>(), Arg.Any<QuestionImportWorksheetOptions>(), Arg.Any<CancellationToken>())
             .Returns(new QuestionTransferJobDto());
 
         await NewController().StartImport(new StartQuestionImportFormDto { File = ZipFile(sourceKeyInManifest: null) }, default);
 
-        await _service.Received(1).StartImportAsync("default", "u", Arg.Any<QuestionTransferOwner>(), Arg.Any<CancellationToken>());
+        await _service.Received(1).StartImportAsync("default", "u", Arg.Any<QuestionTransferOwner>(), Arg.Any<QuestionImportWorksheetOptions>(), Arg.Any<CancellationToken>());
+    }
+
+    // Issue #819: paylaşım seçimi işe gider; verilmezse bugünkü varsayılan (Özel + Kısıtlı).
+    [Fact]
+    public async Task StartImport_passes_the_default_worksheet_sharing_when_none_is_given()
+    {
+        _minio.UploadFileAsync(Arg.Any<Stream>(), Arg.Any<string>()).Returns("u");
+        await NewController().StartImport(new StartQuestionImportFormDto { File = ZipFile("k") }, default);
+
+        await _service.Received(1).StartImportAsync("k", "u", Arg.Any<QuestionTransferOwner>(),
+            new QuestionImportWorksheetOptions(WorksheetTeacherSharing.Private, WorksheetStudentVisibility.Restricted), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task StartImport_passes_the_chosen_worksheet_sharing()
+    {
+        _minio.UploadFileAsync(Arg.Any<Stream>(), Arg.Any<string>()).Returns("u");
+        await NewController().StartImport(new StartQuestionImportFormDto
+        {
+            File = ZipFile("k"),
+            TeacherSharing = WorksheetTeacherSharing.PublicAssignable,
+            StudentVisibility = WorksheetStudentVisibility.Normal,
+        }, default);
+
+        await _service.Received(1).StartImportAsync("k", "u", Arg.Any<QuestionTransferOwner>(),
+            new QuestionImportWorksheetOptions(WorksheetTeacherSharing.PublicAssignable, WorksheetStudentVisibility.Normal), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(WorksheetTeacherSharing.SchoolOnly)]
+    [InlineData((WorksheetTeacherSharing)9)]
+    public async Task StartImport_rejects_school_only_or_unknown_sharing_without_uploading(WorksheetTeacherSharing sharing)
+    {
+        var result = await NewController().StartImport(
+            new StartQuestionImportFormDto { File = ZipFile("k"), TeacherSharing = sharing }, default);
+
+        result.Result.ShouldBeOfType<BadRequestObjectResult>();
+        await _minio.DidNotReceiveWithAnyArgs().UploadFileAsync(default!, default!);
     }
 
     [Fact]
     public async Task StartImport_prefers_an_explicit_source_key_over_the_manifest()
     {
         _minio.UploadFileAsync(Arg.Any<Stream>(), Arg.Any<string>()).Returns("u");
-        _service.StartImportAsync("explicit", "u", Arg.Any<QuestionTransferOwner>(), Arg.Any<CancellationToken>()).Returns(new QuestionTransferJobDto());
+        _service.StartImportAsync("explicit", "u", Arg.Any<QuestionTransferOwner>(), Arg.Any<QuestionImportWorksheetOptions>(), Arg.Any<CancellationToken>()).Returns(new QuestionTransferJobDto());
 
         await NewController().StartImport(
             new StartQuestionImportFormDto { File = ZipFile("from-manifest"), SourceKey = "  explicit  " }, default);
 
-        await _service.Received(1).StartImportAsync("explicit", "u", Arg.Any<QuestionTransferOwner>(), Arg.Any<CancellationToken>());
+        await _service.Received(1).StartImportAsync("explicit", "u", Arg.Any<QuestionTransferOwner>(), Arg.Any<QuestionImportWorksheetOptions>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

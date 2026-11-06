@@ -1159,7 +1159,14 @@ public class QuestionTransferJobRunner
 
             // Sorular işlendi: test ve etkinlikler bulunan kimliklere bağlanır. Hata alan kayıt izleyiciyi temizler:
             // işin durumu bundan sonra yazılır, yoksa iş "çalışıyor" olarak kalır.
-            var worksheetResult = await new QuestionTransferWorksheetImporter(_db, _minio, _logger).ImportAsync(zip, doc.RootElement, job.SourceKey, job.CreateUserId);
+            // Issue #819: işi başlatan isteğin paylaşım seçimi; eski işlerde (RequestJson yok) bugünkü varsayılan.
+            var worksheetOptions = string.IsNullOrWhiteSpace(job.RequestJson)
+                ? new Models.Dtos.QuestionImportWorksheetOptions()
+                : JsonSerializer.Deserialize<Models.Dtos.QuestionImportWorksheetOptions>(job.RequestJson) ?? new Models.Dtos.QuestionImportWorksheetOptions();
+            if (!worksheetOptions.IsValid)
+                worksheetOptions = new Models.Dtos.QuestionImportWorksheetOptions();
+            var worksheetResult = await new QuestionTransferWorksheetImporter(_db, _minio, _logger)
+                .ImportAsync(zip, doc.RootElement, job.SourceKey, job.CreateUserId, worksheetOptions);
             job = await _db.Set<QuestionTransferJob>().FirstAsync(j => j.Id == jobId);
 
             job.Status = QuestionTransferJobStatus.Completed;

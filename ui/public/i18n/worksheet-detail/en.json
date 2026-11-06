@@ -345,5 +345,11 @@
       }
     },
     "addTextItem": "Add text-only item"
+  },
+  "adminSharing": {
+    "title": "Sharing (admin)",
+    "hint": "Set whether teachers can see and assign this item and whether students can find it on their own. Imported items arrive as Private.",
+    "saved": "Sharing updated.",
+    "failed": "Sharing could not be updated."
   }
 }

@@ -3,6 +3,7 @@
     "userIdNotFoundInToken": "Jetonda kullanıcı kimliği bulunamadı."
   },
   "questionTransfer": {
-    "fileRequired": "Dosya zorunludur."
+    "fileRequired": "Dosya zorunludur.",
+    "sharingInvalid": "Geçersiz paylaşım seçimi. İçe alınan kayıt Özel ya da Herkese açık olabilir."
   }
 }

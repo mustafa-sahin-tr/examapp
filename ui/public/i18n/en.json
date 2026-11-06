@@ -120,9 +120,24 @@
       "fallbackName": "User",
       "avatarAlt": "Profile picture",
       "notifications": "Notifications",
-      "logout": "Log out"
+      "logout": "Log out",
+      "menuLabel": "User menu: {{name}}",
+      "myProfile": "My profile",
+      "myBadges": "My badges",
+      "role": {
+        "admin": "Administrator",
+        "teacher": "Teacher",
+        "parent": "Parent",
+        "student": "Student"
+      }
     },
-    "menuLocked": "Opens once your parent approves"
+    "menuLocked": "Opens once your parent approves",
+    "preferences": {
+      "theme": "Theme",
+      "dark": "Dark",
+      "light": "Light",
+      "language": "Language"
+    }
   },
   "shared": {
     "compactTestCard": {

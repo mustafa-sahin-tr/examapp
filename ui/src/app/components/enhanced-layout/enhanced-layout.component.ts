@@ -1,4 +1,4 @@
-import { Component, signal, OnInit, OnDestroy, computed, inject, DOCUMENT, ChangeDetectionStrategy } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy, computed, inject, DOCUMENT, ChangeDetectionStrategy, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -11,7 +11,7 @@ import { MatBadgeModule } from '@angular/material/badge';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink, RouterLinkActive, RouterOutlet, Router, NavigationEnd } from '@angular/router';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { AuthService } from '../../services/auth.service';
@@ -28,6 +28,8 @@ import { WorksheetAccessRequestService } from '../../services/worksheet-access-r
 import { StudentSchoolRequestService } from '../../services/student-school-request.service';
 import { NotificationService } from '../../services/notification.service';
 import { ParentStatusStore } from '../../services/parent-status.store';
+import { GradesService } from '../../services/grades.service';
+import { UserMenuPreferencesComponent } from '../../shared/components/user-menu-preferences/user-menu-preferences.component';
 import { DirectMessageService } from '../../services/direct-message.service';
 import { TranslocoDirective, TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { ColorSchemeToggleComponent } from '../../shared/components/color-scheme-toggle/color-scheme-toggle.component';
@@ -84,6 +86,7 @@ interface MenuItem {
     ReactiveFormsModule,
     ColorSchemeToggleComponent,
     LanguageSwitcherComponent,
+    UserMenuPreferencesComponent,
     ParentFinalWarningComponent,
     TranslocoDirective,
     TranslocoPipe,
@@ -175,6 +178,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   private readonly targetGoalService = inject(TargetGoalService);
   private readonly targetGoalsEnabled = signal(false);
   private readonly document = inject(DOCUMENT);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly gradesService = inject(GradesService);
   /** Issue #106: DM menü rozeti — okunmamış mesajı olan konuşma sayısı. */
   readonly directMessageUnreadCount = this.directMessageService.unreadCount;
   /** Öğrenci mi — öğrencinin Ayarlar'ı /student-profile (issue #373, #375). */
@@ -198,6 +203,25 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   userName = signal('');
   userEmail = signal('');
   userAvatarUrl = signal('');
+  /** #846: öğrencinin sınıfı (kullanıcı menüsü başlığında "Öğrenci · 5. Sınıf"). */
+  userGradeName = signal('');
+  /** #846: avatar fotoğrafı yoksa menüde baş harfler. */
+  readonly userInitials = computed(() =>
+    this.userName()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]!.toLocaleUpperCase('tr'))
+      .join('')
+  );
+  /** #846: kullanıcı menüsündeki rol satırı; birden çok rolde en belirleyici olan. */
+  readonly userRoleKey = (() => {
+    for (const role of ['Admin', 'Teacher', 'Parent', 'Student']) {
+      if (this.authService.hasRealmRole(role)) return role.toLowerCase();
+    }
+    return null;
+  })();
+  readonly isStudentUser = this.authService.hasRealmRole('Student');
   userThemePreset = signal<string>('standard');
   userThemeCustomConfig = signal<string | null>(null);
   private readonly transloco = inject(TranslocoService);
@@ -489,6 +513,19 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     return this.parentActivationRestricted() && this.parentLockedItemIds.has(itemId);
   }
 
+  /** #846: önbellekteki öğrenci yalnız `gradeId` taşır; sınıf adı sınıf listesinden. */
+  private resolveGradeName(gradeId: number | null | undefined): void {
+    if (!gradeId || this.userGradeName()) return;
+    this.gradesService
+      .getGrades()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (grades) =>
+          this.userGradeName.set(grades.find((g) => g.id === gradeId)?.name ?? ''),
+        error: () => {},
+      });
+  }
+
   /** Issue #106: DM menü öğesi mi (rozete ekran okuyucu açıklaması verilir). */
   isDirectMessageItem(itemId: string): boolean {
     return itemId === 'teacher-messages' || itemId === 'student-messages';
@@ -688,6 +725,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
       this.userName.set(userObj.fullName || this.transloco.translate<string>('layout.profile.fallbackName') || '');
       this.userEmail.set(userObj.email || '');
       this.userAvatarUrl.set(userObj.avatar || '');
+      this.userGradeName.set(userObj.student?.grade?.name || '');
+      this.resolveGradeName(userObj.student?.gradeId);
 
       // Theme bilgisini user profile'dan al
       let themePreset = 'standard';

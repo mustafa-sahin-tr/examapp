@@ -120,9 +120,24 @@
       "fallbackName": "Kullanıcı",
       "avatarAlt": "Profil fotoğrafı",
       "notifications": "Bildirimler",
-      "logout": "Çıkış Yap"
+      "logout": "Çıkış Yap",
+      "menuLabel": "Kullanıcı menüsü: {{name}}",
+      "myProfile": "Profilim",
+      "myBadges": "Rozetlerim",
+      "role": {
+        "admin": "Yönetici",
+        "teacher": "Öğretmen",
+        "parent": "Veli",
+        "student": "Öğrenci"
+      }
     },
-    "menuLocked": "Velin onaylayınca açılır"
+    "menuLocked": "Velin onaylayınca açılır",
+    "preferences": {
+      "theme": "Tema",
+      "dark": "Koyu",
+      "light": "Açık",
+      "language": "Dil"
+    }
   },
   "shared": {
     "compactTestCard": {

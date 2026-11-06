@@ -362,6 +362,60 @@
     }
 }
 
+// #846: kullanıcı düğmesi (avatar ya da baş harfler + ad + ok).
+button.profile-menu {
+    gap: 8px;
+    border: 0;
+    border-radius: 999px;
+    padding: 4px 8px 4px 4px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+
+    &:hover {
+        background: var(--sidenav-hover-bg, var(--ms-surface-medium));
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--ms-focus-ring, var(--primaryColor));
+        outline-offset: 2px;
+    }
+
+    .preview-image {
+        margin: 0;
+    }
+
+    .username {
+        font-size: 14px;
+    }
+}
+
+.user-initials {
+    display: inline-grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--ms-action-background);
+    color: var(--ms-action-text-inverse);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.profile-menu__caret {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    opacity: 0.7;
+}
+
+// #846: daraltılmış kenar çubuğunda görünür genişlet düğmesi.
+.expand-btn {
+    display: block;
+    margin: 8px auto 0;
+    color: var(--sidenav-fg);
+}
+
 // Responsive Design
 @media (max-width: 768px), ((max-height: 500px) and (orientation: landscape)) {
     $mobile-bottom-nav-height: 64px;

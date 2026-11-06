@@ -68,6 +68,11 @@ Seçim iş kaydının `RequestJson`'unda (`QuestionImportWorksheetOptions`) taş
 değişmez. Admin sonradan test detayında (`/test/:id`) **Paylaşım (admin)** kartından değiştirir: detay ucu (`GET api/exam/worksheet/{id}/detail`)
 admine de açık (öğrenci olmayan admin öğretmen verisini admin olarak görür); öğretmen rolü olmayan admin öğrenci akışı yerine yalnız özet görür.
 
+**Issue #819 — havuzda etkinlik maddeleri.** Havuz araması (`GET api/exam/questions/bank`) `kind=question|activity` filtresi alır:
+etkinlik maddesi = `InteractionType` dolu ve `mcq` değil (`QuestionService.IsInteractive` ayrımı); boş ya da `mcq` klasik sorudur. Satırda
+`interactionType` döner, kartta **Etkinlik** etiketi çıkar. "Doğru cevabı var" (`hasCorrectAnswer`, filtre ve kart) etkinlikte doğru şıkka değil
+kayıtlı `InteractionSolution`'a bakar.
+
 **MEB Maarif kataloğu.** `deploy/data/meb/maarif-catalog.json` 175 programdan üretilir (`deploy/scripts/meb-programs/`, kurallar README'de), Soru Aktarımı ekranından yüklenir; kendiliğinden yüklenmez. Dışarıda kalanlar `maarif-catalog-report.json`'dadır. Tamamı yüklenirse sınıflandırıcıya giden konu listesi sınıf başına yaklaşık 2,5-3 katına çıkar. `MaarifCatalogFileTests` paketi gerçek katalog servisinden geçirir: paket yeniden üretilince test de koşar.
 
 **Kazanımdan görselsiz soru üretimi.** `/question-generation` (Admin, QuestionTrainer): sınıf, ders ve kazanım seçilir, Claude çoktan seçmeli taslak yazar (`POST api/question-generation/drafts`, en çok 5), inceleyen düzenleyip seçtiklerini kaydeder (`POST api/question-generation/save`). Taslak kaydedilmez. Üretim işaretlemenin `Anthropic:*` ayarlarını, saatlik kotasını ve günlük bütçesini kullanır; anahtar yoksa 503. Şık sayısı sınıfa göre: 8. sınıfa kadar 4, lisede 5; şıklar sunucuda karıştırılır. Görsele atıf yapan, şıkkı eksik ya da yinelenen taslak elenir, sayısı gösterilir. Kayıt soruyu (`IsCanvasQuestion=false`, `SourceType=Generated`), şıkları, kazanım bağını ve `QuestionCreatedEvent`'i tek işlemde yazar; sınıflandırıcı konuyu metinden belirler. Metin soru oynatıcıda `question-lite-view` ile gösterilir. Soru teste Soru Havuzu'ndan eklenir.

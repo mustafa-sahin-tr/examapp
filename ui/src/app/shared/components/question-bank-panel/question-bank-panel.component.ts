@@ -36,6 +36,8 @@ export type QuestionBankAnswerFilter = 'any' | 'yes' | 'no';
 export type QuestionBankInTestFilter = 'any' | 'yes' | 'no';
 export type QuestionBankDifficultyFilter = 'any' | 'easy' | 'medium' | 'hard';
 export type QuestionBankContextFilter = 'any' | 'yes' | 'no';
+/** Issue #819: klasik soru / etkinlik maddesi. */
+export type QuestionBankKindFilter = 'any' | 'question' | 'activity';
 
 /** Zorluk grupları (1-10 ölçeği, iki uç dahil). */
 export const DIFFICULTY_RANGES: Record<Exclude<QuestionBankDifficultyFilter, 'any'>, [number, number]> = {
@@ -115,6 +117,7 @@ export class QuestionBankPanelComponent {
   readonly inTest = signal<QuestionBankInTestFilter>('any');
   readonly difficulty = signal<QuestionBankDifficultyFilter>('any');
   readonly contextBased = signal<QuestionBankContextFilter>('any');
+  readonly kind = signal<QuestionBankKindFilter>('any');
   readonly skillIds = signal<number[]>([]);
   readonly pageIndex = signal(0);
   readonly pageSize = signal(24);
@@ -136,6 +139,7 @@ export class QuestionBankPanelComponent {
     const answer = this.answer();
     const inTest = this.inTest();
     const contextBased = this.contextBased();
+    const kind = this.kind();
     return {
       scope: this.scope(),
       gradeId: c?.gradeId ?? null,
@@ -149,6 +153,7 @@ export class QuestionBankPanelComponent {
       hasCorrectAnswer: answer === 'any' ? null : answer === 'yes',
       inTest: inTest === 'any' ? null : inTest === 'yes',
       contextBased: contextBased === 'any' ? null : contextBased === 'yes',
+      kind: kind === 'any' ? null : kind,
       skillIds: this.skillIds(),
       skip: this.pageIndex() * this.pageSize(),
       take: this.pageSize(),
@@ -216,6 +221,17 @@ export class QuestionBankPanelComponent {
   setContextBased(value: QuestionBankContextFilter): void {
     this.contextBased.set(value);
     this.pageIndex.set(0);
+  }
+
+  setKind(value: QuestionBankKindFilter): void {
+    this.kind.set(value);
+    this.pageIndex.set(0);
+  }
+
+  /** Issue #819: etkileşim tipi dolu ve mcq değilse etkinlik maddesi (sunucudaki ayrımla aynı). */
+  isActivity(item: QuestionBankItem): boolean {
+    const type = item.interactionType?.toLowerCase();
+    return !!type && type !== 'mcq';
   }
 
   setSkillIds(value: number[]): void {

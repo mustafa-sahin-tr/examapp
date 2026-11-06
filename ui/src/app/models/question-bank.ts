@@ -21,6 +21,8 @@ export interface QuestionBankFilter {
   contextBased?: boolean | null;
   /** Issue #703: bu becerilerden en az biriyle etiketli (VEYA). */
   skillIds?: number[];
+  /** Issue #819: `question` klasik soru, `activity` etkinlik maddesi; boş: farketmez. */
+  kind?: 'question' | 'activity' | null;
   skip?: number;
   take?: number;
 }
@@ -40,7 +42,10 @@ export interface QuestionBankItem {
   difficultyLevel: number;
   classificationSource: ClassificationSource | null;
   isClassified: boolean;
+  /** Soruda doğru şık; etkinlik maddesinde (#819) kayıtlı çözüm. */
   hasCorrectAnswer: boolean;
+  /** Issue #819: etkileşim tipi (ör. `mcq`, `matchPairs`); boş: klasik soru. */
+  interactionType?: string | null;
   /** Issue #703: öğretmenin beyanıyla bağlam temelli. */
   isContextBased?: boolean;
   /** Issue #703: beceri kodları (ör. `KB2.8`), kılavuz sırasıyla. */

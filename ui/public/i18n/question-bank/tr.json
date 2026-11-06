@@ -26,7 +26,10 @@
     "contextBased": "Bağlam temelli",
     "contextBasedYes": "İşaretli",
     "contextBasedNo": "İşaretsiz",
-    "skills": "Beceriler"
+    "skills": "Beceriler",
+    "kind": "Tür",
+    "kindQuestion": "Soru",
+    "kindActivity": "Etkinlik"
   },
   "results": {
     "total": "{{count}} soru",
@@ -53,7 +56,8 @@
     "cannotLinkTooltip": "Sahibi belli olmayan eski bir soru; teste eklenemez. Testi kopyalayarak kullanabilirsiniz.",
     "bookTooltip": "Kitap içindekilerinden sınıflandırıldı",
     "contextBased": "Bağlam temelli",
-    "skills": "Beceriler"
+    "skills": "Beceriler",
+    "activity": "Etkinlik"
   },
   "preview": {
     "title": "Soru #{{id}}",

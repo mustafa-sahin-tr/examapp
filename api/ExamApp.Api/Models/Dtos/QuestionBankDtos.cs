@@ -50,6 +50,15 @@ public class QuestionBankQuery
 
     public const int MaxSkillIds = 30;
 
+    /// <summary>
+    /// Issue #819: madde türü — <c>question</c> klasik çoktan seçmeli soru (etkileşim tipi boş ya da <c>mcq</c>);
+    /// <c>activity</c> etkinlik maddesi (diğer etkileşim tipleri); boş → farketmez.
+    /// </summary>
+    public string? Kind { get; set; }
+
+    public bool IsActivityKind => string.Equals(Kind, "activity", StringComparison.OrdinalIgnoreCase);
+    public bool IsQuestionKind => string.Equals(Kind, "question", StringComparison.OrdinalIgnoreCase);
+
     public int Skip { get; set; }
     public int Take { get; set; } = DefaultTake;
 
@@ -68,7 +77,7 @@ public class QuestionBankQuery
             .Select(v => (ClassificationSource?)v)
             .FirstOrDefault();
 
-    /// <summary>Bilinmeyen kapsam/kaynak, aralık dışı zorluk, negatif skip ya da aşırı uzun alt konu / beceri listesi → false (400).</summary>
+    /// <summary>Bilinmeyen kapsam/kaynak/tür, aralık dışı zorluk, negatif skip ya da aşırı uzun alt konu / beceri listesi → false (400).</summary>
     public bool IsValid()
     {
         if (!string.IsNullOrEmpty(Scope) && !IsAllScope && !string.Equals(Scope, "mine", StringComparison.OrdinalIgnoreCase))
@@ -78,6 +87,8 @@ public class QuestionBankQuery
         if (MinDifficulty is < 1 or > 10 || MaxDifficulty is < 1 or > 10)
             return false;
         if (MinDifficulty is { } min && MaxDifficulty is { } max && min > max)
+            return false;
+        if (!string.IsNullOrEmpty(Kind) && !IsActivityKind && !IsQuestionKind)
             return false;
         if (Skip < 0 || SubTopicIds is { Length: > MaxSubTopicIds } || SkillIds is { Length: > MaxSkillIds })
             return false;
@@ -113,7 +124,12 @@ public class QuestionBankItemDto
 
     /// <summary>Ders ve konusu belirlenmiş mi.</summary>
     public bool IsClassified { get; set; }
+
+    /// <summary>Soruda doğru şık; etkinlik maddesinde (#819) kayıtlı etkileşim çözümü.</summary>
     public bool HasCorrectAnswer { get; set; }
+
+    /// <summary>Issue #819: etkileşim tipi (ör. <c>mcq</c>, <c>matchPairs</c>); boş → klasik soru.</summary>
+    public string? InteractionType { get; set; }
 
     /// <summary>Issue #703: öğretmenin beyanıyla bağlam temelli.</summary>
     public bool IsContextBased { get; set; }

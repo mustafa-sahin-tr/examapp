@@ -101,7 +101,7 @@
             </div>
 
             <div class="cta-row" *appIsStudent>
-              @if (!exam.instance) {
+              @if (!exam?.instance) {
                 <button class="btn btn-primary" data-testid="start-cta" (click)="StartTest(exam.id)">
                   <mat-icon>play_arrow</mat-icon>{{ t(isActivity() ? 'activity.start' : 'cta.start') }}
                 </button>
@@ -191,7 +191,7 @@
                 <div><mat-icon>swap_horiz</mat-icon>{{ t('start.navigateBack', { count: d.worksheet.questionCount ?? 0 }) }}</div>
                 <div><mat-icon>shield</mat-icon>{{ t('start.offlineSafe') }}</div>
               </div>
-              @if (!exam.instance) {
+              @if (!exam?.instance) {
                 <button class="btn btn-primary full" (click)="StartTest(exam.id)">
                   <mat-icon>play_arrow</mat-icon>{{ t(isActivity() ? 'activity.start' : 'cta.start') }}
                 </button>
@@ -875,7 +875,7 @@
           @if (!isActivity()) {
             <span class="meta">{{ t('start.autoFinish', { duration: formatDuration(d.worksheet.maxDurationSeconds) }) }}</span>
           }
-          @if (!exam.instance) {
+          @if (!exam?.instance) {
             <button class="btn btn-primary full" (click)="StartTest(exam.id)">
             <mat-icon>play_arrow</mat-icon>{{ t(isActivity() ? 'activity.start' : 'cta.start') }}
           </button>

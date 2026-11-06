@@ -137,6 +137,29 @@
   }
 }
 
+// Telefonda 44 px'lik kutular görsele göre çok büyük kalıp soruyu örtüyordu: görsel en az 720 px çizilir, sahne yatay
+// kaydırılır (yakınlaştırılmış kâğıt gibi). Masaüstünde değişiklik yok.
+@media (max-width: 599px) {
+  .sf-root.is-activity {
+    .sf-stage {
+      justify-content: flex-start;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+    }
+
+    .sf-image-wrap {
+      flex: none;
+      max-width: none;
+    }
+
+    .sf-image {
+      width: 720px;
+      max-width: none;
+      max-height: none;
+    }
+  }
+}
+
 .sf-input {
   box-sizing: border-box;
   flex: 1 1 auto;

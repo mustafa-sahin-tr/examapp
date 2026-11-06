@@ -79,7 +79,9 @@
               <p class="psc__meta">{{ t('card.expiresAt', { date: expiresAtText() }) }}</p>
             }
           }
-          <p class="psc__meta">{{ t('card.restrictedInfo') }}</p>
+          @if (showRestrictedInfo()) {
+            <p class="psc__meta">{{ t('card.restrictedInfo') }}</p>
+          }
           @if (awaitingDeadline(); as deadline) {
             <p
               class="psc__deadline"

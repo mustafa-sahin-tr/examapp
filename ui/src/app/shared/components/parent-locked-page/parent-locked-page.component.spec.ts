@@ -39,6 +39,8 @@ describe('ParentLockedPageComponent', () => {
         expect(el.textContent).toContain('çözmeye devam edebilirsin');
         expect(el.querySelector('[data-test="invitation-resend"]')).not.toBeNull();
         expect(el.querySelector('[data-test="invitation-fix-email"]')).not.toBeNull();
+        // Kartın kısıt listesi tekrar etmez.
+        expect(el.textContent).not.toContain('liderlik tablosu kapalı');
     });
 
     it('allFeatureKeysExistInBothLanguages', () => {

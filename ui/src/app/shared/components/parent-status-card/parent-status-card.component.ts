@@ -75,6 +75,8 @@ export class ParentStatusCardComponent {
    * gönderim ayrıntıları "Ayrıntılar"ın arkasında; ana sayfanın asıl işi (günün soruları) önde kalsın.
    */
   readonly compact = input(false);
+  /** #845: kilit ekranı neyin kapalı olduğunu zaten söylüyor; kartta kısıt listesi tekrar etmesin. */
+  readonly showRestrictedInfo = input(true);
   readonly expandedByUser = signal(false);
   readonly collapsed = computed(() => this.compact() && !this.expandedByUser());
   /** #844: mobilde tek satırda eylem yok; ayrıntılar ve eylemler alttan açılan sayfada. */

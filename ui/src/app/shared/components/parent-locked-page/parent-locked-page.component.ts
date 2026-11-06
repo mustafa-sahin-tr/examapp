@@ -10,7 +10,7 @@ export type ParentLockedFeature = 'messages' | 'tutors';
 /**
  * Issue #845: veli daveti aktive edilene kadar kapalı bir sayfanın (Mesajlar, Özel Ders) yerine gösterilir — sayfa sessizce
  * boş kalmaz, nedenini söyler. Yeniden gönder / e-postayı düzelt ve kalan süre ana sayfadaki veli kartından gelir (aynı mantık
- * iki yerde yazılmasın). Barındıran sayfa yalnız `ParentStatusStore.activationRestricted` iken render eder.
+ * iki yerde yazılmasın); kartın kısıt listesi burada gizlenir, sayfa metni aynı şeyi söylüyor. Barındıran sayfa yalnız `ParentStatusStore.activationRestricted` iken render eder.
  */
 @Component({
   selector: 'app-parent-locked-page',
@@ -23,7 +23,7 @@ export type ParentLockedFeature = 'messages' | 'tutors';
       <h2 id="plp-title" class="plp__title">{{ 'parentRequirement.locked.title' | transloco }}</h2>
       <p class="plp__body">{{ 'parentRequirement.locked.' + feature() | transloco }}</p>
       <p class="plp__body">{{ 'parentRequirement.locked.meanwhile' | transloco }}</p>
-      <app-parent-status-card class="plp__card" />
+      <app-parent-status-card class="plp__card" [showRestrictedInfo]="false" />
     </section>
   `,
   styleUrl: './parent-locked-page.component.scss',

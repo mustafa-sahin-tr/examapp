@@ -99,6 +99,16 @@ describe('WorksheetDetailComponent', () => {
         expect(component).toBeTruthy();
     });
 
+    // Detay yüklendi ama test (`exam`) henüz gelmedi: şablon ve oturum getter'ları patlamaz (TypeError 'instance').
+    it('examNotLoadedYet_InstanceGettersAreSafe', () => {
+        component.exam = undefined as unknown as typeof component.exam;
+
+        expect(component.instanceStatus).toBeUndefined();
+        expect(component.instanceCompleted).toBe(false);
+        expect(component.instanceStarted).toBe(false);
+        expect(component.instanceRetaking).toBe(false);
+    });
+
     describe('study link suggestions (issue #61)', () => {
         it('currentQuestionHelpers_FollowCurrentIndex', () => {
             component.results = { testInstanceQuestions: [{ id: 501 }, { id: 502 }] } as unknown as TestInstance;

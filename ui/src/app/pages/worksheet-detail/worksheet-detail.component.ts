@@ -495,20 +495,20 @@ export class WorksheetDetailComponent implements OnInit {
   }
 
   get instanceStatus(): number | undefined {
-    return this.exam.instance?.status;
+    return this.exam?.instance?.status;
   }
 
   get instanceCompleted(): boolean {
-    return this.exam.instance?.status === 1;
+    return this.exam?.instance?.status === 1;
   }
 
   get instanceStarted(): boolean {
-    return this.exam.instance?.status === 0;
+    return this.exam?.instance?.status === 0;
   }
 
   /** Issue #609: tamamlanmış etkinlik yeniden çözülüyor (oturum Started + `firstCompletedAt` dolu); testte hep false. */
   get instanceRetaking(): boolean {
-    return this.isActivity() && this.instanceStarted && !!this.exam.instance?.firstCompletedAt;
+    return this.isActivity() && this.instanceStarted && !!this.exam?.instance?.firstCompletedAt;
   }
 
   /** Issue #609: yeniden çözme onayı açık / istek uçuşta — düğmeler pasif. */

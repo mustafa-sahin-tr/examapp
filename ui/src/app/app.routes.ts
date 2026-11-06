@@ -3,6 +3,7 @@ import { RegisterWizardComponent } from './pages/register/register-wizard.compon
 import { authGuard } from './shared/guards/auth.guard';
 import { adminGuard } from './shared/guards/admin.guard';
 import { adminHomeRedirectGuard } from './shared/guards/admin-home-redirect.guard';
+import { rootRedirect } from './shared/guards/root-redirect';
 import { independentTeacherGuard } from './shared/guards/independent-teacher.guard';
 import { studentGuard } from './shared/guards/student.guard';
 import { roleGuard } from './shared/guards/role.guard';
@@ -59,7 +60,8 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./pages/public/score-calculator/score-calculator.component').then((m) => m.ScoreCalculatorComponent),
   },
-  { path: '', redirectTo: 'welcome', pathMatch: 'full' },
+  // #875: oturum açmış kullanıcı panele, ziyaretçi tanıtım sayfasına.
+  { path: '', redirectTo: rootRedirect, pathMatch: 'full' },
   // Back-compat: the old per-role routes now land on the wizard at step 2.
   { path: 'student-register', redirectTo: () => '/register?role=student' },
   { path: 'teacher-register', redirectTo: () => '/register?role=teacher' },

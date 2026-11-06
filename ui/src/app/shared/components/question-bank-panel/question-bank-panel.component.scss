@@ -98,8 +98,18 @@
     }
   }
 
+  // #836: görselsiz soru/madde — beyaz kutu yerine koyu yüzeyde kökün ilk satırları.
+  &__image--plain {
+    align-items: flex-start;
+    justify-content: flex-start;
+    background: var(--ms-surface-medium);
+    color: var(--ms-text);
+  }
+
   &__no-image {
-    color: var(--bodyColor);
+    align-self: center;
+    margin: auto;
+    color: var(--ms-text-weak);
   }
 
   &__body {
@@ -182,4 +192,47 @@
   text-align: left;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 6;
+}
+
+// #836: "Daha fazla filtre" ve seçili ikincil filtre çipleri.
+.qb-more {
+  align-self: center;
+}
+
+.qb-filters__row--more {
+  padding-top: 12px;
+  border-top: 1px dashed var(--ms-border-weak);
+}
+
+.qb-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.qb-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 0 8px 0 12px;
+  border: 1px solid var(--primary-text);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary-text) 16%, transparent);
+  color: var(--ms-text-strong);
+  font: 500 12px var(--paragraphFontFamily);
+  cursor: pointer;
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+    color: var(--ms-text-weak);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ms-action-border-focus);
+    outline-offset: 2px;
+  }
 }

@@ -53,6 +53,17 @@ const EMPTY_PAGE: QuestionBankPage = { items: [], total: 0, skip: 0, take: 0 };
  * sonuç ızgarası ve önizleme. Soru bankası sayfası kullanır; test ekranındaki "Havuzdan ekle" (#472) aynı bileşeni
  * `selectable` ile seçim modunda kullanır (zaten testte olanlar `disabledIds` ile pasif).
  */
+/** #836: "Daha fazla filtre" altındaki filtreler. */
+export type ExtraFilterKey = 'difficulty' | 'status' | 'source' | 'answer' | 'inTest' | 'contextBased' | 'skills';
+
+export interface ExtraFilterChip {
+  key: ExtraFilterKey;
+  labelKey: string;
+  /** Seçilen değerin çeviri anahtarı; beceride `null` (yerine `count`). */
+  valueKey: string | null;
+  count?: number;
+}
+
 @Component({
   selector: 'app-question-bank-panel',
   standalone: true,
@@ -119,6 +130,24 @@ export class QuestionBankPanelComponent {
   readonly contextBased = signal<QuestionBankContextFilter>('any');
   readonly kind = signal<QuestionBankKindFilter>('any');
   readonly skillIds = signal<number[]>([]);
+  /** #836: ikincil filtreler "Daha fazla filtre" altında; kapalıyken seçilenler kaldırılabilir çip olarak görünür. */
+  readonly moreFiltersOpen = signal(false);
+  readonly activeExtraFilters = computed<ExtraFilterChip[]>(() => {
+    const chips: ExtraFilterChip[] = [];
+    const add = (key: ExtraFilterKey, value: string, valueKey: string) =>
+      value !== 'any' && chips.push({ key, labelKey: `filters.${key}`, valueKey });
+    const cap = (v: string) => v.charAt(0).toUpperCase() + v.slice(1).toLowerCase();
+    add('difficulty', this.difficulty(), `filters.difficulty${cap(this.difficulty())}`);
+    add('status', this.status(), `filters.status${cap(this.status())}`);
+    add('source', this.source(), `filters.source${cap(this.source())}`);
+    add('answer', this.answer(), `filters.answer${cap(this.answer())}`);
+    add('inTest', this.inTest(), `filters.inTest${cap(this.inTest())}`);
+    add('contextBased', this.contextBased(), `filters.contextBased${cap(this.contextBased())}`);
+    if (this.skillIds().length > 0) {
+      chips.push({ key: 'skills', labelKey: 'filters.skills', valueKey: null, count: this.skillIds().length });
+    }
+    return chips;
+  });
   readonly pageIndex = signal(0);
   readonly pageSize = signal(24);
 
@@ -237,6 +266,42 @@ export class QuestionBankPanelComponent {
   setSkillIds(value: number[]): void {
     this.skillIds.set(value);
     this.pageIndex.set(0);
+  }
+
+  toggleMoreFilters(): void {
+    this.moreFiltersOpen.update((open) => !open);
+  }
+
+  clearExtraFilter(key: ExtraFilterKey): void {
+    switch (key) {
+      case 'difficulty':
+        this.setDifficulty('any');
+        break;
+      case 'status':
+        this.setStatus('any');
+        break;
+      case 'source':
+        this.setSource('any');
+        break;
+      case 'answer':
+        this.setAnswer('any');
+        break;
+      case 'inTest':
+        this.setInTest('any');
+        break;
+      case 'contextBased':
+        this.setContextBased('any');
+        break;
+      case 'skills':
+        this.setSkillIds([]);
+        break;
+    }
+  }
+
+  clearExtraFilters(): void {
+    for (const chip of this.activeExtraFilters()) {
+      this.clearExtraFilter(chip.key);
+    }
   }
 
   onPage(event: PageEvent): void {

@@ -17,7 +17,7 @@ import {
         <h1 class="ms-page-title">{{ t('title') }}</h1>
         <p class="ms-page-subtitle">{{ t('subtitle') }}</p>
       </header>
-      <app-question-bank-panel />
+      <app-question-bank-panel filterLayout="selects" />
     </div>
   `,
   changeDetection: ChangeDetectionStrategy.Eager,

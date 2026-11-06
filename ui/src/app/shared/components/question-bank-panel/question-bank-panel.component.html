@@ -24,76 +24,110 @@
         </mat-select>
       </mat-form-field>
 
-      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>{{ t('filters.difficulty') }}</mat-label>
-        <mat-select [value]="difficulty()" (selectionChange)="setDifficulty($event.value)">
-          <mat-option value="any">{{ t('filters.any') }}</mat-option>
-          <mat-option value="easy">{{ t('filters.difficultyEasy') }}</mat-option>
-          <mat-option value="medium">{{ t('filters.difficultyMedium') }}</mat-option>
-          <mat-option value="hard">{{ t('filters.difficultyHard') }}</mat-option>
-        </mat-select>
-      </mat-form-field>
+      <button
+        mat-stroked-button
+        type="button"
+        class="qb-more"
+        data-testid="more-filters"
+        [attr.aria-expanded]="moreFiltersOpen()"
+        aria-controls="qb-more-filters"
+        (click)="toggleMoreFilters()"
+      >
+        <mat-icon>tune</mat-icon>
+        @if (activeExtraFilters().length > 0) {
+          {{ t('filters.moreCount', { count: activeExtraFilters().length }) }}
+        } @else {
+          {{ t('filters.more') }}
+        }
+      </button>
+    </div>
 
-      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>{{ t('filters.status') }}</mat-label>
-        <mat-select [value]="status()" (selectionChange)="setStatus($event.value)">
-          <mat-option value="any">{{ t('filters.any') }}</mat-option>
-          <mat-option value="classified">{{ t('filters.statusClassified') }}</mat-option>
-          <mat-option value="unclassified">{{ t('filters.statusUnclassified') }}</mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>{{ t('filters.source') }}</mat-label>
-        <mat-select [value]="source()" (selectionChange)="setSource($event.value)">
-          <mat-option value="any">{{ t('filters.any') }}</mat-option>
-          <mat-option value="AI">{{ t('filters.sourceAi') }}</mat-option>
-          <mat-option value="Human">{{ t('filters.sourceHuman') }}</mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>{{ t('filters.answer') }}</mat-label>
-        <mat-select [value]="answer()" (selectionChange)="setAnswer($event.value)">
-          <mat-option value="any">{{ t('filters.any') }}</mat-option>
-          <mat-option value="yes">{{ t('filters.answerYes') }}</mat-option>
-          <mat-option value="no">{{ t('filters.answerNo') }}</mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>{{ t('filters.inTest') }}</mat-label>
-        <mat-select [value]="inTest()" (selectionChange)="setInTest($event.value)">
-          <mat-option value="any">{{ t('filters.any') }}</mat-option>
-          <mat-option value="yes">{{ t('filters.inTestYes') }}</mat-option>
-          <mat-option value="no">{{ t('filters.inTestNo') }}</mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>{{ t('filters.contextBased') }}</mat-label>
-        <mat-select data-testid="filter-context-based" [value]="contextBased()" (selectionChange)="setContextBased($event.value)">
-          <mat-option value="any">{{ t('filters.any') }}</mat-option>
-          <mat-option value="yes">{{ t('filters.contextBasedYes') }}</mat-option>
-          <mat-option value="no">{{ t('filters.contextBasedNo') }}</mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      @if (skillGroups().length > 0) {
+    <!-- #836: ikincil filtreler; kapalıyken seçilenler çip olarak kalır, sonuçlar ilk ekranda görünür. -->
+    @if (moreFiltersOpen()) {
+      <div class="qb-filters__row qb-filters__row--more" id="qb-more-filters" data-testid="more-filters-panel">
         <mat-form-field appearance="outline" subscriptSizing="dynamic">
-          <mat-label>{{ t('filters.skills') }}</mat-label>
-          <mat-select data-testid="filter-skills" multiple [value]="skillIds()" (selectionChange)="setSkillIds($event.value)">
-            @for (group of skillGroups(); track group.category) {
-              <mat-optgroup [label]="t('contextTags.category.' + group.category)">
-                @for (skill of group.skills; track skill.id) {
-                  <mat-option [value]="skill.id">{{ t(skillLabelKey(skill.code)) }}</mat-option>
-                }
-              </mat-optgroup>
-            }
+          <mat-label>{{ t('filters.difficulty') }}</mat-label>
+          <mat-select [value]="difficulty()" (selectionChange)="setDifficulty($event.value)">
+            <mat-option value="any">{{ t('filters.any') }}</mat-option>
+            <mat-option value="easy">{{ t('filters.difficultyEasy') }}</mat-option>
+            <mat-option value="medium">{{ t('filters.difficultyMedium') }}</mat-option>
+            <mat-option value="hard">{{ t('filters.difficultyHard') }}</mat-option>
           </mat-select>
         </mat-form-field>
-      }
-    </div>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>{{ t('filters.status') }}</mat-label>
+          <mat-select [value]="status()" (selectionChange)="setStatus($event.value)">
+            <mat-option value="any">{{ t('filters.any') }}</mat-option>
+            <mat-option value="classified">{{ t('filters.statusClassified') }}</mat-option>
+            <mat-option value="unclassified">{{ t('filters.statusUnclassified') }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>{{ t('filters.source') }}</mat-label>
+          <mat-select [value]="source()" (selectionChange)="setSource($event.value)">
+            <mat-option value="any">{{ t('filters.any') }}</mat-option>
+            <mat-option value="AI">{{ t('filters.sourceAi') }}</mat-option>
+            <mat-option value="Human">{{ t('filters.sourceHuman') }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>{{ t('filters.answer') }}</mat-label>
+          <mat-select [value]="answer()" (selectionChange)="setAnswer($event.value)">
+            <mat-option value="any">{{ t('filters.any') }}</mat-option>
+            <mat-option value="yes">{{ t('filters.answerYes') }}</mat-option>
+            <mat-option value="no">{{ t('filters.answerNo') }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>{{ t('filters.inTest') }}</mat-label>
+          <mat-select [value]="inTest()" (selectionChange)="setInTest($event.value)">
+            <mat-option value="any">{{ t('filters.any') }}</mat-option>
+            <mat-option value="yes">{{ t('filters.inTestYes') }}</mat-option>
+            <mat-option value="no">{{ t('filters.inTestNo') }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>{{ t('filters.contextBased') }}</mat-label>
+          <mat-select data-testid="filter-context-based" [value]="contextBased()" (selectionChange)="setContextBased($event.value)">
+            <mat-option value="any">{{ t('filters.any') }}</mat-option>
+            <mat-option value="yes">{{ t('filters.contextBasedYes') }}</mat-option>
+            <mat-option value="no">{{ t('filters.contextBasedNo') }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        @if (skillGroups().length > 0) {
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>{{ t('filters.skills') }}</mat-label>
+            <mat-select data-testid="filter-skills" multiple [value]="skillIds()" (selectionChange)="setSkillIds($event.value)">
+              @for (group of skillGroups(); track group.category) {
+                <mat-optgroup [label]="t('contextTags.category.' + group.category)">
+                  @for (skill of group.skills; track skill.id) {
+                    <mat-option [value]="skill.id">{{ t(skillLabelKey(skill.code)) }}</mat-option>
+                  }
+                </mat-optgroup>
+              }
+            </mat-select>
+          </mat-form-field>
+        }
+      </div>
+    }
+    @if (activeExtraFilters().length > 0) {
+      <div class="qb-chips" data-testid="active-extra-filters">
+        @for (chip of activeExtraFilters(); track chip.key) {
+          <button type="button" class="qb-chip" (click)="clearExtraFilter(chip.key)"
+            [attr.aria-label]="t('filters.removeChip', { label: t(chip.labelKey) })">
+            <span>{{ t(chip.labelKey) }}: {{ chip.valueKey ? t(chip.valueKey) : chip.count }}</span>
+            <mat-icon aria-hidden="true">close</mat-icon>
+          </button>
+        }
+        <button mat-button type="button" class="qb-chips__clear" (click)="clearExtraFilters()">{{ t('filters.clearExtras') }}</button>
+      </div>
+    }
   </section>
 
   <div class="qb-summary" aria-live="polite">
@@ -124,7 +158,7 @@
         [class.qb-card--selected]="isSelected(item)"
         [class.qb-card--disabled]="selectable() && (isDisabled(item) || isLinkBlocked(item))"
       >
-        <button type="button" class="qb-card__image" (click)="preview(item)" [attr.aria-label]="t('card.preview', { id: item.id })">
+        <button type="button" class="qb-card__image" [class.qb-card__image--plain]="!item.imageUrl" (click)="preview(item)" [attr.aria-label]="t('card.preview', { id: item.id })">
           @if (item.imageUrl) {
             <img [src]="item.imageUrl" [alt]="t('preview.imageAlt', { id: item.id })" loading="lazy" />
           } @else if (item.text) {

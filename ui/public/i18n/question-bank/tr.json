@@ -29,7 +29,11 @@
     "skills": "Beceriler",
     "kind": "Tür",
     "kindQuestion": "Soru",
-    "kindActivity": "Etkinlik"
+    "kindActivity": "Etkinlik",
+    "more": "Daha fazla filtre",
+    "moreCount": "Daha fazla filtre · {{count}}",
+    "removeChip": "{{label}} filtresini kaldır",
+    "clearExtras": "Temizle"
   },
   "results": {
     "total": "{{count}} soru",

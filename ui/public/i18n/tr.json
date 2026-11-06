@@ -117,7 +117,8 @@
       "avatarAlt": "Profil fotoğrafı",
       "notifications": "Bildirimler",
       "logout": "Çıkış Yap"
-    }
+    },
+    "menuLocked": "Velin onaylayınca açılır"
   },
   "shared": {
     "compactTestCard": {
@@ -1183,6 +1184,12 @@
       "messages": "Veliniz hesabını aktive edene kadar mesaj gönderemezsin.",
       "comments": "Veliniz hesabını aktive edene kadar yorum yazamazsın.",
       "leaderboard": "Veliniz hesabını aktive edene kadar liderlik tablosu kapalı."
+    },
+    "locked": {
+      "title": "Velin onaylayınca açılacak",
+      "messages": "Öğretmenlerinle mesajlaşmak için velinin hesabını aktive etmesi gerekiyor.",
+      "tutors": "Özel ders öğretmeni bulmak için velinin hesabını aktive etmesi gerekiyor.",
+      "meanwhile": "Testlerini ve ödevlerini bu sırada çözmeye devam edebilirsin."
     },
     "card": {
       "title": "Velinize davet gönderildi",

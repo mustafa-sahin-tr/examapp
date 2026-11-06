@@ -21,6 +21,8 @@ import { NotificationService } from '../../services/notification.service';
 import { DirectMessageService } from '../../services/direct-message.service';
 import { UserThemeService } from '../../services/user-theme.service';
 import { ThemeConfigService } from '../../services/theme-config.service';
+import { ParentStatusStore } from '../../services/parent-status.store';
+import { awaitingStatusOf, parentStatusOf } from '../../shared/testing/parent-status-testing';
 import { routes } from '../../app.routes';
 import { adminGuard } from '../../shared/guards/admin.guard';
 import { studentGuard } from '../../shared/guards/student.guard';
@@ -295,6 +297,21 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
         const adminRoute = children.find((r) => r.path === 'admin/student-school-requests');
         expect(teacherRoute?.canActivate?.length).toBe(3);
         expect(adminRoute?.canActivate).toContain(adminGuard);
+    });
+
+    it('isParentLocked_AwaitingActivation_LocksMessagesAndTutorsOnly (issue #845)', () => {
+        const component = create(['Student']);
+        const store = TestBed.inject(ParentStatusStore);
+        expect(component.isParentLocked('teacher-messages')).toBe(false);
+
+        store.set(awaitingStatusOf());
+        expect(component.isParentLocked('teacher-messages')).toBe(true);
+        expect(component.isParentLocked('tutors')).toBe(true);
+        expect(component.isParentLocked('exams')).toBe(false);
+
+        store.set(parentStatusOf({ mode: 'Ok' }));
+        expect(component.isParentLocked('teacher-messages')).toBe(false);
+        expect(TestBed.inject(TranslocoService).translate('layout.menuLocked')).toBe('Velin onaylayınca açılır');
     });
 
     it('menuBadgeCount_StudentSchoolRequests_UsesPendingCount (issue #361)', () => {

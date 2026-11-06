@@ -9,6 +9,9 @@ import { firstValueFrom, of } from 'rxjs';
 import { TutorSearchComponent } from './tutor-search.component';
 import { TUTOR_SEARCH_SCOPE } from './tutor-search-scope';
 import { ParentLinkService } from '../../services/parent-link.service';
+import { ParentStatusStore } from '../../services/parent-status.store';
+import { StudentParentService } from '../../services/student-parent.service';
+import { awaitingStatusOf } from '../../shared/testing/parent-status-testing';
 import { SubjectService } from '../../services/subject.service';
 import { TeacherService } from '../../services/teacher.service';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
@@ -55,12 +58,26 @@ describe('TutorSearchComponent (issue #196 — kompakt filtre)', () => {
                 { provide: ParentLinkService, useValue: {
                         getMyChildren: vi.fn().mockName("ParentLinkService.getMyChildren")
                     } },
+                // #845: kilit ekranındaki veli kartı.
+                { provide: StudentParentService, useValue: { resend: vi.fn(), reload: vi.fn().mockReturnValue(of(null)) } },
             ],
         }).compileComponents();
 
         fixture = TestBed.createComponent(TutorSearchComponent);
         component = fixture.componentInstance;
         fixture.detectChanges();
+    });
+
+    it('#845: veli onayı beklerken arama yerine kilit ekranı gösterir ve arama yapmaz', () => {
+        teacherService.searchTutors.mockClear();
+        TestBed.inject(ParentStatusStore).set(awaitingStatusOf());
+        const locked = TestBed.createComponent(TutorSearchComponent);
+        locked.detectChanges();
+        const host = locked.nativeElement as HTMLElement;
+
+        expect(host.querySelector('[data-test="parent-locked-page"]')?.textContent).toContain('Özel ders öğretmeni bulmak için');
+        expect(host.querySelector('.ts__filters')).toBeNull();
+        expect(teacherService.searchTutors).not.toHaveBeenCalled();
     });
 
     it('ücret aralığını tek bir role="group" altında, tek etiket ve tek ₺ ekiyle gösterir', () => {

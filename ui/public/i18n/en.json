@@ -117,7 +117,8 @@
       "avatarAlt": "Profile picture",
       "notifications": "Notifications",
       "logout": "Log out"
-    }
+    },
+    "menuLocked": "Opens once your parent approves"
   },
   "shared": {
     "compactTestCard": {
@@ -1183,6 +1184,12 @@
       "messages": "You can't send messages until your parent activates their account.",
       "comments": "You can't post comments until your parent activates their account.",
       "leaderboard": "The leaderboard is off until your parent activates their account."
+    },
+    "locked": {
+      "title": "Opens once your parent approves",
+      "messages": "Your parent needs to activate their account before you can message your teachers.",
+      "tutors": "Your parent needs to activate their account before you can find a private tutor.",
+      "meanwhile": "You can keep solving your tests and homework in the meantime."
     },
     "card": {
       "title": "An invitation was sent to your parent",

@@ -102,9 +102,8 @@
   border: 1px solid var(--ms-border-weak);
   border-radius: 12px;
   box-shadow: none;
-  transition: opacity 0.15s ease;
-
-  &.disabled {
+  // Pasif sütunda yalnız başlık soluklaşır; "önce ders seçin" ipucu okunur kalmalı (opaklık 2.9:1'e düşürüyordu).
+  &.disabled .column-header {
     opacity: 0.55;
   }
 }

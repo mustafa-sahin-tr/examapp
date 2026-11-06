@@ -564,9 +564,9 @@
                   </button>
                 }
               </div>
-              @if (isActivity() && (exam.instanceCount ?? 0) > 0) {
+              @if (isActivity() && (exam?.instanceCount ?? 0) > 0) {
                 <p class="started-note" data-testid="started-note" *appIsTeacher>
-                  <mat-icon aria-hidden="true">info</mat-icon>{{ t('activity.startedNote', { count: exam.instanceCount }) }}
+                  <mat-icon aria-hidden="true">info</mat-icon>{{ t('activity.startedNote', { count: exam?.instanceCount }) }}
                 </p>
               }
             } @else if (!isActivity()) {

@@ -1,3 +1,4 @@
+import { WorksheetStudentVisibility, WorksheetTeacherSharing } from '../models/test-instance';
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -103,6 +104,12 @@ export interface CatalogImportResult {
   errors: string[];
 }
 
+/** Issue #819: içe alınan test/etkinliklerin paylaşımı (okul paylaşımı yok: sahip içe alan admin). */
+export interface QuestionImportWorksheetOptions {
+  teacherSharing: WorksheetTeacherSharing;
+  studentVisibility: WorksheetStudentVisibility;
+}
+
 @Injectable({ providedIn: 'root' })
 export class QuestionTransferService {
   private readonly http = inject(HttpClient);
@@ -123,10 +130,17 @@ export class QuestionTransferService {
     return this.http.get<QuestionTransferWorksheetListItem[]>(`${this.apiUrl}/worksheets`, { params });
   }
 
-  /** Kaynak adı gönderilmez: sunucu paketin içinden okur. */
-  startImport(file: File): Observable<QuestionTransferJob> {
+  /**
+   * Kaynak adı gönderilmez: sunucu paketin içinden okur. Issue #819: paketteki test/etkinliklerin paylaşımı; verilmezse
+   * sunucu Özel + Kısıtlı kullanır.
+   */
+  startImport(file: File, options?: QuestionImportWorksheetOptions): Observable<QuestionTransferJob> {
     const form = new FormData();
     form.append('file', file);
+    if (options) {
+      form.append('teacherSharing', String(options.teacherSharing));
+      form.append('studentVisibility', String(options.studentVisibility));
+    }
     return this.http.post<QuestionTransferJob>(`${this.apiUrl}/imports`, form);
   }
 

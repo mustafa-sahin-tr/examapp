@@ -1,3 +1,4 @@
+using ExamApp.Api.Data;
 using ExamApp.Api.Services.Storage;
 using System;
 using System.Collections.Generic;
@@ -37,6 +38,25 @@ public class StartQuestionImportFormDto
 
     [Required]
     public IFormFile File { get; set; } = default!;
+
+    /// <summary>
+    /// Issue #819: paketteki test ve etkinliklerin öğretmen paylaşımı. Varsayılan Özel. Sahip içe alan admin olduğu ve okulu
+    /// olmadığı için <see cref="WorksheetTeacherSharing.SchoolOnly"/> seçilemez (400).
+    /// </summary>
+    public WorksheetTeacherSharing? TeacherSharing { get; set; }
+
+    /// <summary>Issue #819: öğrenci görünürlüğü. Varsayılan Kısıtlı (prod'a taşınan içerik kendiliğinden yayına çıkmaz).</summary>
+    public WorksheetStudentVisibility? StudentVisibility { get; set; }
+}
+
+/// <summary>Issue #819: içe alma işinin test/etkinlik seçenekleri; iş kaydının <c>RequestJson</c>'unda taşınır.</summary>
+public sealed record QuestionImportWorksheetOptions(
+    WorksheetTeacherSharing TeacherSharing = WorksheetTeacherSharing.Private,
+    WorksheetStudentVisibility StudentVisibility = WorksheetStudentVisibility.Restricted)
+{
+    public bool IsValid =>
+        TeacherSharing is WorksheetTeacherSharing.Private or WorksheetTeacherSharing.PublicView or WorksheetTeacherSharing.PublicAssignable
+        && Enum.IsDefined(StudentVisibility);
 }
 
 public class QuestionTransferJobDto

@@ -13,8 +13,8 @@ namespace ExamApp.Api.Services.QuestionTransfer;
 /// <summary>
 /// Paketteki test ve etkinlikleri hedefe yazar. Sorular önceden işlenmiştir: her madde hedefteki sorunun kimliğine bağlanır.
 /// Tek bir madde bile bağlanamıyorsa kayıt hiç oluşturulmaz, eksik maddeli test yanlış puan verir.
-/// Yeni kayıt kapalı gelir (<see cref="WorksheetTeacherSharing.Private"/> + <see cref="WorksheetStudentVisibility.Restricted"/>): prod'a taşınan test
-/// kendiliğinden yayına çıkmaz. Atama, oturum, sonuç ve yorum taşınmaz. İkinci kez gelen kayıt güncellenmez: hedefte oturum başlamış olabilir.
+/// Yeni kayıt varsayılan olarak kapalı gelir (<see cref="WorksheetTeacherSharing.Private"/> + <see cref="WorksheetStudentVisibility.Restricted"/>): prod'a
+/// taşınan test kendiliğinden yayına çıkmaz. Issue #819: içe alan admin paylaşımı seçebilir (<see cref="QuestionImportWorksheetOptions"/>). Atama, oturum, sonuç ve yorum taşınmaz. İkinci kez gelen kayıt güncellenmez: hedefte oturum başlamış olabilir.
 /// </summary>
 public sealed class QuestionTransferWorksheetImporter(AppDbContext db, IMinIoService minio, ILogger? logger = null)
 {
@@ -33,8 +33,10 @@ public sealed class QuestionTransferWorksheetImporter(AppDbContext db, IMinIoSer
 
     private sealed record Plan(string Name, string Kind, int GradeId, int? SubjectId, int? TopicId, int? SubTopicId, List<int> TargetQuestionIds, bool MissingTaxonomy, bool HadDuplicates);
 
-    public async Task<QuestionTransferWorksheetResultDto> ImportAsync(ZipArchive zip, JsonElement manifest, string sourceKey, int? ownerUserId, CancellationToken ct = default)
+    public async Task<QuestionTransferWorksheetResultDto> ImportAsync(
+        ZipArchive zip, JsonElement manifest, string sourceKey, int? ownerUserId, QuestionImportWorksheetOptions? options = null, CancellationToken ct = default)
     {
+        options ??= new QuestionImportWorksheetOptions();
         var result = new QuestionTransferWorksheetResultDto();
         if (!TryReadWorksheets(manifest, out var worksheets))
             return result;
@@ -78,7 +80,7 @@ public sealed class QuestionTransferWorksheetImporter(AppDbContext db, IMinIoSer
                     // Yeniden denemede önceki denemenin satırları izleyicide kalmasın: ikinci kez yazılır ya da geri alınmış kimliğe bağlanır.
                     db.ChangeTracker.Clear();
                     await using var tx = await db.Database.BeginTransactionAsync(ct);
-                    var entity = NewWorksheet(worksheet, plan, imageUrl);
+                    var entity = NewWorksheet(worksheet, plan, imageUrl, options);
                     db.Add(entity);
                     await db.SaveChangesAsync(ct);
 
@@ -255,7 +257,7 @@ public sealed class QuestionTransferWorksheetImporter(AppDbContext db, IMinIoSer
         return id;
     }
 
-    private static Worksheet NewWorksheet(JsonElement worksheet, Plan plan, string? imageUrl)
+    private static Worksheet NewWorksheet(JsonElement worksheet, Plan plan, string? imageUrl, QuestionImportWorksheetOptions options)
     {
         var kind = Enum.Parse<WorksheetKind>(plan.Kind);
         // Elle oluşturmadaki kurallar (#396, #573): süre 0-24 saat; etkinlikte süre ve çalışma testi yoktur.
@@ -278,8 +280,8 @@ public sealed class QuestionTransferWorksheetImporter(AppDbContext db, IMinIoSer
             MaxDurationSeconds = isActivity ? 0 : duration,
             IsPracticeTest = !isActivity && worksheet.TryGetProperty("isPracticeTest", out var practice) && practice.ValueKind == JsonValueKind.True,
             CommentsEnabled = !worksheet.TryGetProperty("commentsEnabled", out var comments) || comments.ValueKind != JsonValueKind.False,
-            TeacherSharing = WorksheetTeacherSharing.Private,
-            StudentVisibility = WorksheetStudentVisibility.Restricted,
+            TeacherSharing = options.TeacherSharing,
+            StudentVisibility = options.StudentVisibility,
         };
     }
 

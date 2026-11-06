@@ -1,3 +1,4 @@
+import { WorksheetStudentVisibility, WorksheetTeacherSharing } from '../../models/test-instance';
 import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, signal } from '@angular/core';
 import { HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
@@ -115,6 +116,15 @@ export class QuestionTransferComponent implements OnDestroy {
   readonly previewLoading = signal(false);
   readonly previewError = signal<string | null>(null);
   readonly importBusy = signal(false);
+  /** Issue #819: içe alınan test/etkinliklerin paylaşımı; varsayılan bugünkü (Özel + Kısıtlı). */
+  readonly importSharingOptions = [
+    WorksheetTeacherSharing.Private,
+    WorksheetTeacherSharing.PublicView,
+    WorksheetTeacherSharing.PublicAssignable,
+  ];
+  readonly importVisibilityOptions = [WorksheetStudentVisibility.Restricted, WorksheetStudentVisibility.Normal];
+  readonly importTeacherSharing = signal(WorksheetTeacherSharing.Private);
+  readonly importStudentVisibility = signal(WorksheetStudentVisibility.Restricted);
   readonly importFailed = signal(false);
 
   // ---- katalog
@@ -357,7 +367,10 @@ export class QuestionTransferComponent implements OnDestroy {
 
     this.importBusy.set(true);
     this.importFailed.set(false);
-    this.transfer.startImport(file).subscribe({
+    this.transfer.startImport(file, {
+      teacherSharing: this.importTeacherSharing(),
+      studentVisibility: this.importStudentVisibility(),
+    }).subscribe({
       next: () => {
         this.importBusy.set(false);
         this.importFile.set(null);

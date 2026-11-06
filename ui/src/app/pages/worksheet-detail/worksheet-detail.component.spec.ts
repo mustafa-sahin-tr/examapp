@@ -15,7 +15,7 @@ import { WorksheetDetailComponent } from './worksheet-detail.component';
 import { TestService } from '../../services/test.service';
 import { GradesService } from '../../services/grades.service';
 import { AuthService, UserProfile } from '../../services/auth.service';
-import { Test, TestInstance, TestStartResult } from '../../models/test-instance';
+import { Test, TestInstance, TestStartResult, WorksheetStudentVisibility, WorksheetTeacherSharing } from '../../models/test-instance';
 import { WorksheetDetail } from '../../models/worksheet-detail';
 import { WorksheetAssignmentDialogData } from './components/assignment-dialog/worksheet-assignment-dialog.component';
 import { StudentService } from '../../services/student.service';
@@ -1361,5 +1361,108 @@ describe('WorksheetDetailComponent activity page (#573)', () => {
         expect(link?.textContent).toContain('Açık uçlu cevapları değerlendir');
         const routerLink = fixture.debugElement.query((d) => d.nativeElement === link).injector.get(RouterLink);
         expect(routerLink.queryParams).toEqual({ worksheetId: component['detail']()?.worksheet?.id });
+    });
+});
+
+describe('WorksheetDetailComponent admin sharing (issue #819)', () => {
+    function setup(options: { admin: boolean; updateVisibility?: ReturnType<typeof vi.fn> }) {
+        const testService = {
+            getWorksheetDetail: vi.fn().mockName('TestService.getWorksheetDetail'),
+            updateVisibility: options.updateVisibility ?? vi.fn().mockName('TestService.updateVisibility'),
+        };
+        const snackBar = { open: vi.fn().mockName('MatSnackBar.open') };
+        TestBed.configureTestingModule({
+            imports: [WorksheetDetailComponent, NoopAnimationsModule, translocoTesting],
+            providers: [
+                provideHttpClient(withXhr()),
+                provideHttpClientTesting(),
+                { provide: TestService, useValue: testService },
+                { provide: Router, useValue: { navigate: vi.fn() } },
+                { provide: MatSnackBar, useValue: snackBar },
+                {
+                    provide: AuthService,
+                    useValue: { hasRole: () => false, hasRealmRole: (r: string) => options.admin && r === 'Admin', user: signal(null) },
+                },
+                { provide: StudentService, useValue: {} },
+                { provide: GradesService, useValue: { getGrades: () => of([]) } },
+                {
+                    provide: ActivatedRoute,
+                    useValue: {
+                        snapshot: { paramMap: convertToParamMap({}), data: {} },
+                        params: of({}),
+                        queryParams: of({}),
+                        paramMap: of(convertToParamMap({})),
+                        queryParamMap: of(convertToParamMap({})),
+                    },
+                },
+            ],
+        });
+        const fixture = TestBed.createComponent(WorksheetDetailComponent);
+        const component = fixture.componentInstance;
+        component.exam = { id: 12 } as Test;
+        component['detail'].set({
+            worksheet: { id: 12, name: 'Kitap', teacherSharing: WorksheetTeacherSharing.Private, studentVisibility: WorksheetStudentVisibility.Restricted },
+            attempts: [],
+            similarWorksheets: [],
+            topicBreakdown: [],
+            outcomes: [],
+            stats: { solverCount: 0, averageScorePercent: null },
+        } as unknown as WorksheetDetail);
+        fixture.detectChanges();
+        component.testId = 12; // ngOnInit rotadan okur (bu testte rota parametresi yok)
+        return { fixture, component, testService, snackBar };
+    }
+
+    const card = (fixture: ComponentFixture<WorksheetDetailComponent>) =>
+        (fixture.nativeElement as HTMLElement).querySelector('[data-testid="admin-sharing"]');
+
+    it('shows the sharing card to an admin without the Teacher role', () => {
+        const { fixture } = setup({ admin: true });
+        expect(card(fixture)).not.toBeNull();
+    });
+
+    it('shows an admin without the Teacher role a summary instead of the student flow', () => {
+        const { fixture, component } = setup({ admin: true });
+        expect(component['view']()).toBe('admin');
+        expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid="admin-summary"]')).not.toBeNull();
+    });
+
+    it('hides the sharing card from non-admins', () => {
+        const { fixture } = setup({ admin: false });
+        expect(card(fixture)).toBeNull();
+    });
+
+    it('saves the change and keeps the server value', () => {
+        const updateVisibility = vi.fn().mockReturnValue(of({
+            teacherSharing: WorksheetTeacherSharing.PublicAssignable,
+            studentVisibility: WorksheetStudentVisibility.Normal,
+        }));
+        const { component, snackBar } = setup({ admin: true, updateVisibility });
+
+        component['onSharingChange']({
+            teacherSharing: WorksheetTeacherSharing.PublicAssignable,
+            studentVisibility: WorksheetStudentVisibility.Normal,
+        });
+
+        expect(updateVisibility).toHaveBeenCalledWith(12, {
+            teacherSharing: WorksheetTeacherSharing.PublicAssignable,
+            studentVisibility: WorksheetStudentVisibility.Normal,
+        });
+        expect(component['detail']()!.worksheet.teacherSharing).toBe(WorksheetTeacherSharing.PublicAssignable);
+        expect(component['sharingSaving']()).toBe(false);
+        expect(snackBar.open).toHaveBeenCalled();
+    });
+
+    it('reverts and shows the server message when saving fails', () => {
+        const updateVisibility = vi.fn().mockReturnValue(throwError(() => ({ status: 400, error: { message: 'okul gerekli' } })));
+        const { component, snackBar } = setup({ admin: true, updateVisibility });
+
+        component['onSharingChange']({
+            teacherSharing: WorksheetTeacherSharing.SchoolOnly,
+            studentVisibility: WorksheetStudentVisibility.Restricted,
+        });
+
+        expect(component['detail']()!.worksheet.teacherSharing).toBe(WorksheetTeacherSharing.Private);
+        expect(vi.mocked(snackBar.open).mock.lastCall![0]).toBe('okul gerekli');
     });
 });

@@ -3,6 +3,7 @@
     "userIdNotFoundInToken": "User ID not found in token."
   },
   "questionTransfer": {
-    "fileRequired": "File is required."
+    "fileRequired": "File is required.",
+    "sharingInvalid": "Invalid sharing option. Imported worksheets can be Private or Public."
   }
 }

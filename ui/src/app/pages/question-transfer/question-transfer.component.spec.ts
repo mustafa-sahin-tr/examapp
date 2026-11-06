@@ -1,3 +1,4 @@
+import { WorksheetStudentVisibility, WorksheetTeacherSharing } from '../../models/test-instance';
 import type { MockedObject } from "vitest";
 import { HttpErrorResponse, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -597,6 +598,26 @@ describe('QuestionTransferComponent', () => {
         expect(component.importFile()).toBeNull();
         expect(component.importPreview()).toBeNull();
         expect(transfer.listJobs).toHaveBeenCalled();
+    });
+
+    // Issue #819: paylaşım seçimi işle birlikte gider; varsayılan bugünkü (Özel + Kısıtlı).
+    it('startImport_SendsTheChosenWorksheetSharing', () => {
+        setup();
+        component.onImportFileSelected(fileEvent(zip()));
+        component.startImport();
+        expect(transfer.startImport.mock.lastCall![1]).toEqual({
+            teacherSharing: WorksheetTeacherSharing.Private,
+            studentVisibility: WorksheetStudentVisibility.Restricted,
+        });
+
+        component.onImportFileSelected(fileEvent(zip()));
+        component.importTeacherSharing.set(WorksheetTeacherSharing.PublicAssignable);
+        component.importStudentVisibility.set(WorksheetStudentVisibility.Normal);
+        component.startImport();
+        expect(transfer.startImport.mock.lastCall![1]).toEqual({
+            teacherSharing: WorksheetTeacherSharing.PublicAssignable,
+            studentVisibility: WorksheetStudentVisibility.Normal,
+        });
     });
 
     // ---- katalog

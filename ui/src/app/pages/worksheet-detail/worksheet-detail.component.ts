@@ -15,6 +15,7 @@ import {
   ChangeDetectionStrategy
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { HttpErrorResponse } from '@angular/common/http';
 import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, NavigationExtras, ParamMap, Router, RouterLink } from '@angular/router';
 import { Test, TestInstance, TestInstanceQuestion, WorksheetTeacherSharing } from '../../models/test-instance';
@@ -83,11 +84,15 @@ interface AssignmentPanelState {
   error: string | null;
 }
 
-type WorksheetView = 'teacher' | 'completed' | 'start';
+type WorksheetView = 'teacher' | 'admin' | 'completed' | 'start';
 
 /** Sayfa çevirileri kendi scope'unda: `public/i18n/worksheet-detail/<lang>.json` (issue #183). */
 const WORKSHEET_DETAIL_SCOPE = 'worksheet-detail';
 
+import {
+  VisibilityChange,
+  VisibilitySectionComponent,
+} from '../../shared/components/visibility-section/visibility-section.component';
 @Component({
   selector: 'app-worksheet-detail',
   standalone: true,
@@ -115,6 +120,7 @@ const WORKSHEET_DETAIL_SCOPE = 'worksheet-detail';
     ActivityReportComponent,
     ActivityItemListComponent,
     RouterLink,
+    VisibilitySectionComponent,
   ],
   providers: [provideTranslocoScope(WORKSHEET_DETAIL_SCOPE)],
   templateUrl: './worksheet-detail.component-dlms.html',
@@ -131,6 +137,42 @@ export class WorksheetDetailComponent implements OnInit {
   private readonly transloco = inject(TranslocoService);
   private readonly localeService = inject(LocaleService);
   private readonly activityLauncher = inject(ActivityLauncherService);
+
+  /** Issue #819: admin paylaşım kartı. İyimser günceller, hata olursa eski değere döner. */
+  protected onSharingChange(change: VisibilityChange): void {
+    const current = this.detail();
+    if (!current || this.sharingSaving()) {
+      return;
+    }
+    const previous = { teacherSharing: current.worksheet.teacherSharing, studentVisibility: current.worksheet.studentVisibility };
+    const patch = (values: Partial<typeof previous>) => {
+      const d = this.detail();
+      if (d) {
+        this.detail.set({ ...d, worksheet: { ...d.worksheet, ...values } });
+      }
+    };
+    patch(change);
+    this.sharingSaving.set(true);
+    this.testService
+      .updateVisibility(this.testId, change)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updated) => {
+          this.sharingSaving.set(false);
+          patch({
+            teacherSharing: updated?.teacherSharing ?? change.teacherSharing,
+            studentVisibility: updated?.studentVisibility ?? change.studentVisibility,
+          });
+          this.snackBar.open(this.tr('adminSharing.saved'), this.tr('snackbar.dismiss'), { duration: 2000 });
+        },
+        error: (err: HttpErrorResponse) => {
+          this.sharingSaving.set(false);
+          patch(previous);
+          const message = typeof err?.error?.message === 'string' ? err.error.message : this.tr('adminSharing.failed');
+          this.snackBar.open(message, this.tr('snackbar.dismiss'), { duration: 4000 });
+        },
+      });
+  }
 
   /** Scope'lu anahtarı tam adıyla senkron çevirir; şablon yardımcıları `*transloco` bloğu içinde çalışır. */
   private tr(key: string, params?: Record<string, unknown>): string {
@@ -198,6 +240,12 @@ export class WorksheetDetailComponent implements OnInit {
    * bölümü. Gerçek yetki yorum bazında sunucunun `canModerate`'ı; şikayet listesi yalnız moderatörü olunanları döner.
    */
   protected readonly canModerateComments = this.isTeacher || this.isAdmin;
+  /**
+   * Issue #819: admin, öğretmen rolü olmadan da test/etkinliğin paylaşımını buradan değiştirir (içe aktarılan kayıtlar
+   * Özel gelir; düzenleme sayfası `/exam/:id` yalnız öğretmene açık). Sunucu admine izin verir (`CanModify`).
+   */
+  protected readonly canManageSharing = this.isAdmin;
+  protected readonly sharingSaving = signal(false);
   /** Issue #305: şikayet ucu Student/Teacher rolüne açık — yalnız admin olan şikayet etmez. */
   protected readonly canReportComments = this.isTeacher || !this.isAdmin;
   /** Issue #305: tüm thread'lerin moderatörü (admin ya da worksheet sahibi) — moderasyon anahtarı hemen görünür. */
@@ -296,6 +344,10 @@ export class WorksheetDetailComponent implements OnInit {
   protected readonly view = computed<WorksheetView>(() => {
     if (this.isTeacher) {
       return 'teacher';
+    }
+    // Issue #819: öğretmen rolü olmayan admin öğrenci akışını (Başla) kullanamaz; yalnız özet ve paylaşım kartı.
+    if (this.isAdmin) {
+      return 'admin';
     }
     if (this.isActivity()) {
       return 'start';

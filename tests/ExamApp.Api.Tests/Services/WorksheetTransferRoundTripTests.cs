@@ -176,10 +176,15 @@ public class WorksheetTransferRoundTripTests : IDisposable
     private Task<QuestionTransferImportResultDto> ImportAsync(byte[] package, params IInterceptor[] interceptors) =>
         ImportWithAsync(package, () => _target.NewContext(interceptors));
 
-    private async Task<QuestionTransferImportResultDto> ImportWithAsync(byte[] package, Func<AppDbContext> newContext)
+    private async Task<QuestionTransferImportResultDto> ImportWithAsync(
+        byte[] package, Func<AppDbContext> newContext, QuestionImportWorksheetOptions? options = null)
     {
         _storage[PackageUrl] = package;
-        var job = new QuestionTransferJob { Id = Guid.NewGuid(), Kind = QuestionTransferJobKind.Import, SourceKey = OriginOf(package), FileUrl = PackageUrl, Message = "Queued" };
+        var job = new QuestionTransferJob
+        {
+            Id = Guid.NewGuid(), Kind = QuestionTransferJobKind.Import, SourceKey = OriginOf(package), FileUrl = PackageUrl, Message = "Queued",
+            RequestJson = options is null ? null : JsonSerializer.Serialize(options),
+        };
         await using (var seed = _target.NewContext())
         {
             seed.SetCurrentUser(ImportingAdmin);
@@ -328,6 +333,24 @@ public class WorksheetTransferRoundTripTests : IDisposable
         second.Worksheets.AlreadyImported.ShouldBe(1);
         await using var ctx = _target.NewContext();
         (await ctx.Worksheets.CountAsync()).ShouldBe(1);
+    }
+
+    // Issue #819: içe alan admin paylaşımı seçerse kayıt o paylaşımla gelir (iş kaydının RequestJson'u).
+    [Fact]
+    public async Task Imported_test_takes_the_sharing_chosen_for_the_import()
+    {
+        var grade = await GradeAsync(_source);
+        await GradeAsync(_target);
+        var question = await QuestionAsync(_source, "Tek soru");
+        var worksheet = await WorksheetAsync(_source, "Paylaşılan test", grade, [question]);
+
+        await ImportWithAsync(await ExportAsync(worksheet), () => _target.NewContext(),
+            new QuestionImportWorksheetOptions(WorksheetTeacherSharing.PublicAssignable, WorksheetStudentVisibility.Normal));
+
+        var imported = await TargetWorksheetAsync("Paylaşılan test");
+        imported.TeacherSharing.ShouldBe(WorksheetTeacherSharing.PublicAssignable);
+        imported.StudentVisibility.ShouldBe(WorksheetStudentVisibility.Normal);
+        imported.CreateUserId.ShouldBe(ImportingAdmin);
     }
 
     [Fact]

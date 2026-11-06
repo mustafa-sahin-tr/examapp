@@ -106,6 +106,16 @@ public class EffectiveRoleTests
         await _studentService.DidNotReceiveWithAnyArgs().GetStudentProfile(default);
     }
 
+    // Issue #819: öğretmen rolü olmayan admin detayı öğretmen verisiyle (admin olarak) açar.
+    [Fact]
+    public async Task Detail_for_an_admin_without_the_teacher_role_takes_the_teacher_branch_as_admin()
+    {
+        await NewExamController("Admin", "Admin").GetWorksheetDetail(9, default);
+
+        await _worksheetDetail.Received(1).GetWorksheetDetailAsync(9, "Teacher", null, 5, true, Arg.Any<CancellationToken>());
+        await _studentService.DidNotReceiveWithAnyArgs().GetStudentProfile(default);
+    }
+
     [Fact]
     public async Task List_with_jwt_student_and_profile_teacher_uses_the_student_listing()
     {

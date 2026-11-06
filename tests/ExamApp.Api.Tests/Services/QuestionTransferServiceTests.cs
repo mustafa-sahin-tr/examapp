@@ -53,7 +53,8 @@ public class QuestionTransferServiceTests : IDisposable
     {
         QuestionTransferJobDto dto;
         await using (var ctx = _db.NewContext())
-            dto = await NewService(ctx).StartImportAsync("  prod-eu  ", "http://minio/in.zip", new QuestionTransferOwner(77, true), default);
+            dto = await NewService(ctx).StartImportAsync("  prod-eu  ", "http://minio/in.zip", new QuestionTransferOwner(77, true),
+                new QuestionImportWorksheetOptions(WorksheetTeacherSharing.PublicView, WorksheetStudentVisibility.Normal), default);
 
         dto.Kind.ShouldBe("Import");
         dto.SourceKey.ShouldBe("prod-eu");
@@ -62,6 +63,9 @@ public class QuestionTransferServiceTests : IDisposable
         var job = await check.Set<QuestionTransferJob>().SingleAsync();
         job.FileUrl.ShouldBe("http://minio/in.zip");
         job.CreateUserId.ShouldBe(77);
+        // Issue #819: paylaşım seçimi işle birlikte saklanır, çalıştırıcı oradan okur.
+        JsonSerializer.Deserialize<QuestionImportWorksheetOptions>(job.RequestJson!)
+            .ShouldBe(new QuestionImportWorksheetOptions(WorksheetTeacherSharing.PublicView, WorksheetStudentVisibility.Normal));
         _jobs.Received(1).Create(
             Arg.Is<Hangfire.Common.Job>(j => j.Method.Name == nameof(QuestionTransferJobRunner.RunImportAsync)
                                              && j.Args.Count == 2 && (bool)j.Args[1]! == true),

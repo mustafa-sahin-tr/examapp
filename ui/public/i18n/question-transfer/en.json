@@ -81,7 +81,15 @@
     "conflictsNote": "Conflict: the same image is here with different content. These questions are not imported and the question here does not change.",
     "missingTaxonomyNote": "Questions whose topic is not found arrive without one. Move the catalog first.",
     "unhashedNote": "{{count}} questions here have not been scanned yet, so the counts may be low. The scan is running in the background.",
-    "start": "Import"
+    "start": "Import",
+    "teacherSharing": "Teacher sharing",
+    "teacherSharing0": "Private (only me)",
+    "teacherSharing1": "Public (view)",
+    "teacherSharing2": "Public (can assign)",
+    "studentVisibility": "Student visibility",
+    "studentVisibility1": "Restricted (only when assigned)",
+    "studentVisibility0": "Normal (students can find it)",
+    "sharingHint": "Applies to the package's tests and activities; items imported before are not changed. Can be changed later on the test page."
   },
   "worksheets": {
     "title": "Tests and activities",

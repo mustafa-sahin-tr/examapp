@@ -13,6 +13,37 @@
   } @else if (detail()) {
    @if (detail(); as d) {
     <div class="wd-page">
+      <!-- Issue #819: öğretmen rolü olmayan admin: yalnız özet (öğrenci akışı yok) + aşağıdaki paylaşım kartı. -->
+      @if (view() === 'admin') {
+        <section class="card admin-summary" data-testid="admin-summary">
+          <h1>{{ d.worksheet.name }}</h1>
+          @if (d.worksheet.subtitle || d.worksheet.description) {
+            <p class="subtitle">{{ d.worksheet.subtitle || d.worksheet.description }}</p>
+          }
+          <div class="chips">
+            @if (gradeName()) { <span class="chip">{{ gradeName() }}</span> }
+            @if (isActivity()) {
+              <span class="chip">{{ t('activity.itemCount', { count: d.worksheet.questionCount ?? 0 }) }}</span>
+            } @else {
+              <span class="chip">{{ t('hero.questionCount', { count: d.worksheet.questionCount ?? 0 }) }}</span>
+            }
+          </div>
+        </section>
+      }
+
+      <!-- Issue #819: admin paylaşımı her görünümde buradan değiştirir. -->
+      @if (canManageSharing) {
+        <section class="card admin-sharing" data-testid="admin-sharing">
+          <h3><span class="dot"></span>{{ t('adminSharing.title') }}</h3>
+          <p class="admin-sharing__hint">{{ t('adminSharing.hint') }}</p>
+          <app-visibility-section
+            [teacherSharing]="d.worksheet.teacherSharing"
+            [studentVisibility]="d.worksheet.studentVisibility"
+            [disabled]="sharingSaving()"
+            (visibilityChange)="onSharingChange($event)"
+          ></app-visibility-section>
+        </section>
+      }
 
       <!-- ================= STUDENT · START ================= -->
       @if (view() === 'start') {

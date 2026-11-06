@@ -1,3 +1,4 @@
+using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.QuestionTransfer;
 using ExamApp.Api.Helpers;
@@ -89,6 +90,13 @@ public class QuestionTransferController : ControllerBase
             return BadRequest(new { message = _localizer["questionTransfer.fileRequired"].Value });
         }
 
+        // Issue #819: içe alınan test/etkinliklerin paylaşımı (varsayılan bugünkü: Özel + Kısıtlı).
+        var options = new QuestionImportWorksheetOptions(
+            request.TeacherSharing ?? WorksheetTeacherSharing.Private,
+            request.StudentVisibility ?? WorksheetStudentVisibility.Restricted);
+        if (!options.IsValid)
+            return BadRequest(new { message = _localizer["questionTransfer.sharingInvalid"].Value });
+
         var owner = await ResolveOwnerAsync(ct);
         if (owner is null)
             return Forbid();
@@ -104,7 +112,7 @@ public class QuestionTransferController : ControllerBase
         await using var uploadStream = request.File.OpenReadStream();
         var url = await _minio.UploadFileAsync(uploadStream, objectName);
 
-        var job = await _service.StartImportAsync(sourceKey, url, owner, ct);
+        var job = await _service.StartImportAsync(sourceKey, url, owner, options, ct);
         return Ok(job);
     }
 

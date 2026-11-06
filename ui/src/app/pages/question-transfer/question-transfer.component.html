@@ -312,6 +312,27 @@
           </div>
         }
 
+        <!-- Issue #819: paketteki test ve etkinlikler kime açık gelsin (sorulara dokunmaz). -->
+        <div class="qt-scope qt-gap" data-testid="import-sharing">
+          <mat-form-field appearance="outline">
+            <mat-label>{{ t('import.teacherSharing') }}</mat-label>
+            <mat-select [value]="importTeacherSharing()" (selectionChange)="importTeacherSharing.set($event.value)">
+              @for (option of importSharingOptions; track option) {
+                <mat-option [value]="option">{{ t('import.teacherSharing' + option) }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ t('import.studentVisibility') }}</mat-label>
+            <mat-select [value]="importStudentVisibility()" (selectionChange)="importStudentVisibility.set($event.value)">
+              @for (option of importVisibilityOptions; track option) {
+                <mat-option [value]="option">{{ t('import.studentVisibility' + option) }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+        <div class="qt-muted">{{ t('import.sharingHint') }}</div>
+
         @if (importFailed()) {
           <div class="qt-error qt-gap" role="alert">{{ t('import.failed') }}</div>
         }

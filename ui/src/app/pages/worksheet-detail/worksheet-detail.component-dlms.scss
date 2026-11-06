@@ -1425,3 +1425,22 @@ table {
     }
   }
 }
+
+// Issue #819: admin paylaşım kartı (sayfanın üstünde, her görünümde).
+.admin-sharing {
+  margin-bottom: 16px;
+
+  &__hint {
+    margin: 0 0 12px;
+    color: var(--ms-text-weak);
+    font-size: 14px;
+  }
+}
+
+.admin-summary {
+  margin-bottom: 16px;
+
+  h1 {
+    margin: 0 0 8px;
+  }
+}

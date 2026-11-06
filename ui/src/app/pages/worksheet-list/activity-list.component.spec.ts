@@ -99,6 +99,30 @@ describe('ActivityListComponent (#573)', () => {
     expect(el().textContent).not.toMatch(/%|puan|XP/i);
   });
 
+  it('i834_SectionInput_RendersOnlyThatSectionWithoutTitle', () => {
+    testService.getActiveAssignments.mockReturnValue(
+      of([{ worksheetId: 1, name: 'Yeni etkinlik', kind: 1, hasStarted: false, isCompleted: false, questionCount: 5 }] as AssignedWorksheet[])
+    );
+    testService.listWorksheets.mockImplementation((f: { statuses: number[] }) =>
+      f.statuses[0] === 1 ? paged([{ id: 3, name: 'Biten', kind: 1, questionCount: 2, instance: { status: 1 } as Test['instance'] }]) : paged([])
+    );
+    TestBed.configureTestingModule({
+      imports: [ActivityListComponent, translocoTesting],
+      providers: [provideRouter([]), { provide: TestService, useValue: testService }, { provide: BadgeService, useValue: badgeService }],
+    });
+    fixture = TestBed.createComponent(ActivityListComponent);
+    fixture.componentRef.setInput('section', 'completed');
+    fixture.detectChanges();
+
+    expect(el().querySelectorAll('.al__section-title').length).toBe(0);
+    const cards = Array.from(el().querySelectorAll('app-worksheet-list-view-card'));
+    expect(cards.map((c) => c.textContent)).toEqual([expect.stringContaining('Biten')]);
+
+    fixture.componentRef.setInput('section', 'inprogress');
+    fixture.detectChanges();
+    expect(el().querySelector('[data-testid="activity-section-empty"]')?.textContent).toContain('Devam eden etkinliğin yok.');
+  });
+
   it('i648_NotStartedUnassigned_ShowsExploreSection_AssignedStaysInNew', () => {
     testService.getActiveAssignments.mockReturnValue(
       of([{ worksheetId: 1, name: 'Atanan', kind: 1, hasStarted: false, isCompleted: false, questionCount: 5 }] as AssignedWorksheet[])

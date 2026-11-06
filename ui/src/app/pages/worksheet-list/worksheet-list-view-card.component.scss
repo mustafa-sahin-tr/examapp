@@ -33,6 +33,14 @@
   background-position: center;
   background-repeat: no-repeat;
   text-decoration: none;
+
+  // #834: görselsiz test — desen yerine ders renginde kısa şerit; etiketler şeridin içinde kalır.
+  &--plain {
+    aspect-ratio: auto;
+    min-height: 44px;
+    background-color: color-mix(in srgb, var(--wcard-subject, var(--ms-subject-default)) 70%, var(--ms-surface-medium));
+    border-bottom: 3px solid var(--wcard-subject, var(--ms-subject-default));
+  }
 }
 
 .wcard__tag {

@@ -1,9 +1,9 @@
 {
   "header": {
     "titleTeacher": "My Tests",
-    "titleStudent": "Tests",
+    "titleStudent": "My tests",
     "subtitleTeacher": "Manage, edit and assign the tests you have created.",
-    "subtitleStudent": "Find tests by topic and difficulty, take them and track your progress.",
+    "subtitleStudent": "Solve what is assigned to you and discover new ones.",
     "newTest": "New Test",
     "newActivity": "New Activity"
   },
@@ -223,6 +223,12 @@
     "inProgressTitle": "In progress",
     "exploreTitle": "Explore",
     "completedTitle": "Completed",
-    "partialError": "Some activities could not be loaded; the list may be incomplete."
+    "partialError": "Some activities could not be loaded; the list may be incomplete.",
+    "sectionEmpty": {
+      "assigned": "No new activities assigned to you.",
+      "inprogress": "You have no activities in progress.",
+      "discover": "No new activities to discover.",
+      "completed": "You have not completed any activities yet."
+    }
   }
 }

@@ -1,9 +1,11 @@
 <article *transloco="let t; prefix: 'worksheet-list'" class="wcard" [class.wcard--list]="viewMode === 'list'" [attr.aria-label]="t('card.aria')">
   <a
     class="wcard__cover"
+    [class.wcard__cover--plain]="!coverUrl"
     [routerLink]="['/test', course.id]"
     [attr.aria-label]="t('card.openAria', { name: course.name })"
-    [style.backgroundImage]="'url(' + coverUrl + ')'"
+    [style.backgroundImage]="coverUrl ? 'url(' + coverUrl + ')' : null"
+    [style.--wcard-subject]="subjectColor"
   >
     @if (isActivity) {
       <span class="wcard__tag wcard__tag--info" data-testid="activity-tag">{{ t('card.tagActivity') }}</span>

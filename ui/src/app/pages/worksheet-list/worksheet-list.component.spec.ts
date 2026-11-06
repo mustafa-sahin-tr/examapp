@@ -277,65 +277,15 @@ describe('WorksheetListComponent', () => {
             expect(component.resumeProgressPercent({ id: 1, name: 'x', instance: { status: 0 } } as Test)).toBe(0);
         });
 
-        it('discoverAssigned_RendersCompactCardsWithDueDateOnly_ExploreKeepsRichCards', () => {
-            component.assignments.set([
-                { assignmentId: 1, worksheetId: 11, name: 'Atanan Sınav', endAt: '2026-03-12T10:00:00Z' } as AssignedWorksheet,
-            ]);
+        it('discover_ShowsOnlyExploreTests_AssignedLiveInTheirOwnTab_issue834', () => {
             setPaged([assignedTest, exploreTest]);
             fixture.detectChanges();
 
-            const assignedSection = section(0);
-            const exploreSection = section(1);
-            const cards = compactCards(assignedSection);
-
-            expect(cards.length).toBe(1);
-            expect(richCards(assignedSection).length).toBe(0);
-            expect(cards[0].querySelector('.ctc__title')?.textContent?.trim()).toBe('Atanan Sınav');
-            expect(cards[0].querySelector('.ctc__due')?.textContent?.trim()).toBe(`Bitiş: ${new Date('2026-03-12T10:00:00Z').toLocaleDateString('tr')}`);
-            expect(cards[0].querySelector('.ctc__progress')).toBeNull();
-            expect(compactCards(exploreSection).length).toBe(0);
-            expect(richCards(exploreSection).length).toBe(1);
-        });
-
-        it('discoverAssigned_NoAssignmentRecord_RendersCompactCardWithoutDue', () => {
-            setPaged([assignedTest]);
-            fixture.detectChanges();
-
-            const card = compactCards(section(0))[0];
-
-            expect(card).toBeTruthy();
-            expect(card.querySelector('.ctc__due')).toBeNull();
-        });
-
-        it('discoverAssigned_CardActivated_NavigatesToWorksheet', () => {
-            setPaged([assignedTest]);
-            fixture.detectChanges();
-
-            compactCards(section(0))[0].click();
-
-            expect(router.navigate).toHaveBeenCalledTimes(1);
-
-            expect(router.navigate).toHaveBeenCalledWith(['/test', 11]);
-        });
-
-        it('discoverAssigned_ListViewMode_StillRendersCompactCards', () => {
-            setPaged([assignedTest, exploreTest]);
-            component.viewMode.set('list');
-            fixture.detectChanges();
-
-            const grid = section(0).querySelector('.wl__compact-grid') as HTMLElement;
-
-            expect(grid.classList).toContain('wl__compact-grid--list');
-            expect(compactCards(section(0)).length).toBe(1);
-            expect(richCards(section(1)).length).toBe(1);
-        });
-
-        it('discoverAssigned_Empty_KeepsEmptyMessage', () => {
-            setPaged([exploreTest]);
-            fixture.detectChanges();
-
-            expect(section(0).querySelector('.wl__empty--section p')?.textContent?.trim()).toBe('Sana atanmış aktif bir test yok.');
+            const sections = (fixture.nativeElement as HTMLElement).querySelectorAll('.wl__section');
+            expect(sections.length).toBe(1);
             expect(compactCards(section(0)).length).toBe(0);
+            expect(richCards(section(0)).map((c) => c.textContent)).toEqual([expect.stringContaining('Keşfet Sınavı')]);
+            expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Atanan Sınav');
         });
 
         it('otherTabs_RenderRichCardsNotCompact', () => {
@@ -496,6 +446,31 @@ describe('WorksheetListComponent', () => {
             expect(testService.getActiveAssignments).toHaveBeenCalledTimes(1);
         });
 
+        it('studentTabs_OrderStartsWithAssigned_issue834', () => {
+            const labels = Array.from(el().querySelectorAll('.wl__tabs button')).map((b) => b.getAttribute('data-testid'));
+            expect(labels).toEqual(['tab-assigned', 'tab-inprogress', 'tab-discover', 'tab-completed']);
+            expect(el().querySelector('nav[mat-tab-nav-bar]')).toBeNull();
+        });
+
+        it('openAssignment_OpensAssignedTabByDefault_issue834', () => {
+            TestBed.resetTestingModule();
+            fixture = configure(true, {}, [{ worksheetId: 1, name: 'Test', kind: 0, isCompleted: false } as AssignedWorksheet]);
+            component = fixture.componentInstance;
+            fixture.detectChanges();
+
+            expect(component.tab()).toBe('assigned');
+            expect(el().querySelector('[data-testid="tab-assigned"]')?.classList).toContain('is-active');
+        });
+
+        it('noOpenAssignment_StaysOnDiscover_issue834', () => {
+            TestBed.resetTestingModule();
+            fixture = configure(true, {}, [{ worksheetId: 1, name: 'Bitti', kind: 0, isCompleted: true } as AssignedWorksheet]);
+            component = fixture.componentInstance;
+            fixture.detectChanges();
+
+            expect(component.tab()).toBe('discover');
+        });
+
         it('studentActivitiesTab_RendersActivityListWithKindFilters', () => {
             TestBed.resetTestingModule();
             fixture = configure(true, { type: 'activities' });
@@ -504,7 +479,9 @@ describe('WorksheetListComponent', () => {
 
             expect(component.pageKind()).toBe('activities');
             expect(el().querySelector('app-activity-list')).not.toBeNull();
-            expect(el().querySelector('.wl__tabs')).toBeNull();
+            // #834: öğrencide aynı tek sekme sırası etkinlikte de durur; Test | Etkinlik yanındaki seçici.
+            expect(el().querySelector('.wl__tabs')).not.toBeNull();
+            expect(el().querySelector('[data-testid="kind-tab-activities"]')?.getAttribute('aria-pressed')).toBe('true');
             expect(testService.getActiveAssignments).toHaveBeenCalledWith(1);
             expect(listCalls().some((f) => f.kind === 1 && f.statuses?.[0] === 0)).toBe(true);
             expect(listCalls().some((f) => f.kind === 1 && f.statuses?.[0] === 1)).toBe(true);

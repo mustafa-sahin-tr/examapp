@@ -1,9 +1,9 @@
 {
   "header": {
     "titleTeacher": "Testlerim",
-    "titleStudent": "Testler",
+    "titleStudent": "Testlerim",
     "subtitleTeacher": "Oluşturduğun testleri yönet, düzenle ve öğrencilere ata.",
-    "subtitleStudent": "Konu ve zorluğa göre test bul, çöz ve ilerlemeni takip et.",
+    "subtitleStudent": "Sana atananları çöz, yenilerini keşfet.",
     "newTest": "Yeni Test",
     "newActivity": "Yeni Etkinlik"
   },
@@ -223,6 +223,12 @@
     "inProgressTitle": "Devam ediyor",
     "exploreTitle": "Keşfet",
     "completedTitle": "Tamamlandı",
-    "partialError": "Bazı etkinlikler yüklenemedi; liste eksik olabilir."
+    "partialError": "Bazı etkinlikler yüklenemedi; liste eksik olabilir.",
+    "sectionEmpty": {
+      "assigned": "Sana atanmış yeni etkinlik yok.",
+      "inprogress": "Devam eden etkinliğin yok.",
+      "discover": "Keşfedilecek yeni etkinlik yok.",
+      "completed": "Henüz tamamladığın etkinlik yok."
+    }
   }
 }

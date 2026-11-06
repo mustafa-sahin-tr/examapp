@@ -1,7 +1,7 @@
 {
   "form": {
     "select": "Select",
-    "nameLabel": "Test Name",
+    "nameLabel": "Test name",
     "namePlaceholder": "e.g. Measuring Time Assessment",
     "subtitleLabel": "Subtitle",
     "subtitlePlaceholder": "e.g. For Students Moving to Grade 5",
@@ -21,10 +21,10 @@
     "segTopic": "Topic",
     "bookLabel": "Book",
     "addBook": "Add new book",
-    "newBookLabel": "New Book Name",
-    "bookTestLabel": "Book Test",
+    "newBookLabel": "New book name",
+    "bookTestLabel": "Book test",
     "addBookTest": "Add new book test",
-    "newBookTestLabel": "New Book Test Name",
+    "newBookTestLabel": "New book test name",
     "subjectLabel": "Subject",
     "selectGradeFirst": "Select a grade first.",
     "topicLabel": "Topic",
@@ -42,7 +42,22 @@
     "kindActivityHint": "Activity pages have no time limit or score; students check their items and fix their mistakes.",
     "kindLockedHint": "Students have already opened this page, so its type cannot be changed.",
     "instructionLabel": "Instructions",
-    "instructionPlaceholder": "Briefly tell students what to do (e.g. Match the pictures with the right words)."
+    "instructionPlaceholder": "Briefly tell students what to do (e.g. Match the pictures with the right words).",
+    "optional": "(optional)",
+    "selectSubjectFirst": "Pick a subject first to list its topics.",
+    "stepOf": "Step {{n}} of {{total}}",
+    "back": "Back",
+    "createNow": "Create now",
+    "create": "Create and add questions",
+    "steps": {
+      "basics": "Basics",
+      "source": "Source and topic",
+      "settings": "Settings"
+    },
+    "next": {
+      "source": "Next: source and topic",
+      "settings": "Next: settings"
+    }
   },
   "page": {
     "creating": "Creating…",

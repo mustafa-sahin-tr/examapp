@@ -1,4 +1,4 @@
-<form *transloco="let t; prefix: 'test-create'" class="tf" [class.compact]="compact" [formGroup]="form" (ngSubmit)="onSubmit.emit()">
+<form *transloco="let t; prefix: 'test-create'" class="tf" [class.compact]="compact" [class.wizard]="!compact && !isEditMode" [formGroup]="form" (ngSubmit)="onSubmit.emit()">
   <!-- KOMPAKT VARYANT -->
   @if (compact) {
     <!-- Issue #574: hızlı oluşturmada da sayfa türü (soru tuvalinden etkinlik sayfası açılabilsin). -->
@@ -17,7 +17,7 @@
       <input class="control" type="text" formControlName="name" [placeholder]="t('form.namePlaceholder')" />
     </div>
     <div class="field">
-      <label>{{ t('form.subtitleLabel') }}<span class="req">*</span></label>
+      <label>{{ t('form.subtitleLabel') }} <span class="opt">{{ t('form.optional') }}</span></label>
       <input class="control" type="text" formControlName="subtitle" [placeholder]="t('form.subtitlePlaceholder')" />
     </div>
     <div class="settings-row">
@@ -71,211 +71,308 @@
         <div class="t-sub">{{ t('form.commentsHintCompact') }}</div>
       </div>
     </div>
-  } @else {
-    <!-- Geniş ekranda: solda Künye + Ayarlar, sağda Sınıflandırma; dar ekranda alt alta -->
+  } @else if (isEditMode) {
+    <!-- Düzenleme: solda Künye + Ayarlar, sağda Sınıflandırma; dar ekranda alt alta -->
     <div class="tf-grid">
       <div class="tf-col">
-        <!-- KÜNYE -->
         <section class="card">
           <h2><span class="dot"></span>{{ t('form.identityTitle') }}</h2>
           <p class="card-note">{{ t('form.identityNote') }}</p>
-          <!-- Issue #573: sayfa türü — Test | Etkinlik sayfası -->
-          @if (hasKindControl) {
-            <div class="field">
-              <label id="tf-kind-label">{{ t('form.kindLabel') }}</label>
-              <mat-button-toggle-group class="kind-toggle" formControlName="kind" aria-labelledby="tf-kind-label"
-                data-testid="kind-toggle">
-                <mat-button-toggle [value]="kinds.Test" data-testid="kind-test">{{ t('form.kindTest') }}</mat-button-toggle>
-                <mat-button-toggle [value]="kinds.Activity" data-testid="kind-activity">{{ t('form.kindActivity') }}</mat-button-toggle>
-              </mat-button-toggle-group>
-              @if (kindLocked) {
-                <p class="card-note field-hint" data-testid="kind-locked">{{ t('form.kindLockedHint') }}</p>
-              } @else if (isActivity) {
-                <p class="card-note field-hint">{{ t('form.kindActivityHint') }}</p>
-              }
-            </div>
-          }
-          <div class="field">
-            <label>{{ t('form.nameLabel') }}<span class="req">*</span></label>
-            <input class="control" type="text" formControlName="name" [placeholder]="t('form.namePlaceholder')" />
-          </div>
-          <div class="field">
-            <label>{{ t('form.subtitleLabel') }}<span class="req">*</span></label>
-            <input class="control" type="text" formControlName="subtitle" [placeholder]="t('form.subtitlePlaceholder')" />
-          </div>
-          <div class="field">
-            <label for="tf-description">{{ t(isActivity ? 'form.instructionLabel' : 'form.descriptionLabel') }}</label>
-            <textarea id="tf-description" class="control area" rows="3" formControlName="description"
-              [placeholder]="t(isActivity ? 'form.instructionPlaceholder' : 'form.descriptionPlaceholder')"></textarea>
-          </div>
+          <ng-container *ngTemplateOutlet="kindField" />
+          <ng-container *ngTemplateOutlet="nameField" />
+          <ng-container *ngTemplateOutlet="subtitleField" />
+          <ng-container *ngTemplateOutlet="descriptionField" />
         </section>
-        <!-- AYARLAR -->
         <section class="card">
           <h2><span class="dot"></span>{{ t('form.settingsTitle') }}</h2>
           <p class="card-note">{{ t('form.settingsNote') }}</p>
-          <!-- Issue #573: etkinlikte süre ve çalışma testi yok (backend 0 / false'a zorlar). -->
-          @if (!isActivity) {
-          <div class="settings-row">
-            <div class="field dur">
-              <label>{{ t('form.durationLabel') }}<span class="req">*</span></label>
-              <input class="control" type="number" min="1" formControlName="maxDurationMinutes" />
-            </div>
-          </div>
-          <div class="toggle-row">
-            <button
-              type="button"
-              class="switch"
-              [class.off]="!value('isPracticeTest')"
-              [attr.aria-pressed]="!!value('isPracticeTest')"
-              (click)="togglePractice()"
-            ></button>
-            <div>
-              <div class="t-label">{{ t('form.practiceLabel') }}</div>
-              <div class="t-sub">{{ t('form.practiceHint') }}</div>
-            </div>
-          </div>
-          }
-          <!-- Issue #105: öğrenci yorum/soru anahtarı (varsayılan açık) -->
-          <div class="toggle-row">
-            <button
-              type="button"
-              class="switch"
-              data-testid="comments-toggle"
-              [class.off]="!value('commentsEnabled')"
-              [attr.aria-pressed]="!!value('commentsEnabled')"
-              [attr.aria-label]="t('form.commentsLabel')"
-              [disabled]="form.disabled"
-              (click)="toggleComments()"
-            ></button>
-            <div>
-              <div class="t-label">{{ t('form.commentsLabel') }}</div>
-              <div class="t-sub">{{ t('form.commentsHint') }}</div>
-            </div>
-          </div>
+          <ng-container *ngTemplateOutlet="settingsFields" />
         </section>
       </div>
       <div class="tf-col">
-        <!-- SINIFLANDIRMA -->
         <section class="card">
           <h2><span class="dot"></span>{{ t('form.classificationTitle') }}</h2>
           <p class="card-note">{{ t('form.classificationNote') }}</p>
-          <div class="seg"><i></i><span>{{ t('form.segGrade') }}</span><span class="ln"></span></div>
-          <div class="grid3">
-            <div class="field">
-              <label>{{ t('form.gradeLabel') }}<span class="req">*</span></label>
-              <div class="control select">
-                <select formControlName="gradeId" (change)="gradeChange(value('gradeId'))">
-                  <option [ngValue]="null">{{ t('form.select') }}</option>
-                  @for (grade of grades; track grade) {
-                    <option [ngValue]="grade.id">{{ grade.name }}</option>
-                  }
-                </select>
-                <mat-icon class="chev">expand_more</mat-icon>
-              </div>
-            </div>
-          </div>
-          <div class="seg"><i></i><span>{{ t('form.segSource') }}</span><span class="ln"></span></div>
           <div class="grid2">
-            @if (!showAddBookInput) {
-              <div class="field">
-                <label>{{ t('form.bookLabel') }}</label>
-                <div class="control select">
-                  <select formControlName="bookId" (change)="bookChange(value('bookId'))">
-                    <option [ngValue]="null">{{ t('form.select') }}</option>
-                    @for (book of books; track book) {
-                      <option [ngValue]="book.id">{{ book.name }}</option>
-                    }
-                  </select>
-                  <mat-icon class="chev">expand_more</mat-icon>
-                </div>
-                <button type="button" class="add-link" (click)="openNewBookAdd.emit()">
-                  <mat-icon>add</mat-icon>{{ t('form.addBook') }}
-                </button>
-              </div>
-            }
-            @if (showAddBookInput) {
-              <div class="field">
-                <label>{{ t('form.newBookLabel') }}</label>
-                <input class="control" type="text" formControlName="newBookName" (blur)="onNewBookBlur.emit()" />
-              </div>
-            }
-            @if (!showAddBookTestInput) {
-              <div class="field">
-                <label>{{ t('form.bookTestLabel') }}</label>
-                <div class="control select">
-                  <select formControlName="bookTestId">
-                    <option [ngValue]="null">{{ t('form.select') }}</option>
-                    @for (bt of bookTests; track bt) {
-                      <option [ngValue]="bt.id">{{ bt.name }}</option>
-                    }
-                  </select>
-                  <mat-icon class="chev">expand_more</mat-icon>
-                </div>
-                <button type="button" class="add-link" (click)="openNewBookTestAdd.emit()">
-                  <mat-icon>add</mat-icon>{{ t('form.addBookTest') }}
-                </button>
-              </div>
-            }
-            @if (showAddBookTestInput) {
-              <div class="field">
-                <label>{{ t('form.newBookTestLabel') }}</label>
-                <input class="control" type="text" formControlName="newBookTestName" />
-              </div>
-            }
+            <ng-container *ngTemplateOutlet="gradeField" />
+            <ng-container *ngTemplateOutlet="subjectField" />
           </div>
-          <div class="seg"><i></i><span>{{ t('form.segTopic') }}</span><span class="ln"></span></div>
-          <div class="grid3">
-            <div class="field">
-              <label>{{ t('form.subjectLabel') }}</label>
-              <div class="control select">
-                <select formControlName="subjectId" (change)="subjectChange(value('subjectId'))">
-                  <option [ngValue]="null">{{ t('form.select') }}</option>
-                  @for (subject of subjects; track subject) {
-                    <option [ngValue]="subject.id">{{ subject.name }}</option>
-                  }
-                </select>
-                <mat-icon class="chev">expand_more</mat-icon>
-              </div>
-              @if (!gradeSelected) {
-                <p class="card-note field-hint">{{ t('form.selectGradeFirst') }}</p>
-              }
-            </div>
-            <div class="field">
-              <label>{{ t('form.topicLabel') }}</label>
-              <div class="control select">
-                <select formControlName="topicId" (change)="topicChange(value('topicId'))">
-                  <option [ngValue]="null">{{ t('form.select') }}</option>
-                  @for (topic of topics; track topic) {
-                    <option [ngValue]="topic.id">{{ topic.name }}</option>
-                  }
-                </select>
-                <mat-icon class="chev">expand_more</mat-icon>
-              </div>
-            </div>
-            <div class="field">
-              <label>{{ t('form.subtopicLabel') }}</label>
-              <div class="control select">
-                <select formControlName="subtopicId">
-                  <option [ngValue]="null">{{ t('form.select') }}</option>
-                  @for (subTopic of subtopics; track subTopic) {
-                    <option [ngValue]="subTopic.id">{{ subTopic.name }}</option>
-                  }
-                </select>
-                <mat-icon class="chev">expand_more</mat-icon>
-              </div>
-            </div>
-          </div>
+          <ng-container *ngTemplateOutlet="sourceFields" />
+          <ng-container *ngTemplateOutlet="topicFields" />
         </section>
       </div>
     </div>
-    @if (!isEditMode) {
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary" [disabled]="form.invalid">
-          <mat-icon>check</mat-icon>{{ t('form.save') }}
-        </button>
-        <button type="button" class="btn btn-ghost" (click)="onCancel.emit()">{{ t('form.cancel') }}</button>
-      </div>
+  } @else {
+    <!-- Issue #851: yeni test bağımlılık sırasıyla üç adım — temel bilgiler (sınıf, ders) → kaynak ve konu → ayarlar. -->
+    <ol class="tf-steps" data-testid="form-steps">
+      @for (s of steps; track s; let i = $index) {
+        <li [class.on]="step() === i + 1" [class.done]="step() > i + 1">
+          <button type="button" [disabled]="i + 1 > step() && !basicsValid" (click)="goTo(i + 1)"
+            [attr.aria-current]="step() === i + 1 ? 'step' : null">
+            <b>{{ i + 1 }}</b>{{ t('form.steps.' + s) }}
+          </button>
+        </li>
+      }
+    </ol>
+
+    @switch (step()) {
+      @case (1) {
+        <section class="card" data-testid="step-basics">
+          <h2><span class="dot"></span>{{ t('form.steps.basics') }}</h2>
+          <ng-container *ngTemplateOutlet="kindField" />
+          <ng-container *ngTemplateOutlet="nameField" />
+          <div class="grid2">
+            <ng-container *ngTemplateOutlet="gradeField" />
+            <ng-container *ngTemplateOutlet="subjectField" />
+          </div>
+          <ng-container *ngTemplateOutlet="subtitleField" />
+          <ng-container *ngTemplateOutlet="descriptionField" />
+        </section>
+      }
+      @case (2) {
+        <section class="card" data-testid="step-source">
+          <h2><span class="dot"></span>{{ t('form.steps.source') }} <span class="opt">{{ t('form.optional') }}</span></h2>
+          <p class="card-note">{{ t('form.classificationNote') }}</p>
+          <ng-container *ngTemplateOutlet="sourceFields" />
+          <ng-container *ngTemplateOutlet="topicFields" />
+        </section>
+      }
+      @case (3) {
+        <section class="card" data-testid="step-settings">
+          <h2><span class="dot"></span>{{ t('form.steps.settings') }}</h2>
+          <p class="card-note">{{ t('form.settingsNote') }}</p>
+          <ng-container *ngTemplateOutlet="settingsFields" />
+        </section>
+      }
     }
+
+    <!-- Kaydet çubuğu ekranın altına yapışık: oluştur düğmesi her adımda görünür. -->
+    <div class="tf-foot" data-testid="form-foot">
+      <span class="tf-foot__step">{{ t('form.stepOf', { n: step(), total: steps.length }) }}</span>
+      <button type="button" class="btn btn-ghost" (click)="onCancel.emit()">{{ t('form.cancel') }}</button>
+      <span class="tf-foot__sp"></span>
+      @if (step() > 1) {
+        <button type="button" class="btn btn-ghost" data-testid="step-back" (click)="goTo(step() - 1)">
+          <mat-icon>arrow_back</mat-icon>{{ t('form.back') }}
+        </button>
+      }
+      @if (step() < steps.length) {
+        <button type="submit" class="btn btn-ghost" data-testid="create-now" [disabled]="form.invalid">
+          {{ t('form.createNow') }}
+        </button>
+        <button type="button" class="btn btn-primary" data-testid="step-next" [disabled]="!basicsValid"
+          (click)="goTo(step() + 1)">
+          {{ t('form.next.' + steps[step()]) }}<mat-icon iconPositionEnd>arrow_forward</mat-icon>
+        </button>
+      } @else {
+        <button type="submit" class="btn btn-primary" data-testid="create" [disabled]="form.invalid">
+          <mat-icon>check</mat-icon>{{ t('form.create') }}
+        </button>
+      }
+    </div>
   }
 
+  <!-- ── Alan şablonları: düzenleme ızgarası ve yeni test adımları aynı alanları kullanır (#851). ── -->
+  <ng-template #kindField>
+    <!-- Issue #573: sayfa türü — Test | Etkinlik sayfası -->
+    @if (hasKindControl) {
+      <div class="field">
+        <label id="tf-kind-label">{{ t('form.kindLabel') }}</label>
+        <mat-button-toggle-group class="kind-toggle" formControlName="kind" aria-labelledby="tf-kind-label"
+          data-testid="kind-toggle">
+          <mat-button-toggle [value]="kinds.Test" data-testid="kind-test">{{ t('form.kindTest') }}</mat-button-toggle>
+          <mat-button-toggle [value]="kinds.Activity" data-testid="kind-activity">{{ t('form.kindActivity') }}</mat-button-toggle>
+        </mat-button-toggle-group>
+        @if (kindLocked) {
+          <p class="card-note field-hint" data-testid="kind-locked">{{ t('form.kindLockedHint') }}</p>
+        } @else if (isActivity) {
+          <p class="card-note field-hint">{{ t('form.kindActivityHint') }}</p>
+        }
+      </div>
+    }
+  </ng-template>
+
+  <ng-template #nameField>
+    <div class="field">
+      <label for="tf-name">{{ t('form.nameLabel') }}<span class="req">*</span></label>
+      <input id="tf-name" class="control" type="text" formControlName="name" [placeholder]="t('form.namePlaceholder')" />
+    </div>
+  </ng-template>
+
+  <ng-template #subtitleField>
+    <div class="field">
+      <label for="tf-subtitle">{{ t('form.subtitleLabel') }} <span class="opt">{{ t('form.optional') }}</span></label>
+      <input id="tf-subtitle" class="control" type="text" formControlName="subtitle" [placeholder]="t('form.subtitlePlaceholder')" />
+    </div>
+  </ng-template>
+
+  <ng-template #descriptionField>
+    <div class="field">
+      <label for="tf-description">{{ t(isActivity ? 'form.instructionLabel' : 'form.descriptionLabel') }}
+        <span class="opt">{{ t('form.optional') }}</span></label>
+      <textarea id="tf-description" class="control area" rows="3" formControlName="description"
+        [placeholder]="t(isActivity ? 'form.instructionPlaceholder' : 'form.descriptionPlaceholder')"></textarea>
+    </div>
+  </ng-template>
+
+  <ng-template #gradeField>
+    <div class="field">
+      <label for="tf-grade">{{ t('form.gradeLabel') }}<span class="req">*</span></label>
+      <div class="control select">
+        <select id="tf-grade" formControlName="gradeId" (change)="gradeChange(value('gradeId'))">
+          <option [ngValue]="null">{{ t('form.select') }}</option>
+          @for (grade of grades; track grade) {
+            <option [ngValue]="grade.id">{{ grade.name }}</option>
+          }
+        </select>
+        <mat-icon class="chev">expand_more</mat-icon>
+      </div>
+    </div>
+  </ng-template>
+
+  <ng-template #subjectField>
+    <div class="field">
+      <label for="tf-subject">{{ t('form.subjectLabel') }}</label>
+      <div class="control select">
+        <select id="tf-subject" formControlName="subjectId" (change)="subjectChange(value('subjectId'))">
+          <option [ngValue]="null">{{ t('form.select') }}</option>
+          @for (subject of subjects; track subject) {
+            <option [ngValue]="subject.id">{{ subject.name }}</option>
+          }
+        </select>
+        <mat-icon class="chev">expand_more</mat-icon>
+      </div>
+      @if (!gradeSelected) {
+        <p class="card-note field-hint">{{ t('form.selectGradeFirst') }}</p>
+      }
+    </div>
+  </ng-template>
+
+  <ng-template #sourceFields>
+    <div class="seg"><i></i><span>{{ t('form.segSource') }}</span><span class="ln"></span></div>
+    <div class="grid2">
+      @if (!showAddBookInput) {
+        <div class="field">
+          <label for="tf-book">{{ t('form.bookLabel') }}</label>
+          <div class="control select">
+            <select id="tf-book" formControlName="bookId" (change)="bookChange(value('bookId'))">
+              <option [ngValue]="null">{{ t('form.select') }}</option>
+              @for (book of books; track book) {
+                <option [ngValue]="book.id">{{ book.name }}</option>
+              }
+            </select>
+            <mat-icon class="chev">expand_more</mat-icon>
+          </div>
+          <button type="button" class="add-link" (click)="openNewBookAdd.emit()">
+            <mat-icon>add</mat-icon>{{ t('form.addBook') }}
+          </button>
+        </div>
+      }
+      @if (showAddBookInput) {
+        <div class="field">
+          <label for="tf-new-book">{{ t('form.newBookLabel') }}</label>
+          <input id="tf-new-book" class="control" type="text" formControlName="newBookName" (blur)="onNewBookBlur.emit()" />
+        </div>
+      }
+      @if (!showAddBookTestInput) {
+        <div class="field">
+          <label for="tf-book-test">{{ t('form.bookTestLabel') }}</label>
+          <div class="control select">
+            <select id="tf-book-test" formControlName="bookTestId">
+              <option [ngValue]="null">{{ t('form.select') }}</option>
+              @for (bt of bookTests; track bt) {
+                <option [ngValue]="bt.id">{{ bt.name }}</option>
+              }
+            </select>
+            <mat-icon class="chev">expand_more</mat-icon>
+          </div>
+          <button type="button" class="add-link" (click)="openNewBookTestAdd.emit()">
+            <mat-icon>add</mat-icon>{{ t('form.addBookTest') }}
+          </button>
+        </div>
+      }
+      @if (showAddBookTestInput) {
+        <div class="field">
+          <label for="tf-new-book-test">{{ t('form.newBookTestLabel') }}</label>
+          <input id="tf-new-book-test" class="control" type="text" formControlName="newBookTestName" />
+        </div>
+      }
+    </div>
+  </ng-template>
+
+  <ng-template #topicFields>
+    <div class="seg"><i></i><span>{{ t('form.segTopic') }}</span><span class="ln"></span></div>
+    @if (!value('subjectId')) {
+      <p class="card-note field-hint" data-testid="pick-subject-first">{{ t('form.selectSubjectFirst') }}</p>
+    }
+    <div class="grid2">
+      <div class="field">
+        <label for="tf-topic">{{ t('form.topicLabel') }}</label>
+        <div class="control select">
+          <select id="tf-topic" formControlName="topicId" (change)="topicChange(value('topicId'))">
+            <option [ngValue]="null">{{ t('form.select') }}</option>
+            @for (topic of topics; track topic) {
+              <option [ngValue]="topic.id">{{ topic.name }}</option>
+            }
+          </select>
+          <mat-icon class="chev">expand_more</mat-icon>
+        </div>
+      </div>
+      <div class="field">
+        <label for="tf-subtopic">{{ t('form.subtopicLabel') }}</label>
+        <div class="control select">
+          <select id="tf-subtopic" formControlName="subtopicId">
+            <option [ngValue]="null">{{ t('form.select') }}</option>
+            @for (subTopic of subtopics; track subTopic) {
+              <option [ngValue]="subTopic.id">{{ subTopic.name }}</option>
+            }
+          </select>
+          <mat-icon class="chev">expand_more</mat-icon>
+        </div>
+      </div>
+    </div>
+  </ng-template>
+
+  <ng-template #settingsFields>
+    <!-- Issue #573: etkinlikte süre ve çalışma testi yok (backend 0 / false'a zorlar). -->
+    @if (!isActivity) {
+      <div class="settings-row">
+        <div class="field dur">
+          <label for="tf-duration">{{ t('form.durationLabel') }}<span class="req">*</span></label>
+          <input id="tf-duration" class="control" type="number" min="1" formControlName="maxDurationMinutes" />
+        </div>
+      </div>
+      <div class="toggle-row">
+        <button
+          type="button"
+          class="switch"
+          [class.off]="!value('isPracticeTest')"
+          [attr.aria-pressed]="!!value('isPracticeTest')"
+          [attr.aria-label]="t('form.practiceLabel')"
+          (click)="togglePractice()"
+        ></button>
+        <div>
+          <div class="t-label">{{ t('form.practiceLabel') }}</div>
+          <div class="t-sub">{{ t('form.practiceHint') }}</div>
+        </div>
+      </div>
+    }
+    <!-- Issue #105: öğrenci yorum/soru anahtarı (varsayılan açık) -->
+    <div class="toggle-row">
+      <button
+        type="button"
+        class="switch"
+        data-testid="comments-toggle"
+        [class.off]="!value('commentsEnabled')"
+        [attr.aria-pressed]="!!value('commentsEnabled')"
+        [attr.aria-label]="t('form.commentsLabel')"
+        [disabled]="form.disabled"
+        (click)="toggleComments()"
+      ></button>
+      <div>
+        <div class="t-label">{{ t('form.commentsLabel') }}</div>
+        <div class="t-sub">{{ t('form.commentsHint') }}</div>
+      </div>
+    </div>
+  </ng-template>
 </form>

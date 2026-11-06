@@ -1,4 +1,5 @@
-import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { FormGroup, ReactiveFormsModule, FormsModule } from '@angular/forms';
 
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -22,7 +23,8 @@ import { WorksheetKind } from '../../models/activity';
     MatButtonModule,
     MatIconModule,
     MatButtonToggleModule,
-    TranslocoDirective
+    TranslocoDirective,
+    NgTemplateOutlet,
 ],
 })
 export class TestFormComponent {
@@ -46,6 +48,10 @@ export class TestFormComponent {
   @Input() kindLocked = false;
 
   readonly kinds = WorksheetKind;
+
+  /** Issue #851: yeni testin adımları (bağımlılık sırası); düzenleme ve kompakt formda kullanılmaz. */
+  readonly steps = ['basics', 'source', 'settings'] as const;
+  readonly step = signal(1);
 
   @Output() onBookChange = new EventEmitter<any>();
   @Output() openNewBookAdd = new EventEmitter<void>();
@@ -74,6 +80,21 @@ export class TestFormComponent {
   /** Ders/Konu/Alt Konu alanları yalnızca sınıf seçiliyken kullanılabilir. */
   get gradeSelected(): boolean {
     return !!this.value('gradeId');
+  }
+
+  /** Issue #851: ilk adım (ad + sınıf) geçerli olmadan sonraki adımlara geçilmez. */
+  get basicsValid(): boolean {
+    return !!this.form?.get('name')?.valid && !!this.form?.get('gradeId')?.valid;
+  }
+
+  goTo(step: number): void {
+    if (step < 1 || step > this.steps.length) return;
+    if (step > this.step() && !this.basicsValid) {
+      this.form.get('name')?.markAsTouched();
+      this.form.get('gradeId')?.markAsTouched();
+      return;
+    }
+    this.step.set(step);
   }
 
   subjectChange(value: any) {

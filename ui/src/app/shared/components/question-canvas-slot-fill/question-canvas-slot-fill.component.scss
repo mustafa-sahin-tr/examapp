@@ -102,6 +102,19 @@
     box-shadow: 0 0 0 2px var(--ms-danger-border);
   }
 
+  // #843: boş kutu yanlış değil — kesik gri kenar, işaret yok.
+  &.is-empty .sf-input {
+    border-style: dashed;
+    border-color: var(--ms-text-weak);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--ms-text-weak) 35%, transparent);
+  }
+
+  &.is-empty .sf-fraction {
+    --fi-field-border: var(--ms-text-weak);
+    --fi-field-border-style: dashed;
+    --fi-field-ring: color-mix(in srgb, var(--ms-text-weak) 35%, transparent);
+  }
+
   // Kesirde çerçeve yok: durum rengi pay / payda kutularına geçer (fraction-input bu değişkenleri okur).
   &.is-correct .sf-fraction {
     --fi-field-border: var(--ms-success-border);

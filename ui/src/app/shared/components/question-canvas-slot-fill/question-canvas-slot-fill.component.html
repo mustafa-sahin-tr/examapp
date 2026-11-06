@@ -20,6 +20,7 @@
                 [class.sf-slot--fraction]="slot.input.kind === 'number' && slot.input.entry !== 'plain'"
                 [class.is-correct]="slotMark()(slot) === 'correct'"
                 [class.is-wrong]="slotMark()(slot) === 'wrong'"
+                [class.is-empty]="slotMark()(slot) === 'empty'"
                 [ngStyle]="boxStyle(slot.box)"
                 [attr.data-slot]="slot.id">
                 <ng-container *ngTemplateOutlet="slotField; context: { $implicit: slot, index: i }" />
@@ -147,6 +148,7 @@
       [class.sf-slot--fraction]="ref.slot.input.kind === 'number' && ref.slot.input.entry !== 'plain'"
       [class.is-correct]="slotMark()(ref.slot) === 'correct'"
       [class.is-wrong]="slotMark()(ref.slot) === 'wrong'"
+      [class.is-empty]="slotMark()(ref.slot) === 'empty'"
       [attr.data-slot]="ref.slot.id">
       <ng-container *ngTemplateOutlet="slotField; context: { $implicit: ref.slot, index: ref.index }" />
     </span>
@@ -211,7 +213,7 @@
         }
       }
     }
-    @if (mark) {
+    @if (mark === 'correct' || mark === 'wrong') {
       <span class="sf-mark" [class.sf-mark--wrong]="mark === 'wrong'" aria-hidden="true" [attr.data-mark]="slot.id">
         <mat-icon>{{ mark === 'correct' ? 'check' : 'close' }}</mat-icon>
       </span>

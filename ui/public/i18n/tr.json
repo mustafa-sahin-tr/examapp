@@ -997,7 +997,13 @@
           "sufficient": "Yeterli",
           "partial": "Kısmen",
           "insufficient": "Eksik"
-        }
+        },
+        "countCorrect": "{{count}} doğru",
+        "countWrong": "{{count}} yanlış",
+        "countEmpty": "{{count}} boş",
+        "rowEmpty": "Boş",
+        "rowsDetails": "Kutu kutu ayrıntılar",
+        "fillBlanks": "Boşları doldur"
       },
       "summary": {
         "title": "Etkinlik bitti",

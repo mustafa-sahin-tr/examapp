@@ -223,12 +223,23 @@ describe('QuestionCanvasSlotFillComponent (#575)', () => {
     });
 
     it('serverFeedback_MarksEachSlot', () => {
-        setup({ feedbackRows: [{ id: 's1', correct: true }, { id: 's2', correct: false }] });
+        setup({
+            answer: { version: 1, type: 'slotFill', values: { s1: '5', s2: 'İzmir' } },
+            feedbackRows: [{ id: 's1', correct: true }, { id: 's2', correct: false }],
+        });
 
         expect(slot('s1').classList).toContain('is-correct');
         expect(slot('s2').classList).toContain('is-wrong');
         expect(el().querySelector('[data-mark="s3"]')).toBeNull();
         expect(field('s2').getAttribute('aria-label')).toBe('Kutu 2: Başkent, yanlış');
+    });
+
+    it('serverFeedback_BlankSlotIsEmptyNotWrong (#843)', () => {
+        setup({ feedbackRows: [{ id: 's2', correct: false }] });
+
+        expect(slot('s2').classList).toContain('is-empty');
+        expect(slot('s2').classList).not.toContain('is-wrong');
+        expect(el().querySelector('[data-mark="s2"]')).toBeNull();
     });
 
     it('practiceFeedback_UsesClientNormalizerOnCommittedValues', () => {
@@ -410,7 +421,8 @@ describe('QuestionCanvasSlotFillComponent görselsiz düzen (#590)', () => {
         );
         expect(Array.from(el().querySelectorAll('.sf-table th')).map((th) => th.textContent!.trim())).toEqual(['Soru', 'Cevap']);
         expect(el().querySelector('[data-slot="s1"]')!.classList).toContain('is-correct');
-        expect(el().querySelector('[data-slot="s2"]')!.classList).toContain('is-wrong');
+        // #843: s2 boş → yanlış değil, boş işareti.
+        expect(el().querySelector('[data-slot="s2"]')!.classList).toContain('is-empty');
         expect(el().querySelectorAll('.sf-table td')[3].textContent).toContain('il');
     });
 

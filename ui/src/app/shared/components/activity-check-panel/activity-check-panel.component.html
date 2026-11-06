@@ -52,15 +52,24 @@
     </div>
   }
 
+  @if (hasCounts() && !revealed()) {
+    <!-- #843: kutulardaki durumun özeti — boş gri, yanlış kırmızı. -->
+    <ul class="acp__counts" data-testid="row-counts" [attr.aria-label]="t('rowsTitle')">
+      <li class="acp__count acp__count--ok"><mat-icon aria-hidden="true">check</mat-icon>{{ t('countCorrect', { count: rowCounts().correct }) }}</li>
+      <li class="acp__count acp__count--no"><mat-icon aria-hidden="true">close</mat-icon>{{ t('countWrong', { count: rowCounts().wrong }) }}</li>
+      <li class="acp__count acp__count--empty"><mat-icon aria-hidden="true">remove</mat-icon>{{ t('countEmpty', { count: rowCounts().empty }) }}</li>
+    </ul>
+  }
+
   @if (rows().length > 0) {
-    <div class="acp__rows">
-      <h2 class="acp__rows-title">{{ t('rowsTitle') }}</h2>
+    <ng-template #rowList>
       <ul>
         @for (row of rows(); track $index) {
           <li
             class="acp__row"
             [class.acp__row--ok]="row.correct === true"
-            [class.acp__row--no]="row.correct === false"
+            [class.acp__row--no]="row.correct === false && !row.empty"
+            [class.acp__row--empty]="row.correct === false && row.empty"
             [class.acp__row--status]="!!row.status"
             [attr.data-status]="row.status ?? null"
             data-testid="result-row"
@@ -69,6 +78,8 @@
               <mat-icon aria-hidden="true">{{ openTextIcon[status] }}</mat-icon><b>{{ t('openTextStatus.' + status) }}</b>
             } @else if (row.correct === true) {
               <mat-icon aria-hidden="true">check</mat-icon><b>{{ t('rowCorrect') }}</b>
+            } @else if (row.correct === false && row.empty) {
+              <mat-icon aria-hidden="true">remove</mat-icon><b>{{ t('rowEmpty') }}</b>
             } @else if (row.correct === false) {
               <mat-icon aria-hidden="true">close</mat-icon><b>{{ t('rowWrong') }}</b>
             }
@@ -79,6 +90,17 @@
           </li>
         }
       </ul>
+    </ng-template>
+    <div class="acp__rows">
+      @if (rowsOpen()) {
+        <h2 class="acp__rows-title">{{ t('rowsTitle') }}</h2>
+        <ng-container [ngTemplateOutlet]="rowList" />
+      } @else {
+        <details class="acp__details" data-testid="row-details">
+          <summary>{{ t('rowsDetails') }}</summary>
+          <ng-container [ngTemplateOutlet]="rowList" />
+        </details>
+      }
     </div>
   }
 
@@ -120,6 +142,11 @@
         }
         {{ t(checking() ? 'checking' : hasChecked() ? 'recheck' : 'check') }}
       </button>
+      @if (rowCounts().empty > 0) {
+        <button mat-stroked-button type="button" class="acp__btn" data-testid="fill-blanks" [disabled]="busy()" (click)="fillBlanks.emit()">
+          <mat-icon>edit_square</mat-icon>{{ t('fillBlanks') }}
+        </button>
+      }
       @if (wrongCount() > 0) {
         <button mat-stroked-button type="button" class="acp__btn" data-testid="fix-wrong" [disabled]="busy()" (click)="fixWrong.emit()">
           <mat-icon>edit</mat-icon>{{ t('fixWrong') }}

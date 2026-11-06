@@ -28,6 +28,30 @@ describe('ActivityCheckPanelComponent (#573)', () => {
     expect(q('check-summary')).toBeNull();
   });
 
+  it('checkedRows_ShowCountsWithBlankApart_ListFoldedAndFillBlanksEmits (#843)', () => {
+    setup({
+      checkCount: 1,
+      summary: { correct: 0, total: 1 },
+      rows: [
+        { label: 'Kutu 1: 10/22', correct: true },
+        { label: 'Kutu 2: 4/12', correct: false },
+        { label: 'Kutu 3: boş', correct: false, empty: true },
+      ],
+    });
+
+    const counts = q('row-counts')!.textContent!;
+    expect(counts).toContain('1 doğru');
+    expect(counts).toContain('1 yanlış');
+    expect(counts).toContain('1 boş');
+    expect(q('row-details')?.hasAttribute('open')).toBe(false);
+    expect(el().querySelector('.acp__row--empty')?.textContent).toContain('Boş');
+
+    const fill = vi.fn();
+    fixture.componentInstance.fillBlanks.subscribe(fill);
+    btn('fill-blanks')!.click();
+    expect(fill).toHaveBeenCalledTimes(1);
+  });
+
   it('blankItems_ShowNonBlockingWarning_CheckStaysEnabled', () => {
     setup({ blankItems: ['3', '5'] });
 

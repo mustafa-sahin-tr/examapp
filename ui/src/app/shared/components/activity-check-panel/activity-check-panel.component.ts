@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -24,6 +25,8 @@ export interface ActivityResultRow {
   correct: boolean | null;
   solution?: string | null;
   status?: OpenTextRowStatus | null;
+  /** #843: kontrol edildi ama boş bırakıldı — yanlış sayılmaz, gri gösterilir. */
+  empty?: boolean;
 }
 
 /** Issue #583: açık uçlu satır durumunun ikonu. */
@@ -44,7 +47,7 @@ export const OPEN_TEXT_ROW_ICON: Record<OpenTextRowStatus, string> = {
 @Component({
   selector: 'app-activity-check-panel',
   standalone: true,
-  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, TranslocoDirective],
+  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, NgTemplateOutlet, TranslocoDirective],
   templateUrl: './activity-check-panel.component.html',
   styleUrl: './activity-check-panel.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -89,6 +92,8 @@ export class ActivityCheckPanelComponent {
   readonly reveal = output<void>();
   readonly restore = output<void>();
   readonly fixWrong = output<void>();
+  /** #843: "Boşları doldur" — sahibi ilk boş kutuya odaklanır. */
+  readonly fillBlanks = output<void>();
   readonly finish = output<void>();
   /** W2: hata kutusundaki "Tekrar dene" — sahibi başarısız adımı (kontrol/çözüm/bitir) yeniden dener. */
   readonly retry = output<void>();
@@ -100,6 +105,26 @@ export class ActivityCheckPanelComponent {
     const s = this.summary();
     return s ? Math.max(0, s.total - s.correct) : 0;
   });
+  /** #843: geçerli maddenin satır sayıları; boş, yanlıştan ayrı. Açık uçlu (status) satırlar sayılmaz. */
+  readonly rowCounts = computed(() => {
+    const counts = { correct: 0, wrong: 0, empty: 0 };
+    for (const row of this.rows()) {
+      if (row.status || row.correct === null) continue;
+      if (row.correct) counts.correct++;
+      else if (row.empty) counts.empty++;
+      else counts.wrong++;
+    }
+    return counts;
+  });
+  readonly hasCounts = computed(() => {
+    const c = this.rowCounts();
+    return c.correct + c.wrong + c.empty > 0;
+  });
+  /**
+   * #843: geri bildirim kutuların üzerinde; ✓/✗ satır listesi yalnız çözüm açıkken ya da açık uçlu / çözüm metni varken
+   * açık durur. Diğer durumda "Ayrıntılar" altında katlıdır (ekran okuyucu için metin kalır).
+   */
+  readonly rowsOpen = computed(() => this.revealed() || this.rows().some((row) => !!row.status || !!row.solution));
   readonly busy = computed(() => this.checking() || this.revealing() || this.finishing());
   readonly compact = computed(
     () => this.collapsible() && this.collapsed() && this.hasChecked() && !this.error() && !this.revealed()

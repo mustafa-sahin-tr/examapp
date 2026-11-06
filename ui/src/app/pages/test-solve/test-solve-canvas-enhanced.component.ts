@@ -270,7 +270,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     });
   });
   /** Sonuç sayfasına yönlendirme başladı mı (tekrarlı yönlendirme/bildirimi engeller). */
-  private redirectedToResult = false;
+  protected redirectedToResult = false;
   protected readonly snackBar = inject(MatSnackBar);
 
   // YENİ: Çoklu soru görüntüleme konfigürasyonu

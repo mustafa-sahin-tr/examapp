@@ -72,6 +72,7 @@ import { QuestionCanvasMazeTreeComponent } from '../../shared/components/questio
 import { QuestionCanvasTextSelectComponent } from '../../shared/components/question-canvas-text-select/question-canvas-text-select.component';
 import { FLUSHABLE_PLAYER } from '../../shared/utils/flushable-player';
 import { StorageImageRetryDirective } from '../../shared/directives/storage-image-retry.directive';
+import { firstValueFrom } from 'rxjs';
 
 /**
  * Sınav çözme ekranı (issue #72 yeniden tasarımı).
@@ -126,6 +127,8 @@ import { StorageImageRetryDirective } from '../../shared/directives/storage-imag
   providers: [provideTranslocoScope(TEST_SOLVE_SCOPE)],
 })
 export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
+  /** Issue #821: "Çık" onaylandı; rota koruması ikinci kez sormaz. */
+  private leaveConfirmed = false;
   private static readonly MOBILE_VIEWPORT_QUERY =
     '(max-width: 640px), ((max-height: 500px) and (orientation: landscape))';
   /** Bu genişlikte yan panel yoktur; harita alttan açılır, araçlar yazılıdır (issue #779). SCSS'teki $bp-compact. */
@@ -479,6 +482,36 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
 
   public leaveAndContinueLater(): void {
     if (!this.testInstance) return;
+    void this.confirmLeave().then((confirmed) => {
+      if (!confirmed) return;
+      this.leaveConfirmed = true;
+      const worksheetId = this.testInstance?.worksheetId;
+      void this.router.navigate(worksheetId ? ['/test', worksheetId] : ['/tests']);
+    });
+  }
+
+  /**
+   * Issue #821: rotadan her ayrılış (bildirim, menü, geri) "Çık, sonra devam et" penceresinden geçer. Akışın kendi
+   * yönlendirmeleri (sonuç sayfası, etkinliğe yönlendirme, onaylanmış çıkış) ve yüklenemeyen oturum sormadan geçer.
+   */
+  public canLeave(): boolean | Promise<boolean> {
+    if (this.leaveConfirmed || this.redirectedToResult || !this.testInstance || this.loadError()) return true;
+    return this.confirmLeave();
+  }
+
+  /** Sekme kapanır / yenilenirken yalnız kaydı süren ya da başarısız cevap varsa tarayıcı uyarısı. */
+  @HostListener('window:beforeunload', ['$event'])
+  public onBeforeUnload(event: BeforeUnloadEvent): void {
+    if (this.leaveConfirmed || this.redirectedToResult || !this.testInstance) return;
+    const status = this.saveStatus();
+    if (status === 'saving' || status === 'failed') {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  }
+
+  /** Pencereyi açar; onaylanırsa bekleyen cevapları kaydeder. Kayıt başarısızsa uyarır ve false döner (çıkılmaz). */
+  private async confirmLeave(): Promise<boolean> {
     const timed = this.testInstance.maxDurationSeconds > 0;
     const data: ConfirmDialogData = {
       title: this.tr('leave.title'),
@@ -488,27 +521,19 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
       icon: 'logout',
       confirmColor: 'primary',
     };
+    const confirmed = await firstValueFrom(
+      this.dialog.open(ConfirmDialogComponent, { data, restoreFocus: true }).afterClosed(),
+    );
+    if (confirmed !== true) return false;
 
-    this.dialog
-      .open(ConfirmDialogComponent, { data, restoreFocus: true })
-      .afterClosed()
-      .subscribe((confirmed) => {
-        if (confirmed === true) {
-          void this.saveAndLeave();
-        }
-      });
-  }
-
-  private async saveAndLeave(): Promise<void> {
     this.closeMobileMapSheet();
     this.flushInteractivePlayers();
     const outcomes = await this.flushPendingAnswers();
     if (outcomes.includes('failed')) {
       this.showToastMessage(this.tr('leave.saveFailed'), 'error');
-      return;
+      return false;
     }
-    const worksheetId = this.testInstance?.worksheetId;
-    void this.router.navigate(worksheetId ? ['/test', worksheetId] : ['/tests']);
+    return true;
   }
 
   @HostListener('document:keydown.escape')

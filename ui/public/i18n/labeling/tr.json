@@ -65,6 +65,13 @@
     "empty": "Sınıf yok",
     "retry": "Sınıfları yeniden yükle"
   },
+  "sharing": {
+    "label": "Paylaşım",
+    "hint": "Havuza kaydedilen soruları kimler havuzunda görüp kendi testlerine ekleyebilir. Düzenleme yalnız sende kalır.",
+    "option0": "Yalnız ben",
+    "option1": "Okulum",
+    "option2": "Herkes"
+  },
   "stats": {
     "label": "Oturum sayaçları",
     "total": "Toplam görsel",

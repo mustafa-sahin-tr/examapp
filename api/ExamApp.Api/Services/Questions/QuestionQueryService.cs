@@ -278,9 +278,10 @@ public class QuestionQueryService : IQuestionQueryService
         // dalında da testin varlığı (global soft-delete filtresi) aranır.
         IQueryable<WorksheetQuestion> visibleMemberships = _context.TestQuestions
             .Where(tq => _context.Worksheets.Any(w => w.Id == tq.TestId));
+        int? schoolId = null;
         if (!isAdmin)
         {
-            var schoolId = await _context.ResolveTeacherSchoolIdAsync(userId, ct);
+            schoolId = await _context.ResolveTeacherSchoolIdAsync(userId, ct);
             var visibleWorksheets = _context.Worksheets.Where(WorksheetAccess.VisibleToTeacherPredicate(_context, userId, schoolId));
             visibleMemberships = visibleMemberships.Where(tq => visibleWorksheets.Any(w => w.Id == tq.TestId));
         }
@@ -306,7 +307,9 @@ public class QuestionQueryService : IQuestionQueryService
         }
         else if (!isAdmin)
         {
-            var visibleQuestionIds = visibleMemberships.Select(tq => tq.QuestionId);
+            // Issue #826: testsiz paylaşılan sorular (Havuza kaydet → Okulum / Herkes) da görünür.
+            var visibleQuestionIds = visibleMemberships.Select(tq => tq.QuestionId)
+                .Union(_context.Questions.Where(QuestionBankSharingAccess.SharedWithTeacherPredicate(_context, schoolId)).Select(q => q.Id));
             query = hasLegacyOwned
                 ? query.Where(q => q.CreateUserId == userId || legacyOwnedIds.Contains(q.Id) || visibleQuestionIds.Contains(q.Id))
                 : query.Where(q => q.CreateUserId == userId || visibleQuestionIds.Contains(q.Id));

@@ -65,6 +65,13 @@
     "empty": "No grades",
     "retry": "Reload grades"
   },
+  "sharing": {
+    "label": "Sharing",
+    "hint": "Who sees the questions saved to the pool and can add them to their own tests. Only you can edit them.",
+    "option0": "Only me",
+    "option1": "My school",
+    "option2": "Everyone"
+  },
   "stats": {
     "label": "Session counters",
     "total": "Total images",

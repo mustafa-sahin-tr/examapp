@@ -28,6 +28,7 @@ import {
     LabelingPage,
     LabelingPromptState,
     LabelingResult,
+    QuestionBankSharing,
 } from '../../models/labeling';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import labelingTr from '../../../../public/i18n/labeling/tr.json';
@@ -266,6 +267,7 @@ describe('LabelingComponent', () => {
         localStorage.removeItem('labeling.aiModel');
         localStorage.removeItem('labeling.gradeId');
         localStorage.removeItem('labeling.bookId');
+        localStorage.removeItem('labeling.bankSharing');
         gradesResponse = of(GRADES);
         booksResponse = of([]);
     });
@@ -1091,6 +1093,8 @@ describe('LabelingComponent', () => {
             expect(labelingApi.saveToBank).toHaveBeenCalledTimes(1);
             const request = vi.mocked(labelingApi.saveToBank).mock.lastCall![0];
             expect(request.force).toBe(false);
+            // Issue #826: öğretmenin varsayılanı Yalnız ben.
+            expect(request.sharing).toBe(QuestionBankSharing.Private);
             expect(request.imageBase64).toMatch(/^data:image\/webp;base64,/);
             expect(request.questions).toEqual([
                 {
@@ -1105,6 +1109,17 @@ describe('LabelingComponent', () => {
             expect(selector().ensureQuestionsValid).toHaveBeenCalledWith({ requireCorrectAnswer: true, skipInteractive: true });
             expect(component.bankRecord()?.questionCount).toBe(1);
             expect(component.bankSaving()).toBe(false);
+        });
+
+        it('saveToBank_ChosenSharing_IsSentAndRemembered', async () => {
+            await openPageWith([region('S1', 1)]);
+            labelingApi.saveToBank.mockReturnValue(of({ imageSha256: 'abc', bank: savedBank }));
+
+            component.setSharing({ value: QuestionBankSharing.Everyone } as unknown as MatSelectChange);
+            component.saveToBank();
+
+            expect(vi.mocked(labelingApi.saveToBank).mock.lastCall![0].sharing).toBe(QuestionBankSharing.Everyone);
+            expect(localStorage.getItem('labeling.bankSharing')).toBe('2');
         });
 
         it('saveToBank_Success_SendsPageToTraining', async () => {

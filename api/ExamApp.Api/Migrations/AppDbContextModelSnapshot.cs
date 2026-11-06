@@ -3217,6 +3217,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<int>("AnswerColCount")
                         .HasColumnType("integer");
 
+                    b.Property<int>("BankSharing")
+                        .HasColumnType("integer");
+
                     b.Property<string>("BookName")
                         .HasColumnType("text");
 
@@ -3343,6 +3346,9 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("double precision");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BankSharing")
+                        .HasFilter("\"BankSharing\" <> 0");
 
                     b.HasIndex("ContentFingerprint");
 

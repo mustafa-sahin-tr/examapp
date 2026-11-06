@@ -49,6 +49,7 @@ import {
   LabelingBankQuestion,
   LabelingPage,
   LabelingResult,
+  QuestionBankSharing,
 } from '../../models/labeling';
 import { LabelingService, manualDetectionSource, sha256OfDataUrl } from '../../services/labeling.service';
 import {
@@ -59,6 +60,7 @@ import {
 } from './labeling-prompt-dialog/labeling-prompt-dialog.component';
 import { LabelingBook, LabelingBookPageInfo, LabelingCropConflict } from '../../models/labeling-book';
 import { LabelingBookService } from '../../services/labeling-book.service';
+import { AuthService } from '../../services/auth.service';
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
@@ -78,6 +80,7 @@ const SOURCE_STORAGE_KEY = 'labeling.source';
 const AI_MODEL_STORAGE_KEY = 'labeling.aiModel';
 /** Havuza kaydedilen sayfanın sınıfı (issue #565); yalnız listede hâlâ varsa geri yüklenir. */
 const GRADE_STORAGE_KEY = 'labeling.gradeId';
+const SHARING_STORAGE_KEY = 'labeling.bankSharing';
 /** Issue #577: seçili kaynak kitap; yalnız listede hâlâ varsa geri yüklenir. */
 const BOOK_STORAGE_KEY = 'labeling.bookId';
 /** Soru başına etkinlik / madde etiketi üst sınırı (sunucuyla aynı). */
@@ -133,6 +136,7 @@ export class LabelingComponent {
   private readonly dialog = inject(MatDialog);
   private readonly gradesApi = inject(GradesService);
   private readonly booksApi = inject(LabelingBookService);
+  private readonly auth = inject(AuthService);
 
   private readonly selectorRef = viewChild(ImageSelectorComponent);
 
@@ -228,6 +232,10 @@ export class LabelingComponent {
   readonly gradesLoading = signal(false);
   readonly gradesError = signal(false);
   readonly gradeId = signal<number | null>(null);
+
+  /** Issue #826: havuz paylaşımı. Admin herkes için içerik üretir (varsayılan Herkes); öğretmenin sorusu kendisine kalır. */
+  readonly sharingOptions = [QuestionBankSharing.Private, QuestionBankSharing.School, QuestionBankSharing.Everyone];
+  readonly sharing = signal<QuestionBankSharing>(this.initialSharing());
   /**
    * Kullanıcının elle seçtiği (localStorage'daki) sınıf. İçindekiler sınıfı yalnız o sayfa için `gradeId`'yi değiştirir;
    * içindekiler olmayan sayfada bu sınıfa dönülür (CR11 — TOC sınıfı sonraki sayfaya sızmaz).
@@ -458,6 +466,20 @@ export class LabelingComponent {
           this.gradesError.set(true);
         },
       });
+  }
+
+  setSharing(event: MatSelectChange): void {
+    const value = event.value as QuestionBankSharing;
+    this.sharing.set(value);
+    writeStored(SHARING_STORAGE_KEY, String(value));
+  }
+
+  private initialSharing(): QuestionBankSharing {
+    const stored = Number(readStored(SHARING_STORAGE_KEY) ?? NaN);
+    if (this.sharingOptions.includes(stored)) {
+      return stored;
+    }
+    return this.auth.hasRealmRole('Admin') ? QuestionBankSharing.Everyone : QuestionBankSharing.Private;
   }
 
   setGrade(event: MatSelectChange): void {
@@ -979,7 +1001,8 @@ export class LabelingComponent {
     const filePage = this.filePage();
     const source = bookId != null && filePage != null ? { bookId, filePage } : {};
     this.bankSaving.set(true);
-    this.labelingApi.saveToBank({ imageBase64: image, questions, gradeId, force, ...source }).subscribe({
+    const sharing = this.sharing();
+    this.labelingApi.saveToBank({ imageBase64: image, questions, gradeId, force, sharing, ...source }).subscribe({
       next: (response) => {
         if (token !== this.pageToken) {
           return;

@@ -111,6 +111,17 @@ ikinci kez kaydedilmek istenirse 409 `LabelingPageAlreadyInBank` → UI "Yine de
 süren kayıt force ile de aşılmaz). Şık kutuları soru kutusuna kırpılır. Pasaj ve kitap adı (`BookName`) bu ekrandan kaydedilmez (açık soru). **Sınıf zorunlu (#565):** araç çubuğundaki **Sınıf** açılır kutusu (localStorage `labeling.gradeId`) seçilmeden
 Havuza kaydet pasiftir; istek `gradeId` taşır (eksik/bilinmeyen → 400) ve `QuestionCreatedEvent.GradeId` olarak sınıflandırıcıya gider.
 
+**Issue #826 — havuz paylaşımı.** Testsiz soru eskiden yalnız sahibine (ve admine) görünürdü: havuzun "Görebildiğim tüm sorular"
+kapsamı yalnız görülebilen testlerin sorularını ekliyordu. `Questions.BankSharing` (`QuestionBankSharing`: 0 Yalnız ben, 1 Okulum,
+2 Herkes; kısmi index `<> 0`) testten bağımsız ikinci bir görünürlük yoludur: havuz araması (`scope=all`), görüntüleme
+(`CanViewQuestionAsync`) ve teste bağlama (#472) aynı koşulu kullanır (`QuestionBankSharingAccess`; okul = sahibin
+`Teachers.SchoolId`'si, istekçi okulsuzsa yalnız Herkes). Düzenleme yetkisi değişmez (sahibi + admin). İşaretleme araç çubuğunda
+**Paylaşım** seçimi (localStorage `labeling.bankSharing`); verilmezse sunucu admin için Herkes, öğretmen için Yalnız ben kullanır;
+Okulum okulsuz kaydedende 400 `labeling.bank.sharingSchoolRequired`. Günün soruları / serbest pratik etkilenmez (öğrenci havuzu
+hâlâ Normal görünürlüklü test ister). Admin rolü exam DB'de değil Keycloak'ta olduğundan eski admin sorularını migration seçemez;
+kurulumda bir kez, adminin kullanıcı id'siyle:
+`UPDATE "Questions" q SET "BankSharing" = 2 WHERE q."CreateUserId" = <adminUserId> AND NOT EXISTS (SELECT 1 FROM "TestQuestions" t WHERE t."QuestionId" = q."Id");`
+
 **Issue #597 — büyük sayfa görseli.** Sunucu sayfa görselini çözerken 40 MP / uzun kenar 12000 px sınırı uygular
 (`SkiaImaging.MaxPixels`/`MaxEdge`, decompression bomb koruması; yükseltilmez). Soru tuvali ve işaretleme ekranı sınırı aşan sayfayı
 yüklerken sınıra sığacak kadar küçültür (`image-selector/page-image-limits.ts`; PNG → PNG, diğerleri JPEG 0.92); kutular küçültülmüş

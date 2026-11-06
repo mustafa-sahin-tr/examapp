@@ -30,6 +30,8 @@
       "rateLimited": "You reached the hourly limit for saving to the pool. Please try again later.",
       "gradeRequired": "Choose the grade of the page.",
       "gradeUnknown": "The selected grade was not found.",
+      "sharingInvalid": "Invalid sharing option.",
+      "sharingSchoolRequired": "You need to belong to a school to share with your school.",
       "cropAlreadySaved": "This crop was already saved to the question pool.",
       "bookPageRequired": "Book and file page must be given together.",
       "answerKeyPage": "This page is in the book's answer key range; it is not expected to be saved as questions."

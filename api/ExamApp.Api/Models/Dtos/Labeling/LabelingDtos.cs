@@ -1,3 +1,4 @@
+using ExamApp.Api.Data;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -174,6 +175,12 @@ public class LabelingBankSaveRequestDto
 
     /// <summary>true: sayfa (ya da kırpma) daha önce bankaya kaydedildiyse de yeniden kaydet (sorular ikinci kez oluşur).</summary>
     public bool Force { get; set; }
+
+    /// <summary>
+    /// Issue #826: soruların havuz paylaşımı. Verilmezse admin için <see cref="QuestionBankSharing.Everyone"/>, öğretmen için
+    /// <see cref="QuestionBankSharing.Private"/>. <see cref="QuestionBankSharing.School"/> okulsuz kaydedende 400.
+    /// </summary>
+    public QuestionBankSharing? Sharing { get; set; }
 }
 
 /// <summary>

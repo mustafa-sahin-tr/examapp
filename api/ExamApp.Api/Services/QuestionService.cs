@@ -978,6 +978,7 @@ public class QuestionService : IQuestionService
                         TopicId = questionClassification != null ? questionClassification.TopicId : soruDto.Header.TopicId,
                         PassageId = matchedPassage?.Id,
                         ClassificationSource = classificationSource,
+                        BankSharing = soruDto.BankSharing,
                         QuestionLearningOutcomes = (questionDto.LearningOutcomeIds ?? new List<int>()).Distinct()
                             .Select(id => new QuestionLearningOutcome { LearningOutcomeId = id })
                             .ToList()

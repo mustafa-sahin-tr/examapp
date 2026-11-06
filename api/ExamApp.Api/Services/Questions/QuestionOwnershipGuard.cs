@@ -176,6 +176,11 @@ public sealed class QuestionOwnershipGuard : IQuestionOwnershipGuard
             .Select(tq => tq.Worksheet)
             .Where(WorksheetAccess.VisibleToTeacherPredicate(_context, userId, requesterSchoolId))
             .AnyAsync(ct);
+        // Issue #826: testsiz paylaşılan soru (Okulum / Herkes).
+        visible = visible || await _context.Questions.AsNoTracking()
+            .Where(q => q.Id == questionId)
+            .Where(QuestionBankSharingAccess.SharedWithTeacherPredicate(_context, requesterSchoolId))
+            .AnyAsync(ct);
 
         return visible ? QuestionAccessResult.Allowed : QuestionAccessResult.Forbidden;
     }

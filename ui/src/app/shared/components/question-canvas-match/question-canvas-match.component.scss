@@ -184,6 +184,12 @@
     border-color: var(--ms-danger-border);
   }
 
+  // #913: eşlenmemiş öğe yanlış değil — kesik gri kenar.
+  &.is-empty {
+    border-style: dashed;
+    border-color: var(--ms-text-weak);
+  }
+
   &:disabled {
     color: var(--ms-text);
   }

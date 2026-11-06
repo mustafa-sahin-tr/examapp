@@ -158,6 +158,19 @@ describe('QuestionCanvasMatchComponent (#576)', () => {
         expect(el().querySelector('[data-mark="l1"]')).toBeNull();
     });
 
+    it('feedback_UnlinkedLeftIsEmptyNotWrong (#913)', async () => {
+        setup({
+            answer: { version: 1, type: 'match', pairs: [{ leftId: 'l2', rightId: 'r2' }] },
+            feedbackRows: [{ id: 'l2', correct: true }, { id: 'l3', correct: false }],
+        });
+        await settle();
+
+        expect(item('left', 'l3').classList).toContain('is-empty');
+        expect(item('left', 'l3').classList).not.toContain('is-wrong');
+        expect(item('left', 'l3').getAttribute('aria-label')).toContain('boş');
+        expect(el().querySelector('[data-mark="l3"]')).toBeNull();
+    });
+
     it('showSolution_WithoutAnswer_ShowsCorrectPairs', async () => {
         setup({ solution: { l2: 'r2', l3: 'r3' } });
         fixture.componentRef.setInput('showSolution', true);

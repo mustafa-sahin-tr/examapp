@@ -182,6 +182,13 @@
     color: var(--ms-danger-text);
     border-color: var(--ms-danger-border);
   }
+
+  // #913: boş satır yanlış değil — nötr, kesik kenar.
+  &--empty {
+    background: var(--ms-surface);
+    color: var(--ms-text-weak);
+    border: 1px dashed var(--ms-text-weak);
+  }
 }
 
 .mc-list {
@@ -211,6 +218,11 @@
       border-style: dashed;
       border-color: var(--ms-danger-border);
       background: var(--ms-danger-surface-weak);
+    }
+
+    &.is-empty {
+      border-style: dashed;
+      border-color: var(--ms-text-weak);
     }
   }
 
@@ -252,6 +264,10 @@
 
     &--wrong {
       color: var(--ms-danger-text);
+    }
+
+    &--empty {
+      color: var(--ms-text-weak);
     }
   }
 }

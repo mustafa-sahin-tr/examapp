@@ -332,6 +332,7 @@
         "announceCleared": "{{row}}: {{column}} seçimi kaldırıldı.",
         "markCorrect": "Doğru",
         "markWrong": "Yanlış",
+        "markEmpty": "Boş",
         "presetTrue": "Doğru",
         "presetFalse": "Yanlış"
       },
@@ -414,7 +415,8 @@
         "leftFallback": "Sol {{n}}",
         "rightFallback": "Sağ {{n}}",
         "markCorrect": "doğru",
-        "markWrong": "yanlış"
+        "markWrong": "yanlış",
+        "markEmpty": "boş"
       },
       "textSelect": {
         "hint": {

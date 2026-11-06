@@ -168,13 +168,29 @@ describe('QuestionCanvasMatrixChoiceComponent (#574)', () => {
     });
 
     it('feedbackRows_MarksRowsCorrectAndWrongWithText', () => {
-        setup({ feedbackRows: [{ id: 'r1', correct: true }, { id: 'r2', correct: false }] });
+        setup({
+            answer: { version: 1, type: 'matrixChoice', selections: { r1: ['c1'], r2: ['c1'] } },
+            feedbackRows: [{ id: 'r1', correct: true }, { id: 'r2', correct: false }],
+        });
 
         const rows = Array.from(el().querySelectorAll('.mc-list__row')) as HTMLElement[];
         expect(rows[0].classList.contains('is-correct')).toBe(true);
         expect(rows[1].classList.contains('is-wrong')).toBe(true);
         expect(rows[1].querySelector('.mc-list__mark')?.textContent).toContain(m.markWrong);
         expect(el().querySelectorAll('.mc-mark').length).toBe(2);
+    });
+
+    it('feedbackRows_BlankRowIsEmptyNotWrong (#913)', () => {
+        setup({
+            answer: { version: 1, type: 'matrixChoice', selections: { r1: ['c1'] } },
+            feedbackRows: [{ id: 'r1', correct: true }, { id: 'r2', correct: false }],
+        });
+
+        const rows = Array.from(el().querySelectorAll('.mc-list__row')) as HTMLElement[];
+        expect(rows[1].classList.contains('is-empty')).toBe(true);
+        expect(rows[1].classList.contains('is-wrong')).toBe(false);
+        expect(rows[1].querySelector('.mc-list__mark')?.textContent).toContain('Boş');
+        expect(rows[1].querySelector('.mc-list__mark mat-icon')?.textContent).toBe('remove');
     });
 
     it('showSolution_ComparesOwnAnswerReadOnly_AndRestoresOwnAnswer', () => {

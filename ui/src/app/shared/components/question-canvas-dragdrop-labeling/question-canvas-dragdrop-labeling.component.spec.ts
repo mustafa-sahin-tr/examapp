@@ -340,6 +340,14 @@ describe('QuestionCanvasDragDropLabelingComponent (#545)', () => {
         expect(zone('z1').querySelector('.dd-zone__mark')).toBeNull();
     });
 
+    it('feedbackRows_BlankZoneIsEmptyNotWrong (#913)', () => {
+        setup({ activityMode: true, feedbackRows: [{ id: 'z1', correct: false }] });
+
+        expect(zone('z1').classList.contains('is-empty')).toBe(true);
+        expect(zone('z1').classList.contains('is-incorrect')).toBe(false);
+        expect(zone('z1').querySelector('.dd-zone__mark')).toBeNull();
+    });
+
     it('showSolution_WithoutAnswer_DisplaysSolution', () => {
         setup({ activityMode: true, showSolution: true });
         expect(zone('z1').querySelector('.dd-chip')?.textContent?.trim()).toBe('Kalp');

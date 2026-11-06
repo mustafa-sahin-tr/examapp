@@ -332,6 +332,7 @@
         "announceCleared": "{{row}}: {{column}} cleared.",
         "markCorrect": "Correct",
         "markWrong": "Wrong",
+        "markEmpty": "Blank",
         "presetTrue": "True",
         "presetFalse": "False"
       },
@@ -414,7 +415,8 @@
         "leftFallback": "Left {{n}}",
         "rightFallback": "Right {{n}}",
         "markCorrect": "correct",
-        "markWrong": "wrong"
+        "markWrong": "wrong",
+        "markEmpty": "blank"
       },
       "textSelect": {
         "hint": {

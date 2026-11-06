@@ -39,7 +39,8 @@ import { StorageImageResolver } from '../../utils/storage-image-refresh.util';
 import { QuestionImageCropComponent } from '../question-image-crop/question-image-crop.component';
 import { seededShuffle } from '../../utils/seeded-shuffle';
 
-export type MatchMark = 'correct' | 'wrong' | null;
+/** #913: `empty` — kontrol edildi ama sol öğe eşlenmemiş; yanlış gibi kırmızı değil, kesik gri çizilir. */
+export type MatchMark = 'correct' | 'wrong' | 'empty' | null;
 
 interface MatchSelection {
   side: MatchSide;
@@ -241,7 +242,8 @@ export class QuestionCanvasMatchComponent {
       if (showSolution) return null;
       if (feedback) {
         if (!feedback.has(leftId)) return null;
-        return feedback.get(leftId) ? 'correct' : 'wrong';
+        if (feedback.get(leftId)) return 'correct';
+        return rightOf(pairs, leftId) ? 'wrong' : 'empty';
       }
       const own = rightOf(pairs, leftId);
       const expected = rightOf(solution, leftId);
@@ -324,7 +326,7 @@ export class QuestionCanvasMatchComponent {
     let text = partner ? this.t('itemAriaLinked', { item: name, partner: this.itemText(other, partner) }) : name;
     if (this.isPrelinked(side, item.id)) text = `${text}, ${this.t('exampleAria')}`;
     const mark = side === 'left' ? this.leftMark()(item.id) : null;
-    return mark ? `${text}, ${this.t(mark === 'correct' ? 'markCorrect' : 'markWrong')}` : text;
+    return mark ? `${text}, ${this.t(mark === 'correct' ? 'markCorrect' : mark === 'wrong' ? 'markWrong' : 'markEmpty')}` : text;
   }
 
   // ---------------------------------------------------------------------------

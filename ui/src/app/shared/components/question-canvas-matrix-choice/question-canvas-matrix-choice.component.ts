@@ -36,7 +36,10 @@ import { StorageImageRetryDirective } from '../../directives/storage-image-retry
 import { seededShuffle } from '../../utils/seeded-shuffle';
 import { StorageImageResolver } from '../../utils/storage-image-refresh.util';
 
-export type MatrixRowMark = 'correct' | 'wrong' | null;
+/** #913: `empty` — kontrol edildi ama satır boş; yanlış gibi kırmızı değil, kesik gri çizilir. */
+const MARK_KEYS = { correct: 'markCorrect', wrong: 'markWrong', empty: 'markEmpty' } as const;
+
+export type MatrixRowMark = 'correct' | 'wrong' | 'empty' | null;
 
 /**
  * Issue #574: matris seçim oynatıcısı (D/Y, ✓ tablo, çoklu seçim, <, >, =). Planın tüm satırlarında tüm kolonlar için hücre
@@ -196,7 +199,8 @@ export class QuestionCanvasMatrixChoiceComponent {
       if (showSolution) return null;
       if (feedback) {
         if (!feedback.has(rowId)) return null;
-        return feedback.get(rowId) ? 'correct' : 'wrong';
+        if (feedback.get(rowId)) return 'correct';
+        return selectionOf(selections, rowId).length ? 'wrong' : 'empty';
       }
       // İstemci tarafı işaret yalnız örnek soruda ve çözüm geldiyse; cevaplanmamış satır işaretlenmez.
       if (!practice) return null;
@@ -253,10 +257,19 @@ export class QuestionCanvasMatrixChoiceComponent {
     return row.label?.trim() || this.t('rowFallback', { n: index + 1 });
   }
 
+  markIcon(mark: Exclude<MatrixRowMark, null>): string {
+    return mark === 'correct' ? 'check' : mark === 'wrong' ? 'close' : 'remove';
+  }
+
+  markLabel(mark: Exclude<MatrixRowMark, null>): string {
+    this.i18nTick();
+    return this.t(MARK_KEYS[mark]);
+  }
+
   rowAria(row: MatrixChoiceRow, index: number): string {
     const base = this.t('rowAria', { n: index + 1, label: this.rowTitle(row, index) });
     const mark = this.rowMark()(row.id);
-    return mark ? `${base}, ${this.t(mark === 'correct' ? 'markCorrect' : 'markWrong')}` : base;
+    return mark ? `${base}, ${this.t(MARK_KEYS[mark])}` : base;
   }
 
   cellAria(row: MatrixChoiceRow, index: number, columnLabel: string): string {

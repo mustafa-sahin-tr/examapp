@@ -45,7 +45,7 @@
               <button type="button" class="mt-item" [attr.data-side]="side" [attr.data-item]="item.id"
                 [class.is-selected]="isSelected(side, item.id)" [class.is-linked]="!!partnerOf(side, item.id)"
                 [class.is-example]="prelinked" [class.is-correct]="mark === 'correct'" [class.is-wrong]="mark === 'wrong'"
-                [disabled]="prelinked || locked()" [attr.aria-pressed]="isSelected(side, item.id)"
+                [class.is-empty]="mark === 'empty'" [disabled]="prelinked || locked()" [attr.aria-pressed]="isSelected(side, item.id)"
                 [attr.aria-label]="itemAria(side, item)"
                 (click)="onItem(side, item.id, $event)" (keydown)="onItemKeydown(side, i, $event)">
                 @if (item.box && imageUrl() && region(); as r) {
@@ -60,7 +60,7 @@
                 @if (prelinked) {
                   <span class="mt-item__tag">{{ t('match.example') }}</span>
                 }
-                @if (mark) {
+                @if (mark === 'correct' || mark === 'wrong') {
                   <span class="mt-mark" [class.mt-mark--wrong]="mark === 'wrong'" aria-hidden="true" [attr.data-mark]="item.id">
                     <mat-icon>{{ mark === 'correct' ? 'check' : 'close' }}</mat-icon>
                   </span>

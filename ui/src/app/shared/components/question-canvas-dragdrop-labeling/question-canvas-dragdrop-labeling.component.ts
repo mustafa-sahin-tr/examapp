@@ -261,14 +261,19 @@ export class QuestionCanvasDragDropLabelingComponent {
   /** Sürükleme kapalı mı: dokunmatik/dar ekran ya da çözüm gösteriliyor. */
   public dragDisabled = computed(() => this.tapOnly() || this._showSolution());
 
-  /** Hedefin geri bildirim işareti: `correct` / `wrong` / null (işaret yok). */
+  /**
+   * Hedefin geri bildirim işareti: `correct` / `wrong` / null (işaret yok). #913: `empty` — kontrol edildi ama hedef boş;
+   * yanlış gibi kırmızı değil, kesik gri çizilir.
+   */
   public zoneMark = computed(() => {
     const feedback = this._feedback();
     const compare = this.compare();
-    return (zoneId: string): 'correct' | 'wrong' | null => {
+    const zones = this.zoneState();
+    return (zoneId: string): 'correct' | 'wrong' | 'empty' | null => {
       if (compare) return this.compareMark(zoneId);
       if (this._showSolution() || !feedback || !feedback.has(zoneId)) return null;
-      return feedback.get(zoneId) ? 'correct' : 'wrong';
+      if (feedback.get(zoneId)) return 'correct';
+      return zones[zoneId]?.length ? 'wrong' : 'empty';
     };
   });
 
@@ -293,8 +298,8 @@ export class QuestionCanvasDragDropLabelingComponent {
       if (this._showSolution()) return 'is-solution';
       // Issue #573: sunucu kontrolü (etkinlik) varsa yalnız ondan.
       if (feedback) {
-        if (!feedback.has(zoneId)) return '';
-        return feedback.get(zoneId) ? 'is-correct' : 'is-incorrect';
+        const mark = this.zoneMark()(zoneId);
+        return mark === 'correct' ? 'is-correct' : mark === 'wrong' ? 'is-incorrect' : mark === 'empty' ? 'is-empty' : '';
       }
       // İstemci tarafı kontrol yalnız örnek sorularda (practiceFeedback); çözüm girdisi yoksa işaret yok.
       if (!this.practiceFeedback) return '';
@@ -314,7 +319,8 @@ export class QuestionCanvasDragDropLabelingComponent {
     const content = item ? this.draggableLabel()(item) : this.t('zoneEmpty');
     const mark = this.zoneMark()(zoneId);
     const base = this.t('zoneAria', { n: index + 1, content });
-    return mark ? `${base}, ${this.t(mark === 'correct' ? 'markCorrect' : 'markWrong')}` : base;
+    // Boş hedefin içeriği zaten "boş" okunur; ayrıca işaret eklenmez.
+    return mark && mark !== 'empty' ? `${base}, ${this.t(mark === 'correct' ? 'markCorrect' : 'markWrong')}` : base;
   }
 
   isSelected(id: string): boolean {

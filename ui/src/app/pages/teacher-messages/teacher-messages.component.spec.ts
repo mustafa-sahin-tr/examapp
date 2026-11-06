@@ -1,12 +1,19 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient, withXhr } from '@angular/common/http';
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
-import { ActivatedRoute, convertToParamMap } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { signal } from '@angular/core';
+import { of } from 'rxjs';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
 import { TeacherMessagesComponent } from './teacher-messages.component';
 import { ConversationSummary, MessageableTeacher } from '../../models/direct-message.model';
 import { DirectMessageService } from '../../services/direct-message.service';
+import { AuthService } from '../../services/auth.service';
+import { LocaleService } from '../../services/locale.service';
+import { ParentStatusStore } from '../../services/parent-status.store';
+import { StudentParentService } from '../../services/student-parent.service';
+import { awaitingStatusOf } from '../../shared/testing/parent-status-testing';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import rootTr from '../../../../public/i18n/tr.json';
 import dmTr from '../../../../public/i18n/direct-messages/tr.json';
@@ -52,7 +59,7 @@ describe('TeacherMessagesComponent — öğrenci "Mesajlar" (issue #106)', () =>
         url: string;
     }) => r.url === `${BASE}/teachers`;
 
-    function create(): void {
+    function create(beforeRender?: () => void): void {
         TestBed.configureTestingModule({
             imports: [
                 TeacherMessagesComponent,
@@ -62,6 +69,11 @@ describe('TeacherMessagesComponent — öğrenci "Mesajlar" (issue #106)', () =>
             providers: [
                 provideHttpClient(withXhr()),
                 provideHttpClientTesting(),
+                provideRouter([]),
+                // #845: kilit ekranındaki veli kartı.
+                { provide: StudentParentService, useValue: { resend: vi.fn(), reload: vi.fn().mockReturnValue(of(null)) } },
+                { provide: AuthService, useValue: { user: signal({ id: 1 }) } },
+                { provide: LocaleService, useValue: { localeDefinition: signal({ angularLocale: 'tr-TR' }) } },
                 {
                     provide: ActivatedRoute,
                     useValue: { snapshot: { queryParamMap: convertToParamMap(queryConversation ? { conversation: queryConversation } : {}) } },
@@ -69,6 +81,7 @@ describe('TeacherMessagesComponent — öğrenci "Mesajlar" (issue #106)', () =>
             ],
         });
         http = TestBed.inject(HttpTestingController);
+        beforeRender?.();
         fixture = TestBed.createComponent(TeacherMessagesComponent);
         fixture.detectChanges();
     }
@@ -104,6 +117,14 @@ describe('TeacherMessagesComponent — öğrenci "Mesajlar" (issue #106)', () =>
 
     beforeEach(() => (queryConversation = null));
     afterEach(() => http.verify());
+
+    it('awaitingParentActivation_ShowsLockedPage_AndLoadsNothing', () => {
+        create(() => TestBed.inject(ParentStatusStore).set(awaitingStatusOf()));
+
+        expect(el().querySelector('[data-test="parent-locked-page"]')?.textContent).toContain('Öğretmenlerinle mesajlaşmak için');
+        expect(el().querySelector('.dmp__layout')).toBeNull();
+        http.expectNone(isConversations);
+    });
 
     it('conversations_LoadingThenRows_WithUnreadAria_AndBadgeRefreshed', () => {
         create();

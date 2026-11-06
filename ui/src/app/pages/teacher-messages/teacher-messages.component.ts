@@ -33,6 +33,8 @@ import {
 import { directMessageError } from '../../shared/utils/direct-message-error.util';
 import { provideTranslatedPaginatorIntl } from '../../shared/utils/paginator-intl.util';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { ParentStatusStore } from '../../services/parent-status.store';
+import { ParentLockedPageComponent } from '../../shared/components/parent-locked-page/parent-locked-page.component';
 
 /** Panelde açık olan konuşma ya da yeni konuşma hedefi. */
 export interface StudentDmSelection {
@@ -70,6 +72,7 @@ const PREVIEW_LENGTH = 120;
     TranslocoDirective,
     DmConversationComponent,
     DmConversationListComponent,
+    ParentLockedPageComponent,
   ],
   providers: [
     provideTranslocoScope(DIRECT_MESSAGES_SCOPE),
@@ -85,6 +88,8 @@ export class TeacherMessagesComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
+  /** #845: veli onayı beklerken sayfanın yerine kilit ekranı. */
+  protected readonly activationRestricted = inject(ParentStatusStore).activationRestricted;
 
   protected readonly pageSize = DIRECT_MESSAGE_PAGE_SIZE;
   protected readonly minSearch = TEACHER_SEARCH_MIN_LENGTH;
@@ -156,6 +161,10 @@ export class TeacherMessagesComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // #845: kilit ekranında liste gösterilmez; veli durumu route guard'ında yüklenmiş olur.
+    if (this.activationRestricted()) {
+      return;
+    }
     this.loadConversations();
     // Derin link (dilim b bildirimleri için kanca): /teacher-messages?conversation=<id>
     const id = Number(this.route.snapshot.queryParamMap.get('conversation'));

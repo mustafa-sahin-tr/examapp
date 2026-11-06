@@ -27,6 +27,7 @@ import { OpenTextReviewService } from '../../services/open-text-review.service';
 import { WorksheetAccessRequestService } from '../../services/worksheet-access-request.service';
 import { StudentSchoolRequestService } from '../../services/student-school-request.service';
 import { NotificationService } from '../../services/notification.service';
+import { ParentStatusStore } from '../../services/parent-status.store';
 import { DirectMessageService } from '../../services/direct-message.service';
 import { TranslocoDirective, TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { ColorSchemeToggleComponent } from '../../shared/components/color-scheme-toggle/color-scheme-toggle.component';
@@ -478,6 +479,14 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     }
     this.studentSchoolRequestCountLoaded = true;
     this.studentSchoolRequestService.refreshPendingCount().subscribe({ error: () => {} });
+  }
+
+  /** #845: veli onayı beklerken kapalı sayfalar (Mesajlar, Özel Ders) menüde kilitle işaretlenir. */
+  private readonly parentLockedItemIds = new Set(['teacher-messages', 'tutors']);
+  private readonly parentActivationRestricted = inject(ParentStatusStore).activationRestricted;
+
+  isParentLocked(itemId: string): boolean {
+    return this.parentActivationRestricted() && this.parentLockedItemIds.has(itemId);
   }
 
   /** Issue #106: DM menü öğesi mi (rozete ekran okuyucu açıklaması verilir). */

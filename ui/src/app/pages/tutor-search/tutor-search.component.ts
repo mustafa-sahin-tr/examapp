@@ -15,9 +15,11 @@ import { finalize, take } from 'rxjs';
 import { Subject } from '../../models/subject';
 import { TutorSearchResult } from '../../models/tutor.model';
 import { ParentLinkService } from '../../services/parent-link.service';
+import { ParentStatusStore } from '../../services/parent-status.store';
 import { SubjectService } from '../../services/subject.service';
 import { TeacherService } from '../../services/teacher.service';
 import { BookingSlotDialogChild } from '../../shared/components/booking-slot-dialog/booking-slot-dialog.component';
+import { ParentLockedPageComponent } from '../../shared/components/parent-locked-page/parent-locked-page.component';
 import { TutorCardComponent } from '../../shared/components/tutor-card/tutor-card.component';
 import {
   BOOKING_CHILD_ROUTE_PARAM,
@@ -48,6 +50,7 @@ import { TUTOR_SEARCH_SCOPE } from './tutor-search-scope';
     RouterLink,
     TutorCardComponent,
     TranslocoDirective,
+    ParentLockedPageComponent,
   ],
   providers: [provideTranslocoScope(TUTOR_SEARCH_SCOPE)],
   templateUrl: './tutor-search.component.html',
@@ -63,6 +66,8 @@ export class TutorSearchComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
   private readonly transloco = inject(TranslocoService);
+  /** #845: veli onayı beklerken sayfanın yerine kilit ekranı. */
+  protected readonly activationRestricted = inject(ParentStatusStore).activationRestricted;
 
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
@@ -96,6 +101,10 @@ export class TutorSearchComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    // #845: kilit ekranında arama yapılmaz; veli durumu route guard'ında yüklenmiş olur.
+    if (this.activationRestricted()) {
+      return;
+    }
     if (this.childStudentId !== null) {
       this.loadChild();
     }

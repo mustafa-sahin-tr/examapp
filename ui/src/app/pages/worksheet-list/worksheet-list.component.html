@@ -11,22 +11,52 @@
   </app-page-header>
 
   <!-- ============ TÜR SEKMELERİ (issue #573): Testler | Etkinlikler ============ -->
-  <nav mat-tab-nav-bar class="wl__kind-tabs" [tabPanel]="kindPanel" mat-stretch-tabs="false" [attr.aria-label]="t('kindTabs.aria')">
-    <a mat-tab-link [active]="pageKind() === 'tests'" (click)="setPageKind('tests')" data-testid="kind-tab-tests">
-      {{ t('kindTabs.tests') }}
-    </a>
-    <a mat-tab-link [active]="pageKind() === 'activities'" (click)="setPageKind('activities')" data-testid="kind-tab-activities">
-      @if (isStudent && openActivityCount() > 0) {
-        {{ t('kindTabs.activitiesCount', { count: openActivityCount() }) }}
-      } @else {
+  @if (isStudent) {
+    <!-- #834: öğrencide tek sekme sırası; test / etkinlik ayrımı sekme değil, yanındaki seçici. -->
+    <div class="wl__studentbar">
+      <nav class="wl__tabs" [attr.aria-label]="t('tabs.aria')">
+        <button type="button" [class.is-active]="tab() === 'assigned'" [attr.aria-current]="tab() === 'assigned' ? 'page' : null" (click)="setTab('assigned')" data-testid="tab-assigned">
+          {{ t('tabs.assigned') }}
+          @if (pageKind() === 'tests' && assignedCount() > 0) { <b>{{ assignedCount() }}</b> }
+        </button>
+        <button type="button" [class.is-active]="tab() === 'inprogress'" [attr.aria-current]="tab() === 'inprogress' ? 'page' : null" (click)="setTab('inprogress')" data-testid="tab-inprogress">
+          {{ t('tabs.inprogress') }}
+          @if (pageKind() === 'tests' && inProgressCount() > 0) { <b>{{ inProgressCount() }}</b> }
+        </button>
+        <button type="button" [class.is-active]="tab() === 'discover'" [attr.aria-current]="tab() === 'discover' ? 'page' : null" (click)="setTab('discover')" data-testid="tab-discover">{{ t('tabs.discover') }}</button>
+        <button type="button" [class.is-active]="tab() === 'completed'" [attr.aria-current]="tab() === 'completed' ? 'page' : null" (click)="setTab('completed')" data-testid="tab-completed">{{ t('tabs.completed') }}</button>
+      </nav>
+      <div class="wl__kind-seg" role="group" [attr.aria-label]="t('kindTabs.aria')">
+        <button type="button" [class.is-active]="pageKind() === 'tests'" [attr.aria-pressed]="pageKind() === 'tests'" (click)="setPageKind('tests')" data-testid="kind-tab-tests">
+          {{ t('kindTabs.tests') }}
+        </button>
+        <button type="button" [class.is-active]="pageKind() === 'activities'" [attr.aria-pressed]="pageKind() === 'activities'" (click)="setPageKind('activities')" data-testid="kind-tab-activities">
+          @if (openActivityCount() > 0) {
+            {{ t('kindTabs.activitiesCount', { count: openActivityCount() }) }}
+          } @else {
+            {{ t('kindTabs.activities') }}
+          }
+        </button>
+      </div>
+    </div>
+    <ng-container [ngTemplateOutlet]="listBody" />
+  } @else {
+    <nav mat-tab-nav-bar class="wl__kind-tabs" [tabPanel]="kindPanel" mat-stretch-tabs="false" [attr.aria-label]="t('kindTabs.aria')">
+      <a mat-tab-link [active]="pageKind() === 'tests'" (click)="setPageKind('tests')" data-testid="kind-tab-tests">
+        {{ t('kindTabs.tests') }}
+      </a>
+      <a mat-tab-link [active]="pageKind() === 'activities'" (click)="setPageKind('activities')" data-testid="kind-tab-activities">
         {{ t('kindTabs.activities') }}
-      }
-    </a>
-  </nav>
+      </a>
+    </nav>
+    <mat-tab-nav-panel #kindPanel>
+      <ng-container [ngTemplateOutlet]="listBody" />
+    </mat-tab-nav-panel>
+  }
 
-  <mat-tab-nav-panel #kindPanel>
+  <ng-template #listBody>
   @if (showStudentActivities()) {
-    <app-activity-list [subjectNames]="subjectMap()" [gradeNames]="gradeMap()" />
+    <app-activity-list [subjectNames]="subjectMap()" [gradeNames]="gradeMap()" [section]="tab()" />
   } @else {
 
   <mat-menu #sortMenu="matMenu">
@@ -38,22 +68,6 @@
       }
     }
   </mat-menu>
-
-  <!-- ============ SEGMENT TABS (student) ============ -->
-  @if (isStudent) {
-    <nav class="wl__tabs" [attr.aria-label]="t('tabs.aria')">
-      <button type="button" [class.is-active]="tab() === 'discover'" (click)="setTab('discover')">{{ t('tabs.discover') }}</button>
-      <button type="button" [class.is-active]="tab() === 'assigned'" (click)="setTab('assigned')">
-        {{ t('tabs.assigned') }}
-        @if (assignedCount() > 0) { <b>{{ assignedCount() }}</b> }
-      </button>
-      <button type="button" [class.is-active]="tab() === 'inprogress'" (click)="setTab('inprogress')">
-        {{ t('tabs.inprogress') }}
-        @if (inProgressCount() > 0) { <b>{{ inProgressCount() }}</b> }
-      </button>
-      <button type="button" [class.is-active]="tab() === 'completed'" (click)="setTab('completed')">{{ t('tabs.completed') }}</button>
-    </nav>
-  }
 
   <!-- ============ CONTINUE STRIP (student, discover) ============ -->
   @if (isStudent && tab() === 'discover' && resumeItems().length) {
@@ -85,18 +99,6 @@
           <mat-icon>close</mat-icon>
         </button>
       </div>
-
-      @if (isStudent) {
-        <div class="wl__filter-group">
-          <span class="wl__filter-label">{{ t('filters.status') }}</span>
-          @for (status of [-1, 0, 1]; track status) {
-            <label class="wl__check">
-              <input type="checkbox" [checked]="isStatusSelected($any(status))" (change)="toggleStatus($any(status))" />
-              <span>{{ statusLabel($any(status)) }}</span>
-            </label>
-          }
-        </div>
-      }
 
       <div class="wl__filter-group">
         <span class="wl__filter-label">{{ t('filters.subject') }}</span>
@@ -210,11 +212,6 @@
               {{ gradeName(id) || t('activeFilters.gradeFallback', { id }) }} <mat-icon>close</mat-icon>
             </button>
           }
-          @for (status of selectedStatuses(); track status) {
-            <button type="button" class="wl__filter-pill" (click)="toggleStatus(status)">
-              {{ statusLabel(status) }} <mat-icon>close</mat-icon>
-            </button>
-          }
           @if (durationBucket(); as bucket) {
             <button type="button" class="wl__filter-pill" (click)="setDurationBucket(bucket)">
               {{ durationBucketLabel(bucket) }} <mat-icon>close</mat-icon>
@@ -292,30 +289,8 @@
           }
         </div>
       } @else if (tab() === 'discover' && isStudent) {
-        <!-- ============ DISCOVER (student): "Atanan sınavlar" + "Keşfet" (issue #14) ============ -->
+        <!-- ============ DISCOVER (student): atananlar kendi sekmesinde (#834), burada yalnız keşfedilecekler ============ -->
         <div class="wl__section">
-          <h3 class="wl__section-title">{{ t('discover.assignedTitle') }}</h3>
-          @if (discoverAssignedTests().length === 0) {
-            <div class="wl__empty wl__empty--section">
-              <p>{{ t('discover.assignedEmpty') }}</p>
-            </div>
-          } @else {
-            <!-- Kompakt kart (issue #188): yalnız thumb + başlık + bitiş; grid ve liste görünümünde aynı -->
-            <div class="wl__compact-grid" [class.wl__compact-grid--list]="viewMode() === 'list'">
-              @for (test of discoverAssignedTests(); track trackTest($index, test)) {
-                <app-compact-test-card
-                  [title]="test.name"
-                  [thumbUrl]="test.imageUrl"
-                  [dueDate]="assignmentFor(test.id)?.endAt ?? null"
-                  (activated)="goToWorksheet(test.id || 0)"
-                ></app-compact-test-card>
-              }
-            </div>
-          }
-        </div>
-
-        <div class="wl__section">
-          <h3 class="wl__section-title">{{ t('discover.exploreTitle') }}</h3>
           @if (discoverExploreTests().length === 0) {
             <div class="wl__empty wl__empty--section">
               <p>{{ t('discover.exploreEmpty') }}</p>
@@ -389,5 +364,5 @@
     </div>
   </div>
   }
-  </mat-tab-nav-panel>
+  </ng-template>
 </section>

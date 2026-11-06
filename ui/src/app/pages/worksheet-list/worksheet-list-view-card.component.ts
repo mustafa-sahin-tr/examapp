@@ -10,6 +10,7 @@ import { SharingBadgeComponent } from '../../shared/components/sharing-badge/sha
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { WorksheetKind } from '../../models/activity';
 import { ActivityLauncherService } from '../../services/activity-launcher.service';
+import { subjectColorFor } from '../../shared/utils/subject-color';
 
 type CardStatus = 'none' | 'inprogress' | 'completed';
 
@@ -51,14 +52,14 @@ export class WorksheetListViewCardComponent {
   private tr(key: string, params?: Record<string, unknown>): string {
     return this.transloco.translate<string>(`worksheet-list.${key}`, params) ?? '';
   }
-  private readonly images = ['honey-back.png', 'rect-back.png', 'triangle-back.png', 'diamond-back.png'];
-
+  /** Kapak görseli; yoksa boş — kart bilgi taşımayan desen yerine ders renginde ince bir şerit çizer (#834). */
   get coverUrl(): string {
-    if (this.course.imageUrl) {
-      return this.course.imageUrl;
-    }
-    const id = Math.abs(this.course.id ?? 0);
-    return `/${this.images[id % this.images.length]}`;
+    return this.course.imageUrl ?? '';
+  }
+
+  /** #834: görselsiz kapağın rengi; ders adından (Planım ile aynı harita). */
+  get subjectColor(): string {
+    return subjectColorFor(this.subjectName);
   }
 
   // NOT: `computed()` yerine getter — `course` klasik `@Input` (signal input değil).

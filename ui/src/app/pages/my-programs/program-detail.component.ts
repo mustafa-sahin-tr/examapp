@@ -24,10 +24,10 @@ import { ScheduleDetailDialogComponent } from './schedule-detail-dialog.componen
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { LocaleService } from '../../services/locale.service';
 import { MY_PROGRAMS_SCOPE } from './my-programs-scope';
+import { subjectColorFor } from '../../shared/utils/subject-color';
 
 /** Sözlükte karşılığı olan program türleri; bunun dışındaki değer backend'den geldiği gibi gösterilir. */
 const KNOWN_STUDY_TYPES = ['intensive', 'regular', 'flexible', 'weekend', 'exam', 'question'];
-const DEFAULT_SUBJECT_COLOR = 'var(--ms-subject-default)';
 
 interface ScheduleBar {
   schedule: UserProgramStudyPageSchedule;
@@ -77,17 +77,6 @@ export class ProgramDetailComponent implements OnInit {
   weekStart = this.getWeekStart(new Date());
   currentMonth = new Date();
 
-  // Ders adına göre takvim rengi (styles.scss `--ms-subject-*`, beyaz yazıyla AA).
-  subjectColors: { [key: string]: string } = {
-    Matematik: 'var(--ms-subject-blue)',
-    Fizik: 'var(--ms-subject-red)',
-    Kimya: 'var(--ms-subject-green)',
-    Biyoloji: 'var(--ms-subject-amber)',
-    Türkçe: 'var(--ms-subject-purple)',
-    Tarih: 'var(--ms-subject-pink)',
-    Coğrafya: 'var(--ms-subject-teal)',
-    İngilizce: 'var(--ms-subject-orange)',
-  };
 
   constructor() {
     this.programId = this.route.snapshot.paramMap.get('id');
@@ -286,13 +275,10 @@ export class ProgramDetailComponent implements OnInit {
   }
 
   private getScheduleColor(schedule: UserProgramStudyPageSchedule): string {
-    for (const [subject, color] of Object.entries(this.subjectColors)) {
-      if (schedule.studyItemTitle?.toLowerCase().includes(subject.toLowerCase())) {
-        return color;
-      }
-    }
-    return DEFAULT_SUBJECT_COLOR;
+    // Ders adına göre takvim rengi (#725; harita shared/utils/subject-color).
+    return subjectColorFor(schedule.studyItemTitle);
   }
+
 
   private assignStackPositions(bars: ScheduleBar[]): void {
     const barsByWeek = new Map<number, ScheduleBar[]>();

@@ -661,6 +661,48 @@
 }
 
 // Issue #573: Testler | Etkinlikler üst sekmeleri (mat-tab-nav-bar).
+// #834: öğrencide tek sekme sırası + sağda Test | Etkinlik seçici (sekme değil, filtre).
+.wl__studentbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px 16px;
+  border-bottom: 1px solid var(--ms-border-weak);
+
+  .wl__tabs {
+    border-bottom: none;
+  }
+}
+
+.wl__kind-seg {
+  display: inline-flex;
+  margin-bottom: 8px;
+  border: 1px solid var(--ms-border-strong);
+  border-radius: 999px;
+  overflow: hidden;
+
+  button {
+    min-height: 36px;
+    padding: 0 16px;
+    border: none;
+    background: transparent;
+    color: var(--ms-text-medium);
+    font: 600 13px var(--mainFontFamily);
+    cursor: pointer;
+
+    &.is-active {
+      background: color-mix(in srgb, var(--primary-text) 18%, transparent);
+      color: var(--ms-text-strong);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--ms-action-border-focus);
+      outline-offset: -2px;
+    }
+  }
+}
+
 .wl__kind-tabs {
   margin-bottom: 12px;
   font-family: var(--mainFontFamily);

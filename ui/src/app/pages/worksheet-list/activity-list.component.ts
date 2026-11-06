@@ -21,6 +21,8 @@ import { WorksheetListViewCardComponent } from './worksheet-list-view-card.compo
  * (etkinlikte puan/yüzde/süre göstermez). Scope sözlüğü üst sayfa (`worksheet-list`) tarafından sağlanır.
  * Issue #572: üstte "Bugün" + en yakın etkinlik rozeti (BadgeService `activity-summary`); yüklenemezse gizli.
  */
+export type ActivityListSection = 'assigned' | 'inprogress' | 'discover' | 'completed';
+
 @Component({
   selector: 'app-activity-list',
   standalone: true,
@@ -36,6 +38,11 @@ export class ActivityListComponent implements OnInit {
 
   readonly subjectNames = input<Map<number, string>>(new Map());
   readonly gradeNames = input<Map<number, string>>(new Map());
+  /**
+   * #834: öğrenci Testler sayfasının tek sekme sırası; verilirse yalnız o bölüm çizilir (başlıksız, sekme adı başlıktır).
+   * `null`: dört bölüm başlıklarıyla birlikte.
+   */
+  readonly section = input<ActivityListSection | null>(null);
 
   readonly loading = signal(true);
   readonly error = signal(false);
@@ -69,6 +76,27 @@ export class ActivityListComponent implements OnInit {
       this.explore().length === 0 &&
       this.completed().length === 0
   );
+
+  /** #834: seçili bölüm (sekme) boş mu. */
+  readonly sectionEmpty = computed(() => {
+    switch (this.section()) {
+      case 'assigned':
+        return this.fresh().length === 0;
+      case 'inprogress':
+        return this.inProgress().length === 0;
+      case 'discover':
+        return this.explore().length === 0;
+      case 'completed':
+        return this.completed().length === 0;
+      default:
+        return false;
+    }
+  });
+
+  shows(section: ActivityListSection): boolean {
+    const current = this.section();
+    return current === null || current === section;
+  }
 
   ngOnInit(): void {
     this.load();

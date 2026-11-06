@@ -1,4 +1,4 @@
-
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
@@ -37,7 +37,6 @@ import {
   WorksheetListFilter,
   WorksheetListTab,
   WorksheetSortBy,
-  WorksheetStatus,
 } from '../../models/worksheet-list-filter';
 import { AuthService } from '../../services/auth.service';
 import { LocaleService } from '../../services/locale.service';
@@ -72,6 +71,7 @@ interface GradeOption {
   styleUrls: ['./worksheet-list.component.scss'],
   standalone: true,
   imports: [
+    NgTemplateOutlet,
     PageHeaderComponent,
     RouterModule,
     MatIconModule,
@@ -123,6 +123,8 @@ export class WorksheetListComponent implements OnInit {
   readonly openActivityCount = signal(0);
   readonly viewMode = signal<'grid' | 'list'>('grid');
   readonly tab = signal<WorksheetListTab>('discover');
+  /** #834: kullanıcı bir sekmeye bastı mı (varsayılan "Bana atananlar" geçişi yalnız ilk açılışta). */
+  private tabChosen = false;
   readonly sortBy = signal<WorksheetSortBy>('newest');
 
   // Her veri kaynağının kendi loading/error sinyali var; şablon aktif sekmeye göre birleşik okur.
@@ -204,7 +206,6 @@ export class WorksheetListComponent implements OnInit {
   readonly search = signal('');
   readonly selectedSubjectIds = signal<number[]>([]);
   readonly selectedGradeIds = signal<number[]>([]);
-  readonly selectedStatuses = signal<WorksheetStatus[]>([]);
   readonly durationBucket = signal<DurationBucket | null>(null);
   readonly questionBucket = signal<QuestionBucket | null>(null);
   readonly practiceOnly = signal(false);
@@ -290,7 +291,6 @@ export class WorksheetListComponent implements OnInit {
     () =>
       this.selectedSubjectIds().length > 0 ||
       this.selectedGradeIds().length > 0 ||
-      this.selectedStatuses().length > 0 ||
       this.durationBucket() !== null ||
       this.questionBucket() !== null ||
       this.practiceOnly()
@@ -360,7 +360,6 @@ export class WorksheetListComponent implements OnInit {
       search: this.search() || undefined,
       subjectIds: this.selectedSubjectIds(),
       gradeIds: this.selectedGradeIds(),
-      statuses: this.isStudent ? this.selectedStatuses() : undefined,
       minDurationSeconds: duration?.min,
       maxDurationSeconds: duration?.max,
       minQuestionCount: question?.min,
@@ -422,9 +421,27 @@ export class WorksheetListComponent implements OnInit {
           this.openActivityCount.set(
             all.filter((a) => a.kind === WorksheetKind.Activity && !a.isCompleted && !a.isFinished).length
           );
+          this.openAssignedTabByDefault(all);
         },
         error: () => this.assignmentsError.set(this.tr('error.assignmentsLoadFailed')),
       });
+  }
+
+  /**
+   * #834: "Bana atananlar" ilk sekmedir; öğrencinin açık ataması varsa sayfa onunla açılır. Kullanıcı sekme seçtiyse
+   * ya da açık ataması yoksa Keşfet'te kalır.
+   */
+  private openAssignedTabByDefault(all: readonly AssignedWorksheet[]): void {
+    if (this.tabChosen || this.tab() !== 'discover') {
+      return;
+    }
+    const wanted = this.pageKind() === 'activities' ? WorksheetKind.Activity : WorksheetKind.Test;
+    const hasOpen = all.some(
+      (a) => (a.kind === WorksheetKind.Activity) === (wanted === WorksheetKind.Activity) && !a.isCompleted && !a.isFinished
+    );
+    if (hasOpen) {
+      this.tab.set('assigned');
+    }
   }
 
   /** Öğrenci durum sekmeleri (Devam Edenler / Tamamlananlar) + devam şeridi için ayrı fetch. */
@@ -468,6 +485,7 @@ export class WorksheetListComponent implements OnInit {
   }
 
   setTab(tab: WorksheetListTab): void {
+    this.tabChosen = true;
     if (this.tab() === tab) {
       return;
     }
@@ -541,10 +559,6 @@ export class WorksheetListComponent implements OnInit {
     this.toggleInArray(this.selectedGradeIds, id);
   }
 
-  toggleStatus(status: WorksheetStatus): void {
-    this.toggleInArray(this.selectedStatuses, status);
-  }
-
   setDurationBucket(bucket: DurationBucket): void {
     this.durationBucket.set(this.durationBucket() === bucket ? null : bucket);
     this.pageNumber.set(1);
@@ -588,7 +602,6 @@ export class WorksheetListComponent implements OnInit {
   private resetFilterSignals(): void {
     this.selectedSubjectIds.set([]);
     this.selectedGradeIds.set([]);
-    this.selectedStatuses.set([]);
     this.durationBucket.set(null);
     this.questionBucket.set(null);
     this.practiceOnly.set(false);
@@ -609,15 +622,6 @@ export class WorksheetListComponent implements OnInit {
 
   isGradeSelected(id: number): boolean {
     return this.selectedGradeIds().includes(id);
-  }
-
-  isStatusSelected(status: WorksheetStatus): boolean {
-    return this.selectedStatuses().includes(status);
-  }
-
-  statusLabel(status: WorksheetStatus): string {
-    const key = status === -1 ? 'notStarted' : status === 0 ? 'inProgress' : 'completed';
-    return this.tr(`status.${key}`);
   }
 
   subjectName(id?: number): string {

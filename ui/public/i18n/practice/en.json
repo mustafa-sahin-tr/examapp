@@ -152,8 +152,8 @@
     "backToPassage": "Back to Passage",
     "passageAlt": "Passage image",
     "correct": "Correct answer! You are doing great.",
-    "wrong": "Wrong answer. The correct option is shown below.",
-    "skipped": "Question skipped. The correct option is shown below.",
+    "wrong": "Wrong answer. The correct option is marked in green.",
+    "skipped": "Question skipped. The correct option is marked in green.",
     "nextQuestion": "Next Question",
     "skip": "Skip",
     "submit": "Submit Answer"
@@ -193,5 +193,11 @@
     "emptyTitle": "No questions for today",
     "emptyText": "Your daily set will show up here once questions are added for your grade.",
     "goToProfile": "Go to profile"
+  },
+  "session": {
+    "questionOf": "Question {{n}}",
+    "questionOfScope": "Question {{n}} · {{scope}}",
+    "keys": "A–D choose · Enter submit",
+    "keysNext": "Enter: next question"
   }
 }

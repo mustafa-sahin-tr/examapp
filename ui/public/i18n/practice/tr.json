@@ -152,8 +152,8 @@
     "backToPassage": "Pasaja Dön",
     "passageAlt": "Pasaj görseli",
     "correct": "Doğru cevap! Harika gidiyorsun.",
-    "wrong": "Yanlış cevap. Doğru şık aşağıda gösteriliyor.",
-    "skipped": "Soru pas geçildi. Doğru şık aşağıda gösteriliyor.",
+    "wrong": "Yanlış cevap. Doğru şık yeşil işaretli.",
+    "skipped": "Soru pas geçildi. Doğru şık yeşil işaretli.",
     "nextQuestion": "Sonraki Soru",
     "skip": "Pas Geç",
     "submit": "Cevabı Gönder"
@@ -193,5 +193,11 @@
     "emptyTitle": "Bugün için soru bulunamadı",
     "emptyText": "Sınıfına uygun soru eklendiğinde günlük setin burada görünür.",
     "goToProfile": "Profilime git"
+  },
+  "session": {
+    "questionOf": "{{n}}. soru",
+    "questionOfScope": "{{n}}. soru · {{scope}}",
+    "keys": "A–D seç · Enter gönder",
+    "keysNext": "Enter: sonraki soru"
   }
 }

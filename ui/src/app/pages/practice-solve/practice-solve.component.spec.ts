@@ -10,6 +10,7 @@ import { PracticeSolveComponent } from './practice-solve.component';
 import { PracticeService } from '../../services/practice.service';
 import { StudentService } from '../../services/student.service';
 import { SubjectService } from '../../services/subject.service';
+import { SidenavService } from '../../services/sidenav.service';
 import { DailySet, PracticeAnswerResult, PracticeSession, PracticeSessionReview } from '../../models/practice';
 import { BadgeService, BadgeProgressResponse } from '../../services/badge.service';
 import { StudentProfile } from '../../models/student-profile';
@@ -231,6 +232,43 @@ describe('PracticeSolveComponent', () => {
         expect(component.phase()).toBe('feedback');
         expect(component.feedbackKind()).toBe('correct');
         expect(component.result()?.isCorrect).toBe(true);
+    });
+
+    it('session_CompactHeadHidesTabs_KeyboardSelectsSubmitsAndAdvances (#849)', () => {
+        setup();
+        const question = buildQuestion();
+        practiceService.startSession.mockReturnValue(of(session));
+        practiceService.getNextQuestion.mockReturnValue(of({ sessionId: session.id, question, poolExhausted: false, answeredCount: 0, correctCount: 0 }));
+        practiceService.submitAnswer.mockReturnValue(of({
+            sessionId: session.id, questionId: question.id, isCorrect: false, skipped: false,
+            correctAnswerId: 900, answeredCount: 1, correctCount: 0,
+        }));
+        const sidenav = TestBed.inject(SidenavService);
+        const key = (k: string) => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }));
+
+        fixture.detectChanges();
+        expect(fixture.debugElement.query(By.css('app-section-header'))).toBeTruthy();
+        component.startSession();
+        fixture.detectChanges();
+
+        expect(sidenav.sectionTabsHidden()).toBe(true);
+        expect(fixture.debugElement.query(By.css('app-section-header'))).toBeNull();
+        const head = fixture.debugElement.query(By.css('[data-testid="practice-session-head"]')).nativeElement as HTMLElement;
+        expect(head.textContent).toContain('1. soru');
+        expect(fixture.debugElement.queryAll(By.css('h1')).length).toBe(1);
+
+        key('b');
+        expect(component.selectedAnswerId()).toBe(901);
+        key('Enter');
+        fixture.detectChanges();
+        expect(component.phase()).toBe('feedback');
+        expect(practiceService.submitAnswer).toHaveBeenCalledWith(session.id, expect.objectContaining({ selectedAnswerId: 901 }));
+
+        key('Enter');
+        expect(practiceService.getNextQuestion).toHaveBeenCalledTimes(2);
+
+        fixture.destroy();
+        expect(sidenav.sectionTabsHidden()).toBe(false);
     });
 
     it('submitAnswer_ServerReturnsIncorrect_TransitionsToFeedbackPhaseWithWrongResult', () => {

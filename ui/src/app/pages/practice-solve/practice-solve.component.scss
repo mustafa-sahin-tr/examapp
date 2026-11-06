@@ -139,10 +139,24 @@ $bp-mobile: 640px;
     justify-content: center;
   }
 
+  // #849: şıkların altında, ekranın altına yapışık — uzun soruda da gönder düğmesi görünür.
   &--stage {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    align-items: center;
     width: min(100%, clamp(680px, 78vw, 1180px));
     margin: 0 auto;
+    padding: var(--ms-layout-spacing-xsmall) 0;
+    background: var(--main-bg-color);
+    box-shadow: 0 -12px 16px -12px color-mix(in srgb, var(--main-bg-color) 80%, transparent);
   }
+}
+
+.practice__keys {
+  margin-right: auto;
+  color: var(--ms-text-medium);
+  font-size: 0.8rem;
 }
 
 // ── İstatistik çubuğu ────────────────────────────────────────────────────────
@@ -198,8 +212,32 @@ $bp-mobile: 640px;
 }
 
 .practice__finish {
-  margin-left: auto;
   border-radius: 14px;
+}
+
+// #849: oturum başlığı — tek satır, sayaçlar sağda.
+.session-head {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.25;
+
+  &__title {
+    font-weight: 800;
+    color: var(--ms-text-strong);
+  }
+
+  &__sub {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--ms-text-medium);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 // ── Soru kartı (test-solve-canvas-v3 .question-card ile aynı yüzey) ─────────
@@ -725,6 +763,10 @@ $bp-mobile: 640px;
 
   .practice__actions--stage button {
     flex: 1;
+  }
+
+  .practice__keys {
+    display: none;
   }
 }
 

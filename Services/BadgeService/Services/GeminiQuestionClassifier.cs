@@ -107,7 +107,9 @@ public class GeminiQuestionClassifier : IQuestionClassifier
             _logger.LogWarning("⏭️ Question {QuestionId} has no image; text classification is Claude-only. Skipping.", questionId);
             return;
         }
-        var result = await CallGeminiAsync(image, cachedContent, model, cancellationToken);
+        // The instruction / passage outside the cropped image goes along with it (same text as Claude's).
+        var text = await examApi.FetchQuestionTextAsync(questionId, token, cancellationToken);
+        var result = await CallGeminiAsync(image, text, cachedContent, model, cancellationToken);
 
         if (result == null)
         {
@@ -167,7 +169,8 @@ public class GeminiQuestionClassifier : IQuestionClassifier
         return (string.IsNullOrWhiteSpace(_gemini.CachedContent) ? null : _gemini.CachedContent, _gemini.Model);
     }
 
-    private async Task<QuestionClassificationResult?> CallGeminiAsync(QuestionImage image, string cachedContent, string model, CancellationToken ct)
+    private async Task<QuestionClassificationResult?> CallGeminiAsync(
+        QuestionImage image, string? text, string cachedContent, string model, CancellationToken ct)
     {
         var client = _httpClientFactory.CreateClient();
         client.Timeout = TimeSpan.FromSeconds(_gemini.TimeoutSeconds);
@@ -180,11 +183,18 @@ public class GeminiQuestionClassifier : IQuestionClassifier
                 new
                 {
                     role = "user",
-                    parts = new object[]
-                    {
-                        new { inlineData = new { mimeType = image.MediaType, data = Convert.ToBase64String(image.Bytes) } },
-                        new { text = Prompt },
-                    },
+                    parts = string.IsNullOrWhiteSpace(text)
+                        ? new object[]
+                        {
+                            new { inlineData = new { mimeType = image.MediaType, data = Convert.ToBase64String(image.Bytes) } },
+                            new { text = Prompt },
+                        }
+                        : new object[]
+                        {
+                            new { inlineData = new { mimeType = image.MediaType, data = Convert.ToBase64String(image.Bytes) } },
+                            new { text = ClaudeQuestionClassifier.ImageTextPrefix + text },
+                            new { text = Prompt },
+                        },
                 },
             },
             generationConfig = new

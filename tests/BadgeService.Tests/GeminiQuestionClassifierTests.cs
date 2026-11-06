@@ -93,7 +93,7 @@ public class GeminiQuestionClassifierTests
 
         await NewClassifier(http).ClassifyAndPersistAsync(42, null, default);
 
-        http.Requests.Single(r => r.RequestUri!.ToString().Contains("/classification")).Method.ShouldBe(HttpMethod.Put);
+        http.Requests.Single(r => r.RequestUri!.ToString().EndsWith("/classification")).Method.ShouldBe(HttpMethod.Put);
         var body = http.BodyMatching("/classification");
         body.ShouldContain("\"difficulty\":10");        // clamped from 99
         body.ShouldContain("\"subjectId\":3");

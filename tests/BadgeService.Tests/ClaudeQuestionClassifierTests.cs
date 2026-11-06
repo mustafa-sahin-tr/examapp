@@ -67,7 +67,7 @@ public class ClaudeQuestionClassifierTests
 
         await NewClassifier(http, chat).ClassifyAndPersistAsync(42, null, default);
 
-        http.Requests.Single(r => r.RequestUri!.ToString().Contains("/42/classification")).Method.ShouldBe(HttpMethod.Put);
+        http.Requests.Single(r => r.RequestUri!.ToString().EndsWith("/42/classification")).Method.ShouldBe(HttpMethod.Put);
         var body = http.BodyMatching("/classification");
         body.ShouldContain("\"subTopicIds\":[101,100]");     // deduped, order kept
         body.ShouldContain("\"subjectId\":1");
@@ -104,6 +104,40 @@ public class ClaudeQuestionClassifierTests
         image.Data.ToArray().ShouldBe(new byte[] { 1, 2, 3, 4 });
         image.MediaType.ShouldBe("image/jpeg");
         user.Contents.OfType<TextContent>().ShouldNotContain(t => t.Text.Contains(TaxonomyJson)); // nothing volatile in the prefix
+    }
+
+    // Görselin dışında kalan yönerge (etkinlikte yalnız tablo kırpılır) görselle birlikte gider; yoksa konu yanlış seçiliyordu.
+    [Fact]
+    public async Task An_image_question_also_sends_its_text_after_the_image()
+    {
+        var http = new StubHttp()
+            .On("/api/questions/classifier-taxonomy", HttpStatusCode.OK, TaxonomyResponse())
+            .OnBytes("/image", new byte[] { 1, 2, 3, 4 })
+            .On("/classification-text", HttpStatusCode.OK, """{"text":"Tabloda verilen açıların tümlerini yazınız."}""")
+            .On("/classification", HttpStatusCode.OK, "{}");
+        var chat = new FakeChatClient("""{ "subTopicIds": [100], "subjectId": 1, "topicId": 10, "difficultyLevel": 3, "reasoning": "açı" }""");
+
+        await NewClassifier(http, chat).ClassifyAndPersistAsync(7, null, default);
+
+        var user = chat.Calls.ShouldHaveSingleItem().Messages.Single(m => m.Role == ChatRole.User);
+        user.Contents[0].ShouldBeOfType<DataContent>();
+        user.Contents[1].ShouldBeOfType<TextContent>().Text
+            .ShouldBe(ClaudeQuestionClassifier.ImageTextPrefix + "Tabloda verilen açıların tümlerini yazınız.");
+        user.Contents[2].ShouldBeOfType<TextContent>().Text.ShouldBe(ClaudeQuestionClassifier.UserInstruction);
+    }
+
+    [Fact]
+    public async Task An_image_question_without_text_sends_only_the_image_and_the_instruction()
+    {
+        var http = HappyHttp();
+        var chat = new FakeChatClient("""{ "subTopicIds": [100], "subjectId": 1, "topicId": 10, "difficultyLevel": 3, "reasoning": "x" }""");
+
+        await NewClassifier(http, chat).ClassifyAndPersistAsync(7, null, default);
+
+        var user = chat.Calls.ShouldHaveSingleItem().Messages.Single(m => m.Role == ChatRole.User);
+        user.Contents.Count.ShouldBe(2);
+        user.Contents[0].ShouldBeOfType<DataContent>();
+        user.Contents[1].ShouldBeOfType<TextContent>().Text.ShouldBe(ClaudeQuestionClassifier.UserInstruction);
     }
 
     // Issue #590: görseli olmayan soru metinle sınıflandırılır.
@@ -208,7 +242,7 @@ public class ClaudeQuestionClassifierTests
             () => NewClassifier(http, new FakeChatClient(claudeJson)).ClassifyAndPersistAsync(5, null, default));
 
         ex.Message.ShouldContain("not in the taxonomy");
-        http.Requests.ShouldNotContain(r => r.RequestUri!.ToString().Contains("/classification"));
+        http.Requests.ShouldNotContain(r => r.RequestUri!.ToString().EndsWith("/classification"));
     }
 
     [Fact]
@@ -265,7 +299,7 @@ public class ClaudeQuestionClassifierTests
 
         chat.Calls.ShouldBeEmpty();
         TaxonomyUrls(http).ShouldHaveSingleItem().ShouldEndWith("?gradeId=9"); // no second, unfiltered fetch
-        http.Requests.ShouldNotContain(r => r.RequestUri!.ToString().Contains("/classification"));
+        http.Requests.ShouldNotContain(r => r.RequestUri!.ToString().EndsWith("/classification"));
     }
 
     [Fact]
@@ -311,7 +345,7 @@ public class ClaudeQuestionClassifierTests
         await Should.ThrowAsync<InvalidOperationException>(() =>
             NewClassifier(http, new FakeChatClient("""{ "subTopicIds": [200], "difficultyLevel": 3, "reasoning": "r" }""")).ClassifyAndPersistAsync(8, 5, default));
 
-        http.Requests.ShouldNotContain(r => r.RequestUri!.ToString().Contains("/classification"));
+        http.Requests.ShouldNotContain(r => r.RequestUri!.ToString().EndsWith("/classification"));
     }
 
     // issue #577: book TOC hybrid — classify only the subtopic within the book's topic
@@ -348,7 +382,7 @@ public class ClaudeQuestionClassifierTests
         await NewClassifier(http, chat).ClassifyWithinTopicAndPersistAsync(8, 5, 10, "Book", default);
 
         chat.Calls.ShouldBeEmpty();
-        http.Requests.ShouldNotContain(r => r.RequestUri!.ToString().Contains("/classification"));
+        http.Requests.ShouldNotContain(r => r.RequestUri!.ToString().EndsWith("/classification"));
     }
 
     [Fact]
@@ -364,7 +398,7 @@ public class ClaudeQuestionClassifierTests
             NewClassifier(http, new FakeChatClient("""{ "subTopicIds": [200], "difficultyLevel": 3, "reasoning": "r" }"""))
                 .ClassifyWithinTopicAndPersistAsync(8, 5, 10, "Book", default));
 
-        http.Requests.ShouldNotContain(r => r.RequestUri!.ToString().Contains("/classification"));
+        http.Requests.ShouldNotContain(r => r.RequestUri!.ToString().EndsWith("/classification"));
     }
 
     [Fact]
@@ -404,7 +438,7 @@ public class ClaudeQuestionClassifierTests
         var chat = new FakeChatClient("""{ "subTopicIds": [10""", ChatFinishReason.Length);
 
         await Should.ThrowAsync<InvalidOperationException>(() => NewClassifier(http, chat).ClassifyAndPersistAsync(5, null, default));
-        http.Requests.ShouldNotContain(r => r.RequestUri!.ToString().Contains("/classification"));
+        http.Requests.ShouldNotContain(r => r.RequestUri!.ToString().EndsWith("/classification"));
     }
 
     [Fact]

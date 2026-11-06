@@ -61,6 +61,12 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
     /// <summary>Issue #590: the text of a question without an image precedes <see cref="UserInstruction"/>.</summary>
     internal const string TextQuestionPrefix = "Soru (metin):\n";
 
+    /// <summary>
+    /// The text of a question that has an image follows the image: the instruction, passage and item labels often sit
+    /// outside the cropped image (an activity's "Tabloyu tamamlayınız" with only the table cropped).
+    /// </summary>
+    internal const string ImageTextPrefix = "Görselin yanındaki metin (yönerge, paragraf, şıklar):\n";
+
     private const string AiSource = "AI";
 
     private readonly IHttpClientFactory _httpClientFactory;
@@ -143,16 +149,13 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
         }
 
         // Issue #590: a question without an image (text-authored activity, text MCQ) is classified from its text.
+        // With an image the text goes along too: the instruction outside the crop decides the subject.
         var image = await examApi.TryFetchQuestionImageAsync(questionId, token, cancellationToken);
-        string? text = null;
-        if (image is null)
+        var text = await examApi.FetchQuestionTextAsync(questionId, token, cancellationToken);
+        if (image is null && string.IsNullOrWhiteSpace(text))
         {
-            text = await examApi.FetchQuestionTextAsync(questionId, token, cancellationToken);
-            if (string.IsNullOrWhiteSpace(text))
-            {
-                _logger.LogWarning("⚠️ Question {QuestionId} has neither an image nor text. Skipping classification.", questionId);
-                return;
-            }
+            _logger.LogWarning("⚠️ Question {QuestionId} has neither an image nor text. Skipping classification.", questionId);
+            return;
         }
         var (result, usage) = await CallClaudeAsync(image, text, taxonomy, cancellationToken);
 
@@ -231,14 +234,8 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
                 // Cache breakpoint at the end of the taxonomy: instructions + taxonomy are reused across questions.
                 new TextContent("Taksonomi (JSON):\n" + taxonomy.Json).WithCacheControl(ParseTtl(_options.CacheTtl)),
             ]),
-            // Question (image, or text when there is none) before the instruction: Claude reads the question first.
-            new(ChatRole.User,
-            [
-                image is not null
-                    ? new DataContent(image.Bytes, image.MediaType)
-                    : new TextContent(TextQuestionPrefix + text),
-                new TextContent(UserInstruction),
-            ]),
+            // Question (image and its text, or text when there is no image) before the instruction: Claude reads it first.
+            new(ChatRole.User, QuestionContents(image, text)),
         ];
 
         var response = await _chat!.GetResponseAsync<ClaudeClassification>(messages, chatOptions, cancellationToken: ct);
@@ -292,6 +289,23 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
             + usage.CacheWriteTokens * inputPrice * writeMultiplier
             + usage.CacheReadTokens * inputPrice * CacheReadMultiplier
             + usage.OutputTokens * (_options.OutputUsdPerMTok / 1_000_000m);
+    }
+
+    internal static List<AIContent> QuestionContents(QuestionImage? image, string? text)
+    {
+        var contents = new List<AIContent>(3);
+        if (image is not null)
+        {
+            contents.Add(new DataContent(image.Bytes, image.MediaType));
+            if (!string.IsNullOrWhiteSpace(text))
+                contents.Add(new TextContent(ImageTextPrefix + text));
+        }
+        else
+        {
+            contents.Add(new TextContent(TextQuestionPrefix + text));
+        }
+        contents.Add(new TextContent(UserInstruction));
+        return contents;
     }
 
     private static IChatClient? CreateChatClient(ClaudeClassifierOptions options, ILoggerFactory loggerFactory)

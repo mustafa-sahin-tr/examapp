@@ -115,6 +115,48 @@ describe('QuestionBankPanelComponent (issue #471)', () => {
         return vi.mocked(search).mock.lastCall![0] as Record<string, unknown>;
     }
 
+    describe('more filters (issue #836)', () => {
+        const el = () => fixture.nativeElement as HTMLElement;
+
+        it('secondaryFiltersHiddenUntilToggled', async () => {
+            await settle();
+
+            expect(el().querySelector('[data-testid="more-filters-panel"]')).toBeNull();
+            expect(el().querySelector('[data-testid="filter-context-based"]')).toBeNull();
+            expect(el().querySelector('[data-testid="filter-kind"]')).not.toBeNull();
+
+            (el().querySelector('[data-testid="more-filters"]') as HTMLButtonElement).click();
+            fixture.detectChanges();
+
+            expect(el().querySelector('[data-testid="more-filters"]')?.getAttribute('aria-expanded')).toBe('true');
+            expect(el().querySelector('[data-testid="filter-context-based"]')).not.toBeNull();
+        });
+
+        it('activeSecondaryFilters_ShowAsRemovableChipsAndCountOnButton', async () => {
+            component.setDifficulty('medium');
+            component.setSkillIds([1, 2]);
+            await settle();
+
+            const chips = Array.from(el().querySelectorAll('[data-testid="active-extra-filters"] .qb-chip'));
+            expect(chips.map((c) => c.textContent?.replace(/\s+/g, ' ').trim())).toEqual([
+                expect.stringContaining('Zorluk'),
+                expect.stringContaining('2'),
+            ]);
+            expect(el().querySelector('[data-testid="more-filters"]')?.textContent).toContain('2');
+
+            (chips[0] as HTMLButtonElement).click();
+            await settle();
+
+            expect(component.difficulty()).toBe('any');
+            expect(lastFilter()['minDifficulty'] ?? null).toBeNull();
+
+            component.clearExtraFilters();
+            await settle();
+            expect(component.skillIds()).toEqual([]);
+            expect(el().querySelector('[data-testid="active-extra-filters"]')).toBeNull();
+        });
+    });
+
     describe('filterLayout', () => {
         const selector = () =>
             fixture.debugElement.query(By.directive(ClassificationSelectorStub)).componentInstance as ClassificationSelectorStub;

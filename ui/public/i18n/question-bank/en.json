@@ -29,7 +29,11 @@
     "skills": "Skills",
     "kind": "Type",
     "kindQuestion": "Question",
-    "kindActivity": "Activity"
+    "kindActivity": "Activity",
+    "more": "More filters",
+    "moreCount": "More filters · {{count}}",
+    "removeChip": "Remove the {{label}} filter",
+    "clearExtras": "Clear"
   },
   "results": {
     "total": "{{count}} questions",

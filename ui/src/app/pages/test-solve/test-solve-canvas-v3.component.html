@@ -249,10 +249,21 @@
 <!-- Soru haritası + özet + hızlı araçlar: masaüstü panel ve mobil sheet aynı şablonu kullanır -->
 <ng-template #insightContent>
   <ng-container *transloco="let t; prefix: 'test-solve'">
+  <!-- Issue #820: harita öncelikli; özet üç sayaç + çubuk, numaralar kalan yüksekliği alır, araçlar altta tek sıra. -->
   <section class="insight-panel__section insight-panel__section--map">
     <div class="section-header">
       <mat-icon>map</mat-icon>
       <span>{{ t('insight.mapTitle') }}</span>
+    </div>
+    <ul class="map-counts" [attr.aria-label]="t('insight.progressTitle')">
+      <li class="map-count"><span>{{ t('insight.answered') }}</span><b>{{ answeredCount() }}</b></li>
+      <li class="map-count"><span>{{ t('insight.legendEmpty') }}</span><b>{{ remainingCount() }}</b></li>
+      <li class="map-count"><span>{{ t('insight.bookmarked') }}</span><b>{{ bookmarkedCount() }}</b></li>
+    </ul>
+    <div class="map-progress" role="progressbar" [attr.aria-label]="t('header.answeredRatio')"
+      [attr.aria-valuenow]="progressPercentage()" aria-valuemin="0" aria-valuemax="100"
+      [attr.aria-valuetext]="t('header.answeredPercent', { percent: progressPercentage() | number: '1.0-0' })">
+      <div class="map-progress__fill" [style.width.%]="progressPercentage()"></div>
     </div>
     <div class="question-map-grid">
       @for (question of testInstance.testInstanceQuestions; track question.id; let i = $index) {
@@ -274,65 +285,48 @@
     </ul>
   </section>
 
-  <section class="insight-panel__section">
-    <div class="section-header">
-      <mat-icon>equalizer</mat-icon>
-      <span>{{ t('insight.progressTitle') }}</span>
-    </div>
-    <div class="stat-grid">
-      <div class="stat-card">
-        <span class="stat-label">{{ t('insight.answered') }}</span>
-        <span class="stat-value">{{ answeredCount() }}</span>
-      </div>
-      <div class="stat-card">
-        <span class="stat-label">{{ t('insight.remaining') }}</span>
-        <span class="stat-value">{{ remainingCount() }}</span>
-      </div>
-      <div class="stat-card">
-        <span class="stat-label">{{ t('insight.bookmarked') }}</span>
-        <span class="stat-value">{{ bookmarkedCount() }}</span>
-      </div>
-    </div>
-  </section>
-
-  <section class="insight-panel__section">
-    <div class="section-header">
-      <mat-icon>build</mat-icon>
-      <span>{{ t('insight.toolsTitle') }}</span>
-    </div>
-    <div class="tool-list">
+  <section class="insight-panel__section insight-panel__section--tools" [attr.aria-label]="t('insight.toolsTitle')">
+    <div class="tool-bar">
       @if (usesMapSheet()) {
-      <button mat-stroked-button type="button" class="tool-list__item" [class.is-active]="autoNextQuestion()"
-        [attr.aria-pressed]="autoNextQuestion()" (click)="toggleAutoNextQuestion()">
+      <button mat-stroked-button type="button" class="tool-bar__item" [class.is-active]="autoNextQuestion()"
+        [attr.aria-pressed]="autoNextQuestion()" (click)="toggleAutoNextQuestion()"
+        [matTooltip]="autoNextQuestion() ? t('dock.autoNextOn') : t('dock.autoNextOff')"
+        [attr.aria-label]="autoNextQuestion() ? t('dock.autoNextOn') : t('dock.autoNextOff')">
         <mat-icon>{{ autoNextQuestion() ? 'toggle_on' : 'toggle_off' }}</mat-icon>
-        {{ autoNextQuestion() ? t('dock.autoNextOn') : t('dock.autoNextOff') }}
+        <span class="tool-bar__label">{{ t('insight.toolAutoNext') }}</span>
       </button>
       }
-      <button mat-stroked-button type="button" class="tool-list__item" (click)="toggleBookmark()"
+      <button mat-stroked-button type="button" class="tool-bar__item" (click)="toggleBookmark()"
         [class.is-active]="isQuestionBookmarked(currentIndex())"
-        [attr.aria-pressed]="isQuestionBookmarked(currentIndex())">
+        [attr.aria-pressed]="isQuestionBookmarked(currentIndex())"
+        [matTooltip]="isQuestionBookmarked(currentIndex()) ? t('question.removeBookmark') : t('question.bookmarkActive')"
+        [attr.aria-label]="isQuestionBookmarked(currentIndex()) ? t('question.removeBookmark') : t('question.bookmarkActive')">
         <mat-icon>{{ isQuestionBookmarked(currentIndex()) ? 'bookmark' : 'bookmark_border' }}</mat-icon>
-        {{ isQuestionBookmarked(currentIndex()) ? t('question.removeBookmark') : t('question.bookmarkActive') }}
+        <span class="tool-bar__label">{{ isQuestionBookmarked(currentIndex()) ? t('insight.toolUnbookmark') : t('insight.toolBookmark') }}</span>
       </button>
-      <button mat-stroked-button type="button" class="tool-list__item" [disabled]="!remainingCount()"
-        (click)="closeMobileMapSheet(); goToNextUnanswered()">
+      <button mat-stroked-button type="button" class="tool-bar__item" [disabled]="!remainingCount()"
+        (click)="closeMobileMapSheet(); goToNextUnanswered()" [matTooltip]="t('insight.goToUnanswered')"
+        [attr.aria-label]="t('insight.goToUnanswered')">
         <mat-icon>help_outline</mat-icon>
-        {{ t('insight.goToUnanswered') }}
+        <span class="tool-bar__label">{{ t('insight.goToUnanswered') }}</span>
       </button>
-      <button mat-stroked-button type="button" class="tool-list__item" [disabled]="!bookmarkedCount()"
-        (click)="closeMobileMapSheet(); goToNextBookmarked()">
+      <button mat-stroked-button type="button" class="tool-bar__item" [disabled]="!bookmarkedCount()"
+        (click)="closeMobileMapSheet(); goToNextBookmarked()" [matTooltip]="t('insight.goToBookmarked')"
+        [attr.aria-label]="t('insight.goToBookmarked')">
         <mat-icon>bookmark</mat-icon>
-        {{ t('insight.goToBookmarked') }}
+        <span class="tool-bar__label">{{ t('insight.goToBookmarked') }}</span>
       </button>
       @if (canReportQuestion) {
-        <button mat-stroked-button type="button" class="tool-list__item" (click)="reportQuestion()">
+        <button mat-stroked-button type="button" class="tool-bar__item" (click)="reportQuestion()"
+          [matTooltip]="t('report.action')" [attr.aria-label]="t('report.action')">
           <mat-icon>flag</mat-icon>
-          {{ t('report.action') }}
+          <span class="tool-bar__label">{{ t('insight.toolReport') }}</span>
         </button>
       }
-      <button mat-stroked-button type="button" class="tool-list__item" (click)="leaveAndContinueLater()">
+      <button mat-stroked-button type="button" class="tool-bar__item" (click)="leaveAndContinueLater()"
+        [matTooltip]="t('leave.title')" [attr.aria-label]="t('leave.title')">
         <mat-icon>logout</mat-icon>
-        {{ t('leave.title') }}
+        <span class="tool-bar__label">{{ t('insight.toolLeave') }}</span>
       </button>
     </div>
   </section>

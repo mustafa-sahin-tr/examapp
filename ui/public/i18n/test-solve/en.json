@@ -84,7 +84,12 @@
     "legendCurrent": "Current",
     "legendAnswered": "Answered",
     "legendEmpty": "Empty",
-    "legendBookmarked": "Bookmarked"
+    "legendBookmarked": "Bookmarked",
+    "toolBookmark": "Bookmark",
+    "toolUnbookmark": "Unmark",
+    "toolReport": "Report",
+    "toolLeave": "Later",
+    "toolAutoNext": "Auto next"
   },
   "toast": {
     "close": "Dismiss notification",

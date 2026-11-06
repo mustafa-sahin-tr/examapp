@@ -1,8 +1,11 @@
 <div class="ae" *transloco="let t; prefix: 'activity-editor'">
   <header class="ae__header">
-    <button mat-stroked-button type="button" (click)="backToActivity()">
-      <mat-icon>arrow_back</mat-icon>{{ t('back') }}
-    </button>
+    <!-- #876: etkinlik yokken geri dönülecek etkinlik de yok; dönüş yolu durum kutusunda. -->
+    @if (testId) {
+      <button mat-stroked-button type="button" (click)="backToActivity()">
+        <mat-icon>arrow_back</mat-icon>{{ t('back') }}
+      </button>
+    }
     <div class="ae__heading">
       <h1>{{ editingId() ? t('titleEdit') : t('titleNew') }}</h1>
       <p>{{ t('subtitle') }}</p>
@@ -15,11 +18,17 @@
       <span>{{ t('loading') }}</span>
     </div>
   } @else if (loadError()) {
-    <div class="ae__state ae__state--error" role="alert">
-      <mat-icon aria-hidden="true">error_outline</mat-icon>
-      <span>{{ t('loadError') }}</span>
+    <!-- #876: etkinlik seçilmemişse bu bir hata değil, yol gösterme: nötr kutu. -->
+    <div class="ae__state" [class.ae__state--error]="testId" [attr.role]="testId ? 'alert' : 'status'" data-testid="ae-load-state">
+      <mat-icon aria-hidden="true">{{ testId ? 'error_outline' : 'info' }}</mat-icon>
+      <!-- #876: etkinlik seçilmeden açılınca ne olduğunu söyle ve listeye dönüş yolu ver. -->
+      <span>{{ testId ? t('loadError') : t('noActivity') }}</span>
       @if (testId) {
         <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+      } @else {
+        <button mat-stroked-button type="button" data-testid="ae-back-to-tests" (click)="backToActivity()">
+          {{ t('backToTests') }}
+        </button>
       }
     </div>
   } @else {

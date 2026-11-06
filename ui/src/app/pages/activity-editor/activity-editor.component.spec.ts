@@ -99,6 +99,19 @@ describe('ActivityEditorComponent (#590)', () => {
 
   const el = (selector: string) => fixture.nativeElement.querySelector(selector) as HTMLElement | null;
 
+  it('etkinlik seçilmeden açılınca nedenini söyler ve testlere döndürür (#876)', async () => {
+    await setup({});
+
+    const state = el('[data-testid="ae-load-state"]')!;
+    expect(state.textContent).toContain('Önce bir etkinlik seç');
+    // Hata değil, yol gösterme: nötr kutu; geri dönülecek etkinlik olmadığından başlıkta "Etkinliğe dön" yok.
+    expect(state.getAttribute('role')).toBe('status');
+    expect(state.classList).not.toContain('ae__state--error');
+    expect(el('.ae__header button')).toBeNull();
+    el('[data-testid="ae-back-to-tests"]')!.click();
+    expect(router.navigate).toHaveBeenCalledWith(['/tests']);
+  });
+
   it('yeni D/Y maddesini görselsiz toplu kayıtla etkinliğe ekler ve etkinliğe döner', async () => {
     await setup({ testId: '9', gradeId: '5' });
     expect(component.matrix()?.columns).toEqual(['Doğru', 'Yanlış']);

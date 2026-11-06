@@ -45,6 +45,45 @@ describe('RegisterComponent', () => {
     expect(component.registerForm.get('role')?.enabled).toBe(true);
   });
 
+  // Issue #850: kayıt rolle başlar; form rol seçilip "Devam"a basılınca o rolle açılır.
+  it('starts with the role step and opens the form for the chosen role', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('form')).toBeNull();
+    const cont = el.querySelector('[data-testid="role-continue"]') as HTMLButtonElement;
+    expect(cont.disabled).toBe(true);
+    expect(el.querySelector('.auth-callout')).toBeNull();
+
+    (el.querySelector('[data-role="Student"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(component.registerForm.value.role).toBe('Student');
+    expect(el.querySelector('[data-role="Student"]')?.getAttribute('aria-checked')).toBe('true');
+    expect(el.querySelector('.auth-callout')).not.toBeNull();
+    expect(cont.disabled).toBe(false);
+
+    cont.click();
+    fixture.detectChanges();
+    expect(el.querySelector('form')).not.toBeNull();
+    expect(el.querySelector('h1')?.textContent).toContain('Öğrenci hesabı oluştur');
+
+    (el.querySelector('[data-testid="role-change"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el.querySelector('form')).toBeNull();
+    expect(component.selectedRole()).toBe('Student');
+  });
+
+  it('meets the password rule while typing (#850)', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    component.selectRole('Teacher');
+    component.continueToForm();
+    fixture.detectChanges();
+    const rule = () => el.querySelector('[data-testid="password-rule"]') as HTMLElement;
+    expect(rule().classList).not.toContain('is-met');
+    component.registerForm.controls['password'].setValue('abc123');
+    fixture.detectChanges();
+    expect(rule().classList).toContain('is-met');
+    expect(rule().textContent).toContain('✓');
+  });
+
   // Issue #240: register yanıtı id içermez (kayıtlı/yeni e-posta aynı gövde) — her 200'de login'e yönlendirilir.
   it('navigates to login on the generic accepted response without a user id', async () => {
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);

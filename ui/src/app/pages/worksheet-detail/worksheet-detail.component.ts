@@ -579,16 +579,15 @@ export class WorksheetDetailComponent implements OnInit {
         subjectId: null,
         topicId: null,
         subtopicId: null,
-        testId: this.exam.subtitle,
+        // #873: canvas başlığı bu alanı gösterir; alt başlık boşsa test adı (yoksa "Test seç" kalıyordu, #610 ile aynı).
+        testId: this.exam.subtitle || this.exam.name,
         bookId: this.exam.bookId,
         bookTestId: this.exam.bookTestId,
         testValue: this.exam.id,
       },
     };
 
-    setTimeout(() => {
-      this.router.navigate(['/questioncanvas'], navigationExtras);
-    }, 1000);
+    void this.router.navigate(['/questioncanvas'], navigationExtras);
   }
 
   /** Issue #590: görselsiz etkinlik maddesi editörü (yeni madde; mevcut görselsiz maddeler editörün listesinden açılır). */

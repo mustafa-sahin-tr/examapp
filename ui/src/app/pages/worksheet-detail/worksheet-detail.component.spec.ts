@@ -1163,6 +1163,21 @@ describe('WorksheetDetailComponent add from bank (issue #472)', () => {
         expect(readOnly.fixture.debugElement.query(By.css('[data-testid="add-from-bank-btn"]'))).toBeNull();
     });
 
+    it('addQuestion_NavigatesAtOnceWithTestNameWhenSubtitleIsEmpty', async () => {
+        const { component, testService } = setup();
+        testService.get.mockImplementation((id: number) => of({ id, name: 'Kesirler', subtitle: '', gradeId: 5 } as Test));
+        const router = TestBed.inject(Router) as unknown as { navigate: ReturnType<typeof vi.fn> };
+        component.ngOnInit();
+        await settle();
+
+        component.navigateToQuestionCanvas();
+
+        // #873: bekleme yok; canvas başlığı test adını gösterir ("Test seç" değil).
+        expect(router.navigate).toHaveBeenCalledWith(['/questioncanvas'], {
+            state: expect.objectContaining({ testId: 'Kesirler', testValue: 12 }),
+        });
+    });
+
     it('printButton_IsOfferedToTeacherWhoCanOnlyView', async () => {
         const readOnly = setup({ canEdit: false });
         readOnly.component.ngOnInit();

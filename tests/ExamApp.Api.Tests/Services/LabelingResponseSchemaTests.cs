@@ -45,6 +45,17 @@ public class LabelingResponseSchemaTests
         schema.ShouldNotContain("definitions");
     }
 
+    [Fact]
+    public async Task PageBlocksSchema_AsksForPrintedAnswers()
+    {
+        // Issue #791: kural talimatta değil şemada; DB'deki özel talimat sürümlerinde de modele ulaşır.
+        var schema = await CaptureAsync<ClaudeLabelDetector.PageBlocks>();
+
+        schema.ShouldNotBeNull();
+        schema.ShouldContain("\"answerShown\"");
+        schema.ShouldContain("Cevap: B");
+    }
+
     private static async Task<string?> CaptureAsync<T>()
     {
         var chat = new CapturingChatClient();

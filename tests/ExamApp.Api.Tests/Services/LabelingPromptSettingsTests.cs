@@ -126,10 +126,12 @@ public class LabelingPromptSettingsTests
     // ---------- Issue #578: blok türleri ----------
 
     [Fact]
-    public void SchemaRevision_IsSixForOpenTextComponentH()
+    public void SchemaRevision_IsSevenForPrintedAnswerFlag()
     {
-        LabelingPromptSettings.SchemaRevision.ShouldBe(6);
+        // 6: openText (#583); 7: 1. aşama blokları answerShown taşır (#791).
+        LabelingPromptSettings.SchemaRevision.ShouldBe(7);
     }
+
 
     [Fact]
     public void DefaultQuestionInstruction_MapsComponentHToOpenText()

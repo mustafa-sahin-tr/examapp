@@ -34,7 +34,7 @@
       <!-- Issue #819: admin paylaşımı her görünümde buradan değiştirir. -->
       @if (canManageSharing) {
         <section class="card admin-sharing" data-testid="admin-sharing">
-          <h3><span class="dot"></span>{{ t('adminSharing.title') }}</h3>
+          <h2><span class="dot"></span>{{ t('adminSharing.title') }}</h2>
           <p class="admin-sharing__hint">{{ t('adminSharing.hint') }}</p>
           <app-visibility-section
             [teacherSharing]="d.worksheet.teacherSharing"
@@ -127,14 +127,14 @@
           <div class="stack">
             @if (d.worksheet.description) {
               <div class="card">
-                <h3><span class="dot"></span>{{ t(isActivity() ? 'activity.instructionTitle' : 'start.overviewTitle') }}</h3>
+                <h2><span class="dot"></span>{{ t(isActivity() ? 'activity.instructionTitle' : 'start.overviewTitle') }}</h2>
                 <p class="p">{{ d.worksheet.description }}</p>
               </div>
             }
 
             @if (d.topicBreakdown.length) {
               <div class="card">
-                <h3><span class="dot"></span>{{ t('start.topicBreakdownTitle') }}</h3>
+                <h2><span class="dot"></span>{{ t('start.topicBreakdownTitle') }}</h2>
                 @for (topic of d.topicBreakdown; track trackByTopicId($index, topic)) {
                   <div class="topic">
                     <div class="t-head">
@@ -149,7 +149,7 @@
 
             @if (d.outcomes.length || d.rewardBadgeText) {
               <div class="card">
-                <h3><span class="dot"></span>{{ t('start.outcomesTitle') }}</h3>
+                <h2><span class="dot"></span>{{ t('start.outcomesTitle') }}</h2>
                 @for (outcome of d.outcomes; track outcome) {
                   <div class="outcome"><span class="ok"><mat-icon>check</mat-icon></span>{{ outcome }}</div>
                 }
@@ -164,7 +164,7 @@
             }
 
             <div class="card">
-              <h3><span class="dot"></span>{{ t('start.sampleTitle') }}</h3>
+              <h2><span class="dot"></span>{{ t('start.sampleTitle') }}</h2>
               @if (d.sampleQuestion?.imageUrl) {
                 <div class="sample">
                   <img [src]="d.sampleQuestion!.imageUrl" [alt]="t('start.sampleAlt')" class="sample-img"
@@ -211,7 +211,7 @@
             </div>
 
             <div class="card" *appIsStudent id="planla-hatirlat" tabindex="-1">
-              <h3><span class="dot"></span>{{ t('reminder.title') }}</h3>
+              <h2><span class="dot"></span>{{ t('reminder.title') }}</h2>
 
               @if (hasActiveReminder() && !showReminderForm() && reminder(); as active) {
                 <div class="plan">
@@ -266,7 +266,7 @@
 
             @if (d.attempts.length && !isActivity()) {
               <div class="card">
-                <h3><span class="dot"></span>{{ t('attempts.title') }}</h3>
+                <h2><span class="dot"></span>{{ t('attempts.title') }}</h2>
                 @for (attempt of d.attempts; track attempt.instanceId; let first = $first) {
                   <div class="attempt">
                     <span class="a-score" [class.weak]="!first">{{ t('format.percent', { value: attempt.scorePercent }) }}</span>
@@ -297,7 +297,7 @@
 
             @if (d.similarWorksheets.length && !isActivity()) {
               <div class="card">
-                <h3><span class="dot"></span>{{ t('similar.title') }}</h3>
+                <h2><span class="dot"></span>{{ t('similar.title') }}</h2>
                 @for (similar of d.similarWorksheets; track similar.id) {
                   <button class="similar" type="button" (click)="openSimilarWorksheet(similar.id)">
                     <span class="s-thumb"><mat-icon>quiz</mat-icon></span>
@@ -366,7 +366,7 @@
           <div class="stack">
             @if (result.topicSuccess.length) {
               <div class="card">
-                <h3><span class="dot"></span>{{ t('completed.topicTitle') }}</h3>
+                <h2><span class="dot"></span>{{ t('completed.topicTitle') }}</h2>
                 @for (topic of result.topicSuccess; track trackByTopicId($index, topic)) {
                   <div class="brk">
                     <div class="b-head">
@@ -384,7 +384,7 @@
             }
 
             <div class="card">
-              <h3><span class="dot"></span>{{ t('completed.questionsTitle') }}</h3>
+              <h2><span class="dot"></span>{{ t('completed.questionsTitle') }}</h2>
               @if (regions().length) {
                 <mat-accordion>
                   <mat-expansion-panel [expanded]="true">
@@ -410,7 +410,7 @@
                       <!-- Issue #105: seçili sorunun yorum/soru thread'i; soru değişince yeniden yüklenir -->
                       @if (d.worksheet.id; as worksheetId) {
                         <div class="question-comments" data-testid="question-comments">
-                          <h4 class="qc-title"><mat-icon aria-hidden="true">forum</mat-icon>{{ t('comments.questionTitle') }}</h4>
+                          <h3 class="qc-title"><mat-icon aria-hidden="true">forum</mat-icon>{{ t('comments.questionTitle') }}</h3>
                           <!-- Issue #105: thread bileşeni ayrı chunk; görünür olunca yüklenir -->
                           @defer (on viewport) {
                             <app-comment-thread
@@ -440,7 +440,7 @@
           <div class="stack">
             @if (result.rank; as rank) {
               <div class="card">
-                <h3><span class="dot"></span>{{ t('completed.rankTitle') }}</h3>
+                <h2><span class="dot"></span>{{ t('completed.rankTitle') }}</h2>
                 <div class="rank">
                   <span class="r-num">{{ t('completed.rankPosition', { position: rank.position }) }}</span>
                   <div>
@@ -453,7 +453,7 @@
 
             @if (d.rewardBadgeText) {
               <div class="card">
-                <h3><span class="dot"></span>{{ t('completed.badgeTitle') }}</h3>
+                <h2><span class="dot"></span>{{ t('completed.badgeTitle') }}</h2>
                 <div class="badge-won">
                   <span class="m"><mat-icon>military_tech</mat-icon></span>
                   <div><div class="b-t">{{ d.rewardBadgeText }}</div>
@@ -464,7 +464,7 @@
 
             @if (d.similarWorksheets.length) {
               <div class="card">
-                <h3><span class="dot"></span>{{ t('completed.nextTitle') }}</h3>
+                <h2><span class="dot"></span>{{ t('completed.nextTitle') }}</h2>
                 @for (similar of d.similarWorksheets; track similar.id) {
                   <button class="next" type="button" (click)="openSimilarWorksheet(similar.id)">
                     <mat-icon>arrow_forward</mat-icon>
@@ -589,7 +589,7 @@
               </div>
             }
             <div class="card">
-              <h3><span class="dot"></span>{{ t(isActivity() ? 'activity.trackingTitle' : 'teacher.classProgressTitle') }}</h3>
+              <h2><span class="dot"></span>{{ t(isActivity() ? 'activity.trackingTitle' : 'teacher.classProgressTitle') }}</h2>
 
               @switch (assignmentPanel()) {
                 @case ('loading') {
@@ -697,7 +697,7 @@
 
             @if (d.teacherInsights && d.teacherInsights.hardestQuestions.length && !isActivity()) {
               <div class="card">
-                <h3><span class="dot"></span>{{ t('teacher.hardestTitle') }}</h3>
+                <h2><span class="dot"></span>{{ t('teacher.hardestTitle') }}</h2>
                 @for (hard of d.teacherInsights.hardestQuestions; track hard.questionId) {
                   @let hardNumber = hard.number ?? hard.order;
                   <div class="hardq" data-testid="hardest-question">
@@ -720,7 +720,7 @@
 
           <div class="stack">
             <div class="card" *appIsTeacher>
-              <h3><span class="dot"></span>{{ t('teacher.assignmentTitle') }}</h3>
+              <h2><span class="dot"></span>{{ t('teacher.assignmentTitle') }}</h2>
               @if (canAssignWorksheet()) {
                 <div class="a-btns">
                   <!-- Issue #222: bağımsız öğretmen sınıf bazlı atama yapamaz; buton hiç render edilmez. -->
@@ -754,7 +754,7 @@
 
             @if (d.teacherInsights; as insights) {
               <div class="card">
-                <h3><span class="dot"></span>{{ t('teacher.qualityTitle') }}</h3>
+                <h2><span class="dot"></span>{{ t('teacher.qualityTitle') }}</h2>
                 <p class="p muted">
                   {{
                     t('teacher.qualityText', {
@@ -798,14 +798,14 @@
       @if (d.worksheet.id; as worksheetId) {
         @if (showLinkedQuestionCard() && commentLink(); as link) {
           <section class="card comments-card" id="soru-yorumlari" data-testid="linked-question-comments">
-            <h3 data-testid="linked-question-title">
+            <h2 data-testid="linked-question-title">
               <span class="dot"></span>
               @if (linkedQuestionOrder(); as order) {
                 {{ t('comments.linkedQuestionTitleNumbered', { order: order }) }}
               } @else {
                 {{ t('comments.linkedQuestionTitle') }}
               }
-            </h3>
+            </h2>
             <!-- Yalnız derin linkte çizilen kart: hemen yüklenir -->
             @defer (on immediate) {
               <app-comment-thread
@@ -826,7 +826,7 @@
         }
 
         <section class="card comments-card" id="yorumlar" data-testid="worksheet-comments">
-          <h3><span class="dot"></span>{{ t('comments.worksheetTitle') }}</h3>
+          <h2><span class="dot"></span>{{ t('comments.worksheetTitle') }}</h2>
           <!-- Issue #105: sayfanın altında; görünür olunca ya da derin linkte hemen yüklenir (initial bundle'a girmez) -->
           @defer (on viewport; when commentLink() !== null; prefetch on idle) {
             <app-comment-thread

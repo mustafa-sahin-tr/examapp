@@ -320,7 +320,7 @@ describe('StudentProfileComponent', () => {
         expect('learning' in studentProfileTr).toBe(false);
     });
 
-    it('badgesTab_NoFakePointCards_AndSectionIconsAreMaterialIcons', async () => {
+    it('badgesTab_NoFakePointCards_AndSectionHeadersHaveNoIcons', async () => {
         await activateBadgesTab();
         const host = fixture.nativeElement as HTMLElement;
 
@@ -328,10 +328,9 @@ describe('StudentProfileComponent', () => {
         for (const fake of ['2,500', '3rd', '128']) {
             expect(host.textContent, fake).not.toContain(fake);
         }
-        // Repoda olmayan assets/icons/*.png yerine Material ikon: kırık <img> yok.
-        expect(host.querySelector('app-section-header img')).toBeNull();
-        const icons = Array.from(host.querySelectorAll('app-section-header .section-material-icon')).map((i) => i.textContent?.trim());
-        expect(icons).toEqual(['military_tech', 'leaderboard']);
+        // #833: bölüm başlıkları ikonsuz (ortak başlık seti); kırık <img> da yok.
+        expect(host.querySelector('app-section-header img, app-section-header mat-icon')).toBeNull();
+        expect(host.querySelectorAll('app-section-header h2.ms-section-title').length).toBe(2);
     });
 
     it('infoAndBadgesTabs_NoImagePointsToMissingAssets', async () => {

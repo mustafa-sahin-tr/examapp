@@ -1,30 +1,18 @@
-<div class="section-header" [ngClass]="'variant-' + variant">
-  <div class="header-left">
-    @if (showBackButton) {
-      <button mat-icon-button (click)="onBack()" class="back-button">
-        <mat-icon>arrow_back</mat-icon>
-      </button>
+<div class="section-header" [class.section-header--page]="headingLevel === 1">
+  @if (showBackButton) {
+    <button mat-icon-button type="button" (click)="onBack()" class="back-button">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+  }
+  <div class="title-container">
+    @if (headingLevel === 1) {
+      <h1 class="section-title ms-page-title"><ng-container [ngTemplateOutlet]="titleContent" /></h1>
+    } @else {
+      <h2 class="section-title ms-section-title"><ng-container [ngTemplateOutlet]="titleContent" /></h2>
     }
-    @if (iconName || icon) {
-      <span class="section-icon-wrap">
-        @if (iconName) {
-          <mat-icon class="section-material-icon" aria-hidden="true">{{ iconName }}</mat-icon>
-        }
-        @if (!iconName && icon) {
-          <img [src]="icon" class="section-icon" alt="{{ title }} icon" />
-        }
-      </span>
+    <ng-template #titleContent><ng-content select="[sectionTitlePrefix]"></ng-content>{{ title }}</ng-template>
+    @if (subtitle) {
+      <p class="section-subtitle ms-page-subtitle">{{ subtitle }}</p>
     }
-    <div class="title-container">
-      @if (headingLevel === 1) {
-        <h1 class="section-title"><ng-container [ngTemplateOutlet]="titleContent" /></h1>
-      } @else {
-        <h2 class="section-title"><ng-container [ngTemplateOutlet]="titleContent" /></h2>
-      }
-      <ng-template #titleContent><ng-content select="[sectionTitlePrefix]"></ng-content>{{ title }}</ng-template>
-      @if (subtitle) {
-        <p class="section-subtitle">{{ subtitle }}</p>
-      }
-    </div>
   </div>
 </div>

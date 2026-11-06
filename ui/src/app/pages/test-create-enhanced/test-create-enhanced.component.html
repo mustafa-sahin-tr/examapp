@@ -45,7 +45,7 @@
         <!-- KAPAK GÖRSELİ (yalnız düzenleme) -->
         @if (isEditMode && canEdit()) {
           <section class="card">
-            <h3><span class="dot"></span>{{ t('page.coverTitle') }}</h3>
+            <h2><span class="dot"></span>{{ t('page.coverTitle') }}</h2>
             <p class="card-note">{{ t('page.coverNote') }}</p>
             <div class="drop">
               <div class="thumb">
@@ -71,7 +71,7 @@
         <!-- GÖRÜNÜRLÜK (yalnız düzenleme, sahibi/admin) -->
         @if (isEditMode && canEdit()) {
           <section class="card">
-            <h3><span class="dot"></span>{{ t('page.visibilityTitle') }}</h3>
+            <h2><span class="dot"></span>{{ t('page.visibilityTitle') }}</h2>
             <p class="card-note">
               {{ t('page.visibilityNote') }}
             </p>

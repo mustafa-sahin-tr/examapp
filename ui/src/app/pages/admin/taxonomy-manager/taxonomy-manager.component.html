@@ -38,12 +38,12 @@
     <!-- Subjects -->
     <mat-card class="column" appearance="outlined">
       <header class="column-header">
-        <h3>
+        <h2>
           {{ t('subjects.title') }}
           @if (selectedGradeFilter(); as gradeId) {
             <span class="crumb"> — {{ gradeName(gradeId) }}</span>
           }
-        </h3>
+        </h2>
         @if (selectedGradeFilter() != null) {
           <span class="count">{{ subjects().length }}</span>
         }
@@ -183,12 +183,12 @@
     <!-- Topics -->
     <mat-card class="column" appearance="outlined" [class.disabled]="!selectedSubject()">
       <header class="column-header">
-        <h3>
+        <h2>
           {{ t('topics.title') }}
           @if (selectedSubject(); as subj) {
             <span class="crumb"> — {{ subj.name }}</span>
           }
-        </h3>
+        </h2>
         @if (selectedSubject()) {
           <span class="count">{{ topics().length }}</span>
         }
@@ -299,12 +299,12 @@
     <!-- SubTopics -->
     <mat-card class="column" appearance="outlined" [class.disabled]="!selectedTopic()">
       <header class="column-header">
-        <h3>
+        <h2>
           {{ t('subTopics.title') }}
           @if (selectedTopic(); as topic) {
             <span class="crumb"> — {{ topic.name }}</span>
           }
-        </h3>
+        </h2>
         @if (selectedTopic()) {
           <span class="count">{{ subTopics().length }}</span>
         }

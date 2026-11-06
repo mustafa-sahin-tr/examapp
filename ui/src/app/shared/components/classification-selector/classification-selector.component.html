@@ -47,9 +47,9 @@
   } @else {
   <!-- Grade Selection -->
   <div class="classification-level">
-    <h4 class="level-title">{{ t('grade') }}</h4>
+    <p class="level-title">{{ t('grade') }}</p>
     <div class="chips-container">
-      <mat-chip-listbox [value]="selectedGrade()">
+      <mat-chip-listbox [attr.aria-label]="t('grade')" [value]="selectedGrade()">
         @for (grade of grades(); track grade.id) {
         <mat-chip-option [value]="grade.id" (click)="selectGrade(grade.id)">
           {{ grade.name }}
@@ -65,9 +65,9 @@
   <!-- Subject Selection -->
   @if (selectedGrade() && subjects().length > 0) {
   <div class="classification-level">
-    <h4 class="level-title">{{ t('subject') }}</h4>
+    <p class="level-title">{{ t('subject') }}</p>
     <div class="chips-container">
-      <mat-chip-listbox [value]="selectedSubject()">
+      <mat-chip-listbox [attr.aria-label]="t('subject')" [value]="selectedSubject()">
         @for (subject of subjects(); track subject.id) {
         <mat-chip-option [value]="subject.id" (click)="selectSubject(subject.id)">
           {{ subject.name }}
@@ -84,9 +84,9 @@
   <!-- Topic Selection -->
   @if (selectedSubject() && topics().length > 0) {
   <div class="classification-level">
-    <h4 class="level-title">{{ t('topic') }}</h4>
+    <p class="level-title">{{ t('topic') }}</p>
     <div class="chips-container">
-      <mat-chip-listbox [value]="selectedTopic()">
+      <mat-chip-listbox [attr.aria-label]="t('topic')" [value]="selectedTopic()">
         @for (topic of topics(); track topic.id) {
         <mat-chip-option [value]="topic.id" (click)="selectTopic(topic.id)">
           {{ topic.name }}
@@ -103,9 +103,9 @@
   <!-- Subtopic Selection (Multiple) -->
   @if (selectedTopic() && subtopics().length > 0) {
   <div class="classification-level">
-    <h4 class="level-title">{{ t('subtopics') }}</h4>
+    <p class="level-title">{{ t('subtopics') }}</p>
     <div class="chips-container">
-      <mat-chip-listbox multiple>
+      <mat-chip-listbox [attr.aria-label]="t('subtopics')" multiple>
         @for (subtopic of subtopics(); track subtopic.id) {
         <mat-chip-option [selected]="isSubtopicSelected(subtopic.id)" (click)="toggleSubtopic(subtopic.id)">
           {{ subtopic.name }}

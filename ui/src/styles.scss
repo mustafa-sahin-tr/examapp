@@ -524,6 +524,17 @@ $ms-material-surface-overrides: ( // Sayfa zemini (body zaten --ms-surface)
   inverse-on-surface: var(--ms-text-inverse),
 );
 
+// #833: tek birincil buton. Dolu (flat) ve yükseltilmiş (raised) Material butonları M3 violet tonunu (koyu temada açık
+// lavanta) değil uygulamanın aksiyon rengini kullanır; özel `.btn-primary` ile aynı görünür.
+$ms-material-button-overrides: (
+  filled-container-color: var(--ms-action-background),
+  filled-label-text-color: var(--whiteColor),
+  filled-container-shape: 8px,
+  protected-container-color: var(--ms-action-background),
+  protected-label-text-color: var(--whiteColor),
+  protected-container-shape: 8px,
+);
+
 html.dark-theme {
   color-scheme: dark;
   @include mat.theme((color: (theme-type: dark,
@@ -531,6 +542,7 @@ html.dark-theme {
       typography: Roboto,
       density: 0));
   @include mat.theme-overrides($ms-material-surface-overrides);
+  @include mat.button-overrides($ms-material-button-overrides);
 }
 
 html.light-theme {
@@ -540,6 +552,7 @@ html.light-theme {
       typography: Roboto,
       density: 0));
   @include mat.theme-overrides($ms-material-surface-overrides);
+  @include mat.button-overrides($ms-material-button-overrides);
 }
 
 body {
@@ -4407,4 +4420,43 @@ app-root,
     background: var(--whiteColor);
     color: var(--darkColor);
   }
+}
+
+// #833: ortak başlık seti — sayfa (h1), bölüm (h2), kart (h3). Global h2/h3 kurallarının boşluklarını ezer; başlıkta ikon yok.
+.ms-page-title {
+  margin: 0;
+  padding: 0;
+  font-family: var(--mainFontFamily);
+  font-size: 24px;
+  line-height: 1.25;
+  font-weight: 800;
+  color: var(--ms-text-strong);
+  text-wrap: balance;
+}
+
+.ms-page-subtitle {
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ms-text-medium);
+}
+
+.ms-section-title {
+  margin: 0;
+  padding: 0;
+  font-family: var(--mainFontFamily);
+  font-size: 16px;
+  line-height: 1.35;
+  font-weight: 700;
+  color: var(--ms-text-strong);
+}
+
+.ms-card-title {
+  margin: 0;
+  padding: 0;
+  font-family: var(--mainFontFamily);
+  font-size: 14px;
+  line-height: 1.35;
+  font-weight: 700;
+  color: var(--ms-text-strong);
 }

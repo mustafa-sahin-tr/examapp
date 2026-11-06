@@ -3,18 +3,5 @@
   flex-direction: column;
   gap: 16px;
   padding: 24px;
-
-  &__header {
-    h1 {
-      margin: 0;
-      font-family: var(--mainFontFamily);
-      color: var(--ms-text-strong);
-    }
-
-    p {
-      margin: 4px 0 0;
-      font-family: var(--paragraphFontFamily);
-      color: var(--ms-text-medium);
-    }
-  }
+  // #833: başlık görünümü .ms-page-title / .ms-page-subtitle'dan.
 }

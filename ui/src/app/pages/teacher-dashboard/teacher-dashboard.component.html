@@ -1,6 +1,6 @@
 <div class="teacher-dashboard" *transloco="let t; prefix: 'teacher-dashboard'">
   <div class="dashboard-section">
-    <app-section-header [title]="t('summary.title')" iconName="dashboard" [headingLevel]="1"></app-section-header>
+    <app-section-header [title]="t('summary.title')" [headingLevel]="1"></app-section-header>
 
     @if (loading()) {
       <div class="summary-grid" aria-busy="true" aria-live="polite">
@@ -43,7 +43,7 @@
   <!-- Issue #54: Sınavlarım -->
   <!-- ngSkipHydration: mat-table kendi DOM'unu yönetir; hydration uzlaştırmasına girmesin, tarayıcıda sıfırdan render edilsin. -->
   <div class="dashboard-section" ngSkipHydration>
-    <app-section-header [title]="t('worksheets.title')" iconName="list_alt"></app-section-header>
+    <app-section-header [title]="t('worksheets.title')"></app-section-header>
 
     @if (worksheetsLoading()) {
       <div class="state-box state-box--loading" aria-busy="true" aria-live="polite">
@@ -128,7 +128,7 @@
   <!-- Issue #55: Geride Kalan Öğrenciler -->
   <!-- ngSkipHydration: mat-table kendi DOM'unu yönetir; hydration uzlaştırmasına girmesin, tarayıcıda sıfırdan render edilsin. -->
   <div class="dashboard-section" ngSkipHydration>
-    <app-section-header [title]="t('lagging.title')" iconName="report_problem"></app-section-header>
+    <app-section-header [title]="t('lagging.title')"></app-section-header>
 
     @if (laggingStudentsLoading()) {
       <div class="state-box state-box--loading" aria-busy="true" aria-live="polite">
@@ -209,9 +209,7 @@
 
   <!-- Issue #56: Aktivite Özeti (son N gün) -->
   <div class="dashboard-section">
-    <app-section-header [title]="t('activity.title', { days: activityDays })">
-      <span sectionTitlePrefix class="title-emoji" aria-hidden="true">📊</span>
-    </app-section-header>
+    <app-section-header [title]="t('activity.title', { days: activityDays })"></app-section-header>
 
     <div class="activity-grid">
       <!-- Benim Aktivitem -->
@@ -317,9 +315,7 @@
   <!-- ngSkipHydration: mat-table kendi DOM'unu yönetir; hydration uzlaştırmasına girmesin, tarayıcıda sıfırdan render edilsin. -->
   <div class="dashboard-section" ngSkipHydration>
     <div class="section-header-row">
-      <app-section-header [title]="t('topStudents.title', { days: activityDays })">
-        <span sectionTitlePrefix class="title-emoji" aria-hidden="true">🏆</span>
-      </app-section-header>
+      <app-section-header [title]="t('topStudents.title', { days: activityDays })"></app-section-header>
       <span class="section-header-row__hint">{{ t('topStudents.sortHint') }}</span>
     </div>
 

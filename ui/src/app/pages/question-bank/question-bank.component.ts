@@ -14,8 +14,8 @@ import {
   template: `
     <div class="question-bank-page" *transloco="let t; prefix: 'question-bank'">
       <header class="question-bank-page__header">
-        <h1>{{ t('title') }}</h1>
-        <p>{{ t('subtitle') }}</p>
+        <h1 class="ms-page-title">{{ t('title') }}</h1>
+        <p class="ms-page-subtitle">{{ t('subtitle') }}</p>
       </header>
       <app-question-bank-panel />
     </div>

@@ -1,6 +1,6 @@
 <section class="ail" *transloco="let t; prefix: 'worksheet-detail.activity.items'" data-testid="activity-item-list">
   <header class="ail__head">
-    <h3><span class="dot"></span>{{ t('title') }}</h3>
+    <h2><span class="dot"></span>{{ t('title') }}</h2>
     @if (state() === 'loaded') {
       <span class="ail__chip">{{ t('count', { count: rows().length }) }}</span>
     }

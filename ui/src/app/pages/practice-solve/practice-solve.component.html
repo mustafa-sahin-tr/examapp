@@ -1,10 +1,10 @@
 <section class="practice" *transloco="let t; prefix: 'practice'">
   @if (dailyMode()) {
-  <app-section-header [title]="t('daily.title')" iconName="bolt" [headingLevel]="1"
+  <app-section-header [title]="t('daily.title')" [headingLevel]="1"
     [subtitle]="dailyDate() ? (dailyDate() | date: 'd MMMM y') ?? '' : ''"
     [showBackButton]="true" (onBackClick)="onHeaderBack()" />
   } @else {
-  <app-section-header [title]="t('title')" iconName="bolt" [headingLevel]="1"
+  <app-section-header [title]="t('title')" [headingLevel]="1"
     [subtitle]="t('subtitle')"
     [showBackButton]="true" (onBackClick)="onHeaderBack()" />
   }

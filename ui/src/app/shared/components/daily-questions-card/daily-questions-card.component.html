@@ -31,7 +31,7 @@
     <span class="daily-card__icon daily-card__icon--info" aria-hidden="true"><mat-icon>inbox</mat-icon></span>
     <div class="daily-card__text">
       <span class="daily-card__eyebrow">{{ t('eyebrow') }}</span>
-      <h3 class="daily-card__title">{{ t('emptyTitle') }}</h3>
+      <h2 class="daily-card__title">{{ t('emptyTitle') }}</h2>
       <p class="daily-card__sub">{{ t('emptyText') }}</p>
     </div>
   </div>
@@ -56,11 +56,11 @@
       <span class="daily-card__eyebrow">{{ t('eyebrow') }}</span>
       @switch (state()) {
       @case ('inProgress') {
-      <h3 class="daily-card__title">{{ t('titleInProgress') }}</h3>
+      <h2 class="daily-card__title">{{ t('titleInProgress') }}</h2>
       <p class="daily-card__sub">{{ t(remaining() === 1 ? 'subInProgressOne' : 'subInProgress', { count: remaining() }) }}</p>
       }
       @case ('completed') {
-      <h3 class="daily-card__title">{{ t('titleDone') }}</h3>
+      <h2 class="daily-card__title">{{ t('titleDone') }}</h2>
       <p class="daily-card__sub">{{
         skipped() > 0
           ? t('subDoneWithSkipped', { correct: correct(), wrong: wrong(), skipped: skipped() })
@@ -68,11 +68,11 @@
       }}</p>
       }
       @case ('lowPool') {
-      <h3 class="daily-card__title">{{ t(total() === 1 ? 'lowPoolTitleOne' : 'lowPoolTitle', { count: total() }) }}</h3>
+      <h2 class="daily-card__title">{{ t(total() === 1 ? 'lowPoolTitleOne' : 'lowPoolTitle', { count: total() }) }}</h2>
       <p class="daily-card__sub">{{ t('subStart') }}</p>
       }
       @default {
-      <h3 class="daily-card__title">{{ t(total() === 1 ? 'titleStartOne' : 'titleStart', { count: total() }) }}</h3>
+      <h2 class="daily-card__title">{{ t(total() === 1 ? 'titleStartOne' : 'titleStart', { count: total() }) }}</h2>
       <p class="daily-card__sub">{{ t('subStart') }}</p>
       }
       }

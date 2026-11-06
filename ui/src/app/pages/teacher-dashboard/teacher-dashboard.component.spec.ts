@@ -488,9 +488,9 @@ describe('TeacherDashboardComponent', () => {
         const activityTitle = titles.find((el) => el.textContent?.includes('Aktivite Özeti (son 7 gün)'));
         const topTitle = titles.find((el) => el.textContent?.includes('En Aktif Öğrenciler (son 7 gün)'));
 
-        // Emoji dekoratif: i18n metninde değil, aria-hidden span'de.
-        expect(activityTitle?.querySelector('[aria-hidden="true"]')?.textContent?.trim()).toBe('📊');
-        expect(topTitle?.querySelector('[aria-hidden="true"]')?.textContent?.trim()).toBe('🏆');
+        // #833: bölüm başlıklarında dekoratif emoji / ikon yok; metin i18n'den.
+        expect(activityTitle?.querySelector('[aria-hidden="true"]')).toBeNull();
+        expect(topTitle?.querySelector('[aria-hidden="true"]')).toBeNull();
         expect(text('.activity-card[data-key="own"] .activity-card__title [aria-hidden="true"]')).toBe('👤');
         expect(text('.activity-card[data-key="students"] .activity-card__title [aria-hidden="true"]')).toBe('🎓');
         expect(text('.section-header-row__hint')).toBe('Çözülen soruya göre sıralı');

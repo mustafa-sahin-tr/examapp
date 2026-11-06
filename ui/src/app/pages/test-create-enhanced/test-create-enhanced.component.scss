@@ -59,10 +59,11 @@
 }
 
 .page-head h1 {
+  // #833: ortak sayfa başlığı (.ms-page-title ile aynı ölçü).
   font-family: var(--mainFontFamily);
-  font-size: 26px;
+  font-size: 24px;
+  line-height: 1.25;
   font-weight: 800;
-  letter-spacing: -0.4px;
   color: var(--ms-text-strong);
   margin: 0;
 }
@@ -97,7 +98,7 @@
   border-radius: 16px;
   padding: 22px;
 
-  h3 {
+  h2 {
     font-family: var(--mainFontFamily);
     font-size: 14px;
     font-weight: 800;
@@ -106,6 +107,7 @@
     align-items: center;
     gap: 9px;
     margin: 0 0 6px;
+    padding: 0;
 
     .dot {
       width: 7px;

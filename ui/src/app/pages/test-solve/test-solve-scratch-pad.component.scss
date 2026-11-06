@@ -53,12 +53,26 @@
   vector-effect: non-scaling-stroke;
 }
 
+// Issue #820: not alanı panelin boyunu doldurur. Form alanının iç sarmalayıcıları yükseklik aktarmadığı için
+// textarea'nın %100'ü yalnız birkaç satır tutuyordu; zincir boyunca esnetilir.
 .scratch__text {
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
+  display: flex;
+  flex-direction: column;
+
+  ::ng-deep .mat-mdc-text-field-wrapper,
+  ::ng-deep .mat-mdc-form-field-flex,
+  ::ng-deep .mat-mdc-form-field-infix {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
 
   textarea {
+    flex: 1 1 auto;
     min-height: 96px;
     height: 100%;
     resize: none;

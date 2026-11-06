@@ -107,6 +107,8 @@ Deneme her oturum için sıradan bir test kaydı açar: süre sınırı, oturum,
 
 Seçili şık nötr mavi ve işaretlidir; yeşil yalnız doğru cevap içindir. 1024 px ve altında yan panel yoktur: harita alttan açılır, tüm araçlar yazılıdır. Son soruda "Gözden geçir", "Testi Bitir" ile aynı pencereyi açar; boş ve işaretli soruları listeler, soruya gitmek testi bitirmez. "Çık, sonra devam et" oturumu bitirmez, bekleyen cevapları kaydeder, süreli testte sürenin işlediğini söyler; kayıt başarısızsa çıkmaz.
 
+**Yan panel (#820):** harita öncelikli. Özet üç sayaç (cevaplanan, boş, işaretli) ve ince ilerleme çubuğu; numaralar 5 sütun kare (≥ 44 px) ve panelin kalan yüksekliğini alır, sığmazsa yalnız harita kayar; araçlar altta tek sıra ikon + kısa etiket (tam ad tooltip ve `aria-label`'da). Mobil harita sayfası aynı şablonu kullanır, ızgarası `auto-fill` kalır. Soru görseli kartta ortalanır (mobilde tam genişlik). Karalama "Yaz" modunda not alanı panelin boyunu doldurur.
+
 ## Soru önizlemesi: cihaz seçici (#780)
 
 `QuestionDevicePreviewComponent` soruyu öğrenci ekranındaki soru alanının boyutunda çizer (`PREVIEW_DEVICES`: telefon, tablet, masaüstü) ve seçimi `questionPreview.device` anahtarıyla bu tarayıcıda hatırlar. Boyutlar öğrenci ekranından ölçülmüştür; başlık, alt çubuk veya panel değişirse yeniden ölçülür. Alan sütuna sığmazsa düzen bozulmadan görsel olarak küçültülür. Önizlemede doğru şık yeşil görünür, öğrencide görünmez. Önizlemede tek görünüm budur: şıka tıklamak doğru cevabı kaydeder; sınıflandırmayı uygulama ve soruyu çıkarma düğmeleri altındadır. Eski birleşik görünüm ve elle yakınlaştırma önizlemeden kaldırıldı.

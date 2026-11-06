@@ -145,6 +145,13 @@
   position: relative;
 }
 
+// Issue #820: dar soru görseli kartın soluna yapışmasın; kutu görsel kadar, ortada (yakınlaştırma düğmesi köşede kalır).
+// Mobilde (aşağıdaki @media) kutu yine tam genişlik.
+.qcv4-main-image-box {
+  width: fit-content;
+  margin-inline: auto;
+}
+
 // Görselin üstünde durur; metnin üzerine binse de okunması için odaklanılana kadar yarı saydam.
 .qcv4-zoom-button {
   --mat-button-text-label-text-color: var(--primaryColor);

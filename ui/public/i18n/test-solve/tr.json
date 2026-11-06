@@ -84,7 +84,12 @@
     "legendCurrent": "Şu anki",
     "legendAnswered": "Cevaplı",
     "legendEmpty": "Boş",
-    "legendBookmarked": "İşaretli"
+    "legendBookmarked": "İşaretli",
+    "toolBookmark": "İşaretle",
+    "toolUnbookmark": "Kaldır",
+    "toolReport": "Bildir",
+    "toolLeave": "Sonra devam",
+    "toolAutoNext": "Oto. geçiş"
   },
   "toast": {
     "close": "Bildirimi kapat",

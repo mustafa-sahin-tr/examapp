@@ -754,6 +754,8 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
   // Grid alanı (body satırı minmax(0,1fr)) definite olduğundan yüzde doğrudan çözülür:
   // header/dock/dvh hesabına gerek yok; dock artık yalnızca soru sütununda, panelle çakışmaz.
   // Altta küçük pay bırakmak için margin-bottom düşülür.
+  // Issue #820: panel tam boy; harita kalan yüksekliği alır, araçlar altta kalır. Çok kısa ekranda panel kayar.
+  height: calc(100% - var(--ms-layout-spacing-medium));
   max-height: calc(100% - var(--ms-layout-spacing-medium));
   margin-bottom: var(--ms-layout-spacing-medium);
   overflow: auto;
@@ -777,15 +779,28 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
   gap: var(--ms-layout-spacing-small);
 }
 
-// Uzun testte harita kendi içinde kayar; özet ve araçlar ekranda kalır (issue #779).
+// Uzun testte harita kendi içinde kayar; sayaçlar ve araçlar ekranda kalır (issue #779). #820: harita panelin
+// kalan yüksekliğini alır, 5 sütun kare numara (≥ 44 px).
 .insight-panel > .insight-panel__section--map {
-  flex: 0 1 auto;
-  min-height: 140px;
+  flex: 1 1 auto;
+  min-height: 180px;
 
   .question-map-grid {
+    flex: 1 1 auto;
     min-height: 0;
     overflow: auto;
+    align-content: start;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: var(--ms-layout-spacing-xsmall);
+    padding: 3px;
     scrollbar-width: thin;
+  }
+
+  .map-cell {
+    height: auto;
+    min-height: 44px;
+    aspect-ratio: 1;
+    font-size: 1rem;
   }
 }
 
@@ -855,33 +870,54 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
   }
 }
 
-.stat-grid {
+.map-counts {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--ms-layout-spacing-xsmall);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.stat-card {
+// Dar panelde de etiket kesilmesin: sayı üstte, etiket altta.
+.map-count {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 10px;
-  border-radius: 14px;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 1px;
+  min-width: 0;
+  padding: 5px 4px;
+  border-radius: 10px;
   background: var(--solve-panel-alt);
-  border: 1px solid var(--solve-panel-border);
-}
-
-.stat-label {
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 0.72rem;
+  font-weight: 700;
   color: var(--solve-panel-muted);
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  b {
+    font-size: 1.02rem;
+    font-weight: 800;
+    color: var(--solve-panel-ink);
+    font-variant-numeric: tabular-nums;
+  }
 }
 
-.stat-value {
-  font-size: 1.08rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
+.map-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--solve-panel-alt);
+  overflow: hidden;
+}
+
+.map-progress__fill {
+  height: 100%;
+  background: var(--ms-success-border);
+  transition: width 200ms ease;
 }
 
 .map-legend {
@@ -923,22 +959,38 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
   }
 }
 
-.tool-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ms-layout-spacing-xsmall);
+.insight-panel__section--tools {
+  margin-top: auto;
 }
 
-.tool-list__item {
+// Araçlar tek sıra: ikon + kısa etiket; tam ad tooltip ve aria-label'da.
+.tool-bar {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+
+.tool-bar__item {
   --mat-button-outlined-label-text-color: var(--solve-panel-ink);
   --mat-button-outlined-outline-color: var(--solve-panel-border);
   --mat-button-outlined-disabled-label-text-color: var(--solve-panel-muted);
   --mat-button-outlined-disabled-outline-color: var(--solve-panel-border);
-  justify-content: flex-start;
-  min-height: 44px;
-  border-radius: 14px;
-  font-weight: 600;
-  text-align: start;
+  --mat-button-outlined-horizontal-padding: 2px;
+  // Material ikonu etiketin yanına koyar; ikon üstte, etiket altta olsun.
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  height: auto;
+  min-height: 56px;
+  padding: 6px 2px;
+  border-radius: 12px;
+
+  mat-icon {
+    margin: 0;
+  }
 
   &:hover:not([disabled]) {
     background: var(--solve-accent-soft);
@@ -948,6 +1000,21 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
     background: var(--solve-accent-soft);
     border-color: var(--solve-accent);
   }
+}
+
+.tool-bar__label {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  text-align: center;
+  white-space: normal;
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--solve-panel-muted);
 }
 
 // ---------------------------------------------------------------------------

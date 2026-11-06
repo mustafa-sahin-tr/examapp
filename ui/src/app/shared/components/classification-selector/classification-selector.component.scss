@@ -1,6 +1,6 @@
 .classification-selector {
   padding: 16px;
-  background-color: #f9f9f9;
+  background-color: var(--ms-surface-weak);
   border-radius: 8px;
   margin-bottom: 16px;
 }
@@ -35,7 +35,7 @@
   margin: 0 0 8px 0;
   font-size: 14px;
   font-weight: 600;
-  color: #333;
+  color: var(--ms-text-strong);
 }
 
 .chips-container {

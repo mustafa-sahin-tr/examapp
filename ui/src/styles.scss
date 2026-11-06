@@ -56,6 +56,8 @@
 .dark-theme {
   --bodyColor: #63667D;
   --primaryColor: #1C43FE;
+  // Marka mavisi YAZI olarak: koyu yüzeyde #1C43FE 2.4:1 kalır, açık ton 6.5:1. Dolgu/buton için --primaryColor.
+  --primary-text: #8EA2FF;
   --secondaryColor: #FE3F10;
   --paragraphColor: #4B5563;
   --main-bg-color: #120F20;
@@ -69,7 +71,8 @@
   --sidenav-solid-bg: #1a1a2e;
   --sidenav-fg: #cbd5e1;
   --sidenav-fg-strong: #ffffff;
-  --sidenav-fg-muted: #64748b;
+  // impeccable taraması (2026-11): #64748b koyu menüde 3.4:1 idi; #94a3b8 6.3:1.
+  --sidenav-fg-muted: #94a3b8;
   --sidenav-border: rgba(255, 255, 255, 0.1);
   --sidenav-hover-bg: rgba(255, 255, 255, 0.08);
   --sidenav-scrollbar-thumb: rgba(255, 255, 255, 0.18);
@@ -154,6 +157,8 @@
 .light-theme {
   --bodyColor: #5C5A78;
   --primaryColor: #1C43FE;
+  // Marka mavisi YAZI olarak: koyu yüzeyde #1C43FE 2.4:1 kalır, açık ton 6.5:1. Dolgu/buton için --primaryColor.
+  --primary-text: #1C43FE;
   --secondaryColor: #C13511;
   --paragraphColor: #4B5563;
   --main-bg-color: #F5F4FB;
@@ -166,7 +171,8 @@
   --sidenav-solid-bg: #FFFFFF;
   --sidenav-fg: #3E3B5C;
   --sidenav-fg-strong: #0E0C1C;
-  --sidenav-fg-muted: #8A88A6;
+  // #8A88A6 açık menüde 3.1:1 idi; #6B6987 4.8:1.
+  --sidenav-fg-muted: #6B6987;
   --sidenav-border: rgba(14, 12, 28, 0.1);
   --sidenav-hover-bg: rgba(14, 12, 28, 0.06);
   --sidenav-scrollbar-thumb: rgba(14, 12, 28, 0.18);
@@ -1008,7 +1014,7 @@ ul {
 }
 
 .search-box input::placeholder {
-  color: #888;
+  color: var(--ms-text-weak);
 }
 
 .fill-available {
@@ -1022,7 +1028,7 @@ ul {
   top: 50%;
   left: 10px;
   transform: translateY(-50%);
-  color: #888;
+  color: var(--ms-text-weak);
   pointer-events: none;
 }
 
@@ -1617,7 +1623,7 @@ mat-card-title {
   font-weight: bold;
   text-align: center;
   padding-bottom: 10px;
-  color: #1976d2; // Material Blue
+  color: var(--primary-text);
 }
 
 .form-container {
@@ -1720,7 +1726,7 @@ select:focus {
 .file-upload-container p {
   margin: 0;
   font-size: 0.9rem;
-  color: #1976d2;
+  color: var(--primary-text);
 }
 
 /* 🟢 Resim Önizleme */
@@ -1810,7 +1816,7 @@ mat-card-title {
   font-weight: bold;
   text-align: center;
   padding-bottom: 10px;
-  color: #1976d2; // Material Blue
+  color: var(--primary-text);
 }
 
 .form-container {
@@ -1893,7 +1899,7 @@ h3 {
 .file-upload-container p {
   margin: 0;
   font-size: 0.9rem;
-  color: #1976d2;
+  color: var(--primary-text);
 }
 
 /* 🟢 Resim Önizleme */
@@ -2337,7 +2343,7 @@ mat-select:not(.mat-mdc-form-field mat-select) {
   align-items: center;
   gap: 5px;
   font-size: 1rem;
-  color: #555;
+  color: var(--ms-text-medium);
 }
 
 .test-score {

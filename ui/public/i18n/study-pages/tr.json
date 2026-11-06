@@ -4,7 +4,7 @@
     "searchLabel": "Başlık veya açıklama ara",
     "subjectFilterLabel": "Ders filtrele",
     "allSubjects": "Tüm Dersler",
-    "new": "Yeni Ekle",
+    "new": "Yeni çalışma sayfası",
     "coverFallback": "Çalışma Sayfası",
     "bookFallback": "Kitap",
     "newBadge": "Yeni",
@@ -19,7 +19,14 @@
       "cancel": "İptal"
     },
     "deleted": "Çalışma sayfası silindi.",
-    "deleteFailed": "Silme işleminde hata oluştu."
+    "deleteFailed": "Silme işleminde hata oluştu.",
+    "subtitle": "Konu anlatımı, örnek ve alıştırmayı tek sayfada topla.",
+    "noResults": "Aramana uyan çalışma sayfası yok.",
+    "empty": {
+      "title": "Henüz çalışma sayfan yok",
+      "text": "Bir konunun özetini, örnek çözümleri ve birkaç alıştırmayı tek sayfada hazırla; öğrencilerin testten önce ya da sonra çalışsın.",
+      "cta": "İlk çalışma sayfanı oluştur"
+    }
   },
   "contentType": {
     "image": "Görsel",

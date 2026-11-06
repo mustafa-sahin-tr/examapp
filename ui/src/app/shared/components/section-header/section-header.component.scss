@@ -22,6 +22,17 @@
   white-space: nowrap;
 }
 
+.section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+
+  &:empty {
+    display: none;
+  }
+}
+
 .back-button {
   flex: none;
 }

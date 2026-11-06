@@ -4,7 +4,7 @@
     "searchLabel": "Search by title or description",
     "subjectFilterLabel": "Filter by subject",
     "allSubjects": "All Subjects",
-    "new": "Add New",
+    "new": "New study page",
     "coverFallback": "Study Page",
     "bookFallback": "Book",
     "newBadge": "New",
@@ -19,7 +19,14 @@
       "cancel": "Cancel"
     },
     "deleted": "The study page has been deleted.",
-    "deleteFailed": "An error occurred while deleting."
+    "deleteFailed": "An error occurred while deleting.",
+    "subtitle": "Put the explanation, examples and practice for a topic on one page.",
+    "noResults": "No study pages match your search.",
+    "empty": {
+      "title": "No study pages yet",
+      "text": "Put a topic summary, worked examples and a few exercises on one page so your students can study before or after a test.",
+      "cta": "Create your first study page"
+    }
   },
   "contentType": {
     "image": "Image",

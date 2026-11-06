@@ -1,10 +1,32 @@
+<!-- #852: başlık ve içerik diğer sayfalarla aynı sol kenarda (genel .section-container kaydırması yok). -->
+<div class="sp-page" *transloco="let t; prefix: 'study-pages'">
 <app-section-header
-  class="section-container"
-  [title]="'study-pages.list.title' | transloco"
+  [title]="t('list.title')"
+  [subtitle]="t('list.subtitle')"
   [headingLevel]="1"
-></app-section-header>
+>
+  <!-- #852: birincil eylem başlığın sağında, ne eklediğini söyler; boş durumda kartın kendi düğmesi var. -->
+  @if (loaded() && !isEmpty()) {
+    <button sectionActions mat-flat-button color="primary" data-testid="new-study-page" (click)="onNewPage()">
+      <mat-icon>add</mat-icon>
+      {{ t('list.new') }}
+    </button>
+  }
+</app-section-header>
 
-<div class="list-container" *transloco="let t; prefix: 'study-pages'">
+<div class="list-container">
+  @if (isEmpty()) {
+  <!-- #852: hiç çalışma sayfası yok — filtre / sayfalama yerine ne işe yaradığını anlatan tek kart. -->
+  <section class="empty-card" data-testid="study-pages-empty">
+    <mat-icon class="empty-card__icon" aria-hidden="true">auto_stories</mat-icon>
+    <h2>{{ t('list.empty.title') }}</h2>
+    <p>{{ t('list.empty.text') }}</p>
+    <button mat-flat-button color="primary" data-testid="first-study-page" (click)="onNewPage()">
+      <mat-icon>add</mat-icon>
+      {{ t('list.empty.cta') }}
+    </button>
+  </section>
+  } @else if (loaded()) {
   <!-- Filters Section -->
   <section class="filters-section">
     <div class="form-container align-center">
@@ -30,14 +52,12 @@
           </mat-select>
         </mat-form-field>
       </div>
-      <div class="form-column actions">
-        <button mat-flat-button color="primary" (click)="onNewPage()">
-          <mat-icon>library_add</mat-icon>
-          {{ t('list.new') }}
-        </button>
-      </div>
     </div>
   </section>
+
+  @if (pagedStudyPagesSignal().totalCount === 0) {
+    <p class="no-results" role="status" data-testid="study-pages-no-results">{{ t('list.noResults') }}</p>
+  }
 
   <!-- Cards Section -->
   <section class="cards-section">
@@ -143,7 +163,8 @@
 </div>
 </section>
 
-<!-- Pagination Section -->
+<!-- Pagination Section: tek sayfada gizli (#852) -->
+@if (totalPages > 1) {
 <section class="pagination-section">
   <app-pagination
     [currentPage]="pageNumber"
@@ -151,4 +172,7 @@
     (pageChanged)="changePage($event)"
   ></app-pagination>
 </section>
+}
+  }
+</div>
 </div>

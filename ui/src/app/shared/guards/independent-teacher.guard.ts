@@ -1,7 +1,8 @@
-import { inject } from '@angular/core';
-import { CanActivateFn, Router, UrlTree } from '@angular/router';
+import { EnvironmentInjector, inject, runInInjectionContext } from '@angular/core';
+import { CanActivateFn, UrlTree } from '@angular/router';
 import { Observable, catchError, map, of } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
+import { deniedRedirect } from './denied-redirect';
 
 /**
  * Issue #384: yalnız bağımsız öğretmenlere ait sayfaları (ör. özel ders profili) bağımsız OLMADIĞI bilinen öğretmene
@@ -11,13 +12,15 @@ import { AuthService } from '../../services/auth.service';
  */
 export const independentTeacherGuard: CanActivateFn = (): boolean | UrlTree | Observable<boolean | UrlTree> => {
   const auth = inject(AuthService);
-  const router = inject(Router);
+  const injector = inject(EnvironmentInjector);
   if (!auth.hasRealmRole('Teacher')) {
     return true;
   }
 
-  const decide = (): boolean | UrlTree =>
-    AuthService.isIndependentTutorOf(auth.user()) === false ? router.createUrlTree(['/dashboard']) : true;
+  // #877: geri çevirirken nedeni bildirimle söylenir. decide() refreshProfile sonrası da çağrıldığı için
+  // inject() yerine burada (enjeksiyon bağlamında) yakalanır.
+  const denied = () => runInInjectionContext(injector, () => deniedRedirect('common.routeDenied.independentTeacher'));
+  const decide = (): boolean | UrlTree => (AuthService.isIndependentTutorOf(auth.user()) === false ? denied() : true);
 
   if (AuthService.isIndependentTutorOf(auth.user()) !== null) {
     return decide();

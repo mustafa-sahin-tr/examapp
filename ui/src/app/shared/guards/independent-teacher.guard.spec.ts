@@ -1,6 +1,8 @@
 import type { Mock } from "vitest";
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { TranslocoService } from '@jsverse/transloco';
 import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree, provideRouter } from '@angular/router';
 import { Observable, isObservable, of, throwError } from 'rxjs';
 
@@ -25,7 +27,11 @@ describe('independentTeacherGuard (issue #384)', () => {
         } as UserProfile;
     }
 
+    // #877: geri çevirirken nedeni bildirim olarak söyler.
+    const snackBar = { open: vi.fn().mockName('MatSnackBar.open') };
+
     function setup(roles: string[], initial: UserProfile | null, refreshed?: Observable<UserProfile | null>): void {
+        snackBar.open.mockClear();
         user = signal(initial);
         refreshProfile = vi.fn().mockName('refreshProfile').mockReturnValue(refreshed ?? of(initial));
         const authStub: Partial<AuthService> = {
@@ -34,7 +40,12 @@ describe('independentTeacherGuard (issue #384)', () => {
             refreshProfile,
         };
         TestBed.configureTestingModule({
-            providers: [provideRouter([]), { provide: AuthService, useValue: authStub }],
+            providers: [
+                provideRouter([]),
+                { provide: AuthService, useValue: authStub },
+                { provide: MatSnackBar, useValue: snackBar },
+                { provide: TranslocoService, useValue: { translate: (key: string) => key } },
+            ],
         });
     }
 
@@ -56,6 +67,7 @@ describe('independentTeacherGuard (issue #384)', () => {
         setup(['Teacher'], profile(false, 7));
         expect(run()).toBe('/dashboard');
         expect(refreshProfile).not.toHaveBeenCalled();
+        expect(snackBar.open).toHaveBeenCalledWith('common.routeDenied.independentTeacher', undefined, { duration: 5000 });
     });
 
     it('NotIndependentTeacherWithoutSchool_StillRedirects', () => {

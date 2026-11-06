@@ -4,6 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRouteSnapshot, CanActivateFn, Router, RouterStateSnapshot, UrlTree, provideRouter } from '@angular/router';
+import { TranslocoService } from '@jsverse/transloco';
 import { of, throwError } from 'rxjs';
 
 import { StudyLinksComponent } from './study-links.component';
@@ -188,6 +189,8 @@ describe('StudyLinksComponent (issue #61, teacher page)', () => {
                 providers: [
                     provideRouter([]),
                     { provide: AuthService, useValue: { hasRealmRole: (role: string) => roles.includes(role) } },
+                    // #877: roleGuard geri çevirirken bildirim metnini çevirir.
+                    { provide: TranslocoService, useValue: { translate: (key: string) => key } },
                 ],
             });
             const guard = studyLinksRoute()!.canActivate![1] as CanActivateFn;

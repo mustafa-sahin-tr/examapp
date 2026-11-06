@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree, provideRouter } from '@angular/router';
+import { TranslocoService } from '@jsverse/transloco';
 
 import { parentGuard, parentHomeRedirectGuard } from './parent.guard';
 import { AuthService } from '../../services/auth.service';
@@ -9,7 +10,8 @@ describe('parent guards (issue #420)', () => {
     function run(guard: typeof parentGuard, roles: string[]): string | boolean {
         const authStub: Partial<AuthService> = { hasRealmRole: (role: string) => roles.includes(role) };
         TestBed.configureTestingModule({
-            providers: [provideRouter([]), { provide: AuthService, useValue: authStub }],
+            // #877: roleGuard geri çevirirken bildirim metnini çevirir.
+            providers: [provideRouter([]), { provide: AuthService, useValue: authStub }, { provide: TranslocoService, useValue: { translate: (key: string) => key } }],
         });
         const result = TestBed.runInInjectionContext(() => guard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot));
         return result instanceof UrlTree ? TestBed.inject(Router).serializeUrl(result) : (result as boolean);

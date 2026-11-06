@@ -31,7 +31,7 @@
 }
 
 h1,
-h3 {
+h2 {
   font-family: var(--mainFontFamily);
   color: var(--ms-text-strong);
   margin: 0;
@@ -341,7 +341,7 @@ h3 {
   border-radius: 16px;
   padding: 22px;
 
-  h3 {
+  h2 {
     font-size: 15px;
     font-weight: 800;
     display: flex;
@@ -1348,6 +1348,7 @@ table {
     align-items: center;
     gap: 8px;
     margin: 0 0 12px;
+    padding: 0;
     font-family: var(--mainFontFamily);
     font-size: 14px;
     font-weight: 800;

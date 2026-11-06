@@ -73,11 +73,8 @@ $bp-narrow: 480px; // dar telefon: özet kartları sabit 2 sütun
 }
 
 .dashboard-welcome-title {
-  margin: 0;
-  font-family: var(--mainFontFamily);
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--heading-on-dark);
+  // #833: görünüm .ms-page-title'dan.
+  min-width: 0;
 }
 
 .dashboard-daily {
@@ -311,10 +308,12 @@ $bp-narrow: 480px; // dar telefon: özet kartları sabit 2 sütun
 }
 
 .earned-badges-heading {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ms-text-strong);
   margin: 0;
+  padding: 0;
+  font-family: var(--mainFontFamily);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ms-text-strong);
 }
 
 .badges-state {
@@ -400,10 +399,6 @@ $bp-narrow: 480px; // dar telefon: özet kartları sabit 2 sütun
     margin-bottom: 8px;
   }
 
-  .dashboard-welcome-title {
-    font-size: 18px;
-  }
-
   .nav-btn {
     display: none;
   }
@@ -465,7 +460,7 @@ $bp-narrow: 480px; // dar telefon: özet kartları sabit 2 sütun
   border-radius: 12px;
   background: var(--ms-surface-weak);
 
-  h3,
+  h2,
   p {
     margin: 0;
     padding: 0;

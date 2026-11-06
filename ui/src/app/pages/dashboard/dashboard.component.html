@@ -6,7 +6,7 @@
 
 <!-- Karşılama alanı: son giriş bilgisi (issue #126). İlk girişte lastLoginLabel null → chip hiç render edilmez. -->
 <div class="dashboard-welcome">
-  <h1 class="dashboard-welcome-title">{{ 'dashboard.welcome.title' | transloco }}</h1>
+  <h1 class="dashboard-welcome-title ms-page-title">{{ 'dashboard.welcome.title' | transloco }}</h1>
   @if (lastLoginLabel(); as lastLogin) {
     <span class="last-login-chip">{{
       'dashboard.welcome.lastLogin' | transloco: { value: lastLogin }
@@ -18,7 +18,7 @@
 @if (nextStep(); as step) {
   <section class="dashboard-next" data-test="next-step" [attr.aria-label]="'dashboard.nextStep.label' | transloco">
     <div class="dashboard-next__text">
-      <h3>{{ 'dashboard.nextStep.' + step.kind + 'Title' | transloco: { name: step.name, count: step.count } }}</h3>
+      <h2 class="ms-card-title">{{ 'dashboard.nextStep.' + step.kind + 'Title' | transloco: { name: step.name, count: step.count } }}</h2>
       <p>{{ 'dashboard.nextStep.' + step.kind + 'Text' | transloco }}</p>
     </div>
     <button mat-raised-button color="primary" type="button" (click)="onNextStep(step)">
@@ -31,7 +31,7 @@
 @if (dueFlashcardCount() > 0) {
   <section class="dashboard-next" data-test="flashcards-due">
     <div class="dashboard-next__text">
-      <h3>{{ 'dashboard.flashcardsDue.title' | transloco: { count: dueFlashcardCount() } }}</h3>
+      <h2 class="ms-card-title">{{ 'dashboard.flashcardsDue.title' | transloco: { count: dueFlashcardCount() } }}</h2>
     </div>
     <button mat-stroked-button type="button" (click)="onFlashcardReview()">{{ 'dashboard.flashcardsDue.action' | transloco }}</button>
   </section>
@@ -48,7 +48,7 @@
 
       <!-- 2. Atanmış testler — kompakt kartlar -->
       <div class="dashboard-section">
-        <app-section-header [title]="'dashboard.assignments.title' | transloco" icon="/icons/18.svg"></app-section-header>
+        <app-section-header [title]="'dashboard.assignments.title' | transloco"></app-section-header>
         @if (loading()) {
           <p class="info">{{ 'dashboard.assignments.loading' | transloco }}</p>
         } @else {

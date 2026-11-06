@@ -1,6 +1,6 @@
 <section class="ar" *transloco="let t; prefix: 'worksheet-detail.activity.report'" data-testid="activity-report">
   <header class="ar__head">
-    <h3 class="ar__title"><mat-icon aria-hidden="true">insights</mat-icon>{{ t('title') }}</h3>
+    <h2 class="ar__title"><mat-icon aria-hidden="true">insights</mat-icon>{{ t('title') }}</h2>
     @switch (state()) {
       @case ('idle') {
         <button mat-stroked-button type="button" (click)="load()" data-testid="activity-report-load">

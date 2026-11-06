@@ -320,11 +320,6 @@
 }
 
 // ── Issue #56: aktivite kartları (iki kart yan yana, mobilde alt alta) ──────
-// Başlıklardaki dekoratif emoji (aria-hidden) ile metin arası boşluk.
-.title-emoji {
-  margin-right: 0.4rem;
-}
-
 // Ekran okuyucuya özel metin; global CDK a11y stili yüklenmemiş olsa da çalışsın diye yerel karşılık.
 .cdk-visually-hidden {
   border: 0;

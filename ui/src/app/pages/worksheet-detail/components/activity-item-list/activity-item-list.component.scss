@@ -9,8 +9,14 @@
   gap: 8px;
   flex-wrap: wrap;
 
-  h3 {
+  // #833: bölüm başlığı (h2) — global h2/h3 kurallarını ezer.
+  h2 {
     margin: 0;
+    padding: 0;
+    font-family: var(--mainFontFamily);
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--ms-text-strong);
   }
 }
 

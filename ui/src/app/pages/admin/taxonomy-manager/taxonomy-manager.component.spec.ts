@@ -690,7 +690,7 @@ describe('TaxonomyManagerComponent', () => {
         component.selectSubject(1);
         fixture.detectChanges();
 
-        const header: HTMLElement = fixture.nativeElement.querySelector('.column:nth-child(2) .column-header h3');
+        const header: HTMLElement = fixture.nativeElement.querySelector('.column:nth-child(2) .column-header h2');
         expect(header.textContent).toContain('Matematik');
     });
 
@@ -702,7 +702,7 @@ describe('TaxonomyManagerComponent', () => {
         component.selectTopic(10);
         fixture.detectChanges();
 
-        const header: HTMLElement = fixture.nativeElement.querySelector('.column:nth-child(3) .column-header h3');
+        const header: HTMLElement = fixture.nativeElement.querySelector('.column:nth-child(3) .column-header h2');
         expect(header.textContent).toContain('Kesirler');
     });
 
@@ -711,7 +711,7 @@ describe('TaxonomyManagerComponent', () => {
     it('breadcrumb_GradeSelected_ShowsGradeNameInSubjectsHeader', () => {
         fixture = configureWithGrade(11);
 
-        const header: HTMLElement = fixture.nativeElement.querySelector('.column:nth-child(1) .column-header h3');
+        const header: HTMLElement = fixture.nativeElement.querySelector('.column:nth-child(1) .column-header h2');
         expect(header.textContent).toContain('11. Sınıf');
     });
 

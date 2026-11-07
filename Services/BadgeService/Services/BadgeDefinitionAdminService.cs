@@ -104,7 +104,23 @@ public class BadgeDefinitionAdminService
             .Take(take)
             .ToListAsync(cancellationToken);
 
-        return new BadgeDefinitionAdminPage { Items = rows.Select(ToDto).ToList(), TotalCount = totalCount };
+        // #871: the admin list shows how many students earned each badge (distinct users).
+        var ids = rows.Select(x => x.Id).ToList();
+        var earned = await _context.BadgeEarned.AsNoTracking()
+            .Where(e => ids.Contains(e.BadgeDefinitionId))
+            .Select(e => new { e.BadgeDefinitionId, e.UserId })
+            .Distinct()
+            .GroupBy(e => e.BadgeDefinitionId)
+            .Select(g => new { Id = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Id, x => x.Count, cancellationToken);
+
+        var items = rows.Select(row =>
+        {
+            var dto = ToDto(row);
+            dto.EarnedCount = earned.GetValueOrDefault(row.Id);
+            return dto;
+        }).ToList();
+        return new BadgeDefinitionAdminPage { Items = items, TotalCount = totalCount };
     }
 
     public async Task<BadgeDefinitionAdminDto?> GetAsync(Guid id, CancellationToken cancellationToken)

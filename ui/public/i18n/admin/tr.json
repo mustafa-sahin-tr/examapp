@@ -710,7 +710,10 @@
         "forbidden": "Bu işlem için yetkiniz yok.",
         "saveFailed": "Kaydedilemedi. Lütfen tekrar deneyin."
       }
-    }
+    },
+    "noPath": "Yolu olmayan rozetler",
+    "earnedCount": "{{count}} öğrenci",
+    "summary": "{{count}} rozet · {{paths}} yol · {{inactive}} devre dışı"
   },
   "teacherSuspension": {
     "suspendAction": "Öğretmen onayını askıya al",

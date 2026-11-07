@@ -105,11 +105,32 @@ describe('BadgeDefinitionsComponent', () => {
 
         expect(service.list).toHaveBeenCalledTimes(1);
 
-        expect(service.list).toHaveBeenCalledWith(false, 0, 50);
+        // #871: rozetler yol yol gruplandığı için tek sayfada (en büyük sayfa) gelir.
+        expect(service.list).toHaveBeenCalledWith(false, 0, 200);
         const summaries = [...fixture.nativeElement.querySelectorAll('[data-testid="rule-summary"]')].map((e: Element) => e.textContent?.trim());
         expect(summaries).toEqual(['10 soru çöz', 'Matematik dersinde 100 soru çöz']);
-        expect(el('status-chip')?.textContent?.trim()).toBe('Aktif');
-        expect(fixture.nativeElement.textContent).toContain('admin1');
+        // #871: aktif rozette durum çipi ve "system-seed" gibi oluşturan bilgisi yok.
+        expect(el('status-chip')).toBeNull();
+        expect(fixture.nativeElement.textContent).not.toContain('admin1');
+    });
+
+    it('paths_GroupBadgesInPathOrder_WithEarnedCounts_NoPathLast (#871)', () => {
+        init([
+            dto({ id: 'x', name: 'Serbest', pathKey: null }),
+            dto({ id: 'b2', name: 'İkinci', pathKey: 'activity', pathName: 'Aktivite Yolu', pathOrder: 2, earnedCount: 9 }),
+            dto({ id: 'b1', name: 'Birinci', pathKey: 'activity', pathName: 'Aktivite Yolu', pathOrder: 1, earnedCount: 38 }),
+            dto({ id: 'c', name: 'Pasif', pathKey: 'activity', pathName: 'Aktivite Yolu', pathOrder: 3, isActive: false }),
+        ]);
+
+        const paths = [...fixture.nativeElement.querySelectorAll('[data-testid="badge-path"]')] as HTMLElement[];
+        expect(paths.map((p) => p.querySelector('h2')?.textContent?.trim())).toEqual([
+            'Aktivite Yolu', adminTr.badgeDefinitions.noPath,
+        ]);
+        const names = [...paths[0].querySelectorAll('.bd-badge__name')].map((e) => e.textContent?.trim());
+        expect(names).toEqual(['Birinci', 'İkinci', 'Pasif']);
+        expect(paths[0].querySelector('[data-testid="earned-count"]')?.textContent).toContain('38 öğrenci');
+        expect(paths[0].querySelectorAll('[data-testid="status-chip"]').length).toBe(1);
+        expect(el('badge-summary')?.textContent).toContain('4 rozet · 1 yol · 1 devre dışı');
     });
 
     // ── ikon sütunu / geçiş (issue #149) ───────────────────────────────────
@@ -145,12 +166,12 @@ describe('BadgeDefinitionsComponent', () => {
         expect(cells[2].querySelector('mat-icon')?.textContent?.trim()).toBe('military_tech');
 
         const chips = [...fixture.nativeElement.querySelectorAll('[data-testid="icon-status"]')].map((e: Element) => e.textContent?.trim());
+        // #871: "Yeni ikon" çipi gürültüydü; yalnız eski / eksik ikon işaretlenir.
         expect(chips).toEqual([
-            adminTr.badgeDefinitions.iconStatus.new,
             adminTr.badgeDefinitions.iconStatus.legacy,
             adminTr.badgeDefinitions.iconStatus.none,
         ]);
-        expect(el('icon-status')?.classList).toContain('bd-icon-chip--new');
+        expect(el('icon-status')?.classList).toContain('bd-icon-chip--legacy');
     });
 
     it('legacyBanner_ShownWithCount_WhenAnyRowUsesLegacySvg', () => {

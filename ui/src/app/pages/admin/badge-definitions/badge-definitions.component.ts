@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,7 +8,6 @@ import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { Subscription, filter, take } from 'rxjs';
@@ -50,6 +48,30 @@ export function badgeIconStatus(item: Pick<BadgeDefinitionAdmin, 'icon' | 'iconU
   return validLegacyIconUrl(item.iconUrl) ? 'legacy' : 'none';
 }
 
+export interface BadgePathGroup {
+  /** `pathKey`; null = yolu olmayan rozetler. */
+  key: string | null;
+  name: string | null;
+  rows: BadgeDefinitionRow[];
+}
+
+export function groupByPath(rows: readonly BadgeDefinitionRow[]): BadgePathGroup[] {
+  const groups = new Map<string | null, BadgePathGroup>();
+  for (const row of rows) {
+    const key = row.source.pathKey ?? null;
+    const group = groups.get(key) ?? { key, name: row.source.pathName ?? null, rows: [] };
+    group.rows.push(row);
+    groups.set(key, group);
+  }
+  const order = (r: BadgeDefinitionRow) => r.source.pathOrder ?? Number.MAX_SAFE_INTEGER;
+  const list = [...groups.values()];
+  for (const g of list) {
+    g.rows.sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name, 'tr'));
+  }
+  return list.sort((a, b) =>
+    a.key === null ? 1 : b.key === null ? -1 : (a.name ?? a.key).localeCompare(b.name ?? b.key, 'tr'));
+}
+
 /** Şablonun doğrudan bastığı satır modeli. */
 export interface BadgeDefinitionRow {
   id: string;
@@ -61,6 +83,7 @@ export interface BadgeDefinitionRow {
   iconStatus: BadgeIconStatus;
   rule: RuleSummary;
   isActive: boolean;
+  earnedCount: number;
   /** Son değiştiren (yoksa oluşturan). */
   changedBy: string | null;
   changedAtUtc: string;
@@ -75,7 +98,6 @@ export interface BadgeDefinitionRow {
   selector: 'app-badge-definitions',
   standalone: true,
   imports: [
-    DatePipe,
     BadgeMedallionComponent,
     MatButtonModule,
     MatButtonToggleModule,
@@ -85,7 +107,6 @@ export interface BadgeDefinitionRow {
     MatProgressBarModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
-    MatTableModule,
     MatTooltipModule,
     TranslocoDirective,
     TranslocoPipe,
@@ -104,8 +125,6 @@ export class BadgeDefinitionsComponent {
   private readonly snack = inject(MatSnackBar);
   private readonly transloco = inject(TranslocoService);
 
-  readonly displayedColumns = ['icon', 'name', 'code', 'category', 'rule', 'status', 'updated', 'actions'];
-
   readonly statusFilter = signal<BadgeStatusFilter>('active');
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
@@ -113,13 +132,18 @@ export class BadgeDefinitionsComponent {
   readonly totalCount = signal(0);
   /** 0-tabanlı (MatPaginator); backend'e `skip = pageIndex * pageSize` gider. */
   readonly pageIndex = signal(0);
-  readonly pageSize = signal(BADGE_DEFINITION_DEFAULT_PAGE_SIZE);
+  /** #871: rozetler yol yol gruplanır; sayfa bölünmesin diye en büyük sayfa (rozet sayısı bunun çok altında). */
+  readonly pageSize = signal(BADGE_DEFINITION_MAX_PAGE_SIZE);
   readonly pageSizeOptions = [25, BADGE_DEFINITION_DEFAULT_PAGE_SIZE, 100, BADGE_DEFINITION_MAX_PAGE_SIZE];
   /** Aktiflik isteği süren satırın id'si (çift tıklamaya karşı). */
   readonly busyId = signal<string | null>(null);
   readonly dialogOpen = signal(false);
 
   readonly rows = computed<BadgeDefinitionRow[]>(() => this.items().map(toRow));
+  /** #871: yol kartları — yol adına göre, yol içinde sırayla; yolu olmayanlar sonda tek grupta. */
+  readonly groups = computed<BadgePathGroup[]>(() => groupByPath(this.rows()));
+  readonly pathCount = computed(() => this.groups().filter((g) => g.key !== null).length);
+  readonly inactiveCount = computed(() => this.rows().filter((r) => !r.isActive).length);
   /** Bu sayfada yalnız eski SVG kullanan rozet sayısı — üstteki geçiş uyarısı için. */
   readonly legacyIconCount = computed(() => this.rows().filter((r) => r.iconStatus === 'legacy').length);
   readonly isEmpty = computed(() => !this.loading() && !this.error() && this.items().length === 0);
@@ -286,6 +310,7 @@ function toRow(item: BadgeDefinitionAdmin): BadgeDefinitionRow {
     iconStatus: badgeIconStatus(item),
     rule: ruleSummary(item),
     isActive: item.isActive,
+    earnedCount: item.earnedCount ?? 0,
     // `*By` alanları Keycloak `sub`; görüntüleme adı varsa o gösterilir.
     changedBy: item.updatedAtUtc
       ? item.updatedByName ?? item.updatedBy ?? null

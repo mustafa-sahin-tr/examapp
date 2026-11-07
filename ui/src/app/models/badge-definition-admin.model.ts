@@ -21,6 +21,8 @@ export interface BadgeDefinitionAdmin {
   pathName: string | null;
   pathOrder: number | null;
   isActive: boolean;
+  /** #871: rozeti kazanan farklı öğrenci sayısı (yalnız liste ucu doldurur). */
+  earnedCount?: number;
   /** Keycloak `sub` — kalıcı denetim kimliği (görüntüleme için `createdByName` tercih edilir). */
   createdBy: string | null;
   /** `preferred_username` (best-effort, yalnız görüntüleme). */

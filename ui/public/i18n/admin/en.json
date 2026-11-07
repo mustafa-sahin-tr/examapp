@@ -710,7 +710,10 @@
         "forbidden": "You are not allowed to do this.",
         "saveFailed": "Could not save. Please try again."
       }
-    }
+    },
+    "noPath": "Badges without a path",
+    "earnedCount": "{{count}} students",
+    "summary": "{{count}} badges · {{paths}} paths · {{inactive}} inactive"
   },
   "teacherSuspension": {
     "suspendAction": "Suspend teacher approval",

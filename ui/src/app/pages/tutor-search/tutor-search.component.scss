@@ -250,3 +250,32 @@
   height: 2.5rem;
   color: var(--ms-text-weak);
 }
+
+// #872: ders çipleri tek satır; "Daha fazla süzgeç" sağda.
+.ts__chips-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+// Çok ders olabilir: çipler tek satırda yatay kayar, "Daha fazla süzgeç" sağda sabit kalır.
+.ts__chips {
+  flex: 1 1 auto;
+  min-width: 0;
+
+  ::ng-deep .mdc-evolution-chip-set__chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+  }
+}
+
+.ts__more {
+  flex: none;
+}
+
+.ts__state-title {
+  color: var(--ms-text-strong);
+  font-weight: 600;
+}

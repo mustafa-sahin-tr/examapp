@@ -29,20 +29,26 @@
       </div>
     }
 
-    <form class="ts__filters" [formGroup]="filterForm" (ngSubmit)="search()">
-      <mat-form-field appearance="outline" class="ts__subject" subscriptSizing="dynamic">
-        <mat-label>{{ t('subject') }}</mat-label>
-        <mat-select formControlName="subjectId">
-          <mat-option [value]="null">{{ t('allSubjects') }}</mat-option>
-          @for (subject of subjects(); track subject.id) {
-            <mat-option [value]="subject.id">{{ subject.name }}</mat-option>
-          }
-        </mat-select>
-        @if (subjectsFailed()) {
-          <mat-hint class="ts__hint-error">{{ t('subjectsError') }}</mat-hint>
+    <!-- #872: ders çipleri tek satır; ücret ve biçim "Daha fazla süzgeç" içinde. -->
+    <div class="ts__chips-row">
+      <mat-chip-listbox class="ts__chips" [attr.aria-label]="t('subject')" [hideSingleSelectionIndicator]="true"
+        [value]="filterForm.controls.subjectId.value" (change)="pickSubject($event.value ?? null)" data-testid="subject-chips">
+        <mat-chip-option [value]="null" [selectable]="filterForm.controls.subjectId.value !== null">{{ t('allSubjects') }}</mat-chip-option>
+        @for (subject of subjects(); track subject.id) {
+          <mat-chip-option [value]="subject.id">{{ subject.name }}</mat-chip-option>
         }
-      </mat-form-field>
+      </mat-chip-listbox>
+      <button mat-button type="button" class="ts__more" (click)="moreFilters.set(!moreFilters())"
+        [attr.aria-expanded]="moreFilters()" aria-controls="ts-more-filters" data-testid="more-filters">
+        <mat-icon>tune</mat-icon>{{ t('moreFilters') }}
+      </button>
+    </div>
+    @if (subjectsFailed()) {
+      <p class="ts__hint-error">{{ t('subjectsError') }}</p>
+    }
 
+    @if (moreFilters()) {
+    <form class="ts__filters" id="ts-more-filters" [formGroup]="filterForm" (ngSubmit)="search()">
       <div class="ts__price" role="group" [attr.aria-label]="t('priceGroup')">
         <span class="ts__price-label" aria-hidden="true">{{ t('price') }}</span>
         <mat-form-field appearance="outline" class="ts__price-input" subscriptSizing="dynamic">
@@ -83,6 +89,7 @@
         </button>
       </div>
     </form>
+    }
 
     @if (loading()) {
       <div class="ts__state" aria-busy="true" aria-live="polite">
@@ -96,12 +103,20 @@
         <button mat-stroked-button type="button" (click)="search()">{{ t('retry') }}</button>
       </div>
     } @else if (isEmpty()) {
-      <div class="ts__state" aria-live="polite">
+      <div class="ts__state" aria-live="polite" data-testid="tutors-empty">
         <mat-icon class="ts__state-icon">person_search</mat-icon>
-        <!-- Issue #712: filtre yokken "filtrelere uygun değil" yanıltıcı. -->
-        <span>{{ t(searchedWithFilters() ? 'empty' : 'emptyNoFilter') }}</span>
-        @if (searchedWithFilters()) {
+        @if (searchedWithMoreFilters()) {
+          <!-- Issue #712: filtre yokken "filtrelere uygun değil" yanıltıcı. -->
+          <span>{{ t('empty') }}</span>
           <button mat-stroked-button type="button" (click)="resetFilters()">{{ t('reset') }}</button>
+        } @else {
+          <span class="ts__state-title">
+            {{ searchedSubjectName() ? t('emptySubject', { subject: searchedSubjectName() }) : t('emptyNoFilter') }}
+          </span>
+          <span>{{ childStudentId !== null ? t('emptyHintParent') : t('emptyHint') }}</span>
+          @if (searchedSubjectName()) {
+            <button mat-stroked-button type="button" (click)="pickSubject(null)" data-testid="other-subjects">{{ t('otherSubjects') }}</button>
+          }
         }
       </div>
     } @else {

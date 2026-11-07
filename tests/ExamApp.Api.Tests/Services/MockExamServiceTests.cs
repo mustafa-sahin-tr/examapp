@@ -168,6 +168,20 @@ public class MockExamServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Template_list_counts_the_mock_exams_built_from_each_template()
+    {
+        var created = await UseAsync(s => s.SaveTemplateAsync(NewTemplate("sayim"), null, 1, default));
+        (await UseAsync(s => s.ListTemplatesAsync(default))).Single(t => t.Id == created.Id).MockExamCount.ShouldBe(0);
+
+        await CreateAsync(created.Id);
+        await CreateAsync(created.Id);
+
+        var listed = (await UseAsync(s => s.ListTemplatesAsync(default))).Single(t => t.Id == created.Id);
+        listed.MockExamCount.ShouldBe(2);
+        listed.InUse.ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task Template_code_is_unique()
     {
         var error = await Should.ThrowAsync<MockExamRuleException>(() => UseAsync(s => s.SaveTemplateAsync(NewTemplate("LGS"), null, 1, default)));

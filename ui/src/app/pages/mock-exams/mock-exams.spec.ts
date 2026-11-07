@@ -557,12 +557,55 @@ describe('mock exam screens', () => {
       expect(component.templates()[0].name).toBe('LGS');
     });
 
-    it('templateInUse_CannotBeEdited', () => {
-      service.listTemplates.mockReturnValue(of([{ ...TEMPLATE, inUse: true }]));
-      const { el } = view();
+    it('templateInUse_OpensReadOnlyWithItsUsage', () => {
+      service.listTemplates.mockReturnValue(of([{ ...TEMPLATE, inUse: true, mockExamCount: 3 }]));
+      const { fixture, component, el } = view();
+      expect(el.querySelector('.et-lock')?.textContent).toContain(tr.templates.locked);
 
-      expect(el.querySelector('.me-edit')).toBeNull();
-      expect(el.textContent).toContain(tr.templates.inUse);
+      (el.querySelector('.et-item') as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      expect(component.draft()).toBeNull();
+      expect(el.querySelector('[data-test="template-form"]')).toBeNull();
+      const panel = el.querySelector('[data-test="template-readonly"]')!;
+      expect(panel.textContent).toContain('3 denemede kullanılıyor');
+      expect(panel.querySelectorAll('input').length).toBe(0);
+      expect(el.querySelector('.et-item')!.getAttribute('aria-current')).toBe('true');
+    });
+
+    it('selectedRow_IsHighlightedAndOpensTheForm', () => {
+      const { fixture, el } = view();
+
+      (el.querySelector('.et-item') as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      expect(el.querySelector('.et-item')!.classList).toContain('et-item--selected');
+      expect(el.querySelector('[data-test="template-form"]')).not.toBeNull();
+    });
+
+    it('changedTotal_WarnsAgainstTheSavedTemplate', () => {
+      const { fixture, component, el } = view();
+      component.edit(TEMPLATE);
+      fixture.detectChanges();
+      expect(el.querySelector('[data-test="template-total"]')!.textContent).toContain('Toplam 20 / 20');
+      expect(el.querySelector('[data-test="template-total-warning"]')).toBeNull();
+
+      component.changeSection(0, 0, { questionCount: 18 });
+      fixture.detectChanges();
+
+      expect(el.querySelector('[data-test="template-total"]')!.textContent).toContain('Toplam 18 / 20');
+      expect(el.querySelector('[data-test="template-total-warning"]')).not.toBeNull();
+      expect(el.querySelector('[data-test="session-total"]')!.textContent).toContain('18');
+    });
+
+    it('newTemplate_ShowsOnlyItsOwnTotal', () => {
+      const { fixture, component, el } = view();
+      component.startNew();
+      component.changeSection(0, 0, { questionCount: component.toNumber('') });
+      fixture.detectChanges();
+
+      expect(el.querySelector('[data-test="template-total"]')!.textContent).toContain('Toplam 0 soru');
+      expect(el.querySelector('[data-test="template-total-warning"]')).toBeNull();
     });
 
     it('saveRefused_ShowsTheReasonAndKeepsTheForm', () => {

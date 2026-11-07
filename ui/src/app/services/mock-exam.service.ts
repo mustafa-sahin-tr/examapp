@@ -25,6 +25,8 @@ export interface ExamTemplate {
   sourceReference?: string | null;
   sessions: ExamTemplateSession[];
   inUse?: boolean;
+  /** Bu şablondan kurulmuş deneme sayısı (#899). */
+  mockExamCount?: number;
 }
 
 export interface MockExamListItem {

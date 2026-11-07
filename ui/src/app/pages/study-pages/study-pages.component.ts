@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -12,7 +12,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Router, RouterModule } from '@angular/router';
 import { take } from 'rxjs';
-import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Subject } from '../../models/subject';
 import { Paged } from '../../models/test-instance';
@@ -72,7 +72,6 @@ const PLATFORM_LABEL_KEYS: Record<StudyPageLinkPlatform, string> = {
     SectionHeaderComponent,
     PaginationComponent,
     TranslocoDirective,
-    TranslocoPipe,
     StorageImageRetryDirective,
   ],
   changeDetection: ChangeDetectionStrategy.Eager,
@@ -100,6 +99,12 @@ export class StudyPagesComponent {
   pageSize = 10;
   selectedSubjectId = signal<number | null>(null);
   deletingId = signal<number | null>(null);
+  /** #852: ilk yanıt geldi mi (boş durum yüklenirken yanıp sönmesin). */
+  readonly loaded = signal(false);
+  /** #852: arama ya da ders filtresi var mı — sonuçsuz filtre "boş durum" değildir. */
+  readonly filtered = signal(false);
+  /** #852: öğretmenin hiç çalışma sayfası yok — filtre ve sayfalama yerine tek açıklayıcı kart. */
+  readonly isEmpty = computed(() => this.loaded() && !this.filtered() && this.pagedStudyPagesSignal().totalCount === 0);
 
   /**
    * issue #365 (S3): kapak görseli yüklenemezse (imzalı URL'nin süresi doldu) aynı sayfa (aynı filtre) yeniden çekilir
@@ -199,8 +204,10 @@ export class StudyPagesComponent {
     this.studyPageService
       .getPaged(this.currentFilter(page))
       .subscribe((result) => {
+        this.filtered.set(!!this.searchControl.value?.trim() || this.selectedSubjectId() != null);
         this.pagedStudyPagesSignal.set(result);
         this.deletingId.set(null);
+        this.loaded.set(true);
       });
   }
 

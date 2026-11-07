@@ -81,6 +81,48 @@ describe('StudyPagesComponent', () => {
         expect(component).toBeTruthy();
     });
 
+    describe('empty state (#852)', () => {
+        const render = () => {
+            const fixture = TestBed.createComponent(StudyPagesComponent);
+            fixture.detectChanges();
+            return { fixture, el: fixture.nativeElement as HTMLElement };
+        };
+
+        it('noPages_ShowsExplainingCard_HidesFiltersAndHeaderButton', () => {
+            const { el } = render();
+
+            expect(el.querySelector('[data-testid="study-pages-empty"]')).not.toBeNull();
+            expect(el.querySelector('.filters-section')).toBeNull();
+            expect(el.querySelector('app-pagination')).toBeNull();
+            expect(el.querySelector('[data-testid="new-study-page"]')).toBeNull();
+            expect(el.querySelector('[data-testid="first-study-page"]')?.textContent).toContain('İlk çalışma sayfanı oluştur');
+        });
+
+        it('filteredWithoutResults_KeepsFilters_ShowsNoResults', () => {
+            const { fixture, el } = render();
+            fixture.componentInstance.searchControl.setValue('kesir');
+            fixture.componentInstance.onSearch();
+            fixture.detectChanges();
+
+            expect(el.querySelector('[data-testid="study-pages-empty"]')).toBeNull();
+            expect(el.querySelector('.filters-section')).not.toBeNull();
+            expect(el.querySelector('[data-testid="study-pages-no-results"]')).not.toBeNull();
+            expect(el.querySelector('[data-testid="new-study-page"]')?.textContent).toContain('Yeni çalışma sayfası');
+        });
+
+        it('withPages_HeaderButtonOnly_NoPaginationOnOnePage', () => {
+            studyPageService.getPaged.mockReturnValue(of({
+                items: [{ id: 1, title: 'Kesirler', createTime: '2026-01-01', imageCount: 2 } as StudyPage],
+                totalCount: 1, pageNumber: 1, pageSize: 10,
+            }));
+            const { el } = render();
+
+            expect(el.querySelector('[data-testid="new-study-page"]')).not.toBeNull();
+            expect(el.querySelector('.course-card')).not.toBeNull();
+            expect(el.querySelector('app-pagination')).toBeNull();
+        });
+    });
+
     // Kriter 5: her etkinligin tipi ikon/etiketle ayirt edilebiliyor
     describe('content type badge helpers', () => {
         it('contentTypeIcon_ImagePage_ReturnsImageIcon', () => {

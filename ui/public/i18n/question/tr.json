@@ -105,7 +105,13 @@
     "modeSlot": "Kutu",
     "modePlace": "Yerleştir",
     "modeMatch": "Eşleştir",
-    "modeTextLine": "Metin"
+    "modeTextLine": "Metin",
+    "backToTest": "Teste dön",
+    "addingToTest": "Soru eklenen test:",
+    "addingToActivity": "Madde eklenen etkinlik:",
+    "testQuestionCount": "{{n}} soru",
+    "testQuestions": "Testteki sorular ({{n}})",
+    "saveCount": "{{n}} soruyu teste ekle"
   },
   "inspector": {
     "quickCreateTitle": "Yeni Test Oluştur",

@@ -105,7 +105,13 @@
     "modeSlot": "Box",
     "modePlace": "Place",
     "modeMatch": "Match",
-    "modeTextLine": "Text"
+    "modeTextLine": "Text",
+    "backToTest": "Back to test",
+    "addingToTest": "Adding questions to:",
+    "addingToActivity": "Adding items to:",
+    "testQuestionCount": "{{n}} questions",
+    "testQuestions": "Questions in this test ({{n}})",
+    "saveCount": "Add {{n}} questions to the test"
   },
   "inspector": {
     "quickCreateTitle": "Create new worksheet",

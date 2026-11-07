@@ -10,6 +10,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { Test } from '../../models/test-instance';
 import { TestService } from '../../services/test.service';
+import { Question } from '../../models/question';
 import { QuestionCanvasForm } from '../../models/question-form';
 import { Book, BookTest } from '../../models/book';
 import { BookService } from '../../services/book.service';
@@ -158,6 +159,17 @@ export class QuestionCanvasComponent implements OnInit {
    */
   readonly activityContext = computed(() => this.worksheetKind() === WorksheetKind.Activity);
   private readonly worksheetContext = new RxSubject<{ id: number | null; kind?: WorksheetKind | null }>();
+  /**
+   * Issue #858: hedef testin mevcut soruları (sol rayda) ve sayısı (üst çubuk bağlamı). Hedef değişince ya da kayıttan
+   * sonra yeniden okunur; null = okunmadı / hedef yok.
+   */
+  readonly testQuestions = signal<Question[] | null>(null);
+  private readonly testQuestionsReload = new RxSubject<number | null>();
+  /**
+   * Issue #858: tuval bir testten açıldı (route id ya da gezinme state'i): üst çubuk test seçici yerine "Teste dön" ve
+   * bağlam satırı gösterir. Bağlamsız açılışta kitap / test seçimi açık kalır.
+   */
+  readonly fromTest = signal(false);
   /** saveBulk isteği sürerken kaydet butonlarını kilitler. */
   readonly saving = signal(false);
   /** Kayıt sonrası 2 sn'lik "sonraki sayfaya geçiş" beklemesi sürüyor. */
@@ -311,6 +323,14 @@ export class QuestionCanvasComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe((kind) => this.worksheetKind.set(kind));
+    this.testQuestionsReload
+      .pipe(
+        switchMap((id) =>
+          id ? this.questionService.getAll(id).pipe(catchError(() => of(null))) : of(null)
+        ),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((questions) => this.testQuestions.set(questions));
     this.questionForm
       .get('testValue')!
       .valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
@@ -517,6 +537,28 @@ export class QuestionCanvasComponent implements OnInit {
     const id = this.targetWorksheetId;
     const known = this.knownWorksheetKind?.id === id ? this.knownWorksheetKind.kind : undefined;
     this.worksheetContext.next({ id, kind: kind ?? known });
+    if (id !== this.testQuestionsFor) {
+      this.testQuestionsFor = id;
+      this.testQuestions.set(null);
+      this.testQuestionsReload.next(id);
+    }
+  }
+
+  private testQuestionsFor: number | null | undefined;
+
+  /** Issue #858: hedef testin adı (bağlam satırı); boşsa test seç etiketi. */
+  get targetTestName(): string {
+    return this.questionForm.get('testId')?.value || '';
+  }
+
+  /** Issue #858: sayfadaki soru kutusu sayısı — kaydet "N soruyu teste ekle" der. */
+  get pageQuestionCount(): number {
+    return this.imageSelector?.regions().length ?? 0;
+  }
+
+  backToTest() {
+    const id = this.targetWorksheetId;
+    void this.router.navigate(id ? ['/test', id] : ['/tests']);
   }
 
   ngOnInit() {
@@ -534,7 +576,23 @@ export class QuestionCanvasComponent implements OnInit {
     this.resetFormWithDefaultValues(history.state);
     this.id = this.route.snapshot.paramMap.get('id') ? Number(this.route.snapshot.paramMap.get('id')) : null;
     this.isEditMode = this.id !== null;
+    this.fromTest.set(this.targetWorksheetId !== null);
     this.syncWorksheetContext();
+    // #858: doğrudan /questioncanvas/:id açılışında bağlam satırı test adını sunucudan alır.
+    const targetId = this.targetWorksheetId;
+    if (targetId && !this.questionForm.get('testId')?.value) {
+      this.testService
+        .get(targetId)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (test) => {
+            if (!this.questionForm.get('testId')?.value) {
+              this.questionForm.get('testId')?.setValue(test.subtitle || test.name, { emitEvent: false });
+            }
+          },
+          error: () => undefined,
+        });
+    }
   }
 
   sendToFix() {
@@ -1584,6 +1642,7 @@ export class QuestionCanvasComponent implements OnInit {
           this.imageSelector.sendToFix(!this.excludeFromTraining(), false);
         }
         this.testCreateEnhancedComponent.reloadComponent(targetId);
+        this.testQuestionsReload.next(targetId);
         if (this.destroyed) {
           return;
         }

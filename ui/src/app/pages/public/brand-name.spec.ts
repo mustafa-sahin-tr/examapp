@@ -55,7 +55,7 @@ describe('Brand name i18n key (issue #409)', () => {
     });
 
     it('legalPageTitles_ResolveBrandReference', () => {
-        expect(transloco.translate(`${PUBLIC_PAGES_SCOPE}.terms.meta.title`, {}, 'tr')).toBe(`Kullanım Şartları | ${BRAND}`);
+        expect(transloco.translate(`${PUBLIC_PAGES_SCOPE}.terms.meta.title`, {}, 'tr')).toBe(`Kullanım Koşulları | ${BRAND}`);
         expect(transloco.translate(`${PUBLIC_PAGES_SCOPE}.privacyPolicy.meta.title`, {}, 'en')).toBe(`Privacy Policy | ${BRAND}`);
     });
 

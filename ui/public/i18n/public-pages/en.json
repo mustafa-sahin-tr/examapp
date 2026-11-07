@@ -1,23 +1,161 @@
 {
+  "legal": {
+    "back": "Back to home"
+  },
   "privacyPolicy": {
     "meta": {
       "title": "Privacy Policy | {{ brand.name }}",
-      "description": "{{ brand.name }} privacy policy and data protection commitment."
+      "description": "{{ brand.name }} privacy notice under the Turkish Personal Data Protection Law (KVKK): which data, why, who sees it and your rights."
     },
-    "title": "Privacy Policy",
-    "intro": "At {{ brand.name }} we take our users' privacy very seriously. Your personal data is protected in line with applicable regulations and is never shared with third parties.",
-    "contact": "Please contact us if you would like more information."
+    "title": "Privacy Policy and KVKK Notice",
+    "version": "Version 1.0",
+    "updated": "Last updated: 7 November 2026",
+    "intro": "This notice explains how your personal data is processed when you use {{ brand.name }}, under Turkish Law No. 6698 on the Protection of Personal Data (KVKK).",
+    "sections": {
+      "controller": {
+        "title": "Data controller",
+        "body": "Your personal data is processed by the operator of the {{ brand.name }} platform as data controller. For any question or request: {{ email }}."
+      },
+      "data": {
+        "title": "Personal data we process",
+        "body": "Depending on your role we process:",
+        "items": {
+          "1": "Identity and contact: first name, last name, e-mail address.",
+          "2": "Account: role (student, teacher, private tutor, parent), school, grade, language and theme preference; application details for teacher applications.",
+          "3": "Learning: assigned and solved tests, answers, points, badges, streaks and study time, open-ended answers and teacher feedback.",
+          "4": "Parent link: the link between a parent and a child account and invitation details.",
+          "5": "Correspondence: messages, comments, question and comment reports.",
+          "6": "Private lessons: tutor profile and fee, available hours, lesson requests and approvals, joining video lessons.",
+          "7": "Technical: session and security logs (sign-in times, error logs)."
+        }
+      },
+      "purposes": {
+        "title": "Purposes",
+        "body": "Data is processed only to:",
+        "items": {
+          "1": "Open accounts, show the screens for your role and approve teacher accounts.",
+          "2": "Prepare, assign and solve tests and show results to the student, their teacher and their parent.",
+          "3": "Run private lesson bookings and video lessons.",
+          "4": "Send notifications and answer support requests.",
+          "5": "Keep the platform secure and review misuse and reported content."
+        }
+      },
+      "legalBasis": {
+        "title": "Legal grounds",
+        "body": "Processing relies on these grounds in Article 5 of the KVKK:",
+        "items": {
+          "1": "Establishing and performing the contract to provide the service (Art. 5/2-c).",
+          "2": "Complying with legal obligations (Art. 5/2-ç).",
+          "3": "Legitimate interest in keeping the platform secure, without harming fundamental rights (Art. 5/2-f).",
+          "4": "Explicit consent for anything outside these grounds; you can withdraw it at any time."
+        }
+      },
+      "transfer": {
+        "title": "Who it is shared with",
+        "body": "Data is never sold or used for advertising. It is shared only:",
+        "items": {
+          "1": "Inside the platform as your role requires: a student's results are seen by their teacher and parent, a lesson request by the tutor. The name of a student who reports a question is not shown to the teacher.",
+          "2": "With infrastructure suppliers such as hosting and e-mail, only as far as the service needs.",
+          "3": "Artificial intelligence: question images and texts uploaded by teachers may be sent to AI providers abroad (Anthropic, Google) for subject/topic classification and question detection. Students' identity data and answers are not sent to these services. Transfers abroad follow Article 9 of the KVKK.",
+          "4": "With authorised public bodies when required by law."
+        }
+      },
+      "collection": {
+        "title": "How data is collected",
+        "body": "Data is collected from sign-up and profile forms, from what you do on the platform and automatically. The browser only keeps local records for your session and preferences (language, theme, last used settings); no advertising or tracking cookies are used."
+      },
+      "children": {
+        "title": "Children's data",
+        "body": "Student accounts open fully after a parent confirms the invitation; until then features such as messaging and private lessons stay off. Parents follow their child's work from their own account and approve private lesson requests."
+      },
+      "retention": {
+        "title": "Retention",
+        "body": "Data is kept while the account is open. When the account is deleted or the purpose ends it is deleted or anonymised, subject to retention periods required by law."
+      },
+      "rights": {
+        "title": "Your rights (KVKK Art. 11)",
+        "body": "You may ask the data controller to:",
+        "items": {
+          "1": "learn whether your personal data is processed,",
+          "2": "get information about it if so,",
+          "3": "learn the purpose and whether it is used accordingly,",
+          "4": "know the third parties it is transferred to in Turkey or abroad,",
+          "5": "have incomplete or wrong data corrected,",
+          "6": "have it deleted or destroyed under the conditions of Article 7 of the KVKK,",
+          "7": "have corrections and deletions notified to the third parties it was transferred to,",
+          "8": "object to a result against you that comes solely from automated analysis,",
+          "9": "claim compensation for damage caused by unlawful processing."
+        }
+      },
+      "contact": {
+        "title": "Requests",
+        "body": "Send your request by e-mail to {{ email }}. Requests are answered free of charge within 30 days at the latest."
+      }
+    }
   },
   "terms": {
     "meta": {
       "title": "Terms of Use | {{ brand.name }}",
-      "description": "{{ brand.name }} terms of use: the rules and conditions that apply to our services."
+      "description": "{{ brand.name }} terms of use: accounts, rules, content, private lessons and liability."
     },
     "title": "Terms of Use",
-    "intro": "By using {{ brand.name }} services you agree to the terms below. Please read all of the rules carefully.",
-    "purpose": "{{ brand.name }} is designed to improve the exam experience of its users.",
-    "misuse": "Misuse of our services is prohibited.",
-    "updates": "Check this page regularly for updated terms and conditions."
+    "version": "Version 1.0",
+    "updated": "Last updated: 7 November 2026",
+    "intro": "By using {{ brand.name }} you accept these terms. Your personal data is processed under the Privacy Policy.",
+    "sections": {
+      "service": {
+        "title": "Service",
+        "body": "{{ brand.name }} is a learning platform where teachers prepare and assign tests, students solve them and follow their progress, parents keep track, and private lessons take place over video. Sign-up and use are free."
+      },
+      "accounts": {
+        "title": "Accounts and roles",
+        "body": "You are responsible for opening your account with correct details and keeping your sign-in safe.",
+        "items": {
+          "1": "Teacher and private tutor accounts open after administrator approval.",
+          "2": "Some student features open after a parent confirms.",
+          "3": "Parent accounts are created through the student's invitation."
+        }
+      },
+      "rules": {
+        "title": "Rules",
+        "body": "On the platform you may not:",
+        "items": {
+          "1": "use someone else's account or pretend to be someone else,",
+          "2": "share insults, harassment, hate speech or content unsuitable for children,",
+          "3": "upload or share content you have no rights to,",
+          "4": "try to disrupt the platform, get around its security or scrape data in bulk,",
+          "5": "use the platform for commercial advertising or referrals."
+        }
+      },
+      "content": {
+        "title": "Content and rights",
+        "body": "You keep the rights to the questions, images and texts you upload and confirm you have the permissions needed to upload them. You allow us to use your content to the extent of the visibility you choose so it can be shown on the platform. Reported content is reviewed and content against the rules may be removed."
+      },
+      "ai": {
+        "title": "AI suggestions",
+        "body": "AI suggestions such as question classification, question detection and question generation can be wrong. Checking them and making the final decision is the teacher's responsibility."
+      },
+      "tutoring": {
+        "title": "Private lessons",
+        "body": "The fee on a tutor's profile is for information; no payment is taken through the platform and {{ brand.name }} is not a party to the agreement between the tutor and the student or parent."
+      },
+      "suspension": {
+        "title": "Suspension",
+        "body": "Use that breaks these terms may lead to the account being restricted, suspended or closed without notice."
+      },
+      "liability": {
+        "title": "Liability",
+        "body": "We work to keep the platform available and free of errors but cannot guarantee it. Results of tools such as the score calculator are estimates and do not replace official results."
+      },
+      "changes": {
+        "title": "Changes",
+        "body": "When the terms change, the version and date on this page change; important changes are also announced in the platform."
+      },
+      "contact": {
+        "title": "Contact",
+        "body": "Questions: {{ email }}."
+      }
+    }
   },
   "scoreCalculator": {
     "meta": {

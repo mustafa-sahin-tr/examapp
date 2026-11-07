@@ -1,23 +1,161 @@
 {
+  "legal": {
+    "back": "Ana sayfaya dön"
+  },
   "privacyPolicy": {
     "meta": {
       "title": "Gizlilik Politikası | {{ brand.name }}",
-      "description": "{{ brand.name }} gizlilik politikası ve veri koruma taahhüdü."
+      "description": "{{ brand.name }} kişisel verilerin korunması aydınlatma metni: hangi veriler, hangi amaçla, kimlerle paylaşılır ve haklarınız."
     },
-    "title": "Gizlilik Politikası",
-    "intro": "{{ brand.name }} olarak kullanıcılarımızın gizliliğine büyük önem veriyoruz. Kişisel verileriniz, yasal mevzuata uygun şekilde korunur ve asla üçüncü şahıslarla paylaşılmaz.",
-    "contact": "Daha fazla bilgi için bizimle iletişime geçebilirsiniz."
+    "title": "Gizlilik Politikası ve KVKK Aydınlatma Metni",
+    "version": "Sürüm 1.0",
+    "updated": "Son güncelleme: 7 Kasım 2026",
+    "intro": "Bu metin, 6698 sayılı Kişisel Verilerin Korunması Kanunu (KVKK) kapsamında {{ brand.name }} kullanırken kişisel verilerinin nasıl işlendiğini açıklar.",
+    "sections": {
+      "controller": {
+        "title": "Veri sorumlusu",
+        "body": "Kişisel verileriniz, {{ brand.name }} platformunun işletmecisi tarafından veri sorumlusu sıfatıyla işlenir. Her türlü soru ve başvuru için: {{ email }}."
+      },
+      "data": {
+        "title": "İşlenen kişisel veriler",
+        "body": "Rolüne göre aşağıdaki veriler işlenir:",
+        "items": {
+          "1": "Kimlik ve iletişim: ad, soyad, e-posta adresi.",
+          "2": "Hesap: rol (öğrenci, öğretmen, özel ders öğretmeni, veli), okul, sınıf, dil ve tema tercihi; öğretmen başvurularında başvuru bilgileri.",
+          "3": "Eğitim: atanan ve çözülen testler, cevaplar, puan, rozet, seri ve çalışma süreleri, açık uçlu cevaplar ve öğretmen geri bildirimleri.",
+          "4": "Veli bağlantısı: veli ile çocuk hesabı arasındaki bağlantı ve davet bilgileri.",
+          "5": "Yazışmalar: mesajlar, yorumlar, soru ve yorum bildirimleri.",
+          "6": "Özel ders: öğretmen profili ve ücret bilgisi, müsait saatler, ders talepleri ve onaylar, görüntülü ders oturumuna katılım.",
+          "7": "Teknik: oturum ve güvenlik kayıtları (giriş zamanları, hata kayıtları)."
+        }
+      },
+      "purposes": {
+        "title": "İşleme amaçları",
+        "body": "Veriler yalnız şu amaçlarla işlenir:",
+        "items": {
+          "1": "Hesap açmak, rolüne uygun ekranları göstermek ve öğretmen hesaplarını onaylamak.",
+          "2": "Test hazırlamak, atamak, çözmek ve sonuçları öğrenciye, öğretmenine ve velisine göstermek.",
+          "3": "Özel ders randevularını ve görüntülü dersleri yürütmek.",
+          "4": "Bildirim göndermek ve destek taleplerini yanıtlamak.",
+          "5": "Platformun güvenliğini sağlamak, kötüye kullanımı ve bildirilen içerikleri incelemek."
+        }
+      },
+      "legalBasis": {
+        "title": "Hukuki sebepler",
+        "body": "Veriler KVKK'nın 5. maddesindeki şu sebeplere dayanır:",
+        "items": {
+          "1": "Hizmetin sunulması için sözleşmenin kurulması ve ifası (m. 5/2-c).",
+          "2": "Hukuki yükümlülüklerin yerine getirilmesi (m. 5/2-ç).",
+          "3": "Temel hak ve özgürlüklere zarar vermemek kaydıyla platformun güvenliği için meşru menfaat (m. 5/2-f).",
+          "4": "Bu sebeplerin dışında kalan işlemler için açık rıza; rızanı her zaman geri alabilirsin."
+        }
+      },
+      "transfer": {
+        "title": "Kimlerle paylaşılır?",
+        "body": "Veriler satılmaz ve reklam amacıyla kullanılmaz. Yalnız şu durumlarda paylaşılır:",
+        "items": {
+          "1": "Platform içinde rolün gereği: öğrencinin sonuçlarını öğretmeni ve velisi, ders talebini özel ders öğretmeni görür. Soru bildiren öğrencinin adı öğretmene gösterilmez.",
+          "2": "Barındırma ve e-posta gibi altyapı hizmeti aldığımız tedarikçiler, yalnız hizmetin gerektirdiği ölçüde.",
+          "3": "Yapay zekâ: öğretmenlerin yüklediği soru görselleri ve metinleri, ders/konu sınıflandırması ve soru işaretleme için yurt dışındaki yapay zekâ hizmet sağlayıcılarına (Anthropic, Google) gönderilebilir. Öğrencilerin kimlik bilgileri ve cevapları bu hizmetlere gönderilmez. Yurt dışına aktarım KVKK'nın 9. maddesine uygun yapılır.",
+          "4": "Kanunen yetkili kamu kurum ve kuruluşları, talep ettiklerinde."
+        }
+      },
+      "collection": {
+        "title": "Toplama yöntemi",
+        "body": "Veriler kayıt ve profil formlarından, platformu kullanırken yaptığın işlemlerden ve otomatik yollarla toplanır. Tarayıcında yalnız oturumu ve tercihlerini (dil, tema, son kullanılan ayarlar) tutan yerel kayıtlar kullanılır; reklam ya da izleme çerezi kullanılmaz."
+      },
+      "children": {
+        "title": "Çocukların verileri",
+        "body": "Öğrenci hesapları velinin davetle doğrulamasından sonra tam açılır; veli onayı alınana kadar mesajlaşma ve özel ders gibi özellikler kapalıdır. Veli, çocuğunun çalışmalarını kendi hesabından izler ve özel ders taleplerini onaylar."
+      },
+      "retention": {
+        "title": "Saklama süresi",
+        "body": "Veriler hesabın açık olduğu sürece saklanır. Hesap silindiğinde ya da işleme amacı ortadan kalktığında silinir veya anonim hâle getirilir; kanunda öngörülen saklama süreleri saklıdır."
+      },
+      "rights": {
+        "title": "Haklarınız (KVKK m. 11)",
+        "body": "Veri sorumlusuna başvurarak şunları talep edebilirsin:",
+        "items": {
+          "1": "Kişisel verilerinin işlenip işlenmediğini öğrenmek,",
+          "2": "İşlenmişse buna ilişkin bilgi istemek,",
+          "3": "İşlenme amacını ve amaca uygun kullanılıp kullanılmadığını öğrenmek,",
+          "4": "Yurt içinde veya yurt dışında aktarıldığı üçüncü kişileri bilmek,",
+          "5": "Eksik veya yanlış işlenmişse düzeltilmesini istemek,",
+          "6": "KVKK'nın 7. maddesindeki şartlar çerçevesinde silinmesini veya yok edilmesini istemek,",
+          "7": "Düzeltme, silme ve yok etme işlemlerinin aktarıldığı üçüncü kişilere bildirilmesini istemek,",
+          "8": "Münhasıran otomatik sistemlerle analiz edilmesi sonucu aleyhine bir sonuç çıkmasına itiraz etmek,",
+          "9": "Kanuna aykırı işleme nedeniyle zarara uğramışsa zararın giderilmesini talep etmek."
+        }
+      },
+      "contact": {
+        "title": "Başvuru",
+        "body": "Başvurunu {{ email }} adresine e-postayla iletebilirsin. Başvurular en geç 30 gün içinde ücretsiz yanıtlanır."
+      }
+    }
   },
   "terms": {
     "meta": {
-      "title": "Kullanım Şartları | {{ brand.name }}",
-      "description": "{{ brand.name }} kullanım şartları: Hizmetlerimizin kullanımına ilişkin kurallar ve koşullar."
+      "title": "Kullanım Koşulları | {{ brand.name }}",
+      "description": "{{ brand.name }} kullanım koşulları: hesaplar, kullanım kuralları, içerik, özel ders ve sorumluluk."
     },
-    "title": "Kullanım Şartları",
-    "intro": "{{ brand.name }} hizmetlerini kullanarak aşağıdaki şartları kabul etmiş olursunuz. Lütfen tüm kuralları dikkatlice okuyunuz.",
-    "purpose": "{{ brand.name }}, kullanıcıların sınav deneyimini iyileştirmek için tasarlanmıştır.",
-    "misuse": "Hizmetlerimizin kötüye kullanımı yasaktır.",
-    "updates": "Güncellenen şartlar ve koşullar için bu sayfayı düzenli olarak kontrol ediniz."
+    "title": "Kullanım Koşulları",
+    "version": "Sürüm 1.0",
+    "updated": "Son güncelleme: 7 Kasım 2026",
+    "intro": "{{ brand.name }}'u kullanarak bu koşulları kabul etmiş olursun. Kişisel verilerin Gizlilik Politikası'na göre işlenir.",
+    "sections": {
+      "service": {
+        "title": "Hizmet",
+        "body": "{{ brand.name }}; öğretmenlerin test hazırlayıp atadığı, öğrencilerin çözüp gelişimini izlediği, velilerin takip ettiği ve özel derslerin görüntülü yapıldığı bir eğitim platformudur. Kayıt ve kullanım ücretsizdir."
+      },
+      "accounts": {
+        "title": "Hesaplar ve roller",
+        "body": "Hesabını doğru bilgilerle açmak ve giriş bilgilerini korumak senin sorumluluğundadır.",
+        "items": {
+          "1": "Öğretmen ve özel ders öğretmeni hesapları yönetici onayından sonra açılır.",
+          "2": "Öğrenci hesabının bazı özellikleri veli doğrulamasından sonra açılır.",
+          "3": "Veli hesabı öğrencinin davetiyle oluşturulur."
+        }
+      },
+      "rules": {
+        "title": "Kullanım kuralları",
+        "body": "Platformda şunlar yasaktır:",
+        "items": {
+          "1": "Başkasının hesabını kullanmak ya da kendini başkası gibi tanıtmak,",
+          "2": "Hakaret, taciz, nefret söylemi veya çocuklara uygun olmayan içerik paylaşmak,",
+          "3": "Hakkına sahip olmadığın içeriği yüklemek ya da paylaşmak,",
+          "4": "Platformun işleyişini bozmaya, güvenliğini aşmaya veya verileri toplu olarak çekmeye çalışmak,",
+          "5": "Platformu ticari reklam veya yönlendirme amacıyla kullanmak."
+        }
+      },
+      "content": {
+        "title": "İçerik ve haklar",
+        "body": "Yüklediğin soru, görsel ve metinlerin hakları sende kalır; bunları yüklemek için gerekli izinlere sahip olduğunu kabul edersin. İçeriğini platformda gösterebilmemiz için seçtiğin görünürlük ölçüsünde kullanma izni verirsin. Bildirilen içerikler incelenir ve kurallara aykırı olanlar kaldırılabilir."
+      },
+      "ai": {
+        "title": "Yapay zekâ önerileri",
+        "body": "Soru sınıflandırması, soru işaretleme ve soru üretme gibi yapay zekâ önerileri hata içerebilir. Önerileri kontrol etmek ve son kararı vermek öğretmenin sorumluluğundadır."
+      },
+      "tutoring": {
+        "title": "Özel ders",
+        "body": "Özel ders öğretmenlerinin profilinde yazan ücret bilgi amaçlıdır; ödeme platform üzerinden alınmaz ve {{ brand.name }} öğretmen ile öğrenci/veli arasındaki anlaşmanın tarafı değildir."
+      },
+      "suspension": {
+        "title": "Hesabın askıya alınması",
+        "body": "Bu koşullara aykırı kullanımda hesap uyarılmadan kısıtlanabilir, askıya alınabilir veya kapatılabilir."
+      },
+      "liability": {
+        "title": "Sorumluluk",
+        "body": "Platformu kesintisiz ve hatasız sunmak için çalışırız, ancak bunu garanti edemeyiz. Platformdaki puan hesaplayıcı gibi araçların sonuçları tahminidir; resmî sonuçların yerini tutmaz."
+      },
+      "changes": {
+        "title": "Değişiklikler",
+        "body": "Koşullar güncellendiğinde sürüm ve tarih bu sayfada değişir; önemli değişiklikler platform içinde ayrıca duyurulur."
+      },
+      "contact": {
+        "title": "İletişim",
+        "body": "Sorular için: {{ email }}."
+      }
+    }
   },
   "scoreCalculator": {
     "meta": {

@@ -15,5 +15,19 @@
   },
   "unreadPrefix": "Okunmamış:",
   "questionTag": "Soru {{order}}",
-  "coalescedAria": "{{count}} bildirim birleştirildi"
+  "coalescedAria": "{{count}} bildirim birleştirildi",
+  "markAllRead": "Tümünü okundu say",
+  "markAllFailed": "Bildirimler okundu işaretlenemedi. Tekrar dene.",
+  "day": {
+    "today": "Bugün",
+    "yesterday": "Dün",
+    "thisWeek": "Bu hafta",
+    "older": "Daha eski"
+  },
+  "panel": {
+    "title": "Bildirimler",
+    "seeAll": "Tümünü gör",
+    "empty": "Henüz bir bildirimin yok.",
+    "loadError": "Bildirimler yüklenemedi."
+  }
 }

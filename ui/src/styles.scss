@@ -4550,3 +4550,9 @@ mat-icon[mat-card-avatar] {
   color: var(--primaryColor);
   background: var(--ms-surface-medium);
 }
+
+// #914: zil paneli; mat-menu'nün 280px sınırı satırları ve okunmamış noktasını kesiyordu.
+.mat-mdc-menu-panel.bell-menu-panel {
+  width: min(360px, 90vw);
+  max-width: min(360px, 90vw);
+}

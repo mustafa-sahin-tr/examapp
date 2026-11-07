@@ -53,6 +53,11 @@ export class NotificationService {
     });
   }
 
+  /** #914: bütün okunmamışları okundu işaretler; başarıda zil sayısı sıfırlanır. */
+  markAllRead(): Observable<number> {
+    return this.http.post<number>(`${this.baseUrl}/me/read-all`, null).pipe(tap(() => this.unreadCountState.set(0)));
+  }
+
   /** Oturum kapanınca önceki kullanıcının sayısı görünmesin. */
   resetUnreadCount(): void {
     this.unreadCountState.set(0);

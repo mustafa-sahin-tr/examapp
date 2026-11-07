@@ -111,4 +111,24 @@ public class NotificationsController : ControllerBase
 
         return NoContent();
     }
+
+    /// <summary>
+    /// #914: çağıranın görebildiği bütün okunmamış bildirimleri okundu işaretler; işaretlenen sayıyı döner. Admin için rol bazlı
+    /// satırlar da dahildir (okundu durumu onlarda zaten paylaşımlı), yoksa zil sayısı sıfırlanmazdı.
+    /// </summary>
+    [HttpPost("me/read-all")]
+    public async Task<ActionResult<int>> MarkAllReadAsync(CancellationToken ct)
+    {
+        var sub = CallerSub;
+        if (string.IsNullOrEmpty(sub))
+            return Forbid();
+
+        var unread = await Visible(sub).Where(n => !n.IsRead).ToListAsync(ct);
+        foreach (var notification in unread)
+            notification.IsRead = true;
+        if (unread.Count > 0)
+            await _db.SaveChangesAsync(ct);
+
+        return Ok(unread.Count);
+    }
 }

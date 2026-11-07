@@ -380,6 +380,7 @@ describe('EnhancedLayoutComponent notification badge (issue #146)', () => {
             user: signal(null),
             isCachedUserCurrent: () => true,
             refreshProfile: () => NEVER,
+            getUserRole: () => 'Student',
         };
         TestBed.configureTestingModule({
             imports: [EnhancedLayoutComponent, NoopAnimationsModule, translocoTestingModule()],
@@ -406,6 +407,10 @@ describe('EnhancedLayoutComponent notification badge (issue #146)', () => {
                         unreadCount: unreadCount.asReadonly(),
                         refreshUnreadCount,
                         resetUnreadCount: () => unreadCount.set(0),
+                        list: () => of([
+                            { id: 1, type: 'Generic', title: 'Yeni rozet', body: '', data: null, isRead: false, createdAt: new Date().toISOString() },
+                        ]),
+                        markRead: () => of(undefined),
                     },
                 },
                 { provide: UserThemeService, useValue: { userTheme$: of(null) } },
@@ -544,13 +549,20 @@ describe('EnhancedLayoutComponent notification badge (issue #146)', () => {
         await vi.runAllTimersAsync();
     });
 
-    it('bellClick_NavigatesToNotifications', () => {
+    it('bellClick_OpensAPanelWithRecentNotificationsAndALinkToAll (#914)', async () => {
         setup();
         fixture.detectChanges();
 
         bellButton()?.click();
+        fixture.detectChanges();
+        await vi.runOnlyPendingTimersAsync();
+        fixture.detectChanges();
 
-        expect(navigateSpy).toHaveBeenCalledWith(['/notifications']);
+        const overlay = document.querySelector('.cdk-overlay-container') as HTMLElement;
+        expect(navigateSpy).not.toHaveBeenCalledWith(['/notifications']);
+        expect(overlay.querySelectorAll('[data-testid="bell-item"]').length).toBe(1);
+        expect(overlay.textContent).toContain('Yeni rozet');
+        expect(overlay.querySelector('[data-testid="bell-see-all"]')?.getAttribute('href')).toBe('/notifications');
     });
 
     it('routes_NotificationsRoute_ExistsWithAuthGuard', () => {

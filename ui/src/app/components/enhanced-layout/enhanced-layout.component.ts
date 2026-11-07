@@ -7,6 +7,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatMenuModule } from '@angular/material/menu';
+import { NotificationBellPanelComponent } from '../../shared/components/notification-bell-panel/notification-bell-panel.component';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -78,6 +79,7 @@ interface MenuItem {
     MatInputModule,
     MatFormFieldModule,
     MatMenuModule,
+    NotificationBellPanelComponent,
     MatBadgeModule,
     MatDividerModule,
     MatTooltipModule,

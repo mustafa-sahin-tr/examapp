@@ -1,3 +1,4 @@
+import { provideRouter } from '@angular/router';
 import type { Mock, MockedObject } from "vitest";
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient, withXhr } from '@angular/common/http';
@@ -77,6 +78,7 @@ describe('DmConversationComponent (issue #106)', () => {
                 provideHttpClientTesting(),
                 { provide: MatDialog, useValue: dialog },
                 { provide: MatSnackBar, useValue: snackBar },
+                provideRouter([]),
             ],
         });
         http = TestBed.inject(HttpTestingController);
@@ -337,6 +339,21 @@ describe('DmConversationComponent (issue #106)', () => {
         http.expectOne(`${BASE}/conversations/5/unblock`).flush({ success: true, isBlocked: false });
         fixture.detectChanges();
         expect(q('dm-blocked-band')).toBeNull();
+    });
+
+    it('teacher_CoachLinkToStudentsCoachingPage_issue890', () => {
+        create({ role: 'Teacher', unread: 0, name: 'Deniz' });
+        flushLoad(page({ counterpartName: 'Deniz', studentId: 11 }));
+
+        const link = q<HTMLAnchorElement>('dm-coach-link')!;
+        expect(link.getAttribute('href')).toBe('/teacher/coach/11');
+        expect(link.getAttribute('aria-label')).toBe('Deniz için koçluk sayfasını aç');
+    });
+
+    it('student_HasNoCoachLink_issue890', () => {
+        create({ unread: 0 });
+        flushLoad(page({ studentId: 11 }));
+        expect(q('dm-coach-link')).toBeNull();
     });
 
     it('student_HasNoBlockAction', () => {

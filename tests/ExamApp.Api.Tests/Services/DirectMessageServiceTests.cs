@@ -132,6 +132,38 @@ public class DirectMessageServiceTests : IDisposable
         return _w = new World(s1.Id, s2.Id, grade.Id, ws.Id, teacherIds, studentIds, assignmentIds);
     }
 
+    [Fact]
+    public async Task GetMessageableTeachers_Subject_DeclaredSubjectsElseMostAuthored_issue890()
+    {
+        await SeedAsync();
+        await using (var ctx = _db.NewContext())
+        {
+            var math = new Subject { Name = "Matematik" };
+            var turkish = new Subject { Name = "Türkçe" };
+            var science = new Subject { Name = "Fen Bilimleri" };
+            ctx.Subjects.AddRange(math, turkish, science);
+            await ctx.SaveChangesAsync();
+            // Beyan: bağımsız öğretmen iki ders (ada göre sıralı döner).
+            ctx.TeacherSubjects.AddRange(
+                new TeacherSubject { TeacherId = _w.TeacherIds[TIndepAssign], SubjectId = turkish.Id },
+                new TeacherSubject { TeacherId = _w.TeacherIds[TIndepAssign], SubjectId = math.Id });
+            // Beyan yok: en çok hazırladığı ders (2 Fen > 1 Matematik).
+            ctx.SetCurrentUser(TAssignOther);
+            ctx.Worksheets.AddRange(
+                new Worksheet { Name = "F1", Description = "", GradeId = _w.GradeId, SubjectId = science.Id, MaxDurationSeconds = 60 },
+                new Worksheet { Name = "F2", Description = "", GradeId = _w.GradeId, SubjectId = science.Id, MaxDurationSeconds = 60 },
+                new Worksheet { Name = "M1", Description = "", GradeId = _w.GradeId, SubjectId = math.Id, MaxDurationSeconds = 60 });
+            await ctx.SaveChangesAsync();
+            ctx.SetCurrentUser(0);
+        }
+
+        var items = (await ListAsync(SA)).Page!.Items;
+
+        items.Single(i => i.TeacherId == _w.TeacherIds[TIndepAssign]).Subject.ShouldBe("Matematik, Türkçe");
+        items.Single(i => i.TeacherId == _w.TeacherIds[TAssignOther]).Subject.ShouldBe("Fen Bilimleri");
+        items.Single(i => i.TeacherId == _w.TeacherIds[TBoth]).Subject.ShouldBeNull();
+    }
+
     private DirectMessageQuotaOptions _quotas = new();
 
     private DirectMessageService NewService(AppDbContext ctx) =>

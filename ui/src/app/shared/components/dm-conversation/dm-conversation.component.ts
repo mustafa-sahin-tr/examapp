@@ -1,3 +1,4 @@
+import { RouterLink } from '@angular/router';
 import {
   Component,
   DestroyRef,
@@ -46,6 +47,8 @@ interface ConversationHeader {
   avatar: string;
   canSend: boolean;
   isBlocked: boolean;
+  /** #890: öğretmen görünümünde öğrencinin koçluk sayfası bağlantısı için (Students.Id). */
+  studentId: number | null;
 }
 
 export interface DmMessageSentEvent {
@@ -86,6 +89,7 @@ export interface DmBlockedChangeEvent {
     MatInputModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
+    RouterLink,
     ParentActivationNoticeComponent,
     TranslocoDirective,
   ],
@@ -127,7 +131,7 @@ export class DmConversationComponent {
   private readonly logRef = viewChild<ElementRef<HTMLElement>>('messageLog');
 
   protected readonly activeId = signal<number | null>(null);
-  protected readonly header = signal<ConversationHeader>({ name: '', avatar: '', canSend: true, isBlocked: false });
+  protected readonly header = signal<ConversationHeader>({ name: '', avatar: '', canSend: true, isBlocked: false, studentId: null });
   protected readonly messages = signal<DirectMessage[]>([]);
   protected readonly loading = signal(false);
   protected readonly loadError = signal<string | null>(null);
@@ -197,6 +201,7 @@ export class DmConversationComponent {
       avatar: this.counterpartAvatar(),
       canSend: true,
       isBlocked: false,
+      studentId: null,
     });
     this.messages.set([]);
     this.hasMore.set(false);
@@ -222,6 +227,7 @@ export class DmConversationComponent {
           avatar: page.counterpartAvatar ?? '',
           canSend: page.canSend === true,
           isBlocked: page.isBlocked === true,
+          studentId: page.studentId ?? null,
         });
         this.messages.set(page.items ?? []);
         this.hasMore.set(page.hasMore === true);

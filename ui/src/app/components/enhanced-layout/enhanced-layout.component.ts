@@ -274,6 +274,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'teacher-messages', labelKey: 'menu.teacherMessages', icon: 'forum', route: '/teacher-messages', type: 'menu', roles: ['Student'] },
     // Issue #106: öğretmenin öğrenci mesajları gelen kutusu.
     { id: 'student-messages', labelKey: 'menu.studentMessages', icon: 'forum', route: '/student-messages', type: 'menu', roles: ['Teacher'] },
+    // Issue #890: koçluk Mesajlar'ın sekmesi değil, kendi öğesi ("Öğrencilerim").
+    { id: 'teacher-coach', labelKey: 'menu.myStudents', icon: 'insights', route: '/teacher/coach', type: 'menu', roles: ['Teacher'] },
     // Issue #420: veli paneli (çocuk özeti) — velinin ana sayfası.
     { id: 'parent-home', labelKey: 'menu.parentHome', icon: 'home', route: '/parent', type: 'menu', roles: ['Parent'] },
     // Issue #419: velinin çocukları (davet koduyla ekleme + liste).
@@ -358,11 +360,6 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
       { id: 'tab-booking-requests', labelKey: 'menu.bookingRequests', icon: '', route: '/booking-requests', type: 'menu', roles: ['Teacher'], onlyIndependentTeacher: true },
       // Issue #583: açık uçlu etkinlik cevaplarını değerlendirme kuyruğu.
       { id: 'tab-open-text-reviews', labelKey: 'menu.openTextReviews', icon: '', route: '/open-text-reviews', type: 'menu', roles: ['Teacher'] },
-    ],
-    // Issue #700: koç paneli öğrenci mesajlarının yanında; ana menü #719 sınırında kalır.
-    [
-      { id: 'tab-student-messages', labelKey: 'menu.studentMessages', icon: '', route: '/student-messages', type: 'menu', roles: ['Teacher'] },
-      { id: 'tab-teacher-coach', labelKey: 'menu.coach', icon: '', route: '/teacher/coach', type: 'menu', roles: ['Teacher'] },
     ],
     [
       { id: 'tab-tutor-profile', labelKey: 'menu.tutorProfile', icon: '', route: '/tutor-profile', type: 'menu', roles: ['Teacher'], allowUnapprovedTeacher: true, onlyIndependentTeacher: true },

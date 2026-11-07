@@ -37,6 +37,13 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
     public const string InvalidTemplate = "InvalidTemplate";
     public const string WrongGrade = "UnknownGrade";
     public const string TemplateInUse = "TemplateInUse";
+    public const string OfficialTemplate = "OfficialTemplate";
+
+    /// <summary>
+    /// #917: kılavuzdan girilen resmî şablonlar (LGS, YKS TYT/AYT) kilitli; değişiklik kopyası üzerinde yapılır.
+    /// Kodlar kurulum verisindekiyle aynı ve benzersiz olduğundan başka şablon bu kodu alamaz.
+    /// </summary>
+    public static readonly IReadOnlySet<string> OfficialCodes = new HashSet<string>(StringComparer.Ordinal) { "lgs", "tyt", "ayt" };
     public const string CodeTaken = "TemplateCodeTaken";
     public const string AlreadyPublished = "AlreadyPublished";
     public const string TooManyQuestions = "TooManyQuestions";
@@ -73,6 +80,8 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
         {
             template = await db.Set<ExamTemplate>().Include(t => t.Sessions).ThenInclude(s => s.Sections).FirstOrDefaultAsync(t => t.Id == existingId, ct)
                 ?? throw new MockExamRuleException(WrongTemplate);
+            if (OfficialCodes.Contains(template.Code))
+                throw new MockExamRuleException(OfficialTemplate);
             // Kurulmuş denemelerin ders satırları ve sonuçları bu yapıya bağlıdır.
             if (await db.Set<MockExam>().AnyAsync(e => e.ExamTemplateId == existingId, ct))
                 throw new MockExamRuleException(TemplateInUse);
@@ -115,6 +124,7 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
         WrongAnswersPerCorrect = template.WrongAnswersPerCorrect,
         SourceReference = template.SourceReference,
         InUse = mockExamCount > 0,
+        IsOfficial = OfficialCodes.Contains(template.Code),
         MockExamCount = mockExamCount,
         Sessions = template.Sessions.OrderBy(s => s.Order).Select(s => new ExamTemplateSessionDto
         {

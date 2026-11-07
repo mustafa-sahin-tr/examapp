@@ -577,6 +577,28 @@ describe('mock exam screens', () => {
       expect(el.querySelector('.et-item')!.getAttribute('aria-current')).toBe('true');
     });
 
+    it('officialTemplate_IsLocked_CopyOpensANewTemplateToEdit_issue917', () => {
+      service.listTemplates.mockReturnValue(of([{ ...TEMPLATE, isOfficial: true }]));
+      const { fixture, component, el } = view();
+      expect(el.querySelector('[data-test="template-official"]')?.textContent).toContain(tr.templates.official);
+
+      (el.querySelector('.et-item') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(component.draft()).toBeNull();
+      expect(el.querySelector('[data-test="template-readonly"]')?.textContent).toContain(tr.templates.officialNote);
+
+      (el.querySelector('[data-test="template-copy"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      expect(component.selectedId()).toBe('new');
+      const copy = component.draft()!;
+      expect(copy.id).toBeUndefined();
+      expect(copy.code).toBe('lgs-kopya');
+      expect(copy.name).toBe('LGS (kopya)');
+      expect(copy.sessions[0].sections[0]).toEqual({ groupName: undefined, name: 'Türkçe', questionCount: 20 });
+      expect(el.querySelector('[data-test="template-form"]')).not.toBeNull();
+    });
+
     it('selectedRow_IsHighlightedAndOpensTheForm', () => {
       const { fixture, el } = view();
 

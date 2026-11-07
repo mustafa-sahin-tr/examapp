@@ -39,11 +39,11 @@
     "youtube": "YouTube"
   },
   "editor": {
-    "titleEdit": "Edit Study Activity",
-    "titleNew": "New Study Activity",
-    "contentTypeLabel": "Activity Type",
+    "titleEdit": "Edit study page",
+    "titleNew": "New study page",
+    "contentTypeLabel": "Content type",
     "titleField": "Title",
-    "descriptionField": "Description",
+    "descriptionField": "Text",
     "link": {
       "sectionTitle": "Link Details",
       "urlLabel": "URL",
@@ -71,7 +71,8 @@
       "subject": "Subject",
       "topic": "Topic",
       "subTopic": "Subtopic",
-      "select": "Select"
+      "select": "Select",
+      "none": "Select"
     },
     "publish": "Publish",
     "cancel": "Cancel",
@@ -95,7 +96,8 @@
       "excluded": "Excluded",
       "empty": "No images added yet",
       "selectedTitle": "Images To Be Added",
-      "viewLarge": "View Larger"
+      "viewLarge": "View Larger",
+      "more": "More"
     },
     "guidance": {
       "title": "File Guide",
@@ -139,6 +141,9 @@
       "createFailed": "An error occurred while saving.",
       "notFound": "The study activity was not found.",
       "ok": "OK"
-    }
+    },
+    "statusDraft": "Draft",
+    "statusPublished": "Published",
+    "descriptionHint": "A short note the student reads before the content."
   }
 }

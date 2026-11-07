@@ -1,5 +1,12 @@
 .editor-grid {
   gap: 20px;
+
+  // #869: içerik sütunu tür seçicinin üç seçeneğini sığdırır.
+  > .form-column {
+    flex: 1 1 380px;
+    min-width: 380px;
+    max-width: 520px;
+  }
 }
 
 .editor-card {
@@ -561,5 +568,54 @@
   .missing & {
     color: var(--ms-danger-text-medium);
     background: color-mix(in srgb, var(--ms-danger-border) 20%, transparent);
+  }
+}
+// #869: kısa künye satırı.
+.sp-head {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 16px 0 20px;
+}
+
+.sp-head__bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.sp-head__title {
+  margin: 0;
+}
+
+.sp-head__status {
+  padding: 2px 10px;
+  border: 1px solid var(--ms-border);
+  border-radius: 999px;
+  color: var(--ms-text-medium);
+  font-size: 13px;
+  font-weight: 600;
+
+  &--live {
+    border-color: var(--ms-success-border);
+    background: var(--ms-success-surface-weak);
+    color: var(--ms-success-text);
+  }
+}
+
+.sp-head__spacer {
+  flex: 1;
+}
+
+.sp-head__meta {
+  display: grid;
+  grid-template-columns: minmax(220px, 2fr) repeat(4, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 1100px) {
+  .sp-head__meta {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   }
 }

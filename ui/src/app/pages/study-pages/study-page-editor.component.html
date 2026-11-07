@@ -1,8 +1,63 @@
-<app-section-header
-  class="section-container"
-  [title]="(isEditMode() ? 'study-pages.editor.titleEdit' : 'study-pages.editor.titleNew') | transloco"
-  [headingLevel]="1"
-></app-section-header>
+<!-- #869: kısa künye — başlık, sınıf / ders / konu tek satırda; yayın ve kaydet sağda. -->
+<header class="sp-head" *transloco="let t; prefix: 'study-pages.editor'" [formGroup]="form">
+  <div class="sp-head__bar">
+    <h1 class="sp-head__title ms-page-title">{{ isEditMode() ? t('titleEdit') : t('titleNew') }}</h1>
+    <span class="sp-head__status" [class.sp-head__status--live]="form.controls.isPublished.value" data-testid="study-page-status">
+      {{ form.controls.isPublished.value ? t('statusPublished') : t('statusDraft') }}
+    </span>
+    <span class="sp-head__spacer"></span>
+    <mat-slide-toggle formControlName="isPublished">{{ t('publish') }}</mat-slide-toggle>
+    <button mat-stroked-button type="button" (click)="onCancel()">{{ t('cancel') }}</button>
+    <button mat-flat-button color="primary" type="button" (click)="onSave()" [disabled]="loading()" data-testid="study-page-save">
+      {{ loading() ? t('saving') : t('save') }}
+    </button>
+  </div>
+  <div class="sp-head__meta">
+    <mat-form-field appearance="outline" class="sp-head__name" subscriptSizing="dynamic">
+      <mat-label>{{ t('titleField') }}</mat-label>
+      <input matInput formControlName="title" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="sp-head__tax" subscriptSizing="dynamic">
+      <mat-label>{{ t('taxonomy.grade') }}</mat-label>
+      <mat-select formControlName="gradeId">
+        <mat-option [value]="null">{{ t('taxonomy.none') }}</mat-option>
+        @for (grade of grades(); track grade.id) {
+        <mat-option [value]="grade.id">{{ grade.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="sp-head__tax" subscriptSizing="dynamic">
+      <mat-label>{{ t('taxonomy.subject') }}</mat-label>
+      <mat-select formControlName="subjectId" [disabled]="!form.get('gradeId')?.value">
+        <mat-option [value]="null">{{ t('taxonomy.none') }}</mat-option>
+        @for (subject of subjects(); track subject.id) {
+        <mat-option [value]="subject.id">{{ subject.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="sp-head__tax" subscriptSizing="dynamic">
+      <mat-label>{{ t('taxonomy.topic') }}</mat-label>
+      <mat-select formControlName="topicId" [disabled]="!form.get('gradeId')?.value">
+        <mat-option [value]="null">{{ t('taxonomy.none') }}</mat-option>
+        @for (topic of topics(); track topic.id) {
+        <mat-option [value]="topic.id">{{ topic.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="sp-head__tax" subscriptSizing="dynamic">
+      <mat-label>{{ t('taxonomy.subTopic') }}</mat-label>
+      <mat-select formControlName="subTopicId" [disabled]="!form.get('gradeId')?.value">
+        <mat-option [value]="null">{{ t('taxonomy.none') }}</mat-option>
+        @for (subtopic of subtopics(); track subtopic.id) {
+        <mat-option [value]="subtopic.id">{{ subtopic.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
+</header>
 
 <div class="form-container editor-grid" *transloco="let t; prefix: 'study-pages.editor'">
   <div class="form-column">
@@ -27,12 +82,8 @@
           </div>
 
           <mat-form-field appearance="outline">
-            <mat-label>{{ t('titleField') }}</mat-label>
-            <input matInput formControlName="title" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
             <mat-label>{{ t('descriptionField') }}</mat-label>
+            <mat-hint>{{ t('descriptionHint') }}</mat-hint>
             <textarea matInput rows="4" formControlName="description"></textarea>
           </mat-form-field>
 
@@ -148,56 +199,9 @@
           </div>
           }
 
-          <mat-form-field appearance="outline">
-            <mat-label>{{ t('taxonomy.grade') }}</mat-label>
-            <mat-select formControlName="gradeId">
-              <mat-option [value]="null">Seciniz</mat-option>
-              @for (grade of grades(); track grade.id) {
-              <mat-option [value]="grade.id">{{ grade.name }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>{{ t('taxonomy.subject') }}</mat-label>
-            <mat-select formControlName="subjectId" [disabled]="!form.get('gradeId')?.value">
-              <mat-option [value]="null">Seciniz</mat-option>
-              @for (subject of subjects(); track subject.id) {
-              <mat-option [value]="subject.id">{{ subject.name }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>{{ t('taxonomy.topic') }}</mat-label>
-            <mat-select formControlName="topicId" [disabled]="!form.get('gradeId')?.value">
-              <mat-option [value]="null">Seciniz</mat-option>
-              @for (topic of topics(); track topic.id) {
-              <mat-option [value]="topic.id">{{ topic.name }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>{{ t('taxonomy.subTopic') }}</mat-label>
-            <mat-select formControlName="subTopicId" [disabled]="!form.get('gradeId')?.value">
-              <mat-option [value]="null">Seciniz</mat-option>
-              @for (subtopic of subtopics(); track subtopic.id) {
-              <mat-option [value]="subtopic.id">{{ subtopic.name }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-
-          <mat-slide-toggle formControlName="isPublished">{{ t('publish') }}</mat-slide-toggle>
         </form>
       </mat-card-content>
 
-      <mat-card-actions class="action-row">
-        <button mat-stroked-button (click)="onCancel()">{{ t('cancel') }}</button>
-        <button mat-flat-button color="primary" (click)="onSave()" [disabled]="loading()">
-          {{ loading() ? t('saving') : t('save') }}
-        </button>
-      </mat-card-actions>
     </mat-card>
   </div>
 
@@ -218,11 +222,18 @@
                 {{ downloadingZip() ? t('images.downloadingZip') : t('images.downloadZip') }}
               </button>
               }
-              <label class="upload-btn json-upload-btn">
-                <input type="file" accept=".json" (change)="onJsonSelected($event)" [disabled]="jsonProcessing()" />
-                <mat-icon>upload_file</mat-icon>
-                {{ jsonProcessing() ? t('images.readingJson') : t('images.uploadJson') }}
-              </label>
+              <!-- #869: toplu kitap aktarımı (JSON) ikincil iş: "Diğer" menüsünde. -->
+              <input #jsonInput type="file" accept=".json" hidden (change)="onJsonSelected($event)" />
+              <button mat-icon-button type="button" [matMenuTriggerFor]="moreMenu" [attr.aria-label]="t('images.more')"
+                data-testid="study-page-more">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+              <mat-menu #moreMenu="matMenu">
+                <button mat-menu-item type="button" (click)="jsonInput.click()" [disabled]="jsonProcessing()" data-testid="study-page-upload-json">
+                  <mat-icon>upload_file</mat-icon>
+                  <span>{{ jsonProcessing() ? t('images.readingJson') : t('images.uploadJson') }}</span>
+                </button>
+              </mat-menu>
               @if (hasJsonConfig) {
               <label class="upload-btn">
                 <input #bulkFileInput type="file" webkitdirectory multiple (change)="onBulkFilesSelected($event)" />

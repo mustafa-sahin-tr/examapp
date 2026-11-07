@@ -1,6 +1,6 @@
 /* ===========================
-   Auth Area — Two-column layout
-   (shared visual language with register/login)
+   Auth Area — #1009: the dark, branded shell of the sign-in and Keycloak registration pages;
+   one card under the brand, no illustration. Colors come from the global --ms-* tokens.
    =========================== */
 .auth-area {
   width: 100%;
@@ -9,37 +9,52 @@
   align-items: center;
   justify-content: center;
   padding: 48px 16px;
-  background-color: #f5f7fb;
+  box-sizing: border-box;
+  background-color: var(--main-bg-color);
+  background-image: radial-gradient(1200px 600px at 50% -10%, color-mix(in srgb, var(--ms-action-background) 28%, transparent), transparent 70%);
+  color: var(--ms-text);
   font-family: 'Segoe UI', Arial, sans-serif;
 }
 
 .auth-inner {
   display: flex;
-  align-items: center;
-  gap: 48px;
-  max-width: 1040px;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 560px;
   width: 100%;
 }
 
-.auth-image-col {
-  flex: 1;
+.auth-brand {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 12px;
 
-  img {
-    max-width: 100%;
-    height: auto;
+  &__mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    color: var(--ms-action-text-inverse);
+    background: linear-gradient(135deg, var(--ms-action-text-medium) 0%, var(--ms-action-background) 100%);
+  }
+
+  &__name {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--ms-text-strong);
   }
 }
 
 .auth-form-col {
-  flex: 1.2;
   min-width: 0;
-  background: #ffffff;
+  background: var(--ms-surface-weak);
+  border: 1px solid var(--ms-border-weak);
   border-radius: 16px;
-  padding: 36px 32px;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.08);
+  padding: 32px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.35);
 }
 
 .auth-form-header {
@@ -48,13 +63,15 @@
   h3 {
     font-size: 24px;
     font-weight: 700;
-    color: #1a1a2e;
-    margin-bottom: 4px;
+    color: var(--ms-text-strong);
+    margin: 0 0 4px;
+    padding: 0; // global styles.scss pads every h3
   }
 
   p {
+    margin: 0;
     font-size: 14px;
-    color: #6b7280;
+    color: var(--ms-text-medium);
     line-height: 1.5;
   }
 }
@@ -77,34 +94,33 @@
   width: 100%;
   padding: 16px 18px;
   text-align: left;
-  background: #f9fafb;
-  border: 1px solid #d1d5db;
-  border-radius: 10px;
+  background: var(--ms-surface);
+  border: 1px solid var(--ms-border);
+  border-radius: 12px;
   cursor: pointer;
   font-family: inherit;
   transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 
   &:hover {
-    border-color: #6438c3;
-    background: #ffffff;
+    border-color: var(--ms-action-border);
   }
 
   &.role-card-selected {
-    border-color: #6438c3;
-    background: #ffffff;
-    box-shadow: 0 0 0 3px rgba(100, 56, 195, 0.12);
+    background: var(--ms-action-background-weak);
+    border-color: var(--ms-action-border);
+    box-shadow: 0 0 0 1px var(--ms-action-border);
   }
 }
 
 .role-card-title {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
-  color: #1a1a2e;
+  color: var(--ms-text-strong);
 }
 
 .role-card-desc {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--ms-text-medium);
 }
 
 /* ===========================
@@ -124,26 +140,28 @@
   label {
     font-size: 13px;
     font-weight: 600;
-    color: #1a1a2e;
+    color: var(--ms-text);
   }
 
   input,
   select {
+    box-sizing: border-box;
     width: 100%;
     padding: 12px 14px;
     font-size: 14px;
     font-family: inherit;
-    color: #1a1a2e;
-    background: #f9fafb;
-    border: 1px solid #d1d5db;
+    color: var(--ms-text-strong);
+    background: var(--ms-surface);
+    border: 1px solid var(--ms-border);
     border-radius: 8px;
     transition: border-color 0.2s, box-shadow 0.2s;
 
+    &::placeholder { color: var(--ms-text-weak); }
+
     &:focus {
       outline: none;
-      border-color: #6438c3;
-      background: #ffffff;
-      box-shadow: 0 0 0 3px rgba(100, 56, 195, 0.12);
+      border-color: var(--ms-action-border-focus);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--ms-action-border-focus) 30%, transparent);
     }
   }
 }
@@ -159,7 +177,7 @@
     margin-bottom: 6px;
     font-size: 13px;
     font-weight: 600;
-    color: #1a1a2e;
+    color: var(--ms-text);
   }
 }
 
@@ -170,40 +188,48 @@
   padding: 12px 14px;
   font-size: 14px;
   font-weight: 500;
-  color: #1a1a2e;
-  background: #f9fafb;
-  border: 1px solid #d1d5db;
+  color: var(--ms-text-strong);
+  background: var(--ms-surface);
+  border: 1px solid var(--ms-border);
   border-radius: 8px;
   cursor: pointer;
   transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 
   &:hover {
-    border-color: #6438c3;
-    background: #ffffff;
+    border-color: var(--ms-action-border);
   }
 
   &:has(input:checked) {
-    border-color: #6438c3;
-    background: #ffffff;
-    box-shadow: 0 0 0 3px rgba(100, 56, 195, 0.12);
+    background: var(--ms-action-background-weak);
+    border-color: var(--ms-action-border);
+    box-shadow: 0 0 0 1px var(--ms-action-border);
   }
 
   input[type='radio'] {
     width: auto;
     margin: 0;
-    accent-color: #6438c3;
+    accent-color: var(--ms-action-background);
     cursor: pointer;
   }
 }
 
 .field-error {
   font-size: 12px;
-  color: #dc2626;
+  color: var(--ms-danger-text-medium);
 }
 
 .field-hint {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--ms-text-medium);
+
+  // global styles.scss turns every link into a clamped block; keep this one inside the sentence
+  a {
+    display: inline;
+    color: var(--ms-action-text-weak);
+    font-weight: 600;
+
+    &:hover { text-decoration: underline; }
+  }
 }
 
 /* Veli bilgileri (issue #440) */
@@ -262,14 +288,14 @@
   padding: 13px 16px;
   font-size: 14px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--ms-text-medium);
   background: transparent;
   border: none;
   cursor: pointer;
   font-family: inherit;
 
   &:hover:not(:disabled) {
-    color: #1a1a2e;
+    color: var(--ms-text-strong);
   }
   &:disabled {
     opacity: 0.55;
@@ -286,8 +312,8 @@
   padding: 13px 24px;
   font-size: 15px;
   font-weight: 600;
-  color: #ffffff;
-  background: linear-gradient(135deg, #6438c3 0%, #4f2fa4 100%);
+  color: var(--ms-action-text-inverse);
+  background: var(--ms-action-background);
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -309,16 +335,7 @@
 /* ===========================
    Responsive
    =========================== */
-@media (max-width: 900px) {
-  .auth-inner {
-    flex-direction: column;
-    gap: 24px;
-  }
-
-  .auth-image-col {
-    display: none;
-  }
-
+@media (max-width: 600px) {
   .auth-form-col {
     padding: 28px 20px;
   }

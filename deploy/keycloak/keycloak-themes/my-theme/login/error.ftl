@@ -21,8 +21,7 @@
       <#if !skipLink??>
         <div class="auth-bottom-text">
           <#-- exam-client has no baseUrl configured (realm-export: ""), so
-               fall back to the app's own login route, the same way
-               login.ftl links to /app/register. -->
+               fall back to the app's own login route. -->
           <#if client?? && client.baseUrl?has_content>
             <a id="backToApplication" href="${client.baseUrl}">${kcSanitize(msg("backToApplication"))?no_esc}</a>
           <#else>

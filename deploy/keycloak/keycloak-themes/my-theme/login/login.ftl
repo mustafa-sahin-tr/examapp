@@ -71,8 +71,12 @@
         </div>
       </#if>
 
-      <div class="auth-bottom-text">
-        <span>${msg("noAccount")} <a href="/app/register">${msg("doRegister")}</a></span>
-      </div>
+      <#-- #1009: one sign-up path. Keycloak's own registration page, inside the current OIDC request, so the
+           user comes back signed in and picks a role on /app/complete-profile (Google sign-up lands there too). -->
+      <#if realm.password && realm.registrationAllowed && !registrationDisabled??>
+        <div class="auth-bottom-text">
+          <span>${msg("noAccount")} <a id="register-link" href="${url.registrationUrl}">${msg("doRegister")}</a></span>
+        </div>
+      </#if>
   </#if>
 </@layout.registrationLayout>

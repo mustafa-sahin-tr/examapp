@@ -1,5 +1,5 @@
 /* ===========================
-   Auth Area — #1009: the dark, branded shell of the sign-in and Keycloak registration pages;
+   Auth Area — #1009: the dark, branded shell shared with the sign-in and Keycloak registration pages;
    one card under the brand, no illustration. Colors come from the global --ms-* tokens.
    =========================== */
 .auth-area {
@@ -79,49 +79,9 @@
 /* ===========================
    Role picker
    =========================== */
-.role-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 24px;
-}
 
-.role-card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  width: 100%;
-  padding: 16px 18px;
-  text-align: left;
-  background: var(--ms-surface);
-  border: 1px solid var(--ms-border);
-  border-radius: 12px;
-  cursor: pointer;
-  font-family: inherit;
-  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 
-  &:hover {
-    border-color: var(--ms-action-border);
-  }
 
-  &.role-card-selected {
-    background: var(--ms-action-background-weak);
-    border-color: var(--ms-action-border);
-    box-shadow: 0 0 0 1px var(--ms-action-border);
-  }
-}
-
-.role-card-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--ms-text-strong);
-}
-
-.role-card-desc {
-  font-size: 13px;
-  color: var(--ms-text-medium);
-}
 
 /* ===========================
    Role-specific form (step 2)
@@ -166,52 +126,7 @@
   }
 }
 
-.radio-group {
-  margin: 0;
-  padding: 0;
-  border: none;
-  min-width: 0;
 
-  legend {
-    padding: 0;
-    margin-bottom: 6px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--ms-text);
-  }
-}
-
-.radio-option {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--ms-text-strong);
-  background: var(--ms-surface);
-  border: 1px solid var(--ms-border);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
-
-  &:hover {
-    border-color: var(--ms-action-border);
-  }
-
-  &:has(input:checked) {
-    background: var(--ms-action-background-weak);
-    border-color: var(--ms-action-border);
-    box-shadow: 0 0 0 1px var(--ms-action-border);
-  }
-
-  input[type='radio'] {
-    width: auto;
-    margin: 0;
-    accent-color: var(--ms-action-background);
-    cursor: pointer;
-  }
-}
 
 .field-error {
   font-size: 12px;
@@ -233,16 +148,6 @@
 }
 
 /* Veli bilgileri (issue #440) */
-.parent-section {
-  padding: 16px 0 0;
-  border: none;
-  border-top: 1px solid var(--ms-border-weak);
-
-  legend {
-    padding: 0;
-    font-weight: 700;
-  }
-}
 
 /* ===========================
    Notice (issue #234: okul onayı bekliyor / 409 mesajı)
@@ -283,25 +188,6 @@
   gap: 12px;
 }
 
-.text-btn {
-  flex: 0 0 auto;
-  padding: 13px 16px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ms-text-medium);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-family: inherit;
-
-  &:hover:not(:disabled) {
-    color: var(--ms-text-strong);
-  }
-  &:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
-}
 
 .default-btn {
   display: inline-flex;

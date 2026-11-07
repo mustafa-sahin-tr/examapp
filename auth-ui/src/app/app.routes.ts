@@ -1,10 +1,9 @@
 import { Routes } from '@angular/router';
-import { toRegisterIntent } from './services/oidc-flow.service';
+import { profileStepUrl, toRegisterIntent } from './services/oidc-flow.service';
 import { LoginComponent } from './pages/login/login.component';
 import { PublicLayoutComponent } from './pages/public/public-layout/public-layout.component';
 import { CallbackComponent } from './pages/callback/callback.component';
 import { LogoutComponent } from './pages/logout/logout.component';
-import { CompleteProfileComponent } from './pages/complete-profile/complete-profile.component';
 
 export const routes: Routes = [
   {
@@ -23,7 +22,17 @@ export const routes: Routes = [
         },
       },
       { path: 'login', component: LoginComponent },
-      { path: 'complete-profile', component: CompleteProfileComponent },
+      // #1009: rol adımı ana uygulamanın `/register` sihirbazına taşındı; eski bağlantılar tam sayfa oraya gider.
+      {
+        path: 'complete-profile',
+        canActivate: [
+          ({ queryParams }: { queryParams: Record<string, unknown> }) => {
+            window.location.replace(profileStepUrl(queryParams['role']));
+            return false;
+          },
+        ],
+        children: [],
+      },
       // Issue #440: velinin e-postasındaki aktivasyon bağlantısı (anonim; `/app/parent-activate?token=...`).
       {
         path: 'parent-activate',

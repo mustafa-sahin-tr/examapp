@@ -98,7 +98,7 @@ const matchingPasswordsValidator: ValidatorFn = (group: AbstractControl): Valida
   imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './parent-activate.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
-  styleUrls: ['../complete-profile/complete-profile.component.scss', './parent-activate.component.scss'],
+  styleUrls: ['./auth-shell.scss', './parent-activate.component.scss'],
 })
 export class ParentActivateComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);

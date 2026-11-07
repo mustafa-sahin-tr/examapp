@@ -314,18 +314,18 @@ describe('CallbackComponent', () => {
 
     // Issue #438: veli panelinden açılan çocuk hesabı kullanıcı adıyla girer (e-postasız); öğrenci kaydı ve Student rolü hazır
     // olduğu için profil tamamlamaya DÜŞMEZ, öğrenci paneline gider.
-    it('veli tarafından açılan çocuk hesabı (yalnız Student) → /dashboard, complete-profile değil', async () => {
+    it('veli tarafından açılan çocuk hesabı (yalnız Student) → /dashboard, rol adımı değil', async () => {
       const target = await runSuccess(['Student']);
       expect(target).toBe('/dashboard');
-      expect(target).not.toContain('complete-profile');
+      expect(target).not.toContain('/register');
     });
 
-    it('rol yok → /app/complete-profile', async () => {
-      expect(await runSuccess([])).toBe('/app/complete-profile');
+    it('rol yok → ana uygulamanın /register sihirbazı (#1009)', async () => {
+      expect(await runSuccess([])).toBe('/register');
     });
 
-    it('rol yok + kayıt niyeti → /app/complete-profile?role=<niyet>', async () => {
-      expect(await runSuccess([], { intent: 'teacher' })).toBe('/app/complete-profile?role=teacher');
+    it('rol yok + kayıt niyeti → /register?role=<niyet>', async () => {
+      expect(await runSuccess([], { intent: 'teacher' })).toBe('/register?role=teacher');
     });
 
     it('saklanan güvenli returnPath kullanılır', async () => {
@@ -345,7 +345,7 @@ describe('CallbackComponent', () => {
     });
 
     it('rolsüz kullanıcıda returnPath profil tamamlamayı atlatmaz', () => {
-      expect(postLoginDestination([], { intent: null, returnPath: '/tests/1' })).toBe('/app/complete-profile');
+      expect(postLoginDestination([], { intent: null, returnPath: '/tests/1' })).toBe('/register');
     });
   });
 

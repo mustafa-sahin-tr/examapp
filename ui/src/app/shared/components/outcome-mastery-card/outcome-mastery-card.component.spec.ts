@@ -98,11 +98,24 @@ describe('OutcomeMasteryCardComponent (#696)', () => {
   const q = (el: HTMLElement, test: string) => el.querySelector(`[data-test="${test}"]`);
   const all = (el: HTMLElement, test: string) => [...el.querySelectorAll(`[data-test="${test}"]`)];
 
+  /** #894: üniteler kapalı gelir, başlanmamış satırlar ayrıca açılır. */
+  async function openUnits(el: HTMLElement, notStarted = false): Promise<void> {
+    for (const button of all(el, 'outcome-mastery-unit-toggle') as HTMLButtonElement[]) button.click();
+    await settle();
+    if (notStarted) {
+      for (const button of all(el, 'outcome-mastery-show-not-started') as HTMLButtonElement[]) button.click();
+      await settle();
+    }
+  }
+
   it('student: reads own report and shows level, stats, and the rules from the server', async () => {
     const el = await render(of(report([outcome(1)])));
 
     expect(service.getMine).toHaveBeenCalled();
     expect(text(el.querySelector('#outcome-mastery-title'))).toBe('Kazanım haritam');
+    expect(q(el, 'outcome-mastery-rules')).toBeNull();
+    (q(el, 'outcome-mastery-rules-toggle') as HTMLButtonElement).click();
+    await openUnits(el);
     expect(text(q(el, 'outcome-mastery-name'))).toBe('M.1 Kazanım 1');
     expect(text(q(el, 'outcome-mastery-level'))).toContain('Tanışık');
     expect(text(q(el, 'outcome-mastery-stats'))).toBe('%50 doğru · son 10 cevap');
@@ -113,6 +126,7 @@ describe('OutcomeMasteryCardComponent (#696)', () => {
     const el = await render(
       of(report([outcome(1), outcome(2, { level: 'mastered' }), outcome(3, { level: 'notStarted', answered: 0, correct: 0, accuracyPct: null })]))
     );
+    await openUnits(el, true);
 
     const links = all(el, 'outcome-mastery-practice') as HTMLAnchorElement[];
     expect(links.length).toBe(1);
@@ -122,12 +136,14 @@ describe('OutcomeMasteryCardComponent (#696)', () => {
 
   it('student: outcome with no topic practises the subject', async () => {
     const el = await render(of(report([outcome(1, { topicId: null, topicName: null })])));
+    await openUnits(el);
 
     expect((q(el, 'outcome-mastery-practice') as HTMLAnchorElement).getAttribute('href')).toBe('/practice?subjectId=3');
   });
 
   it('marks few answers as not certain', async () => {
     const el = await render(of(report([outcome(1, { isTentative: true, answered: 2, correct: 1 }), outcome(2)])));
+    await openUnits(el);
 
     expect(all(el, 'outcome-mastery-tentative').length).toBe(1);
     expect(text(q(el, 'outcome-mastery-tentative'))).toContain('5 cevabın altında');
@@ -177,6 +193,7 @@ describe('OutcomeMasteryCardComponent (#696)', () => {
     const el = await render(of(report([untouched, outcome(2, { level: 'mastered' }), outcome(3), outcome(4, { level: 'proficient' })])));
 
     expect(text(q(el, 'outcome-mastery-subject'))).toContain('Matematik');
+    await openUnits(el, true);
     // Yalnız açık panelin içeriği çizilir.
     expect(all(el, 'outcome-mastery-name').map(text)).toEqual(['M.3 Kazanım 3', 'M.4 Kazanım 4', 'M.2 Kazanım 2']);
   });
@@ -186,7 +203,47 @@ describe('OutcomeMasteryCardComponent (#696)', () => {
     const el = await render(of(report([outcome(1, { curriculumVersion: 'Previous' }), outcome(2), fallback])));
 
     expect(q(el, 'outcome-mastery-curricula')).not.toBeNull();
+    await openUnits(el);
     expect(all(el, 'outcome-mastery-name').map(text)).toEqual(['M.2 Kazanım 2', 'Üçgen']);
+  });
+
+  it('#894: one row per unit with a stacked bar; not-started rows stay hidden until asked', async () => {
+    const notStarted = (id: number, topicId = 30, topicName = 'Açılar') =>
+      outcome(id, { level: 'notStarted', answered: 0, correct: 0, accuracyPct: null, topicId, topicName });
+    const el = await render(
+      of(
+        report([
+          notStarted(4, 31, 'Kesirler'),
+          outcome(1, { level: 'mastered' }),
+          notStarted(2),
+          notStarted(3),
+          outcome(5, { topicId: null, topicName: null, isTentative: true }),
+        ])
+      )
+    );
+
+    expect(all(el, 'outcome-mastery-unit-name').map(text)).toEqual(['Açılar', 'Kesirler', 'Konusu belirtilmemiş']);
+    expect(all(el, 'outcome-mastery-unit-meta').map(text)).toEqual(['1 / 3 başlandı', '0 / 1 başlandı', '1 / 1 başlandı · Az veri']);
+    // Kesirler sunucuda önce gelse de çalışılmamış: çalışılmış ünite öne geçer.
+    const bar = all(el, 'outcome-mastery-bar')[0] as HTMLElement;
+    expect([...bar.children].map((part) => [part.className.split('--')[1], (part as HTMLElement).style.flexGrow])).toEqual([
+      ['mastered', '1'],
+      ['notStarted', '2'],
+    ]);
+    expect(all(el, 'outcome-mastery-row').length).toBe(0);
+
+    const toggle = all(el, 'outcome-mastery-unit-toggle')[0] as HTMLButtonElement;
+    toggle.click();
+    await settle();
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(all(el, 'outcome-mastery-name').map(text)).toEqual(['M.1 Kazanım 1']);
+    expect(text(q(el, 'outcome-mastery-show-not-started'))).toContain('2 başlanmamış satırı göster');
+
+    (q(el, 'outcome-mastery-show-not-started') as HTMLButtonElement).click();
+    await settle();
+    expect(all(el, 'outcome-mastery-name').map(text)).toEqual(['M.1 Kazanım 1', 'M.2 Kazanım 2', 'M.3 Kazanım 3']);
+    expect(q(el, 'outcome-mastery-show-not-started')).toBeNull();
+    expect(el.querySelectorAll('[data-test="outcome-mastery-legend"] li').length).toBe(4);
   });
 
   it('with one curriculum, shows no switch', async () => {

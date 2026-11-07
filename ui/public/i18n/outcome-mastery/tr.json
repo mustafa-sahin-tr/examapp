@@ -43,5 +43,9 @@
   "practiceLabel": "{{name}} için pratik yap",
   "loading": "Yükleniyor…",
   "loadError": "Kazanım bilgileri yüklenemedi.",
-  "retry": "Tekrar dene"
+  "retry": "Tekrar dene",
+  "rulesToggle": "Seviyeler nasıl hesaplanıyor?",
+  "otherUnit": "Konusu belirtilmemiş",
+  "unitStarted": "{{started}} / {{total}} başlandı",
+  "showNotStarted": "{{count}} başlanmamış satırı göster"
 }

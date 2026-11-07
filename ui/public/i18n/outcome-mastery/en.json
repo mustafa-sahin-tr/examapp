@@ -43,5 +43,9 @@
   "practiceLabel": "Practise {{name}}",
   "loading": "Loading…",
   "loadError": "Outcome information could not be loaded.",
-  "retry": "Try again"
+  "retry": "Try again",
+  "rulesToggle": "How are levels calculated?",
+  "otherUnit": "No topic",
+  "unitStarted": "{{started}} / {{total}} started",
+  "showNotStarted": "Show {{count}} not started"
 }

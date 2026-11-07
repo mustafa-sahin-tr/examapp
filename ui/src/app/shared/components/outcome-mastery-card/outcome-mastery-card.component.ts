@@ -7,6 +7,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { EMPTY, Observable, Subject, catchError, defer, finalize, switchMap, tap } from 'rxjs';
@@ -30,11 +31,23 @@ const LEVEL_ICONS: Record<MasteryLevel, string> = {
 /** Sırada ne çalışılacağı önce görünsün: zayıf satır üstte, başlanmamış altta; aynı seviyede sunucu sırası korunur. */
 const LEVEL_ORDER: Record<MasteryLevel, number> = { familiar: 0, proficient: 1, mastered: 2, notStarted: 3 };
 
-interface MasteryRow {
+export interface MasteryRow {
   key: string;
   item: MasteryItem;
   icon: string;
   accuracy: string | null;
+}
+
+/** Issue #894: ünite (konu) satırı — yığılmış çubuk; başlanmamış satırlar ayrı tutulur, istenince açılır. */
+interface UnitGroup {
+  key: string;
+  name: string | null;
+  counts: Record<MasteryLevel, number>;
+  total: number;
+  started: MasteryRow[];
+  notStarted: MasteryRow[];
+  /** Başlanmış her satır az veriye dayanıyor. */
+  allTentative: boolean;
 }
 
 interface SubjectGroup {
@@ -42,6 +55,38 @@ interface SubjectGroup {
   name: string | null;
   rows: MasteryRow[];
   counts: Record<MasteryLevel, number>;
+  units: UnitGroup[];
+}
+
+/** Çubuk ve açıklama sırası: güçlüden başlanmamışa. */
+export const BAR_LEVELS: readonly MasteryLevel[] = ['mastered', 'proficient', 'familiar', 'notStarted'];
+
+const emptyCounts = (): Record<MasteryLevel, number> => ({ notStarted: 0, familiar: 0, proficient: 0, mastered: 0 });
+
+/** Satırları sunucu sırasıyla konuya (ünite) toplar; konusu olmayan satırlar tek "diğer" ünitede, sonda. */
+export function toUnits(rows: MasteryRow[]): UnitGroup[] {
+  const units = new Map<string, UnitGroup>();
+  for (const row of rows) {
+    const key = String(row.item.topicId ?? 'other');
+    let unit = units.get(key);
+    if (!unit) {
+      unit = { key, name: row.item.topicName, counts: emptyCounts(), total: 0, started: [], notStarted: [], allTentative: true };
+      units.set(key, unit);
+    }
+    unit.counts[row.item.level]++;
+    unit.total++;
+    if (row.item.level === 'notStarted') {
+      unit.notStarted.push(row);
+    } else {
+      unit.started.push(row);
+      if (!row.item.isTentative) unit.allTentative = false;
+    }
+  }
+  const list = [...units.values()];
+  for (const unit of list) unit.started.sort((a, b) => LEVEL_ORDER[a.item.level] - LEVEL_ORDER[b.item.level]);
+  // Çalışılmış ünite önce (sunucu sırası korunur), konusuz satırlar en sonda.
+  const rank = (unit: UnitGroup) => (unit.key === 'other' ? 2 : unit.started.length > 0 ? 0 : 1);
+  return list.sort((a, b) => rank(a) - rank(b));
 }
 
 /**
@@ -52,7 +97,7 @@ interface SubjectGroup {
 @Component({
   selector: 'app-outcome-mastery-card',
   standalone: true,
-  imports: [MatButtonModule, MatButtonToggleModule, MatCardModule, MatExpansionModule, MatIconModule, MatProgressSpinnerModule, RouterLink, TranslocoDirective],
+  imports: [MatButtonModule, MatButtonToggleModule, MatCardModule, MatExpansionModule, MatIconModule, MatProgressSpinnerModule, NgTemplateOutlet, RouterLink, TranslocoDirective],
   providers: [provideTranslocoScope(SCOPE)],
   templateUrl: './outcome-mastery-card.component.html',
   styleUrl: './outcome-mastery-card.component.scss',
@@ -94,7 +139,7 @@ export class OutcomeMasteryCardComponent {
       const key = String(item.subjectId ?? 'other');
       let group = groups.get(key);
       if (!group) {
-        group = { key, name: item.subjectName, rows: [], counts: { notStarted: 0, familiar: 0, proficient: 0, mastered: 0 } };
+        group = { key, name: item.subjectName, rows: [], counts: emptyCounts(), units: [] };
         groups.set(key, group);
       }
       group.counts[item.level]++;
@@ -106,11 +151,20 @@ export class OutcomeMasteryCardComponent {
       });
     });
     const list = [...groups.values()];
-    for (const group of list) group.rows.sort((a, b) => LEVEL_ORDER[a.item.level] - LEVEL_ORDER[b.item.level]);
+    for (const group of list) {
+      group.units = toUnits(group.rows);
+      group.rows.sort((a, b) => LEVEL_ORDER[a.item.level] - LEVEL_ORDER[b.item.level]);
+    }
     // Çalışılmış ders önce: açık gelen ilk panel boş bir "başlanmadı" listesi olmasın.
     const started = (group: SubjectGroup) => (group.rows.length > group.counts.notStarted ? 0 : 1);
     return list.sort((a, b) => started(a) - started(b));
   });
+
+  protected readonly barLevels = BAR_LEVELS;
+  /** Açık üniteler ve başlanmamış satırları gösterilen üniteler (`dersKey:üniteKey`). */
+  protected readonly openUnits = signal<ReadonlySet<string>>(new Set());
+  protected readonly notStartedShown = signal<ReadonlySet<string>>(new Set());
+  protected readonly rulesOpen = signal(false);
 
   private readonly requests = new Subject<void>();
 
@@ -133,6 +187,14 @@ export class OutcomeMasteryCardComponent {
     this.requests.next();
   }
 
+  protected toggleUnit(key: string): void {
+    this.openUnits.update((keys) => toggled(keys, key));
+  }
+
+  protected showNotStarted(key: string): void {
+    this.notStartedShown.update((keys) => new Set(keys).add(key));
+  }
+
   protected pickCurriculum(version: string): void {
     this.pickedCurriculum.set(version);
   }
@@ -149,6 +211,8 @@ export class OutcomeMasteryCardComponent {
       this.notFound.set(false);
       this.report.set(null);
       this.pickedCurriculum.set(null);
+      this.openUnits.set(new Set());
+      this.notStartedShown.set(new Set());
       const teacherStudentId = this.teacherStudentId();
       const childId = this.childId();
       const request =
@@ -168,4 +232,10 @@ export class OutcomeMasteryCardComponent {
       );
     });
   }
+}
+
+function toggled(keys: ReadonlySet<string>, key: string): Set<string> {
+  const next = new Set(keys);
+  if (!next.delete(key)) next.add(key);
+  return next;
 }

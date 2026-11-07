@@ -1,4 +1,4 @@
-import { BookDraft, formatRanges, offsetPreview, printedPageOf, validateBookDraft } from './book-ranges';
+import { BookDraft, formatRanges, offsetFromPrinted, offsetPreview, printedPageOf, validateBookDraft } from './book-ranges';
 
 function draft(partial: Partial<BookDraft> = {}): BookDraft {
     return { name: 'TT MatLab', offsets: [], answerKeyRanges: [], toc: [], ...partial };
@@ -94,4 +94,11 @@ describe('book-ranges (#577)', () => {
     it('formatRanges_SingleAndMulti', () => {
         expect(formatRanges([{ fileFrom: 5, fileTo: 5 }, { fileFrom: 120, fileTo: 130 }])).toBe('5, 120–130');
     });
+
+  it('offsetFromPrinted_IsPrintedMinusFile (#868)', () => {
+    expect(offsetFromPrinted(50, 1)).toBe(-49);
+    expect(offsetFromPrinted(1, 3)).toBe(2);
+    expect(offsetFromPrinted(null, 1)).toBeNull();
+    expect(offsetFromPrinted(5, null)).toBeNull();
+  });
 });

@@ -122,6 +122,14 @@ export function validateBookDraft(draft: BookDraft): BookValidationError[] {
 }
 
 /** Ofset satırının önizlemesi: aralığın iki ucunun basılı karşılığı (eksik alan varsa null). */
+/**
+ * #868: ekranda ofset yerine "aralığın ilk dosya sayfası basılı kaçıncı sayfa" girilir; ofset bundan hesaplanır
+ * (basılı = dosya + ofset). Biri boşsa null.
+ */
+export function offsetFromPrinted(fileFrom: number | null, printedFrom: number | null): number | null {
+  return isInt(fileFrom) && isInt(printedFrom) ? printedFrom - fileFrom : null;
+}
+
 export function offsetPreview(row: OffsetDraft): { fileFrom: number; printedFrom: number; fileTo: number; printedTo: number } | null {
   if (!isInt(row.fileFrom) || !isInt(row.fileTo) || !isInt(row.offset)) {
     return null;

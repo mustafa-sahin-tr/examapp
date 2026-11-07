@@ -156,6 +156,17 @@
   width: 120px;
 }
 
+// #868: fasikül satırı — sıra no, PDF aralığı, ilk basılı sayfa, basılı aralık önizlemesi.
+.bk-num--wide {
+  width: 180px;
+}
+
+.bk-row__label {
+  min-width: 24px;
+  color: var(--ms-text-medium);
+  font-weight: 600;
+}
+
 .bk-sel {
   flex: 1 1 160px;
   min-width: 150px;

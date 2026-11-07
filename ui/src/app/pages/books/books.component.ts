@@ -38,6 +38,7 @@ import {
   OffsetDraft,
   TocDraft,
   formatRanges,
+  offsetFromPrinted,
   offsetPreview,
   validateBookDraft,
 } from './book-ranges';
@@ -49,11 +50,18 @@ const BOOKS_SCOPE = 'books';
 const MAX_NOTES = 500;
 
 type RangeGroup = FormGroup<{ fileFrom: FormControl<number | null>; fileTo: FormControl<number | null> }>;
+/** #868: formda ofset yerine aralığın ilk basılı sayfası; ofset kayıtta / doğrulamada hesaplanır. */
 type OffsetGroup = FormGroup<{
   fileFrom: FormControl<number | null>;
   fileTo: FormControl<number | null>;
-  offset: FormControl<number | null>;
+  printedFrom: FormControl<number | null>;
 }>;
+type OffsetFormValue = { fileFrom: number | null; fileTo: number | null; printedFrom: number | null };
+
+function toOffsetDraft(row: OffsetFormValue): OffsetDraft {
+  return { fileFrom: row.fileFrom, fileTo: row.fileTo, offset: offsetFromPrinted(row.fileFrom, row.printedFrom) };
+}
+
 type TocGroup = FormGroup<{
   fileFrom: FormControl<number | null>;
   fileTo: FormControl<number | null>;
@@ -135,7 +143,7 @@ export class BooksComponent {
   private readonly formValue = toSignal(this.form.valueChanges.pipe(map(() => this.form.getRawValue())), {
     initialValue: this.form.getRawValue(),
   });
-  readonly errors = computed(() => validateBookDraft(this.formValue() as BookDraft));
+  readonly errors = computed(() => validateBookDraft(this.draftOf(this.formValue())));
   readonly saving = signal(false);
   readonly saveError = signal<string | null>(null);
   readonly deleting = signal(false);
@@ -242,7 +250,9 @@ export class BooksComponent {
     this.answerKeyRanges.clear({ emitEvent: false });
     this.toc.clear({ emitEvent: false });
     for (const o of book?.offsets ?? []) {
-      this.offsets.push(this.offsetGroup(o), { emitEvent: false });
+      this.offsets.push(this.offsetGroup({ fileFrom: o.fileFrom, fileTo: o.fileTo, printedFrom: o.fileFrom + o.offset }), {
+        emitEvent: false,
+      });
     }
     for (const r of book?.answerKeyRanges ?? []) {
       this.answerKeyRanges.push(this.rangeGroup(r), { emitEvent: false });
@@ -293,7 +303,8 @@ export class BooksComponent {
     // Fasikül: yeni aralık bir öncekinin bittiği yerden başlasın.
     const last = this.offsets.at(this.offsets.length - 1)?.getRawValue();
     const from = last?.fileTo != null ? last.fileTo + 1 : null;
-    this.offsets.push(this.offsetGroup({ fileFrom: from, fileTo: null, offset: last?.offset ?? 0 }));
+    // Yeni fasikül çoğunlukla basılı 1. sayfadan başlar.
+    this.offsets.push(this.offsetGroup({ fileFrom: from, fileTo: null, printedFrom: 1 }));
     this.form.markAsDirty();
   }
 
@@ -357,7 +368,8 @@ export class BooksComponent {
 
   /** "dosya 40 → basılı 39"; ofset ya da uçlar eksikse null. */
   preview(index: number): ReturnType<typeof offsetPreview> {
-    return offsetPreview((this.formValue().offsets[index] ?? {}) as OffsetDraft);
+    const row = this.formValue().offsets[index];
+    return row ? offsetPreview(toOffsetDraft(row)) : null;
   }
 
   rowErrors(section: BookSection | 'name', index: number): BookValidationError[] {
@@ -470,7 +482,7 @@ export class BooksComponent {
       name: value.name.trim(),
       canonicalBookId: value.canonicalBookId,
       notes: notes || null,
-      offsets: value.offsets.map((o) => ({ fileFrom: o.fileFrom!, fileTo: o.fileTo!, offset: o.offset! })),
+      offsets: value.offsets.map((o) => ({ fileFrom: o.fileFrom!, fileTo: o.fileTo!, offset: toOffsetDraft(o).offset! })),
       answerKeyRanges: value.answerKeyRanges.map((r) => ({ fileFrom: r.fileFrom!, fileTo: r.fileTo! })),
       toc: value.toc.map((t) => ({
         fileFrom: t.fileFrom!,
@@ -585,12 +597,16 @@ export class BooksComponent {
     });
   }
 
-  private offsetGroup(value: OffsetDraft): OffsetGroup {
+  private offsetGroup(value: OffsetFormValue): OffsetGroup {
     return this.fb.group({
       fileFrom: this.fb.control<number | null>(value.fileFrom),
       fileTo: this.fb.control<number | null>(value.fileTo),
-      offset: this.fb.control<number | null>(value.offset),
+      printedFrom: this.fb.control<number | null>(value.printedFrom),
     });
+  }
+
+  private draftOf(value: ReturnType<typeof this.form.getRawValue>): BookDraft {
+    return { ...value, offsets: value.offsets.map(toOffsetDraft) } as BookDraft;
   }
 
   private rangeGroup(value: { fileFrom: number | null; fileTo: number | null }): RangeGroup {

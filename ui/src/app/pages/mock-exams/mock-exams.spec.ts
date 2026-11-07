@@ -428,10 +428,14 @@ describe('mock exam screens', () => {
       expect(el.textContent).toContain(tr.student.notAssigned);
     });
 
-    it('noExams_SaysSo', () => {
+    it('noExams_ExplainsWhatAMockExamIsAndOffersNextSteps', () => {
       const { el } = list([]);
 
-      expect(el.textContent).toContain(tr.student.empty);
+      const empty = el.querySelector('[data-test="mock-exams-empty"]')!;
+      expect(empty.textContent).toContain(tr.student.emptyTitle);
+      expect(empty.textContent).toContain(tr.student.empty);
+      const links = Array.from(empty.querySelectorAll('a')).map((a) => a.getAttribute('href'));
+      expect(links).toEqual(['/dashboard', '/score-calculator']);
     });
   });
 

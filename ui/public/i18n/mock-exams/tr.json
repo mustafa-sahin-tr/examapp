@@ -76,15 +76,18 @@
   },
   "student": {
     "title": "Denemeler",
-    "empty": "Şu an çözebileceğiniz deneme yok.",
+    "emptyTitle": "Henüz deneme yok",
+    "empty": "Deneme, LGS gibi süreli ve oturumlu bir sınav. Öğretmenin bir deneme açınca burada görürsün; bitince her ders için netini gösteririz.",
+    "goDaily": "Günün sorularını çöz",
+    "goCalculator": "Puan hesaplamayı dene",
     "failed": "Denemeler yüklenemedi.",
-    "startFailed": "Oturum başlatılamadı. Tekrar deneyin.",
+    "startFailed": "Oturum başlatılamadı. Tekrar dene.",
     "questions": "{{count}} soru",
     "start": "Başla",
     "resume": "Devam et",
     "finished": "Bitti",
     "result": "Sonucu gör",
-    "notAssigned": "Size atanmadı"
+    "notAssigned": "Sana atanmadı"
   },
   "result": {
     "failed": "Sonuç yüklenemedi.",

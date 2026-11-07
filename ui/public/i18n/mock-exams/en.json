@@ -76,7 +76,10 @@
   },
   "student": {
     "title": "Mock Exams",
-    "empty": "There are no mock exams for you right now.",
+    "emptyTitle": "No mock exams yet",
+    "empty": "A mock exam is a timed exam in sessions, like the LGS. When your teacher opens one, you will see it here; when you finish, we show your net for each subject.",
+    "goDaily": "Solve today's questions",
+    "goCalculator": "Try the score calculator",
     "failed": "Mock exams could not be loaded.",
     "startFailed": "The session could not be started. Try again.",
     "questions": "{{count}} questions",

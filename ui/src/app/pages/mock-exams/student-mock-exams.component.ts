@@ -8,7 +8,7 @@ import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { MockExamResult, MockExamService, StudentMockExam, StudentMockExamSession } from '../../services/mock-exam.service';
 import { TestService } from '../../services/test.service';
 
-/** Issue #693: öğrencinin denemeleri. Her oturum ayrı başlar, süresi sunucuda işler. */
+/** Issue #693: öğrencinin denemeleri. Her oturum ayrı başlar, süresi sunucuda işler. #901: boş durum denemeyi anlatır. */
 @Component({
   selector: 'app-student-mock-exams',
   standalone: true,
@@ -17,7 +17,7 @@ import { TestService } from '../../services/test.service';
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./mock-exams.scss'],
   template: `
-    <div class="me-root" *transloco="let t; prefix: 'mock-exams'">
+    <div class="me-root me-root--tab" *transloco="let t; prefix: 'mock-exams'">
       <h1 class="me-title">{{ t('student.title') }}</h1>
 
       @if (failed()) {
@@ -26,7 +26,15 @@ import { TestService } from '../../services/test.service';
           <button mat-button (click)="load()">{{ t('retry') }}</button>
         </div>
       } @else if (loaded() && exams().length === 0) {
-        <p class="me-note">{{ t('student.empty') }}</p>
+        <div class="me-empty" data-test="mock-exams-empty">
+          <mat-icon aria-hidden="true">timer</mat-icon>
+          <h2>{{ t('student.emptyTitle') }}</h2>
+          <p>{{ t('student.empty') }}</p>
+          <div class="me-empty-actions">
+            <a mat-flat-button routerLink="/dashboard">{{ t('student.goDaily') }}</a>
+            <a mat-stroked-button routerLink="/score-calculator">{{ t('student.goCalculator') }}</a>
+          </div>
+        </div>
       }
       @if (startFailed()) {
         <div class="me-error" role="alert">{{ t('student.startFailed') }}</div>

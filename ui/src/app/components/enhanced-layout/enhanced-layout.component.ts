@@ -254,6 +254,13 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     return appRoles.length === 1 && appRoles[0] === 'Parent';
   })();
 
+  /**
+   * #918: üst çubuk araması `/tests` listesinde arar — yalnız test listesi olan öğretmen ve öğrenciye gösterilir
+   * (yalnız admin / yalnız veli hesabında anlamsız). Yer tutucu role göre: öğretmen kendi testlerinde arar.
+   */
+  readonly showGlobalSearch = !this.isParentOnly && (this.isTeacher || this.isStudent);
+  readonly searchPlaceholderKey = this.isTeacher ? 'toolbar.searchPlaceholderTeacher' : 'toolbar.searchPlaceholder';
+
   // Menu items — single source of truth. `roles` omitted = visible to every role.
   // `labelKey` kök sözlükteki `layout.*` anahtarıdır; metin şablonda çevrilir (issue #183).
   menuItems: MenuItem[] = [
@@ -437,6 +444,15 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     const items = this.bottomNavItems.filter((item) => this.isItemAllowed(item, unapprovedTeacher, notIndependent));
     // Issue #719: öğrenci ve öğretmende birincil işler alt çubukta; Ayarlar "Menü"nün içinde.
     return items.some((item) => item.id === 'dashboard') ? items.filter((item) => item.id !== 'settings') : items;
+  });
+
+  /**
+   * #918: alt çubuktaki "Menü" yalnız menüde alt çubukta olmayan bir öğe varsa gösterilir (ör. veli: Ana Sayfa, Çocuklarım,
+   * Ayarlar zaten alt çubukta). Menü (çıkış dahil) üst çubuktaki ☰ düğmesiyle yine açılır.
+   */
+  readonly showBottomMenuTrigger = computed(() => {
+    const bottomRoutes = new Set(this.visibleBottomNavItems().map((item) => item.route));
+    return this.visibleMenuItems().some((item) => item.type === 'menu' && !!item.route && !bottomRoutes.has(item.route));
   });
 
   /** Issue #719: kullanıcının görebildiği bölüm sekmeleri. */

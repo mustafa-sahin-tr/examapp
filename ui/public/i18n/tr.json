@@ -116,7 +116,8 @@
     "toolbar": {
       "searchPlaceholder": "Test ara...",
       "notifications": "Bildirimler",
-      "notificationsUnread": "Bildirimler ({{count}} okunmamış)"
+      "notificationsUnread": "Bildirimler ({{count}} okunmamış)",
+      "searchPlaceholderTeacher": "Testlerde ara..."
     },
     "profile": {
       "fallbackName": "Kullanıcı",

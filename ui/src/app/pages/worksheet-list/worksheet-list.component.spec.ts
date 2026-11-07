@@ -6,6 +6,9 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { of, throwError } from 'rxjs';
 
 import { WorksheetListComponent } from './worksheet-list.component';
+import { StudentService } from '../../services/student.service';
+import { MatDialog } from '@angular/material/dialog';
+import { WorksheetAssignmentDialogData, WorksheetAssignmentDialogResult } from '../worksheet-detail/components/assignment-dialog/worksheet-assignment-dialog.component';
 import { TestService } from '../../services/test.service';
 import { SubjectService } from '../../services/subject.service';
 import { GradesService } from '../../services/grades.service';
@@ -55,7 +58,8 @@ describe('WorksheetListComponent', () => {
             listWorksheets: vi.fn().mockName("TestService.listWorksheets"),
             getActiveAssignments: vi.fn().mockName("TestService.getActiveAssignments"),
             delete: vi.fn().mockName("TestService.delete"),
-            copyWorksheet: vi.fn().mockName("TestService.copyWorksheet")
+            copyWorksheet: vi.fn().mockName("TestService.copyWorksheet"),
+            assignWorksheet: vi.fn().mockName("TestService.assignWorksheet")
         } as unknown as MockedObject<TestService>;
         testService.listWorksheets.mockReturnValue(of({ items: [], totalCount: 0, pageNumber: 1, pageSize: 12 } as Paged<Test>));
         testService.getActiveAssignments.mockReturnValue(of(assignments));
@@ -71,6 +75,7 @@ describe('WorksheetListComponent', () => {
         gradesService.getGrades.mockReturnValue(of([]));
 
         authService = {
+            user: signal(null),
             hasRole: vi.fn().mockName("AuthService.hasRole")
         } as unknown as MockedObject<AuthService>;
         authService.hasRole.mockImplementation((role: string) => (isStudent ? role === 'Student' : role === 'Teacher'));
@@ -82,6 +87,7 @@ describe('WorksheetListComponent', () => {
                 { provide: SubjectService, useValue: subjectService },
                 { provide: GradesService, useValue: gradesService },
                 { provide: AuthService, useValue: authService },
+                { provide: StudentService, useValue: { getLookup: vi.fn().mockReturnValue(of([{ id: 1, fullName: 'Ali' }])) } },
                 { provide: LocaleService, useValue: localeServiceStub },
                 // Gerçek router: kartlardaki routerLink'ler Angular 20'den beri ngOnChanges'ta createUrlTree çağırıyor (#545).
                 provideRouter([]),
@@ -325,10 +331,44 @@ describe('WorksheetListComponent', () => {
             component.paged.set({ items, totalCount: items.length, pageNumber: 1, pageSize: 12 });
         }
 
-        it('onAssign_WorksheetId_NavigatesToDetailWithAssignStudentQuery', () => {
+        it('onAssign_TestNotInTheList_NavigatesToDetailWithAssignStudentQuery', () => {
             component.onAssign(7);
 
             expect(router.navigate).toHaveBeenCalledWith(['/test', 7], { queryParams: { assign: 'student' } });
+        });
+
+        it('onAssign_AssignableTest_OpensTheDialogInPlace_CancelStaysOnTheList_issue918', () => {
+            listWithTests();
+            const open = vi.spyOn(fixture.debugElement.injector.get(MatDialog), 'open')
+                .mockReturnValue({ afterClosed: () => of(undefined) } as never);
+
+            component.onAssign(3);
+
+            expect(router.navigate).not.toHaveBeenCalled();
+            const data = open.mock.lastCall![1]!.data as WorksheetAssignmentDialogData;
+            expect(data.worksheetId).toBe(3);
+            expect(data.worksheetName).toBe('A');
+            expect(data.studentsStatus!()).toBe('loaded');
+            expect(testService.assignWorksheet).not.toHaveBeenCalled();
+        });
+
+        it('onAssign_DialogConfirmed_SendsTheAssignment_issue918', () => {
+            listWithTests();
+            const request = { worksheetId: 3 } as WorksheetAssignmentDialogResult['request'];
+            vi.spyOn(fixture.debugElement.injector.get(MatDialog), 'open')
+                .mockReturnValue({ afterClosed: () => of({ request }) } as never);
+            testService.assignWorksheet.mockReturnValue(of({ success: true }) as never);
+
+            component.onAssign(3);
+
+            expect(testService.assignWorksheet).toHaveBeenCalledWith(request);
+        });
+
+        it('onAssign_NotAssignableTest_GoesToDetailForThePermissionFlow_issue918', () => {
+            listWithTests();
+            component.onAssign(5);
+
+            expect(router.navigate).toHaveBeenCalledWith(['/test', 5], { queryParams: { assign: 'student' } });
         });
 
         it('onAssign_NullId_DoesNotNavigate', () => {
@@ -345,7 +385,7 @@ describe('WorksheetListComponent', () => {
             expect(header.textContent).not.toContain('Excel');
         });
 
-        it('bulkAssign_SingleSelection_EnabledAndNavigatesForSelectedWorksheet', () => {
+        it('bulkAssign_SingleSelection_EnabledAndOpensTheDialogForSelectedWorksheet', () => {
             listWithTests();
             component.toggleRowSelection(3);
             fixture.detectChanges();
@@ -354,9 +394,11 @@ describe('WorksheetListComponent', () => {
             expect(bulkAssignButton()!.disabled).toBe(false);
             expect(bulkHint()).toBeNull();
 
+            const open = vi.spyOn(fixture.debugElement.injector.get(MatDialog), 'open')
+                .mockReturnValue({ afterClosed: () => of(undefined) } as never);
             bulkAssignButton()!.click();
 
-            expect(router.navigate).toHaveBeenCalledWith(['/test', 3], { queryParams: { assign: 'student' } });
+            expect((open.mock.lastCall![1]!.data as WorksheetAssignmentDialogData).worksheetId).toBe(3);
         });
 
         it('bulkAssign_MultipleSelection_DisabledWithSingleOnlyHintAndNoNavigation', () => {

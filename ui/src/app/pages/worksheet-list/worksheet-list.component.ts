@@ -49,6 +49,14 @@ import { WorksheetListViewCardComponent } from './worksheet-list-view-card.compo
 import { ActivityListComponent } from './activity-list.component';
 import { WorksheetKind } from '../../models/activity';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { StudentService } from '../../services/student.service';
+import { StudentLookup } from '../../models/student';
+import {
+  StudentLookupStatus,
+  WorksheetAssignmentDialogComponent,
+  WorksheetAssignmentDialogData,
+  WorksheetAssignmentDialogResult,
+} from '../worksheet-detail/components/assignment-dialog/worksheet-assignment-dialog.component';
 
 /** Issue #573: üst düzey sekme — Testler | Etkinlikler (`?type=activities`). */
 export type WorksheetPageKind = 'tests' | 'activities';
@@ -100,6 +108,7 @@ export class WorksheetListComponent implements OnInit {
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
   private readonly transloco = inject(TranslocoService);
+  private readonly studentService = inject(StudentService);
 
   readonly sortOptions = WORKSHEET_SORT_OPTIONS;
 
@@ -650,11 +659,83 @@ export class WorksheetListComponent implements OnInit {
    * Issue #377: atama, test detayındaki mevcut atama diyaloğuyla yapılır (sınıf/öğrenci listesi, izin ve
    * bağımsız öğretmen kuralları orada). `?assign=student` detay yüklenince diyaloğu doğrudan açar.
    */
+  /**
+   * #918: atama diyaloğu listede açılır; vazgeçilirse liste yerinde kalır. Atanamayan (başkasının) test detay sayfasına
+   * gider — izin isteme akışı orada.
+   */
   onAssign(worksheetId: number | null | undefined): void {
     if (worksheetId == null) {
       return;
     }
-    this.router.navigate(['/test', worksheetId], { queryParams: { assign: 'student' } });
+    const test = this.paged().items.find((t) => t.id === worksheetId);
+    if (!test || test.canAssign === false) {
+      this.router.navigate(['/test', worksheetId], { queryParams: { assign: 'student' } });
+      return;
+    }
+    this.ensureStudentLookup();
+    const user = this.auth.user();
+    this.dialog
+      .open(WorksheetAssignmentDialogComponent, {
+        width: '600px',
+        maxWidth: '95vw',
+        data: {
+          worksheetId,
+          scope: 'student',
+          grades: this.grades(),
+          students: this.studentLookups.asReadonly(),
+          studentsStatus: this.studentLookupStatus.asReadonly(),
+          isIndependentTutor: !this.auth.hasRole('Admin') && user !== null && AuthService.schoolIdOf(user) === null,
+          worksheetCommentsEnabled: test.commentsEnabled !== false,
+          worksheetName: test.subtitle || test.name,
+          defaultGradeId: test.gradeId ?? null,
+        } satisfies WorksheetAssignmentDialogData,
+      })
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((result: WorksheetAssignmentDialogResult | undefined) => {
+        if (result) this.sendAssignment(result);
+      });
+  }
+
+  private readonly studentLookups = signal<StudentLookup[]>([]);
+  private readonly studentLookupStatus = signal<StudentLookupStatus>('loading');
+  private studentLookupRequested = false;
+
+  /** Öğrenci listesi ilk atamada bir kez istenir; hata olursa sonraki açılışta yeniden denenir. */
+  private ensureStudentLookup(): void {
+    if (this.studentLookupRequested) return;
+    this.studentLookupRequested = true;
+    this.studentLookupStatus.set('loading');
+    this.studentService
+      .getLookup()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (students) => {
+          this.studentLookups.set(students ?? []);
+          this.studentLookupStatus.set('loaded');
+        },
+        error: () => {
+          this.studentLookups.set([]);
+          this.studentLookupStatus.set('error');
+          this.studentLookupRequested = false;
+        },
+      });
+  }
+
+  private sendAssignment(result: WorksheetAssignmentDialogResult): void {
+    this.testService
+      .assignWorksheet(result.request)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          const success = response?.success ?? false;
+          const message = response?.message ?? this.tr(success ? 'snackbar.assignmentCreated' : 'snackbar.assignmentFailed');
+          this.snackBar.open(message, this.tr('snackbar.dismiss'), { duration: 3000 });
+        },
+        error: (error) => {
+          this.snackBar.open(error?.error?.message ?? this.tr('snackbar.assignmentFailed'), this.tr('snackbar.close'), { duration: 4000 });
+        },
+      });
   }
 
   /**

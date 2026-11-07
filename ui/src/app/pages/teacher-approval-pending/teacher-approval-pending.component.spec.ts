@@ -44,7 +44,7 @@ describe('TeacherApprovalPendingComponent (issue #287)', () => {
         });
     }
 
-    function create(initial: UserProfile | null, response: UserProfile | null): void {
+    function create(initial: UserProfile | null, response: UserProfile | null, navigate?: ReturnType<typeof vi.fn>): void {
         user = signal(initial);
         unapproved = signal(initial?.teacher?.teacherAccountApproved === false);
         refreshProfile = vi.fn().mockName('refreshProfile');
@@ -65,6 +65,9 @@ describe('TeacherApprovalPendingComponent (issue #287)', () => {
                 { provide: SignalRService, useValue: { teacherApplicationDecided$: decided$.asObservable() } },
             ],
         });
+        // #918: an approved profile on first load redirects to /dashboard; the empty test router has no such route, so
+        // navigation is always stubbed to keep it from raising an unhandled NG04002.
+        vi.spyOn(TestBed.inject(Router), 'navigate').mockImplementation((navigate ?? vi.fn().mockResolvedValue(true)) as never);
         fixture = TestBed.createComponent(TeacherApprovalPendingComponent);
         fixture.detectChanges();
     }
@@ -170,6 +173,14 @@ describe('TeacherApprovalPendingComponent (issue #287)', () => {
         create(switched, switched);
 
         expect(el().querySelector('[data-view="approved"]')).not.toBeNull();
+    });
+
+    it('approvedTeacherOpensThePage_GoesStraightToTheDashboard_issue918', () => {
+        const approved = profile({ teacherAccountApproved: true, teacherApplicationStatus: 'Approved' });
+        const navigate = vi.fn().mockResolvedValue(true);
+        create(approved, approved, navigate);
+
+        expect(navigate).toHaveBeenCalledWith(['/dashboard'], { replaceUrl: true });
     });
 
     it('refreshReturnsNull_ShowsNoRecordWithRegisterLink', () => {

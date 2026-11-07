@@ -114,7 +114,9 @@
     "copySuccess": "Test kendi hesabına kopyalandı.",
     "copyFailed": "Kopyalama başarısız.",
     "deleted": "{{count}} test silindi.",
-    "deletedPartial": "{{ok}} test silindi, {{fail}} tanesi başarısız."
+    "deletedPartial": "{{ok}} test silindi, {{fail}} tanesi başarısız.",
+    "assignmentCreated": "Atama oluşturuldu.",
+    "assignmentFailed": "Atama oluşturulamadı."
   },
   "dialog": {
     "deleteTitle": "Testi Sil",

@@ -114,7 +114,9 @@
     "copySuccess": "The test was copied to your account.",
     "copyFailed": "Copy failed.",
     "deleted": "{{count}} test(s) deleted.",
-    "deletedPartial": "{{ok}} test(s) deleted, {{fail}} failed."
+    "deletedPartial": "{{ok}} test(s) deleted, {{fail}} failed.",
+    "assignmentCreated": "Assignment created.",
+    "assignmentFailed": "The assignment could not be created."
   },
   "dialog": {
     "deleteTitle": "Delete Test",

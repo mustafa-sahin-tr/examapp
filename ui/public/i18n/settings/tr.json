@@ -17,7 +17,8 @@
     "email": "E-posta",
     "role": "Rol",
     "avatarAlt": "Profil fotoğrafı",
-    "readOnlyHint": "Ad, e-posta ve fotoğraf bu sayfada yalnızca görüntülenir."
+    "readOnlyHint": "Ad ve e-postanı Hesabım sayfasından değiştirebilirsin.",
+    "accountLink": "Hesabım'ı aç"
   },
   "teacher": {
     "title": "Öğretmen bilgileri",

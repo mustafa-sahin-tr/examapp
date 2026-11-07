@@ -15,5 +15,19 @@
   },
   "unreadPrefix": "Unread:",
   "questionTag": "Question {{order}}",
-  "coalescedAria": "{{count}} notifications combined"
+  "coalescedAria": "{{count}} notifications combined",
+  "markAllRead": "Mark all as read",
+  "markAllFailed": "Notifications could not be marked as read. Try again.",
+  "day": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "thisWeek": "This week",
+    "older": "Earlier"
+  },
+  "panel": {
+    "title": "Notifications",
+    "seeAll": "See all",
+    "empty": "You have no notifications yet.",
+    "loadError": "Notifications could not be loaded."
+  }
 }

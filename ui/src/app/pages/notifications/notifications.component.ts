@@ -13,7 +13,7 @@ import { AppRouteLink } from '../../models/worksheet-comment.model';
 import { AuthService } from '../../services/auth.service';
 import { NotificationService } from '../../services/notification.service';
 import { LocaleService } from '../../services/locale.service';
-import { NotificationBadgeIcon, describeNotification, formatRelativeTime } from './notification-format';
+import { NotificationBadgeIcon, NotificationDayGroup, describeNotification, formatRelativeTime, navigateToNotification, notificationDayGroup } from './notification-format';
 import { BadgeMedallionComponent } from '../../shared/components/badge-medallion/badge-medallion.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
@@ -37,6 +37,11 @@ export interface NotificationRow {
   /** Issue #305 B: birleştirilmiş olay sayısı rozeti ("3", "99+"); tek olayda null. */
   coalescedLabel: string | null;
   coalescedCount: number;
+}
+
+export interface NotificationGroup {
+  key: NotificationDayGroup;
+  rows: NotificationRow[];
 }
 
 const SCOPE = 'notifications';
@@ -86,6 +91,26 @@ export class NotificationsComponent implements OnInit {
 
   protected readonly isEmpty = computed(() => !this.loading() && !this.error() && this.rows().length === 0);
 
+  /** #914: satırlar gün gruplarında; liste yeniden eskiye sıralı geldiği için gruplar da sırayla oluşur. */
+  protected readonly groups = computed<NotificationGroup[]>(() => {
+    const now = this.now();
+    const groups: NotificationGroup[] = [];
+    for (const row of this.rows()) {
+      const key = notificationDayGroup(row.notification.createdAt, now);
+      const last = groups.at(-1);
+      if (last?.key === key) {
+        last.rows.push(row);
+      } else {
+        groups.push({ key, rows: [row] });
+      }
+    }
+    return groups;
+  });
+
+  protected readonly hasUnread = computed(() => this.notifications().some((n) => !n.isRead));
+  protected readonly markingAll = signal(false);
+  protected readonly markAllFailed = signal(false);
+
   constructor() {
     // Sunucuda periyodik timer uygulamayı "stable" olmaktan alıkoyar — yalnızca tarayıcıda.
     if (isPlatformBrowser(inject(PLATFORM_ID))) {
@@ -132,18 +157,7 @@ export class NotificationsComponent implements OnInit {
    */
   protected open(row: NotificationRow): void {
     const { notification, route } = row;
-    const navigate = () => {
-      if (!route) {
-        return;
-      }
-      if (route.fragment) {
-        void this.router.navigate(route.commands, { queryParams: route.queryParams, fragment: route.fragment });
-      } else if (route.queryParams) {
-        void this.router.navigate(route.commands, { queryParams: route.queryParams });
-      } else {
-        void this.router.navigate(route.commands);
-      }
-    };
+    const navigate = () => navigateToNotification(this.router, route);
     if (notification.isRead) {
       navigate();
       return;
@@ -154,6 +168,29 @@ export class NotificationsComponent implements OnInit {
       .markRead(notification.id)
       .pipe(finalize(navigate))
       .subscribe({ error: () => this.setRead(notification.id, false) });
+  }
+
+  /** #914: sayfadaki okunmamışlar hemen okunmuş görünür; istek başarısızsa geri alınır. */
+  protected markAllRead(): void {
+    if (this.markingAll()) {
+      return;
+    }
+    const before = this.notifications();
+    this.markingAll.set(true);
+    this.markAllFailed.set(false);
+    this.notifications.update((items) => items.map((n) => (n.isRead ? n : { ...n, isRead: true })));
+    this.notificationService
+      .markAllRead()
+      .pipe(
+        finalize(() => this.markingAll.set(false)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        error: () => {
+          this.notifications.set(before);
+          this.markAllFailed.set(true);
+        },
+      });
   }
 
   private setRead(id: number, isRead: boolean): void {

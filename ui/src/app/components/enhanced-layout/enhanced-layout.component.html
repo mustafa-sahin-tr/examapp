@@ -220,7 +220,7 @@
 
       <!-- Issue #146: bildirim zili + okunmamış sayacı (masaüstü ve mobil toolbar ortak) -->
       <ng-template #notificationBell let-hostClass>
-        <button mat-icon-button type="button" class="notification-bell" [ngClass]="hostClass" (click)="onNotifications()"
+        <button mat-icon-button type="button" class="notification-bell" [ngClass]="hostClass" [matMenuTriggerFor]="bellMenu" data-testid="notification-bell"
       [attr.aria-label]="unreadNotificationCount() > 0
         ? t('toolbar.notificationsUnread', { count: unreadNotificationCount() })
         : t('toolbar.notifications')"
@@ -230,6 +230,12 @@
             [matBadgeHidden]="unreadNotificationCount() === 0"
           matBadgeColor="warn" matBadgeSize="small">notifications</mat-icon>
         </button>
+        <!-- #914: zil son bildirimleri panelde açar; içerik her açılışta yeniden kurulur. -->
+        <mat-menu #bellMenu="matMenu" class="ms-menu-panel bell-menu-panel" xPosition="before">
+          <ng-template matMenuContent>
+            <app-notification-bell-panel />
+          </ng-template>
+        </mat-menu>
       </ng-template>
 
       <!-- Mobile Bottom Navigation Bar (sınav çözme ekranında gizli: ekranın kendi dock'u var) -->

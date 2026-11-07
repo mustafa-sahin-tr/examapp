@@ -1,3 +1,4 @@
+import { Router } from '@angular/router';
 import { PARENT_CHILD_QUERY_PARAM } from '../../models/parent-dashboard.model';
 import { PARENT_HOME_URL } from '../../shared/guards/parent.guard';
 import { PARENT_REQUIRED_URL } from '../../models/parent-status.model';
@@ -308,4 +309,41 @@ function describeParentNotification(notification: Pick<AppNotification, 'type' |
     route.fragment = entry.fragment;
   }
   return { icon: entry.icon, badge: null, route, questionOrder: null };
+}
+
+/** #914: listedeki gün grubu. Hafta takvim haftası değil, son 7 gündür. */
+export type NotificationDayGroup = 'today' | 'yesterday' | 'thisWeek' | 'older';
+
+const DAY_MS = 86_400_000;
+
+/** Yerel takvim gününe göre grup; tarih okunamazsa 'older'. */
+export function notificationDayGroup(iso: string, now: number): NotificationDayGroup {
+  const time = parseUtcDate(iso).getTime();
+  if (Number.isNaN(time)) {
+    return 'older';
+  }
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  const today = startOfToday.getTime();
+  if (time >= today) {
+    return 'today';
+  }
+  if (time >= today - DAY_MS) {
+    return 'yesterday';
+  }
+  return time >= today - 6 * DAY_MS ? 'thisWeek' : 'older';
+}
+
+/** Bildirim hedefine gider; sorgu ve parça varsa birlikte. */
+export function navigateToNotification(router: Router, route: AppRouteLink | null): void {
+  if (!route) {
+    return;
+  }
+  if (route.fragment) {
+    void router.navigate(route.commands, { queryParams: route.queryParams, fragment: route.fragment });
+  } else if (route.queryParams) {
+    void router.navigate(route.commands, { queryParams: route.queryParams });
+  } else {
+    void router.navigate(route.commands);
+  }
 }

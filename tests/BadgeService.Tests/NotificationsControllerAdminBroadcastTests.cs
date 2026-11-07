@@ -73,5 +73,23 @@ public class NotificationsControllerAdminBroadcastTests : IDisposable
         ((OkObjectResult)(await Controller("admin-2", true).GetMyUnreadCountAsync(default)).Result!).Value.ShouldBe(0);
     }
 
+    [Fact]
+    public async Task Mark_all_read_touches_only_rows_the_caller_can_see()
+    {
+        var s = await SeedAsync();
+
+        var marked = (OkObjectResult)(await Controller("admin-1", admin: false).MarkAllReadAsync(default)).Result!;
+        marked.Value.ShouldBe(1);
+
+        await using var check = _db.NewContext();
+        check.Notifications.Single(n => n.Id == s.Own).IsRead.ShouldBeTrue();
+        check.Notifications.Single(n => n.Id == s.Broadcast).IsRead.ShouldBeFalse();
+        check.Notifications.Single(n => n.Id == s.OtherUser).IsRead.ShouldBeFalse();
+        check.Notifications.Single(n => n.Id == s.UntypedNull).IsRead.ShouldBeFalse();
+
+        ((OkObjectResult)(await Controller("admin-1", admin: true).MarkAllReadAsync(default)).Result!).Value.ShouldBe(1);
+        ((OkObjectResult)(await Controller("admin-1", true).GetMyUnreadCountAsync(default)).Result!).Value.ShouldBe(0);
+    }
+
     public void Dispose() => _db.Dispose();
 }

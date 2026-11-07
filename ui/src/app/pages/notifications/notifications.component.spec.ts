@@ -110,6 +110,51 @@ describe('NotificationsComponent (issue #146)', () => {
         expect(rows[1].classList).not.toContain('is-unread');
     });
 
+    it('rows_AreGroupedByDay (#914)', () => {
+        const daysAgo = (days: number) => {
+            const d = new Date();
+            d.setHours(12, 0, 0, 0);
+            d.setDate(d.getDate() - days);
+            return d.toISOString();
+        };
+        flushList([
+            notification({ id: 1 }),
+            notification({ id: 2, createdAt: daysAgo(1) }),
+            notification({ id: 3, createdAt: daysAgo(3) }),
+            notification({ id: 4, createdAt: daysAgo(20) }),
+        ]);
+
+        const headings = Array.from(el().querySelectorAll('[data-testid="notification-day"]')).map((h) => h.textContent?.trim());
+        expect(headings).toEqual(['Bugün', 'Dün', 'Bu hafta', 'Daha eski']);
+        expect(items().length).toBe(4);
+    });
+
+    it('markAllRead_ClearsHighlightsAndHidesTheButton (#914)', () => {
+        flushList([notification({ id: 1 }), notification({ id: 2 })]);
+        const button = el().querySelector<HTMLButtonElement>('[data-testid="mark-all-read"]')!;
+        expect(button.textContent).toContain(notificationsTr.markAllRead);
+
+        button.click();
+        fixture.detectChanges();
+        httpMock.expectOne('/api/badge/notifications/me/read-all').flush(2);
+        fixture.detectChanges();
+
+        expect(items().every((row) => !row.classList.contains('is-unread'))).toBe(true);
+        expect(el().querySelector('[data-testid="mark-all-read"]')).toBeNull();
+    });
+
+    it('markAllRead_Failure_RestoresUnreadRows (#914)', () => {
+        flushList([notification({ id: 1 })]);
+
+        el().querySelector<HTMLButtonElement>('[data-testid="mark-all-read"]')!.click();
+        fixture.detectChanges();
+        httpMock.expectOne('/api/badge/notifications/me/read-all').flush(null, { status: 500, statusText: 'err' });
+        fixture.detectChanges();
+
+        expect(items()[0].classList).toContain('is-unread');
+        expect(el().textContent).toContain(notificationsTr.markAllFailed);
+    });
+
     // Issue #149: rozet satırı 40px "Kazanıldı" medalyonu — icon → iconUrl → military_tech.
     function medallion(row: HTMLElement): HTMLElement | null {
         return row.querySelector<HTMLElement>('app-badge-medallion');

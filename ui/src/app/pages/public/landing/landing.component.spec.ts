@@ -64,10 +64,17 @@ describe('LandingComponent (#395)', () => {
   });
 
   it('#880: parents have a role card, a menu link and sign in (no parent registration)', () => {
-    const card = el.querySelector('article#veliler')!;
-    expect(card.textContent).toContain('Veli');
+    const card = Array.from(el.querySelectorAll('article.role')).find((a) => a.querySelector('h3')?.textContent?.trim() === 'Veli')!;
     expect(card.querySelector('a')?.getAttribute('href')).toBe('/app/login');
     expect(Array.from(el.querySelectorAll('.nav-links a')).map((a) => a.textContent?.trim())).toContain('Veliler');
+  });
+
+  it('parentsMenuLink_GoesToItsOwnSection_WithSignInAndInvitationNote', () => {
+    const section = el.querySelector('section#veliler')!;
+    expect(section.querySelector('h2')?.textContent).toContain('Çocuğunun çalışmasını');
+    expect(section.querySelector('a')?.getAttribute('href')).toBe('/app/login');
+    expect(section.querySelector('.footnote')?.textContent).toContain('öğrencinin davetiyle');
+    expect(section.querySelector('img')?.getAttribute('src')).toBe('assets/images/landing/parent.svg');
   });
 
   it('#880: sign-in stays in the top bar on small screens', () => {

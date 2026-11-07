@@ -44,8 +44,8 @@ export const LANDING_ROLES = [
   { key: 'student', icon: 'backpack', tone: 'r1', ctaUrl: LANDING_REGISTER_STUDENT_URL, primary: true },
   { key: 'teacher', icon: 'co_present', tone: 'r2', ctaUrl: LANDING_REGISTER_TEACHER_URL, primary: false },
   { key: 'tutor', icon: 'video_chat', tone: 'r3', ctaUrl: LANDING_REGISTER_TEACHER_URL, primary: false },
-  // #880: veli kendini kaydetmez, öğrencinin davetiyle hesap açar; kart girişe götürür.
-  { key: 'parent', icon: 'family_restroom', tone: 'r4', ctaUrl: LANDING_LOGIN_URL, primary: false, anchor: 'veliler' },
+  // #880: veli kendini kaydetmez, öğrencinin davetiyle hesap açar; kart girişe götürür. Menüdeki "Veliler" ayrı bölüme gider.
+  { key: 'parent', icon: 'family_restroom', tone: 'r4', ctaUrl: LANDING_LOGIN_URL, primary: false },
 ] as const;
 
 export const LANDING_FEATURES = [

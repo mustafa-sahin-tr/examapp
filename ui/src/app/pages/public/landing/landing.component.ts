@@ -19,6 +19,7 @@ import { FaqComponent } from './faq/faq.component';
 import { HowItWorksComponent } from './how-it-works/how-it-works.component';
 import {
   LANDING_CONTACT_EMAIL,
+  LANDING_LOGIN_URL,
   LANDING_REGISTER_STUDENT_URL,
   LANDING_REGISTER_TEACHER_URL,
   LANDING_STATS_ARE_SAMPLE,
@@ -78,6 +79,7 @@ export class LandingComponent implements OnInit {
 
   readonly registerStudentUrl = LANDING_REGISTER_STUDENT_URL;
   readonly registerTeacherUrl = LANDING_REGISTER_TEACHER_URL;
+  readonly loginUrl = LANDING_LOGIN_URL;
   readonly showBackToTop = signal(false);
   /** #880: örnek rakamlar ve temsili yorumlar yayımlanmaz; gerçekleri girilince bayrakla geri gelir. */
   readonly showStats = !LANDING_STATS_ARE_SAMPLE;

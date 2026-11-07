@@ -142,6 +142,17 @@
       "retryValue": "Yeni test oluştur"
     }
   },
+  "parents": {
+    "kicker": "Veliler için",
+    "title": "Çocuğunun çalışmasını yanında olmadan da gör",
+    "body": "Veli panelinde çocuğunun bu hafta ne kadar çalıştığını, çözdüğü testlerin sonucunu ve kazandığı rozetleri görürsün. Özel ders talepleri senin onayınla kesinleşir. Birden fazla çocuğun varsa hepsini tek hesaptan izlersin.",
+    "item1": "Haftalık çalışma süresi ve test sonuçları",
+    "item2": "Kazanılan rozetler ve çalışma serisi",
+    "item3": "Özel ders taleplerini onaylama",
+    "cta": "Veli girişi",
+    "footnote": "Veli hesabı kendi başına açılmaz; öğrencinin davetiyle açılır.",
+    "imageAlt": "Çizim: veli paneli; çocuğun haftalık çalışma grafiği, son test sonucu, yeni rozet ve onay bekleyen özel ders talebi."
+  },
   "motivation": {
     "kicker": "Motivasyon",
     "title": "Düzenli çalışmak görünür olsun",

@@ -123,11 +123,12 @@ export class MyCalendarComponent {
 
   /** #888: haftanın 7 günü ve o güne düşen satırlar. */
   readonly agendaDays = computed(() =>
-    buildWeekAgenda(this.events(), this.weekStart(), new Date(), !this.isTeacher || this.canOpenBookingRequests()),
+    buildWeekAgenda(this.events(), this.weekStart(), new Date(), !this.isTeacher || this.canOpenBookingRequests(), this.isTeacher),
   );
 
   /** Öğretmen takviminde yalnız ders randevuları var. */
-  readonly agendaLegend: readonly string[] = this.isTeacher ? ['booking'] : ['assignment', 'program', 'booking'];
+  // #916: öğretmenin takviminde kendi ödevlerinin teslim tarihleri de var.
+  readonly agendaLegend: readonly string[] = this.isTeacher ? ['assignment', 'booking'] : ['assignment', 'program', 'booking'];
 
   /** Gün başlığı: "Pzt" + "3". */
   dayName(date: Date): string {

@@ -38,7 +38,8 @@
       "start": "Start",
       "program": "Go to program",
       "bookings": "Go to lesson",
-      "view": "Open"
+      "view": "Open",
+      "open": "Open"
     }
   },
   "today": "Today",

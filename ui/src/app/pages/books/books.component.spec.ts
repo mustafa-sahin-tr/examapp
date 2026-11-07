@@ -89,7 +89,7 @@ describe('BooksComponent (#577)', () => {
             const items = el().querySelectorAll('.bk-item');
             expect(items.length).toBe(2);
             expect(items[0].textContent).toContain('TT MatLab');
-            expect(items[0].textContent).toContain('2 ofset aralığı');
+            expect(items[0].textContent).toContain('2 sayfa aralığı');
             expect(items[0].textContent).toContain('cevap anahtarı: 201–210');
             expect(items[1].textContent).toContain('Baskısı: Süper Combo Türkçe');
             expect(text()).toContain(booksTr.selectHint);
@@ -127,8 +127,10 @@ describe('BooksComponent (#577)', () => {
             expect(component.answerKeyRanges.length).toBe(1);
             expect(component.toc.length).toBe(1);
             const previews = Array.from(el().querySelectorAll('.bk-preview')).map((p) => p.textContent?.replace(/\s+/g, ' ').trim());
-            expect(previews[0]).toBe('dosya 1 → basılı 0 · dosya 100 → basılı 99');
-            expect(previews[1]).toBe('dosya 101 → basılı 1 · dosya 200 → basılı 100');
+            // #868: ofset yerine ilk sayfanın basılı numarası (dosya + ofset) gösterilir.
+            expect(component.offsets.at(1).getRawValue()).toEqual({ fileFrom: 101, fileTo: 200, printedFrom: 1 });
+            expect(previews[0]).toBe('basılı s. 0 – 99');
+            expect(previews[1]).toBe('basılı s. 1 – 100');
             expect(subjects.getSubjectsByGrade).toHaveBeenCalledWith(4);
             expect(subjects.getTopicsBySubjectAndGrade).toHaveBeenCalledWith(3, 4);
             expect(subjects.getSubTopicsByTopic).toHaveBeenCalledWith(11);
@@ -141,10 +143,10 @@ describe('BooksComponent (#577)', () => {
             setup();
             await component.select(MATLAB);
 
-            component.offsets.at(0).controls.offset.setValue(1);
+            component.offsets.at(0).controls.printedFrom.setValue(2);
             fixture.detectChanges();
 
-            expect(el().querySelector('.bk-preview')?.textContent).toContain('dosya 1 → basılı 2');
+            expect(el().querySelector('.bk-preview')?.textContent).toContain('basılı s. 2 – 101');
             expect(component.errors()).toEqual([]);
         });
 
@@ -154,7 +156,8 @@ describe('BooksComponent (#577)', () => {
 
             component.addOffset();
 
-            expect(component.offsets.at(2).getRawValue()).toEqual({ fileFrom: 201, fileTo: null, offset: -100 });
+            // Yeni fasikül basılı 1. sayfadan başlar.
+            expect(component.offsets.at(2).getRawValue()).toEqual({ fileFrom: 201, fileTo: null, printedFrom: 1 });
             expect(component.form.dirty).toBe(true);
         });
 
@@ -230,7 +233,8 @@ describe('BooksComponent (#577)', () => {
             component.form.controls.name.setValue('  Yeni Kitap ');
             component.form.controls.canonicalBookId.setValue(7);
             component.addOffset();
-            component.offsets.at(0).setValue({ fileFrom: 1, fileTo: 40, offset: 2 });
+            // İlk sayfa basılı 3 → ofset 2 olarak kaydedilir (#868).
+            component.offsets.at(0).setValue({ fileFrom: 1, fileTo: 40, printedFrom: 3 });
             component.addTocEntry();
             component.toc.at(0).setValue({ fileFrom: 3, fileTo: 10, gradeId: 4, subjectId: 3, topicId: 11, subTopicId: null });
             const saved: LabelingBook = { ...COMBO, id: 12, name: 'Yeni Kitap', canonicalBookId: 7 };

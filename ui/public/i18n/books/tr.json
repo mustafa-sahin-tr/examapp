@@ -19,7 +19,7 @@
     "failed": "Kitaplar yüklenemedi.",
     "empty": "Henüz kitap yok.",
     "edition": "Baskısı: {{name}}",
-    "offsets": "{{count}} ofset aralığı",
+    "offsets": "{{count}} sayfa aralığı",
     "toc": "{{count}} içindekiler kaydı",
     "answerKey": "cevap anahtarı: {{ranges}}",
     "noRanges": "Aralık girilmedi"
@@ -34,12 +34,15 @@
     "notes": "Notlar"
   },
   "offsets": {
-    "title": "Sayfa ofseti",
-    "hint": "Basılı sayfa = dosya sayfası + ofset. Ofset negatif olabilir; fasiküllü kitapta her fasikül için ayrı aralık girin.",
-    "add": "Aralık ekle",
-    "offset": "Ofset",
-    "preview": "dosya {{file}} → basılı {{printed}}",
-    "empty": "Ofset aralığı yok: basılı sayfa bilinmez."
+    "title": "Fasiküller ve sayfa aralıkları",
+    "hint": "Her fasikül (ya da numarası kesintisiz giden bölüm) için PDF sayfa aralığını ve o aralığın ilk sayfasının kitapta basılı numarasını girin; çoğunlukla 1.",
+    "add": "Fasikül ekle",
+    "rowLabel": "{{n}}.",
+    "pdfFrom": "PDF ilk sayfa",
+    "pdfTo": "PDF son sayfa",
+    "printedFrom": "İlk sayfanın basılı no",
+    "preview": "basılı s. {{from}} – {{to}}",
+    "empty": "Aralık yok: basılı sayfa bilinmez."
   },
   "answerKeys": {
     "title": "Cevap anahtarı sayfaları",
@@ -62,16 +65,16 @@
     "nameRequired": "Kitap adı zorunlu.",
     "fromRequired": "{{row}}. satır: dosya başı girin.",
     "toRequired": "{{row}}. satır: dosya sonu girin.",
-    "offsetRequired": "{{row}}. satır: ofset girin (tam sayı, negatif olabilir).",
+    "offsetRequired": "{{row}}. satır: ilk sayfanın basılı numarasını girin.",
     "fromMin": "{{row}}. satır: sayfa numarası 1'den küçük olamaz.",
     "fromAfterTo": "{{row}}. satır: başlangıç bitişten büyük olamaz.",
     "overlap": "{{row}}. satır {{other}}. satırla çakışıyor.",
     "gradeRequired": "{{row}}. satır: sınıf seçin.",
     "subjectRequired": "{{row}}. satır: ders seçin.",
     "subTopicNeedsTopic": "{{row}}. satır: alt konu için önce konu seçin.",
-    "printedMin": "{{row}}. satır: ilk basılı sayfa 1'den küçük olamaz (dosya başı + ofset ≥ 1).",
+    "printedMin": "{{row}}. satır: basılı sayfa 1'den küçük olamaz.",
     "toMax": "{{row}}. satır: dosya sonu en çok {{max}} olabilir.",
-    "printedMax": "{{row}}. satır: son basılı sayfa en çok {{max}} olabilir (dosya sonu + ofset)."
+    "printedMax": "{{row}}. satır: son basılı sayfa en çok {{max}} olabilir."
   },
   "delete": {
     "action": "Sil",
@@ -96,7 +99,7 @@
     "filePage": "Dosya sayfası",
     "toPrinted": "Basılıya çevir",
     "printedResult": "dosya {{file}} → basılı {{printed}}",
-    "noOffset": "dosya {{file}}: ofset aralığı yok",
+    "noOffset": "dosya {{file}}: sayfa aralığı yok",
     "answerKey": "cevap anahtarı",
     "printedPage": "Basılı sayfa",
     "near": "Yakın dosya sayfası",

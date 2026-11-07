@@ -73,7 +73,7 @@
         </mat-form-field>
       </section>
 
-      <!-- Ofset aralıkları -->
+      <!-- #868: fasikül / sayfa aralıkları — ofset yerine "ilk sayfa basılı kaçıncı sayfa" -->
       <section class="bk-sec" formArrayName="offsets">
         <div class="bk-sec__head">
           <h3>{{ t('offsets.title') }}</h3>
@@ -81,23 +81,23 @@
         </div>
         <p class="bk-hint">{{ t('offsets.hint') }}</p>
         @for (row of offsets.controls; track row; let i = $index) {
-        <div class="bk-row" [formGroupName]="i">
+        <div class="bk-row bk-row--fascicle" [formGroupName]="i" data-testid="book-fascicle-row">
+          <span class="bk-row__label">{{ t('offsets.rowLabel', { n: i + 1 }) }}</span>
           <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bk-num">
-            <mat-label>{{ t('fileFrom') }}</mat-label>
+            <mat-label>{{ t('offsets.pdfFrom') }}</mat-label>
             <input matInput type="number" min="1" [max]="maxFilePage" step="1" formControlName="fileFrom" />
           </mat-form-field>
           <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bk-num">
-            <mat-label>{{ t('fileTo') }}</mat-label>
+            <mat-label>{{ t('offsets.pdfTo') }}</mat-label>
             <input matInput type="number" min="1" [max]="maxFilePage" step="1" formControlName="fileTo" />
           </mat-form-field>
-          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bk-num">
-            <mat-label>{{ t('offsets.offset') }}</mat-label>
-            <input matInput type="number" step="1" formControlName="offset" />
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bk-num bk-num--wide">
+            <mat-label>{{ t('offsets.printedFrom') }}</mat-label>
+            <input matInput type="number" min="1" step="1" formControlName="printedFrom" data-testid="book-printed-from" />
           </mat-form-field>
           <span class="bk-preview" aria-live="polite">
             @if (preview(i); as p) {
-            {{ t('offsets.preview', { file: p.fileFrom, printed: p.printedFrom }) }}
-            @if (p.fileTo !== p.fileFrom) { · {{ t('offsets.preview', { file: p.fileTo, printed: p.printedTo }) }} }
+            {{ t('offsets.preview', { from: p.printedFrom, to: p.printedTo }) }}
             }
           </span>
           <button mat-icon-button type="button" (click)="removeRow('offsets', i)" [attr.aria-label]="t('removeRow', { row: i + 1 })">

@@ -19,7 +19,7 @@
     "failed": "Books could not be loaded.",
     "empty": "No books yet.",
     "edition": "Edition of: {{name}}",
-    "offsets": "{{count}} offset ranges",
+    "offsets": "{{count}} page ranges",
     "toc": "{{count}} table of contents entries",
     "answerKey": "answer key: {{ranges}}",
     "noRanges": "No ranges entered"
@@ -34,12 +34,15 @@
     "notes": "Notes"
   },
   "offsets": {
-    "title": "Page offset",
-    "hint": "Printed page = file page + offset. The offset may be negative; for a book in fascicles enter one range per fascicle.",
-    "add": "Add range",
-    "offset": "Offset",
-    "preview": "file {{file}} → printed {{printed}}",
-    "empty": "No offset ranges: printed pages are unknown."
+    "title": "Fascicles and page ranges",
+    "hint": "For each fascicle (or section with continuous numbering) enter the PDF page range and the printed number of its first page; usually 1.",
+    "add": "Add fascicle",
+    "rowLabel": "{{n}}.",
+    "pdfFrom": "First PDF page",
+    "pdfTo": "Last PDF page",
+    "printedFrom": "Printed no. of first page",
+    "preview": "printed p. {{from}} – {{to}}",
+    "empty": "No ranges: printed pages are unknown."
   },
   "answerKeys": {
     "title": "Answer key pages",
@@ -62,16 +65,16 @@
     "nameRequired": "The book name is required.",
     "fromRequired": "Row {{row}}: enter the first file page.",
     "toRequired": "Row {{row}}: enter the last file page.",
-    "offsetRequired": "Row {{row}}: enter the offset (whole number, may be negative).",
+    "offsetRequired": "Row {{row}}: enter the printed number of the first page.",
     "fromMin": "Row {{row}}: page numbers start at 1.",
     "fromAfterTo": "Row {{row}}: the start cannot be after the end.",
     "overlap": "Row {{row}} overlaps row {{other}}.",
     "gradeRequired": "Row {{row}}: pick a grade.",
     "subjectRequired": "Row {{row}}: pick a subject.",
     "subTopicNeedsTopic": "Row {{row}}: pick a topic before the subtopic.",
-    "printedMin": "Row {{row}}: the first printed page must be at least 1 (file from + offset ≥ 1).",
+    "printedMin": "Row {{row}}: a printed page cannot be below 1.",
     "toMax": "Row {{row}}: the last file page can be at most {{max}}.",
-    "printedMax": "Row {{row}}: the last printed page can be at most {{max}} (file to + offset)."
+    "printedMax": "Row {{row}}: the last printed page can be at most {{max}}."
   },
   "delete": {
     "action": "Delete",
@@ -96,7 +99,7 @@
     "filePage": "File page",
     "toPrinted": "To printed",
     "printedResult": "file {{file}} → printed {{printed}}",
-    "noOffset": "file {{file}}: no offset range",
+    "noOffset": "file {{file}}: no page range",
     "answerKey": "answer key",
     "printedPage": "Printed page",
     "near": "Near file page",

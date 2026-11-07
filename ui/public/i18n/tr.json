@@ -1220,6 +1220,22 @@
       "tutors": "Özel ders öğretmeni bulmak için velinin hesabını aktive etmesi gerekiyor.",
       "meanwhile": "Testlerini ve ödevlerini bu sırada çözmeye devam edebilirsin."
     },
+    "status": {
+      "sent": "Davet",
+      "sentTo": "{{email}} adresine {{when}} gönderildi",
+      "link": "Bağlantı",
+      "linkValid": "{{date}} tarihine kadar geçerli",
+      "linkExpired": "Süresi doldu; daveti tekrar gönder",
+      "left": "Onay için kalan",
+      "daysLeft": "{{days}} gün; sonra hesabın kilitlenir",
+      "closed": "Şu an kapalı",
+      "closedList": "Mesajlar, özel ders, yorumlar, liderlik tablosu",
+      "resend": "Daveti tekrar gönder",
+      "otherAddress": "Başka bir adres gir",
+      "otherWarning": "Yeni adrese davet gidince eski bağlantı geçersiz olur.",
+      "previewTitle": "Velime ne gidecek?",
+      "previewBody": "Velin, senin bu platforma katıldığını söyleyen kısa bir e-posta alır. İçinde hesabını açıp rızasını vereceği bir bağlantı vardır; bağlantı {{date}} tarihine kadar geçerlidir. Velin şifresini kendisi belirler."
+    },
     "card": {
       "title": "Velinize davet gönderildi",
       "sentTo": "Davet {{email}} adresine gönderildi.",
@@ -1256,6 +1272,8 @@
     "page": {
       "title": "Veli bilgisi ekle",
       "editTitle": "Velinin e-postasını düzelt",
+      "awaitingTitle": "Velinin onayı bekleniyor",
+      "awaitingIntro": "Velin bağlantıyı açıp onay verince hesabının tüm özellikleri açılır.",
       "intro": "Platform velinin bilgisi ve rızasıyla çalışır; velinize bir aktivasyon bağlantısı göndereceğiz.",
       "expired": "Velini ekleme süren doldu. Devam etmek için velinin bilgilerini ekle; verilerin silinmedi.",
       "grace": "Velini eklemek için {{days}} gün kaldı.",

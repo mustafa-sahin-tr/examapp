@@ -10,6 +10,7 @@ export function invitationOf(overrides: Partial<ParentInvitationSummary> = {}): 
     parentName: 'Ayşe Yılmaz',
     maskedEmail: 'a***@g***.com',
     expiresAt: '2026-10-22T10:00:00Z',
+    lastSentAt: null,
     expired: false,
     canResend: true,
     nextResendAt: null,

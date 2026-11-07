@@ -1220,6 +1220,22 @@
       "tutors": "Your parent needs to activate their account before you can find a private tutor.",
       "meanwhile": "You can keep solving your tests and homework in the meantime."
     },
+    "status": {
+      "sent": "Invitation",
+      "sentTo": "Sent to {{email}} {{when}}",
+      "link": "Link",
+      "linkValid": "Valid until {{date}}",
+      "linkExpired": "Expired; send the invitation again",
+      "left": "Time to approve",
+      "daysLeft": "{{days}} days, then your account is locked",
+      "closed": "Closed for now",
+      "closedList": "Messages, private lessons, comments, leaderboard",
+      "resend": "Send the invitation again",
+      "otherAddress": "Use another address",
+      "otherWarning": "Once the invitation goes to the new address, the old link stops working.",
+      "previewTitle": "What will my parent receive?",
+      "previewBody": "Your parent gets a short email saying you joined this platform. It has a link to open their account and give consent; the link is valid until {{date}}. Your parent sets their own password."
+    },
     "card": {
       "title": "An invitation was sent to your parent",
       "sentTo": "The invitation was sent to {{email}}.",
@@ -1256,6 +1272,8 @@
     "page": {
       "title": "Add parent details",
       "editTitle": "Fix your parent's email",
+      "awaitingTitle": "Waiting for your parent",
+      "awaitingIntro": "Once your parent opens the link and approves, every feature of your account opens up.",
       "intro": "The platform works with your parent's knowledge and consent; we will send your parent an activation link.",
       "expired": "Your time to add a parent is over. Add your parent's details to continue; your data was not deleted.",
       "grace": "{{days}} days left to add your parent.",

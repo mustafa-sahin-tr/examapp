@@ -119,6 +119,7 @@ public class ParentInvitationServiceTests : IDisposable
         result.Status!.Mode.ShouldBe("AwaitingActivation");
         result.Status.Invitation!.MaskedEmail.ShouldBe("v***@e***.com");
         result.Status.Invitation.CanResend.ShouldBeFalse();
+        result.Status.Invitation.LastSentAt.ShouldBe(_time.Now.UtcDateTime); // #892: "bugün gönderildi"
         result.Status.Invitation.DevActivationUrl.ShouldBeNull(); // Development değil
         await _directory.DidNotReceiveWithAnyArgs().CreateAsync(default!, default!, default!, default); // M2: hesap açılmaz
 

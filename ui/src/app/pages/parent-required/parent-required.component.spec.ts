@@ -83,12 +83,50 @@ describe('ParentRequiredComponent', () => {
         expect(q(fixture, '[data-test="prq-grace"]')?.textContent).toContain('9 gün kaldı');
     });
 
-    it('awaiting_EditTitle_PrefillsParentName_ShowsMaskedEmail', () => {
-        const fixture = create(awaitingStatusOf());
+    it('awaiting_StatusCardWithSentDaysLeftAndClosedFeatures_FormHidden_issue892', () => {
+        const sent = new Date();
+        sent.setDate(sent.getDate() - 3);
+        const fixture = create({ ...awaitingStatusOf({ lastSentAt: sent.toISOString() }), daysLeft: 11 });
 
-        expect(fixture.nativeElement.querySelector('h1').textContent).toContain('Velinin e-postasını düzelt');
-        expect(q(fixture, '[data-test="prq-awaiting"]')?.textContent).toContain('a***@g***.com');
+        expect(fixture.nativeElement.querySelector('h1').textContent).toContain('Velinin onayı bekleniyor');
+        expect(q(fixture, '[data-test="prq-sent"]')?.textContent?.trim()).toBe('a***@g***.com adresine 3 gün önce gönderildi');
+        expect(q(fixture, '[data-test="prq-days-left"]')?.textContent?.trim()).toBe('11 gün; sonra hesabın kilitlenir');
+        expect(q(fixture, '[data-test="prq-link"]')?.textContent).toContain('tarihine kadar geçerli');
+        expect(q(fixture, '[data-test="prq-closed"]')?.textContent).toContain('Mesajlar');
+        expect(q(fixture, '[data-test="prq-resend"]')).not.toBeNull();
+        expect(q(fixture, '[data-test="prq-preview"]')).not.toBeNull();
+        // Form yalnız "Başka bir adres gir" ile açılır; ad yine doldurulmuş gelir.
+        expect(q(fixture, '[data-test="prq-form"]')).toBeNull();
+        (q(fixture, '[data-test="prq-other-address"]') as HTMLButtonElement).click();
+        fixture.detectChanges();
+        expect(q(fixture, '[data-test="prq-form"]')).not.toBeNull();
+        expect(q(fixture, '[data-test="prq-other-warning"]')).not.toBeNull();
         expect(fixture.componentInstance.form.controls.parentFullName.value).toBe('Ayşe Yılmaz');
+    });
+
+    it('awaiting_ResendToSameAddress_StaysOnPage_issue892', () => {
+        const fixture = create(awaitingStatusOf());
+        service.resend.mockImplementation(() => of({ message: 'ok', status: awaitingStatusOf() }));
+
+        (q(fixture, '[data-test="prq-resend"]') as HTMLButtonElement).click();
+        fixture.detectChanges();
+
+        expect(service.resend).toHaveBeenCalled();
+        expect(snackBar.open).toHaveBeenCalled();
+        expect(router.navigateByUrl).not.toHaveBeenCalled();
+    });
+
+    it('awaiting_ResendNotYetAllowed_ShowsNextTime_issue892', () => {
+        const fixture = create(awaitingStatusOf({ canResend: false, nextResendAt: '2026-11-08T10:00:00Z', resendsLeft: 4 }));
+        expect(q(fixture, '[data-test="prq-resend"]')).toBeNull();
+        expect(q(fixture, '[data-test="prq-next-resend"]')?.textContent).toContain('Bir sonraki gönderim');
+    });
+
+    it('awaiting_LinkExpired_SaysSoInTheStatusCard_issue892', () => {
+        const fixture = create(awaitingStatusOf({ expired: true }));
+        const link = q(fixture, '[data-test="prq-link"]')!;
+        expect(link.textContent).toContain('Süresi doldu');
+        expect(link.classList).toContain('prq__fact--danger');
     });
 
     it('awaiting_EmailLocked_ShowsLockNotice', () => {
@@ -156,6 +194,7 @@ describe('ParentRequiredComponent', () => {
             status: 429,
             error: { errorCode: 'ParentEmailChangeLocked', retryAt: '2026-10-15T12:00:00Z', message: 'x' },
         })));
+        fixture.componentInstance.otherAddress.set(true); // #892: davet beklerken form "Başka bir adres gir"le açılır
         fill(fixture);
 
         fixture.componentInstance.submit();
@@ -199,6 +238,7 @@ describe('ParentRequiredComponent', () => {
     it('submit_Busy409_ShowsTryAgainMessage', () => {
         const fixture = create(awaitingStatusOf());
         service.startInvitation.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 409, error: { errorCode: 'Busy', message: 'x' } })));
+        fixture.componentInstance.otherAddress.set(true); // #892: davet beklerken form "Başka bir adres gir"le açılır
         fill(fixture);
 
         fixture.componentInstance.submit();

@@ -1,12 +1,15 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import printTr from '../../../../public/i18n/test-print/tr.json';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { WorksheetKind } from '../../models/activity';
 import { Question } from '../../models/question';
+import { GradesService } from '../../services/grades.service';
 import { QuestionService } from '../../services/question.service';
+import { SubjectService } from '../../services/subject.service';
 import { TestService } from '../../services/test.service';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
-import { TestPrintComponent, buildPrintSheet } from './test-print.component';
+import { TestPrintComponent, buildPrintSheet, sheetSubtitle } from './test-print.component';
 
 function question(id: number, overrides: Partial<Question> = {}): Question {
   return {
@@ -86,14 +89,21 @@ describe('buildPrintSheet (issue #701)', () => {
 describe('TestPrintComponent (issue #701)', () => {
   let printSpy: ReturnType<typeof vi.spyOn>;
 
-  function create(questions: Question[], kind = WorksheetKind.Test, fail = false): ComponentFixture<TestPrintComponent> {
+  function create(
+    questions: Question[],
+    kind = WorksheetKind.Test,
+    fail = false,
+    test: Record<string, unknown> = {},
+  ): ComponentFixture<TestPrintComponent> {
     const load = fail ? throwError(() => new Error('nope')) : of(questions);
     TestBed.configureTestingModule({
-      imports: [TestPrintComponent, translocoTestingModule()],
+      imports: [TestPrintComponent, translocoTestingModule({ langs: { 'test-print/tr': printTr } })],
       providers: [
         provideRouter([]),
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ id: '5' }) } } },
-        { provide: TestService, useValue: { get: vi.fn().mockReturnValue(of({ id: 5, name: 'Kesirler', kind })) } },
+        { provide: TestService, useValue: { get: vi.fn().mockReturnValue(of({ id: 5, name: 'Kesirler', kind, ...test })) } },
+        { provide: SubjectService, useValue: { loadCategories: () => of([{ id: 3, name: 'Matematik' }]) } },
+        { provide: GradesService, useValue: { getGrades: () => of([{ id: 5, name: '5. Sınıf' }]) } },
         { provide: QuestionService, useValue: { getAll: vi.fn().mockReturnValue(load) } },
       ],
     });
@@ -117,6 +127,45 @@ describe('TestPrintComponent (issue #701)', () => {
     expect(all(fixture, 'print-question').length).toBe(2);
     expect(all(fixture, 'print-key-item').map((e) => e.textContent?.replace(/\s/g, ''))).toEqual(['1.B', '2.B']);
     expect(getComputedStyle(all(fixture, 'print-key')[0]).breakBefore).toBe('page');
+  });
+
+  it('#895: header shows the real title, subject · grade · count, and the subtitle only when it differs', () => {
+    const fixture = create([question(1), question(2)], WorksheetKind.Test, false, { subjectId: 3, gradeId: 5, subtitle: 'kesirler' });
+    const text = (id: string) => all(fixture, id)[0]?.textContent?.replace(/\s+/g, ' ').trim();
+
+    expect(text('print-title')).toBe('Kesirler');
+    expect(text('print-meta')).toBe('Matematik · 5. Sınıf · 2 soru');
+    expect(all(fixture, 'print-subtitle').length).toBe(0);
+    expect(sheetSubtitle({ name: 'Kesirler', subtitle: 'Bölüm 2' })).toBe('Bölüm 2');
+  });
+
+  it('#895: book questions (image only) print without our number unless the teacher adds it', () => {
+    const book = (id: number) => question(id, { text: '', imageUrl: `/img/${id}.jpg` });
+    const fixture = create([book(1), book(2)]);
+
+    expect(all(fixture, 'print-number').length).toBe(0);
+    (fixture.nativeElement.querySelector('[data-testid="print-numbers-toggle"] input') as HTMLInputElement).click();
+    fixture.detectChanges();
+    expect(all(fixture, 'print-number').map((e) => e.textContent?.trim())).toEqual(['1.', '2.']);
+
+    TestBed.resetTestingModule();
+    const mixed = create([book(1), question(2)]);
+    expect(all(mixed, 'print-number').length).toBe(2);
+  });
+
+  it('#895: two columns and the name line are options', () => {
+    const fixture = create([question(1)]);
+    const sheet = all(fixture, 'print-sheet')[0];
+    expect(sheet.classList).not.toContain('sheet--two');
+    expect(all(fixture, 'print-name-line').length).toBe(1);
+
+    (fixture.nativeElement.querySelectorAll('[data-testid="print-columns"] button')[1] as HTMLButtonElement).click();
+    (fixture.nativeElement.querySelector('[data-testid="print-name-toggle"] input') as HTMLInputElement).click();
+    fixture.detectChanges();
+
+    expect(sheet.classList).toContain('sheet--two');
+    expect(getComputedStyle(sheet.querySelector('.sheet-body')!).columnCount).toBe('2');
+    expect(all(fixture, 'print-name-line').length).toBe(0);
   });
 
   it('keeps a question together across pages', () => {

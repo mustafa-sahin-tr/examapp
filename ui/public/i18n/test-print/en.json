@@ -19,5 +19,15 @@
   "fieldClass": "Class:",
   "fieldDate": "Date:",
   "keyTitle": "Answer Key: {{name}}",
-  "noKey": "—"
+  "noKey": "—",
+  "optionsTitle": "Print",
+  "columns": {
+    "label": "Columns",
+    "one": "One column",
+    "two": "Two columns"
+  },
+  "includeNameLine": "Name line",
+  "showNumbers": "Add our question numbers",
+  "showNumbersHint": "Book questions already show their number in the image; this may be off by default so the paper has one number.",
+  "questionCount": "{{count}} questions"
 }

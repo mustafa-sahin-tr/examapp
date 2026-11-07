@@ -1,4 +1,4 @@
-<div class="tp" *transloco="let t; prefix: 'test-print'">
+<div class="tp" [class.tp--ready]="canPrint()" *transloco="let t; prefix: 'test-print'">
   <div class="tp-panel">
     <a mat-button [routerLink]="['/test', testId]">
       <mat-icon>arrow_back</mat-icon>{{ t('back') }}
@@ -15,14 +15,32 @@
           <mat-icon aria-hidden="true">info</mat-icon>{{ t('activityNotPrintable') }}
         </p>
       } @else {
-        <div class="tp-actions">
-          <button mat-flat-button type="button" data-testid="print-btn" [disabled]="!canPrint() || preparing()" (click)="print()">
-            <mat-icon>print</mat-icon>{{ t('print') }}
-          </button>
+        <!-- Issue #895: kağıt seçenekleri; geniş ekranda sağda, kağıdın yanında. -->
+        <h2 class="tp-title">{{ t('optionsTitle') }}</h2>
+        <div class="tp-options">
+          <mat-button-toggle-group
+            data-testid="print-columns"
+            [attr.aria-label]="t('columns.label')"
+            [value]="columns()"
+            (change)="columns.set($event.value)"
+          >
+            <mat-button-toggle [value]="1">{{ t('columns.one') }}</mat-button-toggle>
+            <mat-button-toggle [value]="2">{{ t('columns.two') }}</mat-button-toggle>
+          </mat-button-toggle-group>
           <mat-checkbox data-testid="print-key-toggle" [checked]="includeKey()" (change)="includeKey.set($event.checked)">
             {{ t('includeKey') }}
           </mat-checkbox>
+          <mat-checkbox data-testid="print-name-toggle" [checked]="includeNameLine()" (change)="includeNameLine.set($event.checked)">
+            {{ t('includeNameLine') }}
+          </mat-checkbox>
+          <mat-checkbox data-testid="print-numbers-toggle" [checked]="showNumbers()" (change)="setShowNumbers($event.checked)">
+            {{ t('showNumbers') }}
+          </mat-checkbox>
+          <p class="tp-hint">{{ t('showNumbersHint') }}</p>
         </div>
+        <button mat-flat-button type="button" class="tp-print" data-testid="print-btn" [disabled]="!canPrint() || preparing()" (click)="print()">
+          <mat-icon>print</mat-icon>{{ t('print') }}
+        </button>
         <p class="tp-hint">{{ t('hint') }}</p>
 
         @if (!items().length) {
@@ -53,19 +71,28 @@
   </div>
 
   @if (canPrint()) {
-    <article class="sheet">
+    <article class="sheet" [class.sheet--two]="columns() === 2" data-testid="print-sheet">
       <header class="sheet-head">
-        <h1>{{ test()?.name }}</h1>
-        @if (test()?.subtitle) {
-          <p class="sheet-sub">{{ test()?.subtitle }}</p>
+        <h1 data-testid="print-title">{{ test()?.name }}</h1>
+        <p class="sheet-meta" data-testid="print-meta">
+          @for (part of metaParts(); track part) {
+            {{ part }} ·
+          }
+          {{ t('questionCount', { count: items().length }) }}
+        </p>
+        @if (subtitle(); as sub) {
+          <p class="sheet-sub" data-testid="print-subtitle">{{ sub }}</p>
         }
-        <div class="sheet-fields">
-          <span>{{ t('fieldName') }}</span>
-          <span>{{ t('fieldClass') }}</span>
-          <span>{{ t('fieldDate') }}</span>
-        </div>
+        @if (includeNameLine()) {
+          <div class="sheet-fields" data-testid="print-name-line">
+            <span>{{ t('fieldName') }}</span>
+            <span>{{ t('fieldClass') }}</span>
+            <span>{{ t('fieldDate') }}</span>
+          </div>
+        }
       </header>
 
+      <div class="sheet-body">
       @for (item of items(); track item.question.id) {
         <section class="q" data-testid="print-question">
           @if (item.showPassage && item.question.passage; as passage) {
@@ -85,7 +112,9 @@
             </div>
           }
           <div class="q-body">
-            <span class="q-number">{{ item.number }}.</span>
+            @if (showNumbers()) {
+              <span class="q-number" data-testid="print-number">{{ item.number }}.</span>
+            }
             <div class="q-content">
               @if (item.question.text) {
                 <div [innerHTML]="item.question.text"></div>
@@ -113,6 +142,7 @@
           </div>
         </section>
       }
+      </div>
 
       @if (includeKey()) {
         <section class="key" data-testid="print-key">

@@ -10,12 +10,53 @@
   margin: 0 auto 16px;
 }
 
-.tp-actions {
+// Issue #895: geniş ekranda kağıt solda, seçenekler sağda ve kaydırmada görünür.
+@media (min-width: 1200px) {
+  .tp--ready {
+    display: grid;
+    grid-template-columns: 210mm 300px;
+    justify-content: center;
+    align-items: start;
+    gap: 24px;
+
+    .tp-panel {
+      position: sticky;
+      top: 16px;
+      grid-column: 2;
+      grid-row: 1;
+      margin: 0;
+    }
+
+    .sheet {
+      grid-column: 1;
+      grid-row: 1;
+      margin: 0;
+    }
+  }
+}
+
+.tp-title {
+  margin: 12px 0 8px;
+  font-size: 16px;
+}
+
+.tp-options {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 16px;
-  margin-top: 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+
+  mat-button-toggle-group {
+    margin-bottom: 4px;
+  }
+
+  .tp-hint {
+    margin: 0 0 0 40px;
+  }
+}
+
+.tp-print {
+  margin-top: 12px;
 }
 
 .tp-hint {
@@ -80,8 +121,29 @@
   }
 }
 
+.sheet-meta {
+  margin: 1mm 0 0;
+  font-size: 10.5pt;
+}
+
 .sheet-sub {
   margin: 2mm 0 0;
+}
+
+// Issue #895: iki sütun — soru bölünmez, sütunlar arasında ince çizgi.
+.sheet--two .sheet-body {
+  column-count: 2;
+  column-gap: 8mm;
+  column-rule: 0.3mm solid color-mix(in srgb, var(--darkColor) 30%, transparent);
+
+  .q {
+    display: inline-block;
+    width: 100%;
+  }
+
+  img {
+    max-height: 110mm;
+  }
 }
 
 .sheet-fields {

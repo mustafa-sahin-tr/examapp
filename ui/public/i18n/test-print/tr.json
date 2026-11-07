@@ -19,5 +19,15 @@
   "fieldClass": "Sınıf:",
   "fieldDate": "Tarih:",
   "keyTitle": "Cevap Anahtarı: {{name}}",
-  "noKey": "—"
+  "noKey": "—",
+  "optionsTitle": "Yazdırma",
+  "columns": {
+    "label": "Sütun",
+    "one": "Tek sütun",
+    "two": "İki sütun"
+  },
+  "includeNameLine": "Ad-soyad satırı",
+  "showNumbers": "Kendi numaramızı ekle",
+  "showNumbersHint": "Kitap sorularının görselinde numara zaten var; ikinci numara basılmasın diye bu testte kapalı gelebilir.",
+  "questionCount": "{{count}} soru"
 }

@@ -38,6 +38,10 @@ public class AdminTargetProgramsController(ITargetProgramService service) : Base
         [FromQuery] string? search = null, [FromQuery] int skip = 0, [FromQuery] int take = 50, CancellationToken ct = default) =>
         Ok(await service.SearchForAdminAsync(new(exam, scoreType, year, city, search, Math.Max(skip, 0), Math.Clamp(take, 1, MaxTake)), ct));
 
+    /// <summary>#900: sınav başına yüklü kayıt sayısı ve son yıl.</summary>
+    [HttpGet("summary")]
+    public async Task<IActionResult> Summary(CancellationToken ct = default) => Ok(await service.SummaryAsync(ct));
+
     [HttpPost]
     public Task<IActionResult> Create([FromBody] SaveTargetProgramDto request, CancellationToken ct) =>
         RunAsync(async userId => Ok(await service.CreateAsync(request, userId, ct)));

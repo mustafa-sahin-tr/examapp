@@ -125,6 +125,15 @@ public class TargetProgramImportResultDto
     public int Skipped { get; set; }
 }
 
+/// <summary>#900: sınav başına katalog durumu; boşsa öğrencinin hedef araması sonuç vermez.</summary>
+public class TargetCatalogSummaryDto
+{
+    public string Exam { get; set; } = string.Empty;
+    public int Total { get; set; }
+    public int? LatestYear { get; set; }
+    public int LatestYearCount { get; set; }
+}
+
 public class SetTargetGoalDto
 {
     [Range(1, int.MaxValue)]

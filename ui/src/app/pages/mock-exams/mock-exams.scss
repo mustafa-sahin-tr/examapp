@@ -414,3 +414,106 @@
 .et-hint {
   padding: 24px 0;
 }
+
+// #900: taban puanlar — başlıkta eylemler, veri durumu şeridi, üç adımlı yükleme diyaloğu.
+.tp-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+
+  .me-title {
+    margin-bottom: 4px;
+  }
+}
+
+.tp-status {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.tp-status-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 16px;
+  border: 1px solid var(--ms-border-weak, currentColor);
+  border-radius: 12px;
+  background: var(--ms-surface-weak);
+  font-variant-numeric: tabular-nums;
+}
+
+.tp-status-item--empty {
+  border-color: var(--ms-warning-text-medium);
+}
+
+.tp-status-warn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ms-warning-text-medium);
+  font-size: 13px;
+
+  mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.tp-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.tp-search {
+  flex: 1 1 260px;
+  max-width: 420px;
+}
+
+.tp-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tp-step-row {
+  display: flex;
+  gap: 12px;
+}
+
+.tp-counts {
+  margin: 0;
+  font-weight: 600;
+}
+
+.tp-h3 {
+  margin: 8px 0 0;
+  font-size: 14px;
+}
+
+.tp-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--ms-border-weak, currentColor);
+  font-variant-numeric: tabular-nums;
+}
+
+.tp-done {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+
+  mat-icon {
+    flex: none;
+    color: var(--ms-success-text-medium);
+  }
+}

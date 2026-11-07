@@ -26,6 +26,7 @@ public interface ITargetProgramService
     Task<bool> DeleteAsync(int id, int userId, CancellationToken ct = default);
     Task<TargetProgramImportPreviewDto> PreviewImportAsync(TargetProgramImport import, CancellationToken ct = default);
     Task<TargetProgramImportResultDto> ConfirmImportAsync(TargetProgramImport import, int userId, CancellationToken ct = default);
+    Task<List<TargetCatalogSummaryDto>> SummaryAsync(CancellationToken ct = default);
 }
 
 public sealed partial class TargetProgramService(AppDbContext db) : ITargetProgramService
@@ -78,6 +79,28 @@ public sealed partial class TargetProgramService(AppDbContext db) : ITargetProgr
                 InUse = db.StudentTargetGoals.Any(g => g.TargetProgramId == p.Id),
             }).ToListAsync(ct),
         };
+    }
+
+    public async Task<List<TargetCatalogSummaryDto>> SummaryAsync(CancellationToken ct = default)
+    {
+        var byTypeAndYear = await db.TargetPrograms.AsNoTracking()
+            .GroupBy(p => new { p.ScoreType, p.Year })
+            .Select(g => new { g.Key.ScoreType, g.Key.Year, Count = g.Count() })
+            .ToListAsync(ct);
+
+        return new[] { TargetScoreTypes.LgsExam, TargetScoreTypes.YksExam }.Select(exam =>
+        {
+            var types = TargetScoreTypes.OfExam(exam);
+            var rows = byTypeAndYear.Where(r => types.Contains(r.ScoreType)).ToList();
+            int? latest = rows.Count == 0 ? null : rows.Max(r => r.Year);
+            return new TargetCatalogSummaryDto
+            {
+                Exam = exam,
+                Total = rows.Sum(r => r.Count),
+                LatestYear = latest,
+                LatestYearCount = rows.Where(r => r.Year == latest).Sum(r => r.Count),
+            };
+        }).ToList();
     }
 
     private IQueryable<TargetProgram> Filter(TargetProgramQuery query)

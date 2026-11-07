@@ -166,7 +166,7 @@
     "delete": "Delete school",
     "nameAria": "School name",
     "emptyTitle": "No schools added yet",
-    "emptyHint": "Enter a school name and optional province / district / address, then add it",
+    "emptyHint": "Add the first school with \"Add school\".",
     "filter": {
       "ariaLabel": "Filter the school list",
       "searchPlaceholder": "Search school names",
@@ -200,6 +200,13 @@
       "title": "delete school",
       "message": "Are you sure you want to delete the school \"{{name}}\"?",
       "confirm": "Delete"
+    },
+    "rowMenu": "Actions for {{name}}",
+    "deleteBlocked": "The school has {{count}} members or requests; move them first.",
+    "counts": {
+      "teachers": "{{count}} teachers",
+      "students": "{{count}} students",
+      "pending": "{{count}} requests"
     }
   },
   "subjectGrades": {

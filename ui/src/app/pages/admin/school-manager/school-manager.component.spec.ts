@@ -4,7 +4,7 @@ import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, ParamMap, Params, Router, convertToParamMap, provideRouter } from '@angular/router';
-import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
+import { BehaviorSubject, NEVER, Subject, of, throwError } from 'rxjs';
 
 import { SCHOOL_SEARCH_DEBOUNCE_MS, SchoolManagerComponent } from './school-manager.component';
 import { AdminService } from '../../../services/admin.service';
@@ -45,6 +45,9 @@ describe('SchoolManagerComponent', () => {
             districtId: 601,
             districtName: 'Çankaya',
             addressLine: null,
+            teacherCount: 0,
+            studentCount: 0,
+            pendingCount: 0,
         },
     ];
 
@@ -341,6 +344,56 @@ describe('SchoolManagerComponent', () => {
         await component.remove(schools[0]);
 
         expect(adminService.deleteSchool).not.toHaveBeenCalled();
+    });
+
+    // ── Issue #898: satır sayıları, menüde sil, diyalogda ekle ───────────────────
+
+    it('row_ShowsMemberCounts_AndBlocksDeleteWithAReason_issue898', async () => {
+        init();
+        adminService.getSchools.mockReturnValue(of([{ ...schools[0], teacherCount: 1, studentCount: 10, pendingCount: 1 }]));
+        component.loadSchools();
+        fixture.detectChanges();
+
+        const counts = Array.from<HTMLElement>(fixture.nativeElement.querySelectorAll('[data-test="school-counts"] span')).map((e) => e.textContent?.trim());
+        expect(counts).toEqual(['1 öğretmen', '10 öğrenci', '1 başvuru']);
+
+        (fixture.nativeElement.querySelector('[data-test="school-menu"]') as HTMLButtonElement).click();
+        fixture.detectChanges();
+        await fixture.whenStable();
+        const blocked = document.querySelector('[data-test="school-delete-blocked"]') as HTMLButtonElement;
+        expect(blocked.disabled).toBe(true);
+        expect(blocked.textContent).toContain('Okulda 12 üye ya da başvuru var');
+        expect(document.querySelector('[data-test="school-delete"]')).toBeNull();
+    });
+
+    it('emptySchool_CanBeDeletedFromTheMenu_issue898', async () => {
+        init();
+        adminService.deleteSchool.mockReturnValue(of(okResult));
+        expect(component.deleteBlocked(schools[0])).toBe(false);
+
+        (fixture.nativeElement.querySelector('[data-test="school-menu"]') as HTMLButtonElement).click();
+        fixture.detectChanges();
+        await fixture.whenStable();
+        (document.querySelector('[data-test="school-delete"]') as HTMLButtonElement).click();
+        await fixture.whenStable();
+
+        expect(dialog.open).toHaveBeenCalled();
+    });
+
+    it('addButton_OpensTheFormInADialog_AndClosesItAfterSaving_issue898', async () => {
+        init();
+        const close = vi.fn();
+        // Diyalog açık kalır (afterClosed henüz yaymaz).
+        dialog.open.mockReturnValue({ afterClosed: () => NEVER, close } as unknown as MatDialogRef<unknown, boolean>);
+        adminService.createSchool.mockReturnValue(of(okResult));
+        expect(fixture.nativeElement.querySelector('.add-row')).toBeNull();
+
+        (fixture.nativeElement.querySelector('[data-test="school-add"]') as HTMLButtonElement).click();
+        expect(dialog.open).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ width: '560px' }));
+
+        component.newSchoolName = 'Yeni Okul';
+        await component.addSchool();
+        expect(close).toHaveBeenCalled();
     });
 
     // ── schoolLocation ────────────────────────────────────────────────────────

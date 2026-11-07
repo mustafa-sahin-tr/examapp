@@ -40,7 +40,11 @@ public class SchoolService : ISchoolService
                 ProvinceName = s.Province != null ? s.Province.Name : null,
                 DistrictId = s.DistrictId,
                 DistrictName = s.District != null ? s.District.Name : null,
-                AddressLine = s.AddressLine
+                AddressLine = s.AddressLine,
+                TeacherCount = _context.Teachers.Count(t => t.SchoolId == s.Id),
+                StudentCount = _context.Students.Count(st => st.SchoolId == s.Id && st.SchoolVerifiedAt != null),
+                PendingCount = _context.Students.Count(st => st.SchoolId == s.Id && st.SchoolVerifiedAt == null)
+                    + _context.Teachers.Count(t => t.RequestedSchoolId == s.Id && t.ApprovalStatus == TeacherApprovalStatus.Pending),
             })
             .ToListAsync(ct);
     }
@@ -103,13 +107,14 @@ public class SchoolService : ISchoolService
         if (school == null)
             return Fail(_localizer["school.notFound"]);
 
-        // Teacher/Student do not have a SchoolId FK yet (out of scope for this issue) —
-        // match against the free-text SchoolName field instead.
+        // Issue #898: üyelik SchoolId'de (bekleyen öğrenci ve okul isteyen öğretmen dahil); eski kayıtlar için serbest metin
+        // SchoolName eşleşmesi de engeller.
         var name = school.Name.ToLower();
-        if (await _context.Teachers.AnyAsync(t => t.SchoolName != null && t.SchoolName.ToLower() == name, ct))
+        if (await _context.Teachers.AnyAsync(t => t.SchoolId == id || t.RequestedSchoolId == id
+                || (t.SchoolName != null && t.SchoolName.ToLower() == name), ct))
             return Fail(_localizer["school.hasTeachers"]);
 
-        if (await _context.Students.AnyAsync(s => s.SchoolName != null && s.SchoolName.ToLower() == name, ct))
+        if (await _context.Students.AnyAsync(s => s.SchoolId == id || (s.SchoolName != null && s.SchoolName.ToLower() == name), ct))
             return Fail(_localizer["school.hasStudents"]);
 
         _context.SetCurrentUser(userId);

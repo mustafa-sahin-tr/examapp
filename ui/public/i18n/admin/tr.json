@@ -166,7 +166,7 @@
     "delete": "Okulu sil",
     "nameAria": "Okul adı",
     "emptyTitle": "Henüz okul eklenmemiş",
-    "emptyHint": "Okul adı ve isteğe bağlı il / ilçe / adres girip ekle",
+    "emptyHint": "\"Okul ekle\" ile ilk okulu ekle.",
     "filter": {
       "ariaLabel": "Okul listesini filtrele",
       "searchPlaceholder": "Okul adında ara",
@@ -200,6 +200,13 @@
       "title": "okul sil",
       "message": "\"{{name}}\" okulunu silmek istediğine emin misin?",
       "confirm": "Sil"
+    },
+    "rowMenu": "{{name}} için işlemler",
+    "deleteBlocked": "Okulda {{count}} üye ya da başvuru var; önce taşıyın.",
+    "counts": {
+      "teachers": "{{count}} öğretmen",
+      "students": "{{count}} öğrenci",
+      "pending": "{{count}} başvuru"
     }
   },
   "subjectGrades": {

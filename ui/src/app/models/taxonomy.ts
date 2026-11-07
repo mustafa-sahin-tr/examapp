@@ -60,6 +60,10 @@ export interface School {
   districtId: number | null;
   districtName: string | null;
   addressLine: string | null;
+  /** Issue #898: okula bağlı öğretmen, doğrulanmış öğrenci ve bekleyen başvuru (admin okul listesi doldurur). */
+  teacherCount?: number;
+  studentCount?: number;
+  pendingCount?: number;
 }
 
 export interface ApiResult {

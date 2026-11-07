@@ -290,7 +290,50 @@ public class SchoolServiceTests : IDisposable
         result.Success.ShouldBeTrue();
     }
 
+    [Fact]
+    public async Task DeleteAsync_is_blocked_by_members_and_requests_linked_by_id_issue898()
+    {
+        var withStudent = await SeedSchoolAsync("A Okulu");
+        var withRequest = await SeedSchoolAsync("B Okulu");
+        await using (var ctx = _db.NewContext())
+        {
+            // Serbest metin ad eşleşmiyor: yalnız kimlik bağı engeller.
+            ctx.Students.Add(new Student { UserId = 1, StudentNumber = "1", SchoolName = "başka", SchoolId = withStudent });
+            ctx.Teachers.Add(new Teacher { UserId = 2, SchoolName = "başka", RequestedSchoolId = withRequest, ApprovalStatus = TeacherApprovalStatus.Pending });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var del = _db.NewContext();
+        (await NewService(del).DeleteAsync(withStudent, userId: 1)).Message.ShouldContain("öğrenci");
+        (await NewService(del).DeleteAsync(withRequest, userId: 1)).Message.ShouldContain("öğretmen");
+    }
+
     // ---- Read ----
+
+    [Fact]
+    public async Task GetAllAsync_counts_teachers_verified_students_and_pending_requests_issue898()
+    {
+        var id = await SeedSchoolAsync("A Okulu");
+        var other = await SeedSchoolAsync("B Okulu");
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.Teachers.AddRange(
+                new Teacher { UserId = 1, SchoolId = id },
+                new Teacher { UserId = 2, RequestedSchoolId = id, ApprovalStatus = TeacherApprovalStatus.Pending },
+                new Teacher { UserId = 3, RequestedSchoolId = id, ApprovalStatus = TeacherApprovalStatus.Rejected },
+                new Teacher { UserId = 4, SchoolId = other });
+            ctx.Students.AddRange(
+                new Student { UserId = 5, StudentNumber = "5", SchoolId = id, SchoolVerifiedAt = DateTime.UtcNow },
+                new Student { UserId = 6, StudentNumber = "6", SchoolId = id, SchoolVerifiedAt = DateTime.UtcNow },
+                new Student { UserId = 7, StudentNumber = "7", SchoolId = id });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var read = _db.NewContext();
+        var row = (await NewService(read).GetAllAsync()).Single(s => s.Id == id);
+
+        (row.TeacherCount, row.StudentCount, row.PendingCount).ShouldBe((1, 2, 2));
+    }
 
     [Fact]
     public async Task GetAllAsync_returns_schools_ordered_by_name()

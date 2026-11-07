@@ -35,66 +35,73 @@
             : t('filter.countAria', { count: schools().length })
         }}
       </span>
+      <button mat-flat-button type="button" class="add-school" data-test="school-add" (click)="openAdd()">
+        <mat-icon>add</mat-icon>{{ t('add') }}
+      </button>
     </header>
 
-    <div class="add-row stacked">
-      <mat-form-field appearance="outline" class="dense">
-        <input
-          matInput
-          [placeholder]="t('newPlaceholder')"
-          [(ngModel)]="newSchoolName"
-          (keyup.enter)="addSchool()"
-        />
-      </mat-form-field>
-      <mat-form-field appearance="outline" class="dense location-select">
-        <mat-select
-          [placeholder]="t('provincePlaceholder')"
-          [attr.aria-label]="t('provinceAria')"
-          [ngModel]="newSchoolProvinceId()"
-          (ngModelChange)="onNewSchoolProvinceChange($event)"
-          [disabled]="provincesLoading() || !!provincesError()"
-        >
-          <mat-option [value]="null">{{ t('provinceNone') }}</mat-option>
-          @for (p of provinces(); track p.id) {
-            <mat-option [value]="p.id">{{ p.name }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-      <mat-form-field appearance="outline" class="dense location-select">
-        <mat-select
-          [placeholder]="t('districtPlaceholder')"
-          [attr.aria-label]="t('districtAria')"
-          [ngModel]="newSchoolDistrictId()"
-          (ngModelChange)="newSchoolDistrictId.set($event)"
-          [disabled]="newSchoolProvinceId() == null || newSchoolDistrictsLoading()"
-        >
-          <mat-option [value]="null">{{ t('districtNone') }}</mat-option>
-          @for (d of newSchoolDistricts(); track d.id) {
-            <mat-option [value]="d.id">{{ d.name }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-      <mat-form-field appearance="outline" class="dense address-field">
-        <input
-          matInput
-          [placeholder]="t('addressPlaceholder')"
-          [attr.aria-label]="t('addressAria')"
-          maxlength="500"
-          [(ngModel)]="newSchoolAddressLine"
-          (keyup.enter)="addSchool()"
-        />
-      </mat-form-field>
-      <button
-        mat-icon-button
-        color="primary"
-        type="button"
-        [attr.aria-label]="t('add')"
-        (click)="addSchool()"
-        [disabled]="busy()"
-      >
-        <mat-icon>add</mat-icon>
-      </button>
-    </div>
+    <!-- Issue #898: yeni okul diyalogda; liste üstünde yalnız arama ve süzgeç. -->
+    <ng-template #addDialog>
+      <h2 mat-dialog-title>{{ t('add') }}</h2>
+      <mat-dialog-content>
+        <div class="add-row stacked add-dialog-fields">
+          <mat-form-field appearance="outline" class="dense">
+            <input
+              matInput
+              cdkFocusInitial
+              data-test="school-add-name"
+              [placeholder]="t('newPlaceholder')"
+              [(ngModel)]="newSchoolName"
+              (keyup.enter)="addSchool()"
+            />
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="dense location-select">
+            <mat-select
+              [placeholder]="t('provincePlaceholder')"
+              [attr.aria-label]="t('provinceAria')"
+              [ngModel]="newSchoolProvinceId()"
+              (ngModelChange)="onNewSchoolProvinceChange($event)"
+              [disabled]="provincesLoading() || !!provincesError()"
+            >
+              <mat-option [value]="null">{{ t('provinceNone') }}</mat-option>
+              @for (p of provinces(); track p.id) {
+                <mat-option [value]="p.id">{{ p.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="dense location-select">
+            <mat-select
+              [placeholder]="t('districtPlaceholder')"
+              [attr.aria-label]="t('districtAria')"
+              [ngModel]="newSchoolDistrictId()"
+              (ngModelChange)="newSchoolDistrictId.set($event)"
+              [disabled]="newSchoolProvinceId() == null || newSchoolDistrictsLoading()"
+            >
+              <mat-option [value]="null">{{ t('districtNone') }}</mat-option>
+              @for (d of newSchoolDistricts(); track d.id) {
+                <mat-option [value]="d.id">{{ d.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="dense address-field">
+            <input
+              matInput
+              [placeholder]="t('addressPlaceholder')"
+              [attr.aria-label]="t('addressAria')"
+              maxlength="500"
+              [(ngModel)]="newSchoolAddressLine"
+              (keyup.enter)="addSchool()"
+            />
+          </mat-form-field>
+        </div>
+      </mat-dialog-content>
+      <mat-dialog-actions align="end">
+        <button mat-button type="button" mat-dialog-close>{{ t('actions.cancel') }}</button>
+        <button mat-flat-button type="button" data-test="school-add-submit" [disabled]="busy() || !newSchoolName.trim()" (click)="addSchool()">
+          {{ t('add') }}
+        </button>
+      </mat-dialog-actions>
+    </ng-template>
 
     @if (provincesError()) {
       <div class="location-error" role="alert">
@@ -207,28 +214,42 @@
         @for (sc of filteredSchools(); track sc.id) {
           <li class="item static">
             @if (!isEditing(sc.id)) {
-              <span class="name">{{ sc.name }}</span>
-              @if (schoolLocation(sc); as loc) {
-                <span class="meta" [title]="sc.addressLine ?? ''">{{ loc }}</span>
-              }
+              <span class="school-main">
+                <span class="name">{{ sc.name }}</span>
+                @if (schoolLocation(sc); as loc) {
+                  <span class="meta" [title]="sc.addressLine ?? ''">{{ loc }}</span>
+                }
+              </span>
+              <!-- Issue #898: üye ve başvuru sayıları -->
+              <span class="school-counts" data-test="school-counts">
+                <span>{{ t('counts.teachers', { count: sc.teacherCount ?? 0 }) }}</span>
+                <span>{{ t('counts.students', { count: sc.studentCount ?? 0 }) }}</span>
+                @if ((sc.pendingCount ?? 0) > 0) {
+                  <span class="pending" data-test="school-pending">{{ t('counts.pending', { count: sc.pendingCount }) }}</span>
+                }
+              </span>
               <span class="actions">
-                <button
-                  mat-icon-button
-                  type="button"
-                  [attr.aria-label]="t('edit')"
-                  (click)="startEdit(sc)"
-                >
-                  <mat-icon>edit</mat-icon>
+                <button mat-icon-button type="button" data-test="school-menu" [attr.aria-label]="t('rowMenu', { name: sc.name })" [matMenuTriggerFor]="rowMenu">
+                  <mat-icon>more_vert</mat-icon>
                 </button>
-                <button
-                  mat-icon-button
-                  type="button"
-                  class="danger"
-                  [attr.aria-label]="t('delete')"
-                  (click)="remove(sc)"
-                >
-                  <mat-icon>delete</mat-icon>
-                </button>
+                <mat-menu #rowMenu="matMenu">
+                  <button mat-menu-item type="button" (click)="startEdit(sc)">
+                    <mat-icon>edit</mat-icon>{{ t('edit') }}
+                  </button>
+                  @if (deleteBlocked(sc)) {
+                    <button mat-menu-item type="button" disabled data-test="school-delete-blocked">
+                      <mat-icon>delete</mat-icon>
+                      <span class="menu-two-line">
+                        {{ t('delete') }}
+                        <small>{{ t('deleteBlocked', { count: memberCount(sc) }) }}</small>
+                      </span>
+                    </button>
+                  } @else {
+                    <button mat-menu-item type="button" class="danger" data-test="school-delete" (click)="remove(sc)">
+                      <mat-icon>delete</mat-icon>{{ t('delete') }}
+                    </button>
+                  }
+                </mat-menu>
               </span>
             } @else {
               <span class="edit-row">

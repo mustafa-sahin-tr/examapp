@@ -56,6 +56,11 @@ describe('OpenTextReviewsComponent (#583)', () => {
   const el = () => fixture.nativeElement as HTMLElement;
   const q = (id: string, root: ParentNode = el()) => root.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
   const cards = () => Array.from(el().querySelectorAll<HTMLElement>('[data-testid="otq-item"]'));
+  const rows = () => Array.from(el().querySelectorAll<HTMLElement>('[data-testid="otq-row"]'));
+  const key = (k: string, init: KeyboardEventInit = {}, target: EventTarget = document.body) => {
+    target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, ...init }));
+    fixture.detectChanges();
+  };
 
   async function create(
     first: OpenTextReviewPage | { error: unknown } = page([item()]),
@@ -208,7 +213,9 @@ describe('OpenTextReviewsComponent (#583)', () => {
     expect(snackOpen).toHaveBeenCalledWith('Değerlendirme kaydedildi.', 'Tamam', expect.any(Object));
     // Sayfa kaymasın diye satır yerelde çıkarılmaz: aynı sayfa sunucudan yeniden okunur.
     expect(service.list).toHaveBeenLastCalledWith({ status: 'pending', worksheetId: null, page: 2, pageSize: 20 });
-    expect(cards().map((c) => c.getAttribute('data-id'))).toEqual(['502', '503']);
+    // #864: kuyrukta iki satır; kaydedilen düştüğü için aynı sıradaki (502) açılır.
+    expect(rows().map((c) => c.getAttribute('data-id'))).toEqual(['502', '503']);
+    expect(cards()[0].getAttribute('data-id')).toBe('502');
     expect(fixture.componentInstance.totalCount()).toBe(24);
   });
 
@@ -347,5 +354,66 @@ describe('OpenTextReviewsComponent (#583)', () => {
     expect(q('otq-feedback', card)?.getAttribute('maxlength')).toBe('1000');
     typeFeedback(card, 'x'.repeat(1200));
     expect(fixture.componentInstance.draftOf(fixture.componentInstance.items()[0]).feedback).toHaveLength(1000);
+  });
+
+  // Issue #864: iki panel, kısayollar, hazır cümleler, kayıttan sonra sıradaki.
+  it('twoPanels_RowSelectsDetail_JKMoves', async () => {
+    await create(page([item(), item({ instanceQuestionId: 502, studentNumber: '1204' })]));
+    expect(rows()).toHaveLength(2);
+    expect(cards()).toHaveLength(1);
+    expect(cards()[0].getAttribute('data-id')).toBe('501');
+
+    rows()[1].click();
+    fixture.detectChanges();
+    expect(cards()[0].getAttribute('data-id')).toBe('502');
+    expect(rows()[1].getAttribute('aria-current')).toBe('true');
+
+    key('k');
+    expect(cards()[0].getAttribute('data-id')).toBe('501');
+    key('j');
+    expect(cards()[0].getAttribute('data-id')).toBe('502');
+  });
+
+  it('shortcuts_123Evaluate_CtrlEnterSaves_DigitsInFeedbackAreText', async () => {
+    await create();
+    service.review.mockReturnValue(of({ success: true, message: '', item: item() }));
+
+    key('2');
+    expect(fixture.componentInstance.draftOf(fixture.componentInstance.selected()!).evaluation).toBe('partial');
+    const field = q('otq-feedback') as HTMLTextAreaElement;
+    key('3', {}, field);
+    expect(fixture.componentInstance.draftOf(fixture.componentInstance.selected()!).evaluation).toBe('partial');
+
+    key('Enter', { ctrlKey: true }, field);
+    await settle();
+    expect(service.review).toHaveBeenCalledWith(501, { evaluation: 'partial', feedback: null, answerHash: 'hash-1' });
+  });
+
+  it('phrases_AppendToFeedback', async () => {
+    await create();
+    expect(q('otq-phrases')).toBeNull();
+    chooseEvaluation(cards()[0], 'sufficient');
+    typeFeedback(cards()[0], 'Aferin.');
+
+    (q('otq-phrases')!.querySelector('button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect((q('otq-feedback') as HTMLTextAreaElement).value).toBe('Aferin. Harika, konuyu iyi anlamışsın.');
+  });
+
+  it('afterSave_RowStaysInList_OpensTheNextOne', async () => {
+    const reviewed = (id: number) =>
+      item({
+        instanceQuestionId: id,
+        status: 'reviewed',
+        review: { evaluation: 'partial', feedback: '', source: 'teacher', reviewedByUserId: 5, reviewedAt: '2026-10-27T10:00:00Z', stale: false },
+      });
+    await create(page([reviewed(501), reviewed(502)]), { status: 'reviewed' });
+    service.review.mockReturnValue(of({ success: true, message: '', item: reviewed(501) }));
+    chooseEvaluation(cards()[0], 'sufficient');
+    (q('otq-save', cards()[0]) as HTMLButtonElement).click();
+    await settle();
+
+    expect(cards()[0].getAttribute('data-id')).toBe('502');
   });
 });

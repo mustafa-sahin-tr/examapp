@@ -54,5 +54,21 @@
     "forbidden": "Bu cevabı değerlendirme yetkin yok; liste yenilendi."
   },
   "imageAltPlain": "Madde görseli",
-  "lockedByOther": "Başka bir öğretmen değerlendirdi; bu değerlendirmeyi değiştiremezsin."
+  "lockedByOther": "Başka bir öğretmen değerlendirdi; bu değerlendirmeyi değiştiremezsin.",
+  "queueAria": "Değerlendirilecek cevaplar",
+  "shortcuts": "Kısayollar: 1-2-3 değerlendirme · J/K sonraki/önceki · Ctrl+Enter kaydet",
+  "phrases": {
+    "sufficient": [
+      "Harika, konuyu iyi anlamışsın.",
+      "Düşünceni açık ve düzenli anlatmışsın."
+    ],
+    "partial": [
+      "Fikrin doğru; bir örnekle biraz daha açıklayabilirsin.",
+      "Güzel başlangıç; eksik kalan noktayı tamamla."
+    ],
+    "insufficient": [
+      "Yönergeyi bir kez daha oku ve cevabını yeniden yaz.",
+      "Örnek cevaba bakıp eksiklerini tamamla."
+    ]
+  }
 }

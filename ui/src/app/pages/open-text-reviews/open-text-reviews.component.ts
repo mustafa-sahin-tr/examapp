@@ -74,6 +74,7 @@ export interface OpenTextReviewDraft {
   ],
   providers: [provideTranslocoScope(OPEN_TEXT_REVIEWS_SCOPE)],
   templateUrl: './open-text-reviews.component.html',
+  host: { '(document:keydown)': 'onKeydown($event)' },
   styleUrl: './open-text-reviews.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -103,6 +104,15 @@ export class OpenTextReviewsComponent {
   readonly loaded = signal(false);
   readonly savingId = signal<number | null>(null);
   readonly drafts = signal<Record<number, OpenTextReviewDraft>>({});
+
+  /** Issue #864: sağ panelde açık satır; yoksa listenin ilki. */
+  readonly selectedId = signal<number | null>(null);
+  readonly selected = computed(() => {
+    const items = this.items();
+    return items.find((item) => item.instanceQuestionId === this.selectedId()) ?? items[0] ?? null;
+  });
+  /** Kayıttan sonra yeniden okunan sayfada sıradaki satıra geçmek için kaydedilen satır ve sırası. */
+  private advanceFrom: { id: number; index: number } | null = null;
 
   readonly isEmpty = computed(() => this.loaded() && !this.loading() && !this.error() && this.items().length === 0);
   /** Etkinlik filtresinin adı (listedeki satırlardan; boşsa yalnız "Bu etkinlik"). */
@@ -157,6 +167,7 @@ export class OpenTextReviewsComponent {
           }
           this.items.set(items);
           this.totalCount.set(total);
+          this.applyAdvance(items);
           this.seedDrafts(items);
           this.loaded.set(true);
         },
@@ -196,6 +207,57 @@ export class OpenTextReviewsComponent {
     this.pageIndex.set(event.pageIndex);
     this.pageSize.set(event.pageSize);
     this.load();
+  }
+
+  select(item: OpenTextReviewItem): void {
+    this.selectedId.set(item.instanceQuestionId);
+  }
+
+  /** Issue #864: hazır geri bildirim cümleleri (değerlendirmeye göre). */
+  phrasesFor(evaluation: OpenTextEvaluation): string[] {
+    const phrases = this.transloco.translateObject<string[]>(`${OPEN_TEXT_REVIEWS_SCOPE}.phrases.${evaluation}`);
+    return Array.isArray(phrases) ? phrases : [];
+  }
+
+  addPhrase(item: OpenTextReviewItem, phrase: string): void {
+    if (!this.canEdit(item)) return;
+    const current = this.draftOf(item).feedback.trim();
+    const next = (current ? `${current} ${phrase}` : phrase).slice(0, OPEN_TEXT_LIMITS.maxFeedbackLength);
+    this.patchDraft(item, { feedback: next });
+  }
+
+  /**
+   * Issue #864: kısayollar — 1/2/3 değerlendirme, J/K sonraki/önceki, Ctrl/⌘+Enter kaydet. Yazı alanındayken yalnız kaydet
+   * kısayolu çalışır (rakam geri bildirime yazılır).
+   */
+  onKeydown(event: KeyboardEvent): void {
+    const item = this.selected();
+    if (!item || event.altKey) return;
+    const target = event.target instanceof Element ? event.target : null;
+    const typing = !!target?.closest('input, textarea, select, [contenteditable="true"]');
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+      if (this.canSave(item)) {
+        event.preventDefault();
+        this.save(item);
+      }
+      return;
+    }
+    if (typing || event.ctrlKey || event.metaKey) return;
+    const index = ['1', '2', '3'].indexOf(event.key);
+    if (index >= 0 && this.canEdit(item) && this.savingId() === null) {
+      event.preventDefault();
+      this.setEvaluation(item, this.evaluations[index]);
+      return;
+    }
+    if (event.key === 'j' || event.key === 'k') {
+      const items = this.items();
+      const at = items.findIndex((i) => i.instanceQuestionId === item.instanceQuestionId);
+      const next = items[at + (event.key === 'j' ? 1 : -1)];
+      if (next) {
+        event.preventDefault();
+        this.select(next);
+      }
+    }
   }
 
   draftOf(item: OpenTextReviewItem): OpenTextReviewDraft {
@@ -291,12 +353,31 @@ export class OpenTextReviewsComponent {
    */
   private afterSaved(item: OpenTextReviewItem): void {
     const id = item.instanceQuestionId;
+    this.advanceFrom = { id, index: this.items().findIndex((i) => i.instanceQuestionId === id) };
     this.drafts.update((all) => {
       const next = { ...all };
       delete next[id];
       return next;
     });
     this.load();
+  }
+
+  /**
+   * Issue #864: kayıttan sonra sıradaki cevap açılır — bekleyen listesinde kaydedilen satır düştüğü için aynı sıra, satır
+   * listede kaldıysa (değerlendirilen / hepsi) bir sonraki. Seçim listede yoksa ilk satır.
+   */
+  private applyAdvance(items: OpenTextReviewItem[]): void {
+    const from = this.advanceFrom;
+    this.advanceFrom = null;
+    if (from && from.index >= 0 && items.length > 0) {
+      const stayed = items.findIndex((i) => i.instanceQuestionId === from.id);
+      const index = stayed >= 0 ? Math.min(stayed + 1, items.length - 1) : Math.min(from.index, items.length - 1);
+      this.selectedId.set(items[index].instanceQuestionId);
+      return;
+    }
+    if (!items.some((i) => i.instanceQuestionId === this.selectedId())) {
+      this.selectedId.set(items[0]?.instanceQuestionId ?? null);
+    }
   }
 
   private onSaveError(source: unknown): void {

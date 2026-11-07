@@ -194,6 +194,7 @@ export class BooksComponent {
         next: (books) => {
           this.books.set(books ?? []);
           this.loading.set(false);
+          this.selectFirstOnOpen();
         },
         error: (error) => {
           console.error('labeling books failed', error);
@@ -218,6 +219,21 @@ export class BooksComponent {
   }
 
   // ---------------- Seçim ----------------
+
+  private openedOnce = false;
+
+  /** #916: sayfa ilk açılışta boş "listeden kitap seç" yerine ilk kitapla açılır; sonraki yüklemeler seçimi değiştirmez. */
+  private selectFirstOnOpen(): void {
+    if (this.openedOnce) {
+      return;
+    }
+    this.openedOnce = true;
+    const first = this.books()[0];
+    if (first && this.selectedId() === null) {
+      this.selectedId.set(first.id);
+      this.fillForm(first);
+    }
+  }
 
   async select(book: LabelingBook): Promise<void> {
     if (this.selectedId() === book.id || !(await this.confirmDiscard())) {

@@ -95,6 +95,8 @@
     "subjectsLoadFailed": "Subjects could not be loaded.",
     "topicsLoadFailed": "Topics could not be loaded.",
     "subTopicsLoadFailed": "Subtopics could not be loaded.",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "overviewTitle": "Topics with links",
+    "overviewCount": "{{count}} links"
   }
 }

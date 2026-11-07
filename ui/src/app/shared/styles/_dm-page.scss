@@ -99,6 +99,23 @@
   }
 }
 
+// #916: konuşma hiç yokken sayfanın tek boş durumu.
+.dmp__state--page {
+  padding: 48px 16px;
+
+  > mat-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 40px;
+    opacity: 0.6;
+  }
+
+  p {
+    max-width: 420px;
+    margin: 0;
+  }
+}
+
 .dmp__state--error {
   color: var(--ms-danger-text);
 }

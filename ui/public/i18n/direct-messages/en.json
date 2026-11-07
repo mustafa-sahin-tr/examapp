@@ -50,7 +50,8 @@
       "blocked": "You have not blocked any students."
     },
     "error": "Could not load the inbox.",
-    "selectHint": "Pick a conversation on the left to read it."
+    "selectHint": "Pick a conversation on the left to read it.",
+    "noConversations": "No student has written to you yet. When students send a message, it appears here."
   },
   "conversation": {
     "back": "Back to conversation list",

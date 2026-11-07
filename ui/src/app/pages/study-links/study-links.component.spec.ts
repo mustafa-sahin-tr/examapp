@@ -11,6 +11,7 @@ import { StudyLinksComponent } from './study-links.component';
 import { SubjectService } from '../../services/subject.service';
 import { GradesService } from '../../services/grades.service';
 import { StudyLinkService } from '../../services/study-link.service';
+import { StudyLinkTopicOverview } from '../../models/study-link';
 import { AuthService } from '../../services/auth.service';
 import { TopicStudyLinkManagerComponent } from '../../shared/components/topic-study-link-manager/topic-study-link-manager.component';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
@@ -32,6 +33,15 @@ describe('StudyLinksComponent (issue #61, teacher page)', () => {
         { id: 20, name: 'Kesirler', subjectId: 1, gradeId: 5 },
     ];
 
+    let overview: StudyLinkTopicOverview[] = [];
+
+    beforeEach(() => {
+        overview = [];
+        localStorage.removeItem('studyLinks.lastSubjectId');
+    });
+
+    afterEach(() => localStorage.removeItem('studyLinks.lastSubjectId'));
+
     function configure(): void {
         subjectService = {
             loadCategories: vi.fn().mockName("SubjectService.loadCategories"),
@@ -43,8 +53,10 @@ describe('StudyLinksComponent (issue #61, teacher page)', () => {
         subjectService.getSubTopicsByTopic.mockReturnValue(of([{ id: 200, name: 'Basit Kesirler', topicId: 20 }]));
 
         studyLinkService = {
-            list: vi.fn().mockName("StudyLinkService.list")
+            list: vi.fn().mockName("StudyLinkService.list"),
+            overview: vi.fn().mockName("StudyLinkService.overview")
         } as unknown as MockedObject<StudyLinkService>;
+        studyLinkService.overview.mockReturnValue(of(overview));
         studyLinkService.list.mockReturnValue(of({ success: true, items: [], totalCount: 0, activeCount: 0, maxActiveLinks: 7 }));
 
         TestBed.configureTestingModule({
@@ -84,6 +96,35 @@ describe('StudyLinksComponent (issue #61, teacher page)', () => {
         expect(subjectService.getSubTopicsByTopic).not.toHaveBeenCalled();
         expect(manager().scope()).toBeNull();
         expect(studyLinkService.list).not.toHaveBeenCalled();
+    });
+
+    it('overview_ShownBeforeATopicIsPicked_ClickOpensSubjectAndTopic_issue916', () => {
+        overview = [{ topicId: 20, topicName: 'Kesirler', subjectId: 2, subjectName: 'Fizik', gradeId: 5, linkCount: 3, activeCount: 2, lastChangedAt: '2026-11-06T10:00:00Z' }];
+        configure();
+
+        const items = fixture.nativeElement.querySelectorAll('[data-testid="overview-topic"]');
+        expect(items.length).toBe(1);
+        expect(items[0].textContent).toContain('Kesirler');
+        expect(items[0].textContent).toContain('5. Sınıf');
+        expect(items[0].textContent).toContain('3 link');
+        // En son linki değişen ders başta.
+        expect(component.sortedSubjects().map((s) => s.name)).toEqual(['Fizik', 'Matematik']);
+
+        items[0].click();
+        render();
+
+        expect(component.selectedSubjectId()).toBe(2);
+        expect(component.selectedTopicId()).toBe(20);
+        expect(manager().scope()).toEqual({ topicId: 20 });
+        expect(fixture.nativeElement.querySelector('[data-testid="study-links-overview"]')).toBeNull();
+    });
+
+    it('lastPickedSubject_ListedFirst_issue916', () => {
+        localStorage.setItem('studyLinks.lastSubjectId', '2');
+        configure();
+
+        expect(component.sortedSubjects().map((s) => s.name)).toEqual(['Fizik', 'Matematik']);
+        expect(fixture.nativeElement.querySelector('[data-testid="study-links-overview"]')).toBeNull();
     });
 
     it('selectSubject_LoadsTopicsSortedByGradeThenName', () => {

@@ -161,6 +161,30 @@ public class TopicStudyLinkListResultDto : StudyLinkResponseDto
     public int MaxActiveLinks { get; set; } = TopicStudyLinkLimits.MaxActiveLinksPerScope;
 }
 
+/// <summary>
+/// GET /api/study-links/overview (#916) — linki olan konular; alt konu linkleri konusuna sayılır. Sayfa ilk açılışta
+/// bunları gösterir ki öğretmen ders → konu seçmeden mevcut linklere ulaşsın. Son değişene göre sıralı.
+/// </summary>
+public class StudyLinkTopicOverviewDto
+{
+    public int TopicId { get; set; }
+    public string TopicName { get; set; } = string.Empty;
+    public int SubjectId { get; set; }
+    public string SubjectName { get; set; } = string.Empty;
+    public int GradeId { get; set; }
+
+    /// <summary>Konu + alt konularındaki link sayısı (pasifler dahil).</summary>
+    public int LinkCount { get; set; }
+
+    public int ActiveCount { get; set; }
+    public DateTime LastChangedAt { get; set; }
+}
+
+public class StudyLinkOverviewResultDto : StudyLinkResponseDto
+{
+    public List<StudyLinkTopicOverviewDto> Items { get; set; } = new();
+}
+
 public static class TopicStudyLinkErrorCodes
 {
     /// <summary>409 — kapsamda zaten 7 aktif link var.</summary>

@@ -13,7 +13,7 @@
           [placeholder]="subjects().loading ? t('page.loading') : t('page.subjectPlaceholder')"
           (selectionChange)="selectSubject($event.value)"
         >
-          @for (s of subjects().items ?? []; track s.id) {
+          @for (s of sortedSubjects(); track s.id) {
             <mat-option [value]="s.id">{{ s.name }}</mat-option>
           }
         </mat-select>
@@ -97,6 +97,25 @@
       }
     </div>
   </div>
+
+  @if (selectedTopicId() == null && overview().length) {
+    <section class="slp-overview" aria-labelledby="slp-overview-title" data-testid="study-links-overview">
+      <h2 id="slp-overview-title" class="slp-overview__title">{{ t('page.overviewTitle') }}</h2>
+      <ul class="slp-overview__list">
+        @for (item of overview(); track item.topicId) {
+          <li>
+            <button type="button" class="slp-overview__item" data-testid="overview-topic" (click)="openOverviewTopic(item)">
+              <span class="slp-overview__name">{{ item.topicName }}</span>
+              <span class="slp-overview__meta">
+                {{ item.subjectName }}@if (gradeName(item.gradeId); as grade) { · {{ grade }}}
+              </span>
+              <span class="slp-overview__count">{{ t('page.overviewCount', { count: item.linkCount }) }}</span>
+            </button>
+          </li>
+        }
+      </ul>
+    </section>
+  }
 
   <div class="slp-panel">
     <app-topic-study-link-manager

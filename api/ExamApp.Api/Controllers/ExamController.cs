@@ -150,7 +150,7 @@ public class ExamController : BaseController
         if (user == null)
             return UserNotResolved(_localizer["exam.unauthenticated"].Value);
 
-        // Öğretmen takvimi yalnızca onaylanmış randevuları içerir (issue #96); öğrenci akışı değişmedi.
+        // Öğretmen takvimi onaylı randevuları (issue #96) ve verdiği ödevlerin teslim günlerini (#916) içerir.
         if (User.IsInRole("Teacher") && !User.IsInRole("Student"))
         {
             var teacherResult = await _calendarService.GetTeacherCalendarAsync(user.Id, fromUtc, toUtc, ct);

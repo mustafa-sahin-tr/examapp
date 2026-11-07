@@ -83,6 +83,8 @@ export class StudentMessagesComponent implements OnInit {
   protected readonly page = signal(1);
   protected readonly total = signal(0);
   protected readonly isEmpty = computed(() => this.loaded() && !this.loading() && !this.error() && this.items().length === 0);
+  /** #916: hiç konuşma yokken liste + "konuşma seç" paneli yerine tek boş durum. */
+  protected readonly noConversations = computed(() => this.isEmpty() && this.filter() === 'all' && this.page() === 1);
 
   protected readonly selection = signal<TeacherDmSelection | null>(null);
   protected readonly selectedId = computed(() => this.selection()?.conversationId ?? null);

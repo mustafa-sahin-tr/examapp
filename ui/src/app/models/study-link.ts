@@ -57,6 +57,18 @@ export type StudyLinkQuery = StudyLinkScope & {
   take?: number;
 };
 
+/** `StudyLinkTopicOverviewDto` — linki olan konu (#916); alt konu linkleri konusuna sayılır. */
+export interface StudyLinkTopicOverview {
+  topicId: number;
+  topicName: string;
+  subjectId: number;
+  subjectName: string;
+  gradeId: number;
+  linkCount: number;
+  activeCount: number;
+  lastChangedAt: string;
+}
+
 /** `TopicStudyLinkListResultDto` — GET listesi ve PUT reorder yanıtı. */
 export interface StudyLinkListResponse {
   success: boolean;

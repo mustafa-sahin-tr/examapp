@@ -19,6 +19,9 @@ public interface ITopicStudyLinkService
     /// <summary>Konu (yalnızca konu seviyesi) veya alt konu linkleri; SortOrder, Id sıralı.</summary>
     Task<TopicStudyLinkListResultDto> ListAsync(TopicStudyLinkQueryDto query, StudyLinkActor actor, CancellationToken ct = default);
 
+    /// <summary>Linki olan konular (alt konu linkleri konusuna sayılır), son değişene göre; en fazla 50 (#916).</summary>
+    Task<StudyLinkOverviewResultDto> OverviewAsync(StudyLinkActor actor, CancellationToken ct = default);
+
     Task<TopicStudyLinkResultDto> GetByIdAsync(int id, StudyLinkActor actor, CancellationToken ct = default);
 
     /// <summary>

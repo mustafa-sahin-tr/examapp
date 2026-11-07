@@ -54,6 +54,20 @@ public class StudyLinksController : BaseController
         return result.Success ? Ok(result) : MapFailure(result);
     }
 
+    /// <summary>Linki olan konular — sayfa ilk açılışta gösterir (#916).</summary>
+    [HttpGet("overview")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
+    [Authorize(Roles = ManagerRoles)]
+    public async Task<IActionResult> Overview(CancellationToken ct)
+    {
+        var actor = await ResolveActorAsync(ct);
+        if (actor == null)
+            return UserNotResolved(new { message = _localizer["studyLinks.unauthorized"].Value });
+
+        var result = await _service.OverviewAsync(actor, ct);
+        return result.Success ? Ok(result) : MapFailure(result);
+    }
+
     [HttpGet("{id:int}")]
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     [Authorize(Roles = ManagerRoles)]

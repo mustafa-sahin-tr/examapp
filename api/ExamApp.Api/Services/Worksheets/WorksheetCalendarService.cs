@@ -80,11 +80,49 @@ public class WorksheetCalendarService : IWorksheetCalendarService
             return new StudentCalendarResponseDto();
 
         var events = await BuildBookingEventsAsync(b => b.TeacherId == teacherId.Value, fromUtc, toUtc, isTeacherView: true, ct);
+        events.AddRange(await BuildTeacherAssignmentDeadlineEventsAsync(teacherUserId, fromUtc, toUtc, ct));
 
         return new StudentCalendarResponseDto
         {
             Events = events.OrderBy(e => e.Date).ToList()
         };
+    }
+
+    /// <summary>
+    /// #916: öğretmenin verdiği ödevlerin teslim günleri. Aynı test aynı gün birden çok sınıfa / öğrenciye verilmiş olabilir:
+    /// gün başına tek etkinlik, en erken saatle. Tamamlanma öğrenciye özgü olduğu için öğretmen görünümünde işaretlenmez.
+    /// </summary>
+    private async Task<List<CalendarEventDto>> BuildTeacherAssignmentDeadlineEventsAsync(
+        int teacherUserId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+    {
+        var rows = await _context.WorksheetAssignments
+            .AsNoTracking()
+            .Where(a => a.CreateUserId == teacherUserId && a.EndAt != null && a.EndAt >= fromUtc && a.EndAt < toUtc)
+            .Select(a => new
+            {
+                a.WorksheetId,
+                EndAt = a.EndAt!.Value,
+                Title = a.Worksheet.Name,
+                Subject = a.Worksheet.Subject != null ? a.Worksheet.Subject.Name : null,
+                a.Worksheet.ImageUrl,
+                WorksheetKind = a.Worksheet.Kind
+            })
+            .ToListAsync(ct);
+
+        return rows
+            .GroupBy(r => (r.WorksheetId, r.EndAt.Date))
+            .Select(g => g.OrderBy(r => r.EndAt).First())
+            .Select(r => new CalendarEventDto
+            {
+                Kind = KindAssignmentDeadline,
+                Date = DateTime.SpecifyKind(r.EndAt, DateTimeKind.Utc),
+                WorksheetId = r.WorksheetId,
+                WorksheetTitle = r.Title,
+                WorksheetKind = r.WorksheetKind,
+                Subject = r.Subject,
+                ImageUrl = r.ImageUrl,
+            })
+            .ToList();
     }
 
     /// <summary>

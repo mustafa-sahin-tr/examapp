@@ -1,6 +1,12 @@
 <div class="dmp" *transloco="let t; prefix: 'direct-messages'">
   <app-page-header [title]="t('teacher.title')" [description]="t('teacher.subtitle')" />
 
+  @if (noConversations()) {
+    <div class="dmp__state dmp__state--page" data-testid="sm-no-conversations">
+      <mat-icon aria-hidden="true">forum</mat-icon>
+      <p>{{ t('teacher.noConversations') }}</p>
+    </div>
+  } @else {
   <div class="dmp__layout" [class.dmp__layout--open]="selection() !== null">
     <section class="dmp__list" aria-labelledby="sm-inbox-title">
       <h2 class="dmp__sr" id="sm-inbox-title">{{ t('teacher.inboxLabel') }}</h2>
@@ -79,4 +85,5 @@
       }
     </section>
   </div>
+  }
 </div>

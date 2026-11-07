@@ -113,6 +113,12 @@ public class StudentTargetGoalController(
         [FromQuery] string? search = null, [FromQuery] int skip = 0, [FromQuery] int take = 20, CancellationToken ct = default) =>
         Ok(await programs.SearchAsync(new(exam, scoreType, year, city, search, Math.Max(skip, 0), Math.Clamp(take, 1, MaxTake)), ct));
 
+    /// <summary>Issue #891: il seçimi için katalogdaki iller.</summary>
+    [HttpGet("programs/cities")]
+    [EnableRateLimiting(TaxonomySearchRateLimiting.Policy)]
+    public async Task<IActionResult> Cities([FromQuery] string? exam = null, CancellationToken ct = default) =>
+        Ok(await programs.CitiesAsync(exam, ct));
+
     [HttpPut]
     public Task<IActionResult> Set([FromBody] SetTargetGoalDto request, CancellationToken ct) =>
         WithStudentAsync(async studentId => await goals.SetAsync(studentId, request.TargetProgramId, ct) ? Ok(await goals.GetAsync(studentId, ct)) : NotFound(), ct);

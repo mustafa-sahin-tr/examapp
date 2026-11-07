@@ -139,6 +139,12 @@ public class TargetGoalDto
 {
     public TargetProgramDto? Target { get; set; }
     public List<MockExamResultDto> Results { get; set; } = [];
+
+    /// <summary>
+    /// Issue #891: öğrencinin sınıf düzeyi (Grade kodundaki sayı, ör. "5-sinif" → 5); okunamazsa null. Arayüz sınav türünü
+    /// (5–8 LGS, 9–12 YKS) ve sınava kalan yılı bundan türetir.
+    /// </summary>
+    public int? GradeLevel { get; set; }
 }
 
 public class TargetGoalsStatusDto

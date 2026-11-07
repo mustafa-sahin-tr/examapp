@@ -31,14 +31,29 @@ public sealed class TargetGoalService(AppDbContext db, IMockExamService mockExam
                 MinimumScore = g.TargetProgram.MinimumScore, Percentile = g.TargetProgram.Percentile, SourceReference = g.TargetProgram.SourceReference,
             })
             .FirstOrDefaultAsync(ct);
+        var grade = await db.Students.AsNoTracking()
+            .Where(st => st.Id == studentId)
+            .Select(st => new { st.Grade.Code, st.Grade.Name })
+            .FirstOrDefaultAsync(ct);
+        var gradeLevel = GradeLevelOf(grade?.Code) ?? GradeLevelOf(grade?.Name);
         if (target is null)
-            return new();
+            return new() { GradeLevel = gradeLevel };
 
         return new()
         {
             Target = target,
             Results = await mockExams.GetLatestCompleteResultsAsync(studentId, TargetScoreTypes.TemplateCodes(target.ScoreType), ct),
+            GradeLevel = gradeLevel,
         };
+    }
+
+    /// <summary>Issue #891: "5-sinif" / "5. Sınıf" / "8" → ilk sayı (1–12); yoksa null.</summary>
+    internal static int? GradeLevelOf(string? text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return null;
+        var digits = new string(text.SkipWhile(c => !char.IsDigit(c)).TakeWhile(char.IsDigit).ToArray());
+        return int.TryParse(digits, out var level) && level is >= 1 and <= 12 ? level : null;
     }
 
     public async Task<bool> SetAsync(int studentId, int targetProgramId, CancellationToken ct = default)

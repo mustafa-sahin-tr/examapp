@@ -1,7 +1,8 @@
 {
   "self": {
     "title": "Hedefim",
-    "empty": "Henüz hedef seçmedin. Bir okul ya da program seç, denemelerinden sonra tabana kalan farkı burada gör."
+    "empty": "Henüz hedef seçmedin. Bir okul ya da program seç, denemelerinden sonra tabana kalan farkı burada gör.",
+    "farNote": "Sınava daha yıllar var; hedef, denemelerde ne kadar yol aldığını gösterir. İstediğin zaman değiştirebilirsin."
   },
   "child": {
     "title": "Hedef okul",
@@ -35,6 +36,14 @@
   "searchYks": "Program, üniversite ya da il ara",
   "searchFailed": "Arama yapılamadı. Tekrar dene.",
   "noResults": "Sonuç bulunamadı.",
+  "gradeLevel": "{{level}}. sınıf",
+  "yearsToExam": "{{exam}}'ye {{years}} yıl var",
+  "examThisYear": "{{exam}} bu yıl",
+  "city": "İl",
+  "allCities": "Tüm iller",
+  "popular": "En çok seçilenler",
+  "popularIn": "{{city}} için en çok seçilenler",
+  "catalogEmpty": "Taban puanlar henüz yüklenmedi. Yüklenince okulunu buradan seçebileceksin.",
   "choose": "Hedef seç",
   "change": "Değiştir",
   "remove": "Hedefi kaldır",

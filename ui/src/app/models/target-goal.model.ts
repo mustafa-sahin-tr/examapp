@@ -26,6 +26,8 @@ export interface TargetProgramPage<T> {
 
 export interface TargetProgramQuery {
   exam?: TargetExam;
+  /** #891: il süzgeci (katalogdaki yazımla). */
+  city?: string;
   year?: number;
   search?: string;
   skip?: number;
@@ -69,6 +71,8 @@ export interface TargetMockResult {
 export interface TargetGoal {
   target: TargetProgram | null;
   results: TargetMockResult[];
+  /** #891: sınıf düzeyi (5–12); bilinmiyorsa null, eski sunucuda yok. */
+  gradeLevel?: number | null;
 }
 
 export interface TargetImportRow {

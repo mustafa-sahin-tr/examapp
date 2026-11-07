@@ -9,6 +9,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSelectModule } from '@angular/material/select';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { EMPTY, Subject, catchError, debounceTime, finalize, of, switchMap, tap } from 'rxjs';
 
@@ -20,6 +21,16 @@ import { TargetGoalService } from '../../../services/target-goal.service';
 const SEARCH_DEBOUNCE_MS = 300;
 const SEARCH_TAKE = 20;
 
+/** #891: sınava son sınıf (LGS 8, YKS 12) ve geçiş sınıfı (yalnız orada iki sınav da sunulur). */
+const LGS_GRADE = 8;
+const YKS_GRADE = 12;
+
+/** #891: sınıftan sınav türü; 8. sınıf ve bilinmeyen sınıf seçebilir (null). */
+export function examForGrade(level: number | null | undefined): TargetExam | null {
+  if (!level || level === LGS_GRADE) return null;
+  return level < LGS_GRADE ? 'lgs' : 'yks';
+}
+
 /**
  * Issue #695: hedef okul ve tabana kalan fark. Girdi yoksa öğrencinin kendisi (seçip değiştirebilir), `childId` velinin
  * seçili çocuğu (salt okunur). 404'te kart gizlenir: özellik kapalıdır ya da çocuk veliye bağlı değildir.
@@ -27,7 +38,7 @@ const SEARCH_TAKE = 20;
 @Component({
   selector: 'app-target-goal-card',
   standalone: true,
-  imports: [FormsModule, MatButtonModule, MatButtonToggleModule, MatCardModule, MatFormFieldModule, MatIconModule, MatInputModule, MatProgressSpinnerModule, TranslocoDirective],
+  imports: [FormsModule, MatButtonModule, MatButtonToggleModule, MatCardModule, MatFormFieldModule, MatIconModule, MatInputModule, MatProgressSpinnerModule, MatSelectModule, TranslocoDirective],
   providers: [provideTranslocoScope('target-goals')],
   templateUrl: './target-goal-card.component.html',
   styleUrl: './target-goal-card.component.scss',
@@ -55,6 +66,26 @@ export class TargetGoalCardComponent {
   protected readonly options = signal<TargetProgram[]>([]);
   protected readonly searching = signal(false);
   protected readonly searchFailed = signal(false);
+  /** #891: il süzgeci ('' = tüm iller) ve katalogdaki iller. */
+  protected readonly city = signal('');
+  protected readonly cities = signal<string[]>([]);
+  /** Son aramanın terimi; boş terimde liste "en çok seçilenler"dir. */
+  protected readonly searchedTerm = signal('');
+
+  protected readonly gradeLevel = computed(() => this.goal()?.gradeLevel ?? null);
+  /** Sınıftan gelen sınav (null: seçim gösterilir). */
+  protected readonly fixedExam = computed(() => examForGrade(this.gradeLevel()));
+  /** Başlık satırı için sınava kalan yıl (0: bu yıl); sınıf bilinmiyorsa null. */
+  protected readonly yearsToExam = computed(() => {
+    const level = this.gradeLevel();
+    if (!level) return null;
+    const exam = this.fixedExam() ?? this.exam();
+    return Math.max(0, (exam === 'lgs' ? LGS_GRADE : YKS_GRADE) - level);
+  });
+  /** Arama da il de boşken sonuç yoksa katalog yüklenmemiştir. */
+  protected readonly catalogEmpty = computed(
+    () => !this.searching() && !this.searchFailed() && this.options().length === 0 && !this.searchedTerm() && !this.city(),
+  );
 
   protected readonly readOnly = computed(() => this.childId() !== null);
   protected readonly gap = computed(() => {
@@ -99,7 +130,7 @@ export class TargetGoalCardComponent {
           this.searchFailed.set(false);
         }),
         switchMap(() =>
-          this.service.searchPrograms({ exam: this.exam(), search: this.term().trim(), take: SEARCH_TAKE }).pipe(
+          this.service.searchPrograms({ exam: this.exam(), city: this.city() || undefined, search: this.term().trim(), take: SEARCH_TAKE }).pipe(
             catchError(() => {
               this.searchFailed.set(true);
               return of({ total: 0, items: [] });
@@ -110,6 +141,7 @@ export class TargetGoalCardComponent {
       )
       .subscribe((page) => {
         this.options.set(page.items);
+        this.searchedTerm.set(this.term().trim());
         this.searching.set(false);
       });
 
@@ -125,13 +157,37 @@ export class TargetGoalCardComponent {
 
   protected openPicker(): void {
     const scoreType = this.goal()?.target?.scoreType;
-    if (scoreType) {
+    const fixed = this.fixedExam();
+    if (fixed) {
+      this.exam.set(fixed);
+    } else if (scoreType) {
       this.exam.set(scoreType === 'lgs' ? 'lgs' : 'yks');
     }
     this.term.set('');
+    this.searchedTerm.set('');
+    this.city.set(this.goal()?.target?.city ?? '');
     this.options.set([]);
     this.picking.set(true);
+    this.loadCities();
     this.search$.next();
+  }
+
+  protected changeCity(city: string): void {
+    this.city.set(city);
+    this.search$.next();
+  }
+
+  private loadCities(): void {
+    this.service
+      .programCities(this.exam())
+      .pipe(
+        catchError(() => of([] as string[])),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((cities) => {
+        this.cities.set(cities);
+        if (this.city() && !cities.includes(this.city())) this.city.set('');
+      });
   }
 
   protected closePicker(): void {
@@ -140,6 +196,8 @@ export class TargetGoalCardComponent {
 
   protected changeExam(exam: TargetExam): void {
     this.exam.set(exam);
+    this.city.set('');
+    this.loadCities();
     this.search$.next();
   }
 

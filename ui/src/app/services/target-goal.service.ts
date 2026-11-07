@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 import {
   AdminTargetProgram,
   SaveTargetProgram,
+  TargetExam,
   TargetGoal,
   TargetImportPreview,
   TargetImportRequest,
@@ -56,6 +57,11 @@ export class TargetGoalService {
 
   clearMine(): Observable<void> {
     return this.http.delete<void>('/api/exam/student/me/target-goal');
+  }
+
+  /** #891: il seçimi için katalogdaki iller. */
+  programCities(exam: TargetExam): Observable<string[]> {
+    return this.http.get<string[]>('/api/exam/student/me/target-goal/programs/cities', { params: { exam } });
   }
 
   searchPrograms(query: TargetProgramQuery): Observable<TargetProgramPage<TargetProgram>> {

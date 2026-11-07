@@ -3,6 +3,14 @@
     <mat-card appearance="outlined" class="tg__card">
       <mat-card-header>
         <mat-card-title class="tg__title">{{ t(readOnly() ? 'child.title' : 'self.title') }}</mat-card-title>
+        <!-- #891: sınav türü sınıftan; "5. sınıf · LGS'ye 3 yıl var". -->
+        @if (!readOnly() && !loading() && gradeLevel(); as level) {
+          @let examKey = fixedExam() ?? exam();
+          <mat-card-subtitle class="tg__context" data-testid="target-context">
+            {{ t('exams.' + examKey) }} · {{ t('gradeLevel', { level }) }} ·
+            {{ yearsToExam() === 0 ? t('examThisYear', { exam: t('exams.' + examKey) }) : t('yearsToExam', { exam: t('exams.' + examKey), years: yearsToExam() }) }}
+          </mat-card-subtitle>
+        }
       </mat-card-header>
       <mat-card-content>
         @if (loading()) {
@@ -70,6 +78,9 @@
             }
           } @else {
             <p class="tg__state">{{ t(readOnly() ? 'child.empty' : 'self.empty') }}</p>
+            @if (!readOnly() && (yearsToExam() ?? 0) >= 2) {
+              <p class="tg__note" data-testid="target-far-note">{{ t('self.farNote') }}</p>
+            }
           }
 
           @if (!readOnly()) {
@@ -78,18 +89,36 @@
             }
             @if (picking()) {
               <div class="tg__picker">
-                <mat-button-toggle-group [value]="exam()" (change)="changeExam($event.value)" [attr.aria-label]="t('examLabel')" hideSingleSelectionIndicator>
-                  <mat-button-toggle value="lgs">{{ t('exams.lgs') }}</mat-button-toggle>
-                  <mat-button-toggle value="yks">{{ t('exams.yks') }}</mat-button-toggle>
-                </mat-button-toggle-group>
-                <mat-form-field appearance="outline" class="tg__search">
-                  <mat-label>{{ t(exam() === 'lgs' ? 'searchLgs' : 'searchYks') }}</mat-label>
-                  <input matInput maxlength="100" autocomplete="off" [ngModel]="term()" (ngModelChange)="changeTerm($event)" />
-                </mat-form-field>
+                <!-- #891: seçim yalnız geçiş sınıfında (8) ya da sınıf bilinmiyorsa. -->
+                @if (!fixedExam()) {
+                  <mat-button-toggle-group [value]="exam()" (change)="changeExam($event.value)" [attr.aria-label]="t('examLabel')" hideSingleSelectionIndicator>
+                    <mat-button-toggle value="lgs">{{ t('exams.lgs') }}</mat-button-toggle>
+                    <mat-button-toggle value="yks">{{ t('exams.yks') }}</mat-button-toggle>
+                  </mat-button-toggle-group>
+                }
+                <div class="tg__filters">
+                  <mat-form-field appearance="outline" class="tg__city" subscriptSizing="dynamic">
+                    <mat-label>{{ t('city') }}</mat-label>
+                    <mat-select [value]="city()" (valueChange)="changeCity($event)" data-testid="target-city">
+                      <mat-option value="">{{ t('allCities') }}</mat-option>
+                      @for (c of cities(); track c) {
+                        <mat-option [value]="c">{{ c }}</mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="tg__search" subscriptSizing="dynamic">
+                    <mat-label>{{ t(exam() === 'lgs' ? 'searchLgs' : 'searchYks') }}</mat-label>
+                    <input matInput maxlength="100" autocomplete="off" [ngModel]="term()" (ngModelChange)="changeTerm($event)" />
+                  </mat-form-field>
+                </div>
                 @if (searchFailed()) {
                   <p class="tg__state" role="alert">{{ t('searchFailed') }}</p>
+                } @else if (catalogEmpty()) {
+                  <p class="tg__state" data-testid="target-catalog-empty">{{ t('catalogEmpty') }}</p>
                 } @else if (!searching() && options().length === 0) {
                   <p class="tg__state">{{ t('noResults') }}</p>
+                } @else if (!searchedTerm() && options().length > 0) {
+                  <p class="tg__list-title" data-testid="target-popular">{{ city() ? t('popularIn', { city: city() }) : t('popular') }}</p>
                 }
                 <ul class="tg__options">
                   @for (option of options(); track option.id) {
@@ -97,7 +126,7 @@
                       <button mat-button type="button" class="tg__option" [disabled]="saving()" (click)="choose(option)">
                         <span class="tg__option-text">
                           <strong>{{ option.name }}</strong>
-                          <span class="tg__meta">{{ place(option) }} · {{ t('minimumScore', { year: option.year, score: number(option.minimumScore, 2) }) }}</span>
+                          <span class="tg__meta">{{ place(option) }} · {{ t('minimumScore', { year: option.year, score: number(option.minimumScore, 2) }) }}@if (option.percentile !== null) { · {{ t('percentile', { value: number(option.percentile, 2) }) }} }</span>
                         </span>
                       </button>
                     </li>

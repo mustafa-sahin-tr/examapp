@@ -65,7 +65,9 @@ describe('TeacherApprovalPendingComponent (issue #287)', () => {
                 { provide: SignalRService, useValue: { teacherApplicationDecided$: decided$.asObservable() } },
             ],
         });
-        if (navigate) vi.spyOn(TestBed.inject(Router), 'navigate').mockImplementation(navigate as never);
+        // #918: an approved profile on first load redirects to /dashboard; the empty test router has no such route, so
+        // navigation is always stubbed to keep it from raising an unhandled NG04002.
+        vi.spyOn(TestBed.inject(Router), 'navigate').mockImplementation((navigate ?? vi.fn().mockResolvedValue(true)) as never);
         fixture = TestBed.createComponent(TeacherApprovalPendingComponent);
         fixture.detectChanges();
     }

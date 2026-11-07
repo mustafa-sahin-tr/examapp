@@ -24,7 +24,7 @@ const SCOPE = 'student-profile';
 
 /**
  * Öğrencinin profili (#847): kim olduğu (avatar, ad, sınıf · okul, seviye) ve gelişimi. Ayarlar (sınıf, tema, hesap, veliler)
- * ayrı sayfada (`/student-settings`); rozetler kendi sayfasında (`/certificates`).
+ * ayrı sayfada (`/student-settings`); rozetler kendi sayfasında (`/badges`).
  *
  * Sayılar tek kaynaktan: çözülen soru ve doğru cevap, ana sayfadaki "Son 4 hafta" ile aynı BadgeService özetinden (tüm
  * zamanlar); biten test sayısı profil ucundan (#501, tamamlanmış oturumlar).

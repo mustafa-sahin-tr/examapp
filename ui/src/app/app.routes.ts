@@ -177,7 +177,9 @@ export const routes: Routes = [
         canActivate: [authGuard, roleGuard('Student')],
       },
       { path: 'program-create', component: ProgramCreateComponent, canActivate: [authGuard, roleGuard('Student')] },
-      { path: 'certificates', component: BadgeThropyComponent, canActivate: [authGuard] },
+      // #889: rozetler /badges; eski /certificates bağlantıları (bildirimler, yer imleri) oraya yönlenir.
+      { path: 'badges', component: BadgeThropyComponent, canActivate: [authGuard] },
+      { path: 'certificates', redirectTo: 'badges' },
       {
         // Issue #146: kalıcı bildirim listesi (rozet kazanımı ve diğer BadgeService bildirimleri) — tüm roller.
         path: 'notifications',

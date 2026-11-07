@@ -8,7 +8,7 @@ import { BadgeEarnedPushPayload } from '../../../models/notification.model';
 import { BadgeMedallionComponent } from '../badge-medallion/badge-medallion.component';
 
 /** Toast'taki "Rozetlerim" eyleminin hedefi (BadgeThropyComponent). */
-export const BADGE_TOAST_ROUTE = '/certificates';
+export const BADGE_TOAST_ROUTE = '/badges';
 /** Eylem içerdiği için varsayılan 4 sn kısa (tasarım kararı 5). */
 export const BADGE_TOAST_DURATION_MS = 6000;
 export const BADGE_TOAST_PANEL_CLASS = 'badge-toast';

@@ -155,10 +155,16 @@
       "loading": "Loading badges...",
       "error": "Badge information could not be loaded.",
       "empty": "You have no earned or in-progress badges yet.",
-      "standaloneTitle": "Standalone Badges",
-      "earnedSummary": "{{earned}} / {{total}} earned",
+      "standaloneTitle": "Other badges",
+      "earnedSummary": "{{earned}} badges earned · {{total}} badges in all",
       "legendLabel": "Badge states",
-      "pathEarned": "{{completed}} / {{total}} earned"
+      "pathEarned": "{{completed}} / {{total}} earned",
+      "nearlyTitle": "Almost there",
+      "remaining": "{{remaining}} to go",
+      "earnedTitle": "Earned",
+      "pathsTitle": "Paths",
+      "pathNext": "next: {{name}}",
+      "pathDone": "all earned"
     },
     "bookingSlotDialog": {
       "title": "{{teacher}} · Book a Lesson",

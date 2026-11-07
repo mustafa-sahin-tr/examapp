@@ -281,7 +281,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'tutor-profile', labelKey: 'menu.tutors', icon: 'cast_for_education', route: '/tutor-profile', type: 'menu', roles: ['Teacher'], allowUnapprovedTeacher: true, onlyIndependentTeacher: true },
     { id: 'divider1', labelKey: '', icon: '', route: '', type: 'divider' },
     // Issue #713: sayfa rozet sayfasıdır, rapor değil; yalnız öğrencide anlamlı.
-    { id: 'badges', labelKey: 'menu.badges', icon: 'military_tech', route: '/certificates', type: 'menu', roles: ['Student'] },
+    { id: 'badges', labelKey: 'menu.badges', icon: 'military_tech', route: '/badges', type: 'menu', roles: ['Student'] },
     // Issue #726: admin öğeleri başlıklı gruplarda (panel ve Yönetim en üstte). Başlık, altında görünen öğe yoksa düşer.
     { id: 'group-users', labelKey: 'menu.groupUsers', icon: '', route: '', type: 'header', roles: ['Admin'] },
     { id: 'admin-teachers', labelKey: 'menu.adminTeachers', icon: 'groups', route: '/admin/teachers', type: 'menu', roles: ['Admin'] },

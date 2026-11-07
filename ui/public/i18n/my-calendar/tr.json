@@ -27,6 +27,7 @@
     "done": "tamamlandı",
     "legendAria": "Renk açıklaması",
     "emptyTitle": "Bu hafta planlı bir şey yok",
+    "emptyMonthTitle": "Bu ay planlı bir şey yok",
     "emptyStudent": "Bir çalışma programı oluştur ya da bugün birkaç soru çöz.",
     "emptyTeacher": "Müsait saat açınca öğrencilerin ders isteyebilir.",
     "emptyTeacherSchool": "Onayladığın ders randevuları burada gün gün görünür.",
@@ -45,11 +46,5 @@
     "message": "Takvim yüklenemedi",
     "retry": "Tekrar dene"
   },
-  "loading": "Takvimin hazırlanıyor…",
-  "empty": {
-    "teacher": "Bu ay onaylanmış ders randevun yok",
-    "teacherCta": "Müsait saatlerimi düzenle",
-    "student": "Bu ay planlanmış sınav, atama veya randevu yok",
-    "studentCta": "Sınavlara git"
-  }
+  "loading": "Takvimin hazırlanıyor…"
 }

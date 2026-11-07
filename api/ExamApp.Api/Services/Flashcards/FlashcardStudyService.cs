@@ -90,6 +90,22 @@ public class FlashcardStudyService(AppDbContext context, ILocalDayCalendar calen
             .CountAsync(c => !context.FlashcardReviews.Any(r => r.FlashcardId == c.Id && r.StudentId == studentId && r.DueDay > today), ct);
     }
 
+    /// <summary>#915: "Bugün tekrar yok" ekranı sonraki günü söyler; yalnız görünen destelerin kartları sayılır.</summary>
+    public async Task<(DateOnly? Day, int Count)> GetNextDueAsync(FlashcardLearner learner, CancellationToken ct = default)
+    {
+        var today = calendar.Today;
+        var studentId = learner.StudentId;
+        var decks = FlashcardAccess.VisibleDecks(context, learner);
+        var next = await context.FlashcardReviews
+            .Where(r => r.StudentId == studentId && r.DueDay > today)
+            .Where(r => context.Flashcards.Any(c => c.Id == r.FlashcardId && decks.Any(d => d.Id == c.DeckId)))
+            .GroupBy(r => r.DueDay)
+            .OrderBy(g => g.Key)
+            .Select(g => new { Day = g.Key, Count = g.Count() })
+            .FirstOrDefaultAsync(ct);
+        return next is null ? (null, 0) : (next.Day, next.Count);
+    }
+
     public async Task<FlashcardReviewResult> ReviewAsync(FlashcardLearner learner, int cardId, FlashcardRecall recall, CancellationToken ct = default)
     {
         var decks = FlashcardAccess.VisibleDecks(context, learner);

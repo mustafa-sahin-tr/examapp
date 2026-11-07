@@ -92,6 +92,19 @@ describe('MyProgramsComponent', () => {
         expect(component).toBeTruthy();
     });
 
+    it('noPrograms_ShowsOneCompactCardWithASingleCreateAction (#915)', () => {
+        fixture = configure([]);
+        fixture.detectChanges();
+        const el = fixture.nativeElement as HTMLElement;
+
+        const empty = el.querySelector('[data-test="programs-empty"]')!;
+        expect(empty.textContent).toContain(myProgramsTr.list.empty.cta);
+        expect(el.querySelectorAll('button').length).toBe(1);
+
+        (empty.querySelector('[data-test="programs-empty-create"]') as HTMLButtonElement).click();
+        expect(router.navigate).toHaveBeenCalled();
+    });
+
     describe('getProgressPercentage', () => {
         beforeEach(() => {
             fixture = configure();

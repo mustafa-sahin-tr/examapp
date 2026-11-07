@@ -38,6 +38,12 @@
         <mat-icon>style</mat-icon>
         <h2>{{ t('emptyTitle') }}</h2>
         <p>{{ isStudent ? t('emptyTextStudent') : t('emptyTextTeacher') }}</p>
+        @if (!creating()) {
+          <button mat-flat-button type="button" data-test="deck-new-empty" (click)="creating.set(true)">
+            <mat-icon>add</mat-icon>
+            {{ t('newDeck') }}
+          </button>
+        }
       </div>
     } @else {
       @if (assignedDecks().length > 0) {

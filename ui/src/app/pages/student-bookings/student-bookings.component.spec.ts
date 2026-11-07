@@ -110,6 +110,21 @@ describe('StudentBookingsComponent (issue #439)', () => {
         expect(el.querySelector('[data-test="awaiting-parent-hint"]')).toBeNull();
     });
 
+    it('NoBookings_HidesTheFilterAndOffersOneFindTeacherButton (#915)', async () => {
+        const el = await setup([]);
+
+        expect(el.querySelector('[data-testid="bookings-filter"]')).toBeNull();
+        expect(el.querySelector('[data-testid="bookings-find-teacher"]')).toBeNull();
+        expect(Array.from(el.querySelectorAll('a[href="/tutors"]')).length).toBe(1);
+    });
+
+    it('OnlyClosedBookings_KeepsTheFilterSoTheyCanBeShown (#915)', async () => {
+        const el = await setup([booking(3, 'Expired')]);
+
+        expect(el.querySelector('[data-testid="bookings-filter"]')).not.toBeNull();
+        expect(Array.from(el.querySelectorAll('a[href="/tutors"]')).length).toBe(1);
+    });
+
     it('English_LabelsNewStatuses', async () => {
         const el = await setup([booking(1, 'AwaitingParent', { expiresAt: '2030-10-08T08:00:00Z' })], 'en');
 

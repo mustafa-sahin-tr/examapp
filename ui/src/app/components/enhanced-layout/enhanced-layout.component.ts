@@ -1,4 +1,4 @@
-import { Component, signal, OnInit, OnDestroy, computed, inject, DOCUMENT, ChangeDetectionStrategy, DestroyRef } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy, computed, inject, DOCUMENT, ChangeDetectionStrategy, DestroyRef, Injector } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -12,14 +12,14 @@ import { MatBadgeModule } from '@angular/material/badge';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink, RouterLinkActive, RouterOutlet, Router, NavigationEnd } from '@angular/router';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { AuthService } from '../../services/auth.service';
 import { AdminPendingService } from '../../services/admin-pending.service';
 import { UserThemeService } from '../../services/user-theme.service';
 import { ThemeConfigService } from '../../services/theme-config.service';
-import { EMPTY, Subject, fromEvent, interval, merge, of } from 'rxjs';
+import { EMPTY, Subject, forkJoin, fromEvent, interval, merge, of } from 'rxjs';
 import { catchError, debounceTime, distinctUntilChanged, filter, map, startWith, switchMap, takeUntil, throttleTime } from 'rxjs/operators';
 import { SidenavService } from '../../services/sidenav.service';
 import { TEACHER_APPROVAL_PENDING_URL, teacherAccountApprovalOf } from '../../models/teacher-approval.model';
@@ -40,6 +40,8 @@ import { ParentFinalWarningComponent } from '../../shared/components/parent-fina
 import { resolveActiveMenuItemId } from './active-menu-item';
 import { SETTINGS_URL, settingsUrlFor } from '../../shared/guards/settings.guard';
 import { TargetGoalService } from '../../services/target-goal.service';
+import { PracticeService } from '../../services/practice.service';
+import { FlashcardService } from '../../services/flashcard.service';
 
 const TARGET_PROGRAMS_MENU_ID = 'target-programs';
 
@@ -455,6 +457,31 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
       ) ?? []
     );
   });
+
+  /**
+   * #915: Soru Çöz bölümünde sekme başlığında sayı ("Yanlışlarım 10", "Bilgi kartları 6"). Bölüme her girişte bir kez
+   * çekilir; servisler yalnız o an alınır, layout'un geri kalanı bu uçlara bağlı değildir. Hata sayıyı gizler.
+   */
+  private readonly injector = inject(Injector);
+  private readonly practiceTabCounts = toSignal(
+    toObservable(computed(() => this.isStudent && this.activeSectionTabs().some((tab) => tab.id === 'tab-mistakes'))).pipe(
+      distinctUntilChanged(),
+      switchMap((inPractice) =>
+        !inPractice
+          ? of({} as Record<string, number>)
+          : forkJoin({
+              mistakes: this.injector.get(PracticeService).getMistakes().pipe(map((notebook) => notebook.totalCount), catchError(() => of(0))),
+              flashcards: this.injector.get(FlashcardService).getDueCount().pipe(catchError(() => of(0))),
+            }).pipe(map(({ mistakes, flashcards }): Record<string, number> => ({ 'tab-mistakes': mistakes, 'tab-flashcards': flashcards }))),
+      ),
+    ),
+    { initialValue: {} as Record<string, number> },
+  );
+
+  /** #915: sekmedeki bilgi sayısı (dikkat rozeti değil); 0 ya da bilinmiyorsa gösterilmez. */
+  tabCount(tabId: string): number {
+    return this.practiceTabCounts()[tabId] ?? 0;
+  }
 
   /** Issue #384: profil bağımsız olmadığını söylüyor mu (reaktif — `user` signal'ı profil yenilenince değişir). */
   private isKnownNotIndependent(): boolean {

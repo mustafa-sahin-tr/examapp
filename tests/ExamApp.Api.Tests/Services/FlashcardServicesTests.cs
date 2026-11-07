@@ -256,6 +256,8 @@ public class FlashcardServicesTests : IDisposable
         result.Review.DueDay.ShouldBe(Today.AddDays(3));
 
         (await Study(ctx).GetDueCountAsync(w.Learner)).ShouldBe(0);
+        (await Study(ctx).GetNextDueAsync(w.Learner)).ShouldBe((Today.AddDays(3), 1));
+        (await Study(ctx).GetNextDueAsync(w.OtherSchoolLearner)).ShouldBe(((DateOnly?)null, 0));
         (await Study(ctx).GetDueCardsAsync(w.Learner, null, 20)).ShouldBeEmpty();
         (await Study(ctx).ReviewAsync(w.Learner, cardId, FlashcardRecall.Good)).Outcome.ShouldBe(FlashcardReviewOutcome.NotDue);
 

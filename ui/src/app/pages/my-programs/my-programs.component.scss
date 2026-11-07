@@ -81,7 +81,6 @@ $status-idle: linear-gradient(135deg, var(--ms-border), var(--ms-border-strong))
 // Content Section
 .programs-section,
 .loading-state,
-.empty-state,
 .error-state {
   background: var(--ms-surface-medium);
   min-height: calc(100vh - 400px);
@@ -120,102 +119,34 @@ $status-idle: linear-gradient(135deg, var(--ms-border), var(--ms-border-strong))
 }
 
 // Empty State
+// #915: boş durum diğer ekranlardaki gibi sade ve kısa; tek eylem.
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  gap: 8px;
+  padding: 48px 16px;
   text-align: center;
 
-  .empty-illustration {
-    margin-bottom: 32px;
-
-    .empty-icon-wrapper {
-      position: relative;
-      display: inline-block;
-
-      .empty-icon {
-        font-size: 120px;
-        width: 120px;
-        height: 120px;
-        color: var(--ms-text-weak);
-        background: linear-gradient(135deg, var(--ms-surface-strong), var(--ms-border-strong));
-        border-radius: 50%;
-        padding: 24px;
-        box-shadow: 0 20px 60px color-mix(in srgb, var(--ms-shadow-color) 10%, transparent);
-      }
-
-      .empty-decoration {
-        position: absolute;
-        top: -8px;
-        right: -8px;
-        width: 24px;
-        height: 24px;
-        background: linear-gradient(135deg, var(--ms-action-background), var(--ms-action-background-hover));
-        border-radius: 50%;
-        animation: pulse 2s infinite;
-      }
-    }
+  h2,
+  p {
+    margin: 0;
   }
 
-  .empty-content {
-    max-width: 500px;
+  p {
+    max-width: 440px;
+    color: var(--ms-text-medium);
+  }
 
-    .empty-title {
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--ms-text-medium);
-      margin: 0 0 16px 0;
-    }
+  > mat-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 40px;
+    opacity: 0.7;
+  }
 
-    .empty-description {
-      font-size: 1.1rem;
-      color: var(--ms-text-weak);
-      margin: 0 0 32px 0;
-      line-height: 1.6;
-    }
-
-    .empty-features {
-      display: flex;
-      justify-content: center;
-      gap: 32px;
-      margin-bottom: 32px;
-      flex-wrap: wrap;
-
-      .feature-item {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-        color: var(--ms-text-weak);
-
-        mat-icon {
-          font-size: 32px;
-          width: 32px;
-          height: 32px;
-          color: var(--ms-action-text);
-          background: color-mix(in srgb, var(--ms-action-border-focus) 10%, transparent);
-          border-radius: 50%;
-          padding: 8px;
-        }
-
-        span {
-          font-size: 0.9rem;
-          font-weight: 500;
-        }
-      }
-    }
-
-    .empty-action-btn {
-      background: linear-gradient(135deg, var(--ms-action-background), var(--ms-action-background-hover));
-      color: var(--ms-action-text-inverse);
-      box-shadow: 0 8px 32px color-mix(in srgb, var(--ms-action-border-focus) 30%, transparent);
-
-      &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 12px 40px color-mix(in srgb, var(--ms-action-border-focus) 40%, transparent);
-      }
-    }
+  button {
+    margin-top: 8px;
   }
 }
 
@@ -796,7 +727,6 @@ $status-idle: linear-gradient(135deg, var(--ms-border), var(--ms-border-strong))
 
   .programs-section,
   .loading-state,
-  .empty-state,
   .error-state {
     padding: 32px 16px;
   }

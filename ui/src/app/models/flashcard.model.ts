@@ -48,6 +48,13 @@ export interface FlashcardDeckDetail extends FlashcardDeckSummary {
   cards: Flashcard[];
 }
 
+/** #915: günü gelen kart sayısı ve bugünden sonraki ilk tekrar günü (yyyy-mm-dd). */
+export interface FlashcardDueSummary {
+  count: number;
+  nextDueDay: string | null;
+  nextDueCount: number;
+}
+
 export interface FlashcardDueCard extends Flashcard {
   deckId: number;
   deckTitle: string;

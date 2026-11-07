@@ -68,7 +68,12 @@ public class FlashcardsController(
 
     [HttpGet("due-count")]
     public Task<IActionResult> GetDueCount(CancellationToken ct) =>
-        AsLearnerAsync(async learner => Ok(new FlashcardDueCountDto { Count = await study.GetDueCountAsync(learner, ct) }), ct);
+        AsLearnerAsync(async learner =>
+        {
+            var count = await study.GetDueCountAsync(learner, ct);
+            var (nextDay, nextCount) = await study.GetNextDueAsync(learner, ct);
+            return Ok(new FlashcardDueCountDto { Count = count, NextDueDay = nextDay, NextDueCount = nextCount });
+        }, ct);
 
     [HttpPost("cards/{cardId:int}/review")]
     public Task<IActionResult> Review(int cardId, [FromBody] FlashcardReviewRequestDto request, CancellationToken ct)

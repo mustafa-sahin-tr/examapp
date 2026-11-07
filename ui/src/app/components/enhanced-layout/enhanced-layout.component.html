@@ -207,6 +207,9 @@
                     @if (menuBadgeCount(tab.id) > 0) {
                       <span class="section-tab__badge">{{ menuBadgeCount(tab.id) > 99 ? '99+' : menuBadgeCount(tab.id) }}</span>
                     }
+                    @if (tabCount(tab.id) > 0) {
+                      <span class="section-tab__count" [attr.data-testid]="tab.id + '-count'">{{ tabCount(tab.id) > 99 ? '99+' : tabCount(tab.id) }}</span>
+                    }
                   </a>
                 }
               </nav>

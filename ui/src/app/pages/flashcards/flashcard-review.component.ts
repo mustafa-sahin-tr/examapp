@@ -5,7 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { FlashcardDueCard, FlashcardRecall } from '../../models/flashcard.model';
 import { FlashcardService } from '../../services/flashcard.service';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
@@ -27,6 +27,7 @@ export class FlashcardReviewComponent implements OnInit {
   private readonly flashcards = inject(FlashcardService);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly transloco = inject(TranslocoService);
 
   protected readonly recalls: readonly FlashcardRecall[] = ['Forgot', 'Hard', 'Good'];
   private readonly deckId = this.parseDeckId();
@@ -42,6 +43,8 @@ export class FlashcardReviewComponent implements OnInit {
 
   readonly current = computed(() => this.queue()[0] ?? null);
   readonly reviewedCount = computed(() => this.reviewedIds().size);
+  /** #915: kuyruk boşken sıradaki tekrar günü; bilinmiyorsa gösterilmez. */
+  readonly nextDue = signal<{ day: string; count: number } | null>(null);
 
   ngOnInit(): void {
     this.load();
@@ -58,12 +61,38 @@ export class FlashcardReviewComponent implements OnInit {
           this.queue.set(cards);
           this.revealed.set(false);
           this.loading.set(false);
+          if (cards.length === 0) {
+            this.loadNextDue();
+          }
         },
         error: () => {
           this.loadFailed.set(true);
           this.loading.set(false);
         },
       });
+  }
+
+  private loadNextDue(): void {
+    this.flashcards
+      .getDueSummary()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (due) => this.nextDue.set(due.nextDueDay ? { day: due.nextDueDay, count: due.nextDueCount } : null),
+        error: () => this.nextDue.set(null),
+      });
+  }
+
+  /** "Yarın" ya da "12 Kasım"; gün yerel takvim günüdür (sunucunun DueDay'i). */
+  nextDueLabel(day: string): { key: 'tomorrow' | 'onDay'; date: string } {
+    const [y, m, d] = day.split('-').map(Number);
+    const target = new Date(y, m - 1, d);
+    const tomorrow = new Date();
+    tomorrow.setHours(0, 0, 0, 0);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    if (target.getTime() === tomorrow.getTime()) {
+      return { key: 'tomorrow', date: '' };
+    }
+    return { key: 'onDay', date: target.toLocaleDateString(this.transloco.getActiveLang() === 'en' ? 'en-GB' : 'tr-TR', { day: 'numeric', month: 'long' }) };
   }
 
   rate(recall: FlashcardRecall): void {

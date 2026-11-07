@@ -21,12 +21,14 @@ const card = (id: number): FlashcardDueCard => ({
 });
 
 describe('FlashcardReviewComponent (issue #699)', () => {
-  let service: { getDue: ReturnType<typeof vi.fn>; review: ReturnType<typeof vi.fn> };
+  let service: { getDue: ReturnType<typeof vi.fn>; review: ReturnType<typeof vi.fn>; getDueSummary: ReturnType<typeof vi.fn> };
+  let nextDueDay: string | null = null;
 
   function create(cards: FlashcardDueCard[], deck: string | null = null): ComponentFixture<FlashcardReviewComponent> {
     service = {
       getDue: vi.fn().mockReturnValueOnce(of(cards)).mockReturnValue(of([])),
       review: vi.fn().mockReturnValue(of(undefined)),
+      getDueSummary: vi.fn(() => of({ count: 0, nextDueDay, nextDueCount: nextDueDay ? 6 : 0 })),
     };
     TestBed.configureTestingModule({
       imports: [FlashcardReviewComponent, NoopAnimationsModule, translocoTestingModule({ langs: { 'flashcards/tr': flashcardsTr } })],
@@ -48,6 +50,23 @@ describe('FlashcardReviewComponent (issue #699)', () => {
     query(fixture, 'review-reveal')!.click();
     fixture.detectChanges();
   }
+
+  it('nothingDue_SaysWhenTheNextReviewIs (#915)', () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    nextDueDay = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+    const fixture = create([]);
+    nextDueDay = null;
+
+    expect(query(fixture, 'review-done')?.textContent).toContain('Bugün tekrar yok');
+    expect(query(fixture, 'review-next')?.textContent).toContain('Sıradaki tekrar: yarın 6 kart.');
+  });
+
+  it('nothingDue_NoFutureReview_SaysNothingMore (#915)', () => {
+    const fixture = create([]);
+
+    expect(query(fixture, 'review-next')).toBeNull();
+  });
 
   it('backAndRating_HiddenUntilRevealed', () => {
     const fixture = create([card(1)]);

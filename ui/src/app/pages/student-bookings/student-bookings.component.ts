@@ -145,6 +145,8 @@ export class StudentBookingsComponent implements OnInit {
   });
 
   protected readonly isEmpty = computed(() => !this.loading() && !this.error() && this.rows().length === 0);
+  /** #915: süzgeç yalnız en az bir randevu varken anlamlı (biten randevular "Tümü"nde görünür). */
+  protected readonly hasBookings = computed(() => this.bookings().length > 0);
 
   constructor() {
     // Snackbar/dialog metinleri senkron `translate()` ile okunur; scope şablondan bağımsız yüklensin.

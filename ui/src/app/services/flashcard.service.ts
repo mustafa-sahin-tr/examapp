@@ -8,6 +8,7 @@ import {
   FlashcardDeckDetail,
   FlashcardDeckSummary,
   FlashcardDueCard,
+  FlashcardDueSummary,
   FlashcardMode,
   FlashcardRecall,
   SaveFlashcard,
@@ -116,7 +117,11 @@ export class FlashcardService {
   }
 
   getDueCount(): Observable<number> {
-    return this.http.get<{ count: number }>(`${this.studentUrl}/due-count`).pipe(map((due) => due.count));
+    return this.getDueSummary().pipe(map((due) => due.count));
+  }
+
+  getDueSummary(): Observable<FlashcardDueSummary> {
+    return this.http.get<FlashcardDueSummary>(`${this.studentUrl}/due-count`);
   }
 
   review(cardId: number, recall: FlashcardRecall): Observable<void> {

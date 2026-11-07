@@ -1,19 +1,27 @@
 <section class="sbk" *transloco="let t; prefix: 'student-bookings'">
   <app-page-header [title]="t('title')" [description]="t('subtitle')">
-    <div class="sbk__head-actions">
-      <mat-button-toggle-group
-        [value]="filter()"
-        (change)="setFilter($event.value)"
-        [attr.aria-label]="t('filter.label')"
-      >
-        <mat-button-toggle value="active">{{ t('filter.active') }}</mat-button-toggle>
-        <mat-button-toggle value="all">{{ t('filter.all') }}</mat-button-toggle>
-      </mat-button-toggle-group>
-      <a mat-stroked-button routerLink="/tutors">
-        <mat-icon>person_search</mat-icon>
-        {{ t('findTeacher') }}
-      </a>
-    </div>
+    <!-- #915: hiç randevu yokken süzgeç anlamsız; liste boşken "Öğretmen ara" yalnız boş durumdadır. -->
+    @if (!isEmpty() || hasBookings()) {
+      <div class="sbk__head-actions">
+        @if (hasBookings()) {
+          <mat-button-toggle-group
+            [value]="filter()"
+            (change)="setFilter($event.value)"
+            [attr.aria-label]="t('filter.label')"
+            data-testid="bookings-filter"
+          >
+            <mat-button-toggle value="active">{{ t('filter.active') }}</mat-button-toggle>
+            <mat-button-toggle value="all">{{ t('filter.all') }}</mat-button-toggle>
+          </mat-button-toggle-group>
+        }
+        @if (!isEmpty()) {
+          <a mat-stroked-button routerLink="/tutors" data-testid="bookings-find-teacher">
+            <mat-icon>person_search</mat-icon>
+            {{ t('findTeacher') }}
+          </a>
+        }
+      </div>
+    }
   </app-page-header>
 
   @if (loading()) {

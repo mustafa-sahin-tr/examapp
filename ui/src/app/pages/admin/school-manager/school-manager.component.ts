@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, input, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, DestroyRef, computed, inject, input, OnInit, signal, ChangeDetectionStrategy, TemplateRef, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -9,7 +9,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import {
   TranslocoDirective,
@@ -64,6 +65,7 @@ export const SCHOOL_SEARCH_DEBOUNCE_MS = 300;
     MatSelectModule,
     MatProgressBarModule,
     MatDialogModule,
+    MatMenuModule,
     MatSnackBarModule,
     TranslocoDirective,
     TranslocoPipe,
@@ -302,6 +304,24 @@ export class SchoolManagerComponent implements OnInit {
 
   // ---- create ----
 
+  private readonly addDialog = viewChild.required<TemplateRef<unknown>>('addDialog');
+  private addDialogRef: MatDialogRef<unknown> | null = null;
+
+  /** Issue #898: yeni okul formu diyalogda; kapatılınca yarım kalan taslak durur, bir sonraki açılışta sürer. */
+  openAdd(): void {
+    this.addDialogRef = this.dialog.open(this.addDialog(), { width: '560px', maxWidth: '95vw', autoFocus: 'first-tabbable' });
+    this.addDialogRef.afterClosed().subscribe(() => (this.addDialogRef = null));
+  }
+
+  /** Issue #898: üyesi ya da bekleyen başvurusu olan okul silinemez (sunucu da reddeder); menü nedeni söyler. */
+  deleteBlocked(sc: School): boolean {
+    return this.memberCount(sc) > 0;
+  }
+
+  memberCount(sc: School): number {
+    return (sc.teacherCount ?? 0) + (sc.studentCount ?? 0) + (sc.pendingCount ?? 0);
+  }
+
   async addSchool(): Promise<void> {
     const name = this.newSchoolName.trim();
     if (!name) return;
@@ -322,6 +342,7 @@ export class SchoolManagerComponent implements OnInit {
     this.newSchoolAddressLine = '';
     this.newSchoolProvinceId.set(null);
     this.newSchoolDistrictId.set(null);
+    this.addDialogRef?.close();
   }
 
   // ---- edit ----

@@ -234,3 +234,7 @@ Kılavuz özeti ve beceri listesinin kaynağı `docs/context-based-questions.md`
 - Sağdaki örnek hafta sunucunun takvim kuralının TS kopyası (`pickDailySubjects` ↔ `ProgramService.PickDailySubjects`);
   biri değişirse diğeri de değişmeli.
 - `GET api/program/steps` ucu duruyor ama arayüz artık kullanmıyor.
+
+## Okullar listesi (#898)
+
+`GET api/admin/schools` satırı `teacherCount` (`Teacher.SchoolId`), `studentCount` (doğrulanmış üyelik) ve `pendingCount` (doğrulanmamış öğrenci üyeliği + bu okulu isteyen, onay bekleyen öğretmen) taşır; sayılar alt sorgularla tek istekte gelir. Silme artık kimlik bağına da bakar: okulda öğretmen (bağlı ya da okul isteyen) veya öğrenci (bekleyen dahil) varsa reddedilir; eski serbest metin `SchoolName` eşleşmesi de engellemeye devam eder. Ekran: liste üstünde yalnız arama ve il / ilçe süzgeci, "Okul ekle" diyalog açar; satırda konum, sayılar ve satır menüsü (Düzenle, Sil); üyesi ya da başvurusu olan okulda Sil devre dışı ve nedenini yazar.

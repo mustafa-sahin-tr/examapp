@@ -96,13 +96,42 @@
   align-self: flex-start;
 }
 
-.tg__search {
+.tg__context {
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--ms-text-medium);
+}
+
+// #891: il + arama yan yana; dar ekranda alt alta.
+.tg__filters {
+  display: grid;
+  grid-template-columns: minmax(0, 200px) minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+.tg__search,
+.tg__city {
   width: 100%;
 }
 
-.tg__option {
+.tg__list-title {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ms-text-strong);
+}
+
+@media (max-width: 600px) {
+  .tg__filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.tg__options .tg__option {
   width: 100%;
   height: auto;
+  // #891: MDC düğmesi içeriği ortalar; liste satırı sola hizalı okunur.
+  justify-content: flex-start;
   padding: 0.5rem;
   text-align: start;
   white-space: normal;

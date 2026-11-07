@@ -8,7 +8,7 @@ import { Observable, of, throwError } from 'rxjs';
 import { TargetGoal, TargetProgram } from '../../../models/target-goal.model';
 import { TargetGoalService } from '../../../services/target-goal.service';
 import { translocoTestingModule } from '../../testing/transloco-testing';
-import { TargetGoalCardComponent } from './target-goal-card.component';
+import { TargetGoalCardComponent, examForGrade } from './target-goal-card.component';
 import goalsTr from '../../../../../public/i18n/target-goals/tr.json';
 import goalsEn from '../../../../../public/i18n/target-goals/en.json';
 
@@ -46,6 +46,7 @@ describe('TargetGoalCardComponent (#695)', () => {
       setMine: vi.fn().mockReturnValue(of({ target: program, results: [] })),
       clearMine: vi.fn().mockReturnValue(of(undefined)),
       searchPrograms: vi.fn().mockReturnValue(of({ total: 1, items: [program] })),
+      programCities: vi.fn().mockReturnValue(of(['Ankara', 'İstanbul'])),
     } as unknown as MockedObject<TargetGoalService>;
 
     TestBed.configureTestingModule({
@@ -139,6 +140,93 @@ describe('TargetGoalCardComponent (#695)', () => {
 
     expect(service.clearMine).toHaveBeenCalled();
     expect(el.textContent).toContain(goalsTr.self.empty);
+  });
+
+  // ── #891 ──────────────────────────────────────────────────────────────────
+
+  async function openPicker(goal: TargetGoal, items: TargetProgram[] = [program]): Promise<HTMLElement> {
+    const el = await render(of(goal));
+    service.searchPrograms.mockReturnValue(of({ total: items.length, items }));
+    button(el, goalsTr.choose)!.click();
+    fixture.detectChanges();
+    await vi.advanceTimersByTimeAsync(400);
+    fixture.detectChanges();
+    return el;
+  }
+
+  it('examForGrade_DerivesExamExceptAtTheTransitionGrade_issue891', () => {
+    expect(examForGrade(5)).toBe('lgs');
+    expect(examForGrade(7)).toBe('lgs');
+    expect(examForGrade(8)).toBeNull();
+    expect(examForGrade(10)).toBe('yks');
+    expect(examForGrade(null)).toBeNull();
+  });
+
+  it('grade 5: exam from the grade, years left and the far note, no exam switch; popular list first_issue891', async () => {
+    vi.useFakeTimers();
+    try {
+      const el = await openPicker({ target: null, results: [], gradeLevel: 5 });
+
+      expect(el.querySelector('[data-testid="target-context"]')?.textContent?.replace(/\s+/g, ' ').trim()).toBe("LGS · 5. sınıf · LGS'ye 3 yıl var");
+      expect(el.querySelector('[data-testid="target-far-note"]')).not.toBeNull();
+      expect(el.querySelector('mat-button-toggle-group')).toBeNull();
+      expect(service.programCities).toHaveBeenCalledWith('lgs');
+      expect(service.searchPrograms).toHaveBeenCalledWith({ exam: 'lgs', city: undefined, search: '', take: 20 });
+      expect(el.querySelector('[data-testid="target-popular"]')?.textContent?.trim()).toBe('En çok seçilenler');
+      expect(el.textContent).not.toContain(goalsTr.noResults);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('grade 8 keeps the exam switch_issue891', async () => {
+    vi.useFakeTimers();
+    try {
+      const el = await openPicker({ target: null, results: [], gradeLevel: 8 });
+      expect(el.querySelector('mat-button-toggle-group')).not.toBeNull();
+      expect(el.querySelector('[data-testid="target-context"]')?.textContent).toContain('LGS bu yıl');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('grade 10 searches YKS_issue891', async () => {
+    vi.useFakeTimers();
+    try {
+      const el = await openPicker({ target: null, results: [], gradeLevel: 10 });
+      expect(el.querySelector('mat-button-toggle-group')).toBeNull();
+      expect(service.searchPrograms).toHaveBeenCalledWith(expect.objectContaining({ exam: 'yks' }));
+      expect(el.querySelector('[data-testid="target-context"]')?.textContent).toContain("YKS'ye 2 yıl var");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('an empty catalogue says scores are not loaded yet instead of no results_issue891', async () => {
+    vi.useFakeTimers();
+    try {
+      const el = await openPicker({ target: null, results: [], gradeLevel: 6 }, []);
+      expect(el.querySelector('[data-testid="target-catalog-empty"]')?.textContent?.trim()).toBe(goalsTr.catalogEmpty);
+      expect(el.textContent).not.toContain(goalsTr.noResults);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a chosen target opens the picker in its province_issue891', async () => {
+    vi.useFakeTimers();
+    try {
+      const el = await render(of({ target: program, results: [], gradeLevel: 7 }));
+      button(el, goalsTr.change)!.click();
+      fixture.detectChanges();
+      await vi.advanceTimersByTimeAsync(400);
+      fixture.detectChanges();
+
+      expect(service.searchPrograms).toHaveBeenCalledWith({ exam: 'lgs', city: 'Ankara', search: '', take: 20 });
+      expect(el.querySelector('[data-testid="target-popular"]')?.textContent?.trim()).toBe('Ankara için en çok seçilenler');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('both languages carry the same keys', () => {

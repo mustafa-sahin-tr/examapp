@@ -1,7 +1,8 @@
 {
   "self": {
     "title": "My target",
-    "empty": "You have not chosen a target yet. Choose a school or programme to see the gap to its minimum score after your mock exams."
+    "empty": "You have not chosen a target yet. Choose a school or programme to see the gap to its minimum score after your mock exams.",
+    "farNote": "The exam is years away; the target shows how far your mock exams have taken you. You can change it any time."
   },
   "child": {
     "title": "Target school",
@@ -35,6 +36,14 @@
   "searchYks": "Search by programme, university, or city",
   "searchFailed": "The search failed. Try again.",
   "noResults": "No results.",
+  "gradeLevel": "Grade {{level}}",
+  "yearsToExam": "{{years}} years to {{exam}}",
+  "examThisYear": "{{exam}} is this year",
+  "city": "Province",
+  "allCities": "All provinces",
+  "popular": "Most chosen",
+  "popularIn": "Most chosen in {{city}}",
+  "catalogEmpty": "Minimum scores have not been loaded yet. Once they are, you can pick your school here.",
   "choose": "Choose a target",
   "change": "Change",
   "remove": "Remove target",

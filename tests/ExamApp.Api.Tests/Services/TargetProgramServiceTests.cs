@@ -169,6 +169,50 @@ public class TargetProgramServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Empty_search_lists_most_chosen_first_and_cities_are_listed_per_exam_issue891()
+    {
+        await using var ctx = _db.NewContext();
+        var service = new TargetProgramService(ctx);
+        var low = await service.CreateAsync(Save("Az Seçilen Lisesi"), 1);
+        var popular = await service.CreateAsync(Save("Çok Seçilen Lisesi"), 1);
+        var ankara = Save("Ankara Lisesi");
+        ankara.City = "Ankara";
+        await service.CreateAsync(ankara, 1);
+        var izmir = Save("İzmir Programı", TargetScoreTypes.Say, "Örnek Üniversitesi");
+        izmir.City = "İzmir";
+        await service.CreateAsync(izmir, 1);
+        var grade = new Grade { Name = "8" };
+        ctx.Add(grade);
+        await ctx.SaveChangesAsync();
+        for (var i = 0; i < 2; i++)
+        {
+            var student = new Student { UserId = 10 + i, StudentNumber = $"S{i}", SchoolName = "s", GradeId = grade.Id };
+            ctx.Add(student);
+            await ctx.SaveChangesAsync();
+            ctx.Add(new StudentTargetGoal { StudentId = student.Id, TargetProgramId = popular.Id, SelectedAt = DateTime.UtcNow });
+        }
+        await ctx.SaveChangesAsync();
+
+        var suggestions = await service.SearchAsync(new(TargetScoreTypes.LgsExam, null, null, "İstanbul", null, 0, 20));
+        suggestions.Items.Select(p => p.Id).ShouldBe([popular.Id, low.Id]);
+        // Aramada eski ad sırası.
+        (await service.SearchAsync(new(TargetScoreTypes.LgsExam, null, null, "İstanbul", "lisesi", 0, 20))).Items.Select(p => p.Id)
+            .ShouldBe([low.Id, popular.Id]);
+
+        (await service.CitiesAsync(TargetScoreTypes.LgsExam)).ShouldBe(["Ankara", "İstanbul"]);
+        (await service.CitiesAsync(null)).ShouldBe(["Ankara", "İstanbul", "İzmir"]);
+    }
+
+    [Theory]
+    [InlineData("5-sinif", 5)]
+    [InlineData("12. Sınıf", 12)]
+    [InlineData("8", 8)]
+    [InlineData("hazirlik", null)]
+    [InlineData(null, null)]
+    public void Grade_level_is_read_from_the_grade_code_issue891(string? code, int? expected) =>
+        TargetGoalService.GradeLevelOf(code).ShouldBe(expected);
+
+    [Fact]
     public async Task A_program_someone_chose_cannot_be_deleted_but_can_be_corrected()
     {
         await using var ctx = _db.NewContext();

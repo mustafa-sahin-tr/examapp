@@ -15,7 +15,11 @@ public sealed record TargetProgramImport(string Exam, int Year, string Source, b
 /// <summary>Issue #695: hedef kataloğu ve CSV aktarımı. Yetki çağıranın (controller) sorumluluğundadır.</summary>
 public interface ITargetProgramService
 {
+    /// <summary>Arama boşken en çok seçilenler önce (#891); aramada ad sırası.</summary>
     Task<TargetProgramPageDto<TargetProgramDto>> SearchAsync(TargetProgramQuery query, CancellationToken ct = default);
+
+    /// <summary>Issue #891: katalogdaki iller (sınava göre), Türkçe alfabe sırasıyla.</summary>
+    Task<List<string>> CitiesAsync(string? exam, CancellationToken ct = default);
     Task<TargetProgramPageDto<AdminTargetProgramDto>> SearchForAdminAsync(TargetProgramQuery query, CancellationToken ct = default);
     Task<AdminTargetProgramDto> CreateAsync(SaveTargetProgramDto request, int userId, CancellationToken ct = default);
     Task<AdminTargetProgramDto?> UpdateAsync(int id, SaveTargetProgramDto request, int userId, CancellationToken ct = default);
@@ -36,15 +40,29 @@ public sealed partial class TargetProgramService(AppDbContext db) : ITargetProgr
     public async Task<TargetProgramPageDto<TargetProgramDto>> SearchAsync(TargetProgramQuery query, CancellationToken ct = default)
     {
         var rows = Filter(query);
+        // #891: boş aramada öneri listesi — öğrencilerin en çok seçtikleri, sonra yüksek taban.
+        var ordered = string.IsNullOrWhiteSpace(query.Search)
+            ? rows.OrderByDescending(p => db.StudentTargetGoals.Count(g => g.TargetProgramId == p.Id))
+                .ThenByDescending(p => p.Year).ThenByDescending(p => p.MinimumScore).ThenBy(p => p.Id)
+            : Ordered(rows);
         return new()
         {
             Total = await rows.CountAsync(ct),
-            Items = await Ordered(rows).Skip(query.Skip).Take(query.Take).Select(p => new TargetProgramDto
+            Items = await ordered.Skip(query.Skip).Take(query.Take).Select(p => new TargetProgramDto
             {
                 Id = p.Id, ScoreType = p.ScoreType, Name = p.Name, Institution = p.Institution, City = p.City, District = p.District,
                 Year = p.Year, MinimumScore = p.MinimumScore, Percentile = p.Percentile, SourceReference = p.SourceReference,
             }).ToListAsync(ct),
         };
+    }
+
+    public async Task<List<string>> CitiesAsync(string? exam, CancellationToken ct = default)
+    {
+        var cities = await Filter(new TargetProgramQuery(exam, null, null, null, null, 0, 0))
+            .Select(p => p.City)
+            .Distinct()
+            .ToListAsync(ct);
+        return cities.Where(c => !string.IsNullOrWhiteSpace(c)).Order(StringComparer.Create(new System.Globalization.CultureInfo("tr-TR"), false)).ToList();
     }
 
     public async Task<TargetProgramPageDto<AdminTargetProgramDto>> SearchForAdminAsync(TargetProgramQuery query, CancellationToken ct = default)

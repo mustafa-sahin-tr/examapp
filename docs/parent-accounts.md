@@ -92,3 +92,13 @@ with the same key `ParentInvitations__LinkEncryptionKey` (docker-compose: `PAREN
 - **Aspire:** restart the AppHost to pick up the new parameter.
 - `ParentRequired` (student account restriction until a parent is linked) is enforced ONLY in exam API; BadgeService
   notifications and auth-api stay reachable for restricted students — deliberate, so the reminder notifications still arrive.
+
+## Veli ana sayfası (#882, #883)
+
+- Bağlı çocuğu olmayan veli iki yol görür: "Çocuğum için hesap aç" (`/my-children#create-child`) ve "Kodu gir"
+  (`/my-children#enter-code`). Profili olmayan veli ilk girişte `ProfileNotFound` alır; UI `POST /api/exam/parent/register` ile
+  profili oluşturup listeyi yeniden ister (#902).
+- Dolu panel: haftanın tek cümlesi (`activeDaysThisWeek`, `questionsSolvedThisWeek`), sayı şeridi (doğru % = `correctThisWeek`
+  / çözülen), "Dikkat" listesi (geciken ödev sayısı + `attention.weakTopic`: son 30 gün, en az 5 cevap, %70 altı en düşük konu)
+  ve ayrıntı sekmeleri (Gelişim, Kazanımlar, Hedef okul, Takvim, Ödevler). Sekme içeriği açılınca yüklenir.
+- Özet ucu hâlâ yalnız sayı ve taksonomi adı taşır; ödev adı yok (sözleşme `ParentDashboardEndpointsTests`'te).

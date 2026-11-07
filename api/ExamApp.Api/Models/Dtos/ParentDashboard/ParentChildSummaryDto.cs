@@ -18,6 +18,12 @@ public sealed class ParentChildSummaryDto
     /// <summary>Bu hafta (Pazartesi 00:00'dan şimdiye, yerel) cevaplanan soru sayısı: worksheet cevapları + pratik (pas hariç).</summary>
     public int QuestionsSolvedThisWeek { get; set; }
 
+    /// <summary>issue #883: <see cref="QuestionsSolvedThisWeek"/> içinde doğru olanlar (veli "doğru %" görür).</summary>
+    public int CorrectThisWeek { get; set; }
+
+    /// <summary>issue #883: bu hafta en az bir soru cevaplanan yerel gün sayısı (0–7). Saat bilgisi vermez.</summary>
+    public int ActiveDaysThisWeek { get; set; }
+
     public ParentChildAssignmentCountsDto Assignments { get; set; } = new();
 
     /// <summary>Toplam puan (StudentPoints.XP).</summary>
@@ -28,6 +34,34 @@ public sealed class ParentChildSummaryDto
 
     /// <summary>issue #584: etkinlik özeti (tamamlama sayısı ve ilk kontrol ortalaması).</summary>
     public ParentChildActivitySummaryDto Activities { get; set; } = new();
+
+    /// <summary>issue #883: panelin "Dikkat" listesi için zorlandığı konu.</summary>
+    public ParentChildAttentionDto Attention { get; set; } = new();
+}
+
+/// <summary>
+/// issue #883: veli panelinin "Dikkat" listesi için özetin taşımadığı tek bilgi: zorlandığı konu. Geciken ödev sayısı
+/// <see cref="ParentChildSummaryDto.Assignments"/>'ta (ödev adı yok; ad veli ödev listesinde). Konu adı taksonomidir, soru içeriği değil.
+/// </summary>
+public sealed class ParentChildAttentionDto
+{
+    /// <summary>Son 30 günde en düşük doğru oranlı konu (en az 5 cevap, %70 altı); yoksa null.</summary>
+    public ParentWeakTopicDto? WeakTopic { get; set; }
+}
+
+public sealed class ParentWeakTopicDto
+{
+    public int TopicId { get; set; }
+
+    public string TopicName { get; set; } = string.Empty;
+
+    public string? SubjectName { get; set; }
+
+    /// <summary>Cevaplananlar üzerinden doğru oranı (0–100, yuvarlanmış).</summary>
+    public int AccuracyPercent { get; set; }
+
+    /// <summary>Cevaplanan soru (doğru + yanlış).</summary>
+    public int Answered { get; set; }
 }
 
 /// <summary>

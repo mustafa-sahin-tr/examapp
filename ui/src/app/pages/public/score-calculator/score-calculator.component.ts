@@ -39,6 +39,18 @@ export class ScoreCalculatorComponent {
   });
   readonly hasInput = computed(() => this.exam().tests.some((test) => this.fieldValue(test, 'correct') !== null || this.fieldValue(test, 'wrong') !== null));
   readonly hasInvalid = computed(() => this.exam().tests.some((test) => !this.isValid(test)));
+  /** #896: sonuç kartı hangi satırın düzeltileceğini adıyla söyler. */
+  readonly invalidNames = computed(() =>
+    this.exam()
+      .tests.filter((test) => !this.isValid(test))
+      .map((test) => this.transloco.translate(`${PUBLIC_PAGES_SCOPE}.scoreCalculator.tests.${test.id}`))
+      .join(', '),
+  );
+  readonly totalNet = computed(() => {
+    const exam = this.exam();
+    const total = exam.tests.reduce((sum, test) => sum + netOf(this.answersOf(test), exam.wrongAnswersPerCorrect), 0);
+    return this.formatNet(total);
+  });
   readonly estimates = computed(() => {
     if (this.hasInvalid()) {
       return [];
@@ -84,7 +96,10 @@ export class ScoreCalculatorComponent {
     if (!this.isValid(test)) {
       return '–';
     }
-    const net = netOf(this.answersOf(test), this.exam().wrongAnswersPerCorrect);
+    return this.formatNet(netOf(this.answersOf(test), this.exam().wrongAnswersPerCorrect));
+  }
+
+  private formatNet(net: number): string {
     return net.toLocaleString(this.transloco.getActiveLang(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 

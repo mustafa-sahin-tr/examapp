@@ -11,6 +11,9 @@
 
   <p class="privacy" data-testid="calc-privacy">{{ t('privacy') }}</p>
 
+  <!-- #896: geniş ekranda dersler solda, sonuç kartı sağda ve kaydırırken görünür. -->
+  <div class="layout">
+  <div class="tests">
   @for (session of sessions(); track session.id) {
     <section class="session">
       <h2>{{ t('sessions.' + session.id) }}</h2>
@@ -22,6 +25,8 @@
           <span class="name">{{ t('tests.' + test.id) }} <small>{{ t('questionCount', { count: test.questions }) }}</small></span>
           <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <input matInput type="number" min="0" step="1" [max]="test.questions" inputmode="numeric"
+                 [placeholder]="t('placeholder', { count: test.questions })"
+                 [attr.aria-invalid]="!isValid(test)"
                  [attr.data-testid]="test.id + '-correct'"
                  [attr.aria-label]="t('tests.' + test.id) + ': ' + t('correct')"
                  [value]="fieldValue(test, 'correct')"
@@ -29,12 +34,14 @@
           </mat-form-field>
           <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <input matInput type="number" min="0" step="1" [max]="test.questions" inputmode="numeric"
+                 [placeholder]="t('placeholder', { count: test.questions })"
+                 [attr.aria-invalid]="!isValid(test)"
                  [attr.data-testid]="test.id + '-wrong'"
                  [attr.aria-label]="t('tests.' + test.id) + ': ' + t('wrong')"
                  [value]="fieldValue(test, 'wrong')"
                  (input)="setField(test, 'wrong', $any($event.target).value)" />
           </mat-form-field>
-          <output [attr.data-testid]="test.id + '-net'">{{ netDisplay(test) }}</output>
+          <output [attr.data-testid]="test.id + '-net'">{{ isValid(test) ? netDisplay(test) : t('max', { count: test.questions }) }}</output>
           @if (!isValid(test)) {
             <p class="error" role="alert">{{ t('invalid', { count: test.questions }) }}</p>
           }
@@ -42,14 +49,16 @@
       }
     </section>
   }
+  </div>
 
   <section class="result" aria-live="polite" data-testid="calc-result">
     <h2>{{ t('resultTitle', { year: exam().year }) }}</h2>
     @if (!hasInput()) {
       <p data-testid="calc-empty">{{ t('enterAnswers') }}</p>
     } @else if (hasInvalid()) {
-      <p>{{ t('fixInput') }}</p>
+      <p data-testid="calc-fix">{{ t('fixRows', { names: invalidNames() }) }}</p>
     } @else {
+      <p class="total" data-testid="calc-total-net">{{ t('totalNet') }} <strong>{{ totalNet() }}</strong></p>
       <div class="scores">
         @for (estimate of estimates(); track estimate.id) {
           <div class="score" [attr.data-testid]="'score-' + estimate.id">
@@ -67,6 +76,7 @@
     <p class="estimate" data-testid="calc-estimate">{{ t('estimateNote', { year: exam().year }) }}</p>
     <button mat-stroked-button type="button" data-testid="calc-info" (click)="openInfo()">{{ t('info.open') }}</button>
   </section>
+  </div>
 
   <section class="cta">
     <p>{{ t('ctaText') }}</p>

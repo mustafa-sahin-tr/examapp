@@ -77,6 +77,8 @@ export class QuestionGenerationComponent implements OnDestroy {
   readonly outcomeId = signal<number | null>(null);
   readonly search = signal('');
   readonly count = signal(3);
+  /** Boş taslak alanındaki örnek kartın şık sayısı (#866). */
+  protected readonly sampleOptions = [0, 1, 2, 3];
   readonly difficulty = signal(5);
   readonly outcomesLoading = signal(false);
   readonly outcomesFailed = signal(false);
@@ -93,6 +95,13 @@ export class QuestionGenerationComponent implements OnDestroy {
   readonly selectionDiffersFromDrafts = computed(() => {
     const outcome = this.draftOutcome();
     return this.drafts().length > 0 && !!outcome && (outcome.id !== this.outcomeId() || outcome.difficulty !== this.difficulty());
+  });
+  /** #866: "Taslak üret" kapalıyken altında hangi alanın eksik olduğu yazar (sırayla sınıf, ders, kazanım). */
+  readonly missingField = computed<'grade' | 'subject' | 'outcome' | null>(() => {
+    if (this.gradeId() === null) return 'grade';
+    if (this.subjectId() === null) return 'subject';
+    if (this.outcomeId() === null) return 'outcome';
+    return null;
   });
   readonly selectedCount = computed(() => this.drafts().filter((d) => d.selected).length);
   readonly canSave = computed(() => {

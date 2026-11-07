@@ -94,6 +94,35 @@ describe('QuestionGenerationComponent', () => {
     expect(generation.generate).not.toHaveBeenCalled();
   });
 
+  it('generateButton_SaysWhichFieldIsMissing_InOrder (#866)', () => {
+    setup();
+    const missing = () => el().querySelector('[data-testid="qg-missing"]')?.textContent?.trim();
+
+    expect(missing()).toBe(tr.missing.grade);
+    expect(el().querySelector('.qg-generate')?.getAttribute('aria-describedby')).toBe('qg-missing');
+    component.onGradeChange(5);
+    fixture.detectChanges();
+    expect(missing()).toBe(tr.missing.subject);
+    component.onSubjectChange(7);
+    fixture.detectChanges();
+    expect(missing()).toBe(tr.missing.outcome);
+    component.outcomeId.set(11);
+    fixture.detectChanges();
+    expect(missing()).toBeUndefined();
+    expect(el().querySelector('.qg-generate')?.textContent).toContain('3 taslak üret');
+  });
+
+  it('draftsArea_ShowsAnExampleUntilDraftsArrive (#866)', () => {
+    setup();
+    expect(el().querySelector('.qg-drafts [data-testid="qg-sample"]')?.textContent).toContain(tr.sampleTag);
+
+    chooseOutcome();
+    component.generate();
+    fixture.detectChanges();
+    expect(el().querySelector('[data-testid="qg-sample"]')).toBeNull();
+    expect(el().querySelector('.qg-drafts .qg-draft')).not.toBeNull();
+  });
+
   it('subjectChange_LoadsOutcomesOfThatGradeAndSubject', () => {
     setup();
 

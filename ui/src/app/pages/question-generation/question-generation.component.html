@@ -1,7 +1,8 @@
 <div class="qg-root" *transloco="let t; prefix: 'question-generation'">
   <app-page-header [title]="t('title')" [description]="t('subtitle')" />
 
-  <mat-card class="qg-card">
+  <div class="qg-layout">
+  <mat-card class="qg-card qg-form">
     <mat-card-content>
       <div class="qg-filters">
         <mat-form-field appearance="outline">
@@ -84,13 +85,21 @@
       }
     </mat-card-content>
 
-    <mat-card-actions class="qg-actions">
-      <button class="qg-generate" mat-raised-button color="primary" (click)="generate()" [disabled]="outcomeId() === null || generating() || saving() || selectionDiffersFromDrafts()">
+    <mat-card-actions class="qg-actions qg-form-actions">
+      <button class="qg-generate" mat-raised-button color="primary" (click)="generate()" [disabled]="outcomeId() === null || generating() || saving() || selectionDiffersFromDrafts()"
+        [attr.aria-describedby]="missingField() ? 'qg-missing' : null">
         <mat-icon>auto_awesome</mat-icon>
-        {{ t('generate') }}
+        {{ t('generateCount', { count: count() }) }}
       </button>
+      @if (missingField(); as field) {
+        <p class="qg-missing" id="qg-missing" data-testid="qg-missing">{{ t('missing.' + field) }}</p>
+      } @else if (!generating()) {
+        <p class="qg-note">{{ t('duration') }}</p>
+      }
     </mat-card-actions>
   </mat-card>
+
+  <section class="qg-drafts" [attr.aria-label]="t('draftsTitle')">
 
   @if (savedCount() > 0) {
     <div class="qg-saved" role="status">
@@ -104,6 +113,7 @@
 
   @if (draftOutcome(); as outcome) {
     @if (drafts().length > 0) {
+      <h2 class="qg-drafts-title">{{ t('draftsTitle') }} <span class="qg-drafts-count">{{ drafts().length }}</span></h2>
       <h2 class="qg-section">{{ outcome.code }} · {{ outcome.description }}</h2>
       <p class="qg-warning">{{ t('reviewNote') }}</p>
 
@@ -157,4 +167,23 @@
       </div>
     }
   }
+  @if (drafts().length === 0) {
+    <div class="qg-sample" data-testid="qg-sample">
+      <h2 class="qg-drafts-title">{{ t('draftsTitle') }}</h2>
+      <p class="qg-note">{{ t('sampleIntro') }}</p>
+      <mat-card class="qg-card qg-sample-card" aria-hidden="true">
+        <mat-card-content>
+          <span class="qg-sample-tag">{{ t('sampleTag') }}</span>
+          <p class="qg-sample-question">{{ t('sampleQuestion') }}</p>
+          <ol class="qg-sample-options">
+            @for (option of sampleOptions; track $index; let o = $index) {
+              <li [class.qg-sample-correct]="o === 2">{{ optionLabel(o) }}) {{ t('sampleOptions.' + o) }}</li>
+            }
+          </ol>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  }
+  </section>
+  </div>
 </div>

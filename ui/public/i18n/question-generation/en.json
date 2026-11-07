@@ -15,7 +15,6 @@
     "medium": "Medium",
     "hard": "Hard"
   },
-  "generate": "Generate drafts",
   "generating": "Preparing drafts. This can take about a minute.",
   "errors": {
     "unavailable": "Question generation is off: no Claude key is set.",
@@ -35,6 +34,23 @@
   "save": "Save selected ({{count}})",
   "saveFailed": "Could not be saved.",
   "saved": "{{count}} questions saved. You can add them to a test from the Question Pool.",
-  "finishDraftsFirst": "The drafts below are for another outcome or difficulty. Save or delete them before generating again.",
-  "clearDrafts": "Delete drafts"
+  "finishDraftsFirst": "The current drafts are for another outcome or difficulty. Save or delete them before generating again.",
+  "clearDrafts": "Delete drafts",
+  "generateCount": "Generate {{count}} drafts",
+  "duration": "Takes about a minute.",
+  "missing": {
+    "grade": "Pick a grade first.",
+    "subject": "Pick a subject.",
+    "outcome": "Pick a learning outcome."
+  },
+  "draftsTitle": "Drafts",
+  "sampleIntro": "Your drafts appear here: edit the question, options and correct answer, then save the ones you pick to the Question Bank.",
+  "sampleTag": "Example",
+  "sampleQuestion": "Which fraction is greater than 3/4?",
+  "sampleOptions": {
+    "0": "2/3",
+    "1": "5/8",
+    "2": "7/8",
+    "3": "1/2"
+  }
 }

@@ -52,6 +52,14 @@ namespace ExamApp.Api.Services
         {
             // Parse user selections to extract program configuration
             var programConfig = ParseUserSelections(request.UserSelections);
+            // issue #885: dersler öğrencinin sınıfından id ile gelir; takvim ağırlığı doğrudan id'ye göre.
+            var subjects = await LoadProgramSubjectsAsync(studentUserId);
+            HashSet<int>? difficultIds = null;
+            if (request.DifficultSubjectIds is { } ids)
+            {
+                difficultIds = subjects.Where(s => ids.Contains(s.Id)).Select(s => s.Id).ToHashSet();
+                programConfig.DifficultSubjects = string.Join(", ", subjects.Where(s => difficultIds.Contains(s.Id)).Select(s => s.Name));
+            }
 
             // Parse provided dates or use defaults, always set Kind=Utc
             DateTime startDate = DateTime.UtcNow.Date;
@@ -94,7 +102,7 @@ namespace ExamApp.Api.Services
             await _context.SaveChangesAsync();
 
             // Generate schedule based on program configuration
-            await GenerateProgramScheduleAsync(userProgram, studentUserId);
+            await GenerateProgramScheduleAsync(userProgram, subjects, difficultIds);
 
             // Return DTO
             return await GetUserProgramDtoAsync(userProgram.Id);
@@ -328,7 +336,22 @@ namespace ExamApp.Api.Services
             };
         }
 
-        private (string StudyType, string StudyDuration, int? QuestionsPerDay, int SubjectsPerDay, string RestDays, string DifficultSubjects) ParseUserSelections(List<UserSelectionDto> selections)
+        public async Task<List<ProgramSubjectDto>> GetProgramSubjectsAsync(int? studentUserId)
+            => (await LoadProgramSubjectsAsync(studentUserId))
+                .Select(s => new ProgramSubjectDto { Id = s.Id, Name = s.Name })
+                .ToList();
+
+        private sealed class ProgramConfig
+        {
+            public string StudyType { get; set; } = "time";
+            public string StudyDuration { get; set; } = "25-5";
+            public int? QuestionsPerDay { get; set; }
+            public int SubjectsPerDay { get; set; } = 1;
+            public string RestDays { get; set; } = "";
+            public string DifficultSubjects { get; set; } = "";
+        }
+
+        private ProgramConfig ParseUserSelections(List<UserSelectionDto> selections)
         {
             string studyType = "time"; // Default to time-based study
             string studyDuration = "25-5"; // Default pomodoro duration
@@ -373,22 +396,38 @@ namespace ExamApp.Api.Services
                 studyDuration = "question-based"; // Placeholder value for question mode
             }
 
-            return (studyType, studyDuration, questionsPerDay, subjectsPerDay, restDays, difficultSubjects);
+            return new ProgramConfig
+            {
+                StudyType = studyType,
+                StudyDuration = studyDuration,
+                QuestionsPerDay = questionsPerDay,
+                SubjectsPerDay = subjectsPerDay,
+                RestDays = restDays,
+                DifficultSubjects = difficultSubjects
+            };
         }
 
         // Zorlandığı ders, takvimde diğer derslerin iki katı sıklıkta yer alır (issue #514).
         internal const int DifficultSubjectWeight = 2;
 
-        private async Task GenerateProgramScheduleAsync(UserProgram userProgram, int? studentUserId)
+        /// <param name="difficultIds">issue #885: id ile seçilen zor dersler; null ise eski 7. adım değerleri (ders adıyla eşlenir).</param>
+        private async Task GenerateProgramScheduleAsync(UserProgram userProgram, List<Subject> subjects, HashSet<int>? difficultIds)
         {
             if (userProgram.StartDate == null || userProgram.EndDate == null)
                 return;
 
-            var subjects = await LoadProgramSubjectsAsync(studentUserId);
-            var difficultNames = await LoadDifficultSubjectNamesAsync(userProgram.DifficultSubjects);
-            var weights = subjects
-                .Select(s => difficultNames.Contains(s.Name.Trim()) ? DifficultSubjectWeight : 1)
-                .ToArray();
+            int[] weights;
+            if (difficultIds != null)
+            {
+                weights = subjects.Select(s => difficultIds.Contains(s.Id) ? DifficultSubjectWeight : 1).ToArray();
+            }
+            else
+            {
+                var difficultNames = await LoadDifficultSubjectNamesAsync(userProgram.DifficultSubjects);
+                weights = subjects
+                    .Select(s => difficultNames.Contains(s.Name.Trim()) ? DifficultSubjectWeight : 1)
+                    .ToArray();
+            }
             var plannedCounts = new int[subjects.Count];
             var subjectsPerDay = Math.Min(Math.Max(userProgram.SubjectsPerDay, 1), subjects.Count);
 

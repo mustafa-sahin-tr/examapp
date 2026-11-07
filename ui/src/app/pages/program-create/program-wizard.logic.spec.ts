@@ -1,90 +1,56 @@
-import { ProgramStep } from '../../models/programstep';
-import { isEndAfterStart, toLocalDateString, isExclusiveOption, reachableFrom, remainingRange, resolveNext, toggleValue, } from './program-wizard.logic';
+import { WizardChoices, buildPreview, isEndAfterStart, pickDailySubjects, toLocalDateString, toUserSelections } from './program-wizard.logic';
 
-function step(id: number, multiple: boolean, options: ProgramStep['options']): ProgramStep {
-    return { id, title: `S${id}`, description: `S${id}`, multiple, actions: [], options };
-}
+const base: WizardChoices = { studyType: 'time', duration: '40-10', questionsPerDay: 24, subjectsPerDay: 2, studyDays: [1, 2, 3, 4, 5, 6, 7] };
+const subjects = [
+    { id: 1, name: 'Fen' },
+    { id: 2, name: 'Matematik' },
+    { id: 3, name: 'Türkçe' },
+];
+// 2026-11-09 Pazartesi.
+const monday = new Date(2026, 10, 9);
 
-describe('program-wizard.logic (issue #135)', () => {
-    const graph = new Map<number, ProgramStep>([
-        [1, step(1, false, [{ label: 'a', value: 'a', nextStep: 2 }, { label: 'b', value: 'b', nextStep: 3 }])],
-        [2, step(2, false, [{ label: 'x', value: 'x', nextStep: 4 }])],
-        [3, step(3, false, [{ label: 'y', value: 'y' }])],
-        [4, step(4, false, [{ label: 'z', value: 'z' }])],
-    ]);
-
-    it('resolveNext_FirstSelectedInOptionOrder_NullToForm_DanglingToInvalid', () => {
-        expect(resolveNext(graph, graph.get(1)!, ['b', 'a'])).toEqual({ kind: 'step', stepId: 2 });
-        expect(resolveNext(graph, graph.get(3)!, ['y'])).toEqual({ kind: 'form' });
-        const dangling = step(9, false, [{ label: 'q', value: 'q', nextStep: 99 }]);
-        expect(resolveNext(graph, dangling, ['q'])).toEqual({ kind: 'invalid', nextStep: 99 });
-    });
-
-    it('reachableFrom_FollowsEveryOption', () => {
-        expect([...reachableFrom(graph, 1)].sort()).toEqual([1, 2, 3, 4]);
-        expect([...reachableFrom(graph, 2)].sort()).toEqual([2, 4]);
-    });
-
-    it('remainingRange_UnequalBranches_MinMaxThenExactAfterAnswer', () => {
-        expect(remainingRange(graph, 1, new Map())).toEqual({ min: 1, max: 2 });
-        expect(remainingRange(graph, 1, new Map([[1, ['b']]]))).toEqual({ min: 1, max: 1 });
-        expect(remainingRange(graph, 1, new Map([[1, ['a']]]))).toEqual({ min: 2, max: 2 });
-    });
-
-    it('remainingRange_Cycle_Terminates', () => {
-        const cyclic = new Map<number, ProgramStep>([
-            [1, step(1, false, [{ label: 'a', value: 'a', nextStep: 2 }])],
-            [2, step(2, false, [{ label: 'b', value: 'b', nextStep: 1 }])],
+describe('program wizard logic (#885)', () => {
+    it('toUserSelections_UsesTheServerStepIds', () => {
+        expect(toUserSelections({ ...base, studyDays: [1, 2, 3, 4, 5] })).toEqual([
+            { stepId: 1, selectedValues: ['time'] },
+            { stepId: 2, selectedValues: ['40-10'] },
+            { stepId: 5, selectedValues: ['2'] },
+            { stepId: 6, selectedValues: ['6', '7'] },
         ]);
-        expect(remainingRange(cyclic, 1, new Map())).toEqual({ min: 1, max: 1 });
-    });
-
-    describe('Yok dışlaması (backend ProgramService.cs eşlemesi)', () => {
-        const days = step(6, true, [
-            { label: 'Pazartesi', value: '1' },
-            { label: 'Salı', value: '2' },
-            { label: 'Yok', value: '8' },
+        // Soru sayılı ve dinlenme günü yok → "8".
+        expect(toUserSelections({ ...base, studyType: 'question' })).toEqual([
+            { stepId: 1, selectedValues: ['question'] },
+            { stepId: 3, selectedValues: ['24'] },
+            { stepId: 5, selectedValues: ['2'] },
+            { stepId: 6, selectedValues: ['8'] },
         ]);
-
-        it('mappedStep_UsesValueNotLabel', () => {
-            expect(isExclusiveOption(days, days.options[2])).toBe(true);
-            // Eşlemedeki adımda etiket belirleyici değil.
-            expect(isExclusiveOption(days, { label: 'Yok', value: '3' })).toBe(false);
-            const subjects = step(7, true, [{ label: 'Hiçbiri', value: '5' }]);
-            expect(isExclusiveOption(subjects, subjects.options[0])).toBe(true);
-        });
-
-        it('unmappedStep_FallsBackToLabel', () => {
-            const other = step(42, true, [{ label: 'Yok', value: 'n' }, { label: 'None', value: 'm' }, { label: 'X', value: 'x' }]);
-            expect(isExclusiveOption(other, other.options[0])).toBe(true);
-            expect(isExclusiveOption(other, other.options[1])).toBe(true);
-            expect(isExclusiveOption(other, other.options[2])).toBe(false);
-        });
-
-        it('toggleValue_ExclusiveClearsOthersAndViceVersa_KeepsOptionOrder', () => {
-            expect(toggleValue(days, ['2'], days.options[0])).toEqual(['1', '2']);
-            expect(toggleValue(days, ['1', '2'], days.options[2])).toEqual(['8']);
-            expect(toggleValue(days, ['8'], days.options[1])).toEqual(['2']);
-            expect(toggleValue(days, ['1', '2'], days.options[0])).toEqual(['2']);
-        });
-
-        it('toggleValue_Single_Replaces', () => {
-            expect(toggleValue(graph.get(1)!, ['a'], graph.get(1)!.options[1])).toEqual(['b']);
-        });
     });
 
-    describe('isEndAfterStart', () => {
-        it('comparesCalendarDays_IgnoringTimeOfDay', () => {
-            const start = new Date(2026, 9, 6, 15, 30);
-            expect(isEndAfterStart(start, new Date(2026, 9, 7))).toBe(true);
-            expect(isEndAfterStart(start, new Date(2026, 9, 6, 23, 59))).toBe(false);
-            expect(isEndAfterStart(start, new Date(2026, 9, 6))).toBe(false);
-            expect(isEndAfterStart(start, new Date(2026, 9, 5))).toBe(false);
-        });
+    it('pickDailySubjects_MatchesTheServerRule', () => {
+        // Eşitlikte ağırlığı büyük olan, sonra sıra.
+        expect(pickDailySubjects([0, 0, 0], [1, 2, 1], 1)).toEqual([1]);
+        expect(pickDailySubjects([1, 1, 0], [1, 2, 1], 2)).toEqual([1, 2]);
+    });
 
-        it('toLocalDateString_UsesLocalCalendarDay', () => {
-            expect(toLocalDateString(new Date(2026, 9, 6))).toBe('2026-10-06');
-            expect(toLocalDateString(new Date(2026, 0, 1, 23, 59))).toBe('2026-01-01');
-        });
+    it('buildPreview_SpreadsSubjectsAndSkipsRestDays', () => {
+        const days = buildPreview({ ...base, studyDays: [1, 2, 3, 4, 5] }, subjects, new Set(), monday);
+        expect(days.map((d) => d.weekday)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+        expect(days[0].items).toEqual([{ subject: 'Fen', amount: 40 }, { subject: 'Matematik', amount: 40 }]);
+        expect(days[1].items.map((i) => i.subject)).toEqual(['Fen', 'Türkçe']); // ders sırasıyla
+        expect(days[5].items).toEqual([]); // Cumartesi dinlenme
+        expect(days[6].items).toEqual([]);
+    });
+
+    it('buildPreview_HardSubjectComesTwiceAsOften_AndQuestionsAreSplit', () => {
+        const days = buildPreview({ ...base, studyType: 'question', subjectsPerDay: 1 }, subjects, new Set([2]), monday);
+        const math = days.filter((d) => d.items[0]?.subject === 'Matematik').length;
+        expect(math).toBeGreaterThanOrEqual(3);
+        expect(days[0].items[0]).toEqual({ subject: 'Matematik', amount: 24 });
+    });
+
+    it('dates_AreComparedByCalendarDay', () => {
+        expect(isEndAfterStart(new Date(2026, 10, 9, 15), new Date(2026, 10, 9))).toBe(false);
+        expect(isEndAfterStart(new Date(2026, 10, 9, 15), new Date(2026, 10, 10))).toBe(true);
+        expect(toLocalDateString(new Date(2026, 0, 5))).toBe('2026-01-05');
     });
 });

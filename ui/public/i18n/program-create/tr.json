@@ -1,63 +1,60 @@
 {
-  "actions": {
-    "ok": "Tamam"
+  "title": "Yeni program",
+  "stepsLabel": "Adımlar",
+  "ok": "Tamam",
+  "retry": "Tekrar dene",
+  "back": "Geri",
+  "next": "Devam: {{step}}",
+  "create": "Programı oluştur",
+  "creating": "Oluşturuluyor…",
+  "created": "Program oluşturuldu.",
+  "createFailed": "Program oluşturulamadı. Seçimlerin korunuyor; tekrar deneyebilirsin.",
+  "amount": {
+    "title": "Ne kadar?",
+    "question": "Nasıl çalışmak istersin?",
+    "typeTime": "Süreyle",
+    "typeQuestion": "Soru sayısıyla",
+    "durationTitle": "Bir ders ne kadar sürsün?",
+    "duration": "{{study}} dk çalış, {{rest}} dk ara",
+    "questionsTitle": "Günde kaç soru?",
+    "questions": "Günde {{count}} soru",
+    "perDayTitle": "Günde kaç farklı ders?",
+    "perDay": "{{count}} ders"
   },
-  "wizard": {
-    "questionNumber": "Soru {{number}}",
-    "loading": "Sorular yükleniyor...",
-    "loadError": "Sorular yüklenemedi, lütfen tekrar deneyin.",
-    "retry": "Tekrar Dene",
-    "noSelection": "Bir seçim yapmadınız",
-    "progress": {
-      "label": "Sihirbaz ilerlemesi",
-      "current": "Soru {{n}} / {{total}}",
-      "currentMax": "Soru {{n}} / en fazla {{total}}",
-      "final": "Son adım · {{n}} / {{total}}",
-      "stop": "Soru",
-      "done": "tamamlandı, düzenle",
-      "here": "şu an",
-      "upcoming": "sırada",
-      "branch": "yol seçimine göre değişir",
-      "finalStop": "Program bilgileri"
-    },
-    "hint": {
-      "single": "Bir seçenek seç.",
-      "multi": "Birden fazla seçebilirsin."
-    },
-    "continue": "Devam",
-    "back": "Geri",
-    "needSelection": "Devam etmek için bir seçim yap",
-    "summary": {
-      "title": "Seçimlerin",
-      "pending": "Seçim bekleniyor",
-      "remaining": "Kalan sorular: {{count}}",
-      "edit": "Düzenle",
-      "all": "Tümü"
-    },
-    "pathChanged": "Yol değişti: önceki dala ait {{count}} seçim sıfırlandı.",
-    "undo": "Geri al",
-    "emptyTitle": "Henüz soru yok",
-    "emptyBody": "Program adımları bulunamadı. Biraz sonra tekrar deneyebilirsin."
+  "days": {
+    "title": "Hangi günler?",
+    "question": "Hangi günler çalışacaksın?",
+    "hint": "Çalışmayacağın günlerin işaretini kaldır.",
+    "needOne": "En az bir gün seç."
   },
-  "form": {
-    "title": "Programınızı Oluşturun",
-    "subtitle": "Son bir adım! Programınıza bir isim verin ve açıklama ekleyin.",
-    "name": "Program Adı",
-    "namePlaceholder": "Örn: Matematik Çalışma Programım",
-    "description": "Açıklama (İsteğe bağlı)",
-    "descriptionPlaceholder": "Programınız hakkında kısa bir açıklama yazabilirsiniz...",
-    "startDate": "Başlangıç Tarihi",
-    "endDate": "Bitiş Tarihi",
-    "submit": "Programı Oluştur",
-    "back": "Geri Dön",
-    "nameRequired": "Program adı gereklidir",
-    "startDateRequired": "Başlangıç tarihi gereklidir",
-    "endDateRequired": "Bitiş tarihi gereklidir",
-    "endDateAfterStart": "Bitiş tarihi, başlangıç tarihinden sonra olmalıdır",
-    "dateInvalid": "Geçerli bir tarih gir",
-    "created": "Program başarıyla oluşturuldu!",
-    "reviewTitle": "Onay özeti",
-    "summaryCount": "{{count}} cevap",
-    "createFailedInline": "Program oluşturulamadı. Seçimlerin ve girdiğin bilgiler korunuyor; tekrar deneyebilirsin."
+  "subjects": {
+    "title": "Hangi dersler?",
+    "question": "Hangi derslerde zorlanıyorsun?",
+    "hint": "Seçtiğin dersler programda iki kat sık yer alır. Hiçbirini seçmeden de devam edebilirsin.",
+    "loadError": "Dersler yüklenemedi.",
+    "none": "Sınıfına ait ders bulunamadı."
+  },
+  "until": {
+    "title": "Ne zamana kadar?",
+    "question": "Program ne zamana kadar sürsün?",
+    "length": {
+      "14": "2 hafta",
+      "30": "1 ay",
+      "60": "2 ay"
+    },
+    "endDate": "Bitiş tarihi",
+    "from": "Başlangıç: bugün, {{date}}",
+    "name": "Program adı (isteğe bağlı)",
+    "nameHint": "Boş bırakırsan: {{name}}",
+    "defaultName": "{{month}} programı",
+    "endAfterStart": "Bitiş tarihi bugünden sonra olmalı."
+  },
+  "preview": {
+    "title": "Örnek hafta",
+    "waiting": "Dersler yüklenince haftan burada görünecek.",
+    "rest": "Dinlenme",
+    "minutes": "{{count}} dk",
+    "questions": "{{count}} soru",
+    "hardNote": "Vurgulu dersler zorlandıkların; daha sık gelir."
   }
 }

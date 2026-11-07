@@ -117,6 +117,47 @@ public class ProgramServiceTests : IDisposable
         dto.Schedules.ShouldAllBe(s => s.QuestionCount == 10); // 30 / 3
     }
 
+    [Fact]
+    public async Task Difficult_subject_ids_double_that_subjects_share_and_are_stored_by_name()
+    {
+        await SeedSubjectsAsync("Fen", "Mat", "Türkçe");
+        int matId;
+        await using (var ctx = _db.NewContext())
+            matId = await ctx.Subjects.Where(s => s.Name == "Mat").Select(s => s.Id).SingleAsync();
+
+        var request = new CreateProgramRequestDto
+        {
+            ProgramName = "Plan",
+            Description = "",
+            StartDate = "2026-03-02",
+            EndDate = "2026-03-13", // 12 gün, günde 1 ders
+            UserSelections = new() { Sel(1, "time"), Sel(2, "25-5"), Sel(5, "1"), Sel(7, "2") }, // eski 7. adım yok sayılır
+            DifficultSubjectIds = new() { matId, 999_999 }, // sınıfta olmayan id yok sayılır
+        };
+
+        UserProgramDto dto;
+        await using (var ctx = _db.NewContext())
+            dto = await NewService(ctx).CreateUserProgramAsync(User, request);
+
+        dto.DifficultSubjects.ShouldBe("Mat");
+        var counts = dto.Schedules.GroupBy(s => s.SubjectName).ToDictionary(g => g.Key, g => g.Count());
+        counts["Mat"].ShouldBe(6);   // ağırlık 2
+        counts["Fen"].ShouldBe(3);
+        counts["Türkçe"].ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task Program_subjects_fall_back_to_all_subjects_without_a_student()
+    {
+        await SeedSubjectsAsync("Mat", "Fen");
+        await using var ctx = _db.NewContext();
+
+        var subjects = await NewService(ctx).GetProgramSubjectsAsync(null);
+
+        subjects.Select(s => s.Name).ShouldBe(new[] { "Fen", "Mat" });
+        subjects.ShouldAllBe(s => s.Id > 0);
+    }
+
     // ---- GetUserPrograms / GetUserProgramById ----
 
     [Fact]

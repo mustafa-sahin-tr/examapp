@@ -14,6 +14,9 @@ namespace ExamApp.Api.Services
         /// sınıfının dersleridir, zor dersler daha sık planlanır. Sınıf bilinmiyorsa bütün dersler kullanılır.
         /// </summary>
         Task<UserProgramDto> CreateUserProgramAsync(string userId, CreateProgramRequestDto request, int? studentUserId = null);
+
+        /// <summary>issue #885: takvime girecek dersler (öğrencinin sınıfı; yoksa tüm dersler), sihirbazın ders adımı ve önizlemesi için.</summary>
+        Task<List<ProgramSubjectDto>> GetProgramSubjectsAsync(int? studentUserId);
         Task<List<UserProgramDto>> GetUserProgramsAsync(string userId);
         Task<UserProgramDto?> GetUserProgramByIdAsync(string userId, int programId);
         Task<UserProgramDto?> AddStudyItemSchedulesAsync(string userId, int programId, ProgramStudyItemScheduleRequestDto request);

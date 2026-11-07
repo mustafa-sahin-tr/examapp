@@ -38,12 +38,13 @@
       "loginTitle": "Student Login Trend",
       "periodYear": "Last year",
       "periodDays": "Last {{days}} days",
+      "periodWeeks": "Last {{weeks}} weeks",
       "verbCreated": "created",
       "verbSolved": "solved",
       "tooltip": "{{label}}: {{count}} questions {{verb}}",
       "loginTooltip": "{{label}}: {{count}} logins",
-      "summaryEmpty": "Last year: not enough data yet.",
-      "summary": "Last year: {{total}} questions {{verb}} in total. Peak day {{peak}}, {{count}} questions.",
+      "summaryEmpty": "Last 8 weeks: not enough data yet.",
+      "summary": "Last 8 weeks: {{total}} questions {{verb}} in total. Peak day {{peak}}, {{count}} questions.",
       "loginSummaryEmpty": "Last {{days}} days: not enough data yet.",
       "loginSummary": "Last {{days}} days: {{total}} student logins in total. Peak day {{peak}}, {{count}} logins.",
       "today": "today",
@@ -56,7 +57,26 @@
       "inGrace": "In grace period",
       "graceExpired": "Grace period expired",
       "awaitingActivation": "Awaiting parent activation",
-      "aria": "Parent status counts"
+      "aria": "Parent status counts",
+      "openStudents": "Open the student list"
+    },
+    "pending": {
+      "title": "Pending",
+      "total": "{{count}} items waiting",
+      "none": "Nothing pending",
+      "teacherApplications": "Teacher applications",
+      "schoolApplications": "School requests",
+      "questionReports": "Question reports",
+      "commentReports": "Comment reports",
+      "openTextAnswers": "Open-ended answers",
+      "tileAria": "{{label}}: {{count}} pending"
+    },
+    "system": {
+      "title": "System status",
+      "lastClassification": "Last AI classification: {{when}}",
+      "noClassification": "No AI classification yet",
+      "outboxOk": "Event queue healthy",
+      "outboxFailed": "{{count}} events failed to publish"
     }
   },
   "taxonomy": {

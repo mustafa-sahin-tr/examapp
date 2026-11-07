@@ -7,6 +7,132 @@
   margin: 0 auto;
 }
 
+// ── #887: Bekleyenler satırı ──────────────────────────────────────────────
+.pending-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  &__head {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+
+    h2 {
+      margin: 0;
+    }
+  }
+
+  &__total {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--primaryColor);
+
+    &--none {
+      font-weight: 400;
+      color: var(--ms-text-medium);
+    }
+  }
+}
+
+.pending-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.pending-tile {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    'icon count'
+    'label label';
+  align-items: center;
+  gap: 4px 8px;
+  min-height: 44px;
+  padding: 12px 14px;
+  border: 1px solid var(--ms-border);
+  border-radius: 14px;
+  background: var(--ms-surface-weak);
+  color: var(--ms-text);
+  text-decoration: none;
+  transition: border-color 0.15s ease;
+
+  &:hover {
+    border-color: var(--primaryColor);
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--ms-action-border-focus);
+    outline-offset: 2px;
+  }
+
+  &__icon {
+    grid-area: icon;
+    color: var(--primaryColor);
+  }
+
+  &__count {
+    grid-area: count;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--ms-text-strong);
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__label {
+    grid-area: label;
+    font-size: 0.82rem;
+    color: var(--ms-text-medium);
+  }
+
+  // Boş kuyruk: soluk, yine de tıklanabilir (geçmişe bakmak için).
+  &--idle {
+    opacity: 0.55;
+
+    .pending-tile__icon {
+      color: var(--ms-text-weak);
+    }
+  }
+}
+
+// ── #887: Sistem durumu ──────────────────────────────────────────────────
+.system-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  font-size: 0.85rem;
+  color: var(--ms-text-medium);
+
+  &__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    mat-icon {
+      width: 18px;
+      height: 18px;
+      font-size: 18px;
+      color: var(--ms-success-text, var(--ms-text-weak));
+    }
+
+    &--warn {
+      color: var(--ms-danger-text);
+
+      mat-icon {
+        color: var(--ms-danger-text);
+      }
+    }
+  }
+}
+
+.parent-status-list__link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 // ── Başlık (admin-home ile aynı görsel dil) ─────────────────────────────────
 .admin-header {
   display: flex;
@@ -167,6 +293,7 @@
   }
 
   @media (max-width: 767px) {
+
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -403,27 +530,70 @@
   }
 }
 
-// Heatmap `[view]` ile sabit genişlikte (52 hafta × 22px ≥ 1200px) çizilir; dar ekranda yatay kaydırılır.
-// dashboard.component'teki `.heatmap-scroll` ile aynı davranış.
-.heatmap-scroll {
-  width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
+// #887: son 8 haftanın haftalık çubukları (eski 52 haftalık heatmap'in yerine). Dikey çubuk, altta hafta etiketi.
+.week-bars {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 
-  &::-webkit-scrollbar {
-    display: none;
+  &__item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  &__count {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--ms-text-strong);
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__track {
+    display: flex;
+    align-items: flex-end;
+    width: 100%;
+    max-width: 48px;
+    height: 120px;
+    border-radius: 8px;
+    background: var(--ms-surface-medium);
+    overflow: hidden;
+  }
+
+  &__bar {
+    width: 100%;
+    min-height: 2px;
+    border-radius: 8px 8px 0 0;
+    background: var(--primaryColor);
+
+    &--solved {
+      background: var(--secondaryColor);
+    }
+  }
+
+  &__label {
+    font-size: 0.72rem;
+    color: var(--ms-text-weak);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
   }
 }
 
-// Bar chart `[view]` almaz; ngx-charts kabın ölçüsünü okur. Yükseklik heatmap'le (210px) hizalı sabitlenir,
+// Bar chart `[view]` almaz; ngx-charts kabın ölçüsünü okur. Yükseklik 210px sabitlenir,
 // genişlik karta uyar — 30 çubuk dar ekranda da sığar, yatay kaydırma gerekmez.
 .login-bar-chart {
   width: 100%;
   height: 210px;
 
   // ngx-charts varsayılanı `.gridline-path { stroke: #ddd; stroke-width: 1 }` — koyu kart zemininde
-  // (--ms-surface-weak) fazla parlak/kalın durur. Sadece bu kartın ızgarası inceltilir; heatmap'ler etkilenmez.
+  // (--ms-surface-weak) fazla parlak/kalın durur. Sadece bu kartın ızgarası inceltilir.
   ::ng-deep .gridline-path {
     stroke: var(--ms-border);
     stroke-width: 0.5;
@@ -463,12 +633,28 @@
 
 // ── Responsive ──────────────────────────────────────────────────────────────
 @media (max-width: 1023px) {
+  .pending-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .summary-grid {
     grid-template-columns: repeat(3, 1fr);
   }
 }
 
 @media (max-width: 767px) {
+  .pending-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .week-bars {
+    gap: 4px;
+
+    &__track {
+      height: 96px;
+    }
+  }
+
   $mobile-bottom-nav-height: 64px;
 
   .admin-dashboard {

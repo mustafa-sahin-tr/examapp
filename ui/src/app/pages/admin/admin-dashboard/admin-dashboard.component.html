@@ -7,6 +7,33 @@
     <p class="admin-header__subtitle">{{ t('subtitle') }}</p>
   </header>
 
+  <!-- Issue #887: bekleyen kuyruklar ilk sırada; sayı menü rozetiyle aynı kaynaktan. Yüklenemezse satır yok. -->
+  @if (pending(); as p) {
+    <section class="pending-section" data-test="pending" aria-labelledby="pending-heading">
+      <div class="pending-section__head">
+        <h2 id="pending-heading" class="trend-section__title">{{ t('pending.title') }}</h2>
+        <span class="pending-section__total" [class.pending-section__total--none]="p.total === 0">
+          {{ p.total > 0 ? t('pending.total', { count: p.total }) : t('pending.none') }}
+        </span>
+      </div>
+      <div class="pending-grid">
+        @for (q of pendingQueues; track q.key) {
+          <a
+            class="pending-tile"
+            [class.pending-tile--idle]="p[q.key] === 0"
+            [attr.data-key]="q.key"
+            [routerLink]="q.route"
+            [attr.aria-label]="t('pending.tileAria', { label: t('pending.' + q.key), count: p[q.key] })"
+          >
+            <mat-icon class="pending-tile__icon" aria-hidden="true">{{ q.icon }}</mat-icon>
+            <span class="pending-tile__count">{{ p[q.key] | number }}</span>
+            <span class="pending-tile__label">{{ t('pending.' + q.key) }}</span>
+          </a>
+        }
+      </div>
+    </section>
+  }
+
   @if (loading()) {
     <div class="summary-grid" aria-busy="true" aria-live="polite">
       @for (i of skeletonCards; track i) {
@@ -92,13 +119,39 @@
               @for (row of rows; track row.key) {
                 <div class="parent-status-list__item" [attr.data-key]="row.key">
                   <dt class="summary-hint">{{ t(row.labelKey) }}</dt>
-                  <dd class="summary-value">{{ row.value | number }}</dd>
+                  <dd class="summary-value">
+                    <!-- #887: aktive etmeyen veli satırı öğrenci listesine gider (takip oradan yapılır). -->
+                    @if (row.key === 'awaitingActivation' && row.value > 0) {
+                      <a class="parent-status-list__link" routerLink="/admin/students" [attr.aria-label]="t('parentStatus.openStudents')">{{ row.value | number }}</a>
+                    } @else {
+                      {{ row.value | number }}
+                    }
+                  </dd>
                 </div>
               }
             </dl>
           </section>
         }
       </div>
+
+      <!-- Issue #887: sistem durumu — son sınıflandırma ve yayımlanamayan olaylar. -->
+      @if (s.failedOutboxCount !== undefined) {
+        <section class="system-status" data-test="system-status" [attr.aria-label]="t('system.title')">
+          <span class="system-status__item" data-key="classification">
+            <mat-icon aria-hidden="true">schedule</mat-icon>
+            {{ lastClassification() ? t('system.lastClassification', { when: lastClassification() }) : t('system.noClassification') }}
+          </span>
+          <span
+            class="system-status__item"
+            data-key="outbox"
+            [class.system-status__item--warn]="(s.failedOutboxCount ?? 0) > 0"
+            [attr.role]="(s.failedOutboxCount ?? 0) > 0 ? 'status' : null"
+          >
+            <mat-icon aria-hidden="true">{{ (s.failedOutboxCount ?? 0) > 0 ? 'warning' : 'check_circle' }}</mat-icon>
+            {{ (s.failedOutboxCount ?? 0) > 0 ? t('system.outboxFailed', { count: s.failedOutboxCount }) : t('system.outboxOk') }}
+          </span>
+        </section>
+      }
 
       @if (isEmpty()) {
         <div class="state-box state-box--empty">
@@ -110,7 +163,7 @@
   }
 
   <!--
-    Phase 2 (Issue #88): 52 haftalık takvim heatmap'leri; Phase 3 (Issue #89): 30 günlük login bar chart.
+    Phase 2 (Issue #88, #887): son 8 haftanın haftalık çubukları; Phase 3 (Issue #89): 30 günlük login bar chart.
     Sayaçlardan bağımsız durum seti, full-width stack. Dönem kart başına farklı olduğu için başlıkta değil kartta.
   -->
   <section class="trend-section" aria-labelledby="trend-heading">
@@ -158,32 +211,28 @@
 
             @if (card.isEmpty) {
               <div class="state-box state-box--empty trend-card__empty">
-                <mat-icon>calendar_view_month</mat-icon>
+                <mat-icon>bar_chart</mat-icon>
                 <p class="state-text">{{ t('trends.empty') }}</p>
               </div>
             } @else {
-              <!-- dashboard.component'teki heatmap-scroll + ngx-charts-heat-map kullanımıyla aynı -->
-              <div #heatmapScroll class="heatmap-scroll" aria-hidden="true">
-                <ngx-charts-heat-map
-                  [view]="heatmapView()"
-                  [scheme]="card.scheme"
-                  [results]="card.results"
-                  [xAxis]="true"
-                  [yAxis]="true"
-                  [legend]="false"
-                  [showXAxisLabel]="false"
-                  [showYAxisLabel]="false"
-                  [gradient]="false"
-                  [rotateXAxisTicks]="false"
-                  [xAxisTickFormatting]="card.xAxisTickFormatting"
-                  [tooltipText]="formatHeatmapTooltip"
-                ></ngx-charts-heat-map>
-              </div>
+              <!-- #887: son 8 hafta, haftalık toplam çubukları (veri azken boş alan kalmaz). -->
+              <ol class="week-bars" aria-hidden="true" data-test="week-bars">
+                @for (week of card.weeks; track week.label) {
+                  <li class="week-bars__item">
+                    <span class="week-bars__count">{{ week.count | number }}</span>
+                    <span class="week-bars__track">
+                      <span class="week-bars__bar" [class.week-bars__bar--solved]="card.key === 'solved'"
+                        [style.height.%]="week.percent"></span>
+                    </span>
+                    <span class="week-bars__label">{{ week.label }}</span>
+                  </li>
+                }
+              </ol>
             }
           </article>
         }
 
-        <!-- Phase 3 (Issue #89): son 30 gün öğrenci login bar chart; heatmap kartıyla aynı dış yapı -->
+        <!-- Phase 3 (Issue #89): son 30 gün öğrenci login bar chart; haftalık kartlarla aynı dış yapı -->
         @if (loginTrendCard(); as card) {
           <article
             class="trend-card"

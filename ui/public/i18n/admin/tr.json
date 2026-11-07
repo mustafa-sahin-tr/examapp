@@ -38,12 +38,13 @@
       "loginTitle": "Öğrenci Login Trendi",
       "periodYear": "Son 1 yıl",
       "periodDays": "Son {{days}} gün",
+      "periodWeeks": "Son {{weeks}} hafta",
       "verbCreated": "oluşturuldu",
       "verbSolved": "çözüldü",
       "tooltip": "{{label}}: {{count}} soru {{verb}}",
       "loginTooltip": "{{label}}: {{count}} giriş",
-      "summaryEmpty": "Son 1 yıl: henüz yeterli veri yok.",
-      "summary": "Son 1 yıl: toplam {{total}} soru {{verb}}. En yüksek gün {{peak}}, {{count}} soru.",
+      "summaryEmpty": "Son 8 hafta: henüz yeterli veri yok.",
+      "summary": "Son 8 hafta: toplam {{total}} soru {{verb}}. En yüksek gün {{peak}}, {{count}} soru.",
       "loginSummaryEmpty": "Son {{days}} gün: henüz yeterli veri yok.",
       "loginSummary": "Son {{days}} gün: toplam {{total}} öğrenci girişi. En yüksek gün {{peak}}, {{count}} giriş.",
       "today": "bugün",
@@ -56,7 +57,26 @@
       "inGrace": "Hoşgörü süresinde",
       "graceExpired": "Süresi dolmuş",
       "awaitingActivation": "Veli aktivasyonu bekleyen",
-      "aria": "Veli durumu sayıları"
+      "aria": "Veli durumu sayıları",
+      "openStudents": "Öğrenci listesini aç"
+    },
+    "pending": {
+      "title": "Bekleyenler",
+      "total": "{{count}} iş bekliyor",
+      "none": "Bekleyen iş yok",
+      "teacherApplications": "Öğretmen başvurusu",
+      "schoolApplications": "Okul talebi",
+      "questionReports": "Soru bildirimi",
+      "commentReports": "Yorum şikâyeti",
+      "openTextAnswers": "Açık uçlu cevap",
+      "tileAria": "{{label}}: {{count}} bekliyor"
+    },
+    "system": {
+      "title": "Sistem durumu",
+      "lastClassification": "Son AI sınıflandırma: {{when}}",
+      "noClassification": "Henüz AI sınıflandırması yok",
+      "outboxOk": "Olay kuyruğu sorunsuz",
+      "outboxFailed": "{{count}} olay yayımlanamadı"
     }
   },
   "taxonomy": {

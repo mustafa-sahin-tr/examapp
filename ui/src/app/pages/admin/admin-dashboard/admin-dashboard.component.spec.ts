@@ -2,11 +2,13 @@ import type { MockedObject } from "vitest";
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter, Router, UrlTree } from '@angular/router';
+import { signal } from '@angular/core';
 import { of, Subject, throwError } from 'rxjs';
-import { ScaleType } from '@swimlane/ngx-charts';
 
 import { AdminDashboardComponent } from './admin-dashboard.component';
 import { AdminService } from '../../../services/admin.service';
+import { AdminPendingService } from '../../../services/admin-pending.service';
+import { AdminPendingSummary } from '../../../models/admin-pending.model';
 import { AdminDashboardSummary, AdminDashboardTrendPoint, AdminDashboardTrends, } from '../../../models/admin-dashboard.model';
 import { routes } from '../../../app.routes';
 import { authGuard } from '../../../shared/guards/auth.guard';
@@ -20,6 +22,8 @@ describe('AdminDashboardComponent', () => {
     let fixture: ComponentFixture<AdminDashboardComponent>;
     let component: AdminDashboardComponent;
     let adminService: MockedObject<AdminService>;
+    let pendingSummary: ReturnType<typeof signal<AdminPendingSummary | null>>;
+    let pendingRefresh: ReturnType<typeof vi.fn>;
 
     const summary: AdminDashboardSummary = {
         teacherCount: 12,
@@ -42,8 +46,8 @@ describe('AdminDashboardComponent', () => {
         });
     }
 
-    /** 52 hafta × 7 gün — bileşenin backend'den istediği pencere. */
-    const TREND_DAYS = 364;
+    /** 8 hafta × 7 gün — bileşenin backend'den istediği pencere (#887). */
+    const TREND_DAYS = 56;
 
     const trends: AdminDashboardTrends = {
         questionCreated: makeSeries(TREND_DAYS, (i) => (i === TREND_DAYS - 3 ? 9 : 1)), // tepe: 2 gün önce, 9 soru
@@ -57,7 +61,7 @@ describe('AdminDashboardComponent', () => {
         studentLogin: makeSeries(TREND_DAYS, () => 0),
     };
 
-    /** Heatmap boyutu viewport'a bağlı; testleri masaüstü (52 hafta) düzenine sabitle. */
+    /** Login grafiğinin eksen yoğunluğu viewport'a bağlı; testleri masaüstü düzenine sabitle. */
     function useDesktopViewport(): void {
         component.viewportWidth.set(1280);
         fixture.detectChanges();
@@ -70,6 +74,8 @@ describe('AdminDashboardComponent', () => {
         } as unknown as MockedObject<AdminService>;
         adminService.getDashboardSummary.mockReturnValue(of(summary));
         adminService.getDashboardTrends.mockReturnValue(of(trends));
+        pendingSummary = signal<AdminPendingSummary | null>(null);
+        pendingRefresh = vi.fn(() => of(null));
 
         TestBed.configureTestingModule({
             imports: [AdminDashboardComponent, translocoTestingModule({
@@ -77,7 +83,12 @@ describe('AdminDashboardComponent', () => {
                     // app.config.ts ile aynı: tireli scope önekleri camelCase'e çevrilmez.
                     translocoConfig: { scopes: { keepCasing: true } },
                 })],
-            providers: [{ provide: AdminService, useValue: adminService }, provideRouter([]), provideNoopAnimations()],
+            providers: [
+                { provide: AdminService, useValue: adminService },
+                { provide: AdminPendingService, useValue: { summary: pendingSummary, refresh: pendingRefresh } },
+                provideRouter([]),
+                provideNoopAnimations(),
+            ],
         });
 
         return TestBed.createComponent(AdminDashboardComponent);
@@ -305,15 +316,15 @@ describe('AdminDashboardComponent', () => {
         expect(component.hasQuestions()).toBe(true);
     });
 
-    // ── Phase 2 (Issue #88): 52 haftalık heatmap'ler ─────────────────────────
+    // ── Phase 2 (#88 → #887): son 8 haftanın haftalık çubukları ─────────────
 
-    it('ngOnInit_Always_RequestsSummaryAndTrendsInParallelWith52Weeks', () => {
+    it('ngOnInit_Always_RequestsSummaryAndTrendsInParallelWith8Weeks', () => {
         fixture = configure();
         fixture.detectChanges();
 
         expect(adminService.getDashboardSummary).toHaveBeenCalledTimes(1);
         expect(adminService.getDashboardTrends).toHaveBeenCalledTimes(1);
-        expect(adminService.getDashboardTrends).toHaveBeenCalledWith(364);
+        expect(adminService.getDashboardTrends).toHaveBeenCalledWith(56);
     });
 
     it('loadTrends_WhileRequestPending_ShowsTrendSkeletonWithoutBlockingSummary', () => {
@@ -325,214 +336,56 @@ describe('AdminDashboardComponent', () => {
 
         expect(component.trendLoading()).toBe(true);
         expect(component.loading()).toBe(false);
-        expect(fixture.nativeElement.querySelectorAll('.trend-card--skeleton').length).toBe(3); // 2 heatmap + 1 bar chart
+        expect(fixture.nativeElement.querySelectorAll('.trend-card--skeleton').length).toBe(3); // 2 haftalık + 1 bar chart
         expect(fixture.nativeElement.querySelector('[data-key="teachers"]')).toBeTruthy();
     });
 
-    it('loadTrends_SuccessfulResponse_RendersTwoHeatmapsWith52WeekColumns', () => {
+    it('loadTrends_SuccessfulResponse_RendersTwoCardsWithEightWeekBars_issue887', () => {
         fixture = configure();
         component = fixture.componentInstance;
 
         fixture.detectChanges();
-        useDesktopViewport();
 
         expect(component.trendLoading()).toBe(false);
         expect(component.trendError()).toBeNull();
-        expect(component.trends()).toEqual(trends);
 
         const cards = component.trendCards();
         expect(cards.map((c) => c.key)).toEqual(['created', 'solved']);
-        expect(cards[0].isEmpty).toBe(false);
         expect(cards[0].total).toBe(TREND_DAYS - 1 + 9);
         expect(cards[1].total).toBe((TREND_DAYS - 1) * 2 + 5);
 
-        // ngx-charts heat-map formatı (dashboard.component ile aynı): dış dizi = 52 hafta, series = ≤7 gün
-        const weeks = cards[0].results;
-        expect(weeks.length).toBe(52);
-        expect(weeks.every((w) => w.series.length >= 1 && w.series.length <= 7)).toBe(true);
-        expect(weeks[0].series.length).toBe(7);
+        const weeks = cards[0].weeks;
+        expect(weeks.length).toBe(8);
+        // Her gün tam bir haftaya düşer: hafta toplamları kart toplamına eşit.
+        expect(weeks.reduce((acc, w) => acc + w.count, 0)).toBe(cards[0].total);
+        // Tepe (2 gün önce, 9 soru) son haftada: 6×1 + 9 = 15 → en yüksek çubuk %100.
+        expect(weeks[7].count).toBe(15);
+        expect(weeks[7].percent).toBe(100);
+        expect(weeks[0].count).toBe(7);
+        expect(weeks[0].percent).toBe(47);
         // Etiket aktif dile göre biçimlenir: "10 Ağu" (tr) / "Aug 10" (en)
-        expect(weeks[0].name).toMatch(/^(\d{1,2} \S+|\S+ \d{1,2})$/);
+        expect(weeks[0].label).toMatch(/^(\d{1,2} \S+|\S+ \d{1,2})$/);
 
-        // Izgara serinin ilk gününden son gününe kadar tam 52×7 hücre: gün atılmaz, gün uydurulmaz.
-        const cells = weeks.flatMap((w) => w.series);
-        expect(cells.length).toBe(TREND_DAYS);
-        expect(weeks.every((w) => w.series.length === 7)).toBe(true);
-        // İlk haftanın son hücresi (günler ters sıralı) = serinin ilk günü; son haftanın ilk hücresi = son günü
-        expect(weeks[0].series[6].extra.date).toBe(trends.questionCreated[0].date);
-        expect(weeks[weeks.length - 1].series[0].extra.date).toBe(trends.questionCreated[TREND_DAYS - 1].date);
-
-        // Günler hafta içinde ters sırada (Pazartesi üstte kalsın diye): series[6] tarihi < series[0] tarihi
-        expect(weeks[0].series[6].extra.date < weeks[0].series[0].extra.date).toBe(true);
-
-        // Tepe gün (2 gün önce, 9 soru): gerçek sayı tooltip payload'ında, hücre değeri en üst yoğunluk seviyesi
-        const peak = cells.find((c) => c.extra.count === 9);
-        expect(peak).toBeDefined();
-        expect(peak?.value).toBe(4);
-        expect(peak?.extra.date).toBe(trends.questionCreated[TREND_DAYS - 3].date);
-        expect(peak?.extra.verb).toBe('oluşturuldu');
-        // Sıradan günler (1 soru) en düşük sıfır-dışı seviye; tepe ile aynı renge çökmez
-        expect(cells.filter((c) => c.extra.count === 1).every((c) => c.value === 1)).toBe(true);
-
-        const charts = fixture.nativeElement.querySelectorAll('ngx-charts-heat-map');
-        expect(charts.length).toBe(2);
-        expect(fixture.nativeElement.querySelector('[data-trend="created"]')).toBeTruthy();
-        expect(fixture.nativeElement.querySelector('[data-trend="solved"]')).toBeTruthy();
+        const created: HTMLElement = fixture.nativeElement.querySelector('[data-trend="created"]');
+        const bars = created.querySelectorAll('.week-bars__item');
+        expect(bars.length).toBe(8);
+        expect((bars[7].querySelector('.week-bars__bar') as HTMLElement).style.height).toBe('100%');
+        expect(bars[7].querySelector('.week-bars__count')?.textContent?.trim()).toBe('15');
+        expect(fixture.nativeElement.querySelector('[data-trend="solved"] .week-bars__bar--solved')).toBeTruthy();
+        expect(fixture.nativeElement.querySelector('ngx-charts-heat-map')).toBeFalsy();
     });
 
-    it('trendCards_SuccessfulResponse_RenderedCellSumEqualsTotalAndEveryPointIsRendered', () => {
-        // Regresyon: eski Pazar hizalaması, bugün Pazar değilken serinin en eski k gününü ızgara dışına
-        // düşürüyordu; başlık toplamı (tüm 364 gün) ile görünen hücreler tutarsızlaşıyordu. Tepe gün en eski
-        // güne konur ki hizalama kayması olursa yakalansın.
+    it('trendCards_ShortSeries_MissingDaysCountAsZero_issue887', () => {
         fixture = configure();
         component = fixture.componentInstance;
-        const oldestPeak = makeSeries(TREND_DAYS, (i) => (i === 0 ? 40 : i % 3));
-        adminService.getDashboardTrends.mockReturnValue(of({ questionCreated: oldestPeak, questionSolved: oldestPeak, studentLogin: trends.studentLogin }));
+        const short = makeSeries(10, () => 2);
+        adminService.getDashboardTrends.mockReturnValue(of({ questionCreated: short, questionSolved: short, studentLogin: trends.studentLogin }));
 
         fixture.detectChanges();
-        useDesktopViewport();
 
         const [created] = component.trendCards();
-        const cells = created.results.flatMap((w) => w.series);
-        // Hücre `value` yoğunluk seviyesidir; gerçek sayılar `extra.count`'ta toplanır ve başlık toplamına eşittir
-        const renderedSum = cells.reduce((acc, c) => acc + c.extra.count, 0);
-        const expectedTotal = oldestPeak.reduce((acc, p) => acc + p.count, 0);
-
-        expect(created.total).toBe(expectedTotal);
-        expect(renderedSum).toBe(created.total);
-        expect(cells.every((c) => Number.isInteger(c.value) && c.value >= 0 && c.value <= 4)).toBe(true);
-
-        // Her backend günü tam olarak bir hücreye eşlenir, fazladan gün yok
-        const renderedDates = new Set(cells.map((c) => c.extra.date));
-        expect(renderedDates.size).toBe(TREND_DAYS);
-        expect(oldestPeak.every((p) => renderedDates.has(p.date))).toBe(true);
-        expect(cells.find((c) => c.extra.count === 40)?.extra.date).toBe(oldestPeak[0].date);
-    });
-
-    it('transformToHeatmap_SkewedCountsWithOutlier_BucketsIntoDistinctLevelsAndKeepsRealCounts', () => {
-        // Regresyon: ngx-charts renkleri [0,max] üzerinden doğrusal normalize eder; tek bir 79'luk gün diğer tüm
-        // günleri (2, 3, 4, 8, 18) skalanın en altına sıkıştırıp boş günden ayırt edilemez yapıyordu. Hücre değeri
-        // artık dağılımdan türetilen seviye (0..4): ara günler ayrı kovalara düşmeli, 79 en üstte olmalı.
-        fixture = configure();
-        component = fixture.componentInstance;
-        const seeded: Record<number, number> = { 10: 2, 50: 3, 100: 4, 150: 8, 200: 18, [TREND_DAYS - 1]: 79 };
-        const skewed = makeSeries(TREND_DAYS, (i) => seeded[i] ?? 0);
-        adminService.getDashboardTrends.mockReturnValue(of({ questionCreated: skewed, questionSolved: skewed, studentLogin: trends.studentLogin }));
-
-        fixture.detectChanges();
-        useDesktopViewport();
-
-        const [created] = component.trendCards();
-        const cells = created.results.flatMap((w) => w.series);
-        const levelOf = (count: number): number | undefined => cells.find((c) => c.extra.count === count)?.value;
-
-        // Sıfır günler 0; tüm hücreler 0..4 tam sayı
-        expect(cells.filter((c) => c.extra.count === 0).every((c) => c.value === 0)).toBe(true);
-        expect(cells.every((c) => Number.isInteger(c.value) && c.value >= 0 && c.value <= 4)).toBe(true);
-
-        // Farklı değerlerin çeyreklikleri (3.25 / 6 / 15.5) → 2,3 → 1; 4 → 2; 8 → 3; 18,79 → 4
-        expect(levelOf(2)).toBe(1);
-        expect(levelOf(3)).toBe(1);
-        expect(levelOf(4)).toBe(2);
-        expect(levelOf(8)).toBe(3);
-        expect(levelOf(18)).toBe(4);
-        expect(levelOf(79)).toBe(4);
-        // Asıl hata: orta günler en düşük kovaya çökmemeli, tepe en üstte
-        expect(levelOf(8)).toBeGreaterThan(levelOf(2) ?? 0);
-        expect(levelOf(18)).toBeGreaterThan(levelOf(2) ?? 0);
-        expect(levelOf(2)).toBeGreaterThan(0);
-
-        // Toplam, özet ve tooltip gerçek sayıyı gösterir; seviye sızmaz
-        expect(created.total).toBe(2 + 3 + 4 + 8 + 18 + 79);
-        expect(created.summaryText).toContain(`toplam ${created.total} soru oluşturuldu`);
-        expect(created.summaryText).toContain('bugün, 79 soru');
-        const peakCell = cells.find((c) => c.extra.count === 79);
-        expect(component.formatHeatmapTooltip({ cell: peakCell, data: peakCell?.value })).toBe(`${peakCell?.extra.label}: 79 soru oluşturuldu`);
-        const summaryEl: HTMLElement = fixture.nativeElement.querySelector('#trend-summary-created');
-        expect(summaryEl.textContent).toContain('79 soru');
-    });
-
-    it('transformToHeatmap_EveryActiveDaySameCount_MarksThemAsTopLevel', () => {
-        // Tek farklı değer: çeyreklik tanımsız, [0,max] eşit bölünür → her etkin gün tepe (seviye 4), boş günler 0
-        fixture = configure();
-        component = fixture.componentInstance;
-        const uniform = makeSeries(TREND_DAYS, (i) => (i % 2 === 0 ? 2 : 0));
-        adminService.getDashboardTrends.mockReturnValue(of({ questionCreated: uniform, questionSolved: uniform, studentLogin: trends.studentLogin }));
-
-        fixture.detectChanges();
-        useDesktopViewport();
-
-        const [created] = component.trendCards();
-        const cells = created.results.flatMap((w) => w.series);
-        expect(cells.filter((c) => c.extra.count === 2).every((c) => c.value === 4)).toBe(true);
-        expect(cells.filter((c) => c.extra.count === 0).every((c) => c.value === 0)).toBe(true);
-    });
-
-    it('trendCards_MobileViewport_ShowsOnlyLast17Weeks', () => {
-        fixture = configure();
-        component = fixture.componentInstance;
-
-        fixture.detectChanges();
-        component.viewportWidth.set(400);
-        fixture.detectChanges();
-
-        expect(component.isMobileViewport()).toBe(true);
-        const [created] = component.trendCards();
-        expect(created.results.length).toBe(17);
-        // Son hafta korunur (dilim sondan alınır)
-        const lastCell = created.results[created.results.length - 1].series[0];
-        expect(lastCell.extra.date).toBe(trends.questionCreated[TREND_DAYS - 1].date);
-    });
-
-    it('heatmapView_DesktopViewport_UsesFixedWideViewLikeStudentDashboard', () => {
-        fixture = configure();
-        component = fixture.componentInstance;
-
-        fixture.detectChanges();
-        useDesktopViewport();
-
-        expect(component.heatmapView()).toEqual([1200, 210]);
-    });
-
-    it('trendCards_SuccessfulResponse_UsesLinearSchemeWithOneStopPerNonTopLevel', () => {
-        fixture = configure();
-        component = fixture.componentInstance;
-
-        fixture.detectChanges();
-
-        const [created, solved] = component.trendCards();
-        expect(created.scheme.group).toBe(ScaleType.Linear);
-        expect(solved.scheme.group).toBe(ScaleType.Linear);
-        // Hücre değeri 0..4 seviyesi; 4 durak ile seviye 0..3 tam durağa denk gelir, seviye 4 ekstrapole edilip
-        // tam rengi verir. Durak sayısı değişirse seviyeler duraklar arasına düşer ve tonlar öngörülemez olur.
-        expect(created.scheme.domain.length).toBe(4);
-        expect(created.scheme.domain.every((c) => c !== '')).toBe(true);
-        expect(new Set(created.scheme.domain).size).toBe(4);
-        expect(new Set(solved.scheme.domain).size).toBe(4);
-        expect(created.scheme.domain[0]).toBe('rgba(28, 67, 254, 0.1)');
-    });
-
-    it('trendCards_TokenUndefined_StillProducesFourDistinctColorMixTones', () => {
-        // Tema class'ı olmayan ortam: token boş → currentColor. Eski davranış 4 aynı `currentColor` üretiyordu.
-        const root = document.documentElement;
-        const themeClasses = ['dark-theme', 'light-theme'].filter((c) => root.classList.contains(c));
-        root.classList.remove(...themeClasses);
-        root.style.removeProperty('--primaryColor');
-        const warn = vi.spyOn(console, 'warn').mockReturnValue(undefined);
-        try {
-            fixture = configure();
-            component = fixture.componentInstance;
-
-            fixture.detectChanges();
-
-            const [created] = component.trendCards();
-            expect(new Set(created.scheme.domain).size).toBe(4);
-            expect(created.scheme.domain[0]).toBe('color-mix(in srgb, currentColor 10%, transparent)');
-            expect(warn).toHaveBeenCalledWith(expect.stringContaining('--primaryColor'));
-        }
-        finally {
-            root.classList.add(...themeClasses);
-        }
+        expect(created.weeks.map((w) => w.count)).toEqual([0, 0, 0, 0, 0, 0, 6, 14]);
+        expect(created.weeks[6].percent).toBe(43);
     });
 
     it('trendCards_JustAfterTurkeyMidnight_TreatsTurkeyLocalDayAsTodayRegardlessOfBrowserZone', () => {
@@ -547,56 +400,17 @@ describe('AdminDashboardComponent', () => {
             adminService.getDashboardTrends.mockReturnValue(of({ questionCreated: series, questionSolved: series, studentLogin: series }));
 
             fixture.detectChanges();
-            useDesktopViewport();
 
             const [created] = component.trendCards();
             expect(created.summaryText).toContain('bugün, 7 soru');
-            const cells = created.results.flatMap((w) => w.series);
-            const peakCell = cells.find((c) => c.extra.count === 7);
-            expect(peakCell?.extra.date).toBe('2026-09-25');
-            // Beklenen etiketler, sahte "şimdi" anının doğrudan Europe/Istanbul'da biçimlenmesiyle üretilir
-            // (25 Eylül 2026 Cuma); bileşen tarayıcı dilimi UTC/başka olsa da aynısını vermeli.
+            // Son hafta 19–25 Eylül: etiket kovanın ilk günü.
             const locale = TestBed.inject(LocaleService).localeDefinition().angularLocale;
-            const now = new Date();
-            const inZone = (opts: Intl.DateTimeFormatOptions): string => new Intl.DateTimeFormat(locale, { ...opts, timeZone: DASHBOARD_TIME_ZONE }).format(now);
-            expect(peakCell?.extra.label).toBe(inZone({ day: 'numeric', month: 'short', year: 'numeric' }));
-            expect(peakCell?.name).toBe(inZone({ weekday: 'short' }));
+            const firstDay = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 8, 19)));
+            expect(created.weeks[7].label).toBe(firstDay);
         }
         finally {
             vi.useRealTimers();
         }
-    });
-
-    it('xAxisTickFormatting_RepeatedMonth_CollapsesToSingleMonthLabel', () => {
-        fixture = configure();
-        component = fixture.componentInstance;
-
-        fixture.detectChanges();
-
-        const [created] = component.trendCards();
-        const format = created.xAxisTickFormatting;
-        const first = created.results[0].name;
-        const firstMonth = first.split(' ')[1];
-
-        expect(format(first)).toBe(firstMonth);
-        expect(format(`99 ${firstMonth}`)).toBe('');
-        expect(format('1 Zzz')).toBe('Zzz');
-        // İlk hafta etiketi durumu sıfırlar (yeniden render'da ilk ay yine görünür)
-        expect(format(first)).toBe(firstMonth);
-    });
-
-    it('formatHeatmapTooltip_CellWithExtra_ReturnsDateAndCountSentence', () => {
-        fixture = configure();
-        component = fixture.componentInstance;
-
-        const text = component.formatHeatmapTooltip({
-            cell: { value: 5, extra: { date: '2026-08-10', label: '10 Ağu 2026', count: 5, verb: 'oluşturuldu' } },
-            data: 5,
-        });
-
-        expect(text).toBe('10 Ağu 2026: 5 soru oluşturuldu');
-        expect(component.formatHeatmapTooltip({ data: 3 })).toBe('3');
-        expect(component.formatHeatmapTooltip(null)).toBe('');
     });
 
     it('trendCards_SuccessfulResponse_ExposesAriaLabelAndDescribedBySummary', () => {
@@ -607,13 +421,13 @@ describe('AdminDashboardComponent', () => {
 
         const createdCard: HTMLElement = fixture.nativeElement.querySelector('[data-trend="created"]');
         expect(createdCard.getAttribute('aria-label')).toContain('Soru Oluşturma');
-        expect(createdCard.getAttribute('aria-label')).toContain('son 1 yıl');
+        expect(createdCard.getAttribute('aria-label')).toContain('son 8 hafta');
 
         const describedBy = createdCard.getAttribute('aria-describedby');
         expect(describedBy).toBe('trend-summary-created');
         const summaryEl: HTMLElement = fixture.nativeElement.querySelector(`#${describedBy}`);
         expect(summaryEl).toBeTruthy();
-        expect(summaryEl.textContent).toContain('Son 1 yıl');
+        expect(summaryEl.textContent).toContain('Son 8 hafta');
         expect(summaryEl.textContent).toContain(`toplam ${TREND_DAYS - 1 + 9} soru oluşturuldu`);
         expect(summaryEl.textContent).toContain('2 gün önce, 9 soru');
 
@@ -635,7 +449,7 @@ describe('AdminDashboardComponent', () => {
         const trendError = fixture.nativeElement.querySelector('.state-box--error[data-section="trend"]');
         expect(trendError).toBeTruthy();
         expect(trendError.querySelector('button')).toBeTruthy();
-        expect(fixture.nativeElement.querySelectorAll('ngx-charts-heat-map').length).toBe(0);
+        expect(fixture.nativeElement.querySelectorAll('.week-bars').length).toBe(0);
 
         // Sayaç bölümü etkilenmedi
         expect(component.error()).toBeNull();
@@ -660,7 +474,7 @@ describe('AdminDashboardComponent', () => {
         expect(adminService.getDashboardTrends).toHaveBeenCalledTimes(2);
         expect(adminService.getDashboardSummary).toHaveBeenCalledTimes(1);
         expect(component.trendError()).toBeNull();
-        expect(fixture.nativeElement.querySelectorAll('ngx-charts-heat-map').length).toBe(2);
+        expect(fixture.nativeElement.querySelectorAll('.week-bars').length).toBe(2);
     });
 
     it('loadSummary_RequestFailsButTrendsSucceed_StillRendersCharts', () => {
@@ -672,7 +486,7 @@ describe('AdminDashboardComponent', () => {
 
         expect(component.error()).not.toBeNull();
         expect(component.trendError()).toBeNull();
-        expect(fixture.nativeElement.querySelectorAll('ngx-charts-heat-map').length).toBe(2);
+        expect(fixture.nativeElement.querySelectorAll('.week-bars').length).toBe(2);
     });
 
     it('trendCards_AllCountsZero_ShowsNotEnoughDataInsteadOfChart', () => {
@@ -687,9 +501,9 @@ describe('AdminDashboardComponent', () => {
         expect(cards[0].summaryText).toContain('henüz yeterli veri yok');
 
         const emptyBoxes = fixture.nativeElement.querySelectorAll('.trend-card__empty');
-        expect(emptyBoxes.length).toBe(3); // 2 heatmap + 1 login bar chart
+        expect(emptyBoxes.length).toBe(3); // 2 haftalık + 1 login bar chart
         expect(emptyBoxes[0].textContent).toContain('Henüz yeterli veri yok');
-        expect(fixture.nativeElement.querySelectorAll('ngx-charts-heat-map').length).toBe(0);
+        expect(fixture.nativeElement.querySelectorAll('.week-bars').length).toBe(0);
         expect(fixture.nativeElement.querySelector('.trend-card__total')).toBeFalsy();
     });
 
@@ -707,64 +521,8 @@ describe('AdminDashboardComponent', () => {
         const [created, solved] = component.trendCards();
         expect(created.isEmpty).toBe(true);
         expect(solved.isEmpty).toBe(false);
-        expect(fixture.nativeElement.querySelectorAll('ngx-charts-heat-map').length).toBe(1);
+        expect(fixture.nativeElement.querySelectorAll('.week-bars').length).toBe(1);
         expect(fixture.nativeElement.querySelector('[data-trend="created"] .trend-card__empty')).toBeTruthy();
-    });
-
-    // ── Heatmap kaydırma: veri gelince en güncel hafta görünür ───────────────
-
-    it('loadTrends_SuccessfulResponse_ScrollsEachHeatmapContainerToLatestWeek', () => {
-        // Kap 52 hafta × 22px = 1200px'lik grafiği taşırır; tarayıcı varsayılanı scrollLeft=0 en ESKİ haftaları
-        // gösterirdi. Host'u dar tutarak taşmayı garanti ederiz; render sonrası her kap sona kaydırılmış olmalı.
-        fixture = configure();
-        component = fixture.componentInstance;
-        (fixture.nativeElement as HTMLElement).style.width = '400px';
-
-        fixture.detectChanges(); // ngOnInit -> loadTrends -> trendCards effect -> afterNextRender (detectChanges render hook'larını çalıştırır)
-        useDesktopViewport();
-
-        const containers: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('.heatmap-scroll'));
-        expect(containers.length).toBe(2);
-        for (const el of containers) {
-            expect(el.scrollWidth, 'kap taşmalı ki kaydırma anlamlı olsun').toBeGreaterThan(el.clientWidth);
-            expect(el.scrollLeft).toBe(el.scrollWidth - el.clientWidth);
-        }
-    });
-
-    it('trendCards_ViewportCrossesMobileThreshold_RescrollsToLatestWeekAfterRedraw', () => {
-        // Mobil (17 hafta) ↔ masaüstü (52 hafta) geçişinde grafik farklı genişlikte yeniden çizilir; eski
-        // scrollLeft yeni genişlikte ortada kalırdı. trendCards değiştiği için effect tekrar sona kaydırmalı.
-        fixture = configure();
-        component = fixture.componentInstance;
-        (fixture.nativeElement as HTMLElement).style.width = '300px';
-
-        fixture.detectChanges();
-        component.viewportWidth.set(400);
-        fixture.detectChanges();
-        // `track card.key` aynı DOM öğesini korur; ölçümleri geçişten ÖNCE sayı olarak yakala.
-        const el: HTMLElement = fixture.nativeElement.querySelector('.heatmap-scroll');
-        const mobileScrollWidth = el.scrollWidth;
-        expect(el.scrollLeft).toBe(mobileScrollWidth - el.clientWidth);
-
-        useDesktopViewport();
-        expect(el.scrollWidth).toBeGreaterThan(mobileScrollWidth);
-        expect(el.scrollLeft).toBe(el.scrollWidth - el.clientWidth);
-    });
-
-    it('loadTrends_SuccessfulResponse_DoesNotRescrollOnUnrelatedChangeDetection', () => {
-        fixture = configure();
-        component = fixture.componentInstance;
-        (fixture.nativeElement as HTMLElement).style.width = '400px';
-
-        fixture.detectChanges();
-        useDesktopViewport();
-
-        // Yönetici eski haftalara döndü; ilgisiz bir CD turu onu geri sürüklememeli.
-        const el: HTMLElement = fixture.nativeElement.querySelector('.heatmap-scroll');
-        el.scrollLeft = 0;
-        fixture.detectChanges();
-
-        expect(el.scrollLeft).toBe(0);
     });
 
     // ── Phase 3 (Issue #89): öğrenci login bar chart ─────────────────────────
@@ -909,6 +667,10 @@ describe('AdminDashboardComponent', () => {
         expect(value('graceExpired')).toBe('2');
         expect(value('awaitingActivation')).toBe('5');
         expect(card.textContent).toContain('Veli durumu');
+        // #887: aktive etmeyen veli satırı öğrenci listesine gider.
+        const link = card.querySelector('[data-key="awaitingActivation"] a');
+        expect(link?.getAttribute('href')).toBe('/admin/students');
+        expect(card.querySelector('[data-key="inGrace"] a')).toBeNull();
     });
 
     it('parentStatusCard_OldServerWithoutCounts_Hidden', () => {
@@ -917,5 +679,101 @@ describe('AdminDashboardComponent', () => {
         fixture.detectChanges();
 
         expect(fixture.nativeElement.querySelector('[data-key="parentStatus"]')).toBeNull();
+    });
+
+    // ── #887: Bekleyenler satırı ve sistem durumu ───────────────────────────
+
+    const pending: AdminPendingSummary = {
+        teacherApplications: 3,
+        schoolApplications: 0,
+        commentReports: 1,
+        questionReports: 2,
+        openTextAnswers: 0,
+        total: 6,
+    };
+
+    it('pendingRow_OnInit_RefreshesAndRendersFiveQueueTilesWithRoutes_issue887', () => {
+        fixture = configure();
+        component = fixture.componentInstance;
+        pendingRefresh.mockImplementation(() => {
+            pendingSummary.set(pending);
+            return of(pending);
+        });
+
+        fixture.detectChanges();
+
+        expect(pendingRefresh).toHaveBeenCalledTimes(1);
+        const section: HTMLElement = fixture.nativeElement.querySelector('[data-test="pending"]');
+        expect(section.textContent).toContain('Bekleyenler');
+        expect(section.textContent).toContain('6 iş bekliyor');
+        const tile = (key: string) => section.querySelector(`.pending-tile[data-key="${key}"]`) as HTMLAnchorElement;
+        expect(section.querySelectorAll('.pending-tile').length).toBe(5);
+        expect(tile('teacherApplications').getAttribute('href')).toBe('/admin/teacher-approvals');
+        expect(tile('schoolApplications').getAttribute('href')).toBe('/admin/student-school-requests');
+        expect(tile('questionReports').getAttribute('href')).toBe('/question-reports');
+        expect(tile('commentReports').getAttribute('href')).toBe('/admin/comment-reports');
+        expect(tile('openTextAnswers').getAttribute('href')).toBe('/open-text-reviews');
+        expect(tile('teacherApplications').querySelector('.pending-tile__count')?.textContent?.trim()).toBe('3');
+        expect(tile('teacherApplications').getAttribute('aria-label')).toBe('Öğretmen başvurusu: 3 bekliyor');
+        // Boş kuyruk soluk ama yine link.
+        expect(tile('schoolApplications').classList).toContain('pending-tile--idle');
+        expect(tile('teacherApplications').classList).not.toContain('pending-tile--idle');
+    });
+
+    it('pendingRow_AllZero_SaysNothingPending_issue887', () => {
+        fixture = configure();
+        pendingSummary.set({ ...pending, teacherApplications: 0, commentReports: 0, questionReports: 0, total: 0 });
+
+        fixture.detectChanges();
+
+        const section: HTMLElement = fixture.nativeElement.querySelector('[data-test="pending"]');
+        expect(section.textContent).toContain('Bekleyen iş yok');
+        expect(section.querySelectorAll('.pending-tile--idle').length).toBe(5);
+    });
+
+    it('pendingRow_RefreshFails_RowHiddenAndRestStillRenders_issue887', () => {
+        fixture = configure();
+        pendingRefresh.mockReturnValue(throwError(() => new Error('network error')));
+
+        fixture.detectChanges();
+
+        expect(fixture.nativeElement.querySelector('[data-test="pending"]')).toBeNull();
+        expect(fixture.nativeElement.querySelector('[data-key="teachers"]')).toBeTruthy();
+    });
+
+    it('systemStatus_RecentClassificationAndFailedOutbox_ShowsRelativeTimeAndWarning_issue887', () => {
+        const at = new Date(Date.now() - 12 * 60_000).toISOString();
+        fixture = configure();
+        adminService.getDashboardSummary.mockReturnValue(of({ ...summary, lastAiClassificationAt: at, failedOutboxCount: 4 }));
+
+        fixture.detectChanges();
+
+        const status: HTMLElement = fixture.nativeElement.querySelector('[data-test="system-status"]');
+        const locale = TestBed.inject(LocaleService).localeDefinition().angularLocale;
+        const when = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(-12, 'minute');
+        expect(status.querySelector('[data-key="classification"]')?.textContent).toContain(`Son AI sınıflandırma: ${when}`);
+        const outbox = status.querySelector('[data-key="outbox"]') as HTMLElement;
+        expect(outbox.textContent).toContain('4 olay yayımlanamadı');
+        expect(outbox.classList).toContain('system-status__item--warn');
+    });
+
+    it('systemStatus_NoClassificationAndHealthyOutbox_ShowsCalmTexts_issue887', () => {
+        fixture = configure();
+        adminService.getDashboardSummary.mockReturnValue(of({ ...summary, lastAiClassificationAt: null, failedOutboxCount: 0 }));
+
+        fixture.detectChanges();
+
+        const status: HTMLElement = fixture.nativeElement.querySelector('[data-test="system-status"]');
+        expect(status.textContent).toContain('Henüz AI sınıflandırması yok');
+        const outbox = status.querySelector('[data-key="outbox"]') as HTMLElement;
+        expect(outbox.textContent).toContain('Olay kuyruğu sorunsuz');
+        expect(outbox.classList).not.toContain('system-status__item--warn');
+    });
+
+    it('systemStatus_OldServerWithoutFields_Hidden_issue887', () => {
+        fixture = configure();
+        fixture.detectChanges();
+
+        expect(fixture.nativeElement.querySelector('[data-test="system-status"]')).toBeNull();
     });
 });

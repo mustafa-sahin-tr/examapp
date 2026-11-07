@@ -125,6 +125,8 @@ public sealed class DirectMessageService : IDirectMessageService
                 .Select(c => new { c.TeacherUserId, c.Id })
                 .ToDictionaryAsync(c => c.TeacherUserId, c => c.Id, ct);
 
+        var subjects = await TeacherSubjectsAsync(pageRows, ct);
+
         var items = pageRows.Select(r =>
         {
             users.TryGetValue(r.TeacherUserId, out var user);
@@ -134,7 +136,8 @@ public sealed class DirectMessageService : IDirectMessageService
                 FullName = TeacherName(user, r.TeacherId),
                 Avatar = user?.Avatar ?? string.Empty,
                 Relation = DirectMessageRelations.For(r.ViaSchool, r.ViaAssignment),
-                ConversationId = conversations.TryGetValue(r.TeacherUserId, out var cid) ? cid : null
+                ConversationId = conversations.TryGetValue(r.TeacherUserId, out var cid) ? cid : null,
+                Subject = subjects.GetValueOrDefault(r.TeacherId)
             };
         }).ToList();
 
@@ -143,6 +146,45 @@ public sealed class DirectMessageService : IDirectMessageService
             Success = true,
             Page = new MessageableTeacherPageDto { Items = items, Page = page, PageSize = pageSize, TotalCount = total, Truncated = truncated }
         };
+    }
+
+    /// <summary>
+    /// Issue #890: sayfadaki öğretmenlerin branşı. Önce beyan edilen dersler (bağımsız öğretmen profili, #95; en çok iki,
+    /// ada göre); beyan yoksa öğretmenin hazırladığı testlerde en sık geçen ders. İki sorgu, sayfa boyutuyla sınırlı.
+    /// </summary>
+    private async Task<Dictionary<int, string>> TeacherSubjectsAsync(List<RelatedTeacherRow> rows, CancellationToken ct)
+    {
+        if (rows.Count == 0)
+            return new Dictionary<int, string>();
+
+        var teacherIds = rows.Select(r => r.TeacherId).ToList();
+        var declared = await _context.TeacherSubjects.AsNoTracking()
+            .Where(ts => teacherIds.Contains(ts.TeacherId))
+            .Select(ts => new { ts.TeacherId, ts.Subject.Name })
+            .ToListAsync(ct);
+        var result = declared
+            .GroupBy(d => d.TeacherId)
+            .ToDictionary(g => g.Key, g => string.Join(", ", g.Select(d => d.Name).Order(StringComparer.Create(TurkishCulture, false)).Take(2)));
+
+        var missing = rows.Where(r => !result.ContainsKey(r.TeacherId)).ToList();
+        if (missing.Count == 0)
+            return result;
+
+        var userIds = missing.Select(r => (int?)r.TeacherUserId).ToList();
+        var authored = await _context.Worksheets.AsNoTracking()
+            .Where(w => w.SubjectId != null && userIds.Contains(w.CreateUserId))
+            .GroupBy(w => new { w.CreateUserId, w.Subject!.Name })
+            .Select(g => new { UserId = g.Key.CreateUserId!.Value, g.Key.Name, Count = g.Count() })
+            .ToListAsync(ct);
+        var topByUser = authored
+            .GroupBy(a => a.UserId)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(a => a.Count).ThenBy(a => a.Name, StringComparer.Ordinal).First().Name);
+        foreach (var row in missing)
+        {
+            if (topByUser.TryGetValue(row.TeacherUserId, out var name))
+                result[row.TeacherId] = name;
+        }
+        return result;
     }
 
     // ---- Gönderme ---------------------------------------------------------------------------------------------

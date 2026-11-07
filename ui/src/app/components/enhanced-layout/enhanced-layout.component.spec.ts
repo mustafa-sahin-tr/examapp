@@ -1247,7 +1247,7 @@ describe('EnhancedLayoutComponent role navigation (issue #719)', () => {
     it('teacher_GroupsSectionsAndDropsCreateTest', () => {
         const items = renderLayout(['Teacher'], false).componentInstance.visibleMenuItems().filter((i) => i.type === 'menu');
         expect(labels(items)).toEqual([
-            'dashboard', 'exams', 'question-bank', 'study-pages', 'my-calendar', 'teacher-requests', 'student-messages', 'tutor-profile', 'settings',
+            'dashboard', 'exams', 'question-bank', 'study-pages', 'my-calendar', 'teacher-requests', 'student-messages', 'teacher-coach', 'tutor-profile', 'settings',
         ]);
     });
 

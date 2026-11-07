@@ -248,26 +248,28 @@ describe('TeacherMessagesComponent — öğrenci "Mesajlar" (issue #106)', () =>
         await settle();
     });
 
-    it('writeToChosenTeacher_WithoutConversation_OpensNewConversationPanel', async () => {
+    it('teacherRowClick_WithoutConversation_OpensNewConversationPanel_issue890', async () => {
         create();
         flushConversations([]);
         await settle();
-        flushTeachers(expectTeachers(), [teacher(7, 'assignment')]);
+        flushTeachers(expectTeachers(), [{ ...teacher(7, 'assignment'), subject: 'Matematik' }]);
         await settle();
 
-        expect(q<HTMLButtonElement>('tm-write')!.disabled).toBe(true);
-        q('tm-teacher')!.querySelector<HTMLInputElement>('input')!.click();
-        fixture.detectChanges();
-        const write = q<HTMLButtonElement>('tm-write')!;
-        expect(write.disabled).toBe(false);
-        expect(write.getAttribute('aria-label')).toBe('Hoca 7 adlı öğretmene mesaj yaz');
+        // Radyo ve ayrı "Mesaj yaz" düğmesi yok; satırın kendisi düğme.
+        expect(q('tm-write')).toBeNull();
+        expect(el().querySelector('mat-radio-button')).toBeNull();
+        const row = q<HTMLButtonElement>('tm-teacher')!;
+        expect(row.tagName).toBe('BUTTON');
+        expect(row.getAttribute('aria-label')).toBe('Hoca 7 adlı öğretmene mesaj yaz');
+        expect(row.querySelector('[data-testid="tm-subject"]')?.textContent?.trim()).toBe('Matematik');
 
-        write.click();
+        row.click();
         fixture.detectChanges();
 
         expect(q('tm-placeholder')).toBeNull();
         expect(q('dm-counterpart')?.textContent?.trim()).toBe('Hoca 7');
         expect(el().querySelector('.dmp__layout--open')).not.toBeNull();
+        expect(row.getAttribute('aria-current')).toBe('true');
         // Yeni konuşma: geçmiş isteği yok.
         http.expectNone((r) => r.url.includes('/messages'));
     });

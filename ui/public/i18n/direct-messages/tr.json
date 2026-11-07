@@ -45,7 +45,7 @@
     },
     "inboxLabel": "Gelen kutusu",
     "empty": {
-      "all": "Henüz size gelen bir mesaj yok.",
+      "all": "Henüz mesaj yok. Öğrencilerin sana buradan yazar; bildirim ayarı Ayarlar'da.",
       "unread": "Okunmamış mesaj yok.",
       "blocked": "Engellediğiniz öğrenci yok."
     },
@@ -54,6 +54,8 @@
   },
   "conversation": {
     "back": "Konuşma listesine dön",
+    "coachLink": "{{name}} için koçluk sayfasını aç",
+    "coachLinkShort": "Koçluk sayfası",
     "logLabel": "{{name}} ile mesajlar",
     "loading": "Mesajlar yükleniyor",
     "loadOlder": "Önceki mesajları yükle",

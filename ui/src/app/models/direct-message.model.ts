@@ -31,6 +31,8 @@ export interface MessageableTeacher {
   relation: DirectMessageRelation;
   /** Mevcut konuşma varsa Id; yoksa ilk mesaj konuşmayı açar. */
   conversationId?: number | null;
+  /** #890: branş (beyan edilen dersler ya da en çok test hazırladığı ders); eski sunucuda yok. */
+  subject?: string | null;
 }
 
 export interface MessageableTeacherPage {

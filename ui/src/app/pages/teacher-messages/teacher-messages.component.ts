@@ -8,7 +8,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatRadioChange, MatRadioModule } from '@angular/material/radio';
 import { MatTabsModule } from '@angular/material/tabs';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { Subject, Subscription, debounceTime, distinctUntilChanged, map, skip, startWith, take } from 'rxjs';
@@ -67,7 +66,6 @@ const PREVIEW_LENGTH = 120;
     MatInputModule,
     MatPaginatorModule,
     MatProgressSpinnerModule,
-    MatRadioModule,
     MatTabsModule,
     TranslocoDirective,
     DmConversationComponent,
@@ -118,10 +116,6 @@ export class TeacherMessagesComponent implements OnInit {
   protected readonly teachersPage = signal(1);
   protected readonly teachersTotal = signal(0);
   protected readonly teachersTruncated = signal(false);
-  protected readonly chosenTeacherId = signal<number | null>(null);
-  protected readonly chosenTeacher = computed(
-    () => this.teachers().find((teacher) => teacher.teacherId === this.chosenTeacherId()) ?? null,
-  );
 
   // ---- Panel ----
   protected readonly selection = signal<StudentDmSelection | null>(null);
@@ -252,9 +246,6 @@ export class TeacherMessagesComponent implements OnInit {
         this.teachers.set(page?.items ?? []);
         this.teachersTotal.set(page?.totalCount ?? 0);
         this.teachersTruncated.set(page?.truncated === true);
-        if (!this.teachers().some((teacher) => teacher.teacherId === this.chosenTeacherId())) {
-          this.chosenTeacherId.set(null);
-        }
       },
       error: (err: unknown) => {
         this.teachersLoading.set(false);
@@ -271,15 +262,8 @@ export class TeacherMessagesComponent implements OnInit {
     this.loadTeachers();
   }
 
-  protected onTeacherChosen(event: MatRadioChange): void {
-    this.chosenTeacherId.set(event.value as number);
-  }
-
-  protected writeToChosen(event: Event): void {
-    const teacher = this.chosenTeacher();
-    if (!teacher) {
-      return;
-    }
+  /** #890: öğretmen satırı konuşmayı doğrudan açar (varsa mevcut konuşma, yoksa yeni). */
+  protected openTeacher(teacher: MessageableTeacher, event: Event): void {
     this.lastTrigger = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
     const existing = this.conversations().find((c) => c.conversationId === teacher.conversationId);
     this.selection.set({

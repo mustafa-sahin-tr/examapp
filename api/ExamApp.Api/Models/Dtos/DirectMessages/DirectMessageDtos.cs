@@ -69,6 +69,12 @@ public class MessageableTeacherDto
 
     /// <summary>Bu öğretmenle mevcut konuşma varsa Id'si; yoksa null (ilk mesaj oluşturur).</summary>
     public int? ConversationId { get; set; }
+
+    /// <summary>
+    /// Issue #890: öğretmenin branşı — beyan ettiği dersler (en çok iki, ada göre), yoksa en çok test hazırladığı ders;
+    /// hiçbiri yoksa null.
+    /// </summary>
+    public string? Subject { get; set; }
 }
 
 public class MessageableTeacherPageDto

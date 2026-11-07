@@ -112,35 +112,48 @@
                       <mat-icon aria-hidden="true">info</mat-icon><span>{{ t('student.searchTruncated') }}</span>
                     </p>
                   }
-                  <span class="dmp__sr" id="tm-teachers-label">{{ t('student.teachersLabel') }}</span>
-                  <mat-radio-group
-                    class="tm__teachers"
-                    aria-labelledby="tm-teachers-label"
-                    data-testid="tm-teachers"
-                    [value]="chosenTeacherId()"
-                    (change)="onTeacherChosen($event)"
-                  >
+                  <!-- #890: öğretmen satırına tıklamak konuşmayı açar (radyo + ayrı "Mesaj yaz" düğmesi yok). -->
+                  <ul class="tm__teachers" [attr.aria-label]="t('student.teachersLabel')" data-testid="tm-teachers">
                     @for (teacher of teachers(); track teacher.teacherId) {
-                      <mat-radio-button class="tm__teacher" [value]="teacher.teacherId" data-testid="tm-teacher">
-                        <span class="tm__teacher-name">{{ teacher.fullName }}</span>
-                        <mat-chip-set class="tm__chips">
-                          @if (teacher.relation === 'both') {
-                            <!-- Geniş ekranda iki chip; dar ekranda tek birleşik chip (BA notu). -->
-                            <mat-chip class="tm__chip tm__chip--wide" disableRipple data-testid="tm-relation">{{ t('relation.school') }}</mat-chip>
-                            <mat-chip class="tm__chip tm__chip--wide" disableRipple data-testid="tm-relation">{{ t('relation.assignment') }}</mat-chip>
-                            <mat-chip class="tm__chip tm__chip--narrow" disableRipple data-testid="tm-relation-both">{{ t('relation.both') }}</mat-chip>
-                          } @else {
-                            <mat-chip class="tm__chip" disableRipple data-testid="tm-relation">{{ t('relation.' + teacher.relation) }}</mat-chip>
-                          }
-                        </mat-chip-set>
-                      </mat-radio-button>
+                      <li>
+                        <button
+                          type="button"
+                          class="tm__teacher"
+                          data-testid="tm-teacher"
+                          [class.tm__teacher--active]="selection()?.teacherId === teacher.teacherId"
+                          [attr.aria-current]="selection()?.teacherId === teacher.teacherId ? 'true' : null"
+                          [attr.aria-label]="t('student.writeAria', { name: teacher.fullName })"
+                          (click)="openTeacher(teacher, $event)"
+                        >
+                          <span class="tm__avatar" aria-hidden="true">{{ teacher.fullName.charAt(0) }}</span>
+                          <span class="tm__teacher-text">
+                            <span class="tm__teacher-name">{{ teacher.fullName }}</span>
+                            <span class="tm__teacher-meta">
+                              @if (teacher.subject) {
+                                <span class="tm__subject" data-testid="tm-subject">{{ teacher.subject }}</span>
+                              }
+                              <mat-chip-set class="tm__chips">
+                                @if (teacher.relation === 'both') {
+                                  <!-- Geniş ekranda iki chip; dar ekranda tek birleşik chip (BA notu). -->
+                                  <mat-chip class="tm__chip tm__chip--wide" disableRipple data-testid="tm-relation">{{ t('relation.school') }}</mat-chip>
+                                  <mat-chip class="tm__chip tm__chip--wide" disableRipple data-testid="tm-relation">{{ t('relation.assignment') }}</mat-chip>
+                                  <mat-chip class="tm__chip tm__chip--narrow" disableRipple data-testid="tm-relation-both">{{ t('relation.both') }}</mat-chip>
+                                } @else {
+                                  <mat-chip class="tm__chip" disableRipple data-testid="tm-relation">{{ t('relation.' + teacher.relation) }}</mat-chip>
+                                }
+                              </mat-chip-set>
+                            </span>
+                          </span>
+                          <mat-icon class="tm__teacher-go" aria-hidden="true">chevron_right</mat-icon>
+                        </button>
+                      </li>
                     }
-                  </mat-radio-group>
+                  </ul>
                 }
               </div>
 
-              <div class="tm__footer">
-                @if (teachersTotal() > pageSize) {
+              @if (teachersTotal() > pageSize) {
+                <div class="tm__footer">
                   <mat-paginator
                     class="dmp__paginator"
                     hidePageSize
@@ -150,19 +163,8 @@
                     [pageIndex]="teachersPage() - 1"
                     (page)="onTeachersPage($event)"
                   />
-                }
-                <button
-                  mat-flat-button
-                  type="button"
-                  class="tm__write"
-                  data-testid="tm-write"
-                  [disabled]="!chosenTeacher()"
-                  [attr.aria-label]="chosenTeacher() ? t('student.writeAria', { name: chosenTeacher()!.fullName }) : t('student.write')"
-                  (click)="writeToChosen($event)"
-                >
-                  <mat-icon aria-hidden="true">edit</mat-icon>{{ t('student.write') }}
-                </button>
-              </div>
+                </div>
+              }
             </div>
           </mat-tab>
         </mat-tab-group>

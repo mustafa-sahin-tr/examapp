@@ -45,7 +45,7 @@
     },
     "inboxLabel": "Inbox",
     "empty": {
-      "all": "You have no messages yet.",
+      "all": "No messages yet. Your students write to you here; notification settings are in Settings.",
       "unread": "No unread messages.",
       "blocked": "You have not blocked any students."
     },
@@ -54,6 +54,8 @@
   },
   "conversation": {
     "back": "Back to conversation list",
+    "coachLink": "Open the coaching page for {{name}}",
+    "coachLinkShort": "Coaching page",
     "logLabel": "Messages with {{name}}",
     "loading": "Loading messages",
     "loadOlder": "Load earlier messages",

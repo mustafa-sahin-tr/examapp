@@ -22,6 +22,19 @@
 
     @if (!isNew()) {
       <div class="dmc__actions" role="group" [attr.aria-label]="t('actionsLabel')">
+        <!-- #890: öğrencinin koçluk sayfası (Öğrencilerim) mesajdan bir tık. -->
+        @if (isTeacher() && header().studentId) {
+          <a
+            mat-icon-button
+            class="dmc__icon-action"
+            data-testid="dm-coach-link"
+            [routerLink]="['/teacher/coach', header().studentId]"
+            [attr.aria-label]="t('coachLink', { name: header().name })"
+            [matTooltip]="t('coachLinkShort')"
+          >
+            <mat-icon aria-hidden="true">insights</mat-icon>
+          </a>
+        }
         @if (isTeacher()) {
           <button
             mat-stroked-button

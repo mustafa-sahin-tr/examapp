@@ -17,7 +17,13 @@ import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@js
 
 import { FaqComponent } from './faq/faq.component';
 import { HowItWorksComponent } from './how-it-works/how-it-works.component';
-import { LANDING_CONTACT_EMAIL, LANDING_REGISTER_STUDENT_URL, LANDING_REGISTER_TEACHER_URL } from './landing-content';
+import {
+  LANDING_CONTACT_EMAIL,
+  LANDING_REGISTER_STUDENT_URL,
+  LANDING_REGISTER_TEACHER_URL,
+  LANDING_STATS_ARE_SAMPLE,
+  LANDING_TESTIMONIALS_ARE_FICTIONAL,
+} from './landing-content';
 import { LandingCtaComponent } from './landing-cta/landing-cta.component';
 import { LandingFeaturesComponent } from './landing-features/landing-features.component';
 import { LandingFooterComponent } from './landing-footer/landing-footer.component';
@@ -73,6 +79,9 @@ export class LandingComponent implements OnInit {
   readonly registerStudentUrl = LANDING_REGISTER_STUDENT_URL;
   readonly registerTeacherUrl = LANDING_REGISTER_TEACHER_URL;
   readonly showBackToTop = signal(false);
+  /** #880: örnek rakamlar ve temsili yorumlar yayımlanmaz; gerçekleri girilince bayrakla geri gelir. */
+  readonly showStats = !LANDING_STATS_ARE_SAMPLE;
+  readonly showTestimonials = !LANDING_TESTIMONIALS_ARE_FICTIONAL;
 
   ngOnInit(): void {
     // `selectTranslate` scope'u yükler ve dil değişiminde yeniden yayınlar; sözlük hazır olduğunda

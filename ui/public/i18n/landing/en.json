@@ -13,6 +13,7 @@
     "features": "Features",
     "teachers": "Teachers",
     "students": "Students",
+    "parents": "Parents",
     "tutoring": "Private lessons",
     "howItWorks": "How it works",
     "faq": "FAQ",
@@ -87,6 +88,16 @@
       "item4": "Video lessons and a shared whiteboard",
       "cta": "Apply as a private tutor",
       "note": "Applications go live after administrator approval."
+    },
+    "parent": {
+      "title": "Parent",
+      "description": "Follow your child's work and approve private lesson requests.",
+      "item1": "Weekly study and test results",
+      "item2": "Badges earned and streak",
+      "item3": "Approve private lesson requests",
+      "item4": "Several children in one account",
+      "cta": "Parent sign-in",
+      "note": "A parent account opens with the student's invitation."
     }
   },
   "features": {
@@ -134,11 +145,11 @@
   "motivation": {
     "kicker": "Motivation",
     "title": "Make steady work visible",
-    "body": "Correct answers earn points. You move step by step along badge paths, keep your streak with daily questions, and see your place on the leaderboard. The heat map on your home page shows a year of work.",
+    "body": "Correct answers earn points. You move step by step along badge paths, keep your streak with daily questions, and see your place on the leaderboard. The recent weeks card on your home page shows how much you studied.",
     "item1": "Badge paths and single badges",
     "item2": "Daily streak and estimated time",
     "item3": "Total questions, correct answers and study time",
-    "imageAlt": "Badges, a daily streak and a study heat map."
+    "imageAlt": "Badges, a daily streak and a study calendar."
   },
   "tutoring": {
     "kicker": "Private lessons",
@@ -165,7 +176,7 @@
       "step1": { "title": "Sign up", "text": "Sign up as a student and choose your grade and school." },
       "step2": { "title": "Solve", "text": "Solve the tests assigned to you, or find new ones in Explore." },
       "step3": { "title": "Practise", "text": "Solve the daily questions and practise your weak topics freely." },
-      "step4": { "title": "See your progress", "text": "Earn points and badges, and follow your progress on your heat map." }
+      "step4": { "title": "See your progress", "text": "Earn points and badges, and follow the last weeks of progress on your home page." }
     },
     "tutor": {
       "step1": { "title": "Apply", "text": "At sign-up, mark that you give independent private lessons." },

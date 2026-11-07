@@ -3,7 +3,7 @@
  * Güncelleme adımları: `docs/feature-notes.md` (Karşılama sayfası).
  */
 
-/** Örnek değerler. Gerçek sayılar yazıldığında `false` yapılır ve "Örnek veriler" notu kalkar. */
+/** Örnek değerler. Örnek oldukları sürece bölüm gösterilmez (#880); gerçek sayılar yazılınca `false` yapılır. */
 export const LANDING_STATS_ARE_SAMPLE = true;
 export const LANDING_STATS = [
   { key: 'teachers', icon: 'co_present', value: 1250 },
@@ -12,7 +12,7 @@ export const LANDING_STATS = [
   { key: 'solvedTests', icon: 'task_alt', value: 96000 },
 ] as const;
 
-/** Temsili yorumlar. Tümü izinli gerçek yorum olunca `false` yapılır ve not kalkar. Kart sayısı 1–6. */
+/** Temsili yorumlar. Temsili oldukları sürece bölüm gösterilmez (#880); tümü izinli gerçek yorum olunca `false`. Kart sayısı 1–6. */
 export const LANDING_TESTIMONIALS_ARE_FICTIONAL = true;
 export const LANDING_TESTIMONIALS = [
   { key: 'elif', initial: 'E', tone: 'av1' },
@@ -34,6 +34,7 @@ export const LANDING_NAV_LINKS = [
   { id: 'ozellikler', key: 'features', icon: 'widgets' },
   { id: 'ogretmenler', key: 'teachers', icon: 'co_present' },
   { id: 'ogrenciler', key: 'students', icon: 'backpack' },
+  { id: 'veliler', key: 'parents', icon: 'family_restroom' },
   { id: 'ozel-ders', key: 'tutoring', icon: 'video_chat' },
   { id: 'nasil-calisir', key: 'howItWorks', icon: 'route' },
   { id: 'sss', key: 'faq', icon: 'help' },
@@ -43,6 +44,8 @@ export const LANDING_ROLES = [
   { key: 'student', icon: 'backpack', tone: 'r1', ctaUrl: LANDING_REGISTER_STUDENT_URL, primary: true },
   { key: 'teacher', icon: 'co_present', tone: 'r2', ctaUrl: LANDING_REGISTER_TEACHER_URL, primary: false },
   { key: 'tutor', icon: 'video_chat', tone: 'r3', ctaUrl: LANDING_REGISTER_TEACHER_URL, primary: false },
+  // #880: veli kendini kaydetmez, öğrencinin davetiyle hesap açar; kart girişe götürür.
+  { key: 'parent', icon: 'family_restroom', tone: 'r4', ctaUrl: LANDING_LOGIN_URL, primary: false, anchor: 'veliler' },
 ] as const;
 
 export const LANDING_FEATURES = [

@@ -20,6 +20,21 @@ public class WorksheetDetailDto
 
     /// <summary>Öğrencinin bu worksheet için planladığı hatırlatma (varsa). Öğretmen için null.</summary>
     public WorksheetReminderDto? PlannedReminder { get; set; }
+
+    /// <summary>
+    /// issue #848: öğrencinin bu worksheet'e aktif ataması — kim atadı, son tarih. Öğretmen ya da ataması olmayan öğrenci için
+    /// null (kendi seçtiği test / herkese açık).
+    /// </summary>
+    public WorksheetStudentAssignmentDto? StudentAssignment { get; set; }
+}
+
+/// <summary>issue #848: test başlangıç sayfasında "Ayşe Öğretmen atadı · Son gün: 8 Kasım".</summary>
+public class WorksheetStudentAssignmentDto
+{
+    /// <summary>Atayan öğretmenin adı; auth-api'ye ulaşılamazsa null (sayfa yine açılır).</summary>
+    public string? AssignedByName { get; set; }
+    /// <summary>UTC; açık uçlu atamada null.</summary>
+    public DateTime? DueAtUtc { get; set; }
 }
 
 public class WorksheetStatsDto

@@ -48,6 +48,55 @@ h2 {
   padding: 24px;
 }
 
+.hero--no-cover {
+  // #848: kapak yoksa boş saat kutusu yerine sol kenarda ince bir şerit.
+  border-left: 4px solid var(--ms-action-border);
+}
+
+.assign-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin: 0;
+  color: var(--ms-text-medium);
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.assign-due {
+  font-weight: 600;
+  color: var(--ms-text-strong);
+}
+
+.hero-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: var(--ms-text-medium);
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    color: var(--ms-action-border);
+  }
+}
+
 .hero-media {
   position: relative;
   width: 404px;
@@ -553,55 +602,6 @@ h2 {
   }
 }
 
-/* ---------- sticky cta ---------- */
-.sticky-cta {
-  background: var(--ms-surface-medium);
-  border: 1px solid var(--ms-border);
-  border-top: 1px solid var(--ms-action-border);
-  border-radius: 16px;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-
-  .s-status {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 12.5px;
-    color: var(--ms-success-text-weak);
-    font-weight: 600;
-
-    i {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--ms-success-text-medium);
-      display: block;
-    }
-  }
-
-  .s-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 9px;
-    font-size: 13px;
-    color: var(--ms-text-weak);
-
-    div {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-    }
-
-    mat-icon {
-      font-size: 16px;
-      width: 16px;
-      height: 16px;
-    }
-  }
-}
-
 /* ---------- planla & hatırlat ---------- */
 .plan {
   display: flex;
@@ -785,43 +785,6 @@ h2 {
   .s-meta {
     font-size: 11.5px;
     color: var(--ms-text-weak);
-  }
-}
-
-/* ---------- rules ---------- */
-.rules {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 24px;
-  background: var(--ms-surface-weak);
-  border: 1px dashed var(--ms-border);
-  border-radius: 14px;
-  padding: 16px 22px;
-
-  .r {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 12.5px;
-    color: var(--ms-text-weak);
-  }
-
-  .ri {
-    width: 22px;
-    height: 22px;
-    border-radius: 7px;
-    background: var(--ms-surface-strong);
-    color: var(--ms-action-border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex: none;
-
-    mat-icon {
-      font-size: 14px;
-      width: 14px;
-      height: 14px;
-    }
   }
 }
 
@@ -1400,10 +1363,6 @@ table {
 @media (max-width: 768px) {
   .wd-wrap {
     padding: 16px 12px 96px;
-  }
-
-  .sticky-cta {
-    display: none;
   }
 
   .mobile-cta {

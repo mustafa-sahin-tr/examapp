@@ -18,7 +18,7 @@
     "averageScore": "Avg. score"
   },
   "cta": {
-    "start": "Start the Test",
+    "start": "Start the test",
     "continue": "Continue"
   },
   "start": {
@@ -31,13 +31,13 @@
     "sampleAlt": "Sample question",
     "sampleWaiting": "{{count}} questions are waiting for you",
     "samplePlaceholder": "The first question will appear here once you start",
-    "ready": "Ready to start",
     "autoFinish": "{{duration}} · finishes automatically when time is up",
-    "navigateBack": "{{count}} questions · you can go back and change answers",
     "offlineSafe": "Your answers are saved even if you lose connection",
     "ruleAutoComplete": "The test completes automatically when time is up",
     "ruleNavigate": "You can move back and forth between questions",
-    "ruleAutoSave": "Your answers are saved instantly so you can continue later"
+    "assignedBy": "Assigned by {{name}}",
+    "assigned": "Assigned to you",
+    "due": "Due: {{date}}"
   },
   "reminder": {
     "title": "Plan & Remind",

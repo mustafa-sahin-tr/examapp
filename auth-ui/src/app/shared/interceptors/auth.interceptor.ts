@@ -14,9 +14,8 @@ const AUTH_EXCLUDED_PATHS: ReadonlySet<string> = new Set([
   // Kimlik, refresh cookie'sidir.
   '/api/auth/refresh-token',
   // Anonim kimlik uçları: localStorage'da kalmış süresi dolmuş bir token burada refresh denemesine,
-  // başarısızlıkta da giriş/kayıt/callback akışının ortasında `/login`'e yönlendirmeye yol açardı.
+  // başarısızlıkta da giriş/callback akışının ortasında `/login`'e yönlendirmeye yol açardı.
   '/api/auth/login',
-  '/api/auth/register',
   '/api/auth/exchange',
   // `logout()` token'ı önce temizler ve Authorization başlığını kendisi taşır.
   '/api/exam/auth/logout',

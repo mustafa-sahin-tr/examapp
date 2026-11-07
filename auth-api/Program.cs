@@ -82,7 +82,6 @@ if (!builder.Environment.IsDevelopment())
 }
 
 // Register kabul yanıtı taban süresi (#240: kayıtlı/yeni e-posta yanıt süresinden ayırt edilemesin).
-builder.Services.Configure<RegistrationSettings>(builder.Configuration.GetSection(RegistrationSettings.SectionName));
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

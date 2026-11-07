@@ -933,7 +933,8 @@ export class WorksheetDetailComponent implements OnInit {
     }
 
     const dialogRef = this.dialog.open(WorksheetAssignmentDialogComponent, {
-      width: '520px',
+      width: '600px',
+      maxWidth: '95vw',
       data: {
         worksheetId: this.exam.id,
         scope,
@@ -942,6 +943,8 @@ export class WorksheetDetailComponent implements OnInit {
         studentsStatus: this.studentLookupStatus.asReadonly(),
         isIndependentTutor: this.isIndependentTutor(),
         worksheetCommentsEnabled: this.detail()?.worksheet?.commentsEnabled !== false,
+        worksheetName: this.exam.subtitle || this.exam.name,
+        defaultGradeId: this.exam.gradeId,
       } satisfies WorksheetAssignmentDialogData,
     });
 

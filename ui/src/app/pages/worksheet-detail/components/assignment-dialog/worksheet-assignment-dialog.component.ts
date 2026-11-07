@@ -39,6 +39,10 @@ export interface WorksheetAssignmentDialogData {
    * yardımcı metninde gösterilir. Verilmezse açık kabul edilir (backend varsayılanı).
    */
   worksheetCommentsEnabled?: boolean;
+  /** Issue #860: başlıkta hangi testin atandığı. */
+  worksheetName?: string;
+  /** Issue #860: testin sınıfı — sınıf kartlarında önceden seçili. Yoksa ilk sınıf. */
+  defaultGradeId?: number | null;
 }
 
 /** Issue #105: atama override'ı — `default` → `null` (worksheet varsayılanı), `on` → true, `off` → false. */
@@ -98,7 +102,7 @@ export class WorksheetAssignmentDialogComponent {
 
   protected readonly form = this.fb.nonNullable.group({
     scope: [this.initialScope, Validators.required],
-    gradeId: [this.initialScope === 'grade' ? this.data.grades[0]?.id ?? null : null],
+    gradeId: [this.initialScope === 'grade' ? this.defaultGrade() : null],
     studentId: [null as number | null],
     startDate: [new Date(), Validators.required],
     startTime: [currentTimeOfDay(), [Validators.required, Validators.pattern(/^\d{2}:\d{2}$/)]],
@@ -117,6 +121,44 @@ export class WorksheetAssignmentDialogComponent {
   });
 
   protected readonly isGradeScope = computed(() => this.scopeSignal() === 'grade');
+
+  private readonly studentIdSignal = toSignal(this.form.controls.studentId.valueChanges, {
+    initialValue: this.form.controls.studentId.value,
+  });
+
+  /**
+   * Issue #860: sınıf kartlarında öğrenci sayısı. Lookup okul kapsamlıdır (#190) — sınıf ataması da okulun o
+   * sınıftaki öğrencilerine gider; sayı aynı kümeden gelir. Lookup yüklenmediyse null (sayı gösterilmez).
+   */
+  protected readonly gradeCounts = computed(() => {
+    if (this.studentsStatus() !== 'loaded') return null;
+    const counts = new Map<number, number>();
+    for (const student of this.students()) {
+      if (student.gradeId) counts.set(student.gradeId, (counts.get(student.gradeId) ?? 0) + 1);
+    }
+    return counts;
+  });
+
+  /** Issue #860: atamayı kaç öğrenci alacak — özet satırı ve buton; bilinmiyorsa null. */
+  protected readonly recipientCount = computed(() => {
+    if (!this.isGradeScope()) return this.studentIdSignal() ? 1 : 0;
+    const counts = this.gradeCounts();
+    const gradeId = this.gradeIdSignal();
+    return counts && gradeId ? counts.get(gradeId) ?? 0 : null;
+  });
+
+  protected readonly selectedGradeName = computed(() => this.gradeLabel(this.gradeIdSignal()));
+
+  protected readonly selectedStudentName = computed(() => {
+    const id = this.studentIdSignal();
+    const student = id ? this.students().find((s) => s.id === id) : undefined;
+    return student ? student.fullName || student.studentNumber : null;
+  });
+
+  protected selectGrade(gradeId: number): void {
+    this.form.controls.gradeId.setValue(gradeId);
+    this.form.controls.gradeId.markAsTouched();
+  }
 
   protected readonly filteredStudents = computed(() => {
     const gradeId = this.gradeIdSignal();
@@ -215,6 +257,12 @@ export class WorksheetAssignmentDialogComponent {
     const [hours, minutes] = time.split(':').map(Number);
     // Saat öğretmenin yerel saatidir (TR 09:00 → 06:00Z); Date.UTC 3 saat kaydırıyordu.
     return new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours, minutes);
+  }
+
+  private defaultGrade(): number | null {
+    const preferred = this.data.defaultGradeId;
+    if (preferred && this.data.grades.some((g) => g.id === preferred)) return preferred;
+    return this.data.grades[0]?.id ?? null;
   }
 
   protected gradeLabel(gradeId?: number | null): string | null {

@@ -1,5 +1,8 @@
 <ng-container *transloco="let t; prefix: 'worksheet-detail'">
   <h2 mat-dialog-title>{{ t('assignDialog.title') }}</h2>
+  @if (data.worksheetName) {
+    <p class="dialog-subject" data-testid="assign-worksheet-name">{{ data.worksheetName }}</p>
+  }
   <section mat-dialog-content>
     <form [formGroup]="form" class="assignment-form">
       @if (isIndependentTutor) {
@@ -12,16 +15,25 @@
       }
 
       @if (isGradeScope()) {
+        <!-- #860: sınıf kartları, her birinde öğrenci sayısı. -->
         <div class="field-pair">
-          <mat-form-field appearance="outline" class="wide">
-            <mat-label>{{ t('assignDialog.gradeLabel') }}</mat-label>
-            <mat-select formControlName="gradeId">
-              @for (grade of grades; track grade) {
-                <mat-option [value]="grade.id">{{ grade.name }}</mat-option>
-              }
-            </mat-select>
-            <mat-error>{{ t('assignDialog.gradeRequired') }}</mat-error>
-          </mat-form-field>
+          <span class="field-label" id="assign-grade-label">{{ t('assignDialog.gradeLabel') }}</span>
+          <div class="grade-cards" role="radiogroup" aria-labelledby="assign-grade-label" data-testid="grade-cards">
+            @for (grade of grades; track grade.id) {
+              <button type="button" class="grade-card" role="radio" [attr.aria-checked]="form.controls.gradeId.value === grade.id"
+                [class.is-selected]="form.controls.gradeId.value === grade.id"
+                [class.is-empty]="gradeCounts()?.get(grade.id) === undefined && gradeCounts() !== null"
+                [attr.data-grade]="grade.id" (click)="selectGrade(grade.id)">
+                <span class="grade-card__name">{{ grade.name }}</span>
+                @if (gradeCounts(); as counts) {
+                  <span class="grade-card__count">{{ t('assignDialog.studentCount', { n: counts.get(grade.id) ?? 0 }) }}</span>
+                }
+              </button>
+            }
+          </div>
+          @if (form.controls.gradeId.touched && form.controls.gradeId.invalid) {
+            <div class="helper-text empty">{{ t('assignDialog.gradeRequired') }}</div>
+          }
           <div class="helper-text">{{ t('assignDialog.gradeHelper') }}</div>
         </div>
       } @else {
@@ -127,8 +139,26 @@
     </form>
   </section>
 
-  <section mat-dialog-actions align="end">
+  <section mat-dialog-actions class="assign-actions">
+    <!-- #860: kimin alacağı, butonun yanında tek satır. -->
+    <span class="assign-summary" data-testid="assign-summary" aria-live="polite">
+      @if (isGradeScope()) {
+        @if (recipientCount() !== null && selectedGradeName()) {
+          {{ t('assignDialog.summaryGrade', { grade: selectedGradeName(), n: recipientCount() }) }}
+        }
+      } @else if (selectedStudentName(); as name) {
+        {{ t('assignDialog.summaryStudent', { name: name }) }}
+      }
+    </span>
     <button mat-button type="button" (click)="cancel()">{{ t('assignDialog.cancel') }}</button>
-    <button mat-flat-button color="primary" type="button" (click)="submit()">{{ t('assignDialog.save') }}</button>
+    <button mat-flat-button color="primary" type="button" data-testid="assign-submit" (click)="submit()">
+      @if (isGradeScope() && recipientCount()) {
+        {{ t('assignDialog.submitCount', { n: recipientCount() }) }}
+      } @else if (!isGradeScope() && recipientCount()) {
+        {{ t('assignDialog.submitStudent') }}
+      } @else {
+        {{ t('assignDialog.save') }}
+      }
+    </button>
   </section>
 </ng-container>

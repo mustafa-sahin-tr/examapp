@@ -97,3 +97,82 @@ mat-chip {
     min-height: 44px;
   }
 }
+
+// #860: hangi test atanıyor (başlığın altında).
+.dialog-subject {
+  margin: -8px 24px 0;
+  font-weight: 600;
+  color: var(--ms-text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ms-text-medium);
+}
+
+.grade-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 8px;
+}
+
+.grade-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 56px;
+  padding: 8px 12px;
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 10px;
+  background: var(--ms-surface);
+  color: var(--ms-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--ms-border);
+  }
+
+  &.is-selected {
+    border-color: var(--ms-action-border);
+    background: var(--ms-action-background-weak);
+  }
+
+  &.is-empty:not(.is-selected) {
+    opacity: 0.6;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ms-action-border-focus);
+    outline-offset: 2px;
+  }
+
+  &__name {
+    font-weight: 700;
+    color: var(--ms-text-strong);
+  }
+
+  &__count {
+    font-size: 0.75rem;
+    color: var(--ms-text-medium);
+  }
+}
+
+.assign-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.assign-summary {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.8125rem;
+  color: var(--ms-text-medium);
+}

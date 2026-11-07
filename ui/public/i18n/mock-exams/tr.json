@@ -12,7 +12,19 @@
     "create": "Deneme oluştur",
     "createFailed": "Deneme oluşturulamadı. Tekrar deneyin.",
     "loadFailed": "Denemeler yüklenemedi.",
-    "empty": "Henüz deneme yok."
+    "empty": "Henüz deneme yok. Deneme, LGS ya da YKS biçiminde süreli bir sınavdır; sonuçta ders başına net gösterilir.",
+    "newTitle": "Yeni deneme",
+    "pickTemplate": "Bir sınav şablonu seç; oturumlar, süreler ve ders başına soru sayıları hazır gelir.",
+    "templateSummary": "{{questions}} soru · {{sessions}} oturum",
+    "penalty": "{{n}} yanlış 1 doğruyu götürür",
+    "noPenalty": "Yanlış doğruyu götürmez",
+    "session": "{{n}}. oturum · {{name}} · {{minutes}} dk",
+    "fillLater": "Soruları deneme oluşturulduktan sonra her derse eklersin; tüm dersler dolunca yayınlayıp atarsın.",
+    "missing": {
+      "name": "Deneme adı yaz.",
+      "grade": "Sınıf seç."
+    },
+    "mine": "Denemelerim"
   },
   "builder": {
     "loadFailed": "Deneme yüklenemedi.",

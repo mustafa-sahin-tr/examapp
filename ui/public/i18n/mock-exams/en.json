@@ -12,7 +12,19 @@
     "create": "Create mock exam",
     "createFailed": "The mock exam could not be created. Try again.",
     "loadFailed": "Mock exams could not be loaded.",
-    "empty": "No mock exams yet."
+    "empty": "No mock exams yet. A mock exam is a timed exam in LGS or YKS format; the result shows net scores per subject.",
+    "newTitle": "New mock exam",
+    "pickTemplate": "Pick an exam template; sessions, durations and question counts per subject come ready.",
+    "templateSummary": "{{questions}} questions · {{sessions}} sessions",
+    "penalty": "{{n}} wrong cancel 1 correct",
+    "noPenalty": "No penalty for wrong answers",
+    "session": "Session {{n}} · {{name}} · {{minutes}} min",
+    "fillLater": "After creating the exam you add questions to each subject; once every subject is full you publish and assign it.",
+    "missing": {
+      "name": "Enter a name.",
+      "grade": "Pick a grade."
+    },
+    "mine": "My mock exams"
   },
   "builder": {
     "loadFailed": "The mock exam could not be loaded.",

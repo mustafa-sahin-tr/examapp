@@ -109,6 +109,35 @@ describe('mock exam screens', () => {
       expect(navigate).toHaveBeenCalledWith(['/mock-exams', 5]);
     });
 
+    it('templateCards_PickingOneShowsSessionsAndWhatIsMissing (#870)', () => {
+      const fixture = TestBed.createComponent(MockExamsComponent);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+      const root = fixture.nativeElement as HTMLElement;
+
+      const card = root.querySelector<HTMLButtonElement>('[data-testid="me-template-card"]')!;
+      expect(card.textContent).toContain('LGS');
+      expect(card.textContent).toContain('20 soru · 1 oturum');
+      expect(card.textContent).toContain('3 yanlış 1 doğruyu götürür');
+      expect(root.querySelector('[data-testid="me-template-sessions"]')).toBeNull();
+
+      card.click();
+      fixture.detectChanges();
+      expect(card.getAttribute('aria-checked')).toBe('true');
+      const sessions = root.querySelector('[data-testid="me-template-sessions"]')!.textContent!.replace(/\s+/g, ' ');
+      expect(sessions).toContain('1. oturum · Sözel · 75 dk');
+      expect(sessions).toContain('Türkçe 0/20');
+      expect(root.querySelector('[data-testid="me-missing"]')?.textContent).toContain('Deneme adı yaz.');
+
+      component.name.set('Kasım');
+      fixture.detectChanges();
+      expect(root.querySelector('[data-testid="me-missing"]')?.textContent).toContain('Sınıf seç.');
+      component.gradeId.set(8);
+      fixture.detectChanges();
+      expect(root.querySelector('[data-testid="me-missing"]')).toBeNull();
+      expect(component.canCreate()).toBe(true);
+    });
+
     it('create_Failure_SaysSoAndAllowsAnotherTry', () => {
       const fixture = TestBed.createComponent(MockExamsComponent);
       const component = fixture.componentInstance;

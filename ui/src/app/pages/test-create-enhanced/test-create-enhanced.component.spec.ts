@@ -3,6 +3,7 @@ import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { By } from '@angular/platform-browser';
+import { TestFormComponent } from '../test-form/test-form.component';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { MatRadioButton } from '@angular/material/radio';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -501,8 +502,12 @@ describe('TestCreateEnhancedComponent', () => {
             (el(fixture).querySelector('[data-testid="kind-activity"] button') as HTMLButtonElement).click();
             fixture.detectChanges();
 
+            expect(el(fixture).querySelector('label[for="tf-description"]')?.textContent?.trim()).toMatch(/^Yönerge/);
+            // #851: süre 3. adımda (Ayarlar); etkinlikte orada da yok.
+            fixture.debugElement.query(By.directive(TestFormComponent)).componentInstance.step.set(3);
+            fixture.detectChanges();
+            expect(el(fixture).querySelector('[data-testid="step-settings"]')).not.toBeNull();
             expect(el(fixture).querySelector('input[formcontrolname="maxDurationMinutes"]')).toBeNull();
-            expect(el(fixture).querySelector('label[for="tf-description"]')?.textContent?.trim()).toBe('Yönerge');
             expect(el(fixture).querySelector('h1')?.textContent).toContain('Etkinlik');
             c.onSubmit();
             const payload = vi.mocked(testService.create).mock.lastCall![0];

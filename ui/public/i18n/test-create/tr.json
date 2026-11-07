@@ -1,9 +1,9 @@
 {
   "form": {
     "select": "Seçiniz",
-    "nameLabel": "Test Adı",
+    "nameLabel": "Test adı",
     "namePlaceholder": "Örn. Zamanı Ölçme Değerlendirme",
-    "subtitleLabel": "Alt Başlık",
+    "subtitleLabel": "Alt başlık",
     "subtitlePlaceholder": "Örn. 5. Sınıfa Geçenler İçin",
     "descriptionLabel": "Açıklama",
     "descriptionPlaceholder": "Kısa bir tanıtım…",
@@ -21,14 +21,14 @@
     "segTopic": "Konu",
     "bookLabel": "Kitap",
     "addBook": "Yeni kitap ekle",
-    "newBookLabel": "Yeni Kitap Adı",
-    "bookTestLabel": "Kitap Testi",
+    "newBookLabel": "Yeni kitap adı",
+    "bookTestLabel": "Kitap testi",
     "addBookTest": "Yeni kitap testi ekle",
-    "newBookTestLabel": "Yeni Kitap Testi Adı",
+    "newBookTestLabel": "Yeni kitap testi adı",
     "subjectLabel": "Ders",
     "selectGradeFirst": "Önce sınıf seçin.",
     "topicLabel": "Konu",
-    "subtopicLabel": "Alt Konu",
+    "subtopicLabel": "Alt konu",
     "settingsTitle": "Ayarlar",
     "settingsNote": "Testin nasıl çözüleceğini belirler.",
     "save": "Kaydet",
@@ -42,7 +42,22 @@
     "kindActivityHint": "Etkinlik sayfasında süre ve puan yoktur; öğrenci maddeleri kontrol edip yanlışlarını düzeltir.",
     "kindLockedHint": "Bu sayfa öğrenciler tarafından açıldığı için türü değiştirilemez.",
     "instructionLabel": "Yönerge",
-    "instructionPlaceholder": "Öğrenciye ne yapacağını kısaca anlat (ör. Resimleri doğru kelimelerle eşleştir)."
+    "instructionPlaceholder": "Öğrenciye ne yapacağını kısaca anlat (ör. Resimleri doğru kelimelerle eşleştir).",
+    "optional": "(isteğe bağlı)",
+    "selectSubjectFirst": "Konu listesi için önce ders seç.",
+    "stepOf": "Adım {{n}} / {{total}}",
+    "back": "Geri",
+    "createNow": "Şimdi oluştur",
+    "create": "Oluştur ve soru ekle",
+    "steps": {
+      "basics": "Temel bilgiler",
+      "source": "Kaynak ve konu",
+      "settings": "Ayarlar"
+    },
+    "next": {
+      "source": "Devam: kaynak ve konu",
+      "settings": "Devam: ayarlar"
+    }
   },
   "page": {
     "creating": "Oluşturuluyor…",

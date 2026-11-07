@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using ExamApp.Api.Services.Storage;
 
 namespace ExamApp.Api.Models.Dtos;
 
@@ -26,6 +27,9 @@ public class PracticeSessionStartDto
 
     /// <summary>Issue #698: oturum, yanlış defterinden (kapsam filtresiyle) sabit bir listeyle açılır.</summary>
     public bool Mistakes { get; set; }
+
+    /// <summary>Issue #862: <see cref="Mistakes"/> ile tek soru ("Tekrar çöz"); soru defterde değilse oturum açılmaz.</summary>
+    public int? MistakeQuestionId { get; set; }
 
     /// <summary>Issue #532: oturum, öğrencinin kaydettiği sorulardan sabit bir listeyle açılır.</summary>
     public bool Saved { get; set; }
@@ -69,6 +73,17 @@ public class MistakeItemDto
     public int WrongCount { get; set; }
     /// <summary>DidNotKnow | Calculation | Attention | Time; etiket yoksa null.</summary>
     public string? Reason { get; set; }
+    /// <summary>Issue #862: sorunun görseli (yoksa null; görselsiz soruda <see cref="Text"/>). Yanıtta imzalanır (#365).</summary>
+    [StorageUrl(StorageArea.QuestionImage)]
+    public string? ImageUrl { get; set; }
+    public string? Text { get; set; }
+    /// <summary>Issue #862: son yanlışta seçilen şıkkın harfi (boş bırakıldıysa / şıksız soruda null).</summary>
+    public string? YourAnswer { get; set; }
+    /// <summary>Issue #862: doğru şıkkın harfi (şıksız soruda null).</summary>
+    public string? CorrectAnswer { get; set; }
+    /// <summary>Issue #862: son yanlıştan sonraki doğru sayısı; <see cref="CorrectToClear"/>'a varınca defterden çıkar.</summary>
+    public int CorrectSinceWrong { get; set; }
+    public int CorrectToClear { get; set; }
 }
 
 public class MistakeReasonUpdateDto

@@ -3,7 +3,7 @@
     @if (visibleItems().length > 0) {
       <button mat-raised-button color="primary" type="button" data-test="mistakes-start" [disabled]="starting()" (click)="startPractice()">
         <mat-icon>replay</mat-icon>
-        {{ t('start') }}
+        {{ t('startAll', { count: visibleItems().length }) }}
       </button>
     }
   </app-page-header>
@@ -48,22 +48,59 @@
     <ul class="mnb__list">
       @for (item of visibleItems(); track item.questionId) {
         <li class="mnb__item" data-test="mistake-item">
-          <div class="mnb__meta">
-            <strong>{{ item.subjectName || t('noSubject') }}</strong>
-            @if (item.topicName) {
-              <span>{{ item.topicName }}</span>
+          <!-- #862: sorunun kendisi; görselsizse ilk satırı. -->
+          <div class="mnb__question" aria-hidden="true">
+            @if (item.imageUrl) {
+              <img class="mnb__img" [src]="item.imageUrl" alt="" loading="lazy" />
+            } @else if (item.text) {
+              <span class="mnb__text">{{ item.text }}</span>
+            } @else {
+              <mat-icon>help_outline</mat-icon>
             }
-            <span class="mnb__sub">{{ t('wrongInfo', { count: item.wrongCount, date: (item.lastWrongAt | date: 'd MMM') }) }}</span>
           </div>
-          <mat-form-field class="mnb__reason" subscriptSizing="dynamic">
-            <mat-label>{{ t('reasonLabel') }}</mat-label>
-            <mat-select [value]="item.reason" (valueChange)="setReason(item, $event)">
-              <mat-option [value]="null">{{ t('reasonNone') }}</mat-option>
-              @for (reason of reasons; track reason) {
-                <mat-option [value]="reason">{{ t('reason.' + reason) }}</mat-option>
+          <div class="mnb__body">
+            <div class="mnb__meta">
+              <strong>{{ item.subjectName || t('noSubject') }}@if (item.topicName) { · {{ item.topicName }} }</strong>
+              <span class="mnb__sub">{{ t('wrongInfo', { count: item.wrongCount, date: (item.lastWrongAt | date: 'd MMM') }) }}</span>
+            </div>
+            @if (item.correctAnswer) {
+              <p class="mnb__answers" data-test="mistake-answers">
+                @if (item.yourAnswer) {
+                  <span class="mnb__yours">{{ t('yourAnswer', { letter: item.yourAnswer }) }}</span>
+                } @else {
+                  <span class="mnb__yours">{{ t('leftBlank') }}</span>
+                }
+                <span class="mnb__correct">{{ t('correctAnswer', { letter: item.correctAnswer }) }}</span>
+              </p>
+            }
+            @if (item.correctToClear) {
+              <!-- #862: kaç doğru daha çözünce listeden çıkacağı. -->
+              <span class="mnb__progress" data-test="mistake-progress"
+                [attr.aria-label]="t('progressAria', { done: item.correctSinceWrong ?? 0, total: item.correctToClear })">
+                @for (step of steps(item); track $index) {
+                  <span class="mnb__dot" [class.is-done]="step" aria-hidden="true"></span>
+                }
+                <span class="mnb__sub">{{ t('progress', { left: item.correctToClear - (item.correctSinceWrong ?? 0) }) }}</span>
+              </span>
+            }
+            <!-- #862: "Neden?" açılır listesi yerine dört çip; seçince kısa ipucu. -->
+            <div class="mnb__why">
+              <span class="mnb__sub" [id]="'why-' + item.questionId">{{ t('whyQuestion') }}</span>
+              <mat-chip-listbox [attr.aria-labelledby]="'why-' + item.questionId" [value]="item.reason"
+                (change)="setReason(item, $event.value ?? null)" data-test="mistake-reasons">
+                @for (reason of reasons; track reason) {
+                  <mat-chip-option [value]="reason" [attr.data-reason]="reason">{{ t('reason.' + reason) }}</mat-chip-option>
+                }
+              </mat-chip-listbox>
+              @if (item.reason) {
+                <p class="mnb__tip" data-test="mistake-tip">{{ t('tip.' + item.reason) }}</p>
               }
-            </mat-select>
-          </mat-form-field>
+            </div>
+          </div>
+          <button mat-stroked-button type="button" class="mnb__retry" data-test="mistake-retry" [disabled]="starting()"
+            (click)="retry(item)">
+            <mat-icon>replay</mat-icon>{{ t('retry1') }}
+          </button>
         </li>
       }
     </ul>

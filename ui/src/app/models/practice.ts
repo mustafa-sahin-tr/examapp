@@ -13,6 +13,8 @@ export interface PracticeSessionStartRequest {
   dueReview?: boolean;
   /** Issue #698: yanlış defterinden sabit listeli oturum. */
   mistakes?: boolean;
+  /** Issue #862: `mistakes` ile tek soru ("Tekrar çöz"). */
+  mistakeQuestionId?: number;
   /** Issue #532: kaydedilen sorulardan sabit listeli oturum. */
   saved?: boolean;
   /** Issue #534: tekrar, yanlış defteri ve zayıf konulardan karışık sabit listeli oturum. */
@@ -53,6 +55,13 @@ export interface MistakeItem {
   lastWrongAt: string;
   wrongCount: number;
   reason: MistakeReason | null;
+  /** Issue #862: soru, öğrencinin son yanlış cevabı, doğru cevap ve defterden çıkma ilerlemesi. */
+  imageUrl?: string | null;
+  text?: string | null;
+  yourAnswer?: string | null;
+  correctAnswer?: string | null;
+  correctSinceWrong?: number;
+  correctToClear?: number;
 }
 
 /** Issue #532: kaydedilen sorular. */

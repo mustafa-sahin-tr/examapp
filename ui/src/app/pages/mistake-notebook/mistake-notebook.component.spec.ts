@@ -6,6 +6,7 @@ import { MistakeItem } from '../../models/practice';
 import { PracticeService } from '../../services/practice.service';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import { MistakeNotebookComponent } from './mistake-notebook.component';
+import practiceTr from '../../../../public/i18n/practice/tr.json';
 
 const item = (questionId: number, subjectId: number, subjectName: string): MistakeItem => ({
   questionId,
@@ -32,7 +33,7 @@ describe('MistakeNotebookComponent (issue #698)', () => {
       setMistakeReason: vi.fn().mockReturnValue(of(undefined)),
     };
     TestBed.configureTestingModule({
-      imports: [MistakeNotebookComponent, NoopAnimationsModule, translocoTestingModule()],
+      imports: [MistakeNotebookComponent, NoopAnimationsModule, translocoTestingModule({ langs: { 'practice/tr': practiceTr } })],
       providers: [provideRouter([]), { provide: PracticeService, useValue: practice }],
     });
     const fixture = TestBed.createComponent(MistakeNotebookComponent);
@@ -88,6 +89,38 @@ describe('MistakeNotebookComponent (issue #698)', () => {
     component.setReason(component.items()[0], 'Time');
     expect(component.items()[0].reason).toBe('Calculation');
     expect(component.saveFailed()).toBe(true);
+  });
+
+  // Issue #862: satır soruyu, cevapları, ilerlemeyi gösterir; neden çip ile seçilir; tek soru tekrar çözülür.
+  it('row_ShowsQuestion_Answers_Progress_AndTip_issue862', () => {
+    const fixture = create([
+      { ...item(1, 10, 'Matematik'), imageUrl: 'https://img/1.png', yourAnswer: 'C', correctAnswer: 'B', correctSinceWrong: 1, correctToClear: 2 },
+      { ...item(2, 10, 'Matematik'), text: 'Metin sorusu', yourAnswer: null, correctAnswer: 'A', correctSinceWrong: 0, correctToClear: 2 },
+    ]);
+    const rows = el(fixture).querySelectorAll('[data-test="mistake-item"]');
+
+    expect(rows[0].querySelector('img')?.getAttribute('src')).toBe('https://img/1.png');
+    expect(rows[0].querySelector('[data-test="mistake-answers"]')?.textContent).toContain('Senin cevabın C');
+    expect(rows[0].querySelector('[data-test="mistake-answers"]')?.textContent).toContain('Doğru B');
+    expect(rows[0].querySelectorAll('.mnb__dot.is-done').length).toBe(1);
+    expect(rows[1].textContent).toContain('Metin sorusu');
+    expect(rows[1].querySelector('[data-test="mistake-answers"]')?.textContent).toContain('Boş bıraktın');
+    expect(el(fixture).querySelector('[data-test="mistakes-start"]')?.textContent).toContain('Hepsini çöz (2)');
+
+    (rows[0].querySelector('[data-reason="Attention"] button') as HTMLElement).click(); // çipin iç düğmesi
+    fixture.detectChanges();
+    expect(practice.setMistakeReason).toHaveBeenCalledWith(1, 'Attention');
+    expect(rows[0].querySelector('[data-test="mistake-tip"]')?.textContent).toContain('altını çiz');
+  });
+
+  it('retry_StartsASingleQuestionSession_issue862', () => {
+    const fixture = create([item(1, 10, 'Matematik'), item(2, 10, 'Matematik')]);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    el(fixture).querySelectorAll<HTMLButtonElement>('[data-test="mistake-retry"]')[1].click();
+
+    expect(practice.startSession).toHaveBeenCalledWith({ mistakes: true, mistakeQuestionId: 2 });
+    expect(navigate).toHaveBeenCalledWith(['/practice'], { queryParams: { session: 9 } });
   });
 
   it('loadError_OffersRetry', () => {

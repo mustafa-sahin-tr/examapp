@@ -18,7 +18,6 @@
   "mistakes": {
     "title": "Yanlışlarım",
     "subtitle": "Testlerde ve pratikte yanlış yaptığın sorular burada. İki kez art arda doğru çözünce listeden çıkar.",
-    "start": "Bu soruları çöz",
     "startError": "Pratik başlatılamadı.",
     "saveError": "Neden kaydedilemedi.",
     "loadError": "Liste yüklenemedi.",
@@ -30,14 +29,26 @@
     "allSubjects": "Tüm dersler",
     "noSubject": "Ders belirtilmemiş",
     "wrongInfo": "{{count}} kez yanlış, son: {{date}}",
-    "reasonLabel": "Neden?",
-    "reasonNone": "Seçilmedi",
     "truncated": "{{total}} sorudan {{shown}} tanesi gösteriliyor.",
     "reason": {
       "DidNotKnow": "Bilmiyordum",
       "Calculation": "İşlem hatası",
       "Attention": "Dikkat",
       "Time": "Süre"
+    },
+    "startAll": "Hepsini çöz ({{count}})",
+    "yourAnswer": "Senin cevabın {{letter}}",
+    "leftBlank": "Boş bıraktın",
+    "correctAnswer": "Doğru {{letter}}",
+    "progress": "{{left}} doğru daha → listeden çıkar",
+    "progressAria": "{{total}} doğrudan {{done}} tanesi tamam",
+    "whyQuestion": "Neden yanlış oldu?",
+    "retry1": "Tekrar çöz",
+    "tip": {
+      "DidNotKnow": "Konuyu bir kez daha oku, sonra benzer bir soru çöz.",
+      "Calculation": "İşlemi adım adım yaz; sonucu bir kez daha kontrol et.",
+      "Attention": "Soruyu ilk okuyuşta önemli kelimelerin altını çiz.",
+      "Time": "Takıldığın soruyu işaretle, sona bırak; sonra geri dön."
     }
   },
   "savedQuestions": {

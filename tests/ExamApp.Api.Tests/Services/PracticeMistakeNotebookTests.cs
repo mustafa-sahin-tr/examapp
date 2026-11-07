@@ -92,6 +92,58 @@ public class PracticeMistakeNotebookTests : IDisposable
     }
 
     [Fact]
+    public async Task Item_ShowsQuestion_YourAnswer_CorrectAnswer_AndProgress() // issue #862
+    {
+        var w = await SeedAsync();
+        int questionId, wrongAnswerId;
+        await using (var ctx = _db.NewContext())
+        {
+            var q = new Question { Text = "2 + 2 = ?", ImageUrl = "https://img/q.png", SubjectId = w.SubjectId, Point = 1, DifficultyLevel = 1 };
+            ctx.Questions.Add(q);
+            await ctx.SaveChangesAsync();
+            var a = new Answer { QuestionId = q.Id, Text = "3", Order = 0 };
+            var b = new Answer { QuestionId = q.Id, Text = "4", Order = 1 };
+            var c = new Answer { QuestionId = q.Id, Text = "5", Order = 2 };
+            ctx.Answers.AddRange(a, b, c);
+            await ctx.SaveChangesAsync();
+            q.CorrectAnswerId = b.Id;
+            ctx.TestQuestions.Add(new WorksheetQuestion { TestId = w.WorksheetId, QuestionId = q.Id, Order = 1 });
+            await ctx.SaveChangesAsync();
+            (questionId, wrongAnswerId) = (q.Id, c.Id);
+        }
+        await using (var ctx = _db.NewContext())
+        {
+            var session = new PracticeSession { StudentId = w.StudentId, GradeId = w.GradeId, StartTime = DaysAgo(2), Status = PracticeSessionStatus.Ended };
+            session.Questions.Add(new PracticeSessionQuestion { QuestionId = questionId, ShownAt = DaysAgo(2), AnsweredAt = DaysAgo(2), IsCorrect = false, SelectedAnswerId = wrongAnswerId });
+            ctx.PracticeSessions.Add(session);
+            await ctx.SaveChangesAsync();
+        }
+        await AnswerAsync(w, questionId, (1, true));
+
+        var item = (await ListAsync(w)).Items.ShouldHaveSingleItem();
+        item.ImageUrl.ShouldBe("https://img/q.png");
+        item.Text.ShouldBe("2 + 2 = ?");
+        item.YourAnswer.ShouldBe("C");
+        item.CorrectAnswer.ShouldBe("B");
+        item.CorrectSinceWrong.ShouldBe(1);
+        item.CorrectToClear.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task Item_BlankAnswer_HasNoYourAnswer() // issue #862
+    {
+        var w = await SeedAsync();
+        var q = await AddQuestionAsync(w);
+        await AnswerAsync(w, q, (0, false));
+
+        var item = (await ListAsync(w)).Items.ShouldHaveSingleItem();
+        item.YourAnswer.ShouldBeNull();
+        item.CorrectAnswer.ShouldBe("A");
+        item.ImageUrl.ShouldBeNull();
+        item.CorrectSinceWrong.ShouldBe(0);
+    }
+
+    [Fact]
     public async Task NeverWrong_IsNotListed()
     {
         var w = await SeedAsync();
@@ -143,6 +195,25 @@ public class PracticeMistakeNotebookTests : IDisposable
         var session = await service.StartAsync(Profile(w), new PracticeSessionStartDto { Mistakes = true });
 
         (await service.NextQuestionAsync(session.Id, w.StudentId))!.Question!.Id.ShouldBe(q);
+    }
+
+    [Fact]
+    public async Task Session_SingleMistake_AsksOnlyThatQuestion_AndRejectsOthers() // issue #862
+    {
+        var w = await SeedAsync();
+        var q1 = await AddQuestionAsync(w);
+        var q2 = await AddQuestionAsync(w);
+        var clean = await AddQuestionAsync(w);
+        await AnswerAsync(w, q1, (1, false));
+        await AnswerAsync(w, q2, (0, false));
+
+        await using var ctx = _db.NewContext();
+        var service = new PracticeSessionService(ctx);
+        var session = await service.StartAsync(Profile(w), new PracticeSessionStartDto { Mistakes = true, MistakeQuestionId = q1 });
+        (await service.NextQuestionAsync(session.Id, w.StudentId))!.Question!.Id.ShouldBe(q1);
+
+        await Should.ThrowAsync<InvalidOperationException>(
+            service.StartAsync(Profile(w), new PracticeSessionStartDto { Mistakes = true, MistakeQuestionId = clean }));
     }
 
     [Fact]

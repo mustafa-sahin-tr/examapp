@@ -5,7 +5,8 @@ using System.Linq;
 namespace ExamApp.Api.Services.Practice;
 
 /// <summary>Bir sorunun tek cevabı: yanlış ve boş cevap <c>Correct = false</c> sayılır.</summary>
-internal readonly record struct DueReviewAttempt(DateTime AtUtc, bool Correct);
+/// <param name="SelectedAnswerId">Issue #862: öğrencinin seçtiği şık (çoktan seçmeli değilse ya da boşsa null).</param>
+internal readonly record struct DueReviewAttempt(DateTime AtUtc, bool Correct, int? SelectedAnswerId = null);
 
 /// <summary>Tekrar sırası: <c>Step</c> son yanlıştan sonraki doğru sayısı, <c>DueDay</c> tekrarın geldiği yerel gün.</summary>
 internal readonly record struct DueReviewStatus(int Step, DateOnly DueDay, int WrongCount);

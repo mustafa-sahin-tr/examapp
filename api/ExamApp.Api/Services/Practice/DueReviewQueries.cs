@@ -70,7 +70,7 @@ internal static class DueReviewQueries
         var practice = await context.PracticeSessionQuestions
             .AsNoTracking()
             .Where(p => p.PracticeSession.StudentId == studentId && p.AnsweredAt != null)
-            .Select(p => new { p.QuestionId, At = p.AnsweredAt!.Value, p.IsCorrect })
+            .Select(p => new { p.QuestionId, At = p.AnsweredAt!.Value, p.IsCorrect, p.SelectedAnswerId })
             .ToListAsync(ct);
 
         var tests = await context.TestInstanceQuestions
@@ -82,13 +82,14 @@ internal static class DueReviewQueries
             {
                 q.WorksheetQuestion.QuestionId,
                 At = q.UpdateTime ?? q.WorksheetInstance.EndTime ?? q.WorksheetInstance.StartTime,
-                q.IsCorrect
+                q.IsCorrect,
+                q.SelectedAnswerId
             })
             .ToListAsync(ct);
 
         return practice
-            .Select(p => (p.QuestionId, Attempt: new DueReviewAttempt(p.At, p.IsCorrect)))
-            .Concat(tests.Select(t => (t.QuestionId, Attempt: new DueReviewAttempt(t.At, t.IsCorrect))))
+            .Select(p => (p.QuestionId, Attempt: new DueReviewAttempt(p.At, p.IsCorrect, p.SelectedAnswerId)))
+            .Concat(tests.Select(t => (t.QuestionId, Attempt: new DueReviewAttempt(t.At, t.IsCorrect, t.SelectedAnswerId))))
             .GroupBy(a => a.QuestionId)
             .ToDictionary(g => g.Key, g => g.Select(a => a.Attempt).ToList());
     }

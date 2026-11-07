@@ -48,6 +48,9 @@ const DEFAULT_MAX_PARENTS = 4;
  * "Şifre sıfırla" (yeni şifreyi veli belirler; hiçbir yerde gösterilmez). `/my-children#create-child` forma kaydırır.
  * Issue #439: Active çocuk için "Ders talebi oluştur" → `/my-children/<studentId>/tutors` (veli modunda öğretmen arama).
  */
+/** #884: Çocuklarım'daki ekleme panelleri. */
+type AddPanel = 'create' | 'code';
+
 @Component({
   selector: 'app-parent-children',
   standalone: true,
@@ -123,23 +126,39 @@ export class ParentChildrenComponent implements OnInit, AfterViewInit {
     return formatted;
   });
 
+  /** #884: açık ekleme paneli (çocuk hesabı aç ya da kodla bağlan); ikisi birden açılmaz. */
+  protected readonly panel = signal<AddPanel | null>(null);
+  /** Başlıktaki "N çocuk bağlı". */
+  protected readonly activeCount = computed(() => this.children().filter((c) => c.status === 'Active').length);
+
   ngOnInit(): void {
+    // Veli paneli boş durumu `/my-children#create-child` ya da `#enter-code` ile gelir (#882): ilgili panel açık başlar.
+    const fragment = this.route?.snapshot.fragment;
+    if (fragment === 'create-child') this.panel.set('create');
+    else if (fragment === 'enter-code') this.panel.set('code');
     this.load();
   }
 
-  /**
-   * Veli paneli boş durumu `/my-children#create-child` (#882: ya da `#enter-code`) ile gelir: forma kaydır. Liste
-   * yüklendikten sonra da bir kez denenir: gezinme sonrası sayfa başa alınır ve liste yerleşimi kaydırır.
-   */
+  /** Gezinme sonrası sayfa başa alınır; liste yüklendikten sonra da bir kez denenir (liste yerleşimi kaydırır). */
   ngAfterViewInit(): void {
-    this.scrollToFragment();
+    this.scrollToPanel();
   }
 
-  private scrollToFragment(): void {
-    const fragment = this.route?.snapshot.fragment;
-    if (fragment === 'create-child' || fragment === 'enter-code') {
-      setTimeout(() => document.getElementById(fragment)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-    }
+  protected openPanel(panel: AddPanel): void {
+    this.panel.set(panel);
+    this.scrollToPanel();
+  }
+
+  protected closePanel(): void {
+    this.panel.set(null);
+    this.redeemError.set(null);
+  }
+
+  private scrollToPanel(): void {
+    const panel = this.panel();
+    if (!panel) return;
+    const id = panel === 'create' ? 'create-child' : 'enter-code';
+    setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }
 
   /** Issue #438: yeni çocuk hesabı açıldı — liste sunucudan tazelenir (birincil Active bağlantı). */
@@ -177,7 +196,7 @@ export class ParentChildrenComponent implements OnInit, AfterViewInit {
           this.children.set(items ?? []);
           if (!this.scrolledAfterLoad) {
             this.scrolledAfterLoad = true;
-            this.scrollToFragment();
+            this.scrollToPanel();
           }
         },
         error: (err: HttpErrorResponse) =>
@@ -203,6 +222,7 @@ export class ParentChildrenComponent implements OnInit, AfterViewInit {
       .subscribe({
         next: (child) => {
           this.code.set('');
+          this.panel.set(null);
           this.children.update((list) => [...list.filter((c) => c.linkId !== child.linkId), child]);
           this.ui.toast(this.ui.text('children.requested'));
         },

@@ -10,6 +10,11 @@
 }
 
 .pch__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
   margin-bottom: 1.25rem;
 
   h1 {
@@ -40,10 +45,57 @@
 }
 
 .pch__hint,
-.pch__empty {
-  margin: 0.25rem 0 0.75rem;
-  font-size: 0.8125rem;
-  opacity: 0.8;
+.pch__head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+// #884: boş liste — iki büyük seçenek.
+.pch__paths {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.75rem;
+}
+
+.pch__path {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.375rem;
+  padding: 1rem;
+  border: 1px solid var(--ms-border);
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--primaryColor);
+  }
+
+  mat-icon {
+    color: var(--primaryColor);
+  }
+
+  b {
+    font-family: var(--mainFontFamily);
+    font-size: 1rem;
+    color: var(--ms-text-strong);
+  }
+
+  span {
+    font-size: 0.8125rem;
+    color: var(--ms-text-weak);
+  }
+}
+
+.pch__panel-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 // Global `form { flex-direction: column }` (styles.scss) burada satır düzenine çevrilir; aksi halde alanın `flex-basis`'i
@@ -140,11 +192,19 @@
   }
 
   > .pch__item {
+    flex-wrap: wrap;
     border-bottom: none;
+  }
+
+  // #884: ad ve bilgiler sığmazsa düğmeler alt satıra iner (rozet adın yanında kalır).
+  .pch__info {
+    flex: 1 1 260px;
   }
 }
 
 .pch__badge {
+  display: inline-block;
+  white-space: nowrap;
   margin-left: 0.5rem;
   padding: 0.0625rem 0.5rem;
   border-radius: 999px;

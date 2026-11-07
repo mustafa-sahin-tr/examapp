@@ -8,11 +8,18 @@
 # worksheet DB — TRUNCATE CASCADE'in ulaştığı tablolar (FK zinciri, dev DB'de doğrulandı): Questions, Answers, Passage,
 # QuestionSubTopics, TestQuestions, TestInstanceQuestions (öğrenci cevapları), DailyQuestionSetItems,
 # PracticeSessionQuestions, WorksheetComments + WorksheetCommentReports (TÜM test yorumları), LabelingPages,
-# LabelingResults. Ayrıca açıkça: TestInstances (soruları silinen oturum "boş test yapılmış" gibi kalmasın — Questions'a
-# FK ile bağlı değil, CASCADE ulaşmıyor) ve puan/rozet tabloları: StudentPoints, StudentPointHistories, StudentBadges,
+# LabelingResults, OpenTextReviews, QuestionSources, QuestionLearningOutcomes (#692), QuestionSkills (#703),
+# QuestionReports, SavedQuestions, StudentMistakeReasons, MockExamQuestions (#693; deneme ve şablonu kalır).
+# Ayrıca açıkça: TestInstances ve PracticeSessions (öğrenci oturumları; soruları silinen oturum "boş test yapılmış" gibi
+# kalmasın — Questions'a FK ile bağlı değiller; PracticeSessions CASCADE ile öğrencinin günlük setlerini,
+# DailyQuestionSets, de götürür — maddeleri zaten silinmişti, set ertesi gün yeniden üretilir), FlashcardReviews (bilgi kartı ilerlemesi, #699; desteler kalır),
+# QuestionTransferExportMaps / QuestionTransferImportMaps (FK'sız soru id'si tutar; kalırsa aynı paket yeniden alınırken
+# sorular "zaten var" sayılıp atlanır) ve puan/rozet tabloları: StudentPoints, StudentPointHistories, StudentBadges,
 # StudentRewards, StudentSpecialEvents, Leaderboards, StudentBadgeProjections, StudentDailyXps (#225/#422 projeksiyonları);
-# Students.ProgressResetAtUtc NULL'lanır. Testler (Worksheets), taksonomi, kullanıcılar, çalışma sayfaları ve
-# LabelingPromptVersions kalır.
+# Students.ProgressResetAtUtc NULL'lanır. Testler (Worksheets), taksonomi, beceriler, kullanıcılar, çalışma sayfaları,
+# bilgi kartı desteleri, deneme şablonları, hedef / koç verisi ve LabelingPromptVersions kalır.
+# StudyItemBlocks (#933) Questions'a bağlı olduğu için CASCADE onu da boşaltır; bloklar önce kopyalanıp geri yazılır,
+# soru blokları uygulamadaki gibi (ON DELETE SET NULL) sorusuz kalır.
 #
 # badge DB — öğrencinin kendi "ilerlemeyi sıfırla" ucunun (POST api/student/me/reset, #243, BadgeService
 # UserResetService) sildiği tabloların TÜM öğrenciler için toplu hali: BadgeEarned, StudentBadgeProgresses,
@@ -22,20 +29,22 @@
 # (Uygulama içi uç öğrenci başına ve soft-delete'tir; burası dev'de her şeyi sert siler.)
 #
 # İsteğe bağlı gruplar (bayraklarla; CASCADE erişimi dev DB'nin FK grafiğinde doğrulandı):
-#   --wipe-tests  Worksheets (testler) + DailyQuestionSets + PracticeSessions. CASCADE: TestQuestions, TestInstances,
-#                 WorksheetAssignments, WorksheetReminders, WorksheetAccessRequests/Grants, WorksheetComments(+Reports),
-#                 DailyQuestionSetItems, PracticeSessionQuestions. MinIO 'worksheets' (test arka planları) ve 'exams'
+#   --wipe-tests  Worksheets (testler) + MockExams (denemeler, #693). CASCADE: TestQuestions, WorksheetAssignments,
+#                 WorksheetReminders, WorksheetAccessRequests/Grants, WorksheetComments(+Reports), MockExamSessions. FK'sız test id'si tutanlar da: WorksheetTransferImportMaps
+#                 (kalırsa yeniden alınan test atlanır), ParentHomeworkOverdueMarkers. MinIO 'worksheets' (test arka planları) ve 'exams'
 #                 bucket'ları boşalır. Books/BookTests KALIR: StudyItems (çalışma sayfaları) onlara FK ile bağlı,
 #                 silmek çalışma sayfalarını ve program takvimlerini de götürürdü. TestPrototypes (kullanılmıyor) kalır.
 #   --wipe-social Mesajlaşma (Conversations, DirectMessages, DirectMessageReports, DirectMessageBlocks), yorum
 #                 moderasyon olayları (WorksheetCommentModerationEvents) ve badge DB'de TÜM bildirimler
 #                 (Notifications, NotificationEventLogs, HiddenCommentTombstones).
 #   --wipe-logs   İşlenmiş outbox mesajları (üç DB; bekleyenler ve hatalılar kalır), LoginEvents, AdminDataAccessLogs,
-#                 AdminUserActionLogs, QuestionTransfer* işleri, badge ProcessedLoginAttempts; Hangfire'da yalnız
+#                 AdminUserActionLogs, QuestionSourceActionLogs, QuestionTransfer* işleri, badge ProcessedLoginAttempts; Hangfire'da yalnız
 #                 bitmiş işler (Succeeded/Deleted/Failed) ve stats sayaçları — recurring/zamanlanmış işler kalır.
 #   --all         üçü birden (dataset hariç).
 # Hiçbir bayrakta yok (bilerek): veli bağları/davetleri (silinirse öğrenciler #441 grace süresine düşer), kullanıcılar
-# (seed-teachers / seed-tutors ile yeniden üret), randevular, çalışma sayfaları, programlar, taksonomi, BadgeDefinitions.
+# (seed-teachers / seed-tutors ile yeniden üret), randevular, çalışma sayfaları, programlar, taksonomi, BadgeDefinitions,
+# bilgi kartı desteleri, deneme şablonları (ExamTemplates), hedef programları ve koç not / hedefleri, QuestionTransferOrigins
+# (ortamın kalıcı kimliği).
 #
 # ASLA prod'a karşı çalıştırma. Konteynerleri docker üzerinden bulur (Aspire: postgres-xxxx / minio-xxxx;
 # docker-compose: pg_container_dev / minio); birden fazla aday varsa ya da emin değilse env ile seç:
@@ -151,7 +160,13 @@ psql_exec -At -c "
       || E'\n  TestInstances=' || (SELECT count(*) FROM \"TestInstances\")
       || '  StudentPoints=' || (SELECT count(*) FROM \"StudentPoints\")
       || '  StudentBadges=' || (SELECT count(*) FROM \"StudentBadges\")
-      || '  StudentDailyXps=' || (SELECT count(*) FROM \"StudentDailyXps\");"
+      || '  StudentDailyXps=' || (SELECT count(*) FROM \"StudentDailyXps\")
+      || E'\n  PracticeSessions=' || (SELECT count(*) FROM \"PracticeSessions\")
+      || '  DailyQuestionSets=' || (SELECT count(*) FROM \"DailyQuestionSets\")
+      || '  FlashcardReviews=' || (SELECT count(*) FROM \"FlashcardReviews\")
+      || '  QuestionTransfer*Maps=' || ((SELECT count(*) FROM \"QuestionTransferExportMaps\") + (SELECT count(*) FROM \"QuestionTransferImportMaps\"))
+      || '  StudyItemBlocks (kalır; soru bağı boşalacak)=' || (SELECT count(*) FROM \"StudyItemBlocks\")
+      || '/' || (SELECT count(*) FROM \"StudyItemBlocks\" WHERE \"QuestionId\" IS NOT NULL);"
 badge_psql_exec -At -c "
   SELECT '  [badge] BadgeEarned=' || (SELECT count(*) FROM \"BadgeEarned\")
       || '  AnswerPointAwards=' || (SELECT count(*) FROM \"AnswerPointAwards\")
@@ -167,8 +182,7 @@ if [[ "$WIPE_TESTS" -eq 1 ]]; then
   psql_exec -At -c "
     SELECT '  [tests] Worksheets=' || (SELECT count(*) FROM \"Worksheets\")
         || '  WorksheetAssignments=' || (SELECT count(*) FROM \"WorksheetAssignments\")
-        || '  DailyQuestionSets=' || (SELECT count(*) FROM \"DailyQuestionSets\")
-        || '  PracticeSessions=' || (SELECT count(*) FROM \"PracticeSessions\");"
+        || '  MockExams=' || (SELECT count(*) FROM \"MockExams\");"
   for b in "${TEST_BUCKETS[@]}"; do
     echo "  [tests] $b → $(mc_exec ls --recursive "local/${b}" 2>/dev/null | wc -l | tr -d ' ') nesne"
   done
@@ -212,17 +226,23 @@ fi
 
 echo "▶ Postgres ($PG_DB): soru, oturum ve puan/rozet tabloları boşaltılıyor (CASCADE bağlı tabloları da boşaltır, NOTICE satırlarında listelenir)…"
 # TRUNCATE ... CASCADE: Questions'a FK ile bağlı her tablo (TestQuestions, TestInstanceQuestions, QuestionSubTopics,
-# DailyQuestionSetItems, PracticeSessionQuestions, QuestionTransfer*Maps, WorksheetComments…) otomatik boşalır.
+# DailyQuestionSetItems, PracticeSessionQuestions, MockExamQuestions, WorksheetComments…) otomatik boşalır.
 # Passage ve Labeling* ayrıca sayılır (Questions'a bağlı değiller / ters yönde bağlılar). TestInstances'a yalnız
 # TestInstanceQuestions bağlı; Questions'tan ulaşılmadığı için açıkça listede. Puan/rozet tabloları (StudentResetJob'un
 # soft-delete ettiği set + #422 projeksiyonları) başka tabloya bağlı değil.
+# StudyItemBlocks (#933): TRUNCATE, FK'nın ON DELETE SET NULL kuralına bakmaz, tabloyu tümden boşaltırdı → bloklar
+# geçici tabloya alınır, soru bağı boşaltılıp geri yazılır, kimlik sayacı devam ettirilir.
 psql_exec <<'SQL'
 BEGIN;
+CREATE TEMP TABLE keep_study_item_blocks ON COMMIT DROP AS SELECT * FROM "StudyItemBlocks";
+UPDATE keep_study_item_blocks SET "QuestionId" = NULL;
 TRUNCATE TABLE "Questions", "Answers", "Passage", "LabelingResults", "LabelingPages",
-  "TestInstances",
+  "TestInstances", "PracticeSessions", "FlashcardReviews", "QuestionTransferExportMaps", "QuestionTransferImportMaps",
   "StudentPoints", "StudentPointHistories", "StudentBadges", "StudentRewards", "StudentSpecialEvents", "Leaderboards",
   "StudentBadgeProjections", "StudentDailyXps"
   RESTART IDENTITY CASCADE;
+INSERT INTO "StudyItemBlocks" SELECT * FROM keep_study_item_blocks;
+SELECT setval(pg_get_serial_sequence('"StudyItemBlocks"', 'Id'), COALESCE((SELECT max("Id") FROM "StudyItemBlocks"), 0) + 1, false);
 UPDATE "Students" SET "ProgressResetAtUtc" = NULL WHERE "ProgressResetAtUtc" IS NOT NULL;
 DELETE FROM "OutboxMessages" WHERE ("Type" LIKE '%QuestionCreated%' OR "Type" LIKE '%ActivityCompleted%') AND "ProcessedAt" IS NULL;
 COMMIT;
@@ -243,11 +263,12 @@ COMMIT;
 SQL
 
 if [[ "$WIPE_TESTS" -eq 1 ]]; then
-  echo "▶ Postgres ($PG_DB): testler, günlük soru setleri ve pratik oturumları boşaltılıyor…"
+  echo "▶ Postgres ($PG_DB): testler ve denemeler boşaltılıyor…"
   # Books/BookTests bilerek listede değil: StudyItems -> Books/BookTests FK'sı CASCADE ile çalışma sayfalarını götürür.
   psql_exec <<'SQL'
 BEGIN;
-TRUNCATE TABLE "Worksheets", "DailyQuestionSets", "PracticeSessions" RESTART IDENTITY CASCADE;
+TRUNCATE TABLE "Worksheets", "MockExams", "WorksheetTransferImportMaps", "ParentHomeworkOverdueMarkers"
+  RESTART IDENTITY CASCADE;
 COMMIT;
 SQL
 fi
@@ -275,8 +296,8 @@ if [[ "$WIPE_LOGS" -eq 1 ]]; then
   psql_exec <<'SQL'
 BEGIN;
 DELETE FROM "OutboxMessages" WHERE "ProcessedAt" IS NOT NULL;
-TRUNCATE TABLE "LoginEvents", "AdminDataAccessLogs", "AdminUserActionLogs",
-  "QuestionTransferJobs", "QuestionTransferExportBundles", "QuestionTransferExportMaps", "QuestionTransferImportMaps"
+TRUNCATE TABLE "LoginEvents", "AdminDataAccessLogs", "AdminUserActionLogs", "QuestionSourceActionLogs",
+  "QuestionTransferJobs", "QuestionTransferExportBundles"
   RESTART IDENTITY CASCADE;
 DELETE FROM hangfire.job WHERE statename IN ('Succeeded', 'Deleted', 'Failed');
 DELETE FROM hangfire.list WHERE key IN ('succeeded', 'deleted');

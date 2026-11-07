@@ -354,13 +354,18 @@ bu cevaplardan türeyen puan/rozet verisini **her iki DB'de** (worksheet: `Stude
 `UserResetMarkers`, `StudentActivityCompletions` (#572), `Type='BadgeEarned'` bildirimleri — tüm öğrenciler için sert silme; uygulamadaki
 `POST api/student/me/reset` öğrenci başına ve soft-delete'tir), MinIO `exam-questions`'daki
 `questions/ answers/ passages/ question-transfer/` nesnelerini ve bekleyen QuestionCreated / ActivityCompleted / StudentPointsChanged /
-StudentBadgeEarned outbox mesajlarını siler; `Worksheets`, taksonomi, kullanıcılar, `BadgeDefinitions` kalır. `BADGE_DB` (varsayılan `badge`) ile badge DB adı seçilir;
+StudentBadgeEarned outbox mesajlarını siler; `Worksheets`, taksonomi, kullanıcılar, `BadgeDefinitions` kalır.
+2026-11-08 güncellemesi: soruya bağlı yeni tablolar (kazanım / beceri bağları, soru bildirimleri, kaydedilenler, hata
+nedenleri, deneme soruları) CASCADE ile gider; öğrenci oturumu olan `PracticeSessions` (+ günlük setler), bilgi kartı
+ilerlemesi `FlashcardReviews` ve FK'sız soru id'si tutan `QuestionTransfer{Export,Import}Maps` artık temel silmede.
+`StudyItemBlocks` (#933) korunur: TRUNCATE onu da boşaltacağı için bloklar kopyalanıp soru bağı boşaltılarak geri yazılır.
+Bilgi kartı desteleri, deneme şablonları, hedef / koç verisi kalır. `BADGE_DB` (varsayılan `badge`) ile badge DB adı seçilir;
 `--wipe-dataset` question-detector eğitim verisini de (`dataset/`, Drive arşivine dokunmaz) boşaltır. İsteğe bağlı gruplar:
-- `--wipe-tests`: `Worksheets` + `DailyQuestionSets` + `PracticeSessions` (CASCADE: atamalar, hatırlatıcılar, erişim
-  istekleri, test yorumları) ve MinIO `worksheets`/`exams` bucket'ları. `Books`/`BookTests` kalır: `StudyItems` onlara FK
+- `--wipe-tests`: `Worksheets` + `MockExams` (CASCADE: atamalar, hatırlatıcılar, erişim istekleri, test yorumları,
+  deneme oturumları) + FK'sız test id'si tutan `WorksheetTransferImportMaps`, `ParentHomeworkOverdueMarkers` ve MinIO `worksheets`/`exams` bucket'ları. `Books`/`BookTests` kalır: `StudyItems` onlara FK
   ile bağlı, silmek çalışma sayfalarını ve program takvimlerini götürürdü.
 - `--wipe-social`: mesajlaşma tabloları, `WorksheetCommentModerationEvents`, badge DB'de tüm bildirimler.
-- `--wipe-logs`: üç DB'de işlenmiş outbox (bekleyen/hatalı kalır), `LoginEvents`, `Admin*Logs`, `QuestionTransfer*`,
+- `--wipe-logs`: üç DB'de işlenmiş outbox (bekleyen/hatalı kalır), `LoginEvents`, `Admin*Logs`, `QuestionSourceActionLogs`, `QuestionTransfer{Jobs,ExportBundles}`,
   `ProcessedLoginAttempts`, Hangfire'da yalnız bitmiş işler + stats sayaçları (recurring/zamanlanmış işler kalır).
 - `--all`: üçü birden (dataset hariç). Veli bağları, kullanıcılar, randevular, çalışma sayfaları, programlar hiçbir
   bayrakta yok (veli bağı silinirse öğrenciler #441 grace süresine düşer).

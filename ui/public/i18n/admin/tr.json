@@ -1,10 +1,9 @@
 {
   "home": {
-    "title": "Yönetim",
+    "title": "Taksonomi",
     "tabs": {
       "taxonomy": "Taksonomi",
-      "classifierCache": "Sınıflandırma Cache",
-      "schools": "Okullar"
+      "classifier": "Sınıflandırıcı"
     }
   },
   "dashboard": {
@@ -238,6 +237,30 @@
     "statusFailed": "Cache durumu alınamadı",
     "refreshFailed": "Yenileme başarısız",
     "close": "Kapat"
+  },
+  "classifier": {
+    "title": "Sınıflandırıcı",
+    "subtitle": "Yeni sorulara ders, konu, alt konu ve zorluk önerir.",
+    "reload": "Yenile",
+    "loadError": "Sınıflandırıcı durumu okunamadı.",
+    "state": {
+      "running": "Etkin",
+      "disabled": "Kapalı",
+      "noKey": "API anahtarı yok"
+    },
+    "bookToc": "Kitap içindekiler",
+    "bookMode": {
+      "Hybrid": "Karma (içindekiler önce)",
+      "Skip": "Kitap soruları sınıflandırılmaz",
+      "Always": "Her zaman sınıflandır"
+    },
+    "last24h": "Son 24 saat",
+    "sinceStart": "Servis başlangıcından beri ({{date}})",
+    "counts": "{{classified}} soru sınıflandı · {{skipped}} atlandı",
+    "lastError": "Son hata",
+    "noError": "Yok",
+    "errorAt": "{{date}} · {{kind}} ({{failed}} başarısız deneme)",
+    "geminiUnused": "Gemini kullanılmıyor: önbellek ve Gemini API anahtarı yalnız Gemini seçiliyken gerekir."
   },
   "approvals": {
     "title": "Öğretmen Başvuruları",

@@ -1,10 +1,9 @@
 {
   "home": {
-    "title": "Administration",
+    "title": "Taxonomy",
     "tabs": {
       "taxonomy": "Taxonomy",
-      "classifierCache": "Classification Cache",
-      "schools": "Schools"
+      "classifier": "Classifier"
     }
   },
   "dashboard": {
@@ -238,6 +237,30 @@
     "statusFailed": "The cache status could not be loaded",
     "refreshFailed": "The refresh failed",
     "close": "Close"
+  },
+  "classifier": {
+    "title": "Classifier",
+    "subtitle": "Suggests subject, topic, subtopic and difficulty for new questions.",
+    "reload": "Refresh",
+    "loadError": "Could not read the classifier status.",
+    "state": {
+      "running": "Active",
+      "disabled": "Off",
+      "noKey": "No API key"
+    },
+    "bookToc": "Book table of contents",
+    "bookMode": {
+      "Hybrid": "Hybrid (table of contents first)",
+      "Skip": "Book questions are not classified",
+      "Always": "Always classify"
+    },
+    "last24h": "Last 24 hours",
+    "sinceStart": "Since the service started ({{date}})",
+    "counts": "{{classified}} questions classified · {{skipped}} skipped",
+    "lastError": "Last error",
+    "noError": "None",
+    "errorAt": "{{date}} · {{kind}} ({{failed}} failed attempts)",
+    "geminiUnused": "Gemini is not in use: its cache and API key are needed only when Gemini is selected."
   },
   "approvals": {
     "title": "Teacher Applications",

@@ -255,7 +255,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   menuItems: MenuItem[] = [
     // Issue #726: admin paneli ve Yönetim menünün başında.
     { id: 'admin-dashboard', labelKey: 'menu.dashboard', icon: 'insights', route: '/admin/dashboard', type: 'menu', roles: ['Admin'] },
-    { id: 'admin', labelKey: 'menu.admin', icon: 'admin_panel_settings', route: '/admin', type: 'menu', roles: ['Admin'] },
+    { id: 'admin', labelKey: 'menu.admin', icon: 'account_tree', route: '/admin', type: 'menu', roles: ['Admin'] },
     // Issue #861: beş onay / moderasyon kuyruğu tek girişte; kuyruklar `sectionTabs` sekmelerinde, rozet toplam bekleyen.
     { id: 'admin-pending', labelKey: 'menu.adminPending', icon: 'inbox', route: '/admin/teacher-approvals', type: 'menu', roles: ['Admin'] },
     // Issue #287: onaysız öğretmenin tek öğretmen girişi — öğretmene özel diğer tüm öğeler gizlenir.

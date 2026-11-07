@@ -183,6 +183,12 @@ output token'ı ve tahmini USD loglanır (`Anthropic:InputUsdPerMTok`/`OutputUsd
   kök, şıklar, plan etiketleri; çözüm yok) alınır ve boş değilse görselin hemen arkasından `ImageTextPrefix` ile gider
   (Claude ve Gemini). Etkinlikte çoğu zaman yalnız tablo kırpılır, yönerge görselde yoktur; yalnız görselle açı tablosu
   Fen → Kuvvet'e düşüyordu. Prompt'un sabit kısmı (sistem mesajı, taksonomi önbelleği) değişmedi.
+- **Durum kartı (#897).** BadgeService `GET api/admin/classifier-status` (Admin; gateway `/api/badge/admin/classifier-status`):
+  sağlayıcı, model, `AIActive`, anahtar var mı (değeri gönderilmez), kitap modu ve son 24 saatte sınıflandırılan / atlanan /
+  başarısız deneme sayısı ile son hatanın yalnız türü. Sayılar bellektedir (`ClassifierActivity`, örnek başına), servis yeniden
+  başlayınca sıfırlanır; yanıt `since` ile bunu söyler. Yeniden denenen mesaj her denemede başarısız sayılır. Admin `/admin`
+  sayfası artık "Taksonomi" (menü adı da): sekmeler Taksonomi ve Sınıflandırıcı; Gemini önbellek kartı yalnız Gemini
+  seçiliyken. Okullar sekmesi kalktı, okul filtreli eski `/admin?q=…` bağlantısı `/admin/schools`'a gider.
 - **Sınıf bağlamı (#565).** `QuestionCreatedEvent.GradeId` doluysa Claude sınıflandırıcı taksonomiyi
   `GET /api/questions/classifier-taxonomy?gradeId=` ile yalnız o sınıfa bağlı ders/konu/alt konularla alır ve sınıf başına
   önbellekler (prompt daha küçük, başka sınıfın aynı adlı konusu seçilemez; taksonomi dışı id reddi başka sınıfın id'sini de

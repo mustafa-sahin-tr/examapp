@@ -138,7 +138,8 @@ describe('SchoolManagerComponent', () => {
 
         expect(route, 'route tanımı bulunamadı').toBeDefined();
         expect(route?.canActivate).toEqual([authGuard, adminGuard]);
-        expect(route?.canActivate).toEqual(adminRoute?.canActivate);
+        // #897: /admin ayrıca okul filtreli eski bağlantıları buraya yönlendirir; yetki kapıları aynı.
+        expect(adminRoute?.canActivate?.slice(0, 2)).toEqual(route?.canActivate);
     });
 
     it('routes_AdminSchoolsPath_LazyLoadsSchoolManagerComponent', async () => {

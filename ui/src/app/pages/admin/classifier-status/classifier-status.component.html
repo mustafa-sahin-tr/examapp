@@ -1,0 +1,57 @@
+<section class="cls" *transloco="let t; prefix: 'admin.classifier'" data-test="classifier-status">
+  <header class="cls__head">
+    <div>
+      <h2>{{ t('title') }}</h2>
+      <p class="cls__muted">{{ t('subtitle') }}</p>
+    </div>
+    <button mat-stroked-button type="button" data-test="classifier-reload" [disabled]="loading()" (click)="load()">
+      <mat-icon>sync</mat-icon>{{ t('reload') }}
+    </button>
+  </header>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" />
+  } @else if (failed()) {
+    <p class="cls__error" role="alert" data-test="classifier-error">{{ t('loadError') }}</p>
+  } @else if (status(); as s) {
+    <article class="cls__card" [attr.data-state]="state()">
+      <div class="cls__provider">
+        <strong data-test="classifier-provider">{{ s.provider }}</strong>
+        <span class="cls__model" data-test="classifier-model">{{ s.model }}</span>
+        <span class="cls__badge" [class]="'cls__badge cls__badge--' + state()" data-test="classifier-state">
+          <mat-icon aria-hidden="true">{{ state() === 'running' ? 'check_circle' : state() === 'disabled' ? 'pause_circle' : 'key_off' }}</mat-icon>
+          {{ t('state.' + state()) }}
+        </span>
+      </div>
+
+      <dl class="cls__facts">
+        <div>
+          <dt>{{ t('bookToc') }}</dt>
+          <dd data-test="classifier-book-mode">{{ t('bookMode.' + s.bookTocMode) }}</dd>
+        </div>
+        <div>
+          <dt>{{ restartedRecently(s) ? t('sinceStart', { date: formatDate(s.since) }) : t('last24h') }}</dt>
+          <dd data-test="classifier-counts">{{ t('counts', { classified: s.classified, skipped: s.skipped }) }}</dd>
+        </div>
+        <div>
+          <dt>{{ t('lastError') }}</dt>
+          <dd data-test="classifier-last-error" [class.cls__danger]="s.failed > 0">
+            @if (s.lastErrorAt) {
+              {{ t('errorAt', { date: formatDate(s.lastErrorAt), kind: s.lastErrorKind ?? '—', failed: s.failed }) }}
+            } @else {
+              {{ t('noError') }}
+            }
+          </dd>
+        </div>
+      </dl>
+    </article>
+
+    @if (s.provider === 'Gemini') {
+      <app-classifier-cache />
+    } @else {
+      <p class="cls__muted cls__gemini" data-test="classifier-gemini-unused">
+        <mat-icon aria-hidden="true">info</mat-icon>{{ t('geminiUnused') }}
+      </p>
+    }
+  }
+</section>

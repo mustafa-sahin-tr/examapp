@@ -6,8 +6,6 @@ import { jwtDecode } from 'jwt-decode';
 import {
   Grade,
   RegisterProfileResponse,
-  RegisterRequest,
-  RegisterResponse,
   RegisterStudentPayload,
   RegisterTeacherPayload,
   RegisterTeacherResponse,
@@ -60,10 +58,6 @@ export class AuthService {
 
   isAuthenticatedSubject = new BehaviorSubject<boolean>(this.hasToken());
   isAuthenticated$ = this.isAuthenticatedSubject.asObservable(); // 🟢 Diğer bileşenler bunu subscribe edebilir
-
-  register(request: RegisterRequest): Observable<RegisterResponse> {
-    return this.http.post<RegisterResponse>('/api/auth/register', request);
-  }
 
   login(credentials: any): Observable<TokenResponse> {
     // const body = new HttpParams()

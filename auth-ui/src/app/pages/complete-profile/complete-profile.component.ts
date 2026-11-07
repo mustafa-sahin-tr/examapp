@@ -30,6 +30,7 @@ import {
   parentPhoneValidator,
 } from '../../shared/utils/parent-contact.util';
 import { PhoneMaskDirective } from '../../shared/directives/phone-mask.directive';
+import { BRAND_NAME } from '../../shared/brand';
 
 type AppRole = 'Student' | 'Teacher' | 'Parent';
 
@@ -113,6 +114,7 @@ export class CompleteProfileComponent implements OnInit {
    * Active velisi / açık daveti olan öğrencide alanları yok sayar; istemci bunu bilemediği için kurala tabi herkese sorar.
    */
   readonly parentInfoRequired = signal(true);
+  readonly brandName = BRAND_NAME;
   readonly privacyPolicyUrl = PRIVACY_POLICY_URL;
   readonly parentNameMaxLength = PARENT_NAME_MAX_LENGTH;
   readonly parentEmailMaxLength = PARENT_EMAIL_MAX_LENGTH;

@@ -57,6 +57,9 @@ public class ExamTemplateDto
 
     /// <summary>Bu şablondan kurulmuş deneme sayısı (#899); yalnız yanıtta dolar.</summary>
     public int MockExamCount { get; set; }
+
+    /// <summary>#917: resmî şablon (LGS, YKS) — değiştirilemez, kopyalanarak düzenlenir; yalnız yanıtta dolar.</summary>
+    public bool IsOfficial { get; set; }
 }
 
 public class CreateMockExamDto

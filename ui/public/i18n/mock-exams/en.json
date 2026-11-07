@@ -72,7 +72,8 @@
     "QuestionNotUsable": "One of the questions cannot be added: it is open text, unpublished or not yours.",
     "TemplateCodeTaken": "Another template uses this code.",
     "TemplateInUse": "Mock exams use this template, so it cannot be changed.",
-    "Failed": "That did not work. Try again."
+    "Failed": "That did not work. Try again.",
+    "OfficialTemplate": "Official templates cannot be changed; copy one and edit the copy."
   },
   "student": {
     "title": "Mock Exams",
@@ -136,6 +137,10 @@
     "total": "Total {{count}} questions",
     "totalOf": "Total {{count}} / {{saved}}",
     "totalChanged": "The saved template has {{saved}} questions; saving changes the question count.",
-    "close": "Close"
+    "close": "Close",
+    "official": "Official",
+    "officialNote": "Official template: the structure from the exam guide, it cannot be changed. Copy it and edit the copy for a different structure.",
+    "copyAndEdit": "Copy and edit",
+    "copyName": "{{name}} (copy)"
   }
 }

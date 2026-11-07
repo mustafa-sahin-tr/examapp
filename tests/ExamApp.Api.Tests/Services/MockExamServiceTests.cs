@@ -182,6 +182,26 @@ public class MockExamServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Official_templates_are_locked_but_a_copy_can_be_saved_and_edited_issue917()
+    {
+        var templates = await UseAsync(s => s.ListTemplatesAsync(default));
+        var lgs = templates.Single(t => t.Id == ExamTemplateSeed.LgsId);
+        lgs.IsOfficial.ShouldBeTrue();
+
+        var error = await Should.ThrowAsync<MockExamRuleException>(() => UseAsync(s => s.SaveTemplateAsync(lgs, lgs.Id, 1, default)));
+        error.Message.ShouldBe(MockExamService.OfficialTemplate);
+
+        lgs.Code = "lgs-kopya";
+        lgs.Name = "LGS (kopya)";
+        var copy = await UseAsync(s => s.SaveTemplateAsync(lgs, null, 1, default));
+        copy.IsOfficial.ShouldBeFalse();
+        copy.Sessions.Sum(x => x.Sections.Sum(y => y.QuestionCount)).ShouldBe(90);
+
+        lgs.Sessions[0].Sections[0].QuestionCount = 15;
+        (await UseAsync(s => s.SaveTemplateAsync(lgs, copy.Id, 1, default))).Sessions[0].Sections[0].QuestionCount.ShouldBe(15);
+    }
+
+    [Fact]
     public async Task Template_code_is_unique()
     {
         var error = await Should.ThrowAsync<MockExamRuleException>(() => UseAsync(s => s.SaveTemplateAsync(NewTemplate("LGS"), null, 1, default)));

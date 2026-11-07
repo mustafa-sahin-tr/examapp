@@ -27,6 +27,8 @@ export interface ExamTemplate {
   inUse?: boolean;
   /** Bu şablondan kurulmuş deneme sayısı (#899). */
   mockExamCount?: number;
+  /** #917: resmî şablon (LGS, YKS) — değiştirilemez, kopyalanarak düzenlenir. */
+  isOfficial?: boolean;
 }
 
 export interface MockExamListItem {

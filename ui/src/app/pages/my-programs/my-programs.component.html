@@ -1,10 +1,13 @@
 <div class="ms-programs-container" *transloco="let t; prefix: 'my-programs.list'">
   <div class="mp-head">
     <app-page-header icon="school" [title]="t('title')" [description]="t('subtitle')">
-      <button mat-flat-button type="button" (click)="createNewProgram()">
-        <mat-icon>add</mat-icon>
-        {{ t('create') }}
-      </button>
+      <!-- #915: liste boşken tek eylem boş durumdaki karttadır. -->
+      @if (loading || loadError || programs.length > 0) {
+        <button mat-flat-button type="button" (click)="createNewProgram()">
+          <mat-icon>add</mat-icon>
+          {{ t('create') }}
+        </button>
+      }
     </app-page-header>
 
     <!-- Stats Section -->
@@ -72,38 +75,14 @@
   }
   @if (!loading && !loadError && programs.length === 0) {
     <!-- Hiç program yok -->
-    <div class="empty-state">
-      <div class="empty-illustration">
-        <div class="empty-icon-wrapper">
-          <mat-icon class="empty-icon">assignment</mat-icon>
-          <div class="empty-decoration"></div>
-        </div>
-      </div>
-
-      <div class="empty-content">
-        <h2 class="empty-title">{{ t('empty.title') }}</h2>
-        <p class="empty-description">{{ t('empty.description') }}</p>
-
-        <div class="empty-features">
-          <div class="feature-item">
-            <mat-icon>schedule</mat-icon>
-            <span>{{ t('empty.featurePersonal') }}</span>
-          </div>
-          <div class="feature-item">
-            <mat-icon>trending_up</mat-icon>
-            <span>{{ t('empty.featureProgress') }}</span>
-          </div>
-          <div class="feature-item">
-            <mat-icon>notifications</mat-icon>
-            <span>{{ t('empty.featureReminders') }}</span>
-          </div>
-        </div>
-
-        <button mat-fab extended color="primary" (click)="createNewProgram()" class="empty-action-btn">
-          <mat-icon>add</mat-icon>
-          {{ t('empty.cta') }}
-        </button>
-      </div>
+    <div class="empty-state" data-test="programs-empty">
+      <mat-icon aria-hidden="true">event_note</mat-icon>
+      <h2>{{ t('empty.title') }}</h2>
+      <p>{{ t('empty.description') }}</p>
+      <button mat-flat-button type="button" (click)="createNewProgram()" data-test="programs-empty-create">
+        <mat-icon>add</mat-icon>
+        {{ t('empty.cta') }}
+      </button>
     </div>
   }
   @if (!loading && programs.length > 0 && filteredPrograms.length === 0) {

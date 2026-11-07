@@ -27,6 +27,7 @@
     "done": "done",
     "legendAria": "Color key",
     "emptyTitle": "Nothing planned this week",
+    "emptyMonthTitle": "Nothing planned this month",
     "emptyStudent": "Create a study program or solve a few questions today.",
     "emptyTeacher": "Open available hours so students can request lessons.",
     "emptyTeacherSchool": "Lessons you approve show up here day by day.",
@@ -45,11 +46,5 @@
     "message": "The calendar could not be loaded",
     "retry": "Try again"
   },
-  "loading": "Preparing your calendar…",
-  "empty": {
-    "teacher": "You have no approved lesson bookings this month",
-    "teacherCta": "Edit my available hours",
-    "student": "No exams, assignments or bookings scheduled this month",
-    "studentCta": "Go to exams"
-  }
+  "loading": "Preparing your calendar…"
 }

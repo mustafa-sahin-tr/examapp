@@ -60,6 +60,16 @@ describe('FlashcardDecksComponent (issue #699)', () => {
     expect(query(create([]), 'decks-empty')).not.toBeNull();
   });
 
+  it('empty_NewDeckButtonInsideTheCardOpensTheForm (#915)', () => {
+    const fixture = create([]);
+
+    query(fixture, 'deck-new-empty')!.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-flashcard-deck-form')).not.toBeNull();
+    expect(query(fixture, 'deck-new-empty')).toBeNull();
+  });
+
   it('loadError_RetryLoadsAgain', () => {
     const fixture = create([]);
     service.listDecks.mockReturnValueOnce(throwError(() => new Error('x')));

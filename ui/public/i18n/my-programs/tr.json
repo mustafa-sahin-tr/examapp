@@ -7,7 +7,7 @@
   },
   "list": {
     "title": "Çalışma Programlarım",
-    "subtitle": "Hedeflerinize ulaşmak için özel olarak tasarlanmış çalışma programlarınızı yönetin",
+    "subtitle": "Hedeflerine göre kurduğun çalışma programların burada.",
     "create": "Yeni Program Oluştur",
     "stats": {
       "total": "Toplam Program",
@@ -24,14 +24,11 @@
       "retry": "Tekrar Dene"
     },
     "empty": {
-      "title": "Henüz bir çalışma programınız yok",
-      "description": "Hedeflerinize ulaşmak için kişiselleştirilmiş bir çalışma programı oluşturun. Size özel hazırlanacak program ile daha etkili çalışın.",
-      "featurePersonal": "Kişisel program",
-      "featureProgress": "İlerleme takibi",
-      "featureReminders": "Hatırlatmalar",
-      "cta": "İlk Programımı Oluştur"
+      "title": "Henüz çalışma programın yok",
+      "description": "Hangi günler, hangi dersler ve ne kadar çalışacağını seç; programın her gün ne yapacağını söyler.",
+      "cta": "İlk programını 1 dakikada kur"
     },
-    "sectionTitle": "Programlarınız",
+    "sectionTitle": "Programların",
     "filter": {
       "all": "Tümü",
       "active": "Aktif",

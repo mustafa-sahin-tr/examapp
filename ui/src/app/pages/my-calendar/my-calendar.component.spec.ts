@@ -305,7 +305,21 @@ describe('MyCalendarComponent week agenda (issue #888)', () => {
         expect(component.weekStart().getTime()).toBe(start);
     });
 
+    it('emptyMonth_ShowsTheEmptyStateInsteadOfAnEmptyGrid_issue915', () => {
+        fixture.detectChanges();
+
+        component.setView('month');
+        fixture.detectChanges();
+
+        const empty: HTMLElement = fixture.nativeElement.querySelector('[data-test="month-empty"]');
+        expect(empty.textContent).toContain('Bu ay planlı bir şey yok');
+        expect(Array.from(empty.querySelectorAll('button')).map((b) => b.textContent?.trim())).toEqual(['Program oluştur', 'Günün sorularını çöz']);
+        expect(fixture.nativeElement.querySelector('app-month-calendar-grid')).toBeNull();
+        expect(fixture.nativeElement.querySelector('app-calendar-legend')).toBeNull();
+    });
+
     it('setView_Month_ShowsGridAndRefetchesMonthRange_issue888', () => {
+        getMyCalendar.mockReturnValue(of([makeEvent({ date: new Date().toISOString(), worksheetId: 42 })]));
         fixture.detectChanges();
         getMyCalendar.mockClear();
 

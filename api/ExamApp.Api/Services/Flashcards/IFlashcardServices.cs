@@ -45,5 +45,6 @@ public interface IFlashcardStudyService
     Task<FlashcardDeckDetailDto?> GetDeckAsync(FlashcardLearner learner, int deckId, CancellationToken ct = default);
     Task<IReadOnlyList<FlashcardDueCardDto>> GetDueCardsAsync(FlashcardLearner learner, int? deckId, int take, CancellationToken ct = default);
     Task<int> GetDueCountAsync(FlashcardLearner learner, CancellationToken ct = default);
+    Task<(DateOnly? Day, int Count)> GetNextDueAsync(FlashcardLearner learner, CancellationToken ct = default);
     Task<FlashcardReviewResult> ReviewAsync(FlashcardLearner learner, int cardId, FlashcardRecall recall, CancellationToken ct = default);
 }

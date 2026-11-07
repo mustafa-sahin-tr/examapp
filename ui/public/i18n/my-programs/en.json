@@ -24,12 +24,9 @@
       "retry": "Try Again"
     },
     "empty": {
-      "title": "You do not have a study program yet",
-      "description": "Create a personalised study program to reach your goals. Study more effectively with a program tailored to you.",
-      "featurePersonal": "Personal program",
-      "featureProgress": "Progress tracking",
-      "featureReminders": "Reminders",
-      "cta": "Create My First Program"
+      "title": "No study programme yet",
+      "description": "Pick the days, the subjects and how long to study; the programme tells you what to do each day.",
+      "cta": "Set up your first programme in a minute"
     },
     "sectionTitle": "Your Programs",
     "filter": {

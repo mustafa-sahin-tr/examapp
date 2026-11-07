@@ -83,7 +83,11 @@
     "backToDecks": "Destelere dön",
     "loadError": "Kartlar yüklenemedi.",
     "saveError": "Cevabın kaydedilemedi. Yeniden dene.",
-    "retry": "Tekrar dene"
+    "retry": "Tekrar dene",
+    "next": {
+      "tomorrow": "Sıradaki tekrar: yarın {{count}} kart.",
+      "onDay": "Sıradaki tekrar: {{date}}, {{count}} kart."
+    }
   },
   "errors": {
     "generic": "İşlem tamamlanamadı. Yeniden dene.",

@@ -611,6 +611,12 @@ button.profile-menu {
         }
     }
 
+    // #915: bilgi sayısı; dikkat isteyen kırmızı rozetten ayrı, sessiz.
+    .section-tab__count {
+        font-variant-numeric: tabular-nums;
+        opacity: 0.7;
+    }
+
     .section-tab__badge {
         min-width: 18px;
         padding: 0 5px;

@@ -92,6 +92,11 @@ public class FlashcardDueCardDto : FlashcardDto
 public class FlashcardDueCountDto
 {
     public int Count { get; set; }
+
+    /// <summary>#915: bugünden sonraki ilk tekrar günü ve o gün gelecek kart sayısı; tekrar yoksa null / 0.</summary>
+    public DateOnly? NextDueDay { get; set; }
+
+    public int NextDueCount { get; set; }
 }
 
 public class FlashcardReviewResultDto

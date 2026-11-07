@@ -83,7 +83,11 @@
     "backToDecks": "Back to decks",
     "loadError": "Could not load the cards.",
     "saveError": "Your answer was not saved. Try again.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "next": {
+      "tomorrow": "Next review: tomorrow, {{count}} cards.",
+      "onDay": "Next review: {{date}}, {{count}} cards."
+    }
   },
   "errors": {
     "generic": "That did not work. Try again.",

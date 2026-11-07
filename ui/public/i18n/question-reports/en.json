@@ -4,7 +4,7 @@
   "statusLabel": "Report status",
   "status": {
     "open": "Open",
-    "reviewed": "Reviewed"
+    "reviewed": "Resolved"
   },
   "reason": {
     "wrongAnswer": "The answer may be wrong",
@@ -15,10 +15,27 @@
   "imageAlt": "Reported question",
   "noImage": "Question without an image",
   "openQuestion": "Open question",
-  "markReviewed": "Mark reviewed",
   "emptyOpen": "No open reports.",
-  "emptyReviewed": "No reviewed reports.",
+  "emptyReviewed": "No resolved reports.",
   "loadError": "Reports could not be loaded.",
   "retry": "Try again",
-  "actionError": "The report could not be updated. Try again."
+  "actionError": "The report could not be updated. Try again.",
+  "reportCount": "{{n}} reports",
+  "lastReport": "last: {{date}}",
+  "testCount": "in {{n}} tests",
+  "moreTests": "+{{n}}",
+  "answeredCount": "{{n}} students answered",
+  "fixQuestion": "Fix the question",
+  "openAgain": "Open the question again",
+  "markFixed": "Fixed, close",
+  "noIssue": "No issue",
+  "noIssueNote": "Short note (why is it fine?)",
+  "closeNoIssue": "Close as no issue",
+  "cancel": "Cancel",
+  "outcome": {
+    "fixed": "Fixed",
+    "noIssue": "No issue",
+    "reviewed": "Reviewed"
+  },
+  "reviewedByMe": "You · {{date}}"
 }

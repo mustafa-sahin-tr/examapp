@@ -50,9 +50,9 @@ public class QuestionReportsController : BaseController
     [HttpPut("reports/{id:int}/reviewed")]
     [Authorize(Roles = "Teacher,Admin")]
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)]
-    public async Task<IActionResult> MarkReviewed(int id)
+    public async Task<IActionResult> MarkReviewed(int id, [FromBody] ReviewQuestionReportDto dto)
     {
         var user = await GetAuthenticatedUserAsync(HttpContext.RequestAborted);
-        return await _reports.MarkReviewedAsync(id, user.Id, IsAdmin, HttpContext.RequestAborted) ? NoContent() : NotFound();
+        return await _reports.MarkReviewedAsync(id, user.Id, IsAdmin, dto, HttpContext.RequestAborted) ? NoContent() : NotFound();
     }
 }

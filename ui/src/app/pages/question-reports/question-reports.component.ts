@@ -3,21 +3,32 @@ import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
-import { QuestionReportItem, QuestionReportListStatus } from '../../models/question-report';
+import {
+  QUESTION_REPORT_NOTE_MAX_LENGTH,
+  QuestionReportItem,
+  QuestionReportListStatus,
+  QuestionReportOutcome,
+} from '../../models/question-report';
 import { QuestionReportService } from '../../services/question-report.service';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 const QUESTION_REPORTS_SCOPE = 'question-reports';
 const PAGE_SIZE = 20;
 
-/** Issue #781: öğretmen kendi sorularına, admin tüm sorulara gelen bildirimleri görür; bildiren görünmez. */
+/**
+ * Issue #781: öğretmen kendi sorularına, admin tüm sorulara gelen bildirimleri görür; bildiren görünmez.
+ * #865: satır soru başına birleşik (kaç bildirim, hangi testler, kaç öğrenci cevapladı); iki karar — "Soruyu düzelt"
+ * soruyu yeni sekmede açar ve satırda "Düzelttim" kapatmasını gösterir, "Sorun yok" kısa not ister.
+ */
 @Component({
   selector: 'app-question-reports',
   standalone: true,
-  imports: [PageHeaderComponent, DatePipe, RouterLink, MatButtonModule, MatButtonToggleModule, MatIconModule, MatPaginatorModule, TranslocoDirective],
+  imports: [PageHeaderComponent, DatePipe, RouterLink, MatButtonModule, MatButtonToggleModule, MatFormFieldModule, MatIconModule, MatInputModule, MatPaginatorModule, TranslocoDirective],
   providers: [provideTranslocoScope(QUESTION_REPORTS_SCOPE)],
   templateUrl: './question-reports.component.html',
   styleUrl: './question-reports.component.scss',
@@ -34,6 +45,13 @@ export class QuestionReportsComponent implements OnInit {
   protected readonly loading = signal(true);
   protected readonly loadFailed = signal(false);
   protected readonly actionFailed = signal(false);
+  protected readonly noteMaxLength = QUESTION_REPORT_NOTE_MAX_LENGTH;
+  /** Düzeltmek için açılan soruların satırları: "Düzelttim" kapatması görünür. */
+  protected readonly fixing = signal<ReadonlySet<number>>(new Set());
+  /** "Sorun yok" notu yazılan satır. */
+  protected readonly noIssueFor = signal<number | null>(null);
+  protected readonly noIssueNote = signal('');
+  protected readonly saving = signal(false);
 
   ngOnInit(): void {
     this.load();
@@ -50,17 +68,40 @@ export class QuestionReportsComponent implements OnInit {
     this.load();
   }
 
-  protected markReviewed(item: QuestionReportItem): void {
+  protected startFix(item: QuestionReportItem): void {
+    this.fixing.update((ids) => new Set(ids).add(item.id));
+  }
+
+  protected askNoIssue(item: QuestionReportItem): void {
+    this.noIssueFor.set(item.id);
+    this.noIssueNote.set('');
+  }
+
+  protected cancelNoIssue(): void {
+    this.noIssueFor.set(null);
+  }
+
+  protected markReviewed(item: QuestionReportItem, outcome: QuestionReportOutcome): void {
+    if (this.saving()) {
+      return;
+    }
     this.actionFailed.set(false);
-    this.reports.markReviewed(item.id).subscribe({
+    this.saving.set(true);
+    const note = outcome === 'noIssue' ? this.noIssueNote().trim() || null : null;
+    this.reports.markReviewed(item.id, { outcome, note }).subscribe({
       next: () => {
+        this.saving.set(false);
+        this.noIssueFor.set(null);
         // Sayfanın son satırı gittiyse boş sayfada kalınmaz.
         if (this.items().length === 1 && this.page() > 1) {
           this.page.update((page) => page - 1);
         }
         this.load();
       },
-      error: () => this.actionFailed.set(true),
+      error: () => {
+        this.saving.set(false);
+        this.actionFailed.set(true);
+      },
     });
   }
 

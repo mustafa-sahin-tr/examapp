@@ -3445,6 +3445,14 @@ namespace ExamApp.Api.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<string>("Outcome")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("OutcomeNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<int>("QuestionId")
                         .HasColumnType("integer");
 
@@ -3454,6 +3462,12 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("character varying(16)");
 
                     b.Property<int>("ReporterUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("ReviewedByUserId")
                         .HasColumnType("integer");
 
                     b.Property<string>("Status")

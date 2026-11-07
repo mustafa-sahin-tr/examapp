@@ -474,6 +474,7 @@ public class AppDbContext : DbContext
         {
             e.Property(r => r.Reason).HasConversion<string>().HasMaxLength(16);
             e.Property(r => r.Status).HasConversion<string>().HasMaxLength(16);
+            e.Property(r => r.Outcome).HasConversion<string>().HasMaxLength(16);
             e.HasOne(r => r.Question).WithMany().HasForeignKey(r => r.QuestionId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(r => new { r.QuestionId, r.ReporterUserId }, "IX_QuestionReports_Question_Reporter")
                 .IsUnique()

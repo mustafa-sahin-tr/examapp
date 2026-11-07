@@ -268,6 +268,7 @@ describe('LabelingComponent', () => {
         localStorage.removeItem('labeling.gradeId');
         localStorage.removeItem('labeling.bookId');
         localStorage.removeItem('labeling.bankSharing');
+        localStorage.removeItem('labeling.recentFolders');
         gradesResponse = of(GRADES);
         booksResponse = of([]);
     });
@@ -297,6 +298,46 @@ describe('LabelingComponent', () => {
         expect(component.currentPath()).toBe('kitap/p1.webp');
         // açık sayfa + arka planda bulunan aday: biri havuzda değil, biri önceden seçilmiş
         expect(component.remaining()).toBe(1);
+    });
+
+    it('noFolder_NoRecents_ShowsThreeSteps (#867)', async () => {
+        await setup();
+
+        const steps = fixture.nativeElement.querySelectorAll('[data-testid="labeling-steps"] li');
+        expect(steps.length).toBe(3);
+        expect(fixture.nativeElement.querySelector('[data-testid="labeling-recent"]')).toBeNull();
+    });
+
+    it('folderPick_RemembersFolderAndPage_ThenListsItWithResume (#867)', async () => {
+        const done = image('page_112.webp');
+        await setup([await pageIdOf(done)]);
+
+        await pickFolder([done, image('page_113.webp'), image('page_114.webp')]);
+
+        const stored = JSON.parse(localStorage.getItem('labeling.recentFolders')!);
+        expect(stored[0]).toMatchObject({ name: 'kitap', total: 3, position: 2, page: 113 });
+
+        // Sayfa yeniden açılınca (klasör seçilmeden) son klasör "Devam et · s. 113" ile listelenir.
+        fixture.destroy();
+        fixture = TestBed.createComponent(LabelingComponent);
+        fixture.detectChanges();
+        await settle(fixture);
+        const row = fixture.nativeElement.querySelector('[data-testid="labeling-recent-row"]') as HTMLElement;
+        expect(row.textContent).toContain('kitap');
+        expect(row.textContent).toContain('2 / 3');
+        expect(row.querySelector('[data-testid="labeling-resume"]')?.textContent).toContain(
+            labelingTr.recent.resume.replace('{{page}}', '113'));
+        expect(fixture.nativeElement.querySelector('[data-testid="labeling-steps"]')).toBeNull();
+    });
+
+    it('folderPick_AllLabeled_RemembersFolderAsDone (#867)', async () => {
+        const a = image('a.webp');
+        await setup([await pageIdOf(a)]);
+
+        await pickFolder([a]);
+
+        const stored = JSON.parse(localStorage.getItem('labeling.recentFolders')!);
+        expect(stored[0]).toMatchObject({ name: 'kitap', total: 1, position: 1 });
     });
 
     it('folderPick_SkipsAlreadyLabeledPages', async () => {

@@ -36,6 +36,12 @@ public class PracticeSessionStartDto
 
     /// <summary>Issue #534: oturum, tekrar, yanlış defteri ve zayıf konulardan karışık sabit bir listeyle açılır.</summary>
     public bool MixedReview { get; set; }
+
+    /// <summary>Issue #933: oturum, yayımlanmış çalışma sayfasının soru bloklarından sabit bir listeyle açılır.</summary>
+    public int? StudyItemId { get; set; }
+
+    /// <summary>Issue #933: <see cref="StudyItemId"/> ile tek soru; soru sayfada değilse oturum açılmaz.</summary>
+    public int? StudyQuestionId { get; set; }
 }
 
 /// <summary>GET api/practice/saved: kaydedilen sorular, en yeni önce.</summary>

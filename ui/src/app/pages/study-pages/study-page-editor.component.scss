@@ -9,6 +9,11 @@
   }
 }
 
+// Issue #933: bloklar ızgaranın altında tam genişlikte.
+.blocks-card {
+  flex: 1 1 100%;
+}
+
 .editor-card {
   border-radius: 16px;
   box-shadow: 0 12px 32px color-mix(in srgb, var(--ms-shadow-color) 8%, transparent);

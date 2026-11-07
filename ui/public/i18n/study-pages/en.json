@@ -26,7 +26,8 @@
       "title": "No study pages yet",
       "text": "Put a topic summary, worked examples and a few exercises on one page so your students can study before or after a test.",
       "cta": "Create your first study page"
-    }
+    },
+    "view": "Student view"
   },
   "contentType": {
     "image": "Image",
@@ -145,5 +146,75 @@
     "statusDraft": "Draft",
     "statusPublished": "Published",
     "descriptionHint": "A short note the student reads before the content."
+  },
+  "blocks": {
+    "title": "Page content",
+    "hint": "Add text, image, link, question and flashcard blocks in order. Students see the blocks in this order.",
+    "modeAria": "View",
+    "modeEdit": "Edit",
+    "modePreview": "Student view",
+    "previewEmpty": "No blocks yet.",
+    "add": "Add block",
+    "addAria": "Add a block here",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "remove": "Delete block",
+    "type": {
+      "text": "Text",
+      "image": "Image",
+      "link": "Link",
+      "question": "Question",
+      "flashcard": "Flashcard"
+    },
+    "field": {
+      "text": "Text",
+      "caption": "Caption (optional)",
+      "url": "Address",
+      "platform": "Platform",
+      "linkTitle": "Title (optional)",
+      "front": "Front",
+      "back": "Back"
+    },
+    "chooseImage": "Choose image",
+    "replaceImage": "Replace image",
+    "uploading": "Uploading…",
+    "uploadFailed": "The image could not be uploaded.",
+    "chooseQuestion": "Choose from the question pool",
+    "changeQuestion": "Change question",
+    "questionRemoved": "This question was removed from the question pool; the block is dropped on save.",
+    "errors": {
+      "uploading": "Wait for the image upload to finish before saving.",
+      "textRequired": "A text block cannot be empty.",
+      "imageRequired": "Choose an image for the image block.",
+      "flashcardRequired": "Fill in both sides of the flashcard."
+    },
+    "picker": {
+      "title": "Choose a question",
+      "scope": "Scope",
+      "mine": "My questions",
+      "all": "All questions I can see",
+      "loadFailed": "Questions could not be loaded.",
+      "empty": "No questions found.",
+      "pickAria": "Choose question {{id}}",
+      "more": "More",
+      "cancel": "Cancel"
+    },
+    "view": {
+      "question": "Question",
+      "solve": "Solve",
+      "solving": "Opening…",
+      "cardFront": "Front",
+      "cardBack": "Back",
+      "flipHint": "Tap to flip"
+    },
+    "page": {
+      "loadFailed": "The study page could not be opened.",
+      "retry": "Try again",
+      "back": "Back",
+      "solveAll": "Solve the questions on this page",
+      "solveFailed": "The question could not be opened.",
+      "openLink": "Open link",
+      "images": "Images"
+    }
   }
 }

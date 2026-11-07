@@ -148,6 +148,10 @@
             <mat-icon>edit</mat-icon>
             {{ t('list.edit') }}
           </button>
+          <!-- Issue #933: öğrencinin göreceği sayfa -->
+          <a mat-icon-button [routerLink]="['/study-page', page.id]" [attr.aria-label]="t('list.view')" data-testid="study-page-view-link">
+            <mat-icon>visibility</mat-icon>
+          </a>
           <button mat-icon-button color="warn" (click)="onDelete(page)" [disabled]="deletingId() === page.id" class="delete-btn">
             @if (deletingId() !== page.id) {
               <mat-icon>delete</mat-icon>

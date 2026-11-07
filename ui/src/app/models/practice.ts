@@ -19,6 +19,10 @@ export interface PracticeSessionStartRequest {
   saved?: boolean;
   /** Issue #534: tekrar, yanlış defteri ve zayıf konulardan karışık sabit listeli oturum. */
   mixedReview?: boolean;
+  /** Issue #933: çalışma sayfasının soru bloklarından sabit listeli oturum. */
+  studyItemId?: number;
+  /** Issue #933: `studyItemId` ile tek soru. */
+  studyQuestionId?: number;
 }
 
 /** Issue #529: tekrar zamanı gelen sorular; `items` listenin ilk bölümüdür. */

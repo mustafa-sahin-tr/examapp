@@ -65,6 +65,11 @@
   </div>
 
   <div class="schedule-detail-actions">
+    <!-- Issue #933: sayfanın tamamı (bloklar dahil) -->
+    <a mat-stroked-button [routerLink]="['/study-page', data.schedule.studyItemId]" (click)="close()" data-testid="schedule-open-page">
+      <mat-icon>article</mat-icon>
+      {{ t('scheduleDetail.openPage') }}
+    </a>
     <button mat-flat-button color="primary" (click)="close()">{{ t('actions.close') }}</button>
   </div>
 </ng-container>

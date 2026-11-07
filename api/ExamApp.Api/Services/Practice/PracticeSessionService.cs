@@ -72,7 +72,8 @@ public class PracticeSessionService : IPracticeSessionService
             var gradeId = student.GradeId.Value;
             var known = await _context.SubTopics.AsNoTracking()
                 .CountAsync(s => subTopicIds.Contains(s.Id) && s.Topic.GradeId == gradeId, ct);
-            if (known != request.SubTopicIds.Distinct().Count() || request.DueReview || request.Mistakes || request.Saved || request.MixedReview)
+            if (known != request.SubTopicIds.Distinct().Count() || request.DueReview || request.Mistakes || request.Saved || request.MixedReview
+                || request.StudyItemId.HasValue)
                 throw new InvalidOperationException(_localizer["practice.subTopicInvalid"]);
         }
 
@@ -115,6 +116,25 @@ public class PracticeSessionService : IPracticeSessionService
                 throw new InvalidOperationException(_localizer["practice.noMixedReview"]);
 
             fixedQuestionIdsJson = JsonSerializer.Serialize(mixed);
+        }
+
+        if (request.StudyItemId is { } studyItemId)
+        {
+            // Issue #933: yalnız yayımlanmış sayfanın silinmemiş soruları, bloklardaki sırayla.
+            var pageQuestionIds = await _context.StudyItemBlocks.AsNoTracking()
+                .Where(b => b.StudyItemId == studyItemId && !b.IsDeleted && b.Type == StudyItemBlockType.Question
+                    && b.QuestionId != null && !b.Question!.IsDeleted
+                    && !b.StudyItem.IsDeleted && b.StudyItem.IsPublished)
+                .OrderBy(b => b.SortOrder)
+                .Select(b => b.QuestionId!.Value)
+                .ToListAsync(ct);
+            pageQuestionIds = pageQuestionIds.Distinct().ToList();
+            if (request.StudyQuestionId is { } only)
+                pageQuestionIds = pageQuestionIds.Where(id => id == only).ToList();
+            if (pageQuestionIds.Count == 0)
+                throw new InvalidOperationException(_localizer["practice.noStudyPageQuestions"]);
+
+            fixedQuestionIdsJson = JsonSerializer.Serialize(pageQuestionIds.Take(MaxSavedSessionCount));
         }
 
         var session = new PracticeSession

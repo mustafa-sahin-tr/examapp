@@ -28,6 +28,7 @@ import {
   STUDY_PAGE_CONTENT_TYPE_ICONS,
   STUDY_PAGE_PLATFORM_ICONS,
   StudyPage,
+  StudyPageBlockType,
   StudyPageContentType,
   StudyPageImage,
   StudyPageLinkPlatform,
@@ -41,6 +42,13 @@ import {
   findFreshStorageUrl,
 } from '../../shared/utils/storage-image-refresh.util';
 import { storageImageKey } from '../../shared/utils/storage-image-url.util';
+import { safeExternalUrl } from '../../shared/utils/study-item-display.util';
+import {
+  StudyPageBlockDraft,
+  StudyPageBlocksEditorComponent,
+  toBlockDrafts,
+  toBlockRequests,
+} from './study-page-blocks-editor.component';
 
 interface NewImageItem {
   file?: File; // Optional for MinIO items
@@ -158,6 +166,7 @@ const PLATFORM_LABEL_KEYS: Record<StudyPageLinkPlatform, string> = {
     TranslocoDirective,
     TranslocoPipe,
     StorageImageRetryDirective,
+    StudyPageBlocksEditorComponent,
   ],
   changeDetection: ChangeDetectionStrategy.Eager,
   providers: [provideTranslocoScope(STUDY_PAGES_SCOPE)],
@@ -173,6 +182,9 @@ export class StudyPageEditorComponent implements OnDestroy {
   private transloco = inject(TranslocoService);
 
   readonly ContentType = StudyPageContentType;
+
+  /** Issue #933: ana içerikten sonra gösterilen bloklar (kayıtta tamamı gönderilir). */
+  readonly blocks = signal<StudyPageBlockDraft[]>([]);
 
   readonly contentTypeOptions: ContentTypeOption[] = [
     StudyPageContentType.Image,
@@ -907,6 +919,8 @@ export class StudyPageEditorComponent implements OnDestroy {
 
       case StudyPageContentType.Image:
       default: {
+        // Issue #933: blokları olan sayfada görsel seti zorunlu değil.
+        if (toBlockRequests(this.blocks()).length > 0) return null;
         const selectedNewItems = this.newImages().filter((img) => img.selected);
         const remainingExisting = this.existingImages().filter((img) => !this.removedImageIds.has(img.id));
         if (!this.isEditMode() && selectedNewItems.length === 0) return this.text('editor.messages.imageRequired');
@@ -918,13 +932,35 @@ export class StudyPageEditorComponent implements OnDestroy {
     }
   }
 
+  /** Issue #933: sunucu kurallarının erken hali; ilk hatalı bloğun mesajı. */
+  private validateBlocks(): string | null {
+    for (const block of this.blocks()) {
+      if (block.uploading) return this.text('blocks.errors.uploading');
+      switch (block.type) {
+        case StudyPageBlockType.Text:
+          if (!block.text?.trim()) return this.text('blocks.errors.textRequired');
+          break;
+        case StudyPageBlockType.Image:
+          if (!block.imageUrl) return this.text('blocks.errors.imageRequired');
+          break;
+        case StudyPageBlockType.Link:
+          if (!safeExternalUrl(block.url)) return this.text('editor.messages.urlInvalid');
+          break;
+        case StudyPageBlockType.Flashcard:
+          if (!block.text?.trim() || !block.backText?.trim()) return this.text('blocks.errors.flashcardRequired');
+          break;
+      }
+    }
+    return null;
+  }
+
   onSave() {
     if (this.form.invalid) {
       this.snackBar.open(this.text('editor.messages.fillRequired'), this.ok, { duration: 2000 });
       return;
     }
 
-    const typedError = this.validateTypedContent();
+    const typedError = this.validateBlocks() ?? this.validateTypedContent();
     if (typedError) {
       this.snackBar.open(typedError, this.ok, { duration: 3000 });
       return;
@@ -964,6 +1000,7 @@ export class StudyPageEditorComponent implements OnDestroy {
       startPage: v.startPage,
       endPage: v.endPage,
       minioImages: selectedMinIOImages,
+      blocks: toBlockRequests(this.blocks()),
     };
 
     this.loading.set(true);
@@ -1056,6 +1093,7 @@ export class StudyPageEditorComponent implements OnDestroy {
         this.form.controls.platform.setValue(page.platform ?? StudyPageLinkPlatform.Other);
 
         this.existingImages.set(page.images || []);
+        this.blocks.set(toBlockDrafts(page.blocks));
 
         if (contentType === StudyPageContentType.BookPageRange) {
           this.ensureBooksLoaded(() => {

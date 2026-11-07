@@ -17,6 +17,7 @@
     "dailyScopeInvalid": "Seçilen ders/konu geçersiz",
     "dailyAlreadyStarted": "Bugünün setinin kapsamı belirlendi ya da setten soru çözüldü; kapsam artık değişmez.",
     "subTopicInvalid": "Seçilen alt konu sınıfınıza ait değil.",
-    "dailyRateLimited": "Günün soruları kısa sürede çok fazla istendi. Lütfen biraz bekleyip tekrar deneyin."
+    "dailyRateLimited": "Günün soruları kısa sürede çok fazla istendi. Lütfen biraz bekleyip tekrar deneyin.",
+    "noStudyPageQuestions": "Bu çalışma sayfasında çözülecek soru yok."
   }
 }

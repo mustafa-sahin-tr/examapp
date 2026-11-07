@@ -1,0 +1,148 @@
+.spb {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.spb__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.spb__title {
+  margin: 0;
+  font-size: 18px;
+}
+
+.spb__hint {
+  margin: 4px 0 0;
+  color: var(--ms-text-medium);
+  font-size: 13px;
+}
+
+.spb__warn {
+  margin: 0;
+  color: var(--ms-warning-text);
+}
+
+.spb__preview {
+  padding: 16px;
+  border: 1px dashed var(--ms-border);
+  border-radius: 12px;
+}
+
+.spb__add {
+  display: flex;
+  justify-content: center;
+
+  button {
+    opacity: 0.75;
+  }
+
+  button:hover,
+  button:focus-visible {
+    opacity: 1;
+  }
+}
+
+.spb__block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 16px 16px;
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 12px;
+  background: var(--ms-surface);
+}
+
+.spb__block-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ms-text-medium);
+}
+
+.spb__block-type {
+  font-weight: 600;
+}
+
+.spb__spacer {
+  flex: 1;
+}
+
+.spb__full {
+  width: 100%;
+}
+
+.spb__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.spb__grow {
+  flex: 1 1 240px;
+}
+
+.spb__image {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+
+  img {
+    max-width: 100%;
+    max-height: 280px;
+    object-fit: contain;
+    border-radius: 8px;
+  }
+}
+
+.spb__upload {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border: 1px solid var(--ms-border);
+  border-radius: 20px;
+  color: var(--ms-action-text);
+  cursor: pointer;
+
+  &:focus-within {
+    outline: 2px solid var(--ms-action-border-focus);
+    outline-offset: 2px;
+  }
+
+  input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+  }
+}
+
+.spb__upload--busy {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.spb__question {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+
+  img {
+    max-width: 100%;
+    max-height: 240px;
+    object-fit: contain;
+  }
+}
+
+.spb__question-text {
+  overflow-wrap: anywhere;
+}

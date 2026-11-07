@@ -223,6 +223,7 @@ public class AppDbContext : DbContext
     public DbSet<UserProgramStudyPageSchedule> UserProgramStudyPageSchedules { get; set; } // UserProgramStudyPageSchedule tablosu
     public DbSet<StudyItem> StudyItems { get; set; } // StudyItem tablosu
     public DbSet<StudyItemImage> StudyItemImages { get; set; } // StudyItemImage tablosu
+    public DbSet<StudyItemBlock> StudyItemBlocks { get; set; } // Issue #933: sayfa içerik blokları
     public DbSet<TopicStudyLink> TopicStudyLinks { get; set; } // Konu/alt konu harici çalışma linkleri (issue #61)
     public DbSet<TopicStudyLinkAudit> TopicStudyLinkAudits { get; set; } // Çalışma linki denetim kaydı (issue #61)
     public DbSet<LearningOutcomeDetail> LearningOutcomeDetails { get; set; } // LearningOutcomeDetail tablosu
@@ -860,6 +861,22 @@ public class AppDbContext : DbContext
             .WithMany(p => p.Images)
             .HasForeignKey(i => i.StudyItemId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Issue #933: bloklar sayfayla birlikte gider; soru silinirse blok kalır (QuestionId null, öğrenciye gösterilmez).
+        modelBuilder.Entity<StudyItemBlock>()
+            .HasOne(b => b.StudyItem)
+            .WithMany(p => p.Blocks)
+            .HasForeignKey(b => b.StudyItemId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<StudyItemBlock>()
+            .HasOne(b => b.Question)
+            .WithMany()
+            .HasForeignKey(b => b.QuestionId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<StudyItemBlock>()
+            .HasIndex(b => new { b.StudyItemId, b.SortOrder });
 
         // ---- Konu / alt konu çalışma linkleri (issue #61) ----
 

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Questions;
 using ExamApp.Api.Services.Storage;
 using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Http;
@@ -24,6 +25,7 @@ public class StudyItemService : IStudyItemService
     private readonly IMinIoService _minioService;
     private readonly ILogger<StudyItemService> _logger;
     private readonly StorageAreaPolicy _storagePolicy;
+    private readonly IQuestionOwnershipGuard _questionGuard;
 
     // Client'a ulaşan hata/başarı metinleri buradan gelir (issue #184). DI her zaman gerçek
     // localizer'ı verir; parametre yalnızca DI'sız (birim test) senaryolar için opsiyonel.
@@ -34,13 +36,15 @@ public class StudyItemService : IStudyItemService
         IMinIoService minioService,
         ILogger<StudyItemService>? logger = null,
         IStringLocalizer<Messages>? localizer = null,
-        StorageAreaPolicy? storagePolicy = null)
+        StorageAreaPolicy? storagePolicy = null,
+        IQuestionOwnershipGuard? questionGuard = null)
     {
         _context = context;
         _minioService = minioService;
         _logger = logger ?? NullLogger<StudyItemService>.Instance;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         _storagePolicy = storagePolicy ?? new StorageAreaPolicy((string?)null);
+        _questionGuard = questionGuard ?? new QuestionOwnershipGuard(context);
     }
 
     public async Task<Paged<StudyItemDto>> GetPagedAsync(StudyItemFilterDto filter, UserProfileDto user)
@@ -104,6 +108,9 @@ public class StudyItemService : IStudyItemService
             .Include(p => p.Images)
             .Include(p => p.Book)
             .Include(p => p.BookTest)
+            .Include(p => p.Blocks.Where(b => !b.IsDeleted))
+                .ThenInclude(b => b.Question)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted);
 
         if (item == null)
@@ -111,12 +118,20 @@ public class StudyItemService : IStudyItemService
             return null;
         }
 
-        if (user.Role == UserRole.Student.ToString() && !item.IsPublished)
+        var isStudent = user.Role == UserRole.Student.ToString();
+        if (isStudent && !item.IsPublished)
         {
             return null;
         }
 
-        return MapToDto(item);
+        var dto = MapToDto(item);
+        if (isStudent)
+        {
+            // Issue #933: silinmiş soruya bakan blok öğrenciye gösterilmez; öğretmen editörde "soru kaldırıldı" görür.
+            dto.Blocks.RemoveAll(b => b.Type == StudyItemBlockType.Question && b.QuestionId == null);
+        }
+
+        return dto;
     }
 
     public async Task<StudyItemMutationResult> CreateAsync(CreateStudyItemRequestDto request, List<IFormFile> images, UserProfileDto user)
@@ -126,11 +141,18 @@ public class StudyItemService : IStudyItemService
             return StudyItemMutationResult.Fail(_localizer["study.image.invalidUrl"]);
         }
 
+        var (blocks, blockError) = await ParseBlocksAsync(request.Blocks, user, new HashSet<int>());
+        if (blockError != null)
+        {
+            return StudyItemMutationResult.Fail(blockError);
+        }
+
+        // Issue #933: blokları olan sayfada görsel seti zorunlu değil.
         var validationError = ValidateContent(
             request.ContentType, request.Url,
             request.BookId, request.NewBookName, request.BookTestId, request.NewBookTestName,
             request.StartPage, request.EndPage,
-            hasAnyImage: HasAnyImage(images, minioImages));
+            hasAnyImage: HasAnyImage(images, minioImages) || blocks is { Count: > 0 });
 
         if (validationError != null)
         {
@@ -168,8 +190,10 @@ public class StudyItemService : IStudyItemService
         if (request.ContentType == StudyItemContentType.Image)
         {
             await AddImagesAsync(entity.Id, images, minioImages, startSortOrder: 1);
-            await _context.SaveChangesAsync();
         }
+
+        ApplyBlocks(entity, blocks);
+        await _context.SaveChangesAsync();
 
         var dto = await GetByIdAsync(entity.Id, user) ?? MapToDto(entity);
         return StudyItemMutationResult.Ok(dto);
@@ -179,6 +203,8 @@ public class StudyItemService : IStudyItemService
     {
         var item = await _context.StudyItems
             .Include(p => p.Images)
+            .Include(p => p.Blocks.Where(b => !b.IsDeleted))
+            .AsSplitQuery()
             .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted);
 
         if (item == null)
@@ -199,6 +225,16 @@ public class StudyItemService : IStudyItemService
         // Image tipinde: mevcut (silinmeyen) resimler + yeni gelenler toplamda en az bir olmalı.
         var remainingImageCount = item.Images.Count(i => !i.IsDeleted && !request.RemovedImageIds.Contains(i.Id));
         var hasAnyImage = remainingImageCount > 0 || HasAnyImage(newImages, minioImages);
+
+        var pageQuestionIds = item.Blocks.Where(b => b.QuestionId != null).Select(b => b.QuestionId!.Value).ToHashSet();
+        var (blocks, blockError) = await ParseBlocksAsync(request.Blocks, user, pageQuestionIds);
+        if (blockError != null)
+        {
+            return StudyItemMutationResult.Fail(blockError);
+        }
+
+        // Issue #933: blokları olan sayfada görsel seti zorunlu değil (blocks null → mevcut bloklar kalır).
+        hasAnyImage = hasAnyImage || (blocks?.Count ?? item.Blocks.Count) > 0;
 
         var validationError = ValidateContent(
             request.ContentType, request.Url,
@@ -242,6 +278,7 @@ public class StudyItemService : IStudyItemService
             await AddImagesAsync(item.Id, newImages, minioImages, sortOrder);
         }
 
+        ApplyBlocks(item, blocks);
         await _context.SaveChangesAsync();
 
         var dto = await GetByIdAsync(item.Id, user);
@@ -722,6 +759,206 @@ public class StudyItemService : IStudyItemService
         return true;
     }
 
+    // ---- Bloklar (issue #933) ----
+
+    /// <summary>
+    /// <c>Blocks</c> JSON'unu ayrıştırır ve doğrular. null/boş → (null, null): bloklara dokunulmaz. Hata varsa hiçbir blok
+    /// yazılmaz. Görsel adresi <see cref="StorageArea.StudyPage"/> allowlist'ine normalize edilir. Soru silinmemiş olmalı ve
+    /// sayfaya yeni eklenen soru öğretmene görünür olmalı (soru bankası <c>GET {id}</c> kuralı,
+    /// <see cref="IQuestionOwnershipGuard.CanViewQuestionAsync"/>); sayfada zaten olan soru yeniden denetlenmez.
+    /// </summary>
+    private async Task<(List<StudyItemBlockRequestDto>? Blocks, string? Error)> ParseBlocksAsync(
+        string? json, UserProfileDto user, IReadOnlySet<int> existingQuestionIds)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return (null, null);
+        }
+
+        List<StudyItemBlockRequestDto>? blocks;
+        try
+        {
+            blocks = JsonSerializer.Deserialize<List<StudyItemBlockRequestDto>>(json, BlockJsonOptions);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Invalid Blocks JSON on study item");
+            return (null, _localizer["study.block.invalidJson"]);
+        }
+
+        if (blocks == null || blocks.Any(b => b == null))
+        {
+            return (null, _localizer["study.block.invalidJson"]);
+        }
+
+        if (blocks.Count > StudyItemBlock.MaxBlocksPerItem)
+        {
+            return (null, _localizer["study.block.tooMany", StudyItemBlock.MaxBlocksPerItem]);
+        }
+
+        foreach (var block in blocks)
+        {
+            block.Text = string.IsNullOrWhiteSpace(block.Text) ? null : block.Text.Trim();
+            block.BackText = string.IsNullOrWhiteSpace(block.BackText) ? null : block.BackText.Trim();
+            if (block.Text?.Length > StudyItemBlock.MaxTextLength || block.BackText?.Length > StudyItemBlock.MaxTextLength)
+            {
+                return (null, _localizer["study.block.textTooLong", StudyItemBlock.MaxTextLength]);
+            }
+
+            switch (block.Type)
+            {
+                case StudyItemBlockType.Text:
+                    if (block.Text == null)
+                    {
+                        return (null, _localizer["study.block.textRequired"]);
+                    }
+                    break;
+
+                case StudyItemBlockType.Image:
+                    if (!_storagePolicy.TryNormalizeRequiredClientUrl(block.ImageUrl, StorageArea.StudyPage, out var normalized))
+                    {
+                        return (null, _localizer["study.image.invalidUrl"]);
+                    }
+                    block.ImageUrl = normalized;
+                    break;
+
+                case StudyItemBlockType.Link:
+                    if (!Uri.TryCreate(block.Url?.Trim(), UriKind.Absolute, out var uri)
+                        || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+                    {
+                        return (null, _localizer["study.content.invalidUrl"]);
+                    }
+                    block.Url = block.Url!.Trim();
+                    break;
+
+                case StudyItemBlockType.Question:
+                    if (block.QuestionId is null or <= 0)
+                    {
+                        return (null, _localizer["study.block.questionNotFound"]);
+                    }
+                    break;
+
+                case StudyItemBlockType.Flashcard:
+                    if (block.Text == null || block.BackText == null)
+                    {
+                        return (null, _localizer["study.block.flashcardRequired"]);
+                    }
+                    break;
+
+                default:
+                    return (null, _localizer["study.block.invalidType"]);
+            }
+        }
+
+        var questionIds = blocks.Where(b => b.Type == StudyItemBlockType.Question).Select(b => b.QuestionId!.Value).Distinct().ToList();
+        if (questionIds.Count > 0)
+        {
+            var found = await _context.Questions.AsNoTracking()
+                .CountAsync(q => questionIds.Contains(q.Id) && !q.IsDeleted);
+            if (found != questionIds.Count)
+            {
+                return (null, _localizer["study.block.questionNotFound"]);
+            }
+
+            var isService = user.Role == "Service";
+            foreach (var questionId in questionIds.Where(id => !existingQuestionIds.Contains(id)))
+            {
+                if (!isService && await _questionGuard.CanViewQuestionAsync(questionId, user.Id, isAdmin: false) != QuestionAccessResult.Allowed)
+                {
+                    return (null, _localizer["study.block.questionNotFound"]);
+                }
+            }
+        }
+
+        return (blocks, null);
+    }
+
+    private static readonly JsonSerializerOptions BlockJsonOptions = new() { PropertyNameCaseInsensitive = true };
+
+    /// <summary>
+    /// Doğrulanmış blok listesini sayfaya yazar: id'si eşleşen blok yerinde güncellenir, listede olmayan silinir
+    /// (soft delete), yeni blok eklenir. Sıra listedeki sıradır. <paramref name="blocks"/> null → dokunulmaz.
+    /// </summary>
+    private void ApplyBlocks(StudyItem item, List<StudyItemBlockRequestDto>? blocks)
+    {
+        if (blocks == null)
+        {
+            return;
+        }
+
+        var existing = item.Blocks.Where(b => !b.IsDeleted).ToDictionary(b => b.Id);
+        var kept = new HashSet<int>();
+        var sortOrder = 1;
+
+        foreach (var request in blocks)
+        {
+            if (request.Id is not { } id || !existing.TryGetValue(id, out var block) || !kept.Add(id))
+            {
+                block = new StudyItemBlock();
+                item.Blocks.Add(block);
+            }
+
+            block.SortOrder = sortOrder++;
+            block.Type = request.Type;
+            block.Text = request.Type is StudyItemBlockType.Question ? null : request.Text;
+            block.BackText = request.Type == StudyItemBlockType.Flashcard ? request.BackText : null;
+            block.ImageUrl = request.Type == StudyItemBlockType.Image ? request.ImageUrl : null;
+            block.Url = request.Type == StudyItemBlockType.Link ? request.Url : null;
+            block.Platform = request.Type == StudyItemBlockType.Link ? request.Platform ?? StudyItemLinkPlatform.Other : null;
+            block.QuestionId = request.Type == StudyItemBlockType.Question ? request.QuestionId : null;
+        }
+
+        foreach (var removed in existing.Values.Where(b => !kept.Contains(b.Id)))
+        {
+            _context.StudyItemBlocks.Remove(removed);
+        }
+    }
+
+    /// <summary>Issue #933: görsel bloğu dosyasını yükler; dönen değer kayıtta bloğun <c>imageUrl</c>'i olur.</summary>
+    public async Task<(StudyItemBlockImageUploadDto? Image, string? Error)> UploadBlockImageAsync(IFormFile? image, UserProfileDto user)
+    {
+        if (image == null || image.Length == 0 || image.Length > MaxBlockImageBytes
+            || !AllowedBlockImageTypes.Contains(image.ContentType ?? string.Empty))
+        {
+            return (null, _localizer["study.block.invalidImageFile"]);
+        }
+
+        var extension = Path.GetExtension(image.FileName) ?? string.Empty;
+        if (extension.Length > 8 || extension.Any(c => !char.IsLetterOrDigit(c) && c != '.'))
+        {
+            extension = string.Empty;
+        }
+
+        var objectName = $"pages/blocks/{user.Id}/{Guid.NewGuid()}{extension.ToLowerInvariant()}";
+        using var stream = image.OpenReadStream();
+        var url = await _minioService.UploadFileAsync(stream, objectName, "study-pages", image.ContentType);
+        return (new StudyItemBlockImageUploadDto { ImageUrl = url }, null);
+    }
+
+    private const long MaxBlockImageBytes = 10 * 1024 * 1024;
+
+    private static readonly HashSet<string> AllowedBlockImageTypes =
+        new(StringComparer.OrdinalIgnoreCase) { "image/png", "image/jpeg", "image/webp", "image/gif" };
+
+    private static StudyItemBlockDto MapBlock(StudyItemBlock block)
+    {
+        var question = block.Question is { IsDeleted: false } q ? q : null;
+        return new StudyItemBlockDto
+        {
+            Id = block.Id,
+            SortOrder = block.SortOrder,
+            Type = block.Type,
+            Text = block.Text,
+            BackText = block.BackText,
+            ImageUrl = block.ImageUrl,
+            Url = block.Url,
+            Platform = block.Platform,
+            QuestionId = block.Type == StudyItemBlockType.Question ? question?.Id : null,
+            QuestionText = question?.Text,
+            QuestionImageUrl = question?.ImageUrl,
+        };
+    }
+
     private async Task AddImagesAsync(int studyItemId, List<IFormFile>? images, IReadOnlyList<MinioImageInfo> minioImages, int startSortOrder)
     {
         var sortOrder = startSortOrder;
@@ -803,7 +1040,12 @@ public class StudyItemService : IStudyItemService
             EndPage = item.EndPage,
             ImageCount = images.Count,
             CoverImageUrl = images.FirstOrDefault()?.ImageUrl,
-            Images = images
+            Images = images,
+            Blocks = item.Blocks
+                .Where(b => !b.IsDeleted)
+                .OrderBy(b => b.SortOrder)
+                .Select(MapBlock)
+                .ToList()
         };
     }
 

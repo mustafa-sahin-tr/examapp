@@ -52,6 +52,51 @@ export interface StudyPage {
   imageCount: number;
   coverImageUrl?: string | null;
   images: StudyPageImage[];
+
+  /** Issue #933: ana içerikten sonra gösterilen bloklar, sırayla. */
+  blocks?: StudyPageBlock[];
+}
+
+/** Backend karşılığı: api/ExamApp.Api/Data/StudyItemBlock.cs (StudyItemBlockType). */
+export enum StudyPageBlockType {
+  Text = 0,
+  Image = 1,
+  Link = 2,
+  Question = 3,
+  Flashcard = 4,
+}
+
+/** Backend StudyItemBlock.MaxTextLength / MaxBlocksPerItem ile aynı. */
+export const STUDY_PAGE_BLOCK_MAX_TEXT = 4000;
+export const STUDY_PAGE_MAX_BLOCKS = 50;
+
+/** Backend karşılığı: StudyItemBlockDto. Tipe ait olmayan alanlar null. */
+export interface StudyPageBlock {
+  id: number;
+  sortOrder: number;
+  type: StudyPageBlockType;
+  /** Text: gövde; Image: alt yazı; Link: başlık; Flashcard: ön yüz. */
+  text?: string | null;
+  backText?: string | null;
+  imageUrl?: string | null;
+  url?: string | null;
+  platform?: StudyPageLinkPlatform | null;
+  /** Soru silindiyse null (öğrenciye gösterilmez). */
+  questionId?: number | null;
+  questionText?: string | null;
+  questionImageUrl?: string | null;
+}
+
+/** Backend karşılığı: StudyItemBlockRequestDto. `id` yoksa yeni blok. */
+export interface StudyPageBlockRequest {
+  id?: number | null;
+  type: StudyPageBlockType;
+  text?: string | null;
+  backText?: string | null;
+  imageUrl?: string | null;
+  url?: string | null;
+  platform?: StudyPageLinkPlatform | null;
+  questionId?: number | null;
 }
 
 export interface StudyPageFilter {
@@ -113,6 +158,9 @@ export interface StudyPageWriteRequest {
 
   // Image
   minioImages?: StudyPageMinioImage[];
+
+  /** Issue #933: verilirse sayfanın blokları bu listeyle değişir (boş liste hepsini siler). */
+  blocks?: StudyPageBlockRequest[];
 }
 
 // Backend karşılığı: UpdateStudyItemRequestDto

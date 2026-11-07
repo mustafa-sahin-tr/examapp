@@ -5016,6 +5016,73 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("StudyItems");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.StudyItemBlock", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BackText")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("Platform")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("QuestionId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StudyItemId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Text")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Url")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuestionId");
+
+                    b.HasIndex("StudyItemId", "SortOrder");
+
+                    b.ToTable("StudyItemBlocks");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.StudyItemImage", b =>
                 {
                     b.Property<int>("Id")
@@ -7878,6 +7945,24 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Topic");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.StudyItemBlock", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Question", "Question")
+                        .WithMany()
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("ExamApp.Api.Data.StudyItem", "StudyItem")
+                        .WithMany("Blocks")
+                        .HasForeignKey("StudyItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Question");
+
+                    b.Navigation("StudyItem");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.StudyItemImage", b =>
                 {
                     b.HasOne("ExamApp.Api.Data.StudyItem", "StudyItem")
@@ -8404,6 +8489,8 @@ namespace ExamApp.Api.Migrations
 
             modelBuilder.Entity("ExamApp.Api.Data.StudyItem", b =>
                 {
+                    b.Navigation("Blocks");
+
                     b.Navigation("Images");
                 });
 

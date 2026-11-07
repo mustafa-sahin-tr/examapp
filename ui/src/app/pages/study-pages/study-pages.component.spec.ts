@@ -1,3 +1,4 @@
+import { provideRouter } from '@angular/router';
 import type { MockedObject } from "vitest";
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient, withXhr } from '@angular/common/http';
@@ -58,6 +59,7 @@ describe('StudyPagesComponent', () => {
                 provideHttpClient(withXhr()),
                 provideHttpClientTesting(),
                 provideNoopAnimations(),
+                provideRouter([]), // #933: kartta öğrenci görünümü bağlantısı
                 { provide: StudyPageService, useValue: studyPageService },
                 { provide: SubjectService, useValue: subjectService },
                 { provide: MatDialog, useValue: {

@@ -1,0 +1,66 @@
+<div class="spb-view" *transloco="let t; prefix: 'study-pages.blocks'">
+  @for (item of items(); track item.key) {
+  @switch (item.block.type) {
+  @case (Type.Text) {
+  <p class="spb-view__text" data-testid="block-text">{{ item.block.text }}</p>
+  }
+  @case (Type.Image) {
+  <figure class="spb-view__figure" data-testid="block-image">
+    <img [src]="item.block.imageUrl" [alt]="item.block.text || ''" loading="lazy" />
+    @if (item.block.text) {
+    <figcaption>{{ item.block.text }}</figcaption>
+    }
+  </figure>
+  }
+  @case (Type.Link) {
+  @if (item.href) {
+  <a class="spb-view__link" [href]="item.href" target="_blank" rel="noopener noreferrer" data-testid="block-link">
+    <mat-icon aria-hidden="true">{{ item.platformIcon }}</mat-icon>
+    <span class="spb-view__link-body">
+      <strong>{{ item.block.text || item.host }}</strong>
+      <small>{{ item.host }}</small>
+    </span>
+    <mat-icon aria-hidden="true">open_in_new</mat-icon>
+  </a>
+  }
+  }
+  @case (Type.Question) {
+  <section class="spb-view__question" data-testid="block-question">
+    <span class="spb-view__label"><mat-icon aria-hidden="true">quiz</mat-icon>{{ t('view.question') }}</span>
+    @if (item.block.questionImageUrl) {
+    <img [src]="item.block.questionImageUrl" alt="" loading="lazy" />
+    } @else if (item.block.questionText) {
+    <div class="spb-view__question-text" [innerHTML]="item.block.questionText"></div>
+    }
+    <button
+      mat-flat-button
+      type="button"
+      [disabled]="!solvable() || solvingQuestionId() !== null"
+      (click)="solve.emit(item.block.questionId!)"
+      data-testid="block-question-solve"
+    >
+      <mat-icon>play_arrow</mat-icon>
+      {{ solvingQuestionId() === item.block.questionId ? t('view.solving') : t('view.solve') }}
+    </button>
+  </section>
+  }
+  @case (Type.Flashcard) {
+  <button
+    type="button"
+    class="spb-view__card"
+    [class.spb-view__card--back]="flipped().has(item.key)"
+    (click)="toggleFlip(item.key)"
+    [attr.aria-pressed]="flipped().has(item.key)"
+    data-testid="block-flashcard"
+  >
+    <span class="spb-view__label">
+      <mat-icon aria-hidden="true">style</mat-icon>
+      {{ flipped().has(item.key) ? t('view.cardBack') : t('view.cardFront') }}
+    </span>
+    <span class="spb-view__card-text">{{ flipped().has(item.key) ? item.block.backText : item.block.text }}</span>
+    <small>{{ t('view.flipHint') }}</small>
+  </button>
+  }
+  }
+  }
+</div>

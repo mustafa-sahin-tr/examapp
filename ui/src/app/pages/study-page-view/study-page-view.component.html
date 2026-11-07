@@ -1,0 +1,50 @@
+<section class="spv" *transloco="let t; prefix: 'study-pages.blocks'">
+  @if (loading()) {
+  <div class="spv__state" role="status">
+    <mat-progress-spinner mode="indeterminate" diameter="40" />
+  </div>
+  } @else if (loadFailed() || !page()) {
+  <div class="spv__state" role="alert">
+    <mat-icon>error_outline</mat-icon>
+    <p>{{ t('page.loadFailed') }}</p>
+    <button mat-stroked-button type="button" (click)="load()">{{ t('page.retry') }}</button>
+  </div>
+  } @else {
+  @let p = page()!;
+  <app-page-header [title]="p.title" [description]="p.description" />
+
+  <div class="spv__body">
+    @if (display(); as d) {
+    @if (d.kind === 'link' && d.href) {
+    <a class="spv__main-link" mat-stroked-button [href]="d.href" target="_blank" rel="noopener noreferrer" data-testid="study-page-main-link">
+      <mat-icon>{{ d.platformIcon }}</mat-icon>
+      {{ t('page.openLink') }} · {{ d.host }}
+    </a>
+    } @else if (d.kind === 'book' && d.bookLine) {
+    <p class="spv__book"><mat-icon aria-hidden="true">menu_book</mat-icon>{{ d.bookLine }}</p>
+    } @else if (d.kind === 'image' && p.images.length > 0) {
+    <div class="spv__images" [attr.aria-label]="t('page.images')">
+      @for (img of p.images; track img.id) {
+      <img [src]="img.imageUrl" alt="" loading="lazy" />
+      }
+    </div>
+    }
+    }
+
+    @if (p.blocks?.length) {
+    <app-study-page-blocks-view
+      [blocks]="p.blocks!"
+      [solvable]="isStudent"
+      [solvingQuestionId]="solving()"
+      (solve)="solve($event)"
+    />
+    }
+
+    @if (isStudent && questionCount() > 1) {
+    <button mat-flat-button type="button" class="spv__solve-all" (click)="solve(null)" [disabled]="solving() !== null" data-testid="study-page-solve-all">
+      <mat-icon>quiz</mat-icon>{{ t('page.solveAll') }} ({{ questionCount() }})
+    </button>
+    }
+  </div>
+  }
+</section>

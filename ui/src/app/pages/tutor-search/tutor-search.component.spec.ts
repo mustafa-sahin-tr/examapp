@@ -66,6 +66,9 @@ describe('TutorSearchComponent (issue #196 — kompakt filtre)', () => {
         fixture = TestBed.createComponent(TutorSearchComponent);
         component = fixture.componentInstance;
         fixture.detectChanges();
+        // #872: ücret ve biçim "Daha fazla süzgeç" panelinde; testler paneli açık sınar.
+        component.moreFilters.set(true);
+        fixture.detectChanges();
     });
 
     it('#845: veli onayı beklerken arama yerine kilit ekranı gösterir ve arama yapmaz', () => {
@@ -178,8 +181,37 @@ describe('TutorSearchComponent (issue #196 — kompakt filtre)', () => {
     it('boş durum aria-live="polite" ile duyurulur', () => {
         const empty = el().querySelector('.ts__state');
         expect(empty?.getAttribute('aria-live')).toBe('polite');
-        expect(empty?.textContent).toContain('Şu an listelenecek öğretmen yok');
+        expect(empty?.textContent).toContain(tutorSearchTr.search.emptyNoFilter);
+        expect(empty?.textContent).toContain(tutorSearchTr.search.emptyHint);
         expect(empty?.querySelector('button')).toBeNull();
+    });
+
+    it('#872: ders çipi hemen arar; boş durum dersi söyler ve "Diğer dersler" tümüne döner', () => {
+        component.subjects.set([{ id: 3, name: 'Fen Bilimleri' } as never]);
+        fixture.detectChanges();
+        teacherService.searchTutors.mockClear();
+
+        component.pickSubject(3);
+        fixture.detectChanges();
+        expect(teacherService.searchTutors).toHaveBeenCalledWith(expect.objectContaining({ subjectId: 3 }));
+        const empty = el().querySelector('[data-testid="tutors-empty"]')!;
+        expect(empty.textContent).toContain('Fen Bilimleri dersinde şu an özel ders veren öğretmen yok');
+
+        (empty.querySelector('[data-testid="other-subjects"]') as HTMLButtonElement).click();
+        fixture.detectChanges();
+        expect(component.filterForm.controls.subjectId.value).toBeNull();
+        expect(teacherService.searchTutors).toHaveBeenLastCalledWith(expect.objectContaining({ subjectId: null }));
+    });
+
+    it('#872: ücret ve biçim süzgeci kapalı başlar, düğmeyle açılır', () => {
+        component.moreFilters.set(false);
+        fixture.detectChanges();
+        expect(el().querySelector('.ts__price')).toBeNull();
+        const toggle = el().querySelector<HTMLButtonElement>('[data-testid="more-filters"]')!;
+        expect(toggle.getAttribute('aria-expanded')).toBe('false');
+        toggle.click();
+        fixture.detectChanges();
+        expect(el().querySelector('.ts__price')).not.toBeNull();
     });
 
     it('issue #712: filtreli boş sonuçta filtre mesajı ve temizleme düğmesi görünür', () => {
@@ -213,18 +245,17 @@ describe('TutorSearchComponent (issue #196 — kompakt filtre)', () => {
                 parseFloat(styles.paddingRight);
 
             const items = {
-                subject: rect('.ts__subject'),
                 price: rect('.ts__price'),
                 online: rect('.ts__modes mat-checkbox:first-child'),
                 inPerson: rect('.ts__modes mat-checkbox:last-child'),
                 submit: rect('.ts__filter-actions button[type="submit"]'),
                 reset: rect('.ts__filter-actions button[type="button"]'),
             };
-            const rowTop = items.subject.top;
-            const rowBottom = items.subject.bottom;
+            const rowTop = items.price.top;
+            const rowBottom = items.price.bottom;
 
             for (const [name, r] of Object.entries(items)) {
-                // Aynı satır: her öğe ders alanının dikey aralığıyla örtüşür ve üstü satır başlangıcına yakındır.
+                // Aynı satır: her öğe ücret grubunun dikey aralığıyla örtüşür ve üstü satır başlangıcına yakındır.
                 expect(r.top, `${width}px ${name} top`).toBeLessThan(rowTop + 8);
                 expect(r.top, `${width}px ${name} top`).toBeGreaterThanOrEqual(rowTop - 1);
                 expect(r.bottom, `${width}px ${name} bottom`).toBeLessThanOrEqual(rowBottom + 8);
@@ -233,7 +264,6 @@ describe('TutorSearchComponent (issue #196 — kompakt filtre)', () => {
             }
 
             // Soldan sağa sıra korunur, öğeler üst üste binmez.
-            expect(items.subject.right).toBeLessThanOrEqual(items.price.left);
             expect(items.price.right).toBeLessThanOrEqual(items.online.left);
             expect(items.inPerson.right).toBeLessThanOrEqual(items.submit.left);
 
@@ -244,8 +274,6 @@ describe('TutorSearchComponent (issue #196 — kompakt filtre)', () => {
                 .querySelectorAll('.ts__price-input')
                 .forEach((field) => expect(field.getBoundingClientRect().width).toBeGreaterThanOrEqual(64));
 
-            // Ders alanı ~180px'i geçmeyen dar sabit genişlikte.
-            expect(items.subject.width).toBeLessThanOrEqual(180);
         };
 
         it('769px: tüm filtreler tek satırda ve taşmıyor', () => expectSingleRow(769));
@@ -269,26 +297,13 @@ describe('TutorSearchComponent (issue #196 — kompakt filtre)', () => {
             expectSingleRow(800);
         });
 
-        it('ders hata ipucu satırdaki diğer öğeleri kaydırmaz', () => {
-            renderAt(1040);
-            const before = [rect('.ts__price').top, rect('.ts__modes').top, rect('.ts__filter-actions').top];
-            component.subjectsFailed.set(true);
-            fixture.detectChanges();
-            const after = [rect('.ts__price').top, rect('.ts__modes').top, rect('.ts__filter-actions').top];
-            expect(after).toEqual(before);
-            expect(rect('.ts__hint-error').height).toBeGreaterThan(0);
-        });
-
         it('768px altı: alanlar alt alta, ücret min/max yan yana, butonlar eşit ve ≥44px', () => {
             renderAt(500);
-            const subject = rect('.ts__subject');
             const price = rect('.ts__price');
             const modes = rect('.ts__modes');
             const actions = rect('.ts__filter-actions');
-            expect(price.top).toBeGreaterThanOrEqual(subject.bottom);
             expect(modes.top).toBeGreaterThanOrEqual(price.bottom);
             expect(actions.top).toBeGreaterThanOrEqual(modes.bottom);
-            expect(price.width).toBeCloseTo(subject.width, 0);
 
             const [min, max] = Array.from(el().querySelectorAll('.ts__price-input')).map((f) => f.getBoundingClientRect());
             expect(Math.abs(min.top - max.top)).toBeLessThan(1);

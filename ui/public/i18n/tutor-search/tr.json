@@ -1,7 +1,7 @@
 {
   "search": {
     "title": "Özel Ders Öğretmenleri",
-    "subtitle": "Branşa, ücrete ve ders şekline göre onaylı bağımsız öğretmenleri listeleyin.",
+    "subtitle": "Onaylı öğretmenlerden birebir ders.",
     "subject": "Ders",
     "allSubjects": "Tümü",
     "subjectsError": "Ders listesi yüklenemedi.",
@@ -19,7 +19,12 @@
     "error": "Öğretmenler aranırken bir sorun oluştu.",
     "retry": "Tekrar dene",
     "empty": "Bu filtrelere uygun öğretmen bulunamadı",
-    "emptyNoFilter": "Şu an listelenecek öğretmen yok"
+    "emptyNoFilter": "Şu an özel ders veren öğretmen yok",
+    "moreFilters": "Daha fazla süzgeç",
+    "emptySubject": "{{subject}} dersinde şu an özel ders veren öğretmen yok",
+    "emptyHint": "Velin bir öğretmen bulduğunda burada görünür.",
+    "emptyHintParent": "Yeni öğretmenler onaylandıkça burada listelenir.",
+    "otherSubjects": "Diğer dersler"
   },
   "profile": {
     "back": "Geri",

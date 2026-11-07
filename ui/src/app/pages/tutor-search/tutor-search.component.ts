@@ -5,6 +5,7 @@ import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatChipsModule } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -42,6 +43,7 @@ import { TUTOR_SEARCH_SCOPE } from './tutor-search-scope';
     ReactiveFormsModule,
     MatButtonModule,
     MatCheckboxModule,
+    MatChipsModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -87,6 +89,12 @@ export class TutorSearchComponent implements OnInit {
 
   /** Son aramada filtre var mıydı (form sonradan değişmiş olabilir). */
   readonly searchedWithFilters = signal(false);
+  /** #872: son aramada ücret / biçim süzgeci var mıydı; yalnız ders seçiliyse boş durum dersi söyler. */
+  readonly searchedWithMoreFilters = signal(false);
+  /** #872: son aramadaki dersin adı (boş durum için). */
+  readonly searchedSubjectName = signal<string | null>(null);
+  /** #872: ücret ve ders biçimi "Daha fazla süzgeç" altında; biri doluysa açık başlar. */
+  readonly moreFilters = signal(false);
 
   readonly isEmpty = computed(
     () => this.searched() && !this.loading() && !this.error() && this.results().length === 0,
@@ -146,8 +154,18 @@ export class TutorSearchComponent implements OnInit {
       });
   }
 
+  /** #872: ders çipi — seçim hemen aranır. */
+  pickSubject(subjectId: number | null): void {
+    this.filterForm.controls.subjectId.setValue(subjectId);
+    this.search();
+  }
+
   search(): void {
     const value = this.filterForm.getRawValue();
+    const more = value.minPrice !== null || value.maxPrice !== null || value.online || value.inPerson;
+    this.searchedWithMoreFilters.set(more);
+    if (more) this.moreFilters.set(true);
+    this.searchedSubjectName.set(this.subjects().find((s) => s.id === value.subjectId)?.name ?? null);
     this.searchedWithFilters.set(
       value.subjectId !== null ||
         value.minPrice !== null ||

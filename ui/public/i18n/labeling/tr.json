@@ -235,5 +235,18 @@
     },
     "promptSaved": "{{type}} talimatı v{{version}} kaydedildi; soru tuvalinde bu tipin taslakları yeni talimatla çıkarılır.",
     "promptUnchanged": "Talimat değişmedi (v{{version}}); yeniden çıkarma gerekmiyor."
+  },
+  "recent": {
+    "title": "Kaldığın yerden",
+    "progress": "{{position}} / {{total}} sayfa",
+    "done": "{{total}} sayfa · tamamlandı",
+    "resume": "Devam et · s. {{page}}",
+    "open": "Aç",
+    "hint": "Tarayıcı klasöre yeniden erişmek için seçmeni ister; aynı klasörü seçince işaretlenmiş sayfalar atlanır ve kaldığın yerden devam edilir."
+  },
+  "steps": {
+    "pick": "Kitabın sayfa görsellerinin olduğu klasörü seç.",
+    "mark": "Her sayfada soru ve şık kutularını düzelt.",
+    "train": "\"Eğit\" ile sayfayı modele gönder; sıradaki sayfa açılır."
   }
 }

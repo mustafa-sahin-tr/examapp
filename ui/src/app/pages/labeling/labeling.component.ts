@@ -69,6 +69,14 @@ import {
   LabelingCropDuplicateDialogComponent,
   LabelingCropDuplicateDialogData,
 } from './labeling-crop-duplicate-dialog/labeling-crop-duplicate-dialog.component';
+import {
+  RECENT_FOLDERS_STORAGE_KEY,
+  RecentLabelingFolder,
+  isRecentFolderDone,
+  parseRecentFolders,
+  rootFolderName,
+  upsertRecentFolder,
+} from './labeling-recent';
 
 /** Sayfa metinleri kendi Transloco scope'unda: `public/i18n/labeling/<lang>.json`. */
 const LABELING_SCOPE = 'labeling';
@@ -155,7 +163,13 @@ export class LabelingComponent {
   // --- Havuz ve sayaçlar ---
   /** Kalan, henüz gösterilmemiş dosyalar (seçilen her dosya çıkarılır). */
   private pool: File[] = [];
+  /** Seçilen klasörün ad sıralı tüm dosyaları; son klasörler kaydındaki konum bundan (#867). */
+  private sortedFiles: File[] = [];
+  private folderName: string | null = null;
   readonly folderPicked = signal(false);
+  /** #867: son çalışılan klasörler (yerel); klasör seçilmeden önce "Kaldığın yerden" listesi. */
+  readonly recentFolders = signal<RecentLabelingFolder[]>(parseRecentFolders(readStored(RECENT_FOLDERS_STORAGE_KEY)));
+  protected readonly isRecentFolderDone = isRecentFolderDone;
   readonly totalImages = signal(0);
   readonly skippedLabeled = signal(0);
   readonly unreadable = signal(0);
@@ -857,6 +871,8 @@ export class LabelingComponent {
     this.prefetch = null;
     // Süren eğitim isteği (önceki klasör) yanıtı yalnız id kümesine yazılır; bu oturumun sayacına girmez.
     this.pool = files;
+    this.sortedFiles = [...files];
+    this.folderName = rootFolderName(files);
     this.current.set(null);
     this.picking.set(false);
     this.exhausted.set(false);
@@ -1267,8 +1283,10 @@ export class LabelingComponent {
     this.current.set(candidate);
     if (!candidate) {
       this.exhausted.set(true);
+      this.rememberFolder(null);
       return;
     }
+    this.rememberFolder(candidate.file);
     this.shownCount.update((n) => n + 1);
     const selector = this.selectorRef();
     if (selector) {
@@ -1280,6 +1298,25 @@ export class LabelingComponent {
       selector.loadFile(candidate.file);
       this.startPrefetch(seq);
     }
+  }
+
+  /** #867: klasörün konumunu son klasörler listesine yazar; `file` null ise klasör bitti. */
+  private rememberFolder(file: File | null): void {
+    const total = this.sortedFiles.length;
+    if (!this.folderName || total === 0) {
+      return;
+    }
+    const position = file ? this.sortedFiles.indexOf(file) + 1 : total;
+    const page = file ? filePageOf(file.webkitRelativePath || file.name) ?? position : position;
+    const list = upsertRecentFolder(this.recentFolders(), {
+      name: this.folderName,
+      total,
+      position,
+      page,
+      updatedAt: new Date().toISOString(),
+    });
+    this.recentFolders.set(list);
+    writeStored(RECENT_FOLDERS_STORAGE_KEY, JSON.stringify(list));
   }
 
   private startPrefetch(seq: number): void {

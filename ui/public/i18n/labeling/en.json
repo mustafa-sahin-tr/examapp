@@ -235,5 +235,18 @@
     },
     "promptSaved": "{{type}} instruction v{{version}} saved; in the question canvas, drafts of this type are extracted with the new instruction.",
     "promptUnchanged": "Instruction unchanged (v{{version}}); nothing to extract again."
+  },
+  "recent": {
+    "title": "Pick up where you left off",
+    "progress": "{{position}} / {{total}} pages",
+    "done": "{{total}} pages · done",
+    "resume": "Continue · p. {{page}}",
+    "open": "Open",
+    "hint": "The browser asks you to pick the folder again; pick the same folder and labeled pages are skipped so you continue where you left off."
+  },
+  "steps": {
+    "pick": "Pick the folder with the book's page images.",
+    "mark": "Fix the question and option boxes on each page.",
+    "train": "Send the page to the model with \"Train\"; the next page opens."
   }
 }

@@ -8,9 +8,16 @@
 
     <div class="lb-top__actions">
       <input #folderInput type="file" webkitdirectory multiple hidden (change)="onFolderSelected($event)" />
+      @if (!folderPicked() && recentFolders().length) {
+      <!-- #867: son klasörler varken asıl eylem "Devam et"; klasör seçimi ikincil. -->
+      <button mat-stroked-button type="button" (click)="folderInput.click()" [disabled]="labeledLoading()">
+        <mat-icon>folder_open</mat-icon>{{ t('chooseFolder') }}
+      </button>
+      } @else {
       <button mat-flat-button type="button" (click)="folderInput.click()" [disabled]="labeledLoading()">
         <mat-icon>folder_open</mat-icon>{{ folderPicked() ? t('changeFolder') : t('chooseFolder') }}
       </button>
+      }
     </div>
   </header>
 
@@ -38,10 +45,46 @@
     <span>{{ t('labeledError') }}</span>
     <button mat-stroked-button type="button" (click)="retryLabeledPages()">{{ t('retry') }}</button>
   </div>
+  } @else if (!folderPicked() && recentFolders().length) {
+  <section class="lb-recent" data-testid="labeling-recent" [attr.aria-label]="t('recent.title')">
+    <h2 class="lb-recent__title">{{ t('recent.title') }}</h2>
+    <ul class="lb-recent__list">
+      @for (folder of recentFolders(); track folder.name) {
+      <li class="lb-recent__row" data-testid="labeling-recent-row">
+        <mat-icon aria-hidden="true">folder</mat-icon>
+        <div class="lb-recent__info">
+          <span class="lb-recent__name">{{ folder.name }}</span>
+          <span class="lb-recent__meta">
+            @if (isRecentFolderDone(folder)) {
+            {{ t('recent.done', { total: folder.total }) }}
+            } @else {
+            {{ t('recent.progress', { position: folder.position, total: folder.total }) }}
+            }
+            · {{ folder.updatedAt | date: 'dd.MM.yyyy' }}
+          </span>
+          <span class="lb-recent__bar" aria-hidden="true"><i [style.width.%]="(folder.position / folder.total) * 100"></i></span>
+        </div>
+        @if (isRecentFolderDone(folder)) {
+        <button mat-button type="button" (click)="folderInput.click()">{{ t('recent.open') }}</button>
+        } @else {
+        <button mat-flat-button type="button" (click)="folderInput.click()" data-testid="labeling-resume">
+          {{ t('recent.resume', { page: folder.page }) }}
+        </button>
+        }
+      </li>
+      }
+    </ul>
+    <p class="lb-recent__hint">{{ t('recent.hint') }}</p>
+  </section>
   } @else if (!folderPicked()) {
   <div class="lb-state lb-state--empty">
     <mat-icon aria-hidden="true">folder_open</mat-icon>
     <span class="lb-state__title">{{ t('emptyTitle') }}</span>
+    <ol class="lb-steps" data-testid="labeling-steps">
+      <li>{{ t('steps.pick') }}</li>
+      <li>{{ t('steps.mark') }}</li>
+      <li>{{ t('steps.train') }}</li>
+    </ol>
     <span>{{ t('emptyHint') }}</span>
   </div>
   } @else if (totalImages() === 0) {

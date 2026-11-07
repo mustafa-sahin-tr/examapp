@@ -3,6 +3,7 @@ import { RegisterWizardComponent } from './pages/register/register-wizard.compon
 import { authGuard } from './shared/guards/auth.guard';
 import { adminGuard } from './shared/guards/admin.guard';
 import { adminHomeRedirectGuard } from './shared/guards/admin-home-redirect.guard';
+import { adminSchoolFilterRedirectGuard } from './shared/guards/admin-school-filter-redirect.guard';
 import { rootRedirect } from './shared/guards/root-redirect';
 import { independentTeacherGuard } from './shared/guards/independent-teacher.guard';
 import { studentGuard } from './shared/guards/student.guard';
@@ -258,7 +259,8 @@ export const routes: Routes = [
       },
       {
         path: 'admin',
-        canActivate: [authGuard, adminGuard],
+        // #897: okul filtreli eski bağlantı Okullar sayfasına.
+        canActivate: [authGuard, adminGuard, adminSchoolFilterRedirectGuard],
         loadComponent: () => import('./pages/admin/admin-home/admin-home.component').then((m) => m.AdminHomeComponent),
       },
       {

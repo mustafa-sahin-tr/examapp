@@ -1,12 +1,9 @@
-import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { TaxonomyManagerComponent } from '../taxonomy-manager/taxonomy-manager.component';
-import { SchoolManagerComponent } from '../school-manager/school-manager.component';
-import { ClassifierCacheComponent } from '../classifier-cache/classifier-cache.component';
-import { hasSchoolListFilterParams } from '../school-manager/school-list-filter';
+import { ClassifierStatusComponent } from '../classifier-status/classifier-status.component';
 
 /** Yönetim ekranlarının ortak Transloco scope'u: `public/i18n/admin/<lang>.json` (issue #183). */
 const ADMIN_SCOPE = 'admin';
@@ -16,7 +13,8 @@ const ADMIN_SCOPE = 'admin';
  * `ADMIN_HOME_TABS.indexOf(...)` ile doğru bulunur (sabit sayı yok).
  */
 // #853: "Öğretmen Başvuruları" sekmesi kalktı — sol menüde kendi sayfası var (/admin/teacher-approvals).
-export const ADMIN_HOME_TABS = ['taxonomy', 'schools', 'classifierCache'] as const;
+// #897: "Okullar" da kalktı (/admin/schools menüde); "Sınıflandırma Cache" yerine etkin sağlayıcıyı gösteren "Sınıflandırıcı".
+export const ADMIN_HOME_TABS = ['taxonomy', 'classifier'] as const;
 export type AdminHomeTab = (typeof ADMIN_HOME_TABS)[number];
 
 @Component({
@@ -26,12 +24,11 @@ export type AdminHomeTab = (typeof ADMIN_HOME_TABS)[number];
   template: `
     <div class="admin-page" *transloco="let t; prefix: 'admin.home'">
       <header class="admin-header">
-        <mat-icon>admin_panel_settings</mat-icon>
+        <mat-icon>account_tree</mat-icon>
         <h1>{{ t('title') }}</h1>
       </header>
 
-      <!-- Issue #281: URL'de okul filtresi varsa (derin link / yenileme) Okullar sekmesiyle açılır. -->
-      <mat-tab-group animationDuration="150ms" mat-stretch-tabs="false" [selectedIndex]="initialTabIndex">
+      <mat-tab-group animationDuration="150ms" mat-stretch-tabs="false">
         @for (tab of tabs; track tab) {
           <mat-tab [label]="t('tabs.' + tab)">
             <div class="tab-body">
@@ -39,11 +36,8 @@ export type AdminHomeTab = (typeof ADMIN_HOME_TABS)[number];
                 @case ('taxonomy') {
                   <app-taxonomy-manager></app-taxonomy-manager>
                 }
-                @case ('schools') {
-                  <app-school-manager [embedded]="true"></app-school-manager>
-                }
-                @case ('classifierCache') {
-                  <app-classifier-cache></app-classifier-cache>
+                @case ('classifier') {
+                  <app-classifier-status></app-classifier-status>
                 }
               }
             </div>
@@ -85,23 +79,10 @@ export type AdminHomeTab = (typeof ADMIN_HOME_TABS)[number];
     MatTabsModule,
     MatIconModule,
     TaxonomyManagerComponent,
-    SchoolManagerComponent,
-    ClassifierCacheComponent,
+    ClassifierStatusComponent,
     TranslocoDirective,
   ],
 })
 export class AdminHomeComponent {
   readonly tabs = ADMIN_HOME_TABS;
-
-  /**
-   * Yalnız ilk açılıştaki snapshot'a bakılır: sabit bir değer bağlandığı için kullanıcı sekme
-   * değiştirince geri zorlanmaz; filtre değişiklikleri (replaceUrl) sekmeyi etkilemez.
-   */
-  readonly initialTabIndex = AdminHomeComponent.tabIndex(
-    hasSchoolListFilterParams(inject(ActivatedRoute).snapshot.queryParamMap) ? 'schools' : 'taxonomy',
-  );
-
-  private static tabIndex(tab: AdminHomeTab): number {
-    return ADMIN_HOME_TABS.indexOf(tab);
-  }
 }

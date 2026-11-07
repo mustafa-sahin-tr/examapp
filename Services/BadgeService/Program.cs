@@ -111,6 +111,8 @@ builder.Services.AddScoped<BadgeDefinitionAdminService>();
 builder.Services.AddSingleton<IServiceTokenProvider, ServiceTokenProvider>();
 // Soru sınıflandırıcısı: QuestionAnalyzer:Provider = Claude (varsayılan) | Gemini (issue #469).
 builder.Services.AddQuestionClassifier(builder.Configuration);
+// Issue #897: recent classifier outcomes for the admin status card (in memory, per instance).
+builder.Services.AddSingleton<ClassifierActivity>(_ => new ClassifierActivity(TimeProvider.System));
 // Issue #577: QuestionAnalyzer:BookTocMode = Hybrid (varsayılan) | Skip | Always — geçersiz değer açılışta patlar.
 BookTocModeConfig.Read(builder.Configuration);
 

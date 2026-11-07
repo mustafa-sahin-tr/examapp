@@ -17,13 +17,16 @@ public class QuestionCreatedConsumer : IConsumer<QuestionCreatedEvent>
     private readonly ILogger<QuestionCreatedConsumer> _logger;
     private readonly bool _aiActive;
     private readonly BookTocMode _bookTocMode;
+    private readonly ClassifierActivity? _activity;
 
     public QuestionCreatedConsumer(
         IQuestionClassifier classifier,
         ILogger<QuestionCreatedConsumer> logger,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ClassifierActivity? activity = null)
     {
         _classifier = classifier;
+        _activity = activity;
         _logger = logger;
         _aiActive = configuration.GetValue<bool?>("QuestionAnalyzer:AIActive") ?? true;
         _bookTocMode = BookTocModeConfig.Read(configuration);
@@ -39,6 +42,7 @@ public class QuestionCreatedConsumer : IConsumer<QuestionCreatedEvent>
         if (!_aiActive)
         {
             _logger.LogInformation("⏭️ AI classifier is disabled by config. Skipping question {QuestionId}", @event.QuestionId);
+            _activity?.Record(ClassifierActivity.Outcome.Skipped);
             return;
         }
 
@@ -46,6 +50,7 @@ public class QuestionCreatedConsumer : IConsumer<QuestionCreatedEvent>
         if (@event.ClassificationSource == "AI")
         {
             _logger.LogInformation("⏭️ Skipping question {QuestionId} (ClassificationSource is AI)", @event.QuestionId);
+            _activity?.Record(ClassifierActivity.Outcome.Skipped);
             return;
         }
 
@@ -58,11 +63,13 @@ public class QuestionCreatedConsumer : IConsumer<QuestionCreatedEvent>
                 if (@event.SubTopicIds is { Count: > 0 } || @event.TopicId is not > 0)
                 {
                     _logger.LogInformation("⏭️ Skipping question {QuestionId} (taxonomy locked by the teacher)", @event.QuestionId);
+                    _activity?.Record(ClassifierActivity.Outcome.Skipped);
                     return;
                 }
 
                 await _classifier.ClassifyWithinTopicAndPersistAsync(
                     @event.QuestionId, @event.GradeId, @event.TopicId.Value, HumanSource, context.CancellationToken);
+                _activity?.Record(ClassifierActivity.Outcome.Classified);
                 return;
             }
 
@@ -75,6 +82,7 @@ public class QuestionCreatedConsumer : IConsumer<QuestionCreatedEvent>
                 {
                     _logger.LogInformation("⏭️ Skipping question {QuestionId} (book TOC, mode {Mode}, subtopic {HasSubTopic})",
                         @event.QuestionId, _bookTocMode, hasSubTopic);
+                    _activity?.Record(ClassifierActivity.Outcome.Skipped);
                     return;
                 }
 
@@ -82,16 +90,19 @@ public class QuestionCreatedConsumer : IConsumer<QuestionCreatedEvent>
                 {
                     await _classifier.ClassifyWithinTopicAndPersistAsync(
                         @event.QuestionId, @event.GradeId, topicId, BookSource, context.CancellationToken);
+                    _activity?.Record(ClassifierActivity.Outcome.Classified);
                     return;
                 }
                 // Hybrid without a topic: nothing to constrain to — classify like a human-authored question.
             }
 
             await _classifier.ClassifyAndPersistAsync(@event.QuestionId, @event.GradeId, context.CancellationToken);
+            _activity?.Record(ClassifierActivity.Outcome.Classified);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "❌ Error classifying question {QuestionId}", @event.QuestionId);
+            _activity?.Record(ClassifierActivity.Outcome.Failed, ex);
             throw; // Let MassTransit retry / dead-letter.
         }
     }

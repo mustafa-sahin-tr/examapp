@@ -1,0 +1,140 @@
+.spb-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.spb-view__text {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.6;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.spb-view__figure {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+
+  img {
+    max-width: 100%;
+    max-height: 480px;
+    object-fit: contain;
+    align-self: flex-start;
+    border-radius: 8px;
+  }
+
+  figcaption {
+    color: var(--ms-text-medium);
+    font-size: 13px;
+  }
+}
+
+.spb-view__link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 12px;
+  color: var(--ms-text-strong);
+  text-decoration: none;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--ms-border-strong);
+    background: var(--ms-surface-weak);
+  }
+}
+
+.spb-view__link-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+
+  strong,
+  small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  small {
+    color: var(--ms-text-medium);
+  }
+}
+
+.spb-view__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ms-text-medium);
+  font-size: 13px;
+
+  mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.spb-view__question {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 12px;
+  background: var(--ms-surface-weak);
+
+  img {
+    max-width: 100%;
+    max-height: 360px;
+    object-fit: contain;
+  }
+}
+
+.spb-view__question-text {
+  overflow-wrap: anywhere;
+}
+
+.spb-view__card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  min-height: 120px;
+  padding: 16px 20px;
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 12px;
+  background: var(--ms-surface);
+  color: var(--ms-text-strong);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--ms-action-border-focus);
+    outline-offset: 2px;
+  }
+
+  small {
+    margin-top: auto;
+    color: var(--ms-text-weak);
+  }
+}
+
+.spb-view__card--back {
+  background: var(--ms-surface-weak);
+}
+
+.spb-view__card-text {
+  font-size: 18px;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}

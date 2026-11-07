@@ -149,6 +149,7 @@
     "open": "Open",
     "openAria": "Open {{title}} link in a new tab",
     "linkUnavailable": "This activity's link is invalid, so it cannot be opened.",
-    "bookMissing": "No book details were entered."
+    "bookMissing": "No book details were entered.",
+    "openPage": "Open page"
   }
 }

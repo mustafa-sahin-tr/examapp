@@ -29,6 +29,16 @@
       "invalidBook": "Invalid book folder name. Only letters, digits, spaces and - _ . ( ) , ' + are allowed; the name cannot start or end with a space, start with a dot or contain ..",
       "storageUnavailable": "The storage service is unavailable right now. Please try again shortly.",
       "rateLimited": "Too many book page lookups in a short time. Please wait a moment and try again."
+    },
+    "block": {
+      "invalidJson": "The block list could not be read.",
+      "tooMany": "A page can have at most {0} blocks.",
+      "textTooLong": "Block text can be at most {0} characters.",
+      "textRequired": "A text block cannot be empty.",
+      "questionNotFound": "The selected question could not be found in the question pool.",
+      "flashcardRequired": "A flashcard needs both a front and a back.",
+      "invalidType": "Invalid block type.",
+      "invalidImageFile": "Upload a PNG, JPEG, WebP or GIF image of at most 10 MB."
     }
   }
 }

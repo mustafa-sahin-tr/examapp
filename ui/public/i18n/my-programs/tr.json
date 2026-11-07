@@ -149,6 +149,7 @@
     "open": "Aç",
     "openAria": "{{title}} bağlantısını yeni sekmede aç",
     "linkUnavailable": "Bu etkinliğin bağlantısı geçersiz olduğu için açılamıyor.",
-    "bookMissing": "Kitap bilgisi girilmemiş."
+    "bookMissing": "Kitap bilgisi girilmemiş.",
+    "openPage": "Sayfayı aç"
   }
 }

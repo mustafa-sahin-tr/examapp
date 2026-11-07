@@ -1,0 +1,145 @@
+<section class="spb" *transloco="let t; prefix: 'study-pages.blocks'">
+  <header class="spb__head">
+    <div>
+      <h2 class="spb__title">{{ t('title') }}</h2>
+      <p class="spb__hint">{{ t('hint') }}</p>
+    </div>
+    <mat-button-toggle-group [value]="mode()" (change)="mode.set($event.value)" [attr.aria-label]="t('modeAria')">
+      <mat-button-toggle value="edit" data-testid="blocks-mode-edit"><mat-icon>edit</mat-icon>{{ t('modeEdit') }}</mat-button-toggle>
+      <mat-button-toggle value="preview" data-testid="blocks-mode-preview"><mat-icon>visibility</mat-icon>{{ t('modePreview') }}</mat-button-toggle>
+    </mat-button-toggle-group>
+  </header>
+
+  @if (mode() === 'preview') {
+  <div class="spb__preview" data-testid="blocks-preview">
+    @if (blocks().length === 0) {
+    <p class="spb__hint">{{ t('previewEmpty') }}</p>
+    } @else {
+    <app-study-page-blocks-view [blocks]="blocks()" [solvable]="false"></app-study-page-blocks-view>
+    }
+  </div>
+  } @else {
+  <ng-template #addBar let-index="index">
+    <div class="spb__add">
+      <button
+        mat-stroked-button
+        type="button"
+        [matMenuTriggerFor]="addMenu"
+        [matMenuTriggerData]="{ index }"
+        [disabled]="!canAdd()"
+        [attr.aria-label]="t('addAria')"
+        data-testid="blocks-add"
+      >
+        <mat-icon>add</mat-icon>{{ t('add') }}
+      </button>
+    </div>
+  </ng-template>
+
+  <mat-menu #addMenu="matMenu">
+    <ng-template matMenuContent let-index="index">
+      @for (opt of typeOptions; track opt.type) {
+      <button mat-menu-item type="button" (click)="add(opt.type, index)" [attr.data-testid]="'blocks-add-' + opt.type">
+        <mat-icon>{{ opt.icon }}</mat-icon>
+        <span>{{ t(opt.labelKey) }}</span>
+      </button>
+      }
+    </ng-template>
+  </mat-menu>
+
+  <ng-container *ngTemplateOutlet="addBar; context: { index: 0 }"></ng-container>
+
+  @for (block of blocks(); track block.key; let i = $index, first = $first, last = $last) {
+  <article class="spb__block" data-testid="blocks-item">
+    <div class="spb__block-head">
+      <mat-icon aria-hidden="true">{{ optionFor(block.type).icon }}</mat-icon>
+      <span class="spb__block-type">{{ t(optionFor(block.type).labelKey) }}</span>
+      <span class="spb__spacer"></span>
+      <button mat-icon-button type="button" (click)="move(i, -1)" [disabled]="first" [attr.aria-label]="t('moveUp')">
+        <mat-icon>arrow_upward</mat-icon>
+      </button>
+      <button mat-icon-button type="button" (click)="move(i, 1)" [disabled]="last" [attr.aria-label]="t('moveDown')">
+        <mat-icon>arrow_downward</mat-icon>
+      </button>
+      <button mat-icon-button type="button" (click)="remove(block.key)" [attr.aria-label]="t('remove')" data-testid="blocks-remove">
+        <mat-icon>delete</mat-icon>
+      </button>
+    </div>
+
+    @switch (block.type) {
+    @case (Type.Text) {
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="spb__full">
+      <mat-label>{{ t('field.text') }}</mat-label>
+      <textarea matInput rows="4" [maxLength]="maxText" [value]="block.text ?? ''" (input)="patch(block.key, { text: inputValue($event) })"></textarea>
+    </mat-form-field>
+    }
+    @case (Type.Image) {
+    <div class="spb__image">
+      @if (block.imageUrl) {
+      <img [src]="block.imageUrl" alt="" />
+      }
+      <label class="spb__upload" [class.spb__upload--busy]="block.uploading">
+        <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" (change)="onImageSelected(block.key, $event)" [disabled]="block.uploading" />
+        <mat-icon>upload</mat-icon>
+        {{ block.uploading ? t('uploading') : block.imageUrl ? t('replaceImage') : t('chooseImage') }}
+      </label>
+    </div>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="spb__full">
+      <mat-label>{{ t('field.caption') }}</mat-label>
+      <input matInput [maxLength]="maxText" [value]="block.text ?? ''" (input)="patch(block.key, { text: inputValue($event) })" />
+    </mat-form-field>
+    }
+    @case (Type.Link) {
+    <div class="spb__row">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="spb__grow">
+        <mat-label>{{ t('field.url') }}</mat-label>
+        <input matInput type="url" placeholder="https://" [value]="block.url ?? ''" (input)="patch(block.key, { url: inputValue($event) })" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>{{ t('field.platform') }}</mat-label>
+        <mat-select [value]="block.platform ?? 0" (selectionChange)="patch(block.key, { platform: $event.value })">
+          @for (p of platforms; track p) {
+          <mat-option [value]="p">{{ 'study-pages.' + platformKeys[p] | transloco }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="spb__full">
+      <mat-label>{{ t('field.linkTitle') }}</mat-label>
+      <input matInput [maxLength]="maxText" [value]="block.text ?? ''" (input)="patch(block.key, { text: inputValue($event) })" />
+    </mat-form-field>
+    }
+    @case (Type.Question) {
+    @if (block.questionId != null) {
+    <div class="spb__question">
+      @if (block.questionImageUrl) {
+      <img [src]="block.questionImageUrl" alt="" />
+      } @else {
+      <div class="spb__question-text" [innerHTML]="block.questionText || ''"></div>
+      }
+      <span class="spb__hint">#{{ block.questionId }}</span>
+      <button mat-stroked-button type="button" (click)="pickQuestion(block.key)">{{ t('changeQuestion') }}</button>
+    </div>
+    } @else if (block.id) {
+    <p class="spb__warn">{{ t('questionRemoved') }}</p>
+    } @else {
+    <button mat-stroked-button type="button" (click)="pickQuestion(block.key)">{{ t('chooseQuestion') }}</button>
+    }
+    }
+    @case (Type.Flashcard) {
+    <div class="spb__row">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="spb__grow">
+        <mat-label>{{ t('field.front') }}</mat-label>
+        <textarea matInput rows="3" [maxLength]="maxText" [value]="block.text ?? ''" (input)="patch(block.key, { text: inputValue($event) })"></textarea>
+      </mat-form-field>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="spb__grow">
+        <mat-label>{{ t('field.back') }}</mat-label>
+        <textarea matInput rows="3" [maxLength]="maxText" [value]="block.backText ?? ''" (input)="patch(block.key, { backText: inputValue($event) })"></textarea>
+      </mat-form-field>
+    </div>
+    }
+    }
+  </article>
+  <ng-container *ngTemplateOutlet="addBar; context: { index: i + 1 }"></ng-container>
+  }
+  }
+</section>

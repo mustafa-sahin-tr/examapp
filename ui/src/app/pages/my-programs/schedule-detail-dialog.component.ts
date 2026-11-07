@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { UserProgramStudyPageSchedule } from '../../models/program.interfaces';
 import { StudyItemDisplay, describeStudyItem } from '../../shared/utils/study-item-display.util';
@@ -16,7 +17,7 @@ export interface ScheduleDetailDialogData {
 @Component({
   selector: 'app-schedule-detail-dialog',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, MatButtonModule, MatIconModule, TranslocoDirective],
+  imports: [CommonModule, MatDialogModule, MatButtonModule, MatIconModule, RouterLink, TranslocoDirective],
   // Dialog `MatDialog` ile açıldığı için sayfanın scope'unu devralmaz; kendi provider'ını verir.
   providers: [provideTranslocoScope(MY_PROGRAMS_SCOPE)],
   templateUrl: './schedule-detail-dialog.component.html',

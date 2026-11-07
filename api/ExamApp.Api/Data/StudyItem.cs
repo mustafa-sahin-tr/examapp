@@ -67,4 +67,7 @@ public class StudyItem : BaseEntity
     public int? EndPage { get; set; }
 
     public ICollection<StudyItemImage> Images { get; set; } = new List<StudyItemImage>();
+
+    /// <summary>Issue #933: ana içerikten sonra gösterilen sıralı bloklar.</summary>
+    public ICollection<StudyItemBlock> Blocks { get; set; } = new List<StudyItemBlock>();
 }

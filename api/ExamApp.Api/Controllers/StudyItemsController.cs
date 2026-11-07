@@ -101,6 +101,22 @@ public class StudyItemsController : BaseController
         return Ok(result.Item);
     }
 
+    /// <summary>Issue #933: görsel bloğu için tek dosya yükler; dönen <c>imageUrl</c> kayıtta bloğa yazılır.</summary>
+    [Authorize(Roles = "Teacher")]
+    [HttpPost("block-images")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)]
+    [RequestSizeLimit(12 * 1024 * 1024)]
+    public async Task<IActionResult> UploadBlockImage(IFormFile? image)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        var (result, error) = await _studyItemService.UploadBlockImageAsync(image, user);
+        if (error != null)
+        {
+            return BadRequest(new { message = error });
+        }
+        return Ok(result);
+    }
+
     [Authorize(Policy = "TeacherOrService")]
     [HttpPost("attach-image-by-subtopics")]
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287

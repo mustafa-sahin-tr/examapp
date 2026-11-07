@@ -238,3 +238,20 @@ Kılavuz özeti ve beceri listesinin kaynağı `docs/context-based-questions.md`
 ## Okullar listesi (#898)
 
 `GET api/admin/schools` satırı `teacherCount` (`Teacher.SchoolId`), `studentCount` (doğrulanmış üyelik) ve `pendingCount` (doğrulanmamış öğrenci üyeliği + bu okulu isteyen, onay bekleyen öğretmen) taşır; sayılar alt sorgularla tek istekte gelir. Silme artık kimlik bağına da bakar: okulda öğretmen (bağlı ya da okul isteyen) veya öğrenci (bekleyen dahil) varsa reddedilir; eski serbest metin `SchoolName` eşleşmesi de engellemeye devam eder. Ekran: liste üstünde yalnız arama ve il / ilçe süzgeci, "Okul ekle" diyalog açar; satırda konum, sayılar ve satır menüsü (Düzenle, Sil); üyesi ya da başvurusu olan okulda Sil devre dışı ve nedenini yazar.
+
+## Çalışma sayfası blokları (#933)
+
+- `StudyItemBlocks` tablosu: sayfa başına en fazla 50 sıralı blok — `Text`, `Image` (alt yazı), `Link` (başlık + platform),
+  `Question` (soru havuzundan), `Flashcard` (ön / arka). Sayfanın eski ana içeriği (`ContentType`: görsel seti / bağlantı / kitap
+  aralığı) yerinde kalır, çünkü program, takvim ve kitap kaydı onu okur; bloklar ana içerikten sonra gösterilir. Eski sayfalar
+  taşınmadı (blokları boş, eskisi gibi görünür). Blokları olan sayfada görsel seti zorunlu değil.
+- Kayıt: create / update formuna `Blocks` JSON'u (`[{id?, type, text, backText, imageUrl, url, platform, questionId}]`); alan
+  yoksa bloklara dokunulmaz, `[]` hepsini siler. Id'si eşleşen blok yerinde güncellenir, listede olmayan soft delete edilir,
+  başka sayfanın id'si yeni blok sayılır. Görsel `POST api/study-items/block-images` ile `study-pages/pages/blocks/{userId}/`
+  altına yüklenir (PNG/JPEG/WebP/GIF, ≤ 10 MB); kayıtta `StudyPage` allowlist'ine normalize edilir.
+- Soru bloğu: soru silinmemiş ve sayfaya yeni ekleniyorsa öğretmene görünür olmalı (`CanViewQuestionAsync`, havuzun `GET {id}`
+  kuralı); sayfada zaten olan soru yeniden denetlenmez. Soru silinirse blok kalır, öğrenciye gösterilmez, editörde uyarı çıkar
+  ve kayıtta düşer.
+- Öğrenci görünümü `/study-page/:id` (plan detayındaki "Sayfayı aç", öğretmen listesinde göz simgesi). Soru bloğu pratik
+  oturumu açar: `POST api/practice/sessions` `{ studyItemId, studyQuestionId? }` — yayımlanmış sayfanın silinmemiş soruları,
+  blok sırasıyla sabit liste (en fazla 30). Editörde "Öğrenci görünümü" sekmesi aynı bileşeni (`study-page-blocks-view`) gösterir.

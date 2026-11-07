@@ -21,6 +21,9 @@ public interface IStudyItemService
     Task<AttachStudyItemImageBySubTopicsResultDto> AttachImageBySubTopicsAsync(AttachStudyItemImageBySubTopicsRequestDto request, UserProfileDto user);
     Task<ResponseBaseDto> DeleteAsync(int id, UserProfileDto user);
 
+    /// <summary>Issue #933: görsel bloğu dosyasını <c>study-pages/pages/blocks/</c> altına yükler; geçersiz dosya → Error (400).</summary>
+    Task<(StudyItemBlockImageUploadDto? Image, string? Error)> UploadBlockImageAsync(IFormFile? image, UserProfileDto user);
+
     /// <summary>
     /// issue #365 (S3): JSON kılavuzundaki kitap sayfalarının <c>study-pages/books/{book}/page_{n}.webp</c> nesnesi var mı
     /// (sunucu tarafı StatObject). Kitap adı sıkı allowlist'ten geçmezse <see cref="StudyBookPageLookupResult.Error"/>;

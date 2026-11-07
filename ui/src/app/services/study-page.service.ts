@@ -63,6 +63,13 @@ export class StudyPageService {
    * issue #365 (S3): kitap sayfalarının depolamada olup olmadığı (sunucu tarafı kontrol; bucket'lar özel olduğu için
    * tarayıcı `/img/...` adresini artık yoklayamaz). İstek başına en fazla {@link BOOK_PAGE_LOOKUP_MAX_PAGES} sayfa.
    */
+  /** Issue #933: görsel bloğu dosyası; dönen `imageUrl` bloğa yazılır (imzalı önizleme, kayıtta sunucu normalize eder). */
+  uploadBlockImage(file: File): Observable<{ imageUrl: string }> {
+    const formData = new FormData();
+    formData.append('image', file);
+    return this.http.post<{ imageUrl: string }>(`${this.baseUrl}/block-images`, formData);
+  }
+
   lookupBookPages(pages: StudyBookPageRef[]): Observable<StudyBookPageLookupResult[]> {
     return this.http.post<StudyBookPageLookupResult[]>(`${this.baseUrl}/book-pages/lookup`, { pages });
   }
@@ -81,6 +88,7 @@ export class StudyPageService {
     if (request.subTopicId) formData.append('SubTopicId', String(request.subTopicId));
     formData.append('IsPublished', String(request.isPublished));
     formData.append('ContentType', String(request.contentType));
+    if (request.blocks) formData.append('Blocks', JSON.stringify(request.blocks));
 
     switch (request.contentType) {
       case StudyPageContentType.Link:

@@ -195,6 +195,13 @@ export const routes: Routes = [
       { path: 'study-pages/new', component: StudyPageEditorComponent, canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard] },
       { path: 'study-pages/:id', component: StudyPageEditorComponent, canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard] },
       {
+        // Issue #933: çalışma sayfasının öğrenci görünümü (öğretmen de açabilir; soru çözme yalnız öğrenci).
+        path: 'study-page/:id',
+        canActivate: [authGuard, approvedTeacherGuard],
+        loadComponent: () =>
+          import('./pages/study-page-view/study-page-view.component').then((m) => m.StudyPageViewComponent),
+      },
+      {
         // Issue #61: öğretmenin tüm konu/alt konular için çalışma linki yönetimi (admin taksonomi ekranından bağımsız).
         path: 'study-links',
         canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],

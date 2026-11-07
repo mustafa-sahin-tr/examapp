@@ -11,7 +11,7 @@ import { GradesService } from '../../services/grades.service';
 import { SubjectService } from '../../services/subject.service';
 import { StudyPageService } from '../../services/study-page.service';
 import { BookService } from '../../services/book.service';
-import { StudyBookPageLookupResult, StudyPage, StudyPageContentType, StudyPageLinkPlatform, } from '../../models/study-page';
+import { StudyBookPageLookupResult, StudyPage, StudyPageBlockType, StudyPageContentType, StudyPageLinkPlatform, } from '../../models/study-page';
 import { TranslocoService } from '@jsverse/transloco';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 
@@ -404,6 +404,57 @@ describe('StudyPageEditorComponent', () => {
 
             expect(snackBar.open).toHaveBeenCalledWith('En az bir resim seçmelisiniz.', 'Tamam', expect.any(Object));
             expect(studyPageService.create).not.toHaveBeenCalled();
+        });
+    });
+
+    // Issue #933: sayfa gövdesi blokları.
+    describe('content blocks', () => {
+        it('onSave_NewPageWithOnlyBlocks_NeedsNoImageAndSendsBlocksInOrder', () => {
+            const { component, studyPageService } = setupComponent('new');
+            studyPageService.create.mockReturnValue(of({} as StudyPage));
+            component.form.patchValue({ title: 'Kesirler' });
+            component.blocks.set([
+                { key: 'a', id: 0, sortOrder: 0, type: StudyPageBlockType.Text, text: 'Giriş' },
+                { key: 'b', id: 0, sortOrder: 0, type: StudyPageBlockType.Flashcard, text: 'Ön', backText: 'Arka' },
+            ]);
+
+            component.onSave();
+
+            expect(studyPageService.create).toHaveBeenCalledTimes(1);
+            const payload = studyPageService.create.mock.calls[0][0];
+            expect(payload.blocks.map((b: { type: StudyPageBlockType }) => b.type)).toEqual([StudyPageBlockType.Text, StudyPageBlockType.Flashcard]);
+            expect(payload.blocks[1]).toMatchObject({ id: null, text: 'Ön', backText: 'Arka', imageUrl: null, questionId: null });
+        });
+
+        it('onSave_EmptyTextBlock_ShowsBlockErrorAndDoesNotSave', () => {
+            const { component, snackBar, studyPageService } = setupComponent('new');
+            component.form.patchValue({ title: 'Kesirler' });
+            component.blocks.set([{ key: 'a', id: 0, sortOrder: 0, type: StudyPageBlockType.Text, text: '   ' }]);
+
+            component.onSave();
+
+            expect(snackBar.open).toHaveBeenCalledWith(translate('blocks.errors.textRequired'), 'Tamam', expect.any(Object));
+            expect(studyPageService.create).not.toHaveBeenCalled();
+        });
+
+        it('loadStudyPage_KeepsBlockIds_AndDropsAQuestionBlockWhoseQuestionWasRemoved', () => {
+            const services = configureModule('42');
+            services.studyPageService.getById.mockReturnValue(of({
+                id: 42, title: 'Bloklu', description: '', isPublished: true, contentType: StudyPageContentType.Image,
+                images: [], imageCount: 0,
+                blocks: [
+                    { id: 7, sortOrder: 1, type: StudyPageBlockType.Text, text: 'Giriş' },
+                    { id: 8, sortOrder: 2, type: StudyPageBlockType.Question, questionId: null },
+                ],
+            } as unknown as StudyPage));
+            services.studyPageService.update.mockReturnValue(of({} as StudyPage));
+            const component = TestBed.createComponent(StudyPageEditorComponent).componentInstance;
+
+            expect(component.blocks().length).toBe(2);
+            component.onSave();
+
+            const payload = services.studyPageService.update.mock.calls[0][1];
+            expect(payload.blocks).toEqual([expect.objectContaining({ id: 7, type: StudyPageBlockType.Text, text: 'Giriş' })]);
         });
     });
 

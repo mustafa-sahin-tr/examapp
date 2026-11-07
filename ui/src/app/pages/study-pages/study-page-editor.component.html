@@ -446,4 +446,11 @@
     </mat-card>
   </div>
   }
+
+  <!-- Issue #933: sayfa gövdesi — sıralı içerik blokları. -->
+  <mat-card class="editor-card blocks-card">
+    <mat-card-content>
+      <app-study-page-blocks-editor [(blocks)]="blocks" [subjectId]="form.controls.subjectId.value"></app-study-page-blocks-editor>
+    </mat-card-content>
+  </mat-card>
 </div>

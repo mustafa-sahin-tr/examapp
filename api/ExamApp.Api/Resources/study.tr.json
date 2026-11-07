@@ -29,6 +29,16 @@
       "invalidBook": "Geçersiz kitap klasörü adı. Yalnızca harf, rakam, boşluk ve - _ . ( ) , ' + karakterleri kullanılabilir; ad boşlukla başlayıp bitemez, nokta ile başlayamaz ve .. içeremez.",
       "storageUnavailable": "Depolama servisine şu anda ulaşılamıyor. Lütfen biraz sonra tekrar deneyin.",
       "rateLimited": "Kısa sürede çok fazla kitap sayfası sorgusu yapıldı. Lütfen biraz bekleyip tekrar deneyin."
+    },
+    "block": {
+      "invalidJson": "Blok listesi okunamadı.",
+      "tooMany": "Bir sayfada en fazla {0} blok olabilir.",
+      "textTooLong": "Blok metni en fazla {0} karakter olabilir.",
+      "textRequired": "Metin bloğu boş olamaz.",
+      "questionNotFound": "Seçilen soru soru havuzunda bulunamadı.",
+      "flashcardRequired": "Bilgi kartının ön ve arka yüzü dolu olmalı.",
+      "invalidType": "Geçersiz blok tipi.",
+      "invalidImageFile": "En fazla 10 MB'lık PNG, JPEG, WebP ya da GIF görsel yükleyin."
     }
   }
 }

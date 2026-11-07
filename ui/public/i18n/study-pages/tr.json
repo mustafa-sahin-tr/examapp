@@ -26,7 +26,8 @@
       "title": "Henüz çalışma sayfan yok",
       "text": "Bir konunun özetini, örnek çözümleri ve birkaç alıştırmayı tek sayfada hazırla; öğrencilerin testten önce ya da sonra çalışsın.",
       "cta": "İlk çalışma sayfanı oluştur"
-    }
+    },
+    "view": "Öğrenci görünümü"
   },
   "contentType": {
     "image": "Görsel",
@@ -145,5 +146,75 @@
     "statusDraft": "Taslak",
     "statusPublished": "Yayında",
     "descriptionHint": "Öğrencinin içerikten önce okuyacağı kısa açıklama."
+  },
+  "blocks": {
+    "title": "Sayfa içeriği",
+    "hint": "Metin, görsel, bağlantı, soru ve bilgi kartı bloklarını sırayla ekleyin. Öğrenci blokları bu sırayla görür.",
+    "modeAria": "Görünüm",
+    "modeEdit": "Düzenle",
+    "modePreview": "Öğrenci görünümü",
+    "previewEmpty": "Henüz blok yok.",
+    "add": "Blok ekle",
+    "addAria": "Buraya blok ekle",
+    "moveUp": "Yukarı taşı",
+    "moveDown": "Aşağı taşı",
+    "remove": "Bloğu sil",
+    "type": {
+      "text": "Metin",
+      "image": "Görsel",
+      "link": "Bağlantı",
+      "question": "Soru",
+      "flashcard": "Bilgi kartı"
+    },
+    "field": {
+      "text": "Metin",
+      "caption": "Alt yazı (isteğe bağlı)",
+      "url": "Adres",
+      "platform": "Platform",
+      "linkTitle": "Başlık (isteğe bağlı)",
+      "front": "Ön yüz",
+      "back": "Arka yüz"
+    },
+    "chooseImage": "Görsel seç",
+    "replaceImage": "Görseli değiştir",
+    "uploading": "Yükleniyor…",
+    "uploadFailed": "Görsel yüklenemedi.",
+    "chooseQuestion": "Soru havuzundan seç",
+    "changeQuestion": "Soruyu değiştir",
+    "questionRemoved": "Bu soru havuzdan kaldırıldı; kayıtta blok silinir.",
+    "errors": {
+      "uploading": "Görsel yüklemesi bitmeden kaydedemezsiniz.",
+      "textRequired": "Metin bloğu boş olamaz.",
+      "imageRequired": "Görsel bloğuna bir görsel seçin.",
+      "flashcardRequired": "Bilgi kartının ön ve arka yüzünü doldurun."
+    },
+    "picker": {
+      "title": "Soru seç",
+      "scope": "Kapsam",
+      "mine": "Sorularım",
+      "all": "Görebildiğim tüm sorular",
+      "loadFailed": "Sorular yüklenemedi.",
+      "empty": "Soru bulunamadı.",
+      "pickAria": "{{id}} numaralı soruyu seç",
+      "more": "Daha fazla",
+      "cancel": "Vazgeç"
+    },
+    "view": {
+      "question": "Soru",
+      "solve": "Çöz",
+      "solving": "Açılıyor…",
+      "cardFront": "Ön yüz",
+      "cardBack": "Arka yüz",
+      "flipHint": "Çevirmek için dokun"
+    },
+    "page": {
+      "loadFailed": "Çalışma sayfası açılamadı.",
+      "retry": "Tekrar dene",
+      "back": "Geri",
+      "solveAll": "Sayfadaki soruları çöz",
+      "solveFailed": "Soru açılamadı.",
+      "openLink": "Bağlantıyı aç",
+      "images": "Görseller"
+    }
   }
 }

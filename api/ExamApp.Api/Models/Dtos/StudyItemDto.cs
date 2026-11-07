@@ -40,6 +40,36 @@ public class StudyItemDto
     [StorageUrl(StorageArea.StudyPage)]
     public string? CoverImageUrl { get; set; }
     public List<StudyItemImageDto> Images { get; set; } = new();
+
+    /// <summary>Issue #933: ana içerikten sonra gösterilen bloklar, sırayla.</summary>
+    public List<StudyItemBlockDto> Blocks { get; set; } = new();
+}
+
+/// <summary>Issue #933: tek içerik bloğu; tipe ait olmayan alanlar null.</summary>
+public class StudyItemBlockDto
+{
+    public int Id { get; set; }
+    public int SortOrder { get; set; }
+    public StudyItemBlockType Type { get; set; }
+    public string? Text { get; set; }
+    public string? BackText { get; set; }
+    [StorageUrl(StorageArea.StudyPage)]
+    public string? ImageUrl { get; set; }
+    [NotStorageUrl("Link bloğunun dış bağlantısı (YouTube/EBA vb.), MinIO nesnesi değil")]
+    public string? Url { get; set; }
+    public StudyItemLinkPlatform? Platform { get; set; }
+    public int? QuestionId { get; set; }
+    /// <summary>Soru bloğu önizlemesi: soru kökü metni (varsa).</summary>
+    public string? QuestionText { get; set; }
+    [StorageUrl(StorageArea.QuestionImage)]
+    public string? QuestionImageUrl { get; set; }
+}
+
+/// <summary>Issue #933: <c>POST api/study-items/block-images</c> yanıtı. Değer kayıtta <c>imageUrl</c> olarak geri gönderilir.</summary>
+public class StudyItemBlockImageUploadDto
+{
+    [StorageUrl(StorageArea.StudyPage)]
+    public string ImageUrl { get; set; } = string.Empty;
 }
 
 public class StudyItemImageDto

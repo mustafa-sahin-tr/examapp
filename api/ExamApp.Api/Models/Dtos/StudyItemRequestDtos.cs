@@ -31,6 +31,9 @@ public class CreateStudyItemRequestDto
 
     // Image
     public string? MinioImages { get; set; } // JSON string
+
+    // Issue #933: blok listesi JSON'u ([{id?, type, text, backText, imageUrl, url, platform, questionId}]); null → bloklara dokunma
+    public string? Blocks { get; set; }
 }
 
 public class UpdateStudyItemRequestDto
@@ -61,6 +64,25 @@ public class UpdateStudyItemRequestDto
     // Image
     public List<int> RemovedImageIds { get; set; } = new();
     public string? MinioImages { get; set; } // JSON string
+
+    // Issue #933: blok listesi JSON'u ([{id?, type, text, backText, imageUrl, url, platform, questionId}]); null → bloklara dokunma
+    public string? Blocks { get; set; }
+}
+
+/// <summary>Issue #933: <see cref="CreateStudyItemRequestDto.Blocks"/> JSON'undaki tek blok. Sıra listedeki sıradır.</summary>
+public class StudyItemBlockRequestDto
+{
+    /// <summary>Güncellemede var olan blok; null ya da sayfaya ait değilse yeni blok.</summary>
+    public int? Id { get; set; }
+    public StudyItemBlockType Type { get; set; }
+    public string? Text { get; set; }
+    public string? BackText { get; set; }
+    [NotStorageUrl("İstek DTO'su: StudyItemService StorageAreaPolicy ile normalize eder")]
+    public string? ImageUrl { get; set; }
+    [NotStorageUrl("İstek DTO'su: Link bloğunun dış bağlantısı")]
+    public string? Url { get; set; }
+    public StudyItemLinkPlatform? Platform { get; set; }
+    public int? QuestionId { get; set; }
 }
 
 public class StudyItemFilterDto

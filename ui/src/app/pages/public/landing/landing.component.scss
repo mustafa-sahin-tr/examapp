@@ -98,6 +98,7 @@
     letter-spacing: -0.02em;
     text-decoration: none;
     white-space: nowrap;
+    flex: none;
     img { flex: none; }
   }
 
@@ -110,10 +111,11 @@
 
     a {
       display: block;
-      padding: 8px 12px;
+      padding: 8px 10px;
       border-radius: 10px;
       color: var(--ms-text-medium);
       font-size: 15px;
+      white-space: nowrap;
       font-weight: 500;
       text-decoration: none;
       cursor: pointer;
@@ -294,7 +296,8 @@
   }
 
   // ---------- roller
-  .roles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  // #880: dört rol (öğrenci, öğretmen, özel ders, veli) geniş ekranda tek satır, daha darda 2 × 2.
+  .roles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
 
   .role {
     display: flex;
@@ -323,7 +326,15 @@
   .r1 .role-icon { background: var(--ms-action-background-weak); color: var(--ms-action-text); }
   .r2 .role-icon { background: var(--ms-warning-surface-weak); color: var(--ms-warning-text-weak); }
   .r3 .role-icon { background: var(--ms-info-surface-weak); color: var(--ms-info-text-weak); }
-  .role-foot { display: grid; gap: 10px; justify-items: start; margin-top: auto; }
+  .r4 .role-icon { background: var(--ms-success-surface-weak); color: var(--ms-success-text); }
+  .role-foot {
+    display: grid;
+    gap: 10px;
+    justify-items: start;
+    margin-top: auto;
+    // Uzun düğme metni ("Özel ders öğretmeni olarak başvur") dar kartta satır kırar, taşmaz.
+    a { max-width: 100%; height: auto; min-height: 36px; white-space: normal; text-align: center; }
+  }
 
   // ---------- özellikler
   .features { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
@@ -560,10 +571,15 @@
   }
 
   // ---------- duyarlı
-  @media (max-width: 1080px) {
+  // #880: menüde yedi bağlantı (Veliler eklendi); sığmadığı genişlikte menü düğmesine geçilir.
+  @media (max-width: 1240px) {
     .nav-links { display: none; }
     .menu-btn { display: inline-flex; }
     .nav .wrap { justify-content: space-between; }
+    .roles { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (max-width: 1080px) {
     .features, .steps, .quotes { grid-template-columns: repeat(2, 1fr); }
   }
 
@@ -603,5 +619,11 @@
     .cf-2 { display: none; }
     .cf-1 { left: 50%; bottom: -26px; white-space: nowrap; transform: translateX(-50%); }
     .faq .mat-expansion-panel-header-title { font-size: 16px; }
+  }
+
+  // #880: "Giriş yap" telefonda da üst çubukta; yer açmak için marka yalnız logo olur.
+  @media (max-width: 420px) {
+    .brand span { display: none; }
+    .nav-actions { gap: 2px; }
   }
 }

@@ -15,7 +15,8 @@
         <button mat-icon-button type="button" class="hide-sm" [attr.aria-label]="t('nav.toggleTheme')" (click)="colorScheme.toggle()">
           <mat-icon fontSet="material-symbols-outlined" aria-hidden="true">{{ colorScheme.colorScheme() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
         </button>
-        <a mat-button class="btn btn-ghost btn-sm hide-sm" [href]="loginUrl">{{ t('nav.login') }}</a>
+        <!-- #880: mobil üst çubukta da giriş görünür (menüyü açmadan). -->
+        <a mat-button class="btn btn-ghost btn-sm" [href]="loginUrl" data-testid="landing-login">{{ t('nav.login') }}</a>
         <button mat-flat-button type="button" class="btn btn-primary btn-sm" [matMenuTriggerFor]="registerMenu">{{ t('nav.register') }}</button>
         <mat-menu #registerMenu="matMenu">
           <a mat-menu-item [href]="registerStudentUrl">{{ t('nav.registerStudent') }}</a>

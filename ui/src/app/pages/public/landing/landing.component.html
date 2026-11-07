@@ -2,7 +2,9 @@
   <app-navbar />
   <main>
     <app-landing-hero />
-    <app-landing-stats />
+    @if (showStats) {
+      <app-landing-stats />
+    }
     <app-landing-roles />
     <app-landing-features />
 
@@ -34,7 +36,9 @@
 
     <app-how-it-works />
     <app-landing-subjects />
-    <app-landing-testimonials />
+    @if (showTestimonials) {
+      <app-landing-testimonials />
+    }
     <app-faq />
     <app-landing-cta />
   </main>

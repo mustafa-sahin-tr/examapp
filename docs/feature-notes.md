@@ -96,11 +96,13 @@ Deneme her oturum için sıradan bir test kaydı açar: süre sınırı, oturum,
 
 `/welcome` statiktir, backend çağrısı yapmaz. Veri `ui/src/app/pages/public/landing/landing-content.ts`, metin `ui/public/i18n/landing/{tr,en}.json`.
 
-**Rakamları güncelleme:** `LANDING_STATS` değerlerini yuvarlayarak yaz, gerçek sayılara geçince `LANDING_STATS_ARE_SAMPLE = false` yap. "Örnek veriler" notu yalnız o zaman kalkar.
+**Rakamları güncelleme:** `LANDING_STATS` değerlerini yuvarlayarak yaz, gerçek sayılara geçince `LANDING_STATS_ARE_SAMPLE = false` yap. Örnek oldukları sürece rakam bölümü hiç gösterilmez (#880).
 
-**Yorumları güncelleme:** `LANDING_TESTIMONIALS` dizisine bir satır, iki sözlüğe `testimonials.items.<key>.{quote,name,role}` ekle (1–6 kart; soyad, okul, fotoğraf yok). Hepsi izinli gerçek yorum olunca `LANDING_TESTIMONIALS_ARE_FICTIONAL = false` yap. İzin kaydı (kimden, ne zaman) kodda değil, ürün sahibinde tutulur.
+**Yorumları güncelleme:** `LANDING_TESTIMONIALS` dizisine bir satır, iki sözlüğe `testimonials.items.<key>.{quote,name,role}` ekle (1–6 kart; soyad, okul, fotoğraf yok). Hepsi izinli gerçek yorum olunca `LANDING_TESTIMONIALS_ARE_FICTIONAL = false` yap; o zamana kadar yorum bölümü gösterilmez (#880). İzin kaydı (kimden, ne zaman) kodda değil, ürün sahibinde tutulur.
 
-**Yayın öncesi:** örnek sayılar ve temsili yorumlar bu notlar olmadan yayımlanmaz; gerçekmiş gibi sunulursa yanıltıcı reklam sayılır.
+**Yayın öncesi:** örnek sayılar ve temsili yorumlar yayımlanmaz (bayraklar `true` iken bölümler kapalıdır); gerçekmiş gibi sunulursa yanıltıcı reklam sayılır.
+
+**Veli (#880):** veli kendini kaydetmez, öğrencinin davetiyle hesap açar; rol kartı ve "Veliler" menü bağlantısı girişe götürür.
 
 **Test çözme görüntüsü:** `assets/images/landing/test-solve.png` gerçek ekrandandır, ekran değişince yenilenir. Soru ve şıklar özgün örnektir, kitap içeriği kullanılmaz (#779). SVG'lerdeki metinler Türkçedir, İngilizce sürümü yok.
 

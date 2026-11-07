@@ -13,6 +13,7 @@
     "features": "Özellikler",
     "teachers": "Öğretmenler",
     "students": "Öğrenciler",
+    "parents": "Veliler",
     "tutoring": "Özel ders",
     "howItWorks": "Nasıl çalışır?",
     "faq": "SSS",
@@ -87,6 +88,16 @@
       "item4": "Görüntülü ders ve ortak tahta",
       "cta": "Özel ders öğretmeni olarak başvur",
       "note": "Başvurular yönetici onayıyla yayına alınır."
+    },
+    "parent": {
+      "title": "Veli",
+      "description": "Çocuğunun çalışmalarını izle, özel ders taleplerini onayla.",
+      "item1": "Haftalık çalışma ve test sonuçları",
+      "item2": "Kazanılan rozetler ve seri",
+      "item3": "Özel ders taleplerini onaylama",
+      "item4": "Birden fazla çocuk tek hesapta",
+      "cta": "Veli girişi",
+      "note": "Veli hesabı öğrencinin davetiyle açılır."
     }
   },
   "features": {
@@ -118,7 +129,7 @@
   "students": {
     "kicker": "Öğrenciler için",
     "title": "Sınav gibi çöz, sonucu hemen gör",
-    "body": "Çözüm ekranında kalan süreyi, soru haritasını ve işaretlediğin soruları tek bakışta görürsün. Test bitince başarı yüzden, konu bazlı sonuçların ve soru soru inceleme hazır. Yanlışlarından tek tıkla yeni bir test oluşturabilirsin.",
+    "body": "Çözüm ekranında kalan süreyi, soru haritasını ve işaretlediğin soruları tek bakışta görürsün. Test bitince başarı yüzdeni, konu bazlı sonuçlarını ve soru soru incelemeyi görürsün. Yanlışlarından tek tıkla yeni bir test oluşturabilirsin.",
     "item1": "Atanan, devam eden ve tamamlanan testler, Keşfet",
     "item2": "Otomatik geçiş, işaretleme ve cevap temizleme",
     "item3": "Konu bazlı başarı ve sıradaki adım önerisi",
@@ -134,11 +145,11 @@
   "motivation": {
     "kicker": "Motivasyon",
     "title": "Düzenli çalışmak görünür olsun",
-    "body": "Doğru cevaplar puan kazandırır. Rozet yollarında adım adım ilerler, günün sorularıyla serini korur, liderlik tablosunda yerini görürsün. Ana sayfandaki ısı haritası bir yıllık çalışmanı gösterir.",
+    "body": "Doğru cevaplar puan kazandırır. Rozet yollarında adım adım ilerler, günün sorularıyla serini korur, liderlik tablosunda yerini görürsün. Ana sayfandaki son haftalar kartı ne kadar çalıştığını gösterir.",
     "item1": "Rozet yolları ve tekil rozetler",
     "item2": "Günlük seri ve tahmini süre",
     "item3": "Toplam soru, doğru cevap ve çalışma süresi",
-    "imageAlt": "Rozetler, günlük seri ve çalışma ısı haritası."
+    "imageAlt": "Rozetler, günlük seri ve çalışma takvimi."
   },
   "tutoring": {
     "kicker": "Özel ders",
@@ -165,7 +176,7 @@
       "step1": { "title": "Kaydol", "text": "Öğrenci olarak kaydol, sınıfını ve okulunu seç." },
       "step2": { "title": "Çöz", "text": "Sana atanan testleri çöz ya da Keşfet'ten yeni testler bul." },
       "step3": { "title": "Pratik yap", "text": "Günün sorularını çöz, eksik konularda serbest pratik yap." },
-      "step4": { "title": "Gelişimini gör", "text": "Puan topla, rozet kazan, ısı haritanda ilerlemeni izle." }
+      "step4": { "title": "Gelişimini gör", "text": "Puan topla, rozet kazan, son haftalardaki ilerlemeni ana sayfanda izle." }
     },
     "tutor": {
       "step1": { "title": "Başvur", "text": "Kayıtta bağımsız özel ders verdiğini işaretle." },

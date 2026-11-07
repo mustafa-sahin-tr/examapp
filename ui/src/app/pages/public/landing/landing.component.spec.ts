@@ -10,7 +10,7 @@ import rootTr from '../../../../../public/i18n/tr.json';
 import landingEn from '../../../../../public/i18n/landing/en.json';
 import landingTr from '../../../../../public/i18n/landing/tr.json';
 import { LandingComponent } from './landing.component';
-import { LANDING_STATS, LANDING_TESTIMONIALS } from './landing-content';
+import { LANDING_STATS_ARE_SAMPLE, LANDING_TESTIMONIALS_ARE_FICTIONAL } from './landing-content';
 
 function keysOf(dictionary: Translation, prefix = ''): string[] {
   return Object.entries(dictionary).flatMap(([key, value]) =>
@@ -46,7 +46,7 @@ describe('LandingComponent (#395)', () => {
 
   it('rendersOneH1_AndAllSections', () => {
     expect(el.querySelectorAll('h1').length).toBe(1);
-    for (const id of ['anasayfa', 'kimler-icin', 'ozellikler', 'ogretmenler', 'ogrenciler', 'motivasyon', 'ozel-ders', 'nasil-calisir', 'dersler', 'yorumlar', 'sss']) {
+    for (const id of ['anasayfa', 'kimler-icin', 'ozellikler', 'ogretmenler', 'ogrenciler', 'motivasyon', 'ozel-ders', 'nasil-calisir', 'dersler', 'sss']) {
       expect(el.querySelector(`section[id="${id}"]`), id).not.toBeNull();
     }
   });
@@ -55,14 +55,30 @@ describe('LandingComponent (#395)', () => {
     TestBed.inject(HttpTestingController).expectNone(() => true);
   });
 
-  it('stats_ComeFromConstant_WithSampleNote', () => {
-    expect(el.querySelectorAll('.stat').length).toBe(LANDING_STATS.length);
-    expect(el.querySelector('[data-testid="landing-stats-sample"]')?.textContent).toContain('Örnek veriler');
+  it('#880: sample stats and fictional testimonials are not published', () => {
+    expect(LANDING_STATS_ARE_SAMPLE && LANDING_TESTIMONIALS_ARE_FICTIONAL).toBe(true);
+    expect(el.querySelector('.stat')).toBeNull();
+    expect(el.querySelector('.quote')).toBeNull();
+    expect(el.textContent).not.toContain('Örnek veriler');
+    expect(el.textContent).not.toContain('Temsili kullanıcı yorumlarıdır.');
   });
 
-  it('testimonials_ComeFromConstant_WithDisclaimer', () => {
-    expect(el.querySelectorAll('.quote').length).toBe(LANDING_TESTIMONIALS.length);
-    expect(el.querySelector('[data-testid="landing-testimonials-disclaimer"]')?.textContent).toContain('Temsili kullanıcı yorumlarıdır.');
+  it('#880: parents have a role card, a menu link and sign in (no parent registration)', () => {
+    const card = el.querySelector('article#veliler')!;
+    expect(card.textContent).toContain('Veli');
+    expect(card.querySelector('a')?.getAttribute('href')).toBe('/app/login');
+    expect(Array.from(el.querySelectorAll('.nav-links a')).map((a) => a.textContent?.trim())).toContain('Veliler');
+  });
+
+  it('#880: sign-in stays in the top bar on small screens', () => {
+    expect(el.querySelector('[data-testid="landing-login"]')?.classList).not.toContain('hide-sm');
+  });
+
+  it('#880: outdated copy is gone', () => {
+    const text = el.textContent ?? '';
+    for (const phrase of ['bir yıllık', 'başarı yüzden,', 'ısı haritan']) {
+      expect(text, phrase).not.toContain(phrase);
+    }
   });
 
   it('links_OfferNoParentRegistration_AndPointToWorkingTargets', () => {

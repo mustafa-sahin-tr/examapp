@@ -4539,3 +4539,14 @@ app-root,
     }
   }
 }
+
+// #906: kart başlığındaki ikon avatarı. Glif 40px kutunun sol üstünde kalıp başlıktan kopuk görünüyordu; ortalanır ve
+// bütün kartlarda (paylaşılan kartlar dahil) veli panelindeki görünüm kullanılır.
+mat-icon[mat-card-avatar] {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--primaryColor);
+  background: var(--ms-surface-medium);
+}

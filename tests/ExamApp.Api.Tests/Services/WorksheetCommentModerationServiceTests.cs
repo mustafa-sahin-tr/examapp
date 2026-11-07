@@ -327,6 +327,26 @@ public partial class WorksheetCommentServiceTests
     }
 
     [Fact]
+    public async Task Open_report_count_counts_reported_comments_until_hidden() // issue #861
+    {
+        var w = await SeedSchoolsAsync();
+        var rootA = Created(await PostAsync(w.WorksheetId, Student(StudentAUser), "A"));
+        var rootB = Created(await PostAsync(w.WorksheetId, Student(StudentBUser), "B"));
+        Created(await PostAsync(w.WorksheetId, Student(StudentAUser), "şikayetsiz"));
+        await AddReportRowAsync(rootA, StudentBUser);
+        await AddReportRowAsync(rootA, OtherSchoolStudentUser);
+        await AddReportRowAsync(rootB, StudentAUser);
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).CountOpenReportsAsync()).ShouldBe(2); // yorum başına bir, şikayet sayısı değil
+
+        (await HideAsync(w.WorksheetId, rootA, Teacher(Owner))).Success.ShouldBeTrue();
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).CountOpenReportsAsync()).ShouldBe(1);
+    }
+
+    [Fact]
     public async Task Hidden_root_is_a_placeholder_its_replies_stay_and_moderators_can_reveal_it()
     {
         var w = await SeedSchoolsAsync();

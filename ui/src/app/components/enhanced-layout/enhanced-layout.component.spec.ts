@@ -17,6 +17,8 @@ import { AuthService, UserProfile } from '../../services/auth.service';
 import { SignalRService } from '../../services/signalr.service';
 import { WorksheetAccessRequestService } from '../../services/worksheet-access-request.service';
 import { StudentSchoolRequestService } from '../../services/student-school-request.service';
+import { AdminPendingService } from '../../services/admin-pending.service';
+import { resolveActiveMenuItemId } from './active-menu-item';
 import { NotificationService } from '../../services/notification.service';
 import { DirectMessageService } from '../../services/direct-message.service';
 import { UserThemeService } from '../../services/user-theme.service';
@@ -281,7 +283,8 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
         expect(create(['Teacher']).visibleSectionTabs().flat().map((i) => i.route)).toContain('/student-school-requests');
 
         TestBed.resetTestingModule();
-        const admin = create(['Admin']).visibleMenuItems().map((i) => i.route);
+        // #861: admin'de "Bekleyenler" sekmesi.
+        const admin = create(['Admin']).visibleSectionTabs().flat().map((i) => i.route);
         expect(admin).toContain('/admin/student-school-requests');
         expect(admin).not.toContain('/student-school-requests');
 
@@ -321,7 +324,6 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
         };
         service.pendingCount.set(3);
         expect(component.menuBadgeCount('student-school-requests')).toBe(3);
-        expect(component.menuBadgeCount('admin-student-school-requests')).toBe(3);
         expect(component.menuBadgeCount('access-requests')).toBe(0);
     });
 
@@ -1252,13 +1254,28 @@ describe('EnhancedLayoutComponent role navigation (issue #719)', () => {
     it('admin_DashboardFirstAndItemsGroupedUnderHeaders_issue726', () => {
         const items = renderLayout(['Admin'], false).componentInstance.visibleMenuItems().filter((i) => i.type !== 'divider');
         expect(labels(items)).toEqual([
-            'admin-dashboard', 'admin', 'question-bank',
-            'group-users', 'admin-teacher-approvals', 'admin-teachers', 'admin-students',
-            'group-schools', 'admin-schools', 'admin-student-school-requests',
+            'admin-dashboard', 'admin', 'admin-pending', 'question-bank',
+            'group-users', 'admin-teachers', 'admin-students',
+            'group-schools', 'admin-schools',
             'group-content', 'mock-exams', 'exam-templates', 'questiongeneration', 'questiontransfer', 'labeling', 'labeling-books', 'admin-badge-definitions',
-            'group-moderation', 'open-text-reviews', 'admin-comment-reports',
             'settings',
         ]);
+    });
+
+    // Issue #861: beş kuyruk tek "Bekleyenler" girişinde; sekmeler ve rozetler özet ucundan.
+    it('admin_PendingInbox_TabsCountsAndActiveItem_issue861', () => {
+        const component = renderLayout(['Admin'], false).componentInstance;
+        const pending = TestBed.inject(AdminPendingService);
+        pending.summary.set({ teacherApplications: 2, schoolApplications: 1, commentReports: 0, questionReports: 4, openTextAnswers: 3, total: 10 });
+
+        expect(component.menuBadgeCount('admin-pending')).toBe(10);
+        expect(component.menuBadgeCount('tab-admin-question-reports')).toBe(4);
+        expect(component.visibleSectionTabs()[0].map((t) => t.route)).toEqual([
+            '/admin/teacher-approvals', '/admin/student-school-requests', '/admin/comment-reports', '/question-reports', '/open-text-reviews',
+        ]);
+        for (const url of ['/admin/comment-reports', '/question-reports', '/open-text-reviews']) {
+            expect(resolveActiveMenuItemId(url, component.visibleMenuItems())).toBe('admin-pending');
+        }
     });
 
     it('questionTrainer_SeesLabelingWithoutAdminGroupHeaders_issue726', () => {

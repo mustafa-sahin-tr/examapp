@@ -15,10 +15,11 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { AuthService } from '../../services/auth.service';
+import { AdminPendingService } from '../../services/admin-pending.service';
 import { UserThemeService } from '../../services/user-theme.service';
 import { ThemeConfigService } from '../../services/theme-config.service';
-import { EMPTY, Subject, fromEvent, merge, of } from 'rxjs';
-import { catchError, debounceTime, distinctUntilChanged, filter, map, switchMap, takeUntil, throttleTime } from 'rxjs/operators';
+import { EMPTY, Subject, fromEvent, interval, merge, of } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, filter, map, startWith, switchMap, takeUntil, throttleTime } from 'rxjs/operators';
 import { SidenavService } from '../../services/sidenav.service';
 import { TEACHER_APPROVAL_PENDING_URL, teacherAccountApprovalOf } from '../../models/teacher-approval.model';
 import { SignalRService } from '../../services/signalr.service';
@@ -173,6 +174,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   readonly bookingRequestCount = this.bookingService.pendingCount;
   private readonly openTextReviewService = inject(OpenTextReviewService);
   readonly openTextReviewCount = this.openTextReviewService.pendingCount;
+  /** Issue #861: admin "Bekleyenler" sayıları (menü rozeti + kuyruk sekmeleri). */
+  private readonly adminPending = inject(AdminPendingService);
   private readonly notificationService = inject(NotificationService);
   /** Issue #146: zil rozetindeki okunmamış kalıcı bildirim sayısı. */
   readonly unreadNotificationCount = this.notificationService.unreadCount;
@@ -193,6 +196,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   readonly settingsRoute = settingsUrlFor(this.authService) ?? SETTINGS_URL;
   /** Pencere odağında DM sayacı en sık bu aralıkla tazelenir (polling değil; yalnız odak olayı). */
   static readonly DM_FOCUS_REFRESH_THROTTLE_MS = 30_000;
+  /** Issue #861: "Bekleyenler" kuyruk sayfası açıkken sayıların tazelenme aralığı. */
+  static readonly ADMIN_PENDING_REFRESH_MS = 60_000;
   /** Issue #106 b: DM push'ları arka arkaya gelirse tek rozet isteği (ms). */
   static readonly DM_PUSH_REFRESH_DEBOUNCE_MS = 400;
   /** Art arda gelen hub push'larını tek sayaç isteğinde birleştirme penceresi. */
@@ -251,6 +256,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     // Issue #726: admin paneli ve Yönetim menünün başında.
     { id: 'admin-dashboard', labelKey: 'menu.dashboard', icon: 'insights', route: '/admin/dashboard', type: 'menu', roles: ['Admin'] },
     { id: 'admin', labelKey: 'menu.admin', icon: 'admin_panel_settings', route: '/admin', type: 'menu', roles: ['Admin'] },
+    // Issue #861: beş onay / moderasyon kuyruğu tek girişte; kuyruklar `sectionTabs` sekmelerinde, rozet toplam bekleyen.
+    { id: 'admin-pending', labelKey: 'menu.adminPending', icon: 'inbox', route: '/admin/teacher-approvals', type: 'menu', roles: ['Admin'] },
     // Issue #287: onaysız öğretmenin tek öğretmen girişi — öğretmene özel diğer tüm öğeler gizlenir.
     { id: 'teacher-approval-status', labelKey: 'menu.teacherApprovalStatus', icon: 'hourglass_top', route: TEACHER_APPROVAL_PENDING_URL, type: 'menu', onlyUnapprovedTeacher: true },
     { id: 'dashboard', labelKey: 'menu.dashboard', icon: 'dashboard', route: '/dashboard', type: 'menu', roles: ['Student', 'Teacher'] },
@@ -277,13 +284,10 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'badges', labelKey: 'menu.badges', icon: 'military_tech', route: '/certificates', type: 'menu', roles: ['Student'] },
     // Issue #726: admin öğeleri başlıklı gruplarda (panel ve Yönetim en üstte). Başlık, altında görünen öğe yoksa düşer.
     { id: 'group-users', labelKey: 'menu.groupUsers', icon: '', route: '', type: 'header', roles: ['Admin'] },
-    { id: 'admin-teacher-approvals', labelKey: 'menu.teacherApprovals', icon: 'how_to_reg', route: '/admin/teacher-approvals', type: 'menu', roles: ['Admin'] },
     { id: 'admin-teachers', labelKey: 'menu.adminTeachers', icon: 'groups', route: '/admin/teachers', type: 'menu', roles: ['Admin'] },
     { id: 'admin-students', labelKey: 'menu.adminStudents', icon: 'school', route: '/admin/students', type: 'menu', roles: ['Admin'] },
     { id: 'group-schools', labelKey: 'menu.groupSchools', icon: '', route: '', type: 'header', roles: ['Admin'] },
     { id: 'admin-schools', labelKey: 'menu.adminSchools', icon: 'apartment', route: '/admin/schools', type: 'menu', roles: ['Admin'] },
-    // Issue #361: tüm okulların bekleyen öğrenci okul üyelikleri.
-    { id: 'admin-student-school-requests', labelKey: 'menu.studentSchoolRequests', icon: 'person_add', route: '/admin/student-school-requests', type: 'menu', roles: ['Admin'] },
     { id: 'group-content', labelKey: 'menu.groupContent', icon: '', route: '', type: 'header', roles: ['Admin'] },
     { id: 'mock-exams', labelKey: 'menu.mockExams', icon: 'assignment_turned_in', route: '/mock-exams', type: 'menu', roles: ['Admin'] },
     { id: 'exam-templates', labelKey: 'menu.examTemplates', icon: 'rule', route: '/exam-templates', type: 'menu', roles: ['Admin'] },
@@ -298,11 +302,6 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'labeling-books', labelKey: 'menu.labelingBooks', icon: 'menu_book', route: '/books', type: 'menu', roles: ['Admin', 'QuestionTrainer'] },
     // Issue #148: rozet tanımları yönetimi.
     { id: 'admin-badge-definitions', labelKey: 'menu.adminBadgeDefinitions', icon: 'military_tech', route: '/admin/badge-definitions', type: 'menu', roles: ['Admin'] },
-    { id: 'group-moderation', labelKey: 'menu.groupModeration', icon: '', route: '', type: 'header', roles: ['Admin'] },
-    // Issue #583: açık uçlu etkinlik cevaplarını değerlendirme kuyruğu.
-    { id: 'open-text-reviews', labelKey: 'menu.openTextReviews', icon: 'rate_review', route: '/open-text-reviews', type: 'menu', roles: ['Admin'] },
-    // Issue #305: yorum şikayetleri (moderasyon).
-    { id: 'admin-comment-reports', labelKey: 'menu.adminCommentReports', icon: 'flag', route: '/admin/comment-reports', type: 'menu', roles: ['Admin'] },
     { id: 'divider-settings', labelKey: '', icon: '', route: '', type: 'divider', roles: ['Admin'] },
     // Issue #417: tüm roller (onay bekleyen öğretmen dahil — dil/hesap ayarı); rota role göre (#373: öğrenci /student-profile).
     { id: 'settings', labelKey: 'menu.settings', icon: 'settings', route: this.settingsRoute, type: 'menu' },
@@ -312,6 +311,14 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
    * tek sekme kalırsa çubuk çizilmez.
    */
   readonly sectionTabs: MenuItem[][] = [
+    // Issue #861: admin "Bekleyenler" kuyrukları (ilk grup: /question-reports admin'de burada açılır).
+    [
+      { id: 'tab-admin-teacher-approvals', labelKey: 'menu.teacherApprovals', icon: '', route: '/admin/teacher-approvals', type: 'menu', roles: ['Admin'] },
+      { id: 'tab-admin-school-requests', labelKey: 'menu.studentSchoolRequests', icon: '', route: '/admin/student-school-requests', type: 'menu', roles: ['Admin'] },
+      { id: 'tab-admin-comment-reports', labelKey: 'menu.adminCommentReports', icon: '', route: '/admin/comment-reports', type: 'menu', roles: ['Admin'] },
+      { id: 'tab-admin-question-reports', labelKey: 'menu.questionReports', icon: '', route: '/question-reports', type: 'menu', roles: ['Admin'] },
+      { id: 'tab-admin-open-text-reviews', labelKey: 'menu.openTextReviews', icon: '', route: '/open-text-reviews', type: 'menu', roles: ['Admin'] },
+    ],
     // Issue #693: deneme testlerin yanında; ana menü #719 sınırında kalır.
     [
       { id: 'tab-tests', labelKey: 'menu.exams', icon: '', route: '/tests', type: 'menu', roles: ['Student', 'Teacher'] },
@@ -336,7 +343,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     // Issue #781: öğrencilerin bildirdiği sorular; ana menü #719 sınırında kalır.
     [
       { id: 'tab-question-bank', labelKey: 'menu.questionBank', icon: '', route: '/question-bank', type: 'menu', roles: ['Teacher', 'Admin'] },
-      { id: 'tab-question-reports', labelKey: 'menu.questionReports', icon: '', route: '/question-reports', type: 'menu', roles: ['Teacher', 'Admin'] },
+      { id: 'tab-question-reports', labelKey: 'menu.questionReports', icon: '', route: '/question-reports', type: 'menu', roles: ['Teacher'] },
     ],
     [
       { id: 'tab-study-pages', labelKey: 'menu.studyPages', icon: '', route: '/study-pages', type: 'menu', roles: ['Teacher'] },
@@ -507,6 +514,38 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     this.studentSchoolRequestService.refreshPendingCount().subscribe({ error: () => {} });
   }
 
+  /** Issue #861: "Bekleyenler" kuyruk sayfaları (sekme grubundaki rotalar). */
+  private onAdminPendingRoute(): boolean {
+    const path = this.currentUrl().split(/[?#]/)[0];
+    return this.sectionTabs[0].some((tab) => path === tab.route || path.startsWith(`${tab.route}/`));
+  }
+
+  /**
+   * Issue #861: admin "Bekleyenler" sayıları açılışta, kuyruk sayfasına her girişte, pencere odağında ve kuyruk sayfası
+   * açıkken dakikada bir tazelenir ("Yenile" düğmesine gerek kalmasın). Hata sessiz: rozet son değerde kalır.
+   */
+  private initAdminPendingBadge(): void {
+    if (!this.authService.hasRealmRole('Admin')) {
+      return;
+    }
+    const view = this.document.defaultView;
+    const focus$ = view
+      ? fromEvent(view, 'focus').pipe(throttleTime(EnhancedLayoutComponent.DM_FOCUS_REFRESH_THROTTLE_MS))
+      : EMPTY;
+    const enterQueue$ = this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      filter(() => this.onAdminPendingRoute()),
+    );
+    const whileOnQueue$ = interval(EnhancedLayoutComponent.ADMIN_PENDING_REFRESH_MS).pipe(filter(() => this.onAdminPendingRoute()));
+    merge(enterQueue$, focus$, whileOnQueue$)
+      .pipe(
+        startWith(undefined),
+        switchMap(() => this.adminPending.refresh().pipe(catchError(() => EMPTY))),
+        takeUntil(this.destroy$),
+      )
+      .subscribe();
+  }
+
   /** #845: veli onayı beklerken kapalı sayfalar (Mesajlar, Özel Ders) menüde kilitle işaretlenir. */
   private readonly parentLockedItemIds = new Set(['teacher-messages', 'tutors']);
   private readonly parentActivationRestricted = inject(ParentStatusStore).activationRestricted;
@@ -543,8 +582,19 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
       case 'access-requests':
         return this.accessRequestCount();
       case 'student-school-requests':
-      case 'admin-student-school-requests':
         return this.studentSchoolRequestCount();
+      case 'admin-pending':
+        return this.adminPending.total();
+      case 'tab-admin-teacher-approvals':
+        return this.adminPending.summary()?.teacherApplications ?? 0;
+      case 'tab-admin-school-requests':
+        return this.adminPending.summary()?.schoolApplications ?? 0;
+      case 'tab-admin-comment-reports':
+        return this.adminPending.summary()?.commentReports ?? 0;
+      case 'tab-admin-question-reports':
+        return this.adminPending.summary()?.questionReports ?? 0;
+      case 'tab-admin-open-text-reviews':
+        return this.adminPending.summary()?.openTextAnswers ?? 0;
       case 'tab-booking-requests':
         return this.bookingRequestCount();
       case 'tab-open-text-reviews':
@@ -612,10 +662,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     this.initNotificationBadge();
     this.initDirectMessageBadge();
 
-    // Issue #361: admin için bekleyen öğrenci okul başvurusu rozeti (öğretmende onay bilinince çekilir).
-    if (this.authService.hasRealmRole('Admin')) {
-      this.loadStudentSchoolRequestCount();
-    }
+    this.initAdminPendingBadge();
 
     if (this.isTeacher) {
       this.signalR.accessRequestUpdates$.pipe(takeUntil(this.destroy$)).subscribe((update) => {

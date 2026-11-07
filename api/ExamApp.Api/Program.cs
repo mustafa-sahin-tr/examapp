@@ -306,6 +306,7 @@ builder.Services.AddScoped<ISubjectService, SubjectService>();
 builder.Services.AddScoped<IBookService, BookService>();
 builder.Services.AddScoped<IQuestionService, QuestionService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Questions.IQuestionReportService, ExamApp.Api.Services.Questions.QuestionReportService>();
+builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminPendingSummaryService, ExamApp.Api.Services.AdminUsers.AdminPendingSummaryService>(); // issue #861
 builder.Services.AddScoped<ExamApp.Api.Services.Questions.IQuestionClassificationService, ExamApp.Api.Services.Questions.QuestionClassificationService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Questions.IQuestionQueryService, ExamApp.Api.Services.Questions.QuestionQueryService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Questions.IQuestionTestLinkService, ExamApp.Api.Services.Questions.QuestionTestLinkService>();

@@ -9,6 +9,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -32,7 +33,6 @@ import {
   StudyPageLinkPlatform,
   StudyPageWriteRequest,
 } from '../../models/study-page';
-import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
 import { AutofocusDirective } from '../../shared/directives/auto-focus.directive';
 import { StorageImageRetryDirective } from '../../shared/directives/storage-image-retry.directive';
 import {
@@ -150,10 +150,10 @@ const PLATFORM_LABEL_KEYS: Record<StudyPageLinkPlatform, string> = {
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
+    MatMenuModule,
     MatIconModule,
     MatSlideToggleModule,
     MatSnackBarModule,
-    SectionHeaderComponent,
     AutofocusDirective,
     TranslocoDirective,
     TranslocoPipe,

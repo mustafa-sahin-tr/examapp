@@ -39,11 +39,11 @@
     "youtube": "YouTube"
   },
   "editor": {
-    "titleEdit": "Çalışma Etkinliğini Düzenle",
-    "titleNew": "Yeni Çalışma Etkinliği",
-    "contentTypeLabel": "Etkinlik Tipi",
+    "titleEdit": "Çalışma sayfasını düzenle",
+    "titleNew": "Yeni çalışma sayfası",
+    "contentTypeLabel": "İçerik türü",
     "titleField": "Başlık",
-    "descriptionField": "Açıklama",
+    "descriptionField": "Metin",
     "link": {
       "sectionTitle": "Link Bilgileri",
       "urlLabel": "URL",
@@ -71,7 +71,8 @@
       "subject": "Ders",
       "topic": "Konu",
       "subTopic": "Alt Konu",
-      "select": "Seçiniz"
+      "select": "Seçiniz",
+      "none": "Seçiniz"
     },
     "publish": "Yayınla",
     "cancel": "İptal",
@@ -95,7 +96,8 @@
       "excluded": "Hariç",
       "empty": "Henüz resim eklenmedi",
       "selectedTitle": "Programa Eklenecek Resimler",
-      "viewLarge": "Büyük Gör"
+      "viewLarge": "Büyük Gör",
+      "more": "Diğer"
     },
     "guidance": {
       "title": "Dosya Kılavuzu",
@@ -139,6 +141,9 @@
       "createFailed": "Kayıt sırasında hata oluştu.",
       "notFound": "Çalışma etkinliği bulunamadı.",
       "ok": "Tamam"
-    }
+    },
+    "statusDraft": "Taslak",
+    "statusPublished": "Yayında",
+    "descriptionHint": "Öğrencinin içerikten önce okuyacağı kısa açıklama."
   }
 }

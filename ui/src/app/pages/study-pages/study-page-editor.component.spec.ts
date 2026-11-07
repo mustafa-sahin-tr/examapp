@@ -116,6 +116,36 @@ describe('StudyPageEditorComponent', () => {
         expect(component).toBeTruthy();
     });
 
+    it('header_HoldsTitleTaxonomyAndSave_StatusFollowsPublish (#869)', () => {
+        const { fixture, component } = setupComponent();
+        fixture.detectChanges();
+        const head = fixture.nativeElement.querySelector('.sp-head') as HTMLElement;
+
+        expect(head.querySelector('input[formcontrolname="title"]')).not.toBeNull();
+        expect(head.querySelectorAll('mat-select').length).toBe(4);
+        expect(head.querySelector('[data-testid="study-page-save"]')).not.toBeNull();
+        const status = () => head.querySelector('[data-testid="study-page-status"]')!;
+        component.form.controls.isPublished.setValue(false);
+        fixture.detectChanges();
+        expect(status().classList).not.toContain('sp-head__status--live');
+
+        component.form.controls.isPublished.setValue(true);
+        fixture.detectChanges();
+        expect(status().classList).toContain('sp-head__status--live');
+    });
+
+    it('jsonUpload_IsInTheMoreMenu_NotAButton (#869)', () => {
+        const { fixture } = setupComponent();
+        fixture.detectChanges();
+        const root = fixture.nativeElement as HTMLElement;
+
+        expect(root.querySelector('.json-upload-btn')).toBeNull();
+        expect(root.querySelector('[data-testid="study-page-upload-json"]')).toBeNull();
+        (root.querySelector('[data-testid="study-page-more"]') as HTMLButtonElement).click();
+        fixture.detectChanges();
+        expect(document.querySelector('[data-testid="study-page-upload-json"]')).not.toBeNull();
+    });
+
     // Kriter 1: tip secici var; secilen tipe gore farkli alanlar gosteriliyor (computed sinyaller)
     describe('content type selector', () => {
         it('default_ContentTypeIsImage_IsImageTypeSignalTrue', () => {

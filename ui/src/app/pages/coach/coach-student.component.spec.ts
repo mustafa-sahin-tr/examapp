@@ -3,8 +3,8 @@ import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { ActivatedRoute, provideRouter } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { ActivatedRoute, ParamMap, convertToParamMap, provideRouter } from '@angular/router';
+import { BehaviorSubject, of, throwError } from 'rxjs';
 import coachTr from '../../../../public/i18n/coach/tr.json';
 import { CoachGoal, CoachNote, CoachOverview } from '../../models/coach.model';
 import { CoachService } from '../../services/coach.service';
@@ -12,7 +12,13 @@ import { LocaleService } from '../../services/locale.service';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import { CoachStudentComponent, addDays } from './coach-student.component';
 
-const goal = (id: number, title: string, weekStart = '2026-11-02'): CoachGoal => ({ id, title, weekStart, updatedAt: '2026-11-05T10:00:00Z' });
+const goal = (id: number, title: string, weekStart = '2026-11-02', completedAt: string | null = null): CoachGoal => ({
+  id,
+  title,
+  weekStart,
+  updatedAt: '2026-11-05T10:00:00Z',
+  completedAt,
+});
 const note = (id: number, body: string): CoachNote => ({ id, body, createdAt: '2026-11-05T10:00:00Z', updatedAt: '2026-11-05T10:00:00Z' });
 
 function overview(overrides: Partial<CoachOverview> = {}): CoachOverview {
@@ -38,9 +44,11 @@ function overview(overrides: Partial<CoachOverview> = {}): CoachOverview {
 describe('CoachStudentComponent (issue #700)', () => {
   let service: Record<string, ReturnType<typeof vi.fn>>;
   let dialogResult: boolean;
+  let params: BehaviorSubject<ParamMap>;
 
   function create(response = of(overview())): ComponentFixture<CoachStudentComponent> {
     dialogResult = true;
+    params = new BehaviorSubject(convertToParamMap({ studentId: '7' }));
     service = {
       getOverview: vi.fn().mockReturnValue(response),
       listGoals: vi.fn().mockReturnValue(of([])),
@@ -57,7 +65,7 @@ describe('CoachStudentComponent (issue #700)', () => {
       providers: [
         provideRouter([]),
         { provide: CoachService, useValue: service },
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: new Map([['studentId', '7']]) } } },
+        { provide: ActivatedRoute, useValue: { paramMap: params } },
         { provide: MatDialog, useValue: { open: () => ({ afterClosed: () => of(dialogResult) }) } },
         { provide: LocaleService, useValue: { localeDefinition: signal({ angularLocale: 'tr-TR' }) } },
       ],
@@ -154,6 +162,33 @@ describe('CoachStudentComponent (issue #700)', () => {
     fixture.detectChanges();
 
     expect(text(q(fixture, 'coach-goal-error'))).toBe('İşlem tamamlanamadı. Tekrar dene.');
+  });
+
+  it('goals_ShowWhetherTheStudentMarkedThem_issue893', () => {
+    const fixture = create(of(overview({ goals: [goal(1, 'Kesirler'), goal(2, 'Paragraf', '2026-11-02', '2026-11-04T09:00:00Z')] })));
+
+    expect(all(fixture, 'coach-goal-status').map(text)).toEqual([
+      'radio_button_unchecked Öğrenci henüz işaretlemedi',
+      'check_circle Öğrenci işaretledi',
+    ]);
+  });
+
+  it('switchingStudent_ReloadsAndClearsThePreviousOne_issue893', () => {
+    const fixture = create();
+    type(fixture, 'coach-note-input', 'yarım taslak');
+    service['getOverview'].mockReturnValue(of(overview({ studentId: 8, fullName: 'Can Demir', goals: [] })));
+    service['listNotes'].mockReturnValue(of([]));
+
+    params.next(convertToParamMap({ studentId: '8' }));
+    fixture.detectChanges();
+
+    expect(service['getOverview']).toHaveBeenLastCalledWith(8);
+    expect(service['listNotes']).toHaveBeenLastCalledWith(8);
+    expect(text(q(fixture, 'coach-student-title'))).toBe('Can Demir');
+    expect(q(fixture, 'coach-goals-empty')).not.toBeNull();
+    expect(q(fixture, 'coach-notes-empty')).not.toBeNull();
+    expect((q(fixture, 'coach-note-input') as HTMLTextAreaElement).value).toBe('');
+    expect(q(fixture, 'coach-outcomes')?.getAttribute('href')).toBe('/teacher/students/8/outcomes');
   });
 
   it('goalLimit_HidesTheAddForm', () => {

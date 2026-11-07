@@ -9,13 +9,23 @@
 
       <mat-card-content>
         @if (audience() === 'self') {
+          @if (markFailed()) {
+            <p class="cg__error" role="alert" data-test="coach-goal-mark-error">{{ t('markError') }}</p>
+          }
           <ul class="cg__list">
-            @for (goal of myGoals(); track $index) {
-              <li class="cg__item" data-test="coach-goal-item">
-                <span class="cg__title">{{ goal.title }}</span>
-                @if (goal.coachName) {
-                  <span class="cg__meta" data-test="coach-goal-coach">{{ goal.coachName }}</span>
-                }
+            @for (goal of myGoals(); track goal.id) {
+              <li class="cg__item cg__item--check" data-test="coach-goal-item" [class.cg__item--done]="goal.done">
+                <mat-checkbox
+                  data-test="coach-goal-done"
+                  [checked]="goal.done"
+                  [disabled]="saving().has(goal.id)"
+                  (change)="toggleDone(goal, $event.checked)"
+                >
+                  <span class="cg__title">{{ goal.title }}</span>
+                  @if (goal.coachName) {
+                    <span class="cg__meta" data-test="coach-goal-coach">{{ goal.coachName }}</span>
+                  }
+                </mat-checkbox>
               </li>
             }
           </ul>
@@ -38,8 +48,11 @@
           } @else {
             <ul class="cg__list">
               @for (goal of s.goals; track $index) {
-                <li class="cg__item" data-test="coach-goal-item">
+                <li class="cg__item cg__item--row" data-test="coach-goal-item">
                   <span class="cg__title">{{ goal.title }}</span>
+                  @if (goal.done) {
+                    <span class="cg__done" data-test="coach-goal-done-tag"><mat-icon aria-hidden="true">check_circle</mat-icon>{{ t('done') }}</span>
+                  }
                 </li>
               }
             </ul>

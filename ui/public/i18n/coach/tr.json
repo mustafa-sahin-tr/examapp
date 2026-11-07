@@ -1,6 +1,6 @@
 {
   "students": {
-    "title": "Koçluk",
+    "title": "Öğrencilerim",
     "subtitle": "Okulundaki ve özel ders verdiğin öğrencilerin haftası, hedefleri ve ders notların.",
     "search": "Öğrenci ara",
     "relationship": {
@@ -12,7 +12,20 @@
     "emptyText": "Okuluna doğrulanmış öğrenciler ve onaylı özel ders verdiğin öğrenciler burada görünür.",
     "noMatch": "Aramaya uyan öğrenci yok.",
     "loadError": "Öğrenciler yüklenemedi.",
-    "retry": "Tekrar dene"
+    "retry": "Tekrar dene",
+    "sortHint": "Dikkat isteyenler önce: 7 gündür çalışmayan, 10 ve üstü yanlışı biriken ya da bu hafta hedefi olmayan.",
+    "pick": "Bir öğrenci seç; haftası, hedefleri ve ders notların burada açılır.",
+    "signals": {
+      "activeToday": "Bugün çalıştı",
+      "activeYesterday": "Dün çalıştı",
+      "activeDaysAgo": "{{days}} gün önce çalıştı",
+      "inactiveDays": "{{days}} gündür yok",
+      "neverActive": "Henüz etkinlik yok",
+      "mistakes": "{{count}} yanlış",
+      "noGoals": "Bu hafta hedef yok",
+      "goals": "{{done}}/{{count}} hedef",
+      "attention": "Dikkat istiyor"
+    }
   },
   "student": {
     "back": "Öğrencilere dön",
@@ -58,7 +71,9 @@
     "delete": "Hedefi sil",
     "empty": "Seçili hafta için hedef yok.",
     "limit": "Bir haftaya en çok {{max}} hedef yazılabilir.",
-    "loadError": "Hedefler yüklenemedi."
+    "loadError": "Hedefler yüklenemedi.",
+    "studentDone": "Öğrenci işaretledi",
+    "studentNotDone": "Öğrenci henüz işaretlemedi"
   },
   "notes": {
     "title": "Ders notlarım",
@@ -87,7 +102,7 @@
   "card": {
     "self": {
       "title": "Bu haftanın hedefleri",
-      "subtitle": "Öğretmeninin bu hafta için koyduğu hedefler"
+      "subtitle": "Öğretmeninin bu hafta için koyduğu hedefler; yaptığını işaretle."
     },
     "child": {
       "title": "Haftalık hedefler",
@@ -97,6 +112,8 @@
     },
     "loading": "Yükleniyor…",
     "loadError": "Hedefler yüklenemedi.",
-    "retry": "Tekrar dene"
+    "retry": "Tekrar dene",
+    "markError": "İşaret kaydedilemedi. Tekrar dene.",
+    "done": "Yapıldı"
   }
 }

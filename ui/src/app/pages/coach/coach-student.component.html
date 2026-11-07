@@ -1,12 +1,14 @@
 <ng-container *transloco="let root; prefix: 'coach'">
   <section class="cs" *transloco="let t; prefix: 'coach.student'">
     <div class="cs__top">
-      <a mat-button routerLink="/teacher/coach"><mat-icon aria-hidden="true">arrow_back</mat-icon>{{ t('back') }}</a>
+      <!-- Issue #893: geniş ekranda liste yanda durur; geri bağlantısı yalnız tek panelli dar ekranda. -->
+      <a mat-button class="cs__back" data-test="coach-back" routerLink="/teacher/coach"><mat-icon aria-hidden="true">arrow_back</mat-icon>{{ t('back') }}</a>
       @if (overview()) {
         <a
           mat-stroked-button
+          class="cs__outcomes"
           data-test="coach-outcomes"
-          [routerLink]="['/teacher/students', studentId, 'outcomes']"
+          [routerLink]="['/teacher/students', studentId(), 'outcomes']"
           [state]="{ studentName: studentName() }"
         >
           {{ t('outcomes') }}
@@ -139,7 +141,14 @@
                       <button mat-button type="button" (click)="editingGoalId.set(null)">{{ g('cancel') }}</button>
                     </span>
                   } @else {
-                    <span class="cs__row-main cs__text" data-test="coach-goal-title">{{ goal.title }}</span>
+                    <span class="cs__row-main">
+                      <span class="cs__text" data-test="coach-goal-title">{{ goal.title }}</span>
+                      <!-- Issue #893: öğrencinin "yaptım" işareti; yalnız okunur. -->
+                      <span class="cs__goal-status" data-test="coach-goal-status" [class.cs__goal-status--done]="goal.completedAt">
+                        <mat-icon aria-hidden="true">{{ goal.completedAt ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
+                        {{ goal.completedAt ? g('studentDone') : g('studentNotDone') }}
+                      </span>
+                    </span>
                     <span class="cs__actions">
                       <button mat-icon-button type="button" data-test="coach-goal-edit" [attr.aria-label]="g('edit')" (click)="startGoalEdit(goal)">
                         <mat-icon>edit</mat-icon>

@@ -368,14 +368,16 @@ export const routes: Routes = [
       },
       {
         // Issue #700: koç paneli; öğrenci kapsamı sunucuda (kendi okulu ya da onaylı özel ders).
+        // Issue #893: iki panel — liste solda kalır, seçili öğrenci sağdaki çocuk rotada açılır.
         path: 'teacher/coach',
         canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],
         loadComponent: () => import('./pages/coach/coach-students.component').then((m) => m.CoachStudentsComponent),
-      },
-      {
-        path: 'teacher/coach/:studentId',
-        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],
-        loadComponent: () => import('./pages/coach/coach-student.component').then((m) => m.CoachStudentComponent),
+        children: [
+          {
+            path: ':studentId',
+            loadComponent: () => import('./pages/coach/coach-student.component').then((m) => m.CoachStudentComponent),
+          },
+        ],
       },
       {
         // Issue #417: öğretmen/admin Ayarlar sayfası (dil, hesap/şifre, öğretmen profili bağlantıları).

@@ -110,6 +110,21 @@ public class StudentCoachGoalsController(
 
         return Ok(await coach.ListGoalsForStudentAsync(student.Id, ct));
     }
+
+    /// <summary>Issue #893: "yaptım" işareti. Başka öğrencinin ya da bu hafta dışındaki hedef 404.</summary>
+    [HttpPut("{goalId:int}/done")]
+    public async Task<IActionResult> SetDone(int goalId, [FromBody] SetCoachGoalDoneDto request, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync(ct);
+        if (!IsResolvedUser(user))
+            return Unauthorized();
+        var student = await students.GetStudentProfile(user.Id);
+        if (student is null)
+            return NotFound(new { message = localizer["student.profileNotFound"].Value });
+
+        var goal = await coach.SetGoalDoneAsync(student.Id, goalId, request.Done, ct);
+        return goal is null ? NotFound() : Ok(goal);
+    }
 }
 
 /// <summary>Issue #700: velinin haftalık özeti. Başka velinin ya da Active olmayan bağlantının çocuğu 404.</summary>

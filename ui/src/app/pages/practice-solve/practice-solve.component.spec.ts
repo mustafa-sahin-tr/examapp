@@ -594,6 +594,26 @@ describe('PracticeSolveComponent', () => {
         expect(component.phase()).toBe('question');
     });
 
+    it('studyPageSession_PoolExhausted_EndsSessionAndReturnsToThePage', () => {
+        const active: PracticeSession = { ...session, id: 13, status: 'Active' };
+        practiceService.getSession.mockReturnValue(of(active));
+        practiceService.getNextQuestion.mockReturnValue(of({ sessionId: 13, question: null, poolExhausted: true, answeredCount: 1, correctCount: 1 }));
+        practiceService.endSession.mockReturnValue(of({ ...active, status: 'Ended' as const }));
+        setup({ session: '13', page: '3' });
+        fixture.detectChanges();
+
+        expect(component.phase()).toBe('empty');
+        expect(component.sessionScope()).toBe('Çalışma sayfası');
+        const empty = fixture.debugElement.query(By.css('.practice__state--empty')).nativeElement as HTMLElement;
+        expect(empty.textContent).toContain('Sayfanın sorularını bitirdin');
+        expect(empty.textContent).not.toContain('Kapsamı Değiştir');
+
+        component.backToStudyPage();
+
+        expect(practiceService.endSession).toHaveBeenCalledWith(13);
+        expect(router.navigate).toHaveBeenCalledWith(['/study-page', 3]);
+    });
+
     it('openReview_CalledAgain_ResetsIndexToFirstQuestion', () => {
         practiceService.getSessionReview.mockReturnValue(of(review));
         setup();

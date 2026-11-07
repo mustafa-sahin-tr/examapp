@@ -9,6 +9,7 @@
     "bookFallback": "Book",
     "newBadge": "New",
     "pageCount": "{{count}} Pages",
+    "blockCount": "{{count}} Blocks",
     "bookRange": "{{book}} · p. {{start}}-{{end}}",
     "edit": "Edit",
     "delete": "Delete",

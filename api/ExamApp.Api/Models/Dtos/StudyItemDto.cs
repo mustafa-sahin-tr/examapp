@@ -43,6 +43,9 @@ public class StudyItemDto
 
     /// <summary>Issue #933: ana içerikten sonra gösterilen bloklar, sırayla.</summary>
     public List<StudyItemBlockDto> Blocks { get; set; } = new();
+
+    /// <summary>Issue #933: silinmemiş blok sayısı; liste blokları taşımaz, kart bunu gösterir.</summary>
+    public int BlockCount { get; set; }
 }
 
 /// <summary>Issue #933: tek içerik bloğu; tipe ait olmayan alanlar null.</summary>

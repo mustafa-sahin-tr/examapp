@@ -78,6 +78,26 @@ public class StudyItemBlockTests : IDisposable
     }
 
     [Fact]
+    public async Task List_reports_the_live_block_count_and_a_missing_description_is_stored_empty()
+    {
+        var created = await CreateAsync(Json(new { type = 0, text = "Bir" }, new { type = 4, text = "Ön", backText = "Arka" }));
+        created.Error.ShouldBeNull();
+        created.Item!.BlockCount.ShouldBe(2);
+        created.Item.Description.ShouldBe(string.Empty);
+
+        await using (var ctx = _db.NewContext())
+        {
+            var block = await ctx.StudyItemBlocks.FirstAsync(b => b.Type == StudyItemBlockType.Flashcard);
+            block.IsDeleted = true;
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var read = _db.NewContext();
+        var page = await NewService(read).GetPagedAsync(new StudyItemFilterDto { PageNumber = 1, PageSize = 10 }, Teacher());
+        page.Items.Single().BlockCount.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task Create_image_type_without_images_or_blocks_is_still_rejected()
     {
         (await CreateAsync(null)).Error.ShouldNotBeNull();

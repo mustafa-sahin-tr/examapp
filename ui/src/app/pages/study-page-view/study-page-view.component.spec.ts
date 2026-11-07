@@ -73,7 +73,7 @@ describe('StudyPageViewComponent (#933)', () => {
     el.querySelectorAll<HTMLButtonElement>('[data-testid="block-question-solve"]')[1].click();
 
     expect(practice.startSession).toHaveBeenCalledWith({ studyItemId: 9, studyQuestionId: 12 });
-    expect(router.navigate).toHaveBeenCalledWith(['/practice'], { queryParams: { session: 77 } });
+    expect(router.navigate).toHaveBeenCalledWith(['/practice'], { queryParams: { session: 77, page: 9 } });
   });
 
   it('solveAll_SendsOnlyThePage_FailureShowsMessage', () => {

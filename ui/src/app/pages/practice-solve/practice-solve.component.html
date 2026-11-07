@@ -428,7 +428,10 @@
   <ng-container *ngTemplateOutlet="statsBar" />
   <div class="practice__card practice__state practice__state--empty">
     <mat-icon>inbox</mat-icon>
-    @if (mixedReviewSession()) {
+    @if (studyPageId() !== null) {
+    <h2>{{ t('studyPage.doneTitle') }}</h2>
+    <p>{{ t('studyPage.doneText') }}</p>
+    } @else if (mixedReviewSession()) {
     <h2>{{ t('mixedReview.doneTitle') }}</h2>
     <p>{{ t('mixedReview.doneText') }}</p>
     } @else if (session()?.isDueReview) {
@@ -442,10 +445,17 @@
     <p>{{ t('empty.noQuestionsText') }}</p>
     }
     <div class="practice__actions practice__actions--center">
+      @if (studyPageId() !== null) {
+      <button mat-raised-button color="primary" type="button" (click)="backToStudyPage()" [disabled]="busy()">
+        <mat-icon>arrow_back</mat-icon>
+        {{ t('studyPage.back') }}
+      </button>
+      } @else {
       <button mat-raised-button color="primary" type="button" (click)="changeScope()" [disabled]="busy()">
         <mat-icon>tune</mat-icon>
         {{ t('empty.changeScope') }}
       </button>
+      }
       <button mat-stroked-button type="button" (click)="finishSession()" [disabled]="busy()">
         <mat-icon>done_all</mat-icon>
         {{ t('common.finish') }}
@@ -551,10 +561,17 @@
       </div>
     </dl>
     <div class="practice__actions practice__actions--center">
+      @if (studyPageId() !== null) {
+      <button mat-raised-button color="primary" type="button" (click)="backToStudyPage()">
+        <mat-icon>arrow_back</mat-icon>
+        {{ t('studyPage.back') }}
+      </button>
+      } @else {
       <button mat-raised-button color="primary" type="button" (click)="changeScope()">
         <mat-icon>replay</mat-icon>
         {{ t('ended.newSession') }}
       </button>
+      }
       @if (session(); as s) {
       <button mat-stroked-button type="button" (click)="openReview(s.id)">
         <mat-icon>fact_check</mat-icon>

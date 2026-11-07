@@ -131,7 +131,76 @@ public sealed class QuestionReportServiceTests : IDisposable
         var other = await CreateAsync(Dto(instanceId: _otherStudentInstanceId), userId: OtherStudentUserId);
 
         other!.AlreadyReported.ShouldBeFalse();
-        (await ListAsync(OwnerUserId)).TotalCount.ShouldBe(2);
+        await using var ctx = _db.NewContext();
+        (await ctx.QuestionReports.CountAsync()).ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task Reports_on_the_same_question_merge_into_one_row_with_impact()
+    {
+        await CreateAsync(Dto(reason: "unreadable", note: "bulanık"));
+        await CreateAsync(Dto(reason: "wrongAnswer", note: "cevap B", instanceId: _otherStudentInstanceId), userId: OtherStudentUserId);
+        await using (var ctx = _db.NewContext())
+        {
+            // Bir öğrenci soruyu cevapladı; diğeri yalnız gördü.
+            var row = await ctx.TestInstanceQuestions.FirstAsync(t => t.WorksheetInstanceId == _instanceId);
+            row.AnswerPayload = "{}";
+            await ctx.SaveChangesAsync();
+        }
+
+        var page = await ListAsync(OwnerUserId);
+
+        page.TotalCount.ShouldBe(1);
+        var item = page.Items.ShouldHaveSingleItem();
+        item.ShouldSatisfyAllConditions(
+            () => item.ReportCount.ShouldBe(2),
+            () => item.Reasons.ShouldBe(new[] { "wrongAnswer", "unreadable" }, ignoreOrder: true),
+            () => item.Notes.ShouldBe(new[] { "cevap B", "bulanık" }, ignoreOrder: true),
+            () => item.TestNames.ShouldBe(new[] { "Test" }),
+            () => item.TestCount.ShouldBe(1),
+            () => item.AnsweredCount.ShouldBe(1),
+            () => item.Outcome.ShouldBeNull());
+    }
+
+    [Fact]
+    public async Task No_issue_decision_closes_every_open_report_of_the_question_with_the_note()
+    {
+        await CreateAsync(Dto());
+        await CreateAsync(Dto(instanceId: _otherStudentInstanceId), userId: OtherStudentUserId);
+        await using (var ctx = _db.NewContext())
+        {
+            var reportId = (await ctx.QuestionReports.OrderBy(r => r.Id).FirstAsync()).Id;
+            (await new QuestionReportService(ctx).MarkReviewedAsync(
+                reportId, OwnerUserId, isAdmin: false, new ReviewQuestionReportDto { Outcome = "noIssue", Note = "  cevap doğru  " })).ShouldBeTrue();
+        }
+
+        (await ListAsync(OwnerUserId)).TotalCount.ShouldBe(0);
+        var item = (await ListAsync(OwnerUserId, status: QuestionReportStatus.Reviewed)).Items.ShouldHaveSingleItem();
+        item.ShouldSatisfyAllConditions(
+            () => item.ReportCount.ShouldBe(2),
+            () => item.Outcome.ShouldBe("noIssue"),
+            () => item.OutcomeNote.ShouldBe("cevap doğru"),
+            () => item.ReviewedAt.ShouldNotBeNull(),
+            () => item.ReviewedByMe.ShouldBeTrue());
+        (await ListAsync(OtherTeacherUserId, isAdmin: true, status: QuestionReportStatus.Reviewed)).Items.Single().ReviewedByMe.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Fixed_decision_drops_the_note()
+    {
+        await CreateAsync(Dto());
+        await using (var ctx = _db.NewContext())
+        {
+            var reportId = (await ctx.QuestionReports.SingleAsync()).Id;
+            await new QuestionReportService(ctx).MarkReviewedAsync(
+                reportId, OwnerUserId, isAdmin: false, new ReviewQuestionReportDto { Outcome = "fixed", Note = "x" });
+        }
+
+        await using var check = _db.NewContext();
+        var saved = await check.QuestionReports.SingleAsync();
+        saved.Outcome.ShouldBe(QuestionReportOutcome.Fixed);
+        saved.OutcomeNote.ShouldBeNull();
+        saved.ReviewedByUserId.ShouldBe(OwnerUserId);
     }
 
     [Fact]
@@ -162,8 +231,9 @@ public sealed class QuestionReportServiceTests : IDisposable
         {
             var reportId = (await ctx.QuestionReports.SingleAsync()).Id;
             var service = new QuestionReportService(ctx);
-            (await service.MarkReviewedAsync(reportId, OtherTeacherUserId, isAdmin: false)).ShouldBeFalse();
-            (await service.MarkReviewedAsync(reportId, OwnerUserId, isAdmin: false)).ShouldBeTrue();
+            var fixedDto = new ReviewQuestionReportDto { Outcome = "fixed" };
+            (await service.MarkReviewedAsync(reportId, OtherTeacherUserId, isAdmin: false, fixedDto)).ShouldBeFalse();
+            (await service.MarkReviewedAsync(reportId, OwnerUserId, isAdmin: false, fixedDto)).ShouldBeTrue();
         }
 
         (await ListAsync(OwnerUserId)).TotalCount.ShouldBe(0);

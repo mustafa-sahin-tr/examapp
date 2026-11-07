@@ -17,9 +17,19 @@ const report = (overrides: Partial<QuestionReportItem> = {}): QuestionReportItem
   questionId: 42,
   questionImageUrl: 'https://img/q.png',
   reason: 'wrongAnswer',
+  reasons: ['wrongAnswer'],
   note: 'The key looks wrong',
+  notes: ['The key looks wrong'],
+  reportCount: 1,
+  testNames: ['Fractions'],
+  testCount: 1,
+  answeredCount: 12,
   status: 'open',
   createTime: '2026-11-05T08:00:00Z',
+  outcome: null,
+  outcomeNote: null,
+  reviewedAt: null,
+  reviewedByMe: false,
   ...overrides,
 });
 
@@ -60,19 +70,83 @@ describe('QuestionReportsComponent (#781)', () => {
     const row = root().querySelector('[data-testid="question-report-row"]')!;
     expect(row.textContent).toContain(reportsTr.reason.wrongAnswer);
     expect(row.textContent).toContain('The key looks wrong');
-    expect(row.querySelector('a')?.getAttribute('href')).toBe('/question/42');
+    expect(row.querySelector('[data-testid="report-fix"]')?.getAttribute('href')).toBe('/question/42');
+    expect(row.querySelector('[data-testid="report-fix"]')?.getAttribute('target')).toBe('_blank');
   });
 
-  it('marks a report reviewed and reloads the list', () => {
+  it('#865: shows merged reports with impact', () => {
+    flushList([
+      report({
+        reasons: ['unreadable', 'wrongAnswer'],
+        notes: ['blurry', 'cut off'],
+        reportCount: 3,
+        testNames: ['Fractions', 'Theme 1'],
+        testCount: 4,
+        answeredCount: 46,
+      }),
+    ]);
+
+    const row = root().querySelector('[data-testid="question-report-row"]')!;
+    expect(row.querySelector('[data-testid="report-count"]')?.textContent).toContain('3 bildirim');
+    expect(row.textContent).toContain(reportsTr.reason.unreadable);
+    expect(row.textContent).toContain('blurry');
+    expect(row.textContent).toContain('cut off');
+    const impact = row.querySelector('[data-testid="report-impact"]')!.textContent!;
+    expect(impact).toContain('Fractions, Theme 1');
+    expect(impact).toContain('+2');
+    expect(impact).toContain('4 testte');
+    expect(impact).toContain('46 öğrenci cevapladı');
+  });
+
+  it('#865: fixing opens the question, then "fixed" closes the report', () => {
     flushList([report()]);
 
-    root().querySelector<HTMLButtonElement>('.report-row__actions button')!.click();
+    // Bağlantı yeni sekmede açılır; testte tıklamak sekme açardı, durumu doğrudan kuruyoruz.
+    (fixture.componentInstance as unknown as { startFix(item: QuestionReportItem): void }).startFix(report());
+    fixture.detectChanges();
+    root().querySelector<HTMLButtonElement>('[data-testid="report-fixed"]')!.click();
     const put = http.expectOne('/api/exam/questions/reports/7/reviewed');
     expect(put.request.method).toBe('PUT');
+    expect(put.request.body).toEqual({ outcome: 'fixed', note: null });
     put.flush(null);
 
     flushList([]);
     expect(root().textContent).toContain(reportsTr.emptyOpen);
+  });
+
+  it('#865: "no issue" asks for a short note and sends it', () => {
+    flushList([report()]);
+
+    root().querySelector<HTMLButtonElement>('[data-testid="report-no-issue-btn"]')!.click();
+    fixture.detectChanges();
+    const note = root().querySelector<HTMLTextAreaElement>('[data-testid="report-no-issue-note"]')!;
+    note.value = '  The key is right  ';
+    note.dispatchEvent(new Event('input'));
+    root().querySelector<HTMLButtonElement>('[data-testid="report-no-issue-confirm"]')!.click();
+
+    const put = http.expectOne('/api/exam/questions/reports/7/reviewed');
+    expect(put.request.body).toEqual({ outcome: 'noIssue', note: 'The key is right' });
+    put.flush(null);
+    flushList([]);
+    expect(root().querySelector('[data-testid="report-no-issue"]')).toBeNull();
+  });
+
+  it('#865: resolved reports show the outcome and who closed them', () => {
+    flushList([]);
+    root().querySelectorAll<HTMLButtonElement>('.reports__status button')[1].click();
+    const request = http.expectOne((r) => r.url === LIST_URL);
+    expect(request.request.params.get('status')).toBe('Reviewed');
+    request.flush({
+      items: [report({ status: 'reviewed', outcome: 'noIssue', outcomeNote: 'Key is right', reviewedAt: '2026-11-06T10:00:00Z', reviewedByMe: true })],
+      totalCount: 1,
+    });
+    fixture.detectChanges();
+
+    const outcome = root().querySelector('[data-testid="report-outcome"]')!.textContent!;
+    expect(outcome).toContain(reportsTr.outcome.noIssue);
+    expect(outcome).toContain('Key is right');
+    expect(outcome).toContain('Sen · 06.11.2026');
+    expect(root().querySelector('[data-testid="report-fix"]')).toBeNull();
   });
 
   it('shows a retry when the list cannot load', () => {
@@ -88,7 +162,9 @@ describe('QuestionReportsComponent (#781)', () => {
   it('keeps the list when marking reviewed fails and says so', () => {
     flushList([report()]);
 
-    root().querySelector<HTMLButtonElement>('.report-row__actions button')!.click();
+    root().querySelector<HTMLButtonElement>('[data-testid="report-no-issue-btn"]')!.click();
+    fixture.detectChanges();
+    root().querySelector<HTMLButtonElement>('[data-testid="report-no-issue-confirm"]')!.click();
     http.expectOne('/api/exam/questions/reports/7/reviewed').flush('down', { status: 500, statusText: 'Server Error' });
     fixture.detectChanges();
 

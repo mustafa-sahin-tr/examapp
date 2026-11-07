@@ -30,16 +30,73 @@
             }
           </div>
           <div class="report-row__body">
-            <h2>{{ t('reason.' + item.reason) }}</h2>
-            @if (item.note) {
-              <p class="report-row__note">{{ item.note }}</p>
+            <div class="report-row__tags">
+              @for (reason of item.reasons; track reason; let first = $first) {
+                <span class="report-tag" [class.report-tag--reason]="first">{{ t('reason.' + reason) }}</span>
+              }
+              @if (item.reportCount > 1) {
+                <span class="report-tag" data-testid="report-count">{{ t('reportCount', { n: item.reportCount }) }}</span>
+              }
+              <span class="report-row__date">{{ t('lastReport', { date: (item.createTime | date: 'dd.MM.yyyy HH:mm') }) }}</span>
+            </div>
+            @if (item.notes.length) {
+              <p class="report-row__note">
+                @for (note of item.notes; track $index; let last = $last) {
+                  <q>{{ note }}</q>@if (!last) { <span aria-hidden="true"> · </span> }
+                }
+              </p>
             }
-            <p class="report-row__date">{{ item.createTime | date: 'dd.MM.yyyy HH:mm' }}</p>
+            <p class="report-row__impact" data-testid="report-impact">
+              @if (item.testNames.length) {
+                <span>{{ item.testNames.join(', ') }}@if (item.testCount > item.testNames.length) { {{ t('moreTests', { n: item.testCount - item.testNames.length }) }} }</span>
+                <span aria-hidden="true">·</span>
+              }
+              <span>{{ t('testCount', { n: item.testCount }) }}</span>
+              <span aria-hidden="true">·</span>
+              <span>{{ t('answeredCount', { n: item.answeredCount }) }}</span>
+            </p>
+            @if (item.status === 'reviewed') {
+              <p class="report-row__outcome" data-testid="report-outcome">
+                <span class="report-tag" [class.report-tag--fixed]="item.outcome === 'fixed'"
+                  [class.report-tag--ok]="item.outcome === 'noIssue'">{{ t('outcome.' + (item.outcome ?? 'reviewed')) }}</span>
+                @if (item.outcomeNote) {
+                  <q>{{ item.outcomeNote }}</q>
+                }
+                @if (item.reviewedAt) {
+                  <span class="report-row__date">{{ item.reviewedByMe ? t('reviewedByMe', { date: (item.reviewedAt | date: 'dd.MM.yyyy') }) : (item.reviewedAt | date: 'dd.MM.yyyy') }}</span>
+                }
+              </p>
+            }
+            @if (noIssueFor() === item.id) {
+              <div class="report-row__no-issue" data-testid="report-no-issue">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                  <mat-label>{{ t('noIssueNote') }}</mat-label>
+                  <textarea matInput rows="2" [attr.maxlength]="noteMaxLength" [value]="noIssueNote()"
+                    (input)="noIssueNote.set($any($event.target).value)" data-testid="report-no-issue-note"></textarea>
+                </mat-form-field>
+                <div class="report-row__no-issue-actions">
+                  <button mat-button type="button" (click)="cancelNoIssue()">{{ t('cancel') }}</button>
+                  <button mat-flat-button type="button" [disabled]="saving()" (click)="markReviewed(item, 'noIssue')"
+                    data-testid="report-no-issue-confirm">{{ t('closeNoIssue') }}</button>
+                </div>
+              </div>
+            }
           </div>
           <div class="report-row__actions">
-            <a mat-stroked-button [routerLink]="['/question', item.questionId]">{{ t('openQuestion') }}</a>
             @if (item.status === 'open') {
-              <button mat-flat-button type="button" (click)="markReviewed(item)">{{ t('markReviewed') }}</button>
+              @if (fixing().has(item.id)) {
+                <button mat-flat-button type="button" [disabled]="saving()" (click)="markReviewed(item, 'fixed')"
+                  data-testid="report-fixed">{{ t('markFixed') }}</button>
+                <a mat-stroked-button [routerLink]="['/question', item.questionId]" target="_blank" rel="noopener">{{ t('openAgain') }}</a>
+              } @else {
+                <a mat-flat-button [routerLink]="['/question', item.questionId]" target="_blank" rel="noopener" (click)="startFix(item)"
+                  data-testid="report-fix">{{ t('fixQuestion') }}</a>
+              }
+              @if (noIssueFor() !== item.id) {
+                <button mat-stroked-button type="button" (click)="askNoIssue(item)" data-testid="report-no-issue-btn">{{ t('noIssue') }}</button>
+              }
+            } @else {
+              <a mat-stroked-button [routerLink]="['/question', item.questionId]">{{ t('openQuestion') }}</a>
             }
           </div>
         </li>

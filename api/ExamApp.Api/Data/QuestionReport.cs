@@ -18,6 +18,13 @@ public enum QuestionReportStatus
     Reviewed = 1
 }
 
+/// <summary>issue #865: incelenen bildirimin sonucu. DB'de string; #865 öncesi kapatılanlarda null.</summary>
+public enum QuestionReportOutcome
+{
+    Fixed = 1,
+    NoIssue = 2
+}
+
 /// <summary>
 /// issue #781: öğrencinin çözdüğü testteki bir soruyu bildirmesi. Soru sahibi ve admin görür; bildireni görmezler.
 /// Aynı öğrenci aynı soruyu bir kez bildirir, tekrar istek mevcut kaydı döner.
@@ -45,4 +52,14 @@ public class QuestionReport : BaseEntity
     public string? Note { get; set; }
 
     public QuestionReportStatus Status { get; set; } = QuestionReportStatus.Open;
+
+    public QuestionReportOutcome? Outcome { get; set; }
+
+    /// <summary>"Sorun yok" kararının kısa gerekçesi (#865); öğrenciye gösterilmez.</summary>
+    [MaxLength(NoteMaxLength)]
+    public string? OutcomeNote { get; set; }
+
+    public int? ReviewedByUserId { get; set; }
+
+    public DateTime? ReviewedAt { get; set; }
 }

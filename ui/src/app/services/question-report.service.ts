@@ -6,6 +6,7 @@ import {
   QuestionReportCreated,
   QuestionReportListStatus,
   QuestionReportPage,
+  ReviewQuestionReport,
 } from '../models/question-report';
 
 /** Issue #781: öğrencinin soru bildirimi ve soru sahibinin listesi. */
@@ -23,7 +24,8 @@ export class QuestionReportService {
     return this.http.get<QuestionReportPage>(`${this.apiUrl}/reports`, { params });
   }
 
-  markReviewed(id: number): Observable<void> {
-    return this.http.put<void>(`${this.apiUrl}/reports/${id}/reviewed`, {});
+  /** #865: sonucu kaydeder; sorunun bekleyen tüm bildirimleri kapanır. */
+  markReviewed(id: number, review: ReviewQuestionReport): Observable<void> {
+    return this.http.put<void>(`${this.apiUrl}/reports/${id}/reviewed`, review);
   }
 }

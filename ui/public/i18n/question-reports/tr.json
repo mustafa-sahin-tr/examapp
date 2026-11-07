@@ -4,7 +4,7 @@
   "statusLabel": "Bildirim durumu",
   "status": {
     "open": "Bekleyen",
-    "reviewed": "İncelenen"
+    "reviewed": "Sonuçlanan"
   },
   "reason": {
     "wrongAnswer": "Cevap yanlış olabilir",
@@ -15,10 +15,27 @@
   "imageAlt": "Bildirilen soru",
   "noImage": "Görselsiz soru",
   "openQuestion": "Soruyu aç",
-  "markReviewed": "İncelendi",
   "emptyOpen": "Bekleyen bildirim yok.",
-  "emptyReviewed": "İncelenmiş bildirim yok.",
+  "emptyReviewed": "Sonuçlanan bildirim yok.",
   "loadError": "Bildirimler yüklenemedi.",
   "retry": "Tekrar dene",
-  "actionError": "Bildirim güncellenemedi. Tekrar dene."
+  "actionError": "Bildirim güncellenemedi. Tekrar dene.",
+  "reportCount": "{{n}} bildirim",
+  "lastReport": "son: {{date}}",
+  "testCount": "{{n}} testte",
+  "moreTests": "+{{n}}",
+  "answeredCount": "{{n}} öğrenci cevapladı",
+  "fixQuestion": "Soruyu düzelt",
+  "openAgain": "Soruyu yeniden aç",
+  "markFixed": "Düzelttim, kapat",
+  "noIssue": "Sorun yok",
+  "noIssueNote": "Kısa not (neden sorun yok?)",
+  "closeNoIssue": "Sorun yok olarak kapat",
+  "cancel": "Vazgeç",
+  "outcome": {
+    "fixed": "Düzeltildi",
+    "noIssue": "Sorun yok",
+    "reviewed": "İncelendi"
+  },
+  "reviewedByMe": "Sen · {{date}}"
 }

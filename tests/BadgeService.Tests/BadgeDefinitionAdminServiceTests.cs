@@ -374,6 +374,30 @@ public class BadgeDefinitionAdminServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ListAsync_counts_distinct_students_who_earned_each_badge()
+    {
+        await using var ctx = _db.NewContext();
+        var service = NewService(ctx);
+        var earnedBadge = await service.CreateAsync(new CreateBadgeDefinitionRequest
+        {
+            Code = "earned-one", Name = "Earned", Category = "c", RuleType = "AnswerCount", RuleConfigJson = "{\"target\":1}",
+        }, "admin", null, CancellationToken.None);
+        var other = await service.CreateAsync(new CreateBadgeDefinitionRequest
+        {
+            Code = "nobody", Name = "Nobody", Category = "c", RuleType = "AnswerCount", RuleConfigJson = "{\"target\":1}",
+        }, "admin", null, CancellationToken.None);
+        ctx.BadgeEarned.AddRange(
+            new BadgeEarned { Id = Guid.NewGuid(), UserId = 1, BadgeDefinitionId = earnedBadge.Value!.Id, EarnedDate = DateTime.UtcNow },
+            new BadgeEarned { Id = Guid.NewGuid(), UserId = 2, BadgeDefinitionId = earnedBadge.Value.Id, EarnedDate = DateTime.UtcNow });
+        await ctx.SaveChangesAsync();
+
+        var page = await service.ListAsync(includeInactive: true, skip: 0, take: 50, CancellationToken.None);
+
+        page.Items.Single(x => x.Id == earnedBadge.Value.Id).EarnedCount.ShouldBe(2);
+        page.Items.Single(x => x.Id == other.Value!.Id).EarnedCount.ShouldBe(0);
+    }
+
+    [Fact]
     public async Task ListAsync_pages_using_skip_and_take()
     {
         await using var ctx = _db.NewContext();

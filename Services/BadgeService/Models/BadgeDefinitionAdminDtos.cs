@@ -22,6 +22,9 @@ public class BadgeDefinitionAdminDto
     public int? PathOrder { get; set; }
     public bool IsActive { get; set; }
 
+    /// <summary>#871: distinct students who earned this badge; filled by the list endpoint only (0 elsewhere).</summary>
+    public int EarnedCount { get; set; }
+
     /// <summary>Keycloak `sub` of the creator — the stable audit id (security review #148, L1).</summary>
     public string? CreatedBy { get; set; }
 

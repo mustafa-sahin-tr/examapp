@@ -1,8 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { ProgramStep } from '../models/programstep';
-import { CreateProgramRequest, ProgramStudyPageScheduleRequest, UserProgram } from '../models/program.interfaces';
+import { CreateProgramRequest, ProgramStudyPageScheduleRequest, ProgramSubject, UserProgram } from '../models/program.interfaces';
 
 @Injectable({
   providedIn: 'root',
@@ -12,8 +11,9 @@ export class ProgramService {
 
   constructor(private http: HttpClient) {}
 
-  getProgramSteps(): Observable<ProgramStep[]> {
-    return this.http.get<ProgramStep[]>(`${this.apiUrl}/steps`);
+  /** #885: takvime girecek dersler (öğrencinin sınıfı); sihirbazın ders adımı ve önizlemesi. */
+  getProgramSubjects(): Observable<ProgramSubject[]> {
+    return this.http.get<ProgramSubject[]>(`${this.apiUrl}/subjects`);
   }
 
   createProgram(request: CreateProgramRequest): Observable<UserProgram> {

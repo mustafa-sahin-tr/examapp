@@ -6,6 +6,14 @@ export interface CreateProgramRequest {
   startDate?: string;
   endDate?: string;
   userSelections: UserSelection[];
+  /** #885: zorlandığı dersler (`ProgramSubject.id`); doluysa eski 7. adım yok sayılır. */
+  difficultSubjectIds?: number[];
+}
+
+/** #885: `GET /api/program/subjects`. */
+export interface ProgramSubject {
+  id: number;
+  name: string;
 }
 
 export interface UserSelection {

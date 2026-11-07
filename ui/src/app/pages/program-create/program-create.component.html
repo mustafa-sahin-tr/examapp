@@ -1,307 +1,172 @@
 <div class="pc" *transloco="let t; prefix: 'program-create'">
-  @let summaryLabels = {
-    title: t('wizard.summary.title'),
-    pending: t('wizard.summary.pending'),
-    remaining: t('wizard.summary.remaining', { count: remainingPathLength() }),
-    edit: t('wizard.summary.edit'),
-    all: t('wizard.summary.all')
-  };
-  @let reviewLabels = {
-    title: t('form.reviewTitle'),
-    pending: '',
-    remaining: '',
-    edit: t('wizard.summary.edit'),
-    all: t('wizard.summary.all')
-  };
-  @let progressLabels = {
-    ariaLabel: t('wizard.progress.label'),
-    stop: t('wizard.progress.stop'),
-    done: t('wizard.progress.done'),
-    current: t('wizard.progress.here'),
-    upcoming: t('wizard.progress.upcoming'),
-    branch: t('wizard.progress.branch'),
-    final: t('wizard.progress.finalStop')
-  };
-  @let counterText = atForm()
-    ? t('wizard.progress.final', { n: position(), total: total() })
-    : t(totalExact() ? 'wizard.progress.current' : 'wizard.progress.currentMax', { n: position(), total: total() });
+  <header class="pc-head">
+    <h1>{{ t('title') }}</h1>
+    <!-- #885: dört adım; geçilmiş adıma tıklanarak dönülür. -->
+    <ol class="pc-steps" [attr.aria-label]="t('stepsLabel')">
+      @for (name of steps; track name; let i = $index) {
+        <li [class.pc-steps__item--done]="i < step()" [class.pc-steps__item--current]="i === step()"
+          [attr.aria-current]="i === step() ? 'step' : null">
+          <button type="button" [disabled]="i >= step()" (click)="goTo(i)" [attr.data-test]="'step-' + name">
+            <span class="pc-steps__n">{{ i + 1 }}</span>{{ t(name + '.title') }}
+          </button>
+        </li>
+      }
+    </ol>
+  </header>
 
-  @switch (viewState()) {
-    @case ('loading') {
-    <div class="pc-layout">
-      <section class="pc-main">
-        <p class="pc-loading" role="status" aria-live="polite">{{ t('wizard.loading') }}</p>
-        <div class="pc-card pc-skeleton" aria-busy="true">
-          <span class="pc-skeleton__line pc-skeleton__line--eyebrow" aria-hidden="true"></span>
-          <span class="pc-skeleton__line pc-skeleton__line--title" aria-hidden="true"></span>
-          <span class="pc-skeleton__line pc-skeleton__line--hint" aria-hidden="true"></span>
-          <div class="pc-skeleton__grid" aria-hidden="true">
-            @for (tile of skeletonTiles; track tile) {
-            <span class="pc-skeleton__tile"></span>
-            }
-          </div>
-        </div>
-      </section>
-      <div class="pc-rail pc-skeleton pc-skeleton--rail" aria-hidden="true">
-        <span class="pc-skeleton__line pc-skeleton__line--rail-title"></span>
-        @for (row of skeletonRailRows; track row) {
-        <span class="pc-skeleton__row"></span>
-        }
-      </div>
-    </div>
-    }
-
-    @case ('error') {
-    <div class="pc-state" role="alert">
-      <mat-icon fontSet="material-symbols-outlined" aria-hidden="true">cloud_off</mat-icon>
-      <p>{{ t('wizard.loadError') }}</p>
-      <button mat-flat-button type="button" class="pc-state__retry" (click)="retryLoad()">
-        <mat-icon aria-hidden="true">refresh</mat-icon>
-        {{ t('wizard.retry') }}
-      </button>
-    </div>
-    }
-
-    @case ('empty') {
-    <div class="pc-state" role="status">
-      <mat-icon fontSet="material-symbols-outlined" aria-hidden="true">info</mat-icon>
-      <p class="pc-state__title">{{ t('wizard.emptyTitle') }}</p>
-      <p>{{ t('wizard.emptyBody') }}</p>
-      <button mat-stroked-button type="button" class="pc-state__retry" (click)="retryLoad()">
-        <mat-icon aria-hidden="true">refresh</mat-icon>
-        {{ t('wizard.retry') }}
-      </button>
-    </div>
-    }
-
-    @default {
-    @let step = currentStep();
-    <div class="pc-layout">
-      <section class="pc-main">
-        <app-wizard-progress
-          class="pc-progress"
-          [done]="doneCount()"
-          [remaining]="remainingPathLength()"
-          [branchUnknown]="branchUnknown()"
-          [atFinal]="atForm()"
-          [counterText]="counterText"
-          [labels]="progressLabels"
-          (goTo)="goToStop($event)"
-        />
-
-        <!-- Kalıcı live region: kapsayıcı hep DOM'da, yalnız içerik değişir (ekran okuyucu duyurusu için). -->
-        <div class="pc-live" role="status" aria-live="polite">
-          @if (pathChange(); as notice) {
-          <div class="pc-band">
-            <mat-icon fontSet="material-symbols-outlined" aria-hidden="true">alt_route</mat-icon>
-            <span class="pc-band__text">{{ t('wizard.pathChanged', { count: notice.count }) }}</span>
-            <button mat-button type="button" class="pc-band__undo" (click)="undoPathChange()">
-              {{ t('wizard.undo') }}
-            </button>
-          </div>
-          }
-        </div>
-
-        @if (step && summaryItems().length > 0) {
-        <app-selection-summary
-          class="pc-chips"
-          variant="chips"
-          [items]="summaryItems()"
-          [labels]="summaryLabels"
-          (edit)="goToStep($event)"
-        />
-        }
-
-        <div class="pc-card">
-          @if (step) {
-          <p class="pc-eyebrow">{{ t('wizard.questionNumber', { number: position() }) }}</p>
-          }
-          <!-- Adım ve form aynı başlık öğesini paylaşır; gezinmeden sonra odak buraya taşınır. -->
-          <h2 #heading class="pc-question" id="pc-question" tabindex="-1">
-            {{ step ? step.description : t('form.title') }}
-          </h2>
-
-          @if (step) {
-          <p class="pc-hint" id="pc-hint">{{ step.multiple ? t('wizard.hint.multi') : t('wizard.hint.single') }}</p>
-
-          <app-option-group [multi]="step.multiple" labelledBy="pc-question" describedBy="pc-hint">
-            @for (opt of step.options; track opt.value) {
-            <button
-              app-option-card
-              [icon]="opt.icon | programOptionIcon"
-              [label]="opt.label"
-              [selected]="selectedValueSet().has(opt.value)"
-              [multi]="step.multiple"
-              (click)="toggleOption(opt)"
-            ></button>
-            }
+  <div class="pc-layout">
+    <section class="pc-card" aria-labelledby="pc-question">
+      @switch (steps[step()]) {
+        @case ('amount') {
+          <h2 id="pc-question" class="pc-question">{{ t('amount.question') }}</h2>
+          <app-option-group labelledBy="pc-question">
+            <button app-option-card icon="timer" [label]="t('amount.typeTime')" [selected]="studyType() === 'time'"
+              data-test="type-time" (click)="studyType.set('time')"></button>
+            <button app-option-card icon="quiz" [label]="t('amount.typeQuestion')" [selected]="studyType() === 'question'"
+              data-test="type-question" (click)="studyType.set('question')"></button>
           </app-option-group>
 
-          <div class="pc-bar">
-            <button mat-button type="button" class="pc-bar__back" (click)="previous()" [disabled]="path().length <= 1">
-              <mat-icon aria-hidden="true">arrow_back</mat-icon>
-              {{ t('wizard.back') }}
-            </button>
-            @if (!hasSelection()) {
-            <span class="pc-bar__reason" id="pc-need">{{ t('wizard.needSelection') }}</span>
-            }
-            <button
-              mat-flat-button
-              type="button"
-              class="pc-bar__next"
-              (click)="next()"
-              [disabled]="!hasSelection()"
-              [attr.aria-describedby]="hasSelection() ? null : 'pc-need'"
-            >
-              {{ t('wizard.continue') }}
-              <mat-icon iconPositionEnd aria-hidden="true">arrow_forward</mat-icon>
-            </button>
-          </div>
-          } @else {
-          <p class="pc-hint">{{ t('form.subtitle') }}</p>
-
-          @if (submitError()) {
-          <div #submitAlert class="pc-alert" role="alert" tabindex="-1">
-            <mat-icon fontSet="material-symbols-outlined" aria-hidden="true">error</mat-icon>
-            <span class="pc-alert__text">{{ t('form.createFailedInline') }}</span>
-          </div>
-          }
-
-          <!-- Mobil: onay özeti form üstünde, kapalı katlanır panel. Masaüstünde sağ ray gösterilir. -->
-          <mat-expansion-panel class="pc-review-panel">
-            <mat-expansion-panel-header>
-              <mat-panel-title class="pc-review-panel__title">
-                {{ t('form.summaryCount', { count: summaryItems().length }) }}
-              </mat-panel-title>
-              <mat-panel-description class="pc-review-panel__preview">{{ summaryPreview() }}</mat-panel-description>
-            </mat-expansion-panel-header>
-            <app-selection-summary
-              variant="review"
-              [items]="summaryItems()"
-              [labels]="reviewLabels"
-              (edit)="goToStep($event)"
-            />
-          </mat-expansion-panel>
-
-          <div class="pc-form">
-            <mat-form-field appearance="outline" class="pc-form__full">
-              <mat-label>{{ t('form.name') }}</mat-label>
-              <input
-                matInput
-                class="pc-form__name"
-                [(ngModel)]="programName"
-                [placeholder]="t('form.namePlaceholder')"
-                [errorStateMatcher]="nameErrorMatcher"
-                [disabled]="submitting()"
-                required
-              />
-              <mat-error>{{ t('form.nameRequired') }}</mat-error>
-            </mat-form-field>
-
-            <mat-form-field appearance="outline" class="pc-form__full">
-              <mat-label>{{ t('form.description') }}</mat-label>
-              <textarea
-                matInput
-                class="pc-form__description"
-                [(ngModel)]="programDescription"
-                rows="3"
-                [placeholder]="t('form.descriptionPlaceholder')"
-                [disabled]="submitting()"
-              ></textarea>
-            </mat-form-field>
-
-            <div class="pc-form__dates">
-              <mat-form-field appearance="outline">
-                <mat-label>{{ t('form.startDate') }}</mat-label>
-                <input
-                  matInput
-                  class="pc-form__start"
-                  [matDatepicker]="startPicker"
-                  [(ngModel)]="programStartDate"
-                  #startModel="ngModel"
-                  [errorStateMatcher]="startErrorMatcher"
-                  [disabled]="submitting()"
-                  required
-                />
-                <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
-                <mat-datepicker #startPicker></mat-datepicker>
-                <mat-error>
-                  {{ startModel.hasError('matDatepickerParse') ? t('form.dateInvalid') : t('form.startDateRequired') }}
-                </mat-error>
-              </mat-form-field>
-
-              <mat-form-field appearance="outline">
-                <mat-label>{{ t('form.endDate') }}</mat-label>
-                <input
-                  matInput
-                  class="pc-form__end"
-                  [matDatepicker]="endPicker"
-                  [(ngModel)]="programEndDate"
-                  #endModel="ngModel"
-                  [errorStateMatcher]="endErrorMatcher"
-                  [disabled]="submitting()"
-                  required
-                />
-                <mat-datepicker-toggle matIconSuffix [for]="endPicker"></mat-datepicker-toggle>
-                <mat-datepicker #endPicker></mat-datepicker>
-                <mat-error class="pc-form__end-error">
-                  {{
-                    endModel.hasError('matDatepickerParse')
-                      ? t('form.dateInvalid')
-                      : programEndDate()
-                        ? t('form.endDateAfterStart')
-                        : t('form.endDateRequired')
-                  }}
-                </mat-error>
-              </mat-form-field>
-            </div>
-          </div>
-
-          <div class="pc-bar">
-            <button
-              mat-button
-              type="button"
-              class="pc-bar__back"
-              (click)="cancelProgramCreation()"
-              [disabled]="submitting()"
-            >
-              <mat-icon aria-hidden="true">arrow_back</mat-icon>
-              {{ t('form.back') }}
-            </button>
-            <button
-              mat-flat-button
-              type="button"
-              class="pc-bar__submit"
-              (click)="createProgram()"
-              [disabled]="submitting() || !formValid()"
-              [attr.aria-busy]="submitting() ? 'true' : null"
-            >
-              @if (submitting()) {
-                @if (reducedMotion) {
-                <mat-icon class="pc-bar__busy-icon" fontSet="material-symbols-outlined" aria-hidden="true">hourglass_top</mat-icon>
-                } @else {
-                <mat-spinner class="pc-bar__spinner" diameter="18" aria-hidden="true"></mat-spinner>
-                }
-              } @else {
-              <mat-icon aria-hidden="true">add</mat-icon>
+          @if (studyType() === 'time') {
+            <h3 class="pc-sub" id="pc-duration">{{ t('amount.durationTitle') }}</h3>
+            <mat-chip-listbox [attr.aria-labelledby]="'pc-duration'" [hideSingleSelectionIndicator]="true"
+              [value]="duration()" (change)="$event.value && duration.set($event.value)" data-test="durations">
+              @for (d of durations; track d) {
+                <mat-chip-option [value]="d">{{ t('amount.duration', durationMinutes(d)) }}</mat-chip-option>
               }
-              {{ t('form.submit') }}
-            </button>
-          </div>
+            </mat-chip-listbox>
+          } @else {
+            <h3 class="pc-sub" id="pc-questions">{{ t('amount.questionsTitle') }}</h3>
+            <mat-chip-listbox [attr.aria-labelledby]="'pc-questions'" [hideSingleSelectionIndicator]="true"
+              [value]="questionsPerDay()" (change)="$event.value && questionsPerDay.set($event.value)" data-test="questions">
+              @for (q of questionOptions; track q) {
+                <mat-chip-option [value]="q">{{ t('amount.questions', { count: q }) }}</mat-chip-option>
+              }
+            </mat-chip-listbox>
           }
-        </div>
-      </section>
 
-      <app-selection-summary
-        class="pc-rail"
-        [variant]="atForm() ? 'review' : 'rail'"
-        [items]="summaryItems()"
-        [labels]="atForm() ? reviewLabels : summaryLabels"
-        [pendingCaption]="step?.title ?? null"
-        [remainingCount]="remainingPathLength()"
-        (edit)="goToStep($event)"
-      />
-    </div>
-    }
-  }
+          <h3 class="pc-sub" id="pc-per-day">{{ t('amount.perDayTitle') }}</h3>
+          <mat-chip-listbox [attr.aria-labelledby]="'pc-per-day'" [hideSingleSelectionIndicator]="true"
+            [value]="subjectsPerDay()" (change)="$event.value && subjectsPerDay.set($event.value)" data-test="per-day">
+            @for (n of perDayOptions; track n) {
+              <mat-chip-option [value]="n">{{ t('amount.perDay', { count: n }) }}</mat-chip-option>
+            }
+          </mat-chip-listbox>
+        }
+
+        @case ('days') {
+          <h2 id="pc-question" class="pc-question">{{ t('days.question') }}</h2>
+          <p class="pc-hint">{{ t('days.hint') }}</p>
+          <div class="pc-days" role="group" aria-labelledby="pc-question" data-test="days">
+            @for (d of weekDays; track d) {
+              <button type="button" class="pc-day" [class.pc-day--on]="studyDays().includes(d)"
+                [attr.aria-pressed]="studyDays().includes(d)" (click)="toggleDay(d)">{{ dayShort(d) }}</button>
+            }
+          </div>
+        }
+
+        @case ('subjects') {
+          <h2 id="pc-question" class="pc-question">{{ t('subjects.question') }}</h2>
+          <p class="pc-hint">{{ t('subjects.hint') }}</p>
+          @if (subjectsLoading()) {
+            <mat-spinner diameter="28" />
+          } @else if (subjectsError()) {
+            <div class="pc-alert" role="alert">
+              <span>{{ t('subjects.loadError') }}</span>
+              <button mat-stroked-button type="button" (click)="loadSubjects()">{{ t('retry') }}</button>
+            </div>
+          } @else {
+            <mat-chip-listbox multiple [attr.aria-labelledby]="'pc-question'" data-test="subjects">
+              @for (s of subjects(); track s.id) {
+                <mat-chip-option [value]="s.id" [selected]="difficultIds().includes(s.id)" (selectionChange)="$event.isUserInput && setDifficult(s.id, $event.selected)">
+                  {{ s.name }}
+                </mat-chip-option>
+              }
+            </mat-chip-listbox>
+          }
+        }
+
+        @case ('until') {
+          <h2 id="pc-question" class="pc-question">{{ t('until.question') }}</h2>
+          <mat-chip-listbox [attr.aria-labelledby]="'pc-question'" [hideSingleSelectionIndicator]="true" data-test="lengths">
+            @for (days of lengths; track days) {
+              <mat-chip-option [selected]="isLength(days)" (selectionChange)="$event.isUserInput && setLength(days)">
+                {{ t('until.length.' + days) }}
+              </mat-chip-option>
+            }
+          </mat-chip-listbox>
+          <div class="pc-form">
+            <mat-form-field appearance="outline">
+              <mat-label>{{ t('until.endDate') }}</mat-label>
+              <input matInput [matDatepicker]="endPicker" [min]="startDate()" [ngModel]="endDate()"
+                (ngModelChange)="endDate.set($event)" data-test="end-date" />
+              <mat-datepicker-toggle matIconSuffix [for]="endPicker" />
+              <mat-datepicker #endPicker />
+              <mat-hint>{{ t('until.from', { date: formatDate(startDate()) }) }}</mat-hint>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>{{ t('until.name') }}</mat-label>
+              <input matInput maxlength="100" [placeholder]="defaultName()" [ngModel]="programName()"
+                (ngModelChange)="programName.set($event)" data-test="name" />
+              <mat-hint>{{ t('until.nameHint', { name: defaultName() }) }}</mat-hint>
+            </mat-form-field>
+          </div>
+        }
+      }
+
+      @if (submitError()) {
+        <p class="pc-alert" role="alert" data-test="submit-error">{{ t('createFailed') }}</p>
+      }
+
+      <div class="pc-bar">
+        @if (step() > 0) {
+          <button mat-button type="button" data-test="back" (click)="back()">
+            <mat-icon aria-hidden="true">arrow_back</mat-icon>
+            {{ t('back') }}
+          </button>
+        }
+        <span class="pc-bar__spacer"></span>
+        @if (blocker(); as reason) {
+          <span class="pc-bar__reason" data-test="blocker">{{ t(reason) }}</span>
+        }
+        <button mat-flat-button type="button" data-test="next" [disabled]="!!blocker() || submitting()" (click)="next()">
+          @if (step() < steps.length - 1) {
+            {{ t('next', { step: t(steps[step() + 1] + '.title') }) }}
+          } @else {
+            {{ submitting() ? t('creating') : t('create') }}
+          }
+        </button>
+      </div>
+    </section>
+
+    <!-- #885: canlı örnek hafta — her seçim hemen yansır. -->
+    <aside class="pc-preview" aria-labelledby="pc-preview-title" data-test="preview">
+      <h2 id="pc-preview-title">{{ t('preview.title') }}</h2>
+      @if (subjects().length === 0) {
+        <p class="pc-hint">{{ t('preview.waiting') }}</p>
+      } @else {
+        <ul>
+          @for (day of preview(); track day.date.getTime()) {
+            <li [class.pc-preview__rest]="day.items.length === 0">
+              <span class="pc-preview__day">{{ dayShort(day.weekday) }}</span>
+              @if (day.items.length === 0) {
+                <span class="pc-preview__items">{{ t('preview.rest') }}</span>
+              } @else {
+                <span class="pc-preview__items">
+                  @for (item of day.items; track $index) {
+                    <span class="pc-preview__item" [class.pc-preview__item--hard]="difficultNames().has(item.subject)">
+                      {{ item.subject }}
+                      <small>{{ studyType() === 'time' ? t('preview.minutes', { count: item.amount }) : t('preview.questions', { count: item.amount }) }}</small>
+                    </span>
+                  }
+                </span>
+              }
+            </li>
+          }
+        </ul>
+        @if (difficultIds().length > 0) {
+          <p class="pc-hint">{{ t('preview.hardNote') }}</p>
+        }
+      }
+    </aside>
+  </div>
 </div>

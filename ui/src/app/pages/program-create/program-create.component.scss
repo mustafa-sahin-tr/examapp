@@ -1,4 +1,4 @@
-// Issue #135 — program oluşturma sihirbazı (dilim 1 adım ekranı, dilim 2 son adım + durum ekranları).
+// #885 — program sihirbazı: dört adım + canlı örnek hafta.
 // Renkler yalnız tema token'ları (.dark-theme / .light-theme); hex yok.
 
 :host {
@@ -8,382 +8,253 @@
 }
 
 .pc {
-  max-width: 1200px;
+  max-width: 1100px;
   margin: 0 auto;
   min-width: 0;
+
+  @media (max-width: 599px) {
+    padding: 0 0.75rem;
+  }
 }
 
-// Masaüstü: sol ana kart + sağ 320px özet rayı.
+.pc-head {
+  margin-bottom: 1rem;
+
+  h1 {
+    margin: 0 0 0.75rem;
+    font-size: 1.375rem;
+    font-weight: 700;
+    color: var(--ms-text-strong);
+  }
+}
+
+.pc-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+    border: 0;
+    background: none;
+    color: var(--ms-text-weak);
+    font: 600 0.875rem var(--mainFontFamily);
+    cursor: pointer;
+
+    &:disabled {
+      cursor: default;
+    }
+  }
+}
+
+.pc-steps__n {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1px solid var(--ms-border);
+  border-radius: 50%;
+  font-size: 0.75rem;
+}
+
+.pc-steps__item--current button {
+  color: var(--ms-text-strong);
+
+  .pc-steps__n {
+    border-color: var(--primaryColor);
+    background: var(--primaryColor);
+    color: var(--ms-on-primary, var(--ms-surface));
+  }
+}
+
+.pc-steps__item--done button {
+  color: var(--ms-text-medium);
+
+  .pc-steps__n {
+    border-color: var(--primaryColor);
+    color: var(--primaryColor);
+  }
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+// Masaüstü: sol adım kartı + sağda önizleme.
 .pc-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
   gap: 1.5rem;
   align-items: start;
-}
 
-.pc-main {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  min-width: 0;
-}
-
-.pc-rail {
-  position: sticky;
-  top: 1rem;
-}
-
-// Mobil çip şeridi yalnız dar ekranda.
-.pc-chips {
-  display: none;
+  @media (max-width: 899px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .pc-card {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem;
   min-width: 0;
   padding: 1.5rem;
   border: 1px solid var(--ms-border);
   border-radius: 20px;
   background: var(--ms-surface);
-  box-shadow: var(--ms-shadow-overlay);
-}
-
-.pc-eyebrow {
-  margin: 0;
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--primaryColor);
 }
 
 .pc-question {
   margin: 0;
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   font-weight: 700;
-  line-height: 1.3;
   color: var(--ms-text-strong);
-  overflow-wrap: anywhere;
+}
+
+.pc-sub {
+  margin: 0.75rem 0 0;
+  padding: 0; // global başlık dolgusu çiplerle hizayı bozuyordu
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--ms-text-medium);
 }
 
 .pc-hint {
   margin: 0;
   font-family: var(--paragraphFontFamily);
-  color: var(--ms-text-medium);
-}
-
-// Live region kapsayıcısı hep render edilir (display:none duyuruyu bozar); boşken flex gap'ini geri al.
-.pc-live:empty {
-  margin-bottom: -1rem;
-}
-
-// "Yol değişti" bilgi bandı.
-.pc-band {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.5rem 0.75rem;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--ms-info-border);
-  border-radius: 12px;
-  background: var(--ms-info-surface-weak);
-  color: var(--ms-info-text);
-}
-
-.pc-band__text {
-  flex: 1 1 200px;
-  min-width: 0;
-}
-
-// Alt çubuk: Geri solda, neden metni + Devam sağda.
-.pc-bar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--ms-border-weak);
-
-  button {
-    min-height: 44px;
-  }
-}
-
-.pc-bar__back {
-  margin-right: auto;
-}
-
-.pc-bar__reason {
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   color: var(--ms-text-weak);
 }
 
-.pc-form {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.pc-form__full {
-  width: 100%;
-}
-
-.pc-form__dates {
+// Yedi gün düğmesi: kısa ad, numara ikonu yok.
+.pc-days {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.5rem;
+  max-width: 480px;
 }
 
-.pc-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  min-height: 260px;
-  padding: 2rem 1rem;
+.pc-day {
+  height: 3rem;
   border: 1px solid var(--ms-border);
-  border-radius: 20px;
-  background: var(--ms-surface);
-  text-align: center;
-
-  p {
-    margin: 0;
-    color: var(--ms-text-medium);
-  }
-
-  mat-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 40px;
-    color: var(--ms-text-weak);
-  }
-}
-
-.pc-state__title {
-  font-weight: 700;
-  color: var(--ms-text-strong);
-}
-
-// Başlık programatik odak alır (tabindex=-1): fare/programatik odakta halka yok, klavyede görünür.
-.pc-question:focus {
-  outline: none;
-}
-
-.pc-question:focus-visible {
-  outline: 3px solid var(--ms-action-border-focus);
-  outline-offset: 4px;
-  border-radius: 4px;
-}
-
-// Gönderim hatası bandı (form üstünde, role=alert).
-.pc-alert {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem 0.75rem;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--ms-danger-border);
   border-radius: 12px;
-  background: var(--ms-danger-surface-weak);
-  color: var(--ms-danger-text);
-
-  mat-icon {
-    flex: none;
-  }
-
-  &:focus {
-    outline: none;
-  }
+  background: transparent;
+  color: var(--ms-text-weak);
+  font: 600 0.875rem var(--mainFontFamily);
+  cursor: pointer;
 
   &:focus-visible {
-    outline: 3px solid var(--ms-action-border-focus);
+    outline: 2px solid var(--primaryColor);
     outline-offset: 2px;
   }
 }
 
-.pc-alert__text {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow-wrap: anywhere;
+.pc-day--on {
+  border-color: var(--primaryColor);
+  background: var(--primaryColor);
+  color: var(--ms-on-primary, var(--ms-surface));
 }
 
-// Mobil katlanır onay özeti; masaüstünde sağ ray kullanıldığı için gizli.
-.pc-review-panel {
-  display: none;
-  --mat-expansion-container-background-color: var(--ms-surface-weak);
-  --mat-expansion-header-text-color: var(--ms-text-strong);
-  --mat-expansion-header-description-color: var(--ms-text-medium);
-  border: 1px solid var(--ms-border);
-  box-shadow: none;
+.pc-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.5rem;
 }
 
-.pc-review-panel__title {
-  flex: none;
-  font-weight: 700;
-}
-
-.pc-review-panel__preview {
-  display: block;
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-// Buton içi gönderim göstergesi; buton metin rengini izler.
-.pc-bar__spinner {
-  display: inline-block;
-  margin-right: 0.5rem;
-  vertical-align: middle;
-  --mat-progress-spinner-active-indicator-color: currentColor;
-}
-
-// Yükleniyor: kart + ray iskeleti.
-.pc-loading {
+.pc-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   margin: 0;
-  font-family: var(--paragraphFontFamily);
+  padding: 0.625rem 0.875rem;
+  border-radius: 10px;
+  background: var(--ms-danger-surface-weak);
+  color: var(--ms-danger-text);
+  font-size: 0.875rem;
+}
+
+.pc-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.pc-bar__spacer {
+  flex: 1;
+}
+
+.pc-bar__reason {
+  font-size: 0.8125rem;
+  color: var(--ms-text-weak);
+}
+
+.pc-preview {
+  position: sticky;
+  top: 1rem;
+  padding: 1.25rem;
+  border: 1px solid var(--ms-border);
+  border-radius: 20px;
+  background: var(--ms-surface-weak);
+
+  h2 {
+    margin: 0 0 0.75rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--ms-text-strong);
+  }
+
+  ul {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0 0 0.75rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: grid;
+    grid-template-columns: 2.75rem minmax(0, 1fr);
+    gap: 0.5rem;
+    align-items: baseline;
+    font-size: 0.875rem;
+  }
+
+  @media (max-width: 899px) {
+    position: static;
+  }
+}
+
+.pc-preview__day {
+  font-weight: 700;
   color: var(--ms-text-medium);
 }
 
-.pc-skeleton__line,
-.pc-skeleton__tile,
-.pc-skeleton__row {
-  display: block;
-  border-radius: 8px;
-  background: linear-gradient(
-    90deg,
-    var(--ms-surface-weak) 0%,
-    var(--ms-surface-medium) 50%,
-    var(--ms-surface-weak) 100%
-  );
-  background-size: 200% 100%;
-  animation: pc-shimmer 1.4s ease-in-out infinite;
-}
-
-.pc-skeleton__line {
-  height: 0.9rem;
-}
-
-.pc-skeleton__line--eyebrow {
-  width: 5rem;
-}
-
-.pc-skeleton__line--title {
-  width: 70%;
-  height: 1.5rem;
-}
-
-.pc-skeleton__line--hint {
-  width: 40%;
-}
-
-.pc-skeleton__line--rail-title {
-  width: 50%;
-  height: 1.1rem;
-}
-
-.pc-skeleton__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 0.75rem;
-}
-
-.pc-skeleton__tile {
-  min-height: 112px;
-  border-radius: 16px;
-}
-
-.pc-skeleton--rail {
+.pc-preview__items {
   display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 1rem;
-  border: 1px solid var(--ms-border);
-  border-radius: 20px;
-  background: var(--ms-surface);
-}
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  color: var(--ms-text-strong);
 
-.pc-skeleton__row {
-  height: 56px;
-  border-radius: 12px;
-}
-
-@keyframes pc-shimmer {
-  from {
-    background-position: 100% 0;
-  }
-
-  to {
-    background-position: -100% 0;
+  small {
+    color: var(--ms-text-weak);
   }
 }
 
-@media (max-width: 960px) {
-  .pc-layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .pc-rail {
-    display: none;
-  }
-
-  .pc-chips {
-    display: block;
-  }
-
-  .pc-review-panel {
-    display: block;
-  }
+.pc-preview__item--hard {
+  font-weight: 700;
+  color: var(--primaryColor);
 }
 
-@media (max-width: 600px) {
-  .pc-card {
-    padding: 1rem;
-    border-radius: 16px;
-  }
-
-  .pc-question {
-    font-size: 1.15rem;
-  }
-
-  // Sticky alt çubuk: Geri / Devam her zaman erişilebilir.
-  .pc-bar {
-    position: sticky;
-    bottom: 0;
-    z-index: 1;
-    margin: 0 -1rem -1rem;
-    padding: 0.75rem 1rem;
-    background: var(--ms-surface);
-  }
-
-  .pc-bar__reason {
-    order: 3;
-    flex-basis: 100%;
-  }
-
-  .pc-form__dates {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .pc-skeleton__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .pc-skeleton__tile {
-    min-height: 96px;
-  }
-}
-
-// Hareket azaltma tercihi: sayfadaki geçiş ve animasyonlar (iskelet parıltısı dahil) kapalı.
-// Alt komponentler (option-card vb.) kendi stillerinde aynı sorguyu uygular.
-@media (prefers-reduced-motion: reduce) {
-  :host *,
-  :host *::before,
-  :host *::after {
-    animation: none;
-    transition: none;
-    scroll-behavior: auto;
-  }
+.pc-preview__rest .pc-preview__items {
+  color: var(--ms-text-weak);
+  font-style: italic;
 }

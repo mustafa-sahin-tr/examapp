@@ -37,7 +37,7 @@ namespace ExamApp.Api.Data
 
         public string RestDays { get; set; } // Comma-separated day numbers: "1,6,7"
 
-        public string DifficultSubjects { get; set; } // Comma-separated subject IDs: "1,3,4"
+        public string DifficultSubjects { get; set; } // Bilgi amaçlı: eski sihirbazda 7. adım değerleri ("1,3"), #885'ten beri ders adları ("Matematik, Türkçe")
 
         // Navigation properties
         public virtual ICollection<UserProgramSchedule> Schedules { get; set; } = new List<UserProgramSchedule>();

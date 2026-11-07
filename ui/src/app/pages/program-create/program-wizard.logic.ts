@@ -1,134 +1,112 @@
-import { Option, ProgramStep } from '../../models/programstep';
-
 /**
- * Program oluşturma sihirbazının saf (komponentten bağımsız) kuralları — issue #135.
- * Dallanma kuralı eski `next()` ile aynıdır: seçenek sırasına göre ilk seçili seçeneğin `nextStep`'i;
- * `null` → form; `steps` içinde karşılığı olmayan `nextStep` → form (savunma, issue #136).
+ * Program oluşturma sihirbazının saf kuralları. #885: dört sabit adım (Ne kadar? · Hangi günler? · Hangi dersler? · Ne
+ * zamana kadar?) ve canlı hafta önizlemesi. Gönderilen `userSelections` biçimi sunucunun `ProgramService.ParseUserSelections`
+ * sözleşmesiyle aynıdır (adım 1 tür, 2 süre, 3 günlük soru, 5 günlük ders, 6 dinlenme günleri; "8" = yok).
  */
 
-/** Adım id → seçili değerler. Her değişiklikte yeni Map üretilir (signal eşitliği referansa bakar). */
-export type WizardAnswers = ReadonlyMap<number, readonly string[]>;
+import { UserSelection } from '../../models/program.interfaces';
 
-export type NextTarget =
-  | { kind: 'step'; stepId: number }
-  | { kind: 'form' }
-  | { kind: 'invalid'; nextStep: number };
+export type StudyType = 'time' | 'question';
 
-export interface RemainingRange {
-  /** Şu anki adımdan sonra en az kaç soru kaldığı. */
-  min: number;
-  /** Şu anki adımdan sonra en fazla kaç soru kaldığı. */
-  max: number;
+/** Süreli çalışmada "çalış-ara" dakikaları (sunucu ilk sayıyı ders süresi olarak okur). */
+export const STUDY_DURATIONS = ['25-5', '30-10', '40-10', '50-10'] as const;
+/** Soru takipli çalışmada günde toplam soru (sunucu günün derslerine böler). */
+export const QUESTIONS_PER_DAY = [12, 24, 36] as const;
+export const SUBJECTS_PER_DAY = [1, 2, 3] as const;
+
+/** ISO gün numaraları: 1 = Pazartesi … 7 = Pazar (sunucunun dinlenme günü değerleri). */
+export const WEEK_DAYS = [1, 2, 3, 4, 5, 6, 7] as const;
+
+/** Sunucunun "dinlenme günü yok" değeri (6. adım). */
+const NO_REST_DAY = '8';
+
+export interface WizardChoices {
+  studyType: StudyType;
+  duration: string;
+  questionsPerDay: number;
+  subjectsPerDay: number;
+  /** Çalışılan günler (ISO). */
+  studyDays: readonly number[];
 }
 
-/** Seçim sırasından bağımsız, adımdaki seçenek sırasıyla seçili seçenekler. */
-export function selectedOptions(step: ProgramStep, values: readonly string[]): Option[] {
-  return step.options.filter((o) => values.includes(o.value));
+export interface PreviewSubject {
+  id: number;
+  name: string;
 }
 
-/** Seçili seçeneklere göre bir sonraki hedef. Seçim yoksa form (çağıran bunu önceden engeller). */
-export function resolveNext(
-  stepsById: ReadonlyMap<number, ProgramStep>,
-  step: ProgramStep,
-  values: readonly string[],
-): NextTarget {
-  const first = selectedOptions(step, values)[0];
-  const nextStep = first?.nextStep;
-  if (!nextStep) return { kind: 'form' };
-  return stepsById.has(nextStep) ? { kind: 'step', stepId: nextStep } : { kind: 'invalid', nextStep };
+export interface PreviewItem {
+  subject: string;
+  /** Süreli çalışmada dakika, soru takipliyse soru sayısı. */
+  amount: number;
 }
 
-/** `startId`'den `nextStep` grafiğinde (her seçenek dikkate alınarak) ulaşılabilen adımlar; döngü korumalı. */
-export function reachableFrom(stepsById: ReadonlyMap<number, ProgramStep>, startId: number): Set<number> {
-  const seen = new Set<number>();
-  const stack = [startId];
-  while (stack.length > 0) {
-    const id = stack.pop()!;
-    const step = stepsById.get(id);
-    if (!step || seen.has(id)) continue;
-    seen.add(id);
-    for (const option of step.options) {
-      if (option.nextStep) stack.push(option.nextStep);
-    }
-  }
-  return seen;
+export interface PreviewDay {
+  date: Date;
+  /** ISO gün numarası. */
+  weekday: number;
+  /** Boşsa dinlenme günü. */
+  items: PreviewItem[];
+}
+
+/** Sunucuya giden seçimler (eski sihirbaz adım id'leriyle). */
+export function toUserSelections(choices: WizardChoices): UserSelection[] {
+  const restDays = WEEK_DAYS.filter((d) => !choices.studyDays.includes(d)).map(String);
+  return [
+    { stepId: 1, selectedValues: [choices.studyType] },
+    choices.studyType === 'time'
+      ? { stepId: 2, selectedValues: [choices.duration] }
+      : { stepId: 3, selectedValues: [String(choices.questionsPerDay)] },
+    { stepId: 5, selectedValues: [String(choices.subjectsPerDay)] },
+    { stepId: 6, selectedValues: restDays.length > 0 ? restDays : [NO_REST_DAY] },
+  ];
+}
+
+/** Zorlandığı dersin takvimdeki ağırlığı (sunucu `ProgramService.DifficultSubjectWeight`). */
+export const DIFFICULT_SUBJECT_WEIGHT = 2;
+
+/**
+ * Günün dersleri — sunucu `ProgramService.PickDailySubjects` ile aynı kural: ağırlığına göre en az planlanmış `count`
+ * ders (planlanan / ağırlık); eşitlikte ağırlığı büyük olan, sonra sıra (ders adı). Sonuç sıra düzeninde.
+ */
+export function pickDailySubjects(planned: readonly number[], weights: readonly number[], count: number): number[] {
+  return planned
+    .map((_, i) => i)
+    .sort((a, b) => planned[a] / weights[a] - planned[b] / weights[b] || weights[b] - weights[a] || a - b)
+    .slice(0, count)
+    .sort((a, b) => a - b);
 }
 
 /**
- * `fromId` adımından sonra kalan soru sayısı aralığı. Cevaplanmış adımda yalnız gerçek dal
- * (ilk seçili seçeneğin `nextStep`'i), cevapsız adımda tüm dallar dikkate alınır. Geçersiz/eksik
- * `nextStep` ve döngü formda biter sayılır.
+ * Başlangıçtan itibaren `days` günün önizlemesi; sunucunun takvim üretimiyle aynı dağılım. `subjects` sunucunun sıralamasıyla
+ * (ders adı) gelir.
  */
-export function remainingRange(
-  stepsById: ReadonlyMap<number, ProgramStep>,
-  fromId: number,
-  answers: WizardAnswers,
-): RemainingRange {
-  const visit = (id: number, onPath: ReadonlySet<number>): RemainingRange => {
-    const step = stepsById.get(id);
-    if (!step) return { min: 0, max: 0 };
-    const values = answers.get(id) ?? [];
-    const candidates = values.length > 0 ? selectedOptions(step, values).slice(0, 1) : step.options;
-    const nextIds = new Set<number | null>(candidates.map((o) => o.nextStep ?? null));
-    if (nextIds.size === 0) return { min: 0, max: 0 };
+export function buildPreview(
+  choices: WizardChoices,
+  subjects: readonly PreviewSubject[],
+  difficultIds: ReadonlySet<number>,
+  start: Date,
+  days = 7,
+): PreviewDay[] {
+  const weights = subjects.map((s) => (difficultIds.has(s.id) ? DIFFICULT_SUBJECT_WEIGHT : 1));
+  const planned = subjects.map(() => 0);
+  const perDay = Math.min(Math.max(choices.subjectsPerDay, 1), subjects.length);
+  const minutes = Number(choices.duration.split('-')[0]) || 0;
+  const questions = perDay > 0 ? Math.floor(choices.questionsPerDay / perDay) : 0;
 
-    const nextOnPath = new Set(onPath).add(id);
-    let min = Number.POSITIVE_INFINITY;
-    let max = 0;
-    for (const nextId of nextIds) {
-      if (nextId === null || !stepsById.has(nextId) || nextOnPath.has(nextId)) {
-        min = Math.min(min, 0);
-        continue;
+  const result: PreviewDay[] = [];
+  for (let offset = 0; offset < days; offset++) {
+    const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + offset);
+    const weekday = date.getDay() === 0 ? 7 : date.getDay();
+    const items: PreviewItem[] = [];
+    if (choices.studyDays.includes(weekday) && perDay > 0) {
+      for (const index of pickDailySubjects(planned, weights, perDay)) {
+        planned[index]++;
+        items.push({ subject: subjects[index].name, amount: choices.studyType === 'time' ? minutes : questions });
       }
-      const sub = visit(nextId, nextOnPath);
-      min = Math.min(min, sub.min + 1);
-      max = Math.max(max, sub.max + 1);
     }
-    return { min, max };
-  };
-  return visit(fromId, new Set());
-}
-
-/** Adımdaki seçeneklerin farklı adımlara dallanıp dallanmadığı. */
-export function hasDistinctBranches(step: ProgramStep): boolean {
-  return new Set(step.options.map((o) => o.nextStep ?? null)).size > 1;
-}
-
-/**
- * Çoklu seçimde diğerlerini dışlayan "Yok" seçeneklerinin değerleri (Karar 1) — backend sözleşmesiyle
- * aynı kaynak: `api/ExamApp.Api/Services/ProgramService.cs` `CreateProgram` switch'i, `case 6` "8"
- * ("8" means "Yok") ve `case 7` "5" ("5" means "Yok") değerlerini dinlenme günü / zor ders listesinden
- * çıkarır. Bu eşleme orada değişirse burada da değişmeli.
- */
-export const EXCLUSIVE_OPTION_VALUES: ReadonlyMap<number, string> = new Map([
-  [6, '8'],
-  [7, '5'],
-]);
-
-/**
- * Seçenek diğerlerini dışlıyor mu? Eşlemede bulunan adımlarda yalnız stepId + value belirleyicidir;
- * eşlemede olmayan adımlarda (yeni seed) etiket `yok` / `none` yedek olarak kullanılır.
- */
-export function isExclusiveOption(step: ProgramStep, option: Option): boolean {
-  const mapped = EXCLUSIVE_OPTION_VALUES.get(step.id);
-  if (mapped !== undefined) return option.value === mapped;
-  const label = option.label.trim().toLocaleLowerCase('tr');
-  return label === 'yok' || label === 'none';
-}
-
-/**
- * Bir seçeneğe tıklanınca yeni seçili değerler. Tek seçimde değiştirir; çoklu seçimde aç/kapat,
- * "Yok" seçilince diğerleri kalkar, diğerinden biri seçilince "Yok" kalkar.
- */
-export function toggleValue(step: ProgramStep, values: readonly string[], option: Option): string[] {
-  if (!step.multiple) return [option.value];
-  if (values.includes(option.value)) return values.filter((v) => v !== option.value);
-  if (isExclusiveOption(step, option)) return [option.value];
-
-  const exclusive = new Set(step.options.filter((o) => isExclusiveOption(step, o)).map((o) => o.value));
-  const kept = values.filter((v) => !exclusive.has(v));
-  // Seçenek sırasını koru: payload ve özet adım sırasına göre okunur.
-  return step.options.map((o) => o.value).filter((v) => v === option.value || kept.includes(v));
+    result.push({ date, weekday, items });
+  }
+  return result;
 }
 
 /**

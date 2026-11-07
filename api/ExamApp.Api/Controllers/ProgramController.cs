@@ -59,6 +59,21 @@ namespace ExamApp.Api.Controllers
             return Ok(userProgram);
         }
 
+        /// <summary>issue #885: sihirbazın ders adımı ve önizlemesi — takvime girecek dersler (öğrencinin sınıfı).</summary>
+        [HttpGet("subjects")]
+        public async Task<ActionResult<List<ProgramSubjectDto>>> GetProgramSubjects()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(_localizer["program.userIdNotFoundInToken"].Value);
+            }
+
+            var profile = _profiles is null ? null : await _profiles.GetAsync(userId, HttpContext.RequestAborted);
+            var studentUserId = profile is { Id: > 0 } ? profile.Id : (int?)null;
+            return Ok(await _programService.GetProgramSubjectsAsync(studentUserId));
+        }
+
         [HttpGet("my-programs")]
         public async Task<ActionResult<List<UserProgramDto>>> GetMyPrograms()
         {

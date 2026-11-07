@@ -1,14 +1,8 @@
 import {
   Component,
-  ElementRef,
   HostListener,
-  Injector,
   OnInit,
-  QueryList,
-  ViewChildren,
-  afterNextRender,
   computed,
-  effect,
   inject,
   signal,
   ChangeDetectionStrategy
@@ -18,11 +12,13 @@ import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { BarChartModule, Color, HeatMapModule, ScaleType } from '@swimlane/ngx-charts';
+import { BarChartModule, Color, ScaleType } from '@swimlane/ngx-charts';
 import { finalize, take } from 'rxjs';
 import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { LocaleService } from '../../../services/locale.service';
 import { AdminService } from '../../../services/admin.service';
+import { AdminPendingService } from '../../../services/admin-pending.service';
+import { AdminPendingSummary } from '../../../models/admin-pending.model';
 import {
   AdminDashboardSummary,
   AdminDashboardTrendPoint,
@@ -43,48 +39,21 @@ interface SummaryCardViewModel {
   route?: string;
 }
 
+/** #887: "Bekleyenler" satırı — kuyruk, sayı alanı ve kuyruk sayfası (menüdeki #861 sekmeleriyle aynı rotalar). */
+export const ADMIN_PENDING_QUEUES: readonly { key: keyof Omit<AdminPendingSummary, 'total'>; icon: string; route: string }[] = [
+  { key: 'teacherApplications', icon: 'how_to_reg', route: '/admin/teacher-approvals' },
+  { key: 'schoolApplications', icon: 'school', route: '/admin/student-school-requests' },
+  { key: 'questionReports', icon: 'flag', route: '/question-reports' },
+  { key: 'commentReports', icon: 'comment', route: '/admin/comment-reports' },
+  { key: 'openTextAnswers', icon: 'rate_review', route: '/open-text-reviews' },
+];
+
 /** Yönetim ekranlarının ortak Transloco scope'u: `public/i18n/admin/<lang>.json` (issue #183). */
 const ADMIN_SCOPE = 'admin';
 
-/** Tooltip için hücreye iliştirilen veri (ngx-charts `extra` alanı). */
-interface HeatmapCellExtra {
-  /** `yyyy-MM-dd` */
-  date: string;
-  /** "10 Ağu 2026" */
-  label: string;
-  count: number;
-  /** "oluşturuldu" / "çözüldü" — tooltip cümlesi için. */
-  verb: string;
-}
-
-/**
- * Tek gün hücresi (y ekseni satırı); `name` = gün adı, `value` = yoğunluk SEVİYESİ (0..HEAT_LEVELS tam sayı),
- * gerçek sayı DEĞİL. Gerçek sayı `extra.count`'ta; tooltip ve özet oradan okur.
- */
-interface HeatmapDay {
-  name: string;
-  value: number;
-  extra: HeatmapCellExtra;
-}
-
-/**
- * ngx-charts heat-map `results` girdisi; dashboard.component `transformActivityToHeatmap` çıktısı ile aynı
- * oryantasyon: dış dizi = haftalar (x ekseni sütunları, `name` = hafta başlangıcı), `series` = 7 gün.
- */
-interface HeatmapWeek {
-  name: string;
-  series: HeatmapDay[];
-}
-
-/** ngx-charts `tooltipText` callback'ine gelen nesnenin bizim kullandığımız kısmı. */
-interface HeatmapTooltipPayload {
-  cell?: { value?: number; extra?: HeatmapCellExtra };
-  data?: number;
-}
-
 type TrendKey = 'created' | 'solved';
 
-/** Heatmap ve bar chart kartlarının ortak başlık/özet alanları. */
+/** Haftalık çubuk ve giriş grafiği kartlarının ortak başlık/özet alanları. */
 interface TrendCardBase {
   title: string;
   icon: string;
@@ -100,11 +69,15 @@ interface TrendCardBase {
 /** Bir heatmap trend kartının şablon için hazır hâli; her ikisi de aynı kart bileşenini kullanır. */
 interface TrendCardViewModel extends TrendCardBase {
   key: TrendKey;
-  /** Heatmap yoğunluk şeması: seviye 0..HEAT_LEVELS için token'ın açık tonundan tam rengine kademeli geçiş. */
-  scheme: Color;
-  results: HeatmapWeek[];
-  /** x ekseni tick'i: aynı ay tekrar etmez (kart başına ayrı durum). */
-  xAxisTickFormatting: (label: string) => string;
+  /** #887: son 8 haftanın haftalık toplamları (eskiden yeniye). */
+  weeks: TrendWeekBar[];
+}
+
+/** #887: haftalık çubuk; `percent` kartın en yüksek haftasına göre (0–100). */
+interface TrendWeekBar {
+  label: string;
+  count: number;
+  percent: number;
 }
 
 /** Tooltip için çubuğa iliştirilen veri (ngx-charts `extra`, `tooltipTemplate` `model.extra` olarak gelir). */
@@ -142,15 +115,13 @@ const SKELETON_CARD_COUNT = 5;
 /** Trend bölümü skeleton'u: 2 heatmap + 1 bar chart. */
 const TREND_SKELETON_CARD_COUNT = 3;
 
-const TOTAL_WEEKS = 52;
+/** #887: soru oluşturma / çözme trendi son 8 hafta (yıllık ısı haritasının yerine). */
+const TREND_WEEKS = 8;
 const DAYS_PER_WEEK = 7;
 const MS_PER_DAY = 86_400_000;
 
-/** Trend penceresi (gün): 52 tam hafta. Backend `days` 1..365 kabul eder. */
-const TREND_DAYS = TOTAL_WEEKS * DAYS_PER_WEEK;
-
-/** Admin dashboard'unda mobilde gösterilen son hafta sayısı. */
-const MOBILE_HEATMAP_WEEKS = 17;
+/** Trend penceresi (gün): 8 hafta; giriş grafiğinin 30 günü de bu serinin içinde. */
+const TREND_DAYS = TREND_WEEKS * DAYS_PER_WEEK;
 
 /**
  * Login bar chart penceresi (gün). Backend'e ayrı istek atılmaz; 364 günlük `studentLogin` serisinin
@@ -161,86 +132,6 @@ const LOGIN_TREND_DAYS = 30;
 /** Bar chart x ekseni tick aralığı (gün): 30 çubukta her gün etiketlenirse "10 Ağu" etiketleri üst üste biner. */
 const LOGIN_TICK_STEP_DESKTOP = 3;
 const LOGIN_TICK_STEP_MOBILE = 6;
-
-/** Sıfır dışı günler için yoğunluk seviyesi sayısı; hücre `value` 0..HEAT_LEVELS (0 = o gün etkinlik yok). */
-const HEAT_LEVELS = 4;
-
-/** Seviye sınırlarının dağılım içindeki konumu: 1/4, 2/4, 3/4 (HEAT_LEVELS-1 adet eşik). */
-const HEAT_LEVEL_FRACTIONS = Array.from({ length: HEAT_LEVELS - 1 }, (_, i) => (i + 1) / HEAT_LEVELS);
-
-/** Sıralı dizide doğrusal enterpolasyonlu yüzdelik (q: 0..1). */
-function quantile(sorted: number[], q: number): number {
-  const pos = (sorted.length - 1) * q;
-  const lo = Math.floor(pos);
-  const hi = Math.ceil(pos);
-  return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
-}
-
-/**
- * Bir serinin gün sayılarından heatmap seviye eşiklerini (artan, HEAT_LEVELS-1 adet) türetir.
- *
- * Neden ham sayı değil, seviye: ngx-charts hücre rengini her zaman [0,max] üzerinden DOĞRUSAL normalize eder.
- * Günlük etkinlik verisi uzun kuyrukludur (çoğu gün 1-5, tek bir gün 79 gibi); doğrusal ölçekte tepe dışındaki
- * her gün skalanın en alt %10-20'sine sıkışıp boş günden ayırt edilemez oluyordu. GitHub katkı grafiği de bu
- * yüzden sürekli renk yerine verinin kendi dağılımından türetilmiş birkaç ayrık kova kullanır; burada aynı fikir.
- *
- * Eşikler sıfır dışı FARKLI değerlerin çeyrekliklerinden alınır. "Farklı" olması bilinçli: tekrar eden değerler
- * (yüzlerce "1" günü) dahil edilseydi çeyreklikler birbirine eşit çıkıp (1,1,1) 2-3 gibi sıradan günleri tepe ile
- * aynı kovaya iter, ya da tam tersi her "1" gününü koyu gösterirdi. Farklı değerler üzerinden alınınca en yüksek
- * gün her zaman en üst seviyeye düşer, ara değerler kademeli dağılır. Tek farklı değer varsa (her etkin gün aynı
- * sayı) çeyreklik tanımsız olur; [0,max] eşit bölünür ve o günler en üst seviye alır — hepsi "tepe"dir.
- */
-function buildHeatThresholds(counts: number[]): number[] {
-  const distinct = Array.from(new Set(counts.filter((c) => c > 0))).sort((a, b) => a - b);
-  if (distinct.length === 0) {
-    return [];
-  }
-  if (distinct.length === 1) {
-    const max = distinct[0];
-    return HEAT_LEVEL_FRACTIONS.map((f) => max * f);
-  }
-  return HEAT_LEVEL_FRACTIONS.map((f) => quantile(distinct, f));
-}
-
-/** Gerçek gün sayısı → seviye: 0 = etkinlik yok; aksi hâlde 1 + aşılan eşik sayısı (en fazla HEAT_LEVELS). */
-function toHeatLevel(count: number, thresholds: number[]): number {
-  if (count <= 0) {
-    return 0;
-  }
-  return 1 + thresholds.filter((t) => count > t).length;
-}
-
-/**
- * Seviye 0..2 için hücre alfa değerleri (0 = etkinlik yok: soluk ama görünür). Seviye 3 durağı ve seviye 4'ün
- * rengi bunlardan türetilir, bkz. `buildHeatScheme`.
- */
-const HEAT_LEVEL_ALPHAS = [0.1, 0.3, 0.55] as const;
-
-/**
- * Heatmap renk şeması. Hücre `value` artık 0..HEAT_LEVELS seviyesidir (bkz. `buildHeatThresholds`), yani
- * ngx-charts'ın [0,max] doğrusal normalizasyonu daima seviye/HEAT_LEVELS = 0, .25, .5, .75, 1 üretir.
- * `ColorHelper` N durağı `0, 1/N … (N-1)/N` noktalarına koyar; N = HEAT_LEVELS seçilince seviye 0..3 tam olarak
- * bir durağa denk gelir, ara renk üretilmez. En üst seviye (1.0) her N için son durağın ötesindedir ve d3
- * ekstrapole eder: renk = 2·son − sondan_önceki. Son durak, bu ekstrapolasyon tam renk (alfa 1) versin diye
- * `(1 + önceki_alfa) / 2` olarak seçilir; böylece 5 seviye 5 belirgin ton alır ve tepe tam renktir.
- */
-function buildHeatScheme(name: string, tokenName: string): Color {
-  const color = readCssToken(tokenName);
-  if (!parseCssColor(color)) {
-    // Token tanımsız (örn. <html> üzerinde tema class'ı yok) ya da hex değil: withAlpha color-mix() fallback'ine
-    // düşer. d3 bu dizgeyi renk olarak ayrıştıramaz, string enterpolasyonu yapar ve yalnızca yüzde değerini
-    // enterpole eder; tonlar yine farklıdır (bkz. css-color.util başlığı).
-    console.warn(`[admin-dashboard] ${tokenName} rgba'ya çözülemedi ("${color}"); color-mix fallback kullanılıyor.`);
-  }
-  const [zero, low, mid] = HEAT_LEVEL_ALPHAS;
-  const high = (1 + mid) / 2;
-  return {
-    name,
-    selectable: false,
-    group: ScaleType.Linear,
-    domain: [withAlpha(color, zero), withAlpha(color, low), withAlpha(color, mid), withAlpha(color, high)],
-  };
-}
 
 /**
  * Bar chart renk şeması: tek renkli ordinal domain. ngx-charts bar-vertical her çubuğu `name`'e göre
@@ -292,38 +183,9 @@ function formatWeekLabel(weekStart: Date, locale: string): string {
   return weekStart.toLocaleDateString(locale, { day: 'numeric', month: 'short', timeZone: 'UTC' });
 }
 
-/** y ekseni etiketi: "Pzt" (aktif dile göre) */
-function formatDayLabel(date: Date, locale: string): string {
-  return date.toLocaleDateString(locale, { weekday: 'short', timeZone: 'UTC' });
-}
-
 /** Tooltip tarihi: "10 Ağu 2026" (aktif dile göre) */
 function formatTooltipDate(date: Date, locale: string): string {
   return date.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
-}
-
-/**
- * dashboard.component `activityXAxisTickFormatting` ile aynı davranış: hafta etiketi "10 Ağu" → ay adı,
- * aynı ay art arda gelince boş. Durum kart başına tutulur ve ilk hafta etiketinde sıfırlanır; böylece
- * iki heatmap ve yeniden render'lar birbirini etkilemez.
- */
-function createMonthTickFormatter(firstWeekLabel: string): (label: string) => string {
-  let lastMonth = '';
-  return (label: string): string => {
-    if (label === firstWeekLabel) {
-      lastMonth = '';
-    }
-    const parts = label.trim().split(' ');
-    if (parts.length < 2) {
-      return label;
-    }
-    const month = parts[1];
-    if (lastMonth === month) {
-      return '';
-    }
-    lastMonth = month;
-    return month;
-  };
 }
 
 /** Bar chart x ekseni etiketi: `yyyy-MM-dd` → "10 Ağu". Tanınmayan girdi olduğu gibi döner. */
@@ -386,8 +248,8 @@ function findPeak(points: AdminDashboardTrendPoint[]): AdminDashboardTrendPoint 
 
 /**
  * Issue #86 / #88 / #89 — Admin dashboard.
- * Phase 1: sayaç kartları (summary). Phase 2: son 1 yılın (52 hafta) soru oluşturma / çözme takvim
- * heatmap'leri — öğrenci dashboard'undaki aktivite heatmap'i ile aynı ngx-charts deseni ve boyut.
+ * Phase 1: sayaç kartları (summary). Phase 2: son 8 haftanın soru oluşturma / çözme haftalık çubukları
+ * (#887; eskiden 52 haftalık heatmap). #887: üstte "Bekleyenler" satırı ve sistem durumu.
  * Phase 3 (#89): son 30 günün öğrenci login bar chart'ı; aynı trends isteğinden beslenir.
  * İki bölümün loading/error/data durumları birbirinden bağımsızdır; trend endpoint'i düşerse
  * yalnızca trend bölümü hata gösterir, sayaç kartları etkilenmez.
@@ -402,7 +264,6 @@ function findPeak(points: AdminDashboardTrendPoint[]): AdminDashboardTrendPoint 
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
-    HeatMapModule,
     BarChartModule,
     TranslocoDirective,
     TranslocoPipe,
@@ -414,7 +275,6 @@ function findPeak(points: AdminDashboardTrendPoint[]): AdminDashboardTrendPoint 
 })
 export class AdminDashboardComponent implements OnInit {
   private readonly adminService = inject(AdminService);
-  private readonly injector = inject(Injector);
   private readonly transloco = inject(TranslocoService);
   private readonly localeService = inject(LocaleService);
 
@@ -424,9 +284,24 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   /** Heatmap kaydırma kapları (kart başına bir tane); bkz. `scrollHeatmapsToLatestWeek`. */
-  @ViewChildren('heatmapScroll') private readonly heatmapScrolls?: QueryList<ElementRef<HTMLElement>>;
 
   // ── Phase 1: sayaçlar ──────────────────────────────────────────────────────
+  private readonly pendingService = inject(AdminPendingService);
+  /** #887: bekleyen kuyruk sayıları (menü rozetiyle aynı kaynak); yüklenemezse satır gizli. */
+  readonly pending = this.pendingService.summary;
+  readonly pendingQueues = ADMIN_PENDING_QUEUES;
+
+  /** #887: sistem durumu — son sınıflandırma ("12 dk önce") ve yayımlanamayan olay uyarısı. */
+  readonly lastClassification = computed(() => {
+    const at = this.summary()?.lastAiClassificationAt;
+    if (!at) return null;
+    const minutes = Math.max(0, Math.round((Date.now() - new Date(at).getTime()) / 60_000));
+    const rtf = new Intl.RelativeTimeFormat(this.intlLocale, { numeric: 'auto' });
+    if (minutes < 60) return rtf.format(-minutes, 'minute');
+    if (minutes < 60 * 48) return rtf.format(-Math.round(minutes / 60), 'hour');
+    return rtf.format(-Math.round(minutes / 1440), 'day');
+  });
+
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly summary = signal<AdminDashboardSummary | null>(null);
@@ -499,23 +374,10 @@ export class AdminDashboardComponent implements OnInit {
   readonly viewportWidth = signal(typeof window !== 'undefined' ? window.innerWidth : 1280);
   readonly isMobileViewport = computed(() => this.viewportWidth() < 768);
 
-  /** Masaüstünde 52 hafta, mobilde son 17 hafta (yatay kaydırma ile). */
-  private readonly visibleWeekCount = computed(() => (this.isMobileViewport() ? MOBILE_HEATMAP_WEEKS : TOTAL_WEEKS));
-
-  readonly heatmapView = computed<[number, number]>(() => {
-    const weeks = Math.max(this.visibleWeekCount(), this.isMobileViewport() ? 14 : 24);
-    if (this.isMobileViewport()) {
-      return [Math.max(weeks * 20, Math.max(this.viewportWidth() - 24, 320)), 190];
-    }
-    return [Math.max(weeks * 22, 1200), 210];
-  });
-
   /**
    * Renkler CSS token'dan bir kez okunur: ngx-charts `scheme.domain` `var(--x)` kabul etmez,
    * çözümlenmiş değere ihtiyaç duyar. Tema değişimi bu sayfada beklenmediği için cache yeterli.
    */
-  private readonly createdScheme = buildHeatScheme('trend-created', '--primaryColor');
-  private readonly solvedScheme = buildHeatScheme('trend-solved', '--ms-success-text-medium');
   private readonly loginScheme = buildBarScheme('trend-login', '--ms-info-text-medium');
 
   readonly trendCards = computed<TrendCardViewModel[]>(() => {
@@ -523,7 +385,6 @@ export class AdminDashboardComponent implements OnInit {
     if (!t) {
       return [];
     }
-    const visibleWeeks = this.visibleWeekCount();
     return [
       this.buildTrendCard(
         'created',
@@ -531,8 +392,6 @@ export class AdminDashboardComponent implements OnInit {
         'add_circle_outline',
         this.text('trends.verbCreated'),
         t.questionCreated,
-        this.createdScheme,
-        visibleWeeks,
       ),
       this.buildTrendCard(
         'solved',
@@ -540,15 +399,12 @@ export class AdminDashboardComponent implements OnInit {
         'task_alt',
         this.text('trends.verbSolved'),
         t.questionSolved,
-        this.solvedScheme,
-        visibleWeeks,
       ),
     ];
   });
 
   /**
-   * Issue #89 — öğrenci login bar chart kartı. `trendCards`'tan ayrı tutulur: heatmap değil, sabit `[view]`
-   * yok, dolayısıyla `scrollToLatestWeekOnTrendChange` effect'ini de tetiklemez (kaydırılacak kap yok).
+   * Issue #89 — öğrenci login bar chart kartı. `trendCards`'tan ayrı tutulur (günlük çubuk, haftalık değil).
    * Aynı trends yanıtının `studentLogin` serisinden son 30 gün dilimlenir; tick seyreltmesi viewport'a bağlı.
    */
   readonly loginTrendCard = computed<LoginTrendViewModel | null>(() => {
@@ -579,19 +435,6 @@ export class AdminDashboardComponent implements OnInit {
     };
   });
 
-  /**
-   * Heatmap içeriği her değiştiğinde (veri geldi, ya da mobil↔masaüstü eşiği geçilip 17/52 hafta yeniden
-   * çizildi) kapları en güncel haftaya kaydırır. `trendCards` yalnızca `trends` veya hafta sayısı değişince
-   * yeniden hesaplanır; ilgisiz change-detection turları (aynı kırılım içinde resize, tooltip vb.) effect'i
-   * tetiklemez, dolayısıyla yöneticinin elle geri kaydırdığı konumla oynanmaz.
-   */
-  private readonly scrollToLatestWeekOnTrendChange = effect(() => {
-    if (this.trendCards().length === 0) {
-      return;
-    }
-    this.scrollHeatmapsToLatestWeek();
-  });
-
   constructor() {
     this.preloadScope();
   }
@@ -601,6 +444,7 @@ export class AdminDashboardComponent implements OnInit {
     // İki istek paralel; biri diğerini bloklamaz ve kendi durum setini yönetir.
     this.loadSummary();
     this.loadTrends();
+    this.pendingService.refresh().pipe(take(1)).subscribe({ error: () => undefined });
   }
 
   @HostListener('window:resize')
@@ -640,33 +484,6 @@ export class AdminDashboardComponent implements OnInit {
       });
   }
 
-  /**
-   * Bir sonraki render'ın ardından her heatmap kabını en sağa (en güncel hafta) kaydırır. `afterNextRender`
-   * DOM'da yeni `@for` öğeleri ve ngx-charts SVG'si (sabit `[view]` genişliği) yerleştikten sonra çalışır;
-   * iki kart bağımsız ölçülür. 52 hafta kartın genişliğinden taştığı için tarayıcı varsayılanı
-   * (`scrollLeft = 0`) en ESKİ haftaları gösteriyordu, güncel ay görünmek için elle kaydırma gerekiyordu.
-   */
-  private scrollHeatmapsToLatestWeek(): void {
-    afterNextRender(
-      () => {
-        this.heatmapScrolls?.forEach(({ nativeElement }) => {
-          nativeElement.scrollLeft = nativeElement.scrollWidth;
-        });
-      },
-      { injector: this.injector },
-    );
-  }
-
-  /** ngx-charts `tooltipText` girdisi. Örn: "10 Ağu 2026: 5 soru oluşturuldu". */
-  readonly formatHeatmapTooltip = (payload: HeatmapTooltipPayload | null | undefined): string => {
-    const extra = payload?.cell?.extra;
-    if (!extra) {
-      return String(payload?.data ?? '');
-    }
-    return this.text('trends.tooltip', { label: extra.label, count: extra.count, verb: extra.verb });
-  };
-
-  // Bar chart eksen formatlayıcıları; ngx-charts `this` bağlamı vermeden çağırdığı için property olarak tutulur.
   readonly formatLoginXAxisTick = (isoDate: string): string => formatIsoDayTick(isoDate, this.intlLocale);
   readonly formatLoginYAxisTick = formatIntegerTick;
 
@@ -694,21 +511,16 @@ export class AdminDashboardComponent implements OnInit {
     icon: string,
     verb: string,
     points: AdminDashboardTrendPoint[],
-    scheme: Color,
-    visibleWeeks: number,
   ): TrendCardViewModel {
     const total = points.reduce((acc, p) => acc + p.count, 0);
     const isEmpty = points.length === 0 || total === 0;
-    const results = this.transformToHeatmap(points, verb).slice(-visibleWeeks);
 
     return {
       key,
       title,
       icon,
-      period: this.text('trends.periodYear'),
-      scheme,
-      results,
-      xAxisTickFormatting: createMonthTickFormatter(results[0]?.name ?? ''),
+      period: this.text('trends.periodWeeks', { weeks: TREND_WEEKS }),
+      weeks: this.toWeekBars(points),
       total,
       isEmpty,
       summaryText: this.buildTrendSummary(verb, points, total, isEmpty),
@@ -716,46 +528,22 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   /**
-   * dashboard.component `transformActivityToHeatmap`'in `{date, count}` serisine uyarlanmış hâli.
-   * Backend tam olarak 52×7 gün döner (bugün dahil, geriye doğru); ızgara serinin ilk gününden başlar ve
-   * son gününde biter, günler tarih anahtarıyla eşlenir. Haftanın gününe (Pazar) hizalama YAPILMAZ: ızgara
-   * bütçesi sabit 52×7 olduğundan bitişi ileri bir Pazar'a kaydırmak serinin en eski günlerini ızgaranın
-   * dışına düşürüyor, kart toplamı ile görünen hücreler tutarsızlaşıyordu. Bu yüzden ilk sütunun ilk satırı
-   * Pazartesi olmak zorunda değil; y ekseni etiketleri gerçek gün adını taşır. Seri 52×7'den kısaysa
-   * ızgaranın veri öncesi kısmı 0 olur; bitişten sonraki gün üretilmez. Her haftanın günleri ters sırada
-   * verilir çünkü heat-map y ekseninde ilk öğeyi en alta koyar.
-   *
-   * Hücre `value` gerçek sayı değil, serinin kendi dağılımından türetilen yoğunluk seviyesidir
-   * (`buildHeatThresholds`); gerçek sayı tooltip/özet için `extra.count`'a yazılır.
+   * #887: günlük seriyi son günle biten 7'şer günlük kovalara toplar (son kova bugünü içerir). Seri kısaysa eksik günler 0;
+   * etiket kovanın ilk günü ("2 Kas").
    */
-  private transformToHeatmap(points: AdminDashboardTrendPoint[], verb: string): HeatmapWeek[] {
+  private toWeekBars(points: AdminDashboardTrendPoint[]): TrendWeekBar[] {
     const endDate = points.length > 0 ? parseIsoDate(points[points.length - 1].date) : todayCalendarDate();
-    const startDate = addDays(endDate, -(TOTAL_WEEKS * DAYS_PER_WEEK - 1));
-
     const countByDate = new Map(points.map((p) => [p.date, p.count]));
-    const thresholds = buildHeatThresholds(points.map((p) => p.count));
-
-    const heatmap: HeatmapWeek[] = [];
-    for (let weekIndex = 0; weekIndex < TOTAL_WEEKS; weekIndex++) {
-      const weekStart = addDays(startDate, weekIndex * DAYS_PER_WEEK);
-      const weekSeries = Array.from({ length: DAYS_PER_WEEK }, (_, dayOffset) => {
-        const currentDate = addDays(weekStart, dayOffset);
-        if (currentDate > endDate) {
-          return null;
-        }
-        const key = toIsoDateKey(currentDate);
-        const count = countByDate.get(key) ?? 0;
-        return {
-          name: formatDayLabel(currentDate, this.intlLocale),
-          value: toHeatLevel(count, thresholds),
-          extra: { date: key, label: formatTooltipDate(currentDate, this.intlLocale), count, verb },
-        } satisfies HeatmapDay;
-      }).filter((entry): entry is HeatmapDay => entry !== null);
-
-      heatmap.push({ name: formatWeekLabel(weekStart, this.intlLocale), series: weekSeries.slice().reverse() });
-    }
-
-    return heatmap;
+    const weeks = Array.from({ length: TREND_WEEKS }, (_, i) => {
+      const start = addDays(endDate, -((TREND_WEEKS - i) * DAYS_PER_WEEK - 1));
+      let count = 0;
+      for (let d = 0; d < DAYS_PER_WEEK; d++) {
+        count += countByDate.get(toIsoDateKey(addDays(start, d))) ?? 0;
+      }
+      return { label: formatWeekLabel(start, this.intlLocale), count, percent: 0 };
+    });
+    const max = Math.max(...weeks.map((w) => w.count));
+    return weeks.map((w) => ({ ...w, percent: max > 0 ? Math.round((w.count * 100) / max) : 0 }));
   }
 
   /**

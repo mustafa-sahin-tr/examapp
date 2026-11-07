@@ -20,6 +20,10 @@ export interface AdminDashboardSummary {
   studentsParentGraceExpired?: number;
   /** Issue #440: velisi henüz aktive etmemiş (açık davetli) öğrenciler — kısıtlı mod. */
   studentsAwaitingParentActivation?: number;
+  /** Issue #887: AI'ın sınıflandırdığı son sorunun zamanı (UTC ISO); hiç yoksa null. */
+  lastAiClassificationAt?: string | null;
+  /** Issue #887: hata alıp yayımlanamamış outbox mesajı sayısı. */
+  failedOutboxCount?: number;
 }
 
 /**

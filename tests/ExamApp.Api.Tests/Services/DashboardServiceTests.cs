@@ -27,6 +27,35 @@ public class DashboardServiceTests : IDisposable
         result.QuestionCount.ShouldBe(0);
         result.AiClassifiedQuestionCount.ShouldBe(0);
         result.AiClassifiedRatio.ShouldBe(0);
+        result.LastAiClassificationAt.ShouldBeNull();
+        result.FailedOutboxCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task GetSummaryAsync_SystemStatus_LastAiClassificationAndFailedOutbox_issue887()
+    {
+        var aiAt = new DateTime(2026, 11, 6, 10, 0, 0, DateTimeKind.Utc);
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.Questions.Add(new Question { Text = "ai", Point = 1, ClassificationSource = ClassificationSource.AI });
+            ctx.Questions.Add(new Question { Text = "human", Point = 1, ClassificationSource = ClassificationSource.Human });
+            ctx.OutboxMessages.Add(new ExamApp.Foundation.Persistence.OutboxMessage { Type = "T", Content = "{}", Error = "boom" });
+            ctx.OutboxMessages.Add(new ExamApp.Foundation.Persistence.OutboxMessage { Type = "T", Content = "{}", Error = "old", ProcessedAt = aiAt });
+            ctx.OutboxMessages.Add(new ExamApp.Foundation.Persistence.OutboxMessage { Type = "T", Content = "{}" });
+            await ctx.SaveChangesAsync();
+        }
+        await using (var ctx = _db.NewContext())
+        {
+            // Denetim yakalayıcısı zaman damgasını kendisi yazar; sınıflandırma anı elle sabitlenir.
+            await ctx.Questions.Where(q => q.Text == "ai").ExecuteUpdateAsync(u => u.SetProperty(q => q.UpdateTime, aiAt));
+            await ctx.Questions.Where(q => q.Text == "human").ExecuteUpdateAsync(u => u.SetProperty(q => q.UpdateTime, aiAt.AddDays(1)));
+        }
+
+        await using var check = _db.NewContext();
+        var result = await NewService(check).GetSummaryAsync();
+
+        result.LastAiClassificationAt.ShouldBe(aiAt);
+        result.FailedOutboxCount.ShouldBe(1);
     }
 
     [Fact]

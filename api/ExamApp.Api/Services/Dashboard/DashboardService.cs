@@ -52,9 +52,18 @@ public class DashboardService : IDashboardService
         var expired = await modes.Expired.CountAsync(ct);
         var studentsWithoutParent = inGrace + expired;
 
+        // issue #887: sistem durumu satırı — sınıflandırıcının son çalışması ve yayımlanamayan olay sayısı.
+        var lastAiClassificationAt = await _context.Questions.AsNoTracking()
+            .Where(q => q.ClassificationSource == ClassificationSource.AI)
+            .MaxAsync(q => (DateTime?)(q.UpdateTime ?? q.CreateTime), ct); // boş kümede null
+        var failedOutbox = await _context.OutboxMessages.AsNoTracking()
+            .CountAsync(m => m.ProcessedAt == null && m.Error != null, ct);
+
         return new DashboardSummaryDto
         {
             StudentsWithoutParent = studentsWithoutParent,
+            LastAiClassificationAt = lastAiClassificationAt,
+            FailedOutboxCount = failedOutbox,
             StudentsInParentGrace = inGrace,
             StudentsParentGraceExpired = expired,
             StudentsAwaitingParentActivation = awaitingActivation,

@@ -24,6 +24,12 @@ public class DashboardSummaryDto
     /// </summary>
     public int StudentsWithoutParent { get; set; }
 
+    /// <summary>issue #887: son yapay zekâ sınıflandırmasının zamanı (AI kaynaklı sorunun son güncellenmesi, UTC); hiç yoksa null.</summary>
+    public DateTime? LastAiClassificationAt { get; set; }
+
+    /// <summary>issue #887: hata verip yayımlanamamış (işlenmemiş, hatalı) outbox mesajı — sistem durumu uyarısı.</summary>
+    public int FailedOutboxCount { get; set; }
+
     /// <summary>Issue #441: hedef kümeden hoşgörü süresi içinde olanlar (sayaç başlamış, süre dolmamış).</summary>
     public int StudentsInParentGrace { get; set; }
 

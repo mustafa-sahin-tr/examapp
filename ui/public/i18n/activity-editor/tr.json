@@ -548,5 +548,31 @@
     "time": "Saat",
     "fixed": "Kurulu",
     "addClock": "Saat ekle"
+  },
+  "kindPick": "Önce madde türünü seç.",
+  "kindChosen": "Tür:",
+  "kindChange": "Değiştir",
+  "kindDescriptions": {
+    "matrix": "Her satır için doğru seçeneği işaretler (D/Y ya da çoklu seçim).",
+    "classify": "Kartları doğru gruplara sürükler.",
+    "order": "Karışık gelen öğeleri doğru sıraya dizer.",
+    "match": "Sol ve sağ sütundaki öğeleri eşleştirir.",
+    "wordPool": "Havuzdaki kelimeleri metindeki boşluklara yerleştirir.",
+    "fillText": "Metindeki boşluklara cevabı yazar.",
+    "shortAnswer": "Sorulara kısa cevap yazar.",
+    "fillTable": "Tablodaki boş hücreleri doldurur.",
+    "mazeTree": "D ya da Y seçerek dallanan yolda çıkışa varır.",
+    "mazeBoard": "Her satırda doğru kutuya basarak yukarı çıkar.",
+    "mazeRooms": "Doğru kapıları izleyip odalardan bitişe ulaşır.",
+    "mazeStones": "Yalnız doğru taşlara basarak karşıya geçer.",
+    "crossword": "İpuçlarından kelimeleri bulup bulmacaya yazar.",
+    "wordSearch": "Harf tablosunda gizli kelimeleri bulur.",
+    "logicGrid": "İpuçlarıyla tabloyu ✓ / ✗ işaretleyerek çözer.",
+    "regionPaint": "İstenen sayıda kareyi ya da dilimi boyar.",
+    "numberLine": "Sayı doğrusunda doğru noktayı işaretler.",
+    "barChart": "Verilere göre sütun grafiğini kurar.",
+    "gridDraw": "Kareli zeminde şekil ya da yol çizer.",
+    "balanceScale": "Ağırlıkları yerleştirip teraziyi dengeler.",
+    "clockSet": "Akrep ve yelkovanı istenen saate kurar."
   }
 }

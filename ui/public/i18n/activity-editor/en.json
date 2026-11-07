@@ -548,5 +548,31 @@
     "time": "Time",
     "fixed": "Pre-set",
     "addClock": "Add clock"
+  },
+  "kindPick": "Pick the item type first.",
+  "kindChosen": "Type:",
+  "kindChange": "Change",
+  "kindDescriptions": {
+    "matrix": "Marks the right option on each row (true/false or multiple choice).",
+    "classify": "Drags cards into the right groups.",
+    "order": "Puts shuffled items in the right order.",
+    "match": "Matches items in the left and right columns.",
+    "wordPool": "Places words from a pool into the blanks.",
+    "fillText": "Types the answer into each blank in the text.",
+    "shortAnswer": "Writes short answers to questions.",
+    "fillTable": "Fills in the empty table cells.",
+    "mazeTree": "Picks T or F to follow a branching path to an exit.",
+    "mazeBoard": "Taps the right box on each row to climb up.",
+    "mazeRooms": "Follows the right doors through rooms to the finish.",
+    "mazeStones": "Crosses by stepping only on the right stones.",
+    "crossword": "Solves the clues and fills in the crossword.",
+    "wordSearch": "Finds hidden words in a letter grid.",
+    "logicGrid": "Solves the grid with ✓ / ✗ using the clues.",
+    "regionPaint": "Paints the asked number of squares or slices.",
+    "numberLine": "Marks the right point on a number line.",
+    "barChart": "Builds a bar chart from the data.",
+    "gridDraw": "Draws a shape or path on a grid.",
+    "balanceScale": "Places weights to balance the scale.",
+    "clockSet": "Sets the clock hands to the asked time."
   }
 }

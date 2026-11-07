@@ -9,8 +9,11 @@ import { isSameDay } from '../../shared/utils/calendar-month.util';
 /** Satırın renk ailesi; lejanttaki üç ana tür (ödev, program, ders) + hatırlatma. */
 export type AgendaKind = 'assignment' | 'program' | 'booking' | 'reminder';
 
-/** Satır eylemi: `start` testi açar, `program` program detayına, `bookings` randevu listesine gider. */
-export type AgendaAction = 'start' | 'program' | 'bookings' | null;
+/**
+ * Satır eylemi: `start` testi açar (öğrenci), `open` testi açar (öğretmen: kendi ödevinin teslim tarihi, #916),
+ * `program` program detayına, `bookings` randevu listesine gider.
+ */
+export type AgendaAction = 'start' | 'open' | 'program' | 'bookings' | null;
 
 export interface AgendaRow {
   event: CalendarEvent;
@@ -59,7 +62,7 @@ function coversDay(ev: CalendarEvent, day: Date): boolean {
   return day >= start && day <= end;
 }
 
-function toRow(ev: CalendarEvent, now: Date, canOpenBookings: boolean): AgendaRow {
+function toRow(ev: CalendarEvent, now: Date, canOpenBookings: boolean, isTeacher: boolean): AgendaRow {
   const at = new Date(ev.date);
   switch (ev.kind) {
     case 'booking':
@@ -101,6 +104,20 @@ function toRow(ev: CalendarEvent, now: Date, canOpenBookings: boolean): AgendaRo
         action: 'start',
       };
     default: {
+      // #916: öğretmenin satırı kendi verdiği ödevin teslim tarihi — çözülecek iş değil; tarih geçince biter, "Gecikti" olmaz.
+      if (isTeacher) {
+        return {
+          event: ev,
+          kind: 'assignment',
+          icon: 'flag',
+          title: ev.worksheetTitle,
+          time: at,
+          endTime: null,
+          done: at < now,
+          overdue: false,
+          action: 'open',
+        };
+      }
       const done = ev.isCompleted === true;
       return {
         event: ev,
@@ -129,13 +146,14 @@ export function buildWeekAgenda(
   weekStart: Date,
   now: Date,
   canOpenBookings: boolean,
+  isTeacher = false,
 ): AgendaDay[] {
   const today = dayStart(now);
   return Array.from({ length: 7 }, (_, i) => {
     const date = addDays(weekStart, i);
     const rows = events
       .filter((ev) => coversDay(ev, date))
-      .map((ev) => toRow(ev, now, canOpenBookings))
+      .map((ev) => toRow(ev, now, canOpenBookings, isTeacher))
       .sort(compareRows);
     return { date, isToday: isSameDay(date, today), isPast: date < today, rows };
   });

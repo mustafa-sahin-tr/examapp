@@ -51,6 +51,17 @@ describe('week-agenda.util (issue #888)', () => {
         expect(row.action).toBe('start');
     });
 
+    it('buildWeekAgenda_TeacherDeadline_OpensInsteadOfStart_AndIsNeverOverdue_issue916', () => {
+        const past = ev({ date: new Date(2026, 10, 4, 17, 0).toISOString() });
+        const future = ev({ date: new Date(2026, 10, 7, 17, 0).toISOString() });
+        const rows = buildWeekAgenda([past, future], monday, now, true, true).flatMap((d) => d.rows);
+
+        expect(rows.map((r) => r.action)).toEqual(['open', 'open']);
+        expect(rows.every((r) => !r.overdue)).toBe(true);
+        expect(rows.find((r) => r.event === past)!.done).toBe(true);
+        expect(rows.find((r) => r.event === future)!.done).toBe(false);
+    });
+
     it('buildWeekAgenda_CompletedAssignment_DoneWithoutActionAndSortedLast', () => {
         const day = new Date(2026, 10, 6);
         const days = buildWeekAgenda([

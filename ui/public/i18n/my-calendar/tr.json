@@ -38,7 +38,8 @@
       "start": "Başla",
       "program": "Programa git",
       "bookings": "Derse git",
-      "view": "Aç"
+      "view": "Aç",
+      "open": "Aç"
     }
   },
   "today": "Bugün",

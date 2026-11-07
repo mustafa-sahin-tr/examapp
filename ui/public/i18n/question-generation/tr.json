@@ -15,7 +15,6 @@
     "medium": "Orta",
     "hard": "Zor"
   },
-  "generate": "Taslak üret",
   "generating": "Taslaklar hazırlanıyor. Bu işlem yaklaşık bir dakika sürebilir.",
   "errors": {
     "unavailable": "Soru üretimi şu an kapalı: Claude anahtarı tanımlı değil.",
@@ -35,6 +34,23 @@
   "save": "Seçilenleri kaydet ({{count}})",
   "saveFailed": "Kaydedilemedi.",
   "saved": "{{count}} soru kaydedildi. Teste Soru Havuzu'ndan ekleyebilirsiniz.",
-  "finishDraftsFirst": "Aşağıdaki taslaklar başka bir kazanım ya da zorluk için. Yeniden üretmeden önce kaydedin ya da silin.",
-  "clearDrafts": "Taslakları sil"
+  "finishDraftsFirst": "Mevcut taslaklar başka bir kazanım ya da zorluk için. Yeniden üretmeden önce kaydedin ya da silin.",
+  "clearDrafts": "Taslakları sil",
+  "generateCount": "{{count}} taslak üret",
+  "duration": "Yaklaşık bir dakika sürer.",
+  "missing": {
+    "grade": "Önce sınıf seç.",
+    "subject": "Ders seç.",
+    "outcome": "Kazanım seç."
+  },
+  "draftsTitle": "Taslaklar",
+  "sampleIntro": "Ürettiğin taslaklar burada çıkar: soruyu, şıkları ve doğru cevabı düzenleyip seçtiklerini Soru Havuzu'na kaydedersin.",
+  "sampleTag": "Örnek",
+  "sampleQuestion": "Aşağıdaki kesirlerden hangisi 3/4'ten büyüktür?",
+  "sampleOptions": {
+    "0": "2/3",
+    "1": "5/8",
+    "2": "7/8",
+    "3": "1/2"
+  }
 }

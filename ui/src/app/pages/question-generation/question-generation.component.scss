@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  max-width: 960px;
+  max-width: 1280px;
   margin: 0 auto;
   padding: 24px 16px;
 }
@@ -71,4 +71,97 @@
 
 .qg-option-field {
   flex: 1;
+}
+
+// #866: form solda, taslaklar sağda; dar ekranda alt alta.
+.qg-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (min-width: 1100px) {
+  .qg-layout {
+    grid-template-columns: minmax(320px, 2fr) minmax(0, 3fr);
+  }
+
+  .qg-form {
+    position: sticky;
+    top: 16px;
+  }
+}
+
+.qg-form-actions {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.qg-missing {
+  margin: 0;
+  color: var(--ms-warning-text-medium);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.qg-drafts {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.qg-drafts-title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  font-size: 18px;
+}
+
+.qg-drafts-count {
+  padding: 0 8px;
+  border: 1px solid var(--ms-border);
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+.qg-sample {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.qg-sample-card {
+  border: 1px dashed var(--ms-border);
+  opacity: 0.6;
+}
+
+.qg-sample-tag {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 0 8px;
+  border: 1px solid var(--ms-border);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.qg-sample-question {
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+.qg-sample-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.qg-sample-correct {
+  color: var(--ms-success-text);
+  font-weight: 600;
 }

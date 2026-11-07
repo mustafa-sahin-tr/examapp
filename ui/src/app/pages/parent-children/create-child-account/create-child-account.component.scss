@@ -24,17 +24,20 @@
 }
 
 // Global `form { flex-direction: column }` (styles.scss) korunur; satırlar kendi içinde yan yana.
+// Alanların alt yazısı dinamik (#903): iki satırlık ipucu bir sonraki alana ya da butonlara taşmaz; boşluğu gap verir.
 .cca__form {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 1rem;
 }
 
 .cca__row {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  // Komşu alanın ipucu satırı uzatınca diğer alan kutusu da uzamasın.
+  align-items: flex-start;
+  gap: 1rem 0.75rem;
 }
 
 .cca__field {

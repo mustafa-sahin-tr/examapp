@@ -54,12 +54,12 @@ const newPwValidator: ValidatorFn = (group: AbstractControl): ValidationErrors |
       <form [formGroup]="form" (ngSubmit)="submit()" novalidate data-test="reset-form">
         <mat-dialog-content class="cpr__content">
           <p class="cpr__hint">{{ t('resetPw.hint') }}</p>
-          <mat-form-field appearance="outline" class="cpr__field">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="cpr__field">
             <mat-label>{{ t('resetPw.newPw') }}</mat-label>
             <input matInput type="password" formControlName="pw" autocomplete="new-password" maxlength="128" data-test="reset-pw" />
             <mat-hint>{{ t('createChild.pwHint') }}</mat-hint>
           </mat-form-field>
-          <mat-form-field appearance="outline" class="cpr__field">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="cpr__field">
             <mat-label>{{ t('resetPw.repeat') }}</mat-label>
             <input matInput type="password" formControlName="pwRepeat" autocomplete="new-password" maxlength="128" data-test="reset-pw-repeat" />
           </mat-form-field>
@@ -91,7 +91,7 @@ const newPwValidator: ValidatorFn = (group: AbstractControl): ValidationErrors |
       .cpr__content {
         display: flex;
         flex-direction: column;
-        gap: 0.25rem;
+        gap: 1rem;
         max-width: 420px;
         font-family: var(--paragraphFontFamily);
       }

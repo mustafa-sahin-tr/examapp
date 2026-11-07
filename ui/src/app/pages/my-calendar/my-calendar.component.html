@@ -2,23 +2,32 @@
   <app-page-header icon="event_note" [title]="t('title')"
     [description]="isTeacher ? t('subtitle.teacher') : t('subtitle.student')" />
 
-  <span aria-live="polite" class="sr-only">{{ monthLabel() }}</span>
+  <span aria-live="polite" class="sr-only">{{ periodLabel() }}</span>
 
   <div class="my-calendar__card">
     <div class="my-calendar__toolbar">
-      <button mat-icon-button type="button" (click)="prevMonth()" [attr.aria-label]="t('prevMonth')">
+      <button mat-icon-button type="button" class="my-calendar__prev" (click)="prev()"
+        [attr.aria-label]="view() === 'week' ? t('prevWeek') : t('prevMonth')">
         <mat-icon>chevron_left</mat-icon>
       </button>
 
-      <h2 class="my-calendar__month-label">{{ monthLabel() }}</h2>
+      <h2 class="my-calendar__month-label">{{ periodLabel() }}</h2>
 
-      <button mat-icon-button type="button" (click)="nextMonth()" [attr.aria-label]="t('nextMonth')">
+      <button mat-icon-button type="button" class="my-calendar__next" (click)="next()"
+        [attr.aria-label]="view() === 'week' ? t('nextWeek') : t('nextMonth')">
         <mat-icon>chevron_right</mat-icon>
       </button>
 
       <button mat-stroked-button type="button" class="my-calendar__today-btn" (click)="goToday()">
         {{ t('today') }}
       </button>
+
+      <!-- #888: hafta varsayılan, ay seçenek. -->
+      <mat-button-toggle-group class="my-calendar__view" hideSingleSelectionIndicator [value]="view()"
+        (change)="setView($event.value)" [attr.aria-label]="t('view.aria')">
+        <mat-button-toggle value="week" data-test="view-week">{{ t('view.week') }}</mat-button-toggle>
+        <mat-button-toggle value="month" data-test="view-month">{{ t('view.month') }}</mat-button-toggle>
+      </mat-button-toggle-group>
     </div>
 
     <div class="my-calendar__grid-wrap" [attr.aria-busy]="status() === 'loading' ? 'true' : null">
@@ -28,7 +37,7 @@
           <p>{{ t('error.message') }}</p>
           <button mat-flat-button type="button" (click)="retry()">{{ t('error.retry') }}</button>
         </div>
-      } @else {
+      } @else if (view() === 'month') {
         <app-month-calendar-grid
           [month]="viewMonth()"
           [events]="events()"
@@ -37,17 +46,86 @@
           (barClick)="onBarClick($event)"
           (monthChange)="onMonthChange($event)"
         />
+      } @else if (status() === 'empty') {
+        <!-- #888: boş hafta — gün listesi yerine iki eylem. -->
+        <div class="my-calendar__state my-calendar__state--empty" data-test="week-empty">
+          <mat-icon>event_available</mat-icon>
+          <p class="my-calendar__state-title">{{ t('week.emptyTitle') }}</p>
+          @if (isTeacher) {
+            @if (showAvailabilityCta()) {
+              <p>{{ t('week.emptyTeacher') }}</p>
+              <button mat-flat-button type="button" routerLink="/availability">{{ t('week.openSlots') }}</button>
+            } @else {
+              <p>{{ t('week.emptyTeacherSchool') }}</p>
+            }
+          } @else {
+            <p>{{ t('week.emptyStudent') }}</p>
+            <div class="my-calendar__state-actions">
+              <button mat-flat-button type="button" routerLink="/program-create">{{ t('week.createProgram') }}</button>
+              <button mat-stroked-button type="button" routerLink="/dashboard">{{ t('week.dailyQuestions') }}</button>
+            </div>
+          }
+        </div>
+      } @else {
+        <!-- #888: renk açıklaması görünür; ay görünümünde ayrıntılı lejant altta. -->
+        <ul class="agenda-legend" [attr.aria-label]="t('week.legendAria')">
+          @for (kind of agendaLegend; track kind) {
+            <li class="agenda-legend__item" [attr.data-kind]="kind">{{ t('kind.' + kind) }}</li>
+          }
+        </ul>
+        <ol class="agenda" data-test="agenda">
+          @for (day of agendaDays(); track day.date.getTime()) {
+            <li class="agenda__day" [class.agenda__day--today]="day.isToday" [class.agenda__day--past]="day.isPast"
+              [attr.aria-current]="day.isToday ? 'date' : null">
+              <div class="agenda__date">
+                <span class="agenda__weekday">{{ dayName(day.date) }}</span>
+                <span class="agenda__daynum">{{ day.date.getDate() }}</span>
+                @if (day.isToday) {
+                  <span class="agenda__today">{{ t('week.today') }}</span>
+                }
+              </div>
+              @if (day.rows.length === 0) {
+                <p class="agenda__free">{{ t('week.free') }}</p>
+              } @else {
+                <ul class="agenda__rows">
+                  @for (row of day.rows; track $index) {
+                    <li class="agenda__row" [class.agenda__row--done]="row.done"
+                      [attr.data-kind]="row.kind">
+                      <mat-icon class="agenda__icon" aria-hidden="true">{{ row.icon }}</mat-icon>
+                      <div class="agenda__text">
+                        <span class="agenda__title">{{ row.title || t('kind.' + row.kind) }}</span>
+                        <span class="agenda__meta">
+                          {{ metaText(row, t) }}
+                          @if (row.overdue) { · <span class="agenda__overdue">{{ t('week.overdue') }}</span> }
+                        </span>
+                      </div>
+                      @if (row.action && !row.done) {
+                        <button mat-stroked-button type="button" class="agenda__action" (click)="openRow(row)">
+                          {{ t('week.action.' + row.action) }}
+                        </button>
+                      } @else if (row.action) {
+                        <button mat-button type="button" class="agenda__action" (click)="openRow(row)">
+                          {{ t('week.action.view') }}
+                        </button>
+                      }
+                    </li>
+                  }
+                </ul>
+              }
+            </li>
+          }
+        </ol>
+      }
 
-        @if (status() === 'loading') {
-          <div class="my-calendar__overlay">
-            <mat-progress-spinner mode="indeterminate" diameter="40" />
-            <p>{{ t('loading') }}</p>
-          </div>
-        }
+      @if (status() === 'loading') {
+        <div class="my-calendar__overlay">
+          <mat-progress-spinner mode="indeterminate" diameter="40" />
+          <p>{{ t('loading') }}</p>
+        </div>
       }
     </div>
 
-    @if (status() === 'empty') {
+    @if (view() === 'month' && status() === 'empty') {
       <div class="my-calendar__state my-calendar__state--empty">
         <mat-icon>event_available</mat-icon>
         @if (isTeacher) {
@@ -62,7 +140,7 @@
       </div>
     }
 
-    @if (status() !== 'error') {
+    @if (status() !== 'error' && view() === 'month') {
       <app-calendar-legend />
     }
   </div>

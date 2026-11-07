@@ -117,3 +117,227 @@
 .my-calendar app-page-header {
   margin-bottom: 0;
 }
+
+// ── #888: haftalık ajanda ─────────────────────────────────────────────────
+.my-calendar__view {
+  --mat-standard-button-toggle-height: 36px;
+}
+
+.my-calendar__state-title {
+  font-weight: 700;
+  color: var(--ms-text-strong);
+}
+
+.my-calendar__state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--ms-layout-spacing-small);
+}
+
+// Tür renkleri lejantla aynı token aileleri: ödev uyarı, program bilgi, ders eylem.
+[data-kind='assignment'] {
+  --agenda-kind: var(--ms-warning-border);
+}
+
+[data-kind='program'] {
+  --agenda-kind: var(--ms-info-border);
+}
+
+[data-kind='booking'] {
+  --agenda-kind: var(--ms-action-border);
+}
+
+[data-kind='reminder'] {
+  --agenda-kind: var(--ms-border);
+}
+
+.agenda-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ms-layout-spacing-medium);
+  margin: 0 0 var(--ms-layout-spacing-small);
+  padding: 0;
+  list-style: none;
+  font-size: var(--ms-type-font-size-xsmall);
+  color: var(--ms-text-medium);
+
+  &__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    &::before {
+      content: '';
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+      background: var(--agenda-kind);
+    }
+  }
+}
+
+.agenda {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  &__day {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: var(--ms-layout-spacing-medium);
+    align-items: start;
+    padding: 12px 8px;
+    border-top: 1px solid var(--ms-border-weak);
+
+    &:first-child {
+      border-top: none;
+    }
+
+    &--today {
+      border-radius: 12px;
+      border-top-color: transparent;
+      background: var(--ms-info-surface-weak);
+      outline: 1px solid var(--ms-info-border);
+
+      + .agenda__day {
+        border-top-color: transparent;
+      }
+    }
+
+    &--past .agenda__date {
+      opacity: 0.6;
+    }
+  }
+
+  &__date {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    line-height: 1.1;
+  }
+
+  &__weekday {
+    font-size: var(--ms-type-font-size-xsmall);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ms-text-medium);
+  }
+
+  &__daynum {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--ms-text-strong);
+  }
+
+  &__today {
+    margin-top: 4px;
+    font-size: var(--ms-type-font-size-xsmall);
+    font-weight: 700;
+    color: var(--ms-info-text);
+  }
+
+  &__free {
+    margin: 0;
+    padding-top: 10px;
+    font-size: var(--ms-type-font-size-small);
+    color: var(--ms-text-weak);
+  }
+
+  &__rows {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 52px;
+    padding: 8px 12px;
+    border: 1px solid var(--ms-border-weak);
+    border-left: 4px solid var(--agenda-kind);
+    border-radius: 10px;
+    background: var(--ms-surface);
+
+    &--done {
+      opacity: 0.6;
+    }
+  }
+
+  &__icon {
+    flex: none;
+    color: var(--agenda-kind);
+  }
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__title {
+    font-weight: 600;
+    color: var(--ms-text-strong);
+    overflow-wrap: anywhere;
+  }
+
+  &__meta {
+    font-size: var(--ms-type-font-size-xsmall);
+    color: var(--ms-text-medium);
+  }
+
+  &__overdue {
+    font-weight: 700;
+    color: var(--ms-danger-text);
+  }
+
+  &__action {
+    flex: none;
+    min-height: 40px;
+  }
+}
+
+@media (max-width: 767px) {
+  .my-calendar__toolbar {
+    flex-wrap: wrap;
+  }
+
+  .my-calendar__view {
+    order: 5;
+    width: 100%;
+
+    mat-button-toggle {
+      flex: 1;
+    }
+  }
+
+  .agenda {
+    &__day {
+      grid-template-columns: 44px minmax(0, 1fr);
+      gap: var(--ms-layout-spacing-small);
+      padding: 10px 4px;
+    }
+
+    &__row {
+      flex-wrap: wrap;
+      gap: 8px 10px;
+    }
+
+    // Metin tam satır alır, düğme altına (ikon hizasından) iner.
+    &__text {
+      flex-basis: calc(100% - 36px);
+    }
+
+    &__action {
+      margin-left: 34px;
+    }
+  }
+}

@@ -24,6 +24,9 @@ namespace ExamApp.Api.Services
         Task<bool> CompleteStudyItemAsync(string userId, int programId, int scheduleId, CancellationToken ct = default);
         /// <summary>Tamamlanma işaretini geri alır (idempotent). Program/schedule sahibine ait değilse veya yoksa false döner.</summary>
         Task<bool> UncompleteStudyItemAsync(string userId, int programId, int scheduleId, CancellationToken ct = default);
+
+        /// <summary>issue #886: programdaki ders oturumunu (günün dersi) yapıldı / yapılmadı işaretler; sahip değilse false.</summary>
+        Task<bool> SetSessionCompletionAsync(string userId, int programId, int scheduleId, bool completed, CancellationToken ct = default);
         /// <summary>Programı soft-delete eder (IsActive=false). Sahibine ait değilse veya yoksa false döner.</summary>
         Task<bool> DeleteUserProgramAsync(string userId, int programId, CancellationToken ct = default);
         // Add other methods as needed, for example:

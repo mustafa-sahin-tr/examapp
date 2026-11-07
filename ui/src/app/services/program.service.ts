@@ -20,6 +20,18 @@ export class ProgramService {
     return this.http.post<UserProgram>(`${this.apiUrl}/create`, request);
   }
 
+  /** #886: günün ders oturumu yapıldı / geri alındı. */
+  setSessionDone(programId: number, scheduleId: number, done: boolean): Observable<void> {
+    const url = `${this.apiUrl}/${programId}/sessions/${scheduleId}/complete`;
+    return done ? this.http.put<void>(url, {}) : this.http.delete<void>(url);
+  }
+
+  /** #886: programa eklenmiş çalışma sayfası tamamlandı / geri alındı. */
+  setStudyItemDone(programId: number, scheduleId: number, done: boolean): Observable<void> {
+    const url = `${this.apiUrl}/${programId}/study-pages/${scheduleId}/complete`;
+    return done ? this.http.put<void>(url, {}) : this.http.delete<void>(url);
+  }
+
   getMyPrograms(): Observable<UserProgram[]> {
     return this.http.get<UserProgram[]>(`${this.apiUrl}/my-programs`);
   }

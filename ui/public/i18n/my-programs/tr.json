@@ -76,12 +76,12 @@
     "flexible": "Esnek",
     "weekend": "Hafta sonu",
     "exam": "Sınav",
-    "question": "Soru"
+    "question": "Soru",
+    "time": "Süreli"
   },
   "detail": {
     "dailyTarget": "Günde {{questions}} soru, {{subjects}} konu",
     "type": "Tür: {{type}}",
-    "pagesTitle": "Program Sayfaları",
     "addPages": "Çalışma Sayfası Ekle",
     "calendarSize": {
       "label": "Takvim boyutu",
@@ -94,7 +94,32 @@
     "updateFailed": "Program güncellenemedi.",
     "loadFailed": "Program bilgisi yüklenemedi.",
     "typeAria": "Etkinlik tipi: {{type}}",
-    "dateRange": "{{start}} – {{end}}"
+    "dateRange": "{{start}} – {{end}}",
+    "duration": "{{study}} dk çalış, {{rest}} dk ara",
+    "perDay": "Günde {{count}} ders",
+    "minutes": "{{count}} dk",
+    "questions": "{{count}} soru",
+    "today": {
+      "title": "Bugün · {{date}}",
+      "empty": "Bugün için planlanmış bir şey yok.",
+      "start": "Başla",
+      "markDone": "Yaptım",
+      "done": "Bitti",
+      "studyPage": "Çalışma sayfası"
+    },
+    "progress": {
+      "sentence": "Bu hafta {{planned}} oturumdan {{done}} tanesi yapıldı.",
+      "label": "Bu haftanın ilerlemesi"
+    },
+    "view": {
+      "label": "Takvim görünümü",
+      "week": "Hafta",
+      "month": "Ay",
+      "previousWeek": "Önceki hafta",
+      "nextWeek": "Sonraki hafta",
+      "today": "bugün",
+      "free": "Boş"
+    }
   },
   "addStudyPages": {
     "titleWithoutDate": "Programa Sayfa Ekle",

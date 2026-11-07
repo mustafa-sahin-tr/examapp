@@ -159,6 +159,28 @@ namespace ExamApp.Api.Controllers
             return NoContent();
         }
 
+        /// <summary>issue #886: günün ders oturumu yapıldı.</summary>
+        [HttpPut("{programId:int}/sessions/{scheduleId:int}/complete")]
+        public Task<IActionResult> CompleteSession(int programId, int scheduleId, CancellationToken ct)
+            => SetSessionCompletion(programId, scheduleId, completed: true, ct);
+
+        /// <summary>issue #886: "yapıldı" işareti geri alınır.</summary>
+        [HttpDelete("{programId:int}/sessions/{scheduleId:int}/complete")]
+        public Task<IActionResult> UncompleteSession(int programId, int scheduleId, CancellationToken ct)
+            => SetSessionCompletion(programId, scheduleId, completed: false, ct);
+
+        private async Task<IActionResult> SetSessionCompletion(int programId, int scheduleId, bool completed, CancellationToken ct)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(_localizer["program.userIdNotFoundInToken"].Value);
+            }
+
+            var found = await _programService.SetSessionCompletionAsync(userId, programId, scheduleId, completed, ct);
+            return found ? NoContent() : NotFound();
+        }
+
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeleteProgram(int id, CancellationToken ct)
         {

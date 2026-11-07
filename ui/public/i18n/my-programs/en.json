@@ -76,12 +76,12 @@
     "flexible": "Flexible",
     "weekend": "Weekend",
     "exam": "Exam",
-    "question": "Question"
+    "question": "Question",
+    "time": "Timed"
   },
   "detail": {
     "dailyTarget": "{{questions}} questions, {{subjects}} topics per day",
     "type": "Type: {{type}}",
-    "pagesTitle": "Program Pages",
     "addPages": "Add Study Page",
     "calendarSize": {
       "label": "Calendar size",
@@ -94,7 +94,32 @@
     "updateFailed": "The program could not be updated.",
     "loadFailed": "Program details could not be loaded.",
     "typeAria": "Activity type: {{type}}",
-    "dateRange": "{{start}} – {{end}}"
+    "dateRange": "{{start}} – {{end}}",
+    "duration": "{{study}} min study, {{rest}} min break",
+    "perDay": "{{count}} subject(s) a day",
+    "minutes": "{{count}} min",
+    "questions": "{{count}} questions",
+    "today": {
+      "title": "Today · {{date}}",
+      "empty": "Nothing is planned for today.",
+      "start": "Start",
+      "markDone": "Mark done",
+      "done": "Done",
+      "studyPage": "Study page"
+    },
+    "progress": {
+      "sentence": "This week {{done}} of {{planned}} sessions are done.",
+      "label": "This week's progress"
+    },
+    "view": {
+      "label": "Calendar view",
+      "week": "Week",
+      "month": "Month",
+      "previousWeek": "Previous week",
+      "nextWeek": "Next week",
+      "today": "today",
+      "free": "Free"
+    }
   },
   "addStudyPages": {
     "titleWithoutDate": "Add Page to Program",

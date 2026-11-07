@@ -55,7 +55,6 @@
     "year": "Yıl",
     "source": "Kaynak belge",
     "search": "Ad, kurum ya da il",
-    "searchAction": "Ara",
     "add": "Satır ekle",
     "scoreType": "Puan türü",
     "name": "Okul ya da program",
@@ -77,14 +76,18 @@
       "format": "Başlıklar: Okul ya da Program, Üniversite (YKS), İl, İlçe, Puan Türü (YKS: TYT, SAY, EA, SÖZ), Taban Puan, Yüzdelik. Ayraç noktalı virgül, virgül ya da sekme olabilir. DİL programları desteklenmez.",
       "pick": "Dosya seç",
       "preview": "Önizle",
-      "confirm": "Onayla ve yaz",
       "counts": "Yeni {{fresh}}, değişen {{changed}}, aynı {{unchanged}}, hatalı {{invalid}}",
       "fresh": "Yeni satırlar",
       "changed": "Değişen satırlar",
       "invalid": "Hatalı satırlar (yazılmaz)",
       "line": "Satır {{line}}:",
-      "capped": "Listeler ilk 200 satırı gösterir; sayılar tüm dosya içindir.",
-      "done": "Yazıldı: {{created}} yeni, {{updated}} güncellendi, {{unchanged}} aynı, {{skipped}} atlandı."
+      "done": "Yazıldı: {{created}} yeni, {{updated}} güncellendi, {{unchanged}} aynı, {{skipped}} atlandı.",
+      "stepTitle": "CSV yükle · {{step}} / {{total}}",
+      "sample": "Örnek {{exam}} dosyasını indir",
+      "back": "Geri",
+      "confirmCount": "{{count}} satırı yaz",
+      "close": "Kapat",
+      "firstRows": "Her grupta ilk {{count}} satır görünür; sayılar tüm dosya içindir."
     },
     "errors": {
       "generic": "İşlem yapılamadı.",
@@ -102,6 +105,14 @@
       "PercentileInvalid": "Yüzdelik 0-100 arasında olmalı.",
       "TooLong": "Metin çok uzun.",
       "InvalidText": "Metinde geçersiz karakter var."
+    },
+    "noMatch": "Aramaya uyan kayıt yok.",
+    "status": {
+      "none": "Henüz yüklenmedi",
+      "studentsBlocked": "Öğrencilerin hedef araması şu an boş sonuç veriyor",
+      "lgs": "{{count}} okul",
+      "yks": "{{count}} program",
+      "allYears": "Tüm yıllar: {{count}}"
     }
   }
 }

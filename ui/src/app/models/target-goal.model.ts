@@ -97,6 +97,14 @@ export interface TargetImportError {
   name: string | null;
 }
 
+/** #900: sınav başına katalog durumu; `total` 0 ise öğrencinin hedef araması boş döner. */
+export interface TargetCatalogSummary {
+  exam: TargetExam;
+  total: number;
+  latestYear: number | null;
+  latestYearCount: number;
+}
+
 export interface TargetImportPreview {
   newCount: number;
   changedCount: number;

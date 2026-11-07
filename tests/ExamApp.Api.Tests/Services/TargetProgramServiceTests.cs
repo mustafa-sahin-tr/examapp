@@ -44,6 +44,32 @@ public class TargetProgramServiceTests : IDisposable
     };
 
     [Fact]
+    public async Task Summary_counts_each_exam_and_its_latest_year()
+    {
+        await ConfirmAsync(Lgs("Okul;İl;Taban Puan\nBir Lisesi;Ankara;400\nİki Lisesi;İzmir;410\n"));
+        await ConfirmAsync(Lgs("Okul;İl;Taban Puan\nEski Lisesi;Ankara;390\n") with { Year = 2025 });
+
+        await using var ctx = _db.NewContext();
+        var summary = await new TargetProgramService(ctx).SummaryAsync();
+
+        var lgs = summary.Single(s => s.Exam == TargetScoreTypes.LgsExam);
+        (lgs.Total, lgs.LatestYear, lgs.LatestYearCount).ShouldBe((3, 2026, 2));
+        var yks = summary.Single(s => s.Exam == TargetScoreTypes.YksExam);
+        (yks.Total, yks.LatestYear, yks.LatestYearCount).ShouldBe((0, (int?)null, 0));
+    }
+
+    /// <summary>Taban puan ekranının indirttiği örnek dosyalar (#900, SAMPLE_CSV) hatasız okunmalı.</summary>
+    [Fact]
+    public async Task Admin_sample_files_are_read_without_errors()
+    {
+        var lgs = await PreviewAsync(Lgs("Okul;İl;İlçe;Taban Puan;Yüzdelik\nÖrnek Fen Lisesi;İstanbul;Kadıköy;478,20;0,15\nÖrnek Anadolu Lisesi;Ankara;Çankaya;452,70;2,40\n"));
+        var yks = await PreviewAsync(Yks("Program;Üniversite;İl;Puan Türü;Taban Puan;Yüzdelik\nBilgisayar Mühendisliği;Örnek Üniversitesi;Ankara;SAY;480,50;1,20\nHukuk;Örnek Üniversitesi;İstanbul;EA;455,30;3,10\n"));
+
+        (lgs.NewCount, lgs.InvalidCount).ShouldBe((2, 0));
+        (yks.NewCount, yks.InvalidCount).ShouldBe((2, 0));
+    }
+
+    [Fact]
     public async Task Preview_classifies_rows_and_writes_nothing()
     {
         await ConfirmAsync(Lgs("Okul;İl;İlçe;Taban Puan;Yüzdelik\nDeğişen Lisesi;Ankara;Çankaya;400;5\nAynı Lisesi;Ankara;Çankaya;410;4\n"));

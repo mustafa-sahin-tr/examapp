@@ -55,7 +55,6 @@
     "year": "Year",
     "source": "Source document",
     "search": "Name, institution, or city",
-    "searchAction": "Search",
     "add": "Add row",
     "scoreType": "Score type",
     "name": "School or programme",
@@ -77,14 +76,18 @@
       "format": "Headers (Turkish): Okul or Program, Üniversite (YKS), İl, İlçe, Puan Türü (YKS: TYT, SAY, EA, SÖZ), Taban Puan, Yüzdelik. The separator can be a semicolon, comma, or tab. DİL programmes are not supported.",
       "pick": "Choose file",
       "preview": "Preview",
-      "confirm": "Confirm and write",
       "counts": "New {{fresh}}, changed {{changed}}, same {{unchanged}}, invalid {{invalid}}",
       "fresh": "New rows",
       "changed": "Changed rows",
       "invalid": "Invalid rows (not written)",
       "line": "Line {{line}}:",
-      "capped": "Lists show the first 200 rows; the counts cover the whole file.",
-      "done": "Written: {{created}} new, {{updated}} updated, {{unchanged}} same, {{skipped}} skipped."
+      "done": "Written: {{created}} new, {{updated}} updated, {{unchanged}} same, {{skipped}} skipped.",
+      "stepTitle": "Upload CSV · {{step}} / {{total}}",
+      "sample": "Download a sample {{exam}} file",
+      "back": "Back",
+      "confirmCount": "Write {{count}} rows",
+      "close": "Close",
+      "firstRows": "Each group shows its first {{count}} rows; the counts cover the whole file."
     },
     "errors": {
       "generic": "The action failed.",
@@ -102,6 +105,14 @@
       "PercentileInvalid": "The percentile must be between 0 and 100.",
       "TooLong": "The text is too long.",
       "InvalidText": "The text contains an invalid character."
+    },
+    "noMatch": "No records match your search.",
+    "status": {
+      "none": "Not uploaded yet",
+      "studentsBlocked": "Students' target search returns no results right now",
+      "lgs": "{{count}} schools",
+      "yks": "{{count}} programmes",
+      "allYears": "All years: {{count}}"
     }
   }
 }

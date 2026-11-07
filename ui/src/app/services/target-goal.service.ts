@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 import {
   AdminTargetProgram,
   SaveTargetProgram,
+  TargetCatalogSummary,
   TargetExam,
   TargetGoal,
   TargetImportPreview,
@@ -70,6 +71,10 @@ export class TargetGoalService {
 
   adminList(query: TargetProgramQuery): Observable<TargetProgramPage<AdminTargetProgram>> {
     return this.http.get<TargetProgramPage<AdminTargetProgram>>('/api/exam/admin/target-programs', { params: toParams(query) });
+  }
+
+  adminSummary(): Observable<TargetCatalogSummary[]> {
+    return this.http.get<TargetCatalogSummary[]>('/api/exam/admin/target-programs/summary');
   }
 
   adminSave(program: SaveTargetProgram, id: number | null): Observable<AdminTargetProgram> {

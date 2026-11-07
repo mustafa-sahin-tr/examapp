@@ -62,8 +62,13 @@
     <div class="auth-area">
       <div class="auth-inner">
 
-        <div class="auth-image-col">
-          <img src="${url.resourcesPath}/img/login.png" alt="${msg("loginImageAlt")}">
+        <#-- Issue #850: no stock illustration; the product's own mark and name above one card,
+             same as the app's sidebar logo. -->
+        <div class="auth-brand">
+          <span class="auth-brand__mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3 1 9l11 6 9-4.91V17h2V9L12 3z"/></svg>
+          </span>
+          <span class="auth-brand__name">${msg("brandName")}</span>
         </div>
 
         <div class="auth-form-col">

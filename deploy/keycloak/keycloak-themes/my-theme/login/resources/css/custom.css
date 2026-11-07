@@ -5,7 +5,8 @@
 
 body {
   font-family: 'Segoe UI', Arial, sans-serif;
-  background-color: #f5f7fb;
+  background-color: var(--kc-bg);
+  background-image: radial-gradient(1200px 600px at 50% -10%, color-mix(in srgb, var(--kc-primary) 28%, transparent), transparent 70%);
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -26,32 +27,44 @@ body {
 
 .auth-inner {
   display: flex;
-  align-items: center;
-  gap: 48px;
-  max-width: 960px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 20px;
+  max-width: 440px;
   width: 100%;
 }
 
-/* Left column – illustration */
-.auth-image-col {
-  flex: 1;
+/* Brand above the card (issue #850): the app's sidebar mark + name */
+.auth-brand {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 12px;
 }
 
-.auth-image-col img {
-  max-width: 100%;
-  height: auto;
+.auth-brand__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #7C5CFF 0%, var(--kc-primary) 100%);
 }
 
-/* Right column – form */
+.auth-brand__name {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--kc-text);
+}
+
 .auth-form-col {
-  flex: 1;
-  background: #ffffff;
+  background: var(--kc-surface);
+  border: 1px solid var(--kc-border-weak);
   border-radius: 16px;
-  padding: 40px 36px;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.08);
+  padding: 36px 32px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.35);
 }
 
 /* ===========================
@@ -64,13 +77,13 @@ body {
 .auth-form-header h3 {
   font-size: 26px;
   font-weight: 700;
-  color: #1a1a2e;
+  color: var(--kc-text);
   margin-bottom: 6px;
 }
 
 .auth-form-header p {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--kc-text-muted);
   line-height: 1.5;
 }
 
@@ -85,9 +98,9 @@ body {
 }
 
 .auth-alert--error {
-  background-color: #fef2f2;
-  color: #dc2626;
-  border: 1px solid #fca5a5;
+  background-color: var(--kc-danger-bg);
+  color: var(--kc-danger);
+  border: 1px solid var(--kc-danger-border);
 }
 
 /* ===========================
@@ -101,7 +114,7 @@ body {
   display: block;
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: var(--kc-label);
   margin-bottom: 6px;
 }
 
@@ -109,18 +122,18 @@ body {
   width: 100%;
   padding: 12px 14px;
   font-size: 14px;
-  color: #1a1a2e;
-  background: #f9fafb;
-  border: 1px solid #d1d5db;
+  color: var(--kc-text);
+  background: var(--kc-input-bg);
+  border: 1px solid var(--kc-border);
   border-radius: 8px;
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .form-control:focus {
-  border-color: #6438c3;
-  box-shadow: 0 0 0 3px rgba(100, 56, 195, 0.12);
-  background: #ffffff;
+  border-color: var(--kc-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--kc-focus) 30%, transparent);
+  background: var(--kc-surface);
 }
 
 /* ===========================
@@ -138,18 +151,18 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #374151;
+  color: var(--kc-label);
   cursor: pointer;
 }
 
 .remember-me input[type="checkbox"] {
-  accent-color: #6438c3;
+  accent-color: var(--kc-primary);
   width: 15px;
   height: 15px;
 }
 
 .forgot-link {
-  color: #6438c3;
+  color: var(--kc-link);
   text-decoration: none;
   font-weight: 500;
 }
@@ -171,14 +184,14 @@ body {
   font-size: 15px;
   font-weight: 600;
   color: #ffffff;
-  background: linear-gradient(135deg, #6438c3 0%, #4f2fa4 100%);
+  background: var(--kc-primary);
   border: none;
   border-radius: 8px;
   cursor: pointer;
   transition: opacity 0.2s, transform 0.1s;
 }
 
-.default-btn:hover { opacity: 0.92; }
+.default-btn:hover { background: var(--kc-primary-hover); }
 .default-btn:active { transform: scale(0.98); }
 
 /* ===========================
@@ -189,7 +202,7 @@ body {
   align-items: center;
   gap: 12px;
   margin: 20px 0;
-  color: #9ca3af;
+  color: var(--kc-text-muted);
   font-size: 13px;
 }
 
@@ -198,7 +211,7 @@ body {
   content: '';
   flex: 1;
   height: 1px;
-  background: #e5e7eb;
+  background: var(--kc-border-weak);
 }
 
 /* ===========================
@@ -212,11 +225,11 @@ body {
   justify-content: center;
   width: 100%;
   padding: 11px 16px;
-  background: #ffffff;
-  border: 1px solid #d1d5db;
+  background: var(--kc-surface);
+  border: 1px solid var(--kc-border);
   border-radius: 8px;
   text-decoration: none;
-  color: #1a1a2e;
+  color: var(--kc-text);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -225,7 +238,7 @@ body {
 }
 
 .gsi-material-button:hover {
-  background: #f9fafb;
+  background: var(--kc-surface-hover);
   box-shadow: 0 1px 6px rgba(0,0,0,0.1);
 }
 
@@ -252,11 +265,11 @@ body {
 .auth-bottom-text {
   text-align: center;
   font-size: 14px;
-  color: #6b7280;
+  color: var(--kc-text-muted);
 }
 
 .auth-bottom-text a {
-  color: #6438c3;
+  color: var(--kc-link);
   font-weight: 600;
   text-decoration: none;
 }
@@ -272,22 +285,34 @@ body {
    its own small token set here.
    =========================== */
 :root {
-  --kc-primary: #6438c3;
-  --kc-text: #1a1a2e;
-  --kc-text-muted: #6b7280;
-  --kc-label: #374151;
-  --kc-border: #d1d5db;
-  --kc-surface: #ffffff;
-  --kc-danger: #dc2626;
-  --kc-success-bg: #f0fdf4;
-  --kc-success-fg: #15803d;
-  --kc-success-border: #86efac;
-  --kc-info-bg: #eff6ff;
-  --kc-info-fg: #1d4ed8;
-  --kc-info-border: #93c5fd;
-  --kc-warning-bg: #fffbeb;
-  --kc-warning-fg: #b45309;
-  --kc-warning-border: #fcd34d;
+  /* Issue #850: the app's dark theme (ui/src/styles.scss .dark-theme), so the step from the
+     welcome page to sign-in stays in one product. */
+  color-scheme: dark;
+  --kc-bg: #120F20;
+  --kc-primary: #4A33D1;
+  --kc-primary-hover: #3C28B1;
+  --kc-link: #A499E8;
+  --kc-focus: #3895FF;
+  --kc-text: #ECEAF8;
+  --kc-text-muted: #A9A4C8;
+  --kc-label: #D4D0EC;
+  --kc-border: #404376;
+  --kc-border-weak: #2D2D55;
+  --kc-surface: #1B1834;
+  --kc-surface-hover: #241F44;
+  --kc-input-bg: #130F25;
+  --kc-danger: #FF73AC;
+  --kc-danger-bg: #5C0026;
+  --kc-danger-border: #FF1675;
+  --kc-success-bg: #0B3A24;
+  --kc-success-fg: #86EFAC;
+  --kc-success-border: #15803D;
+  --kc-info-bg: #13235A;
+  --kc-info-fg: #A9C4FF;
+  --kc-info-border: #3B5BDB;
+  --kc-warning-bg: #3D2A05;
+  --kc-warning-fg: #FCD34D;
+  --kc-warning-border: #B45309;
 }
 
 /* Alert variants: template.ftl emits auth-alert--{error|success|info|warning} */
@@ -464,9 +489,9 @@ body {
 #kc-current-locale-link {
   display: inline-block;
   padding: 6px 12px;
-  color: #374151;
-  background: #ffffff;
-  border: 1px solid #d1d5db;
+  color: var(--kc-label);
+  background: var(--kc-surface);
+  border: 1px solid var(--kc-border);
   border-radius: 8px;
   text-decoration: none;
   cursor: pointer;
@@ -479,10 +504,10 @@ body {
   top: calc(100% + 4px);
   min-width: 100px;
   list-style: none;
-  background: #ffffff;
-  border: 1px solid #d1d5db;
+  background: var(--kc-surface);
+  border: 1px solid var(--kc-border);
   border-radius: 8px;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.35);
   padding: 4px 0;
 }
 
@@ -494,12 +519,12 @@ body {
 .kc-locale-item a {
   display: block;
   padding: 8px 14px;
-  color: #1a1a2e;
+  color: var(--kc-text);
   text-decoration: none;
 }
 
 .kc-locale-item a:hover {
-  background: #f9fafb;
+  background: var(--kc-surface-hover);
 }
 
 /* ===========================
@@ -522,10 +547,6 @@ body {
     flex-direction: column;
     gap: 0;
     width: 100%;
-  }
-
-  .auth-image-col {
-    display: none;
   }
 
   .auth-form-col {

@@ -1,5 +1,6 @@
 /* ===========================
-   Auth Area — Two-column layout
+   Auth Area — issue #850: the app's dark, branded shell (same as the Keycloak sign-in page);
+   one card under the brand, no illustration. Colors come from the global --ms-* tokens.
    =========================== */
 .auth-area {
   width: 100%;
@@ -8,39 +9,52 @@
   align-items: center;
   justify-content: center;
   padding: 48px 16px;
-  background-color: #f5f7fb;
+  box-sizing: border-box;
+  background-color: var(--main-bg-color);
+  background-image: radial-gradient(1200px 600px at 50% -10%, color-mix(in srgb, var(--ms-action-background) 28%, transparent), transparent 70%);
+  color: var(--ms-text);
   font-family: 'Segoe UI', Arial, sans-serif;
 }
 
 .auth-inner {
   display: flex;
-  align-items: center;
-  gap: 48px;
-  max-width: 1040px;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 520px;
   width: 100%;
 }
 
-/* Left column */
-.auth-image-col {
-  flex: 1;
+.auth-brand {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 12px;
 
-  img {
-    max-width: 100%;
-    height: auto;
+  &__mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    color: var(--ms-action-text-inverse);
+    background: linear-gradient(135deg, var(--ms-action-text-medium) 0%, var(--ms-action-background) 100%);
+  }
+
+  &__name {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--ms-text-strong);
   }
 }
 
-/* Right column */
 .auth-form-col {
-  flex: 1.2;
-  min-width: 0;  /* flexbox shrink fix */
-  background: #ffffff;
+  min-width: 0;
+  background: var(--ms-surface-weak);
+  border: 1px solid var(--ms-border-weak);
   border-radius: 16px;
-  padding: 36px 32px;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.08);
+  padding: 32px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.35);
 }
 
 /* ===========================
@@ -49,22 +63,89 @@
 .auth-form-header {
   margin-bottom: 24px;
 
-  h3 {
+  h1 {
     font-size: 24px;
     font-weight: 700;
-    color: #1a1a2e;
-    margin-bottom: 4px;
-  }
-
-  p {
-    font-size: 14px;
-    color: #6b7280;
-    line-height: 1.5;
+    line-height: 1.3;
+    color: var(--ms-text-strong);
+    margin: 4px 0 0;
   }
 }
 
+.auth-step {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ms-text-medium);
+}
+
+.link-btn {
+  margin-top: 6px;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ms-action-text-weak);
+  background: none;
+  border: none;
+  cursor: pointer;
+
+  &:hover { text-decoration: underline; }
+}
+
 /* ===========================
-   Form
+   Role cards (step 1)
+   =========================== */
+.role-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.role-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 104px;
+  padding: 16px;
+  text-align: start;
+  font: inherit;
+  color: var(--ms-text-medium);
+  background: var(--ms-surface);
+  border: 1px solid var(--ms-border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+
+  b {
+    font-size: 16px;
+    color: var(--ms-text-strong);
+  }
+
+  span { font-size: 13px; line-height: 1.4; }
+
+  &:hover { border-color: var(--ms-action-border); }
+
+  &.is-selected {
+    background: var(--ms-action-background-weak);
+    border-color: var(--ms-action-border);
+    box-shadow: 0 0 0 1px var(--ms-action-border);
+  }
+}
+
+.auth-callout {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ms-info-text);
+  background: var(--ms-info-surface);
+  border: 1px solid var(--ms-info-border);
+  border-radius: 8px;
+}
+
+/* ===========================
+   Form (step 2)
    =========================== */
 .auth-form {
   .form-row {
@@ -80,7 +161,7 @@
       display: block;
       font-size: 13px;
       font-weight: 600;
-      color: #374151;
+      color: var(--ms-text);
       margin-bottom: 6px;
     }
   }
@@ -91,31 +172,41 @@
   width: 100%;
   padding: 11px 14px;
   font-size: 14px;
-  color: #1a1a2e;
-  background: #f9fafb;
-  border: 1px solid #d1d5db;
+  color: var(--ms-text-strong);
+  background: var(--ms-surface);
+  border: 1px solid var(--ms-border);
   border-radius: 8px;
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
   font-family: inherit;
   appearance: none;
 
+  &::placeholder { color: var(--ms-text-weak); }
+
   &:focus {
-    border-color: #6438c3;
-    box-shadow: 0 0 0 3px rgba(100, 56, 195, 0.12);
-    background: #ffffff;
+    border-color: var(--ms-action-border-focus);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ms-action-border-focus) 30%, transparent);
   }
 
   &.is-invalid {
-    border-color: #dc2626;
+    border-color: var(--ms-danger-border);
   }
 }
 
 .field-error {
   display: block;
   font-size: 12px;
-  color: #dc2626;
+  color: var(--ms-danger-text-medium);
   margin-top: 4px;
+}
+
+.field-rule {
+  display: block;
+  font-size: 12px;
+  color: var(--ms-text-medium);
+  margin-top: 4px;
+
+  &.is-met { color: var(--ms-success-text-medium); }
 }
 
 /* ===========================
@@ -136,12 +227,12 @@
     background: none;
     border: none;
     cursor: pointer;
-    color: #9ca3af;
+    color: var(--ms-text-medium);
     display: flex;
     align-items: center;
     padding: 0;
 
-    &:hover { color: #6438c3; }
+    &:hover { color: var(--ms-action-text-weak); }
   }
 }
 
@@ -162,17 +253,25 @@
   padding: 13px 24px;
   font-size: 15px;
   font-weight: 600;
-  color: #ffffff;
-  background: linear-gradient(135deg, #6438c3 0%, #4f2fa4 100%);
+  color: var(--ms-action-text-inverse);
+  background: var(--ms-action-background);
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  transition: opacity 0.2s, transform 0.1s;
+  transition: background 0.2s, transform 0.1s;
   font-family: inherit;
 
-  &:hover:not(:disabled) { opacity: 0.92; }
+  &:hover:not(:disabled) { background: var(--ms-action-background-hover); }
   &:active:not(:disabled) { transform: scale(0.98); }
   &:disabled { opacity: 0.55; cursor: not-allowed; }
+}
+
+.default-btn:focus-visible,
+.role-card:focus-visible,
+.link-btn:focus-visible,
+.auth-link:focus-visible {
+  outline: 2px solid var(--ms-action-border-focus);
+  outline-offset: 2px;
 }
 
 /* ===========================
@@ -181,11 +280,12 @@
 .auth-bottom-text {
   text-align: center;
   font-size: 14px;
-  color: #6b7280;
+  color: var(--ms-text-medium);
 }
 
 .auth-link {
-  color: #6438c3;
+  display: inline;
+  color: var(--ms-action-text-weak);
   font-weight: 600;
   cursor: pointer;
   text-decoration: none;
@@ -196,22 +296,26 @@
 /* ===========================
    Responsive
    =========================== */
-@media (max-width: 900px) {
-  .auth-inner {
-    flex-direction: column;
-    gap: 24px;
-  }
-
-  .auth-image-col {
-    display: none;
+@media (max-width: 600px) {
+  .auth-area {
+    align-items: flex-start;
+    padding: 32px 16px 24px;
   }
 
   .auth-form-col {
-    padding: 28px 20px;
+    padding: 24px 20px;
+  }
+
+  .role-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .role-card {
+    min-height: 0;
   }
 
   .auth-form .form-row {
     grid-template-columns: 1fr;
+    gap: 0;
   }
 }
-  

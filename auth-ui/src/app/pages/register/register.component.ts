@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, computed, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
@@ -28,11 +28,18 @@ export class RegisterComponent {
   hideConfirmPassword = true;
   // Issue #240: kayıt formu anonim; Keycloak realm rol kataloğu (GET /api/auth/roles) artık yalnızca Admin'e açık.
   // Anonim kayıtta seçilebilen roller auth-api'nin register allowlist'i ile birebir aynı sabit küme.
-  readonly roles: readonly { value: string; viewValue: string }[] = [
-    { value: 'Student', viewValue: 'Öğrenci' },
-    { value: 'Teacher', viewValue: 'Öğretmen' },
-    { value: 'Parent', viewValue: 'Veli' },
+  readonly roles: readonly { value: string; viewValue: string; title: string; hint: string }[] = [
+    { value: 'Student', viewValue: 'Öğrenci', title: 'Öğrenciyim', hint: 'Test çöz, rozet kazan' },
+    { value: 'Teacher', viewValue: 'Öğretmen', title: 'Öğretmenim', hint: 'Test hazırla, ata' },
+    { value: 'Parent', viewValue: 'Veli', title: 'Veliyim', hint: 'Çocuğumu izle' },
   ];
+
+  /** Issue #850: kayıt önce rolü sorar (1 / 2), form o rolle açılır (2 / 2). */
+  readonly step = signal<'role' | 'form'>('role');
+  readonly selectedRole = signal<string | null>(null);
+  readonly selectedRoleTitle = computed(
+    () => this.roles.find((r) => r.value === this.selectedRole())?.viewValue ?? ''
+  );
 
   constructor() {
     this.registerForm = this.fb.group(
@@ -46,6 +53,19 @@ export class RegisterComponent {
       },
       { validator: this.passwordMatchValidator }
     );
+  }
+
+  selectRole(role: string): void {
+    this.selectedRole.set(role);
+    this.registerForm.controls['role'].setValue(role);
+  }
+
+  continueToForm(): void {
+    if (this.selectedRole()) this.step.set('form');
+  }
+
+  backToRole(): void {
+    this.step.set('role');
   }
 
   passwordMatchValidator(group: FormGroup) {

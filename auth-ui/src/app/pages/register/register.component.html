@@ -1,22 +1,53 @@
+<!-- Issue #850: giriş ekranıyla aynı koyu, markalı kabuk; kayıt rol seçimiyle başlar (1 / 2), form o role göre açılır (2 / 2). -->
 <div class="auth-area">
   <div class="auth-inner">
 
-    <div class="auth-image-col">
-      <img src="assets/images/register-illustration.svg" alt="Kayıt Ol">
+    <div class="auth-brand">
+      <span class="auth-brand__mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3 1 9l11 6 9-4.91V17h2V9L12 3z"/></svg>
+      </span>
+      <span class="auth-brand__name">Hedef Okul</span>
     </div>
 
     <div class="auth-form-col">
+      @if (step() === 'role') {
       <div class="auth-form-header">
-        <h3>Hesap Oluştur</h3>
-        <p>Hemen ücretsiz kaydol, öğrenmeye başla.</p>
+        <span class="auth-step">Kayıt · 1 / 2</span>
+        <h1>Hedef Okul'u kim olarak kullanacaksın?</h1>
+      </div>
+
+      <div class="role-cards" role="radiogroup" aria-label="Rol" data-testid="role-cards">
+        @for (role of roles; track role.value) {
+        <button type="button" class="role-card" role="radio" [attr.aria-checked]="selectedRole() === role.value"
+          [class.is-selected]="selectedRole() === role.value" [attr.data-role]="role.value" (click)="selectRole(role.value)">
+          <b>{{ role.title }}</b>
+          <span>{{ role.hint }}</span>
+        </button>
+        }
+      </div>
+
+      @if (selectedRole() === 'Student') {
+      <p class="auth-callout" role="note">Kayıttan sonra velinden onay istenir; velin onaylayınca tüm özellikler açılır.</p>
+      }
+
+      <div class="auth-submit">
+        <button type="button" class="default-btn" data-testid="role-continue" [disabled]="!selectedRole()"
+          (click)="continueToForm()">Devam</button>
+      </div>
+      } @else {
+      <div class="auth-form-header">
+        <span class="auth-step">Kayıt · 2 / 2</span>
+        <h1>{{ selectedRoleTitle() }} hesabı oluştur</h1>
+        <button type="button" class="link-btn" data-testid="role-change" (click)="backToRole()">Rolü değiştir</button>
       </div>
 
       <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="auth-form">
 
         <div class="form-row">
           <div class="form-group">
-            <label for="firstName">Ad *</label>
+            <label for="firstName">Ad</label>
             <input id="firstName" type="text" formControlName="firstName" placeholder="Adınız" class="form-control"
+              autocomplete="given-name"
               [class.is-invalid]="registerForm.controls['firstName'].invalid && registerForm.controls['firstName'].touched" />
             @if (registerForm.controls['firstName'].touched && registerForm.controls['firstName'].hasError('required'))
             {
@@ -28,8 +59,9 @@
           </div>
 
           <div class="form-group">
-            <label for="lastName">Soyad *</label>
+            <label for="lastName">Soyad</label>
             <input id="lastName" type="text" formControlName="lastName" placeholder="Soyadınız" class="form-control"
+              autocomplete="family-name"
               [class.is-invalid]="registerForm.controls['lastName'].invalid && registerForm.controls['lastName'].touched" />
             @if (registerForm.controls['lastName'].touched && registerForm.controls['lastName'].hasError('required')) {
             <span class="field-error">Soyad zorunludur.</span>
@@ -40,39 +72,24 @@
           </div>
         </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label for="email">E-posta *</label>
-            <input id="email" type="email" formControlName="email" placeholder="siz@ornek.com" class="form-control"
-              [class.is-invalid]="registerForm.controls['email'].invalid && registerForm.controls['email'].touched" />
-            @if (registerForm.controls['email'].touched && registerForm.controls['email'].hasError('required')) {
-            <span class="field-error">E-posta zorunludur.</span>
-            } @else if (registerForm.controls['email'].touched && registerForm.controls['email'].hasError('email')) {
-            <span class="field-error">Geçerli bir e-posta giriniz.</span>
-            }
-          </div>
-
-          <div class="form-group">
-            <label for="role">Rol *</label>
-            <select id="role" formControlName="role" class="form-control"
-              [class.is-invalid]="registerForm.controls['role'].invalid && registerForm.controls['role'].touched">
-              <option value="" disabled selected>Rol seçiniz</option>
-              @for (role of roles; track role.value) {
-              <option [value]="role.value">{{ role.viewValue }}</option>
-              }
-            </select>
-            @if (registerForm.controls['role'].touched && registerForm.controls['role'].hasError('required')) {
-            <span class="field-error">Rol seçimi zorunludur.</span>
-            }
-          </div>
+        <div class="form-group">
+          <label for="email">E-posta</label>
+          <input id="email" type="email" formControlName="email" placeholder="siz@ornek.com" class="form-control"
+            autocomplete="email"
+            [class.is-invalid]="registerForm.controls['email'].invalid && registerForm.controls['email'].touched" />
+          @if (registerForm.controls['email'].touched && registerForm.controls['email'].hasError('required')) {
+          <span class="field-error">E-posta zorunludur.</span>
+          } @else if (registerForm.controls['email'].touched && registerForm.controls['email'].hasError('email')) {
+          <span class="field-error">Geçerli bir e-posta giriniz.</span>
+          }
         </div>
 
         <div class="form-row">
           <div class="form-group">
-            <label for="password">Şifre *</label>
+            <label for="password">Şifre</label>
             <div class="input-with-icon">
               <input id="password" [type]="hidePassword ? 'password' : 'text'" formControlName="password"
-                placeholder="En az 6 karakter" class="form-control"
+                class="form-control" autocomplete="new-password" aria-describedby="password-rule"
                 [class.is-invalid]="registerForm.controls['password'].invalid && registerForm.controls['password'].touched" />
               <button type="button" class="toggle-pw" (click)="hidePassword = !hidePassword" tabindex="-1">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
@@ -88,19 +105,18 @@
                 </svg>
               </button>
             </div>
-            @if (registerForm.controls['password'].touched && registerForm.controls['password'].hasError('required')) {
-            <span class="field-error">Şifre zorunludur.</span>
-            } @else if (registerForm.controls['password'].touched &&
-            registerForm.controls['password'].hasError('minlength')) {
-            <span class="field-error">En az 6 karakter olmalıdır.</span>
-            }
+            <!-- Kural yazarken karşılanır (#850). -->
+            <span id="password-rule" class="field-rule" data-testid="password-rule"
+              [class.is-met]="(registerForm.controls['password'].value?.length ?? 0) >= 6">
+              En az 6 karakter @if ((registerForm.controls['password'].value?.length ?? 0) >= 6) { ✓ }
+            </span>
           </div>
 
           <div class="form-group">
-            <label for="confirmPassword">Şifre Tekrar *</label>
+            <label for="confirmPassword">Şifre tekrar</label>
             <div class="input-with-icon">
               <input id="confirmPassword" [type]="hideConfirmPassword ? 'password' : 'text'"
-                formControlName="confirmPassword" placeholder="Şifrenizi tekrar girin" class="form-control"
+                formControlName="confirmPassword" class="form-control" autocomplete="new-password"
                 [class.is-invalid]="registerForm.controls['confirmPassword'].invalid && registerForm.controls['confirmPassword'].touched" />
               <button type="button" class="toggle-pw" (click)="hideConfirmPassword = !hideConfirmPassword"
                 tabindex="-1">
@@ -131,20 +147,16 @@
             @if (isLoading) {
             Kaydediliyor...
             } @else {
-            Kayıt Ol
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="14" viewBox="0 0 18 14" fill="none">
-              <path opacity="0.5" d="M16.25 6.75V7.25H1.25V6.75H16.25Z" fill="white" stroke="white" />
-              <path d="M10.75 1L16.75 7L10.75 13" stroke="white" stroke-width="1.5" stroke-linecap="round"
-                stroke-linejoin="round" />
-            </svg>
+            Kayıt ol
             }
           </button>
         </div>
 
       </form>
+      }
 
       <div class="auth-bottom-text">
-        <span>Zaten hesabın var mı? <a (click)="navigateToLogin()" class="auth-link">Giriş Yap</a></span>
+        <span>Zaten hesabın var mı? <a (click)="navigateToLogin()" class="auth-link">Giriş yap</a></span>
       </div>
     </div>
 

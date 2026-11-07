@@ -90,6 +90,11 @@ export class CoachService {
     return this.http.get<StudentCoachGoal[]>('/api/exam/student/me/coach-goals').pipe(map((goals) => goals.map(decodeGoal)));
   }
 
+  /** Issue #893: öğrenci bu haftaki hedefini işaretler ya da işareti kaldırır. */
+  setMyGoalDone(id: number, done: boolean): Observable<StudentCoachGoal> {
+    return this.http.put<StudentCoachGoal>(`/api/exam/student/me/coach-goals/${id}/done`, { done }).pipe(map(decodeGoal));
+  }
+
   getChildSummary(studentId: number): Observable<ParentCoachSummary> {
     return this.http
       .get<ParentCoachSummary>(`/api/exam/parent/children/${studentId}/coach-summary`)

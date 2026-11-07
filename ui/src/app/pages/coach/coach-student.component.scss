@@ -1,10 +1,9 @@
+// Issue #893: koç listesinin sağ panelinde açılır; boşluğu liste sayfası verir. Kart ızgarası panel genişliğine bakar.
 .cs {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  max-width: 64rem;
-  margin: 0 auto;
-  padding: 16px var(--ms-page-gutter-mobile) 48px;
+  container-type: inline-size;
 
   h2 {
     margin: 0;
@@ -35,8 +34,50 @@
 
 .cs__tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
+}
+
+// Dört özet kart: geniş panelde tek satır, orta genişlikte 2×2 (üçlü ızgarada dördüncünün tek kalması yok).
+@container (min-width: 480px) {
+  .cs__tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (min-width: 900px) {
+  .cs__tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .cs__back {
+    display: none;
+  }
+
+  .cs__outcomes {
+    margin-left: auto;
+  }
+}
+
+.cs__goal-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  color: var(--ms-text-weak);
+  font-size: 12px;
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+
+  &--done {
+    color: var(--ms-success-text-medium);
+  }
 }
 
 .cs__tile,

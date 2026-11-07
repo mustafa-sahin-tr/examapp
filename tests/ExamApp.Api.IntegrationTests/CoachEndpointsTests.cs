@@ -158,6 +158,71 @@ public class CoachEndpointsTests(IntegrationApiFactory factory) : IntegrationTes
     }
 
     [Fact]
+    public async Task Student_marks_a_goal_done_and_the_coach_parent_and_list_see_it_issue893()
+    {
+        var seeded = await SeedAsync();
+        await SeedParentLinkAsync(ParentUser, StudentUser);
+        var author = await TeacherAsync(SchoolTeacherUser, seeded.SchoolId);
+        var goal = (await (await author.PostAsJsonAsync($"{Base(seeded.StudentId)}/goals", new SaveCoachGoalDto { Title = "20 soru" }))
+            .Content.ReadFromJsonAsync<CoachGoalDto>(Json))!;
+        var student = await ClientAsAsync(StudentUser, "Student", $"kc-{StudentUser}", "Student");
+
+        var listed = (await author.GetFromJsonAsync<List<CoachStudentDto>>("/api/teacher/coach/students", Json))!.Single(s => s.Id == seeded.StudentId);
+        listed.GoalCount.ShouldBe(1);
+        listed.GoalsDone.ShouldBe(0);
+        listed.LastActiveDay.ShouldBeNull();
+        listed.NeedsAttention.ShouldBeTrue();
+
+        var done = await student.PutAsJsonAsync($"/api/student/me/coach-goals/{goal.Id}/done", new SetCoachGoalDoneDto { Done = true });
+        done.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await done.Content.ReadFromJsonAsync<StudentCoachGoalDto>(Json))!.Done.ShouldBeTrue();
+        (await student.GetFromJsonAsync<List<StudentCoachGoalDto>>("/api/student/me/coach-goals", Json))!.Single().Done.ShouldBeTrue();
+        (await author.GetFromJsonAsync<List<CoachGoalDto>>($"{Base(seeded.StudentId)}/goals", Json))!.Single().CompletedAt.ShouldNotBeNull();
+        var parent = await ClientAsAsync(ParentUser, "Parent", $"kc-{ParentUser}", "Parent");
+        (await parent.GetFromJsonAsync<ParentCoachSummaryDto>($"/api/parent/children/{seeded.StudentId}/coach-summary", Json))!.Goals.Single().Done.ShouldBeTrue();
+
+        await WithDbAsync(async db =>
+        {
+            // Son etkinlik veli panelinin kaynaklarından: burada bugün başlatılmış bir test.
+            var gradeId = await db.Students.Where(s => s.Id == seeded.StudentId).Select(s => s.GradeId!.Value).SingleAsync();
+            var worksheet = new Worksheet { Name = "Bugün", Description = "", GradeId = gradeId };
+            db.Add(worksheet);
+            await db.SaveChangesAsync();
+            db.TestInstances.Add(new WorksheetInstance { StudentId = seeded.StudentId, WorksheetId = worksheet.Id, StartTime = DateTime.UtcNow, Status = WorksheetInstanceStatus.Started });
+            await db.SaveChangesAsync();
+        });
+        listed = (await author.GetFromJsonAsync<List<CoachStudentDto>>("/api/teacher/coach/students", Json))!.Single(s => s.Id == seeded.StudentId);
+        listed.GoalsDone.ShouldBe(1);
+        listed.LastActiveDay.ShouldBe(LocalToday);
+        listed.MistakeCount.ShouldBe(0);
+        listed.NeedsAttention.ShouldBeFalse();
+
+        (await student.PutAsJsonAsync($"/api/student/me/coach-goals/{goal.Id}/done", new SetCoachGoalDoneDto { Done = false })).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await author.GetFromJsonAsync<List<CoachGoalDto>>($"{Base(seeded.StudentId)}/goals", Json))!.Single().CompletedAt.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Student_cannot_mark_another_students_or_another_weeks_goal_issue893()
+    {
+        var seeded = await SeedAsync();
+        var author = await TeacherAsync(SchoolTeacherUser, seeded.SchoolId);
+        var next = (await (await author.PostAsJsonAsync($"{Base(seeded.StudentId)}/goals", new SaveCoachGoalDto { Title = "Gelecek", WeekStart = ThisWeek.AddDays(7) }))
+            .Content.ReadFromJsonAsync<CoachGoalDto>(Json))!;
+        var otherStudentsGoal = await WithDbAsync(async db =>
+        {
+            var g = new CoachWeeklyGoal { StudentId = seeded.UnverifiedStudentId, TeacherUserId = SchoolTeacherUser, WeekStart = ThisWeek, Title = "Başka", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+            db.Add(g);
+            await db.SaveChangesAsync();
+            return g.Id;
+        });
+        var student = await ClientAsAsync(StudentUser, "Student", $"kc-{StudentUser}", "Student");
+
+        (await student.PutAsJsonAsync($"/api/student/me/coach-goals/{next.Id}/done", new SetCoachGoalDoneDto { Done = true })).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await student.PutAsJsonAsync($"/api/student/me/coach-goals/{otherStudentsGoal}/done", new SetCoachGoalDoneDto { Done = true })).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        await WithDbAsync(async db => (await db.CoachWeeklyGoals.CountAsync(g => g.CompletedAt != null)).ShouldBe(0));
+    }
+
+    [Fact]
     public async Task Notes_are_private_to_the_teacher_who_wrote_them()
     {
         var seeded = await SeedAsync();

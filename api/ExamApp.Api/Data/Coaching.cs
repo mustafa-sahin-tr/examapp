@@ -27,6 +27,9 @@ public class CoachWeeklyGoal
 
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+
+    /// <summary>Issue #893: öğrencinin hedefi "yaptım" diye işaretlediği an (UTC); işaretlemediyse null.</summary>
+    public DateTime? CompletedAt { get; set; }
 }
 
 /// <summary>Issue #700: koçun sonraki ders için özel notu. Yalnız yazan öğretmen okur; öğrenci ve veli yanıtlarına girmez.</summary>

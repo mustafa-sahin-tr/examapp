@@ -1,6 +1,6 @@
 {
   "students": {
-    "title": "Coaching",
+    "title": "My students",
     "subtitle": "The week, goals, and your lesson notes for students at your school and students you tutor.",
     "search": "Search students",
     "relationship": {
@@ -12,7 +12,20 @@
     "emptyText": "Verified students at your school and students with an approved private lesson appear here.",
     "noMatch": "No students match your search.",
     "loadError": "Students could not be loaded.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "sortHint": "Students who need attention come first: inactive for 7 days, 10 or more unresolved mistakes, or no goal this week.",
+    "pick": "Pick a student; their week, goals and your lesson notes open here.",
+    "signals": {
+      "activeToday": "Active today",
+      "activeYesterday": "Active yesterday",
+      "activeDaysAgo": "Active {{days}} days ago",
+      "inactiveDays": "Inactive for {{days}} days",
+      "neverActive": "No activity yet",
+      "mistakes": "{{count}} mistakes",
+      "noGoals": "No goals this week",
+      "goals": "{{done}}/{{count}} goals",
+      "attention": "Needs attention"
+    }
   },
   "student": {
     "back": "Back to students",
@@ -58,7 +71,9 @@
     "delete": "Delete goal",
     "empty": "No goals for the selected week.",
     "limit": "A week can have at most {{max}} goals.",
-    "loadError": "Goals could not be loaded."
+    "loadError": "Goals could not be loaded.",
+    "studentDone": "Marked done by the student",
+    "studentNotDone": "Not marked by the student yet"
   },
   "notes": {
     "title": "My lesson notes",
@@ -87,7 +102,7 @@
   "card": {
     "self": {
       "title": "This week's goals",
-      "subtitle": "Goals your teacher set for this week"
+      "subtitle": "Goals your teacher set for this week; tick the ones you have done."
     },
     "child": {
       "title": "Weekly goals",
@@ -97,6 +112,8 @@
     },
     "loading": "Loading…",
     "loadError": "Goals could not be loaded.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "markError": "Could not save. Try again.",
+    "done": "Done"
   }
 }

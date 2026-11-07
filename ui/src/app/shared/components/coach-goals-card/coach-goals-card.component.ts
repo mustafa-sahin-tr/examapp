@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, injec
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
@@ -14,12 +15,12 @@ import { CoachService } from '../../../services/coach.service';
 /**
  * Issue #700: koçların bu haftaki hedefleri. `childId` yoksa öğrencinin kendisi: hedef yoksa ya da yüklenemezse kart
  * çizilmez (ana sayfa isteğe bağlı alanı). `childId` varsa velinin seçili çocuğu: "Planım" sayıları ve hedefler, öğretmen
- * kimliği ve notlar yok; 404'te kart gizlenir.
+ * kimliği ve notlar yok; 404'te kart gizlenir. Issue #893: öğrenci hedefi "yaptım" diye işaretler, veli yalnız görür.
  */
 @Component({
   selector: 'app-coach-goals-card',
   standalone: true,
-  imports: [MatButtonModule, MatCardModule, MatIconModule, MatProgressSpinnerModule, TranslocoDirective],
+  imports: [MatButtonModule, MatCardModule, MatCheckboxModule, MatIconModule, MatProgressSpinnerModule, TranslocoDirective],
   providers: [provideTranslocoScope('coach')],
   templateUrl: './coach-goals-card.component.html',
   styleUrl: './coach-goals-card.component.scss',
@@ -36,6 +37,9 @@ export class CoachGoalsCardComponent {
   protected readonly loading = signal(false);
   protected readonly error = signal(false);
   protected readonly hidden = signal(false);
+  /** İşareti kaydedilmekte olan hedefler. */
+  protected readonly saving = signal<ReadonlySet<number>>(new Set());
+  protected readonly markFailed = signal(false);
 
   protected readonly audience = computed(() => (this.childId() == null ? 'self' : 'child'));
 
@@ -62,6 +66,37 @@ export class CoachGoalsCardComponent {
 
   protected reload(): void {
     this.requests.next(this.childId());
+  }
+
+  /** İyimser: kutu hemen değişir, hata gelirse geri alınır. */
+  protected toggleDone(goal: StudentCoachGoal, done: boolean): void {
+    if (this.saving().has(goal.id)) return;
+    this.markFailed.set(false);
+    this.setDone(goal.id, done);
+    this.saving.update((ids) => new Set(ids).add(goal.id));
+    this.service
+      .setMyGoalDone(goal.id, done)
+      .pipe(
+        finalize(() =>
+          this.saving.update((ids) => {
+            const next = new Set(ids);
+            next.delete(goal.id);
+            return next;
+          }),
+        ),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (saved) => this.setDone(saved.id, saved.done),
+        error: () => {
+          this.setDone(goal.id, !done);
+          this.markFailed.set(true);
+        },
+      });
+  }
+
+  private setDone(id: number, done: boolean): void {
+    this.myGoals.update((goals) => goals.map((g) => (g.id === id ? { ...g, done } : g)));
   }
 
   private fetch(childId: number | null): Observable<unknown> {

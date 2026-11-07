@@ -58,3 +58,52 @@
   font-size: 0.8125rem;
   color: var(--ms-text-medium);
 }
+
+// Issue #893: öğrencinin onay kutusu; etiket çok satırlı olabilir (başlık + koç adı).
+.cg__item--check {
+  padding: 0.25rem 0;
+
+  ::ng-deep .mdc-form-field {
+    align-items: flex-start;
+  }
+
+  ::ng-deep .mdc-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    padding-top: 0.6rem;
+  }
+}
+
+.cg__item--done .cg__title {
+  color: var(--ms-text-medium);
+  text-decoration: line-through;
+}
+
+.cg__item--row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.cg__done {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8125rem;
+  color: var(--ms-success-text-medium);
+
+  mat-icon {
+    width: 1rem;
+    height: 1rem;
+    font-size: 1rem;
+  }
+}
+
+.cg__error {
+  margin: 0.5rem 0 0;
+  font-size: 0.875rem;
+  color: var(--ms-danger-text-weak);
+}

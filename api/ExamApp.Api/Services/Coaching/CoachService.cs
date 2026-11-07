@@ -53,6 +53,9 @@ public interface ICoachService
     Task<bool> DeleteNoteAsync(int teacherUserId, int studentId, int noteId, CancellationToken ct = default);
 
     Task<List<StudentCoachGoalDto>> ListGoalsForStudentAsync(int studentId, CancellationToken ct = default);
+    /// <summary>Issue #893: öğrenci bu haftaki hedefini "yaptım" diye işaretler ya da işareti kaldırır.</summary>
+    /// <returns>null: hedef bu öğrencinin bu haftaki hedefi değil.</returns>
+    Task<StudentCoachGoalDto?> SetGoalDoneAsync(int studentId, int goalId, bool done, CancellationToken ct = default);
 }
 
 public interface IParentCoachSummaryService
@@ -84,6 +87,10 @@ public sealed class CoachService(
     private const int WeakTopicWindowDays = 30;
     private const int WeakTopicMinQuestions = 5;
     private const decimal WeakTopicAccuracyPct = 70m;
+    // Issue #893: liste sinyalleri. Yanlış defteri öğrenci başına birkaç sorgu; çok kalabalık listede ilk N öğrenciye hesaplanır.
+    internal const int MaxMistakeSignalStudents = 60;
+    internal const int InactiveDays = 7;
+    internal const int ManyMistakes = 10;
 
     private static readonly TimeSpan NameLookupTimeout = TimeSpan.FromSeconds(3);
 
@@ -95,13 +102,97 @@ public sealed class CoachService(
         if (scope.SchoolId.HasValue)
             Merge(await students.GetStudentLookupsAsync(scope, ct), "School");
         Merge(await students.GetStudentLookupsAsync(SchoolScope.For(scope.UserId, null), ct), "PrivateLesson");
-        return result.Values.OrderBy(s => s.FullName, StringComparer.CurrentCulture).ThenBy(s => s.Id).ToList();
+        var list = result.Values.OrderBy(s => s.FullName, StringComparer.CurrentCulture).ThenBy(s => s.Id).ToList();
+        await FillSignalsAsync(scope.UserId, list, ct);
+        return list.OrderByDescending(s => s.NeedsAttention).ToList();
 
         void Merge(IEnumerable<StudentLookupDto> rows, string relationship)
         {
             foreach (var row in rows)
                 result.TryAdd(row.Id, new CoachStudentDto { Id = row.Id, FullName = row.FullName, GradeId = row.GradeId, Relationship = relationship });
         }
+    }
+
+    /// <summary>Issue #893: "kime bakmalıyım" sinyalleri; sıralama kararlı (ad sırası dikkat grubunun içinde korunur).</summary>
+    private async Task FillSignalsAsync(int teacherUserId, List<CoachStudentDto> list, CancellationToken ct)
+    {
+        if (list.Count == 0)
+            return;
+
+        var ids = list.Select(s => s.Id).ToList();
+        var lastActive = await LastActiveDaysAsync(ids, ct);
+
+        var week = CurrentWeek;
+        var goals = await db.CoachWeeklyGoals.AsNoTracking()
+            .Where(g => g.TeacherUserId == teacherUserId && g.WeekStart == week && ids.Contains(g.StudentId))
+            .GroupBy(g => g.StudentId)
+            .Select(g => new { StudentId = g.Key, Count = g.Count(), Done = g.Count(x => x.CompletedAt != null) })
+            .ToDictionaryAsync(x => x.StudentId, ct);
+
+        var profiles = await db.Students.AsNoTracking()
+            .Where(s => ids.Contains(s.Id))
+            .Select(s => new StudentProfileDto { Id = s.Id, GradeId = s.GradeId, SchoolId = s.SchoolVerifiedAt != null ? s.SchoolId : null })
+            .ToDictionaryAsync(s => s.Id, ct);
+
+        var today = calendar.Today;
+        var mistakeBudget = MaxMistakeSignalStudents;
+        foreach (var student in list)
+        {
+            student.LastActiveDay = lastActive.TryGetValue(student.Id, out var day) ? day : null;
+            if (goals.TryGetValue(student.Id, out var g))
+            {
+                student.GoalCount = g.Count;
+                student.GoalsDone = g.Done;
+            }
+
+            // Yanlış defteri sınıfı olmayan öğrencide kurulamaz (GetMistakesAsync de boş döner).
+            if (mistakeBudget > 0 && profiles.TryGetValue(student.Id, out var profile) && profile.GradeId.HasValue)
+            {
+                mistakeBudget--;
+                student.MistakeCount = (await practice.GetMistakesAsync(profile, null, null, ct)).TotalCount;
+            }
+
+            var inactive = student.LastActiveDay is null || student.LastActiveDay.Value.AddDays(InactiveDays) <= today;
+            student.NeedsAttention = inactive || student.MistakeCount >= ManyMistakes || student.GoalCount == 0;
+        }
+    }
+
+    /// <summary>
+    /// Son etkin yerel gün: veli panelinin "son etkinlik" kaynaklarıyla aynı (cevap, test başlatma / bitirme, pratik cevabı;
+    /// <see cref="ParentDashboardService"/>). Puan defteri yetmez: puan getirmeyen çalışma da etkinliktir.
+    /// </summary>
+    private async Task<Dictionary<int, DateOnly>> LastActiveDaysAsync(List<int> ids, CancellationToken ct)
+    {
+        var answers = await db.TestInstanceQuestions.AsNoTracking()
+            .Where(q => ids.Contains(q.WorksheetInstance.StudentId)
+                && (q.SelectedAnswerId != null || q.AnswerPayload != null) && q.UpdateTime != null)
+            .GroupBy(q => q.WorksheetInstance.StudentId)
+            .Select(g => new { StudentId = g.Key, At = g.Max(q => q.UpdateTime) })
+            .ToListAsync(ct);
+        var instances = await db.TestInstances.AsNoTracking()
+            .Where(ti => ids.Contains(ti.StudentId))
+            .GroupBy(ti => ti.StudentId)
+            .Select(g => new { StudentId = g.Key, Start = g.Max(ti => (DateTime?)ti.StartTime), End = g.Max(ti => ti.EndTime ?? ti.FirstCompletedAt) })
+            .ToListAsync(ct);
+        var practice = await db.PracticeSessionQuestions.AsNoTracking()
+            .Where(p => ids.Contains(p.PracticeSession.StudentId) && p.AnsweredAt != null)
+            .GroupBy(p => p.PracticeSession.StudentId)
+            .Select(g => new { StudentId = g.Key, At = g.Max(p => p.AnsweredAt) })
+            .ToListAsync(ct);
+
+        var latest = new Dictionary<int, DateTime>();
+        void Take(int studentId, DateTime? at)
+        {
+            if (at.HasValue && (!latest.TryGetValue(studentId, out var current) || at.Value > current))
+                latest[studentId] = at.Value;
+        }
+        foreach (var a in answers) Take(a.StudentId, a.At);
+        foreach (var i in instances) { Take(i.StudentId, i.Start); Take(i.StudentId, i.End); }
+        foreach (var p in practice) Take(p.StudentId, p.At);
+
+        return latest.ToDictionary(
+            x => x.Key,
+            x => DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(x.Value, DateTimeKind.Utc), calendar.TimeZone)));
     }
 
     public async Task<CoachOverviewDto> GetOverviewAsync(int teacherUserId, int studentId, CancellationToken ct = default)
@@ -140,7 +231,7 @@ public sealed class CoachService(
         return db.CoachWeeklyGoals.AsNoTracking()
             .Where(g => g.TeacherUserId == teacherUserId && g.StudentId == studentId && g.WeekStart == week)
             .OrderBy(g => g.Id)
-            .Select(g => new CoachGoalDto { Id = g.Id, WeekStart = g.WeekStart, Title = g.Title, UpdatedAt = g.UpdatedAt })
+            .Select(g => new CoachGoalDto { Id = g.Id, WeekStart = g.WeekStart, Title = g.Title, UpdatedAt = g.UpdatedAt, CompletedAt = g.CompletedAt })
             .ToListAsync(ct);
     }
 
@@ -238,13 +329,45 @@ public sealed class CoachService(
         var goals = await db.CoachWeeklyGoals.AsNoTracking()
             .Where(g => g.StudentId == studentId && g.WeekStart == week)
             .OrderBy(g => g.Id)
-            .Select(g => new { g.TeacherUserId, g.WeekStart, g.Title })
+            .Select(g => new { g.Id, g.TeacherUserId, g.WeekStart, g.Title, g.CompletedAt })
             .ToListAsync(ct);
         if (goals.Count == 0)
             return [];
 
         var names = await LookupNamesAsync(goals.Select(g => g.TeacherUserId).Distinct().ToList(), ct);
-        return goals.Select(g => new StudentCoachGoalDto { WeekStart = g.WeekStart, Title = g.Title, CoachName = names.GetValueOrDefault(g.TeacherUserId) }).ToList();
+        return goals.Select(g => new StudentCoachGoalDto
+        {
+            Id = g.Id,
+            WeekStart = g.WeekStart,
+            Title = g.Title,
+            CoachName = names.GetValueOrDefault(g.TeacherUserId),
+            Done = g.CompletedAt != null,
+        }).ToList();
+    }
+
+    public async Task<StudentCoachGoalDto?> SetGoalDoneAsync(int studentId, int goalId, bool done, CancellationToken ct = default)
+    {
+        // Yalnız bu haftanın hedefi: geçmiş hafta kapanmıştır, gelecek hafta öğrenciye görünmez.
+        var week = CurrentWeek;
+        var goal = await db.CoachWeeklyGoals.FirstOrDefaultAsync(g => g.Id == goalId && g.StudentId == studentId && g.WeekStart == week, ct);
+        if (goal is null)
+            return null;
+
+        if (done != (goal.CompletedAt != null))
+        {
+            goal.CompletedAt = done ? DateTime.UtcNow : null;
+            await db.SaveChangesAsync(ct);
+        }
+
+        var names = await LookupNamesAsync([goal.TeacherUserId], ct);
+        return new StudentCoachGoalDto
+        {
+            Id = goal.Id,
+            WeekStart = goal.WeekStart,
+            Title = goal.Title,
+            CoachName = names.GetValueOrDefault(goal.TeacherUserId),
+            Done = goal.CompletedAt != null,
+        };
     }
 
     /// <summary>Kaydetmeden önce temizlenir: yalnız etiketten oluşan metin boş sayılsın. Kayıtta <see cref="AppDbContext"/> yeniden temizler.</summary>
@@ -263,7 +386,7 @@ public sealed class CoachService(
         return title is not null && title.Contains('<') ? (null, CoachSaveError.MarkupNotAllowed) : (title, error);
     }
 
-    private static CoachGoalDto ToDto(CoachWeeklyGoal g) => new() { Id = g.Id, WeekStart = g.WeekStart, Title = g.Title, UpdatedAt = g.UpdatedAt };
+    private static CoachGoalDto ToDto(CoachWeeklyGoal g) => new() { Id = g.Id, WeekStart = g.WeekStart, Title = g.Title, UpdatedAt = g.UpdatedAt, CompletedAt = g.CompletedAt };
 
     private static CoachNoteDto ToDto(CoachNote n) => new() { Id = n.Id, Body = n.Body, CreatedAt = n.CreatedAt, UpdatedAt = n.UpdatedAt };
 
@@ -350,7 +473,7 @@ public sealed class ParentCoachSummaryService(
         var goals = await db.CoachWeeklyGoals.AsNoTracking()
             .Where(g => g.StudentId == grant.StudentId && g.WeekStart == plan.WeekStart)
             .OrderBy(g => g.Id)
-            .Select(g => new ParentCoachGoalDto { Title = g.Title })
+            .Select(g => new ParentCoachGoalDto { Title = g.Title, Done = g.CompletedAt != null })
             .ToListAsync(ct);
 
         return new ParentCoachSummaryDto { WeekStart = plan.WeekStart, PlannedCount = plan.Planned, CompletedCount = plan.Completed, Goals = goals };

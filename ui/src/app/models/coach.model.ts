@@ -9,6 +9,15 @@ export interface CoachStudent {
   fullName: string;
   gradeId: number | null;
   relationship: CoachRelationship;
+  /** Issue #893: son etkin gün (`yyyy-MM-dd`, sunucunun yerel takvimi); hiç yoksa null. */
+  lastActiveDay: string | null;
+  /** Çözülmemiş yanlış; kalabalık listede hesaplanmayanlar null. */
+  mistakeCount: number | null;
+  /** Bu haftanın bu koça ait hedefleri ve öğrencinin işaretledikleri. */
+  goalCount: number;
+  goalsDone: number;
+  /** Sunucu "dikkat isteyen önce" sıralar: 7+ gün etkinlik yok, 10+ yanlış ya da bu hafta hedef yok. */
+  needsAttention: boolean;
 }
 
 export interface CoachGoal {
@@ -17,6 +26,8 @@ export interface CoachGoal {
   weekStart: string;
   title: string;
   updatedAt: string;
+  /** Issue #893: öğrenci "yaptım" diye işaretlediyse an. */
+  completedAt: string | null;
 }
 
 export interface SaveCoachGoal {
@@ -53,9 +64,12 @@ export interface CoachOverview {
 }
 
 export interface StudentCoachGoal {
+  id: number;
   weekStart: string;
   title: string;
   coachName: string | null;
+  /** Issue #893: öğrencinin "yaptım" işareti. */
+  done: boolean;
 }
 
 /** Veli yanıtı: not ve öğretmen kimliği yok. */
@@ -63,8 +77,12 @@ export interface ParentCoachSummary {
   weekStart: string;
   plannedCount: number;
   completedCount: number;
-  goals: { title: string }[];
+  goals: { title: string; done: boolean }[];
 }
+
+/** Issue #893: sunucunun `CoachService.InactiveDays` / `ManyMistakes` eşikleri (satırdaki uyarı rengi). */
+export const COACH_INACTIVE_DAYS = 7;
+export const COACH_MANY_MISTAKES = 10;
 
 /** Sunucu sınırları (`CoachWeeklyGoal.MaxTitleLength`, `CoachNote.MaxBodyLength`, `CoachService.MaxGoalsPerWeek`). */
 export const COACH_GOAL_MAX_LENGTH = 300;

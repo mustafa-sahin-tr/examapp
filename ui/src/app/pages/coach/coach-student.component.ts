@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -39,6 +39,12 @@ export function addDays(isoDate: string, days: number): string {
   return date.toISOString().slice(0, 10);
 }
 
+export interface CoachGoalCounts {
+  studentId: number;
+  goalCount: number;
+  goalsDone: number;
+}
+
 /**
  * Issue #700: koçun öğrenci sayfası — haftanın özeti, haftalık hedefler (öğrenci ve veli görür) ve yalnız yazan öğretmenin
  * gördüğü ders notları. Hafta listesi sunucunun "bu hafta"sından türetilir (`plan.weekStart`), tarayıcı saatinden değil.
@@ -70,10 +76,13 @@ export class CoachStudentComponent implements OnInit {
   private readonly localeService = inject(LocaleService);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly studentId = Number(inject(ActivatedRoute).snapshot.paramMap.get('studentId'));
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+
+  /** Issue #893: iki panelde öğrenciler arasında geçişte komponent yeniden kullanılır; kimlik rotadan izlenir. */
+  readonly studentId = signal(0);
   /** Ad gezinme durumundan gelir; özet yüklenince sunucudaki ad geçer. */
-  private readonly navigationName: string | null =
-    (inject(Router).currentNavigation()?.extras.state?.['studentName'] as string | undefined) ?? null;
+  private readonly navigationName = signal<string | null>(null);
 
   readonly goalMaxLength = COACH_GOAL_MAX_LENGTH;
   readonly noteMaxLength = COACH_NOTE_MAX_LENGTH;
@@ -84,7 +93,7 @@ export class CoachStudentComponent implements OnInit {
   readonly loadFailed = signal(false);
   readonly overview = signal<CoachOverview | null>(null);
 
-  readonly studentName = computed(() => this.overview()?.fullName ?? this.navigationName);
+  readonly studentName = computed(() => this.overview()?.fullName ?? this.navigationName());
 
   readonly selectedWeek = signal<string | null>(null);
   readonly goals = signal<CoachGoal[]>([]);
@@ -119,6 +128,9 @@ export class CoachStudentComponent implements OnInit {
     });
   });
 
+  /** Issue #893: bu haftanın hedefleri değişince listedeki satır güncellensin (iki panel). */
+  readonly currentWeekGoalsChanged = output<CoachGoalCounts>();
+
   readonly goalLimitReached = computed(() => this.goals().length >= COACH_GOALS_PER_WEEK);
 
   private readonly number = computed(
@@ -129,18 +141,42 @@ export class CoachStudentComponent implements OnInit {
   );
 
   ngOnInit(): void {
-    this.load();
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      this.studentId.set(Number(params.get('studentId')));
+      this.navigationName.set((this.router.currentNavigation()?.extras.state?.['studentName'] as string | undefined) ?? null);
+      this.reset();
+      this.load();
+    });
+  }
+
+  /** Başka öğrenciye geçerken önceki öğrencinin özeti, hedefleri, notları ve taslakları kalmaz. */
+  private reset(): void {
+    this.overview.set(null);
+    this.selectedWeek.set(null);
+    this.goals.set([]);
+    this.goalsFailed.set(false);
+    this.goalDraft.set('');
+    this.editingGoalId.set(null);
+    this.goalErrorKey.set(null);
+    this.notes.set([]);
+    this.notesFailed.set(false);
+    this.noteDraft.set('');
+    this.editingNoteId.set(null);
+    this.noteErrorKey.set(null);
   }
 
   load(): void {
     this.loading.set(true);
     this.loadFailed.set(false);
     this.notFound.set(false);
+    const id = this.studentId();
     this.coach
-      .getOverview(this.studentId)
+      .getOverview(id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (overview) => {
+          // Yanıt gelmeden başka öğrenciye geçildiyse eski öğrencinin özeti yazılmaz.
+          if (this.studentId() !== id) return;
           this.overview.set(overview);
           this.selectedWeek.set(overview.plan.weekStart);
           this.goals.set(overview.goals);
@@ -148,6 +184,7 @@ export class CoachStudentComponent implements OnInit {
           this.loadNotes();
         },
         error: (error: unknown) => {
+          if (this.studentId() !== id) return;
           if (error instanceof HttpErrorResponse && error.status === 404) this.notFound.set(true);
           else this.loadFailed.set(true);
           this.loading.set(false);
@@ -170,7 +207,7 @@ export class CoachStudentComponent implements OnInit {
     this.goalsLoading.set(true);
     this.goalsFailed.set(false);
     this.coach
-      .listGoals(this.studentId, week)
+      .listGoals(this.studentId(), week)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (goals) => {
@@ -195,11 +232,12 @@ export class CoachStudentComponent implements OnInit {
     this.goalSaving.set(true);
     this.goalErrorKey.set(null);
     this.coach
-      .addGoal(this.studentId, { title, weekStart })
+      .addGoal(this.studentId(), { title, weekStart })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (goal) => {
           if (goal.weekStart === this.selectedWeek()) this.goals.update((goals) => [...goals, goal]);
+          this.notifyGoalCounts();
           this.goalDraft.set('');
           this.goalSaving.set(false);
         },
@@ -219,7 +257,7 @@ export class CoachStudentComponent implements OnInit {
     this.goalSaving.set(true);
     this.goalErrorKey.set(null);
     this.coach
-      .updateGoal(this.studentId, goal.id, title)
+      .updateGoal(this.studentId(), goal.id, title)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (saved) => {
@@ -234,10 +272,13 @@ export class CoachStudentComponent implements OnInit {
   deleteGoal(goal: CoachGoal): void {
     this.goalErrorKey.set(null);
     this.coach
-      .deleteGoal(this.studentId, goal.id)
+      .deleteGoal(this.studentId(), goal.id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => this.goals.update((goals) => goals.filter((g) => g.id !== goal.id)),
+        next: () => {
+          this.goals.update((goals) => goals.filter((g) => g.id !== goal.id));
+          this.notifyGoalCounts();
+        },
         error: () => this.goalErrorKey.set('generic'),
       });
   }
@@ -248,7 +289,7 @@ export class CoachStudentComponent implements OnInit {
     this.noteSaving.set(true);
     this.noteErrorKey.set(null);
     this.coach
-      .addNote(this.studentId, body)
+      .addNote(this.studentId(), body)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (note) => {
@@ -272,7 +313,7 @@ export class CoachStudentComponent implements OnInit {
     this.noteSaving.set(true);
     this.noteErrorKey.set(null);
     this.coach
-      .updateNote(this.studentId, note.id, body)
+      .updateNote(this.studentId(), note.id, body)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (saved) => {
@@ -305,7 +346,7 @@ export class CoachStudentComponent implements OnInit {
   private deleteNote(note: CoachNote): void {
     this.noteErrorKey.set(null);
     this.coach
-      .deleteNote(this.studentId, note.id)
+      .deleteNote(this.studentId(), note.id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => this.notes.update((notes) => notes.filter((n) => n.id !== note.id)),
@@ -315,13 +356,29 @@ export class CoachStudentComponent implements OnInit {
 
   private loadNotes(): void {
     this.notesFailed.set(false);
+    const id = this.studentId();
     this.coach
-      .listNotes(this.studentId)
+      .listNotes(id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (notes) => this.notes.set(notes),
-        error: () => this.notesFailed.set(true),
+        next: (notes) => {
+          if (this.studentId() === id) this.notes.set(notes);
+        },
+        error: () => {
+          if (this.studentId() === id) this.notesFailed.set(true);
+        },
       });
+  }
+
+  /** Yalnız bu haftanın listesi gösteriliyorsa: gelecek haftaya eklenen hedef satırdaki sayıyı değiştirmez. */
+  private notifyGoalCounts(): void {
+    if (this.selectedWeek() !== this.overview()?.plan.weekStart) return;
+    const goals = this.goals();
+    this.currentWeekGoalsChanged.emit({
+      studentId: this.studentId(),
+      goalCount: goals.length,
+      goalsDone: goals.filter((g) => g.completedAt).length,
+    });
   }
 
   private goalFailed(error: unknown): void {

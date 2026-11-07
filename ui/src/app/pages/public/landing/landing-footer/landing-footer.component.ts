@@ -7,6 +7,7 @@ import {
   LANDING_CONTACT_EMAIL,
   LANDING_LOGIN_URL,
   LANDING_REGISTER_STUDENT_URL,
+  LANDING_REGISTER_PARENT_URL,
   LANDING_REGISTER_TEACHER_URL,
 } from '../landing-content';
 
@@ -22,6 +23,7 @@ export class LandingFooterComponent {
   readonly loginUrl = LANDING_LOGIN_URL;
   readonly registerStudentUrl = LANDING_REGISTER_STUDENT_URL;
   readonly registerTeacherUrl = LANDING_REGISTER_TEACHER_URL;
+  readonly registerParentUrl = LANDING_REGISTER_PARENT_URL;
   readonly year = new Date().getFullYear();
   readonly platformLinks = [
     { id: 'ozellikler', key: 'features' },

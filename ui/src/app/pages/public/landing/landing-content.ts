@@ -29,6 +29,8 @@ export const LANDING_CONTACT_EMAIL = 'admin@hedefokul.com';
 export const LANDING_LOGIN_URL = '/app/login';
 export const LANDING_REGISTER_STUDENT_URL = '/app/login?intent=student';
 export const LANDING_REGISTER_TEACHER_URL = '/app/login?intent=teacher';
+/** Veli kendi hesabını açar, sonra çocuğuna hesap açar ya da çocuğunun hesabını bağlar (#438, #440). */
+export const LANDING_REGISTER_PARENT_URL = '/app/login?intent=parent';
 
 export const LANDING_NAV_LINKS = [
   { id: 'ozellikler', key: 'features', icon: 'widgets' },
@@ -44,8 +46,8 @@ export const LANDING_ROLES = [
   { key: 'student', icon: 'backpack', tone: 'r1', ctaUrl: LANDING_REGISTER_STUDENT_URL, primary: true },
   { key: 'teacher', icon: 'co_present', tone: 'r2', ctaUrl: LANDING_REGISTER_TEACHER_URL, primary: false },
   { key: 'tutor', icon: 'video_chat', tone: 'r3', ctaUrl: LANDING_REGISTER_TEACHER_URL, primary: false },
-  // #880: veli kendini kaydetmez, öğrencinin davetiyle hesap açar; kart girişe götürür. Menüdeki "Veliler" ayrı bölüme gider.
-  { key: 'parent', icon: 'family_restroom', tone: 'r4', ctaUrl: LANDING_LOGIN_URL, primary: false },
+  // Menüdeki "Veliler" ayrı bölüme gider.
+  { key: 'parent', icon: 'family_restroom', tone: 'r4', ctaUrl: LANDING_REGISTER_PARENT_URL, primary: false },
 ] as const;
 
 export const LANDING_FEATURES = [

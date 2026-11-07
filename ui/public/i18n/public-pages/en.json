@@ -205,7 +205,6 @@
       "aytBiology": "Biology"
     },
     "invalid": "Correct and wrong must be whole numbers, and together they cannot exceed {{ count }} questions.",
-    "fixInput": "Fix the marked rows to see your score.",
     "resultTitle": "Estimated score (using {{ year }} data)",
     "scores": {
       "lgs": "Central exam score",
@@ -252,6 +251,10 @@
       "standardDeviation": "Standard deviation",
       "weightsTitle": "Weights",
       "sourcesTitle": "Sources"
-    }
+    },
+    "placeholder": "0–{{ count }}",
+    "max": "At most {{ count }}",
+    "fixRows": "Fix to see your score: {{ names }}.",
+    "totalNet": "Total net"
   }
 }

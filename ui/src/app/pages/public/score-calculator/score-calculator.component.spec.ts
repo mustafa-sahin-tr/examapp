@@ -79,6 +79,20 @@ describe('ScoreCalculatorComponent (#694)', () => {
     expect(el.querySelector('[data-testid="score-lgs"]')).toBeNull();
   });
 
+  it('#896: boxes hint the range, the bad row says its limit, and the result names the row to fix', async () => {
+    expect(el.querySelector<HTMLInputElement>('[data-testid="turkish-correct"]')!.placeholder).toBe('0–20');
+    await type('mathematics-correct', '15');
+    await type('mathematics-wrong', '7');
+
+    expect(el.querySelector('[data-testid="mathematics-correct"]')!.getAttribute('aria-invalid')).toBe('true');
+    expect(text('mathematics-net')).toBe('En çok 20');
+    expect(text('calc-fix')).toBe('Puanı görmek için düzelt: Matematik.');
+
+    await type('mathematics-wrong', '3');
+    expect(el.querySelector('[data-testid="calc-fix"]')).toBeNull();
+    expect(text('calc-total-net')).toContain('14,00');
+  });
+
   it('switchingExam_ShowsYksScoreTypes', async () => {
     fixture.componentInstance.selectExam('yks');
     fixture.detectChanges();

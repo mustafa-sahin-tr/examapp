@@ -205,7 +205,6 @@
       "aytBiology": "Biyoloji"
     },
     "invalid": "Doğru ve yanlış tam sayı olmalı, toplamları {{ count }} soruyu geçemez.",
-    "fixInput": "Puanı görmek için hatalı satırları düzelt.",
     "resultTitle": "Tahmini puan ({{ year }} verisiyle)",
     "scores": {
       "lgs": "Merkezî sınav puanı",
@@ -252,6 +251,10 @@
       "standardDeviation": "Standart sapma",
       "weightsTitle": "Ağırlıklar",
       "sourcesTitle": "Kaynaklar"
-    }
+    },
+    "placeholder": "0–{{ count }}",
+    "max": "En çok {{ count }}",
+    "fixRows": "Puanı görmek için düzelt: {{ names }}.",
+    "totalNet": "Toplam net"
   }
 }

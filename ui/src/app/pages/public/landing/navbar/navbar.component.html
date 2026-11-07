@@ -21,6 +21,7 @@
         <mat-menu #registerMenu="matMenu">
           <a mat-menu-item [href]="registerStudentUrl">{{ t('nav.registerStudent') }}</a>
           <a mat-menu-item [href]="registerTeacherUrl">{{ t('nav.registerTeacher') }}</a>
+          <a mat-menu-item [href]="registerParentUrl">{{ t('nav.registerParent') }}</a>
         </mat-menu>
         <button mat-icon-button type="button" class="menu-btn" [attr.aria-label]="t(menuOpen() ? 'nav.closeMenu' : 'nav.openMenu')"
           [attr.aria-expanded]="menuOpen()" aria-controls="landing-mobile-menu" (click)="toggleMenu()">

@@ -21,6 +21,7 @@
     "register": "Kayıt ol",
     "registerStudent": "Öğrenci",
     "registerTeacher": "Öğretmen",
+    "registerParent": "Veli",
     "registerStudentLong": "Öğrenci olarak kaydol",
     "registerTeacherLong": "Öğretmen olarak başvur",
     "openMenu": "Menüyü aç",
@@ -96,8 +97,8 @@
       "item2": "Kazanılan rozetler ve seri",
       "item3": "Özel ders taleplerini onaylama",
       "item4": "Birden fazla çocuk tek hesapta",
-      "cta": "Veli girişi",
-      "note": "Veli hesabı öğrencinin davetiyle açılır."
+      "cta": "Veli olarak kaydol",
+      "note": "Kendi hesabını açarsın; sonra çocuğuna hesap açar ya da onun hesabını bağlarsın."
     }
   },
   "features": {
@@ -149,8 +150,8 @@
     "item1": "Haftalık çalışma süresi ve test sonuçları",
     "item2": "Kazanılan rozetler ve çalışma serisi",
     "item3": "Özel ders taleplerini onaylama",
-    "cta": "Veli girişi",
-    "footnote": "Veli hesabı kendi başına açılmaz; öğrencinin davetiyle açılır.",
+    "cta": "Veli olarak kaydol",
+    "footnote": "Kayıttan sonra çocuğuna hesap açabilir ya da çocuğunun hesabını bağlayabilirsin.",
     "imageAlt": "Çizim: veli paneli; çocuğun haftalık çalışma grafiği, son test sonucu, yeni rozet ve onay bekleyen özel ders talebi."
   },
   "motivation": {
@@ -238,7 +239,7 @@
     "title": "Sık sorulan sorular",
     "items": {
       "pricing": { "question": "{{ brand.name }} ücretli mi?", "answer": "Kayıt ve kullanım ücretsizdir. Özel ders öğretmenlerinin profilinde yazan saatlik ücret bilgi amaçlıdır; ödeme platform üzerinden alınmaz." },
-      "parent": { "question": "Veliler için bir panel var mı?", "answer": "Evet. Veli kendi hesabıyla çocuğunun çalışmalarını izler ve özel ders taleplerini onaylar. Öğrenci kayıt olurken velisini davet eder." },
+      "parent": { "question": "Veliler için bir panel var mı?", "answer": "Evet. Veli kendi hesabıyla çocuğunun çalışmalarını izler ve özel ders taleplerini onaylar. Veli kendi hesabını açıp çocuğuna hesap açabilir; öğrenci de kayıt olurken velisini davet edebilir." },
       "teacherApproval": { "question": "Öğretmen hesabım neden hemen açılmıyor?", "answer": "Öğretmen ve özel ders öğretmeni başvuruları platform yöneticisi tarafından incelenir. Onaya kadar başvuru durumu ekranını görürsün; onaydan sonra öğretmen menüsünün tamamı açılır." },
       "detection": { "question": "Soru tespiti nasıl çalışıyor?", "answer": "Soru ekleme ekranına taranmış kitap sayfalarını yüklersin. Otomatik Algıla, bir görüntü işleme modeliyle soru, şık ve pasaj bölgelerini işaretler. Bölgeleri düzeltip kaydedersin; kaydedilen sorular için yapay zekâ ders, konu ve zorluk önerir." },
       "access": { "question": "Öğrenciler testlere nasıl ulaşır?", "answer": "Öğretmenin atadığı testler öğrencinin Testler sayfasına ve ana sayfasına düşer. Sınıfına açık testler Keşfet bölümünde listelenir." },
@@ -266,6 +267,7 @@
       "login": "Giriş yap",
       "registerStudent": "Öğrenci kaydı",
       "registerTeacher": "Öğretmen başvurusu",
+      "registerParent": "Veli kaydı",
       "scoreCalculator": "Puan hesaplama",
       "terms": "Kullanım Koşulları",
       "privacy": "Gizlilik Politikası"

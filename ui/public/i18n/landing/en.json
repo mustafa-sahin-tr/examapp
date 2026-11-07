@@ -21,6 +21,7 @@
     "register": "Sign up",
     "registerStudent": "Student",
     "registerTeacher": "Teacher",
+    "registerParent": "Parent",
     "registerStudentLong": "Sign up as a student",
     "registerTeacherLong": "Apply as a teacher",
     "openMenu": "Open menu",
@@ -96,8 +97,8 @@
       "item2": "Badges earned and streak",
       "item3": "Approve private lesson requests",
       "item4": "Several children in one account",
-      "cta": "Parent sign-in",
-      "note": "A parent account opens with the student's invitation."
+      "cta": "Sign up as a parent",
+      "note": "Open your own account, then create one for your child or link your child's account."
     }
   },
   "features": {
@@ -149,8 +150,8 @@
     "item1": "Weekly study time and test results",
     "item2": "Badges earned and study streak",
     "item3": "Approve private lesson requests",
-    "cta": "Parent sign-in",
-    "footnote": "A parent account cannot be opened on its own; it opens with the student's invitation.",
+    "cta": "Sign up as a parent",
+    "footnote": "After signing up you can create an account for your child or link your child's account.",
     "imageAlt": "Illustration: the parent panel with the child's weekly study chart, latest test result, a new badge and a private lesson request waiting for approval."
   },
   "motivation": {
@@ -238,7 +239,7 @@
     "title": "Frequently asked questions",
     "items": {
       "pricing": { "question": "Does {{ brand.name }} cost anything?", "answer": "Signing up and using it is free. The hourly fee on tutor profiles is for information only; payment is not taken on the platform." },
-      "parent": { "question": "Is there a panel for parents?", "answer": "Yes. Parents follow their child's work with their own account and approve private lesson requests. A student invites a parent when signing up." },
+      "parent": { "question": "Is there a panel for parents?", "answer": "Yes. Parents follow their child's work with their own account and approve private lesson requests. A parent can open their own account and create one for their child; a student can also invite a parent when signing up." },
       "teacherApproval": { "question": "Why doesn't my teacher account open right away?", "answer": "Teacher and tutor applications are reviewed by a platform administrator. Until approval you see the application status screen; after approval the full teacher menu opens." },
       "detection": { "question": "How does question detection work?", "answer": "You upload scanned book pages on the question screen. Auto Detect marks question, option and passage regions with an image processing model. You correct the regions and save; AI then suggests a subject, topic and difficulty for the saved questions." },
       "access": { "question": "How do students reach tests?", "answer": "Tests assigned by a teacher appear on the student's Tests page and home page. Tests open to their grade are listed under Explore." },
@@ -266,6 +267,7 @@
       "login": "Log in",
       "registerStudent": "Student sign-up",
       "registerTeacher": "Teacher application",
+      "registerParent": "Parent sign-up",
       "scoreCalculator": "Score calculator",
       "terms": "Terms of Use",
       "privacy": "Privacy Policy"

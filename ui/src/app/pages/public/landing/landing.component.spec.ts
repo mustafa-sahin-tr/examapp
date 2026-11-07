@@ -63,17 +63,19 @@ describe('LandingComponent (#395)', () => {
     expect(el.textContent).not.toContain('Temsili kullanıcı yorumlarıdır.');
   });
 
-  it('#880: parents have a role card, a menu link and sign in (no parent registration)', () => {
+  it('parents have a role card and a menu link, and sign up with the parent intent', () => {
     const card = Array.from(el.querySelectorAll('article.role')).find((a) => a.querySelector('h3')?.textContent?.trim() === 'Veli')!;
-    expect(card.querySelector('a')?.getAttribute('href')).toBe('/app/login');
+    expect(card.querySelector('a')?.getAttribute('href')).toBe('/app/login?intent=parent');
+    expect(card.querySelector('a')?.textContent).toContain('Veli olarak kaydol');
     expect(Array.from(el.querySelectorAll('.nav-links a')).map((a) => a.textContent?.trim())).toContain('Veliler');
   });
 
-  it('parentsMenuLink_GoesToItsOwnSection_WithSignInAndInvitationNote', () => {
+  it('parentsMenuLink_GoesToItsOwnSection_WithSignUpAndNextStepsNote', () => {
     const section = el.querySelector('section#veliler')!;
     expect(section.querySelector('h2')?.textContent).toContain('Çocuğunun çalışmasını');
-    expect(section.querySelector('a')?.getAttribute('href')).toBe('/app/login');
-    expect(section.querySelector('.footnote')?.textContent).toContain('öğrencinin davetiyle');
+    expect(section.querySelector('a')?.getAttribute('href')).toBe('/app/login?intent=parent');
+    expect(section.querySelector('.footnote')?.textContent).toContain('çocuğuna hesap açabilir');
+    expect(el.textContent).not.toContain('davetiyle açılır');
     expect(section.querySelector('img')?.getAttribute('src')).toBe('assets/images/landing/parent.svg');
   });
 
@@ -88,9 +90,9 @@ describe('LandingComponent (#395)', () => {
     }
   });
 
-  it('links_OfferNoParentRegistration_AndPointToWorkingTargets', () => {
+  it('links_PointToWorkingTargets', () => {
     const hrefs = Array.from(el.querySelectorAll('a')).map((a) => a.getAttribute('href') ?? '');
-    expect(hrefs.some((href) => href.includes('intent=parent') || href.includes('role=parent'))).toBe(false);
+    expect(hrefs).toContain('/app/login?intent=parent');
     expect(hrefs).toContain('/app/login?intent=student');
     expect(hrefs).toContain('/app/login?intent=teacher');
     expect(hrefs).toContain('/app/login');

@@ -11,6 +11,7 @@ import {
   LANDING_LOGIN_URL,
   LANDING_NAV_LINKS,
   LANDING_REGISTER_STUDENT_URL,
+  LANDING_REGISTER_PARENT_URL,
   LANDING_REGISTER_TEACHER_URL,
 } from '../landing-content';
 
@@ -36,6 +37,7 @@ export class NavbarComponent {
   readonly loginUrl = LANDING_LOGIN_URL;
   readonly registerStudentUrl = LANDING_REGISTER_STUDENT_URL;
   readonly registerTeacherUrl = LANDING_REGISTER_TEACHER_URL;
+  readonly registerParentUrl = LANDING_REGISTER_PARENT_URL;
   readonly menuOpen = signal(false);
 
   toggleMenu(): void {

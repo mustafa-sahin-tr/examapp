@@ -62,6 +62,9 @@ public class ParentInvitationSummaryDto
 
     public DateTime ExpiresAt { get; set; }
 
+    /// <summary>Issue #892: davetin bu adrese son gönderildiği an (UTC) — "3 gün önce gönderildi".</summary>
+    public DateTime LastSentAt { get; set; }
+
     /// <summary>Davet süresi doldu → öğrenci panelinde "Davet süresi doldu, yeniden gönder".</summary>
     public bool Expired { get; set; }
 

@@ -1,7 +1,7 @@
 <section class="prq" *transloco="let t; prefix: 'parentRequirement'">
   <header class="prq__head">
-    <h1>{{ invitation() ? t('page.editTitle') : t('page.title') }}</h1>
-    <p>{{ t('page.intro') }}</p>
+    <h1>{{ mode() === 'AwaitingActivation' ? t('page.awaitingTitle') : invitation() ? t('page.editTitle') : t('page.title') }}</h1>
+    <p>{{ mode() === 'AwaitingActivation' ? t('page.awaitingIntro') : t('page.intro') }}</p>
   </header>
 
   @if (loading() && !status()) {
@@ -64,11 +64,60 @@
           </div>
         }
         @case ('AwaitingActivation') {
+          <!-- #892: "düzelt" yerine davetin durumu: ne zaman gönderildi, kaç gün kaldı, neler kapalı; iki eylem. -->
           @if (invitation(); as inv) {
-            <div class="prq__notice" role="status" data-test="prq-awaiting">
-              <mat-icon aria-hidden="true">mark_email_read</mat-icon>
-              <span>{{ t('page.awaiting', { email: inv.maskedEmail }) }}</span>
-            </div>
+            <article class="prq__status" data-test="prq-awaiting">
+              <dl class="prq__facts">
+                <div>
+                  <dt>{{ t('status.sent') }}</dt>
+                  <dd data-test="prq-sent">{{ sentText(t, inv) }}</dd>
+                </div>
+                <div>
+                  <dt>{{ t('status.link') }}</dt>
+                  <dd data-test="prq-link" [class.prq__fact--danger]="inv.expired">
+                    {{ inv.expired ? t('status.linkExpired') : t('status.linkValid', { date: formatDate(inv.expiresAt) }) }}
+                  </dd>
+                </div>
+                <div>
+                  <dt>{{ t('status.left') }}</dt>
+                  <dd data-test="prq-days-left">{{ t('status.daysLeft', { days: s.daysLeft ?? 0 }) }}</dd>
+                </div>
+                <div>
+                  <dt>{{ t('status.closed') }}</dt>
+                  <dd data-test="prq-closed">{{ t('status.closedList') }}</dd>
+                </div>
+              </dl>
+              <p class="prq__meanwhile">{{ t('locked.meanwhile') }}</p>
+
+              @if (resendError(); as message) {
+                <p class="prq__error" role="alert" data-test="prq-resend-error">{{ message }}</p>
+              }
+              <div class="prq__actions">
+                @if (inv.canResend) {
+                  <button mat-flat-button type="button" data-test="prq-resend" [disabled]="resending()" (click)="resend()">
+                    <mat-icon>forward_to_inbox</mat-icon>
+                    {{ resending() ? t('card.resending') : t('status.resend') }}
+                  </button>
+                }
+                <button mat-stroked-button type="button" data-test="prq-other-address" [attr.aria-expanded]="otherAddress()"
+                  (click)="otherAddress.set(!otherAddress())">
+                  <mat-icon>alternate_email</mat-icon>
+                  {{ t('status.otherAddress') }}
+                </button>
+              </div>
+              @if (!inv.canResend) {
+                <p class="prq__hint" data-test="prq-next-resend">
+                  {{ inv.resendsLeft <= 0 ? t('card.noResendsLeft') : t('card.nextResendAt', { date: formatDate(inv.nextResendAt) }) }}
+                </p>
+              }
+              <details class="prq__preview" data-test="prq-preview">
+                <summary>{{ t('status.previewTitle') }}</summary>
+                <p>{{ t('status.previewBody', { date: formatDate(inv.expiresAt) }) }}</p>
+              </details>
+              @if (otherAddress()) {
+                <p class="prq__hint" data-test="prq-other-warning">{{ t('status.otherWarning') }}</p>
+              }
+            </article>
           }
         }
       }

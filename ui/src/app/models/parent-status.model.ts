@@ -19,6 +19,8 @@ export interface ParentInvitationSummary {
   maskedEmail: string;
   /** UTC. */
   expiresAt: string;
+  /** #892: bu adrese son gönderim (UTC); eski sunucuda yok. */
+  lastSentAt?: string | null;
   expired: boolean;
   /** Şu an yeniden gönderilebilir mi (24 saatte 1, toplam 5). */
   canResend: boolean;

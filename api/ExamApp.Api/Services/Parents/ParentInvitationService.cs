@@ -1139,6 +1139,7 @@ public sealed class ParentInvitationService : IParentInvitationService
             ParentName = inv.FullName,
             MaskedEmail = EmailMask.ApplyWithDomain(inv.Email),
             ExpiresAt = inv.ExpiresAt,
+            LastSentAt = inv.LastSentToEmail,
             Expired = inv.ExpiresAt <= now,
             CanResend = decision.Allowed,
             NextResendAt = decision.NextResendAt,

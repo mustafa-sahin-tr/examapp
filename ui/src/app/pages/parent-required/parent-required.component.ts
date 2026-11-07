@@ -79,10 +79,12 @@ export class ParentRequiredComponent implements OnInit {
   readonly status = this.store.status;
   readonly mode = this.store.mode;
   readonly invitation = this.store.invitation;
-  /** Form gösterilsin mi: velisi bağlı (`Ok`) öğrencide gerek yok. */
+  /** #892: davet beklerken form kapalı; "Başka bir adres gir" ile açılır. */
+  readonly otherAddress = signal(false);
+  /** Form gösterilsin mi: velisi bağlı (`Ok`) öğrencide gerek yok; davet beklerken yalnız istenince. */
   readonly showForm = computed(() => {
     const mode = this.mode();
-    return mode === 'Grace' || mode === 'Expired' || mode === 'AwaitingActivation';
+    return mode === 'Grace' || mode === 'Expired' || (mode === 'AwaitingActivation' && this.otherAddress());
   });
   /** Farklı e-posta kilidi (1 saatte 3 deneme) hâlâ sürüyorsa bitiş metni. */
   readonly emailLockedUntil = computed(() => {
@@ -165,6 +167,7 @@ export class ParentRequiredComponent implements OnInit {
     if (this.resending()) {
       return;
     }
+    const wasExpired = this.store.expired();
     this.resending.set(true);
     this.resendError.set(null);
     this.service
@@ -176,7 +179,8 @@ export class ParentRequiredComponent implements OnInit {
       .subscribe({
         next: () => {
           this.snackBar.open(this.t('parentRequirement.card.resent'), this.t('common.close'), { duration: 4000 });
-          if (!this.store.expired()) {
+          // #892: davet beklerken ekranda kalınır (durum kartı güncellenir); süresi dolmuştan açılınca ana sayfa.
+          if (wasExpired && !this.store.expired()) {
             void this.router.navigateByUrl(PARENT_REQUIRED_DONE_URL);
           }
         },
@@ -194,6 +198,16 @@ export class ParentRequiredComponent implements OnInit {
     if (name && !this.form.controls.parentFullName.value) {
       this.form.controls.parentFullName.setValue(name);
     }
+  }
+
+  /** #892: "a***@g***.com · 3 gün önce" (gönderim anı yoksa yalnız adres). */
+  protected sentText(t: (key: string, params?: Record<string, unknown>) => string, inv: { maskedEmail: string; lastSentAt?: string | null }): string {
+    const sent = parseServerDate(inv.lastSentAt);
+    if (!sent) return inv.maskedEmail;
+    const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const days = Math.round((startOfDay(new Date()) - startOfDay(sent)) / 86_400_000);
+    const when = new Intl.RelativeTimeFormat(this.locale(), { numeric: 'auto' }).format(-Math.max(0, days), 'day');
+    return t('status.sentTo', { email: inv.maskedEmail, when });
   }
 
   protected formatDate(iso: string | null | undefined): string {

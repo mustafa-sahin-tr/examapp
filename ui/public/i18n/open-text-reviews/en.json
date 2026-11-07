@@ -54,5 +54,21 @@
     "forbidden": "You are not allowed to review this answer; the list was refreshed."
   },
   "imageAltPlain": "Item image",
-  "lockedByOther": "Another teacher reviewed this; you cannot change this review."
+  "lockedByOther": "Another teacher reviewed this; you cannot change this review.",
+  "queueAria": "Answers to review",
+  "shortcuts": "Shortcuts: 1-2-3 evaluate · J/K next/previous · Ctrl+Enter save",
+  "phrases": {
+    "sufficient": [
+      "Great, you understood the topic well.",
+      "You explained your idea clearly and in order."
+    ],
+    "partial": [
+      "Your idea is right; explain a little more with an example.",
+      "Good start; complete the missing point."
+    ],
+    "insufficient": [
+      "Read the instructions once more and rewrite your answer.",
+      "Look at the sample answer and fill in what is missing."
+    ]
+  }
 }

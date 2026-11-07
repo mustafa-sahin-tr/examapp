@@ -39,11 +39,39 @@
       <span>{{ t('state.empty.' + status()) }}</span>
     </div>
   } @else {
-    <ul class="otq__list">
-      @for (item of items(); track item.instanceQuestionId) {
+    <!-- #864: iki panel — solda kuyruk, sağda seçili cevap; kaydedince sıradakine geçer. -->
+    <div class="otq__layout">
+      <nav class="otq__queue" [attr.aria-label]="t('queueAria')">
+        <ul class="otq__rows">
+          @for (item of items(); track item.instanceQuestionId) {
+            @let rowDraft = draftOf(item);
+            <li>
+              <button type="button" class="otq__row" data-testid="otq-row" [attr.data-id]="item.instanceQuestionId"
+                [class.is-active]="selected()?.instanceQuestionId === item.instanceQuestionId"
+                [attr.aria-current]="selected()?.instanceQuestionId === item.instanceQuestionId ? 'true' : null"
+                (click)="select(item)">
+                <span class="otq__row-main">
+                  <span class="otq__row-student">{{ item.studentNumber || t('unknownStudent') }}</span>
+                  <span class="otq__row-activity">{{ itemLabel(item) ? t('itemOf', { name: item.worksheetName, label: itemLabel(item) }) : item.worksheetName }}</span>
+                </span>
+                <span class="otq__row-side">
+                  @if (rowDraft.evaluation) {
+                    <span class="otq__dot" [attr.data-evaluation]="rowDraft.evaluation" [attr.title]="t('evaluation.' + rowDraft.evaluation)"></span>
+                  }
+                  <span class="otq__date">{{ formatDate(item.answeredAt) }}</span>
+                </span>
+              </button>
+            </li>
+          }
+        </ul>
+        <mat-paginator class="otq__paginator" [length]="totalCount()" [pageIndex]="pageIndex()" [pageSize]="pageSize()"
+          [pageSizeOptions]="[10, 20, 50]" (page)="onPage($event)" [attr.aria-label]="t('paginatorAria')"></mat-paginator>
+      </nav>
+
+      @if (selected(); as item) {
         @let draft = draftOf(item);
         @let label = itemLabel(item);
-        <li class="otq__card" data-testid="otq-item" [attr.data-id]="item.instanceQuestionId" [attr.data-status]="item.status">
+        <article class="otq__card otq__detail" data-testid="otq-item" [attr.data-id]="item.instanceQuestionId" [attr.data-status]="item.status">
           <div class="otq__meta">
             <span class="otq__student"><mat-icon aria-hidden="true">person</mat-icon>{{ item.studentNumber || t('unknownStudent') }}</span>
             @if (item.gradeName) {
@@ -53,7 +81,7 @@
             <span class="otq__date">{{ formatDate(item.answeredAt) }}</span>
           </div>
 
-          <div class="otq__body">
+          <div class="otq__body" [class.otq__body--with-question]="item.questionImageUrl || item.questionText">
             @if (item.questionImageUrl) {
               <img class="otq__image" [src]="item.questionImageUrl" [alt]="label ? t('imageAlt', { label: label }) : t('imageAltPlain')"
                 loading="lazy" [appStorageImageRetry]="imageRefresh" />
@@ -108,19 +136,30 @@
               <span class="otq__label" [id]="'otq-eval-' + item.instanceQuestionId">{{ t('evaluate') }}</span>
               <mat-button-toggle-group class="otq__eval" [value]="draft.evaluation" (change)="setEvaluation(item, $event.value)"
                 [attr.aria-labelledby]="'otq-eval-' + item.instanceQuestionId" [disabled]="!canEdit(item) || savingId() === item.instanceQuestionId">
-                @for (ev of evaluations; track ev) {
-                  <mat-button-toggle [value]="ev" [attr.data-evaluation]="ev">{{ t('evaluation.' + ev) }}</mat-button-toggle>
+                @for (ev of evaluations; track ev; let i = $index) {
+                  <mat-button-toggle [value]="ev" [attr.data-evaluation]="ev">
+                    <kbd class="otq__key" aria-hidden="true">{{ i + 1 }}</kbd>{{ t('evaluation.' + ev) }}
+                  </mat-button-toggle>
                 }
               </mat-button-toggle-group>
-              <mat-form-field class="otq__feedback" appearance="outline" subscriptSizing="dynamic">
+              <mat-form-field class="otq__feedback" appearance="outline" subscriptSizing="dynamic" floatLabel="always">
                 <mat-label>{{ t('feedback') }}</mat-label>
                 <textarea matInput rows="3" data-testid="otq-feedback" [attr.maxlength]="limits.maxFeedbackLength"
                   [value]="draft.feedback" [placeholder]="t('feedbackPlaceholder')" [readonly]="!canEdit(item)"
                   (input)="setFeedback(item, $event)"></textarea>
                 <mat-hint align="end">{{ draft.feedback.length }} / {{ limits.maxFeedbackLength }}</mat-hint>
               </mat-form-field>
+              @if (canEdit(item) && draft.evaluation) {
+                <!-- #864: hazır geri bildirim cümleleri (seçili değerlendirmeye göre); tıklayınca metne eklenir. -->
+                <div class="otq__phrases" data-testid="otq-phrases">
+                  @for (phrase of phrasesFor(draft.evaluation); track phrase) {
+                    <button mat-stroked-button type="button" class="otq__phrase" (click)="addPhrase(item, phrase)">{{ phrase }}</button>
+                  }
+                </div>
+              }
               @if (canEdit(item)) {
               <div class="otq__actions">
+                <span class="otq__shortcuts">{{ t('shortcuts') }}</span>
                 <button mat-flat-button type="submit" class="otq__btn" data-testid="otq-save" [disabled]="!canSave(item)">
                   @if (savingId() === item.instanceQuestionId) {
                     <mat-spinner diameter="18" aria-hidden="true"></mat-spinner>
@@ -133,11 +172,8 @@
               }
             </form>
           </div>
-        </li>
+        </article>
       }
-    </ul>
-
-    <mat-paginator class="otq__paginator" [length]="totalCount()" [pageIndex]="pageIndex()" [pageSize]="pageSize()"
-      [pageSizeOptions]="[10, 20, 50]" (page)="onPage($event)" [attr.aria-label]="t('paginatorAria')"></mat-paginator>
+    </div>
   }
 </section>

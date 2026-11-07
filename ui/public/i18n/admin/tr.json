@@ -4,7 +4,6 @@
     "tabs": {
       "taxonomy": "Taksonomi",
       "classifierCache": "Sınıflandırma Cache",
-      "teacherApplications": "Öğretmen Başvuruları",
       "schools": "Okullar"
     }
   },
@@ -126,7 +125,8 @@
       "gradesLoadFailed": "Sınıflar yüklenemedi",
       "actionFailed": "İşlem başarısız",
       "close": "Kapat"
-    }
+    },
+    "breadcrumbAria": "Seçili yol"
   },
   "schools": {
     "pageTitle": "Okul Yönetimi",

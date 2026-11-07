@@ -6,7 +6,6 @@ import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { TaxonomyManagerComponent } from '../taxonomy-manager/taxonomy-manager.component';
 import { SchoolManagerComponent } from '../school-manager/school-manager.component';
 import { ClassifierCacheComponent } from '../classifier-cache/classifier-cache.component';
-import { TeacherApprovalsComponent } from '../teacher-approvals/teacher-approvals.component';
 import { hasSchoolListFilterParams } from '../school-manager/school-list-filter';
 
 /** Yönetim ekranlarının ortak Transloco scope'u: `public/i18n/admin/<lang>.json` (issue #183). */
@@ -16,7 +15,8 @@ const ADMIN_SCOPE = 'admin';
  * Sekme sırası — şablon bu diziden üretilir, bu yüzden bir sekmenin index'i her zaman
  * `ADMIN_HOME_TABS.indexOf(...)` ile doğru bulunur (sabit sayı yok).
  */
-export const ADMIN_HOME_TABS = ['taxonomy', 'schools', 'classifierCache', 'teacherApplications'] as const;
+// #853: "Öğretmen Başvuruları" sekmesi kalktı — sol menüde kendi sayfası var (/admin/teacher-approvals).
+export const ADMIN_HOME_TABS = ['taxonomy', 'schools', 'classifierCache'] as const;
 export type AdminHomeTab = (typeof ADMIN_HOME_TABS)[number];
 
 @Component({
@@ -44,9 +44,6 @@ export type AdminHomeTab = (typeof ADMIN_HOME_TABS)[number];
                 }
                 @case ('classifierCache') {
                   <app-classifier-cache></app-classifier-cache>
-                }
-                @case ('teacherApplications') {
-                  <app-teacher-approvals></app-teacher-approvals>
                 }
               }
             </div>
@@ -90,7 +87,6 @@ export type AdminHomeTab = (typeof ADMIN_HOME_TABS)[number];
     TaxonomyManagerComponent,
     SchoolManagerComponent,
     ClassifierCacheComponent,
-    TeacherApprovalsComponent,
     TranslocoDirective,
   ],
 })

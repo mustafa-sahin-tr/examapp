@@ -266,6 +266,19 @@
     border-color: var(--ms-border);
   }
 
+  .row-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    padding: 4px 0;
+
+    .name {
+      flex: none;
+    }
+  }
+
   .meta {
     flex-shrink: 0;
     font-size: 11px;
@@ -404,5 +417,28 @@
     button {
       width: 100%;
     }
+  }
+}
+
+// #853: seçili yol
+.taxonomy-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ms-text-medium);
+
+  mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    color: var(--ms-text-weak);
+  }
+
+  [aria-current] {
+    color: var(--ms-text-strong);
   }
 }

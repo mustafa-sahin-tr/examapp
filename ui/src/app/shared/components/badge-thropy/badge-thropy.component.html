@@ -7,14 +7,29 @@
       </div>
     }
     @if (!isLoading() && !loadError() && badges().length) {
-      <span class="ms-badge-summary-chip" data-testid="badge-earned-summary">
-        {{ t('shared.badgeThropy.earnedSummary', { earned: earnedCount(), total: badges().length }) }}
-      </span>
+      <div class="ms-badge-header-side">
+        <span class="ms-badge-summary-chip" data-testid="badge-earned-summary">
+          {{ t('shared.badgeThropy.earnedSummary', { earned: earnedCount(), total: badges().length }) }}
+        </span>
+        <!-- #889: durum açıklaması rozetlerin üstünde değil, "?" içinde. -->
+        <button
+          mat-icon-button
+          type="button"
+          class="ms-badge-help"
+          data-testid="badge-legend-toggle"
+          [attr.aria-label]="t('shared.badgeThropy.legendLabel')"
+          [attr.aria-expanded]="legendOpen()"
+          aria-controls="badge-legend"
+          (click)="legendOpen.set(!legendOpen())"
+        >
+          <mat-icon>help_outline</mat-icon>
+        </button>
+      </div>
     }
   </header>
 
-  @if (!isLoading() && !loadError() && badges().length) {
-    <ul class="ms-badge-legend" [attr.aria-label]="t('shared.badgeThropy.legendLabel')">
+  @if (legendOpen() && !isLoading() && !loadError() && badges().length) {
+    <ul id="badge-legend" class="ms-badge-legend" [attr.aria-label]="t('shared.badgeThropy.legendLabel')">
       @for (entry of legend; track entry.state) {
         <li class="ms-badge-legend-item">
           <app-badge-medallion [state]="entry.state" icon="military_tech" [size]="40" />
@@ -37,45 +52,136 @@
   } @else if (!badgePaths().length && !standaloneBadges().length) {
     <div class="ms-badge-empty">{{ t('shared.badgeThropy.empty') }}</div>
   } @else {
+    <!-- #889: en motive edici bilgi önce — tamamlanmaya en yakın üç rozet. -->
+    @if (nearlyBadges().length) {
+      <section class="ms-badge-nearly" data-testid="badge-nearly" aria-labelledby="badge-nearly-title">
+        <h3 id="badge-nearly-title" class="ms-badge-section-title">{{ t('shared.badgeThropy.nearlyTitle') }}</h3>
+        <ul class="ms-badge-nearly-list">
+          @for (badge of nearlyBadges(); track badge.id) {
+            <li>
+              <button
+                type="button"
+                class="ms-badge-nearly-card"
+                [attr.data-state]="badge.state"
+                [class.ms-badge-selected]="selectedSource() === 'top' && badge.id === selectedBadge()?.id"
+                [attr.aria-label]="ariaLabel(t, badge)"
+                [attr.aria-expanded]="selectedSource() === 'top' && badge.id === selectedBadge()?.id"
+                [attr.aria-controls]="selectedSource() === 'top' && badge.id === selectedBadge()?.id ? 'badge-top-detail' : null"
+                (click)="selectBadge(badge, 'top')"
+              >
+                <app-badge-medallion
+                  [icon]="badge.icon"
+                  [iconUrl]="badge.iconUrl"
+                  [state]="badge.state"
+                  [size]="72"
+                  [progressPercent]="badge.progressPercent"
+                />
+                <span class="ms-badge-nearly-text" aria-hidden="true">
+                  <span class="ms-badge-nearly-count">{{ badge.completedLabel }}/{{ badge.totalLabel }}</span>
+                  <bdi class="ms-badge-nearly-name" dir="auto">{{ badge.name }}</bdi>
+                  <span class="ms-badge-nearly-left">{{ t('shared.badgeThropy.remaining', { remaining: badge.remainingLabel }) }}</span>
+                </span>
+              </button>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+
+    @if (earnedBadges().length) {
+      <section class="ms-badge-earned" data-testid="badge-earned" aria-labelledby="badge-earned-title">
+        <h3 id="badge-earned-title" class="ms-badge-section-title">
+          {{ t('shared.badgeThropy.earnedTitle') }} <span class="ms-badge-section-count">{{ earnedBadges().length }}</span>
+        </h3>
+        <ul class="ms-badge-earned-list">
+          @for (badge of earnedBadges(); track badge.id) {
+            <li>
+              <button
+                type="button"
+                class="ms-badge-earned-item"
+                [attr.data-state]="badge.state"
+                [class.ms-badge-selected]="selectedSource() === 'top' && badge.id === selectedBadge()?.id"
+                [attr.aria-label]="ariaLabel(t, badge)"
+                [attr.aria-expanded]="selectedSource() === 'top' && badge.id === selectedBadge()?.id"
+                [attr.aria-controls]="selectedSource() === 'top' && badge.id === selectedBadge()?.id ? 'badge-top-detail' : null"
+                (click)="selectBadge(badge, 'top')"
+              >
+                <app-badge-medallion [icon]="badge.icon" [iconUrl]="badge.iconUrl" [state]="badge.state" [size]="48" />
+                <bdi class="ms-badge-name" dir="auto" aria-hidden="true">{{ badge.name }}</bdi>
+                @if (badge.state === 'new') {
+                  <span class="ms-badge-new" aria-hidden="true">{{ t('shared.badgeMedallion.state.new') }}</span>
+                }
+              </button>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+
+    @if (selectedSource() === 'top') {
+      @if (selectedBadge(); as selected) {
+        <app-badge-detail id="badge-top-detail" [badge]="selected" />
+      }
+    }
+
     @if (badgePaths().length) {
-      <section class="ms-badge-paths">
+      <section class="ms-badge-paths" aria-labelledby="badge-paths-title">
+        <h3 id="badge-paths-title" class="ms-badge-section-title">{{ t('shared.badgeThropy.pathsTitle') }}</h3>
         @for (path of badgePaths(); track path.key) {
-          <article class="ms-badge-path">
-            <header class="ms-badge-path-header">
-              <div class="ms-badge-path-info">
-                <h3>{{ path.name }}</h3>
-                <span class="ms-badge-path-progress">{{
-                  t('shared.badgeThropy.pathEarned', { completed: path.completedCount, total: path.badges.length })
-                }}</span>
+          @let open = expandedPaths().has(path.key);
+          @let next = nextInPath(path);
+          <article class="ms-badge-path" [class.ms-badge-path--open]="open">
+            <button
+              type="button"
+              class="ms-badge-path-header"
+              [attr.data-path]="path.key"
+              [attr.aria-expanded]="open"
+              [attr.aria-controls]="'badge-path-' + path.key"
+              (click)="togglePath(path.key)"
+            >
+              <span class="ms-badge-path-info">
+                <span class="ms-badge-path-name">{{ path.name }}</span>
+                <span class="ms-badge-path-progress">
+                  {{ t('shared.badgeThropy.pathEarned', { completed: path.completedCount, total: path.badges.length }) }}
+                  @if (next) {
+                    · {{ t('shared.badgeThropy.pathNext', { name: next.name }) }}
+                  } @else {
+                    · {{ t('shared.badgeThropy.pathDone') }}
+                  }
+                </span>
+              </span>
+              <mat-icon class="ms-badge-path-chevron" aria-hidden="true">expand_more</mat-icon>
+            </button>
+            @if (open) {
+              <div class="ms-badge-path-body" [id]="'badge-path-' + path.key">
+                <app-badge-path
+                  [items]="path.badges"
+                  [maxPerRow]="6"
+                  [selectedId]="selectedSource() === 'path' ? (selectedBadge()?.id ?? null) : null"
+                  (badgeSelected)="onPathBadgeSelected($event)"
+                ></app-badge-path>
               </div>
-              <span class="ms-badge-path-percent">%{{ path.completionPercent }}</span>
-            </header>
-            <app-badge-path
-              [items]="path.badges"
-              [maxPerRow]="6"
-              [selectedId]="selectedBadge()?.id ?? null"
-              (badgeSelected)="onPathBadgeSelected($event)"
-            ></app-badge-path>
+            }
           </article>
         }
       </section>
     }
 
-    @if (standaloneBadges().length) {
+    @if (pendingStandalone().length) {
       <section class="ms-badge-standalone">
         <h3 class="ms-badge-standalone-title">{{ t('shared.badgeThropy.standaloneTitle') }}</h3>
         <ul class="ms-badge-list">
-          @for (badge of standaloneBadges(); track badge.id) {
+          @for (badge of pendingStandalone(); track badge.id) {
             <li>
               <button
                 type="button"
                 class="ms-badge-item"
                 [attr.data-state]="badge.state"
-                [class.ms-badge-selected]="badge.id === selectedBadge()?.id"
+                [class.ms-badge-selected]="selectedSource() === 'standalone' && badge.id === selectedBadge()?.id"
                 [attr.aria-label]="ariaLabel(t, badge)"
-                [attr.aria-expanded]="badge.id === selectedBadge()?.id"
-                [attr.aria-controls]="badge.id === selectedBadge()?.id ? 'badge-standalone-detail' : null"
-                (click)="selectBadge(badge)"
+                [attr.aria-expanded]="selectedSource() === 'standalone' && badge.id === selectedBadge()?.id"
+                [attr.aria-controls]="selectedSource() === 'standalone' && badge.id === selectedBadge()?.id ? 'badge-standalone-detail' : null"
+                (click)="selectBadge(badge, 'standalone')"
               >
                 <app-badge-medallion
                   [icon]="badge.icon"
@@ -91,8 +197,8 @@
           }
         </ul>
 
-        @if (selectedBadge(); as selected) {
-          @if (!selected.pathKey) {
+        @if (selectedSource() === 'standalone') {
+          @if (selectedBadge(); as selected) {
             <app-badge-detail id="badge-standalone-detail" [badge]="selected" />
           }
         }

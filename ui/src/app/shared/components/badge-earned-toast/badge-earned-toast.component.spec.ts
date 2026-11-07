@@ -77,7 +77,7 @@ describe('BadgeEarnedToastComponent (issue #149)', () => {
 
         expect(snackBarRef.dismissWithAction).toHaveBeenCalled();
         expect(router.navigateByUrl).toHaveBeenCalledWith(BADGE_TOAST_ROUTE);
-        expect(BADGE_TOAST_ROUTE).toBe('/certificates');
+        expect(BADGE_TOAST_ROUTE).toBe('/badges');
     });
 
     it('CloseButton_HasAccessibleNameAndDismisses', () => {

@@ -155,10 +155,16 @@
       "loading": "Rozetler yükleniyor...",
       "error": "Rozet bilgisi alınırken bir hata oluştu.",
       "empty": "Henüz kazanılmış veya takip edilen bir rozet yok.",
-      "standaloneTitle": "Tekil Rozetler",
-      "earnedSummary": "{{earned}} / {{total}} kazanıldı",
+      "standaloneTitle": "Diğer rozetler",
+      "earnedSummary": "{{earned}} rozet kazandın · {{total}} rozet var",
       "legendLabel": "Rozet durumları",
-      "pathEarned": "{{completed}} / {{total}} kazanıldı"
+      "pathEarned": "{{completed}} / {{total}} kazanıldı",
+      "nearlyTitle": "Neredeyse",
+      "remaining": "{{remaining}} kaldı",
+      "earnedTitle": "Kazandıkların",
+      "pathsTitle": "Yollar",
+      "pathNext": "sıradaki: {{name}}",
+      "pathDone": "hepsi kazanıldı"
     },
     "bookingSlotDialog": {
       "title": "{{teacher}} · Randevu Al",

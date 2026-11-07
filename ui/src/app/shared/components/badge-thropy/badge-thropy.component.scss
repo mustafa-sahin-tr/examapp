@@ -56,23 +56,23 @@
   color: var(--ms-text-weak);
 }
 
-// Başlıksız modda (showHeading=false) da özet çipi sağda kalsın.
-.ms-badge-summary-chip {
+// Başlıksız modda (showHeading=false) da özet çipi ve "?" sağda kalsın.
+.ms-badge-header-side {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
   margin-left: auto;
 }
 
-.ms-badge-summary-chip,
-.ms-badge-path-progress,
-.ms-badge-path-percent {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.3rem 0.85rem;
-  border-radius: 999px;
-  font-size: 0.85rem;
+.ms-badge-help {
+  color: var(--ms-text-medium);
+}
+
+.ms-badge-summary-chip {
+  font-size: 0.9rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  background: var(--ms-action-background-weak);
-  color: var(--ms-action-text);
+  color: var(--ms-text-medium);
 }
 
 .ms-badge-legend {
@@ -92,15 +92,152 @@
   color: var(--ms-text-medium);
 }
 
+.ms-badge-section-title {
+  margin: 0 0 0.75rem;
+  // Global h3 dolgusu kartlarla hizayı bozar.
+  padding: 0;
+  font-family: var(--mainFontFamily);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ms-text-strong);
+}
+
+.ms-badge-section-count {
+  margin-left: 0.25rem;
+  font-weight: 600;
+  color: var(--ms-text-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+// ── #889: Neredeyse ──────────────────────────────────────────────────────
+.ms-badge-nearly-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ms-badge-nearly-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  height: 100%;
+  padding: 1rem 1.25rem;
+  box-sizing: border-box;
+  border-radius: 1rem;
+  border: 2px solid var(--ms-border);
+  background: var(--ms-surface-medium);
+  color: var(--ms-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--ms-action-border);
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--ms-action-border-focus);
+    outline-offset: 2px;
+  }
+
+  &.ms-badge-selected {
+    border-color: var(--ms-action-border-focus);
+  }
+
+  app-badge-medallion {
+    flex: none;
+  }
+}
+
+.ms-badge-nearly-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.ms-badge-nearly-count {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--ms-text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.ms-badge-nearly-name {
+  font-family: var(--mainFontFamily);
+  font-weight: 600;
+  color: var(--ms-text-strong);
+}
+
+.ms-badge-nearly-left {
+  font-size: 0.85rem;
+  color: var(--ms-text-medium);
+}
+
+// ── #889: Kazandıkların ──────────────────────────────────────────────────
+.ms-badge-earned-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ms-badge-earned-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 56px;
+  padding: 0.4rem 1rem 0.4rem 0.5rem;
+  border-radius: 999px;
+  border: 2px solid var(--ms-action-border);
+  background: var(--ms-action-background-weak);
+  color: var(--ms-text);
+  font: inherit;
+  cursor: pointer;
+
+  &[data-state='new'] {
+    border-color: var(--ms-action-border-focus);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--ms-action-border-focus) 25%, transparent);
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--ms-action-border-focus);
+    outline-offset: 2px;
+  }
+
+  &.ms-badge-selected {
+    border-color: var(--ms-action-border-focus);
+  }
+}
+
+.ms-badge-new {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--ms-action-background);
+  color: var(--ms-action-text);
+}
+
+// ── #889: Yollar, kapalı başlıklar ───────────────────────────────────────
 .ms-badge-paths {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 0.75rem;
+
+  .ms-badge-section-title {
+    margin-bottom: 0;
+  }
 }
 
 .ms-badge-path {
-  padding: 1.25rem;
-  border-radius: 1.25rem;
+  border-radius: 1rem;
   background: var(--ms-surface-medium);
   border: 1px solid var(--ms-border);
 }
@@ -110,22 +247,55 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1.25rem;
+  width: 100%;
+  min-height: 56px;
+  padding: 0.75rem 1.25rem;
+  border: none;
+  border-radius: 1rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 3px solid var(--ms-action-border-focus);
+    outline-offset: 2px;
+  }
 }
 
 .ms-badge-path-info {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: 0.25rem 0.75rem;
+  min-width: 0;
 }
 
-.ms-badge-path-header h3 {
-  margin: 0;
+.ms-badge-path-name {
   font-family: var(--mainFontFamily);
   font-size: 1rem;
   font-weight: 600;
   color: var(--ms-text-strong);
+}
+
+.ms-badge-path-progress {
+  font-size: 0.85rem;
+  color: var(--ms-text-medium);
+}
+
+.ms-badge-path-chevron {
+  flex: none;
+  color: var(--ms-text-medium);
+  transition: transform 150ms ease;
+}
+
+.ms-badge-path--open .ms-badge-path-chevron {
+  transform: rotate(180deg);
+}
+
+.ms-badge-path-body {
+  padding: 0 1.25rem 1.25rem;
 }
 
 .ms-badge-standalone {
@@ -216,7 +386,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ms-badge-item {
+  .ms-badge-item,
+  .ms-badge-path-chevron {
     transition: none;
   }
 
@@ -230,13 +401,17 @@
     padding: 1.25rem;
   }
 
-  .ms-badge-path-percent {
-    display: none;
+  .ms-badge-nearly-list {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
 @media (max-width: 640px) {
-  .ms-badge-path {
+  .ms-badge-path-header {
     padding: 0.75rem;
+  }
+
+  .ms-badge-path-body {
+    padding: 0 0.5rem 0.75rem;
   }
 }

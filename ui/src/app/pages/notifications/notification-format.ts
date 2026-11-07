@@ -91,7 +91,7 @@ export interface NotificationPresentation {
 }
 
 /** Rozet bildirimine tıklanınca gidilen öğrencinin rozet/ilerleme sayfası (`BadgeThropyComponent`). */
-export const BADGE_PROGRESS_ROUTE = '/certificates';
+export const BADGE_PROGRESS_ROUTE = '/badges';
 
 /** Issue #298: öğrencinin randevu listesi (`StudentBookingsComponent`, route `my-bookings`). */
 export const STUDENT_BOOKINGS_ROUTE = '/my-bookings';

@@ -190,7 +190,7 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
         expect(status[0].route).toBe('/teacher-approval-pending');
         // Rolsüz (herkese açık) öğeler kalır; baştaki/sondaki ayırıcılar temizlenir.
         // Issue #713: rozet sayfası artık yalnız öğrencinin menüsünde.
-        expect(routesShown).not.toContain('/certificates');
+        expect(routesShown).not.toContain('/badges');
         // Issue #373: /student-profile yalnız öğrenciye; #417: onay bekleyen öğretmen de Ayarlar'a (/settings) ulaşır.
         expect(routesShown).not.toContain('/student-profile');
         expect(routesShown).toContain('/settings');
@@ -1053,7 +1053,7 @@ describe('EnhancedLayoutComponent profile menu (issue #375, #846)', () => {
         items[0].click();
         expect(navigateSpy).toHaveBeenCalledWith(['/student-profile'], {});
         items[1].click();
-        expect(navigateSpy).toHaveBeenCalledWith(['/certificates'], {});
+        expect(navigateSpy).toHaveBeenCalledWith(['/badges'], {});
         items[3].click();
         expect(navigateSpy).toHaveBeenCalledWith(['/student-settings'], {}); // #847
     });

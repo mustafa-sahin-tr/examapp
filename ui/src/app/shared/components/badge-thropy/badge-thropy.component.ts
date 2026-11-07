@@ -14,6 +14,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { BadgeProgressItem, BadgeService } from '../../../services/badge.service';
@@ -40,11 +41,22 @@ export const BADGE_LEGEND: ReadonlyArray<{ state: BadgeMedallionState; labelKey:
   { state: 'locked', labelKey: 'locked' },
 ];
 
+/** Issue #889: "Neredeyse" şeridindeki en yakın rozet sayısı. */
+export const NEARLY_COUNT = 3;
+
+/** Seçimin geldiği bölüm; detay paneli o bölümün altında açılır (tek panel). */
+export type BadgeSelectionSource = 'top' | 'path' | 'standalone';
+
+/**
+ * Rozetler sayfası. #889: önce tamamlanmaya en yakın üç rozet ("Neredeyse"), sonra kazanılanlar, sonra kapalı yol
+ * başlıkları; durum açıklaması "?" içinde.
+ */
 @Component({
   selector: 'app-badge-thropy',
   imports: [
     MatProgressSpinnerModule,
     MatButtonModule,
+    MatIconModule,
     BadgePathComponent,
     BadgeDetailComponent,
     BadgeMedallionComponent,
@@ -93,6 +105,39 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
   readonly isLoading = signal(false);
   readonly loadError = signal(false);
   readonly selectedBadge = signal<BadgeThropyItem | null>(null);
+  readonly selectedSource = signal<BadgeSelectionSource | null>(null);
+  /** #889: durum açıklaması varsayılan kapalı, "?" ile açılır. */
+  readonly legendOpen = signal(false);
+  /** #889: yollar kapalı başlık; açılan yolların anahtarları. */
+  readonly expandedPaths = signal<ReadonlySet<string>>(new Set());
+
+  /**
+   * #889: tamamlanmaya en yakın rozetler — ilerlemesi olanlar yüzdeye (eşitse kalan miktara) göre; üçü dolmazsa her yolun
+   * sıradaki rozetiyle tamamlanır.
+   */
+  readonly nearlyBadges = computed(() => {
+    const pending = this.badges().filter((b) => !b.isCompleted);
+    const started = pending
+      .filter((b) => b.currentValue > 0)
+      .sort((a, b) => b.progressPercent - a.progressPercent || (a.targetValue - a.currentValue) - (b.targetValue - b.currentValue));
+    const picked = started.slice(0, NEARLY_COUNT);
+    for (const path of this.badgePaths()) {
+      if (picked.length >= NEARLY_COUNT) break;
+      const next = path.badges.find((b) => !b.isCompleted);
+      if (next && !picked.includes(next)) picked.push(next);
+    }
+    return picked;
+  });
+
+  /** #889: kazanılanlar, en yenisi önce. */
+  readonly earnedBadges = computed(() =>
+    this.badges()
+      .filter((b) => isEarnedState(b.state))
+      .sort((a, b) => (b.earnedDateUtc ?? '').localeCompare(a.earnedDateUtc ?? '')),
+  );
+
+  /** Kazanılan tekil rozetler yukarıda; burada yalnız henüz kazanılmamışlar. */
+  readonly pendingStandalone = computed(() => this.standaloneBadges().filter((b) => !isEarnedState(b.state)));
   readonly earnedCount = computed(() => this.badges().filter((badge) => isEarnedState(badge.state)).length);
   readonly legend = BADGE_LEGEND;
 
@@ -111,13 +156,14 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
     }
   }
 
-  selectBadge(badge: BadgeThropyItem): void {
+  selectBadge(badge: BadgeThropyItem, source: BadgeSelectionSource = 'standalone'): void {
     if (!badge) {
       return;
     }
 
-    const isSame = this.selectedBadge()?.id === badge.id;
+    const isSame = this.selectedBadge()?.id === badge.id && this.selectedSource() === source;
     this.selectedBadge.set(isSame ? null : badge);
+    this.selectedSource.set(isSame ? null : source);
 
     if (!isSame) {
       this.badgeSelected.emit(badge.id);
@@ -150,8 +196,29 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
   onPathBadgeSelected(id: string): void {
     const badge = this.badges().find((item) => item.id === id);
     if (badge) {
-      this.selectBadge(badge);
+      this.selectBadge(badge, 'path');
     }
+  }
+
+  togglePath(key: string): void {
+    this.expandedPaths.update((open) => {
+      const next = new Set(open);
+      if (next.has(key)) {
+        next.delete(key);
+        if (this.selectedSource() === 'path' && this.selectedBadge()?.pathKey === key) {
+          this.selectedBadge.set(null);
+          this.selectedSource.set(null);
+        }
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }
+
+  /** Yolun sıradaki (ilk kazanılmamış) rozeti; hepsi kazanıldıysa null. */
+  nextInPath(path: BadgeThropyPath): BadgeThropyItem | null {
+    return path.badges.find((b) => !b.isCompleted) ?? null;
   }
 
   reload(): void {
@@ -162,6 +229,7 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
     this.isLoading.set(true);
     this.loadError.set(false);
     this.selectedBadge.set(null);
+    this.selectedSource.set(null);
     const storedUserId = this.authService.getUserIdFromLocalStorage();
     this.badgeService
       .getUserBadgeProgress(userId || storedUserId || 0)
@@ -176,13 +244,10 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
           this.badgePaths.set(partition.paths);
           this.standaloneBadges.set(partition.standalone);
 
-          const initial = this.resolveInitialSelection(partition.paths, partition.standalone);
-          if (initial) {
-            this.selectedBadge.set(initial);
-            this.badgeSelected.emit(initial.id);
-          } else {
-            this.selectedBadge.set(null);
-          }
+          // #889: açılışta seçim yok; yollar kapalı, detay kullanıcı seçince açılır.
+          this.selectedBadge.set(null);
+          this.selectedSource.set(null);
+          this.expandedPaths.set(new Set());
           this.isLoading.set(false);
         },
         error: (error) => {
@@ -297,19 +362,5 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
     standalone.sort((a, b) => a.name.localeCompare(b.name));
 
     return { paths, standalone };
-  }
-
-  private resolveInitialSelection(paths: BadgeThropyPath[], standalone: BadgeThropyItem[]): BadgeThropyItem | null {
-    for (const path of paths) {
-      const nextPending = path.badges.find((badge) => !badge.isCompleted);
-      if (nextPending) {
-        return nextPending;
-      }
-      if (path.badges.length) {
-        return path.badges[path.badges.length - 1];
-      }
-    }
-
-    return standalone.length ? standalone[0] : null;
   }
 }

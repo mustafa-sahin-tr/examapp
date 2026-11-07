@@ -130,7 +130,7 @@ export class SignalRService {
       .start()
       .catch((err) => console.error('SignalR bağlantı hatası:', err));
 
-    // Issue #149: emoji'li düz metin yerine medalyonlu toast; "Rozetlerim" eylemi /certificates.
+    // Issue #149: emoji'li düz metin yerine medalyonlu toast; "Rozetlerim" eylemi /badges.
     this.hubConnection.on('BadgeEarned', (data: unknown) => this.onBadgeEarnedPush(data));
 
     this.hubConnection.on('AccessRequestUpdate', (data: AccessRequestUpdate) => {

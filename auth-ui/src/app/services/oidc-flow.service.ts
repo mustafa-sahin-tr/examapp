@@ -40,6 +40,15 @@ export function toRegisterIntent(value: unknown): RegisterIntent | null {
 }
 
 /**
+ * #1009: rolü olmayan (yeni) kullanıcının rol adımı ana uygulamanın `/register` sihirbazıdır; niyet varsa rol ön seçili.
+ * auth-ui'nin dışındadır (tam sayfa yönlendirme).
+ */
+export function profileStepUrl(role: unknown): string {
+  const intent = toRegisterIntent(role);
+  return intent ? `/register?role=${intent}` : '/register';
+}
+
+/**
  * OIDC authorization code + PKCE akışının istemci tarafı (issue #347).
  *
  * `begin()` her login'de rastgele `state` + `code_verifier` üretir, sessionStorage'a yazar ve gateway'in

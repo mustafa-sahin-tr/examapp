@@ -2,7 +2,7 @@ import { Component, DestroyRef, DOCUMENT, inject, OnInit, signal, ChangeDetectio
 import { ActivatedRoute, Router } from '@angular/router';
 import { take } from 'rxjs';
 import { AuthService, pickAppRole } from '../../services/auth.service';
-import { OidcFlowService, OidcLoginRecord } from '../../services/oidc-flow.service';
+import { OidcFlowService, OidcLoginRecord, profileStepUrl } from '../../services/oidc-flow.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -39,7 +39,7 @@ export function oidcErrorMessage(error: string): string {
  * - Admin → istenen yol, yoksa `/admin/dashboard`
  * - Veli (öğrenci/öğretmen rolü yok) → istenen yol, yoksa `/parent` (veli paneli, issue #420)
  * - Uygulama rolü olan kullanıcı → istenen yol, yoksa `/dashboard`
- * - Rolü olmayan (yeni) kullanıcı → profil tamamlama (niyet varsa rol ön seçili)
+ * - Rolü olmayan (yeni) kullanıcı → ana uygulamanın `/register` sihirbazı (niyet varsa rol ön seçili, #1009)
  */
 export function postLoginDestination(
   roles: readonly string[],
@@ -48,7 +48,7 @@ export function postLoginDestination(
   const isAdmin = roles.includes('Admin');
   const hasAppRole = isAdmin || ['Student', 'Teacher', 'Parent'].some((r) => roles.includes(r));
   if (!hasAppRole) {
-    return record.intent ? `/app/complete-profile?role=${record.intent}` : '/app/complete-profile';
+    return profileStepUrl(record.intent);
   }
   const isParentOnly = roles.includes('Parent') && !roles.includes('Student') && !roles.includes('Teacher');
   return safeRedirectTarget(record.returnPath) ?? (isAdmin ? '/admin/dashboard' : isParentOnly ? '/parent' : '/dashboard');

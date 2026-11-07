@@ -44,6 +44,7 @@ describe('RegisterWizardComponent (Issue #234)', () => {
     let teacherService: MockedObject<TeacherService>;
     let studentService: MockedObject<StudentService>;
     let router: MockedObject<Router>;
+    let redirect: ReturnType<typeof vi.spyOn>;
 
     function createComponent(role?: string): void {
         authService = {
@@ -106,6 +107,7 @@ describe('RegisterWizardComponent (Issue #234)', () => {
 
         fixture = TestBed.createComponent(RegisterWizardComponent);
         component = fixture.componentInstance;
+        redirect = vi.spyOn(component, 'redirectTo').mockImplementation(() => undefined);
     }
 
     it('should create', () => {
@@ -142,7 +144,7 @@ describe('RegisterWizardComponent (Issue #234)', () => {
 
         component.continueAfterPending();
 
-        expect(router.navigate).toHaveBeenCalledWith(['/tests']);
+        expect(redirect).toHaveBeenCalledWith('/tests');
     });
 
     // ── Issue #234: 409 hata mesajı (okul değişikliğine izin yok) ──────────────
@@ -235,8 +237,8 @@ describe('RegisterWizardComponent (Issue #234)', () => {
 
             expect(notifyText).toHaveBeenCalledWith('Sunucu: hesabınız onay bekliyor.');
             expect(notify).not.toHaveBeenCalled();
-            expect(router.navigate).toHaveBeenCalledTimes(1);
-            expect(router.navigate).toHaveBeenCalledWith(['/teacher-approval-pending']);
+            expect(redirect).toHaveBeenCalledTimes(1);
+            expect(redirect).toHaveBeenCalledWith('/teacher-approval-pending');
         });
 
         for (const schoolApprovalPending of [false, true]) {
@@ -253,10 +255,10 @@ describe('RegisterWizardComponent (Issue #234)', () => {
                 component.submit();
                 await vi.runAllTimersAsync();
 
-                expect(router.navigate).toHaveBeenCalledTimes(1);
+                expect(redirect).toHaveBeenCalledTimes(1);
 
-                expect(router.navigate).toHaveBeenCalledWith(['/teacher-approval-pending']);
-                expect(router.navigate).not.toHaveBeenCalledWith(['/tests']);
+                expect(redirect).toHaveBeenCalledWith('/teacher-approval-pending');
+                expect(redirect).not.toHaveBeenCalledWith('/tests');
                 expect(component.schoolApprovalPending()).toBe(false);
                 expect(notify).toHaveBeenCalledTimes(1);
                 expect(notify).toHaveBeenCalledWith('wizard.teacherAccountPending');
@@ -303,9 +305,9 @@ describe('RegisterWizardComponent (Issue #234)', () => {
             component.submit();
             await vi.runAllTimersAsync();
 
-            expect(router.navigate).toHaveBeenCalledTimes(1);
+            expect(redirect).toHaveBeenCalledTimes(1);
 
-            expect(router.navigate).toHaveBeenCalledWith(['/tests']);
+            expect(redirect).toHaveBeenCalledWith('/tests');
         });
     });
     // ── Issue #277 (madde 6): okul serbest metin değil, listeden seçilir; backend `schoolId` okur ─────────────
@@ -408,7 +410,7 @@ describe('RegisterWizardComponent (Issue #234)', () => {
             expect(component.isSubmitting()).toBe(false);
             expect(component.submitError()).toBe(message);
             expect(component.retryAfter()).toEqual({ hours: 5, minutes: 30 });
-            expect(router.navigate).not.toHaveBeenCalled();
+            expect(redirect).not.toHaveBeenCalled();
             const el: HTMLElement = fixture.nativeElement;
             expect(el.querySelector('[data-testid="submit-error"]')?.textContent).toContain(message);
             expect(el.querySelector('[data-testid="retry-after"]')?.textContent?.trim()).toBe('Yeni bir okul talebini yaklaşık 5 saat 30 dakika sonra gönderebilirsiniz.');
@@ -663,7 +665,7 @@ describe('RegisterWizardComponent (Issue #234)', () => {
             await vi.runAllTimersAsync();
 
             expect(TestBed.inject(ParentStatusStore).activationRestricted()).toBe(true);
-            expect(router.navigate).toHaveBeenCalledWith(['/tests']);
+            expect(redirect).toHaveBeenCalledWith('/tests');
         });
 
         const errors: {
@@ -693,7 +695,7 @@ describe('RegisterWizardComponent (Issue #234)', () => {
 
                 expect(component.submitError()).toContain(scenario.expected);
                 expect(component.retryAfterSeconds()).toBeNull();
-                expect(router.navigate).not.toHaveBeenCalled();
+                expect(redirect).not.toHaveBeenCalled();
                 expect(fixture.nativeElement.querySelector('[data-testid="submit-error"]')?.textContent).toContain(scenario.expected);
             });
         }

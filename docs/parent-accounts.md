@@ -15,8 +15,8 @@ the theme (`usernameOrEmail` = "E-posta veya kullanıcı adı"); restart Keycloa
 
 *VERIFY_PROFILE off — trade-off.* Keycloak no longer forces **any** user to complete a profile that is
 missing a required attribute: a user created by an admin/IdP without email/name logs in as-is instead of
-landing on the "update your profile" page. Email-registered users are unaffected (registration and auth-ui
-`complete-profile` still collect email/name), and the exam API never relied on Keycloak's profile page —
+landing on the "update your profile" page. Email-registered users are unaffected (Keycloak's registration form
+still collects email/name, #1009), and the exam API never relied on Keycloak's profile page —
 so the only loss is that backstop. `registrationAllowed` stays **true**: the "register as …" links go to
 Keycloak's own `registrations` endpoint (`OidcLoginRedirect`), so turning it off would break sign-up.
 

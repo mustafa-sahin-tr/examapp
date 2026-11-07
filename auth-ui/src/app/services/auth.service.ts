@@ -3,14 +3,6 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { BehaviorSubject, catchError, map, Observable, of, tap, throwError, timeout } from 'rxjs';
 import { Router } from '@angular/router';
 import { jwtDecode } from 'jwt-decode';
-import {
-  Grade,
-  RegisterProfileResponse,
-  RegisterStudentPayload,
-  RegisterTeacherPayload,
-  RegisterTeacherResponse,
-  School,
-} from '../models/registration.model';
 import { LocaleHintService } from './locale-hint.service';
 
 export interface UserProfile {
@@ -95,43 +87,6 @@ export class AuthService {
         this.isAuthenticatedSubject.next(true);
       })
     );
-  }
-
-  completeProfile(role: string): Observable<UserProfile> {
-    return this.http.post<UserProfile>('/api/auth/complete-profile', { role });
-  }
-
-  registerStudent(studentData: any): Observable<any> {
-    return this.http.post('/api/exam/students/register-student', studentData);
-  }
-
-  /** Grade lookup used by the student registration step. */
-  getGrades(): Observable<Grade[]> {
-    return this.http.get<Grade[]>('/api/exam/worksheet/grades');
-  }
-
-  /** School lookup used by the student/teacher registration steps — anonymous endpoint, callable pre-login. */
-  getSchools(): Observable<School[]> {
-    return this.http.get<School[]>('/api/school');
-  }
-
-  /** Assigns the Student realm role, creates the Student profile row, and refreshes the session cookie. */
-  registerStudentProfile(payload: RegisterStudentPayload): Observable<RegisterProfileResponse> {
-    return this.http.post<RegisterProfileResponse>('/api/exam/student/register', payload);
-  }
-
-  /**
-   * Assigns the Teacher realm role, creates the Teacher profile row, and refreshes the session cookie.
-   * Issue #234: okul talebi admin onayı bekler (`schoolApprovalPending`); mevcut kaydın okulunu/bağımsızlığını
-   * değiştirme denemesi 409 `{ message }` döner.
-   */
-  registerTeacherProfile(payload: RegisterTeacherPayload): Observable<RegisterTeacherResponse> {
-    return this.http.post<RegisterTeacherResponse>('/api/exam/teacher/register', payload);
-  }
-
-  /** Assigns the Parent realm role, creates the Parent profile row, and refreshes the session cookie. */
-  registerParentProfile(): Observable<RegisterProfileResponse> {
-    return this.http.post<RegisterProfileResponse>('/api/exam/parent/register', {});
   }
 
   /**
@@ -274,7 +229,7 @@ export class AuthService {
         localStorage.setItem(this.tokenKey, res.token);
         // Ek yetki rolleri (QuestionTrainer vb.) atlanır. Uygulama rolü yoksa (profil tamamlanmamış kullanıcı)
         // önceki oturumdan kalan değer ya da "undefined" string'i kalmasın diye anahtar silinir;
-        // complete-profile akışı rolü kendisi yazar.
+        // rol adımı (ana uygulamada `/register`, #1009) rolü kendisi yazar.
         const appRole = pickAppRole(res.roles);
         if (appRole) {
           localStorage.setItem(this.roleKey, appRole);

@@ -4,7 +4,7 @@ import { combineLatest, take } from 'rxjs';
 
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -105,7 +105,6 @@ interface RegistrationResult {
 export class RegisterWizardComponent implements OnInit {
   private fb = inject(FormBuilder);
   private route = inject(ActivatedRoute);
-  private router = inject(Router);
   private snackBar = inject(MatSnackBar);
   private authService = inject(AuthService);
   private studentService = inject(StudentService);
@@ -238,7 +237,15 @@ export class RegisterWizardComponent implements OnInit {
 
   /** Okul onayı bilgilendirmesinden sonra öğretmen akışına devam. */
   continueAfterPending() {
-    this.router.navigate(['/tests']);
+    this.redirectTo('/tests');
+  }
+
+  /**
+   * #1009: kayıt tamamlanınca tam sayfa yönlendirme. Menü ve rol korumaları rolü token'dan sayfa açılışında okur; rolsüz
+   * açılan kabuk SPA navigasyonuyla yeni rolü görmezdi (veli panelinde menü boş kalıyordu). Spec'ler bunu stub'lar.
+   */
+  redirectTo(url: string): void {
+    window.location.assign(url);
   }
 
   private loadGrades() {
@@ -313,7 +320,7 @@ export class RegisterWizardComponent implements OnInit {
           } else {
             this.notify('wizard.teacherAccountPending');
           }
-          this.router.navigate([TEACHER_APPROVAL_PENDING_URL]);
+          this.redirectTo(TEACHER_APPROVAL_PENDING_URL);
           return;
         }
         this.notify('wizard.success');
@@ -322,7 +329,7 @@ export class RegisterWizardComponent implements OnInit {
           this.schoolApprovalPending.set(true);
           return;
         }
-        this.router.navigate([role === 'parent' ? '/parent' : '/tests']); // issue #420: veli paneli
+        this.redirectTo(role === 'parent' ? '/parent' : '/tests'); // issue #420: veli paneli
       },
       error: (err: unknown) => {
         this.isSubmitting.set(false);

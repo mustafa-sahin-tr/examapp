@@ -5,7 +5,7 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
-import { CreateChildAccountComponent } from './create-child-account.component';
+import { CreateChildAccountComponent, suggestChildUsername } from './create-child-account.component';
 import { CreatedChildAccount, CreateChildAccountRequest, PARENT_CONSENT_VERSION, isAcceptableChildPassword, normalizeChildUsername, } from '../../../models/parent-child-account.model';
 import { GradesService } from '../../../services/grades.service';
 import { ParentChildAccountService } from '../../../services/parent-child-account.service';
@@ -116,23 +116,43 @@ describe('CreateChildAccountComponent (issue #438)', () => {
         fixture.detectChanges();
     }
 
-    /** Geçerli bir form doldurur (sınıf ve rıza form kontrolünden). */
-    function fillValid(username = 'Ali.Kaya'): void {
+    function formControls(): Record<string, { setValue(v: unknown): void; value: unknown }> {
+        return (fixture.componentInstance as unknown as {
+            form: { controls: Record<string, { setValue(v: unknown): void; value: unknown }> };
+        }).form.controls;
+    }
+
+    /** #884: bir sonraki adım (Enter ile aynı: form gönderimi). */
+    function next(): void {
+        el.querySelector<HTMLButtonElement>('[data-test="step-next"]')!.click();
+        fixture.detectChanges();
+    }
+
+    /** Adım 1: çocuk bilgileri (sınıf form kontrolünden). */
+    function fillChild(): void {
         type('first-name', ' Ali ');
         type('last-name', 'Kaya');
+        type('student-number', ' 12 ');
+        formControls()['gradeId'].setValue(3);
+        fixture.detectChanges();
+    }
+
+    /** Geçerli bir form doldurur ve onay adımına gelir (rıza form kontrolünden). */
+    function fillValid(username = 'Ali.Kaya'): void {
+        fillChild();
+        next();
         type('username', username);
         type('pw', PW);
         type('pw-repeat', PW);
-        type('student-number', ' 12 ');
-        const form = (fixture.componentInstance as unknown as {
-            form: {
-                controls: Record<string, {
-                    setValue(v: unknown): void;
-                }>;
-            };
-        }).form;
-        form.controls['gradeId'].setValue(3);
-        form.controls['consent'].setValue(true);
+        next();
+        formControls()['consent'].setValue(true);
+        fixture.detectChanges();
+    }
+
+    /** Onay adımına gelir (rıza işaretlenmeden). */
+    function goToConsent(): void {
+        fillValid();
+        formControls()['consent'].setValue(false);
         fixture.detectChanges();
     }
 
@@ -152,6 +172,7 @@ describe('CreateChildAccountComponent (issue #438)', () => {
     it('renders the form with the brand name in the consent text and the consent version', () => {
         setup();
         expect(el.querySelector('h2')!.textContent).toContain(parentLinksTr.createChild.title);
+        goToConsent();
         const consent = el.querySelector('[data-test="consent"]')!.textContent!;
         expect(consent).toContain(rootTr.brand.name);
         expect(el.textContent).toContain(PARENT_CONSENT_VERSION);
@@ -159,6 +180,11 @@ describe('CreateChildAccountComponent (issue #438)', () => {
 
     it('invalid username, weak / mismatching password and missing consent block submit', async () => {
         setup();
+        // Adım 1 eksikse ilerlenmez.
+        next();
+        expect(el.querySelector('[data-test="first-name"]')).not.toBeNull();
+        fillChild();
+        next();
         type('username', 'ali-kaya');
         expect(el.querySelector('[data-test="username-invalid"]')).not.toBeNull();
 
@@ -171,7 +197,13 @@ describe('CreateChildAccountComponent (issue #438)', () => {
         type('pw', PW_WITH_USERNAME);
         type('pw-repeat', PW_WITH_USERNAME);
         expect(el.querySelector('[data-test="pw-contains-username"]')).not.toBeNull();
+        // Şifre grubu hatasıyla onay adımına geçilmez.
+        next();
+        expect(el.querySelector('[data-test="pw"]')).not.toBeNull();
 
+        type('pw', PW);
+        type('pw-repeat', PW);
+        next();
         submit();
         await vi.advanceTimersByTimeAsync(0);
         expect(service.create).not.toHaveBeenCalled();
@@ -204,11 +236,12 @@ describe('CreateChildAccountComponent (issue #438)', () => {
         expect(el.querySelector('[data-test="create-form"]')).toBeNull();
         expect(emitted).toEqual([created]);
 
-        // "Başka bir çocuk" → boş form (şifre bellekte tutulmadı).
+        // "Başka bir çocuk" → ilk adımda boş form (şifre bellekte tutulmadı).
         el.querySelector<HTMLButtonElement>('[data-test="create-another"]')!.click();
         fixture.detectChanges();
-        expect(el.querySelector<HTMLInputElement>('[data-test="pw"]')!.value).toBe('');
-        expect(el.querySelector<HTMLInputElement>('[data-test="username"]')!.value).toBe('');
+        expect(el.querySelector<HTMLInputElement>('[data-test="first-name"]')!.value).toBe('');
+        expect(formControls()['pw'].value).toBe('');
+        expect(formControls()['username'].value).toBe('');
     });
 
     it('selected school is sent as schoolId', async () => {
@@ -243,6 +276,7 @@ describe('CreateChildAccountComponent (issue #438)', () => {
         await vi.advanceTimersByTimeAsync(0);
         fixture.detectChanges();
 
+        // #884: giriş adımına dönülür, hata kullanıcı adı alanının altında.
         expect(el.querySelector('[data-test="username-server"]')!.textContent).toContain('Bu kullanıcı adı alınmış.');
         expect(el.querySelector('[data-test="create-summary"]')).toBeNull();
         expect(emitted).toEqual([]);
@@ -318,11 +352,54 @@ describe('CreateChildAccountComponent (issue #438)', () => {
 
     it('consent section links to the privacy policy (new tab)', () => {
         setup();
+        goToConsent();
         const link = el.querySelector<HTMLAnchorElement>('[data-test="privacy-link"]')!;
 
         expect(link).not.toBeNull();
         expect(link.getAttribute('href')).toBe('/privacy-policy');
         expect(link.getAttribute('target')).toBe('_blank');
         expect(link.textContent).toContain(parentLinksTr.createChild.privacyLink);
+    });
+
+    it('suggestChildUsername_TransliteratesTurkishAndJoinsWithADot (#884)', () => {
+        expect(suggestChildUsername('Elif Su', 'Kaya')).toBe('elifsu.kaya');
+        expect(suggestChildUsername('Çağrı', 'Öztürk')).toBe('cagri.ozturk');
+        expect(suggestChildUsername('İpek', 'Işık')).toBe('ipek.isik');
+        expect(suggestChildUsername('Al', '')).toBeNull(); // kuraldan kısa
+    });
+
+    it('loginStep_SuggestsAUsernameFromTheName_UntilTheParentEditsIt (#884)', () => {
+        setup();
+        type('first-name', 'Çağrı');
+        type('last-name', 'Öztürk');
+        formControls()['gradeId'].setValue(3);
+        fixture.detectChanges();
+        next();
+        expect(el.querySelector<HTMLInputElement>('[data-test="username"]')!.value).toBe('cagri.ozturk');
+        expect(el.textContent).toContain(parentLinksTr.createChild.usernameSuggested);
+
+        type('username', 'cagri2016');
+        expect(el.textContent).not.toContain(parentLinksTr.createChild.usernameSuggested);
+        // Geri dönüp ilerlemek elle yazılanı ezmez.
+        el.querySelector<HTMLButtonElement>('[data-test="step-back"]')!.click();
+        fixture.detectChanges();
+        next();
+        expect(el.querySelector<HTMLInputElement>('[data-test="username"]')!.value).toBe('cagri2016');
+    });
+
+    it('wideFields_AreNotStretchedVertically (#884)', () => {
+        setup();
+        document.body.appendChild(el); // hesaplanan stil için belgeye bağlı olmalı
+        const school = el.querySelector<HTMLElement>('.cca__field--wide')!;
+        expect(school.getBoundingClientRect().height).toBeLessThan(120);
+        el.remove();
+    });
+
+    it('cancel_EmitsClosed (#884)', () => {
+        setup();
+        let closed = 0;
+        fixture.componentInstance.closed.subscribe(() => closed++);
+        el.querySelector<HTMLButtonElement>('[data-test="create-cancel"]')!.click();
+        expect(closed).toBe(1);
     });
 });

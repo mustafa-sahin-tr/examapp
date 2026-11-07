@@ -1,7 +1,8 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, OnInit, computed, inject, input, output, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, DestroyRef, Injector, OnInit, afterNextRender, computed, inject, input, output, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
+import { ErrorStateMatcher } from '@angular/material/core';
 import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -52,6 +53,46 @@ const childPwGroupValidator: ValidatorFn = (group: AbstractControl): ValidationE
   return Object.keys(errors).length ? errors : null;
 };
 
+/** #884: formun adımları ve her adımın denetlediği alanlar. */
+const CREATE_STEPS = ['child', 'login', 'consent'] as const;
+type CreateStep = (typeof CREATE_STEPS)[number];
+const STEP_CONTROLS: Record<CreateStep, readonly string[]> = {
+  child: ['firstName', 'lastName', 'gradeId', 'studentNumber'],
+  login: ['username', 'pw', 'pwRepeat'],
+  consent: ['consent'],
+};
+/** Şifre grubundaki hatalar giriş adımına aittir. */
+const LOGIN_GROUP_ERRORS = ['pwInvalid', 'pwContainsUsername', 'pwMismatch'];
+
+const TR_ASCII: Record<string, string> = { ç: 'c', ğ: 'g', ı: 'i', i̇: 'i', ö: 'o', ş: 's', ü: 'u', â: 'a', î: 'i', û: 'u' };
+
+/**
+ * #884: adımlar formu gönderir (Enter da ilerlesin diye); varsayılan eşleyici "form gönderildi"de bir sonraki adımın boş
+ * alanlarını hemen kırmızı gösterirdi. Hata yalnız dokunulmuş alanda görünür (adım geçişi o adımın alanlarına dokunur).
+ */
+export class TouchedErrorStateMatcher implements ErrorStateMatcher {
+  isErrorState(control: AbstractControl | null): boolean {
+    return !!control && control.invalid && control.touched;
+  }
+}
+
+/**
+ * #884: ad + soyaddan kullanıcı adı önerisi ("Elif Su", "Kaya" → "elifsu.kaya"). Türkçe harfler ASCII'ye çevrilir; kurala
+ * (`CHILD_USERNAME_PATTERN`) uymayan sonuçta (ör. çok kısa) öneri yok.
+ */
+export function suggestChildUsername(firstName: string, lastName: string): string | null {
+  const part = (value: string) =>
+    value
+      .toLocaleLowerCase('tr-TR')
+      .replace(/[çğıöşüâîû]|i̇/g, (ch) => TR_ASCII[ch] ?? '')
+      .normalize('NFD')
+      .replace(/[^a-z0-9]/g, '');
+  const first = part(firstName);
+  const last = part(lastName);
+  const username = [first, last].filter(Boolean).join('.').slice(0, 30).replace(/\.$/, '');
+  return CHILD_USERNAME_PATTERN.test(username) ? username : null;
+}
+
 /**
  * Issue #438 (epic #435): velinin "Çocuklarım" sayfasındaki "Çocuk hesabı oluştur" formu. Çocuk e-postasız, kullanıcı adı + şifreyle
  * giriş yapar; hesap veli tarafından yönetilir. Başarıda kısa özet (çocuğun giriş yapacağı kullanıcı adı) gösterilir — şifre
@@ -74,7 +115,7 @@ const childPwGroupValidator: ValidatorFn = (group: AbstractControl): ValidationE
     TranslocoDirective,
     TranslocoPipe,
   ],
-  providers: [provideTranslocoScope(PARENT_LINKS_SCOPE)],
+  providers: [provideTranslocoScope(PARENT_LINKS_SCOPE), { provide: ErrorStateMatcher, useClass: TouchedErrorStateMatcher }],
   templateUrl: './create-child-account.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./create-child-account.component.scss'],
@@ -87,6 +128,7 @@ export class CreateChildAccountComponent implements OnInit {
   private readonly schoolService = inject(SchoolService);
   private readonly transloco = inject(TranslocoService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly injector = inject(Injector);
 
   /**
    * Velinin açık çocuk bağlantısı sayısı (üst sayfanın listesi); bilinmiyorsa null. Tavana (10) ulaşınca form gizlenir — sunucu
@@ -96,6 +138,13 @@ export class CreateChildAccountComponent implements OnInit {
 
   /** Hesap açıldı — üst sayfa çocuk listesini tazeler. */
   readonly created = output<CreatedChildAccount>();
+  /** #884: "Vazgeç" / "Kapat" — üst sayfa paneli kapatır. */
+  readonly closed = output<void>();
+
+  protected readonly steps = CREATE_STEPS;
+  protected readonly step = signal(0);
+  /** Kullanıcı adı ad-soyaddan önerildi ve veli henüz değiştirmedi. */
+  protected readonly usernameSuggested = signal(false);
 
   protected readonly consentVersion = PARENT_CONSENT_VERSION;
   protected readonly maxChildren = MAX_CHILD_ACCOUNTS;
@@ -221,10 +270,67 @@ export class CreateChildAccountComponent implements OnInit {
     return this.form.hasError(key) && (this.form.controls.pw.touched || this.form.controls.pwRepeat.touched);
   }
 
+  /** Enter ya da adım düğmesi: son adımda gönderir, öncekilerde adım geçerliyse ilerler. */
+  protected submitStep(): void {
+    if (this.step() === CREATE_STEPS.length - 1) {
+      this.submit();
+      return;
+    }
+    if (!this.stepValid(CREATE_STEPS[this.step()])) return;
+    if (CREATE_STEPS[this.step()] === 'child') this.suggestUsername();
+    this.step.update((n) => n + 1);
+  }
+
+  protected back(): void {
+    this.step.update((n) => Math.max(0, n - 1));
+  }
+
+  /** Adımın alanlarını dokunulmuş sayar; geçersiz alan (giriş adımında şifre grubu hatası) varsa false. */
+  private stepValid(step: CreateStep): boolean {
+    const controls = STEP_CONTROLS[step].map((name) => this.form.get(name)!);
+    controls.forEach((c) => c.markAsTouched());
+    const groupError = step === 'login' && LOGIN_GROUP_ERRORS.some((key) => this.form.hasError(key));
+    return controls.every((c) => c.valid) && !groupError;
+  }
+
+  /** Kullanıcı adı boşsa (ya da hâlâ önceki öneriyse) ad-soyaddan önerilir. */
+  private suggestUsername(): void {
+    const control = this.form.controls.username;
+    if (control.value && !this.usernameSuggested()) return;
+    const suggestion = suggestChildUsername(this.form.controls.firstName.value, this.form.controls.lastName.value);
+    if (!suggestion) return;
+    control.setValue(suggestion);
+    control.markAsUntouched();
+    this.usernameSuggested.set(true);
+    const sub = control.valueChanges.subscribe((value) => {
+      if (value !== suggestion) {
+        this.usernameSuggested.set(false);
+        sub.unsubscribe();
+      }
+    });
+  }
+
+  /** Onay adımındaki özet satırı. */
+  protected reviewName(): string {
+    const v = this.form.getRawValue();
+    return `${v.firstName.trim()} ${v.lastName.trim()}`.trim();
+  }
+
+  protected reviewGrade(): string {
+    return this.grades().find((g) => g.id === this.form.controls.gradeId.value)?.name ?? '';
+  }
+
+  protected reviewUsername(): string {
+    return normalizeChildUsername(this.form.controls.username.value);
+  }
+
   protected submit(): void {
     this.serverError.set(null);
     if (this.form.invalid || this.submitting()) {
       this.form.markAllAsTouched();
+      // Geçersiz alan önceki bir adımdaysa o adıma dönülür.
+      const invalidStep = CREATE_STEPS.findIndex((step) => !this.stepValid(step));
+      if (invalidStep >= 0) this.step.set(invalidStep);
       return;
     }
     const v = this.form.getRawValue();
@@ -252,6 +358,8 @@ export class CreateChildAccountComponent implements OnInit {
         next: (child) => {
           // Şifre bellekte tutulmaz: form tamamen sıfırlanır, özet yalnız kullanıcı adını gösterir.
           this.form.reset();
+          this.step.set(0);
+          this.usernameSuggested.set(false);
           this.selectedSchool.set(null);
           this.showPw.set(false);
           this.summary.set(child);
@@ -275,13 +383,26 @@ export class CreateChildAccountComponent implements OnInit {
       return;
     }
     // Alan hataları ilgili alanın altında da işaretlenir; mesaj sunucunun yerelleştirilmiş metni.
-    if (code === CHILD_ACCOUNT_ERROR_CODES.usernameTaken || code === CHILD_ACCOUNT_ERROR_CODES.invalidUsername) {
-      this.form.controls.username.setErrors({ server: true });
-      this.form.controls.username.markAsTouched();
-    } else if (code === CHILD_ACCOUNT_ERROR_CODES.passwordRejected) {
-      this.form.controls.pw.setErrors({ server: true });
-      this.form.controls.pw.markAsTouched();
+    const field =
+      code === CHILD_ACCOUNT_ERROR_CODES.usernameTaken || code === CHILD_ACCOUNT_ERROR_CODES.invalidUsername
+        ? this.form.controls.username
+        : code === CHILD_ACCOUNT_ERROR_CODES.passwordRejected
+          ? this.form.controls.pw
+          : null;
+    if (field && this.steps[this.step()] !== 'login') {
+      // #884: alan giriş adımında. Adım çizilince alan kontrole yeniden bağlanır ve doğrulama elle konan hatayı siler: hata
+      // çizimden sonra konur.
+      this.step.set(CREATE_STEPS.indexOf('login'));
+      afterNextRender(() => this.markServerError(field, message), { injector: this.injector });
+      return;
     }
+    if (field) this.markServerError(field, message);
+    else this.serverError.set(message);
+  }
+
+  private markServerError(field: AbstractControl, message: string): void {
+    field.setErrors({ server: true });
+    field.markAsTouched();
     this.serverError.set(message);
   }
 }

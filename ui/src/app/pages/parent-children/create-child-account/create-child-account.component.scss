@@ -46,8 +46,25 @@
   }
 }
 
+// Sütun yönlü formun doğrudan çocuğu: `flex-basis` yükseklik olur ve alan ~240px'lik boş kutuya döner (#884).
 .cca__field--wide {
+  flex: none;
   width: 100%;
+}
+
+.cca__step-label {
+  font-weight: 500;
+  color: var(--ms-text-weak);
+}
+
+.cca__review {
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+  color: var(--ms-text-strong);
+}
+
+.cca__spacer {
+  flex: 1;
 }
 
 .cca__consent {

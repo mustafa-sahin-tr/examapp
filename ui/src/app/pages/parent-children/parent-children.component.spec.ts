@@ -134,8 +134,15 @@ describe('ParentChildrenComponent (issue #419, #436)', () => {
         return fixture.nativeElement as HTMLElement;
     }
 
+    /** #884: ekleme formları başlıktaki düğmeyle açılır. */
+    function openPanel(el: HTMLElement, panel: 'code' | 'create'): void {
+        el.querySelector<HTMLButtonElement>(`[data-test="open-${panel}"]`)!.click();
+        fixture.detectChanges();
+    }
+
     /** Sahte zamanlayıcıyla çağrılır: ngModel kontrolü bir microtask sonra bağlanır, önce o boşaltılır. */
     async function typeCode(el: HTMLElement, value: string): Promise<void> {
+        if (!el.querySelector('[data-test="code-input"]')) openPanel(el, 'code');
         await vi.advanceTimersByTimeAsync(0);
         const input = el.querySelector<HTMLInputElement>('[data-test="code-input"]')!;
         input.value = value;
@@ -149,6 +156,7 @@ describe('ParentChildrenComponent (issue #419, #436)', () => {
 
     it('inviteCodeForm_IsASingleRow_FieldNotStretchedVertically (#421 review)', () => {
         const el = setup([]);
+        openPanel(el, 'code');
         document.body.appendChild(el); // hesaplanan stil için belgeye bağlı olmalı
         const form = el.querySelector<HTMLElement>('.pch__form')!;
         // Global `form { flex-direction: column }` alanın flex-basis'ini yüksekliğe çeviriyordu (~200px kutu).
@@ -157,9 +165,46 @@ describe('ParentChildrenComponent (issue #419, #436)', () => {
         el.remove();
     });
 
-    it('emptyList_ShowsEmptyState', () => {
+    it('emptyList_ShowsTwoPaths_EachOpensItsForm (#884)', () => {
         const el = setup([]);
-        expect(el.querySelector('[data-test="empty"]')?.textContent).toContain(parentLinksTr.children.empty);
+        expect(el.querySelector('[data-test="empty"]')?.textContent).toContain(parentLinksTr.children.emptyCreateTitle);
+        expect(el.querySelector('[data-test="empty"]')?.textContent).toContain(parentLinksTr.children.emptyCodeTitle);
+        // Formlar kapalı başlar.
+        expect(el.querySelector('app-create-child-account')).toBeNull();
+        expect(el.querySelector('[data-test="code-input"]')).toBeNull();
+
+        el.querySelector<HTMLButtonElement>('[data-test="empty-code"]')!.click();
+        fixture.detectChanges();
+        expect(el.querySelector('[data-test="code-input"]')).not.toBeNull();
+
+        el.querySelector<HTMLButtonElement>('[data-test="empty-create"]')!.click();
+        fixture.detectChanges();
+        // İki panel birden açılmaz.
+        expect(el.querySelector('[data-test="code-input"]')).toBeNull();
+        expect(el.querySelector('app-create-child-account')).not.toBeNull();
+    });
+
+    it('listComesFirst_HeaderCountsActiveChildren_RowShowsAccountTypeAndDashboardLink (#884)', () => {
+        const managed: LinkedChild = { ...ayse, linkId: 5, studentId: 41, studentName: 'Ali Kaya', parentManaged: true };
+        const el = setup([ayse, managed]);
+        expect(el.querySelector('[data-test="subtitle"]')?.textContent?.trim()).toBe('2 çocuk bağlı');
+        const rows = el.querySelectorAll('[data-test="child-row"]');
+        expect(rows[0].querySelector('[data-test="account-type"]')?.textContent).toContain(parentLinksTr.children.accountEmail);
+        expect(rows[1].querySelector('[data-test="account-type"]')?.textContent).toContain(parentLinksTr.children.accountUsername);
+        expect(rows[1].querySelector('[data-test="open-dashboard"]')?.getAttribute('href')).toBe('/parent?child=41');
+    });
+
+    it('closeButtons_CloseTheForms (#884)', () => {
+        const el = setup([ayse]);
+        openPanel(el, 'code');
+        el.querySelector<HTMLButtonElement>('[data-test="close-code"]')!.click();
+        fixture.detectChanges();
+        expect(el.querySelector('[data-test="code-input"]')).toBeNull();
+
+        openPanel(el, 'create');
+        el.querySelector<HTMLButtonElement>('[data-test="create-cancel"]')!.click();
+        fixture.detectChanges();
+        expect(el.querySelector('app-create-child-account')).toBeNull();
     });
 
     it('listsChildren_WithGradeAndSchool', () => {
@@ -206,6 +251,8 @@ describe('ParentChildrenComponent (issue #419, #436)', () => {
 
         expect(service.redeem).toHaveBeenCalledWith('ABCDEFGHJKMN');
         expect(el.querySelectorAll('[data-test="pending-row"]').length).toBe(1);
+        // #884: başarıda kod paneli kapanır.
+        expect(el.querySelector('[data-test="code-input"]')).toBeNull();
         expect(snackBar.open).toHaveBeenCalledWith(parentLinksTr.children.requested, expect.any(String), expect.any(Object));
     });
 
@@ -360,8 +407,9 @@ describe('ParentChildrenComponent (issue #419, #436)', () => {
 
     // ---- Issue #438: çocuk hesabı oluşturma + şifre sıfırlama ----------------------------------------------------------
 
-    it('rendersCreateChildAccountForm_AboveSecondParentCode (issue #438)', () => {
+    it('rendersCreateChildAccountForm_WhenOpened (issue #438, #884)', () => {
         const el = setup([]);
+        openPanel(el, 'create');
         const form = el.querySelector('app-create-child-account');
         expect(form).not.toBeNull();
         expect(form!.querySelector('#create-child')).not.toBeNull();
@@ -397,6 +445,7 @@ describe('ParentChildrenComponent (issue #419, #436)', () => {
     it('createChildForm_HiddenWithInfo_WhenTenChildrenAreLinked (issue #438)', () => {
         const ten: LinkedChild[] = Array.from({ length: 10 }, (_, i) => ({ ...ayse, linkId: 100 + i, studentId: 200 + i }));
         const el = setup(ten);
+        openPanel(el, 'create');
         const host = el.querySelector('app-create-child-account')!;
         expect(host.querySelector('[data-test="create-form"]')).toBeNull();
         expect(host.querySelector('[data-test="create-limit"]')).not.toBeNull();
@@ -421,6 +470,7 @@ describe('ParentChildrenComponent (issue #419, #436)', () => {
         const future = new Date(Date.now() + 86400000).toISOString();
         const nine: LinkedChild[] = Array.from({ length: 9 }, (_, i) => ({ ...ayse, linkId: 100 + i, studentId: 200 + i }));
         const el = setup([...nine, pendingRow(300, future)]);
+        openPanel(el, 'create');
         const host = el.querySelector('app-create-child-account')!;
         expect(host.querySelector('[data-test="create-form"]')).toBeNull();
         expect(host.querySelector('[data-test="create-limit"]')).not.toBeNull();
@@ -430,6 +480,7 @@ describe('ParentChildrenComponent (issue #419, #436)', () => {
         const past = new Date(Date.now() - 60000).toISOString();
         const nine: LinkedChild[] = Array.from({ length: 9 }, (_, i) => ({ ...ayse, linkId: 100 + i, studentId: 200 + i }));
         const el = setup([...nine, pendingRow(300, past)]);
+        openPanel(el, 'create');
         const host = el.querySelector('app-create-child-account')!;
         // 9 Active + 1 süresi dolmuş Pending = 9 açık bağlantı: sunucu yeni hesaba izin verir, form açık kalır.
         expect(host.querySelector('[data-test="create-form"]')).not.toBeNull();

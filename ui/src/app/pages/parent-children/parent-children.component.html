@@ -1,43 +1,23 @@
 <section class="pch" *transloco="let t; prefix: 'parent-links'">
+  <!-- #884: önce bağlı çocuklar; eklemenin iki yolu sağ üstte, form ancak seçilince açılır. -->
   <header class="pch__head">
-    <h1>{{ t('children.title') }}</h1>
-    <p>{{ t('children.subtitle') }}</p>
-  </header>
-
-  <!-- Issue #438: veli çocuk hesabını kendisi açar (kullanıcı adı + şifre). -->
-  <section class="pch__card">
-    <app-create-child-account [openChildren]="openChildCount()" (created)="onChildCreated()" />
-  </section>
-
-  <article class="pch__card" id="enter-code" aria-labelledby="pch-add-title">
-    <h2 id="pch-add-title">{{ t('children.addTitle') }}</h2>
-    <p class="pch__hint">{{ t('children.addHint') }}</p>
-    <form class="pch__form" (ngSubmit)="submit()">
-      <mat-form-field appearance="outline" class="pch__field">
-        <mat-label>{{ t('children.codeLabel') }}</mat-label>
-        <input
-          matInput
-          name="inviteCode"
-          data-test="code-input"
-          autocomplete="off"
-          autocapitalize="characters"
-          spellcheck="false"
-          maxlength="20"
-          [placeholder]="t('children.codePlaceholder')"
-          [ngModel]="code()"
-          (ngModelChange)="onCodeInput($event)"
-        />
-        <mat-hint>{{ t('children.invalidLength') }}</mat-hint>
-      </mat-form-field>
-      <button mat-flat-button type="submit" data-test="submit" [disabled]="!canSubmit()">
-        <mat-icon>link</mat-icon>
-        {{ t('children.submit') }}
+    <div>
+      <h1>{{ t('children.title') }}</h1>
+      <p data-test="subtitle">{{ activeCount() > 0 ? t('children.linkedCount', { count: activeCount() }) : t('children.subtitle') }}</p>
+    </div>
+    <div class="pch__head-actions">
+      <button mat-stroked-button type="button" data-test="open-code" [attr.aria-expanded]="panel() === 'code'"
+        (click)="openPanel('code')">
+        <mat-icon>key</mat-icon>
+        {{ t('children.openCode') }}
       </button>
-    </form>
-    @if (redeemError()) {
-      <p class="pch__error" role="alert" data-test="redeem-error">{{ redeemError() }}</p>
-    }
-  </article>
+      <button mat-flat-button type="button" data-test="open-create" [attr.aria-expanded]="panel() === 'create'"
+        (click)="openPanel('create')">
+        <mat-icon>person_add</mat-icon>
+        {{ t('children.openCreate') }}
+      </button>
+    </div>
+  </header>
 
   <article class="pch__card" aria-labelledby="pch-list-title">
     <h2 id="pch-list-title">{{ t('children.listTitle') }}</h2>
@@ -52,7 +32,19 @@
         <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
       </div>
     } @else if (isEmpty()) {
-      <p class="pch__empty" data-test="empty">{{ t('children.empty') }}</p>
+      <!-- #884: boş liste — iki büyük seçenek. -->
+      <div class="pch__paths" data-test="empty">
+        <button type="button" class="pch__path" data-test="empty-create" (click)="openPanel('create')">
+          <mat-icon aria-hidden="true">person_add</mat-icon>
+          <b>{{ t('children.emptyCreateTitle') }}</b>
+          <span>{{ t('children.emptyCreateText') }}</span>
+        </button>
+        <button type="button" class="pch__path" data-test="empty-code" (click)="openPanel('code')">
+          <mat-icon aria-hidden="true">key</mat-icon>
+          <b>{{ t('children.emptyCodeTitle') }}</b>
+          <span>{{ t('children.emptyCodeText') }}</span>
+        </button>
+      </div>
     } @else {
       <ul class="pch__list">
         @for (child of children(); track child.linkId) {
@@ -151,10 +143,16 @@
                     @if (child.schoolName) {
                       <span>{{ t('children.school') }}: {{ child.schoolName }}</span>
                     }
+                    <!-- #884: hesap türü — veli açtıysa kullanıcı adıyla, değilse kendi e-postasıyla girer. -->
+                    <span data-test="account-type">{{ child.parentManaged ? t('children.accountUsername') : t('children.accountEmail') }}</span>
                     <span>{{ t('children.linkedAt', { date: ui.formatDate(child.linkedAt) }) }}</span>
                   </span>
                 </div>
                 @if (child.studentId) {
+                  <a mat-flat-button data-test="open-dashboard" routerLink="/parent" [queryParams]="{ child: child.studentId }">
+                    <mat-icon>space_dashboard</mat-icon>
+                    {{ t('children.openDashboard') }}
+                  </a>
                   <a
                     mat-stroked-button
                     data-test="book-lesson"
@@ -299,4 +297,45 @@
       </ul>
     }
   </article>
+
+  @if (panel() === 'create') {
+    <!-- Issue #438: veli çocuk hesabını kendisi açar (kullanıcı adı + şifre); #884: üç adım. -->
+    <section class="pch__card">
+      <app-create-child-account [openChildren]="openChildCount()" (created)="onChildCreated()" (closed)="closePanel()" />
+    </section>
+  }
+  @if (panel() === 'code') {
+    <article class="pch__card" id="enter-code" aria-labelledby="pch-add-title">
+      <h2 id="pch-add-title">{{ t('children.addTitle') }}</h2>
+      <p class="pch__hint">{{ t('children.addHint') }}</p>
+      <form class="pch__form" (ngSubmit)="submit()">
+        <mat-form-field appearance="outline" class="pch__field">
+          <mat-label>{{ t('children.codeLabel') }}</mat-label>
+          <input
+            matInput
+            name="inviteCode"
+            data-test="code-input"
+            autocomplete="off"
+            autocapitalize="characters"
+            spellcheck="false"
+            maxlength="20"
+            [placeholder]="t('children.codePlaceholder')"
+            [ngModel]="code()"
+            (ngModelChange)="onCodeInput($event)"
+          />
+          <mat-hint>{{ t('children.invalidLength') }}</mat-hint>
+        </mat-form-field>
+        <button mat-flat-button type="submit" data-test="submit" [disabled]="!canSubmit()">
+          <mat-icon>link</mat-icon>
+          {{ t('children.submit') }}
+        </button>
+      </form>
+      @if (redeemError()) {
+        <p class="pch__error" role="alert" data-test="redeem-error">{{ redeemError() }}</p>
+      }
+      <div class="pch__panel-actions">
+        <button mat-button type="button" data-test="close-code" (click)="closePanel()">{{ t('children.close') }}</button>
+      </div>
+    </article>
+  }
 </section>

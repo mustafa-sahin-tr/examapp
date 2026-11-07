@@ -6,6 +6,40 @@
   },
   "prevMonth": "Önceki ay",
   "nextMonth": "Sonraki ay",
+  "prevWeek": "Önceki hafta",
+  "nextWeek": "Sonraki hafta",
+  "view": {
+    "aria": "Görünüm",
+    "week": "Hafta",
+    "month": "Ay"
+  },
+  "kind": {
+    "assignment": "Ödev",
+    "program": "Program",
+    "booking": "Ders",
+    "reminder": "Hatırlatma"
+  },
+  "week": {
+    "today": "bugün",
+    "free": "Boş",
+    "dueAt": "teslim {{time}}",
+    "overdue": "gecikti",
+    "done": "tamamlandı",
+    "legendAria": "Renk açıklaması",
+    "emptyTitle": "Bu hafta planlı bir şey yok",
+    "emptyStudent": "Bir çalışma programı oluştur ya da bugün birkaç soru çöz.",
+    "emptyTeacher": "Müsait saat açınca öğrencilerin ders isteyebilir.",
+    "emptyTeacherSchool": "Onayladığın ders randevuları burada gün gün görünür.",
+    "createProgram": "Program oluştur",
+    "dailyQuestions": "Günün sorularını çöz",
+    "openSlots": "Müsait saat aç",
+    "action": {
+      "start": "Başla",
+      "program": "Programa git",
+      "bookings": "Derse git",
+      "view": "Aç"
+    }
+  },
   "today": "Bugün",
   "error": {
     "message": "Takvim yüklenemedi",

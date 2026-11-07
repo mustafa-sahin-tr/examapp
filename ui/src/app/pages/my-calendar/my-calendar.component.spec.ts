@@ -1,7 +1,7 @@
 import type { MockedObject } from "vitest";
 import { signal } from '@angular/core';
-import { TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { Router, provideRouter } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { of } from 'rxjs';
@@ -225,4 +225,99 @@ describe('MyCalendarComponent availability CTA (issue #418)', () => {
     it('Student_NoCta', () => {
         expect(showCta(['Student'], null)).toBe(false);
     });
+});
+
+/** Issue #888: haftalık ajanda — gerçek router (routerLink'ler) ve navigate casusu. */
+describe('MyCalendarComponent week agenda (issue #888)', () => {
+    let fixture: ComponentFixture<MyCalendarComponent>;
+    let component: MyCalendarComponent;
+    let getMyCalendar: ReturnType<typeof vi.fn>;
+    let router: { navigate: ReturnType<typeof vi.fn> };
+
+    beforeEach(() => {
+        getMyCalendar = vi.fn(() => of([] as CalendarEvent[]));
+        TestBed.configureTestingModule({
+            imports: [MyCalendarComponent, translocoTesting],
+            providers: [
+                provideRouter([]),
+                { provide: TestService, useValue: { getMyCalendar } },
+                { provide: AuthService, useValue: { hasRealmRole: () => false, user: signal(null) } as Partial<AuthService> },
+            ],
+        });
+        router = TestBed.inject(Router) as unknown as { navigate: ReturnType<typeof vi.fn> };
+        vi.spyOn(router, 'navigate').mockResolvedValue(true);
+        fixture = TestBed.createComponent(MyCalendarComponent);
+        component = fixture.componentInstance;
+        component.isMobile.set(false);
+    });
+
+    it('defaultView_IsWeek_FetchesMondayToNextMonday_issue888', () => {
+        fixture.detectChanges();
+
+        expect(component.view()).toBe('week');
+        const [from, to] = getMyCalendar.mock.calls[0] as [Date, Date];
+        expect(from.getDay()).toBe(1);
+        expect((to.getTime() - from.getTime()) / 86_400_000).toBeCloseTo(7, 0);
+        expect(from.getTime()).toBe(component.weekStart().getTime());
+    });
+
+    it('emptyWeek_Student_ShowsTwoActions_issue888', () => {
+        fixture.detectChanges();
+
+        const empty: HTMLElement = fixture.nativeElement.querySelector('[data-test="week-empty"]');
+        expect(empty.textContent).toContain('Bu hafta planlı bir şey yok');
+        const buttons = Array.from(empty.querySelectorAll('button')).map((b) => b.textContent?.trim());
+        expect(buttons).toEqual(['Program oluştur', 'Günün sorularını çöz']);
+        expect(fixture.nativeElement.querySelector('[data-test="agenda"]')).toBeNull();
+    });
+
+    it('weekWithEvents_RendersSevenDaysTodayHighlightedAndStartAction_issue888', () => {
+        const today = new Date();
+        today.setHours(23, 30, 0, 0);
+        getMyCalendar.mockReturnValue(of([makeEvent({ date: today.toISOString(), worksheetId: 42, worksheetTitle: 'Kesirler' })]));
+        fixture.detectChanges();
+
+        const agenda: HTMLElement = fixture.nativeElement.querySelector('[data-test="agenda"]');
+        expect(agenda.querySelectorAll('.agenda__day').length).toBe(7);
+        const todayEl = agenda.querySelector('.agenda__day--today') as HTMLElement;
+        expect(todayEl.getAttribute('aria-current')).toBe('date');
+        expect(todayEl.textContent).toContain('bugün');
+        const row = todayEl.querySelector('.agenda__row') as HTMLElement;
+        expect(row.dataset['kind']).toBe('assignment');
+        expect(row.textContent).toContain('Kesirler');
+        expect(row.textContent).toContain('Ödev · Matematik · teslim');
+        expect(agenda.querySelectorAll('.agenda__free').length).toBe(6);
+
+        (row.querySelector('.agenda__action') as HTMLButtonElement).click();
+        expect(router.navigate).toHaveBeenCalledWith(['/test', 42]);
+    });
+
+    it('prevNext_InWeekView_MovesBySevenDays_issue888', () => {
+        fixture.detectChanges();
+        const start = component.weekStart().getTime();
+
+        component.next();
+        expect(component.weekStart().getTime() - start).toBeCloseTo(7 * 86_400_000, -6);
+        component.prev();
+        component.prev();
+        expect(start - component.weekStart().getTime()).toBeCloseTo(7 * 86_400_000, -6);
+        component.goToday();
+        expect(component.weekStart().getTime()).toBe(start);
+    });
+
+    it('setView_Month_ShowsGridAndRefetchesMonthRange_issue888', () => {
+        fixture.detectChanges();
+        getMyCalendar.mockClear();
+
+        component.setView('month');
+        fixture.detectChanges();
+
+        expect(fixture.nativeElement.querySelector('app-month-calendar-grid')).toBeTruthy();
+        expect(fixture.nativeElement.querySelector('[data-test="agenda"]')).toBeNull();
+        expect(getMyCalendar).toHaveBeenCalledTimes(1);
+        const [from, to] = getMyCalendar.mock.calls[0] as [Date, Date];
+        expect((to.getTime() - from.getTime()) / 86_400_000).toBeGreaterThanOrEqual(28);
+        expect(component.viewMonth().getMonth()).toBe(component.weekStart().getMonth());
+    });
+
 });

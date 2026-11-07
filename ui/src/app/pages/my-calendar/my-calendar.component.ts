@@ -6,11 +6,13 @@ import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { Observable, Subject, catchError, map, merge, of, switchMap, tap } from 'rxjs';
 import { MonthCalendarGridComponent } from '../../shared/components/month-calendar-grid/month-calendar-grid.component';
 import { CalendarLegendComponent } from '../../shared/components/calendar-legend/calendar-legend.component';
 import { addMonths, buildMonthWeeks, startOfMonth, toLocalIso } from '../../shared/utils/calendar-month.util';
+import { AgendaRow, addDays, buildWeekAgenda, startOfWeek } from './week-agenda.util';
 import { LocaleService } from '../../services/locale.service';
 import { TestService } from '../../services/test.service';
 import { AuthService } from '../../services/auth.service';
@@ -26,13 +28,22 @@ const SCOPE = 'my-calendar';
 
 type CalendarStatus = 'loading' | 'error' | 'empty' | 'ready';
 
+/** Issue #888: varsayılan "Bu hafta" ajandası; ay ızgarası seçenek. */
+export type CalendarView = 'week' | 'month';
+
+interface CalendarRange {
+  from: Date;
+  to: Date;
+}
+
 interface CalendarResult {
   ok: boolean;
   events: CalendarEvent[];
 }
 
 /**
- * Öğrenci takvimi sayfası (issue #38) — planlanmış hatırlatmalar + atama teslim
+ * Öğrenci takvimi sayfası (issue #38). #888: açılışta haftalık ajanda (gün gün liste, bugün vurgulu, satırda
+ * "Başla" / "Programa git"); ay ızgarası sağ üstteki seçenekle. — planlanmış hatırlatmalar + atama teslim
  * tarihleri aylık grid'de gerçek veriyle. Ay değişince (veya "Tekrar dene")
  * `GET /api/exam/calendar/me` çağrılır; hızlı navigasyonda eski cevaplar
  * `switchMap` ile iptal edilir. Aralık, grid'in ilk/son hücresini kapsar
@@ -47,6 +58,7 @@ interface CalendarResult {
     MatIconModule,
     MatButtonModule,
     MatProgressSpinnerModule,
+    MatButtonToggleModule,
     MonthCalendarGridComponent,
     CalendarLegendComponent,
     TranslocoDirective,
@@ -77,6 +89,8 @@ export class MyCalendarComponent {
   }
   private readonly localeService = inject(LocaleService);
 
+  readonly view = signal<CalendarView>('week');
+  readonly weekStart = signal<Date>(startOfWeek(new Date()));
   readonly viewMonth = signal<Date>(startOfMonth(new Date()));
   readonly status = signal<CalendarStatus>('loading');
   readonly events = signal<CalendarEvent[]>([]);
@@ -93,6 +107,66 @@ export class MyCalendarComponent {
     }).format(this.viewMonth())
   );
 
+  private get intlLocale(): string {
+    return this.localeService.localeDefinition().angularLocale;
+  }
+
+  /** Haftalık başlık: "3–9 Kasım" (ay/yıl taşarsa Intl ikisini de yazar). */
+  readonly weekLabel = computed(() =>
+    new Intl.DateTimeFormat(this.intlLocale, { day: 'numeric', month: 'long' }).formatRange(
+      this.weekStart(),
+      addDays(this.weekStart(), 6),
+    ),
+  );
+
+  readonly periodLabel = computed(() => (this.view() === 'week' ? this.weekLabel() : this.monthLabel()));
+
+  /** #888: haftanın 7 günü ve o güne düşen satırlar. */
+  readonly agendaDays = computed(() =>
+    buildWeekAgenda(this.events(), this.weekStart(), new Date(), !this.isTeacher || this.canOpenBookingRequests()),
+  );
+
+  /** Öğretmen takviminde yalnız ders randevuları var. */
+  readonly agendaLegend: readonly string[] = this.isTeacher ? ['booking'] : ['assignment', 'program', 'booking'];
+
+  /** Gün başlığı: "Pzt" + "3". */
+  dayName(date: Date): string {
+    return new Intl.DateTimeFormat(this.intlLocale, { weekday: 'short' }).format(date);
+  }
+
+  /** Satır alt bilgisi: "Ödev · Matematik · teslim 17:00" / "Program · LGS" / "Ders · 17:00–18:00". */
+  metaText(row: AgendaRow, t: (key: string, params?: Record<string, unknown>) => string): string {
+    const ev = row.event;
+    const parts = [t('kind.' + row.kind), row.kind === 'program' ? ev.programName : ev.subject];
+    if (row.time) {
+      parts.push(row.kind === 'assignment' ? t('week.dueAt', { time: this.timeText(row) }) : this.timeText(row));
+    }
+    if (row.done && row.kind !== 'booking') parts.push(t('week.done'));
+    return parts.filter((p) => !!p).join(' · ');
+  }
+
+  timeText(row: AgendaRow): string {
+    if (!row.time) return '';
+    const fmt = new Intl.DateTimeFormat(this.intlLocale, { hour: '2-digit', minute: '2-digit' });
+    return row.endTime ? fmt.formatRange(row.time, row.endTime) : fmt.format(row.time);
+  }
+
+  /** Görünen aralık: hafta [Pzt, sonraki Pzt) ya da ay ızgarasının ilk/son hücresi. */
+  private readonly range = computed<CalendarRange>(() => {
+    if (this.view() === 'week') {
+      const from = this.weekStart();
+      return { from, to: addDays(from, 7) };
+    }
+    const cells = buildMonthWeeks(this.viewMonth()).flat();
+    const first = cells[0].date;
+    const last = cells[cells.length - 1].date;
+    // Grid'in ilk hücresinin local günü -> son hücresinin ertesi günü (exclusive).
+    return {
+      from: new Date(first.getFullYear(), first.getMonth(), first.getDate()),
+      to: new Date(last.getFullYear(), last.getMonth(), last.getDate() + 1),
+    };
+  }, { equal: (a, b) => a.from.getTime() === b.from.getTime() && a.to.getTime() === b.to.getTime() });
+
   private readonly retry$ = new Subject<void>();
 
   constructor() {
@@ -102,10 +176,10 @@ export class MyCalendarComponent {
     mql.addEventListener('change', sync);
     this.destroyRef.onDestroy(() => mql.removeEventListener('change', sync));
 
-    merge(toObservable(this.viewMonth), this.retry$.pipe(map(() => this.viewMonth())))
+    merge(toObservable(this.range), this.retry$.pipe(map(() => this.range())))
       .pipe(
         tap(() => this.status.set('loading')),
-        switchMap((month) => this.fetch(month)),
+        switchMap((range) => this.fetch(range)),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((result) => {
@@ -118,30 +192,45 @@ export class MyCalendarComponent {
       });
   }
 
-  private fetch(month: Date): Observable<CalendarResult> {
-    const cells = buildMonthWeeks(month).flat();
-    const first = cells[0].date;
-    const last = cells[cells.length - 1].date;
-    // Grid'in ilk hücresinin local günü -> son hücresinin ertesi günü (exclusive).
-    const from = new Date(first.getFullYear(), first.getMonth(), first.getDate());
-    const to = new Date(last.getFullYear(), last.getMonth(), last.getDate() + 1);
-
+  private fetch({ from, to }: CalendarRange): Observable<CalendarResult> {
     return this.testService.getMyCalendar(from, to).pipe(
       map((events) => ({ ok: true, events }) as CalendarResult),
       catchError(() => of({ ok: false, events: [] } as CalendarResult)),
     );
   }
 
-  prevMonth(): void {
-    this.viewMonth.set(addMonths(this.viewMonth(), -1));
+  /** Görünüm değişince yeni görünüm, eskisinin gösterdiği tarihten açılır (hafta → o haftanın ayı). */
+  setView(view: CalendarView): void {
+    if (view === this.view()) return;
+    if (view === 'month') {
+      this.viewMonth.set(startOfMonth(this.weekStart()));
+    } else {
+      const today = new Date();
+      const month = this.viewMonth();
+      const inMonth = today.getFullYear() === month.getFullYear() && today.getMonth() === month.getMonth();
+      this.weekStart.set(startOfWeek(inMonth ? today : month));
+    }
+    this.view.set(view);
   }
 
-  nextMonth(): void {
-    this.viewMonth.set(addMonths(this.viewMonth(), 1));
+  prev(): void {
+    if (this.view() === 'week') this.weekStart.set(addDays(this.weekStart(), -7));
+    else this.viewMonth.set(addMonths(this.viewMonth(), -1));
+  }
+
+  next(): void {
+    if (this.view() === 'week') this.weekStart.set(addDays(this.weekStart(), 7));
+    else this.viewMonth.set(addMonths(this.viewMonth(), 1));
   }
 
   goToday(): void {
+    this.weekStart.set(startOfWeek(new Date()));
     this.viewMonth.set(startOfMonth(new Date()));
+  }
+
+  /** Ajanda satırı eylemi: test / program detayı / randevular (ay görünümündeki tıklamayla aynı hedefler). */
+  openRow(row: AgendaRow): void {
+    this.navigateToEvent(row.event);
   }
 
   onMonthChange(month: Date): void {

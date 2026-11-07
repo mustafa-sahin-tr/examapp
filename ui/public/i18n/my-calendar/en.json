@@ -6,6 +6,40 @@
   },
   "prevMonth": "Previous month",
   "nextMonth": "Next month",
+  "prevWeek": "Previous week",
+  "nextWeek": "Next week",
+  "view": {
+    "aria": "View",
+    "week": "Week",
+    "month": "Month"
+  },
+  "kind": {
+    "assignment": "Assignment",
+    "program": "Program",
+    "booking": "Lesson",
+    "reminder": "Reminder"
+  },
+  "week": {
+    "today": "today",
+    "free": "Free",
+    "dueAt": "due {{time}}",
+    "overdue": "overdue",
+    "done": "done",
+    "legendAria": "Color key",
+    "emptyTitle": "Nothing planned this week",
+    "emptyStudent": "Create a study program or solve a few questions today.",
+    "emptyTeacher": "Open available hours so students can request lessons.",
+    "emptyTeacherSchool": "Lessons you approve show up here day by day.",
+    "createProgram": "Create a program",
+    "dailyQuestions": "Solve today's questions",
+    "openSlots": "Open available hours",
+    "action": {
+      "start": "Start",
+      "program": "Go to program",
+      "bookings": "Go to lesson",
+      "view": "Open"
+    }
+  },
   "today": "Today",
   "error": {
     "message": "The calendar could not be loaded",

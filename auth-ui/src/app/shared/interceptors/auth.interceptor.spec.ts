@@ -81,7 +81,6 @@ describe('authInterceptor', () => {
   for (const path of [
     '/api/auth/refresh-token',
     '/api/auth/login',
-    '/api/auth/register',
     '/api/auth/exchange',
     // Issue #440: anonim veli aktivasyon uçları.
     '/api/exam/parent-activation/lookup',

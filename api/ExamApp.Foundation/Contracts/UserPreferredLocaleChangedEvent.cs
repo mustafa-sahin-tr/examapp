@@ -8,12 +8,10 @@ namespace ExamApp.Foundation.Contracts;
 /// <c>UserLocalePreference</c> tablosuna upsert eder; bildirim metinleri buradan okunan dille
 /// üretilir.
 ///
-/// İki üretim noktası:
+/// Üretim noktaları:
 ///  - <c>PUT /api/auth/me/locale</c>: değer gerçekten değiştiğinde.
-///  - <c>POST /api/auth/register</c>: kullanıcı ilk oluştuğunda, varsayılan dille (henüz hiç
-///    tercih yapılmamışsa BadgeService'in kullanıcıyı default'tan farklı davranmaması için ayrı
-///    bir event yerine bu event tekrar kullanılır — <see cref="IndependentTeacherRegisteredEvent"/>
-///    gibi başka bir amaca hizmet eden event'e alan eklenmez).
+///  - auth-api'nin hesap açtığı yerler (veli/çocuk hesabı, dev seed): kullanıcı ilk oluştuğunda, varsayılan dille.
+///    Keycloak kaydıyla gelen kullanıcı (#1009) için event yok; satırı olmayan kullanıcı BadgeService'te varsayılan dildir.
 ///
 /// Payload minimum tutulur: id'ler + dil kodu + zaman damgası. Hassas veri taşınmaz.
 /// </summary>

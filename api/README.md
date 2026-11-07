@@ -122,7 +122,6 @@ The API will be available at `https://localhost:5079`
 
 ### Authentication
 - `POST /api/auth/login` - User login
-- `POST /api/auth/register` - User registration
 - `POST /api/auth/refresh-token` - Refresh access token
 - `POST /api/auth/logout` - User logout
 

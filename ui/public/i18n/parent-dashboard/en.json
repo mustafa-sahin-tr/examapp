@@ -19,37 +19,41 @@
     "codeText": "Open the link in your child's invitation e-mail or enter the code from the other parent.",
     "codeCta": "Enter code"
   },
-  "cards": {
-    "solved": {
-      "title": "Questions solved this week",
-      "since": "Since Monday, {{date}}",
-      "unit": "questions"
-    },
-    "assignments": {
-      "title": "Assignments",
-      "window": "Open assignments and those due in the last {{days}} days",
-      "completed": "Completed",
-      "pending": "Pending",
-      "overdue": "Overdue / timed out"
-    },
-    "points": {
-      "title": "Total points",
-      "unit": "points"
-    },
+  "week": {
+    "title": "This week",
+    "sentence": "{{name}} studied on {{days}} days this week and solved {{count}} questions.",
+    "sentenceNone": "{{name}} has not solved any questions yet this week.",
+    "correct": "correct",
+    "correctHint": "Of the questions answered this week",
+    "activities": "activities done",
+    "activitiesHint": "{{percent}} correct on first check on average",
+    "pending": "assignments open",
+    "points": "total points",
     "lastActivity": {
-      "title": "Last activity",
+      "title": "last activity",
       "none": "No activity yet",
       "today": "Today, around {{time}}",
       "yesterday": "Yesterday, around {{time}}",
       "onDate": "{{date}}, around {{time}}"
-    },
-    "activities": {
-      "title": "Activities",
-      "subtitle": "Interactive activity pages (not scored)",
-      "thisWeek": "Completed this week",
-      "total": "Completed in total",
-      "average": "Average correct on first check"
     }
+  },
+  "attention": {
+    "title": "Needs attention",
+    "none": "Nothing needs your attention right now.",
+    "overdue": "{{count}} assignment(s) overdue",
+    "overdueMeta": "Due in the last {{days}} days and not finished",
+    "overdueCta": "Assignments",
+    "weak": "Struggling with: {{topic}}",
+    "weakMeta": "{{percent}} correct in the last 30 days · {{count}} questions",
+    "weakCta": "Details"
+  },
+  "tabs": {
+    "label": "Details",
+    "progress": "Progress",
+    "outcomes": "Outcomes",
+    "goal": "Target school",
+    "schedule": "Calendar",
+    "assignments": "Assignments"
   },
   "assignments": {
     "title": "Homework and tests",

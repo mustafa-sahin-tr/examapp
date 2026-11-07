@@ -1,12 +1,12 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, OnInit, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, DestroyRef, ElementRef, OnInit, computed, inject, signal, viewChild, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSelectModule } from '@angular/material/select';
+import { MatTabsModule } from '@angular/material/tabs';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { EMPTY, Observable, Subject, Subscription, catchError, defer, finalize, map, switchMap, tap } from 'rxjs';
@@ -29,6 +29,9 @@ import { PageHeaderComponent } from '../../shared/components/page-header/page-he
 
 /** Veli paneli ekranlarının Transloco scope'u (`public/i18n/parent-dashboard/<lang>.json`). */
 export const PARENT_DASHBOARD_SCOPE = 'parent-dashboard';
+
+/** #883: ayrıntı sekmelerinin sırası (şablondaki `mat-tab` sırasıyla aynı). */
+export const PARENT_DASHBOARD_TABS = { progress: 0, outcomes: 1, goal: 2, schedule: 3, assignments: 4 } as const;
 
 /** Bağlı çocuk + özet anahtarı (yalnızca Active ve studentId dolu satırlar). */
 type ActiveChild = LinkedChild & { studentId: number };
@@ -59,6 +62,8 @@ export function parseChildParam(value: string | null): number | null {
  * Issue #421 (V3): aynı seçili çocuk için "Ödevler ve testler" bölümü (`app-parent-child-assignments`).
  * Issue #422 (V4): "Puan ve rozetler" kartı (`app-parent-child-progress`) ve haftalık "Program" (`app-parent-child-schedule`).
  * Issue #439: "Onay bekleyen ders talepleri" (`app-parent-booking-requests`) — seçili çocuktan bağımsız, tüm Active çocuklar.
+ * Issue #883: özet kartları yerine haftanın tek cümlesi + sayı şeridi, "Dikkat" listesi (geciken ödev, zorlandığı konu) ve
+ * alt alta yedi bölüm yerine sekmeler (içerik sekme açılınca yüklenir). Birden çok çocukta seçici çip satırı.
  */
 @Component({
   selector: 'app-parent-dashboard',
@@ -67,10 +72,10 @@ export function parseChildParam(value: string | null): number | null {
     PageHeaderComponent,
     MatButtonModule,
     MatCardModule,
-    MatFormFieldModule,
+    MatChipsModule,
     MatIconModule,
     MatProgressSpinnerModule,
-    MatSelectModule,
+    MatTabsModule,
     ParentBookingRequestsComponent,
     ParentRescheduleRequestsComponent,
     ParentChildAssignmentsComponent,
@@ -106,6 +111,11 @@ export class ParentDashboardComponent implements OnInit {
   protected readonly summaryError = signal<string | null>(null);
   /** 404 sonrası (bağlantı kaldırılmış olabilir) liste yenilenince gösterilen bilgi notu; seçim değişince kalkar. */
   protected readonly notice = signal<string | null>(null);
+
+  protected readonly tabs = PARENT_DASHBOARD_TABS;
+  /** Açık ayrıntı sekmesi; çocuk değişince korunur. */
+  protected readonly tab = signal<number>(PARENT_DASHBOARD_TABS.progress);
+  private readonly detailTabs = viewChild('detailTabs', { read: ElementRef });
 
   /** "Şimdi" — testte sabitlenebilir (bugün/dün ayrımı). */
   protected now: () => Date = () => new Date();
@@ -188,6 +198,45 @@ export class ParentDashboardComponent implements OnInit {
     this.loadChildren();
   }
 
+  /** "Dikkat" satırından: ilgili sekmeyi açar ve sekmelere kaydırır. */
+  protected openTab(index: number): void {
+    this.tab.set(index);
+    const el = this.detailTabs()?.nativeElement as HTMLElement | undefined;
+    setTimeout(() => el?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }));
+  }
+
+  /** "Ayşe bu hafta 4 gün çalıştı ve 62 soru çözdü." — ad yalnız ilk kelime (sıcak, kısa). */
+  protected weekSentence(s: ParentChildSummary): string {
+    const name = (this.selectedChild()?.studentName ?? '').trim().split(/\s+/)[0];
+    if (s.questionsSolvedThisWeek === 0) return this.text('week.sentenceNone', { name });
+    // Eski API gün sayısı vermez: en az bir gün çalışılmıştır.
+    const days = Math.max(1, s.activeDaysThisWeek ?? 1);
+    return this.text('week.sentence', { name, days, count: s.questionsSolvedThisWeek });
+  }
+
+  /** Bu hafta cevaplananlarda doğru oranı; cevap yoksa ya da eski API ise "—". */
+  protected correctPercent(s: ParentChildSummary): string {
+    if (s.correctThisWeek == null || s.questionsSolvedThisWeek === 0) return '—';
+    return this.percent(Math.round((s.correctThisWeek * 100) / s.questionsSolvedThisWeek));
+  }
+
+  /** 0–100 → dile göre yüzde ("%71" / "71%"). */
+  protected percent(value: number): string {
+    return new Intl.NumberFormat(this.locale(), { style: 'percent', maximumFractionDigits: 0 }).format(value / 100);
+  }
+
+  protected attentionCount(s: ParentChildSummary): number {
+    return (s.assignments.overdue > 0 ? 1 : 0) + (s.attention?.weakTopic ? 1 : 0);
+  }
+
+  /** "5 – 11 Ekim": haftanın Pazartesi'si → Pazar. */
+  protected weekRange(weekStart: string): string {
+    const start = parseLocalDate(weekStart);
+    if (!start) return '';
+    const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
+    return new Intl.DateTimeFormat(this.locale(), { day: 'numeric', month: 'long' }).formatRange(start, end);
+  }
+
   protected retrySummary(): void {
     const id = this.selectedId();
     if (id !== null) this.summaryRequests.next(id);
@@ -245,30 +294,24 @@ export class ParentDashboardComponent implements OnInit {
     });
   }
 
-  /** Haftanın Pazartesi'si ("yyyy-MM-dd") aktif dilde; saat dilimi kayması olmadan. */
-  protected formatWeekStart(value: string): string {
-    const date = parseLocalDate(value);
-    return date ? new Intl.DateTimeFormat(this.locale(), { day: 'numeric', month: 'long' }).format(date) : '';
-  }
-
   /**
    * Son aktivite (sunucu saate kesilmiş UTC gönderir): "Bugün / Dün / <tarih>" + yaklaşık saat (yerel, "14:00").
    * Dakika gösterilmez.
    */
   protected formatLastActivity(iso: string | null): string {
-    if (!iso) return this.text('cards.lastActivity.none');
+    if (!iso) return this.text('week.lastActivity.none');
     const date = new Date(iso);
-    if (Number.isNaN(date.getTime())) return this.text('cards.lastActivity.none');
+    if (Number.isNaN(date.getTime())) return this.text('week.lastActivity.none');
 
     const locale = this.locale();
     const time = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(
       new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours())
     );
     const dayDiff = Math.round((startOfDay(this.now()).getTime() - startOfDay(date).getTime()) / 86_400_000);
-    if (dayDiff === 0) return this.text('cards.lastActivity.today', { time });
-    if (dayDiff === 1) return this.text('cards.lastActivity.yesterday', { time });
+    if (dayDiff === 0) return this.text('week.lastActivity.today', { time });
+    if (dayDiff === 1) return this.text('week.lastActivity.yesterday', { time });
     const day = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric' }).format(date);
-    return this.text('cards.lastActivity.onDate', { date: day, time });
+    return this.text('week.lastActivity.onDate', { date: day, time });
   }
 
   private locale(): string {

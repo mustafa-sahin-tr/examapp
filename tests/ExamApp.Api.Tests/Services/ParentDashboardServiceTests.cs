@@ -2,6 +2,7 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Dashboard;
 using ExamApp.Api.Services.Parents;
+using ExamApp.Api.Services.TopicPerformance;
 using ExamApp.Api.Tests.Support;
 using Microsoft.EntityFrameworkCore;
 
@@ -62,11 +63,12 @@ public class ParentDashboardServiceTests : IDisposable
         (_studentId, _otherStudentId, _gradeId, _schoolId, _otherSchoolId) = (student.Id, other.Id, grade.Id, school.Id, otherSchool.Id);
     }
 
-    private async Task<ExamApp.Api.Models.Dtos.ParentDashboard.ParentChildSummaryDto> SummaryAsync()
+    private async Task<ExamApp.Api.Models.Dtos.ParentDashboard.ParentChildSummaryDto> SummaryAsync(
+        ITopicPerformanceService? topicPerformance = null)
     {
         await using var ctx = _db.NewContext();
         var service = new ParentDashboardService(ctx, new ParentChildAccess(ctx), new ParentAccessAuditLog(ctx, _time),
-            new LocalDayCalendar(LocalDayCalendar.DefaultTimeZoneId, _time), _time);
+            new LocalDayCalendar(LocalDayCalendar.DefaultTimeZoneId, _time), _time, topicPerformance: topicPerformance);
         return (await service.GetChildSummaryAsync(ParentUser, _studentId)).ShouldNotBeNull();
     }
 
@@ -110,7 +112,7 @@ public class ParentDashboardServiceTests : IDisposable
     }
 
     /// <summary>Instance'a bir soru satırı ekler; <paramref name="answeredAt"/> null ise cevapsız (test başlarken açılan satır).</summary>
-    private async Task AnswerAsync(int instanceId, int worksheetId, DateTime? answeredAt)
+    private async Task AnswerAsync(int instanceId, int worksheetId, DateTime? answeredAt, bool correct = false)
     {
         await using var ctx = _db.NewContext();
         var question = new Question { Text = $"q{++_seq}", Point = 1 };
@@ -125,12 +127,13 @@ public class ParentDashboardServiceTests : IDisposable
             WorksheetInstanceId = instanceId,
             WorksheetQuestionId = wq.Id,
             SelectedAnswerId = answeredAt.HasValue ? answer.Id : null,
-            UpdateTime = answeredAt
+            UpdateTime = answeredAt,
+            IsCorrect = correct
         });
         await ctx.SaveChangesAsync();
     }
 
-    private async Task PracticeAsync(DateTime? answeredAt, bool skipped = false, int? studentId = null)
+    private async Task PracticeAsync(DateTime? answeredAt, bool skipped = false, int? studentId = null, bool correct = false)
     {
         await using var ctx = _db.NewContext();
         var session = new PracticeSession { StudentId = studentId ?? _studentId, GradeId = _gradeId, StartTime = Now.AddDays(-10) };
@@ -140,7 +143,7 @@ public class ParentDashboardServiceTests : IDisposable
         ctx.PracticeSessionQuestions.Add(new PracticeSessionQuestion
         {
             PracticeSessionId = session.Id, QuestionId = question.Id, ShownAt = Now.AddDays(-10),
-            AnsweredAt = answeredAt, IsSkipped = skipped
+            AnsweredAt = answeredAt, IsSkipped = skipped, IsCorrect = correct
         });
         await ctx.SaveChangesAsync();
     }
@@ -161,10 +164,10 @@ public class ParentDashboardServiceTests : IDisposable
         var instance = await InstanceAsync(ws, Now.AddDays(-5), WorksheetInstanceStatus.Started);
         await AnswerAsync(instance, ws, WeekStartUtc.AddMinutes(30));    // Pzt 00:30 TR → sayılır
         await AnswerAsync(instance, ws, WeekStartUtc.AddMinutes(-30));   // Paz 23:30 TR → geçen hafta
-        await AnswerAsync(instance, ws, Now.AddHours(-1));               // sayılır
+        await AnswerAsync(instance, ws, Now.AddHours(-1), correct: true); // sayılır, doğru
         await AnswerAsync(instance, ws, null);                           // cevapsız satır
 
-        await PracticeAsync(Now.AddHours(-2));                           // sayılır
+        await PracticeAsync(Now.AddHours(-2), correct: true);            // sayılır, doğru
         await PracticeAsync(Now.AddHours(-2), skipped: true);            // pas → sayılmaz
         await PracticeAsync(null);                                       // gösterildi, cevaplanmadı
         await PracticeAsync(WeekStartUtc.AddHours(-1));                  // geçen hafta
@@ -179,6 +182,9 @@ public class ParentDashboardServiceTests : IDisposable
 
         summary.WeekStart.ShouldBe(new DateOnly(2026, 10, 5));
         summary.QuestionsSolvedThisWeek.ShouldBe(3);
+        // issue #883: doğru sayısı ve yerel gün sayısı (Pzt 00:30 TR + Çarşamba iki cevap → 2 gün).
+        summary.CorrectThisWeek.ShouldBe(2);
+        summary.ActiveDaysThisWeek.ShouldBe(2);
     }
 
     [Fact]
@@ -397,5 +403,57 @@ public class ParentDashboardServiceTests : IDisposable
     {
         DateTime? endAt = endOffsetDays.HasValue ? Now.AddDays(endOffsetDays.Value) : null;
         ParentDashboardService.ToBucket(status, endAt, Now).ShouldBe(expected);
+    }
+
+    [Fact]
+    public async Task Attention_weak_topic_is_the_lowest_accuracy_topic_under_seventy_percent()
+    {
+        await SeedAsync();
+        var performance = new StubTopicPerformance(
+            new TopicPerformanceItemDto { TopicId = 1, TopicName = "Kesirler", SubjectName = "Matematik", Correct = 3, Wrong = 3, AccuracyPct = 50m },
+            new TopicPerformanceItemDto { TopicId = 2, TopicName = "Oran", SubjectName = "Matematik", Correct = 3, Wrong = 5, AccuracyPct = 37.5m },
+            new TopicPerformanceItemDto { TopicId = 3, TopicName = "Hücre", SubjectName = "Fen", Correct = 8, Wrong = 2, AccuracyPct = 80m },
+            new TopicPerformanceItemDto { TopicId = null, TopicName = null, Correct = 0, Wrong = 9, AccuracyPct = 0m },
+            new TopicPerformanceItemDto { TopicId = 4, TopicName = "Sözcük", Correct = 7, Wrong = 3, AccuracyPct = 70m }); // %70 zayıf değil
+
+        var summary = await SummaryAsync(performance);
+
+        var weak = summary.Attention.WeakTopic.ShouldNotBeNull();
+        weak.TopicId.ShouldBe(2);
+        weak.TopicName.ShouldBe("Oran");
+        weak.SubjectName.ShouldBe("Matematik");
+        weak.AccuracyPercent.ShouldBe(38);
+        weak.Answered.ShouldBe(8);
+        performance.StudentId.ShouldBe(_studentId);
+        performance.MinQuestions.ShouldBe(TopicPerformanceQuery.ParentMinQuestions);
+        // Pencere saate kesilmiş son 30 gün.
+        performance.To.ShouldBe(new DateTime(2026, 10, 7, 9, 0, 0, DateTimeKind.Utc));
+        performance.From.ShouldBe(performance.To.AddDays(-30));
+    }
+
+    [Fact]
+    public async Task Attention_weak_topic_is_null_when_every_topic_is_fine()
+    {
+        await SeedAsync();
+        var summary = await SummaryAsync(new StubTopicPerformance(
+            new TopicPerformanceItemDto { TopicId = 4, TopicName = "Sözcük", Correct = 8, Wrong = 2, AccuracyPct = 80m }));
+
+        summary.Attention.WeakTopic.ShouldBeNull();
+    }
+
+    private sealed class StubTopicPerformance(params TopicPerformanceItemDto[] items) : ITopicPerformanceService
+    {
+        private List<TopicPerformanceItemDto> Items { get; } = items.ToList();
+        public int StudentId { get; private set; }
+        public int MinQuestions { get; private set; }
+        public DateTime From { get; private set; }
+        public DateTime To { get; private set; }
+
+        public Task<TopicPerformanceDto> GetAsync(int studentId, DateTime from, DateTime to, int? subjectId,
+            TopicPerformanceGroupBy groupBy, int minQuestions, CancellationToken ct = default)
+        {
+            (StudentId, From, To, MinQuestions) = (studentId, from, to, minQuestions);
+            return Task.FromResult(new TopicPerformanceDto { Items = Items });
+        }
     }
 }

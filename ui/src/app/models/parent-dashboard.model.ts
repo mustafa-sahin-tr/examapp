@@ -17,12 +17,32 @@ export interface ParentChildSummary {
   /** Haftanın Pazartesi'si (Europe/Istanbul), "yyyy-MM-dd". */
   weekStart: string;
   questionsSolvedThisWeek: number;
+  /** Issue #883: bu hafta cevaplananlardan doğru olanlar (eski API yanıtında yok). */
+  correctThisWeek?: number;
+  /** Issue #883: bu hafta cevap verilen yerel gün sayısı (0–7). */
+  activeDaysThisWeek?: number;
   assignments: ParentChildAssignmentCounts;
   totalPoints: number;
   /** ISO-8601 UTC; hiç aktivite yoksa null. */
   lastActivityAt: string | null;
   /** Issue #584: etkileşimli etkinlik özeti (eski API yanıtında yok). */
   activities?: ParentChildActivitySummary;
+  /** Issue #883: "Dikkat" listesi için zorlandığı konu. */
+  attention?: ParentChildAttention;
+}
+
+/** Issue #883: geciken ödev sayısı `assignments.overdue`'da; burada yalnız zorlandığı konu (son 30 gün, %70 altı). */
+export interface ParentChildAttention {
+  weakTopic: ParentWeakTopic | null;
+}
+
+export interface ParentWeakTopic {
+  topicId: number;
+  topicName: string;
+  subjectName: string | null;
+  /** 0–100. */
+  accuracyPercent: number;
+  answered: number;
 }
 
 /**

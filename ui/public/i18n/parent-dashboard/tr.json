@@ -19,37 +19,41 @@
     "codeText": "Çocuğunun gönderdiği davet e-postasındaki bağlantıyı aç ya da diğer veliden aldığın kodu gir.",
     "codeCta": "Kodu gir"
   },
-  "cards": {
-    "solved": {
-      "title": "Bu hafta çözülen soru",
-      "since": "{{date}} Pazartesi'den bu yana",
-      "unit": "soru"
-    },
-    "assignments": {
-      "title": "Ödevler",
-      "window": "Açık ödevler ve son {{days}} günde teslim tarihi geçenler",
-      "completed": "Tamamlandı",
-      "pending": "Bekliyor",
-      "overdue": "Gecikti / süresi doldu"
-    },
-    "points": {
-      "title": "Toplam puan",
-      "unit": "puan"
-    },
+  "week": {
+    "title": "Bu hafta",
+    "sentence": "{{name}} bu hafta {{days}} gün çalıştı ve {{count}} soru çözdü.",
+    "sentenceNone": "{{name}} bu hafta henüz soru çözmedi.",
+    "correct": "doğru",
+    "correctHint": "Bu hafta cevaplanan sorularda",
+    "activities": "etkinlik bitti",
+    "activitiesHint": "İlk kontrolde ortalama {{percent}} doğru",
+    "pending": "ödev bekliyor",
+    "points": "toplam puan",
     "lastActivity": {
-      "title": "Son aktivite",
+      "title": "son etkinlik",
       "none": "Henüz aktivite yok",
       "today": "Bugün, yaklaşık {{time}}",
       "yesterday": "Dün, yaklaşık {{time}}",
       "onDate": "{{date}}, yaklaşık {{time}}"
-    },
-    "activities": {
-      "title": "Etkinlikler",
-      "subtitle": "Etkileşimli etkinlik sayfaları (puansız)",
-      "thisWeek": "Bu hafta tamamlanan",
-      "total": "Toplam tamamlanan",
-      "average": "İlk kontrolde ortalama doğru"
     }
+  },
+  "attention": {
+    "title": "Dikkat",
+    "none": "Şu an dikkat isteyen bir şey yok.",
+    "overdue": "{{count}} ödevin süresi geçti",
+    "overdueMeta": "Son {{days}} günde teslim tarihi geçen ve bitirilmeyen ödevler",
+    "overdueCta": "Ödevler",
+    "weak": "Zorlandığı konu: {{topic}}",
+    "weakMeta": "Son 30 günde {{percent}} doğru · {{count}} soru",
+    "weakCta": "Ayrıntı"
+  },
+  "tabs": {
+    "label": "Ayrıntılar",
+    "progress": "Gelişim",
+    "outcomes": "Kazanımlar",
+    "goal": "Hedef okul",
+    "schedule": "Takvim",
+    "assignments": "Ödevler"
   },
   "assignments": {
     "title": "Ödevler ve testler",

@@ -8,7 +8,7 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { TranslocoService } from '@jsverse/transloco';
 import { EMPTY, Subject, of, throwError } from 'rxjs';
 
-import { ParentDashboardComponent, parseChildParam, parseLocalDate } from './parent-dashboard.component';
+import { PARENT_DASHBOARD_TABS, ParentDashboardComponent, parseChildParam, parseLocalDate } from './parent-dashboard.component';
 import { ParentDashboardService } from '../../services/parent-dashboard.service';
 import { ParentLinkService } from '../../services/parent-link.service';
 import { BookingService } from '../../services/booking.service';
@@ -68,6 +68,11 @@ describe('ParentDashboardComponent (issue #420)', () => {
             totalPoints: 1250,
             lastActivityAt: '2026-10-07T08:30:00Z',
             activities: { completedThisWeek: 2, completedTotal: 9, averageFirstCheckPercent: 78 },
+            correctThisWeek: 12,
+            activeDaysThisWeek: 3,
+            attention: {
+                weakTopic: { topicId: 5, topicName: 'Oran ve orantı', subjectName: 'Matematik', accuracyPercent: 38, answered: 21 },
+            },
             ...overrides,
         };
     }
@@ -146,6 +151,10 @@ describe('ParentDashboardComponent (issue #420)', () => {
         harness.detectChanges();
     }
 
+    const openTab = async (index: number) => {
+        (harness.routeDebugElement!.componentInstance as unknown as { tab: { set(i: number): void } }).tab.set(index);
+        await settle();
+    };
     const url = () => TestBed.inject(Router).url;
     const text = (el: HTMLElement, sel: string) => el.querySelector(sel)?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
 
@@ -235,46 +244,71 @@ describe('ParentDashboardComponent (issue #420)', () => {
         expect(text(el, '[data-test="selected-child"]')).toContain('Mert Kaya');
     });
 
-    it('summary_RendersCards', async () => {
+    it('summary_RendersWeekSentenceAndStrip (#883)', async () => {
         const el = await setup([ayse]);
-        expect(text(el, '[data-test="solved-value"]')).toBe('17');
-        expect(text(el, '[data-test="assignments-completed"]')).toContain('4');
-        expect(text(el, '[data-test="assignments-completed"]')).toContain(parentDashboardTr.cards.assignments.completed);
-        expect(text(el, '[data-test="assignments-pending"]')).toContain('2');
-        expect(text(el, '[data-test="assignments-overdue"]')).toContain('1');
-        expect(text(el, '[data-test="assignments-overdue"]')).toContain(parentDashboardTr.cards.assignments.overdue);
-        expect(text(el, '[data-test="points-value"]')).toBe('1250');
-        expect(text(el, '[data-test="card-solved"]')).toContain(parentDashboardTr.cards.solved.title);
-        expect(text(el, '[data-test="card-assignments"]')).toContain('30');
+        // Ad yalnız ilk kelime; gün sayısı + çözülen soru.
+        expect(text(el, '[data-test="week-sentence"]')).toBe('Ayşe bu hafta 3 gün çalıştı ve 17 soru çözdü.');
+        expect(text(el, '[data-test="week-correct"]')).toContain('%71'); // 12 / 17
+        expect(text(el, '[data-test="week-pending"]')).toContain('2');
+        expect(text(el, '[data-test="week-points"]')).toContain('1250');
         expect(text(el, '[data-test="last-activity-value"]')).not.toBe('');
         // Hafta başı ("yyyy-MM-dd") yerel gün olarak — saat dilimine göre bir önceki güne kaymaz.
-        expect(text(el, '[data-test="card-solved"]')).toContain('5 Ekim');
+        expect(text(el, '[data-test="week-range"]')).toMatch(/^5\s*[–-]\s*11 Ekim$/);
     });
 
-    it('summary_ActivitiesCard_ShowsCompletionsAndFirstCheckAverage (issue #584)', async () => {
+    it('summary_NoQuestionsThisWeek_SaysSoAndShowsDash (#883)', async () => {
         const el = await setup([ayse]);
-        expect(text(el, '[data-test="card-activities"]')).toContain(parentDashboardTr.cards.activities.title);
-        expect(text(el, '[data-test="activities-week"]')).toContain('2');
-        expect(text(el, '[data-test="activities-total"]')).toContain('9');
-        expect(text(el, '[data-test="activities-average"]')).toContain('%78');
-        expect(text(el, '[data-test="activities-average"]')).toContain(parentDashboardTr.cards.activities.average);
-    });
-
-    it('summary_ActivitiesWithoutCheck_ShowsDash_AndOldApiHidesCard (issue #584)', async () => {
-        const el = await setup([ayse]);
-        const component = harness.routeDebugElement!.componentInstance as unknown as { retrySummary(): void };
-
         dashboardService.getChildSummary.mockReturnValue(
-            of(summaryFor(11, { activities: { completedThisWeek: 0, completedTotal: 0, averageFirstCheckPercent: null } })),
-        );
-        component.retrySummary();
+            of(summaryFor(11, { questionsSolvedThisWeek: 0, correctThisWeek: 0, activeDaysThisWeek: 0 })));
+        (harness.routeDebugElement!.componentInstance as unknown as { retrySummary(): void }).retrySummary();
         await settle();
-        expect(text(el, '[data-test="activities-average"]')).toContain('—');
+        expect(text(el, '[data-test="week-sentence"]')).toBe('Ayşe bu hafta henüz soru çözmedi.');
+        expect(text(el, '[data-test="week-correct"]')).toContain('—');
+    });
+
+    it('attention_ListsOverdueAndWeakTopic_AndOpensTheirTabs (#883)', async () => {
+        const el = await setup([ayse]);
+        expect(text(el, '[data-test="attention"] h2')).toContain('2');
+        expect(text(el, '[data-test="attention-overdue"]')).toContain('1 ödevin süresi geçti');
+        expect(text(el, '[data-test="attention-weak"]')).toContain('Zorlandığı konu: Oran ve orantı');
+        expect(text(el, '[data-test="attention-weak"]')).toContain('%38 doğru · 21 soru');
+
+        el.querySelector<HTMLButtonElement>('[data-test="attention-overdue"] button')!.click();
+        await settle();
+        expect(el.querySelector('[data-test="assignments-section"]')).not.toBeNull();
+
+        el.querySelector<HTMLButtonElement>('[data-test="attention-weak"] button')!.click();
+        await settle();
+        expect(el.querySelector('[data-test="progress-section"]')).not.toBeNull();
+    });
+
+    it('attention_NothingToShow_SaysSo (#883)', async () => {
+        const el = await setup([ayse]);
+        dashboardService.getChildSummary.mockReturnValue(of(summaryFor(11, {
+            assignments: { completed: 1, overdue: 0, pending: 0, windowDays: 30 }, attention: { weakTopic: null },
+        })));
+        (harness.routeDebugElement!.componentInstance as unknown as { retrySummary(): void }).retrySummary();
+        await settle();
+        expect(text(el, '[data-test="attention-none"]')).toBe(parentDashboardTr.attention.none);
+        expect(el.querySelector('[data-test="attention-overdue"]')).toBeNull();
+    });
+
+    it('summary_Activities_ShowWeekCount_AndOldApiHidesThem (issue #584)', async () => {
+        const el = await setup([ayse]);
+        expect(text(el, '[data-test="week-activities"]')).toContain('2');
+        expect(el.querySelector('[data-test="week-activities"]')!.getAttribute('title')).toContain('%78');
 
         dashboardService.getChildSummary.mockReturnValue(of(summaryFor(11, { activities: undefined })));
-        component.retrySummary();
+        (harness.routeDebugElement!.componentInstance as unknown as { retrySummary(): void }).retrySummary();
         await settle();
-        expect(el.querySelector('[data-test="card-activities"]')).toBeNull();
+        expect(el.querySelector('[data-test="week-activities"]')).toBeNull();
+    });
+
+    it('tabs_OnlyTheOpenTabLoads (#883)', async () => {
+        await setup([ayse]);
+        expect(dashboardService.getChildProgress).toHaveBeenCalledTimes(1);
+        expect(dashboardService.getChildSchedule).not.toHaveBeenCalled();
+        expect(dashboardService.getChildAssignments).not.toHaveBeenCalled();
     });
 
     it('summary_NoActivity_ShowsNoneText', async () => {
@@ -285,7 +319,7 @@ describe('ParentDashboardComponent (issue #420)', () => {
         };
         component.retrySummary();
         await settle();
-        expect(text(el, '[data-test="last-activity-value"]')).toBe(parentDashboardTr.cards.lastActivity.none);
+        expect(text(el, '[data-test="last-activity-value"]')).toContain(parentDashboardTr.week.lastActivity.none);
     });
 
     it('summary404_ShowsNoAccessMessage_RetryRefetches', async () => {
@@ -305,7 +339,7 @@ describe('ParentDashboardComponent (issue #420)', () => {
         el.querySelector<HTMLButtonElement>('[data-test="summary-error"] button')!.click();
         await settle();
         expect(el.querySelector('[data-test="summary-error"]')).toBeNull();
-        expect(text(el, '[data-test="solved-value"]')).toBe('17');
+        expect(text(el, '[data-test="week-sentence"]')).toContain('17');
     });
 
     it('summary404_ChildNoLongerLinked_ReloadsListAndFallsBackToRemainingChild', async () => {
@@ -351,7 +385,7 @@ describe('ParentDashboardComponent (issue #420)', () => {
         expect(component.formatLastActivity(at(7, 14))).toBe('Bugün, yaklaşık 14:00');
         expect(component.formatLastActivity(at(6, 9))).toBe('Dün, yaklaşık 09:00');
         expect(component.formatLastActivity(at(3, 21))).toBe('3 Ekim 2026, yaklaşık 21:00');
-        expect(component.formatLastActivity(null)).toBe(parentDashboardTr.cards.lastActivity.none);
+        expect(component.formatLastActivity(null)).toBe(parentDashboardTr.week.lastActivity.none);
     });
 
     it('parseLocalDate_BuildsLocalMidnight', () => {
@@ -359,11 +393,6 @@ describe('ParentDashboardComponent (issue #420)', () => {
         expect([d.getFullYear(), d.getMonth(), d.getDate(), d.getHours()]).toEqual([2026, 9, 5, 0]);
         expect(parseLocalDate('2026-10-5')).toBeNull();
         expect(parseLocalDate(null)).toBeNull();
-    });
-
-    it('overdueLabel_MentionsTimedOut', () => {
-        expect(parentDashboardTr.cards.assignments.overdue).toBe('Gecikti / süresi doldu');
-        expect(parentDashboardEn.cards.assignments.overdue).toBe('Overdue / timed out');
     });
 
     it('summaryServerError_ShowsGenericLoadError', async () => {
@@ -389,12 +418,14 @@ describe('ParentDashboardComponent (issue #420)', () => {
     it('english_RendersEnglishDictionary', async () => {
         const el = await setup([ayse], '/parent', 'en');
         expect(text(el, 'h1')).toBe(parentDashboardEn.title);
-        expect(text(el, '[data-test="card-points"]')).toContain(parentDashboardEn.cards.points.title);
-        expect(text(el, '[data-test="card-solved"]')).toContain('October 5');
+        expect(text(el, '[data-test="week-points"]')).toContain(parentDashboardEn.week.points);
+        expect(text(el, '[data-test="week-range"]')).toContain('October 5');
+        expect(text(el, '[data-test="week-correct"]')).toContain('71%');
     });
 
     it('assignmentsSection_FollowsTheSelectedChild', async () => {
         const el = await setup([ayse, mert]);
+        await openTab(PARENT_DASHBOARD_TABS.assignments);
         expect(el.querySelector('[data-test="assignments-section"]')).not.toBeNull();
         expect(dashboardService.getChildAssignments).toHaveBeenCalledTimes(1);
         expect(dashboardService.getChildAssignments).toHaveBeenCalledWith(11, null, 1);
@@ -419,9 +450,10 @@ describe('ParentDashboardComponent (issue #420)', () => {
     it('progressAndScheduleSections_FollowTheSelectedChild', async () => {
         const el = await setup([ayse, mert]);
         expect(el.querySelector('[data-test="progress-section"]')).not.toBeNull();
-        expect(el.querySelector('[data-test="schedule-section"]')).not.toBeNull();
         expect(dashboardService.getChildProgress).toHaveBeenCalledTimes(1);
         expect(dashboardService.getChildProgress).toHaveBeenCalledWith(11);
+        await openTab(PARENT_DASHBOARD_TABS.schedule);
+        expect(el.querySelector('[data-test="schedule-section"]')).not.toBeNull();
         expect(dashboardService.getChildSchedule).toHaveBeenCalledTimes(1);
         expect(dashboardService.getChildSchedule).toHaveBeenCalledWith(11, undefined);
 
@@ -431,12 +463,12 @@ describe('ParentDashboardComponent (issue #420)', () => {
             selectChild(id: number): void;
         }).selectChild(12);
         await settle();
+        // Çocuk değişince açık sekme korunur; program bu haftaya döner (aralıksız istek).
+        expect(dashboardService.getChildSchedule).toHaveBeenCalledTimes(1);
+        expect(dashboardService.getChildSchedule).toHaveBeenCalledWith(12, undefined);
+        await openTab(PARENT_DASHBOARD_TABS.progress);
         expect(dashboardService.getChildProgress).toHaveBeenCalledTimes(1);
         expect(dashboardService.getChildProgress).toHaveBeenCalledWith(12);
-        // Çocuk değişince program bu haftaya döner (aralıksız istek).
-        expect(dashboardService.getChildSchedule).toHaveBeenCalledTimes(1);
-        // Çocuk değişince program bu haftaya döner (aralıksız istek).
-        expect(dashboardService.getChildSchedule).toHaveBeenCalledWith(12, undefined);
     });
 
     it('progress404_ShowsNoticeAndReloadsChildren', async () => {
@@ -463,6 +495,7 @@ describe('ParentDashboardComponent (issue #420)', () => {
 
     it('assignments404_ShowsNoticeAndReloadsChildren', async () => {
         const el = await setup([ayse]);
+        await openTab(PARENT_DASHBOARD_TABS.assignments);
         linkService.getMyChildren.mockReturnValue(of([]));
         dashboardService.getChildAssignments.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 404 })));
         const section = harness.routeDebugElement!.query((d) => d.name === 'app-parent-child-assignments')!.componentInstance as unknown as {

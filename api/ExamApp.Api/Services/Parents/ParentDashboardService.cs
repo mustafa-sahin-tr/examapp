@@ -8,6 +8,7 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.ParentDashboard;
 using ExamApp.Api.Services.Dashboard;
+using ExamApp.Api.Services.TopicPerformance;
 using ExamApp.Api.Services.Worksheets;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -43,6 +44,11 @@ public sealed class ParentDashboardService : IParentDashboardService
     private readonly ILocalDayCalendar _calendar;
     private readonly TimeProvider _time;
     private readonly ILogger<ParentDashboardService>? _logger;
+    private readonly ITopicPerformanceService? _topicPerformance;
+
+    /// <summary>issue #883: zayıf konu kuralı veli konu kartıyla aynı (30 gün, en az 5 cevap, %70 altı).</summary>
+    internal const int WeakTopicDays = TopicPerformanceQuery.DefaultDays;
+    internal const decimal WeakTopicMaxAccuracy = 70m;
 
     public ParentDashboardService(
         AppDbContext context,
@@ -50,7 +56,8 @@ public sealed class ParentDashboardService : IParentDashboardService
         IParentAccessAuditLog audit,
         ILocalDayCalendar? calendar = null,
         TimeProvider? time = null,
-        ILogger<ParentDashboardService>? logger = null)
+        ILogger<ParentDashboardService>? logger = null,
+        ITopicPerformanceService? topicPerformance = null)
     {
         _context = context;
         _access = access;
@@ -58,6 +65,7 @@ public sealed class ParentDashboardService : IParentDashboardService
         _calendar = calendar ?? LocalDayCalendar.Default;
         _time = time ?? TimeProvider.System;
         _logger = logger;
+        _topicPerformance = topicPerformance;
     }
 
     public async Task<ParentChildSummaryDto?> GetChildSummaryAsync(int parentUserId, int studentId, CancellationToken ct = default)
@@ -74,23 +82,30 @@ public sealed class ParentDashboardService : IParentDashboardService
         var weekEndUtc = _calendar.StartOfDayUtc(weekStart.AddDays(7));
 
         // AppDbContext thread-safe değil: sorgular art arda (her biri tek COUNT/SUM/MAX; N+1 yok).
-        var solved = await CountSolvedAsync(grant.StudentId, weekStartUtc, weekEndUtc, ct);
+        var week = await WeekAnswersAsync(grant.StudentId, weekStartUtc, weekEndUtc, ct);
         var assignments = await CountAssignmentsAsync(grant, now, ct);
         var points = await _context.StudentPoints.AsNoTracking()
             .Where(sp => sp.StudentId == grant.StudentId)
             .SumAsync(sp => (int?)sp.XP, ct) ?? 0;
         var lastActivity = await LastActivityAsync(grant.StudentId, ct);
         var activities = await ActivitySummaryAsync(grant.StudentId, weekStartUtc, weekEndUtc, ct);
+        var attention = new ParentChildAttentionDto
+        {
+            WeakTopic = await WeakTopicAsync(grant.StudentId, now, ct)
+        };
 
         return new ParentChildSummaryDto
         {
             StudentId = grant.StudentId,
             WeekStart = weekStart,
-            QuestionsSolvedThisWeek = solved,
+            QuestionsSolvedThisWeek = week.Solved,
+            CorrectThisWeek = week.Correct,
+            ActiveDaysThisWeek = week.ActiveDays,
             Assignments = assignments,
             TotalPoints = points,
             LastActivityAt = lastActivity,
-            Activities = activities
+            Activities = activities,
+            Attention = attention
         };
     }
 
@@ -121,21 +136,34 @@ public sealed class ParentDashboardService : IParentDashboardService
     /// <summary>Haftanın Pazartesi'si (ISO haftası; Pazar bir önceki Pazartesi'ye bağlanır).</summary>
     internal static DateOnly StartOfWeek(DateOnly day) => day.AddDays(-(((int)day.DayOfWeek + 6) % 7));
 
-    private async Task<int> CountSolvedAsync(int studentId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+    private sealed record WeekAnswers(int Solved, int Correct, int ActiveDays);
+
+    /// <summary>
+    /// Bu haftanın cevapları: sayı, doğru sayısı ve cevap verilen yerel gün sayısı. Bir haftanın cevap anları okunur (iki kolon);
+    /// gün hesabı yerel saat diliminde bellekte yapılır.
+    /// </summary>
+    private async Task<WeekAnswers> WeekAnswersAsync(int studentId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
     {
         // IX_TestInstanceQuestions_UpdateTime_Answered yüklemiyle aynı şekil (cevaplı + UpdateTime aralığı).
         var worksheetAnswers = await _context.TestInstanceQuestions.AsNoTracking()
             .Where(q => q.WorksheetInstance.StudentId == studentId
                 && (q.SelectedAnswerId != null || q.AnswerPayload != null)
                 && q.UpdateTime != null && q.UpdateTime >= fromUtc && q.UpdateTime < toUtc)
-            .CountAsync(ct);
+            .Select(q => new { At = q.UpdateTime!.Value, q.IsCorrect })
+            .ToListAsync(ct);
 
         var practiceAnswers = await _context.PracticeSessionQuestions.AsNoTracking()
             .Where(p => p.PracticeSession.StudentId == studentId
                 && p.AnsweredAt != null && p.AnsweredAt >= fromUtc && p.AnsweredAt < toUtc && !p.IsSkipped)
-            .CountAsync(ct);
+            .Select(p => new { At = p.AnsweredAt!.Value, p.IsCorrect })
+            .ToListAsync(ct);
 
-        return worksheetAnswers + practiceAnswers;
+        var all = worksheetAnswers.Concat(practiceAnswers).ToList();
+        var days = all
+            .Select(a => DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(a.At, DateTimeKind.Utc), _calendar.TimeZone)))
+            .Distinct()
+            .Count();
+        return new WeekAnswers(all.Count, all.Count(a => a.IsCorrect), days);
     }
 
     private async Task<ParentChildAssignmentCountsDto> CountAssignmentsAsync(ParentChildAccessGrant grant, DateTime now, CancellationToken ct)
@@ -151,6 +179,35 @@ public sealed class ParentDashboardService : IParentDashboardService
         }
 
         return ParentAssignmentScope.Count(scope.Items);
+    }
+
+    /// <summary>
+    /// issue #883: son 30 günün en zayıf konusu. Pencere ParentTopicPerformanceService gibi saate kesilir (cevap anı dakikasıyla
+    /// görünmez). Konu performansı servisi yoksa (eski testler) null.
+    /// </summary>
+    private async Task<ParentWeakTopicDto?> WeakTopicAsync(int studentId, DateTime now, CancellationToken ct)
+    {
+        if (_topicPerformance == null)
+            return null;
+
+        var to = TruncateToHour(now);
+        var performance = await _topicPerformance.GetAsync(studentId, to.AddDays(-WeakTopicDays), to, null,
+            TopicPerformanceGroupBy.Topic, TopicPerformanceQuery.ParentMinQuestions, ct);
+        var weakest = performance.Items
+            .Where(i => i.TopicId != null && i.AccuracyPct < WeakTopicMaxAccuracy)
+            .OrderBy(i => i.AccuracyPct)
+            .ThenByDescending(i => i.Correct + i.Wrong)
+            .FirstOrDefault();
+        return weakest == null
+            ? null
+            : new ParentWeakTopicDto
+            {
+                TopicId = weakest.TopicId!.Value,
+                TopicName = weakest.TopicName ?? string.Empty,
+                SubjectName = weakest.SubjectName,
+                AccuracyPercent = (int)Math.Round(weakest.AccuracyPct, MidpointRounding.AwayFromZero),
+                Answered = weakest.Correct + weakest.Wrong
+            };
     }
 
     /// <inheritdoc cref="ParentAssignmentScope.ToBucket"/>

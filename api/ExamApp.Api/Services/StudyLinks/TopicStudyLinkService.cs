@@ -78,6 +78,55 @@ public class TopicStudyLinkService : ITopicStudyLinkService
         return await BuildListAsync(scope.Scope, query.IncludeInactive, query.Skip, query.Take, ct);
     }
 
+    public async Task<StudyLinkOverviewResultDto> OverviewAsync(StudyLinkActor actor, CancellationToken ct = default)
+    {
+        if (await AuthorizeManagerAsync<StudyLinkOverviewResultDto>(actor, ct) is { } denied)
+            return denied;
+
+        var groups = await _context.TopicStudyLinks.AsNoTracking()
+            .Select(l => new
+            {
+                TopicId = l.TopicId ?? l.SubTopic!.TopicId,
+                l.IsActive,
+                Changed = l.UpdateTime ?? l.CreateTime,
+            })
+            .GroupBy(l => l.TopicId)
+            .Select(g => new
+            {
+                TopicId = g.Key,
+                LinkCount = g.Count(),
+                ActiveCount = g.Count(l => l.IsActive),
+                LastChangedAt = g.Max(l => l.Changed),
+            })
+            .OrderByDescending(g => g.LastChangedAt)
+            .Take(OverviewLimit)
+            .ToListAsync(ct);
+
+        var topicIds = groups.Select(g => g.TopicId).ToList();
+        var topics = await _context.Topics.AsNoTracking()
+            .Where(t => topicIds.Contains(t.Id))
+            .Select(t => new { t.Id, t.Name, t.SubjectId, SubjectName = t.Subject.Name, t.GradeId })
+            .ToDictionaryAsync(t => t.Id, ct);
+
+        return new StudyLinkOverviewResultDto
+        {
+            Success = true,
+            Items = groups.Where(g => topics.ContainsKey(g.TopicId)).Select(g => new StudyLinkTopicOverviewDto
+            {
+                TopicId = g.TopicId,
+                TopicName = topics[g.TopicId].Name,
+                SubjectId = topics[g.TopicId].SubjectId,
+                SubjectName = topics[g.TopicId].SubjectName,
+                GradeId = topics[g.TopicId].GradeId,
+                LinkCount = g.LinkCount,
+                ActiveCount = g.ActiveCount,
+                LastChangedAt = g.LastChangedAt,
+            }).ToList(),
+        };
+    }
+
+    private const int OverviewLimit = 50;
+
     public async Task<TopicStudyLinkResultDto> GetByIdAsync(int id, StudyLinkActor actor, CancellationToken ct = default)
     {
         if (await AuthorizeManagerAsync<TopicStudyLinkResultDto>(actor, ct) is { } denied)

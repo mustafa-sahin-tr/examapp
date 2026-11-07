@@ -1,7 +1,7 @@
 {
   "title": "Planım",
   "subtitle": {
-    "teacher": "Onayladığın ders randevularını tek takvimde gör.",
+    "teacher": "Verdiğin ödevlerin teslim tarihlerini ve onayladığın ders randevularını tek takvimde gör.",
     "student": "Planladığın sınavları, atama teslim tarihlerini, çalışma planlarını ve ders randevularını tek takvimde gör."
   },
   "prevMonth": "Önceki ay",
@@ -30,7 +30,7 @@
     "emptyMonthTitle": "Bu ay planlı bir şey yok",
     "emptyStudent": "Bir çalışma programı oluştur ya da bugün birkaç soru çöz.",
     "emptyTeacher": "Müsait saat açınca öğrencilerin ders isteyebilir.",
-    "emptyTeacherSchool": "Onayladığın ders randevuları burada gün gün görünür.",
+    "emptyTeacherSchool": "Verdiğin ödevlerin teslim tarihleri ve onayladığın ders randevuları burada gün gün görünür.",
     "createProgram": "Program oluştur",
     "dailyQuestions": "Günün sorularını çöz",
     "openSlots": "Müsait saat aç",

@@ -1,7 +1,7 @@
 {
   "title": "My Plan",
   "subtitle": {
-    "teacher": "See all the lesson bookings you approved in a single calendar.",
+    "teacher": "See the due dates of the assignments you gave and the lesson bookings you approved in a single calendar.",
     "student": "See your scheduled exams, assignment due dates, study plans and lesson bookings in a single calendar."
   },
   "prevMonth": "Previous month",
@@ -30,7 +30,7 @@
     "emptyMonthTitle": "Nothing planned this month",
     "emptyStudent": "Create a study program or solve a few questions today.",
     "emptyTeacher": "Open available hours so students can request lessons.",
-    "emptyTeacherSchool": "Lessons you approve show up here day by day.",
+    "emptyTeacherSchool": "Due dates of your assignments and the lessons you approve show up here day by day.",
     "createProgram": "Create a program",
     "dailyQuestions": "Solve today's questions",
     "openSlots": "Open available hours",

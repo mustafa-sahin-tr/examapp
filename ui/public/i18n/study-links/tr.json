@@ -95,6 +95,8 @@
     "subjectsLoadFailed": "Dersler yüklenemedi.",
     "topicsLoadFailed": "Konular yüklenemedi.",
     "subTopicsLoadFailed": "Alt konular yüklenemedi.",
-    "loading": "Yükleniyor…"
+    "loading": "Yükleniyor…",
+    "overviewTitle": "Linki olan konular",
+    "overviewCount": "{{count}} link"
   }
 }

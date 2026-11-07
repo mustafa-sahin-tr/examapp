@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import {
   CreateStudyLinkRequest,
   QuestionStudyLinkSuggestion,
@@ -11,6 +11,7 @@ import {
   StudyLinkListResponse,
   StudyLinkQuery,
   UpdateStudyLinkRequest,
+  StudyLinkTopicOverview,
 } from '../models/study-link';
 
 /** Konu / alt konu çalışma linkleri (issue #61). */
@@ -21,6 +22,13 @@ export class StudyLinkService {
   private readonly http = inject(HttpClient);
 
   /** Yönetim listesi — `topicId` ya da `subTopicId`'den tam olarak biri gönderilir. */
+  /** Linki olan konular, son değişen önce (#916). */
+  overview(): Observable<StudyLinkTopicOverview[]> {
+    return this.http
+      .get<{ items: StudyLinkTopicOverview[] }>(`${this.baseUrl}/overview`)
+      .pipe(map((r) => r.items ?? []));
+  }
+
   list(query: StudyLinkQuery): Observable<StudyLinkListResponse> {
     let params = new HttpParams();
     if (query.subTopicId != null) params = params.set('subTopicId', query.subTopicId);

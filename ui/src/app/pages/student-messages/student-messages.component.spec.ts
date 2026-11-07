@@ -135,6 +135,16 @@ describe('StudentMessagesComponent — öğretmen gelen kutusu (issue #106)', ()
         expect(http.expectOne(isInboxList).request.params.get('filter')).toBe('unread');
     });
 
+    it('noConversations_AllFilter_ShowsSinglePageEmptyState_issue916', () => {
+        create();
+        flushInbox([]);
+
+        expect(q('sm-no-conversations')?.querySelector('p')?.textContent?.trim()).toBe(dmTr.teacher.noConversations);
+        expect(q('sm-empty')).toBeNull();
+        expect(q('sm-placeholder')).toBeNull();
+        expect(q('sm-filter')).toBeNull();
+    });
+
     it('error_ShowsRetry_ThatReloads', () => {
         create();
         http.expectOne(isInboxList).flush({}, { status: 500, statusText: 'err' });

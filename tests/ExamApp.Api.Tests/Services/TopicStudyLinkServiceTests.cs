@@ -70,6 +70,36 @@ public class TopicStudyLinkServiceTests : IDisposable
         return await NewService(ctx).CreateAsync(dto, TeacherActor);
     }
 
+    // ---------------- Genel bakış (#916) ----------------
+
+    [Fact]
+    public async Task Overview_CountsSubTopicLinksUnderTheirTopic_MostRecentFirst_issue916()
+    {
+        var t = await SeedTaxonomyAsync();
+        Assert.True((await CreateAsync(NewLink(topicId: t.TopicId))).Success);
+        Assert.True((await CreateAsync(NewLink(subTopicId: t.SubTopicA, isActive: false, url: "https://example.com/a"))).Success);
+        Assert.True((await CreateAsync(NewLink(subTopicId: t.OtherTopicSubTopic, url: "https://example.com/o"))).Success);
+
+        await using (var ctx = _db.NewContext())
+        {
+            // Geometri bağlantısı daha yeni → listede önce gelir.
+            var other = await ctx.TopicStudyLinks.SingleAsync(l => l.SubTopicId == t.OtherTopicSubTopic);
+            other.UpdateTime = DateTime.UtcNow.AddMinutes(5);
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var read = _db.NewContext();
+        var result = await NewService(read).OverviewAsync(TeacherActor);
+
+        Assert.True(result.Success);
+        Assert.Equal(new[] { t.OtherTopicId, t.TopicId }, result.Items.Select(i => i.TopicId));
+        var numbers = result.Items.Single(i => i.TopicId == t.TopicId);
+        Assert.Equal(2, numbers.LinkCount);
+        Assert.Equal(1, numbers.ActiveCount);
+        Assert.Equal("Matematik", numbers.SubjectName);
+        Assert.Equal("Sayılar", numbers.TopicName);
+    }
+
     // ---------------- 7 aktif link limiti ----------------
 
     [Fact]

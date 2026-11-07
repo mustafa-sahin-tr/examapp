@@ -8,6 +8,8 @@ import { TranslocoDirective, TranslocoPipe, provideTranslocoScope } from '@jsver
 import { Observable, catchError, combineLatest, finalize, map, of, switchMap } from 'rxjs';
 import { SubjectService } from '../../services/subject.service';
 import { GradesService } from '../../services/grades.service';
+import { StudyLinkService } from '../../services/study-link.service';
+import { StudyLinkTopicOverview } from '../../models/study-link';
 import { Subject } from '../../models/subject';
 import { Topic } from '../../models/topic';
 import { SubTopic } from '../../models/subtopic';
@@ -25,6 +27,9 @@ interface ListState<T> {
 }
 
 const IDLE: ListState<never> = { items: null, loading: false, failed: false };
+
+/** Son seçilen ders (#916) — ders listesinde başa alınır. */
+const LAST_SUBJECT_KEY = 'studyLinks.lastSubjectId';
 
 /**
  * Issue #61 — öğretmenin (Admin/Teacher backend yetkisi) tüm konu/alt konular için çalışma linki yönetimi.
@@ -52,6 +57,7 @@ const IDLE: ListState<never> = { items: null, loading: false, failed: false };
 export class StudyLinksComponent {
   private readonly subjectService = inject(SubjectService);
   private readonly gradesService = inject(GradesService);
+  private readonly studyLinkService = inject(StudyLinkService);
 
   readonly selectedSubjectId = signal<number | null>(null);
   readonly selectedTopicId = signal<number | null>(null);
@@ -73,6 +79,24 @@ export class StudyLinksComponent {
     ),
     { initialValue: new Map<number, string>() }
   );
+
+  /**
+   * #916: linki olan konular — konu seçilmemişken gösterilir, tıklanınca ders + konu seçilir.
+   * Hata → liste gösterilmez (seçiciler yine çalışır).
+   */
+  readonly overview = toSignal(
+    this.studyLinkService.overview().pipe(catchError(() => of<StudyLinkTopicOverview[]>([]))),
+    { initialValue: [] as StudyLinkTopicOverview[] }
+  );
+
+  /** #916: son kullanılan ders (bu tarayıcıda son seçilen, yoksa en son linki değişen) başta. */
+  private readonly recentSubjectId = signal<number | null>(readLastSubject());
+  readonly sortedSubjects = computed(() => {
+    const items = this.subjects().items ?? [];
+    const recent = this.recentSubjectId() ?? this.overview()[0]?.subjectId ?? null;
+    const first = items.find((s) => s.id === recent);
+    return first ? [first, ...items.filter((s) => s !== first)] : items;
+  });
 
   readonly sortedTopics = computed(() =>
     [...(this.topics().items ?? [])].sort((a, b) => a.gradeId - b.gradeId || a.name.localeCompare(b.name))
@@ -105,6 +129,16 @@ export class StudyLinksComponent {
     this.selectedSubjectId.set(id);
     this.selectedTopicId.set(null);
     this.selectedSubTopicId.set(null);
+    if (id != null) {
+      this.recentSubjectId.set(id);
+      writeLastSubject(id);
+    }
+  }
+
+  /** #916: genel bakıştaki konuyu açar (ders + konu seçili, alt konu yok → konu ve alt konu linkleri seçilebilir). */
+  openOverviewTopic(item: StudyLinkTopicOverview): void {
+    this.selectSubject(item.subjectId);
+    this.selectTopic(item.topicId);
   }
 
   selectTopic(id: number | null): void {
@@ -160,5 +194,23 @@ export class StudyLinksComponent {
       .subscribe((next) => {
         if (next) state.set(next);
       });
+  }
+}
+
+function readLastSubject(): number | null {
+  try {
+    const raw = localStorage.getItem(LAST_SUBJECT_KEY);
+    const id = raw == null ? NaN : Number(raw);
+    return Number.isInteger(id) ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeLastSubject(id: number): void {
+  try {
+    localStorage.setItem(LAST_SUBJECT_KEY, String(id));
+  } catch {
+    // Depolama kapalıysa sıralama yalnız bu oturumda kalır.
   }
 }

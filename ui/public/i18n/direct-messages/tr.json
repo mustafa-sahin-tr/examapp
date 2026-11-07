@@ -50,7 +50,8 @@
       "blocked": "Engellediğiniz öğrenci yok."
     },
     "error": "Gelen kutusu yüklenemedi.",
-    "selectHint": "Okumak için soldan bir konuşma seçin."
+    "selectHint": "Okumak için soldan bir konuşma seçin.",
+    "noConversations": "Henüz size yazan bir öğrenci yok. Öğrencileriniz mesaj gönderdiğinde burada görünür."
   },
   "conversation": {
     "back": "Konuşma listesine dön",

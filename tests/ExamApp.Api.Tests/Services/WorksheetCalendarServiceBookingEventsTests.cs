@@ -255,6 +255,46 @@ public class WorksheetCalendarServiceBookingEventsTests : IDisposable
     }
 
     [Fact]
+    public async Task GetTeacherCalendarAsync_IncludesDueDatesOfTheTeachersOwnAssignments_issue916()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+        var due = DateTime.UtcNow.Date.AddDays(3).AddHours(17);
+        int worksheetId;
+        await using (var seed = _db.NewContext())
+        {
+            var grade = new Grade { Name = "5. Sınıf" };
+            seed.Grades.Add(grade);
+            await seed.SaveChangesAsync();
+            var ws = new Worksheet { Name = "Kesirler", Description = "", GradeId = grade.Id };
+            seed.Worksheets.Add(ws);
+            await seed.SaveChangesAsync();
+            worksheetId = ws.Id;
+
+            seed.SetCurrentUser(TeacherUserId);
+            // Aynı test aynı gün iki hedefe: tek etkinlik.
+            seed.WorksheetAssignments.Add(new WorksheetAssignment { WorksheetId = ws.Id, StudentId = StudentId, StartAt = DateTime.UtcNow, EndAt = due });
+            seed.WorksheetAssignments.Add(new WorksheetAssignment { WorksheetId = ws.Id, GradeId = grade.Id, StartAt = DateTime.UtcNow, EndAt = due.AddHours(2) });
+            await seed.SaveChangesAsync();
+        }
+        await using (var other = _db.NewContext())
+        {
+            other.SetCurrentUser(999);
+            other.WorksheetAssignments.Add(new WorksheetAssignment { WorksheetId = worksheetId, StudentId = StudentId, StartAt = DateTime.UtcNow, EndAt = due });
+            await other.SaveChangesAsync();
+        }
+
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).GetTeacherCalendarAsync(TeacherUserId, DateTime.UtcNow.Date, DateTime.UtcNow.Date.AddDays(30), CancellationToken.None);
+
+        var evt = result.Events.ShouldHaveSingleItem();
+        evt.Kind.ShouldBe("assignment-deadline");
+        evt.WorksheetId.ShouldBe(worksheetId);
+        evt.WorksheetTitle.ShouldBe("Kesirler");
+        evt.Date.ShouldBe(due);
+    }
+
+    [Fact]
     public async Task GetTeacherCalendarAsync_StudentNameUnresolved_FallsBackToGenericTitle()
     {
         await SeedTeacherAsync(TeacherId, TeacherUserId);

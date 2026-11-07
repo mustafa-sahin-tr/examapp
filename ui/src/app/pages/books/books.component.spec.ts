@@ -92,7 +92,8 @@ describe('BooksComponent (#577)', () => {
             expect(items[0].textContent).toContain('2 sayfa aralığı');
             expect(items[0].textContent).toContain('cevap anahtarı: 201–210');
             expect(items[1].textContent).toContain('Baskısı: Süper Combo Türkçe');
-            expect(text()).toContain(booksTr.selectHint);
+            // #916: ilk açılışta ilk kitap seçili gelir.
+            expect(component.selectedId()).toBe(7);
         });
 
         it('init_Empty_ShowsEmptyState', () => {

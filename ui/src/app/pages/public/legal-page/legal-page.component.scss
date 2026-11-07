@@ -1,0 +1,64 @@
+.legal {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 32px 20px 64px;
+  color: var(--ms-text);
+  line-height: 1.6;
+
+  h1 {
+    margin: 16px 0 4px;
+    color: var(--ms-text-strong);
+    font-size: 28px;
+  }
+
+  h2 {
+    margin: 0 0 6px;
+    color: var(--ms-text-strong);
+    font-size: 18px;
+  }
+
+  p {
+    margin: 0 0 8px;
+  }
+
+  ul {
+    margin: 0;
+    padding-left: 20px;
+    // Genel stil listelerin işaretini kaldırıyor; maddeler okunur kalsın.
+    list-style: disc;
+  }
+
+  .legal__intro {
+    margin-bottom: 24px;
+  }
+}
+
+.legal__back {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--ms-text-medium);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--ms-text-strong);
+  }
+}
+
+.legal__meta {
+  color: var(--ms-text-medium);
+  font-size: 14px;
+}
+
+.legal__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin: 0;
+  padding-left: 22px;
+
+  > li::marker {
+    color: var(--ms-text-medium);
+    font-weight: 700;
+  }
+}

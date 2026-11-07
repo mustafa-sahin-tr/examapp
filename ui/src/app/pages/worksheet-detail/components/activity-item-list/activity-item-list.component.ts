@@ -20,11 +20,12 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
-import { filter, switchMap } from 'rxjs';
+import { filter, map, switchMap } from 'rxjs';
 
 import { authoringItemTitle, parseDefinition } from '../../../../models/activity-authoring';
 import { Question } from '../../../../models/question';
 import { QuestionService } from '../../../../services/question.service';
+import { TestItemAnswerDialogComponent, TestItemAnswerDialogData } from './test-item-answer-dialog.component';
 import {
   ActivityItemRemoveDialogComponent,
   ActivityItemRemoveDialogData,
@@ -63,6 +64,15 @@ export interface ActivityItemRow {
   formEditable: boolean;
   /** Tuvalden gelen görselli madde: editörde açılmaz. */
   visual: boolean;
+  /** Issue #857 (test modu): doğru şıkkın harfi (şık sırasından); cevap yoksa null. */
+  answerLetter: string | null;
+  /** Issue #857: şıklı soru ama doğru cevabı yok — satırda uyarı. */
+  noAnswer: boolean;
+  /** Issue #857: alt konular (yoksa ders adı) — test satırının önizlemesi. */
+  topic: string;
+  /** Issue #857: şık id'leri (sunucu sırası) ve doğru cevap — cevap diyaloğu için. */
+  answerIds: number[];
+  correctAnswerId: number | null;
 }
 
 /**
@@ -103,6 +113,15 @@ export class ActivityItemListComponent implements OnInit {
   readonly worksheetId = input.required<number>();
   readonly gradeId = input<number | null | undefined>(null);
   readonly canEdit = input(false);
+  /**
+   * Issue #857: `test` — normal testin soruları: başlık/metinler "Soru", satırda doğru cevap ya da "Cevap yok" uyarısı,
+   * konu önizlemesi, Düzenle soru sayfasını (`/question/:id`) açar.
+   */
+  readonly mode = input<'activity' | 'test'>('activity');
+  readonly isTest = computed(() => this.mode() === 'test');
+  /** Metin grubu: `worksheet-detail.activity.items` (etkinlik) ya da `.testItems` (test). */
+  readonly scope = computed(() => `worksheet-detail.activity.${this.isTest() ? 'testItems' : 'items'}`);
+  readonly warningCount = computed(() => (this.isTest() ? this.rows().filter((r) => r.noAnswer).length : 0));
 
   readonly addTextItem = output<void>();
   readonly addFromBank = output<void>();
@@ -138,10 +157,57 @@ export class ActivityItemListComponent implements OnInit {
   }
 
   edit(row: ActivityItemRow): void {
+    if (this.isTest()) {
+      this.editAnswer(row);
+      return;
+    }
     const gradeId = this.gradeId();
     this.router.navigate(['/activity-editor'], {
       queryParams: { testId: this.worksheetId(), ...(gradeId ? { gradeId } : {}), questionId: row.questionId },
     });
+  }
+
+  /**
+   * Issue #857: test sorusunda düzenleme = doğru cevabı seçmek (görselli soru tuvalden gelir, metni burada değişmez).
+   * Kayıt `PUT questions/{id}/correct-answer`; yalnız sorunun sahibi yazabilir (403 → mesaj).
+   */
+  editAnswer(row: ActivityItemRow): void {
+    if (this.busy() || row.answerIds.length === 0) return;
+    this.dialog
+      .open<TestItemAnswerDialogComponent, TestItemAnswerDialogData, number | undefined>(TestItemAnswerDialogComponent, {
+        data: { number: row.number, imageUrl: row.imageUrl, answerIds: row.answerIds, currentAnswerId: row.correctAnswerId },
+        width: '560px',
+        maxWidth: '95vw',
+      })
+      .afterClosed()
+      .pipe(
+        filter((answerId): answerId is number => typeof answerId === 'number'),
+        switchMap((answerId) => {
+          this.removingId.set(row.questionId);
+          return this.questionService.updateCorrectAnswer(row.questionId, answerId, 1).pipe(
+            map(() => answerId)
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (answerId) => {
+          this.removingId.set(null);
+          const index = row.answerIds.indexOf(answerId);
+          this.rows.update((rows) =>
+            rows.map((r) =>
+              r.questionId === row.questionId
+                ? { ...r, correctAnswerId: answerId, answerLetter: String.fromCharCode(65 + index), noAnswer: false }
+                : r
+            )
+          );
+          this.snackBar.open(this.tr('answerSaved', { number: row.number }), this.tr('dismiss'), { duration: 3000 });
+        },
+        error: (error) => {
+          this.removingId.set(null);
+          this.snackBar.open(error?.error?.message ?? this.tr('answerFailed'), this.tr('dismiss'), { duration: 4000 });
+        },
+      });
   }
 
   remove(row: ActivityItemRow): void {
@@ -150,7 +216,7 @@ export class ActivityItemListComponent implements OnInit {
       .open<ActivityItemRemoveDialogComponent, ActivityItemRemoveDialogData, boolean>(
         ActivityItemRemoveDialogComponent,
         {
-          data: { number: row.number, typeName: this.typeName(row) },
+          data: { number: row.number, typeName: this.typeName(row), scope: this.scope() },
           width: '440px',
           maxWidth: '95vw',
         }
@@ -236,7 +302,7 @@ export class ActivityItemListComponent implements OnInit {
   }
 
   private tr(key: string, params?: Record<string, unknown>): string {
-    return this.transloco.translate<string>(`worksheet-detail.activity.items.${key}`, params);
+    return this.transloco.translate<string>(`${this.scope()}.${key}`, params);
   }
 }
 
@@ -252,6 +318,10 @@ export function toRows(questions: Question[]): ActivityItemRow[] {
     const instruction = q.passage?.instruction;
     const preview = (form ? authoringItemTitle(form, instruction) : instruction?.trim()) || q.text?.trim() || '';
     const imageUrl = q.imageUrl || null;
+    // Issue #857: şıklı sorunun doğru cevabı (harf şık sırasından; sunucu şıkları Order'a göre verir).
+    const answers = q.answers ?? [];
+    const correctIndex = q.correctAnswerId != null ? answers.findIndex((a) => a.id === q.correctAnswerId) : -1;
+    const topic = q.subTopics?.map((st) => st.name).filter(Boolean).join(', ') || q.categoryName || '';
     return {
       questionId: q.id,
       number: index + 1,
@@ -260,6 +330,11 @@ export function toRows(questions: Question[]): ActivityItemRow[] {
       imageUrl,
       formEditable: form !== null,
       visual: form === null && imageUrl !== null,
+      answerLetter: correctIndex >= 0 ? String.fromCharCode(65 + correctIndex) : null,
+      noAnswer: !form && answers.length > 0 && correctIndex < 0,
+      topic,
+      answerIds: answers.map((a) => a.id),
+      correctAnswerId: correctIndex >= 0 ? q.correctAnswerId! : null,
     };
   });
 }

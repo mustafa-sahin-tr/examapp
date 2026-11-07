@@ -78,7 +78,7 @@ describe('toRows (#684)', () => {
 describe('ActivityItemListComponent (#684)', () => {
   let fixture: ComponentFixture<ActivityItemListComponent>;
   let questions: MockedObject<QuestionService>;
-  let dialogResult: boolean | undefined;
+  let dialogResult: unknown;
   let snackBar: { open: ReturnType<typeof vi.fn> };
   let snackAction: Subject<void>;
   const navigate = vi.fn();
@@ -86,11 +86,12 @@ describe('ActivityItemListComponent (#684)', () => {
   const el = () => fixture.nativeElement as HTMLElement;
   const rows = () => Array.from(el().querySelectorAll('[data-testid="activity-item-row"]'));
 
-  async function setup(list: Question[] | 'error', canEdit = true): Promise<void> {
+  async function setup(list: Question[] | 'error', canEdit = true, mode: 'activity' | 'test' = 'activity'): Promise<void> {
     questions = {
       getAll: vi.fn().mockReturnValue(list === 'error' ? throwError(() => new Error('x')) : of(list)),
       removeQuestionFromTest: vi.fn().mockReturnValue(of({ success: true })),
       reorderTestQuestions: vi.fn().mockReturnValue(of({ success: true })),
+      updateCorrectAnswer: vi.fn().mockReturnValue(of({})),
     } as unknown as MockedObject<QuestionService>;
     snackAction = new Subject<void>();
     snackBar = { open: vi.fn(() => ({ onAction: () => snackAction })) };
@@ -108,6 +109,7 @@ describe('ActivityItemListComponent (#684)', () => {
     fixture.componentRef.setInput('worksheetId', 7);
     fixture.componentRef.setInput('gradeId', 5);
     fixture.componentRef.setInput('canEdit', canEdit);
+    fixture.componentRef.setInput('mode', mode);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -293,5 +295,42 @@ describe('ActivityItemListComponent (#684)', () => {
 
     expect(el().querySelector('[data-testid="activity-item-drag"]')).toBeNull();
     expect(el().querySelector('[data-testid="activity-item-more"]')).toBeNull();
+  });
+
+  // #857: normal test — soru listesi cevap harfi, "Cevap yok" uyarısı ve doğru cevap diyaloğu.
+  const answers = [{ id: 501 }, { id: 502 }, { id: 503 }] as Question['answers'];
+  const answered = question({ id: 31, imageUrl: 'https://img/a.png', answers, correctAnswerId: 502, categoryName: 'Matematik' });
+  const unanswered = question({ id: 32, imageUrl: 'https://img/b.png', answers });
+
+  it('test mode shows answer letters, a no-answer warning and edit on every row', async () => {
+    await setup([answered, unanswered], true, 'test');
+
+    expect(rows()[0].querySelector('[data-testid="test-item-answer"]')?.textContent).toContain('B');
+    expect(rows()[1].querySelector('[data-testid="test-item-no-answer"]')).not.toBeNull();
+    expect(el().querySelector('[data-testid="test-items-warnings"]')?.textContent).toContain('1');
+    expect(rows().every((r) => r.querySelector('[data-testid="activity-item-edit"]'))).toBe(true);
+    expect(rows()[0].textContent).toContain('Matematik');
+  });
+
+  it('test mode edit saves the picked answer and clears the warning', async () => {
+    await setup([answered, unanswered], true, 'test');
+    dialogResult = 503;
+
+    (rows()[1].querySelector('[data-testid="activity-item-edit"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(questions.updateCorrectAnswer).toHaveBeenCalledWith(32, 503, 1);
+    expect(rows()[1].querySelector('[data-testid="test-item-answer"]')?.textContent).toContain('C');
+    expect(el().querySelector('[data-testid="test-items-warnings"]')).toBeNull();
+    expect(navigate).not.toHaveBeenCalledWith(['/question', 32]);
+  });
+
+  it('test mode edit cancelled saves nothing', async () => {
+    await setup([unanswered], true, 'test');
+    dialogResult = undefined;
+
+    (rows()[0].querySelector('[data-testid="activity-item-edit"]') as HTMLButtonElement).click();
+
+    expect(questions.updateCorrectAnswer).not.toHaveBeenCalled();
   });
 });

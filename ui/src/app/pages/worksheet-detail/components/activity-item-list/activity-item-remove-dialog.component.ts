@@ -7,6 +7,8 @@ import { TranslocoDirective } from '@jsverse/transloco';
 export interface ActivityItemRemoveDialogData {
   number: number;
   typeName: string;
+  /** Issue #857: metin grubu (`...activity.items` ya da `...activity.testItems`); yoksa etkinlik. */
+  scope?: string;
 }
 
 /** Issue #684: madde kaldırma onayı — başlamış öğrencilerin etkilenmediğini söyler. */
@@ -15,7 +17,7 @@ export interface ActivityItemRemoveDialogData {
   standalone: true,
   imports: [MatButtonModule, MatDialogModule, MatIconModule, TranslocoDirective],
   template: `
-    <ng-container *transloco="let t; prefix: 'worksheet-detail.activity.items'">
+    <ng-container *transloco="let t; prefix: data.scope ?? 'worksheet-detail.activity.items'">
       <h2 mat-dialog-title>{{ t('removeTitle', { number: data.number }) }}</h2>
       <mat-dialog-content>
         <p>{{ t('removeMessage', { type: data.typeName }) }}</p>

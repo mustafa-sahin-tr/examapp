@@ -1152,7 +1152,12 @@ describe('WorksheetDetailComponent add from bank (issue #472)', () => {
         editable.component.ngOnInit();
         await settle();
         editable.fixture.detectChanges();
-        expect(editable.fixture.debugElement.query(By.css('[data-testid="add-from-bank-btn"]'))).not.toBeNull();
+        // #857: bankadan ekleme "Soru ekle" menüsünde.
+        const trigger = editable.fixture.debugElement.query(By.css('[data-testid="add-question-menu-btn"]'));
+        expect(trigger).not.toBeNull();
+        (trigger.nativeElement as HTMLButtonElement).click();
+        editable.fixture.detectChanges();
+        expect(document.querySelector('.mat-mdc-menu-panel [data-testid="add-from-bank-btn"]')).not.toBeNull();
     });
 
     it('addFromBankButton_HiddenWhenWorksheetIsNotEditable', async () => {

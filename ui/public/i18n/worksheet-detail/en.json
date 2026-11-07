@@ -141,7 +141,16 @@
     "hard": "Hard",
     "legendItem": "{{label}} · {{count}}",
     "unclassifiedWarn": "{{count}} questions unclassified — topic/difficulty must be set manually",
-    "openTextReviews": "Review open-ended answers"
+    "openTextReviews": "Review open-ended answers",
+    "addQuestionMenu": {
+      "open": "Add question",
+      "book": "Mark on a book page",
+      "bookHint": "Draw question boxes on a scanned page",
+      "bank": "Pick from the bank",
+      "bankHint": "From ready-made questions",
+      "text": "Write without an image",
+      "textHint": "New item from text"
+    }
   },
   "status": {
     "completed": "Completed",
@@ -354,7 +363,53 @@
         "clockSet": "Set the clock"
       }
     },
-    "addTextItem": "Add text-only item"
+    "addTextItem": "Add text-only item",
+    "testItems": {
+      "title": "Questions",
+      "count": "{{count}} questions",
+      "warnings": "{{count}} warnings",
+      "listLabel": "Test questions",
+      "loading": "Loading questions",
+      "error": "Questions could not be loaded.",
+      "retry": "Try again",
+      "emptyTitle": "This test has no questions yet",
+      "emptyHint": "Mark them on a book page or add them from the question bank.",
+      "addTextItem": "Add a text question",
+      "addFromBank": "Add from bank",
+      "visual": "Image",
+      "visualHint": "Image item, not editable",
+      "noPreview": "No topic",
+      "answer": "Answer {{letter}}",
+      "noAnswer": "No answer",
+      "noAnswerHint": "A question without a correct answer reaches students unscored; edit it and pick the answer.",
+      "edit": "Edit",
+      "editAria": "Edit question {{number}}",
+      "remove": "Remove from test",
+      "removeAria": "Remove question {{number}} from the test",
+      "removeTitle": "Remove question {{number}} from the test?",
+      "removeMessage": "The question leaves the test; the others are renumbered. It stays in the question bank.",
+      "removeNote": "This only applies to students who start after now; students already solving finish the test as they started it.",
+      "cancel": "Cancel",
+      "removed": "Question {{number}} removed from the test.",
+      "removeFailed": "The question could not be removed.",
+      "dragAria": "Drag question {{number}} to move it",
+      "more": "More actions",
+      "moreAria": "More actions for question {{number}}",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "moveUpAria": "Move question {{number}} up",
+      "moveDownAria": "Move question {{number}} down",
+      "moved": "Question {{from}} moved to position {{to}}",
+      "saving": "Saving the order",
+      "reorderFailed": "The order could not be saved",
+      "reorderNote": "This only applies to students who start after now; students already solving finish the test as they started it.",
+      "dismiss": "Close",
+      "answerTitle": "Correct answer for question {{number}}",
+      "answerPick": "Pick the correct choice",
+      "answerSave": "Save",
+      "answerSaved": "Answer for question {{number}} saved.",
+      "answerFailed": "Could not save the answer."
+    }
   },
   "adminSharing": {
     "title": "Sharing (admin)",

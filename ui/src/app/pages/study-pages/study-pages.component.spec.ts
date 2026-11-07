@@ -123,6 +123,18 @@ describe('StudyPagesComponent', () => {
             expect(el.querySelector('.course-card')).not.toBeNull();
             expect(el.querySelector('app-pagination')).toBeNull();
         });
+
+        it('blocksOnlyPage_ShowsBlockCountInsteadOfZeroPages', () => {
+            studyPageService.getPaged.mockReturnValue(of({
+                items: [{ id: 3, title: 'Kesirler', createTime: '2026-01-01', imageCount: 0, blockCount: 4 } as StudyPage],
+                totalCount: 1, pageNumber: 1, pageSize: 10,
+            }));
+            const { el } = render();
+
+            const meta = el.querySelector('.card-meta')?.textContent ?? '';
+            expect(meta).toContain('4 Blok');
+            expect(meta).not.toContain('0 Sayfa');
+        });
     });
 
     // Kriter 5: her etkinligin tipi ikon/etiketle ayirt edilebiliyor

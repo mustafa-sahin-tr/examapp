@@ -108,6 +108,8 @@ function choiceKeyIndex(key: string): number {
 
 /** Günün soruları modu (issue #99): `/practice?daily=1`. */
 const DAILY_QUERY_PARAM = 'daily';
+/** Issue #933: çalışma sayfasından açılan oturum `/practice?session=..&page=<id>`; bitişte sayfaya dönülür. */
+const STUDY_PAGE_QUERY_PARAM = 'page';
 const HISTORY_PAGE_SIZE = 10;
 const EMPTY_HISTORY: Paged<PracticeSession> = { items: [], totalCount: 0, pageNumber: 1, pageSize: HISTORY_PAGE_SIZE };
 
@@ -202,6 +204,8 @@ export class PracticeSolveComponent implements OnInit {
   readonly dueReviewCount = signal(0);
   /** Issue #534: bitiş metni tekrardan farklıdır: oturumda yeni sorular da vardır. */
   readonly mixedReviewSession = signal(false);
+  /** Issue #933: oturum bu çalışma sayfasının sorularından açıldı. */
+  readonly studyPageId = signal<number | null>(null);
   /** Issue #532: bu oturumda kaydedilen sorular. */
   private readonly savedIds = signal<ReadonlySet<number>>(new Set());
   readonly saveBusy = signal(false);
@@ -304,7 +308,8 @@ export class PracticeSolveComponent implements OnInit {
   readonly questionNumber = computed(() => this.answeredCount() + (this.phase() === 'feedback' ? 0 : 1));
   readonly sessionScope = computed(() => {
     const session = this.session();
-    return session ? this.scopeLabel(session) : '';
+    if (!session) return '';
+    return this.studyPageId() !== null ? this.text('studyPage.scope') : this.scopeLabel(session);
   });
   private readonly syncSectionTabs = effect(() => this.sidenav.sectionTabsHidden.set(this.inSession()));
   /** Canvas görünümü: cevap sonrası v5 doğru/yanlış boyamasını `result` modunda yapar. */
@@ -367,6 +372,8 @@ export class PracticeSolveComponent implements OnInit {
     }
 
     this.linkScope = this.scopeFromQuery();
+    const studyPage = Number(this.route.snapshot.queryParamMap.get(STUDY_PAGE_QUERY_PARAM));
+    if (Number.isInteger(studyPage) && studyPage > 0) this.studyPageId.set(studyPage);
     this.loadSetupData();
     this.loadHistory(1);
     this.loadDueReview();
@@ -926,6 +933,19 @@ export class PracticeSolveComponent implements OnInit {
       return;
     }
     this.resetToSetup();
+  }
+
+  /** Issue #933: oturumu kapatıp çalışma sayfasına döner. */
+  backToStudyPage(): void {
+    const pageId = this.studyPageId();
+    if (pageId === null) return;
+    const open = () => void this.router.navigate(['/study-page', pageId]);
+    const session = this.session();
+    if (session && session.status === 'Active') {
+      this.run(this.practiceService.endSession(session.id), () => this.backToStudyPage(), open);
+      return;
+    }
+    open();
   }
 
   onHeaderBack(): void {

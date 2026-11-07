@@ -9,9 +9,11 @@
   }
 }
 
-// Issue #933: bloklar ızgaranın altında tam genişlikte.
-.blocks-card {
+// Issue #933: bloklar ızgaranın altında tam genişlikte. `.editor-card`'ın 900px sınırı kalırsa kart
+// satıra sığıp resim panelinin yanına geçer ve onu sıkıştırır.
+.editor-card.blocks-card {
   flex: 1 1 100%;
+  max-width: none;
 }
 
 .editor-card {

@@ -101,7 +101,8 @@ export class StudyPageViewComponent implements OnInit {
       .startSession(request)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (session) => void this.router.navigate(['/practice'], { queryParams: { session: session.id } }),
+        next: (session) =>
+          void this.router.navigate(['/practice'], { queryParams: { session: session.id, page: this.pageId } }),
         error: () => {
           this.solving.set(null);
           this.snackBar.open(this.transloco.translate('study-pages.blocks.page.solveFailed'), undefined, { duration: 3000 });

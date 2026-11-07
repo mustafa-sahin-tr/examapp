@@ -93,12 +93,25 @@ public class StudyItemService : IStudyItemService
             .Take(filter.PageSize)
             .ToListAsync();
 
+        var itemIds = items.Select(p => p.Id).ToList();
+        var blockCounts = await _context.StudyItemBlocks.AsNoTracking()
+            .Where(b => itemIds.Contains(b.StudyItemId) && !b.IsDeleted)
+            .GroupBy(b => b.StudyItemId)
+            .Select(g => new { g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Count);
+
+        var dtos = items.Select(MapToDto).ToList();
+        foreach (var dto in dtos)
+        {
+            dto.BlockCount = blockCounts.GetValueOrDefault(dto.Id);
+        }
+
         return new Paged<StudyItemDto>
         {
             PageNumber = filter.PageNumber,
             PageSize = filter.PageSize,
             TotalCount = totalCount,
-            Items = items.Select(MapToDto).ToList()
+            Items = dtos
         };
     }
 
@@ -1015,7 +1028,7 @@ public class StudyItemService : IStudyItemService
             })
             .ToList();
 
-        return new StudyItemDto
+        var dto = new StudyItemDto
         {
             Id = item.Id,
             Title = item.Title,
@@ -1047,6 +1060,8 @@ public class StudyItemService : IStudyItemService
                 .Select(MapBlock)
                 .ToList()
         };
+        dto.BlockCount = dto.Blocks.Count;
+        return dto;
     }
 
     private static string GetFileNameFromUrl(string imageUrl)

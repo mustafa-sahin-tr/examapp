@@ -210,5 +210,11 @@
     "questionOfScope": "{{n}}. soru · {{scope}}",
     "keys": "A–D seç · Enter gönder",
     "keysNext": "Enter: sonraki soru"
+  },
+  "studyPage": {
+    "scope": "Çalışma sayfası",
+    "doneTitle": "Sayfanın sorularını bitirdin",
+    "doneText": "Sayfaya dönüp kaldığın yerden devam edebilir ya da oturumu bitirip özetini görebilirsin.",
+    "back": "Sayfaya dön"
   }
 }

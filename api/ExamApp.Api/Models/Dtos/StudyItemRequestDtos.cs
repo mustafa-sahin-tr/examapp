@@ -7,7 +7,7 @@ namespace ExamApp.Api.Models.Dtos;
 public class CreateStudyItemRequestDto
 {
     public string Title { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public int? GradeId { get; set; }
     public int? SubjectId { get; set; }
     public int? TopicId { get; set; }
@@ -39,7 +39,7 @@ public class CreateStudyItemRequestDto
 public class UpdateStudyItemRequestDto
 {
     public string Title { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public int? GradeId { get; set; }
     public int? SubjectId { get; set; }
     public int? TopicId { get; set; }

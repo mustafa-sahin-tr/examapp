@@ -210,5 +210,11 @@
     "questionOfScope": "Question {{n}} · {{scope}}",
     "keys": "A–D choose · Enter submit",
     "keysNext": "Enter: next question"
+  },
+  "studyPage": {
+    "scope": "Study page",
+    "doneTitle": "You finished the page's questions",
+    "doneText": "Go back to the page to continue where you left off, or finish the session to see your summary.",
+    "back": "Back to page"
   }
 }

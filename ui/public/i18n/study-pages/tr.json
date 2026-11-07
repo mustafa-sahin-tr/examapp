@@ -9,6 +9,7 @@
     "bookFallback": "Kitap",
     "newBadge": "Yeni",
     "pageCount": "{{count}} Sayfa",
+    "blockCount": "{{count}} Blok",
     "bookRange": "{{book}} · s. {{start}}-{{end}}",
     "edit": "Düzenle",
     "delete": "Sil",

@@ -50,6 +50,8 @@ export interface StudyPage {
 
   // Image
   imageCount: number;
+  /** Issue #933: silinmemiş blok sayısı (liste blokları taşımaz). */
+  blockCount?: number;
   coverImageUrl?: string | null;
   images: StudyPageImage[];
 

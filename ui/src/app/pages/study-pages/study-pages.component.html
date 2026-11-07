@@ -127,6 +127,12 @@
                 }}
               </span>
             </div>
+          } @else if (page.imageCount === 0 && page.blockCount) {
+            <!-- #933: yalnız bloklu sayfada "0 Sayfa" yerine blok sayısı. -->
+            <div class="meta-item">
+              <mat-icon>view_agenda</mat-icon>
+              <span>{{ t('list.blockCount', { count: page.blockCount }) }}</span>
+            </div>
           } @else {
             <div class="meta-item">
               <mat-icon>photo_library</mat-icon>

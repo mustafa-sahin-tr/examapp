@@ -115,6 +115,55 @@ describe('QuestionBankPanelComponent (issue #471)', () => {
         return vi.mocked(search).mock.lastCall![0] as Record<string, unknown>;
     }
 
+    // Issue #863: "Havuzdan soru ekle" satır listesi, cevap süzgeci varsayılanı ve seçilen öğeler.
+    describe('list layout (issue #863)', () => {
+        const el = () => fixture.nativeElement as HTMLElement;
+
+        it('rows_ShowTextDifficultyAndWarnOnMissingAnswer', async () => {
+            vi.mocked(search).mockReturnValue(of(makePage([
+                makeItem(1, { imageUrl: null, text: 'Tümler iki açıdan biri 35° ise', difficultyLevel: 2, testCount: 1 }),
+                makeItem(2, { hasCorrectAnswer: false, difficultyLevel: 5 }),
+            ])));
+            fixture.componentRef.setInput('layout', 'list');
+            fixture.componentRef.setInput('selectable', true);
+            await settle();
+
+            const rows = el().querySelectorAll('[data-testid="bank-row"]');
+            expect(rows.length).toBe(2);
+            expect(el().querySelector('.qb-card')).toBeNull();
+            expect(rows[0].textContent).toContain('Tümler iki açıdan biri 35° ise');
+            expect(rows[0].textContent).toContain('Kolay');
+            expect(rows[1].classList).toContain('qb-row--no-answer');
+            expect(rows[1].querySelector('[data-testid="bank-row-no-answer"]')).not.toBeNull();
+
+            (rows[1].querySelector('.qb-row__body') as HTMLElement).click();
+            expect(component.isSelected(makeItem(2))).toBe(true);
+            fixture.destroy();
+        });
+
+        it('initialAnswerFilter_SearchesAnsweredOnly', async () => {
+            fixture.componentRef.setInput('initialAnswerFilter', 'yes');
+            await settle();
+            expect(lastFilter()['hasCorrectAnswer']).toBe(true);
+            fixture.destroy();
+        });
+
+        it('selectedItems_EmittedAndRemovable', async () => {
+            fixture.componentRef.setInput('selectable', true);
+            await settle();
+            const emit = vi.spyOn(component.selectedItemsChange, 'emit').mockReturnValue(undefined);
+
+            component.toggleSelection(makeItem(1));
+            component.toggleSelection(makeItem(2));
+            expect(emit).toHaveBeenLastCalledWith([makeItem(1), makeItem(2)]);
+
+            component.removeSelection(1);
+            expect(emit).toHaveBeenLastCalledWith([makeItem(2)]);
+            expect(component.isSelected(makeItem(1))).toBe(false);
+            fixture.destroy();
+        });
+    });
+
     describe('more filters (issue #836)', () => {
         const el = () => fixture.nativeElement as HTMLElement;
 

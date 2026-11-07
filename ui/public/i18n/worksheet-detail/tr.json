@@ -256,7 +256,10 @@
     "submit": "Teste ekle",
     "loadFailed": "Testin soruları yüklenemedi.",
     "submitFailed": "Sorular teste eklenemedi. Lütfen tekrar deneyin.",
-    "notFound": "Seçilen sorulardan biri bu teste eklenemiyor (silinmiş ya da artık erişiminiz olmayabilir). Seçiminizi değiştirip tekrar deneyin."
+    "notFound": "Seçilen sorulardan biri bu teste eklenemiyor (silinmiş ya da artık erişiminiz olmayabilir). Seçiminizi değiştirip tekrar deneyin.",
+    "trayCount": "{{count}} soru seçildi",
+    "submitCount": "{{count}} soruyu teste ekle",
+    "removeSelected": "Seçimden çıkar"
   },
   "activity": {
     "startedNote": "{{count}} öğrenci bu etkinliğe başladı: yeni eklediğin maddeleri yalnız bundan sonra başlayanlar görür.",

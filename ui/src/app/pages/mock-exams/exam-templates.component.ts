@@ -7,7 +7,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { ExamTemplate, ExamTemplateSession, MockExamService } from '../../services/mock-exam.service';
 
 const emptyTemplate = (): ExamTemplate => ({
@@ -57,7 +57,9 @@ const wholeBetween = (value: number, min: number, max: number): boolean => Numbe
                 <b>{{ template.name }}</b>
                 <span class="me-note">{{ t('templates.listSummary', { questions: questionCount(template), sessions: template.sessions.length }) }}</span>
               </span>
-              @if (template.inUse) {
+              @if (template.isOfficial) {
+                <span class="et-lock" data-test="template-official"><mat-icon aria-hidden="true">verified</mat-icon>{{ t('templates.official') }}</span>
+              } @else if (template.inUse) {
                 <span class="et-lock"><mat-icon aria-hidden="true">lock</mat-icon>{{ t('templates.locked') }}</span>
               }
             </button>
@@ -75,7 +77,12 @@ const wholeBetween = (value: number, min: number, max: number): boolean => Numbe
                 <h2 class="et-panel-title">{{ view.name }}</h2>
                 <span class="me-note">{{ t('templates.penaltyValue', { penalty: view.wrongAnswersPerCorrect }) }}</span>
               </div>
-              <p class="me-note et-lock-note"><mat-icon aria-hidden="true">lock</mat-icon>{{ t('templates.usedBy', { count: view.mockExamCount ?? 0 }) }}</p>
+              @if (view.isOfficial) {
+                <p class="me-note et-lock-note"><mat-icon aria-hidden="true">verified</mat-icon>{{ t('templates.officialNote') }}</p>
+              }
+              @if (view.inUse) {
+                <p class="me-note et-lock-note"><mat-icon aria-hidden="true">lock</mat-icon>{{ t('templates.usedBy', { count: view.mockExamCount ?? 0 }) }}</p>
+              }
               @if (view.sourceReference) {
                 <p class="me-note">{{ t('templates.source') }}: {{ view.sourceReference }}</p>
               }
@@ -112,6 +119,11 @@ const wholeBetween = (value: number, min: number, max: number): boolean => Numbe
             </mat-card-content>
             <mat-card-actions class="me-actions">
               <button mat-button (click)="close()">{{ t('templates.close') }}</button>
+              <!-- #917: kilitli şablon (resmî ya da kullanılıyor) yerine kopyası düzenlenir. -->
+              <button mat-flat-button color="primary" data-test="template-copy" (click)="copy(view)">
+                <mat-icon>content_copy</mat-icon>
+                {{ t('templates.copyAndEdit') }}
+              </button>
             </mat-card-actions>
           </mat-card>
         } @else if (draft(); as form) {
@@ -241,6 +253,7 @@ export class ExamTemplatesComponent {
   readonly draft = signal<ExamTemplate | null>(null);
   readonly saving = signal(false);
   readonly errorKey = signal<string | null>(null);
+  private readonly transloco = inject(TranslocoService);
   readonly newTemplate = emptyTemplate;
   /** Seçili satır: şablon kimliği ya da yeni şablon. */
   readonly selectedId = signal<number | 'new' | null>(null);
@@ -249,7 +262,7 @@ export class ExamTemplatesComponent {
   readonly locked = computed(() => {
     const id = this.selectedId();
     const template = typeof id === 'number' ? this.templates().find((t) => t.id === id) : undefined;
-    return template?.inUse ? template : null;
+    return template?.inUse || template?.isOfficial ? template : null;
   });
 
   readonly draftTotal = computed(() => {
@@ -304,10 +317,30 @@ export class ExamTemplatesComponent {
     this.draft.set(this.newTemplate());
   }
 
+  /** #917: kilitli şablonun kopyası yeni şablon olarak açılır; kod ve ad çakışmasın diye "-kopya" / "(kopya)" eklenir. */
+  copy(template: ExamTemplate): void {
+    const codes = new Set(this.templates().map((t) => t.code));
+    let code = `${template.code}-kopya`;
+    for (let n = 2; codes.has(code); n++) code = `${template.code}-kopya-${n}`;
+    this.errorKey.set(null);
+    this.selectedId.set('new');
+    this.draft.set({
+      code,
+      name: this.transloco.translate('mock-exams.templates.copyName', { name: template.name }),
+      wrongAnswersPerCorrect: template.wrongAnswersPerCorrect,
+      sourceReference: template.sourceReference ?? null,
+      sessions: template.sessions.map((session) => ({
+        name: session.name,
+        durationSeconds: session.durationSeconds,
+        sections: session.sections.map((section) => ({ groupName: section.groupName, name: section.name, questionCount: section.questionCount })),
+      })),
+    });
+  }
+
   edit(template: ExamTemplate): void {
     this.errorKey.set(null);
     this.selectedId.set(template.id ?? null);
-    this.draft.set(template.inUse ? null : structuredClone(template));
+    this.draft.set(template.inUse || template.isOfficial ? null : structuredClone(template));
   }
 
   close(): void {
@@ -366,7 +399,7 @@ export class ExamTemplatesComponent {
       error: (err: HttpErrorResponse) => {
         this.saving.set(false);
         const code = (err.error as { errorCode?: string } | null)?.errorCode;
-        this.errorKey.set(code === 'TemplateCodeTaken' || code === 'TemplateInUse' ? code : 'Failed');
+        this.errorKey.set(code === 'TemplateCodeTaken' || code === 'TemplateInUse' || code === 'OfficialTemplate' ? code : 'Failed');
       },
     });
   }

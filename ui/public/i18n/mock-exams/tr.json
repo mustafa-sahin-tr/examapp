@@ -72,7 +72,8 @@
     "QuestionNotUsable": "Seçilen sorulardan biri teste eklenemez: açık uçlu, yayında değil ya da size ait değil.",
     "TemplateCodeTaken": "Bu kod başka bir şablonda kullanılıyor.",
     "TemplateInUse": "Bu şablondan deneme kuruldu, değiştirilemez.",
-    "Failed": "İşlem tamamlanamadı. Tekrar deneyin."
+    "Failed": "İşlem tamamlanamadı. Tekrar deneyin.",
+    "OfficialTemplate": "Resmî şablonlar değiştirilemez; kopyalayıp kopyasını düzenleyin."
   },
   "student": {
     "title": "Denemeler",
@@ -136,6 +137,10 @@
     "total": "Toplam {{count}} soru",
     "totalOf": "Toplam {{count}} / {{saved}}",
     "totalChanged": "Kayıtlı şablonda {{saved}} soru var; kaydedersen soru sayısı değişir.",
-    "close": "Kapat"
+    "close": "Kapat",
+    "official": "Resmî",
+    "officialNote": "Resmî şablon: sınav kılavuzundaki yapı, değiştirilemez. Farklı bir yapı için kopyalayıp düzenleyin.",
+    "copyAndEdit": "Kopyala ve düzenle",
+    "copyName": "{{name}} (kopya)"
   }
 }

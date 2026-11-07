@@ -55,7 +55,11 @@
           </div>
         </dl>
       </div>
-      <p class="stg__hint">{{ t('profile.readOnlyHint') }}</p>
+      <!-- #918: salt okunur profilin nereden değiştirileceği — ad ve e-posta hesap sayfasında. -->
+      <p class="stg__hint" data-testid="profile-edit-hint">
+        {{ t('profile.readOnlyHint') }}
+        <a [href]="accountConsoleUrl" target="_blank" rel="noopener noreferrer">{{ t('profile.accountLink') }}</a>
+      </p>
 
       @if (isTeacher) {
         <section class="stg-teacher" aria-labelledby="stg-teacher-title">

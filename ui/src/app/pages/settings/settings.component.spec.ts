@@ -110,6 +110,13 @@ describe('SettingsComponent (issue #417)', () => {
         expect(el.querySelector('.stg-account')).not.toBeNull();
     });
 
+    it('profileHint_LinksToTheAccountPageForNameAndEmail_issue918', () => {
+        const el = setup(['Admin'], profile('Admin'));
+        const hint = el.querySelector('[data-testid="profile-edit-hint"]')!;
+        expect(hint.textContent).toContain('Hesabım sayfasından değiştirebilirsin');
+        expect(hint.querySelector('a')?.getAttribute('href')).toBe(KEYCLOAK_ACCOUNT_CONSOLE_PATH);
+    });
+
     it('adminTeacher_ShowsAdminRoleAndTeacherSection', () => {
         const el = setup(['Admin', 'Teacher'], profile('Teacher', { schoolName: 'Hedef Okul', isIndependentTutor: false }));
         expect(text(el, '.stg-profile__role')).toBe('Yönetici');

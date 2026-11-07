@@ -116,7 +116,8 @@
     "toolbar": {
       "searchPlaceholder": "Search tests...",
       "notifications": "Notifications",
-      "notificationsUnread": "Notifications ({{count}} unread)"
+      "notificationsUnread": "Notifications ({{count}} unread)",
+      "searchPlaceholderTeacher": "Search your tests..."
     },
     "profile": {
       "fallbackName": "User",

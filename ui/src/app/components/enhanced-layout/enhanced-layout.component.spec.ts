@@ -1370,6 +1370,26 @@ describe('EnhancedLayoutComponent header (issue #720)', () => {
         expect(el.querySelector('.ms-search-dropdown')).toBeNull();
     });
 
+    it('search_TeacherPlaceholderSaysItSearchesTests_AdminOnlyHasNoSearch_issue918', () => {
+        const teacher = renderLayout(['Teacher'], false).nativeElement as HTMLElement;
+        expect(teacher.querySelector<HTMLInputElement>('[data-test="toolbar-search"] input')?.placeholder).toBe('Testlerde ara...');
+        TestBed.resetTestingModule();
+
+        const admin = renderLayout(['Admin'], false).nativeElement as HTMLElement;
+        expect(admin.querySelector('mat-toolbar .section-nav')).not.toBeNull();
+        expect(admin.querySelector('[data-test="toolbar-search"]')).toBeNull();
+    });
+
+    it('mobileBottomNav_ParentHasNoEmptyMenuTrigger_StudentKeepsIt_issue918', () => {
+        const parent = renderLayout(['Parent'], true).nativeElement as HTMLElement;
+        expect(parent.querySelectorAll('.mobile-bottom-nav .bottom-nav-item').length).toBeGreaterThan(0);
+        expect(parent.querySelector('.mobile-bottom-nav .menu-trigger')).toBeNull();
+        TestBed.resetTestingModule();
+
+        const student = renderLayout(['Student'], true).nativeElement as HTMLElement;
+        expect(student.querySelector('.mobile-bottom-nav .menu-trigger')).not.toBeNull();
+    });
+
     it('newAndPopularButtons_AreRemoved', () => {
         const el = renderLayout(['Student'], false).nativeElement as HTMLElement;
         expect(el.querySelector('.section-nav-btn')).toBeNull();

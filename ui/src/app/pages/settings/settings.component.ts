@@ -15,6 +15,7 @@ import { LocaleService } from '../../services/locale.service';
 import { LocalePreferenceService } from '../../services/locale-preference.service';
 import { AccountSecurityCardComponent } from '../../shared/components/account-security-card/account-security-card.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { KEYCLOAK_ACCOUNT_CONSOLE_PATH } from '../../models/account-settings.model';
 
 const SCOPE = 'settings';
 
@@ -67,6 +68,8 @@ export class SettingsComponent implements OnInit {
   protected readonly primaryRole: SettingsRole = this.isAdmin ? 'Admin' : this.isTeacher ? 'Teacher' : 'Parent';
 
   /** Okul adı; bağımsız/okulsuz öğretmende null. */
+  /** #918: ad / e-posta değişikliği Keycloak hesap sayfasında ("Hesabım" kartıyla aynı adres). */
+  protected readonly accountConsoleUrl = KEYCLOAK_ACCOUNT_CONSOLE_PATH;
   protected readonly schoolName = computed(() => this.profile()?.teacher?.schoolName?.trim() || null);
   /**
    * #384 kuralı: özel ders profili yalnız bağımsız öğretmene. Bayrak bilinmiyorsa bağlantı gösterilir — asıl kapı

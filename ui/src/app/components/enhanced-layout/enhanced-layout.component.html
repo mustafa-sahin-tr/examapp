@@ -122,11 +122,11 @@
       @if (!isMobile() && !isFullScreen() && !isQuestionCanvasRoute()) {
         <mat-toolbar color="primary">
           <div class="section-nav">
-            @if (!isParentOnly) {
+            @if (showGlobalSearch) {
               <div class="search-box" data-test="toolbar-search">
                 <mat-icon class="search-icon">search</mat-icon>
                 <input matInput [formControl]="globalSearchControl" (keyup.enter)="onGlobalSearch()"
-                  [placeholder]="t('toolbar.searchPlaceholder')" [attr.aria-label]="t('toolbar.searchPlaceholder')" />
+                  [placeholder]="t(searchPlaceholderKey)" [attr.aria-label]="t(searchPlaceholderKey)" />
                 </div>
               }
             </div>
@@ -252,11 +252,13 @@
               <span class="bottom-nav-label">{{ t(item.labelKey) }}</span>
             </div>
           }
-          <div class="bottom-nav-item menu-trigger" role="button" tabindex="0"
-            (click)="toggleSidenav()" (keydown.enter)="toggleSidenav()" (keydown.space)="toggleSidenav()">
-            <mat-icon>{{ isMobileSidenavOpen() ? 'close' : 'menu' }}</mat-icon>
-            <span class="bottom-nav-label">{{ t('bottomNav.menu') }}</span>
-          </div>
+          @if (showBottomMenuTrigger()) {
+            <div class="bottom-nav-item menu-trigger" role="button" tabindex="0"
+              (click)="toggleSidenav()" (keydown.enter)="toggleSidenav()" (keydown.space)="toggleSidenav()">
+              <mat-icon>{{ isMobileSidenavOpen() ? 'close' : 'menu' }}</mat-icon>
+              <span class="bottom-nav-label">{{ t('bottomNav.menu') }}</span>
+            </div>
+          }
         </nav>
       }
     </div>

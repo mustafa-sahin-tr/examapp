@@ -88,9 +88,15 @@ export class TeacherApprovalPendingComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (profile) => {
+          const firstLoad = !this.loaded();
           this.profileMissing.set(!profile);
           this.loading.set(false);
           this.loaded.set(true);
+          // #918: onaylı öğretmen bu sayfaya (eski bağlantı / yer imi) girerse doğrudan ana sayfaya gider. Sayfadayken
+          // onay gelirse (yenile / push) onay ekranı gösterilir.
+          if (firstLoad && this.view() === 'approved') {
+            void this.router.navigate(['/dashboard'], { replaceUrl: true });
+          }
         },
         error: () => {
           this.loading.set(false);

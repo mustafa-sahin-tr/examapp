@@ -17,7 +17,8 @@
     "email": "Email",
     "role": "Role",
     "avatarAlt": "Profile photo",
-    "readOnlyHint": "Your name, email and photo are shown here for reference only."
+    "readOnlyHint": "You can change your name and email on the My account page.",
+    "accountLink": "Open My account"
   },
   "teacher": {
     "title": "Teacher details",

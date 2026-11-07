@@ -51,8 +51,11 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
             .Include(t => t.Sessions).ThenInclude(s => s.Sections)
             .OrderBy(t => t.Id)
             .ToListAsync(ct);
-        var used = await db.Set<MockExam>().AsNoTracking().Select(e => e.ExamTemplateId).Distinct().ToListAsync(ct);
-        return templates.Select(t => ToDto(t, used.Contains(t.Id))).ToList();
+        var used = await db.Set<MockExam>().AsNoTracking()
+            .GroupBy(e => e.ExamTemplateId)
+            .Select(g => new { TemplateId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.TemplateId, x => x.Count, ct);
+        return templates.Select(t => ToDto(t, used.GetValueOrDefault(t.Id))).ToList();
     }
 
     public async Task<ExamTemplateDto> SaveTemplateAsync(ExamTemplateDto dto, int? id, int userId, CancellationToken ct)
@@ -101,17 +104,18 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
             }).ToList(),
         }).ToList();
         await db.SaveChangesAsync(ct);
-        return ToDto(template, inUse: false);
+        return ToDto(template, mockExamCount: 0);
     }
 
-    private static ExamTemplateDto ToDto(ExamTemplate template, bool inUse) => new()
+    private static ExamTemplateDto ToDto(ExamTemplate template, int mockExamCount) => new()
     {
         Id = template.Id,
         Code = template.Code,
         Name = template.Name,
         WrongAnswersPerCorrect = template.WrongAnswersPerCorrect,
         SourceReference = template.SourceReference,
-        InUse = inUse,
+        InUse = mockExamCount > 0,
+        MockExamCount = mockExamCount,
         Sessions = template.Sessions.OrderBy(s => s.Order).Select(s => new ExamTemplateSessionDto
         {
             Id = s.Id,

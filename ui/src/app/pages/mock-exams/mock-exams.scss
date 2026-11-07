@@ -231,3 +231,186 @@
     gap: 2px;
   }
 }
+
+// #899: şablon listesi solda, seçilen şablon sağdaki panelde.
+.me-root--wide {
+  max-width: 1200px;
+}
+
+.et-layout {
+  display: grid;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .et-layout {
+    grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  }
+}
+
+.et-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.et-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--ms-border, currentColor);
+  border-radius: 12px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.et-item:hover {
+  background: var(--ms-surface-weak);
+}
+
+.et-item:focus-visible {
+  outline: 2px solid var(--primaryColor);
+  outline-offset: 2px;
+}
+
+.et-item--selected {
+  border-color: var(--primaryColor);
+  background: var(--ms-surface-weak);
+  box-shadow: inset 3px 0 0 var(--primaryColor);
+}
+
+.et-item-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.et-lock,
+.et-lock-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  white-space: nowrap;
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.et-lock-note {
+  white-space: normal;
+}
+
+.et-panel {
+  container-type: inline-size;
+  min-width: 0;
+}
+
+.et-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.et-panel-title {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+
+.et-panel-head .et-panel-title {
+  margin-bottom: 4px;
+}
+
+.et-session-title {
+  margin: 12px 0 4px;
+  font-size: 15px;
+}
+
+.et-table td:nth-child(2) {
+  text-align: left;
+}
+
+.et-session {
+  border-top: 1px solid var(--ms-border-weak, currentColor);
+}
+
+.et-session-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+}
+
+.et-section-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) 5.5rem 40px;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+
+  // Uzun ders / test adı kesilmesin: alan alt satıra uzar (#899). Autosize yüksekliği içerik kutusuna yazar;
+  // genel kuraldaki border-box + dolgu tek satırı 24px'e sıkıştırıp metni kesiyordu.
+  textarea.mat-mdc-input-element {
+    box-sizing: content-box;
+    padding: 16px 0;
+    resize: none;
+    overflow: hidden;
+  }
+}
+
+@container (max-width: 560px) {
+  .et-session-row,
+  .et-section-row {
+    grid-template-columns: minmax(0, 1fr) 5.5rem 40px;
+  }
+
+  // Dar panelde test adı kendi satırında: kesilmesin.
+  .et-section-row mat-form-field:nth-child(2) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .et-section-row {
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--ms-border-weak, currentColor);
+  }
+}
+
+.et-session-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.et-total {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 12px 0 4px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+
+  mat-icon {
+    color: var(--ms-success-text-medium, currentColor);
+  }
+}
+
+.et-hint {
+  padding: 24px 0;
+}

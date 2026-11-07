@@ -54,6 +54,9 @@ public class ExamTemplateDto
 
     /// <summary>Bu şablondan deneme kuruldu: yapı değişirse sonuçlar bozulur, değiştirilemez.</summary>
     public bool InUse { get; set; }
+
+    /// <summary>Bu şablondan kurulmuş deneme sayısı (#899); yalnız yanıtta dolar.</summary>
+    public int MockExamCount { get; set; }
 }
 
 public class CreateMockExamDto

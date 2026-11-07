@@ -1,7 +1,7 @@
 import { Component, DestroyRef, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest, take } from 'rxjs';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -14,6 +14,7 @@ import { ProgramService } from '../../services/program.service';
 import {
   ProgramStudyPageScheduleItem,
   UserProgram,
+  UserProgramSchedule,
   UserProgramStudyPageSchedule,
 } from '../../models/program.interfaces';
 import { StudyPage } from '../../models/study-page';
@@ -27,7 +28,7 @@ import { MY_PROGRAMS_SCOPE } from './my-programs-scope';
 import { subjectColorFor } from '../../shared/utils/subject-color';
 
 /** Sözlükte karşılığı olan program türleri; bunun dışındaki değer backend'den geldiği gibi gösterilir. */
-const KNOWN_STUDY_TYPES = ['intensive', 'regular', 'flexible', 'weekend', 'exam', 'question'];
+const KNOWN_STUDY_TYPES = ['intensive', 'regular', 'flexible', 'weekend', 'exam', 'question', 'time'];
 
 interface ScheduleBar {
   schedule: UserProgramStudyPageSchedule;
@@ -54,6 +55,7 @@ interface ScheduleBar {
     MatSnackBarModule,
     MatDialogModule,
     MatButtonToggleModule,
+    RouterLink,
     TranslocoDirective,
   ],
   providers: [provideTranslocoScope(MY_PROGRAMS_SCOPE)],
@@ -73,6 +75,10 @@ export class ProgramDetailComponent implements OnInit {
   programId: string | null = null;
   userProgram: UserProgram | null = null;
   calendarSize: 'small' | 'medium' | 'large' = 'medium';
+  /** #886: takvim varsayılan olarak hafta; ay görünümü ikinci planda. */
+  view: 'week' | 'month' = 'week';
+  /** "Bugün" — testte sabitlenebilir. */
+  today: () => Date = () => new Date();
 
   weekStart = this.getWeekStart(new Date());
   currentMonth = new Date();
@@ -112,12 +118,6 @@ export class ProgramDetailComponent implements OnInit {
     return this.currentMonth.toLocaleDateString(this.intlLocale, { month: 'long', year: 'numeric' });
   }
 
-  get nextMonthLabel(): string {
-    const next = new Date(this.currentMonth);
-    next.setMonth(next.getMonth() + 1);
-    return next.toLocaleDateString(this.intlLocale, { month: 'long', year: 'numeric' });
-  }
-
   /**
    * Issue #386: başlıktaki program tarih aralığı — ham ISO yerine aktif dilde gün biçimi. Tarih-yalnız yorumlandığı
    * için UTC gece yarısı değerleri yerel saat diliminde önceki güne kaymaz. Tek uç okunabiliyorsa şablon yalnız onu
@@ -137,11 +137,6 @@ export class ProgramDetailComponent implements OnInit {
   /** Pazartesi başlangıçlı kısa gün adları — aktif dile göre üretilir. */
   get weekdayNames(): string[] {
     return this.buildWeekdayNames('short');
-  }
-
-  /** Mini takvimin tek harflik gün başlıkları. */
-  get weekdayInitials(): string[] {
-    return this.buildWeekdayNames('narrow');
   }
 
   /**
@@ -320,29 +315,6 @@ export class ProgramDetailComponent implements OnInit {
     });
   }
 
-  get nextMonthCalendarDays(): (Date | null)[] {
-    const next = new Date(this.currentMonth);
-    next.setMonth(next.getMonth() + 1);
-    const year = next.getFullYear();
-    const month = next.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-
-    const days: (Date | null)[] = [];
-
-    const firstDayOfWeek = firstDay.getDay();
-    const startOffset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
-    for (let i = 0; i < startOffset; i++) {
-      days.push(null);
-    }
-
-    for (let day = 1; day <= lastDay.getDate(); day++) {
-      days.push(new Date(year, month, day));
-    }
-
-    return days;
-  }
-
   previousMonth(): void {
     const prev = new Date(this.currentMonth);
     prev.setMonth(prev.getMonth() - 1);
@@ -353,23 +325,6 @@ export class ProgramDetailComponent implements OnInit {
     const next = new Date(this.currentMonth);
     next.setMonth(next.getMonth() + 1);
     this.currentMonth = next;
-  }
-
-  getDayGradient(date: Date | null): string {
-    if (!date) return 'transparent';
-
-    // Planı olmayan gün satır içi renk almaz, temanın yüzeyini (SCSS) kullanır.
-    const schedules = this.getSchedulesForDay(date);
-    if (schedules.length === 0) return '';
-
-    const colors = schedules.map((schedule) => this.getScheduleColor(schedule));
-
-    if (colors.length === 1) {
-      return colors[0];
-    }
-
-    // Create diagonal gradient for multiple subjects
-    return `linear-gradient(135deg, ${colors.join(', ')})`;
   }
 
   previousWeek(): void {
@@ -464,6 +419,102 @@ export class ProgramDetailComponent implements OnInit {
     });
   }
 
+  /** #886: günün ders oturumları (tarih-yalnız karşılaştırma; sunucu UTC gece yarısı gönderir). */
+  sessionsOn(day: Date): UserProgramSchedule[] {
+    const key = ymd(day);
+    return (this.userProgram?.schedules ?? []).filter((s) => s.scheduleDate.slice(0, 10) === key);
+  }
+
+  /** #886: o gün süren çalışma sayfaları. */
+  itemsOn(day: Date): UserProgramStudyPageSchedule[] {
+    const key = ymd(day);
+    return (this.userProgram?.studyItemSchedules ?? []).filter(
+      (s) => s.startDate.slice(0, 10) <= key && s.endDate.slice(0, 10) >= key,
+    );
+  }
+
+  get todaySessions(): UserProgramSchedule[] {
+    return this.sessionsOn(this.today());
+  }
+
+  get todayItems(): UserProgramStudyPageSchedule[] {
+    return this.itemsOn(this.today());
+  }
+
+  /** "Cumartesi 7 Kasım". */
+  get todayLabel(): string {
+    return this.today().toLocaleDateString(this.intlLocale, { weekday: 'long', day: 'numeric', month: 'long' });
+  }
+
+  /** #886: bu haftanın (bugünü içeren Pazartesi–Pazar) planlanan / yapılan oturumları. */
+  get weekProgress(): { done: number; planned: number; percent: number } {
+    const start = this.getWeekStart(this.today());
+    const from = ymd(start);
+    const to = ymd(new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6));
+    const sessions = (this.userProgram?.schedules ?? []).filter((s) => {
+      const key = s.scheduleDate.slice(0, 10);
+      return key >= from && key <= to;
+    });
+    const done = sessions.filter((s) => s.isCompleted).length;
+    return { done, planned: sessions.length, percent: sessions.length ? Math.round((done * 100) / sessions.length) : 0 };
+  }
+
+  /** #886: süreli programın "çalış-ara" dakikaları ("25-5"); başka değerde null. */
+  get durationParts(): { study: string; rest: string } | null {
+    const match = /^(\d+)-(\d+)$/.exec(this.userProgram?.studyDuration ?? '');
+    return match ? { study: match[1], rest: match[2] } : null;
+  }
+
+  /** Ders rengi (ders adından; takvimdeki şeritlerle aynı palet). */
+  subjectColor(name: string): string {
+    return subjectColorFor(name);
+  }
+
+  isToday(day: Date): boolean {
+    return ymd(day) === ymd(this.today());
+  }
+
+  /** Oturumun miktarı: süreli programda dakika, soru takiplide soru. */
+  sessionAmount(session: UserProgramSchedule): { key: string; count: number } | null {
+    if (session.studyDurationMinutes) return { key: 'detail.minutes', count: session.studyDurationMinutes };
+    if (session.questionCount) return { key: 'detail.questions', count: session.questionCount };
+    return null;
+  }
+
+  /** Ders oturumu "yapıldı" işareti (iyimser; hata olursa geri alınır). */
+  toggleSession(session: UserProgramSchedule): void {
+    if (!this.userProgram) return;
+    const done = !session.isCompleted;
+    session.isCompleted = done;
+    this.programService.setSessionDone(this.userProgram.id, session.id, done).subscribe({
+      error: () => {
+        session.isCompleted = !done;
+        this.notify('detail.updateFailed');
+      },
+    });
+  }
+
+  /** Çalışma sayfası "tamamlandı" işareti. */
+  toggleItem(item: UserProgramStudyPageSchedule): void {
+    if (!this.userProgram) return;
+    const done = !item.isCompleted;
+    item.isCompleted = done;
+    this.programService.setStudyItemDone(this.userProgram.id, item.id, done).subscribe({
+      error: () => {
+        item.isCompleted = !done;
+        this.notify('detail.updateFailed');
+      },
+    });
+  }
+
+  openItem(item: UserProgramStudyPageSchedule): void {
+    this.dialog.open(ScheduleDetailDialogComponent, {
+      width: '480px',
+      maxWidth: '90vw',
+      data: { schedule: item, color: this.getScheduleColor(item) },
+    });
+  }
+
   formatDayLabel(day: Date): string {
     return day.toLocaleDateString(this.intlLocale, { weekday: 'short', day: '2-digit', month: 'short' });
   }
@@ -506,4 +557,10 @@ export class ProgramDetailComponent implements OnInit {
   private formatShortDate(date: Date): string {
     return date.toLocaleDateString(this.intlLocale, { day: '2-digit', month: 'short' });
   }
+}
+
+/** Yerel takvim günü `yyyy-MM-dd`. */
+function ymd(date: Date): string {
+  const pad = (n: number): string => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }

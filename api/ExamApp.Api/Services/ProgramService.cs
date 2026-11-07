@@ -198,6 +198,34 @@ namespace ExamApp.Api.Services
         public Task<bool> UncompleteStudyItemAsync(string userId, int programId, int scheduleId, CancellationToken ct = default)
             => SetStudyItemCompletionAsync(userId, programId, scheduleId, completed: false, ct);
 
+        public async Task<bool> SetSessionCompletionAsync(string userId, int programId, int scheduleId, bool completed, CancellationToken ct = default)
+        {
+            // Çalışma sayfası tamamlama ile aynı sahiplik zinciri (schedule → program → UserId, etkin program).
+            var session = await _context.UserProgramSchedules
+                .FirstOrDefaultAsync(s => s.Id == scheduleId
+                                       && s.UserProgramId == programId
+                                       && s.UserProgram.UserId == userId
+                                       && s.UserProgram.IsActive, ct);
+            if (session == null)
+                return false;
+
+            if (completed && !session.IsCompleted)
+            {
+                // İdempotent: ilk yapılma zamanı korunur.
+                session.IsCompleted = true;
+                session.CompletedDate = DateTime.UtcNow;
+                await _context.SaveChangesAsync(ct);
+            }
+            else if (!completed && (session.IsCompleted || session.CompletedDate != null))
+            {
+                session.IsCompleted = false;
+                session.CompletedDate = null;
+                await _context.SaveChangesAsync(ct);
+            }
+
+            return true;
+        }
+
         public async Task<bool> DeleteUserProgramAsync(string userId, int programId, CancellationToken ct = default)
         {
             // Sahiplik kontrolü: başka kullanıcının programı bulunamamış gibi (false → 404) davranır.

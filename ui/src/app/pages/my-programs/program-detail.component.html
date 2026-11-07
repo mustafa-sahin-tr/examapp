@@ -3,178 +3,212 @@
   <div class="program-meta">
     @if (dateRange; as range) {
       <!-- Yalnız bir uç okunabiliyorsa tek tarih; sarkan tire yok. -->
-      <span
-        ><mat-icon>calendar_today</mat-icon>
-        {{ range.start && range.end ? t('detail.dateRange', range) : range.start || range.end }}</span
-        >
-      }
-      @if (userProgram?.questionsPerDay; as questions) {
-        <span
-          ><mat-icon>assignment</mat-icon>
-          {{ t('detail.dailyTarget', { questions: questions, subjects: userProgram?.subjectsPerDay }) }}</span
-          >
-      }
-        <span><mat-icon>timeline</mat-icon> {{ t('detail.type', { type: studyTypeLabel }) }}</span>
-      </div>
+      <span><mat-icon>calendar_today</mat-icon>
+        {{ range.start && range.end ? t('detail.dateRange', range) : range.start || range.end }}</span>
+    }
+    @if (userProgram?.questionsPerDay; as questions) {
+      <span><mat-icon>assignment</mat-icon>
+        {{ t('detail.dailyTarget', { questions: questions, subjects: userProgram?.subjectsPerDay }) }}</span>
+    }
+    @if (durationParts; as d) {
+      <span><mat-icon>timer</mat-icon> {{ t('detail.duration', d) }}</span>
+    } @else {
+      <span><mat-icon>timeline</mat-icon> {{ t('detail.type', { type: studyTypeLabel }) }}</span>
+    }
+    @if (userProgram?.subjectsPerDay && !userProgram?.questionsPerDay) {
+      <span><mat-icon>menu_book</mat-icon> {{ t('detail.perDay', { count: userProgram?.subjectsPerDay }) }}</span>
+    }
+  </div>
 
-      <div class="study-page-schedule-section">
-        <div class="study-page-schedule-header">
-          <h3>{{ t('detail.pagesTitle') }}</h3>
-          <button
-            mat-raised-button
-            color="primary"
-            type="button"
-            class="add-study-pages-btn"
-            (click)="toggleAddStudyPages()"
-            [attr.aria-label]="t('detail.addPages')"
-            >
-            <mat-icon>playlist_add</mat-icon>
-            {{ t('detail.addPages') }}
+  @if (userProgram) {
+    <!-- #886: bugünün işi — her oturumda "Başla" ve "Bitti". -->
+    <section class="pd-today" data-test="today" aria-labelledby="pd-today-title">
+      <h3 id="pd-today-title">{{ t('detail.today.title', { date: todayLabel }) }}</h3>
+      @if (todaySessions.length === 0 && todayItems.length === 0) {
+        <p class="pd-muted" data-test="today-empty">{{ t('detail.today.empty') }}</p>
+      } @else {
+        <ul class="pd-today__list">
+          @for (session of todaySessions; track session.id) {
+            <li class="pd-row" [class.pd-row--done]="session.isCompleted" data-test="today-session">
+              <span class="pd-row__dot" [style.background]="subjectColor(session.subjectName)" aria-hidden="true"></span>
+              <span class="pd-row__title">{{ session.subjectName }}</span>
+              @if (sessionAmount(session); as amount) {
+                <span class="pd-row__meta">{{ t(amount.key, { count: amount.count }) }}</span>
+              }
+              <span class="pd-row__spacer"></span>
+              @if (!session.isCompleted) {
+                <a mat-stroked-button routerLink="/practice" [queryParams]="{ subjectId: session.subjectId }" data-test="start">
+                  {{ t('detail.today.start') }}
+                </a>
+              }
+              <button mat-button type="button" data-test="done" [attr.aria-pressed]="session.isCompleted" (click)="toggleSession(session)">
+                <mat-icon>{{ session.isCompleted ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
+                {{ session.isCompleted ? t('detail.today.done') : t('detail.today.markDone') }}
+              </button>
+            </li>
+          }
+          @for (item of todayItems; track item.id) {
+            <li class="pd-row" [class.pd-row--done]="item.isCompleted" data-test="today-item">
+              <mat-icon class="pd-row__icon" aria-hidden="true">menu_book</mat-icon>
+              <span class="pd-row__title">{{ item.studyItemTitle }}</span>
+              <span class="pd-row__meta">{{ t('detail.today.studyPage') }}</span>
+              <span class="pd-row__spacer"></span>
+              @if (!item.isCompleted) {
+                <button mat-stroked-button type="button" (click)="openItem(item)">{{ t('detail.today.start') }}</button>
+              }
+              <button mat-button type="button" data-test="item-done" [attr.aria-pressed]="item.isCompleted" (click)="toggleItem(item)">
+                <mat-icon>{{ item.isCompleted ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
+                {{ item.isCompleted ? t('detail.today.done') : t('detail.today.markDone') }}
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <!-- #886: bu haftanın ilerlemesi. -->
+    @if (weekProgress; as w) {
+      @if (w.planned > 0) {
+        <section class="pd-progress" data-test="week-progress">
+          <p>{{ t('detail.progress.sentence', { done: w.done, planned: w.planned }) }}</p>
+          <div class="pd-progress__bar" role="progressbar" [attr.aria-valuenow]="w.percent" aria-valuemin="0" aria-valuemax="100"
+            [attr.aria-label]="t('detail.progress.label')">
+            <span [style.width.%]="w.percent"></span>
+          </div>
+        </section>
+      }
+    }
+  }
+
+  <div class="study-page-schedule-section">
+    <div class="study-page-schedule-header">
+      <mat-button-toggle-group [(ngModel)]="view" [attr.aria-label]="t('detail.view.label')" data-test="view">
+        <mat-button-toggle value="week">{{ t('detail.view.week') }}</mat-button-toggle>
+        <mat-button-toggle value="month">{{ t('detail.view.month') }}</mat-button-toggle>
+      </mat-button-toggle-group>
+      <span class="pd-row__spacer"></span>
+      <button mat-stroked-button type="button" class="add-study-pages-btn" (click)="toggleAddStudyPages()">
+        <mat-icon>playlist_add</mat-icon>
+        {{ t('detail.addPages') }}
+      </button>
+    </div>
+
+    @if (view === 'week') {
+      <!-- #886: hafta görünümü — her gün o günün dersleri ve çalışma sayfaları. -->
+      <section class="pd-week" data-test="week">
+        <div class="pd-week__head">
+          <button mat-icon-button type="button" (click)="previousWeek()" [attr.aria-label]="t('detail.view.previousWeek')">
+            <mat-icon>chevron_left</mat-icon>
+          </button>
+          <h3>{{ weekRangeLabel }}</h3>
+          <button mat-icon-button type="button" (click)="nextWeek()" [attr.aria-label]="t('detail.view.nextWeek')">
+            <mat-icon>chevron_right</mat-icon>
           </button>
         </div>
+        <ul class="pd-week__days">
+          @for (day of weekDays; track day.getTime()) {
+            <li class="pd-week__day" [class.pd-week__day--today]="isToday(day)" data-test="week-day">
+              <span class="pd-week__label">
+                {{ formatDayLabel(day) }}
+                @if (isToday(day)) {<b class="pd-week__today">{{ t('detail.view.today') }}</b>}
+              </span>
+              <span class="pd-week__items">
+                @for (session of sessionsOn(day); track session.id) {
+                  <span class="pd-chip" [class.pd-chip--done]="session.isCompleted">
+                    <span class="pd-row__dot" [style.background]="subjectColor(session.subjectName)" aria-hidden="true"></span>
+                    {{ session.subjectName }}
+                    @if (sessionAmount(session); as amount) {<small>{{ t(amount.key, { count: amount.count }) }}</small>}
+                    @if (session.isCompleted) {<mat-icon class="pd-chip__check" [attr.aria-label]="t('detail.today.done')">check</mat-icon>}
+                  </span>
+                }
+                @for (item of itemsOn(day); track item.id) {
+                  <button type="button" class="pd-chip pd-chip--item" [class.pd-chip--done]="item.isCompleted" (click)="openItem(item)">
+                    <mat-icon aria-hidden="true">menu_book</mat-icon>{{ item.studyItemTitle }}
+                  </button>
+                }
+                @if (sessionsOn(day).length === 0 && itemsOn(day).length === 0) {
+                  <span class="pd-muted">{{ t('detail.view.free') }}</span>
+                }
+              </span>
+            </li>
+          }
+        </ul>
+      </section>
+    } @else {
+      <div class="calendar-container">
+        <div class="main-calendar" [ngClass]="'cal-size-' + calendarSize">
+          <div class="calendar-header">
+            <button mat-icon-button (click)="previousMonth()">
+              <mat-icon>chevron_left</mat-icon>
+            </button>
+            <h3>{{ currentMonthLabel }}</h3>
+            <button mat-icon-button (click)="nextMonth()">
+              <mat-icon>chevron_right</mat-icon>
+            </button>
+            <mat-button-toggle-group
+              [(ngModel)]="calendarSize"
+              class="calendar-size-toggle"
+              [attr.aria-label]="t('detail.calendarSize.label')"
+              >
+              <mat-button-toggle value="small" [matTooltip]="t('detail.calendarSize.small')">
+                <mat-icon>view_module</mat-icon>
+              </mat-button-toggle>
+              <mat-button-toggle value="medium" [matTooltip]="t('detail.calendarSize.medium')">
+                <mat-icon>grid_view</mat-icon>
+              </mat-button-toggle>
+              <mat-button-toggle value="large" [matTooltip]="t('detail.calendarSize.large')">
+                <mat-icon>calendar_view_month</mat-icon>
+              </mat-button-toggle>
+            </mat-button-toggle-group>
+          </div>
 
-        <div class="calendar-container">
-          <!-- Main Monthly Calendar -->
-          <div class="main-calendar" [ngClass]="'cal-size-' + calendarSize">
-            <div class="calendar-header">
-              <button mat-icon-button (click)="previousMonth()">
-                <mat-icon>chevron_left</mat-icon>
-              </button>
-              <h3>{{ currentMonthLabel }}</h3>
-              <button mat-icon-button (click)="nextMonth()">
-                <mat-icon>chevron_right</mat-icon>
-              </button>
-              <mat-button-toggle-group
-                [(ngModel)]="calendarSize"
-                class="calendar-size-toggle"
-                [attr.aria-label]="t('detail.calendarSize.label')"
-                >
-                <mat-button-toggle value="small" [matTooltip]="t('detail.calendarSize.small')">
-                  <mat-icon>view_module</mat-icon>
-                </mat-button-toggle>
-                <mat-button-toggle value="medium" [matTooltip]="t('detail.calendarSize.medium')">
-                  <mat-icon>grid_view</mat-icon>
-                </mat-button-toggle>
-                <mat-button-toggle value="large" [matTooltip]="t('detail.calendarSize.large')">
-                  <mat-icon>calendar_view_month</mat-icon>
-                </mat-button-toggle>
-              </mat-button-toggle-group>
+          <div class="calendar-body">
+            <div class="calendar-weekdays">
+              @for (weekday of weekdayNames; track weekday) {
+                <div class="weekday">{{ weekday }}</div>
+              }
             </div>
 
-            <div class="calendar-body">
-              <div class="calendar-weekdays">
-                @for (weekday of weekdayNames; track weekday) {
-                  <div class="weekday">{{ weekday }}</div>
+            <div class="calendar-grid-container">
+              <!-- Schedule Bars (overlay on top of grid) -->
+              <div class="schedule-bars-layer" [style.grid-template-rows]="'repeat(' + monthCalendarWeeks + ', 1fr)'">
+                @for (bar of monthScheduleBars; track $index) {
+                  <div
+                    class="schedule-bar"
+                    [style.grid-column]="bar.startCol + ' / ' + bar.endCol"
+                    [style.grid-row]="bar.weekRow + 1"
+                    [style.transform]="'translateY(calc(var(--bar-top-offset) + ' + bar.offsetY + 'px))'"
+                    [style.background]="bar.color"
+                    [title]="bar.schedule.studyItemTitle + ' · ' + bar.typeLabel"
+                    [attr.data-kind]="bar.schedule.contentType"
+                    (click)="onScheduleClick(bar, $event)"
+                    >
+                    <mat-icon class="schedule-bar-icon" [attr.aria-label]="t('detail.typeAria', { type: bar.typeLabel })">{{ bar.typeIcon }}</mat-icon>
+                    <span class="schedule-bar-title">{{ bar.schedule.studyItemTitle }}</span>
+                  </div>
                 }
               </div>
 
-              <div class="calendar-grid-container">
-                <!-- Schedule Bars (overlay on top of grid) -->
-                <div class="schedule-bars-layer" [style.grid-template-rows]="'repeat(' + monthCalendarWeeks + ', 1fr)'">
-                  @for (bar of monthScheduleBars; track $index) {
-                    <div
-                      class="schedule-bar"
-                      [style.grid-column]="bar.startCol + ' / ' + bar.endCol"
-                      [style.grid-row]="bar.weekRow + 1"
-                      [style.transform]="'translateY(calc(var(--bar-top-offset) + ' + bar.offsetY + 'px))'"
-                      [style.background]="bar.color"
-                      [title]="bar.schedule.studyItemTitle + ' · ' + bar.typeLabel"
-                      [attr.data-kind]="bar.schedule.contentType"
-                      (click)="onScheduleClick(bar, $event)"
-                      >
-                      <mat-icon class="schedule-bar-icon" [attr.aria-label]="t('detail.typeAria', { type: bar.typeLabel })">{{ bar.typeIcon }}</mat-icon>
-                      <span class="schedule-bar-title">{{ bar.schedule.studyItemTitle }}</span>
-                    </div>
-                  }
-                </div>
-
-                <!-- Calendar Days Grid -->
-                <div class="calendar-grid">
-                  @for (day of monthCalendarDays; track $index) {
-                    <div
-                      class="calendar-day"
-                      [class.empty]="!day"
-                      [class.clickable]="day"
-                      (click)="onDayClick(day, $event)"
-                      >
-                      @if (day) {
-                        <span class="day-number">{{ day.getDate() }}</span>
-                      }
-                    </div>
-                  }
-                </div>
+              <!-- Calendar Days Grid -->
+              <div class="calendar-grid">
+                @for (day of monthCalendarDays; track $index) {
+                  <div
+                    class="calendar-day"
+                    [class.empty]="!day"
+                    [class.clickable]="day"
+                    (click)="onDayClick(day, $event)"
+                    >
+                    @if (day) {
+                      <span class="day-number">{{ day.getDate() }}</span>
+                    }
+                  </div>
+                }
               </div>
             </div>
-            <!-- /.calendar-body -->
           </div>
-
-          <!-- Next Month Mini Calendar -->
-          <div class="mini-calendar">
-            <h4>{{ nextMonthLabel }}</h4>
-            <div class="mini-weekdays">
-              @for (weekday of weekdayInitials; track $index) {
-                <div>{{ weekday }}</div>
-              }
-            </div>
-            <div class="mini-grid">
-              @for (day of nextMonthCalendarDays; track $index) {
-                <div
-                  class="mini-day"
-                  [class.empty]="!day"
-                  [class.clickable]="day"
-                  [class.filled]="day && getSchedulesForDay(day).length > 0"
-                  [style.background]="getDayGradient(day)"
-                  (click)="onDayClick(day, $event)"
-                  >
-                  @if (day) {
-                    <span>{{ day.getDate() }}</span>
-                  }
-                </div>
-              }
-            </div>
-          </div>
+          <!-- /.calendar-body -->
         </div>
       </div>
-
-      <!-- Özet Kartlar -->
-
-    <!-- Performans Radar Grafiği (Radar Chart) -->
-
-  <!-- Trafik Işıkları Sistemi -->
-
-<!-- Dairesel İlerleme Yüzdeleri (Circular Progress) -->
-
-<!-- Kişisel SWOT Analizi -->
-
-<!-- SWOT Analizi Daire Görselleştirme -->
-
-<!-- Kadranlı Hedef Metreleri (Gauge Chart) -->
-
-<!-- Kişisel Başarı Haritası (Achievement Map) -->
-
-<!-- Günlük Detay Carousel -->
-
-<!-- Günlük Detayda: Motivasyon, Emoji, Not, ProgressBar -->
-
-  <!-- Ekstra: Streak, En İyi Gün, En Kötü Gün, Pie Chart, Not/Emoji, ProgressBar -->
-
-<!-- Yeni Dashboard Bölümü -->
-
-<!-- Duolingo Stili Seri Uyarısı -->
-
-<!-- Google Classroom Stili Görev Takvimi -->
-
-<!-- Khan Academy Tarzı Beceri Ağacı -->
-
-<!-- Quizlet Tarzı Etkileşimli İstatistikler -->
-
-<!-- Notion Akademik Dashboard Odak Konular -->
-
-<!-- Forest Uygulaması Tarzı Zaman Yönetimi -->
-
-<!-- Udemy Tarzı İlerleme Barları -->
-
-<!-- Trello Tarzı Kart Yapıları -->
-
-<!-- Günlük Performans Isı Haritası (Modern) -->
+    }
+  </div>
 </div>

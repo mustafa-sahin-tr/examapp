@@ -324,97 +324,6 @@
   }
 }
 
-.mini-calendar {
-  width: 230px;
-  flex: 0 0 230px;
-  padding: 16px;
-  border-radius: 22px;
-  background: var(--ms-surface-weak);
-  border: 1px solid var(--ms-border-weak);
-  box-shadow: 0 12px 30px color-mix(in srgb, var(--ms-shadow-color) 5%, transparent);
-
-  h4 {
-    margin: 0 0 12px;
-    font-size: 0.98rem;
-    font-weight: 800;
-    color: var(--ms-text-strong);
-    text-align: center;
-    text-transform: capitalize;
-  }
-}
-
-.mini-weekdays,
-.mini-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-}
-
-.mini-weekdays {
-  margin-bottom: 6px;
-
-  div {
-    padding: 5px 2px;
-    border-radius: 8px;
-    background: var(--ms-surface-medium);
-    text-align: center;
-    font-size: 0.64rem;
-    font-weight: 800;
-    color: var(--ms-text-weak);
-  }
-}
-
-.mini-day {
-  aspect-ratio: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  border: 1px solid var(--ms-border-weak);
-  background: color-mix(in srgb, var(--ms-surface-medium) 55%, transparent);
-  color: var(--ms-text);
-  font-size: 0.72rem;
-  font-weight: 800;
-
-  // Planlı gün ders rengiyle dolar (`--ms-subject-*`); yazı o zaman beyaz.
-  &.filled {
-    color: var(--ms-colors-white);
-    text-shadow: 0 1px 2px color-mix(in srgb, var(--ms-shadow-color) 25%, transparent);
-  }
-  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
-
-  &.clickable {
-    cursor: pointer;
-
-    &:hover {
-      transform: scale(1.06);
-      box-shadow: 0 8px 18px color-mix(in srgb, var(--ms-shadow-color) 12%, transparent);
-      filter: brightness(1.04);
-      z-index: 1;
-    }
-  }
-
-  &.empty {
-    background: transparent;
-    border-color: transparent;
-    box-shadow: none;
-    cursor: default;
-    color: transparent;
-    text-shadow: none;
-  }
-
-  &:not(.empty):not([style*="background"]) {
-    background: var(--ms-surface-medium);
-    color: var(--ms-text-medium);
-    text-shadow: none;
-  }
-
-  span {
-    position: relative;
-    z-index: 1;
-  }
-}
-
 @media (max-width: 1024px) {
   .program-detail-container {
     padding: 24px;
@@ -423,11 +332,6 @@
 
   .calendar-container {
     flex-direction: column;
-  }
-
-  .mini-calendar {
-    width: 100%;
-    flex-basis: auto;
   }
 
   .main-calendar {
@@ -540,4 +444,182 @@
   height: 14px;
   font-size: 14px;
   color: var(--ms-colors-white);
+}
+
+// #886: Bugün kartı, haftalık ilerleme ve hafta görünümü.
+.pd-today,
+.pd-progress,
+.pd-week {
+  margin-bottom: 20px;
+  padding: 16px 20px;
+  border: 1px solid var(--ms-border);
+  border-radius: 18px;
+  background: var(--ms-surface-weak);
+
+  h3 {
+    margin: 0 0 10px;
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--ms-text-strong);
+  }
+}
+
+.pd-today__list,
+.pd-week__days {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pd-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px 4px 8px 12px;
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 12px;
+  background: var(--ms-surface);
+}
+
+.pd-row--done .pd-row__title {
+  color: var(--ms-text-weak);
+  text-decoration: line-through;
+}
+
+.pd-row__dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.pd-row__icon {
+  color: var(--ms-text-medium);
+}
+
+.pd-row__title {
+  font-weight: 700;
+  color: var(--ms-text-strong);
+}
+
+.pd-row__meta {
+  font-size: 0.85rem;
+  color: var(--ms-text-weak);
+}
+
+.pd-row__spacer {
+  flex: 1;
+}
+
+.pd-muted {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--ms-text-weak);
+}
+
+.pd-progress p {
+  margin: 0 0 8px;
+  font-weight: 700;
+  color: var(--ms-text-strong);
+}
+
+.pd-progress__bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ms-surface-medium);
+  overflow: hidden;
+
+  span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--primaryColor);
+  }
+}
+
+.pd-week__head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+
+  h3 {
+    margin: 0;
+  }
+}
+
+.pd-week__day {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+  padding: 8px 10px;
+  border-radius: 12px;
+
+  @media (max-width: 599px) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+}
+
+.pd-week__day--today {
+  background: var(--ms-surface);
+  outline: 1px solid var(--primaryColor);
+}
+
+.pd-week__label {
+  font-weight: 700;
+  color: var(--ms-text-medium);
+}
+
+.pd-week__today {
+  margin-left: 6px;
+  font-size: 0.75rem;
+  color: var(--primaryColor);
+}
+
+.pd-week__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pd-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 999px;
+  background: var(--ms-surface);
+  color: var(--ms-text-strong);
+  font: inherit;
+  font-size: 0.875rem;
+
+  small {
+    color: var(--ms-text-weak);
+    white-space: nowrap;
+  }
+
+  mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.pd-chip--item {
+  cursor: pointer;
+}
+
+.pd-chip--done {
+  color: var(--ms-text-weak);
+}
+
+.pd-chip__check {
+  color: var(--ms-success-text, var(--primaryColor));
 }

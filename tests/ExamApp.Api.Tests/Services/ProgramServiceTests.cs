@@ -271,6 +271,54 @@ public class ProgramServiceTests : IDisposable
         return (program.Id, schedule.Id);
     }
 
+    // ---- issue #886: ders oturumu yapıldı ----
+
+    private async Task<(int programId, int sessionId)> SeedProgramWithSessionAsync(string userId)
+    {
+        await using var ctx = _db.NewContext();
+        var program = new UserProgram { UserId = userId, ProgramName = "Plan", Description = "", StudyType = "time", StudyDuration = "25-5", SubjectsPerDay = 1, RestDays = "", DifficultSubjects = "" };
+        ctx.UserPrograms.Add(program);
+        await ctx.SaveChangesAsync();
+        var session = new UserProgramSchedule { UserProgramId = program.Id, ScheduleDate = new DateTime(2026, 3, 2, 0, 0, 0, DateTimeKind.Utc), SubjectId = 1, SubjectName = "Mat", Notes = "" };
+        ctx.UserProgramSchedules.Add(session);
+        await ctx.SaveChangesAsync();
+        return (program.Id, session.Id);
+    }
+
+    [Fact]
+    public async Task SetSessionCompletionAsync_Owner_MarksDoneAndUndone()
+    {
+        var (programId, sessionId) = await SeedProgramWithSessionAsync(User);
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).SetSessionCompletionAsync(User, programId, sessionId, completed: true)).ShouldBeTrue();
+        await using (var check = _db.NewContext())
+        {
+            var done = await check.UserProgramSchedules.SingleAsync(s => s.Id == sessionId);
+            done.IsCompleted.ShouldBeTrue();
+            done.CompletedDate.ShouldNotBeNull();
+        }
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).SetSessionCompletionAsync(User, programId, sessionId, completed: false)).ShouldBeTrue();
+        await using var after = _db.NewContext();
+        var undone = await after.UserProgramSchedules.SingleAsync(s => s.Id == sessionId);
+        undone.IsCompleted.ShouldBeFalse();
+        undone.CompletedDate.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task SetSessionCompletionAsync_OtherUsersOrWrongProgram_ReturnsFalse()
+    {
+        var (programId, sessionId) = await SeedProgramWithSessionAsync(User);
+        await using var ctx = _db.NewContext();
+        var service = NewService(ctx);
+
+        (await service.SetSessionCompletionAsync("someone-else", programId, sessionId, completed: true)).ShouldBeFalse();
+        (await service.SetSessionCompletionAsync(User, programId + 1, sessionId, completed: true)).ShouldBeFalse();
+        (await ctx.UserProgramSchedules.SingleAsync(s => s.Id == sessionId)).IsCompleted.ShouldBeFalse();
+    }
+
     [Fact]
     public async Task CompleteStudyItemAsync_Owner_MarksCompletedAndSetsCompletedDate()
     {

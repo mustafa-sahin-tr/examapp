@@ -47,14 +47,14 @@ public class AdminControllerStudentsTests
         var result = await NewController().GetStudents(schoolId: 3, unassigned: true, page: 1, pageSize: 20, ct: default);
 
         result.Result.ShouldBeOfType<BadRequestObjectResult>();
-        await _adminStudents.DidNotReceive().ListAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+        await _adminStudents.DidNotReceive().ListAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<bool>(), Arg.Any<AdminStudentParentFilter?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task Passes_paging_and_filter_to_service_and_returns_200()
     {
         var paged = new Paged<AdminStudentListItemDto> { PageNumber = 2, PageSize = 20, TotalCount = 25, Items = [] };
-        _adminStudents.ListAsync(2, 20, 7, false, Arg.Any<CancellationToken>()).Returns(paged);
+        _adminStudents.ListAsync(2, 20, 7, false, null, Arg.Any<CancellationToken>()).Returns(paged);
 
         var result = await NewController().GetStudents(schoolId: 7, unassigned: false, page: 2, pageSize: 20, ct: default);
 
@@ -64,13 +64,13 @@ public class AdminControllerStudentsTests
     [Fact]
     public async Task Unassigned_only_is_passed_through()
     {
-        _adminStudents.ListAsync(1, 20, null, true, Arg.Any<CancellationToken>())
+        _adminStudents.ListAsync(1, 20, null, true, null, Arg.Any<CancellationToken>())
             .Returns(new Paged<AdminStudentListItemDto> { PageNumber = 1, PageSize = 20, TotalCount = 0, Items = [] });
 
         var result = await NewController().GetStudents(schoolId: null, unassigned: true, page: 1, pageSize: 20, ct: default);
 
         result.Result.ShouldBeOfType<OkObjectResult>();
-        await _adminStudents.Received(1).ListAsync(1, 20, null, true, Arg.Any<CancellationToken>());
+        await _adminStudents.Received(1).ListAsync(1, 20, null, true, null, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -89,7 +89,7 @@ public class AdminControllerStudentsTests
     public async Task Issue246_successful_call_is_audited_with_sub_filter_normalized_page_and_row_count()
     {
         // Servis pageSize'ı normalize eder (1000 → 100); audit istemcinin ham değerini değil yanıttakini yazar.
-        _adminStudents.ListAsync(3, 1000, 7, false, Arg.Any<CancellationToken>())
+        _adminStudents.ListAsync(3, 1000, 7, false, null, Arg.Any<CancellationToken>())
             .Returns(new Paged<AdminStudentListItemDto> { PageNumber = 3, PageSize = 100, TotalCount = 250, Items = [new(), new()] });
 
         await NewController().GetStudents(schoolId: 7, unassigned: false, page: 3, pageSize: 1000, ct: default);
@@ -110,7 +110,7 @@ public class AdminControllerStudentsTests
     [Fact]
     public async Task Issue246_audit_failure_fails_the_request_instead_of_returning_data()
     {
-        _adminStudents.ListAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+        _adminStudents.ListAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<bool>(), Arg.Any<AdminStudentParentFilter?>(), Arg.Any<CancellationToken>())
             .Returns(new Paged<AdminStudentListItemDto> { PageNumber = 1, PageSize = 20, TotalCount = 1, Items = [new()] });
         _audit.RecordListAccessAsync(Arg.Any<AdminListAccessRecord>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new InvalidOperationException("db down")));

@@ -5,7 +5,7 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { of, throwError } from 'rxjs';
 
-import { BadgeDefinitionDialogComponent, BadgeDefinitionDialogData } from './badge-definition-dialog.component';
+import { BadgeDefinitionDialogComponent, BadgeDefinitionDialogData, badgeCodeFromName } from './badge-definition-dialog.component';
 import { BadgeDefinitionAdminService } from '../../../../services/badge-definition-admin.service';
 import { SubjectService } from '../../../../services/subject.service';
 import { BadgeDefinitionAdmin, BadgeIconEntry, BadgeRuleTypeSchema } from '../../../../models/badge-definition-admin.model';
@@ -118,6 +118,35 @@ describe('BadgeDefinitionDialogComponent', () => {
     function el(testId: string): HTMLElement | null {
         return fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
     }
+
+    // ── #917: ad önce, kod addan üretilir ──────────────────────────────────
+
+    it('badgeCodeFromName_TurkishLettersAndSpaces_ProducesPatternSafeCode_issue917', () => {
+        expect(badgeCodeFromName('Matematik Ustası', 60)).toBe('matematik-ustasi');
+        expect(badgeCodeFromName('  Çığ Öğrencisi! 10 Gün ', 60)).toBe('cig-ogrencisi-10-gun');
+        expect(badgeCodeFromName('Uzun ad burada', 8)).toBe('uzun-ad');
+        expect(badgeCodeFromName('!!!', 60)).toBe('');
+    });
+
+    it('create_TypingName_FillsCode_UntilCodeIsEditedByHand_issue917', () => {
+        init();
+        component.form.controls.name.setValue('Soru Avcısı');
+        expect(component.form.controls.code.value).toBe('soru-avcisi');
+        component.form.controls.name.setValue('Soru Avcısı 2');
+        expect(component.form.controls.code.value).toBe('soru-avcisi-2');
+
+        component.form.controls.code.setValue('hunter');
+        component.form.controls.name.setValue('Başka Ad');
+        expect(component.form.controls.code.value).toBe('hunter');
+    });
+
+    it('iconGrid_EveryOptionHasAVisibleLabel_issue917', () => {
+        init();
+        const labels = Array.from(fixture.nativeElement.querySelectorAll('.bd-icon-option__label')) as HTMLElement[];
+        expect(labels.length).toBeGreaterThan(0);
+        expect(labels.every((l) => (l.textContent ?? '').trim().length > 0)).toBe(true);
+        expect(labels.some((l) => (l.textContent ?? '').includes('_'))).toBe(false);
+    });
 
     // ── dinamik kural formu ─────────────────────────────────────────────────
 

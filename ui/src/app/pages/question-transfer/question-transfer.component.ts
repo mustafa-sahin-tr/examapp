@@ -14,6 +14,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { catchError, EMPTY, filter, interval, Subscription, switchMap, timer } from 'rxjs';
 import { LabelingBook } from '../../models/labeling-book';
@@ -63,6 +64,7 @@ const CATALOG_ROWS = ['grades', 'subjects', 'gradeSubjects', 'topics', 'subTopic
     MatProgressBarModule,
     MatIconModule,
     MatTooltipModule,
+    MatMenuModule,
     MatChipsModule,
     MatDividerModule,
     TranslocoDirective,

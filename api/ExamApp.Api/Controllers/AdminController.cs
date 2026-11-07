@@ -310,6 +310,7 @@ public class AdminController : BaseController
     /// GET api/admin/students?page=1&amp;pageSize=20           → tüm öğrenciler, Id'ye göre artan
     /// GET api/admin/students?schoolId=5                      → yalnızca 5 numaralı okulun öğrencileri
     /// GET api/admin/students?unassigned=true                 → okul bağlantısı olmayanlar (SchoolId null)
+    /// GET api/admin/students?parentStatus=awaitingActivation → panodaki veli durumu sayacının öğrencileri (#917)
     /// schoolId ve unassigned birlikte kullanılamaz. pageSize 1..100 aralığına kırpılır. Ad/e-posta/hesap durumu
     /// auth-api'den sayfa başına tek çağrıyla gelir; erişilemezse liste yine döner (ad/e-posta boş, isEnabled null).
     /// issue #246: e-posta maskeli (<c>a***@x.com</c>); her başarılı çağrı audit'lenir; kullanıcı başına rate limit (429).
@@ -324,12 +325,13 @@ public class AdminController : BaseController
         [FromQuery] bool unassigned = false,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = AdminListPaging.DefaultPageSize,
+        [FromQuery] AdminStudentParentFilter? parentStatus = null,
         CancellationToken ct = default)
     {
         if (schoolId.HasValue && unassigned)
             return BadRequest(_localizer["admin.students.filterConflict"].Value);
 
-        var result = await _adminStudents.ListAsync(page, pageSize, schoolId, unassigned, ct);
+        var result = await _adminStudents.ListAsync(page, pageSize, schoolId, unassigned, parentStatus, ct);
         await AuditListAccessAsync(AdminDataAccessResource.StudentList, schoolId, unassigned, result, ct);
         return Ok(result);
     }

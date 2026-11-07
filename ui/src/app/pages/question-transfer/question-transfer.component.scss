@@ -9,9 +9,13 @@
 .qt-top {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
-  flex-wrap: wrap;
+
+  > div {
+    flex: 1;
+    min-width: 0;
+  }
 }
 
 .qt-title {
@@ -33,6 +37,23 @@
 
 .qt-card {
   border-radius: 14px;
+
+  // #917: global `mat-card-title` kuralı başlığı ortalıyor; kart içeriği gibi sola hizalı.
+  .mat-mdc-card-header-text {
+    flex: 1;
+  }
+
+  mat-card-title {
+    text-align: start;
+    font-size: 1.15rem;
+    padding-bottom: 4px;
+  }
+}
+
+.qt-menu-hint {
+  display: block;
+  font-size: 12px;
+  opacity: 0.7;
 }
 
 .qt-field {

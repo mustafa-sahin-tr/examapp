@@ -200,9 +200,9 @@ export class AdminService {
    * ikisi birden verilirse `unassigned` önceliklidir.
    */
   getStudents(query: AdminStudentListQuery): Observable<Paged<AdminStudentListItem>> {
-    return this.http.get<Paged<AdminStudentListItem>>(`${this.baseUrl}/students`, {
-      params: schoolPagedParams(query),
-    });
+    let params = schoolPagedParams(query);
+    if (query.parentStatus) params = params.set('parentStatus', query.parentStatus);
+    return this.http.get<Paged<AdminStudentListItem>>(`${this.baseUrl}/students`, { params });
   }
 
   // ---- şifre sıfırlama (Issue #156) ----

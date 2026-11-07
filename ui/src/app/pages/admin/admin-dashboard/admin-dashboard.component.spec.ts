@@ -667,10 +667,11 @@ describe('AdminDashboardComponent', () => {
         expect(value('graceExpired')).toBe('2');
         expect(value('awaitingActivation')).toBe('5');
         expect(card.textContent).toContain('Veli durumu');
-        // #887: aktive etmeyen veli satırı öğrenci listesine gider.
+        // #917: her sayı, o kümeye süzülmüş öğrenci listesine gider.
         const link = card.querySelector('[data-key="awaitingActivation"] a');
-        expect(link?.getAttribute('href')).toBe('/admin/students');
-        expect(card.querySelector('[data-key="inGrace"] a')).toBeNull();
+        expect(link?.getAttribute('href')).toBe('/admin/students?parentStatus=awaitingActivation');
+        expect(card.querySelector('[data-key="withoutParent"] a')?.getAttribute('href')).toBe('/admin/students?parentStatus=withoutParent');
+        expect(card.querySelector('[data-key="inGrace"] a')?.getAttribute('aria-label')).toContain('öğrenci listesini aç');
     });
 
     it('parentStatusCard_OldServerWithoutCounts_Hidden', () => {

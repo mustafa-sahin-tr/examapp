@@ -1,5 +1,6 @@
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Models.Dtos.Admin;
 using ExamApp.Api.Services.AdminUsers;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Tests.Support;
@@ -53,14 +54,61 @@ public class AdminStudentServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ParentStatus_filter_returns_the_same_sets_as_the_dashboard_counters_issue917()
+    {
+        var now = DateTime.UtcNow;
+        async Task<int> Seed(int userId, DateTime? startedAt, ParentStudentLinkStatus? link = null, bool invitation = false)
+        {
+            await using var ctx = _db.NewContext();
+            var student = new Student { UserId = userId, StudentNumber = $"2026{userId:D4}", ParentRequirementStartedAt = startedAt };
+            ctx.Students.Add(student);
+            await ctx.SaveChangesAsync();
+            if (link is not { } status)
+                return student.Id;
+            var parent = new Parent { UserId = userId + 100_000 };
+            ctx.Parents.Add(parent);
+            await ctx.SaveChangesAsync();
+            var l = new ParentStudentLink { ParentId = parent.Id, StudentId = student.Id, Status = status, Origin = ParentStudentLinkOrigin.StudentRegistered, CreatedAt = now };
+            ctx.ParentStudentLinks.Add(l);
+            await ctx.SaveChangesAsync();
+            if (invitation)
+            {
+                ctx.ParentInvitations.Add(new ParentInvitation
+                {
+                    Id = Guid.NewGuid(), StudentId = student.Id, ParentId = parent.Id, ParentUserId = parent.UserId, ParentKeycloakId = "kc",
+                    LinkId = l.Id, Email = $"v{userId}@example.com", FullName = "Veli", Phone = "+905321234567",
+                    Status = ParentInvitationStatus.Pending, ExpiresAt = now.AddDays(8), SendCount = 1, LastSentAt = now, CreatedAt = now
+                });
+                await ctx.SaveChangesAsync();
+            }
+            return student.Id;
+        }
+
+        await Seed(1001, now.AddDays(-400), ParentStudentLinkStatus.Active);           // velisi var → hiçbir kümede yok
+        var grace = await Seed(1002, now);                                              // süre içinde
+        var expired = await Seed(1003, now.AddDays(-400));                              // süresi dolmuş
+        var awaiting = await Seed(1004, now, ParentStudentLinkStatus.Pending, invitation: true); // aktivasyon bekliyor
+
+        await using var read = _db.NewContext();
+        async Task<int[]> Ids(AdminStudentParentFilter? f) =>
+            (await NewService(read).ListAsync(1, 20, null, false, f)).Items.Select(i => i.Id).OrderBy(i => i).ToArray();
+
+        Assert.Equal(new[] { grace }, await Ids(AdminStudentParentFilter.InGrace));
+        Assert.Equal(new[] { expired }, await Ids(AdminStudentParentFilter.GraceExpired));
+        Assert.Equal(new[] { awaiting }, await Ids(AdminStudentParentFilter.AwaitingActivation));
+        Assert.Equal(new[] { grace, expired }.OrderBy(i => i), await Ids(AdminStudentParentFilter.WithoutParent));
+        Assert.Equal(4, (await Ids(null)).Length);
+    }
+
+    [Fact]
     public async Task Paginates_25_students_as_20_plus_5_ordered_by_id_with_total_count()
     {
         await SeedAsync(countA: 25, countB: 0, countUnassigned: 0);
         await using var ctx = _db.NewContext();
         var service = NewService(ctx);
 
-        var page1 = await service.ListAsync(page: 1, pageSize: 20, schoolId: null, unassigned: false);
-        var page2 = await service.ListAsync(page: 2, pageSize: 20, schoolId: null, unassigned: false);
+        var page1 = await service.ListAsync(page: 1, pageSize: 20, schoolId: null, unassigned: false, parentStatus: null);
+        var page2 = await service.ListAsync(page: 2, pageSize: 20, schoolId: null, unassigned: false, parentStatus: null);
 
         page1.TotalCount.ShouldBe(25);
         page1.PageNumber.ShouldBe(1);
@@ -81,7 +129,7 @@ public class AdminStudentServiceTests : IDisposable
         await SeedAsync(countA: 25, countB: 0, countUnassigned: 0);
         await using var ctx = _db.NewContext();
 
-        var page2 = await NewService(ctx).ListAsync(page: 2, pageSize: 20, schoolId: null, unassigned: false);
+        var page2 = await NewService(ctx).ListAsync(page: 2, pageSize: 20, schoolId: null, unassigned: false, parentStatus: null);
 
         await _authApi.Received(1).GetUsersWithAccountStatusByIdsAsync(
             Arg.Is<IEnumerable<int>>(ids => ids.OrderBy(i => i).SequenceEqual(page2.Items.Select(UserIdOf).OrderBy(i => i))),
@@ -95,7 +143,7 @@ public class AdminStudentServiceTests : IDisposable
         var (schoolA, schoolB) = await SeedAsync(countA: 3, countB: 2, countUnassigned: 1);
         await using var ctx = _db.NewContext();
 
-        var result = await NewService(ctx).ListAsync(page: 1, pageSize: 20, schoolId: schoolB, unassigned: false);
+        var result = await NewService(ctx).ListAsync(page: 1, pageSize: 20, schoolId: schoolB, unassigned: false, parentStatus: null);
 
         result.TotalCount.ShouldBe(2);
         result.Items.Count.ShouldBe(2);
@@ -109,7 +157,7 @@ public class AdminStudentServiceTests : IDisposable
         await SeedAsync(countA: 3, countB: 2, countUnassigned: 2);
         await using var ctx = _db.NewContext();
 
-        var result = await NewService(ctx).ListAsync(page: 1, pageSize: 20, schoolId: null, unassigned: true);
+        var result = await NewService(ctx).ListAsync(page: 1, pageSize: 20, schoolId: null, unassigned: true, parentStatus: null);
 
         result.TotalCount.ShouldBe(2);
         result.Items.ShouldAllBe(i => i.SchoolId == null);
@@ -121,7 +169,7 @@ public class AdminStudentServiceTests : IDisposable
         await SeedAsync(countA: 3, countB: 0, countUnassigned: 0);
         await using var ctx = _db.NewContext();
 
-        var result = await NewService(ctx).ListAsync(page: 1, pageSize: 20, schoolId: 9999, unassigned: false);
+        var result = await NewService(ctx).ListAsync(page: 1, pageSize: 20, schoolId: 9999, unassigned: false, parentStatus: null);
 
         result.TotalCount.ShouldBe(0);
         result.Items.ShouldBeEmpty();
@@ -148,7 +196,7 @@ public class AdminStudentServiceTests : IDisposable
         }
         await using var ctx = _db.NewContext();
 
-        var items = (await NewService(ctx).ListAsync(1, 20, null, false)).Items;
+        var items = (await NewService(ctx).ListAsync(1, 20, null, false, null)).Items;
 
         var bound = items.Single(i => i.StudentNumber == "****1234");
         bound.FullName.ShouldBe("Ad 42");
@@ -181,7 +229,7 @@ public class AdminStudentServiceTests : IDisposable
         await SeedAsync(countA: 2, countB: 0, countUnassigned: 0); // UserId 100, 101
         await using var ctx = _db.NewContext();
 
-        var items = (await NewService(ctx).ListAsync(1, 20, null, false)).Items;
+        var items = (await NewService(ctx).ListAsync(1, 20, null, false, null)).Items;
 
         var missing = items.Single(i => i.StudentNumber == "****0100");
         missing.FullName.ShouldBe(string.Empty);
@@ -203,7 +251,7 @@ public class AdminStudentServiceTests : IDisposable
         await SeedAsync(countA: 3, countB: 0, countUnassigned: 0);
         await using var ctx = _db.NewContext();
 
-        var result = await NewService(ctx).ListAsync(1, 20, null, false);
+        var result = await NewService(ctx).ListAsync(1, 20, null, false, null);
 
         result.TotalCount.ShouldBe(3);
         result.Items.Count.ShouldBe(3);
@@ -220,7 +268,7 @@ public class AdminStudentServiceTests : IDisposable
         await SeedAsync(countA: 25, countB: 0, countUnassigned: 0);
         await using var ctx = _db.NewContext();
 
-        var result = await NewService(ctx).ListAsync(page, 20, null, false);
+        var result = await NewService(ctx).ListAsync(page, 20, null, false, null);
 
         result.PageNumber.ShouldBe(page);
         result.TotalCount.ShouldBe(25);
@@ -237,7 +285,7 @@ public class AdminStudentServiceTests : IDisposable
         await SeedAsync(countA: 2, countB: 0, countUnassigned: 0);
         await using var ctx = _db.NewContext();
 
-        var result = await NewService(ctx).ListAsync(page, pageSize, null, false);
+        var result = await NewService(ctx).ListAsync(page, pageSize, null, false, null);
 
         result.PageNumber.ShouldBe(expectedPage);
         result.PageSize.ShouldBe(expectedPageSize);
@@ -255,7 +303,7 @@ public class AdminStudentServiceTests : IDisposable
         }
         await using var ctx = _db.NewContext();
 
-        var result = await NewService(ctx).ListAsync(1, 20, null, false);
+        var result = await NewService(ctx).ListAsync(1, 20, null, false, null);
 
         result.TotalCount.ShouldBe(1);
         result.Items.Single().StudentNumber.ShouldBe("****0001");
@@ -274,7 +322,7 @@ public class AdminStudentServiceTests : IDisposable
             });
         await using var ctx = _db.NewContext();
 
-        var items = (await NewService(ctx).ListAsync(1, 20, null, false)).Items.OrderBy(i => i.Id).ToList();
+        var items = (await NewService(ctx).ListAsync(1, 20, null, false, null)).Items.OrderBy(i => i.Id).ToList();
 
         items.Select(i => i.Email).ShouldBe(["a***@okul.k12.tr", "***@okul.k12.tr", "***"]);
     }

@@ -4,6 +4,18 @@ namespace ExamApp.Api.Models.Dtos.Admin;
 /// Admin öğrenci listesi satırı (issue #153). Yanıt zarfı <see cref="Paged{T}"/>:
 /// <c>{ pageNumber, pageSize, totalCount, items: [...] }</c>.
 /// </summary>
+/// <summary>
+/// #917: GET api/admin/students?parentStatus= — panodaki veli durumu sayaçlarının kümesi. Query'de ad olarak gelir
+/// (withoutParent | inGrace | graceExpired | awaitingActivation).
+/// </summary>
+public enum AdminStudentParentFilter
+{
+    WithoutParent = 0,
+    InGrace = 1,
+    GraceExpired = 2,
+    AwaitingActivation = 3,
+}
+
 public class AdminStudentListItemDto
 {
     /// <summary>Student kaydının id'si.</summary>

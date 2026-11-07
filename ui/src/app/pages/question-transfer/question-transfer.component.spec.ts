@@ -94,7 +94,7 @@ describe('QuestionTransferComponent', () => {
             downloadPackage: vi.fn(),
             importCatalog: vi.fn().mockReturnValue(of(catalogCounts())),
             downloadCatalog: vi.fn(),
-            hangfireLogin: vi.fn(),
+            hangfireLogin: vi.fn().mockReturnValue(of(undefined)),
             hangfireUrl: vi.fn(),
         } as unknown as MockedObject<QuestionTransferService>;
 
@@ -133,6 +133,19 @@ describe('QuestionTransferComponent', () => {
         for (const term of ['Bundle', 'Paket Kodu', 'Index', 'Export Başlat']) {
             expect(text()).not.toContain(term);
         }
+    });
+
+    it('hangfire_LivesInTheMoreMenu_NotOnThePage_issue917', () => {
+        setup();
+        expect(text()).not.toContain('Hangfire');
+
+        (el().querySelector('[data-testid="qt-more"]') as HTMLButtonElement).click();
+        fixture.detectChanges();
+
+        const item = document.querySelector('[data-testid="qt-hangfire"]') as HTMLButtonElement;
+        expect(item.textContent).toContain('Hangfire');
+        item.click();
+        expect(transfer.hangfireLogin).toHaveBeenCalled();
     });
 
     // ---- test ve etkinlik seçimi

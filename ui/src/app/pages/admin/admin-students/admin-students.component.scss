@@ -11,3 +11,9 @@
   background: color-mix(in srgb, var(--primaryColor) 15%, transparent);
   color: var(--primaryColor);
 }
+
+// #917: panodan gelen veli durumu filtresi.
+.al__chips {
+  display: block;
+  margin: 0 0 12px;
+}

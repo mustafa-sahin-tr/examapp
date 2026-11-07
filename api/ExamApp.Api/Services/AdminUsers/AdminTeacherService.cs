@@ -22,15 +22,18 @@ public class AdminTeacherService : IAdminTeacherService
         _userDirectory = userDirectory;
     }
 
-    public async Task<Paged<AdminTeacherListItemDto>> ListAsync(int page, int pageSize, int? schoolId, bool unassigned, CancellationToken ct = default)
+    public async Task<Paged<AdminTeacherListItemDto>> ListAsync(int page, int pageSize, int? schoolId, bool unassigned, CancellationToken ct = default,
+        AdminTeacherStatusFilter status = AdminTeacherStatusFilter.All)
     {
         (page, pageSize) = AdminListPaging.Normalize(page, pageSize);
 
-        var query = _context.Teachers.AsNoTracking();
-        if (schoolId.HasValue)
-            query = query.Where(t => t.SchoolId == schoolId.Value);
-        else if (unassigned)
-            query = query.Where(t => t.SchoolId == null);
+        var query = ScopedQuery(schoolId, unassigned);
+        query = status switch
+        {
+            AdminTeacherStatusFilter.Pending => query.Where(t => t.ApprovalStatus == TeacherApprovalStatus.Pending),
+            AdminTeacherStatusFilter.Suspended => query.Where(t => t.AccountSuspendedAt != null),
+            _ => query
+        };
 
         var totalCount = await query.CountAsync(ct);
 
@@ -88,5 +91,30 @@ public class AdminTeacherService : IAdminTeacherService
                 };
             }).ToList()
         };
+    }
+
+    public async Task<AdminTeacherStatusCountsDto> CountByStatusAsync(int? schoolId, bool unassigned, CancellationToken ct = default)
+    {
+        var counts = await ScopedQuery(schoolId, unassigned)
+            .GroupBy(_ => 1)
+            .Select(g => new AdminTeacherStatusCountsDto
+            {
+                All = g.Count(),
+                Pending = g.Count(t => t.ApprovalStatus == TeacherApprovalStatus.Pending),
+                Suspended = g.Count(t => t.AccountSuspendedAt != null)
+            })
+            .FirstOrDefaultAsync(ct);
+        return counts ?? new AdminTeacherStatusCountsDto();
+    }
+
+    /// <summary>Okul filtresi (liste ve sayılar aynı kapsam).</summary>
+    private IQueryable<Teacher> ScopedQuery(int? schoolId, bool unassigned)
+    {
+        var query = _context.Teachers.AsNoTracking();
+        if (schoolId.HasValue)
+            query = query.Where(t => t.SchoolId == schoolId.Value);
+        else if (unassigned)
+            query = query.Where(t => t.SchoolId == null);
+        return query;
     }
 }

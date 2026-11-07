@@ -19,7 +19,7 @@ import {
   TeacherApplicationListQuery,
   TeacherRejectRequest,
 } from '../models/teacher-application.model';
-import { AdminTeacherListItem, AdminTeacherListQuery } from '../models/admin-teacher.model';
+import { AdminTeacherListItem, AdminTeacherListQuery, AdminTeacherStatusCounts } from '../models/admin-teacher.model';
 import { AdminStudentListItem, AdminStudentListQuery } from '../models/admin-student.model';
 import { AdminSchoolPagedQuery } from '../models/admin-paged-query.model';
 import { AdminPasswordResetResponse, AdminPasswordResetTarget } from '../models/admin-password-reset.model';
@@ -180,9 +180,18 @@ export class AdminService {
    * ikisi birden verilirse `unassigned` önceliklidir.
    */
   getTeachers(query: AdminTeacherListQuery): Observable<Paged<AdminTeacherListItem>> {
-    return this.http.get<Paged<AdminTeacherListItem>>(`${this.baseUrl}/teachers`, {
-      params: schoolPagedParams(query),
-    });
+    let params = schoolPagedParams(query);
+    // Issue #854: durum çipi ("all" varsayılan, gönderilmez).
+    if (query.status && query.status !== 'all') params = params.set('status', query.status);
+    return this.http.get<Paged<AdminTeacherListItem>>(`${this.baseUrl}/teachers`, { params });
+  }
+
+  /** Issue #854: durum çiplerinin sayıları; okul filtresi listeyle aynı. */
+  getTeacherStatusCounts(query: Pick<AdminTeacherListQuery, 'schoolId' | 'unassigned'>): Observable<AdminTeacherStatusCounts> {
+    let params = new HttpParams();
+    if (query.unassigned) params = params.set('unassigned', 'true');
+    else if (query.schoolId != null) params = params.set('schoolId', query.schoolId);
+    return this.http.get<AdminTeacherStatusCounts>(`${this.baseUrl}/teachers/status-counts`, { params });
   }
 
   // ---- öğrenci listesi (Issue #153) ----

@@ -15,6 +15,19 @@
     </div>
   </header>
 
+  <!-- #854: durum çipleri (okul filtresiyle birlikte çalışır) -->
+  <mat-chip-listbox class="al__status-chips" [attr.aria-label]="t('statusFilter.aria')" [hideSingleSelectionIndicator]="true"
+    [value]="status()" (change)="setStatus($event.value)" data-testid="status-chips">
+    @for (s of statusFilters; track s) {
+      <mat-chip-option [value]="s" [selectable]="status() !== s" [attr.data-status]="s">
+        {{ t('statusFilter.' + s) }}
+        @if (statusCounts(); as counts) {
+          <span class="al__chip-count">{{ counts[s] }}</span>
+        }
+      </mat-chip-option>
+    }
+  </mat-chip-listbox>
+
   @if (error()) {
     <div class="al__state al__state--error" role="alert">
       <mat-icon>error_outline</mat-icon>
@@ -97,80 +110,109 @@
             <span class="cdk-visually-hidden">{{ t('columns.actions') }}</span>
           </th>
           <td mat-cell *matCellDef="let row" class="al__actions-cell">
+            <!-- #854: dört etiketsiz ikon yerine tek "Yönet ▾" menüsü; geri alınamaz işlem ayrı grupta, kırmızı. -->
             <button
-              mat-icon-button
+              mat-stroked-button
               type="button"
-              data-testid="reset-password"
-              [matTooltip]="'admin.passwordReset.action' | transloco"
-              [attr.aria-label]="'admin.passwordReset.actionFor' | transloco: { name: rowDisplayName(row) }"
-              [disabled]="resetDialogOpen()"
-              (click)="resetPassword(row)"
+              data-testid="row-menu"
+              [matMenuTriggerFor]="rowMenu"
+              [attr.aria-label]="'admin.rowMenu.manageFor' | transloco: { name: rowDisplayName(row) }"
             >
-              <mat-icon>lock_reset</mat-icon>
+              {{ 'admin.rowMenu.manage' | transloco }}<mat-icon iconPositionEnd>expand_more</mat-icon>
             </button>
-            @let assignSchool = row.schoolId == null;
-            <!-- #313: backend'in 409 ile reddettiği satırda aksiyon gizlenmez, devre dışı kalır; `disabledInteractive`
-                 sayesinde tooltip (neden) fareyle ve klavye odağıyla görünür, tıklama `changeSchool` içinde yok sayılır. -->
-            <button
-              mat-icon-button
-              type="button"
-              data-testid="change-school"
-              disabledInteractive
-              [matTooltip]="
-                (row.schoolBlockedReason
-                  ? 'admin.teacherSchool.blocked.' + row.schoolBlockedReason
-                  : assignSchool
-                    ? 'admin.teacherSchool.assignAction'
-                    : 'admin.teacherSchool.changeAction'
-                ) | transloco
-              "
-              [attr.aria-label]="
-                (assignSchool ? 'admin.teacherSchool.assignActionFor' : 'admin.teacherSchool.changeActionFor')
-                  | transloco: { name: rowDisplayName(row) }
-              "
-              [disabled]="schoolDialogOpen() || !!row.schoolBlockedReason"
-              (click)="changeSchool(row)"
-            >
-              <mat-icon>{{ assignSchool ? 'add_business' : 'swap_horiz' }}</mat-icon>
-            </button>
-            @if (row.accountStatus !== 'unknown') {
-              @let enable = row.accountStatus === 'inactive';
+            <mat-menu #rowMenu="matMenu" xPosition="before" class="al__menu">
+              @let assignSchool = row.schoolId == null;
+              <!-- #313: backend'in 409 ile reddettiği satırda öğe gizlenmez, devre dışı kalır ve nedeni altında yazar. -->
               <button
-                mat-icon-button
+                mat-menu-item
                 type="button"
-                class="al__status-action"
-                data-testid="account-status"
-                [class.al__status-action--enable]="enable"
-                [matTooltip]="(enable ? 'admin.accountStatus.enableAction' : 'admin.accountStatus.disableAction') | transloco"
+                data-testid="change-school"
                 [attr.aria-label]="
-                  (enable ? 'admin.accountStatus.enableActionFor' : 'admin.accountStatus.disableActionFor')
+                  (assignSchool ? 'admin.teacherSchool.assignActionFor' : 'admin.teacherSchool.changeActionFor')
                     | transloco: { name: rowDisplayName(row) }
                 "
-                [disabled]="statusDialogOpen()"
-                (click)="toggleAccountStatus(row)"
+                [disabled]="schoolDialogOpen() || !!row.schoolBlockedReason"
+                (click)="changeSchool(row)"
               >
-                <mat-icon>{{ enable ? 'check_circle' : 'block' }}</mat-icon>
+                <mat-icon>{{ assignSchool ? 'add_business' : 'swap_horiz' }}</mat-icon>
+                <span class="al__menu-text">
+                  <span>{{ (assignSchool ? 'admin.teacherSchool.assignAction' : 'admin.teacherSchool.changeAction') | transloco }}</span>
+                  @if (row.schoolBlockedReason) {
+                    <small class="al__menu-reason" data-testid="school-blocked-reason">{{ 'admin.teacherSchool.blocked.' + row.schoolBlockedReason | transloco }}</small>
+                  }
+                </span>
               </button>
-            }
-            @if (row.accountApproved || row.accountSuspended) {
-              @let unsuspend = row.accountSuspended;
               <button
-                mat-icon-button
+                mat-menu-item
                 type="button"
-                class="al__suspension-action"
-                data-testid="suspension"
-                [class.al__suspension-action--restore]="unsuspend"
-                [matTooltip]="(unsuspend ? 'admin.teacherSuspension.unsuspendAction' : 'admin.teacherSuspension.suspendAction') | transloco"
-                [attr.aria-label]="
-                  (unsuspend ? 'admin.teacherSuspension.unsuspendActionFor' : 'admin.teacherSuspension.suspendActionFor')
-                    | transloco: { name: rowDisplayName(row) }
-                "
-                [disabled]="suspensionDialogOpen()"
-                (click)="toggleSuspension(row)"
+                data-testid="reset-password"
+                [attr.aria-label]="'admin.passwordReset.actionFor' | transloco: { name: rowDisplayName(row) }"
+                [disabled]="resetDialogOpen()"
+                (click)="resetPassword(row)"
               >
-                <mat-icon>{{ unsuspend ? 'play_circle' : 'pause_circle' }}</mat-icon>
+                <mat-icon>lock_reset</mat-icon>
+                <span>{{ 'admin.passwordReset.action' | transloco }}</span>
               </button>
-            }
+              @if (row.accountStatus === 'inactive') {
+                <button
+                  mat-menu-item
+                  type="button"
+                  class="al__status-action al__status-action--enable"
+                  data-testid="account-status"
+                  [attr.aria-label]="'admin.accountStatus.enableActionFor' | transloco: { name: rowDisplayName(row) }"
+                  [disabled]="statusDialogOpen()"
+                  (click)="toggleAccountStatus(row)"
+                >
+                  <mat-icon>check_circle</mat-icon>
+                  <span>{{ 'admin.accountStatus.enableAction' | transloco }}</span>
+                </button>
+              }
+              @if (row.accountSuspended) {
+                <button
+                  mat-menu-item
+                  type="button"
+                  class="al__suspension-action al__suspension-action--restore"
+                  data-testid="suspension"
+                  [attr.aria-label]="'admin.teacherSuspension.unsuspendActionFor' | transloco: { name: rowDisplayName(row) }"
+                  [disabled]="suspensionDialogOpen()"
+                  (click)="toggleSuspension(row)"
+                >
+                  <mat-icon>play_circle</mat-icon>
+                  <span>{{ 'admin.teacherSuspension.unsuspendAction' | transloco }}</span>
+                </button>
+              }
+              @if (row.accountStatus === 'active' || (row.accountApproved && !row.accountSuspended)) {
+                <mat-divider />
+                @if (row.accountApproved && !row.accountSuspended) {
+                  <button
+                    mat-menu-item
+                    type="button"
+                    class="al__suspension-action al__menu-danger"
+                    data-testid="suspension"
+                    [attr.aria-label]="'admin.teacherSuspension.suspendActionFor' | transloco: { name: rowDisplayName(row) }"
+                    [disabled]="suspensionDialogOpen()"
+                    (click)="toggleSuspension(row)"
+                  >
+                    <mat-icon>pause_circle</mat-icon>
+                    <span>{{ 'admin.teacherSuspension.suspendAction' | transloco }}</span>
+                  </button>
+                }
+                @if (row.accountStatus === 'active') {
+                  <button
+                    mat-menu-item
+                    type="button"
+                    class="al__status-action al__menu-danger"
+                    data-testid="account-status"
+                    [attr.aria-label]="'admin.accountStatus.disableActionFor' | transloco: { name: rowDisplayName(row) }"
+                    [disabled]="statusDialogOpen()"
+                    (click)="toggleAccountStatus(row)"
+                  >
+                    <mat-icon>block</mat-icon>
+                    <span>{{ 'admin.accountStatus.disableAction' | transloco }}</span>
+                  </button>
+                }
+              }
+            </mat-menu>
           </td>
         </ng-container>
 

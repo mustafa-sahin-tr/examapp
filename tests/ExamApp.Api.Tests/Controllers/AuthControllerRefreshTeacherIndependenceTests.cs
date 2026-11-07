@@ -94,4 +94,16 @@ public class AuthControllerRefreshTeacherIndependenceTests : IDisposable
     }
 
     public void Dispose() => _db.Dispose();
+
+    [Fact]
+    public async Task Refresh_school_name_comes_from_the_linked_school_issue854()
+    {
+        // Admin okula bağladığında eski serbest metin alan (Teacher.SchoolName) boş kalır; profil bağlı okulun adını vermeli,
+        // yoksa Ayarlar "okula bağlı değil" der (admin listesi ise okulu gösterir).
+        await SeedTeacherAsync(isIndependentTutor: false, withSchool: true);
+
+        var teacher = await RefreshAsync();
+
+        teacher.SchoolName.ShouldBe("Okul");
+    }
 }

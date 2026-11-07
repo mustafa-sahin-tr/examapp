@@ -348,6 +348,12 @@
       "since": "{{date}} itibarıyla",
       "tooltip": "Askıya alındı: {{date}} — Neden: {{reason}}",
       "noReason": "Neden belirtilmedi"
+    },
+    "statusFilter": {
+      "aria": "Duruma göre süz",
+      "all": "Tümü",
+      "pending": "Onay bekleyen",
+      "suspended": "Askıda"
     }
   },
   "students": {
@@ -745,5 +751,9 @@
     "title": "Yorum şikayetleri",
     "subtitle": "Tüm testlerde şikayet edilen yorumlar. Gizleme herkese \"kaldırıldı\" olarak görünür; içerik ve neden yalnız moderatörlere açıktır.",
     "refresh": "Yenile"
+  },
+  "rowMenu": {
+    "manage": "Yönet",
+    "manageFor": "{{name}} için işlemler"
   }
 }

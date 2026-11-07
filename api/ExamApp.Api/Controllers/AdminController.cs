@@ -276,14 +276,32 @@ public class AdminController : BaseController
         [FromQuery] bool unassigned = false,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = AdminListPaging.DefaultPageSize,
+        [FromQuery] AdminTeacherStatusFilter status = AdminTeacherStatusFilter.All,
         CancellationToken ct = default)
     {
         if (schoolId.HasValue && unassigned)
             return BadRequest(_localizer["admin.teachers.filterConflict"].Value);
 
-        var result = await _adminTeachers.ListAsync(page, pageSize, schoolId, unassigned, ct);
+        var result = await _adminTeachers.ListAsync(page, pageSize, schoolId, unassigned, ct, status);
         await AuditListAccessAsync(AdminDataAccessResource.TeacherList, schoolId, unassigned, result, ct);
         return Ok(result);
+    }
+
+    /// <summary>
+    /// issue #854: GET api/admin/teachers/status-counts?schoolId=5 → { all, pending, suspended } (durum çipleri).
+    /// Yalnız sayı döner (kişisel veri yok); okul filtresi listeyle aynı kuralla.
+    /// </summary>
+    [HttpGet("teachers/status-counts")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<ActionResult<AdminTeacherStatusCountsDto>> GetTeacherStatusCounts(
+        [FromQuery, Range(1, int.MaxValue)] int? schoolId,
+        [FromQuery] bool unassigned = false,
+        CancellationToken ct = default)
+    {
+        if (schoolId.HasValue && unassigned)
+            return BadRequest(_localizer["admin.teachers.filterConflict"].Value);
+
+        return Ok(await _adminTeachers.CountByStatusAsync(schoolId, unassigned, ct));
     }
 
     // ---- Öğrenci listesi (issue #153) ----

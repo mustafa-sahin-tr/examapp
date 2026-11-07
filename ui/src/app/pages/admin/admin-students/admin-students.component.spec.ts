@@ -2,6 +2,7 @@ import type { Mock, MockedObject } from "vitest";
 import { EnvironmentProviders, Provider } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
+import { MatMenuTrigger } from '@angular/material/menu';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, ParamMap, Params, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
@@ -470,12 +471,27 @@ describe('AdminStudentsComponent', () => {
 
     // ── Şifre sıfırlama (issue #156) ─────────────────────────────────────────
 
+    /** #854: satır eylemleri "Yönet" menüsünde; öğe satırın görünümüne ait, menü kapansa da canlı. */
+    function rowMenuItems(testId: string): HTMLButtonElement[] {
+        const items: HTMLButtonElement[] = [];
+        for (const de of fixture.debugElement.queryAll(By.directive(MatMenuTrigger))) {
+            const trigger = de.injector.get(MatMenuTrigger);
+            trigger.openMenu();
+            fixture.detectChanges();
+            const item = document.getElementById(trigger.menu!.panelId!)?.querySelector<HTMLButtonElement>(`button[data-testid="${testId}"]`);
+            if (item) items.push(item);
+            trigger.closeMenu();
+            fixture.detectChanges();
+        }
+        return items;
+    }
+
     function overlay(): HTMLElement {
         return TestBed.inject(OverlayContainer).getContainerElement();
     }
 
     function resetButtons(): HTMLButtonElement[] {
-        return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button[data-testid="reset-password"]'));
+        return rowMenuItems('reset-password');
     }
 
     it('resetPassword_RowAction_OpensConfirmDialogWithRowIdentity', async () => {
@@ -535,7 +551,7 @@ describe('AdminStudentsComponent', () => {
     // ── Hesap durumu: devre dışı bırak / etkinleştir (issue #155) ─────────────
 
     function statusButtons(): HTMLButtonElement[] {
-        return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button[data-testid="account-status"]'));
+        return rowMenuItems('account-status');
     }
 
     function overlayButton(testId: string): HTMLButtonElement {
@@ -672,7 +688,7 @@ describe('AdminStudentsComponent', () => {
     // ── Okul değişikliği (issue #277 madde 8) ─────────────────────────────────
 
     function schoolButtons(): HTMLButtonElement[] {
-        return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button[data-testid="change-school"]'));
+        return rowMenuItems('change-school');
     }
 
     /** Açık dialog'da okul seçer (seçim bileşeninin kendi testi ayrı; burada sayfa entegrasyonu doğrulanır). */

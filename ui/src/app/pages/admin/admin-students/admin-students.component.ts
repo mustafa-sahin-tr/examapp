@@ -6,7 +6,8 @@ import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTableModule } from '@angular/material/table';
-import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatDividerModule } from '@angular/material/divider';
 import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { take } from 'rxjs';
 import { AdminService } from '../../../services/admin.service';
@@ -60,7 +61,8 @@ export interface AdminStudentRow {
     MatProgressBarModule,
     MatProgressSpinnerModule,
     MatTableModule,
-    MatTooltipModule,
+    MatMenuModule,
+    MatDividerModule,
     TranslocoDirective,
     TranslocoPipe,
     SchoolFilterComponent,

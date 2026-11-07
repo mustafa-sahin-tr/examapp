@@ -18,11 +18,14 @@
   vertical-align: bottom;
 }
 
-// Askıya al → uyarı tonu, askıyı kaldır → başarı tonu.
-.al__suspension-action mat-icon {
-  color: var(--ms-warning-text);
+// Issue #854: durum çipleri
+.al__status-chips {
+  display: block;
+  margin: 0 0 12px;
 }
 
-.al__suspension-action--restore mat-icon {
-  color: var(--ms-success-text);
+.al__chip-count {
+  margin-inline-start: 6px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
 }

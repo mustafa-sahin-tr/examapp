@@ -3,7 +3,7 @@
   <app-section-header [title]="t('daily.title')" [headingLevel]="1"
     [subtitle]="dailyDate() ? (dailyDate() | date: 'd MMMM y') ?? '' : ''"
     [showBackButton]="true" (onBackClick)="onHeaderBack()" />
-  } @else {
+  } @else if (!inSession()) {
   <app-section-header [title]="t('title')" [headingLevel]="1"
     [subtitle]="t('subtitle')"
     [showBackButton]="true" (onBackClick)="onHeaderBack()" />
@@ -572,6 +572,18 @@
 <!-- İstatistik çubuğu: soru, geri bildirim ve boş durumda ortak -->
 <ng-template #statsBar>
   <div class="practice__stats" *transloco="let t; prefix: 'practice'" [attr.aria-label]="t('stats.progressAria')">
+    <!-- #849: oturumda sayfa başlığı yerine tek satır: ← Bitir · "Pratik / 3. soru · kapsam" · sayaçlar. -->
+    <button mat-stroked-button type="button" class="practice__finish" data-testid="practice-finish" (click)="finishSession()"
+      [disabled]="busy()" [attr.aria-label]="t('stats.finishAria')">
+      <mat-icon>arrow_back</mat-icon>
+      <span>{{ t('common.finish') }}</span>
+    </button>
+    @if (inSession()) {
+    <h1 class="session-head" data-testid="practice-session-head">
+      <span class="session-head__title">{{ t('title') }}</span>
+      <span class="session-head__sub">{{ sessionScope() ? t('session.questionOfScope', { n: questionNumber(), scope: sessionScope() }) : t('session.questionOf', { n: questionNumber() }) }}</span>
+    </h1>
+    }
     <span class="stat">
       <span class="stat__label">{{ t('stats.answered') }}</span>
       <span class="stat__value">{{ answeredCount() }}</span>
@@ -588,11 +600,6 @@
       <span class="stat__label">{{ t('stats.skipped') }}</span>
       <span class="stat__value">{{ skippedCount() }}</span>
     </span>
-    <button mat-stroked-button type="button" class="practice__finish" (click)="finishSession()" [disabled]="busy()"
-      [attr.aria-label]="t('stats.finishAria')">
-      <mat-icon>done_all</mat-icon>
-      <span>{{ t('common.finish') }}</span>
-    </button>
   </div>
 </ng-template>
 
@@ -720,7 +727,9 @@
     }
   </div>
 
-  <div class="practice__actions practice__actions--stage">
+  <!-- #849: şıkların hemen altında, ekranın altına yapışık — gönder düğmesi kaydırmadan görünür. -->
+  <div class="practice__actions practice__actions--stage" data-testid="practice-actions">
+    <span class="practice__keys" aria-hidden="true">{{ t(phase() === 'feedback' ? 'session.keysNext' : 'session.keys') }}</span>
     @if (phase() === 'feedback') {
     <!-- Issue #532: çözülen soruyu sonra yeniden çözmek için kaydet. -->
     <button mat-stroked-button type="button" data-test="save-question" [disabled]="saveBusy()" (click)="toggleSaved()"

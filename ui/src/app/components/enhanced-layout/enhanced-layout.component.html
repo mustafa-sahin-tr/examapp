@@ -199,7 +199,7 @@
 
           <!-- Main Content -->
           <main class="main-content" [class.no-bottom-nav]="isExamRoute()">
-            @if (activeSectionTabs().length && !isExamRoute() && !isFullScreen()) {
+            @if (activeSectionTabs().length && !isExamRoute() && !isFullScreen() && !sectionTabsHidden()) {
               <nav class="section-tabs" [attr.aria-label]="t('sectionTabs.label')">
                 @for (tab of activeSectionTabs(); track tab.id) {
                   <a class="section-tab" [routerLink]="tab.route" routerLinkActive="is-active" ariaCurrentWhenActive="page">

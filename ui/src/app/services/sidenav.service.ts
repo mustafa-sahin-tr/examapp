@@ -7,6 +7,8 @@ export class SidenavService {
   isSidenavOpen = signal(true);  // Sidebar her zaman açık
   isSidenavCollapsed = signal(false);  // Collapsed/mini mode için
   isFullScreen = signal(false);  // Global olarak yönetilecek değişken
+  /** Issue #849: çözüm oturumu sürerken bölüm sekmeleri gizlenir (pratik soru ekranı). */
+  sectionTabsHidden = signal(false);
 
   toggleSidenav() {
     // Artık collapse/expand yapıyoruz, tamamen gizlemiyoruz

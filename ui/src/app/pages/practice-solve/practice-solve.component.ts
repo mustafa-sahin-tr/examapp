@@ -7,6 +7,7 @@ import {
   OnInit,
   afterNextRender,
   computed,
+  effect,
   inject,
   signal,
   viewChild,
@@ -15,6 +16,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { SidenavService } from '../../services/sidenav.service';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -97,6 +99,13 @@ interface ReviewEntry {
 }
 
 const SESSION_QUERY_PARAM = 'session';
+/** Issue #849: A–E / 1–5 tuşunun şık sırası; şık tuşu değilse -1. */
+function choiceKeyIndex(key: string): number {
+  if (/^[1-5]$/.test(key)) return Number(key) - 1;
+  const letter = key.toLowerCase();
+  return /^[a-e]$/.test(letter) ? letter.charCodeAt(0) - 97 : -1;
+}
+
 /** Günün soruları modu (issue #99): `/practice?daily=1`. */
 const DAILY_QUERY_PARAM = 'daily';
 const HISTORY_PAGE_SIZE = 10;
@@ -133,6 +142,7 @@ const EMPTY_HISTORY: Paged<PracticeSession> = { items: [], totalCount: 0, pageNu
   templateUrl: './practice-solve.component.html',
   styleUrls: ['./practice-solve.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '(document:keydown)': 'onKeydown($event)' },
 })
 export class PracticeSolveComponent implements OnInit {
   private readonly practiceService = inject(PracticeService);
@@ -144,6 +154,7 @@ export class PracticeSolveComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
   private readonly badgeService = inject(BadgeService);
+  private readonly sidenav = inject(SidenavService);
 
   // ── Faz / genel durum ───────────────────────────────────────────────────────
   readonly phase = signal<PracticePhase>('setup');
@@ -287,6 +298,15 @@ export class PracticeSolveComponent implements OnInit {
     const graded = this.answeredCount() - this.skippedCount();
     return graded > 0 ? Math.round((this.correctCount() / graded) * 100) : 0;
   });
+  /** Issue #849: soru ya da geri bildirim gösteriliyor — sekmeler ve büyük başlık gizli, tek satır başlık. */
+  readonly inSession = computed(() => this.phase() === 'question' || this.phase() === 'feedback');
+  /** Ekrandaki sorunun sırası (pas geçilenler dahil); geri bildirimde cevaplanan soru sayılmıştır. */
+  readonly questionNumber = computed(() => this.answeredCount() + (this.phase() === 'feedback' ? 0 : 1));
+  readonly sessionScope = computed(() => {
+    const session = this.session();
+    return session ? this.scopeLabel(session) : '';
+  });
+  private readonly syncSectionTabs = effect(() => this.sidenav.sectionTabsHidden.set(this.inSession()));
   /** Canvas görünümü: cevap sonrası v5 doğru/yanlış boyamasını `result` modunda yapar. */
   readonly canvasMode = computed<'exam' | 'result'>(() => (this.phase() === 'feedback' ? 'result' : 'exam'));
 
@@ -339,6 +359,7 @@ export class PracticeSolveComponent implements OnInit {
   private readonly endedTitle = viewChild<ElementRef<HTMLElement>>('endedTitle');
 
   ngOnInit(): void {
+    this.destroyRef.onDestroy(() => this.sidenav.sectionTabsHidden.set(false));
     if (this.route.snapshot.queryParamMap.get(DAILY_QUERY_PARAM) === '1') {
       this.dailyMode.set(true);
       this.loadDaily();
@@ -776,6 +797,34 @@ export class PracticeSolveComponent implements OnInit {
       this.questionShownAt = Date.now();
       this.phase.set('question');
     });
+  }
+
+  /**
+   * Issue #849: klavye — A–E (ya da 1–5) şık seçer, Enter gönderir; geri bildirimde Enter sonraki soru.
+   * Yazı alanında ya da değiştirici tuşla basılınca karışmaz.
+   */
+  onKeydown(event: KeyboardEvent): void {
+    if (!this.inSession() || event.ctrlKey || event.metaKey || event.altKey || this.busy()) return;
+    const target = event.target instanceof Element ? event.target : null;
+    if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+    if (event.key === 'Enter') {
+      if (target?.closest('button, a')) return;
+      event.preventDefault();
+      if (this.phase() === 'feedback') this.advance();
+      else if (this.canSubmit()) this.submitAnswer();
+      return;
+    }
+    if (this.phase() !== 'question' || this.showPassageOnly()) return;
+    const index = choiceKeyIndex(event.key);
+    if (index < 0) return;
+    const region = this.question()?.isCanvasQuestion ? this.region() : null;
+    if (region) {
+      const choice = region.answers[index];
+      if (choice) this.selectChoice(choice);
+    } else {
+      const answer = this.question()?.answers?.[index];
+      if (answer) this.selectAnswer(answer.id);
+    }
   }
 
   /** Canvas görünümünden (v5) şık seçimi. */

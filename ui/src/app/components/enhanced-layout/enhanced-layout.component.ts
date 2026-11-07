@@ -140,6 +140,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   isMobileSidenavOpen = signal(false);
   isSidenavCollapsed = computed(() => !this.isMobile() && this.sidenavService.isSidenavCollapsed());
   isFullScreen = computed(() => this.sidenavService.isFullScreen());
+  /** Issue #849: çözüm oturumu bölüm sekmelerini gizler. */
+  readonly sectionTabsHidden = computed(() => this.sidenavService.sectionTabsHidden());
   /**
    * Sidenav'ın kapladığı gerçek piksel genişliği — içerik margin'i buradan TEK KAYNAKTAN türetilir
    * ve şablonda `[style.margin-left.px]` ile uygulanır. Material, CSS class'ıyla daralan sidenav

@@ -127,10 +127,18 @@ export class ParentChildrenComponent implements OnInit, AfterViewInit {
     this.load();
   }
 
-  /** Veli paneli boş durumu `/my-children#create-child` ile gelir: forma kaydır. */
+  /**
+   * Veli paneli boş durumu `/my-children#create-child` (#882: ya da `#enter-code`) ile gelir: forma kaydır. Liste
+   * yüklendikten sonra da bir kez denenir: gezinme sonrası sayfa başa alınır ve liste yerleşimi kaydırır.
+   */
   ngAfterViewInit(): void {
-    if (this.route?.snapshot.fragment === 'create-child') {
-      setTimeout(() => document.getElementById('create-child')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    this.scrollToFragment();
+  }
+
+  private scrollToFragment(): void {
+    const fragment = this.route?.snapshot.fragment;
+    if (fragment === 'create-child' || fragment === 'enter-code') {
+      setTimeout(() => document.getElementById(fragment)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
     }
   }
 
@@ -153,6 +161,8 @@ export class ParentChildrenComponent implements OnInit, AfterViewInit {
       .subscribe(() => this.ui.toast(this.ui.text('resetPw.done')));
   }
 
+  private scrolledAfterLoad = false;
+
   protected load(): void {
     this.loading.set(true);
     this.loadError.set(null);
@@ -163,7 +173,13 @@ export class ParentChildrenComponent implements OnInit, AfterViewInit {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
-        next: (items) => this.children.set(items ?? []),
+        next: (items) => {
+          this.children.set(items ?? []);
+          if (!this.scrolledAfterLoad) {
+            this.scrolledAfterLoad = true;
+            this.scrollToFragment();
+          }
+        },
         error: (err: HttpErrorResponse) =>
           this.loadError.set(this.service.extractError(err, this.ui.text('children.loadError'))),
       });

@@ -9,10 +9,15 @@
   "summaryLoadError": "Özet yüklenemedi.",
   "summaryNotFound": "Bu çocuğun bilgilerine artık erişiminiz yok. Bağlantı kaldırılmış olabilir.",
   "empty": {
-    "title": "Henüz bağlı çocuğunuz yok",
-    "message": "Çocuğunuz için kullanıcı adı ve şifreyle giriş yapan bir hesap açın ya da çocuğun diğer velisinden ikinci veli kodu isteyin.",
+    "title": "Hoş geldin",
+    "message": "Çocuğunun çalışmalarını izlemek için önce hesabını bağla.",
     "pendingNote": "Onay bekleyen bir isteğiniz var. Çocuğun birincil velisi onayladığında özet burada görünecek.",
-    "cta": "Çocuk hesabı oluştur"
+    "cta": "Hesap aç",
+    "createTitle": "Çocuğum için hesap aç",
+    "createText": "E-postası olmayan çocuğun kullanıcı adı ve şifreyle girer; şifresini sen yönetirsin.",
+    "codeTitle": "Çocuğumun hesabı zaten var",
+    "codeText": "Çocuğunun gönderdiği davet e-postasındaki bağlantıyı aç ya da diğer veliden aldığın kodu gir.",
+    "codeCta": "Kodu gir"
   },
   "cards": {
     "solved": {

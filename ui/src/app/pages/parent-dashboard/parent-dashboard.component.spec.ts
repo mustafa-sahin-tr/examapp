@@ -165,9 +165,10 @@ describe('ParentDashboardComponent (issue #420)', () => {
         expect(el.querySelector('[data-test="empty"]')).not.toBeNull();
         const cta = el.querySelector<HTMLAnchorElement>('[data-test="add-child"]')!;
         expect(cta.textContent).toContain(parentDashboardTr.empty.cta);
-        // Issue #438: boş durum "Çocuk hesabı oluştur" formuna götürür.
+        // Issue #438: boş durum çocuk hesabı formuna götürür; #882: ikinci yol kod formuna.
         expect(cta.getAttribute('href')).toBe('/my-children#create-child');
-        expect(parentDashboardTr.empty.cta).toBe('Çocuk hesabı oluştur');
+        expect(el.querySelector('[data-test="enter-code"]')?.getAttribute('href')).toBe('/my-children#enter-code');
+        expect(el.querySelector('[data-test="empty"] h2')?.textContent?.trim()).toBe(parentDashboardTr.empty.title);
         expect(el.querySelector('[data-test="pending-note"]')).toBeNull();
         expect(dashboardService.getChildSummary).not.toHaveBeenCalled();
         expect(url()).toBe('/parent');

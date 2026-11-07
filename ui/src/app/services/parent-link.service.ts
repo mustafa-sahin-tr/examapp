@@ -1,6 +1,6 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, catchError, switchMap, tap, throwError } from 'rxjs';
 
 import {
   LinkedChild,
@@ -9,6 +9,11 @@ import {
   ParentLinkErrorBody,
   StudentParentLinks,
 } from '../models/parent-link.model';
+
+/** Backend `ParentLinkErrorCodes.ProfileNotFound`. */
+export const PARENT_PROFILE_NOT_FOUND = 'ProfileNotFound';
+/** `ParentController.RegisterParent`: profil alanı yok, yalnız Parent satırını açar (kayıt sihirbazıyla aynı). */
+const PARENT_REGISTER_URL = '/api/exam/parent/register';
 
 /** Veli–öğrenci bağlantısı (issue #419; #436 veli-öncelikli model). */
 @Injectable({ providedIn: 'root' })
@@ -32,9 +37,24 @@ export class ParentLinkService {
     return this.http.post<LinkedChild>(`${this.baseUrl}/redeem`, { code });
   }
 
-  /** Veli: bağlı çocuklar. */
+  /**
+   * Veli: bağlı çocuklar. #902: Keycloak'ta "Veli" rolüyle kayıt olan hesabın uygulama profili ilk girişte yoktur
+   * (`ProfileNotFound`); "Kaydı Tamamla" ile aynı kayıt çağrısı bir kez yapılır ve liste yeniden istenir.
+   */
   getMyChildren(): Observable<LinkedChild[]> {
-    return this.http.get<LinkedChild[]>(`${this.baseUrl}/my-children`);
+    const load = () => this.http.get<LinkedChild[]>(`${this.baseUrl}/my-children`);
+    return load().pipe(
+      catchError((err: HttpErrorResponse) =>
+        this.errorCode(err) === PARENT_PROFILE_NOT_FOUND
+          ? this.http.post<{ accessToken?: string }>(PARENT_REGISTER_URL, {}).pipe(
+              tap((result) => {
+                if (result?.accessToken) localStorage.setItem('auth_token', result.accessToken);
+              }),
+              switchMap(() => load()),
+            )
+          : throwError(() => err),
+      ),
+    );
   }
 
   /**

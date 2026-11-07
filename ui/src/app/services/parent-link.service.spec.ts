@@ -25,6 +25,29 @@ describe('ParentLinkService (issue #419, #436)', () => {
         req.flush({ code: 'ABCDEFGHJKMN', expiresAt: '2026-10-09T09:00:00Z' });
     });
 
+    it('getMyChildren_ProfileNotFound_CompletesParentRegistrationOnceAndRetries (#902)', () => {
+        let result: unknown;
+        service.getMyChildren().subscribe((r) => (result = r));
+
+        http.expectOne('/api/exam/parent-links/my-children')
+            .flush({ errorCode: 'ProfileNotFound' }, { status: 404, statusText: 'Not Found' });
+        const register = http.expectOne('/api/exam/parent/register');
+        expect(register.request.method).toBe('POST');
+        register.flush({});
+        http.expectOne('/api/exam/parent-links/my-children').flush([]);
+
+        expect(result).toEqual([]);
+    });
+
+    it('getMyChildren_OtherError_IsNotTreatedAsMissingProfile', () => {
+        let failed = false;
+        service.getMyChildren().subscribe({ error: () => (failed = true) });
+
+        http.expectOne('/api/exam/parent-links/my-children').flush({}, { status: 500, statusText: 'Server Error' });
+        http.expectNone('/api/exam/parent/register');
+        expect(failed).toBe(true);
+    });
+
     it('getMyParents_And_getMyChildren_UseGet', () => {
         service.getMyParents().subscribe();
         service.getMyChildren().subscribe();

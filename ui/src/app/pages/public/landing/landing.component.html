@@ -25,11 +25,17 @@
       </div>
     </app-landing-spotlight>
 
-    <app-landing-spotlight anchor="motivasyon" section="motivation" kickerIcon="military_tech" [itemCount]="3" [alt]="true">
+    <!-- Veli kendini kaydetmez (#880): bölüm girişe götürür, dipnot daveti anlatır. -->
+    <app-landing-spotlight anchor="veliler" section="parents" kickerIcon="family_restroom" [itemCount]="3" [alt]="true"
+      [ctaUrl]="loginUrl" [showFootnote]="true">
+      <img src="assets/images/landing/parent.svg" width="600" height="440" loading="lazy" [alt]="t('parents.imageAlt')" />
+    </app-landing-spotlight>
+
+    <app-landing-spotlight anchor="motivasyon" section="motivation" kickerIcon="military_tech" [itemCount]="3" [flip]="true">
       <img src="assets/images/landing/motivation.svg" width="560" height="420" loading="lazy" [alt]="t('motivation.imageAlt')" />
     </app-landing-spotlight>
 
-    <app-landing-spotlight anchor="ozel-ders" section="tutoring" kickerIcon="video_chat" [itemCount]="3" [flip]="true"
+    <app-landing-spotlight anchor="ozel-ders" section="tutoring" kickerIcon="video_chat" [itemCount]="3" [alt]="true"
       [ctaUrl]="registerStudentUrl" [showFootnote]="true">
       <img src="assets/images/landing/tutor.svg" width="600" height="440" loading="lazy" [alt]="t('tutoring.imageAlt')" />
     </app-landing-spotlight>

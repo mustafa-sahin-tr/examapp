@@ -7,7 +7,7 @@
     </div>
     <div class="roles">
       @for (role of roles; track role.key) {
-        <article class="role" [class]="role.tone" [attr.id]="'anchor' in role ? role.anchor : null">
+        <article class="role" [class]="role.tone">
           <div class="role-icon"><mat-icon fontSet="material-symbols-outlined" aria-hidden="true">{{ role.icon }}</mat-icon></div>
           <h3>{{ t('roles.' + role.key + '.title') }}</h3>
           <p>{{ t('roles.' + role.key + '.description') }}</p>

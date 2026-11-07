@@ -142,6 +142,17 @@
       "retryValue": "Build a new test"
     }
   },
+  "parents": {
+    "kicker": "For parents",
+    "title": "See your child's progress even when you are not there",
+    "body": "The parent panel shows how much your child studied this week, the results of the tests they solved and the badges they earned. Private lesson requests are confirmed only after you approve them. If you have more than one child, you follow them all from one account.",
+    "item1": "Weekly study time and test results",
+    "item2": "Badges earned and study streak",
+    "item3": "Approve private lesson requests",
+    "cta": "Parent sign-in",
+    "footnote": "A parent account cannot be opened on its own; it opens with the student's invitation.",
+    "imageAlt": "Illustration: the parent panel with the child's weekly study chart, latest test result, a new badge and a private lesson request waiting for approval."
+  },
   "motivation": {
     "kicker": "Motivation",
     "title": "Make steady work visible",

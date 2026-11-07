@@ -9,7 +9,7 @@
     <app-create-child-account [openChildren]="openChildCount()" (created)="onChildCreated()" />
   </section>
 
-  <article class="pch__card" aria-labelledby="pch-add-title">
+  <article class="pch__card" id="enter-code" aria-labelledby="pch-add-title">
     <h2 id="pch-add-title">{{ t('children.addTitle') }}</h2>
     <p class="pch__hint">{{ t('children.addHint') }}</p>
     <form class="pch__form" (ngSubmit)="submit()">

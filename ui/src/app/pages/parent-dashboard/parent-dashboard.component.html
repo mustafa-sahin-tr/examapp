@@ -19,20 +19,32 @@
       <button mat-stroked-button type="button" (click)="loadChildren()">{{ t('retry') }}</button>
     </div>
   } @else if (isEmpty()) {
-    <mat-card appearance="outlined" class="pdb__empty" data-test="empty">
-      <mat-card-content>
-        <mat-icon class="pdb__empty-icon" aria-hidden="true">child_care</mat-icon>
-        <h2>{{ t('empty.title') }}</h2>
-        <p>{{ t('empty.message') }}</p>
-        @if (hasPending()) {
-          <p class="pdb__pending-note" data-test="pending-note">{{ t('empty.pendingNote') }}</p>
-        }
-        <a mat-flat-button routerLink="/my-children" fragment="create-child" data-test="add-child">
-          <mat-icon>person_add</mat-icon>
-          {{ t('empty.cta') }}
-        </a>
-      </mat-card-content>
-    </mat-card>
+    <!-- #882: yeni velinin ilk ekranı — iki yol: çocuk hesabı aç ya da var olan hesaba kodla bağlan. -->
+    <section class="pdb__welcome" data-test="empty">
+      <h2>{{ t('empty.title') }}</h2>
+      <p>{{ t('empty.message') }}</p>
+      @if (hasPending()) {
+        <p class="pdb__pending-note" data-test="pending-note">{{ t('empty.pendingNote') }}</p>
+      }
+      <div class="pdb__paths">
+        <mat-card appearance="outlined" class="pdb__path">
+          <mat-card-content>
+            <mat-icon class="pdb__empty-icon" aria-hidden="true">person_add</mat-icon>
+            <h3>{{ t('empty.createTitle') }}</h3>
+            <p>{{ t('empty.createText') }}</p>
+            <a mat-flat-button routerLink="/my-children" fragment="create-child" data-test="add-child">{{ t('empty.cta') }}</a>
+          </mat-card-content>
+        </mat-card>
+        <mat-card appearance="outlined" class="pdb__path">
+          <mat-card-content>
+            <mat-icon class="pdb__empty-icon" aria-hidden="true">key</mat-icon>
+            <h3>{{ t('empty.codeTitle') }}</h3>
+            <p>{{ t('empty.codeText') }}</p>
+            <a mat-stroked-button routerLink="/my-children" fragment="enter-code" data-test="enter-code">{{ t('empty.codeCta') }}</a>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </section>
   } @else {
     @if (notice()) {
       <p class="pdb__notice" role="status" data-test="notice">{{ notice() }}</p>

@@ -32,6 +32,7 @@ tarayıcının yazdırma penceresinden kaydedilir; sunucuda PDF üretimi ve yeni
 soruları çıktıya alınmaz; etkileşimli sorular (`mcq` dışı) da çıkarılır ve hepsi sayfada testteki sıra numarasıyla raporlanır. Yayıncı sözleşmelerinde baskı izni
 alanı yok; ilk sözleşme gelince alan eklenip kural gevşetilir. Kaynağı bilinmeyen (`Unknown`) soru engellenmez. Şıkları görselin içinde olan
 işaretlenmiş soruda tam görsel basılır ve anahtardaki harf şık etiketinden gelir. Migration yok; yeni alan için exam API yeniden başlatılır.
+#895: sağdaki seçenek paneli tek / iki sütun (soru sütunda bölünmez), cevap anahtarı, ad-soyad satırı ve "Kendi numaramızı ekle"; yalnız görselden oluşan (kitap) sorularda numara görselin içinde olduğu için, testin bütün basılan soruları böyleyse bizim numaramız varsayılan kapalı. Başlık testin adı, altında ders · sınıf · basılan soru sayısı; açıklama addan farklıysa basılır. Anahtar testteki basılma sırasıyla numaralanır.
 
 **Issue #692 — MEB kazanımları.** `LearningOutcomes` artık müfredat (`Previous`, `Maarif`), ders ve kaynak belge taşır; (müfredat, kod) benzersizdir, iki müfredat
 birlikte yaşar. Soru bağı `QuestionLearningOutcomes` (çoka çok); kazanımı olmayan soru her yerde çalışır. İçe aktarım `POST api/admin/learning-outcomes/import`

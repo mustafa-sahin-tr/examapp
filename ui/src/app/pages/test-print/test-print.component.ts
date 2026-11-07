@@ -1,16 +1,19 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
-import { forkJoin } from 'rxjs';
+import { catchError, forkJoin, of } from 'rxjs';
 import { WorksheetKind } from '../../models/activity';
 import { Question } from '../../models/question';
 import { Test } from '../../models/test-instance';
+import { GradesService } from '../../services/grades.service';
 import { QuestionService } from '../../services/question.service';
+import { SubjectService } from '../../services/subject.service';
 import { TestService } from '../../services/test.service';
 import { StorageImageRetryDirective } from '../../shared/directives/storage-image-retry.directive';
 import { createStorageImageResolver } from '../../shared/utils/storage-image-refresh.util';
@@ -27,6 +30,8 @@ export interface PrintItem {
   answersInImage: boolean;
   keyLetter: string | null;
   keyText: string | null;
+  /** Issue #895: yalnız görsel (kitap sorusu): numarası görselin içindedir, bizim numaramız varsayılan basılmaz. */
+  imageOnly: boolean;
 }
 
 export interface PrintExclusion {
@@ -67,6 +72,7 @@ function toPrintItem(question: Question, number: number, previousPassageId: numb
     answersInImage,
     keyLetter,
     keyText: keyLetter ? null : question.practiceCorrectAnswer?.trim() || null,
+    imageOnly: !!question.imageUrl?.trim() && !question.text?.trim(),
   };
 }
 
@@ -93,6 +99,13 @@ export function buildPrintSheet(questions: Question[]): { items: PrintItem[]; ex
   return { items, exclusions };
 }
 
+/** Issue #895: açıklama adın tekrarıysa basılmaz ("Test" / "Test"). */
+export function sheetSubtitle(test: Pick<Test, 'name' | 'subtitle'> | null): string | null {
+  const subtitle = test?.subtitle?.trim();
+  if (!subtitle) return null;
+  return subtitle.toLocaleLowerCase('tr') === test!.name.trim().toLocaleLowerCase('tr') ? null : subtitle;
+}
+
 function imageSettled(img: HTMLImageElement): Promise<void> {
   if (img.complete) {
     return Promise.resolve();
@@ -113,13 +126,15 @@ function imageSettled(img: HTMLImageElement): Promise<void> {
   templateUrl: './test-print.component.html',
   styleUrls: ['./test-print.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslocoDirective, RouterLink, MatButtonModule, MatCheckboxModule, MatIconModule, StorageImageRetryDirective],
+  imports: [TranslocoDirective, RouterLink, MatButtonModule, MatButtonToggleModule, MatCheckboxModule, MatIconModule, StorageImageRetryDirective],
   providers: [provideTranslocoScope('test-print')],
 })
 export class TestPrintComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly testService = inject(TestService);
   private readonly questionService = inject(QuestionService);
+  private readonly subjects = inject(SubjectService);
+  private readonly grades = inject(GradesService);
   private readonly titleService = inject(Title);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly destroyRef = inject(DestroyRef);
@@ -130,6 +145,13 @@ export class TestPrintComponent implements OnInit {
   protected readonly loading = signal(true);
   protected readonly loadFailed = signal(false);
   protected readonly includeKey = signal(true);
+  /** Issue #895: kağıt seçenekleri. */
+  protected readonly columns = signal<1 | 2>(1);
+  protected readonly includeNameLine = signal(true);
+  /** null: kullanıcı seçmedi; varsayılan testin sorularından (hepsi kitap görseliyse numara yok). */
+  private readonly pickedNumbers = signal<boolean | null>(null);
+  private readonly subjectName = signal<string | null>(null);
+  private readonly gradeName = signal<string | null>(null);
   protected readonly preparing = signal(false);
   /** Yüklenemeyen görsel sayısı; öğretmen uyarıyı gördükten sonra ikinci tıklamada yine de yazdırabilir. */
   protected readonly brokenImages = signal(0);
@@ -139,6 +161,11 @@ export class TestPrintComponent implements OnInit {
   protected readonly exclusions = computed(() => this.sheet().exclusions);
   protected readonly isActivity = computed(() => this.test()?.kind === WorksheetKind.Activity);
   protected readonly canPrint = computed(() => !this.isActivity() && this.items().length > 0);
+
+  protected readonly showNumbers = computed(() => this.pickedNumbers() ?? !this.items().every((item) => item.imageOnly));
+  protected readonly subtitle = computed(() => sheetSubtitle(this.test()));
+  /** Künye: ders · sınıf · basılan soru sayısı; bilinmeyen parça atlanır. */
+  protected readonly metaParts = computed(() => [this.subjectName(), this.gradeName()].filter((part): part is string => !!part));
 
   protected readonly imageRefresh = createStorageImageResolver(() => this.questionService.getAll(this.testId));
 
@@ -157,6 +184,7 @@ export class TestPrintComponent implements OnInit {
         next: ({ test, questions }) => {
           this.test.set(test);
           this.questions.set(questions);
+          this.loadNames(test);
           // Tarayıcı PDF dosyasını sayfa başlığıyla adlandırır.
           this.titleService.setTitle(test.name);
           this.loading.set(false);
@@ -166,6 +194,26 @@ export class TestPrintComponent implements OnInit {
           this.loading.set(false);
         },
       });
+  }
+
+  protected setShowNumbers(show: boolean): void {
+    this.pickedNumbers.set(show);
+  }
+
+  /** Künye adları (istek önbellekli uçlardan); gelmezse künye yalnız soru sayısını gösterir, baskı beklemez. */
+  private loadNames(test: Test): void {
+    if (test.subjectId) {
+      this.subjects
+        .loadCategories()
+        .pipe(catchError(() => of([])), takeUntilDestroyed(this.destroyRef))
+        .subscribe((subjects) => this.subjectName.set(subjects.find((s) => s.id === test.subjectId)?.name ?? null));
+    }
+    if (test.gradeId) {
+      this.grades
+        .getGrades()
+        .pipe(catchError(() => of([])), takeUntilDestroyed(this.destroyRef))
+        .subscribe((grades) => this.gradeName.set(grades.find((g) => g.id === test.gradeId)?.name ?? null));
+    }
   }
 
   protected async print(): Promise<void> {

@@ -7,8 +7,8 @@
     }
   },
   "dashboard": {
-    "title": "Yönetim Paneli",
-    "subtitle": "Platformun genel durumu — öğretmen, öğrenci, test ve soru istatistikleri",
+    "title": "Ana Sayfa",
+    "subtitle": "Bekleyen işler ve platformun genel durumu — öğretmen, öğrenci, test ve soru istatistikleri",
     "error": "Özet bilgileri alınırken bir sorun oluştu.",
     "empty": "Platformda henüz veri yok. Öğretmen, öğrenci, test veya soru eklendiğinde sayaçlar burada güncellenecek.",
     "cards": {
@@ -57,7 +57,7 @@
       "graceExpired": "Süresi dolmuş",
       "awaitingActivation": "Veli aktivasyonu bekleyen",
       "aria": "Veli durumu sayıları",
-      "openStudents": "Öğrenci listesini aç"
+      "openStudents": "{{label}}: öğrenci listesini aç"
     },
     "pending": {
       "title": "Bekleyenler",
@@ -430,7 +430,15 @@
       "inactive": "Pasif",
       "unknown": "Bilinmiyor"
     },
-    "schoolPending": "Onay bekliyor"
+    "schoolPending": "Onay bekliyor",
+    "parentFilter": {
+      "aria": "Veli durumu filtresi",
+      "clear": "Filtreyi kaldır",
+      "withoutParent": "Velisi olmayan öğrenciler",
+      "inGrace": "Veli hoşgörü süresindekiler",
+      "graceExpired": "Veli hoşgörü süresi dolanlar",
+      "awaitingActivation": "Veli aktivasyonu bekleyenler"
+    }
   },
   "passwordReset": {
     "action": "Şifreyi sıfırla",
@@ -739,7 +747,7 @@
         "subject": "Ders"
       },
       "hints": {
-        "code": "Küçük harf, rakam ve tire; ör. subject-matematik-mastery. Sonradan değiştirilemez.",
+        "code": "Addan üretilir; değiştirebilirsiniz. Küçük harf, rakam ve tire. Kaydettikten sonra değiştirilemez.",
         "codeImmutable": "Kod oluşturulduktan sonra değiştirilemez.",
         "category": "Listeden seç veya yeni kategori yaz.",
         "path": "Aynı yol anahtarına sahip rozetler öğrenci ekranında sırayla bir yol olarak gösterilir.",

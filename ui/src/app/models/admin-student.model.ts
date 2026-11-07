@@ -31,4 +31,8 @@ export interface AdminStudentListItem {
 }
 
 /** Sorgu parametreleri; `schoolId` ile `unassigned=true` birlikte gönderilemez. */
-export type AdminStudentListQuery = AdminSchoolPagedQuery;
+export type AdminStudentListQuery = AdminSchoolPagedQuery & { parentStatus?: AdminStudentParentFilter | null };
+
+/** #917: panodaki veli durumu sayaçlarıyla aynı kümeler (`GET api/admin/students?parentStatus=`). */
+export const ADMIN_STUDENT_PARENT_FILTERS = ['withoutParent', 'inGrace', 'graceExpired', 'awaitingActivation'] as const;
+export type AdminStudentParentFilter = (typeof ADMIN_STUDENT_PARENT_FILTERS)[number];

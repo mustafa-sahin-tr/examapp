@@ -200,6 +200,29 @@ describe('AdminStudentsComponent', () => {
         });
     });
 
+    it('init_ParentStatusQueryParam_SendsFilterAndShowsChip_issue917', () => {
+        configure({ parentStatus: 'awaitingActivation' });
+        create();
+
+        expect(adminService.getStudents).toHaveBeenCalledWith({
+            page: 1,
+            pageSize: 20,
+            schoolId: null,
+            unassigned: false,
+            parentStatus: 'awaitingActivation',
+        });
+        const chip = (fixture.nativeElement as HTMLElement).querySelector('[data-testid="parent-status-chip"]');
+        expect(chip?.textContent).toContain('Veli aktivasyonu bekleyenler');
+    });
+
+    it('init_UnknownParentStatus_Ignored_issue917', () => {
+        configure({ parentStatus: 'everyone' });
+        create();
+
+        expect(vi.mocked(adminService.getStudents).mock.lastCall![0]).not.toHaveProperty('parentStatus');
+        expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid="parent-status-chip"]')).toBeNull();
+    });
+
     // ── Kolonlar ──────────────────────────────────────────────────────────────
 
     it('render_Rows_ShowsAllFiveColumns', () => {

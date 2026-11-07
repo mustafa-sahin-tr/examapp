@@ -20,6 +20,15 @@
     </div>
   </header>
 
+  @if (parentStatus(); as status) {
+    <mat-chip-set class="al__chips" [attr.aria-label]="t('parentFilter.aria')">
+      <mat-chip data-testid="parent-status-chip" (removed)="clearParentStatus()">
+        {{ t('parentFilter.' + status) }}
+        <button matChipRemove [attr.aria-label]="t('parentFilter.clear')"><mat-icon>cancel</mat-icon></button>
+      </mat-chip>
+    </mat-chip-set>
+  }
+
   @if (error()) {
     <div class="al__state al__state--error" role="alert">
       <mat-icon>error_outline</mat-icon>
@@ -35,7 +44,7 @@
     <div class="al__state al__state--empty">
       <mat-icon class="al__empty-icon">person_search</mat-icon>
       <span>{{ t('empty') }}</span>
-      @if (isFiltered()) {
+      @if (isFiltered() || parentStatus()) {
         <small>{{ t('emptyFilteredHint') }}</small>
       }
     </div>

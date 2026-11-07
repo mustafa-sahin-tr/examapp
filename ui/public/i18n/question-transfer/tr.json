@@ -3,7 +3,8 @@
   "subtitle": "Soruları, testleri, etkinlikleri ve kataloğu bir ortamdan diğerine taşır. Önce kataloğu, sonra diğerlerini taşıyın: sorular konularına, testler sınıflarına katalog üzerinden bağlanır.",
   "actions": {
     "hangfire": "Hangfire",
-    "hangfireTooltip": "Arka plan işleri panelini açar"
+    "hangfireTooltip": "Arka plan işleri panelini açar",
+    "more": "Diğer"
   },
   "catalog": {
     "title": "Katalog",

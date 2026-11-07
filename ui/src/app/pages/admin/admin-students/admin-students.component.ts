@@ -9,9 +9,12 @@ import { MatTableModule } from '@angular/material/table';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
-import { take } from 'rxjs';
+import { map, take } from 'rxjs';
+import { ActivatedRoute, Router } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { MatChipsModule } from '@angular/material/chips';
 import { AdminService } from '../../../services/admin.service';
-import { AdminStudentListItem } from '../../../models/admin-student.model';
+import { ADMIN_STUDENT_PARENT_FILTERS, AdminStudentListItem, AdminStudentParentFilter } from '../../../models/admin-student.model';
 import { SchoolFilterComponent } from '../../../shared/components/school-filter/school-filter.component';
 import { SchoolFilterValue } from '../../../shared/components/school-filter/school-filter.model';
 import { PAGE_SIZE_OPTIONS } from '../../../shared/utils/paging.util';
@@ -63,6 +66,7 @@ export interface AdminStudentRow {
     MatTableModule,
     MatMenuModule,
     MatDividerModule,
+    MatChipsModule,
     TranslocoDirective,
     TranslocoPipe,
     SchoolFilterComponent,
@@ -79,6 +83,17 @@ export class AdminStudentsComponent {
   private readonly adminService = inject(AdminService);
   private readonly transloco = inject(TranslocoService);
   private readonly dialog = inject(MatDialog);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+
+  /**
+   * #917: panodaki veli durumu sayacından gelinirse `?parentStatus=`. `list`'ten ÖNCE tanımlı: aynı
+   * `queryParamMap` emisyonunda bu sinyal listenin isteğinden önce güncellenir.
+   */
+  readonly parentStatus = toSignal(
+    this.route.queryParamMap.pipe(map((p) => parseParentFilter(p.get('parentStatus')))),
+    { initialValue: null }
+  );
 
   readonly displayedColumns = ['fullName', 'email', 'school', 'grade', 'accountStatus', 'actions'];
   readonly pageSizeOptions = PAGE_SIZE_OPTIONS;
@@ -114,6 +129,16 @@ export class AdminStudentsComponent {
 
   onPage(event: PageEvent): void {
     this.list.onPage(event);
+  }
+
+  /** #917: veli durumu filtresini kaldırır (1. sayfaya döner). */
+  clearParentStatus(): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { parentStatus: null, page: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   /** Şifre sıfırlama dialog'u açıkken ikinci bir dialog açılmaz (çift tıklama). */
@@ -212,7 +237,10 @@ export class AdminStudentsComponent {
     // Hata metinleri şablon dışında senkron `translate()` ile okunur; scope baştan yüklensin.
     this.transloco.load(`${ADMIN_SCOPE}/${this.transloco.getActiveLang()}`).pipe(take(1)).subscribe();
     return new SchoolPagedList<AdminStudentListItem>({
-      fetch: (query) => this.adminService.getStudents(query),
+      fetch: (query) => {
+        const parentStatus = this.parentStatus();
+        return this.adminService.getStudents(parentStatus ? { ...query, parentStatus } : query);
+      },
       errorMessage: (err) => adminListErrorMessage(err, (key) => this.text(key)),
     });
   }
@@ -235,4 +263,8 @@ function toRow(item: AdminStudentListItem): AdminStudentRow {
     gradeName: item.gradeName?.trim() || null,
     accountStatus: item.isEnabled === true ? 'active' : item.isEnabled === false ? 'inactive' : 'unknown',
   };
+}
+
+function parseParentFilter(raw: string | null): AdminStudentParentFilter | null {
+  return (ADMIN_STUDENT_PARENT_FILTERS as readonly string[]).includes(raw ?? '') ? (raw as AdminStudentParentFilter) : null;
 }

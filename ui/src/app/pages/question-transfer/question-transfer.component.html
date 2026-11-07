@@ -5,10 +5,18 @@
       <div class="qt-subtitle">{{ t('subtitle') }}</div>
     </div>
 
-    <button mat-stroked-button (click)="openHangfire()" [matTooltip]="t('actions.hangfireTooltip')">
-      <mat-icon>launch</mat-icon>
-      {{ t('actions.hangfire') }}
+    <!-- #917: geliştirici aracı birincil eylem değil; "Diğer" menüsünde. -->
+    <button mat-icon-button type="button" [matMenuTriggerFor]="moreMenu" [attr.aria-label]="t('actions.more')"
+      [matTooltip]="t('actions.more')" data-testid="qt-more">
+      <mat-icon>more_vert</mat-icon>
     </button>
+    <mat-menu #moreMenu="matMenu" xPosition="before">
+      <button mat-menu-item type="button" (click)="openHangfire()" data-testid="qt-hangfire">
+        <mat-icon>launch</mat-icon>
+        <span>{{ t('actions.hangfire') }}</span>
+        <span class="qt-menu-hint">{{ t('actions.hangfireTooltip') }}</span>
+      </button>
+    </mat-menu>
   </div>
 
   <mat-card class="qt-card qt-catalog">

@@ -120,9 +120,10 @@
                 <div class="parent-status-list__item" [attr.data-key]="row.key">
                   <dt class="summary-hint">{{ t(row.labelKey) }}</dt>
                   <dd class="summary-value">
-                    <!-- #887: aktive etmeyen veli satırı öğrenci listesine gider (takip oradan yapılır). -->
-                    @if (row.key === 'awaitingActivation' && row.value > 0) {
-                      <a class="parent-status-list__link" routerLink="/admin/students" [attr.aria-label]="t('parentStatus.openStudents')">{{ row.value | number }}</a>
+                    <!-- #887, #917: sayı, o kümeye süzülmüş öğrenci listesine gider (takip oradan yapılır). -->
+                    @if (row.value > 0) {
+                      <a class="parent-status-list__link" routerLink="/admin/students" [queryParams]="{ parentStatus: row.key }"
+                        [attr.aria-label]="t('parentStatus.openStudents', { label: t(row.labelKey) })">{{ row.value | number }}</a>
                     } @else {
                       {{ row.value | number }}
                     }

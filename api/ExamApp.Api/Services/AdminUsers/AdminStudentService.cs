@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -6,7 +7,9 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Admin;
+using ExamApp.Api.Services.Parents;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace ExamApp.Api.Services.AdminUsers;
 
@@ -14,19 +17,27 @@ public class AdminStudentService : IAdminStudentService
 {
     private readonly AppDbContext _context;
     private readonly IAdminUserDirectory _userDirectory;
+    private readonly IOptionsMonitor<ParentRequirementOptions>? _parentRequirement;
+    private readonly TimeProvider _time;
 
-    public AdminStudentService(AppDbContext context, IAdminUserDirectory userDirectory)
+    public AdminStudentService(AppDbContext context, IAdminUserDirectory userDirectory,
+        IOptionsMonitor<ParentRequirementOptions>? parentRequirement = null, TimeProvider? time = null)
     {
         _context = context;
         _userDirectory = userDirectory;
+        _parentRequirement = parentRequirement;
+        _time = time ?? TimeProvider.System;
     }
 
-    public async Task<Paged<AdminStudentListItemDto>> ListAsync(int page, int pageSize, int? schoolId, bool unassigned, CancellationToken ct = default)
+    public async Task<Paged<AdminStudentListItemDto>> ListAsync(int page, int pageSize, int? schoolId, bool unassigned,
+        AdminStudentParentFilter? parentStatus, CancellationToken ct = default)
     {
         (page, pageSize) = AdminListPaging.Normalize(page, pageSize);
 
         // Soft-deleted öğrenciler global query filter ile hariç.
         var query = _context.Students.AsNoTracking();
+        if (parentStatus.HasValue)
+            query = ParentStatusQuery(parentStatus.Value);
         if (schoolId.HasValue)
             query = query.Where(s => s.SchoolId == schoolId.Value);
         else if (unassigned)
@@ -84,6 +95,23 @@ public class AdminStudentService : IAdminStudentService
                     IsEnabled = user?.Enabled
                 };
             }).ToList()
+        };
+    }
+
+    /// <summary>
+    /// #917: panodaki veli durumu sayaçlarıyla AYNI küme (<see cref="StudentParentStatusService.QueryByMode"/>);
+    /// "velisi olmayan" = süre içinde + süresi dolmuş.
+    /// </summary>
+    private IQueryable<Student> ParentStatusQuery(AdminStudentParentFilter filter)
+    {
+        var modes = StudentParentStatusService.QueryByMode(_context, _time.GetUtcNow().UtcDateTime,
+            _parentRequirement?.CurrentValue ?? new ParentRequirementOptions());
+        return filter switch
+        {
+            AdminStudentParentFilter.InGrace => modes.Grace,
+            AdminStudentParentFilter.GraceExpired => modes.Expired,
+            AdminStudentParentFilter.AwaitingActivation => modes.AwaitingActivation,
+            _ => modes.Grace.Concat(modes.Expired),
         };
     }
 }

@@ -248,6 +248,17 @@ export class BadgeDefinitionDialogComponent {
   constructor() {
     this.transloco.load(`${ADMIN_SCOPE}/${this.transloco.getActiveLang()}`).pipe(take(1)).subscribe();
 
+    // #917: yeni rozette kod addan üretilir; kod boş değilse ve son üretilen değer değilse (elle yazıldı) dokunulmaz.
+    if (!this.isEdit) {
+      let generated = '';
+      this.form.controls.name.valueChanges.pipe(takeUntilDestroyed()).subscribe((name) => {
+        const code = this.form.controls.code;
+        if (code.value && code.value !== generated) return;
+        generated = badgeCodeFromName(name, LIMITS.codeMax);
+        code.setValue(generated);
+      });
+    }
+
     this.form.controls.ruleType.valueChanges.pipe(takeUntilDestroyed()).subscribe((ruleType) => {
       this.ruleError.set(null);
       this.rebuildRuleForm(findRuleTypeSchema(this.ruleTypes(), ruleType));
@@ -299,6 +310,11 @@ export class BadgeDefinitionDialogComponent {
       return;
     }
     this.setIconCategory(value);
+  }
+
+  /** #917: ızgaradaki görünür etiket — Material Symbols adı okunur biçimde (`emoji_events` → "emoji events"). */
+  iconLabel(entry: BadgeIconEntry): string {
+    return entry.name.replace(/_/g, ' ');
   }
 
   iconCategoryLabel(entry: BadgeIconEntry): string {
@@ -630,4 +646,18 @@ function integerValidator(control: AbstractControl): ValidationErrors | null {
 function notBlank(control: AbstractControl<string | null>): ValidationErrors | null {
   const value = control.value ?? '';
   return value.length > 0 && !value.trim() ? { required: true } : null;
+}
+
+const TR_ASCII: Record<string, string> = { ç: 'c', ğ: 'g', ı: 'i', ö: 'o', ş: 's', ü: 'u', â: 'a', î: 'i', û: 'u' };
+
+/** #917: "Matematik Ustası" → `matematik-ustasi` (BADGE_CODE_PATTERN'e uyar; boş addan boş kod). */
+export function badgeCodeFromName(name: string, max: number): string {
+  const slug = name
+    .toLocaleLowerCase('tr-TR')
+    .replace(/[çğıöşüâîû]/g, (c) => TR_ASCII[c] ?? c)
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return slug.slice(0, max).replace(/-+$/, '');
 }

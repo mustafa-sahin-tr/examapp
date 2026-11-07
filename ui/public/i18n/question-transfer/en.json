@@ -3,7 +3,8 @@
   "subtitle": "Moves questions, tests, activities and the catalog between environments. Move the catalog first, then the rest: questions reach their topics and tests reach their grades through the catalog.",
   "actions": {
     "hangfire": "Hangfire",
-    "hangfireTooltip": "Opens the background jobs dashboard"
+    "hangfireTooltip": "Opens the background jobs dashboard",
+    "more": "More"
   },
   "catalog": {
     "title": "Catalog",

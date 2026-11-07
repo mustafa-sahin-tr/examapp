@@ -13,5 +13,7 @@ public interface IAdminStudentService
     /// <paramref name="unassigned"/> true ise okul bağlantısı olmayanlar (SchoolId null). İkisi birlikte verilmez
     /// (controller 400 döner). <paramref name="page"/> &lt; 1 → 1; <paramref name="pageSize"/> [1, <see cref="AdminListPaging.MaxPageSize"/>] aralığına kırpılır.
     /// </summary>
-    Task<Paged<AdminStudentListItemDto>> ListAsync(int page, int pageSize, int? schoolId, bool unassigned, CancellationToken ct = default);
+    /// <paramref name="parentStatus"/> (#917) verilirse yalnız o veli durumundaki öğrenciler (panodaki sayaçla aynı küme).
+    Task<Paged<AdminStudentListItemDto>> ListAsync(int page, int pageSize, int? schoolId, bool unassigned,
+        AdminStudentParentFilter? parentStatus, CancellationToken ct = default);
 }

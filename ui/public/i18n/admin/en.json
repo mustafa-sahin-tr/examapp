@@ -7,8 +7,8 @@
     }
   },
   "dashboard": {
-    "title": "Admin Panel",
-    "subtitle": "Overall platform status — teacher, student, exam and question statistics",
+    "title": "Home",
+    "subtitle": "Pending work and overall platform status — teacher, student, exam and question statistics",
     "error": "Something went wrong while loading the overview.",
     "empty": "There is no data on the platform yet. The counters will update here once a teacher, student, exam or question is added.",
     "cards": {
@@ -57,7 +57,7 @@
       "graceExpired": "Grace period expired",
       "awaitingActivation": "Awaiting parent activation",
       "aria": "Parent status counts",
-      "openStudents": "Open the student list"
+      "openStudents": "{{label}}: open the student list"
     },
     "pending": {
       "title": "Pending",
@@ -430,7 +430,15 @@
       "inactive": "Disabled",
       "unknown": "Unknown"
     },
-    "schoolPending": "Approval pending"
+    "schoolPending": "Approval pending",
+    "parentFilter": {
+      "aria": "Parent status filter",
+      "clear": "Remove filter",
+      "withoutParent": "Without a parent",
+      "inGrace": "Parent grace period running",
+      "graceExpired": "Parent grace period over",
+      "awaitingActivation": "Awaiting parent activation"
+    }
   },
   "passwordReset": {
     "action": "Reset password",
@@ -739,7 +747,7 @@
         "subject": "Subject"
       },
       "hints": {
-        "code": "Lowercase letters, digits and hyphens; e.g. subject-math-mastery. Cannot be changed later.",
+        "code": "Generated from the name; you can change it. Lowercase letters, digits and hyphens. Cannot be changed after saving.",
         "codeImmutable": "The code cannot be changed after creation.",
         "category": "Pick from the list or type a new category.",
         "path": "Badges sharing a path key are shown to students as an ordered path.",

@@ -6,12 +6,14 @@ import {
   ApproveAllBookImportResult,
   BookImportJob,
   BookImportJobDetail,
+  BookImportPageFix,
   BookImportReviewQuestion,
   BookImportQuota,
   BookImportSetup,
   ConfirmBookImportSetup,
   StartBookImportRequest,
 } from '../models/book-import';
+import { LabelingBankQuestion } from '../models/labeling';
 
 /** Issue #1018 (epic #1017): kitaptan aktarım işleri. Pilot: yalnız Admin + QuestionTrainer. */
 @Injectable({ providedIn: 'root' })
@@ -73,6 +75,11 @@ export class BookImportService {
 
   removeTest(id: string, testId: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}/tests/${testId}`);
+  }
+
+  /** Issue #1023 "İşaretlemede düzelt": testin bir sayfasının taslaklarını işaretleme ekranında düzeltilenlerle değiştirir. */
+  replacePage(id: string, testId: number, filePage: number, questions: LabelingBankQuestion[]): Observable<BookImportPageFix> {
+    return this.http.put<BookImportPageFix>(`${this.baseUrl}/${id}/tests/${testId}/pages/${filePage}/questions`, { questions });
   }
 
   /** Sayfa görseli (WebP, #1020); yetkili istek olduğundan <img src> yerine blob. */

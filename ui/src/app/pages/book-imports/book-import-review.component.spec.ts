@@ -3,6 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { of, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
 
 import { BookImportReviewComponent } from './book-import-review.component';
 import { BookImportJobTest, BookImportReviewQuestion } from '../../models/book-import';
@@ -43,7 +44,7 @@ describe('BookImportReviewComponent (#1023)', () => {
     } as unknown as MockedObject<BookImportService>;
     TestBed.configureTestingModule({
       imports: [BookImportReviewComponent, translocoTestingModule({ langs: { 'book-imports/tr': tr } })],
-      providers: [provideNoopAnimations(), { provide: BookImportService, useValue: api }],
+      providers: [provideNoopAnimations(), provideRouter([]), { provide: BookImportService, useValue: api }],
     });
     fixture = TestBed.createComponent(BookImportReviewComponent);
     fixture.componentRef.setInput('jobId', 'a1');
@@ -146,10 +147,24 @@ describe('BookImportReviewComponent (#1023)', () => {
     expect(api.removeTest).toHaveBeenCalledWith('a1', 2);
   });
 
+  it('fixInLabeling_ListsTheTestPagesMarksFlaggedOnesAndLinksToLabeling', async () => {
+    setup([test({ status: 'NeedsReview', reviewFlags: [{ code: 'missingNumbers', pages: [4], numbers: [3], found: null, expected: null }] })]);
+
+    button(rows()[0], 'İşaretlemede düzelt').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const items = Array.from(document.querySelectorAll<HTMLAnchorElement>('.mat-mdc-menu-panel a[mat-menu-item]'));
+    expect(items.map((a) => a.querySelector('span')?.textContent?.trim())).toEqual(['Sayfa 3', 'Sayfa 4 · işaretli']);
+    expect(items.map((a) => a.querySelector('mat-icon')?.textContent?.trim())).toEqual(['description', 'flag']);
+    expect(items[1].getAttribute('href')).toBe('/labeling?bookImport=a1&test=1&page=4');
+  });
+
   it('completedJob_IsReadOnly', () => {
     setup([test({ status: 'Approved' })], false);
 
     expect(text()).toContain('İncelenecek test kalmadı.');
     expect(button(el(), 'Sorunsuz testleri onayla')).toBeUndefined();
+    expect(button(el(), 'İşaretlemede düzelt')).toBeUndefined();
   });
 });

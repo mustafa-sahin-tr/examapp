@@ -123,5 +123,14 @@ aktarım aracındaki Python portu referanstır (#1022).
 - **Ekran:** takip sayfasında "İnceleme ve onay" (`book-import-review`): "Yalnız bakılması gerekenler" varsayılan açık, satırda
   işaretler, Önizle (soru görselleri + A–D seçici, "Cevaplanan x/y"), Onayla, Sil (ikinci tıkla); toplu onay onay ister ve
   atlananları bildirir. Önizleme taslağı genel test ekranına açmaz (aktarım uç noktasından okur).
-- **Açık:** "İşaretlemede düzelt" yok: işaretleme ekranı kayıtlı soruları yüklemiyor, yeniden kayıt etkin soru üretir. Şimdilik
-  hatalı test silinir, sayfa işaretlemede elle yeniden kaydedilir.
+- **İşaretlemede düzelt** (karar: seçenek 1 — sayfanın taslaklarını değiştir): satırdaki menü testin sayfalarını listeler
+  (inceleme işaretinde geçenler bayraklı), önizlemede her sorunun yanında da kısayol var. `/labeling?bookImport=&test=&page=`
+  klasör yerine işin sayfa görselini açar (kitap kilitli, sayaçlar gizli); tespit her zamanki kaynaklardan (aktarımın Claude
+  sonucu önbellekte, maliyetsiz). "Taslakları değiştir" → `PUT {id}/tests/{testId}/pages/{filePage}/questions`
+  (`BookImportPageFixService`): görsel sunucuda işin sayfasından okunur; yeni sorular taslak kaydedilir (eski taslakların
+  kırpmaları tekrar sayılmaz, `ReplacingQuestionIds`), sonra tek transaction'da eskiler soft-delete, yeniler eskilerin
+  sırasına (eskisi yoksa önceki sayfaların sorularından sonra) bağlanır. Numara: madde etiketi sayıysa o, yoksa sayfanın eski
+  ilk numarasından sırayla; cevap: işaretlenen şık, yoksa anahtar. Sayfanın inceleme işaretleri yeniden hesaplanır, sayı
+  uyuşmazlığı testin güncel soru sayısıyla; işaret kalmazsa test `Done`. Başarısız testte (taslak testi yok) düzeltme taslak
+  testi açar. Boş sayfa kaydı onayla sayfanın taslaklarını siler. Kayıt başarısızsa test değişmez. Kırpması başka bir aktarımda
+  ya da bankada etkin olan soru tekrar sayılır ve bağlanmaz (aktarımla aynı kural).

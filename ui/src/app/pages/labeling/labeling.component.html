@@ -21,7 +21,27 @@
     </div>
   </header>
 
-  @if (folderPicked() && totalImages() > 0) {
+  @if (fix(); as f) {
+  <!-- #1023: kitap aktarımının bir sayfası düzeltiliyor; kayıt o sayfanın taslaklarının yerine geçer. -->
+  <div class="lb-fix" role="status" data-testid="labeling-fix">
+    <mat-icon aria-hidden="true">edit_square</mat-icon>
+    <span class="lb-fix__text">{{ t('fix.banner', { book: f.bookName, test: f.testName, page: f.filePage }) }}</span>
+    <a mat-button [routerLink]="['/book-imports', f.jobId]">{{ t('fix.back') }}</a>
+  </div>
+  } @else if (fixLoading()) {
+  <div class="lb-state" role="status">
+    <mat-spinner diameter="28" aria-hidden="true"></mat-spinner>
+    <span>{{ t('fix.loading') }}</span>
+  </div>
+  } @else if (fixError()) {
+  <div class="lb-state lb-state--error" role="alert">
+    <mat-icon aria-hidden="true">error_outline</mat-icon>
+    <span>{{ t('fix.loadFailed') }}</span>
+    <button mat-stroked-button type="button" (click)="retryFix()">{{ t('retry') }}</button>
+  </div>
+  }
+
+  @if (folderPicked() && totalImages() > 0 && !fix()) {
   <dl class="lb-stats" [attr.aria-label]="t('stats.label')">
     <div class="lb-stat"><dt>{{ t('stats.total') }}</dt><dd>{{ totalImages() }}</dd></div>
     <div class="lb-stat"><dt>{{ t('stats.skipped') }}</dt><dd>{{ skippedLabeled() }}</dd></div>
@@ -45,7 +65,7 @@
     <span>{{ t('labeledError') }}</span>
     <button mat-stroked-button type="button" (click)="retryLabeledPages()">{{ t('retry') }}</button>
   </div>
-  } @else if (!folderPicked() && recentFolders().length) {
+  } @else if (!folderPicked() && !fixLoading() && !fixError() && recentFolders().length) {
   <section class="lb-recent" data-testid="labeling-recent" [attr.aria-label]="t('recent.title')">
     <h2 class="lb-recent__title">{{ t('recent.title') }}</h2>
     <ul class="lb-recent__list">
@@ -76,7 +96,7 @@
     </ul>
     <p class="lb-recent__hint">{{ t('recent.hint') }}</p>
   </section>
-  } @else if (!folderPicked()) {
+  } @else if (!folderPicked() && !fixLoading() && !fixError()) {
   <div class="lb-state lb-state--empty">
     <mat-icon aria-hidden="true">folder_open</mat-icon>
     <span class="lb-state__title">{{ t('emptyTitle') }}</span>
@@ -188,7 +208,7 @@
       <span class="lb-group__label" id="lb-book-label">{{ t('book.label') }}</span>
       <mat-form-field class="lb-grade" appearance="outline" subscriptSizing="dynamic">
         <mat-select [value]="bookId()" (selectionChange)="setBook($event)" aria-labelledby="lb-book-label"
-          [placeholder]="t('book.none')">
+          [placeholder]="t('book.none')" [disabled]="!!fix()">
           <mat-option [value]="null">{{ t('book.none') }}</mat-option>
           @for (book of books(); track book.id) {
           <mat-option [value]="book.id">{{ book.name }}</mat-option>
@@ -258,6 +278,17 @@
       <mat-icon>view_sidebar</mat-icon>{{ t('inspector.title') }}
     </button>
 
+    @if (fix()) {
+    <button mat-flat-button type="button" class="lb-bank" (click)="replaceDrafts()" [disabled]="!canReplaceDrafts()"
+      disabledInteractive [attr.aria-busy]="fixSaving()" [matTooltip]="t('fix.hint')" data-testid="labeling-fix-save">
+      @if (fixSaving()) {
+      <mat-spinner diameter="16" aria-hidden="true"></mat-spinner>
+      } @else {
+      <mat-icon>published_with_changes</mat-icon>
+      }
+      <span>{{ fixSaving() ? t('fix.saving') : t('fix.save') }}</span>
+    </button>
+    } @else {
     <button mat-stroked-button type="button" (click)="skip()" [disabled]="!canSkip()" [matTooltip]="t('skipHint')">
       <mat-icon>skip_next</mat-icon>{{ t('skip') }}
     </button>
@@ -279,6 +310,7 @@
       }
       <span>{{ bankSaving() ? t('bank.saving') : t('bank.save') }}</span>
     </button>
+    }
   </div>
   }
 

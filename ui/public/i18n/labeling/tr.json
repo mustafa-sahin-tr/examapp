@@ -23,6 +23,23 @@
   "train": "Eğit",
   "trainHint": "Sayfayı, tüm soruları işaretlenmiş olarak eğitim verisine ekle",
   "sending": "Gönderiliyor…",
+  "fix": {
+    "banner": "Kitap aktarımı düzeltmesi: {{book}} · {{test}} · sayfa {{page}}. Kaydedince bu sayfanın taslak soruları bunlarla değişir.",
+    "back": "İncelemeye dön",
+    "loading": "Aktarım sayfası açılıyor…",
+    "loadFailed": "Aktarım sayfası açılamadı.",
+    "save": "Taslakları değiştir",
+    "saving": "Kaydediliyor…",
+    "hint": "Sayfadaki çoktan seçmeli sorular bu sayfanın taslaklarının yerine geçer; doğru şık işaretlenmezse kitabın cevap anahtarından alınır.",
+    "saved": "{{saved}} soru kaydedildi, {{removed}} eski taslak kaldırıldı.",
+    "duplicates": "{{count}} soru zaten bankada olduğu için atlandı.",
+    "answerless": "{{count}} soru cevapsız; incelemede cevabını seçin.",
+    "failed": "Sayfa düzeltmesi kaydedilemedi.",
+    "emptyTitle": "Sayfanın taslakları silinsin mi?",
+    "emptyMessage": "Sayfada soru yok. Kaydedilirse {{page}}. sayfadaki taslak sorular testten çıkarılır.",
+    "emptyConfirm": "Taslakları sil",
+    "cancel": "Vazgeç"
+  },
   "bank": {
     "save": "Havuza kaydet",
     "saving": "Kaydediliyor…",

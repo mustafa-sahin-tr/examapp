@@ -73,7 +73,7 @@ public sealed record BookImportReviewFlag(
 internal sealed class BookQuestionImportStage(
     AppDbContext db, IMinIoService minio, ILabelingService labeling, IServiceScopeFactory scopes, string detectModel, ILogger logger)
 {
-    private const int ExpectedOptions = 4;
+    internal const int ExpectedOptions = 4;
 
     public async Task RunAsync(BookImportJob job, CancellationToken ct = default)
     {
@@ -123,8 +123,7 @@ internal sealed class BookQuestionImportStage(
             throw new BookImportFailure("The test has no pages.");
 
         var key = test.AnswerKey;
-        var label = BookImportService.BookTestName(test);
-        label = label.Length <= QuestionSource.MaxLabelLength ? label : label[..QuestionSource.MaxLabelLength];
+        var label = SourceLabel(test);
         var flags = new FlagSet();
         var questionIds = new List<int>();
         int saved = 0, duplicates = 0, failedPages = 0, pageCount = 0;
@@ -259,18 +258,7 @@ internal sealed class BookQuestionImportStage(
             : null;
         if (worksheet is null)
         {
-            var name = $"{job.BookName} – {BookImportService.BookTestName(test)}";
-            worksheet = new Worksheet
-            {
-                Name = name.Length <= DraftTestNameLength ? name : name[..DraftTestNameLength],
-                Description = $"{job.BookName}. Cevaplar kitabın cevap anahtarından.",
-                GradeId = job.GradeId,
-                SubjectId = job.SubjectId,
-                MaxDurationSeconds = (test.Minutes ?? 0) * 60,
-                BookTestId = test.BookTestId,
-                TeacherSharing = WorksheetTeacherSharing.Private,
-                IsDraft = true,
-            };
+            worksheet = NewDraftTest(job, test);
             // Sahip denetim damgasıyla yazılır (iş isteksiz çalışır): taslağın sahibi işin sahibi.
             db.SetCurrentUser(job.CreateUserId!.Value);
             db.Worksheets.Add(worksheet);
@@ -282,6 +270,30 @@ internal sealed class BookQuestionImportStage(
             worksheet.WorksheetQuestions.Add(new WorksheetQuestion { QuestionId = id, Order = ++order });
         await db.SaveChangesAsync(ct);
         test.WorksheetId = worksheet.Id;
+    }
+
+    /// <summary>Testin taslak testi (yeni; #1023 işaretlemede düzeltme de kullanır).</summary>
+    internal static Worksheet NewDraftTest(BookImportJob job, BookImportJobTest test)
+    {
+        var name = $"{job.BookName} – {BookImportService.BookTestName(test)}";
+        return new Worksheet
+        {
+            Name = name.Length <= DraftTestNameLength ? name : name[..DraftTestNameLength],
+            Description = $"{job.BookName}. Cevaplar kitabın cevap anahtarından.",
+            GradeId = job.GradeId,
+            SubjectId = job.SubjectId,
+            MaxDurationSeconds = (test.Minutes ?? 0) * 60,
+            BookTestId = test.BookTestId,
+            TeacherSharing = WorksheetTeacherSharing.Private,
+            IsDraft = true,
+        };
+    }
+
+    /// <summary>Soruların etkinlik etiketi: testin adı (kaynak etiketi sınırına kırpılır).</summary>
+    internal static string SourceLabel(BookImportJobTest test)
+    {
+        var label = BookImportService.BookTestName(test);
+        return label.Length <= QuestionSource.MaxLabelLength ? label : label[..QuestionSource.MaxLabelLength];
     }
 
     private const int DraftTestNameLength = 200;

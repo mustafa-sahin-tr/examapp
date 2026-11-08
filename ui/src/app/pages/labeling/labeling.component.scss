@@ -38,6 +38,23 @@
   color: var(--ms-text-weak);
 }
 
+// #1023: kitap aktarımı düzeltmesi bandı.
+.lb-fix {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--ms-info-border);
+  border-radius: 10px;
+  background: var(--ms-info-surface-weak);
+  color: var(--ms-text-strong);
+
+  &__text {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
 .lb-stats {
   display: flex;
   flex-wrap: wrap;

@@ -22,6 +22,7 @@
     "notCancellable": "This import cannot be cancelled at this stage.",
     "answerless": "A test with unanswered questions cannot be approved; pick the answers first.",
     "invalidOption": "Invalid option.",
-    "notInReview": "This test cannot be approved or removed right now."
+    "notInReview": "This test cannot be approved or removed right now.",
+    "fixFailed": "The page fix could not be saved; try again."
   }
 }

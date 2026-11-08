@@ -218,3 +218,21 @@ export interface ConfirmBookImportSetup {
     answerKey: string | null;
   }[];
 }
+
+/** Issue #1023: sayfa düzeltmesinin sonucu (kaydedilen, kırpması bankada olduğu için atlanan, silinen eski taslak, cevapsız). */
+export interface BookImportPageFix {
+  saved: number;
+  duplicates: number;
+  removed: number;
+  answerless: number;
+}
+
+/** İşaretleme ekranını aktarımın bir sayfasında açan sorgu parametreleri (`/labeling?bookImport=…&test=…&page=…`). */
+export function labelingFixParams(jobId: string, testId: number, filePage: number): Record<string, string | number> {
+  return { bookImport: jobId, test: testId, page: filePage };
+}
+
+/** Testin kısa adı: "1-03 · Kesirler". */
+export function bookImportTestName(test: Pick<BookImportJobTest, 'unit' | 'testNo' | 'title'>): string {
+  return `${test.unit}-${String(test.testNo).padStart(2, '0')}${test.title ? ' · ' + test.title : ''}`;
+}

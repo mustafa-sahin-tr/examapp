@@ -67,5 +67,84 @@
     "notIncluded": "{{ feature }} mevcut planında yok.",
     "resets": "Hakların {{ date }} tarihinde yenilenir.",
     "compare": "Planlarda {{ feature }}"
+  },
+  "admin": {
+    "title": "Abonelikler",
+    "subtitle": "Kullanıcıya ya da okula tarihli plan ata, geçmişi gör.",
+    "loading": "Yükleniyor…",
+    "openEnded": "süresiz",
+    "currentPlan": "Mevcut plan",
+    "tabs": {
+      "users": "Kullanıcılar",
+      "schools": "Okullar"
+    },
+    "search": {
+      "label": "Ad ya da e-posta",
+      "hint": "En az 2 karakter",
+      "role": "Rol",
+      "submit": "Ara",
+      "empty": "Eşleşen kullanıcı yok."
+    },
+    "roles": {
+      "any": "Hepsi",
+      "Teacher": "Öğretmen",
+      "Student": "Öğrenci",
+      "Parent": "Veli"
+    },
+    "assign": {
+      "title": "Plan ata",
+      "plan": "Plan",
+      "from": "Başlangıç",
+      "fromHint": "Boşsa bugün",
+      "to": "Bitiş",
+      "toHint": "Boşsa süresiz; seçilen gün dahil",
+      "submit": "Ata"
+    },
+    "end": {
+      "button": "Atamayı bitir",
+      "confirm": "Atama şimdi bitirilsin mi? Kullanıcı ücretsiz plana döner.",
+      "yes": "Evet, bitir",
+      "cancel": "Vazgeç"
+    },
+    "assignments": {
+      "title": "Atamalar"
+    },
+    "status": {
+      "Active": "Etkin",
+      "Scheduled": "Planlandı",
+      "Ended": "Bitti"
+    },
+    "history": {
+      "title": "Değişiklik geçmişi",
+      "empty": "Henüz değişiklik yok.",
+      "bySelf": "Kendisi",
+      "bySchool": "okula toplu atama"
+    },
+    "school": {
+      "school": "Okul",
+      "audience": "Kime",
+      "all": "Hepsi",
+      "teachers": "Öğretmenler",
+      "students": "Öğrenciler",
+      "members": "{{ teachers }} öğretmen, {{ students }} doğrulanmış öğrenci",
+      "submit": "{{ count }} kişiye ata",
+      "confirm": "Plan {{ count }} kişiye atanacak; mevcut atamaları kapanır. Emin misin?",
+      "yes": "Evet, ata",
+      "done": "Plan {{ count }} kişiye atandı."
+    },
+    "errors": {
+      "load": "Planlar yüklenemedi.",
+      "generic": "İşlem tamamlanamadı. Lütfen tekrar dene.",
+      "rateLimited": "Çok fazla arama yaptın; biraz bekle.",
+      "invalidRange": "Bitiş, başlangıçtan sonra olmalı.",
+      "audienceMismatch": "Bu plan seçilen kitleye uygun değil.",
+      "noMembers": "Bu okulda seçilen kitlede kimse yok.",
+      "tooManyMembers": "Tek seferde en çok 5000 kişiye atanabilir; kitleyi ayrı ayrı seç.",
+      "noAssignment": "Bitirilecek atama yok.",
+      "unknownPlan": "Plan bulunamadı.",
+      "userNotFound": "Kullanıcı bulunamadı.",
+      "schoolNotFound": "Okul bulunamadı.",
+      "queryTooShort": "En az 2 karakter yaz."
+    }
   }
 }

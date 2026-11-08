@@ -244,6 +244,7 @@ public class AppDbContext : DbContext
     public DbSet<SubscriptionPlan> SubscriptionPlans { get; set; } // issue #1019
     public DbSet<SubscriptionPlanFeatureLimit> SubscriptionPlanFeatureLimits { get; set; }
     public DbSet<UserSubscriptionPlan> UserSubscriptionPlans { get; set; }
+    public DbSet<SubscriptionPlanAssignmentAudit> SubscriptionPlanAssignmentAudits { get; set; } // issue #1030
     public DbSet<EntitlementUsage> EntitlementUsages { get; set; }
 
     // Issue #693: deneme sınavları.
@@ -1441,6 +1442,12 @@ public class AppDbContext : DbContext
         {
             e.HasOne(a => a.Plan).WithMany().HasForeignKey(a => a.PlanId).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(a => new { a.UserId, a.ValidFromUtc });
+        });
+        // Issue #1030: atama değişikliği kaydı; kullanıcının geçmişi en yeni önce okunur.
+        modelBuilder.Entity<SubscriptionPlanAssignmentAudit>(e =>
+        {
+            e.HasIndex(a => new { a.UserId, a.OccurredAtUtc });
+            e.Property(a => a.Action).HasConversion<string>().HasMaxLength(16);
         });
         modelBuilder.Entity<EntitlementUsage>(e =>
         {

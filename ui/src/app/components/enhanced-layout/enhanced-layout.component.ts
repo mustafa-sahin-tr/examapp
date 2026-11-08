@@ -299,6 +299,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'group-users', labelKey: 'menu.groupUsers', icon: '', route: '', type: 'header', roles: ['Admin'] },
     { id: 'admin-teachers', labelKey: 'menu.adminTeachers', icon: 'groups', route: '/admin/teachers', type: 'menu', roles: ['Admin'] },
     { id: 'admin-students', labelKey: 'menu.adminStudents', icon: 'school', route: '/admin/students', type: 'menu', roles: ['Admin'] },
+    // Issue #1030: plan ataması (kullanıcı ve okul).
+    { id: 'admin-subscriptions', labelKey: 'menu.adminSubscriptions', icon: 'workspace_premium', route: '/admin/subscriptions', type: 'menu', roles: ['Admin'] },
     { id: 'group-schools', labelKey: 'menu.groupSchools', icon: '', route: '', type: 'header', roles: ['Admin'] },
     { id: 'admin-schools', labelKey: 'menu.adminSchools', icon: 'apartment', route: '/admin/schools', type: 'menu', roles: ['Admin'] },
     { id: 'group-content', labelKey: 'menu.groupContent', icon: '', route: '', type: 'header', roles: ['Admin'] },

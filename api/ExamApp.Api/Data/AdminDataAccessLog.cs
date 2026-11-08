@@ -89,7 +89,13 @@ public enum AdminDataAccessResource
     DirectMessageReports = 5,
 
     /// <summary>issue #424: <c>GET api/admin/parent-access-audits</c> (veli erişim kayıtları; hangi velinin hangi çocuğa baktığı).</summary>
-    ParentAccessAudits = 6
+    ParentAccessAudits = 6,
+
+    /// <summary>issue #1030: <c>GET api/admin/subscription-plans/users?q=</c> (plan ataması kullanıcı araması; maskeli e-posta).</summary>
+    SubscriptionUserSearch = 7,
+
+    /// <summary>issue #1030: <c>GET api/admin/subscription-plans/users/{id}</c> (kullanıcının planı ve atama geçmişi).</summary>
+    SubscriptionUserDetail = 8
 }
 
 /// <summary>

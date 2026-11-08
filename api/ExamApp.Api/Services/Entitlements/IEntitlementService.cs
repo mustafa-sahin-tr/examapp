@@ -102,6 +102,16 @@ public interface IEntitlementService
     Task<AssignPlanError> AssignPlanAsync(int userId, string planKey, DateTime? validFromUtc, DateTime? validToUtc,
         int assignedByUserId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Issue #1030: aynı planı birden çok kullanıcıya tek kayıtla atar (okula toplu atama; <paramref name="schoolId"/> audit'e
+    /// yazılır). Her kullanıcı için bir audit satırı (eski → yeni).
+    /// </summary>
+    Task<AssignPlanError> AssignPlanToUsersAsync(IReadOnlyCollection<int> userIds, string planKey, DateTime? validFromUtc,
+        DateTime? validToUtc, int assignedByUserId, int? schoolId, CancellationToken ct = default);
+
+    /// <summary>Issue #1030: açık atamayı şimdi bitirir, ileride başlayacakları iptal eder (Free'ye döner); atama yoksa false.</summary>
+    Task<bool> EndPlanAsync(int userId, int endedByUserId, CancellationToken ct = default);
+
     /// <summary>Kullanıcı daha önce (silinmiş atamalar dahil) deneme planı aldıysa true.</summary>
     Task<bool> HasUsedTrialAsync(int userId, CancellationToken ct = default);
 

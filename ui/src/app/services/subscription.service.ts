@@ -1,8 +1,17 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { CurrentSubscriptionPlan, SubscriptionPlan } from '../models/subscription';
+import {
+  AdminSubscriptionUser,
+  AdminSubscriptionUserDetail,
+  CurrentSubscriptionPlan,
+  PlanAssignment,
+  SchoolPlanAudience,
+  SchoolSubscriptionMembers,
+  SubscriptionPlan,
+  SubscriptionSearchRole,
+} from '../models/subscription';
 
 /** Issue #1027 / #1028 (epic #1026): plan kataloğu, kullanıcının planı, deneme ve sahte ödeme. */
 @Injectable({ providedIn: 'root' })
@@ -28,5 +37,41 @@ export class SubscriptionService {
   /** Sahte ödeme: ücretli planı bir aylık atar, ödeme alınmaz. */
   checkout(planKey: string): Observable<CurrentSubscriptionPlan> {
     return this.http.post<CurrentSubscriptionPlan>(`${this.baseUrl}/me/checkout`, { planKey });
+  }
+
+  // ---- Issue #1030: admin plan ataması (yalnız Admin / SuperAdmin) ----
+
+  private readonly adminUrl = '/api/exam/admin/subscription-plans';
+
+  /** Etkin ve pasif tüm planlar. */
+  adminPlans(): Observable<SubscriptionPlan[]> {
+    return this.http.get<SubscriptionPlan[]>(this.adminUrl);
+  }
+
+  /** Ad ya da e-postada geçen metin (en az 2 karakter); en fazla 20 sonuç. */
+  searchUsers(query: string, role: SubscriptionSearchRole | null): Observable<AdminSubscriptionUser[]> {
+    let params = new HttpParams().set('q', query);
+    if (role) params = params.set('role', role);
+    return this.http.get<AdminSubscriptionUser[]>(`${this.adminUrl}/users`, { params });
+  }
+
+  userDetail(userId: number): Observable<AdminSubscriptionUserDetail> {
+    return this.http.get<AdminSubscriptionUserDetail>(`${this.adminUrl}/users/${userId}`);
+  }
+
+  assignUser(userId: number, assignment: PlanAssignment): Observable<unknown> {
+    return this.http.put(`${this.adminUrl}/users/${userId}`, assignment);
+  }
+
+  endUserPlan(userId: number): Observable<unknown> {
+    return this.http.post(`${this.adminUrl}/users/${userId}/end`, {});
+  }
+
+  schoolMembers(schoolId: number): Observable<SchoolSubscriptionMembers> {
+    return this.http.get<SchoolSubscriptionMembers>(`${this.adminUrl}/schools/${schoolId}/members`);
+  }
+
+  assignSchool(schoolId: number, assignment: PlanAssignment & { audience: SchoolPlanAudience }): Observable<{ assigned: number }> {
+    return this.http.put<{ assigned: number }>(`${this.adminUrl}/schools/${schoolId}`, assignment);
   }
 }

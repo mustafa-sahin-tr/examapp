@@ -275,6 +275,19 @@ Kılavuz özeti ve beceri listesinin kaynağı `docs/context-based-questions.md`
 - **Admin uç noktaları:** `GET /api/exam/admin/subscription-plans` (katalog + sınırlar), `GET|PUT
   /api/exam/admin/subscription-plans/users/{userId}` (`{ planKey, validFromUtc?, validToUtc? }`; exam kullanıcı id'si). Arayüz
   #1030'da.
+- **Admin plan ataması (#1030):** yönetim menüsünde Kullanıcılar → "Abonelikler" (`/admin/subscriptions`, yalnız Admin /
+  SuperAdmin). **Kullanıcılar** sekmesi: ad / e-posta araması (`GET …/users?q=&role=`, en az 2 karakter, en çok 20 sonuç, e-posta
+  maskeli, #246 hız sınırı ve `AdminDataAccessLogs` kaydı) auth-api'nin `POST /api/auth/users/search` ucuna gider (yalnız Service
+  politikası, gateway'de kapalı; LIKE joker karakterleri kaçırılır). Detay (`GET …/users/{id}`, audit'li): güncel plan, son 50
+  atama (Etkin / Planlandı / Bitti) ve son 50 değişiklik. Atama formu plan + başlangıç (boşsa şimdi) + bitiş (boşsa süresiz;
+  arayüz seçilen günün son anını gönderir, gün dahil). "Atamayı bitir" (`POST …/users/{id}/end`, satır içi onay) başlamış
+  atamayı şimdi kapatır, planlanmışları siler; kullanıcı Free'ye döner, bitirecek atama yoksa 404 `subscription.noAssignment`.
+  **Okullar** sekmesi: okul + kitle (Hepsi / Öğretmenler / Öğrenciler) + plan + tarihler; sayılar `GET …/schools/{id}/members`
+  (öğretmen: `Teacher.SchoolId`, öğrenci: yalnız doğrulanmış üyelik), "N kişiye ata" ikinci tıklamada onaylanır →
+  `PUT …/schools/{id}`. Öğretmen planı yalnız öğretmenlere, öğrenci planı yalnız öğrencilere toplu atanır (400
+  `subscription.audienceMismatch`; tekil atamada serbest); tek istekte en çok 5000 kişi. **Geçmiş:** her atama / bitirme
+  kullanıcı başına bir `SubscriptionPlanAssignmentAudits` satırı yazar (yapan, eski → yeni plan anahtarı, tarihler, toplu
+  atamada okul); kullanıcının kendi deneme / demo ödemesi de buraya düşer (detayda "Kendisi").
 - **Katalog (#1027):** seed'li dört plan — `free` (herkes, varsayılan), `trial` (herkes, `TrialDays` = 14), `teacher-pro`
   (öğretmen), `student-plus` (öğrenci). Planda `DisplayNameKey` (`subscription.plans.*` çeviri anahtarı), `Audience`
   (`Any` / `Teacher` / `Student`), yer tutucu `MonthlyPrice` + `Currency` (`TRY`; gerçek ödeme yok), `SortOrder`. Sınırlar

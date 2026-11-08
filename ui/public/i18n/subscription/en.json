@@ -67,5 +67,84 @@
     "notIncluded": "{{ feature }} isn't included in your plan.",
     "resets": "Your allowance renews on {{ date }}.",
     "compare": "{{ feature }} by plan"
+  },
+  "admin": {
+    "title": "Subscriptions",
+    "subtitle": "Assign a dated plan to a user or a school and see the history.",
+    "loading": "Loading…",
+    "openEnded": "open-ended",
+    "currentPlan": "Current plan",
+    "tabs": {
+      "users": "Users",
+      "schools": "Schools"
+    },
+    "search": {
+      "label": "Name or email",
+      "hint": "At least 2 characters",
+      "role": "Role",
+      "submit": "Search",
+      "empty": "No matching users."
+    },
+    "roles": {
+      "any": "All",
+      "Teacher": "Teacher",
+      "Student": "Student",
+      "Parent": "Parent"
+    },
+    "assign": {
+      "title": "Assign a plan",
+      "plan": "Plan",
+      "from": "Start",
+      "fromHint": "Today if empty",
+      "to": "End",
+      "toHint": "Open-ended if empty; the chosen day is included",
+      "submit": "Assign"
+    },
+    "end": {
+      "button": "End assignment",
+      "confirm": "End the assignment now? The user goes back to the free plan.",
+      "yes": "Yes, end it",
+      "cancel": "Cancel"
+    },
+    "assignments": {
+      "title": "Assignments"
+    },
+    "status": {
+      "Active": "Active",
+      "Scheduled": "Scheduled",
+      "Ended": "Ended"
+    },
+    "history": {
+      "title": "Change history",
+      "empty": "No changes yet.",
+      "bySelf": "Themselves",
+      "bySchool": "school-wide assignment"
+    },
+    "school": {
+      "school": "School",
+      "audience": "Audience",
+      "all": "Everyone",
+      "teachers": "Teachers",
+      "students": "Students",
+      "members": "{{ teachers }} teachers, {{ students }} verified students",
+      "submit": "Assign to {{ count }} people",
+      "confirm": "The plan will be assigned to {{ count }} people and their current assignments will close. Continue?",
+      "yes": "Yes, assign",
+      "done": "Plan assigned to {{ count }} people."
+    },
+    "errors": {
+      "load": "Plans could not be loaded.",
+      "generic": "Something went wrong. Please try again.",
+      "rateLimited": "Too many searches; please wait a moment.",
+      "invalidRange": "The end must be after the start.",
+      "audienceMismatch": "This plan does not fit the selected audience.",
+      "noMembers": "Nobody in this school matches the audience.",
+      "tooManyMembers": "At most 5000 people per assignment; pick one audience at a time.",
+      "noAssignment": "There is no assignment to end.",
+      "unknownPlan": "Plan not found.",
+      "userNotFound": "User not found.",
+      "schoolNotFound": "School not found.",
+      "queryTooShort": "Type at least 2 characters."
+    }
   }
 }

@@ -29,6 +29,24 @@ public sealed class ChildAccountRouteTests
         }
     }
 
+    /// <summary>Issue #1030: auth-api'nin servis-only kullanıcı arama ucu (<c>/api/auth/users/search</c>) gateway'de engelli.</summary>
+    [Theory]
+    [MemberData(nameof(OcelotFiles))]
+    public void Auth_api_user_search_is_blocked(string file)
+    {
+        var path = Path.Combine(GatewayWebSocketAuthTests.GatewayFactory.FindGatewayDir(), file);
+        var routes = JsonNode.Parse(File.ReadAllText(path))!["Routes"]!.AsArray().Select(r => r!).ToList();
+
+        foreach (var upstream in new[] { "/api/auth/users/search", "/API/Auth/Users/Search/" })
+        {
+            var matching = routes.Where(r => Matches(r, "POST", upstream)).ToList();
+            var top = matching.Max(r => r["Priority"]?.GetValue<int>() ?? 1);
+            top.ShouldBe(2, $"{file}: {upstream}");
+            matching.Where(r => (r["Priority"]?.GetValue<int>() ?? 1) == top)
+                .ShouldAllBe(r => r["DownstreamPathTemplate"]!.GetValue<string>().StartsWith("/__blocked/"), $"{file}: {upstream}");
+        }
+    }
+
     /// <summary>
     /// #438 review: kompanzasyon ucu <c>DELETE /api/auth/child-accounts/by-request/{requestId}</c> (ve userId'li silme) gateway'den
     /// dışarıya kapalı. Ocelot'un seçimi taklit edilir: path + metodu eşleşen route'lar içinde en yüksek Priority kazanır; kazanan

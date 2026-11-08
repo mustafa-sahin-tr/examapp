@@ -205,6 +205,82 @@ public sealed class UsersLookupAuthorizationTests : IAsyncDisposable
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
+    // ---- Kullanıcı araması (issue #1030) ----
+
+    private static HttpRequestMessage SearchRequest(string query, string? role, string? sub, string? roles = null)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/users/search") { Content = JsonContent.Create(new { Query = query, Role = role }) };
+        if (sub is not null) request.Headers.Add(SubHeader, sub);
+        if (roles is not null) request.Headers.Add(RolesHeader, roles);
+        return request;
+    }
+
+    private sealed record SearchRow(int Id, string FullName, string Email, string Role);
+
+    [Theory]
+    [InlineData("Teacher")]
+    [InlineData("Admin")]
+    public async Task Search_with_an_end_user_token_gets_403(string role)
+    {
+        await SeedUserAsync("kc-s0", "Gizli Kullanici", "gizli@test.local");
+        var client = await StartAsync();
+
+        var response = await client.SendAsync(SearchRequest("gizli", null, sub: "kc-caller", roles: role));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await response.Content.ReadAsStringAsync()).ShouldNotContain("gizli@test.local");
+    }
+
+    [Fact]
+    public async Task Search_matches_name_or_email_case_insensitively_and_filters_by_role()
+    {
+        var byName = await SeedUserAsync("kc-s1", "Mehmet Demir", "md@test.local");
+        var byEmail = await SeedUserAsync("kc-s2", "Zeynep", "demir.z@test.local");
+        await SeedUserAsync("kc-s3", "Baska", "baska@test.local");
+        await using (var ctx = _db.NewContext())
+        {
+            (await ctx.Users.SingleAsync(u => u.Id == byEmail)).Role = "Teacher";
+            await ctx.SaveChangesAsync();
+        }
+        var client = await StartAsync();
+
+        var all = await (await client.SendAsync(SearchRequest("DEMIR", null, sub: "svc", roles: ServicePrincipal.ServiceRole)))
+            .Content.ReadFromJsonAsync<List<SearchRow>>();
+        all!.Select(r => r.Id).OrderBy(id => id).ShouldBe(new[] { byName, byEmail });
+
+        var teachers = await (await client.SendAsync(SearchRequest("demir", "teacher", sub: "svc", roles: ServicePrincipal.ServiceRole)))
+            .Content.ReadFromJsonAsync<List<SearchRow>>();
+        teachers!.ShouldHaveSingleItem().Id.ShouldBe(byEmail);
+    }
+
+    [Theory]
+    [InlineData("d", null)]
+    [InlineData("demir", "Admin")]
+    public async Task Search_rejects_a_short_query_or_an_unknown_role(string query, string? role)
+    {
+        var client = await StartAsync();
+
+        var response = await client.SendAsync(SearchRequest(query, role, sub: "svc", roles: ServicePrincipal.ServiceRole));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Search_returns_at_most_20_users_and_treats_wildcards_literally()
+    {
+        for (var i = 0; i < 25; i++)
+            await SeedUserAsync($"kc-w{i}", $"Ogrenci {i:00}", $"o{i}@test.local");
+        var client = await StartAsync();
+
+        var many = await (await client.SendAsync(SearchRequest("ogrenci", null, sub: "svc", roles: ServicePrincipal.ServiceRole)))
+            .Content.ReadFromJsonAsync<List<SearchRow>>();
+        many!.Count.ShouldBe(20);
+
+        var wildcard = await (await client.SendAsync(SearchRequest("%%", null, sub: "svc", roles: ServicePrincipal.ServiceRole)))
+            .Content.ReadFromJsonAsync<List<SearchRow>>();
+        wildcard!.ShouldBeEmpty();
+    }
+
     // ---- Hesap durumu (issue #152) ----
 
     private sealed record LookupRow(int Id, string KeycloakId, string Email, bool? Enabled);

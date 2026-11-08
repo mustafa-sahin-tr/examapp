@@ -66,4 +66,7 @@ public class BookImportQuotaDto
     public int Used { get; set; }
     public DateTime? ResetsAtUtc { get; set; }
     public bool Allowed { get; set; }
+
+    /// <summary>Kullanıcının planı (#1019; ör. <c>free</c>). Sınır 0 ise arayüz demoya (#1032) yönlendirir.</summary>
+    public string? PlanKey { get; set; }
 }

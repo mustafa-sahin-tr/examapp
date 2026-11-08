@@ -21,7 +21,7 @@ function job(overrides: Partial<BookImportJob> = {}): BookImportJob {
   };
 }
 
-const UNLIMITED: BookImportQuota = { limit: null, used: 0, resetsAtUtc: null, allowed: true };
+const UNLIMITED: BookImportQuota = { limit: null, used: 0, resetsAtUtc: null, allowed: true, planKey: 'free' };
 
 describe('BookImportsComponent (#1018)', () => {
   let fixture: ComponentFixture<BookImportsComponent>;
@@ -177,16 +177,36 @@ describe('BookImportsComponent (#1018)', () => {
   });
 
   it('quota_Blocked_DisablesStart', () => {
-    quota = { limit: 5, used: 5, resetsAtUtc: '2026-12-01T00:00:00Z', allowed: false };
+    quota = { limit: 5, used: 5, resetsAtUtc: '2026-12-01T00:00:00Z', allowed: false, planKey: 'pro' };
     setup();
     component.openForm();
     component.pickFile(pdf());
     fixture.detectChanges();
 
-    expect(text()).toContain('5 / 5 kitap kullanıldı');
+    expect(text()).toContain('Bu ay 5 / 5 kitap');
     expect(text()).toContain(tr.quota.blocked);
     const start = el().querySelector('button[type=submit]') as HTMLButtonElement;
     expect(start.disabled).toBe(true);
+  });
+
+  it('quota_Unlimited_HidesCard', () => {
+    setup();
+    component.openForm();
+    fixture.detectChanges();
+
+    expect(text()).not.toContain(tr.quota.title);
+  });
+
+  it('quota_NotInPlan_ExplainsAndPointsToDemo', () => {
+    quota = { limit: 0, used: 0, resetsAtUtc: '2026-12-01T00:00:00Z', allowed: false, planKey: 'free' };
+    setup();
+    component.openForm();
+    component.pickFile(pdf());
+    fixture.detectChanges();
+
+    expect(text()).toContain(tr.quota.notInPlan);
+    expect(text()).toContain(tr.quota.demoSoon);
+    expect((el().querySelector('button[type=submit]') as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('errorKey_MapsKnownCodesAndFallsBack', () => {

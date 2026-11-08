@@ -60,12 +60,13 @@ export interface BookImportJobDetail extends BookImportJob {
   tests: BookImportJobTest[];
 }
 
-/** `limit` null = sınırsız (#1019 öncesi ve Admin). */
+/** `limit` null = sınırsız (Admin, QuestionTrainer ya da sınırsız plan; kart gizlenir), 0 = planda yok (#1019). */
 export interface BookImportQuota {
   limit: number | null;
   used: number;
   resetsAtUtc: string | null;
   allowed: boolean;
+  planKey: string | null;
 }
 
 export interface StartBookImportRequest {

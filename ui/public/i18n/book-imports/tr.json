@@ -27,10 +27,11 @@
   },
   "quota": {
     "title": "Aylık hak",
-    "unlimited": "Sınırsız aktarım",
-    "used": "{{used}} / {{limit}} kitap kullanıldı",
+    "used": "Bu ay {{used}} / {{limit}} kitap",
     "resets": "{{date}} tarihinde yenilenir",
-    "blocked": "Bu ayki hakkınız doldu."
+    "blocked": "Bu ayki hakkınız doldu.",
+    "notInPlan": "Planınız kitap aktarımı içermiyor.",
+    "demoSoon": "Örnek bir kitapla demo yakında burada olacak."
   },
   "hint": {
     "title": "Nasıl çalışır?",

@@ -64,25 +64,29 @@
         </button>
         <button mat-stroked-button type="button" (click)="cancelForm()" [disabled]="submitting()">{{ t('form.cancel') }}</button>
         @if (quotaBlocked()) {
-        <span class="bi-form__blocked">{{ t('quota.blocked') }}</span>
+        <span class="bi-form__blocked">{{ t(quota()?.limit === 0 ? 'quota.notInPlan' : 'quota.blocked') }}</span>
         }
       </div>
     </form>
 
     <aside class="bi-side">
       @if (quota(); as q) {
+      @if (q.limit !== null) {
       <div class="bi-card" [class.bi-card--danger]="!q.allowed">
         <h3>{{ t('quota.title') }}</h3>
-        @if (q.limit === null) {
-        <p>{{ t('quota.unlimited') }}</p>
+        @if (q.limit === 0) {
+        <p>{{ t('quota.notInPlan') }}</p>
+        <p class="bi-card__meta">{{ t('quota.demoSoon') }}</p>
         } @else {
         <p class="bi-card__big">{{ t('quota.used', { used: q.used, limit: q.limit }) }}</p>
-        <mat-progress-bar mode="determinate" [value]="q.limit > 0 ? (100 * q.used) / q.limit : 100"></mat-progress-bar>
+        <mat-progress-bar mode="determinate" [value]="(100 * q.used) / q.limit"
+          [attr.aria-label]="t('quota.used', { used: q.used, limit: q.limit })"></mat-progress-bar>
         @if (q.resetsAtUtc) {
         <p class="bi-card__meta">{{ t('quota.resets', { date: (q.resetsAtUtc | date: 'd MMMM') }) }}</p>
         }
         }
       </div>
+      }
       }
       <div class="bi-card">
         <h3>{{ t('hint.title') }}</h3>

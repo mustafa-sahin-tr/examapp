@@ -646,7 +646,7 @@ if (rabbitMqEnabled)
 builder.Services.AddScoped<IQuestionTransferService, QuestionTransferService>();
 builder.Services.AddScoped<QuestionTransferJobRunner>();
 // Issue #1018 (epic #1017): kitaptan aktarım; plan / hak kontrolü #1019'a kadar sınırsız.
-builder.Services.AddScoped<ExamApp.Api.Services.Entitlements.IEntitlementService, ExamApp.Api.Services.Entitlements.UnlimitedEntitlementService>();
+builder.Services.AddScoped<ExamApp.Api.Services.Entitlements.IEntitlementService, ExamApp.Api.Services.Entitlements.EntitlementService>();
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IBookImportService, ExamApp.Api.Services.BookImport.BookImportService>();
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.BookImportJobRunner>();
 builder.Services.AddScoped<QuestionContentHashService>();

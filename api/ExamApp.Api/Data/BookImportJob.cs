@@ -96,6 +96,16 @@ public class BookImportJob : BaseEntity
 
     public DateTime? FinishedAt { get; set; }
 
+    /// <summary>
+    /// Issue #1021: kurulum özeti (JSON, <see cref="Services.BookImport.BookSetupSummary"/>): ofset, cevap anahtarı ve öz
+    /// değerlendirme sayfaları, üniteler, eşleşmeyen anahtar satırları. Test satırları <see cref="Tests"/>'te.
+    /// </summary>
+    public string? SetupJson { get; set; }
+
+    /// <summary>Issue #1021 / #1024: işte harcanan tahmini Claude maliyeti (USD); başarısız çağrılar dahil.</summary>
+    [Column(TypeName = "numeric(10,4)")]
+    public decimal AiCostUsd { get; set; }
+
     public ICollection<BookImportJobTest> Tests { get; set; } = new List<BookImportJobTest>();
 
     public ICollection<BookImportPage> Pages { get; set; } = new List<BookImportPage>();
@@ -105,6 +115,7 @@ public class BookImportJob : BaseEntity
 public class BookImportJobTest : BaseEntity
 {
     public const int MaxTitleLength = 300;
+    public const int MaxKeyLength = 100;
 
     public int Id { get; set; }
 
@@ -122,6 +133,35 @@ public class BookImportJobTest : BaseEntity
 
     [MaxLength(MaxTitleLength)]
     public string? Title { get; set; }
+
+    /// <summary>Issue #1021: testin dosya sayfaları (kurulum çıkarır, öğretmen onayda düzeltebilir).</summary>
+    public int? FileFrom { get; set; }
+
+    public int? FileTo { get; set; }
+
+    public int? Minutes { get; set; }
+
+    /// <summary>Beklenen soru sayısı: anahtar varsa anahtardaki, yoksa sayfada görülen en büyük soru no.</summary>
+    public int? ExpectedQuestions { get; set; }
+
+    /// <summary>
+    /// Issue #1021: cevap anahtarı, soru sırasıyla bir harf (A–E; okunamayan "?"). Null: anahtar yok (sorular cevapsız aktarılır).
+    /// </summary>
+    [MaxLength(MaxKeyLength)]
+    public string? AnswerKey { get; set; }
+
+    /// <summary>
+    /// İki anahtar okumasının farkı, <see cref="AnswerKey"/> ile aynı uzunlukta: "." uyumlu, harf diğer okumanın değeri,
+    /// "-" diğer okumada yok. Onayda temizlenir.
+    /// </summary>
+    [MaxLength(MaxKeyLength)]
+    public string? KeyConflicts { get; set; }
+
+    /// <summary>Kurulum onayında oluşturulan kitap testi (#577 kitap kaydı).</summary>
+    public int? BookTestId { get; set; }
+
+    [ForeignKey(nameof(BookTestId))]
+    public BookTest? BookTest { get; set; }
 
     public BookImportTestStatus Status { get; set; } = BookImportTestStatus.Pending;
 

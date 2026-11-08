@@ -48,6 +48,16 @@ internal static class LabelingClaude
         return await CompleteAsync<T>(chat, options, logger, model, maxOutputTokens, messages, ct);
     }
 
+    /// <summary>
+    /// Birden çok görsel ve metin parçası → <typeparamref name="T"/> (#1021 kitap kurulumu: sayfa toplu taraması, döşemeli cevap
+    /// anahtarı). Hata davranışı <see cref="AskAsync{T}"/> ile aynıdır.
+    /// </summary>
+    public static Task<(T Result, LabelingAiUsage Usage)> AskContentAsync<T>(
+        IChatClient chat, LabelingAiOptions options, ILogger logger, LabelingAiModelOption model, int maxOutputTokens,
+        string systemPrompt, IList<AIContent> content, CancellationToken ct) =>
+        CompleteAsync<T>(chat, options, logger, model, maxOutputTokens,
+            [new(ChatRole.System, systemPrompt), new(ChatRole.User, content)], ct);
+
     /// <summary>Görselsiz çağrı: talimat → <typeparamref name="T"/>. Hata davranışı <see cref="AskAsync{T}"/> ile aynıdır.</summary>
     public static Task<(T Result, LabelingAiUsage Usage)> AskTextAsync<T>(
         IChatClient chat, LabelingAiOptions options, ILogger logger, LabelingAiModelOption model, int maxOutputTokens,

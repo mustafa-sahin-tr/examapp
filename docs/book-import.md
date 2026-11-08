@@ -50,3 +50,29 @@ aktarım aracındaki Python portu referanstır (#1022).
   işaretleme rolleri `GET /api/exam/labeling/books/{bookId}/pages/{filePage}/image` (kitaba bağlı en son aktarım).
 - **Depolama:** görseller silinmez (işaretleme ekranları okur); kitap başına ~100–150 MB (gerçek sayfa ~300 KB). MinIO
   büyümesi izlenmeli; iş silme / temizleme #1025'te.
+
+## Kurulum aşaması ve onay (#1021)
+
+- **Tarama** (`BookSetupStage`, `IBookSetupAi.SurveyAsync`): sayfalar `BookImport:SurveyBatchSize` (varsayılan 8) sayfalık
+  gruplar halinde, uzun kenarı 1000 px JPEG olarak ucuz modele (`BookImport:SurveyModel`, varsayılan `claude-haiku-5-5`)
+  gider. Sayfa başına: tür (`cover|toc|test|answerKey|selfAssessment|other`), basılı sayfa no, test başlığı (ünite, test no,
+  başlık, dakika), sayfadaki en büyük soru no; içindekiler sayfalarından ünite satırları.
+- **Cevap anahtarı** iki kez okunur (`BookImport:AnswerKeyModel`, varsayılan `claude-sonnet-5-5`): tam sayfa (uzun kenar
+  1568) ve sayfanın üst / alt %55'lik iki örtüşen döşemesi. İki okuma soru soru karşılaştırılır; farklı hücreler onay
+  ekranında sarı, okunamayanlar (`?`) kırmızı işaretlenir.
+- **Planlama** (`BookSetupPlanner`, saf; kurallar orada): test başlıklı sayfayla başlar, başlıksız ardışık test sayfaları ona
+  eklenir; ofset (basılı = dosya + ofset) en sık farktır; beklenen soru sayısı anahtar uzunluğu (yoksa sayfadaki en büyük
+  soru no). İşaretler: `noKey`, `keyMismatch`, `keyConflicts`; kitapta bulunamayan anahtar satırları "eşleşmeyen" listesi.
+  Üniteler (ders seçiliyse) Haiku ile dersin o sınıftaki konularına eşlenir.
+- **Kayıt:** test satırları `BookImportJobTests` (sayfa aralığı, dakika, `AnswerKey` "ABCD…", `KeyConflicts` "." uyumlu /
+  diğer okumanın harfi / "-"), özet `BookImportJobs.SetupJson`, maliyet `AiCostUsd` (başarısız çağrılar dahil). Model listesi
+  ve fiyatlar `Anthropic:Models`'tan; API anahtarı yoksa iş "Claude is not configured" ile düşer. Hiç test başlığı yoksa
+  "No tests were found in the book". Sistem mesajı / şema / görsel boyutu değişince `ClaudeBookSetupAi.SchemaRevision` artar.
+- **Onay ekranı** (takip sayfasında, iş `AwaitingConfirmation` + `SetupConfirmation`): özet, anahtar sayfası görseli, test
+  tablosu (aktar / başlık / dakika / sayfalar) ve klavyeyle gezilen anahtar ızgarası (harf → sağa, oklar). Anahtar yoksa
+  "cevapsız devam et" ya da "aktarımı iptal et". Uyuşmazlık ve okunamayan hücre kalırken onay kapalı.
+- **Onay** (`POST /api/exam/book-imports/{id}/setup/confirm`): hak kontrolü (`CheckAsync`, 429) → kitap kaydı (#577:
+  ofset, anahtar aralıkları, içindekiler) → `BookTest` satırları ("1-01 · Başlık") → hak düşer
+  (`RecordUsageAsync(userId, "book-import", jobId)`) → iş `Questions` aşamasında kuyruğa girer (#1022 iskelet). Aynı adlı
+  kitap varsa 409 + `existingBook`: mevcut kitabı kullan (kayıt kümeleri boşsa kurulumla doldurulur) ya da yeni ad.
+  İptal: `POST /api/exam/book-imports/{id}/cancel` (yalnız onay beklerken; diğer durumlar #1025).

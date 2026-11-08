@@ -1,0 +1,183 @@
+<section class="bis" *transloco="let t; prefix: 'book-imports'" [attr.aria-label]="t('setup.title')">
+  @if (loadError()) {
+  <div class="bis-banner bis-banner--danger" role="alert">
+    <mat-icon aria-hidden="true">error_outline</mat-icon>{{ t('setup.loadFailed') }}
+    <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+  </div>
+  } @else if (setup(); as s) {
+  <header class="bis-head">
+    <h2>{{ t('setup.title') }}</h2>
+    <p>{{ t('setup.intro') }}</p>
+  </header>
+
+  @if (s.noAnswerKey && !noKeyAcknowledged()) {
+  <div class="bis-banner bis-banner--warning" role="alert">
+    <mat-icon aria-hidden="true">help_outline</mat-icon>
+    <span>{{ t('setup.noKey') }}</span>
+    <span class="bis-banner__actions">
+      <button mat-flat-button type="button" (click)="acknowledgeNoKey()">{{ t('setup.continueWithoutKey') }}</button>
+      <button mat-stroked-button type="button" [disabled]="saving()" (click)="cancel()">{{ t('setup.cancelImport') }}</button>
+    </span>
+  </div>
+  }
+
+  <div class="bis-summary">
+    <dl class="bis-facts">
+      <div><dt>{{ t('setup.tests') }}</dt><dd>{{ s.tests.length }}</dd></div>
+      <div><dt>{{ t('setup.offset') }}</dt><dd>{{ s.offset === null ? t('setup.offsetUnknown') : t('setup.offsetValue', { offset: s.offset }) }}</dd></div>
+      <div><dt>{{ t('setup.keyPages') }}</dt><dd>{{ keyPages().length ? keyPages().join(', ') : '—' }}</dd></div>
+      <div><dt>{{ t('setup.selfAssessment') }}</dt><dd>{{ s.selfAssessmentPages.length ? s.selfAssessmentPages.join(', ') : '—' }}</dd></div>
+      <div><dt>{{ t('setup.cost') }}</dt><dd>{{ '$' + s.aiCostUsd.toFixed(2) }}</dd></div>
+    </dl>
+    @if (s.units.length) {
+    <ul class="bis-units" [attr.aria-label]="t('setup.units')">
+      @for (unit of s.units; track unit.unit) {
+      <li>
+        <strong>{{ t('setup.unit', { unit: unit.unit }) }}</strong>
+        <span>{{ unit.title || '—' }}</span>
+        <span class="bis-muted">{{ t('setup.pagesRange', { from: unit.fileFrom, to: unit.fileTo }) }}</span>
+        @if (unit.topicName) { <span class="bis-chip">{{ unit.topicName }}</span> }
+      </li>
+      }
+    </ul>
+    }
+    @if (s.orphanKeys.length) {
+    <details class="bis-orphans">
+      <summary>{{ t('setup.orphanKeys', { count: s.orphanKeys.length }) }}</summary>
+      <p>{{ s.orphanKeys.join(', ') }}</p>
+    </details>
+    }
+  </div>
+
+  <div class="bis-body">
+    @if (keyPages().length) {
+    <figure class="bis-keypage" [class.bis-keypage--large]="keyImageLarge()">
+      <div class="bis-keypage__tabs" role="group" [attr.aria-label]="t('setup.keyPages')">
+        @for (page of keyPages(); track page) {
+        <button mat-stroked-button type="button" [class.bis-active]="keyPage() === page" [attr.aria-pressed]="keyPage() === page"
+          (click)="showKeyPage(page)">{{ t('setup.page', { page }) }}</button>
+        }
+        <button mat-icon-button type="button" (click)="keyImageLarge.set(!keyImageLarge())"
+          [attr.aria-label]="keyImageLarge() ? t('setup.shrink') : t('setup.enlarge')">
+          <mat-icon>{{ keyImageLarge() ? 'zoom_out' : 'zoom_in' }}</mat-icon>
+        </button>
+      </div>
+      @if (keyImage(); as src) {
+      <img [src]="src" [alt]="t('setup.keyImageAlt', { page: keyPage() })" />
+      } @else {
+      <div class="bis-keypage__empty"><mat-spinner diameter="20" aria-hidden="true"></mat-spinner></div>
+      }
+    </figure>
+    }
+
+    <div class="bis-table-wrap">
+      <p class="bis-legend">
+        <span class="bis-swatch bis-swatch--conflict" aria-hidden="true"></span>{{ t('setup.legendConflict') }}
+        <span class="bis-swatch bis-swatch--unreadable" aria-hidden="true"></span>{{ t('setup.legendUnreadable') }}
+        <span class="bis-muted">{{ t('setup.keyboardHint') }}</span>
+      </p>
+      <table class="bis-table">
+        <thead>
+          <tr>
+            <th scope="col"><span class="cdk-visually-hidden">{{ t('setup.include') }}</span></th>
+            <th scope="col">{{ t('setup.colTest') }}</th>
+            <th scope="col">{{ t('setup.colTitle') }}</th>
+            <th scope="col">{{ t('setup.colMinutes') }}</th>
+            <th scope="col">{{ t('setup.colPages') }}</th>
+            <th scope="col">{{ t('setup.colKey') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of rows(); track row.order; let r = $index) {
+          <tr [class.bis-excluded]="!row.include">
+            <td>
+              <mat-checkbox [checked]="row.include" (change)="update(row, { include: $event.checked })"
+                [aria-label]="t('setup.includeTest', { unit: row.unit, no: row.testNo })"></mat-checkbox>
+            </td>
+            <th scope="row" class="bis-code">{{ row.unit }}-{{ row.testNo < 10 ? '0' + row.testNo : row.testNo }}</th>
+            <td>
+              <mat-form-field class="bis-field bis-field--title" appearance="outline" subscriptSizing="dynamic">
+                <input matInput [ngModel]="row.title" (ngModelChange)="update(row, { title: $event })" maxlength="300"
+                  [attr.aria-label]="t('setup.colTitle')" />
+              </mat-form-field>
+            </td>
+            <td>
+              <mat-form-field class="bis-field bis-field--num" appearance="outline" subscriptSizing="dynamic">
+                <input matInput type="number" min="1" max="600" [ngModel]="row.minutes"
+                  (ngModelChange)="update(row, { minutes: $event || null })" [attr.aria-label]="t('setup.colMinutes')" />
+              </mat-form-field>
+            </td>
+            <td class="bis-pages">
+              <mat-form-field class="bis-field bis-field--num" appearance="outline" subscriptSizing="dynamic">
+                <input matInput type="number" min="1" [ngModel]="row.fileFrom" (ngModelChange)="update(row, { fileFrom: $event })"
+                  [attr.aria-label]="t('setup.fromPage')" />
+              </mat-form-field>
+              –
+              <mat-form-field class="bis-field bis-field--num" appearance="outline" subscriptSizing="dynamic">
+                <input matInput type="number" min="1" [ngModel]="row.fileTo" (ngModelChange)="update(row, { fileTo: $event })"
+                  [attr.aria-label]="t('setup.toPage')" />
+              </mat-form-field>
+            </td>
+            <td>
+              @if (row.key; as key) {
+              <div class="bis-key" role="group" [attr.aria-label]="t('setup.keyOf', { unit: row.unit, no: row.testNo })">
+                <!-- Yoğun ızgara: hücre başına mat-form-field sığmaz; yerel input + klavye + aria-label (#575 istisnası gibi). -->
+                @for (cell of key; track $index; let c = $index) {
+                <label class="bis-key__cell"
+                  [class.bis-key__cell--conflict]="conflictLabel(row, c)"
+                  [class.bis-key__cell--unreadable]="cell === '?' || cell === ''"
+                  [attr.title]="conflictLabel(row, c) ? t('setup.otherRead', { answer: conflictLabel(row, c) }) : null">
+                  <span class="bis-key__no">{{ c + 1 }}</span>
+                  <input [value]="cell" maxlength="1" autocomplete="off" [attr.data-cell]="r + '-' + c"
+                    [attr.aria-label]="t('setup.keyCell', { no: c + 1, other: conflictLabel(row, c) || '' })"
+                    (keydown)="onKeyCell($event, r, c)" (focus)="$any($event.target).select()" />
+                </label>
+                }
+              </div>
+              } @else {
+              <span class="bis-muted">{{ t('setup.noKeyForTest') }}</span>
+              }
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer class="bis-confirm">
+    @if (s.existingBook; as existing) {
+    <mat-radio-group class="bis-existing" [ngModel]="useExisting()" (ngModelChange)="useExisting.set($event)"
+      [attr.aria-label]="t('setup.existingTitle', { name: existing.name })">
+      <p>{{ t('setup.existingTitle', { name: existing.name }) }}</p>
+      <mat-radio-button value="existing">{{ t('setup.useExisting') }}</mat-radio-button>
+      <mat-radio-button value="new">{{ t('setup.createNew') }}</mat-radio-button>
+    </mat-radio-group>
+    }
+    @if (!s.existingBook || useExisting() === 'new') {
+    <mat-form-field class="bis-name" appearance="outline" subscriptSizing="dynamic">
+      <mat-label>{{ t('setup.bookName') }}</mat-label>
+      <input matInput [ngModel]="bookName()" (ngModelChange)="bookName.set($event)" maxlength="200" required />
+    </mat-form-field>
+    }
+
+    <p class="bis-status" role="status">
+      @if (openConflicts() > 0) { {{ t('setup.openConflicts', { count: openConflicts() }) }} }
+      @if (unreadable() > 0) { {{ t('setup.unreadable', { count: unreadable() }) }} }
+      @if (invalidPages()) { {{ t('setup.invalidPages') }} }
+      @if (openConflicts() === 0 && unreadable() === 0 && !invalidPages()) { {{ t('setup.ready', { count: included().length }) }} }
+    </p>
+    @if (error(); as message) {
+    <p class="bis-error" role="alert">{{ message === 'generic' ? t('setup.confirmFailed') : message }}</p>
+    }
+    <div class="bis-actions">
+      <button mat-stroked-button type="button" [disabled]="saving()" (click)="cancel()">{{ t('setup.cancelImport') }}</button>
+      <button mat-flat-button color="primary" type="button" [disabled]="!canConfirm()" (click)="confirm()">
+        {{ t('setup.confirm') }}
+      </button>
+    </div>
+  </footer>
+  } @else {
+  <div class="bis-loading" role="status"><mat-spinner diameter="24" aria-hidden="true"></mat-spinner>{{ t('setup.loading') }}</div>
+  }
+</section>

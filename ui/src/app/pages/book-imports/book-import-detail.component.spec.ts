@@ -2,7 +2,7 @@ import type { MockedObject } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { Observable, of, throwError } from 'rxjs';
+import { NEVER, Observable, of, throwError } from 'rxjs';
 
 import { BookImportDetailComponent } from './book-import-detail.component';
 import { BOOK_IMPORTS_POLL_MS } from './book-imports.component';
@@ -35,6 +35,7 @@ describe('BookImportDetailComponent (#1018)', () => {
       quota: vi.fn(),
       start: vi.fn(),
       get: vi.fn().mockName('get').mockImplementation(() => response),
+      setup: vi.fn().mockReturnValue(NEVER),
     } as unknown as MockedObject<BookImportService>;
     TestBed.configureTestingModule({
       imports: [BookImportDetailComponent, translocoTestingModule({ langs: { 'book-imports/tr': tr } })],
@@ -69,12 +70,15 @@ describe('BookImportDetailComponent (#1018)', () => {
     expect(text()).toContain(tr.detail.noTestsYet);
   });
 
-  it('awaitingConfirmation_MarksStepWaitingAndShowsBanner', () => {
+  it('awaitingConfirmation_MarksStepWaitingAndShowsTheSetupScreen', () => {
     response = of(detail({ status: 'AwaitingConfirmation', stage: 'SetupConfirmation', stageTotal: 0, stageProcessed: 0 }));
     setup();
 
     expect(steps()[3].classList).toContain('bid-step--waiting');
     expect(text()).toContain(tr.detail.awaitingConfirmation);
+    // #1021: onay ekranı kurulumu yükler.
+    expect(el().querySelector('app-book-import-setup')).not.toBeNull();
+    expect(api.setup).toHaveBeenCalledWith('a1');
   });
 
   it('failed_ShowsFailedStepAndError', () => {

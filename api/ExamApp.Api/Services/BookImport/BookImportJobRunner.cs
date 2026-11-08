@@ -14,7 +14,8 @@ namespace ExamApp.Api.Services.BookImport;
 
 /// <summary>
 /// Issue #1018 (epic #1017): kitaptan aktarım işini aşama aşama yürütür. Sayfalar (#1020) PDF'i sayfa görsellerine çevirir; kitap
-/// kurulumu (#1021) henüz iskelet: iş yapmadan geçilir ve iş kurulum onayında bekler. Emsal <c>QuestionTransferJobRunner</c>:
+/// kurulumu (#1021, <see cref="BookSetupStage"/>) testleri ve cevap anahtarını çıkarır, iş kurulum onayında bekler. Onaydan sonra
+/// iş yeniden kuyruğa girer; soru aktarımı (#1022) henüz iskelet. Emsal <c>QuestionTransferJobRunner</c>:
 /// kendi Hangfire kuyruğu, iş başına dağıtık kilit, sahibin öğretmen onayı iş başında yeniden kontrol edilir.
 /// </summary>
 public class BookImportJobRunner
@@ -25,21 +26,28 @@ public class BookImportJobRunner
     /// <summary>Varsayılan sayfa sınırı; <c>BookImport:MaxPages</c> ile değişir.</summary>
     public const int DefaultMaxPages = 400;
 
+    /// <summary>Kurulum taramasında tek Claude çağrısına giden sayfa; <c>BookImport:SurveyBatchSize</c>.</summary>
+    public const int DefaultSurveyBatchSize = 8;
+
     private readonly AppDbContext _db;
     private readonly IApprovedTeacherGuard _teacherGuard;
     private readonly IMinIoService _minio;
     private readonly IPdfRasterizer _rasterizer;
+    private readonly IBookSetupAi _setupAi;
     private readonly int _maxPages;
+    private readonly int _surveyBatchSize;
     private readonly ILogger<BookImportJobRunner> _logger;
 
     public BookImportJobRunner(AppDbContext db, IApprovedTeacherGuard teacherGuard, IMinIoService minio, IPdfRasterizer rasterizer,
-        IConfiguration? configuration = null, ILogger<BookImportJobRunner>? logger = null)
+        IBookSetupAi setupAi, IConfiguration? configuration = null, ILogger<BookImportJobRunner>? logger = null)
     {
         _db = db;
         _teacherGuard = teacherGuard;
         _minio = minio;
         _rasterizer = rasterizer;
+        _setupAi = setupAi;
         _maxPages = Math.Max(1, configuration?.GetValue<int?>("BookImport:MaxPages") ?? DefaultMaxPages);
+        _surveyBatchSize = Math.Clamp(configuration?.GetValue<int?>("BookImport:SurveyBatchSize") ?? DefaultSurveyBatchSize, 1, 20);
         _logger = logger ?? NullLogger<BookImportJobRunner>.Instance;
     }
 
@@ -74,16 +82,27 @@ public class BookImportJobRunner
 
         try
         {
-            await RenderPagesAsync(job);
+            if (job.Stage < BookImportStage.SetupConfirmation)
+            {
+                await RenderPagesAsync(job);
 
-            // #1021: AI ile kitap kurulumu. İskelet: iş yapmadan geçilir.
-            await EnterStageAsync(job, BookImportStage.Setup);
+                await EnterStageAsync(job, BookImportStage.Setup);
+                await new BookSetupStage(_db, _minio, _setupAi, _surveyBatchSize, _logger).RunAsync(job);
 
-            // Kurulum onayı: kullanıcı onaylayana kadar iş bekler (#1021 onay ucu soruları başlatır).
-            job.Stage = BookImportStage.SetupConfirmation;
-            job.Status = BookImportJobStatus.AwaitingConfirmation;
-            job.StageTotal = 0;
-            job.StageProcessed = 0;
+                // Kurulum onayı: kullanıcı onaylayana kadar iş bekler; onay ucu (BookImportService.ConfirmSetupAsync) işi
+                // Questions aşamasında yeniden kuyruğa verir.
+                job.Stage = BookImportStage.SetupConfirmation;
+                job.Status = BookImportJobStatus.AwaitingConfirmation;
+                job.StageTotal = 0;
+                job.StageProcessed = 0;
+                await _db.SaveChangesAsync();
+                return;
+            }
+
+            // #1022: test test soru aktarımı. İskelet: iş yapmadan inceleme aşamasına geçilir.
+            await EnterStageAsync(job, BookImportStage.Questions);
+            job.Stage = BookImportStage.Review;
+            job.Status = BookImportJobStatus.ReadyForReview;
             await _db.SaveChangesAsync();
         }
         catch (Exception failure) when (failure is BookImportFailure or PdfRasterizeException)

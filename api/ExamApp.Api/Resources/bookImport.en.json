@@ -8,6 +8,17 @@
     "invalidSubject": "Choose a valid subject.",
     "notPdf": "The file is not a PDF.",
     "fileTooLarge": "The file is too large.",
-    "quotaReached": "You have used this month's book imports."
+    "quotaReached": "You have used this month's book imports.",
+    "notAwaitingSetup": "This import is not waiting for setup confirmation.",
+    "bookNameTaken": "A book with this name already exists. Use the existing book or enter another name.",
+    "bookNotFound": "The selected book was not found.",
+    "noTests": "Select at least one test.",
+    "unknownTest": "The test list does not match the import; reload the page.",
+    "invalidPages": "Invalid test pages (start ≤ end, within the book's pages).",
+    "titleTooLong": "A test title can be at most 300 characters.",
+    "invalidMinutes": "Minutes must be between 1 and 600.",
+    "invalidAnswerKey": "The answer key may contain only the letters A–E; fix unreadable (?) answers.",
+    "invalidSetup": "The setup could not be confirmed.",
+    "notCancellable": "This import cannot be cancelled at this stage."
   }
 }

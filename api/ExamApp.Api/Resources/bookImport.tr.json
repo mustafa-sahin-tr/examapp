@@ -8,6 +8,17 @@
     "invalidSubject": "Geçerli bir ders seçin.",
     "notPdf": "Dosya PDF değil.",
     "fileTooLarge": "Dosya çok büyük.",
-    "quotaReached": "Bu ayki kitap aktarım hakkını doldurdun."
+    "quotaReached": "Bu ayki kitap aktarım hakkını doldurdun.",
+    "notAwaitingSetup": "Bu aktarım kurulum onayı beklemiyor.",
+    "bookNameTaken": "Bu adla bir kitap zaten var. Mevcut kitabı kullan ya da başka bir ad gir.",
+    "bookNotFound": "Seçilen kitap bulunamadı.",
+    "noTests": "En az bir test seçin.",
+    "unknownTest": "Test listesi aktarımla eşleşmiyor; sayfayı yenileyin.",
+    "invalidPages": "Test sayfaları geçersiz (başlangıç ≤ bitiş, kitabın sayfaları içinde).",
+    "titleTooLong": "Test başlığı en fazla 300 karakter olabilir.",
+    "invalidMinutes": "Süre 1–600 dakika olmalı.",
+    "invalidAnswerKey": "Cevap anahtarı yalnız A–E harflerinden oluşmalı; okunamayan (?) cevapları düzeltin.",
+    "invalidSetup": "Kurulum onaylanamadı.",
+    "notCancellable": "Bu aktarım bu aşamada iptal edilemez."
   }
 }

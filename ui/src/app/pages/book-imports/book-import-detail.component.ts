@@ -20,18 +20,20 @@ import {
   stageState,
 } from '../../models/book-import';
 import { BookImportService } from '../../services/book-import.service';
+import { BookImportSetupComponent } from './book-import-setup.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { BOOK_IMPORTS_POLL_MS, BOOK_IMPORTS_SCOPE } from './book-imports.component';
 
 /**
  * Issue #1018 (epic #1017): bir kitap aktarımının takibi — aşama adımları, geçerli aşamanın ilerlemesi, test ızgarası ve dikkat
- * gerektiren testler. İş sürerken 5 sn'de bir yenilenir. Yeniden dene / iptal (#1025), kurulum onayı (#1021) ve inceleme (#1023)
- * sonraki dilimlerde.
+ * gerektiren testler. İş sürerken 5 sn'de bir yenilenir. Kurulum onayında onay ekranı (#1021) gösterilir. Yeniden dene / iptal
+ * (#1025) ve inceleme (#1023) sonraki dilimlerde.
  */
 @Component({
   selector: 'app-book-import-detail',
   standalone: true,
   imports: [
+    BookImportSetupComponent,
     DatePipe,
     MatButtonModule,
     MatIconModule,

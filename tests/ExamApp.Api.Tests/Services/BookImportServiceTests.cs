@@ -3,6 +3,7 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Services.BookImport;
 using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Labeling;
 using ExamApp.Api.Services.Teachers;
 using ExamApp.Api.Tests.Support;
 using Hangfire;
@@ -18,6 +19,7 @@ public class BookImportServiceTests : IDisposable
     private readonly IMinIoService _minio = Substitute.For<IMinIoService>();
     private readonly IBackgroundJobClient _jobs = Substitute.For<IBackgroundJobClient>();
     private IEntitlementService _entitlements = AllowAll();
+    private readonly FakeBookSetupAi _ai = new();
     private readonly int _gradeId;
 
     public BookImportServiceTests()
@@ -37,7 +39,7 @@ public class BookImportServiceTests : IDisposable
         if (maxUploadBytes is { } max)
             settings["BookImport:MaxUploadBytes"] = max.ToString();
         var config = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
-        return new BookImportService(ctx, _minio, _jobs, _entitlements, config);
+        return new BookImportService(ctx, _minio, _jobs, _entitlements, new BookRegistryService(ctx, TimeProvider.System), config);
     }
 
     private StartBookImportRequest Pdf(string name = "Puan BTS 5 Matematik", int? gradeId = null, string content = "%PDF-1.7 body")
@@ -229,7 +231,7 @@ public class BookImportServiceTests : IDisposable
     }
 
     private BookImportJobRunner Runner(AppDbContext ctx, IApprovedTeacherGuard guard) =>
-        new(ctx, guard, _minio, new PdfiumRasterizer(pageWidth: 400));
+        new(ctx, guard, _minio, new PdfiumRasterizer(pageWidth: 400), _ai);
 
     private void ServePdf(byte[] pdf) =>
         _minio.GetFileStreamAsync(Arg.Any<string>()).Returns(_ => Task.FromResult<Stream?>(new MemoryStream(pdf)));

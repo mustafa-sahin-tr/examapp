@@ -1408,6 +1408,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<BookImportJobTest>(e =>
         {
             e.HasOne(t => t.Job).WithMany(j => j.Tests).HasForeignKey(t => t.JobId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(t => t.BookTest).WithMany().HasForeignKey(t => t.BookTestId).OnDelete(DeleteBehavior.SetNull);
             e.HasIndex(t => new { t.JobId, t.Order }).IsUnique();
         });
         modelBuilder.Entity<BookImportPage>(e =>

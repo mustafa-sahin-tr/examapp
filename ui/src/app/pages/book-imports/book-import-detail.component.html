@@ -44,6 +44,9 @@
     <mat-icon aria-hidden="true">pending_actions</mat-icon>
     <span>{{ t('detail.awaitingConfirmation') }}</span>
   </div>
+  @if (j.stage === 'SetupConfirmation') {
+  <app-book-import-setup [jobId]="j.id" (changed)="load()" />
+  }
   }
 
   <div class="bid-body">

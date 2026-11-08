@@ -9,6 +9,7 @@ Menü, sayfa başlığı ve metinlerde aynı kavram için aynı kelime kullanıl
 | Puansız çalışma sayfası | Etkinlik | Activity | |
 | Giriş ekranı | Ana Sayfa | Home | Dashboard, Veli paneli |
 | Program ve takvim | Planım | My Plan | Haftalık Takvim |
+| Abonelik (#1029) | Aboneliğim, plan, Planı yükselt | My subscription, plan, Upgrade plan | Planım (çalışma planı), Paket |
 | Birebir ders | Özel Ders, Derslerim | Private Lessons, My Lessons | Ders Randevularım |
 | Rozet | Rozetler | Badges | Raporlar, Sertifika |
 | Soru deposu | Soru Havuzu | Question Pool | Soru Bankası |

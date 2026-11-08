@@ -197,6 +197,27 @@ public class SubscriptionPlansControllerTests : IDisposable
         result.Result.ShouldBeOfType<BadRequestObjectResult>();
     }
 
+    [Fact]
+    public async Task Limit_response_carries_feature_usage_and_reset_date_for_a_blocked_user()
+    {
+        await using var ctx = _db.NewContext();
+        var check = await new EntitlementService(ctx, _clock).CheckAsync(
+            EntitlementSubject.Create(UserId, "Teacher"), EntitlementFeatures.BookImport, CancellationToken.None);
+
+        var result = EntitlementLimitResponse.Create(EntitlementFeatures.BookImport, check, "limit");
+
+        check.Allowed.ShouldBeFalse();
+        result.StatusCode.ShouldBe(StatusCodes.Status429TooManyRequests);
+        var body = result.Value.ShouldBeOfType<EntitlementLimitReachedDto>();
+        body.Code.ShouldBe("entitlement.limitReached");
+        body.Feature.ShouldBe(EntitlementFeatures.BookImport);
+        body.Limit.ShouldBe(0);
+        body.Used.ShouldBe(0);
+        body.ResetsAtUtc.ShouldBe(new DateTime(2026, 12, 1, 0, 0, 0, DateTimeKind.Utc));
+        body.PlanKey.ShouldBe(SubscriptionPlan.FreeKey);
+        body.Message.ShouldBe("limit");
+    }
+
     private static Dictionary<string, int?> Limits(IEnumerable<SubscriptionPlanDto> plans, string key) =>
         plans.Single(p => p.Key == key).MonthlyLimits;
 

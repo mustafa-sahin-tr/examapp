@@ -1061,12 +1061,14 @@ describe('EnhancedLayoutComponent profile menu (issue #375, #846)', () => {
         const navigateSpy = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
         const items = openProfileMenu();
 
-        expect(titles(items)).toEqual(['Profilim', 'Rozetlerim', 'Bildirimler', 'Ayarlar', 'Çıkış Yap']);
+        expect(titles(items)).toEqual(['Profilim', 'Rozetlerim', 'Aboneliğim', 'Bildirimler', 'Ayarlar', 'Çıkış Yap']);
         items[0].click();
         expect(navigateSpy).toHaveBeenCalledWith(['/student-profile'], {});
         items[1].click();
         expect(navigateSpy).toHaveBeenCalledWith(['/badges'], {});
-        items[3].click();
+        items[2].click();
+        expect(navigateSpy).toHaveBeenCalledWith(['/subscription'], {}); // #1029
+        items[4].click();
         expect(navigateSpy).toHaveBeenCalledWith(['/student-settings'], {}); // #847
     });
 
@@ -1076,11 +1078,17 @@ describe('EnhancedLayoutComponent profile menu (issue #375, #846)', () => {
             const navigateSpy = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
             const items = openProfileMenu();
 
-            expect(titles(items)).toEqual(['Bildirimler', 'Ayarlar', 'Çıkış Yap']);
-            items[1].click();
+            expect(titles(items)).toEqual(['Aboneliğim', 'Bildirimler', 'Ayarlar', 'Çıkış Yap']);
+            items[2].click();
             expect(navigateSpy).toHaveBeenCalledWith(['/settings'], {});
         });
     }
+
+    it('parent_DoesNotSeeSubscription (#1029)', () => {
+        setup(['Parent']);
+
+        expect(titles(openProfileMenu())).not.toContain('Aboneliğim');
+    });
 
     it('header_ShowsInitialsRoleGradeAndEmail_PreferencesInside (#846)', () => {
         setup(['Student']);

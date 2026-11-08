@@ -65,6 +65,26 @@ public class FeatureUsageDto
     public DateTime? ResetsAtUtc { get; set; }
 }
 
+/// <summary>Issue #1029: plan sınırına takılan isteğin ortak 429 gövdesi (<c>EntitlementLimitResponse</c>).</summary>
+public class EntitlementLimitReachedDto
+{
+    public const string LimitReachedCode = "entitlement.limitReached";
+
+    public string Code { get; set; } = LimitReachedCode;
+
+    /// <summary>Sınırına ulaşılan özellik anahtarı (ör. <c>book-import</c>).</summary>
+    public string Feature { get; set; } = string.Empty;
+
+    public int? Limit { get; set; }
+    public int? Used { get; set; }
+    public DateTime? ResetsAtUtc { get; set; }
+
+    /// <summary>Kullanıcının çözülen planı (pencerede "mevcut planın" işareti için).</summary>
+    public string? PlanKey { get; set; }
+
+    public string? Message { get; set; }
+}
+
 /// <summary>Issue #1028: sahte ödeme isteği (gerçek ödeme yok).</summary>
 public class SubscriptionCheckoutDto
 {

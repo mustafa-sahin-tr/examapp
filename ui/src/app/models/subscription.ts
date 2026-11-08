@@ -1,3 +1,5 @@
+import { HttpErrorResponse } from '@angular/common/http';
+
 /** Issue #1027 / #1028 (epic #1026): plan kataloğu ve kullanıcının planı. Fiyatlar yer tutucudur; gerçek ödeme yok. */
 
 export type SubscriptionPlanAudience = 'Any' | 'Teacher' | 'Student';
@@ -43,4 +45,26 @@ export const SUBSCRIPTION_FEATURES = ['book-import', 'ai-classification', 'mock-
 /** `subscription.plans.teacherPro` → scope içi `plans.teacherPro` (şablon `subscription` önekiyle çevirir). */
 export function planNameKey(displayNameKey: string | null | undefined): string {
   return (displayNameKey ?? '').replace(/^subscription\./, '');
+}
+
+/** Issue #1029: plan sınırına takılan her uç noktanın ortak 429 gövdesi (`EntitlementLimitResponse`). */
+export const ENTITLEMENT_LIMIT_REACHED_CODE = 'entitlement.limitReached';
+
+export interface EntitlementLimitReached {
+  code: typeof ENTITLEMENT_LIMIT_REACHED_CODE;
+  feature: string;
+  limit: number | null;
+  used: number | null;
+  resetsAtUtc: string | null;
+  planKey: string | null;
+  message?: string | null;
+}
+
+/** 429 + `entitlement.limitReached` ise gövdeyi döndürür; diğer hatalarda null. */
+export function entitlementLimitOf(error: unknown): EntitlementLimitReached | null {
+  if (!(error instanceof HttpErrorResponse) || error.status !== 429) return null;
+  const body = error.error as Partial<EntitlementLimitReached> | null;
+  return body?.code === ENTITLEMENT_LIMIT_REACHED_CODE && typeof body.feature === 'string'
+    ? (body as EntitlementLimitReached)
+    : null;
 }

@@ -307,15 +307,8 @@ public class BookImportController : BaseController
         _ => Conflict(new { code = "bookImport.notInReview", message = _localizer["bookImport.notInReview"].Value }),
     };
 
-    private ObjectResult QuotaReached(EntitlementCheck? quota) => StatusCode(StatusCodes.Status429TooManyRequests, new
-    {
-        code = "entitlement.limitReached",
-        feature = EntitlementFeatures.BookImport,
-        limit = quota?.Limit,
-        used = quota?.Used,
-        resetsAtUtc = quota?.ResetsAtUtc,
-        message = _localizer["bookImport.quotaReached"].Value,
-    });
+    private ObjectResult QuotaReached(EntitlementCheck? quota) =>
+        EntitlementLimitResponse.Create(EntitlementFeatures.BookImport, quota, _localizer["bookImport.quotaReached"].Value);
 
     private async Task<BookImportOwner?> ResolveOwnerAsync(CancellationToken ct)
     {

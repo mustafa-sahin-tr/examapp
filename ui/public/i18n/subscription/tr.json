@@ -17,7 +17,7 @@
   "features": {
     "book-import": "Kitaptan aktarım",
     "ai-classification": "Yapay zekâ ile sınıflandırma",
-    "mock-exam": "Deneme sınavı"
+    "mock-exam": "Deneme"
   },
   "limits": {
     "unlimited": "Sınırsız",
@@ -29,7 +29,9 @@
     "startTrial": "Denemeyi başlat",
     "choose": "Seç",
     "back": "Geri",
-    "retry": "Tekrar dene"
+    "retry": "Tekrar dene",
+    "upgrade": "Planı yükselt",
+    "close": "Kapat"
   },
   "checkout": {
     "demoTitle": "Bu bir demo ödeme ekranıdır",
@@ -40,11 +42,30 @@
   "errors": {
     "load": "Planlar yüklenemedi.",
     "trialUsed": "Bu hesap deneme hakkını daha önce kullandı.",
-    "generic": "İşlem tamamlanamadı. Lütfen tekrar dene."
+    "generic": "İşlem tamamlanamadı. Lütfen tekrar dene.",
+    "loadMine": "Abonelik bilgin yüklenemedi."
   },
   "page": {
-    "title": "Planım",
+    "title": "Planı yükselt",
     "subtitle": "Planını yükselt ya da deneme başlat.",
     "changed": "Planın güncellendi: {{ plan }}."
+  },
+  "mine": {
+    "title": "Aboneliğim",
+    "subtitle": "Planın ve bu ayki kullanımın.",
+    "loading": "Abonelik bilgin yükleniyor…",
+    "currentPlan": "Mevcut planın",
+    "validTo": "{{ date }} tarihine kadar geçerli.",
+    "trialEnds": "Deneme süren {{ date }} tarihinde biter.",
+    "usageTitle": "Bu ayki kullanım",
+    "usedOf": "{{ used }} / {{ limit }}",
+    "resets": "Sayaçlar {{ date }} tarihinde sıfırlanır."
+  },
+  "limitDialog": {
+    "title": "Bu ayki limitine ulaştın",
+    "usage": "{{ feature }} için bu ayki hakkını kullandın ({{ used }} / {{ limit }}).",
+    "notIncluded": "{{ feature }} mevcut planında yok.",
+    "resets": "Hakların {{ date }} tarihinde yenilenir.",
+    "compare": "Planlarda {{ feature }}"
   }
 }

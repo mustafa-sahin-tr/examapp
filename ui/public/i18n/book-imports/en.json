@@ -25,13 +25,35 @@
     "quotaReached": "You have used this month's book imports.",
     "generic": "The import could not be started. Try again."
   },
+  "demo": {
+    "badge": "Demo",
+    "sourceBadge": "Demo source",
+    "title": "Try with a sample book",
+    "body": "Try book import with 5 questions from \"{{book}}\". Pages, setup, questions and review run on the real screens, and it does not use your allowance.",
+    "bodyNoBook": "Try book import with 5 questions from a sample book.",
+    "used": "Demo runs: {{used}} / {{limit}}",
+    "start": "Try with a sample book",
+    "continue": "Back to the demo",
+    "upgrade": "See plans",
+    "unavailable": "The sample book is not available right now.",
+    "limitReached": "You have used all your demo runs. Upgrade your plan to import your own book.",
+    "startFailed": "The demo could not be started. Try again.",
+    "subtitle": "Try book import with a sample book. Importing your own book needs a plan.",
+    "setupIntro": "Review the test, its pages and the answer key. Questions are imported once you confirm; only a demo run is used.",
+    "setupNote": "This is a demo: the setup comes ready from the sample book and your changes here are not saved.",
+    "finished": "The demo is complete. Questions you review and approve stay as your private copies. Upgrade your plan to import your own book.",
+    "failed": "The demo could not finish. You can start it again from the imports page; it does not use a run.",
+    "stalled": "The demo is not progressing. Cancel it and start again from the imports page.",
+    "setSource": "Make demo source",
+    "unsetSource": "Remove as demo source",
+    "setSourceFailed": "This import cannot be the demo source: it has no test with questions."
+  },
   "quota": {
     "title": "Monthly allowance",
     "used": "{{used}} / {{limit}} books this month",
     "resets": "Resets on {{date}}",
     "blocked": "You have used this month's allowance.",
-    "notInPlan": "Your plan does not include book import.",
-    "demoSoon": "A demo with a sample book will be available here soon."
+    "notInPlan": "Your plan does not include book import."
   },
   "hint": {
     "title": "How it works",

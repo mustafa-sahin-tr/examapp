@@ -22,10 +22,13 @@ namespace ExamApp.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/book-imports")]
-[Authorize(Roles = "Admin,QuestionTrainer")]
+// Issue #1032: öğretmen yalnız demo işlerini görür (sahibi olduğu iş yalnız demo olabilir); gerçek aktarım uçları PilotRoles ister.
+[Authorize(Roles = "Admin,QuestionTrainer,Teacher")]
 [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)]
 public class BookImportController : BaseController
 {
+    private const string PilotRoles = "Admin,QuestionTrainer";
+
     private readonly IBookImportService _service;
     private readonly IStringLocalizer<Messages> _localizer;
 
@@ -36,6 +39,7 @@ public class BookImportController : BaseController
     }
 
     [HttpPost]
+    [Authorize(Roles = PilotRoles)]
     [RequestSizeLimit(BookImportService.MaxUploadBytesCeiling + 1_000_000)]
     [RequestFormLimits(MultipartBodyLengthLimit = BookImportService.MaxUploadBytesCeiling + 1_000_000)]
     [Consumes("multipart/form-data")]
@@ -69,6 +73,43 @@ public class BookImportController : BaseController
             return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
         return Ok(await _service.ListAsync(owner, take, ct));
     }
+
+    /// <summary>Issue #1032: örnek kitapla demonun durumu.</summary>
+    [HttpGet("demo")]
+    public async Task<IActionResult> GetDemo(CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        return Ok(await _service.GetDemoAsync(owner, ct));
+    }
+
+    /// <summary>Issue #1032: demoyu başlatır; bitmemiş demo varsa ona döner. AI çağrısı ve hak kullanımı yok.</summary>
+    [HttpPost("demo")]
+    public async Task<IActionResult> StartDemo(CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        var result = await _service.StartDemoAsync(owner, ct);
+        return result.Error switch
+        {
+            StartBookImportDemoError.None => Ok(result.Job),
+            StartBookImportDemoError.LimitReached => Conflict(new { code = "bookImport.demoLimitReached", message = _localizer["bookImport.demoLimitReached"].Value }),
+            _ => NotFound(new { code = "bookImport.demoUnavailable", message = _localizer["bookImport.demoUnavailable"].Value }),
+        };
+    }
+
+    /// <summary>Issue #1032: öğretmenlere oynatılacak kaynak işi seçer; önceki seçim kalkar.</summary>
+    [HttpPut("{id:guid}/demo-source")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> SetDemoSource(Guid id, [FromBody] SetBookImportDemoSourceDto request, CancellationToken ct) =>
+        await _service.SetDemoSourceAsync(id, request.IsDemoSource, ct) switch
+        {
+            SetBookImportDemoSourceResult.Ok => NoContent(),
+            SetBookImportDemoSourceResult.NotEligible => BadRequest(new { code = "bookImport.demoSourceNotEligible", message = _localizer["bookImport.demoSourceNotEligible"].Value }),
+            _ => NotFound(),
+        };
 
     [HttpGet("quota")]
     public async Task<IActionResult> Quota(CancellationToken ct)
@@ -160,6 +201,7 @@ public class BookImportController : BaseController
 
     /// <summary>Issue #1025: hatalı ya da takılmış işi kaldığı yerden yeniden dene.</summary>
     [HttpPost("{id:guid}/retry")]
+    [Authorize(Roles = PilotRoles)]
     public async Task<IActionResult> Retry(Guid id, CancellationToken ct)
     {
         var owner = await ResolveOwnerAsync(ct);
@@ -170,6 +212,7 @@ public class BookImportController : BaseController
 
     /// <summary>Issue #1025: hatalı testi yeniden aktar.</summary>
     [HttpPost("{id:guid}/tests/{testId:int}/retry")]
+    [Authorize(Roles = PilotRoles)]
     public async Task<IActionResult> RetryTest(Guid id, int testId, CancellationToken ct)
     {
         var owner = await ResolveOwnerAsync(ct);
@@ -180,6 +223,7 @@ public class BookImportController : BaseController
 
     /// <summary>Issue #1025: bütün hatalı testleri yeniden aktar.</summary>
     [HttpPost("{id:guid}/tests/retry")]
+    [Authorize(Roles = PilotRoles)]
     public async Task<IActionResult> RetryFailedTests(Guid id, CancellationToken ct)
     {
         var owner = await ResolveOwnerAsync(ct);
@@ -270,6 +314,7 @@ public class BookImportController : BaseController
     /// (görsel işin sayfa görseli; cevap verilmezse anahtardan).
     /// </summary>
     [HttpPut("{id:guid}/tests/{testId:int}/pages/{filePage:int}/questions")]
+    [Authorize(Roles = PilotRoles)]
     [ProducesResponseType(typeof(BookImportPageFixDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> ReplacePage(Guid id, int testId, int filePage, [FromBody] ReplaceBookImportPageDto request,
         [FromServices] IBookImportPageFixService fix, CancellationToken ct)

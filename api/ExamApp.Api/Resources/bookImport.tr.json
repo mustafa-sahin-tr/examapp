@@ -1,6 +1,9 @@
 {
   "bookImport": {
     "fileRequired": "PDF dosyası zorunludur.",
+    "demoLimitReached": "Demo hakkın doldu. Kendi kitabını aktarmak için planını yükselt.",
+    "demoUnavailable": "Örnek kitap şu an hazır değil.",
+    "demoSourceNotEligible": "Bu aktarımda demoya uygun, sorusu olan test yok.",
     "userNotResolved": "Kullanıcı bulunamadı.",
     "notFound": "Aktarım bulunamadı.",
     "invalidBookName": "Kitap adı zorunludur (en fazla 200 karakter).",

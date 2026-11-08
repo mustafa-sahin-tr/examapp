@@ -29,7 +29,18 @@ export type BookImportStage = (typeof BOOK_IMPORT_STAGES)[number];
 
 export type BookImportTestStatus = 'Pending' | 'Running' | 'Done' | 'NeedsReview' | 'Failed' | 'Approved' | 'Removed';
 
+/** Issue #1032: örnek kitapla demo durumu. */
+export interface BookImportDemo {
+  available: boolean;
+  bookName: string | null;
+  used: number;
+  limit: number;
+  activeJobId: string | null;
+}
+
 export interface BookImportJob {
+  isDemo?: boolean;
+  isDemoSource?: boolean;
   id: string;
   bookName: string;
   gradeId: number;
@@ -192,6 +203,7 @@ export function stageState(
 
 /** Issue #1021: kurulum onay ekranı. Anahtar: soru sırasıyla harf (A–E, okunamayan "?"); null = anahtar yok. */
 export interface BookImportSetup {
+  isDemo?: boolean;
   jobId: string;
   bookName: string;
   pageCount: number | null;

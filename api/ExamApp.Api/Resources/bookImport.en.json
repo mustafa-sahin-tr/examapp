@@ -1,6 +1,9 @@
 {
   "bookImport": {
     "fileRequired": "A PDF file is required.",
+    "demoLimitReached": "You have used all your demo runs. Upgrade your plan to import your own book.",
+    "demoUnavailable": "The sample book is not available right now.",
+    "demoSourceNotEligible": "This import has no test with questions to use as a demo.",
     "userNotResolved": "User not found.",
     "notFound": "Import not found.",
     "invalidBookName": "Book name is required (200 characters max).",

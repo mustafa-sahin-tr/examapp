@@ -41,6 +41,10 @@ public class BookImportJobDto
     public int? BookId { get; set; }
     public string Status { get; set; } = string.Empty;
     public string Stage { get; set; } = string.Empty;
+    /// <summary>Issue #1032: örnek kitapla demo; AI çağrısı ve hak yok.</summary>
+    public bool IsDemo { get; set; }
+    /// <summary>Issue #1032: öğretmenlere oynatılan demo kaynağı.</summary>
+    public bool IsDemoSource { get; set; }
     public string? FileName { get; set; }
     public long FileSizeBytes { get; set; }
     public int? PageCount { get; set; }
@@ -134,6 +138,22 @@ public class BookImportReviewQuestionDto
     public int? AnswerIndex { get; set; }
 }
 
+/// <summary>Issue #1032: öğretmenin demo durumu; <c>Available</c> kaynak seçili ve hak kaldıysa ya da süren demo varsa true.</summary>
+public class BookImportDemoDto
+{
+    public bool Available { get; set; }
+    public string? BookName { get; set; }
+    public int Used { get; set; }
+    public int Limit { get; set; }
+    /// <summary>Bitmemiş demo: yeni başlatmak yerine buna dönülür.</summary>
+    public Guid? ActiveJobId { get; set; }
+}
+
+public class SetBookImportDemoSourceDto
+{
+    public bool IsDemoSource { get; set; }
+}
+
 public class SetBookImportAnswerDto
 {
     public int OptionIndex { get; set; }
@@ -163,6 +183,8 @@ public class BookImportQuotaDto
 /// <summary>Issue #1021: kurulum onay ekranı — kurulum özeti, üniteler ve düzenlenebilir test tablosu.</summary>
 public class BookImportSetupDto
 {
+    /// <summary>Issue #1032: düzenlemeler kaydedilmez, kitap kaydı yazılmaz.</summary>
+    public bool IsDemo { get; set; }
     public Guid JobId { get; set; }
     public string BookName { get; set; } = string.Empty;
     public int? PageCount { get; set; }

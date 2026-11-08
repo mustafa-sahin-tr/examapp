@@ -184,6 +184,22 @@ aktarım aracındaki Python portu referanstır (#1022).
   alınamadı" + "Testi yeniden dene", birden çok hatalı testte "Hatalı testleri yeniden dene (n)"; "Aktarımı iptal et" satır içi
   onay: taslak varsa "İptal et, taslakları sakla" / "İptal et ve taslakları sil".
 
+## Örnek kitapla demo (#1032)
+
+Öğretmen gerçek aktarımı açmadan özelliği görür. Claude çağrısı, depolama yazımı ve `book-import` hakkı yoktur.
+
+- **Kaynak:** admin hazır bir kitap aktarımının detayında "Demo kaynağı yap" der (`PUT /api/book-imports/{id}/demo-source`).
+  Tek kaynak olur (`BookImportJobs.IsDemoSource`, filtreli tekil dizin). Sorusu olan bir testi yoksa reddedilir.
+- **Başlatma:** `POST /api/book-imports/demo`. Kaynağın sorusu olan ilk testi, en çok 5 soruyla, yeni işe yazılır
+  (`DemoSourceJobId` doluysa iş demodur). Sayfa satırları yalnız testin ve cevap anahtarının sayfaları için kopyalanır, görseller
+  paylaşılır. Bitmemiş demo varsa yenisi açılmaz, o döner.
+- **Oynatma:** `BookImportJobRunner` demoda `BookImportDemoReplay`'e ayrılır; kuyruğa nereden düşerse düşsün AI aşamasına girmez.
+  Sayfalar → kurulum → onay → sorular → inceleme. Adım süresi `BookImport:DemoStepMilliseconds` (varsayılan 1500).
+- **Kopya:** onaydan önce de sorular öğretmenin özel taslak kopyasıdır (görsel, şık, pasaj aynı; kaynak satırı kitaba bağlı değil,
+  kırpım özeti rastgele, gerçek aktarımda tekrar sayılmaz). Onay normal akıştır: `IsDraft` kalkar, sorular öğretmende kalır.
+- **Sınır:** `BookImport:DemoMaxRuns` (varsayılan 3). Silinen demo sayılır, başarısız demo sayılmaz. Demo maliyet raporuna girmez.
+- **Roller:** gerçek aktarım hâlâ pilot (Admin, QuestionTrainer). Öğretmene yükleme, yeniden deneme ve sayfa düzeltme uçları kapalı.
+
 ## Hızlı ekleme (#1048, #1052, #1053)
 
 - **Model:** hızlı ekleme bir kitap aktarımı işidir (`BookImportJobs.Kind = QuickAdd`; mevcut işler `Book`). Fotoğraf = sayfa

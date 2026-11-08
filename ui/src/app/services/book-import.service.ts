@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 
 import {
   ApproveAllBookImportResult,
+  BookImportDemo,
   BookImportJob,
   BookImportJobDetail,
   BookImportPageFix,
@@ -15,7 +16,7 @@ import {
 } from '../models/book-import';
 import { LabelingBankQuestion } from '../models/labeling';
 
-/** Issue #1018 (epic #1017): kitaptan aktarım işleri. Pilot: yalnız Admin + QuestionTrainer. */
+/** Issue #1018 (epic #1017): kitaptan aktarım işleri. Pilot: Admin + QuestionTrainer; öğretmen yalnız demo (#1032). */
 @Injectable({ providedIn: 'root' })
 export class BookImportService {
   // Gateway: /api/exam/{everything} -> backend /api/{everything}
@@ -32,6 +33,19 @@ export class BookImportService {
 
   quota(): Observable<BookImportQuota> {
     return this.http.get<BookImportQuota>(`${this.baseUrl}/quota`);
+  }
+
+  /** Issue #1032: örnek kitapla demo. */
+  demo(): Observable<BookImportDemo> {
+    return this.http.get<BookImportDemo>(`${this.baseUrl}/demo`);
+  }
+
+  startDemo(): Observable<BookImportJob> {
+    return this.http.post<BookImportJob>(`${this.baseUrl}/demo`, {});
+  }
+
+  setDemoSource(id: string, isDemoSource: boolean): Observable<void> {
+    return this.http.put<void>(`${this.baseUrl}/${id}/demo-source`, { isDemoSource });
   }
 
   start(request: StartBookImportRequest): Observable<BookImportJob> {

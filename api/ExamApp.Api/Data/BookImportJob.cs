@@ -137,6 +137,15 @@ public class BookImportJob : BaseEntity
     /// <summary>Issue #1024: bütçe beklenirken işin yeniden deneneceği zaman.</summary>
     public DateTime? ResumeAt { get; set; }
 
+    /// <summary>Issue #1032: admin'in seçtiği demo kaynağı; en çok bir iş (filtreli tekil dizin).</summary>
+    public bool IsDemoSource { get; set; }
+
+    /// <summary>
+    /// Issue #1032: doluysa iş demodur: Claude çağrılmaz, hak harcanmaz, aşamalar kaynaktan oynatılır
+    /// (<see cref="Services.BookImport.BookImportDemoReplay"/>).
+    /// </summary>
+    public Guid? DemoSourceJobId { get; set; }
+
     public ICollection<BookImportJobTest> Tests { get; set; } = new List<BookImportJobTest>();
 
     public ICollection<BookImportPage> Pages { get; set; } = new List<BookImportPage>();

@@ -14,9 +14,10 @@ import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { Subscription, timer } from 'rxjs';
 
-import { BookImportJob, BookImportQuota, bookImportStatusTone, isBookImportActive } from '../../models/book-import';
+import { BookImportDemo, BookImportJob, BookImportQuota, bookImportStatusTone, isBookImportActive } from '../../models/book-import';
 import { Grade } from '../../models/student';
 import { Subject } from '../../models/subject';
+import { AuthService } from '../../services/auth.service';
 import { BookImportService } from '../../services/book-import.service';
 import { GradesService } from '../../services/grades.service';
 import { SubjectService } from '../../services/subject.service';
@@ -33,6 +34,7 @@ type StatusFilter = 'all' | 'awaiting' | 'failed';
 
 /**
  * Issue #1018 (epic #1017): kitaptan aktarım — PDF yükleme formu ve aktarımlar listesi. Pilot: Admin + QuestionTrainer.
+ * Issue #1032: öğretmen yükleme yerine örnek kitapla demo görür.
  * Aşamalar bu dilimde iskelet: iş sayfalar ve kurulumdan iş yapmadan geçip kurulum onayında bekler (#1020, #1021).
  */
 @Component({
@@ -63,6 +65,13 @@ export class BookImportsComponent implements OnInit {
   private readonly subjectsApi = inject(SubjectService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly auth = inject(AuthService);
+
+  /** Gerçek yükleme pilot rollerinde; diğerleri demo görür. */
+  readonly canUpload = this.auth.hasRealmRole('Admin') || this.auth.hasRealmRole('QuestionTrainer');
+  readonly demo = signal<BookImportDemo | null>(null);
+  readonly startingDemo = signal(false);
+  readonly demoError = signal<'limitReached' | 'unavailable' | 'startFailed' | null>(null);
 
   readonly jobs = signal<BookImportJob[]>([]);
   readonly loading = signal(true);
@@ -106,6 +115,10 @@ export class BookImportsComponent implements OnInit {
 
   ngOnInit(): void {
     this.load();
+    if (!this.canUpload) {
+      this.loadDemo();
+      return;
+    }
     this.gradesApi
       .getGrades()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -123,6 +136,37 @@ export class BookImportsComponent implements OnInit {
         error: () => this.subjects.set([]),
       });
     });
+  }
+
+  private loadDemo(): void {
+    this.api
+      .demo()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({ next: (demo) => this.demo.set(demo), error: () => this.demo.set(null) });
+  }
+
+  /** Bitmemiş demo varsa sunucu onu döner; yeni hak harcanmaz. */
+  startDemo(): void {
+    if (this.startingDemo()) return;
+    this.startingDemo.set(true);
+    this.demoError.set(null);
+    this.api
+      .startDemo()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (job) => {
+          this.startingDemo.set(false);
+          this.router.navigate(['/book-imports', job.id]);
+        },
+        error: (error: HttpErrorResponse) => {
+          this.startingDemo.set(false);
+          const code = error.error?.code;
+          this.demoError.set(
+            code === 'bookImport.demoLimitReached' ? 'limitReached' : code === 'bookImport.demoUnavailable' ? 'unavailable' : 'startFailed',
+          );
+          this.loadDemo();
+        },
+      });
   }
 
   load(): void {

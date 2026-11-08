@@ -5,7 +5,8 @@ import { Router, provideRouter } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
 
 import { BOOK_IMPORTS_POLL_MS, BookImportsComponent } from './book-imports.component';
-import { BookImportJob, BookImportQuota } from '../../models/book-import';
+import { BookImportDemo, BookImportJob, BookImportQuota } from '../../models/book-import';
+import { AuthService } from '../../services/auth.service';
 import { BookImportService } from '../../services/book-import.service';
 import { GradesService } from '../../services/grades.service';
 import { SubjectService } from '../../services/subject.service';
@@ -30,6 +31,8 @@ describe('BookImportsComponent (#1018)', () => {
   let api: MockedObject<BookImportService>;
   let listResponse: Observable<BookImportJob[]>;
   let quota: BookImportQuota;
+  let roles: string[];
+  let demo: BookImportDemo;
 
   const el = () => fixture.nativeElement as HTMLElement;
   const text = () => el().textContent ?? '';
@@ -41,6 +44,8 @@ describe('BookImportsComponent (#1018)', () => {
       get: vi.fn().mockName('get'),
       quota: vi.fn().mockName('quota').mockImplementation(() => of(quota)),
       start: vi.fn().mockName('start'),
+      demo: vi.fn().mockName('demo').mockImplementation(() => of(demo)),
+      startDemo: vi.fn().mockName('startDemo'),
     } as unknown as MockedObject<BookImportService>;
     TestBed.configureTestingModule({
       imports: [BookImportsComponent, translocoTestingModule({ langs: { 'book-imports/tr': tr } })],
@@ -48,6 +53,7 @@ describe('BookImportsComponent (#1018)', () => {
         provideNoopAnimations(),
         provideRouter([]),
         { provide: BookImportService, useValue: api },
+        { provide: AuthService, useValue: { hasRealmRole: (role: string) => roles.includes(role) } },
         { provide: GradesService, useValue: { getGrades: () => of([{ id: 4, name: '4. Sınıf' }]) } },
         { provide: SubjectService, useValue: { getSubjectsByGrade: () => of([{ id: 3, name: 'Matematik' }]) } },
       ],
@@ -58,6 +64,8 @@ describe('BookImportsComponent (#1018)', () => {
   }
 
   beforeEach(() => {
+    roles = ['Admin'];
+    demo = { available: true, bookName: 'Örnek', used: 1, limit: 3, activeJobId: null };
     listResponse = of([job()]);
     quota = UNLIMITED;
   });
@@ -154,6 +162,44 @@ describe('BookImportsComponent (#1018)', () => {
     expect(navigate).toHaveBeenCalledWith(['/book-imports', 'new-id']);
   });
 
+  it('teacher_SeesDemoInsteadOfUpload (#1032)', () => {
+    roles = ['Teacher'];
+    setup();
+    fixture.detectChanges();
+
+    expect(text()).toContain(tr.demo.start);
+    expect(text()).not.toContain(tr.new);
+    expect(api.quota).not.toHaveBeenCalled();
+  });
+
+  it('teacher_StartDemo_OpensTheDemoJob (#1032)', () => {
+    roles = ['Teacher'];
+    setup();
+    api.startDemo.mockReturnValue(of(job({ id: 'demo-id', isDemo: true })));
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    component.startDemo();
+
+    expect(navigate).toHaveBeenCalledWith(['/book-imports', 'demo-id']);
+  });
+
+  it('teacher_LimitReached_ShowsPlansLink (#1032)', () => {
+    roles = ['Teacher'];
+    demo = { available: false, bookName: 'Örnek', used: 3, limit: 3, activeJobId: null };
+    setup();
+    fixture.detectChanges();
+
+    expect(el().querySelector('a[href="/plans"]')).not.toBeNull();
+    expect(el().querySelector('.bi-demo button')).toBeNull();
+  });
+
+  it('pilotRole_DoesNotAskForDemo (#1032)', () => {
+    setup();
+
+    expect(api.demo).not.toHaveBeenCalled();
+    expect(text()).toContain(tr.new);
+  });
+
   it('submit_WithoutGrade_DoesNotStart', () => {
     setup();
     component.openForm();
@@ -206,7 +252,6 @@ describe('BookImportsComponent (#1018)', () => {
     fixture.detectChanges();
 
     expect(text()).toContain(tr.quota.notInPlan);
-    expect(text()).toContain(tr.quota.demoSoon);
     expect((el().querySelector('button[type=submit]') as HTMLButtonElement).disabled).toBe(true);
   });
 

@@ -1,6 +1,6 @@
 <div class="bi" *transloco="let t; prefix: 'book-imports'">
-  <app-page-header icon="auto_stories" [title]="t('title')" [description]="t('subtitle')">
-    @if (!showForm()) {
+  <app-page-header icon="auto_stories" [title]="t('title')" [description]="t(canUpload ? 'subtitle' : 'demo.subtitle')">
+    @if (canUpload && !showForm()) {
     <button mat-flat-button type="button" (click)="openForm()">
       <mat-icon>add</mat-icon>{{ t('new') }}
     </button>
@@ -76,7 +76,6 @@
         <h3>{{ t('quota.title') }}</h3>
         @if (q.limit === 0) {
         <p>{{ t('quota.notInPlan') }}</p>
-        <p class="bi-card__meta">{{ t('quota.demoSoon') }}</p>
         } @else {
         <p class="bi-card__big">{{ t('quota.used', { used: q.used, limit: q.limit }) }}</p>
         <mat-progress-bar mode="determinate" [value]="(100 * q.used) / q.limit"
@@ -98,6 +97,27 @@
         <a routerLink="/books">{{ t('registry.link') }}</a>
       </div>
     </aside>
+  </section>
+  }
+
+  @if (!canUpload && demo(); as d) {
+  <section class="bi-state bi-state--empty bi-demo" [attr.aria-label]="t('demo.title')">
+    <mat-icon aria-hidden="true">auto_stories</mat-icon>
+    <h2 class="bi-section-title">{{ t('demo.title') }}</h2>
+    <p>{{ d.bookName ? t('demo.body', { book: d.bookName }) : t('demo.bodyNoBook') }}</p>
+    <p class="bi-card__meta">{{ t('demo.used', { used: d.used, limit: d.limit }) }}</p>
+    @if (d.available) {
+    <button mat-flat-button type="button" [disabled]="startingDemo()" (click)="startDemo()">
+      {{ t(d.activeJobId ? 'demo.continue' : 'demo.start') }}
+    </button>
+    } @else if (d.used >= d.limit) {
+    <a mat-flat-button routerLink="/plans">{{ t('demo.upgrade') }}</a>
+    } @else {
+    <p>{{ t('demo.unavailable') }}</p>
+    }
+    @if (demoError(); as e) {
+    <p class="bi-error" role="alert">{{ t('demo.' + e) }}</p>
+    }
   </section>
   }
 
@@ -129,7 +149,7 @@
     <div class="bi-state bi-state--empty">
       <mat-icon aria-hidden="true">auto_stories</mat-icon>
       <span>{{ t('list.empty') }}</span>
-      @if (!showForm()) {
+      @if (canUpload && !showForm()) {
       <button mat-stroked-button type="button" (click)="openForm()">{{ t('list.emptyAction') }}</button>
       }
     </div>
@@ -148,7 +168,10 @@
       <tbody>
         @for (job of visibleJobs(); track job.id) {
         <tr>
-          <td class="bi-table__book">{{ job.bookName }}</td>
+          <td class="bi-table__book">{{ job.bookName }}
+            @if (job.isDemo) { <span class="bi-status bi-status--info">{{ t('demo.badge') }}</span> }
+            @if (job.isDemoSource) { <span class="bi-status bi-status--info">{{ t('demo.sourceBadge') }}</span> }
+          </td>
           <td>{{ t('stages.' + job.stage) }}</td>
           <td class="bi-table__progress">
             <mat-progress-bar mode="determinate" [value]="progress(job)" [attr.aria-label]="t('list.progress')"></mat-progress-bar>

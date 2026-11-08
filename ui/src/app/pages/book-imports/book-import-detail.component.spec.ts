@@ -7,6 +7,7 @@ import { NEVER, Observable, of, throwError } from 'rxjs';
 import { BookImportDetailComponent } from './book-import-detail.component';
 import { BOOK_IMPORTS_POLL_MS } from './book-imports.component';
 import { BookImportJobDetail, BookImportJobTest } from '../../models/book-import';
+import { AuthService } from '../../services/auth.service';
 import { BookImportService } from '../../services/book-import.service';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import tr from '../../../../public/i18n/book-imports/tr.json';
@@ -30,6 +31,7 @@ function test(overrides: Partial<BookImportJobTest> = {}): BookImportJobTest {
 }
 
 describe('BookImportDetailComponent (#1018)', () => {
+  let roles: string[] = ['Admin'];
   let fixture: ComponentFixture<BookImportDetailComponent>;
   let api: MockedObject<BookImportService>;
   let response: Observable<BookImportJobDetail>;
@@ -57,6 +59,7 @@ describe('BookImportDetailComponent (#1018)', () => {
         provideNoopAnimations(),
         provideRouter([]),
         { provide: BookImportService, useValue: api },
+        { provide: AuthService, useValue: { hasRealmRole: (role: string) => roles.includes(role) } },
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ id: 'a1' }) } } },
       ],
     });
@@ -239,6 +242,30 @@ describe('BookImportDetailComponent (#1018)', () => {
     setup();
 
     expect(text()).toContain(tr.detail.notFound);
+  });
+
+  it('demo_ShowsBadgeNoRetryAndPlansAtTheEnd (#1032)', () => {
+    roles = ['Teacher'];
+    response = of(detail({ isDemo: true, status: 'Failed', error: 'x' }));
+    setup();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.textContent).toContain(tr.demo.badge);
+    expect(el.textContent).not.toContain(tr.detail.retry);
+    expect(el.textContent).not.toContain(tr.demo.setSource);
+  });
+
+  it('demo_ReadyForReview_OffersPlans (#1032)', () => {
+    roles = ['Teacher'];
+    response = of(detail({ isDemo: true, status: 'ReadyForReview', stage: 'Review' }));
+    setup();
+    expect((fixture.nativeElement as HTMLElement).querySelector('a[href="/plans"]')).not.toBeNull();
+  });
+
+  it('admin_CanMarkAFinishedImportAsDemoSource (#1032)', () => {
+    roles = ['Admin'];
+    response = of(detail({ status: 'ReadyForReview', stage: 'Review' }));
+    setup();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(tr.demo.setSource);
   });
 
   it('poll_ReloadsWhileRunning_StopsAtCheckpoint', async () => {

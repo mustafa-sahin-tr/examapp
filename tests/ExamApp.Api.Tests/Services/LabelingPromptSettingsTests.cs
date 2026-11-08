@@ -129,7 +129,7 @@ public class LabelingPromptSettingsTests
     public void SchemaRevision_IsSevenForPrintedAnswerFlag()
     {
         // 6: openText (#583); 7: 1. aşama blokları answerShown taşır (#791).
-        LabelingPromptSettings.SchemaRevision.ShouldBe(7);
+        LabelingPromptSettings.SchemaRevision.ShouldBe(8);
     }
 
 

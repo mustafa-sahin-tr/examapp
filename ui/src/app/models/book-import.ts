@@ -89,6 +89,7 @@ export interface BookImportReviewQuestion {
   filePage: number;
   optionCount: number;
   imageUrl: string | null;
+  passageImageUrl?: string | null;
   answerIndex: number | null;
 }
 

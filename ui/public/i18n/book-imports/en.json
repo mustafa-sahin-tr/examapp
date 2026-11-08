@@ -261,6 +261,7 @@
     "loading": "Loading questions…",
     "answered": "Answered {{done}}/{{total}}",
     "question": "Question {{number}} · page {{page}}",
+    "passage": "Passage of question {{number}}",
     "answerFor": "Answer of question {{number}}",
     "fix": "Fix in labeling",
     "fixPage": "Page {{page}}",
@@ -351,6 +352,7 @@
     "removeConfirm": "Delete questions",
     "counts": "{{saved}} questions",
     "question": "Question {{number}}",
+    "passage": "Passage of question {{number}}",
     "fixPage": "Photo {{page}}",
     "fixPageFlagged": "Photo {{page}} · flagged",
     "footer": "Approved questions go to your question pool and are visible only to you (private). No test is created."

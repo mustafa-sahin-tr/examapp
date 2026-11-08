@@ -5,6 +5,7 @@
     "testNotFound": "Test not found!",
     "testSessionNotFound": "Test session not found.",
     "startTestFailed": "The test could not be started. Please try again.",
+    "mockExamLimitReached": "You have used the mock exams included in your plan. Upgrade your plan to continue.",
     "unexpectedError": "An error occurred: {0}",
 
     "calendar": {

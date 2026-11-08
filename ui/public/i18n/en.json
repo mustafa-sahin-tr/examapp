@@ -2,6 +2,10 @@
   "brand": {
     "name": "Hedef Okul"
   },
+  "classificationLimit": {
+    "note": "Saved, but you have used this month's AI classification: {{count}} questions were not classified.",
+    "upgrade": "Upgrade plan"
+  },
   "common": {
     "loading": "Loading...",
     "retry": "Try again",

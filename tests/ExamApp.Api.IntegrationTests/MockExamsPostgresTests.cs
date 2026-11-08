@@ -153,6 +153,11 @@ public class MockExamsPostgresTests : IntegrationTestBase
         var mine = await student.GetFromJsonAsync<List<StudentMockExamDto>>($"{Api}/mine", Json);
         mine!.ShouldHaveSingleItem().Sessions.ShouldHaveSingleItem().Status.ShouldBe("NotStarted");
 
+        // Free öğrenci ücretli denemeyi başlatamaz; admin'in seçtiği deneme sınırdan muaftır (#1031).
+        (await student.PostAsync($"/api/worksheet/start-test/{worksheetId}", null)).StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        var admin = await AdminAsync();
+        await ReadAsync(await admin.PutAsJsonAsync($"{Api}/{exam.Id}/free-trial", new SetMockExamFreeTrialDto { IsFreeTrial = true }));
+
         var start = await student.PostAsync($"/api/worksheet/start-test/{worksheetId}", null);
         start.StatusCode.ShouldBe(HttpStatusCode.OK, await start.Content.ReadAsStringAsync());
         var instanceId = (await start.Content.ReadFromJsonAsync<TestStartResultDto>(Json))!.InstanceId;

@@ -37,6 +37,7 @@ export interface MockExamListItem {
   templateName: string;
   gradeName: string;
   publishedAt: string | null;
+  isFreeTrial?: boolean;
 }
 
 export interface MockExamQuestionCard {
@@ -78,6 +79,9 @@ export interface MockExamDetail {
   gradeId: number;
   gradeName: string;
   publishedAt: string | null;
+  openToGrade?: boolean;
+  /** Issue #1031: sınıfın Free öğrencilerine açık deneme. */
+  isFreeTrial?: boolean;
   sessions: MockExamSession[];
   problems: MockExamProblem[];
 }
@@ -97,6 +101,7 @@ export interface StudentMockExam {
   id: number;
   name: string;
   templateName: string;
+  isFreeTrial?: boolean;
   sessions: StudentMockExamSession[];
 }
 
@@ -157,6 +162,10 @@ export class MockExamService {
 
   publish(id: number, openToGrade: boolean): Observable<MockExamDetail> {
     return this.http.post<MockExamDetail>(`${this.apiUrl}/${id}/publish`, { openToGrade });
+  }
+
+  setFreeTrial(id: number, isFreeTrial: boolean): Observable<MockExamDetail> {
+    return this.http.put<MockExamDetail>(`${this.apiUrl}/${id}/free-trial`, { isFreeTrial });
   }
 
   deleteDraft(id: number): Observable<void> {

@@ -1,3 +1,4 @@
+import { ClassificationLimitNotice } from '../../shared/utils/classification-limit-notice';
 import { Component, computed, DestroyRef, effect, inject, OnInit, signal, untracked, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import { FormGroup, Validators, FormControl, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -125,6 +126,7 @@ export class QuestionCanvasComponent implements OnInit {
   subjectService = inject(SubjectService);
   sidenavService = inject(SidenavService);
   snackBar = inject(MatSnackBar);
+  private readonly classificationLimit = inject(ClassificationLimitNotice);
   private readonly transloco = inject(TranslocoService);
 
   /** Scope'a göreli anahtarı senkron çevirir. */
@@ -1636,6 +1638,7 @@ export class QuestionCanvasComponent implements OnInit {
       next: (data) => {
         this.saving.set(false);
         this.notify('canvas.bulkSaveSuccess', 2000);
+        this.classificationLimit.showIfSkipped(data);
         // Eğitim verisi üretimi (Python question-detector) yan etkidir; yalnız Admin/QuestionTrainer için çalışır.
         if (sendToFix && this.canTrain) {
           // Sonraki sayfaya geçişi aşağıdaki 2 sn'lik zamanlayıcı yapar; sendToFix ayrıca ilerletmesin.

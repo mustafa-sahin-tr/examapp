@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Entitlements;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
@@ -128,9 +129,9 @@ public class QuestionsControllerAuthorizationTests : IDisposable
     private async Task<IHost> StartHostAsync(Action<IQuestionService>? configureQuestionService = null)
     {
         var questionService = Substitute.For<IQuestionService>();
-        questionService.CreateOrUpdateQuestion(Arg.Any<QuestionDto>(), Arg.Any<int>(), Arg.Any<bool>())
+        questionService.CreateOrUpdateQuestion(Arg.Any<QuestionDto>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<EntitlementSubject?>())
             .Returns(new QuestionSavedDto { Success = true });
-        questionService.SaveBulkQuestion(Arg.Any<BulkQuestionCreateDto>(), Arg.Any<int>())
+        questionService.SaveBulkQuestion(Arg.Any<BulkQuestionCreateDto>(), Arg.Any<int>(), Arg.Any<EntitlementSubject?>())
             .Returns(new ResponseBaseDto { Success = true });
         questionService.AttachImageToStudyPage(Arg.Any<StudyPageAttachImageDto>())
             .Returns(new StudyPageAttachImageResponseDto { Success = true });
@@ -350,7 +351,7 @@ public class QuestionsControllerAuthorizationTests : IDisposable
     public async Task Bulk_save_rejected_as_invalid_input_returns_400_with_the_localized_message()
     {
         // issue #581: servis yazmadan önce reddettiyse (ör. geçersiz maske) genel "kaydedilemedi" değil, servisin mesajı.
-        using var host = await StartHostAsync(qs => qs.SaveBulkQuestion(Arg.Any<BulkQuestionCreateDto>(), Arg.Any<int>())
+        using var host = await StartHostAsync(qs => qs.SaveBulkQuestion(Arg.Any<BulkQuestionCreateDto>(), Arg.Any<int>(), Arg.Any<EntitlementSubject?>())
             .Returns(new QuestionSavedDto { Success = false, InvalidInput = true, Message = "mask-invalid-581" }));
         using var client = host.GetTestClient();
 

@@ -34,6 +34,8 @@
     "removeQuestion": "Remove question {{id}}",
     "problemsTitle": "Complete these to publish:",
     "openToGrade": "Open to {{grade}} students in all schools",
+    "freeTrial": "Make this the free mock exam for {{grade}} students",
+    "freeTrialHint": "Students on the free plan can only take this mock exam. Each grade has one; the previous choice is replaced.",
     "openToGradeHint": "If unchecked, only assigned students can start it. After publishing, assign each session.",
     "publish": "Publish",
     "deleteDraft": "Delete draft",
@@ -67,6 +69,7 @@
   },
   "errors": {
     "AlreadyPublished": "This mock exam is published and can no longer be changed.",
+    "FreeTrialNotOpen": "The free mock exam must be published and open to the grade.",
     "TooManyQuestions": "You chose more questions than this subject needs.",
     "QuestionUsedTwice": "A question you chose is already used in this mock exam.",
     "QuestionNotUsable": "One of the questions cannot be added: it is open text, unpublished or not yours.",
@@ -77,6 +80,7 @@
   },
   "student": {
     "title": "Mock Exams",
+    "freeTrial": "Free",
     "emptyTitle": "No mock exams yet",
     "empty": "A mock exam is a timed exam in sessions, like the LGS. When your teacher opens one, you will see it here; when you finish, we show your net for each subject.",
     "goDaily": "Solve today's questions",

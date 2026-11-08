@@ -82,6 +82,12 @@ public class MockExam : BaseEntity
     /// </summary>
     public bool OpenToGrade { get; set; }
 
+    /// <summary>
+    /// Issue #1031: sınıfın Free öğrencilerine açık tek deneme (admin seçer, sınıf başına en çok bir tane). Yalnız yayımlanmış ve
+    /// sınıfa açık denemede geçerlidir; başlatmak plan sınırına sayılmaz.
+    /// </summary>
+    public bool IsFreeTrial { get; set; }
+
     public ICollection<MockExamSession> Sessions { get; set; } = new List<MockExamSession>();
 }
 

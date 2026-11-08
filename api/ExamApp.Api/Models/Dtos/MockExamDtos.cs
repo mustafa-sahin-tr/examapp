@@ -113,6 +113,12 @@ public class MockExamSessionDetailDto
     public List<MockExamSectionDetailDto> Sections { get; set; } = [];
 }
 
+/// <summary>Issue #1031: denemeyi sınıfın ücretsiz denemesi yapar ya da bundan çıkarır (yalnız admin).</summary>
+public class SetMockExamFreeTrialDto
+{
+    public bool IsFreeTrial { get; set; }
+}
+
 public class MockExamDetailDto
 {
     public int Id { get; set; }
@@ -122,6 +128,10 @@ public class MockExamDetailDto
     public int GradeId { get; set; }
     public string GradeName { get; set; } = string.Empty;
     public DateTime? PublishedAt { get; set; }
+    public bool OpenToGrade { get; set; }
+
+    /// <summary>Issue #1031: sınıfın Free öğrencilerine açık deneme.</summary>
+    public bool IsFreeTrial { get; set; }
     public List<MockExamSessionDetailDto> Sessions { get; set; } = [];
 
     /// <summary>Yayını engelleyen sorunlar.</summary>
@@ -145,6 +155,7 @@ public class MockExamListItemDto
     public string TemplateName { get; set; } = string.Empty;
     public string GradeName { get; set; } = string.Empty;
     public DateTime? PublishedAt { get; set; }
+    public bool IsFreeTrial { get; set; }
 }
 
 public class StudentMockExamSessionDto
@@ -167,6 +178,9 @@ public class StudentMockExamDto
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string TemplateName { get; set; } = string.Empty;
+
+    /// <summary>Issue #1031: plan sınırına sayılmayan, sınıfın ücretsiz denemesi.</summary>
+    public bool IsFreeTrial { get; set; }
     public List<StudentMockExamSessionDto> Sessions { get; set; } = [];
 }
 

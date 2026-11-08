@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Teachers.Authorization;
 using ExamApp.Api.Controllers;
 using ExamApp.Api.Data;
@@ -172,7 +173,7 @@ public class QuestionsController : BaseController
             && await DenyUnlessPassageUsableAsync(passage.Id!.Value, user.Id, questionDto.Id > 0 ? questionDto.Id : null) is { } passageDenied)
             return passageDenied;
 
-        var response = await _questionService.CreateOrUpdateQuestion(questionDto, user.Id, IsAdmin);
+        var response = await _questionService.CreateOrUpdateQuestion(questionDto, user.Id, IsAdmin, EntitlementSubject.FromPrincipal(user.Id, User));
         if (response == null)
         {
             return BadRequest(new { message = _localizer["questions.saveFailed"].Value });
@@ -200,7 +201,7 @@ public class QuestionsController : BaseController
             && await DenyUnlessWorksheetOwnerAsync(testId, user.Id) is { } denied)
             return denied;
 
-        var reponse = await _questionService.SaveBulkQuestion(soruDto, user.Id);
+        var reponse = await _questionService.SaveBulkQuestion(soruDto, user.Id, EntitlementSubject.FromPrincipal(user.Id, User));
         // issue #581: yazmadan önce reddedilen girdi (ör. geçersiz maske) yerelleştirilmiş mesajıyla 400.
         if (reponse is QuestionSavedDto { InvalidInput: true } invalid)
         {

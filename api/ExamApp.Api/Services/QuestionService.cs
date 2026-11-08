@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Entitlements;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -42,6 +43,9 @@ public class QuestionService : IQuestionService
     // issue #581: maske sayısı (görsel verisi değil) Information seviyesinde loglanır.
     private readonly ILogger<QuestionService> _logger;
 
+    // issue #1031: AI sınıflandırma sayacı. DI verir; DI'sız birim testlerde sayım yok.
+    private readonly IEntitlementService? _entitlements;
+
     public QuestionService(
         AppDbContext context,
         ImageHelper imageHelper,
@@ -49,8 +53,10 @@ public class QuestionService : IQuestionService
         IStringLocalizer<Messages>? localizer = null,
         StorageAreaPolicy? storagePolicy = null,
         IInteractionGraderRegistry? graders = null,
-        ILogger<QuestionService>? logger = null)
+        ILogger<QuestionService>? logger = null,
+        IEntitlementService? entitlements = null)
     {
+        _entitlements = entitlements;
         _logger = logger ?? NullLogger<QuestionService>.Instance;
         _graders = graders ?? InteractionGraderRegistry.Default;
         _imageHelper = imageHelper;
@@ -61,11 +67,13 @@ public class QuestionService : IQuestionService
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
-    public async Task<QuestionSavedDto> CreateOrUpdateQuestion(QuestionDto questionDto, int actingUserId = 0, bool isAdmin = false)
+    public async Task<QuestionSavedDto> CreateOrUpdateQuestion(QuestionDto questionDto, int actingUserId = 0, bool isAdmin = false, EntitlementSubject? classificationOwner = null)
     {
         // issue #287 H1: audit alanları (CreateUserId = soru sahibi) istek sahibine damgalanır.
         if (actingUserId > 0)
             _context.SetCurrentUser(actingUserId);
+
+        var classificationSkipped = 0;
 
         // issue #365 (S2): yeni paragrafın görseli base64 değilse istemcinin gönderdiği adrestir. Hiçbir şey yazılmadan
         // ÖNCE /img/{varsayılan bucket}/passages/... biçimine indirgenir (imzalı URL'nin query'si atılır); başka her şey
@@ -419,7 +427,12 @@ public class QuestionService : IQuestionService
                 await _context.SaveChangesAsync();
 
                 // 🟢 Record QuestionCreated event to Outbox for new questions only (OutboxPublisher will publish)
-                if (questionDto.Id == 0) // Yeni soru oluşturuldı
+                // Issue #1031: plan sınırı doluysa soru kaydedilir, sınıflandırma olayı yazılmaz (AI çağrısı yok).
+                if (questionDto.Id == 0 && await MeterClassificationAsync(classificationOwner, [question.Id]) == 0)
+                {
+                    classificationSkipped = 1;
+                }
+                else if (questionDto.Id == 0) // Yeni soru oluşturuldı
                 {
                     // Issue #565: sınıflandırıcı taksonomiyi testin sınıfına daraltsın; testsiz kayıtta sınıf bilinmiyor.
                     int? gradeId = null;
@@ -458,6 +471,7 @@ public class QuestionService : IQuestionService
             {
                 Success = questionDto.Id > 0,
                 QuestionId = question.Id,
+                ClassificationSkipped = classificationSkipped,
                 Message = questionDto.Id > 0 ? _localizer["questions.updated"] : _localizer["questions.created"]
             };
         }
@@ -597,7 +611,23 @@ public class QuestionService : IQuestionService
     private bool IsInteractive(string? interactionType) =>
         !_graders.Resolve(interactionType).InteractionType.Equals(McqGrader.Type, StringComparison.OrdinalIgnoreCase);
 
-    public async Task<ResponseBaseDto> SaveBulkQuestion(BulkQuestionCreateDto soruDto, int actingUserId = 0)
+    /// <summary>
+    /// Issue #1031: sınıflandırılacak yeni soruları sahibin planına yazar ve kaç tanesinin hakkı olduğunu döner (ilk N soru).
+    /// Sahip verilmemişse hepsi sınıflandırılır, sayılmaz. Muaf rolde sınır yoktur ama kullanım yine yazılır (Aboneliğim sayacı).
+    /// </summary>
+    private async Task<int> MeterClassificationAsync(EntitlementSubject? owner, IReadOnlyList<int> questionIds)
+    {
+        if (owner is null || _entitlements is null || questionIds.Count == 0)
+            return questionIds.Count;
+
+        var check = await _entitlements.CheckAsync(owner, EntitlementFeatures.AiClassification);
+        var allowed = check.Remaining is { } remaining ? Math.Min(remaining, questionIds.Count) : questionIds.Count;
+        foreach (var questionId in questionIds.Take(allowed))
+            await _entitlements.RecordUsageAsync(owner.UserId, EntitlementFeatures.AiClassification, $"question:{questionId}");
+        return allowed;
+    }
+
+    public async Task<ResponseBaseDto> SaveBulkQuestion(BulkQuestionCreateDto soruDto, int actingUserId = 0, EntitlementSubject? classificationOwner = null)
     {
         // issue #287 H1: audit alanları (CreateUserId = soru sahibi) istek sahibine damgalanır.
         if (actingUserId > 0)
@@ -1104,8 +1134,11 @@ public class QuestionService : IQuestionService
                         await _context.SaveChangesAsync();
                     }
                 }
+                // Issue #1031: sınıflandırma hakkı sırayla harcanır; sınırı aşan sorular kaydedilir, olayları yazılmaz (AI çağrısı yok).
+                var classifiable = await MeterClassificationAsync(classificationOwner, createdQuestions.Select(q => q.Id).ToList());
+
                 // Record QuestionCreated events to Outbox for all newly created questions
-                foreach (var question in createdQuestions)
+                foreach (var question in createdQuestions.Take(classifiable))
                 {
                     var @event = new QuestionCreatedEvent
                     {
@@ -1135,10 +1168,11 @@ public class QuestionService : IQuestionService
                 // }
 
                 await transaction.CommitAsync();
-                return new ResponseBaseDto
+                return new QuestionSavedDto
                 {
                     Success = true,
-                    Message = _localizer["questions.bulk.saved"]
+                    Message = _localizer["questions.bulk.saved"],
+                    ClassificationSkipped = createdQuestions.Count - classifiable,
                 };
                 // return Ok(new { message = "Sorular başarıyla kaydedildi!" });
             }

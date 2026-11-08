@@ -1,3 +1,4 @@
+import { ClassificationLimitNotice } from '../../shared/utils/classification-limit-notice';
 import { HttpErrorResponse } from '@angular/common/http';
 import { PASSAGE_INSTRUCTION_MAX_LENGTH, PassageKind, saveValidationMessage } from '../../models/activity';
 import { Component, inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
@@ -97,6 +98,7 @@ export class QuestionComponent implements OnInit {
     ],
   };
   router = inject(Router);
+  private readonly classificationLimit = inject(ClassificationLimitNotice);
   route = inject(ActivatedRoute);
   questionService = inject(QuestionService);
   testService = inject(TestService);
@@ -402,6 +404,7 @@ export class QuestionComponent implements OnInit {
     this.questionService.saveQuestion(questionPayload).subscribe({
       next: (response) => {
         alert(this.tr('form.saveSuccess'));
+        this.classificationLimit.showIfSkipped(response);
         if (!this.testInstance.testInstanceQuestions.find((q) => q.id === response.questionId)) {
           this.testInstance.testInstanceQuestions.push({
             id: response.questionId,

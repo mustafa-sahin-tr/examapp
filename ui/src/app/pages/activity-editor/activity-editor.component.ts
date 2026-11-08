@@ -1,3 +1,4 @@
+import { ClassificationLimitNotice } from '../../shared/utils/classification-limit-notice';
 import { LearningOutcome } from '../../models/learning-outcome';
 import { LearningOutcomeService } from '../../services/learning-outcome.service';
 import { LearningOutcomePickerComponent } from '../../shared/components/learning-outcome-picker/learning-outcome-picker.component';
@@ -228,6 +229,7 @@ export class ActivityEditorComponent {
   private readonly learningOutcomeService = inject(LearningOutcomeService);
   private readonly testService = inject(TestService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly classificationLimit = inject(ClassificationLimitNotice);
   private readonly transloco = inject(TranslocoService);
   private readonly auth = inject(AuthService);
   private readonly labelingApi = inject(LabelingService);
@@ -1754,13 +1756,14 @@ export class ActivityEditorComponent {
     const editingId = this.editingId();
     const request$ = editingId ? this.questionService.saveQuestion(this.updateBody(editingId)) : this.questionService.saveBulk(this.createBody());
     request$.subscribe({
-      next: () => {
+      next: (response) => {
         if (editingId) {
           this.saveClassificationIfChanged(editingId);
           this.saveLearningOutcomesIfChanged(editingId);
         }
         this.saving.set(false);
         this.snackBar.open(this.t(editingId ? 'snackbar.updated' : 'snackbar.created'), undefined, { duration: 3000 });
+        this.classificationLimit.showIfSkipped(response);
         if (addAnother) {
           this.newItem();
           this.load();

@@ -2,6 +2,10 @@
   "brand": {
     "name": "Hedef Okul"
   },
+  "classificationLimit": {
+    "note": "Kaydedildi, ama bu ayki yapay zekâ sınıflandırma hakkınız doldu: {{count}} soru sınıflandırılmadı.",
+    "upgrade": "Planı yükselt"
+  },
   "common": {
     "loading": "Yükleniyor...",
     "retry": "Tekrar dene",

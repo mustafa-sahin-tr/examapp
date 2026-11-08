@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models;
@@ -34,10 +35,14 @@ public class TestSessionService : ITestSessionService
     // issue #571: etkileşim tipine göre sunucu tarafı kontrolcü. DI verir; DI'sız birim testler yerleşik kontrolcüleri alır.
     private readonly IInteractionGraderRegistry _graders;
 
+    // issue #1031: sınıfa açık denemenin plan kapısı. DI verir; DI'sız birim testlerde kapı yok.
+    private readonly IEntitlementService? _entitlements;
+
     public TestSessionService(AppDbContext context, IStringLocalizer<Messages>? localizer = null, IAuthApiClient? authApi = null,
-        IInteractionGraderRegistry? graders = null)
+        IInteractionGraderRegistry? graders = null, IEntitlementService? entitlements = null)
     {
         _context = context;
+        _entitlements = entitlements;
         _authApi = authApi;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         _graders = graders ?? InteractionGraderRegistry.Default;
@@ -146,6 +151,11 @@ public class TestSessionService : ITestSessionService
         if (existing != null)
             return existing;
 
+        // Issue #1031: yeni oturum açılırken. Atanan deneme öğrencinin planına sayılmaz (öğretmen atadı); kalan oturuma dönmek de.
+        var mockExamUsage = openMockExamSession && !hasActiveAssignment
+            ? await CheckMockExamPlanAsync(testId, student.Id)
+            : null;
+
         // Teste ait soruları TestQuestion tablosundan çekiyoruz (kilit dışında okunur). Include'lar korunur: soft-delete
         // filtreli soru gezinmesi silinmiş sorunun satırını önceki davranıştaki gibi dışarıda bırakır.
         var testQuestionIds = (await _context.TestQuestions
@@ -217,12 +227,43 @@ public class TestSessionService : ITestSessionService
                 ?? throw new InvalidOperationException("Test instance unique violation but no existing instance found.");
         }
 
+        if (mockExamUsage is { } usage)
+            await _entitlements!.RecordUsageAsync(usage.UserId, EntitlementFeatures.MockExam, usage.ReferenceKey);
+
         return new TestStartResultDto
         {
             Success = true,
             InstanceId = created.Id,
             StartTime = created.StartTime
         };
+    }
+
+    /// <summary>
+    /// Issue #1031: sınıfa açık denemenin oturumunu açacak öğrencinin planı. Sınıfın ücretsiz denemesi serbesttir; denemenin
+    /// bütün oturumları tek kullanım sayılır (başka oturumu önce başladıysa yeniden sorulmaz). Sınır doluysa
+    /// <see cref="EntitlementLimitException"/>; sayılacaksa kullanıcı ve kayıt anahtarı döner (oturum açıldıktan sonra yazılır).
+    /// </summary>
+    private async Task<(int UserId, string ReferenceKey)?> CheckMockExamPlanAsync(int worksheetId, int studentId)
+    {
+        if (_entitlements is null)
+            return null;
+
+        var exam = await _context.MockExamSessions.AsNoTracking()
+            .Where(s => s.WorksheetId == worksheetId)
+            .Select(s => new { s.MockExamId, s.MockExam.IsFreeTrial })
+            .FirstAsync();
+        if (exam.IsFreeTrial)
+            return null;
+
+        var userId = await _context.Students.AsNoTracking().Where(s => s.Id == studentId).Select(s => s.UserId).FirstAsync();
+        var referenceKey = $"mock-exam:{exam.MockExamId}:{userId}";
+        if (await _context.EntitlementUsages.AsNoTracking().AnyAsync(u => u.FeatureKey == EntitlementFeatures.MockExam && u.ReferenceKey == referenceKey))
+            return null;
+
+        var check = await _entitlements.CheckAsync(EntitlementSubject.Create(userId), EntitlementFeatures.MockExam);
+        if (!check.Allowed)
+            throw new EntitlementLimitException(EntitlementFeatures.MockExam, check);
+        return (userId, referenceKey);
     }
 
     /// <summary>Unique index adı — <see cref="AppDbContext"/> (StudentId, WorksheetId) filtreli unique index'i.</summary>

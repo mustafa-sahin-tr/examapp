@@ -2632,6 +2632,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsFreeTrial")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -2654,6 +2657,10 @@ namespace ExamApp.Api.Migrations
                     b.HasIndex("ExamTemplateId");
 
                     b.HasIndex("GradeId");
+
+                    b.HasIndex(new[] { "GradeId" }, "IX_MockExams_GradeId_FreeTrial")
+                        .IsUnique()
+                        .HasFilter("\"IsFreeTrial\" AND NOT \"IsDeleted\"");
 
                     b.ToTable("MockExams");
                 });

@@ -17,7 +17,10 @@ public static class EntitlementFeatures
     /// <summary>Kitaptan aktarım (epic #1017): kurulumu onaylanan iş bir kullanım sayılır (#1021 kaydeder).</summary>
     public const string BookImport = "book-import";
 
-    /// <summary>Soru sınıflandırma (AI); sayım #1031'de.</summary>
+    /// <summary>
+    /// Soru sınıflandırma (AI): öğretmenin kaydettiği yeni soru başına bir kullanım (#1031). Sınır doluysa soru kaydedilir ama
+    /// sınıflandırıcıya gönderilmez. Kitap ve hızlı ekleme taslakları sayılmaz: onların maliyeti kendi özelliğine yazılır.
+    /// </summary>
     public const string AiClassification = "ai-classification";
 
     /// <summary>Deneme sınavı çözme. Free'de 0: herkese açık tek deneme sınavı sınırdan muaftır (#1031).</summary>
@@ -40,6 +43,7 @@ public static class EntitlementRoles
     public static readonly IReadOnlyDictionary<string, string[]> UnlimitedByFeature = new Dictionary<string, string[]>
     {
         [EntitlementFeatures.BookImport] = [QuestionTrainer],
+        [EntitlementFeatures.AiClassification] = [QuestionTrainer],
     };
 
     internal static readonly string[] All = [Admin, QuestionTrainer];
@@ -65,6 +69,13 @@ public sealed record EntitlementSubject(int UserId, IReadOnlySet<string> Roles)
 public sealed record EntitlementCheck(bool Allowed, int? Limit, int Used, DateTime? ResetsAtUtc, string? PlanKey = null)
 {
     public int? Remaining => Limit is { } limit ? Math.Max(0, limit - Used) : null;
+}
+
+/// <summary>İşlem plan sınırına takıldı; denetleyici <see cref="EntitlementLimitResponse"/> döner.</summary>
+public sealed class EntitlementLimitException(string featureKey, EntitlementCheck check) : Exception(featureKey)
+{
+    public string FeatureKey { get; } = featureKey;
+    public EntitlementCheck Check { get; } = check;
 }
 
 /// <summary>Kullanıcının o anki planı; <paramref name="ValidToUtc"/> atamanın bitişi (Free / süresiz atamada null).</summary>

@@ -312,6 +312,17 @@ Kılavuz özeti ve beceri listesinin kaynağı `docs/context-based-questions.md`
   resetsAtUtc, planKey, message }`. Arayüzde `entitlementLimitInterceptor` bu yanıtı yakalayıp `UpgradeDialogComponent`'i açar
   (aynı anda tek pencere; planların o özellikteki sınırı karşılaştırılır); hata çağırana da iletilir. Yeni sınırlı uç nokta
   (#1031) yalnız bu yardımcıyı döndürür, sayfaya ayrıca pencere kodu yazılmaz.
+- **Sınırların uygulanması (#1031):** **`ai-classification`** kapısı soru kaydındadır: `POST /api/exam/questions` (yeni soru) ve
+  `POST /api/exam/questions/save` çağıranı sahip olarak planına yazar (soru başına bir `question:{id}` kullanımı, ilk N soru). Sınır doluysa
+  soru kaydedilir, `QuestionCreatedEvent` yazılmaz (AI çağrısı yok), yanıtta `classificationSkipped` döner; arayüz bildirimi
+  (`ClassificationLimitNotice`) "Planı yükselt" ile gösterir (kayıt başarılı olduğundan 429 değil). Admin ve QuestionTrainer sınırsız.
+  **Kitap ve hızlı ekleme taslakları sayılmaz** (`classificationOwner` null): maliyetleri `book-import` / `quick-add`'e yazılır,
+  yoksa kitap başına yüzlerce soru `ai-classification` hakkını bitirirdi. **`mock-exam`** kapısı `start-test`'tedir, yalnız yeni oturum
+  açan ve **atanmamış** sınıfa açık deneme için: admin'in seçtiği **sınıfın ücretsiz denemesi** (`MockExam.IsFreeTrial`, `PUT
+  /api/exam/mock-exams/{id}/free-trial`, deneme kurma ekranı; yayımlanmış + sınıfa açık, sınıf başına tek) serbest; deneme başına bir
+  kullanım (`mock-exam:{examId}:{userId}`, bütün oturumlar tek sayılır); dolu → 429 ortak yanıt. Süren oturuma dönmek ve geçmiş sonuç
+  etkilenmez. **Kim öder:** öğretmenin atadığı işte öğrencinin planı kullanılmaz; ileride ödevde AI kullanan bir özellik eklenirse
+  `RecordUsageAsync` öğretmenin kullanıcı id'sini yazar. Bugün öğrencinin tetiklediği ölçülü AI özelliği yok, atanan deneme de
+  sayılmaz (öğretmen planında `mock-exam` sınırı yok). `book-import` kapısı #1019'dan beri yüklemededir.
 - **Genişletme (abonelik epic'i):** yeni özellik = `EntitlementFeatures`'a sabit + plan başına sınır satırı + kullanım anında
   `RecordUsageAsync`, karar anında `CheckAsync`. Yeni planlar (#1027) satır ekler; plan tablolarında özelliğe özgü mantık yok.
-  Öğretmenin atadığı işin maliyeti öğretmenin kotasından (#1031): kayıt `userId` olarak öğretmeni yazar.

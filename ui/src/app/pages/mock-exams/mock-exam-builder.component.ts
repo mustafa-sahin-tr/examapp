@@ -70,6 +70,15 @@ export class SectionQuestionsDialogComponent {
           <div class="me-error" role="alert">{{ t('errors.' + key) }}</div>
         }
 
+        @if (isAdmin && current.publishedAt && current.openToGrade) {
+          <div class="me-free-trial">
+            <mat-checkbox data-testid="me-free-trial-toggle" [checked]="!!current.isFreeTrial" [disabled]="busy()" (change)="setFreeTrial(current, $event.checked)">
+              {{ t('builder.freeTrial', { grade: current.gradeName }) }}
+            </mat-checkbox>
+            <div class="me-note">{{ t('builder.freeTrialHint') }}</div>
+          </div>
+        }
+
         @for (session of current.sessions; track session.id) {
           <mat-card class="me-card">
             <mat-card-header>
@@ -237,6 +246,18 @@ export class MockExamBuilderComponent implements OnInit {
     });
   }
 
+  setFreeTrial(exam: MockExamDetail, isFreeTrial: boolean): void {
+    this.busy.set(true);
+    this.errorKey.set(null);
+    this.service.setFreeTrial(exam.id, isFreeTrial).subscribe({
+      next: (updated) => {
+        this.busy.set(false);
+        this.exam.set(updated);
+      },
+      error: (err: HttpErrorResponse) => this.fail(err),
+    });
+  }
+
   deleteDraft(): void {
     const exam = this.exam();
     if (!exam || this.busy()) return;
@@ -264,7 +285,7 @@ export class MockExamBuilderComponent implements OnInit {
   private fail(err: HttpErrorResponse): void {
     this.busy.set(false);
     const code = (err.error as { errorCode?: string } | null)?.errorCode;
-    const known = ['AlreadyPublished', 'TooManyQuestions', 'QuestionUsedTwice', 'QuestionNotUsable'];
+    const known = ['AlreadyPublished', 'TooManyQuestions', 'QuestionUsedTwice', 'QuestionNotUsable', 'FreeTrialNotOpen'];
     this.errorKey.set(code && known.includes(code) ? code : 'Failed');
   }
 }

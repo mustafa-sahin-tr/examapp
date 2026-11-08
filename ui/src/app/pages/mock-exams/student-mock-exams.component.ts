@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { MockExamResult, MockExamService, StudentMockExam, StudentMockExamSession } from '../../services/mock-exam.service';
 import { TestService } from '../../services/test.service';
+import { entitlementLimitOf } from '../../models/subscription';
 
 /** Issue #693: öğrencinin denemeleri. Her oturum ayrı başlar, süresi sunucuda işler. #901: boş durum denemeyi anlatır. */
 @Component({
@@ -44,7 +45,12 @@ import { TestService } from '../../services/test.service';
         <mat-card class="me-card">
           <mat-card-header>
             <mat-card-title>{{ exam.name }}</mat-card-title>
-            <mat-card-subtitle>{{ exam.templateName }}</mat-card-subtitle>
+            <mat-card-subtitle>
+              {{ exam.templateName }}
+              @if (exam.isFreeTrial) {
+                <span class="me-free" data-testid="me-free-trial">{{ t('student.freeTrial') }}</span>
+              }
+            </mat-card-subtitle>
           </mat-card-header>
           <mat-card-content>
             @for (session of exam.sessions; track session.worksheetId) {
@@ -117,9 +123,10 @@ export class StudentMockExamsComponent {
         this.starting.set(false);
         void this.router.navigate(['/testsolve', result.instanceId]);
       },
-      error: () => {
+      error: (err: unknown) => {
         this.starting.set(false);
-        this.startFailed.set(true);
+        // Issue #1031: plan sınırında yükseltme penceresi açılır (interceptor); ayrıca hata gösterilmez.
+        this.startFailed.set(!entitlementLimitOf(err));
       },
     });
   }

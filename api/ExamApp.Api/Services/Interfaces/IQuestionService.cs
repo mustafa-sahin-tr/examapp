@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Entitlements;
 using System;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
@@ -8,10 +9,14 @@ public interface IQuestionService
 {
     /// <param name="actingUserId">issue #287 H1: &gt; 0 ise yeni sorular bu kullanıcıya damgalanır (Question.CreateUserId → sahiplik).</param>
     /// <param name="isAdmin">issue #573: var olan kapsamın tür/yönergesini sahibi olmayan admin de değiştirebilir.</param>
-    Task<QuestionSavedDto> CreateOrUpdateQuestion(QuestionDto questionDto, int actingUserId = 0, bool isAdmin = false);
+    Task<QuestionSavedDto> CreateOrUpdateQuestion(QuestionDto questionDto, int actingUserId = 0, bool isAdmin = false, EntitlementSubject? classificationOwner = null);
 
     /// <param name="actingUserId">issue #287 H1: &gt; 0 ise yeni sorular bu kullanıcıya damgalanır (Question.CreateUserId → sahiplik).</param>
-    Task<ResponseBaseDto> SaveBulkQuestion(BulkQuestionCreateDto soruDto, int actingUserId = 0);
+    /// <param name="classificationOwner">
+    /// Issue #1031: yeni soruların AI sınıflandırması bu kullanıcının planına sayılır; sınır doluysa soru sınıflandırıcıya gönderilmez
+    /// (<see cref="QuestionSavedDto.ClassificationSkipped"/>). Null: sayılmaz (kitap / hızlı ekleme işleri, muaf rollerin ekranları).
+    /// </param>
+    Task<ResponseBaseDto> SaveBulkQuestion(BulkQuestionCreateDto soruDto, int actingUserId = 0, EntitlementSubject? classificationOwner = null);
 
     Task<StudyPageAttachImageResponseDto> AttachImageToStudyPage(StudyPageAttachImageDto request);
 

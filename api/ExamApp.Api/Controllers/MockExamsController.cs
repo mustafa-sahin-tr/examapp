@@ -105,6 +105,17 @@ public class MockExamsController : BaseController
         });
     }
 
+    /// <summary>Issue #1031: sınıfın Free öğrencilerine açık tek deneme. Yalnız yayımlanmış ve sınıfa açık deneme seçilir.</summary>
+    [HttpPut("{id:int}/free-trial")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> SetFreeTrial(int id, [FromBody] SetMockExamFreeTrialDto request, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync(ct);
+        if (!IsResolvedUser(user))
+            return Unauthorized();
+        return await RunAsync(async () => await _service.SetFreeTrialAsync(id, request.IsFreeTrial, user.Id, ct) is { } detail ? Ok(detail) : NotFound());
+    }
+
     [HttpDelete("{id:int}")]
     [Authorize(Roles = AuthoringRoles)]
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)]

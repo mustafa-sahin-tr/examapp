@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Teachers.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -606,6 +607,10 @@ public class ExamController : BaseController
                 return NotFound(new { message = _localizer["exam.testNotFound"].Value });
 
             return Ok(result);
+        }
+        catch (EntitlementLimitException ex)
+        {
+            return EntitlementLimitResponse.Create(ex.FeatureKey, ex.Check, _localizer["exam.mockExamLimitReached"].Value);
         }
         catch (UnauthorizedAccessException ex)
         {

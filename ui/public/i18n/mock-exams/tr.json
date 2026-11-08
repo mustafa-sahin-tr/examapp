@@ -34,6 +34,8 @@
     "removeQuestion": "{{id}} numaralı soruyu çıkar",
     "problemsTitle": "Yayınlamak için tamamlanmalı:",
     "openToGrade": "Bütün okullardaki {{grade}} öğrencilerine açık olsun",
+    "freeTrial": "{{grade}} öğrencilerinin ücretsiz denemesi olsun",
+    "freeTrialHint": "Ücretsiz plandaki öğrenciler yalnız bu denemeyi çözebilir. Her sınıfta bir deneme seçilir; önceki seçim kalkar.",
     "openToGradeHint": "İşaretli değilse yalnız atanan öğrenciler başlatabilir. Yayından sonra her oturumu ayrı atayın.",
     "publish": "Yayınla",
     "deleteDraft": "Taslağı sil",
@@ -67,6 +69,7 @@
   },
   "errors": {
     "AlreadyPublished": "Deneme yayınlandı, artık değiştirilemez.",
+    "FreeTrialNotOpen": "Ücretsiz deneme yayımlanmış ve sınıfa açık olmalı.",
     "TooManyQuestions": "Bu derse gerekenden fazla soru seçtiniz.",
     "QuestionUsedTwice": "Seçtiğiniz soru bu denemede zaten kullanılıyor.",
     "QuestionNotUsable": "Seçilen sorulardan biri teste eklenemez: açık uçlu, yayında değil ya da size ait değil.",
@@ -77,6 +80,7 @@
   },
   "student": {
     "title": "Denemeler",
+    "freeTrial": "Ücretsiz",
     "emptyTitle": "Henüz deneme yok",
     "empty": "Deneme, LGS gibi süreli ve oturumlu bir sınav. Öğretmenin bir deneme açınca burada görürsün; bitince her ders için netini gösteririz.",
     "goDaily": "Günün sorularını çöz",

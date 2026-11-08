@@ -141,6 +141,9 @@ public class QuestionSavedDto : ResponseBaseDto
 {
     public int? QuestionId { get; set; }
 
+    /// <summary>Issue #1031: plan sınırı dolu olduğu için sınıflandırılmayacak yeni soru sayısı (arayüz not gösterir).</summary>
+    public int ClassificationSkipped { get; set; }
+
     /// <summary>
     /// True when the request was rejected before anything was written because an input value is invalid
     /// (e.g. a passage image URL outside the allowlist, issue #365). Lets the controller map to HTTP 400.

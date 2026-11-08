@@ -127,50 +127,52 @@ internal sealed class BookQuestionImportStage(
         label = label.Length <= QuestionSource.MaxLabelLength ? label : label[..QuestionSource.MaxLabelLength];
         var flags = new FlagSet();
         var questionIds = new List<int>();
-        int found = 0, saved = 0, duplicates = 0, failedPages = 0, pageCount = 0;
-        var last = 0;
+        int saved = 0, duplicates = 0, failedPages = 0, pageCount = 0;
 
+        // Önce testin bütün sayfaları tespit edilir: numaralama testin toplamına bakar (NumberPages).
+        var detected = new List<DetectedPage>();
         for (var filePage = from; filePage <= to; filePage++)
         {
             pageCount++;
             if (!pages.TryGetValue(filePage, out var page))
             {
-                flags.Add(BookImportReviewFlag.DetectionFailed, filePage);
-                failedPages++;
+                detected.Add(new DetectedPage(filePage, null, null, null));
                 continue;
             }
-
-            // Numaralama sayfaya dayanır: basılı en büyük no biliniyorsa sayfa önceki sayfanın sonundan başlar ve orada biter.
-            var start = last + 1;
-            var pageMax = page.MaxQuestionNumber is { } max && max >= start ? max : (int?)null;
-
-            string imageBase64;
-            List<LayoutQuestion> questions;
-            int width, height;
             try
             {
-                imageBase64 = await LoadAsync(page);
+                var imageBase64 = await LoadAsync(page);
                 var detection = await DetectAsync(job, imageBase64, ct);
-                width = page.Width;
-                height = page.Height;
-                questions = BookQuestionLayout.MergeSplit(
-                    BookQuestionLayout.Order(ToLayout(detection.Response.Result.Predictions), width), width, height);
+                var questions = BookQuestionLayout.MergeSplit(
+                    BookQuestionLayout.Order(ToLayout(detection.Response.Result.Predictions), page.Width), page.Width, page.Height);
+                detected.Add(new DetectedPage(filePage, page, imageBase64, questions));
             }
             catch (Exception ex) when (ex is LabelingAiException or LabelingImportDetectException or LabelingValidationException
                                            or LabelingAiUnavailableException or BookImportFailure)
             {
                 logger.LogWarning("Book import job {JobId}: detection failed on page {Page}: {Reason}", job.Id, filePage, ex.Message);
+                detected.Add(new DetectedPage(filePage, page, null, null));
+            }
+        }
+
+        var found = detected.Sum(d => d.Questions?.Count ?? 0);
+        var numbering = NumberPages(
+            detected.Select(d => (d.Page is null ? null : d.Page.MaxQuestionNumber, d.Questions?.Count)).ToList(), key?.Length);
+
+        for (var p = 0; p < detected.Count; p++)
+        {
+            var (filePage, page, imageBase64, questions) = detected[p];
+            var (start, pageMax) = numbering[p];
+            if (page is null || questions is null || imageBase64 is null)
+            {
                 flags.Add(BookImportReviewFlag.DetectionFailed, filePage);
                 if (pageMax is { } m)
-                {
                     flags.Add(BookImportReviewFlag.MissingNumbers, filePage, Enumerable.Range(start, m - start + 1));
-                    last = m;
-                }
                 failedPages++;
                 continue;
             }
+            var (width, height) = (page.Width, page.Height);
 
-            found += questions.Count;
             if (pageMax is { } expectedMax)
             {
                 var expected = expectedMax - start + 1;
@@ -200,7 +202,6 @@ internal sealed class BookQuestionImportStage(
                     flags.Add(BookImportReviewFlag.NoAnswer, filePage, [number]);
                 toSave.Add(ToBankQuestion(prepared, answer, label, number));
             }
-            last = Math.Max(pageMax ?? 0, start + questions.Count - 1);
 
             if (toSave.Count == 0)
                 continue;
@@ -284,6 +285,32 @@ internal sealed class BookQuestionImportStage(
     }
 
     private const int DraftTestNameLength = 200;
+
+    /// <summary>Testin bir sayfasının tespiti; <c>Questions</c> null → sayfa görseli yok ya da tespit başarısız.</summary>
+    private sealed record DetectedPage(int FilePage, BookImportPage? Page, string? ImageBase64, List<LayoutQuestion>? Questions);
+
+    /// <summary>
+    /// Sayfaların ilk soru no'su ve beklenen en büyük no'su. Numaralama sayfaya dayanır: kurulumda okunan basılı en büyük no
+    /// biliniyorsa sayfa önceki sayfanın sonundan başlar ve orada biter; tespiti başarısız sayfa numaralarını yine tüketir.
+    /// Her sayfa tespit edildi ve bulunan toplam anahtarın uzunluğuna eşitse basılı numaralar yok sayılır, sorular sırayla
+    /// numaralanır: kurulumda yanlış okunan bir sayfa no'su sonraki soruları kaydırıp cevapsız bırakmasın.
+    /// </summary>
+    /// <param name="pages">Sayfa başına basılı en büyük no (bilinmiyorsa null) ve bulunan soru sayısı (tespit başarısızsa null).</param>
+    internal static IReadOnlyList<(int Start, int? Max)> NumberPages(
+        IReadOnlyList<(int? PrintedMax, int? Found)> pages, int? keyLength)
+    {
+        var sequential = keyLength is { } n && pages.All(p => p.Found is not null) && pages.Sum(p => p.Found!.Value) == n;
+        var result = new List<(int Start, int? Max)>(pages.Count);
+        var last = 0;
+        foreach (var (printedMax, foundOnPage) in pages)
+        {
+            var start = last + 1;
+            var max = !sequential && printedMax is { } m && m >= start ? m : (int?)null;
+            result.Add((start, max));
+            last = foundOnPage is { } count ? Math.Max(max ?? 0, start + count - 1) : max ?? last;
+        }
+        return result;
+    }
 
     private async Task<LabelingImportDetection> DetectAsync(BookImportJob job, string imageBase64, CancellationToken ct)
     {

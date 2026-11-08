@@ -69,9 +69,8 @@ const MAX_BODY_TEXT_PX = 22;
 const ZOOM_OFFER_SCALE = 0.75;
 /** Büyütme penceresi görseli ekrandakinin bu katı genişlikte açar (doğal boyutu aşmadan). */
 const ZOOM_FACTOR = 2;
-/** Düğme kendi satırındayken soru için kullanılamayan yükseklik (px). */
+/** Büyütme düğmesi görselin üstünde kendi satırında durur (metni kapatmasın); soru için kullanılamayan yükseklik (px). */
 const ZOOM_ROW_HEIGHT_PX = 48;
-const ZOOM_ROW_MAX_WIDTH_PX = 900;
 /** Sekme satırının soru için kullanılamayan yüksekliği (px). */
 const PANE_TABS_HEIGHT_PX = 60;
 
@@ -119,9 +118,12 @@ export class QuestionCanvasViewComponentv5 {
   readonly answerMinWidth = signal<number>(0);
   /** Yükseklik-bazlı sığdırmada ekrandaki alana göre seçilen düzen; diğer tüketicilerde null. */
   readonly plan = signal<QuestionLayoutPlan | null>(null);
-  /** Büyütme düğmesi metni kapatmasın diye görselin üstünde kendi satırında mı. */
-  readonly zoomInOwnRow = signal(false);
   readonly passagePlan = signal<PassageLayoutPlan | null>(null);
+  /** Soru üstte, şıklar tek sütunda: şık bloğu ortalanmış soru görseliyle aynı sol kenardan başlar. */
+  readonly singleColumnAnswersWidth = computed(() => {
+    const plan = this.plan();
+    return plan?.arrangement === 'top' && plan.answerColumns === 1 ? this.questionImageWidth() : null;
+  });
   readonly activePane = signal<'passage' | 'question'>('question');
   readonly passageArrangement = computed(() => this.passagePlan()?.arrangement ?? null);
   /** Kayıtlı boyuttan görsel genişliği: yüklenmeden yer ayrılır, kaydırma konumu geri yüklenebilir. */
@@ -371,7 +373,7 @@ export class QuestionCanvasViewComponentv5 {
     let availableHeight = passagePlan ? passagePlan.questionHeight : hostHeight;
     if (availableHeight !== null) {
       availableHeight -=
-        (this.needsZoomRow(hostWidth) ? ZOOM_ROW_HEIGHT_PX : 0) +
+        ZOOM_ROW_HEIGHT_PX +
         (passagePlan?.arrangement === 'tabs' ? PANE_TABS_HEIGHT_PX : 0);
     }
 
@@ -387,17 +389,12 @@ export class QuestionCanvasViewComponentv5 {
     });
 
     this.plan.set(plan);
-    this.zoomInOwnRow.set(this.needsZoomRow(hostWidth));
     // Soru genişliğe uyar; kısa şıklar çok geniş sorunun ölçeğiyle okunmaz hâle gelmesin (kart genişliği yine sınırlar).
     this.visualScale.set(clampVisualScale(plan.scale));
     this.questionImageWidth.set(Math.round(region.width * plan.scale));
     this.passagePlan.set(passagePlan);
   }
 
-  /** Dar alanda ve dokunmatik ekranda ipucu çıkmaz; düğme yazısıyla kendi satırında durur. */
-  private needsZoomRow(hostWidth: number): boolean {
-    return hostWidth < ZOOM_ROW_MAX_WIDTH_PX || window.matchMedia('(hover: none)').matches;
-  }
 
   /**
    * Seçilirse ya da bir şıkkın görseli yoksa (bilinmeyen tip) tüm soru tek görsel gösterilir.
@@ -422,11 +419,19 @@ export class QuestionCanvasViewComponentv5 {
 
   private planPassage(width: number, height: number | null): PassageLayoutPlan {
     const passage = this._questionRegion().passage;
-    return planPassageLayout({
+    const plan = planPassageLayout({
       passage: passage?.width && passage?.height ? { width: passage.width, height: passage.height } : null,
       width,
       height,
     });
+    // Parçanın büyütme düğmesi de kendi satırında: yanda kayan kutu ve üstteki parçanın altındaki soru o kadar kısalır.
+    if (plan.arrangement === 'beside' && plan.boxHeight !== null) {
+      return { ...plan, boxHeight: Math.max(0, plan.boxHeight - ZOOM_ROW_HEIGHT_PX) };
+    }
+    if (plan.arrangement === 'top' && plan.questionHeight !== null) {
+      return { ...plan, questionHeight: Math.max(0, plan.questionHeight - ZOOM_ROW_HEIGHT_PX) };
+    }
+    return plan;
   }
 
   /** İlk kez görülen parçada dar ekran metinle açılır; aynı grubun sonraki sorularında soruyla. */

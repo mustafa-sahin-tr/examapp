@@ -134,6 +134,10 @@
   max-width: 100%;
 }
 
+.qcv4-answers-grid {
+  margin-inline: auto;
+}
+
 .qcv4-question-image {
   display: block;
   max-width: 100%;
@@ -152,39 +156,26 @@
   margin-inline: auto;
 }
 
-// Görselin üstünde durur; metnin üzerine binse de okunması için odaklanılana kadar yarı saydam.
+// Büyütme düğmesi görselin üstünde kendi satırında, sağda: görselin köşesine binip metni kapatmaz.
 .qcv4-zoom-button {
   --mat-button-text-label-text-color: var(--primaryColor);
-  position: absolute;
-  top: 4px;
-  right: 4px;
   min-width: 44px;
   min-height: 44px;
   padding: 0 8px;
-  background: color-mix(in srgb, var(--whiteColor) 85%, transparent);
-  opacity: 0.7;
 
   mat-icon {
     margin: 0;
   }
-
-  &:hover,
-  &:focus-visible {
-    opacity: 1;
-  }
 }
 
-// Dar alanda görsel tüm genişliği kullanır: düğme metni kapatmasın diye üstte kendi satırında.
 .qcv4-main-image-box--zoom-row,
 .qcv4-passage--zoom-row {
   display: flex;
   flex-direction: column;
 
   .qcv4-zoom-button {
-    position: static;
     order: -1;
     align-self: flex-end;
-    opacity: 1;
   }
 }
 
@@ -263,6 +254,14 @@
 .qcv4-answer-card {
   cursor: pointer;
 
+  // Kart, şık görseli kadar geniş: hücrenin geri kalanı boş kalır, seçim/üzerine gelme rengi görselin dışına taşmaz.
+  &:has(.qcv4-answer-image) {
+    justify-self: start;
+    align-self: start;
+    width: fit-content;
+    max-width: 100%;
+  }
+
   &:focus-visible {
     outline: 2px solid var(--primaryColor);
     outline-offset: 2px;
@@ -316,18 +315,29 @@
 }
 
 
+// Şık kâğıdı her temada beyaz: zemin renkleri beyazla karıştırılır (koyu temada kart koyulaşmaz) ve görsel
+// multiply ile zemine karışır, böylece görselin beyaz zemini kartın içinde ayrı bir kutu gibi durmaz.
 .qcv4-answer-card.is-hovered {
   border: 2px solid #1e88e5;
-  background: rgba(0, 0, 255, 0.02); 
+  background: color-mix(in srgb, #1e88e5 6%, #fff);
   box-shadow: 0 0 0 2px #c6e0f533;
 }
 .qcv4-answer-card.is-correct {
-  border: 2px solid #43a047;
+  border: 3px solid #2e7d32;
   background: #e8f5e9;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #2e7d32 35%, transparent);
 }
 .qcv4-answer-card.is-incorrect {
-  border: 2px solid #e53935;
+  border: 3px solid #e53935;
   background: #ffebee;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #e53935 30%, transparent);
+}
+.qcv4-answer-card.is-hovered,
+.qcv4-answer-card.is-correct,
+.qcv4-answer-card.is-incorrect {
+  img {
+    mix-blend-mode: multiply;
+  }
 }
 
 

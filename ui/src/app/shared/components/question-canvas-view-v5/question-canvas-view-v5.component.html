@@ -9,7 +9,7 @@
     </mat-button-toggle-group>
   }
   @if (!hidePassage && passageImageSource(); as pUrl) {
-    <div class="qcv4-passage" [class.qcv4-passage--zoom-row]="enableHeightFit && zoomInOwnRow()"
+    <div class="qcv4-passage" [class.qcv4-passage--zoom-row]="enableHeightFit"
       [class.qcv4-pane-hidden]="passageArrangement() === 'tabs' && activePane() !== 'passage'"
       [style.width.px]="passagePlan()?.boxWidth ?? null">
       <div #passageScroller class="qcv4-passage__scroller" [style.max-height.px]="passagePlan()?.boxHeight ?? null"
@@ -22,16 +22,14 @@
         <button mat-button type="button" class="qcv4-zoom-button" [attr.aria-label]="t('zoomPassage')"
           (click)="openPassageZoom(passageImage, t('passageAlt'))">
           <mat-icon>zoom_in</mat-icon>
-          @if (zoomInOwnRow()) {
-            <span>{{ t('zoomShort') }}</span>
-          }
+          <span>{{ t('zoomShort') }}</span>
         </button>
       }
     </div>
   }
   <div class="qcv4-container" [class]="containerClass()" [class.qcv4-pane-hidden]="passageArrangement() === 'tabs' && activePane() !== 'question'" [style.--qcv-answer-cols]="plan()?.answerColumns ?? null">
     <div class="qcv4-question-image-wrapper">
-      <div #questionImageBox class="qcv4-main-image-box" [class.qcv4-main-image-box--zoom-row]="questionZoomAvailable() && zoomInOwnRow()">
+      <div #questionImageBox class="qcv4-main-image-box" [class.qcv4-main-image-box--zoom-row]="questionZoomAvailable()">
         <img #questionImage class="qcv4-question-image" [src]="displayedQuestionSource()" [alt]="t('questionAlt')"
           [style.width.px]="questionImageWidth()" [style.aspect-ratio]="questionAspectRatio()"
           (load)="updateVisualScale()" [appStorageImageRetry]="imageRefresh" />
@@ -39,14 +37,12 @@
           <button mat-button type="button" class="qcv4-zoom-button" [attr.aria-label]="t('zoomQuestion')"
             (click)="openQuestionZoom(questionImage, t('questionAlt'), choiceAlt(t))">
             <mat-icon>zoom_in</mat-icon>
-            @if (zoomInOwnRow()) {
-              <span>{{ t('zoomShort') }}</span>
-            }
+            <span>{{ t('zoomShort') }}</span>
           </button>
         }
         </div>
       </div>
-      <div class="qcv4-answers-grid">
+      <div class="qcv4-answers-grid" [style.width.px]="singleColumnAnswersWidth()">
         @for (answer of _questionRegion().answers; track $index) {
           <div class="qcv4-answer-card" [ngClass]="getAnswerClasses(answer)" role="button" tabindex="0"
             [attr.aria-pressed]="isSelected(answer)" [attr.aria-label]="t('choiceAria', { label: answer.label || $index + 1 })"

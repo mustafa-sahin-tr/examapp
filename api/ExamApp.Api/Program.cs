@@ -650,6 +650,7 @@ builder.Services.AddScoped<QuestionTransferJobRunner>();
 builder.Services.AddScoped<ExamApp.Api.Services.Entitlements.IEntitlementService, ExamApp.Api.Services.Entitlements.EntitlementService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Entitlements.IAdminSubscriptionService, ExamApp.Api.Services.Entitlements.AdminSubscriptionService>(); // Issue #1030
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IBookImportService, ExamApp.Api.Services.BookImport.BookImportService>();
+builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IQuickAddService, ExamApp.Api.Services.BookImport.QuickAddService>(); // issue #1052
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IBookImportPageFixService, ExamApp.Api.Services.BookImport.BookImportPageFixService>();
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.BookImportJobRunner>();
 // Issue #1020: PDFium tabanlı sayfa görselleri (durumsuz).

@@ -16,10 +16,25 @@ public class StartBookImportFormDto
     public int? SubjectId { get; set; }
 }
 
+/// <summary>Issue #1052: hızlı ekleme formu; <see cref="Answers"/>[i] i. fotoğrafın isteğe bağlı cevap anahtarı.</summary>
+public class StartQuickAddFormDto
+{
+    public List<IFormFile>? Photos { get; set; }
+
+    public List<string?>? Answers { get; set; }
+
+    public int GradeId { get; set; }
+
+    public int? SubjectId { get; set; }
+}
+
 /// <summary>Issue #1018: aktarımlar listesi satırı ve takip ekranının başlığı.</summary>
 public class BookImportJobDto
 {
     public Guid Id { get; set; }
+
+    /// <summary>Issue #1052: <c>Book</c> ya da <c>QuickAdd</c>.</summary>
+    public string Kind { get; set; } = string.Empty;
     public string BookName { get; set; } = string.Empty;
     public int GradeId { get; set; }
     public int? SubjectId { get; set; }

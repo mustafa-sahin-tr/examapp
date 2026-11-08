@@ -23,8 +23,11 @@ public static class EntitlementFeatures
     /// <summary>Deneme sınavı çözme. Free'de 0: herkese açık tek deneme sınavı sınırdan muaftır (#1031).</summary>
     public const string MockExam = "mock-exam";
 
+    /// <summary>Hızlı soru ekleme (#1048, #1052): yüklenen her fotoğraf bir kullanım sayılır (yüklemede kaydedilir).</summary>
+    public const string QuickAdd = "quick-add";
+
     /// <summary>Kullanıcının plan özetinde (#1027) her zaman listelenen özellikler.</summary>
-    public static readonly IReadOnlyList<string> All = [BookImport, AiClassification, MockExam];
+    public static readonly IReadOnlyList<string> All = [BookImport, AiClassification, MockExam, QuickAdd];
 }
 
 /// <summary>Hak çözümlemesinde bakılan roller. Admin her özellikte sınırsız; diğer muafiyetler özellik bazında.</summary>

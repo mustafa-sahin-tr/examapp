@@ -34,6 +34,16 @@ public enum BookImportStage
     Approval = 8,
 }
 
+/// <summary>
+/// Issue #1052 (epic #1048): işin türü. Hızlı ekleme öğretmenin yüklediği fotoğrafları kitap aktarımının soru aşamasından geçirir:
+/// fotoğraf = sayfa, fotoğraf başına bir test satırı (incelemede satır başına onay); kitap kaydı ve kurulum yok.
+/// </summary>
+public enum BookImportJobKind
+{
+    Book = 1,
+    QuickAdd = 2,
+}
+
 public enum BookImportTestStatus
 {
     Pending = 1,
@@ -61,6 +71,9 @@ public class BookImportJob : BaseEntity
     [Key]
     public Guid Id { get; set; }
 
+    /// <summary>Issue #1052: kitap aktarımı ya da hızlı ekleme; iki tür ayrı uçlardan görünür.</summary>
+    public BookImportJobKind Kind { get; set; } = BookImportJobKind.Book;
+
     [Required, MaxLength(MaxBookNameLength)]
     public string BookName { get; set; } = string.Empty;
 
@@ -78,7 +91,7 @@ public class BookImportJob : BaseEntity
 
     public BookImportStage Stage { get; set; } = BookImportStage.Upload;
 
-    /// <summary>Yüklenen PDF'in MinIO adresi.</summary>
+    /// <summary>Yüklenen PDF'in MinIO adresi; hızlı eklemede boş (fotoğraflar <see cref="Pages"/>'te).</summary>
     [Required]
     public string FileUrl { get; set; } = string.Empty;
 

@@ -48,6 +48,13 @@ public class LabelingAiOptions
     [Range(0.01, 10_000)]
     public decimal DailyBudgetUsdImport { get; set; } = 15m;
 
+    /// <summary>
+    /// Issue #1052: hızlı eklemelerin 24 saatlik ortak Claude harcama sınırı (USD); kitap aktarımıyla aynı kural (kullanıcı bütçesine
+    /// yazılmaz, toplama yazılır), ayrı sayaç: büyük bir kitap aktarımı öğretmenlerin hızlı eklemesini bekletmesin.
+    /// </summary>
+    [Range(0.01, 10_000)]
+    public decimal DailyBudgetUsdQuickAdd { get; set; } = 5m;
+
     /// <summary>Kullanıcı başına saatte en fazla gerçek Claude çağrısı (kayıttan dönenler sayılmaz).</summary>
     [Range(1, 10_000)]
     public int LiveCallsPerHour { get; set; } = 60;

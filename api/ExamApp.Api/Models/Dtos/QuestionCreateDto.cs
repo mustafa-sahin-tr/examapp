@@ -122,7 +122,7 @@ public class BulkQuestionDto
 }
 
 /// <summary>Issue #577: <see cref="BulkQuestionDto.Source"/> — sunucu içi kitap kaynağı bilgisi.</summary>
-public sealed record BulkQuestionSourceInfo(int BookId, int FilePage, int? PrintedPage, string? ActivityLabel, string? ItemLabel);
+public sealed record BulkQuestionSourceInfo(int? BookId, int FilePage, int? PrintedPage, string? ActivityLabel, string? ItemLabel);
 
 public class BulkQuestionClassificationDto
 {

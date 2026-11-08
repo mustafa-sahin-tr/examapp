@@ -837,6 +837,63 @@ public class BookQuestionImportTests : IDisposable
     }
 
     [Fact]
+    public async Task Quick_add_photos_are_imported_without_a_book_and_a_matching_key_answers_them_in_order()
+    {
+        var id = await SeedQuickAddAsync("CA", null);
+        Detect(1, 4, 4);
+        Detect(2, 4, 4, 4);
+        var store = new InMemoryFixedWindowCounterStore();
+
+        await RunAsync(id, store);
+
+        var tests = await TestsAsync();
+        tests.ShouldAllBe(t => t.QuestionsSaved == t.QuestionsFound && t.WorksheetId != null);
+        tests[0].Status.ShouldBe(BookImportTestStatus.Done);
+        _saved.ShouldAllBe(s => s.BookId == null && s.GradeId == _gradeId && s.Sharing == QuestionBankSharing.Private);
+        _saved[0].Questions.Select(q => q.CorrectOptionIndex).ShouldBe([2, 0]);
+        _saved[0].Questions.ShouldAllBe(q => q.ActivityLabel == "Fotoğraf 1");
+        _saved[1].Questions.Select(q => q.ItemLabel).ShouldBe(["1", "2", "3"]);
+        Flags(tests[1]).ShouldBe(["noAnswer p2 n1,2,3 /"]);
+        // Ayrı bütçe sayacı: kitap aktarımının sayacı tüketilmez.
+        (await store.PeekAsync(LabelingAiQuota.QuickAddBudgetKey)).Count.ShouldBe(20_000);
+        (await store.PeekAsync(LabelingAiQuota.ImportBudgetKey)).Count.ShouldBe(0);
+        (await store.PeekAsync(LabelingAiQuota.TotalBudgetKey)).Count.ShouldBe(20_000);
+
+        await using var check = _db.NewContext();
+        (await check.BookImportJobs.SingleAsync()).Status.ShouldBe(BookImportJobStatus.ReadyForReview);
+        (await check.Worksheets.WithDrafts().SingleAsync(w => w.Id == tests[0].WorksheetId)).Name.ShouldBe("Hızlı ekleme – Fotoğraf 1");
+    }
+
+    [Fact]
+    public async Task Quick_add_key_that_does_not_match_the_detected_count_is_not_applied_and_flagged()
+    {
+        var id = await SeedQuickAddAsync("ABC");
+        Detect(1, 4, 4);
+
+        await RunAsync(id);
+
+        _saved.Single().Questions.ShouldAllBe(q => q.CorrectOptionIndex == -1);
+        var test = await SingleTestAsync();
+        test.Status.ShouldBe(BookImportTestStatus.NeedsReview);
+        Flags(test).ShouldBe(["noAnswer p1 n1,2 /", "countMismatch p1 n 2/3"]);
+    }
+
+    [Fact]
+    public async Task Quick_adds_and_book_imports_are_listed_only_by_their_own_endpoints()
+    {
+        var quickAdd = await SeedQuickAddAsync([null]);
+        await using var ctx = _db.NewContext();
+        var service = Service(ctx);
+        var quickOwner = Owner with { Kind = BookImportJobKind.QuickAdd };
+
+        (await service.ListAsync(quickOwner, 50, CancellationToken.None)).ShouldHaveSingleItem().Kind.ShouldBe("QuickAdd");
+        (await service.ListAsync(Owner, 50, CancellationToken.None)).ShouldBeEmpty();
+        (await service.GetAsync(Owner, quickAdd, CancellationToken.None)).ShouldBeNull();
+        (await service.GetAsync(Admin, quickAdd, CancellationToken.None)).ShouldBeNull();
+        (await service.GetAsync(Admin with { Kind = BookImportJobKind.QuickAdd }, quickAdd, CancellationToken.None)).ShouldNotBeNull();
+    }
+
+    [Fact]
     public void Page_flags_drop_the_fixed_page_and_keep_the_others()
     {
         var flags = BookImportPageFixService.ReplacePageFlags(
@@ -914,6 +971,38 @@ public class BookQuestionImportTests : IDisposable
                     MaxQuestionNumber = t.PageMaxNumbers[page - t.FileFrom],
                 });
             }
+        }
+        await ctx.SaveChangesAsync();
+        return job.Id;
+    }
+
+    /// <summary>Issue #1052: hızlı ekleme işi — kitapsız, fotoğraf başına bir test; anahtarlar fotoğraf sırasıyla.</summary>
+    private async Task<Guid> SeedQuickAddAsync(params string?[] keys)
+    {
+        await using var ctx = _db.NewContext();
+        var grade = new Grade { Name = "5. Sınıf" };
+        ctx.Grades.Add(grade);
+        await ctx.SaveChangesAsync();
+        _gradeId = grade.Id;
+
+        var job = new BookImportJob
+        {
+            Id = Guid.NewGuid(), Kind = BookImportJobKind.QuickAdd, BookName = QuickAddService.JobName, GradeId = grade.Id,
+            Status = BookImportJobStatus.Queued, Stage = BookImportStage.Questions, PageCount = keys.Length,
+        };
+        ctx.SetCurrentUser(OwnerId);
+        ctx.BookImportJobs.Add(job);
+        for (var photo = 1; photo <= keys.Length; photo++)
+        {
+            ctx.BookImportJobTests.Add(new BookImportJobTest
+            {
+                JobId = job.Id, Order = photo, TestNo = photo, Title = $"Fotoğraf {photo}", FileFrom = photo, FileTo = photo,
+                AnswerKey = keys[photo - 1],
+            });
+            ctx.BookImportPages.Add(new BookImportPage
+            {
+                JobId = job.Id, FilePage = photo, ImageUrl = $"http://minio/photos/{photo}", Width = PageWidth, Height = PageHeight,
+            });
         }
         await ctx.SaveChangesAsync();
         return job.Id;

@@ -41,11 +41,14 @@ public class SubscriptionPlansControllerTests : IDisposable
         Limits(plans, SubscriptionPlan.FreeKey).ShouldBe(new Dictionary<string, int?>
         {
             [EntitlementFeatures.BookImport] = 0, [EntitlementFeatures.AiClassification] = 20, [EntitlementFeatures.MockExam] = 0,
+            [EntitlementFeatures.QuickAdd] = 5,
         });
         Limits(plans, SubscriptionPlan.TrialKey)[EntitlementFeatures.BookImport].ShouldBe(1);
+        Limits(plans, SubscriptionPlan.TrialKey)[EntitlementFeatures.QuickAdd].ShouldBe(20);
         Limits(plans, SubscriptionPlan.TeacherProKey).ShouldBe(new Dictionary<string, int?>
         {
             [EntitlementFeatures.BookImport] = 10, [EntitlementFeatures.AiClassification] = 1000,
+            [EntitlementFeatures.QuickAdd] = 200,
         });
         Limits(plans, SubscriptionPlan.StudentPlusKey).ShouldBe(new Dictionary<string, int?> { [EntitlementFeatures.MockExam] = null });
     }

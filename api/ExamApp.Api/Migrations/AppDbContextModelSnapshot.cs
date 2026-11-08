@@ -429,6 +429,11 @@ namespace ExamApp.Api.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<int>("Kind")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
                     b.Property<string>("Message")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
@@ -3890,7 +3895,7 @@ namespace ExamApp.Api.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<int>("BookId")
+                    b.Property<int?>("BookId")
                         .HasColumnType("integer");
 
                     b.Property<string>("CropSha256")
@@ -5775,6 +5780,33 @@ namespace ExamApp.Api.Migrations
                             FeatureKey = "mock-exam",
                             IsDeleted = false,
                             PlanId = 4
+                        },
+                        new
+                        {
+                            Id = 10,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "quick-add",
+                            IsDeleted = false,
+                            MonthlyLimit = 5,
+                            PlanId = 1
+                        },
+                        new
+                        {
+                            Id = 11,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "quick-add",
+                            IsDeleted = false,
+                            MonthlyLimit = 20,
+                            PlanId = 2
+                        },
+                        new
+                        {
+                            Id = 12,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "quick-add",
+                            IsDeleted = false,
+                            MonthlyLimit = 200,
+                            PlanId = 3
                         });
                 });
 
@@ -8451,8 +8483,7 @@ namespace ExamApp.Api.Migrations
                     b.HasOne("ExamApp.Api.Data.Book", "Book")
                         .WithMany()
                         .HasForeignKey("BookId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("ExamApp.Api.Data.Question", "Question")
                         .WithOne()

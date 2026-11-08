@@ -15,8 +15,11 @@ using Microsoft.Extensions.Configuration;
 
 namespace ExamApp.Api.Services.BookImport;
 
-/// <summary>Issue #1018: işin sahibi (exam kullanıcı id'si ve hakla ilgili rolleri); Admin tüm işleri görür.</summary>
-public sealed record BookImportOwner(EntitlementSubject Subject)
+/// <summary>
+/// Issue #1018: işin sahibi (exam kullanıcı id'si ve hakla ilgili rolleri); Admin tüm işleri görür. #1052: <paramref name="Kind"/>
+/// görülen işlerin türü — kitap aktarımı uçları yalnız kitap işlerini, hızlı ekleme uçları yalnız hızlı eklemeleri görür.
+/// </summary>
+public sealed record BookImportOwner(EntitlementSubject Subject, BookImportJobKind Kind = BookImportJobKind.Book)
 {
     public int UserId => Subject.UserId;
     public bool IsAdmin => Subject.IsAdmin;
@@ -312,7 +315,9 @@ public sealed partial class BookImportService : IBookImportService
     }
 
     private IQueryable<BookImportJob> Visible(BookImportOwner owner) =>
-        owner.IsAdmin ? _db.BookImportJobs : _db.BookImportJobs.Where(j => j.CreateUserId == owner.UserId);
+        owner.IsAdmin
+            ? _db.BookImportJobs.Where(j => j.Kind == owner.Kind)
+            : _db.BookImportJobs.Where(j => j.Kind == owner.Kind && j.CreateUserId == owner.UserId);
 
     private static string? TrimFileName(string? name)
     {
@@ -346,6 +351,7 @@ public sealed partial class BookImportService : IBookImportService
     private static void Fill(BookImportJobDto dto, BookImportJob job)
     {
         dto.Id = job.Id;
+        dto.Kind = job.Kind.ToString();
         dto.BookName = job.BookName;
         dto.GradeId = job.GradeId;
         dto.SubjectId = job.SubjectId;

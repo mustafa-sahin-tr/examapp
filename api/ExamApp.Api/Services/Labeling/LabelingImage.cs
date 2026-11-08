@@ -43,9 +43,13 @@ public sealed class LabelingImage : IDisposable
     /// Base64 (data URL öneki olabilir) → görsel. EXIF yönü uygulanır (tarayıcı tuvali de öyle gösterir; kutular aynı
     /// uzayda olsun); hash ham baytlardandır. Geçersiz/çok büyükse <see cref="LabelingValidationException"/>.
     /// </summary>
-    public static LabelingImage Decode(string base64)
+    public static LabelingImage Decode(string base64) => Decode(DecodeBase64(base64));
+
+    /// <summary>Issue #1052: yüklenen dosyanın baytları (base64'süz); sınırlar ve EXIF yönü <see cref="Decode(string)"/> ile aynı.</summary>
+    public static LabelingImage Decode(byte[] bytes)
     {
-        var bytes = DecodeBase64(base64);
+        if (bytes.Length is 0 or > MaxBytes)
+            throw new LabelingValidationException("labeling.invalidImage");
         ReadHeader(bytes);
         try
         {

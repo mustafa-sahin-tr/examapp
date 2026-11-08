@@ -16,9 +16,10 @@ public class QuestionSource
 
     public Question Question { get; set; } = null!;
 
-    public int BookId { get; set; }
+    /// <summary>Issue #1052: hızlı eklemeden gelen soruda kitap yok (null); <see cref="FilePage"/> işteki fotoğraf sırası.</summary>
+    public int? BookId { get; set; }
 
-    public Book Book { get; set; } = null!;
+    public Book? Book { get; set; }
 
     public int FilePage { get; set; }
 

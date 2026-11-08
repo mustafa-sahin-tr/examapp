@@ -36,7 +36,11 @@ public static class SubscriptionPlanSeed
             Limit(6, TrialPlanId, EntitlementFeatures.MockExam, 2),
             Limit(7, TeacherProPlanId, EntitlementFeatures.BookImport, 10),
             Limit(8, TeacherProPlanId, EntitlementFeatures.AiClassification, 1000),
-            Limit(9, StudentPlusPlanId, EntitlementFeatures.MockExam, null));
+            Limit(9, StudentPlusPlanId, EntitlementFeatures.MockExam, null),
+            // Issue #1052: hızlı ekleme fotoğraf başına sayılır; Free da birkaç fotoğrafla dener.
+            Limit(10, FreePlanId, EntitlementFeatures.QuickAdd, 5),
+            Limit(11, TrialPlanId, EntitlementFeatures.QuickAdd, 20),
+            Limit(12, TeacherProPlanId, EntitlementFeatures.QuickAdd, 200));
     }
 
     private static SubscriptionPlan Plan(int id, string key, string name, string displayKey, SubscriptionPlanAudience audience,

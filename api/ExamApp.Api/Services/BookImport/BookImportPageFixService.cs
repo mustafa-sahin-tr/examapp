@@ -67,7 +67,7 @@ public sealed class BookImportPageFixService(AppDbContext db, IMinIoService mini
         var start = old.Select(l => l.Number).Where(n => n is not null).Min()
                     ?? (links.Where(l => l.FilePage < filePage).Select(l => l.Number).Max() ?? 0) + 1;
 
-        var label = BookQuestionImportStage.SourceLabel(test);
+        var label = BookQuestionImportStage.SourceLabel(job, test);
         var numbers = new List<int>();
         var toSave = questions.Select((q, i) =>
         {

@@ -17,7 +17,8 @@
   "features": {
     "book-import": "Book import",
     "ai-classification": "AI classification",
-    "mock-exam": "Mock exams"
+    "mock-exam": "Mock exams",
+    "quick-add": "Quick add (photos)"
   },
   "limits": {
     "unlimited": "Unlimited",

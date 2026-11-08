@@ -77,7 +77,9 @@
     "ReadyForReview": "Ready for review",
     "Completed": "Completed",
     "Failed": "Failed",
-    "Cancelled": "Cancelled"
+    "Cancelled": "Cancelled",
+    "AwaitingBudget": "Waiting for budget",
+    "AwaitingCostApproval": "Waiting for cost approval"
   },
   "testStatus": {
     "Pending": "Pending",
@@ -135,7 +137,13 @@
     "duplicates": "{{count}} duplicates skipped",
     "flagPages": "page {{pages}}",
     "flagNumbers": "question {{numbers}}",
-    "legendReview": "{{approved}} approved · {{removed}} removed"
+    "legendReview": "{{approved}} approved · {{removed}} removed",
+    "awaitingBudget": "The daily AI budget is used up; the import will continue by itself around {{time}}.",
+    "awaitingBudgetNoTime": "The daily AI budget is used up; the import will continue by itself when budget is available.",
+    "awaitingCostApproval": "The import reached its cost limit; waiting for an administrator to continue it.",
+    "awaitingCostApprovalAdmin": "The import reached its cost limit: {{cost}} spent (limit {{ceiling}}). Continuing raises the limit by the configured per-job ceiling.",
+    "continue": "Continue",
+    "continueFailed": "The import could not be continued; refresh the page and try again."
   },
   "setup": {
     "title": "Confirm the book setup",
@@ -231,5 +239,18 @@
     "fixPage": "Page {{page}}",
     "fixPageFlagged": "Page {{page}} · flagged",
     "footer": "Approved tests follow normal test settings and are private (only you) by default."
+  },
+  "cost": {
+    "title": "Cost",
+    "total": "Total {{cost}}",
+    "ceiling": "limit {{ceiling}}",
+    "noCeiling": "no limit",
+    "stage": "Stage",
+    "model": "Model",
+    "calls": "Calls",
+    "tokens": "Tokens (input / output)",
+    "usd": "Amount",
+    "tokenValue": "{{input}} / {{output}}",
+    "empty": "No per-call cost records (older import or no calls yet)."
   }
 }

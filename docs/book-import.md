@@ -87,8 +87,7 @@ aktarım aracındaki Python portu referanstır (#1022).
 - **Akış** (`BookQuestionImportStage`): testler sırayla; yalnız `Pending` / `Running` olanlar çalışır (bitmiş test yeniden çalışmada
   atlanır, yarım test baştan alınır, kaydedilmişler kırpma tekrarı sayılır). Sayfa başına:
   1. Tespit: `ILabelingService.DetectForImportAsync` — işaretleme ekranının "Claude ile tespit"iyle aynı model listesi, etkin prompt,
-     kayıt ve önbellek (`LabelingResults`); kullanıcı kotası / günlük bütçe yok, maliyet `AiCostUsd`'ye (kullanılamayan ücretli yanıt
-     dahil). Model `BookImport:DetectModel` (varsayılan `claude-haiku-5-5`, izinli listede olmalı).
+     kayıt ve önbellek (`LabelingResults`); kullanıcı kotası yok, aktarım bütçesi ve maliyet aşağıda (#1024). Model `BookImport:DetectModel` (varsayılan `claude-haiku-5-5`, izinli listede olmalı).
   2. Yalnız `mcq_question` blokları; okuma sırası (sütun, sonra yukarıdan aşağı), şıksız kök + hemen altındaki şık kutusu birleşir.
   3. `BookQuestionLayout.Prepare`: soru kutusu taşan şıkları içine alır, şıklar (satır, x) sırasıyla dolgulanır (25 px),
      "Cevapları Hizala" kurallarıyla hizalanır, örtüşen dolgu tespit kutularının ortasından kesilir. Kurallar ve toleranslar el ile
@@ -134,3 +133,23 @@ aktarım aracındaki Python portu referanstır (#1022).
   uyuşmazlığı testin güncel soru sayısıyla; işaret kalmazsa test `Done`. Başarısız testte (taslak testi yok) düzeltme taslak
   testi açar. Boş sayfa kaydı onayla sayfanın taslaklarını siler. Kayıt başarısızsa test değişmez. Kırpması başka bir aktarımda
   ya da bankada etkin olan soru tekrar sayılır ve bağlanmaz (aktarımla aynı kural).
+
+## Maliyet ve bütçe (#1024)
+
+- **Bütçe:** aktarımın bütün Claude çağrıları (kurulum taraması, anahtar okumaları, ünite eşleme, sayfa tespiti) `BookImportBudget`'tan
+  geçer. Her canlı çağrıdan önce aktarım sayacı (`labeling-ai-usd:book-import`, `Anthropic:DailyBudgetUsdImport`, varsayılan 15 $)
+  ve toplam sayaç (`labeling-ai-usd:all`, `DailyBudgetUsdTotal`, 25 $) denetlenir; ödenen tutar ikisine de yazılır.
+- **Kural:** aktarım kullanıcı bütçesine (`DailyBudgetUsdPerUser`) ve saatlik canlı çağrı kotasına (`LiveCallsPerHour`) yazılmaz:
+  öğretmenin işaretleme ekranındaki kotasını tüketmez. Aktarım sınırı toplamdan küçük tutulur; toplamın en az `Total − Import` kadarı
+  canlı işaretlemeye kalır. Canlı işaretleme toplamı doldurmuşsa aktarım da bekler.
+- **Duraklama:** sayaç doluysa iş başarısız olmaz, `AwaitingBudget` ("Bütçe bekleniyor") olur ve pencerenin kalan süresi + 1 dk
+  sonra (bilinmiyorsa 30 dk) Hangfire ile yeniden kuyruğa girer (`ResumeAt`). Soru aktarımında bitmiş testler atlanır, yarım test
+  baştan alınır (tespit önbelleği tekrar ödetmez); kurulumda aşama baştan çalışır.
+- **Tavan:** `BookImport:MaxJobCostUsd` (boş / 0: yok) işin maliyet tavanı. Aşılınca iş `AwaitingCostApproval`; Admin takip
+  ekranında "Devam et" der (`POST {id}/continue`, yalnız Admin), tavan şimdiki maliyet + yapılandırılan tavana yükselir
+  (`BookImportJobs.CostCeilingUsd`). Bir çağrı tavanı en fazla kendi maliyeti kadar aşar.
+- **Kayıt:** ödenen her çağrı (kullanılamayan ücretli yanıt dahil; önbellekten dönen hariç) `BookImportCosts` satırı: aşama, test
+  (soru aktarımında), model, girdi / çıktı token, USD. `AiCostUsd` bu satırların toplamı. Takip ekranında yalnız Admin toplam
+  maliyeti, tavanı, aşama × model dökümünü ve ızgarada test başına maliyeti görür.
+- **Log:** iş incelemeye geçince tek satır: `Book import job {JobId} finished: … pages, … tests, … questions, … flagged tests,
+  … failed tests, cost $…`; duraklama `paused in stage …` satırıyla.

@@ -17,7 +17,8 @@ function job(overrides: Partial<BookImportJob> = {}): BookImportJob {
     id: 'a1', bookName: 'Puan BTS 4 Matematik', gradeId: 4, subjectId: null, bookId: null,
     status: 'Running', stage: 'Pages', fileName: 'bts.pdf', fileSizeBytes: 1000, pageCount: 120,
     stageTotal: 120, stageProcessed: 30, message: null, error: null, createdAt: '2026-11-08T08:00:00Z',
-    startedAt: '2026-11-08T08:00:05Z', finishedAt: null, ownerId: 3, ...overrides,
+    startedAt: '2026-11-08T08:00:05Z', finishedAt: null, ownerId: 3, resumeAt: null, aiCostUsd: null,
+    costCeilingUsd: null, ...overrides,
   };
 }
 

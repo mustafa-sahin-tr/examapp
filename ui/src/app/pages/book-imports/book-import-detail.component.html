@@ -49,6 +49,29 @@
   }
   }
 
+  @if (j.status === 'AwaitingBudget') {
+  <div class="bid-banner bid-banner--warning" role="status">
+    <mat-icon aria-hidden="true">hourglass_top</mat-icon>
+    <span>{{ j.resumeAt ? t('detail.awaitingBudget', { time: (j.resumeAt | date: 'd MMM HH:mm') }) : t('detail.awaitingBudgetNoTime') }}</span>
+  </div>
+  }
+  @if (j.status === 'AwaitingCostApproval') {
+  <div class="bid-banner bid-banner--warning" role="status">
+    <mat-icon aria-hidden="true">savings</mat-icon>
+    <span>{{ j.aiCostUsd != null
+      ? t('detail.awaitingCostApprovalAdmin', { cost: (j.aiCostUsd | currency: 'USD' : 'symbol' : '1.2-4'), ceiling: (j.costCeilingUsd | currency: 'USD' : 'symbol' : '1.2-4') })
+      : t('detail.awaitingCostApproval') }}</span>
+    @if (j.aiCostUsd != null) {
+    <button mat-flat-button type="button" class="bid-banner__action" [disabled]="continuing()" (click)="continueJob()">
+      {{ t('detail.continue') }}
+    </button>
+    }
+  </div>
+  @if (continueFailed()) {
+  <p class="bid-error" role="alert">{{ t('detail.continueFailed') }}</p>
+  }
+  }
+
   @if (reviewing()) {
   <app-book-import-review [jobId]="j.id" [tests]="j.tests" [editable]="j.status === 'ReadyForReview'" (changed)="load()" />
   }
@@ -132,5 +155,41 @@
     <div><dt>{{ t('detail.startedAt') }}</dt><dd>{{ j.startedAt | date: 'd MMM HH:mm' }}</dd></div>
     }
   </dl>
+
+  @if (j.aiCostUsd != null) {
+  <section class="bid-card bid-cost" [attr.aria-label]="t('cost.title')">
+    <h2>{{ t('cost.title') }}</h2>
+    <p class="bid-card__count">
+      {{ t('cost.total', { cost: (j.aiCostUsd | currency: 'USD' : 'symbol' : '1.2-4') }) }}
+      · {{ j.costCeilingUsd != null ? t('cost.ceiling', { ceiling: (j.costCeilingUsd | currency: 'USD' : 'symbol' : '1.2-4') }) : t('cost.noCeiling') }}
+    </p>
+    @if (j.costs.length > 0) {
+    <table class="bid-cost__table">
+      <thead>
+        <tr>
+          <th scope="col">{{ t('cost.stage') }}</th>
+          <th scope="col">{{ t('cost.model') }}</th>
+          <th scope="col">{{ t('cost.calls') }}</th>
+          <th scope="col">{{ t('cost.tokens') }}</th>
+          <th scope="col">{{ t('cost.usd') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of j.costs; track row.stage + row.modelId) {
+        <tr>
+          <td>{{ t('stages.' + row.stage) }}</td>
+          <td>{{ row.modelId }}</td>
+          <td>{{ row.calls }}</td>
+          <td>{{ t('cost.tokenValue', { input: (row.inputTokens | number), output: (row.outputTokens | number) }) }}</td>
+          <td>{{ row.costUsd | currency: 'USD' : 'symbol' : '1.2-4' }}</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+    } @else {
+    <p class="bid-card__muted">{{ t('cost.empty') }}</p>
+    }
+  </section>
+  }
   }
 </div>

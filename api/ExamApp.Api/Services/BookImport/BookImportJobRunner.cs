@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Services.Labeling;
 using ExamApp.Api.Services.Teachers;
 using Hangfire;
@@ -11,6 +12,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace ExamApp.Api.Services.BookImport;
 
@@ -19,7 +21,9 @@ namespace ExamApp.Api.Services.BookImport;
 /// kurulumu (#1021, <see cref="BookSetupStage"/>) testleri ve cevap anahtarını çıkarır, iş kurulum onayında bekler. Onaydan sonra
 /// iş yeniden kuyruğa girer; soru aktarımı (#1022, <see cref="BookQuestionImportStage"/>) testleri taslak soru olarak kaydeder ve
 /// iş incelemeye geçer. Emsal <c>QuestionTransferJobRunner</c>:
-/// kendi Hangfire kuyruğu, iş başına dağıtık kilit, sahibin öğretmen onayı iş başında yeniden kontrol edilir.
+/// kendi Hangfire kuyruğu, iş başına dağıtık kilit, sahibin öğretmen onayı iş başında yeniden kontrol edilir. Claude çağrıları
+/// <see cref="BookImportBudget"/>'tan geçer (#1024): bütçe dolunca iş "Bütçe bekleniyor"a geçip pencere açılınca yeniden kuyruğa
+/// girer, maliyet tavanı aşılınca Admin'in sürdürmesini bekler.
 /// </summary>
 public class BookImportJobRunner
 {
@@ -35,6 +39,9 @@ public class BookImportJobRunner
     /// <summary>Soru / şık tespit modeli (işaretleme ekranının "Claude ile tespit"i); <c>BookImport:DetectModel</c>.</summary>
     public const string DefaultDetectModel = "claude-haiku-5-5";
 
+    /// <summary>Bütçe penceresinin kalan süresi bilinmiyorsa yeniden deneme aralığı.</summary>
+    public static readonly TimeSpan DefaultBudgetRetry = TimeSpan.FromMinutes(30);
+
     private readonly AppDbContext _db;
     private readonly IApprovedTeacherGuard _teacherGuard;
     private readonly IMinIoService _minio;
@@ -45,11 +52,16 @@ public class BookImportJobRunner
     private readonly int _maxPages;
     private readonly int _surveyBatchSize;
     private readonly string _detectModel;
+    private readonly decimal? _maxJobCostUsd;
+    private readonly IFixedWindowCounterStore _budgetStore;
+    private readonly LabelingAiOptions _aiOptions;
+    private readonly IBackgroundJobClient? _jobs;
     private readonly ILogger<BookImportJobRunner> _logger;
 
     public BookImportJobRunner(AppDbContext db, IApprovedTeacherGuard teacherGuard, IMinIoService minio, IPdfRasterizer rasterizer,
         IBookSetupAi setupAi, ILabelingService labeling, IServiceScopeFactory scopes, IConfiguration? configuration = null,
-        ILogger<BookImportJobRunner>? logger = null)
+        ILogger<BookImportJobRunner>? logger = null, IFixedWindowCounterStore? budgetStore = null,
+        IOptions<LabelingAiOptions>? aiOptions = null, IBackgroundJobClient? jobs = null)
     {
         _db = db;
         _teacherGuard = teacherGuard;
@@ -61,6 +73,10 @@ public class BookImportJobRunner
         _maxPages = Math.Max(1, configuration?.GetValue<int?>("BookImport:MaxPages") ?? DefaultMaxPages);
         _surveyBatchSize = Math.Clamp(configuration?.GetValue<int?>("BookImport:SurveyBatchSize") ?? DefaultSurveyBatchSize, 1, 20);
         _detectModel = configuration?["BookImport:DetectModel"] is { Length: > 0 } model ? model : DefaultDetectModel;
+        _maxJobCostUsd = MaxJobCost(configuration);
+        _budgetStore = budgetStore ?? new InMemoryFixedWindowCounterStore();
+        _aiOptions = aiOptions?.Value ?? new LabelingAiOptions();
+        _jobs = jobs;
         _logger = logger ?? NullLogger<BookImportJobRunner>.Instance;
     }
 
@@ -78,7 +94,7 @@ public class BookImportJobRunner
     internal async Task RunLockedAsync(Guid jobId)
     {
         var job = await _db.BookImportJobs.FirstOrDefaultAsync(j => j.Id == jobId);
-        if (job is null || job.Status is not (BookImportJobStatus.Queued or BookImportJobStatus.Running))
+        if (job is null || job.Status is not (BookImportJobStatus.Queued or BookImportJobStatus.Running or BookImportJobStatus.AwaitingBudget))
             return;
 
         if (await OwnerNotApprovedAsync(job))
@@ -91,7 +107,10 @@ public class BookImportJobRunner
         job.Status = BookImportJobStatus.Running;
         job.StartedAt ??= DateTime.UtcNow;
         job.Error = null;
+        job.ResumeAt = null;
         await _db.SaveChangesAsync();
+
+        var budget = new BookImportBudget(_db, _budgetStore, _aiOptions, job, job.CostCeilingUsd ?? _maxJobCostUsd);
 
         try
         {
@@ -100,7 +119,7 @@ public class BookImportJobRunner
                 await RenderPagesAsync(job);
 
                 await EnterStageAsync(job, BookImportStage.Setup);
-                await new BookSetupStage(_db, _minio, _setupAi, _surveyBatchSize, _logger).RunAsync(job);
+                await new BookSetupStage(_db, _minio, _setupAi, budget, _surveyBatchSize, _logger).RunAsync(job);
 
                 // Kurulum onayı: kullanıcı onaylayana kadar iş bekler; onay ucu (BookImportService.ConfirmSetupAsync) işi
                 // Questions aşamasında yeniden kuyruğa verir.
@@ -115,10 +134,16 @@ public class BookImportJobRunner
             // #1022: test test soru aktarımı; kaldığı testten devam eder (aşama sayaçları sıfırlanmaz).
             if (job.Stage != BookImportStage.Questions)
                 await EnterStageAsync(job, BookImportStage.Questions);
-            await new BookQuestionImportStage(_db, _minio, _labeling, _scopes, _detectModel, _logger).RunAsync(job);
+            await new BookQuestionImportStage(_db, _minio, _labeling, _scopes, budget, _detectModel, _logger).RunAsync(job);
             job.Stage = BookImportStage.Review;
             job.Status = BookImportJobStatus.ReadyForReview;
             await _db.SaveChangesAsync();
+            await LogSummaryAsync(job);
+        }
+        catch (BookImportPause pause)
+        {
+            await budget.FlushAsync();
+            await PauseAsync(job, pause);
         }
         catch (Exception failure) when (failure is BookImportFailure or PdfRasterizeException)
         {
@@ -188,6 +213,45 @@ public class BookImportJobRunner
         _logger.LogInformation("Book import job {JobId}: rendered {Pages} pages in {Seconds:F1}s", job.Id, pageCount - next + 1,
             (DateTime.UtcNow - started).TotalSeconds);
     }
+
+    /// <summary>
+    /// Issue #1024: bütçe doluysa iş pencere açılınca yeniden kuyruğa girer (bitmemiş test baştan; tespit önbelleği tekrar ödetmez),
+    /// tavan aşıldıysa Admin'in sürdürmesini bekler (<see cref="BookImportService.ContinueAsync"/>).
+    /// </summary>
+    private async Task PauseAsync(BookImportJob job, BookImportPause pause)
+    {
+        if (pause.Reason == BookImportPauseReason.Budget)
+        {
+            var delay = (pause.RetryAfter ?? DefaultBudgetRetry) + TimeSpan.FromMinutes(1);
+            job.Status = BookImportJobStatus.AwaitingBudget;
+            job.ResumeAt = DateTime.UtcNow + delay;
+            await _db.SaveChangesAsync();
+            _jobs?.Schedule<BookImportJobRunner>(r => r.RunAsync(job.Id), delay);
+        }
+        else
+        {
+            job.Status = BookImportJobStatus.AwaitingCostApproval;
+            await _db.SaveChangesAsync();
+        }
+        _logger.LogWarning("Book import job {JobId} paused in stage {Stage}: {Reason}; cost ${Cost:F4}, resume at {ResumeAt}",
+            job.Id, job.Stage, pause.Reason, job.AiCostUsd, job.ResumeAt);
+    }
+
+    /// <summary>Issue #1024: bitmiş işin tek satırlık özeti (sayfa, test, soru, işaretli test, maliyet).</summary>
+    private async Task LogSummaryAsync(BookImportJob job)
+    {
+        var tests = await _db.BookImportJobTests.AsNoTracking().Where(t => t.JobId == job.Id)
+            .Select(t => new { t.Status, t.QuestionsSaved }).ToListAsync();
+        _logger.LogInformation(
+            "Book import job {JobId} finished: {Pages} pages, {Tests} tests, {Questions} questions, {Flagged} flagged tests, {FailedTests} failed tests, cost ${Cost:F4}",
+            job.Id, job.PageCount ?? 0, tests.Count, tests.Sum(t => t.QuestionsSaved),
+            tests.Count(t => t.Status == BookImportTestStatus.NeedsReview), tests.Count(t => t.Status == BookImportTestStatus.Failed),
+            job.AiCostUsd);
+    }
+
+    /// <summary>Issue #1024: <c>BookImport:MaxJobCostUsd</c>; boş ya da 0 → tavan yok.</summary>
+    internal static decimal? MaxJobCost(IConfiguration? configuration) =>
+        configuration?.GetValue<decimal?>("BookImport:MaxJobCostUsd") is > 0 and var max ? max : null;
 
     public static string PageObjectName(Guid jobId, int filePage) => $"book-imports/{jobId}/pages/{filePage:D4}.webp";
 

@@ -1,5 +1,6 @@
 using System.Text;
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos.Labeling;
 using ExamApp.Api.Services.BookImport;
 using ExamApp.Api.Services.Entitlements;
@@ -11,6 +12,7 @@ using ExamApp.Api.Tests.Support;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace ExamApp.Api.Tests.Services;
 
@@ -53,7 +55,7 @@ public class BookQuestionImportTests : IDisposable
             var response = new LabelingAiDetectResponseDto("live", new string('a', 64), new LabelingResultDto("Ai", Model,
                 new PredictionListDto { Predictions = predictions }, null, null, 10, 10, 0.01m, 0, null, DateTime.UtcNow,
                 DateTime.UtcNow, null));
-            return Task.FromResult(new LabelingImportDetection(response, 0.01m));
+            return Task.FromResult(new LabelingImportDetection(response, 0.01m, new LabelingAiUsage(1000, 100)));
         });
         _bank.SaveImportedPageAsync(Arg.Any<LabelingImportPageRequest>(), OwnerId, Arg.Any<CancellationToken>()).Returns(ci =>
         {
@@ -208,6 +210,121 @@ public class BookQuestionImportTests : IDisposable
 
         _saved.ShouldHaveSingleItem().FilePage.ShouldBe(2);
         await _labeling.Received(1).DetectForImportAsync(Arg.Any<string>(), Model, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Each_paid_call_is_recorded_per_test_and_charged_to_the_import_budget_and_only_admin_sees_the_breakdown()
+    {
+        var id = await SeedAsync([new(1, 1, 2, "AB", [1, 2]), new(2, 3, 3, "C", [3])]);
+        Detect(1, 4);
+        Detect(2, 4);
+        Detect(3, 4);
+        var store = new InMemoryFixedWindowCounterStore();
+
+        await RunAsync(id, store);
+
+        var tests = await TestsAsync();
+        await using (var check = _db.NewContext())
+        {
+            var costs = await check.BookImportCosts.ToListAsync();
+            costs.Count.ShouldBe(3);
+            costs.ShouldAllBe(c => c.Stage == BookImportStage.Questions && c.ModelId == Model && c.InputTokens == 1000 && c.OutputTokens == 100);
+            costs.Count(c => c.TestId == tests[0].Id).ShouldBe(2);
+            (await check.BookImportJobs.SingleAsync()).AiCostUsd.ShouldBe(0.03m);
+        }
+        (await store.PeekAsync(LabelingAiQuota.ImportBudgetKey)).Count.ShouldBe(30_000);
+        (await store.PeekAsync(LabelingAiQuota.TotalBudgetKey)).Count.ShouldBe(30_000);
+
+        await using var ctx = _db.NewContext();
+        var admin = (await Service(ctx).GetAsync(Admin, id, CancellationToken.None))!;
+        admin.AiCostUsd.ShouldBe(0.03m);
+        var row = admin.Costs.ShouldHaveSingleItem();
+        (row.Stage, row.ModelId, row.Calls, row.InputTokens, row.CostUsd).ShouldBe(("Questions", Model, 3, 3000L, 0.03m));
+        admin.Tests.Select(t => t.CostUsd).ShouldBe([0.02m, 0.01m]);
+
+        var owner = (await Service(ctx).GetAsync(Owner, id, CancellationToken.None))!;
+        owner.AiCostUsd.ShouldBeNull();
+        owner.Costs.ShouldBeEmpty();
+        owner.Tests.ShouldAllBe(t => t.CostUsd == null);
+    }
+
+    [Fact]
+    public async Task A_full_import_budget_pauses_the_job_and_the_unfinished_test_is_redone_when_it_resumes()
+    {
+        var id = await SeedAsync([new(1, 1, 2, "AB", [1, 2]), new(2, 3, 3, "C", [3])]);
+        Detect(1, 4);
+        Detect(2, 4);
+        Detect(3, 4);
+        var jobs = Substitute.For<IBackgroundJobClient>();
+
+        // İki çağrıdan (0.02 $) sonra aktarım bütçesi (0.015 $) dolu: ikinci testten önce iş durur.
+        await RunAsync(id, new InMemoryFixedWindowCounterStore(), new LabelingAiOptions { DailyBudgetUsdImport = 0.015m }, jobs);
+
+        await using (var check = _db.NewContext())
+        {
+            var job = await check.BookImportJobs.SingleAsync();
+            job.Status.ShouldBe(BookImportJobStatus.AwaitingBudget);
+            job.ResumeAt.ShouldNotBeNull();
+            job.AiCostUsd.ShouldBe(0.02m);
+            (await check.BookImportCosts.CountAsync()).ShouldBe(2);
+        }
+        jobs.Received(1).Create(Arg.Any<Hangfire.Common.Job>(), Arg.Any<Hangfire.States.ScheduledState>());
+        (await TestsAsync()).Select(t => t.Status).ShouldBe([BookImportTestStatus.Done, BookImportTestStatus.Running]);
+
+        // Pencere yenilendi (yeni sayaç): iş kaldığı testten devam eder.
+        await RunAsync(id, new InMemoryFixedWindowCounterStore());
+
+        await using var after = _db.NewContext();
+        var resumed = await after.BookImportJobs.SingleAsync();
+        resumed.Status.ShouldBe(BookImportJobStatus.ReadyForReview);
+        resumed.ResumeAt.ShouldBeNull();
+        resumed.AiCostUsd.ShouldBe(0.03m);
+        _saved.Select(s => s.FilePage).ShouldBe([1, 2, 3]);
+        (await TestsAsync()).ShouldAllBe(t => t.Status == BookImportTestStatus.Done);
+    }
+
+    [Fact]
+    public async Task Exceeding_the_job_cost_ceiling_waits_until_an_admin_continues_with_a_raised_ceiling()
+    {
+        _config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["BookImport:MaxJobCostUsd"] = "0.015",
+        }).Build();
+        var id = await SeedAsync([new(1, 1, 2, "AB", [1, 2]), new(2, 3, 3, "C", [3])]);
+        Detect(1, 4);
+        Detect(2, 4);
+        Detect(3, 4);
+        var runnerJobs = Substitute.For<IBackgroundJobClient>();
+
+        await RunAsync(id, jobs: runnerJobs);
+
+        await using (var check = _db.NewContext())
+        {
+            var job = await check.BookImportJobs.SingleAsync();
+            job.Status.ShouldBe(BookImportJobStatus.AwaitingCostApproval);
+            job.AiCostUsd.ShouldBe(0.02m);
+        }
+        runnerJobs.ReceivedCalls().ShouldBeEmpty();
+
+        var jobs = Substitute.For<IBackgroundJobClient>();
+        await using (var ctx = _db.NewContext())
+        {
+            (await Service(ctx, jobs).ContinueAsync(Owner, id, CancellationToken.None)).ShouldBe(ContinueBookImportResult.NotFound);
+            (await Service(ctx, jobs).ContinueAsync(Admin, id, CancellationToken.None)).ShouldBe(ContinueBookImportResult.Continued);
+            (await Service(ctx, jobs).ContinueAsync(Admin, id, CancellationToken.None)).ShouldBe(ContinueBookImportResult.InvalidState);
+        }
+        jobs.Received(1).Create(Arg.Any<Hangfire.Common.Job>(), Arg.Any<Hangfire.States.EnqueuedState>());
+        await using (var check = _db.NewContext())
+        {
+            var job = await check.BookImportJobs.SingleAsync();
+            job.Status.ShouldBe(BookImportJobStatus.Queued);
+            job.CostCeilingUsd.ShouldBe(0.035m);
+        }
+
+        await RunAsync(id);
+
+        await using var after = _db.NewContext();
+        (await after.BookImportJobs.SingleAsync()).Status.ShouldBe(BookImportJobStatus.ReadyForReview);
     }
 
     [Fact]
@@ -565,19 +682,25 @@ public class BookQuestionImportTests : IDisposable
         return job.Id;
     }
 
-    private async Task RunAsync(Guid id)
+    private async Task RunAsync(Guid id, IFixedWindowCounterStore? budgetStore = null, LabelingAiOptions? aiOptions = null,
+        IBackgroundJobClient? jobs = null)
     {
         var guard = Substitute.For<IApprovedTeacherGuard>();
         guard.CheckAsync(OwnerId, Arg.Any<CancellationToken>()).Returns(TeacherApprovalCheck.NoTeacherProfile);
         await using var ctx = _db.NewContext();
         await new BookImportJobRunner(ctx, guard, _minio, Substitute.For<IPdfRasterizer>(), new FakeBookSetupAi(), _labeling,
-            _services.GetRequiredService<IServiceScopeFactory>(), new ConfigurationBuilder().Build()).RunLockedAsync(id);
+            _services.GetRequiredService<IServiceScopeFactory>(), _config, budgetStore: budgetStore,
+            aiOptions: aiOptions is null ? null : Options.Create(aiOptions), jobs: jobs).RunLockedAsync(id);
     }
 
     private static readonly BookImportOwner Owner = BookImportOwner.Create(OwnerId, "QuestionTrainer");
+    private static readonly BookImportOwner Admin = BookImportOwner.Create(1, "Admin");
 
-    private BookImportService Service(AppDbContext ctx) => new(ctx, _minio, Substitute.For<IBackgroundJobClient>(),
-        Substitute.For<IEntitlementService>(), new BookRegistryService(ctx, TimeProvider.System), new ConfigurationBuilder().Build());
+    private IConfiguration _config = new ConfigurationBuilder().Build();
+
+    private BookImportService Service(AppDbContext ctx, IBackgroundJobClient? jobs = null) => new(ctx, _minio,
+        jobs ?? Substitute.For<IBackgroundJobClient>(), Substitute.For<IEntitlementService>(), new BookRegistryService(ctx, TimeProvider.System),
+        _config);
 
     private async Task<List<BookImportJobTest>> TestsAsync()
     {

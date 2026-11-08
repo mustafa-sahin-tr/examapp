@@ -40,6 +40,14 @@ public class LabelingAiOptions
     [Range(0.01, 10_000)]
     public decimal DailyBudgetUsdTotal { get; set; } = 25m;
 
+    /// <summary>
+    /// Issue #1024: kitap aktarımlarının 24 saatlik ortak Claude harcama sınırı (USD). Aktarım çağrıları bu sayaca ve
+    /// <see cref="DailyBudgetUsdTotal"/>'a yazılır, kullanıcı bütçesine ve <see cref="LiveCallsPerHour"/>'a yazılmaz: toplamın
+    /// en az <c>Total − Import</c> kadarı canlı işaretlemeye kalır.
+    /// </summary>
+    [Range(0.01, 10_000)]
+    public decimal DailyBudgetUsdImport { get; set; } = 15m;
+
     /// <summary>Kullanıcı başına saatte en fazla gerçek Claude çağrısı (kayıttan dönenler sayılmaz).</summary>
     [Range(1, 10_000)]
     public int LiveCallsPerHour { get; set; } = 60;

@@ -13,6 +13,9 @@ namespace ExamApp.Api.Services.Labeling;
 internal static class LabelingAiQuota
 {
     public const string TotalBudgetKey = "labeling-ai-usd:all";
+
+    /// <summary>Issue #1024: kitap aktarımlarının ortak bütçe sayacı (<c>DailyBudgetUsdImport</c>).</summary>
+    public const string ImportBudgetKey = "labeling-ai-usd:book-import";
     public static readonly TimeSpan RateLimitWindow = TimeSpan.FromHours(1);
     public static readonly TimeSpan BudgetWindow = TimeSpan.FromHours(24);
 

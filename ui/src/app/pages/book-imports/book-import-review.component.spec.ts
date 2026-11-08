@@ -15,7 +15,7 @@ function test(overrides: Partial<BookImportJobTest> = {}): BookImportJobTest {
   return {
     id: 1, order: 1, unit: 1, testNo: 1, title: 'Kesirler', status: 'Done', questionsFound: 4, keyAnswers: 4, flags: [],
     questionsSaved: 4, duplicatesSkipped: 0, reviewFlags: [], worksheetId: 100, fileFrom: 3, fileTo: 4, answerless: 0,
-    error: null, ...overrides,
+    costUsd: null, error: null, ...overrides,
   };
 }
 

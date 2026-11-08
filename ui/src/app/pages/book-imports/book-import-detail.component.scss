@@ -175,6 +175,40 @@
     background: var(--ms-warning-surface-weak);
     color: var(--ms-warning-text);
   }
+
+  &__action {
+    margin-left: auto;
+  }
+}
+
+.bid-error {
+  margin: 0;
+  color: var(--ms-danger-text-medium);
+  font-size: 0.9rem;
+}
+
+// #1024: Admin maliyet dökümü.
+.bid-cost__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+
+  th,
+  td {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--ms-border);
+    text-align: left;
+  }
+
+  th {
+    color: var(--ms-text-medium);
+    font-weight: 600;
+  }
+
+  td:nth-child(n + 3),
+  th:nth-child(n + 3) {
+    text-align: right;
+  }
 }
 
 .bid-body {

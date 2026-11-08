@@ -19,6 +19,7 @@
     "invalidMinutes": "Süre 1–600 dakika olmalı.",
     "invalidAnswerKey": "Cevap anahtarı yalnız A–E harflerinden oluşmalı; okunamayan (?) cevapları düzeltin.",
     "invalidSetup": "Kurulum onaylanamadı.",
+    "notPaused": "Bu aktarım maliyet onayı beklemiyor.",
     "notCancellable": "Bu aktarım bu aşamada iptal edilemez.",
     "answerless": "Cevapsız sorusu olan test onaylanamaz; önce cevapları seçin.",
     "invalidOption": "Geçersiz şık.",

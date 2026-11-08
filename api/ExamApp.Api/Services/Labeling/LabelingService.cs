@@ -30,14 +30,18 @@ public sealed class LabelingRateLimitException(TimeSpan? retryAfter, bool budget
     public bool Budget { get; } = budget;
 }
 
-/// <summary>Issue #1022: aktarım tespiti; <c>CostUsd</c> bu çağrıda ödenen tutar (önbellekten 0).</summary>
-public sealed record LabelingImportDetection(LabelingAiDetectResponseDto Response, decimal CostUsd);
+/// <summary>
+/// Issue #1022: aktarım tespiti; <c>CostUsd</c> bu çağrıda ödenen tutar, <c>Usage</c> token'ları (önbellekten 0 / default, #1024).
+/// </summary>
+public sealed record LabelingImportDetection(LabelingAiDetectResponseDto Response, decimal CostUsd, LabelingAiUsage Usage = default);
 
 /// <summary>Issue #1022: Claude yanıtı geldi ama kullanılamadı; token ödendi (<see cref="CostUsd"/> işin maliyetine sayılır).</summary>
-public sealed class LabelingImportDetectException(decimal costUsd, Exception inner)
+public sealed class LabelingImportDetectException(decimal costUsd, Exception inner, LabelingAiUsage usage = default)
     : Exception("Claude detection response could not be used.", inner)
 {
     public decimal CostUsd { get; } = costUsd;
+
+    public LabelingAiUsage Usage { get; } = usage;
 }
 
 public interface ILabelingService
@@ -104,14 +108,14 @@ public sealed class LabelingService(
 
     public async Task<LabelingImportDetection> DetectForImportAsync(string imageBase64, string modelId, CancellationToken ct = default)
     {
-        var (response, cost) = await DetectAsync(imageBase64, modelId, force: false, ImportActor, enforceQuota: false, ct);
-        return new LabelingImportDetection(response, cost);
+        var (response, cost, usage) = await DetectAsync(imageBase64, modelId, force: false, ImportActor, enforceQuota: false, ct);
+        return new LabelingImportDetection(response, cost, usage);
     }
 
     /// <summary>Aktarım işinin kayıtlarda görünen adı (Claude sonucu "kim üretti").</summary>
     private static readonly LabelingActor ImportActor = new(null, "Book import");
 
-    private async Task<(LabelingAiDetectResponseDto Response, decimal Cost)> DetectAsync(
+    private async Task<(LabelingAiDetectResponseDto Response, decimal Cost, LabelingAiUsage Usage)> DetectAsync(
         string imageBase64, string modelId, bool force, LabelingActor actor, bool enforceQuota, CancellationToken ct)
     {
         var model = options.Value.Models.FirstOrDefault(m => string.Equals(m.Id, modelId, StringComparison.Ordinal))
@@ -129,7 +133,7 @@ public sealed class LabelingService(
                 .FirstOrDefaultAsync(r => r.Page.ImageSha256 == image.Sha256 && r.Source == LabelingSource.Ai &&
                                           r.ModelName == model.Id && r.PromptHash == fingerprint, ct);
             if (cached is not null)
-                return (new LabelingAiDetectResponseDto("cached", image.Sha256, ToDto(cached)), 0m);
+                return (new LabelingAiDetectResponseDto("cached", image.Sha256, ToDto(cached)), 0m, default);
         }
 
         if (!detector.IsConfigured)
@@ -153,7 +157,7 @@ public sealed class LabelingService(
                 "[Labeling] Claude {Model} page {Hash} failed after a paid response: {In}/{Out} tokens, ~${Cost:F4} charged",
                 model.Id, image.Sha256[..16], failed.Input, failed.Output, failedCost);
             if (!enforceQuota)
-                throw new LabelingImportDetectException(failedCost, ex);
+                throw new LabelingImportDetectException(failedCost, ex, failed);
             throw;
         }
         var cost = LabelingAiQuota.Cost(model, detection.InputTokens, detection.OutputTokens);
@@ -177,7 +181,8 @@ public sealed class LabelingService(
             result.PromptHash = prompt.Fingerprint;
         }, CancellationToken.None);
 
-        return (new LabelingAiDetectResponseDto("live", image.Sha256, ToDto(saved)), cost);
+        return (new LabelingAiDetectResponseDto("live", image.Sha256, ToDto(saved)), cost,
+            new LabelingAiUsage(detection.InputTokens, detection.OutputTokens));
     }
 
     public async Task<LabelingPageDto> SaveManualAsync(

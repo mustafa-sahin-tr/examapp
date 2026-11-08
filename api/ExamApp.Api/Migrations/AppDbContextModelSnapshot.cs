@@ -332,6 +332,47 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("BookAnswerKeyRanges");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.BookImportCost", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("CostUsd")
+                        .HasColumnType("numeric(10,6)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("InputTokens")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ModelId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<long>("OutputTokens")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Stage")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TestId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobId");
+
+                    b.ToTable("BookImportCosts");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.BookImportJob", b =>
                 {
                     b.Property<Guid>("Id")
@@ -348,6 +389,9 @@ namespace ExamApp.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<decimal?>("CostCeilingUsd")
+                        .HasColumnType("numeric(10,4)");
 
                     b.Property<DateTime>("CreateTime")
                         .HasColumnType("timestamp with time zone");
@@ -391,6 +435,9 @@ namespace ExamApp.Api.Migrations
 
                     b.Property<int?>("PageCount")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ResumeAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("SetupJson")
                         .HasColumnType("text");
@@ -7478,6 +7525,17 @@ namespace ExamApp.Api.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.BookImportCost", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.BookImportJob", "Job")
+                        .WithMany("Costs")
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Job");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.BookImportJob", b =>
                 {
                     b.HasOne("ExamApp.Api.Data.Book", "Book")
@@ -8929,6 +8987,8 @@ namespace ExamApp.Api.Migrations
 
             modelBuilder.Entity("ExamApp.Api.Data.BookImportJob", b =>
                 {
+                    b.Navigation("Costs");
+
                     b.Navigation("Pages");
 
                     b.Navigation("Tests");

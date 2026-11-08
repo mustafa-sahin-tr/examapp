@@ -77,7 +77,9 @@
     "ReadyForReview": "İncelemeye hazır",
     "Completed": "Tamamlandı",
     "Failed": "Hata",
-    "Cancelled": "İptal edildi"
+    "Cancelled": "İptal edildi",
+    "AwaitingBudget": "Bütçe bekleniyor",
+    "AwaitingCostApproval": "Maliyet onayı bekliyor"
   },
   "testStatus": {
     "Pending": "Bekliyor",
@@ -135,7 +137,13 @@
     "duplicates": "{{count}} tekrar atlandı",
     "flagPages": "sayfa {{pages}}",
     "flagNumbers": "soru {{numbers}}",
-    "legendReview": "{{approved}} onaylandı · {{removed}} silindi"
+    "legendReview": "{{approved}} onaylandı · {{removed}} silindi",
+    "awaitingBudget": "Günlük yapay zekâ bütçesi doldu; aktarım {{time}} civarında kendiliğinden devam edecek.",
+    "awaitingBudgetNoTime": "Günlük yapay zekâ bütçesi doldu; aktarım bütçe açılınca kendiliğinden devam edecek.",
+    "awaitingCostApproval": "Aktarım maliyet sınırına ulaştı; bir yöneticinin devam ettirmesi bekleniyor.",
+    "awaitingCostApprovalAdmin": "Aktarım maliyet sınırına ulaştı: {{cost}} harcandı (sınır {{ceiling}}). Devam edersen sınır, ayarlardaki iş başı tavan kadar yükselir.",
+    "continue": "Devam et",
+    "continueFailed": "Aktarım sürdürülemedi; sayfayı yenileyip tekrar dene."
   },
   "setup": {
     "title": "Kitap kurulumunu onayla",
@@ -231,5 +239,18 @@
     "fixPage": "Sayfa {{page}}",
     "fixPageFlagged": "Sayfa {{page}} · işaretli",
     "footer": "Onaylanan testler normal test ayarlarına uyar ve varsayılan olarak yalnız size açıktır (özel)."
+  },
+  "cost": {
+    "title": "Maliyet",
+    "total": "Toplam {{cost}}",
+    "ceiling": "sınır {{ceiling}}",
+    "noCeiling": "sınır yok",
+    "stage": "Aşama",
+    "model": "Model",
+    "calls": "Çağrı",
+    "tokens": "Token (girdi / çıktı)",
+    "usd": "Tutar",
+    "tokenValue": "{{input}} / {{output}}",
+    "empty": "Çağrı bazında maliyet kaydı yok (eski aktarım ya da henüz çağrı yapılmadı)."
   }
 }

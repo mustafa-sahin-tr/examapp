@@ -1,4 +1,5 @@
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.BookImport;
 using ExamApp.Api.Services.Entitlements;
@@ -96,6 +97,34 @@ public class BookImportSetupTests : IDisposable
         ]);
         tests[0].FlagsJson.ShouldBe("[\"keyConflicts\"]");
         tests[0].KeyAnswers.ShouldBe(4);
+    }
+
+    [Fact]
+    public async Task Setup_calls_are_recorded_as_setup_costs_and_a_full_total_budget_pauses_setup_before_any_call()
+    {
+        var id = await SeedJobAsync();
+        var store = new InMemoryFixedWindowCounterStore();
+        await LabelingAiQuota.ChargeBudgetAsync(store, LabelingAiQuota.TotalBudgetKey, new LabelingAiOptions().DailyBudgetUsdTotal);
+
+        await RunAsync(id, budgetStore: store);
+
+        _ai.SurveyBatches.ShouldBeEmpty();
+        await using (var check = _db.NewContext())
+        {
+            var job = await check.BookImportJobs.SingleAsync();
+            job.Status.ShouldBe(BookImportJobStatus.AwaitingBudget);
+            job.Stage.ShouldBe(BookImportStage.Setup);
+            job.ResumeAt.ShouldNotBeNull();
+        }
+
+        await RunAsync(id, budgetStore: new InMemoryFixedWindowCounterStore());
+
+        await using var after = _db.NewContext();
+        (await after.BookImportJobs.SingleAsync()).Status.ShouldBe(BookImportJobStatus.AwaitingConfirmation);
+        var costs = await after.BookImportCosts.ToListAsync();
+        costs.Count.ShouldBe(4);
+        costs.ShouldAllBe(c => c.Stage == BookImportStage.Setup && c.TestId == null && c.ModelId == Model.Id);
+        costs.Sum(c => c.CostUsd).ShouldBe((after.BookImportJobs.Single()).AiCostUsd);
     }
 
     [Fact]
@@ -375,7 +404,7 @@ public class BookImportSetupTests : IDisposable
         return job.Id;
     }
 
-    private async Task RunAsync(Guid id, int batchSize = 8)
+    private async Task RunAsync(Guid id, int batchSize = 8, IFixedWindowCounterStore? budgetStore = null)
     {
         var guard = Substitute.For<IApprovedTeacherGuard>();
         guard.CheckAsync(OwnerId, Arg.Any<CancellationToken>()).Returns(TeacherApprovalCheck.NoTeacherProfile);
@@ -384,8 +413,8 @@ public class BookImportSetupTests : IDisposable
             .Build();
         await using var ctx = _db.NewContext();
         await new BookImportJobRunner(ctx, guard, _minio, new PdfiumRasterizer(pageWidth: 200), _ai,
-            Substitute.For<ExamApp.Api.Services.Labeling.ILabelingService>(), Substitute.For<IServiceScopeFactory>(), config)
-            .RunLockedAsync(id);
+            Substitute.For<ExamApp.Api.Services.Labeling.ILabelingService>(), Substitute.For<IServiceScopeFactory>(), config,
+            budgetStore: budgetStore).RunLockedAsync(id);
     }
 
     public void Dispose() => _db.Dispose();

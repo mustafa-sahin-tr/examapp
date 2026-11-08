@@ -17,9 +17,14 @@ namespace ExamApp.Api.Services.BookImport;
 /// <summary>Bir PDF sayfasının görseli (#1020'de üretilen WebP).</summary>
 public sealed record BookPageImage(int FilePage, byte[] Image);
 
-/// <summary>Kurulumda harcanan tahmini Claude maliyeti; başarısız (ama yanıt almış) çağrılar da eklenir.</summary>
+/// <summary>
+/// Kurulumda harcanan tahmini Claude maliyeti; başarısız (ama yanıt almış) çağrılar da eklenir. İşte çalışırken (#1024) her çağrı
+/// öncesi <see cref="EnsureAsync"/> bütçeyi denetler ve her çağrı işin maliyet satırlarına (<see cref="BookImportBudget"/>) yazılır.
+/// </summary>
 public sealed class BookSetupCost
 {
+    internal BookImportBudget? Budget { get; init; }
+
     public decimal Usd { get; private set; }
     public long InputTokens { get; private set; }
     public long OutputTokens { get; private set; }
@@ -29,7 +34,11 @@ public sealed class BookSetupCost
         InputTokens += usage.Input;
         OutputTokens += usage.Output;
         Usd += LabelingAiQuota.Cost(model, usage.Input, usage.Output);
+        Budget?.Record(model, usage);
     }
+
+    /// <summary>Canlı çağrıdan önce: bütçe ya da işin tavanı doluysa <see cref="BookImportPause"/>.</summary>
+    public Task EnsureAsync(CancellationToken ct) => Budget?.EnsureAsync(ct) ?? Task.CompletedTask;
 }
 
 public sealed record SurveyResult(IReadOnlyList<SurveyedPage> Pages, IReadOnlyList<SurveyedTocRow> Toc);
@@ -185,7 +194,7 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
             "\n\nFor every unit give the id of the topic it mostly covers, or null when no topic fits.";
         var model = Model(_surveyModelId);
         var (mapping, _) = await Call(() => LabelingClaude.AskTextAsync<UnitTopics>(
-            _chat!, _options, _logger, model, MapMaxOutputTokens, MapSystemPrompt, instruction, ct), model, cost);
+            _chat!, _options, _logger, model, MapMaxOutputTokens, MapSystemPrompt, instruction, ct), model, cost, ct);
 
         var known = topics.Select(t => t.Id).ToHashSet();
         foreach (var match in mapping.Units ?? [])
@@ -203,15 +212,16 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
         BookSetupCost cost, CancellationToken ct)
     {
         var (result, _) = await Call(() => LabelingClaude.AskContentAsync<T>(
-            _chat!, _options, _logger, model, maxOutputTokens, system, content, ct), model, cost);
+            _chat!, _options, _logger, model, maxOutputTokens, system, content, ct), model, cost, ct);
         return result;
     }
 
     private async Task<(T Result, LabelingAiUsage Usage)> Call<T>(
-        Func<Task<(T, LabelingAiUsage)>> call, LabelingAiModelOption model, BookSetupCost cost)
+        Func<Task<(T, LabelingAiUsage)>> call, LabelingAiModelOption model, BookSetupCost cost, CancellationToken ct)
     {
         if (_chat is null)
             throw new BookImportFailure("Claude is not configured (Anthropic:ApiKey is empty).");
+        await cost.EnsureAsync(ct);
         try
         {
             var (result, usage) = await call();

@@ -56,6 +56,11 @@ export class BookImportService {
     return this.http.post<void>(`${this.baseUrl}/${id}/cancel`, {});
   }
 
+  /** Issue #1024: Admin — maliyet tavanında bekleyen işi sürdür. */
+  continue(id: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${id}/continue`, {});
+  }
+
   /** Issue #1023: inceleme — testin soruları, cevap seçimi, onay ve silme. */
   reviewQuestions(id: string, testId: number): Observable<BookImportReviewQuestion[]> {
     return this.http.get<BookImportReviewQuestion[]>(`${this.baseUrl}/${id}/tests/${testId}/questions`);

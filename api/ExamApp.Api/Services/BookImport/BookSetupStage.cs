@@ -106,6 +106,7 @@ internal sealed class BookSetupStage(AppDbContext db, IMinIoService minio, IBook
                 await db.SaveChangesAsync(ct);
             }
 
+            await SavePageNumbersAsync(job, surveyed, ct);
             var plan = BookSetupPlanner.Plan(surveyed, toc, firstRead, secondRead);
             if (plan.Tests.Count == 0)
                 throw new BookImportFailure("No tests were found in the book (no page with a test header).");
@@ -121,6 +122,18 @@ internal sealed class BookSetupStage(AppDbContext db, IMinIoService minio, IBook
             job.AiCostUsd += cost.Usd;
             await db.SaveChangesAsync(CancellationToken.None);
         }
+    }
+
+    /// <summary>Issue #1022: sayfadaki en büyük soru no, soru aktarımının sayfa bazlı numaralaması için.</summary>
+    private async Task SavePageNumbersAsync(BookImportJob job, IReadOnlyList<SurveyedPage> surveyed, CancellationToken ct)
+    {
+        var numbers = surveyed.GroupBy(p => p.FilePage).ToDictionary(g => g.Key, g => g.First().MaxQuestionNumber);
+        var rows = await db.BookImportPages.AsTracking().Where(p => p.JobId == job.Id).ToListAsync(ct);
+        foreach (var row in rows)
+            row.MaxQuestionNumber = numbers.GetValueOrDefault(row.FilePage) is > 0 and <= BookSetupPlanner.MaxQuestionsPerTest and var n
+                ? n
+                : null;
+        await db.SaveChangesAsync(ct);
     }
 
     private async Task<IReadOnlyDictionary<int, int?>> MapUnitsAsync(BookImportJob job, BookSetupPlan plan, BookSetupCost cost, CancellationToken ct)

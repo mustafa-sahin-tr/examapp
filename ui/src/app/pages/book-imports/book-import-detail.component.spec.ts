@@ -6,7 +6,7 @@ import { NEVER, Observable, of, throwError } from 'rxjs';
 
 import { BookImportDetailComponent } from './book-import-detail.component';
 import { BOOK_IMPORTS_POLL_MS } from './book-imports.component';
-import { BookImportJobDetail } from '../../models/book-import';
+import { BookImportJobDetail, BookImportJobTest } from '../../models/book-import';
 import { BookImportService } from '../../services/book-import.service';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import tr from '../../../../public/i18n/book-imports/tr.json';
@@ -17,6 +17,13 @@ function detail(overrides: Partial<BookImportJobDetail> = {}): BookImportJobDeta
     status: 'Running', stage: 'Setup', fileName: 'bts.pdf', fileSizeBytes: 1000, pageCount: 120,
     stageTotal: 4, stageProcessed: 1, message: null, error: null, createdAt: '2026-11-08T08:00:00Z',
     startedAt: '2026-11-08T08:00:05Z', finishedAt: null, ownerId: 3, tests: [], ...overrides,
+  };
+}
+
+function test(overrides: Partial<BookImportJobTest> = {}): BookImportJobTest {
+  return {
+    order: 1, unit: 1, testNo: 1, title: null, status: 'Done', questionsFound: 0, keyAnswers: 0, flags: [],
+    questionsSaved: 0, duplicatesSkipped: 0, reviewFlags: [], error: null, ...overrides,
   };
 }
 
@@ -93,22 +100,37 @@ describe('BookImportDetailComponent (#1018)', () => {
     response = of(detail({
       stage: 'Questions',
       tests: [
-        { order: 1, unit: 1, testNo: 1, title: null, status: 'Done', questionsFound: 10, keyAnswers: 10, flags: [], error: null },
-        { order: 2, unit: 1, testNo: 2, title: null, status: 'NeedsReview', questionsFound: 9, keyAnswers: 10, flags: ['keyMismatch'], error: null },
-        { order: 3, unit: 2, testNo: 1, title: null, status: 'Failed', questionsFound: 0, keyAnswers: 0, flags: [], error: 'Sayfa okunamadı' },
+        test({ order: 1, status: 'Done', questionsFound: 10, keyAnswers: 10, questionsSaved: 10 }),
+        test({
+          order: 2, testNo: 2, status: 'NeedsReview', questionsFound: 9, keyAnswers: 10, questionsSaved: 8, duplicatesSkipped: 1,
+          flags: ['keyMismatch'],
+          reviewFlags: [
+            { code: 'missingNumbers', pages: [12], numbers: [7], found: null, expected: null },
+            { code: 'countMismatch', pages: [12, 13], numbers: null, found: 9, expected: 10 },
+          ],
+        }),
+        test({ order: 3, unit: 2, status: 'Failed', error: 'Sayfa okunamadı' }),
+        test({ order: 4, unit: 2, testNo: 2, status: 'Pending' }),
       ],
     }));
     setup();
 
     const cells = el().querySelectorAll('.bid-grid__cell');
-    expect(cells.length).toBe(3);
-    expect(cells[1].getAttribute('aria-label')).toBe('Ünite 1, test 2: Kontrol gerekli');
+    expect(cells.length).toBe(4);
+    expect(cells[1].getAttribute('aria-label')).toBe('Ünite 1, test 2: Kontrol gerekli · 9 soru bulundu, anahtarda 10');
+    expect(cells[3].getAttribute('aria-label')).toBe('Ünite 2, test 2: Bekliyor');
     expect(cells[2].classList).toContain('bid-grid__cell--failed');
     const attention = el().querySelector('.bid-attention')!.textContent ?? '';
     expect(attention).toContain('Ünite 1 · Test 2');
     expect(attention).toContain(tr.flags.keyMismatch);
     expect(attention).toContain('Sayfa okunamadı');
     expect(attention).not.toContain('Ünite 1 · Test 1');
+    expect(attention).toContain('9 / 10 soru · 8 kaydedildi');
+    expect(attention).toContain('1 tekrar atlandı');
+    expect(attention).toContain(tr.reviewFlags.missingNumbers);
+    expect(attention).toContain('sayfa 12 · soru 7');
+    expect(attention).toContain('9 soru bulundu, anahtarda 10');
+    expect(attention).toContain('sayfa 12, 13');
   });
 
   it('notFound_ShowsMessage', () => {

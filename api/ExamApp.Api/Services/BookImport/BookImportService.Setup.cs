@@ -207,8 +207,9 @@ public sealed partial class BookImportService
         var registry = new LabelingBookSaveRequestDto
         {
             Name = reuse?.Name ?? bookName,
-            Offsets = summary.Offset is { } offset && job.PageCount is { } pages
-                ? [new LabelingBookOffsetDto { FileFrom = 1, FileTo = pages, Offset = offset }]
+            // Negatif ofsette baştaki sayfaların basılı numarası olmaz (kapak): aralık basılı 1'den başlar.
+            Offsets = summary.Offset is { } offset && job.PageCount is { } pages && Math.Max(1, 1 - offset) <= pages
+                ? [new LabelingBookOffsetDto { FileFrom = Math.Max(1, 1 - offset), FileTo = pages, Offset = offset }]
                 : [],
             AnswerKeyRanges = summary.AnswerKeyRanges
                 .Select(r => new LabelingBookPageRangeDto { FileFrom = r.FileFrom, FileTo = r.FileTo }).ToList(),

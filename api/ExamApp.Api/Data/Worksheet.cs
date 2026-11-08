@@ -32,6 +32,9 @@ public class Worksheet : BaseEntity
     public int MaxDurationSeconds { get; set; } // 🕒 Maksimum test süresi (saniye)
     public bool IsPracticeTest { get; set; } // True ise Çalışma Testi, False ise Normal Test
 
+    /// <summary>Issue #1022 / #1023: kitaptan aktarılmış, onaylanmamış test; global filtre gizler (<see cref="DraftQueryFilter"/>).</summary>
+    public bool IsDraft { get; set; }
+
     public string? Subtitle { get; set; }
 
     public string? ImageUrl { get; set; }

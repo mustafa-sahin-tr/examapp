@@ -3,10 +3,12 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
+using ExamApp.Api.Services.Labeling;
 using ExamApp.Api.Services.Teachers;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -15,7 +17,8 @@ namespace ExamApp.Api.Services.BookImport;
 /// <summary>
 /// Issue #1018 (epic #1017): kitaptan aktarım işini aşama aşama yürütür. Sayfalar (#1020) PDF'i sayfa görsellerine çevirir; kitap
 /// kurulumu (#1021, <see cref="BookSetupStage"/>) testleri ve cevap anahtarını çıkarır, iş kurulum onayında bekler. Onaydan sonra
-/// iş yeniden kuyruğa girer; soru aktarımı (#1022) henüz iskelet. Emsal <c>QuestionTransferJobRunner</c>:
+/// iş yeniden kuyruğa girer; soru aktarımı (#1022, <see cref="BookQuestionImportStage"/>) testleri taslak soru olarak kaydeder ve
+/// iş incelemeye geçer. Emsal <c>QuestionTransferJobRunner</c>:
 /// kendi Hangfire kuyruğu, iş başına dağıtık kilit, sahibin öğretmen onayı iş başında yeniden kontrol edilir.
 /// </summary>
 public class BookImportJobRunner
@@ -29,25 +32,35 @@ public class BookImportJobRunner
     /// <summary>Kurulum taramasında tek Claude çağrısına giden sayfa; <c>BookImport:SurveyBatchSize</c>.</summary>
     public const int DefaultSurveyBatchSize = 8;
 
+    /// <summary>Soru / şık tespit modeli (işaretleme ekranının "Claude ile tespit"i); <c>BookImport:DetectModel</c>.</summary>
+    public const string DefaultDetectModel = "claude-haiku-5-5";
+
     private readonly AppDbContext _db;
     private readonly IApprovedTeacherGuard _teacherGuard;
     private readonly IMinIoService _minio;
     private readonly IPdfRasterizer _rasterizer;
     private readonly IBookSetupAi _setupAi;
+    private readonly ILabelingService _labeling;
+    private readonly IServiceScopeFactory _scopes;
     private readonly int _maxPages;
     private readonly int _surveyBatchSize;
+    private readonly string _detectModel;
     private readonly ILogger<BookImportJobRunner> _logger;
 
     public BookImportJobRunner(AppDbContext db, IApprovedTeacherGuard teacherGuard, IMinIoService minio, IPdfRasterizer rasterizer,
-        IBookSetupAi setupAi, IConfiguration? configuration = null, ILogger<BookImportJobRunner>? logger = null)
+        IBookSetupAi setupAi, ILabelingService labeling, IServiceScopeFactory scopes, IConfiguration? configuration = null,
+        ILogger<BookImportJobRunner>? logger = null)
     {
         _db = db;
         _teacherGuard = teacherGuard;
         _minio = minio;
         _rasterizer = rasterizer;
         _setupAi = setupAi;
+        _labeling = labeling;
+        _scopes = scopes;
         _maxPages = Math.Max(1, configuration?.GetValue<int?>("BookImport:MaxPages") ?? DefaultMaxPages);
         _surveyBatchSize = Math.Clamp(configuration?.GetValue<int?>("BookImport:SurveyBatchSize") ?? DefaultSurveyBatchSize, 1, 20);
+        _detectModel = configuration?["BookImport:DetectModel"] is { Length: > 0 } model ? model : DefaultDetectModel;
         _logger = logger ?? NullLogger<BookImportJobRunner>.Instance;
     }
 
@@ -99,8 +112,10 @@ public class BookImportJobRunner
                 return;
             }
 
-            // #1022: test test soru aktarımı. İskelet: iş yapmadan inceleme aşamasına geçilir.
-            await EnterStageAsync(job, BookImportStage.Questions);
+            // #1022: test test soru aktarımı; kaldığı testten devam eder (aşama sayaçları sıfırlanmaz).
+            if (job.Stage != BookImportStage.Questions)
+                await EnterStageAsync(job, BookImportStage.Questions);
+            await new BookQuestionImportStage(_db, _minio, _labeling, _scopes, _detectModel, _logger).RunAsync(job);
             job.Stage = BookImportStage.Review;
             job.Status = BookImportJobStatus.ReadyForReview;
             await _db.SaveChangesAsync();

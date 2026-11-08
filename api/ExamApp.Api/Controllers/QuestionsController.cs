@@ -382,7 +382,8 @@ public class QuestionsController : BaseController
                 return denied;
         }
 
-        var question = await _questionQuery.GetQuestionById(id, ct: HttpContext.RequestAborted);
+        // Issue #1022: sınıflandırıcı kitap aktarımı taslaklarını da sınıflandırır (onaydan önce).
+        var question = await _questionQuery.GetQuestionById(id, ct: HttpContext.RequestAborted, includeDrafts: IsServiceAccount);
         if (question == null || string.IsNullOrWhiteSpace(question.ImageUrl))
         {
             return NotFound(new { message = _localizer["questions.imageNotFound"].Value });

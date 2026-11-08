@@ -126,7 +126,13 @@
     "attentionEmpty": "Şimdilik dikkat gereken test yok.",
     "file": "Dosya",
     "pages": "Sayfa",
-    "startedAt": "Başlangıç"
+    "startedAt": "Başlangıç",
+    "testCellCounts": "Ünite {{unit}}, test {{no}}: {{status}} · {{found}} soru bulundu, anahtarda {{key}}",
+    "testCounts": "{{found}} / {{key}} soru · {{saved}} kaydedildi",
+    "testCountsNoKey": "{{found}} soru · {{saved}} kaydedildi",
+    "duplicates": "{{count}} tekrar atlandı",
+    "flagPages": "sayfa {{pages}}",
+    "flagNumbers": "soru {{numbers}}"
   },
   "setup": {
     "title": "Kitap kurulumunu onayla",
@@ -177,5 +183,15 @@
     "ready": "{{count}} test aktarılmaya hazır.",
     "confirm": "Onayla ve soruları aktar",
     "confirmFailed": "Kurulum onaylanamadı."
+  },
+  "reviewFlags": {
+    "countMismatch": "{{found}} soru bulundu, anahtarda {{expected}}",
+    "missingNumbers": "Eksik soru",
+    "extraQuestions": "Fazla soru kutusu",
+    "optionCount": "Şık sayısı 4 değil",
+    "noAnswer": "Cevapsız",
+    "notSaved": "Kaydedilemedi (ikiden az şık)",
+    "detectionFailed": "Tespit başarısız",
+    "saveFailed": "Kayıt başarısız"
   }
 }

@@ -53,7 +53,20 @@ export interface BookImportJobTest {
   questionsFound: number;
   keyAnswers: number;
   flags: string[];
+  /** #1022: taslak kaydedilen ve kırpması bankada olduğu için atlanan sorular. */
+  questionsSaved: number;
+  duplicatesSkipped: number;
+  reviewFlags: BookImportReviewFlag[];
   error: string | null;
+}
+
+/** #1022: aktarım inceleme işareti; `pages` dosya sayfaları, `numbers` soru numaraları. */
+export interface BookImportReviewFlag {
+  code: string;
+  pages: number[];
+  numbers: number[] | null;
+  found: number | null;
+  expected: number | null;
 }
 
 export interface BookImportJobDetail extends BookImportJob {

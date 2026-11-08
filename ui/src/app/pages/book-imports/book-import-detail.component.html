@@ -61,8 +61,7 @@
       <ul class="bid-grid" [attr.aria-label]="t('detail.testGrid')">
         @for (test of j.tests; track test.order) {
         <li class="bid-grid__cell bid-grid__cell--{{ testTone(test) }}"
-          [attr.title]="t('detail.testCell', { unit: test.unit, no: test.testNo, status: t('testStatus.' + test.status) })"
-          [attr.aria-label]="t('detail.testCell', { unit: test.unit, no: test.testNo, status: t('testStatus.' + test.status) })"></li>
+          [attr.title]="testCellLabel(test, t)" [attr.aria-label]="testCellLabel(test, t)"></li>
         }
       </ul>
       <p class="bid-legend">
@@ -87,6 +86,26 @@
           }
           @for (flag of test.flags; track flag) {
           <span class="bid-flag">{{ t('flags.' + flag) }}</span>
+          }
+          @if (test.status !== 'Failed' || test.questionsFound > 0) {
+          <span class="bid-attention__counts">
+            {{ test.keyAnswers > 0
+              ? t('detail.testCounts', { found: test.questionsFound, key: test.keyAnswers, saved: test.questionsSaved })
+              : t('detail.testCountsNoKey', { found: test.questionsFound, saved: test.questionsSaved }) }}
+            @if (test.duplicatesSkipped > 0) {
+            · {{ t('detail.duplicates', { count: test.duplicatesSkipped }) }}
+            }
+          </span>
+          }
+          @if (test.reviewFlags.length > 0) {
+          <ul class="bid-review-flags">
+            @for (flag of test.reviewFlags; track flag.code) {
+            <li>
+              <span class="bid-flag">{{ t('reviewFlags.' + flag.code, { found: flag.found, expected: flag.expected }) }}</span>
+              <span class="bid-review-flags__where">{{ flagWhere(flag, t) }}</span>
+            </li>
+            }
+          </ul>
           }
         </li>
         }

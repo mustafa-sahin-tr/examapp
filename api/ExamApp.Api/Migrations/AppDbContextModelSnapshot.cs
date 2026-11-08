@@ -459,6 +459,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("DeleteUserId")
                         .HasColumnType("integer");
 
+                    b.Property<int>("DuplicatesSkipped")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Error")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
@@ -496,6 +499,12 @@ namespace ExamApp.Api.Migrations
 
                     b.Property<int>("QuestionsFound")
                         .HasColumnType("integer");
+
+                    b.Property<int>("QuestionsSaved")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ReviewFlagsJson")
+                        .HasColumnType("text");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
@@ -547,6 +556,9 @@ namespace ExamApp.Api.Migrations
 
                     b.Property<Guid>("JobId")
                         .HasColumnType("uuid");
+
+                    b.Property<int?>("MaxQuestionNumber")
+                        .HasColumnType("integer");
 
                     b.Property<long>("SizeBytes")
                         .HasColumnType("bigint");
@@ -3541,6 +3553,9 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDraft")
                         .HasColumnType("boolean");
 
                     b.Property<bool>("IsExample")
@@ -7090,6 +7105,9 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("text");
 
                     b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDraft")
                         .HasColumnType("boolean");
 
                     b.Property<bool>("IsPracticeTest")

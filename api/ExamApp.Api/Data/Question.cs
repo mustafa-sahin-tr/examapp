@@ -108,6 +108,12 @@ public class Question : BaseEntity
     /// <summary>Issue #703: öğretmenin beyanıyla bağlam temelli soru (bkz. docs/context-based-questions.md); doğrulanmaz.</summary>
     public bool IsContextBased { get; set; }
 
+    /// <summary>
+    /// Issue #1022 / #1023: kitaptan aktarılmış, henüz onaylanmamış soru. Global filtre gizler (<see cref="DraftQueryFilter"/>);
+    /// yalnız aktarım / inceleme kodu <c>WithDrafts()</c> ile görür. Onayda false olur.
+    /// </summary>
+    public bool IsDraft { get; set; }
+
     public ICollection<QuestionSkill> QuestionSkills { get; set; } = new List<QuestionSkill>(); // Issue #703
 
     /// <summary>Ortamlar arası eşleşme kimliği (bkz. QuestionContentHash). İçerik değişince sıfırlanır, Hangfire işi yeniden hesaplar.</summary>

@@ -76,3 +76,30 @@ aktarım aracındaki Python portu referanstır (#1022).
   (`RecordUsageAsync(userId, "book-import", jobId)`) → iş `Questions` aşamasında kuyruğa girer (#1022 iskelet). Aynı adlı
   kitap varsa 409 + `existingBook`: mevcut kitabı kullan (kayıt kümeleri boşsa kurulumla doldurulur) ya da yeni ad.
   İptal: `POST /api/exam/book-imports/{id}/cancel` (yalnız onay beklerken; diğer durumlar #1025).
+
+## Soru aktarımı (#1022)
+
+- **Taslak bayrağı** (karar 3, #1023'ün bayrak kısmı burada): `Question.IsDraft`, `Worksheet.IsDraft`; iki varlıkta da filtreler
+  ADLI (`DraftQueryFilter.Key` taslak, `DraftQueryFilter.SoftDeleteKey` silinmiş). `WithDrafts()` yalnız taslak filtresini kapatır.
+  Taslağı gören yollar: aktarım işi, sınıflandırıcının servis hesabıyla çağırdığı uçlar (`GET /api/questions/{id}/image`,
+  `classification-text`, `PUT …/classification`; `QuestionClassificationService` sorguları). `IgnoreQueryFilters()` (tümü) taslakları
+  da gösterir: yeni kullanımda bilinçli seçilmeli. Alan alan sızıntı testleri ve inceleme / onay ekranı #1023.
+- **Akış** (`BookQuestionImportStage`): testler sırayla; yalnız `Pending` / `Running` olanlar çalışır (bitmiş test yeniden çalışmada
+  atlanır, yarım test baştan alınır, kaydedilmişler kırpma tekrarı sayılır). Sayfa başına:
+  1. Tespit: `ILabelingService.DetectForImportAsync` — işaretleme ekranının "Claude ile tespit"iyle aynı model listesi, etkin prompt,
+     kayıt ve önbellek (`LabelingResults`); kullanıcı kotası / günlük bütçe yok, maliyet `AiCostUsd`'ye (kullanılamayan ücretli yanıt
+     dahil). Model `BookImport:DetectModel` (varsayılan `claude-haiku-5-5`, izinli listede olmalı).
+  2. Yalnız `mcq_question` blokları; okuma sırası (sütun, sonra yukarıdan aşağı), şıksız kök + hemen altındaki şık kutusu birleşir.
+  3. `BookQuestionLayout.Prepare`: soru kutusu taşan şıkları içine alır, şıklar (satır, x) sırasıyla dolgulanır (25 px),
+     "Cevapları Hizala" kurallarıyla hizalanır, örtüşen dolgu tespit kutularının ortasından kesilir. Kurallar ve toleranslar el ile
+     aktarım aracının Python portuyla aynı (2363 px genişliğe ölçekli); testler aynı girdilerde Python sonucuyla karşılaştırıldı.
+  4. Numaralama sayfaya dayanır: kurulum taramasının okuduğu "sayfadaki en büyük soru no" (`BookImportPages.MaxQuestionNumber`)
+     varsa sayfa önceki sayfanın sonundan başlar; eksik tespit sonraki sayfayı kaydırmaz. Cevap anahtardan (`AnswerKey[no-1]`).
+  5. Kayıt: `ILabelingBankService.SaveImportedPageAsync` (ayrı DI scope'u) — `pages/bank` ile aynı kırpma, kitap kaynağı
+     (`QuestionSources`: etkinlik etiketi = kitap testi adı "1-01 · Başlık", madde = soru no), içindekiler (`ClassificationSource=Book`)
+     ve `QuestionCreatedEvent`; sorular taslak, `BankSharing=Private`, cevapsız olabilir. Kırpma hash'i bankada olan soru atlanır ve
+     sayılır (`DuplicatesSkipped`). Rol özniteliği, saatlik kota ve sayfa "kaydedildi" kilidi yok.
+- **İşaretler** (`BookImportJobTests.ReviewFlagsJson`, sayfa / soru referanslı): `countMismatch` (bulunan ≠ anahtar), `missingNumbers`,
+  `extraQuestions`, `optionCount` (≠ 4), `noAnswer`, `notSaved` (ikiden az şık), `detectionFailed`, `saveFailed`. İşaretli test
+  `NeedsReview`, işaretsiz `Done`; her sayfası düşen test `Failed`. Bir sayfa ya da test diğerlerini durdurmaz.
+- Takip ekranı test başına bulunan / anahtardaki / kaydedilen / atlanan sayıları ve işaretleri sayfa ve soru numarasıyla gösterir.

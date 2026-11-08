@@ -979,6 +979,7 @@ public class QuestionService : IQuestionService
                         PassageId = matchedPassage?.Id,
                         ClassificationSource = classificationSource,
                         BankSharing = soruDto.BankSharing,
+                        IsDraft = soruDto.IsDraft,
                         QuestionLearningOutcomes = (questionDto.LearningOutcomeIds ?? new List<int>()).Distinct()
                             .Select(id => new QuestionLearningOutcome { LearningOutcomeId = id })
                             .ToList()
@@ -1048,7 +1049,8 @@ public class QuestionService : IQuestionService
                             ? null
                             : sourceAnswers.FirstOrDefault(a => a.IsCorrect)?.Label;
 
-                        if (!isInteractive && correctLabel == null)
+                        // Issue #1022: aktarım taslağı cevapsız kalabilir (onay #1023'te engellenir).
+                        if (!isInteractive && correctLabel == null && !soruDto.IsDraft)
                         {
                             throw new InvalidOperationException(_localizer["questions.bulk.correctAnswerMissing", questionDto.Name]);
                         }

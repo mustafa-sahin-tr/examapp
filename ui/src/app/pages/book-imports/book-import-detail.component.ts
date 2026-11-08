@@ -14,6 +14,7 @@ import {
   BOOK_IMPORT_STAGES,
   BookImportJobDetail,
   BookImportJobTest,
+  BookImportReviewFlag,
   BookImportStage,
   bookImportStatusTone,
   isBookImportActive,
@@ -24,9 +25,12 @@ import { BookImportSetupComponent } from './book-import-setup.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { BOOK_IMPORTS_POLL_MS, BOOK_IMPORTS_SCOPE } from './book-imports.component';
 
+type Translate = (key: string, params?: Record<string, unknown>) => string;
+
 /**
  * Issue #1018 (epic #1017): bir kitap aktarımının takibi — aşama adımları, geçerli aşamanın ilerlemesi, test ızgarası ve dikkat
- * gerektiren testler. İş sürerken 5 sn'de bir yenilenir. Kurulum onayında onay ekranı (#1021) gösterilir. Yeniden dene / iptal
+ * gerektiren testler (#1022: bulunan / anahtardaki / kaydedilen soru, sayfa referanslı işaretler). İş sürerken 5 sn'de bir
+ * yenilenir. Kurulum onayında onay ekranı (#1021) gösterilir. Yeniden dene / iptal
  * (#1025) ve inceleme (#1023) sonraki dilimlerde.
  */
 @Component({
@@ -118,6 +122,22 @@ export class BookImportDetailComponent implements OnInit {
   stageState(stage: BookImportStage): 'done' | 'current' | 'waiting' | 'failed' | 'todo' {
     const job = this.job();
     return job ? stageState(job, stage) : 'todo';
+  }
+
+  /** Izgara hücresinin başlığı; aktarılmış testte bulunan / anahtardaki soru sayısıyla (#1022). */
+  testCellLabel(test: BookImportJobTest, t: Translate): string {
+    const params = { unit: test.unit, no: test.testNo, status: t('testStatus.' + test.status) };
+    return test.status === 'Pending' || test.status === 'Running'
+      ? t('detail.testCell', params)
+      : t('detail.testCellCounts', { ...params, found: test.questionsFound, key: test.keyAnswers });
+  }
+
+  /** İşaretin yeri: "sayfa 12, 13 · soru 4, 7" (#1022). */
+  flagWhere(flag: BookImportReviewFlag, t: Translate): string {
+    const parts = [];
+    if (flag.pages.length > 0) parts.push(t('detail.flagPages', { pages: flag.pages.join(', ') }));
+    if (flag.numbers?.length) parts.push(t('detail.flagNumbers', { numbers: flag.numbers.join(', ') }));
+    return parts.join(' · ');
   }
 
   testTone(test: BookImportJobTest): 'done' | 'review' | 'failed' | 'running' | 'pending' {

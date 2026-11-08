@@ -56,6 +56,14 @@ public class BookImportJobTestDto
     public int QuestionsFound { get; set; }
     public int KeyAnswers { get; set; }
     public List<string> Flags { get; set; } = new();
+
+    /// <summary>Issue #1022: taslak kaydedilen ve kırpma tekrarı olduğu için atlanan soru sayısı.</summary>
+    public int QuestionsSaved { get; set; }
+    public int DuplicatesSkipped { get; set; }
+
+    /// <summary>Issue #1022: aktarım inceleme işaretleri (kod, dosya sayfaları, soru numaraları).</summary>
+    public IReadOnlyList<Services.BookImport.BookImportReviewFlag> ReviewFlags { get; set; } = [];
+
     public string? Error { get; set; }
 }
 

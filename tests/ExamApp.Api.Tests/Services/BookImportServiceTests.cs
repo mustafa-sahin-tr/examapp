@@ -231,7 +231,9 @@ public class BookImportServiceTests : IDisposable
     }
 
     private BookImportJobRunner Runner(AppDbContext ctx, IApprovedTeacherGuard guard) =>
-        new(ctx, guard, _minio, new PdfiumRasterizer(pageWidth: 400), _ai);
+        new(ctx, guard, _minio, new PdfiumRasterizer(pageWidth: 400), _ai,
+            Substitute.For<ExamApp.Api.Services.Labeling.ILabelingService>(),
+            Substitute.For<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>());
 
     private void ServePdf(byte[] pdf) =>
         _minio.GetFileStreamAsync(Arg.Any<string>()).Returns(_ => Task.FromResult<Stream?>(new MemoryStream(pdf)));

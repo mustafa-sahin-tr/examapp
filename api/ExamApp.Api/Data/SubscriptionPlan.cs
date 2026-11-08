@@ -110,3 +110,37 @@ public class EntitlementUsage
 
     public DateTime UsedAtUtc { get; set; }
 }
+
+/// <summary>
+/// Issue #1030: plan atamasındaki her değişikliğin kaydı (kim, ne zaman, eski → yeni). <see cref="BaseEntity"/>'den türemez,
+/// silinmez. Plan anahtarı saklanır (plan satırı değişse de kayıt okunur kalır); <c>null</c> = atama yok (Free).
+/// <see cref="ActorUserId"/> kendi başlattığı değişiklikte (deneme, ödeme) kullanıcının kendisidir.
+/// </summary>
+public class SubscriptionPlanAssignmentAudit
+{
+    public long Id { get; set; }
+    public int UserId { get; set; }
+    public int ActorUserId { get; set; }
+    public SubscriptionPlanAuditAction Action { get; set; }
+
+    [MaxLength(SubscriptionPlan.KeyMaxLength)]
+    public string? FromPlanKey { get; set; }
+
+    [MaxLength(SubscriptionPlan.KeyMaxLength)]
+    public string? ToPlanKey { get; set; }
+
+    public DateTime? ValidFromUtc { get; set; }
+    public DateTime? ValidToUtc { get; set; }
+
+    /// <summary>Okula toplu atamada okul (Schools.Id); tekil atamada null.</summary>
+    public int? SchoolId { get; set; }
+
+    public DateTime OccurredAtUtc { get; set; }
+}
+
+/// <summary>Kalıcı değer string'dir; yeniden adlandırma geçmiş kayıtları bozar.</summary>
+public enum SubscriptionPlanAuditAction
+{
+    Assigned = 1,
+    Ended = 2,
+}

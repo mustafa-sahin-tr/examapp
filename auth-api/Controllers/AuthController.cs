@@ -114,6 +114,45 @@ namespace ExamApp.Api.Controllers
             return Ok(users);
         }
 
+        // Issue #1030: admin plan ataması için ad / e-posta araması; lookup gibi yalnız servis (exam API), gateway'de engelli.
+        [Authorize(Policy = "Service")]
+        [HttpPost("users/search")]
+        public async Task<IActionResult> SearchUsers([FromBody] UserSearchRequest request)
+        {
+            var term = request?.Query?.Trim() ?? string.Empty;
+            if (term.Length < UserSearchRequest.MinQueryLength)
+                return BadRequest("Query is too short");
+
+            string? role = null;
+            if (!string.IsNullOrWhiteSpace(request!.Role))
+            {
+                if (!Enum.TryParse<UserRole>(request.Role, ignoreCase: true, out var parsed) || !Enum.IsDefined(parsed))
+                    return BadRequest("Unknown role");
+                role = parsed.ToString();
+            }
+
+            var pattern = $"%{term.ToLower().Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_")}%";
+            var query = _context.Users.Where(u => !u.IsDeleted
+                && (EF.Functions.Like(u.FullName.ToLower(), pattern, "\\") || EF.Functions.Like(u.Email.ToLower(), pattern, "\\")));
+            if (role is not null)
+                query = query.Where(u => u.Role == role);
+
+            var users = await query
+                .OrderBy(u => u.FullName).ThenBy(u => u.Id)
+                .Take(UserSearchRequest.MaxResults)
+                .Select(u => new UserLookupResponse
+                {
+                    Id = u.Id,
+                    KeycloakId = u.KeycloakId,
+                    FullName = u.FullName,
+                    Email = u.Email,
+                    Avatar = u.AvatarUrl ?? string.Empty,
+                    Role = u.Role.ToString()
+                })
+                .ToListAsync();
+            return Ok(users);
+        }
+
         /// <summary>
         /// Issue #152: Keycloak <c>enabled</c> okumasının üst süre sınırı. Exam API → auth-api çağrısı ServiceDefaults'un
         /// 10 sn attempt timeout'una tabi; bütçe bunun altında kalmalı ki yavaş Keycloak lookup'ın tamamını düşürmesin.

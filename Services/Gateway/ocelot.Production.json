@@ -87,6 +87,18 @@
             "Priority": 2
         },
         {
+            "DownstreamPathTemplate": "/__blocked/api/auth/users/search",
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "auth-api",
+                    "Port": 5079
+                }
+            ],
+            "UpstreamPathTemplate": "/api/auth/users/search",
+            "Priority": 2
+        },
+        {
             "DownstreamPathTemplate": "/__blocked/api/auth/child-accounts",
             "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [

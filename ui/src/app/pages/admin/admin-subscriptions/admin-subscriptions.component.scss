@@ -1,0 +1,159 @@
+// Issue #1030: admin plan ataması.
+.admin-subscriptions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px;
+  font-family: var(--paragraphFontFamily);
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 0;
+}
+
+.search,
+.assign,
+.end {
+  display: flex;
+  // Global `form` kuralı sütun yapar; bu satırlar yatay akar.
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.search__query {
+  flex: 1 1 280px;
+}
+
+.assign__school {
+  flex: 1 1 320px;
+}
+
+.muted {
+  margin: 0;
+  color: var(--ms-text-medium);
+}
+
+.success {
+  margin: 0;
+  color: var(--ms-success-text-medium);
+}
+
+.results,
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.result {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--ms-border);
+  border-radius: 10px;
+  background: var(--ms-surface);
+  color: var(--ms-text-strong);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--ms-action-text-medium);
+  }
+}
+
+.result--selected {
+  border-color: var(--ms-action-text-medium);
+}
+
+.result__name {
+  font-weight: 600;
+}
+
+.result__meta {
+  grid-column: 1;
+  color: var(--ms-text-medium);
+  font-size: 0.875rem;
+}
+
+.result__plan {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+
+.card {
+  padding: 20px;
+  border: 1px solid var(--ms-border);
+  border-radius: 12px;
+  background: var(--ms-surface);
+}
+
+.card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.card__title {
+  margin: 0 0 4px;
+  color: var(--ms-text-strong);
+}
+
+.card__plan {
+  text-align: right;
+}
+
+.card__section {
+  margin: 20px 0 8px;
+  padding: 0;
+  font-size: 1rem;
+  color: var(--ms-text-strong);
+}
+
+.entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--ms-border);
+}
+
+.entry__main {
+  flex: 1 1 200px;
+  color: var(--ms-text-strong);
+}
+
+.status {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: var(--ms-warning-surface-weak);
+  color: var(--ms-warning-text-medium);
+
+  &[data-status='Active'] {
+    background: var(--ms-success-surface-weak);
+    color: var(--ms-success-text-medium);
+  }
+
+  &[data-status='Ended'] {
+    background: transparent;
+    color: var(--ms-text-medium);
+  }
+}

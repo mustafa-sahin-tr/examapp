@@ -1,0 +1,225 @@
+<div class="admin-subscriptions" *transloco="let t; prefix: 'subscription'">
+  <app-page-header icon="workspace_premium" [title]="t('admin.title')" [description]="t('admin.subtitle')" />
+
+  @if (error(); as key) {
+    <p class="ms-error" role="alert" data-testid="admin-sub-error">{{ t(key) }}</p>
+  }
+
+  <mat-tab-group mat-stretch-tabs="false" animationDuration="0ms">
+    <mat-tab [label]="t('admin.tabs.users')">
+      <section class="pane">
+        <form class="search" (ngSubmit)="search()">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="search__query">
+            <mat-label>{{ t('admin.search.label') }}</mat-label>
+            <input matInput name="q" [ngModel]="query()" (ngModelChange)="query.set($event)" data-testid="admin-sub-query" />
+            <mat-hint>{{ t('admin.search.hint') }}</mat-hint>
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="search__role">
+            <mat-label>{{ t('admin.search.role') }}</mat-label>
+            <mat-select name="role" [ngModel]="role()" (ngModelChange)="role.set($event)">
+              <mat-option [value]="null">{{ t('admin.roles.any') }}</mat-option>
+              <mat-option value="Teacher">{{ t('admin.roles.Teacher') }}</mat-option>
+              <mat-option value="Student">{{ t('admin.roles.Student') }}</mat-option>
+              <mat-option value="Parent">{{ t('admin.roles.Parent') }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <button mat-flat-button type="submit" [disabled]="!canSearch()" data-testid="admin-sub-search">
+            <mat-icon>search</mat-icon>{{ t('admin.search.submit') }}
+          </button>
+        </form>
+
+        @if (results(); as users) {
+          @if (users.length === 0) {
+            <p class="muted" data-testid="admin-sub-empty">{{ t('admin.search.empty') }}</p>
+          } @else {
+            <ul class="results" data-testid="admin-sub-results">
+              @for (user of users; track user.userId) {
+                <li>
+                  <button type="button" class="result" [class.result--selected]="selected()?.userId === user.userId"
+                    (click)="select(user.userId)">
+                    <span class="result__name">{{ user.fullName }}</span>
+                    <span class="result__meta">{{ user.email }} · {{ t('admin.roles.' + user.role) }}</span>
+                    <span class="result__plan">{{ planLabelKey(user.planKey) ? t(planLabelKey(user.planKey)) : user.planName }}</span>
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+        }
+
+        @if (detailLoading()) {
+          <p role="status">{{ t('admin.loading') }}</p>
+        } @else if (selected(); as user) {
+          <section class="card" data-testid="admin-sub-detail">
+            <div class="card__head">
+              <div>
+                <h2 class="card__title">{{ user.fullName }}</h2>
+                <p class="muted">{{ user.email }} · {{ t('admin.roles.' + user.role) }}</p>
+              </div>
+              <div class="card__plan">
+                <p class="muted">{{ t('admin.currentPlan') }}</p>
+                <strong data-testid="admin-sub-current">{{ planLabelKey(user.planKey) ? t(planLabelKey(user.planKey)) : user.planName }}</strong>
+                @if (user.validToUtc) {
+                  <p class="muted">{{ t('mine.validTo', { date: (user.validToUtc | date: 'd MMMM y') }) }}</p>
+                }
+              </div>
+            </div>
+
+            <h3 class="card__section">{{ t('admin.assign.title') }}</h3>
+            <div class="assign">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>{{ t('admin.assign.plan') }}</mat-label>
+                <mat-select [ngModel]="userPlanKey()" (ngModelChange)="userPlanKey.set($event)" data-testid="admin-sub-plan">
+                  @for (plan of activePlans(); track plan.key) {
+                    <mat-option [value]="plan.key">{{ t(planLabelKey(plan.key)) }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>{{ t('admin.assign.from') }}</mat-label>
+                <input matInput [matDatepicker]="userFromPicker" [ngModel]="userFrom()" (ngModelChange)="userFrom.set($event)" />
+                <mat-datepicker-toggle matIconSuffix [for]="userFromPicker" />
+                <mat-datepicker #userFromPicker />
+                <mat-hint>{{ t('admin.assign.fromHint') }}</mat-hint>
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>{{ t('admin.assign.to') }}</mat-label>
+                <input matInput [matDatepicker]="userToPicker" [min]="userFrom()" [ngModel]="userTo()" (ngModelChange)="userTo.set($event)" />
+                <mat-datepicker-toggle matIconSuffix [for]="userToPicker" />
+                <mat-datepicker #userToPicker />
+                <mat-hint>{{ t('admin.assign.toHint') }}</mat-hint>
+              </mat-form-field>
+              <button mat-flat-button type="button" [disabled]="!userPlanKey() || busy()" (click)="assignUser()"
+                data-testid="admin-sub-assign">
+                {{ t('admin.assign.submit') }}
+              </button>
+            </div>
+
+            @if (hasOpenAssignment()) {
+              <div class="end">
+                @if (confirmEnd()) {
+                  <span>{{ t('admin.end.confirm') }}</span>
+                  <button mat-flat-button color="warn" type="button" [disabled]="busy()" (click)="endPlan()"
+                    data-testid="admin-sub-end-confirm">{{ t('admin.end.yes') }}</button>
+                  <button mat-button type="button" (click)="confirmEnd.set(false)">{{ t('admin.end.cancel') }}</button>
+                } @else {
+                  <button mat-stroked-button type="button" (click)="confirmEnd.set(true)" data-testid="admin-sub-end">
+                    {{ t('admin.end.button') }}
+                  </button>
+                }
+              </div>
+            }
+
+            @if (user.assignments.length > 0) {
+              <h3 class="card__section">{{ t('admin.assignments.title') }}</h3>
+              <ul class="rows" data-testid="admin-sub-assignments">
+                @for (a of user.assignments; track a.id) {
+                  <li class="entry">
+                    <span class="entry__main">{{ planLabelKey(a.planKey) ? t(planLabelKey(a.planKey)) : a.planName }}</span>
+                    <span class="muted">
+                      {{ a.validFromUtc | date: 'd MMM y' }} – {{ a.validToUtc ? (a.validToUtc | date: 'd MMM y') : t('admin.openEnded') }}
+                    </span>
+                    <span class="status" [attr.data-status]="a.status">{{ t('admin.status.' + a.status) }}</span>
+                  </li>
+                }
+              </ul>
+            }
+
+            <h3 class="card__section">{{ t('admin.history.title') }}</h3>
+            @if (user.changes.length === 0) {
+              <p class="muted">{{ t('admin.history.empty') }}</p>
+            } @else {
+              <ul class="rows" data-testid="admin-sub-history">
+                @for (c of user.changes; track $index) {
+                  <li class="entry">
+                    <span class="muted">{{ c.occurredAtUtc | date: 'd MMM y HH:mm' }}</span>
+                    <span class="entry__main">
+                      {{ t(planLabelKey(c.fromPlanKey)) }} → {{ c.action === 'Ended' ? t(planLabelKey(null)) : t(planLabelKey(c.toPlanKey)) }}
+                      @if (c.schoolId) {
+                        <span class="muted">· {{ t('admin.history.bySchool') }}</span>
+                      }
+                    </span>
+                    <span class="muted">{{ c.bySelf ? t('admin.history.bySelf') : c.actorName }}</span>
+                  </li>
+                }
+              </ul>
+            }
+          </section>
+        }
+      </section>
+    </mat-tab>
+
+    <mat-tab [label]="t('admin.tabs.schools')">
+      <section class="pane">
+        <div class="assign">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="assign__school">
+            <mat-label>{{ t('admin.school.school') }}</mat-label>
+            <mat-select [ngModel]="schoolId()" (ngModelChange)="selectSchool($event)" data-testid="admin-sub-school">
+              @for (school of schools(); track school.id) {
+                <mat-option [value]="school.id">{{ school.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-button-toggle-group [value]="audience()" (change)="audience.set($event.value); confirmSchool.set(false)"
+            [attr.aria-label]="t('admin.school.audience')">
+            <mat-button-toggle value="All">{{ t('admin.school.all') }}</mat-button-toggle>
+            <mat-button-toggle value="Teachers">{{ t('admin.school.teachers') }}</mat-button-toggle>
+            <mat-button-toggle value="Students">{{ t('admin.school.students') }}</mat-button-toggle>
+          </mat-button-toggle-group>
+        </div>
+
+        @if (members(); as m) {
+          <p class="muted" data-testid="admin-sub-members">
+            {{ t('admin.school.members', { teachers: m.teachers, students: m.students }) }}
+          </p>
+        }
+
+        <div class="assign">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>{{ t('admin.assign.plan') }}</mat-label>
+            <mat-select [ngModel]="schoolPlanKey()" (ngModelChange)="schoolPlanKey.set($event); confirmSchool.set(false)"
+              data-testid="admin-sub-school-plan">
+              @for (plan of activePlans(); track plan.key) {
+                <mat-option [value]="plan.key">{{ t(planLabelKey(plan.key)) }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>{{ t('admin.assign.from') }}</mat-label>
+            <input matInput [matDatepicker]="schoolFromPicker" [ngModel]="schoolFrom()" (ngModelChange)="schoolFrom.set($event)" />
+            <mat-datepicker-toggle matIconSuffix [for]="schoolFromPicker" />
+            <mat-datepicker #schoolFromPicker />
+            <mat-hint>{{ t('admin.assign.fromHint') }}</mat-hint>
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>{{ t('admin.assign.to') }}</mat-label>
+            <input matInput [matDatepicker]="schoolToPicker" [min]="schoolFrom()" [ngModel]="schoolTo()" (ngModelChange)="schoolTo.set($event)" />
+            <mat-datepicker-toggle matIconSuffix [for]="schoolToPicker" />
+            <mat-datepicker #schoolToPicker />
+            <mat-hint>{{ t('admin.assign.toHint') }}</mat-hint>
+          </mat-form-field>
+        </div>
+
+        <div class="end">
+          @if (confirmSchool()) {
+            <span data-testid="admin-sub-school-confirm-text">{{ t('admin.school.confirm', { count: targetCount() }) }}</span>
+            <button mat-flat-button type="button" [disabled]="busy()" (click)="assignSchool()"
+              data-testid="admin-sub-school-confirm">{{ t('admin.school.yes') }}</button>
+            <button mat-button type="button" (click)="confirmSchool.set(false)">{{ t('admin.end.cancel') }}</button>
+          } @else {
+            <button mat-flat-button type="button" [disabled]="!schoolId() || !schoolPlanKey() || targetCount() === 0 || busy()"
+              (click)="assignSchool()" data-testid="admin-sub-school-assign">
+              {{ t('admin.school.submit', { count: targetCount() }) }}
+            </button>
+          }
+        </div>
+
+        @if (schoolResult() !== null) {
+          <p class="success" role="status" data-testid="admin-sub-school-result">
+            {{ t('admin.school.done', { count: schoolResult() }) }}
+          </p>
+        }
+      </section>
+    </mat-tab>
+  </mat-tab-group>
+</div>

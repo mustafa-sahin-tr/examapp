@@ -68,3 +68,57 @@ export function entitlementLimitOf(error: unknown): EntitlementLimitReached | nu
     ? (body as EntitlementLimitReached)
     : null;
 }
+
+/** Issue #1030: admin plan ataması. E-posta maskelidir. */
+export type SubscriptionSearchRole = 'Student' | 'Teacher' | 'Parent';
+
+export interface AdminSubscriptionUser {
+  userId: number;
+  fullName: string;
+  email: string;
+  role: string;
+  planKey: string | null;
+  planName: string | null;
+  validToUtc: string | null;
+}
+
+export interface AdminSubscriptionAssignment {
+  id: number;
+  planKey: string;
+  planName: string;
+  validFromUtc: string;
+  validToUtc: string | null;
+  status: 'Active' | 'Scheduled' | 'Ended';
+}
+
+export interface AdminSubscriptionChange {
+  occurredAtUtc: string;
+  action: 'Assigned' | 'Ended';
+  /** `null` = atama yoktu (Free). */
+  fromPlanKey: string | null;
+  toPlanKey: string | null;
+  validFromUtc: string | null;
+  validToUtc: string | null;
+  actorName: string;
+  bySelf: boolean;
+  schoolId: number | null;
+}
+
+export interface AdminSubscriptionUserDetail extends AdminSubscriptionUser {
+  assignments: AdminSubscriptionAssignment[];
+  changes: AdminSubscriptionChange[];
+}
+
+export interface PlanAssignment {
+  planKey: string;
+  validFromUtc: string | null;
+  validToUtc: string | null;
+}
+
+export type SchoolPlanAudience = 'Teachers' | 'Students' | 'All';
+
+export interface SchoolSubscriptionMembers {
+  schoolId: number;
+  teachers: number;
+  students: number;
+}

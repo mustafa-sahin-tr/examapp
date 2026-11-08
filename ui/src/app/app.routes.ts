@@ -311,6 +311,13 @@ export const routes: Routes = [
           import('./pages/admin/admin-students/admin-students.component').then((m) => m.AdminStudentsComponent),
       },
       {
+        // Issue #1030: admin plan ataması.
+        path: 'admin/subscriptions',
+        canActivate: [authGuard, adminGuard],
+        loadComponent: () =>
+          import('./pages/admin/admin-subscriptions/admin-subscriptions.component').then((m) => m.AdminSubscriptionsComponent),
+      },
+      {
         // Issue #150: okul yönetimi (Taksonomi'den ayrıldı; admin-home "Okullar" sekmesi olarak da gömülü).
         path: 'admin/schools',
         canActivate: [authGuard, adminGuard],

@@ -1275,7 +1275,7 @@ describe('EnhancedLayoutComponent role navigation (issue #719)', () => {
         const items = renderLayout(['Admin'], false).componentInstance.visibleMenuItems().filter((i) => i.type !== 'divider');
         expect(labels(items)).toEqual([
             'admin-dashboard', 'admin', 'admin-pending', 'question-bank',
-            'group-users', 'admin-teachers', 'admin-students',
+            'group-users', 'admin-teachers', 'admin-students', 'admin-subscriptions',
             'group-schools', 'admin-schools',
             'group-content', 'mock-exams', 'exam-templates', 'questiongeneration', 'questiontransfer', 'labeling', 'labeling-books', 'book-imports', 'admin-badge-definitions',
             'settings',

@@ -20,4 +20,10 @@ public interface IAuthApiClient
     /// auth-api Keycloak'tan kullanıcı başı okur — yalnızca sayfalı admin listeleri için kullan, geniş toplu çözümlerde değil.
     /// </summary>
     Task<IReadOnlyList<UserLookupResultDto>> GetUsersWithAccountStatusByIdsAsync(IEnumerable<int> userIds, CancellationToken ct = default);
+
+    /// <summary>
+    /// Issue #1030: auth-api <c>users/search</c> (yalnız servis) — ad ya da e-postada geçen metin, isteğe bağlı rol
+    /// (<c>Student</c> | <c>Teacher</c> | <c>Parent</c>); en fazla 20 kullanıcı. Servis token'ı alınamazsa fırlatır.
+    /// </summary>
+    Task<IReadOnlyList<UserLookupResultDto>> SearchUsersAsync(string query, string? role, CancellationToken ct = default);
 }

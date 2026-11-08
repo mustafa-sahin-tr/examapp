@@ -53,6 +53,10 @@ public sealed class FakeUserDirectoryAuthApiClient(
         return directory.TryResolveAll(ids, out var users) ? Task.FromResult(users) : inner.GetUsersByIdsOrThrowAsync(ids, ct);
     }
 
+    // Issue #1030: arama ad/e-posta deposuna (auth-api) gider; testlerde fake dizin aranmaz.
+    public Task<IReadOnlyList<UserLookupResultDto>> SearchUsersAsync(string query, string? role, CancellationToken ct = default) =>
+        inner.SearchUsersAsync(query, role, ct);
+
     public Task<IReadOnlyList<UserLookupResultDto>> GetUsersWithAccountStatusByIdsAsync(IEnumerable<int> userIds, CancellationToken ct = default)
     {
         var ids = userIds.ToList();

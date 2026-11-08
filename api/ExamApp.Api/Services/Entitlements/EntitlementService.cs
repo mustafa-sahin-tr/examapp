@@ -92,44 +92,108 @@ public sealed class EntitlementService : IEntitlementService
         }
     }
 
-    public async Task<AssignPlanError> AssignPlanAsync(int userId, string planKey, DateTime? validFromUtc, DateTime? validToUtc,
-        int assignedByUserId, CancellationToken ct = default)
+    public Task<AssignPlanError> AssignPlanAsync(int userId, string planKey, DateTime? validFromUtc, DateTime? validToUtc,
+        int assignedByUserId, CancellationToken ct = default) =>
+        AssignPlanToUsersAsync([userId], planKey, validFromUtc, validToUtc, assignedByUserId, schoolId: null, ct);
+
+    public async Task<AssignPlanError> AssignPlanToUsersAsync(IReadOnlyCollection<int> userIds, string planKey, DateTime? validFromUtc,
+        DateTime? validToUtc, int assignedByUserId, int? schoolId, CancellationToken ct = default)
     {
         var plan = await _db.SubscriptionPlans.FirstOrDefaultAsync(p => p.Key == planKey && p.IsActive, ct);
         if (plan is null)
             return AssignPlanError.UnknownPlan;
 
-        var from = (validFromUtc ?? _clock.GetUtcNow().UtcDateTime).ToUniversalTime();
+        var now = _clock.GetUtcNow().UtcDateTime;
+        var from = (validFromUtc ?? now).ToUniversalTime();
         var to = validToUtc?.ToUniversalTime();
         if (to is { } end && end <= from)
             return AssignPlanError.InvalidRange;
 
+        var ids = userIds.Distinct().ToList();
         // Hesap başına tek plan: yeni atamanın başında hâlâ açık olanları kapat, sonra başlayacak olanları iptal et.
-        var overlapping = await _db.UserSubscriptionPlans
-            .Where(a => a.UserId == userId && (a.ValidToUtc == null || a.ValidToUtc > from))
+        var overlapping = await _db.UserSubscriptionPlans.Include(a => a.Plan)
+            .Where(a => ids.Contains(a.UserId) && (a.ValidToUtc == null || a.ValidToUtc > from))
             .ToListAsync(ct);
-        foreach (var existing in overlapping)
+        var byUser = overlapping.ToLookup(a => a.UserId);
+        foreach (var userId in ids)
         {
-            if (existing.ValidFromUtc >= from)
+            string? fromPlanKey = null;
+            foreach (var existing in byUser[userId])
             {
-                existing.IsDeleted = true;
+                if (existing.ValidFromUtc >= from)
+                {
+                    existing.IsDeleted = true;
+                }
+                else
+                {
+                    existing.ValidToUtc = from;
+                    fromPlanKey = existing.Plan.Key;
+                }
             }
-            else
+
+            _db.UserSubscriptionPlans.Add(new UserSubscriptionPlan
             {
-                existing.ValidToUtc = from;
-            }
+                UserId = userId,
+                PlanId = plan.Id,
+                ValidFromUtc = from,
+                ValidToUtc = to,
+            });
+            _db.SubscriptionPlanAssignmentAudits.Add(new SubscriptionPlanAssignmentAudit
+            {
+                UserId = userId,
+                ActorUserId = assignedByUserId,
+                Action = SubscriptionPlanAuditAction.Assigned,
+                FromPlanKey = fromPlanKey,
+                ToPlanKey = plan.Key,
+                ValidFromUtc = from,
+                ValidToUtc = to,
+                SchoolId = schoolId,
+                OccurredAtUtc = now,
+            });
         }
 
-        _db.UserSubscriptionPlans.Add(new UserSubscriptionPlan
-        {
-            UserId = userId,
-            PlanId = plan.Id,
-            ValidFromUtc = from,
-            ValidToUtc = to,
-        });
         _db.SetCurrentUser(assignedByUserId);
         await _db.SaveChangesAsync(ct);
         return AssignPlanError.None;
+    }
+
+    public async Task<bool> EndPlanAsync(int userId, int endedByUserId, CancellationToken ct = default)
+    {
+        var now = _clock.GetUtcNow().UtcDateTime;
+        var open = await _db.UserSubscriptionPlans.Include(a => a.Plan)
+            .Where(a => a.UserId == userId && (a.ValidToUtc == null || a.ValidToUtc > now))
+            .ToListAsync(ct);
+        if (open.Count == 0)
+            return false;
+
+        string? fromPlanKey = null;
+        foreach (var assignment in open)
+        {
+            // Başlamış olan bugün biter; ileride başlayacak olan iptal edilir. Kullanıcı Free'ye döner.
+            if (assignment.ValidFromUtc > now)
+            {
+                assignment.IsDeleted = true;
+            }
+            else
+            {
+                assignment.ValidToUtc = now;
+                fromPlanKey = assignment.Plan.Key;
+            }
+        }
+
+        _db.SubscriptionPlanAssignmentAudits.Add(new SubscriptionPlanAssignmentAudit
+        {
+            UserId = userId,
+            ActorUserId = endedByUserId,
+            Action = SubscriptionPlanAuditAction.Ended,
+            FromPlanKey = fromPlanKey,
+            ToPlanKey = null,
+            ValidToUtc = now,
+            OccurredAtUtc = now,
+        });
+        _db.SetCurrentUser(endedByUserId);
+        await _db.SaveChangesAsync(ct);
+        return true;
     }
 
     public Task<bool> HasUsedTrialAsync(int userId, CancellationToken ct = default) =>

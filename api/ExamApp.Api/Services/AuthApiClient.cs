@@ -95,6 +95,33 @@ public class AuthApiClient : IAuthApiClient
     public Task<IReadOnlyList<UserLookupResultDto>> GetUsersWithAccountStatusByIdsAsync(IEnumerable<int> userIds, CancellationToken ct = default)
         => LookupUsersAsync(userIds, includeAccountStatus: true, failSoftOnTokenError: true, ct);
 
+    public async Task<IReadOnlyList<UserLookupResultDto>> SearchUsersAsync(string query, string? role, CancellationToken ct = default)
+    {
+        string token;
+        try
+        {
+            token = await _serviceTokenProvider.GetAccessTokenAsync(ct);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or HttpRequestException
+                                   || (ex is TaskCanceledException && !ct.IsCancellationRequested))
+        {
+            throw new HttpRequestException("auth-api service token could not be obtained.", ex);
+        }
+
+        var httpClient = _httpClientFactory.CreateClient();
+        var baseUrl = _configuration["AuthApiBaseUrl"];
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/api/auth/users/search")
+        {
+            Content = new StringContent(JsonSerializer.Serialize(new { Query = query, Role = role }), Encoding.UTF8, "application/json")
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        using var response = await httpClient.SendAsync(request, ct);
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync(ct);
+        return JsonSerializer.Deserialize<List<UserLookupResultDto>>(content, Json) ?? new List<UserLookupResultDto>();
+    }
+
     private async Task<IReadOnlyList<UserLookupResultDto>> LookupUsersAsync(IEnumerable<int> userIds, bool includeAccountStatus, bool failSoftOnTokenError, CancellationToken ct)
     {
         if (userIds == null)

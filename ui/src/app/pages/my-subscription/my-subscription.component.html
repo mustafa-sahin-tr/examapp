@@ -1,0 +1,55 @@
+<div class="my-subscription" *transloco="let t; prefix: 'subscription'">
+  <app-page-header icon="workspace_premium" [title]="t('mine.title')" [description]="t('mine.subtitle')" />
+
+  @if (loading()) {
+    <p role="status">{{ t('mine.loading') }}</p>
+  } @else if (loadError()) {
+    <div class="ms-error" role="alert">
+      <p>{{ t('errors.loadMine') }}</p>
+      <button mat-stroked-button type="button" (click)="load()">{{ t('actions.retry') }}</button>
+    </div>
+  } @else if (current(); as plan) {
+    <section class="card" data-testid="my-plan">
+      <div class="card__head">
+        <div>
+          <p class="card__label">{{ t('mine.currentPlan') }}</p>
+          <h2 class="card__plan" data-testid="my-plan-name">{{ t(nameKey()) }}</h2>
+          @if (plan.validToUtc) {
+            <p class="card__validity" data-testid="my-plan-validity">
+              {{ t(isTrial() ? 'mine.trialEnds' : 'mine.validTo', { date: (plan.validToUtc | date: 'd MMMM y') }) }}
+            </p>
+          }
+        </div>
+        <a mat-flat-button data-testid="my-plan-upgrade" [routerLink]="plansUrl">
+          <mat-icon aria-hidden="true">upgrade</mat-icon>{{ t('actions.upgrade') }}
+        </a>
+      </div>
+
+      <h3 class="card__section">{{ t('mine.usageTitle') }}</h3>
+      <ul class="usage">
+        @for (feature of plan.features; track feature.featureKey) {
+          <li class="usage__row" [attr.data-testid]="'usage-' + feature.featureKey">
+            <div class="usage__line">
+              <span>{{ t('features.' + feature.featureKey) }}</span>
+              <span class="usage__count" [class.is-blocked]="!feature.allowed">
+                @if (feature.limit == null) {
+                  {{ t('limits.unlimited') }}
+                } @else if (feature.limit === 0) {
+                  {{ t('limits.none') }}
+                } @else {
+                  {{ t('mine.usedOf', { used: feature.used, limit: feature.limit }) }}
+                }
+              </span>
+            </div>
+            @if (feature.limit) {
+              <mat-progress-bar mode="determinate" [value]="percent(feature)" [attr.aria-label]="t('features.' + feature.featureKey)" />
+            }
+          </li>
+        }
+      </ul>
+      @if (resetsAtUtc(); as resetsAt) {
+        <p class="card__reset" data-testid="my-plan-reset">{{ t('mine.resets', { date: (resetsAt | date: 'd MMMM y') }) }}</p>
+      }
+    </section>
+  }
+</div>

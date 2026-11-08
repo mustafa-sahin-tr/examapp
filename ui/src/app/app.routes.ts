@@ -401,7 +401,14 @@ export const routes: Routes = [
         ],
       },
       {
-        // Issue #1028: kayıttaki plan adımı sonradan (yükseltme); Planım (#1029) buraya bağlanır.
+        // Issue #1029: Aboneliğim — plan, bu ayki kullanım ve sıfırlanma tarihi; "Planı yükselt" → /plans.
+        path: 'subscription',
+        canActivate: [authGuard, roleGuard('Teacher', 'Student', 'Admin')],
+        loadComponent: () =>
+          import('./pages/my-subscription/my-subscription.component').then((m) => m.MySubscriptionComponent),
+      },
+      {
+        // Issue #1028: kayıttaki plan adımı sonradan (yükseltme); Aboneliğim (#1029) buraya bağlanır.
         path: 'plans',
         canActivate: [authGuard, roleGuard('Teacher', 'Student', 'Admin')],
         loadComponent: () =>

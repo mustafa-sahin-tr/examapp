@@ -29,7 +29,9 @@
     "startTrial": "Start trial",
     "choose": "Choose",
     "back": "Back",
-    "retry": "Try again"
+    "retry": "Try again",
+    "upgrade": "Upgrade plan",
+    "close": "Close"
   },
   "checkout": {
     "demoTitle": "This is a demo checkout",
@@ -40,11 +42,30 @@
   "errors": {
     "load": "Could not load plans.",
     "trialUsed": "This account has already used its trial.",
-    "generic": "Could not complete the action. Please try again."
+    "generic": "Could not complete the action. Please try again.",
+    "loadMine": "Couldn't load your subscription."
   },
   "page": {
-    "title": "My plan",
+    "title": "Upgrade plan",
     "subtitle": "Upgrade your plan or start a trial.",
     "changed": "Your plan was updated: {{ plan }}."
+  },
+  "mine": {
+    "title": "My subscription",
+    "subtitle": "Your plan and this month's usage.",
+    "loading": "Loading your subscription…",
+    "currentPlan": "Current plan",
+    "validTo": "Valid until {{ date }}.",
+    "trialEnds": "Your trial ends on {{ date }}.",
+    "usageTitle": "This month's usage",
+    "usedOf": "{{ used }} / {{ limit }}",
+    "resets": "Counters reset on {{ date }}."
+  },
+  "limitDialog": {
+    "title": "You've reached this month's limit",
+    "usage": "You've used this month's {{ feature }} allowance ({{ used }} / {{ limit }}).",
+    "notIncluded": "{{ feature }} isn't included in your plan.",
+    "resets": "Your allowance renews on {{ date }}.",
+    "compare": "{{ feature }} by plan"
   }
 }

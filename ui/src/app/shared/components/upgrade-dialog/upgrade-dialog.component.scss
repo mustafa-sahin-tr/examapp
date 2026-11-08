@@ -1,0 +1,63 @@
+// Issue #1029: plan sınırı penceresi.
+.upgrade {
+  font-family: var(--paragraphFontFamily);
+}
+
+.upgrade__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 24px 0;
+}
+
+.upgrade__icon {
+  color: var(--ms-action-text);
+}
+
+.upgrade__title {
+  margin: 0;
+  padding: 0;
+}
+
+.upgrade__content p {
+  margin: 0 0 8px;
+}
+
+.upgrade__reset {
+  color: var(--ms-text-medium);
+}
+
+.upgrade__compare {
+  width: 100%;
+  margin-top: 12px;
+  border-collapse: collapse;
+
+  caption {
+    text-align: start;
+    font-weight: 600;
+    padding-bottom: 6px;
+  }
+
+  th,
+  td {
+    padding: 8px 4px;
+    border-top: 1px solid var(--ms-border);
+    text-align: start;
+    font-weight: 400;
+  }
+
+  td {
+    text-align: end;
+  }
+
+  tr.is-current th,
+  tr.is-current td {
+    font-weight: 600;
+  }
+}
+
+.upgrade__current {
+  margin-inline-start: 8px;
+  font-size: 0.8em;
+  color: var(--ms-action-text);
+}

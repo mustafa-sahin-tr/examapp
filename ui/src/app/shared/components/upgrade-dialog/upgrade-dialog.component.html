@@ -1,0 +1,55 @@
+<div class="upgrade" *transloco="let t; prefix: 'subscription'">
+  <header class="upgrade__header">
+    <mat-icon class="upgrade__icon" aria-hidden="true">workspace_premium</mat-icon>
+    <h2 mat-dialog-title class="upgrade__title">{{ t('limitDialog.title') }}</h2>
+  </header>
+
+  <mat-dialog-content class="upgrade__content">
+    <p data-testid="upgrade-usage">
+      @if (data.limit != null && data.used != null) {
+        {{ t('limitDialog.usage', { feature: t('features.' + data.feature), used: data.used, limit: data.limit }) }}
+      } @else {
+        {{ t('limitDialog.notIncluded', { feature: t('features.' + data.feature) }) }}
+      }
+    </p>
+    @if (data.resetsAtUtc) {
+      <p class="upgrade__reset" data-testid="upgrade-reset">
+        {{ t('limitDialog.resets', { date: (data.resetsAtUtc | date: 'd MMMM y') }) }}
+      </p>
+    }
+
+    @if (rows().length) {
+      <table class="upgrade__compare" data-testid="upgrade-compare">
+        <caption>{{ t('limitDialog.compare', { feature: t('features.' + data.feature) }) }}</caption>
+        <tbody>
+          @for (row of rows(); track row.key) {
+            <tr [class.is-current]="row.key === data.planKey">
+              <th scope="row">
+                {{ t(row.nameKey) }}
+                @if (row.key === data.planKey) {
+                  <span class="upgrade__current">{{ t('currentBadge') }}</span>
+                }
+              </th>
+              <td>
+                @if (row.limit == null) {
+                  {{ t('limits.unlimited') }}
+                } @else if (row.limit === 0) {
+                  {{ t('limits.none') }}
+                } @else {
+                  {{ t('limits.perMonth', { count: row.limit }) }}
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button mat-dialog-close type="button">{{ t('actions.close') }}</button>
+    <button mat-flat-button type="button" data-testid="upgrade-button" (click)="upgrade()">
+      {{ t('actions.upgrade') }}
+    </button>
+  </mat-dialog-actions>
+</div>

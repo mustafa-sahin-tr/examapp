@@ -291,7 +291,14 @@ Kılavuz özeti ve beceri listesinin kaynağı `docs/context-based-questions.md`
   açıkça "demo" işaretli ödeme ekranı (kart alanı yok) → `POST …/me/checkout { planKey }` şimdiden bir ay atar; Free / deneme /
   rolüne kapalı plan 400 `subscription.planNotAvailable`. Atama öncekini kapatır (geçmiş kalır, `CreateUserId` = kullanıcı).
   Plan adımı bitince önceki akış aynen sürer (onay bekleme sayfası / okul onayı kartı / tam sayfa yönlendirme). Sonradan
-  yükseltme: `/plans` (Teacher / Student / Admin; Planım #1029 buraya bağlanır).
+  yükseltme: `/plans` (Teacher / Student / Admin; Aboneliğim #1029 buraya bağlanır).
+- **Aboneliğim ve sınır penceresi (#1029):** profil menüsünde "Aboneliğim" (`/subscription`, Teacher / Student / Admin; sözlükte
+  "Planım" çalışma planına ayrılmış): `/me`'den plan, geçerlilik / deneme bitişi, özellik başına "kullanılan / sınır" ve sayaçların
+  sıfırlanma tarihi; "Planı yükselt" → `/plans`. Sınırına ulaşılan her uç nokta **tek biçim** döner:
+  `EntitlementLimitResponse.Create(featureKey, check, message)` → 429 `{ code: "entitlement.limitReached", feature, limit, used,
+  resetsAtUtc, planKey, message }`. Arayüzde `entitlementLimitInterceptor` bu yanıtı yakalayıp `UpgradeDialogComponent`'i açar
+  (aynı anda tek pencere; planların o özellikteki sınırı karşılaştırılır); hata çağırana da iletilir. Yeni sınırlı uç nokta
+  (#1031) yalnız bu yardımcıyı döndürür, sayfaya ayrıca pencere kodu yazılmaz.
 - **Genişletme (abonelik epic'i):** yeni özellik = `EntitlementFeatures`'a sabit + plan başına sınır satırı + kullanım anında
   `RecordUsageAsync`, karar anında `CheckAsync`. Yeni planlar (#1027) satır ekler; plan tablolarında özelliğe özgü mantık yok.
   Öğretmenin atadığı işin maliyeti öğretmenin kotasından (#1031): kayıt `userId` olarak öğretmeni yazar.

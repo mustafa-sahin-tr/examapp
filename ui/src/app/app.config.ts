@@ -22,6 +22,7 @@ import { teacherNotApprovedInterceptor } from './shared/interceptors/teacher-not
 import { parentRequirementInterceptor } from './shared/interceptors/parent-requirement.interceptor';
 import { cacheInterceptor } from './shared/interceptors/cache.interceptor';
 import { localeInterceptor } from './shared/interceptors/locale.interceptor';
+import { entitlementLimitInterceptor } from './shared/interceptors/entitlement-limit.interceptor';
 import { CoreModule } from './core/core.module';
 import { provideClientHydration, withNoIncrementalHydration } from '@angular/platform-browser';
 import { MAT_DATE_LOCALE, MatDateFormats } from '@angular/material/core';
@@ -69,6 +70,8 @@ export const appConfig: ApplicationConfig = {
         teacherNotApprovedInterceptor,
         // Issue #440/#441: 403 ParentRequired → "veli bilgisi ekle" ekranı; ParentActivationRequired → kısıtlı mod bilgisi.
         parentRequirementInterceptor,
+        // Issue #1029: 429 entitlement.limitReached → ortak yükseltme penceresi.
+        entitlementLimitInterceptor,
       ])
     ),
     provideZoneChangeDetection({ eventCoalescing: true }),

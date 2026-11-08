@@ -23,7 +23,8 @@ internal static class LabelingClaude
 
         // AsIChatClient: Anthropic SDK'nın MEAI köprüsü. Model sabitlenmez, istek başına ChatOptions.ModelId'den gelir.
         // UseLogging/UseOpenTelemetry: Aspire dashboard'unda istek/yanıt izleri (gen_ai.* span'leri).
-        return new AnthropicClient { ApiKey = options.ApiKey }
+        // MaxRetries (#1025): geçici hatalar SDK içinde üstel beklemeyle yeniden denenir.
+        return new AnthropicClient { ApiKey = options.ApiKey, MaxRetries = options.MaxRetries }
             .AsIChatClient()
             .AsBuilder()
             .UseLogging(loggerFactory)

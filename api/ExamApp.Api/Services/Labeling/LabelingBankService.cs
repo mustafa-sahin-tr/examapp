@@ -43,17 +43,22 @@ public sealed class LabelingBankSaveException() : Exception("Saving labeling que
 /// <summary>
 /// Issue #1022: kitap aktarımı işinin bir sayfası. <see cref="LabelingBankQuestionDto.CorrectOptionIndex"/> -1 = cevapsız
 /// (anahtar yok / anahtarda yok); sorular taslak oluşur. #1023: <c>ReplacingQuestionIds</c> işaretlemede düzeltilen sayfanın
-/// eski taslakları — kayıttan sonra silinecekleri için kırpmaları tekrar sayılmaz.
+/// eski taslakları — kayıttan sonra silinecekleri için kırpmaları tekrar sayılmaz. #1025: <c>ResumeDrafts</c> yarıda kalan
+/// aktarımın devamı — aynı kullanıcının bu kitaptaki, başka bir teste bağlı olmayan (ya da <c>ResumeWorksheetId</c>'ye bağlı)
+/// taslak sorusu tekrar sayılmaz, yeniden kullanılır.
 /// </summary>
 public sealed record LabelingImportPageRequest(
     string ImageBase64, int BookId, int FilePage, int GradeId, QuestionBankSharing Sharing,
-    IReadOnlyList<LabelingBankQuestionDto> Questions, IReadOnlyCollection<int>? ReplacingQuestionIds = null);
+    IReadOnlyList<LabelingBankQuestionDto> Questions, IReadOnlyCollection<int>? ReplacingQuestionIds = null,
+    bool ResumeDrafts = false, int? ResumeWorksheetId = null);
 
 /// <summary>
 /// Issue #1022: kaydedilen soru sayısı ve kırpması bankada olduğu için atlanan soruların sırası (istekteki). #1023:
-/// kaydedilen soruların id'leri, istekteki sırayla (taslak test bunlara bağlanır).
+/// kaydedilen soruların id'leri, istekteki sırayla (taslak test bunlara bağlanır). #1025: <c>Resumed</c> önceki çalıştırmadan
+/// yeniden kullanılan taslaklar; id'leri <c>QuestionIds</c>'te kendi sırasında.
 /// </summary>
-public sealed record LabelingImportPageResult(int Saved, IReadOnlyList<int> DuplicateIndexes, IReadOnlyList<int> QuestionIds);
+public sealed record LabelingImportPageResult(
+    int Saved, IReadOnlyList<int> DuplicateIndexes, IReadOnlyList<int> QuestionIds, int Resumed = 0);
 
 public interface ILabelingBankService
 {
@@ -260,20 +265,37 @@ public sealed class LabelingBankService(
         var hashes = ComputeCropHashes(bulkQuestions, pageJpeg);
         var distinct = hashes.Distinct().ToList();
         var replacing = request.ReplacingQuestionIds ?? [];
-        var existing = (await db.QuestionSources.IgnoreQueryFilters().AsNoTracking()
-                .Where(s => distinct.Contains(s.CropSha256) && !s.Question.IsDeleted && !replacing.Contains(s.QuestionId))
-                .Select(s => s.CropSha256)
-                .ToListAsync(ct))
-            .ToHashSet();
+        var resumeWorksheetId = request.ResumeWorksheetId ?? 0;
+        var existingRows = await db.QuestionSources.IgnoreQueryFilters().AsNoTracking()
+            .Where(s => distinct.Contains(s.CropSha256) && !s.Question.IsDeleted && !replacing.Contains(s.QuestionId))
+            .Select(s => new
+            {
+                s.CropSha256,
+                s.QuestionId,
+                // #1025: yarıda kalan aktarımın kendi taslağı (başka bir teste bağlı değil).
+                Resumable = request.ResumeDrafts && s.BookId == request.BookId && s.Question.IsDraft
+                            && s.Question.CreateUserId == actingUserId
+                            && !db.TestQuestions.Any(wq => wq.QuestionId == s.QuestionId && !wq.IsDeleted
+                                                           && !wq.Worksheet.IsDeleted && wq.TestId != resumeWorksheetId),
+            })
+            .ToListAsync(ct);
+        var existing = existingRows.Where(r => !r.Resumable).Select(r => r.CropSha256).ToHashSet();
+        var resumable = existingRows.Where(r => r.Resumable && !existing.Contains(r.CropSha256))
+            .GroupBy(r => r.CropSha256).ToDictionary(g => g.Key, g => g.Max(r => r.QuestionId));
         // Aynı sayfada iki kez tespit edilen aynı kutu da tekrar sayılır (ilk kalır).
         var seen = new HashSet<string>();
         var duplicates = hashes.Select((hash, index) => (hash, index))
             .Where(h => existing.Contains(h.hash) || !seen.Add(h.hash))
             .Select(h => h.index)
             .ToList();
-        var kept = bulkQuestions.Where((_, i) => !duplicates.Contains(i)).ToList();
+        var resumedIndexes = hashes.Select((hash, index) => (hash, index))
+            .Where(h => resumable.ContainsKey(h.hash) && !duplicates.Contains(h.index))
+            .Select(h => h.index)
+            .ToHashSet();
+        var kept = bulkQuestions.Where((_, i) => !duplicates.Contains(i) && !resumedIndexes.Contains(i)).ToList();
         if (kept.Count == 0)
-            return new LabelingImportPageResult(0, duplicates, []);
+            return new LabelingImportPageResult(0, duplicates,
+                resumedIndexes.Order().Select(i => resumable[hashes[i]]).ToList(), resumedIndexes.Count);
 
         var bulk = new BulkQuestionCreateDto
         {
@@ -293,14 +315,19 @@ public sealed class LabelingBankService(
                 request.BookId, request.FilePage, result?.Message);
             throw new LabelingBankSaveException();
         }
-        var keptHashes = hashes.Where((_, i) => !duplicates.Contains(i)).ToList();
+        var keptHashes = hashes.Where((_, i) => !duplicates.Contains(i) && !resumedIndexes.Contains(i)).ToList();
         var ids = await db.QuestionSources.IgnoreQueryFilters().AsNoTracking()
             .Where(s => s.BookId == request.BookId && keptHashes.Contains(s.CropSha256) && !s.Question.IsDeleted)
             .Select(s => new { s.CropSha256, s.QuestionId })
             .ToListAsync(ct);
         var idByHash = ids.GroupBy(s => s.CropSha256).ToDictionary(g => g.Key, g => g.Max(s => s.QuestionId));
-        return new LabelingImportPageResult(kept.Count, duplicates,
-            keptHashes.Where(idByHash.ContainsKey).Select(h => idByHash[h]).ToList());
+        // İstekteki sırayla: yeni kaydedilenler ve yeniden kullanılan taslaklar.
+        var ordered = hashes.Select((hash, index) => (hash, index))
+            .Where(h => !duplicates.Contains(h.index))
+            .Select(h => resumedIndexes.Contains(h.index) ? resumable[h.hash] : idByHash.GetValueOrDefault(h.hash))
+            .Where(id => id > 0)
+            .ToList();
+        return new LabelingImportPageResult(kept.Count, duplicates, ordered, resumedIndexes.Count);
     }
 
     private static HeaderInfo BookHeader(BookTocEntry? toc) =>

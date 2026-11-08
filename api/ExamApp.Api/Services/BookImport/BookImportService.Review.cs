@@ -190,8 +190,9 @@ public sealed partial class BookImportService
     private static bool IsReviewable(BookImportJobTest test) =>
         test.Status is BookImportTestStatus.Done or BookImportTestStatus.NeedsReview && test.WorksheetId is not null;
 
+    /// <summary>İncelemede ya da iptal edilmiş (taslakları kalan, #1025) iş: testler onaylanıp silinebilir.</summary>
     private Task<bool> InReviewAsync(Guid id, CancellationToken ct) =>
-        _db.BookImportJobs.AnyAsync(j => j.Id == id && j.Status == BookImportJobStatus.ReadyForReview, ct);
+        _db.BookImportJobs.AnyAsync(j => j.Id == id && (j.Status == BookImportJobStatus.ReadyForReview || j.Status == BookImportJobStatus.Cancelled), ct);
 
     /// <summary>Testin taslak soruları (silinmemiş bağlantılar).</summary>
     private IQueryable<Question> DraftQuestions(int worksheetId) =>

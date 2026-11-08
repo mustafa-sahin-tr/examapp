@@ -179,6 +179,73 @@
   &__action {
     margin-left: auto;
   }
+
+  // #1025: sade açıklama + teknik ayrıntı.
+  &__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__detail {
+    opacity: 0.85;
+    word-break: break-word;
+  }
+
+  &:not(.bid-banner--danger):not(.bid-banner--warning) {
+    background: var(--ms-background-hover);
+    color: var(--ms-text-medium);
+  }
+}
+
+// #1025: iptal onayı (inceleme ekranındaki toplu onay onayıyla aynı görünüm).
+.bid-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.bid-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--ms-warning-surface-weak);
+  color: var(--ms-warning-text);
+  font-size: 0.9rem;
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-left: auto;
+  }
+}
+
+.bid-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.bid-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.bid-attention__retry {
+  align-self: flex-start;
+}
+
+.bid-attention__error {
+  color: var(--ms-text-medium);
+  word-break: break-word;
 }
 
 .bid-error {

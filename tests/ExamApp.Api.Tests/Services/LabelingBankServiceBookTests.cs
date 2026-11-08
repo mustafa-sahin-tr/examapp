@@ -131,18 +131,26 @@ public class LabelingBankServiceBookTests : IDisposable
         return QuestionCropHash.Compute(new ImageHelper(), jpeg, request.Questions.Select(q => (q.X, q.Y, q.Width, q.Height)).ToList());
     }
 
-    private async Task SeedExistingSourceAsync(string cropSha, int filePage = 12, string? itemLabel = "7", int ownerId = ActingUserId)
+    private async Task<int> SeedExistingSourceAsync(string cropSha, int filePage = 12, string? itemLabel = "7", int ownerId = ActingUserId,
+        bool draft = false, bool linkedToWorksheet = false)
     {
         await using var ctx = _db.NewContext();
         ctx.SetCurrentUser(ownerId);
-        var q = new Question { Text = "eski" };
+        var q = new Question { Text = "eski", IsDraft = draft };
         ctx.Questions.Add(q);
         await ctx.SaveChangesAsync();
         ctx.QuestionSources.Add(new QuestionSource
         {
             QuestionId = q.Id, BookId = _seed.BookId, FilePage = filePage, PrintedPage = 10, ItemLabel = itemLabel, CropSha256 = cropSha,
         });
+        if (linkedToWorksheet)
+        {
+            var worksheet = new Worksheet { Name = "başka taslak", Description = "", GradeId = _seed.Grade5, IsDraft = true };
+            worksheet.WorksheetQuestions.Add(new WorksheetQuestion { QuestionId = q.Id, Order = 1 });
+            ctx.Worksheets.Add(worksheet);
+        }
         await ctx.SaveChangesAsync();
+        return q.Id;
     }
 
     // ---------- İçindekiler varsayılanı ----------
@@ -453,6 +461,53 @@ public class LabelingBankServiceBookTests : IDisposable
         result.Saved.ShouldBe(0);
         result.DuplicateIndexes.ShouldBe([0, 1]);
         await _questions.DidNotReceiveWithAnyArgs().SaveBulkQuestion(default!, default);
+    }
+
+    [Fact]
+    public async Task Import_Resume_ReusesTheUsersUnlinkedDraftOfThisBook_InRequestOrder()
+    {
+        // Issue #1025: yarıda kalan aktarımın kaydettiği taslak tekrar sayılmaz; id'si istekteki yerinde döner.
+        var png = GradientPng();
+        var hashes = ExpectedCropHashes(png, Request(png, _seed.BookId, 12));
+        var resumed = await SeedExistingSourceAsync(hashes[0], draft: true);
+
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).SaveImportedPageAsync(ImportRequest(png) with { ResumeDrafts = true }, ActingUserId);
+
+        result.Saved.ShouldBe(1);
+        result.Resumed.ShouldBe(1);
+        result.DuplicateIndexes.ShouldBeEmpty();
+        result.QuestionIds[0].ShouldBe(resumed); // yeni kaydedilenin id'si sahte toplu kayıtta oluşmaz
+        _captured.ShouldNotBeNull().Questions.ShouldHaveSingleItem();
+    }
+
+    [Fact]
+    public async Task Import_Resume_StillSkipsActiveQuestions_OtherUsersDrafts_AndDraftsOfAnotherTest()
+    {
+        var png = GradientPng();
+        var hashes = ExpectedCropHashes(png, Request(png, _seed.BookId, 12));
+        await SeedExistingSourceAsync(hashes[0], draft: true, linkedToWorksheet: true);
+        await SeedExistingSourceAsync(hashes[1], draft: true, ownerId: 999);
+
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).SaveImportedPageAsync(ImportRequest(png) with { ResumeDrafts = true }, ActingUserId);
+
+        result.Resumed.ShouldBe(0);
+        result.DuplicateIndexes.ShouldBe([0, 1]);
+        await _questions.DidNotReceiveWithAnyArgs().SaveBulkQuestion(default!, default);
+    }
+
+    [Fact]
+    public async Task Import_WithoutResume_OwnDraftIsADuplicate()
+    {
+        var png = GradientPng();
+        await SeedExistingSourceAsync(ExpectedCropHashes(png, Request(png, _seed.BookId, 12))[0], draft: true);
+
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).SaveImportedPageAsync(ImportRequest(png), ActingUserId);
+
+        result.Resumed.ShouldBe(0);
+        result.DuplicateIndexes.ShouldBe([0]);
     }
 
     [Fact]

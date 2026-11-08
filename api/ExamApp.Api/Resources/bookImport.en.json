@@ -21,6 +21,7 @@
     "invalidSetup": "The setup could not be confirmed.",
     "notPaused": "This import is not waiting for cost approval.",
     "notCancellable": "This import cannot be cancelled at this stage.",
+    "notRetryable": "This import cannot be retried right now.",
     "answerless": "A test with unanswered questions cannot be approved; pick the answers first.",
     "invalidOption": "Invalid option.",
     "notInReview": "This test cannot be approved or removed right now.",

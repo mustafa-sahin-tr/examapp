@@ -16,7 +16,7 @@ function detail(overrides: Partial<BookImportJobDetail> = {}): BookImportJobDeta
     id: 'a1', bookName: 'Puan BTS 4 Matematik', gradeId: 4, subjectId: null, bookId: null,
     status: 'Running', stage: 'Setup', fileName: 'bts.pdf', fileSizeBytes: 1000, pageCount: 120,
     stageTotal: 4, stageProcessed: 1, message: null, error: null, createdAt: '2026-11-08T08:00:00Z',
-    startedAt: '2026-11-08T08:00:05Z', finishedAt: null, ownerId: 3, resumeAt: null, aiCostUsd: null,
+    startedAt: '2026-11-08T08:00:05Z', finishedAt: null, ownerId: 3, resumeAt: null, stalled: false, aiCostUsd: null,
     costCeilingUsd: null, tests: [], costs: [], ...overrides,
   };
 }
@@ -46,6 +46,10 @@ describe('BookImportDetailComponent (#1018)', () => {
       get: vi.fn().mockName('get').mockImplementation(() => response),
       setup: vi.fn().mockReturnValue(NEVER),
       continue: vi.fn().mockReturnValue(of(undefined)),
+      retry: vi.fn().mockReturnValue(of(undefined)),
+      retryTest: vi.fn().mockReturnValue(of(undefined)),
+      retryFailedTests: vi.fn().mockReturnValue(of(undefined)),
+      cancel: vi.fn().mockReturnValue(of(undefined)),
     } as unknown as MockedObject<BookImportService>;
     TestBed.configureTestingModule({
       imports: [BookImportDetailComponent, translocoTestingModule({ langs: { 'book-imports/tr': tr } })],
@@ -129,6 +133,68 @@ describe('BookImportDetailComponent (#1018)', () => {
 
     expect(steps()[1].classList).toContain('bid-step--failed');
     expect(el().querySelector('.bid-banner--danger')!.textContent).toContain('PDF bozuk');
+  });
+
+  it('failed_ExplainsInPlainLanguageAndRetriesTheJob', () => {
+    response = of(detail({ status: 'Failed', stage: 'Questions', error: 'Claude request failed.' }));
+    setup();
+
+    const banner = el().querySelector('.bid-banner--danger')!.textContent ?? '';
+    expect(banner).toContain(tr.detail.failedHelp.Questions);
+    expect(banner).toContain('Teknik ayrıntı: Claude request failed.');
+    (el().querySelector('.bid-banner--danger .bid-banner__action') as HTMLButtonElement).click();
+    expect(api.retry).toHaveBeenCalledWith('a1');
+    expect(api.get).toHaveBeenCalledTimes(2);
+  });
+
+  it('stalled_ShowsRetryBanner', () => {
+    response = of(detail({ status: 'Running', stalled: true }));
+    setup();
+
+    expect(text()).toContain(tr.detail.stalled);
+    (el().querySelector('.bid-banner--warning .bid-banner__action') as HTMLButtonElement).click();
+    expect(api.retry).toHaveBeenCalledWith('a1');
+  });
+
+  it('failedTests_RetryOneOrAllAfterTheQuestionsStage', () => {
+    response = of(detail({
+      status: 'ReadyForReview', stage: 'Review',
+      tests: [
+        test({ id: 7, order: 1, status: 'Failed', error: 'connection reset' }),
+        test({ id: 8, order: 2, testNo: 2, status: 'Failed' }),
+      ],
+    }));
+    setup();
+
+    expect(el().querySelector('.bid-attention')!.textContent).toContain(tr.detail.testFailed);
+    (el().querySelector('.bid-attention__retry') as HTMLButtonElement).click();
+    expect(api.retryTest).toHaveBeenCalledWith('a1', 7);
+    const all = Array.from(el().querySelectorAll('button')).find((b) => b.textContent?.includes('Hatalı testleri yeniden dene (2)'));
+    all!.click();
+    expect(api.retryFailedTests).toHaveBeenCalledWith('a1');
+  });
+
+  it('cancel_AsksToKeepOrDeleteDrafts', () => {
+    response = of(detail({
+      status: 'Running', stage: 'Questions',
+      tests: [test({ id: 7, status: 'Done', worksheetId: 30 }), test({ id: 8, order: 2, status: 'Running' })],
+    }));
+    setup();
+    const button = (label: string) =>
+      Array.from(el().querySelectorAll('button')).find((b) => b.textContent?.trim().endsWith(label)) as HTMLButtonElement;
+
+    button(tr.detail.cancelImport).click();
+    fixture.detectChanges();
+    expect(el().querySelector('.bid-confirm')!.textContent).toContain(tr.detail.cancelConfirmDrafts);
+    button(tr.detail.cancelDeleteDrafts).click();
+    expect(api.cancel).toHaveBeenCalledWith('a1', true);
+  });
+
+  it('cancel_IsNotOfferedInReview', () => {
+    response = of(detail({ status: 'ReadyForReview', stage: 'Review' }));
+    setup();
+
+    expect(text()).not.toContain(tr.detail.cancelImport);
   });
 
   it('tests_RenderGridWithLabelsAndAttentionList', () => {

@@ -52,13 +52,29 @@ export class BookImportService {
     return this.http.post<BookImportJob>(`${this.baseUrl}/${id}/setup/confirm`, request);
   }
 
-  cancel(id: string): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/${id}/cancel`, {});
+  cancel(id: string, deleteDrafts = false): Observable<void> {
+    const params = deleteDrafts ? { deleteDrafts: 'true' } : undefined;
+    return this.http.post<void>(`${this.baseUrl}/${id}/cancel`, {}, { params });
   }
 
   /** Issue #1024: Admin — maliyet tavanında bekleyen işi sürdür. */
   continue(id: string): Observable<void> {
     return this.http.post<void>(`${this.baseUrl}/${id}/continue`, {});
+  }
+
+  /** #1025: hatalı ya da takılmış işi kaldığı yerden yeniden dene. */
+  retry(id: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${id}/retry`, {});
+  }
+
+  /** #1025: hatalı testi yeniden aktar. */
+  retryTest(id: string, testId: number): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${id}/tests/${testId}/retry`, {});
+  }
+
+  /** #1025: bütün hatalı testleri yeniden aktar. */
+  retryFailedTests(id: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${id}/tests/retry`, {});
   }
 
   /** Issue #1023: inceleme — testin soruları, cevap seçimi, onay ve silme. */

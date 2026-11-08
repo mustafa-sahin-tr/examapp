@@ -8,11 +8,12 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
-import { Subscription, timer } from 'rxjs';
+import { Observable, Subscription, timer } from 'rxjs';
 
 import {
   BOOK_IMPORT_STAGES,
   BookImportJobDetail,
+  BookImportStatus,
   BookImportJobTest,
   BookImportReviewFlag,
   BookImportStage,
@@ -28,12 +29,15 @@ import { BOOK_IMPORTS_POLL_MS, BOOK_IMPORTS_SCOPE } from './book-imports.compone
 
 type Translate = (key: string, params?: Record<string, unknown>) => string;
 
+/** #1025: takip ekranından iptal edilebilen durumlar (sunucudaki liste; onay bekleyen iş kurulum ekranından iptal edilir). */
+const CANCELLABLE: BookImportStatus[] = ['Queued', 'Running', 'AwaitingBudget', 'AwaitingCostApproval', 'Failed'];
+
 /**
  * Issue #1018 (epic #1017): bir kitap aktarımının takibi — aşama adımları, geçerli aşamanın ilerlemesi, test ızgarası ve dikkat
  * gerektiren testler (#1022: bulunan / anahtardaki / kaydedilen soru, sayfa referanslı işaretler). İş sürerken 5 sn'de bir
  * yenilenir. Kurulum onayında onay ekranı (#1021), soru aktarımı bitince inceleme ve onay (#1023) gösterilir. Bütçe / tavan
- * duraklaması bantla; Admin maliyet dökümünü görür ve tavanda bekleyen işi sürdürür (#1024). Yeniden dene / iptal (#1025)
- * sonraki dilimde.
+ * duraklaması bantla; Admin maliyet dökümünü görür ve tavanda bekleyen işi sürdürür (#1024). Hatalı / takılmış işi ve hatalı
+ * testleri yeniden dene, aktarımı iptal et — taslaklar kalır ya da silinir (#1025).
  */
 @Component({
   selector: 'app-book-import-detail',
@@ -70,6 +74,11 @@ export class BookImportDetailComponent implements OnInit {
   readonly continuing = signal(false);
   readonly continueFailed = signal(false);
 
+  /** #1025: yeniden dene / iptal isteği sürüyor (test yeniden denemesinde test id'si) ve başarısız isteğin mesaj anahtarı. */
+  readonly busy = signal<'retry' | 'retryFailed' | 'cancel' | number | null>(null);
+  readonly actionError = signal<string | null>(null);
+  readonly confirmingCancel = signal(false);
+
   readonly stages = BOOK_IMPORT_STAGES;
   readonly tone = bookImportStatusTone;
 
@@ -79,7 +88,29 @@ export class BookImportDetailComponent implements OnInit {
   /** #1023: inceleme ekranı aktarım bitince (incelemede düzenlenebilir, tamamlanınca salt okunur). */
   readonly reviewing = computed(() => {
     const job = this.job();
-    return !!job && job.tests.some((t) => t.worksheetId != null) && (job.status === 'ReadyForReview' || job.status === 'Completed');
+    return (
+      !!job &&
+      job.tests.some((t) => t.worksheetId != null) &&
+      (job.status === 'ReadyForReview' || job.status === 'Completed' || job.status === 'Cancelled')
+    );
+  });
+  /** #1025: iptal edilen işin kalan taslakları da incelenip onaylanabilir. */
+  readonly reviewEditable = computed(() => this.job()?.status === 'ReadyForReview' || this.job()?.status === 'Cancelled');
+  /** #1025: iptal edilebilir (onay bekleyen işin iptali kurulum ekranında). */
+  readonly cancellable = computed(() => CANCELLABLE.includes(this.job()?.status as BookImportStatus));
+  readonly hasDrafts = computed(() =>
+    (this.job()?.tests ?? []).some((t) => t.worksheetId != null && t.status !== 'Approved' && t.status !== 'Removed'),
+  );
+  readonly canRetryJob = computed(() => this.job()?.status === 'Failed' || !!this.job()?.stalled);
+  /** #1025: hatalı test soru aktarımı bittikten sonra yeniden denenir. */
+  readonly canRetryTests = computed(() => {
+    const job = this.job();
+    if (!job) return false;
+    return (
+      job.status === 'ReadyForReview' ||
+      job.status === 'Completed' ||
+      (job.status === 'Failed' && BOOK_IMPORT_STAGES.indexOf(job.stage) >= BOOK_IMPORT_STAGES.indexOf('Questions'))
+    );
   });
   readonly testCounts = computed(() => {
     const tests = this.job()?.tests ?? [];
@@ -151,6 +182,42 @@ export class BookImportDetailComponent implements OnInit {
           this.continueFailed.set(true);
         },
       });
+  }
+
+  /** #1025: hatalı / takılmış işi kaldığı yerden yeniden dene. */
+  retryJob(): void {
+    this.run('retry', this.api.retry(this.id));
+  }
+
+  /** #1025: tek hatalı testi (ya da hepsini) yeniden aktar. */
+  retryTest(test: BookImportJobTest): void {
+    this.run(test.id, this.api.retryTest(this.id, test.id));
+  }
+
+  retryFailedTests(): void {
+    this.run('retryFailed', this.api.retryFailedTests(this.id));
+  }
+
+  /** #1025: iptal — taslaklar kalır (incelenip onaylanabilir) ya da silinir. */
+  cancelJob(deleteDrafts: boolean): void {
+    this.confirmingCancel.set(false);
+    this.run('cancel', this.api.cancel(this.id, deleteDrafts));
+  }
+
+  private run(action: 'retry' | 'retryFailed' | 'cancel' | number, request: Observable<void>): void {
+    this.busy.set(action);
+    this.actionError.set(null);
+    request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.busy.set(null);
+        this.load();
+      },
+      error: () => {
+        this.busy.set(null);
+        this.actionError.set(action === 'cancel' ? 'detail.cancelFailed' : 'detail.retryFailed');
+        this.load();
+      },
+    });
   }
 
   stageState(stage: BookImportStage): 'done' | 'current' | 'waiting' | 'failed' | 'todo' {

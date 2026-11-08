@@ -155,19 +155,6 @@ public sealed partial class BookImportService
         _db.BookImportJobs.Where(j => j.Id == id && j.Status == BookImportJobStatus.Running && j.Stage == BookImportStage.SetupConfirmation)
             .ExecuteUpdateAsync(s => s.SetProperty(j => j.Status, BookImportJobStatus.AwaitingConfirmation), CancellationToken.None);
 
-    public async Task<CancelBookImportResult> CancelAsync(BookImportOwner owner, Guid id, CancellationToken ct)
-    {
-        if (!await Visible(owner).AnyAsync(j => j.Id == id, ct))
-            return CancelBookImportResult.NotFound;
-        var now = DateTime.UtcNow;
-        var rows = await _db.BookImportJobs
-            .Where(j => j.Id == id && j.Status == BookImportJobStatus.AwaitingConfirmation)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(j => j.Status, BookImportJobStatus.Cancelled)
-                .SetProperty(j => j.FinishedAt, now), ct);
-        return rows == 0 ? CancelBookImportResult.InvalidState : CancelBookImportResult.Cancelled;
-    }
-
     private static bool IsAwaitingSetup(BookImportJob job) =>
         job.Status == BookImportJobStatus.AwaitingConfirmation && job.Stage == BookImportStage.SetupConfirmation;
 

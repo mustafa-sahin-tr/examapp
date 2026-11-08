@@ -23,7 +23,8 @@ namespace ExamApp.Api.Services.BookImport;
 /// iş incelemeye geçer. Emsal <c>QuestionTransferJobRunner</c>:
 /// kendi Hangfire kuyruğu, iş başına dağıtık kilit, sahibin öğretmen onayı iş başında yeniden kontrol edilir. Claude çağrıları
 /// <see cref="BookImportBudget"/>'tan geçer (#1024): bütçe dolunca iş "Bütçe bekleniyor"a geçip pencere açılınca yeniden kuyruğa
-/// girer, maliyet tavanı aşılınca Admin'in sürdürmesini bekler.
+/// girer, maliyet tavanı aşılınca Admin'in sürdürmesini bekler. İptal (#1025) aşama, test ve sayfa arasında denetlenir; yeniden
+/// çalıştırma bitmiş sayfa ve testleri atlar (yarıda kalan testin taslakları kırpma hash'iyle yeniden kullanılır).
 /// </summary>
 public class BookImportJobRunner
 {
@@ -120,6 +121,7 @@ public class BookImportJobRunner
 
                 await EnterStageAsync(job, BookImportStage.Setup);
                 await new BookSetupStage(_db, _minio, _setupAi, budget, _surveyBatchSize, _logger).RunAsync(job);
+                await BookQuestionImportStage.StopIfCancelledAsync(_db, job.Id, default);
 
                 // Kurulum onayı: kullanıcı onaylayana kadar iş bekler; onay ucu (BookImportService.ConfirmSetupAsync) işi
                 // Questions aşamasında yeniden kuyruğa verir.
@@ -135,27 +137,33 @@ public class BookImportJobRunner
             if (job.Stage != BookImportStage.Questions)
                 await EnterStageAsync(job, BookImportStage.Questions);
             await new BookQuestionImportStage(_db, _minio, _labeling, _scopes, budget, _detectModel, _logger).RunAsync(job);
+            await BookQuestionImportStage.StopIfCancelledAsync(_db, job.Id, default);
             job.Stage = BookImportStage.Review;
             job.Status = BookImportJobStatus.ReadyForReview;
             await _db.SaveChangesAsync();
             await LogSummaryAsync(job);
         }
+        catch (BookImportCancelled)
+        {
+            // #1025: iptal ucu durumu yazdı; iş burada durur (kaydedilmiş taslaklar iptal seçeneğine göre durur / silinir).
+            await budget.FlushAsync();
+            _logger.LogInformation("Book import job {JobId} stopped in stage {Stage}: cancelled", job.Id, job.Stage);
+        }
         catch (BookImportPause pause)
         {
             await budget.FlushAsync();
-            await PauseAsync(job, pause);
+            if (!await CancelledAsync(job.Id))
+                await PauseAsync(job, pause);
         }
         catch (Exception failure) when (failure is BookImportFailure or PdfRasterizeException)
         {
             _logger.LogWarning("Book import job {JobId} failed in stage {Stage}: {Reason}", job.Id, job.Stage, failure.Message);
-            Fail(job, failure.Message);
-            await _db.SaveChangesAsync();
+            await FailUnlessCancelledAsync(job, failure.Message);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Book import job {JobId} failed in stage {Stage}", job.Id, job.Stage);
-            Fail(job, ex.Message);
-            await _db.SaveChangesAsync();
+            await FailUnlessCancelledAsync(job, ex.Message);
         }
     }
 
@@ -208,6 +216,7 @@ public class BookImportJobRunner
             });
             job.StageProcessed = page.FilePage;
             await _db.SaveChangesAsync();
+            await BookQuestionImportStage.StopIfCancelledAsync(_db, job.Id, default);
         }
 
         _logger.LogInformation("Book import job {JobId}: rendered {Pages} pages in {Seconds:F1}s", job.Id, pageCount - next + 1,
@@ -275,6 +284,18 @@ public class BookImportJobRunner
         return check is TeacherApprovalCheck.NotApproved or TeacherApprovalCheck.Suspended;
     }
 
+    private Task<bool> CancelledAsync(Guid jobId) =>
+        _db.BookImportJobs.AnyAsync(j => j.Id == jobId && j.Status == BookImportJobStatus.Cancelled);
+
+    /// <summary>İptal edilmiş iş hataya çevrilmez (iptal ucu ile çalışma yarışı, #1025).</summary>
+    private async Task FailUnlessCancelledAsync(BookImportJob job, string error)
+    {
+        if (await CancelledAsync(job.Id))
+            return;
+        Fail(job, error);
+        await _db.SaveChangesAsync();
+    }
+
     private static void Fail(BookImportJob job, string error)
     {
         job.Status = BookImportJobStatus.Failed;
@@ -285,3 +306,6 @@ public class BookImportJobRunner
 
 /// <summary>İşi okunur bir hatayla düşüren beklenen durum (bozuk / şifreli / çok uzun PDF vb.); yığın izi loglanmaz.</summary>
 public sealed class BookImportFailure(string message) : Exception(message);
+
+/// <summary>Issue #1025: iş çalışırken iptal edildi; çalışma test / sayfa arasında durur.</summary>
+public sealed class BookImportCancelled() : Exception("The book import was cancelled.");

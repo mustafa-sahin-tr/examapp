@@ -38,6 +38,12 @@ public class BookQuestionImportTests : IDisposable
 
     private readonly List<LabelingImportPageRequest> _saved = new();
     private readonly HashSet<string> _duplicateItems = new();
+    /// <summary>#1025: bir kez kaydı patlayan sayfalar (çalışma ortasında çökme).</summary>
+    private readonly HashSet<int> _crashOnSave = new();
+    /// <summary>#1025: kaydedilen taslaklar (sayfa, soru no) → id; <c>ResumeDrafts</c> isteği bunları yeniden kullanır.</summary>
+    private readonly Dictionary<(int Page, string Label), int> _drafts = new();
+    /// <summary>#1025: tespit bu sayfaya gelince çalıştırılır (ör. işi iptal et).</summary>
+    private readonly Dictionary<int, Func<Task>> _onDetect = new();
     private int _bookId;
     private int _gradeId;
 
@@ -50,6 +56,8 @@ public class BookQuestionImportTests : IDisposable
         {
             var url = Encoding.UTF8.GetString(Convert.FromBase64String(ci.ArgAt<string>(0).Split(',')[1]));
             var page = int.Parse(url[(url.LastIndexOf('/') + 1)..]);
+            if (_onDetect.Remove(page, out var hook))
+                hook().GetAwaiter().GetResult();
             if (!_detections.TryGetValue(page, out var predictions))
                 throw new LabelingAiException("Claude response could not be used.");
             var response = new LabelingAiDetectResponseDto("live", new string('a', 64), new LabelingResultDto("Ai", Model,
@@ -61,12 +69,17 @@ public class BookQuestionImportTests : IDisposable
         {
             var request = ci.Arg<LabelingImportPageRequest>();
             _saved.Add(request);
+            if (_crashOnSave.Remove(request.FilePage))
+                throw new InvalidOperationException("connection reset");
             var duplicates = request.Questions.Select((q, i) => (q, i)).Where(x => _duplicateItems.Contains(x.q.ItemLabel!))
                 .Select(x => x.i).ToList();
+            var resumed = request.Questions.Select((q, i) => (q, i))
+                .Where(x => request.ResumeDrafts && !duplicates.Contains(x.i) && _drafts.ContainsKey((request.FilePage, x.q.ItemLabel!)))
+                .ToDictionary(x => x.i, x => _drafts[(request.FilePage, x.q.ItemLabel!)]);
             // Bankaya kayıt gibi: kaydedilen her soru taslak bir satır (şıklar, anahtardaki doğru şık, kitap kaynağı).
             using var ctx = _db.NewContext();
             ctx.SetCurrentUser(OwnerId);
-            var created = request.Questions.Where((_, i) => !duplicates.Contains(i)).Select(q =>
+            var created = request.Questions.Where((_, i) => !duplicates.Contains(i) && !resumed.ContainsKey(i)).Select(q =>
             {
                 var question = new Question { Text = q.ItemLabel!, IsDraft = true };
                 question.Answers = Enumerable.Range(0, q.Options.Count)
@@ -83,7 +96,17 @@ public class BookQuestionImportTests : IDisposable
             foreach (var (question, correct) in created.Where(c => c.CorrectOptionIndex >= 0))
                 question.CorrectAnswerId = question.Answers.ElementAt(correct).Id;
             ctx.SaveChanges();
-            return Task.FromResult(new LabelingImportPageResult(created.Count, duplicates, created.Select(c => c.question.Id).ToList()));
+            foreach (var (question, _) in created)
+                _drafts[(request.FilePage, question.Text!)] = question.Id;
+            var ids = new List<int>();
+            var next = 0;
+            for (var i = 0; i < request.Questions.Count; i++)
+            {
+                if (duplicates.Contains(i))
+                    continue;
+                ids.Add(resumed.TryGetValue(i, out var id) ? id : created[next++].question.Id);
+            }
+            return Task.FromResult(new LabelingImportPageResult(created.Count, duplicates, ids, resumed.Count));
         });
         _services = new ServiceCollection().AddScoped(_ => _bank).BuildServiceProvider();
     }
@@ -597,6 +620,220 @@ public class BookQuestionImportTests : IDisposable
         (await Service(ctx).ApproveTestAsync(Owner, id, tests[0].Id, default)).ShouldBe(BookImportReviewResult.Ok);
         (await fix.ReplacePageAsync(Owner, id, tests[0].Id, 1, [Box(0)], default)).Error.ShouldBe(BookImportPageFixError.InvalidState);
         _saved.Count.ShouldBe(2);
+    }
+
+    // ---------- Issue #1025: devam, yeniden deneme, iptal ----------
+
+    [Fact]
+    public async Task An_interrupted_test_is_retried_reusing_its_saved_drafts_without_duplicates_and_in_order()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "AB", [2]), new(2, 2, 3, "ABCD", [2, 4])]);
+        Detect(1, 4, 4);
+        Detect(2, 4, 4);
+        Detect(3, 4, 4);
+        _crashOnSave.Add(3); // test 2'nin ikinci sayfası kaydedilirken bağlantı koptu
+
+        await RunAsync(id);
+
+        var tests = await TestsAsync();
+        tests[1].Status.ShouldBe(BookImportTestStatus.Failed);
+        tests[1].Error.ShouldBe("connection reset");
+        tests[1].WorksheetId.ShouldBeNull();
+        await using (var ctx = _db.NewContext())
+        {
+            var service = Service(ctx);
+            (await service.ApproveTestAsync(Owner, id, tests[0].Id, default)).ShouldBe(BookImportReviewResult.Ok);
+            (await service.RetryTestsAsync(Owner, id, tests[0].Id, default)).ShouldBe(RetryBookImportResult.InvalidState);
+            (await service.RetryTestsAsync(Owner, id, tests[1].Id, default)).ShouldBe(RetryBookImportResult.Queued);
+        }
+        (await TestsAsync())[1].Status.ShouldBe(BookImportTestStatus.Pending);
+
+        await RunAsync(id);
+
+        await using var check = _db.NewContext();
+        var job = await check.BookImportJobs.SingleAsync();
+        job.Status.ShouldBe(BookImportJobStatus.ReadyForReview);
+        var after = await check.BookImportJobTests.OrderBy(t => t.Order).ToListAsync();
+        after[0].Status.ShouldBe(BookImportTestStatus.Approved); // onaylanan test yeniden alınmaz
+        after[1].Status.ShouldBe(BookImportTestStatus.Done);
+        after[1].QuestionsSaved.ShouldBe(4);
+        after[1].DuplicatesSkipped.ShouldBe(0);
+        _saved.Select(s => s.FilePage).ShouldBe([1, 2, 3, 2, 3]);
+        _saved.Skip(3).ShouldAllBe(s => s.ResumeDrafts);
+        var worksheet = await check.Worksheets.WithDrafts().Include(w => w.WorksheetQuestions).ThenInclude(wq => wq.Question)
+            .SingleAsync(w => w.Id == after[1].WorksheetId);
+        worksheet.WorksheetQuestions.OrderBy(wq => wq.Order).Select(wq => wq.Question.Text).ShouldBe(["1", "2", "3", "4"]);
+        (await check.Questions.WithDrafts().CountAsync()).ShouldBe(6); // test 1: 2, test 2: 4 — sayfa 2 iki kez kaydedilmedi
+    }
+
+    [Fact]
+    public async Task A_restarted_run_continues_from_the_unfinished_test_and_relinks_its_existing_draft_test()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "A", [1]), new(2, 2, 2, "AB", [2])]);
+        Detect(1, 4);
+        Detect(2, 4, 4);
+        await RunAsync(id);
+        var tests = await TestsAsync();
+
+        // Yeniden başlatma: test 2 çalışırken API düştü (satır Running, taslak testi var), Hangfire işi yeniden çalıştırır.
+        await using (var ctx = _db.NewContext())
+        {
+            var test = await ctx.BookImportJobTests.AsTracking().SingleAsync(t => t.Id == tests[1].Id);
+            test.Status = BookImportTestStatus.Running;
+            var job = await ctx.BookImportJobs.AsTracking().SingleAsync();
+            job.Status = BookImportJobStatus.Running;
+            job.Stage = BookImportStage.Questions;
+            await ctx.SaveChangesAsync();
+        }
+        _saved.Clear();
+
+        await RunAsync(id);
+
+        _saved.ShouldHaveSingleItem().FilePage.ShouldBe(2);
+        await using var check = _db.NewContext();
+        var after = await check.BookImportJobTests.SingleAsync(t => t.Id == tests[1].Id);
+        after.Status.ShouldBe(BookImportTestStatus.Done);
+        after.WorksheetId.ShouldBe(tests[1].WorksheetId);
+        after.QuestionsSaved.ShouldBe(2);
+        (await check.Worksheets.WithDrafts().CountAsync()).ShouldBe(2);
+        (await check.TestQuestions.CountAsync(wq => wq.TestId == after.WorksheetId)).ShouldBe(2);
+        (await check.Questions.WithDrafts().CountAsync()).ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task Cancelling_a_running_job_stops_before_the_next_page_and_keeps_its_drafts_for_review()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "A", [1]), new(2, 2, 3, "AB", [1, 2]), new(3, 4, 4, "C", [1])]);
+        Detect(1, 4);
+        Detect(2, 4);
+        Detect(3, 4);
+        Detect(4, 4);
+        _onDetect[2] = async () =>
+        {
+            await using var ctx = _db.NewContext();
+            (await Service(ctx).CancelAsync(Owner, id, false, default)).ShouldBe(CancelBookImportResult.Cancelled);
+        };
+
+        await RunAsync(id);
+
+        await using (var check = _db.NewContext())
+        {
+            var job = await check.BookImportJobs.SingleAsync();
+            job.Status.ShouldBe(BookImportJobStatus.Cancelled);
+            job.FinishedAt.ShouldNotBeNull();
+        }
+        var tests = await TestsAsync();
+        tests.Select(t => t.Status).ShouldBe([BookImportTestStatus.Done, BookImportTestStatus.Pending, BookImportTestStatus.Pending]);
+        _saved.Select(s => s.FilePage).ShouldBe([1]);
+        await _labeling.Received(2).DetectForImportAsync(Arg.Any<string>(), Model, Arg.Any<CancellationToken>()); // sayfa 3 yok
+
+        // Kalan taslaklar incelenebilir; iptal edilmiş iş yeniden denenemez.
+        await using var ctx = _db.NewContext();
+        var service = Service(ctx);
+        (await service.ApproveTestAsync(Owner, id, tests[0].Id, default)).ShouldBe(BookImportReviewResult.Ok);
+        (await service.RetryAsync(Owner, id, default)).ShouldBe(RetryBookImportResult.InvalidState);
+        (await service.CancelAsync(Owner, id, false, default)).ShouldBe(CancelBookImportResult.InvalidState);
+    }
+
+    [Fact]
+    public async Task Cancelling_with_delete_drafts_removes_unapproved_draft_tests_and_unlinked_drafts_only()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "A", [1]), new(2, 2, 2, "B", [1]), new(3, 3, 4, "CD", [1, 2])]);
+        Detect(1, 4);
+        Detect(2, 4);
+        Detect(3, 4);
+        Detect(4, 4);
+        _crashOnSave.Add(4); // test 3: sayfa 3 kaydedildi, teste bağlanmadan düştü
+        await RunAsync(id);
+        var tests = await TestsAsync();
+        await using (var ctx = _db.NewContext())
+            (await Service(ctx).ApproveTestAsync(Owner, id, tests[0].Id, default)).ShouldBe(BookImportReviewResult.Ok);
+        await using (var ctx = _db.NewContext())
+        {
+            // İncelemedeki iş iptal edilmez (yapılacak iş yok; testler tek tek silinir); hatalı iş edilir.
+            (await Service(ctx).CancelAsync(Owner, id, true, default)).ShouldBe(CancelBookImportResult.InvalidState);
+            var job = await ctx.BookImportJobs.AsTracking().SingleAsync();
+            job.Status = BookImportJobStatus.Failed;
+            await ctx.SaveChangesAsync();
+        }
+
+        await using (var ctx = _db.NewContext())
+            (await Service(ctx).CancelAsync(BookImportOwner.Create(99), id, true, default)).ShouldBe(CancelBookImportResult.NotFound);
+        await using (var ctx = _db.NewContext())
+            (await Service(ctx).CancelAsync(Owner, id, true, default)).ShouldBe(CancelBookImportResult.Cancelled);
+
+        await using var check = _db.NewContext();
+        (await check.Questions.WithDrafts().Select(q => q.Text).ToListAsync()).ShouldBe(["1"]); // yalnız onaylanan testin sorusu
+        (await check.Worksheets.WithDrafts().Select(w => w.Id).ToListAsync()).ShouldBe([tests[0].WorksheetId!.Value]);
+        (await check.BookImportJobTests.OrderBy(t => t.Order).Select(t => t.Status).ToListAsync())
+            .ShouldBe([BookImportTestStatus.Approved, BookImportTestStatus.Removed, BookImportTestStatus.Failed]);
+        (await check.BookImportJobs.SingleAsync()).Status.ShouldBe(BookImportJobStatus.Cancelled);
+    }
+
+    [Fact]
+    public async Task A_failed_or_stalled_job_can_be_retried_and_a_progressing_one_cannot()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "A", [1])]);
+        var jobs = Substitute.For<IBackgroundJobClient>();
+        async Task SetAsync(BookImportJobStatus status, DateTime? updated)
+        {
+            await using var ctx = _db.NewContext();
+            await ctx.BookImportJobs.ExecuteUpdateAsync(s => s
+                .SetProperty(j => j.Status, status).SetProperty(j => j.UpdateTime, updated).SetProperty(j => j.Error, "boom"));
+        }
+        async Task<(RetryBookImportResult Result, bool Stalled)> RetryAsync()
+        {
+            await using var ctx = _db.NewContext();
+            var service = Service(ctx, jobs);
+            var stalled = (await service.GetAsync(Owner, id, default))!.Stalled;
+            return (await service.RetryAsync(Owner, id, default), stalled);
+        }
+
+        await SetAsync(BookImportJobStatus.Running, DateTime.UtcNow.AddMinutes(-2));
+        (await RetryAsync()).ShouldBe((RetryBookImportResult.InvalidState, false));
+        await SetAsync(BookImportJobStatus.ReadyForReview, DateTime.UtcNow.AddHours(-2));
+        (await RetryAsync()).ShouldBe((RetryBookImportResult.InvalidState, false));
+        await SetAsync(BookImportJobStatus.Running, DateTime.UtcNow.AddMinutes(-BookImportService.DefaultStallMinutes - 1));
+        (await RetryAsync()).ShouldBe((RetryBookImportResult.Queued, true));
+        await SetAsync(BookImportJobStatus.Failed, DateTime.UtcNow);
+        (await RetryAsync()).ShouldBe((RetryBookImportResult.Queued, false));
+
+        jobs.Received(2).Create(Arg.Any<Hangfire.Common.Job>(), Arg.Any<Hangfire.States.EnqueuedState>());
+        await using var check = _db.NewContext();
+        var job = await check.BookImportJobs.SingleAsync();
+        job.Status.ShouldBe(BookImportJobStatus.Queued);
+        job.Error.ShouldBeNull();
+        job.FinishedAt.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Retry_all_requeues_every_failed_test_only_after_the_questions_stage()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "A", [1]), new(2, 2, 2, "B", [1]), new(3, 3, 3, "C", [1])]);
+        Detect(2, 4); // sayfa 1 ve 3 tespitte hata verir
+        await RunAsync(id);
+        var jobs = Substitute.For<IBackgroundJobClient>();
+
+        await using (var ctx = _db.NewContext())
+            (await Service(ctx, jobs).RetryTestsAsync(Owner, id, null, default)).ShouldBe(RetryBookImportResult.Queued);
+
+        (await TestsAsync()).Select(t => t.Status)
+            .ShouldBe([BookImportTestStatus.Pending, BookImportTestStatus.Done, BookImportTestStatus.Pending]);
+        await using (var ctx = _db.NewContext())
+        {
+            var job = await ctx.BookImportJobs.SingleAsync();
+            job.Status.ShouldBe(BookImportJobStatus.Queued);
+            job.Stage.ShouldBe(BookImportStage.Questions);
+            // İş kuyruktayken (henüz bitmedi) tekrar istenemez; başkasının işi görünmez.
+            (await Service(ctx, jobs).RetryTestsAsync(Owner, id, null, default)).ShouldBe(RetryBookImportResult.InvalidState);
+            (await Service(ctx, jobs).RetryTestsAsync(BookImportOwner.Create(99), id, null, default)).ShouldBe(RetryBookImportResult.NotFound);
+        }
+        jobs.Received(1).Create(Arg.Any<Hangfire.Common.Job>(), Arg.Any<Hangfire.States.EnqueuedState>());
+
+        Detect(1, 4);
+        Detect(3, 4);
+        await RunAsync(id);
+        (await TestsAsync()).ShouldAllBe(t => t.Status == BookImportTestStatus.Done);
     }
 
     [Fact]

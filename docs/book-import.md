@@ -75,7 +75,7 @@ aktarım aracındaki Python portu referanstır (#1022).
   ofset, anahtar aralıkları, içindekiler) → `BookTest` satırları ("1-01 · Başlık") → hak düşer
   (`RecordUsageAsync(userId, "book-import", jobId)`) → iş `Questions` aşamasında kuyruğa girer (#1022 iskelet). Aynı adlı
   kitap varsa 409 + `existingBook`: mevcut kitabı kullan (kayıt kümeleri boşsa kurulumla doldurulur) ya da yeni ad.
-  İptal: `POST /api/exam/book-imports/{id}/cancel` (yalnız onay beklerken; diğer durumlar #1025).
+  İptal: `POST /api/exam/book-imports/{id}/cancel` (onay beklerken burada; diğer durumlar aşağıda, #1025).
 
 ## Soru aktarımı (#1022)
 
@@ -153,3 +153,28 @@ aktarım aracındaki Python portu referanstır (#1022).
   maliyeti, tavanı, aşama × model dökümünü ve ızgarada test başına maliyeti görür.
 - **Log:** iş incelemeye geçince tek satır: `Book import job {JobId} finished: … pages, … tests, … questions, … flagged tests,
   … failed tests, cost $…`; duraklama `paused in stage …` satırıyla.
+
+## Devam, yeniden deneme ve iptal (#1025)
+
+- **Kaldığı yerden devam:** Hangfire işi (`book-import` kuyruğu, iş başına dağıtık kilit; ikinci çalıştırma kilidi alamayıp çıkar)
+  yeniden çalışınca sayfalar kayıtlı son sayfadan, soru aktarımı ilk bitmemiş testten devam eder; bitmiş sayılan testler
+  `Done`, `NeedsReview`, `Failed`, `Approved`, `Removed`. Yarıda kalan test baştan alınır: sayfa kaydı `ResumeDrafts` ile
+  çağrılır, aynı kullanıcının bu kitaptaki, başka bir teste bağlı olmayan (ya da testin kendi taslak testine bağlı) taslağı
+  kırpma hash'iyle bulunup yeniden kullanılır (tekrar sayılmaz, yeni soru yazılmaz); taslak testin sırası bu çalıştırmaya göre
+  yeniden yazılır, test ↔ taslak test bağlantısı taslak testle aynı kayıtta yazılır.
+- **Geçici Claude hataları:** bağlantı, zaman aşımı, 408 / 409 / 429 / 5xx Anthropic SDK içinde kısa üstel beklemeyle
+  `Anthropic:MaxRetries` (varsayılan 3, 0–10; bütün işaretleme çağrıları) kez yeniden denenir; sonra sayfa tespiti başarısız
+  sayılır (`detectionFailed`), testin bütün sayfaları başarısızsa test `Failed` + hata metni.
+- **Takılmış iş:** `Queued` / `Running` iş `BookImport:StallMinutes` (varsayılan 15) dakikadır güncellenmediyse (her sayfa ve test
+  satırı günceller) ya da `AwaitingBudget`'ın `ResumeAt`'i bu kadar geçtiyse DTO `stalled: true`; takip ekranı bant + "Yeniden dene".
+- **Uçlar** (sahip ya da Admin): `POST {id}/retry` — `Failed` ya da takılmış işi yeniden kuyruğa verir (hata ve bitiş temizlenir);
+  `POST {id}/tests/{testId}/retry` ve `POST {id}/tests/retry` — hatalı testi / bütün hatalı testleri `Pending` yapar, iş
+  `Questions` aşamasında kuyruğa girer (yalnız `ReadyForReview`, `Completed` ya da soru aşamasında `Failed` işte);
+  `POST {id}/cancel?deleteDrafts=` — `Queued`, `Running`, `AwaitingConfirmation`, `AwaitingBudget`, `AwaitingCostApproval`,
+  `Failed` işi `Cancelled` yapar. Çalışma iptali sayfa, test ve aşama arasında görür, yarıdaki test `Pending` kalır; iptal edilen
+  iş hataya çevrilmez. Taslaklar kalırsa iptal edilen işte testler incelenip onaylanabilir / silinebilir (işaretlemede düzelt de);
+  `deleteDrafts=true` onaylanmamış testlerin taslak testlerini ve sorularını, ayrıca bu kitapta sahibin hiçbir teste bağlı
+  olmayan taslaklarını siler (testler `Removed`).
+- **Ekran:** hata bandı aşamaya göre sade açıklama + "Teknik ayrıntı" + "Yeniden dene"; hatalı test "Bu testin soruları
+  alınamadı" + "Testi yeniden dene", birden çok hatalı testte "Hatalı testleri yeniden dene (n)"; "Aktarımı iptal et" satır içi
+  onay: taslak varsa "İptal et, taslakları sakla" / "İptal et ve taslakları sil".

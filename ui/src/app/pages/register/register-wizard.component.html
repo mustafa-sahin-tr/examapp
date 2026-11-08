@@ -3,7 +3,11 @@
     <div class="steps">
       <span class="step" [class.active]="step() === 1" [class.done]="step() === 2">{{ t('wizard.stepRole') }}</span>
       <span class="sep">›</span>
-      <span class="step" [class.active]="step() === 2">{{ t('wizard.stepDetails') }}</span>
+      <span class="step" [class.active]="step() === 2" [class.done]="step() === 3">{{ t('wizard.stepDetails') }}</span>
+      @if (role() !== 'parent') {
+        <span class="sep">›</span>
+        <span class="step" [class.active]="step() === 3">{{ t('wizard.stepPlan') }}</span>
+      }
     </div>
 
     <!-- STEP 1 — role picker -->
@@ -40,6 +44,9 @@
           {{ t('actions.continue') }}
         </button>
       </div>
+    } @else if (step() === 3) {
+      <!-- Issue #1028: plan seçimi (Free ile geçilebilir) -->
+      <app-plan-picker mode="signup" (completed)="onPlanChosen()" />
     } @else if (step() === 2) {
       @if (submitError() || retryAfter()) {
         <div class="notice notice--error" role="alert" data-testid="submit-error">

@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore;
 namespace ExamApp.Api.Controllers;
 
 /// <summary>
-/// Issue #1027: kullanıcıya açık plan kataloğu ve oturumdaki kullanıcının planı + bu ayki kullanımı. Plan seçimi / ödeme
-/// #1028'de, uygulama (sınırda engel) #1031'de.
+/// Issue #1027: kullanıcıya açık plan kataloğu ve oturumdaki kullanıcının planı + bu ayki kullanımı. #1028: deneme başlatma ve
+/// sahte ödeme (kayıt sihirbazının plan adımı, sonra "Planım"). Uygulama (sınırda engel) #1031'de.
 /// </summary>
 [ApiController]
 [Route("api/subscription-plans")]
@@ -42,8 +42,40 @@ public class SubscriptionPlansController : BaseController
     public async Task<ActionResult<CurrentSubscriptionPlanDto>> Current(CancellationToken ct)
     {
         var user = await GetAuthenticatedUserAsync(ct);
-        var subject = EntitlementSubject.FromPrincipal(user.Id, User);
-        var plan = await _entitlements.ResolvePlanAsync(user.Id, ct);
+        return await CurrentAsync(user.Id, ct);
+    }
+
+    /// <summary>#1028: deneme planını başlatır (hesap başına bir kez; ikinci deneme 409 <c>subscription.trialUsed</c>).</summary>
+    [HttpPost("me/trial")]
+    [Authorize(Roles = "Teacher,Student,Admin")] // veliye plan satılmaz (sihirbaz veliye plan adımı göstermez)
+    public async Task<ActionResult<CurrentSubscriptionPlanDto>> StartTrial(CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync(ct);
+        var error = await _entitlements.StartTrialAsync(user.Id, SubscriptionPlanCatalog.AudiencesFor(User), ct);
+        return error == SelfServicePlanError.None ? await CurrentAsync(user.Id, ct) : PlanError(error);
+    }
+
+    /// <summary>#1028 sahte ödeme: ücretli planı bir aylık atar. Gerçek ödeme alınmaz; arayüz ekranı "demo" diye işaretler.</summary>
+    [HttpPost("me/checkout")]
+    [Authorize(Roles = "Teacher,Student,Admin")] // veliye plan satılmaz (sihirbaz veliye plan adımı göstermez)
+    public async Task<ActionResult<CurrentSubscriptionPlanDto>> Checkout([FromBody] SubscriptionCheckoutDto request, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync(ct);
+        var error = await _entitlements.CheckoutAsync(user.Id, request.PlanKey, SubscriptionPlanCatalog.AudiencesFor(User), ct);
+        return error == SelfServicePlanError.None ? await CurrentAsync(user.Id, ct) : PlanError(error);
+    }
+
+    private ActionResult PlanError(SelfServicePlanError error) => error switch
+    {
+        SelfServicePlanError.TrialAlreadyUsed => Conflict(new { code = "subscription.trialUsed" }),
+        SelfServicePlanError.NotAvailable => BadRequest(new { code = "subscription.planNotAvailable" }),
+        _ => BadRequest(new { code = "subscription.unknownPlan" }),
+    };
+
+    private async Task<CurrentSubscriptionPlanDto> CurrentAsync(int userId, CancellationToken ct)
+    {
+        var subject = EntitlementSubject.FromPrincipal(userId, User);
+        var plan = await _entitlements.ResolvePlanAsync(userId, ct);
         var planInfo = plan.PlanId is { } planId
             ? await _db.SubscriptionPlans.AsNoTracking()
                 .Where(p => p.Id == planId)
@@ -72,7 +104,16 @@ public class SubscriptionPlansController : BaseController
             PlanName = plan.Name,
             DisplayNameKey = planInfo?.DisplayNameKey,
             ValidToUtc = plan.ValidToUtc,
+            TrialAvailable = await IsTrialAvailableAsync(userId, ct),
             Features = features,
         };
+    }
+
+    private async Task<bool> IsTrialAvailableAsync(int userId, CancellationToken ct)
+    {
+        var audiences = SubscriptionPlanCatalog.AudiencesFor(User);
+        var offered = await _db.SubscriptionPlans.AsNoTracking()
+            .AnyAsync(p => p.Key == SubscriptionPlan.TrialKey && p.IsActive && p.TrialDays != null && audiences.Contains(p.Audience), ct);
+        return offered && !await _entitlements.HasUsedTrialAsync(userId, ct);
     }
 }

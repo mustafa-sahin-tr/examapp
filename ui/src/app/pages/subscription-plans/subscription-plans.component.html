@@ -1,0 +1,10 @@
+<div class="subscription-plans" *transloco="let t; prefix: 'subscription'">
+  <app-page-header icon="workspace_premium" [title]="t('page.title')" [description]="t('page.subtitle')" />
+  @if (changedTo(); as nameKey) {
+    <div class="notice" role="status" data-testid="plan-changed">
+      <mat-icon aria-hidden="true">check_circle</mat-icon>
+      <p>{{ t('page.changed', { plan: t(nameKey) }) }}</p>
+    </div>
+  }
+  <app-plan-picker mode="change" (completed)="onCompleted($event)" />
+</div>

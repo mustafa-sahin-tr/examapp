@@ -47,6 +47,7 @@ import { SchoolSelectComponent } from '../../shared/components/school-select/sch
 import { REGISTER_SCOPE } from './register-scope';
 import { TEACHER_APPROVAL_PENDING_URL } from '../../models/teacher-approval.model';
 import { PhoneMaskDirective } from '../../shared/directives/phone-mask.directive';
+import { PlanPickerComponent } from '../../shared/components/plan-picker/plan-picker.component';
 
 type Role = 'student' | 'teacher' | 'parent';
 
@@ -96,6 +97,7 @@ interface RegistrationResult {
     TranslocoDirective,
     SchoolSelectComponent,
     PhoneMaskDirective,
+    PlanPickerComponent,
   ],
   providers: [provideTranslocoScope(REGISTER_SCOPE)],
   templateUrl: './register-wizard.component.html',
@@ -126,7 +128,13 @@ export class RegisterWizardComponent implements OnInit {
   readonly parentInfoRequired = signal(true);
 
   role = signal<Role | null>(null);
-  step = computed(() => (this.role() ? 2 : 1));
+  /**
+   * Issue #1028: rol kaydı tamamlandı, plan seçimi bekleniyor (öğrenci / öğretmen; velinin ücretli özelliği yok). Plan seçilince
+   * ya da Free ile geçilince kayıt sonrası akış (`finishRegistration`) çalışır.
+   */
+  readonly planStep = signal(false);
+  private finishRegistration: (() => void) | null = null;
+  step = computed(() => (this.planStep() ? 3 : this.role() ? 2 : 1));
   isSubmitting = signal(false);
   readonly grades = signal<Grade[]>([]);
   /** Issue #234: kayıt tamamlandı ama okul bağlantısı admin onayı bekliyor — yönlendirmeden önce bilgilendir. */
@@ -235,6 +243,14 @@ export class RegisterWizardComponent implements OnInit {
     this.teacherSchoolErrorRequested.set(false);
   }
 
+  /** Issue #1028: plan seçildi (deneme / demo ödeme) ya da Free ile geçildi → kayıt sonrası akış. */
+  onPlanChosen(): void {
+    const finish = this.finishRegistration;
+    this.finishRegistration = null;
+    this.planStep.set(false);
+    finish?.();
+  }
+
   /** Okul onayı bilgilendirmesinden sonra öğretmen akışına devam. */
   continueAfterPending() {
     this.redirectTo('/tests');
@@ -311,25 +327,34 @@ export class RegisterWizardComponent implements OnInit {
             /* ignore */
           }
         }
-        if (accountApprovalPending) {
-          // Issue #287: yeni öğretmen hesabı admin onayı bekler — teacher dashboard yerine başvuru durumu sayfası.
-          // Sunucu mesajı varsa o gösterilir; yoksa (eski sunucu) scope sözlüğündeki metin.
-          const serverMessage = val?.message?.trim();
-          if (serverMessage) {
-            this.notifyText(serverMessage);
-          } else {
-            this.notify('wizard.teacherAccountPending');
+        const finish = () => {
+          if (accountApprovalPending) {
+            // Issue #287: yeni öğretmen hesabı admin onayı bekler — teacher dashboard yerine başvuru durumu sayfası.
+            // Sunucu mesajı varsa o gösterilir; yoksa (eski sunucu) scope sözlüğündeki metin.
+            const serverMessage = val?.message?.trim();
+            if (serverMessage) {
+              this.notifyText(serverMessage);
+            } else {
+              this.notify('wizard.teacherAccountPending');
+            }
+            this.redirectTo(TEACHER_APPROVAL_PENDING_URL);
+            return;
           }
-          this.redirectTo(TEACHER_APPROVAL_PENDING_URL);
+          this.notify('wizard.success');
+          if (role === 'teacher' && val?.schoolApprovalPending) {
+            // Oturum kaydedildi; kullanıcı bilgilendirme kartını görüp "Devam et" ile ilerler.
+            this.schoolApprovalPending.set(true);
+            return;
+          }
+          this.redirectTo(role === 'parent' ? '/parent' : '/tests'); // issue #420: veli paneli
+        };
+        if (role === 'parent') {
+          finish();
           return;
         }
-        this.notify('wizard.success');
-        if (role === 'teacher' && val?.schoolApprovalPending) {
-          // Oturum kaydedildi; kullanıcı bilgilendirme kartını görüp "Devam et" ile ilerler.
-          this.schoolApprovalPending.set(true);
-          return;
-        }
-        this.redirectTo(role === 'parent' ? '/parent' : '/tests'); // issue #420: veli paneli
+        // Issue #1028: oturum yeni rolle kaydedildi; plan adımı bitince akış aynen sürer (tam sayfa yönlendirme dahil).
+        this.finishRegistration = finish;
+        this.planStep.set(true);
       },
       error: (err: unknown) => {
         this.isSubmitting.set(false);

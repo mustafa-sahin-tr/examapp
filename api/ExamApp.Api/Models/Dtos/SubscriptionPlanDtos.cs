@@ -48,6 +48,9 @@ public class CurrentSubscriptionPlanDto
     /// <summary>Atamanın bitişi (deneme / süreli plan); Free ve süresiz atamada null.</summary>
     public DateTime? ValidToUtc { get; set; }
 
+    /// <summary>#1028: deneme planı çağırana açık ve hesap daha önce deneme almadı.</summary>
+    public bool TrialAvailable { get; set; }
+
     public List<FeatureUsageDto> Features { get; set; } = new();
 }
 
@@ -60,4 +63,10 @@ public class FeatureUsageDto
     public int Used { get; set; }
     public int? Remaining { get; set; }
     public DateTime? ResetsAtUtc { get; set; }
+}
+
+/// <summary>Issue #1028: sahte ödeme isteği (gerçek ödeme yok).</summary>
+public class SubscriptionCheckoutDto
+{
+    public string PlanKey { get; set; } = string.Empty;
 }

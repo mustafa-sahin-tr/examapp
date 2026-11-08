@@ -1,0 +1,50 @@
+{
+  "title": "Choose your plan",
+  "changeTitle": "Change your plan",
+  "hint": "Start on the free plan and upgrade whenever you like.",
+  "loading": "Loading plans…",
+  "perMonth": "/ month",
+  "priceNote": "Prices are examples; no real payment is taken yet.",
+  "currentBadge": "Your plan",
+  "trialDays": "{{ days }} days free",
+  "trialUsed": "You have used your trial",
+  "plans": {
+    "free": "Free",
+    "trial": "Free trial",
+    "teacherPro": "Teacher Pro",
+    "studentPlus": "Student Plus"
+  },
+  "features": {
+    "book-import": "Book import",
+    "ai-classification": "AI classification",
+    "mock-exam": "Mock exams"
+  },
+  "limits": {
+    "unlimited": "Unlimited",
+    "none": "None",
+    "perMonth": "{{ count }} a month"
+  },
+  "actions": {
+    "continueFree": "Continue for free",
+    "startTrial": "Start trial",
+    "choose": "Choose",
+    "back": "Back",
+    "retry": "Try again"
+  },
+  "checkout": {
+    "demoTitle": "This is a demo checkout",
+    "demoBody": "No card details are asked and nothing is charged. Your plan starts right away.",
+    "validity": "The plan is valid for one month from today.",
+    "complete": "Complete payment (demo)"
+  },
+  "errors": {
+    "load": "Could not load plans.",
+    "trialUsed": "This account has already used its trial.",
+    "generic": "Could not complete the action. Please try again."
+  },
+  "page": {
+    "title": "My plan",
+    "subtitle": "Upgrade your plan or start a trial.",
+    "changed": "Your plan was updated: {{ plan }}."
+  }
+}

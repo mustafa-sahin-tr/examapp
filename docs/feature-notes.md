@@ -284,6 +284,14 @@ Kılavuz özeti ve beceri listesinin kaynağı `docs/context-based-questions.md`
   `GET /api/exam/subscription-plans` çağıranın rolüne uygun aktif planlar (`Any` + öğretmene Teacher, öğrenciye Student;
   Admin hepsi; veli yalnız `Any`), `GET /api/exam/subscription-plans/me` plan + `validToUtc` + `EntitlementFeatures.All` ve
   planın sınırladığı her özellik için bu ayki `allowed` / `limit` / `used` / `remaining` / `resetsAtUtc`.
+- **Plan seçimi (#1028):** kayıt sihirbazının (`ui` `/register`) öğrenci / öğretmen kaydından sonra 3. adımı plan kartlarıdır
+  (`PlanPickerComponent`, scope `subscription`); veli adımı atlar. "Ücretsiz devam et" API çağırmaz (Free). "Denemeyi başlat"
+  → `POST /api/exam/subscription-plans/me/trial`: hesap başına bir kez (silinmiş atamalar dahil; ikincisi 409
+  `subscription.trialUsed`), `TrialDays` sonra biter; `/me` `trialAvailable` döner, kart yalnız Free'deyken önerir. Ücretli plan →
+  açıkça "demo" işaretli ödeme ekranı (kart alanı yok) → `POST …/me/checkout { planKey }` şimdiden bir ay atar; Free / deneme /
+  rolüne kapalı plan 400 `subscription.planNotAvailable`. Atama öncekini kapatır (geçmiş kalır, `CreateUserId` = kullanıcı).
+  Plan adımı bitince önceki akış aynen sürer (onay bekleme sayfası / okul onayı kartı / tam sayfa yönlendirme). Sonradan
+  yükseltme: `/plans` (Teacher / Student / Admin; Planım #1029 buraya bağlanır).
 - **Genişletme (abonelik epic'i):** yeni özellik = `EntitlementFeatures`'a sabit + plan başına sınır satırı + kullanım anında
   `RecordUsageAsync`, karar anında `CheckAsync`. Yeni planlar (#1027) satır ekler; plan tablolarında özelliğe özgü mantık yok.
   Öğretmenin atadığı işin maliyeti öğretmenin kotasından (#1031): kayıt `userId` olarak öğretmeni yazar.

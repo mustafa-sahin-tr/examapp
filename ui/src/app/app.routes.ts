@@ -401,6 +401,13 @@ export const routes: Routes = [
         ],
       },
       {
+        // Issue #1028: kayıttaki plan adımı sonradan (yükseltme); Planım (#1029) buraya bağlanır.
+        path: 'plans',
+        canActivate: [authGuard, roleGuard('Teacher', 'Student', 'Admin')],
+        loadComponent: () =>
+          import('./pages/subscription-plans/subscription-plans.component').then((m) => m.SubscriptionPlansComponent),
+      },
+      {
         // Issue #417: öğretmen/admin Ayarlar sayfası (dil, hesap/şifre, öğretmen profili bağlantıları).
         // Öğrenci /student-profile'a yönlenir; onay bekleyen öğretmene de açık (approvedTeacherGuard yok).
         path: 'settings',

@@ -132,6 +132,41 @@ public sealed class EntitlementService : IEntitlementService
         return AssignPlanError.None;
     }
 
+    public Task<bool> HasUsedTrialAsync(int userId, CancellationToken ct = default) =>
+        _db.UserSubscriptionPlans.IgnoreQueryFilters().AsNoTracking()
+            .AnyAsync(a => a.UserId == userId && a.Plan.TrialDays != null, ct);
+
+    public async Task<SelfServicePlanError> StartTrialAsync(int userId, IReadOnlySet<SubscriptionPlanAudience> audiences,
+        CancellationToken ct = default)
+    {
+        var trial = await _db.SubscriptionPlans.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Key == SubscriptionPlan.TrialKey && p.IsActive && p.TrialDays != null, ct);
+        if (trial is null)
+            return SelfServicePlanError.UnknownPlan;
+        if (!audiences.Contains(trial.Audience))
+            return SelfServicePlanError.NotAvailable;
+        if (await HasUsedTrialAsync(userId, ct))
+            return SelfServicePlanError.TrialAlreadyUsed;
+
+        var now = _clock.GetUtcNow().UtcDateTime;
+        await AssignPlanAsync(userId, trial.Key, now, now.AddDays(trial.TrialDays!.Value), assignedByUserId: userId, ct);
+        return SelfServicePlanError.None;
+    }
+
+    public async Task<SelfServicePlanError> CheckoutAsync(int userId, string planKey, IReadOnlySet<SubscriptionPlanAudience> audiences,
+        CancellationToken ct = default)
+    {
+        var plan = await _db.SubscriptionPlans.AsNoTracking().FirstOrDefaultAsync(p => p.Key == planKey && p.IsActive, ct);
+        if (plan is null)
+            return SelfServicePlanError.UnknownPlan;
+        if (!audiences.Contains(plan.Audience) || plan.MonthlyPrice <= 0 || plan.TrialDays is not null)
+            return SelfServicePlanError.NotAvailable;
+
+        var now = _clock.GetUtcNow().UtcDateTime;
+        await AssignPlanAsync(userId, plan.Key, now, now.AddMonths(1), assignedByUserId: userId, ct);
+        return SelfServicePlanError.None;
+    }
+
     private static bool IsRoleUnlimited(EntitlementSubject subject, string featureKey) =>
         subject.IsAdmin
         || (EntitlementRoles.UnlimitedByFeature.TryGetValue(featureKey, out var roles) && roles.Any(subject.Roles.Contains));

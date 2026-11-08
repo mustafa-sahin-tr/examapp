@@ -22,6 +22,7 @@ import { signal } from '@angular/core';
 import { awaitingStatusOf } from '../../shared/testing/parent-status-testing';
 import registerTr from '../../../../public/i18n/register/tr.json';
 import registerEn from '../../../../public/i18n/register/en.json';
+import { SubscriptionService } from '../../services/subscription.service';
 
 const GRADES: Grade[] = [{ id: 10, name: '10. Sınıf' }];
 
@@ -45,6 +46,11 @@ describe('RegisterWizardComponent (Issue #234)', () => {
     let studentService: MockedObject<StudentService>;
     let router: MockedObject<Router>;
     let redirect: ReturnType<typeof vi.spyOn>;
+    // Issue #1028: kayıt sonrası plan adımı; seçici boş katalogla açılır.
+    const subscriptionService = {
+        plans: () => of([]),
+        current: () => of({ planKey: 'free', planName: 'Free', displayNameKey: 'subscription.plans.free', validToUtc: null, trialAvailable: true, features: [] }),
+    };
 
     function createComponent(role?: string): void {
         authService = {
@@ -101,6 +107,7 @@ describe('RegisterWizardComponent (Issue #234)', () => {
                     } },
                 { provide: SchoolService, useValue: { getSchools: () => of(SCHOOLS) } },
                 { provide: LocaleService, useValue: { localeDefinition: signal({ angularLocale: 'tr-TR' }) } },
+                { provide: SubscriptionService, useValue: subscriptionService },
                 provideNoopAnimations(),
             ],
         });
@@ -134,6 +141,7 @@ describe('RegisterWizardComponent (Issue #234)', () => {
 
         component.submit();
         await vi.runAllTimersAsync();
+        component.onPlanChosen(); // #1028: plan adımı Free ile geçilir
 
         expect(component.schoolApprovalPending()).toBe(true);
     });
@@ -232,6 +240,7 @@ describe('RegisterWizardComponent (Issue #234)', () => {
 
             component.submit();
             await vi.runAllTimersAsync();
+            component.onPlanChosen(); // #1028: plan adımı Free ile geçilir
 
             expect(notifyText).toHaveBeenCalledTimes(1);
 
@@ -254,6 +263,7 @@ describe('RegisterWizardComponent (Issue #234)', () => {
 
                 component.submit();
                 await vi.runAllTimersAsync();
+                component.onPlanChosen(); // #1028: plan adımı Free ile geçilir
 
                 expect(redirect).toHaveBeenCalledTimes(1);
 
@@ -304,6 +314,7 @@ describe('RegisterWizardComponent (Issue #234)', () => {
 
             component.submit();
             await vi.runAllTimersAsync();
+            component.onPlanChosen(); // #1028: plan adımı Free ile geçilir
 
             expect(redirect).toHaveBeenCalledTimes(1);
 
@@ -311,6 +322,56 @@ describe('RegisterWizardComponent (Issue #234)', () => {
         });
     });
     // ── Issue #277 (madde 6): okul serbest metin değil, listeden seçilir; backend `schoolId` okur ─────────────
+
+    // ── Issue #1028: kayıt sonrası plan adımı ───────────────────────────────
+
+    describe('plan step (issue #1028)', () => {
+        it('submit_StudentSuccess_ShowsPlanStepWithoutRedirect_ThenRedirectsAfterPlan', async () => {
+            createComponent('student');
+            fixture.detectChanges();
+            component.studentForm.setValue({ studentNumber: '123', schoolId: 7, gradeId: 10, ...PARENT_INPUT });
+            studentService.register.mockReturnValue(of({ accessToken: 'token', profileId: 9 }));
+
+            component.submit();
+            await vi.runAllTimersAsync();
+            fixture.detectChanges();
+
+            expect(component.step()).toBe(3);
+            expect(fixture.nativeElement.querySelector('app-plan-picker')).not.toBeNull();
+            expect(redirect).not.toHaveBeenCalled();
+
+            component.onPlanChosen();
+            expect(component.step()).toBe(2);
+            expect(redirect).toHaveBeenCalledWith('/tests');
+        });
+
+        it('submit_Parent_SkipsPlanStep', async () => {
+            createComponent('parent');
+            fixture.detectChanges();
+            const parentService = TestBed.inject(ParentService) as unknown as { register: ReturnType<typeof vi.fn> };
+            parentService.register.mockReturnValue(of({ accessToken: 'token' }));
+
+            component.submit();
+            await vi.runAllTimersAsync();
+
+            expect(component.planStep()).toBe(false);
+            expect(redirect).toHaveBeenCalledWith('/parent');
+        });
+
+        it('template_StepIndicator_ShowsPlanStepExceptForParent', () => {
+            createComponent('teacher');
+            fixture.detectChanges();
+            expect(fixture.nativeElement.querySelectorAll('.steps .step').length).toBe(3);
+            component.pickRole('parent');
+            fixture.detectChanges();
+            expect(fixture.nativeElement.querySelectorAll('.steps .step').length).toBe(2);
+        });
+
+        it('i18n_StepPlan_TrAndEn', () => {
+            expect(registerTr.wizard.stepPlan).toBeTruthy();
+            expect(registerEn.wizard.stepPlan).toBeTruthy();
+        });
+    });
 
     describe('school selection payload (issue #277)', () => {
         it('submit_Teacher_SendsSchoolIdAndIsIndependentTutor_WithoutSchoolName', () => {
@@ -663,6 +724,7 @@ describe('RegisterWizardComponent (Issue #234)', () => {
 
             component.submit();
             await vi.runAllTimersAsync();
+            component.onPlanChosen(); // #1028: plan adımı Free ile geçilir
 
             expect(TestBed.inject(ParentStatusStore).activationRestricted()).toBe(true);
             expect(redirect).toHaveBeenCalledWith('/tests');

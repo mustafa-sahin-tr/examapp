@@ -357,6 +357,9 @@ public class ApprovedTeacherAuthorizationTests : IDisposable
     {
         (typeof(TeacherController), nameof(TeacherController.GetTutorProfile)),
         (typeof(TeacherController), nameof(TeacherController.UpdateTutorProfile)),
+        // #1028: kayıt sihirbazının plan adımı onaydan önce gelir (onay bekleyen öğretmen de plan seçer).
+        (typeof(SubscriptionPlansController), nameof(SubscriptionPlansController.StartTrial)),
+        (typeof(SubscriptionPlansController), nameof(SubscriptionPlansController.Checkout)),
     };
 
     private static IEnumerable<AuthorizeAttribute> AuthorizeAttributesOf(MethodInfo action) =>

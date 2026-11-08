@@ -1,0 +1,25 @@
+// Issue #1028: plan değiştirme sayfası.
+.subscription-plans {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--ms-success-border);
+  background: var(--ms-success-surface-weak);
+  color: var(--ms-success-text);
+  font-family: var(--paragraphFontFamily);
+
+  p {
+    margin: 0;
+  }
+}

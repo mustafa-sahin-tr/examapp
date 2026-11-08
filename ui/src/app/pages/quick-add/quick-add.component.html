@@ -1,0 +1,133 @@
+<div class="qa-page" *transloco="let t; prefix: 'quick-add'">
+  <app-page-header [title]="t('title')" [description]="t('subtitle')" icon="add_a_photo" />
+
+  @if (quota(); as q) {
+  @if (q.limit != null) {
+  <p class="qa-quota" [class.qa-quota--blocked]="quotaBlocked()" role="status">
+    <mat-icon aria-hidden="true">photo_library</mat-icon>
+    {{ quotaBlocked() ? t('quotaBlocked') : t('quota', { used: q.used, limit: q.limit }) }}
+  </p>
+  }
+  }
+
+  <section class="qa-form" [attr.aria-label]="t('title')">
+    <div class="qa-form__selects">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>{{ t('form.grade') }}</mat-label>
+        <mat-select [formControl]="gradeId" required>
+          @for (grade of grades(); track grade.id) {
+          <mat-option [value]="grade.id">{{ grade.name }}</mat-option>
+          }
+        </mat-select>
+        @if (gradeId.invalid && (gradeId.touched || submitted())) {
+        <mat-error>{{ t('errors.invalidGrade') }}</mat-error>
+        }
+      </mat-form-field>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>{{ t('form.subject') }}</mat-label>
+        <mat-select [formControl]="subjectId">
+          <mat-option [value]="null">{{ t('form.anySubject') }}</mat-option>
+          @for (subject of subjects(); track subject.id) {
+          <mat-option [value]="subject.id">{{ subject.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    @if (photos().length > 0) {
+    <ol class="qa-photos">
+      @for (photo of photos(); track photo.id; let i = $index) {
+      <li class="qa-photo" [class.qa-photo--error]="submitError()?.photo === i + 1">
+        <img class="qa-photo__thumb" [src]="photo.url" [alt]="t('form.photo', { n: i + 1 })" />
+        <div class="qa-photo__body">
+          <div class="qa-photo__head">
+            <span class="qa-photo__name">{{ t('form.photo', { n: i + 1 }) }}</span>
+            <button mat-icon-button type="button" class="qa-photo__remove" [disabled]="uploading()"
+              [attr.aria-label]="t('form.remove', { n: i + 1 })" (click)="removePhoto(photo.id)">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="qa-photo__answers">
+            <mat-label>{{ t('form.answers') }}</mat-label>
+            <input matInput [value]="photo.answers" [placeholder]="t('form.answersPlaceholder')" autocapitalize="characters"
+              autocomplete="off" spellcheck="false" maxlength="400" [disabled]="uploading()"
+              (input)="setAnswers(photo.id, $any($event.target).value)" />
+            <mat-hint>{{ t('form.answersHint') }}</mat-hint>
+          </mat-form-field>
+        </div>
+      </li>
+      }
+    </ol>
+    }
+
+    @if (canAddMore()) {
+    <label class="qa-picker" [class.qa-picker--compact]="photos().length > 0">
+      <input class="cdk-visually-hidden" type="file" accept="image/*" capture="environment" multiple
+        (change)="onFileInput($event)" />
+      <mat-icon aria-hidden="true">{{ photos().length > 0 ? 'add_photo_alternate' : 'photo_camera' }}</mat-icon>
+      <span class="qa-picker__label">{{ photos().length > 0 ? t('form.pickMore') : t('form.pick') }}</span>
+      @if (photos().length === 0) {
+      <span class="qa-picker__hint">{{ t('form.pickHint') }}</span>
+      }
+    </label>
+    }
+
+    @for (error of pickErrors(); track $index) {
+    <p class="qa-error" role="alert">{{ t('errors.' + error.key, { name: error.name }) }}</p>
+    }
+    @if (submitted() && photos().length === 0) {
+    <p class="qa-error" role="alert">{{ t('form.noPhotos') }}</p>
+    }
+    @if (overQuota()) {
+    <p class="qa-warning" role="status">{{ t('quotaShort', { remaining: remaining() }) }}</p>
+    }
+    @if (submitError(); as error) {
+    <p class="qa-error" role="alert">{{ t(errorKey(error.code), { photo: error.photo }) }}</p>
+    }
+
+    @if (uploading()) {
+    <div class="qa-upload" role="status">
+      <mat-progress-bar mode="determinate" [value]="uploadPercent()" [attr.aria-label]="t('form.uploading', { percent: uploadPercent() })"></mat-progress-bar>
+      <span>{{ t('form.uploading', { percent: uploadPercent() }) }}</span>
+    </div>
+    }
+
+    <button mat-flat-button type="button" class="qa-submit" [disabled]="uploading()" (click)="submit()">
+      <mat-icon aria-hidden="true">cloud_upload</mat-icon>
+      {{ photos().length > 1 ? t('form.submitCount', { count: photos().length }) : t('form.submit') }}
+    </button>
+  </section>
+
+  <section class="qa-list" [attr.aria-label]="t('list.title')">
+    <h2 class="qa-section-title">{{ t('list.title') }}</h2>
+    @if (loading()) {
+    <div class="qa-state" role="status"><mat-spinner diameter="24" aria-hidden="true"></mat-spinner>{{ t('list.loading') }}</div>
+    } @else if (loadError()) {
+    <div class="qa-state qa-state--error" role="alert">
+      <mat-icon aria-hidden="true">error_outline</mat-icon>{{ t('list.loadFailed') }}
+      <button mat-stroked-button type="button" (click)="load()">{{ t('detail.retry') }}</button>
+    </div>
+    } @else if (jobs().length === 0) {
+    <p class="qa-state qa-state--empty">{{ t('list.empty') }}</p>
+    } @else {
+    <ul class="qa-jobs">
+      @for (job of jobs(); track job.id) {
+      <li>
+        <a class="qa-job" [routerLink]="['/quick-add', job.id]">
+          <span class="qa-job__main">
+            <span class="qa-job__date">{{ job.createdAt | date: 'd MMM HH:mm' }}</span>
+            <span class="qa-job__meta">{{ t('list.photos', { count: job.pageCount ?? 0 }) }}</span>
+          </span>
+          @if (phase(job) === 'processing') {
+          <mat-progress-bar class="qa-job__progress" mode="determinate" [value]="progress(job)"
+            [attr.aria-label]="t('phase.processing')"></mat-progress-bar>
+          }
+          <span class="qa-status qa-status--{{ phase(job) }}">{{ t('phase.' + phase(job)) }}</span>
+          <mat-icon class="qa-job__chevron" aria-hidden="true">chevron_right</mat-icon>
+        </a>
+      </li>
+      }
+    </ul>
+    }
+  </section>
+</div>

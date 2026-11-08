@@ -4,4 +4,16 @@
   gap: 16px;
   padding: 24px;
   // #833: başlık görünümü .ms-page-title / .ms-page-subtitle'dan.
+
+  &__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  &__quick-add {
+    min-height: 44px;
+  }
 }

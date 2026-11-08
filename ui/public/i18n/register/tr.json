@@ -53,6 +53,7 @@
   "wizard": {
     "stepRole": "1 · Rol Seçimi",
     "stepDetails": "2 · Bilgiler",
+    "stepPlan": "Plan",
     "roleQuestion": "Nasıl devam etmek istersiniz?",
     "roleHint": "Hesabınızın rolünü seçin.",
     "studentTitle": "Öğrenci Bilgileri",

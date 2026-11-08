@@ -1,0 +1,50 @@
+{
+  "title": "Planını seç",
+  "changeTitle": "Planını değiştir",
+  "hint": "Ücretsiz planla başlayabilir, istediğin zaman yükseltebilirsin.",
+  "loading": "Planlar yükleniyor…",
+  "perMonth": "/ ay",
+  "priceNote": "Fiyatlar örnektir; şu an gerçek ödeme alınmıyor.",
+  "currentBadge": "Mevcut planın",
+  "trialDays": "{{ days }} gün ücretsiz",
+  "trialUsed": "Deneme hakkını kullandın",
+  "plans": {
+    "free": "Ücretsiz",
+    "trial": "Ücretsiz deneme",
+    "teacherPro": "Öğretmen Pro",
+    "studentPlus": "Öğrenci Plus"
+  },
+  "features": {
+    "book-import": "Kitaptan aktarım",
+    "ai-classification": "Yapay zekâ ile sınıflandırma",
+    "mock-exam": "Deneme sınavı"
+  },
+  "limits": {
+    "unlimited": "Sınırsız",
+    "none": "Yok",
+    "perMonth": "Ayda {{ count }}"
+  },
+  "actions": {
+    "continueFree": "Ücretsiz devam et",
+    "startTrial": "Denemeyi başlat",
+    "choose": "Seç",
+    "back": "Geri",
+    "retry": "Tekrar dene"
+  },
+  "checkout": {
+    "demoTitle": "Bu bir demo ödeme ekranıdır",
+    "demoBody": "Kart bilgisi istenmez ve ücret alınmaz. Planın hemen etkinleşir.",
+    "validity": "Plan bugünden itibaren bir ay geçerlidir.",
+    "complete": "Ödemeyi tamamla (demo)"
+  },
+  "errors": {
+    "load": "Planlar yüklenemedi.",
+    "trialUsed": "Bu hesap deneme hakkını daha önce kullandı.",
+    "generic": "İşlem tamamlanamadı. Lütfen tekrar dene."
+  },
+  "page": {
+    "title": "Planım",
+    "subtitle": "Planını yükselt ya da deneme başlat.",
+    "changed": "Planın güncellendi: {{ plan }}."
+  }
+}

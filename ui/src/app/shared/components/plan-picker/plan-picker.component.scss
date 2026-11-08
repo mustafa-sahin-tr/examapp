@@ -1,0 +1,168 @@
+// Issue #1028: plan kartları ve sahte ödeme ekranı (kayıt sihirbazı + Planım).
+:host {
+  display: block;
+}
+
+.plan-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  h2 {
+    margin: 0;
+    font-family: var(--mainFontFamily);
+    color: var(--ms-text-strong);
+  }
+}
+
+.hint,
+.price-note,
+.muted {
+  margin: 0;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text-medium);
+}
+
+.price-note {
+  font-size: 13px;
+}
+
+.error {
+  margin: 0;
+  color: var(--ms-danger-text-medium);
+}
+
+.plan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.plan-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--ms-border);
+  border-radius: 12px;
+  background: var(--ms-surface);
+
+  &--current {
+    border-color: var(--primaryColor);
+    border-width: 2px;
+  }
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  h3 {
+    margin: 0;
+    padding: 0; // global h3 sol boşluğu kartta hizayı bozuyor
+    font-family: var(--mainFontFamily);
+    font-size: 18px;
+  }
+}
+
+.plan-card__badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: var(--ms-success-surface-weak);
+  color: var(--ms-success-text);
+}
+
+.price {
+  margin: 0;
+  font-family: var(--mainFontFamily);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--ms-text-strong);
+
+  span {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--ms-text-medium);
+  }
+}
+
+.limits {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: var(--paragraphFontFamily);
+  font-size: 14px;
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  strong {
+    white-space: nowrap;
+  }
+}
+
+.card-action {
+  margin-top: auto;
+  padding-top: 8px;
+
+  button {
+    width: 100%;
+  }
+}
+
+.checkout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--ms-info-border);
+  background: var(--ms-info-surface-weak);
+  color: var(--ms-info-text-weak);
+  font-family: var(--paragraphFontFamily);
+
+  mat-icon {
+    flex: 0 0 auto;
+    color: var(--ms-info-text-medium);
+  }
+
+  strong {
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  p {
+    margin: 0;
+  }
+
+  &--error {
+    border-color: var(--ms-danger-border);
+    background: var(--ms-danger-surface-weak);
+    color: var(--ms-danger-text-medium);
+
+    mat-icon {
+      color: var(--ms-danger-text-medium);
+    }
+  }
+}

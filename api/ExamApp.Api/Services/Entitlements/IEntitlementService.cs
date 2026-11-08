@@ -4,6 +4,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
+using ExamApp.Api.Data;
 
 namespace ExamApp.Api.Services.Entitlements;
 
@@ -73,6 +74,17 @@ public enum AssignPlanError
     InvalidRange,
 }
 
+/// <summary>Kullanıcının kendi başlattığı plan değişikliğinin sonucu (#1028).</summary>
+public enum SelfServicePlanError
+{
+    None,
+    UnknownPlan,
+
+    /// <summary>Plan çağıranın rolüne açık değil ya da bu yolla alınamaz (ör. Free / deneme ödeme ile alınmaz).</summary>
+    NotAvailable,
+    TrialAlreadyUsed,
+}
+
 /// <summary>
 /// Issue #1019: plan / hak kontrolünün tek giriş noktası. Ataması olmayan kullanıcı Free'ye çözülür; Admin her özellikte, rol
 /// muafiyeti olan kullanıcı ilgili özellikte sınırsızdır. Sayaç UTC takvim ayıdır.
@@ -89,4 +101,20 @@ public interface IEntitlementService
     /// <summary>Kullanıcıya plan atar; açık atamayı yeni atamanın başında kapatır (hesap başına tek plan).</summary>
     Task<AssignPlanError> AssignPlanAsync(int userId, string planKey, DateTime? validFromUtc, DateTime? validToUtc,
         int assignedByUserId, CancellationToken ct = default);
+
+    /// <summary>Kullanıcı daha önce (silinmiş atamalar dahil) deneme planı aldıysa true.</summary>
+    Task<bool> HasUsedTrialAsync(int userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// #1028: deneme planını şimdi başlatır, <c>TrialDays</c> sonra biter. Hesap başına bir kez; deneme <paramref name="audiences"/>
+    /// içinde olmalı.
+    /// </summary>
+    Task<SelfServicePlanError> StartTrialAsync(int userId, IReadOnlySet<SubscriptionPlanAudience> audiences,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// #1028 sahte ödeme: ücretli planı (fiyatı > 0, deneme değil) şimdiden bir ay geçerli atar. Gerçek ödeme yoktur.
+    /// </summary>
+    Task<SelfServicePlanError> CheckoutAsync(int userId, string planKey, IReadOnlySet<SubscriptionPlanAudience> audiences,
+        CancellationToken ct = default);
 }

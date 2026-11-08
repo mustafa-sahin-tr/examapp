@@ -1,0 +1,109 @@
+<section class="plan-picker" *transloco="let t; prefix: 'subscription'">
+  @if (loading()) {
+    <p class="hint" role="status">{{ t('loading') }}</p>
+  } @else if (loadError()) {
+    <div class="notice notice--error" role="alert">
+      <mat-icon aria-hidden="true">error_outline</mat-icon>
+      <p>{{ t('errors.load') }}</p>
+    </div>
+    <div class="actions">
+      @if (mode() === 'signup') {
+        <button mat-button type="button" (click)="continueFree()">{{ t('actions.continueFree') }}</button>
+      }
+      <button mat-raised-button color="primary" type="button" (click)="load()">{{ t('actions.retry') }}</button>
+    </div>
+  } @else if (checkoutPlan(); as plan) {
+    <div class="checkout" data-testid="checkout">
+      <div class="notice notice--info" role="note">
+        <mat-icon aria-hidden="true">science</mat-icon>
+        <div>
+          <strong>{{ t('checkout.demoTitle') }}</strong>
+          <p>{{ t('checkout.demoBody') }}</p>
+        </div>
+      </div>
+      <h2>{{ t(nameKey(plan)) }}</h2>
+      <p class="price">
+        {{ plan.monthlyPrice | currency: plan.currency : 'symbol' : '1.0-0' }} <span>{{ t('perMonth') }}</span>
+      </p>
+      <p class="hint">{{ t('checkout.validity') }}</p>
+      @if (actionError(); as error) {
+        <p class="error" role="alert">{{ t(error) }}</p>
+      }
+      <div class="actions">
+        <button mat-button type="button" (click)="closeCheckout()" [disabled]="busy()">{{ t('actions.back') }}</button>
+        <button mat-raised-button color="primary" type="button" data-testid="complete-checkout" (click)="completeCheckout()" [disabled]="busy()">
+          {{ t('checkout.complete') }}
+        </button>
+      </div>
+    </div>
+  } @else {
+    <h2>{{ t(mode() === 'signup' ? 'title' : 'changeTitle') }}</h2>
+    <p class="hint">{{ t('hint') }}</p>
+    @if (actionError(); as error) {
+      <p class="error" role="alert">{{ t(error) }}</p>
+    }
+    <div class="plan-grid">
+      @for (plan of plans(); track plan.key) {
+        @let action = actionOf(plan);
+        <article class="plan-card" [class.plan-card--current]="mode() === 'change' && plan.key === currentKey()" [attr.data-plan]="plan.key">
+          <div class="plan-card__head">
+            <h3>{{ t(nameKey(plan)) }}</h3>
+            @if (mode() === 'change' && plan.key === currentKey()) {
+              <span class="plan-card__badge">{{ t('currentBadge') }}</span>
+            }
+          </div>
+          <p class="price">
+            {{ plan.monthlyPrice | currency: plan.currency : 'symbol' : '1.0-0' }} <span>{{ t('perMonth') }}</span>
+          </p>
+          @if (plan.trialDays) {
+            <p class="hint">{{ t('trialDays', { days: plan.trialDays }) }}</p>
+          }
+          <ul class="limits">
+            @for (feature of featuresOf(plan); track feature.key) {
+              <li>
+                <span>{{ t('features.' + feature.key) }}</span>
+                <strong>
+                  @if (feature.limit === null) {
+                    {{ t('limits.unlimited') }}
+                  } @else if (feature.limit === 0) {
+                    {{ t('limits.none') }}
+                  } @else {
+                    {{ t('limits.perMonth', { count: feature.limit }) }}
+                  }
+                </strong>
+              </li>
+            }
+          </ul>
+          <div class="card-action">
+            @switch (action) {
+              @case ('free') {
+                @if (mode() === 'signup') {
+                  <button mat-stroked-button type="button" (click)="continueFree()" [disabled]="busy()">
+                    {{ t('actions.continueFree') }}
+                  </button>
+                }
+              }
+              @case ('trial') {
+                @if (current()?.trialAvailable && currentKey() === freeKey) {
+                  <button mat-stroked-button color="primary" type="button" (click)="startTrial()" [disabled]="busy()">
+                    {{ t('actions.startTrial') }}
+                  </button>
+                } @else if (!current()?.trialAvailable) {
+                  <span class="muted">{{ t('trialUsed') }}</span>
+                }
+              }
+              @case ('paid') {
+                @if (!(mode() === 'change' && plan.key === currentKey())) {
+                  <button mat-raised-button color="primary" type="button" (click)="openCheckout(plan)" [disabled]="busy()">
+                    {{ t('actions.choose') }}
+                  </button>
+                }
+              }
+            }
+          </div>
+        </article>
+      }
+    </div>
+    <p class="price-note">{{ t('priceNote') }}</p>
+  }
+</section>

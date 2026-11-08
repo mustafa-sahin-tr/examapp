@@ -53,6 +53,7 @@
   "wizard": {
     "stepRole": "1 · Role",
     "stepDetails": "2 · Details",
+    "stepPlan": "Plan",
     "roleQuestion": "How would you like to continue?",
     "roleHint": "Choose the role for your account.",
     "studentTitle": "Student Details",

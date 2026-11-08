@@ -15,7 +15,7 @@ namespace ExamApp.Api.Tests.Controllers;
 
 /// <summary>
 /// Issue #1027: MVP plan kataloğu seed'i, rolüne göre süzülen plan listesi ve oturumdaki kullanıcının planı + kullanımı
-/// (ataması olmayan kullanıcı Free, Admin sınırsız).
+/// (ataması olmayan kullanıcı Free, Admin sınırsız). #1028: deneme bir kez, sahte ödeme, atamanın yer değiştirmesi.
 /// </summary>
 public class SubscriptionPlansControllerTests : IDisposable
 {
@@ -123,6 +123,80 @@ public class SubscriptionPlansControllerTests : IDisposable
         me.Features.ShouldAllBe(f => f.Allowed && f.Limit == null && f.ResetsAtUtc == null);
     }
 
+    [Fact]
+    public async Task Trial_starts_once_with_an_end_date_and_is_not_offered_again()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            var controller = NewController(ctx, "Teacher");
+            (await controller.Current(CancellationToken.None)).Value!.TrialAvailable.ShouldBeTrue();
+
+            var me = (await controller.StartTrial(CancellationToken.None)).Value!;
+
+            me.PlanKey.ShouldBe(SubscriptionPlan.TrialKey);
+            me.ValidToUtc.ShouldBe(_clock.Now.AddDays(SubscriptionPlanSeed.DefaultTrialDays));
+            me.TrialAvailable.ShouldBeFalse();
+        }
+
+        // Admin başka plana geçirse (deneme ataması silinse) bile ikinci deneme yok.
+        await using (var ctx = _db.NewContext())
+            await new EntitlementService(ctx, _clock).AssignPlanAsync(UserId, SubscriptionPlan.TeacherProKey, _clock.Now, null, 1);
+
+        await using var again = _db.NewContext();
+        var result = await NewController(again, "Teacher").StartTrial(CancellationToken.None);
+        result.Result.ShouldBeOfType<ConflictObjectResult>();
+        (await again.UserSubscriptionPlans.IgnoreQueryFilters().CountAsync(a => a.UserId == UserId)).ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task Checkout_assigns_a_paid_plan_for_one_month_and_closes_the_previous_one()
+    {
+        await using (var ctx = _db.NewContext())
+            await NewController(ctx, "Teacher").StartTrial(CancellationToken.None);
+        _clock.Now = _clock.Now.AddDays(3);
+
+        await using (var ctx = _db.NewContext())
+        {
+            var me = (await NewController(ctx, "Teacher")
+                .Checkout(new SubscriptionCheckoutDto { PlanKey = SubscriptionPlan.TeacherProKey }, CancellationToken.None)).Value!;
+
+            me.PlanKey.ShouldBe(SubscriptionPlan.TeacherProKey);
+            me.ValidToUtc.ShouldBe(_clock.Now.AddMonths(1));
+            me.Features.Single(f => f.FeatureKey == EntitlementFeatures.BookImport).Limit.ShouldBe(10);
+        }
+
+        await using var read = _db.NewContext();
+        var history = await read.UserSubscriptionPlans.Include(a => a.Plan).Where(a => a.UserId == UserId)
+            .OrderBy(a => a.ValidFromUtc).ToListAsync();
+        history.Select(a => a.Plan.Key).ShouldBe([SubscriptionPlan.TrialKey, SubscriptionPlan.TeacherProKey]);
+        history[0].ValidToUtc.ShouldBe(_clock.Now);
+        history[1].CreateUserId.ShouldBe(UserId);
+    }
+
+    [Theory]
+    [InlineData("Student", "teacher-pro")]
+    [InlineData("Teacher", "free")]
+    [InlineData("Teacher", "trial")]
+    public async Task Checkout_rejects_plans_not_sold_to_the_caller(string role, string planKey)
+    {
+        await using var ctx = _db.NewContext();
+
+        var result = await NewController(ctx, role).Checkout(new SubscriptionCheckoutDto { PlanKey = planKey }, CancellationToken.None);
+
+        result.Result.ShouldBeOfType<BadRequestObjectResult>();
+        (await ctx.UserSubscriptionPlans.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Checkout_rejects_unknown_plan()
+    {
+        await using var ctx = _db.NewContext();
+
+        var result = await NewController(ctx, "Teacher").Checkout(new SubscriptionCheckoutDto { PlanKey = "nope" }, CancellationToken.None);
+
+        result.Result.ShouldBeOfType<BadRequestObjectResult>();
+    }
+
     private static Dictionary<string, int?> Limits(IEnumerable<SubscriptionPlanDto> plans, string key) =>
         plans.Single(p => p.Key == key).MonthlyLimits;
 
@@ -156,7 +230,7 @@ public class SubscriptionPlansControllerTests : IDisposable
 
     private sealed class FixedClock(DateTime now) : TimeProvider
     {
-        public DateTime Now { get; } = now;
+        public DateTime Now { get; set; } = now;
         public override DateTimeOffset GetUtcNow() => new(Now, TimeSpan.Zero);
     }
 }

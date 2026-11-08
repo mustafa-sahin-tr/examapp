@@ -71,7 +71,8 @@ public sealed record BookImportReviewFlag(
 /// testler yeniden çalışmada atlanır, yarıda kalan test baştan alınır (kaydedilmiş sorular kırpma tekrarı olarak sayılır).
 /// </summary>
 internal sealed class BookQuestionImportStage(
-    AppDbContext db, IMinIoService minio, ILabelingService labeling, IServiceScopeFactory scopes, string detectModel, ILogger logger)
+    AppDbContext db, IMinIoService minio, ILabelingService labeling, IServiceScopeFactory scopes, BookImportBudget budget,
+    string detectModel, ILogger logger)
 {
     internal const int ExpectedOptions = 4;
 
@@ -98,17 +99,20 @@ internal sealed class BookQuestionImportStage(
             test.Status = BookImportTestStatus.Running;
             test.Error = null;
             await db.SaveChangesAsync(ct);
+            budget.Stage = BookImportStage.Questions;
+            budget.TestId = test.Id;
             try
             {
                 await ImportTestAsync(job, bookId, test, pages, ct);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex) when (ex is not (OperationCanceledException or BookImportPause))
             {
                 logger.LogError(ex, "Book import job {JobId}: test {Order} failed", job.Id, test.Order);
                 test.Status = BookImportTestStatus.Failed;
                 test.Error = Truncate(ex.Message);
             }
             job.StageProcessed++;
+            await budget.FlushAsync();
             await db.SaveChangesAsync(CancellationToken.None);
         }
     }
@@ -141,7 +145,7 @@ internal sealed class BookQuestionImportStage(
             try
             {
                 var imageBase64 = await LoadAsync(page);
-                var detection = await DetectAsync(job, imageBase64, ct);
+                var detection = await DetectAsync(imageBase64, ct);
                 var questions = BookQuestionLayout.MergeSplit(
                     BookQuestionLayout.Order(ToLayout(detection.Response.Result.Predictions), page.Width), page.Width, page.Height);
                 detected.Add(new DetectedPage(filePage, page, imageBase64, questions));
@@ -324,18 +328,23 @@ internal sealed class BookQuestionImportStage(
         return result;
     }
 
-    private async Task<LabelingImportDetection> DetectAsync(BookImportJob job, string imageBase64, CancellationToken ct)
+    /// <summary>
+    /// Issue #1024: önce bütçe ve tavan (doluysa <see cref="BookImportPause"/>; önbellekteki sayfa da bekler, devamda ücretsizdir),
+    /// sonra tespit; ödenen tutar testin maliyetine yazılır.
+    /// </summary>
+    private async Task<LabelingImportDetection> DetectAsync(string imageBase64, CancellationToken ct)
     {
+        await budget.EnsureAsync(ct);
         try
         {
             var detection = await labeling.DetectForImportAsync(imageBase64, detectModel, ct);
-            job.AiCostUsd += detection.CostUsd;
+            budget.Record(detectModel, detection.Usage, detection.CostUsd);
             return detection;
         }
         catch (LabelingImportDetectException failed)
         {
             // Kullanılamayan yanıtın token'ı da ödendi.
-            job.AiCostUsd += failed.CostUsd;
+            budget.Record(detectModel, failed.Usage, failed.CostUsd);
             throw;
         }
     }

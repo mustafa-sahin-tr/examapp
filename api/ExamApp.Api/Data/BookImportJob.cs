@@ -15,6 +15,10 @@ public enum BookImportJobStatus
     Completed = 5,
     Failed = 6,
     Cancelled = 7,
+    /// <summary>Issue #1024: günlük Claude bütçesi doldu; iş bütçe açılınca kendiliğinden devam eder (<see cref="BookImportJob.ResumeAt"/>).</summary>
+    AwaitingBudget = 8,
+    /// <summary>Issue #1024: işin maliyet tavanı aşıldı; Admin "Devam et" diyene kadar bekler.</summary>
+    AwaitingCostApproval = 9,
 }
 
 /// <summary>Issue #1018: aşama sırası takip ekranındaki adımlarla aynıdır (#1017 maketi).</summary>
@@ -110,9 +114,21 @@ public class BookImportJob : BaseEntity
     [Column(TypeName = "numeric(10,4)")]
     public decimal AiCostUsd { get; set; }
 
+    /// <summary>
+    /// Issue #1024: işin maliyet tavanı (USD); null → <c>BookImport:MaxJobCostUsd</c> (0 / boş: tavan yok). Admin tavanı aşan işi
+    /// sürdürünce <see cref="AiCostUsd"/> + yapılandırılan tavana yükselir.
+    /// </summary>
+    [Column(TypeName = "numeric(10,4)")]
+    public decimal? CostCeilingUsd { get; set; }
+
+    /// <summary>Issue #1024: bütçe beklenirken işin yeniden deneneceği zaman.</summary>
+    public DateTime? ResumeAt { get; set; }
+
     public ICollection<BookImportJobTest> Tests { get; set; } = new List<BookImportJobTest>();
 
     public ICollection<BookImportPage> Pages { get; set; } = new List<BookImportPage>();
+
+    public ICollection<BookImportCost> Costs { get; set; } = new List<BookImportCost>();
 }
 
 /// <summary>Issue #1018: aktarım işindeki bir kitap testinin durumu (takip ekranındaki test ızgarası).</summary>
@@ -199,6 +215,35 @@ public class BookImportJobTest : BaseEntity
 
     [MaxLength(BookImportJob.MaxMessageLength)]
     public string? Error { get; set; }
+}
+
+/// <summary>
+/// Issue #1024: aktarımın bir Claude çağrısının maliyeti (önbellekten dönenler yazılmaz). Takip ekranı Admin'e aşama, test ve
+/// model bazında toplar; <see cref="BookImportJob.AiCostUsd"/> bu satırların toplamıdır.
+/// </summary>
+public class BookImportCost
+{
+    public const int MaxModelLength = 100;
+
+    public long Id { get; set; }
+    public Guid JobId { get; set; }
+    public BookImportJob Job { get; set; } = null!;
+
+    public BookImportStage Stage { get; set; }
+
+    /// <summary>Soru aktarımında çağrının testi (<see cref="BookImportJobTest.Id"/>); kurulumda null.</summary>
+    public int? TestId { get; set; }
+
+    [Required, MaxLength(MaxModelLength)]
+    public string ModelId { get; set; } = string.Empty;
+
+    public long InputTokens { get; set; }
+    public long OutputTokens { get; set; }
+
+    [Column(TypeName = "numeric(10,6)")]
+    public decimal CostUsd { get; set; }
+
+    public DateTime CreatedAt { get; set; }
 }
 
 /// <summary>

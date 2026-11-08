@@ -40,6 +40,14 @@ public enum StartBookImportError
 
 public sealed record StartBookImportResult(BookImportJobDto? Job, StartBookImportError Error, EntitlementCheck? Quota = null);
 
+/// <summary>Issue #1024: tavanda bekleyen işi sürdürme sonucu.</summary>
+public enum ContinueBookImportResult
+{
+    Continued,
+    NotFound,
+    InvalidState,
+}
+
 public interface IBookImportService
 {
     Task<StartBookImportResult> StartAsync(BookImportOwner owner, StartBookImportRequest request, CancellationToken ct);
@@ -61,6 +69,12 @@ public interface IBookImportService
 
     /// <summary>Kurulumu onaylar (#1021): hak düşer, kitap kaydı yazılır, iş soru aktarımı için kuyruğa girer.</summary>
     Task<ConfirmSetupResult> ConfirmSetupAsync(BookImportOwner owner, Guid id, ConfirmBookImportSetupDto request, CancellationToken ct);
+
+    /// <summary>
+    /// Issue #1024: Admin — maliyet tavanında bekleyen işi sürdürür; tavan şimdiki maliyet + <c>BookImport:MaxJobCostUsd</c> olur
+    /// (yapılandırma boşsa tavan kalkar) ve iş yeniden kuyruğa girer.
+    /// </summary>
+    Task<ContinueBookImportResult> ContinueAsync(BookImportOwner owner, Guid id, CancellationToken ct);
 
     /// <summary>Onay bekleyen işi iptal eder (#1021 "anahtar yok → iptal"); diğer durumlar #1025.</summary>
     Task<CancelBookImportResult> CancelAsync(BookImportOwner owner, Guid id, CancellationToken ct);
@@ -98,6 +112,7 @@ public sealed partial class BookImportService : IBookImportService
     private readonly IEntitlementService _entitlements;
     private readonly IBookRegistryService _books;
     private readonly long _maxUploadBytes;
+    private readonly decimal? _maxJobCostUsd;
 
     public BookImportService(AppDbContext db, IMinIoService minio, IBackgroundJobClient jobs, IEntitlementService entitlements,
         IBookRegistryService books, IConfiguration configuration)
@@ -109,6 +124,7 @@ public sealed partial class BookImportService : IBookImportService
         _books = books;
         var configured = configuration.GetValue<long?>("BookImport:MaxUploadBytes") ?? MaxUploadBytesCeiling;
         _maxUploadBytes = Math.Clamp(configured, 1, MaxUploadBytesCeiling);
+        _maxJobCostUsd = BookImportJobRunner.MaxJobCost(configuration);
     }
 
     public async Task<StartBookImportResult> StartAsync(BookImportOwner owner, StartBookImportRequest request, CancellationToken ct)
@@ -170,7 +186,13 @@ public sealed partial class BookImportService : IBookImportService
             .Take(take)
             .AsNoTracking()
             .ToListAsync(ct);
-        return jobs.Select(ToDto).ToList();
+        return jobs.Select(job =>
+        {
+            var dto = ToDto(job);
+            if (owner.IsAdmin)
+                FillCost(dto, job);
+            return dto;
+        }).ToList();
     }
 
     public async Task<BookImportJobDetailDto?> GetAsync(BookImportOwner owner, Guid id, CancellationToken ct)
@@ -186,6 +208,26 @@ public sealed partial class BookImportService : IBookImportService
 
         var detail = new BookImportJobDetailDto();
         Fill(detail, job);
+        var testCosts = new Dictionary<int, decimal>();
+        if (owner.IsAdmin)
+        {
+            FillCost(detail, job);
+            var costs = await _db.BookImportCosts.AsNoTracking().Where(c => c.JobId == id)
+                .GroupBy(c => new { c.Stage, c.TestId, c.ModelId })
+                .Select(g => new
+                {
+                    g.Key.Stage, g.Key.TestId, g.Key.ModelId, Calls = g.Count(), Input = g.Sum(c => c.InputTokens),
+                    Output = g.Sum(c => c.OutputTokens), Usd = g.Sum(c => c.CostUsd),
+                })
+                .ToListAsync(ct);
+            detail.Costs = costs.GroupBy(c => new { c.Stage, c.ModelId }).OrderBy(g => g.Key.Stage).ThenBy(g => g.Key.ModelId)
+                .Select(g => new BookImportCostDto
+                {
+                    Stage = g.Key.Stage.ToString(), ModelId = g.Key.ModelId, Calls = g.Sum(c => c.Calls),
+                    InputTokens = g.Sum(c => c.Input), OutputTokens = g.Sum(c => c.Output), CostUsd = g.Sum(c => c.Usd),
+                }).ToList();
+            testCosts = costs.Where(c => c.TestId is not null).GroupBy(c => c.TestId!.Value).ToDictionary(g => g.Key, g => g.Sum(c => c.Usd));
+        }
         var answerless = await AnswerlessCountsAsync(tests.Where(t => t.WorksheetId is not null).Select(t => t.WorksheetId!.Value).ToList(), ct);
         detail.Tests = tests.Select(t => new BookImportJobTestDto
         {
@@ -205,6 +247,7 @@ public sealed partial class BookImportService : IBookImportService
             FileFrom = t.FileFrom,
             FileTo = t.FileTo,
             Answerless = t.WorksheetId is { } w ? answerless.GetValueOrDefault(w) : 0,
+            CostUsd = owner.IsAdmin ? testCosts.GetValueOrDefault(t.Id) : null,
             Error = t.Error,
         }).ToList();
         return detail;
@@ -235,6 +278,21 @@ public sealed partial class BookImportService : IBookImportService
         {
             Allowed = check.Allowed, Limit = check.Limit, Used = check.Used, ResetsAtUtc = check.ResetsAtUtc, PlanKey = check.PlanKey,
         };
+    }
+
+    public async Task<ContinueBookImportResult> ContinueAsync(BookImportOwner owner, Guid id, CancellationToken ct)
+    {
+        var job = owner.IsAdmin ? await _db.BookImportJobs.AsTracking().FirstOrDefaultAsync(j => j.Id == id, ct) : null;
+        if (job is null)
+            return ContinueBookImportResult.NotFound;
+        if (job.Status != BookImportJobStatus.AwaitingCostApproval)
+            return ContinueBookImportResult.InvalidState;
+
+        job.CostCeilingUsd = _maxJobCostUsd is { } step ? job.AiCostUsd + step : null;
+        job.Status = BookImportJobStatus.Queued;
+        await _db.SaveChangesAsync(ct);
+        _jobs.Enqueue<BookImportJobRunner>(r => r.RunAsync(id));
+        return ContinueBookImportResult.Continued;
     }
 
     private IQueryable<BookImportJob> Visible(BookImportOwner owner) =>
@@ -289,5 +347,12 @@ public sealed partial class BookImportService : IBookImportService
         dto.StartedAt = job.StartedAt;
         dto.FinishedAt = job.FinishedAt;
         dto.OwnerId = job.CreateUserId;
+        dto.ResumeAt = job.ResumeAt;
+    }
+
+    private void FillCost(BookImportJobDto dto, BookImportJob job)
+    {
+        dto.AiCostUsd = job.AiCostUsd;
+        dto.CostCeilingUsd = job.CostCeilingUsd ?? _maxJobCostUsd;
     }
 }

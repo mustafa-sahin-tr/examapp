@@ -16,7 +16,8 @@ function detail(overrides: Partial<BookImportJobDetail> = {}): BookImportJobDeta
     id: 'a1', bookName: 'Puan BTS 4 Matematik', gradeId: 4, subjectId: null, bookId: null,
     status: 'Running', stage: 'Setup', fileName: 'bts.pdf', fileSizeBytes: 1000, pageCount: 120,
     stageTotal: 4, stageProcessed: 1, message: null, error: null, createdAt: '2026-11-08T08:00:00Z',
-    startedAt: '2026-11-08T08:00:05Z', finishedAt: null, ownerId: 3, tests: [], ...overrides,
+    startedAt: '2026-11-08T08:00:05Z', finishedAt: null, ownerId: 3, resumeAt: null, aiCostUsd: null,
+    costCeilingUsd: null, tests: [], costs: [], ...overrides,
   };
 }
 
@@ -24,7 +25,7 @@ function test(overrides: Partial<BookImportJobTest> = {}): BookImportJobTest {
   return {
     id: 1, order: 1, unit: 1, testNo: 1, title: null, status: 'Done', questionsFound: 0, keyAnswers: 0, flags: [],
     questionsSaved: 0, duplicatesSkipped: 0, reviewFlags: [], worksheetId: null, fileFrom: null, fileTo: null, answerless: 0,
-    error: null, ...overrides,
+    costUsd: null, error: null, ...overrides,
   };
 }
 
@@ -44,6 +45,7 @@ describe('BookImportDetailComponent (#1018)', () => {
       start: vi.fn(),
       get: vi.fn().mockName('get').mockImplementation(() => response),
       setup: vi.fn().mockReturnValue(NEVER),
+      continue: vi.fn().mockReturnValue(of(undefined)),
     } as unknown as MockedObject<BookImportService>;
     TestBed.configureTestingModule({
       imports: [BookImportDetailComponent, translocoTestingModule({ langs: { 'book-imports/tr': tr } })],
@@ -87,6 +89,38 @@ describe('BookImportDetailComponent (#1018)', () => {
     // #1021: onay ekranı kurulumu yükler.
     expect(el().querySelector('app-book-import-setup')).not.toBeNull();
     expect(api.setup).toHaveBeenCalledWith('a1');
+  });
+
+  it('awaitingBudget_ShowsWaitingStepAndResumeBanner_WithoutCostForNonAdmins', () => {
+    response = of(detail({ status: 'AwaitingBudget', stage: 'Questions', resumeAt: '2026-11-09T08:00:00Z' }));
+    setup();
+
+    expect(steps()[4].classList).toContain('bid-step--waiting');
+    expect(el().querySelector('.bid-banner--warning')!.textContent).toContain('kendiliğinden devam');
+    expect(el().querySelector('.bid-cost')).toBeNull();
+    expect(el().querySelector('.bid-banner__action')).toBeNull();
+  });
+
+  it('awaitingCostApproval_AdminSeesCostBreakdownAndContinues', () => {
+    response = of(detail({
+      status: 'AwaitingCostApproval', stage: 'Questions', aiCostUsd: 5.0123, costCeilingUsd: 5,
+      costs: [
+        { stage: 'Setup', modelId: 'claude-sonnet-5-5', calls: 4, inputTokens: 12000, outputTokens: 3000, costUsd: 0.12 },
+        { stage: 'Questions', modelId: 'claude-haiku-5-5', calls: 300, inputTokens: 900000, outputTokens: 90000, costUsd: 4.8923 },
+      ],
+    }));
+    setup();
+
+    expect(el().querySelector('.bid-banner--warning')!.textContent).toContain('$5.0123');
+    const rows = Array.from(el().querySelectorAll('.bid-cost__table tbody tr')).map((r) => r.textContent ?? '');
+    expect(rows.length).toBe(2);
+    expect(rows[0]).toContain('Kurulum');
+    expect(rows[1]).toContain('claude-haiku-5-5');
+    expect(rows[1]).toContain('$4.8923');
+
+    (el().querySelector('.bid-banner__action') as HTMLButtonElement).click();
+    expect(api.continue).toHaveBeenCalledWith('a1');
+    expect(api.get).toHaveBeenCalledTimes(2);
   });
 
   it('failed_ShowsFailedStepAndError', () => {

@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -31,8 +31,9 @@ type Translate = (key: string, params?: Record<string, unknown>) => string;
 /**
  * Issue #1018 (epic #1017): bir kitap aktarımının takibi — aşama adımları, geçerli aşamanın ilerlemesi, test ızgarası ve dikkat
  * gerektiren testler (#1022: bulunan / anahtardaki / kaydedilen soru, sayfa referanslı işaretler). İş sürerken 5 sn'de bir
- * yenilenir. Kurulum onayında onay ekranı (#1021), soru aktarımı bitince inceleme ve onay (#1023) gösterilir. Yeniden dene /
- * iptal (#1025) sonraki dilimde.
+ * yenilenir. Kurulum onayında onay ekranı (#1021), soru aktarımı bitince inceleme ve onay (#1023) gösterilir. Bütçe / tavan
+ * duraklaması bantla; Admin maliyet dökümünü görür ve tavanda bekleyen işi sürdürür (#1024). Yeniden dene / iptal (#1025)
+ * sonraki dilimde.
  */
 @Component({
   selector: 'app-book-import-detail',
@@ -40,7 +41,9 @@ type Translate = (key: string, params?: Record<string, unknown>) => string;
   imports: [
     BookImportReviewComponent,
     BookImportSetupComponent,
+    CurrencyPipe,
     DatePipe,
+    DecimalPipe,
     MatButtonModule,
     MatIconModule,
     MatProgressBarModule,
@@ -63,6 +66,9 @@ export class BookImportDetailComponent implements OnInit {
   readonly loading = signal(true);
   readonly notFound = signal(false);
   readonly loadError = signal(false);
+  /** #1024: "Devam et" isteği sürüyor / başarısız. */
+  readonly continuing = signal(false);
+  readonly continueFailed = signal(false);
 
   readonly stages = BOOK_IMPORT_STAGES;
   readonly tone = bookImportStatusTone;
@@ -128,6 +134,25 @@ export class BookImportDetailComponent implements OnInit {
       .subscribe(() => this.load());
   }
 
+  /** #1024: Admin — maliyet tavanında bekleyen işi sürdür. */
+  continueJob(): void {
+    this.continuing.set(true);
+    this.continueFailed.set(false);
+    this.api
+      .continue(this.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.continuing.set(false);
+          this.load();
+        },
+        error: () => {
+          this.continuing.set(false);
+          this.continueFailed.set(true);
+        },
+      });
+  }
+
   stageState(stage: BookImportStage): 'done' | 'current' | 'waiting' | 'failed' | 'todo' {
     const job = this.job();
     return job ? stageState(job, stage) : 'todo';
@@ -136,9 +161,12 @@ export class BookImportDetailComponent implements OnInit {
   /** Izgara hücresinin başlığı; aktarılmış testte bulunan / anahtardaki soru sayısıyla (#1022). */
   testCellLabel(test: BookImportJobTest, t: Translate): string {
     const params = { unit: test.unit, no: test.testNo, status: t('testStatus.' + test.status) };
-    return test.status === 'Pending' || test.status === 'Running'
-      ? t('detail.testCell', params)
-      : t('detail.testCellCounts', { ...params, found: test.questionsFound, key: test.keyAnswers });
+    const label =
+      test.status === 'Pending' || test.status === 'Running'
+        ? t('detail.testCell', params)
+        : t('detail.testCellCounts', { ...params, found: test.questionsFound, key: test.keyAnswers });
+    // #1024: Admin'e testin maliyeti.
+    return test.costUsd != null ? `${label} · $${test.costUsd.toFixed(4)}` : label;
   }
 
   /** İşaretin yeri: "sayfa 12, 13 · soru 4, 7" (#1022). */

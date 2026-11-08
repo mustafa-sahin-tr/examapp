@@ -53,9 +53,10 @@ public sealed record BookSetupUnit(int Unit, string? Title, int FileFrom, int Fi
 /// <summary>
 /// Issue #1021: kurulum aşaması — sayfa görsellerini toplu tarar, cevap anahtarı sayfalarını iki kez (tam sayfa + döşemeli)
 /// okur, <see cref="BookSetupPlanner"/> ile test listesini çıkarır, üniteleri konulara eşler ve sonucu işe yazar. Kesilirse
-/// baştan çalışır (tarama ucuz). Maliyet başarısızlıkta da işe yazılır.
+/// (bütçe duraklaması dahil, #1024) baştan çalışır (tarama ucuz). Maliyet başarısızlıkta da işe yazılır.
 /// </summary>
-internal sealed class BookSetupStage(AppDbContext db, IMinIoService minio, IBookSetupAi ai, int surveyBatchSize, ILogger logger)
+internal sealed class BookSetupStage(
+    AppDbContext db, IMinIoService minio, IBookSetupAi ai, BookImportBudget budget, int surveyBatchSize, ILogger logger)
 {
     public async Task RunAsync(BookImportJob job, CancellationToken ct = default)
     {
@@ -67,7 +68,9 @@ internal sealed class BookSetupStage(AppDbContext db, IMinIoService minio, IBook
         if (pages.Count == 0)
             throw new BookImportFailure("The book has no page images.");
 
-        var cost = new BookSetupCost();
+        budget.Stage = BookImportStage.Setup;
+        budget.TestId = null;
+        var cost = new BookSetupCost { Budget = budget };
         try
         {
             var batches = pages.Chunk(surveyBatchSize).ToList();
@@ -119,7 +122,8 @@ internal sealed class BookSetupStage(AppDbContext db, IMinIoService minio, IBook
         }
         finally
         {
-            job.AiCostUsd += cost.Usd;
+            // Maliyet çağrı başına işe yazıldı (BookImportBudget.Record); kalan satırlar ve bütçe sayaçları yazılır.
+            await budget.FlushAsync();
             await db.SaveChangesAsync(CancellationToken.None);
         }
     }

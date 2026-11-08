@@ -6,7 +6,11 @@ export type BookImportStatus =
   | 'ReadyForReview'
   | 'Completed'
   | 'Failed'
-  | 'Cancelled';
+  | 'Cancelled'
+  /** #1024: günlük Claude bütçesi doldu; `resumeAt`'te kendiliğinden devam eder. */
+  | 'AwaitingBudget'
+  /** #1024: işin maliyet tavanı aşıldı; Admin sürdürür. */
+  | 'AwaitingCostApproval';
 
 /** Takip ekranındaki adımlar; sıra sunucudaki `BookImportStage` ile aynı. */
 export const BOOK_IMPORT_STAGES = [
@@ -42,6 +46,11 @@ export interface BookImportJob {
   startedAt: string | null;
   finishedAt: string | null;
   ownerId: number | null;
+  /** #1024: bütçe beklenirken yeniden deneme zamanı. */
+  resumeAt: string | null;
+  /** #1024: yalnız Admin'e dolu — toplam Claude maliyeti ve tavan (null: tavan yok). */
+  aiCostUsd: number | null;
+  costCeilingUsd: number | null;
 }
 
 export interface BookImportJobTest {
@@ -64,6 +73,8 @@ export interface BookImportJobTest {
   fileFrom: number | null;
   fileTo: number | null;
   answerless: number;
+  /** #1024: yalnız Admin'e — testin soru aktarımı maliyeti. */
+  costUsd: number | null;
   error: string | null;
 }
 
@@ -104,6 +115,18 @@ export interface BookImportReviewFlag {
 
 export interface BookImportJobDetail extends BookImportJob {
   tests: BookImportJobTest[];
+  /** #1024: yalnız Admin'e — aşama ve model bazında maliyet. */
+  costs: BookImportCost[];
+}
+
+/** #1024: bir aşamanın bir modelle yaptığı Claude çağrılarının toplamı. */
+export interface BookImportCost {
+  stage: BookImportStage;
+  modelId: string;
+  calls: number;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number;
 }
 
 /** `limit` null = sınırsız (Admin, QuestionTrainer ya da sınırsız plan; kart gizlenir), 0 = planda yok (#1019). */
@@ -136,6 +159,8 @@ export function bookImportStatusTone(status: BookImportStatus): 'neutral' | 'inf
     case 'Running':
       return 'info';
     case 'AwaitingConfirmation':
+    case 'AwaitingBudget':
+    case 'AwaitingCostApproval':
       return 'warning';
     case 'ReadyForReview':
     case 'Completed':
@@ -155,7 +180,9 @@ export function stageState(
   if (job.status === 'Completed' || index < current) return 'done';
   if (index > current) return 'todo';
   if (job.status === 'Failed') return 'failed';
-  if (job.status === 'AwaitingConfirmation') return 'waiting';
+  if (job.status === 'AwaitingConfirmation' || job.status === 'AwaitingBudget' || job.status === 'AwaitingCostApproval') {
+    return 'waiting';
+  }
   return 'current';
 }
 

@@ -155,6 +155,22 @@ public class BookImportController : BaseController
         };
     }
 
+    /// <summary>Issue #1024: Admin — maliyet tavanında bekleyen işi sürdür (tavan yükselir, iş yeniden kuyruğa girer).</summary>
+    [HttpPost("{id:guid}/continue")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Continue(Guid id, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        return await _service.ContinueAsync(owner, id, ct) switch
+        {
+            ContinueBookImportResult.Continued => NoContent(),
+            ContinueBookImportResult.NotFound => NotFound(new { message = _localizer["bookImport.notFound"].Value }),
+            _ => Conflict(new { code = "bookImport.notPaused", message = _localizer["bookImport.notPaused"].Value }),
+        };
+    }
+
     /// <summary>Issue #1023: incelemedeki testin soruları (numara, sayfa, cevap; cevapsızlar için A–D seçici).</summary>
     [HttpGet("{id:guid}/tests/{testId:int}/questions")]
     [ProducesResponseType(typeof(List<BookImportReviewQuestionDto>), StatusCodes.Status200OK)]

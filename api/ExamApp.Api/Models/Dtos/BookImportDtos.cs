@@ -38,12 +38,33 @@ public class BookImportJobDto
     public DateTime? FinishedAt { get; set; }
     /// <summary>İşin sahibi (Admin listesinde başkalarının işlerini ayırmak için).</summary>
     public int? OwnerId { get; set; }
+
+    /// <summary>Issue #1024: bütçe beklenirken yeniden deneme zamanı.</summary>
+    public DateTime? ResumeAt { get; set; }
+
+    /// <summary>Issue #1024: yalnız Admin'e — işin toplam Claude maliyeti ve geçerli tavanı (null: tavan yok).</summary>
+    public decimal? AiCostUsd { get; set; }
+    public decimal? CostCeilingUsd { get; set; }
 }
 
 /// <summary>Issue #1018: takip ekranı — iş + test satırları.</summary>
 public class BookImportJobDetailDto : BookImportJobDto
 {
     public List<BookImportJobTestDto> Tests { get; set; } = new();
+
+    /// <summary>Issue #1024: yalnız Admin'e — aşama ve model bazında maliyet (Admin değilse boş).</summary>
+    public List<BookImportCostDto> Costs { get; set; } = new();
+}
+
+/// <summary>Issue #1024: bir aşamanın bir modelle yaptığı Claude çağrılarının toplamı.</summary>
+public class BookImportCostDto
+{
+    public string Stage { get; set; } = string.Empty;
+    public string ModelId { get; set; } = string.Empty;
+    public int Calls { get; set; }
+    public long InputTokens { get; set; }
+    public long OutputTokens { get; set; }
+    public decimal CostUsd { get; set; }
 }
 
 public class BookImportJobTestDto
@@ -71,6 +92,9 @@ public class BookImportJobTestDto
     public int? FileFrom { get; set; }
     public int? FileTo { get; set; }
     public int Answerless { get; set; }
+
+    /// <summary>Issue #1024: yalnız Admin'e — testin soru aktarımı maliyeti.</summary>
+    public decimal? CostUsd { get; set; }
 
     public string? Error { get; set; }
 }

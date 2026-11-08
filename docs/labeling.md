@@ -196,3 +196,16 @@ output token'ı ve tahmini USD loglanır (`Anthropic:InputUsdPerMTok`/`OutputUsd
   tüm taksonomi. Exam API `GradeId`'yi şöyle çözer: istekte açıkça verilen sınıf (işaretleme ekranı) → teste bağlı kayıtta
   testin `Worksheet.GradeId`'si → null. Gemini sağlayıcısı sınıfı yoksayar. `Question` tablosunda sınıf kolonu yok; sınıf
   konu (`Topic.GradeId`) üzerinden gelir.
+
+**Issue #1018 (epic #1017) — PDF'ten kitap aktarımı: yükleme, iş ve takip ekranı.** Admin + QuestionTrainer (pilot) için
+**Kitap aktarımı** sayfası (`/book-imports`, menüde Kitaplar'ın altında): PDF + kitap adı + sınıf (+ isteğe bağlı ders)
+`POST /api/exam/book-imports` (multipart) ile yüklenir; dosya MinIO'da özel olarak `book-imports/<jobId>/source.pdf`'e yazılır
+(DTO'da URL yok), `BookImportJobs` satırı açılır ve Hangfire `book-import` kuyruğuna `BookImportJobRunner` iş olarak eklenir
+(exam API içinde; outbox kuralının istisnası, karar #1017'de). Koşucu `book-import:<jobId>` dağıtık kilidiyle çalışır, yalnız
+Queued/Running işi ilerletir, sahibi onaysız / askıdaki öğretmense işi Failed yapar. Bu dilimde Sayfalar ve Kurulum aşamaları
+taslak (stub): iş **Kurulum onayı**'nda `AwaitingConfirmation` olarak durur; gerçek sayfa ayırma #1020, kurulum #1021, testler
+#1022, onay #1023, yeniden dene / iptal #1025. Takip ekranı (`/book-imports/:id`) 8 aşamalı adım çubuğu, geçerli aşama sayacı,
+test ızgarası ve dikkat listesi gösterir; iş Queued/Running iken liste ve ayrıntı 5 sn'de bir yenilenir. Boyut sınırı
+`BookImport:MaxUploadBytes` (üst tavan 200 MB), PDF `%PDF-` imzasıyla doğrulanır. Kota `IEntitlementService` üzerinden
+(`book-import`); şimdilik `UnlimitedEntitlementService` (#1019 gerçek planlarla değiştirir); dolunca 429
+`entitlement.limitReached`. Görünürlük: Admin tüm işleri, diğerleri yalnız kendi işini görür.

@@ -1269,7 +1269,7 @@ describe('EnhancedLayoutComponent role navigation (issue #719)', () => {
             'admin-dashboard', 'admin', 'admin-pending', 'question-bank',
             'group-users', 'admin-teachers', 'admin-students',
             'group-schools', 'admin-schools',
-            'group-content', 'mock-exams', 'exam-templates', 'questiongeneration', 'questiontransfer', 'labeling', 'labeling-books', 'admin-badge-definitions',
+            'group-content', 'mock-exams', 'exam-templates', 'questiongeneration', 'questiontransfer', 'labeling', 'labeling-books', 'book-imports', 'admin-badge-definitions',
             'settings',
         ]);
     });
@@ -1293,7 +1293,7 @@ describe('EnhancedLayoutComponent role navigation (issue #719)', () => {
     it('questionTrainer_SeesLabelingWithoutAdminGroupHeaders_issue726', () => {
         const items = renderLayout(['QuestionTrainer'], false).componentInstance.visibleMenuItems();
         expect(items.some((i) => i.type === 'header')).toBe(false);
-        expect(labels(items.filter((i) => i.type === 'menu'))).toEqual(['questiongeneration', 'labeling', 'labeling-books', 'settings']);
+        expect(labels(items.filter((i) => i.type === 'menu'))).toEqual(['questiongeneration', 'labeling', 'labeling-books', 'book-imports', 'settings']);
     });
 
     it('bottomNav_StudentAndTeacher_HavePrimaryTasksInsteadOfSettings', () => {

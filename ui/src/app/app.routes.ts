@@ -126,6 +126,18 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/books/books.component').then((m) => m.BooksComponent),
       },
       {
+        // Issue #1018 (epic #1017): PDF'ten kitap aktarımı — pilot rolleri işaretleme ile aynı.
+        path: 'book-imports',
+        canActivate: [authGuard, roleGuard('Admin', 'QuestionTrainer')],
+        loadComponent: () => import('./pages/book-imports/book-imports.component').then((m) => m.BookImportsComponent),
+      },
+      {
+        path: 'book-imports/:id',
+        canActivate: [authGuard, roleGuard('Admin', 'QuestionTrainer')],
+        loadComponent: () =>
+          import('./pages/book-imports/book-import-detail.component').then((m) => m.BookImportDetailComponent),
+      },
+      {
         path: 'question-reports',
         canActivate: [authGuard, ...authoringGuards],
         loadComponent: () => import('./pages/question-reports/question-reports.component').then((m) => m.QuestionReportsComponent),

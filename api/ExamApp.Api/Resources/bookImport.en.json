@@ -1,0 +1,13 @@
+{
+  "bookImport": {
+    "fileRequired": "A PDF file is required.",
+    "userNotResolved": "User not found.",
+    "notFound": "Import not found.",
+    "invalidBookName": "Book name is required (200 characters max).",
+    "invalidGrade": "Choose a valid grade.",
+    "invalidSubject": "Choose a valid subject.",
+    "notPdf": "The file is not a PDF.",
+    "fileTooLarge": "The file is too large.",
+    "quotaReached": "You have used this month's book imports."
+  }
+}

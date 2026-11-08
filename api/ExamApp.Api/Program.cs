@@ -586,7 +586,7 @@ builder.Services.AddHangfire(config =>
 
 builder.Services.AddHangfireServer(options =>
 {
-    options.Queues = new[] { "default", "question-transfer" };
+    options.Queues = new[] { "default", "question-transfer", ExamApp.Api.Services.BookImport.BookImportJobRunner.Queue };
 });
 
 // RabbitMQ consumer'ları (issue #225): exam API'nin sahibi olduğu veriye yazan event'ler burada tüketilir.
@@ -645,6 +645,10 @@ if (rabbitMqEnabled)
 // Question export/import
 builder.Services.AddScoped<IQuestionTransferService, QuestionTransferService>();
 builder.Services.AddScoped<QuestionTransferJobRunner>();
+// Issue #1018 (epic #1017): kitaptan aktarım; plan / hak kontrolü #1019'a kadar sınırsız.
+builder.Services.AddScoped<ExamApp.Api.Services.Entitlements.IEntitlementService, ExamApp.Api.Services.Entitlements.UnlimitedEntitlementService>();
+builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IBookImportService, ExamApp.Api.Services.BookImport.BookImportService>();
+builder.Services.AddScoped<ExamApp.Api.Services.BookImport.BookImportJobRunner>();
 builder.Services.AddScoped<QuestionContentHashService>();
 builder.Services.AddScoped<IQuestionContentHashService>(sp => sp.GetRequiredService<QuestionContentHashService>());
 

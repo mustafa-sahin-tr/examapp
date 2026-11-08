@@ -1,0 +1,129 @@
+{
+  "title": "Book import",
+  "subtitle": "Upload the book's PDF; the setup and questions are prepared in the background. Everything stays a draft until you approve it.",
+  "new": "New import",
+  "retry": "Try again",
+  "form": {
+    "title": "Upload a book",
+    "dropTitle": "Drop the PDF here or click to choose",
+    "dropHint": "PDF only, up to 200 MB",
+    "replaceFile": "Choose another file to replace it",
+    "bookName": "Book name",
+    "grade": "Grade",
+    "subject": "Subject",
+    "subjectAuto": "Detect from the book",
+    "start": "Start import",
+    "uploading": "Uploading…",
+    "cancel": "Cancel"
+  },
+  "errors": {
+    "notPdf": "The selected file is not a PDF.",
+    "fileTooLarge": "The file is too large (up to 200 MB).",
+    "invalidBookName": "Enter a book name (up to 200 characters).",
+    "invalidGrade": "Choose a valid grade.",
+    "invalidSubject": "Choose a valid subject.",
+    "quotaReached": "You have used this month's book imports.",
+    "generic": "The import could not be started. Try again."
+  },
+  "quota": {
+    "title": "Monthly allowance",
+    "unlimited": "Unlimited imports",
+    "used": "{{used}} / {{limit}} books used",
+    "resets": "Resets on {{date}}",
+    "blocked": "You have used this month's allowance."
+  },
+  "hint": {
+    "title": "How it works",
+    "body": "Pages are split, the answer key and contents are read and you are asked to confirm the setup; then questions are imported test by test. When it is done you review and approve."
+  },
+  "registry": {
+    "title": "Book registry",
+    "body": "Imported books are added to the book list; you can fix the offset and answer key there.",
+    "link": "Go to books"
+  },
+  "list": {
+    "title": "Imports",
+    "filter": "Filter imports",
+    "all": "All",
+    "awaiting": "Awaiting you ({{count}})",
+    "failed": "Failed ({{count}})",
+    "awaitingBanner": "{{count}} imports are waiting for you.",
+    "loading": "Loading imports…",
+    "loadFailed": "Imports could not be loaded.",
+    "empty": "No book imports yet.",
+    "emptyAction": "Upload the first book",
+    "book": "Book",
+    "stage": "Stage",
+    "progress": "Progress",
+    "started": "Started",
+    "status": "Status",
+    "action": "Action"
+  },
+  "stages": {
+    "Upload": "Upload",
+    "Pages": "Pages",
+    "Setup": "Setup",
+    "SetupConfirmation": "Setup check",
+    "Questions": "Questions",
+    "Classification": "Classification",
+    "Review": "Review",
+    "Approval": "Approval"
+  },
+  "status": {
+    "Queued": "Queued",
+    "Running": "Running",
+    "AwaitingConfirmation": "Awaiting you",
+    "ReadyForReview": "Ready for review",
+    "Completed": "Completed",
+    "Failed": "Failed",
+    "Cancelled": "Cancelled"
+  },
+  "testStatus": {
+    "Pending": "Pending",
+    "Running": "Importing",
+    "Done": "Ready",
+    "NeedsReview": "Needs a check",
+    "Failed": "Failed"
+  },
+  "stepState": {
+    "done": "done",
+    "current": "in progress",
+    "waiting": "waiting for you",
+    "failed": "failed",
+    "todo": "to do"
+  },
+  "flags": {
+    "noKey": "No answer key",
+    "keyMismatch": "Key count does not match",
+    "qrAnswers": "Answers behind a QR code",
+    "missedNumbers": "Missing question numbers"
+  },
+  "actions": {
+    "open": "Open",
+    "openSetup": "Confirm setup",
+    "review": "Review"
+  },
+  "detail": {
+    "back": "Imports",
+    "loading": "Loading import…",
+    "notFound": "Import not found.",
+    "loadFailed": "The import could not be loaded.",
+    "subtitle": "{{status}} · started {{date}}",
+    "stages": "Import stages",
+    "failed": "Failed during {{stage}}",
+    "awaitingConfirmation": "The book setup is ready; your confirmation is needed before questions are imported. The confirmation screen is coming soon.",
+    "current": "Current stage",
+    "currentStage": "Current stage: {{stage}}",
+    "stageCount": "{{done}} / {{total}}",
+    "testGrid": "Tests",
+    "testCell": "Unit {{unit}}, test {{no}}: {{status}}",
+    "testName": "Unit {{unit}} · Test {{no}}",
+    "legend": "{{done}} ready · {{review}} need a check · {{failed}} failed · {{running}} importing",
+    "noTestsYet": "Tests appear here after the setup is confirmed.",
+    "attention": "Needs attention",
+    "attentionEmpty": "No tests need attention right now.",
+    "file": "File",
+    "pages": "Pages",
+    "startedAt": "Started"
+  }
+}

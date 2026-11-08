@@ -30,7 +30,7 @@ public sealed class EntitlementService : IEntitlementService
         var assigned = await _db.UserSubscriptionPlans.AsNoTracking()
             .Where(a => a.UserId == userId && a.ValidFromUtc <= now && (a.ValidToUtc == null || a.ValidToUtc > now) && a.Plan.IsActive)
             .OrderByDescending(a => a.ValidFromUtc).ThenByDescending(a => a.Id)
-            .Select(a => new ResolvedPlan(a.PlanId, a.Plan.Key, a.Plan.Name))
+            .Select(a => new ResolvedPlan(a.PlanId, a.Plan.Key, a.Plan.Name, a.ValidToUtc))
             .FirstOrDefaultAsync(ct);
         if (assigned is not null)
             return assigned;

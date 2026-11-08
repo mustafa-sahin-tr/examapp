@@ -275,6 +275,15 @@ Kılavuz özeti ve beceri listesinin kaynağı `docs/context-based-questions.md`
 - **Admin uç noktaları:** `GET /api/exam/admin/subscription-plans` (katalog + sınırlar), `GET|PUT
   /api/exam/admin/subscription-plans/users/{userId}` (`{ planKey, validFromUtc?, validToUtc? }`; exam kullanıcı id'si). Arayüz
   #1030'da.
+- **Katalog (#1027):** seed'li dört plan — `free` (herkes, varsayılan), `trial` (herkes, `TrialDays` = 14), `teacher-pro`
+  (öğretmen), `student-plus` (öğrenci). Planda `DisplayNameKey` (`subscription.plans.*` çeviri anahtarı), `Audience`
+  (`Any` / `Teacher` / `Student`), yer tutucu `MonthlyPrice` + `Currency` (`TRY`; gerçek ödeme yok), `SortOrder`. Sınırlar
+  (aylık; satır yok = 0, null = sınırsız): `book-import` Free 0 / Trial 1 / TeacherPro 10; `ai-classification` Free 20 /
+  Trial 50 / TeacherPro 1000; `mock-exam` Free 0 / Trial 2 / StudentPlus sınırsız (Free'de herkese açık tek deneme sınavı
+  sınırdan muaf, #1031). Hepsi veritabanından değiştirilebilir. Uç noktalar (oturum açmış her kullanıcı):
+  `GET /api/exam/subscription-plans` çağıranın rolüne uygun aktif planlar (`Any` + öğretmene Teacher, öğrenciye Student;
+  Admin hepsi; veli yalnız `Any`), `GET /api/exam/subscription-plans/me` plan + `validToUtc` + `EntitlementFeatures.All` ve
+  planın sınırladığı her özellik için bu ayki `allowed` / `limit` / `used` / `remaining` / `resetsAtUtc`.
 - **Genişletme (abonelik epic'i):** yeni özellik = `EntitlementFeatures`'a sabit + plan başına sınır satırı + kullanım anında
   `RecordUsageAsync`, karar anında `CheckAsync`. Yeni planlar (#1027) satır ekler; plan tablolarında özelliğe özgü mantık yok.
   Öğretmenin atadığı işin maliyeti öğretmenin kotasından (#1031): kayıt `userId` olarak öğretmeni yazar.

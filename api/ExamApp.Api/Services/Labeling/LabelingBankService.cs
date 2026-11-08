@@ -40,10 +40,29 @@ public sealed class LabelingAnswerKeyPageException() : Exception("Labeling page 
 /// <summary>Sorular oluşturulamadı (görsel kırpma / DB) → 500; ayrıntı loglanır, istemciye sızdırılmaz.</summary>
 public sealed class LabelingBankSaveException() : Exception("Saving labeling questions to the bank failed.");
 
+/// <summary>
+/// Issue #1022: kitap aktarımı işinin bir sayfası. <see cref="LabelingBankQuestionDto.CorrectOptionIndex"/> -1 = cevapsız
+/// (anahtar yok / anahtarda yok); sorular taslak oluşur.
+/// </summary>
+public sealed record LabelingImportPageRequest(
+    string ImageBase64, int BookId, int FilePage, int GradeId, QuestionBankSharing Sharing,
+    IReadOnlyList<LabelingBankQuestionDto> Questions);
+
+/// <summary>Issue #1022: kaydedilen soru sayısı ve kırpması bankada olduğu için atlanan soruların sırası (istekteki).</summary>
+public sealed record LabelingImportPageResult(int Saved, IReadOnlyList<int> DuplicateIndexes);
+
 public interface ILabelingBankService
 {
     Task<LabelingBankSaveResponseDto> SaveToBankAsync(
         LabelingBankSaveRequestDto request, LabelingActor actor, int actingUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Issue #1022: kitap aktarımı işinden kayıt. <see cref="SaveToBankAsync"/> ile aynı kırpma, kitap kaynağı (#577), içindekiler
+    /// ve <c>QuestionCreatedEvent</c>; farkları: sorular taslak ve cevapsız olabilir, kırpması bankada olan soru atlanıp
+    /// sayılır (hata değil), saatlik kota ve sayfa "kaydedildi" kilidi yok (iş tek çalışır; tekrarı kırpma hash'i yakalar).
+    /// </summary>
+    Task<LabelingImportPageResult> SaveImportedPageAsync(
+        LabelingImportPageRequest request, int actingUserId, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -179,17 +198,7 @@ public sealed class LabelingBankService(
             ImageData = imageData,
             Passages = [],
             Questions = bulkQuestions,
-            Header = toc is null
-                ? new HeaderInfo { TestId = null }
-                : new HeaderInfo
-                {
-                    TestId = null,
-                    SubjectId = toc.SubjectId,
-                    TopicId = toc.TopicId,
-                    Subtopics = toc.SubTopicId is { } subTopicId ? [subTopicId] : [],
-                    // Konu yoksa (yalnız ders) kaynak Human kalır: sınıflandırıcı bugünkü gibi çalışır.
-                    ClassificationSource = toc.TopicId is null ? null : nameof(ClassificationSource.Book),
-                },
+            Header = BookHeader(toc),
             GradeId = gradeId,
             BankSharing = sharing,
         };
@@ -220,6 +229,81 @@ public sealed class LabelingBankService(
             TocApplied: toc?.TopicId is not null);
     }
 
+    public async Task<LabelingImportPageResult> SaveImportedPageAsync(
+        LabelingImportPageRequest request, int actingUserId, CancellationToken ct = default)
+    {
+        var questions = request.Questions;
+        if (questions.Count == 0)
+            return new LabelingImportPageResult(0, []);
+        if (questions.Count > MaxQuestions)
+            throw new LabelingValidationException("labeling.tooManyBoxes");
+        foreach (var q in questions)
+            ValidateShape(q, allowAnswerless: true);
+
+        var bookPage = await books.ResolvePageAsync(request.BookId, request.FilePage, ct)
+                       ?? throw new LabelingValidationException("labeling.books.notFound");
+        var toc = bookPage.Toc is { } entry && entry.GradeId == request.GradeId ? entry : null;
+
+        List<BulkQuestionDto> bulkQuestions;
+        byte[] pageJpeg;
+        using (var image = LabelingImage.Decode(request.ImageBase64))
+        {
+            bulkQuestions = questions.Select((q, i) => ToBulkQuestion(q, i, image.Width, image.Height)).ToList();
+            pageJpeg = image.Encode(LabelingImage.MaxEdge).Jpeg;
+        }
+        ApplyBookSource(bulkQuestions, questions, bookPage);
+
+        var hashes = ComputeCropHashes(bulkQuestions, pageJpeg);
+        var distinct = hashes.Distinct().ToList();
+        var existing = (await db.QuestionSources.IgnoreQueryFilters().AsNoTracking()
+                .Where(s => distinct.Contains(s.CropSha256) && !s.Question.IsDeleted)
+                .Select(s => s.CropSha256)
+                .ToListAsync(ct))
+            .ToHashSet();
+        // Aynı sayfada iki kez tespit edilen aynı kutu da tekrar sayılır (ilk kalır).
+        var seen = new HashSet<string>();
+        var duplicates = hashes.Select((hash, index) => (hash, index))
+            .Where(h => existing.Contains(h.hash) || !seen.Add(h.hash))
+            .Select(h => h.index)
+            .ToList();
+        var kept = bulkQuestions.Where((_, i) => !duplicates.Contains(i)).ToList();
+        if (kept.Count == 0)
+            return new LabelingImportPageResult(0, duplicates);
+
+        var bulk = new BulkQuestionCreateDto
+        {
+            ImageData = "data:image/jpeg;base64," + Convert.ToBase64String(pageJpeg),
+            Passages = [],
+            Questions = kept,
+            Header = BookHeader(toc),
+            GradeId = request.GradeId,
+            BankSharing = request.Sharing,
+            IsDraft = true,
+        };
+
+        var result = await questionService.SaveBulkQuestion(bulk, actingUserId);
+        if (result is not { Success: true })
+        {
+            logger.LogError("[Labeling] book import save failed for book {BookId} page {Page}: {Message}",
+                request.BookId, request.FilePage, result?.Message);
+            throw new LabelingBankSaveException();
+        }
+        return new LabelingImportPageResult(kept.Count, duplicates);
+    }
+
+    private static HeaderInfo BookHeader(BookTocEntry? toc) =>
+        toc is null
+            ? new HeaderInfo { TestId = null }
+            : new HeaderInfo
+            {
+                TestId = null,
+                SubjectId = toc.SubjectId,
+                TopicId = toc.TopicId,
+                Subtopics = toc.SubTopicId is { } subTopicId ? [subTopicId] : [],
+                // Konu yoksa (yalnız ders) kaynak Human kalır: sınıflandırıcı bugünkü gibi çalışır.
+                ClassificationSource = toc.TopicId is null ? null : nameof(ClassificationSource.Book),
+            };
+
     /// <summary>Kitap adı ve soru başına kaynak (sunucu içi <see cref="BulkQuestionDto.Source"/>).</summary>
     private static void ApplyBookSource(
         List<BulkQuestionDto> bulkQuestions, IReadOnlyList<LabelingBankQuestionDto> questions, BookPageContext bookPage)
@@ -246,18 +330,7 @@ public sealed class LabelingBankService(
     private async Task ThrowIfCropsExistAsync(
         List<BulkQuestionDto> bulkQuestions, byte[] pageJpeg, int actingUserId, bool isAdmin, CancellationToken ct)
     {
-        IReadOnlyList<string> hashes;
-        try
-        {
-            hashes = QuestionCropHash.Compute(imageHelper, pageJpeg,
-                bulkQuestions.Select(q => ((int)q.X, (int)q.Y, q.Width, q.Height)).ToList(),
-                bulkQuestions.Select(q => (IReadOnlyList<RegionBoxDto>?)q.Masks).ToList());
-        }
-        catch (Exception ex) when (ex is ImageDecodeException or ArgumentOutOfRangeException)
-        {
-            throw new LabelingValidationException("labeling.invalidImage");
-        }
-
+        var hashes = ComputeCropHashes(bulkQuestions, pageJpeg);
         var distinct = hashes.Distinct().ToList();
         var existing = await db.QuestionSources.IgnoreQueryFilters().AsNoTracking()
             .Where(s => distinct.Contains(s.CropSha256) && !s.Question.IsDeleted)
@@ -294,6 +367,21 @@ public sealed class LabelingBankService(
             .Take(MaxReportedCropDuplicates)
             .ToList();
         throw new LabelingCropDuplicateException(duplicates);
+    }
+
+    /// <summary>Toplu kaydın yükleyeceği question.jpg baytlarının SHA-256'sı, soru sırasıyla (<see cref="QuestionCropHash"/>).</summary>
+    private IReadOnlyList<string> ComputeCropHashes(List<BulkQuestionDto> bulkQuestions, byte[] pageJpeg)
+    {
+        try
+        {
+            return QuestionCropHash.Compute(imageHelper, pageJpeg,
+                bulkQuestions.Select(q => ((int)q.X, (int)q.Y, q.Width, q.Height)).ToList(),
+                bulkQuestions.Select(q => (IReadOnlyList<RegionBoxDto>?)q.Masks).ToList());
+        }
+        catch (Exception ex) when (ex is ImageDecodeException or ArgumentOutOfRangeException)
+        {
+            throw new LabelingValidationException("labeling.invalidImage");
+        }
     }
 
     internal static LabelingBankInfoDto? ToBankInfo(LabelingPage page) =>
@@ -338,13 +426,16 @@ public sealed class LabelingBankService(
         return page is null ? null : ToBankInfo(page);
     }
 
-    /// <summary>Sayfa boyutundan bağımsız kurallar: şık sayısı, doğru şık, negatif / çok küçük kutu.</summary>
-    private static void ValidateShape(LabelingBankQuestionDto q)
+    /// <summary>
+    /// Sayfa boyutundan bağımsız kurallar: şık sayısı, doğru şık, negatif / çok küçük kutu. <paramref name="allowAnswerless"/>
+    /// (#1022 aktarım taslağı): doğru şık -1 olabilir.
+    /// </summary>
+    private static void ValidateShape(LabelingBankQuestionDto q, bool allowAnswerless = false)
     {
         var options = q.Options ?? [];
         if (options.Count is < MinOptions or > MaxOptions)
             throw new LabelingValidationException("labeling.bank.invalidOptions");
-        if (q.CorrectOptionIndex < 0 || q.CorrectOptionIndex >= options.Count)
+        if (!(allowAnswerless && q.CorrectOptionIndex == -1) && (q.CorrectOptionIndex < 0 || q.CorrectOptionIndex >= options.Count))
             throw new LabelingValidationException("labeling.bank.correctAnswerMissing");
         if (options.Prepend(q).Any(b => b is null || b.X < 0 || b.Y < 0 || b.Width < MinBoxEdge || b.Height < MinBoxEdge))
             throw new LabelingValidationException("labeling.invalidBox");

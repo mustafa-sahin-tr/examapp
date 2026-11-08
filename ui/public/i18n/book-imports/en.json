@@ -126,7 +126,13 @@
     "attentionEmpty": "No tests need attention right now.",
     "file": "File",
     "pages": "Pages",
-    "startedAt": "Started"
+    "startedAt": "Started",
+    "testCellCounts": "Unit {{unit}}, test {{no}}: {{status}} · {{found}} questions found, {{key}} in the key",
+    "testCounts": "{{found}} / {{key}} questions · {{saved}} saved",
+    "testCountsNoKey": "{{found}} questions · {{saved}} saved",
+    "duplicates": "{{count}} duplicates skipped",
+    "flagPages": "page {{pages}}",
+    "flagNumbers": "question {{numbers}}"
   },
   "setup": {
     "title": "Confirm the book setup",
@@ -177,5 +183,15 @@
     "ready": "{{count}} tests are ready to import.",
     "confirm": "Confirm and import questions",
     "confirmFailed": "The setup could not be confirmed."
+  },
+  "reviewFlags": {
+    "countMismatch": "{{found}} questions found, {{expected}} in the key",
+    "missingNumbers": "Missing question",
+    "extraQuestions": "Extra question box",
+    "optionCount": "Not 4 choices",
+    "noAnswer": "No answer",
+    "notSaved": "Not saved (fewer than two choices)",
+    "detectionFailed": "Detection failed",
+    "saveFailed": "Saving failed"
   }
 }

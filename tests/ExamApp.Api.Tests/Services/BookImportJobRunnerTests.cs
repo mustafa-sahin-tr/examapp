@@ -6,6 +6,7 @@ using ExamApp.Api.Services.Teachers;
 using ExamApp.Api.Tests.Support;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using SkiaSharp;
 
 namespace ExamApp.Api.Tests.Services;
@@ -185,6 +186,7 @@ public class BookImportJobRunnerTests : IDisposable
             settings["BookImport:MaxPages"] = max.ToString();
         await using var ctx = _db.NewContext();
         await new BookImportJobRunner(ctx, _guard, _minio, new PdfiumRasterizer(pageWidth: 400), _ai,
+            Substitute.For<ExamApp.Api.Services.Labeling.ILabelingService>(), Substitute.For<IServiceScopeFactory>(),
             new ConfigurationBuilder().AddInMemoryCollection(settings).Build()).RunLockedAsync(id);
     }
 

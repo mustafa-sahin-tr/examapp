@@ -30,7 +30,7 @@ public class QuestionClassificationService : IQuestionClassificationService
 
     public async Task<bool> SetLayoutChoiceAsync(int questionId, string? layoutChoice, CancellationToken ct = default)
     {
-        var updated = await _context.Questions
+        var updated = await _context.Questions.WithDrafts()
             .Where(q => q.Id == questionId)
             .ExecuteUpdateAsync(setters => setters.SetProperty(q => q.LayoutChoice, layoutChoice), ct);
         return updated > 0;
@@ -42,7 +42,7 @@ public class QuestionClassificationService : IQuestionClassificationService
     {
         try
         {
-            var question = await _context.Questions
+            var question = await _context.Questions.WithDrafts()
                 .Include(q => q.Answers)
                 .FirstOrDefaultAsync(q => q.Id == questionId);
 
@@ -99,7 +99,7 @@ public class QuestionClassificationService : IQuestionClassificationService
     {
         try
         {
-            var question = await _context.Questions
+            var question = await _context.Questions.WithDrafts()
                 .Include(q => q.QuestionSubTopics)
                 .FirstOrDefaultAsync(q => q.Id == questionId);
 
@@ -229,7 +229,7 @@ public class QuestionClassificationService : IQuestionClassificationService
     }
     public async Task<string?> GetClassificationTextAsync(int questionId, CancellationToken ct = default)
     {
-        var question = await _context.Questions
+        var question = await _context.Questions.WithDrafts()
             .AsNoTracking()
             .Where(q => q.Id == questionId)
             .Select(q => new

@@ -23,6 +23,13 @@ public class BulkQuestionCreateDto
     /// <summary>Issue #826: oluşan soruların havuz paylaşımı. Sunucu içi (işaretleme "Havuza kaydet"); istemciden okunmaz.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public QuestionBankSharing BankSharing { get; set; } = QuestionBankSharing.Private;
+
+    /// <summary>
+    /// Issue #1022: kitap aktarımı. Sorular taslak (<see cref="ExamApp.Api.Data.Question.IsDraft"/>) oluşur ve doğru şık
+    /// olmadan (cevapsız kitap / anahtarda yok) kaydedilebilir; onay (#1023) cevapsız taslağı engeller. Sunucu içi.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsDraft { get; set; }
 }
 
 public class StudyPageAttachImageDto

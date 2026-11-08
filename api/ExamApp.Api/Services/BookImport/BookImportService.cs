@@ -181,6 +181,9 @@ public sealed partial class BookImportService : IBookImportService
             QuestionsFound = t.QuestionsFound,
             KeyAnswers = t.KeyAnswers,
             Flags = ParseFlags(t.FlagsJson),
+            QuestionsSaved = t.QuestionsSaved,
+            DuplicatesSkipped = t.DuplicatesSkipped,
+            ReviewFlags = BookImportReviewFlag.Parse(t.ReviewFlagsJson),
             Error = t.Error,
         }).ToList();
         return detail;

@@ -392,6 +392,80 @@ public class LabelingBankServiceBookTests : IDisposable
         dto.Source.ShouldBeNull();
     }
 
+    // ---------- Issue #1022: kitap aktarımı işinden kayıt ----------
+
+    private LabelingImportPageRequest ImportRequest(byte[] png, int correct = 1) => new(
+        Convert.ToBase64String(png), _seed.BookId, 12, _seed.Grade5, QuestionBankSharing.Private,
+        Request(png, _seed.BookId, 12).Questions.Select(q => { q.CorrectOptionIndex = correct; return q; }).ToList());
+
+    [Fact]
+    public async Task Import_SavesDraftQuestions_WithBookSource_WithoutQuotaOrPageClaim()
+    {
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).SaveImportedPageAsync(ImportRequest(GradientPng()), ActingUserId);
+
+        result.Saved.ShouldBe(2);
+        result.DuplicateIndexes.ShouldBeEmpty();
+        var bulk = _captured.ShouldNotBeNull();
+        bulk.IsDraft.ShouldBeTrue();
+        bulk.Header.TopicId.ShouldBe(_seed.Topic);
+        bulk.Header.ClassificationSource.ShouldBe(nameof(ClassificationSource.Book));
+        bulk.Questions[0].Source!.ActivityLabel.ShouldBe("Etkinlik 9");
+        bulk.Questions[0].Answers.Single(a => a.IsCorrect).Label.ShouldBe("B");
+        await _questions.Received(1).SaveBulkQuestion(Arg.Any<BulkQuestionCreateDto>(), ActingUserId);
+        (await ctx.LabelingPages.AnyAsync(p => p.BankSavedAt != null)).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Import_AllowsAnswerlessQuestions()
+    {
+        await using var ctx = _db.NewContext();
+        await NewService(ctx).SaveImportedPageAsync(ImportRequest(GradientPng(), correct: -1), ActingUserId);
+
+        _captured.ShouldNotBeNull().Questions.SelectMany(q => q.Answers).ShouldAllBe(a => !a.IsCorrect);
+    }
+
+    [Fact]
+    public async Task Import_SkipsAndCountsCropDuplicates_InsteadOfFailing()
+    {
+        var png = GradientPng();
+        await SeedExistingSourceAsync(ExpectedCropHashes(png, Request(png, _seed.BookId, 12))[0], ownerId: 999);
+
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).SaveImportedPageAsync(ImportRequest(png), ActingUserId);
+
+        result.Saved.ShouldBe(1);
+        result.DuplicateIndexes.ShouldBe([0]);
+        _captured.ShouldNotBeNull().Questions.ShouldHaveSingleItem().Source!.ItemLabel.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Import_AllDuplicates_DoesNotCallBulkSave()
+    {
+        var png = GradientPng();
+        var hashes = ExpectedCropHashes(png, Request(png, _seed.BookId, 12));
+        await SeedExistingSourceAsync(hashes[0]);
+        await SeedExistingSourceAsync(hashes[1]);
+
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).SaveImportedPageAsync(ImportRequest(png), ActingUserId);
+
+        result.Saved.ShouldBe(0);
+        result.DuplicateIndexes.ShouldBe([0, 1]);
+        await _questions.DidNotReceiveWithAnyArgs().SaveBulkQuestion(default!, default);
+    }
+
+    [Fact]
+    public async Task Import_BulkSaveFailure_Throws()
+    {
+        _questions.SaveBulkQuestion(Arg.Any<BulkQuestionCreateDto>(), Arg.Any<int>())
+            .Returns(Task.FromResult(new ResponseBaseDto { Success = false, Message = "boom" }));
+
+        await using var ctx = _db.NewContext();
+        await Should.ThrowAsync<LabelingBankSaveException>(() =>
+            NewService(ctx).SaveImportedPageAsync(ImportRequest(GradientPng()), ActingUserId));
+    }
+
     // ---------- review follow-ups ----------
 
     private LabelingBankService NewService(AppDbContext ctx, bool admin, out LabelingActor actor)

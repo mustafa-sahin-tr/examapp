@@ -1626,6 +1626,21 @@ public class AppDbContext : DbContext
             return;
         }
 
+        // Issue #1022: aktarım taslakları ayrı adlı filtreyle gizlenir (DraftQueryFilter.WithDrafts yalnız onu kapatır).
+        if (typeof(T) == typeof(Question))
+        {
+            modelBuilder.Entity<Question>().HasQueryFilter(DraftQueryFilter.SoftDeleteKey, e => !e.IsDeleted);
+            modelBuilder.Entity<Question>().HasQueryFilter(DraftQueryFilter.Key, e => !e.IsDraft);
+            return;
+        }
+
+        if (typeof(T) == typeof(Worksheet))
+        {
+            modelBuilder.Entity<Worksheet>().HasQueryFilter(DraftQueryFilter.SoftDeleteKey, e => !e.IsDeleted);
+            modelBuilder.Entity<Worksheet>().HasQueryFilter(DraftQueryFilter.Key, e => !e.IsDraft);
+            return;
+        }
+
         modelBuilder.Entity<T>().HasQueryFilter(e => !e.IsDeleted);
     }
 }

@@ -30,6 +30,16 @@ public sealed class LabelingRateLimitException(TimeSpan? retryAfter, bool budget
     public bool Budget { get; } = budget;
 }
 
+/// <summary>Issue #1022: aktarım tespiti; <c>CostUsd</c> bu çağrıda ödenen tutar (önbellekten 0).</summary>
+public sealed record LabelingImportDetection(LabelingAiDetectResponseDto Response, decimal CostUsd);
+
+/// <summary>Issue #1022: Claude yanıtı geldi ama kullanılamadı; token ödendi (<see cref="CostUsd"/> işin maliyetine sayılır).</summary>
+public sealed class LabelingImportDetectException(decimal costUsd, Exception inner)
+    : Exception("Claude detection response could not be used.", inner)
+{
+    public decimal CostUsd { get; } = costUsd;
+}
+
 public interface ILabelingService
 {
     IReadOnlyList<LabelingAiModelDto> GetAiModels();
@@ -37,6 +47,14 @@ public interface ILabelingService
     Task<LabelingPageDto?> GetPageAsync(string imageSha256, CancellationToken ct = default);
 
     Task<LabelingAiDetectResponseDto> DetectWithAiAsync(LabelingAiDetectRequestDto request, LabelingActor actor, CancellationToken ct = default);
+
+    /// <summary>
+    /// Issue #1022: kitap aktarımı işinin tespiti — <see cref="DetectWithAiAsync"/> ile aynı model, prompt, kayıt ve önbellek;
+    /// kullanıcının saatlik kotası ve günlük bütçesi uygulanmaz (maliyet işin <c>AiCostUsd</c>'sine yazılır). Dönen
+    /// <c>CostUsd</c> bu çağrıda ödenen tutar: önbellekten 0, kullanılamayan ücretli yanıt da sayılır
+    /// (<see cref="LabelingImportDetectException"/>).
+    /// </summary>
+    Task<LabelingImportDetection> DetectForImportAsync(string imageBase64, string modelId, CancellationToken ct = default);
 
     Task<LabelingPageDto> SaveManualAsync(LabelingSaveManualRequestDto request, LabelingActor actor, CancellationToken ct = default);
 
@@ -81,15 +99,28 @@ public sealed class LabelingService(
     }
 
     public async Task<LabelingAiDetectResponseDto> DetectWithAiAsync(
-        LabelingAiDetectRequestDto request, LabelingActor actor, CancellationToken ct = default)
+        LabelingAiDetectRequestDto request, LabelingActor actor, CancellationToken ct = default) =>
+        (await DetectAsync(request.ImageBase64, request.Model, request.Force, actor, enforceQuota: true, ct)).Response;
+
+    public async Task<LabelingImportDetection> DetectForImportAsync(string imageBase64, string modelId, CancellationToken ct = default)
     {
-        var model = options.Value.Models.FirstOrDefault(m => string.Equals(m.Id, request.Model, StringComparison.Ordinal))
+        var (response, cost) = await DetectAsync(imageBase64, modelId, force: false, ImportActor, enforceQuota: false, ct);
+        return new LabelingImportDetection(response, cost);
+    }
+
+    /// <summary>Aktarım işinin kayıtlarda görünen adı (Claude sonucu "kim üretti").</summary>
+    private static readonly LabelingActor ImportActor = new(null, "Book import");
+
+    private async Task<(LabelingAiDetectResponseDto Response, decimal Cost)> DetectAsync(
+        string imageBase64, string modelId, bool force, LabelingActor actor, bool enforceQuota, CancellationToken ct)
+    {
+        var model = options.Value.Models.FirstOrDefault(m => string.Equals(m.Id, modelId, StringComparison.Ordinal))
                     ?? throw new LabelingValidationException("labeling.unknownModel");
 
-        using var image = LabelingImage.Decode(request.ImageBase64);
+        using var image = LabelingImage.Decode(imageBase64);
         var prompt = await GetActivePromptAsync(ct);
 
-        if (!request.Force)
+        if (!force)
         {
             // Kayıt yalnız aynı prompt içeriğiyle üretildiyse geçerli (parmak izi; sürüm numarası değil): prompt ya da koddaki
             // sabit kısım değiştiyse Claude'a yeniden sorulur.
@@ -98,13 +129,14 @@ public sealed class LabelingService(
                 .FirstOrDefaultAsync(r => r.Page.ImageSha256 == image.Sha256 && r.Source == LabelingSource.Ai &&
                                           r.ModelName == model.Id && r.PromptHash == fingerprint, ct);
             if (cached is not null)
-                return new LabelingAiDetectResponseDto("cached", image.Sha256, ToDto(cached));
+                return (new LabelingAiDetectResponseDto("cached", image.Sha256, ToDto(cached)), 0m);
         }
 
         if (!detector.IsConfigured)
             throw new LabelingAiUnavailableException();
 
-        await LabelingAiQuota.EnsureAndAcquireAsync(rateLimitStore, actor, options.Value, 1, ct);
+        if (enforceQuota)
+            await LabelingAiQuota.EnsureAndAcquireAsync(rateLimitStore, actor, options.Value, 1, ct);
 
         ClaudeDetection detection;
         try
@@ -115,16 +147,20 @@ public sealed class LabelingService(
         {
             // Yanıt geldi ama kullanılamadı (kesik / ret / şema dışı): token ödendi, bütçeye sayılır (bütçe kaçağı olmasın).
             var failedCost = LabelingAiQuota.Cost(model, failed.Input, failed.Output);
-            await LabelingAiQuota.ChargeAsync(rateLimitStore, actor, failedCost);
+            if (enforceQuota)
+                await LabelingAiQuota.ChargeAsync(rateLimitStore, actor, failedCost);
             logger.LogWarning(
                 "[Labeling] Claude {Model} page {Hash} failed after a paid response: {In}/{Out} tokens, ~${Cost:F4} charged",
                 model.Id, image.Sha256[..16], failed.Input, failed.Output, failedCost);
+            if (!enforceQuota)
+                throw new LabelingImportDetectException(failedCost, ex);
             throw;
         }
         var cost = LabelingAiQuota.Cost(model, detection.InputTokens, detection.OutputTokens);
 
         // Ödenmiş sonuç: istemci bu arada vazgeçse de harcama sayılır ve sonuç kaydedilir (tekrar ödenmesin).
-        await LabelingAiQuota.ChargeAsync(rateLimitStore, actor, cost);
+        if (enforceQuota)
+            await LabelingAiQuota.ChargeAsync(rateLimitStore, actor, cost);
         logger.LogInformation(
             "[Labeling] Claude {Model} prompt v{Prompt} page {Hash}: {Questions} questions, {In}/{Out} tokens, ~${Cost:F4}",
             model.Id, prompt.Version, image.Sha256[..16], detection.Predictions.Predictions.Count, detection.InputTokens,
@@ -141,7 +177,7 @@ public sealed class LabelingService(
             result.PromptHash = prompt.Fingerprint;
         }, CancellationToken.None);
 
-        return new LabelingAiDetectResponseDto("live", image.Sha256, ToDto(saved));
+        return (new LabelingAiDetectResponseDto("live", image.Sha256, ToDto(saved)), cost);
     }
 
     public async Task<LabelingPageDto> SaveManualAsync(

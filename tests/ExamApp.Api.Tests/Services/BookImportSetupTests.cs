@@ -9,6 +9,7 @@ using ExamApp.Api.Tests.Support;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using static ExamApp.Api.Tests.Support.FakeBookSetupAi;
 
 namespace ExamApp.Api.Tests.Services;
@@ -144,6 +145,27 @@ public class BookImportSetupTests : IDisposable
     }
 
     [Fact]
+    public async Task Negative_offset_starts_the_registry_range_at_printed_page_one()
+    {
+        // Canlı deneme (#1022, ikinci yayınevi): basılı = dosya - 1 → dosya 1 (kapak) basılı 0 olurdu, kayıt reddediyordu.
+        var id = await SetUpAsync();
+        await using (var ctx = _db.NewContext())
+        {
+            var job = await ctx.BookImportJobs.AsTracking().SingleAsync();
+            var summary = BookSetupSummary.Parse(job.SetupJson)!;
+            summary.Offset = -1;
+            job.SetupJson = summary.Serialize();
+            await ctx.SaveChangesAsync();
+        }
+
+        (await ConfirmAsync(id, Request(Confirmed(1)))).Error.ShouldBe(ConfirmSetupError.None);
+
+        await using var check = _db.NewContext();
+        (await check.BookPageOffsets.SingleAsync()).ShouldSatisfyAllConditions(
+            o => o.FileFrom.ShouldBe(2), o => o.FileTo.ShouldBe(6), o => o.Offset.ShouldBe(-1));
+    }
+
+    [Fact]
     public async Task Confirm_writes_the_book_registry_and_book_tests_records_usage_and_queues_the_questions()
     {
         var id = await SetUpAsync();
@@ -188,7 +210,10 @@ public class BookImportSetupTests : IDisposable
 
         _ai.SurveyBatches.Count.ShouldBe(1); // kurulum yeniden yapılmadı
         await using var check = _db.NewContext();
-        (await check.BookImportJobs.SingleAsync()).Status.ShouldBe(BookImportJobStatus.ReadyForReview);
+        // Soru aktarımına geçildi (#1022; burada Claude tespiti yapılandırılmamış → okunur hata, BookQuestionImportTests).
+        var job = await check.BookImportJobs.SingleAsync();
+        job.Stage.ShouldBe(BookImportStage.Questions);
+        job.Error.ShouldBe("Claude is not configured (Anthropic:ApiKey is empty).");
     }
 
     [Fact]
@@ -358,7 +383,9 @@ public class BookImportSetupTests : IDisposable
             .AddInMemoryCollection(new Dictionary<string, string?> { ["BookImport:SurveyBatchSize"] = batchSize.ToString() })
             .Build();
         await using var ctx = _db.NewContext();
-        await new BookImportJobRunner(ctx, guard, _minio, new PdfiumRasterizer(pageWidth: 200), _ai, config).RunLockedAsync(id);
+        await new BookImportJobRunner(ctx, guard, _minio, new PdfiumRasterizer(pageWidth: 200), _ai,
+            Substitute.For<ExamApp.Api.Services.Labeling.ILabelingService>(), Substitute.For<IServiceScopeFactory>(), config)
+            .RunLockedAsync(id);
     }
 
     public void Dispose() => _db.Dispose();

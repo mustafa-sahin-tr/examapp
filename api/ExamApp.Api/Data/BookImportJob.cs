@@ -169,8 +169,20 @@ public class BookImportJobTest : BaseEntity
 
     public int KeyAnswers { get; set; }
 
-    /// <summary>İnceleme işaretleri (#1022), JSON dizi.</summary>
+    /// <summary>Issue #1022: taslak olarak kaydedilen soru sayısı.</summary>
+    public int QuestionsSaved { get; set; }
+
+    /// <summary>Issue #1022: kırpması bankada zaten olduğu için atlanan soru sayısı (hata değil).</summary>
+    public int DuplicatesSkipped { get; set; }
+
+    /// <summary>Kurulum işaretleri (#1021: <c>noKey</c>, <c>keyMismatch</c>, <c>keyConflicts</c>), JSON dizi.</summary>
     public string? FlagsJson { get; set; }
+
+    /// <summary>
+    /// Issue #1022: aktarım inceleme işaretleri, sayfa referanslı JSON dizi
+    /// (<see cref="Services.BookImport.BookImportReviewFlag"/>).
+    /// </summary>
+    public string? ReviewFlagsJson { get; set; }
 
     [MaxLength(BookImportJob.MaxMessageLength)]
     public string? Error { get; set; }
@@ -195,4 +207,10 @@ public class BookImportPage
     public int Width { get; set; }
     public int Height { get; set; }
     public long SizeBytes { get; set; }
+
+    /// <summary>
+    /// Issue #1022: kurulum taramasının okuduğu, sayfada basılı en büyük soru no. Soru aktarımı numaraları sayfa sayfa buna
+    /// dayandırır (bir sayfada eksik tespit sonraki sayfaları kaydırmaz) ve eksik numaraları sayfasıyla işaretler.
+    /// </summary>
+    public int? MaxQuestionNumber { get; set; }
 }

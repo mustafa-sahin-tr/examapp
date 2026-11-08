@@ -10,8 +10,9 @@ public interface IQuestionQueryService
     /// <paramref name="solutionViewerIsAdmin"/> ya da <paramref name="solutionViewerUserId"/> sorunun sahibiyse
     /// (<see cref="IQuestionOwnershipGuard.CanModifyQuestionAsync"/> kuralı) dolar. Varsayılan: çözüm yok.
     /// </summary>
+    /// <para><paramref name="includeDrafts"/> (#1022): aktarım taslağı da döner; yalnız yetkisi denetlenmiş servis yolu (sınıflandırıcı).</para>
     Task<QuestionDto?> GetQuestionById(int id, int solutionViewerUserId = 0, bool solutionViewerIsAdmin = false,
-        CancellationToken ct = default);
+        CancellationToken ct = default, bool includeDrafts = false);
     /// <summary>
     /// issue #402 (P4): son 10 paragraf — admin tüm paragraflar, diğerleri yalnız kendi oluşturdukları
     /// (<c>Passage.CreateUserId == userId</c>). <paramref name="userId"/> &lt;= 0 (profil çözülemedi) → boş liste.

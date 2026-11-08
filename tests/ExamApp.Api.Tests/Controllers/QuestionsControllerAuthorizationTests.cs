@@ -147,7 +147,7 @@ public class QuestionsControllerAuthorizationTests : IDisposable
         classification.GetClassificationTextAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns("metin");
 
         var query = Substitute.For<IQuestionQueryService>();
-        query.GetQuestionById(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(new QuestionDto { Id = 1, ImageUrl = "q/question.jpg" });
+        query.GetQuestionById(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>(), Arg.Any<bool>()).Returns(new QuestionDto { Id = 1, ImageUrl = "q/question.jpg" });
         query.GetQuestionByTestId(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(new List<QuestionDto>());
         query.GetLastTenPassages(Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(new List<PassageDto>());
         query.SearchBankAsync(Arg.Any<QuestionBankQuery>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
@@ -518,6 +518,8 @@ public class QuestionsControllerAuthorizationTests : IDisposable
         image.StatusCode.ShouldBe(HttpStatusCode.OK);
         // Sınıflandırıcı türü bu başlıktan alır; WebP'yi image/jpeg diye gönderince Claude isteği reddediyordu.
         image.Content.Headers.ContentType?.MediaType.ShouldBe("image/webp");
+        // Issue #1022: sınıflandırıcı kitap aktarımı taslaklarını da okur (yalnız servis hesabı).
+        await _questionQuery.Received(1).GetQuestionById(_copierQuestion, 0, false, Arg.Any<CancellationToken>(), true);
         // Issue #590: görseli olmayan sorunun sınıflandırma metni.
         (await SendAsync(client, Service, HttpMethod.Get, $"/api/questions/{_copierQuestion}/classification-text")).StatusCode.ShouldBe(HttpStatusCode.OK);
         (await SendAsync(client, Service, HttpMethod.Put, $"/api/questions/{_copierQuestion}/classification",

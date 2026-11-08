@@ -18,9 +18,9 @@ public class QuestionQueryService : IQuestionQueryService
     }
 
     public async Task<QuestionDto?> GetQuestionById(int id, int solutionViewerUserId = 0, bool solutionViewerIsAdmin = false,
-        CancellationToken ct = default)
+        CancellationToken ct = default, bool includeDrafts = false)
     {
-        var row = await _context.Questions
+        var row = await (includeDrafts ? _context.Questions.WithDrafts() : _context.Questions)
             .Include(q => q.Answers)
             .Include(q => q.Subject)
             .Include(q => q.QuestionSubTopics)

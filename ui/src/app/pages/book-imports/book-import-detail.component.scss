@@ -242,6 +242,16 @@
     &--running {
       background: var(--ms-info-border);
     }
+
+    // #1023: onaylanan dolu yeşil, silinen yalnız çerçeve.
+    &--approved {
+      background: var(--ms-success-text);
+    }
+
+    &--removed {
+      background: transparent;
+      border: 1px dashed var(--ms-border);
+    }
   }
 }
 

@@ -49,6 +49,10 @@
   }
   }
 
+  @if (reviewing()) {
+  <app-book-import-review [jobId]="j.id" [tests]="j.tests" [editable]="j.status === 'ReadyForReview'" (changed)="load()" />
+  }
+
   <div class="bid-body">
     <section class="bid-card" [attr.aria-label]="t('detail.current')">
       <h2>{{ t('detail.currentStage', { stage: t('stages.' + j.stage) }) }}</h2>
@@ -66,6 +70,9 @@
       </ul>
       <p class="bid-legend">
         {{ t('detail.legend', { done: testCounts().done, review: testCounts().review, failed: testCounts().failed, running: testCounts().running }) }}
+        @if (testCounts().approved + testCounts().removed > 0) {
+        · {{ t('detail.legendReview', { approved: testCounts().approved, removed: testCounts().removed }) }}
+        }
       </p>
       } @else {
       <p class="bid-card__muted">{{ t('detail.noTestsYet') }}</p>

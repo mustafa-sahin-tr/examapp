@@ -37,6 +37,10 @@ public enum BookImportTestStatus
     Done = 3,
     NeedsReview = 4,
     Failed = 5,
+    /// <summary>Issue #1023: onaylandı; taslak test ve soruları etkin.</summary>
+    Approved = 6,
+    /// <summary>Issue #1023: incelemede silindi; taslak test ve soruları silindi.</summary>
+    Removed = 7,
 }
 
 /// <summary>
@@ -162,6 +166,15 @@ public class BookImportJobTest : BaseEntity
 
     [ForeignKey(nameof(BookTestId))]
     public BookTest? BookTest { get; set; }
+
+    /// <summary>
+    /// Issue #1023: soru aktarımında oluşturulan taslak test (kaydedilen sorular sırayla bağlı). Onayda etkinleşir; testin
+    /// silinmesi yalnız bu testi ve taslak sorularını siler.
+    /// </summary>
+    public int? WorksheetId { get; set; }
+
+    [ForeignKey(nameof(WorksheetId))]
+    public Worksheet? Worksheet { get; set; }
 
     public BookImportTestStatus Status { get; set; } = BookImportTestStatus.Pending;
 

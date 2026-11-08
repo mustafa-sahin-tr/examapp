@@ -154,6 +154,69 @@ public class BookImportController : BaseController
         };
     }
 
+    /// <summary>Issue #1023: incelemedeki testin soruları (numara, sayfa, cevap; cevapsızlar için A–D seçici).</summary>
+    [HttpGet("{id:guid}/tests/{testId:int}/questions")]
+    [ProducesResponseType(typeof(List<BookImportReviewQuestionDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetReviewQuestions(Guid id, int testId, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        var questions = await _service.GetReviewQuestionsAsync(owner, id, testId, ct);
+        return questions is null ? NotFound(new { message = _localizer["bookImport.notFound"].Value }) : Ok(questions);
+    }
+
+    /// <summary>Issue #1023: taslak sorunun doğru şıkkı (A = 0).</summary>
+    [HttpPut("{id:guid}/tests/{testId:int}/questions/{questionId:int}/answer")]
+    public async Task<IActionResult> SetAnswer(Guid id, int testId, int questionId, [FromBody] SetBookImportAnswerDto request, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        return ReviewResult(await _service.SetAnswerAsync(owner, id, testId, questionId, request?.OptionIndex ?? -1, ct));
+    }
+
+    /// <summary>Issue #1023: testi onayla; cevapsız soru varsa 409 <c>bookImport.answerless</c>.</summary>
+    [HttpPost("{id:guid}/tests/{testId:int}/approve")]
+    public async Task<IActionResult> ApproveTest(Guid id, int testId, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        return ReviewResult(await _service.ApproveTestAsync(owner, id, testId, ct));
+    }
+
+    /// <summary>Issue #1023: onaylanabilen bütün testleri onayla; atlananlar nedeniyle döner.</summary>
+    [HttpPost("{id:guid}/approve")]
+    [ProducesResponseType(typeof(ApproveAllBookImportResultDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ApproveAll(Guid id, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        var result = await _service.ApproveAllAsync(owner, id, ct);
+        return result is null ? NotFound(new { message = _localizer["bookImport.notFound"].Value }) : Ok(result);
+    }
+
+    /// <summary>Issue #1023: testi sil — yalnız o testin taslak testi ve taslak soruları.</summary>
+    [HttpDelete("{id:guid}/tests/{testId:int}")]
+    public async Task<IActionResult> RemoveTest(Guid id, int testId, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        return ReviewResult(await _service.RemoveTestAsync(owner, id, testId, ct));
+    }
+
+    private IActionResult ReviewResult(BookImportReviewResult result) => result switch
+    {
+        BookImportReviewResult.Ok => NoContent(),
+        BookImportReviewResult.NotFound => NotFound(new { message = _localizer["bookImport.notFound"].Value }),
+        BookImportReviewResult.Answerless => Conflict(new { code = "bookImport.answerless", message = _localizer["bookImport.answerless"].Value }),
+        BookImportReviewResult.InvalidOption => BadRequest(new { code = "bookImport.invalidOption", message = _localizer["bookImport.invalidOption"].Value }),
+        _ => Conflict(new { code = "bookImport.notInReview", message = _localizer["bookImport.notInReview"].Value }),
+    };
+
     private ObjectResult QuotaReached(EntitlementCheck? quota) => StatusCode(StatusCodes.Status429TooManyRequests, new
     {
         code = "entitlement.limitReached",

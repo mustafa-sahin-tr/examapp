@@ -84,7 +84,9 @@
     "Running": "Alınıyor",
     "Done": "Hazır",
     "NeedsReview": "Kontrol gerekli",
-    "Failed": "Hata"
+    "Failed": "Hata",
+    "Approved": "Onaylandı",
+    "Removed": "Silindi"
   },
   "stepState": {
     "done": "tamamlandı",
@@ -132,7 +134,8 @@
     "testCountsNoKey": "{{found}} soru · {{saved}} kaydedildi",
     "duplicates": "{{count}} tekrar atlandı",
     "flagPages": "sayfa {{pages}}",
-    "flagNumbers": "soru {{numbers}}"
+    "flagNumbers": "soru {{numbers}}",
+    "legendReview": "{{approved}} onaylandı · {{removed}} silindi"
   },
   "setup": {
     "title": "Kitap kurulumunu onayla",
@@ -193,5 +196,37 @@
     "notSaved": "Kaydedilemedi (ikiden az şık)",
     "detectionFailed": "Tespit başarısız",
     "saveFailed": "Kayıt başarısız"
+  },
+  "review": {
+    "title": "İnceleme ve onay",
+    "summary": "{{open}} test inceleme bekliyor · {{approved}} onaylandı",
+    "onlyAttention": "Yalnız bakılması gerekenler",
+    "approveAll": "Sorunsuz testleri onayla ({{count}}/{{total}})",
+    "approveAllConfirm": "{{count}} test onaylanacak ve etkinleşecek. Cevapsız sorusu olan ya da hatalı testler atlanır.",
+    "confirm": "Onayla",
+    "cancel": "Vazgeç",
+    "approving": "Onaylanıyor…",
+    "failed": "İşlem yapılamadı. Tekrar deneyin.",
+    "approvedAll": "{{count}} test onaylandı.",
+    "skipped": "{{name}} atlandı: {{reason}}",
+    "skipReason": {
+      "answerless": "cevapsız soru var",
+      "failed": "aktarım hatalı"
+    },
+    "allDone": "İncelenecek test kalmadı.",
+    "nothingToCheck": "Bakılması gereken test yok. Bütün testleri görmek için filtreyi kapatın.",
+    "answerless": "{{count}} cevapsız",
+    "counts": "{{saved}} soru · anahtarda {{key}}",
+    "pages": "sayfa {{from}}–{{to}}",
+    "preview": "Önizle",
+    "approve": "Onayla",
+    "answerlessHint": "Önce cevapsız soruların cevabını seçin.",
+    "remove": "{{name}} testini sil",
+    "removeConfirm": "Testi sil",
+    "loading": "Sorular yükleniyor…",
+    "answered": "Cevaplanan {{done}}/{{total}}",
+    "question": "Soru {{number}} · sayfa {{page}}",
+    "answerFor": "Soru {{number}} cevabı",
+    "footer": "Onaylanan testler normal test ayarlarına uyar ve varsayılan olarak yalnız size açıktır (özel)."
   }
 }

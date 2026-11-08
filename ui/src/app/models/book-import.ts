@@ -21,7 +21,7 @@ export const BOOK_IMPORT_STAGES = [
 ] as const;
 export type BookImportStage = (typeof BOOK_IMPORT_STAGES)[number];
 
-export type BookImportTestStatus = 'Pending' | 'Running' | 'Done' | 'NeedsReview' | 'Failed';
+export type BookImportTestStatus = 'Pending' | 'Running' | 'Done' | 'NeedsReview' | 'Failed' | 'Approved' | 'Removed';
 
 export interface BookImportJob {
   id: string;
@@ -45,6 +45,8 @@ export interface BookImportJob {
 }
 
 export interface BookImportJobTest {
+  /** #1023: inceleme işlemleri bu id ile. */
+  id: number;
   order: number;
   unit: number;
   testNo: number;
@@ -57,7 +59,38 @@ export interface BookImportJobTest {
   questionsSaved: number;
   duplicatesSkipped: number;
   reviewFlags: BookImportReviewFlag[];
+  /** #1023: taslak test, dosya sayfaları ve cevapsız soru sayısı (onayı engeller). */
+  worksheetId: number | null;
+  fileFrom: number | null;
+  fileTo: number | null;
+  answerless: number;
   error: string | null;
+}
+
+/** #1023: incelemedeki testin sorusu; `answerIndex` A = 0, cevapsızsa null. */
+export interface BookImportReviewQuestion {
+  id: number;
+  number: string | null;
+  filePage: number;
+  optionCount: number;
+  imageUrl: string | null;
+  answerIndex: number | null;
+}
+
+/** #1023: "Sorunsuz testleri onayla" sonucu; atlananların nedeni `answerless` ya da `failed`. */
+export interface ApproveAllBookImportResult {
+  approved: number[];
+  skipped: { id: number; reason: 'answerless' | 'failed' }[];
+}
+
+/** #1023: onaylanabilir test — aktarımı bitmiş, taslak testi var ve cevapsız sorusu yok. */
+export function isApprovable(test: BookImportJobTest): boolean {
+  return (test.status === 'Done' || test.status === 'NeedsReview') && test.worksheetId != null && test.answerless === 0;
+}
+
+/** #1023: incelemede bakılması gereken: işaretli, hatalı ya da cevapsız sorusu olan (onaylanmamış / silinmemiş). */
+export function needsAttention(test: BookImportJobTest): boolean {
+  return test.status === 'NeedsReview' || test.status === 'Failed' || (test.status === 'Done' && test.answerless > 0);
 }
 
 /** #1022: aktarım inceleme işareti; `pages` dosya sayfaları, `numbers` soru numaraları. */

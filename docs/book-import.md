@@ -103,3 +103,25 @@ aktarım aracındaki Python portu referanstır (#1022).
   `extraQuestions`, `optionCount` (≠ 4), `noAnswer`, `notSaved` (ikiden az şık), `detectionFailed`, `saveFailed`. İşaretli test
   `NeedsReview`, işaretsiz `Done`; her sayfası düşen test `Failed`. Bir sayfa ya da test diğerlerini durdurmaz.
 - Takip ekranı test başına bulunan / anahtardaki / kaydedilen / atlanan sayıları ve işaretleri sayfa ve soru numarasıyla gösterir.
+
+## İnceleme ve onay (#1023)
+
+- **Taslak test:** soru aktarımı her test için kaydedilen soruları sırayla bağlayan taslak bir test (`Worksheet.IsDraft`) açar
+  (ad "kitap – test", süre kurulumdan, öğretmen paylaşımı Private, sahibi işin sahibi); `BookImportJobTest.WorksheetId`.
+  Soru id'leri bankaya kayıttan kırpma hash'iyle döner (`LabelingImportPageResult.QuestionIds`).
+- **Uç noktalar** (sahibi / Admin, iş `ReadyForReview`): `GET {id}/tests/{testId}/questions` (numara, sayfa, görsel, cevap),
+  `PUT …/questions/{questionId}/answer`, `POST {id}/tests/{testId}/approve` (cevapsız soru → 409 `bookImport.answerless`),
+  `POST {id}/approve` (onaylanabilenler; atlananlar `answerless` / `failed`), `DELETE {id}/tests/{testId}` (yalnız o testin taslak
+  testi ve taslak soruları soft-delete). Onaylanacak test kalmayınca iş `Completed` / `Approval`.
+- **Onay** `IsDraft`'ı kaldırır; öğretmen paylaşımı Private, soru havuzu paylaşımı olduğu gibi kalır. Sınıflandırma taslakta da
+  yazar (`WithDrafts`), onaydan sonra gelen sonuç da uygulanır.
+- **Sızıntı:** taslaklar adlı global filtreyle her sorgudan gizlidir. `IgnoreQueryFilters()` kullanan okumalar yalnız oturum /
+  cevap geçmişinden okur (taslak atanamaz, başlatılamaz); ham SQL soru / test tablolarına dokunmaz. Alan başına test: havuz
+  araması ve paylaşılan havuz (`QuestionBankSearchTests`), test listeleri (`ExamServiceWorksheetListTests`), atama
+  (`WorksheetAssignmentServiceSchoolOnlyTests`), çözme (`TestSessionServiceActivityKindTests`), sayılar
+  (`TeacherServiceDashboardSummaryTests`), veli (`ParentAssignmentServiceTests`). Liderlik tablosu yalnız öğrenci puanından okur.
+- **Ekran:** takip sayfasında "İnceleme ve onay" (`book-import-review`): "Yalnız bakılması gerekenler" varsayılan açık, satırda
+  işaretler, Önizle (soru görselleri + A–D seçici, "Cevaplanan x/y"), Onayla, Sil (ikinci tıkla); toplu onay onay ister ve
+  atlananları bildirir. Önizleme taslağı genel test ekranına açmaz (aktarım uç noktasından okur).
+- **Açık:** "İşaretlemede düzelt" yok: işaretleme ekranı kayıtlı soruları yüklemiyor, yeniden kayıt etkin soru üretir. Şimdilik
+  hatalı test silinir, sayfa işaretlemede elle yeniden kaydedilir.

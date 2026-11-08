@@ -53,6 +53,26 @@ public class TeacherServiceDashboardSummaryTests : IDisposable
     }
 
     [Fact]
+    public async Task GetDashboardSummaryAsync_DoesNotCountDraftWorksheets()
+    {
+        // Issue #1023: kitap aktarımı taslakları onaylanana kadar sayılara girmez.
+        await using (var ctx = _db.NewContext())
+        {
+            var grade = new Grade { Name = "8" };
+            ctx.Grades.Add(grade);
+            await ctx.SaveChangesAsync();
+
+            ctx.SetCurrentUser(TeacherId);
+            ctx.Worksheets.Add(new Worksheet { Name = "Owned", Description = "", GradeId = grade.Id });
+            ctx.Worksheets.Add(new Worksheet { Name = "Draft", Description = "", GradeId = grade.Id, IsDraft = true });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var check = _db.NewContext();
+        (await NewService(check).GetDashboardSummaryAsync(SchoolTeacher(TeacherId))).TotalWorksheets.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task GetDashboardSummaryAsync_OnlyCountsWorksheetsOwnedByTheTeacher()
     {
         await using (var ctx = _db.NewContext())

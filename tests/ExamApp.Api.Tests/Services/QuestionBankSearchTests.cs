@@ -142,6 +142,31 @@ public class QuestionBankSearchTests : IDisposable
 
     private int[] AllLiveIds => Sorted(_live);
 
+    // ---------------- taslaklar (#1023) ----------------
+
+    [Fact]
+    public async Task SearchBankAsync_DraftQuestions_AreHiddenFromOwnSharedAndAdminSearches()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            // Kitap aktarımı taslağı: herkese açık havuz paylaşımı ve açık bir testte bile görünmez.
+            var draftTest = Add(ctx, TeacherA, new Worksheet
+            {
+                Name = "taslak test", Description = "", GradeId = _g5, TeacherSharing = WorksheetTeacherSharing.PublicView, IsDraft = true,
+            });
+            var draft = Add(ctx, TeacherA, new Question
+            {
+                Text = "taslak", SubjectId = _mat, TopicId = _t5, IsDraft = true, BankSharing = QuestionBankSharing.Everyone,
+            });
+            ctx.TestQuestions.Add(Link(draftTest, draft));
+            ctx.SaveChanges();
+        }
+
+        (await SearchAsync(TeacherA, isAdmin: false)).Items.ShouldNotContain(i => i.Text == "taslak");
+        (await SearchAsync(TeacherC, isAdmin: false, new QuestionBankQuery { Scope = "all" })).Items.ShouldNotContain(i => i.Text == "taslak");
+        IdsOf(await SearchAsync(Admin, isAdmin: true, new QuestionBankQuery { Scope = "all" })).ShouldBe(AllLiveIds);
+    }
+
     // ---------------- kapsam: mine ----------------
 
     [Fact]

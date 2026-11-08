@@ -56,6 +56,22 @@ public class WorksheetAssignmentServiceSchoolOnlyTests : IDisposable
     };
 
     [Fact]
+    public async Task DraftWorksheet_CannotBeAssignedEvenByOwnerOrAdmin_UntilApproved()
+    {
+        // Issue #1023: kitap aktarımı taslağı onaydan önce atanamaz (öğrenciye ulaşmaz).
+        var (ws, studentA, _) = await SeedAsync(WorksheetTeacherSharing.PublicAssignable);
+        await using var ctx = _db.NewContext();
+        await ctx.Worksheets.IgnoreQueryFilters().Where(w => w.Id == ws).ExecuteUpdateAsync(s => s.SetProperty(w => w.IsDraft, true));
+
+        (await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentA), OwnerA, isAdmin: false)).Success.ShouldBeFalse();
+        (await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentA), Admin, isAdmin: true)).Success.ShouldBeFalse();
+        (await ctx.WorksheetAssignments.CountAsync()).ShouldBe(0);
+
+        await ctx.Worksheets.IgnoreQueryFilters().Where(w => w.Id == ws).ExecuteUpdateAsync(s => s.SetProperty(w => w.IsDraft, false));
+        (await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentA), OwnerA, isAdmin: false)).Success.ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task SameSchoolTeacher_CanAssignSchoolOnlyToOwnSchoolStudent()
     {
         var (ws, studentA, _) = await SeedAsync(WorksheetTeacherSharing.SchoolOnly);

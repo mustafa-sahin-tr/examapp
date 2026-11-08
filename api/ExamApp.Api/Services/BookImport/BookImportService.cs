@@ -64,6 +64,21 @@ public interface IBookImportService
 
     /// <summary>Onay bekleyen işi iptal eder (#1021 "anahtar yok → iptal"); diğer durumlar #1025.</summary>
     Task<CancelBookImportResult> CancelAsync(BookImportOwner owner, Guid id, CancellationToken ct);
+
+    /// <summary>Issue #1023: incelemedeki testin soruları (numara, sayfa, cevap); test yoksa null.</summary>
+    Task<List<BookImportReviewQuestionDto>?> GetReviewQuestionsAsync(BookImportOwner owner, Guid id, int testId, CancellationToken ct);
+
+    /// <summary>Issue #1023: taslak sorunun doğru şıkkını seç (cevapsız sorular için).</summary>
+    Task<BookImportReviewResult> SetAnswerAsync(BookImportOwner owner, Guid id, int testId, int questionId, int optionIndex, CancellationToken ct);
+
+    /// <summary>Issue #1023: testi onayla — taslak test ve soruları etkinleşir; cevapsız soru varsa engellenir.</summary>
+    Task<BookImportReviewResult> ApproveTestAsync(BookImportOwner owner, Guid id, int testId, CancellationToken ct);
+
+    /// <summary>Issue #1023: onaylanabilen bütün testleri onayla; engellenenler nedeniyle döner. İş yoksa null.</summary>
+    Task<ApproveAllBookImportResultDto?> ApproveAllAsync(BookImportOwner owner, Guid id, CancellationToken ct);
+
+    /// <summary>Issue #1023: testi sil — yalnız o testin taslak testi ve taslak soruları silinir.</summary>
+    Task<BookImportReviewResult> RemoveTestAsync(BookImportOwner owner, Guid id, int testId, CancellationToken ct);
 }
 
 /// <summary>
@@ -171,8 +186,10 @@ public sealed partial class BookImportService : IBookImportService
 
         var detail = new BookImportJobDetailDto();
         Fill(detail, job);
+        var answerless = await AnswerlessCountsAsync(tests.Where(t => t.WorksheetId is not null).Select(t => t.WorksheetId!.Value).ToList(), ct);
         detail.Tests = tests.Select(t => new BookImportJobTestDto
         {
+            Id = t.Id,
             Order = t.Order,
             Unit = t.Unit,
             TestNo = t.TestNo,
@@ -184,6 +201,10 @@ public sealed partial class BookImportService : IBookImportService
             QuestionsSaved = t.QuestionsSaved,
             DuplicatesSkipped = t.DuplicatesSkipped,
             ReviewFlags = BookImportReviewFlag.Parse(t.ReviewFlagsJson),
+            WorksheetId = t.WorksheetId,
+            FileFrom = t.FileFrom,
+            FileTo = t.FileTo,
+            Answerless = t.WorksheetId is { } w ? answerless.GetValueOrDefault(w) : 0,
             Error = t.Error,
         }).ToList();
         return detail;

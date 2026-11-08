@@ -1,0 +1,127 @@
+<section class="bir" *transloco="let t; prefix: 'book-imports'" [attr.aria-label]="t('review.title')">
+  <div class="bir-head">
+    <div>
+      <h2>{{ t('review.title') }}</h2>
+      <p>{{ t('review.summary', { open: open().length, approved: approvedCount() }) }}</p>
+    </div>
+    <mat-slide-toggle [checked]="onlyAttention()" (change)="onlyAttention.set($event.checked)">
+      {{ t('review.onlyAttention') }}
+    </mat-slide-toggle>
+    @if (editable() && open().length > 0) {
+    <button mat-flat-button type="button" class="bir-head__bulk" [disabled]="approvable() === 0 || busy() !== null"
+      (click)="confirmingAll.set(true)">
+      <mat-icon aria-hidden="true">done_all</mat-icon>
+      {{ t('review.approveAll', { count: approvable(), total: open().length }) }}
+    </button>
+    }
+  </div>
+
+  @if (confirmingAll()) {
+  <div class="bir-confirm" role="alertdialog" aria-labelledby="bir-confirm-text">
+    <span id="bir-confirm-text">{{ t('review.approveAllConfirm', { count: approvable() }) }}</span>
+    <div class="bir-confirm__actions">
+      <button mat-stroked-button type="button" (click)="confirmingAll.set(false)">{{ t('review.cancel') }}</button>
+      <button mat-flat-button type="button" (click)="approveAll()">{{ t('review.confirm') }}</button>
+    </div>
+  </div>
+  }
+
+  @if (busy() === 'all') {
+  <div class="bir-note" role="status"><mat-spinner diameter="18" aria-hidden="true"></mat-spinner>{{ t('review.approving') }}</div>
+  }
+  @if (error(); as e) {
+  <div class="bir-note bir-note--danger" role="alert">
+    <mat-icon aria-hidden="true">error_outline</mat-icon>{{ e === 'review.failed' ? t('review.failed') : e }}
+  </div>
+  }
+  @if (result(); as r) {
+  <div class="bir-note" role="status">
+    <mat-icon aria-hidden="true">task_alt</mat-icon>
+    <span>
+      {{ t('review.approvedAll', { count: r.approved.length }) }}
+      @for (skip of r.skipped; track skip.id) {
+      @if (testById(skip.id); as s) {
+      <span class="bir-skip">{{ t('review.skipped', { name: testName(s), reason: t('review.skipReason.' + skip.reason) }) }}</span>
+      }
+      }
+    </span>
+  </div>
+  }
+
+  @if (visible().length === 0) {
+  <p class="bir-empty">{{ open().length === 0 ? t('review.allDone') : t('review.nothingToCheck') }}</p>
+  } @else {
+  <ul class="bir-list">
+    @for (test of visible(); track test.id) {
+    <li class="bir-row">
+      <div class="bir-row__main">
+        <span class="bir-row__name">{{ testName(test) }}</span>
+        <span class="bir-chip bir-chip--{{ test.status }}">{{ t('testStatus.' + test.status) }}</span>
+        @for (flag of test.reviewFlags; track flag.code) {
+        <span class="bir-chip">{{ t('reviewFlags.' + flag.code, { found: flag.found, expected: flag.expected }) }}</span>
+        }
+        @if (test.answerless > 0) {
+        <span class="bir-chip bir-chip--danger">{{ t('review.answerless', { count: test.answerless }) }}</span>
+        }
+        <span class="bir-row__counts">
+          {{ t('review.counts', { saved: test.questionsSaved, key: test.keyAnswers }) }}
+          @if (test.fileFrom) { · {{ t('review.pages', { from: test.fileFrom, to: test.fileTo }) }} }
+        </span>
+      </div>
+      <div class="bir-row__actions">
+        @if (test.worksheetId) {
+        <button mat-stroked-button type="button" [attr.aria-expanded]="previewId() === test.id" (click)="togglePreview(test)">
+          <mat-icon aria-hidden="true">{{ previewId() === test.id ? 'expand_less' : 'visibility' }}</mat-icon>{{ t('review.preview') }}
+        </button>
+        }
+        @if (editable()) {
+        <button mat-flat-button type="button" [disabled]="!isApprovable(test) || busy() !== null"
+          [attr.title]="test.answerless > 0 ? t('review.answerlessHint') : null" (click)="approve(test)">
+          @if (busy() === test.id) { <mat-spinner diameter="16" aria-hidden="true"></mat-spinner> }
+          {{ t('review.approve') }}
+        </button>
+        @if (removingId() === test.id) {
+        <button mat-stroked-button type="button" class="bir-danger" (click)="remove(test)">{{ t('review.removeConfirm') }}</button>
+        <button mat-button type="button" (click)="removingId.set(null)">{{ t('review.cancel') }}</button>
+        } @else {
+        <button mat-icon-button type="button" [attr.aria-label]="t('review.remove', { name: testName(test) })"
+          [disabled]="busy() !== null" (click)="removingId.set(test.id)">
+          <mat-icon>delete_outline</mat-icon>
+        </button>
+        }
+        }
+      </div>
+
+      @if (previewId() === test.id) {
+      <div class="bir-preview">
+        @if (previewLoading()) {
+        <div class="bir-note" role="status"><mat-spinner diameter="18" aria-hidden="true"></mat-spinner>{{ t('review.loading') }}</div>
+        } @else {
+        <p class="bir-preview__counter" aria-live="polite">{{ t('review.answered', { done: answered(), total: questions().length }) }}</p>
+        <ol class="bir-questions">
+          @for (q of questions(); track q.id) {
+          <li class="bir-q" [class.bir-q--missing]="q.answerIndex == null">
+            <div class="bir-q__head">
+              <span>{{ t('review.question', { number: q.number ?? '?', page: q.filePage }) }}</span>
+              <div class="bir-q__answers" role="group" [attr.aria-label]="t('review.answerFor', { number: q.number ?? '?' })">
+                @for (letter of letters.slice(0, q.optionCount); track letter; let i = $index) {
+                <button type="button" class="bir-q__answer" [class.bir-q__answer--on]="q.answerIndex === i"
+                  [attr.aria-pressed]="q.answerIndex === i" [disabled]="!editable()" (click)="pick(test, q, i)">{{ letter }}</button>
+                }
+              </div>
+            </div>
+            @if (q.imageUrl) {
+            <img class="bir-q__image" [src]="q.imageUrl" [alt]="t('review.question', { number: q.number ?? '?', page: q.filePage })" loading="lazy" />
+            }
+          </li>
+          }
+        </ol>
+        }
+      </div>
+      }
+    </li>
+    }
+  </ul>
+  }
+  <p class="bir-footer">{{ t('review.footer') }}</p>
+</section>

@@ -22,8 +22,9 @@ function detail(overrides: Partial<BookImportJobDetail> = {}): BookImportJobDeta
 
 function test(overrides: Partial<BookImportJobTest> = {}): BookImportJobTest {
   return {
-    order: 1, unit: 1, testNo: 1, title: null, status: 'Done', questionsFound: 0, keyAnswers: 0, flags: [],
-    questionsSaved: 0, duplicatesSkipped: 0, reviewFlags: [], error: null, ...overrides,
+    id: 1, order: 1, unit: 1, testNo: 1, title: null, status: 'Done', questionsFound: 0, keyAnswers: 0, flags: [],
+    questionsSaved: 0, duplicatesSkipped: 0, reviewFlags: [], worksheetId: null, fileFrom: null, fileTo: null, answerless: 0,
+    error: null, ...overrides,
   };
 }
 

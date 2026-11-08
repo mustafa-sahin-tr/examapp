@@ -19,6 +19,9 @@
     "invalidMinutes": "Minutes must be between 1 and 600.",
     "invalidAnswerKey": "The answer key may contain only the letters A–E; fix unreadable (?) answers.",
     "invalidSetup": "The setup could not be confirmed.",
-    "notCancellable": "This import cannot be cancelled at this stage."
+    "notCancellable": "This import cannot be cancelled at this stage.",
+    "answerless": "A test with unanswered questions cannot be approved; pick the answers first.",
+    "invalidOption": "Invalid option.",
+    "notInReview": "This test cannot be approved or removed right now."
   }
 }

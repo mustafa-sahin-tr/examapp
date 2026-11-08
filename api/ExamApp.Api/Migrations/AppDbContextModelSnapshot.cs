@@ -495,6 +495,42 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("BookImportJobTests");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.BookImportPage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("FilePage")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Height")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Width")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobId", "FilePage")
+                        .IsUnique();
+
+                    b.ToTable("BookImportPages");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.BookPageOffset", b =>
                 {
                     b.Property<int>("Id")
@@ -7420,6 +7456,17 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Job");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.BookImportPage", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.BookImportJob", "Job")
+                        .WithMany("Pages")
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Job");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.BookPageOffset", b =>
                 {
                     b.HasOne("ExamApp.Api.Data.Book", null)
@@ -8815,6 +8862,8 @@ namespace ExamApp.Api.Migrations
 
             modelBuilder.Entity("ExamApp.Api.Data.BookImportJob", b =>
                 {
+                    b.Navigation("Pages");
+
                     b.Navigation("Tests");
                 });
 

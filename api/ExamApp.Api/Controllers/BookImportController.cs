@@ -96,6 +96,17 @@ public class BookImportController : BaseController
         return job is null ? NotFound(new { message = _localizer["bookImport.notFound"].Value }) : Ok(job);
     }
 
+    /// <summary>Issue #1020: işin sayfa görseli (WebP); iş sahibine (ve Admin'e).</summary>
+    [HttpGet("{id:guid}/pages/{filePage:int}")]
+    public async Task<IActionResult> GetPage(Guid id, int filePage, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        var image = await _service.GetPageImageAsync(owner, id, filePage, ct);
+        return image is null ? NotFound(new { message = _localizer["bookImport.notFound"].Value }) : File(image, "image/webp");
+    }
+
     private async Task<BookImportOwner?> ResolveOwnerAsync(CancellationToken ct)
     {
         var user = await GetAuthenticatedUserAsync(ct);

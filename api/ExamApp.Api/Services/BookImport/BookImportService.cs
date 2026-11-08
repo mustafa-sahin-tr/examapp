@@ -45,6 +45,15 @@ public interface IBookImportService
     Task<List<BookImportJobDto>> ListAsync(BookImportOwner owner, int take, CancellationToken ct);
     Task<BookImportJobDetailDto?> GetAsync(BookImportOwner owner, Guid id, CancellationToken ct);
     Task<BookImportQuotaDto> GetQuotaAsync(BookImportOwner owner, CancellationToken ct);
+
+    /// <summary>İşin bir sayfa görseli (#1020); iş görünmüyorsa ya da sayfa yoksa null.</summary>
+    Task<Stream?> GetPageImageAsync(BookImportOwner owner, Guid id, int filePage, CancellationToken ct);
+
+    /// <summary>
+    /// Kitaba bağlı en son aktarımın sayfa görseli (#1020): işaretleme ekranı <c>bookId</c> + <c>filePage</c> ile okur. Kitap
+    /// kaydı işaretleme rolleri için ortak olduğundan sahiplik aranmaz.
+    /// </summary>
+    Task<Stream?> GetBookPageImageAsync(int bookId, int filePage, CancellationToken ct);
 }
 
 /// <summary>
@@ -163,6 +172,24 @@ public sealed class BookImportService : IBookImportService
             Error = t.Error,
         }).ToList();
         return detail;
+    }
+
+    public async Task<Stream?> GetPageImageAsync(BookImportOwner owner, Guid id, int filePage, CancellationToken ct)
+    {
+        var url = await Visible(owner).Where(j => j.Id == id)
+            .SelectMany(j => j.Pages.Where(p => p.FilePage == filePage).Select(p => p.ImageUrl))
+            .FirstOrDefaultAsync(ct);
+        return url is null ? null : await _minio.GetFileStreamAsync(url);
+    }
+
+    public async Task<Stream?> GetBookPageImageAsync(int bookId, int filePage, CancellationToken ct)
+    {
+        var url = await _db.BookImportPages.AsNoTracking()
+            .Where(p => p.Job.BookId == bookId && p.FilePage == filePage)
+            .OrderByDescending(p => p.Job.CreateTime)
+            .Select(p => p.ImageUrl)
+            .FirstOrDefaultAsync(ct);
+        return url is null ? null : await _minio.GetFileStreamAsync(url);
     }
 
     public async Task<BookImportQuotaDto> GetQuotaAsync(BookImportOwner owner, CancellationToken ct)

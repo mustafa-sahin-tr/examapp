@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using ExamApp.Api.Controllers;
 using ExamApp.Api.Models.Dtos.Labeling;
+using ExamApp.Api.Services.BookImport;
 using ExamApp.Api.Services.Labeling;
 using ExamApp.Api.Services.Teachers.Authorization;
 using Microsoft.AspNetCore.Authorization;
@@ -23,6 +24,7 @@ namespace ExamApp.Api.Tests.Controllers;
 public class LabelingBooksControllerTests
 {
     private readonly IBookRegistryService _books = Substitute.For<IBookRegistryService>();
+    private readonly IBookImportService _imports = Substitute.For<IBookImportService>();
 
     private LabelingBooksController NewController(bool admin = false, int userId = 42)
     {
@@ -39,7 +41,7 @@ public class LabelingBooksControllerTests
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "kc-1"), new("preferred_username", "trainer") };
         if (admin)
             claims.Add(new Claim(ClaimTypes.Role, "Admin"));
-        return new LabelingBooksController(_books)
+        return new LabelingBooksController(_books, imports: _imports)
         {
             ControllerContext = new ControllerContext
             {
@@ -77,12 +79,24 @@ public class LabelingBooksControllerTests
             .ToList();
 
         actions.Select(m => m.Name).OrderBy(n => n)
-            .ShouldBe(new[] { "Create", "Delete", "FindFilePages", "Get", "GetPage", "List", "Update" });
+            .ShouldBe(new[] { "Create", "Delete", "FindFilePages", "Get", "GetPage", "GetPageImage", "List", "Update" });
         foreach (var m in actions)
         {
             m.GetCustomAttributes<AllowAnonymousAttribute>().ShouldBeEmpty(m.Name);
             m.GetCustomAttributes<AuthorizeAttribute>().ShouldBeEmpty(m.Name);
         }
+    }
+
+    [Fact]
+    public async Task GetPageImage_ReturnsWebpFromTheBooksImport_Or404()
+    {
+        _imports.GetBookPageImageAsync(7, 12, Arg.Any<CancellationToken>()).Returns(new MemoryStream([1, 2, 3]));
+
+        var found = await NewController().GetPageImage(7, 12, CancellationToken.None);
+        var missing = await NewController().GetPageImage(7, 13, CancellationToken.None);
+
+        found.ShouldBeOfType<FileStreamResult>().ContentType.ShouldBe("image/webp");
+        missing.ShouldBeOfType<NotFoundObjectResult>();
     }
 
     [Fact]

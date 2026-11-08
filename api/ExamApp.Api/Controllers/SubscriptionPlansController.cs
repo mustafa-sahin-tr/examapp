@@ -47,6 +47,7 @@ public class SubscriptionPlansController : BaseController
 
     /// <summary>#1028: deneme planını başlatır (hesap başına bir kez; ikinci deneme 409 <c>subscription.trialUsed</c>).</summary>
     [HttpPost("me/trial")]
+    [Authorize(Roles = "Teacher,Student,Admin")] // veliye plan satılmaz (sihirbaz veliye plan adımı göstermez)
     public async Task<ActionResult<CurrentSubscriptionPlanDto>> StartTrial(CancellationToken ct)
     {
         var user = await GetAuthenticatedUserAsync(ct);
@@ -56,6 +57,7 @@ public class SubscriptionPlansController : BaseController
 
     /// <summary>#1028 sahte ödeme: ücretli planı bir aylık atar. Gerçek ödeme alınmaz; arayüz ekranı "demo" diye işaretler.</summary>
     [HttpPost("me/checkout")]
+    [Authorize(Roles = "Teacher,Student,Admin")] // veliye plan satılmaz (sihirbaz veliye plan adımı göstermez)
     public async Task<ActionResult<CurrentSubscriptionPlanDto>> Checkout([FromBody] SubscriptionCheckoutDto request, CancellationToken ct)
     {
         var user = await GetAuthenticatedUserAsync(ct);

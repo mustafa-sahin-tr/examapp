@@ -1,7 +1,7 @@
 import { Component, DestroyRef, computed, effect, inject, signal, untracked, viewChild, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { Subject, firstValueFrom, takeUntil } from 'rxjs';
+import { Subject, firstValueFrom, map, switchMap, takeUntil, throwError } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleChange, MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog } from '@angular/material/dialog';
@@ -12,7 +12,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import {
   ActiveInspector,
@@ -61,6 +61,8 @@ import {
 import { LabelingBook, LabelingBookPageInfo, LabelingCropConflict } from '../../models/labeling-book';
 import { LabelingBookService } from '../../services/labeling-book.service';
 import { AuthService } from '../../services/auth.service';
+import { BookImportService } from '../../services/book-import.service';
+import { BookImportPageFix, bookImportTestName } from '../../models/book-import';
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
@@ -145,6 +147,9 @@ export class LabelingComponent {
   private readonly gradesApi = inject(GradesService);
   private readonly booksApi = inject(LabelingBookService);
   private readonly auth = inject(AuthService);
+  private readonly bookImports = inject(BookImportService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   private readonly selectorRef = viewChild(ImageSelectorComponent);
 
@@ -331,6 +336,17 @@ export class LabelingComponent {
   /** Soru başına etkinlik / madde etiketleri (bölge adı → etiketler). */
   readonly questionLabels = signal<Record<string, QuestionLabels>>({});
 
+  // --- Kitap aktarımı düzeltmesi (#1023 "İşaretlemede düzelt") ---
+  /**
+   * `/labeling?bookImport=<iş>&test=<test>&page=<dosya sayfası>`: klasör yerine aktarımın sayfa görseli açılır; kayıt o sayfanın
+   * taslak sorularının yerine geçer (cevap işaretlenmezse kitabın anahtarından). Klasör seçilince mod kapanır.
+   */
+  readonly fix = signal<LabelingFixTarget | null>(null);
+  readonly fixLoading = signal(false);
+  readonly fixError = signal(false);
+  readonly fixSaving = signal(false);
+  readonly canReplaceDrafts = computed(() => !!this.fix() && this.canTrain() && !this.fixSaving());
+
   /**
    * C bileşeninin (sürükle-yerleştir ailesi) tip seçenekleri. Issue #581: taslak yapı artık soru tuvalinde çıkarılır; tip
    * manuel kayıtta (eğitim / sonraki tuval açılışı) korunur.
@@ -366,6 +382,7 @@ export class LabelingComponent {
       untracked(() => this.loadBookPage(bookId, filePage));
     });
     void this.loadLabeledPages();
+    this.startFixFromRoute();
     this.loadAiModels();
     this.loadGrades();
     this.loadBooks();
@@ -867,6 +884,8 @@ export class LabelingComponent {
     // Aynı klasör tekrar seçilebilsin.
     input.value = '';
 
+    this.fix.set(null);
+    this.fixError.set(false);
     this.pickSeq++;
     this.prefetch = null;
     // Süren eğitim isteği (önceki klasör) yanıtı yalnız id kümesine yazılır; bu oturumun sayacına girmez.
@@ -985,6 +1004,161 @@ export class LabelingComponent {
       return;
     }
     this.submitBank(image, questions, false);
+  }
+
+  /**
+   * Düzeltme modunda kaydet: sayfadaki çoktan seçmeli sorular aktarımın o sayfasındaki taslakların yerine geçer. Doğru şık
+   * zorunlu değil (sunucu anahtardan doldurur); soru kalmadıysa sayfanın taslaklarının silineceği sorulur.
+   */
+  replaceDrafts(): void {
+    const fix = this.fix();
+    const selector = this.selectorRef();
+    if (!fix || !selector || !this.canReplaceDrafts()) {
+      return;
+    }
+    const regions = selector.regions().filter((r) => selector.isMcqRegion(r.name));
+    if (regions.length > 0 && !selector.ensureQuestionsValid({ requireCorrectAnswer: false, skipInteractive: true })) {
+      return;
+    }
+    const questions: LabelingBankQuestion[] = regions.map((q) => {
+      const itemLabel = this.labelsOf(q.name).itemLabel.trim();
+      return {
+        ...roundBox(q),
+        options: q.answers.map(roundBox),
+        correctOptionIndex: q.answers.findIndex((a) => a.isCorrect),
+        ...(itemLabel ? { itemLabel } : {}),
+      };
+    });
+    if (questions.length > 0) {
+      this.submitFix(fix, questions);
+      return;
+    }
+    const data: ConfirmDialogData = {
+      title: this.tr('fix.emptyTitle'),
+      message: this.tr('fix.emptyMessage', { page: fix.filePage }),
+      confirmText: this.tr('fix.emptyConfirm'),
+      cancelText: this.tr('fix.cancel'),
+      icon: 'delete_sweep',
+      confirmColor: 'warn',
+    };
+    this.dialog
+      .open(ConfirmDialogComponent, { data, autoFocus: false })
+      .afterClosed()
+      .subscribe((ok) => {
+        if (ok && this.fix() === fix) {
+          this.submitFix(fix, []);
+        }
+      });
+  }
+
+  retryFix(): void {
+    this.startFixFromRoute();
+  }
+
+  private submitFix(fix: LabelingFixTarget, questions: LabelingBankQuestion[]): void {
+    this.fixSaving.set(true);
+    this.bookImports
+      .replacePage(fix.jobId, fix.testId, fix.filePage, questions)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          this.fixSaving.set(false);
+          this.snackBar.open(this.fixSavedMessage(result), this.tr('ok'), { duration: 8000 });
+          void this.router.navigate(['/book-imports', fix.jobId]);
+        },
+        error: (error) => {
+          this.fixSaving.set(false);
+          console.error('labeling book import fix failed', error);
+          const body = (error as { error?: { message?: string } })?.error;
+          this.snackBar.open(body?.message || this.tr('fix.failed'), this.tr('ok'), { duration: 6000 });
+        },
+      });
+  }
+
+  private fixSavedMessage(result: BookImportPageFix): string {
+    const parts = [this.tr('fix.saved', { saved: result.saved, removed: result.removed })];
+    if (result.duplicates > 0) parts.push(this.tr('fix.duplicates', { count: result.duplicates }));
+    if (result.answerless > 0) parts.push(this.tr('fix.answerless', { count: result.answerless }));
+    return parts.join(' ');
+  }
+
+  /** Sorgu parametreleri geçerliyse işin testi ve sayfa görseli okunur, sayfa tuvalde açılır. */
+  private startFixFromRoute(): void {
+    const params = this.route.snapshot.queryParamMap;
+    const jobId = params.get('bookImport');
+    const testId = Number(params.get('test'));
+    const filePage = Number(params.get('page'));
+    if (!jobId || !Number.isInteger(testId) || testId <= 0 || !Number.isInteger(filePage) || filePage <= 0) {
+      return;
+    }
+    this.fixLoading.set(true);
+    this.fixError.set(false);
+    this.bookImports
+      .get(jobId)
+      .pipe(
+        switchMap((job) => {
+          const test = job.tests.find((t) => t.id === testId);
+          if (!test) {
+            return throwError(() => new Error('book import test not found'));
+          }
+          return this.bookImports.pageImage(jobId, filePage).pipe(map((blob) => ({ job, test, blob })));
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: ({ job, test, blob }) => {
+          const name = `page_${String(filePage).padStart(3, '0')}.webp`;
+          const file = new File([blob], name, { type: blob.type || 'image/webp' });
+          const target: LabelingFixTarget = {
+            jobId,
+            testId,
+            filePage,
+            bookName: job.bookName,
+            testName: bookImportTestName(test),
+          };
+          void this.hashFile(file).then((pageId) => {
+            this.fixLoading.set(false);
+            this.openFixPage(target, { file, pageId }, job.bookId);
+          });
+        },
+        error: (error) => {
+          console.error('labeling book import page failed', error);
+          this.fixLoading.set(false);
+          this.fixError.set(true);
+        },
+      });
+  }
+
+  /** Klasör oturumu kapanır, tek sayfalık oturum açılır (sayaçlar gizli). */
+  private openFixPage(target: LabelingFixTarget, candidate: LabelingCandidate<File>, bookId: number | null): void {
+    this.pickSeq++;
+    this.prefetch = null;
+    this.pool = [];
+    this.sortedFiles = [];
+    this.folderName = null;
+    this.fix.set(target);
+    this.folderPicked.set(true);
+    this.exhausted.set(true);
+    this.picking.set(false);
+    this.totalImages.set(1);
+    this.skippedLabeled.set(0);
+    this.unreadable.set(0);
+    this.trainedThisSession.set(0);
+    this.passedThisSession.set(0);
+    if (bookId != null) {
+      // Kitap sayfası bilgisi (basılı sayfa, içindekiler) bu kitaptan; elle seçilen kitap (localStorage) değişmez.
+      this.bookId.set(bookId);
+    }
+    this.resetPageState();
+    this.current.set(candidate);
+    this.shownCount.set(1);
+    const selector = this.selectorRef();
+    if (selector) {
+      if (selector.selectionModeLocked() === 'answer') {
+        selector.lockSelectionMode(null);
+      }
+      selector.loadFile(candidate.file);
+    }
   }
 
   private confirmBankAgain(existing: LabelingBankInfo, image: string, questions: LabelingBankQuestion[]): void {
@@ -1351,6 +1525,15 @@ export class LabelingComponent {
   private tr(key: string, params?: Record<string, unknown>): string {
     return this.transloco.translate<string>(`${LABELING_SCOPE}.${key}`, params) ?? '';
   }
+}
+
+/** Düzeltilen aktarım sayfası (#1023). */
+export interface LabelingFixTarget {
+  jobId: string;
+  testId: number;
+  filePage: number;
+  bookName: string;
+  testName: string;
 }
 
 function roundBox(box: LabelingBankBox): LabelingBankBox {

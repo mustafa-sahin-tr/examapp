@@ -22,6 +22,7 @@
     "notCancellable": "Bu aktarım bu aşamada iptal edilemez.",
     "answerless": "Cevapsız sorusu olan test onaylanamaz; önce cevapları seçin.",
     "invalidOption": "Geçersiz şık.",
-    "notInReview": "Bu test şu anda onaylanamaz ya da silinemez."
+    "notInReview": "Bu test şu anda onaylanamaz ya da silinemez.",
+    "fixFailed": "Sayfa düzeltmesi kaydedilemedi; yeniden deneyin."
   }
 }

@@ -386,6 +386,128 @@ public class BookQuestionImportTests : IDisposable
 
     // ---------- yardımcılar ----------
 
+    [Fact]
+    public async Task Fixing_a_page_in_labeling_replaces_its_drafts_in_place_with_answers_from_the_key()
+    {
+        var id = await SeedAsync([new(1, 1, 2, "ABCD", [2, 4])]);
+        Detect(1, 4);
+        Detect(2, 4, 4);
+        await RunAsync(id);
+        var test = await SingleTestAsync();
+        Flags(test).ShouldBe([F("missingNumbers", [1], [2]), F("countMismatch", [1, 2], null, 3, 4)]);
+
+        await using (var ctx = _db.NewContext())
+        {
+            var result = await Fix(ctx).ReplacePageAsync(Owner, id, test.Id, 1, [Box(0), Box(1)], default);
+            result.Error.ShouldBe(BookImportPageFixError.None);
+            result.Page!.Saved.ShouldBe(2);
+            result.Page.Removed.ShouldBe(1);
+            result.Page.Answerless.ShouldBe(0);
+        }
+
+        _saved.Last().ReplacingQuestionIds!.Count.ShouldBe(1);
+        _saved.Last().Questions.Select(q => (q.ItemLabel, q.CorrectOptionIndex)).ShouldBe([("1", 0), ("2", 1)]);
+        test = await SingleTestAsync();
+        test.Status.ShouldBe(BookImportTestStatus.Done);
+        Flags(test).ShouldBeEmpty();
+        test.QuestionsSaved.ShouldBe(4);
+        await using var check = _db.NewContext();
+        var worksheet = await check.Worksheets.WithDrafts().Include(w => w.WorksheetQuestions).ThenInclude(wq => wq.Question)
+            .SingleAsync(w => w.Id == test.WorksheetId);
+        worksheet.WorksheetQuestions.OrderBy(wq => wq.Order).Select(wq => (wq.Order, wq.Question.Text))
+            .ShouldBe([(1, "1"), (2, "2"), (3, "3"), (4, "4")]);
+        (await check.Questions.IgnoreQueryFilters().CountAsync(q => q.IsDeleted && q.IsDraft && q.Text == "1")).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task A_marked_answer_wins_over_the_key_and_an_unanswered_question_stays_flagged()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "A", [2])]);
+        Detect(1, 4, 4);
+        await RunAsync(id);
+        var test = await SingleTestAsync();
+
+        await using (var ctx = _db.NewContext())
+        {
+            var questions = new List<LabelingBankQuestionDto> { Box(0, correct: 2), Box(1), Box(2, label: "7") };
+            var result = await Fix(ctx).ReplacePageAsync(Owner, id, test.Id, 1, questions, default);
+            result.Page!.Answerless.ShouldBe(2);
+        }
+
+        _saved.Last().Questions.Select(q => (q.ItemLabel, q.CorrectOptionIndex)).ShouldBe([("1", 2), ("2", -1), ("7", -1)]);
+        test = await SingleTestAsync();
+        test.Status.ShouldBe(BookImportTestStatus.NeedsReview);
+        Flags(test).ShouldBe([F("noAnswer", [1], [2, 7]), F("countMismatch", [1], null, 3, 1)]);
+    }
+
+    [Fact]
+    public async Task Fixing_a_failed_test_creates_its_draft_worksheet()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "AB", [2])]);
+        // Sayfa 1 tespit edilemez → test Failed, taslak test yok.
+        await RunAsync(id);
+        var test = await SingleTestAsync();
+        test.Status.ShouldBe(BookImportTestStatus.Failed);
+        test.WorksheetId.ShouldBeNull();
+
+        await using (var ctx = _db.NewContext())
+            (await Fix(ctx).ReplacePageAsync(Owner, id, test.Id, 1, [Box(0), Box(1)], default)).Error.ShouldBe(BookImportPageFixError.None);
+
+        test = await SingleTestAsync();
+        test.Status.ShouldBe(BookImportTestStatus.Done);
+        test.Error.ShouldBeNull();
+        await using var check = _db.NewContext();
+        var worksheet = await check.Worksheets.WithDrafts().Include(w => w.WorksheetQuestions).SingleAsync(w => w.Id == test.WorksheetId);
+        worksheet.IsDraft.ShouldBeTrue();
+        worksheet.CreateUserId.ShouldBe(OwnerId);
+        worksheet.WorksheetQuestions.Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task A_page_cannot_be_fixed_outside_review_outside_the_test_or_by_another_user()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "A", [1]), new(2, 2, 2, "B", [1])]);
+        Detect(1, 4);
+        Detect(2, 4);
+        await RunAsync(id);
+        var tests = await TestsAsync();
+
+        await using var ctx = _db.NewContext();
+        var fix = Fix(ctx);
+        (await fix.ReplacePageAsync(Owner, id, tests[0].Id, 2, [Box(0)], default)).Error.ShouldBe(BookImportPageFixError.InvalidState);
+        (await fix.ReplacePageAsync(BookImportOwner.Create(OwnerId + 1, "QuestionTrainer"), id, tests[0].Id, 1, [Box(0)], default))
+            .Error.ShouldBe(BookImportPageFixError.NotFound);
+        (await Service(ctx).ApproveTestAsync(Owner, id, tests[0].Id, default)).ShouldBe(BookImportReviewResult.Ok);
+        (await fix.ReplacePageAsync(Owner, id, tests[0].Id, 1, [Box(0)], default)).Error.ShouldBe(BookImportPageFixError.InvalidState);
+        _saved.Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public void Page_flags_drop_the_fixed_page_and_keep_the_others()
+    {
+        var flags = BookImportPageFixService.ReplacePageFlags(
+            [
+                new(BookImportReviewFlag.MissingNumbers, [1, 2], [2, 5]),
+                new(BookImportReviewFlag.DetectionFailed, [1]),
+                new(BookImportReviewFlag.OptionCount, [2], [6]),
+                new(BookImportReviewFlag.CountMismatch, [1, 2], Found: 4, Expected: 6),
+            ],
+            filePage: 1, pageNumbers: new HashSet<int> { 1, 2, 3 }, answerless: [3], optionCount: [], found: 6, keyLength: 6, from: 1, to: 2);
+
+        flags.Select(f => F(f.Code, f.Pages, f.Numbers, f.Found, f.Expected))
+            .ShouldBe([F("missingNumbers", [2], [5]), F("optionCount", [2], [6]), F("noAnswer", [1], [3])]);
+    }
+
+    private BookImportPageFixService Fix(AppDbContext ctx) => new(ctx, _minio, _bank);
+
+    private static LabelingBankQuestionDto Box(int row, int correct = -1, string? label = null) => new()
+    {
+        X = 100, Y = 100 + row * 700, Width = 900, Height = 400, CorrectOptionIndex = correct, ItemLabel = label,
+        Options = Enumerable.Range(0, 4)
+            .Select(i => new LabelingBankBoxDto { X = 120 + i % 2 * 440, Y = 300 + row * 700 + i / 2 * 90, Width = 400, Height = 60 })
+            .ToList(),
+    };
+
     private sealed record TestSeed(int Order, int FileFrom, int FileTo, string? Key, int[] PageMaxNumbers);
 
     private static PredictionDto Question(int x, int y, int options) => new()

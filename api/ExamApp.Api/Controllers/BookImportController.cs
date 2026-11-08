@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.BookImport;
 using ExamApp.Api.Services.Entitlements;
+using ExamApp.Api.Services.Labeling;
 using ExamApp.Api.Services.Teachers.Authorization;
 using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
@@ -206,6 +207,39 @@ public class BookImportController : BaseController
         if (owner is null)
             return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
         return ReviewResult(await _service.RemoveTestAsync(owner, id, testId, ct));
+    }
+
+    /// <summary>
+    /// Issue #1023 "İşaretlemede düzelt": testin bir sayfasının taslak sorularını işaretleme ekranında düzeltilenlerle değiştirir
+    /// (görsel işin sayfa görseli; cevap verilmezse anahtardan).
+    /// </summary>
+    [HttpPut("{id:guid}/tests/{testId:int}/pages/{filePage:int}/questions")]
+    [ProducesResponseType(typeof(BookImportPageFixDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ReplacePage(Guid id, int testId, int filePage, [FromBody] ReplaceBookImportPageDto request,
+        [FromServices] IBookImportPageFixService fix, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        try
+        {
+            var result = await fix.ReplacePageAsync(owner, id, testId, filePage, request?.Questions ?? [], ct);
+            return result.Error switch
+            {
+                BookImportPageFixError.None => Ok(result.Page),
+                BookImportPageFixError.NotFound => NotFound(new { message = _localizer["bookImport.notFound"].Value }),
+                _ => Conflict(new { code = "bookImport.notInReview", message = _localizer["bookImport.notInReview"].Value }),
+            };
+        }
+        catch (LabelingValidationException ex)
+        {
+            var message = ex.Args is { Length: > 0 } ? _localizer[ex.Message, ex.Args] : _localizer[ex.Message];
+            return BadRequest(new { code = ex.Message, message = message.Value });
+        }
+        catch (Exception ex) when (ex is LabelingBankSaveException or BookImportFailure)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = _localizer["bookImport.fixFailed"].Value });
+        }
     }
 
     private IActionResult ReviewResult(BookImportReviewResult result) => result switch

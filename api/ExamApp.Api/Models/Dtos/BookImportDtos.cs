@@ -196,3 +196,19 @@ public class ConfirmBookImportTestDto
     public int FileTo { get; set; }
     public string? AnswerKey { get; set; }
 }
+
+/// <summary>Issue #1023 "İşaretlemede düzelt": sayfanın işaretleme ekranında düzeltilen soruları (boş = sayfanın taslaklarını sil).</summary>
+public class ReplaceBookImportPageDto
+{
+    [System.ComponentModel.DataAnnotations.MaxLength(Services.Labeling.LabelingBankService.MaxQuestions)]
+    public List<Labeling.LabelingBankQuestionDto> Questions { get; set; } = new();
+}
+
+/// <summary>Issue #1023: sayfa düzeltmesinin sonucu — kaydedilen, kırpması bankada olduğu için atlanan, silinen eski taslak ve cevapsız soru sayısı.</summary>
+public class BookImportPageFixDto
+{
+    public int Saved { get; set; }
+    public int Duplicates { get; set; }
+    public int Removed { get; set; }
+    public int Answerless { get; set; }
+}

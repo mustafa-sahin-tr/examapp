@@ -227,6 +227,9 @@
     "answered": "Answered {{done}}/{{total}}",
     "question": "Question {{number}} · page {{page}}",
     "answerFor": "Answer of question {{number}}",
+    "fix": "Fix in labeling",
+    "fixPage": "Page {{page}}",
+    "fixPageFlagged": "Page {{page}} · flagged",
     "footer": "Approved tests follow normal test settings and are private (only you) by default."
   }
 }

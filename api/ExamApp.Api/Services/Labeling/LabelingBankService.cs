@@ -42,11 +42,12 @@ public sealed class LabelingBankSaveException() : Exception("Saving labeling que
 
 /// <summary>
 /// Issue #1022: kitap aktarımı işinin bir sayfası. <see cref="LabelingBankQuestionDto.CorrectOptionIndex"/> -1 = cevapsız
-/// (anahtar yok / anahtarda yok); sorular taslak oluşur.
+/// (anahtar yok / anahtarda yok); sorular taslak oluşur. #1023: <c>ReplacingQuestionIds</c> işaretlemede düzeltilen sayfanın
+/// eski taslakları — kayıttan sonra silinecekleri için kırpmaları tekrar sayılmaz.
 /// </summary>
 public sealed record LabelingImportPageRequest(
     string ImageBase64, int BookId, int FilePage, int GradeId, QuestionBankSharing Sharing,
-    IReadOnlyList<LabelingBankQuestionDto> Questions);
+    IReadOnlyList<LabelingBankQuestionDto> Questions, IReadOnlyCollection<int>? ReplacingQuestionIds = null);
 
 /// <summary>
 /// Issue #1022: kaydedilen soru sayısı ve kırpması bankada olduğu için atlanan soruların sırası (istekteki). #1023:
@@ -258,8 +259,9 @@ public sealed class LabelingBankService(
 
         var hashes = ComputeCropHashes(bulkQuestions, pageJpeg);
         var distinct = hashes.Distinct().ToList();
+        var replacing = request.ReplacingQuestionIds ?? [];
         var existing = (await db.QuestionSources.IgnoreQueryFilters().AsNoTracking()
-                .Where(s => distinct.Contains(s.CropSha256) && !s.Question.IsDeleted)
+                .Where(s => distinct.Contains(s.CropSha256) && !s.Question.IsDeleted && !replacing.Contains(s.QuestionId))
                 .Select(s => s.CropSha256)
                 .ToListAsync(ct))
             .ToHashSet();

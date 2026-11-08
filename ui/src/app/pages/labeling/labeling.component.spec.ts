@@ -8,7 +8,7 @@ import { MatSelect, MatSelectChange } from '@angular/material/select';
 import { By } from '@angular/platform-browser';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 
 import { LabelingComponent } from './labeling.component';
 import { pageIdOf } from './labeling-pool';
@@ -18,6 +18,8 @@ import { QuestionDetectorService } from '../../services/question-detector.servic
 import { LabelingService } from '../../services/labeling.service';
 import { GradesService } from '../../services/grades.service';
 import { LabelingBookService } from '../../services/labeling-book.service';
+import { BookImportService } from '../../services/book-import.service';
+import { BookImportJobDetail, BookImportJobTest } from '../../models/book-import';
 import { LabelingBook, LabelingBookPageInfo } from '../../models/labeling-book';
 import { LabelingCropDuplicateDialogComponent } from './labeling-crop-duplicate-dialog/labeling-crop-duplicate-dialog.component';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
@@ -193,6 +195,11 @@ describe('LabelingComponent', () => {
     let booksApi: MockedObject<LabelingBookService>;
     /** `setup` öncesi değiştirilebilir: kitap listesi yanıtı (varsayılan boş → kitap seçimi gizli). */
     let booksResponse: Observable<LabelingBook[]>;
+    let bookImportsApi: MockedObject<BookImportService>;
+    /** `setup` öncesi değiştirilebilir: açılış adresi (#1023 düzeltme modu sorgu parametreleri). */
+    let routeUrl: string;
+    /** `setup` içinde mock'lar kurulduktan sonra, bileşen oluşmadan önce çağrılır. */
+    let beforeCreate: (() => void) | null;
 
     function selector(): ImageSelectorStub {
         return fixture.debugElement.query((de) => de.componentInstance instanceof ImageSelectorStub)
@@ -232,11 +239,18 @@ describe('LabelingComponent', () => {
         booksApi.getPage.mockReturnValue(throwError(() => ({ status: 404 })));
         // Varsayılan: sayfanın kaydı yok (404 → null).
         labelingApi.getPage.mockReturnValue(throwError(() => ({ status: 404 })));
+        bookImportsApi = {
+            get: vi.fn().mockName('BookImportService.get'),
+            pageImage: vi.fn().mockName('BookImportService.pageImage'),
+            replacePage: vi.fn().mockName('BookImportService.replacePage'),
+        } as unknown as MockedObject<BookImportService>;
+        beforeCreate?.();
         TestBed.configureTestingModule({
             imports: [LabelingComponent, translocoTestingModule({ langs: { 'labeling/tr': labelingTr } })],
             providers: [
                 provideNoopAnimations(),
                 provideRouter([]),
+                { provide: BookImportService, useValue: bookImportsApi },
                 { provide: QuestionDetectorService, useValue: detector },
                 { provide: LabelingBookService, useValue: booksApi },
                 { provide: LabelingService, useValue: labelingApi },
@@ -247,6 +261,9 @@ describe('LabelingComponent', () => {
             remove: { imports: [ImageSelectorComponent] },
             add: { imports: [ImageSelectorStub] },
         });
+        if (routeUrl !== '/') {
+            await TestBed.inject(Router).navigateByUrl(routeUrl);
+        }
         fixture = TestBed.createComponent(LabelingComponent);
         component = fixture.componentInstance;
         fixture.detectChanges();
@@ -271,6 +288,8 @@ describe('LabelingComponent', () => {
         localStorage.removeItem('labeling.recentFolders');
         gradesResponse = of(GRADES);
         booksResponse = of([]);
+        routeUrl = '/';
+        beforeCreate = null;
     });
 
     afterEach(() => {
@@ -1857,5 +1876,88 @@ describe('LabelingComponent', () => {
             });
         });
     });
-});
 
+    describe('kitap aktarımı düzeltmesi (#1023)', () => {
+        const test = { id: 3, unit: 1, testNo: 2, title: 'Kesirler' } as BookImportJobTest;
+        const job = { id: 'j1', bookName: 'Puan BTS', bookId: 7, tests: [test] } as unknown as BookImportJobDetail;
+
+        function mcq(name: string, correct: number): StubRegion {
+            return {
+                name, x: 10.4, y: 20, width: 300, height: 200,
+                answers: [0, 1, 2, 3].map((i) => ({
+                    label: String.fromCharCode(65 + i), isCorrect: i === correct, x: 12 + i * 60, y: 150, width: 50, height: 30,
+                })),
+            };
+        }
+
+        /** Mock'lar `setup` içinde kurulur: yanıtlar bileşen oluşmadan önce verilir. */
+        async function setupWith(responses: () => void): Promise<void> {
+            beforeCreate = responses;
+            await setup();
+        }
+
+        function pageResponses(): void {
+            bookImportsApi.get.mockReturnValue(of(job));
+            bookImportsApi.pageImage.mockReturnValue(of(new Blob(['webp'], { type: 'image/webp' })));
+        }
+
+        it('fix_OpensTheImportPageInsteadOfAFolder', async () => {
+            routeUrl = '/?bookImport=j1&test=3&page=12';
+            await setupWith(pageResponses);
+
+            expect(bookImportsApi.pageImage).toHaveBeenCalledWith('j1', 12);
+            expect(selector().loaded.map((f) => f.name)).toEqual(['page_012.webp']);
+            expect(component.filePage()).toBe(12);
+            expect(component.bookId()).toBe(7);
+            const el = fixture.nativeElement as HTMLElement;
+            expect(el.querySelector('[data-testid="labeling-fix"]')?.textContent).toContain('Puan BTS · 1-02 · Kesirler · sayfa 12');
+            expect(el.querySelector('.lb-stats')).toBeNull();
+            expect(el.querySelector('.lb-train')).toBeNull();
+            expect(localStorage.getItem('labeling.bookId')).toBeNull();
+        });
+
+        it('fix_Save_ReplacesThePageDraftsWithoutRequiringAnswersAndGoesBack', async () => {
+            routeUrl = '/?bookImport=j1&test=3&page=12';
+            await setupWith(() => {
+                pageResponses();
+                bookImportsApi.replacePage.mockReturnValue(of({ saved: 2, duplicates: 0, removed: 1, answerless: 1 }));
+            });
+            const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+            selector().regions.set([mcq('q1', -1), mcq('q2', 1)]);
+            fixture.detectChanges();
+
+            (fixture.nativeElement.querySelector('[data-testid="labeling-fix-save"]') as HTMLButtonElement).click();
+
+            expect(selector().ensureQuestionsValid).toHaveBeenCalledWith({ requireCorrectAnswer: false, skipInteractive: true });
+            const [jobId, testId, filePage, questions] = bookImportsApi.replacePage.mock.calls[0];
+            expect([jobId, testId, filePage]).toEqual(['j1', 3, 12]);
+            expect(questions.map((q) => [q.x, q.correctOptionIndex, q.options.length])).toEqual([[10, -1, 4], [10, 1, 4]]);
+            expect(labelingApi.saveToBank).not.toHaveBeenCalled();
+            expect(navigate).toHaveBeenCalledWith(['/book-imports', 'j1']);
+        });
+
+        it('fix_EmptyPage_AsksBeforeDeletingTheDrafts', async () => {
+            routeUrl = '/?bookImport=j1&test=3&page=12';
+            await setupWith(() => {
+                pageResponses();
+                bookImportsApi.replacePage.mockReturnValue(of({ saved: 0, duplicates: 0, removed: 2, answerless: 0 }));
+            });
+            vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+            const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({ afterClosed: () => of(true) } as never);
+
+            component.replaceDrafts();
+
+            expect(open).toHaveBeenCalledWith(ConfirmDialogComponent, expect.anything());
+            expect(bookImportsApi.replacePage).toHaveBeenCalledWith('j1', 3, 12, []);
+        });
+
+        it('fix_UnknownTest_ShowsTheLoadError', async () => {
+            routeUrl = '/?bookImport=j1&test=3&page=12';
+            await setupWith(() => bookImportsApi.get.mockReturnValue(of({ ...job, tests: [] })));
+
+            expect(component.fixError()).toBe(true);
+            expect(component.current()).toBeNull();
+            expect(bookImportsApi.pageImage).not.toHaveBeenCalled();
+        });
+    });
+});

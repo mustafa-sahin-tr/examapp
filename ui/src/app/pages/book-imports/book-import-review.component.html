@@ -74,6 +74,19 @@
           <mat-icon aria-hidden="true">{{ previewId() === test.id ? 'expand_less' : 'visibility' }}</mat-icon>{{ t('review.preview') }}
         </button>
         }
+        @if (editable() && test.fileFrom) {
+        <button mat-stroked-button type="button" [matMenuTriggerFor]="fixMenu" [disabled]="busy() !== null">
+          <mat-icon aria-hidden="true">edit_square</mat-icon>{{ t('review.fix') }}
+        </button>
+        <mat-menu #fixMenu="matMenu">
+          @for (p of fixPages(test); track p.page) {
+          <a mat-menu-item routerLink="/labeling" [queryParams]="fixParams(jobId(), test.id, p.page)">
+            <mat-icon aria-hidden="true">{{ p.flagged ? 'flag' : 'description' }}</mat-icon>
+            <span>{{ t(p.flagged ? 'review.fixPageFlagged' : 'review.fixPage', { page: p.page }) }}</span>
+          </a>
+          }
+        </mat-menu>
+        }
         @if (editable()) {
         <button mat-flat-button type="button" [disabled]="!isApprovable(test) || busy() !== null"
           [attr.title]="test.answerless > 0 ? t('review.answerlessHint') : null" (click)="approve(test)">
@@ -103,6 +116,12 @@
           <li class="bir-q" [class.bir-q--missing]="q.answerIndex == null">
             <div class="bir-q__head">
               <span>{{ t('review.question', { number: q.number ?? '?', page: q.filePage }) }}</span>
+              @if (editable() && q.filePage) {
+              <a mat-icon-button class="bir-q__fix" routerLink="/labeling" [queryParams]="fixParams(jobId(), test.id, q.filePage)"
+                [attr.aria-label]="t('review.fixPage', { page: q.filePage })" [title]="t('review.fixPage', { page: q.filePage })">
+                <mat-icon>edit_square</mat-icon>
+              </a>
+              }
               <div class="bir-q__answers" role="group" [attr.aria-label]="t('review.answerFor', { number: q.number ?? '?' })">
                 @for (letter of letters.slice(0, q.optionCount); track letter; let i = $index) {
                 <button type="button" class="bir-q__answer" [class.bir-q__answer--on]="q.answerIndex === i"

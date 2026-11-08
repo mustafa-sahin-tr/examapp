@@ -23,6 +23,23 @@
   "train": "Train",
   "trainHint": "Add the page to the training data with all its questions marked",
   "sending": "Sending…",
+  "fix": {
+    "banner": "Book import fix: {{book}} · {{test}} · page {{page}}. Saving replaces this page's draft questions.",
+    "back": "Back to review",
+    "loading": "Opening the import page…",
+    "loadFailed": "The import page could not be opened.",
+    "save": "Replace drafts",
+    "saving": "Saving…",
+    "hint": "The multiple-choice questions on the page replace this page's drafts; unmarked answers come from the book's answer key.",
+    "saved": "{{saved}} questions saved, {{removed}} old drafts removed.",
+    "duplicates": "{{count}} questions skipped because they are already in the bank.",
+    "answerless": "{{count}} questions have no answer; pick it in the review.",
+    "failed": "The page fix could not be saved.",
+    "emptyTitle": "Delete the page's drafts?",
+    "emptyMessage": "There are no questions on the page. Saving removes the draft questions of page {{page}} from the test.",
+    "emptyConfirm": "Delete drafts",
+    "cancel": "Cancel"
+  },
   "bank": {
     "save": "Save to pool",
     "saving": "Saving…",

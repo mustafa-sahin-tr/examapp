@@ -179,9 +179,10 @@ public class BookImportServiceTests : IDisposable
         var id = (await StartAs(41, Pdf())).Job!.Id;
         var guard = Substitute.For<IApprovedTeacherGuard>();
         guard.CheckAsync(41, Arg.Any<CancellationToken>()).Returns(TeacherApprovalCheck.NoTeacherProfile);
+        ServePdf(SamplePdf.Create(2));
 
         await using (var ctx = _db.NewContext())
-            await new BookImportJobRunner(ctx, guard).RunLockedAsync(id);
+            await Runner(ctx, guard).RunLockedAsync(id);
 
         await using var check = _db.NewContext();
         var job = await check.BookImportJobs.SingleAsync();
@@ -201,7 +202,7 @@ public class BookImportServiceTests : IDisposable
         guard.CheckAsync(41, Arg.Any<CancellationToken>()).Returns(check);
 
         await using (var ctx = _db.NewContext())
-            await new BookImportJobRunner(ctx, guard).RunLockedAsync(id);
+            await Runner(ctx, guard).RunLockedAsync(id);
 
         await using var verify = _db.NewContext();
         var job = await verify.BookImportJobs.SingleAsync();
@@ -221,11 +222,17 @@ public class BookImportServiceTests : IDisposable
         }
 
         await using (var ctx = _db.NewContext())
-            await new BookImportJobRunner(ctx, Substitute.For<IApprovedTeacherGuard>()).RunLockedAsync(id);
+            await Runner(ctx, Substitute.For<IApprovedTeacherGuard>()).RunLockedAsync(id);
 
         await using var check = _db.NewContext();
         (await check.BookImportJobs.SingleAsync()).Status.ShouldBe(BookImportJobStatus.Cancelled);
     }
+
+    private BookImportJobRunner Runner(AppDbContext ctx, IApprovedTeacherGuard guard) =>
+        new(ctx, guard, _minio, new PdfiumRasterizer(pageWidth: 400));
+
+    private void ServePdf(byte[] pdf) =>
+        _minio.GetFileStreamAsync(Arg.Any<string>()).Returns(_ => Task.FromResult<Stream?>(new MemoryStream(pdf)));
 
     private async Task AssertNothingStartedAsync()
     {

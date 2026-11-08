@@ -649,6 +649,8 @@ builder.Services.AddScoped<QuestionTransferJobRunner>();
 builder.Services.AddScoped<ExamApp.Api.Services.Entitlements.IEntitlementService, ExamApp.Api.Services.Entitlements.EntitlementService>();
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IBookImportService, ExamApp.Api.Services.BookImport.BookImportService>();
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.BookImportJobRunner>();
+// Issue #1020: PDFium tabanlı sayfa görselleri (durumsuz).
+builder.Services.AddSingleton<ExamApp.Api.Services.BookImport.IPdfRasterizer>(_ => new ExamApp.Api.Services.BookImport.PdfiumRasterizer());
 builder.Services.AddScoped<QuestionContentHashService>();
 builder.Services.AddScoped<IQuestionContentHashService>(sp => sp.GetRequiredService<QuestionContentHashService>());
 

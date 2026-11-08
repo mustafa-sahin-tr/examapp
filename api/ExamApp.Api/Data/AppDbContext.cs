@@ -239,6 +239,7 @@ public class AppDbContext : DbContext
     // Issue #1018 (epic #1017): kitaptan aktarım işleri.
     public DbSet<BookImportJob> BookImportJobs { get; set; }
     public DbSet<BookImportJobTest> BookImportJobTests { get; set; }
+    public DbSet<BookImportPage> BookImportPages { get; set; } // issue #1020
     public DbSet<SubscriptionPlan> SubscriptionPlans { get; set; } // issue #1019
     public DbSet<SubscriptionPlanFeatureLimit> SubscriptionPlanFeatureLimits { get; set; }
     public DbSet<UserSubscriptionPlan> UserSubscriptionPlans { get; set; }
@@ -1408,6 +1409,11 @@ public class AppDbContext : DbContext
         {
             e.HasOne(t => t.Job).WithMany(j => j.Tests).HasForeignKey(t => t.JobId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(t => new { t.JobId, t.Order }).IsUnique();
+        });
+        modelBuilder.Entity<BookImportPage>(e =>
+        {
+            e.HasOne(p => p.Job).WithMany(j => j.Pages).HasForeignKey(p => p.JobId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(p => new { p.JobId, p.FilePage }).IsUnique();
         });
 
         // Issue #1019: plan / hak katmanı. Free planı ve sınırı seed'lidir; değerler veritabanından değiştirilebilir.

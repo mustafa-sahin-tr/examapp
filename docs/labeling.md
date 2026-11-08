@@ -202,9 +202,9 @@ output token'ı ve tahmini USD loglanır (`Anthropic:InputUsdPerMTok`/`OutputUsd
 `POST /api/exam/book-imports` (multipart) ile yüklenir; dosya MinIO'da özel olarak `book-imports/<jobId>/source.pdf`'e yazılır
 (DTO'da URL yok), `BookImportJobs` satırı açılır ve Hangfire `book-import` kuyruğuna `BookImportJobRunner` iş olarak eklenir
 (exam API içinde; outbox kuralının istisnası, karar #1017'de). Koşucu `book-import:<jobId>` dağıtık kilidiyle çalışır, yalnız
-Queued/Running işi ilerletir, sahibi onaysız / askıdaki öğretmense işi Failed yapar. Bu dilimde Sayfalar ve Kurulum aşamaları
-taslak (stub): iş **Kurulum onayı**'nda `AwaitingConfirmation` olarak durur; gerçek sayfa ayırma #1020, kurulum #1021, testler
-#1022, onay #1023, yeniden dene / iptal #1025. Takip ekranı (`/book-imports/:id`) 8 aşamalı adım çubuğu, geçerli aşama sayacı,
+Queued/Running işi ilerletir, sahibi onaysız / askıdaki öğretmense işi Failed yapar. Sayfalar aşaması PDF'i sayfa
+görsellerine çevirir (#1020, `docs/book-import.md`); Kurulum henüz taslak (stub): iş **Kurulum onayı**'nda
+`AwaitingConfirmation` olarak durur; kurulum #1021, testler #1022, onay #1023, yeniden dene / iptal #1025. Takip ekranı (`/book-imports/:id`) 8 aşamalı adım çubuğu, geçerli aşama sayacı,
 test ızgarası ve dikkat listesi gösterir; iş Queued/Running iken liste ve ayrıntı 5 sn'de bir yenilenir. Boyut sınırı
 `BookImport:MaxUploadBytes` (üst tavan 200 MB), PDF `%PDF-` imzasıyla doğrulanır. Kota `IEntitlementService` üzerinden
 (`book-import`); şimdilik `UnlimitedEntitlementService` (#1019 gerçek planlarla değiştirir); dolunca 429

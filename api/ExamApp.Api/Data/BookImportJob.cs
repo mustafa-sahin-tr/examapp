@@ -97,6 +97,8 @@ public class BookImportJob : BaseEntity
     public DateTime? FinishedAt { get; set; }
 
     public ICollection<BookImportJobTest> Tests { get; set; } = new List<BookImportJobTest>();
+
+    public ICollection<BookImportPage> Pages { get; set; } = new List<BookImportPage>();
 }
 
 /// <summary>Issue #1018: aktarım işindeki bir kitap testinin durumu (takip ekranındaki test ızgarası).</summary>
@@ -132,4 +134,25 @@ public class BookImportJobTest : BaseEntity
 
     [MaxLength(BookImportJob.MaxMessageLength)]
     public string? Error { get; set; }
+}
+
+/// <summary>
+/// Issue #1020: PDF'in bir sayfasının görseli (MinIO, özel; <c>book-imports/&lt;jobId&gt;/pages/&lt;filePage&gt;.webp</c>). Sonraki
+/// aşamalar (kurulum, test aktarımı) ve kitap oluşunca işaretleme ekranı (<c>bookId</c> + <c>filePage</c>) buradan okur.
+/// </summary>
+public class BookImportPage
+{
+    public long Id { get; set; }
+    public Guid JobId { get; set; }
+    public BookImportJob Job { get; set; } = null!;
+
+    /// <summary>PDF'teki 1 tabanlı sayfa sırası (kitap kaydındaki "dosya sayfası").</summary>
+    public int FilePage { get; set; }
+
+    [MaxLength(1000)]
+    public string ImageUrl { get; set; } = string.Empty;
+
+    public int Width { get; set; }
+    public int Height { get; set; }
+    public long SizeBytes { get; set; }
 }

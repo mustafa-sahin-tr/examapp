@@ -1,6 +1,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos.Labeling;
+using ExamApp.Api.Services.BookImport;
 using ExamApp.Api.Services.Labeling;
 using ExamApp.Api.Services.Teachers.Authorization;
 using ExamApp.Foundation.Localization;
@@ -24,12 +25,15 @@ namespace ExamApp.Api.Controllers;
 public class LabelingBooksController : BaseController
 {
     private readonly IBookRegistryService _books;
+    private readonly IBookImportService? _imports;
     private readonly IStringLocalizer<Messages> _localizer;
 
-    public LabelingBooksController(IBookRegistryService books, IStringLocalizer<Messages>? localizer = null)
+    public LabelingBooksController(IBookRegistryService books, IStringLocalizer<Messages>? localizer = null,
+        IBookImportService? imports = null)
     {
         _books = books;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
+        _imports = imports;
     }
 
     /// <summary>Tüm kitaplar, kümeleriyle (ad sırasıyla).</summary>
@@ -82,6 +86,14 @@ public class LabelingBooksController : BaseController
             var page = await _books.GetPageAsync(id, filePage, ct);
             return page is null ? NotFound(Error("labeling.books.notFound")) : Ok(page);
         });
+
+    /// <summary>Issue #1020: kitap PDF'ten aktarıldıysa dosya sayfasının görseli (WebP); yoksa 404.</summary>
+    [HttpGet("{id:int}/pages/{filePage:int}/image")]
+    public async Task<IActionResult> GetPageImage(int id, int filePage, CancellationToken ct)
+    {
+        var image = _imports is null ? null : await _imports.GetBookPageImageAsync(id, filePage, ct);
+        return image is null ? NotFound(Error("labeling.books.notFound")) : File(image, "image/webp");
+    }
 
     /// <summary>Bastırılmış sayfa → dosya sayfaları (fasiküllü kitapta birden çok; <c>near</c> verilirse en yakın önce).</summary>
     [HttpGet("{id:int}/printed/{printedPage:int}")]

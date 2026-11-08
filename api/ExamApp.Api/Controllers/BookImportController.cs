@@ -140,20 +140,60 @@ public class BookImportController : BaseController
         };
     }
 
-    /// <summary>Issue #1021: onay bekleyen işi iptal et (ör. cevap anahtarı bulunamadı → iptal).</summary>
+    /// <summary>
+    /// İşi iptal et (#1021 onay bekleyen, ör. cevap anahtarı bulunamadı; #1025 kuyrukta / çalışan / bekleyen / hatalı).
+    /// <paramref name="deleteDrafts"/>: onaylanmamış taslak testler ve soruları da silinir.
+    /// </summary>
     [HttpPost("{id:guid}/cancel")]
-    public async Task<IActionResult> Cancel(Guid id, CancellationToken ct)
+    public async Task<IActionResult> Cancel(Guid id, [FromQuery] bool deleteDrafts = false, CancellationToken ct = default)
     {
         var owner = await ResolveOwnerAsync(ct);
         if (owner is null)
             return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
-        return await _service.CancelAsync(owner, id, ct) switch
+        return await _service.CancelAsync(owner, id, deleteDrafts, ct) switch
         {
             CancelBookImportResult.Cancelled => NoContent(),
             CancelBookImportResult.NotFound => NotFound(new { message = _localizer["bookImport.notFound"].Value }),
             _ => Conflict(new { code = "bookImport.notCancellable", message = _localizer["bookImport.notCancellable"].Value }),
         };
     }
+
+    /// <summary>Issue #1025: hatalı ya da takılmış işi kaldığı yerden yeniden dene.</summary>
+    [HttpPost("{id:guid}/retry")]
+    public async Task<IActionResult> Retry(Guid id, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        return RetryResult(await _service.RetryAsync(owner, id, ct));
+    }
+
+    /// <summary>Issue #1025: hatalı testi yeniden aktar.</summary>
+    [HttpPost("{id:guid}/tests/{testId:int}/retry")]
+    public async Task<IActionResult> RetryTest(Guid id, int testId, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        return RetryResult(await _service.RetryTestsAsync(owner, id, testId, ct));
+    }
+
+    /// <summary>Issue #1025: bütün hatalı testleri yeniden aktar.</summary>
+    [HttpPost("{id:guid}/tests/retry")]
+    public async Task<IActionResult> RetryFailedTests(Guid id, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        return RetryResult(await _service.RetryTestsAsync(owner, id, null, ct));
+    }
+
+    private IActionResult RetryResult(RetryBookImportResult result) => result switch
+    {
+        RetryBookImportResult.Queued => NoContent(),
+        RetryBookImportResult.NotFound => NotFound(new { message = _localizer["bookImport.notFound"].Value }),
+        _ => Conflict(new { code = "bookImport.notRetryable", message = _localizer["bookImport.notRetryable"].Value }),
+    };
 
     /// <summary>Issue #1024: Admin — maliyet tavanında bekleyen işi sürdür (tavan yükselir, iş yeniden kuyruğa girer).</summary>
     [HttpPost("{id:guid}/continue")]

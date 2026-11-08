@@ -21,6 +21,7 @@
     "invalidSetup": "Kurulum onaylanamadı.",
     "notPaused": "Bu aktarım maliyet onayı beklemiyor.",
     "notCancellable": "Bu aktarım bu aşamada iptal edilemez.",
+    "notRetryable": "Bu aktarım şu anda yeniden denenemez.",
     "answerless": "Cevapsız sorusu olan test onaylanamaz; önce cevapları seçin.",
     "invalidOption": "Geçersiz şık.",
     "notInReview": "Bu test şu anda onaylanamaz ya da silinemez.",

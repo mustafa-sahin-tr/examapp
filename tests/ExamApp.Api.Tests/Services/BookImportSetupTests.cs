@@ -322,14 +322,14 @@ public class BookImportSetupTests : IDisposable
 
         (await ConfirmAsync(id, Request(Confirmed(1)), userId: 99)).Error.ShouldBe(ConfirmSetupError.NotFound);
         await using (var ctx = _db.NewContext())
-            (await NewService(ctx).CancelAsync(BookImportOwner.Create(99), id, default)).ShouldBe(CancelBookImportResult.NotFound);
+            (await NewService(ctx).CancelAsync(BookImportOwner.Create(99), id, false, default)).ShouldBe(CancelBookImportResult.NotFound);
 
         await using (var ctx = _db.NewContext())
-            (await NewService(ctx).CancelAsync(BookImportOwner.Create(OwnerId), id, default)).ShouldBe(CancelBookImportResult.Cancelled);
+            (await NewService(ctx).CancelAsync(BookImportOwner.Create(OwnerId), id, false, default)).ShouldBe(CancelBookImportResult.Cancelled);
 
         (await ConfirmAsync(id, Request(Confirmed(1)))).Error.ShouldBe(ConfirmSetupError.InvalidState);
         await using (var ctx = _db.NewContext())
-            (await NewService(ctx).CancelAsync(BookImportOwner.Create(OwnerId), id, default)).ShouldBe(CancelBookImportResult.InvalidState);
+            (await NewService(ctx).CancelAsync(BookImportOwner.Create(OwnerId), id, false, default)).ShouldBe(CancelBookImportResult.InvalidState);
         await using var check = _db.NewContext();
         (await check.BookImportJobs.SingleAsync()).Status.ShouldBe(BookImportJobStatus.Cancelled);
     }

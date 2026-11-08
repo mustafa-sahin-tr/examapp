@@ -96,6 +96,7 @@ internal sealed class BookQuestionImportStage(
 
         foreach (var test in tests.Where(t => !IsFinished(t)))
         {
+            await StopIfCancelledAsync(job, ct);
             test.Status = BookImportTestStatus.Running;
             test.Error = null;
             await db.SaveChangesAsync(ct);
@@ -104,6 +105,14 @@ internal sealed class BookQuestionImportStage(
             try
             {
                 await ImportTestAsync(job, bookId, test, pages, ct);
+            }
+            catch (BookImportCancelled)
+            {
+                // #1025: iptal edildi; yarıda kalan test bekleyen olarak kalır, kaydedilmiş taslaklar yerinde.
+                test.Status = BookImportTestStatus.Pending;
+                await budget.FlushAsync();
+                await db.SaveChangesAsync(CancellationToken.None);
+                throw;
             }
             catch (Exception ex) when (ex is not (OperationCanceledException or BookImportPause))
             {
@@ -117,8 +126,19 @@ internal sealed class BookQuestionImportStage(
         }
     }
 
-    private static bool IsFinished(BookImportJobTest test) =>
-        test.Status is BookImportTestStatus.Done or BookImportTestStatus.NeedsReview or BookImportTestStatus.Failed;
+    /// <summary>Yeniden çalıştırmada atlanan testler; incelemede onaylanan / silinen testler de (#1025 hatalı testi yeniden dene).</summary>
+    internal static bool IsFinished(BookImportJobTest test) =>
+        test.Status is BookImportTestStatus.Done or BookImportTestStatus.NeedsReview or BookImportTestStatus.Failed
+            or BookImportTestStatus.Approved or BookImportTestStatus.Removed;
+
+    /// <summary>Issue #1025: iş iptal edildiyse (<see cref="BookImportService.CancelAsync"/>) çalışma test / sayfa arasında durur.</summary>
+    internal static async Task StopIfCancelledAsync(AppDbContext db, Guid jobId, CancellationToken ct)
+    {
+        if (await db.BookImportJobs.AnyAsync(j => j.Id == jobId && j.Status == BookImportJobStatus.Cancelled, ct))
+            throw new BookImportCancelled();
+    }
+
+    private Task StopIfCancelledAsync(BookImportJob job, CancellationToken ct) => StopIfCancelledAsync(db, job.Id, ct);
 
     private async Task ImportTestAsync(
         BookImportJob job, int bookId, BookImportJobTest test, IReadOnlyDictionary<int, BookImportPage> pages, CancellationToken ct)
@@ -142,6 +162,7 @@ internal sealed class BookQuestionImportStage(
                 detected.Add(new DetectedPage(filePage, null, null, null));
                 continue;
             }
+            await StopIfCancelledAsync(job, ct);
             try
             {
                 var imageBase64 = await LoadAsync(page);
@@ -213,9 +234,11 @@ internal sealed class BookQuestionImportStage(
                 // Ayrı scope (ayrı DbContext): toplu kaydın geri alınan varlıkları işin izleyicisinde kalmasın.
                 await using var scope = scopes.CreateAsyncScope();
                 var bank = scope.ServiceProvider.GetRequiredService<ILabelingBankService>();
+                // #1025: yarıda kalmış çalıştırmanın taslakları tekrar sayılmaz, yeniden kullanılır.
                 var result = await bank.SaveImportedPageAsync(new LabelingImportPageRequest(
-                    imageBase64, bookId, filePage, job.GradeId, QuestionBankSharing.Private, toSave), job.CreateUserId!.Value, ct);
-                saved += result.Saved;
+                    imageBase64, bookId, filePage, job.GradeId, QuestionBankSharing.Private, toSave,
+                    ResumeDrafts: true, ResumeWorksheetId: test.WorksheetId), job.CreateUserId!.Value, ct);
+                saved += result.Saved + result.Resumed;
                 duplicates += result.DuplicateIndexes.Count;
                 questionIds.AddRange(result.QuestionIds);
             }
@@ -252,7 +275,8 @@ internal sealed class BookQuestionImportStage(
 
     /// <summary>
     /// Issue #1023: testin kaydedilen soruları taslak bir teste sırayla bağlanır (el ile aktarımdaki gibi: kitap adı – test adı,
-    /// süre anahtardan, öğretmen paylaşımı Private). Yeniden çalıştırmada var olan taslak test yeniden kullanılır.
+    /// süre anahtardan, öğretmen paylaşımı Private). Yeniden çalıştırmada var olan taslak test yeniden kullanılır ve sıra bu
+    /// çalıştırmanınkine göre yeniden yazılır (#1025); test bağlantısı taslak testle aynı kayıtta yazılır.
     /// </summary>
     private async Task CreateDraftTestAsync(BookImportJob job, BookImportJobTest test, List<int> questionIds, CancellationToken ct)
     {
@@ -268,12 +292,21 @@ internal sealed class BookQuestionImportStage(
             db.Worksheets.Add(worksheet);
         }
 
-        var linked = worksheet.WorksheetQuestions.Select(q => q.QuestionId).ToHashSet();
-        var order = worksheet.WorksheetQuestions.Count == 0 ? 0 : worksheet.WorksheetQuestions.Max(q => q.Order);
-        foreach (var id in questionIds.Where(linked.Add))
-            worksheet.WorksheetQuestions.Add(new WorksheetQuestion { QuestionId = id, Order = ++order });
+        var links = worksheet.WorksheetQuestions.Where(q => !q.IsDeleted).GroupBy(q => q.QuestionId)
+            .ToDictionary(g => g.Key, g => g.First());
+        var order = 0;
+        foreach (var id in questionIds.Distinct())
+        {
+            if (links.Remove(id, out var link))
+                link.Order = ++order;
+            else
+                worksheet.WorksheetQuestions.Add(new WorksheetQuestion { QuestionId = id, Order = ++order });
+        }
+        // Bu çalıştırmada görülmeyen eski bağlantılar sona.
+        foreach (var link in links.Values.OrderBy(l => l.Order))
+            link.Order = ++order;
+        test.Worksheet = worksheet;
         await db.SaveChangesAsync(ct);
-        test.WorksheetId = worksheet.Id;
     }
 
     /// <summary>Testin taslak testi (yeni; #1023 işaretlemede düzeltme de kullanır).</summary>

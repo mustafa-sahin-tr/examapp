@@ -48,6 +48,8 @@ export interface BookImportJob {
   ownerId: number | null;
   /** #1024: bütçe beklenirken yeniden deneme zamanı. */
   resumeAt: string | null;
+  /** #1025: kuyrukta / çalışıyor görünüyor ama uzun süredir ilerlemedi; "Yeniden dene" gösterilir. */
+  stalled: boolean;
   /** #1024: yalnız Admin'e dolu — toplam Claude maliyeti ve tavan (null: tavan yok). */
   aiCostUsd: number | null;
   costCeilingUsd: number | null;

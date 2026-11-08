@@ -76,8 +76,17 @@ public interface IBookImportService
     /// </summary>
     Task<ContinueBookImportResult> ContinueAsync(BookImportOwner owner, Guid id, CancellationToken ct);
 
-    /// <summary>Onay bekleyen işi iptal eder (#1021 "anahtar yok → iptal"); diğer durumlar #1025.</summary>
-    Task<CancelBookImportResult> CancelAsync(BookImportOwner owner, Guid id, CancellationToken ct);
+    /// <summary>
+    /// İşi iptal eder (#1021 onay bekleyen; #1025 kuyrukta, çalışan, bekleyen ya da hatalı): çalışma test / sayfa arasında durur.
+    /// Taslaklar kalır (incelenip onaylanabilir) ya da <paramref name="deleteDrafts"/> ile onaylanmamışlar silinir.
+    /// </summary>
+    Task<CancelBookImportResult> CancelAsync(BookImportOwner owner, Guid id, bool deleteDrafts, CancellationToken ct);
+
+    /// <summary>Issue #1025: hatalı ya da takılmış işi kaldığı yerden yeniden kuyruğa verir.</summary>
+    Task<RetryBookImportResult> RetryAsync(BookImportOwner owner, Guid id, CancellationToken ct);
+
+    /// <summary>Issue #1025: hatalı testi (<paramref name="testId"/>) ya da bütün hatalı testleri yeniden aktarır.</summary>
+    Task<RetryBookImportResult> RetryTestsAsync(BookImportOwner owner, Guid id, int? testId, CancellationToken ct);
 
     /// <summary>Issue #1023: incelemedeki testin soruları (numara, sayfa, cevap); test yoksa null.</summary>
     Task<List<BookImportReviewQuestionDto>?> GetReviewQuestionsAsync(BookImportOwner owner, Guid id, int testId, CancellationToken ct);
@@ -104,6 +113,9 @@ public sealed partial class BookImportService : IBookImportService
     /// <summary>Formdaki sınır; <c>BookImport:MaxUploadBytes</c> bunu düşürebilir, yükseltemez (istek sınırı controller'da).</summary>
     public const long MaxUploadBytesCeiling = 200_000_000;
 
+    /// <summary>Issue #1025: bu süreden uzun ilerlemeyen kuyruktaki / çalışan iş takılmış sayılır; <c>BookImport:StallMinutes</c>.</summary>
+    public const int DefaultStallMinutes = 15;
+
     private static readonly byte[] PdfMagic = "%PDF-"u8.ToArray();
 
     private readonly AppDbContext _db;
@@ -113,6 +125,7 @@ public sealed partial class BookImportService : IBookImportService
     private readonly IBookRegistryService _books;
     private readonly long _maxUploadBytes;
     private readonly decimal? _maxJobCostUsd;
+    private readonly TimeSpan _stallAfter;
 
     public BookImportService(AppDbContext db, IMinIoService minio, IBackgroundJobClient jobs, IEntitlementService entitlements,
         IBookRegistryService books, IConfiguration configuration)
@@ -125,6 +138,7 @@ public sealed partial class BookImportService : IBookImportService
         var configured = configuration.GetValue<long?>("BookImport:MaxUploadBytes") ?? MaxUploadBytesCeiling;
         _maxUploadBytes = Math.Clamp(configured, 1, MaxUploadBytesCeiling);
         _maxJobCostUsd = BookImportJobRunner.MaxJobCost(configuration);
+        _stallAfter = TimeSpan.FromMinutes(Math.Max(1, configuration.GetValue<int?>("BookImport:StallMinutes") ?? DefaultStallMinutes));
     }
 
     public async Task<StartBookImportResult> StartAsync(BookImportOwner owner, StartBookImportRequest request, CancellationToken ct)
@@ -189,6 +203,7 @@ public sealed partial class BookImportService : IBookImportService
         return jobs.Select(job =>
         {
             var dto = ToDto(job);
+            dto.Stalled = IsStalled(job);
             if (owner.IsAdmin)
                 FillCost(dto, job);
             return dto;
@@ -208,6 +223,7 @@ public sealed partial class BookImportService : IBookImportService
 
         var detail = new BookImportJobDetailDto();
         Fill(detail, job);
+        detail.Stalled = IsStalled(job);
         var testCosts = new Dictionary<int, decimal>();
         if (owner.IsAdmin)
         {

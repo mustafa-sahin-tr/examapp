@@ -53,7 +53,7 @@ public sealed class BookImportPageFixService(AppDbContext db, IMinIoService mini
             : await db.BookImportJobTests.AsTracking().FirstOrDefaultAsync(t => t.Id == testId && t.JobId == id, ct);
         if (job is null || test is null)
             return new(BookImportPageFixError.NotFound);
-        if (job.Status != BookImportJobStatus.ReadyForReview || job.BookId is not { } bookId || job.CreateUserId is not > 0
+        if (job.Status is not (BookImportJobStatus.ReadyForReview or BookImportJobStatus.Cancelled) || job.BookId is not { } bookId || job.CreateUserId is not > 0
             || test.Status is not (BookImportTestStatus.Done or BookImportTestStatus.NeedsReview or BookImportTestStatus.Failed)
             || test.FileFrom is not { } from || test.FileTo is not { } to || filePage < from || filePage > to)
             return new(BookImportPageFixError.InvalidState);

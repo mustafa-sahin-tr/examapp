@@ -42,6 +42,12 @@ public class BookImportJobDto
     /// <summary>Issue #1024: bütçe beklenirken yeniden deneme zamanı.</summary>
     public DateTime? ResumeAt { get; set; }
 
+    /// <summary>
+    /// Issue #1025: iş kuyrukta / çalışıyor görünüyor ama <c>BookImport:StallMinutes</c>'tan uzun süredir ilerlemedi
+    /// (ör. API yeniden başlatıldı ve Hangfire işi geri almadı); takip ekranı "Yeniden dene" gösterir.
+    /// </summary>
+    public bool Stalled { get; set; }
+
     /// <summary>Issue #1024: yalnız Admin'e — işin toplam Claude maliyeti ve geçerli tavanı (null: tavan yok).</summary>
     public decimal? AiCostUsd { get; set; }
     public decimal? CostCeilingUsd { get; set; }

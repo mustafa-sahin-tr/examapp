@@ -61,6 +61,13 @@ public class LabelingAiOptions
 
     /// <summary><c>low|medium|high|xhigh</c> (MEAI <c>ReasoningEffort</c>); boşsa modelin varsayılanı.</summary>
     public string? Effort { get; set; } = "low";
+
+    /// <summary>
+    /// Issue #1025: geçici hatada (bağlantı, zaman aşımı, 408 / 409 / 429 / 5xx) Anthropic SDK'nın kısa üstel beklemeli yeniden
+    /// deneme sayısı; sonra çağrı <see cref="LabelingAiException"/> ile düşer (kitap aktarımında sayfa / test hatası).
+    /// </summary>
+    [Range(0, 10)]
+    public int MaxRetries { get; set; } = 3;
 }
 
 public class LabelingAiModelOption

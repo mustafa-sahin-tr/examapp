@@ -36,7 +36,31 @@
   @if (j.status === 'Failed') {
   <div class="bid-banner bid-banner--danger" role="alert">
     <mat-icon aria-hidden="true">error_outline</mat-icon>
-    <span>{{ t('detail.failed', { stage: t('stages.' + j.stage) }) }}@if (j.error) { — {{ j.error }} }</span>
+    <span class="bid-banner__text">
+      <strong>{{ t('detail.failed', { stage: t('stages.' + j.stage) }) }}</strong>
+      <span>{{ t('detail.failedHelp.' + j.stage) }}</span>
+      @if (j.error) {
+      <small class="bid-banner__detail">{{ t('detail.errorDetail', { error: j.error }) }}</small>
+      }
+    </span>
+    <button mat-flat-button type="button" class="bid-banner__action" [disabled]="busy() !== null" (click)="retryJob()">
+      <mat-icon aria-hidden="true">refresh</mat-icon>{{ t('detail.retry') }}
+    </button>
+  </div>
+  }
+  @if (j.stalled) {
+  <div class="bid-banner bid-banner--warning" role="status">
+    <mat-icon aria-hidden="true">schedule</mat-icon>
+    <span>{{ t('detail.stalled') }}</span>
+    <button mat-flat-button type="button" class="bid-banner__action" [disabled]="busy() !== null" (click)="retryJob()">
+      <mat-icon aria-hidden="true">refresh</mat-icon>{{ t('detail.retry') }}
+    </button>
+  </div>
+  }
+  @if (j.status === 'Cancelled') {
+  <div class="bid-banner" role="status">
+    <mat-icon aria-hidden="true">block</mat-icon>
+    <span>{{ hasDrafts() ? t('detail.cancelledWithDrafts') : t('detail.cancelled') }}</span>
   </div>
   }
   @if (j.status === 'AwaitingConfirmation') {
@@ -72,8 +96,37 @@
   }
   }
 
+  @if (cancellable()) {
+  <div class="bid-actions">
+    @if (confirmingCancel()) {
+    <div class="bid-confirm" role="alertdialog" aria-labelledby="bid-cancel-text">
+      <span id="bid-cancel-text">{{ hasDrafts() ? t('detail.cancelConfirmDrafts') : t('detail.cancelConfirm') }}</span>
+      <div class="bid-confirm__actions">
+        <button mat-stroked-button type="button" (click)="confirmingCancel.set(false)">{{ t('detail.cancelBack') }}</button>
+        @if (hasDrafts()) {
+        <button mat-stroked-button type="button" (click)="cancelJob(true)">{{ t('detail.cancelDeleteDrafts') }}</button>
+        <button mat-flat-button type="button" (click)="cancelJob(false)">{{ t('detail.cancelKeepDrafts') }}</button>
+        } @else {
+        <button mat-flat-button type="button" (click)="cancelJob(false)">{{ t('detail.cancelImport') }}</button>
+        }
+      </div>
+    </div>
+    } @else {
+    <button mat-stroked-button type="button" [disabled]="busy() !== null" (click)="confirmingCancel.set(true)">
+      <mat-icon aria-hidden="true">block</mat-icon>{{ t('detail.cancelImport') }}
+    </button>
+    }
+  </div>
+  }
+  @if (busy() !== null) {
+  <p class="bid-note" role="status"><mat-spinner diameter="18" aria-hidden="true"></mat-spinner>{{ t('detail.working') }}</p>
+  }
+  @if (actionError(); as e) {
+  <p class="bid-error" role="alert">{{ t(e) }}</p>
+  }
+
   @if (reviewing()) {
-  <app-book-import-review [jobId]="j.id" [tests]="j.tests" [editable]="j.status === 'ReadyForReview'" (changed)="load()" />
+  <app-book-import-review [jobId]="j.id" [tests]="j.tests" [editable]="reviewEditable()" (changed)="load()" />
   }
 
   <div class="bid-body">
@@ -103,7 +156,14 @@
     </section>
 
     <aside class="bid-card" [attr.aria-label]="t('detail.attention')">
-      <h2>{{ t('detail.attention') }}</h2>
+      <div class="bid-card__head">
+        <h2>{{ t('detail.attention') }}</h2>
+        @if (canRetryTests() && testCounts().failed > 1) {
+        <button mat-stroked-button type="button" [disabled]="busy() !== null" (click)="retryFailedTests()">
+          <mat-icon aria-hidden="true">refresh</mat-icon>{{ t('detail.retryFailedTests', { count: testCounts().failed }) }}
+        </button>
+        }
+      </div>
       @if (attention().length === 0) {
       <p class="bid-card__muted">{{ t('detail.attentionEmpty') }}</p>
       } @else {
@@ -112,7 +172,16 @@
         <li>
           <span class="bid-attention__name">{{ t('detail.testName', { unit: test.unit, no: test.testNo }) }}</span>
           @if (test.status === 'Failed') {
-          <span class="bid-flag bid-flag--danger">{{ test.error || t('testStatus.Failed') }}</span>
+          <span class="bid-flag bid-flag--danger">{{ t('detail.testFailed') }}</span>
+          @if (canRetryTests()) {
+          <button mat-stroked-button type="button" class="bid-attention__retry" [disabled]="busy() !== null"
+            (click)="retryTest(test)">
+            <mat-icon aria-hidden="true">refresh</mat-icon>{{ t('detail.retryTest') }}
+          </button>
+          }
+          @if (test.error) {
+          <small class="bid-attention__error">{{ t('detail.errorDetail', { error: test.error }) }}</small>
+          }
           }
           @for (flag of test.flags; track flag) {
           <span class="bid-flag">{{ t('flags.' + flag) }}</span>

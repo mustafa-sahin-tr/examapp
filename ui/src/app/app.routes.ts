@@ -336,6 +336,13 @@ export const routes: Routes = [
           import('./pages/admin/school-manager/school-manager.component').then((m) => m.SchoolManagerComponent),
       },
       {
+        // Issue #1056: kitap aktarımı ve hızlı ekleme AI maliyet raporu.
+        path: 'admin/book-import-costs',
+        canActivate: [authGuard, adminGuard],
+        loadComponent: () =>
+          import('./pages/admin/admin-import-costs/admin-import-costs.component').then((m) => m.AdminImportCostsComponent),
+      },
+      {
         // Issue #148: rozet tanımları yönetimi (oluştur / düzenle / aktifleştir-devre dışı bırak; silme yok).
         path: 'admin/badge-definitions',
         canActivate: [authGuard, adminGuard],

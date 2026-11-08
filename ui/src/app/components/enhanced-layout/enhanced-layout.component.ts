@@ -318,6 +318,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     // Issue #577: işaretleme kitap kaydı (sayfa ofseti, cevap anahtarı, içindekiler).
     { id: 'labeling-books', labelKey: 'menu.labelingBooks', icon: 'menu_book', route: '/books', type: 'menu', roles: ['Admin', 'QuestionTrainer'] },
     { id: 'book-imports', labelKey: 'menu.bookImports', icon: 'auto_stories', route: '/book-imports', type: 'menu', roles: ['Admin', 'QuestionTrainer'] },
+    // Issue #1056: aktarım AI maliyet raporu.
+    { id: 'admin-import-costs', labelKey: 'menu.adminImportCosts', icon: 'payments', route: '/admin/book-import-costs', type: 'menu', roles: ['Admin'] },
     // Issue #148: rozet tanımları yönetimi.
     { id: 'admin-badge-definitions', labelKey: 'menu.adminBadgeDefinitions', icon: 'military_tech', route: '/admin/badge-definitions', type: 'menu', roles: ['Admin'] },
     { id: 'divider-settings', labelKey: '', icon: '', route: '', type: 'divider', roles: ['Admin'] },

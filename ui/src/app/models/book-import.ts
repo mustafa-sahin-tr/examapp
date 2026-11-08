@@ -265,3 +265,63 @@ export function labelingFixParams(jobId: string, testId: number, filePage: numbe
 export function bookImportTestName(test: Pick<BookImportJobTest, 'unit' | 'testNo' | 'title'>): string {
   return `${test.unit}-${String(test.testNo).padStart(2, '0')}${test.title ? ' · ' + test.title : ''}`;
 }
+
+// ---- Issue #1056: admin maliyet raporu ----
+export type BookImportCostKind = 'Book' | 'QuickAdd';
+
+export interface BookImportCostFilter {
+  from: string;
+  to: string;
+  kind: BookImportCostKind | null;
+  userId: number | null;
+}
+
+export interface BookImportCostTotals {
+  jobs: number;
+  pages: number;
+  questionsSaved: number;
+  costUsd: number;
+  costPerQuestionUsd: number | null;
+}
+
+export interface BookImportCostUser {
+  userId: number;
+  fullName: string | null;
+  role: string | null;
+  planKey: string | null;
+  planName: string | null;
+  jobs: number;
+  costUsd: number;
+}
+
+export interface BookImportCostJob {
+  id: string;
+  kind: BookImportCostKind;
+  bookName: string;
+  ownerId: number;
+  ownerName: string | null;
+  createdAt: string;
+  status: string;
+  pages: number;
+  questionsSaved: number;
+  costUsd: number;
+}
+
+export interface BookImportCostStage {
+  stage: string;
+  modelId: string;
+  calls: number;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number;
+}
+
+export interface BookImportCostReport {
+  from: string;
+  to: string;
+  totals: BookImportCostTotals;
+  users: BookImportCostUser[];
+  jobCount: number;
+  jobs: BookImportCostJob[];
+  stages: BookImportCostStage[];
+}

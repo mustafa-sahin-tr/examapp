@@ -1,0 +1,124 @@
+// Issue #1056: aktarım maliyet raporu.
+.import-costs {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 16px;
+  font-family: var(--paragraphFontFamily);
+}
+
+.filters {
+  display: flex;
+  // Global `form` kuralı sütun yapar; süzgeçler yatay akar.
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.muted {
+  margin: 0;
+  color: var(--ms-text-medium);
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.tile,
+.card {
+  border: 1px solid var(--ms-border);
+  border-radius: 12px;
+  background: var(--ms-surface);
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px;
+}
+
+.tile__value {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--ms-text-strong);
+}
+
+.tile__label {
+  font-size: 13px;
+  color: var(--ms-text-medium);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+
+  h2 {
+    margin: 0;
+    font-size: 16px;
+    color: var(--ms-text-strong);
+  }
+}
+
+.card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.scroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  color: var(--ms-text-strong);
+
+  th,
+  td {
+    padding: 8px;
+    border-bottom: 1px solid var(--ms-border);
+    text-align: start;
+    white-space: nowrap;
+  }
+
+  th {
+    font-weight: 600;
+    color: var(--ms-text-medium);
+  }
+
+  .num {
+    text-align: end;
+  }
+
+  a,
+  .link {
+    color: var(--ms-action-text-medium);
+  }
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: start;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.status--unfinished {
+  font-weight: 600;
+  color: var(--ms-danger-text-medium);
+}

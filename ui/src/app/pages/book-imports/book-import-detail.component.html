@@ -1,0 +1,107 @@
+<div class="bid" *transloco="let t; prefix: 'book-imports'">
+  <a class="bid-back" routerLink="/book-imports"><mat-icon aria-hidden="true">arrow_back</mat-icon>{{ t('detail.back') }}</a>
+
+  @if (loading()) {
+  <div class="bid-state" role="status"><mat-spinner diameter="24" aria-hidden="true"></mat-spinner>{{ t('detail.loading') }}</div>
+  } @else if (notFound()) {
+  <div class="bid-state" role="alert"><mat-icon aria-hidden="true">search_off</mat-icon>{{ t('detail.notFound') }}</div>
+  } @else if (loadError()) {
+  <div class="bid-state bid-state--error" role="alert">
+    <mat-icon aria-hidden="true">error_outline</mat-icon>{{ t('detail.loadFailed') }}
+    <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+  </div>
+  } @else if (job(); as j) {
+  <app-page-header icon="auto_stories" [title]="j.bookName"
+    [description]="t('detail.subtitle', { status: t('status.' + j.status), date: (j.createdAt | date: 'd MMM HH:mm') })">
+    <span class="bid-status bid-status--{{ tone(j.status) }}">{{ t('status.' + j.status) }}</span>
+  </app-page-header>
+
+  <ol class="bid-steps" [attr.aria-label]="t('detail.stages')">
+    @for (stage of stages; track stage; let i = $index) {
+    <li class="bid-step bid-step--{{ stageState(stage) }}" [attr.aria-current]="j.stage === stage ? 'step' : null">
+      <span class="bid-step__dot" aria-hidden="true">
+        @switch (stageState(stage)) {
+        @case ('done') { <mat-icon>check</mat-icon> }
+        @case ('failed') { <mat-icon>close</mat-icon> }
+        @case ('waiting') { <mat-icon>pause</mat-icon> }
+        @default { {{ i + 1 }} }
+        }
+      </span>
+      <span class="bid-step__label">{{ t('stages.' + stage) }}</span>
+      <span class="cdk-visually-hidden">{{ t('stepState.' + stageState(stage)) }}</span>
+    </li>
+    }
+  </ol>
+
+  @if (j.status === 'Failed') {
+  <div class="bid-banner bid-banner--danger" role="alert">
+    <mat-icon aria-hidden="true">error_outline</mat-icon>
+    <span>{{ t('detail.failed', { stage: t('stages.' + j.stage) }) }}@if (j.error) { — {{ j.error }} }</span>
+  </div>
+  }
+  @if (j.status === 'AwaitingConfirmation') {
+  <div class="bid-banner bid-banner--warning" role="status">
+    <mat-icon aria-hidden="true">pending_actions</mat-icon>
+    <span>{{ t('detail.awaitingConfirmation') }}</span>
+  </div>
+  }
+
+  <div class="bid-body">
+    <section class="bid-card" [attr.aria-label]="t('detail.current')">
+      <h2>{{ t('detail.currentStage', { stage: t('stages.' + j.stage) }) }}</h2>
+      @if (j.stageTotal > 0) {
+      <p class="bid-card__count">{{ t('detail.stageCount', { done: j.stageProcessed, total: j.stageTotal }) }}</p>
+      <mat-progress-bar mode="determinate" [value]="progress()" [attr.aria-label]="t('list.progress')"></mat-progress-bar>
+      }
+
+      @if (testCounts().total > 0) {
+      <ul class="bid-grid" [attr.aria-label]="t('detail.testGrid')">
+        @for (test of j.tests; track test.order) {
+        <li class="bid-grid__cell bid-grid__cell--{{ testTone(test) }}"
+          [attr.title]="t('detail.testCell', { unit: test.unit, no: test.testNo, status: t('testStatus.' + test.status) })"
+          [attr.aria-label]="t('detail.testCell', { unit: test.unit, no: test.testNo, status: t('testStatus.' + test.status) })"></li>
+        }
+      </ul>
+      <p class="bid-legend">
+        {{ t('detail.legend', { done: testCounts().done, review: testCounts().review, failed: testCounts().failed, running: testCounts().running }) }}
+      </p>
+      } @else {
+      <p class="bid-card__muted">{{ t('detail.noTestsYet') }}</p>
+      }
+    </section>
+
+    <aside class="bid-card" [attr.aria-label]="t('detail.attention')">
+      <h2>{{ t('detail.attention') }}</h2>
+      @if (attention().length === 0) {
+      <p class="bid-card__muted">{{ t('detail.attentionEmpty') }}</p>
+      } @else {
+      <ul class="bid-attention">
+        @for (test of attention(); track test.order) {
+        <li>
+          <span class="bid-attention__name">{{ t('detail.testName', { unit: test.unit, no: test.testNo }) }}</span>
+          @if (test.status === 'Failed') {
+          <span class="bid-flag bid-flag--danger">{{ test.error || t('testStatus.Failed') }}</span>
+          }
+          @for (flag of test.flags; track flag) {
+          <span class="bid-flag">{{ t('flags.' + flag) }}</span>
+          }
+        </li>
+        }
+      </ul>
+      }
+    </aside>
+  </div>
+
+  <dl class="bid-meta">
+    @if (j.fileName) {
+    <div><dt>{{ t('detail.file') }}</dt><dd>{{ j.fileName }}</dd></div>
+    }
+    @if (j.pageCount) {
+    <div><dt>{{ t('detail.pages') }}</dt><dd>{{ j.pageCount }}</dd></div>
+    }
+    @if (j.startedAt) {
+    <div><dt>{{ t('detail.startedAt') }}</dt><dd>{{ j.startedAt | date: 'd MMM HH:mm' }}</dd></div>
+    }
+  </dl>
+  }
+</div>

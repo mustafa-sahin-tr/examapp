@@ -1,0 +1,162 @@
+<div class="bi" *transloco="let t; prefix: 'book-imports'">
+  <app-page-header icon="auto_stories" [title]="t('title')" [description]="t('subtitle')">
+    @if (!showForm()) {
+    <button mat-flat-button type="button" (click)="openForm()">
+      <mat-icon>add</mat-icon>{{ t('new') }}
+    </button>
+    }
+  </app-page-header>
+
+  @if (showForm()) {
+  <section class="bi-start" [attr.aria-label]="t('form.title')">
+    <form class="bi-form" [formGroup]="form" (ngSubmit)="submit()">
+      <h2 class="bi-section-title">{{ t('form.title') }}</h2>
+      <label class="bi-drop" [class.is-over]="dragOver()" [class.has-file]="!!file()" (dragover)="onDragOver($event)"
+        (dragleave)="dragOver.set(false)" (drop)="onDrop($event)">
+        <input class="bi-drop__input" type="file" accept="application/pdf,.pdf" (change)="onFileInput($event)" />
+        <mat-icon aria-hidden="true">picture_as_pdf</mat-icon>
+        @if (file(); as picked) {
+        <span class="bi-drop__file">{{ picked.name }} · {{ fileSize(picked.size) }}</span>
+        <span class="bi-drop__hint">{{ t('form.replaceFile') }}</span>
+        } @else {
+        <span class="bi-drop__title">{{ t('form.dropTitle') }}</span>
+        <span class="bi-drop__hint">{{ t('form.dropHint') }}</span>
+        }
+      </label>
+      @if (fileError(); as error) {
+      <p class="bi-error" role="alert">{{ t('errors.' + (error === 'notPdf' ? 'notPdf' : 'fileTooLarge')) }}</p>
+      }
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ t('form.bookName') }}</mat-label>
+        <input matInput formControlName="bookName" maxlength="200" required />
+      </mat-form-field>
+      <div class="bi-form__row">
+        <mat-form-field appearance="outline">
+          <mat-label>{{ t('form.grade') }}</mat-label>
+          <mat-select formControlName="gradeId" required>
+            @for (grade of grades(); track grade.id) {
+            <mat-option [value]="grade.id">{{ grade.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>{{ t('form.subject') }}</mat-label>
+          <mat-select formControlName="subjectId">
+            <mat-option [value]="null">{{ t('form.subjectAuto') }}</mat-option>
+            @for (subject of subjects(); track subject.id) {
+            <mat-option [value]="subject.id">{{ subject.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      @if (submitError(); as code) {
+      <p class="bi-error" role="alert">{{ t(errorKey(code)) }}</p>
+      }
+      <div class="bi-form__actions">
+        <button mat-flat-button type="submit" [disabled]="submitting() || quotaBlocked() || !file()">
+          @if (submitting()) {
+          <mat-spinner diameter="18" aria-hidden="true"></mat-spinner>{{ t('form.uploading') }}
+          } @else {
+          {{ t('form.start') }}
+          }
+        </button>
+        <button mat-stroked-button type="button" (click)="cancelForm()" [disabled]="submitting()">{{ t('form.cancel') }}</button>
+        @if (quotaBlocked()) {
+        <span class="bi-form__blocked">{{ t('quota.blocked') }}</span>
+        }
+      </div>
+    </form>
+
+    <aside class="bi-side">
+      @if (quota(); as q) {
+      <div class="bi-card" [class.bi-card--danger]="!q.allowed">
+        <h3>{{ t('quota.title') }}</h3>
+        @if (q.limit === null) {
+        <p>{{ t('quota.unlimited') }}</p>
+        } @else {
+        <p class="bi-card__big">{{ t('quota.used', { used: q.used, limit: q.limit }) }}</p>
+        <mat-progress-bar mode="determinate" [value]="q.limit > 0 ? (100 * q.used) / q.limit : 100"></mat-progress-bar>
+        @if (q.resetsAtUtc) {
+        <p class="bi-card__meta">{{ t('quota.resets', { date: (q.resetsAtUtc | date: 'd MMMM') }) }}</p>
+        }
+        }
+      </div>
+      }
+      <div class="bi-card">
+        <h3>{{ t('hint.title') }}</h3>
+        <p>{{ t('hint.body') }}</p>
+      </div>
+      <div class="bi-card">
+        <h3>{{ t('registry.title') }}</h3>
+        <p>{{ t('registry.body') }}</p>
+        <a routerLink="/books">{{ t('registry.link') }}</a>
+      </div>
+    </aside>
+  </section>
+  }
+
+  <section class="bi-list" [attr.aria-label]="t('list.title')">
+    <div class="bi-list__head">
+      <h2 class="bi-section-title">{{ t('list.title') }}</h2>
+      <div class="bi-filters" role="group" [attr.aria-label]="t('list.filter')">
+        <button type="button" class="bi-chip" [class.is-active]="filter() === 'all'" [attr.aria-pressed]="filter() === 'all'"
+          (click)="filter.set('all')">{{ t('list.all') }}</button>
+        <button type="button" class="bi-chip" [class.is-active]="filter() === 'awaiting'"
+          [attr.aria-pressed]="filter() === 'awaiting'" (click)="filter.set('awaiting')">{{ t('list.awaiting', { count: awaitingCount() }) }}</button>
+        <button type="button" class="bi-chip" [class.is-active]="filter() === 'failed'"
+          [attr.aria-pressed]="filter() === 'failed'" (click)="filter.set('failed')">{{ t('list.failed', { count: failedCount() }) }}</button>
+      </div>
+    </div>
+
+    @if (awaitingCount() > 0) {
+    <p class="bi-banner" role="status">{{ t('list.awaitingBanner', { count: awaitingCount() }) }}</p>
+    }
+
+    @if (loading()) {
+    <div class="bi-state" role="status"><mat-spinner diameter="24" aria-hidden="true"></mat-spinner>{{ t('list.loading') }}</div>
+    } @else if (loadError()) {
+    <div class="bi-state bi-state--error" role="alert">
+      <mat-icon aria-hidden="true">error_outline</mat-icon>{{ t('list.loadFailed') }}
+      <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+    </div>
+    } @else if (jobs().length === 0) {
+    <div class="bi-state bi-state--empty">
+      <mat-icon aria-hidden="true">auto_stories</mat-icon>
+      <span>{{ t('list.empty') }}</span>
+      @if (!showForm()) {
+      <button mat-stroked-button type="button" (click)="openForm()">{{ t('list.emptyAction') }}</button>
+      }
+    </div>
+    } @else {
+    <table class="bi-table">
+      <thead>
+        <tr>
+          <th scope="col">{{ t('list.book') }}</th>
+          <th scope="col">{{ t('list.stage') }}</th>
+          <th scope="col">{{ t('list.progress') }}</th>
+          <th scope="col">{{ t('list.started') }}</th>
+          <th scope="col">{{ t('list.status') }}</th>
+          <th scope="col"><span class="cdk-visually-hidden">{{ t('list.action') }}</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (job of visibleJobs(); track job.id) {
+        <tr>
+          <td class="bi-table__book">{{ job.bookName }}</td>
+          <td>{{ t('stages.' + job.stage) }}</td>
+          <td class="bi-table__progress">
+            <mat-progress-bar mode="determinate" [value]="progress(job)" [attr.aria-label]="t('list.progress')"></mat-progress-bar>
+            <span>{{ progress(job) }}%</span>
+          </td>
+          <td>{{ job.createdAt | date: 'd MMM HH:mm' }}</td>
+          <td><span class="bi-status bi-status--{{ tone(job.status) }}">{{ t('status.' + job.status) }}</span></td>
+          <td><a mat-stroked-button [routerLink]="['/book-imports', job.id]">{{ t(actionKey(job)) }}</a></td>
+        </tr>
+        }
+      </tbody>
+    </table>
+    }
+  </section>
+</div>

@@ -1,0 +1,13 @@
+{
+  "bookImport": {
+    "fileRequired": "PDF dosyası zorunludur.",
+    "userNotResolved": "Kullanıcı bulunamadı.",
+    "notFound": "Aktarım bulunamadı.",
+    "invalidBookName": "Kitap adı zorunludur (en fazla 200 karakter).",
+    "invalidGrade": "Geçerli bir sınıf seçin.",
+    "invalidSubject": "Geçerli bir ders seçin.",
+    "notPdf": "Dosya PDF değil.",
+    "fileTooLarge": "Dosya çok büyük.",
+    "quotaReached": "Bu ayki kitap aktarım hakkını doldurdun."
+  }
+}

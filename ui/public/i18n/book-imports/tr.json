@@ -1,0 +1,129 @@
+{
+  "title": "Kitap aktarımı",
+  "subtitle": "Kitabın PDF'ini yükleyin; kurulum ve sorular arka planda hazırlanır. Her şey siz onaylayana kadar taslak kalır.",
+  "new": "Yeni aktarım",
+  "retry": "Tekrar dene",
+  "form": {
+    "title": "Kitap yükle",
+    "dropTitle": "PDF'i buraya bırakın ya da seçmek için tıklayın",
+    "dropHint": "Yalnız PDF, en fazla 200 MB",
+    "replaceFile": "Değiştirmek için başka bir dosya seçin",
+    "bookName": "Kitap adı",
+    "grade": "Sınıf",
+    "subject": "Ders",
+    "subjectAuto": "Kitaptan belirlensin",
+    "start": "Aktarımı başlat",
+    "uploading": "Yükleniyor…",
+    "cancel": "Vazgeç"
+  },
+  "errors": {
+    "notPdf": "Seçilen dosya PDF değil.",
+    "fileTooLarge": "Dosya çok büyük (en fazla 200 MB).",
+    "invalidBookName": "Kitap adını yazın (en fazla 200 karakter).",
+    "invalidGrade": "Geçerli bir sınıf seçin.",
+    "invalidSubject": "Geçerli bir ders seçin.",
+    "quotaReached": "Bu ayki kitap aktarım hakkınız doldu.",
+    "generic": "Aktarım başlatılamadı. Tekrar deneyin."
+  },
+  "quota": {
+    "title": "Aylık hak",
+    "unlimited": "Sınırsız aktarım",
+    "used": "{{used}} / {{limit}} kitap kullanıldı",
+    "resets": "{{date}} tarihinde yenilenir",
+    "blocked": "Bu ayki hakkınız doldu."
+  },
+  "hint": {
+    "title": "Nasıl çalışır?",
+    "body": "Sayfalar ayrılır, cevap anahtarı ve içindekiler okunur, kurulumu onaylamanız istenir; sonra sorular test test alınır. Bitince inceleyip onaylarsınız."
+  },
+  "registry": {
+    "title": "Kitap kaydı",
+    "body": "Aktarılan kitaplar kitap listesine eklenir; ofset ve cevap anahtarını oradan düzeltebilirsiniz.",
+    "link": "Kitaplara git"
+  },
+  "list": {
+    "title": "Aktarımlar",
+    "filter": "Aktarımları süz",
+    "all": "Tümü",
+    "awaiting": "Onay bekleyen ({{count}})",
+    "failed": "Hatalı ({{count}})",
+    "awaitingBanner": "{{count}} aktarım sizi bekliyor.",
+    "loading": "Aktarımlar yükleniyor…",
+    "loadFailed": "Aktarımlar yüklenemedi.",
+    "empty": "Henüz kitap aktarımı yok.",
+    "emptyAction": "İlk kitabı yükle",
+    "book": "Kitap",
+    "stage": "Aşama",
+    "progress": "İlerleme",
+    "started": "Başlangıç",
+    "status": "Durum",
+    "action": "İşlem"
+  },
+  "stages": {
+    "Upload": "Yükleme",
+    "Pages": "Sayfalar",
+    "Setup": "Kurulum",
+    "SetupConfirmation": "Kurulum onayı",
+    "Questions": "Sorular",
+    "Classification": "Sınıflandırma",
+    "Review": "İnceleme",
+    "Approval": "Onay"
+  },
+  "status": {
+    "Queued": "Sırada",
+    "Running": "Sürüyor",
+    "AwaitingConfirmation": "Onay bekliyor",
+    "ReadyForReview": "İncelemeye hazır",
+    "Completed": "Tamamlandı",
+    "Failed": "Hata",
+    "Cancelled": "İptal edildi"
+  },
+  "testStatus": {
+    "Pending": "Bekliyor",
+    "Running": "Alınıyor",
+    "Done": "Hazır",
+    "NeedsReview": "Kontrol gerekli",
+    "Failed": "Hata"
+  },
+  "stepState": {
+    "done": "tamamlandı",
+    "current": "sürüyor",
+    "waiting": "sizi bekliyor",
+    "failed": "hata",
+    "todo": "sırada"
+  },
+  "flags": {
+    "noKey": "Cevap anahtarı yok",
+    "keyMismatch": "Anahtar sayısı tutmuyor",
+    "qrAnswers": "Cevaplar karekodda",
+    "missedNumbers": "Eksik soru numarası"
+  },
+  "actions": {
+    "open": "Aç",
+    "openSetup": "Kurulumu onayla",
+    "review": "İncele"
+  },
+  "detail": {
+    "back": "Aktarımlar",
+    "loading": "Aktarım yükleniyor…",
+    "notFound": "Aktarım bulunamadı.",
+    "loadFailed": "Aktarım yüklenemedi.",
+    "subtitle": "{{status}} · {{date}} tarihinde başladı",
+    "stages": "Aktarım aşamaları",
+    "failed": "{{stage}} aşamasında hata oluştu",
+    "awaitingConfirmation": "Kitap kurulumu hazır; sorular alınmadan önce onayınız gerekiyor. Onay ekranı yakında.",
+    "current": "Geçerli aşama",
+    "currentStage": "Geçerli aşama: {{stage}}",
+    "stageCount": "{{done}} / {{total}}",
+    "testGrid": "Testler",
+    "testCell": "Ünite {{unit}}, test {{no}}: {{status}}",
+    "testName": "Ünite {{unit}} · Test {{no}}",
+    "legend": "{{done}} hazır · {{review}} kontrol gerekli · {{failed}} hata · {{running}} alınıyor",
+    "noTestsYet": "Testler kurulum onayından sonra burada görünür.",
+    "attention": "Dikkat gerekenler",
+    "attentionEmpty": "Şimdilik dikkat gereken test yok.",
+    "file": "Dosya",
+    "pages": "Sayfa",
+    "startedAt": "Başlangıç"
+  }
+}

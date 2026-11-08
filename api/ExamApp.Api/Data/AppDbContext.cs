@@ -236,6 +236,10 @@ public class AppDbContext : DbContext
     public DbSet<QuestionTransferImportMap> QuestionTransferImportMaps { get; set; }
     public DbSet<WorksheetTransferImportMap> WorksheetTransferImportMaps { get; set; }
 
+    // Issue #1018 (epic #1017): kitaptan aktarım işleri.
+    public DbSet<BookImportJob> BookImportJobs { get; set; }
+    public DbSet<BookImportJobTest> BookImportJobTests { get; set; }
+
     // Issue #693: deneme sınavları.
     public DbSet<ExamTemplate> ExamTemplates { get; set; }
     public DbSet<ExamTemplateSession> ExamTemplateSessions { get; set; }
@@ -1386,6 +1390,20 @@ public class AppDbContext : DbContext
             e.HasOne<Topic>().WithMany().HasForeignKey(t => t.TopicId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<SubTopic>().WithMany().HasForeignKey(t => t.SubTopicId).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(t => new { t.BookId, t.FileFrom });
+        });
+
+        // Issue #1018: aktarım işi kitap silinince kalır (Restrict); testler işle birlikte yaşar.
+        modelBuilder.Entity<BookImportJob>(e =>
+        {
+            e.HasOne(j => j.Book).WithMany().HasForeignKey(j => j.BookId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Grade>().WithMany().HasForeignKey(j => j.GradeId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Subject>().WithMany().HasForeignKey(j => j.SubjectId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(j => new { j.CreateUserId, j.CreateTime });
+        });
+        modelBuilder.Entity<BookImportJobTest>(e =>
+        {
+            e.HasOne(t => t.Job).WithMany(j => j.Tests).HasForeignKey(t => t.JobId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(t => new { t.JobId, t.Order }).IsUnique();
         });
 
         // Soru başına tek kaynak; kırpma hash'i tekrar kontrolü için indeksli (tekil değil: Force ile ikinci kayıt mümkün).

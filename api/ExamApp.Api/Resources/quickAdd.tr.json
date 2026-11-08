@@ -1,0 +1,16 @@
+{
+  "quickAdd": {
+    "userNotResolved": "Kullanıcı bulunamadı.",
+    "notFound": "Hızlı ekleme bulunamadı.",
+    "invalidGrade": "Geçerli bir sınıf seçin.",
+    "invalidSubject": "Geçerli bir ders seçin.",
+    "noPhotos": "En az bir fotoğraf ekleyin.",
+    "tooManyPhotos": "Bir seferde en fazla 10 fotoğraf eklenebilir.",
+    "photoTooLarge": "Fotoğraf çok büyük (en fazla 15 MB).",
+    "invalidImage": "Fotoğraf okunamadı. JPEG, PNG ya da WebP yükleyin.",
+    "invalidAnswerKey": "Cevap anahtarı okunamadı. Harfleri sırayla yazın (ör. A C B D); bilinmeyen için ? kullanın.",
+    "quotaReached": "Bu ayki hızlı ekleme hakkını doldurdun.",
+    "notRetryable": "Bu hızlı ekleme yeniden denenemez.",
+    "notCancellable": "Bu hızlı ekleme iptal edilemez."
+  }
+}

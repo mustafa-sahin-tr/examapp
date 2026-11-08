@@ -1405,6 +1405,8 @@ public class AppDbContext : DbContext
             e.HasOne(j => j.Book).WithMany().HasForeignKey(j => j.BookId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Grade>().WithMany().HasForeignKey(j => j.GradeId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Subject>().WithMany().HasForeignKey(j => j.SubjectId).OnDelete(DeleteBehavior.Restrict);
+            // Issue #1052: mevcut işler kitap aktarımıdır.
+            e.Property(j => j.Kind).HasDefaultValue(BookImportJobKind.Book);
             e.HasIndex(j => new { j.CreateUserId, j.CreateTime });
         });
         modelBuilder.Entity<BookImportJobTest>(e =>

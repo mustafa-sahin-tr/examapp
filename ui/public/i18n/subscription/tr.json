@@ -17,7 +17,8 @@
   "features": {
     "book-import": "Kitaptan aktarım",
     "ai-classification": "Yapay zekâ ile sınıflandırma",
-    "mock-exam": "Deneme"
+    "mock-exam": "Deneme",
+    "quick-add": "Hızlı soru ekleme (fotoğraf)"
   },
   "limits": {
     "unlimited": "Sınırsız",

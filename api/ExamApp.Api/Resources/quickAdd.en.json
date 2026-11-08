@@ -1,0 +1,16 @@
+{
+  "quickAdd": {
+    "userNotResolved": "User could not be resolved.",
+    "notFound": "Quick add not found.",
+    "invalidGrade": "Choose a valid grade.",
+    "invalidSubject": "Choose a valid subject.",
+    "noPhotos": "Add at least one photo.",
+    "tooManyPhotos": "At most 10 photos can be added at once.",
+    "photoTooLarge": "The photo is too large (max 15 MB).",
+    "invalidImage": "The photo could not be read. Upload a JPEG, PNG or WebP.",
+    "invalidAnswerKey": "The answer key could not be read. Write the letters in order (e.g. A C B D); use ? for unknown.",
+    "quotaReached": "You have used this month's quick add allowance.",
+    "notRetryable": "This quick add cannot be retried.",
+    "notCancellable": "This quick add cannot be cancelled."
+  }
+}

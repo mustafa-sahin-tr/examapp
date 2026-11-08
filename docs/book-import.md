@@ -178,3 +178,28 @@ aktarım aracındaki Python portu referanstır (#1022).
 - **Ekran:** hata bandı aşamaya göre sade açıklama + "Teknik ayrıntı" + "Yeniden dene"; hatalı test "Bu testin soruları
   alınamadı" + "Testi yeniden dene", birden çok hatalı testte "Hatalı testleri yeniden dene (n)"; "Aktarımı iptal et" satır içi
   onay: taslak varsa "İptal et, taslakları sakla" / "İptal et ve taslakları sil".
+
+## Hızlı ekleme (#1048, #1052)
+
+- **Model:** hızlı ekleme bir kitap aktarımı işidir (`BookImportJobs.Kind = QuickAdd`; mevcut işler `Book`). Fotoğraf = sayfa
+  (`BookImportPages`, `quick-adds/<jobId>/photos/<n>.jpg`), fotoğraf başına bir test satırı ("Fotoğraf n", `FileFrom = FileTo = n`).
+  Kitap kaydı ve kurulum yok: iş yüklemede `Questions` aşamasında kuyruğa girer; koşucu, devam / yeniden deneme / iptal (#1025),
+  bütçe ve tavan (#1024), inceleme işaretleri ve taslak test (#1023) kitapla aynı. `BookImportOwner.Kind` görünürlüğü ayırır:
+  `api/book-imports` yalnız kitapları, `api/quick-add` yalnız hızlı eklemeleri görür (Admin dahil).
+- **Kaynak:** `QuestionSources.BookId` boş olabilir; hızlı ekleme sorusunun kaynağı kitapsız (sayfa = fotoğraf sırası, etiket
+  "Fotoğraf n"). Kırpma hash'i tekrar ve devam kuralları aynı. İçindekiler yok: sorular normal sınıflandırılır (#1047 dahil).
+- **Yükleme** `POST /api/exam/quick-add` (multipart: `photos[]`, `answers[]`, `gradeId`, `subjectId?`; Teacher / Admin /
+  QuestionTrainer, onaylı öğretmen policy'si): en çok 10 fotoğraf, her biri en çok 15 MB; JPEG / PNG / WebP (iOS Safari
+  `accept="image/*"` ile HEIC'i JPEG'e çevirir). Önce hepsi çözülür (EXIF yönü uygulanır, uzun kenar 2400 px, meta verisiz JPEG);
+  bozuk biri varsa hiçbir şey saklanmaz, 400 `photo` = sırası. Perspektif düzeltme yok.
+- **Cevap anahtarı** (fotoğraf başına, isteğe bağlı): harfler sırayla, ayrık ya da bitişik, numaralı da olabilir ("A C B",
+  "ACB", "1-A 2) C"); bilinmeyen `?` / `-` / `_`. Tespit edilen sorular okuma sırasıyla numaralanır, anahtar **yalnız bulunan
+  sayı anahtar uzunluğuna eşitse** uygulanır; değilse hiç yazılmaz, fotoğraf `countMismatch` (+ `noAnswer`) işaretini alır,
+  cevaplar incelemede girilir (kitapta anahtar numarayla yine uygulanır).
+- **Hak:** `quick-add` fotoğraf başına, yüklemede (`quick-add:<jobId>:<n>`; yeniden deneme tekrar saymaz). Kalan hak bütün
+  fotoğraflara yetmiyorsa 429 (#1029 biçimi), hiçbir şey saklanmaz. `GET /api/exam/quick-add/quota`.
+- **Bütçe:** ayrı sayaç `labeling-ai-usd:quick-add` (`Anthropic:DailyBudgetUsdQuickAdd`, varsayılan 5 $) + toplam; kitap
+  aktarımının sayacını tüketmez. Maliyet tavanı `BookImport:MaxJobCostUsd` aynı.
+- **Uçlar:** `GET /api/exam/quick-add` (liste), `GET {id}` (fotoğraf satırları, işaretler), `GET {id}/photos/{n}` (JPEG),
+  `POST {id}/retry`, `POST {id}/cancel?deleteDrafts=`. İnceleme / onay uçları #1054, mobil ekran #1053.
+

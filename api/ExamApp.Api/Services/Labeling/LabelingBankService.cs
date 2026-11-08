@@ -45,10 +45,11 @@ public sealed class LabelingBankSaveException() : Exception("Saving labeling que
 /// (anahtar yok / anahtarda yok); sorular taslak oluşur. #1023: <c>ReplacingQuestionIds</c> işaretlemede düzeltilen sayfanın
 /// eski taslakları — kayıttan sonra silinecekleri için kırpmaları tekrar sayılmaz. #1025: <c>ResumeDrafts</c> yarıda kalan
 /// aktarımın devamı — aynı kullanıcının bu kitaptaki, başka bir teste bağlı olmayan (ya da <c>ResumeWorksheetId</c>'ye bağlı)
-/// taslak sorusu tekrar sayılmaz, yeniden kullanılır.
+/// taslak sorusu tekrar sayılmaz, yeniden kullanılır. #1052: <c>BookId</c> null → hızlı ekleme fotoğrafı (kitap kaynağı ve
+/// içindekiler yok; kaynak satırı kırpma hash'i ve fotoğraf sırasıyla yazılır).
 /// </summary>
 public sealed record LabelingImportPageRequest(
-    string ImageBase64, int BookId, int FilePage, int GradeId, QuestionBankSharing Sharing,
+    string ImageBase64, int? BookId, int FilePage, int GradeId, QuestionBankSharing Sharing,
     IReadOnlyList<LabelingBankQuestionDto> Questions, IReadOnlyCollection<int>? ReplacingQuestionIds = null,
     bool ResumeDrafts = false, int? ResumeWorksheetId = null);
 
@@ -249,9 +250,10 @@ public sealed class LabelingBankService(
         foreach (var q in questions)
             ValidateShape(q, allowAnswerless: true);
 
-        var bookPage = await books.ResolvePageAsync(request.BookId, request.FilePage, ct)
-                       ?? throw new LabelingValidationException("labeling.books.notFound");
-        var toc = bookPage.Toc is { } entry && entry.GradeId == request.GradeId ? entry : null;
+        var bookPage = request.BookId is { } bookId
+            ? await books.ResolvePageAsync(bookId, request.FilePage, ct) ?? throw new LabelingValidationException("labeling.books.notFound")
+            : null;
+        var toc = bookPage?.Toc is { } entry && entry.GradeId == request.GradeId ? entry : null;
 
         List<BulkQuestionDto> bulkQuestions;
         byte[] pageJpeg;
@@ -260,7 +262,10 @@ public sealed class LabelingBankService(
             bulkQuestions = questions.Select((q, i) => ToBulkQuestion(q, i, image.Width, image.Height)).ToList();
             pageJpeg = image.Encode(LabelingImage.MaxEdge).Jpeg;
         }
-        ApplyBookSource(bulkQuestions, questions, bookPage);
+        if (bookPage is not null)
+            ApplyBookSource(bulkQuestions, questions, bookPage);
+        else
+            ApplyPhotoSource(bulkQuestions, questions, request.FilePage);
 
         var hashes = ComputeCropHashes(bulkQuestions, pageJpeg);
         var distinct = hashes.Distinct().ToList();
@@ -356,6 +361,14 @@ public sealed class LabelingBankService(
         }
     }
 
+    /// <summary>Issue #1052: hızlı ekleme fotoğrafının kaynağı (kitapsız; sayfa = işteki fotoğraf sırası).</summary>
+    private static void ApplyPhotoSource(List<BulkQuestionDto> bulkQuestions, IReadOnlyList<LabelingBankQuestionDto> questions, int photo)
+    {
+        for (var i = 0; i < bulkQuestions.Count; i++)
+            bulkQuestions[i].Source = new BulkQuestionSourceInfo(
+                null, photo, null, NormalizeLabel(questions[i].ActivityLabel), NormalizeLabel(questions[i].ItemLabel));
+    }
+
     private static string? NormalizeLabel(string? value)
     {
         var trimmed = value?.Trim();
@@ -376,7 +389,7 @@ public sealed class LabelingBankService(
             .OrderBy(s => s.QuestionId)
             .Select(s => new
             {
-                s.QuestionId, s.CropSha256, BookName = s.Book.Name, s.FilePage, s.PrintedPage, s.ActivityLabel, s.ItemLabel,
+                s.QuestionId, s.CropSha256, BookName = s.Book != null ? s.Book.Name : null, s.FilePage, s.PrintedPage, s.ActivityLabel, s.ItemLabel,
             })
             .Take(MaxReportedCropDuplicates)
             .ToListAsync(ct);

@@ -78,7 +78,9 @@ internal sealed class BookQuestionImportStage(
 
     public async Task RunAsync(BookImportJob job, CancellationToken ct = default)
     {
-        if (job.BookId is not { } bookId)
+        // #1052: hızlı eklemenin kitabı yok; kitap aktarımında kurulum onayı kitabı bağlar.
+        var bookId = job.BookId;
+        if (bookId is null && job.Kind == BookImportJobKind.Book)
             throw new BookImportFailure("The book record is missing (setup was not confirmed).");
         if (labeling.GetAiModels().All(m => m.Id != detectModel))
             throw new BookImportFailure(labeling.GetAiModels().Count == 0
@@ -141,13 +143,13 @@ internal sealed class BookQuestionImportStage(
     private Task StopIfCancelledAsync(BookImportJob job, CancellationToken ct) => StopIfCancelledAsync(db, job.Id, ct);
 
     private async Task ImportTestAsync(
-        BookImportJob job, int bookId, BookImportJobTest test, IReadOnlyDictionary<int, BookImportPage> pages, CancellationToken ct)
+        BookImportJob job, int? bookId, BookImportJobTest test, IReadOnlyDictionary<int, BookImportPage> pages, CancellationToken ct)
     {
         if (test.FileFrom is not { } from || test.FileTo is not { } to || to < from)
             throw new BookImportFailure("The test has no pages.");
 
         var key = test.AnswerKey;
-        var label = SourceLabel(test);
+        var label = SourceLabel(job, test);
         var flags = new FlagSet();
         var questionIds = new List<int>();
         int saved = 0, duplicates = 0, failedPages = 0, pageCount = 0;
@@ -180,6 +182,9 @@ internal sealed class BookQuestionImportStage(
         }
 
         var found = detected.Sum(d => d.Questions?.Count ?? 0);
+        // #1052: hızlı eklemede anahtar yalnız bulunan sayı tutarsa uygulanır (sırayla eşlenir); tutmazsa sorular cevapsız kalır
+        // ve sayı uyuşmazlığı işaretlenir, cevaplar incelemede girilir.
+        var answers = job.Kind == BookImportJobKind.QuickAdd && key is not null && found != key.Length ? null : key;
         var numbering = NumberPages(
             detected.Select(d => (d.Page is null ? null : d.Page.MaxQuestionNumber, d.Questions?.Count)).ToList(), key?.Length);
 
@@ -219,7 +224,7 @@ internal sealed class BookQuestionImportStage(
                     continue;
                 }
 
-                var answer = AnswerIndex(key, number);
+                var answer = AnswerIndex(answers, number);
                 if (answer >= prepared.Options.Count)
                     answer = -1;
                 if (answer < 0)
@@ -312,11 +317,13 @@ internal sealed class BookQuestionImportStage(
     /// <summary>Testin taslak testi (yeni; #1023 işaretlemede düzeltme de kullanır).</summary>
     internal static Worksheet NewDraftTest(BookImportJob job, BookImportJobTest test)
     {
-        var name = $"{job.BookName} – {BookImportService.BookTestName(test)}";
+        var name = $"{job.BookName} – {BookImportService.BookTestName(job, test)}";
         return new Worksheet
         {
             Name = name.Length <= DraftTestNameLength ? name : name[..DraftTestNameLength],
-            Description = $"{job.BookName}. Cevaplar kitabın cevap anahtarından.",
+            Description = job.Kind == BookImportJobKind.QuickAdd
+                ? $"{job.BookName}. Fotoğraftan eklenen sorular."
+                : $"{job.BookName}. Cevaplar kitabın cevap anahtarından.",
             GradeId = job.GradeId,
             SubjectId = job.SubjectId,
             MaxDurationSeconds = (test.Minutes ?? 0) * 60,
@@ -327,9 +334,9 @@ internal sealed class BookQuestionImportStage(
     }
 
     /// <summary>Soruların etkinlik etiketi: testin adı (kaynak etiketi sınırına kırpılır).</summary>
-    internal static string SourceLabel(BookImportJobTest test)
+    internal static string SourceLabel(BookImportJob job, BookImportJobTest test)
     {
-        var label = BookImportService.BookTestName(test);
+        var label = BookImportService.BookTestName(job, test);
         return label.Length <= QuestionSource.MaxLabelLength ? label : label[..QuestionSource.MaxLabelLength];
     }
 
@@ -417,7 +424,9 @@ internal sealed class BookQuestionImportStage(
                                  ?? throw new BookImportFailure($"Page {page.FilePage} image could not be read from storage.");
         using var buffer = new MemoryStream();
         await stream.CopyToAsync(buffer);
-        return "data:image/webp;base64," + Convert.ToBase64String(buffer.GetBuffer(), 0, (int)buffer.Length);
+        // Kitap sayfaları WebP, hızlı ekleme fotoğrafları JPEG (#1052).
+        var mime = page.ImageUrl.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ? "image/jpeg" : "image/webp";
+        return $"data:{mime};base64," + Convert.ToBase64String(buffer.GetBuffer(), 0, (int)buffer.Length);
     }
 
     private static string Truncate(string message) =>

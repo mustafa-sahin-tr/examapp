@@ -293,7 +293,7 @@ Kılavuz özeti ve beceri listesinin kaynağı `docs/context-based-questions.md`
   (`Any` / `Teacher` / `Student`), yer tutucu `MonthlyPrice` + `Currency` (`TRY`; gerçek ödeme yok), `SortOrder`. Sınırlar
   (aylık; satır yok = 0, null = sınırsız): `book-import` Free 0 / Trial 1 / TeacherPro 10; `ai-classification` Free 20 /
   Trial 50 / TeacherPro 1000; `mock-exam` Free 0 / Trial 2 / StudentPlus sınırsız (Free'de herkese açık tek deneme sınavı
-  sınırdan muaf, #1031). Hepsi veritabanından değiştirilebilir. Uç noktalar (oturum açmış her kullanıcı):
+  sınırdan muaf, #1031); `quick-add` (fotoğraf başına, #1052) Free 5 / Trial 20 / TeacherPro 200. Hepsi veritabanından değiştirilebilir. Uç noktalar (oturum açmış her kullanıcı):
   `GET /api/exam/subscription-plans` çağıranın rolüne uygun aktif planlar (`Any` + öğretmene Teacher, öğrenciye Student;
   Admin hepsi; veli yalnız `Any`), `GET /api/exam/subscription-plans/me` plan + `validToUtc` + `EntitlementFeatures.All` ve
   planın sınırladığı her özellik için bu ayki `allowed` / `limit` / `used` / `remaining` / `resetsAtUtc`.

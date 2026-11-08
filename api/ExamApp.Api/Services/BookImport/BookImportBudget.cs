@@ -49,6 +49,11 @@ internal sealed class BookImportBudget(AppDbContext db, IFixedWindowCounterStore
     /// <summary>Tavan; null ya da 0 → yok.</summary>
     public decimal? CeilingUsd { get; } = ceilingUsd is > 0 ? ceilingUsd : null;
 
+    /// <summary>Issue #1052: işin türüne göre bütçe sayacı (kitap aktarımı / hızlı ekleme).</summary>
+    private string KindBudgetKey => job.Kind == BookImportJobKind.QuickAdd ? LabelingAiQuota.QuickAddBudgetKey : LabelingAiQuota.ImportBudgetKey;
+
+    private decimal KindBudgetUsd => job.Kind == BookImportJobKind.QuickAdd ? options.DailyBudgetUsdQuickAdd : options.DailyBudgetUsdImport;
+
     public void Record(string modelId, LabelingAiUsage usage, decimal costUsd)
     {
         if (costUsd <= 0 && usage.Input <= 0 && usage.Output <= 0)
@@ -78,7 +83,7 @@ internal sealed class BookImportBudget(AppDbContext db, IFixedWindowCounterStore
             throw new BookImportPause(BookImportPauseReason.CostCeiling);
         try
         {
-            await LabelingAiQuota.EnsureBudgetAsync(store, LabelingAiQuota.ImportBudgetKey, options.DailyBudgetUsdImport, ct);
+            await LabelingAiQuota.EnsureBudgetAsync(store, KindBudgetKey, KindBudgetUsd, ct);
             await LabelingAiQuota.EnsureBudgetAsync(store, LabelingAiQuota.TotalBudgetKey, options.DailyBudgetUsdTotal, ct);
         }
         catch (LabelingRateLimitException full)
@@ -93,7 +98,7 @@ internal sealed class BookImportBudget(AppDbContext db, IFixedWindowCounterStore
         if (_pending.Count == 0)
             return;
         var usd = _pending.Sum(c => c.CostUsd);
-        await LabelingAiQuota.ChargeBudgetAsync(store, LabelingAiQuota.ImportBudgetKey, usd);
+        await LabelingAiQuota.ChargeBudgetAsync(store, KindBudgetKey, usd);
         await LabelingAiQuota.ChargeBudgetAsync(store, LabelingAiQuota.TotalBudgetKey, usd);
         db.BookImportCosts.AddRange(_pending);
         _pending.Clear();

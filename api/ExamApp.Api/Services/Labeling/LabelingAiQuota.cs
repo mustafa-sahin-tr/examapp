@@ -16,6 +16,9 @@ internal static class LabelingAiQuota
 
     /// <summary>Issue #1024: kitap aktarımlarının ortak bütçe sayacı (<c>DailyBudgetUsdImport</c>).</summary>
     public const string ImportBudgetKey = "labeling-ai-usd:book-import";
+
+    /// <summary>Issue #1052: hızlı eklemelerin ortak bütçe sayacı (<c>DailyBudgetUsdQuickAdd</c>); kitap aktarımı bunu tüketmez.</summary>
+    public const string QuickAddBudgetKey = "labeling-ai-usd:quick-add";
     public static readonly TimeSpan RateLimitWindow = TimeSpan.FromHours(1);
     public static readonly TimeSpan BudgetWindow = TimeSpan.FromHours(24);
 

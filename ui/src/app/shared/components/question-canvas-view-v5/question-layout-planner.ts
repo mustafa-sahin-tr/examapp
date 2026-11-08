@@ -30,8 +30,11 @@ export interface QuestionLayoutInput {
   minScale: number;
   /** Bunun üstüne büyütülmez (varsayılan doğal boyut). */
   maxScale?: number;
-  /** Hazırlayanın seçimi; yoksa en büyük ölçeği veren düzen. Dar alanda soru hep üsttedir. */
-  arrangement?: 'top' | 'side';
+  /**
+   * Hazırlayanın seçimi; yoksa en büyük ölçeği veren düzen. Dar alanda soru hep üsttedir.
+   * `stacked`: soru üstte, her satırda bir şık (başlıklı tablo şıkları kitaptaki gibi alt alta okunur).
+   */
+  arrangement?: 'top' | 'side' | 'stacked';
 }
 
 export interface QuestionLayoutPlan {
@@ -114,6 +117,9 @@ function evaluate(candidate: Candidate, input: QuestionLayoutInput): QuestionLay
 
 /** Öncelik sırasıyla denenecek düzenler: soru üstte, şıklar mümkün olan en çok sütunda. */
 function candidatesFor(input: QuestionLayoutInput): Candidate[] {
+  if (input.arrangement === 'stacked') {
+    return [{ arrangement: 'top', answerColumns: 1 }];
+  }
   const count = Math.max(1, input.answers.length);
   const compact = input.width < COMPACT_WIDTH_PX;
   const columnChoices = (compact ? [2, 1] : [4, 2, 1]).map((columns) => Math.min(columns, count));

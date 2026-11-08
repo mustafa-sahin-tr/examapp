@@ -1,6 +1,6 @@
 import { LearningOutcome } from './learning-outcome';
 
-export type QuestionLayoutChoice = 'top' | 'side' | 'whole';
+export type QuestionLayoutChoice = 'top' | 'side' | 'whole' | 'stacked';
 
 export interface AnswerChoice {
   label: string; // "A", "B", "C", "D"

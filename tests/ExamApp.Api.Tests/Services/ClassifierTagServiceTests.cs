@@ -1,6 +1,7 @@
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Classifier;
+using ExamApp.Api.Services.Questions;
 using ExamApp.Api.Tests.Support;
 using Microsoft.EntityFrameworkCore;
 
@@ -167,6 +168,45 @@ public class ClassifierTagServiceTests : IDisposable
         (await OptionsAsync(seed.QuestionId)).ShouldNotBeNull().LearningOutcomes.Count.ShouldBe(2);
         (await OptionsAsync(999_999)).ShouldBeNull();
         (await SetAsync(999_999, [], [])).ShouldBeNull();
+    }
+
+    private async Task<int?> RevisionAsync(int questionId)
+    {
+        await using var ctx = _db.NewContext();
+        return await ctx.Questions.Where(q => q.Id == questionId).Select(q => q.ClassifierRevision).SingleAsync();
+    }
+
+    // Issue #1047: istem sürümü soruya yazılır; eski istemle sınıflananlar bulunabilir.
+    [Fact]
+    public async Task Classifier_revision_is_set_by_Claude_writes_and_cleared_by_a_manual_classification()
+    {
+        var seed = await SeedAsync();
+
+        await using (var ctx = _db.NewContext())
+            (await new QuestionClassificationService(ctx).UpdateQuestionClassification(
+                seed.QuestionId, topicId: seed.TopicId, classificationSourceStr: "AI", classifierRevision: 3)).Success.ShouldBeTrue();
+        (await RevisionAsync(seed.QuestionId)).ShouldBe(3);
+
+        await using (var ctx = _db.NewContext())
+            (await new QuestionClassificationService(ctx).UpdateQuestionClassification(
+                seed.QuestionId, topicId: seed.TopicId, classificationSourceStr: "Human")).Success.ShouldBeTrue();
+        (await RevisionAsync(seed.QuestionId)).ShouldBeNull();
+
+        await using (var ctx = _db.NewContext())
+            (await new ClassifierTagService(ctx).SetAsync(seed.QuestionId, null,
+                new SetClassifierTagsDto { SkillIds = [3], ClassifierRevision = 4 })).ShouldBe(true);
+        (await RevisionAsync(seed.QuestionId)).ShouldBe(4);
+    }
+
+    [Fact]
+    public async Task An_empty_tag_pick_does_not_mark_the_question()
+    {
+        var seed = await SeedAsync();
+
+        await using (var ctx = _db.NewContext())
+            (await new ClassifierTagService(ctx).SetAsync(seed.QuestionId, null, new SetClassifierTagsDto { ClassifierRevision = 4 })).ShouldBe(true);
+
+        (await RevisionAsync(seed.QuestionId)).ShouldBeNull();
     }
 
     public void Dispose() => _db.Dispose();

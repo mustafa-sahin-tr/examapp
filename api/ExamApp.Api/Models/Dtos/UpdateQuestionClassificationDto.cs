@@ -24,4 +24,7 @@ public class UpdateQuestionClassificationDto
 
     // If provided, question difficulty will be updated (expected range: 1-10).
     public int? Difficulty { get; set; }
+
+    /// <summary>Issue #1047: sınıflandırıcının istem sürümü; yalnız servis hesabından kabul edilir.</summary>
+    public int? ClassifierRevision { get; set; }
 }

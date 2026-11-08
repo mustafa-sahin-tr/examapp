@@ -30,4 +30,7 @@ public class SetClassifierTagsDto
 {
     public List<int> LearningOutcomeIds { get; set; } = new();
     public List<int> SkillIds { get; set; } = new();
+
+    /// <summary>Sınıflandırıcının istem sürümü (<c>Question.ClassifierRevision</c>); bağ eklenince yazılır.</summary>
+    public int? ClassifierRevision { get; set; }
 }

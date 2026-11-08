@@ -108,7 +108,8 @@ public sealed class ExamApiClassificationClient(IHttpClientFactory httpClientFac
     /// <c>Book</c> — topic/subject came from the book, only subtopic + difficulty from the model.
     /// </summary>
     public async Task PersistAsync(
-        int questionId, QuestionClassificationResult result, string token, CancellationToken ct, string classificationSource = "AI")
+        int questionId, QuestionClassificationResult result, string token, CancellationToken ct, string classificationSource = "AI",
+        int? classifierRevision = null)
     {
         var client = CreateClient(token);
 
@@ -119,6 +120,7 @@ public sealed class ExamApiClassificationClient(IHttpClientFactory httpClientFac
             subTopicIds = result.SubTopicIds.ToArray(),
             classificationSource,
             difficulty = result.DifficultyLevel,
+            classifierRevision,
         };
 
         var url = $"{_baseUrl}/api/questions/{questionId}/classification";
@@ -158,11 +160,12 @@ public sealed class ExamApiClassificationClient(IHttpClientFactory httpClientFac
 
     /// <summary>Issue #1047: <c>PUT /api/questions/{id}/classifier-tags</c> — adds the picked links (ids from the options only).</summary>
     public async Task PersistTagsAsync(
-        int questionId, int? gradeId, IReadOnlyCollection<int> learningOutcomeIds, IReadOnlyCollection<int> skillIds, string token, CancellationToken ct)
+        int questionId, int? gradeId, IReadOnlyCollection<int> learningOutcomeIds, IReadOnlyCollection<int> skillIds, int classifierRevision,
+        string token, CancellationToken ct)
     {
         var client = CreateClient(token);
 
-        var bodyJson = JsonSerializer.Serialize(new { learningOutcomeIds, skillIds });
+        var bodyJson = JsonSerializer.Serialize(new { learningOutcomeIds, skillIds, classifierRevision });
         var url = $"{_baseUrl}/api/questions/{questionId}/classifier-tags" + (gradeId.HasValue ? $"?gradeId={gradeId.Value}" : string.Empty);
         using var content = new StringContent(bodyJson, Encoding.UTF8, "application/json");
 

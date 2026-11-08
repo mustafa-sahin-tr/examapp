@@ -87,6 +87,11 @@ public sealed class ClassifierTagService(AppDbContext context) : IClassifierTagS
         context.QuestionLearningOutcomes.AddRange(outcomeIds
             .Select(id => new QuestionLearningOutcome { QuestionId = questionId, LearningOutcomeId = id }));
         context.QuestionSkills.AddRange(skillIds.Select(id => new QuestionSkill { QuestionId = questionId, SkillId = id }));
+        if (request.ClassifierRevision is { } revision && (outcomeIds.Count > 0 || skillIds.Count > 0))
+        {
+            var question = await context.Questions.IgnoreQueryFilters([DraftQueryFilter.Key]).FirstAsync(q => q.Id == questionId, ct);
+            question.ClassifierRevision = revision;
+        }
 
         await context.SaveChangesAsync(ct);
         return true;

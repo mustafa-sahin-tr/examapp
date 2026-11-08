@@ -289,7 +289,8 @@ public class QuestionsController : BaseController
             request.SubTopicId,
             request.SubTopicIds,
             request.ClassificationSource,
-            request.Difficulty
+            request.Difficulty,
+            IsServiceAccount ? request.ClassifierRevision : null
         );
 
         if (!response.Success)

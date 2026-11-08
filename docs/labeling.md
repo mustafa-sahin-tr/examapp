@@ -206,6 +206,10 @@ output token'ı ve tahmini USD loglanır (`Anthropic:InputUsdPerMTok`/`OutputUsd
   (Hybrid, alt konu var) ya da öğretmen kilidi belirlediğinde yalnız bu adım çalışır (`TagAndPersistAsync`; burada liste dışı
   id mesajı hataya düşürür); `Skip` modunda çalışmaz. Gemini atlar. Listeler soruya göre değiştiği için kullanıcı
   mesajındadır, sistem mesajı (`TagInstructions`) sabit ve önbelleksizdir. Dev'de kazanım tablosu boşsa adım yalnız beceri seçer.
+- **İstem sürümü (#1047).** `ClaudeQuestionClassifier.SchemaRevision` iki istemin sabit kısmını (sistem mesajları, kullanıcı
+  yönergeleri, yanıt şemaları) sürümler; biri değişince artırılır. Claude sınıflandırma ya da etiket yazınca sürüm
+  `Questions.ClassifierRevision`'a yazılır (yalnız servis hesabından kabul edilir); elle sınıflandırma ve Gemini temizler
+  (null). Eski istemle sınıflanan sorular `ClassifierRevision < SchemaRevision` ile bulunur.
 
 **Issue #1018 (epic #1017) — PDF'ten kitap aktarımı: yükleme, iş ve takip ekranı.** Admin + QuestionTrainer (pilot) için
 **Kitap aktarımı** sayfası (`/book-imports`, menüde Kitaplar'ın altında): PDF + kitap adı + sınıf (+ isteğe bağlı ders)

@@ -39,6 +39,13 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
     private const decimal CacheWrite1hMultiplier = 2m;
     private const decimal CacheReadMultiplier = 0.1m;
 
+    /// <summary>
+    /// Issue #1047: version of the fixed prompt parts (<see cref="Instructions"/>, <see cref="TagInstructions"/>, the user
+    /// instructions and prefixes, both response schemas). Bump it whenever one of them changes; the exam API stores it on the
+    /// question (<c>Questions.ClassifierRevision</c>) so questions classified with an older prompt can be found and re-run.
+    /// </summary>
+    public const int SchemaRevision = 1;
+
     // Instructions + taxonomy form the cached prefix: keep them byte-stable (no dates, ids or per-question text).
     internal const string Instructions =
         """
@@ -211,7 +218,7 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
             "🔎 Question {QuestionId} — Claude result: subTopics=[{SubTopics}], subjectId={SubjectId}, topicId={TopicId}, difficulty={Difficulty}",
             questionId, string.Join(",", result.SubTopicIds), result.SubjectId, result.TopicId, result.DifficultyLevel);
 
-        await examApi.PersistAsync(questionId, result, token, cancellationToken, classificationSource);
+        await examApi.PersistAsync(questionId, result, token, cancellationToken, classificationSource, SchemaRevision);
 
         _logger.LogInformation("✅ Question {QuestionId} classification persisted", questionId);
 
@@ -291,7 +298,7 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
             return;
         }
 
-        await examApi.PersistTagsAsync(questionId, gradeId, outcomeIds, skillIds, token, ct);
+        await examApi.PersistTagsAsync(questionId, gradeId, outcomeIds, skillIds, SchemaRevision, token, ct);
         _logger.LogInformation(
             "✅ Question {QuestionId} tags persisted: outcomes=[{Outcomes}], skills=[{Skills}]",
             questionId, string.Join(",", outcomeIds), string.Join(",", skillIds));

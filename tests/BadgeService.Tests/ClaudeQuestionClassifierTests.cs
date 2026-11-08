@@ -74,6 +74,7 @@ public class ClaudeQuestionClassifierTests
         body.ShouldContain("\"topicId\":null");              // 0 -> null
         body.ShouldContain("\"difficulty\":10");             // clamped from 42
         body.ShouldContain("\"classificationSource\":\"AI\"");
+        body.ShouldContain($"\"classifierRevision\":{ClaudeQuestionClassifier.SchemaRevision}"); // issue #1047
         // service token on every exam API call
         http.Requests.ShouldAllBe(r => r.Headers.Authorization!.Parameter == "test-token");
     }
@@ -488,7 +489,7 @@ public class ClaudeQuestionClassifierTests
         get.RequestUri!.Query.ShouldBe("?gradeId=5");
         http.Requests.IndexOf(get).ShouldBeGreaterThan(http.Requests.FindIndex(r => r.Method == HttpMethod.Put));
         var put = TagRequests(http, HttpMethod.Put).ShouldHaveSingleItem();
-        http.Bodies[put].ShouldBe("""{"learningOutcomeIds":[502],"skillIds":[7,102]}""");
+        http.Bodies[put].ShouldBe("""{"learningOutcomeIds":[502],"skillIds":[7,102],"classifierRevision":1}""");
     }
 
     [Fact]
@@ -537,7 +538,7 @@ public class ClaudeQuestionClassifierTests
         chat.Calls.ShouldHaveSingleItem().Messages.Single(m => m.Role == ChatRole.System).Text.ShouldBe(ClaudeQuestionClassifier.TagInstructions);
         http.Requests.ShouldNotContain(r => r.RequestUri!.AbsolutePath.Contains("classifier-taxonomy"));
         http.Requests.ShouldNotContain(r => r.Method == HttpMethod.Put && r.RequestUri!.AbsolutePath.EndsWith("/classification"));
-        http.Bodies[TagRequests(http, HttpMethod.Put).ShouldHaveSingleItem()].ShouldBe("""{"learningOutcomeIds":[501],"skillIds":[]}""");
+        http.Bodies[TagRequests(http, HttpMethod.Put).ShouldHaveSingleItem()].ShouldBe("""{"learningOutcomeIds":[501],"skillIds":[],"classifierRevision":1}""");
     }
 
     [Fact]

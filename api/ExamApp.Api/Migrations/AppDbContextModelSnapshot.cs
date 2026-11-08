@@ -1206,6 +1206,40 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("Districts");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.EntitlementUsage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("FeatureKey")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("ReferenceKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("UsedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FeatureKey", "ReferenceKey")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "FeatureKey", "UsedAtUtc");
+
+                    b.ToTable("EntitlementUsages");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.ExamTemplate", b =>
                 {
                     b.Property<int>("Id")
@@ -5295,6 +5329,128 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("StudyItemImages");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.SubscriptionPlan", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 1000L, null, null, null, null, null);
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .IsUnique();
+
+                    b.ToTable("SubscriptionPlans");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "free",
+                            Name = "Free"
+                        });
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.SubscriptionPlanFeatureLimit", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 1000L, null, null, null, null, null);
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FeatureKey")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("MonthlyLimit")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PlanId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlanId", "FeatureKey")
+                        .IsUnique();
+
+                    b.ToTable("SubscriptionPlanFeatureLimits");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "book-import",
+                            IsDeleted = false,
+                            MonthlyLimit = 0,
+                            PlanId = 1
+                        });
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.TargetProgram", b =>
                 {
                     b.Property<int>("Id")
@@ -5904,6 +6060,56 @@ namespace ExamApp.Api.Migrations
                     b.HasIndex("UserProgramId");
 
                     b.ToTable("UserProgramStudyPageSchedules");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.UserSubscriptionPlan", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("PlanId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("ValidFromUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ValidToUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlanId");
+
+                    b.HasIndex("UserId", "ValidFromUtc");
+
+                    b.ToTable("UserSubscriptionPlans");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.WorksheetAccessGrant", b =>
@@ -8169,6 +8375,17 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("StudyItem");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.SubscriptionPlanFeatureLimit", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.SubscriptionPlan", "Plan")
+                        .WithMany("FeatureLimits")
+                        .HasForeignKey("PlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Plan");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.Teacher", b =>
                 {
                     b.HasOne("ExamApp.Api.Data.School", "RequestedSchool")
@@ -8276,6 +8493,17 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("StudyItem");
 
                     b.Navigation("UserProgram");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.UserSubscriptionPlan", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.SubscriptionPlan", "Plan")
+                        .WithMany()
+                        .HasForeignKey("PlanId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Plan");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.WorksheetAccessGrant", b =>
@@ -8692,6 +8920,11 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Blocks");
 
                     b.Navigation("Images");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.SubscriptionPlan", b =>
+                {
+                    b.Navigation("FeatureLimits");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Teacher", b =>

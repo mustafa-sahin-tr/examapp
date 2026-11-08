@@ -17,7 +17,7 @@ public class BookImportServiceTests : IDisposable
     private readonly TestDb _db = TestDb.Create();
     private readonly IMinIoService _minio = Substitute.For<IMinIoService>();
     private readonly IBackgroundJobClient _jobs = Substitute.For<IBackgroundJobClient>();
-    private IEntitlementService _entitlements = new UnlimitedEntitlementService();
+    private IEntitlementService _entitlements = AllowAll();
     private readonly int _gradeId;
 
     public BookImportServiceTests()
@@ -49,7 +49,7 @@ public class BookImportServiceTests : IDisposable
     private async Task<StartBookImportResult> StartAs(int userId, StartBookImportRequest request, bool isAdmin = false, long? maxUploadBytes = null)
     {
         await using var ctx = _db.NewContext();
-        return await NewService(ctx, maxUploadBytes).StartAsync(new BookImportOwner(userId, isAdmin), request, default);
+        return await NewService(ctx, maxUploadBytes).StartAsync(isAdmin ? BookImportOwner.Create(userId, EntitlementRoles.Admin) : BookImportOwner.Create(userId), request, default);
     }
 
     [Fact]
@@ -125,7 +125,7 @@ public class BookImportServiceTests : IDisposable
     {
         var resets = new DateTime(2026, 12, 1, 0, 0, 0, DateTimeKind.Utc);
         _entitlements = Substitute.For<IEntitlementService>();
-        _entitlements.CheckAsync(41, false, EntitlementFeatures.BookImport, Arg.Any<CancellationToken>())
+        _entitlements.CheckAsync(Arg.Is<EntitlementSubject>(s => s.UserId == 41 && !s.IsAdmin), EntitlementFeatures.BookImport, Arg.Any<CancellationToken>())
             .Returns(new EntitlementCheck(false, 5, 5, resets));
 
         var result = await StartAs(41, Pdf());
@@ -143,12 +143,12 @@ public class BookImportServiceTests : IDisposable
 
         await using var ctx = _db.NewContext();
         var service = NewService(ctx);
-        var owner = new BookImportOwner(41, false);
+        var owner = BookImportOwner.Create(41);
         (await service.ListAsync(owner, 50, default)).Select(j => j.Id).ShouldBe(new[] { mine });
         (await service.GetAsync(owner, theirs, default)).ShouldBeNull();
         (await service.GetAsync(owner, mine, default))!.BookName.ShouldBe("Benim");
 
-        var admin = new BookImportOwner(1, true);
+        var admin = BookImportOwner.Create(1, EntitlementRoles.Admin);
         (await service.ListAsync(admin, 50, default)).Select(j => j.Id).ShouldBe(new[] { mine, theirs }, ignoreOrder: true);
         (await service.GetAsync(admin, theirs, default)).ShouldNotBeNull();
     }
@@ -166,7 +166,7 @@ public class BookImportServiceTests : IDisposable
         }
 
         await using var ctx = _db.NewContext();
-        var detail = await NewService(ctx).GetAsync(new BookImportOwner(41, false), id, default);
+        var detail = await NewService(ctx).GetAsync(BookImportOwner.Create(41), id, default);
 
         detail!.Tests.Select(t => t.TestNo).ShouldBe(new[] { 1, 2 });
         detail.Tests[1].Status.ShouldBe("NeedsReview");
@@ -233,6 +233,14 @@ public class BookImportServiceTests : IDisposable
         (await check.BookImportJobs.CountAsync()).ShouldBe(0);
         await _minio.DidNotReceiveWithAnyArgs().UploadFileAsync(default!, default!);
         _jobs.DidNotReceiveWithAnyArgs().Create(default!, default!);
+    }
+
+    private static IEntitlementService AllowAll()
+    {
+        var entitlements = Substitute.For<IEntitlementService>();
+        entitlements.CheckAsync(Arg.Any<EntitlementSubject>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new EntitlementCheck(true, null, 0, null));
+        return entitlements;
     }
 
     public void Dispose() => _db.Dispose();

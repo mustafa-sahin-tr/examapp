@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.BookImport;
+using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Teachers.Authorization;
 using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
@@ -56,7 +57,7 @@ public class BookImportController : BaseController
             StartBookImportError.QuotaReached => StatusCode(StatusCodes.Status429TooManyRequests, new
             {
                 code = "entitlement.limitReached",
-                feature = Services.Entitlements.EntitlementFeatures.BookImport,
+                feature = EntitlementFeatures.BookImport,
                 limit = result.Quota?.Limit,
                 used = result.Quota?.Used,
                 resetsAtUtc = result.Quota?.ResetsAtUtc,
@@ -98,7 +99,7 @@ public class BookImportController : BaseController
     private async Task<BookImportOwner?> ResolveOwnerAsync(CancellationToken ct)
     {
         var user = await GetAuthenticatedUserAsync(ct);
-        return IsResolvedUser(user) ? new BookImportOwner(user.Id, IsAdmin) : null;
+        return IsResolvedUser(user) ? new BookImportOwner(EntitlementSubject.FromPrincipal(user.Id, User)) : null;
     }
 
     private static string Camel(StartBookImportError error)

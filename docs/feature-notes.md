@@ -255,3 +255,26 @@ Kılavuz özeti ve beceri listesinin kaynağı `docs/context-based-questions.md`
 - Öğrenci görünümü `/study-page/:id` (plan detayındaki "Sayfayı aç", öğretmen listesinde göz simgesi). Soru bloğu pratik
   oturumu açar: `POST api/practice/sessions` `{ studyItemId, studyQuestionId? }` — yayımlanmış sayfanın silinmemiş soruları,
   blok sırasıyla sabit liste (en fazla 30). Editörde "Öğrenci görünümü" sekmesi aynı bileşeni (`study-page-blocks-view`) gösterir.
+
+## Plan ve haklar (#1019, epic #1017; abonelik epic #1026)
+
+- **Model (exam API):** `SubscriptionPlans` (anahtar, ad, aktif), `SubscriptionPlanFeatureLimits` (plan + özellik anahtarı +
+  aylık sınır; null = sınırsız, satır yok = 0), `UserSubscriptionPlans` (kullanıcı + plan + `ValidFromUtc` / `ValidToUtc`,
+  hariç üst sınır; kullanıcılar auth-api'de olduğundan FK yok) ve kullanım defteri `EntitlementUsages` (kullanıcı, özellik,
+  `ReferenceKey`, zaman; `(FeatureKey, ReferenceKey)` tekil → aynı iş iki kez sayılmaz). Migration yalnız **Free** planını ve
+  `book-import` = 0 sınırını seed'ler (Free öğretmen yalnız demo görür, #1032); değerler veritabanından değiştirilebilir.
+- **Çözümleme (`IEntitlementService`):** geçerli ve aktif plan ataması yoksa Free. Birden çok geçerli atamada en son başlayan
+  kazanır; admin ataması açık olanı yeni atamanın başında kapatır, sonra başlayacakları siler (hesap başına tek plan).
+  **Admin** her özellikte sınırsız; rol muafiyeti özellik bazında `EntitlementRoles.UnlimitedByFeature`'da (şimdilik
+  QuestionTrainer → `book-import`, #1017 pilotu). Sayaç **UTC takvim ayı**; sınırda `Allowed=false`, `ResetsAtUtc` = gelecek
+  ayın 1'i. Rol muafiyetinde ve null sınırda `Limit`/`ResetsAtUtc` null.
+- **Kitap aktarımı:** yükleme `CheckAsync` ile kapıdan geçer (dolu → 429 `entitlement.limitReached` + limit / used /
+  resetsAtUtc). Kullanım **kurulum onaylanınca** sayılır: #1021 onayda `CheckAsync` + `RecordUsageAsync(userId, "book-import",
+  jobId)` çağırır; onaydan önce düşen / iptal edilen iş sayılmaz. Başlangıç ekranındaki kart sınırsızda gizli, 0'da "planınızda
+  yok" + demo notu, aksi hâlde "Bu ay N / M".
+- **Admin uç noktaları:** `GET /api/exam/admin/subscription-plans` (katalog + sınırlar), `GET|PUT
+  /api/exam/admin/subscription-plans/users/{userId}` (`{ planKey, validFromUtc?, validToUtc? }`; exam kullanıcı id'si). Arayüz
+  #1030'da.
+- **Genişletme (abonelik epic'i):** yeni özellik = `EntitlementFeatures`'a sabit + plan başına sınır satırı + kullanım anında
+  `RecordUsageAsync`, karar anında `CheckAsync`. Yeni planlar (#1027) satır ekler; plan tablolarında özelliğe özgü mantık yok.
+  Öğretmenin atadığı işin maliyeti öğretmenin kotasından (#1031): kayıt `userId` olarak öğretmeni yazar.

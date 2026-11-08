@@ -239,6 +239,10 @@ public class AppDbContext : DbContext
     // Issue #1018 (epic #1017): kitaptan aktarım işleri.
     public DbSet<BookImportJob> BookImportJobs { get; set; }
     public DbSet<BookImportJobTest> BookImportJobTests { get; set; }
+    public DbSet<SubscriptionPlan> SubscriptionPlans { get; set; } // issue #1019
+    public DbSet<SubscriptionPlanFeatureLimit> SubscriptionPlanFeatureLimits { get; set; }
+    public DbSet<UserSubscriptionPlan> UserSubscriptionPlans { get; set; }
+    public DbSet<EntitlementUsage> EntitlementUsages { get; set; }
 
     // Issue #693: deneme sınavları.
     public DbSet<ExamTemplate> ExamTemplates { get; set; }
@@ -1405,6 +1409,30 @@ public class AppDbContext : DbContext
             e.HasOne(t => t.Job).WithMany(j => j.Tests).HasForeignKey(t => t.JobId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(t => new { t.JobId, t.Order }).IsUnique();
         });
+
+        // Issue #1019: plan / hak katmanı. Free planı ve sınırı seed'lidir; değerler veritabanından değiştirilebilir.
+        modelBuilder.Entity<SubscriptionPlan>(e =>
+        {
+            e.HasIndex(p => p.Key).IsUnique();
+            e.Property(p => p.Id).HasIdentityOptions(startValue: 1000);
+        });
+        modelBuilder.Entity<SubscriptionPlanFeatureLimit>(e =>
+        {
+            e.HasOne(l => l.Plan).WithMany(p => p.FeatureLimits).HasForeignKey(l => l.PlanId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(l => new { l.PlanId, l.FeatureKey }).IsUnique();
+            e.Property(l => l.Id).HasIdentityOptions(startValue: 1000);
+        });
+        modelBuilder.Entity<UserSubscriptionPlan>(e =>
+        {
+            e.HasOne(a => a.Plan).WithMany().HasForeignKey(a => a.PlanId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(a => new { a.UserId, a.ValidFromUtc });
+        });
+        modelBuilder.Entity<EntitlementUsage>(e =>
+        {
+            e.HasIndex(u => new { u.FeatureKey, u.ReferenceKey }).IsUnique();
+            e.HasIndex(u => new { u.UserId, u.FeatureKey, u.UsedAtUtc });
+        });
+        SubscriptionPlanSeed.Apply(modelBuilder);
 
         // Soru başına tek kaynak; kırpma hash'i tekrar kontrolü için indeksli (tekil değil: Force ile ikinci kayıt mümkün).
         modelBuilder.Entity<QuestionSource>(e =>

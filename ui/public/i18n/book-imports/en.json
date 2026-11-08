@@ -27,10 +27,11 @@
   },
   "quota": {
     "title": "Monthly allowance",
-    "unlimited": "Unlimited imports",
-    "used": "{{used}} / {{limit}} books used",
+    "used": "{{used}} / {{limit}} books this month",
     "resets": "Resets on {{date}}",
-    "blocked": "You have used this month's allowance."
+    "blocked": "You have used this month's allowance.",
+    "notInPlan": "Your plan does not include book import.",
+    "demoSoon": "A demo with a sample book will be available here soon."
   },
   "hint": {
     "title": "How it works",

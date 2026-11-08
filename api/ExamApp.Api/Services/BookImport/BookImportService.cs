@@ -14,8 +14,14 @@ using Microsoft.Extensions.Configuration;
 
 namespace ExamApp.Api.Services.BookImport;
 
-/// <summary>Issue #1018: işin sahibi (exam kullanıcı id'si) ve Admin mi (Admin tüm işleri görür).</summary>
-public sealed record BookImportOwner(int UserId, bool IsAdmin);
+/// <summary>Issue #1018: işin sahibi (exam kullanıcı id'si ve hakla ilgili rolleri); Admin tüm işleri görür.</summary>
+public sealed record BookImportOwner(EntitlementSubject Subject)
+{
+    public int UserId => Subject.UserId;
+    public bool IsAdmin => Subject.IsAdmin;
+
+    public static BookImportOwner Create(int userId, params string[] roles) => new(EntitlementSubject.Create(userId, roles));
+}
 
 /// <summary>Yüklenen PDF ve formdaki kitap bilgisi.</summary>
 public sealed record StartBookImportRequest(string BookName, int GradeId, int? SubjectId, string? FileName, long FileSizeBytes, Stream Content);
@@ -84,7 +90,7 @@ public sealed class BookImportService : IBookImportService
         if (request.FileSizeBytes <= 0 || request.FileSizeBytes > _maxUploadBytes)
             return new(null, StartBookImportError.FileTooLarge);
 
-        var quota = await _entitlements.CheckAsync(owner.UserId, owner.IsAdmin, EntitlementFeatures.BookImport, ct);
+        var quota = await _entitlements.CheckAsync(owner.Subject, EntitlementFeatures.BookImport, ct);
         if (!quota.Allowed)
             return new(null, StartBookImportError.QuotaReached, quota);
 
@@ -161,8 +167,11 @@ public sealed class BookImportService : IBookImportService
 
     public async Task<BookImportQuotaDto> GetQuotaAsync(BookImportOwner owner, CancellationToken ct)
     {
-        var check = await _entitlements.CheckAsync(owner.UserId, owner.IsAdmin, EntitlementFeatures.BookImport, ct);
-        return new BookImportQuotaDto { Allowed = check.Allowed, Limit = check.Limit, Used = check.Used, ResetsAtUtc = check.ResetsAtUtc };
+        var check = await _entitlements.CheckAsync(owner.Subject, EntitlementFeatures.BookImport, ct);
+        return new BookImportQuotaDto
+        {
+            Allowed = check.Allowed, Limit = check.Limit, Used = check.Used, ResetsAtUtc = check.ResetsAtUtc, PlanKey = check.PlanKey,
+        };
     }
 
     private IQueryable<BookImportJob> Visible(BookImportOwner owner) =>

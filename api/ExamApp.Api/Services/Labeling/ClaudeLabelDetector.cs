@@ -207,7 +207,7 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
     /// 1. aşama bloğunun sayfa uzayındaki dikdörtgeni, normalleştirilmiş türü ve sayfada cevabının basılı görünüp görünmediği
     /// (issue #791).
     /// </summary>
-    internal sealed record DetectedBlock(Rectangle Rect, LabelingBlocks.Classification Kind, bool AnswerShown = false);
+    internal sealed record DetectedBlock(Rectangle Rect, LabelingBlocks.Classification Kind, bool AnswerShown = false, int SharedQuestions = 1);
 
     /// <summary>
     /// 1. aşama yanıtı → sayfa uzayı: tür normalleştirilir (bilinmeyen → noise, loglanır), çok küçük kutular atılır.
@@ -236,7 +236,7 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
                     continue;
                 candidates++;
             }
-            result.Add(new DetectedBlock(rect, kind, b.AnswerShown));
+            result.Add(new DetectedBlock(rect, kind, b.AnswerShown, b.SharedQuestions));
             if (result.Count >= maxBlocks)
                 break;
         }
@@ -264,6 +264,7 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
             Component = kind.Component,
             InteractionType = kind.InteractionType,
             AnswerShown = answerable && block.AnswerShown ? true : null,
+            SharedQuestions = kind.Kind == LabelingBlocks.InfoBox && block.SharedQuestions > 1 ? block.SharedQuestions : null,
         };
     }
 
@@ -288,7 +289,10 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
             "correct option, an answer printed next to it (for example \"Cevap: B\"), or blanks that are already filled in. " +
             "False otherwise and for kinds other than mcq_question and activity.")]
         bool AnswerShown,
-        int X1, int Y1, int X2, int Y2);
+        int X1, int Y1, int X2, int Y2,
+        [property: Description("When kind is info_box and its heading names several questions (\"1 - 2. soruları aşağıdaki " +
+            "metne göre cevaplayınız.\"): how many questions it serves. 1 otherwise.")]
+        int SharedQuestions = 1);
 
     internal sealed record OptionBoxes(List<OptionBox> Options);
 

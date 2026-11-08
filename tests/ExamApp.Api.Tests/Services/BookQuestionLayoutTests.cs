@@ -13,6 +13,52 @@ public class BookQuestionLayoutTests
 
     private static LayoutBox B(int x, int y, int w, int h) => new(x, y, w, h);
 
+    private static LayoutQuestion Q(int x, int y, int w, int h) => new(B(x, y, w, h), []);
+
+    [Fact]
+    public void AttachPassages_LinksABoxToTheQuestionBelowInItsColumn_ClippedAtItsTop()
+    {
+        var left = Q(100, 800, 1000, 400);
+        var right = Q(1300, 300, 1000, 400);
+
+        var passages = BookQuestionLayout.AttachPassages([left, right], [new LayoutStimulus(B(120, 300, 900, 600))], Width);
+
+        var passage = passages.ShouldHaveSingleItem();
+        passage.Box.ShouldBe(B(120, 300, 900, 500));
+        passage.QuestionIndexes.ShouldBe([0]);
+    }
+
+    [Fact]
+    public void AttachPassages_MergesSeveralBoxesOfOneQuestion()
+    {
+        var passages = BookQuestionLayout.AttachPassages([Q(100, 900, 1000, 400)],
+            [new LayoutStimulus(B(100, 300, 400, 500)), new LayoutStimulus(B(600, 320, 500, 400))], Width);
+
+        passages.ShouldHaveSingleItem().Box.ShouldBe(B(100, 300, 1000, 500));
+    }
+
+    [Fact]
+    public void AttachPassages_SharesAHeadedBoxWithTheNextQuestions_UpToTheNextPassage()
+    {
+        LayoutQuestion[] questions = [Q(100, 700, 1000, 300), Q(100, 1100, 1000, 300), Q(100, 1900, 1000, 300)];
+
+        var passages = BookQuestionLayout.AttachPassages(questions,
+            [new LayoutStimulus(B(100, 200, 1000, 400), 3), new LayoutStimulus(B(100, 1500, 1000, 300))], Width);
+
+        passages.Select(p => p.QuestionIndexes).ShouldBe([[0, 1], [2]]);
+    }
+
+    [Fact]
+    public void AttachPassages_SkipsBoxesWithoutAQuestionBelow_InsideAQuestion_OrInAnotherColumn()
+    {
+        LayoutQuestion[] questions = [Q(100, 300, 1000, 900)];
+
+        var passages = BookQuestionLayout.AttachPassages(questions,
+            [new LayoutStimulus(B(100, 1500, 1000, 300)), new LayoutStimulus(B(150, 400, 800, 200)), new LayoutStimulus(B(1300, 100, 900, 300))], Width);
+
+        passages.ShouldBeEmpty();
+    }
+
     [Fact]
     public void OneRow_GetsTheSameYAndHeight_XKept()
     {

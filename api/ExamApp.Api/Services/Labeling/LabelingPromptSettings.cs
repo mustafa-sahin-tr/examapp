@@ -36,7 +36,7 @@ public sealed record LabelingPromptSettings(
     /// "other" yalnız E, F, G, I için; yanıt şemasının <c>interactionType</c> açıklamasına <c>openText</c> eklendi. 7 (issue #791):
     /// 1. aşama blokları <c>answerShown</c> taşır (sayfada basılı cevap); kural yalnız şema açıklamasında (talimat 4000 sınırında).
     /// </summary>
-    public const int SchemaRevision = 7;
+    public const int SchemaRevision = 8;
 
     /// <summary>Talimatlar + paylar + <see cref="SchemaRevision"/> SHA-256'sı (hex); AI sonuçlarının önbellek anahtarı.</summary>
     /// Önbelleğe alınmaz: record'un <c>with</c> kopyası alanı da kopyalar ve eski izi taşırdı.
@@ -63,7 +63,8 @@ public sealed record LabelingPromptSettings(
         "student works on together (for a D activity the whole passage, including its title, is inside the box); never return the " +
         "instruction or the label as a separate block. A numbered exercise with several sub-items is one block.\n" +
         "- info_box: topic explanations and information boxes (\"Bilgi\", \"Hatırlayalım\", \"Biliyor musunuz?\", " +
-        "concept or definition boxes, summaries) and worked examples (\"Örnek\" with its solution, \"Çözüm\").\n" +
+        "concept or definition boxes, summaries), worked examples (\"Örnek\" with its solution, \"Çözüm\") and a framed stimulus " +
+        "above a question that the question refers to (\"Buna göre\"), with any \"1 - 2. soruları ...\" heading inside its box.\n" +
         "- answer_key: a printed answer key (\"Cevap Anahtarı\", tables of question numbers and answers).\n" +
         "- noise: optical answer forms (bubble sheets), QR codes (karekod), page headers and footers, page numbers, " +
         "section or unit titles, logos, publisher marks, decorative pictures, cover pages, tables of contents, and " +

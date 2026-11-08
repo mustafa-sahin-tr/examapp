@@ -130,6 +130,9 @@ public class BookImportReviewQuestionDto
     /// <summary>Önizleme: kırpılmış soru görseli.</summary>
     [Services.Storage.StorageUrl(Services.Storage.StorageArea.QuestionImage)]
     public string? ImageUrl { get; set; }
+    /// <summary>Issue #1062: sorunun pasaj görseli (kitaptaki uyaran kutusu); yoksa null.</summary>
+    [Services.Storage.StorageUrl(Services.Storage.StorageArea.QuestionImage)]
+    public string? PassageImageUrl { get; set; }
     /// <summary>Doğru şıkkın sırası (A = 0); cevapsızsa null.</summary>
     public int? AnswerIndex { get; set; }
 }

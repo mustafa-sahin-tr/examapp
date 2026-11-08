@@ -353,6 +353,27 @@ public class BookQuestionImportTests : IDisposable
     }
 
     [Fact]
+    public async Task An_info_box_above_a_question_is_saved_as_its_passage_and_shared_with_the_next_question()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "AB", [2])]);
+        _detections[1] =
+        [
+            new PredictionDto { Kind = LabelingBlocks.InfoBox, X = 100, Y = 100, Width = 900, Height = 300, SharedQuestions = 2 },
+            Question(100, 500, 4),
+            Question(100, 1200, 4),
+        ];
+
+        await RunAsync(id);
+
+        var request = _saved.Single();
+        request.Questions.Count.ShouldBe(2);
+        var passage = request.Passages.ShouldNotBeNull().ShouldHaveSingleItem();
+        passage.Box.Y.ShouldBe(100);
+        passage.Box.Height.ShouldBe(300);
+        passage.QuestionIndexes.ShouldBe([0, 1]);
+    }
+
+    [Fact]
     public async Task Only_multiple_choice_blocks_are_imported_and_a_stem_split_from_its_options_is_merged()
     {
         var id = await SeedAsync([new(1, 1, 1, "AB", [2])]);

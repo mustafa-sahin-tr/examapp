@@ -132,6 +132,9 @@
                 }
               </div>
             </div>
+            @if (q.passageImageUrl) {
+            <img class="bir-q__image bir-q__image--passage" [src]="q.passageImageUrl" [alt]="t(label('passage'), { number: q.number ?? '?' })" loading="lazy" />
+            }
             @if (q.imageUrl) {
             <img class="bir-q__image" [src]="q.imageUrl" [alt]="t(label('question'), { number: q.number ?? '?', page: q.filePage })" loading="lazy" />
             }

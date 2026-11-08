@@ -51,6 +51,10 @@ public class BulkPassageDto
     public int Width { get; set; }
     public int Height { get; set; }
 
+    /// <summary>Issue #1062: sunucu içi; <see cref="Id"/> yalnız eşleme anahtarıdır, kapsamın başlığı olarak saklanmaz.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IdIsInternal { get; set; }
+
     /// <summary>issue #573: kapsam türü (0 = Reading, 1 = Activity); null = Reading.</summary>
     [EnumDataType(typeof(PassageKind))]
     public PassageKind? Kind { get; set; }

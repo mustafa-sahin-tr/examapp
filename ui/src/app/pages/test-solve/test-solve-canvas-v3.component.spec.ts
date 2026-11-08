@@ -840,6 +840,11 @@ describe('TestSolveCanvasComponentv3 — finish flow (issue #383)', () => {
             });
         });
 
+        it('formatString tolerates an untitled, image-only passage (#1062)', () => {
+            expect(component.formatString(null, [1, 2])).toBe('');
+            expect(component.formatString('{0}-{1}. sorular', [1, 2])).toBe('1-2. sorular');
+        });
+
         it('finish stays secondary until the last question or no empty question (#841)', async () => {
             component.regions.set([{}, {}, {}, {}] as never);
             expect(component.finishReady()).toBe(false);

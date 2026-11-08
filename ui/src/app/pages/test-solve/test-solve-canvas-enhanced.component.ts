@@ -578,8 +578,9 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     this.localStateReady.set(true);
   }
 
-  formatString(format: string, args: number[]): string {
-    return format.replace(/{(\d+)}/g, (match, index) => '' + args[index]);
+  /** Başlıksız (yalnız görselli) kapsamda başlık null gelir (#1062). */
+  formatString(format: string | null | undefined, args: number[]): string {
+    return (format ?? '').replace(/{(\d+)}/g, (match, index) => '' + args[index]);
   }
 
   /**

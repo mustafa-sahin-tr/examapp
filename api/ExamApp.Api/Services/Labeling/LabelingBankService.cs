@@ -51,7 +51,10 @@ public sealed class LabelingBankSaveException() : Exception("Saving labeling que
 public sealed record LabelingImportPageRequest(
     string ImageBase64, int? BookId, int FilePage, int GradeId, QuestionBankSharing Sharing,
     IReadOnlyList<LabelingBankQuestionDto> Questions, IReadOnlyCollection<int>? ReplacingQuestionIds = null,
-    bool ResumeDrafts = false, int? ResumeWorksheetId = null);
+    bool ResumeDrafts = false, int? ResumeWorksheetId = null, IReadOnlyList<LabelingImportPassage>? Passages = null);
+
+/// <summary>Issue #1062: sayfadaki ortak pasaj kutusu; <paramref name="QuestionIndexes"/> isteğin soru listesine göre.</summary>
+public sealed record LabelingImportPassage(LabelingBankBoxDto Box, IReadOnlyList<int> QuestionIndexes);
 
 /// <summary>
 /// Issue #1022: kaydedilen soru sayısı ve kırpması bankada olduğu için atlanan soruların sırası (istekteki). #1023:
@@ -257,8 +260,10 @@ public sealed class LabelingBankService(
 
         List<BulkQuestionDto> bulkQuestions;
         byte[] pageJpeg;
+        int pageWidth, pageHeight;
         using (var image = LabelingImage.Decode(request.ImageBase64))
         {
+            (pageWidth, pageHeight) = (image.Width, image.Height);
             bulkQuestions = questions.Select((q, i) => ToBulkQuestion(q, i, image.Width, image.Height)).ToList();
             pageJpeg = image.Encode(LabelingImage.MaxEdge).Jpeg;
         }
@@ -305,7 +310,7 @@ public sealed class LabelingBankService(
         var bulk = new BulkQuestionCreateDto
         {
             ImageData = "data:image/jpeg;base64," + Convert.ToBase64String(pageJpeg),
-            Passages = [],
+            Passages = ApplyImportPassages(request.Passages, bulkQuestions, kept, pageWidth, pageHeight),
             Questions = kept,
             Header = BookHeader(toc),
             GradeId = request.GradeId,
@@ -347,6 +352,27 @@ public sealed class LabelingBankService(
                 // Konu yoksa (yalnız ders) kaynak Human kalır: sınıflandırıcı bugünkü gibi çalışır.
                 ClassificationSource = toc.TopicId is null ? null : nameof(ClassificationSource.Book),
             };
+
+    /// <summary>
+    /// Issue #1062: pasajlar kırpılacak kutulara çevrilir ve sorular bağlanır. Soru başına tek pasaj; kaydedilecek sorusu kalmayan
+    /// (yinelenen / devam eden taslak) pasaj atlanır, sayfa dışına taşan kutu sayfaya kırpılır.
+    /// </summary>
+    private static List<BulkPassageDto> ApplyImportPassages(IReadOnlyList<LabelingImportPassage>? passages,
+        List<BulkQuestionDto> questions, List<BulkQuestionDto> kept, int pageWidth, int pageHeight)
+    {
+        var result = new List<BulkPassageDto>();
+        foreach (var passage in passages ?? [])
+        {
+            var owners = passage.QuestionIndexes.Select(i => questions[i]).Where(kept.Contains).ToList();
+            if (owners.Count == 0 || Intersect(passage.Box, 0, 0, pageWidth, pageHeight) is not { } box)
+                continue;
+            var key = $"import-{result.Count}";
+            foreach (var owner in owners)
+                owner.PassageId = key;
+            result.Add(new BulkPassageDto { Id = key, X = box.X, Y = box.Y, Width = box.Width, Height = box.Height, IdIsInternal = true });
+        }
+        return result;
+    }
 
     /// <summary>Kitap adı ve soru başına kaynak (sunucu içi <see cref="BulkQuestionDto.Source"/>).</summary>
     private static void ApplyBookSource(

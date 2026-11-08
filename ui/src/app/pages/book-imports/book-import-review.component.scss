@@ -235,6 +235,10 @@
     height: auto;
     border-radius: 6px;
     background: var(--ms-surface-weak);
+
+    &--passage {
+      margin-bottom: 8px;
+    }
   }
 }
 

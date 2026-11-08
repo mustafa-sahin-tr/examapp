@@ -161,7 +161,7 @@ internal sealed class BookQuestionImportStage(
             pageCount++;
             if (!pages.TryGetValue(filePage, out var page))
             {
-                detected.Add(new DetectedPage(filePage, null, null, null));
+                detected.Add(new DetectedPage(filePage, null, null, null, []));
                 continue;
             }
             await StopIfCancelledAsync(job, ct);
@@ -171,13 +171,14 @@ internal sealed class BookQuestionImportStage(
                 var detection = await DetectAsync(imageBase64, ct);
                 var questions = BookQuestionLayout.MergeSplit(
                     BookQuestionLayout.Order(ToLayout(detection.Response.Result.Predictions), page.Width), page.Width, page.Height);
-                detected.Add(new DetectedPage(filePage, page, imageBase64, questions));
+                var passages = BookQuestionLayout.AttachPassages(questions, ToStimuli(detection.Response.Result.Predictions), page.Width);
+                detected.Add(new DetectedPage(filePage, page, imageBase64, questions, passages));
             }
             catch (Exception ex) when (ex is LabelingAiException or LabelingImportDetectException or LabelingValidationException
                                            or LabelingAiUnavailableException or BookImportFailure)
             {
                 logger.LogWarning("Book import job {JobId}: detection failed on page {Page}: {Reason}", job.Id, filePage, ex.Message);
-                detected.Add(new DetectedPage(filePage, page, null, null));
+                detected.Add(new DetectedPage(filePage, page, null, null, []));
             }
         }
 
@@ -190,7 +191,7 @@ internal sealed class BookQuestionImportStage(
 
         for (var p = 0; p < detected.Count; p++)
         {
-            var (filePage, page, imageBase64, questions) = detected[p];
+            var (filePage, page, imageBase64, questions, passages) = detected[p];
             var (start, pageMax) = numbering[p];
             if (page is null || questions is null || imageBase64 is null)
             {
@@ -212,6 +213,7 @@ internal sealed class BookQuestionImportStage(
             }
 
             var toSave = new List<LabelingBankQuestionDto>();
+            var savedIndexes = new Dictionary<int, int>();
             for (var i = 0; i < questions.Count; i++)
             {
                 var number = start + i;
@@ -229,6 +231,7 @@ internal sealed class BookQuestionImportStage(
                     answer = -1;
                 if (answer < 0)
                     flags.Add(BookImportReviewFlag.NoAnswer, filePage, [number]);
+                savedIndexes[i] = toSave.Count;
                 toSave.Add(ToBankQuestion(prepared, answer, label, number));
             }
 
@@ -242,7 +245,8 @@ internal sealed class BookQuestionImportStage(
                 // #1025: yarıda kalmış çalıştırmanın taslakları tekrar sayılmaz, yeniden kullanılır.
                 var result = await bank.SaveImportedPageAsync(new LabelingImportPageRequest(
                     imageBase64, bookId, filePage, job.GradeId, QuestionBankSharing.Private, toSave,
-                    ResumeDrafts: true, ResumeWorksheetId: test.WorksheetId), job.CreateUserId!.Value, ct);
+                    ResumeDrafts: true, ResumeWorksheetId: test.WorksheetId, Passages: ToImportPassages(passages, savedIndexes)),
+                    job.CreateUserId!.Value, ct);
                 saved += result.Saved + result.Resumed;
                 duplicates += result.DuplicateIndexes.Count;
                 questionIds.AddRange(result.QuestionIds);
@@ -343,7 +347,8 @@ internal sealed class BookQuestionImportStage(
     private const int DraftTestNameLength = 200;
 
     /// <summary>Testin bir sayfasının tespiti; <c>Questions</c> null → sayfa görseli yok ya da tespit başarısız.</summary>
-    private sealed record DetectedPage(int FilePage, BookImportPage? Page, string? ImageBase64, List<LayoutQuestion>? Questions);
+    private sealed record DetectedPage(int FilePage, BookImportPage? Page, string? ImageBase64, List<LayoutQuestion>? Questions,
+        List<LayoutPassage> Passages);
 
     /// <summary>
     /// Sayfaların ilk soru no'su ve beklenen en büyük no'su. Numaralama sayfaya dayanır: kurulumda okunan basılı en büyük no
@@ -403,6 +408,20 @@ internal sealed class BookQuestionImportStage(
         (predictions.Predictions ?? [])
         .Where(p => (p.Kind ?? LabelingBlocks.McqQuestion) == LabelingBlocks.McqQuestion)
         .Select(p => new LayoutQuestion(Box(p), (p.Subpredictions ?? []).Select(Box).ToList()));
+
+    /// <summary>Issue #1062: sorudan ayrı çerçevedeki uyaranlar; soruyla örtüşmeyenler pasaj olur.</summary>
+    internal static IEnumerable<LayoutStimulus> ToStimuli(PredictionListDto predictions) =>
+        (predictions.Predictions ?? [])
+        .Where(p => p.Kind == LabelingBlocks.InfoBox)
+        .Select(p => new LayoutStimulus(Box(p), p.SharedQuestions ?? 1));
+
+    /// <summary>Pasajların soru sıraları kaydedilecek listeye çevrilir; sorusu kaydedilmeyen pasaj düşer.</summary>
+    private static List<LabelingImportPassage> ToImportPassages(List<LayoutPassage> passages, Dictionary<int, int> savedIndexes) =>
+        passages.Select(p => new LabelingImportPassage(
+                new LabelingBankBoxDto { X = p.Box.X, Y = p.Box.Y, Width = p.Box.Width, Height = p.Box.Height },
+                p.QuestionIndexes.Where(savedIndexes.ContainsKey).Select(i => savedIndexes[i]).ToList()))
+            .Where(p => p.QuestionIndexes.Count > 0)
+            .ToList();
 
     private static LayoutBox Box(PredictionDto p) => new(p.X, p.Y, p.Width, p.Height);
 

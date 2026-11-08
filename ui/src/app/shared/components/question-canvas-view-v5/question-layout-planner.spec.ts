@@ -25,6 +25,15 @@ describe('planQuestionLayout', () => {
     expect(large.answerColumns).toBe(small.answerColumns);
   });
 
+  it('stackedChoice_KeepsOneChoicePerRowEvenWhenFourColumnsFit', () => {
+    const plan = planQuestionLayout(
+      input({ question: { width: 2000, height: 600 }, answers: fourAnswers(300, 80), arrangement: 'stacked' }),
+    );
+
+    expect(plan.arrangement).toBe('top');
+    expect(plan.answerColumns).toBe(1);
+  });
+
   it('narrowChoicesOnWideQuestion_UsesFourColumns', () => {
     const plan = planQuestionLayout(input({ question: { width: 2000, height: 600 }, answers: fourAnswers(300, 80) }));
 

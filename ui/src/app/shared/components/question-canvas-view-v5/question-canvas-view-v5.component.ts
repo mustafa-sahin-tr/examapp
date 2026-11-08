@@ -383,7 +383,7 @@ export class QuestionCanvasViewComponentv5 {
       width: passagePlan ? passagePlan.questionWidth : hostWidth,
       height: availableHeight,
       ...this.scaleLimits(region),
-      arrangement: region.layoutChoice === 'top' || region.layoutChoice === 'side' ? region.layoutChoice : undefined,
+      arrangement: region.layoutChoice === 'whole' ? undefined : (region.layoutChoice ?? undefined),
     });
 
     this.plan.set(plan);

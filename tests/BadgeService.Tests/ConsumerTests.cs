@@ -92,6 +92,8 @@ public class ConsumerTests : IDisposable
         var classifier = Substitute.For<IQuestionClassifier>();
         await NewQuestionConsumer(classifier).Consume(Context(LockedEvent(10, 100)));
         await AssertNoClassificationAsync(classifier);
+        // Issue #1047: outcomes + skills are still picked.
+        await classifier.Received(1).TagAndPersistAsync(42, 5, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -121,6 +123,7 @@ public class ConsumerTests : IDisposable
         var classifier = Substitute.For<IQuestionClassifier>();
         await NewBookConsumer(classifier, mode).Consume(Context(BookEvent(10, 100)));
         await AssertNoClassificationAsync(classifier);
+        await classifier.Received(1).TagAndPersistAsync(42, 5, Arg.Any<CancellationToken>()); // issue #1047
     }
 
     [Fact]
@@ -161,6 +164,7 @@ public class ConsumerTests : IDisposable
         var classifier = Substitute.For<IQuestionClassifier>();
         await NewBookConsumer(classifier, "Skip").Consume(Context(BookEvent(topicId)));
         await AssertNoClassificationAsync(classifier);
+        await classifier.DidNotReceive().TagAndPersistAsync(Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

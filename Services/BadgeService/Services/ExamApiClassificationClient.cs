@@ -14,6 +14,8 @@ public sealed class ExamApiClassificationClient(IHttpClientFactory httpClientFac
 {
     private const int MaxSubTopics = 3;
 
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
     private readonly string _baseUrl = examApiBaseUrl.TrimEnd('/');
 
     /// <summary>
@@ -106,7 +108,8 @@ public sealed class ExamApiClassificationClient(IHttpClientFactory httpClientFac
     /// <c>Book</c> — topic/subject came from the book, only subtopic + difficulty from the model.
     /// </summary>
     public async Task PersistAsync(
-        int questionId, QuestionClassificationResult result, string token, CancellationToken ct, string classificationSource = "AI")
+        int questionId, QuestionClassificationResult result, string token, CancellationToken ct, string classificationSource = "AI",
+        int? classifierRevision = null)
     {
         var client = CreateClient(token);
 
@@ -117,6 +120,7 @@ public sealed class ExamApiClassificationClient(IHttpClientFactory httpClientFac
             subTopicIds = result.SubTopicIds.ToArray(),
             classificationSource,
             difficulty = result.DifficultyLevel,
+            classifierRevision,
         };
 
         var url = $"{_baseUrl}/api/questions/{questionId}/classification";
@@ -129,6 +133,48 @@ public sealed class ExamApiClassificationClient(IHttpClientFactory httpClientFac
             var payload = await response.Content.ReadAsStringAsync(ct);
             throw new InvalidOperationException(
                 $"Failed to persist classification for question {questionId}: {(int)response.StatusCode} {response.ReasonPhrase}. " +
+                $"Request: {bodyJson}. Response: {Truncate(payload)}");
+        }
+    }
+
+    /// <summary>
+    /// Issue #1047: <c>GET /api/questions/{id}/classifier-tags</c> — the outcomes (grade + subject) and skills the classifier may
+    /// pick; a kind the question already has links for comes back empty.
+    /// </summary>
+    public async Task<ClassifierTagOptions> FetchTagOptionsAsync(int questionId, int? gradeId, string token, CancellationToken ct)
+    {
+        var client = CreateClient(token);
+
+        var url = $"{_baseUrl}/api/questions/{questionId}/classifier-tags" + (gradeId.HasValue ? $"?gradeId={gradeId.Value}" : string.Empty);
+        var response = await client.GetAsync(url, ct);
+        var payload = await response.Content.ReadAsStringAsync(ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(
+                $"Failed to fetch classifier tag options for question {questionId}: {(int)response.StatusCode} {response.ReasonPhrase}. {Truncate(payload)}");
+        }
+
+        return JsonSerializer.Deserialize<ClassifierTagOptions>(payload, JsonOptions)
+            ?? throw new InvalidOperationException("Classifier tag options response was empty.");
+    }
+
+    /// <summary>Issue #1047: <c>PUT /api/questions/{id}/classifier-tags</c> — adds the picked links (ids from the options only).</summary>
+    public async Task PersistTagsAsync(
+        int questionId, int? gradeId, IReadOnlyCollection<int> learningOutcomeIds, IReadOnlyCollection<int> skillIds, int classifierRevision,
+        string token, CancellationToken ct)
+    {
+        var client = CreateClient(token);
+
+        var bodyJson = JsonSerializer.Serialize(new { learningOutcomeIds, skillIds, classifierRevision });
+        var url = $"{_baseUrl}/api/questions/{questionId}/classifier-tags" + (gradeId.HasValue ? $"?gradeId={gradeId.Value}" : string.Empty);
+        using var content = new StringContent(bodyJson, Encoding.UTF8, "application/json");
+
+        var response = await client.PutAsync(url, content, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            var payload = await response.Content.ReadAsStringAsync(ct);
+            throw new InvalidOperationException(
+                $"Failed to persist classifier tags for question {questionId}: {(int)response.StatusCode} {response.ReasonPhrase}. " +
                 $"Request: {bodyJson}. Response: {Truncate(payload)}");
         }
     }
@@ -159,3 +205,10 @@ public sealed class ExamApiClassificationClient(IHttpClientFactory httpClientFac
 }
 
 public sealed record QuestionImage(byte[] Bytes, string MediaType);
+
+/// <summary>Issue #1047: closed lists for the outcome / skill pick (exam API <c>ClassifierTagOptionsDto</c>).</summary>
+public sealed record ClassifierTagOptions(List<ClassifierOutcomeOption> LearningOutcomes, List<ClassifierSkillOption> Skills);
+
+public sealed record ClassifierOutcomeOption(int Id, string Code, string Description);
+
+public sealed record ClassifierSkillOption(int Id, string Code, string Name);

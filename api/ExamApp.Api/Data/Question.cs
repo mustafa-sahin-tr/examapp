@@ -88,6 +88,13 @@ public class Question : BaseEntity
 
     public ClassificationSource? ClassificationSource { get; set; }
 
+    /// <summary>
+    /// Issue #1047: BadgeService Claude sınıflandırıcısının istem sürümü (<c>ClaudeQuestionClassifier.SchemaRevision</c>); sorunun
+    /// sınıflandırmasını ya da kazanım / beceri bağlarını son yazan çalıştırmanınki. Elle sınıflandırma temizler; null = Claude
+    /// yazmadı. Eski istemle sınıflanan sorular bununla bulunup yeniden sınıflandırılabilir.
+    /// </summary>
+    public int? ClassifierRevision { get; set; }
+
     // Issue #690: içeriğin kaynağı ve lisansı. Mevcut sorular Unknown kalır; lisanslı sayılmaz.
     public QuestionSourceType SourceType { get; set; } = QuestionSourceType.Unknown;
 

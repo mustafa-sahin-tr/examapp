@@ -140,6 +140,12 @@ public class GeminiQuestionClassifier : IQuestionClassifier
         return Task.CompletedTask;
     }
 
+    public Task TagAndPersistAsync(int questionId, int? gradeId, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("⏭️ Learning outcome / skill tagging is Claude-only; skipping question {QuestionId}.", questionId);
+        return Task.CompletedTask;
+    }
+
     private async Task<(string? CachedContent, string Model)> ResolveCachePointerAsync(string token, CancellationToken ct)
     {
         try

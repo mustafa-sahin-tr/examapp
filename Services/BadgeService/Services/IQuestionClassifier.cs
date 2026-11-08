@@ -18,4 +18,12 @@ public interface IQuestionClassifier
     /// </summary>
     Task ClassifyWithinTopicAndPersistAsync(
         int questionId, int? gradeId, int topicId, string classificationSource, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Issue #1047: picks learning outcomes (from the question's grade + subject) and skills for a question whose taxonomy is
+    /// already set (book TOC subtopic, teacher-locked subtopic); <see cref="ClassifyAndPersistAsync"/> and
+    /// <see cref="ClassifyWithinTopicAndPersistAsync"/> do this step after classifying. Kinds that already have links are
+    /// left alone. Providers without it skip.
+    /// </summary>
+    Task TagAndPersistAsync(int questionId, int? gradeId, CancellationToken cancellationToken);
 }

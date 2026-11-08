@@ -3557,6 +3557,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("ClassificationSource")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("ClassifierRevision")
+                        .HasColumnType("integer");
+
                     b.Property<string>("ContentFingerprint")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");

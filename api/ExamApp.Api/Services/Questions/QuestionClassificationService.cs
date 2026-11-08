@@ -95,7 +95,8 @@ public class QuestionClassificationService : IQuestionClassificationService
         int? subTopicId = null,
         int[]? subTopicIds = null,
         string? classificationSourceStr = null,
-        int? difficulty = null)
+        int? difficulty = null,
+        int? classifierRevision = null)
     {
         try
         {
@@ -212,6 +213,9 @@ public class QuestionClassificationService : IQuestionClassificationService
 
                 question.DifficultyLevel = difficulty.Value;
             }
+
+            // Issue #1047: Claude'un yazdığı sınıflandırma sürümüyle işaretlenir; elle düzenleme (sürümsüz) temizler.
+            question.ClassifierRevision = classifierRevision;
 
             _context.Questions.Update(question);
             await _context.SaveChangesAsync();

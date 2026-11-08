@@ -4,6 +4,9 @@ using BadgeService.Models;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Unicode;
 
 namespace BadgeService.Services;
 
@@ -36,6 +39,13 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
     private const decimal CacheWrite1hMultiplier = 2m;
     private const decimal CacheReadMultiplier = 0.1m;
 
+    /// <summary>
+    /// Issue #1047: version of the fixed prompt parts (<see cref="Instructions"/>, <see cref="TagInstructions"/>, the user
+    /// instructions and prefixes, both response schemas). Bump it whenever one of them changes; the exam API stores it on the
+    /// question (<c>Questions.ClassifierRevision</c>) so questions classified with an older prompt can be found and re-run.
+    /// </summary>
+    public const int SchemaRevision = 1;
+
     // Instructions + taxonomy form the cached prefix: keep them byte-stable (no dates, ids or per-question text).
     internal const string Instructions =
         """
@@ -57,6 +67,30 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
         """;
 
     internal const string UserInstruction = "Bu soruyu sınıflandır.";
+
+    /// <summary>
+    /// Issue #1047: the outcome / skill step. The closed lists differ per question (grade + subject outcomes), so they go in
+    /// the user message; this system message stays byte-stable.
+    /// </summary>
+    internal const string TagInstructions =
+        """
+        Sen bir eğitim içeriği etiketleme asistanısın. Sana bir soru (görsel ya da düz metin) ve iki kapalı liste
+        verilecek: MEB kazanımları (learningOutcomes) ve TYMM becerileri (skills), her öğe kendi "id" değeriyle. Görevin:
+
+        1. Sorunun doğrudan ölçtüğü kazanımları (learningOutcomeIds) YALNIZCA verilen kazanım listesindeki id'lerle seç;
+           en uygun olan ilk sırada, en fazla 3 tane. Hiçbiri açıkça uymuyorsa boş bırak. Liste boşsa boş bırak.
+        2. Sorunun çözümünde öne çıkan becerileri (skillIds) YALNIZCA verilen beceri listesindeki id'lerle seç; 0-2 tane.
+           Belirgin bir beceri yoksa boş bırak. Liste boşsa boş bırak.
+        3. Listede olmayan id uydurma. Kısa bir gerekçe (reasoning) yaz.
+        """;
+
+    internal const string TagUserInstruction = "Bu sorunun kazanımlarını ve becerilerini seç.";
+
+    internal const int MaxLearningOutcomes = 3;
+    internal const int MaxSkills = 2;
+
+    // Turkish letters as-is (not \uXXXX): fewer tokens, readable in logs.
+    private static readonly JsonSerializerOptions TagListJson = new() { Encoder = JavaScriptEncoder.Create(UnicodeRanges.All) };
 
     /// <summary>Issue #590: the text of a question without an image precedes <see cref="UserInstruction"/>.</summary>
     internal const string TextQuestionPrefix = "Soru (metin):\n";
@@ -158,12 +192,7 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
             return;
         }
         var (result, usage) = await CallClaudeAsync(image, text, taxonomy, cancellationToken);
-
-        _logger.LogInformation(
-            "💰 Question {QuestionId} (grade {GradeId}) — Claude {Model} usage: input={InputTokens}, cacheWrite={CacheWriteTokens}, " +
-            "cacheRead={CacheReadTokens}, output={OutputTokens}, estimatedCost=${CostUsd}",
-            questionId, gradeId?.ToString() ?? "-", _options.Model, usage.InputTokens, usage.CacheWriteTokens, usage.CacheReadTokens, usage.OutputTokens,
-            EstimateCostUsd(usage).ToString("0.######", System.Globalization.CultureInfo.InvariantCulture));
+        LogUsage(questionId, gradeId, "classification", usage);
 
         ExamApiClassificationClient.Normalize(result);
 
@@ -189,10 +218,98 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
             "🔎 Question {QuestionId} — Claude result: subTopics=[{SubTopics}], subjectId={SubjectId}, topicId={TopicId}, difficulty={Difficulty}",
             questionId, string.Join(",", result.SubTopicIds), result.SubjectId, result.TopicId, result.DifficultyLevel);
 
-        await examApi.PersistAsync(questionId, result, token, cancellationToken, classificationSource);
+        await examApi.PersistAsync(questionId, result, token, cancellationToken, classificationSource, SchemaRevision);
 
         _logger.LogInformation("✅ Question {QuestionId} classification persisted", questionId);
+
+        // Issue #1047: outcomes + skills against the subject just written. A failure here keeps the classification
+        // (no retry of the whole message for an optional step).
+        try
+        {
+            await TagCoreAsync(examApi, questionId, gradeId, image, text, token, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "⚠️ Question {QuestionId} — outcome / skill tagging failed; classification kept.", questionId);
+        }
     }
+
+    /// <summary>Issue #1047: outcome / skill step alone (taxonomy already set by the book or the teacher).</summary>
+    public async Task TagAndPersistAsync(int questionId, int? gradeId, CancellationToken cancellationToken)
+    {
+        if (_chat is null)
+        {
+            _logger.LogWarning("⚠️ Claude not configured (Anthropic:ApiKey). Skipping tagging for {QuestionId}.", questionId);
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(_examApiBaseUrl))
+        {
+            _logger.LogWarning("⚠️ ExamApi:BaseUrl not configured. Skipping tagging for {QuestionId}.", questionId);
+            return;
+        }
+
+        var token = await _tokenProvider.GetAccessTokenAsync(cancellationToken);
+        var examApi = new ExamApiClassificationClient(_httpClientFactory, _examApiBaseUrl);
+
+        var image = await examApi.TryFetchQuestionImageAsync(questionId, token, cancellationToken);
+        var text = await examApi.FetchQuestionTextAsync(questionId, token, cancellationToken);
+        if (image is null && string.IsNullOrWhiteSpace(text))
+        {
+            _logger.LogWarning("⚠️ Question {QuestionId} has neither an image nor text. Skipping tagging.", questionId);
+            return;
+        }
+
+        await TagCoreAsync(examApi, questionId, gradeId, image, text, token, cancellationToken);
+    }
+
+    private async Task TagCoreAsync(
+        ExamApiClassificationClient examApi, int questionId, int? gradeId, QuestionImage? image, string? text, string token,
+        CancellationToken ct)
+    {
+        var options = await examApi.FetchTagOptionsAsync(questionId, gradeId, token, ct);
+        if (options.LearningOutcomes.Count == 0 && options.Skills.Count == 0)
+        {
+            _logger.LogInformation("⏭️ Question {QuestionId} — no outcomes / skills to pick (already linked or none for its grade + subject).", questionId);
+            return;
+        }
+
+        var (tags, usage) = await CallClaudeForTagsAsync(image, text, options, ct);
+        LogUsage(questionId, gradeId, "tags", usage);
+
+        var outcomeIds = (tags.LearningOutcomeIds ?? []).Where(id => id > 0).Distinct().Take(MaxLearningOutcomes).ToList();
+        var skillIds = (tags.SkillIds ?? []).Where(id => id > 0).Distinct().Take(MaxSkills).ToList();
+
+        var offeredOutcomes = options.LearningOutcomes.Select(o => o.Id).ToHashSet();
+        var offeredSkills = options.Skills.Select(o => o.Id).ToHashSet();
+        var unknown = outcomeIds.Where(id => !offeredOutcomes.Contains(id)).Select(id => $"learningOutcome:{id}")
+            .Concat(skillIds.Where(id => !offeredSkills.Contains(id)).Select(id => $"skill:{id}"))
+            .FirstOrDefault();
+        if (unknown is not null)
+        {
+            _logger.LogWarning(
+                "🚫 Question {QuestionId} — Claude tags rejected: {UnknownId} is not in the offered lists. outcomes=[{Outcomes}], skills=[{Skills}], reasoning={Reasoning}",
+                questionId, unknown, string.Join(",", outcomeIds), string.Join(",", skillIds), tags.Reasoning);
+            throw new InvalidOperationException($"Claude tags for question {questionId} rejected: {unknown} is not in the offered lists.");
+        }
+
+        if (outcomeIds.Count == 0 && skillIds.Count == 0)
+        {
+            _logger.LogInformation("🔎 Question {QuestionId} — Claude picked no outcomes / skills.", questionId);
+            return;
+        }
+
+        await examApi.PersistTagsAsync(questionId, gradeId, outcomeIds, skillIds, SchemaRevision, token, ct);
+        _logger.LogInformation(
+            "✅ Question {QuestionId} tags persisted: outcomes=[{Outcomes}], skills=[{Skills}]",
+            questionId, string.Join(",", outcomeIds), string.Join(",", skillIds));
+    }
+
+    private void LogUsage(int questionId, int? gradeId, string step, ClassificationUsage usage) =>
+        _logger.LogInformation(
+            "💰 Question {QuestionId} (grade {GradeId}) — Claude {Model} {Step} usage: input={InputTokens}, cacheWrite={CacheWriteTokens}, " +
+            "cacheRead={CacheReadTokens}, output={OutputTokens}, estimatedCost=${CostUsd}",
+            questionId, gradeId?.ToString() ?? "-", _options.Model, step, usage.InputTokens, usage.CacheWriteTokens, usage.CacheReadTokens, usage.OutputTokens,
+            EstimateCostUsd(usage).ToString("0.######", System.Globalization.CultureInfo.InvariantCulture));
 
     internal static string TaxonomyCacheKeyFor(int? gradeId) =>
         gradeId.HasValue ? $"{TaxonomyCacheKey}:{gradeId.Value}" : TaxonomyCacheKey;
@@ -216,15 +333,17 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
         return taxonomy;
     }
 
+    private ChatOptions CreateChatOptions() => new()
+    {
+        ModelId = _options.Model,
+        MaxOutputTokens = _options.MaxOutputTokens,
+        Reasoning = ParseEffort(_options.Effort) is { } effort ? new ReasoningOptions { Effort = effort } : null,
+    };
+
     private async Task<(QuestionClassificationResult Result, ClassificationUsage Usage)> CallClaudeAsync(
         QuestionImage? image, string? text, ClassifierTaxonomy taxonomy, CancellationToken ct)
     {
-        var chatOptions = new ChatOptions
-        {
-            ModelId = _options.Model,
-            MaxOutputTokens = _options.MaxOutputTokens,
-            Reasoning = ParseEffort(_options.Effort) is { } effort ? new ReasoningOptions { Effort = effort } : null,
-        };
+        var chatOptions = CreateChatOptions();
 
         List<ChatMessage> messages =
         [
@@ -256,6 +375,40 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
             DifficultyLevel = result.DifficultyLevel,
             Reasoning = result.Reasoning,
         }, usage);
+    }
+
+    private async Task<(ClaudeTags Tags, ClassificationUsage Usage)> CallClaudeForTagsAsync(
+        QuestionImage? image, string? text, ClassifierTagOptions options, CancellationToken ct)
+    {
+        List<ChatMessage> messages =
+        [
+            new(ChatRole.System, TagInstructions),
+            new(ChatRole.User, TagContents(image, text, options)),
+        ];
+
+        var response = await _chat!.GetResponseAsync<ClaudeTags>(messages, CreateChatOptions(), cancellationToken: ct);
+        var usage = ReadUsage(response);
+
+        if (response.FinishReason == ChatFinishReason.ContentFilter)
+            throw new InvalidOperationException("Claude declined to tag the question.");
+        if (response.FinishReason == ChatFinishReason.Length)
+            throw new InvalidOperationException("Claude tag response was truncated (MaxOutputTokens).");
+        if (!response.TryGetResult(out var tags) || tags is null)
+            throw new InvalidOperationException("Claude tag response did not match the schema.");
+
+        return (tags, usage);
+    }
+
+    /// <summary>Issue #1047: the question, then both closed lists (compact JSON), then the instruction.</summary>
+    internal static List<AIContent> TagContents(QuestionImage? image, string? text, ClassifierTagOptions options)
+    {
+        var contents = QuestionContents(image, text, TagUserInstruction);
+        var outcomes = JsonSerializer.Serialize(
+            options.LearningOutcomes.Select(o => new { id = o.Id, code = o.Code, description = o.Description }), TagListJson);
+        var skills = JsonSerializer.Serialize(options.Skills.Select(s => new { id = s.Id, code = s.Code, name = s.Name }), TagListJson);
+        contents.Insert(contents.Count - 1, new TextContent(
+            "Kazanımlar (learningOutcomes, JSON):\n" + outcomes + "\n\nBeceriler (skills, JSON):\n" + skills));
+        return contents;
     }
 
     /// <summary>
@@ -291,7 +444,7 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
             + usage.OutputTokens * (_options.OutputUsdPerMTok / 1_000_000m);
     }
 
-    internal static List<AIContent> QuestionContents(QuestionImage? image, string? text)
+    internal static List<AIContent> QuestionContents(QuestionImage? image, string? text, string instruction = UserInstruction)
     {
         var contents = new List<AIContent>(3);
         if (image is not null)
@@ -304,7 +457,7 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
         {
             contents.Add(new TextContent(TextQuestionPrefix + text));
         }
-        contents.Add(new TextContent(UserInstruction));
+        contents.Add(new TextContent(instruction));
         return contents;
     }
 
@@ -341,6 +494,9 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
     // answer free-form.
     private sealed record ClaudeClassification(
         List<int>? SubTopicIds, int? SubjectId, int? TopicId, int DifficultyLevel, string? Reasoning);
+
+    // Issue #1047: outcome / skill step schema (positional record for the same reason as above).
+    private sealed record ClaudeTags(List<int>? LearningOutcomeIds, List<int>? SkillIds, string? Reasoning);
 }
 
 /// <summary>Uncached input, cache-write, cache-read and output tokens of one classification call.</summary>

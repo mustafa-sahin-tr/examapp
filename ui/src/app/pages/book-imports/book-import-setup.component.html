@@ -7,9 +7,14 @@
   } @else if (setup(); as s) {
   <header class="bis-head">
     <h2>{{ t('setup.title') }}</h2>
-    <p>{{ t('setup.intro') }}</p>
+    <p>{{ t(s.isDemo ? 'demo.setupIntro' : 'setup.intro') }}</p>
   </header>
 
+  @if (s.isDemo) {
+  <div class="bis-banner" role="status">
+    <mat-icon aria-hidden="true">science</mat-icon>{{ t('demo.setupNote') }}
+  </div>
+  }
   @if (s.noAnswerKey && !noKeyAcknowledged()) {
   <div class="bis-banner bis-banner--warning" role="alert">
     <mat-icon aria-hidden="true">help_outline</mat-icon>
@@ -154,7 +159,7 @@
       <mat-radio-button value="new">{{ t('setup.createNew') }}</mat-radio-button>
     </mat-radio-group>
     }
-    @if (!s.existingBook || useExisting() === 'new') {
+    @if (!s.isDemo && (!s.existingBook || useExisting() === 'new')) {
     <mat-form-field class="bis-name" appearance="outline" subscriptSizing="dynamic">
       <mat-label>{{ t('setup.bookName') }}</mat-label>
       <input matInput [ngModel]="bookName()" (ngModelChange)="bookName.set($event)" maxlength="200" required />

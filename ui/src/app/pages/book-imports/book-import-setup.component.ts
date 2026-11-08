@@ -129,12 +129,14 @@ export class BookImportSetupComponent implements OnInit {
   readonly canConfirm = computed(
     () =>
       !this.saving() &&
-      this.included().length > 0 &&
-      this.openConflicts() === 0 &&
-      this.unreadable() === 0 &&
-      !this.invalidPages() &&
-      this.bookName().trim().length > 0 &&
-      (!this.setup()?.noAnswerKey || this.noKeyAcknowledged()),
+      // Issue #1032: demoda kurulum kaydedilmez, kontroller engellemez.
+      (this.setup()?.isDemo === true ||
+        (this.included().length > 0 &&
+          this.openConflicts() === 0 &&
+          this.unreadable() === 0 &&
+          !this.invalidPages() &&
+          this.bookName().trim().length > 0 &&
+          (!this.setup()?.noAnswerKey || this.noKeyAcknowledged()))),
   );
 
   private objectUrl: string | null = null;
@@ -155,6 +157,7 @@ export class BookImportSetupComponent implements OnInit {
       .subscribe({
         next: (setup) => {
           this.setup.set(setup);
+          if (setup.isDemo) this.noKeyAcknowledged.set(true);
           this.rows.set(setup.tests.map(toEditable));
           this.bookName.set(setup.bookName);
           const first = this.keyPages()[0];

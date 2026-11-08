@@ -405,6 +405,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("DeleteUserId")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("DemoSourceJobId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Error")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
@@ -427,6 +430,9 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer");
 
                     b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDemoSource")
                         .HasColumnType("boolean");
 
                     b.Property<int>("Kind")
@@ -475,7 +481,13 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("BookId");
 
+                    b.HasIndex("DemoSourceJobId");
+
                     b.HasIndex("GradeId");
+
+                    b.HasIndex("IsDemoSource")
+                        .IsUnique()
+                        .HasFilter("\"IsDemoSource\" AND NOT \"IsDeleted\"");
 
                     b.HasIndex("SubjectId");
 
@@ -7773,6 +7785,11 @@ namespace ExamApp.Api.Migrations
                     b.HasOne("ExamApp.Api.Data.Book", "Book")
                         .WithMany()
                         .HasForeignKey("BookId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ExamApp.Api.Data.BookImportJob", null)
+                        .WithMany()
+                        .HasForeignKey("DemoSourceJobId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Grade", null)

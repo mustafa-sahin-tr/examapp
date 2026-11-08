@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using ExamApp.Api.Data;
 using ExamApp.Api.IntegrationTests.Infrastructure;
+using ExamApp.Api.Services.Dashboard;
 using ExamApp.Api.Models.Dtos.ParentLinks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -73,6 +74,10 @@ public class ParentDashboardEndpointsTests(IntegrationApiFactory factory) : Inte
         child.StudentId.ShouldBe(seeded.StudentId);
 
         var now = DateTime.UtcNow;
+        // Hafta sınırı: Pazartesi gece yarısının hemen ardından "20 dakika önce" geçen haftaya düşmesin.
+        var today = LocalDayCalendar.Default.Today;
+        var weekStartUtc = LocalDayCalendar.Default.StartOfDayUtc(today.AddDays(-(((int)today.DayOfWeek + 6) % 7)));
+        var solvedAt = now < weekStartUtc.AddMinutes(30) ? weekStartUtc.AddMinutes(30) : now;
         await WithDbAsync(async db =>
         {
             var done = new Worksheet { Name = "Kesirler", Description = "gizli içerik", GradeId = seeded.GradeId };
@@ -88,8 +93,8 @@ public class ParentDashboardEndpointsTests(IntegrationApiFactory factory) : Inte
 
             var instance = new WorksheetInstance
             {
-                StudentId = seeded.StudentId, WorksheetId = done.Id, StartTime = now.AddMinutes(-30),
-                EndTime = now.AddMinutes(-10), Status = WorksheetInstanceStatus.Completed
+                StudentId = seeded.StudentId, WorksheetId = done.Id, StartTime = solvedAt.AddMinutes(-30),
+                EndTime = solvedAt.AddMinutes(-10), Status = WorksheetInstanceStatus.Completed
             };
             db.TestInstances.Add(instance);
             await db.SaveChangesAsync();
@@ -106,7 +111,7 @@ public class ParentDashboardEndpointsTests(IntegrationApiFactory factory) : Inte
                 db.TestInstanceQuestions.Add(new WorksheetInstanceQuestion
                 {
                     WorksheetInstanceId = instance.Id, WorksheetQuestionId = wq.Id, SelectedAnswerId = answer.Id,
-                    IsCorrect = true, UpdateTime = now.AddMinutes(-20 + i)
+                    IsCorrect = true, UpdateTime = solvedAt.AddMinutes(-20 + i)
                 });
             }
 
@@ -146,7 +151,7 @@ public class ParentDashboardEndpointsTests(IntegrationApiFactory factory) : Inte
         assignments.GetProperty("overdue").GetInt32().ShouldBe(1);
         // Saate kesilmiş (review): dakika hassasiyetinde hareket izi dönmez.
         var lastActivity = root.GetProperty("lastActivityAt").GetDateTime().ToUniversalTime();
-        var expectedActivity = now.AddMinutes(-10);
+        var expectedActivity = solvedAt.AddMinutes(-10);
         lastActivity.ShouldBe(new DateTime(expectedActivity.Year, expectedActivity.Month, expectedActivity.Day,
             expectedActivity.Hour, 0, 0, DateTimeKind.Utc));
 

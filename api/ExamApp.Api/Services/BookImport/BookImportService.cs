@@ -71,6 +71,12 @@ public interface IBookImportService
     Task<BookImportSetupDto?> GetSetupAsync(BookImportOwner owner, Guid id, CancellationToken ct);
 
     /// <summary>Kurulumu onaylar (#1021): hak düşer, kitap kaydı yazılır, iş soru aktarımı için kuyruğa girer.</summary>
+    Task<BookImportDemoDto> GetDemoAsync(BookImportOwner owner, CancellationToken ct);
+
+    Task<StartBookImportDemoResult> StartDemoAsync(BookImportOwner owner, CancellationToken ct);
+
+    Task<SetBookImportDemoSourceResult> SetDemoSourceAsync(Guid id, bool isDemoSource, CancellationToken ct);
+
     Task<ConfirmSetupResult> ConfirmSetupAsync(BookImportOwner owner, Guid id, ConfirmBookImportSetupDto request, CancellationToken ct);
 
     /// <summary>
@@ -141,6 +147,7 @@ public sealed partial class BookImportService : IBookImportService
         var configured = configuration.GetValue<long?>("BookImport:MaxUploadBytes") ?? MaxUploadBytesCeiling;
         _maxUploadBytes = Math.Clamp(configured, 1, MaxUploadBytesCeiling);
         _maxJobCostUsd = BookImportJobRunner.MaxJobCost(configuration);
+        _demoMaxRuns = Math.Max(0, configuration.GetValue<int?>("BookImport:DemoMaxRuns") ?? DefaultDemoMaxRuns);
         _stallAfter = TimeSpan.FromMinutes(Math.Max(1, configuration.GetValue<int?>("BookImport:StallMinutes") ?? DefaultStallMinutes));
     }
 
@@ -358,6 +365,8 @@ public sealed partial class BookImportService : IBookImportService
         dto.BookId = job.BookId;
         dto.Status = job.Status.ToString();
         dto.Stage = job.Stage.ToString();
+        dto.IsDemo = job.DemoSourceJobId is not null;
+        dto.IsDemoSource = job.IsDemoSource;
         dto.FileName = job.FileName;
         dto.FileSizeBytes = job.FileSizeBytes;
         dto.PageCount = job.PageCount;

@@ -143,7 +143,9 @@ public sealed class BookImportCostReportService(AppDbContext db, IAuthApiClient 
     private IQueryable<BookImportJob> Jobs(BookImportCostFilter filter)
     {
         var (from, to) = Range(filter);
+        // Issue #1032: demonun maliyeti yok, rapora girmez.
         var query = db.BookImportJobs.AsNoTracking()
+            .Where(j => j.DemoSourceJobId == null)
             .Where(j => (j.CreateTime >= from && j.CreateTime < to) || j.Costs.Any(c => c.CreatedAt >= from && c.CreatedAt < to));
         if (filter.Kind is { } kind)
             query = query.Where(j => j.Kind == kind);

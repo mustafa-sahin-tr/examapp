@@ -21,6 +21,7 @@ import {
   isBookImportActive,
   stageState,
 } from '../../models/book-import';
+import { AuthService } from '../../services/auth.service';
 import { BookImportService } from '../../services/book-import.service';
 import { BookImportReviewComponent } from './book-import-review.component';
 import { BookImportSetupComponent } from './book-import-setup.component';
@@ -65,6 +66,11 @@ export class BookImportDetailComponent implements OnInit {
   private readonly api = inject(BookImportService);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly auth = inject(AuthService);
+
+  /** Issue #1032: demo kaynağını yalnız admin seçer. */
+  readonly isAdmin = this.auth.hasRealmRole('Admin');
+  readonly demoSourceFailed = signal(false);
 
   readonly job = signal<BookImportJobDetail | null>(null);
   readonly loading = signal(true);
@@ -101,11 +107,22 @@ export class BookImportDetailComponent implements OnInit {
   readonly hasDrafts = computed(() =>
     (this.job()?.tests ?? []).some((t) => t.worksheetId != null && t.status !== 'Approved' && t.status !== 'Removed'),
   );
-  readonly canRetryJob = computed(() => this.job()?.status === 'Failed' || !!this.job()?.stalled);
+  /** Issue #1032: demo yeniden denenmez; öğretmen listeden yeni demo başlatır (başarısız demo hak yemez). */
+  readonly canRetryJob = computed(
+    () => !this.job()?.isDemo && (this.job()?.status === 'Failed' || !!this.job()?.stalled),
+  );
+  readonly demoFinished = computed(() => {
+    const job = this.job();
+    return !!job?.isDemo && (job.status === 'ReadyForReview' || job.status === 'Completed');
+  });
+  readonly canBeDemoSource = computed(() => {
+    const job = this.job();
+    return this.isAdmin && !!job && !job.isDemo && (job.status === 'ReadyForReview' || job.status === 'Completed');
+  });
   /** #1025: hatalı test soru aktarımı bittikten sonra yeniden denenir. */
   readonly canRetryTests = computed(() => {
     const job = this.job();
-    if (!job) return false;
+    if (!job || job.isDemo) return false;
     return (
       job.status === 'ReadyForReview' ||
       job.status === 'Completed' ||
@@ -185,6 +202,14 @@ export class BookImportDetailComponent implements OnInit {
   }
 
   /** #1025: hatalı / takılmış işi kaldığı yerden yeniden dene. */
+  toggleDemoSource(job: BookImportJobDetail): void {
+    this.demoSourceFailed.set(false);
+    this.api
+      .setDemoSource(job.id, !job.isDemoSource)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({ next: () => this.load(), error: () => this.demoSourceFailed.set(true) });
+  }
+
   retryJob(): void {
     this.run('retry', this.api.retry(this.id));
   }

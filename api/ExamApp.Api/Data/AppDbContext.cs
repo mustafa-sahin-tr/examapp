@@ -1410,6 +1410,9 @@ public class AppDbContext : DbContext
             // Issue #1052: mevcut işler kitap aktarımıdır.
             e.Property(j => j.Kind).HasDefaultValue(BookImportJobKind.Book);
             e.HasIndex(j => new { j.CreateUserId, j.CreateTime });
+            // Issue #1032: tek demo kaynağı; demo işi kaynağına bağlıdır.
+            e.HasIndex(j => j.IsDemoSource).IsUnique().HasFilter("\"IsDemoSource\" AND NOT \"IsDeleted\"");
+            e.HasOne<BookImportJob>().WithMany().HasForeignKey(j => j.DemoSourceJobId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<BookImportJobTest>(e =>
         {

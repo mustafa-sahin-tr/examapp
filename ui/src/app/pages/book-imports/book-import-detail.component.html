@@ -13,8 +13,25 @@
   } @else if (job(); as j) {
   <app-page-header icon="auto_stories" [title]="j.bookName"
     [description]="t('detail.subtitle', { status: t('status.' + j.status), date: (j.createdAt | date: 'd MMM HH:mm') })">
+    @if (j.isDemo) { <span class="bid-status bid-status--info">{{ t('demo.badge') }}</span> }
+    @if (canBeDemoSource()) {
+    <button mat-stroked-button type="button" (click)="toggleDemoSource(j)">
+      {{ t(j.isDemoSource ? 'demo.unsetSource' : 'demo.setSource') }}
+    </button>
+    }
     <span class="bid-status bid-status--{{ tone(j.status) }}">{{ t('status.' + j.status) }}</span>
   </app-page-header>
+
+  @if (demoSourceFailed()) {
+  <p class="bid-banner bid-banner--danger" role="alert">{{ t('demo.setSourceFailed') }}</p>
+  }
+  @if (demoFinished()) {
+  <div class="bid-banner" role="status">
+    <mat-icon aria-hidden="true">workspace_premium</mat-icon>
+    <span>{{ t('demo.finished') }}</span>
+    <a mat-flat-button class="bid-banner__action" routerLink="/plans">{{ t('demo.upgrade') }}</a>
+  </div>
+  }
 
   <ol class="bid-steps" [attr.aria-label]="t('detail.stages')">
     @for (stage of stages; track stage; let i = $index) {
@@ -38,23 +55,27 @@
     <mat-icon aria-hidden="true">error_outline</mat-icon>
     <span class="bid-banner__text">
       <strong>{{ t('detail.failed', { stage: t('stages.' + j.stage) }) }}</strong>
-      <span>{{ t('detail.failedHelp.' + j.stage) }}</span>
+      <span>{{ j.isDemo ? t('demo.failed') : t('detail.failedHelp.' + j.stage) }}</span>
       @if (j.error) {
       <small class="bid-banner__detail">{{ t('detail.errorDetail', { error: j.error }) }}</small>
       }
     </span>
+    @if (canRetryJob()) {
     <button mat-flat-button type="button" class="bid-banner__action" [disabled]="busy() !== null" (click)="retryJob()">
       <mat-icon aria-hidden="true">refresh</mat-icon>{{ t('detail.retry') }}
     </button>
+    }
   </div>
   }
   @if (j.stalled) {
   <div class="bid-banner bid-banner--warning" role="status">
     <mat-icon aria-hidden="true">schedule</mat-icon>
-    <span>{{ t('detail.stalled') }}</span>
+    <span>{{ j.isDemo ? t('demo.stalled') : t('detail.stalled') }}</span>
+    @if (canRetryJob()) {
     <button mat-flat-button type="button" class="bid-banner__action" [disabled]="busy() !== null" (click)="retryJob()">
       <mat-icon aria-hidden="true">refresh</mat-icon>{{ t('detail.retry') }}
     </button>
+    }
   </div>
   }
   @if (j.status === 'Cancelled') {
@@ -126,7 +147,7 @@
   }
 
   @if (reviewing()) {
-  <app-book-import-review [jobId]="j.id" [tests]="j.tests" [editable]="reviewEditable()" (changed)="load()" />
+  <app-book-import-review [jobId]="j.id" [tests]="j.tests" [editable]="reviewEditable()" [canFix]="!j.isDemo" (changed)="load()" />
   }
 
   <div class="bid-body">

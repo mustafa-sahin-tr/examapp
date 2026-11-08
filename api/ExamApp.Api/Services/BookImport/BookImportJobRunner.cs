@@ -57,6 +57,7 @@ public class BookImportJobRunner
     private readonly IFixedWindowCounterStore _budgetStore;
     private readonly LabelingAiOptions _aiOptions;
     private readonly IBackgroundJobClient? _jobs;
+    private readonly TimeSpan _demoStep;
     private readonly ILogger<BookImportJobRunner> _logger;
 
     public BookImportJobRunner(AppDbContext db, IApprovedTeacherGuard teacherGuard, IMinIoService minio, IPdfRasterizer rasterizer,
@@ -75,6 +76,7 @@ public class BookImportJobRunner
         _surveyBatchSize = Math.Clamp(configuration?.GetValue<int?>("BookImport:SurveyBatchSize") ?? DefaultSurveyBatchSize, 1, 20);
         _detectModel = configuration?["BookImport:DetectModel"] is { Length: > 0 } model ? model : DefaultDetectModel;
         _maxJobCostUsd = MaxJobCost(configuration);
+        _demoStep = TimeSpan.FromMilliseconds(Math.Max(0, configuration?.GetValue<int?>("BookImport:DemoStepMilliseconds") ?? BookImportDemoReplay.DefaultStepMilliseconds));
         _budgetStore = budgetStore ?? new InMemoryFixedWindowCounterStore();
         _aiOptions = aiOptions?.Value ?? new LabelingAiOptions();
         _jobs = jobs;
@@ -102,6 +104,13 @@ public class BookImportJobRunner
         {
             Fail(job, OwnerNotApprovedMessage);
             await _db.SaveChangesAsync();
+            return;
+        }
+
+        // Issue #1032: demo hiçbir AI aşamasına girmez; kuyruğa nereden düşerse düşsün (onay, yeniden deneme) burada ayrılır.
+        if (job.DemoSourceJobId is not null)
+        {
+            await new BookImportDemoReplay(_db, _demoStep, _logger).RunAsync(job);
             return;
         }
 

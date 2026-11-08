@@ -25,13 +25,35 @@
     "quotaReached": "Bu ayki kitap aktarım hakkınız doldu.",
     "generic": "Aktarım başlatılamadı. Tekrar deneyin."
   },
+  "demo": {
+    "badge": "Demo",
+    "sourceBadge": "Demo kaynağı",
+    "title": "Örnek kitapla dene",
+    "body": "Kitap aktarımını \"{{book}}\" kitabından 5 soruyla deneyin. Sayfalar, kurulum, sorular ve inceleme gerçek ekranlarda ilerler; hakkınızdan düşmez.",
+    "bodyNoBook": "Kitap aktarımını örnek bir kitaptan 5 soruyla deneyin.",
+    "used": "Demo hakkı: {{used}} / {{limit}}",
+    "start": "Örnek kitapla dene",
+    "continue": "Demoya dön",
+    "upgrade": "Planları gör",
+    "unavailable": "Örnek kitap şu an hazır değil.",
+    "limitReached": "Demo hakkınız doldu. Kendi kitabınızı aktarmak için planınızı yükseltin.",
+    "startFailed": "Demo başlatılamadı. Tekrar deneyin.",
+    "subtitle": "Kitap aktarımını örnek bir kitapla deneyin. Kendi kitabınızı aktarmak için plan gerekir.",
+    "setupIntro": "Testi, sayfa aralığını ve cevap anahtarını inceleyin. Onaylayınca sorular aktarılır; demo hakkınızdan başka bir şey düşmez.",
+    "setupNote": "Bu bir demo: kurulum örnek kitaptan hazır geldi, burada yaptığınız değişiklikler kaydedilmez.",
+    "finished": "Demo tamamlandı. Soruları inceleyip onaylarsanız size özel kopya olarak kalır. Kendi kitabınızı aktarmak için planınızı yükseltin.",
+    "failed": "Demo tamamlanamadı. Aktarımlar sayfasından yeniden başlatabilirsiniz; hakkınızdan düşmez.",
+    "stalled": "Demo ilerlemiyor. İptal edip Aktarımlar sayfasından yeniden başlatabilirsiniz.",
+    "setSource": "Demo kaynağı yap",
+    "unsetSource": "Demo kaynağından çıkar",
+    "setSourceFailed": "Bu aktarım demo kaynağı yapılamadı: sorusu olan bir test yok."
+  },
   "quota": {
     "title": "Aylık hak",
     "used": "Bu ay {{used}} / {{limit}} kitap",
     "resets": "{{date}} tarihinde yenilenir",
     "blocked": "Bu ayki hakkınız doldu.",
-    "notInPlan": "Planınız kitap aktarımı içermiyor.",
-    "demoSoon": "Örnek bir kitapla demo yakında burada olacak."
+    "notInPlan": "Planınız kitap aktarımı içermiyor."
   },
   "hint": {
     "title": "Nasıl çalışır?",

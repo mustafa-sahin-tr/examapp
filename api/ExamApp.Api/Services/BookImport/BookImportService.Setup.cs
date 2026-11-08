@@ -75,7 +75,8 @@ public sealed partial class BookImportService
             NoAnswerKey = summary.NoAnswerKey,
             AiCostUsd = job.AiCostUsd,
             SchemaRevision = summary.SchemaRevision,
-            ExistingBook = job.BookId is null ? await FindBookByNameAsync(job.BookName, ct) : null,
+            IsDemo = job.DemoSourceJobId is not null,
+            ExistingBook = job.BookId is null && job.DemoSourceJobId is null ? await FindBookByNameAsync(job.BookName, ct) : null,
             Tests = tests.Select(t => new BookImportSetupTestDto
             {
                 Order = t.Order, Unit = t.Unit, TestNo = t.TestNo, Title = t.Title, Minutes = t.Minutes, FileFrom = t.FileFrom,
@@ -96,6 +97,8 @@ public sealed partial class BookImportService
             return new(ConfirmSetupError.NotFound);
         if (!IsAwaitingSetup(job) || BookSetupSummary.Parse(job.SetupJson) is not { } summary)
             return new(ConfirmSetupError.InvalidState);
+        if (job.DemoSourceJobId is not null)
+            return await ConfirmDemoSetupAsync(id, ct);
 
         var jobTests = await _db.BookImportJobTests.AsNoTracking().Where(t => t.JobId == id).ToDictionaryAsync(t => t.Order, ct);
         var bookName = request.BookName?.Trim() ?? string.Empty;

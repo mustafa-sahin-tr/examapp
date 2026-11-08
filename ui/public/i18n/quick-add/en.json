@@ -48,7 +48,8 @@
     "processing": "Processing",
     "ready": "Ready for review",
     "failed": "Failed",
-    "cancelled": "Cancelled"
+    "cancelled": "Cancelled",
+    "completed": "Completed"
   },
   "detail": {
     "back": "My quick adds",
@@ -72,7 +73,9 @@
     "saved": "{{count}} drafts",
     "keyAnswers": "Answer key: {{count}} answers",
     "pending": "Waiting",
-    "photoFailed": "This photo could not be processed."
+    "photoFailed": "This photo could not be processed.",
+    "completed": "All photos reviewed. Approved questions are in your question pool.",
+    "toBank": "Go to question pool"
   },
   "flags": {
     "countMismatch": "The answer key has {{expected}} answers but {{found}} questions were found; the answers were not applied.",

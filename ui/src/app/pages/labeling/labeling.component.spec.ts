@@ -19,6 +19,7 @@ import { LabelingService } from '../../services/labeling.service';
 import { GradesService } from '../../services/grades.service';
 import { LabelingBookService } from '../../services/labeling-book.service';
 import { BookImportService } from '../../services/book-import.service';
+import { QuickAddService } from '../../services/quick-add.service';
 import { BookImportJobDetail, BookImportJobTest } from '../../models/book-import';
 import { LabelingBook, LabelingBookPageInfo } from '../../models/labeling-book';
 import { LabelingCropDuplicateDialogComponent } from './labeling-crop-duplicate-dialog/labeling-crop-duplicate-dialog.component';
@@ -196,6 +197,7 @@ describe('LabelingComponent', () => {
     /** `setup` öncesi değiştirilebilir: kitap listesi yanıtı (varsayılan boş → kitap seçimi gizli). */
     let booksResponse: Observable<LabelingBook[]>;
     let bookImportsApi: MockedObject<BookImportService>;
+    let quickAddApi: MockedObject<QuickAddService>;
     /** `setup` öncesi değiştirilebilir: açılış adresi (#1023 düzeltme modu sorgu parametreleri). */
     let routeUrl: string;
     /** `setup` içinde mock'lar kurulduktan sonra, bileşen oluşmadan önce çağrılır. */
@@ -244,6 +246,11 @@ describe('LabelingComponent', () => {
             pageImage: vi.fn().mockName('BookImportService.pageImage'),
             replacePage: vi.fn().mockName('BookImportService.replacePage'),
         } as unknown as MockedObject<BookImportService>;
+        quickAddApi = {
+            get: vi.fn().mockName('QuickAddService.get'),
+            photo: vi.fn().mockName('QuickAddService.photo'),
+            replacePage: vi.fn().mockName('QuickAddService.replacePage'),
+        } as unknown as MockedObject<QuickAddService>;
         beforeCreate?.();
         TestBed.configureTestingModule({
             imports: [LabelingComponent, translocoTestingModule({ langs: { 'labeling/tr': labelingTr } })],
@@ -251,6 +258,7 @@ describe('LabelingComponent', () => {
                 provideNoopAnimations(),
                 provideRouter([]),
                 { provide: BookImportService, useValue: bookImportsApi },
+                { provide: QuickAddService, useValue: quickAddApi },
                 { provide: QuestionDetectorService, useValue: detector },
                 { provide: LabelingBookService, useValue: booksApi },
                 { provide: LabelingService, useValue: labelingApi },
@@ -1934,6 +1942,31 @@ describe('LabelingComponent', () => {
             expect(questions.map((q) => [q.x, q.correctOptionIndex, q.options.length])).toEqual([[10, -1, 4], [10, 1, 4]]);
             expect(labelingApi.saveToBank).not.toHaveBeenCalled();
             expect(navigate).toHaveBeenCalledWith(['/book-imports', 'j1']);
+        });
+
+        // Issue #1054: hızlı ekleme fotoğrafı kendi uçlarından açılır ve kaydedilir, kitapsızdır.
+        it('fix_QuickAdd_UsesQuickAddEndpointsAndGoesBackToTheJob', async () => {
+            routeUrl = '/?bookImport=q1&test=3&page=1&kind=QuickAdd';
+            await setupWith(() => {
+                quickAddApi.get.mockReturnValue(of({ ...job, id: 'q1', kind: 'QuickAdd', bookId: null, bookName: 'Hızlı ekleme', tests: [{ ...job.tests[0], title: 'Fotoğraf 1' }] }));
+                quickAddApi.photo.mockReturnValue(of(new Blob(['jpeg'], { type: 'image/jpeg' })));
+                quickAddApi.replacePage.mockReturnValue(of({ saved: 1, duplicates: 0, removed: 1, answerless: 0 }));
+            });
+            const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+            expect(quickAddApi.photo).toHaveBeenCalledWith('q1', 1);
+            expect(bookImportsApi.get).not.toHaveBeenCalled();
+            expect(component.bookId()).toBeNull();
+            expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid="labeling-fix"]')?.textContent).toContain('Hızlı ekleme düzeltmesi: Fotoğraf 1');
+            expect((fixture.nativeElement as HTMLElement).querySelector('.lb-fix a')?.getAttribute('href')).toBe('/quick-add/q1');
+
+            selector().regions.set([mcq('q1', 1)]);
+            fixture.detectChanges();
+            (fixture.nativeElement.querySelector('[data-testid="labeling-fix-save"]') as HTMLButtonElement).click();
+
+            expect(quickAddApi.replacePage.mock.calls[0].slice(0, 3)).toEqual(['q1', 3, 1]);
+            expect(bookImportsApi.replacePage).not.toHaveBeenCalled();
+            expect(navigate).toHaveBeenCalledWith(['/quick-add', 'q1']);
         });
 
         it('fix_EmptyPage_AsksBeforeDeletingTheDrafts', async () => {

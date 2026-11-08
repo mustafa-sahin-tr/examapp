@@ -26,7 +26,8 @@
     color: var(--ms-info-text-weak);
   }
 
-  &--ready {
+  &--ready,
+  &--completed {
     background: var(--ms-success-surface-weak);
     color: var(--ms-success-text-weak);
   }

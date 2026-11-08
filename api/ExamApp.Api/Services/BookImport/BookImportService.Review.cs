@@ -23,7 +23,8 @@ public enum BookImportReviewResult
 /// <summary>
 /// Issue #1023: inceleme ve onay. Aktarımın oluşturduğu test ve sorular taslaktır (<see cref="DraftQueryFilter"/>); onay
 /// taslak bayrağını kaldırır (öğretmen paylaşımı Private ve soru bankası paylaşımı olduğu gibi kalır), silme yalnız o testin
-/// taslak testini ve taslak sorularını siler. İşlemler yalnız sahibi / Admin için ve iş incelemedeyken.
+/// taslak testini ve taslak sorularını siler. İşlemler yalnız sahibi / Admin için ve iş incelemedeyken. #1054: hızlı ekleme test
+/// değil soru üretir; onayda sorular etkinleşir, iç taslak test bağlantılarıyla silinir.
 /// </summary>
 public sealed partial class BookImportService
 {
@@ -96,7 +97,7 @@ public sealed partial class BookImportService
         if (await DraftQuestions(test.WorksheetId!.Value).AnyAsync(q => q.CorrectAnswerId == null, ct))
             return BookImportReviewResult.Answerless;
 
-        await ApproveAsync(test, ct);
+        await ApproveAsync(owner, test, ct);
         await CompleteIfReviewedAsync(id, ct);
         return BookImportReviewResult.Ok;
     }
@@ -125,7 +126,7 @@ public sealed partial class BookImportService
                 result.Skipped.Add(new BookImportSkippedTestDto(test.Id, SkipAnswerless));
                 continue;
             }
-            await ApproveAsync(test, ct);
+            await ApproveAsync(owner, test, ct);
             result.Approved.Add(test.Id);
         }
         await CompleteIfReviewedAsync(id, ct);
@@ -199,7 +200,7 @@ public sealed partial class BookImportService
         _db.Questions.IgnoreQueryFilters([DraftQueryFilter.Key])
             .Where(q => q.IsDraft && _db.TestQuestions.Any(wq => wq.TestId == worksheetId && wq.QuestionId == q.Id && !wq.IsDeleted));
 
-    private async Task ApproveAsync(BookImportJobTest test, CancellationToken ct)
+    private async Task ApproveAsync(BookImportOwner owner, BookImportJobTest test, CancellationToken ct)
     {
         var worksheetId = test.WorksheetId!.Value;
         var strategy = _db.Database.CreateExecutionStrategy();
@@ -207,9 +208,28 @@ public sealed partial class BookImportService
         {
             await using var tx = await _db.Database.BeginTransactionAsync(ct);
             await DraftQuestions(worksheetId).ExecuteUpdateAsync(s => s.SetProperty(q => q.IsDraft, false), ct);
-            await _db.Worksheets.IgnoreQueryFilters([DraftQueryFilter.Key])
-                .Where(w => w.Id == worksheetId)
-                .ExecuteUpdateAsync(s => s.SetProperty(w => w.IsDraft, false), ct);
+            if (owner.Kind == BookImportJobKind.QuickAdd)
+            {
+                var now = DateTime.UtcNow;
+                await _db.TestQuestions.IgnoreQueryFilters([DraftQueryFilter.Key])
+                    .Where(wq => wq.TestId == worksheetId && !wq.IsDeleted)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(wq => wq.IsDeleted, true)
+                        .SetProperty(wq => wq.DeleteTime, now)
+                        .SetProperty(wq => wq.DeleteUserId, owner.UserId), ct);
+                await _db.Worksheets.IgnoreQueryFilters([DraftQueryFilter.Key])
+                    .Where(w => w.Id == worksheetId && w.IsDraft)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(w => w.IsDeleted, true)
+                        .SetProperty(w => w.DeleteTime, now)
+                        .SetProperty(w => w.DeleteUserId, owner.UserId), ct);
+            }
+            else
+            {
+                await _db.Worksheets.IgnoreQueryFilters([DraftQueryFilter.Key])
+                    .Where(w => w.Id == worksheetId)
+                    .ExecuteUpdateAsync(s => s.SetProperty(w => w.IsDraft, false), ct);
+            }
             test.Status = BookImportTestStatus.Approved;
             await _db.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);

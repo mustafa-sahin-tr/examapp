@@ -62,7 +62,8 @@ import { LabelingBook, LabelingBookPageInfo, LabelingCropConflict } from '../../
 import { LabelingBookService } from '../../services/labeling-book.service';
 import { AuthService } from '../../services/auth.service';
 import { BookImportService } from '../../services/book-import.service';
-import { BookImportPageFix, bookImportTestName } from '../../models/book-import';
+import { QuickAddService } from '../../services/quick-add.service';
+import { BookImportJobKind, BookImportPageFix, bookImportTestName } from '../../models/book-import';
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
@@ -148,6 +149,7 @@ export class LabelingComponent {
   private readonly booksApi = inject(LabelingBookService);
   private readonly auth = inject(AuthService);
   private readonly bookImports = inject(BookImportService);
+  private readonly quickAdd = inject(QuickAddService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -1057,14 +1059,14 @@ export class LabelingComponent {
 
   private submitFix(fix: LabelingFixTarget, questions: LabelingBankQuestion[]): void {
     this.fixSaving.set(true);
-    this.bookImports
+    (fix.kind === 'QuickAdd' ? this.quickAdd : this.bookImports)
       .replacePage(fix.jobId, fix.testId, fix.filePage, questions)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {
           this.fixSaving.set(false);
           this.snackBar.open(this.fixSavedMessage(result), this.tr('ok'), { duration: 8000 });
-          void this.router.navigate(['/book-imports', fix.jobId]);
+          void this.router.navigate([fix.kind === 'QuickAdd' ? '/quick-add' : '/book-imports', fix.jobId]);
         },
         error: (error) => {
           this.fixSaving.set(false);
@@ -1093,7 +1095,11 @@ export class LabelingComponent {
     }
     this.fixLoading.set(true);
     this.fixError.set(false);
-    this.bookImports
+    // #1054: hızlı ekleme fotoğrafı kendi uçlarından gelir; görseli JPEG, kitap kaydı yok.
+    const kind: BookImportJobKind = params.get('kind') === 'QuickAdd' ? 'QuickAdd' : 'Book';
+    const jobs = kind === 'QuickAdd' ? this.quickAdd : this.bookImports;
+    const image = (photo: number) => (kind === 'QuickAdd' ? this.quickAdd.photo(jobId, photo) : this.bookImports.pageImage(jobId, photo));
+    jobs
       .get(jobId)
       .pipe(
         switchMap((job) => {
@@ -1101,7 +1107,7 @@ export class LabelingComponent {
           if (!test) {
             return throwError(() => new Error('book import test not found'));
           }
-          return this.bookImports.pageImage(jobId, filePage).pipe(map((blob) => ({ job, test, blob })));
+          return image(filePage).pipe(map((blob) => ({ job, test, blob })));
         }),
         takeUntilDestroyed(this.destroyRef)
       )
@@ -1114,7 +1120,8 @@ export class LabelingComponent {
             testId,
             filePage,
             bookName: job.bookName,
-            testName: bookImportTestName(test),
+            testName: kind === 'QuickAdd' ? (test.title ?? '') : bookImportTestName(test),
+            kind,
           };
           void this.hashFile(file).then((pageId) => {
             this.fixLoading.set(false);
@@ -1534,6 +1541,7 @@ export interface LabelingFixTarget {
   filePage: number;
   bookName: string;
   testName: string;
+  kind: BookImportJobKind;
 }
 
 function roundBox(box: LabelingBankBox): LabelingBankBox {

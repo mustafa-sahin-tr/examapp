@@ -38,7 +38,8 @@
     "emptyTitle": "Sayfanın taslakları silinsin mi?",
     "emptyMessage": "Sayfada soru yok. Kaydedilirse {{page}}. sayfadaki taslak sorular testten çıkarılır.",
     "emptyConfirm": "Taslakları sil",
-    "cancel": "Vazgeç"
+    "cancel": "Vazgeç",
+    "bannerQuickAdd": "Hızlı ekleme düzeltmesi: {{test}}. Kaydedince bu fotoğrafın taslak soruları bunlarla değişir."
   },
   "bank": {
     "save": "Havuza kaydet",

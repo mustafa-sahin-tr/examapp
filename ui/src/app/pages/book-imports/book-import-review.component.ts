@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -11,7 +11,9 @@ import { TranslocoDirective } from '@jsverse/transloco';
 
 import {
   ApproveAllBookImportResult,
+  BookImportJobKind,
   BookImportJobTest,
+  BookImportReviewApi,
   BookImportReviewQuestion,
   bookImportTestName,
   isApprovable,
@@ -28,6 +30,8 @@ export const ANSWER_LETTERS = ['A', 'B', 'C', 'D', 'E'];
  * ("cevaplanan x/y"). Cevapsız sorusu olan test onaylanmaz; "Sorunsuz testleri onayla" onay ister ve atlananları nedeniyle
  * bildirir. Onaylanan test etkinleşir, öğretmen paylaşımı Private kalır. "İşaretlemede düzelt" testin bir sayfasını işaretleme
  * ekranında açar (inceleme işaretinde geçen sayfalar bayraklı); orada kaydedilen sorular o sayfanın taslaklarının yerine geçer.
+ * #1054: hızlı ekleme de aynı ekranı kullanır: satır = fotoğraf (küçük resimli), uçlar `reviewApi`, metinler `reviewQuickAdd`,
+ * "İşaretlemede düzelt" yalnız `canFix` iken (işaretleme ekranı öğretmene kapalı).
  */
 @Component({
   selector: 'app-book-import-review',
@@ -45,13 +49,18 @@ export const ANSWER_LETTERS = ['A', 'B', 'C', 'D', 'E'];
   styleUrls: ['./book-import-review.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class BookImportReviewComponent {
-  private readonly api = inject(BookImportService);
+export class BookImportReviewComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
+  private readonly defaultApi = inject(BookImportService);
 
   readonly jobId = input.required<string>();
   readonly tests = input.required<BookImportJobTest[]>();
   readonly editable = input(true);
+  readonly kind = input<BookImportJobKind>('Book');
+  readonly reviewApi = input<BookImportReviewApi | null>(null);
+  readonly canFix = input(true);
+  /** Fotoğraf sırası → küçük resim (hızlı ekleme). */
+  readonly thumbs = input<Record<number, string>>({});
   /** Bir işlem testlerin durumunu değiştirdi: takip ekranı yeniden yüklenir. */
   readonly changed = output<void>();
 
@@ -75,7 +84,27 @@ export class BookImportReviewComponent {
 
   readonly isApprovable = isApprovable;
 
-  readonly fixParams = labelingFixParams;
+  ngOnInit(): void {
+    // Hızlı eklemede az fotoğraf var ve hepsi onaylanır: bütün satırlar görünür.
+    if (this.kind() === 'QuickAdd') this.onlyAttention.set(false);
+  }
+
+  private get api(): BookImportReviewApi {
+    return this.reviewApi() ?? this.defaultApi;
+  }
+
+  /** Türe göre değişen metnin anahtarı. */
+  label(key: string): string {
+    return `${this.kind() === 'QuickAdd' ? 'reviewQuickAdd' : 'review'}.${key}`;
+  }
+
+  fixParams(testId: number, filePage: number): Record<string, string | number> {
+    return labelingFixParams(this.jobId(), testId, filePage, this.kind());
+  }
+
+  thumb(test: BookImportJobTest): string {
+    return this.thumbs()[test.fileFrom ?? test.order] ?? '';
+  }
 
   /** Testin sayfaları; inceleme işaretinde geçenler `flagged`. */
   fixPages(test: BookImportJobTest): { page: number; flagged: boolean }[] {
@@ -88,6 +117,7 @@ export class BookImportReviewComponent {
   }
 
   testName(test: BookImportJobTest): string {
+    if (this.kind() === 'QuickAdd') return test.title ?? `${test.order}`;
     return bookImportTestName(test);
   }
 
@@ -163,7 +193,7 @@ export class BookImportReviewComponent {
       });
   }
 
-  private run(id: number, request: ReturnType<BookImportService['approveTest']>, done: () => void): void {
+  private run(id: number, request: ReturnType<BookImportReviewApi['approveTest']>, done: () => void): void {
     this.busy.set(id);
     this.error.set(null);
     request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({

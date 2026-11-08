@@ -48,7 +48,8 @@
     "processing": "İşleniyor",
     "ready": "İncelemeye hazır",
     "failed": "Başarısız",
-    "cancelled": "İptal edildi"
+    "cancelled": "İptal edildi",
+    "completed": "Tamamlandı"
   },
   "detail": {
     "back": "Hızlı eklemelerim",
@@ -72,7 +73,9 @@
     "saved": "{{count}} taslak",
     "keyAnswers": "Cevap anahtarı: {{count}} cevap",
     "pending": "Bekliyor",
-    "photoFailed": "Bu fotoğraf işlenemedi."
+    "photoFailed": "Bu fotoğraf işlenemedi.",
+    "completed": "Bütün fotoğraflar incelendi. Onaylanan sorular soru havuzunuzda.",
+    "toBank": "Soru havuzuna git"
   },
   "flags": {
     "countMismatch": "Cevap anahtarındaki cevap sayısı ({{expected}}) bulunan soru sayısıyla ({{found}}) uyuşmuyor; cevaplar uygulanmadı.",

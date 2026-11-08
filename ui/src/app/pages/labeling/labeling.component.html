@@ -25,8 +25,8 @@
   <!-- #1023: kitap aktarımının bir sayfası düzeltiliyor; kayıt o sayfanın taslaklarının yerine geçer. -->
   <div class="lb-fix" role="status" data-testid="labeling-fix">
     <mat-icon aria-hidden="true">edit_square</mat-icon>
-    <span class="lb-fix__text">{{ t('fix.banner', { book: f.bookName, test: f.testName, page: f.filePage }) }}</span>
-    <a mat-button [routerLink]="['/book-imports', f.jobId]">{{ t('fix.back') }}</a>
+    <span class="lb-fix__text">{{ t(f.kind === 'QuickAdd' ? 'fix.bannerQuickAdd' : 'fix.banner', { book: f.bookName, test: f.testName, page: f.filePage }) }}</span>
+    <a mat-button [routerLink]="[f.kind === 'QuickAdd' ? '/quick-add' : '/book-imports', f.jobId]">{{ t('fix.back') }}</a>
   </div>
   } @else if (fixLoading()) {
   <div class="lb-state" role="status">

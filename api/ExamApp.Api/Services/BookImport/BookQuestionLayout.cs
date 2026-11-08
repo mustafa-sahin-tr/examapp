@@ -16,6 +16,12 @@ public readonly record struct LayoutBox(int X, int Y, int Width, int Height)
 /// <summary>Tespit edilen soru kutusu ve şıkları.</summary>
 public sealed record LayoutQuestion(LayoutBox Box, IReadOnlyList<LayoutBox> Options);
 
+/// <summary>Sorudan ayrı çerçevedeki uyaran (<c>info_box</c>); <paramref name="SharedQuestions"/> kaç soruya ortak olduğu.</summary>
+public sealed record LayoutStimulus(LayoutBox Box, int SharedQuestions = 1);
+
+/// <summary>Soruların ortak pasajı; <paramref name="QuestionIndexes"/> okuma sırasındaki soru listesine göre.</summary>
+public sealed record LayoutPassage(LayoutBox Box, IReadOnlyList<int> QuestionIndexes);
+
 /// <summary>
 /// Issue #1022: tespit edilen soru / şık kutularını kayda hazırlar. Kurallar el ile aktarım aracındaki Python portuyla
 /// (<c>process_bts.py</c>) aynı; şık hizalama işaretleme ekranının "Cevapları Hizala"sı (<c>alignAnswers</c>):
@@ -34,6 +40,54 @@ public static class BookQuestionLayout
         questions.OrderBy(q => q.Box.Width > pageWidth * 0.6 || q.Box.CenterX < pageWidth / 2d ? 0 : 1)
             .ThenBy(q => q.Box.Y)
             .ToList();
+
+    /// <summary>
+    /// Issue #1062: uyaranları altlarındaki soruya bağlar. Sahip, aynı sütunda (yatay örtüşme, darın %30'u) kutunun tepesinin
+    /// altında başlayan ilk sorudur; kutu sahibin tepesinde kesilir. Bir sorunun birden çok kutusu tek pasajda birleşir, ortak
+    /// kutu sonraki sorulara da bağlanır. Soruyla örtülen, altında soru olmayan ya da kesince çok ince kalan kutu atlanır.
+    /// </summary>
+    public static List<LayoutPassage> AttachPassages(IReadOnlyList<LayoutQuestion> ordered, IEnumerable<LayoutStimulus> stimuli, int pageWidth)
+    {
+        var scale = pageWidth / BaseWidth;
+        var topTolerance = 10 * scale;
+        var minHeight = 30 * scale;
+        var byOwner = new SortedDictionary<int, (LayoutBox Box, int Shared)>();
+        foreach (var stimulus in stimuli)
+        {
+            var box = stimulus.Box;
+            var column = ordered.Select((q, index) => (q.Box, index))
+                .Where(q => Math.Min(q.Box.Right, box.Right) - Math.Max(q.Box.X, box.X) > 0.3 * Math.Min(q.Box.Width, box.Width))
+                .OrderBy(q => q.Box.Y)
+                .ToList();
+            if (column.Any(q => q.Box.Y <= box.Y + topTolerance && q.Box.Bottom >= box.Y + 0.6 * box.Height))
+                continue;
+            var owner = column.FirstOrDefault(q => q.Box.Y > box.Y + topTolerance);
+            if (owner == default)
+                continue;
+            var bottom = Math.Min(box.Bottom, owner.Box.Y);
+            if (bottom - box.Y < minHeight)
+                continue;
+            var clipped = box with { Height = bottom - box.Y };
+            var shared = Math.Max(stimulus.SharedQuestions, 1);
+            byOwner[owner.index] = byOwner.TryGetValue(owner.index, out var current)
+                ? (Union(current.Box, clipped), Math.Max(current.Shared, shared))
+                : (clipped, shared);
+        }
+        // Ortak kutu kendi pasajı olan soruya ya da listenin dışına taşmaz.
+        return byOwner.Select(entry =>
+        {
+            var indexes = new List<int> { entry.Key };
+            for (var next = entry.Key + 1; next < ordered.Count && indexes.Count < entry.Value.Shared && !byOwner.ContainsKey(next); next++)
+                indexes.Add(next);
+            return new LayoutPassage(entry.Value.Box, indexes);
+        }).ToList();
+    }
+
+    private static LayoutBox Union(LayoutBox a, LayoutBox b)
+    {
+        var (x, y) = (Math.Min(a.X, b.X), Math.Min(a.Y, b.Y));
+        return new LayoutBox(x, y, Math.Max(a.Right, b.Right) - x, Math.Max(a.Bottom, b.Bottom) - y);
+    }
 
     /// <summary>
     /// Tespit bazen şıksız bir kök ve hemen altında şıkları ikinci kutu olarak verir: ikisi birleştirilir (okuma sırasındaki

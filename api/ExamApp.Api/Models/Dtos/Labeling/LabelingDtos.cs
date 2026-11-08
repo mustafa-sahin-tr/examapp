@@ -51,6 +51,11 @@ public class PredictionDto
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? InteractionType { get; set; }
 
+    /// <summary>Issue #1062: <c>info_box</c> birden çok soruya ortaksa soru sayısı ("1 - 2. soruları ..."); tek soruda null.</summary>
+    [JsonPropertyName("shared_questions")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? SharedQuestions { get; set; }
+
     /// <summary>
     /// Issue #581: basılı cevap maskeleri (bloğa göre, sayfa pikseli) — manuel kayıtta saklanır, sayfa yeniden açılınca geri
     /// gelir. Yalnız üst düzey kutu; en çok <see cref="Helpers.QuestionImageMasks.MaxMasks"/>, sonlu, x/y ≥ 0, kenar ≥ 1,

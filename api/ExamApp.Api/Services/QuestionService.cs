@@ -868,6 +868,11 @@ public class QuestionService : IQuestionService
                 var passageLookup = passages
                     .Where(p => !string.IsNullOrWhiteSpace(p.Title))
                     .ToDictionary(p => p.Title!, p => p, StringComparer.OrdinalIgnoreCase);
+                foreach (var (dto, passage) in soruDto.Passages.Zip(passages))
+                {
+                    if (dto.IdIsInternal)
+                        passage.Title = null;
+                }
 
                 // Sorular için crop ve upload işlemi
                 foreach (var questionDto in soruDto.Questions)

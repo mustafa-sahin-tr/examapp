@@ -238,3 +238,13 @@ aktarım aracındaki Python portu referanstır (#1022).
 - **İşaretlemede düzelt (#1054):** `PUT {id}/tests/{testId}/pages/{filePage}/questions`, yalnız Admin ve QuestionTrainer; `/labeling` ve
   `LabelingController` öğretmene kapalı olduğu için düğme de öğretmene görünmez (karar: kullanıcı, 2026-11-08). Öğretmen fotoğrafın taslaklarını silip
   yeniden yükler. Bağlantı `/labeling?bookImport=&test=&page=&kind=QuickAdd`. Düzeltmede anahtar yalnız sayı anahtar uzunluğuna eşitse uygulanır.
+
+## Sorudan ayrı çerçevedeki uyaranlar (#1062)
+
+Soru kutusunun üstünde kendi çerçevesinde duran metin, şiir, tablo, görsel ya da kural (`info_box`) pasaj olarak kaydedilir; sorunun
+kırpımı değişmez. `BookQuestionLayout.AttachPassages` kutuyu aynı sütunda altındaki ilk soruya bağlar, sahibin tepesinde keser, bir
+sorunun birden çok kutusunu tek pasajda birleştirir. "1 - 2. soruları ..." başlıklı kutuda Claude `shared_questions` döner, aynı pasaj
+sonraki sorulara da bağlanır. İnceleme ekranı pasajı sorunun üstünde gösterir.
+
+Bilinen sınırlar: işaretleme ekranından sayfa düzeltmesi (`ReplacingQuestionIds`) pasaj taşımaz; sonraki sayfadaki soruya ait kutu
+bağlanmaz. Mevcut Puan BTS kitaplarına 97 pasaj elle eklendi (102 soru); araç ve plan harici diskte `book-import/info-box-passages/`.

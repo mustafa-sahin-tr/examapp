@@ -49,6 +49,7 @@ public sealed partial class BookImportService
                 Answers = wq.Question.Answers.Where(a => !a.IsDeleted).OrderBy(a => a.Order).ThenBy(a => a.Id).Select(a => a.Id).ToList(),
                 wq.Question.CorrectAnswerId,
                 wq.Question.ImageUrl,
+                PassageImageUrl = wq.Question.Passage != null ? wq.Question.Passage.ImageUrl : null,
             })
             .AsAsyncEnumerable()
             .Select(q => new BookImportReviewQuestionDto
@@ -58,6 +59,7 @@ public sealed partial class BookImportService
                 FilePage = q.Source?.FilePage ?? 0,
                 OptionCount = q.Answers.Count,
                 ImageUrl = q.ImageUrl,
+                PassageImageUrl = q.PassageImageUrl,
                 AnswerIndex = q.CorrectAnswerId is { } correct && q.Answers.IndexOf(correct) is var index and >= 0 ? index : null,
             })
             .ToListAsync(ct);

@@ -283,6 +283,7 @@
     "loading": "Sorular yükleniyor…",
     "answered": "Cevaplanan {{done}}/{{total}}",
     "question": "Soru {{number}} · sayfa {{page}}",
+    "passage": "Soru {{number}} pasajı",
     "answerFor": "Soru {{number}} cevabı",
     "fix": "İşaretlemede düzelt",
     "fixPage": "Sayfa {{page}}",
@@ -373,6 +374,7 @@
     "removeConfirm": "Soruları sil",
     "counts": "{{saved}} soru",
     "question": "Soru {{number}}",
+    "passage": "Soru {{number}} pasajı",
     "fixPage": "Fotoğraf {{page}}",
     "fixPageFlagged": "Fotoğraf {{page}} · işaretli",
     "footer": "Onaylanan sorular soru havuzunuza eklenir ve yalnız size açıktır (özel). Test oluşturulmaz."

@@ -407,6 +407,21 @@ public class LabelingBankServiceBookTests : IDisposable
         Request(png, _seed.BookId, 12).Questions.Select(q => { q.CorrectOptionIndex = correct; return q; }).ToList());
 
     [Fact]
+    public async Task Import_LinksSharedPassage_ToItsQuestions_WithAnInternalKey()
+    {
+        await using var ctx = _db.NewContext();
+        var passage = new LabelingImportPassage(new LabelingBankBoxDto { X = 10, Y = 10, Width = 40, Height = 30 }, [0, 1]);
+
+        await NewService(ctx).SaveImportedPageAsync(ImportRequest(GradientPng()) with { Passages = [passage] }, ActingUserId);
+
+        var bulk = _captured.ShouldNotBeNull();
+        var saved = bulk.Passages.ShouldHaveSingleItem();
+        saved.IdIsInternal.ShouldBeTrue();
+        saved.Width.ShouldBe(40);
+        bulk.Questions.ShouldAllBe(q => q.PassageId == saved.Id);
+    }
+
+    [Fact]
     public async Task Import_SavesDraftQuestions_WithBookSource_WithoutQuotaOrPageClaim()
     {
         await using var ctx = _db.NewContext();

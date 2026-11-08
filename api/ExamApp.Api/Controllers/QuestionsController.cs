@@ -327,6 +327,32 @@ public class QuestionsController : BaseController
         return Ok(await _learningOutcomes.GetForQuestionAsync(id, HttpContext.RequestAborted));
     }
 
+    // GET /api/questions/{id}/classifier-tags — issue #1047: sınıflandırıcının kazanım / beceri seçebileceği kapalı listeler
+    // (sınıf + ders kazanımları, beceriler; bağı zaten olan tür boş gelir). Servisten servise; ?gradeId= konunun sınıfı yoksa.
+    [HttpGet("{id}/classifier-tags")]
+    [Authorize(Policy = QuestionAccessPolicies.AdminOrService)]
+    public async Task<IActionResult> GetClassifierTagOptions(
+        int id, [FromQuery] int? gradeId, [FromServices] IClassifierTagService classifierTags)
+    {
+        var options = await classifierTags.GetOptionsAsync(id, gradeId, HttpContext.RequestAborted);
+        return options is null ? NotFound() : Ok(options);
+    }
+
+    // PUT /api/questions/{id}/classifier-tags — issue #1047: sınıflandırıcının seçtiği kazanım / beceri bağlarını ekler;
+    // listelerin dışındaki id 400 (insanın kurduğu bağ hiç değişmez).
+    [HttpPut("{id}/classifier-tags")]
+    [Authorize(Policy = QuestionAccessPolicies.AdminOrService)]
+    public async Task<IActionResult> SetClassifierTags(
+        int id, [FromQuery] int? gradeId, [FromBody] SetClassifierTagsDto request, [FromServices] IClassifierTagService classifierTags)
+    {
+        return await classifierTags.SetAsync(id, gradeId, request, HttpContext.RequestAborted) switch
+        {
+            null => NotFound(),
+            false => BadRequest(),
+            true => NoContent(),
+        };
+    }
+
     // GET /api/questions/{id}/context-tags — issue #703: bağlam temelli bayrağı ve beceri etiketleri.
     [HttpGet("{id}/context-tags")]
     [Authorize(Roles = AuthoringRoles)]

@@ -450,6 +450,117 @@ public class ClaudeQuestionClassifierTests
             () => NewClassifier(http, new FakeChatClient("not json")).ClassifyAndPersistAsync(5, null, default));
     }
 
+    // ---- issue #1047: learning outcomes + skills ----
+
+    private const string TagOptionsJson =
+        """{"learningOutcomes":[{"id":501,"code":"MAT.5.1.1","description":"Doğal sayıları okur."},{"id":502,"code":"MAT.5.1.2","description":"Kesirleri karşılaştırır."}],"skills":[{"id":7,"code":"KB2.7","name":"Karşılaştırma"},{"id":102,"code":"KB3.2","name":"Problem çözme"}]}""";
+
+    private const string ClassificationJson = """{ "subTopicIds": [101], "subjectId": 1, "difficultyLevel": 4, "reasoning": "kesir" }""";
+
+    private static StubHttp TagHttp(string options = TagOptionsJson) => new StubHttp()
+        .On("/api/questions/classifier-taxonomy", HttpStatusCode.OK, TaxonomyResponse())
+        .On("/classifier-tags", HttpStatusCode.OK, options)
+        .OnBytes("/image", new byte[] { 1, 2, 3, 4 })
+        .On("/classification", HttpStatusCode.OK, "{}");
+
+    private static IEnumerable<HttpRequestMessage> TagRequests(StubHttp http, HttpMethod method) =>
+        http.Requests.Where(r => r.Method == method && r.RequestUri!.AbsolutePath.EndsWith("/classifier-tags"));
+
+    [Fact]
+    public async Task After_classifying_picks_outcomes_and_skills_from_the_offered_lists()
+    {
+        var http = TagHttp();
+        var chat = new FakeChatClient(ClassificationJson)
+            .Then("""{ "learningOutcomeIds": [502, 502], "skillIds": [7, 102, 7], "reasoning": "r" }""");
+
+        await NewClassifier(http, chat).ClassifyAndPersistAsync(42, 5, default);
+
+        chat.Calls.Count.ShouldBe(2);
+        var tagCall = chat.Calls[1];
+        tagCall.Messages.Single(m => m.Role == ChatRole.System).Text.ShouldBe(ClaudeQuestionClassifier.TagInstructions);
+        var user = tagCall.Messages.Single(m => m.Role == ChatRole.User);
+        user.Contents.OfType<DataContent>().ShouldHaveSingleItem();
+        user.Contents.OfType<TextContent>().ShouldContain(t => t.Text.Contains("\"code\":\"MAT.5.1.2\"") && t.Text.Contains("Kesirleri karşılaştırır"));
+        user.Contents.OfType<TextContent>().Last().Text.ShouldBe(ClaudeQuestionClassifier.TagUserInstruction);
+
+        // Options read after the classification is persisted (the subject comes from it).
+        var get = TagRequests(http, HttpMethod.Get).ShouldHaveSingleItem();
+        get.RequestUri!.Query.ShouldBe("?gradeId=5");
+        http.Requests.IndexOf(get).ShouldBeGreaterThan(http.Requests.FindIndex(r => r.Method == HttpMethod.Put));
+        var put = TagRequests(http, HttpMethod.Put).ShouldHaveSingleItem();
+        http.Bodies[put].ShouldBe("""{"learningOutcomeIds":[502],"skillIds":[7,102]}""");
+    }
+
+    [Fact]
+    public async Task Tags_with_an_id_outside_the_lists_are_rejected_and_the_classification_is_kept()
+    {
+        var http = TagHttp();
+        var chat = new FakeChatClient(ClassificationJson).Then("""{ "learningOutcomeIds": [999], "skillIds": [7], "reasoning": "r" }""");
+
+        await NewClassifier(http, chat).ClassifyAndPersistAsync(42, 5, default);
+
+        http.BodyMatching("/42/classification").ShouldContain("\"subTopicIds\":[101]");
+        TagRequests(http, HttpMethod.Put).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task No_offered_lists_means_no_tag_call()
+    {
+        var http = TagHttp("""{"learningOutcomes":[],"skills":[]}""");
+        var chat = new FakeChatClient(ClassificationJson);
+
+        await NewClassifier(http, chat).ClassifyAndPersistAsync(42, 5, default);
+
+        chat.Calls.ShouldHaveSingleItem();
+        TagRequests(http, HttpMethod.Put).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task An_empty_pick_writes_nothing()
+    {
+        var http = TagHttp();
+        var chat = new FakeChatClient(ClassificationJson).Then("""{ "learningOutcomeIds": [], "skillIds": [], "reasoning": "yok" }""");
+
+        await NewClassifier(http, chat).ClassifyAndPersistAsync(42, 5, default);
+
+        TagRequests(http, HttpMethod.Put).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Tagging_alone_does_not_classify_and_persists_only_the_tags()
+    {
+        var http = TagHttp();
+        var chat = new FakeChatClient("""{ "learningOutcomeIds": [501], "skillIds": [], "reasoning": "r" }""");
+
+        await NewClassifier(http, chat).TagAndPersistAsync(42, 5, default);
+
+        chat.Calls.ShouldHaveSingleItem().Messages.Single(m => m.Role == ChatRole.System).Text.ShouldBe(ClaudeQuestionClassifier.TagInstructions);
+        http.Requests.ShouldNotContain(r => r.RequestUri!.AbsolutePath.Contains("classifier-taxonomy"));
+        http.Requests.ShouldNotContain(r => r.Method == HttpMethod.Put && r.RequestUri!.AbsolutePath.EndsWith("/classification"));
+        http.Bodies[TagRequests(http, HttpMethod.Put).ShouldHaveSingleItem()].ShouldBe("""{"learningOutcomeIds":[501],"skillIds":[]}""");
+    }
+
+    [Fact]
+    public async Task Tagging_alone_throws_on_an_id_outside_the_lists()
+    {
+        var http = TagHttp();
+        var chat = new FakeChatClient("""{ "learningOutcomeIds": [], "skillIds": [5], "reasoning": "r" }""");
+
+        await Should.ThrowAsync<InvalidOperationException>(() => NewClassifier(http, chat).TagAndPersistAsync(42, 5, default));
+
+        TagRequests(http, HttpMethod.Put).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Tagging_alone_skips_without_an_api_key()
+    {
+        var http = TagHttp();
+
+        await NewClassifier(http, chat: null).TagAndPersistAsync(42, 5, default);
+
+        http.Requests.ShouldBeEmpty();
+    }
+
     [Fact]
     public void Reads_usage_from_UsageDetails_when_there_is_no_raw_Anthropic_message()
     {
@@ -568,18 +679,30 @@ public class ClaudeQuestionClassifierTests
         }
     }
 
-    /// <summary>Records each call and answers with a fixed assistant text.</summary>
+    /// <summary>
+    /// Records each call and answers with a fixed assistant text; <see cref="Then"/> queues the answers of later calls
+    /// (issue #1047: the outcome / skill step is a second call).
+    /// </summary>
     private sealed class FakeChatClient(string responseText, ChatFinishReason? finishReason = null) : IChatClient
     {
         public sealed record Call(List<ChatMessage> Messages, ChatOptions? Options);
 
         public List<Call> Calls { get; } = [];
 
+        private readonly Queue<string> _next = new();
+
+        public FakeChatClient Then(string text)
+        {
+            _next.Enqueue(text);
+            return this;
+        }
+
         public Task<ChatResponse> GetResponseAsync(
             IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
         {
             Calls.Add(new Call(messages.ToList(), options));
-            return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, responseText))
+            var text = Calls.Count > 1 && _next.TryDequeue(out var next) ? next : responseText;
+            return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, text))
             {
                 FinishReason = finishReason ?? ChatFinishReason.Stop,
                 Usage = new UsageDetails { InputTokenCount = 3_000, CachedInputTokenCount = 2_500, OutputTokenCount = 80 },

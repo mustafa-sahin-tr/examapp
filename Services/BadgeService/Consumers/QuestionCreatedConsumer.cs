@@ -62,7 +62,9 @@ public class QuestionCreatedConsumer : IConsumer<QuestionCreatedEvent>
             {
                 if (@event.SubTopicIds is { Count: > 0 } || @event.TopicId is not > 0)
                 {
-                    _logger.LogInformation("⏭️ Skipping question {QuestionId} (taxonomy locked by the teacher)", @event.QuestionId);
+                    // Issue #1047: outcomes + skills are still picked (kinds the teacher linked are kept).
+                    _logger.LogInformation("⏭️ Skipping classification of question {QuestionId} (taxonomy locked by the teacher); tagging only", @event.QuestionId);
+                    await _classifier.TagAndPersistAsync(@event.QuestionId, @event.GradeId, context.CancellationToken);
                     _activity?.Record(ClassifierActivity.Outcome.Skipped);
                     return;
                 }
@@ -82,6 +84,9 @@ public class QuestionCreatedConsumer : IConsumer<QuestionCreatedEvent>
                 {
                     _logger.LogInformation("⏭️ Skipping question {QuestionId} (book TOC, mode {Mode}, subtopic {HasSubTopic})",
                         @event.QuestionId, _bookTocMode, hasSubTopic);
+                    // Issue #1047: Hybrid with a book subtopic still gets outcomes + skills; Skip classifies nothing.
+                    if (_bookTocMode == BookTocMode.Hybrid)
+                        await _classifier.TagAndPersistAsync(@event.QuestionId, @event.GradeId, context.CancellationToken);
                     _activity?.Record(ClassifierActivity.Outcome.Skipped);
                     return;
                 }

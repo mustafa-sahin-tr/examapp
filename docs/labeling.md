@@ -196,6 +196,16 @@ output token'ı ve tahmini USD loglanır (`Anthropic:InputUsdPerMTok`/`OutputUsd
   tüm taksonomi. Exam API `GradeId`'yi şöyle çözer: istekte açıkça verilen sınıf (işaretleme ekranı) → teste bağlı kayıtta
   testin `Worksheet.GradeId`'si → null. Gemini sağlayıcısı sınıfı yoksayar. `Question` tablosunda sınıf kolonu yok; sınıf
   konu (`Topic.GradeId`) üzerinden gelir.
+- **Kazanım ve beceri (#1047).** Claude sınıflandırmayı yazdıktan sonra ikinci, küçük bir çağrıyla 0–3 kazanım ve 0–2 beceri
+  seçer. Kapalı listeler exam API `GET /api/questions/{id}/classifier-tags?gradeId=` (Admin/servis): kazanımlar sorunun
+  **sınıf + dersine** ait olanlar (MEB paketinde kazanım alt konuya bağlı değil; sınıf önce konudan, yoksa `gradeId`'den), o
+  çiftte Maarif kazanımı varsa yalnız Maarif, yoksa önceki müfredat; beceriler TYMM listesi (#703). Sorunun o türde bağı zaten
+  varsa (öğretmen ya da önceki çalışma) liste boş gelir, o tür hiç değişmez; iki liste de boşsa Claude çağrılmaz. Seçim
+  `PUT …/classifier-tags` ile yazılır; exam API listeleri yeniden hesaplar, dışındaki id'yi 400 ile reddeder. Sınıflandırmadan
+  sonraki adımda hata (liste dışı id dahil) loglanır, sınıflandırma kalır (mesaj yeniden denenmez). Taksonomiyi kitap
+  (Hybrid, alt konu var) ya da öğretmen kilidi belirlediğinde yalnız bu adım çalışır (`TagAndPersistAsync`; burada liste dışı
+  id mesajı hataya düşürür); `Skip` modunda çalışmaz. Gemini atlar. Listeler soruya göre değiştiği için kullanıcı
+  mesajındadır, sistem mesajı (`TagInstructions`) sabit ve önbelleksizdir. Dev'de kazanım tablosu boşsa adım yalnız beceri seçer.
 
 **Issue #1018 (epic #1017) — PDF'ten kitap aktarımı: yükleme, iş ve takip ekranı.** Admin + QuestionTrainer (pilot) için
 **Kitap aktarımı** sayfası (`/book-imports`, menüde Kitaplar'ın altında): PDF + kitap adı + sınıf (+ isteğe bağlı ders)

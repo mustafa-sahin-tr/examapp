@@ -54,15 +54,7 @@ public class BookImportController : BaseController
         return result.Error switch
         {
             StartBookImportError.None => Ok(result.Job),
-            StartBookImportError.QuotaReached => StatusCode(StatusCodes.Status429TooManyRequests, new
-            {
-                code = "entitlement.limitReached",
-                feature = EntitlementFeatures.BookImport,
-                limit = result.Quota?.Limit,
-                used = result.Quota?.Used,
-                resetsAtUtc = result.Quota?.ResetsAtUtc,
-                message = _localizer["bookImport.quotaReached"].Value,
-            }),
+            StartBookImportError.QuotaReached => QuotaReached(result.Quota),
             var error => BadRequest(new { code = $"bookImport.{Camel(error)}", message = _localizer[$"bookImport.{Camel(error)}"].Value }),
         };
     }
@@ -106,6 +98,71 @@ public class BookImportController : BaseController
         var image = await _service.GetPageImageAsync(owner, id, filePage, ct);
         return image is null ? NotFound(new { message = _localizer["bookImport.notFound"].Value }) : File(image, "image/webp");
     }
+
+    /// <summary>Issue #1021: kurulum onay ekranı (testler, cevap anahtarı, üniteler); kurulum yoksa 404.</summary>
+    [HttpGet("{id:guid}/setup")]
+    [ProducesResponseType(typeof(BookImportSetupDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetSetup(Guid id, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        var setup = await _service.GetSetupAsync(owner, id, ct);
+        return setup is null ? NotFound(new { message = _localizer["bookImport.notFound"].Value }) : Ok(setup);
+    }
+
+    /// <summary>
+    /// Issue #1021: kurulumu onayla — hak düşer, kitap kaydı yazılır, soru aktarımı başlar. 409: aynı adlı kitap var
+    /// (<c>existingBook</c>; mevcut kitabı kullan ya da yeni ad), 429: aylık hak doldu.
+    /// </summary>
+    [HttpPost("{id:guid}/setup/confirm")]
+    public async Task<IActionResult> ConfirmSetup(Guid id, [FromBody] ConfirmBookImportSetupDto request, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+
+        var result = await _service.ConfirmSetupAsync(owner, id, request ?? new ConfirmBookImportSetupDto(), ct);
+        return result.Error switch
+        {
+            ConfirmSetupError.None => Ok(result.Job),
+            ConfirmSetupError.NotFound => NotFound(new { message = _localizer["bookImport.notFound"].Value }),
+            ConfirmSetupError.InvalidState => Conflict(new { code = "bookImport.notAwaitingSetup", message = _localizer["bookImport.notAwaitingSetup"].Value }),
+            ConfirmSetupError.NameTaken => Conflict(new
+            {
+                code = "bookImport.bookNameTaken",
+                existingBook = result.ExistingBook,
+                message = _localizer["bookImport.bookNameTaken"].Value,
+            }),
+            ConfirmSetupError.QuotaReached => QuotaReached(result.Quota),
+            _ => BadRequest(new { code = result.Code, message = _localizer[result.Code ?? "bookImport.invalidSetup"].Value }),
+        };
+    }
+
+    /// <summary>Issue #1021: onay bekleyen işi iptal et (ör. cevap anahtarı bulunamadı → iptal).</summary>
+    [HttpPost("{id:guid}/cancel")]
+    public async Task<IActionResult> Cancel(Guid id, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        return await _service.CancelAsync(owner, id, ct) switch
+        {
+            CancelBookImportResult.Cancelled => NoContent(),
+            CancelBookImportResult.NotFound => NotFound(new { message = _localizer["bookImport.notFound"].Value }),
+            _ => Conflict(new { code = "bookImport.notCancellable", message = _localizer["bookImport.notCancellable"].Value }),
+        };
+    }
+
+    private ObjectResult QuotaReached(EntitlementCheck? quota) => StatusCode(StatusCodes.Status429TooManyRequests, new
+    {
+        code = "entitlement.limitReached",
+        feature = EntitlementFeatures.BookImport,
+        limit = quota?.Limit,
+        used = quota?.Used,
+        resetsAtUtc = quota?.ResetsAtUtc,
+        message = _localizer["bookImport.quotaReached"].Value,
+    });
 
     private async Task<BookImportOwner?> ResolveOwnerAsync(CancellationToken ct)
     {

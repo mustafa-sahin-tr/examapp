@@ -112,3 +112,63 @@ export function stageState(
   if (job.status === 'AwaitingConfirmation') return 'waiting';
   return 'current';
 }
+
+/** Issue #1021: kurulum onay ekranı. Anahtar: soru sırasıyla harf (A–E, okunamayan "?"); null = anahtar yok. */
+export interface BookImportSetup {
+  jobId: string;
+  bookName: string;
+  pageCount: number | null;
+  /** Basılı = dosya + ofset; null: basılı sayfa no okunamadı. */
+  offset: number | null;
+  answerKeyRanges: { fileFrom: number; fileTo: number }[];
+  selfAssessmentPages: number[];
+  units: BookImportSetupUnit[];
+  orphanKeys: string[];
+  noAnswerKey: boolean;
+  aiCostUsd: number;
+  schemaRevision: number;
+  existingBook: BookImportBookRef | null;
+  tests: BookImportSetupTest[];
+}
+
+export interface BookImportBookRef {
+  id: number;
+  name: string;
+}
+
+export interface BookImportSetupUnit {
+  unit: number;
+  title: string | null;
+  fileFrom: number;
+  fileTo: number;
+  topicId: number | null;
+  topicName: string | null;
+}
+
+export interface BookImportSetupTest {
+  order: number;
+  unit: number;
+  testNo: number;
+  title: string | null;
+  minutes: number | null;
+  fileFrom: number | null;
+  fileTo: number | null;
+  expectedQuestions: number | null;
+  answerKey: string | null;
+  /** "." uyumlu, harf ikinci okumanın değeri, "-" ikinci okumada yok. */
+  keyConflicts: string | null;
+  flags: string[];
+}
+
+export interface ConfirmBookImportSetup {
+  bookName: string;
+  existingBookId: number | null;
+  tests: {
+    order: number;
+    title: string | null;
+    minutes: number | null;
+    fileFrom: number;
+    fileTo: number;
+    answerKey: string | null;
+  }[];
+}

@@ -651,6 +651,7 @@ builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IBookImportService, E
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.BookImportJobRunner>();
 // Issue #1020: PDFium tabanlı sayfa görselleri (durumsuz).
 builder.Services.AddSingleton<ExamApp.Api.Services.BookImport.IPdfRasterizer>(_ => new ExamApp.Api.Services.BookImport.PdfiumRasterizer());
+builder.Services.AddSingleton<ExamApp.Api.Services.BookImport.IBookSetupAi, ExamApp.Api.Services.BookImport.ClaudeBookSetupAi>(); // issue #1021
 builder.Services.AddScoped<QuestionContentHashService>();
 builder.Services.AddScoped<IQuestionContentHashService>(sp => sp.GetRequiredService<QuestionContentHashService>());
 

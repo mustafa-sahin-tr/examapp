@@ -338,6 +338,9 @@ namespace ExamApp.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<decimal>("AiCostUsd")
+                        .HasColumnType("numeric(10,4)");
+
                     b.Property<int?>("BookId")
                         .HasColumnType("integer");
 
@@ -389,6 +392,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("PageCount")
                         .HasColumnType("integer");
 
+                    b.Property<string>("SetupJson")
+                        .HasColumnType("text");
+
                     b.Property<int>("Stage")
                         .HasColumnType("integer");
 
@@ -434,6 +440,13 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AnswerKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int?>("BookTestId")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("CreateTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -450,6 +463,15 @@ namespace ExamApp.Api.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
+                    b.Property<int?>("ExpectedQuestions")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("FileFrom")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("FileTo")
+                        .HasColumnType("integer");
+
                     b.Property<string>("FlagsJson")
                         .HasColumnType("text");
 
@@ -460,6 +482,13 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<int>("KeyAnswers")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("KeyConflicts")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int?>("Minutes")
                         .HasColumnType("integer");
 
                     b.Property<int>("Order")
@@ -488,6 +517,8 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BookTestId");
 
                     b.HasIndex("JobId", "Order")
                         .IsUnique();
@@ -7447,11 +7478,18 @@ namespace ExamApp.Api.Migrations
 
             modelBuilder.Entity("ExamApp.Api.Data.BookImportJobTest", b =>
                 {
+                    b.HasOne("ExamApp.Api.Data.BookTest", "BookTest")
+                        .WithMany()
+                        .HasForeignKey("BookTestId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("ExamApp.Api.Data.BookImportJob", "Job")
                         .WithMany("Tests")
                         .HasForeignKey("JobId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("BookTest");
 
                     b.Navigation("Job");
                 });

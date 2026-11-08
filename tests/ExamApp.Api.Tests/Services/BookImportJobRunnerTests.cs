@@ -20,6 +20,7 @@ public class BookImportJobRunnerTests : IDisposable
     private readonly IApprovedTeacherGuard _guard = Substitute.For<IApprovedTeacherGuard>();
     private readonly Dictionary<string, byte[]> _uploads = new();
     private byte[] _pdf = SamplePdf.Create(3);
+    private readonly FakeBookSetupAi _ai = new();
 
     public BookImportJobRunnerTests()
     {
@@ -143,7 +144,8 @@ public class BookImportJobRunnerTests : IDisposable
 
         await using var ctx = _db.NewContext();
         var service = new BookImportService(ctx, _minio, Substitute.For<Hangfire.IBackgroundJobClient>(),
-            Substitute.For<ExamApp.Api.Services.Entitlements.IEntitlementService>(), new ConfigurationBuilder().Build());
+            Substitute.For<ExamApp.Api.Services.Entitlements.IEntitlementService>(),
+            new ExamApp.Api.Services.Labeling.BookRegistryService(ctx, TimeProvider.System), new ConfigurationBuilder().Build());
 
         (await service.GetPageImageAsync(BookImportOwner.Create(OwnerId), id, 2, default)).ShouldNotBeNull();
         (await service.GetPageImageAsync(BookImportOwner.Create(99), id, 2, default)).ShouldBeNull();
@@ -182,7 +184,7 @@ public class BookImportJobRunnerTests : IDisposable
         if (maxPages is { } max)
             settings["BookImport:MaxPages"] = max.ToString();
         await using var ctx = _db.NewContext();
-        await new BookImportJobRunner(ctx, _guard, _minio, new PdfiumRasterizer(pageWidth: 400),
+        await new BookImportJobRunner(ctx, _guard, _minio, new PdfiumRasterizer(pageWidth: 400), _ai,
             new ConfigurationBuilder().AddInMemoryCollection(settings).Build()).RunLockedAsync(id);
     }
 

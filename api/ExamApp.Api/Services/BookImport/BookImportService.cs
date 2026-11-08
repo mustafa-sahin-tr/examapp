@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Entitlements;
+using ExamApp.Api.Services.Labeling;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -54,13 +55,22 @@ public interface IBookImportService
     /// kaydı işaretleme rolleri için ortak olduğundan sahiplik aranmaz.
     /// </summary>
     Task<Stream?> GetBookPageImageAsync(int bookId, int filePage, CancellationToken ct);
+
+    /// <summary>Kurulum onay ekranı (#1021); iş görünmüyorsa ya da kurulum henüz yoksa null.</summary>
+    Task<BookImportSetupDto?> GetSetupAsync(BookImportOwner owner, Guid id, CancellationToken ct);
+
+    /// <summary>Kurulumu onaylar (#1021): hak düşer, kitap kaydı yazılır, iş soru aktarımı için kuyruğa girer.</summary>
+    Task<ConfirmSetupResult> ConfirmSetupAsync(BookImportOwner owner, Guid id, ConfirmBookImportSetupDto request, CancellationToken ct);
+
+    /// <summary>Onay bekleyen işi iptal eder (#1021 "anahtar yok → iptal"); diğer durumlar #1025.</summary>
+    Task<CancelBookImportResult> CancelAsync(BookImportOwner owner, Guid id, CancellationToken ct);
 }
 
 /// <summary>
 /// Issue #1018 (epic #1017): PDF'i MinIO'ya (özel, <c>book-imports/</c>) koyar, işi açar ve Hangfire kuyruğuna verir
 /// (<see cref="BookImportJobRunner"/>). Kullanıcı yalnız kendi işlerini görür; Admin hepsini.
 /// </summary>
-public sealed class BookImportService : IBookImportService
+public sealed partial class BookImportService : IBookImportService
 {
     /// <summary>Formdaki sınır; <c>BookImport:MaxUploadBytes</c> bunu düşürebilir, yükseltemez (istek sınırı controller'da).</summary>
     public const long MaxUploadBytesCeiling = 200_000_000;
@@ -71,15 +81,17 @@ public sealed class BookImportService : IBookImportService
     private readonly IMinIoService _minio;
     private readonly IBackgroundJobClient _jobs;
     private readonly IEntitlementService _entitlements;
+    private readonly IBookRegistryService _books;
     private readonly long _maxUploadBytes;
 
     public BookImportService(AppDbContext db, IMinIoService minio, IBackgroundJobClient jobs, IEntitlementService entitlements,
-        IConfiguration configuration)
+        IBookRegistryService books, IConfiguration configuration)
     {
         _db = db;
         _minio = minio;
         _jobs = jobs;
         _entitlements = entitlements;
+        _books = books;
         var configured = configuration.GetValue<long?>("BookImport:MaxUploadBytes") ?? MaxUploadBytesCeiling;
         _maxUploadBytes = Math.Clamp(configured, 1, MaxUploadBytesCeiling);
     }

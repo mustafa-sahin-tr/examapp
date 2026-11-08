@@ -1,0 +1,188 @@
+<div class="import-costs" *transloco="let t; prefix: 'book-imports'">
+  <app-page-header icon="payments" [title]="t('costReport.title')" [description]="t('costReport.subtitle')" />
+
+  <form class="filters" (ngSubmit)="applyFilters()">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>{{ t('costReport.filters.from') }}</mat-label>
+      <input matInput name="from" [matDatepicker]="fromPicker" [ngModel]="from()" (ngModelChange)="from.set($event)" data-testid="cost-from" />
+      <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
+      <mat-datepicker #fromPicker />
+    </mat-form-field>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>{{ t('costReport.filters.to') }}</mat-label>
+      <input matInput name="to" [matDatepicker]="toPicker" [ngModel]="to()" (ngModelChange)="to.set($event)" data-testid="cost-to" />
+      <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
+      <mat-datepicker #toPicker />
+    </mat-form-field>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>{{ t('costReport.filters.kind') }}</mat-label>
+      <mat-select name="kind" [ngModel]="kind()" (ngModelChange)="kind.set($event)" data-testid="cost-kind">
+        <mat-option [value]="null">{{ t('costReport.kinds.all') }}</mat-option>
+        <mat-option value="Book">{{ t('costReport.kinds.Book') }}</mat-option>
+        <mat-option value="QuickAdd">{{ t('costReport.kinds.QuickAdd') }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <button mat-flat-button type="submit" [disabled]="!validRange() || loading()" data-testid="cost-apply">
+      {{ t('costReport.filters.apply') }}
+    </button>
+    @if (selectedUser(); as user) {
+      <button mat-stroked-button type="button" (click)="clearUser()" data-testid="cost-clear-user">
+        <mat-icon>close</mat-icon>{{ t('costReport.filters.clearUser', { name: user.name }) }}
+      </button>
+    }
+  </form>
+
+  @if (from() && to() && !validRange()) {
+    <p class="ms-error" role="alert" data-testid="cost-range-error">{{ t('costReport.errors.range') }}</p>
+  }
+  @if (error(); as key) {
+    <p class="ms-error" role="alert" data-testid="cost-error">{{ t(key) }}</p>
+  }
+
+  @if (report(); as r) {
+    @if (isEmpty()) {
+      <p class="muted" data-testid="cost-empty">{{ t('costReport.empty') }}</p>
+    } @else {
+      <section class="tiles" [attr.aria-label]="t('costReport.tiles.label')" data-testid="cost-tiles">
+        <div class="tile">
+          <span class="tile__value" data-testid="cost-total">{{ r.totals.costUsd | currency: 'USD' : 'symbol' : '1.2-4' }}</span>
+          <span class="tile__label">{{ t('costReport.tiles.cost') }}</span>
+        </div>
+        <div class="tile">
+          <span class="tile__value">{{ r.totals.jobs | number }}</span>
+          <span class="tile__label">{{ t('costReport.tiles.jobs') }}</span>
+        </div>
+        <div class="tile">
+          <span class="tile__value">{{ r.totals.pages | number }}</span>
+          <span class="tile__label">{{ t('costReport.tiles.pages') }}</span>
+        </div>
+        <div class="tile">
+          <span class="tile__value">{{ r.totals.questionsSaved | number }}</span>
+          <span class="tile__label">{{ t('costReport.tiles.questions') }}</span>
+        </div>
+        <div class="tile">
+          <span class="tile__value">
+            @if (r.totals.costPerQuestionUsd != null) {
+              {{ r.totals.costPerQuestionUsd | currency: 'USD' : 'symbol' : '1.2-4' }}
+            } @else {
+              –
+            }
+          </span>
+          <span class="tile__label">{{ t('costReport.tiles.perQuestion') }}</span>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>{{ t('costReport.users.title') }}</h2>
+        <p class="muted">{{ t('costReport.users.hint') }}</p>
+        <div class="scroll">
+          <table class="table" data-testid="cost-users">
+            <thead>
+              <tr>
+                <th scope="col">{{ t('costReport.users.name') }}</th>
+                <th scope="col">{{ t('costReport.users.role') }}</th>
+                <th scope="col">{{ t('costReport.users.plan') }}</th>
+                <th scope="col" class="num">{{ t('costReport.users.jobs') }}</th>
+                <th scope="col" class="num">{{ t('cost.usd') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (user of r.users; track user.userId) {
+                <tr>
+                  <td>
+                    <button type="button" class="link" (click)="selectUser(user)">{{ user.fullName ?? '#' + user.userId }}</button>
+                  </td>
+                  <td>{{ user.role ? t('costReport.roles.' + user.role) : '–' }}</td>
+                  <td>{{ user.planName ?? '–' }}</td>
+                  <td class="num">{{ user.jobs | number }}</td>
+                  <td class="num">{{ user.costUsd | currency: 'USD' : 'symbol' : '1.2-4' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card__head">
+          <h2>{{ t('costReport.jobs.title') }}</h2>
+          <button mat-stroked-button type="button" [disabled]="exporting()" (click)="exportCsv()" data-testid="cost-export">
+            <mat-icon>download</mat-icon>{{ t('costReport.jobs.export') }}
+          </button>
+        </div>
+        <div class="scroll">
+          <table class="table" data-testid="cost-jobs">
+            <thead>
+              <tr>
+                <th scope="col">{{ t('costReport.jobs.name') }}</th>
+                <th scope="col">{{ t('costReport.jobs.kind') }}</th>
+                <th scope="col">{{ t('costReport.jobs.owner') }}</th>
+                <th scope="col">{{ t('costReport.jobs.created') }}</th>
+                <th scope="col">{{ t('costReport.jobs.status') }}</th>
+                <th scope="col" class="num">{{ t('costReport.jobs.pages') }}</th>
+                <th scope="col" class="num">{{ t('costReport.jobs.questions') }}</th>
+                <th scope="col" class="num">{{ t('cost.usd') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (job of r.jobs; track job.id) {
+                <tr>
+                  <td><a [routerLink]="jobLink(job)">{{ job.bookName }}</a></td>
+                  <td>{{ t('costReport.kinds.' + job.kind) }}</td>
+                  <td>{{ job.ownerName ?? '#' + job.ownerId }}</td>
+                  <td>{{ job.createdAt | date: 'dd.MM.yyyy HH:mm' }}</td>
+                  <td>
+                    <span class="status" [class.status--unfinished]="isUnfinished(job)">{{ t('status.' + job.status) }}</span>
+                  </td>
+                  <td class="num">{{ job.pages | number }}</td>
+                  <td class="num">{{ job.questionsSaved | number }}</td>
+                  <td class="num">{{ job.costUsd | currency: 'USD' : 'symbol' : '1.2-4' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <mat-paginator
+          [length]="r.jobCount"
+          [pageIndex]="pageIndex()"
+          [pageSize]="pageSize()"
+          [pageSizeOptions]="pageSizeOptions"
+          [disabled]="loading()"
+          (page)="onPage($event)"
+        ></mat-paginator>
+      </section>
+
+      <section class="card">
+        <h2>{{ t('costReport.stages.title') }}</h2>
+        @if (r.stages.length === 0) {
+          <p class="muted">{{ t('cost.empty') }}</p>
+        } @else {
+          <div class="scroll">
+            <table class="table" data-testid="cost-stages">
+              <thead>
+                <tr>
+                  <th scope="col">{{ t('cost.stage') }}</th>
+                  <th scope="col">{{ t('cost.model') }}</th>
+                  <th scope="col" class="num">{{ t('cost.calls') }}</th>
+                  <th scope="col" class="num">{{ t('cost.tokens') }}</th>
+                  <th scope="col" class="num">{{ t('cost.usd') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of r.stages; track row.stage + row.modelId) {
+                  <tr>
+                    <td>{{ t('stages.' + row.stage) }}</td>
+                    <td>{{ row.modelId }}</td>
+                    <td class="num">{{ row.calls | number }}</td>
+                    <td class="num">{{ t('cost.tokenValue', { input: (row.inputTokens | number), output: (row.outputTokens | number) }) }}</td>
+                    <td class="num">{{ row.costUsd | currency: 'USD' : 'symbol' : '1.2-4' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+    }
+  }
+</div>

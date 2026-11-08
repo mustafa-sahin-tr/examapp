@@ -153,6 +153,11 @@ aktarım aracındaki Python portu referanstır (#1022).
   maliyeti, tavanı, aşama × model dökümünü ve ızgarada test başına maliyeti görür.
 - **Log:** iş incelemeye geçince tek satır: `Book import job {JobId} finished: … pages, … tests, … questions, … flagged tests,
   … failed tests, cost $…`; duraklama `paused in stage …` satırıyla.
+- **Rapor (#1056):** `/admin/book-import-costs` (menü "Aktarım Maliyetleri", yalnız Admin / SuperAdmin), uç `GET /api/exam/admin/book-import-costs`
+  (`from`, `to` UTC günü, iki uç dahil, varsayılan içinde bulunulan ay; `kind`, `userId`, `page`, `pageSize`) ve `.../jobs.csv` (en çok 10.000 satır; `;` ayraç,
+  virgüllü ondalık). Maliyet, aralıkta yazılan `BookImportCosts` satırlarının toplamıdır: ay sınırını aşan iş her aya kendi çağrılarıyla girer. İş kümesi: aralıkta
+  açılan ya da aralıkta maliyet yazılan işler (iptal ve hata dahil). Sayfa ve soru sayıları işin tamamına aittir, incelemede silinen testin soruları sayılmaz.
+  Ad ve rol auth-api'den (`users/lookup`), plan `IAdminSubscriptionService.CurrentPlansAsync`; erişim `AdminDataAccessLogs`'a yazılır.
 
 ## Devam, yeniden deneme ve iptal (#1025)
 

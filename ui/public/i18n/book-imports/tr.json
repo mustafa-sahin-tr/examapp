@@ -279,5 +279,64 @@
     "usd": "Tutar",
     "tokenValue": "{{input}} / {{output}}",
     "empty": "Çağrı bazında maliyet kaydı yok (eski aktarım ya da henüz çağrı yapılmadı)."
+  },
+  "costReport": {
+    "title": "Aktarım maliyetleri",
+    "subtitle": "Kitap aktarımı ve hızlı eklemenin kullanıcı başına AI maliyeti. Tarihler UTC gününe göredir; iptal edilen ve hata alan işler de sayılır.",
+    "filters": {
+      "from": "Başlangıç",
+      "to": "Bitiş",
+      "kind": "Tür",
+      "apply": "Uygula",
+      "clearUser": "{{name}} süzgecini kaldır"
+    },
+    "kinds": {
+      "all": "Tümü",
+      "Book": "Kitap aktarımı",
+      "QuickAdd": "Hızlı ekleme"
+    },
+    "empty": "Bu aralıkta aktarım yok.",
+    "tiles": {
+      "label": "Özet",
+      "cost": "Toplam maliyet",
+      "jobs": "İş",
+      "pages": "Sayfa / fotoğraf",
+      "questions": "Kaydedilen soru",
+      "perQuestion": "Soru başına maliyet"
+    },
+    "users": {
+      "title": "Kullanıcılar",
+      "hint": "Yalnız o kullanıcının işlerini görmek için adına dokunun. En yüksek maliyetli 100 kullanıcı gösterilir.",
+      "name": "Kullanıcı",
+      "role": "Rol",
+      "plan": "Plan",
+      "jobs": "İş"
+    },
+    "jobs": {
+      "title": "İşler",
+      "export": "CSV indir",
+      "name": "Kitap / iş",
+      "kind": "Tür",
+      "owner": "Kullanıcı",
+      "created": "Oluşturma",
+      "status": "Durum",
+      "pages": "Sayfa",
+      "questions": "Soru"
+    },
+    "stages": {
+      "title": "Aşama ve model"
+    },
+    "errors": {
+      "load": "Rapor yüklenemedi.",
+      "export": "CSV indirilemedi.",
+      "range": "Başlangıç tarihi bitişten sonra olamaz."
+    },
+    "roles": {
+      "Student": "Öğrenci",
+      "Teacher": "Öğretmen",
+      "Parent": "Veli",
+      "Admin": "Admin",
+      "QuestionTrainer": "Soru eğitmeni"
+    }
   }
 }

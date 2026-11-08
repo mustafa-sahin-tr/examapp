@@ -279,5 +279,64 @@
     "usd": "Amount",
     "tokenValue": "{{input}} / {{output}}",
     "empty": "No per-call cost records (older import or no calls yet)."
+  },
+  "costReport": {
+    "title": "Import costs",
+    "subtitle": "AI cost of book imports and quick adds per user. Dates are UTC days; cancelled and failed jobs are included.",
+    "filters": {
+      "from": "From",
+      "to": "To",
+      "kind": "Kind",
+      "apply": "Apply",
+      "clearUser": "Remove {{name}} filter"
+    },
+    "kinds": {
+      "all": "All",
+      "Book": "Book import",
+      "QuickAdd": "Quick add"
+    },
+    "empty": "No imports in this range.",
+    "tiles": {
+      "label": "Summary",
+      "cost": "Total cost",
+      "jobs": "Jobs",
+      "pages": "Pages / photos",
+      "questions": "Questions saved",
+      "perQuestion": "Cost per question"
+    },
+    "users": {
+      "title": "Users",
+      "hint": "Tap a name to see only that user's jobs. The 100 highest-cost users are shown.",
+      "name": "User",
+      "role": "Role",
+      "plan": "Plan",
+      "jobs": "Jobs"
+    },
+    "jobs": {
+      "title": "Jobs",
+      "export": "Download CSV",
+      "name": "Book / job",
+      "kind": "Kind",
+      "owner": "User",
+      "created": "Created",
+      "status": "Status",
+      "pages": "Pages",
+      "questions": "Questions"
+    },
+    "stages": {
+      "title": "Stage and model"
+    },
+    "errors": {
+      "load": "Could not load the report.",
+      "export": "Could not download the CSV.",
+      "range": "The start date cannot be after the end date."
+    },
+    "roles": {
+      "Student": "Student",
+      "Teacher": "Teacher",
+      "Parent": "Parent",
+      "Admin": "Admin",
+      "QuestionTrainer": "Question trainer"
+    }
   }
 }

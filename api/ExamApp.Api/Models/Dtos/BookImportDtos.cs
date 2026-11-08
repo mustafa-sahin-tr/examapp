@@ -257,3 +257,55 @@ public class BookImportPageFixDto
     public int Removed { get; set; }
     public int Answerless { get; set; }
 }
+
+/// <summary>Issue #1056: kitap aktarımı ve hızlı ekleme maliyet raporu (yalnız Admin).</summary>
+public class BookImportCostReportDto
+{
+    public DateOnly From { get; set; }
+    public DateOnly To { get; set; }
+    public BookImportCostTotalsDto Totals { get; set; } = new();
+    public List<BookImportCostUserDto> Users { get; set; } = [];
+    public int JobCount { get; set; }
+    public List<BookImportCostJobDto> Jobs { get; set; } = [];
+    public List<BookImportCostDto> Stages { get; set; } = [];
+}
+
+public class BookImportCostTotalsDto
+{
+    public int Jobs { get; set; }
+    public int Pages { get; set; }
+    public int QuestionsSaved { get; set; }
+    public decimal CostUsd { get; set; }
+
+    /// <summary>Kaydedilen soru yoksa null.</summary>
+    public decimal? CostPerQuestionUsd { get; set; }
+}
+
+public class BookImportCostUserDto
+{
+    public int UserId { get; set; }
+
+    /// <summary>auth-api çözemezse null; ekran kullanıcı id'sini gösterir.</summary>
+    public string? FullName { get; set; }
+    public string? Role { get; set; }
+    public string? PlanKey { get; set; }
+    public string? PlanName { get; set; }
+    public int Jobs { get; set; }
+    public decimal CostUsd { get; set; }
+}
+
+public class BookImportCostJobDto
+{
+    public Guid Id { get; set; }
+    public string Kind { get; set; } = string.Empty;
+    public string BookName { get; set; } = string.Empty;
+    public int OwnerId { get; set; }
+    public string? OwnerName { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public int Pages { get; set; }
+    public int QuestionsSaved { get; set; }
+
+    /// <summary>İşin yalnız seçilen aralıktaki çağrılarının maliyeti.</summary>
+    public decimal CostUsd { get; set; }
+}

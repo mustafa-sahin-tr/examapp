@@ -95,7 +95,10 @@ public enum AdminDataAccessResource
     SubscriptionUserSearch = 7,
 
     /// <summary>issue #1030: <c>GET api/admin/subscription-plans/users/{id}</c> (kullanıcının planı ve atama geçmişi).</summary>
-    SubscriptionUserDetail = 8
+    SubscriptionUserDetail = 8,
+
+    /// <summary>issue #1056: <c>GET api/admin/book-import-costs</c> ve CSV'si (kullanıcı başına AI maliyeti; ad, rol, plan).</summary>
+    BookImportCostReport = 9
 }
 
 /// <summary>

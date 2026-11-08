@@ -14,6 +14,9 @@ public interface IAdminSubscriptionService
 {
     Task<List<AdminSubscriptionUserDto>> SearchAsync(string query, string? role, CancellationToken ct = default);
 
+    /// <summary>Kullanıcıların bugünkü planı; ataması olmayan kullanıcı Free'dir (<see cref="IEntitlementService.ResolvePlanAsync"/> ile aynı).</summary>
+    Task<Dictionary<int, ResolvedPlan>> CurrentPlansAsync(IReadOnlyCollection<int> userIds, CancellationToken ct = default);
+
     /// <summary><see langword="null"/> = auth-api'de böyle kullanıcı yok.</summary>
     Task<AdminSubscriptionUserDetailDto?> GetDetailAsync(int userId, CancellationToken ct = default);
 
@@ -46,35 +49,42 @@ public sealed class AdminSubscriptionService(AppDbContext db, IEntitlementServic
     public async Task<List<AdminSubscriptionUserDto>> SearchAsync(string query, string? role, CancellationToken ct = default)
     {
         var users = await authApi.SearchUsersAsync(query, role, ct);
-        var ids = users.Select(u => u.Id).ToList();
-        var now = clock.GetUtcNow().UtcDateTime;
-        var current = (await db.UserSubscriptionPlans.AsNoTracking()
-                .Where(a => ids.Contains(a.UserId) && a.ValidFromUtc <= now && (a.ValidToUtc == null || a.ValidToUtc > now) && a.Plan.IsActive)
-                .Select(a => new { a.UserId, a.ValidFromUtc, a.Id, a.Plan.Key, a.Plan.Name, a.ValidToUtc })
-                .ToListAsync(ct))
-            .GroupBy(a => a.UserId)
-            .ToDictionary(g => g.Key, g => g.OrderByDescending(a => a.ValidFromUtc).ThenByDescending(a => a.Id).First());
-
-        var free = await db.SubscriptionPlans.AsNoTracking()
-            .Where(p => p.Key == SubscriptionPlan.FreeKey)
-            .Select(p => new { p.Key, p.Name })
-            .FirstOrDefaultAsync(ct);
+        var plans = await CurrentPlansAsync(users.Select(u => u.Id).ToList(), ct);
 
         return users.Select(u =>
         {
-            current.TryGetValue(u.Id, out var plan);
+            plans.TryGetValue(u.Id, out var plan);
             return new AdminSubscriptionUserDto
             {
                 UserId = u.Id,
                 FullName = u.FullName,
                 Email = EmailMask.Apply(u.Email),
                 Role = u.Role,
-                // Ataması olmayan kullanıcı Free'dir (ResolvePlanAsync ile aynı).
-                PlanKey = plan?.Key ?? free?.Key,
-                PlanName = plan?.Name ?? free?.Name,
+                PlanKey = plan?.Key,
+                PlanName = plan?.Name,
                 ValidToUtc = plan?.ValidToUtc,
             };
         }).ToList();
+    }
+
+    public async Task<Dictionary<int, ResolvedPlan>> CurrentPlansAsync(IReadOnlyCollection<int> userIds, CancellationToken ct = default)
+    {
+        var now = clock.GetUtcNow().UtcDateTime;
+        var current = (await db.UserSubscriptionPlans.AsNoTracking()
+                .Where(a => userIds.Contains(a.UserId) && a.ValidFromUtc <= now && (a.ValidToUtc == null || a.ValidToUtc > now) && a.Plan.IsActive)
+                .Select(a => new { a.UserId, a.ValidFromUtc, a.Id, a.PlanId, a.Plan.Key, a.Plan.Name, a.ValidToUtc })
+                .ToListAsync(ct))
+            .GroupBy(a => a.UserId)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(a => a.ValidFromUtc).ThenByDescending(a => a.Id).First());
+
+        var free = await db.SubscriptionPlans.AsNoTracking()
+            .Where(p => p.Key == SubscriptionPlan.FreeKey)
+            .Select(p => new { p.Id, p.Key, p.Name })
+            .FirstOrDefaultAsync(ct);
+
+        return userIds.Distinct().ToDictionary(id => id, id => current.TryGetValue(id, out var plan)
+            ? new ResolvedPlan(plan.PlanId, plan.Key, plan.Name, plan.ValidToUtc)
+            : new ResolvedPlan(free?.Id, free?.Key, free?.Name));
     }
 
     public async Task<AdminSubscriptionUserDetailDto?> GetDetailAsync(int userId, CancellationToken ct = default)

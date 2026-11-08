@@ -1,6 +1,7 @@
 import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { provideRouter } from '@angular/router';
 
 import { QuestionBankComponent } from './question-bank.component';
 import { QuestionBankPanelComponent } from '../../shared/components/question-bank-panel/question-bank-panel.component';
@@ -23,7 +24,7 @@ describe('QuestionBankComponent (issue #471)', () => {
         });
         TestBed.configureTestingModule({
             imports: [QuestionBankComponent, translocoTestingModule({ langs: { 'question-bank/tr': qbTr } })],
-            providers: [provideNoopAnimations()],
+            providers: [provideNoopAnimations(), provideRouter([])],
         });
         fixture = TestBed.createComponent(QuestionBankComponent);
         fixture.detectChanges();
@@ -32,6 +33,12 @@ describe('QuestionBankComponent (issue #471)', () => {
     it('template_Rendered_ShowsTranslatedTitle', () => {
         const heading = fixture.nativeElement.querySelector('h1') as HTMLElement;
         expect(heading.textContent?.trim()).toBe(qbTr.title);
+    });
+
+    it('template_Rendered_LinksToQuickAdd', () => {
+        const link = fixture.nativeElement.querySelector('.question-bank-page__quick-add') as HTMLAnchorElement;
+        expect(link.getAttribute('href')).toBe('/quick-add');
+        expect(link.textContent).toContain(qbTr.quickAdd);
     });
 
     it('template_Rendered_EmbedsSearchPanel', () => {

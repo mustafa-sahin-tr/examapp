@@ -179,7 +179,7 @@ aktarım aracındaki Python portu referanstır (#1022).
   alınamadı" + "Testi yeniden dene", birden çok hatalı testte "Hatalı testleri yeniden dene (n)"; "Aktarımı iptal et" satır içi
   onay: taslak varsa "İptal et, taslakları sakla" / "İptal et ve taslakları sil".
 
-## Hızlı ekleme (#1048, #1052)
+## Hızlı ekleme (#1048, #1052, #1053)
 
 - **Model:** hızlı ekleme bir kitap aktarımı işidir (`BookImportJobs.Kind = QuickAdd`; mevcut işler `Book`). Fotoğraf = sayfa
   (`BookImportPages`, `quick-adds/<jobId>/photos/<n>.jpg`), fotoğraf başına bir test satırı ("Fotoğraf n", `FileFrom = FileTo = n`).
@@ -201,5 +201,12 @@ aktarım aracındaki Python portu referanstır (#1022).
 - **Bütçe:** ayrı sayaç `labeling-ai-usd:quick-add` (`Anthropic:DailyBudgetUsdQuickAdd`, varsayılan 5 $) + toplam; kitap
   aktarımının sayacını tüketmez. Maliyet tavanı `BookImport:MaxJobCostUsd` aynı.
 - **Uçlar:** `GET /api/exam/quick-add` (liste), `GET {id}` (fotoğraf satırları, işaretler), `GET {id}/photos/{n}` (JPEG),
-  `POST {id}/retry`, `POST {id}/cancel?deleteDrafts=`. İnceleme / onay uçları #1054, mobil ekran #1053.
+  `POST {id}/retry`, `POST {id}/cancel?deleteDrafts=`. İnceleme / onay uçları #1054.
+- **Ekran (#1053):** `/quick-add` (menü "Hızlı soru ekle", yalnız öğretmen; Soru Havuzu başlığında da bağlantı) — sınıf (son seçim
+  `localStorage` `quickAdd.gradeId`), isteğe bağlı ders, `<input type="file" accept="image/*" capture="environment" multiple>`
+  (telefonda kamera, başka yerde galeri / dosya; Capacitor #1045), fotoğraf başına küçük resim + cevap anahtarı alanı. Tür / boyut /
+  10 sınırı yüklemeden önce denetlenir; hak satırı "Bu ay x/y fotoğraf" (sınırsızda gizli), kalan haktan fazla seçimde uyarı;
+  429'da yükseltme penceresi `entitlementLimitInterceptor`'dan. Yükleme ilerlemeli; sonra `/quick-add/:id` durum kartı: Sırada /
+  İşleniyor / İncelemeye hazır / Başarısız (+ Yeniden dene; takılmış iş de), fotoğraf başına bulunan / taslak sayısı ve işaretler.
+  İş bitene kadar 3 sn'de bir yoklanır (liste 5 sn). İnceleme ve onay ekranı #1054.
 

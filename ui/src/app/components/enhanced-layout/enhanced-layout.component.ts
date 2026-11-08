@@ -276,6 +276,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'practice', labelKey: 'menu.practice', icon: 'bolt', route: '/practice', type: 'menu', roles: ['Student'] },
     // Issue #471: hazır soruları ders/konu/alt konuya göre arama.
     { id: 'question-bank', labelKey: 'menu.questionBank', icon: 'inventory_2', route: '/question-bank', type: 'menu', roles: ['Teacher', 'Admin'] },
+    // Issue #1053: fotoğraftan hızlı soru ekleme (mobil öncelikli).
+    { id: 'quick-add', labelKey: 'menu.quickAdd', icon: 'add_a_photo', route: '/quick-add', type: 'menu', roles: ['Teacher'] },
     // Issue #719: alt sayfalar `sectionTabs` sekmelerinde; öğede yalnız bölümün girişi kalır.
     { id: 'study-pages', labelKey: 'menu.studyContent', icon: 'library_add', route: '/study-pages', type: 'menu', roles: ['Teacher'] },
     { id: 'my-calendar', labelKey: 'menu.myCalendar', icon: 'event_note', route: '/my-calendar', type: 'menu', roles: ['Student', 'Teacher'] },

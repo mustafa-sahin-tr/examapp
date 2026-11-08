@@ -40,7 +40,7 @@ export const FREE_PLAN_KEY = 'free';
 export const TRIAL_PLAN_KEY = 'trial';
 
 /** Kartlarda sırasıyla gösterilen özellikler (#1027 `EntitlementFeatures.All`). */
-export const SUBSCRIPTION_FEATURES = ['book-import', 'ai-classification', 'mock-exam'] as const;
+export const SUBSCRIPTION_FEATURES = ['book-import', 'quick-add', 'ai-classification', 'mock-exam'] as const;
 
 /** `subscription.plans.teacherPro` → scope içi `plans.teacherPro` (şablon `subscription` önekiyle çevirir). */
 export function planNameKey(displayNameKey: string | null | undefined): string {

@@ -1,5 +1,6 @@
 {
   "title": "Question Pool",
+  "quickAdd": "Quick add questions",
   "subtitle": "Search ready questions by grade, subject, topic and subtopic.",
   "filters": {
     "title": "Filters",

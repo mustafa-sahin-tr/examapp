@@ -1,0 +1,53 @@
+// Issue #1053: liste ve takip ekranının ortak parçaları (durum çipi, bölüm başlığı, boş / hata durumu).
+
+.qa-section-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ms-text-strong);
+}
+
+.qa-status {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+
+  &--queued,
+  &--cancelled {
+    background: var(--ms-background-hover);
+    color: var(--ms-text-medium);
+  }
+
+  &--processing {
+    background: var(--ms-info-surface-weak);
+    color: var(--ms-info-text-weak);
+  }
+
+  &--ready {
+    background: var(--ms-success-surface-weak);
+    color: var(--ms-success-text-weak);
+  }
+
+  &--failed {
+    background: var(--ms-danger-surface-weak);
+    color: var(--ms-danger-text-medium);
+  }
+}
+
+.qa-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 24px 16px;
+  color: var(--ms-text-medium);
+  text-align: center;
+
+  &--error {
+    color: var(--ms-danger-text-medium);
+  }
+}

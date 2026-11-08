@@ -138,6 +138,17 @@ export const routes: Routes = [
           import('./pages/book-imports/book-import-detail.component').then((m) => m.BookImportDetailComponent),
       },
       {
+        // Issue #1053 (epic #1048): hızlı soru ekleme — backend Teacher/Admin/QuestionTrainer + onaylı öğretmen.
+        path: 'quick-add',
+        canActivate: [authGuard, roleGuard('Teacher', 'Admin', 'QuestionTrainer'), approvedTeacherGuard],
+        loadComponent: () => import('./pages/quick-add/quick-add.component').then((m) => m.QuickAddComponent),
+      },
+      {
+        path: 'quick-add/:id',
+        canActivate: [authGuard, roleGuard('Teacher', 'Admin', 'QuestionTrainer'), approvedTeacherGuard],
+        loadComponent: () => import('./pages/quick-add/quick-add-detail.component').then((m) => m.QuickAddDetailComponent),
+      },
+      {
         path: 'question-reports',
         canActivate: [authGuard, ...authoringGuards],
         loadComponent: () => import('./pages/question-reports/question-reports.component').then((m) => m.QuestionReportsComponent),

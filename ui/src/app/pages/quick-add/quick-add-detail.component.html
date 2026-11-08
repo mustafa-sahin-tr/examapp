@@ -1,0 +1,81 @@
+<div class="qa-page" *transloco="let t; prefix: 'quick-add'">
+  <a mat-button class="qa-back" routerLink="/quick-add">
+    <mat-icon aria-hidden="true">arrow_back</mat-icon>{{ t('detail.back') }}
+  </a>
+
+  @if (loading()) {
+  <div class="qa-state" role="status"><mat-spinner diameter="24" aria-hidden="true"></mat-spinner>{{ t('detail.loading') }}</div>
+  } @else if (loadError(); as error) {
+  <div class="qa-state qa-state--error" role="alert">
+    <mat-icon aria-hidden="true">error_outline</mat-icon>
+    {{ error === 'notFound' ? t('detail.notFound') : t('detail.loadFailed') }}
+    @if (error === 'failed') {
+    <button mat-stroked-button type="button" (click)="load()">{{ t('detail.retry') }}</button>
+    }
+  </div>
+  } @else if (job(); as j) {
+  <section class="qa-card qa-card--{{ phase() }}" [attr.aria-label]="t('title')">
+    <div class="qa-card__head">
+      <h1 class="qa-card__title">{{ t('title') }}</h1>
+      <span class="qa-status qa-status--{{ phase() }}" role="status">{{ t('phase.' + phase()) }}</span>
+    </div>
+    <p class="qa-card__meta">{{ t('detail.created', { date: (j.createdAt | date: 'd MMM HH:mm') }) }}</p>
+    <p class="qa-card__message">
+      {{ t(messageKey(j), { done: done(j), total: j.tests.length, count: savedTotal() }) }}
+    </p>
+    @if (phase() === 'processing') {
+    <mat-progress-bar mode="determinate" [value]="progress(j)" [attr.aria-label]="t('phase.processing')"></mat-progress-bar>
+    } @else if (phase() === 'queued' && !j.stalled) {
+    <mat-progress-bar mode="indeterminate" [attr.aria-label]="t('phase.queued')"></mat-progress-bar>
+    }
+    <div class="qa-card__actions">
+      @if (canRetry()) {
+      <button mat-flat-button type="button" (click)="retry()">
+        <mat-icon aria-hidden="true">refresh</mat-icon>{{ t('detail.retry') }}
+      </button>
+      }
+      @if (phase() !== 'queued' && phase() !== 'processing') {
+      <a mat-stroked-button routerLink="/quick-add">
+        <mat-icon aria-hidden="true">add_a_photo</mat-icon>{{ t('detail.another') }}
+      </a>
+      }
+    </div>
+    @if (retryError()) {
+    <p class="qa-card__error" role="alert">{{ t('detail.retryFailed') }}</p>
+    }
+  </section>
+
+  <ol class="qa-results">
+    @for (photo of photos(); track photo.id) {
+    <li class="qa-result">
+      @if (thumb(photo); as url) {
+      <img class="qa-result__thumb" [src]="url" [alt]="t('detail.photo', { n: photo.order })" />
+      } @else {
+      <span class="qa-result__thumb qa-result__thumb--empty" aria-hidden="true"><mat-icon>image</mat-icon></span>
+      }
+      <div class="qa-result__body">
+        <span class="qa-result__name">{{ t('detail.photo', { n: photo.order }) }}</span>
+        @if (isPhotoPending(photo)) {
+        <span class="qa-result__line">{{ t('detail.pending') }}</span>
+        } @else if (photo.status === 'Failed') {
+        <span class="qa-result__line qa-result__line--error">{{ t('detail.photoFailed') }}</span>
+        } @else {
+        <span class="qa-result__line">
+          {{ t('detail.found', { count: photo.questionsFound }) }} · {{ t('detail.saved', { count: photo.questionsSaved }) }}
+        </span>
+        }
+        @if (photo.keyAnswers > 0) {
+        <span class="qa-result__line">{{ t('detail.keyAnswers', { count: photo.keyAnswers }) }}</span>
+        }
+        @for (flag of photo.reviewFlags; track $index) {
+        <span class="qa-result__flag">
+          <mat-icon aria-hidden="true">warning_amber</mat-icon>
+          {{ t(flagKey(flag), { expected: flag.expected, found: flag.found }) }}
+        </span>
+        }
+      </div>
+    </li>
+    }
+  </ol>
+  }
+</div>

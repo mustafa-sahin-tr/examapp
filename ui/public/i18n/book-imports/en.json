@@ -84,7 +84,9 @@
     "Running": "Importing",
     "Done": "Ready",
     "NeedsReview": "Needs a check",
-    "Failed": "Failed"
+    "Failed": "Failed",
+    "Approved": "Approved",
+    "Removed": "Removed"
   },
   "stepState": {
     "done": "done",
@@ -132,7 +134,8 @@
     "testCountsNoKey": "{{found}} questions · {{saved}} saved",
     "duplicates": "{{count}} duplicates skipped",
     "flagPages": "page {{pages}}",
-    "flagNumbers": "question {{numbers}}"
+    "flagNumbers": "question {{numbers}}",
+    "legendReview": "{{approved}} approved · {{removed}} removed"
   },
   "setup": {
     "title": "Confirm the book setup",
@@ -193,5 +196,37 @@
     "notSaved": "Not saved (fewer than two choices)",
     "detectionFailed": "Detection failed",
     "saveFailed": "Saving failed"
+  },
+  "review": {
+    "title": "Review and approve",
+    "summary": "{{open}} tests awaiting review · {{approved}} approved",
+    "onlyAttention": "Only tests that need a look",
+    "approveAll": "Approve tests without issues ({{count}}/{{total}})",
+    "approveAllConfirm": "{{count}} tests will be approved and become active. Tests with unanswered questions or failures are skipped.",
+    "confirm": "Approve",
+    "cancel": "Cancel",
+    "approving": "Approving…",
+    "failed": "The action failed. Please try again.",
+    "approvedAll": "{{count}} tests approved.",
+    "skipped": "{{name}} skipped: {{reason}}",
+    "skipReason": {
+      "answerless": "has unanswered questions",
+      "failed": "import failed"
+    },
+    "allDone": "No tests left to review.",
+    "nothingToCheck": "No tests need a look. Turn off the filter to see all tests.",
+    "answerless": "{{count}} unanswered",
+    "counts": "{{saved}} questions · {{key}} in key",
+    "pages": "pages {{from}}–{{to}}",
+    "preview": "Preview",
+    "approve": "Approve",
+    "answerlessHint": "Pick the answers of unanswered questions first.",
+    "remove": "Remove test {{name}}",
+    "removeConfirm": "Remove test",
+    "loading": "Loading questions…",
+    "answered": "Answered {{done}}/{{total}}",
+    "question": "Question {{number}} · page {{page}}",
+    "answerFor": "Answer of question {{number}}",
+    "footer": "Approved tests follow normal test settings and are private (only you) by default."
   }
 }

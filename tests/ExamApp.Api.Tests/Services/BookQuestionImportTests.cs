@@ -2,6 +2,8 @@ using System.Text;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos.Labeling;
 using ExamApp.Api.Services.BookImport;
+using ExamApp.Api.Services.Entitlements;
+using Hangfire;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Labeling;
 using ExamApp.Api.Services.Teachers;
@@ -59,7 +61,27 @@ public class BookQuestionImportTests : IDisposable
             _saved.Add(request);
             var duplicates = request.Questions.Select((q, i) => (q, i)).Where(x => _duplicateItems.Contains(x.q.ItemLabel!))
                 .Select(x => x.i).ToList();
-            return Task.FromResult(new LabelingImportPageResult(request.Questions.Count - duplicates.Count, duplicates));
+            // Bankaya kayıt gibi: kaydedilen her soru taslak bir satır (şıklar, anahtardaki doğru şık, kitap kaynağı).
+            using var ctx = _db.NewContext();
+            ctx.SetCurrentUser(OwnerId);
+            var created = request.Questions.Where((_, i) => !duplicates.Contains(i)).Select(q =>
+            {
+                var question = new Question { Text = q.ItemLabel!, IsDraft = true };
+                question.Answers = Enumerable.Range(0, q.Options.Count)
+                    .Select(o => new Answer { Text = ((char)('A' + o)).ToString(), Order = o }).ToList();
+                ctx.Questions.Add(question);
+                ctx.QuestionSources.Add(new QuestionSource
+                {
+                    Question = question, BookId = request.BookId, FilePage = request.FilePage, ItemLabel = q.ItemLabel,
+                    CropSha256 = Guid.NewGuid().ToString("N"),
+                });
+                return (question, q.CorrectOptionIndex);
+            }).ToList();
+            ctx.SaveChanges();
+            foreach (var (question, correct) in created.Where(c => c.CorrectOptionIndex >= 0))
+                question.CorrectAnswerId = question.Answers.ElementAt(correct).Id;
+            ctx.SaveChanges();
+            return Task.FromResult(new LabelingImportPageResult(created.Count, duplicates, created.Select(c => c.question.Id).ToList()));
         });
         _services = new ServiceCollection().AddScoped(_ => _bank).BuildServiceProvider();
     }
@@ -224,6 +246,128 @@ public class BookQuestionImportTests : IDisposable
     }
 
     [Fact]
+    public async Task Each_test_gets_a_hidden_draft_worksheet_with_its_questions_in_order()
+    {
+        var id = await SeedAsync([new(1, 1, 2, "ABC", [2, 3]), new(2, 3, 3, "D", [1])]);
+        Detect(1, 4, 4);
+        Detect(2, 4);
+        Detect(3, 4);
+
+        await RunAsync(id);
+
+        await using var check = _db.NewContext();
+        var tests = await check.BookImportJobTests.OrderBy(t => t.Order).ToListAsync();
+        tests.ShouldAllBe(t => t.WorksheetId != null);
+        var first = await check.Worksheets.WithDrafts().Include(w => w.WorksheetQuestions).ThenInclude(wq => wq.Question)
+            .SingleAsync(w => w.Id == tests[0].WorksheetId);
+        first.IsDraft.ShouldBeTrue();
+        first.CreateUserId.ShouldBe(OwnerId);
+        first.TeacherSharing.ShouldBe(WorksheetTeacherSharing.Private);
+        first.Name.ShouldBe("Puan BTS 5 Matematik – 1-01 · Test 1");
+        first.WorksheetQuestions.OrderBy(wq => wq.Order).Select(wq => wq.Question.Text).ShouldBe(["1", "2", "3"]);
+        (await check.Worksheets.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Answerless_test_is_blocked_until_its_answers_are_picked_then_approval_activates_it()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "A", [2])]);
+        Detect(1, 4, 4);
+        await RunAsync(id);
+        var test = await SingleTestAsync();
+
+        await using (var ctx = _db.NewContext())
+        {
+            var service = Service(ctx);
+            var detail = await service.GetAsync(Owner, id, default);
+            detail!.Tests.Single().Answerless.ShouldBe(1);
+            (await service.ApproveTestAsync(Owner, id, test.Id, default)).ShouldBe(BookImportReviewResult.Answerless);
+
+            var questions = await service.GetReviewQuestionsAsync(Owner, id, test.Id, default);
+            questions!.Select(q => (q.Number, q.FilePage, q.OptionCount, q.AnswerIndex)).ShouldBe([("1", 1, 4, 0), ("2", 1, 4, null)]);
+            (await service.SetAnswerAsync(Owner, id, test.Id, questions[1].Id, 4, default)).ShouldBe(BookImportReviewResult.InvalidOption);
+            (await service.SetAnswerAsync(Owner, id, test.Id, questions[1].Id, 2, default)).ShouldBe(BookImportReviewResult.Ok);
+            (await service.ApproveTestAsync(Owner, id, test.Id, default)).ShouldBe(BookImportReviewResult.Ok);
+        }
+
+        await using var check = _db.NewContext();
+        (await check.Questions.CountAsync()).ShouldBe(2);
+        var worksheet = await check.Worksheets.SingleAsync();
+        worksheet.TeacherSharing.ShouldBe(WorksheetTeacherSharing.Private);
+        (await check.BookImportJobTests.SingleAsync()).Status.ShouldBe(BookImportTestStatus.Approved);
+        var job = await check.BookImportJobs.SingleAsync();
+        job.Status.ShouldBe(BookImportJobStatus.Completed);
+        job.Stage.ShouldBe(BookImportStage.Approval);
+    }
+
+    [Fact]
+    public async Task Approve_all_skips_blocked_tests_and_says_why()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "AB", [2]), new(2, 2, 2, "C", [2]), new(3, 3, 3, "D", [1])]);
+        Detect(1, 4, 4);
+        Detect(2, 4, 4);
+        // Sayfa 3 tespit edilemez → test Failed.
+        await RunAsync(id);
+        var tests = await TestsAsync();
+
+        await using (var ctx = _db.NewContext())
+        {
+            var result = await Service(ctx).ApproveAllAsync(Owner, id, default);
+            result!.Approved.ShouldBe([tests[0].Id]);
+            result.Skipped.ShouldBe([new(tests[1].Id, "answerless"), new(tests[2].Id, "failed")]);
+        }
+
+        await using var check = _db.NewContext();
+        (await check.Worksheets.Select(w => w.Id).ToListAsync()).ShouldBe([tests[0].WorksheetId!.Value]);
+        (await check.BookImportJobs.SingleAsync()).Status.ShouldBe(BookImportJobStatus.ReadyForReview);
+    }
+
+    [Fact]
+    public async Task Removing_a_test_deletes_only_its_draft_worksheet_and_questions()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "AB", [2]), new(2, 2, 2, "CD", [2])]);
+        Detect(1, 4, 4);
+        Detect(2, 4, 4);
+        await RunAsync(id);
+        var tests = await TestsAsync();
+
+        await using (var ctx = _db.NewContext())
+        {
+            var service = Service(ctx);
+            (await service.ApproveTestAsync(Owner, id, tests[0].Id, default)).ShouldBe(BookImportReviewResult.Ok);
+            (await service.RemoveTestAsync(Owner, id, tests[0].Id, default)).ShouldBe(BookImportReviewResult.InvalidState);
+            (await service.RemoveTestAsync(Owner, id, tests[1].Id, default)).ShouldBe(BookImportReviewResult.Ok);
+        }
+
+        await using var check = _db.NewContext();
+        (await check.Questions.WithDrafts().CountAsync()).ShouldBe(2);
+        (await check.Questions.IgnoreQueryFilters().CountAsync(q => q.IsDeleted && q.IsDraft)).ShouldBe(2);
+        (await check.Worksheets.WithDrafts().Select(w => w.Id).ToListAsync()).ShouldBe([tests[0].WorksheetId!.Value]);
+        (await check.BookImportJobTests.OrderBy(t => t.Order).Select(t => t.Status).ToListAsync())
+            .ShouldBe([BookImportTestStatus.Approved, BookImportTestStatus.Removed]);
+        (await check.BookImportJobs.SingleAsync()).Status.ShouldBe(BookImportJobStatus.Completed);
+    }
+
+    [Fact]
+    public async Task Another_user_cannot_review_the_job()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "AB", [2])]);
+        Detect(1, 4, 4);
+        await RunAsync(id);
+        var test = await SingleTestAsync();
+        var stranger = BookImportOwner.Create(OwnerId + 1, "QuestionTrainer");
+
+        await using var ctx = _db.NewContext();
+        var service = Service(ctx);
+        (await service.GetReviewQuestionsAsync(stranger, id, test.Id, default)).ShouldBeNull();
+        (await service.ApproveTestAsync(stranger, id, test.Id, default)).ShouldBe(BookImportReviewResult.NotFound);
+        (await service.RemoveTestAsync(stranger, id, test.Id, default)).ShouldBe(BookImportReviewResult.NotFound);
+        (await service.ApproveAllAsync(stranger, id, default)).ShouldBeNull();
+        (await service.ApproveTestAsync(BookImportOwner.Create(OwnerId + 2, "Admin"), id, test.Id, default))
+            .ShouldBe(BookImportReviewResult.Ok);
+    }
+
+    [Fact]
     public void Draft_questions_are_hidden_unless_explicitly_included()
     {
         using var ctx = _db.NewContext();
@@ -306,6 +450,17 @@ public class BookQuestionImportTests : IDisposable
         await using var ctx = _db.NewContext();
         await new BookImportJobRunner(ctx, guard, _minio, Substitute.For<IPdfRasterizer>(), new FakeBookSetupAi(), _labeling,
             _services.GetRequiredService<IServiceScopeFactory>(), new ConfigurationBuilder().Build()).RunLockedAsync(id);
+    }
+
+    private static readonly BookImportOwner Owner = BookImportOwner.Create(OwnerId, "QuestionTrainer");
+
+    private BookImportService Service(AppDbContext ctx) => new(ctx, _minio, Substitute.For<IBackgroundJobClient>(),
+        Substitute.For<IEntitlementService>(), new BookRegistryService(ctx, TimeProvider.System), new ConfigurationBuilder().Build());
+
+    private async Task<List<BookImportJobTest>> TestsAsync()
+    {
+        await using var check = _db.NewContext();
+        return await check.BookImportJobTests.OrderBy(t => t.Order).ToListAsync();
     }
 
     private async Task<BookImportJobTest> SingleTestAsync()

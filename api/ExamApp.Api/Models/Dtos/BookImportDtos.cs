@@ -48,6 +48,8 @@ public class BookImportJobDetailDto : BookImportJobDto
 
 public class BookImportJobTestDto
 {
+    /// <summary>Issue #1023: inceleme işlemleri (onay, silme, cevap) bu id ile.</summary>
+    public int Id { get; set; }
     public int Order { get; set; }
     public int Unit { get; set; }
     public int TestNo { get; set; }
@@ -64,8 +66,42 @@ public class BookImportJobTestDto
     /// <summary>Issue #1022: aktarım inceleme işaretleri (kod, dosya sayfaları, soru numaraları).</summary>
     public IReadOnlyList<Services.BookImport.BookImportReviewFlag> ReviewFlags { get; set; } = [];
 
+    /// <summary>Issue #1023: taslak test (önizleme / işaretleme bağlantısı), dosya sayfaları ve cevapsız soru sayısı (onayı engeller).</summary>
+    public int? WorksheetId { get; set; }
+    public int? FileFrom { get; set; }
+    public int? FileTo { get; set; }
+    public int Answerless { get; set; }
+
     public string? Error { get; set; }
 }
+
+/// <summary>Issue #1023: incelemedeki testin sorusu (cevapsızlar için satır içi A–D seçici).</summary>
+public class BookImportReviewQuestionDto
+{
+    public int Id { get; set; }
+    public string? Number { get; set; }
+    public int FilePage { get; set; }
+    public int OptionCount { get; set; }
+    /// <summary>Önizleme: kırpılmış soru görseli.</summary>
+    [Services.Storage.StorageUrl(Services.Storage.StorageArea.QuestionImage)]
+    public string? ImageUrl { get; set; }
+    /// <summary>Doğru şıkkın sırası (A = 0); cevapsızsa null.</summary>
+    public int? AnswerIndex { get; set; }
+}
+
+public class SetBookImportAnswerDto
+{
+    public int OptionIndex { get; set; }
+}
+
+/// <summary>Issue #1023: "Sorunsuz testleri onayla" sonucu; atlananlar ve nedeni (answerless / failed / notDraft).</summary>
+public class ApproveAllBookImportResultDto
+{
+    public List<int> Approved { get; set; } = new();
+    public List<BookImportSkippedTestDto> Skipped { get; set; } = new();
+}
+
+public record BookImportSkippedTestDto(int Id, string Reason);
 
 /// <summary>Issue #1018 / #1019: başlangıç ekranındaki "Bu ay N/M kitap" kartı (Limit null = sınırsız).</summary>
 public class BookImportQuotaDto

@@ -48,8 +48,11 @@ public sealed record LabelingImportPageRequest(
     string ImageBase64, int BookId, int FilePage, int GradeId, QuestionBankSharing Sharing,
     IReadOnlyList<LabelingBankQuestionDto> Questions);
 
-/// <summary>Issue #1022: kaydedilen soru sayısı ve kırpması bankada olduğu için atlanan soruların sırası (istekteki).</summary>
-public sealed record LabelingImportPageResult(int Saved, IReadOnlyList<int> DuplicateIndexes);
+/// <summary>
+/// Issue #1022: kaydedilen soru sayısı ve kırpması bankada olduğu için atlanan soruların sırası (istekteki). #1023:
+/// kaydedilen soruların id'leri, istekteki sırayla (taslak test bunlara bağlanır).
+/// </summary>
+public sealed record LabelingImportPageResult(int Saved, IReadOnlyList<int> DuplicateIndexes, IReadOnlyList<int> QuestionIds);
 
 public interface ILabelingBankService
 {
@@ -234,7 +237,7 @@ public sealed class LabelingBankService(
     {
         var questions = request.Questions;
         if (questions.Count == 0)
-            return new LabelingImportPageResult(0, []);
+            return new LabelingImportPageResult(0, [], []);
         if (questions.Count > MaxQuestions)
             throw new LabelingValidationException("labeling.tooManyBoxes");
         foreach (var q in questions)
@@ -268,7 +271,7 @@ public sealed class LabelingBankService(
             .ToList();
         var kept = bulkQuestions.Where((_, i) => !duplicates.Contains(i)).ToList();
         if (kept.Count == 0)
-            return new LabelingImportPageResult(0, duplicates);
+            return new LabelingImportPageResult(0, duplicates, []);
 
         var bulk = new BulkQuestionCreateDto
         {
@@ -288,7 +291,14 @@ public sealed class LabelingBankService(
                 request.BookId, request.FilePage, result?.Message);
             throw new LabelingBankSaveException();
         }
-        return new LabelingImportPageResult(kept.Count, duplicates);
+        var keptHashes = hashes.Where((_, i) => !duplicates.Contains(i)).ToList();
+        var ids = await db.QuestionSources.IgnoreQueryFilters().AsNoTracking()
+            .Where(s => s.BookId == request.BookId && keptHashes.Contains(s.CropSha256) && !s.Question.IsDeleted)
+            .Select(s => new { s.CropSha256, s.QuestionId })
+            .ToListAsync(ct);
+        var idByHash = ids.GroupBy(s => s.CropSha256).ToDictionary(g => g.Key, g => g.Max(s => s.QuestionId));
+        return new LabelingImportPageResult(kept.Count, duplicates,
+            keptHashes.Where(idByHash.ContainsKey).Select(h => idByHash[h]).ToList());
     }
 
     private static HeaderInfo BookHeader(BookTocEntry? toc) =>

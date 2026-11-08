@@ -126,6 +126,7 @@ internal sealed class BookQuestionImportStage(
         var label = BookImportService.BookTestName(test);
         label = label.Length <= QuestionSource.MaxLabelLength ? label : label[..QuestionSource.MaxLabelLength];
         var flags = new FlagSet();
+        var questionIds = new List<int>();
         int found = 0, saved = 0, duplicates = 0, failedPages = 0, pageCount = 0;
         var last = 0;
 
@@ -212,6 +213,7 @@ internal sealed class BookQuestionImportStage(
                     imageBase64, bookId, filePage, job.GradeId, QuestionBankSharing.Private, toSave), job.CreateUserId!.Value, ct);
                 saved += result.Saved;
                 duplicates += result.DuplicateIndexes.Count;
+                questionIds.AddRange(result.QuestionIds);
             }
             catch (Exception ex) when (ex is LabelingValidationException or LabelingBankSaveException)
             {
@@ -223,6 +225,9 @@ internal sealed class BookQuestionImportStage(
 
         if (key is not null && found != key.Length)
             flags.AddCount(BookImportReviewFlag.CountMismatch, from, to, found, key.Length);
+
+        if (questionIds.Count > 0)
+            await CreateDraftTestAsync(job, test, questionIds, ct);
 
         test.QuestionsFound = found;
         test.QuestionsSaved = saved;
@@ -240,6 +245,45 @@ internal sealed class BookQuestionImportStage(
         logger.LogInformation("Book import job {JobId}: test {Order} {Status}: {Found} found, {Saved} saved, {Duplicates} duplicates",
             job.Id, test.Order, test.Status, found, saved, duplicates);
     }
+
+    /// <summary>
+    /// Issue #1023: testin kaydedilen soruları taslak bir teste sırayla bağlanır (el ile aktarımdaki gibi: kitap adı – test adı,
+    /// süre anahtardan, öğretmen paylaşımı Private). Yeniden çalıştırmada var olan taslak test yeniden kullanılır.
+    /// </summary>
+    private async Task CreateDraftTestAsync(BookImportJob job, BookImportJobTest test, List<int> questionIds, CancellationToken ct)
+    {
+        var worksheet = test.WorksheetId is { } existingId
+            ? await db.Worksheets.WithDrafts().AsTracking().Include(w => w.WorksheetQuestions)
+                .FirstOrDefaultAsync(w => w.Id == existingId && w.IsDraft, ct)
+            : null;
+        if (worksheet is null)
+        {
+            var name = $"{job.BookName} – {BookImportService.BookTestName(test)}";
+            worksheet = new Worksheet
+            {
+                Name = name.Length <= DraftTestNameLength ? name : name[..DraftTestNameLength],
+                Description = $"{job.BookName}. Cevaplar kitabın cevap anahtarından.",
+                GradeId = job.GradeId,
+                SubjectId = job.SubjectId,
+                MaxDurationSeconds = (test.Minutes ?? 0) * 60,
+                BookTestId = test.BookTestId,
+                TeacherSharing = WorksheetTeacherSharing.Private,
+                IsDraft = true,
+            };
+            // Sahip denetim damgasıyla yazılır (iş isteksiz çalışır): taslağın sahibi işin sahibi.
+            db.SetCurrentUser(job.CreateUserId!.Value);
+            db.Worksheets.Add(worksheet);
+        }
+
+        var linked = worksheet.WorksheetQuestions.Select(q => q.QuestionId).ToHashSet();
+        var order = worksheet.WorksheetQuestions.Count == 0 ? 0 : worksheet.WorksheetQuestions.Max(q => q.Order);
+        foreach (var id in questionIds.Where(linked.Add))
+            worksheet.WorksheetQuestions.Add(new WorksheetQuestion { QuestionId = id, Order = ++order });
+        await db.SaveChangesAsync(ct);
+        test.WorksheetId = worksheet.Id;
+    }
+
+    private const int DraftTestNameLength = 200;
 
     private async Task<LabelingImportDetection> DetectAsync(BookImportJob job, string imageBase64, CancellationToken ct)
     {

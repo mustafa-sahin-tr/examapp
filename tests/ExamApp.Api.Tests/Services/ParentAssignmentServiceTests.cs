@@ -303,6 +303,27 @@ public class ParentAssignmentServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Draft_worksheets_are_missing_from_the_parent_list_and_summary()
+    {
+        // Issue #1023: taslak test veli görünümüne düşmez (atama olsa bile; savunma katmanı global filtre).
+        await SeedAsync();
+        var start = Now.AddDays(-7);
+        var active = await WorksheetAsync();
+        await AssignAsync(active, start, Now.AddDays(3));
+        var draft = await WorksheetAsync();
+        await AssignAsync(draft, start, Now.AddDays(3));
+        await using (var seed = _db.NewContext())
+            await seed.Worksheets.IgnoreQueryFilters().Where(w => w.Id == draft).ExecuteUpdateAsync(s => s.SetProperty(w => w.IsDraft, true));
+
+        var list = (await ListAsync()).ShouldNotBeNull();
+        list.Items.Select(i => i.WorksheetId).ShouldBe([active]);
+        await using var ctx = _db.NewContext();
+        var summary = (await new ParentDashboardService(ctx, new ParentChildAccess(ctx), new ParentAccessAuditLog(ctx, _time), time: _time)
+            .GetChildSummaryAsync(ParentUser, _studentId)).ShouldNotBeNull();
+        summary.Assignments.Pending.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task List_counts_match_the_v2_summary()
     {
         await SeedAsync();

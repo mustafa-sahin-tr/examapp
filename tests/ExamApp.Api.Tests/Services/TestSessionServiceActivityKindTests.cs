@@ -489,6 +489,23 @@ public class TestSessionServiceActivityKindTests : IDisposable
     }
 
     [Fact]
+    public async Task DraftWorksheet_CannotBeStartedByAStudentInItsGrade_issue1023()
+    {
+        var s = await SeedAsync(WorksheetKind.Activity);
+        var worksheetId = await WorksheetIdAsync(s.InstanceId);
+
+        await using var ctx = _db.NewContext();
+        await ctx.Worksheets.IgnoreQueryFilters().Where(w => w.Id == worksheetId).ExecuteUpdateAsync(u => u.SetProperty(w => w.IsDraft, true));
+        var gradeId = await ctx.Grades.Select(g => g.Id).SingleAsync();
+        var late = new Student { UserId = 4404, StudentNumber = "S4404", SchoolName = "Sch", GradeId = gradeId };
+        ctx.Students.Add(late);
+        await ctx.SaveChangesAsync();
+
+        (await NewService(ctx).StartTestAsync(worksheetId, new StudentProfileDto { Id = late.Id, GradeId = gradeId })).ShouldBeNull();
+        (await ctx.TestInstances.CountAsync(ti => ti.StudentId == late.Id)).ShouldBe(0);
+    }
+
+    [Fact]
     public async Task Reorder_SessionStartedAfterwards_SeesTheNewOrder_issue685()
     {
         var s = await SeedAsync(WorksheetKind.Activity);

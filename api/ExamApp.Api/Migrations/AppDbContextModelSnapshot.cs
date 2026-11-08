@@ -525,9 +525,14 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("UpdateUserId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("WorksheetId")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("BookTestId");
+
+                    b.HasIndex("WorksheetId");
 
                     b.HasIndex("JobId", "Order")
                         .IsUnique();
@@ -7507,9 +7512,15 @@ namespace ExamApp.Api.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Worksheet", "Worksheet")
+                        .WithMany()
+                        .HasForeignKey("WorksheetId");
+
                     b.Navigation("BookTest");
 
                     b.Navigation("Job");
+
+                    b.Navigation("Worksheet");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.BookImportPage", b =>

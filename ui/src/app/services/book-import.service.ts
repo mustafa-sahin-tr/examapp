@@ -3,8 +3,10 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
+  ApproveAllBookImportResult,
   BookImportJob,
   BookImportJobDetail,
+  BookImportReviewQuestion,
   BookImportQuota,
   BookImportSetup,
   ConfirmBookImportSetup,
@@ -50,6 +52,27 @@ export class BookImportService {
 
   cancel(id: string): Observable<void> {
     return this.http.post<void>(`${this.baseUrl}/${id}/cancel`, {});
+  }
+
+  /** Issue #1023: inceleme — testin soruları, cevap seçimi, onay ve silme. */
+  reviewQuestions(id: string, testId: number): Observable<BookImportReviewQuestion[]> {
+    return this.http.get<BookImportReviewQuestion[]>(`${this.baseUrl}/${id}/tests/${testId}/questions`);
+  }
+
+  setAnswer(id: string, testId: number, questionId: number, optionIndex: number): Observable<void> {
+    return this.http.put<void>(`${this.baseUrl}/${id}/tests/${testId}/questions/${questionId}/answer`, { optionIndex });
+  }
+
+  approveTest(id: string, testId: number): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${id}/tests/${testId}/approve`, {});
+  }
+
+  approveAll(id: string): Observable<ApproveAllBookImportResult> {
+    return this.http.post<ApproveAllBookImportResult>(`${this.baseUrl}/${id}/approve`, {});
+  }
+
+  removeTest(id: string, testId: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}/tests/${testId}`);
   }
 
   /** Sayfa görseli (WebP, #1020); yetkili istek olduğundan <img src> yerine blob. */

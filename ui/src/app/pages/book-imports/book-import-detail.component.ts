@@ -21,6 +21,7 @@ import {
   stageState,
 } from '../../models/book-import';
 import { BookImportService } from '../../services/book-import.service';
+import { BookImportReviewComponent } from './book-import-review.component';
 import { BookImportSetupComponent } from './book-import-setup.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { BOOK_IMPORTS_POLL_MS, BOOK_IMPORTS_SCOPE } from './book-imports.component';
@@ -30,13 +31,14 @@ type Translate = (key: string, params?: Record<string, unknown>) => string;
 /**
  * Issue #1018 (epic #1017): bir kitap aktarımının takibi — aşama adımları, geçerli aşamanın ilerlemesi, test ızgarası ve dikkat
  * gerektiren testler (#1022: bulunan / anahtardaki / kaydedilen soru, sayfa referanslı işaretler). İş sürerken 5 sn'de bir
- * yenilenir. Kurulum onayında onay ekranı (#1021) gösterilir. Yeniden dene / iptal
- * (#1025) ve inceleme (#1023) sonraki dilimlerde.
+ * yenilenir. Kurulum onayında onay ekranı (#1021), soru aktarımı bitince inceleme ve onay (#1023) gösterilir. Yeniden dene /
+ * iptal (#1025) sonraki dilimde.
  */
 @Component({
   selector: 'app-book-import-detail',
   standalone: true,
   imports: [
+    BookImportReviewComponent,
     BookImportSetupComponent,
     DatePipe,
     MatButtonModule,
@@ -68,6 +70,11 @@ export class BookImportDetailComponent implements OnInit {
   readonly attention = computed(() =>
     (this.job()?.tests ?? []).filter((t) => t.status === 'NeedsReview' || t.status === 'Failed'),
   );
+  /** #1023: inceleme ekranı aktarım bitince (incelemede düzenlenebilir, tamamlanınca salt okunur). */
+  readonly reviewing = computed(() => {
+    const job = this.job();
+    return !!job && job.tests.some((t) => t.worksheetId != null) && (job.status === 'ReadyForReview' || job.status === 'Completed');
+  });
   readonly testCounts = computed(() => {
     const tests = this.job()?.tests ?? [];
     return {
@@ -75,6 +82,8 @@ export class BookImportDetailComponent implements OnInit {
       review: tests.filter((t) => t.status === 'NeedsReview').length,
       failed: tests.filter((t) => t.status === 'Failed').length,
       running: tests.filter((t) => t.status === 'Running').length,
+      approved: tests.filter((t) => t.status === 'Approved').length,
+      removed: tests.filter((t) => t.status === 'Removed').length,
       total: tests.length,
     };
   });
@@ -140,8 +149,12 @@ export class BookImportDetailComponent implements OnInit {
     return parts.join(' · ');
   }
 
-  testTone(test: BookImportJobTest): 'done' | 'review' | 'failed' | 'running' | 'pending' {
+  testTone(test: BookImportJobTest): 'done' | 'review' | 'failed' | 'running' | 'pending' | 'approved' | 'removed' {
     switch (test.status) {
+      case 'Approved':
+        return 'approved';
+      case 'Removed':
+        return 'removed';
       case 'Done':
         return 'done';
       case 'NeedsReview':

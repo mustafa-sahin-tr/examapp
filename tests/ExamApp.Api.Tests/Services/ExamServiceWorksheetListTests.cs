@@ -94,6 +94,30 @@ public class ExamServiceWorksheetListTests : IDisposable
         page.Items.ShouldHaveSingleItem().Name.ShouldBe("Alfa");
     }
 
+    [Fact]
+    public async Task Draft_worksheets_are_hidden_from_owner_admin_and_student_lists()
+    {
+        // Issue #1023: kitap aktarımı taslağı, açık paylaşımlı olsa da hiçbir listede görünmez.
+        var w = await SeedAsync();
+        await using (var seed = _db.NewContext())
+        {
+            seed.SetCurrentUser(1);
+            seed.Worksheets.Add(new Worksheet
+            {
+                Name = "Taslak", Description = "d", GradeId = w.GradeB, TeacherSharing = WorksheetTeacherSharing.PublicView, IsDraft = true,
+            });
+            await seed.SaveChangesAsync();
+        }
+
+        await using var ctx = _db.NewContext();
+        var svc = NewService(ctx);
+        (await svc.GetWorksheetsForTeacherAsync(Filter(), Teacher, isAdmin: false)).Items.ShouldNotContain(i => i.Name == "Taslak");
+        (await svc.GetWorksheetsForTeacherAsync(Filter(), new UserProfileDto { Id = 9, Role = "Admin" }, isAdmin: true))
+            .Items.ShouldNotContain(i => i.Name == "Taslak");
+        (await svc.GetWorksheetsForStudentsAsync(Filter(), new StudentProfileDto { Id = 10, GradeId = w.GradeB }))
+            .Items.Select(i => i.Name).ShouldBe(["Gama"]);
+    }
+
     // ---- Student ----
 
     [Fact]

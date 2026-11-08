@@ -15,6 +15,15 @@ public static class EntitlementFeatures
 {
     /// <summary>Kitaptan aktarım (epic #1017): kurulumu onaylanan iş bir kullanım sayılır (#1021 kaydeder).</summary>
     public const string BookImport = "book-import";
+
+    /// <summary>Soru sınıflandırma (AI); sayım #1031'de.</summary>
+    public const string AiClassification = "ai-classification";
+
+    /// <summary>Deneme sınavı çözme. Free'de 0: herkese açık tek deneme sınavı sınırdan muaftır (#1031).</summary>
+    public const string MockExam = "mock-exam";
+
+    /// <summary>Kullanıcının plan özetinde (#1027) her zaman listelenen özellikler.</summary>
+    public static readonly IReadOnlyList<string> All = [BookImport, AiClassification, MockExam];
 }
 
 /// <summary>Hak çözümlemesinde bakılan roller. Admin her özellikte sınırsız; diğer muafiyetler özellik bazında.</summary>
@@ -54,8 +63,8 @@ public sealed record EntitlementCheck(bool Allowed, int? Limit, int Used, DateTi
     public int? Remaining => Limit is { } limit ? Math.Max(0, limit - Used) : null;
 }
 
-/// <summary>Kullanıcının o anki planı.</summary>
-public sealed record ResolvedPlan(int? PlanId, string? Key, string? Name);
+/// <summary>Kullanıcının o anki planı; <paramref name="ValidToUtc"/> atamanın bitişi (Free / süresiz atamada null).</summary>
+public sealed record ResolvedPlan(int? PlanId, string? Key, string? Name, DateTime? ValidToUtc = null);
 
 public enum AssignPlanError
 {

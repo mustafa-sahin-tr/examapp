@@ -203,6 +203,10 @@ public static class ParentEndpointCatalog
             "Self registration; a parent account is rejected with 409 (#419).",
         ["TeacherController.UpdateTheme"] =
             "Self-scoped theme; UI sends non-students here (parent has no Teacher record → no-op/404).",
+        ["SubscriptionPlansController.List"] =
+            "Plan catalogue (#1027): plans for the caller's roles (parent: 'Any' plans only), no user data.",
+        ["SubscriptionPlansController.Current"] =
+            "Self-scoped (#1027): the caller's own plan and usage.",
     };
 
     /// <summary>Veliye KAPALI olması gereken uçlar (ters keşif bunları ayrıca doğrular).</summary>

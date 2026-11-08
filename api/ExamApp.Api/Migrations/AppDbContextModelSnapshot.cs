@@ -5472,17 +5472,32 @@ namespace ExamApp.Api.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
                     NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 1000L, null, null, null, null, null);
 
+                    b.Property<string>("Audience")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<DateTime>("CreateTime")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int?>("CreateUserId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
                     b.Property<DateTime?>("DeleteTime")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int?>("DeleteUserId")
                         .HasColumnType("integer");
+
+                    b.Property<string>("DisplayNameKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
@@ -5495,10 +5510,20 @@ namespace ExamApp.Api.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<decimal>("MonthlyPrice")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TrialDays")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime?>("UpdateTime")
                         .HasColumnType("timestamp with time zone");
@@ -5517,11 +5542,59 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 1,
+                            Audience = "Any",
                             CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Currency = "TRY",
+                            DisplayNameKey = "subscription.plans.free",
                             IsActive = true,
                             IsDeleted = false,
                             Key = "free",
-                            Name = "Free"
+                            MonthlyPrice = 0m,
+                            Name = "Free",
+                            SortOrder = 0
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Audience = "Any",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Currency = "TRY",
+                            DisplayNameKey = "subscription.plans.trial",
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "trial",
+                            MonthlyPrice = 0m,
+                            Name = "Trial",
+                            SortOrder = 1,
+                            TrialDays = 14
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Audience = "Teacher",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Currency = "TRY",
+                            DisplayNameKey = "subscription.plans.teacherPro",
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "teacher-pro",
+                            MonthlyPrice = 199m,
+                            Name = "Teacher Pro",
+                            SortOrder = 2
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Audience = "Student",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Currency = "TRY",
+                            DisplayNameKey = "subscription.plans.studentPlus",
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "student-plus",
+                            MonthlyPrice = 99m,
+                            Name = "Student Plus",
+                            SortOrder = 3
                         });
                 });
 
@@ -5582,6 +5655,77 @@ namespace ExamApp.Api.Migrations
                             IsDeleted = false,
                             MonthlyLimit = 0,
                             PlanId = 1
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "ai-classification",
+                            IsDeleted = false,
+                            MonthlyLimit = 20,
+                            PlanId = 1
+                        },
+                        new
+                        {
+                            Id = 3,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "mock-exam",
+                            IsDeleted = false,
+                            MonthlyLimit = 0,
+                            PlanId = 1
+                        },
+                        new
+                        {
+                            Id = 4,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "book-import",
+                            IsDeleted = false,
+                            MonthlyLimit = 1,
+                            PlanId = 2
+                        },
+                        new
+                        {
+                            Id = 5,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "ai-classification",
+                            IsDeleted = false,
+                            MonthlyLimit = 50,
+                            PlanId = 2
+                        },
+                        new
+                        {
+                            Id = 6,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "mock-exam",
+                            IsDeleted = false,
+                            MonthlyLimit = 2,
+                            PlanId = 2
+                        },
+                        new
+                        {
+                            Id = 7,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "book-import",
+                            IsDeleted = false,
+                            MonthlyLimit = 10,
+                            PlanId = 3
+                        },
+                        new
+                        {
+                            Id = 8,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "ai-classification",
+                            IsDeleted = false,
+                            MonthlyLimit = 1000,
+                            PlanId = 3
+                        },
+                        new
+                        {
+                            Id = 9,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "mock-exam",
+                            IsDeleted = false,
+                            PlanId = 4
                         });
                 });
 

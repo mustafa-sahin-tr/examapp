@@ -12,9 +12,14 @@ public class SubscriptionPlan : BaseEntity
 {
     public const int KeyMaxLength = 50;
     public const int NameMaxLength = 100;
+    public const int CurrencyMaxLength = 3;
 
     /// <summary>Ataması olmayan kullanıcının çözüldüğü plan.</summary>
     public const string FreeKey = "free";
+    public const string TrialKey = "trial";
+    public const string TeacherProKey = "teacher-pro";
+    public const string StudentPlusKey = "student-plus";
+    public const string DefaultCurrency = "TRY";
 
     public int Id { get; set; }
 
@@ -24,9 +29,35 @@ public class SubscriptionPlan : BaseEntity
     [MaxLength(NameMaxLength)]
     public string Name { get; set; } = string.Empty;
 
+    /// <summary>Arayüzdeki ad için çeviri anahtarı (#1027); <see cref="Name"/> admin / kayıt içindir.</summary>
+    [MaxLength(NameMaxLength)]
+    public string DisplayNameKey { get; set; } = string.Empty;
+
+    /// <summary>Planın gösterildiği rol (#1027); katalog uç noktası çağıranın rollerine göre süzer.</summary>
+    public SubscriptionPlanAudience Audience { get; set; } = SubscriptionPlanAudience.Any;
+
+    /// <summary>Aylık fiyat — şimdilik yer tutucu, gerçek ödeme yok (#1028 sahte ödeme ekranı).</summary>
+    public decimal MonthlyPrice { get; set; }
+
+    [MaxLength(CurrencyMaxLength)]
+    public string Currency { get; set; } = DefaultCurrency;
+
+    /// <summary>Deneme planında süre (gün); diğerlerinde null. Atamada <c>ValidToUtc</c> buradan hesaplanır (#1028).</summary>
+    public int? TrialDays { get; set; }
+
+    public int SortOrder { get; set; }
+
     public bool IsActive { get; set; } = true;
 
     public ICollection<SubscriptionPlanFeatureLimit> FeatureLimits { get; set; } = new List<SubscriptionPlanFeatureLimit>();
+}
+
+/// <summary>Planın gösterildiği rol. <see cref="Any"/> her role görünür.</summary>
+public enum SubscriptionPlanAudience
+{
+    Any,
+    Teacher,
+    Student,
 }
 
 /// <summary>Planın bir özellik için aylık sınırı; <see cref="MonthlyLimit"/> null = sınırsız, satır yoksa 0 (izin yok).</summary>

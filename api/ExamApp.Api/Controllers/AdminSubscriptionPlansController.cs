@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
@@ -7,7 +6,6 @@ using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Entitlements;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.Controllers;
 
@@ -30,27 +28,8 @@ public class AdminSubscriptionPlansController : BaseController
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<SubscriptionPlanDto>>> List(CancellationToken ct)
-    {
-        var plans = await _db.SubscriptionPlans.AsNoTracking()
-            .OrderBy(p => p.Id)
-            .Select(p => new
-            {
-                p.Key,
-                p.Name,
-                p.IsActive,
-                Limits = p.FeatureLimits.Select(l => new { l.FeatureKey, l.MonthlyLimit }).ToList(),
-            })
-            .ToListAsync(ct);
-
-        return plans.Select(p => new SubscriptionPlanDto
-        {
-            Key = p.Key,
-            Name = p.Name,
-            IsActive = p.IsActive,
-            MonthlyLimits = p.Limits.ToDictionary(l => l.FeatureKey, l => l.MonthlyLimit),
-        }).ToList();
-    }
+    public async Task<ActionResult<List<SubscriptionPlanDto>>> List(CancellationToken ct) =>
+        await SubscriptionPlanCatalog.ListAsync(_db, _ => true, ct);
 
     [HttpGet("users/{userId:int}")]
     public async Task<ActionResult<UserSubscriptionPlanDto>> GetUserPlan(int userId, CancellationToken ct) =>

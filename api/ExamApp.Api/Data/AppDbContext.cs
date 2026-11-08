@@ -1428,6 +1428,8 @@ public class AppDbContext : DbContext
         {
             e.HasIndex(p => p.Key).IsUnique();
             e.Property(p => p.Id).HasIdentityOptions(startValue: 1000);
+            e.Property(p => p.Audience).HasConversion<string>().HasMaxLength(16); // issue #1027
+            e.Property(p => p.MonthlyPrice).HasPrecision(10, 2);
         });
         modelBuilder.Entity<SubscriptionPlanFeatureLimit>(e =>
         {

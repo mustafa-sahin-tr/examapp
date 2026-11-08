@@ -12,7 +12,10 @@ import { Subscription, timer } from 'rxjs';
 
 import { BookImportJobDetail, BookImportJobTest, BookImportReviewFlag } from '../../models/book-import';
 import { canRetryQuickAdd, isQuickAddPending, quickAddPhase } from '../../models/quick-add';
+import { AuthService } from '../../services/auth.service';
 import { QuickAddService } from '../../services/quick-add.service';
+import { BookImportReviewComponent } from '../book-imports/book-import-review.component';
+import { BOOK_IMPORTS_SCOPE } from '../book-imports/book-imports.component';
 import { QUICK_ADD_SCOPE } from './quick-add.component';
 
 /** Takip ekranı yoklama aralığı: tek fotoğraf ~30 sn sürer, liste ekranından sık. */
@@ -24,7 +27,8 @@ const QUICK_ADD_FLAG_CODES = [
 
 /**
  * Issue #1053 (epic #1048): bir hızlı eklemenin durum kartı (Sırada / İşleniyor / İncelemeye hazır / Başarısız + Yeniden dene)
- * ve fotoğraf başına sonuç (bulunan / kaydedilen soru, cevap anahtarı uyuşmazlığı). İş bitene kadar yoklanır. İnceleme ve onay #1054.
+ * ve fotoğraf başına sonuç (bulunan / kaydedilen soru, cevap anahtarı uyuşmazlığı). İş bitene kadar yoklanır. #1054: taslak varsa
+ * sonuç listesi yerine inceleme ve onay (kitap aktarımı inceleme ekranı).
  */
 @Component({
   selector: 'app-quick-add-detail',
@@ -35,16 +39,18 @@ const QUICK_ADD_FLAG_CODES = [
     MatIconModule,
     MatProgressBarModule,
     MatProgressSpinnerModule,
+    BookImportReviewComponent,
     RouterLink,
     TranslocoDirective,
   ],
-  providers: [provideTranslocoScope(QUICK_ADD_SCOPE)],
+  providers: [provideTranslocoScope(QUICK_ADD_SCOPE, BOOK_IMPORTS_SCOPE)],
   templateUrl: './quick-add-detail.component.html',
   styleUrls: ['./quick-add-detail.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class QuickAddDetailComponent implements OnInit {
-  private readonly api = inject(QuickAddService);
+  readonly api = inject(QuickAddService);
+  private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly id = inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '';
 
@@ -66,6 +72,14 @@ export class QuickAddDetailComponent implements OnInit {
   });
   readonly photos = computed(() => [...(this.job()?.tests ?? [])].sort((a, b) => a.order - b.order));
   readonly savedTotal = computed(() => this.photos().reduce((sum, p) => sum + p.questionsSaved, 0));
+  /** Taslağı olan biten iş incelenir; iptal edilen işin kalan taslakları da (#1025). */
+  readonly reviewing = computed(() => {
+    const phase = this.phase();
+    return (phase === 'ready' || phase === 'completed' || phase === 'cancelled') && this.photos().some((p) => p.worksheetId != null);
+  });
+  readonly completed = computed(() => this.phase() === 'completed');
+  /** İşaretleme ekranı öğretmene kapalı (route ve uç). */
+  readonly canFix = computed(() => this.auth.hasRealmRole('Admin') || this.auth.hasRealmRole('QuestionTrainer'));
 
   private poll?: Subscription;
 
@@ -156,6 +170,8 @@ export class QuickAddDetailComponent implements OnInit {
         return job.status === 'AwaitingBudget' ? 'detail.waitingBudget' : 'detail.queued';
       case 'processing':
         return 'detail.processing';
+      case 'completed':
+        return 'detail.completed';
       case 'ready':
         return this.savedTotal() > 0 ? 'detail.ready' : 'detail.readyEmpty';
       case 'cancelled':

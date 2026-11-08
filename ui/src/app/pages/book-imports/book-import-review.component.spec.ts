@@ -6,7 +6,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 
 import { BookImportReviewComponent } from './book-import-review.component';
-import { BookImportJobTest, BookImportReviewQuestion } from '../../models/book-import';
+import { BookImportJobTest, BookImportReviewApi, BookImportReviewQuestion } from '../../models/book-import';
 import { BookImportService } from '../../services/book-import.service';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import tr from '../../../../public/i18n/book-imports/tr.json';
@@ -166,5 +166,83 @@ describe('BookImportReviewComponent (#1023)', () => {
     expect(text()).toContain('İncelenecek test kalmadı.');
     expect(button(el(), 'Sorunsuz testleri onayla')).toBeUndefined();
     expect(button(el(), 'İşaretlemede düzelt')).toBeUndefined();
+  });
+
+  // Issue #1054: hızlı ekleme aynı ekranı kullanır.
+  describe('quick add', () => {
+    let quick: { [K in keyof BookImportReviewApi]: ReturnType<typeof vi.fn> };
+    const photo = (overrides: Partial<BookImportJobTest> = {}) =>
+      test({ unit: 0, title: 'Fotoğraf 1', fileFrom: 1, fileTo: 1, ...overrides });
+
+    function setupQuick(tests: BookImportJobTest[], canFix: boolean): void {
+      quick = {
+        reviewQuestions: vi.fn().mockReturnValue(of([question(1, 2)])),
+        setAnswer: vi.fn().mockReturnValue(of(undefined)),
+        approveTest: vi.fn().mockReturnValue(of(undefined)),
+        approveAll: vi.fn().mockReturnValue(of({ approved: [1], skipped: [] })),
+        removeTest: vi.fn().mockReturnValue(of(undefined)),
+      };
+      TestBed.configureTestingModule({
+        imports: [BookImportReviewComponent, translocoTestingModule({ langs: { 'book-imports/tr': tr } })],
+        providers: [provideNoopAnimations(), provideRouter([]), { provide: BookImportService, useValue: {} }],
+      });
+      fixture = TestBed.createComponent(BookImportReviewComponent);
+      fixture.componentRef.setInput('jobId', 'q1');
+      fixture.componentRef.setInput('tests', tests);
+      fixture.componentRef.setInput('kind', 'QuickAdd');
+      fixture.componentRef.setInput('reviewApi', quick);
+      fixture.componentRef.setInput('canFix', canFix);
+      fixture.componentRef.setInput('thumbs', { 1: 'blob:thumb' });
+      fixture.detectChanges();
+    }
+
+    it('lists every photo with its thumbnail and photo wording', () => {
+      setupQuick([photo()], false);
+
+      expect(rows().length).toBe(1);
+      expect(text()).toContain('Fotoğraf 1');
+      expect(text()).toContain(tr.reviewQuickAdd.footer);
+      expect(text()).not.toContain('sayfa 1–1');
+      expect(el().querySelector('img.bir-row__thumb')?.getAttribute('src')).toBe('blob:thumb');
+    });
+
+    it('uses the quick add endpoints', () => {
+      setupQuick([photo()], false);
+
+      button(rows()[0], tr.review.approve).click();
+
+      expect(quick.approveTest).toHaveBeenCalledWith('q1', 1);
+    });
+
+    it('shows answers from the key as selected and lets them be changed', () => {
+      setupQuick([photo()], false);
+      button(rows()[0], tr.review.preview).click();
+      fixture.detectChanges();
+
+      const answers = () => Array.from(el().querySelectorAll<HTMLButtonElement>('.bir-q__answer'));
+      expect(answers()[2].getAttribute('aria-pressed')).toBe('true');
+
+      answers()[0].click();
+      fixture.detectChanges();
+
+      expect(quick.setAnswer).toHaveBeenCalledWith('q1', 1, 1, 0);
+      expect(answers()[0].getAttribute('aria-pressed')).toBe('true');
+    });
+
+    it('hides the labeling fix from teachers', () => {
+      setupQuick([photo()], false);
+      expect(text()).not.toContain(tr.review.fix);
+    });
+
+    it('offers the labeling fix to admins with the quick add kind', () => {
+      setupQuick([photo()], true);
+      expect(text()).toContain(tr.review.fix);
+      expect(fixture.componentInstance.fixParams(1, 1)).toEqual({ bookImport: 'q1', test: 1, page: 1, kind: 'QuickAdd' });
+    });
+  });
+
+  it('keeps book import labeling links without a kind', () => {
+    setup([test()]);
+    expect(fixture.componentInstance.fixParams(1, 3)).toEqual({ bookImport: 'a1', test: 1, page: 3 });
   });
 });

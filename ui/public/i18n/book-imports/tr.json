@@ -338,5 +338,21 @@
       "Admin": "Admin",
       "QuestionTrainer": "Soru eğitmeni"
     }
+  },
+  "reviewQuickAdd": {
+    "title": "İnceleme ve onay",
+    "summary": "{{open}} fotoğraf inceleme bekliyor · {{approved}} onaylandı",
+    "approveAll": "Hazır fotoğrafları onayla ({{count}}/{{total}})",
+    "approveAllConfirm": "{{count}} fotoğrafın soruları soru havuzuna eklenecek. Cevapsız sorusu olan ya da hatalı fotoğraflar atlanır.",
+    "approvedAll": "{{count}} fotoğraf onaylandı.",
+    "allDone": "İncelenecek fotoğraf kalmadı.",
+    "nothingToCheck": "Bakılması gereken fotoğraf yok. Hepsini görmek için filtreyi kapatın.",
+    "remove": "{{name}} sorularını sil",
+    "removeConfirm": "Soruları sil",
+    "counts": "{{saved}} soru",
+    "question": "Soru {{number}}",
+    "fixPage": "Fotoğraf {{page}}",
+    "fixPageFlagged": "Fotoğraf {{page}} · işaretli",
+    "footer": "Onaylanan sorular soru havuzunuza eklenir ve yalnız size açıktır (özel). Test oluşturulmaz."
   }
 }

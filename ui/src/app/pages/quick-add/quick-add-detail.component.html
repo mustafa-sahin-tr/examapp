@@ -34,6 +34,11 @@
         <mat-icon aria-hidden="true">refresh</mat-icon>{{ t('detail.retry') }}
       </button>
       }
+      @if (completed()) {
+      <a mat-flat-button routerLink="/question-bank">
+        <mat-icon aria-hidden="true">inventory_2</mat-icon>{{ t('detail.toBank') }}
+      </a>
+      }
       @if (phase() !== 'queued' && phase() !== 'processing') {
       <a mat-stroked-button routerLink="/quick-add">
         <mat-icon aria-hidden="true">add_a_photo</mat-icon>{{ t('detail.another') }}
@@ -45,6 +50,10 @@
     }
   </section>
 
+  @if (reviewing()) {
+  <app-book-import-review [jobId]="j.id" [tests]="j.tests" kind="QuickAdd" [reviewApi]="api" [canFix]="canFix()" [thumbs]="thumbs()"
+    (changed)="load()" />
+  } @else {
   <ol class="qa-results">
     @for (photo of photos(); track photo.id) {
     <li class="qa-result">
@@ -77,5 +86,6 @@
     </li>
     }
   </ol>
+  }
   }
 </div>

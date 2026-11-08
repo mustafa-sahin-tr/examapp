@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.BookImport;
+using ExamApp.Api.Services.Labeling;
 using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Teachers.Authorization;
 using ExamApp.Foundation.Localization;
@@ -151,6 +152,103 @@ public class QuickAddController : BaseController
             _ => Conflict(new { code = "quickAdd.notCancellable", message = _localizer["quickAdd.notCancellable"].Value }),
         };
     }
+
+    /// <summary>Issue #1054: fotoğrafın taslak soruları (numara, cevap; A–E seçici).</summary>
+    [HttpGet("{id:guid}/tests/{testId:int}/questions")]
+    [ProducesResponseType(typeof(List<BookImportReviewQuestionDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetReviewQuestions(Guid id, int testId, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["quickAdd.userNotResolved"].Value });
+        var questions = await _jobs.GetReviewQuestionsAsync(owner, id, testId, ct);
+        return questions is null ? NotFound(new { message = _localizer["quickAdd.notFound"].Value }) : Ok(questions);
+    }
+
+    /// <summary>Issue #1054: taslak sorunun doğru şıkkı (A = 0).</summary>
+    [HttpPut("{id:guid}/tests/{testId:int}/questions/{questionId:int}/answer")]
+    public async Task<IActionResult> SetAnswer(Guid id, int testId, int questionId, [FromBody] SetBookImportAnswerDto request, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["quickAdd.userNotResolved"].Value });
+        return ReviewResult(await _jobs.SetAnswerAsync(owner, id, testId, questionId, request?.OptionIndex ?? -1, ct));
+    }
+
+    /// <summary>Issue #1054: fotoğrafı onayla; cevapsız soru varsa 409 <c>bookImport.answerless</c>. Sorular özel olarak havuza girer.</summary>
+    [HttpPost("{id:guid}/tests/{testId:int}/approve")]
+    public async Task<IActionResult> ApproveTest(Guid id, int testId, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["quickAdd.userNotResolved"].Value });
+        return ReviewResult(await _jobs.ApproveTestAsync(owner, id, testId, ct));
+    }
+
+    /// <summary>Issue #1054: onaylanabilen bütün fotoğrafları onayla; atlananlar nedeniyle döner.</summary>
+    [HttpPost("{id:guid}/approve")]
+    [ProducesResponseType(typeof(ApproveAllBookImportResultDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ApproveAll(Guid id, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["quickAdd.userNotResolved"].Value });
+        var result = await _jobs.ApproveAllAsync(owner, id, ct);
+        return result is null ? NotFound(new { message = _localizer["quickAdd.notFound"].Value }) : Ok(result);
+    }
+
+    /// <summary>Issue #1054: fotoğrafın taslak sorularını sil.</summary>
+    [HttpDelete("{id:guid}/tests/{testId:int}")]
+    public async Task<IActionResult> RemoveTest(Guid id, int testId, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["quickAdd.userNotResolved"].Value });
+        return ReviewResult(await _jobs.RemoveTestAsync(owner, id, testId, ct));
+    }
+
+    /// <summary>
+    /// Issue #1054 "İşaretlemede düzelt": fotoğrafın taslaklarını işaretleme ekranında düzeltilenlerle değiştirir. İşaretleme ekranı
+    /// öğretmene kapalı olduğundan yalnız Admin ve QuestionTrainer.
+    /// </summary>
+    [HttpPut("{id:guid}/tests/{testId:int}/pages/{filePage:int}/questions")]
+    [Authorize(Roles = "Admin,QuestionTrainer")]
+    [ProducesResponseType(typeof(BookImportPageFixDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ReplacePage(Guid id, int testId, int filePage, [FromBody] ReplaceBookImportPageDto request,
+        [FromServices] IBookImportPageFixService fix, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["quickAdd.userNotResolved"].Value });
+        try
+        {
+            var result = await fix.ReplacePageAsync(owner, id, testId, filePage, request?.Questions ?? [], ct);
+            return result.Error switch
+            {
+                BookImportPageFixError.None => Ok(result.Page),
+                BookImportPageFixError.NotFound => NotFound(new { message = _localizer["quickAdd.notFound"].Value }),
+                _ => Conflict(new { code = "bookImport.notInReview", message = _localizer["bookImport.notInReview"].Value }),
+            };
+        }
+        catch (LabelingValidationException ex)
+        {
+            var message = ex.Args is { Length: > 0 } ? _localizer[ex.Message, ex.Args] : _localizer[ex.Message];
+            return BadRequest(new { code = ex.Message, message = message.Value });
+        }
+        catch (Exception ex) when (ex is LabelingBankSaveException or BookImportFailure)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = _localizer["bookImport.fixFailed"].Value });
+        }
+    }
+
+    private IActionResult ReviewResult(BookImportReviewResult result) => result switch
+    {
+        BookImportReviewResult.Ok => NoContent(),
+        BookImportReviewResult.NotFound => NotFound(new { message = _localizer["quickAdd.notFound"].Value }),
+        BookImportReviewResult.Answerless => Conflict(new { code = "bookImport.answerless", message = _localizer["bookImport.answerless"].Value }),
+        BookImportReviewResult.InvalidOption => BadRequest(new { code = "bookImport.invalidOption", message = _localizer["bookImport.invalidOption"].Value }),
+        _ => Conflict(new { code = "bookImport.notInReview", message = _localizer["bookImport.notInReview"].Value }),
+    };
 
     private async Task<BookImportOwner?> ResolveOwnerAsync(CancellationToken ct)
     {

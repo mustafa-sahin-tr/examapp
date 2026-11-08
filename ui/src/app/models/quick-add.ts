@@ -21,7 +21,7 @@ export interface StartQuickAddRequest {
 }
 
 /** Kartın durum adı: kitap aktarımı durumları dört öğretmen durumuna indirgenir (Sırada / İşleniyor / İncelemeye hazır / Başarısız). */
-export type QuickAddPhase = 'queued' | 'processing' | 'ready' | 'failed' | 'cancelled';
+export type QuickAddPhase = 'queued' | 'processing' | 'ready' | 'completed' | 'failed' | 'cancelled';
 
 export function quickAddPhase(job: Pick<BookImportJob, 'status'>): QuickAddPhase {
   switch (job.status) {
@@ -33,8 +33,9 @@ export function quickAddPhase(job: Pick<BookImportJob, 'status'>): QuickAddPhase
     case 'AwaitingConfirmation':
       return 'processing';
     case 'ReadyForReview':
-    case 'Completed':
       return 'ready';
+    case 'Completed':
+      return 'completed';
     case 'Cancelled':
       return 'cancelled';
     default:

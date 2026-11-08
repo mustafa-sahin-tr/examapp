@@ -1,8 +1,8 @@
-<section class="bir" *transloco="let t; prefix: 'book-imports'" [attr.aria-label]="t('review.title')">
+<section class="bir" *transloco="let t; prefix: 'book-imports'" [attr.aria-label]="t(label('title'))">
   <div class="bir-head">
     <div>
-      <h2>{{ t('review.title') }}</h2>
-      <p>{{ t('review.summary', { open: open().length, approved: approvedCount() }) }}</p>
+      <h2>{{ t(label('title')) }}</h2>
+      <p>{{ t(label('summary'), { open: open().length, approved: approvedCount() }) }}</p>
     </div>
     <mat-slide-toggle [checked]="onlyAttention()" (change)="onlyAttention.set($event.checked)">
       {{ t('review.onlyAttention') }}
@@ -11,14 +11,14 @@
     <button mat-flat-button type="button" class="bir-head__bulk" [disabled]="approvable() === 0 || busy() !== null"
       (click)="confirmingAll.set(true)">
       <mat-icon aria-hidden="true">done_all</mat-icon>
-      {{ t('review.approveAll', { count: approvable(), total: open().length }) }}
+      {{ t(label('approveAll'), { count: approvable(), total: open().length }) }}
     </button>
     }
   </div>
 
   @if (confirmingAll()) {
   <div class="bir-confirm" role="alertdialog" aria-labelledby="bir-confirm-text">
-    <span id="bir-confirm-text">{{ t('review.approveAllConfirm', { count: approvable() }) }}</span>
+    <span id="bir-confirm-text">{{ t(label('approveAllConfirm'), { count: approvable() }) }}</span>
     <div class="bir-confirm__actions">
       <button mat-stroked-button type="button" (click)="confirmingAll.set(false)">{{ t('review.cancel') }}</button>
       <button mat-flat-button type="button" (click)="approveAll()">{{ t('review.confirm') }}</button>
@@ -38,7 +38,7 @@
   <div class="bir-note" role="status">
     <mat-icon aria-hidden="true">task_alt</mat-icon>
     <span>
-      {{ t('review.approvedAll', { count: r.approved.length }) }}
+      {{ t(label('approvedAll'), { count: r.approved.length }) }}
       @for (skip of r.skipped; track skip.id) {
       @if (testById(skip.id); as s) {
       <span class="bir-skip">{{ t('review.skipped', { name: testName(s), reason: t('review.skipReason.' + skip.reason) }) }}</span>
@@ -49,12 +49,15 @@
   }
 
   @if (visible().length === 0) {
-  <p class="bir-empty">{{ open().length === 0 ? t('review.allDone') : t('review.nothingToCheck') }}</p>
+  <p class="bir-empty">{{ open().length === 0 ? t(label('allDone')) : t(label('nothingToCheck')) }}</p>
   } @else {
   <ul class="bir-list">
     @for (test of visible(); track test.id) {
     <li class="bir-row">
       <div class="bir-row__main">
+        @if (thumb(test); as url) {
+        <img class="bir-row__thumb" [src]="url" [alt]="testName(test)" />
+        }
         <span class="bir-row__name">{{ testName(test) }}</span>
         <span class="bir-chip bir-chip--{{ test.status }}">{{ t('testStatus.' + test.status) }}</span>
         @for (flag of test.reviewFlags; track flag.code) {
@@ -64,8 +67,8 @@
         <span class="bir-chip bir-chip--danger">{{ t('review.answerless', { count: test.answerless }) }}</span>
         }
         <span class="bir-row__counts">
-          {{ t('review.counts', { saved: test.questionsSaved, key: test.keyAnswers }) }}
-          @if (test.fileFrom) { · {{ t('review.pages', { from: test.fileFrom, to: test.fileTo }) }} }
+          {{ t(label('counts'), { saved: test.questionsSaved, key: test.keyAnswers }) }}
+          @if (test.fileFrom && kind() === 'Book') { · {{ t('review.pages', { from: test.fileFrom, to: test.fileTo }) }} }
         </span>
       </div>
       <div class="bir-row__actions">
@@ -74,15 +77,15 @@
           <mat-icon aria-hidden="true">{{ previewId() === test.id ? 'expand_less' : 'visibility' }}</mat-icon>{{ t('review.preview') }}
         </button>
         }
-        @if (editable() && test.fileFrom) {
+        @if (editable() && canFix() && test.fileFrom) {
         <button mat-stroked-button type="button" [matMenuTriggerFor]="fixMenu" [disabled]="busy() !== null">
           <mat-icon aria-hidden="true">edit_square</mat-icon>{{ t('review.fix') }}
         </button>
         <mat-menu #fixMenu="matMenu">
           @for (p of fixPages(test); track p.page) {
-          <a mat-menu-item routerLink="/labeling" [queryParams]="fixParams(jobId(), test.id, p.page)">
+          <a mat-menu-item routerLink="/labeling" [queryParams]="fixParams(test.id, p.page)">
             <mat-icon aria-hidden="true">{{ p.flagged ? 'flag' : 'description' }}</mat-icon>
-            <span>{{ t(p.flagged ? 'review.fixPageFlagged' : 'review.fixPage', { page: p.page }) }}</span>
+            <span>{{ t(label(p.flagged ? 'fixPageFlagged' : 'fixPage'), { page: p.page }) }}</span>
           </a>
           }
         </mat-menu>
@@ -94,10 +97,10 @@
           {{ t('review.approve') }}
         </button>
         @if (removingId() === test.id) {
-        <button mat-stroked-button type="button" class="bir-danger" (click)="remove(test)">{{ t('review.removeConfirm') }}</button>
+        <button mat-stroked-button type="button" class="bir-danger" (click)="remove(test)">{{ t(label('removeConfirm')) }}</button>
         <button mat-button type="button" (click)="removingId.set(null)">{{ t('review.cancel') }}</button>
         } @else {
-        <button mat-icon-button type="button" [attr.aria-label]="t('review.remove', { name: testName(test) })"
+        <button mat-icon-button type="button" [attr.aria-label]="t(label('remove'), { name: testName(test) })"
           [disabled]="busy() !== null" (click)="removingId.set(test.id)">
           <mat-icon>delete_outline</mat-icon>
         </button>
@@ -115,10 +118,10 @@
           @for (q of questions(); track q.id) {
           <li class="bir-q" [class.bir-q--missing]="q.answerIndex == null">
             <div class="bir-q__head">
-              <span>{{ t('review.question', { number: q.number ?? '?', page: q.filePage }) }}</span>
-              @if (editable() && q.filePage) {
-              <a mat-icon-button class="bir-q__fix" routerLink="/labeling" [queryParams]="fixParams(jobId(), test.id, q.filePage)"
-                [attr.aria-label]="t('review.fixPage', { page: q.filePage })" [title]="t('review.fixPage', { page: q.filePage })">
+              <span>{{ t(label('question'), { number: q.number ?? '?', page: q.filePage }) }}</span>
+              @if (editable() && canFix() && q.filePage) {
+              <a mat-icon-button class="bir-q__fix" routerLink="/labeling" [queryParams]="fixParams(test.id, q.filePage)"
+                [attr.aria-label]="t(label('fixPage'), { page: q.filePage })" [title]="t(label('fixPage'), { page: q.filePage })">
                 <mat-icon>edit_square</mat-icon>
               </a>
               }
@@ -130,7 +133,7 @@
               </div>
             </div>
             @if (q.imageUrl) {
-            <img class="bir-q__image" [src]="q.imageUrl" [alt]="t('review.question', { number: q.number ?? '?', page: q.filePage })" loading="lazy" />
+            <img class="bir-q__image" [src]="q.imageUrl" [alt]="t(label('question'), { number: q.number ?? '?', page: q.filePage })" loading="lazy" />
             }
           </li>
           }
@@ -142,5 +145,5 @@
     }
   </ul>
   }
-  <p class="bir-footer">{{ t('review.footer') }}</p>
+  <p class="bir-footer">{{ t(label('footer')) }}</p>
 </section>

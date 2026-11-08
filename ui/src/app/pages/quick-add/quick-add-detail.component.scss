@@ -34,7 +34,8 @@
     border-left-color: var(--ms-info-border);
   }
 
-  &--ready {
+  &--ready,
+  &--completed {
     border-left-color: var(--ms-success-border);
   }
 

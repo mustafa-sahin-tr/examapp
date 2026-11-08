@@ -237,3 +237,11 @@
     background: var(--ms-surface-weak);
   }
 }
+
+// Issue #1054: hızlı eklemede satırın fotoğrafı.
+.bir-row__thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+}

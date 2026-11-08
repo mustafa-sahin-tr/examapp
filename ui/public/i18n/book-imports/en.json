@@ -338,5 +338,21 @@
       "Admin": "Admin",
       "QuestionTrainer": "Question trainer"
     }
+  },
+  "reviewQuickAdd": {
+    "title": "Review and approve",
+    "summary": "{{open}} photos awaiting review · {{approved}} approved",
+    "approveAll": "Approve ready photos ({{count}}/{{total}})",
+    "approveAllConfirm": "Questions from {{count}} photos will be added to the question pool. Photos with unanswered questions or errors are skipped.",
+    "approvedAll": "{{count}} photos approved.",
+    "allDone": "No photos left to review.",
+    "nothingToCheck": "No photos need attention. Turn off the filter to see them all.",
+    "remove": "Delete questions of {{name}}",
+    "removeConfirm": "Delete questions",
+    "counts": "{{saved}} questions",
+    "question": "Question {{number}}",
+    "fixPage": "Photo {{page}}",
+    "fixPageFlagged": "Photo {{page}} · flagged",
+    "footer": "Approved questions go to your question pool and are visible only to you (private). No test is created."
   }
 }

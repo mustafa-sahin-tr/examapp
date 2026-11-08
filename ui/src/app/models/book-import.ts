@@ -1,3 +1,5 @@
+import { Observable } from 'rxjs';
+
 /** Issue #1018 (epic #1017): kitaptan aktarım işi. Sunucu enum'ları adlarıyla gelir. */
 export type BookImportStatus =
   | 'Queued'
@@ -257,8 +259,26 @@ export interface BookImportPageFix {
 }
 
 /** İşaretleme ekranını aktarımın bir sayfasında açan sorgu parametreleri (`/labeling?bookImport=…&test=…&page=…`). */
-export function labelingFixParams(jobId: string, testId: number, filePage: number): Record<string, string | number> {
-  return { bookImport: jobId, test: testId, page: filePage };
+export function labelingFixParams(
+  jobId: string,
+  testId: number,
+  filePage: number,
+  kind: BookImportJobKind = 'Book',
+): Record<string, string | number> {
+  const params = { bookImport: jobId, test: testId, page: filePage };
+  return kind === 'QuickAdd' ? { ...params, kind } : params;
+}
+
+/** Issue #1054: iş türü; inceleme ekranı iki türde de aynıdır, uçlar ve metinler türe göre değişir. */
+export type BookImportJobKind = 'Book' | 'QuickAdd';
+
+/** Issue #1023 / #1054: inceleme ekranının kullandığı uçlar (`BookImportService`, `QuickAddService`). */
+export interface BookImportReviewApi {
+  reviewQuestions(id: string, testId: number): Observable<BookImportReviewQuestion[]>;
+  setAnswer(id: string, testId: number, questionId: number, optionIndex: number): Observable<void>;
+  approveTest(id: string, testId: number): Observable<void>;
+  approveAll(id: string): Observable<ApproveAllBookImportResult>;
+  removeTest(id: string, testId: number): Observable<void>;
 }
 
 /** Testin kısa adı: "1-03 · Kesirler". */

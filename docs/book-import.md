@@ -206,7 +206,7 @@ aktarım aracındaki Python portu referanstır (#1022).
 - **Bütçe:** ayrı sayaç `labeling-ai-usd:quick-add` (`Anthropic:DailyBudgetUsdQuickAdd`, varsayılan 5 $) + toplam; kitap
   aktarımının sayacını tüketmez. Maliyet tavanı `BookImport:MaxJobCostUsd` aynı.
 - **Uçlar:** `GET /api/exam/quick-add` (liste), `GET {id}` (fotoğraf satırları, işaretler), `GET {id}/photos/{n}` (JPEG),
-  `POST {id}/retry`, `POST {id}/cancel?deleteDrafts=`. İnceleme / onay uçları #1054.
+  `POST {id}/retry`, `POST {id}/cancel?deleteDrafts=`.
 - **Ekran (#1053):** `/quick-add` (menü "Hızlı soru ekle", yalnız öğretmen; Soru Havuzu başlığında da bağlantı) — sınıf (son seçim
   `localStorage` `quickAdd.gradeId`), isteğe bağlı ders, `<input type="file" accept="image/*" capture="environment" multiple>`
   (telefonda kamera, başka yerde galeri / dosya; Capacitor #1045), fotoğraf başına küçük resim + cevap anahtarı alanı. Tür / boyut /
@@ -214,4 +214,11 @@ aktarım aracındaki Python portu referanstır (#1022).
   429'da yükseltme penceresi `entitlementLimitInterceptor`'dan. Yükleme ilerlemeli; sonra `/quick-add/:id` durum kartı: Sırada /
   İşleniyor / İncelemeye hazır / Başarısız (+ Yeniden dene; takılmış iş de), fotoğraf başına bulunan / taslak sayısı ve işaretler.
   İş bitene kadar 3 sn'de bir yoklanır (liste 5 sn). İnceleme ve onay ekranı #1054.
-
+- **İnceleme ve onay (#1054):** `/quick-add/:id`'de taslak varsa sonuç listesi yerine kitap aktarımı inceleme ekranı (`BookImportReviewComponent`,
+  `kind="QuickAdd"`): satır = fotoğraf, küçük resim, işaretler, A–E seçici; yüklemede girilen cevaplar seçili ve değiştirilebilir. Uçlar
+  `GET {id}/tests/{testId}/questions`, `PUT .../questions/{questionId}/answer`, `POST {id}/tests/{testId}/approve`, `POST {id}/approve`,
+  `DELETE {id}/tests/{testId}`; `BookImportOwner.Kind` iki türü ayırır (hızlı ekleme kitap uçlarından 404). Cevapsız soru 409
+  `bookImport.answerless`. **Onay:** sorular etkinleşir (özel), iç taslak test ve bağlantıları silinir; test yayımlanmaz.
+- **İşaretlemede düzelt (#1054):** `PUT {id}/tests/{testId}/pages/{filePage}/questions`, yalnız Admin ve QuestionTrainer; `/labeling` ve
+  `LabelingController` öğretmene kapalı olduğu için düğme de öğretmene görünmez (karar: kullanıcı, 2026-11-08). Öğretmen fotoğrafın taslaklarını silip
+  yeniden yükler. Bağlantı `/labeling?bookImport=&test=&page=&kind=QuickAdd`. Düzeltmede anahtar yalnız sayı anahtar uzunluğuna eşitse uygulanır.

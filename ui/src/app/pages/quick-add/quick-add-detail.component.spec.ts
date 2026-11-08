@@ -7,9 +7,12 @@ import { Observable, of, throwError } from 'rxjs';
 
 import { QUICK_ADD_DETAIL_POLL_MS, QuickAddDetailComponent } from './quick-add-detail.component';
 import { BookImportJobDetail, BookImportJobTest } from '../../models/book-import';
+import { AuthService } from '../../services/auth.service';
+import { BookImportService } from '../../services/book-import.service';
 import { QuickAddService } from '../../services/quick-add.service';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import tr from '../../../../public/i18n/quick-add/tr.json';
+import bookImportsTr from '../../../../public/i18n/book-imports/tr.json';
 
 function photo(order: number, overrides: Partial<BookImportJobTest> = {}): BookImportJobTest {
   return {
@@ -34,6 +37,7 @@ describe('QuickAddDetailComponent (#1053)', () => {
   let component: QuickAddDetailComponent;
   let api: MockedObject<QuickAddService>;
   let response: Observable<BookImportJobDetail>;
+  let roles: string[] = ['Teacher'];
 
   const el = () => fixture.nativeElement as HTMLElement;
   const text = () => el().textContent ?? '';
@@ -45,11 +49,13 @@ describe('QuickAddDetailComponent (#1053)', () => {
       retry: vi.fn().mockName('retry').mockReturnValue(of(undefined)),
     } as unknown as MockedObject<QuickAddService>;
     TestBed.configureTestingModule({
-      imports: [QuickAddDetailComponent, translocoTestingModule({ langs: { 'quick-add/tr': tr } })],
+      imports: [QuickAddDetailComponent, translocoTestingModule({ langs: { 'quick-add/tr': tr, 'book-imports/tr': bookImportsTr } })],
       providers: [
         provideNoopAnimations(),
         provideRouter([]),
         { provide: QuickAddService, useValue: api },
+        { provide: BookImportService, useValue: {} },
+        { provide: AuthService, useValue: { hasRealmRole: (role: string) => roles.includes(role) } },
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ id: 'q1' }) } } },
       ],
     });
@@ -67,12 +73,12 @@ describe('QuickAddDetailComponent (#1053)', () => {
     expect(api.get).toHaveBeenCalledWith('q1');
     expect(el().querySelector('.qa-status')?.textContent).toContain(tr.phase.ready);
     expect(text()).toContain('6 soru taslak olarak kaydedildi');
-    const rows = el().querySelectorAll('.qa-result');
+    fixture.detectChanges();
+    const rows = el().querySelectorAll('.bir-row');
     expect(rows.length).toBe(2);
-    expect(rows[0].textContent).toContain('3 soru bulundu');
+    expect(rows[0].textContent).toContain('3 soru');
     expect(api.photo).toHaveBeenCalledWith('q1', 1);
     expect(api.photo).toHaveBeenCalledWith('q1', 2);
-    expect(el().querySelector('.qa-result img')).not.toBeNull();
     // Bitmiş işte yeniden deneme yok; yeni fotoğraf bağlantısı var.
     expect(text()).not.toContain(tr.detail.retry);
     expect(text()).toContain(tr.detail.another);
@@ -81,6 +87,7 @@ describe('QuickAddDetailComponent (#1053)', () => {
   it('countMismatch_ShowsFlagWithCounts', () => {
     response = of(detail({
       tests: [photo(1, {
+        worksheetId: null,
         reviewFlags: [
           { code: 'countMismatch', pages: [1], numbers: null, found: 4, expected: 5 },
           { code: 'noAnswer', pages: [1], numbers: [1, 2], found: null, expected: null },
@@ -156,5 +163,50 @@ describe('QuickAddDetailComponent (#1053)', () => {
 
     expect(text()).toContain(tr.detail.notFound);
     expect(component.job()).toBeNull();
+  });
+
+  // Issue #1054: taslak varsa inceleme ekranı; işaretlemede düzeltme yalnız Admin / QuestionTrainer.
+  describe('review', () => {
+    afterEach(() => {
+      roles = ['Teacher'];
+    });
+
+    it('shows the review without the labeling fix for a teacher', () => {
+      response = of(detail());
+      setup();
+      fixture.detectChanges();
+
+      expect(el().querySelector('app-book-import-review')).not.toBeNull();
+      expect(el().querySelector('.qa-results')).toBeNull();
+      expect(component.canFix()).toBe(false);
+      expect(text()).not.toContain(bookImportsTr.review.fix);
+    });
+
+    it('offers the labeling fix to a question trainer', () => {
+      roles = ['QuestionTrainer'];
+      response = of(detail());
+      setup();
+      fixture.detectChanges();
+
+      expect(text()).toContain(bookImportsTr.review.fix);
+    });
+
+    it('keeps the result list while nothing can be reviewed', () => {
+      response = of(detail({ status: 'Running', stage: 'Questions', tests: [photo(1, { worksheetId: null, status: 'Pending' })] }));
+      setup();
+      fixture.detectChanges();
+
+      expect(el().querySelector('app-book-import-review')).toBeNull();
+      expect(el().querySelector('.qa-results')).not.toBeNull();
+    });
+
+    it('links to the question pool when every photo is reviewed', () => {
+      response = of(detail({ status: 'Completed', tests: [photo(1, { status: 'Approved' })] }));
+      setup();
+      fixture.detectChanges();
+
+      expect(text()).toContain(tr.detail.completed);
+      expect(el().querySelector('a[href="/question-bank"]')).not.toBeNull();
+    });
   });
 });

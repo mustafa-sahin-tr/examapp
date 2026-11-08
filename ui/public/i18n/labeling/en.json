@@ -38,7 +38,8 @@
     "emptyTitle": "Delete the page's drafts?",
     "emptyMessage": "There are no questions on the page. Saving removes the draft questions of page {{page}} from the test.",
     "emptyConfirm": "Delete drafts",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "bannerQuickAdd": "Quick add fix: {{test}}. Saving replaces this photo's draft questions with these."
   },
   "bank": {
     "save": "Save to pool",

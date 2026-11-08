@@ -2,7 +2,15 @@ import { HttpClient, HttpEvent } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { BookImportJob, BookImportJobDetail, BookImportQuota } from '../models/book-import';
+import {
+  ApproveAllBookImportResult,
+  BookImportJob,
+  BookImportJobDetail,
+  BookImportPageFix,
+  BookImportQuota,
+  BookImportReviewQuestion,
+} from '../models/book-import';
+import { LabelingBankQuestion } from '../models/labeling';
 import { StartQuickAddRequest } from '../models/quick-add';
 
 /**
@@ -42,6 +50,32 @@ export class QuickAddService {
 
   retry(id: string): Observable<void> {
     return this.http.post<void>(`${this.baseUrl}/${id}/retry`, {});
+  }
+
+  /** Issue #1054: inceleme — fotoğrafın taslak soruları, cevap seçimi, onay ve silme. */
+  reviewQuestions(id: string, testId: number): Observable<BookImportReviewQuestion[]> {
+    return this.http.get<BookImportReviewQuestion[]>(`${this.baseUrl}/${id}/tests/${testId}/questions`);
+  }
+
+  setAnswer(id: string, testId: number, questionId: number, optionIndex: number): Observable<void> {
+    return this.http.put<void>(`${this.baseUrl}/${id}/tests/${testId}/questions/${questionId}/answer`, { optionIndex });
+  }
+
+  approveTest(id: string, testId: number): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${id}/tests/${testId}/approve`, {});
+  }
+
+  approveAll(id: string): Observable<ApproveAllBookImportResult> {
+    return this.http.post<ApproveAllBookImportResult>(`${this.baseUrl}/${id}/approve`, {});
+  }
+
+  removeTest(id: string, testId: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}/tests/${testId}`);
+  }
+
+  /** Issue #1054 "İşaretlemede düzelt" (yalnız Admin / QuestionTrainer): fotoğrafın taslaklarını düzeltilenlerle değiştirir. */
+  replacePage(id: string, testId: number, filePage: number, questions: LabelingBankQuestion[]): Observable<BookImportPageFix> {
+    return this.http.put<BookImportPageFix>(`${this.baseUrl}/${id}/tests/${testId}/pages/${filePage}/questions`, { questions });
   }
 
   /** Yüklenen (yönü düzeltilmiş) fotoğraf; yetkili istek olduğundan <img src> yerine blob. */

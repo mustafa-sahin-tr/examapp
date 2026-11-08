@@ -3,6 +3,8 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos.Labeling;
 using ExamApp.Api.Services.BookImport;
+using ExamApp.Api.Controllers;
+using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Entitlements;
 using Hangfire;
 using ExamApp.Api.Services.Interfaces;
@@ -907,6 +909,132 @@ public class BookQuestionImportTests : IDisposable
 
         flags.Select(f => F(f.Code, f.Pages, f.Numbers, f.Found, f.Expected))
             .ShouldBe([F("missingNumbers", [2], [5]), F("optionCount", [2], [6]), F("noAnswer", [1], [3])]);
+    }
+
+    private static BookImportOwner QuickOwner => Owner with { Kind = BookImportJobKind.QuickAdd };
+
+    /// <summary>Issue #1054: onayda sorular etkinleşir, iç taslak test bağlantılarıyla silinir; test yayımlanmaz.</summary>
+    [Fact]
+    public async Task Approving_a_quick_add_photo_activates_questions_and_deletes_the_internal_test()
+    {
+        var id = await SeedQuickAddAsync("AB");
+        Detect(1, 4, 4);
+        await RunAsync(id);
+        var test = await SingleTestAsync();
+
+        await using (var before = _db.NewContext())
+            (await before.Questions.CountAsync()).ShouldBe(0);
+
+        await using (var ctx = _db.NewContext())
+            (await Service(ctx).ApproveTestAsync(QuickOwner, id, test.Id, default)).ShouldBe(BookImportReviewResult.Ok);
+
+        await using var check = _db.NewContext();
+        (await check.Questions.CountAsync()).ShouldBe(2);
+        (await check.Worksheets.WithDrafts().AnyAsync(w => w.Id == test.WorksheetId)).ShouldBeFalse();
+        (await check.Worksheets.CountAsync()).ShouldBe(0);
+        (await check.TestQuestions.IgnoreQueryFilters().Where(wq => wq.TestId == test.WorksheetId).AllAsync(wq => wq.IsDeleted)).ShouldBeTrue();
+        (await SingleTestAsync()).Status.ShouldBe(BookImportTestStatus.Approved);
+        (await check.BookImportJobs.SingleAsync()).Status.ShouldBe(BookImportJobStatus.Completed);
+    }
+
+    [Fact]
+    public async Task Quick_add_with_answerless_questions_is_not_approved_until_answers_are_set()
+    {
+        var id = await SeedQuickAddAsync("AB", null);
+        Detect(1, 4, 4);
+        Detect(2, 4);
+        await RunAsync(id);
+        var tests = await TestsAsync();
+
+        await using (var ctx = _db.NewContext())
+        {
+            (await Service(ctx).ApproveTestAsync(QuickOwner, id, tests[1].Id, default)).ShouldBe(BookImportReviewResult.Answerless);
+            var all = await Service(ctx).ApproveAllAsync(QuickOwner, id, default);
+            all!.Approved.ShouldBe([tests[0].Id]);
+            all.Skipped.ShouldBe([new BookImportSkippedTestDto(tests[1].Id, BookImportService.SkipAnswerless)]);
+        }
+        await using (var leak = _db.NewContext())
+            (await leak.Questions.CountAsync()).ShouldBe(2);
+
+        await using (var ctx = _db.NewContext())
+        {
+            var question = (await Service(ctx).GetReviewQuestionsAsync(QuickOwner, id, tests[1].Id, default))!.Single();
+            (question.Number, question.FilePage, question.AnswerIndex).ShouldBe(("1", 2, (int?)null));
+            (await Service(ctx).SetAnswerAsync(QuickOwner, id, tests[1].Id, question.Id, 3, default)).ShouldBe(BookImportReviewResult.Ok);
+            (await Service(ctx).ApproveTestAsync(QuickOwner, id, tests[1].Id, default)).ShouldBe(BookImportReviewResult.Ok);
+        }
+        await using var check = _db.NewContext();
+        (await check.Questions.CountAsync()).ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task Removing_a_quick_add_photo_deletes_only_its_drafts()
+    {
+        var id = await SeedQuickAddAsync("A", "B");
+        Detect(1, 4);
+        Detect(2, 4);
+        await RunAsync(id);
+        var tests = await TestsAsync();
+
+        await using (var ctx = _db.NewContext())
+        {
+            (await Service(ctx).RemoveTestAsync(QuickOwner, id, tests[0].Id, default)).ShouldBe(BookImportReviewResult.Ok);
+            (await Service(ctx).ApproveTestAsync(QuickOwner, id, tests[1].Id, default)).ShouldBe(BookImportReviewResult.Ok);
+        }
+
+        await using var check = _db.NewContext();
+        (await check.Questions.Select(q => q.Text).ToListAsync()).ShouldBe(["1"]);
+        (await check.Questions.WithDrafts().CountAsync()).ShouldBe(1);
+        (await check.BookImportJobs.SingleAsync()).Status.ShouldBe(BookImportJobStatus.Completed);
+    }
+
+    [Fact]
+    public async Task Quick_add_jobs_are_not_reachable_through_book_import_review_or_fix()
+    {
+        var id = await SeedQuickAddAsync("A");
+        Detect(1, 4);
+        await RunAsync(id);
+        var test = await SingleTestAsync();
+
+        await using var ctx = _db.NewContext();
+        (await Service(ctx).ApproveTestAsync(Owner, id, test.Id, default)).ShouldBe(BookImportReviewResult.NotFound);
+        (await Service(ctx).ApproveTestAsync(Admin, id, test.Id, default)).ShouldBe(BookImportReviewResult.NotFound);
+        (await Fix(ctx).ReplacePageAsync(Owner, id, test.Id, 1, [Box(0)], default)).Error.ShouldBe(BookImportPageFixError.NotFound);
+        (await Service(ctx).ApproveTestAsync(QuickOwner with { Subject = EntitlementSubject.Create(OwnerId + 1, "Teacher") }, id, test.Id, default))
+            .ShouldBe(BookImportReviewResult.NotFound);
+    }
+
+    [Fact]
+    public async Task Fixing_a_quick_add_photo_replaces_drafts_and_applies_the_key_only_when_the_count_matches()
+    {
+        var id = await SeedQuickAddAsync("BC");
+        Detect(1, 4);
+        await RunAsync(id);
+        var test = await SingleTestAsync();
+        Flags(test).ShouldContain(f => f.StartsWith("countMismatch"));
+
+        await using (var ctx = _db.NewContext())
+            (await Fix(ctx).ReplacePageAsync(QuickOwner, id, test.Id, 1, [Box(0), Box(1)], default)).Error.ShouldBe(BookImportPageFixError.None);
+
+        _saved.Last().BookId.ShouldBeNull();
+        _saved.Last().ReplacingQuestionIds!.Count.ShouldBe(1);
+        _saved.Last().Questions.Select(q => (q.ItemLabel, q.CorrectOptionIndex)).ShouldBe([("1", 1), ("2", 2)]);
+        test = await SingleTestAsync();
+        (test.Status, test.QuestionsSaved).ShouldBe((BookImportTestStatus.Done, 2));
+
+        await using (var ctx = _db.NewContext())
+            (await Fix(ctx).ReplacePageAsync(QuickOwner, id, test.Id, 1, [Box(0), Box(1), Box(2)], default)).Error.ShouldBe(BookImportPageFixError.None);
+
+        _saved.Last().Questions.ShouldAllBe(q => q.CorrectOptionIndex == -1);
+    }
+
+    [Fact]
+    public void Quick_add_labeling_fix_endpoint_is_closed_to_teachers()
+    {
+        var roles = typeof(QuickAddController).GetMethod(nameof(QuickAddController.ReplacePage))!
+            .GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute), false)
+            .Cast<Microsoft.AspNetCore.Authorization.AuthorizeAttribute>().Single().Roles!.Split(',');
+        roles.ShouldBe(["Admin", "QuestionTrainer"], ignoreOrder: true);
     }
 
     private BookImportPageFixService Fix(AppDbContext ctx) => new(ctx, _minio, _bank);

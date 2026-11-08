@@ -47,13 +47,13 @@ public sealed class BookImportPageFixService(AppDbContext db, IMinIoService mini
     {
         ArgumentNullException.ThrowIfNull(owner);
         var job = await (owner.IsAdmin ? db.BookImportJobs : db.BookImportJobs.Where(j => j.CreateUserId == owner.UserId))
-            .AsNoTracking().FirstOrDefaultAsync(j => j.Id == id, ct);
+            .AsNoTracking().FirstOrDefaultAsync(j => j.Id == id && j.Kind == owner.Kind, ct);
         var test = job is null
             ? null
             : await db.BookImportJobTests.AsTracking().FirstOrDefaultAsync(t => t.Id == testId && t.JobId == id, ct);
         if (job is null || test is null)
             return new(BookImportPageFixError.NotFound);
-        if (job.Status is not (BookImportJobStatus.ReadyForReview or BookImportJobStatus.Cancelled) || job.BookId is not { } bookId || job.CreateUserId is not > 0
+        if (job.Status is not (BookImportJobStatus.ReadyForReview or BookImportJobStatus.Cancelled) || (job.Kind == BookImportJobKind.Book && job.BookId is null) || job.CreateUserId is not > 0
             || test.Status is not (BookImportTestStatus.Done or BookImportTestStatus.NeedsReview or BookImportTestStatus.Failed)
             || test.FileFrom is not { } from || test.FileTo is not { } to || filePage < from || filePage > to)
             return new(BookImportPageFixError.InvalidState);
@@ -61,6 +61,7 @@ public sealed class BookImportPageFixService(AppDbContext db, IMinIoService mini
         if (page is null)
             return new(BookImportPageFixError.NotFound);
 
+        var bookId = job.BookId;
         var links = await LinksAsync(test.WorksheetId, bookId, ct);
         var old = links.Where(l => l.FilePage == filePage && l.IsDraft).ToList();
         var oldIds = old.Select(l => l.QuestionId).ToList();
@@ -68,6 +69,8 @@ public sealed class BookImportPageFixService(AppDbContext db, IMinIoService mini
                     ?? (links.Where(l => l.FilePage < filePage).Select(l => l.Number).Max() ?? 0) + 1;
 
         var label = BookQuestionImportStage.SourceLabel(job, test);
+        // #1054: hızlı eklemede anahtar yalnız bulunan sayı anahtar uzunluğuna eşitse uygulanır (#1052 ile aynı kural).
+        var answerKey = job.Kind == BookImportJobKind.QuickAdd && test.AnswerKey?.Length != questions.Count ? null : test.AnswerKey;
         var numbers = new List<int>();
         var toSave = questions.Select((q, i) =>
         {
@@ -75,7 +78,7 @@ public sealed class BookImportPageFixService(AppDbContext db, IMinIoService mini
             numbers.Add(number);
             var answer = q.CorrectOptionIndex >= 0 && q.CorrectOptionIndex < q.Options.Count
                 ? q.CorrectOptionIndex
-                : BookQuestionImportStage.AnswerIndex(test.AnswerKey, number);
+                : BookQuestionImportStage.AnswerIndex(answerKey, number);
             return new LabelingBankQuestionDto
             {
                 X = q.X,
@@ -162,7 +165,7 @@ public sealed class BookImportPageFixService(AppDbContext db, IMinIoService mini
     }
 
     /// <summary>Taslak testin silinmemiş bağlantıları: soru, kaynak sayfası, numarası (madde etiketi sayıysa).</summary>
-    private async Task<List<Link>> LinksAsync(int? worksheetId, int bookId, CancellationToken ct)
+    private async Task<List<Link>> LinksAsync(int? worksheetId, int? bookId, CancellationToken ct)
     {
         if (worksheetId is not { } wid)
             return [];

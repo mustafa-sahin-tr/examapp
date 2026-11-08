@@ -220,6 +220,26 @@ describe('mock exam screens', () => {
       expect(service.get).toHaveBeenCalledWith(5);
     });
 
+    it('admin_MarksAPublishedOpenExamAsTheFreeTrial', () => {
+      vi.spyOn(TestBed.inject(AuthService), 'hasRole').mockImplementation((role) => role === 'Admin');
+      const published = detail({ publishedAt: '2026-11-04', openToGrade: true, isFreeTrial: false });
+      service.setFreeTrial = vi.fn().mockReturnValue(of({ ...published, isFreeTrial: true }));
+      const { fixture, component, el } = builder(published);
+      expect(el.querySelector('[data-testid="me-free-trial-toggle"]')).not.toBeNull();
+
+      component.setFreeTrial(published, true);
+      fixture.detectChanges();
+
+      expect(service.setFreeTrial).toHaveBeenCalledWith(5, true);
+      expect(component.exam()?.isFreeTrial).toBe(true);
+    });
+
+    it('freeTrialToggle_IsHiddenFromTeachersAndClosedExams', () => {
+      expect(builder(detail({ publishedAt: '2026-11-04', openToGrade: true })).el.querySelector('[data-testid="me-free-trial-toggle"]')).toBeNull();
+      vi.spyOn(TestBed.inject(AuthService), 'hasRole').mockImplementation((role) => role === 'Admin');
+      expect(builder(detail({ publishedAt: '2026-11-04', openToGrade: false })).el.querySelector('[data-testid="me-free-trial-toggle"]')).toBeNull();
+    });
+
     it('wrongCount_BlocksPublishingAndNamesTheSubject', () => {
       const { component, el } = builder(detail({ problems: [{ code: 'WrongCount', section: 'Türkçe', required: 20, actual: 5 }] }));
 
@@ -406,6 +426,16 @@ describe('mock exam screens', () => {
       fixture.detectChanges();
 
       expect(el.textContent).toContain(tr.student.startFailed);
+    });
+
+    it('planLimit_LeavesTheMessageToTheUpgradeDialog', () => {
+      const { fixture, component } = list();
+      tests.startTest.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 429, error: { code: 'entitlement.limitReached', feature: 'mock-exam' } })));
+
+      component.start(exam.sessions[1]);
+      fixture.detectChanges();
+
+      expect(component.startFailed()).toBe(false);
     });
 
     it('finishedSession_HasNoStartButtonAndOffersTheResult', () => {

@@ -88,6 +88,16 @@
   color: var(--ms-warning-text-medium);
 }
 
+.me-free {
+  margin-left: 8px;
+  font-weight: 600;
+  color: var(--ms-success-text-medium);
+}
+
+.me-free-trial {
+  margin-bottom: 12px;
+}
+
 .me-count-done {
   color: inherit;
   opacity: 0.8;

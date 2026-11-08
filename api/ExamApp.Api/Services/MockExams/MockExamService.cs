@@ -16,6 +16,9 @@ public interface IMockExamService
     Task<MockExamDetailDto?> GetAsync(int id, int userId, bool isAdmin, CancellationToken ct);
     Task<MockExamDetailDto?> SetSectionQuestionsAsync(int id, int sectionId, IReadOnlyList<int> questionIds, int userId, bool isAdmin, CancellationToken ct);
     Task<MockExamDetailDto?> PublishAsync(int id, bool openToGrade, int userId, bool isAdmin, CancellationToken ct);
+
+    /// <summary>Issue #1031: denemeyi sınıfının ücretsiz denemesi yapar (sınıfta önceki seçim kalkar) ya da çıkarır; deneme yoksa null.</summary>
+    Task<MockExamDetailDto?> SetFreeTrialAsync(int id, bool isFreeTrial, int userId, CancellationToken ct);
     Task<bool> DeleteDraftAsync(int id, int userId, bool isAdmin, CancellationToken ct);
     Task<List<StudentMockExamDto>> ListForStudentAsync(StudentProfileDto student, CancellationToken ct);
     Task<MockExamResultDto?> GetResultAsync(int id, StudentProfileDto student, CancellationToken ct);
@@ -49,6 +52,7 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
     public const string TooManyQuestions = "TooManyQuestions";
     public const string QuestionTwice = "QuestionUsedTwice";
     public const string QuestionNotUsable = "QuestionNotUsable";
+    public const string FreeTrialNotOpen = "FreeTrialNotOpen";
 
     // ---- şablonlar
 
@@ -188,7 +192,7 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
         db.Set<MockExam>().AsNoTracking()
             .Where(e => isAdmin || e.CreateUserId == userId)
             .OrderByDescending(e => e.Id)
-            .Select(e => new MockExamListItemDto { Id = e.Id, Name = e.Name, TemplateName = e.ExamTemplate.Name, GradeName = e.Grade.Name, PublishedAt = e.PublishedAt })
+            .Select(e => new MockExamListItemDto { Id = e.Id, Name = e.Name, TemplateName = e.ExamTemplate.Name, GradeName = e.Grade.Name, PublishedAt = e.PublishedAt, IsFreeTrial = e.IsFreeTrial })
             .ToListAsync(ct);
 
     public async Task<MockExamDetailDto?> GetAsync(int id, int userId, bool isAdmin, CancellationToken ct) =>
@@ -339,6 +343,28 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
         return await ReadDetailAsync(id, ct);
     }
 
+    public async Task<MockExamDetailDto?> SetFreeTrialAsync(int id, bool isFreeTrial, int userId, CancellationToken ct)
+    {
+        var exam = await db.Set<MockExam>().FirstOrDefaultAsync(e => e.Id == id, ct);
+        if (exam is null)
+            return null;
+        if (isFreeTrial && (exam.PublishedAt is null || !exam.OpenToGrade))
+            throw new MockExamRuleException(FreeTrialNotOpen);
+
+        db.SetCurrentUser(userId);
+        if (isFreeTrial)
+        {
+            // Sınıf başına tek deneme (tekil indeks): önce eskisi kalkar.
+            var previous = await db.Set<MockExam>().Where(e => e.GradeId == exam.GradeId && e.Id != id && e.IsFreeTrial).ToListAsync(ct);
+            previous.ForEach(e => e.IsFreeTrial = false);
+            await db.SaveChangesAsync(ct);
+        }
+
+        exam.IsFreeTrial = isFreeTrial;
+        await db.SaveChangesAsync(ct);
+        return await ReadDetailAsync(id, ct);
+    }
+
     public async Task<bool> DeleteDraftAsync(int id, int userId, bool isAdmin, CancellationToken ct)
     {
         if (!await CanEditAsync(id, userId, isAdmin, ct))
@@ -386,6 +412,8 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
             GradeId = exam.GradeId,
             GradeName = exam.Grade.Name,
             PublishedAt = exam.PublishedAt,
+            OpenToGrade = exam.OpenToGrade,
+            IsFreeTrial = exam.IsFreeTrial,
             Sessions = exam.Sessions.OrderBy(s => s.TemplateSession.Order).Select(s => new MockExamSessionDetailDto
             {
                 Id = s.Id,
@@ -490,6 +518,7 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
             Id = exam.Id,
             Name = exam.Name,
             TemplateName = exam.ExamTemplate.Name,
+            IsFreeTrial = exam.IsFreeTrial,
             Sessions = exam.Sessions.OrderBy(s => s.TemplateSession.Order).Select(session =>
             {
                 var instance = instances.FirstOrDefault(i => i.WorksheetId == session.WorksheetId);

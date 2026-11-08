@@ -849,6 +849,8 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<ExamTemplateSection>().HasOne(s => s.Session).WithMany(t => t.Sections).HasForeignKey(s => s.ExamTemplateSessionId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<MockExam>().HasOne(e => e.ExamTemplate).WithMany().HasForeignKey(e => e.ExamTemplateId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<MockExam>().HasOne(e => e.Grade).WithMany().HasForeignKey(e => e.GradeId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<MockExam>().HasIndex(e => e.GradeId); // tekil süzgeçli indeks FK indeksinin yerini tutmaz
+        modelBuilder.Entity<MockExam>().HasIndex(e => e.GradeId, "IX_MockExams_GradeId_FreeTrial").IsUnique().HasFilter("\"IsFreeTrial\" AND NOT \"IsDeleted\"");
         modelBuilder.Entity<MockExamSession>().HasOne(s => s.MockExam).WithMany(e => e.Sessions).HasForeignKey(s => s.MockExamId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<MockExamSession>().HasOne(s => s.TemplateSession).WithMany().HasForeignKey(s => s.ExamTemplateSessionId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<MockExamSession>().HasOne(s => s.Worksheet).WithMany().HasForeignKey(s => s.WorksheetId).OnDelete(DeleteBehavior.Restrict);

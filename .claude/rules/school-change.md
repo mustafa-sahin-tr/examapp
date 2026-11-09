@@ -7,7 +7,8 @@ paths:
 ---
 # Okul değişimi — davranış matrisi (#194, #540)
 
-Kullanıcı okulunu kendisi değiştiremez (öğrenci kayıttan sonra kilitli, öğretmen 409); tek yol admin:
+Kullanıcı okulunu kendisi değiştiremez (öğrenci kayıttan sonra kilitli, öğretmen 409). Okulu boş olan öğrenci ilk okulu
+kayıtta ya da ayarlardan seçer (`POST api/student/school`, onay bekler; ret okulu boşaltır). Değişikliğin tek yolu admin:
 `PUT api/admin/students/{id}/school`, `PUT api/admin/teachers/{id}/school`
 (`AdminStudentSchoolService`, `AdminTeacherSchoolService`). Yetki kararları claim'e değil DB'den çözülen okula bakar
 (`UserSchoolResolver`, `SchoolAccessPolicy`); değişiklikten sonra profil önbelleği düşer, Keycloak `school_id` best-effort

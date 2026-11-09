@@ -13,6 +13,8 @@ public interface IStudentService
 
     Task<ResponseBaseDto> Save(int userId, RegisterStudentDto dto);
 
+    Task<ResponseBaseDto> RequestSchool(int userId, int schoolId);
+
     Task<ResponseBaseDto> UpdateStudentGrade(int studentId, int gradeId);
 
     /// <summary>

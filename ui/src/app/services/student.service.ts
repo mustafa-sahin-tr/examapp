@@ -22,6 +22,11 @@ export class StudentService {
     return this.http.get<StudentProfile>(`${this.baseUrl}/profile`);
   }
 
+  /** Kayıtta okul seçilmediyse ilk seçim; onay bekler. */
+  requestSchool(schoolId: number): Observable<StudentProfile> {
+    return this.http.post<StudentProfile>(`${this.baseUrl}/school`, schoolId);
+  }
+
   updateGrade(newGradeId: number): Observable<StudentProfile> {
     return this.http.post<StudentProfile>(`${this.baseUrl}/update-grade`, newGradeId);
   }

@@ -8,7 +8,9 @@ import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 
 import { Grade } from '../../models/student';
 import { StudentProfile } from '../../models/student-profile';
+import { AuthService } from '../../services/auth.service';
 import { StudentService } from '../../services/student.service';
+import { SchoolSelectComponent } from '../../shared/components/school-select/school-select.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { AccountSecurityCardComponent } from '../../shared/components/account-security-card/account-security-card.component';
 import { StudentParentsCardComponent } from '../../shared/components/student-parents-card/student-parents-card.component';
@@ -32,6 +34,7 @@ import { UserThemeSwitcherComponent } from '../../components/user-theme-switcher
     AccountSecurityCardComponent,
     StudentParentsCardComponent,
     UserThemeSwitcherComponent,
+    SchoolSelectComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [provideTranslocoScope('student-profile')],
@@ -40,6 +43,7 @@ import { UserThemeSwitcherComponent } from '../../components/user-theme-switcher
 })
 export class StudentSettingsComponent implements OnInit {
   private readonly studentService = inject(StudentService);
+  private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly student = signal<StudentProfile | null>(null);
@@ -49,6 +53,12 @@ export class StudentSettingsComponent implements OnInit {
   readonly savingGrade = signal(false);
   readonly gradeSaved = signal(false);
   readonly gradeError = signal(false);
+
+  readonly editingSchool = signal(false);
+  readonly pendingSchoolId = signal<number | null>(null);
+  readonly savingSchool = signal(false);
+  readonly schoolError = signal<string | null>(null);
+  readonly canSaveSchool = computed(() => !this.savingSchool() && this.pendingSchoolId() !== null);
 
   readonly gradeName = computed(() => this.grades().find((g) => g.id === this.student()?.gradeId)?.name ?? '');
   readonly canSaveGrade = computed(
@@ -64,6 +74,26 @@ export class StudentSettingsComponent implements OnInit {
       .loadGrades()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((grades) => this.grades.set(grades));
+  }
+
+  saveSchool(fallbackError: string): void {
+    const schoolId = this.pendingSchoolId();
+    if (!this.canSaveSchool() || schoolId === null) return;
+    this.savingSchool.set(true);
+    this.schoolError.set(null);
+    this.studentService.requestSchool(schoolId).subscribe({
+      next: (profile) => {
+        this.student.set(profile);
+        this.savingSchool.set(false);
+        this.editingSchool.set(false);
+        // "Okul onayı bekleniyor" bandı AuthService profilinden okur.
+        this.auth.refreshProfile().pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
+      },
+      error: (err: { error?: { message?: string } }) => {
+        this.savingSchool.set(false);
+        this.schoolError.set(err.error?.message ?? fallbackError);
+      },
+    });
   }
 
   startGradeChange(): void {

@@ -60,7 +60,7 @@ export function postLoginDestination(
   imports: [MatIconModule, MatButtonModule],
   templateUrl: './callback.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
-  styleUrl: './callback.component.scss',
+  styleUrl: '../../shared/auth-scene/auth-transition.scss',
 })
 export class CallbackComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
@@ -89,17 +89,6 @@ export class CallbackComponent implements OnInit {
 
   private delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-
-  getRoleIcon(role: string): string {
-    switch (role) {
-      case 'Student':
-        return 'school';
-      case 'Teacher':
-        return 'person';
-      default:
-        return 'account_circle';
-    }
   }
 
   getRoleMessage(role: string): string {

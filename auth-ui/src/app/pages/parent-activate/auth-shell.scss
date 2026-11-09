@@ -1,3 +1,5 @@
+@use '../../shared/auth-scene/auth-scene';
+
 /* ===========================
    Auth Area — #1009: the dark, branded shell shared with the sign-in and Keycloak registration pages;
    one card under the brand, no illustration. Colors come from the global --ms-* tokens.
@@ -10,42 +12,9 @@
   justify-content: center;
   padding: 48px 16px;
   box-sizing: border-box;
-  background-color: var(--main-bg-color);
-  background-image:
-    radial-gradient(1200px 600px at 50% -10%, color-mix(in srgb, var(--ms-action-background) 28%, transparent), transparent 70%),
-    radial-gradient(900px 600px at 0% 100%, color-mix(in srgb, var(--ms-action-background) 16%, transparent), transparent 70%);
   color: var(--ms-text);
   font-family: 'Segoe UI', Arial, sans-serif;
-  isolation: isolate;
-
-  // Same scene as the Keycloak theme: school objects and the trail to the flagged school.
-  &::before,
-  &::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    mask-position: center;
-    mask-size: cover;
-    mask-repeat: no-repeat;
-
-    // Cover would leave only the centre strip, hidden by the card: a larger scene, anchored under it.
-    @media (max-width: 768px) {
-      mask-size: 1100px auto;
-      mask-position: center bottom;
-    }
-  }
-
-  &::before {
-    background-color: color-mix(in srgb, var(--ms-text-medium) 30%, transparent);
-    mask-image: url('./auth-bg-glyphs.svg');
-  }
-
-  &::after {
-    background-color: color-mix(in srgb, var(--ms-action-text-medium) 70%, transparent);
-    mask-image: url('./auth-bg-trail.svg');
-  }
+  @include auth-scene.auth-scene;
 }
 
 .auth-inner {

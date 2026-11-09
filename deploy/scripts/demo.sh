@@ -14,6 +14,10 @@ DEPLOY="$(cd "$(dirname "$0")/.." && pwd)"
 BACKUP_ROOT="${DEMO_BACKUP_DIR:-/Volumes/Mustafas HDD/Builds/examapp/demo-backups}"
 PRIVATE_SCHOOLS_CSV="${DEMO_PRIVATE_SCHOOLS_CSV:-/Volumes/Mustafas HDD/Builds/examapp/private-schools/ozel-okullar.csv}"
 
+# Compose prefers a shell variable over --env-file; a key exported in the owner's shell profile
+# would otherwise silently replace the demo key.
+unset ANTHROPIC_API_KEY
+
 compose() {
   docker compose --env-file "$DEPLOY/.env.demo" -f "$DEPLOY/docker-compose.prod.yml" -f "$DEPLOY/docker-compose.demo.yml" "$@"
 }

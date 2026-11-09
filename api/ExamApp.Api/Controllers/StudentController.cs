@@ -138,6 +138,22 @@ namespace ExamApp.Api.Controllers
             });
         }
 
+        /// <summary>Kayıtta okul seçmeyen öğrencinin sonradan okul seçmesi; seçim onay bekler.</summary>
+        [HttpPost("school")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> RequestSchool([FromBody] int schoolId)
+        {
+            var user = await GetAuthenticatedUserAsync();
+            var response = await _studentService.RequestSchool(user.Id, schoolId);
+            if (!response.Success)
+            {
+                return response.Conflict
+                    ? Conflict(new { message = response.Message })
+                    : BadRequest(new { message = response.Message });
+            }
+            return await GetStudentProfile();
+        }
+
         // issue #424 (ters keşif): önceden yetki attribute'u yoktu (anonim istek user=null ile 500 veriyordu); yalnızca öğrenci.
         [Authorize(Roles = "Student")]
         [HttpPost("update-grade")]

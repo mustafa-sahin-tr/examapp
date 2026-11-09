@@ -33,6 +33,35 @@
     }
   </section>
 
+  <section class="ss__card" aria-labelledby="ss-school">
+    <h2 id="ss-school" class="ss__title">{{ t('school.title') }}</h2>
+    @if (student()?.pendingSchoolId != null) {
+      <span class="ss__value" data-testid="settings-school-pending">{{ student()!.pendingSchoolName }}</span>
+      <p class="ss__note">{{ t('school.pendingNote') }}</p>
+    } @else if (student()?.schoolId != null) {
+      <span class="ss__value" data-testid="settings-school">{{ student()!.schoolName }}</span>
+      <p class="ss__note">{{ t('school.lockedNote') }}</p>
+    } @else if (!editingSchool()) {
+      <div class="ss__row">
+        <span class="ss__value">{{ t('school.none') }}</span>
+        <button mat-stroked-button type="button" data-testid="settings-school-choose" [disabled]="!student()"
+          (click)="editingSchool.set(true)">{{ t('school.choose') }}</button>
+      </div>
+    } @else {
+      <app-school-select class="ss__select" [label]="t('school.label')" [value]="pendingSchoolId()"
+        (valueChange)="pendingSchoolId.set($event)" />
+      <p class="ss__note">{{ t('school.note') }}</p>
+      @if (schoolError(); as message) {
+        <p class="ss__error" role="alert" data-testid="settings-school-error">{{ message }}</p>
+      }
+      <div class="ss__actions">
+        <button mat-flat-button type="button" data-testid="settings-school-save" [disabled]="!canSaveSchool()"
+          (click)="saveSchool(t('school.error'))">{{ t('school.save') }}</button>
+        <button mat-button type="button" (click)="editingSchool.set(false)">{{ t('school.cancel') }}</button>
+      </div>
+    }
+  </section>
+
   <section class="ss__card" aria-labelledby="ss-theme">
     <h2 id="ss-theme" class="ss__title">{{ t('theme') }}</h2>
     <app-user-theme-switcher />

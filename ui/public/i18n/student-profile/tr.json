@@ -31,6 +31,18 @@
       "cancel": "Vazgeç",
       "saved": "Sınıfın güncellendi.",
       "error": "Sınıf kaydedilemedi; yeniden dene."
+    },
+    "school": {
+      "title": "Okulum",
+      "none": "Henüz okul seçmedin.",
+      "choose": "Okul seç",
+      "label": "Okul",
+      "note": "Seçimin okulunun onayına gider. Onaydan sonra okulunu değiştirmek için yöneticiye yazman gerekir.",
+      "save": "Onaya gönder",
+      "cancel": "Vazgeç",
+      "pendingNote": "Okul onayı bekleniyor.",
+      "lockedNote": "Okulunu değiştirmek için yöneticiye yaz.",
+      "error": "Okul kaydedilemedi; yeniden dene."
     }
   }
 }

@@ -146,52 +146,9 @@ public class StudentService : IStudentService
             // SchoolId tracked entity üzerinden YAZILMAZ; yalnız bu atomik ifade yazar.
             if (!student.SchoolId.HasValue && dto.SchoolId.HasValue)
             {
-                var requestedSchoolId = dto.SchoolId.Value;
-
-                // issue #361 review: reddedilen okul SchoolRejectCooldown dolmadan yeniden istenemez (başka okul serbest) —
-                // ret → hemen yeniden başvuru döngüsüyle okulun onaylayıcıları taciz edilemesin.
-                if (student.LastRejectedSchoolId == requestedSchoolId
-                    && student.SchoolRejectedAt is { } rejectedAt
-                    && rejectedAt > DateTime.UtcNow - SchoolRejectCooldown)
-                {
-                    return new ResponseBaseDto
-                    {
-                        Success = false,
-                        Message = _localizer["student.schoolRecentlyRejected", (int)SchoolRejectCooldown.TotalDays]
-                    };
-                }
-
-                // issue #361: kendi seçilen okul BEKLEMEDE başlar — doğrulama alanları da bu atomik ifadeyle sıfırlanır
-                // (security review Low-1: önceki bir doğrulama yeni okula taşınmasın; DB CHECK ile de korunur).
-                var claimed = await _context.Students
-                    .Where(s => s.Id == student.Id && s.SchoolId == null)
-                    .ExecuteUpdateAsync(set => set
-                        .SetProperty(s => s.SchoolId, requestedSchoolId)
-                        .SetProperty(s => s.SchoolVerifiedAt, (DateTime?)null)
-                        .SetProperty(s => s.SchoolVerifiedByUserId, (int?)null));
-
-                if (claimed == 0)
-                {
-                    var currentSchoolId = await _context.Students.AsNoTracking()
-                        .Where(s => s.Id == student.Id)
-                        .Select(s => s.SchoolId)
-                        .FirstOrDefaultAsync();
-                    if (currentSchoolId != requestedSchoolId)
-                    {
-                        return new ResponseBaseDto
-                        {
-                            Success = false,
-                            Conflict = true,
-                            Message = _localizer["student.schoolLocked"]
-                        };
-                    }
-                }
-
-                // Tracked kopyayı DB ile hizala ama değiştirilmiş işaretleme — SaveChanges SchoolId'yi tekrar yazmasın.
-                var schoolEntry = _context.Entry(student).Property(s => s.SchoolId);
-                schoolEntry.CurrentValue = requestedSchoolId;
-                schoolEntry.OriginalValue = requestedSchoolId;
-                schoolEntry.IsModified = false;
+                var claimFailure = await ClaimFirstSchoolAsync(student, dto.SchoolId.Value);
+                if (claimFailure != null)
+                    return claimFailure;
             }
 
             student.StudentNumber = dto.StudentNumber;
@@ -275,6 +232,83 @@ public class StudentService : IStudentService
             Message = _localizer["student.registered"],
             ObjectId = student.Id
         };
+    }
+
+    /// <summary>
+    /// issue #259 / #361: okulsuz öğrenciye ilk okulu BEKLEMEDE atar; başarısızlıkta hata yanıtı, başarıda null döner.
+    /// Kayıt ucu ve ayarlardaki sonradan seçim aynı kuraldan geçer.
+    /// </summary>
+    private async Task<ResponseBaseDto?> ClaimFirstSchoolAsync(Student student, int requestedSchoolId)
+    {
+        // issue #361 review: reddedilen okul SchoolRejectCooldown dolmadan yeniden istenemez (başka okul serbest) —
+        // ret → hemen yeniden başvuru döngüsüyle okulun onaylayıcıları taciz edilemesin.
+        if (student.LastRejectedSchoolId == requestedSchoolId
+            && student.SchoolRejectedAt is { } rejectedAt
+            && rejectedAt > DateTime.UtcNow - SchoolRejectCooldown)
+        {
+            return new ResponseBaseDto
+            {
+                Success = false,
+                Message = _localizer["student.schoolRecentlyRejected", (int)SchoolRejectCooldown.TotalDays]
+            };
+        }
+
+        // issue #361: kendi seçilen okul BEKLEMEDE başlar — doğrulama alanları da bu atomik ifadeyle sıfırlanır
+        // (security review Low-1: önceki bir doğrulama yeni okula taşınmasın; DB CHECK ile de korunur).
+        var claimed = await _context.Students
+            .Where(s => s.Id == student.Id && s.SchoolId == null)
+            .ExecuteUpdateAsync(set => set
+                .SetProperty(s => s.SchoolId, requestedSchoolId)
+                .SetProperty(s => s.SchoolVerifiedAt, (DateTime?)null)
+                .SetProperty(s => s.SchoolVerifiedByUserId, (int?)null));
+
+        if (claimed == 0)
+        {
+            var currentSchoolId = await _context.Students.AsNoTracking()
+                .Where(s => s.Id == student.Id)
+                .Select(s => s.SchoolId)
+                .FirstOrDefaultAsync();
+            if (currentSchoolId != requestedSchoolId)
+            {
+                return new ResponseBaseDto
+                {
+                    Success = false,
+                    Conflict = true,
+                    Message = _localizer["student.schoolLocked"]
+                };
+            }
+        }
+
+        // Tracked kopyayı DB ile hizala ama değiştirilmiş işaretleme — SaveChanges SchoolId'yi tekrar yazmasın.
+        var schoolEntry = _context.Entry(student).Property(s => s.SchoolId);
+        schoolEntry.CurrentValue = requestedSchoolId;
+        schoolEntry.OriginalValue = requestedSchoolId;
+        schoolEntry.IsModified = false;
+
+        return null;
+    }
+
+    /// <summary>
+    /// Kayıtta okul seçmeyen öğrenci sonradan bir kez seçer; seçim onay bekler. Okulu olan öğrenciyi kilit durdurur
+    /// (değişiklik yalnız admin), ret sonrası okul boşaldığı için yeniden seçilebilir.
+    /// </summary>
+    public async Task<ResponseBaseDto> RequestSchool(int userId, int schoolId)
+    {
+        var student = await _context.Students.OrderBy(s => s.Id).FirstOrDefaultAsync(s => s.UserId == userId);
+        if (student == null)
+            return new ResponseBaseDto { Success = false, Message = _localizer["student.notFound"] };
+
+        if (student.SchoolId.HasValue)
+        {
+            return student.SchoolId == schoolId
+                ? new ResponseBaseDto { Success = true }
+                : new ResponseBaseDto { Success = false, Conflict = true, Message = _localizer["student.schoolLocked"] };
+        }
+
+        if (!await _context.Schools.AnyAsync(s => s.Id == schoolId))
+            return new ResponseBaseDto { Success = false, Message = _localizer["student.schoolNotFound"] };
+
+        return await ClaimFirstSchoolAsync(student, schoolId) ?? new ResponseBaseDto { Success = true };
     }
 
     public async Task<ResponseBaseDto> UpdateStudentGrade(int userId, int gradeId)

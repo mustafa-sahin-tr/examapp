@@ -4,6 +4,10 @@ export interface StudentProfile {
   fullName: string;
   /** #847: profil başlığında "5. Sınıf · Okul". */
   schoolName?: string | null;
+  /** Doğrulanmış okul; beklemedeki üyelikte null. */
+  schoolId?: number | null;
+  pendingSchoolId?: number | null;
+  pendingSchoolName?: string | null;
   gradeId: number;
   avatarUrl: string;
   xp: number;

@@ -31,6 +31,18 @@
       "cancel": "Cancel",
       "saved": "Your class was updated.",
       "error": "Could not save the class; try again."
+    },
+    "school": {
+      "title": "My school",
+      "none": "You have not chosen a school yet.",
+      "choose": "Choose school",
+      "label": "School",
+      "note": "Your choice goes to the school for approval. After approval, ask an administrator to change your school.",
+      "save": "Send for approval",
+      "cancel": "Cancel",
+      "pendingNote": "Waiting for school approval.",
+      "lockedNote": "Ask an administrator to change your school.",
+      "error": "Could not save the school; try again."
     }
   }
 }

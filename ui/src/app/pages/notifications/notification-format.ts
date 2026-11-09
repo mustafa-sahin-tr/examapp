@@ -3,6 +3,7 @@ import { PARENT_CHILD_QUERY_PARAM } from '../../models/parent-dashboard.model';
 import { PARENT_HOME_URL } from '../../shared/guards/parent.guard';
 import { PARENT_REQUIRED_URL } from '../../models/parent-status.model';
 import { PARENT_BOOKING_REQUESTS_FRAGMENT } from '../../models/booking.model';
+import { TEACHER_APPROVAL_PENDING_URL } from '../../models/teacher-approval.model';
 import {
   AppNotification,
   BADGE_EARNED_NOTIFICATION_TYPE,
@@ -139,10 +140,52 @@ const PARENT_REQUIREMENT_NOTIFICATIONS: Readonly<Record<string, { icon: string; 
 const SCHOOL_CHANGE_SELF_NOTIFICATIONS: ReadonlySet<string> = new Set([
   'SchoolChangedToStudent',
   'SchoolAssignedToStudent',
-  'SchoolRemovedToStudent',
   'SchoolChangedToTeacher',
   'SchoolAssignedToTeacher',
 ]);
+
+/** Admin'in öğretmen başvurusu ve okul katılım talebi onay ekranı. */
+export const ADMIN_TEACHER_APPROVALS_ROUTE = '/admin/teacher-approvals';
+
+/** Öğretmenin atama izni talepleri ekranı. */
+export const ASSIGNMENT_PERMISSION_REQUESTS_ROUTE = '/assignment-permission-requests';
+
+/** Okulu kaldırılan öğrenci yeni okulunu ayarlardan seçer. */
+export const STUDENT_SETTINGS_ROUTE = '/student-settings';
+
+/**
+ * Sabit hedefli bildirimler: aksiyon gerektirenler işin yapıldığı ekrana, sonuç bildirimleri ilgili listeye gider
+ * (`data` linke taşınmaz).
+ */
+const FIXED_ROUTE_NOTIFICATIONS: Readonly<Record<string, { icon: string; route: string }>> = {
+  TeacherApplicationSubmitted: { icon: 'how_to_reg', route: ADMIN_TEACHER_APPROVALS_ROUTE },
+  TeacherSchoolRequestSubmitted: { icon: 'how_to_reg', route: ADMIN_TEACHER_APPROVALS_ROUTE },
+  TeacherApplicationRejected: { icon: 'person_off', route: TEACHER_APPROVAL_PENDING_URL },
+  WorksheetAccessRequested: { icon: 'assignment_ind', route: ASSIGNMENT_PERMISSION_REQUESTS_ROUTE },
+  BookingRequestCreated: { icon: 'event_available', route: TEACHER_BOOKINGS_ROUTE },
+  BookingApproved: { icon: 'event_available', route: STUDENT_BOOKINGS_ROUTE },
+  BookingRejected: { icon: 'event_busy', route: STUDENT_BOOKINGS_ROUTE },
+  SchoolRemovedToStudent: { icon: 'school', route: STUDENT_SETTINGS_ROUTE },
+};
+
+/** Testin kendisine giden bildirimler; `data.worksheetId` doğrulanır, bozuksa navigasyon yok. */
+const WORKSHEET_NOTIFICATION_ICONS: Readonly<Record<string, string>> = {
+  WorksheetReminderDue: 'alarm',
+  WorksheetAccessApproved: 'assignment_turned_in',
+  WorksheetAccessRejected: 'assignment_late',
+};
+
+function parseNotificationWorksheetId(data: string | null): number | null {
+  if (!data) {
+    return null;
+  }
+  try {
+    const value = (JSON.parse(data) as { worksheetId?: unknown } | null)?.worksheetId;
+    return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
 
 export function describeNotification(
   notification: Pick<AppNotification, 'type' | 'data'>,
@@ -208,6 +251,20 @@ export function describeNotification(
       icon: 'rate_review',
       badge: null,
       route: data ? { commands: ['/activity', data.testInstanceId], queryParams: { item: data.instanceQuestionId } } : null,
+      questionOrder: null,
+    };
+  }
+  const fixedRoute = FIXED_ROUTE_NOTIFICATIONS[notification.type];
+  if (fixedRoute) {
+    return { icon: fixedRoute.icon, badge: null, route: { commands: [fixedRoute.route] }, questionOrder: null };
+  }
+  const worksheetIcon = WORKSHEET_NOTIFICATION_ICONS[notification.type];
+  if (worksheetIcon) {
+    const worksheetId = parseNotificationWorksheetId(notification.data);
+    return {
+      icon: worksheetIcon,
+      badge: null,
+      route: worksheetId === null ? null : { commands: ['/test', worksheetId] },
       questionOrder: null,
     };
   }

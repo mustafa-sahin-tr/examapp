@@ -209,6 +209,32 @@ describe('describeNotification (issue #105)', () => {
         }
     });
 
+    it('ActionAndResultNotifications_LinkTheirScreen', () => {
+        const expected: Record<string, string> = {
+            TeacherApplicationSubmitted: '/admin/teacher-approvals',
+            TeacherSchoolRequestSubmitted: '/admin/teacher-approvals',
+            TeacherApplicationRejected: '/teacher-approval-pending',
+            WorksheetAccessRequested: '/assignment-permission-requests',
+            BookingRequestCreated: '/booking-requests',
+            BookingApproved: '/my-bookings',
+            BookingRejected: '/my-bookings',
+            SchoolRemovedToStudent: '/student-settings',
+        };
+        for (const [type, route] of Object.entries(expected)) {
+            expect(describeNotification({ type, data: '{}' }).route, type).toEqual({ commands: [route] });
+        }
+    });
+
+    it('WorksheetNotifications_LinkTheTest_BrokenDataHasNoRoute', () => {
+        for (const type of ['WorksheetReminderDue', 'WorksheetAccessApproved', 'WorksheetAccessRejected']) {
+            expect(describeNotification({ type, data: JSON.stringify({ worksheetId: 42 }) }).route, type)
+                .toEqual({ commands: ['/test', 42] });
+            for (const data of [null, 'not-json', JSON.stringify({ worksheetId: '42' }), JSON.stringify({ worksheetId: -1 })]) {
+                expect(describeNotification({ type, data }).route, `${type} ${data}`).toBeNull();
+            }
+        }
+    });
+
     it('DirectMessageReported_HasNoRouteYet', () => {
         expect(describeNotification({ type: 'DirectMessageReported', data: '{}' }).route).toBeNull();
     });
@@ -227,7 +253,7 @@ describe('describeNotification (issue #105)', () => {
             expect(result.route, type).toEqual({ commands: ['/parent'], queryParams: { child: 21 } });
             expect(result.icon, type).toBe('school');
         }
-        for (const type of ['SchoolChangedToStudent', 'SchoolRemovedToStudent', 'SchoolChangedToTeacher']) {
+        for (const type of ['SchoolChangedToStudent', 'SchoolChangedToTeacher']) {
             const result = describeNotification({ type, data: JSON.stringify({ studentId: null }) });
             expect(result.route, type).toBeNull();
             expect(result.icon, type).toBe('school');

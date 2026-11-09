@@ -94,13 +94,14 @@
   },
   "admin": {
     "title": "Subscriptions",
-    "subtitle": "Assign a dated plan to a user or a school and see the history.",
+    "subtitle": "Assign dated plans to a user or school, see the history, and edit plan prices and limits.",
     "loading": "Loading…",
     "openEnded": "open-ended",
     "currentPlan": "Current plan",
     "tabs": {
       "users": "Users",
-      "schools": "Schools"
+      "schools": "Schools",
+      "plans": "Plans"
     },
     "search": {
       "label": "Name or email",
@@ -169,6 +170,36 @@
       "userNotFound": "User not found.",
       "schoolNotFound": "School not found.",
       "queryTooShort": "Type at least 2 characters."
+    },
+    "planEditor": {
+      "inactive": "inactive",
+      "name": "Plan name (admin)",
+      "nameHint": "The name users see comes from the translation file.",
+      "price": "Monthly price",
+      "trialDays": "Trial length (days)",
+      "active": "On sale (active)",
+      "groups": {
+        "Teacher": "Teacher features",
+        "Student": "Student features",
+        "Both": "Shared features"
+      },
+      "limited": "Limited",
+      "perMonth": "Monthly limit",
+      "save": "Save plan",
+      "saved": "Saved.",
+      "note": "Changes apply from the next entitlement check and are audited. This month's usage is not reset.",
+      "errors": {
+        "load": "Could not load the feature list.",
+        "generic": "Could not save the plan. Please try again.",
+        "invalidName": "The plan name cannot be empty (at most 100 characters).",
+        "invalidPrice": "The price must be 0 or more (at most two decimals).",
+        "invalidTrialDays": "The trial must be 1–365 days.",
+        "unknownFeature": "An unknown feature was sent.",
+        "featureAudienceMismatch": "This feature does not belong to the plan's audience.",
+        "invalidLimit": "The limit must be a whole number of 0 or more.",
+        "planRequired": "The free and trial plans cannot be turned off.",
+        "unknownPlan": "Plan not found."
+      }
     }
   },
   "units": {

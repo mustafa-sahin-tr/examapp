@@ -11,6 +11,7 @@ import {
   SchoolPlanAudience,
   SchoolSubscriptionMembers,
   SubscriptionPlan,
+  SubscriptionPlanUpdate,
   SubscriptionSearchRole,
 } from '../models/subscription';
 
@@ -52,6 +53,11 @@ export class SubscriptionService {
   /** Etkin ve pasif tüm planlar. */
   adminPlans(): Observable<SubscriptionPlan[]> {
     return this.http.get<SubscriptionPlan[]>(this.adminUrl);
+  }
+
+  /** #1086: planın adı, fiyatı, deneme süresi, etkinliği ve bütün sınırları; güncel planı döndürür. */
+  updatePlan(planKey: string, update: SubscriptionPlanUpdate): Observable<SubscriptionPlan> {
+    return this.http.put<SubscriptionPlan>(`${this.adminUrl}/${encodeURIComponent(planKey)}`, update);
   }
 
   /** Ad ya da e-postada geçen metin (en az 2 karakter); en fazla 20 sonuç. */

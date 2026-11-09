@@ -1,0 +1,84 @@
+<section class="plan-editor" *transloco="let t; prefix: 'subscription'">
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="plan-editor__select">
+    <mat-label>{{ t('admin.assign.plan') }}</mat-label>
+    <mat-select [value]="planKey()" (valueChange)="selectPlan($event)" data-testid="plan-editor-plan">
+      @for (p of plans(); track p.key) {
+        <mat-option [value]="p.key">{{ label()(p.key) }}@if (!p.isActive) { ({{ t('admin.planEditor.inactive') }}) }</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  @if (plan()) {
+    <form class="plan-editor__form" (ngSubmit)="save()">
+      <div class="plan-editor__basics">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="plan-editor__name">
+          <mat-label>{{ t('admin.planEditor.name') }}</mat-label>
+          <input matInput name="name" [ngModel]="name()" (ngModelChange)="name.set($event)" maxlength="100" required
+            data-testid="plan-editor-name" />
+          <mat-hint>{{ t('admin.planEditor.nameHint') }}</mat-hint>
+        </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="plan-editor__number">
+          <mat-label>{{ t('admin.planEditor.price') }}</mat-label>
+          <input matInput type="number" name="price" min="0" step="0.01" [ngModel]="monthlyPrice()"
+            (ngModelChange)="monthlyPrice.set($event)" data-testid="plan-editor-price" />
+          <span matTextSuffix>{{ plan()!.currency }}</span>
+        </mat-form-field>
+        @if (isTrial()) {
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="plan-editor__number">
+            <mat-label>{{ t('admin.planEditor.trialDays') }}</mat-label>
+            <input matInput type="number" name="trialDays" min="1" max="365" [ngModel]="trialDays()"
+              (ngModelChange)="trialDays.set($event)" data-testid="plan-editor-trial-days" />
+          </mat-form-field>
+        }
+        <mat-slide-toggle name="active" [ngModel]="isActive()" (ngModelChange)="isActive.set($event)"
+          data-testid="plan-editor-active">{{ t('admin.planEditor.active') }}</mat-slide-toggle>
+      </div>
+
+      @for (group of groups(); track group.audience) {
+        <fieldset class="plan-editor__group">
+          <legend>{{ t('admin.planEditor.groups.' + group.audience) }}</legend>
+          @for (row of group.rows; track row.feature.key) {
+            <div class="plan-editor__row" [attr.data-testid]="'plan-editor-row-' + row.feature.key">
+              <span class="plan-editor__feature">{{ t('features.' + row.feature.key) }}</span>
+              <mat-button-toggle-group [value]="row.mode" (change)="setMode(row, $event.value)" hideSingleSelectionIndicator
+                [attr.aria-label]="t('features.' + row.feature.key)">
+                <mat-button-toggle value="none">{{ t('limits.none') }}</mat-button-toggle>
+                @if (row.feature.kind === 'Metered') {
+                  <mat-button-toggle value="limited">{{ t('admin.planEditor.limited') }}</mat-button-toggle>
+                  <mat-button-toggle value="unlimited">{{ t('limits.unlimited') }}</mat-button-toggle>
+                } @else {
+                  <mat-button-toggle value="unlimited">{{ t('limits.included') }}</mat-button-toggle>
+                }
+              </mat-button-toggle-group>
+              @if (row.mode === 'limited') {
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="plan-editor__limit">
+                  <mat-label>{{ t('admin.planEditor.perMonth') }}</mat-label>
+                  <input matInput type="number" min="1" step="1" [name]="'limit-' + row.feature.key" [ngModel]="row.limit"
+                    (ngModelChange)="setLimit(row, $event)" [attr.data-testid]="'plan-editor-limit-' + row.feature.key" />
+                  @if (row.feature.unit) {
+                    <span matTextSuffix>{{ t('units.' + row.feature.unit) }}</span>
+                  }
+                </mat-form-field>
+              }
+            </div>
+          }
+        </fieldset>
+      }
+
+      @if (error(); as key) {
+        <p class="ms-error" role="alert" data-testid="plan-editor-error">{{ t(key) }}</p>
+      }
+      <div class="plan-editor__actions">
+        <button mat-flat-button type="submit" [disabled]="!valid() || busy()" data-testid="plan-editor-save">
+          <mat-icon>save</mat-icon>{{ t('admin.planEditor.save') }}
+        </button>
+        @if (done()) {
+          <span class="plan-editor__done" role="status" data-testid="plan-editor-done">{{ t('admin.planEditor.saved') }}</span>
+        }
+      </div>
+      <p class="plan-editor__note">{{ t('admin.planEditor.note') }}</p>
+    </form>
+  } @else if (error(); as key) {
+    <p class="ms-error" role="alert">{{ t(key) }}</p>
+  }
+</section>

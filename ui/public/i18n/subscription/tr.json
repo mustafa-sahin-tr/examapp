@@ -94,13 +94,14 @@
   },
   "admin": {
     "title": "Abonelikler",
-    "subtitle": "Kullanıcıya ya da okula tarihli plan ata, geçmişi gör.",
+    "subtitle": "Kullanıcıya ya da okula tarihli plan ata, geçmişi gör, planların fiyat ve sınırlarını düzenle.",
     "loading": "Yükleniyor…",
     "openEnded": "süresiz",
     "currentPlan": "Mevcut plan",
     "tabs": {
       "users": "Kullanıcılar",
-      "schools": "Okullar"
+      "schools": "Okullar",
+      "plans": "Planlar"
     },
     "search": {
       "label": "Ad ya da e-posta",
@@ -169,6 +170,36 @@
       "userNotFound": "Kullanıcı bulunamadı.",
       "schoolNotFound": "Okul bulunamadı.",
       "queryTooShort": "En az 2 karakter yaz."
+    },
+    "planEditor": {
+      "inactive": "pasif",
+      "name": "Plan adı (yönetim)",
+      "nameHint": "Kullanıcıların gördüğü ad çeviri dosyasından gelir.",
+      "price": "Aylık fiyat",
+      "trialDays": "Deneme süresi (gün)",
+      "active": "Satışta (etkin)",
+      "groups": {
+        "Teacher": "Öğretmen özellikleri",
+        "Student": "Öğrenci özellikleri",
+        "Both": "Ortak özellikler"
+      },
+      "limited": "Sınırlı",
+      "perMonth": "Aylık sınır",
+      "save": "Planı kaydet",
+      "saved": "Kaydedildi.",
+      "note": "Değişiklik bir sonraki hak denetiminde geçerli olur ve kayıt altına alınır. Bu ay kullanılanlar sıfırlanmaz.",
+      "errors": {
+        "load": "Özellik listesi yüklenemedi.",
+        "generic": "Plan kaydedilemedi. Lütfen tekrar dene.",
+        "invalidName": "Plan adı boş olamaz (en çok 100 karakter).",
+        "invalidPrice": "Fiyat 0 ya da daha büyük olmalı (en çok iki ondalık).",
+        "invalidTrialDays": "Deneme süresi 1–365 gün olmalı.",
+        "unknownFeature": "Tanınmayan bir özellik gönderildi.",
+        "featureAudienceMismatch": "Bu özellik planın kitlesine ait değil.",
+        "invalidLimit": "Sınır 0 ya da daha büyük bir tam sayı olmalı.",
+        "planRequired": "Ücretsiz ve deneme planları kapatılamaz.",
+        "unknownPlan": "Plan bulunamadı."
+      }
     }
   },
   "units": {

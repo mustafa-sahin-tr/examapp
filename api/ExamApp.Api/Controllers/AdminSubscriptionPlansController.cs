@@ -42,6 +42,31 @@ public class AdminSubscriptionPlansController : BaseController
     public async Task<ActionResult<List<SubscriptionPlanDto>>> List(CancellationToken ct) =>
         await SubscriptionPlanCatalog.ListAsync(_db, _ => true, ct);
 
+    // PUT {planKey} — #1086: ad, fiyat, deneme süresi, etkinlik ve bütün sınırlar; listede olmayan özellik planda yoktur.
+    [HttpPut("{planKey}")]
+    public async Task<ActionResult<SubscriptionPlanDto>> UpdatePlan(string planKey, [FromBody] UpdateSubscriptionPlanDto request,
+        CancellationToken ct)
+    {
+        var admin = await GetAuthenticatedUserAsync(ct);
+        var error = await _admin.UpdatePlanAsync(planKey, request, admin.Id, ct);
+        if (error == AdminPlanUpdateError.PlanNotFound)
+            return NotFound(new { code = "subscription.unknownPlan" });
+        if (error != AdminPlanUpdateError.None)
+            return BadRequest(new { code = PlanUpdateErrorCodes[error] });
+        return (await SubscriptionPlanCatalog.ListAsync(_db, p => p.Key == planKey, ct)).Single();
+    }
+
+    private static readonly Dictionary<AdminPlanUpdateError, string> PlanUpdateErrorCodes = new()
+    {
+        [AdminPlanUpdateError.InvalidName] = "subscription.invalidName",
+        [AdminPlanUpdateError.InvalidPrice] = "subscription.invalidPrice",
+        [AdminPlanUpdateError.InvalidTrialDays] = "subscription.invalidTrialDays",
+        [AdminPlanUpdateError.UnknownFeature] = "subscription.unknownFeature",
+        [AdminPlanUpdateError.AudienceMismatch] = "subscription.featureAudienceMismatch",
+        [AdminPlanUpdateError.InvalidLimit] = "subscription.invalidLimit",
+        [AdminPlanUpdateError.PlanRequired] = "subscription.planRequired",
+    };
+
     // GET users?q=&role= — ad ya da e-postada geçen metin (en az 2 karakter), rol Student | Teacher | Parent; en fazla 20 sonuç.
     [HttpGet("users")]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]

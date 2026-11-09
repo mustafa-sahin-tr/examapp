@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
@@ -25,6 +26,25 @@ public interface IAdminSubscriptionService
 
     Task<(AdminSchoolAssignError Error, int Assigned)> AssignSchoolAsync(
         int schoolId, AssignSchoolSubscriptionPlanDto request, int adminUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Issue #1086: planın adını, fiyatını, deneme süresini, etkinliğini ve bütün sınırlarını değiştirir; her kayıt
+    /// <c>SubscriptionPlanChangeAudits</c>'e yazılır. Sınırlar her denetimde veritabanından okunduğu için sonraki denetimde geçerlidir.
+    /// </summary>
+    Task<AdminPlanUpdateError> UpdatePlanAsync(string planKey, UpdateSubscriptionPlanDto request, int adminUserId, CancellationToken ct = default);
+}
+
+public enum AdminPlanUpdateError
+{
+    None,
+    PlanNotFound,
+    InvalidName,
+    InvalidPrice,
+    InvalidTrialDays,
+    UnknownFeature,
+    AudienceMismatch,
+    InvalidLimit,
+    PlanRequired,
 }
 
 public enum AdminSchoolAssignError
@@ -197,6 +217,89 @@ public sealed class AdminSubscriptionService(AppDbContext db, IEntitlementServic
             _ => (AdminSchoolAssignError.InvalidRange, 0),
         };
     }
+
+    public async Task<AdminPlanUpdateError> UpdatePlanAsync(
+        string planKey, UpdateSubscriptionPlanDto request, int adminUserId, CancellationToken ct = default)
+    {
+        var plan = await db.SubscriptionPlans.Include(p => p.FeatureLimits).FirstOrDefaultAsync(p => p.Key == planKey, ct);
+        if (plan is null)
+            return AdminPlanUpdateError.PlanNotFound;
+
+        var name = request.Name?.Trim() ?? string.Empty;
+        if (name.Length == 0 || name.Length > SubscriptionPlan.NameMaxLength)
+            return AdminPlanUpdateError.InvalidName;
+        if (request.MonthlyPrice is < 0 or > MaxMonthlyPrice || decimal.Round(request.MonthlyPrice, 2) != request.MonthlyPrice)
+            return AdminPlanUpdateError.InvalidPrice;
+        // Süre yalnız deneme planındadır (atamada bitiş tarihi buradan hesaplanır, #1028).
+        var isTrial = plan.Key == SubscriptionPlan.TrialKey;
+        if (isTrial ? request.TrialDays is not (>= 1 and <= MaxTrialDays) : request.TrialDays is not null)
+            return AdminPlanUpdateError.InvalidTrialDays;
+        // Ataması olmayan kullanıcı Free'ye, kayıtta deneme planına çözülür: ikisi kapatılamaz.
+        if (!request.IsActive && plan.Key is SubscriptionPlan.FreeKey or SubscriptionPlan.TrialKey)
+            return AdminPlanUpdateError.PlanRequired;
+
+        var limits = new Dictionary<string, int?>(StringComparer.Ordinal);
+        foreach (var (featureKey, limit) in request.MonthlyLimits ?? [])
+        {
+            if (EntitlementFeatures.Find(featureKey) is not { } feature)
+                return AdminPlanUpdateError.UnknownFeature;
+            var audienceMatches = feature.Audience == EntitlementAudience.Both || plan.Audience switch
+            {
+                SubscriptionPlanAudience.Teacher => feature.Audience == EntitlementAudience.Teacher,
+                SubscriptionPlanAudience.Student => feature.Audience == EntitlementAudience.Student,
+                _ => true,
+            };
+            if (!audienceMatches)
+                return AdminPlanUpdateError.AudienceMismatch;
+            if (limit is < 0 or > MaxMonthlyLimit)
+                return AdminPlanUpdateError.InvalidLimit;
+            // Açık / kapalı özellikte sayı anlamsız: listedeyse dahildir.
+            limits[featureKey] = feature.Kind == EntitlementFeatureKind.Toggle ? null : limit;
+        }
+
+        var before = Snapshot(plan);
+        plan.Name = name;
+        plan.MonthlyPrice = request.MonthlyPrice;
+        plan.TrialDays = request.TrialDays;
+        plan.IsActive = request.IsActive;
+        // Listede olmayan özellik planda yoktur: satırı silinmez, 0'a çekilir (satır yok = 0; tekil indeks yeniden eklemeyi engellemez).
+        foreach (var row in plan.FeatureLimits)
+        {
+            if (limits.Remove(row.FeatureKey, out var limit))
+                row.MonthlyLimit = limit;
+            else
+                row.MonthlyLimit = 0;
+        }
+        foreach (var (featureKey, limit) in limits)
+            plan.FeatureLimits.Add(new SubscriptionPlanFeatureLimit { FeatureKey = featureKey, MonthlyLimit = limit });
+
+        db.SubscriptionPlanChangeAudits.Add(new SubscriptionPlanChangeAudit
+        {
+            PlanId = plan.Id,
+            PlanKey = plan.Key,
+            ActorUserId = adminUserId,
+            BeforeJson = before,
+            AfterJson = Snapshot(plan),
+            OccurredAtUtc = clock.GetUtcNow().UtcDateTime,
+        });
+        await db.SaveChangesAsync(ct);
+        return AdminPlanUpdateError.None;
+    }
+
+    public const decimal MaxMonthlyPrice = 1_000_000m;
+    public const int MaxTrialDays = 365;
+    public const int MaxMonthlyLimit = 1_000_000;
+
+    // Kayıtta 0 sınırlı satırlar yazılmaz: "planda yok" ile aynıdır.
+    private static string Snapshot(SubscriptionPlan plan) => JsonSerializer.Serialize(new
+    {
+        plan.Name,
+        plan.MonthlyPrice,
+        plan.TrialDays,
+        plan.IsActive,
+        MonthlyLimits = plan.FeatureLimits.Where(l => l.MonthlyLimit != 0).OrderBy(l => l.FeatureKey, StringComparer.Ordinal)
+            .ToDictionary(l => l.FeatureKey, l => l.MonthlyLimit),
+    });
 
     // Öğretmen: okula bağlı (Teacher.SchoolId; başvurusu bekleyen RequestedSchoolId sayılmaz). Öğrenci: yalnız doğrulanmış üyelik.
     private IQueryable<int> TeacherUserIds(int schoolId) =>

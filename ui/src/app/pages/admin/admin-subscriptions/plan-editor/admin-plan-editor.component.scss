@@ -1,0 +1,77 @@
+// Issue #1086: admin plan düzenleyicisi.
+.plan-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 0;
+}
+
+.plan-editor__select {
+  max-width: 360px;
+}
+
+.plan-editor__form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.plan-editor__basics,
+.plan-editor__actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.plan-editor__name {
+  flex: 1 1 260px;
+}
+
+.plan-editor__number {
+  width: 160px;
+}
+
+.plan-editor__group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--ms-border);
+  border-radius: 12px;
+
+  legend {
+    padding: 0 6px;
+    font-weight: 600;
+    color: var(--ms-text-strong);
+  }
+}
+
+.plan-editor__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+}
+
+.plan-editor__feature {
+  flex: 1 1 220px;
+  color: var(--ms-text-strong);
+}
+
+.plan-editor__limit {
+  width: 180px;
+}
+
+.plan-editor__done {
+  color: var(--ms-success-text);
+}
+
+.plan-editor__note {
+  margin: 0;
+  color: var(--ms-text-medium);
+  font-size: 0.875rem;
+}

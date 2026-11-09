@@ -34,7 +34,9 @@
       "sharingSchoolRequired": "\"Okulum\" paylaşımı için bir okula bağlı olmalısınız.",
       "cropAlreadySaved": "Bu kırpma daha önce havuza kaydedildi.",
       "bookPageRequired": "Kitap ve dosya sayfası birlikte verilmeli.",
-      "answerKeyPage": "Bu sayfa kitabın cevap anahtarı aralığında; soru olarak kaydedilmesi beklenmiyor."
+      "answerKeyPage": "Bu sayfa kitabın cevap anahtarı aralığında; soru olarak kaydedilmesi beklenmiyor.",
+      "topicRequired": "Planında yapay zekâ ile konu belirleme yok: sayfanın konusunu seç (ya da içindekileri olan bir kitap sayfası kullan).",
+      "topicUnknown": "Seçilen konu bulunamadı."
     },
     "books": {
       "notFound": "Kitap bulunamadı.",

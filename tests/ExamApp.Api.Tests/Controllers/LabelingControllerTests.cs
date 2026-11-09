@@ -4,6 +4,7 @@ using System.Security.Claims;
 using ExamApp.Api.Controllers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Labeling;
+using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Labeling;
 using ExamApp.Api.Services.Teachers.Authorization;
@@ -57,11 +58,13 @@ public class LabelingControllerTests
     // ---------- Yetkilendirme ----------
 
     [Fact]
-    public void Controller_RequiresAdminOrQuestionTrainerRoles()
+    public void Controller_RequiresAdminQuestionTrainerOrTeacherRoles_AndTheManualLabelingPlan_issue1087()
     {
         typeof(LabelingController).GetCustomAttributes<AuthorizeAttribute>()
             .Where(a => a.Roles is not null).Select(a => a.Roles!).ToArray()
-            .ShouldBe(["Admin,QuestionTrainer"]);
+            .ShouldBe(["Admin,QuestionTrainer,Teacher"]);
+        typeof(LabelingController).GetCustomAttributes<RequiresEntitlementAttribute>().Single().FeatureKey
+            .ShouldBe(EntitlementFeatures.ManualLabeling);
         typeof(LabelingController).GetCustomAttributes<AllowAnonymousAttribute>(inherit: true).ShouldBeEmpty();
     }
 
@@ -83,8 +86,14 @@ public class LabelingControllerTests
         foreach (var m in actions)
         {
             m.GetCustomAttributes<AllowAnonymousAttribute>().ShouldBeEmpty(m.Name);
-            // SaveToBank (#470) ek olarak Teacher/Admin ister; diğerleri sınıf düzeyindeki kümeyi daraltmaz.
-            var expected = m.Name == "SaveToBank" ? "Teacher,Admin" : "Admin,QuestionTrainer";
+            // SaveToBank (#470) ek olarak Teacher/Admin ister; Claude talimatları (#1087) içerik ekibinde kalır; diğerleri sınıf
+            // düzeyindeki kümeyi daraltmaz.
+            var expected = m.Name switch
+            {
+                "SaveToBank" => "Teacher,Admin",
+                "GetPrompt" or "SavePrompt" or "GetActivityPrompts" or "SaveActivityPrompt" => "Admin,QuestionTrainer",
+                _ => null,
+            };
             m.GetCustomAttributes<AuthorizeAttribute>().Where(a => a.Roles is not null)
                 .ShouldAllBe(a => a.Roles == expected, m.Name);
         }
@@ -101,9 +110,23 @@ public class LabelingControllerTests
         _service.DetectWithAiAsync(Arg.Any<LabelingAiDetectRequestDto>(), Arg.Any<LabelingActor>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
-        var result = await NewController().DetectWithAi(DetectRequest(), CancellationToken.None);
+        var result = await NewBankController(TeacherProfile(id: 42)).DetectWithAi(DetectRequest(), _entitlements, CancellationToken.None);
 
         ((OkObjectResult)result).Value.ShouldBe(response);
+        // #1087: canlı çağrı planın canvas-ai sayacından düşer.
+        await _entitlements.Received(1).RecordUsageAsync(42, EntitlementFeatures.CanvasAi, Arg.Is<string>(k => k.StartsWith("canvas-ai:")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DetectWithAi_cached_result_is_not_counted_issue1087()
+    {
+        _service.DetectWithAiAsync(Arg.Any<LabelingAiDetectRequestDto>(), Arg.Any<LabelingActor>(), Arg.Any<CancellationToken>())
+            .Returns(new LabelingAiDetectResponseDto("cached", new string('a', 64), null!));
+
+        await NewBankController(TeacherProfile(id: 42)).DetectWithAi(DetectRequest(), _entitlements, CancellationToken.None);
+
+        await _entitlements.DidNotReceiveWithAnyArgs().RecordUsageAsync(default, default!, default!, default);
     }
 
     [Fact]
@@ -112,7 +135,7 @@ public class LabelingControllerTests
         _service.DetectWithAiAsync(Arg.Any<LabelingAiDetectRequestDto>(), Arg.Any<LabelingActor>(), Arg.Any<CancellationToken>())
             .Returns(new LabelingAiDetectResponseDto("cached", new string('a', 64), null!));
 
-        await NewController().DetectWithAi(DetectRequest(), CancellationToken.None);
+        await NewController().DetectWithAi(DetectRequest(), _entitlements, CancellationToken.None);
 
         await _service.Received(1).DetectWithAiAsync(
             Arg.Any<LabelingAiDetectRequestDto>(),
@@ -126,7 +149,7 @@ public class LabelingControllerTests
         _service.DetectWithAiAsync(default!, default!, default)
             .ThrowsAsyncForAnyArgs(new LabelingValidationException("labeling.unknownModel"));
 
-        var result = await NewController().DetectWithAi(DetectRequest(), CancellationToken.None);
+        var result = await NewController().DetectWithAi(DetectRequest(), _entitlements, CancellationToken.None);
 
         ((ObjectResult)result).StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
     }
@@ -138,7 +161,7 @@ public class LabelingControllerTests
             .ThrowsAsyncForAnyArgs(new LabelingRateLimitException(TimeSpan.FromSeconds(30.2)));
         var controller = NewController();
 
-        var result = await controller.DetectWithAi(DetectRequest(), CancellationToken.None);
+        var result = await controller.DetectWithAi(DetectRequest(), _entitlements, CancellationToken.None);
 
         ((ObjectResult)result).StatusCode.ShouldBe(StatusCodes.Status429TooManyRequests);
         controller.Response.Headers.RetryAfter.ToString().ShouldBe("31");
@@ -151,7 +174,7 @@ public class LabelingControllerTests
             .ThrowsAsyncForAnyArgs(new LabelingRateLimitException(TimeSpan.FromMilliseconds(200)));
         var controller = NewController();
 
-        await controller.DetectWithAi(DetectRequest(), CancellationToken.None);
+        await controller.DetectWithAi(DetectRequest(), _entitlements, CancellationToken.None);
 
         controller.Response.Headers.RetryAfter.ToString().ShouldBe("1");
     }
@@ -163,7 +186,7 @@ public class LabelingControllerTests
             .ThrowsAsyncForAnyArgs(new LabelingRateLimitException(null));
         var controller = NewController();
 
-        var result = await controller.DetectWithAi(DetectRequest(), CancellationToken.None);
+        var result = await controller.DetectWithAi(DetectRequest(), _entitlements, CancellationToken.None);
 
         ((ObjectResult)result).StatusCode.ShouldBe(StatusCodes.Status429TooManyRequests);
         controller.Response.Headers.ContainsKey("Retry-After").ShouldBeFalse();
@@ -175,7 +198,7 @@ public class LabelingControllerTests
         _service.DetectWithAiAsync(default!, default!, default)
             .ThrowsAsyncForAnyArgs(new LabelingAiException("Claude response did not match the schema."));
 
-        var result = await NewController().DetectWithAi(DetectRequest(), CancellationToken.None);
+        var result = await NewController().DetectWithAi(DetectRequest(), _entitlements, CancellationToken.None);
 
         ((ObjectResult)result).StatusCode.ShouldBe(StatusCodes.Status502BadGateway);
     }
@@ -186,7 +209,7 @@ public class LabelingControllerTests
         _service.DetectWithAiAsync(default!, default!, default)
             .ThrowsAsyncForAnyArgs(new LabelingAiUnavailableException());
 
-        var result = await NewController().DetectWithAi(DetectRequest(), CancellationToken.None);
+        var result = await NewController().DetectWithAi(DetectRequest(), _entitlements, CancellationToken.None);
 
         ((ObjectResult)result).StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
     }
@@ -261,7 +284,7 @@ public class LabelingControllerTests
             .ThrowsAsyncForAnyArgs(new LabelingRateLimitException(TimeSpan.FromHours(3), budget: true));
         var controller = NewController();
 
-        var result = await controller.DetectWithAi(DetectRequest(), CancellationToken.None);
+        var result = await controller.DetectWithAi(DetectRequest(), _entitlements, CancellationToken.None);
 
         var obj = result.ShouldBeOfType<ObjectResult>();
         obj.StatusCode.ShouldBe(StatusCodes.Status429TooManyRequests);
@@ -275,7 +298,7 @@ public class LabelingControllerTests
         _service.DetectWithAiAsync(default!, default!, default)
             .ThrowsAsyncForAnyArgs(new LabelingRateLimitException(TimeSpan.FromMinutes(5)));
 
-        var result = await NewController().DetectWithAi(DetectRequest(), CancellationToken.None);
+        var result = await NewController().DetectWithAi(DetectRequest(), _entitlements, CancellationToken.None);
 
         var obj = result.ShouldBeOfType<ObjectResult>();
         obj.Value!.GetType().GetProperty("errorCode")!.GetValue(obj.Value).ShouldBe("LabelingRateLimited");
@@ -340,7 +363,7 @@ public class LabelingControllerTests
         var response = new LabelingBankSaveResponseDto(new string('c', 64),
             new LabelingBankInfoDto(DateTime.UtcNow, "Eğitmen", 1));
         var request = BankRequest();
-        _bank.SaveToBankAsync(Arg.Any<LabelingBankSaveRequestDto>(), Arg.Any<LabelingActor>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _bank.SaveToBankAsync(Arg.Any<LabelingBankSaveRequestDto>(), Arg.Any<LabelingActor>(), Arg.Any<int>(), Arg.Any<EntitlementSubject?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         var result = await NewBankController(TeacherProfile(id: 42)).SaveToBank(request, _bank, CancellationToken.None);
@@ -350,13 +373,14 @@ public class LabelingControllerTests
             request,
             Arg.Is<LabelingActor>(a => a.KeycloakId == TrainerKeycloakId),
             42,
+            Arg.Is<EntitlementSubject?>(o => o!.UserId == 42),
             Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task SaveToBank_RateLimited_Returns429WithBankErrorCodeAndRetryAfter()
     {
-        _bank.SaveToBankAsync(default!, default!, default, default)
+        _bank.SaveToBankAsync(default!, default!, default, default, default)
             .ThrowsAsyncForAnyArgs(new LabelingRateLimitException(TimeSpan.FromMinutes(5)));
         var controller = NewBankController(TeacherProfile());
 
@@ -374,7 +398,7 @@ public class LabelingControllerTests
         var result = await NewBankController(profile: null).SaveToBank(BankRequest(), _bank, CancellationToken.None);
 
         ((ObjectResult)result).StatusCode.ShouldBe(StatusCodes.Status404NotFound);
-        await _bank.DidNotReceiveWithAnyArgs().SaveToBankAsync(default!, default!, default, default);
+        await _bank.DidNotReceiveWithAnyArgs().SaveToBankAsync(default!, default!, default, default, default);
     }
 
     [Fact]
@@ -398,7 +422,7 @@ public class LabelingControllerTests
     [Fact]
     public async Task SaveToBank_ValidationException_Returns400WithMessageKey()
     {
-        _bank.SaveToBankAsync(default!, default!, default, default)
+        _bank.SaveToBankAsync(default!, default!, default, default, default)
             .ThrowsAsyncForAnyArgs(new LabelingValidationException("labeling.bank.correctAnswerMissing"));
 
         var result = await NewBankController(TeacherProfile()).SaveToBank(BankRequest(), _bank, CancellationToken.None);
@@ -411,7 +435,7 @@ public class LabelingControllerTests
     public async Task SaveToBank_DuplicateWithExistingInfo_Returns409WithExistingRecord()
     {
         var existing = new LabelingBankInfoDto(DateTime.UtcNow, "Önceki Eğitmen", 4);
-        _bank.SaveToBankAsync(default!, default!, default, default)
+        _bank.SaveToBankAsync(default!, default!, default, default, default)
             .ThrowsAsyncForAnyArgs(new LabelingBankDuplicateException(existing));
 
         var result = await NewBankController(TeacherProfile()).SaveToBank(BankRequest(), _bank, CancellationToken.None);
@@ -427,7 +451,7 @@ public class LabelingControllerTests
     public async Task SaveToBank_CropDuplicate_Returns409WithExistingCrops()
     {
         IReadOnlyList<LabelingCropDuplicateDto> existing = [new LabelingCropDuplicateDto(0, 12, "TT MatLab 5", 60, 10, "Etkinlik 9", "3")];
-        _bank.SaveToBankAsync(default!, default!, default, default)
+        _bank.SaveToBankAsync(default!, default!, default, default, default)
             .ThrowsAsyncForAnyArgs(new LabelingCropDuplicateException(existing));
 
         var result = await NewBankController(TeacherProfile()).SaveToBank(BankRequest(), _bank, CancellationToken.None);
@@ -446,7 +470,7 @@ public class LabelingControllerTests
             new LabelingCropDuplicateDto(0, 12, "Kitap", 60, 10, "Etkinlik 9", "3"),
             new LabelingCropDuplicateDto(1, 13, "Gizli kitap", 61, 11, "E", "4", OtherOwner: true),
         ];
-        _bank.SaveToBankAsync(default!, default!, default, default)
+        _bank.SaveToBankAsync(default!, default!, default, default, default)
             .ThrowsAsyncForAnyArgs(new LabelingCropDuplicateException(existing));
 
         var obj = (await NewBankController(TeacherProfile()).SaveToBank(BankRequest(), _bank, CancellationToken.None))
@@ -466,7 +490,7 @@ public class LabelingControllerTests
     [Fact]
     public async Task SaveToBank_AnswerKeyPage_Returns409()
     {
-        _bank.SaveToBankAsync(default!, default!, default, default).ThrowsAsyncForAnyArgs(new LabelingAnswerKeyPageException());
+        _bank.SaveToBankAsync(default!, default!, default, default, default).ThrowsAsyncForAnyArgs(new LabelingAnswerKeyPageException());
 
         var obj = (await NewBankController(TeacherProfile()).SaveToBank(BankRequest(), _bank, CancellationToken.None))
             .ShouldBeOfType<ConflictObjectResult>();
@@ -476,7 +500,7 @@ public class LabelingControllerTests
     [Fact]
     public async Task SaveToBank_DuplicateWhileClaimInProgress_Returns409WithNullExisting()
     {
-        _bank.SaveToBankAsync(default!, default!, default, default)
+        _bank.SaveToBankAsync(default!, default!, default, default, default)
             .ThrowsAsyncForAnyArgs(new LabelingBankDuplicateException(null));
 
         var result = await NewBankController(TeacherProfile()).SaveToBank(BankRequest(), _bank, CancellationToken.None);
@@ -488,7 +512,7 @@ public class LabelingControllerTests
     [Fact]
     public async Task SaveToBank_BulkSaveFailure_Returns500WithErrorCodeAndNoDetail()
     {
-        _bank.SaveToBankAsync(default!, default!, default, default)
+        _bank.SaveToBankAsync(default!, default!, default, default, default)
             .ThrowsAsyncForAnyArgs(new LabelingBankSaveException());
 
         var result = await NewBankController(TeacherProfile()).SaveToBank(BankRequest(), _bank, CancellationToken.None);
@@ -569,20 +593,32 @@ public class LabelingControllerTests
     }
 
     [Fact]
-    public void GetPrompt_And_SavePrompt_CarryRoleScopedAuthorizationFromController()
+    public void Claude_prompts_stay_with_the_content_team_issue1087()
     {
-        // Uçlar ayrıca [Authorize] almaz; sınıf düzeyindeki Admin/QuestionTrainer + onaylı öğretmen kapısını devralır.
-        foreach (var name in new[] { "GetPrompt", "SavePrompt" })
+        // #1087: öğretmen ekrana girer ama Claude talimatlarını yalnız Admin / QuestionTrainer düzenler.
+        foreach (var name in new[] { "GetPrompt", "SavePrompt", "GetActivityPrompts", "SaveActivityPrompt" })
         {
             var method = typeof(LabelingController).GetMethod(name)!;
             method.GetCustomAttributes<AllowAnonymousAttribute>().ShouldBeEmpty(name);
-            method.GetCustomAttributes<AuthorizeAttribute>().ShouldBeEmpty(name);
+            method.GetCustomAttributes<AuthorizeAttribute>().Single().Roles.ShouldBe("Admin,QuestionTrainer", name);
         }
+    }
+
+    [Theory]
+    [InlineData(nameof(LabelingController.DetectWithAi), false)]
+    [InlineData(nameof(LabelingController.ExtractActivityStructure), false)]
+    [InlineData(nameof(LabelingController.GetAiModels), true)]
+    public void Claude_endpoints_need_the_canvas_ai_plan_issue1087(string action, bool inPlanOnly)
+    {
+        var gate = typeof(LabelingController).GetMethod(action)!.GetCustomAttributes<RequiresEntitlementAttribute>().Single();
+        gate.FeatureKey.ShouldBe(EntitlementFeatures.CanvasAi);
+        gate.InPlanOnly.ShouldBe(inPlanOnly);
     }
 
     // ---------- Etkinlik yapısı (issue #579) ----------
 
     private readonly IActivityStructureService _activities = Substitute.For<IActivityStructureService>();
+    private readonly IEntitlementService _entitlements = Substitute.For<IEntitlementService>();
 
     private static ActivityStructureRequestDto ActivityRequest() => new()
     {
@@ -595,15 +631,13 @@ public class LabelingControllerTests
     [InlineData(nameof(LabelingController.ExtractActivityStructure), typeof(HttpPostAttribute), "activity-structure")]
     [InlineData(nameof(LabelingController.GetActivityPrompts), typeof(HttpGetAttribute), "activity-prompts")]
     [InlineData(nameof(LabelingController.SaveActivityPrompt), typeof(HttpPutAttribute), "activity-prompts/{interactionType}")]
-    public void ActivityEndpoints_UseControllerRolesAndExpectedRoutes(string action, Type verb, string template)
+    public void ActivityEndpoints_UseExpectedRoutes(string action, Type verb, string template)
     {
         var method = typeof(LabelingController).GetMethod(action)!;
 
         var attribute = method.GetCustomAttributes<HttpMethodAttribute>().Single();
         attribute.GetType().ShouldBe(verb);
         attribute.Template.ShouldBe(template);
-        // Sınıf düzeyi: Admin + QuestionTrainer ve onaylı/askıda olmayan öğretmen politikası; uç daraltmaz, açmaz.
-        method.GetCustomAttributes<AuthorizeAttribute>().ShouldBeEmpty();
         method.GetCustomAttributes<AllowAnonymousAttribute>().ShouldBeEmpty();
     }
 
@@ -617,7 +651,7 @@ public class LabelingControllerTests
             new("b2", "slotFill", "error", null, null, null, false, [], 0, null, null, null, ActivityStructureService.AiFailedKey),
         ]));
 
-        var result = await NewController().ExtractActivityStructure(ActivityRequest(), _activities, CancellationToken.None);
+        var result = await NewBankController(TeacherProfile()).ExtractActivityStructure(ActivityRequest(), _activities, _entitlements, CancellationToken.None);
 
         var body = result.ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<ActivityStructureResponseDto>();
         body.Results[0].ValidationErrors.ShouldBe(["En az iki seçenek kolonu ekleyin."]);
@@ -633,7 +667,7 @@ public class LabelingControllerTests
         _activities.ExtractAsync(default!, default!, default)
             .ThrowsAsyncForAnyArgs(new LabelingValidationException("labeling.activity.unknownType"));
 
-        var result = await NewController().ExtractActivityStructure(ActivityRequest(), _activities, CancellationToken.None);
+        var result = await NewController().ExtractActivityStructure(ActivityRequest(), _activities, _entitlements, CancellationToken.None);
 
         result.ShouldBeOfType<BadRequestObjectResult>();
     }
@@ -647,7 +681,7 @@ public class LabelingControllerTests
             .ThrowsAsyncForAnyArgs(new LabelingRateLimitException(TimeSpan.FromSeconds(90.2), budget));
         var controller = NewController();
 
-        var result = await controller.ExtractActivityStructure(ActivityRequest(), _activities, CancellationToken.None);
+        var result = await controller.ExtractActivityStructure(ActivityRequest(), _activities, _entitlements, CancellationToken.None);
 
         var obj = result.ShouldBeOfType<ObjectResult>();
         obj.StatusCode.ShouldBe(StatusCodes.Status429TooManyRequests);
@@ -660,7 +694,7 @@ public class LabelingControllerTests
     {
         _activities.ExtractAsync(default!, default!, default).ThrowsAsyncForAnyArgs(new LabelingAiUnavailableException());
 
-        var result = await NewController().ExtractActivityStructure(ActivityRequest(), _activities, CancellationToken.None);
+        var result = await NewController().ExtractActivityStructure(ActivityRequest(), _activities, _entitlements, CancellationToken.None);
 
         result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
     }

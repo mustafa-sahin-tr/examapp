@@ -93,10 +93,12 @@
             <mat-icon>folder_open</mat-icon><span>{{ t('common.uploadFolder') }}</span>
           </button>
           <mat-divider></mat-divider>
+          @if (canAutoDetect()) {
           <button mat-menu-item type="button" (click)="triggerPredict()" [disabled]="coordinateJsonMode"
             [attr.title]="coordinateJsonMode ? t('canvas.detectorDisabledInJsonMode') : null">
             <mat-icon>smart_toy</mat-icon><span>{{ t('canvas.autoDetect') }}</span>
           </button>
+          }
           <button mat-menu-item type="button" (click)="triggerAlign()">
             <mat-icon>align_horizontal_center</mat-icon><span>{{ t('common.align') }}</span>
           </button>
@@ -392,7 +394,7 @@
         <app-image-selector [previewMetaProvider]="previewMetaProvider" [navigationLocked]="navigationBusy()"
           (previewQuestionChange)="onPreviewQuestionChange($event)"
           (selectedQuestionChange)="onInspectorQuestionChange($event)"
-          (imageChange)="onImageChange()" [externalDetection]="canTrain" [authorActivities]="true"
+          (imageChange)="onImageChange()" [externalDetection]="canvasAi()" [autoDetect]="canAutoDetect()" [authorActivities]="true"
           (pageReady)="detection.onPageReady($event)" (manualSaved)="detection.onManualSaved($event)"></app-image-selector>
       </div>
 
@@ -1528,10 +1530,15 @@
               </select>
             </div>
 
+            @if (topicRequired()) {
+            <p class="qc-hint-sm" data-testid="qc-topic-required">{{ t('inspector.topicRequiredHint') }}</p>
+            }
+            @if (canAutoDetect()) {
             <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm qc-btn--block" (click)="askAi()"
               [disabled]="coordinateJsonMode" [attr.title]="coordinateJsonMode ? t('canvas.detectorDisabledInJsonMode') : null">
               <mat-icon>smart_toy</mat-icon>{{ t('inspector.askAi') }}
             </button>
+            }
             @if (d.difficulty !== null) {
             <div class="qc-row"><span class="qc-lbl">{{ t('inspector.difficulty') }}</span><b>{{ d.difficulty }}/10</b></div>
             }

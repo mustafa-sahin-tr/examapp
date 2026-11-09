@@ -25,11 +25,14 @@ public sealed class GatewayRouteRoleWiringTests : IClassFixture<GatewayWebSocket
     [Theory]
     [InlineData("/api/exam/question-generation/drafts")]
     [InlineData("/api/exam/question-generation/save")]
-    public async Task QuestionGeneration_IsClosedToOrdinaryAccounts(string path)
+    public async Task QuestionGeneration_IsOpenToTeachersOnly(string path)
     {
+        // #1087: öğretmen geçer (planı backend denetler); öğrenci gateway'de 403.
         (await PostAsync(path, null)).ShouldBe(HttpStatusCode.Unauthorized);
-        (await PostAsync(path, _factory.CreateToken("Teacher"))).ShouldBe(HttpStatusCode.Forbidden);
         (await PostAsync(path, _factory.CreateToken("Student"))).ShouldBe(HttpStatusCode.Forbidden);
+        var teacher = await PostAsync(path, _factory.CreateToken("Teacher"));
+        teacher.ShouldNotBe(HttpStatusCode.Unauthorized);
+        teacher.ShouldNotBe(HttpStatusCode.Forbidden);
     }
 
     [Theory]
@@ -118,7 +121,7 @@ public sealed class GatewayRouteRoleWiringTests : IClassFixture<GatewayWebSocket
         status.ShouldNotBe(HttpStatusCode.Forbidden);
     }
 
-    // İşaretleme (Claude ön-etiketleme dahil) uçları: yalnız Admin + QuestionTrainer.
+    // İşaretleme (Claude ön-etiketleme dahil) uçları: Admin, QuestionTrainer ve Teacher (#1087: plan backend'de).
     [Theory]
     [InlineData("/api/exam/labeling/ai-detect")]
     [InlineData("/api/exam/labeling/pages/manual")]
@@ -134,8 +137,12 @@ public sealed class GatewayRouteRoleWiringTests : IClassFixture<GatewayWebSocket
     [Theory]
     [InlineData("/api/exam/labeling/ai-detect")]
     [InlineData("/api/exam/labeling/pages/manual")]
-    public async Task Labeling_Teacher_Returns403(string path) =>
-        (await PostAsync(path, _factory.CreateToken("Teacher"))).ShouldBe(HttpStatusCode.Forbidden);
+    public async Task Labeling_Teacher_PassesRoleGate_issue1087(string path)
+    {
+        var status = await PostAsync(path, _factory.CreateToken("Teacher"));
+        status.ShouldNotBe(HttpStatusCode.Unauthorized);
+        status.ShouldNotBe(HttpStatusCode.Forbidden);
+    }
 
     [Theory]
     [InlineData("/api/exam/labeling/ai-detect")]

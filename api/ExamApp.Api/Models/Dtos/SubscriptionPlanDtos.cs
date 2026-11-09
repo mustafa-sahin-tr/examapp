@@ -97,6 +97,9 @@ public class EntitlementLimitReachedDto
 {
     public const string LimitReachedCode = "entitlement.limitReached";
 
+    /// <summary>Issue #1087: özellik planda yok (403).</summary>
+    public const string NotInPlanCode = "entitlement.notInPlan";
+
     public string Code { get; set; } = LimitReachedCode;
 
     /// <summary>Sınırına ulaşılan özellik anahtarı (ör. <c>book-import</c>).</summary>

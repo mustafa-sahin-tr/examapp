@@ -135,6 +135,12 @@ public static class EntitlementRoles
     {
         [EntitlementFeatures.BookImport] = [QuestionTrainer],
         [EntitlementFeatures.AiClassification] = [QuestionTrainer],
+        // #1087: soru girişi plana bağlandı; içerik ekibi bütün soru girişi kademelerinde sınırsız kalır.
+        [EntitlementFeatures.ManualLabeling] = [QuestionTrainer],
+        [EntitlementFeatures.AutoDetect] = [QuestionTrainer],
+        [EntitlementFeatures.CanvasAi] = [QuestionTrainer],
+        [EntitlementFeatures.QuickAdd] = [QuestionTrainer],
+        [EntitlementFeatures.QuestionGeneration] = [QuestionTrainer],
     };
 
     internal static readonly string[] All = [Admin, QuestionTrainer];

@@ -6,6 +6,7 @@ using ExamApp.Api.Services.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using ExamApp.Api.Controllers;
+using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Models.Dtos.Labeling;
 using ExamApp.Api.Services.BookImport;
 using ExamApp.Api.Services.Labeling;
@@ -64,14 +65,15 @@ public class LabelingBooksControllerTests
         var type = typeof(LabelingBooksController);
         type.GetCustomAttribute<RouteAttribute>()!.Template.ShouldBe("api/labeling/books");
         type.GetCustomAttributes<AuthorizeAttribute>().Where(a => a.Roles is not null).Select(a => a.Roles!).ToArray()
-            .ShouldBe(["Admin,QuestionTrainer"]);
+            .ShouldBe(["Admin,QuestionTrainer,Teacher"]);
+        type.GetCustomAttributes<RequiresEntitlementAttribute>().Single().FeatureKey.ShouldBe(EntitlementFeatures.ManualLabeling);
         type.GetCustomAttributes<AuthorizeAttribute>().Select(a => a.Policy)
             .ShouldContain(ApprovedTeacherPolicies.TeacherCapability);
         type.GetCustomAttributes<AllowAnonymousAttribute>(inherit: true).ShouldBeEmpty();
     }
 
     [Fact]
-    public void Every_Endpoint_IsNotAnonymous_AndDoesNotChangeRoles()
+    public void Every_Endpoint_IsNotAnonymous_AndOnlyContentTeamWritesTheCatalogue_issue1087()
     {
         var actions = typeof(LabelingBooksController)
             .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
@@ -83,7 +85,10 @@ public class LabelingBooksControllerTests
         foreach (var m in actions)
         {
             m.GetCustomAttributes<AllowAnonymousAttribute>().ShouldBeEmpty(m.Name);
-            m.GetCustomAttributes<AuthorizeAttribute>().ShouldBeEmpty(m.Name);
+            // #1087: öğretmen okur; ortak kitap kataloğunu yalnız içerik ekibi yazar.
+            var writes = m.Name is "Create" or "Update" or "Delete";
+            m.GetCustomAttributes<AuthorizeAttribute>().Select(a => a.Roles).ToArray()
+                .ShouldBe(writes ? ["Admin,QuestionTrainer"] : [], m.Name);
         }
     }
 

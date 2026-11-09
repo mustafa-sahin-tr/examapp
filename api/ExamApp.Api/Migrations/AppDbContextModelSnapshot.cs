@@ -6466,6 +6466,22 @@ namespace ExamApp.Api.Migrations
                             FeatureKey = "analytics",
                             IsDeleted = false,
                             PlanId = 2
+                        },
+                        new
+                        {
+                            Id = 74,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "manual-labeling",
+                            IsDeleted = false,
+                            PlanId = 1
+                        },
+                        new
+                        {
+                            Id = 75,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "auto-detect",
+                            IsDeleted = false,
+                            PlanId = 1
                         });
                 });
 

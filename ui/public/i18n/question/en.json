@@ -135,6 +135,7 @@
     "autoSolution": "Auto solution",
     "emptyOption": "(empty)",
     "classification": "Classification",
+    "topicRequiredHint": "Your plan has no automatic classification: choose a topic for each question before saving.",
     "askAi": "Ask AI",
     "difficulty": "Difficulty",
     "exampleQuestion": "Worked example",

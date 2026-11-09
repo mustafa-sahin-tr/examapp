@@ -6,7 +6,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { Router } from '@angular/router';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 
-import { EntitlementLimitReached, SubscriptionPlan, planNameKey } from '../../../models/subscription';
+import {
+  ENTITLEMENT_NOT_IN_PLAN_CODE,
+  EntitlementLimitReached,
+  SubscriptionPlan,
+  planNameKey,
+} from '../../../models/subscription';
 import { SubscriptionService } from '../../../services/subscription.service';
 
 export const PLANS_URL = '/plans';
@@ -37,6 +42,8 @@ export class UpgradeDialogComponent implements OnInit {
   private readonly dialogRef = inject<MatDialogRef<UpgradeDialogComponent>>(MatDialogRef);
 
   protected readonly data = inject<EntitlementLimitReached>(MAT_DIALOG_DATA);
+  /** Issue #1087: özellik planda hiç yok (403) — kullanım satırı yerine "planında yok". */
+  protected readonly notInPlan = this.data.code === ENTITLEMENT_NOT_IN_PLAN_CODE || this.data.limit === 0;
   /** Plan listesi yüklenemezse karşılaştırma gizlenir; pencere yine yükseltmeye götürür. */
   readonly rows = signal<PlanLimitRow[]>([]);
 

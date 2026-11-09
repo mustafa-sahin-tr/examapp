@@ -34,7 +34,17 @@ import { PASSAGE_INSTRUCTION_MAX_LENGTH, PassageKind, WorksheetKind, saveValidat
 import { Subject } from '../../models/subject';
 import { Topic } from '../../models/topic';
 import { SubTopic } from '../../models/subtopic';
-import { Subject as RxSubject, catchError, debounceTime, distinctUntilChanged, map, of, startWith, switchMap } from 'rxjs';
+import {
+  Subject as RxSubject,
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  firstValueFrom,
+  map,
+  of,
+  startWith,
+  switchMap,
+} from 'rxjs';
 import { SidenavService } from '../../services/sidenav.service';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -42,6 +52,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../services/auth.service';
+import { EntitlementStateService } from '../../services/entitlement-state.service';
 import { TestCreateEnhancedComponent } from '../test-create-enhanced/test-create-enhanced.component';
 import { ClassificationSource, QuestionRegion } from '../../models/draws';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
@@ -139,6 +150,13 @@ export class QuestionCanvasComponent implements OnInit {
   }
   private destroyRef = inject(DestroyRef);
   private authService = inject(AuthService);
+  private readonly entitlements = inject(EntitlementStateService);
+  /** #1087: tuvalde Claude tespiti (içerik ekibi ya da planda `canvas-ai`); açıksa sayfa kaynağı dışarıdan seçilir. */
+  readonly canvasAi = signal(false);
+  /** #1087: planda `auto-detect` yoksa tespit düğmeleri gizlenir, sayfa boş tuvalle açılır. */
+  readonly canAutoDetect = computed(() => this.entitlements.has('auto-detect'));
+  /** #1087: planda `ai-classification` yok (Basic) — sunucu konusuz soruyu reddeder; müfettiş konuyu seçtirmeyi hatırlatır. */
+  readonly topicRequired = computed(() => !this.entitlements.has('ai-classification'));
   /**
    * Model eğitim verisi üretme (sendToFix) yalnızca Admin veya QuestionTrainer realm rolüne açık.
    * Gateway send-to-fix yetkisini yalnız token realm rollerinden verir; aynı kaynağı kullanırız.
@@ -302,7 +320,15 @@ export class QuestionCanvasComponent implements OnInit {
 
   constructor() {
     this.setFullScreen(false);
-    this.detection.attach(() => this.imageSelectorRef(), this.canTrain, QUESTION_SCOPE);
+    // #1087: içerik ekibi her zaman; öğretmen planında `canvas-ai` varsa (plan yüklenmeden ai-models istenmez, 403 penceresi açılmaz).
+    const claudeEnabled = this.canTrain
+      ? true
+      : firstValueFrom(this.entitlements.load()).then(() => {
+          this.canvasAi.set(this.entitlements.has('canvas-ai'));
+          return this.canvasAi();
+        });
+    this.canvasAi.set(this.canTrain);
+    this.detection.attach(() => this.imageSelectorRef(), claudeEnabled, QUESTION_SCOPE);
     this.drafts.attach({
       selector: () => this.imageSelectorRef(),
       enabled: () => this.activityContext() && this.detection.available() && this.detection.hasPage(),
@@ -708,15 +734,15 @@ export class QuestionCanvasComponent implements OnInit {
   }
 
   triggerPredict() {
-    if (this.coordinateJsonMode) {
+    if (this.coordinateJsonMode || !this.canAutoDetect()) {
       return;
     }
     this.imageSelector.predict();
   }
 
   triggerAlign() {
-    // Issue #454: JSON modunda detector'a gitmeden mevcut şıkları yerinde hizala.
-    if (this.coordinateJsonMode) {
+    // Issue #454: JSON modunda detector'a gitmeden mevcut şıkları yerinde hizala. #1087: tespit planda yoksa da.
+    if (this.coordinateJsonMode || !this.canAutoDetect()) {
       this.imageSelector.alignAllAnswers();
       return;
     }
@@ -740,7 +766,7 @@ export class QuestionCanvasComponent implements OnInit {
   }
 
   askAi() {
-    if (this.coordinateJsonMode) {
+    if (this.coordinateJsonMode || !this.canAutoDetect()) {
       return;
     }
     this.imageSelector.predict();

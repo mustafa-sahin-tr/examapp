@@ -23,4 +23,19 @@ public static class EntitlementLimitResponse
         {
             StatusCode = StatusCodes.Status429TooManyRequests,
         };
+
+    /// <summary>Issue #1087: özellik çağıranın planında yok (sınır 0) — 403, arayüz aynı yükseltme penceresini açar.</summary>
+    public static ObjectResult NotInPlan(string featureKey, EntitlementCheck? check, string? message = null) =>
+        new(new EntitlementLimitReachedDto
+        {
+            Code = EntitlementLimitReachedDto.NotInPlanCode,
+            Feature = featureKey,
+            Limit = 0,
+            Used = check?.Used,
+            PlanKey = check?.PlanKey,
+            Message = message,
+        })
+        {
+            StatusCode = StatusCodes.Status403Forbidden,
+        };
 }

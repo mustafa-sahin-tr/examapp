@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Claims;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Labeling;
 using ExamApp.Api.Services.QuestionGeneration;
 using ExamApp.Api.Services.Teachers.Authorization;
@@ -12,11 +13,13 @@ namespace ExamApp.Api.Controllers;
 /// <summary>
 /// Kazanımdan görselsiz soru üretimi. Claude çağrısı ücretli olduğu için işaretleme ekranıyla aynı kişilere açıktır ve aynı kotayı kullanır.
 /// Üretilen taslak kaydedilmez; kayıt, incelenen sorularla ayrı istekte yapılır.
+/// Issue #1087: öğretmen de girer; <c>question-generation</c> planına bağlıdır, üretilen her taslak sayılır.
 /// </summary>
 [ApiController]
 [Route("api/question-generation")]
-[Authorize(Roles = "Admin,QuestionTrainer")]
+[Authorize(Roles = "Admin,QuestionTrainer,Teacher")]
 [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)]
+[RequiresEntitlement(EntitlementFeatures.QuestionGeneration, InPlanOnly = true)]
 public class QuestionGenerationController : BaseController
 {
     private readonly IQuestionGenerationService _service;
@@ -28,12 +31,22 @@ public class QuestionGenerationController : BaseController
 
     [HttpPost("drafts")]
     [RequestSizeLimit(64 * 1024)]
-    public async Task<IActionResult> GenerateDrafts([FromBody] GenerateQuestionDraftsDto request, CancellationToken ct)
+    [RequiresEntitlement(EntitlementFeatures.QuestionGeneration)]
+    public async Task<IActionResult> GenerateDrafts(
+        [FromBody] GenerateQuestionDraftsDto request, [FromServices] IEntitlementService entitlements, CancellationToken ct)
     {
         try
         {
             var response = await _service.GenerateAsync(request, CurrentActor(), ct);
-            return response is null ? NotFound(new { errorCode = "LearningOutcomeNotFound" }) : Ok(response);
+            if (response is null)
+                return NotFound(new { errorCode = "LearningOutcomeNotFound" });
+            var user = await GetAuthenticatedUserAsync(ct);
+            if (IsResolvedUser(user))
+            {
+                foreach (var _ in response.Drafts)
+                    await entitlements.RecordUsageAsync(user.Id, EntitlementFeatures.QuestionGeneration, $"question-generation:{Guid.NewGuid():N}", ct);
+            }
+            return Ok(response);
         }
         catch (LabelingRateLimitException ex)
         {

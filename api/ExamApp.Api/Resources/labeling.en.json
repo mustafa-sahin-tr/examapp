@@ -34,7 +34,9 @@
       "sharingSchoolRequired": "You need to belong to a school to share with your school.",
       "cropAlreadySaved": "This crop was already saved to the question pool.",
       "bookPageRequired": "Book and file page must be given together.",
-      "answerKeyPage": "This page is in the book's answer key range; it is not expected to be saved as questions."
+      "answerKeyPage": "This page is in the book's answer key range; it is not expected to be saved as questions.",
+      "topicRequired": "Your plan does not include AI topic detection: choose the page topic (or use a book page with contents).",
+      "topicUnknown": "The chosen topic was not found."
     },
     "books": {
       "notFound": "Book not found.",

@@ -5,6 +5,7 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Labeling;
+using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Labeling;
 using ExamApp.Api.Tests.Support;
@@ -91,6 +92,52 @@ public class LabelingBankServiceTests : IDisposable
             },
         ],
     };
+
+    [Fact]
+    public async Task Owner_without_ai_classification_must_choose_the_page_topic_issue1087()
+    {
+        var owner = EntitlementSubject.Create(ActingUserId);
+        _questions.RequiresManualTopicAsync(owner, Arg.Any<CancellationToken>()).Returns(true);
+        _questions.SaveBulkQuestion(Arg.Any<BulkQuestionCreateDto>(), Arg.Any<int>(), Arg.Any<EntitlementSubject?>())
+            .Returns(ci =>
+            {
+                _captured = ci.Arg<BulkQuestionCreateDto>();
+                return Task.FromResult(new ResponseBaseDto { Success = true, Message = "ok" });
+            });
+        await using var ctx = _db.NewContext();
+
+        var ex = await Should.ThrowAsync<LabelingValidationException>(() =>
+            NewService(ctx).SaveToBankAsync(ValidRequest(Png(200, 200)), Actor, ActingUserId, owner));
+        ex.Message.ShouldBe("labeling.bank.topicRequired");
+
+        var subject = new Subject { Name = "Matematik" };
+        ctx.Subjects.Add(subject);
+        await ctx.SaveChangesAsync();
+        var topic = new Topic { Name = "Kesirler", SubjectId = subject.Id, GradeId = _gradeId };
+        ctx.Topics.Add(topic);
+        await ctx.SaveChangesAsync();
+        var request = ValidRequest(Png(200, 200));
+        request.TopicId = topic.Id;
+
+        await NewService(ctx).SaveToBankAsync(request, Actor, ActingUserId, owner);
+
+        _captured!.Header.ShouldSatisfyAllConditions(
+            h => h.SubjectId.ShouldBe(subject.Id),
+            h => h.TopicId.ShouldBe(topic.Id),
+            h => h.ClassificationSource.ShouldBe("Human"));
+        await _questions.Received(1).SaveBulkQuestion(Arg.Any<BulkQuestionCreateDto>(), ActingUserId, owner);
+    }
+
+    [Fact]
+    public async Task Unknown_manual_topic_is_rejected_issue1087()
+    {
+        await using var ctx = _db.NewContext();
+        var request = ValidRequest(Png(200, 200));
+        request.TopicId = 99999;
+
+        var ex = await Should.ThrowAsync<LabelingValidationException>(() => NewService(ctx).SaveToBankAsync(request, Actor, ActingUserId));
+        ex.Message.ShouldBe("labeling.bank.topicUnknown");
+    }
 
     private static LabelingBankQuestionDto OneQuestion(int correctIndex = 0, int optionCount = 2) => new()
     {

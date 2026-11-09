@@ -135,6 +135,7 @@
     "autoSolution": "Auto çözüm",
     "emptyOption": "(boş)",
     "classification": "Sınıflandırma",
+    "topicRequiredHint": "Planında otomatik sınıflandırma yok: kaydetmeden önce her sorunun konusunu seç.",
     "askAi": "Yapay Zekâ",
     "difficulty": "Zorluk",
     "exampleQuestion": "Örnek / çözümlü soru",

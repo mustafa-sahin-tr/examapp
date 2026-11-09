@@ -121,6 +121,7 @@ import {
 import { QuestionRegion } from '../../models/draws';
 import { Question } from '../../models/question';
 import { AuthService } from '../../services/auth.service';
+import { EntitlementStateService } from '../../services/entitlement-state.service';
 import { LabelingService } from '../../services/labeling.service';
 import { QuestionService } from '../../services/question.service';
 import { TestService } from '../../services/test.service';
@@ -232,6 +233,7 @@ export class ActivityEditorComponent {
   private readonly classificationLimit = inject(ClassificationLimitNotice);
   private readonly transloco = inject(TranslocoService);
   private readonly auth = inject(AuthService);
+  private readonly entitlements = inject(EntitlementStateService);
   private readonly labelingApi = inject(LabelingService);
 
   readonly kindGroups = AUTHORING_KIND_GROUPS;
@@ -1092,11 +1094,15 @@ export class ActivityEditorComponent {
       });
   }
 
+  /** İçerik ekibi ve (#1087) planında `canvas-ai` olan öğretmen; plan okunmadan model listesi istenmez (403 penceresi açılmaz). */
   private loadAiModel(): void {
-    if (!this.auth.hasRealmRole('Admin') && !this.auth.hasRealmRole('QuestionTrainer')) return;
-    this.labelingApi.getAiModels().subscribe({
-      next: (models) => this.aiModel.set(models?.find((m) => m.isDefault) ?? models?.[0] ?? null),
-      error: () => this.aiModel.set(null),
+    const contentTeam = this.auth.hasRealmRole('Admin') || this.auth.hasRealmRole('QuestionTrainer');
+    this.entitlements.load().subscribe(() => {
+      if (!contentTeam && !this.entitlements.has('canvas-ai')) return;
+      this.labelingApi.getAiModels().subscribe({
+        next: (models) => this.aiModel.set(models?.find((m) => m.isDefault) ?? models?.[0] ?? null),
+        error: () => this.aiModel.set(null),
+      });
     });
   }
 

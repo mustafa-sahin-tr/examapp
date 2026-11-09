@@ -7,6 +7,7 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Labeling;
+using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Questions;
 using Microsoft.EntityFrameworkCore;
@@ -66,8 +67,11 @@ public sealed record LabelingImportPageResult(
 
 public interface ILabelingBankService
 {
+    /// <param name="classificationOwner">#1087: sınıflandırma hakkı sayılan kişi (çağıran); planında yapay zekâ sınıflandırması
+    /// yoksa sayfanın konusu içindekilerden ya da istekten gelmeli.</param>
     Task<LabelingBankSaveResponseDto> SaveToBankAsync(
-        LabelingBankSaveRequestDto request, LabelingActor actor, int actingUserId, CancellationToken ct = default);
+        LabelingBankSaveRequestDto request, LabelingActor actor, int actingUserId, EntitlementSubject? classificationOwner = null,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Issue #1022: kitap aktarımı işinden kayıt. <see cref="SaveToBankAsync"/> ile aynı kırpma, kitap kaynağı (#577), içindekiler
@@ -111,7 +115,8 @@ public sealed class LabelingBankService(
     private static readonly TimeSpan RateLimitWindow = TimeSpan.FromHours(1);
 
     public async Task<LabelingBankSaveResponseDto> SaveToBankAsync(
-        LabelingBankSaveRequestDto request, LabelingActor actor, int actingUserId, CancellationToken ct = default)
+        LabelingBankSaveRequestDto request, LabelingActor actor, int actingUserId, EntitlementSubject? classificationOwner = null,
+        CancellationToken ct = default)
     {
         // Ucuz kontroller görsel çözülmeden önce.
         var questions = request.Questions ?? [];
@@ -157,6 +162,23 @@ public sealed class LabelingBankService(
         if (bookPage?.Toc is not null && toc is null)
             logger.LogInformation("[Labeling] book {BookId} page {Page}: request grade {Grade} differs from TOC grade {TocGrade}; TOC taxonomy not applied",
                 bookPage.BookId, bookPage.FilePage, gradeId, bookPage.Toc.GradeId);
+
+        // Issue #1087: içindekiler konu vermiyorsa elle seçilen konu; yapay zekâ sınıflandırması planda yoksa biri zorunlu.
+        ManualTopic? manualTopic = null;
+        if (toc?.TopicId is null && request.TopicId is > 0)
+        {
+            manualTopic = await db.Topics.AsNoTracking().Where(t => t.Id == request.TopicId)
+                              .Select(t => new ManualTopic(t.SubjectId, t.Id, null)).FirstOrDefaultAsync(ct)
+                          ?? throw new LabelingValidationException("labeling.bank.topicUnknown");
+            if (request.SubTopicId is > 0)
+            {
+                if (!await db.SubTopics.AnyAsync(st => st.Id == request.SubTopicId && st.TopicId == request.TopicId, ct))
+                    throw new LabelingValidationException("labeling.bank.topicUnknown");
+                manualTopic = manualTopic with { SubTopicId = request.SubTopicId };
+            }
+        }
+        if (toc?.TopicId is null && manualTopic is null && await questionService.RequiresManualTopicAsync(classificationOwner, ct))
+            throw new LabelingValidationException("labeling.bank.topicRequired");
 
         string sha256;
         int width, height;
@@ -211,7 +233,7 @@ public sealed class LabelingBankService(
             ImageData = imageData,
             Passages = [],
             Questions = bulkQuestions,
-            Header = BookHeader(toc),
+            Header = manualTopic is { } chosen ? ManualHeader(chosen) : BookHeader(toc),
             GradeId = gradeId,
             BankSharing = sharing,
         };
@@ -219,7 +241,7 @@ public sealed class LabelingBankService(
         ResponseBaseDto? result;
         try
         {
-            result = await questionService.SaveBulkQuestion(bulk, actingUserId);
+            result = await questionService.SaveBulkQuestion(bulk, actingUserId, classificationOwner);
         }
         catch (Exception ex)
         {
@@ -339,6 +361,17 @@ public sealed class LabelingBankService(
             .ToList();
         return new LabelingImportPageResult(kept.Count, duplicates, ordered, resumedIndexes.Count);
     }
+
+    private sealed record ManualTopic(int SubjectId, int TopicId, int? SubTopicId);
+
+    private static HeaderInfo ManualHeader(ManualTopic topic) => new()
+    {
+        TestId = null,
+        SubjectId = topic.SubjectId,
+        TopicId = topic.TopicId,
+        Subtopics = topic.SubTopicId is { } subTopicId ? [subTopicId] : [],
+        ClassificationSource = nameof(ClassificationSource.Human),
+    };
 
     private static HeaderInfo BookHeader(BookTocEntry? toc) =>
         toc is null

@@ -29,7 +29,7 @@ const SUSPEND_STATUSES = [403, 429, 503];
 
 /**
  * Soru tuvalinde (issue #473) tespit kaynağı seçimi: işaretleme ekranındaki Manuel | Model | Claude düzeninin tuval
- * sürümü. Yalnız `ai-models` boş olmayan kullanıcıya (bugün Admin + QuestionTrainer) açılır; diğerlerinde image-selector
+ * sürümü. Yalnız `ai-models` boş olmayan kullanıcıya (içerik ekibi; #1087 planında `canvas-ai` olan öğretmen) açılır; diğerlerinde image-selector
  * `externalDetection` kapalı kalır ve davranış değişmez. Kayıt yoksa sayfa tercih edilen kaynakla açılır (varsayılan
  * YOLO). Claude seçiliyken bir sonraki sayfa arka planda Claude'a sorulur (sunucu sonucu sayfa hash'iyle saklar; sayfaya
  * geçince kayıttan, ücretsiz ve hızlı döner). Claude hatası / bütçe aşımında mesaj gösterilir ve sayfa YOLO ile açılır.
@@ -103,14 +103,17 @@ export class CanvasDetectionSource {
   }
 
   /**
-   * Tuval bağlanır. `enabled` false ise (eğitim rolü yok) model listesi hiç istenmez; Claude seçeneği görünmez.
+   * Tuval bağlanır. `enabled` false ise (eğitim rolü ya da #1087 planda `canvas-ai` yok) model listesi hiç istenmez;
+   * Claude seçeneği görünmez. Söz verilirse (plan yükleniyor) ilk sayfa kararı onu bekler.
    * `scope` çeviri anahtarlarının öneki (`question`).
    */
-  attach(selector: () => ImageSelectorComponent | undefined, enabled: boolean, scope: string): void {
+  attach(selector: () => ImageSelectorComponent | undefined, enabled: boolean | Promise<boolean>, scope: string): void {
     this.selector = selector;
     this.scope = scope;
-    if (enabled) {
+    if (enabled === true) {
       this.modelsLoaded = this.loadAiModels();
+    } else if (enabled !== false) {
+      this.modelsLoaded = enabled.then((ok) => (ok ? this.loadAiModels() : undefined), () => undefined);
     }
   }
 
@@ -193,7 +196,7 @@ export class CanvasDetectionSource {
     const wantsAi = this.preferredSource() === 'Ai' && !this.claudeSuspended;
     let seq: number | undefined;
     if (!wantsAi) {
-      selector.predict();
+      selector.detectOrBlank();
     } else {
       seq = selector.beginExternalDetection();
       this.aiBusy.set(true);
@@ -213,7 +216,7 @@ export class CanvasDetectionSource {
         void this.runClaude(seq);
       } else {
         this.aiBusy.set(false);
-        selector.predict();
+        selector.detectOrBlank();
       }
     }
     if (this.available() && this.pageSha) {

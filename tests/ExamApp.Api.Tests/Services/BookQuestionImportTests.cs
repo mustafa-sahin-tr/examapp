@@ -1050,12 +1050,13 @@ public class BookQuestionImportTests : IDisposable
     }
 
     [Fact]
-    public void Quick_add_labeling_fix_endpoint_is_closed_to_teachers()
+    public void Quick_add_labeling_fix_endpoint_needs_the_manual_labeling_plan_issue1087()
     {
-        var roles = typeof(QuickAddController).GetMethod(nameof(QuickAddController.ReplacePage))!
-            .GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute), false)
-            .Cast<Microsoft.AspNetCore.Authorization.AuthorizeAttribute>().Single().Roles!.Split(',');
-        roles.ShouldBe(["Admin", "QuestionTrainer"], ignoreOrder: true);
+        var action = typeof(QuickAddController).GetMethod(nameof(QuickAddController.ReplacePage))!;
+        action.GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute), false).ShouldBeEmpty();
+        action.GetCustomAttributes(typeof(ExamApp.Api.Services.Entitlements.RequiresEntitlementAttribute), false)
+            .Cast<ExamApp.Api.Services.Entitlements.RequiresEntitlementAttribute>().Single().FeatureKey
+            .ShouldBe(ExamApp.Api.Services.Entitlements.EntitlementFeatures.ManualLabeling);
     }
 
     private BookImportPageFixService Fix(AppDbContext ctx) => new(ctx, _minio, _bank);

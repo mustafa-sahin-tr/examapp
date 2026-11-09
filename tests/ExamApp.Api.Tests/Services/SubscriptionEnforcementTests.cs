@@ -135,6 +135,62 @@ public class SubscriptionEnforcementTests : IDisposable
         (await ClassificationCountsAsync()).ShouldBe((2, 2, 0));
     }
 
+    private async Task AssignTeacherPlanAsync(string planKey)
+    {
+        await using var ctx = _db.NewContext();
+        (await Entitlements(ctx).AssignPlanAsync(TeacherUserId, planKey, null, null, 1)).ShouldBe(AssignPlanError.None);
+    }
+
+    private async Task<int> AddTopicAsync()
+    {
+        await using var ctx = _db.NewContext();
+        var grade = new Grade { Name = "5" };
+        var subject = new Subject { Name = "Matematik" };
+        ctx.AddRange(grade, subject);
+        await ctx.SaveChangesAsync();
+        var topic = new Topic { Name = "Kesirler", SubjectId = subject.Id, GradeId = grade.Id };
+        ctx.Topics.Add(topic);
+        await ctx.SaveChangesAsync();
+        return topic.Id;
+    }
+
+    [Fact]
+    public async Task Basic_teacher_must_choose_the_topic_and_is_not_classified_issue1087()
+    {
+        await AssignTeacherPlanAsync(SubscriptionPlan.TeacherBasicKey);
+        var owner = EntitlementSubject.Create(TeacherUserId);
+
+        await using (var ctx = _db.NewContext())
+        {
+            var service = new QuestionService(ctx, new ImageHelper(), Substitute.For<IMinIoService>(), entitlements: Entitlements(ctx));
+            var rejected = (await service.SaveBulkQuestion(Bulk(1), TeacherUserId, owner)).ShouldBeOfType<QuestionSavedDto>();
+            (rejected.Success, rejected.InvalidInput, rejected.ErrorCode).ShouldBe((false, true, "TopicRequired"));
+        }
+        (await ClassificationCountsAsync()).ShouldBe((0, 0, 0));
+
+        var topicId = await AddTopicAsync();
+        await using (var ctx = _db.NewContext())
+        {
+            var service = new QuestionService(ctx, new ImageHelper(), Substitute.For<IMinIoService>(), entitlements: Entitlements(ctx));
+            var bulk = Bulk(1);
+            bulk.Header.TopicId = topicId;
+            var saved = (await service.SaveBulkQuestion(bulk, TeacherUserId, owner)).ShouldBeOfType<QuestionSavedDto>();
+            saved.Success.ShouldBeTrue(saved.Message);
+            saved.ClassificationSkipped.ShouldBe(1);
+        }
+        (await ClassificationCountsAsync()).ShouldBe((1, 0, 0));
+    }
+
+    [Fact]
+    public async Task Essential_teacher_may_leave_the_topic_to_the_classifier_issue1087()
+    {
+        await AssignTeacherPlanAsync(SubscriptionPlan.TeacherEssentialKey);
+
+        await SaveBulkAsync(1, EntitlementSubject.Create(TeacherUserId));
+
+        (await ClassificationCountsAsync()).ShouldBe((1, 1, 1));
+    }
+
     // ---- deneme
 
     private sealed record MockWorld(int StudentId, int GradeId, int ExamId, int Worksheet1, int Worksheet2);

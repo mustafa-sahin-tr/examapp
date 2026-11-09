@@ -186,6 +186,17 @@ public class LabelingBankSaveRequestDto
     /// <see cref="QuestionBankSharing.Private"/>. <see cref="QuestionBankSharing.School"/> okulsuz kaydedende 400.
     /// </summary>
     public QuestionBankSharing? Sharing { get; set; }
+
+    /// <summary>
+    /// Issue #1087: sayfanın elle seçilen konusu (ders konudan çıkar) ve isteğe bağlı alt konusu. İçindekiler konu vermiyorsa
+    /// kullanılır (<c>ClassificationSource = Human</c>); planında yapay zekâ sınıflandırması olmayan öğretmende biri zorunlu (400
+    /// <c>labeling.bank.topicRequired</c>).
+    /// </summary>
+    [Range(1, int.MaxValue)]
+    public int? TopicId { get; set; }
+
+    [Range(1, int.MaxValue)]
+    public int? SubTopicId { get; set; }
 }
 
 /// <summary>

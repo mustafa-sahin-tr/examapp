@@ -47,7 +47,8 @@
       "topicIdMissingWithSubTopics": "Header.TopicId belirtilmemiş/0 ancak SubTopic listesi var. SubTopic'lerin TopicId değeri {0}. Detay: {1}",
       "subTopicTopicMismatch": "SubTopic'nin topic'i, question üzerinde setlenen TopicId'den farklı. Question.TopicId={0} ('{1}'), SubTopic(Id={2}, Name='{3}') TopicId={4} ('{5}').",
       "invalidInteractionSolution": "Geçersiz etkileşim planı veya çözümü (yinelenen anahtarsız JSON nesnesi olmalı): {0}",
-      "invalidInteractionDefinition": "Geçersiz etkileşim tanımı (plan şemaya uymuyor — izin verilmeyen alan, geçersiz id ya da kutu — veya çözüm planla uyuşmuyor): {0}"
+      "invalidInteractionDefinition": "Geçersiz etkileşim tanımı (plan şemaya uymuyor — izin verilmeyen alan, geçersiz id ya da kutu — veya çözüm planla uyuşmuyor): {0}",
+      "topicRequired": "Planında yapay zekâ ile konu belirleme yok: her soru için ders ve konuyu seç."
     },
 
     "interactionDefinition": {

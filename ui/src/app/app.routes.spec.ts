@@ -21,7 +21,8 @@ describe('authoring routes (issue #709)', () => {
 
             expect(route?.canActivate).toContain(authGuard);
             expect(route?.canActivate).toContain(approvedTeacherGuard);
-            expect(route?.canActivate).toHaveLength(3);
+            // #1087: soru tuvali ayrıca planda `manual-labeling` ister.
+            expect(route?.canActivate).toHaveLength(path.startsWith('questioncanvas') ? 4 : 3);
         });
     }
 });

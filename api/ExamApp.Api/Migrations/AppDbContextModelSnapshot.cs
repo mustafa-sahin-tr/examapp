@@ -5621,6 +5621,34 @@ namespace ExamApp.Api.Migrations
                         },
                         new
                         {
+                            Id = 5,
+                            Audience = "Teacher",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Currency = "TRY",
+                            DisplayNameKey = "subscription.plans.teacherBasic",
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "teacher-basic",
+                            MonthlyPrice = 149m,
+                            Name = "Teacher Basic",
+                            SortOrder = 2
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Audience = "Teacher",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Currency = "TRY",
+                            DisplayNameKey = "subscription.plans.teacherEssential",
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "teacher-essential",
+                            MonthlyPrice = 299m,
+                            Name = "Teacher Essential",
+                            SortOrder = 3
+                        },
+                        new
+                        {
                             Id = 3,
                             Audience = "Teacher",
                             CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -5629,9 +5657,51 @@ namespace ExamApp.Api.Migrations
                             IsActive = true,
                             IsDeleted = false,
                             Key = "teacher-pro",
-                            MonthlyPrice = 199m,
+                            MonthlyPrice = 599m,
                             Name = "Teacher Pro",
-                            SortOrder = 2
+                            SortOrder = 4
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Audience = "Student",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Currency = "TRY",
+                            DisplayNameKey = "subscription.plans.studentBasic",
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "student-basic",
+                            MonthlyPrice = 99m,
+                            Name = "Student Basic",
+                            SortOrder = 5
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Audience = "Student",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Currency = "TRY",
+                            DisplayNameKey = "subscription.plans.studentEssential",
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "student-essential",
+                            MonthlyPrice = 199m,
+                            Name = "Student Essential",
+                            SortOrder = 6
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Audience = "Student",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Currency = "TRY",
+                            DisplayNameKey = "subscription.plans.studentPro",
+                            IsActive = true,
+                            IsDeleted = false,
+                            Key = "student-pro",
+                            MonthlyPrice = 349m,
+                            Name = "Student Pro",
+                            SortOrder = 7
                         },
                         new
                         {
@@ -5640,12 +5710,12 @@ namespace ExamApp.Api.Migrations
                             CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
                             Currency = "TRY",
                             DisplayNameKey = "subscription.plans.studentPlus",
-                            IsActive = true,
+                            IsActive = false,
                             IsDeleted = false,
                             Key = "student-plus",
                             MonthlyPrice = 99m,
                             Name = "Student Plus",
-                            SortOrder = 3
+                            SortOrder = 8
                         });
                 });
 
@@ -5850,6 +5920,515 @@ namespace ExamApp.Api.Migrations
                             IsDeleted = false,
                             MonthlyLimit = 200,
                             PlanId = 3
+                        },
+                        new
+                        {
+                            Id = 13,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "manual-labeling",
+                            IsDeleted = false,
+                            PlanId = 5
+                        },
+                        new
+                        {
+                            Id = 14,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "manual-labeling",
+                            IsDeleted = false,
+                            PlanId = 6
+                        },
+                        new
+                        {
+                            Id = 15,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "auto-detect",
+                            IsDeleted = false,
+                            PlanId = 6
+                        },
+                        new
+                        {
+                            Id = 16,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "ai-classification",
+                            IsDeleted = false,
+                            MonthlyLimit = 500,
+                            PlanId = 6
+                        },
+                        new
+                        {
+                            Id = 17,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "canvas-ai",
+                            IsDeleted = false,
+                            MonthlyLimit = 300,
+                            PlanId = 6
+                        },
+                        new
+                        {
+                            Id = 18,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "quick-add",
+                            IsDeleted = false,
+                            MonthlyLimit = 100,
+                            PlanId = 6
+                        },
+                        new
+                        {
+                            Id = 19,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "activity-editor",
+                            IsDeleted = false,
+                            PlanId = 6
+                        },
+                        new
+                        {
+                            Id = 20,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "flashcard-sets",
+                            IsDeleted = false,
+                            PlanId = 6
+                        },
+                        new
+                        {
+                            Id = 21,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "coach-panel",
+                            IsDeleted = false,
+                            PlanId = 6
+                        },
+                        new
+                        {
+                            Id = 22,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "print-test",
+                            IsDeleted = false,
+                            PlanId = 6
+                        },
+                        new
+                        {
+                            Id = 23,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "messaging",
+                            IsDeleted = false,
+                            PlanId = 6
+                        },
+                        new
+                        {
+                            Id = 24,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "tutoring",
+                            IsDeleted = false,
+                            PlanId = 6
+                        },
+                        new
+                        {
+                            Id = 25,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "live-lesson",
+                            IsDeleted = false,
+                            MonthlyLimit = 10,
+                            PlanId = 6
+                        },
+                        new
+                        {
+                            Id = 26,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "manual-labeling",
+                            IsDeleted = false,
+                            PlanId = 3
+                        },
+                        new
+                        {
+                            Id = 27,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "auto-detect",
+                            IsDeleted = false,
+                            PlanId = 3
+                        },
+                        new
+                        {
+                            Id = 28,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "canvas-ai",
+                            IsDeleted = false,
+                            MonthlyLimit = 1000,
+                            PlanId = 3
+                        },
+                        new
+                        {
+                            Id = 29,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "question-generation",
+                            IsDeleted = false,
+                            MonthlyLimit = 200,
+                            PlanId = 3
+                        },
+                        new
+                        {
+                            Id = 30,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "activity-editor",
+                            IsDeleted = false,
+                            PlanId = 3
+                        },
+                        new
+                        {
+                            Id = 31,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "flashcard-sets",
+                            IsDeleted = false,
+                            PlanId = 3
+                        },
+                        new
+                        {
+                            Id = 32,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "coach-panel",
+                            IsDeleted = false,
+                            PlanId = 3
+                        },
+                        new
+                        {
+                            Id = 33,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "print-test",
+                            IsDeleted = false,
+                            PlanId = 3
+                        },
+                        new
+                        {
+                            Id = 34,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "messaging",
+                            IsDeleted = false,
+                            PlanId = 3
+                        },
+                        new
+                        {
+                            Id = 35,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "tutoring",
+                            IsDeleted = false,
+                            PlanId = 3
+                        },
+                        new
+                        {
+                            Id = 36,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "live-lesson",
+                            IsDeleted = false,
+                            MonthlyLimit = 40,
+                            PlanId = 3
+                        },
+                        new
+                        {
+                            Id = 37,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "mock-exam",
+                            IsDeleted = false,
+                            MonthlyLimit = 3,
+                            PlanId = 7
+                        },
+                        new
+                        {
+                            Id = 38,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "mixed-mini",
+                            IsDeleted = false,
+                            MonthlyLimit = 3,
+                            PlanId = 7
+                        },
+                        new
+                        {
+                            Id = 39,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "practice",
+                            IsDeleted = false,
+                            MonthlyLimit = 10,
+                            PlanId = 7
+                        },
+                        new
+                        {
+                            Id = 40,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "self-activity",
+                            IsDeleted = false,
+                            MonthlyLimit = 10,
+                            PlanId = 7
+                        },
+                        new
+                        {
+                            Id = 41,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "mock-exam",
+                            IsDeleted = false,
+                            MonthlyLimit = 6,
+                            PlanId = 8
+                        },
+                        new
+                        {
+                            Id = 42,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "mixed-mini",
+                            IsDeleted = false,
+                            MonthlyLimit = 6,
+                            PlanId = 8
+                        },
+                        new
+                        {
+                            Id = 43,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "practice",
+                            IsDeleted = false,
+                            MonthlyLimit = 50,
+                            PlanId = 8
+                        },
+                        new
+                        {
+                            Id = 44,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "self-activity",
+                            IsDeleted = false,
+                            MonthlyLimit = 50,
+                            PlanId = 8
+                        },
+                        new
+                        {
+                            Id = 45,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "study-tools",
+                            IsDeleted = false,
+                            PlanId = 8
+                        },
+                        new
+                        {
+                            Id = 46,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "messaging",
+                            IsDeleted = false,
+                            PlanId = 8
+                        },
+                        new
+                        {
+                            Id = 47,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "tutoring",
+                            IsDeleted = false,
+                            PlanId = 8
+                        },
+                        new
+                        {
+                            Id = 48,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "live-lesson",
+                            IsDeleted = false,
+                            PlanId = 8
+                        },
+                        new
+                        {
+                            Id = 49,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "mock-exam",
+                            IsDeleted = false,
+                            PlanId = 9
+                        },
+                        new
+                        {
+                            Id = 50,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "mixed-mini",
+                            IsDeleted = false,
+                            PlanId = 9
+                        },
+                        new
+                        {
+                            Id = 51,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "practice",
+                            IsDeleted = false,
+                            PlanId = 9
+                        },
+                        new
+                        {
+                            Id = 52,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "self-activity",
+                            IsDeleted = false,
+                            PlanId = 9
+                        },
+                        new
+                        {
+                            Id = 53,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "study-tools",
+                            IsDeleted = false,
+                            PlanId = 9
+                        },
+                        new
+                        {
+                            Id = 54,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "analytics",
+                            IsDeleted = false,
+                            PlanId = 9
+                        },
+                        new
+                        {
+                            Id = 55,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "messaging",
+                            IsDeleted = false,
+                            PlanId = 9
+                        },
+                        new
+                        {
+                            Id = 56,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "tutoring",
+                            IsDeleted = false,
+                            PlanId = 9
+                        },
+                        new
+                        {
+                            Id = 57,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "live-lesson",
+                            IsDeleted = false,
+                            PlanId = 9
+                        },
+                        new
+                        {
+                            Id = 58,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "manual-labeling",
+                            IsDeleted = false,
+                            PlanId = 2
+                        },
+                        new
+                        {
+                            Id = 59,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "auto-detect",
+                            IsDeleted = false,
+                            PlanId = 2
+                        },
+                        new
+                        {
+                            Id = 60,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "canvas-ai",
+                            IsDeleted = false,
+                            MonthlyLimit = 30,
+                            PlanId = 2
+                        },
+                        new
+                        {
+                            Id = 61,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "question-generation",
+                            IsDeleted = false,
+                            MonthlyLimit = 20,
+                            PlanId = 2
+                        },
+                        new
+                        {
+                            Id = 62,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "activity-editor",
+                            IsDeleted = false,
+                            PlanId = 2
+                        },
+                        new
+                        {
+                            Id = 63,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "flashcard-sets",
+                            IsDeleted = false,
+                            PlanId = 2
+                        },
+                        new
+                        {
+                            Id = 64,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "coach-panel",
+                            IsDeleted = false,
+                            PlanId = 2
+                        },
+                        new
+                        {
+                            Id = 65,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "print-test",
+                            IsDeleted = false,
+                            PlanId = 2
+                        },
+                        new
+                        {
+                            Id = 66,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "messaging",
+                            IsDeleted = false,
+                            PlanId = 2
+                        },
+                        new
+                        {
+                            Id = 67,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "tutoring",
+                            IsDeleted = false,
+                            PlanId = 2
+                        },
+                        new
+                        {
+                            Id = 68,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "live-lesson",
+                            IsDeleted = false,
+                            MonthlyLimit = 2,
+                            PlanId = 2
+                        },
+                        new
+                        {
+                            Id = 69,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "mixed-mini",
+                            IsDeleted = false,
+                            MonthlyLimit = 2,
+                            PlanId = 2
+                        },
+                        new
+                        {
+                            Id = 70,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "practice",
+                            IsDeleted = false,
+                            MonthlyLimit = 10,
+                            PlanId = 2
+                        },
+                        new
+                        {
+                            Id = 71,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "self-activity",
+                            IsDeleted = false,
+                            MonthlyLimit = 10,
+                            PlanId = 2
+                        },
+                        new
+                        {
+                            Id = 72,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "study-tools",
+                            IsDeleted = false,
+                            PlanId = 2
+                        },
+                        new
+                        {
+                            Id = 73,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "analytics",
+                            IsDeleted = false,
+                            PlanId = 2
                         });
                 });
 

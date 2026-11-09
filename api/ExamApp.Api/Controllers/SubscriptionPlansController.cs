@@ -37,6 +37,13 @@ public class SubscriptionPlansController : BaseController
         return await SubscriptionPlanCatalog.ListAsync(_db, p => p.IsActive && audiences.Contains(p.Audience), ct);
     }
 
+    /// <summary>
+    /// #1093: çağıranın rolüne uygun özellik listesi (sıra, tür, birim). Plan kartları ve sınır penceresi adları buradan dizer.
+    /// </summary>
+    [HttpGet("features")]
+    public ActionResult<List<EntitlementFeatureDto>> Features() =>
+        EntitlementFeatures.For(SubscriptionPlanCatalog.AudiencesFor(User)).Select(EntitlementFeatureDto.From).ToList();
+
     /// <summary>Planı (ataması yoksa Free) ve planın sınırladığı / bilinen her özellik için bu ayki hakkı.</summary>
     [HttpGet("me")]
     public async Task<ActionResult<CurrentSubscriptionPlanDto>> Current(CancellationToken ct)
@@ -76,20 +83,20 @@ public class SubscriptionPlansController : BaseController
     {
         var subject = EntitlementSubject.FromPrincipal(userId, User);
         var plan = await _entitlements.ResolvePlanAsync(userId, ct);
-        var planInfo = plan.PlanId is { } planId
-            ? await _db.SubscriptionPlans.AsNoTracking()
-                .Where(p => p.Id == planId)
-                .Select(p => new { p.DisplayNameKey, FeatureKeys = p.FeatureLimits.Select(l => l.FeatureKey).ToList() })
-                .FirstOrDefaultAsync(ct)
+        var displayNameKey = plan.PlanId is { } planId
+            ? await _db.SubscriptionPlans.AsNoTracking().Where(p => p.Id == planId).Select(p => p.DisplayNameKey).FirstOrDefaultAsync(ct)
             : null;
 
+        // #1093: yalnız çağıranın rolüne ait özellikler (deneme planı iki kitlenin de satırlarını taşır).
         var features = new List<FeatureUsageDto>();
-        foreach (var featureKey in EntitlementFeatures.All.Union(planInfo?.FeatureKeys ?? []))
+        foreach (var feature in EntitlementFeatures.For(SubscriptionPlanCatalog.AudiencesFor(User)))
         {
-            var check = await _entitlements.CheckAsync(subject, featureKey, ct);
+            var check = await _entitlements.CheckAsync(subject, feature.Key, ct);
             features.Add(new FeatureUsageDto
             {
-                FeatureKey = featureKey,
+                FeatureKey = feature.Key,
+                Kind = feature.Kind.ToString(),
+                Unit = feature.Unit,
                 Allowed = check.Allowed,
                 Limit = check.Limit,
                 Used = check.Used,
@@ -102,7 +109,7 @@ public class SubscriptionPlansController : BaseController
         {
             PlanKey = plan.Key,
             PlanName = plan.Name,
-            DisplayNameKey = planInfo?.DisplayNameKey,
+            DisplayNameKey = displayNameKey,
             ValidToUtc = plan.ValidToUtc,
             TrialAvailable = await IsTrialAvailableAsync(userId, ct),
             Features = features,

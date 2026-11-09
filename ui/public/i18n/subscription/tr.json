@@ -11,19 +11,42 @@
   "plans": {
     "free": "Ücretsiz",
     "trial": "Ücretsiz deneme",
-    "teacherPro": "Öğretmen Pro",
-    "studentPlus": "Öğrenci Plus"
+    "teacherPro": "Pro",
+    "studentPlus": "Öğrenci Plus",
+    "teacherBasic": "Basic",
+    "teacherEssential": "Essential",
+    "studentBasic": "Basic",
+    "studentEssential": "Essential",
+    "studentPro": "Pro"
   },
   "features": {
-    "book-import": "Kitaptan aktarım",
-    "ai-classification": "Yapay zekâ ile sınıflandırma",
-    "mock-exam": "Deneme",
-    "quick-add": "Hızlı soru ekleme (fotoğraf)"
+    "book-import": "Kitabı dijitale aktarma (PDF)",
+    "ai-classification": "Yapay zekâ ile konu ve kazanım",
+    "mock-exam": "Deneme sınavı",
+    "quick-add": "Fotoğraftan hızlı soru ekleme",
+    "manual-labeling": "Elle soru işaretleme",
+    "auto-detect": "Otomatik soru ve şık tespiti",
+    "canvas-ai": "İşaretlemede yapay zekâ yardımı",
+    "question-generation": "Yapay zekâ ile soru üretimi",
+    "activity-editor": "Etkileşimli etkinlik hazırlama",
+    "flashcard-sets": "Bilgi kartı setleri",
+    "coach-panel": "Koç paneli",
+    "print-test": "Testi yazdırma",
+    "mixed-mini": "Karışık mini deneme",
+    "practice": "Konu seçip test çözme",
+    "self-activity": "Kendi seçtiği etkinlikler",
+    "study-tools": "Çalışma araçları (sayfalar, yanlışlarım, bilgi kartları)",
+    "analytics": "Ayrıntılı analiz (konu, gelişim, kazanım)",
+    "messaging": "Mesajlaşma",
+    "tutoring": "Özel ders ve randevu",
+    "live-lesson": "Canlı ders"
   },
   "limits": {
     "unlimited": "Sınırsız",
     "none": "Yok",
-    "perMonth": "Ayda {{ count }}"
+    "perMonth": "Ayda {{ count }}",
+    "included": "Dahil",
+    "perMonthUnit": "Ayda {{ count }} {{ unit }}"
   },
   "actions": {
     "continueFree": "Ücretsiz devam et",
@@ -147,5 +170,15 @@
       "schoolNotFound": "Okul bulunamadı.",
       "queryTooShort": "En az 2 karakter yaz."
     }
+  },
+  "units": {
+    "question": "soru",
+    "call": "işlem",
+    "photo": "fotoğraf",
+    "book": "kitap",
+    "exam": "deneme",
+    "test": "test",
+    "activity": "etkinlik",
+    "lesson": "ders"
   }
 }

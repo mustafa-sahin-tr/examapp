@@ -300,10 +300,10 @@ public class SubscriptionEnforcementTests : IDisposable
     }
 
     [Fact]
-    public async Task Student_plus_is_unlimited()
+    public async Task Student_pro_is_unlimited()
     {
         var world = await SeedMockExamAsync();
-        await AssignPlanAsync(SubscriptionPlan.StudentPlusKey);
+        await AssignPlanAsync(SubscriptionPlan.StudentProKey);
         await UseAsync(StudentUserId, EntitlementFeatures.MockExam, 50);
 
         (await StartAsync(world, world.Worksheet1)).Success.ShouldBeTrue();

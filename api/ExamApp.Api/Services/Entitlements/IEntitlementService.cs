@@ -29,9 +29,100 @@ public static class EntitlementFeatures
     /// <summary>Hızlı soru ekleme (#1048, #1052): yüklenen her fotoğraf bir kullanım sayılır (yüklemede kaydedilir).</summary>
     public const string QuickAdd = "quick-add";
 
+    // Issue #1093 (epic #1085): paket kademeleri. Kapı kontrolleri sonraki alt issue'larda (#1087-#1089) bağlanır.
+    public const string ManualLabeling = "manual-labeling";
+    public const string AutoDetect = "auto-detect";
+
+    /// <summary>İşaretleme tuvalinde Claude: her çağrı bir kullanım.</summary>
+    public const string CanvasAi = "canvas-ai";
+
+    public const string QuestionGeneration = "question-generation";
+    public const string ActivityEditor = "activity-editor";
+    public const string FlashcardSets = "flashcard-sets";
+    public const string CoachPanel = "coach-panel";
+    public const string PrintTest = "print-test";
+
+    /// <summary>Öğretmen ve öğrencide ortak: iki tarafta da plan izin vermeli (#1088).</summary>
+    public const string Messaging = "messaging";
+
+    /// <summary>Özel ders profili, müsaitlik ve randevu; iki tarafta da plan izin vermeli.</summary>
+    public const string Tutoring = "tutoring";
+
+    /// <summary>Canlı ders: ders (randevu) başına bir kullanım; saat ölçümü yok.</summary>
+    public const string LiveLesson = "live-lesson";
+
+    public const string MixedMini = "mixed-mini";
+
+    /// <summary>Öğrencinin konu seçip kendi başlattığı test.</summary>
+    public const string Practice = "practice";
+
+    /// <summary>Öğrencinin kendi seçtiği etkinlik.</summary>
+    public const string SelfActivity = "self-activity";
+
+    /// <summary>Çalışma sayfaları, yanlışlarım, kaydedilenler, bilgi kartları, program takibi.</summary>
+    public const string StudyTools = "study-tools";
+
+    /// <summary>Konu performansı, haftalık gelişim, kazanım seviyesi.</summary>
+    public const string Analytics = "analytics";
+
+    /// <summary>
+    /// Bütün özellikler, plan kartlarındaki sırayla. Admin plan düzenleyicisi (#1086) yalnız bu anahtarları kabul eder; arayüz
+    /// adları ve birimleri buradan alır.
+    /// </summary>
+    public static readonly IReadOnlyList<EntitlementFeatureInfo> Registry =
+    [
+        new(ManualLabeling, EntitlementAudience.Teacher, EntitlementFeatureKind.Toggle),
+        new(AutoDetect, EntitlementAudience.Teacher, EntitlementFeatureKind.Toggle),
+        new(AiClassification, EntitlementAudience.Teacher, EntitlementFeatureKind.Metered, "question"),
+        new(CanvasAi, EntitlementAudience.Teacher, EntitlementFeatureKind.Metered, "call"),
+        new(QuickAdd, EntitlementAudience.Teacher, EntitlementFeatureKind.Metered, "photo"),
+        new(QuestionGeneration, EntitlementAudience.Teacher, EntitlementFeatureKind.Metered, "question"),
+        new(BookImport, EntitlementAudience.Teacher, EntitlementFeatureKind.Metered, "book"),
+        new(ActivityEditor, EntitlementAudience.Teacher, EntitlementFeatureKind.Toggle),
+        new(FlashcardSets, EntitlementAudience.Teacher, EntitlementFeatureKind.Toggle),
+        new(CoachPanel, EntitlementAudience.Teacher, EntitlementFeatureKind.Toggle),
+        new(PrintTest, EntitlementAudience.Teacher, EntitlementFeatureKind.Toggle),
+        new(MockExam, EntitlementAudience.Student, EntitlementFeatureKind.Metered, "exam"),
+        new(MixedMini, EntitlementAudience.Student, EntitlementFeatureKind.Metered, "exam"),
+        new(Practice, EntitlementAudience.Student, EntitlementFeatureKind.Metered, "test"),
+        new(SelfActivity, EntitlementAudience.Student, EntitlementFeatureKind.Metered, "activity"),
+        new(StudyTools, EntitlementAudience.Student, EntitlementFeatureKind.Toggle),
+        new(Analytics, EntitlementAudience.Student, EntitlementFeatureKind.Toggle),
+        new(Messaging, EntitlementAudience.Both, EntitlementFeatureKind.Toggle),
+        new(Tutoring, EntitlementAudience.Both, EntitlementFeatureKind.Toggle),
+        new(LiveLesson, EntitlementAudience.Both, EntitlementFeatureKind.Metered, "lesson"),
+    ];
+
+    private static readonly Dictionary<string, EntitlementFeatureInfo> ByKey = Registry.ToDictionary(f => f.Key, StringComparer.Ordinal);
+
+    public static EntitlementFeatureInfo? Find(string featureKey) => ByKey.GetValueOrDefault(featureKey);
+
     /// <summary>Kullanıcının plan özetinde (#1027) her zaman listelenen özellikler.</summary>
-    public static readonly IReadOnlyList<string> All = [BookImport, AiClassification, MockExam, QuickAdd];
+    public static readonly IReadOnlyList<string> All = Registry.Select(f => f.Key).ToList();
+
+    /// <summary>Hedef kitleye görünen özellikler (plan özeti çağıranın rolüne göre süzülür).</summary>
+    public static IEnumerable<EntitlementFeatureInfo> For(IReadOnlySet<SubscriptionPlanAudience> audiences) =>
+        Registry.Where(f => f.Audience == EntitlementAudience.Both
+            || (f.Audience == EntitlementAudience.Teacher && audiences.Contains(SubscriptionPlanAudience.Teacher))
+            || (f.Audience == EntitlementAudience.Student && audiences.Contains(SubscriptionPlanAudience.Student)));
 }
+
+public enum EntitlementAudience
+{
+    Teacher,
+    Student,
+    Both,
+}
+
+/// <summary><see cref="Toggle"/>: planda var / yok (satır sınırı null). <see cref="Metered"/>: aylık sayılır.</summary>
+public enum EntitlementFeatureKind
+{
+    Toggle,
+    Metered,
+}
+
+/// <param name="Unit">Sayılan özelliğin birimi (arayüz çeviri anahtarı); açık / kapalı özellikte null.</param>
+public sealed record EntitlementFeatureInfo(string Key, EntitlementAudience Audience, EntitlementFeatureKind Kind, string? Unit = null);
 
 /// <summary>Hak çözümlemesinde bakılan roller. Admin her özellikte sınırsız; diğer muafiyetler özellik bazında.</summary>
 public static class EntitlementRoles

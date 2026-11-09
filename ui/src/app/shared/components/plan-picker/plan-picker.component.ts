@@ -8,14 +8,21 @@ import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 
 import {
   CurrentSubscriptionPlan,
+  EntitlementFeature,
   FREE_PLAN_KEY,
-  SUBSCRIPTION_FEATURES,
   SubscriptionPlan,
   planNameKey,
 } from '../../../models/subscription';
 import { SubscriptionService } from '../../../services/subscription.service';
 
 const SCOPE = 'subscription';
+
+export interface PlanFeatureLine {
+  key: string;
+  kind: EntitlementFeature['kind'];
+  unit: string | null;
+  limit: number | null;
+}
 
 /** Kart düğmesinin türü: Free (kayıtta atla), deneme, ücretli (sahte ödeme). */
 export type PlanAction = 'free' | 'trial' | 'paid';
@@ -44,6 +51,8 @@ export class PlanPickerComponent implements OnInit {
   readonly loading = signal(true);
   readonly loadError = signal(false);
   readonly plans = signal<SubscriptionPlan[]>([]);
+  /** #1093: özellik sırası, türü ve birimi. */
+  readonly features = signal<EntitlementFeature[]>([]);
   readonly current = signal<CurrentSubscriptionPlan | null>(null);
   /** Sahte ödeme ekranındaki plan; null → kartlar. */
   readonly checkoutPlan = signal<SubscriptionPlan | null>(null);
@@ -60,9 +69,14 @@ export class PlanPickerComponent implements OnInit {
   load(): void {
     this.loading.set(true);
     this.loadError.set(false);
-    forkJoin({ plans: this.subscriptions.plans(), current: this.subscriptions.current() }).subscribe({
-      next: ({ plans, current }) => {
+    forkJoin({
+      plans: this.subscriptions.plans(),
+      current: this.subscriptions.current(),
+      features: this.subscriptions.features(),
+    }).subscribe({
+      next: ({ plans, current, features }) => {
         this.plans.set(plans);
+        this.features.set(features);
         this.current.set(current);
         this.loading.set(false);
       },
@@ -78,12 +92,11 @@ export class PlanPickerComponent implements OnInit {
     return plan.monthlyPrice > 0 ? 'paid' : 'free';
   }
 
-  /** Kartta listelenen özellikler: planın sınır satırı olanlar, sabit sırayla. */
-  featuresOf(plan: SubscriptionPlan): { key: string; limit: number | null }[] {
-    return SUBSCRIPTION_FEATURES.filter((key) => key in plan.monthlyLimits).map((key) => ({
-      key,
-      limit: plan.monthlyLimits[key],
-    }));
+  /** Kartta listelenen özellikler: planda olanlar (sınırı 0 olmayan), özellik listesinin sırasıyla. */
+  featuresOf(plan: SubscriptionPlan): PlanFeatureLine[] {
+    return this.features()
+      .filter((f) => f.key in plan.monthlyLimits && plan.monthlyLimits[f.key] !== 0)
+      .map((f) => ({ key: f.key, kind: f.kind, unit: f.unit, limit: plan.monthlyLimits[f.key] }));
   }
 
   nameKey(plan: SubscriptionPlan): string {

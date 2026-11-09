@@ -5,7 +5,7 @@ import { of, throwError } from 'rxjs';
 
 import { PlanPickerComponent } from './plan-picker.component';
 import { SubscriptionService } from '../../../services/subscription.service';
-import { CurrentSubscriptionPlan, SubscriptionPlan } from '../../../models/subscription';
+import { CurrentSubscriptionPlan, EntitlementFeature, SubscriptionPlan } from '../../../models/subscription';
 import { translocoTestingModule } from '../../testing/transloco-testing';
 import subscriptionTr from '../../../../../public/i18n/subscription/tr.json';
 import subscriptionEn from '../../../../../public/i18n/subscription/en.json';
@@ -14,6 +14,14 @@ const PLANS: SubscriptionPlan[] = [
   plan('free', 'subscription.plans.free', 0, null, { 'book-import': 0, 'ai-classification': 20, 'mock-exam': 0 }),
   plan('trial', 'subscription.plans.trial', 0, 14, { 'book-import': 1 }),
   plan('teacher-pro', 'subscription.plans.teacherPro', 199, null, { 'book-import': 10, 'ai-classification': 1000 }),
+  plan('teacher-basic', 'subscription.plans.teacherBasic', 149, null, { 'manual-labeling': null, 'book-import': 0 }),
+];
+
+const FEATURES: EntitlementFeature[] = [
+  { key: 'manual-labeling', audience: 'Teacher', kind: 'Toggle', unit: null },
+  { key: 'ai-classification', audience: 'Teacher', kind: 'Metered', unit: 'question' },
+  { key: 'book-import', audience: 'Teacher', kind: 'Metered', unit: 'book' },
+  { key: 'mock-exam', audience: 'Student', kind: 'Metered', unit: 'exam' },
 ];
 
 function plan(key: string, displayNameKey: string, monthlyPrice: number, trialDays: number | null,
@@ -36,6 +44,7 @@ describe('PlanPickerComponent (issue #1028)', () => {
     service = {
       plans: vi.fn().mockReturnValue(of(PLANS)),
       current: vi.fn().mockReturnValue(of(me)),
+      features: vi.fn().mockReturnValue(of(FEATURES)),
       startTrial: vi.fn(),
       checkout: vi.fn(),
     } as unknown as MockedObject<SubscriptionService>;
@@ -57,11 +66,23 @@ describe('PlanPickerComponent (issue #1028)', () => {
 
   it('renders a card per plan with its limits', () => {
     create();
-    expect(el().querySelectorAll('.plan-card').length).toBe(3);
+    expect(el().querySelectorAll('.plan-card').length).toBe(4);
     expect(card('free').textContent).toContain('Ücretsiz');
-    expect(card('free').textContent).toContain('Ayda 20');
-    expect(card('teacher-pro').textContent).toContain('Ayda 10');
+    expect(card('free').textContent).toContain('Ayda 20 soru');
+    expect(card('teacher-pro').textContent).toContain('Ayda 10 kitap');
     expect(card('trial').textContent).toContain('14 gün ücretsiz');
+  });
+
+  it('lists features in registry order, marks on/off ones as included and hides features not in the plan (issue #1093)', () => {
+    create();
+    const basic = card('teacher-basic');
+    const lines = [...basic.querySelectorAll('.limits li')].map((li) => li.textContent?.trim());
+    expect(lines.length).toBe(1);
+    expect(lines[0]).toContain('Elle soru işaretleme');
+    expect(basic.querySelector('mat-icon.included')).not.toBeNull();
+    expect(basic.textContent).not.toContain('Kitabı dijitale aktarma');
+    const pro = [...card('teacher-pro').querySelectorAll('.limits li span')].map((s) => s.textContent?.trim());
+    expect(pro).toEqual(['Yapay zekâ ile konu ve kazanım', 'Kitabı dijitale aktarma (PDF)']);
   });
 
   it('signup: "Ücretsiz devam et" emits null without calling the API', () => {

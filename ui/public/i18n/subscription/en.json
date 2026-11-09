@@ -11,19 +11,42 @@
   "plans": {
     "free": "Free",
     "trial": "Free trial",
-    "teacherPro": "Teacher Pro",
-    "studentPlus": "Student Plus"
+    "teacherPro": "Pro",
+    "studentPlus": "Student Plus",
+    "teacherBasic": "Basic",
+    "teacherEssential": "Essential",
+    "studentBasic": "Basic",
+    "studentEssential": "Essential",
+    "studentPro": "Pro"
   },
   "features": {
-    "book-import": "Book import",
-    "ai-classification": "AI classification",
+    "book-import": "Book import (PDF)",
+    "ai-classification": "AI topic and outcome tagging",
     "mock-exam": "Mock exams",
-    "quick-add": "Quick add (photos)"
+    "quick-add": "Quick add from a photo",
+    "manual-labeling": "Manual question labeling",
+    "auto-detect": "Automatic question and option detection",
+    "canvas-ai": "AI help while labeling",
+    "question-generation": "AI question generation",
+    "activity-editor": "Interactive activity editor",
+    "flashcard-sets": "Flashcard sets",
+    "coach-panel": "Coach panel",
+    "print-test": "Print tests",
+    "mixed-mini": "Mixed mini exams",
+    "practice": "Practice tests by topic",
+    "self-activity": "Self-chosen activities",
+    "study-tools": "Study tools (pages, mistakes, flashcards)",
+    "analytics": "Detailed analytics (topics, progress, outcomes)",
+    "messaging": "Messaging",
+    "tutoring": "Tutoring and bookings",
+    "live-lesson": "Live lessons"
   },
   "limits": {
     "unlimited": "Unlimited",
     "none": "None",
-    "perMonth": "{{ count }} a month"
+    "perMonth": "{{ count }} a month",
+    "included": "Included",
+    "perMonthUnit": "{{ count }} {{ unit }} / month"
   },
   "actions": {
     "continueFree": "Continue for free",
@@ -147,5 +170,15 @@
       "schoolNotFound": "School not found.",
       "queryTooShort": "Type at least 2 characters."
     }
+  },
+  "units": {
+    "question": "questions",
+    "call": "requests",
+    "photo": "photos",
+    "book": "books",
+    "exam": "exams",
+    "test": "tests",
+    "activity": "activities",
+    "lesson": "lessons"
   }
 }

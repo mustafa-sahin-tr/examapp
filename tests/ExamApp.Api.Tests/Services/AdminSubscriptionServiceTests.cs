@@ -39,7 +39,7 @@ public class AdminSubscriptionServiceTests : IDisposable
         _clock.Now = _clock.Now.AddDays(1);
         var end = _clock.Now.AddMonths(1);
         await using (var ctx = _db.NewContext())
-            (await Entitlements(ctx).AssignPlanAsync(UserId, SubscriptionPlan.StudentPlusKey, null, end, AdminId)).ShouldBe(AssignPlanError.None);
+            (await Entitlements(ctx).AssignPlanAsync(UserId, SubscriptionPlan.StudentProKey, null, end, AdminId)).ShouldBe(AssignPlanError.None);
 
         var audits = await AuditsAsync();
         audits.Count.ShouldBe(2);
@@ -51,7 +51,7 @@ public class AdminSubscriptionServiceTests : IDisposable
             a => a.SchoolId.ShouldBeNull());
         audits[1].ShouldSatisfyAllConditions(
             a => a.FromPlanKey.ShouldBe(SubscriptionPlan.TeacherProKey),
-            a => a.ToPlanKey.ShouldBe(SubscriptionPlan.StudentPlusKey),
+            a => a.ToPlanKey.ShouldBe(SubscriptionPlan.StudentProKey),
             a => a.ValidFromUtc.ShouldBe(_clock.Now),
             a => a.ValidToUtc.ShouldBe(end),
             a => a.OccurredAtUtc.ShouldBe(_clock.Now));
@@ -78,7 +78,7 @@ public class AdminSubscriptionServiceTests : IDisposable
             await Entitlements(ctx).AssignPlanAsync(UserId, SubscriptionPlan.TeacherProKey, _clock.Now.AddDays(-3), null, AdminId);
         }
         await using (var ctx = _db.NewContext())
-            await Entitlements(ctx).AssignPlanAsync(UserId, SubscriptionPlan.StudentPlusKey, _clock.Now.AddDays(10), null, AdminId);
+            await Entitlements(ctx).AssignPlanAsync(UserId, SubscriptionPlan.StudentProKey, _clock.Now.AddDays(10), null, AdminId);
 
         await using (var ctx = _db.NewContext())
             (await Entitlements(ctx).EndPlanAsync(UserId, AdminId)).ShouldBeTrue();
@@ -172,7 +172,7 @@ public class AdminSubscriptionServiceTests : IDisposable
     [Theory]
     [InlineData(SubscriptionPlan.TeacherProKey, SchoolPlanAudience.Students)]
     [InlineData(SubscriptionPlan.TeacherProKey, SchoolPlanAudience.All)]
-    [InlineData(SubscriptionPlan.StudentPlusKey, SchoolPlanAudience.Teachers)]
+    [InlineData(SubscriptionPlan.StudentProKey, SchoolPlanAudience.Teachers)]
     public async Task Bulk_assign_rejects_a_plan_for_the_other_audience(string planKey, SchoolPlanAudience audience)
     {
         var schoolId = await SeedSchoolAsync();

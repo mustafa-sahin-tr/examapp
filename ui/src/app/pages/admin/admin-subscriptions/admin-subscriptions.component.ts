@@ -112,6 +112,13 @@ export class AdminSubscriptionsComponent implements OnInit {
     return planNameKey(this.plans().find((p) => p.key === (planKey ?? FREE_PLAN_KEY))?.displayNameKey);
   }
 
+  /** #1093: öğretmen ve öğrencinin üç planı aynı adı taşır (Basic, Essential, Pro); admin listelerinde kitle önüne yazılır. */
+  planLabel(t: (key: string) => string, planKey: string | null): string {
+    const plan = this.plans().find((p) => p.key === (planKey ?? FREE_PLAN_KEY));
+    const name = t(planNameKey(plan?.displayNameKey));
+    return plan?.audience === 'Teacher' || plan?.audience === 'Student' ? `${t('admin.roles.' + plan.audience)} · ${name}` : name;
+  }
+
   search(): void {
     if (!this.canSearch()) return;
     this.searching.set(true);

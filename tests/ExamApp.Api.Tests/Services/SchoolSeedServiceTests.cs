@@ -1,3 +1,4 @@
+using System.IO;
 using System.Text;
 using ExamApp.Api.Data;
 using ExamApp.Api.Services.Schools.Seed;
@@ -148,6 +149,62 @@ public class SchoolSeedServiceTests : IDisposable
         saved.ShouldNotContain(s => s.Name.Contains("Lisesi") || s.Name.Contains("İmam Hatip") || s.Name.Contains("Nilüfer"));
         saved.Single(s => s.ExternalCode == "100004").Name.ShouldBe("Fevzi Çakmak, Cumhuriyet Ortaokulu"); // tırnaklı alan
         saved.Single(s => s.ExternalCode == "100005").District!.Name.ShouldBe("Kağızman");
+    }
+
+    [Fact]
+    public async Task Production_runs_only_with_explicit_permission()
+    {
+        await SeedReferenceAsync();
+        await using var ctx = _db.NewContext();
+
+        var result = await NewService(ctx, "Production").RunAsync(new SchoolSeedOptions
+        {
+            Provinces = ["Kars"],
+            AllowProduction = true,
+            DryRun = true
+        });
+
+        result.Added.ShouldBeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task Reads_all_provinces_from_a_local_file_without_codes()
+    {
+        await SeedReferenceAsync();
+        var file = Path.GetTempFileName();
+        try
+        {
+            await File.WriteAllTextAsync(file,
+                "il,ilce,okul_adi,kurum_kodu,okul_turu,web_sitesi,adres,telefon,harita,cekim_tarihi\n" +
+                "KARS,Merkez,ÖZEL KARS TED KOLEJİ ORTAOKULU,,Ortaokul,,,,,\n" +
+                "ANTALYA,MURATPAŞA,FMV ÖZEL MESLEKİ VE TEKNİK ANADOLU LİSESİ,,Lise,,,,,\n" +
+                "ANTALYA,MURATPAŞA,ÖZEL EĞİTİMDE ATILIM KOLEJİ ORTAOKULU,,Ortaokul,,,,,\n");
+
+            var options = new SchoolSeedOptions
+            {
+                AllProvinces = true,
+                SourceFile = file,
+                Kinds = new HashSet<SchoolSeedKind> { SchoolSeedKind.Ortaokul, SchoolSeedKind.Lise }
+            };
+            await using var ctx = _db.NewContext();
+            var result = await NewService(ctx).RunAsync(options);
+
+            result.Source.ShouldBe(file);
+            var saved = await _db.NewContext().Schools.Select(s => s.Name).ToListAsync();
+            saved.ShouldBe(
+                ["Özel Kars TED Koleji Ortaokulu", "FMV Özel Mesleki ve Teknik Anadolu Lisesi", "Özel Eğitimde Atılım Koleji Ortaokulu"],
+                ignoreOrder: true);
+
+            // Kurum kodu yok: ikinci çalıştırma il + ilçe + adla tekrarı yakalar.
+            await using var again = _db.NewContext();
+            var second = await NewService(again).RunAsync(options);
+            second.Added.ShouldBe(0);
+            second.SkippedExisting.ShouldBe(3);
+        }
+        finally
+        {
+            File.Delete(file);
+        }
     }
 
     [Fact]

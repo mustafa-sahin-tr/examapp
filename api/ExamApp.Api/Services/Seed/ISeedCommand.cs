@@ -17,6 +17,9 @@ public interface ISeedCommand
 
     bool ShowHelp { get; }
 
+    /// <summary>Komut, ortam guard'ına rağmen Production'da çalışmaya açıkça izinli mi?</summary>
+    bool AllowProduction => false;
+
     /// <summary>Bekleyen migration'ları ve referans seed'ini atla.</summary>
     bool NoMigrate { get; }
 

@@ -72,6 +72,9 @@ public class SchoolSeedParsingTests
     [InlineData("Ahmet KABAKLI Ortaokulu", "Ahmet KABAKLI Ortaokulu")]
     [InlineData("II. Abdülhamid Han Ortaokulu", "II. Abdülhamid Han Ortaokulu")]
     [InlineData("Dr.Hüseyin Vural İlkokulu", "Dr.Hüseyin Vural İlkokulu")]
+    [InlineData("TED ÖZEL ADANA KOLEJİ ANADOLU LİSESİ", "TED Özel Adana Koleji Anadolu Lisesi")]
+    [InlineData("ÖZEL ATAŞEHİR BİLİMLER AKADEMİSİ (MBA) İLKOKULU", "Özel Ataşehir Bilimler Akademisi (MBA) İlkokulu")]
+    [InlineData("ÖZEL AŞAMA MESLEKİ VE TEKNİK ANADOLU LİSESİ", "Özel Aşama Mesleki ve Teknik Anadolu Lisesi")]
     public void Normalize_applies_turkish_title_case_rules(string raw, string expected)
     {
         SchoolNameNormalizer.Normalize(raw).ShouldBe(expected);

@@ -31,6 +31,7 @@ public sealed record SchoolSeedCommand(SchoolSeedOptions Options, string? Connec
 
     public string CommandName => Name;
     public string UsageText => Usage;
+    public bool AllowProduction => Options.AllowProduction;
 
     Task<int> ExamApp.Api.Services.Seed.ISeedCommand.RunAsync(IServiceProvider services, IHostEnvironment environment)
         => RunAsync(services, environment, this);
@@ -42,6 +43,9 @@ public sealed record SchoolSeedCommand(SchoolSeedOptions Options, string? Connec
           --limit <N>               İl başına en fazla N okul — ada göre sıralı ilk N (varsayılan: sınırsız)
           --types <ilkokul,ortaokul,lise> Tür seçimi (varsayılan: ilkokul, ortaokul)
           --include-imam-hatip      "İmam Hatip Ortaokulu" kayıtlarını Ortaokul olarak dahil et
+          --all-provinces           Province tablosundaki bütün iller (--provinces yerine)
+          --source-file <yol>       Listeyi sabit kaynak yerine bu yerel CSV'den oku (aynı sütunlar)
+          --allow-production        Production'da çalışmaya izin ver (okul listesi referans verisidir)
           --dry-run                 Hiçbir şey yazma, yalnızca raporla
           --connection <conn-str>   ConnectionStrings:DefaultConnection yerine kullanılacak bağlantı
                                     (tercih edilen yol: ConnectionStrings__DefaultConnection ortam değişkeni)
@@ -67,6 +71,9 @@ public sealed record SchoolSeedCommand(SchoolSeedOptions Options, string? Connec
         int? limit = null;
         HashSet<SchoolSeedKind>? kinds = null;
         var includeImamHatip = false;
+        var allProvinces = false;
+        string? sourceFile = null;
+        var allowProduction = false;
         var dryRun = false;
         string? connection = null;
         var help = false;
@@ -98,6 +105,15 @@ public sealed record SchoolSeedCommand(SchoolSeedOptions Options, string? Connec
                 case "--include-imam-hatip":
                     includeImamHatip = true;
                     break;
+                case "--all-provinces":
+                    allProvinces = true;
+                    break;
+                case "--source-file":
+                    sourceFile = TakeValue(args, ref i, arg);
+                    break;
+                case "--allow-production":
+                    allowProduction = true;
+                    break;
                 case "--dry-run":
                     dryRun = true;
                     break;
@@ -120,6 +136,9 @@ public sealed record SchoolSeedCommand(SchoolSeedOptions Options, string? Connec
         var options = new SchoolSeedOptions
         {
             Provinces = provinces,
+            AllProvinces = allProvinces,
+            SourceFile = sourceFile,
+            AllowProduction = allowProduction,
             LimitPerProvince = limit,
             Kinds = kinds ?? new HashSet<SchoolSeedKind> { SchoolSeedKind.Ilkokul, SchoolSeedKind.Ortaokul },
             IncludeImamHatip = includeImamHatip,
@@ -152,7 +171,7 @@ public sealed record SchoolSeedCommand(SchoolSeedOptions Options, string? Connec
             return ExitOk;
         }
 
-        if (!SchoolSeedService.IsAllowedEnvironment(environment))
+        if (!SchoolSeedService.IsAllowedEnvironment(environment) && !command.Options.AllowProduction)
         {
             logger.LogError("seed-schools reddedildi: ortam '{Environment}' (yalnızca Development/Staging).",
                 environment.EnvironmentName);

@@ -45,8 +45,8 @@ var builder = WebApplication.CreateBuilder(seedCommand is null ? args : []);
 if (seedCommand is not null)
 {
     // Ortam guard'ı — host BUILD EDİLMEDEN, Migrate()/ReferenceDataSeed çalışmadan, --connection
-    // override'ı uygulanmadan. Production'da hedef DB'ye hiç dokunulmaz.
-    if (!SeedCommands.IsAllowedEnvironment(builder.Environment))
+    // override'ı uygulanmadan. Production'da hedef DB'ye hiç dokunulmaz (seed-schools --allow-production hariç).
+    if (!SeedCommands.IsAllowedEnvironment(builder.Environment) && !seedCommand.AllowProduction)
     {
         Console.Error.WriteLine(SeedCommands.RefusalMessage(seedCommand.CommandName, builder.Environment));
         return SeedCommands.ExitEnvironmentRefused;
@@ -381,7 +381,7 @@ builder.Services.Configure<ExamApp.Api.Services.Classifier.GeminiCacheOptions>(
 builder.Services.AddScoped<ExamApp.Api.Services.Taxonomy.ITaxonomyService, ExamApp.Api.Services.Taxonomy.TaxonomyService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Schools.ISchoolService, ExamApp.Api.Services.Schools.SchoolService>();
 // Test verisi: MEB türevi okul listesi içe aktarma (issue #216). Yalnızca Development/Staging'de kayıt olur.
-builder.Services.AddSchoolSeed(builder.Environment);
+builder.Services.AddSchoolSeed(builder.Environment, seedCommand?.AllowProduction == true);
 // Test verisi: okula bağlı öğretmen hesapları (issue #217). Yalnızca Development/Staging'de kayıt olur.
 builder.Services.AddTeacherSeed(builder.Environment);
 builder.Services.AddScoped<ExamApp.Api.Services.Locations.ILocationService, ExamApp.Api.Services.Locations.LocationService>();

@@ -287,6 +287,13 @@ deploy/scripts/demo.sh backup  # harici diske; son 14 yedek kalır
   `localhost` kendilerini gösterir. Bu yüzden API servisleri `1.1.1.1` kullanır, Mac'in DNS önbelleğine bağlı kalmaz.
 - **İlk admin:** Kayıt ekranından hesap açılır, ardından Keycloak'ta `Admin` realm rolü verilir (`kcadm.sh add-roles`) ve
   `auth_db."Users"."Role"` `Admin` yapılır. Yeniden girişte geçerli olur.
+- **Okul listesi:** `demo.sh seed-schools [--dry-run]` devlet okullarını sabit kaynaktan, özel okulları yerel CSV'den
+  yükler; tekrar çalıştırmak güvenlidir. CSV repoda durmaz (repo herkese açık), yeri `DEMO_PRIVATE_SCHOOLS_CSV`, varsayılan
+  harici diskte `Builds/examapp/private-schools/ozel-okullar.csv`. Yenilemek için kayıtlı sayfalar
+  `deploy/scripts/private-schools-csv.py <html-dizini> <csv>` ile çevrilir. Kaynak site yapay zeka botlarını
+  `robots.txt` ile engeller: sayfaları bir insan indirir, ajan istek atmaz.
+- **Production'a okul yükleme:** `seed-schools` yalnız `--allow-production` ile çalışır. Kurmadan önce özel okul listesini
+  yenile; kullanım izni için CİMER cevabına ve hukuk kontrolüne bak.
 - **Herkese açılmadan önce:** Demo checkout kapatılmalı, hesap silme eklenmeli, hukuk ve içerik lisansı tamamlanmalı.
 
 ## Notlar / Bilinen Noktalar

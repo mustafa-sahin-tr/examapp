@@ -165,6 +165,7 @@
     "back": "Ana sayfaya dön",
     "title": "LGS ve YKS puan hesaplama",
     "intro": "Doğru ve yanlış sayılarını gir, netlerini ve tahmini puanını gör. Hesap açman gerekmez.",
+    "introSignedIn": "Doğru ve yanlış sayılarını gir, netlerini ve tahmini puanını gör.",
     "examPicker": "Sınav seç",
     "exams": {
       "lgs": "LGS",

@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -46,6 +46,8 @@ export function examForGrade(level: number | null | undefined): TargetExam | nul
 })
 export class TargetGoalCardComponent {
   readonly childId = input<number | null>(null);
+  /** Hedef yüklenince ya da değişince; Hedefim sayfası gelişimi buna göre çizer. */
+  readonly goalChange = output<TargetGoal>();
 
   private readonly service = inject(TargetGoalService);
   private readonly localeService = inject(LocaleService);
@@ -120,6 +122,7 @@ export class TargetGoalCardComponent {
       .subscribe((goal) => {
         this.goal.set(goal);
         this.loading.set(false);
+        this.goalChange.emit(goal);
       });
 
     this.search$
@@ -151,7 +154,7 @@ export class TargetGoalCardComponent {
     });
   }
 
-  protected reload(): void {
+  reload(): void {
     this.load$.next(this.childId());
   }
 
@@ -219,6 +222,7 @@ export class TargetGoalCardComponent {
         next: (goal) => {
           this.goal.set(goal);
           this.picking.set(false);
+          this.goalChange.emit(goal);
         },
         error: () => this.saveFailed.set(true),
       });
@@ -234,7 +238,11 @@ export class TargetGoalCardComponent {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: () => this.goal.set({ target: null, results: [] }),
+        next: () => {
+          const cleared = { target: null, results: [], gradeLevel: this.gradeLevel() };
+          this.goal.set(cleared);
+          this.goalChange.emit(cleared);
+        },
         error: () => this.saveFailed.set(true),
       });
   }

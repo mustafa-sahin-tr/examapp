@@ -11,7 +11,9 @@ import {
   TargetImportPreview,
   TargetImportRequest,
   TargetImportResult,
+  TargetMockResult,
   TargetProgram,
+  TargetProgramsForScore,
   TargetProgramPage,
   TargetProgramQuery,
 } from '../models/target-goal.model';
@@ -63,6 +65,17 @@ export class TargetGoalService {
   /** #891: il seçimi için katalogdaki iller. */
   programCities(exam: TargetExam): Observable<string[]> {
     return this.http.get<string[]>('/api/exam/student/me/target-goal/programs/cities', { params: { exam } });
+  }
+
+  /** Puan türünün şablonlarında son denemeler, eskiden yeniye. */
+  history(scoreType: string): Observable<TargetMockResult[]> {
+    return this.http.get<TargetMockResult[]>('/api/exam/student/me/target-goal/history', { params: { scoreType } });
+  }
+
+  programsForScore(scoreType: string, score: number, city?: string): Observable<TargetProgramsForScore> {
+    return this.http.get<TargetProgramsForScore>('/api/exam/student/me/target-goal/programs/for-score', {
+      params: toParams({ scoreType, score, city } as TargetProgramQuery),
+    });
   }
 
   searchPrograms(query: TargetProgramQuery): Observable<TargetProgramPage<TargetProgram>> {

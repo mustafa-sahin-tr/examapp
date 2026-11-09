@@ -43,6 +43,64 @@ public class TargetProgramServiceTests : IDisposable
         ScoreType = scoreType, Name = name, Institution = institution, City = "İstanbul", Year = 2026, MinimumScore = 450, SourceReference = "test source",
     };
 
+    private async Task SeedForScoreAsync()
+    {
+        await using var ctx = _db.NewContext();
+        var service = new TargetProgramService(ctx);
+        foreach (var (name, score, year, city, type) in new[]
+        {
+            ("Uzak Lise", 380m, 2026, "İstanbul", TargetScoreTypes.Lgs),
+            ("Rahat Lise", 420m, 2026, "İstanbul", TargetScoreTypes.Lgs),
+            ("Sınır Lise", 445m, 2026, "İstanbul", TargetScoreTypes.Lgs),
+            ("Ankara Sınır Lise", 455m, 2026, "Ankara", TargetScoreTypes.Lgs),
+            ("Zor Lise", 490m, 2026, "İstanbul", TargetScoreTypes.Lgs),
+            ("Yakın Zor Lise", 470m, 2026, "İstanbul", TargetScoreTypes.Lgs),
+            ("Eski Yıl Lise", 450m, 2025, "İstanbul", TargetScoreTypes.Lgs),
+            ("Üniversite", 450m, 2026, "İstanbul", TargetScoreTypes.Say),
+        })
+            await service.CreateAsync(new SaveTargetProgramDto
+            {
+                ScoreType = type, Name = name, Institution = type == TargetScoreTypes.Say ? "Örnek Üniversitesi" : "",
+                City = city, Year = year, MinimumScore = score, SourceReference = "https://example.test/kaynak",
+            }, 1);
+    }
+
+    [Fact]
+    public async Task ForScore_groups_the_latest_year_of_the_score_type_nearest_first()
+    {
+        await SeedForScoreAsync();
+        await using var ctx = _db.NewContext();
+
+        var result = await new TargetProgramService(ctx).ForScoreAsync(TargetScoreTypes.Lgs, 450, null, 20);
+
+        result.Year.ShouldBe(2026);
+        result.Safe.Select(p => p.Name).ShouldBe(["Rahat Lise", "Uzak Lise"]);
+        result.Borderline.Select(p => p.Name).ShouldBe(["Ankara Sınır Lise", "Sınır Lise"]);
+        result.Stretch.Select(p => p.Name).ShouldBe(["Yakın Zor Lise", "Zor Lise"]);
+    }
+
+    [Fact]
+    public async Task ForScore_filters_by_city_and_limits_each_group()
+    {
+        await SeedForScoreAsync();
+        await using var ctx = _db.NewContext();
+        var service = new TargetProgramService(ctx);
+
+        (await service.ForScoreAsync(TargetScoreTypes.Lgs, 450, "Ankara", 20)).Borderline.Select(p => p.Name).ShouldBe(["Ankara Sınır Lise"]);
+        (await service.ForScoreAsync(TargetScoreTypes.Lgs, 450, null, 1)).Safe.Select(p => p.Name).ShouldBe(["Rahat Lise"]);
+    }
+
+    [Fact]
+    public async Task ForScore_with_an_empty_catalog_has_no_year()
+    {
+        await using var ctx = _db.NewContext();
+
+        var result = await new TargetProgramService(ctx).ForScoreAsync(TargetScoreTypes.Lgs, 450, null, 20);
+
+        result.Year.ShouldBeNull();
+        result.Safe.ShouldBeEmpty();
+    }
+
     [Fact]
     public async Task Summary_counts_each_exam_and_its_latest_year()
     {

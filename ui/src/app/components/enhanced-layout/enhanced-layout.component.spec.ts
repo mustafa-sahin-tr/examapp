@@ -143,6 +143,20 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
         expect(student.visibleMenuItems().map((i) => i.route)).not.toContain('/study-links');
     });
 
+    it('visibleMenuItems_MyTarget_ForStudentOnlyWhenTheFeatureIsOn', () => {
+        const student = create(['Student']);
+        expect(student.visibleMenuItems().map((i) => i.route)).not.toContain('/my-target');
+
+        student['targetGoalsEnabled'].set(true);
+        expect(student.visibleMenuItems().map((i) => i.route)).toContain('/my-target');
+    });
+
+    it('visibleMenuItems_MyTarget_NotForTeacher', () => {
+        const teacher = create(['Teacher']);
+        teacher['targetGoalsEnabled'].set(true);
+        expect(teacher.visibleMenuItems().map((i) => i.route)).not.toContain('/my-target');
+    });
+
     it('visibleMenuItems_QuestionTransfer_OnlyForAdmin (issue #365)', () => {
         const admin = create(['Admin']);
         const item = admin.visibleMenuItems().find((i) => i.id === 'questiontransfer');

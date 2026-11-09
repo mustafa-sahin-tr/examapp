@@ -84,6 +84,45 @@ function collectAnswers(results: TargetMockResult[]): { answers: Record<string, 
   return { answers, labels };
 }
 
+/** Denemelerden tahmini puan; deneme eksikse, şablon eşleşmezse ya da baraj sağlanmadıysa null. */
+export function estimateScore(scoreType: string, results: TargetMockResult[]): number | null {
+  const required = requiredTemplates(scoreType);
+  const usable = results.filter((result) => result.complete && required.includes(result.templateCode));
+  if (required.some((code) => !usable.some((result) => result.templateCode === code))) {
+    return null;
+  }
+  const exam = examOf(scoreType);
+  const collected = collectAnswers(usable);
+  if (!exam || !collected) {
+    return null;
+  }
+  return estimateScores(exam, collected.answers).find((score) => score.id === scoreType)?.value ?? null;
+}
+
+export interface TargetProgressPoint {
+  id: number;
+  name: string;
+  finishedAt: string | null;
+  score: number;
+}
+
+/**
+ * Eskiden yeniye denemelerden puan serisi. AYT puanı TYT ister: her nokta, o ana kadarki son TYT ve son AYT ile hesaplanır;
+ * eksik şablonlu ya da barajı geçmeyen deneme nokta üretmez.
+ */
+export function targetProgress(scoreType: string, history: TargetMockResult[]): TargetProgressPoint[] {
+  const latest = new Map<string, TargetMockResult>();
+  const points: TargetProgressPoint[] = [];
+  for (const result of history) {
+    latest.set(result.templateCode, result);
+    const score = estimateScore(scoreType, [...latest.values()]);
+    if (score !== null) {
+      points.push({ id: result.id, name: result.name, finishedAt: result.finishedAt ?? null, score });
+    }
+  }
+  return points;
+}
+
 /**
  * Issue #695: son denemeden tahmini puan ve tabana kalan fark. Eksik puan, derslere kalan netleri oranında dağıtılır:
  * her ders kalan netinin aynı payını kazanır. Bu bir öneridir, tek doğru dağılım değildir; puan modeli #694 ile aynıdır.

@@ -25,6 +25,9 @@ public interface IMockExamService
 
     /// <summary>Issue #695: her şablon kodu için öğrencinin bütün oturumlarını bitirdiği en son deneme. Yetki çağıranın sorumluluğundadır.</summary>
     Task<List<MockExamResultDto>> GetLatestCompleteResultsAsync(int studentId, IReadOnlyCollection<string> templateCodes, CancellationToken ct);
+
+    /// <summary>Bütün oturumları bitmiş son <paramref name="take"/> deneme, eskiden yeniye; öğrencinin hedefe yaklaşımı için.</summary>
+    Task<List<MockExamResultDto>> GetCompleteResultHistoryAsync(int studentId, IReadOnlyCollection<string> templateCodes, int take, CancellationToken ct);
 }
 
 /// <summary>İstek kurallara uymuyor; <see cref="Exception.Message"/> ekranın çevirdiği koddur.</summary>
@@ -558,25 +561,9 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
     public async Task<List<MockExamResultDto>> GetLatestCompleteResultsAsync(int studentId, IReadOnlyCollection<string> templateCodes, CancellationToken ct)
     {
         var now = DateTime.UtcNow;
-        var sessions = db.Set<MockExamSession>().Where(s => s.MockExam.PublishedAt != null && templateCodes.Contains(s.MockExam.ExamTemplate.Code));
-        var attempts = await db.TestInstances.AsNoTracking()
-            .Where(i => i.StudentId == studentId)
-            .Join(sessions, i => i.WorksheetId, s => s.WorksheetId, (i, s) => new
-            {
-                s.MockExamId,
-                s.MockExam.ExamTemplate.Code,
-                SessionCount = s.MockExam.Sessions.Count,
-                i.Status, i.StartTime, i.EndTime, i.MaxDurationSeconds,
-            })
-            .ToListAsync(ct);
-
-        var latestIds = attempts
-            .GroupBy(a => a.MockExamId)
-            .Where(g => g.Count() == g.First().SessionCount
-                && g.All(a => TestTimeLimit.EffectiveStatus(a.Status, a.StartTime, a.MaxDurationSeconds, now) != WorksheetInstanceStatus.Started))
-            .Select(g => new { Id = g.Key, g.First().Code, FinishedAt = g.Max(a => a.EndTime ?? a.StartTime.AddSeconds(a.MaxDurationSeconds ?? 0)) })
+        var latestIds = (await CompleteAttemptsAsync(studentId, templateCodes, now, ct))
             .GroupBy(e => e.Code)
-            .Select(g => g.MaxBy(e => e.FinishedAt)!.Id)
+            .Select(g => g.MaxBy(e => e.FinishedAt).Id)
             .ToList();
 
         var exams = await db.Set<MockExam>().AsNoTracking()
@@ -590,6 +577,54 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
         foreach (var exam in exams)
             results.Add(await BuildResultAsync(exam, studentId, now, ct));
         return results;
+    }
+
+    public async Task<List<MockExamResultDto>> GetCompleteResultHistoryAsync(int studentId, IReadOnlyCollection<string> templateCodes, int take, CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        var recent = (await CompleteAttemptsAsync(studentId, templateCodes, now, ct))
+            .OrderByDescending(e => e.FinishedAt)
+            .Take(take)
+            .ToList();
+        var ids = recent.Select(e => e.Id).ToList();
+
+        var exams = await db.Set<MockExam>().AsNoTracking()
+            .Include(e => e.ExamTemplate)
+            .Include(e => e.Sessions).ThenInclude(s => s.TemplateSession).ThenInclude(s => s.Sections)
+            .Where(e => ids.Contains(e.Id))
+            .ToListAsync(ct);
+
+        var results = new List<MockExamResultDto>(exams.Count);
+        foreach (var attempt in recent.AsEnumerable().Reverse())
+        {
+            var result = await BuildResultAsync(exams.First(e => e.Id == attempt.Id), studentId, now, ct);
+            result.FinishedAt = attempt.FinishedAt;
+            results.Add(result);
+        }
+        return results;
+    }
+
+    private async Task<List<(int Id, string Code, DateTime FinishedAt)>> CompleteAttemptsAsync(
+        int studentId, IReadOnlyCollection<string> templateCodes, DateTime now, CancellationToken ct)
+    {
+        var sessions = db.Set<MockExamSession>().Where(s => s.MockExam.PublishedAt != null && templateCodes.Contains(s.MockExam.ExamTemplate.Code));
+        var attempts = await db.TestInstances.AsNoTracking()
+            .Where(i => i.StudentId == studentId)
+            .Join(sessions, i => i.WorksheetId, s => s.WorksheetId, (i, s) => new
+            {
+                s.MockExamId,
+                s.MockExam.ExamTemplate.Code,
+                SessionCount = s.MockExam.Sessions.Count,
+                i.Status, i.StartTime, i.EndTime, i.MaxDurationSeconds,
+            })
+            .ToListAsync(ct);
+
+        return attempts
+            .GroupBy(a => a.MockExamId)
+            .Where(g => g.Count() == g.First().SessionCount
+                && g.All(a => TestTimeLimit.EffectiveStatus(a.Status, a.StartTime, a.MaxDurationSeconds, now) != WorksheetInstanceStatus.Started))
+            .Select(g => (g.Key, g.First().Code, g.Max(a => a.EndTime ?? a.StartTime.AddSeconds(a.MaxDurationSeconds ?? 0))))
+            .ToList();
     }
 
     private async Task<MockExamResultDto> BuildResultAsync(MockExam exam, int studentId, DateTime now, CancellationToken ct)

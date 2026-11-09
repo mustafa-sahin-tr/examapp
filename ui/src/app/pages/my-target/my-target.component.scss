@@ -1,0 +1,115 @@
+.mt {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.mt__head h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--ms-text-strong);
+}
+
+.mt__head p,
+.mt__hint {
+  margin: 0.25rem 0 0;
+  color: var(--ms-text-medium);
+}
+
+.mt__section {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--ms-border);
+  border-radius: 12px;
+}
+
+.mt__section h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  color: var(--ms-text-strong);
+}
+
+.mt__state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.5rem 0;
+  font-size: 0.875rem;
+}
+
+.mt__trend {
+  margin: 0.5rem 0;
+  font-weight: 600;
+  color: var(--ms-text-strong);
+}
+
+.mt__note,
+.mt__meta {
+  font-size: 0.8125rem;
+  color: var(--ms-text-medium);
+}
+
+.mt__note {
+  margin: 0.5rem 0 0;
+}
+
+.mt__table {
+  width: 100%;
+  margin-top: 0.75rem;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.mt__table th,
+.mt__table td {
+  padding: 0.375rem 0.5rem;
+  border-bottom: 1px solid var(--ms-border-weak);
+  text-align: start;
+}
+
+.mt__table .mt__num {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.mt__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0.75rem 0;
+}
+
+.mt__filters mat-form-field {
+  flex: 1 1 180px;
+}
+
+.mt__group {
+  margin: 1rem 0 0.25rem;
+  padding: 0;
+  font-size: 1rem;
+  color: var(--ms-text-strong);
+}
+
+.mt__programs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mt__program {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--ms-border-weak);
+}
+
+.mt__program-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}

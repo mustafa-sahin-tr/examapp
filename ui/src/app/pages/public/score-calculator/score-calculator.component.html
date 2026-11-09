@@ -1,7 +1,9 @@
 <main class="calc" *transloco="let t; prefix: 'public-pages.scoreCalculator'">
-  <a class="back" routerLink="/welcome">{{ t('back') }}</a>
+  @if (!embedded) {
+    <a class="back" routerLink="/welcome">{{ t('back') }}</a>
+  }
   <h1>{{ t('title') }}</h1>
-  <p class="intro">{{ t('intro') }}</p>
+  <p class="intro">{{ t(embedded ? 'introSignedIn' : 'intro') }}</p>
 
   <mat-button-toggle-group [value]="examId()" (change)="selectExam($event.value)" [attr.aria-label]="t('examPicker')">
     @for (item of exams; track item.id) {
@@ -78,8 +80,10 @@
   </section>
   </div>
 
-  <section class="cta">
-    <p>{{ t('ctaText') }}</p>
-    <a mat-flat-button [href]="registerUrl">{{ t('ctaButton') }}</a>
-  </section>
+  @if (!embedded) {
+    <section class="cta">
+      <p>{{ t('ctaText') }}</p>
+      <a mat-flat-button [href]="registerUrl">{{ t('ctaButton') }}</a>
+    </section>
+  }
 </main>

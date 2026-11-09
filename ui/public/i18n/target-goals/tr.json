@@ -114,5 +114,44 @@
       "yks": "{{count}} program",
       "allYears": "Tüm yıllar: {{count}}"
     }
+  },
+  "page": {
+    "title": "Hedefim",
+    "subtitle": "Hedefin, denemeden denemeye gelişimin ve puanınla girebileceğin okullar."
+  },
+  "progress": {
+    "title": "Denemelerdeki gelişimin",
+    "empty": "Henüz tamamlanmış denemen yok. Deneme çözdükçe puanın burada görünecek.",
+    "loadFailed": "Denemelerin yüklenemedi.",
+    "closer": "Son denemede hedefe {{points}} puan yaklaştın. Kalan: {{remaining}} puan.",
+    "further": "Son denemede hedeften {{points}} puan uzaklaştın. Kalan: {{remaining}} puan.",
+    "same": "Son denemede fark değişmedi. Kalan: {{remaining}} puan.",
+    "reached": "Son denemende hedefinin tabanına ulaştın.",
+    "targetLine": "Hedef: {{score}}",
+    "chartLabel": "Denemelere göre tahmini puan",
+    "exam": "Deneme",
+    "date": "Tarih",
+    "score": "Tahmini puan",
+    "toTarget": "Hedefe fark"
+  },
+  "forScore": {
+    "title": "Bu puanla hangi okullar?",
+    "hint": "Son deneme puanın hazır gelir; başka bir puan da yazabilirsin.",
+    "scoreType": "Puan türü",
+    "score": "Puan",
+    "prompt": "Okulları görmek için bir puan yaz ya da deneme çöz.",
+    "basis": "Liste {{year}} taban puanlarına göredir; yerleşmeyi garanti etmez, tabanlar her yıl değişir.",
+    "safe": "Tabanı puanının altında",
+    "borderline": "Sınırda (±10 puan)",
+    "stretch": "Biraz daha çalışırsan",
+    "choose": "Hedef yap",
+    "current": "Şu anki hedefin"
+  },
+  "scoreTypes": {
+    "lgs": "LGS",
+    "tyt": "TYT",
+    "say": "Sayısal",
+    "ea": "Eşit Ağırlık",
+    "soz": "Sözel"
   }
 }

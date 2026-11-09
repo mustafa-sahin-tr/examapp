@@ -15,7 +15,6 @@ import { STUDENT_SETTINGS_URL } from '../../shared/guards/settings.guard';
 import { currentUserId } from '../../shared/utils/current-user-id.util';
 import { LeaderboardComponent } from '../../shared/components/leaderboard/leaderboard.component';
 import { OutcomeMasteryCardComponent } from '../../shared/components/outcome-mastery-card/outcome-mastery-card.component';
-import { TargetGoalCardComponent } from '../../shared/components/target-goal-card/target-goal-card.component';
 import { TopicProgressCardComponent } from '../../shared/components/topic-progress-card/topic-progress-card.component';
 import { WeakTopicsCardComponent } from '../../shared/components/weak-topics-card/weak-topics-card.component';
 
@@ -41,7 +40,6 @@ const SCOPE = 'student-profile';
     TranslocoDirective,
     LeaderboardComponent,
     OutcomeMasteryCardComponent,
-    TargetGoalCardComponent,
     TopicProgressCardComponent,
     WeakTopicsCardComponent,
   ],

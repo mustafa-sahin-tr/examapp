@@ -15,6 +15,14 @@ export interface TargetProgram {
   sourceReference: string | null;
 }
 
+/** "Bu puanla hangi okullar": puan türünün son yılı; katalog boşsa `year` null. */
+export interface TargetProgramsForScore {
+  year: number | null;
+  safe: TargetProgram[];
+  borderline: TargetProgram[];
+  stretch: TargetProgram[];
+}
+
 export interface AdminTargetProgram extends TargetProgram {
   inUse: boolean;
 }
@@ -28,6 +36,8 @@ export interface TargetProgramQuery {
   exam?: TargetExam;
   /** #891: il süzgeci (katalogdaki yazımla). */
   city?: string;
+  scoreType?: string;
+  score?: number;
   year?: number;
   search?: string;
   skip?: number;
@@ -66,6 +76,8 @@ export interface TargetMockResult {
   complete: boolean;
   sections: TargetMockSection[];
   net: number;
+  /** Yalnız geçmiş listesinde dolu. */
+  finishedAt?: string | null;
 }
 
 export interface TargetGoal {

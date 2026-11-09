@@ -212,6 +212,35 @@ public class TargetGoalEndpointsTests(IntegrationApiFactory factory) : Integrati
     }
 
     [Fact]
+    public async Task History_lists_finished_exams_oldest_first_and_rejects_an_unknown_score_type()
+    {
+        var studentId = await SeedStudentAsync();
+        var older = await SeedExamAsync(studentId, "Eski", DateTime.UtcNow.AddDays(-10));
+        var newer = await SeedExamAsync(studentId, "Son", DateTime.UtcNow.AddDays(-1));
+        await SeedExamAsync(studentId, "Süren", null);
+        var student = await StudentAsync();
+
+        var history = await student.GetFromJsonAsync<List<MockExamResultDto>>($"{StudentApi}/history?scoreType=lgs", Json);
+
+        history!.Select(x => x.Id).ShouldBe([older, newer]);
+        (await student.GetAsync($"{StudentApi}/history?scoreType=nope")).StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task For_score_groups_programs_and_rejects_an_out_of_range_score()
+    {
+        await SeedStudentAsync();
+        var program = await SeedProgramAsync();
+        var student = await StudentAsync();
+
+        var result = await student.GetFromJsonAsync<TargetProgramsForScoreDto>($"{StudentApi}/programs/for-score?scoreType=lgs&score=480", Json);
+
+        result!.Year.ShouldBe(2026);
+        result.Safe.ShouldHaveSingleItem().Id.ShouldBe(program);
+        (await student.GetAsync($"{StudentApi}/programs/for-score?scoreType=lgs&score=1001")).StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task Parent_reads_a_linked_child_without_the_source_and_with_an_audit_row()
     {
         var studentId = await SeedStudentAsync();

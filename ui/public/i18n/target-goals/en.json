@@ -114,5 +114,44 @@
       "yks": "{{count}} programmes",
       "allYears": "All years: {{count}}"
     }
+  },
+  "page": {
+    "title": "My target",
+    "subtitle": "Your target, your progress from one mock exam to the next, and the schools your score can reach."
+  },
+  "progress": {
+    "title": "Your mock exam progress",
+    "empty": "You have no finished mock exams yet. Your score will appear here as you take them.",
+    "loadFailed": "Your mock exams could not be loaded.",
+    "closer": "You moved {{points}} points closer to your target in the last mock exam. Remaining: {{remaining}} points.",
+    "further": "You moved {{points}} points away from your target in the last mock exam. Remaining: {{remaining}} points.",
+    "same": "The gap did not change in the last mock exam. Remaining: {{remaining}} points.",
+    "reached": "You reached your target's minimum score in your last mock exam.",
+    "targetLine": "Target: {{score}}",
+    "chartLabel": "Estimated score by mock exam",
+    "exam": "Mock exam",
+    "date": "Date",
+    "score": "Estimated score",
+    "toTarget": "Gap to target"
+  },
+  "forScore": {
+    "title": "Which schools with this score?",
+    "hint": "Your latest mock exam score is filled in; you can also type another score.",
+    "scoreType": "Score type",
+    "score": "Score",
+    "prompt": "Type a score or take a mock exam to see schools.",
+    "basis": "Based on {{year}} minimum scores. This does not guarantee placement; minimum scores change every year.",
+    "safe": "Minimum score below yours",
+    "borderline": "Borderline (±10 points)",
+    "stretch": "Within reach with more work",
+    "choose": "Set as target",
+    "current": "Your current target"
+  },
+  "scoreTypes": {
+    "lgs": "LGS",
+    "tyt": "TYT",
+    "say": "Science & Maths",
+    "ea": "Equal Weight",
+    "soz": "Verbal"
   }
 }

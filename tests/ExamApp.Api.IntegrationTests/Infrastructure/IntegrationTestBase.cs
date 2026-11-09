@@ -38,6 +38,15 @@ public abstract class IntegrationTestBase : IAsyncLifetime
             TablesToIgnore = ["__EFMigrationsHistory"],
         });
         await _respawner.ResetAsync(conn);
+
+        // Respawn plan kataloğunu da boşaltır; plansız her hak denetimi 0 döner (#1088). Seed kataloğu geri yüklenir.
+        await WithDbAsync(async db =>
+        {
+            db.SubscriptionPlans.AddRange(SubscriptionPlanSeed.Plans());
+            await db.SaveChangesAsync();
+            db.SubscriptionPlanFeatureLimits.AddRange(SubscriptionPlanSeed.Limits());
+            await db.SaveChangesAsync();
+        });
     }
 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;

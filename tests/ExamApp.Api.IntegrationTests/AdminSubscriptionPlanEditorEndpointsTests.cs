@@ -15,7 +15,7 @@ public class AdminSubscriptionPlanEditorEndpointsTests(IntegrationApiFactory fac
     private const string Url = "/api/admin/subscription-plans/" + PlanKey;
     private const int TeacherId = 51;
 
-    // Respawn plan tablolarını da boşaltır: test kendi planını ve öğretmen atamasını ekler.
+    // Test kendi planını (seed kataloğunun dışında) ve öğretmen atamasını ekler.
     private async Task SeedPlanAsync() => await WithDbAsync(async db =>
     {
         var plan = new SubscriptionPlan

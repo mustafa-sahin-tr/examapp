@@ -119,7 +119,13 @@ public static class SubscriptionPlanSeed
 
     public static void Apply(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<SubscriptionPlan>().HasData(
+        modelBuilder.Entity<SubscriptionPlan>().HasData(Plans());
+        modelBuilder.Entity<SubscriptionPlanFeatureLimit>().HasData(Limits());
+    }
+
+    /// <summary>Katalog satırları (seed). Entegrasyon testleri veritabanını boşalttıktan sonra kataloğu bunlarla geri yükler.</summary>
+    public static SubscriptionPlan[] Plans() =>
+        [
             Plan(FreePlanId, SubscriptionPlan.FreeKey, "Free", "free", SubscriptionPlanAudience.Any, 0m, null, 0),
             Plan(TrialPlanId, SubscriptionPlan.TrialKey, "Trial", "trial", SubscriptionPlanAudience.Any, 0m, DefaultTrialDays, 1),
             Plan(TeacherBasicPlanId, SubscriptionPlan.TeacherBasicKey, "Teacher Basic", "teacherBasic", SubscriptionPlanAudience.Teacher, 149m, null, 2),
@@ -128,9 +134,11 @@ public static class SubscriptionPlanSeed
             Plan(StudentBasicPlanId, SubscriptionPlan.StudentBasicKey, "Student Basic", "studentBasic", SubscriptionPlanAudience.Student, 99m, null, 5),
             Plan(StudentEssentialPlanId, SubscriptionPlan.StudentEssentialKey, "Student Essential", "studentEssential", SubscriptionPlanAudience.Student, 199m, null, 6),
             Plan(StudentProPlanId, SubscriptionPlan.StudentProKey, "Student Pro", "studentPro", SubscriptionPlanAudience.Student, 349m, null, 7),
-            Plan(StudentPlusPlanId, SubscriptionPlan.StudentPlusKey, "Student Plus", "studentPlus", SubscriptionPlanAudience.Student, 99m, null, 8, isActive: false));
+            Plan(StudentPlusPlanId, SubscriptionPlan.StudentPlusKey, "Student Plus", "studentPlus", SubscriptionPlanAudience.Student, 99m, null, 8, isActive: false),
+        ];
 
-        modelBuilder.Entity<SubscriptionPlanFeatureLimit>().HasData(
+    /// <inheritdoc cref="Plans"/>
+    public static SubscriptionPlanFeatureLimit[] Limits() =>
             new[]
             {
                 Limit(1, FreePlanId, EntitlementFeatures.BookImport, 0),
@@ -146,8 +154,7 @@ public static class SubscriptionPlanSeed
                 Limit(10, FreePlanId, EntitlementFeatures.QuickAdd, 5),
                 Limit(11, TrialPlanId, EntitlementFeatures.QuickAdd, 20),
                 Limit(12, TeacherProPlanId, EntitlementFeatures.QuickAdd, 200),
-            }.Concat(TierLimits.Select((l, i) => Limit(FirstTierLimitId + i, l.PlanId, l.Feature, l.Limit))).ToArray());
-    }
+            }.Concat(TierLimits.Select((l, i) => Limit(FirstTierLimitId + i, l.PlanId, l.Feature, l.Limit))).ToArray();
 
     private static SubscriptionPlan Plan(int id, string key, string name, string displayKey, SubscriptionPlanAudience audience,
         decimal price, int? trialDays, int sortOrder, bool isActive = true) => new()

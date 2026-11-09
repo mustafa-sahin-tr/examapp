@@ -12,7 +12,7 @@ import { BRAND_NAME } from '../../shared/brand';
   imports: [MatIconModule],
   templateUrl: './logout.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
-  styleUrl: './logout.component.scss',
+  styleUrl: '../../shared/auth-scene/auth-transition.scss',
 })
 export class LogoutComponent implements OnInit {
   private authService = inject(AuthService);

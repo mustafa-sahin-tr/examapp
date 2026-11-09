@@ -140,3 +140,5 @@ TestResults/
 docs-private/
 
 scratchpad/
+# Cloudflare Tunnel login certificate and credentials (#1065)
+deploy/cloudflared/

@@ -13,7 +13,8 @@ RUN test -n "$PROJECT_PATH"
 RUN dotnet restore "$PROJECT_PATH" --ignore-failed-sources --source https://api.nuget.org/v3/index.json
 RUN dotnet publish "$PROJECT_PATH" -c Release -o /app/publish /p:UseAppHost=false
 
-FROM mcr.microsoft.com/dotnet/runtime:${DOTNET_VERSION} AS runtime
+# aspnet, not runtime: OutboxPublisherService references Microsoft.AspNetCore.App.
+FROM mcr.microsoft.com/dotnet/aspnet:${DOTNET_VERSION} AS runtime
 WORKDIR /app
 
 COPY --from=build /app/publish/ ./

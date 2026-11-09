@@ -13,8 +13,11 @@
 
 	# Keycloak must be reachable on the public domain for OIDC flows.
 	# Serve it directly from Caddy (bypassing Ocelot) for common Keycloak paths.
-	@keycloak path /realms /realms/* /resources /resources/* /admin /admin/* /js /js/* /robots.txt
+	# /admin is not listed: Keycloak's admin console stays off the public domain (#369) and the path belongs to the app.
+	@keycloak path /realms /realms/* /auth/realms /auth/realms/* /resources /resources/* /js /js/* /robots.txt
 	handle @keycloak {
+		# The login redirect uses /auth/realms; going through the gateway would lose X-Forwarded-Proto.
+		uri strip_prefix /auth
 		reverse_proxy keycloak:8080 {
 			# Keycloak enforces HTTPS for external requests (realm ssl-required=external).
 			# In some setups the connection to Caddy may be HTTP (LB/Cloudflare in front),
@@ -27,12 +30,6 @@
 		}
 	}
 
-	# Expose MinIO admin console under /minio for production operations.
-	# handle_path strips the /minio prefix before proxying to console service.
-	handle_path /minio* {
-		reverse_proxy exam-minio:9001
-	}	
-
 	# Rewrite bare root to /welcome so Angular serves welcome page without URL change
 	handle / {
 		rewrite * /welcome
@@ -44,32 +41,3 @@
 		reverse_proxy ocelot-gateway:5678
 	}
 }
-
-# Optional dedicated host for MinIO console.
-# Example: if DOMAIN=staging.hedefokul.com, this serves minio.staging.hedefokul.com.
-minio.{$DOMAIN} {
-	encode gzip
-	{$CADDY_TLS}
-
-	reverse_proxy exam-minio:9001
-}
-
-# Optional dedicated host for pgAdmin.
-# Example: if DOMAIN=staging.hedefokul.com, this serves pgadmin.staging.hedefokul.com.
-pgadmin.{$DOMAIN} {
-	encode gzip
-	{$CADDY_TLS}
-
-	reverse_proxy exam-pgadmin:80
-}
-
-# Optional dedicated host for RabbitMQ Management.
-# Example: if DOMAIN=staging.hedefokul.com, this serves rabbitmq.staging.hedefokul.com.
-rabbitmq.{$DOMAIN} {
-	encode gzip
-	{$CADDY_TLS}
-
-	reverse_proxy exam-rabbitmq:15672
-}
-
-

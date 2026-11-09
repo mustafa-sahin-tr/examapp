@@ -47,7 +47,8 @@ until curl -sf -u "${ADMIN_AUTH}" "${RABBIT_URL}/api/overview" >/dev/null 2>&1; 
 done
 echo "rabbitmq-init: RabbitMQ management API is up"
 
-NS='ExamApp\.Foundation\.Contracts'
+# Backslashes are doubled because this ends up inside a JSON string; RabbitMQ 4 rejects invalid JSON escapes.
+NS='ExamApp\\.Foundation\\.Contracts'
 
 # Publisher event lists (must match OutboxEventRegistry entries actually
 # written by each DB's outbox — see the _comment fields in

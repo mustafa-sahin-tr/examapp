@@ -18,10 +18,12 @@ services:
     depends_on:
       - ocelot-gateway
     networks:
-      - exam-net
+      exam-net:
+        # Fixed IP: the gateway trusts X-Forwarded-For only from this address (ForwardedHeaders__KnownProxies__0).
+        ipv4_address: 172.30.0.11
 
   postgres:
-    image: postgres:14
+    image: postgres:18.3
     container_name: exam-postgres
     restart: unless-stopped
     environment:
@@ -30,7 +32,8 @@ services:
       # Keep default DB minimal; we create per-service DBs via init scripts
       POSTGRES_DB: postgres
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # Postgres 18+ keeps its data in a versioned folder below this path.
+      - postgres_data:/var/lib/postgresql
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d postgres']
@@ -41,7 +44,7 @@ services:
       - exam-net
 
   redis:
-    image: redis:7
+    image: redis:8.6
     container_name: exam-redis
     restart: unless-stopped
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
@@ -51,7 +54,7 @@ services:
       - exam-net
 
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:4.3-management
     container_name: exam-rabbitmq
     restart: unless-stopped
     environment:
@@ -142,13 +145,13 @@ services:
       - exam-net
 
   keycloak:
-    image: quay.io/keycloak/keycloak:24.0.1
+    image: quay.io/keycloak/keycloak:26.7.0
     container_name: exam-keycloak
     restart: unless-stopped
     command: start --import-realm
     environment:
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
 
       KC_DB: postgres
       KC_DB_URL_HOST: postgres
@@ -157,9 +160,8 @@ services:
       KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
 
       KC_HTTP_ENABLED: 'true'
-      KC_PROXY: edge
       KC_PROXY_HEADERS: xforwarded
-      KC_HOSTNAME: ${DOMAIN}
+      KC_HOSTNAME: ${PUBLIC_BASE_URL}
       KC_HEALTH_ENABLED: 'true'
     volumes:
       # Drop your exported realm JSON(s) here (DO NOT commit them): deploy/keycloak/import/*.json
@@ -175,7 +177,9 @@ services:
     networks:
       - exam-net
 
+  # Optional: only the admin dev page and labeling suggestions use it. Enable with `--profile detector`.
   question-detector:
+    profiles: [detector]
     build:
       context: ..
       dockerfile: deploy/dockerfiles/question-detector.Dockerfile
@@ -198,7 +202,8 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:5079
       # Issue #333: görüşme sunucusu — UI CSP'si (angular-app CSP_JITSI_ORIGIN) ile aynı değişkenden.
-      Video__Jitsi__PublicBaseUrl: ${JITSI_PUBLIC_URL:-}
+      # An empty value fails startup validation; without Jitsi the option default applies and video calls stay off.
+      Video__Jitsi__PublicBaseUrl: ${JITSI_PUBLIC_URL:-http://localhost:8000}
       # Issue #440 (security re-review r3 M1): anonim veli aktivasyonu rate limit'i X-Forwarded-For'a yalnız sabit IP'li gateway'den gelen
       # istekte güvenir; Production'da boş/çözülemeyen değer açılışta durdurur. ocelot-gateway'in ipv4_address'i ve exam-net subnet'iyle eşli.
       ForwardedHeaders__KnownProxies__0: 172.30.0.10
@@ -243,6 +248,7 @@ services:
       RabbitMQ__Host: rabbitmq
       RabbitMQ__Username: exam_api
       RabbitMQ__Password: ${RABBITMQ_EXAM_API_PASSWORD}
+      Anthropic__ApiKey: ${ANTHROPIC_API_KEY}
     depends_on:
       postgres:
         condition: service_healthy
@@ -274,6 +280,8 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:5079
+      # The gateway's fixed IP; Production refuses to start without a trusted proxy.
+      ForwardedHeaders__KnownProxies__0: 172.30.0.10
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=auth_db;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       Jwt__Key: ${JWT_KEY}
       Server__BaseUrl: ${PUBLIC_BASE_URL}
@@ -349,9 +357,7 @@ services:
       # auth-api. Same value as exam-dotnet-api's AuthApiBaseUrl above.
       AuthApi__BaseUrl: http://auth-api:5079
       QuestionAnalyzer__AIActive: ${BADGE_AI_ACTIVE:-true}
-      Gemini__Model: ${GEMINI_MODEL:-models/gemini-3.5-flash-lite}
-      Gemini__CachedContent: ${GEMINI_CACHED_CONTENT}
-      Gemini__ApiKey: ${GEMINI_API_KEY}
+      Anthropic__ApiKey: ${ANTHROPIC_API_KEY}
     depends_on:
       postgres:
         condition: service_healthy
@@ -507,6 +513,8 @@ services:
       Keycloak__RedirectUri: ${PUBLIC_BASE_URL}/app/callback
       Cors__AllowedOrigins__0: ${PUBLIC_BASE_URL}
       Keycloak__Host: http://keycloak:8080
+      # Caddy's fixed IP; without it every client shares one rate limit bucket.
+      ForwardedHeaders__KnownProxies__0: 172.30.0.11
     depends_on:
       - angular-app
       - auth-ui
@@ -517,7 +525,6 @@ services:
       - minio
       - rabbitmq
       - redis
-      - question-detector
     networks:
       exam-net:
         # Issue #440 r3 M1: sabit IP — exam-dotnet-api'nin ForwardedHeaders__KnownProxies__0 değeri.

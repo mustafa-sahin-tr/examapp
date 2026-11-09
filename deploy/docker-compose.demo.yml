@@ -1,0 +1,51 @@
+# Closed demo on the owner's Mac behind a Cloudflare Tunnel (#1065). Overlay on docker-compose.prod.yml:
+#   deploy/scripts/demo.sh up
+# Own project, volumes and network; nothing is published except Caddy on loopback.
+name: hedefokul-demo
+
+services:
+  caddy:
+    ports: !override
+      - '127.0.0.1:8090:80'
+    volumes: !override
+      - ./Caddyfile.demo:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  # The Mac only has arm64 copies of MinIO, and the pinned digest is not pullable (see the go-live notes).
+  minio:
+    image: minio/minio:latest
+    pull_policy: never
+
+  minio-presign-init:
+    image: minio/minio:latest
+    pull_policy: never
+
+  # These validate login tokens against the public address; a public resolver keeps them independent of the Mac's DNS cache.
+  exam-dotnet-api:
+    dns: [1.1.1.1, 8.8.8.8]
+
+  auth-api:
+    dns: [1.1.1.1, 8.8.8.8]
+
+  exam-badge-api:
+    dns: [1.1.1.1, 8.8.8.8]
+
+  ocelot-gateway:
+    dns: [1.1.1.1, 8.8.8.8]
+
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.0
+    container_name: exam-cloudflared
+    restart: unless-stopped
+    profiles: [tunnel]
+    command: tunnel --config /etc/cloudflared/config.yml run
+    volumes:
+      # Created by `cloudflared tunnel login` and `tunnel create`, see deploy/README.md; git-ignored.
+      - ./cloudflared:/etc/cloudflared:ro
+    depends_on:
+      - caddy
+    networks:
+      exam-net:
+        # Caddy takes the client IP from Cf-Connecting-Ip only when the request comes from this address.
+        ipv4_address: 172.30.0.12

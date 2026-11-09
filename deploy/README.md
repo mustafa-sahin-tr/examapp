@@ -265,6 +265,30 @@ Eski image temizliği:
 docker image prune -f
 ```
 
+## Mac üzerinde kapalı demo (#1065)
+
+Sunucu kiralamadan, geliştirme ortamından ayrı veriyle `https://hedefokul.com` üzerinden demo. Mac açıkken çalışır.
+Yalnız test hesapları içindir: veri Mac'te durur ve hukuki hazırlık yapılmadı, gerçek öğrenci verisi girilmez.
+
+```bash
+deploy/scripts/demo.sh init    # .env.demo (rastgele secret'lar) + temiz realm; git'e girmez
+deploy/scripts/demo.sh build
+deploy/scripts/demo.sh up --tunnel
+deploy/scripts/demo.sh down    # veri kalır
+deploy/scripts/demo.sh backup  # harici diske; son 14 yedek kalır
+```
+
+- **Tünel:** `cloudflared tunnel login`, `tunnel create hedefokul-demo` ve `tunnel route dns` ile kurulur (Zero Trust kaydı
+  gerekmedi); sertifika, kimlik dosyası ve `config.yml` git'e girmeyen `deploy/cloudflared/` altındadır. `config.yml` tek
+  hostname'i `http://caddy:80`'e, gerisini 404'e yönlendirir. Yönetim arayüzleri tünele eklenmez.
+- **Realm:** Keycloak realm'i yalnız ilk açılışta içe aktarır. `PUBLIC_BASE_URL` veya SMTP değişirse `demo.sh init` sonrası demo
+  volume'leri silinip yeniden açılır (`hedefokul-demo_*`, yalnız demo verisi).
+- **DNS:** `localhost` ile giriş test edilemez; servisler token anahtarlarını `PUBLIC_BASE_URL` üzerinden alır ve konteynerden
+  `localhost` kendilerini gösterir. Bu yüzden API servisleri `1.1.1.1` kullanır, Mac'in DNS önbelleğine bağlı kalmaz.
+- **İlk admin:** Kayıt ekranından hesap açılır, ardından Keycloak'ta `Admin` realm rolü verilir (`kcadm.sh add-roles`) ve
+  `auth_db."Users"."Role"` `Admin` yapılır. Yeniden girişte geçerli olur.
+- **Herkese açılmadan önce:** Demo checkout kapatılmalı, hesap silme eklenmeli, hukuk ve içerik lisansı tamamlanmalı.
+
 ## Notlar / Bilinen Noktalar
 
 - Prod stack **tek giriş noktası** olarak Caddy (80/443) kullanır ve tüm trafiği `ocelot-gateway`’e iletir.

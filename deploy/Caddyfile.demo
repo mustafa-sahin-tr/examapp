@@ -1,0 +1,32 @@
+{
+	auto_https off
+	servers {
+		trusted_proxies static 172.30.0.12
+		client_ip_headers Cf-Connecting-Ip
+	}
+}
+
+# TLS ends at Cloudflare; the tunnel reaches this listener over exam-net.
+:80 {
+	encode gzip
+
+	@keycloak path /realms /realms/* /auth/realms /auth/realms/* /resources /resources/* /js /js/* /robots.txt
+	handle @keycloak {
+		# The login redirect uses /auth/realms; going through the gateway would lose X-Forwarded-Proto.
+		uri strip_prefix /auth
+		reverse_proxy keycloak:8080 {
+			header_up X-Forwarded-Proto https
+			header_up X-Forwarded-Host {host}
+			header_up X-Forwarded-Port 443
+		}
+	}
+
+	handle / {
+		rewrite * /welcome
+		reverse_proxy ocelot-gateway:5678
+	}
+
+	handle {
+		reverse_proxy ocelot-gateway:5678
+	}
+}

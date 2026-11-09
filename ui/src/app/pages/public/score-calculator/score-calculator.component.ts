@@ -4,7 +4,7 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 
 import { LANDING_REGISTER_STUDENT_URL } from '../landing/landing-content';
@@ -29,6 +29,8 @@ export class ScoreCalculatorComponent {
   private readonly dialog = inject(MatDialog);
   readonly exams = EXAM_SCORE_EXAMS;
   readonly registerUrl = LANDING_REGISTER_STUDENT_URL;
+  /** Öğrenci menüsünden açılınca uygulama kabuğunun içindedir: tanıtım bağlantıları gizlenir. */
+  readonly embedded = inject(ActivatedRoute).snapshot.data['embedded'] === true;
   readonly examId = signal(this.exams[0].id);
   private readonly answers = signal<Record<string, Partial<TestAnswers>>>({});
 

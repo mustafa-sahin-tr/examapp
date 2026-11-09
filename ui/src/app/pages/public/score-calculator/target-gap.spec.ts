@@ -1,6 +1,6 @@
 import { TargetMockResult, TargetMockSection, TargetProgram } from '../../../models/target-goal.model';
 import { EXAM_SCORE_EXAMS, TestAnswers, estimateScores } from './exam-score';
-import { computeTargetGap } from './target-gap';
+import { computeTargetGap, estimateScore, targetProgress } from './target-gap';
 
 const target = (scoreType: string, minimumScore: number, year = 2026): TargetProgram => ({
   id: 1, scoreType, name: 'Örnek', institution: '', city: 'Ankara', district: '', year, minimumScore, percentile: null, sourceReference: null,
@@ -85,5 +85,49 @@ describe('computeTargetGap (#695)', () => {
   it('keeps the model year so the screen can flag a different target year', () => {
     const gap = computeTargetGap(target('lgs', 450, 2025), [lgs(10)]);
     expect(gap.status === 'gap' && gap.modelYear).toBe(2026);
+  });
+});
+
+describe('targetProgress', () => {
+  const lgsSections = (correct: number): TargetMockSection[] =>
+    [
+      ['Türkçe', 20],
+      ['Matematik', 20],
+      ['Fen Bilimleri', 20],
+      ['T.C. İnkılap Tarihi ve Atatürkçülük', 10],
+      ['Din Kültürü ve Ahlak Bilgisi', 10],
+      ['Yabancı Dil', 10],
+    ].map(([name, count]) => ({
+      groupName: null,
+      name: name as string,
+      questionCount: count as number,
+      correct: Math.min(correct, count as number),
+      wrong: 0,
+      blank: (count as number) - Math.min(correct, count as number),
+      net: Math.min(correct, count as number),
+      pending: false,
+    }));
+  const result = (id: number, finishedAt: string, correct: number, complete = true): TargetMockResult => ({
+    id,
+    name: `Deneme ${id}`,
+    templateName: 'LGS',
+    templateCode: 'lgs',
+    wrongAnswersPerCorrect: 3,
+    complete,
+    net: correct,
+    finishedAt,
+    sections: lgsSections(correct),
+  });
+
+  it('keepsHistoryOrderAndHigherNetGivesHigherScore', () => {
+    const points = targetProgress('lgs', [result(1, '2026-10-01T10:00:00Z', 8), result(2, '2026-10-02T10:00:00Z', 18)]);
+
+    expect(points.map((p) => p.id)).toEqual([1, 2]);
+    expect(points[1].score).toBeGreaterThan(points[0].score);
+  });
+
+  it('skipsUnfinishedExamsAndOtherScoreTypes', () => {
+    expect(targetProgress('lgs', [result(1, '2026-10-01T10:00:00Z', 8, false)])).toEqual([]);
+    expect(estimateScore('tyt', [result(1, '2026-10-01T10:00:00Z', 8)])).toBeNull();
   });
 });

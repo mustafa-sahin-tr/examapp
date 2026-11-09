@@ -184,7 +184,7 @@ describe('StudentProfileComponent', () => {
         expect(el.querySelector('mat-tab-group')).toBeNull();
         expect(el.querySelector('app-badge-thropy')).toBeNull();
         expect(el.querySelector('app-user-theme-switcher')).toBeNull();
-        for (const card of ['app-target-goal-card', 'app-weak-topics-card', 'app-topic-progress-card', 'app-outcome-mastery-card', 'app-leaderboard']) {
+        for (const card of ['app-weak-topics-card', 'app-topic-progress-card', 'app-outcome-mastery-card', 'app-leaderboard']) {
             expect(el.querySelector(card), card).not.toBeNull();
         }
     });

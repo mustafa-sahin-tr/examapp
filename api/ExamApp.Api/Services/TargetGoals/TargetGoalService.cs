@@ -16,10 +16,15 @@ public interface ITargetGoalService
     Task<bool> SetAsync(int studentId, int targetProgramId, CancellationToken ct = default);
 
     Task ClearAsync(int studentId, CancellationToken ct = default);
+
+    /// <summary>Puan türünün şablonlarında son denemeler, eskiden yeniye.</summary>
+    Task<List<MockExamResultDto>> GetHistoryAsync(int studentId, string scoreType, CancellationToken ct = default);
 }
 
 public sealed class TargetGoalService(AppDbContext db, IMockExamService mockExams) : ITargetGoalService
 {
+    private const int HistoryTake = 30;
+
     public async Task<TargetGoalDto> GetAsync(int studentId, CancellationToken ct = default)
     {
         var target = await db.StudentTargetGoals.AsNoTracking()
@@ -46,6 +51,9 @@ public sealed class TargetGoalService(AppDbContext db, IMockExamService mockExam
             GradeLevel = gradeLevel,
         };
     }
+
+    public Task<List<MockExamResultDto>> GetHistoryAsync(int studentId, string scoreType, CancellationToken ct = default) =>
+        mockExams.GetCompleteResultHistoryAsync(studentId, TargetScoreTypes.TemplateCodes(scoreType), HistoryTake, ct);
 
     /// <summary>Issue #891: "5-sinif" / "5. Sınıf" / "8" → ilk sayı (1–12); yoksa null.</summary>
     internal static int? GradeLevelOf(string? text)

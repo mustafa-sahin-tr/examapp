@@ -165,6 +165,7 @@
     "back": "Back to home",
     "title": "LGS and YKS score calculator",
     "intro": "Enter your correct and wrong answers to see your net scores and an estimated exam score. No account needed.",
+    "introSignedIn": "Enter your correct and wrong answers to see your nets and estimated score.",
     "examPicker": "Choose an exam",
     "exams": {
       "lgs": "LGS",

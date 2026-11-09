@@ -20,6 +20,9 @@ public interface ITargetProgramService
 
     /// <summary>Issue #891: katalogdaki iller (sınava göre), Türkçe alfabe sırasıyla.</summary>
     Task<List<string>> CitiesAsync(string? exam, CancellationToken ct = default);
+
+    /// <summary>Puan türünün son yılında, bu puana göre gruplanmış programlar; her grupta puana en yakınlar önce.</summary>
+    Task<TargetProgramsForScoreDto> ForScoreAsync(string scoreType, decimal score, string? city, int take, CancellationToken ct = default);
     Task<TargetProgramPageDto<AdminTargetProgramDto>> SearchForAdminAsync(TargetProgramQuery query, CancellationToken ct = default);
     Task<AdminTargetProgramDto> CreateAsync(SaveTargetProgramDto request, int userId, CancellationToken ct = default);
     Task<AdminTargetProgramDto?> UpdateAsync(int id, SaveTargetProgramDto request, int userId, CancellationToken ct = default);
@@ -33,6 +36,8 @@ public sealed partial class TargetProgramService(AppDbContext db) : ITargetProgr
 {
     internal const int PreviewLimit = 200;
     internal const int MaxImportRows = 50_000;
+    /// <summary>"Sınırda" sayılan puan aralığı (± puan); LGS ve YKS puanları aynı ölçekte (500 / 560) olduğu için tek değer.</summary>
+    internal const decimal BorderlineMargin = 10;
 
     private sealed record Row(int Line, string ScoreType, string Name, string Institution, string City, string District, decimal MinimumScore, decimal? Percentile, string Key);
 
@@ -56,6 +61,33 @@ public sealed partial class TargetProgramService(AppDbContext db) : ITargetProgr
             }).ToListAsync(ct),
         };
     }
+
+    public async Task<TargetProgramsForScoreDto> ForScoreAsync(string scoreType, decimal score, string? city, int take, CancellationToken ct = default)
+    {
+        var year = await db.TargetPrograms.AsNoTracking()
+            .Where(p => p.ScoreType == scoreType)
+            .MaxAsync(p => (int?)p.Year, ct);
+        if (year is null)
+            return new();
+
+        var rows = Filter(new TargetProgramQuery(null, scoreType, year, city, null, 0, 0));
+        var low = score - BorderlineMargin;
+        var high = score + BorderlineMargin;
+        return new()
+        {
+            Year = year,
+            Safe = await ToDtos(rows.Where(p => p.MinimumScore < low).OrderByDescending(p => p.MinimumScore).ThenBy(p => p.Id).Take(take)).ToListAsync(ct),
+            Borderline = await ToDtos(rows.Where(p => p.MinimumScore >= low && p.MinimumScore <= high).OrderByDescending(p => p.MinimumScore).ThenBy(p => p.Id).Take(take)).ToListAsync(ct),
+            Stretch = await ToDtos(rows.Where(p => p.MinimumScore > high).OrderBy(p => p.MinimumScore).ThenBy(p => p.Id).Take(take)).ToListAsync(ct),
+        };
+    }
+
+    private static IQueryable<TargetProgramDto> ToDtos(IQueryable<TargetProgram> rows) =>
+        rows.Select(p => new TargetProgramDto
+        {
+            Id = p.Id, ScoreType = p.ScoreType, Name = p.Name, Institution = p.Institution, City = p.City, District = p.District,
+            Year = p.Year, MinimumScore = p.MinimumScore, Percentile = p.Percentile, SourceReference = p.SourceReference,
+        });
 
     public async Task<List<string>> CitiesAsync(string? exam, CancellationToken ct = default)
     {

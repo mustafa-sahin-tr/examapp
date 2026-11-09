@@ -241,6 +241,18 @@ export const routes: Routes = [
       { path: 'mock-exams/:id', component: MockExamBuilderComponent, canActivate: [authGuard, ...authoringGuards] },
       { path: 'exam-templates', component: ExamTemplatesComponent, canActivate: [authGuard, adminGuard] },
       { path: 'target-programs', component: TargetProgramsComponent, canActivate: [authGuard, adminGuard] },
+      {
+        path: 'my-target',
+        canActivate: [authGuard, roleGuard('Student')],
+        loadComponent: () => import('./pages/my-target/my-target.component').then((m) => m.MyTargetComponent),
+      },
+      {
+        path: 'my-score-calculator',
+        canActivate: [authGuard, roleGuard('Student')],
+        data: { embedded: true },
+        loadComponent: () =>
+          import('./pages/public/score-calculator/score-calculator.component').then((m) => m.ScoreCalculatorComponent),
+      },
       { path: 'my-mock-exams', component: StudentMockExamsComponent, canActivate: [authGuard, roleGuard('Student')] },
       { path: 'my-mock-exams/:id/result', component: MockExamResultComponent, canActivate: [authGuard, roleGuard('Student')] },
       {

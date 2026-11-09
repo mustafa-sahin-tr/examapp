@@ -211,4 +211,7 @@ public class MockExamResultDto
     public int Wrong { get; set; }
     public int Blank { get; set; }
     public decimal Net { get; set; }
+
+    /// <summary>Yalnız geçmiş listesinde dolu: son oturumun bitişi.</summary>
+    public DateTime? FinishedAt { get; set; }
 }

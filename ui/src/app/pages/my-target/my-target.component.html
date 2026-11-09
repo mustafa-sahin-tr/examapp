@@ -1,0 +1,132 @@
+<div class="mt" *transloco="let t; prefix: 'target-goals'">
+  <header class="mt__head">
+    <h1>{{ t('page.title') }}</h1>
+    <p>{{ t('page.subtitle') }}</p>
+  </header>
+
+  <app-target-goal-card (goalChange)="onGoal($event)" />
+
+  <section class="mt__section" data-testid="target-progress">
+    <h2>{{ t('progress.title') }}</h2>
+    @if (historyFailed()) {
+      <p class="mt__state" role="alert">{{ t('progress.loadFailed') }}</p>
+    } @else if (historyLoaded() && points().length === 0) {
+      <p class="mt__state" data-testid="progress-empty">{{ t('progress.empty') }}</p>
+    } @else if (points().length > 0) {
+      @if (trend(); as trend) {
+        <p class="mt__trend" data-testid="progress-trend">
+          @if (trend.remaining <= 0) {
+            {{ t('progress.reached') }}
+          } @else if (trend.change > 0) {
+            {{ t('progress.closer', { points: number(trend.change), remaining: number(trend.remaining) }) }}
+          } @else if (trend.change < 0) {
+            {{ t('progress.further', { points: number(-trend.change), remaining: number(trend.remaining) }) }}
+          } @else {
+            {{ t('progress.same', { remaining: number(trend.remaining) }) }}
+          }
+        </p>
+      }
+      <app-target-progress-chart
+        [points]="points()"
+        [target]="target()?.minimumScore ?? null"
+        [targetLabel]="t('progress.targetLine', { score: number(target()?.minimumScore ?? 0) })"
+        [label]="t('progress.chartLabel')"
+      />
+      <table class="mt__table">
+        <thead>
+          <tr>
+            <th scope="col">{{ t('progress.exam') }}</th>
+            <th scope="col">{{ t('progress.date') }}</th>
+            <th scope="col" class="mt__num">{{ t('progress.score') }}</th>
+            @if (target()) {
+              <th scope="col" class="mt__num">{{ t('progress.toTarget') }}</th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (point of points(); track point.id) {
+            <tr>
+              <td>{{ point.name }}</td>
+              <td>{{ date(point.finishedAt) }}</td>
+              <td class="mt__num">{{ number(point.score) }}</td>
+              @if (target(); as target) {
+                <td class="mt__num">{{ number(point.score - target.minimumScore) }}</td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+      <p class="mt__note">{{ t('estimateNote') }}</p>
+    }
+  </section>
+
+  <section class="mt__section" data-testid="schools-for-score">
+    <h2>{{ t('forScore.title') }}</h2>
+    <p class="mt__hint">{{ t('forScore.hint') }}</p>
+    <div class="mt__filters">
+      @if (scoreTypes().length > 1) {
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>{{ t('forScore.scoreType') }}</mat-label>
+          <mat-select [value]="scoreType()" (valueChange)="changeScoreType($event)" data-testid="for-score-type">
+            @for (type of scoreTypes(); track type) {
+              <mat-option [value]="type">{{ t('scoreTypes.' + type) }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      }
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>{{ t('forScore.score') }}</mat-label>
+        <input matInput type="number" min="0" max="1000" step="0.1" autocomplete="off" [ngModel]="score()" (ngModelChange)="changeScore($event)" data-testid="for-score-input" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>{{ t('city') }}</mat-label>
+        <mat-select [value]="city()" (valueChange)="changeCity($event)" data-testid="for-score-city">
+          <mat-option value="">{{ t('allCities') }}</mat-option>
+          @for (c of cities(); track c) {
+            <mat-option [value]="c">{{ c }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    @if (saveFailed()) {
+      <p class="mt__state" role="alert">{{ t('saveFailed') }}</p>
+    }
+    @if (searchFailed()) {
+      <p class="mt__state" role="alert">{{ t('searchFailed') }}</p>
+    } @else if (searching()) {
+      <p class="mt__state"><mat-spinner diameter="24" /> {{ t('loading') }}</p>
+    } @else if (score() === null) {
+      <p class="mt__state" data-testid="for-score-prompt">{{ t('forScore.prompt') }}</p>
+    } @else if (programs(); as result) {
+      @if (result.year === null) {
+        <p class="mt__state" data-testid="for-score-empty">{{ t('catalogEmpty') }}</p>
+      } @else {
+        <p class="mt__note" data-testid="for-score-basis">{{ t('forScore.basis', { year: result.year }) }}</p>
+        @for (group of groups(); track group.key) {
+          <h3 class="mt__group">{{ t('forScore.' + group.key) }}</h3>
+          @if (group.items.length === 0) {
+            <p class="mt__state">{{ t('noResults') }}</p>
+          } @else {
+            <ul class="mt__programs" [attr.data-testid]="'for-score-' + group.key">
+              @for (program of group.items; track program.id) {
+                <li class="mt__program">
+                  <span class="mt__program-text">
+                    <strong>{{ program.name }}</strong>
+                    <span class="mt__meta">{{ place(program) }}</span>
+                    <span class="mt__meta">{{ t('minimumScore', { year: program.year, score: number(program.minimumScore, 2) }) }}</span>
+                  </span>
+                  @if (goal()?.target?.id === program.id) {
+                    <span class="mt__meta" data-testid="for-score-current">{{ t('forScore.current') }}</span>
+                  } @else {
+                    <button mat-stroked-button type="button" [disabled]="saving()" (click)="choose(program)">{{ t('forScore.choose') }}</button>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        }
+      }
+    }
+  </section>
+</div>

@@ -144,6 +144,21 @@ public class SetTargetGoalDto
 /// Hedef ve puan türünün gerektirdiği son tamamlanmış denemeler. Fark istemcide hesaplanır: puan modeli yıllık veridir
 /// (#694), formül sunucuya kopyalanmaz. Deneme yoksa <see cref="Results"/> boştur ve fark görünmez.
 /// </summary>
+public class TargetProgramsForScoreDto
+{
+    /// <summary>Listenin taban yılı; bu puan türünde katalog boşsa null.</summary>
+    public int? Year { get; set; }
+
+    /// <summary>Taban, puanın en az <c>TargetProgramService.BorderlineMargin</c> altında.</summary>
+    public List<TargetProgramDto> Safe { get; set; } = [];
+
+    /// <summary>Taban, puanın çevresinde.</summary>
+    public List<TargetProgramDto> Borderline { get; set; } = [];
+
+    /// <summary>Taban, puanın üstünde; puana yakın olanlar önce.</summary>
+    public List<TargetProgramDto> Stretch { get; set; } = [];
+}
+
 public class TargetGoalDto
 {
     public TargetProgramDto? Target { get; set; }

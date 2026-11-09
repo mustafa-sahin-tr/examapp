@@ -44,6 +44,7 @@ import { PracticeService } from '../../services/practice.service';
 import { FlashcardService } from '../../services/flashcard.service';
 
 const TARGET_PROGRAMS_MENU_ID = 'target-programs';
+const MY_TARGET_MENU_ID = 'my-target';
 
 interface MenuItem {
   id: string;
@@ -274,6 +275,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'dashboard', labelKey: 'menu.dashboard', icon: 'dashboard', route: '/dashboard', type: 'menu', roles: ['Student', 'Teacher'] },
     { id: 'exams', labelKey: 'menu.exams', icon: 'quiz', route: '/tests', type: 'menu', roles: ['Student', 'Teacher'] },
     { id: 'practice', labelKey: 'menu.practice', icon: 'bolt', route: '/practice', type: 'menu', roles: ['Student'] },
+    // Hedef, deneme gelişimi ve puana göre okullar; `TargetGoals:Enabled` kapalıyken görünmez.
+    { id: MY_TARGET_MENU_ID, labelKey: 'menu.myTarget', icon: 'flag', route: '/my-target', type: 'menu', roles: ['Student'] },
     // Issue #471: hazır soruları ders/konu/alt konuya göre arama.
     { id: 'question-bank', labelKey: 'menu.questionBank', icon: 'inventory_2', route: '/question-bank', type: 'menu', roles: ['Teacher', 'Admin'] },
     // Issue #1053: fotoğraftan hızlı soru ekleme (mobil öncelikli).
@@ -338,6 +341,10 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
       { id: 'tab-admin-comment-reports', labelKey: 'menu.adminCommentReports', icon: '', route: '/admin/comment-reports', type: 'menu', roles: ['Admin'] },
       { id: 'tab-admin-question-reports', labelKey: 'menu.questionReports', icon: '', route: '/question-reports', type: 'menu', roles: ['Admin'] },
       { id: 'tab-admin-open-text-reviews', labelKey: 'menu.openTextReviews', icon: '', route: '/open-text-reviews', type: 'menu', roles: ['Admin'] },
+    ],
+    [
+      { id: 'tab-my-target', labelKey: 'menu.myTarget', icon: '', route: '/my-target', type: 'menu', roles: ['Student'] },
+      { id: 'tab-score-calculator', labelKey: 'menu.scoreCalculator', icon: '', route: '/my-score-calculator', type: 'menu', roles: ['Student'] },
     ],
     // Issue #693: deneme testlerin yanında; ana menü #719 sınırında kalır.
     [
@@ -441,7 +448,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     const notIndependent = this.isKnownNotIndependent();
     return this.stripDividers(
       this.menuItems
-        .filter((item) => item.id !== TARGET_PROGRAMS_MENU_ID || this.targetGoalsEnabled())
+        .filter((item) => (item.id !== TARGET_PROGRAMS_MENU_ID && item.id !== MY_TARGET_MENU_ID) || this.targetGoalsEnabled())
         .filter((item) => this.isItemAllowed(item, unapprovedTeacher, notIndependent))
     );
   });
@@ -704,7 +711,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
 
 
   ngOnInit() {
-    if (this.userRoles.includes('Admin')) {
+    if (this.userRoles.includes('Admin') || this.userRoles.includes('Student')) {
       this.targetGoalService.getStatus().subscribe({ next: (status) => this.targetGoalsEnabled.set(status.enabled), error: () => undefined });
     }
     this.signalR.startConnection();

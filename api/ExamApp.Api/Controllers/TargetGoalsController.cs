@@ -1,3 +1,4 @@
+using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.ParentLinks;
@@ -105,10 +106,26 @@ public class StudentTargetGoalController(
     IStringLocalizer<Messages> localizer) : BaseController
 {
     private const int MaxTake = 50;
+    private const decimal MaxScore = 1000;
 
     [HttpGet]
     public Task<IActionResult> Get(CancellationToken ct) =>
         WithStudentAsync(async studentId => Ok(await goals.GetAsync(studentId, ct)), ct);
+
+    [HttpGet("history")]
+    public Task<IActionResult> History([FromQuery] string? scoreType, CancellationToken ct) =>
+        !TargetScoreTypes.IsValid(scoreType)
+            ? Task.FromResult<IActionResult>(BadRequest())
+            : WithStudentAsync(async studentId => Ok(await goals.GetHistoryAsync(studentId, scoreType!, ct)), ct);
+
+    /// <summary>"Bu puanla hangi okullar": puan istemciden gelir, çünkü puan modeli (#694) istemcidedir.</summary>
+    [HttpGet("programs/for-score")]
+    [EnableRateLimiting(TaxonomySearchRateLimiting.Policy)]
+    public async Task<IActionResult> ForScore(
+        [FromQuery] string? scoreType, [FromQuery] decimal score, [FromQuery] string? city = null, [FromQuery] int take = 20, CancellationToken ct = default) =>
+        !TargetScoreTypes.IsValid(scoreType) || score < 0 || score > MaxScore
+            ? BadRequest()
+            : Ok(await programs.ForScoreAsync(scoreType!, score, city, Math.Clamp(take, 1, MaxTake), ct));
 
     [HttpGet("programs")]
     [EnableRateLimiting(TaxonomySearchRateLimiting.Policy)]

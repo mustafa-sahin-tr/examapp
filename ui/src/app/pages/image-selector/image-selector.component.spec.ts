@@ -1420,6 +1420,24 @@ describe('ImageSelectorComponent', () => {
                 component.imageData.set('data:image/png;base64,AAAA');
             });
 
+            it('autoDetectOff_PageOpensBlankWithoutDetectorOrToast_AndPredictKeepsDrawnBoxes (#1087)', () => {
+                component.autoDetect = false;
+                component.regions.set([{ name: 'Soru 1', x: 1, y: 1, width: 5, height: 5, answers: [] } as any]);
+
+                component.detectOrBlank();
+
+                expect(predictSpy).not.toHaveBeenCalled();
+                expect(component.regions()).toEqual([]);
+                expect(component.inProgress()).toBe(false);
+                expect(snackBarOpen).not.toHaveBeenCalled();
+
+                component.regions.set([{ name: 'Soru 1', x: 1, y: 1, width: 5, height: 5, answers: [] } as any]);
+                component.predict();
+
+                expect(predictSpy).not.toHaveBeenCalled();
+                expect(component.regions().length).toBe(1);
+            });
+
             it('predict_NoImage_DoesNotCallDetectorOrSetInProgress', () => {
                 component.imageData.set(null);
 

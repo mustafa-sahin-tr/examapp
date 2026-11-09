@@ -87,6 +87,7 @@
   },
   "limitDialog": {
     "title": "Bu ayki limitine ulaştın",
+    "notInPlanTitle": "Bu özellik planında yok",
     "usage": "{{ feature }} için bu ayki hakkını kullandın ({{ used }} / {{ limit }}).",
     "notIncluded": "{{ feature }} mevcut planında yok.",
     "resets": "Hakların {{ date }} tarihinde yenilenir.",

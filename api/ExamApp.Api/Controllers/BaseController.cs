@@ -57,6 +57,9 @@ public class BaseController : ControllerBase
 
     protected Task<UserProfileDto> GetAuthenticatedUserAsync() => GetAuthenticatedUserAsync(CancellationToken.None);
 
+    /// <summary>Issue #1087: aksiyon filtreleri (<c>RequiresEntitlementAttribute</c>) için aynı fail-closed çözüm.</summary>
+    internal Task<UserProfileDto> ResolveUserForFilterAsync(CancellationToken ct) => GetAuthenticatedUserAsync(ct);
+
     protected async Task<UserProfileDto> GetAuthenticatedUserAsync(CancellationToken ct)
     {
         var preferredUsername = User.FindFirstValue("preferred_username");

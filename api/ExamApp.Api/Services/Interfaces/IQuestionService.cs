@@ -18,6 +18,12 @@ public interface IQuestionService
     /// </param>
     Task<ResponseBaseDto> SaveBulkQuestion(BulkQuestionCreateDto soruDto, int actingUserId = 0, EntitlementSubject? classificationOwner = null);
 
+    /// <summary>
+    /// Issue #1087: sahibin planında yapay zekâ sınıflandırması yok (Basic): konuyu kendisi seçer, sınıflandırıcı çağrılmaz.
+    /// Sahip verilmemişse (iç aktarım yolları) false.
+    /// </summary>
+    Task<bool> RequiresManualTopicAsync(EntitlementSubject? owner, CancellationToken ct = default);
+
     Task<StudyPageAttachImageResponseDto> AttachImageToStudyPage(StudyPageAttachImageDto request);
 
     Task<ResponseBaseDto> ResizeQuestionImage(int questionId, double scale);

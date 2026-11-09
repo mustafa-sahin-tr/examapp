@@ -226,16 +226,18 @@ public class BookImportDemoTests : IDisposable
     }
 
     [Theory]
-    [InlineData(nameof(BookImportController.Start))]
-    [InlineData(nameof(BookImportController.Retry))]
-    [InlineData(nameof(BookImportController.RetryTest))]
-    [InlineData(nameof(BookImportController.RetryFailedTests))]
-    [InlineData(nameof(BookImportController.ReplacePage))]
-    public void Teacher_cannot_reach_real_import_endpoints(string method)
+    [InlineData(nameof(BookImportController.Start), false)]
+    [InlineData(nameof(BookImportController.Retry), true)]
+    [InlineData(nameof(BookImportController.RetryTest), true)]
+    [InlineData(nameof(BookImportController.RetryFailedTests), true)]
+    [InlineData(nameof(BookImportController.ReplacePage), true)]
+    public void Real_import_endpoints_need_the_book_import_plan_issue1087(string method, bool inPlanOnly)
     {
-        var roles = typeof(BookImportController).GetMethod(method)!.GetCustomAttributes<AuthorizeAttribute>().Single().Roles!.Split(',');
-
-        roles.ShouldBe(["Admin", "QuestionTrainer"], ignoreOrder: true);
+        var action = typeof(BookImportController).GetMethod(method)!;
+        action.GetCustomAttributes<AuthorizeAttribute>().ShouldBeEmpty();
+        var gate = action.GetCustomAttributes<RequiresEntitlementAttribute>().Single();
+        gate.FeatureKey.ShouldBe(EntitlementFeatures.BookImport);
+        gate.InPlanOnly.ShouldBe(inPlanOnly);
     }
 
     [Fact]

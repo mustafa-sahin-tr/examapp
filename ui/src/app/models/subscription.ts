@@ -69,9 +69,11 @@ export function planNameKey(displayNameKey: string | null | undefined): string {
 
 /** Issue #1029: plan sınırına takılan her uç noktanın ortak 429 gövdesi (`EntitlementLimitResponse`). */
 export const ENTITLEMENT_LIMIT_REACHED_CODE = 'entitlement.limitReached';
+/** Issue #1087: özellik planda yok (sınır 0) — 403, aynı gövde ve aynı yükseltme penceresi. */
+export const ENTITLEMENT_NOT_IN_PLAN_CODE = 'entitlement.notInPlan';
 
 export interface EntitlementLimitReached {
-  code: typeof ENTITLEMENT_LIMIT_REACHED_CODE;
+  code: typeof ENTITLEMENT_LIMIT_REACHED_CODE | typeof ENTITLEMENT_NOT_IN_PLAN_CODE;
   feature: string;
   limit: number | null;
   used: number | null;
@@ -80,13 +82,13 @@ export interface EntitlementLimitReached {
   message?: string | null;
 }
 
-/** 429 + `entitlement.limitReached` ise gövdeyi döndürür; diğer hatalarda null. */
+/** 429 + `entitlement.limitReached` ya da 403 + `entitlement.notInPlan` ise gövdeyi döndürür; diğer hatalarda null. */
 export function entitlementLimitOf(error: unknown): EntitlementLimitReached | null {
-  if (!(error instanceof HttpErrorResponse) || error.status !== 429) return null;
+  if (!(error instanceof HttpErrorResponse)) return null;
   const body = error.error as Partial<EntitlementLimitReached> | null;
-  return body?.code === ENTITLEMENT_LIMIT_REACHED_CODE && typeof body.feature === 'string'
-    ? (body as EntitlementLimitReached)
-    : null;
+  const expected =
+    error.status === 429 ? ENTITLEMENT_LIMIT_REACHED_CODE : error.status === 403 ? ENTITLEMENT_NOT_IN_PLAN_CODE : null;
+  return expected && body?.code === expected && typeof body.feature === 'string' ? (body as EntitlementLimitReached) : null;
 }
 
 /** Issue #1030: admin plan ataması. E-posta maskelidir. */

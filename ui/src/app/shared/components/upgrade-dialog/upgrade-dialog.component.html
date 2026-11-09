@@ -1,12 +1,12 @@
 <div class="upgrade" *transloco="let t; prefix: 'subscription'">
   <header class="upgrade__header">
     <mat-icon class="upgrade__icon" aria-hidden="true">workspace_premium</mat-icon>
-    <h2 mat-dialog-title class="upgrade__title">{{ t('limitDialog.title') }}</h2>
+    <h2 mat-dialog-title class="upgrade__title">{{ t(notInPlan ? 'limitDialog.notInPlanTitle' : 'limitDialog.title') }}</h2>
   </header>
 
   <mat-dialog-content class="upgrade__content">
     <p data-testid="upgrade-usage">
-      @if (data.limit != null && data.used != null) {
+      @if (!notInPlan && data.limit != null && data.used != null) {
         {{ t('limitDialog.usage', { feature: t('features.' + data.feature), used: data.used, limit: data.limit }) }}
       } @else {
         {{ t('limitDialog.notIncluded', { feature: t('features.' + data.feature) }) }}

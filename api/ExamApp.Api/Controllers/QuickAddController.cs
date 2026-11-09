@@ -26,6 +26,8 @@ namespace ExamApp.Api.Controllers;
 [Route("api/quick-add")]
 [Authorize(Roles = "Teacher,Admin,QuestionTrainer")]
 [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)]
+// #1087: planında hızlı ekleme olmayan öğretmen 403 entitlement.notInPlan; aylık sınır yüklemede (servis) 429.
+[RequiresEntitlement(EntitlementFeatures.QuickAdd, InPlanOnly = true)]
 public class QuickAddController : BaseController
 {
     private const long MaxRequestBytes = QuickAddService.MaxPhotos * QuickAddService.MaxPhotoBytes + 1_000_000;
@@ -208,11 +210,11 @@ public class QuickAddController : BaseController
     }
 
     /// <summary>
-    /// Issue #1054 "İşaretlemede düzelt": fotoğrafın taslaklarını işaretleme ekranında düzeltilenlerle değiştirir. İşaretleme ekranı
-    /// öğretmene kapalı olduğundan yalnız Admin ve QuestionTrainer.
+    /// Issue #1054 "İşaretlemede düzelt": fotoğrafın taslaklarını işaretleme ekranında düzeltilenlerle değiştirir. #1087: işaretleme
+    /// ekranı planın <c>manual-labeling</c> hakkıyla açılır (Admin ve QuestionTrainer muaf).
     /// </summary>
     [HttpPut("{id:guid}/tests/{testId:int}/pages/{filePage:int}/questions")]
-    [Authorize(Roles = "Admin,QuestionTrainer")]
+    [RequiresEntitlement(EntitlementFeatures.ManualLabeling)]
     [ProducesResponseType(typeof(BookImportPageFixDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> ReplacePage(Guid id, int testId, int filePage, [FromBody] ReplaceBookImportPageDto request,
         [FromServices] IBookImportPageFixService fix, CancellationToken ct)

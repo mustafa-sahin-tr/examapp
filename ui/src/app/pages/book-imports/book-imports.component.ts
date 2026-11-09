@@ -18,6 +18,7 @@ import { BookImportDemo, BookImportJob, BookImportQuota, bookImportStatusTone, i
 import { Grade } from '../../models/student';
 import { Subject } from '../../models/subject';
 import { AuthService } from '../../services/auth.service';
+import { EntitlementStateService } from '../../services/entitlement-state.service';
 import { BookImportService } from '../../services/book-import.service';
 import { GradesService } from '../../services/grades.service';
 import { SubjectService } from '../../services/subject.service';
@@ -67,8 +68,10 @@ export class BookImportsComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
 
-  /** Gerçek yükleme pilot rollerinde; diğerleri demo görür. */
-  readonly canUpload = this.auth.hasRealmRole('Admin') || this.auth.hasRealmRole('QuestionTrainer');
+  private readonly entitlements = inject(EntitlementStateService);
+
+  /** Gerçek yükleme içerik ekibinde ve (#1087) planında `book-import` olan öğretmende; diğerleri demo görür. */
+  readonly canUpload = signal(false);
   readonly demo = signal<BookImportDemo | null>(null);
   readonly startingDemo = signal(false);
   readonly demoError = signal<'limitReached' | 'unavailable' | 'startFailed' | null>(null);
@@ -115,10 +118,22 @@ export class BookImportsComponent implements OnInit {
 
   ngOnInit(): void {
     this.load();
-    if (!this.canUpload) {
-      this.loadDemo();
+    if (this.auth.hasRealmRole('Admin') || this.auth.hasRealmRole('QuestionTrainer')) {
+      this.startUploads();
       return;
     }
+    this.entitlements
+      .load()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        // Plan okunamadıysa `has` true döner; demo yerine yükleme formu, sunucu 403 ile karar verir.
+        if (this.entitlements.has('book-import')) this.startUploads();
+        else this.loadDemo();
+      });
+  }
+
+  private startUploads(): void {
+    this.canUpload.set(true);
     this.gradesApi
       .getGrades()
       .pipe(takeUntilDestroyed(this.destroyRef))

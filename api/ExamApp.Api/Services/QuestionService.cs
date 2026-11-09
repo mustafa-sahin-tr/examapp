@@ -627,6 +627,10 @@ public class QuestionService : IQuestionService
         return allowed;
     }
 
+    public async Task<bool> RequiresManualTopicAsync(EntitlementSubject? owner, CancellationToken ct = default) =>
+        owner is not null && _entitlements is not null
+        && (await _entitlements.CheckAsync(owner, EntitlementFeatures.AiClassification, ct)).Limit == 0;
+
     public async Task<ResponseBaseDto> SaveBulkQuestion(BulkQuestionCreateDto soruDto, int actingUserId = 0, EntitlementSubject? classificationOwner = null)
     {
         // issue #287 H1: audit alanları (CreateUserId = soru sahibi) istek sahibine damgalanır.
@@ -695,6 +699,26 @@ public class QuestionService : IQuestionService
             }
             // review #576 (H1/M1): saklanacak biçim (dragPlace / match: karışık sıra + opak id).
             interactionByQuestion[bulkQuestion] = _graders.Resolve(bulkQuestion.InteractionType).PrepareForStorage(resolvedPlan, resolvedSolution);
+        }
+
+        // Issue #1087: yapay zekâ sınıflandırması planda yoksa her sorunun konusu belli olmalı (soru, başlık ya da testin konusu);
+        // yoksa hiçbir şey yazılmadan 400.
+        if (await RequiresManualTopicAsync(classificationOwner))
+        {
+            var headerTopicId = soruDto.Header?.TopicId is > 0 ? soruDto.Header.TopicId
+                : soruDto.Header?.TestId is int topicTestId
+                    ? await _context.Worksheets.Where(w => w.Id == topicTestId).Select(w => w.TopicId).FirstOrDefaultAsync()
+                    : null;
+            if ((soruDto.Questions ?? []).Any(q => (q.Classification is { } c ? c.TopicId : headerTopicId) is not > 0))
+            {
+                return new QuestionSavedDto
+                {
+                    Success = false,
+                    InvalidInput = true,
+                    ErrorCode = "TopicRequired",
+                    Message = _localizer["questions.bulk.topicRequired"],
+                };
+            }
         }
 
         // Wrapped in CreateExecutionStrategy so EF Core's retry-on-failure

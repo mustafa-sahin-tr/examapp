@@ -97,7 +97,18 @@ describe('entitlementLimitInterceptor (issue #1029)', () => {
   it('ignores other 429s and other codes', () => {
     fail('/api/exam/a', 429, { errorCode: 'RateLimited' });
     fail('/api/exam/b', 409, { code: 'entitlement.limitReached', feature: 'book-import' });
+    fail('/api/exam/c', 403, { code: 'entitlement.limitReached', feature: 'book-import' });
+    fail('/api/exam/d', 429, { code: 'entitlement.notInPlan', feature: 'book-import' });
 
     expect(dialog()).toBeNull();
+  });
+
+  it('issue #1087: 403 entitlement.notInPlan opens the same dialog saying the feature is not in the plan', () => {
+    fail('/api/exam/book-imports', 403, { ...LIMIT_BODY, code: 'entitlement.notInPlan', limit: 0, used: 0, resetsAtUtc: null, planKey: 'free' });
+
+    const el = dialog()!;
+    expect(el.textContent).toContain('Bu özellik planında yok');
+    expect(el.querySelector('[data-testid="upgrade-usage"]')!.textContent).toContain('Kitabı dijitale aktarma (PDF) mevcut planında yok.');
+    expect(el.querySelector('[data-testid="upgrade-reset"]')).toBeNull();
   });
 });

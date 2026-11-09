@@ -87,6 +87,7 @@
   },
   "limitDialog": {
     "title": "You've reached this month's limit",
+    "notInPlanTitle": "This feature is not in your plan",
     "usage": "You've used this month's {{ feature }} allowance ({{ used }} / {{ limit }}).",
     "notIncluded": "{{ feature }} isn't included in your plan.",
     "resets": "Your allowance renews on {{ date }}.",

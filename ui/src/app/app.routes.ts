@@ -9,6 +9,7 @@ import { independentTeacherGuard } from './shared/guards/independent-teacher.gua
 import { studentGuard } from './shared/guards/student.guard';
 import { roleGuard } from './shared/guards/role.guard';
 import { approvedTeacherGuard } from './shared/guards/approved-teacher.guard';
+import { entitlementGuard } from './shared/guards/entitlement.guard';
 import { settingsGuard } from './shared/guards/settings.guard';
 import { parentGuard, parentHomeRedirectGuard } from './shared/guards/parent.guard';
 import { parentRequirementGuard } from './shared/guards/parent-requirement.guard';
@@ -110,11 +111,12 @@ export const routes: Routes = [
       // from ?role= or an already-assigned realm role), step 2 the role form.
       { path: 'register', component: RegisterWizardComponent },
       { path: 'question/:id', component: QuestionComponent, canActivate: [authGuard, ...authoringGuards] },
-      { path: 'questioncanvas', component: QuestionCanvasComponent, canActivate: [authGuard, ...authoringGuards] },
-      { path: 'questioncanvas/:id', component: QuestionCanvasComponent, canActivate: [authGuard, ...authoringGuards] },
+      // #1087: soru tuvali öğretmenin soru girişi; planda `manual-labeling` ister (admin muaf).
+      { path: 'questioncanvas', component: QuestionCanvasComponent, canActivate: [authGuard, ...authoringGuards, entitlementGuard('manual-labeling')] },
+      { path: 'questioncanvas/:id', component: QuestionCanvasComponent, canActivate: [authGuard, ...authoringGuards, entitlementGuard('manual-labeling')] },
       {
         // Soru tespit modeli için işaretleme modu: yalnız eğitim verisi (send-to-fix), test/soru kaydı yok.
-        // Gateway send-to-fix'i de yalnız bu iki realm rolüne açar.
+        // Gateway send-to-fix'i de yalnız bu iki realm rolüne açar. Öğretmenin soru girişi soru tuvalidir (#1087).
         path: 'labeling',
         canActivate: [authGuard, roleGuard('Admin', 'QuestionTrainer')],
         loadComponent: () => import('./pages/labeling/labeling.component').then((m) => m.LabelingComponent),
@@ -126,7 +128,7 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/books/books.component').then((m) => m.BooksComponent),
       },
       {
-        // Issue #1018 (epic #1017): PDF'ten kitap aktarımı — pilot rolleri işaretleme ile aynı; öğretmen yalnız demo (#1032).
+        // Issue #1018 (epic #1017): PDF'ten kitap aktarımı. Liste herkese açık (demo #1032); yükleme planda `book-import` ister (#1087).
         path: 'book-imports',
         canActivate: [authGuard, roleGuard('Admin', 'QuestionTrainer', 'Teacher'), approvedTeacherGuard],
         loadComponent: () => import('./pages/book-imports/book-imports.component').then((m) => m.BookImportsComponent),
@@ -140,12 +142,12 @@ export const routes: Routes = [
       {
         // Issue #1053 (epic #1048): hızlı soru ekleme — backend Teacher/Admin/QuestionTrainer + onaylı öğretmen.
         path: 'quick-add',
-        canActivate: [authGuard, roleGuard('Teacher', 'Admin', 'QuestionTrainer'), approvedTeacherGuard],
+        canActivate: [authGuard, roleGuard('Teacher', 'Admin', 'QuestionTrainer'), approvedTeacherGuard, entitlementGuard('quick-add')],
         loadComponent: () => import('./pages/quick-add/quick-add.component').then((m) => m.QuickAddComponent),
       },
       {
         path: 'quick-add/:id',
-        canActivate: [authGuard, roleGuard('Teacher', 'Admin', 'QuestionTrainer'), approvedTeacherGuard],
+        canActivate: [authGuard, roleGuard('Teacher', 'Admin', 'QuestionTrainer'), approvedTeacherGuard, entitlementGuard('quick-add')],
         loadComponent: () => import('./pages/quick-add/quick-add-detail.component').then((m) => m.QuickAddDetailComponent),
       },
       {
@@ -256,10 +258,15 @@ export const routes: Routes = [
       { path: 'my-mock-exams', component: StudentMockExamsComponent, canActivate: [authGuard, roleGuard('Student')] },
       { path: 'my-mock-exams/:id/result', component: MockExamResultComponent, canActivate: [authGuard, roleGuard('Student')] },
       {
-        // Kazanımdan görselsiz soru: işaretlemenin Claude kotasını kullanır, aynı kişilere açıktır.
+        // Kazanımdan görselsiz soru: içerik ekibi ve (#1087) planında `question-generation` olan öğretmen.
         path: 'question-generation',
         component: QuestionGenerationComponent,
-        canActivate: [authGuard, roleGuard('Admin', 'QuestionTrainer')],
+        canActivate: [
+          authGuard,
+          roleGuard('Admin', 'QuestionTrainer', 'Teacher'),
+          approvedTeacherGuard,
+          entitlementGuard('question-generation'),
+        ],
       },
       {
         path: 'question-transfer',

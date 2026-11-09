@@ -313,7 +313,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'exam-templates', labelKey: 'menu.examTemplates', icon: 'rule', route: '/exam-templates', type: 'menu', roles: ['Admin'] },
     // Issue #695: `TargetGoals:Enabled` kapalıyken görünmez.
     { id: TARGET_PROGRAMS_MENU_ID, labelKey: 'menu.targetPrograms', icon: 'flag_circle', route: '/target-programs', type: 'menu', roles: ['Admin'] },
-    { id: 'questiongeneration', labelKey: 'menu.questionGeneration', icon: 'auto_awesome', route: '/question-generation', type: 'menu', roles: ['Admin', 'QuestionTrainer'] },
+    { id: 'questiongeneration', labelKey: 'menu.questionGeneration', icon: 'auto_awesome', route: '/question-generation', type: 'menu', roles: ['Admin', 'QuestionTrainer', 'Teacher'] },
     // Issue #365: soru aktarımı (export/import) yalnız Admin.
     { id: 'questiontransfer', labelKey: 'menu.questionTransfer', icon: 'swap_horiz', route: '/question-transfer', type: 'menu', roles: ['Admin'] },
     // Soru tespit modeli için işaretleme modu (test/soru kaydı yok, yalnız eğitim verisi); send-to-fix ile aynı roller.

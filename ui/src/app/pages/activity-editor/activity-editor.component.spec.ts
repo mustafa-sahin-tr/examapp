@@ -8,6 +8,7 @@ import { of, throwError } from 'rxjs';
 import { AUTHORING_KIND_GROUPS, AUTHORING_KINDS } from '../../models/activity-authoring';
 import { ActivityEditorComponent } from './activity-editor.component';
 import { AuthService } from '../../services/auth.service';
+import { EntitlementStateService } from '../../services/entitlement-state.service';
 import { LabelingService } from '../../services/labeling.service';
 import { LearningOutcomeService } from '../../services/learning-outcome.service';
 import { QuestionService } from '../../services/question.service';
@@ -38,9 +39,12 @@ describe('ActivityEditorComponent (#590)', () => {
   let labeling: { getAiModels: Mock; activityStructure: Mock };
   let outcomes: { search: Mock; getForQuestion: Mock; setForQuestion: Mock };
   let failOutcomeLoad = false;
+  /** #1087: öğretmenin planındaki özellikler. */
+  let planFeatures: string[] = [];
 
   afterEach(() => {
     failOutcomeLoad = false;
+    planFeatures = [];
   });
 
   async function setup(query: Record<string, string>, list: unknown[] = [], trainer = false, startedCount = 0) {
@@ -75,6 +79,7 @@ describe('ActivityEditorComponent (#590)', () => {
         { provide: TestService, useValue: { get: vi.fn().mockReturnValue(of({ id: 7, instanceCount: startedCount })) } },
         { provide: AuthService, useValue: { hasRealmRole: vi.fn((role: string) => trainer && role === 'QuestionTrainer') } },
         { provide: LabelingService, useValue: labeling },
+        { provide: EntitlementStateService, useValue: { load: () => of(null), has: (f: string) => planFeatures.includes(f) } },
         { provide: LearningOutcomeService, useValue: outcomes },
         { provide: StudentService, useValue: { loadGrades: vi.fn().mockReturnValue(of([])) } },
         {
@@ -796,6 +801,16 @@ describe('ActivityEditorComponent (#590)', () => {
     fixture.detectChanges();
     expect(labeling.getAiModels).not.toHaveBeenCalled();
     expect(el('[data-testid="cw-extract"]')).toBeNull();
+  });
+
+  it('çengel bulmaca: planında canvas-ai olan öğretmen görselden çıkarmayı görür (#1087)', async () => {
+    planFeatures = ['canvas-ai'];
+    await setup({ testId: '9' });
+    component.selectKind('crossword');
+    component.image.set({ dataUrl: 'data:image/png;base64,QUJD', src: 'data:image/png;base64,QUJD', width: 400, height: 300 });
+    fixture.detectChanges();
+    expect(labeling.getAiModels).toHaveBeenCalled();
+    expect(el('[data-testid="cw-extract"]')).not.toBeNull();
   });
 
   it('düzenleme: görselsiz maddeyi plandan kurar ve tekli kayıtla aynı kapsama yazar', async () => {

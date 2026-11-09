@@ -84,13 +84,16 @@ function makeSelector() {
         kind: string;
     } | null>(null);
     let seq = 0;
+    const predict = vi.fn().mockName('predict').mockImplementation(() => detectionSource.set({ kind: 'Model' }));
     return {
         detectionSource,
         /** Otomatik ilerleme açıkken (sayfalar kullanıcı bakmadan geçilir) önceden getirme yapılmaz. */
         autoMode: signal(false),
         imageFiles: [] as File[],
         currentImageIndex: 0,
-        predict: vi.fn().mockName('predict').mockImplementation(() => detectionSource.set({ kind: 'Model' })),
+        predict,
+        /** #1087: sayfa açılışı; plan izin veriyorsa (testte hep) `predict`. */
+        detectOrBlank: vi.fn().mockName('detectOrBlank').mockImplementation(() => predict()),
         beginExternalDetection: vi.fn().mockName('beginExternalDetection').mockImplementation(() => ++seq),
         applyExternalPrediction: vi.fn().mockName('applyExternalPrediction').mockImplementation((_seq: number, _predictions: unknown, source: {
             kind: string;

@@ -5,6 +5,7 @@ using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos.Labeling;
+using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Labeling;
 using ExamApp.Api.Services.Teachers.Authorization;
 using ExamApp.Foundation.Localization;
@@ -20,14 +21,20 @@ namespace ExamApp.Api.Controllers;
 /// üretebilen roller (Admin, QuestionTrainer) — gateway'deki <c>send-to-fix</c> kuralıyla aynı küme. QuestionTrainer realm
 /// rolü öğretmen askıya alınınca kalkmadığı için Teacher rolündeki çağıran ayrıca onaylı ve askıda olmayan öğretmen
 /// olmalı (<see cref="ApprovedTeacherPolicies.TeacherCapability"/>; Admin muaf) — bu uçlar şirket bütçesi harcar.
+/// Issue #1087: öğretmen de girer; ekran <c>manual-labeling</c>, Claude uçları <c>canvas-ai</c> (canlı çağrı başına sayılır) planına
+/// bağlıdır. Claude talimatlarını düzenlemek içerik ekibinde kalır (Admin, QuestionTrainer).
 /// </summary>
 [ApiController]
 [Route("api/labeling")]
-[Authorize(Roles = "Admin,QuestionTrainer")]
+[Authorize(Roles = "Admin,QuestionTrainer,Teacher")]
 [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)]
+[RequiresEntitlement(EntitlementFeatures.ManualLabeling)]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public class LabelingController : BaseController
 {
+    private const string ContentTeamRoles = "Admin,QuestionTrainer";
+    private const string LiveOrigin = "live";
+
     private readonly ILabelingService _service;
     private readonly IStringLocalizer<Messages> _localizer;
 
@@ -39,6 +46,7 @@ public class LabelingController : BaseController
 
     /// <summary>İzinli Claude modelleri ve 1M token fiyatları.</summary>
     [HttpGet("ai-models")]
+    [RequiresEntitlement(EntitlementFeatures.CanvasAi, InPlanOnly = true)]
     public IActionResult GetAiModels() => Ok(_service.GetAiModels());
 
     /// <summary>Sayfanın (ham görsel SHA-256, küçük harf hex) kayıtlı tüm kaynakları; kayıt yoksa 404.</summary>
@@ -62,11 +70,16 @@ public class LabelingController : BaseController
     /// </summary>
     [HttpPost("ai-detect")]
     [RequestSizeLimit(32 * 1024 * 1024)]
-    public async Task<IActionResult> DetectWithAi([FromBody] LabelingAiDetectRequestDto request, CancellationToken ct)
+    [RequiresEntitlement(EntitlementFeatures.CanvasAi)]
+    public async Task<IActionResult> DetectWithAi(
+        [FromBody] LabelingAiDetectRequestDto request, [FromServices] IEntitlementService entitlements, CancellationToken ct)
     {
         try
         {
-            return Ok(await _service.DetectWithAiAsync(request, CurrentActor(), ct));
+            var response = await _service.DetectWithAiAsync(request, CurrentActor(), ct);
+            if (response.Origin == LiveOrigin)
+                await RecordCanvasAiAsync(entitlements, ct);
+            return Ok(response);
         }
         catch (LabelingValidationException ex)
         {
@@ -88,10 +101,12 @@ public class LabelingController : BaseController
 
     /// <summary>Claude prompt'u: etkin sürüm, koddaki varsayılanlar ve son sürümler.</summary>
     [HttpGet("prompt")]
+    [Authorize(Roles = ContentTeamRoles)]
     public async Task<IActionResult> GetPrompt(CancellationToken ct) => Ok(await _service.GetPromptStateAsync(ct));
 
     /// <summary>Prompt'u yeni sürüm olarak kaydeder; sonraki Claude çağrıları bunu kullanır (eski sonuçlar kayıttan dönmez).</summary>
     [HttpPut("prompt")]
+    [Authorize(Roles = ContentTeamRoles)]
     public async Task<IActionResult> SavePrompt([FromBody] LabelingSavePromptRequestDto request, CancellationToken ct)
     {
         try
@@ -112,12 +127,16 @@ public class LabelingController : BaseController
     /// </summary>
     [HttpPost("activity-structure")]
     [RequestSizeLimit(32 * 1024 * 1024)]
+    [RequiresEntitlement(EntitlementFeatures.CanvasAi)]
     public async Task<IActionResult> ExtractActivityStructure(
-        [FromBody] ActivityStructureRequestDto request, [FromServices] IActivityStructureService activities, CancellationToken ct)
+        [FromBody] ActivityStructureRequestDto request, [FromServices] IActivityStructureService activities,
+        [FromServices] IEntitlementService entitlements, CancellationToken ct)
     {
         try
         {
             var response = await activities.ExtractAsync(request, CurrentActor(), ct);
+            if (response.Results.Any(r => r.Origin == LiveOrigin))
+                await RecordCanvasAiAsync(entitlements, ct);
             return Ok(new ActivityStructureResponseDto(response.Results.Select(Localize).ToList()));
         }
         catch (LabelingValidationException ex)
@@ -136,11 +155,13 @@ public class LabelingController : BaseController
 
     /// <summary>Issue #579: tip başına etkinlik talimatları — etkin sürüm, koddaki varsayılan ve son sürümler.</summary>
     [HttpGet("activity-prompts")]
+    [Authorize(Roles = ContentTeamRoles)]
     public async Task<IActionResult> GetActivityPrompts([FromServices] IActivityStructureService activities, CancellationToken ct) =>
         Ok(await activities.GetPromptsAsync(ct));
 
     /// <summary>Issue #579: tipin talimatını yeni sürüm olarak kaydeder (içerik aynıysa sürüm açılmaz); etkin sürümü döner.</summary>
     [HttpPut("activity-prompts/{interactionType}")]
+    [Authorize(Roles = ContentTeamRoles)]
     public async Task<IActionResult> SaveActivityPrompt(
         string interactionType, [FromBody] ActivitySavePromptRequestDto request,
         [FromServices] IActivityStructureService activities, CancellationToken ct)
@@ -190,7 +211,7 @@ public class LabelingController : BaseController
 
         try
         {
-            return Ok(await bank.SaveToBankAsync(request, CurrentActor(), user.Id, ct));
+            return Ok(await bank.SaveToBankAsync(request, CurrentActor(), user.Id, EntitlementSubject.FromPrincipal(user.Id, User), ct));
         }
         catch (LabelingValidationException ex)
         {
@@ -255,6 +276,14 @@ public class LabelingController : BaseController
         Error = result.Error is null ? null : _localizer[result.Error].Value,
         ValidationErrors = result.ValidationErrors.Select(key => _localizer[key].Value).ToList(),
     };
+
+    // #1087: canlı Claude çağrısı (önbellekten dönen değil) planın canvas-ai sayacından düşer; anahtar çağrı başına tekildir.
+    private async Task RecordCanvasAiAsync(IEntitlementService entitlements, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync(ct);
+        if (IsResolvedUser(user))
+            await entitlements.RecordUsageAsync(user.Id, EntitlementFeatures.CanvasAi, $"canvas-ai:{Guid.NewGuid():N}", ct);
+    }
 
     private LabelingActor CurrentActor() =>
         new(KeyCloakId, User.FindFirstValue("name") ?? User.FindFirstValue("preferred_username"), IsAdmin);

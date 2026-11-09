@@ -7,6 +7,7 @@ import { Observable, of, throwError } from 'rxjs';
 import { BOOK_IMPORTS_POLL_MS, BookImportsComponent } from './book-imports.component';
 import { BookImportDemo, BookImportJob, BookImportQuota } from '../../models/book-import';
 import { AuthService } from '../../services/auth.service';
+import { EntitlementStateService } from '../../services/entitlement-state.service';
 import { BookImportService } from '../../services/book-import.service';
 import { GradesService } from '../../services/grades.service';
 import { SubjectService } from '../../services/subject.service';
@@ -33,6 +34,8 @@ describe('BookImportsComponent (#1018)', () => {
   let quota: BookImportQuota;
   let roles: string[];
   let demo: BookImportDemo;
+  /** #1087: öğretmenin planındaki özellikler. */
+  let planFeatures: string[];
 
   const el = () => fixture.nativeElement as HTMLElement;
   const text = () => el().textContent ?? '';
@@ -54,6 +57,7 @@ describe('BookImportsComponent (#1018)', () => {
         provideRouter([]),
         { provide: BookImportService, useValue: api },
         { provide: AuthService, useValue: { hasRealmRole: (role: string) => roles.includes(role) } },
+        { provide: EntitlementStateService, useValue: { load: () => of(null), has: (f: string) => planFeatures.includes(f) } },
         { provide: GradesService, useValue: { getGrades: () => of([{ id: 4, name: '4. Sınıf' }]) } },
         { provide: SubjectService, useValue: { getSubjectsByGrade: () => of([{ id: 3, name: 'Matematik' }]) } },
       ],
@@ -65,6 +69,7 @@ describe('BookImportsComponent (#1018)', () => {
 
   beforeEach(() => {
     roles = ['Admin'];
+    planFeatures = [];
     demo = { available: true, bookName: 'Örnek', used: 1, limit: 3, activeJobId: null };
     listResponse = of([job()]);
     quota = UNLIMITED;
@@ -160,6 +165,18 @@ describe('BookImportsComponent (#1018)', () => {
 
     expect(api.start).toHaveBeenCalledWith(expect.objectContaining({ bookName: 'kitap', gradeId: 4, subjectId: null }));
     expect(navigate).toHaveBeenCalledWith(['/book-imports', 'new-id']);
+  });
+
+  it('teacherWithBookImportInPlan_UploadsInsteadOfDemo (#1087)', () => {
+    roles = ['Teacher'];
+    planFeatures = ['book-import'];
+    setup();
+    fixture.detectChanges();
+
+    expect(component.canUpload()).toBe(true);
+    expect(text()).toContain(tr.new);
+    expect(api.demo).not.toHaveBeenCalled();
+    expect(api.quota).toHaveBeenCalled();
   });
 
   it('teacher_SeesDemoInsteadOfUpload (#1032)', () => {

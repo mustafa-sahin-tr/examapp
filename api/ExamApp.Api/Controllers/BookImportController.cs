@@ -16,19 +16,18 @@ using Microsoft.Extensions.Localization;
 namespace ExamApp.Api.Controllers;
 
 /// <summary>
-/// Issue #1018 (epic #1017): kitaptan aktarım — PDF yükle, işleri listele, bir işi takip et. Pilot: yalnız Admin ve
-/// QuestionTrainer (işaretleme ve kitap kaydıyla aynı roller ve onaylı öğretmen policy'si). Kullanıcı yalnız kendi işlerini
+/// Issue #1018 (epic #1017): kitaptan aktarım — PDF yükle, işleri listele, bir işi takip et. Yükleme #1087'den beri planın
+/// <c>book-import</c> hakkına bağlı (Admin ve QuestionTrainer muaf; onaylı öğretmen policy'si). Kullanıcı yalnız kendi işlerini
 /// görür, Admin hepsini; başkasının işi 404.
 /// </summary>
 [ApiController]
 [Route("api/book-imports")]
-// Issue #1032: öğretmen yalnız demo işlerini görür (sahibi olduğu iş yalnız demo olabilir); gerçek aktarım uçları PilotRoles ister.
+// Issue #1032: demo işleri her öğretmene açık. Issue #1087: gerçek aktarım uçları rol yerine book-import planına bağlı (Admin ve
+// QuestionTrainer muaf); yükleme aylık sınıra, yeniden deneme ve düzeltme yalnız "planda var mı"ya bakar.
 [Authorize(Roles = "Admin,QuestionTrainer,Teacher")]
 [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)]
 public class BookImportController : BaseController
 {
-    private const string PilotRoles = "Admin,QuestionTrainer";
-
     private readonly IBookImportService _service;
     private readonly IStringLocalizer<Messages> _localizer;
 
@@ -39,7 +38,7 @@ public class BookImportController : BaseController
     }
 
     [HttpPost]
-    [Authorize(Roles = PilotRoles)]
+    [RequiresEntitlement(EntitlementFeatures.BookImport)]
     [RequestSizeLimit(BookImportService.MaxUploadBytesCeiling + 1_000_000)]
     [RequestFormLimits(MultipartBodyLengthLimit = BookImportService.MaxUploadBytesCeiling + 1_000_000)]
     [Consumes("multipart/form-data")]
@@ -201,7 +200,7 @@ public class BookImportController : BaseController
 
     /// <summary>Issue #1025: hatalı ya da takılmış işi kaldığı yerden yeniden dene.</summary>
     [HttpPost("{id:guid}/retry")]
-    [Authorize(Roles = PilotRoles)]
+    [RequiresEntitlement(EntitlementFeatures.BookImport, InPlanOnly = true)]
     public async Task<IActionResult> Retry(Guid id, CancellationToken ct)
     {
         var owner = await ResolveOwnerAsync(ct);
@@ -212,7 +211,7 @@ public class BookImportController : BaseController
 
     /// <summary>Issue #1025: hatalı testi yeniden aktar.</summary>
     [HttpPost("{id:guid}/tests/{testId:int}/retry")]
-    [Authorize(Roles = PilotRoles)]
+    [RequiresEntitlement(EntitlementFeatures.BookImport, InPlanOnly = true)]
     public async Task<IActionResult> RetryTest(Guid id, int testId, CancellationToken ct)
     {
         var owner = await ResolveOwnerAsync(ct);
@@ -223,7 +222,7 @@ public class BookImportController : BaseController
 
     /// <summary>Issue #1025: bütün hatalı testleri yeniden aktar.</summary>
     [HttpPost("{id:guid}/tests/retry")]
-    [Authorize(Roles = PilotRoles)]
+    [RequiresEntitlement(EntitlementFeatures.BookImport, InPlanOnly = true)]
     public async Task<IActionResult> RetryFailedTests(Guid id, CancellationToken ct)
     {
         var owner = await ResolveOwnerAsync(ct);
@@ -314,7 +313,7 @@ public class BookImportController : BaseController
     /// (görsel işin sayfa görseli; cevap verilmezse anahtardan).
     /// </summary>
     [HttpPut("{id:guid}/tests/{testId:int}/pages/{filePage:int}/questions")]
-    [Authorize(Roles = PilotRoles)]
+    [RequiresEntitlement(EntitlementFeatures.BookImport, InPlanOnly = true)]
     [ProducesResponseType(typeof(BookImportPageFixDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> ReplacePage(Guid id, int testId, int filePage, [FromBody] ReplaceBookImportPageDto request,
         [FromServices] IBookImportPageFixService fix, CancellationToken ct)

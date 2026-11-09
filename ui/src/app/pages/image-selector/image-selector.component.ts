@@ -543,6 +543,11 @@ export class ImageSelectorComponent {
    */
   @Input() externalDetection = false;
   /**
+   * Issue #1087: otomatik soru tespiti (`auto-detect`) planda yoksa `predict()` detector'a gitmez; sayfa boş tuvalle açılır
+   * (`detectOrBlank`), kutular elle çizilir.
+   */
+  @Input() autoDetect = true;
+  /**
    * Issue #581: soru tuvali etkinlik bloklarını yazar — tipli etkinliğin yazarlık uyarıları (matris / kutu / hedef …)
    * tuvalde de gösterilir. İşaretleme ekranında kapalı (orada yazarlık yapılmaz).
    */
@@ -1619,7 +1624,7 @@ export class ImageSelectorComponent {
           } else if (this.externalDetection) {
             this.pageReady.emit(this.imageData()!);
           } else {
-            this.predict();
+            this.detectOrBlank();
           }
         } else {
           this.regions.set([]);
@@ -1764,7 +1769,7 @@ export class ImageSelectorComponent {
             if (this.externalDetection) {
               this.pageReady.emit(this.imageData()!);
             } else {
-              this.predict();
+              this.detectOrBlank();
             }
           } else {
             this.regions.set([]);
@@ -5158,6 +5163,15 @@ export class ImageSelectorComponent {
     });
   }
 
+  /** Yeni sayfa: plan izin veriyorsa tespit, vermiyorsa (#1087) boş tuval (önceki sayfanın kutuları temizlenir). */
+  public detectOrBlank() {
+    if (this.autoDetect) {
+      this.predict();
+    } else if (this.imageData()) {
+      this.applyPrediction(++this.predictSeq, { success: true, predictions: [] }, true);
+    }
+  }
+
   public predict() {
     // Issue #454: JSON modunda detector JSON bölgelerini ve sınıflandırmayı ezerdi; çağıranlar zaten
     // devre dışı, bu da son emniyet.
@@ -5166,6 +5180,10 @@ export class ImageSelectorComponent {
     }
     // Sayfa yüklenmemişse analiz edilecek görsel yok; meşgul durumu açılmaz.
     if (!this.imageData()) {
+      return;
+    }
+    // #1087: elle çizilmiş kutular ezilmesin; plan dışı tespit çağrısı (hizala, bağlam menüsü) hiçbir şey yapmaz.
+    if (!this.autoDetect) {
       return;
     }
     const imageData = { image_base64: this.imageData() };
@@ -5358,7 +5376,8 @@ export class ImageSelectorComponent {
     this.inProgress.set(false);
   }
 
-  private applyPrediction(seq: number, questions: PredictionList) {
+  /** `blank` (#1087, tespit planda yok): bildirim yok, otomatik ilerleme yok; yalnız önceki sayfanın kutuları temizlenir. */
+  private applyPrediction(seq: number, questions: PredictionList, blank = false) {
     // Bu arada sayfa değişti ya da yeni analiz başladı: eski yanıt yeni sayfanın bölgelerini ezmesin.
     if (seq !== this.predictSeq) {
       return;
@@ -5451,8 +5470,10 @@ export class ImageSelectorComponent {
     }
     this.appliedSnapshot = this.serializeBoxes();
 
-    this.snackBar.open(this.tr('messages.analysisCompleted'), this.tr('common.ok'), { duration: 2000 });
-    if (!this.autoMode()) {
+    if (!blank) {
+      this.snackBar.open(this.tr('messages.analysisCompleted'), this.tr('common.ok'), { duration: 2000 });
+    }
+    if (blank || !this.autoMode()) {
       // resmi çiz ve dur
       this.drawImage();
     } else {

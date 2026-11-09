@@ -28,8 +28,8 @@ public static class RouteRoleAuthExtensions
     // - /labeled-pages (egitilmis sayfa id'leri; isaretleme modu tekrar getirmesin) -> send-to-fix ile ayni roller.
     // - bilinmeyen ya da kodlanmis yol ekleri, send-to-fix-* benzeri tureyenler, docs ve openapi.json dahil
     //   GERI KALAN HER SEY yalniz Admin.
-    // exam API isaretleme kaynaklari (/api/exam/labeling/*, Claude on-etiketleme dahil) -> send-to-fix ile ayni roller
-    // (derinlemesine savunma; backend ayrica rol + onayli ogretmen kontrolu yapar).
+    // exam API isaretleme kaynaklari (/api/exam/labeling/*, Claude on-etiketleme dahil) ve soru uretimi -> Admin, QuestionTrainer
+    // ve Teacher (#1087: ogretmenin erisimi planina baglidir; plan ve onayli ogretmen kontrolunu backend yapar, gateway planı bilmez).
     public static readonly RoleRestrictedPrefix[] Default =
     [
         new("/question-detector-dev", ["Admin"],
@@ -37,9 +37,9 @@ public static class RouteRoleAuthExtensions
             new(["predict", "headerlist", "read-qr"], ["Teacher", "Admin"]),
             new(["send-to-fix", "labeled-pages"], ["Admin", "QuestionTrainer"]),
         ]),
-        new("/api/exam/labeling", ["Admin", "QuestionTrainer"], []),
+        new("/api/exam/labeling", ["Admin", "QuestionTrainer", "Teacher"], []),
         // Soru üretimi işaretlemenin Claude kotasını kullanır, aynı kişilere açıktır.
-        new("/api/exam/question-generation", ["Admin", "QuestionTrainer"], []),
+        new("/api/exam/question-generation", ["Admin", "QuestionTrainer", "Teacher"], []),
         // issue #583: açık uçlu değerlendirme kuyruğu (GET liste, PUT {id}) -> yalnız Teacher + Admin (backend ayrıca onaylı öğretmen
         // policy'si ve atama kapsamı uygular; öğrenci / veli token'ı gateway'de 403).
         new("/api/exam/open-text-reviews", ["Teacher", "Admin"], []),

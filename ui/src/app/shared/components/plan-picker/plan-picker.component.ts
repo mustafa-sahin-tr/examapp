@@ -14,6 +14,7 @@ import {
   planNameKey,
 } from '../../../models/subscription';
 import { SubscriptionService } from '../../../services/subscription.service';
+import { EntitlementStateService } from '../../../services/entitlement-state.service';
 
 const SCOPE = 'subscription';
 
@@ -43,6 +44,7 @@ export type PlanAction = 'free' | 'trial' | 'paid';
 })
 export class PlanPickerComponent implements OnInit {
   private readonly subscriptions = inject(SubscriptionService);
+  private readonly entitlements = inject(EntitlementStateService);
 
   readonly mode = input<'signup' | 'change'>('signup');
   /** Plan seçildi (deneme / ödeme sonrası yeni plan) ya da Free ile devam edildi (null). */
@@ -141,6 +143,7 @@ export class PlanPickerComponent implements OnInit {
   private finish(plan: CurrentSubscriptionPlan): void {
     this.busy.set(false);
     this.current.set(plan);
+    this.entitlements.set(plan);
     this.checkoutPlan.set(null);
     this.completed.emit(plan);
   }

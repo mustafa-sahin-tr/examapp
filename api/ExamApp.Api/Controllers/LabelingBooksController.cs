@@ -2,6 +2,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos.Labeling;
 using ExamApp.Api.Services.BookImport;
+using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Labeling;
 using ExamApp.Api.Services.Teachers.Authorization;
 using ExamApp.Foundation.Localization;
@@ -16,11 +17,14 @@ namespace ExamApp.Api.Controllers;
 /// Issue #577: kitap kaydı — sayfa ofsetleri, cevap anahtarı aralıkları, içindekiler. Gateway:
 /// <c>/api/exam/labeling/books/*</c> (işaretleme kuralı: Admin + QuestionTrainer). Yetki <see cref="LabelingController"/> ile
 /// aynı: QuestionTrainer rolündeki öğretmen onaylı ve askıda olmamalı (Admin muaf).
+/// Issue #1087: <c>manual-labeling</c> planındaki öğretmen kitapları okur (işaretlemede kitap seçimi); kitap kataloğu ortak olduğu için
+/// ekleme, düzenleme ve silme içerik ekibinde kalır.
 /// </summary>
 [ApiController]
 [Route("api/labeling/books")]
-[Authorize(Roles = "Admin,QuestionTrainer")]
+[Authorize(Roles = "Admin,QuestionTrainer,Teacher")]
 [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)]
+[RequiresEntitlement(EntitlementFeatures.ManualLabeling)]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public class LabelingBooksController : BaseController
 {
@@ -49,6 +53,7 @@ public class LabelingBooksController : BaseController
 
     /// <summary>201 + kitap; 400 geçersiz aralık / taksonomi; 409 ad kullanımda.</summary>
     [HttpPost]
+    [Authorize(Roles = "Admin,QuestionTrainer")]
     public Task<IActionResult> Create([FromBody] LabelingBookSaveRequestDto request, CancellationToken ct) =>
         Handle(async () =>
         {
@@ -60,6 +65,7 @@ public class LabelingBooksController : BaseController
     /// Paylaşımlı kitabın (kitap testi / çalışma öğesi / başka kullanıcının aynı adlı sorusu) adı ya da asıl kaydı yalnız
     /// Admin tarafından değiştirilir → aksi halde 403 <c>LabelingBookRenameForbidden</c>; aralık/içindekiler/not serbest.
     [HttpPut("{id:int}")]
+    [Authorize(Roles = "Admin,QuestionTrainer")]
     public async Task<IActionResult> Update(int id, [FromBody] LabelingBookSaveRequestDto request, CancellationToken ct)
     {
         var user = await GetAuthenticatedUserAsync(ct);
@@ -75,6 +81,7 @@ public class LabelingBooksController : BaseController
 
     /// <summary>204; 404; 409 kitap kullanımda (soru kaynağı, kitap testi, başka kitabın asıl kaydı ya da aynı adlı soru).</summary>
     [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Admin,QuestionTrainer")]
     public Task<IActionResult> Delete(int id, CancellationToken ct) =>
         Handle(async () => await _books.DeleteAsync(id, ct) ? NoContent() : NotFound(Error("labeling.books.notFound")));
 

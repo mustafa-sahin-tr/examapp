@@ -99,6 +99,11 @@ public static class SubscriptionPlanSeed
         (TrialPlanId, EntitlementFeatures.SelfActivity, 10),
         (TrialPlanId, EntitlementFeatures.StudyTools, null),
         (TrialPlanId, EntitlementFeatures.Analytics, null),
+
+        // #1087: soru girişi plana bağlandı; Free bugünkü öğretmen yeteneklerini (elle soru, otomatik tespit) kilitleme işine (#1090)
+        // kadar korur. Sona eklenir: önceki satırların id'leri değişmez.
+        (FreePlanId, EntitlementFeatures.ManualLabeling, null),
+        (FreePlanId, EntitlementFeatures.AutoDetect, null),
     ];
 
     private const int FirstTierLimitId = 13;

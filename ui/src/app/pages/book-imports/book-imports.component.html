@@ -1,6 +1,6 @@
 <div class="bi" *transloco="let t; prefix: 'book-imports'">
-  <app-page-header icon="auto_stories" [title]="t('title')" [description]="t(canUpload ? 'subtitle' : 'demo.subtitle')">
-    @if (canUpload && !showForm()) {
+  <app-page-header icon="auto_stories" [title]="t('title')" [description]="t(canUpload() ? 'subtitle' : 'demo.subtitle')">
+    @if (canUpload() && !showForm()) {
     <button mat-flat-button type="button" (click)="openForm()">
       <mat-icon>add</mat-icon>{{ t('new') }}
     </button>
@@ -100,7 +100,7 @@
   </section>
   }
 
-  @if (!canUpload && demo(); as d) {
+  @if (!canUpload() && demo(); as d) {
   <section class="bi-state bi-state--empty bi-demo" [attr.aria-label]="t('demo.title')">
     <mat-icon aria-hidden="true">auto_stories</mat-icon>
     <h2 class="bi-section-title">{{ t('demo.title') }}</h2>
@@ -149,7 +149,7 @@
     <div class="bi-state bi-state--empty">
       <mat-icon aria-hidden="true">auto_stories</mat-icon>
       <span>{{ t('list.empty') }}</span>
-      @if (canUpload && !showForm()) {
+      @if (canUpload() && !showForm()) {
       <button mat-stroked-button type="button" (click)="openForm()">{{ t('list.emptyAction') }}</button>
       }
     </div>

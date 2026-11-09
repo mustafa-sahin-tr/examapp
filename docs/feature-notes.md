@@ -318,6 +318,20 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   `SubscriptionPlanChangeAudits`'e eski → yeni JSON yazar. Sınırlar her denetimde veritabanından okunduğu için önbellek yok,
   sonraki denetimde geçerlidir; bu ayın kullanımı sıfırlanmaz. Kullanıcının gördüğü plan adı çeviri dosyasındadır (`Name` yalnız
   admin / kayıt adı). Limit satırı id'leri 1000'den başlar: admin eklemeleri seed id'leriyle çakışmaz.
+- **Soru girişi plana bağlı (#1087):** öğretmenin soru girişi `QuestionTrainer` rolüne değil plana bakar. Uç noktalar
+  `[RequiresEntitlement(feature)]` filtresiyle korunur: sınır 0 → 403 `entitlement.notInPlan`, sınır doldu → 429
+  `entitlement.limitReached` (`InPlanOnly` uçlarda yalnız 403; filtre kullanım yazmaz, sayılan uç başarıdan sonra kendisi yazar).
+  Kapılar: soru tuvali ve kitap sayfası düzeltme `manual-labeling` (Basic+), otomatik tespit `auto-detect` (Essential+; tuvalde
+  düğmeler gizlenir, sayfa boş tuvalle açılır — `/question-detector-dev/predict` rol kapısında kalır), tuvalde ve etkinlik
+  editöründe Claude `canvas-ai` (yalnız canlı çağrı sayılır, önbellekten dönen sayılmaz), hızlı ekleme `quick-add`, soru üretimi
+  `question-generation` (taslak başına bir hak), kitap aktarımı yükleme `book-import` (yeniden deneme / sayfa değiştirme yalnız
+  planda olmayı ister). Admin ve QuestionTrainer muaftır (`EntitlementRoles.UnlimitedByFeature`). İçerik ekibinde kalanlar:
+  `/labeling` eğitim ekranı (send-to-fix, labeled-pages), kitap kataloğu yazımı, genel Claude prompt'ları. Free, #1090'a kadar
+  `manual-labeling` + `auto-detect` taşır. Planında `ai-classification` olmayan öğretmen (Basic) toplu kayıtta her soru için konu
+  seçer (soru → başlık → sayfa konusu sırasıyla çözülür); konusuz soru 400 `TopicRequired`, sınıflandırıcı çağrılmaz, kaynak
+  `Human`. Arayüz: `EntitlementStateService` (`subscription-plans/me`, tek kopya, okunamazsa açık — sunucu karar verir),
+  `entitlementGuard(feature)` (planda yoksa yükseltme penceresi; doğrudan adresle gelen panoya), 403 `entitlement.notInPlan`
+  aynı yükseltme penceresini "Bu özellik planında yok" başlığıyla açar. Plan seçilince (deneme / ödeme) kapılar hemen açılır.
 - **Plan seçimi (#1028):** kayıt sihirbazının (`ui` `/register`) öğrenci / öğretmen kaydından sonra 3. adımı plan kartlarıdır
   (`PlanPickerComponent`, scope `subscription`); veli adımı atlar. "Ücretsiz devam et" API çağırmaz (Free). "Denemeyi başlat"
   → `POST /api/exam/subscription-plans/me/trial`: hesap başına bir kez (silinmiş atamalar dahil; ikincisi 409

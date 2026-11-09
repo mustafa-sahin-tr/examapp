@@ -40,7 +40,7 @@ public sealed record SchoolSeedCommand(SchoolSeedOptions Options, string? Connec
 
           --provinces <il,il,...>   İçe aktarılacak iller (varsayılan: issue #216'daki 10 il)
           --limit <N>               İl başına en fazla N okul — ada göre sıralı ilk N (varsayılan: sınırsız)
-          --types <ilkokul,ortaokul> Tür seçimi (varsayılan: ikisi de)
+          --types <ilkokul,ortaokul,lise> Tür seçimi (varsayılan: ilkokul, ortaokul)
           --include-imam-hatip      "İmam Hatip Ortaokulu" kayıtlarını Ortaokul olarak dahil et
           --dry-run                 Hiçbir şey yazma, yalnızca raporla
           --connection <conn-str>   ConnectionStrings:DefaultConnection yerine kullanılacak bağlantı
@@ -133,7 +133,8 @@ public sealed record SchoolSeedCommand(SchoolSeedOptions Options, string? Connec
         var key = SchoolSeedService.FoldKey(value);
         if (key == SchoolSeedService.FoldKey("ilkokul")) return SchoolSeedKind.Ilkokul;
         if (key == SchoolSeedService.FoldKey("ortaokul")) return SchoolSeedKind.Ortaokul;
-        throw new ArgumentException($"Bilinmeyen tür: '{value}'. Geçerli: ilkokul, ortaokul.");
+        if (key == SchoolSeedService.FoldKey("lise")) return SchoolSeedKind.Lise;
+        throw new ArgumentException($"Bilinmeyen tür: '{value}'. Geçerli: ilkokul, ortaokul, lise.");
     }
 
     /// <summary>
@@ -222,10 +223,10 @@ public sealed record SchoolSeedCommand(SchoolSeedOptions Options, string? Connec
                       $"türler={string.Join(",", options.Kinds)} imamHatip={options.IncludeImamHatip}");
         sb.AppendLine($"Kaynak satır: {r.TotalRowsInSource}, filtreden geçen aday: {r.CandidateRows}");
         sb.AppendLine();
-        sb.AppendLine($"{"İl",-12} {"Eşleşti",-8} {"İlk+",6} {"İlk=",6} {"Orta+",6} {"Orta=",6} {"Bşehir",7} {"ÖzelEğ",7} {"Limit",6} {"İlçe?",6}");
+        sb.AppendLine($"{"İl",-12} {"Eşleşti",-8} {"İlk+",6} {"İlk=",6} {"Orta+",6} {"Orta=",6} {"Lise+",6} {"Lise=",6} {"Bşehir",7} {"ÖzelEğ",7} {"Limit",6} {"İlçe?",6}");
         foreach (var p in r.Provinces)
         {
-            sb.AppendLine($"{p.Province,-12} {(p.ProvinceMatched ? "evet" : "HAYIR"),-8} {p.IlkokulAdded,6} {p.IlkokulExisting,6} {p.OrtaokulAdded,6} {p.OrtaokulExisting,6} " +
+            sb.AppendLine($"{p.Province,-12} {(p.ProvinceMatched ? "evet" : "HAYIR"),-8} {p.IlkokulAdded,6} {p.IlkokulExisting,6} {p.OrtaokulAdded,6} {p.OrtaokulExisting,6} {p.LiseAdded,6} {p.LiseExisting,6} " +
                           $"{p.SkippedBuyuksehir,7} {p.SkippedSpecialEducation,7} {p.SkippedByLimit,6} {p.UnmatchedDistrictRows,6}");
         }
         sb.AppendLine();

@@ -16,7 +16,7 @@ namespace ExamApp.Api.Services.Schools.Seed;
 /// Türkçe kültürüyle Title Case — her kelimenin (boşluk, '-', '.', '/', '(' ile ayrılan parçanın)
 /// ilk harfi büyük, kalanı küçük. "İ/I" dönüşümü tr-TR'ye göre.</item>
 /// <item>Karışık yazımlı adlarda yalnızca tür son ekleri düzeltilir: ilkokulu → İlkokulu,
-/// ortaokulu → Ortaokulu, imam → İmam, hatip → Hatip. Diğer kelimelere dokunulmaz.</item>
+/// ortaokulu → Ortaokulu, lisesi → Lisesi, imam → İmam, hatip → Hatip. Diğer kelimelere dokunulmaz.</item>
 /// </list>
 /// </summary>
 public static class SchoolNameNormalizer
@@ -28,6 +28,7 @@ public static class SchoolNameNormalizer
     [
         ("ilkokulu", "İlkokulu"),
         ("ortaokulu", "Ortaokulu"),
+        ("lisesi", "Lisesi"),
         ("imam", "İmam"),
         ("hatip", "Hatip")
     ];

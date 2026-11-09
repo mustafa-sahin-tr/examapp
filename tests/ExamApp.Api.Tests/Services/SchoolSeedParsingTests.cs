@@ -83,7 +83,11 @@ public class SchoolSeedParsingTests
     [InlineData("Ortaokul", false, SchoolSeedKind.Ortaokul)]
     [InlineData("İmam Hatip Ortaokulu", false, null)]
     [InlineData("İmam Hatip Ortaokulu", true, SchoolSeedKind.Ortaokul)]
-    [InlineData("Anadolu Lisesi", true, null)]
+    [InlineData("Anadolu Lisesi", false, SchoolSeedKind.Lise)]
+    [InlineData("Anadolu İmam Hatip Lisesi", false, SchoolSeedKind.Lise)]
+    [InlineData("Mesleki ve Teknik Anadolu Lisesi", false, SchoolSeedKind.Lise)]
+    [InlineData("Lise", false, SchoolSeedKind.Lise)]
+    [InlineData("Açık/Akşam Lisesi", true, null)]
     [InlineData("Anaokulu", true, null)]
     public void ClassifyKind_maps_source_types(string type, bool includeImamHatip, SchoolSeedKind? expected)
     {
@@ -149,7 +153,7 @@ public class SchoolSeedParsingTests
     [Theory]
     [InlineData("--limit", "0")]
     [InlineData("--limit", "abc")]
-    [InlineData("--types", "lise")]
+    [InlineData("--types", "anaokulu")]
     [InlineData("--bogus", "1")]
     public void Command_rejects_invalid_options(string option, string value)
     {

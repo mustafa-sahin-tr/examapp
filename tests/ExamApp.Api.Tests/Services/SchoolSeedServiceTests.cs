@@ -151,6 +151,26 @@ public class SchoolSeedServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Imports_high_schools_only_when_requested()
+    {
+        await SeedReferenceAsync();
+        await using var ctx = _db.NewContext();
+
+        var result = await NewService(ctx).RunAsync(new SchoolSeedOptions
+        {
+            Provinces = ["Kars"],
+            Kinds = new HashSet<SchoolSeedKind> { SchoolSeedKind.Lise }
+        });
+
+        result.Added.ShouldBe(1);
+        result.Provinces.Single().LiseAdded.ShouldBe(1);
+        result.Provinces.Single().IlkokulAdded.ShouldBe(0);
+        var saved = await _db.NewContext().Schools.SingleAsync();
+        saved.Name.ShouldBe("Kars Fen Lisesi");
+        saved.IsSeedData.ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task Kinds_filter_selects_only_requested_type()
     {
         await SeedReferenceAsync();

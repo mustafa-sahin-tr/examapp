@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round">
+  <!-- The path to the target school: starts bottom left, passes behind the card, ends at the flagged school. Used as a CSS mask. -->
+  <path d="M-30 905C120 985 225 800 370 610S640 545 800 520 1050 590 1130 440 1240 275 1315 262" stroke-width="5" stroke-dasharray=".1 19"/>
+  <g stroke-width="3">
+    <circle cx="370" cy="610" r="13"/><path d="M364 610l5 5 8-10"/>
+    <circle cx="1130" cy="440" r="13"/><path d="M1124 440l5 5 8-10"/>
+  </g>
+  <g transform="translate(1320 130)" stroke-width="3"><!-- school with a flag -->
+    <path d="M0 150V84L82 40l82 44v66Z"/><path d="M-22 150h208"/>
+    <path d="M66 150v-40a16 16 0 0 1 32 0v40"/><circle cx="82" cy="76" r="11"/>
+    <path d="M20 112h24v22H20ZM120 112h24v22h-24Z"/>
+    <path d="M82 40V0"/><path d="M82 2h40l-11 11 11 11H82Z" fill="#000"/>
+  </g>
+</svg>

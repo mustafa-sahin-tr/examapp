@@ -6,11 +6,36 @@
 body {
   font-family: 'Segoe UI', Arial, sans-serif;
   background-color: var(--kc-bg);
-  background-image: radial-gradient(1200px 600px at 50% -10%, color-mix(in srgb, var(--kc-primary) 28%, transparent), transparent 70%);
+  background-image:
+    radial-gradient(1200px 600px at 50% -10%, color-mix(in srgb, var(--kc-primary) 28%, transparent), transparent 70%),
+    radial-gradient(900px 600px at 0% 100%, color-mix(in srgb, var(--kc-primary) 16%, transparent), transparent 70%);
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Background scene: school objects and the trail to the flagged school. Masks, so the colors stay tokens. */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  mask-position: center;
+  mask-size: cover;
+  mask-repeat: no-repeat;
+}
+
+body::before {
+  background-color: color-mix(in srgb, var(--kc-text-muted) 30%, transparent);
+  mask-image: url("../img/auth-bg-glyphs.svg");
+}
+
+body::after {
+  background-color: color-mix(in srgb, var(--kc-link) 70%, transparent);
+  mask-image: url("../img/auth-bg-trail.svg");
 }
 
 /* ===========================
@@ -531,6 +556,13 @@ body {
    Responsive
    =========================== */
 @media (max-width: 768px) {
+  /* Cover would leave only the centre strip, hidden by the card: a larger scene, anchored under it. */
+  body::before,
+  body::after {
+    mask-size: 1100px auto;
+    mask-position: center bottom;
+  }
+
   .auth-area {
     /* top padding leaves room for the absolutely positioned locale switcher
        so it never covers the card's title (#379) */

@@ -19,6 +19,7 @@ dev defaults; never reuse them outside local dev.
   (`cp` geri kalanı ezer). Development dışında boş / `devOnly` değerler açılışta patlar.
 - **Keycloak** `--import-realm` mevcut realm'i yeniden import etmez: realm export değişikliği çalışan Keycloak'ta elle yapılır.
   Prod realm `deploy/keycloak/import/` (boş kalır), dev `deploy/keycloak/dev-import/realm-export.json`.
+  Tema: `custom.css` değişince `template.ftl`'deki `?v=` artır (Cloudflare + tarayıcı 30 gün önbellekler); demoda Keycloak'ı `demo.sh`'in compose'uyla `up -d --force-recreate --no-deps keycloak` yap (`restart` diskteki `kc-gzip-cache` kopyasını silmez, Caddy'ye eski CSS gider).
 - **RabbitMQ** kullanıcı / izinleri `rabbitmq/definitions.json` (tek kaynak, servis başına en az yetki, #279). Yeni event = izin satırı;
   compose'da `rabbitmq-permission-sync` uygular, sonra ilgili servisi `docker-compose restart`; Aspire'da `rabbitmq` kaynağını yeniden başlat.
 - **Migration'lar** exam API açılışında uygulanır → Aspire'da exam API'yi yeniden başlat. Yeni kontrolcü / consumer → ilgili servisi yeniden başlat.

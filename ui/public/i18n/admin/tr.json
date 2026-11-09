@@ -180,7 +180,6 @@
       "allDistricts": "Tüm ilçeler",
       "clear": "Filtreleri temizle",
       "countAria": "{{count}} okul",
-      "countFilteredAria": "{{total}} okuldan {{count}} tanesi filtreye uyuyor",
       "noMatchTitle": "Filtreye uyan okul yok",
       "noMatchHint": "Aramayı değiştir ya da filtreleri temizle",
       "pending": "Filtre uygulanıyor…"

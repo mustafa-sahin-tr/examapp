@@ -23,10 +23,9 @@ import {
   SubscriptionSearchRole,
   planNameKey,
 } from '../../../models/subscription';
-import { School } from '../../../models/taxonomy';
-import { AdminService } from '../../../services/admin.service';
 import { SubscriptionService } from '../../../services/subscription.service';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+import { SchoolSelectComponent } from '../../../shared/components/school-select/school-select.component';
 
 /** Arama metninin en kısa uzunluğu (sunucu da reddeder). */
 export const MIN_SEARCH_LENGTH = 2;
@@ -39,6 +38,7 @@ export const MIN_SEARCH_LENGTH = 2;
   selector: 'app-admin-subscriptions',
   standalone: true,
   imports: [
+    SchoolSelectComponent,
     DatePipe,
     FormsModule,
     MatButtonModule,
@@ -59,11 +59,9 @@ export const MIN_SEARCH_LENGTH = 2;
 })
 export class AdminSubscriptionsComponent implements OnInit {
   private readonly subscriptions = inject(SubscriptionService);
-  private readonly admin = inject(AdminService);
 
   readonly plans = signal<SubscriptionPlan[]>([]);
   readonly activePlans = computed(() => this.plans().filter((p) => p.isActive));
-  readonly schools = signal<School[]>([]);
 
   // ---- Kullanıcı ----
   readonly query = signal('');
@@ -107,7 +105,6 @@ export class AdminSubscriptionsComponent implements OnInit {
       next: (plans) => this.plans.set(plans),
       error: () => this.error.set('admin.errors.load'),
     });
-    this.admin.getSchools().subscribe({ next: (schools) => this.schools.set(schools), error: () => this.schools.set([]) });
   }
 
   /** Plan anahtarının scope içi çeviri anahtarı; katalogda yoksa boş (şablon sunucunun verdiği adı gösterir). */
@@ -175,11 +172,12 @@ export class AdminSubscriptionsComponent implements OnInit {
     });
   }
 
-  selectSchool(schoolId: number): void {
+  selectSchool(schoolId: number | null): void {
     this.schoolId.set(schoolId);
     this.members.set(null);
     this.confirmSchool.set(false);
     this.schoolResult.set(null);
+    if (schoolId == null) return;
     this.subscriptions.schoolMembers(schoolId).subscribe({
       next: (members) => this.members.set(members),
       error: (err: HttpErrorResponse) => this.error.set(this.errorKey(err)),

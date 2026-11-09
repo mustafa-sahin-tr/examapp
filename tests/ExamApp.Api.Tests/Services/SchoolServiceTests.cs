@@ -310,8 +310,95 @@ public class SchoolServiceTests : IDisposable
 
     // ---- Read ----
 
+    private async Task<List<SchoolDto>> ListAsync(AppDbContext ctx) =>
+        (await NewService(ctx).ListAsync(null, null, null, 1, 100)).Items;
+
+    private async Task SeedSearchableAsync()
+    {
+        var (provinceId, districtId) = await SeedProvinceWithDistrictAsync("İstanbul", "Kadıköy");
+        await using var ctx = _db.NewContext();
+        var service = NewService(ctx);
+        await service.CreateAsync(new UpsertSchoolDto { Name = "Bostancı Atatürk Ortaokulu", ProvinceId = provinceId, DistrictId = districtId }, userId: 1);
+        await service.CreateAsync(new UpsertSchoolDto { Name = "Şehit Işık İlkokulu", ProvinceId = provinceId, DistrictId = districtId }, userId: 1);
+        await service.CreateAsync(new UpsertSchoolDto { Name = "Atatürk Lisesi" }, userId: 1);
+    }
+
+    [Theory]
+    [InlineData("ataturk", new[] { "Atatürk Lisesi", "Bostancı Atatürk Ortaokulu" })]
+    [InlineData("ATATÜRK", new[] { "Atatürk Lisesi", "Bostancı Atatürk Ortaokulu" })]
+    [InlineData("kadikoy ataturk", new[] { "Bostancı Atatürk Ortaokulu" })]
+    [InlineData("istanbul sehit", new[] { "Şehit Işık İlkokulu" })]
+    [InlineData("ISIK", new[] { "Şehit Işık İlkokulu" })]
+    [InlineData("yok böyle", new string[0])]
+    public async Task SearchAsync_folds_turkish_and_matches_every_word_in_name_district_or_province(string query, string[] expected)
+    {
+        await SeedSearchableAsync();
+
+        await using var read = _db.NewContext();
+        var result = await NewService(read).SearchAsync(query, 50);
+
+        result.Select(s => s.Name).OrderBy(n => n, StringComparer.Ordinal).ShouldBe(expected.OrderBy(n => n, StringComparer.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(1, 1)]
+    [InlineData(1000, SchoolService.MaxSearchLimit)]
+    [InlineData(-5, 1)]
+    public async Task SearchAsync_clamps_the_limit(int limit, int expected)
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.Schools.AddRange(Enumerable.Range(0, SchoolService.MaxSearchLimit + 5).Select(i => new School { Name = $"Okul {i:D3}" }));
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var read = _db.NewContext();
+        (await NewService(read).SearchAsync(null, limit)).Count.ShouldBe(expected);
+    }
+
     [Fact]
-    public async Task GetAllAsync_counts_teachers_verified_students_and_pending_requests_issue898()
+    public async Task Update_refreshes_the_search_text()
+    {
+        var id = await SeedSchoolAsync("Eski Ad Lisesi");
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).UpdateAsync(id, new UpsertSchoolDto { Name = "Yeni Çınar Lisesi" }, userId: 1)).Success.ShouldBeTrue();
+
+        await using var read = _db.NewContext();
+        (await NewService(read).SearchAsync("cinar", 50)).Single().Id.ShouldBe(id);
+        (await NewService(read).SearchAsync("eski", 50)).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task GetOptionAsync_returns_the_school_or_null()
+    {
+        var id = await SeedSchoolAsync("Ankara Lisesi");
+
+        await using var read = _db.NewContext();
+        (await NewService(read).GetOptionAsync(id))!.Name.ShouldBe("Ankara Lisesi");
+        (await NewService(read).GetOptionAsync(id + 1)).ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task ListAsync_filters_and_pages_on_the_server()
+    {
+        await SeedSearchableAsync();
+
+        await using var read = _db.NewContext();
+        var service = NewService(read);
+
+        var firstPage = await service.ListAsync("ataturk", null, null, page: 1, pageSize: 1);
+        firstPage.TotalCount.ShouldBe(2);
+        firstPage.Items.Single().Name.ShouldBe("Atatürk Lisesi");
+        (await service.ListAsync("ataturk", null, null, page: 2, pageSize: 1)).Items.Single().Name.ShouldBe("Bostancı Atatürk Ortaokulu");
+        (await service.ListAsync("ataturk", null, null, page: 3, pageSize: 1)).Items.ShouldBeEmpty();
+
+        var district = (await read.Districts.SingleAsync()).Id;
+        var inDistrict = await service.ListAsync(null, null, district, page: 1, pageSize: 20);
+        inDistrict.TotalCount.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task ListAsync_counts_teachers_verified_students_and_pending_requests_issue898()
     {
         var id = await SeedSchoolAsync("A Okulu");
         var other = await SeedSchoolAsync("B Okulu");
@@ -330,13 +417,13 @@ public class SchoolServiceTests : IDisposable
         }
 
         await using var read = _db.NewContext();
-        var row = (await NewService(read).GetAllAsync()).Single(s => s.Id == id);
+        var row = (await ListAsync(read)).Single(s => s.Id == id);
 
         (row.TeacherCount, row.StudentCount, row.PendingCount).ShouldBe((1, 2, 2));
     }
 
     [Fact]
-    public async Task GetAllAsync_returns_schools_ordered_by_name()
+    public async Task ListAsync_returns_schools_ordered_by_name()
     {
         await SeedSchoolAsync("Zeytinburnu Lisesi");
         await using (var ctx = _db.NewContext())
@@ -346,13 +433,13 @@ public class SchoolServiceTests : IDisposable
         }
 
         await using var read = _db.NewContext();
-        var result = await NewService(read).GetAllAsync();
+        var result = await ListAsync(read);
 
         result.Select(s => s.Name).ShouldBe(new[] { "Ankara Lisesi", "Zeytinburnu Lisesi" });
     }
 
     [Fact]
-    public async Task GetAllAsync_projects_province_and_district_names()
+    public async Task ListAsync_projects_province_and_district_names()
     {
         var (provinceId, districtId) = await SeedProvinceWithDistrictAsync("Ankara", "Çankaya");
         await using (var ctx = _db.NewContext())
@@ -363,7 +450,7 @@ public class SchoolServiceTests : IDisposable
         }
 
         await using var read = _db.NewContext();
-        var result = await NewService(read).GetAllAsync();
+        var result = await ListAsync(read);
 
         var withAddress = result.Single(s => s.Name == "Ankara Lisesi");
         withAddress.ProvinceName.ShouldBe("Ankara");
@@ -377,14 +464,14 @@ public class SchoolServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetAllAsync_does_not_break_on_a_legacy_school_with_no_address_data_at_all()
+    public async Task ListAsync_does_not_break_on_a_legacy_school_with_no_address_data_at_all()
     {
         // Migration öncesi kayıtları taklit eder: Province/District/AddressLine hepsi null.
         // Geriye dönük uyumluluk (kabul kriteri #4) — projection hata fırlatmamalı, hepsi null dönmeli.
         await SeedSchoolAsync("Eski Kayıt Lisesi", addressLine: null);
 
         await using var read = _db.NewContext();
-        var result = await NewService(read).GetAllAsync();
+        var result = await ListAsync(read);
 
         var legacy = result.Single(s => s.Name == "Eski Kayıt Lisesi");
         legacy.ProvinceId.ShouldBeNull();

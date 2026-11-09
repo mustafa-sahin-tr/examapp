@@ -51,6 +51,15 @@ export interface UpsertSchool {
   addressLine?: string | null;
 }
 
+export interface AdminSchoolListQuery {
+  q: string;
+  provinceId: number | null;
+  districtId: number | null;
+  /** 1 tabanlı. */
+  page: number;
+  pageSize: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminService {
   private readonly http = inject(HttpClient);
@@ -104,8 +113,12 @@ export class AdminService {
   }
 
   // ---- schools ----
-  getSchools(): Observable<School[]> {
-    return this.http.get<School[]>(`${this.baseUrl}/schools`);
+  getSchools(query: AdminSchoolListQuery): Observable<Paged<School>> {
+    let params = new HttpParams().set('page', query.page).set('pageSize', query.pageSize);
+    if (query.q) params = params.set('q', query.q);
+    if (query.provinceId != null) params = params.set('provinceId', query.provinceId);
+    if (query.districtId != null) params = params.set('districtId', query.districtId);
+    return this.http.get<Paged<School>>(`${this.baseUrl}/schools`, { params });
   }
   createSchool(body: UpsertSchool) {
     return this.http.post<ApiResult>(`${this.baseUrl}/schools`, body);

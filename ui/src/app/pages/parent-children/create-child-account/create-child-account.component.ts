@@ -1,9 +1,8 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, Injector, OnInit, afterNextRender, computed, inject, input, output, signal, ChangeDetectionStrategy } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { ErrorStateMatcher } from '@angular/material/core';
-import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -13,7 +12,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
-import { Observable, catchError, finalize, forkJoin, map, of, startWith } from 'rxjs';
+import { finalize } from 'rxjs';
 
 import {
   CHILD_ACCOUNT_ERROR_CODES,
@@ -27,15 +26,13 @@ import {
 } from '../../../models/parent-child-account.model';
 import { PARENT_LINK_ERROR_CODES } from '../../../models/parent-link.model';
 import { Grade } from '../../../models/student';
-import { School } from '../../../models/taxonomy';
 import { GradesService } from '../../../services/grades.service';
+import { SchoolSelectComponent } from '../../../shared/components/school-select/school-select.component';
 import { ParentChildAccountService } from '../../../services/parent-child-account.service';
 import { ParentLinkService } from '../../../services/parent-link.service';
-import { SchoolService } from '../../../services/school.service';
 import { PARENT_LINKS_SCOPE } from '../../../shared/utils/parent-link-ui';
 
 /** Okul otomatik tamamlamasında en fazla bu kadar öneri (okul listesi binlerce satır olabilir). */
-const MAX_SCHOOL_OPTIONS = 50;
 
 /** Kullanıcı adı (normalize edilmiş) biçim kontrolü. */
 const usernameValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null =>
@@ -103,7 +100,7 @@ export function suggestChildUsername(firstName: string, lastName: string): strin
   standalone: true,
   imports: [
     ReactiveFormsModule,
-    MatAutocompleteModule,
+    SchoolSelectComponent,
     MatButtonModule,
     MatCheckboxModule,
     MatFormFieldModule,
@@ -125,7 +122,6 @@ export class CreateChildAccountComponent implements OnInit {
   private readonly service = inject(ParentChildAccountService);
   private readonly linkService = inject(ParentLinkService);
   private readonly gradesService = inject(GradesService);
-  private readonly schoolService = inject(SchoolService);
   private readonly transloco = inject(TranslocoService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
@@ -149,16 +145,13 @@ export class CreateChildAccountComponent implements OnInit {
   protected readonly consentVersion = PARENT_CONSENT_VERSION;
   protected readonly maxChildren = MAX_CHILD_ACCOUNTS;
   protected readonly grades = signal<Grade[]>([]);
-  protected readonly schools = signal<School[]>([]);
   protected readonly submitting = signal(false);
   protected readonly serverError = signal<string | null>(null);
   protected readonly summary = signal<CreatedChildAccount | null>(null);
   protected readonly showPw = signal(false);
-  /** Sınıf / okul listeleri yükleniyor ya da yüklenemedi (sınıf zorunlu: liste gelmeden form tamamlanamaz). */
+  /** Sınıf listesi yükleniyor ya da yüklenemedi (sınıf zorunlu: liste gelmeden form tamamlanamaz). */
   protected readonly refsLoading = signal(false);
   protected readonly gradesFailed = signal(false);
-  protected readonly schoolsFailed = signal(false);
-  protected readonly refsFailed = computed(() => this.gradesFailed() || this.schoolsFailed());
   /** Sunucu tavan hatası döndü (ChildAccountLimitReached / ParentLimitReached) — sayfa yenilenene kadar form gizli kalır. */
   protected readonly serverLimitMessage = signal<string | null>(null);
   protected readonly limitReached = computed(() => {
@@ -174,92 +167,35 @@ export class CreateChildAccountComponent implements OnInit {
       pw: ['', [Validators.required]],
       pwRepeat: ['', [Validators.required]],
       gradeId: [0, [Validators.required, Validators.min(1)]],
-      schoolQuery: [''],
       studentNumber: ['', [Validators.maxLength(50)]],
       consent: [false, [Validators.requiredTrue]],
     },
     { validators: childPwGroupValidator }
   );
 
-  /** Seçilen okul (otomatik tamamlamadan); serbest metin okul sayılmaz. */
-  protected readonly selectedSchool = signal<School | null>(null);
-
-  private readonly schoolQuery = toSignal(
-    this.form.controls.schoolQuery.valueChanges.pipe(
-      startWith(''),
-      map((v) => (typeof v === 'string' ? v : ''))
-    ),
-    { initialValue: '' }
-  );
-
-  protected readonly schoolOptions = computed(() => {
-    const q = this.schoolQuery().trim().toLocaleLowerCase();
-    const all = this.schools();
-    const matches = q ? all.filter((s) => s.name.toLocaleLowerCase().includes(q)) : all;
-    return matches.slice(0, MAX_SCHOOL_OPTIONS);
-  });
+  /** Listeden seçilen okul; serbest metin okul sayılmaz. */
+  protected readonly schoolId = signal<number | null>(null);
 
   ngOnInit(): void {
     this.loadReferenceData();
   }
 
-  /** Sınıf ve okul listelerini yükler; "Tekrar dene" yalnız başarısız olanları yeniden ister. */
+  /** Sınıf listesini yükler; "Tekrar dene" de bunu çağırır. */
   protected loadReferenceData(): void {
     if (this.refsLoading()) return;
-    const needGrades = this.grades().length === 0;
-    const needSchools = this.schools().length === 0;
-    if (!needGrades && !needSchools) return;
 
     this.refsLoading.set(true);
-    if (needGrades) this.gradesFailed.set(false);
-    if (needSchools) this.schoolsFailed.set(false);
-    forkJoin({
-      grades: needGrades
-        ? this.gradesService.getGrades().pipe(
-            map((g): Grade[] | null => g ?? []),
-            catchErrorAs<Grade[]>()
-          )
-        : of(this.grades()),
-      schools: needSchools
-        ? this.schoolService.getSchools().pipe(
-            map((list): School[] | null => list ?? []),
-            catchErrorAs<School[]>()
-          )
-        : of(this.schools()),
-    })
+    this.gradesFailed.set(false);
+    this.gradesService
+      .getGrades()
       .pipe(
         finalize(() => this.refsLoading.set(false)),
         takeUntilDestroyed(this.destroyRef)
       )
-      .subscribe(({ grades, schools }) => {
-        if (grades === null) this.gradesFailed.set(true);
-        else this.grades.set(grades);
-        if (schools === null) this.schoolsFailed.set(true);
-        else this.schools.set(schools);
+      .subscribe({
+        next: (grades) => this.grades.set(grades ?? []),
+        error: () => this.gradesFailed.set(true),
       });
-  }
-
-  protected schoolLabel(school: School | string | null): string {
-    return typeof school === 'string' ? school : (school?.name ?? '');
-  }
-
-  protected onSchoolSelected(event: MatAutocompleteSelectedEvent): void {
-    const school = event.option.value as School;
-    this.selectedSchool.set(school);
-    this.form.controls.schoolQuery.setValue(school.name, { emitEvent: true });
-  }
-
-  protected onSchoolInput(): void {
-    // Seçimden sonra metin değişirse seçim düşer (yanlış okul id'si gönderilmesin).
-    const selected = this.selectedSchool();
-    if (selected && this.form.controls.schoolQuery.value !== selected.name) {
-      this.selectedSchool.set(null);
-    }
-  }
-
-  protected clearSchool(): void {
-    this.selectedSchool.set(null);
-    this.form.controls.schoolQuery.setValue('');
   }
 
   protected toggleShowPw(): void {
@@ -341,7 +277,7 @@ export class CreateChildAccountComponent implements OnInit {
       username: normalizeChildUsername(v.username),
       password: pw,
       gradeId: v.gradeId,
-      schoolId: this.selectedSchool()?.id ?? null,
+      schoolId: this.schoolId(),
       studentNumber: v.studentNumber.trim() || null,
       consentAccepted: v.consent,
       consentVersion: PARENT_CONSENT_VERSION,
@@ -360,7 +296,7 @@ export class CreateChildAccountComponent implements OnInit {
           this.form.reset();
           this.step.set(0);
           this.usernameSuggested.set(false);
-          this.selectedSchool.set(null);
+          this.schoolId.set(null);
           this.showPw.set(false);
           this.summary.set(child);
           this.created.emit(child);
@@ -405,9 +341,4 @@ export class CreateChildAccountComponent implements OnInit {
     field.markAsTouched();
     this.serverError.set(message);
   }
-}
-
-/** Hata durumunda akışı `null` ile tamamlar (forkJoin diğer isteği beklesin, hangi listenin düştüğü ayırt edilsin). */
-function catchErrorAs<T>(): (source: Observable<T | null>) => Observable<T | null> {
-  return (source) => source.pipe(catchError(() => of(null)));
 }

@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, input, OnInit, signal, ChangeDetectionStrategy, TemplateRef, viewChild } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, input, OnInit, signal, ChangeDetectionStrategy, TemplateRef, viewChild, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -11,6 +11,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import {
   TranslocoDirective,
@@ -18,7 +19,7 @@ import {
   TranslocoService,
   provideTranslocoScope,
 } from '@jsverse/transloco';
-import { Subject, debounceTime, firstValueFrom, take } from 'rxjs';
+import { Subject, Subscription, debounceTime, firstValueFrom, take } from 'rxjs';
 import { AdminService } from '../../../services/admin.service';
 import { ApiResult, DistrictDto, ProvinceDto, School } from '../../../models/taxonomy';
 import {
@@ -30,12 +31,13 @@ import {
   MAX_SEARCH_LENGTH,
   SCHOOL_LIST_QUERY_KEYS,
   SchoolListFilter,
-  filterSchools,
   isSchoolListFilterActive,
   sanitizeSchoolListFilter,
   schoolListFilterFromParams,
   schoolListFilterToParams,
 } from './school-list-filter';
+import { provideTranslatedPaginatorIntl } from '../../../shared/utils/paginator-intl.util';
+import { PAGE_SIZE_OPTIONS } from '../../../shared/utils/paging.util';
 
 /**
  * Issue #150 — Okul yönetimi (liste, yeni okul formu, satır içi düzenle/sil). Eskiden
@@ -66,12 +68,13 @@ export const SCHOOL_SEARCH_DEBOUNCE_MS = 300;
     MatProgressBarModule,
     MatDialogModule,
     MatMenuModule,
+    MatPaginatorModule,
     MatSnackBarModule,
     TranslocoDirective,
     TranslocoPipe,
   ],
   changeDetection: ChangeDetectionStrategy.Eager,
-  providers: [provideTranslocoScope(ADMIN_SCOPE)],
+  providers: [provideTranslocoScope(ADMIN_SCOPE), provideTranslatedPaginatorIntl(ADMIN_SCOPE, `${ADMIN_SCOPE}.paginator`)],
 })
 export class SchoolManagerComponent implements OnInit {
   private readonly admin = inject(AdminService);
@@ -88,7 +91,15 @@ export class SchoolManagerComponent implements OnInit {
   readonly busy = signal(false);
   readonly schoolsLoading = signal(false);
   readonly schoolsError = signal<string | null>(null);
+  /** Yalnız görünen sayfa; liste 54 binin üstünde okul taşıyabilir, filtre ve sayfalama sunucudadır. */
   readonly schools = signal<School[]>([]);
+  /** Filtreye uyan toplam okul. */
+  readonly totalCount = signal(0);
+  /** 0 tabanlı (MatPaginator); backend'e `pageIndex + 1` gider. */
+  readonly pageIndex = signal(0);
+  readonly pageSize = signal(20);
+  readonly pageSizeOptions = PAGE_SIZE_OPTIONS;
+  private schoolsRequest?: Subscription;
 
   // ---- il / ilçe (Issue #91) ----
   readonly provinces = signal<ProvinceDto[]>([]);
@@ -117,22 +128,21 @@ export class SchoolManagerComponent implements OnInit {
   /**
    * URL'den okunan filtre — tek doğruluk kaynağı URL'dir (öğretmen/öğrenci listeleriyle aynı kalıp):
    * etkileşim yalnız `navigate` eder, state `queryParamMap` aboneliğinden kurulur. Okul ekle/düzenle/sil
-   * yalnız `schools`'u yeniler; filtre URL'de kaldığı için korunur.
+   * yalnız listeyi yeniler; filtre URL'de kaldığı için korunur.
    */
   private readonly urlFilter = signal<SchoolListFilter>(EMPTY_SCHOOL_LIST_FILTER);
   /** Yüklü il/ilçe listelerine göre doğrulanmış filtre; listede olmayan id'ler yok sayılır. */
   readonly filter = computed(() => sanitizeSchoolListFilter(this.urlFilter(), this.provinces(), this.districts()));
   /** Arama kutusunun anlık metni; URL'e debounce ile yazılır. */
   readonly searchText = signal('');
-  readonly filteredSchools = computed(() => filterSchools(this.schools(), this.filter()));
   readonly isFiltered = computed(() => isSchoolListFilterActive(this.filter()));
   readonly filterDistricts = computed(() => this.districtsOf(this.filter().provinceId));
   readonly filterDistrictsLoading = computed(
     () => this.filter().provinceId != null && this.districtsLoading() === this.filter().provinceId
   );
   /**
-   * URL'deki il/ilçe henüz doğrulanamadı (iller ya da o ilin ilçeleri yükleniyor). Bu sürede sonuç boşsa
-   * "filtreye uyan okul yok" yerine yükleniyor gösterilir; geçersiz id düzeltilince liste gelir.
+   * URL'deki il/ilçe henüz doğrulanamadı (iller ya da o ilin ilçeleri yükleniyor). Bu sürede sunucuya sorulmaz,
+   * yükleniyor gösterilir; geçersiz id düzeltilince liste gelir.
    */
   readonly filterPending = computed(() => {
     const raw = this.urlFilter();
@@ -167,26 +177,55 @@ export class SchoolManagerComponent implements OnInit {
         if (q.trim() === this.urlFilter().q.trim()) return;
         this.navigateFilter({ ...this.filter(), q });
       });
+
+    // Filtre ya da sayfa değişince (derin link dahil) liste sunucudan yeniden istenir.
+    effect(() => {
+      const { q, provinceId, districtId } = this.filter();
+      const page = this.pageIndex();
+      const size = this.pageSize();
+      if (this.filterPending()) return;
+      untracked(() => this.fetchSchools(q, provinceId, districtId, page, size));
+    });
   }
 
   ngOnInit(): void {
     // Tek yönlü akış: URL → filtre. İlk emisyon derin linkteki filtreyi geri yükler.
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const next = schoolListFilterFromParams(params);
+      const current = this.urlFilter();
+      if (next.q.trim() !== current.q.trim() || next.provinceId !== current.provinceId || next.districtId !== current.districtId) {
+        this.pageIndex.set(0);
+      }
       this.urlFilter.set(next);
       if (next.q !== this.lastWrittenQ) this.searchText.set(next.q);
       this.reconcileFilter();
     });
-    this.loadSchools();
     this.loadProvinces();
   }
 
   loadSchools(): void {
+    const { q, provinceId, districtId } = this.filter();
+    this.fetchSchools(q, provinceId, districtId, this.pageIndex(), this.pageSize());
+  }
+
+  onPage(event: PageEvent): void {
+    this.pageSize.set(event.pageSize);
+    this.pageIndex.set(event.pageIndex);
+  }
+
+  private fetchSchools(q: string, provinceId: number | null, districtId: number | null, pageIndex: number, pageSize: number): void {
     this.schoolsLoading.set(true);
     this.schoolsError.set(null);
-    this.admin.getSchools().subscribe({
-      next: (list) => {
-        this.schools.set(list);
+    this.schoolsRequest?.unsubscribe();
+    this.schoolsRequest = this.admin.getSchools({ q: q.trim(), provinceId, districtId, page: pageIndex + 1, pageSize }).subscribe({
+      next: (result) => {
+        // Son satır silinince sayfa boş kalır: var olan son sayfaya dönülür (efekt yeniden ister).
+        if (result.items.length === 0 && result.totalCount > 0 && pageIndex > 0) {
+          this.pageIndex.set(Math.floor((result.totalCount - 1) / pageSize));
+          return;
+        }
+        this.schools.set(result.items);
+        this.totalCount.set(result.totalCount);
         this.schoolsLoading.set(false);
       },
       error: () => {

@@ -50,7 +50,7 @@ describe('AdminTeacherSchoolDialogComponent (issue #313)', () => {
                 provideNoopAnimations(),
                 { provide: AdminService, useValue: adminService },
                 { provide: MatSnackBar, useValue: snackBar },
-                { provide: SchoolService, useValue: { getSchools: () => of([school(5, 'Ankara Lisesi'), school(8, 'İzmir Lisesi')]) } },
+                { provide: SchoolService, useValue: { search: () => of([school(5, 'Ankara Lisesi'), school(8, 'İzmir Lisesi')]), getById: (id: number) => of(school(id, 'Ankara Lisesi')) } },
                 { provide: MatDialogRef, useValue: dialogRef },
                 {
                     provide: MAT_DIALOG_DATA,

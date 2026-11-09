@@ -4465,6 +4465,11 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("ProvinceId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("SearchText")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<DateTime?>("UpdateTime")
                         .HasColumnType("timestamp with time zone");
 

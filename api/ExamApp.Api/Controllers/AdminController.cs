@@ -145,8 +145,14 @@ public class AdminController : BaseController
     // ---- Schools ----
 
     [HttpGet("schools")]
-    public async Task<ActionResult<List<SchoolDto>>> GetSchools(CancellationToken ct)
-        => Ok(await _schools.GetAllAsync(ct));
+    public async Task<ActionResult<Paged<SchoolDto>>> GetSchools(
+        [FromQuery] string? q = null,
+        [FromQuery] int? provinceId = null,
+        [FromQuery] int? districtId = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = AdminListPaging.DefaultPageSize,
+        CancellationToken ct = default)
+        => Ok(await _schools.ListAsync(q, provinceId, districtId, page, pageSize, ct));
 
     [HttpPost("schools")]
     public async Task<IActionResult> CreateSchool([FromBody] UpsertSchoolDto dto, CancellationToken ct)

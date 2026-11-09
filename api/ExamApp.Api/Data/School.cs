@@ -35,4 +35,12 @@ public class School : BaseEntity
     /// okullardan ayırt etmek ve gerekirse toplu temizlemek için (issue #216).
     /// </summary>
     public bool IsSeedData { get; set; }
+
+    /// <summary>
+    /// Sunucu tarafı arama metni: ad + ilçe + il, Türkçe harf ve büyük/küçük farkı katlanmış
+    /// (<see cref="Services.Schools.SchoolSearchText"/>). Okul oluşturulurken / güncellenirken yazılır.
+    /// </summary>
+    [Required]
+    [MaxLength(Services.Schools.SchoolSearchText.MaxLength)]
+    public string SearchText { get; set; } = string.Empty;
 }

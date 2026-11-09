@@ -180,7 +180,6 @@
       "allDistricts": "All districts",
       "clear": "Clear filters",
       "countAria": "{{count}} schools",
-      "countFilteredAria": "{{count}} of {{total}} schools match the filter",
       "noMatchTitle": "No schools match the filter",
       "noMatchHint": "Change the search or clear the filters",
       "pending": "Applying filter…"

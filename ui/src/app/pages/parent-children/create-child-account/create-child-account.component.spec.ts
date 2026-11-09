@@ -11,6 +11,8 @@ import { GradesService } from '../../../services/grades.service';
 import { ParentChildAccountService } from '../../../services/parent-child-account.service';
 import { ParentLinkService } from '../../../services/parent-link.service';
 import { SchoolService } from '../../../services/school.service';
+import { SchoolSelectComponent } from '../../../shared/components/school-select/school-select.component';
+import { By } from '@angular/platform-browser';
 import { translocoTestingModule } from '../../../shared/testing/transloco-testing';
 import parentLinksTr from '../../../../../public/i18n/parent-links/tr.json';
 import parentLinksEn from '../../../../../public/i18n/parent-links/en.json';
@@ -44,19 +46,16 @@ describe('CreateChildAccountComponent (issue #438)', () => {
     const created: CreatedChildAccount = { studentId: 41, linkId: 7, username: 'ali.kaya', studentName: 'Ali Kaya' };
 
     let gradeCalls: number;
-    let schoolCalls: number;
 
     interface SetupOptions {
         /** İlk N sınıf isteği hata döner. */
         gradeFailures?: number;
         /** İlk N okul isteği hata döner. */
-        schoolFailures?: number;
         openChildren?: number | null;
     }
 
     function setup(options: SetupOptions = {}): void {
         gradeCalls = 0;
-        schoolCalls = 0;
         service = {
             create: vi.fn().mockName("ParentChildAccountService.create"),
             resetPassword: vi.fn().mockName("ParentChildAccountService.resetPassword")
@@ -89,11 +88,10 @@ describe('CreateChildAccountComponent (issue #438)', () => {
                 {
                     provide: SchoolService,
                     useValue: {
-                        getSchools: () => ++schoolCalls <= (options.schoolFailures ?? 0)
-                            ? throwError(() => new HttpErrorResponse({ status: 500 }))
-                            : of([
-                                { id: 9, name: 'Atatürk İlkokulu', provinceId: null, provinceName: null, districtId: null, districtName: null, addressLine: null },
-                            ]),
+                        search: () => of([
+                            { id: 9, name: 'Atatürk İlkokulu', provinceId: null, provinceName: null, districtId: null, districtName: null },
+                        ]),
+                        getById: () => of({ id: 9, name: 'Atatürk İlkokulu', provinceId: null, provinceName: null, districtId: null, districtName: null }),
                     },
                 },
             ],
@@ -247,15 +245,9 @@ describe('CreateChildAccountComponent (issue #438)', () => {
     it('selected school is sent as schoolId', async () => {
         setup();
         service.create.mockReturnValue(of(created));
+        const select = fixture.debugElement.query(By.directive(SchoolSelectComponent)).componentInstance as SchoolSelectComponent;
+        select.value.set(9);
         fillValid();
-        const cmp = fixture.componentInstance as unknown as {
-            onSchoolSelected(e: {
-                option: {
-                    value: unknown;
-                };
-            }): void;
-        };
-        cmp.onSchoolSelected({ option: { value: { id: 9, name: 'Atatürk İlkokulu' } } });
         fixture.detectChanges();
 
         submit();
@@ -324,8 +316,8 @@ describe('CreateChildAccountComponent (issue #438)', () => {
         expect(el.querySelector('[data-test="create-limit"]')).toBeNull();
     });
 
-    it('grade/school load failure shows an error with retry that reloads the failed lists', () => {
-        setup({ gradeFailures: 1, schoolFailures: 1 });
+    it('grade load failure shows an error with retry that reloads the list', () => {
+        setup({ gradeFailures: 1 });
 
         expect(el.querySelector('[data-test="refs-error"]')!.textContent).toContain(parentLinksTr.createChild.refsError);
 
@@ -334,20 +326,6 @@ describe('CreateChildAccountComponent (issue #438)', () => {
 
         expect(el.querySelector('[data-test="refs-error"]')).toBeNull();
         expect(gradeCalls).toBe(2);
-        expect(schoolCalls).toBe(2);
-    });
-
-    it('school-only failure shows the school message and retry does not refetch grades', () => {
-        setup({ schoolFailures: 1 });
-
-        expect(el.querySelector('[data-test="refs-error"]')!.textContent).toContain(parentLinksTr.createChild.schoolsError);
-
-        el.querySelector<HTMLButtonElement>('[data-test="refs-retry"]')!.click();
-        fixture.detectChanges();
-
-        expect(el.querySelector('[data-test="refs-error"]')).toBeNull();
-        expect(gradeCalls).toBe(1);
-        expect(schoolCalls).toBe(2);
     });
 
     it('consent section links to the privacy policy (new tab)', () => {

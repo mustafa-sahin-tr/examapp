@@ -86,7 +86,6 @@ describe('AdminTeachersComponent', () => {
             getTeachers: vi.fn().mockName("AdminService.getTeachers"),
             getTeacherStatusCounts: vi.fn().mockName("AdminService.getTeacherStatusCounts")
                 .mockReturnValue(of({ all: 45, pending: 3, suspended: 1 })),
-            getSchools: vi.fn().mockName("AdminService.getSchools"),
             resetPassword: vi.fn().mockName("AdminService.resetPassword"),
             setAccountStatus: vi.fn().mockName("AdminService.setAccountStatus"),
             suspendTeacher: vi.fn().mockName("AdminService.suspendTeacher"),
@@ -98,13 +97,13 @@ describe('AdminTeachersComponent', () => {
         snackBar = {
             open: vi.fn().mockName("MatSnackBar.open")
         } as unknown as MockedObject<MatSnackBar>;
-        adminService.getSchools.mockReturnValue(of(schools));
+        
         adminService.getTeachers.mockReturnValue(of(paged([teacher()], 45)));
         queryParams$ = new BehaviorSubject<ParamMap>(convertToParamMap(initialParams));
 
         const providers: (Provider | EnvironmentProviders)[] = [
             { provide: AdminService, useValue: adminService },
-            { provide: SchoolService, useValue: { getSchools: () => of([...schools, izmir]) } },
+            { provide: SchoolService, useValue: { search: () => of([...schools, izmir]), getById: (id: number) => { const found = [...schools, izmir].find((s) => s.id === id); return found ? of(found) : throwError(() => new HttpErrorResponse({ status: 404 })); } } },
             { provide: MatSnackBar, useValue: snackBar },
             provideRouter([]),
             provideNoopAnimations(),
@@ -298,7 +297,7 @@ describe('AdminTeachersComponent', () => {
 
         const filter = fixture.debugElement.query(By.directive(SchoolFilterComponent))
             .componentInstance as SchoolFilterComponent;
-        filter.select(5);
+        filter.value.set(5);
         fixture.detectChanges();
 
         expect(adminService.getTeachers).toHaveBeenCalledTimes(1);

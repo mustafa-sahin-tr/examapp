@@ -241,6 +241,8 @@ Kılavuz özeti ve beceri listesinin kaynağı `docs/context-based-questions.md`
 
 `GET api/admin/schools` satırı `teacherCount` (`Teacher.SchoolId`), `studentCount` (doğrulanmış üyelik) ve `pendingCount` (doğrulanmamış öğrenci üyeliği + bu okulu isteyen, onay bekleyen öğretmen) taşır; sayılar alt sorgularla tek istekte gelir. Silme artık kimlik bağına da bakar: okulda öğretmen (bağlı ya da okul isteyen) veya öğrenci (bekleyen dahil) varsa reddedilir; eski serbest metin `SchoolName` eşleşmesi de engellemeye devam eder. Ekran: liste üstünde yalnız arama ve il / ilçe süzgeci, "Okul ekle" diyalog açar; satırda konum, sayılar ve satır menüsü (Düzenle, Sil); üyesi ya da başvurusu olan okulda Sil devre dışı ve nedenini yazar.
 
+Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inmez. `GET api/school?q=&limit=` (anonim, en fazla 50 satır, üye sayısı taşımaz) ve `GET api/school/{id}` seçicilerin, `GET api/admin/schools?q=&provinceId=&districtId=&page=&pageSize=` okul yönetiminin kaynağıdır. Arama `School.SearchText` üzerindedir: ad + ilçe + il, Türkçe harf ve büyük/küçük farkı katlanmış (`SchoolSearchText`), okul yazılırken güncellenir. Bir il ya da ilçe adı değişirse bu kolon yeniden doldurulmalı (SQL: `AddSchoolSearchText` migration'ı).
+
 ## Çalışma sayfası blokları (#933)
 
 - `StudyItemBlocks` tablosu: sayfa başına en fazla 50 sıralı blok — `Text`, `Image` (alt yazı), `Link` (başlık + platform),

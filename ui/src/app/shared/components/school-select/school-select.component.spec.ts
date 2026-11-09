@@ -3,21 +3,20 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { Observable, Subject, of, throwError } from 'rxjs';
 
-import { SchoolSelectComponent, normalizeSchoolQuery } from './school-select.component';
+import { SCHOOL_SELECT_DEBOUNCE_MS, SCHOOL_SELECT_MAX_OPTIONS, SchoolSelectComponent } from './school-select.component';
 import { SchoolService } from '../../../services/school.service';
-import { School } from '../../../models/taxonomy';
+import { SchoolOption } from '../../../models/taxonomy';
 import { translocoTestingModule } from '../../testing/transloco-testing';
 import trTranslations from '../../../../../public/i18n/tr.json';
 import enTranslations from '../../../../../public/i18n/en.json';
 
-const school = (id: number, name: string, districtName: string | null = null, provinceName: string | null = null): School => ({
+const school = (id: number, name: string, districtName: string | null = null, provinceName: string | null = null): SchoolOption => ({
     id,
     name,
     provinceId: null,
     provinceName,
     districtId: null,
     districtName,
-    addressLine: null,
 });
 
 const SCHOOLS = [
@@ -31,11 +30,15 @@ describe('SchoolSelectComponent (issue #277)', () => {
     let component: SchoolSelectComponent;
     let schoolService: MockedObject<SchoolService>;
 
-    function create(schools$: () => Observable<School[]> = () => of(SCHOOLS), inputs: Record<string, unknown> = {}): void {
+    /** Sunucu araması taklidi: varsayılan olarak `q` ad, ilçe ve ilde aranır. */
+    const serve = (query: string): Observable<SchoolOption[]> =>
+        of(SCHOOLS.filter((s) => `${s.name} ${s.districtName} ${s.provinceName}`.toLocaleLowerCase('tr').includes(query.toLocaleLowerCase('tr'))));
+
+    function create(search: (query: string) => Observable<SchoolOption[]> = serve, inputs: Record<string, unknown> = {}): void {
         schoolService = {
-            getSchools: vi.fn().mockName("SchoolService.getSchools")
+            search: vi.fn().mockImplementation(search),
+            getById: vi.fn().mockImplementation((id: number) => of(SCHOOLS.find((s) => s.id === id))),
         } as unknown as MockedObject<SchoolService>;
-        schoolService.getSchools.mockImplementation(schools$);
         TestBed.configureTestingModule({
             imports: [SchoolSelectComponent, translocoTestingModule()],
             providers: [{ provide: SchoolService, useValue: schoolService }, provideNoopAnimations()],
@@ -56,29 +59,29 @@ describe('SchoolSelectComponent (issue #277)', () => {
         fixture.detectChanges();
     }
 
-    it('loadsSchools_FromSchoolService', () => {
+    it('loadsFirstSchools_FromSchoolService', () => {
         create();
-        expect(schoolService.getSchools).toHaveBeenCalledTimes(1);
+        expect(schoolService.search).toHaveBeenCalledTimes(1);
+        expect(schoolService.search).toHaveBeenCalledWith('', SCHOOL_SELECT_MAX_OPTIONS);
         expect(component.schools().map((s) => s.id)).toEqual([1, 2, 3]);
         expect(input()).not.toBeNull();
     });
 
-    it('loading_DisablesInputAndShowsLoadingHint', () => {
-        create(() => new Subject<School[]>());
+    it('loading_KeepsInputUsable', () => {
+        create(() => new Subject<SchoolOption[]>());
         expect(component.loading()).toBe(true);
-        expect(input().disabled).toBe(true);
-        expect(el().textContent).toContain(trTranslations.shared.schoolSelect.loading);
+        expect(input().disabled).toBe(false);
     });
 
     it('error_ShowsMessage_RetryReloads', () => {
         let calls = 0;
-        create(() => (++calls === 1 ? throwError(() => new Error('boom')) : of(SCHOOLS)));
+        create((query) => (++calls === 1 ? throwError(() => new Error('boom')) : serve(query)));
         expect(el().querySelector('[data-testid="school-select-error"]')?.textContent).toContain(trTranslations.shared.schoolSelect.loadFailed);
 
         (el().querySelector('[data-testid="school-select-retry"]') as HTMLButtonElement).click();
         fixture.detectChanges();
 
-        expect(schoolService.getSchools).toHaveBeenCalledTimes(2);
+        expect(schoolService.search).toHaveBeenCalledTimes(2);
         expect(el().querySelector('[data-testid="school-select-error"]')).toBeNull();
         expect(input()).not.toBeNull();
     });
@@ -88,28 +91,62 @@ describe('SchoolSelectComponent (issue #277)', () => {
         expect(el().querySelector('[data-testid="school-select-empty"]')?.textContent).toContain(trTranslations.shared.schoolSelect.empty);
     });
 
-    it('typing_FiltersByNameDistrictOrProvince_CaseAndAccentInsensitive', () => {
-        create();
-        type('istanbul');
-        expect(component.filtered().map((s) => s.id)).toEqual([2, 3]);
-        type('KADIKÖY');
-        expect(component.filtered().map((s) => s.id)).toEqual([3]);
-        type('çankaya');
-        expect(component.filtered().map((s) => s.id)).toEqual([1]);
+    it('typing_SearchesOnTheServerOnceAfterDebounce', async () => {
+        vi.useFakeTimers();
+        try {
+            create();
+            type('kad');
+            await vi.advanceTimersByTimeAsync(SCHOOL_SELECT_DEBOUNCE_MS - 1);
+            type('kadı');
+            await vi.advanceTimersByTimeAsync(SCHOOL_SELECT_DEBOUNCE_MS);
+            fixture.detectChanges();
+
+            expect(schoolService.search).toHaveBeenCalledTimes(2);
+            expect(schoolService.search).toHaveBeenLastCalledWith('kadı', SCHOOL_SELECT_MAX_OPTIONS);
+            expect(component.filtered().map((s) => s.id)).toEqual([3]);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('noResultForASearch_KeepsTheField', async () => {
+        vi.useFakeTimers();
+        try {
+            create();
+            type('yok böyle');
+            await vi.advanceTimersByTimeAsync(SCHOOL_SELECT_DEBOUNCE_MS);
+            fixture.detectChanges();
+
+            expect(input()).not.toBeNull();
+            expect(el().querySelector('[data-testid="school-select-empty"]')).toBeNull();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('externalValueClearedByParent_ClearsTheText', () => {
+        create(undefined, { value: 3 });
+        fixture.detectChanges();
+        expect(input().value).toBe('Kadıköy Anadolu Lisesi');
+
+        fixture.componentRef.setInput('value', null);
+        fixture.detectChanges();
+
+        expect(input().value).toBe('');
     });
 
     it('selectingOption_SetsValueAndEmitsSchool', () => {
         create();
-        const emitted: (School | null)[] = [];
+        const emitted: (SchoolOption | null)[] = [];
         const values: (number | null)[] = [];
         component.selectionChange.subscribe((s) => emitted.push(s));
         component.value.subscribe((v) => values.push(v));
 
         input().dispatchEvent(new Event('focusin'));
-        type('fen');
+        fixture.detectChanges();
         // CDK 21: autocomplete paneli tetikleyicinin yanına native popover olarak eklenir (#545).
         const options = document.querySelectorAll('mat-option');
-        expect(options.length).toBe(1);
+        expect(options.length).toBe(3);
         (options[0] as HTMLElement).click();
         fixture.detectChanges();
 
@@ -123,7 +160,7 @@ describe('SchoolSelectComponent (issue #277)', () => {
         create();
         component.select(2);
         fixture.detectChanges();
-        const emitted: (School | null)[] = [];
+        const emitted: (SchoolOption | null)[] = [];
         component.selectionChange.subscribe((s) => emitted.push(s));
 
         type('İstanbul Erkek');
@@ -136,6 +173,8 @@ describe('SchoolSelectComponent (issue #277)', () => {
 
     it('externalValue_ShowsSchoolName', () => {
         create(undefined, { value: 3 });
+        fixture.detectChanges();
+        expect(schoolService.getById).toHaveBeenCalledWith(3);
         expect(component.query()).toBe('Kadıköy Anadolu Lisesi');
         expect(input().value).toBe('Kadıköy Anadolu Lisesi');
     });
@@ -155,11 +194,6 @@ describe('SchoolSelectComponent (issue #277)', () => {
     it('excludeSchoolId_RemovesSchoolFromOptions', () => {
         create(undefined, { excludeSchoolId: 2 });
         expect(component.filtered().map((s) => s.id)).toEqual([1, 3]);
-    });
-
-    it('normalizeSchoolQuery_TurkishLetters', () => {
-        expect(normalizeSchoolQuery('İSTANBUL')).toBe('istanbul');
-        expect(normalizeSchoolQuery('Işık')).toBe('isik');
     });
 
     it('i18n_TrAndEnHaveSameKeys', () => {

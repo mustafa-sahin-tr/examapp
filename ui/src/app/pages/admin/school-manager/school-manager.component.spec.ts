@@ -7,9 +7,9 @@ import { ActivatedRoute, ParamMap, Params, Router, convertToParamMap, provideRou
 import { BehaviorSubject, NEVER, Subject, of, throwError } from 'rxjs';
 
 import { SCHOOL_SEARCH_DEBOUNCE_MS, SchoolManagerComponent } from './school-manager.component';
-import { AdminService } from '../../../services/admin.service';
+import { AdminSchoolListQuery, AdminService } from '../../../services/admin.service';
 import { ApiResult, ProvinceDto, School } from '../../../models/taxonomy';
-import { MAX_SEARCH_LENGTH } from './school-list-filter';
+import { MAX_SEARCH_LENGTH, normalizeSearchText } from './school-list-filter';
 import { ConfirmDialogData } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { routes } from '../../../app.routes';
 import { authGuard } from '../../../shared/guards/auth.guard';
@@ -59,6 +59,18 @@ describe('SchoolManagerComponent', () => {
         return Object.fromEntries(map.keys.map((k) => [k, map.get(k)]));
     }
 
+    /** Sunucu süzmesi + sayfalaması: `GET api/admin/schools` davranışının ince taklidi. */
+    function serveSchools(list: School[]): void {
+        adminService.getSchools.mockImplementation((query: AdminSchoolListQuery) => {
+            const needle = normalizeSearchText(query.q);
+            const matches = list.filter((sc) => (!needle || normalizeSearchText(sc.name).includes(needle))
+                && (query.provinceId == null || sc.provinceId === query.provinceId)
+                && (query.districtId == null || sc.districtId === query.districtId));
+            const start = (query.page - 1) * query.pageSize;
+            return of({ pageNumber: query.page, pageSize: query.pageSize, totalCount: matches.length, items: matches.slice(start, start + query.pageSize) });
+        });
+    }
+
     function configure(initialParams: Params = {}): ComponentFixture<SchoolManagerComponent> {
         queryParams$ = new BehaviorSubject<ParamMap>(convertToParamMap(initialParams));
 
@@ -70,7 +82,7 @@ describe('SchoolManagerComponent', () => {
             updateSchool: vi.fn().mockName("AdminService.updateSchool"),
             deleteSchool: vi.fn().mockName("AdminService.deleteSchool")
         } as unknown as MockedObject<AdminService>;
-        adminService.getSchools.mockReturnValue(of(schools));
+        serveSchools(schools);
         adminService.getProvinces.mockReturnValue(of([{ id: 6, name: 'Ankara' }, { id: 35, name: 'İzmir' }]));
         adminService.getDistricts.mockReturnValue(of([{ id: 601, name: 'Çankaya', provinceId: 6 }]));
 
@@ -172,7 +184,7 @@ describe('SchoolManagerComponent', () => {
 
     it('schools_EmptyList_ShowsEmptyState', () => {
         fixture = configure();
-        adminService.getSchools.mockReturnValue(of([]));
+        serveSchools([]);
         fixture.detectChanges();
 
         const empty: HTMLElement = fixture.nativeElement.querySelector('.schools-section .empty-state');
@@ -350,7 +362,7 @@ describe('SchoolManagerComponent', () => {
 
     it('row_ShowsMemberCounts_AndBlocksDeleteWithAReason_issue898', async () => {
         init();
-        adminService.getSchools.mockReturnValue(of([{ ...schools[0], teacherCount: 1, studentCount: 10, pendingCount: 1 }]));
+        serveSchools([{ ...schools[0], teacherCount: 1, studentCount: 10, pendingCount: 1 }]);
         component.loadSchools();
         fixture.detectChanges();
 
@@ -442,7 +454,7 @@ describe('SchoolManagerComponent', () => {
         fixture.detectChanges();
         expect(adminService.getSchools).toHaveBeenCalledTimes(1);
 
-        adminService.getSchools.mockReturnValue(of(schools));
+        serveSchools(schools);
         const retry: HTMLButtonElement = fixture.nativeElement.querySelector('.schools-section .state-box--error button');
         retry.click();
         fixture.detectChanges();
@@ -524,7 +536,7 @@ describe('SchoolManagerComponent', () => {
         function setup(initialParams: Params = {}, list: School[] = many): void {
             fixture = configure(initialParams);
             component = fixture.componentInstance;
-            adminService.getSchools.mockReturnValue(of(list));
+            serveSchools(list);
             adminService.getProvinces.mockReturnValue(of([
                 { id: 6, name: 'Ankara' },
                 { id: 34, name: 'İstanbul' },
@@ -538,7 +550,10 @@ describe('SchoolManagerComponent', () => {
             fixture.detectChanges();
         }
 
-        const ids = (): number[] => component.filteredSchools().map((s) => s.id);
+        const ids = (): number[] => {
+            fixture.detectChanges();
+            return component.schools().map((s) => s.id);
+        };
         const el = <T extends Element = HTMLElement>(sel: string): T | null => fixture.nativeElement.querySelector(sel);
         const url = (): Params => paramsOf(queryParams$.value);
 
@@ -587,7 +602,7 @@ describe('SchoolManagerComponent', () => {
 
             expect(router.navigate).toHaveBeenCalledTimes(1);
             expect(ids()).toEqual([2, 3]);
-            expect(el('.column-header .count')?.textContent?.trim()).toBe('2 / 5');
+            expect(el('.column-header .count')?.textContent?.trim()).toBe('2');
         });
 
         it('search_UrlEchoOfOlderQuery_DoesNotOverwriteNewerTypedText', async () => {
@@ -725,7 +740,7 @@ describe('SchoolManagerComponent', () => {
             const provinces$ = new Subject<ProvinceDto[]>();
             fixture = configure({ provinceId: '9999' });
             component = fixture.componentInstance;
-            adminService.getSchools.mockReturnValue(of(many));
+            serveSchools(many);
             adminService.getProvinces.mockReturnValue(provinces$);
             fixture.detectChanges();
 
@@ -794,7 +809,44 @@ describe('SchoolManagerComponent', () => {
             const status = el('.column-header .count-status')!;
             expect(status.getAttribute('role')).toBe('status');
             expect(status.classList).toContain('cdk-visually-hidden');
-            expect(status.textContent?.trim()).toBe('5 okuldan 2 tanesi filtreye uyuyor');
+            expect(status.textContent?.trim()).toBe('2 okul');
+        });
+
+        it('filter_IsSentToTheServerAndResetsToTheFirstPage', () => {
+            setup();
+            component.onPage({ pageIndex: 1, pageSize: 2, length: 5 });
+            fixture.detectChanges();
+            expect(adminService.getSchools).toHaveBeenLastCalledWith({ q: '', provinceId: null, districtId: null, page: 2, pageSize: 2 });
+            expect(ids()).toEqual([3, 4]);
+
+            component.onFilterProvinceChange(6);
+            fixture.detectChanges();
+
+            expect(adminService.getSchools).toHaveBeenLastCalledWith({ q: '', provinceId: 6, districtId: null, page: 1, pageSize: 2 });
+            expect(ids()).toEqual([1, 2]);
+        });
+
+        it('paginator_ShownOnlyWhenThereIsMoreThanOnePage', () => {
+            setup();
+            expect(el('.schools-paginator')).toBeNull();
+
+            component.onPage({ pageIndex: 0, pageSize: 2, length: 5 });
+            fixture.detectChanges();
+            expect(el('.schools-paginator')).not.toBeNull();
+        });
+
+        it('page_LeftEmptyAfterDelete_FallsBackToTheLastPage', () => {
+            setup();
+            component.onPage({ pageIndex: 2, pageSize: 2, length: 5 });
+            fixture.detectChanges();
+            expect(ids()).toEqual([5]);
+
+            serveSchools(many.slice(0, 4));
+            component.loadSchools();
+            fixture.detectChanges();
+
+            expect(component.pageIndex()).toBe(1);
+            expect(ids()).toEqual([3, 4]);
         });
 
         it('searchInput_MaxLength_IsBoundToSharedConstant', () => {
@@ -810,7 +862,7 @@ describe('SchoolManagerComponent', () => {
             expect(noMatch?.textContent).toContain('Filtreye uyan okul yok');
             expect(fixture.nativeElement.textContent).not.toContain('Henüz okul eklenmemiş');
             expect(el('.schools-list')).toBeNull();
-            expect(el('.column-header .count')?.textContent?.trim()).toBe('0 / 5');
+            expect(el('.column-header .count')?.textContent?.trim()).toBe('0');
 
             (noMatch!.querySelector('button') as HTMLButtonElement).click();
             fixture.detectChanges();
@@ -821,7 +873,7 @@ describe('SchoolManagerComponent', () => {
         });
 
         it('noSchoolsAtAll_ShowsOriginalEmptyStateNotFilterEmptyState', () => {
-            setup({ q: 'lise' }, []);
+            setup({}, []);
 
             expect(el('.schools-section .empty-state')?.textContent).toContain('Henüz okul eklenmemiş');
             expect(el('.no-match')).toBeNull();
@@ -830,7 +882,7 @@ describe('SchoolManagerComponent', () => {
         it('addSchool_WithActiveFilter_KeepsFilterAndReappliesToReloadedList', async () => {
             setup({ q: 'lise', provinceId: '6' });
             adminService.createSchool.mockReturnValue(of(okResult));
-            adminService.getSchools.mockReturnValue(of([...many, school(6, 'Çankaya Fen Lisesi', 6, 601)]));
+            serveSchools([...many, school(6, 'Çankaya Fen Lisesi', 6, 601)]);
             component.newSchoolName = 'Çankaya Fen Lisesi';
 
             await component.addSchool();
@@ -856,7 +908,7 @@ describe('SchoolManagerComponent', () => {
         it('remove_WithActiveFilter_KeepsFilter', async () => {
             setup({ q: 'ilkokul' });
             adminService.deleteSchool.mockReturnValue(of(okResult));
-            adminService.getSchools.mockReturnValue(of(many.filter((s) => s.id !== 1)));
+            serveSchools(many.filter((s) => s.id !== 1));
 
             await component.remove(many[0]);
 

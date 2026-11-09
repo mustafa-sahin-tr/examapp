@@ -152,14 +152,8 @@
     <mat-tab [label]="t('admin.tabs.schools')">
       <section class="pane">
         <div class="assign">
-          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="assign__school">
-            <mat-label>{{ t('admin.school.school') }}</mat-label>
-            <mat-select [ngModel]="schoolId()" (ngModelChange)="selectSchool($event)" data-testid="admin-sub-school">
-              @for (school of schools(); track school.id) {
-                <mat-option [value]="school.id">{{ school.name }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
+          <app-school-select class="assign__school" [label]="t('admin.school.school')" [value]="schoolId()"
+            (valueChange)="selectSchool($event)" data-testid="admin-sub-school" />
           <mat-button-toggle-group [value]="audience()" (change)="audience.set($event.value); confirmSchool.set(false)"
             [attr.aria-label]="t('admin.school.audience')">
             <mat-button-toggle value="All">{{ t('admin.school.all') }}</mat-button-toggle>

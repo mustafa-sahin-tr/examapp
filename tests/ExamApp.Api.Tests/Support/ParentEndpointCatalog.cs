@@ -175,6 +175,8 @@ public static class ParentEndpointCatalog
             "Anonymous reference data (program steps).",
         ["SchoolController.GetSchools"] =
             "Reference data (school list).",
+        ["SchoolController.GetSchool"] =
+            "Reference data (one school, to show a saved selection).",
         ["StudentController.CheckStudent"] =
             "Self-scoped: does the CALLER have a Student record (parent: false).",
         ["StudentController.GetGradesAsync"] =

@@ -52,7 +52,7 @@ describe('StudentSettingsComponent (#847)', () => {
                 provideRouter([]),
                 { provide: StudentService, useValue: studentService },
                 { provide: AuthService, useValue: { refreshProfile: () => of(null) } },
-                { provide: SchoolService, useValue: { getSchools: () => of([{ id: 5, name: 'Kars Ortaokulu' }]) } },
+                { provide: SchoolService, useValue: { search: () => of([{ id: 5, name: 'Kars Ortaokulu' }]), getById: () => of({ id: 5, name: 'Kars Ortaokulu' }) } },
                 {
                     provide: ParentLinkService,
                     useValue: {

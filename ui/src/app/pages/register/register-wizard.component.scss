@@ -1,3 +1,39 @@
+:host {
+  display: block;
+  position: relative;
+  min-height: 100%;
+  isolation: isolate;
+
+  // Same scene as the sign-in pages: school objects and the trail to the flagged school.
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    // The content column is narrower than the page: full width, so nothing is cut at the sidebar.
+    mask-position: center bottom;
+    mask-size: 100% auto;
+    mask-repeat: no-repeat;
+
+    // Full width would make it tiny: a larger scene, anchored under the card.
+    @media (max-width: 768px) {
+      mask-size: 1100px auto;
+    }
+  }
+
+  &::before {
+    background-color: color-mix(in srgb, var(--ms-text-medium) 30%, transparent);
+    mask-image: url('./auth-bg-glyphs.svg');
+  }
+
+  &::after {
+    background-color: color-mix(in srgb, var(--ms-action-text-medium) 70%, transparent);
+    mask-image: url('./auth-bg-trail.svg');
+  }
+}
+
 .register-wizard {
   max-width: 520px;
   margin: 48px auto;

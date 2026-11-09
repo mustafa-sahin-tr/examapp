@@ -29,7 +29,8 @@
     <meta name="robots" content="noindex, nofollow">
     <#-- Issue #409: brand comes from the theme's single "brandName" message, not the realm name. -->
     <title>${msg("loginTitle",msg("brandName"))}</title>
-    <link rel="stylesheet" href="${url.resourcesPath}/css/custom.css">
+    <#-- resourcesPath only changes with the Keycloak version and the file is cached for 30 days (Cloudflare, browser): bump v when custom.css changes. -->
+    <link rel="stylesheet" href="${url.resourcesPath}/css/custom.css?v=2">
     <#-- Theme-level scripts (theme.properties "scripts=") and per-page
          scripts Keycloak injects (e.g. WebAuthn), as in base template.ftl. -->
     <#if properties.scripts?has_content>

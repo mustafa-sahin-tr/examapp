@@ -48,6 +48,8 @@ public sealed class IntegrationApiFactory : WebApplicationFactory<Program>, IAsy
         Environment.SetEnvironmentVariable("Keycloak__AdminClientSecret", "test-only-admin-client-secret");
         Environment.SetEnvironmentVariable("Keycloak__ServiceClientSecret", "test-only-service-client-secret");
         Environment.SetEnvironmentVariable("Gemini__ApiKey", "");
+        // Testler boş katalogla başlar; MEB paketi yalnız kendi testinde yüklenir.
+        Environment.SetEnvironmentVariable("CatalogPackage__AutoImport", "false");
         Environment.SetEnvironmentVariable("MinioConfig__BucketName", "test");
         Environment.SetEnvironmentVariable("MinioConfig__Endpoint", "localhost:9000");
         Environment.SetEnvironmentVariable("MinioConfig__AccessKey", "x");

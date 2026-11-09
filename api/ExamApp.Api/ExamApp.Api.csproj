@@ -51,6 +51,8 @@
     <!-- Web SDK zaten **/*.json dosyalarını Content olarak ekliyor; burada sadece kopyalama
          davranışını güncelliyoruz (Include kullanılsaydı "duplicate item" hatası olurdu). -->
     <Content Update="Resources\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- MEB Maarif katalogu: açılışta paket değiştiyse içe aktarılır (CatalogPackageImporter). Tek kaynak deploy/data/meb. -->
+    <Content Include="..\..\deploy\data\meb\maarif-catalog.json" Link="Data\Packages\maarif-catalog.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

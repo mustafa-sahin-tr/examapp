@@ -63,10 +63,12 @@
               <li>
                 <span>{{ t('features.' + feature.key) }}</span>
                 <strong>
-                  @if (feature.limit === null) {
+                  @if (feature.kind === 'Toggle') {
+                    <mat-icon class="included" [attr.aria-label]="t('limits.included')">check</mat-icon>
+                  } @else if (feature.limit === null) {
                     {{ t('limits.unlimited') }}
-                  } @else if (feature.limit === 0) {
-                    {{ t('limits.none') }}
+                  } @else if (feature.unit) {
+                    {{ t('limits.perMonthUnit', { count: feature.limit, unit: t('units.' + feature.unit) }) }}
                   } @else {
                     {{ t('limits.perMonth', { count: feature.limit }) }}
                   }

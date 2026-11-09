@@ -18,8 +18,21 @@ export interface SubscriptionPlan {
   monthlyLimits: Record<string, number | null>;
 }
 
+/** Issue #1093: özellik listesinden bir satır (API `GET subscription-plans/features`, sıra kartlardaki sıradır). */
+export type EntitlementFeatureKind = 'Toggle' | 'Metered';
+
+export interface EntitlementFeature {
+  key: string;
+  audience: 'Teacher' | 'Student' | 'Both';
+  kind: EntitlementFeatureKind;
+  /** Sayılan özelliğin birimi (`subscription` scope'unda `units.<unit>`); açık / kapalı özellikte null. */
+  unit: string | null;
+}
+
 export interface FeatureUsage {
   featureKey: string;
+  kind: EntitlementFeatureKind;
+  unit: string | null;
   allowed: boolean;
   limit: number | null;
   used: number;
@@ -39,8 +52,6 @@ export interface CurrentSubscriptionPlan {
 export const FREE_PLAN_KEY = 'free';
 export const TRIAL_PLAN_KEY = 'trial';
 
-/** Kartlarda sırasıyla gösterilen özellikler (#1027 `EntitlementFeatures.All`). */
-export const SUBSCRIPTION_FEATURES = ['book-import', 'quick-add', 'ai-classification', 'mock-exam'] as const;
 
 /** `subscription.plans.teacherPro` → scope içi `plans.teacherPro` (şablon `subscription` önekiyle çevirir). */
 export function planNameKey(displayNameKey: string | null | undefined): string {

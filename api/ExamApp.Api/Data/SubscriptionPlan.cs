@@ -17,7 +17,14 @@ public class SubscriptionPlan : BaseEntity
     /// <summary>Ataması olmayan kullanıcının çözüldüğü plan.</summary>
     public const string FreeKey = "free";
     public const string TrialKey = "trial";
+    public const string TeacherBasicKey = "teacher-basic";
+    public const string TeacherEssentialKey = "teacher-essential";
     public const string TeacherProKey = "teacher-pro";
+    public const string StudentBasicKey = "student-basic";
+    public const string StudentEssentialKey = "student-essential";
+    public const string StudentProKey = "student-pro";
+
+    /// <summary>#1093'ten beri pasif; atamaları <see cref="StudentProKey"/>'e taşındı.</summary>
     public const string StudentPlusKey = "student-plus";
     public const string DefaultCurrency = "TRY";
 

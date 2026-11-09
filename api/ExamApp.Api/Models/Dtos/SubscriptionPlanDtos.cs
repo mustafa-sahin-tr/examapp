@@ -22,6 +22,28 @@ public class SubscriptionPlanDto
     public Dictionary<string, int?> MonthlyLimits { get; set; } = new();
 }
 
+/// <summary>Issue #1093: özellik listesinden bir satır. <see cref="Kind"/> <c>Toggle</c> ya da <c>Metered</c>.</summary>
+public class EntitlementFeatureDto
+{
+    public string Key { get; set; } = string.Empty;
+
+    /// <summary><c>Teacher</c>, <c>Student</c> veya <c>Both</c>.</summary>
+    public string Audience { get; set; } = string.Empty;
+
+    public string Kind { get; set; } = string.Empty;
+
+    /// <summary>Sayılan özelliğin birimi (ör. <c>book</c>); açık / kapalı özellikte null.</summary>
+    public string? Unit { get; set; }
+
+    public static EntitlementFeatureDto From(ExamApp.Api.Services.Entitlements.EntitlementFeatureInfo info) => new()
+    {
+        Key = info.Key,
+        Audience = info.Audience.ToString(),
+        Kind = info.Kind.ToString(),
+        Unit = info.Unit,
+    };
+}
+
 /// <summary>Kullanıcıya plan atama isteği; tarih verilmezse şimdi başlar, süresiz.</summary>
 public class AssignSubscriptionPlanDto
 {
@@ -58,6 +80,11 @@ public class CurrentSubscriptionPlanDto
 public class FeatureUsageDto
 {
     public string FeatureKey { get; set; } = string.Empty;
+
+    /// <summary>#1093: <c>Toggle</c> ya da <c>Metered</c>.</summary>
+    public string Kind { get; set; } = string.Empty;
+
+    public string? Unit { get; set; }
     public bool Allowed { get; set; }
     public int? Limit { get; set; }
     public int Used { get; set; }

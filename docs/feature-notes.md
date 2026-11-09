@@ -301,6 +301,15 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   `GET /api/exam/subscription-plans` çağıranın rolüne uygun aktif planlar (`Any` + öğretmene Teacher, öğrenciye Student;
   Admin hepsi; veli yalnız `Any`), `GET /api/exam/subscription-plans/me` plan + `validToUtc` + `EntitlementFeatures.All` ve
   planın sınırladığı her özellik için bu ayki `allowed` / `limit` / `used` / `remaining` / `resetsAtUtc`.
+- **Paket kademeleri (#1093, epic #1085):** her kitleye üç ücretli plan: `teacher-basic` / `teacher-essential` / `teacher-pro`
+  (149 / 299 / 599, arayüzde Basic / Essential / Pro) ve `student-basic` / `student-essential` / `student-pro` (99 / 199 / 349);
+  fiyat ve sınırlar sahibin yer tutucularıdır (#1082, #1084). `student-plus` pasif, atamaları `student-pro`'ya taşındı. Özellik
+  listesi `EntitlementFeatures.Registry` (anahtar, kitle Teacher / Student / Both, tür Toggle / Metered, birim); açık / kapalı
+  özellik = sınırı null satır, satır yok = planda yok. `GET api/exam/subscription-plans/features` çağıranın rolüne ait listeyi
+  kart sırasıyla döner; `me` yalnız bu özellikleri sayar, satırlarda `kind` ve `unit` taşır. Deneme iki kitleye de Pro gibi açılır
+  (sayılanlarda deneme sınırı). Free eski sınırlarını kilitleme işine (#1090) kadar korur. Yeni anahtarların kapı kontrolleri
+  #1087-#1089'da bağlanır; şimdilik yalnız eski dört özellik (kitap, hızlı ekleme, sınıflandırma, deneme sınavı) uygulanır. Admin
+  ekranında öğretmen / öğrenci planı adının önüne kitle yazılır ("Öğretmen · Pro").
 - **Plan seçimi (#1028):** kayıt sihirbazının (`ui` `/register`) öğrenci / öğretmen kaydından sonra 3. adımı plan kartlarıdır
   (`PlanPickerComponent`, scope `subscription`); veli adımı atlar. "Ücretsiz devam et" API çağırmaz (Free). "Denemeyi başlat"
   → `POST /api/exam/subscription-plans/me/trial`: hesap başına bir kez (silinmiş atamalar dahil; ikincisi 409

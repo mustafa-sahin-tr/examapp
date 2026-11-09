@@ -11,11 +11,11 @@ import { AdminSubscriptionUserDetail, SubscriptionPlan } from '../../../models/s
 import { translocoTestingModule } from '../../../shared/testing/transloco-testing';
 import subscriptionTr from '../../../../../public/i18n/subscription/tr.json';
 
-const plan = (key: string, name: string, isActive = true): SubscriptionPlan => ({
+const plan = (key: string, name: string, isActive = true, audience: SubscriptionPlan['audience'] = 'Any'): SubscriptionPlan => ({
   key,
   name,
   displayNameKey: `subscription.plans.${name}`,
-  audience: 'Any',
+  audience,
   monthlyPrice: 0,
   currency: 'TRY',
   trialDays: null,
@@ -23,7 +23,8 @@ const plan = (key: string, name: string, isActive = true): SubscriptionPlan => (
   monthlyLimits: {},
 });
 
-const PLANS = [plan('free', 'free'), plan('teacher-pro', 'teacherPro'), plan('old', 'studentPlus', false)];
+// #1093: öğretmen planı adının önüne kitle yazılır ("Öğretmen · Pro").
+const PLANS = [plan('free', 'free'), plan('teacher-pro', 'teacherPro', true, 'Teacher'), plan('old', 'studentPlus', false)];
 
 const DETAIL: AdminSubscriptionUserDetail = {
   userId: 7,
@@ -102,9 +103,9 @@ describe('AdminSubscriptionsComponent (issue #1030)', () => {
     c.select(7);
     fixture.detectChanges();
 
-    expect(text('admin-sub-current')).toBe('Öğretmen Pro');
+    expect(text('admin-sub-current')).toBe('Öğretmen · Pro');
     expect(text('admin-sub-assignments')).toContain('Etkin');
-    expect(text('admin-sub-history')).toContain('Ücretsiz → Öğretmen Pro');
+    expect(text('admin-sub-history')).toContain('Ücretsiz → Öğretmen · Pro');
     expect(text('admin-sub-history')).toContain('Admin Kişi');
   });
 

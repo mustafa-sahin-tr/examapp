@@ -209,6 +209,8 @@ public static class ParentEndpointCatalog
             "Plan catalogue (#1027): plans for the caller's roles (parent: 'Any' plans only), no user data.",
         ["SubscriptionPlansController.Current"] =
             "Self-scoped (#1027): the caller's own plan and usage.",
+        ["SubscriptionPlansController.Features"] =
+            "Feature registry (#1093): keys, kinds and units for the caller's roles (parent: shared features only), no user data.",
     };
 
     /// <summary>Veliye KAPALI olması gereken uçlar (ters keşif bunları ayrıca doğrular).</summary>

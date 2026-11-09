@@ -49,6 +49,7 @@ describe('RegisterWizardComponent (Issue #234)', () => {
     // Issue #1028: kayıt sonrası plan adımı; seçici boş katalogla açılır.
     const subscriptionService = {
         plans: () => of([]),
+        features: () => of([]),
         current: () => of({ planKey: 'free', planName: 'Free', displayNameKey: 'subscription.plans.free', validToUtc: null, trialAvailable: true, features: [] }),
     };
 

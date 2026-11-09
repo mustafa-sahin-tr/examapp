@@ -25,39 +25,79 @@ public class SubscriptionPlansControllerTests : IDisposable
     private readonly FixedClock _clock = new(new DateTime(2026, 11, 20, 12, 0, 0, DateTimeKind.Utc));
 
     [Fact]
-    public async Task Catalogue_is_seeded_with_free_trial_teacher_pro_and_student_plus()
+    public async Task Catalogue_is_seeded_with_three_tiers_per_audience_issue1093()
     {
         await using var ctx = _db.NewContext();
 
         var plans = await SubscriptionPlanCatalog.ListAsync(ctx, _ => true, CancellationToken.None);
 
-        plans.Select(p => (p.Key, p.Audience)).ShouldBe([
-            (SubscriptionPlan.FreeKey, "Any"), (SubscriptionPlan.TrialKey, "Any"),
-            (SubscriptionPlan.TeacherProKey, "Teacher"), (SubscriptionPlan.StudentPlusKey, "Student")]);
-        plans.ShouldAllBe(p => p.IsActive && p.Currency == "TRY" && p.DisplayNameKey.StartsWith("subscription.plans."));
+        plans.Select(p => (p.Key, p.Audience, p.MonthlyPrice)).ShouldBe([
+            (SubscriptionPlan.FreeKey, "Any", 0m), (SubscriptionPlan.TrialKey, "Any", 0m),
+            (SubscriptionPlan.TeacherBasicKey, "Teacher", 149m), (SubscriptionPlan.TeacherEssentialKey, "Teacher", 299m),
+            (SubscriptionPlan.TeacherProKey, "Teacher", 599m),
+            (SubscriptionPlan.StudentBasicKey, "Student", 99m), (SubscriptionPlan.StudentEssentialKey, "Student", 199m),
+            (SubscriptionPlan.StudentProKey, "Student", 349m), (SubscriptionPlan.StudentPlusKey, "Student", 99m)]);
+        plans.Single(p => p.Key == SubscriptionPlan.StudentPlusKey).IsActive.ShouldBeFalse();
+        plans.Where(p => p.Key != SubscriptionPlan.StudentPlusKey).ShouldAllBe(p => p.IsActive);
+        plans.ShouldAllBe(p => p.Currency == "TRY" && p.DisplayNameKey.StartsWith("subscription.plans."));
         plans.Single(p => p.Key == SubscriptionPlan.TrialKey).TrialDays.ShouldBe(SubscriptionPlanSeed.DefaultTrialDays);
         plans.Where(p => p.Key != SubscriptionPlan.TrialKey).ShouldAllBe(p => p.TrialDays == null);
 
+        // Free kilitleme işine (#1090) kadar eski sınırlarını korur.
         Limits(plans, SubscriptionPlan.FreeKey).ShouldBe(new Dictionary<string, int?>
         {
             [EntitlementFeatures.BookImport] = 0, [EntitlementFeatures.AiClassification] = 20, [EntitlementFeatures.MockExam] = 0,
             [EntitlementFeatures.QuickAdd] = 5,
         });
-        Limits(plans, SubscriptionPlan.TrialKey)[EntitlementFeatures.BookImport].ShouldBe(1);
-        Limits(plans, SubscriptionPlan.TrialKey)[EntitlementFeatures.QuickAdd].ShouldBe(20);
-        Limits(plans, SubscriptionPlan.TeacherProKey).ShouldBe(new Dictionary<string, int?>
+        Limits(plans, SubscriptionPlan.TeacherBasicKey).ShouldBe(new Dictionary<string, int?> { [EntitlementFeatures.ManualLabeling] = null });
+        var essential = Limits(plans, SubscriptionPlan.TeacherEssentialKey);
+        essential.ShouldNotContainKey(EntitlementFeatures.BookImport);
+        essential.ShouldNotContainKey(EntitlementFeatures.QuestionGeneration);
+        (essential[EntitlementFeatures.CanvasAi], essential[EntitlementFeatures.QuickAdd], essential[EntitlementFeatures.LiveLesson])
+            .ShouldBe((300, 100, 10));
+        var pro = Limits(plans, SubscriptionPlan.TeacherProKey);
+        (pro[EntitlementFeatures.BookImport], pro[EntitlementFeatures.QuickAdd], pro[EntitlementFeatures.AiClassification],
+            pro[EntitlementFeatures.QuestionGeneration]).ShouldBe((10, 200, 1000, 200));
+        essential.Keys.Except(pro.Keys).ShouldBeEmpty();
+        Limits(plans, SubscriptionPlan.StudentBasicKey).ShouldBe(new Dictionary<string, int?>
         {
-            [EntitlementFeatures.BookImport] = 10, [EntitlementFeatures.AiClassification] = 1000,
-            [EntitlementFeatures.QuickAdd] = 200,
+            [EntitlementFeatures.MockExam] = 3, [EntitlementFeatures.MixedMini] = 3, [EntitlementFeatures.Practice] = 10,
+            [EntitlementFeatures.SelfActivity] = 10,
         });
-        Limits(plans, SubscriptionPlan.StudentPlusKey).ShouldBe(new Dictionary<string, int?> { [EntitlementFeatures.MockExam] = null });
+        Limits(plans, SubscriptionPlan.StudentEssentialKey).ShouldNotContainKey(EntitlementFeatures.Analytics);
+        Limits(plans, SubscriptionPlan.StudentProKey).Values.ShouldAllBe(v => v == null);
+        Limits(plans, SubscriptionPlan.TrialKey)[EntitlementFeatures.BookImport].ShouldBe(1);
+        pro.Keys.Except(Limits(plans, SubscriptionPlan.TrialKey).Keys).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Every_seeded_limit_uses_a_registered_feature_issue1093()
+    {
+        using var ctx = _db.NewContext();
+
+        ctx.SubscriptionPlanFeatureLimits.Select(l => l.FeatureKey).Distinct().ToList()
+            .ShouldAllBe(key => EntitlementFeatures.Find(key) != null);
     }
 
     [Theory]
-    [InlineData("Teacher", new[] { "free", "trial", "teacher-pro" })]
-    [InlineData("Student", new[] { "free", "trial", "student-plus" })]
+    [InlineData("Teacher", "Teacher")]
+    [InlineData("Student", "Student")]
+    public void Features_lists_the_callers_audience_and_shared_features_issue1093(string role, string audience)
+    {
+        using var ctx = _db.NewContext();
+
+        var features = NewController(ctx, role).Features().Value!;
+
+        features.ShouldAllBe(f => f.Audience == audience || f.Audience == "Both");
+        features.ShouldContain(f => f.Key == EntitlementFeatures.Messaging && f.Kind == "Toggle" && f.Unit == null);
+        features.Where(f => f.Kind == "Metered").ShouldAllBe(f => f.Unit != null);
+    }
+
+    [Theory]
+    [InlineData("Teacher", new[] { "free", "trial", "teacher-basic", "teacher-essential", "teacher-pro" })]
+    [InlineData("Student", new[] { "free", "trial", "student-basic", "student-essential", "student-pro" })]
     [InlineData("Parent", new[] { "free", "trial" })]
-    [InlineData("Admin", new[] { "free", "trial", "teacher-pro", "student-plus" })]
+    [InlineData("Admin", new[] { "free", "trial", "teacher-basic", "teacher-essential", "teacher-pro", "student-basic", "student-essential", "student-pro" })]
     public async Task List_returns_active_plans_for_the_callers_role(string role, string[] expected)
     {
         await using (var ctx = _db.NewContext())
@@ -93,7 +133,9 @@ public class SubscriptionPlansControllerTests : IDisposable
         me.PlanKey.ShouldBe(SubscriptionPlan.FreeKey);
         me.DisplayNameKey.ShouldBe("subscription.plans.free");
         me.ValidToUtc.ShouldBeNull();
-        me.Features.Select(f => f.FeatureKey).ShouldBe(EntitlementFeatures.All);
+        // #1093: öğretmen yalnız öğretmen ve ortak özellikleri görür.
+        me.Features.Select(f => f.FeatureKey).ShouldBe(EntitlementFeatures.Registry
+            .Where(f => f.Audience != EntitlementAudience.Student).Select(f => f.Key));
         var ai = me.Features.Single(f => f.FeatureKey == EntitlementFeatures.AiClassification);
         (ai.Allowed, ai.Limit, ai.Used, ai.Remaining).ShouldBe((true, 20, 1, 19));
         ai.ResetsAtUtc.ShouldBe(new DateTime(2026, 12, 1, 0, 0, 0, DateTimeKind.Utc));

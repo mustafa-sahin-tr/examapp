@@ -108,6 +108,13 @@
   strong {
     white-space: nowrap;
   }
+
+  .included {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    color: var(--ms-success-text);
+  }
 }
 
 .card-action {

@@ -6,6 +6,7 @@ import {
   AdminSubscriptionUser,
   AdminSubscriptionUserDetail,
   CurrentSubscriptionPlan,
+  EntitlementFeature,
   PlanAssignment,
   SchoolPlanAudience,
   SchoolSubscriptionMembers,
@@ -23,6 +24,11 @@ export class SubscriptionService {
   /** Çağıranın rolüne açık aktif planlar. */
   plans(): Observable<SubscriptionPlan[]> {
     return this.http.get<SubscriptionPlan[]>(this.baseUrl);
+  }
+
+  /** #1093: çağıranın rolüne ait özellikler, kart sırasıyla. */
+  features(): Observable<EntitlementFeature[]> {
+    return this.http.get<EntitlementFeature[]>(`${this.baseUrl}/features`);
   }
 
   current(): Observable<CurrentSubscriptionPlan> {

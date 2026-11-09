@@ -32,10 +32,12 @@
             <div class="usage__line">
               <span>{{ t('features.' + feature.featureKey) }}</span>
               <span class="usage__count" [class.is-blocked]="!feature.allowed">
-                @if (feature.limit == null) {
-                  {{ t('limits.unlimited') }}
-                } @else if (feature.limit === 0) {
+                @if (feature.limit === 0) {
                   {{ t('limits.none') }}
+                } @else if (feature.kind === 'Toggle') {
+                  {{ t('limits.included') }}
+                } @else if (feature.limit == null) {
+                  {{ t('limits.unlimited') }}
                 } @else {
                   {{ t('mine.usedOf', { used: feature.used, limit: feature.limit }) }}
                 }

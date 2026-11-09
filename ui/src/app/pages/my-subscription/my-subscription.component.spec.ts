@@ -15,9 +15,11 @@ const TRIAL: CurrentSubscriptionPlan = {
   validToUtc: '2026-11-22T12:00:00Z',
   trialAvailable: false,
   features: [
-    { featureKey: 'book-import', allowed: false, limit: 1, used: 1, remaining: 0, resetsAtUtc: '2026-12-01T00:00:00Z' },
-    { featureKey: 'ai-classification', allowed: true, limit: 1000, used: 120, remaining: 880, resetsAtUtc: '2026-12-01T00:00:00Z' },
-    { featureKey: 'mock-exam', allowed: true, limit: null, used: 3, remaining: null, resetsAtUtc: null },
+    { featureKey: 'book-import', kind: 'Metered', unit: 'book', allowed: false, limit: 1, used: 1, remaining: 0, resetsAtUtc: '2026-12-01T00:00:00Z' },
+    { featureKey: 'ai-classification', kind: 'Metered', unit: 'question', allowed: true, limit: 1000, used: 120, remaining: 880, resetsAtUtc: '2026-12-01T00:00:00Z' },
+    { featureKey: 'mock-exam', kind: 'Metered', unit: 'exam', allowed: true, limit: null, used: 3, remaining: null, resetsAtUtc: null },
+    { featureKey: 'study-tools', kind: 'Toggle', unit: null, allowed: true, limit: null, used: 0, remaining: null, resetsAtUtc: null },
+    { featureKey: 'analytics', kind: 'Toggle', unit: null, allowed: false, limit: 0, used: 0, remaining: 0, resetsAtUtc: null },
   ],
 };
 
@@ -42,10 +44,13 @@ describe('MySubscriptionComponent (issue #1029)', () => {
 
     expect(text('my-plan-name')).toBe('Ücretsiz deneme');
     expect(text('my-plan-validity')).toMatch(/^Deneme süren 22 \S+ 2026 tarihinde biter\.$/);
-    expect(text('usage-book-import')).toBe('Kitaptan aktarım 1 / 1');
+    expect(text('usage-book-import')).toBe('Kitabı dijitale aktarma (PDF) 1 / 1');
     expect(el().querySelector('[data-testid="usage-book-import"] .is-blocked')).toBeTruthy();
-    expect(text('usage-ai-classification')).toBe('Yapay zekâ ile sınıflandırma 120 / 1000');
-    expect(text('usage-mock-exam')).toBe('Deneme Sınırsız');
+    expect(text('usage-ai-classification')).toBe('Yapay zekâ ile konu ve kazanım 120 / 1000');
+    expect(text('usage-mock-exam')).toBe('Deneme sınavı Sınırsız');
+    // #1093: açık / kapalı özellik "Dahil" ya da "Yok" yazar, sayaç göstermez.
+    expect(text('usage-study-tools')).toBe('Çalışma araçları (sayfalar, yanlışlarım, bilgi kartları) Dahil');
+    expect(text('usage-analytics')).toBe('Ayrıntılı analiz (konu, gelişim, kazanım) Yok');
     expect(text('my-plan-reset')).toMatch(/^Sayaçlar 1 \S+ 2026 tarihinde sıfırlanır\.$/);
     expect(el().querySelector('[data-testid="my-plan-upgrade"]')!.getAttribute('href')).toBe('/plans');
   });

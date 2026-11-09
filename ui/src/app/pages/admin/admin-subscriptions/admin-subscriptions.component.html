@@ -39,7 +39,7 @@
                     (click)="select(user.userId)">
                     <span class="result__name">{{ user.fullName }}</span>
                     <span class="result__meta">{{ user.email }} · {{ t('admin.roles.' + user.role) }}</span>
-                    <span class="result__plan">{{ planLabelKey(user.planKey) ? t(planLabelKey(user.planKey)) : user.planName }}</span>
+                    <span class="result__plan">{{ planLabelKey(user.planKey) ? planLabel(t, user.planKey) : user.planName }}</span>
                   </button>
                 </li>
               }
@@ -58,7 +58,7 @@
               </div>
               <div class="card__plan">
                 <p class="muted">{{ t('admin.currentPlan') }}</p>
-                <strong data-testid="admin-sub-current">{{ planLabelKey(user.planKey) ? t(planLabelKey(user.planKey)) : user.planName }}</strong>
+                <strong data-testid="admin-sub-current">{{ planLabelKey(user.planKey) ? planLabel(t, user.planKey) : user.planName }}</strong>
                 @if (user.validToUtc) {
                   <p class="muted">{{ t('mine.validTo', { date: (user.validToUtc | date: 'd MMMM y') }) }}</p>
                 }
@@ -71,7 +71,7 @@
                 <mat-label>{{ t('admin.assign.plan') }}</mat-label>
                 <mat-select [ngModel]="userPlanKey()" (ngModelChange)="userPlanKey.set($event)" data-testid="admin-sub-plan">
                   @for (plan of activePlans(); track plan.key) {
-                    <mat-option [value]="plan.key">{{ t(planLabelKey(plan.key)) }}</mat-option>
+                    <mat-option [value]="plan.key">{{ planLabel(t, plan.key) }}</mat-option>
                   }
                 </mat-select>
               </mat-form-field>
@@ -115,7 +115,7 @@
               <ul class="rows" data-testid="admin-sub-assignments">
                 @for (a of user.assignments; track a.id) {
                   <li class="entry">
-                    <span class="entry__main">{{ planLabelKey(a.planKey) ? t(planLabelKey(a.planKey)) : a.planName }}</span>
+                    <span class="entry__main">{{ planLabelKey(a.planKey) ? planLabel(t, a.planKey) : a.planName }}</span>
                     <span class="muted">
                       {{ a.validFromUtc | date: 'd MMM y' }} – {{ a.validToUtc ? (a.validToUtc | date: 'd MMM y') : t('admin.openEnded') }}
                     </span>
@@ -134,7 +134,7 @@
                   <li class="entry">
                     <span class="muted">{{ c.occurredAtUtc | date: 'd MMM y HH:mm' }}</span>
                     <span class="entry__main">
-                      {{ t(planLabelKey(c.fromPlanKey)) }} → {{ c.action === 'Ended' ? t(planLabelKey(null)) : t(planLabelKey(c.toPlanKey)) }}
+                      {{ planLabel(t, c.fromPlanKey) }} → {{ c.action === 'Ended' ? planLabel(t, null) : planLabel(t, c.toPlanKey) }}
                       @if (c.schoolId) {
                         <span class="muted">· {{ t('admin.history.bySchool') }}</span>
                       }
@@ -174,7 +174,7 @@
             <mat-select [ngModel]="schoolPlanKey()" (ngModelChange)="schoolPlanKey.set($event); confirmSchool.set(false)"
               data-testid="admin-sub-school-plan">
               @for (plan of activePlans(); track plan.key) {
-                <mat-option [value]="plan.key">{{ t(planLabelKey(plan.key)) }}</mat-option>
+                <mat-option [value]="plan.key">{{ planLabel(t, plan.key) }}</mat-option>
               }
             </mat-select>
           </mat-form-field>

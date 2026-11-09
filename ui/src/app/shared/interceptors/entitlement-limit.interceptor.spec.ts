@@ -73,10 +73,10 @@ describe('entitlementLimitInterceptor (issue #1029)', () => {
     expect(error).toBeTruthy();
     const el = dialog()!;
     expect(el.textContent).toContain('Bu ayki limitine ulaştın');
-    expect(el.querySelector('[data-testid="upgrade-usage"]')!.textContent).toContain('Kitaptan aktarım için bu ayki hakkını kullandın (10 / 10)');
+    expect(el.querySelector('[data-testid="upgrade-usage"]')!.textContent).toContain('Kitabı dijitale aktarma (PDF) için bu ayki hakkını kullandın (10 / 10)');
     expect(el.querySelector('[data-testid="upgrade-reset"]')).toBeTruthy();
     const rows = Array.from(el.querySelectorAll('[data-testid="upgrade-compare"] tr')).map((r) => r.textContent!.replace(/\s+/g, ' ').trim());
-    expect(rows).toEqual(['Ücretsiz Yok', 'Öğretmen Pro Mevcut planın Ayda 10', 'Öğrenci Plus Yok']);
+    expect(rows).toEqual(['Ücretsiz Yok', 'Pro Mevcut planın Ayda 10', 'Öğrenci Plus Yok']);
   });
 
   it('opens a single dialog for repeated limit responses', () => {

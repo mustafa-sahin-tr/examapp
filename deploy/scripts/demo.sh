@@ -6,10 +6,12 @@
 #   down            stop it, data stays
 #   status | logs [service]
 #   backup          database dump and files to the external disk, keeps the last 14
+#   seed-schools [--dry-run]   public and private schools for all provinces
 set -euo pipefail
 
 DEPLOY="$(cd "$(dirname "$0")/.." && pwd)"
 BACKUP_ROOT="${DEMO_BACKUP_DIR:-/Volumes/Mustafas HDD/Builds/examapp/demo-backups}"
+PRIVATE_SCHOOLS_CSV="${DEMO_PRIVATE_SCHOOLS_CSV:-/Volumes/Mustafas HDD/Builds/examapp/private-schools/ozel-okullar.csv}"
 
 compose() {
   docker compose --env-file "$DEPLOY/.env.demo" -f "$DEPLOY/docker-compose.prod.yml" -f "$DEPLOY/docker-compose.demo.yml" "$@"
@@ -33,5 +35,14 @@ case "${1:-}" in
     ls -1dt "$BACKUP_ROOT"/*/ | tail -n +15 | while read -r old; do rm -rf "$old"; done
     echo "Backup: $target"
     ;;
-  *) sed -n 2,8p "$0"; exit 1 ;;
+  seed-schools)
+    # The image's entrypoint drops arguments, so without this override a whole API would start.
+    seed() {
+      compose run --rm --no-deps -T -v "$PRIVATE_SCHOOLS_CSV:/seed/ozel-okullar.csv:ro" --entrypoint sh exam-dotnet-api \
+        -c 'exec dotnet "$APP_DLL" "$@"' seed seed-schools --allow-production --all-provinces --no-migrate "$@"
+    }
+    seed --types ilkokul,ortaokul,lise --include-imam-hatip "${@:2}"
+    seed --types ilkokul,ortaokul,lise --source-file /seed/ozel-okullar.csv "${@:2}"
+    ;;
+  *) sed -n 2,9p "$0"; exit 1 ;;
 esac

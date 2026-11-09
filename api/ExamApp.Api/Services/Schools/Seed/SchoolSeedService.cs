@@ -73,7 +73,7 @@ public sealed class SchoolSeedService : ISchoolSeedService
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        if (!IsAllowedEnvironment(_environment))
+        if (!IsAllowedEnvironment(_environment) && !options.AllowProduction)
         {
             throw new InvalidOperationException(
                 $"seed-schools yalnızca Development/Staging ortamında çalışır; mevcut ortam: '{_environment.EnvironmentName}'.");
@@ -86,7 +86,9 @@ public sealed class SchoolSeedService : ISchoolSeedService
         if (options.LimitPerProvince is <= 0)
             throw new ArgumentException("İl başına limit pozitif olmalı.", nameof(options));
 
-        var source = await _source.GetAsync(ct);
+        var source = options.SourceFile is { Length: > 0 } file
+            ? await LocalSchoolSeedSource.OpenAsync(file, ct)
+            : await _source.GetAsync(ct);
         IReadOnlyList<MebSchoolRow> rows;
         using (var stream = source.OpenRead())
         {
@@ -116,7 +118,10 @@ public sealed class SchoolSeedService : ISchoolSeedService
             .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
 
         // İstenen iller — sırayı koru, tekrarları at.
-        var requested = options.Provinces
+        IReadOnlyList<string> provinceNames = options.AllProvinces
+            ? dbProvinces.Select(p => p.Name).OrderBy(n => n, TrNameComparer).ToList()
+            : options.Provinces;
+        var requested = provinceNames
             .Select(p => p.Trim())
             .Where(p => p.Length > 0)
             .DistinctBy(FoldKey, StringComparer.Ordinal)
@@ -191,7 +196,8 @@ public sealed class SchoolSeedService : ISchoolSeedService
                     continue;
                 }
 
-                if (IsSpecialEducation(row.Name))
+                // Yerel dosyada tür sütunu güvenilir; ad filtresi "Özel Eğitimde ... Koleji" gibi okulları da elerdi.
+                if (options.SourceFile is null && IsSpecialEducation(row.Name))
                 {
                     summary.SkippedSpecialEducation++;
                     result.SkippedSpecialEducation++;

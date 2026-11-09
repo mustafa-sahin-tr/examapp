@@ -14,7 +14,8 @@ namespace ExamApp.Api.Services.Schools.Seed;
 /// <item>Fazla boşluklar tek boşluğa indirilir, baş/son boşluk atılır.</item>
 /// <item>Adda hiç küçük harf yoksa (tamamı büyük) ya da hiç büyük harf yoksa (tamamı küçük):
 /// Türkçe kültürüyle Title Case — her kelimenin (boşluk, '-', '.', '/', '(' ile ayrılan parçanın)
-/// ilk harfi büyük, kalanı küçük. "İ/I" dönüşümü tr-TR'ye göre.</item>
+/// ilk harfi büyük, kalanı küçük. "İ/I" dönüşümü tr-TR'ye göre. Kısaltmalar (bilinenler ve parantez
+/// içindeki kısa kelimeler) büyük kalır, "ve" küçük yazılır: <c>FMV ÖZEL ... MESLEKİ VE TEKNİK (MBA)</c>.</item>
 /// <item>Karışık yazımlı adlarda yalnızca tür son ekleri düzeltilir: ilkokulu → İlkokulu,
 /// ortaokulu → Ortaokulu, lisesi → Lisesi, imam → İmam, hatip → Hatip. Diğer kelimelere dokunulmaz.</item>
 /// </list>
@@ -23,6 +24,10 @@ public static class SchoolNameNormalizer
 {
     private static readonly CultureInfo Tr = CultureInfo.GetCultureInfo("tr-TR");
     private static readonly Regex Whitespace = new(@"\s+", RegexOptions.Compiled);
+    private static readonly Regex KnownAcronym = new(
+        @"(?<!\p{L})(Ted|Tev|Fmv|Mef|Mev|Mba|İtü|Odtü|Ayk|Osb|Bikev|Yetev)(?!\p{L})", RegexOptions.Compiled);
+    private static readonly Regex ParenthesizedAcronym = new(@"\((\p{L}{2,4})\)", RegexOptions.Compiled);
+    private static readonly Regex InnerVe = new(@"(?<= )Ve(?= )", RegexOptions.Compiled);
 
     private static readonly (string Lower, string Proper)[] SuffixWords =
     [
@@ -51,7 +56,14 @@ public static class SchoolNameNormalizer
         if (hasLower && hasUpper)
             return FixSuffixWords(name);
 
-        return ToTitleCase(name);
+        return RestoreSpecialWords(ToTitleCase(name));
+    }
+
+    private static string RestoreSpecialWords(string name)
+    {
+        name = KnownAcronym.Replace(name, m => m.Value.ToUpper(Tr));
+        name = ParenthesizedAcronym.Replace(name, m => m.Value.ToUpper(Tr));
+        return InnerVe.Replace(name, "ve");
     }
 
     /// <summary>Kelime sınırı: boşluk, '-', '.', '/', '(' — bu ayraçlardan sonraki ilk harf büyür.</summary>

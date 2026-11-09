@@ -25,7 +25,7 @@ güncellenecekse: yeni commit SHA + yeni hash birlikte değiştirilir, önbellek
 
 ## Kullanım
 
-`api/ExamApp.Api` dizininden, **yalnızca Development/Staging** ortamında (aksi halde çıkış kodu 2):
+`api/ExamApp.Api` dizininden, **yalnızca Development/Staging** ortamında (aksi halde çıkış kodu 2; istisna `--allow-production`):
 
 ```bash
 cd api/ExamApp.Api
@@ -63,6 +63,9 @@ hiç dokunulmaz.
 | `--limit N` | sınırsız | İl başına en fazla N okul — normalize ada göre (tr-TR) sıralı ilk N, deterministik |
 | `--types ilkokul,ortaokul,lise` | ilkokul, ortaokul | Tür seçimi. `lise`: Anadolu, Anadolu İmam Hatip, Çok Programlı, Mesleki ve Teknik, Fen, Sosyal Bilimler, Güzel Sanatlar, Spor ve türü yalnız `Lise` olanlar (açık/akşam lisesi hariç) |
 | `--include-imam-hatip` | kapalı | `İmam Hatip Ortaokulu` türünü Ortaokul olarak dahil et |
+| `--all-provinces` | kapalı | `Province` tablosundaki bütün iller |
+| `--source-file <yol>` | sabit kaynak | Listeyi aynı sütunlu yerel CSV'den oku (özel okullar). Kurum kodu boş olabilir; tekrar il + ilçe + adla yakalanır |
+| `--allow-production` | kapalı | Production'da çalışmaya açık izin. Okul listesi referans verisidir; `seed-teachers`, `seed-tutors` ve temizlik komutu Production'a kapalı kalır |
 | `--dry-run` | kapalı | Yazma; rapor "eklenecek" sayılarını gösterir |
 | `--connection` | `ConnectionStrings:DefaultConnection` | Bağlantı override'ı (tercih: `ConnectionStrings__DefaultConnection` env var) |
 | `--no-migrate` | kapalı | Bekleyen migration'ları ve il/ilçe referans seed'ini atla |

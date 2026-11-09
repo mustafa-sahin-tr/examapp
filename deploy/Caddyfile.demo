@@ -10,6 +10,12 @@
 :80 {
 	encode gzip
 
+	# Only the app realm is public; the master realm (Keycloak's own admins) answers 404 from outside.
+	@masterRealm path /realms/master /realms/master/* /auth/realms/master /auth/realms/master/*
+	handle @masterRealm {
+		respond 404
+	}
+
 	@keycloak path /realms /realms/* /auth/realms /auth/realms/* /resources /resources/* /js /js/* /robots.txt
 	handle @keycloak {
 		# The login redirect uses /auth/realms; going through the gateway would lose X-Forwarded-Proto.

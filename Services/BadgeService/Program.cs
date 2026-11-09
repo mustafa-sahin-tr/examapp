@@ -146,8 +146,8 @@ builder.Services.AddHostedService<NotificationEventLogRetentionService>();
 builder.Services.AddJsonLocalization(o => o.ResourcesPath = "Resources");
 builder.Services.AddScoped<IUserLocaleResolver, UserLocaleResolver>();
 builder.Services.AddSingleton<INotificationTextFactory, NotificationTextFactory>();
-// Issue #440: gercek e-posta saglayicisi gelene kadar loglayan varsayilan; saglayici bu kaydi degistirir.
-builder.Services.AddSingleton<IEmailSender, LoggingEmailSender>();
+// Issues #440/#1065: Email:Smtp:Host doluysa SMTP, boşsa loglayan varsayılan.
+builder.Services.AddEmailSender(builder.Configuration);
 // Issues #440/#441: aktivasyon bağlantısı şifre çözümü (ParentInvitations:LinkEncryptionKey; Development dışında boş/devOnly = fail-fast).
 // Eager: anahtar geçersizse açılışta patlar (backfill komut modu hariç, orada consumer yok).
 builder.Services.AddSingleton(isBackfillCommand

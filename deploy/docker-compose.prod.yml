@@ -356,6 +356,13 @@ services:
       # Issue #165: caller user id lookup via GET /api/auth/user-profile on
       # auth-api. Same value as exam-dotnet-api's AuthApiBaseUrl above.
       AuthApi__BaseUrl: http://auth-api:5079
+      # Empty host: emails are only logged, parent invitations do not arrive.
+      Email__Smtp__Host: ${SMTP_HOST:-}
+      Email__Smtp__Port: ${SMTP_PORT:-587}
+      Email__Smtp__Username: ${SMTP_USERNAME:-}
+      Email__Smtp__Password: ${SMTP_PASSWORD:-}
+      Email__Smtp__FromAddress: ${SMTP_FROM_ADDRESS:-}
+      Email__Smtp__FromName: ${SMTP_FROM_NAME:-Hedef Okul}
       QuestionAnalyzer__AIActive: ${BADGE_AI_ACTIVE:-true}
       Anthropic__ApiKey: ${ANTHROPIC_API_KEY}
     depends_on:

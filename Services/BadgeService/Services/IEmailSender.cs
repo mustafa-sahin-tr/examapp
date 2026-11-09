@@ -4,8 +4,8 @@ namespace BadgeService.Services;
 public sealed record EmailMessage(string To, string Subject, string TextBody, string? HtmlBody = null);
 
 /// <summary>
-/// E-posta gönderim soyutlaması (issue #440). Gerçek sağlayıcı (SMTP/SendGrid vb.) bu arayüzü uygulayıp
-/// <c>Program.cs</c>'teki <see cref="IEmailSender"/> kaydını değiştirerek takılır; consumer'lar değişmez.
+/// E-posta gönderim soyutlaması (issue #440). Uygulamalar: <see cref="SmtpEmailSender"/> ve <see cref="LoggingEmailSender"/>;
+/// seçim <see cref="EmailServiceCollectionExtensions.AddEmailSender"/> içinde, consumer'lar değişmez.
 /// Hata durumunda exception fırlatır (consumer retry, sonra error kuyruğu); sessizce yutmaz.
 /// </summary>
 public interface IEmailSender

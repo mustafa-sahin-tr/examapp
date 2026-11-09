@@ -111,4 +111,17 @@ describe('entitlementLimitInterceptor (issue #1029)', () => {
     expect(el.querySelector('[data-testid="upgrade-usage"]')!.textContent).toContain('Kitabı dijitale aktarma (PDF) mevcut planında yok.');
     expect(el.querySelector('[data-testid="upgrade-reset"]')).toBeNull();
   });
+
+  it('issue #1088: 403 entitlement.counterpartNotInPlan shows the message instead of the upgrade dialog', () => {
+    const message = "Öğretmenin planında mesajlaşma yok.";
+    const error = fail('/api/exam/direct-messages/teachers/4/messages', 403, {
+      code: 'entitlement.counterpartNotInPlan',
+      feature: 'messaging',
+      message,
+    });
+
+    expect(error).toBeTruthy();
+    expect(dialog()).toBeNull();
+    expect(document.querySelector('mat-snack-bar-container')!.textContent).toContain(message);
+  });
 });

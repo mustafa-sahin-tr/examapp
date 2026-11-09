@@ -8,9 +8,11 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { FlashcardDeckSummary, FlashcardMode, SaveFlashcardDeck } from '../../models/flashcard.model';
+import { EntitlementStateService } from '../../services/entitlement-state.service';
 import { FlashcardService, flashcardErrorCode } from '../../services/flashcard.service';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { EntitlementLimitHandler } from '../../shared/interceptors/entitlement-limit.interceptor';
 import { FlashcardDeckFormComponent } from './flashcard-deck-form.component';
 
 /** Issue #699: öğrencide atanan desteler + kendi destesi, öğretmende kendi desteleri. Rol rotanın `mode` verisinden gelir. */
@@ -39,6 +41,8 @@ export class FlashcardDecksComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly transloco = inject(TranslocoService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly entitlements = inject(EntitlementStateService);
+  private readonly entitlementLimits = inject(EntitlementLimitHandler);
 
   readonly mode: FlashcardMode = this.route.snapshot.data['mode'] === 'teacher' ? 'teacher' : 'student';
   readonly isStudent = this.mode === 'student';
@@ -57,6 +61,16 @@ export class FlashcardDecksComponent implements OnInit {
 
   ngOnInit(): void {
     this.load();
+    if (!this.isStudent) this.entitlements.load().subscribe();
+  }
+
+  /** Issue #1088: öğretmende yeni deste planda `flashcard-sets` ister; yoksa yükseltme penceresi (mevcut desteler açık kalır). */
+  startCreate(): void {
+    if (!this.isStudent && !this.entitlements.has('flashcard-sets')) {
+      this.entitlementLimits.showNotInPlan('flashcard-sets', this.entitlements.plan()?.planKey ?? null);
+      return;
+    }
+    this.creating.set(true);
   }
 
   load(): void {

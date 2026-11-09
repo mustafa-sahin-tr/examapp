@@ -43,11 +43,15 @@ public class SubscriptionPlansControllerTests : IDisposable
         plans.Single(p => p.Key == SubscriptionPlan.TrialKey).TrialDays.ShouldBe(SubscriptionPlanSeed.DefaultTrialDays);
         plans.Where(p => p.Key != SubscriptionPlan.TrialKey).ShouldAllBe(p => p.TrialDays == null);
 
-        // Free kilitleme işine (#1090) kadar eski sınırlarını korur; #1087 bugünkü elle soru ve otomatik tespiti açık tutar.
+        // Free kilitleme işine (#1090) kadar eski sınırlarını korur; #1087 bugünkü elle soru ve otomatik tespiti, #1088 öğretmen
+        // araçlarını ve iki taraflı özellikleri açık tutar.
         Limits(plans, SubscriptionPlan.FreeKey).ShouldBe(new Dictionary<string, int?>
         {
             [EntitlementFeatures.BookImport] = 0, [EntitlementFeatures.AiClassification] = 20, [EntitlementFeatures.MockExam] = 0,
             [EntitlementFeatures.QuickAdd] = 5, [EntitlementFeatures.ManualLabeling] = null, [EntitlementFeatures.AutoDetect] = null,
+            [EntitlementFeatures.ActivityEditor] = null, [EntitlementFeatures.FlashcardSets] = null, [EntitlementFeatures.CoachPanel] = null,
+            [EntitlementFeatures.PrintTest] = null, [EntitlementFeatures.Messaging] = null, [EntitlementFeatures.Tutoring] = null,
+            [EntitlementFeatures.LiveLesson] = null,
         });
         Limits(plans, SubscriptionPlan.TeacherBasicKey).ShouldBe(new Dictionary<string, int?> { [EntitlementFeatures.ManualLabeling] = null });
         var essential = Limits(plans, SubscriptionPlan.TeacherEssentialKey);

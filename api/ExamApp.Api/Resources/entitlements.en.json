@@ -1,0 +1,16 @@
+{
+  "entitlements": {
+    "counterpart": {
+      "teacher": {
+        "messaging": "The teacher's plan does not include messaging. You can write once the teacher upgrades.",
+        "tutoring": "The teacher's plan does not include tutoring bookings. You can book once the teacher upgrades.",
+        "liveLesson": "The teacher's plan does not allow a live lesson right now (not in the plan or this month's lessons are used up)."
+      },
+      "student": {
+        "messaging": "The student's plan does not include messaging. Their parent needs to choose a plan with messaging.",
+        "tutoring": "The student's plan does not include tutoring bookings. Their parent needs to choose a plan that includes them.",
+        "liveLesson": "The student's plan does not include live lessons. Their parent needs to choose a plan that includes them."
+      }
+    }
+  }
+}

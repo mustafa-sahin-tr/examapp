@@ -1,0 +1,16 @@
+{
+  "entitlements": {
+    "counterpart": {
+      "teacher": {
+        "messaging": "Öğretmenin planında mesajlaşma yok. Öğretmen planını yükseltince yazabilirsin.",
+        "tutoring": "Öğretmenin planında özel ders randevusu yok. Öğretmen planını yükseltince randevu alabilirsin.",
+        "liveLesson": "Öğretmenin planı şu an canlı derse izin vermiyor (planda yok ya da bu ayki ders hakkı doldu)."
+      },
+      "student": {
+        "messaging": "Öğrencinin planında mesajlaşma yok. Velisinin mesajlaşma içeren bir plan seçmesi gerekir.",
+        "tutoring": "Öğrencinin planında özel ders randevusu yok. Velisinin bunu içeren bir plan seçmesi gerekir.",
+        "liveLesson": "Öğrencinin planında canlı ders yok. Velisinin bunu içeren bir plan seçmesi gerekir."
+      }
+    }
+  }
+}

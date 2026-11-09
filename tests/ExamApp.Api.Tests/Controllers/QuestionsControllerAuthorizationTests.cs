@@ -1,4 +1,3 @@
-using ExamApp.Api.Services.Entitlements;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
@@ -9,6 +8,7 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Admin;
 using ExamApp.Api.Services.Classifier;
+using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Questions;
 using ExamApp.Api.Services.Teachers;
@@ -48,6 +48,15 @@ public class QuestionsControllerAuthorizationTests : IDisposable
     private IQuestionTestLinkService _testLinks = null!;  // issue #472
     private readonly ILearningOutcomeService _learningOutcomes = Substitute.For<ILearningOutcomeService>(); // issue #692
     private readonly ISkillService _skills = Substitute.For<ISkillService>(); // issue #703
+    private readonly IEntitlementService _entitlements = AllowAll();
+
+    private static IEntitlementService AllowAll()
+    {
+        var entitlements = Substitute.For<IEntitlementService>();
+        entitlements.CheckAsync(Arg.Any<EntitlementSubject>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new EntitlementCheck(true, null, 0, null));
+        return entitlements;
+    }
     private readonly int _worksheet;
     private readonly int _copyWorksheet;
     private readonly int _legacyQuestion;   // CreateUserId=0, W + W2'de
@@ -215,6 +224,7 @@ public class QuestionsControllerAuthorizationTests : IDisposable
                     services.AddSingleton(testLinks);
                     services.AddSingleton(_learningOutcomes);
                     services.AddSingleton(_skills);
+                    services.AddSingleton(_entitlements); // #1088: etkinlik yazmak planda activity-editor ister
                     services.AddSingleton(minio);
                     services.AddSingleton(classifierCache);
                     services.AddSingleton<ImageHelper>();
@@ -375,6 +385,32 @@ public class QuestionsControllerAuthorizationTests : IDisposable
             .StatusCode.ShouldBe(HttpStatusCode.OK);
         (await SendAsync(client, Owner, HttpMethod.Post, "/api/questions",
             new { id = _legacyQuestion, text = (string?)null, interactionType = "matrixChoice", answers = Array.Empty<object>() }))
+            .StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Writing_an_activity_needs_the_activity_editor_plan_but_mcq_does_not_issue1088()
+    {
+        _entitlements.CheckAsync(Arg.Any<EntitlementSubject>(), EntitlementFeatures.ActivityEditor, Arg.Any<CancellationToken>())
+            .Returns(new EntitlementCheck(false, 0, 0, null, "teacher-basic"));
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+
+        var single = await SendAsync(client, Owner, HttpMethod.Post, "/api/questions",
+            new { id = _legacyQuestion, text = (string?)null, interactionType = "matrixChoice", answers = Array.Empty<object>() });
+        single.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await single.Content.ReadFromJsonAsync<EntitlementLimitReachedDto>())!.ShouldSatisfyAllConditions(
+            b => b.Code.ShouldBe(EntitlementLimitReachedDto.NotInPlanCode),
+            b => b.Feature.ShouldBe(EntitlementFeatures.ActivityEditor));
+        (await SendAsync(client, Owner, HttpMethod.Post, "/api/questions/save",
+            new { imageData = (string?)null, passages = Array.Empty<object>(), header = new { testId = _worksheet }, questions = new[] { new { name = "1", passageId = "", interactionType = "match" } } }))
+            .StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+
+        (await SendAsync(client, Owner, HttpMethod.Post, "/api/questions",
+            new { id = _legacyQuestion, text = (string?)null, interactionType = "mcq", answers = Array.Empty<object>() }))
+            .StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await SendAsync(client, Owner, HttpMethod.Post, "/api/questions/save",
+            new { imageData = (string?)null, passages = Array.Empty<object>(), header = new { testId = _worksheet }, questions = Array.Empty<object>() }))
             .StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 

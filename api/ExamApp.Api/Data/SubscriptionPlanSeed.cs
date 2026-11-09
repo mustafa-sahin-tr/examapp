@@ -104,6 +104,15 @@ public static class SubscriptionPlanSeed
         // kadar korur. Sona eklenir: önceki satırların id'leri değişmez.
         (FreePlanId, EntitlementFeatures.ManualLabeling, null),
         (FreePlanId, EntitlementFeatures.AutoDetect, null),
+
+        // #1088: öğretmen araçları ve iki taraflı özellikler plana bağlandı; Free bugünkü davranışı #1090'a kadar korur.
+        (FreePlanId, EntitlementFeatures.ActivityEditor, null),
+        (FreePlanId, EntitlementFeatures.FlashcardSets, null),
+        (FreePlanId, EntitlementFeatures.CoachPanel, null),
+        (FreePlanId, EntitlementFeatures.PrintTest, null),
+        (FreePlanId, EntitlementFeatures.Messaging, null),
+        (FreePlanId, EntitlementFeatures.Tutoring, null),
+        (FreePlanId, EntitlementFeatures.LiveLesson, null),
     ];
 
     private const int FirstTierLimitId = 13;

@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Flashcards;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Teachers.Authorization;
@@ -133,10 +134,12 @@ public class TeacherFlashcardsController(IFlashcardDeckService decks) : BaseCont
         AsOwnerAsync(async owner => await decks.GetOwnedAsync(owner, id, ct) is { } deck ? Ok(deck) : NotFound(), ct);
 
     [HttpPost("decks")]
+    [RequiresEntitlement(EntitlementFeatures.FlashcardSets, InPlanOnly = true)]
     public Task<IActionResult> CreateDeck([FromBody] SaveFlashcardDeckDto request, CancellationToken ct) =>
         AsOwnerAsync(async owner => Ok(await decks.CreateAsync(owner, request, ct)), ct);
 
     [HttpPut("decks/{id:int}")]
+    [RequiresEntitlement(EntitlementFeatures.FlashcardSets, InPlanOnly = true)]
     public Task<IActionResult> UpdateDeck(int id, [FromBody] SaveFlashcardDeckDto request, CancellationToken ct) =>
         AsOwnerAsync(async owner => await decks.UpdateAsync(owner, id, request, ct) is { } deck ? Ok(deck) : NotFound(), ct);
 
@@ -145,10 +148,12 @@ public class TeacherFlashcardsController(IFlashcardDeckService decks) : BaseCont
         AsOwnerAsync(async owner => await decks.DeleteAsync(owner, id, ct) ? NoContent() : NotFound(), ct);
 
     [HttpPost("decks/{id:int}/cards")]
+    [RequiresEntitlement(EntitlementFeatures.FlashcardSets, InPlanOnly = true)]
     public Task<IActionResult> AddCard(int id, [FromBody] SaveFlashcardDto request, CancellationToken ct) =>
         AsOwnerAsync(async owner => await decks.AddCardAsync(owner, id, request, ct) is { } card ? Ok(card) : NotFound(), ct);
 
     [HttpPut("cards/{cardId:int}")]
+    [RequiresEntitlement(EntitlementFeatures.FlashcardSets, InPlanOnly = true)]
     public Task<IActionResult> UpdateCard(int cardId, [FromBody] SaveFlashcardDto request, CancellationToken ct) =>
         AsOwnerAsync(async owner => await decks.UpdateCardAsync(owner, cardId, request, ct) is { } card ? Ok(card) : NotFound(), ct);
 
@@ -164,6 +169,7 @@ public class TeacherFlashcardsController(IFlashcardDeckService decks) : BaseCont
     }
 
     [HttpPost("decks/{id:int}/assignments")]
+    [RequiresEntitlement(EntitlementFeatures.FlashcardSets, InPlanOnly = true)]
     public async Task<IActionResult> Assign(int id, [FromBody] AssignFlashcardDeckDto request, CancellationToken ct)
     {
         var scope = await GetSchoolScopeAsync(ct);

@@ -71,7 +71,7 @@ export const routes: Routes = [
   {
     // Issue #701: kağıt çıktısı; uygulama kabuğu baskıya girmesin diye layout dışında.
     path: 'exam/:id/print',
-    canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],
+    canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard, entitlementGuard('print-test')],
     loadComponent: () => import('./pages/test-print/test-print.component').then((m) => m.TestPrintComponent),
   },
   // Main app (protected) routes — all nested under a single EnhancedLayoutComponent
@@ -164,7 +164,7 @@ export const routes: Routes = [
       {
         // Issue #590: görselsiz etkinlik maddesi editörü (form tabanlı yazarlık) — backend Teacher/Admin + test sahibi.
         path: 'activity-editor',
-        canActivate: [authGuard, roleGuard('Teacher', 'Admin'), approvedTeacherGuard],
+        canActivate: [authGuard, roleGuard('Teacher', 'Admin'), approvedTeacherGuard, entitlementGuard('activity-editor')],
         loadComponent: () =>
           import('./pages/activity-editor/activity-editor.component').then((m) => m.ActivityEditorComponent),
       },
@@ -435,7 +435,7 @@ export const routes: Routes = [
         // Issue #700: koç paneli; öğrenci kapsamı sunucuda (kendi okulu ya da onaylı özel ders).
         // Issue #893: iki panel — liste solda kalır, seçili öğrenci sağdaki çocuk rotada açılır.
         path: 'teacher/coach',
-        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],
+        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard, entitlementGuard('coach-panel')],
         loadComponent: () => import('./pages/coach/coach-students.component').then((m) => m.CoachStudentsComponent),
         children: [
           {
@@ -506,7 +506,7 @@ export const routes: Routes = [
         // Issue #96: öğretmenin müsaitlik aralıkları.
         path: 'availability',
         // Issue #418: randevu bağımsız öğretmen özelliği — okula bağlı öğretmen bu sayfayı görmez (menüde de gizli).
-        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard, independentTeacherGuard],
+        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard, independentTeacherGuard, entitlementGuard('tutoring')],
         loadComponent: () =>
           import('./pages/teacher-availability/teacher-availability.component').then(
             (m) => m.TeacherAvailabilityComponent

@@ -6482,6 +6482,62 @@ namespace ExamApp.Api.Migrations
                             FeatureKey = "auto-detect",
                             IsDeleted = false,
                             PlanId = 1
+                        },
+                        new
+                        {
+                            Id = 76,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "activity-editor",
+                            IsDeleted = false,
+                            PlanId = 1
+                        },
+                        new
+                        {
+                            Id = 77,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "flashcard-sets",
+                            IsDeleted = false,
+                            PlanId = 1
+                        },
+                        new
+                        {
+                            Id = 78,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "coach-panel",
+                            IsDeleted = false,
+                            PlanId = 1
+                        },
+                        new
+                        {
+                            Id = 79,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "print-test",
+                            IsDeleted = false,
+                            PlanId = 1
+                        },
+                        new
+                        {
+                            Id = 80,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "messaging",
+                            IsDeleted = false,
+                            PlanId = 1
+                        },
+                        new
+                        {
+                            Id = 81,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "tutoring",
+                            IsDeleted = false,
+                            PlanId = 1
+                        },
+                        new
+                        {
+                            Id = 82,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "live-lesson",
+                            IsDeleted = false,
+                            PlanId = 1
                         });
                 });
 

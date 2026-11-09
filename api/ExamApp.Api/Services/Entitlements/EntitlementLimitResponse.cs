@@ -38,4 +38,29 @@ public static class EntitlementLimitResponse
         {
             StatusCode = StatusCodes.Status403Forbidden,
         };
+
+    /// <summary>
+    /// Issue #1088: karşı tarafın (öğretmen / öğrenci) planı paylaşılan özelliğe izin vermiyor — 403
+    /// <c>entitlement.counterpartNotInPlan</c>. Çağıranın yükseltmesi işe yaramaz; arayüz yükseltme penceresi yerine mesajı gösterir.
+    /// </summary>
+    public static ObjectResult CounterpartNotInPlan(string featureKey, string message) =>
+        new(new EntitlementLimitReachedDto
+        {
+            Code = EntitlementLimitReachedDto.CounterpartNotInPlanCode,
+            Feature = featureKey,
+            Message = message,
+        })
+        {
+            StatusCode = StatusCodes.Status403Forbidden,
+        };
+
+    /// <summary>İki taraflı denetimin yanıtı; izin varsa null. Çağıranın engeli 403 / 429, karşı tarafınki <see cref="CounterpartNotInPlan"/>.</summary>
+    public static ObjectResult? ForShared(string featureKey, SharedEntitlementDecision decision, string counterpartMessage) =>
+        decision.Block switch
+        {
+            SharedEntitlementBlock.None => null,
+            SharedEntitlementBlock.Self when decision.SelfCheck.Limit == 0 => NotInPlan(featureKey, decision.SelfCheck),
+            SharedEntitlementBlock.Self => Create(featureKey, decision.SelfCheck),
+            _ => CounterpartNotInPlan(featureKey, counterpartMessage),
+        };
 }

@@ -2,7 +2,6 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { map } from 'rxjs';
 
-import { ENTITLEMENT_NOT_IN_PLAN_CODE } from '../../models/subscription';
 import { EntitlementStateService } from '../../services/entitlement-state.service';
 import { EntitlementLimitHandler } from '../interceptors/entitlement-limit.interceptor';
 
@@ -21,14 +20,7 @@ export const entitlementGuard =
     return state.load().pipe(
       map(() => {
         if (state.has(feature)) return true;
-        handler.show({
-          code: ENTITLEMENT_NOT_IN_PLAN_CODE,
-          feature,
-          limit: 0,
-          used: null,
-          resetsAtUtc: null,
-          planKey: state.plan()?.planKey ?? null,
-        });
+        handler.showNotInPlan(feature, state.plan()?.planKey ?? null);
         return router.navigated ? false : router.createUrlTree(['/dashboard']);
       }),
     );

@@ -1,4 +1,5 @@
 using ExamApp.Api.Services.Entitlements;
+using ExamApp.Api.Services.Interactions;
 using ExamApp.Api.Services.Teachers.Authorization;
 using ExamApp.Api.Controllers;
 using ExamApp.Api.Data;
@@ -156,9 +157,11 @@ public class QuestionsController : BaseController
 
     [HttpPost]
     [Authorize(Roles = AuthoringRoles)]
-    public async Task<IActionResult> CreateOrUpdateQuestion([FromBody] QuestionDto questionDto)
+    public async Task<IActionResult> CreateOrUpdateQuestion([FromBody] QuestionDto questionDto, [FromServices] IEntitlementService entitlements)
     {
         var user = await GetAuthenticatedUserAsync(HttpContext.RequestAborted);
+        if (await DenyActivityUnlessInPlanAsync(user.Id, [questionDto.InteractionType], entitlements) is { } planDenied)
+            return planDenied;
         // issue #287 H1: güncellemede soru sahibi, yeni soruyu teste eklerken test sahibi olmalı (admin muaf).
         var denied = questionDto.Id > 0
             ? await DenyUnlessQuestionOwnerAsync(questionDto.Id, user.Id)
@@ -188,7 +191,7 @@ public class QuestionsController : BaseController
 
     [HttpPost("save")]
     [Authorize(Roles = AuthoringRoles)]
-    public async Task<IActionResult> KaydetSoruSeti([FromBody] BulkQuestionCreateDto soruDto)
+    public async Task<IActionResult> KaydetSoruSeti([FromBody] BulkQuestionCreateDto soruDto, [FromServices] IEntitlementService entitlements)
     {
         if (soruDto == null)
         {
@@ -196,6 +199,8 @@ public class QuestionsController : BaseController
         }
 
         var user = await GetAuthenticatedUserAsync(HttpContext.RequestAborted);
+        if (await DenyActivityUnlessInPlanAsync(user.Id, soruDto.Questions?.Select(q => q.InteractionType) ?? [], entitlements) is { } planDenied)
+            return planDenied;
         // issue #287 H1: sorular bir teste ekleniyorsa test sahibi olmalı (admin muaf).
         if (soruDto.Header?.TestId is int testId && testId > 0
             && await DenyUnlessWorksheetOwnerAsync(testId, user.Id) is { } denied)
@@ -565,6 +570,22 @@ public class QuestionsController : BaseController
         await _ownership.CanModifyWorksheetAsync(worksheetId, userId, IsAdmin, HttpContext.RequestAborted) == QuestionAccessResult.Allowed
             ? null
             : NotFound(new { success = false, message = _localizer["questions.testNotFound"].Value });
+
+    /// <summary>
+    /// Issue #1088: çoktan seçmeli dışında etkileşimli etkinlik yazmak (yeni ya da düzenleme) planda <c>activity-editor</c> ister.
+    /// Planı düşen öğretmenin var olan etkinlikleri okunur ve çözülür kalır; yalnız yazma 403 <c>entitlement.notInPlan</c>.
+    /// </summary>
+    private async Task<IActionResult?> DenyActivityUnlessInPlanAsync(int userId, IEnumerable<string?> interactionTypes, IEntitlementService entitlements)
+    {
+        if (!interactionTypes.Any(IsActivity))
+            return null;
+        var check = await entitlements.CheckAsync(
+            EntitlementSubject.FromPrincipal(userId, User), EntitlementFeatures.ActivityEditor, HttpContext.RequestAborted);
+        return check.Limit == 0 ? EntitlementLimitResponse.NotInPlan(EntitlementFeatures.ActivityEditor, check) : null;
+    }
+
+    private static bool IsActivity(string? interactionType) =>
+        !string.IsNullOrWhiteSpace(interactionType) && !string.Equals(interactionType, McqGrader.Type, StringComparison.OrdinalIgnoreCase);
 }
 
 
@@ -593,5 +614,4 @@ public class QuestionsController : BaseController
 //         {
 //             return BadRequest(new { error = ex.Message });
 //         }
-//     }
-
+//

@@ -9,12 +9,12 @@ import { EntitlementLimitHandler } from '../interceptors/entitlement-limit.inter
 /** Issue #1087: planda olmayan özelliğin sayfası açılmaz, yükseltme penceresi açılır. */
 describe('entitlementGuard (issue #1087)', () => {
   let has: ReturnType<typeof vi.fn>;
-  let show: ReturnType<typeof vi.fn>;
+  let showNotInPlan: ReturnType<typeof vi.fn>;
   let router: Router;
 
   beforeEach(() => {
     has = vi.fn();
-    show = vi.fn();
+    showNotInPlan = vi.fn();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
@@ -22,7 +22,7 @@ describe('entitlementGuard (issue #1087)', () => {
           provide: EntitlementStateService,
           useValue: { load: () => of(null), has, plan: () => ({ planKey: 'teacher-basic' }) },
         },
-        { provide: EntitlementLimitHandler, useValue: { show } },
+        { provide: EntitlementLimitHandler, useValue: { showNotInPlan } },
       ],
     });
     router = TestBed.inject(Router);
@@ -38,7 +38,7 @@ describe('entitlementGuard (issue #1087)', () => {
 
     expect(await run('quick-add')).toBe(true);
     expect(has).toHaveBeenCalledWith('quick-add');
-    expect(show).not.toHaveBeenCalled();
+    expect(showNotInPlan).not.toHaveBeenCalled();
   });
 
   it('shows the not-in-plan dialog and sends a direct visit to the dashboard', async () => {
@@ -46,9 +46,7 @@ describe('entitlementGuard (issue #1087)', () => {
 
     const result = await run('question-generation');
 
-    expect(show).toHaveBeenCalledWith(
-      expect.objectContaining({ code: 'entitlement.notInPlan', feature: 'question-generation', limit: 0, planKey: 'teacher-basic' }),
-    );
+    expect(showNotInPlan).toHaveBeenCalledWith('question-generation', 'teacher-basic');
     expect(router.serializeUrl(result as UrlTree)).toBe('/dashboard');
   });
 

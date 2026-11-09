@@ -61,7 +61,7 @@ hiç dokunulmaz.
 |---|---|---|
 | `--provinces a,b,...` | İstanbul, Ankara, İzmir, Erzincan, Trabzon, Adana, Mersin, Antalya, Mardin, Kars | İl listesi; `Province` tablosuyla Türkçe büyük/küçük harf ve İ/I duyarsız eşleşir |
 | `--limit N` | sınırsız | İl başına en fazla N okul — normalize ada göre (tr-TR) sıralı ilk N, deterministik |
-| `--types ilkokul,ortaokul` | ikisi | Tür seçimi |
+| `--types ilkokul,ortaokul,lise` | ilkokul, ortaokul | Tür seçimi. `lise`: Anadolu, Anadolu İmam Hatip, Çok Programlı, Mesleki ve Teknik, Fen, Sosyal Bilimler, Güzel Sanatlar, Spor ve türü yalnız `Lise` olanlar (açık/akşam lisesi hariç) |
 | `--include-imam-hatip` | kapalı | `İmam Hatip Ortaokulu` türünü Ortaokul olarak dahil et |
 | `--dry-run` | kapalı | Yazma; rapor "eklenecek" sayılarını gösterir |
 | `--connection` | `ConnectionStrings:DefaultConnection` | Bağlantı override'ı (tercih: `ConnectionStrings__DefaultConnection` env var) |
@@ -87,7 +87,7 @@ kayıtlarda `IsSeedData = true` — elle açılan okullardan ayırt etmek ve ger
   (yanlış sınıflanmış; 10 ilde 6 kayıt).
 - Ad normalizasyonu (`SchoolNameNormalizer`): fazla boşluk temizlenir; tamamı büyük ya da tamamı küçük harf
   adlar tr-TR Title Case'e çevrilir (`KARATAŞ İLKOKULU` → `Karataş İlkokulu`, `FATMA-YUSUF BİLGİÇ İLKOKULU` →
-  `Fatma-Yusuf Bilgiç İlkokulu`); karışık yazımlı adlarda yalnızca `ilkokulu/ortaokulu/imam/hatip` kelimeleri
+  `Fatma-Yusuf Bilgiç İlkokulu`); karışık yazımlı adlarda yalnızca `ilkokulu/ortaokulu/lisesi/imam/hatip` kelimeleri
   düzeltilir (`Kapıkaya ilkokulu` → `Kapıkaya İlkokulu`), `TOKİ`, `DSİ`, `T.E.K.` gibi kısaltmalara dokunulmaz.
   Karışık adlardaki tamamı büyük soyadları (`Ahmet KABAKLI İlkokulu`) kasıtlı olarak olduğu gibi bırakılır.
   **Bilinen sınırlama:** tamamı büyük harf bir adda Roma rakamı varsa Title Case onu da bozar

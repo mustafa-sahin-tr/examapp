@@ -60,6 +60,8 @@ public sealed class SchoolSeedProvinceSummary
     public int IlkokulExisting { get; set; }
     public int OrtaokulAdded { get; set; }
     public int OrtaokulExisting { get; set; }
+    public int LiseAdded { get; set; }
+    public int LiseExisting { get; set; }
 
     public int SkippedSoftDeleted { get; set; }
     public int SkippedTooLong { get; set; }

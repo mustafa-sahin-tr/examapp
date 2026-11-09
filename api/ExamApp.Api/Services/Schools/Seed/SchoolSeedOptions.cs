@@ -6,7 +6,8 @@ namespace ExamApp.Api.Services.Schools.Seed;
 public enum SchoolSeedKind
 {
     Ilkokul = 1,
-    Ortaokul = 2
+    Ortaokul = 2,
+    Lise = 3
 }
 
 /// <summary>

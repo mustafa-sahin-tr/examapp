@@ -25,6 +25,14 @@ public sealed class SchoolSeedService : ISchoolSeedService
     public const string TypeOrtaokul = "Ortaokul";
     public const string TypeImamHatipOrtaokulu = "İmam Hatip Ortaokulu";
 
+    /// <summary>Kaynakta lise sayılan türler. Yalnızca <c>--types lise</c> ile içe aktarılır.</summary>
+    public static readonly IReadOnlyList<string> HighSchoolTypes =
+    [
+        "Lise", "Anadolu Lisesi", "Anadolu İmam Hatip Lisesi", "Çok Programlı Anadolu Lisesi",
+        "Mesleki ve Teknik Anadolu Lisesi", "Fen Lisesi", "Sosyal Bilimler Lisesi",
+        "Güzel Sanatlar Lisesi", "Spor Lisesi"
+    ];
+
     /// <summary>School.Name / School.ExternalCode kolon sınırları (entity'deki MaxLength ile aynı).</summary>
     public const int NameMaxLength = 200;
     public const int ExternalCodeMaxLength = 32;
@@ -38,6 +46,7 @@ public sealed class SchoolSeedService : ISchoolSeedService
     private static readonly string KeyIlkokul = FoldKey(TypeIlkokul);
     private static readonly string KeyOrtaokul = FoldKey(TypeOrtaokul);
     private static readonly string KeyImamHatipOrtaokulu = FoldKey(TypeImamHatipOrtaokulu);
+    private static readonly HashSet<string> HighSchoolTypeKeys = HighSchoolTypes.Select(FoldKey).ToHashSet();
     private static readonly string[] SpecialEducationMarkerKeys = [FoldKey("Özel Eğitim"), FoldKey("Uygulama Merkezi")];
 
     private readonly AppDbContext _context;
@@ -238,7 +247,7 @@ public sealed class SchoolSeedService : ISchoolSeedService
                 var exists = (code != null && existingCodes.Contains(code)) || existingNameKeys.Contains(nameKey);
                 if (exists)
                 {
-                    if (kind == SchoolSeedKind.Ilkokul) summary.IlkokulExisting++; else summary.OrtaokulExisting++;
+                    if (kind == SchoolSeedKind.Ilkokul) summary.IlkokulExisting++; else if (kind == SchoolSeedKind.Ortaokul) summary.OrtaokulExisting++; else summary.LiseExisting++;
                     result.SkippedExisting++;
                     continue;
                 }
@@ -255,7 +264,7 @@ public sealed class SchoolSeedService : ISchoolSeedService
                     IsSeedData = true
                 });
 
-                if (kind == SchoolSeedKind.Ilkokul) summary.IlkokulAdded++; else summary.OrtaokulAdded++;
+                if (kind == SchoolSeedKind.Ilkokul) summary.IlkokulAdded++; else if (kind == SchoolSeedKind.Ortaokul) summary.OrtaokulAdded++; else summary.LiseAdded++;
                 result.Added++;
 
                 if (result.AddedSample.Count < SchoolSeedResult.AddedSampleLimit)
@@ -293,7 +302,7 @@ public sealed class SchoolSeedService : ISchoolSeedService
     }
 
     /// <summary>
-    /// Kaynak türünü içe aktarılan türe çevirir; kapsam dışı türler (lise, anaokulu…) için null.
+    /// Kaynak türünü içe aktarılan türe çevirir; kapsam dışı türler (anaokulu, halk eğitim…) için null.
     /// "İmam Hatip Ortaokulu" yalnızca <paramref name="includeImamHatip"/> ile Ortaokul sayılır.
     /// </summary>
     public static SchoolSeedKind? ClassifyKind(string schoolType, bool includeImamHatip)
@@ -302,6 +311,7 @@ public sealed class SchoolSeedService : ISchoolSeedService
         if (key == KeyIlkokul) return SchoolSeedKind.Ilkokul;
         if (key == KeyOrtaokul) return SchoolSeedKind.Ortaokul;
         if (includeImamHatip && key == KeyImamHatipOrtaokulu) return SchoolSeedKind.Ortaokul;
+        if (HighSchoolTypeKeys.Contains(key)) return SchoolSeedKind.Lise;
         return null;
     }
 
@@ -351,9 +361,9 @@ public sealed class SchoolSeedService : ISchoolSeedService
         foreach (var p in r.Provinces)
         {
             _logger.LogInformation(
-                "seed-schools  {Province,-10} eşleşti={Matched} İlkokul +{IlkAdd}/={IlkEx}  Ortaokul +{OrtAdd}/={OrtEx}  " +
+                "seed-schools  {Province,-10} eşleşti={Matched} İlkokul +{IlkAdd}/={IlkEx}  Ortaokul +{OrtAdd}/={OrtEx}  Lise +{LiseAdd}/={LiseEx}  " +
                 "büyükşehir={Buyuksehir} özelEğitim={SpecialEd} limitDışı={Limit} eşleşmeyenİlçe={Unmatched}",
-                p.Province, p.ProvinceMatched, p.IlkokulAdded, p.IlkokulExisting, p.OrtaokulAdded, p.OrtaokulExisting,
+                p.Province, p.ProvinceMatched, p.IlkokulAdded, p.IlkokulExisting, p.OrtaokulAdded, p.OrtaokulExisting, p.LiseAdded, p.LiseExisting,
                 p.SkippedBuyuksehir, p.SkippedSpecialEducation, p.SkippedByLimit, p.UnmatchedDistrictRows);
         }
 

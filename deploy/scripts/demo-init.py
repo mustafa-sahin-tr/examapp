@@ -53,7 +53,7 @@ DEFAULTS = {
     "JITSI_PUBLIC_URL": "",
     # Filled in by the owner.
     "ANTHROPIC_API_KEY": "",
-    "SMTP_HOST": "smtp.gmail.com",
+    "SMTP_HOST": "",
     "SMTP_PORT": "587",
     "SMTP_USERNAME": "",
     "SMTP_PASSWORD": "",
@@ -113,7 +113,7 @@ def build_realm(env):
 
 if __name__ == "__main__":
     build_realm(load_env())
-    missing = [k for k in ("ANTHROPIC_API_KEY", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_FROM_ADDRESS") if not load_env()[k]]
+    missing = [k for k in ("ANTHROPIC_API_KEY", "SMTP_HOST", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_FROM_ADDRESS") if not load_env()[k]]
     print(f"Ready: {ENV_FILE}, {DEMO_REALM}")
     if missing:
         print("Still empty in .env.demo: " + ", ".join(missing))

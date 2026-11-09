@@ -145,6 +145,24 @@ public class SubscriptionPlanAssignmentAudit
     public DateTime OccurredAtUtc { get; set; }
 }
 
+/// <summary>
+/// Issue #1086: admin plan düzenleyicisinde her kaydın kaydı (kim, ne zaman, eski → yeni). Ad, fiyat, deneme süresi, etkinlik
+/// ve sınırlar JSON olarak saklanır; silinmez.
+/// </summary>
+public class SubscriptionPlanChangeAudit
+{
+    public long Id { get; set; }
+    public int PlanId { get; set; }
+
+    [MaxLength(SubscriptionPlan.KeyMaxLength)]
+    public string PlanKey { get; set; } = string.Empty;
+
+    public int ActorUserId { get; set; }
+    public string BeforeJson { get; set; } = string.Empty;
+    public string AfterJson { get; set; } = string.Empty;
+    public DateTime OccurredAtUtc { get; set; }
+}
+
 /// <summary>Kalıcı değer string'dir; yeniden adlandırma geçmiş kayıtları bozar.</summary>
 public enum SubscriptionPlanAuditAction
 {

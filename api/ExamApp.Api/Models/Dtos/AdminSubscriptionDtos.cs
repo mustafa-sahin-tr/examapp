@@ -76,6 +76,19 @@ public class AssignSchoolSubscriptionPlanDto : AssignSubscriptionPlanDto
     public SchoolPlanAudience Audience { get; set; } = SchoolPlanAudience.All;
 }
 
+/// <summary>
+/// Issue #1086: planın tamamı. <see cref="MonthlyLimits"/>: özellik anahtarı → aylık sınır (null = sınırsız ya da açık / kapalı
+/// özellikte "dahil"); listede olmayan özellik planda yoktur.
+/// </summary>
+public class UpdateSubscriptionPlanDto
+{
+    public string Name { get; set; } = string.Empty;
+    public decimal MonthlyPrice { get; set; }
+    public int? TrialDays { get; set; }
+    public bool IsActive { get; set; } = true;
+    public Dictionary<string, int?> MonthlyLimits { get; set; } = new();
+}
+
 public class AssignSchoolSubscriptionPlanResultDto
 {
     public int Assigned { get; set; }

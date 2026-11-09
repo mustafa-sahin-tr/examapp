@@ -5765,6 +5765,43 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("SubscriptionPlanAssignmentAudits");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.SubscriptionPlanChangeAudit", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("ActorUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("AfterJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("BeforeJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("OccurredAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("PlanId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PlanKey")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlanId", "OccurredAtUtc");
+
+                    b.ToTable("SubscriptionPlanChangeAudits");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.SubscriptionPlanFeatureLimit", b =>
                 {
                     b.Property<int>("Id")

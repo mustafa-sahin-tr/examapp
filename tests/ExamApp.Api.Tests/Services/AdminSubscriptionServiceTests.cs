@@ -259,6 +259,51 @@ public class AdminSubscriptionServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Free_and_trial_cannot_be_deactivated_and_only_trial_has_days_issue1086()
+    {
+        await using var ctx = _db.NewContext();
+        var service = NewService(ctx);
+
+        (await service.UpdatePlanAsync(SubscriptionPlan.FreeKey, new UpdateSubscriptionPlanDto { Name = "Free", IsActive = false }, AdminId))
+            .ShouldBe(AdminPlanUpdateError.PlanRequired);
+        (await service.UpdatePlanAsync(SubscriptionPlan.TrialKey, new UpdateSubscriptionPlanDto { Name = "Trial" }, AdminId))
+            .ShouldBe(AdminPlanUpdateError.InvalidTrialDays);
+        (await service.UpdatePlanAsync(SubscriptionPlan.TrialKey, new UpdateSubscriptionPlanDto { Name = "Trial", TrialDays = 30 }, AdminId))
+            .ShouldBe(AdminPlanUpdateError.None);
+        (await service.UpdatePlanAsync(SubscriptionPlan.TeacherProKey, new UpdateSubscriptionPlanDto { Name = " ", }, AdminId))
+            .ShouldBe(AdminPlanUpdateError.InvalidName);
+
+        await using var check = _db.NewContext();
+        (await check.SubscriptionPlans.SingleAsync(p => p.Key == SubscriptionPlan.TrialKey)).TrialDays.ShouldBe(30);
+        (await check.SubscriptionPlanChangeAudits.CountAsync()).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Removing_and_re_adding_a_feature_reuses_its_row_issue1086()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            var service = NewService(ctx);
+            (await service.UpdatePlanAsync(SubscriptionPlan.TeacherBasicKey, new UpdateSubscriptionPlanDto { Name = "Basic", MonthlyPrice = 149 }, AdminId))
+                .ShouldBe(AdminPlanUpdateError.None);
+        }
+        await using (var ctx = _db.NewContext())
+        {
+            var request = new UpdateSubscriptionPlanDto
+            {
+                Name = "Basic", MonthlyPrice = 149, MonthlyLimits = new() { [EntitlementFeatures.ManualLabeling] = null },
+            };
+            (await NewService(ctx).UpdatePlanAsync(SubscriptionPlan.TeacherBasicKey, request, AdminId)).ShouldBe(AdminPlanUpdateError.None);
+        }
+
+        await using var check = _db.NewContext();
+        var rows = await check.SubscriptionPlanFeatureLimits.Where(l => l.Plan.Key == SubscriptionPlan.TeacherBasicKey).ToListAsync();
+        rows.Count(r => r.FeatureKey == EntitlementFeatures.ManualLabeling).ShouldBe(1);
+        rows.Single(r => r.FeatureKey == EntitlementFeatures.ManualLabeling).MonthlyLimit.ShouldBeNull();
+        (await check.SubscriptionPlanChangeAudits.CountAsync()).ShouldBe(2);
+    }
+
+    [Fact]
     public void Controller_is_admin_only_and_audits_personal_data_endpoints()
     {
         var type = typeof(AdminSubscriptionPlansController);

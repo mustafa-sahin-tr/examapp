@@ -310,6 +310,14 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   (sayılanlarda deneme sınırı). Free eski sınırlarını kilitleme işine (#1090) kadar korur. Yeni anahtarların kapı kontrolleri
   #1087-#1089'da bağlanır; şimdilik yalnız eski dört özellik (kitap, hızlı ekleme, sınıflandırma, deneme sınavı) uygulanır. Admin
   ekranında öğretmen / öğrenci planı adının önüne kitle yazılır ("Öğretmen · Pro").
+- **Plan düzenleyici (#1086):** `/admin/subscriptions` → "Planlar" sekmesi; `PUT api/exam/admin/subscription-plans/{key}`
+  (yalnız Admin) ad, aylık fiyat, deneme süresi (yalnız `trial`, 1–365 gün; diğerlerinde null), etkinlik ve bütün sınırları
+  birlikte yazar. Gövdedeki `monthlyLimits`'te olmayan özellik planda yoktur: satırı silinmez (soft delete tekil indekse
+  takılırdı), 0'a çekilir; açık / kapalı özellikte sayı yok sayılır. Kayıtta olmayan anahtar, planın kitlesine ait olmayan özellik
+  (öğretmen planına öğrenci özelliği), negatif sınır 400; Free ve deneme kapatılamaz (`subscription.planRequired`). Her kayıt
+  `SubscriptionPlanChangeAudits`'e eski → yeni JSON yazar. Sınırlar her denetimde veritabanından okunduğu için önbellek yok,
+  sonraki denetimde geçerlidir; bu ayın kullanımı sıfırlanmaz. Kullanıcının gördüğü plan adı çeviri dosyasındadır (`Name` yalnız
+  admin / kayıt adı). Limit satırı id'leri 1000'den başlar: admin eklemeleri seed id'leriyle çakışmaz.
 - **Plan seçimi (#1028):** kayıt sihirbazının (`ui` `/register`) öğrenci / öğretmen kaydından sonra 3. adımı plan kartlarıdır
   (`PlanPickerComponent`, scope `subscription`); veli adımı atlar. "Ücretsiz devam et" API çağırmaz (Free). "Denemeyi başlat"
   → `POST /api/exam/subscription-plans/me/trial`: hesap başına bir kez (silinmiş atamalar dahil; ikincisi 409

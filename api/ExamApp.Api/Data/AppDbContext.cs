@@ -245,6 +245,7 @@ public class AppDbContext : DbContext
     public DbSet<SubscriptionPlan> SubscriptionPlans { get; set; } // issue #1019
     public DbSet<SubscriptionPlanFeatureLimit> SubscriptionPlanFeatureLimits { get; set; }
     public DbSet<UserSubscriptionPlan> UserSubscriptionPlans { get; set; }
+    public DbSet<SubscriptionPlanChangeAudit> SubscriptionPlanChangeAudits { get; set; } // issue #1086
     public DbSet<SubscriptionPlanAssignmentAudit> SubscriptionPlanAssignmentAudits { get; set; } // issue #1030
     public DbSet<EntitlementUsage> EntitlementUsages { get; set; }
 
@@ -1457,6 +1458,8 @@ public class AppDbContext : DbContext
             e.HasIndex(a => new { a.UserId, a.OccurredAtUtc });
             e.Property(a => a.Action).HasConversion<string>().HasMaxLength(16);
         });
+        // Issue #1086: plan düzenleme kaydı; planın geçmişi en yeni önce okunur.
+        modelBuilder.Entity<SubscriptionPlanChangeAudit>(e => e.HasIndex(a => new { a.PlanId, a.OccurredAtUtc }));
         modelBuilder.Entity<EntitlementUsage>(e =>
         {
             e.HasIndex(u => new { u.FeatureKey, u.ReferenceKey }).IsUnique();

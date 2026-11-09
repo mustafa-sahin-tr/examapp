@@ -49,6 +49,15 @@ export interface CurrentSubscriptionPlan {
   features: FeatureUsage[];
 }
 
+/** Issue #1086: admin plan düzenleyicisinin gövdesi; `monthlyLimits`'te olmayan özellik planda yoktur (null = sınırsız / dahil). */
+export interface SubscriptionPlanUpdate {
+  name: string;
+  monthlyPrice: number;
+  trialDays: number | null;
+  isActive: boolean;
+  monthlyLimits: Record<string, number | null>;
+}
+
 export const FREE_PLAN_KEY = 'free';
 export const TRIAL_PLAN_KEY = 'trial';
 

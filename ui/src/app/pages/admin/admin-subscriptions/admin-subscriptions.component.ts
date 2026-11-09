@@ -25,6 +25,7 @@ import {
 } from '../../../models/subscription';
 import { SubscriptionService } from '../../../services/subscription.service';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+import { AdminPlanEditorComponent } from './plan-editor/admin-plan-editor.component';
 import { SchoolSelectComponent } from '../../../shared/components/school-select/school-select.component';
 
 /** Arama metninin en kısa uzunluğu (sunucu da reddeder). */
@@ -38,6 +39,7 @@ export const MIN_SEARCH_LENGTH = 2;
   selector: 'app-admin-subscriptions',
   standalone: true,
   imports: [
+    AdminPlanEditorComponent,
     SchoolSelectComponent,
     DatePipe,
     FormsModule,
@@ -117,6 +119,16 @@ export class AdminSubscriptionsComponent implements OnInit {
     const plan = this.plans().find((p) => p.key === (planKey ?? FREE_PLAN_KEY));
     const name = t(planNameKey(plan?.displayNameKey));
     return plan?.audience === 'Teacher' || plan?.audience === 'Student' ? `${t('admin.roles.' + plan.audience)} · ${name}` : name;
+  }
+
+  /** #1086: düzenleyici plan seçicisi için `planLabel`'ın kapanışı. */
+  planLabelFor(t: (key: string) => string): (planKey: string) => string {
+    return (planKey) => this.planLabel(t, planKey);
+  }
+
+  /** #1086: kaydedilen plan listede yerini alır (ad, etkinlik ve sınırlar atama seçicilerine de yansır). */
+  planSaved(plan: SubscriptionPlan): void {
+    this.plans.update((plans) => plans.map((p) => (p.key === plan.key ? plan : p)));
   }
 
   search(): void {

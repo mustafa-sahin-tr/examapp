@@ -276,11 +276,15 @@ deploy/scripts/demo.sh build
 deploy/scripts/demo.sh up --tunnel
 deploy/scripts/demo.sh down    # veri kalır
 deploy/scripts/demo.sh backup  # harici diske; son 14 yedek kalır
+deploy/scripts/demo.sh restore <yedek klasörü> --yes  # bütün demo verisini yedekle değiştirir; önce güncel veriyi yedekler
 ```
 
 - **Tünel:** `cloudflared tunnel login`, `tunnel create hedefokul-demo` ve `tunnel route dns` ile kurulur (Zero Trust kaydı
   gerekmedi); sertifika, kimlik dosyası ve `config.yml` git'e girmeyen `deploy/cloudflared/` altındadır. `config.yml` tek
   hostname'i `http://caddy:80`'e, gerisini 404'e yönlendirir. Yönetim arayüzleri tünele eklenmez.
+- **Geri yükleme:** Postgres ve MinIO volume'leri silinip yedekten kurulur, Redis önbelleği boşalır. Yedek `examuser` parolasını
+  da taşır: `.env.demo` yedeğin alındığı dosyayla aynı olmalı. Tek beklenen hata "role already exists"; başka hata varsa
+  stack kapalı bırakılır.
 - **Realm:** Keycloak realm'i yalnız ilk açılışta içe aktarır. `PUBLIC_BASE_URL` veya SMTP değişirse `demo.sh init` sonrası demo
   volume'leri silinip yeniden açılır (`hedefokul-demo_*`, yalnız demo verisi).
 - **DNS:** `localhost` ile giriş test edilemez; servisler token anahtarlarını `PUBLIC_BASE_URL` üzerinden alır ve konteynerden

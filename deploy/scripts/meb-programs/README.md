@@ -2,7 +2,7 @@
 
 Türkiye Yüzyılı Maarif Modeli programlarının kazanım, konu ve alt konularını Soru Aktarımı ekranından yüklenen katalog paketine çevirir.
 
-Hazır paket `deploy/data/meb/maarif-catalog.json`, dışarıda kalanların listesi `deploy/data/meb/maarif-catalog-report.json`.
+Hazır paket `deploy/data/meb/maarif-catalog.json`, dışarıda kalanların listesi `deploy/data/meb/maarif-catalog-report.json`. Paket değişince her ortamın exam API'si açılışta onu kendiliğinden yükler (`docs/feature-notes.md` § MEB Maarif kataloğu); elle yükleme gerekmez.
 
 ## Yeniden üretme
 

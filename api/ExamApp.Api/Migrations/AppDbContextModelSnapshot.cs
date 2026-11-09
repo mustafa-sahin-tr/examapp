@@ -209,6 +209,25 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("Answers");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.AppliedDataPackage", b =>
+                {
+                    b.Property<string>("Name")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("AppliedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Name");
+
+                    b.ToTable("AppliedDataPackages");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.Badge", b =>
                 {
                     b.Property<int>("Id")

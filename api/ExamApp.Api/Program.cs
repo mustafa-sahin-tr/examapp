@@ -399,6 +399,9 @@ builder.Services.AddScoped<ExamApp.Api.Services.Questions.ILearningOutcomeServic
 builder.Services.AddScoped<ExamApp.Api.Services.Questions.ISkillService, ExamApp.Api.Services.Questions.SkillService>(); // Issue #703
 builder.Services.AddScoped<ExamApp.Api.Services.Classifier.IClassifierTagService, ExamApp.Api.Services.Classifier.ClassifierTagService>(); // Issue #1047
 builder.Services.AddScoped<ExamApp.Api.Services.Catalog.ICatalogTransferService, ExamApp.Api.Services.Catalog.CatalogTransferService>();
+builder.Services.Configure<ExamApp.Api.Services.Catalog.CatalogPackageOptions>(
+    builder.Configuration.GetSection(ExamApp.Api.Services.Catalog.CatalogPackageOptions.SectionName));
+builder.Services.AddScoped<ExamApp.Api.Services.Catalog.CatalogPackageImporter>();
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminUserDirectory, ExamApp.Api.Services.AdminUsers.AdminUserDirectory>();
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminTeacherService, ExamApp.Api.Services.AdminUsers.AdminTeacherService>();
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminStudentService, ExamApp.Api.Services.AdminUsers.AdminStudentService>();
@@ -736,6 +739,27 @@ if (seedCommand is not null)
     await using (app)
     {
         return await seedCommand.RunAsync(app.Services, app.Environment);
+    }
+}
+
+// MEB Maarif katalogu (ders, konu, alt konu, kazanım): her kurulumda elle yüklenmez, paket değiştiyse açılışta içe aktarılır.
+// Hata uygulamayı durdurmaz — katalog eski haliyle kalır, bir sonraki açılış yeniden dener.
+if (runStartupDatabaseSteps)
+{
+    using var scope = app.Services.CreateScope();
+    var services = scope.ServiceProvider;
+    var packageOptions = services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Catalog.CatalogPackageOptions>>().Value;
+    if (packageOptions.AutoImport)
+    {
+        try
+        {
+            await services.GetRequiredService<ExamApp.Api.Services.Catalog.CatalogPackageImporter>()
+                .ImportIfChangedAsync(packageOptions.ResolvePath());
+        }
+        catch (Exception ex)
+        {
+            services.GetRequiredService<ILogger<Program>>().LogError(ex, "Catalog package import failed.");
+        }
     }
 }
 

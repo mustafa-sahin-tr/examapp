@@ -8,7 +8,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { Subscription, take } from 'rxjs';
 import { AdminService } from '../../../services/admin.service';
-import { School } from '../../../models/taxonomy';
+import { SchoolOption } from '../../../models/taxonomy';
 import { AdminTeacherSchoolResponse } from '../../../models/admin-teacher-school.model';
 import { adminActionErrorMessage, backendMessage } from '../../utils/admin-action-error.util';
 import { SchoolSelectComponent } from '../school-select/school-select.component';
@@ -71,7 +71,7 @@ export class AdminTeacherSchoolDialogComponent {
   readonly approvesApplication = !this.data.independent && this.data.accountApproved;
 
   readonly selectedSchoolId = signal<number | null>(null);
-  readonly selectedSchool = signal<School | null>(null);
+  readonly selectedSchool = signal<SchoolOption | null>(null);
   readonly submitting = signal(false);
   readonly error = signal<string | null>(null);
   /** 409: öğretmenin okulu bu arada değişti — yeniden denemek yerine listeyi yenilemek gerekir. */
@@ -102,7 +102,7 @@ export class AdminTeacherSchoolDialogComponent {
     }
   }
 
-  onSchoolSelected(school: School | null): void {
+  onSchoolSelected(school: SchoolOption | null): void {
     this.selectedSchool.set(school);
     // Yeni seçim yapıldı: önceki (409 dışı) hata metni artık geçerli değil.
     if (!this.conflict()) this.error.set(null);

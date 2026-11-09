@@ -105,7 +105,7 @@ describe('RegisterWizardComponent (Issue #234)', () => {
                 { provide: MatSnackBar, useValue: {
                         open: vi.fn().mockName("MatSnackBar.open")
                     } },
-                { provide: SchoolService, useValue: { getSchools: () => of(SCHOOLS) } },
+                { provide: SchoolService, useValue: { search: () => of(SCHOOLS), getById: (id: number) => of(SCHOOLS.find((s) => s.id === id)) } },
                 { provide: LocaleService, useValue: { localeDefinition: signal({ angularLocale: 'tr-TR' }) } },
                 { provide: SubscriptionService, useValue: subscriptionService },
                 provideNoopAnimations(),

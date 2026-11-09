@@ -19,22 +19,10 @@
   <mat-card class="column schools-section" appearance="outlined">
     <header class="column-header">
       <h3>{{ t('title') }}</h3>
-      <!-- Issue #281: sayaç filtrelenmiş sonucu gösterir; filtre varken toplam da görünür. Görünen sayı
-           ekran okuyucudan gizlenir, çevrilmiş cümle görünmez status bölgesinde okunur. -->
-      <span class="count" aria-hidden="true">
-        @if (isFiltered()) {
-          {{ filteredSchools().length }} / {{ schools().length }}
-        } @else {
-          {{ schools().length }}
-        }
-      </span>
-      <span class="cdk-visually-hidden count-status" role="status">
-        {{
-          isFiltered()
-            ? t('filter.countFilteredAria', { count: filteredSchools().length, total: schools().length })
-            : t('filter.countAria', { count: schools().length })
-        }}
-      </span>
+      <!-- Issue #281: sayaç filtreye uyan toplamı gösterir. Görünen sayı ekran okuyucudan gizlenir,
+           çevrilmiş cümle görünmez status bölgesinde okunur. -->
+      <span class="count" aria-hidden="true">{{ totalCount() }}</span>
+      <span class="cdk-visually-hidden count-status" role="status">{{ t('filter.countAria', { count: totalCount() }) }}</span>
       <button mat-flat-button type="button" class="add-school" data-test="school-add" (click)="openAdd()">
         <mat-icon>add</mat-icon>{{ t('add') }}
       </button>
@@ -190,19 +178,19 @@
           {{ 'common.retry' | transloco }}
         </button>
       </div>
-    } @else if (!schoolsLoading() && schools().length === 0) {
-      <div class="empty-state">
-        <mat-icon>school</mat-icon>
-        <p class="empty-title">{{ t('emptyTitle') }}</p>
-        <p class="empty-hint">{{ t('emptyHint') }}</p>
-      </div>
-    } @else if (schools().length > 0 && filteredSchools().length === 0 && filterPending()) {
+    } @else if (schools().length === 0 && filterPending()) {
       <!-- URL'deki il/ilçe henüz doğrulanmadı: yanlış "sonuç yok" göstermemek için bekleme. -->
       <div class="empty-state filter-pending" role="status">
         <mat-icon>hourglass_empty</mat-icon>
         <p class="empty-title">{{ t('filter.pending') }}</p>
       </div>
-    } @else if (schools().length > 0 && filteredSchools().length === 0) {
+    } @else if (!schoolsLoading() && schools().length === 0 && !isFiltered()) {
+      <div class="empty-state">
+        <mat-icon>school</mat-icon>
+        <p class="empty-title">{{ t('emptyTitle') }}</p>
+        <p class="empty-hint">{{ t('emptyHint') }}</p>
+      </div>
+    } @else if (!schoolsLoading() && schools().length === 0) {
       <div class="empty-state no-match">
         <mat-icon>filter_alt_off</mat-icon>
         <p class="empty-title">{{ t('filter.noMatchTitle') }}</p>
@@ -211,7 +199,7 @@
       </div>
     } @else {
       <ul class="list schools-list">
-        @for (sc of filteredSchools(); track sc.id) {
+        @for (sc of schools(); track sc.id) {
           <li class="item static">
             @if (!isEditing(sc.id)) {
               <span class="school-main">
@@ -312,6 +300,18 @@
           </li>
         }
       </ul>
+      @if (totalCount() > pageSize() || pageIndex() > 0) {
+        <mat-paginator
+          class="schools-paginator"
+          [length]="totalCount()"
+          [pageIndex]="pageIndex()"
+          [pageSize]="pageSize()"
+          [pageSizeOptions]="pageSizeOptions"
+          [disabled]="schoolsLoading()"
+          showFirstLastButtons
+          (page)="onPage($event)"
+        ></mat-paginator>
+      }
     }
   </mat-card>
 </div>

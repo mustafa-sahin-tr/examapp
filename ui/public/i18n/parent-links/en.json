@@ -190,7 +190,6 @@
     "summaryPwNote": "For security the password is not shown again. If it is forgotten you can reset it here.",
     "createAnother": "Create another child account",
     "refsError": "The grade and school lists could not be loaded.",
-    "schoolsError": "The school list could not be loaded.",
     "limitReached": "You can create or link at most {{max}} children and you have reached that limit. Remove a link before creating a new account.",
     "privacyLink": "Read the privacy notice"
   },

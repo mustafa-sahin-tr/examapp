@@ -1,23 +1,9 @@
 import { convertToParamMap } from '@angular/router';
-import { School } from '../../../models/taxonomy';
-import { EMPTY_SCHOOL_LIST_FILTER, MAX_SEARCH_LENGTH, SchoolListFilter, filterSchools, hasSchoolListFilterParams, isSchoolListFilterActive, normalizeSearchText, sanitizeSchoolListFilter, schoolListFilterFromParams, schoolListFilterToParams, } from './school-list-filter';
+import { EMPTY_SCHOOL_LIST_FILTER, MAX_SEARCH_LENGTH, SchoolListFilter, hasSchoolListFilterParams, isSchoolListFilterActive, normalizeSearchText, sanitizeSchoolListFilter, schoolListFilterFromParams, schoolListFilterToParams, } from './school-list-filter';
 
-// Issue #281: okul listesi istemci tarafı filtre mantığı.
+// Issue #281: okul listesi filtre durumu (URL ↔ filtre).
 describe('school-list-filter', () => {
-    function school(id: number, name: string, provinceId: number | null, districtId: number | null): School {
-        return { id, name, provinceId, provinceName: null, districtId, districtName: null, addressLine: null };
-    }
-
-    const schools: School[] = [
-        school(1, 'Atatürk İlkokulu', 6, 601),
-        school(2, 'Keçiören Anadolu Lisesi', 6, 602),
-        school(3, 'İstanbul Erkek Lisesi', 34, 3401),
-        school(4, 'CUMHURIYET ILKOKULU', 34, 3401),
-        school(5, 'ışık ortaokulu', null, null),
-    ];
-
     const filter = (patch: Partial<SchoolListFilter>): SchoolListFilter => ({ ...EMPTY_SCHOOL_LIST_FILTER, ...patch });
-    const ids = (f: SchoolListFilter): number[] => filterSchools(schools, f).map((s) => s.id);
 
     // ── normalizeSearchText ────────────────────────────────────────────────────
 
@@ -51,57 +37,6 @@ describe('school-list-filter', () => {
             expect(normalizeSearchText(undefined)).toBe('');
             expect(normalizeSearchText('')).toBe('');
         });
-    });
-
-    // ── filterSchools ─────────────────────────────────────────────────────────
-
-    describe('filterSchools', () => {
-        it('emptyFilter_ReturnsAllInOriginalOrder', () => {
-            expect(ids(EMPTY_SCHOOL_LIST_FILTER)).toEqual([1, 2, 3, 4, 5]);
-        });
-
-        it('search_IsSubstringAndCaseAndTurkishInsensitive', () => {
-            expect(ids(filter({ q: 'istanbul' }))).toEqual([3]);
-            expect(ids(filter({ q: 'İSTANBUL' }))).toEqual([3]);
-            expect(ids(filter({ q: 'ilkokul' }))).toEqual([1, 4]);
-            expect(ids(filter({ q: 'ILKOKUL' }))).toEqual([1, 4]);
-            expect(ids(filter({ q: 'İlkokul' }))).toEqual([1, 4]);
-            expect(ids(filter({ q: 'IŞIK' }))).toEqual([5]);
-            expect(ids(filter({ q: 'kecioren' }))).toEqual([2]);
-        });
-
-        it('whitespaceOnlySearch_DoesNotFilter', () => {
-            expect(ids(filter({ q: '   ' }))).toEqual([1, 2, 3, 4, 5]);
-        });
-
-        it('province_KeepsOnlyThatProvince_ExcludesSchoolsWithoutProvince', () => {
-            expect(ids(filter({ provinceId: 6 }))).toEqual([1, 2]);
-        });
-
-        it('district_KeepsOnlyThatDistrict', () => {
-            expect(ids(filter({ provinceId: 6, districtId: 602 }))).toEqual([2]);
-        });
-
-        it('criteria_AreCombinedWithAnd', () => {
-            expect(ids(filter({ q: 'lise', provinceId: 34 }))).toEqual([3]);
-            expect(ids(filter({ q: 'ilkokul', provinceId: 34, districtId: 3401 }))).toEqual([4]);
-            expect(ids(filter({ q: 'lise', provinceId: 6, districtId: 601 }))).toEqual([]);
-        });
-
-        it('clearedFilter_RestoresFullList', () => {
-            const narrowed = filter({ q: 'lise', provinceId: 6, districtId: 602 });
-            expect(ids(narrowed)).toEqual([2]);
-            expect(ids({ ...EMPTY_SCHOOL_LIST_FILTER })).toEqual([1, 2, 3, 4, 5]);
-        });
-    });
-
-    // ── isSchoolListFilterActive ──────────────────────────────────────────────
-
-    it('isSchoolListFilterActive_ReflectsAnyCriterion', () => {
-        expect(isSchoolListFilterActive(EMPTY_SCHOOL_LIST_FILTER)).toBe(false);
-        expect(isSchoolListFilterActive(filter({ q: '  ' }))).toBe(false);
-        expect(isSchoolListFilterActive(filter({ q: 'a' }))).toBe(true);
-        expect(isSchoolListFilterActive(filter({ provinceId: 6 }))).toBe(true);
     });
 
     // ── URL ───────────────────────────────────────────────────────────────────

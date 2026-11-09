@@ -66,6 +66,9 @@ export interface School {
   pendingCount?: number;
 }
 
+/** Okul seçicinin satırı (`GET /api/exam/school`): üye sayısı ve açık adres taşımaz. */
+export type SchoolOption = Pick<School, 'id' | 'name' | 'provinceId' | 'provinceName' | 'districtId' | 'districtName'>;
+
 export interface ApiResult {
   success: boolean;
   message: string;

@@ -1,11 +1,10 @@
 import { ParamMap, Params } from '@angular/router';
-import { DistrictDto, ProvinceDto, School } from '../../../models/taxonomy';
+import { DistrictDto, ProvinceDto } from '../../../models/taxonomy';
 import { parsePositiveInt } from '../../../shared/utils/paging.util';
 
 /**
- * Issue #281 — Admin okul listesinin istemci tarafı filtresi. `GET api/admin/schools` sayfalamasız tam
- * liste döndüğü için ad / il / ilçe süzmesi tarayıcıda yapılır. Mantık saf fonksiyonlardadır ki
- * komponentten bağımsız birim test edilebilsin.
+ * Issue #281 — Admin okul listesinin filtre durumu (URL ↔ filtre). Süzme ve sayfalama `GET api/admin/schools`'ta
+ * sunucudadır. Mantık saf fonksiyonlardadır ki komponentten bağımsız birim test edilebilsin.
  */
 export interface SchoolListFilter {
   /** Ad araması (ham metin; karşılaştırma `normalizeSearchText` ile yapılır). */
@@ -40,17 +39,6 @@ export function normalizeSearchText(value: string | null | undefined): string {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
-}
-
-/** Ad araması, il ve ilçe birlikte (AND) uygulanır; boş kriter elemez. Sıra korunur. */
-export function filterSchools(schools: readonly School[], filter: SchoolListFilter): School[] {
-  const needle = normalizeSearchText(filter.q);
-  return schools.filter(
-    (sc) =>
-      (!needle || normalizeSearchText(sc.name).includes(needle)) &&
-      (filter.provinceId == null || sc.provinceId === filter.provinceId) &&
-      (filter.districtId == null || sc.districtId === filter.districtId),
-  );
 }
 
 /** Herhangi bir kriter dolu mu (boşluktan ibaret arama sayılmaz). */

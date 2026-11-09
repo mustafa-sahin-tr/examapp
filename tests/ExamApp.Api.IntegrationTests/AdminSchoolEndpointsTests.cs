@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using ExamApp.Api.Data;
 using ExamApp.Api.IntegrationTests.Infrastructure;
+using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Admin;
 using Microsoft.EntityFrameworkCore;
 
@@ -36,8 +37,8 @@ public class AdminSchoolEndpointsTests(IntegrationApiFactory factory) : Integrat
         var create = await admin.PostAsJsonAsync("/api/admin/schools", new UpsertSchoolDto { Name = "Konya Lisesi", AddressLine = "Meram Cad. No:5" });
         create.StatusCode.ShouldBe(HttpStatusCode.OK);
 
-        var schools = await admin.GetFromJsonAsync<List<SchoolDto>>("/api/admin/schools", Json);
-        schools!.ShouldContain(s => s.Name == "Konya Lisesi" && s.AddressLine == "Meram Cad. No:5");
+        var schools = await admin.GetFromJsonAsync<Paged<SchoolDto>>("/api/admin/schools?q=konya", Json);
+        schools!.Items.ShouldContain(s => s.Name == "Konya Lisesi" && s.AddressLine == "Meram Cad. No:5");
 
         await WithDbAsync(async db =>
             (await db.Schools.AnyAsync(s => s.Name == "Konya Lisesi")).ShouldBeTrue());
@@ -110,7 +111,13 @@ public class AdminSchoolEndpointsTests(IntegrationApiFactory factory) : Integrat
         var res = await Anonymous().GetAsync("/api/school");
 
         res.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var schools = await res.Content.ReadFromJsonAsync<List<SchoolDto>>(Json);
-        schools!.ShouldContain(s => s.Name == "Public Lise");
+        var body = await res.Content.ReadAsStringAsync();
+        body.ShouldContain("Public Lise");
+        body.ShouldNotContain("teacherCount", Case.Insensitive);
+        body.ShouldNotContain("studentCount", Case.Insensitive);
+
+        var schoolId = await WithDbAsync(db => db.Schools.Where(s => s.Name == "Public Lise").Select(s => s.Id).SingleAsync());
+        (await Anonymous().GetAsync($"/api/school/{schoolId}")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await Anonymous().GetAsync($"/api/school/{schoolId + 1000}")).StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 }

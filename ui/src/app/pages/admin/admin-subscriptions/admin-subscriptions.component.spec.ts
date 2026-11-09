@@ -6,7 +6,7 @@ import { of, throwError } from 'rxjs';
 
 import { AdminSubscriptionsComponent } from './admin-subscriptions.component';
 import { SubscriptionService } from '../../../services/subscription.service';
-import { AdminService } from '../../../services/admin.service';
+import { SchoolService } from '../../../services/school.service';
 import { AdminSubscriptionUserDetail, SubscriptionPlan } from '../../../models/subscription';
 import { translocoTestingModule } from '../../../shared/testing/transloco-testing';
 import subscriptionTr from '../../../../../public/i18n/subscription/tr.json';
@@ -72,7 +72,7 @@ describe('AdminSubscriptionsComponent (issue #1030)', () => {
         provideNoopAnimations(),
         provideNativeDateAdapter(),
         { provide: SubscriptionService, useValue: service },
-        { provide: AdminService, useValue: { getSchools: vi.fn().mockReturnValue(of([{ id: 3, name: 'Okul' }])) } },
+        { provide: SchoolService, useValue: { search: vi.fn().mockReturnValue(of([{ id: 3, name: 'Okul' }])), getById: vi.fn().mockReturnValue(of({ id: 3, name: 'Okul' })) } },
       ],
     });
     fixture = TestBed.createComponent(AdminSubscriptionsComponent);

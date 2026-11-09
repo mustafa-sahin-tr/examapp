@@ -52,9 +52,9 @@
               }
             </mat-form-field>
           </div>
-          @if (refsFailed()) {
+          @if (gradesFailed()) {
             <div class="cca__refs-error" role="alert" data-test="refs-error">
-              <span>{{ t(gradesFailed() ? 'createChild.refsError' : 'createChild.schoolsError') }}</span>
+              <span>{{ t('createChild.refsError') }}</span>
               <button mat-stroked-button type="button" data-test="refs-retry" [disabled]="refsLoading()" (click)="loadReferenceData()">
                 {{ t('retry') }}
               </button>
@@ -80,28 +80,8 @@
               <input matInput formControlName="studentNumber" autocomplete="off" maxlength="50" data-test="student-number" />
             </mat-form-field>
           </div>
-          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="cca__field cca__field--wide">
-            <mat-label>{{ t('createChild.school') }}</mat-label>
-            <input
-              matInput
-              formControlName="schoolQuery"
-              [matAutocomplete]="schoolAuto"
-              autocomplete="off"
-              (input)="onSchoolInput()"
-              data-test="school"
-            />
-            @if (selectedSchool()) {
-              <button mat-icon-button matSuffix type="button" (click)="clearSchool()" [attr.aria-label]="t('createChild.schoolNone')">
-                <mat-icon>close</mat-icon>
-              </button>
-            }
-            <mat-autocomplete #schoolAuto="matAutocomplete" [displayWith]="schoolLabel" (optionSelected)="onSchoolSelected($event)">
-              @for (school of schoolOptions(); track school.id) {
-                <mat-option [value]="school">{{ school.name }}</mat-option>
-              }
-            </mat-autocomplete>
-            <mat-hint>{{ t('createChild.schoolHint') }}</mat-hint>
-          </mat-form-field>
+          <app-school-select class="cca__field cca__field--wide" data-test="school" [label]="t('createChild.school')"
+            [hint]="t('createChild.schoolHint')" [value]="schoolId()" (valueChange)="schoolId.set($event)" />
         }
         @case ('login') {
           <mat-form-field appearance="outline" subscriptSizing="dynamic" class="cca__field cca__field--wide">

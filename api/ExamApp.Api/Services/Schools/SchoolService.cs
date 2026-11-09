@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -5,6 +6,7 @@ using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Admin;
+using ExamApp.Api.Services.AdminUsers;
 using ExamApp.Foundation.Localization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
@@ -14,6 +16,8 @@ namespace ExamApp.Api.Services.Schools;
 public class SchoolService : ISchoolService
 {
     private const int AddressLineMaxLength = 500;
+
+    public const int MaxSearchLimit = 50;
 
     private readonly AppDbContext _context;
 
@@ -27,11 +31,24 @@ public class SchoolService : ISchoolService
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
-    public async Task<List<SchoolDto>> GetAllAsync(CancellationToken ct = default)
+    public async Task<Paged<SchoolDto>> ListAsync(
+        string? query, int? provinceId, int? districtId, int page, int pageSize, CancellationToken ct = default)
     {
-        return await _context.Schools
-            .AsNoTracking()
+        (page, pageSize) = AdminListPaging.Normalize(page, pageSize);
+
+        var schools = Matching(query);
+        if (provinceId.HasValue) schools = schools.Where(s => s.ProvinceId == provinceId);
+        if (districtId.HasValue) schools = schools.Where(s => s.DistrictId == districtId);
+
+        var total = await schools.CountAsync(ct);
+        if (!AdminListPaging.TryGetOffset(page, pageSize, total, out var offset))
+            return AdminListPaging.EmptyPage<SchoolDto>(page, pageSize, total);
+
+        var items = await schools
             .OrderBy(s => s.Name)
+            .ThenBy(s => s.Id)
+            .Skip(offset)
+            .Take(pageSize)
             .Select(s => new SchoolDto
             {
                 Id = s.Id,
@@ -47,6 +64,52 @@ public class SchoolService : ISchoolService
                     + _context.Teachers.Count(t => t.RequestedSchoolId == s.Id && t.ApprovalStatus == TeacherApprovalStatus.Pending),
             })
             .ToListAsync(ct);
+
+        return new Paged<SchoolDto> { PageNumber = page, PageSize = pageSize, TotalCount = total, Items = items };
+    }
+
+    public async Task<List<SchoolOptionDto>> SearchAsync(string? query, int limit, CancellationToken ct = default)
+    {
+        return await ToOptions(Matching(query))
+            .OrderBy(s => s.Name)
+            .ThenBy(s => s.Id)
+            .Take(Math.Clamp(limit, 1, MaxSearchLimit))
+            .ToListAsync(ct);
+    }
+
+    public async Task<SchoolOptionDto?> GetOptionAsync(int id, CancellationToken ct = default)
+    {
+        return await ToOptions(_context.Schools.AsNoTracking().Where(s => s.Id == id)).FirstOrDefaultAsync(ct);
+    }
+
+    private IQueryable<School> Matching(string? query)
+    {
+        var schools = _context.Schools.AsNoTracking();
+        foreach (var token in SchoolSearchText.Tokens(query))
+            schools = schools.Where(s => s.SearchText.Contains(token));
+        return schools;
+    }
+
+    private static IQueryable<SchoolOptionDto> ToOptions(IQueryable<School> schools) => schools.Select(s => new SchoolOptionDto
+    {
+        Id = s.Id,
+        Name = s.Name,
+        ProvinceId = s.ProvinceId,
+        ProvinceName = s.Province != null ? s.Province.Name : null,
+        DistrictId = s.DistrictId,
+        DistrictName = s.District != null ? s.District.Name : null,
+    });
+
+    /// <summary>İl / ilçe adları referans veridir; okul kaydında değişen il ve ilçenin adı buradan okunur.</summary>
+    private async Task<string> BuildSearchTextAsync(string name, int? provinceId, int? districtId, CancellationToken ct)
+    {
+        var province = provinceId.HasValue
+            ? await _context.Provinces.Where(p => p.Id == provinceId).Select(p => p.Name).FirstOrDefaultAsync(ct)
+            : null;
+        var district = districtId.HasValue
+            ? await _context.Districts.Where(d => d.Id == districtId).Select(d => d.Name).FirstOrDefaultAsync(ct)
+            : null;
+        return SchoolSearchText.Build(name, district, province);
     }
 
     public async Task<ResponseBaseDto> CreateAsync(UpsertSchoolDto dto, int userId, CancellationToken ct = default)
@@ -68,7 +131,8 @@ public class SchoolService : ISchoolService
             Name = name,
             ProvinceId = dto.ProvinceId,
             DistrictId = dto.DistrictId,
-            AddressLine = NormalizeAddressLine(dto.AddressLine)
+            AddressLine = NormalizeAddressLine(dto.AddressLine),
+            SearchText = await BuildSearchTextAsync(name, dto.ProvinceId, dto.DistrictId, ct)
         };
         _context.Schools.Add(school);
         await _context.SaveChangesAsync(ct);
@@ -97,6 +161,7 @@ public class SchoolService : ISchoolService
         school.ProvinceId = dto.ProvinceId;
         school.DistrictId = dto.DistrictId;
         school.AddressLine = NormalizeAddressLine(dto.AddressLine);
+        school.SearchText = await BuildSearchTextAsync(name, dto.ProvinceId, dto.DistrictId, ct);
         await _context.SaveChangesAsync(ct);
         return Ok(_localizer["school.updated"], school.Id);
     }

@@ -5,21 +5,27 @@
   *transloco="let t; prefix: 'admin.schoolFilter'"
 >
   <mat-label>{{ t('label') }}</mat-label>
-  <mat-select
-    [value]="value()"
+  <input
+    #schoolInput
+    matInput
+    type="text"
+    autocomplete="off"
+    data-testid="school-filter-input"
+    [value]="query() ?? (value() === 'all' ? t('all') : value() === 'unassigned' ? t(unassignedLabel()) : selectedName())"
     [disabled]="disabled()"
     [attr.aria-busy]="loading()"
-    (selectionChange)="select($event.value)"
-  >
+    [matAutocomplete]="auto"
+    (focus)="schoolInput.select()"
+    (input)="onInput(schoolInput.value)"
+  />
+  <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayWith" (optionSelected)="onSelected($event)" (closed)="onClosed()">
     <mat-option value="all">{{ t('all') }}</mat-option>
     <mat-option value="unassigned">{{ t(unassignedLabel()) }}</mat-option>
     @for (school of schools(); track school.id) {
       <mat-option [value]="school.id">{{ school.name }}</mat-option>
     }
-  </mat-select>
-  @if (loading()) {
-    <mat-hint>{{ t('loading') }}</mat-hint>
-  } @else if (loadFailed()) {
+  </mat-autocomplete>
+  @if (loadFailed()) {
     <mat-hint class="school-filter__error">{{ t('loadFailed') }}</mat-hint>
   }
 </mat-form-field>

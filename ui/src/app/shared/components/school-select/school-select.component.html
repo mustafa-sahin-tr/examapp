@@ -22,16 +22,14 @@
         type="text"
         autocomplete="off"
         data-testid="school-select-input"
-        [placeholder]="loading() ? t('loading') : t('placeholder')"
+        [placeholder]="t('placeholder')"
         [value]="query()"
         [required]="required()"
-        [disabled]="disabled() || loading()"
+        [disabled]="disabled()"
         [matAutocomplete]="auto"
         (input)="onInput(schoolInput.value)"
       />
-      @if (loading()) {
-        <mat-spinner matSuffix diameter="18" class="ss__spinner" aria-hidden="true"></mat-spinner>
-      } @else if (query() && !disabled()) {
+      @if (query() && !disabled()) {
         <button
           mat-icon-button
           matSuffix
@@ -42,6 +40,8 @@
         >
           <mat-icon>close</mat-icon>
         </button>
+      } @else if (loading()) {
+        <mat-spinner matSuffix diameter="18" class="ss__spinner" aria-hidden="true"></mat-spinner>
       }
       <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayWith" (optionSelected)="onSelected($event)">
         @for (school of filtered(); track school.id) {
@@ -52,12 +52,10 @@
             }
           </mat-option>
         } @empty {
-          <mat-option disabled>{{ t('noMatch') }}</mat-option>
+          <mat-option disabled>{{ loading() ? t('loading') : t('noMatch') }}</mat-option>
         }
       </mat-autocomplete>
-      @if (loading()) {
-        <mat-hint>{{ t('loading') }}</mat-hint>
-      } @else if (unmatchedText()) {
+      @if (unmatchedText()) {
         <mat-hint class="ss__warn" data-testid="school-select-unmatched">{{ t('pickFromList') }}</mat-hint>
       } @else if (hint()) {
         <mat-hint>{{ hint() }}</mat-hint>

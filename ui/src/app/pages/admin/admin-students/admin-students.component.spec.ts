@@ -78,18 +78,17 @@ describe('AdminStudentsComponent', () => {
     function configure(initialParams: Params = {}): void {
         adminService = {
             getStudents: vi.fn().mockName("AdminService.getStudents"),
-            getSchools: vi.fn().mockName("AdminService.getSchools"),
             resetPassword: vi.fn().mockName("AdminService.resetPassword"),
             setAccountStatus: vi.fn().mockName("AdminService.setAccountStatus"),
             changeStudentSchool: vi.fn().mockName("AdminService.changeStudentSchool")
         } as unknown as MockedObject<AdminService>;
-        adminService.getSchools.mockReturnValue(of(schools));
+        
         adminService.getStudents.mockReturnValue(of(paged([student()], 45)));
         queryParams$ = new BehaviorSubject<ParamMap>(convertToParamMap(initialParams));
 
         const providers: (Provider | EnvironmentProviders)[] = [
             { provide: AdminService, useValue: adminService },
-            { provide: SchoolService, useValue: { getSchools: () => of([...schools, izmir]) } },
+            { provide: SchoolService, useValue: { search: () => of([...schools, izmir]), getById: (id: number) => { const found = [...schools, izmir].find((s) => s.id === id); return found ? of(found) : throwError(() => new HttpErrorResponse({ status: 404 })); } } },
             provideRouter([]),
             provideNoopAnimations(),
             { provide: ActivatedRoute, useValue: { queryParamMap: queryParams$.asObservable(), snapshot: {} } },
@@ -312,7 +311,7 @@ describe('AdminStudentsComponent', () => {
 
         const filter = fixture.debugElement.query(By.directive(SchoolFilterComponent))
             .componentInstance as SchoolFilterComponent;
-        filter.select(5);
+        filter.value.set(5);
         fixture.detectChanges();
 
         expect(adminService.getStudents).toHaveBeenCalledTimes(1);

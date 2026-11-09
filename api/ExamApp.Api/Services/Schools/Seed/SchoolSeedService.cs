@@ -267,7 +267,8 @@ public sealed class SchoolSeedService : ISchoolSeedService
                     ProvinceId = province.Id,
                     DistrictId = district.Id,
                     ExternalCode = code,
-                    IsSeedData = true
+                    IsSeedData = true,
+                    SearchText = SchoolSearchText.Build(name, district.Name, province.Name)
                 });
 
                 if (kind == SchoolSeedKind.Ilkokul) summary.IlkokulAdded++; else if (kind == SchoolSeedKind.Ortaokul) summary.OrtaokulAdded++; else summary.LiseAdded++;

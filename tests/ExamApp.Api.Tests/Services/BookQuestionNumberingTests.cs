@@ -49,4 +49,13 @@ public class BookQuestionNumberingTests
 
         numbering.ShouldBe([(1, (int?)6), (9, (int?)null)]);
     }
+
+    [Fact]
+    public void ExtraBoxOnAPage_DoesNotShiftTheFollowingPages()
+    {
+        // 1. sayfada 2 soru var, kural satırı ayrı kutu sanıldı (3 kutu): 2. ve 3. sayfa yine basılı no'dan başlar.
+        var numbering = BookQuestionImportStage.NumberPages([(2, 3), (4, 2), (6, 2)], keyLength: 6);
+
+        numbering.ShouldBe([(1, (int?)2), (3, (int?)4), (5, (int?)6)]);
+    }
 }

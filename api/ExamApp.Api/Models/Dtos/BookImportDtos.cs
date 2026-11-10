@@ -16,6 +16,20 @@ public class StartBookImportFormDto
     public int? SubjectId { get; set; }
 }
 
+/// <summary>Issue #1122: parçalı yüklemeyi açar; dosya sonra parça parça gelir.</summary>
+public class BeginBookImportUploadDto
+{
+    public string? BookName { get; set; }
+
+    public int GradeId { get; set; }
+
+    public int? SubjectId { get; set; }
+
+    public string? FileName { get; set; }
+
+    public long FileSizeBytes { get; set; }
+}
+
 /// <summary>Issue #1052: hızlı ekleme formu; <see cref="Answers"/>[i] i. fotoğrafın isteğe bağlı cevap anahtarı.</summary>
 public class StartQuickAddFormDto
 {

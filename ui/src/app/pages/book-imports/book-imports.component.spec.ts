@@ -2,10 +2,10 @@ import type { MockedObject } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { Router, provideRouter } from '@angular/router';
-import { Observable, of, throwError } from 'rxjs';
+import { Observable, Subject, of, throwError } from 'rxjs';
 
 import { BOOK_IMPORTS_POLL_MS, BookImportsComponent } from './book-imports.component';
-import { BookImportDemo, BookImportJob, BookImportQuota } from '../../models/book-import';
+import { BookImportDemo, BookImportJob, BookImportQuota, BookImportUploadEvent } from '../../models/book-import';
 import { AuthService } from '../../services/auth.service';
 import { EntitlementStateService } from '../../services/entitlement-state.service';
 import { BookImportService } from '../../services/book-import.service';
@@ -156,7 +156,7 @@ describe('BookImportsComponent (#1018)', () => {
   it('submit_StartsAndNavigatesToDetail', () => {
     setup();
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
-    api.start.mockReturnValue(of(job({ id: 'new-id', status: 'Queued', stage: 'Upload' })));
+    api.start.mockReturnValue(of({ type: 'done', job: job({ id: 'new-id', status: 'Queued', stage: 'Upload' }) }));
     component.openForm();
     component.pickFile(pdf());
     component.form.controls.gradeId.setValue(4);
@@ -165,6 +165,22 @@ describe('BookImportsComponent (#1018)', () => {
 
     expect(api.start).toHaveBeenCalledWith(expect.objectContaining({ bookName: 'kitap', gradeId: 4, subjectId: null }));
     expect(navigate).toHaveBeenCalledWith(['/book-imports', 'new-id']);
+  });
+
+  it('submit_ShowsPartProgressWhileUploading (#1122)', () => {
+    setup();
+    const events = new Subject<BookImportUploadEvent>();
+    api.start.mockReturnValue(events);
+    component.openForm();
+    component.pickFile(pdf());
+    component.form.controls.gradeId.setValue(4);
+
+    component.submit();
+    events.next({ type: 'progress', part: 2, parts: 7 });
+    fixture.detectChanges();
+
+    expect(text()).toContain('Yükleniyor… 2 / 7');
+    expect(el().querySelector('.bi-form mat-progress-bar')).not.toBeNull();
   });
 
   it('teacherWithBookImportInPlan_UploadsInsteadOfDemo (#1087)', () => {

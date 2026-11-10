@@ -58,6 +58,17 @@ public interface IBookImportService
     Task<BookImportJobDetailDto?> GetAsync(BookImportOwner owner, Guid id, CancellationToken ct);
     Task<BookImportQuotaDto> GetQuotaAsync(BookImportOwner owner, CancellationToken ct);
 
+    /// <summary>Issue #1122: parçalı yükleme (Cloudflare 100 MB istek sınırı).</summary>
+    Task<BeginBookImportUploadResult> BeginUploadAsync(BookImportOwner owner, BeginBookImportUploadRequest request, CancellationToken ct);
+    Task<BookImportUploadPartResult> UploadPartAsync(BookImportOwner owner, Guid id, int partNumber, Stream content, CancellationToken ct);
+    Task<CompleteBookImportUploadResult> CompleteUploadAsync(BookImportOwner owner, Guid id, CancellationToken ct);
+    Task<bool> AbortUploadAsync(BookImportOwner owner, Guid id, CancellationToken ct);
+
+    /// <summary>Issue #1122: süresi geçen yarım yüklemeleri ve parçalarını siler (Hangfire recurring).</summary>
+    [AutomaticRetry(Attempts = 0)]
+    [DisableConcurrentExecution(timeoutInSeconds: 600)]
+    Task<int> PurgeStaleUploadsAsync(CancellationToken ct = default);
+
     /// <summary>İşin bir sayfa görseli (#1020); iş görünmüyorsa ya da sayfa yoksa null.</summary>
     Task<Stream?> GetPageImageAsync(BookImportOwner owner, Guid id, int filePage, CancellationToken ct);
 
@@ -148,6 +159,7 @@ public sealed partial class BookImportService : IBookImportService
         _maxUploadBytes = Math.Clamp(configured, 1, MaxUploadBytesCeiling);
         _maxJobCostUsd = BookImportJobRunner.MaxJobCost(configuration);
         _demoMaxRuns = Math.Max(0, configuration.GetValue<int?>("BookImport:DemoMaxRuns") ?? DefaultDemoMaxRuns);
+        _uploadBucket = configuration["MinioConfig:BucketName"] ?? string.Empty;
         _stallAfter = TimeSpan.FromMinutes(Math.Max(1, configuration.GetValue<int?>("BookImport:StallMinutes") ?? DefaultStallMinutes));
     }
 
@@ -156,50 +168,73 @@ public sealed partial class BookImportService : IBookImportService
         ArgumentNullException.ThrowIfNull(owner);
         ArgumentNullException.ThrowIfNull(request);
 
-        var bookName = request.BookName?.Trim() ?? string.Empty;
-        if (bookName.Length == 0 || bookName.Length > BookImportJob.MaxBookNameLength)
-            return new(null, StartBookImportError.InvalidBookName);
-        if (!await _db.Grades.AnyAsync(g => g.Id == request.GradeId, ct))
-            return new(null, StartBookImportError.InvalidGrade);
-        if (request.SubjectId is { } subjectId && !await _db.Subjects.AnyAsync(s => s.Id == subjectId, ct))
-            return new(null, StartBookImportError.InvalidSubject);
-        if (request.FileSizeBytes <= 0 || request.FileSizeBytes > _maxUploadBytes)
-            return new(null, StartBookImportError.FileTooLarge);
+        var error = await ValidateUploadAsync(request.BookName, request.GradeId, request.SubjectId, request.FileSizeBytes, ct);
+        if (error != StartBookImportError.None)
+            return new(null, error);
 
         var quota = await _entitlements.CheckAsync(owner.Subject, EntitlementFeatures.BookImport, ct);
         if (!quota.Allowed)
             return new(null, StartBookImportError.QuotaReached, quota);
 
         // İçerik türüne güvenilmez: dosya %PDF- ile başlamalı.
-        var head = new byte[PdfMagic.Length];
-        var read = await request.Content.ReadAtLeastAsync(head, head.Length, throwOnEndOfStream: false, ct);
-        if (read < head.Length || !head.AsSpan().SequenceEqual(PdfMagic))
+        if (!await StartsWithPdfMagicAsync(request.Content, ct))
             return new(null, StartBookImportError.NotPdf);
-
-        var job = new BookImportJob
-        {
-            Id = Guid.NewGuid(),
-            BookName = bookName,
-            GradeId = request.GradeId,
-            SubjectId = request.SubjectId,
-            FileName = TrimFileName(request.FileName),
-            FileSizeBytes = request.FileSizeBytes,
-            Status = BookImportJobStatus.Queued,
-            Stage = BookImportStage.Upload,
-        };
 
         // Form dosyası aranabilir (ASP.NET büyük dosyayı diske tamponlar): başa dönüp olduğu gibi yüklenir, belleğe alınmaz.
         if (!request.Content.CanSeek)
             throw new InvalidOperationException("Upload stream must be seekable.");
         request.Content.Position = 0;
-        job.FileUrl = await _minio.UploadFileAsync(request.Content, $"book-imports/{job.Id}/source.pdf", contentType: "application/pdf");
+        var job = await CreateJobAsync(owner, request.BookName, request.GradeId, request.SubjectId, request.FileName,
+            request.FileSizeBytes, request.Content, ct);
+        return new(ToDto(job), StartBookImportError.None);
+    }
+
+    /// <summary>Formdaki kitap bilgisi ve dosya boyutu; tek istekli ve parçalı yükleme (#1122) aynı kuralları uygular.</summary>
+    private async Task<StartBookImportError> ValidateUploadAsync(string? bookName, int gradeId, int? subjectId, long fileSizeBytes,
+        CancellationToken ct)
+    {
+        var name = bookName?.Trim() ?? string.Empty;
+        if (name.Length == 0 || name.Length > BookImportJob.MaxBookNameLength)
+            return StartBookImportError.InvalidBookName;
+        if (!await _db.Grades.AnyAsync(g => g.Id == gradeId, ct))
+            return StartBookImportError.InvalidGrade;
+        if (subjectId is { } id && !await _db.Subjects.AnyAsync(s => s.Id == id, ct))
+            return StartBookImportError.InvalidSubject;
+        if (fileSizeBytes <= 0 || fileSizeBytes > _maxUploadBytes)
+            return StartBookImportError.FileTooLarge;
+        return StartBookImportError.None;
+    }
+
+    private static async Task<bool> StartsWithPdfMagicAsync(Stream content, CancellationToken ct)
+    {
+        var head = new byte[PdfMagic.Length];
+        var read = await content.ReadAtLeastAsync(head, head.Length, throwOnEndOfStream: false, ct);
+        return read == head.Length && head.AsSpan().SequenceEqual(PdfMagic);
+    }
+
+    /// <summary>PDF'i işin kaynağı olarak yükler, işi kaydeder ve kuyruğa alır. <paramref name="content"/> başta olmalı.</summary>
+    private async Task<BookImportJob> CreateJobAsync(BookImportOwner owner, string bookName, int gradeId, int? subjectId, string? fileName,
+        long fileSizeBytes, Stream content, CancellationToken ct)
+    {
+        var job = new BookImportJob
+        {
+            Id = Guid.NewGuid(),
+            BookName = bookName.Trim(),
+            GradeId = gradeId,
+            SubjectId = subjectId,
+            FileName = TrimFileName(fileName),
+            FileSizeBytes = fileSizeBytes,
+            Status = BookImportJobStatus.Queued,
+            Stage = BookImportStage.Upload,
+        };
+        job.FileUrl = await _minio.UploadFileAsync(content, $"book-imports/{job.Id}/source.pdf", contentType: "application/pdf");
 
         _db.SetCurrentUser(owner.UserId);
         _db.BookImportJobs.Add(job);
         await _db.SaveChangesAsync(ct);
 
         _jobs.Enqueue<BookImportJobRunner>(r => r.RunAsync(job.Id));
-        return new(ToDto(job), StartBookImportError.None);
+        return job;
     }
 
     public async Task<List<BookImportJobDto>> ListAsync(BookImportOwner owner, int take, CancellationToken ct)

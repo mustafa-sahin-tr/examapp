@@ -161,6 +161,18 @@ export interface StartBookImportRequest {
   subjectId: number | null;
 }
 
+/** Issue #1122: parçalı yükleme oturumu (`POST /book-imports/uploads`). */
+export interface BookImportUploadSession {
+  id: string;
+  partSizeBytes: number;
+  partCount: number;
+}
+
+/** Issue #1122: yükleme ilerlemesi (`part` gönderilen parça sayısı), sonunda başlayan iş. */
+export type BookImportUploadEvent =
+  | { type: 'progress'; part: number; parts: number }
+  | { type: 'done'; job: BookImportJob };
+
 /** İş hâlâ ilerliyor mu (takip ekranı yoklamaya devam eder). */
 export function isBookImportActive(status: BookImportStatus): boolean {
   return status === 'Queued' || status === 'Running';

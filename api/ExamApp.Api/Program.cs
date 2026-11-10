@@ -855,6 +855,12 @@ RecurringJob.AddOrUpdate<QuestionContentHashService>(
     s => s.RunAsync(),
     app.Configuration.GetValue<string>("QuestionTransfer:HashCron") ?? "30 * * * *");
 
+// Issue #1122: süresi geçen yarım parçalı kitap yüklemelerini ve MinIO'daki parçalarını siler.
+RecurringJob.AddOrUpdate<ExamApp.Api.Services.BookImport.IBookImportService>(
+    "book-import-upload-sweep",
+    s => s.PurgeStaleUploadsAsync(CancellationToken.None),
+    app.Configuration.GetValue<string>("BookImport:UploadSweepCron") ?? "15 * * * *");
+
 // issue #262: AdminDataAccessLogs saklama süresi (KVKK) — süresi dolan satırları günlük, parti parti siler.
 RecurringJob.AddOrUpdate<ExamApp.Api.Services.AdminUsers.IAdminDataAccessLogRetentionJob>(
     ExamApp.Api.Services.AdminUsers.AdminDataAccessLogRetentionJob.RecurringJobId,

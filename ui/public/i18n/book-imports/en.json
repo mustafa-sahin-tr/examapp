@@ -14,6 +14,7 @@
     "subjectAuto": "Detect from the book",
     "start": "Start import",
     "uploading": "Uploading…",
+    "uploadingParts": "Uploading… {{part}} / {{parts}}",
     "cancel": "Cancel"
   },
   "errors": {
@@ -23,6 +24,8 @@
     "invalidGrade": "Choose a valid grade.",
     "invalidSubject": "Choose a valid subject.",
     "quotaReached": "You have used this month's book imports.",
+    "uploadNotFound": "The upload was interrupted; choose the file again.",
+    "uploadIncomplete": "Some parts of the file could not be sent. Try again.",
     "generic": "The import could not be started. Try again."
   },
   "demo": {

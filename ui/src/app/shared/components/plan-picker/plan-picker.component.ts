@@ -10,6 +10,7 @@ import {
   CurrentSubscriptionPlan,
   EntitlementFeature,
   FREE_PLAN_KEY,
+  TRIAL_PLAN_KEY,
   SubscriptionPlan,
   planNameKey,
 } from '../../../models/subscription';
@@ -47,7 +48,7 @@ export class PlanPickerComponent implements OnInit {
   private readonly entitlements = inject(EntitlementStateService);
 
   readonly mode = input<'signup' | 'change'>('signup');
-  /** Plan seçildi (deneme / ödeme sonrası yeni plan) ya da Free ile devam edildi (null). */
+  /** Plan seçildi (deneme / ödeme sonrası yeni plan) ya da Free / kendiliğinden başlayan deneme ile devam edildi (null). */
   readonly completed = output<CurrentSubscriptionPlan | null>();
 
   readonly loading = signal(true);
@@ -63,6 +64,8 @@ export class PlanPickerComponent implements OnInit {
   readonly actionError = signal<string | null>(null);
 
   readonly currentKey = computed(() => this.current()?.planKey ?? null);
+  /** Issue #1090: plan kilidi açıkken katalogda Free yoktur; açıklama ona göre değişir. */
+  readonly offersFree = computed(() => this.plans().some((p) => p.key === FREE_PLAN_KEY));
 
   ngOnInit(): void {
     this.load();
@@ -156,4 +159,5 @@ export class PlanPickerComponent implements OnInit {
   }
 
   protected readonly freeKey = FREE_PLAN_KEY;
+  protected readonly trialKey = TRIAL_PLAN_KEY;
 }

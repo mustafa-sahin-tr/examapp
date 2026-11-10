@@ -636,6 +636,14 @@
                     <div class="last-refreshed"><mat-icon>schedule</mat-icon>
                       <span>{{ t('teacher.lastUpdate', { date: refreshed | date : 'dd MMM HH:mm' }) }}</span></div>
                   }
+                  @if (planLockedStudents(); as locked) {
+                    @if (locked.length) {
+                      <p class="plan-locked-note" role="note" data-testid="plan-locked-students">
+                        <mat-icon aria-hidden="true">lock</mat-icon>
+                        <span>{{ t('teacher.planLocked', { count: locked.length, names: locked.join(', ') }) }}</span>
+                      </p>
+                    }
+                  }
                   @if (isActivity()) {
                     <!-- Issue #583: bu etkinliğin açık uçlu cevaplarını değerlendirme kuyruğu (etkinliğe filtreli). -->
                     <a mat-stroked-button class="open-text-reviews-link" data-testid="open-text-reviews-link"

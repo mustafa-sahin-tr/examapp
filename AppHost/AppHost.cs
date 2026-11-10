@@ -460,6 +460,8 @@ var examDotnetApi = builder.AddProject<Projects.ExamApp_Api>("exam-dotnet-api")
     // Issues #440/#441: shared activation-link encryption key (same value as BadgeService).
     .WithEnvironment("ParentInvitations__LinkEncryptionKey", parentInvitationLinkKey)
     .WithEnvironment("Anthropic__ApiKey", anthropicApiKey)
+    // Issue #1090: dev users have no plan; the plan lock is off unless started with Subscriptions__RequirePlan=true.
+    .WithEnvironment("Subscriptions__RequirePlan", builder.Configuration["Subscriptions:RequirePlan"] ?? "false")
     // Issue #225: exam API hosts a MassTransit consumer (queue "exam-api",
     // StudentPointsChangedEvent from BadgeService's outbox). Same RabbitMQ:*
     // keys/wiring as BadgeService below; without RabbitMQ__Host the bus is

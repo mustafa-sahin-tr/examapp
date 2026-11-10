@@ -108,7 +108,7 @@ public sealed class StudentParentStatusResolver : IStudentParentStatusResolver
         }
     }
 
-    private static bool IsProfileProviderFailure(Exception ex, CancellationToken ct) => ex switch
+    internal static bool IsProfileProviderFailure(Exception ex, CancellationToken ct) => ex switch
     {
         System.Net.Http.HttpRequestException => true,
         TimeoutException => true,

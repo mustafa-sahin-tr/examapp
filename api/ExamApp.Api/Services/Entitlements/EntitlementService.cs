@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.Services.Entitlements;
@@ -209,12 +210,21 @@ public sealed class EntitlementService : IEntitlementService
             return SelfServicePlanError.UnknownPlan;
         if (!audiences.Contains(trial.Audience))
             return SelfServicePlanError.NotAvailable;
-        if (await HasUsedTrialAsync(userId, ct))
-            return SelfServicePlanError.TrialAlreadyUsed;
 
-        var now = _clock.GetUtcNow().UtcDateTime;
-        await AssignPlanAsync(userId, trial.Key, now, now.AddDays(trial.TrialDays!.Value), assignedByUserId: userId, ct);
-        return SelfServicePlanError.None;
+        // #1090: plan kilidi denemeyi ilk istekte başlatır; ilk sayfanın eş zamanlı istekleri kullanıcı kilidinde sıralanır.
+        var strategy = _db.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            await using var tx = await _db.Database.BeginTransactionAsync(ct);
+            await _db.Database.AcquireTrialStartLockAsync(userId, ct);
+            if (await HasUsedTrialAsync(userId, ct))
+                return SelfServicePlanError.TrialAlreadyUsed;
+
+            var now = _clock.GetUtcNow().UtcDateTime;
+            await AssignPlanAsync(userId, trial.Key, now, now.AddDays(trial.TrialDays!.Value), assignedByUserId: userId, ct);
+            await tx.CommitAsync(ct);
+            return SelfServicePlanError.None;
+        });
     }
 
     public async Task<SelfServicePlanError> CheckoutAsync(int userId, string planKey, IReadOnlySet<SubscriptionPlanAudience> audiences,

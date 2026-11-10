@@ -28,6 +28,7 @@ public abstract class IntegrationTestBase : IAsyncLifetime
     {
         // Touch the app once so the host builds and migrations run.
         _ = Factory.Services;
+        Factory.Services.GetRequiredService<PlanRequirementSwitch>().RequirePlan = false;
 
         await using var conn = new NpgsqlConnection(Factory.ConnectionString);
         await conn.OpenAsync();

@@ -38,7 +38,7 @@
     </div>
   } @else {
     <h2>{{ t(mode() === 'signup' ? 'title' : 'changeTitle') }}</h2>
-    <p class="hint">{{ t('hint') }}</p>
+    <p class="hint">{{ t(offersFree() ? 'hint' : 'hintNoFree') }}</p>
     @if (actionError(); as error) {
       <p class="error" role="alert">{{ t(error) }}</p>
     }
@@ -107,5 +107,12 @@
       }
     </div>
     <p class="price-note">{{ t('priceNote') }}</p>
+    @if (mode() === 'signup' && currentKey() === trialKey) {
+      <!-- Issue #1090: plan kilidi açıkken kayıtta deneme kendiliğinden başlar; Free kartı yoktur. -->
+      <div class="actions" data-testid="trial-started">
+        <p class="hint">{{ t('trialStarted') }}</p>
+        <button mat-raised-button color="primary" type="button" (click)="continueFree()">{{ t('actions.continueTrial') }}</button>
+      </div>
+    }
   }
 </section>

@@ -102,6 +102,42 @@ public class WorksheetAssignmentServiceTeacherViewTests : IDisposable
         assignment.NotStartedCount.ShouldBe(1);
     }
 
+    // Issue #1090: öğretmen işi açamayan (planı olmayan) öğrencileri adlarıyla görür.
+    [Fact]
+    public async Task Marks_students_who_cannot_open_the_assignment_because_they_have_no_plan()
+    {
+        int wsId, schoolId;
+        await using (var ctx = _db.NewContext())
+        {
+            var g = new Grade { Name = "7" };
+            var school = new School { Name = "Okul" };
+            ctx.AddRange(g, school);
+            await ctx.SaveChangesAsync();
+            schoolId = school.Id;
+            var ws = new Worksheet { Name = "W", Description = "", GradeId = g.Id };
+            ctx.Worksheets.Add(ws);
+            await ctx.SaveChangesAsync();
+            wsId = ws.Id;
+            ctx.AddRange(
+                new Student { UserId = 31, StudentNumber = "1", SchoolName = "s", SchoolId = school.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = g.Id },
+                new Student { UserId = 32, StudentNumber = "2", SchoolName = "s", SchoolId = school.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = g.Id });
+            await ctx.SaveChangesAsync();
+            ctx.SetCurrentUser(TeacherUserId);
+            ctx.WorksheetAssignments.Add(new WorksheetAssignment { WorksheetId = ws.Id, GradeId = g.Id, StartAt = DateTime.UtcNow.AddDays(-1) });
+            await ctx.SaveChangesAsync();
+        }
+
+        var locks = Substitute.For<ExamApp.Api.Services.Entitlements.IPlanLockService>();
+        locks.LockedAmongAsync(Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<CancellationToken>()).Returns(new HashSet<int> { 32 });
+        await using var read = _db.NewContext();
+        var result = await new WorksheetAssignmentService(read, new SchoolAccessPolicy(read), planLocks: locks)
+            .GetWorksheetAssignmentsForTeacherAsync(wsId, SchoolScope.For(TeacherUserId, schoolId));
+
+        var assignment = result.Assignments.ShouldHaveSingleItem();
+        assignment.PlanLockedCount.ShouldBe(1);
+        assignment.Students.Single(s => s.PlanLocked).UserId.ShouldBe(32);
+    }
+
     // issue #367: one live instance per (student, worksheet) - a test solved BEFORE it was assigned cannot be started
     // again, so a Completed instance satisfies a later assignment. An unfinished one still has to start in the window.
     [Fact]

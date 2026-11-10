@@ -24,6 +24,9 @@ services:
   # These validate login tokens against the public address; a public resolver keeps them independent of the Mac's DNS cache.
   exam-dotnet-api:
     dns: [1.1.1.1, 8.8.8.8]
+    environment:
+      # Issue #1090: demo accounts have no plan; the plan lock stays off in the demo.
+      Subscriptions__RequirePlan: 'false'
 
   auth-api:
     dns: [1.1.1.1, 8.8.8.8]

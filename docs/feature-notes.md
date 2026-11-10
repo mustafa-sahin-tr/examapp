@@ -353,6 +353,15 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   `analytics`: konu performansı, gelişim zaman çizelgesi ve kazanım ustalığı; profilde kartların yerine `PlanLockedCardComponent`
   (karşılaştırma penceresini açar). Veli paneli **çocuğun** planına bakar: `GET /api/parent/children/{id}/plan-features`
   (bağlantı kapısı önce, audit `children.plan-features`), velinin konu performansı / kazanım uçları çocuğun planında yoksa 403.
+- **Plan kilidi (#1090):** `Subscriptions:RequirePlan` (varsayılan `true`; AppHost, `docker-compose.yml` ve demo `false` verir, AppHost'ta
+  `Subscriptions__RequirePlan=true dotnet run` ile açılır). Free'ye çözülen (ataması olmayan) **öğretmen / öğrenci** kilitlidir:
+  `PlanRequiredMiddleware` (#441 yaptırımından sonra) yetkili her uçta 402 `{ code: "subscription.required", audience, message }`
+  döner; `[AllowWithoutPlan]` (plan kataloğu / deneme / ödeme, kayıt) ve `[AllowWhenParentRequired]` uçları (oturum, profil, veli
+  bağlama) açık. Admin, QuestionTrainer ve veli hiç kilitlenmez. **Denemeyi hiç kullanmamış** kullanıcı kilitlenmez, denemesi ilk
+  istekte kendiliğinden başlar (kayıt sihirbazı, Google girişi, velinin açtığı çocuk hesabı); sihirbazın plan adımı "Denemeyle devam
+  et" gösterir, kilit açıkken katalogda Free yoktur. `/me` `locked` döner. Arayüz: interceptor 402'de planı yeniler ve `/plans`'a
+  yönlendirir (plan / abonelik sayfasında kalır); sayfa öğrenciye "velinin plan seçmesi gerekiyor", öğretmene "plan seç" der.
+  Öğretmenin atama ekranı planı olmadığı için işi açamayan öğrencileri adlarıyla gösterir (`planLocked`, `planLockedCount`).
 - **Plan seçimi (#1028):** kayıt sihirbazının (`ui` `/register`) öğrenci / öğretmen kaydından sonra 3. adımı plan kartlarıdır
   (`PlanPickerComponent`, scope `subscription`); veli adımı atlar. "Ücretsiz devam et" API çağırmaz (Free). "Denemeyi başlat"
   → `POST /api/exam/subscription-plans/me/trial`: hesap başına bir kez (silinmiş atamalar dahil; ikincisi 409

@@ -11,6 +11,10 @@
         "tutoring": "Öğrencinin planında özel ders randevusu yok. Velisinin bunu içeren bir plan seçmesi gerekir.",
         "liveLesson": "Öğrencinin planında canlı ders yok. Velisinin bunu içeren bir plan seçmesi gerekir."
       }
+    },
+    "subscriptionRequired": {
+      "teacher": "Deneme süren bitti. Devam etmek için bir plan seçmelisin.",
+      "student": "Deneme süren bitti. Devam etmek için velinin bir plan seçmesi gerekiyor."
     }
   }
 }

@@ -12,6 +12,8 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8005
+      # Issue #1090: dev users have no plan; the plan lock (default on) stays off here.
+      - Subscriptions__RequirePlan=false
       # Issue #440 (security re-review): anonim veli aktivasyonu rate limit'i X-Forwarded-For'a yalnız güvenilir proxy'den (gateway)
       # gelen istekte güvenir (TrustedClientIp; varsayılan yalnız loopback). mynetwork sabit subnet taşımadığından docker'ın varsayılan
       # bridge havuzu (172.16.0.0/12) — ipam açılırsa (bkz. networks.mynetwork) o subnet'e daraltın.

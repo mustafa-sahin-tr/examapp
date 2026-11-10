@@ -55,7 +55,8 @@
     "back": "Back",
     "retry": "Try again",
     "upgrade": "Upgrade plan",
-    "close": "Close"
+    "close": "Close",
+    "continueTrial": "Continue with the trial"
   },
   "checkout": {
     "demoTitle": "This is a demo checkout",
@@ -72,7 +73,9 @@
   "page": {
     "title": "Upgrade plan",
     "subtitle": "Upgrade your plan or start a trial.",
-    "changed": "Your plan was updated: {{ plan }}."
+    "changed": "Your plan was updated: {{ plan }}.",
+    "lockedTeacher": "Your trial has ended. Choose a plan to continue.",
+    "lockedStudent": "Your trial has ended. Your parent needs to choose a plan for you to continue."
   },
   "mine": {
     "title": "My subscription",
@@ -216,5 +219,7 @@
   "locked": {
     "text": "Not in your current plan. See which plans include it.",
     "compare": "Compare plans"
-  }
+  },
+  "trialStarted": "Your trial has started. You can choose a plan now or when the trial ends.",
+  "hintNoFree": "Everything is open during the trial; when it ends you continue with a plan."
 }

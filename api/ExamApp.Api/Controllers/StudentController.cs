@@ -212,6 +212,7 @@ namespace ExamApp.Api.Controllers
 
 
         [Authorize] // 🔹 Kullanıcının giriş yapmış olması gerekiyor
+        [ExamApp.Api.Services.Entitlements.AllowWithoutPlan] // issue #1090
         [HttpPost("register")]
         public async Task<IActionResult> RegisterStudent(RegisterStudentDto request)
         {

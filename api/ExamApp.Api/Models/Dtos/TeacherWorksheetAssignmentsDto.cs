@@ -46,6 +46,9 @@ public class TeacherWorksheetAssignmentDto
     public int NotStartedCount { get; set; }
     public int ScheduledCount { get; set; }
     public int ExpiredCount { get; set; }
+
+    /// <summary>Issue #1090: planı olmadığı için işi açamayan öğrenci sayısı (adları <see cref="TeacherAssignmentStudentDto.PlanLocked"/>).</summary>
+    public int PlanLockedCount { get; set; }
     public List<TeacherAssignmentStudentDto> Students { get; set; } = new();
 }
 
@@ -75,6 +78,9 @@ public class TeacherAssignmentStudentDto
 
     /// <summary>issue #609: etkinlikte "Yeniden çöz" sayısı (0 = hiç); testte hep 0.</summary>
     public int RetakeCount { get; set; }
+
+    /// <summary>Issue #1090: öğrencinin planı yok (deneme bitti), işi açamaz; velisi plan seçince açılır.</summary>
+    public bool PlanLocked { get; set; }
 }
 
 public static class AssignmentStudentStatuses

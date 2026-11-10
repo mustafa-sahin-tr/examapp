@@ -179,6 +179,27 @@ h2 {
   margin: 0;
 }
 
+// Issue #1090: planı olmadığı için işi açamayan öğrenciler.
+.plan-locked-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--ms-warning-surface-weak);
+  border: 1px solid var(--ms-warning-border);
+  color: var(--ms-warning-text);
+  font-size: 13px;
+
+  mat-icon {
+    flex: none;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
 .readonly-strip {
   display: inline-flex;
   align-items: center;

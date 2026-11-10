@@ -55,7 +55,8 @@
     "back": "Geri",
     "retry": "Tekrar dene",
     "upgrade": "Planı yükselt",
-    "close": "Kapat"
+    "close": "Kapat",
+    "continueTrial": "Denemeyle devam et"
   },
   "checkout": {
     "demoTitle": "Bu bir demo ödeme ekranıdır",
@@ -72,7 +73,9 @@
   "page": {
     "title": "Planı yükselt",
     "subtitle": "Planını yükselt ya da deneme başlat.",
-    "changed": "Planın güncellendi: {{ plan }}."
+    "changed": "Planın güncellendi: {{ plan }}.",
+    "lockedTeacher": "Deneme süren bitti. Devam etmek için bir plan seç.",
+    "lockedStudent": "Deneme süren bitti. Devam etmek için velinin bir plan seçmesi gerekiyor."
   },
   "mine": {
     "title": "Aboneliğim",
@@ -216,5 +219,7 @@
   "locked": {
     "text": "Mevcut planında yok. Hangi planlarda olduğunu görebilirsin.",
     "compare": "Planları karşılaştır"
-  }
+  },
+  "trialStarted": "Deneme süren başladı. Bir planı şimdi seçebilir ya da deneme bitince seçebilirsin.",
+  "hintNoFree": "Deneme süresince her şey açık; deneme bitince bir planla devam edersin."
 }

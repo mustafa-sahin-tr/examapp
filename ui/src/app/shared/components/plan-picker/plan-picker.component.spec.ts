@@ -29,6 +29,8 @@ function plan(key: string, displayNameKey: string, monthlyPrice: number, trialDa
   return { key, name: key, displayNameKey, audience: 'Any', monthlyPrice, currency: 'TRY', trialDays, isActive: true, monthlyLimits };
 }
 
+let PLANS_OVERRIDE: SubscriptionPlan[] | null = null;
+
 function current(planKey: string, trialAvailable = true): CurrentSubscriptionPlan {
   return { planKey, planName: planKey, displayNameKey: `subscription.plans.${planKey}`, validToUtc: null, trialAvailable, features: [] };
 }
@@ -42,7 +44,7 @@ describe('PlanPickerComponent (issue #1028)', () => {
 
   function create(mode: 'signup' | 'change' = 'signup', me = current('free')): void {
     service = {
-      plans: vi.fn().mockReturnValue(of(PLANS)),
+      plans: vi.fn().mockReturnValue(of(PLANS_OVERRIDE ?? PLANS)),
       current: vi.fn().mockReturnValue(of(me)),
       features: vi.fn().mockReturnValue(of(FEATURES)),
       startTrial: vi.fn(),
@@ -144,5 +146,29 @@ describe('PlanPickerComponent (issue #1028)', () => {
     const keys = (o: object, prefix = ''): string[] =>
       Object.entries(o).flatMap(([k, v]) => (typeof v === 'object' ? keys(v, `${prefix}${k}.`) : [`${prefix}${k}`]));
     expect(keys(subscriptionEn).sort()).toEqual(keys(subscriptionTr).sort());
+  });
+
+  it('issue #1090: when the trial started on its own at signup, offers to continue with it', () => {
+    create('signup', current('trial', false));
+
+    const block = el().querySelector('[data-testid="trial-started"]') as HTMLElement;
+    expect(block.textContent).toContain('Deneme süren başladı');
+    button(block).click();
+    expect(emitted).toEqual([null]);
+  });
+
+  it('issue #1090: no trial note on a free account or on the change page', () => {
+    create('signup', current('free'));
+    expect(el().querySelector('[data-testid="trial-started"]')).toBeNull();
+    TestBed.resetTestingModule();
+    create('change', current('trial', false));
+    expect(el().querySelector('[data-testid="trial-started"]')).toBeNull();
+  });
+
+  it('issue #1090: without a Free plan in the catalog the hint does not offer starting free', () => {
+    PLANS_OVERRIDE = PLANS.filter((p) => p.key !== 'free');
+    create('change', current('trial', false));
+    expect(el().querySelector('.hint')!.textContent).toContain('Deneme süresince her şey açık');
+    PLANS_OVERRIDE = null;
   });
 });

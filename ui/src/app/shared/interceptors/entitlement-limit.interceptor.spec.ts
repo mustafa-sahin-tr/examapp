@@ -35,15 +35,17 @@ describe('entitlementLimitInterceptor (issue #1029)', () => {
   let http: HttpClient;
   let httpMock: HttpTestingController;
   let router: Router;
+  const current = vi.fn();
 
   beforeEach(() => {
+    current.mockReset().mockReturnValue(of({ planKey: 'free', locked: true, features: [] }));
     TestBed.configureTestingModule({
       imports: [translocoTestingModule({ langs: { 'subscription/tr': subscriptionTr } })],
       providers: [
         provideHttpClient(withXhr(), withInterceptors([entitlementLimitInterceptor])),
         provideHttpClientTesting(),
         provideRouter([]),
-        { provide: SubscriptionService, useValue: { plans: vi.fn().mockReturnValue(of(PLANS)) } },
+        { provide: SubscriptionService, useValue: { plans: vi.fn().mockReturnValue(of(PLANS)), current } },
       ],
     });
     http = TestBed.inject(HttpClient);
@@ -123,5 +125,23 @@ describe('entitlementLimitInterceptor (issue #1029)', () => {
     expect(error).toBeTruthy();
     expect(dialog()).toBeNull();
     expect(document.querySelector('mat-snack-bar-container')!.textContent).toContain(message);
+  });
+
+  it('issue #1090: 402 subscription.required goes to the plans page and refreshes the plan once, without a dialog', () => {
+    const body = { code: 'subscription.required', audience: 'teacher', message: 'x' };
+    const error = fail('/api/exam/a', 402, body);
+    fail('/api/exam/b', 402, body);
+
+    expect(error).toBeTruthy();
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/plans');
+    expect(current).toHaveBeenCalledTimes(1);
+    expect(dialog()).toBeNull();
+  });
+
+  it('issue #1090: other 402s are ignored', () => {
+    fail('/api/exam/a', 402, { code: 'other' });
+
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
+    expect(current).not.toHaveBeenCalled();
   });
 });

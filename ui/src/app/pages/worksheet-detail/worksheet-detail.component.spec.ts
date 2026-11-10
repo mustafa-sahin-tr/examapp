@@ -1448,6 +1448,32 @@ describe('WorksheetDetailComponent activity page (#573)', () => {
         const routerLink = fixture.debugElement.query((d) => d.nativeElement === link).injector.get(RouterLink);
         expect(routerLink.queryParams).toEqual({ worksheetId: component['detail']()?.worksheet?.id });
     });
+
+    it('issue #1090: teacher sees which students cannot open the work because they have no plan', () => {
+        const { fixture, component } = setup('Teacher');
+        const student = (studentId: number, studentName: string, planLocked: boolean) =>
+            ({ studentId, userId: studentId, studentNumber: String(studentId), studentName, status: 'NotStarted' as const, planLocked });
+        const assignment = (assignmentId: number, students: ReturnType<typeof student>[]) => ({
+            assignmentId, targetType: 'Grade' as const, targetName: '3-A', isActive: true, startAt: '2026-10-20T08:00:00Z',
+            studentCount: students.length, completedCount: 0, inProgressCount: 0, notStartedCount: students.length, scheduledCount: 0,
+            expiredCount: 0, students,
+        });
+        component['assignmentPanelState'].set({
+            loading: false,
+            // Aynı kilitli öğrenci iki atamada: bir kez sayılır.
+            assignments: [
+                assignment(1, [student(1, 'Ada', true), student(2, 'Can', false)]),
+                assignment(2, [student(1, 'Ada', true), student(3, 'Ece', true)]),
+            ],
+            summary: { totalAssignments: 2, activeAssignments: 2, upcomingAssignments: 0, totalStudents: 4, completedCount: 0, inProgressCount: 0, notStartedCount: 4, scheduledCount: 0, expiredCount: 0 },
+            lastRefreshed: null,
+            error: null,
+        });
+        fixture.detectChanges();
+
+        const note = fixture.nativeElement.querySelector('[data-testid="plan-locked-students"]') as HTMLElement;
+        expect(note.textContent).toContain('2 öğrenci planı olmadığı için bu işi açamıyor: Ada, Ece');
+    });
 });
 
 describe('WorksheetDetailComponent admin sharing (issue #819)', () => {

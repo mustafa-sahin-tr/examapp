@@ -150,7 +150,8 @@
       "bankHint": "Hazır sorulardan",
       "text": "Görselsiz yaz",
       "textHint": "Metinle yeni madde"
-    }
+    },
+    "planLocked": "{{count}} öğrenci planı olmadığı için bu işi açamıyor: {{names}}. Velisi plan seçince açılır."
   },
   "status": {
     "completed": "Tamamladı",

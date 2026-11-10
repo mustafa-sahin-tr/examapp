@@ -12,5 +12,16 @@
       <p>{{ t('page.changed', { plan: t(nameKey) }) }}</p>
     </div>
   }
-  <app-plan-picker mode="change" (completed)="onCompleted($event)" />
+  @if (parentPays) {
+    <div class="notice notice--info" role="note" data-testid="parent-pays-notice">
+      <mat-icon aria-hidden="true">family_restroom</mat-icon>
+      <div>
+        <p>{{ t(needsParent() ? 'page.noParent' : 'page.askParent') }}</p>
+        @if (needsParent()) {
+          <a mat-stroked-button color="primary" [routerLink]="parentRequiredLink" data-testid="add-parent">{{ t('actions.addParent') }}</a>
+        }
+      </div>
+    </div>
+  }
+  <app-plan-picker mode="change" [parentPays]="parentPays" (completed)="onCompleted($event)" />
 </div>

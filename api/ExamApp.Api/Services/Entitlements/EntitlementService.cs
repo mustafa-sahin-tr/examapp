@@ -228,7 +228,7 @@ public sealed class EntitlementService : IEntitlementService
     }
 
     public async Task<SelfServicePlanError> CheckoutAsync(int userId, string planKey, IReadOnlySet<SubscriptionPlanAudience> audiences,
-        CancellationToken ct = default)
+        int? purchasedByUserId = null, CancellationToken ct = default)
     {
         var plan = await _db.SubscriptionPlans.AsNoTracking().FirstOrDefaultAsync(p => p.Key == planKey && p.IsActive, ct);
         if (plan is null)
@@ -237,7 +237,7 @@ public sealed class EntitlementService : IEntitlementService
             return SelfServicePlanError.NotAvailable;
 
         var now = _clock.GetUtcNow().UtcDateTime;
-        await AssignPlanAsync(userId, plan.Key, now, now.AddMonths(1), assignedByUserId: userId, ct);
+        await AssignPlanAsync(userId, plan.Key, now, now.AddMonths(1), assignedByUserId: purchasedByUserId ?? userId, ct);
         return SelfServicePlanError.None;
     }
 

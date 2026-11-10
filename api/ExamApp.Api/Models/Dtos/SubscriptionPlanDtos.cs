@@ -126,3 +126,22 @@ public class SubscriptionCheckoutDto
 {
     public string PlanKey { get; set; } = string.Empty;
 }
+
+/// <summary>Issue #1091: veli panelinde çocuğun planı ve velinin alabileceği öğrenci planları.</summary>
+public class ChildSubscriptionPlanDto
+{
+    /// <summary>Çocuğun şu anki planı; ataması yoksa <c>free</c>.</summary>
+    public string? PlanKey { get; set; }
+    public string? DisplayNameKey { get; set; }
+
+    /// <summary>Planın / denemenin bitişi; süresizse null.</summary>
+    public DateTime? ValidToUtc { get; set; }
+
+    public bool IsTrial { get; set; }
+
+    /// <summary>Velinin alabileceği ücretli öğrenci planları (sıralı).</summary>
+    public List<SubscriptionPlanDto> Plans { get; set; } = new();
+
+    /// <summary>Plan kartlarının öğrenci özellikleri (veli kendi rolüyle <c>features</c> ucundan bunları alamaz).</summary>
+    public List<EntitlementFeatureDto> Features { get; set; } = new();
+}

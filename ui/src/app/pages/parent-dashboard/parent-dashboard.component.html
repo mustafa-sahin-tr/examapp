@@ -184,6 +184,11 @@
             <app-parent-child-assignments [studentId]="studentId" (notFound)="onChildNotFound()" />
           </ng-template>
         </mat-tab>
+        <mat-tab [label]="t('tabs.plan')">
+          <ng-template matTabContent>
+            <app-parent-child-plan [studentId]="studentId" (notFound)="onChildNotFound()" (changed)="onPlanChanged()" />
+          </ng-template>
+        </mat-tab>
       </mat-tab-group>
     }
   }

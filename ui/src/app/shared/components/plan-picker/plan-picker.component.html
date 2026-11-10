@@ -37,8 +37,8 @@
       </div>
     </div>
   } @else {
-    <h2>{{ t(mode() === 'signup' ? 'title' : 'changeTitle') }}</h2>
-    <p class="hint">{{ t(offersFree() ? 'hint' : 'hintNoFree') }}</p>
+    <h2>{{ t(childId() != null ? 'childTitle' : mode() === 'signup' ? 'title' : 'changeTitle') }}</h2>
+    <p class="hint">{{ t(childId() != null ? 'hintChild' : parentPays() ? 'hintParentPays' : offersFree() ? 'hint' : 'hintNoFree') }}</p>
     @if (actionError(); as error) {
       <p class="error" role="alert">{{ t(error) }}</p>
     }
@@ -95,7 +95,9 @@
                 }
               }
               @case ('paid') {
-                @if (!(mode() === 'change' && plan.key === currentKey())) {
+                @if (parentPays()) {
+                  <span class="muted" data-testid="parent-pays">{{ t('parentChooses') }}</span>
+                } @else if (!(mode() === 'change' && plan.key === currentKey())) {
                   <button mat-raised-button color="primary" type="button" (click)="openCheckout(plan)" [disabled]="busy()">
                     {{ t('actions.choose') }}
                   </button>

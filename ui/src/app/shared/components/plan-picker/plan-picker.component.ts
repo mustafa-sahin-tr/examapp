@@ -1,12 +1,13 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { forkJoin } from 'rxjs';
+import { Observable, forkJoin, map } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 
 import {
+  ChildSubscriptionPlan,
   CurrentSubscriptionPlan,
   EntitlementFeature,
   FREE_PLAN_KEY,
@@ -33,6 +34,8 @@ export type PlanAction = 'free' | 'trial' | 'paid';
  * Issue #1028 (epic #1026): plan kartları + deneme başlatma + sahte ödeme. Kayıt sihirbazının son adımı (`signup`: Free kartı
  * "Ücretsiz devam et" ile atlar) ve "Planım"dan yükseltme (`change`: mevcut plan işaretli, Free'ye dönüş yok — iptal kapsam dışı).
  * Ödeme ekranı açıkça demodur: kart alanı yok, tek "Ödemeyi tamamla (demo)" düğmesi.
+ * Issue #1091: öğrencinin planını velisi alır — öğrencide (`parentPays`) ücretli kartlarda düğme yerine "velin seçer" notu; veli
+ * panelinde (`childId`) çocuğun planı ve öğrenci planları gösterilir, ödeme çocuk adına yapılır.
  */
 @Component({
   selector: 'app-plan-picker',
@@ -48,6 +51,10 @@ export class PlanPickerComponent implements OnInit {
   private readonly entitlements = inject(EntitlementStateService);
 
   readonly mode = input<'signup' | 'change'>('signup');
+  /** Issue #1091: öğrenci kendine plan alamaz; ücretli kartlar velisine yönlendirir. */
+  readonly parentPays = input(false);
+  /** Issue #1091: veli panelinde çocuğun (Students.Id) planı; doluysa katalog ve ödeme çocuğa aittir. */
+  readonly childId = input<number | null>(null);
   /** Plan seçildi (deneme / ödeme sonrası yeni plan) ya da Free / kendiliğinden başlayan deneme ile devam edildi (null). */
   readonly completed = output<CurrentSubscriptionPlan | null>();
 
@@ -74,11 +81,16 @@ export class PlanPickerComponent implements OnInit {
   load(): void {
     this.loading.set(true);
     this.loadError.set(false);
-    forkJoin({
-      plans: this.subscriptions.plans(),
-      current: this.subscriptions.current(),
-      features: this.subscriptions.features(),
-    }).subscribe({
+    const childId = this.childId();
+    const source: Observable<{ plans: SubscriptionPlan[]; current: CurrentSubscriptionPlan; features: EntitlementFeature[] }> =
+      childId != null
+        ? this.subscriptions.childPlan(childId).pipe(map((child) => ({ plans: child.plans, current: asCurrent(child), features: child.features })))
+        : forkJoin({
+            plans: this.subscriptions.plans(),
+            current: this.subscriptions.current(),
+            features: this.subscriptions.features(),
+          });
+    source.subscribe({
       next: ({ plans, current, features }) => {
         this.plans.set(plans);
         this.features.set(features);
@@ -137,7 +149,11 @@ export class PlanPickerComponent implements OnInit {
     if (!plan || this.busy()) return;
     this.busy.set(true);
     this.actionError.set(null);
-    this.subscriptions.checkout(plan.key).subscribe({
+    const childId = this.childId();
+    const request = childId != null
+      ? this.subscriptions.childCheckout(childId, plan.key).pipe(map(asCurrent))
+      : this.subscriptions.checkout(plan.key);
+    request.subscribe({
       next: (current) => this.finish(current),
       error: (err: unknown) => this.fail(err),
     });
@@ -146,7 +162,8 @@ export class PlanPickerComponent implements OnInit {
   private finish(plan: CurrentSubscriptionPlan): void {
     this.busy.set(false);
     this.current.set(plan);
-    this.entitlements.set(plan);
+    // Veli çocuğuna aldığında oturumun (velinin) plan durumu değişmez.
+    if (this.childId() == null) this.entitlements.set(plan);
     this.checkoutPlan.set(null);
     this.completed.emit(plan);
   }
@@ -160,4 +177,16 @@ export class PlanPickerComponent implements OnInit {
 
   protected readonly freeKey = FREE_PLAN_KEY;
   protected readonly trialKey = TRIAL_PLAN_KEY;
+}
+
+/** Issue #1091: çocuğun planı seçicinin "mevcut plan" biçiminde (deneme ve kullanım veli tarafında yok). */
+function asCurrent(child: ChildSubscriptionPlan): CurrentSubscriptionPlan {
+  return {
+    planKey: child.planKey,
+    planName: null,
+    displayNameKey: child.displayNameKey,
+    validToUtc: child.validToUtc,
+    trialAvailable: false,
+    features: [],
+  };
 }

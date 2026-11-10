@@ -69,6 +69,15 @@ public static class ParentAccessEndpoints
     /// <summary><c>GET api/parent/children/{studentId}/plan-features</c> (issue #1089): çocuğun planındaki öğrenci özellikleri.</summary>
     public const string ChildPlanFeatures = "children.plan-features";
 
+    /// <summary><c>GET api/parent/children/{studentId}/plan</c> (issue #1091): çocuğun planı ve alınabilecek planlar.</summary>
+    public const string ChildPlan = "children.plan";
+
+    /// <summary>
+    /// <c>POST api/parent/children/{studentId}/plan/checkout</c> (issue #1091) — yazma; plan ataması ayrıca plan kaydına (aktör veli)
+    /// yazılır. ResourceId = atanan plan id'si.
+    /// </summary>
+    public const string ChildPlanCheckout = "children.plan-checkout";
+
     /// <summary>
     /// <c>POST api/parent/children/{studentId}/reset-password</c> (issue #438) — veri okuma değil, velinin çocuk hesabındaki yazma
     /// işlemi; her başarılı sıfırlama ayrı satır (tekilleştirme yok).

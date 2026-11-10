@@ -1,0 +1,48 @@
+<section class="child-plan" data-test="child-plan" *transloco="let t">
+  @if (loading() && !plan()) {
+    <div class="child-plan__state" aria-busy="true">
+      <mat-spinner diameter="24" />
+      <span>{{ t('parent-dashboard.loading') }}</span>
+    </div>
+  } @else if (loadError()) {
+    <div class="child-plan__state" role="alert" data-test="child-plan-error">
+      <span>{{ t('parent-dashboard.plan.loadError') }}</span>
+      <button mat-stroked-button type="button" (click)="reload()">{{ t('parent-dashboard.retry') }}</button>
+    </div>
+  } @else if (plan(); as p) {
+    @if (boughtKey(); as bought) {
+      <p class="child-plan__done" role="status" data-test="child-plan-bought">
+        <mat-icon aria-hidden="true">check_circle</mat-icon>
+        {{ t('parent-dashboard.plan.bought', { plan: t('subscription.' + bought) }) }}
+      </p>
+    }
+    <div class="child-plan__current" [class.child-plan__current--warn]="!hasPlan() || endingSoon()">
+      <mat-icon aria-hidden="true">{{ hasPlan() ? 'workspace_premium' : 'lock' }}</mat-icon>
+      <div>
+        @if (hasPlan()) {
+          <b data-test="child-plan-name">{{ t('subscription.' + nameKey()) }}</b>
+          @if (validTo()) {
+            <span data-test="child-plan-until">
+              {{ t(p.isTrial ? 'parent-dashboard.plan.trialUntil' : 'parent-dashboard.plan.until', { date: validTo() }) }}
+            </span>
+          }
+          @if (endingSoon()) {
+            <span class="child-plan__soon" data-test="child-plan-ending">{{ t('parent-dashboard.plan.endingSoon') }}</span>
+          }
+        } @else {
+          <b data-test="child-plan-none">{{ t('parent-dashboard.plan.none') }}</b>
+          <span>{{ t('parent-dashboard.plan.noneHint') }}</span>
+        }
+      </div>
+      @if (!picking()) {
+        <button mat-flat-button color="primary" type="button" data-test="child-plan-choose" (click)="picking.set(true)">
+          {{ t(hasPlan() && !p.isTrial ? 'parent-dashboard.plan.change' : 'parent-dashboard.plan.choose') }}
+        </button>
+      }
+    </div>
+    @if (picking()) {
+      <app-plan-picker mode="change" [childId]="studentId()" (completed)="onCompleted($event)" />
+      <button mat-button type="button" (click)="picking.set(false)">{{ t('parent-dashboard.plan.cancel') }}</button>
+    }
+  }
+</section>

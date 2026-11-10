@@ -46,7 +46,8 @@
       </div>
     } @else if (step() === 3) {
       <!-- Issue #1028: plan seçimi (Free ile geçilebilir) -->
-      <app-plan-picker mode="signup" (completed)="onPlanChosen()" />
+      <!-- Issue #1091: öğrencinin ücretli planını velisi alır. -->
+      <app-plan-picker mode="signup" [parentPays]="role() === 'student'" (completed)="onPlanChosen()" />
     } @else if (step() === 2) {
       @if (submitError() || retryAfter()) {
         <div class="notice notice--error" role="alert" data-testid="submit-error">

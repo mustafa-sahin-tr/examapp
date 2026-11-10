@@ -5,7 +5,7 @@ import { of, throwError } from 'rxjs';
 
 import { PlanPickerComponent } from './plan-picker.component';
 import { SubscriptionService } from '../../../services/subscription.service';
-import { CurrentSubscriptionPlan, EntitlementFeature, SubscriptionPlan } from '../../../models/subscription';
+import { ChildSubscriptionPlan, CurrentSubscriptionPlan, EntitlementFeature, SubscriptionPlan } from '../../../models/subscription';
 import { translocoTestingModule } from '../../testing/transloco-testing';
 import subscriptionTr from '../../../../../public/i18n/subscription/tr.json';
 import subscriptionEn from '../../../../../public/i18n/subscription/en.json';
@@ -31,6 +31,16 @@ function plan(key: string, displayNameKey: string, monthlyPrice: number, trialDa
 
 let PLANS_OVERRIDE: SubscriptionPlan[] | null = null;
 
+const STUDENT_PLANS: SubscriptionPlan[] = [
+  plan('student-basic', 'subscription.plans.studentBasic', 99, null, { 'mock-exam': 2 }),
+  plan('student-pro', 'subscription.plans.studentPro', 349, null, { 'mock-exam': null }),
+];
+
+const CHILD: ChildSubscriptionPlan = {
+  planKey: 'student-basic', displayNameKey: 'subscription.plans.studentBasic', validToUtc: '2026-12-10T00:00:00Z', isTrial: false,
+  plans: STUDENT_PLANS, features: FEATURES.filter((f) => f.audience === 'Student'),
+};
+
 function current(planKey: string, trialAvailable = true): CurrentSubscriptionPlan {
   return { planKey, planName: planKey, displayNameKey: `subscription.plans.${planKey}`, validToUtc: null, trialAvailable, features: [] };
 }
@@ -42,13 +52,15 @@ describe('PlanPickerComponent (issue #1028)', () => {
   let service: MockedObject<SubscriptionService>;
   let emitted: (CurrentSubscriptionPlan | null)[];
 
-  function create(mode: 'signup' | 'change' = 'signup', me = current('free')): void {
+  function create(mode: 'signup' | 'change' = 'signup', me = current('free'), inputs: Record<string, unknown> = {}): void {
     service = {
       plans: vi.fn().mockReturnValue(of(PLANS_OVERRIDE ?? PLANS)),
       current: vi.fn().mockReturnValue(of(me)),
       features: vi.fn().mockReturnValue(of(FEATURES)),
       startTrial: vi.fn(),
       checkout: vi.fn(),
+      childPlan: vi.fn().mockReturnValue(of(CHILD)),
+      childCheckout: vi.fn(),
     } as unknown as MockedObject<SubscriptionService>;
     TestBed.configureTestingModule({
       imports: [PlanPickerComponent, translocoTestingModule({ langs: { 'subscription/tr': subscriptionTr } })],
@@ -56,6 +68,7 @@ describe('PlanPickerComponent (issue #1028)', () => {
     });
     fixture = TestBed.createComponent(PlanPickerComponent);
     fixture.componentRef.setInput('mode', mode);
+    for (const [name, value] of Object.entries(inputs)) fixture.componentRef.setInput(name, value);
     component = fixture.componentInstance;
     emitted = [];
     component.completed.subscribe((p) => emitted.push(p));
@@ -170,5 +183,33 @@ describe('PlanPickerComponent (issue #1028)', () => {
     create('change', current('trial', false));
     expect(el().querySelector('.hint')!.textContent).toContain('Deneme süresince her şey açık');
     PLANS_OVERRIDE = null;
+  });
+
+  it('issue #1091: a student sees "your parent chooses" instead of a buy button on paid plans', () => {
+    create('change', current('trial', false), { parentPays: true });
+    expect(card('teacher-pro').querySelector('[data-testid="parent-pays"]')!.textContent).toContain('velin seçer');
+    expect(card('teacher-pro').querySelector('button')).toBeNull();
+    expect(el().querySelector('.hint')!.textContent).toContain('velinle birlikte');
+  });
+
+  it("issue #1091: for a child the parent sees the child's plans and buys for the child", () => {
+    create('change', current('free'), { childId: 7 });
+    expect(service.childPlan).toHaveBeenCalledWith(7);
+    expect(service.plans).not.toHaveBeenCalled();
+    expect(el().querySelector('h2')!.textContent).toContain('Çocuğun planı');
+    expect(card('student-basic').textContent).toContain('Mevcut');
+    // Öğrenci özellikleri yanıttan gelir (veli kendi rolüyle features ucundan alamaz).
+    expect(card('student-pro').textContent).toContain('Sınırsız');
+
+    const bought: ChildSubscriptionPlan = { ...CHILD, planKey: 'student-pro', displayNameKey: 'subscription.plans.studentPro' };
+    service.childCheckout.mockReturnValue(of(bought));
+    button(card('student-pro')).click();
+    fixture.detectChanges();
+    (el().querySelector('[data-testid="complete-checkout"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(service.childCheckout).toHaveBeenCalledWith(7, 'student-pro');
+    expect(service.checkout).not.toHaveBeenCalled();
+    expect(emitted).toEqual([expect.objectContaining({ planKey: 'student-pro' })]);
   });
 });

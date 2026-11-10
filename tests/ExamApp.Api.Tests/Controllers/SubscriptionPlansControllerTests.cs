@@ -224,7 +224,7 @@ public class SubscriptionPlansControllerTests : IDisposable
     }
 
     [Theory]
-    [InlineData("Student", "teacher-pro")]
+    [InlineData("Teacher", "student-pro")]
     [InlineData("Teacher", "free")]
     [InlineData("Teacher", "trial")]
     public async Task Checkout_rejects_plans_not_sold_to_the_caller(string role, string planKey)
@@ -234,6 +234,20 @@ public class SubscriptionPlansControllerTests : IDisposable
         var result = await NewController(ctx, role).Checkout(new SubscriptionCheckoutDto { PlanKey = planKey }, CancellationToken.None);
 
         result.Result.ShouldBeOfType<BadRequestObjectResult>();
+        (await ctx.UserSubscriptionPlans.CountAsync()).ShouldBe(0);
+    }
+
+    [Theory]
+    [InlineData("student-basic")]
+    [InlineData("teacher-pro")]
+    public async Task Student_cannot_self_checkout_the_parent_pays(string planKey)
+    {
+        await using var ctx = _db.NewContext();
+
+        var result = await NewController(ctx, "Student").Checkout(new SubscriptionCheckoutDto { PlanKey = planKey }, CancellationToken.None);
+
+        var forbidden = result.Result.ShouldBeOfType<ObjectResult>();
+        forbidden.StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
         (await ctx.UserSubscriptionPlans.CountAsync()).ShouldBe(0);
     }
 

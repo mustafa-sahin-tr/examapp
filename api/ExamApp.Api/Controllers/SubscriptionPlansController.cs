@@ -6,6 +6,7 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Entitlements;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -67,22 +68,23 @@ public class SubscriptionPlansController : BaseController
         return error == SelfServicePlanError.None ? await CurrentAsync(user.Id, ct) : PlanError(error);
     }
 
-    /// <summary>#1028 sahte ödeme: ücretli planı bir aylık atar. Gerçek ödeme alınmaz; arayüz ekranı "demo" diye işaretler.</summary>
+    /// <summary>
+    /// #1028 sahte ödeme: ücretli planı bir aylık atar. Gerçek ödeme alınmaz; arayüz ekranı "demo" diye işaretler. #1091: öğrencinin
+    /// planını velisi alır (<c>api/parent/children/{id}/plan</c>); öğrenci kendine alamaz (403 <c>subscription.parentPays</c>).
+    /// </summary>
     [HttpPost("me/checkout")]
-    [Authorize(Roles = "Teacher,Student,Admin")] // veliye plan satılmaz (sihirbaz veliye plan adımı göstermez)
+    [Authorize(Roles = "Teacher,Student,Admin")] // veliye kendi adına plan satılmaz
     public async Task<ActionResult<CurrentSubscriptionPlanDto>> Checkout([FromBody] SubscriptionCheckoutDto request, CancellationToken ct)
     {
+        if (User.IsInRole("Student") && !User.IsInRole("Teacher") && !User.IsInRole(EntitlementRoles.Admin))
+            return StatusCode(StatusCodes.Status403Forbidden, new { code = SubscriptionPlanErrorCodes.ParentPays });
+
         var user = await GetAuthenticatedUserAsync(ct);
-        var error = await _entitlements.CheckoutAsync(user.Id, request.PlanKey, SubscriptionPlanCatalog.AudiencesFor(User), ct);
+        var error = await _entitlements.CheckoutAsync(user.Id, request.PlanKey, SubscriptionPlanCatalog.AudiencesFor(User), ct: ct);
         return error == SelfServicePlanError.None ? await CurrentAsync(user.Id, ct) : PlanError(error);
     }
 
-    private ActionResult PlanError(SelfServicePlanError error) => error switch
-    {
-        SelfServicePlanError.TrialAlreadyUsed => Conflict(new { code = "subscription.trialUsed" }),
-        SelfServicePlanError.NotAvailable => BadRequest(new { code = "subscription.planNotAvailable" }),
-        _ => BadRequest(new { code = "subscription.unknownPlan" }),
-    };
+    private ActionResult PlanError(SelfServicePlanError error) => SubscriptionPlanErrorCodes.ToResult(this, error);
 
     private async Task<CurrentSubscriptionPlanDto> CurrentAsync(int userId, CancellationToken ct)
     {

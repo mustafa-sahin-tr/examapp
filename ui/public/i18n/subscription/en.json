@@ -56,7 +56,8 @@
     "retry": "Try again",
     "upgrade": "Upgrade plan",
     "close": "Close",
-    "continueTrial": "Continue with the trial"
+    "continueTrial": "Continue with the trial",
+    "addParent": "Add parent details"
   },
   "checkout": {
     "demoTitle": "This is a demo checkout",
@@ -75,7 +76,9 @@
     "subtitle": "Upgrade your plan or start a trial.",
     "changed": "Your plan was updated: {{ plan }}.",
     "lockedTeacher": "Your trial has ended. Choose a plan to continue.",
-    "lockedStudent": "Your trial has ended. Your parent needs to choose a plan for you to continue."
+    "lockedStudent": "Your trial has ended. Your parent needs to choose a plan for you to continue.",
+    "askParent": "Your parent chooses your plan. They can buy one from your «Plan» tab in the parent panel.",
+    "noParent": "You don't have a linked parent yet. Add your parent first; they will choose your plan."
   },
   "mine": {
     "title": "My subscription",
@@ -221,5 +224,9 @@
     "compare": "Compare plans"
   },
   "trialStarted": "Your trial has started. You can choose a plan now or when the trial ends.",
-  "hintNoFree": "Everything is open during the trial; when it ends you continue with a plan."
+  "hintNoFree": "Everything is open during the trial; when it ends you continue with a plan.",
+  "parentChooses": "Your parent chooses this plan",
+  "childTitle": "Your child's plan",
+  "hintChild": "The plan you choose is valid on your child's account for one month.",
+  "hintParentPays": "You can look at the plans together with your parent."
 }

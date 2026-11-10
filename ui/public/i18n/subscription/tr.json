@@ -56,7 +56,8 @@
     "retry": "Tekrar dene",
     "upgrade": "Planı yükselt",
     "close": "Kapat",
-    "continueTrial": "Denemeyle devam et"
+    "continueTrial": "Denemeyle devam et",
+    "addParent": "Veli bilgisi ekle"
   },
   "checkout": {
     "demoTitle": "Bu bir demo ödeme ekranıdır",
@@ -75,7 +76,9 @@
     "subtitle": "Planını yükselt ya da deneme başlat.",
     "changed": "Planın güncellendi: {{ plan }}.",
     "lockedTeacher": "Deneme süren bitti. Devam etmek için bir plan seç.",
-    "lockedStudent": "Deneme süren bitti. Devam etmek için velinin bir plan seçmesi gerekiyor."
+    "lockedStudent": "Deneme süren bitti. Devam etmek için velinin bir plan seçmesi gerekiyor.",
+    "askParent": "Planını velin seçer. Velin, veli panelinde çocuğunun «Plan» sekmesinden plan alabilir.",
+    "noParent": "Henüz bağlı bir velin yok. Önce velini ekle; planını o seçecek."
   },
   "mine": {
     "title": "Aboneliğim",
@@ -221,5 +224,9 @@
     "compare": "Planları karşılaştır"
   },
   "trialStarted": "Deneme süren başladı. Bir planı şimdi seçebilir ya da deneme bitince seçebilirsin.",
-  "hintNoFree": "Deneme süresince her şey açık; deneme bitince bir planla devam edersin."
+  "hintNoFree": "Deneme süresince her şey açık; deneme bitince bir planla devam edersin.",
+  "parentChooses": "Bu planı velin seçer",
+  "childTitle": "Çocuğun planı",
+  "hintChild": "Seçtiğin plan çocuğunun hesabında bir ay geçerli olur.",
+  "hintParentPays": "Planları velinle birlikte inceleyebilirsin."
 }

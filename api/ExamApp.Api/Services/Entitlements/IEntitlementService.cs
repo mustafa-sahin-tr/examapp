@@ -235,7 +235,8 @@ public interface IEntitlementService
 
     /// <summary>
     /// #1028 sahte ödeme: ücretli planı (fiyatı > 0, deneme değil) şimdiden bir ay geçerli atar. Gerçek ödeme yoktur.
+    /// #1091: <paramref name="purchasedByUserId"/> ödeyen (veli çocuğuna alır); boşsa kullanıcının kendisi. Kayıtta aktör odur.
     /// </summary>
     Task<SelfServicePlanError> CheckoutAsync(int userId, string planKey, IReadOnlySet<SubscriptionPlanAudience> audiences,
-        CancellationToken ct = default);
+        int? purchasedByUserId = null, CancellationToken ct = default);
 }

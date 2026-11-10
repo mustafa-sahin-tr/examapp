@@ -6,12 +6,14 @@ import { SubscriptionPlansComponent } from './subscription-plans.component';
 import { AuthService } from '../../services/auth.service';
 import { SubscriptionService } from '../../services/subscription.service';
 import { CurrentSubscriptionPlan } from '../../models/subscription';
+import { ParentStatus } from '../../models/parent-status.model';
+import { StudentParentService } from '../../services/student-parent.service';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import subscriptionTr from '../../../../public/i18n/subscription/tr.json';
 
 /** Issue #1090: deneme bitip planı olmayan kullanıcı plan sayfasında nedenini görür; öğrencide planı veli seçer. */
 describe('SubscriptionPlansComponent (issue #1090)', () => {
-  function create(role: 'Teacher' | 'Student', locked: boolean): HTMLElement {
+  function create(role: 'Teacher' | 'Student', locked: boolean, parentMode: ParentStatus['mode'] = 'Ok'): HTMLElement {
     const me: CurrentSubscriptionPlan = {
       planKey: 'free', planName: 'Free', displayNameKey: 'subscription.plans.free', validToUtc: null, trialAvailable: false, locked,
       features: [],
@@ -25,6 +27,10 @@ describe('SubscriptionPlansComponent (issue #1090)', () => {
           useValue: { current: vi.fn().mockReturnValue(of(me)), plans: vi.fn().mockReturnValue(of([])), features: vi.fn().mockReturnValue(of([])) },
         },
         { provide: AuthService, useValue: { hasRealmRole: (r: string) => r === role } },
+        {
+          provide: StudentParentService,
+          useValue: { ensureLoaded: () => of({ mode: parentMode, requiresParent: true, graceDays: 7, isFinalWarning: false }) },
+        },
       ],
     });
     const fixture = TestBed.createComponent(SubscriptionPlansComponent);
@@ -44,5 +50,23 @@ describe('SubscriptionPlansComponent (issue #1090)', () => {
 
   it('shows nothing when the account is not locked', () => {
     expect(notice(create('Teacher', false))).toBeNull();
+  });
+
+  const parentNotice = (el: HTMLElement) => el.querySelector('[data-testid="parent-pays-notice"]');
+
+  it('issue #1091: tells a student that the parent chooses the plan', () => {
+    const el = create('Student', false);
+    expect(parentNotice(el)!.textContent).toContain('Planını velin seçer');
+    expect(el.querySelector('[data-testid="add-parent"]')).toBeNull();
+  });
+
+  it('issue #1091: a student without a linked parent is sent to add one first', () => {
+    const el = create('Student', true, 'Expired');
+    expect(parentNotice(el)!.textContent).toContain('Henüz bağlı bir velin yok');
+    expect(el.querySelector('[data-testid="add-parent"]')!.getAttribute('href')).toBe('/parent-required');
+  });
+
+  it('issue #1091: a teacher buys for themselves', () => {
+    expect(parentNotice(create('Teacher', false))).toBeNull();
   });
 });

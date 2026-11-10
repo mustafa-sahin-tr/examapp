@@ -362,6 +362,14 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   et" gösterir, kilit açıkken katalogda Free yoktur. `/me` `locked` döner. Arayüz: interceptor 402'de planı yeniler ve `/plans`'a
   yönlendirir (plan / abonelik sayfasında kalır); sayfa öğrenciye "velinin plan seçmesi gerekiyor", öğretmene "plan seç" der.
   Öğretmenin atama ekranı planı olmadığı için işi açamayan öğrencileri adlarıyla gösterir (`planLocked`, `planLockedCount`).
+- **Veli öğrenci planını alır (#1091):** `GET /api/exam/parent/children/{studentId}/plan` çocuğun planını (yoksa `free`), bitişini,
+  `isTrial`'ı, alınabilecek ücretli öğrenci planlarını ve öğrenci özelliklerini döner (audit `children.plan`);
+  `POST …/plan/checkout { planKey }` #1028 gibi sahte ödemeyle planı çocuğa bir ay atar, plan kaydında aktör velidir (audit
+  `children.plan-checkout`). Yalnız Active bağlantı (her veli); başka velinin çocuğu ve bekleyen bağlantı 404; öğretmen planı / deneme /
+  Free 400. Öğrenci kendine alamaz: `POST /me/checkout` öğrenciye 403 `subscription.parentPays` (öğretmen / admin rolü de olan hesap
+  alabilir). Arayüz: veli panelinde "Plan" sekmesi (`ParentChildPlanComponent`, bitişe ≤ 3 gün kala "yakında bitiyor"; seçici
+  `childId` ile çocuk adına satın alır); öğrencinin `/plans` sayfası ve kayıt sihirbazı ücretli kartta "velin seçer" gösterir (seçici
+  `parentPays`), velisi bağlı değilse "Veli bilgisi ekle" (`/parent-required`) sunar.
 - **Plan seçimi (#1028):** kayıt sihirbazının (`ui` `/register`) öğrenci / öğretmen kaydından sonra 3. adımı plan kartlarıdır
   (`PlanPickerComponent`, scope `subscription`); veli adımı atlar. "Ücretsiz devam et" API çağırmaz (Free). "Denemeyi başlat"
   → `POST /api/exam/subscription-plans/me/trial`: hesap başına bir kez (silinmiş atamalar dahil; ikincisi 409

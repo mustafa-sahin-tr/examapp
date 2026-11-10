@@ -7212,6 +7212,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("DeleteUserId")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("EndingReminderSentAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 

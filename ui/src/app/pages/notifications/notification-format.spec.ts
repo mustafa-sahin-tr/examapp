@@ -247,6 +247,15 @@ describe('describeNotification (issue #105)', () => {
         }
     });
 
+    it('ParentChildPlanEnding_OpensTheChildsPlanTab (issue #1091)', () => {
+        for (const type of ['ParentChildPlanEnding', 'ParentChildPlanEndingTrial']) {
+            const result = describeNotification({ type, data: JSON.stringify({ studentId: 21, assignmentId: 47 }) });
+            expect(result.route, type).toEqual({ commands: ['/parent'], queryParams: { child: 21, tab: 'plan' } });
+        }
+        expect(describeNotification({ type: 'ParentChildPlanEnding', data: null }).route)
+            .toEqual({ commands: ['/parent'], queryParams: { tab: 'plan' } });
+    });
+
     it('SchoolChange_ParentLinksChild_SelfHasNoRoute (issue #542)', () => {
         for (const type of ['SchoolChangedToParent', 'SchoolAssignedToParent', 'SchoolRemovedToParent']) {
             const result = describeNotification({ type, data: JSON.stringify({ studentId: 21, fromSchoolId: 1, toSchoolId: 2 }) });

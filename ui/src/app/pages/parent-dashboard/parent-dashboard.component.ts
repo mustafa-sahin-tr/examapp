@@ -12,7 +12,7 @@ import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@js
 import { EMPTY, Observable, Subject, Subscription, catchError, defer, finalize, map, of, switchMap, tap } from 'rxjs';
 
 import { LinkedChild } from '../../models/parent-link.model';
-import { PARENT_CHILD_QUERY_PARAM, ParentChildSummary } from '../../models/parent-dashboard.model';
+import { PARENT_CHILD_QUERY_PARAM, PARENT_TAB_QUERY_PARAM, ParentChildSummary } from '../../models/parent-dashboard.model';
 import { ParentDashboardService } from '../../services/parent-dashboard.service';
 import { LocaleService } from '../../services/locale.service';
 import { ParentLinkService } from '../../services/parent-link.service';
@@ -164,6 +164,12 @@ export class ParentDashboardComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe((analytics) => this.childAnalytics.set(analytics));
+
+    // Issue #1091: `?tab=plan` (bildirimden) ilgili sekmeyi açar.
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      const tab = params.get(PARENT_TAB_QUERY_PARAM);
+      if (tab && tab in PARENT_DASHBOARD_TABS) this.tab.set(PARENT_DASHBOARD_TABS[tab as keyof typeof PARENT_DASHBOARD_TABS]);
+    });
 
     this.route.queryParamMap
       .pipe(

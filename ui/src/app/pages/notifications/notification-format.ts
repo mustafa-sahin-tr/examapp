@@ -1,5 +1,5 @@
 import { Router } from '@angular/router';
-import { PARENT_CHILD_QUERY_PARAM } from '../../models/parent-dashboard.model';
+import { PARENT_CHILD_QUERY_PARAM, PARENT_TAB_QUERY_PARAM } from '../../models/parent-dashboard.model';
 import { PARENT_HOME_URL } from '../../shared/guards/parent.guard';
 import { PARENT_REQUIRED_URL } from '../../models/parent-status.model';
 import { PARENT_BOOKING_REQUESTS_FRAGMENT } from '../../models/booking.model';
@@ -292,7 +292,7 @@ export function describeNotification(
  * (`ParentLinkedToStudent`, `ParentUnlinkedToStudent`) yalnız okundu işaretler (hedef yok). Bozuk `data` → çocuk seçimsiz `/parent`.
  */
 const PARENT_NOTIFICATION_PRESENTATION: Readonly<
-  Record<string, { icon: string; toParentPage: boolean; fragment?: string }>
+  Record<string, { icon: string; toParentPage: boolean; fragment?: string; tab?: string }>
 > = {
   ParentLinkedToParent: { icon: 'family_restroom', toParentPage: true },
   ParentLinkedToStudent: { icon: 'family_restroom', toParentPage: false },
@@ -328,6 +328,9 @@ const PARENT_NOTIFICATION_PRESENTATION: Readonly<
   SchoolChangedToParent: { icon: 'school', toParentPage: true },
   SchoolAssignedToParent: { icon: 'school', toParentPage: true },
   SchoolRemovedToParent: { icon: 'school', toParentPage: true },
+  // Issue #1091: çocuğun planı / denemesi bitiyor → o çocuğun "Plan" sekmesi.
+  ParentChildPlanEnding: { icon: 'event_upcoming', toParentPage: true, tab: 'plan' },
+  ParentChildPlanEndingTrial: { icon: 'event_upcoming', toParentPage: true, tab: 'plan' },
 };
 
 /** Issue #439: öğrenciye giden veli kararı bildirimleri → ikon (hepsi `/my-bookings`). */
@@ -362,6 +365,9 @@ function describeParentNotification(notification: Pick<AppNotification, 'type' |
     studentId === null
       ? { commands: [PARENT_HOME_URL] }
       : { commands: [PARENT_HOME_URL], queryParams: { [PARENT_CHILD_QUERY_PARAM]: studentId } };
+  if (entry.tab) {
+    route.queryParams = { ...route.queryParams, [PARENT_TAB_QUERY_PARAM]: entry.tab };
+  }
   if (entry.fragment) {
     route.fragment = entry.fragment;
   }

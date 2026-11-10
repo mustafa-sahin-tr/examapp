@@ -248,6 +248,7 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<StudentParentGraceReminderConsumer, StudentParentGraceReminderConsumerDefinition>(); // issue #441
     x.AddConsumer<SchoolChangedConsumer, SchoolChangedConsumerDefinition>(); // issue #542
     x.AddConsumer<OpenTextReviewedConsumer, OpenTextReviewedConsumerDefinition>(); // issue #614
+    x.AddConsumer<ParentChildPlanEndingConsumer, ParentChildPlanEndingConsumerDefinition>(); // issue #1091
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -298,6 +299,7 @@ builder.Services.AddMassTransit(x =>
             e.ConfigureConsumer<StudentParentGraceReminderConsumer>(context); // issue #441
             e.ConfigureConsumer<SchoolChangedConsumer>(context); // issue #542
             e.ConfigureConsumer<OpenTextReviewedConsumer>(context); // issue #614
+            e.ConfigureConsumer<ParentChildPlanEndingConsumer>(context); // issue #1091
         });
     });
 });

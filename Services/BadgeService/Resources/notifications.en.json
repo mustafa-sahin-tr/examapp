@@ -306,6 +306,14 @@
     "OpenTextReviewed": {
       "title": "Your answer was reviewed",
       "body": "{0}: your teacher reviewed your open-ended answer. Tap to read the feedback."
+    },
+    "ParentChildPlanEnding": {
+      "title": "Plan ending",
+      "body": "{0}'s plan ends on {1}. Renew it from the parent panel to avoid a break."
+    },
+    "ParentChildPlanEndingTrial": {
+      "title": "Trial ending",
+      "body": "{0}'s trial ends on {1}. Choose a plan from the parent panel so they can keep going."
     }
   }
 }

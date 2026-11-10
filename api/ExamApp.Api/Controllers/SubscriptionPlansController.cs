@@ -122,6 +122,7 @@ public class SubscriptionPlansController : BaseController
             ValidToUtc = plan.ValidToUtc,
             TrialAvailable = await IsTrialAvailableAsync(userId, ct),
             Locked = locked,
+            SchoolLicense = plan.FromSchoolLicense,
             Features = features,
         };
     }

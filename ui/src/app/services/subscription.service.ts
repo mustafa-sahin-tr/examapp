@@ -9,6 +9,8 @@ import {
   CurrentSubscriptionPlan,
   EntitlementFeature,
   PlanAssignment,
+  SaveSchoolLicense,
+  SchoolLicense,
   SchoolPlanAudience,
   SchoolSubscriptionMembers,
   SubscriptionPlan,
@@ -99,5 +101,22 @@ export class SubscriptionService {
 
   assignSchool(schoolId: number, assignment: PlanAssignment & { audience: SchoolPlanAudience }): Observable<{ assigned: number }> {
     return this.http.put<{ assigned: number }>(`${this.adminUrl}/schools/${schoolId}`, assignment);
+  }
+
+  // ---- Issue #1092: okul lisansı (özel anlaşma; okulun bütün üyeleri, sonradan katılanlar dahil) ----
+
+  private readonly licenseUrl = (schoolId: number) => `${this.adminUrl}/schools/${schoolId}/license`;
+
+  schoolLicense(schoolId: number): Observable<SchoolLicense> {
+    return this.http.get<SchoolLicense>(this.licenseUrl(schoolId));
+  }
+
+  /** Oluşturur ya da günceller (uzatma dahil). */
+  saveSchoolLicense(schoolId: number, license: SaveSchoolLicense): Observable<SchoolLicense> {
+    return this.http.put<SchoolLicense>(this.licenseUrl(schoolId), license);
+  }
+
+  endSchoolLicense(schoolId: number): Observable<SchoolLicense> {
+    return this.http.post<SchoolLicense>(`${this.licenseUrl(schoolId)}/end`, {});
   }
 }

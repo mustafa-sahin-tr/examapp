@@ -36,6 +36,7 @@ import {
   schoolListFilterFromParams,
   schoolListFilterToParams,
 } from './school-list-filter';
+import { SchoolLicenseDialogComponent, SchoolLicenseDialogData } from './school-license-dialog/school-license-dialog.component';
 import { provideTranslatedPaginatorIntl } from '../../../shared/utils/paginator-intl.util';
 import { PAGE_SIZE_OPTIONS } from '../../../shared/utils/paging.util';
 
@@ -385,6 +386,15 @@ export class SchoolManagerComponent implements OnInit {
   }
 
   // ---- edit ----
+
+  /** Issue #1092: okul lisansı (özel anlaşma; okulun bütün üyelerine plan). */
+  openLicense(sc: School): void {
+    this.dialog.open<SchoolLicenseDialogComponent, SchoolLicenseDialogData>(SchoolLicenseDialogComponent, {
+      data: { schoolId: sc.id, schoolName: sc.name },
+      width: '680px',
+      maxWidth: '95vw',
+    });
+  }
 
   startEdit(sc: School): void {
     this.editingId.set(sc.id);

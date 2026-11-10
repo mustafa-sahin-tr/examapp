@@ -206,7 +206,8 @@
       "teachers": "{{count}} öğretmen",
       "students": "{{count}} öğrenci",
       "pending": "{{count}} başvuru"
-    }
+    },
+    "license": "Lisans"
   },
   "subjectGrades": {
     "title": "Sınıfları Yönet",

@@ -206,7 +206,8 @@
       "teachers": "{{count}} teachers",
       "students": "{{count}} students",
       "pending": "{{count}} requests"
-    }
+    },
+    "license": "License"
   },
   "subjectGrades": {
     "title": "Manage Grades",

@@ -55,6 +55,12 @@ describe('MySubscriptionComponent (issue #1029)', () => {
     expect(el().querySelector('[data-testid="my-plan-upgrade"]')!.getAttribute('href')).toBe('/plans');
   });
 
+  it("notes a plan that comes from the school's license (issue #1092)", () => {
+    create(of({ ...TRIAL, planKey: 'student-pro', displayNameKey: 'subscription.plans.studentPro', schoolLicense: true }));
+
+    expect(text('my-plan-school-license')).toBe('Okulunun lisansıyla');
+  });
+
   it('shows a retry on load failure', () => {
     create(throwError(() => new Error('x')));
 

@@ -248,6 +248,8 @@ public class AppDbContext : DbContext
     public DbSet<SubscriptionPlanChangeAudit> SubscriptionPlanChangeAudits { get; set; } // issue #1086
     public DbSet<SubscriptionPlanAssignmentAudit> SubscriptionPlanAssignmentAudits { get; set; } // issue #1030
     public DbSet<EntitlementUsage> EntitlementUsages { get; set; }
+    public DbSet<SchoolLicense> SchoolLicenses { get; set; } // issue #1092
+    public DbSet<SchoolLicenseAudit> SchoolLicenseAudits { get; set; }
 
     // Issue #693: deneme sınavları.
     public DbSet<ExamTemplate> ExamTemplates { get; set; }
@@ -1464,6 +1466,19 @@ public class AppDbContext : DbContext
         {
             e.HasIndex(u => new { u.FeatureKey, u.ReferenceKey }).IsUnique();
             e.HasIndex(u => new { u.UserId, u.FeatureKey, u.UsedAtUtc });
+        });
+        // Issue #1092: okul başına tek lisans; planlar silinemez (Restrict).
+        modelBuilder.Entity<SchoolLicense>(e =>
+        {
+            e.HasOne(l => l.School).WithMany().HasForeignKey(l => l.SchoolId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(l => l.TeacherPlan).WithMany().HasForeignKey(l => l.TeacherPlanId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(l => l.StudentPlan).WithMany().HasForeignKey(l => l.StudentPlanId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(l => l.SchoolId).IsUnique();
+        });
+        modelBuilder.Entity<SchoolLicenseAudit>(e =>
+        {
+            e.HasIndex(a => new { a.SchoolId, a.OccurredAtUtc });
+            e.Property(a => a.Action).HasConversion<string>().HasMaxLength(16);
         });
         SubscriptionPlanSeed.Apply(modelBuilder);
 

@@ -21,6 +21,9 @@
       <div>
         @if (hasPlan()) {
           <b data-test="child-plan-name">{{ t('subscription.' + nameKey()) }}</b>
+          @if (p.schoolLicense) {
+            <span data-test="child-plan-school-license">{{ t('parent-dashboard.plan.schoolLicense') }}</span>
+          }
           @if (validTo()) {
             <span data-test="child-plan-until">
               {{ t(p.isTrial ? 'parent-dashboard.plan.trialUntil' : 'parent-dashboard.plan.until', { date: validTo() }) }}

@@ -50,6 +50,13 @@ describe('ParentChildPlanComponent (issue #1091)', () => {
     expect(q(el, 'child-plan-choose')!.textContent).toContain('Planı değiştir');
   });
 
+  it("notes a plan that comes from the child's school license (issue #1092)", () => {
+    expect(q(create(PLAN), 'child-plan-school-license')).toBeNull();
+    TestBed.resetTestingModule();
+    const el = create({ ...PLAN, planKey: 'student-pro', displayNameKey: 'subscription.plans.studentPro', schoolLicense: true });
+    expect(q(el, 'child-plan-school-license')!.textContent).toContain('Okulunun lisansıyla');
+  });
+
   it('marks a trial that ends within three days', () => {
     const el = create({ ...PLAN, planKey: 'trial', displayNameKey: 'subscription.plans.trial', isTrial: true },
       new Date('2026-12-08T09:00:00Z'));

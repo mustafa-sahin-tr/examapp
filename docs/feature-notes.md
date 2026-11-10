@@ -376,6 +376,17 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   işaretlenmez (sonradan bağlanan veli alır); ardından başlayan bir atama varsa (önceden yenilenmiş) hatırlatılmaz. BadgeService
   `ParentChildPlanEndingConsumer` velinin bildirimini yazar ("Plan bitiyor" / "Deneme süresi bitiyor", tarih İstanbul günü);
   bildirim `/parent?child=…&tab=plan` açar.
+- **Okul lisansı (#1092):** özel anlaşmayla okulun bütün üyelerine plan: `SchoolLicenses` (okul başına tek satır; öğretmen ve öğrenci
+  planı, varsayılan iki kitlenin Pro'su; başlangıç / hariç bitiş; anlaşma notu ≤ 200). Kimseye atama yazılmaz: plan çözümü
+  (`EntitlementService.ResolvePlanAsync`, admin listesi `CurrentPlansAsync`, ortak kural `SchoolLicensePlans`) kullanıcının okuluna
+  bakar (`UserSchoolResolver` kuralı: canlı öğretmen satırı → `Teachers.SchoolId` ve öğretmen planı; yoksa öğrencinin DOĞRULANMIŞ okulu
+  ve öğrenci planı; belirsiz → lisans yok). Okula sonradan katılan (üyeliği onaylanınca) lisansı alır, ayrılan / okulsuz yapılan düşer.
+  Sıra: kişisel atama lisans planından üst kademedeyse (`SubscriptionPlans.SortOrder` büyük) kişisel, değilse lisans; deneme ve Free
+  her ücretli plandan aşağıdadır. Lisans bitince üye kendi planına, yoksa Free'ye / kilide (#1090) döner; pasif plan lisans vermez.
+  `/me` ve veli `children/{id}/plan` `schoolLicense` döner ("Okulunun lisansıyla"). #1091 hatırlatması lisans atamanın bitişinden sonra
+  da sürüyorsa yazılmaz (atama yine işaretlenir). Admin: `/admin/schools` satır menüsü "Lisans" → `SchoolLicenseDialogComponent`;
+  `GET|PUT /api/exam/admin/subscription-plans/schools/{id}/license` (oluştur / uzat / değiştir), `POST …/license/end` (şimdi bitirir);
+  her değişiklik `SchoolLicenseAudits` (Created / Updated / Ended, aktör, planlar, tarihler, not), diyalogda son 20 kayıt.
 - **Plan seçimi (#1028):** kayıt sihirbazının (`ui` `/register`) öğrenci / öğretmen kaydından sonra 3. adımı plan kartlarıdır
   (`PlanPickerComponent`, scope `subscription`); veli adımı atlar. "Ücretsiz devam et" API çağırmaz (Free). "Denemeyi başlat"
   → `POST /api/exam/subscription-plans/me/trial`: hesap başına bir kez (silinmiş atamalar dahil; ikincisi 409

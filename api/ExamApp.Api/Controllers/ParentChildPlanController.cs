@@ -101,6 +101,7 @@ public class ParentChildPlanController : BaseController
             DisplayNameKey = current?.DisplayNameKey,
             ValidToUtc = resolved.ValidToUtc,
             IsTrial = current?.IsTrial ?? false,
+            SchoolLicense = resolved.FromSchoolLicense,
             Plans = await SubscriptionPlanCatalog.ListAsync(_db,
                 p => p.IsActive && StudentAudiences.Contains(p.Audience) && p.MonthlyPrice > 0 && p.TrialDays == null, ct),
             Features = EntitlementFeatures.For(StudentAudiences.ToHashSet()).Select(EntitlementFeatureDto.From).ToList(),

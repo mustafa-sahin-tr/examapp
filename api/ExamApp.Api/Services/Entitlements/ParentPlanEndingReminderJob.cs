@@ -45,7 +45,8 @@ public interface IParentPlanEndingReminderJob
 /// <list type="bullet">
 /// <item>Aday: silinmemiş, bitişi gelecekte ve pencere içinde, henüz hatırlatılmamış atama; kullanıcı silinmemiş bir öğrenci ve en az
 /// bir Active velisi var (velisi olmayan öğrenci işaretlenmez: sonradan bağlanan veli hatırlatmayı yine alır). Ardından başlayan
-/// bir atama (önceden yenilenmiş plan) varsa hatırlatılmaz. Free hiç bitmez.</item>
+/// bir atama (önceden yenilenmiş plan) varsa hatırlatılmaz. Free hiç bitmez. Okul lisansı (#1092) atamadan sonra da sürüyorsa
+/// hatırlatılmaz, yalnız işaretlenir.</item>
 /// <item>Atama başına bir kez: <see cref="UserSubscriptionPlan.EndingReminderSentAtUtc"/> event'lerle AYNI transaction'da yazılır;
 /// Active veli listesi transaction içinde <c>FOR SHARE</c> ile yeniden okunur (koparma yarışı, #423 ile aynı).</item>
 /// </list>
@@ -105,6 +106,13 @@ public sealed class ParentPlanEndingReminderJob : IParentPlanEndingReminderJob
             .Select(l => new { l.StudentId, l.ParentId, ParentUserId = l.Parent.UserId })
             .ToListAsync(ct);
         var parentsByStudent = links.ToLookup(l => l.StudentId);
+        // Issue #1092: okul lisansı atamanın bitişinden sonra da sürüyorsa çocuk planını kaybetmez: hatırlatma yok, atama işaretlenir
+        // (işaretsiz kalsa her tur partinin başını doldururdu).
+        var licenses = await SchoolLicensePlans.ForUsersAsync(_context, candidates.Select(c => c.StudentUserId).ToList(), now, ct);
+        var coveredByLicense = candidates
+            .Where(c => licenses.TryGetValue(c.StudentUserId, out var l) && (l.Plan.ValidToUtc is null || l.Plan.ValidToUtc >= c.EndsAt))
+            .Select(c => c.AssignmentId)
+            .ToHashSet();
         var users = await ParentNotificationSupport.LookupAsync(
             _authApi, links.Select(l => l.ParentUserId).Concat(candidates.Select(c => c.StudentUserId)), _logger, ct);
 
@@ -127,7 +135,9 @@ public sealed class ParentPlanEndingReminderJob : IParentPlanEndingReminderJob
                     await using var tx = await _context.Database.BeginTransactionAsync(ct);
 
                     var stillActive = await ParentNotificationSupport.ActiveParentIdsLockedAsync(_context, c.StudentId, ct);
-                    var recipients = parentsByStudent[c.StudentId].Where(p => stillActive.Contains(p.ParentId)).ToList();
+                    var recipients = coveredByLicense.Contains(c.AssignmentId)
+                        ? []
+                        : parentsByStudent[c.StudentId].Where(p => stillActive.Contains(p.ParentId)).ToList();
 
                     // Koşullu işaret: eşzamanlı ikinci örnek 0 satır günceller ve event yazmaz.
                     var marked = await _context.UserSubscriptionPlans

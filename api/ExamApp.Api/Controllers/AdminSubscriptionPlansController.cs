@@ -40,7 +40,7 @@ public class AdminSubscriptionPlansController : BaseController
 
     [HttpGet]
     public async Task<ActionResult<List<SubscriptionPlanDto>>> List(CancellationToken ct) =>
-        await SubscriptionPlanCatalog.ListAsync(_db, _ => true, ct);
+        await SubscriptionPlanCatalog.ListAsync(_db, _ => true, ct, includePrices: true);
 
     // PUT {planKey} — #1086: ad, fiyat, deneme süresi, etkinlik ve bütün sınırlar; listede olmayan özellik planda yoktur.
     [HttpPut("{planKey}")]
@@ -53,7 +53,7 @@ public class AdminSubscriptionPlansController : BaseController
             return NotFound(new { code = "subscription.unknownPlan" });
         if (error != AdminPlanUpdateError.None)
             return BadRequest(new { code = PlanUpdateErrorCodes[error] });
-        return (await SubscriptionPlanCatalog.ListAsync(_db, p => p.Key == planKey, ct)).Single();
+        return (await SubscriptionPlanCatalog.ListAsync(_db, p => p.Key == planKey, ct, includePrices: true)).Single();
     }
 
     private static readonly Dictionary<AdminPlanUpdateError, string> PlanUpdateErrorCodes = new()
@@ -65,6 +65,7 @@ public class AdminSubscriptionPlansController : BaseController
         [AdminPlanUpdateError.AudienceMismatch] = "subscription.featureAudienceMismatch",
         [AdminPlanUpdateError.InvalidLimit] = "subscription.invalidLimit",
         [AdminPlanUpdateError.PlanRequired] = "subscription.planRequired",
+        [AdminPlanUpdateError.InvalidPriceRow] = "subscription.invalidPriceRow",
     };
 
     // GET users?q=&role= — ad ya da e-postada geçen metin (en az 2 karakter), rol Student | Teacher | Parent; en fazla 20 sonuç.

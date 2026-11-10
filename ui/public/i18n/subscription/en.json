@@ -63,7 +63,25 @@
     "demoTitle": "This is a demo checkout",
     "demoBody": "No card details are asked and nothing is charged. Your plan starts right away.",
     "validity": "The plan is valid for one month from today.",
-    "complete": "Complete payment (demo)"
+    "complete": "Complete payment (demo)",
+    "band": "Grade {{ grade }} · {{ band }} prices",
+    "scope": "Scope",
+    "subject": "Subject",
+    "duration": "Duration",
+    "perMonthEquivalent": "({{ price }} a month)",
+    "siblingDiscount": "Sibling discount: {{ percent }}% off.",
+    "total": {
+      "Monthly": "/ month",
+      "SixMonths": "for 6 months",
+      "TwelveMonths": "for 12 months",
+      "Summer": "for the summer"
+    },
+    "validityBy": {
+      "Monthly": "The plan is valid for one month from today.",
+      "SixMonths": "The plan is valid for 6 months from today.",
+      "TwelveMonths": "The plan is valid for 12 months from today.",
+      "Summer": "The plan is valid from today until September 1."
+    }
   },
   "errors": {
     "load": "Could not load plans.",
@@ -206,7 +224,17 @@
         "featureAudienceMismatch": "This feature does not belong to the plan's audience.",
         "invalidLimit": "The limit must be a whole number of 0 or more.",
         "planRequired": "The free and trial plans cannot be turned off.",
-        "unknownPlan": "Plan not found."
+        "unknownPlan": "Plan not found.",
+        "invalidPriceRow": "The price table has an invalid row."
+      },
+      "prices": {
+        "title": "Grade band prices",
+        "hint": "An empty cell means the option is not sold. In a grade row an empty cell uses the band price. 6-month, 12-month and summer prices are totals for the whole period.",
+        "band": "Grade band",
+        "actions": "Actions",
+        "grade": "Grade {{ grade }}",
+        "addGrade": "Add a grade-specific price",
+        "removeGrade": "Remove the grade {{ grade }} row"
       }
     },
     "license": {
@@ -273,5 +301,22 @@
   "parentChooses": "Your parent chooses this plan",
   "childTitle": "Your child's plan",
   "hintChild": "The plan you choose is valid on your child's account for one month.",
-  "hintParentPays": "You can look at the plans together with your parent."
+  "hintParentPays": "You can look at the plans together with your parent.",
+  "bands": {
+    "Primary": "Primary school",
+    "Middle": "Middle school",
+    "Lgs": "LGS",
+    "HighSchool": "High school",
+    "Yks": "YKS"
+  },
+  "scopes": {
+    "AllSubjects": "All subjects",
+    "SingleSubject": "Single subject"
+  },
+  "durations": {
+    "Monthly": "Monthly",
+    "SixMonths": "6 months",
+    "TwelveMonths": "12 months",
+    "Summer": "Summer (June–August)"
+  }
 }

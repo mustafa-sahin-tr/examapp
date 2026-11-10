@@ -26,8 +26,9 @@ public static class SubscriptionPlanCatalog
         return audiences;
     }
 
+    /// <param name="includePrices">#1108: öğrenci planlarının fiyat tablosu (admin düzenleyicisi için).</param>
     public static async Task<List<SubscriptionPlanDto>> ListAsync(AppDbContext db, Expression<Func<SubscriptionPlan, bool>> filter,
-        CancellationToken ct)
+        CancellationToken ct, bool includePrices = false)
     {
         var plans = await db.SubscriptionPlans.AsNoTracking()
             .Where(filter)
@@ -53,6 +54,24 @@ public static class SubscriptionPlanCatalog
         {
             p.Plan.Audience = p.Audience.ToString();
             p.Plan.MonthlyLimits = p.Limits.ToDictionary(l => l.FeatureKey, l => l.MonthlyLimit);
+        }
+
+        if (includePrices)
+        {
+            var keys = plans.Select(p => p.Plan.Key).ToList();
+            var prices = (await db.SubscriptionPlanPrices.AsNoTracking()
+                    .Where(p => keys.Contains(p.Plan.Key))
+                    .Select(p => new { p.Plan.Key, p.Band, p.GradeLevel, p.Scope, p.Duration, p.Price })
+                    .ToListAsync(ct))
+                .OrderBy(p => p.Band).ThenBy(p => p.GradeLevel).ThenBy(p => p.Scope).ThenBy(p => p.Duration)
+                .ToLookup(p => p.Key);
+            foreach (var p in plans.Where(p => p.Audience == SubscriptionPlanAudience.Student))
+            {
+                p.Plan.Prices = prices[p.Plan.Key].Select(r => new SubscriptionPlanPriceRowDto
+                {
+                    Band = r.Band.ToString(), GradeLevel = r.GradeLevel, Scope = r.Scope.ToString(), Duration = r.Duration.ToString(), Price = r.Price,
+                }).ToList();
+            }
         }
         return plans.Select(p => p.Plan).ToList();
     }

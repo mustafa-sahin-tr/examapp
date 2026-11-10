@@ -80,7 +80,10 @@ public class SubscriptionPlansController : BaseController
             return StatusCode(StatusCodes.Status403Forbidden, new { code = SubscriptionPlanErrorCodes.ParentPays });
 
         var user = await GetAuthenticatedUserAsync(ct);
-        var error = await _entitlements.CheckoutAsync(user.Id, request.PlanKey, SubscriptionPlanCatalog.AudiencesFor(User), ct: ct);
+        if (StudentPlanPricing.PurchaseOf(request) is not { } purchase)
+            return SubscriptionPlanErrorCodes.ToResult(this, SelfServicePlanError.InvalidOption);
+        var error = await _entitlements.CheckoutAsync(user.Id, request.PlanKey, SubscriptionPlanCatalog.AudiencesFor(User),
+            purchase: purchase, ct: ct);
         return error == SelfServicePlanError.None ? await CurrentAsync(user.Id, ct) : PlanError(error);
     }
 

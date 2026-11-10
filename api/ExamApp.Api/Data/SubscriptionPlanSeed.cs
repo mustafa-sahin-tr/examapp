@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using ExamApp.Api.Services.Entitlements;
 using Microsoft.EntityFrameworkCore;
@@ -128,6 +129,59 @@ public static class SubscriptionPlanSeed
     {
         modelBuilder.Entity<SubscriptionPlan>().HasData(Plans());
         modelBuilder.Entity<SubscriptionPlanFeatureLimit>().HasData(Limits());
+        modelBuilder.Entity<SubscriptionPlanPrice>().HasData(Prices());
+    }
+
+    // Issue #1108 (epic #1118): öğrenci planının aylık, bütün dersler fiyatı band başına (sahibin onayladığı yer tutucular). Diğer
+    // seçenekler bundan türetilir: tek ders %60 (yalnız Basic / Essential), 6 ay 5.4×, 12 ay 9×, yaz 0.5×; tam liraya yuvarlanır.
+    private static readonly (StudentGradeBand Band, decimal Basic, decimal Essential, decimal Pro)[] BandMonthlyPrices =
+    [
+        (StudentGradeBand.Primary, 149m, 249m, 399m),
+        (StudentGradeBand.Middle, 199m, 349m, 549m),
+        (StudentGradeBand.Lgs, 249m, 449m, 699m),
+        (StudentGradeBand.HighSchool, 249m, 449m, 699m),
+        (StudentGradeBand.Yks, 299m, 549m, 899m),
+    ];
+
+    private static readonly (PlanDuration Duration, decimal Factor)[] DurationFactors =
+    [
+        (PlanDuration.Monthly, 1m),
+        (PlanDuration.SixMonths, 5.4m),
+        (PlanDuration.TwelveMonths, 9m),
+        (PlanDuration.Summer, 0.5m),
+    ];
+
+    public const decimal SingleSubjectFactor = 0.6m;
+
+    /// <inheritdoc cref="Plans"/>
+    public static SubscriptionPlanPrice[] Prices()
+    {
+        var rows = new List<SubscriptionPlanPrice>();
+        foreach (var (band, basic, essential, pro) in BandMonthlyPrices)
+        {
+            foreach (var (planId, monthly, single) in new[] { (StudentBasicPlanId, basic, true), (StudentEssentialPlanId, essential, true), (StudentProPlanId, pro, false) })
+            {
+                foreach (var (scope, scopeFactor) in single
+                             ? new[] { (PlanScope.AllSubjects, 1m), (PlanScope.SingleSubject, SingleSubjectFactor) }
+                             : new[] { (PlanScope.AllSubjects, 1m) })
+                {
+                    foreach (var (duration, factor) in DurationFactors)
+                    {
+                        rows.Add(new SubscriptionPlanPrice
+                        {
+                            Id = rows.Count + 1,
+                            PlanId = planId,
+                            Band = band,
+                            Scope = scope,
+                            Duration = duration,
+                            Price = decimal.Round(monthly * scopeFactor * factor, 0, MidpointRounding.AwayFromZero),
+                            CreateTime = SeedTime,
+                        });
+                    }
+                }
+            }
+        }
+        return rows.ToArray();
     }
 
     /// <summary>Katalog satırları (seed). Entegrasyon testleri veritabanını boşalttıktan sonra kataloğu bunlarla geri yükler.</summary>

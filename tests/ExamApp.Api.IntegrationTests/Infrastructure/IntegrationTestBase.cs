@@ -46,6 +46,7 @@ public abstract class IntegrationTestBase : IAsyncLifetime
             db.SubscriptionPlans.AddRange(SubscriptionPlanSeed.Plans());
             await db.SaveChangesAsync();
             db.SubscriptionPlanFeatureLimits.AddRange(SubscriptionPlanSeed.Limits());
+            db.SubscriptionPlanPrices.AddRange(SubscriptionPlanSeed.Prices());
             await db.SaveChangesAsync();
         });
     }

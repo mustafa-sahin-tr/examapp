@@ -63,7 +63,25 @@
     "demoTitle": "Bu bir demo ödeme ekranıdır",
     "demoBody": "Kart bilgisi istenmez ve ücret alınmaz. Planın hemen etkinleşir.",
     "validity": "Plan bugünden itibaren bir ay geçerlidir.",
-    "complete": "Ödemeyi tamamla (demo)"
+    "complete": "Ödemeyi tamamla (demo)",
+    "band": "{{ grade }}. sınıf · {{ band }} fiyatları",
+    "scope": "Kapsam",
+    "subject": "Ders",
+    "duration": "Süre",
+    "perMonthEquivalent": "(aylık {{ price }})",
+    "siblingDiscount": "Kardeş indirimi: %{{ percent }} düşüldü.",
+    "total": {
+      "Monthly": "/ ay",
+      "SixMonths": "6 ay için",
+      "TwelveMonths": "12 ay için",
+      "Summer": "yaz dönemi için"
+    },
+    "validityBy": {
+      "Monthly": "Plan bugünden itibaren bir ay geçerlidir.",
+      "SixMonths": "Plan bugünden itibaren 6 ay geçerlidir.",
+      "TwelveMonths": "Plan bugünden itibaren 12 ay geçerlidir.",
+      "Summer": "Plan bugünden 1 Eylül'e kadar geçerlidir."
+    }
   },
   "errors": {
     "load": "Planlar yüklenemedi.",
@@ -206,7 +224,17 @@
         "featureAudienceMismatch": "Bu özellik planın kitlesine ait değil.",
         "invalidLimit": "Sınır 0 ya da daha büyük bir tam sayı olmalı.",
         "planRequired": "Ücretsiz ve deneme planları kapatılamaz.",
-        "unknownPlan": "Plan bulunamadı."
+        "unknownPlan": "Plan bulunamadı.",
+        "invalidPriceRow": "Fiyat tablosunda geçersiz bir satır var."
+      },
+      "prices": {
+        "title": "Sınıf bandı fiyatları",
+        "hint": "Boş hücre o seçeneğin satılmadığı anlamına gelir. Sınıfa özel satırda boş hücre bandın fiyatını kullanır. 6 ve 12 ay, yaz fiyatı süre boyunca toplamdır.",
+        "band": "Sınıf bandı",
+        "actions": "İşlemler",
+        "grade": "{{ grade }}. sınıf",
+        "addGrade": "Sınıfa özel fiyat ekle",
+        "removeGrade": "{{ grade }}. sınıf satırını kaldır"
       }
     },
     "license": {
@@ -273,5 +301,22 @@
   "parentChooses": "Bu planı velin seçer",
   "childTitle": "Çocuğun planı",
   "hintChild": "Seçtiğin plan çocuğunun hesabında bir ay geçerli olur.",
-  "hintParentPays": "Planları velinle birlikte inceleyebilirsin."
+  "hintParentPays": "Planları velinle birlikte inceleyebilirsin.",
+  "bands": {
+    "Primary": "İlkokul",
+    "Middle": "Ortaokul",
+    "Lgs": "LGS",
+    "HighSchool": "Lise",
+    "Yks": "YKS"
+  },
+  "scopes": {
+    "AllSubjects": "Bütün dersler",
+    "SingleSubject": "Tek ders"
+  },
+  "durations": {
+    "Monthly": "Aylık",
+    "SixMonths": "6 ay",
+    "TwelveMonths": "12 ay",
+    "Summer": "Yaz (Haziran–Ağustos)"
+  }
 }

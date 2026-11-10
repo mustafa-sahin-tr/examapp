@@ -65,6 +65,73 @@
         </fieldset>
       }
 
+      @if (priceGrid(); as grid) {
+        <!-- Issue #1108: sınıf bandı × kapsam × süre; boş hücre satılmaz, sınıf satırında boş hücre band fiyatını kullanır. -->
+        <fieldset class="plan-editor__group plan-editor__prices" data-testid="plan-editor-prices">
+          <legend>{{ t('admin.planEditor.prices.title') }}</legend>
+          <p class="plan-editor__note">{{ t('admin.planEditor.prices.hint') }}</p>
+          <div class="plan-editor__table-wrap">
+            <table class="plan-editor__table">
+              <thead>
+                <tr>
+                  <th rowspan="2">{{ t('admin.planEditor.prices.band') }}</th>
+                  @for (scope of scopes; track scope) {
+                    <th [attr.colspan]="durations.length">{{ t('scopes.' + scope) }}</th>
+                  }
+                  <th rowspan="2"><span class="cdk-visually-hidden">{{ t('admin.planEditor.prices.actions') }}</span></th>
+                </tr>
+                <tr>
+                  @for (column of priceColumns; track column.key) {
+                    <th>{{ t('durations.' + column.duration) }}</th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of grid; track row.band + '-' + row.gradeLevel) {
+                  <tr [class.plan-editor__grade-row]="row.gradeLevel != null"
+                    [attr.data-testid]="'price-row-' + row.band + (row.gradeLevel != null ? '-' + row.gradeLevel : '')">
+                    <th scope="row">
+                      {{ t('bands.' + row.band) }}
+                      @if (row.gradeLevel != null) {
+                        <small>{{ t('admin.planEditor.prices.grade', { grade: row.gradeLevel }) }}</small>
+                      }
+                    </th>
+                    @for (column of priceColumns; track column.key) {
+                      <td>
+                        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="plan-editor__cell">
+                          <input matInput type="number" min="0" step="0.01" [name]="'price-' + row.band + row.gradeLevel + column.key"
+                            [ngModel]="row.cells[column.key]" (ngModelChange)="setPrice(row, column, $event)"
+                            [attr.aria-label]="t('bands.' + row.band) + ' ' + (row.gradeLevel ?? '') + ' ' + t('scopes.' + column.scope) + ' ' + t('durations.' + column.duration)"
+                            [attr.data-testid]="'price-' + row.band + (row.gradeLevel != null ? '-' + row.gradeLevel : '') + '-' + column.key" />
+                        </mat-form-field>
+                      </td>
+                    }
+                    <td>
+                      @if (row.gradeLevel != null) {
+                        <button mat-icon-button type="button" (click)="removeGradeRow(row)"
+                          [attr.aria-label]="t('admin.planEditor.prices.removeGrade', { grade: row.gradeLevel })">
+                          <mat-icon>delete</mat-icon>
+                        </button>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          @if (freeGrades().length > 0) {
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="plan-editor__add-grade">
+              <mat-label>{{ t('admin.planEditor.prices.addGrade') }}</mat-label>
+              <mat-select [value]="null" (valueChange)="addGradeRow($event)" data-testid="plan-editor-add-grade">
+                @for (grade of freeGrades(); track grade) {
+                  <mat-option [value]="grade">{{ t('admin.planEditor.prices.grade', { grade }) }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          }
+        </fieldset>
+      }
+
       @if (error(); as key) {
         <p class="ms-error" role="alert" data-testid="plan-editor-error">{{ t(key) }}</p>
       }

@@ -16,6 +16,59 @@ export interface SubscriptionPlan {
   isActive: boolean;
   /** Özellik anahtarı → aylık sınır (null = sınırsız; anahtar yoksa 0). */
   monthlyLimits: Record<string, number | null>;
+  /** Issue #1108: öğrenci planının fiyat tablosu (yalnız admin kataloğunda). */
+  prices?: PlanPriceRow[] | null;
+}
+
+/** Issue #1108: sınıf bandı, kapsam ve süre (API'de enum adları). */
+export type StudentGradeBand = 'Primary' | 'Middle' | 'Lgs' | 'HighSchool' | 'Yks';
+export type PlanScope = 'AllSubjects' | 'SingleSubject';
+export type PlanDuration = 'Monthly' | 'SixMonths' | 'TwelveMonths' | 'Summer';
+
+export const GRADE_BANDS: readonly StudentGradeBand[] = ['Primary', 'Middle', 'Lgs', 'HighSchool', 'Yks'];
+export const PLAN_SCOPES: readonly PlanScope[] = ['AllSubjects', 'SingleSubject'];
+export const PLAN_DURATIONS: readonly PlanDuration[] = ['Monthly', 'SixMonths', 'TwelveMonths', 'Summer'];
+
+/** Bandın sınıfları (admin fiyat tablosunda sınıfa özel satır için). */
+export const GRADE_BAND_LEVELS: Record<StudentGradeBand, readonly number[]> = {
+  Primary: [1, 2, 3, 4],
+  Middle: [5, 6, 7],
+  Lgs: [8],
+  HighSchool: [9, 10, 11],
+  Yks: [12],
+};
+
+/** Issue #1108: admin fiyat tablosunun satırı; `gradeLevel` doluysa yalnız o sınıfın fiyatı. */
+export interface PlanPriceRow {
+  band: StudentGradeBand;
+  gradeLevel: number | null;
+  scope: PlanScope;
+  duration: PlanDuration;
+  price: number;
+}
+
+/** Issue #1108: velinin gördüğü fiyat (süre boyunca toplam, indirimsiz). */
+export interface StudentPlanPrice {
+  planKey: string;
+  scope: PlanScope;
+  duration: PlanDuration;
+  amount: number;
+}
+
+/** Issue #1108: çocuğun bandı, tek ders için dersleri, fiyatları ve kardeş indirimi; `band` null = sınıfı yok (aylık, bütün dersler). */
+export interface StudentPlanOffer {
+  band: StudentGradeBand | null;
+  gradeLevel: number | null;
+  prices: StudentPlanPrice[];
+  subjects: { id: number; name: string }[];
+  summerOnSale: boolean;
+  siblingDiscountPercent: number;
+}
+
+/** Issue #1108: satın alınan seçenek; boşsa aylık, bütün dersler. */
+export interface PlanPurchase {
+  subjectId: number | null;
+  duration: PlanDuration;
 }
 
 /** Issue #1093: özellik listesinden bir satır (API `GET subscription-plans/features`, sıra kartlardaki sıradır). */
@@ -60,6 +113,8 @@ export interface SubscriptionPlanUpdate {
   trialDays: number | null;
   isActive: boolean;
   monthlyLimits: Record<string, number | null>;
+  /** Issue #1108: öğrenci planının bütün fiyat tablosu; verilmezse değişmez. */
+  prices?: PlanPriceRow[];
 }
 
 /** Issue #1091: veli panelinde çocuğun planı ve velinin alabileceği öğrenci planları. */
@@ -73,6 +128,11 @@ export interface ChildSubscriptionPlan {
   plans: SubscriptionPlan[];
   /** Öğrenci özellikleri (kart satırları). */
   features: EntitlementFeature[];
+  /** Issue #1108: band, kapsam, süre ve fiyat seçenekleri. */
+  offer?: StudentPlanOffer | null;
+  /** Issue #1108: şu anki planın tek dersi; bütün derslerde null. */
+  scopeSubjectId?: number | null;
+  scopeSubjectName?: string | null;
 }
 
 /** Issue #1091: öğrenci kendine plan alamaz (403); planı velisi alır. */

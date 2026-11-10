@@ -197,6 +197,9 @@ public enum SelfServicePlanError
     /// <summary>Plan çağıranın rolüne açık değil ya da bu yolla alınamaz (ör. Free / deneme ödeme ile alınmaz).</summary>
     NotAvailable,
     TrialAlreadyUsed,
+
+    /// <summary>Issue #1108: seçilen kapsam / süre bu plan ve sınıf için satılmıyor ya da ders öğrencinin sınıfında yok.</summary>
+    InvalidOption,
 }
 
 /// <summary>
@@ -237,9 +240,17 @@ public interface IEntitlementService
         CancellationToken ct = default);
 
     /// <summary>
-    /// #1028 sahte ödeme: ücretli planı (fiyatı > 0, deneme değil) şimdiden bir ay geçerli atar. Gerçek ödeme yoktur.
+    /// #1028 sahte ödeme: ücretli planı (fiyatı > 0, deneme değil) şimdiden başlatır. Gerçek ödeme yoktur.
     /// #1091: <paramref name="purchasedByUserId"/> ödeyen (veli çocuğuna alır); boşsa kullanıcının kendisi. Kayıtta aktör odur.
+    /// #1108: <paramref name="purchase"/> kapsam (tek ders) ve süre; boşsa aylık, bütün dersler. Süre bitişi belirler, fiyat
+    /// <see cref="StudentPlanPricing"/>'ten gelir ve atamaya yazılır; satılmayan seçenek <see cref="SelfServicePlanError.InvalidOption"/>.
     /// </summary>
     Task<SelfServicePlanError> CheckoutAsync(int userId, string planKey, IReadOnlySet<SubscriptionPlanAudience> audiences,
-        int? purchasedByUserId = null, CancellationToken ct = default);
+        int? purchasedByUserId = null, PlanPurchase? purchase = null, CancellationToken ct = default);
 }
+
+/// <summary>Issue #1108: satın alınan seçenek. <see cref="SubjectId"/> null = bütün dersler.</summary>
+public sealed record PlanPurchase(int? SubjectId = null, PlanDuration Duration = PlanDuration.Monthly);
+
+/// <summary>Issue #1108: atamaya yazılan satın alma koşulları (indirim sonrası fiyat).</summary>
+public sealed record PurchaseTerms(int? SubjectId, PlanDuration Duration, decimal Price, int DiscountPercent);

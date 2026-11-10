@@ -22,16 +22,69 @@
         </div>
       </div>
       <h2>{{ t(nameKey(plan)) }}</h2>
-      <p class="price">
-        {{ plan.monthlyPrice | currency: plan.currency : 'symbol' : '1.0-0' }} <span>{{ t('perMonth') }}</span>
-      </p>
-      <p class="hint">{{ t('checkout.validity') }}</p>
+      @if (hasOptions()) {
+        <!-- Issue #1108: kapsam, ders ve süre; fiyatlar çocuğun sınıf bandından. -->
+        @if (offer(); as o) {
+          <p class="hint" data-testid="checkout-band">{{ t('checkout.band', { grade: o.gradeLevel, band: t('bands.' + o.band) }) }}</p>
+        }
+        @if (singleSubjectOnSale()) {
+          <mat-radio-group class="options" [value]="scope()" (change)="setScope($event.value)" [attr.aria-label]="t('checkout.scope')">
+            <mat-radio-button value="AllSubjects" data-testid="scope-all">{{ t('scopes.AllSubjects') }}</mat-radio-button>
+            <mat-radio-button value="SingleSubject" data-testid="scope-single">{{ t('scopes.SingleSubject') }}</mat-radio-button>
+          </mat-radio-group>
+          @if (scope() === 'SingleSubject') {
+            <mat-form-field appearance="outline" class="subject-field">
+              <mat-label>{{ t('checkout.subject') }}</mat-label>
+              <mat-select [value]="subjectId()" (valueChange)="subjectId.set($event)" data-testid="checkout-subject">
+                @for (subject of offer()?.subjects ?? []; track subject.id) {
+                  <mat-option [value]="subject.id">{{ subject.name }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          }
+        }
+        <mat-radio-group class="options options--durations" [value]="duration()" (change)="duration.set($event.value)"
+          [attr.aria-label]="t('checkout.duration')">
+          @for (option of durationOptions(); track option.duration) {
+            <mat-radio-button [value]="option.duration" [attr.data-testid]="'duration-' + option.duration">
+              <span class="option-label">{{ t('durations.' + option.duration) }}</span>
+              <span class="option-price">
+                @if (discountPercent() > 0) {
+                  <s>{{ option.price | currency: plan.currency : 'symbol' : '1.0-2' }}</s>
+                }
+                {{ option.finalPrice | currency: plan.currency : 'symbol' : '1.0-2' }}
+                @if (perMonth(option); as monthly) {
+                  <small>{{ t('checkout.perMonthEquivalent', { price: (monthly | currency: plan.currency : 'symbol' : '1.0-0') }) }}</small>
+                }
+              </span>
+            </mat-radio-button>
+          }
+        </mat-radio-group>
+        @if (discountPercent() > 0) {
+          <p class="discount" data-testid="sibling-discount">
+            <mat-icon aria-hidden="true">family_restroom</mat-icon>
+            {{ t('checkout.siblingDiscount', { percent: discountPercent() }) }}
+          </p>
+        }
+        @if (selectedOption(); as option) {
+          <p class="price" data-testid="checkout-total">
+            {{ option.finalPrice | currency: plan.currency : 'symbol' : '1.0-2' }}
+            <span>{{ t('checkout.total.' + option.duration) }}</span>
+          </p>
+        }
+        <p class="hint">{{ t('checkout.validityBy.' + duration()) }}</p>
+      } @else {
+        <p class="price">
+          {{ plan.monthlyPrice | currency: plan.currency : 'symbol' : '1.0-0' }} <span>{{ t('perMonth') }}</span>
+        </p>
+        <p class="hint">{{ t('checkout.validity') }}</p>
+      }
       @if (actionError(); as error) {
         <p class="error" role="alert">{{ t(error) }}</p>
       }
       <div class="actions">
         <button mat-button type="button" (click)="closeCheckout()" [disabled]="busy()">{{ t('actions.back') }}</button>
-        <button mat-raised-button color="primary" type="button" data-testid="complete-checkout" (click)="completeCheckout()" [disabled]="busy()">
+        <button mat-raised-button color="primary" type="button" data-testid="complete-checkout" (click)="completeCheckout()" [disabled]="busy() || !canComplete()">
           {{ t('checkout.complete') }}
         </button>
       </div>

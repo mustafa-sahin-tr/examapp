@@ -379,6 +379,19 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   işaretlenmez (sonradan bağlanan veli alır); ardından başlayan bir atama varsa (önceden yenilenmiş) hatırlatılmaz. BadgeService
   `ParentChildPlanEndingConsumer` velinin bildirimini yazar ("Plan bitiyor" / "Deneme süresi bitiyor", tarih İstanbul günü);
   bildirim `/parent?child=…&tab=plan` açar.
+- **Sınıf bandı, kapsam, süre (#1108, epic #1118):** öğrenci planının fiyatı `SubscriptionPlanPrices`'tan (plan, band, isteğe bağlı
+  sınıf, kapsam `AllSubjects` / `SingleSubject`, süre `Monthly` / `SixMonths` / `TwelveMonths` / `Summer`); kademe ve sınırlar
+  planda kalır. Band öğrencinin sınıfından: 1–4 `Primary`, 5–7 `Middle`, 8 `Lgs`, 9–11 `HighSchool`, 12 `Yks`
+  (`StudentPlanPricing.BandOf`). Sınıfa özel satır aynı seçeneğin band satırının önüne geçer. Satır yoksa seçenek satılmaz (Pro tek
+  ders yok). Seed fiyatları yer tutucudur: band aylığı × 1 / 5,4 / 9 / 0,5, tek ders × 0,6. Tek ders yalnız sınav dersleri
+  (`SingleSubjectCodes`) ve öğrencinin sınıfının dersi; yaz Haziran–Ağustos satılır, 1 Eylül'de biter. Kardeş indirimi %20: velinin
+  Active bağlı başka çocuğunun şu an ücretli kişisel öğrenci planı varsa, veli ödediğinde. Veli ucu `plan` yanıtında `offer`
+  (band, sınıf, fiyatlar, tek ders listesi, `summerOnSale`, `siblingDiscountPercent`) ve mevcut atamanın dersi döner; `checkout
+  { planKey, subjectId?, duration? }` geçersiz seçenekte 400 `subscription.invalidOption`. Atama `ScopeSubjectId`, `Duration`,
+  `PricePaid`, `DiscountPercent` taşır; mevcut atamalar aylık, bütün dersler. Sınıfı olmayan öğrenci eskisi gibi aylık, bütün
+  dersler, `MonthlyPrice`. Tek ders kapsamı henüz özellik kapılarını daraltmaz. Admin plan düzenleyicisi öğrenci planında fiyat
+  tablosunu (band / sınıf satırı × kapsam-süre) `prices` ile birlikte yazar: listede olmayan satır silinir, yeniden eklenen silinmiş
+  satır canlanır (tekil indeks); geçersiz satır 400 `subscription.invalidPriceRow`.
 - **Okul lisansı (#1092):** özel anlaşmayla okulun bütün üyelerine plan: `SchoolLicenses` (okul başına tek satır; öğretmen ve öğrenci
   planı, varsayılan iki kitlenin Pro'su; başlangıç / hariç bitiş; anlaşma notu ≤ 200). Kimseye atama yazılmaz: plan çözümü
   (`EntitlementService.ResolvePlanAsync`, admin listesi `CurrentPlansAsync`, ortak kural `SchoolLicensePlans`) kullanıcının okuluna

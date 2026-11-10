@@ -192,6 +192,7 @@
     "change": "Planı değiştir",
     "cancel": "Vazgeç",
     "bought": "Plan alındı: {{ plan }}.",
-    "schoolLicense": "Okulunun lisansıyla"
+    "schoolLicense": "Okulunun lisansıyla",
+    "singleSubject": "Tek ders: {{ subject }}"
   }
 }

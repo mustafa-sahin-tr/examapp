@@ -6688,6 +6688,1173 @@ namespace ExamApp.Api.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.SubscriptionPlanPrice", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 1000L, null, null, null, null, null);
+
+                    b.Property<string>("Band")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Duration")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int?>("GradeLevel")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("PlanId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlanId", "Band", "GradeLevel", "Scope", "Duration")
+                        .IsUnique();
+
+                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("PlanId", "Band", "GradeLevel", "Scope", "Duration"), false);
+
+                    b.ToTable("SubscriptionPlanPrices");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Band = "Primary",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Monthly",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 149m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Band = "Primary",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "SixMonths",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 805m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Band = "Primary",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "TwelveMonths",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 1341m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Band = "Primary",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Summer",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 75m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Band = "Primary",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Monthly",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 89m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Band = "Primary",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "SixMonths",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 483m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Band = "Primary",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "TwelveMonths",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 805m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Band = "Primary",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Summer",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 45m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Band = "Primary",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Monthly",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 249m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Band = "Primary",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "SixMonths",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 1345m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 11,
+                            Band = "Primary",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "TwelveMonths",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 2241m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 12,
+                            Band = "Primary",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Summer",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 125m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 13,
+                            Band = "Primary",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Monthly",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 149m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 14,
+                            Band = "Primary",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "SixMonths",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 807m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 15,
+                            Band = "Primary",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "TwelveMonths",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 1345m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 16,
+                            Band = "Primary",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Summer",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 75m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 17,
+                            Band = "Primary",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Monthly",
+                            IsDeleted = false,
+                            PlanId = 9,
+                            Price = 399m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 18,
+                            Band = "Primary",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "SixMonths",
+                            IsDeleted = false,
+                            PlanId = 9,
+                            Price = 2155m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 19,
+                            Band = "Primary",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "TwelveMonths",
+                            IsDeleted = false,
+                            PlanId = 9,
+                            Price = 3591m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 20,
+                            Band = "Primary",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Summer",
+                            IsDeleted = false,
+                            PlanId = 9,
+                            Price = 200m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 21,
+                            Band = "Middle",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Monthly",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 199m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 22,
+                            Band = "Middle",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "SixMonths",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 1075m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 23,
+                            Band = "Middle",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "TwelveMonths",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 1791m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 24,
+                            Band = "Middle",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Summer",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 100m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 25,
+                            Band = "Middle",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Monthly",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 119m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 26,
+                            Band = "Middle",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "SixMonths",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 645m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 27,
+                            Band = "Middle",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "TwelveMonths",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 1075m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 28,
+                            Band = "Middle",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Summer",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 60m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 29,
+                            Band = "Middle",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Monthly",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 349m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 30,
+                            Band = "Middle",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "SixMonths",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 1885m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 31,
+                            Band = "Middle",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "TwelveMonths",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 3141m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 32,
+                            Band = "Middle",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Summer",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 175m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 33,
+                            Band = "Middle",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Monthly",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 209m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 34,
+                            Band = "Middle",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "SixMonths",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 1131m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 35,
+                            Band = "Middle",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "TwelveMonths",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 1885m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 36,
+                            Band = "Middle",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Summer",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 105m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 37,
+                            Band = "Middle",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Monthly",
+                            IsDeleted = false,
+                            PlanId = 9,
+                            Price = 549m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 38,
+                            Band = "Middle",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "SixMonths",
+                            IsDeleted = false,
+                            PlanId = 9,
+                            Price = 2965m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 39,
+                            Band = "Middle",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "TwelveMonths",
+                            IsDeleted = false,
+                            PlanId = 9,
+                            Price = 4941m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 40,
+                            Band = "Middle",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Summer",
+                            IsDeleted = false,
+                            PlanId = 9,
+                            Price = 275m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 41,
+                            Band = "Lgs",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Monthly",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 249m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 42,
+                            Band = "Lgs",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "SixMonths",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 1345m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 43,
+                            Band = "Lgs",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "TwelveMonths",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 2241m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 44,
+                            Band = "Lgs",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Summer",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 125m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 45,
+                            Band = "Lgs",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Monthly",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 149m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 46,
+                            Band = "Lgs",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "SixMonths",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 807m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 47,
+                            Band = "Lgs",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "TwelveMonths",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 1345m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 48,
+                            Band = "Lgs",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Summer",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 75m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 49,
+                            Band = "Lgs",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Monthly",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 449m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 50,
+                            Band = "Lgs",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "SixMonths",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 2425m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 51,
+                            Band = "Lgs",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "TwelveMonths",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 4041m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 52,
+                            Band = "Lgs",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Summer",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 225m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 53,
+                            Band = "Lgs",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Monthly",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 269m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 54,
+                            Band = "Lgs",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "SixMonths",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 1455m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 55,
+                            Band = "Lgs",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "TwelveMonths",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 2425m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 56,
+                            Band = "Lgs",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Summer",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 135m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 57,
+                            Band = "Lgs",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Monthly",
+                            IsDeleted = false,
+                            PlanId = 9,
+                            Price = 699m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 58,
+                            Band = "Lgs",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "SixMonths",
+                            IsDeleted = false,
+                            PlanId = 9,
+                            Price = 3775m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 59,
+                            Band = "Lgs",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "TwelveMonths",
+                            IsDeleted = false,
+                            PlanId = 9,
+                            Price = 6291m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 60,
+                            Band = "Lgs",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Summer",
+                            IsDeleted = false,
+                            PlanId = 9,
+                            Price = 350m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 61,
+                            Band = "HighSchool",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Monthly",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 249m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 62,
+                            Band = "HighSchool",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "SixMonths",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 1345m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 63,
+                            Band = "HighSchool",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "TwelveMonths",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 2241m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 64,
+                            Band = "HighSchool",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Summer",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 125m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 65,
+                            Band = "HighSchool",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Monthly",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 149m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 66,
+                            Band = "HighSchool",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "SixMonths",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 807m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 67,
+                            Band = "HighSchool",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "TwelveMonths",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 1345m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 68,
+                            Band = "HighSchool",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Summer",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 75m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 69,
+                            Band = "HighSchool",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Monthly",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 449m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 70,
+                            Band = "HighSchool",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "SixMonths",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 2425m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 71,
+                            Band = "HighSchool",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "TwelveMonths",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 4041m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 72,
+                            Band = "HighSchool",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Summer",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 225m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 73,
+                            Band = "HighSchool",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Monthly",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 269m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 74,
+                            Band = "HighSchool",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "SixMonths",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 1455m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 75,
+                            Band = "HighSchool",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "TwelveMonths",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 2425m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 76,
+                            Band = "HighSchool",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Summer",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 135m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 77,
+                            Band = "HighSchool",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Monthly",
+                            IsDeleted = false,
+                            PlanId = 9,
+                            Price = 699m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 78,
+                            Band = "HighSchool",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "SixMonths",
+                            IsDeleted = false,
+                            PlanId = 9,
+                            Price = 3775m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 79,
+                            Band = "HighSchool",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "TwelveMonths",
+                            IsDeleted = false,
+                            PlanId = 9,
+                            Price = 6291m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 80,
+                            Band = "HighSchool",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Summer",
+                            IsDeleted = false,
+                            PlanId = 9,
+                            Price = 350m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 81,
+                            Band = "Yks",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Monthly",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 299m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 82,
+                            Band = "Yks",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "SixMonths",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 1615m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 83,
+                            Band = "Yks",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "TwelveMonths",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 2691m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 84,
+                            Band = "Yks",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Summer",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 150m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 85,
+                            Band = "Yks",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Monthly",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 179m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 86,
+                            Band = "Yks",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "SixMonths",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 969m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 87,
+                            Band = "Yks",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "TwelveMonths",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 1615m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 88,
+                            Band = "Yks",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Summer",
+                            IsDeleted = false,
+                            PlanId = 7,
+                            Price = 90m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 89,
+                            Band = "Yks",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Monthly",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 549m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 90,
+                            Band = "Yks",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "SixMonths",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 2965m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 91,
+                            Band = "Yks",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "TwelveMonths",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 4941m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 92,
+                            Band = "Yks",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Summer",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 275m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 93,
+                            Band = "Yks",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Monthly",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 329m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 94,
+                            Band = "Yks",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "SixMonths",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 1779m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 95,
+                            Band = "Yks",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "TwelveMonths",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 2965m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 96,
+                            Band = "Yks",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Summer",
+                            IsDeleted = false,
+                            PlanId = 8,
+                            Price = 165m,
+                            Scope = "SingleSubject"
+                        },
+                        new
+                        {
+                            Id = 97,
+                            Band = "Yks",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Monthly",
+                            IsDeleted = false,
+                            PlanId = 9,
+                            Price = 899m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 98,
+                            Band = "Yks",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "SixMonths",
+                            IsDeleted = false,
+                            PlanId = 9,
+                            Price = 4855m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 99,
+                            Band = "Yks",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "TwelveMonths",
+                            IsDeleted = false,
+                            PlanId = 9,
+                            Price = 8091m,
+                            Scope = "AllSubjects"
+                        },
+                        new
+                        {
+                            Id = 100,
+                            Band = "Yks",
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Duration = "Summer",
+                            IsDeleted = false,
+                            PlanId = 9,
+                            Price = 450m,
+                            Scope = "AllSubjects"
+                        });
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.TargetProgram", b =>
                 {
                     b.Property<int>("Id")
@@ -7319,6 +8486,14 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("DeleteUserId")
                         .HasColumnType("integer");
 
+                    b.Property<int>("DiscountPercent")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Duration")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<DateTime?>("EndingReminderSentAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -7326,6 +8501,13 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<int>("PlanId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("PricePaid")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<int?>("ScopeSubjectId")
                         .HasColumnType("integer");
 
                     b.Property<DateTime?>("UpdateTime")
@@ -9695,6 +10877,17 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Plan");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.SubscriptionPlanPrice", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.SubscriptionPlan", "Plan")
+                        .WithMany("Prices")
+                        .HasForeignKey("PlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Plan");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.Teacher", b =>
                 {
                     b.HasOne("ExamApp.Api.Data.School", "RequestedSchool")
@@ -10238,6 +11431,8 @@ namespace ExamApp.Api.Migrations
             modelBuilder.Entity("ExamApp.Api.Data.SubscriptionPlan", b =>
                 {
                     b.Navigation("FeatureLimits");
+
+                    b.Navigation("Prices");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Teacher", b =>

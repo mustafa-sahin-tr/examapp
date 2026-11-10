@@ -101,10 +101,25 @@ internal sealed class BookSetupStage(
             foreach (var filePage in keyPages)
             {
                 var image = await LoadAsync(filePage, pages.First(p => p.FilePage == filePage).ImageUrl);
-                firstRead.AddRange(await ai.ReadAnswerKeyAsync(image, tiled: false, cost, ct));
+                var whole = Tag(await ai.ReadAnswerKeyAsync(image, tiled: false, strong: false, cost, ct), filePage);
                 job.StageProcessed++;
                 await db.SaveChangesAsync(ct);
-                secondRead.AddRange(await ai.ReadAnswerKeyAsync(image, tiled: true, cost, ct));
+                var tiles = Tag(await ai.ReadAnswerKeyAsync(image, tiled: true, strong: false, cost, ct), filePage);
+                job.StageProcessed++;
+                await db.SaveChangesAsync(ct);
+
+                // #1122: iki ucuz okuma uyuşursa yeter; çelişen sayfayı güçlü model okur, ucuz okuma karşılaştırma olarak kalır
+                // (kalan farklar incelemede işaretlenir).
+                if (SameAnswers(whole, tiles))
+                {
+                    firstRead.AddRange(whole);
+                    secondRead.AddRange(tiles);
+                    continue;
+                }
+
+                job.StageTotal++;
+                firstRead.AddRange(Tag(await ai.ReadAnswerKeyAsync(image, tiled: false, strong: true, cost, ct), filePage));
+                secondRead.AddRange(whole);
                 job.StageProcessed++;
                 await db.SaveChangesAsync(ct);
             }
@@ -126,6 +141,26 @@ internal sealed class BookSetupStage(
             await budget.FlushAsync();
             await db.SaveChangesAsync(CancellationToken.None);
         }
+    }
+
+    private static List<AnswerKeyRow> Tag(IReadOnlyList<AnswerKeyRow> rows, int filePage) =>
+        rows.Select(r => r with { KeyPage = filePage }).ToList();
+
+    /// <summary>İki okuma aynı (ünite, test, soru) hücrelerinde aynı harfi mi verdi (döşemelerde iki kez okunan satır bir sayılır).</summary>
+    private static bool SameAnswers(IReadOnlyList<AnswerKeyRow> a, IReadOnlyList<AnswerKeyRow> b)
+    {
+        static Dictionary<(int, int, int), char> Cells(IReadOnlyList<AnswerKeyRow> rows)
+        {
+            var cells = new Dictionary<(int, int, int), char>();
+            foreach (var row in rows)
+                foreach (var (n, answer) in row.Answers)
+                    cells.TryAdd((row.Unit, row.TestNo, n), answer);
+            return cells;
+        }
+
+        var x = Cells(a);
+        var y = Cells(b);
+        return x.Count > 0 && x.Count == y.Count && x.All(c => y.TryGetValue(c.Key, out var other) && other == c.Value);
     }
 
     /// <summary>Issue #1022: sayfadaki en büyük soru no, soru aktarımının sayfa bazlı numaralaması için.</summary>

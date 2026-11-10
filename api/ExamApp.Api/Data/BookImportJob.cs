@@ -157,7 +157,8 @@ public class BookImportJob : BaseEntity
 public class BookImportJobTest : BaseEntity
 {
     public const int MaxTitleLength = 300;
-    public const int MaxKeyLength = 100;
+    /// <summary>#1122: 100 → 200 (bölümlü kitapta ünite tek test; LGS kitabının 1. ünitesi 154 soru).</summary>
+    public const int MaxKeyLength = 200;
 
     public int Id { get; set; }
 

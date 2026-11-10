@@ -58,10 +58,10 @@ public interface IBookSetupAi
     Task<SurveyResult> SurveyAsync(IReadOnlyList<BookPageImage> pages, BookSetupCost cost, CancellationToken ct);
 
     /// <summary>
-    /// Cevap anahtarı sayfasını okur (güçlü model). <paramref name="tiled"/>: sayfa iki örtüşen yarıya bölünür (ikinci, bağımsız
-    /// okuma — ayrıntı daha büyük görünür).
+    /// Cevap anahtarı sayfasını okur. <paramref name="tiled"/>: sayfa iki örtüşen yarıya bölünür (ikinci, bağımsız okuma — ayrıntı
+    /// daha büyük görünür). <paramref name="strong"/>: iki ucuz okuma çelişince hakem okuması güçlü modelle (#1122).
     /// </summary>
-    Task<IReadOnlyList<AnswerKeyRow>> ReadAnswerKeyAsync(BookPageImage page, bool tiled, BookSetupCost cost, CancellationToken ct);
+    Task<IReadOnlyList<AnswerKeyRow>> ReadAnswerKeyAsync(BookPageImage page, bool tiled, bool strong, BookSetupCost cost, CancellationToken ct);
 
     /// <summary>Ünite başlıklarını dersin konularıyla eşler (ucuz model, görselsiz); eşleşmeyen ünite null.</summary>
     Task<IReadOnlyDictionary<int, int?>> MapUnitsAsync(
@@ -69,17 +69,19 @@ public interface IBookSetupAi
 }
 
 /// <summary>
-/// <see cref="IBookSetupAi"/>'nin Claude uygulaması. Modeller <c>BookImport:SurveyModel</c> (varsayılan Haiku) ve
-/// <c>BookImport:AnswerKeyModel</c> (varsayılan Sonnet); ikisi de <c>Anthropic:Models</c> listesinde olmalı (fiyat oradan).
+/// <see cref="IBookSetupAi"/>'nin Claude uygulaması. Modeller <c>BookImport:SurveyModel</c> (varsayılan Haiku),
+/// <c>BookImport:AnswerKeyModel</c> (anahtarın iki okuması, varsayılan Haiku) ve <c>BookImport:AnswerKeyTieBreakModel</c> (okumalar
+/// çelişince hakem, varsayılan Sonnet; #1122 öncesi iki okuma da Sonnet'ti); hepsi <c>Anthropic:Models</c> listesinde olmalı (fiyat oradan).
 /// Sistem mesajı, şemalar ya da görsel boyutları değişince <see cref="SchemaRevision"/> artırılır (kurulum özetine yazılır).
 /// </summary>
 public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
 {
-    /// <summary>1: ilk sürüm (#1021).</summary>
-    public const int SchemaRevision = 1;
+    /// <summary>1: ilk sürüm (#1021). 2: test başlığı olmayan bölümlü kitaplar ve test numarasız anahtarlar (#1122).</summary>
+    public const int SchemaRevision = 2;
 
     public const string DefaultSurveyModel = "claude-haiku-5-5";
-    public const string DefaultAnswerKeyModel = "claude-sonnet-5-5";
+    public const string DefaultAnswerKeyModel = "claude-haiku-5-5";
+    public const string DefaultAnswerKeyTieBreakModel = "claude-sonnet-5-5";
 
     // Tarama görseli küçük tutulur: başlık, sayfa no ve soru numaraları okunur; ayrıntı gerekmez.
     private const int SurveyImageEdge = 1000;
@@ -100,7 +102,9 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
         "(null if none); for test pages the test header if this page shows one: unit (the section number such as " +
         "\"1. Bölüm\" or \"1. Ünite\"), testNo (\"Test 01\" → 1), title (the topic name next to the test number) and " +
         "minutes (\"16 dk.\" → 16); maxQuestionNumber, the highest question number printed on the page. A test page " +
-        "without its own header still has kind test. answerKey is the answer key table (\"Cevap Anahtarı\"); " +
+        "without its own header still has kind test. Some books (e.g. LGS workbooks) have no test headers at all: the question " +
+        "pages of a unit or of an exam section are kind test with unit and testNo null, and the title page of a unit or " +
+        "section (\"1. Ünite\", an exam year cover) is kind cover. answerKey is the answer key table (\"Cevap Anahtarı\"); " +
         "selfAssessment is a scoring or self-evaluation page; toc is the table of contents (\"İçindekiler\"). For toc " +
         "pages also list the rows in tocRows: unit number, title and printed start page.";
 
@@ -112,7 +116,9 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
     private const string KeyInstruction =
         "Transcribe every row of the answer key table(s). A row belongs to one test (\"Test 01\" → testNo 1) inside a " +
         "section heading such as \"1. Bölüm\" or \"1. Ünite\" (unit 1); use unit 1 when the key has no sections. " +
-        "Cells look like \"3. B\": number 3, answer B. Skip empty cells. Rows cut off at the image edge are skipped.";
+        "Cells look like \"3. B\": number 3, answer B. Skip empty cells. Rows cut off at the image edge are skipped. " +
+        "Keys without test numbers: a block per unit (\"1. Ünite\" beside it) is one row with that unit and testNo 1; " +
+        "a single numbered list is one row with unit 1 and testNo 1.";
 
     private const string MapSystemPrompt =
         "You match the units of a Turkish school question bank to curriculum topics. Answer only with ids from the list.";
@@ -122,6 +128,7 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
     private readonly ILogger<ClaudeBookSetupAi> _logger;
     private readonly string _surveyModelId;
     private readonly string _keyModelId;
+    private readonly string _tieBreakModelId;
 
     public ClaudeBookSetupAi(IOptions<LabelingAiOptions> options, IConfiguration configuration, ILoggerFactory loggerFactory)
     {
@@ -130,6 +137,7 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
         _chat = LabelingClaude.CreateClient(_options, loggerFactory);
         _surveyModelId = configuration["BookImport:SurveyModel"] is { Length: > 0 } survey ? survey : DefaultSurveyModel;
         _keyModelId = configuration["BookImport:AnswerKeyModel"] is { Length: > 0 } key ? key : DefaultAnswerKeyModel;
+        _tieBreakModelId = configuration["BookImport:AnswerKeyTieBreakModel"] is { Length: > 0 } tie ? tie : DefaultAnswerKeyTieBreakModel;
     }
 
     public bool IsConfigured => _chat is not null;
@@ -162,9 +170,10 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
         return new SurveyResult(surveyed, toc);
     }
 
-    public async Task<IReadOnlyList<AnswerKeyRow>> ReadAnswerKeyAsync(BookPageImage page, bool tiled, BookSetupCost cost, CancellationToken ct)
+    public async Task<IReadOnlyList<AnswerKeyRow>> ReadAnswerKeyAsync(BookPageImage page, bool tiled, bool strong, BookSetupCost cost,
+        CancellationToken ct)
     {
-        var model = Model(_keyModelId);
+        var model = Model(strong ? _tieBreakModelId : _keyModelId);
         var regions = tiled ? new[] { (Top: 0d, Share: TileShare), (Top: 1 - TileShare, Share: TileShare) } : [(0d, 1d)];
         var rows = new List<AnswerKeyRow>();
         foreach (var (top, share) in regions)

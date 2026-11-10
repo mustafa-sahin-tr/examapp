@@ -64,22 +64,39 @@ public class BookImportSetupTests : IDisposable
     }
 
     [Fact]
+    public async Task Setup_skips_the_tie_break_when_both_cheap_reads_agree()
+    {
+        _ai.Keys[5] = ([Row(1, 1, "ABCD"), Row(1, 2, "DDA")], [Row(1, 1, "ABCD"), Row(1, 2, "DDA")]);
+        var id = await SeedJobAsync();
+
+        await RunAsync(id, batchSize: 4);
+
+        _ai.StrongReads.ShouldBeEmpty();
+        await using var check = _db.NewContext();
+        var tests = await check.BookImportJobTests.OrderBy(t => t.Order).ToListAsync();
+        tests.Select(t => (t.AnswerKey, t.KeyConflicts)).ShouldBe([("ABCD", "...."), ("DDA", "...")]);
+    }
+
+    [Fact]
     public async Task Setup_surveys_in_batches_reads_the_key_twice_and_waits_for_confirmation()
     {
+        // İki ucuz okuma 1-01'in 4. sorusunda çelişir: hakem (güçlü model) B der (#1122).
+        _ai.StrongKeys[5] = [Row(1, 1, "ABCB"), Row(1, 2, "DDA")];
         var id = await SeedJobAsync();
 
         await RunAsync(id, batchSize: 4);
 
         _ai.SurveyBatches.ShouldBe([[1, 2, 3, 4], [5, 6]]);
         _ai.KeyReads.ShouldBe([(5, false), (5, true)]);
+        _ai.StrongReads.ShouldBe([5]);
 
         await using var check = _db.NewContext();
         var job = await check.BookImportJobs.SingleAsync();
         job.Status.ShouldBe(BookImportJobStatus.AwaitingConfirmation);
         job.Stage.ShouldBe(BookImportStage.SetupConfirmation);
         job.Error.ShouldBeNull();
-        // 2 tarama (1000/100) + 2 anahtar okuması (2000/500) + ünite eşleme (100/10), 1 USD / 1M token.
-        job.AiCostUsd.ShouldBe((2 * 1100m + 2 * 2500m + 110m) / 1_000_000m);
+        // 2 tarama (1000/100) + 2 anahtar okuması + hakem (2000/500) + ünite eşleme (100/10), 1 USD / 1M token.
+        job.AiCostUsd.ShouldBe((2 * 1100m + 3 * 2500m + 110m) / 1_000_000m);
 
         var summary = BookSetupSummary.Parse(job.SetupJson)!;
         summary.SchemaRevision.ShouldBe(ClaudeBookSetupAi.SchemaRevision);
@@ -92,7 +109,8 @@ public class BookImportSetupTests : IDisposable
         var tests = await check.BookImportJobTests.OrderBy(t => t.Order).ToListAsync();
         tests.Select(t => (t.TestNo, t.FileFrom, t.FileTo, t.Minutes, t.AnswerKey, t.KeyConflicts, t.ExpectedQuestions)).ShouldBe(
         [
-            (1, (int?)2, (int?)3, (int?)16, "ABCD", "...B", (int?)4),
+            // Hakemin okuması alınır; ucuz tam sayfa okuması karşılaştırma olarak kalır.
+            (1, (int?)2, (int?)3, (int?)16, "ABCB", "...D", (int?)4),
             (2, 4, 4, 12, "DDA", "...", 3),
         ]);
         tests[0].FlagsJson.ShouldBe("[\"keyConflicts\"]");
@@ -122,7 +140,8 @@ public class BookImportSetupTests : IDisposable
         await using var after = _db.NewContext();
         (await after.BookImportJobs.SingleAsync()).Status.ShouldBe(BookImportJobStatus.AwaitingConfirmation);
         var costs = await after.BookImportCosts.ToListAsync();
-        costs.Count.ShouldBe(4);
+        // 1 tarama + 2 ucuz anahtar okuması + hakem (okumalar çelişir) + ünite eşleme.
+        costs.Count.ShouldBe(5);
         costs.ShouldAllBe(c => c.Stage == BookImportStage.Setup && c.TestId == null && c.ModelId == Model.Id);
         costs.Sum(c => c.CostUsd).ShouldBe((after.BookImportJobs.Single()).AiCostUsd);
     }
@@ -337,6 +356,7 @@ public class BookImportSetupTests : IDisposable
     [Fact]
     public async Task Setup_view_shows_the_plan_with_topic_names_and_a_same_named_book()
     {
+        _ai.StrongKeys[5] = [Row(1, 1, "ABCB"), Row(1, 2, "DDA")];
         var id = await SetUpAsync();
         await using (var seed = _db.NewContext())
         {
@@ -349,7 +369,7 @@ public class BookImportSetupTests : IDisposable
 
         setup.Units.Single().TopicName.ShouldBe("Doğal Sayılar");
         setup.ExistingBook!.Name.ShouldBe("Puan BTS 5 Matematik");
-        setup.Tests.Select(t => t.KeyConflicts).ShouldBe(["...B", "..."]);
+        setup.Tests.Select(t => t.KeyConflicts).ShouldBe(["...D", "..."]);
         setup.Tests[0].Flags.ShouldBe(["keyConflicts"]);
         (await NewService(ctx).GetSetupAsync(BookImportOwner.Create(99), id, default)).ShouldBeNull();
     }

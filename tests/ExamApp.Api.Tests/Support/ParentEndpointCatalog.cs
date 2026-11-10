@@ -187,6 +187,10 @@ public static class ParentEndpointCatalog
             "Reference data (school list).",
         ["SchoolController.GetSchool"] =
             "Reference data (one school, to show a saved selection).",
+        ["SchoolController.GetProvinces"] =
+            "Reference data (provinces for the school picker filter, #1106).",
+        ["SchoolController.GetDistricts"] =
+            "Reference data (districts for the school picker filter, #1106).",
         ["StudentController.CheckStudent"] =
             "Self-scoped: does the CALLER have a Student record (parent: false).",
         ["StudentController.GetGradesAsync"] =

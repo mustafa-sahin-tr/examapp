@@ -951,7 +951,13 @@
       "empty": "No schools are registered.",
       "noMatch": "No matching school",
       "pickFromList": "Pick a school from the list; free text is not saved.",
-      "clear": "Clear school selection"
+      "clear": "Clear school selection",
+      "province": "Province",
+      "allProvinces": "All provinces",
+      "district": "District",
+      "districtNeedsProvince": "District (pick a province first)",
+      "allDistricts": "All districts",
+      "more": "More schools exist: pick a province / district or narrow the search."
     },
     "badgeMedallion": {
       "aria": {

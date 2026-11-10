@@ -369,7 +369,8 @@ describe('CreateChildAccountComponent (issue #438)', () => {
         setup();
         document.body.appendChild(el); // hesaplanan stil için belgeye bağlı olmalı
         const school = el.querySelector<HTMLElement>('.cca__field--wide')!;
-        expect(school.getBoundingClientRect().height).toBeLessThan(120);
+        // Okul seçicide il / ilçe satırı + arama kutusu var (#1106, ~144px); gerilen alan bunun çok üstüne çıkar.
+        expect(school.getBoundingClientRect().height).toBeLessThan(180);
         el.remove();
     });
 

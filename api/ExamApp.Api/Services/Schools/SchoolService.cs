@@ -36,9 +36,7 @@ public class SchoolService : ISchoolService
     {
         (page, pageSize) = AdminListPaging.Normalize(page, pageSize);
 
-        var schools = Matching(query);
-        if (provinceId.HasValue) schools = schools.Where(s => s.ProvinceId == provinceId);
-        if (districtId.HasValue) schools = schools.Where(s => s.DistrictId == districtId);
+        var schools = Matching(query, provinceId, districtId);
 
         var total = await schools.CountAsync(ct);
         if (!AdminListPaging.TryGetOffset(page, pageSize, total, out var offset))
@@ -68,9 +66,10 @@ public class SchoolService : ISchoolService
         return new Paged<SchoolDto> { PageNumber = page, PageSize = pageSize, TotalCount = total, Items = items };
     }
 
-    public async Task<List<SchoolOptionDto>> SearchAsync(string? query, int limit, CancellationToken ct = default)
+    public async Task<List<SchoolOptionDto>> SearchAsync(
+        string? query, int? provinceId, int? districtId, int limit, CancellationToken ct = default)
     {
-        return await ToOptions(Matching(query))
+        return await ToOptions(Matching(query, provinceId, districtId))
             .OrderBy(s => s.Name)
             .ThenBy(s => s.Id)
             .Take(Math.Clamp(limit, 1, MaxSearchLimit))
@@ -82,11 +81,13 @@ public class SchoolService : ISchoolService
         return await ToOptions(_context.Schools.AsNoTracking().Where(s => s.Id == id)).FirstOrDefaultAsync(ct);
     }
 
-    private IQueryable<School> Matching(string? query)
+    private IQueryable<School> Matching(string? query, int? provinceId, int? districtId)
     {
         var schools = _context.Schools.AsNoTracking();
         foreach (var token in SchoolSearchText.Tokens(query))
             schools = schools.Where(s => s.SearchText.Contains(token));
+        if (provinceId.HasValue) schools = schools.Where(s => s.ProvinceId == provinceId);
+        if (districtId.HasValue) schools = schools.Where(s => s.DistrictId == districtId);
         return schools;
     }
 

@@ -426,6 +426,70 @@ public class MockExamServiceTests : IDisposable
         ranking.TopPercent.ShouldBeNull();
     }
 
+    // ---- #1094: soru başına istatistik
+
+    [Fact]
+    public async Task Result_lists_each_question_with_the_students_outcome_and_the_success_of_finished_takers()
+    {
+        var exam = await FilledAsync(ExamTemplateSeed.TytId);
+        await UseAsync(s => s.PublishAsync(exam.Id, true, TeacherId, false, default));
+        var session = exam.Sessions.ShouldHaveSingleItem();
+        var section = session.Sections[0].Name;
+
+        await SolveAsync(session, new() { [section] = (3, 0) }, finish: false);
+        (await UseAsync(s => s.GetResultAsync(exam.Id, _student, default)))!.Questions.ShouldBeEmpty();
+        await using (var end = _db.NewContext())
+        {
+            var instanceId = (await end.TestInstances.SingleAsync(i => i.StudentId == _student.Id)).Id;
+            (await new TestSessionService(end).EndTest(instanceId, StudentUserId)).Success.ShouldBeTrue();
+        }
+        var others = new (int Correct, int Wrong)[] { (5, 0), (3, 0), (1, 0), (0, 0), (2, 4) };
+        for (var i = 0; i < others.Length; i++)
+            await SolveAsync(session, new() { [section] = others[i] }, await OtherStudentAsync(9500 + i));
+        // Süren oturumun cevabı sayılmaz.
+        await SolveAsync(session, new() { [section] = (0, 10) }, await OtherStudentAsync(9600), finish: false);
+
+        var questions = (await UseAsync(s => s.GetResultAsync(exam.Id, _student, default)))!.Questions;
+
+        questions.Count.ShouldBe(session.Sections.Sum(s => s.QuestionIds.Count));
+        questions.Take(4).Select(q => (q.SectionName, q.Number, q.Outcome)).ShouldBe(
+            [(section, 1, "correct"), (section, 2, "correct"), (section, 3, "correct"), (section, 4, "blank")]);
+        var first = questions[0].Stats!;
+        (first.Answered, first.SuccessPercent, first.AverageSeconds).ShouldBe((5, (int?)100, (int?)3)); // boş bırakan sayılmaz
+        var third = questions[2].Stats!;
+        (third.Answered, third.SuccessPercent).ShouldBe((4, (int?)null)); // 5 cevabın altında oran yok
+        questions[^1].Stats.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Question_stats_count_each_students_first_finished_answer_once()
+    {
+        var first = await FilledAsync(ExamTemplateSeed.TytId);
+        await UseAsync(s => s.PublishAsync(first.Id, true, TeacherId, false, default));
+        var second = await CreateAsync(ExamTemplateSeed.TytId);
+        foreach (var section in first.Sessions[0].Sections)
+            second = (await UseAsync(s => s.SetSectionQuestionsAsync(second.Id, section.SectionId, section.QuestionIds, TeacherId, false, default)))!;
+        await UseAsync(s => s.PublishAsync(second.Id, true, TeacherId, false, default));
+        // Son ders: soruları en yeni, bankanın ilk sayfasında.
+        var sectionName = first.Sessions[0].Sections[^1].Name;
+        var questionId = first.Sessions[0].Sections[^1].QuestionIds[0];
+
+        await SolveAsync(first.Sessions[0], new() { [sectionName] = (0, 1) }); // ilk çözüm yanlış
+        await SolveAsync(second.Sessions[0], new() { [sectionName] = (1, 0) }); // sonraki doğru: sayılmaz
+        for (var i = 0; i < 4; i++)
+            await SolveAsync(first.Sessions[0], new() { [sectionName] = (1, 0) }, await OtherStudentAsync(9700 + i));
+
+        await using var ctx = _db.NewContext();
+        var stats = await QuestionAnswerStatsReader.ReadAsync(ctx, [questionId], DateTime.UtcNow);
+        (stats[questionId].Answered, stats[questionId].SuccessPercent).ShouldBe((5, (int?)80));
+
+        // Soru bankası aynı sayıyı gösterir; bir denemeyle sınırlanınca yalnız onun oturumları sayılır.
+        var item = (await new QuestionQueryService(ctx).SearchBankAsync(new QuestionBankQuery { Scope = "all" }, TeacherId, true)).Items.Single(i => i.Id == questionId);
+        item.AnswerStats!.SuccessPercent.ShouldBe(80);
+        var onlySecond = await QuestionAnswerStatsReader.ReadAsync(ctx, [questionId], DateTime.UtcNow, [second.Sessions[0].WorksheetId]);
+        onlySecond[questionId].Answered.ShouldBe(1);
+    }
+
     [Fact]
     public async Task Finished_exam_stays_with_the_student_after_changing_grade()
     {

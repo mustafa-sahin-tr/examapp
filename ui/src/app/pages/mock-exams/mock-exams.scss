@@ -578,3 +578,27 @@
   font-weight: 600;
   color: var(--primaryColor);
 }
+
+// #1094: soru bazında sonuç (kapalı başlar; 120 satır sayfayı uzatmasın).
+.me-questions {
+  display: block;
+  margin: 0 0 16px;
+
+  summary {
+    cursor: pointer;
+    font-weight: 600;
+    padding: 8px 0;
+  }
+}
+
+.me-outcome--correct {
+  color: var(--ms-success-text-medium);
+}
+
+.me-outcome--wrong {
+  color: var(--ms-danger-text-medium);
+}
+
+.me-outcome--blank {
+  color: var(--ms-text-medium);
+}

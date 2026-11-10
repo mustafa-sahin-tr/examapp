@@ -182,6 +182,11 @@
               @if (item.topicName) { <span>{{ item.topicName }}</span> }
               <span>{{ t('list.' + difficultyBucket(item.difficultyLevel)) }}</span>
               <span>{{ item.testCount > 0 ? t('card.testCount', { count: item.testCount }) : t('list.new') }}</span>
+              @if (item.answerStats; as stats) {
+                <span data-testid="answer-stats">{{ stats.successPercent !== null
+                  ? t('card.stats', { percent: stats.successPercent, count: stats.answered, seconds: stats.averageSeconds })
+                  : t('card.statsFew', { count: stats.answered }) }}</span>
+              }
               @if (isActivity(item)) { <span class="qb-tag qb-tag--activity" data-testid="activity-tag">{{ t('card.activity') }}</span> }
             </span>
           </div>
@@ -239,6 +244,11 @@
             <span>{{ t('card.difficulty', { level: item.difficultyLevel }) }}</span>
             <span>{{ t('card.testCount', { count: item.testCount }) }}</span>
           </div>
+          @if (item.answerStats; as stats) {
+            <div class="qb-card__stats" data-testid="answer-stats">{{ stats.successPercent !== null
+              ? t('card.stats', { percent: stats.successPercent, count: stats.answered, seconds: stats.averageSeconds })
+              : t('card.statsFew', { count: stats.answered }) }}</div>
+          }
           <div class="qb-card__flags">
             @if (isActivity(item)) {
               <span class="qb-tag qb-tag--activity" data-testid="activity-tag">{{ t('card.activity') }}</span>

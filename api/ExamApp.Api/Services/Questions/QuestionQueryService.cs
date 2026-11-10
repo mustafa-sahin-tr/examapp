@@ -423,6 +423,10 @@ public class QuestionQueryService : IQuestionQueryService
                 textQuestions[answer.QuestionId].AnswerTexts.Add(answer.Text);
         }
 
+        var stats = await QuestionAnswerStatsReader.ReadAsync(_context, page.Items.Select(i => i.Id).ToList(), DateTime.UtcNow, ct: ct);
+        foreach (var item in page.Items)
+            item.AnswerStats = stats.GetValueOrDefault(item.Id);
+
         return page;
     }
 }

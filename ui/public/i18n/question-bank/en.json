@@ -52,6 +52,8 @@
     "aiTooltip": "Classified by AI",
     "difficulty": "Difficulty {{level}}",
     "testCount": "In {{count}} tests",
+    "stats": "{{percent}}% correct · {{count}} students · avg {{seconds}} s",
+    "statsFew": "{{count}} students · too few answers",
     "unclassified": "Classification incomplete",
     "noAnswer": "No correct answer",
     "shared": "Shared",

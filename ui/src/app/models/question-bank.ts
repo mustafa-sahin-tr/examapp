@@ -55,6 +55,18 @@ export interface QuestionBankItem {
   /** issue #472: "Havuzdan ekle" ile teste bağlanabilir mi (kendi sorusu ya da sahibi belli soru). */
   canLink: boolean;
   createTime: string;
+  /** Issue #1094: öğrencilerin bu soruya cevabı; hiç cevap yoksa boş. */
+  answerStats?: QuestionAnswerStats | null;
+}
+
+/**
+ * Issue #1094: soru başına cevap istatistiği (bitmiş oturumlar, öğrenci başına ilk cevap). `answered` farklı öğrenci sayısı;
+ * 5 cevabın altında oran ve süre boş ("az veri").
+ */
+export interface QuestionAnswerStats {
+  answered: number;
+  successPercent: number | null;
+  averageSeconds: number | null;
 }
 
 export interface QuestionBankPage {

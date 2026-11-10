@@ -951,7 +951,13 @@
       "empty": "Kayıtlı okul bulunmuyor.",
       "noMatch": "Eşleşen okul yok",
       "pickFromList": "Listeden bir okul seçin; serbest metin kaydedilmez.",
-      "clear": "Okul seçimini temizle"
+      "clear": "Okul seçimini temizle",
+      "province": "İl",
+      "allProvinces": "Tüm iller",
+      "district": "İlçe",
+      "districtNeedsProvince": "İlçe (önce il seçin)",
+      "allDistricts": "Tüm ilçeler",
+      "more": "Daha fazla okul var: il / ilçe seçin ya da aramayı daraltın."
     },
     "badgeMedallion": {
       "aria": {

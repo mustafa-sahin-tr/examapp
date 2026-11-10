@@ -19,6 +19,8 @@ const school = (id: number, name: string, districtName: string | null = null, pr
     districtName,
 });
 
+const NO_SCOPE = { provinceId: null, districtId: null };
+
 const SCHOOLS = [
     school(1, 'Ankara Fen Lisesi', 'Çankaya', 'Ankara'),
     school(2, 'İstanbul Erkek Lisesi', 'Fatih', 'İstanbul'),
@@ -38,6 +40,8 @@ describe('SchoolSelectComponent (issue #277)', () => {
         schoolService = {
             search: vi.fn().mockImplementation(search),
             getById: vi.fn().mockImplementation((id: number) => of(SCHOOLS.find((s) => s.id === id))),
+            provinces: vi.fn().mockReturnValue(of([{ id: 34, name: 'İstanbul' }])),
+            districts: vi.fn().mockReturnValue(of([{ id: 7, name: 'Kadıköy', provinceId: 34 }])),
         } as unknown as MockedObject<SchoolService>;
         TestBed.configureTestingModule({
             imports: [SchoolSelectComponent, translocoTestingModule()],
@@ -62,7 +66,7 @@ describe('SchoolSelectComponent (issue #277)', () => {
     it('loadsFirstSchools_FromSchoolService', () => {
         create();
         expect(schoolService.search).toHaveBeenCalledTimes(1);
-        expect(schoolService.search).toHaveBeenCalledWith('', SCHOOL_SELECT_MAX_OPTIONS);
+        expect(schoolService.search).toHaveBeenCalledWith('', SCHOOL_SELECT_MAX_OPTIONS, NO_SCOPE);
         expect(component.schools().map((s) => s.id)).toEqual([1, 2, 3]);
         expect(input()).not.toBeNull();
     });
@@ -102,7 +106,7 @@ describe('SchoolSelectComponent (issue #277)', () => {
             fixture.detectChanges();
 
             expect(schoolService.search).toHaveBeenCalledTimes(2);
-            expect(schoolService.search).toHaveBeenLastCalledWith('kadı', SCHOOL_SELECT_MAX_OPTIONS);
+            expect(schoolService.search).toHaveBeenLastCalledWith('kadı', SCHOOL_SELECT_MAX_OPTIONS, NO_SCOPE);
             expect(component.filtered().map((s) => s.id)).toEqual([3]);
         } finally {
             vi.useRealTimers();
@@ -211,5 +215,45 @@ describe('SchoolSelectComponent (issue #277)', () => {
         component.clear();
 
         expect(emitted).toEqual([true, false, true, false]);
+    });
+
+    it('province_ScopesTheSearch_DistrictNeedsProvince_issue1106', () => {
+        create();
+        component.loadProvinces();
+        component.loadProvinces();
+        expect(schoolService.provinces).toHaveBeenCalledTimes(1);
+        expect(component.provinces().map((p) => p.name)).toEqual(['İstanbul']);
+
+        component.onProvinceChange(34);
+        fixture.detectChanges();
+        expect(schoolService.districts).toHaveBeenCalledWith(34);
+        expect(schoolService.search).toHaveBeenLastCalledWith('', SCHOOL_SELECT_MAX_OPTIONS, { provinceId: 34, districtId: null });
+
+        component.districtId.set(7);
+        fixture.detectChanges();
+        expect(schoolService.search).toHaveBeenLastCalledWith('', SCHOOL_SELECT_MAX_OPTIONS, { provinceId: 34, districtId: 7 });
+
+        component.onProvinceChange(null);
+        fixture.detectChanges();
+        expect(component.districtId()).toBeNull();
+        expect(component.districts()).toEqual([]);
+        expect(schoolService.search).toHaveBeenLastCalledWith('', SCHOOL_SELECT_MAX_OPTIONS, NO_SCOPE);
+    });
+
+    it('emptyProvince_KeepsTheFieldInsteadOfTheEmptyState_issue1106', () => {
+        create((_query) => of([]));
+        component.onProvinceChange(34);
+        fixture.detectChanges();
+        expect(el().querySelector('[data-testid="school-select-empty"]')).toBeNull();
+        expect(input()).not.toBeNull();
+    });
+
+    it('cappedResult_ShowsMoreNote_issue1106', () => {
+        const many = Array.from({ length: SCHOOL_SELECT_MAX_OPTIONS }, (_, i) => school(100 + i, `Okul ${i}`));
+        create(() => of(many));
+        expect(component.hasMore()).toBe(true);
+        TestBed.resetTestingModule();
+        create();
+        expect(component.hasMore()).toBe(false);
     });
 });

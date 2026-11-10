@@ -335,9 +335,34 @@ public class SchoolServiceTests : IDisposable
         await SeedSearchableAsync();
 
         await using var read = _db.NewContext();
-        var result = await NewService(read).SearchAsync(query, 50);
+        var result = await NewService(read).SearchAsync(query, null, null, 50);
 
         result.Select(s => s.Name).OrderBy(n => n, StringComparer.Ordinal).ShouldBe(expected.OrderBy(n => n, StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public async Task SearchAsync_narrows_to_the_province_and_district()
+    {
+        await SeedSearchableAsync();
+        var (ankara, cankaya) = await SeedProvinceWithDistrictAsync();
+        int otherDistrict;
+        await using (var ctx = _db.NewContext())
+        {
+            var district = new District { Name = "Keçiören", ProvinceId = ankara };
+            ctx.Districts.Add(district);
+            await ctx.SaveChangesAsync();
+            otherDistrict = district.Id;
+            var service = NewService(ctx);
+            await service.CreateAsync(new UpsertSchoolDto { Name = "Çankaya Atatürk Lisesi", ProvinceId = ankara, DistrictId = cankaya }, userId: 1);
+            await service.CreateAsync(new UpsertSchoolDto { Name = "Keçiören Fen Lisesi", ProvinceId = ankara, DistrictId = otherDistrict }, userId: 1);
+        }
+
+        await using var read = _db.NewContext();
+        var service2 = NewService(read);
+        (await service2.SearchAsync(null, ankara, null, 50)).Select(s => s.Name)
+            .ShouldBe(new[] { "Çankaya Atatürk Lisesi", "Keçiören Fen Lisesi" }, ignoreOrder: true);
+        (await service2.SearchAsync(null, ankara, otherDistrict, 50)).Single().Name.ShouldBe("Keçiören Fen Lisesi");
+        (await service2.SearchAsync("ataturk", ankara, null, 50)).Single().Name.ShouldBe("Çankaya Atatürk Lisesi");
     }
 
     [Theory]
@@ -353,7 +378,7 @@ public class SchoolServiceTests : IDisposable
         }
 
         await using var read = _db.NewContext();
-        (await NewService(read).SearchAsync(null, limit)).Count.ShouldBe(expected);
+        (await NewService(read).SearchAsync(null, null, null, limit)).Count.ShouldBe(expected);
     }
 
     [Fact]
@@ -364,8 +389,8 @@ public class SchoolServiceTests : IDisposable
             (await NewService(ctx).UpdateAsync(id, new UpsertSchoolDto { Name = "Yeni Çınar Lisesi" }, userId: 1)).Success.ShouldBeTrue();
 
         await using var read = _db.NewContext();
-        (await NewService(read).SearchAsync("cinar", 50)).Single().Id.ShouldBe(id);
-        (await NewService(read).SearchAsync("eski", 50)).ShouldBeEmpty();
+        (await NewService(read).SearchAsync("cinar", null, null, 50)).Single().Id.ShouldBe(id);
+        (await NewService(read).SearchAsync("eski", null, null, 50)).ShouldBeEmpty();
     }
 
     [Fact]

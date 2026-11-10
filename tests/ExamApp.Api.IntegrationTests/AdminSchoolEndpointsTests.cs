@@ -120,4 +120,26 @@ public class AdminSchoolEndpointsTests(IntegrationApiFactory factory) : Integrat
         (await Anonymous().GetAsync($"/api/school/{schoolId}")).StatusCode.ShouldBe(HttpStatusCode.OK);
         (await Anonymous().GetAsync($"/api/school/{schoolId + 1000}")).StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
+
+    [Fact]
+    public async Task The_public_school_list_filters_by_province_and_lists_locations_issue1106()
+    {
+        var (provinceId, districtId) = await WithDbAsync(async db =>
+        {
+            var province = new Province { Name = "Filtre İli" };
+            var district = new District { Name = "Filtre İlçesi", Province = province };
+            db.Schools.Add(new School { Name = "İçerideki Lise", Province = province, District = district });
+            db.Schools.Add(new School { Name = "Dışarıdaki Lise" });
+            await db.SaveChangesAsync();
+            return (province.Id, district.Id);
+        });
+
+        var inside = await (await Anonymous().GetAsync($"/api/school?provinceId={provinceId}&districtId={districtId}")).Content.ReadAsStringAsync();
+        inside.ShouldContain("İçerideki Lise");
+        inside.ShouldNotContain("Dışarıdaki Lise");
+
+        (await (await Anonymous().GetAsync("/api/school/provinces")).Content.ReadAsStringAsync()).ShouldContain("Filtre İli");
+        (await (await Anonymous().GetAsync($"/api/school/districts?provinceId={provinceId}")).Content.ReadAsStringAsync())
+            .ShouldContain("Filtre İlçesi");
+    }
 }

@@ -17,9 +17,10 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSelectModule } from '@angular/material/select';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { catchError, of, switchMap, tap, timer } from 'rxjs';
-import { SchoolOption } from '../../../models/taxonomy';
+import { DistrictDto, ProvinceDto, SchoolOption } from '../../../models/taxonomy';
 import { SchoolService } from '../../../services/school.service';
 
 /** Açılır listede aynı anda gösterilen en fazla seçenek; arama daraltır. */
@@ -31,6 +32,7 @@ export const SCHOOL_SELECT_DEBOUNCE_MS = 250;
 /**
  * Issue #277 — aranabilir okul seçimi (mat-autocomplete). Seçenekler yazdıkça `GET /api/exam/school`'dan gelir; serbest metin
  * gönderilmez, yalnız listeden seçilen okulun id'si `value` olur. Yazı seçili okulun adından saparsa seçim düşer (null).
+ * #1106: il / ilçe seçimi aramayı daraltır; iller seçim kutusu ilk açılınca iner. İl değişince seçili okul korunur.
  * Kullananlar: kayıt sihirbazı (öğrenci/öğretmen), admin öğrenci okul değişikliği dialog'u.
  */
 @Component({
@@ -43,6 +45,7 @@ export const SCHOOL_SELECT_DEBOUNCE_MS = 250;
     MatIconModule,
     MatInputModule,
     MatProgressSpinnerModule,
+    MatSelectModule,
     TranslocoDirective,
   ],
   templateUrl: './school-select.component.html',
@@ -71,6 +74,12 @@ export class SchoolSelectComponent {
    */
   readonly unmatchedChange = output<boolean>();
   private lastUnmatched = false;
+
+  readonly provinceId = signal<number | null>(null);
+  readonly districtId = signal<number | null>(null);
+  readonly provinces = signal<ProvinceDto[]>([]);
+  readonly districts = signal<DistrictDto[]>([]);
+  private provincesRequested = false;
 
   private readonly reloadTick = signal(0);
   private readonly status = signal<'loading' | 'ready' | 'error'>('loading');
@@ -107,9 +116,17 @@ export class SchoolSelectComponent {
     const selected = this.selectedSchool();
     return selected && this.query() === selected.name ? '' : this.query().trim();
   });
-  private readonly request = computed(() => ({ term: this.searchTerm(), tick: this.reloadTick() }));
+  private readonly request = computed(() => ({
+    term: this.searchTerm(),
+    scope: { provinceId: this.provinceId(), districtId: this.districtId() },
+    tick: this.reloadTick(),
+  }));
 
-  readonly isEmpty = computed(() => this.status() === 'ready' && !this.searchTerm() && this.schools().length === 0);
+  readonly isEmpty = computed(
+    () => this.status() === 'ready' && !this.searchTerm() && this.provinceId() == null && this.schools().length === 0,
+  );
+  /** Sonuç sınıra dayandı: listede olmayan okullar var, kullanıcı il seçmeli ya da aramayı daraltmalı. */
+  readonly hasMore = computed(() => this.status() === 'ready' && this.results().length >= SCHOOL_SELECT_MAX_OPTIONS);
   readonly filtered = this.schools;
 
   /** Metin yazılmış ama listeden seçilmemiş → kullanıcıya "listeden seçin" ipucu. */
@@ -123,9 +140,9 @@ export class SchoolSelectComponent {
     toObservable(this.request)
       .pipe(
         tap(() => this.status.set('loading')),
-        switchMap(({ term }) =>
+        switchMap(({ term, scope }) =>
           (term ? timer(SCHOOL_SELECT_DEBOUNCE_MS) : of(0)).pipe(
-            switchMap(() => this.schoolService.search(term, SCHOOL_SELECT_MAX_OPTIONS)),
+            switchMap(() => this.schoolService.search(term, SCHOOL_SELECT_MAX_OPTIONS, scope)),
             catchError(() => of(null)),
           ),
         ),
@@ -148,6 +165,29 @@ export class SchoolSelectComponent {
 
   retry(): void {
     this.reloadTick.update((n) => n + 1);
+  }
+
+  /** İl kutusu ilk açılınca iller iner; başarısız olursa sonraki açılışta yeniden denenir. */
+  loadProvinces(): void {
+    if (this.provincesRequested) return;
+    this.provincesRequested = true;
+    this.schoolService.provinces().subscribe({
+      next: (provinces) => this.provinces.set(provinces),
+      error: () => (this.provincesRequested = false),
+    });
+  }
+
+  onProvinceChange(provinceId: number | null): void {
+    this.provinceId.set(provinceId);
+    this.districtId.set(null);
+    this.districts.set([]);
+    if (provinceId == null) return;
+    this.schoolService.districts(provinceId).subscribe({
+      next: (districts) => {
+        if (this.provinceId() === provinceId) this.districts.set(districts);
+      },
+      error: () => this.districts.set([]),
+    });
   }
 
   onInput(text: string): void {

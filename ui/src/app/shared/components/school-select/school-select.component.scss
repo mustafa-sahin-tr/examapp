@@ -6,6 +6,22 @@
   width: 100%;
 }
 
+.ss__scope {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ss__more {
+  font-size: 12px;
+  white-space: normal;
+}
+
 .ss__state {
   display: flex;
   align-items: center;

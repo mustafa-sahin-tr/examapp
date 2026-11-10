@@ -13,6 +13,37 @@
       <span>{{ t('empty') }}</span>
     </div>
   } @else {
+    <div class="ss__scope">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>{{ t('province') }}</mat-label>
+        <mat-select
+          data-testid="school-select-province"
+          [value]="provinceId()"
+          [disabled]="disabled()"
+          (openedChange)="$event && loadProvinces()"
+          (valueChange)="onProvinceChange($event)"
+        >
+          <mat-option [value]="null">{{ t('allProvinces') }}</mat-option>
+          @for (p of provinces(); track p.id) {
+            <mat-option [value]="p.id">{{ p.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>{{ provinceId() == null ? t('districtNeedsProvince') : t('district') }}</mat-label>
+        <mat-select
+          data-testid="school-select-district"
+          [value]="districtId()"
+          [disabled]="disabled() || provinceId() == null"
+          (valueChange)="districtId.set($event)"
+        >
+          <mat-option [value]="null">{{ t('allDistricts') }}</mat-option>
+          @for (d of districts(); track d.id) {
+            <mat-option [value]="d.id">{{ d.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
     <mat-form-field appearance="outline" class="ss__field" subscriptSizing="dynamic">
       <mat-label>{{ label() ?? t('label') }}</mat-label>
       <mat-icon matPrefix aria-hidden="true">search</mat-icon>
@@ -53,6 +84,9 @@
           </mat-option>
         } @empty {
           <mat-option disabled>{{ loading() ? t('loading') : t('noMatch') }}</mat-option>
+        }
+        @if (hasMore()) {
+          <mat-option disabled class="ss__more" data-testid="school-select-more">{{ t('more') }}</mat-option>
         }
       </mat-autocomplete>
       @if (unmatchedText()) {

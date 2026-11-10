@@ -6,6 +6,7 @@ using ExamApp.Api.Models.Dtos.Admin;
 using ExamApp.Api.Models.Dtos.DirectMessages;
 using ExamApp.Api.Services.AdminUsers;
 using ExamApp.Api.Services.DirectMessages;
+using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Teachers.Authorization;
 using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
@@ -59,11 +60,14 @@ public class DirectMessagesController : BaseController
     [Authorize(Roles = "Student")]
     [Authorize(Policy = ExamApp.Api.Services.Parents.Enforcement.ParentRequirementPolicies.ParentActivated)] // issue #440
     [EnableRateLimiting(DirectMessageRateLimiting.SendPolicy)]
-    public async Task<IActionResult> SendToTeacher(int teacherId, [FromBody] SendDirectMessageDto dto, CancellationToken ct)
+    public async Task<IActionResult> SendToTeacher(int teacherId, [FromBody] SendDirectMessageDto dto,
+        [FromServices] ISharedEntitlementGate gate, CancellationToken ct)
     {
         var actor = await ResolveActorAsync(ct);
         if (actor == null)
             return ActorNotResolved();
+        if (await DenyUnlessBothCanMessageAsync(gate, actor, await gate.TeacherUserIdAsync(teacherId, ct), ct) is { } planDenied)
+            return planDenied;
 
         var result = await _messages.SendToTeacherAsync(actor, teacherId, dto, ct);
         return result.Success ? StatusCode(StatusCodes.Status201Created, result) : MapFailure(result);
@@ -165,11 +169,15 @@ public class DirectMessagesController : BaseController
     [Authorize(Policy = ExamApp.Api.Services.Parents.Enforcement.ParentRequirementPolicies.ParentActivated)] // issue #440: yalnız veli kuralına tabi (öğrenci) çağıran; öğretmen etkilenmez
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)]
     [EnableRateLimiting(DirectMessageRateLimiting.SendPolicy)]
-    public async Task<IActionResult> SendToConversation(int conversationId, [FromBody] SendDirectMessageDto dto, CancellationToken ct)
+    public async Task<IActionResult> SendToConversation(int conversationId, [FromBody] SendDirectMessageDto dto,
+        [FromServices] ISharedEntitlementGate gate, CancellationToken ct)
     {
         var actor = await ResolveActorAsync(ct);
         if (actor == null)
             return ActorNotResolved();
+        var counterpart = await gate.ConversationCounterpartAsync(conversationId, actor.UserId, ct);
+        if (await DenyUnlessBothCanMessageAsync(gate, actor, counterpart, ct) is { } planDenied)
+            return planDenied;
 
         var result = await _messages.SendToConversationAsync(actor, conversationId, dto, ct);
         return result.Success ? StatusCode(StatusCodes.Status201Created, result) : MapFailure(result);
@@ -224,6 +232,21 @@ public class DirectMessagesController : BaseController
     /// Aktör: JWT ile doğrulanmış etkin rol (<see cref="EffectiveRole"/>, #277) — Student ya da Teacher. Servis hesabı ve
     /// başka roller mesajlaşmaz. Profil çözülemezse (Id &lt;= 0) null.
     /// </summary>
+    /// <summary>
+    /// Issue #1088: yazmak iki tarafın da planında <c>messaging</c> ister; okumak, engellemek, şikayet etmek istemez (düşürülen
+    /// planda konuşma geçmişi okunur kalır). Karşı taraf bulunamazsa servis kendi yanıtını verir.
+    /// </summary>
+    private async Task<IActionResult?> DenyUnlessBothCanMessageAsync(
+        ISharedEntitlementGate gate, DirectMessageActor actor, int? counterpartUserId, CancellationToken ct)
+    {
+        if (counterpartUserId is not int counterpart)
+            return null;
+        var decision = await gate.CheckAsync(EntitlementFeatures.Messaging, EntitlementSubject.FromPrincipal(actor.UserId, User), counterpart, ct);
+        var counterpartIsTeacher = actor.Kind == DirectMessageActorKind.Student;
+        return EntitlementLimitResponse.ForShared(EntitlementFeatures.Messaging, decision,
+            _localizer[SharedEntitlementMessages.Key(counterpartIsTeacher, EntitlementFeatures.Messaging)].Value);
+    }
+
     private async Task<DirectMessageActor?> ResolveActorAsync(CancellationToken ct)
     {
         if (IsServiceAccount)

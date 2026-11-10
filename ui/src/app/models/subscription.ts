@@ -91,6 +91,21 @@ export function entitlementLimitOf(error: unknown): EntitlementLimitReached | nu
   return expected && body?.code === expected && typeof body.feature === 'string' ? (body as EntitlementLimitReached) : null;
 }
 
+/**
+ * Issue #1088: iki taraflı özellikte (mesaj, randevu, canlı ders) karşı tarafın planı izin vermiyor — 403. Çağıranın
+ * yükseltmesi işe yaramaz; yükseltme penceresi açılmaz, sunucunun sabit sözlük mesajı gösterilir.
+ */
+export const ENTITLEMENT_COUNTERPART_NOT_IN_PLAN_CODE = 'entitlement.counterpartNotInPlan';
+
+/** 403 + `entitlement.counterpartNotInPlan` ise gösterilecek mesaj; diğer hatalarda null. */
+export function entitlementCounterpartMessageOf(error: unknown): string | null {
+  if (!(error instanceof HttpErrorResponse) || error.status !== 403) return null;
+  const body = error.error as { code?: unknown; message?: unknown } | null;
+  return body?.code === ENTITLEMENT_COUNTERPART_NOT_IN_PLAN_CODE && typeof body.message === 'string' && body.message
+    ? body.message
+    : null;
+}
+
 /** Issue #1030: admin plan ataması. E-posta maskelidir. */
 export type SubscriptionSearchRole = 'Student' | 'Teacher' | 'Parent';
 

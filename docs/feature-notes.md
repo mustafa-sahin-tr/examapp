@@ -332,6 +332,19 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   `Human`. Arayüz: `EntitlementStateService` (`subscription-plans/me`, tek kopya, okunamazsa açık — sunucu karar verir),
   `entitlementGuard(feature)` (planda yoksa yükseltme penceresi; doğrudan adresle gelen panoya), 403 `entitlement.notInPlan`
   aynı yükseltme penceresini "Bu özellik planında yok" başlığıyla açar. Plan seçilince (deneme / ödeme) kapılar hemen açılır.
+- **Öğretmen araçları ve iki taraflı özellikler (#1088):** yazma uçları plana bağlı, okuma / silme açık kalır (plan düşen öğretmen
+  eskisini görür, temizler). `activity-editor`: tekil ve toplu soru kaydında çoktan seçmeli (`mcq`) dışı her tip (güncelleme de);
+  tuvalde etkinlik tipi seçimi ve `/activity-editor` rotası yükseltme penceresini açar. `flashcard-sets`: öğretmen destesi
+  oluşturma / düzenleme, kart ekleme / düzenleme, atama (öğrencinin kendi destesi serbest). `coach-panel`: öğretmen koç
+  uçlarının tamamı ve `/teacher/coach`; öğrencinin hedefleri ve veli özeti açık. `print-test`: yalnız arayüz (`exam/:id/print`
+  rotası, sunucu ucu yok). `tutoring`: müsaitlik aralığı / tekrar kuralı yazımı (`/availability`) ve iki taraflı randevu talebi /
+  onayı; öğretmen profili (bağımsız öğretmen başvurusu) kapısız. İki taraflı (`ISharedEntitlementGate`): `messaging` (öğrenci ↔
+  öğretmen mesaj gönderimi; okuma, engel, şikayet açık), `tutoring`, `live-lesson` (ders oturumu açma; katılımcı başına, ders
+  başına bir hak, `live-lesson:{bookingId}:{userId}`; aynı derse yeniden katılım dolu sınıra takılmaz). Önce çağıran denetlenir
+  (kendi engeli 403 `notInPlan` / 429 `limitReached`), sonra karşı taraf: 403 `entitlement.counterpartNotInPlan` + sabit sözlük
+  mesajı (`Resources/entitlements.*.json`; karşı tarafın planı yanıtta yok). Rol muafiyeti yalnız çağırana uygulanır. Arayüzde
+  bu yanıt yükseltme penceresi açmaz, mesaj bildirim olarak görünür (öğrencide karşı taraf öğretmen, öğretmende öğrencinin
+  velisi yükseltir). Free yeni anahtarların hepsini #1090'a kadar sınırsız taşır.
 - **Plan seçimi (#1028):** kayıt sihirbazının (`ui` `/register`) öğrenci / öğretmen kaydından sonra 3. adımı plan kartlarıdır
   (`PlanPickerComponent`, scope `subscription`); veli adımı atlar. "Ücretsiz devam et" API çağırmaz (Free). "Denemeyi başlat"
   → `POST /api/exam/subscription-plans/me/trial`: hesap başına bir kez (silinmiş atamalar dahil; ikincisi 409

@@ -100,6 +100,9 @@ public class EntitlementLimitReachedDto
     /// <summary>Issue #1087: özellik planda yok (403).</summary>
     public const string NotInPlanCode = "entitlement.notInPlan";
 
+    /// <summary>Issue #1088: paylaşılan özellik karşı tarafın planında yok (403); <see cref="Message"/> kimin yükselteceğini söyler.</summary>
+    public const string CounterpartNotInPlanCode = "entitlement.counterpartNotInPlan";
+
     public string Code { get; set; } = LimitReachedCode;
 
     /// <summary>Sınırına ulaşılan özellik anahtarı (ör. <c>book-import</c>).</summary>

@@ -8,7 +8,7 @@
         </a>
       }
       @if (!creating()) {
-        <button mat-stroked-button type="button" data-test="deck-new" (click)="creating.set(true)">
+        <button mat-stroked-button type="button" data-test="deck-new" (click)="startCreate()">
           <mat-icon>add</mat-icon>
           {{ t('newDeck') }}
         </button>
@@ -39,7 +39,7 @@
         <h2>{{ t('emptyTitle') }}</h2>
         <p>{{ isStudent ? t('emptyTextStudent') : t('emptyTextTeacher') }}</p>
         @if (!creating()) {
-          <button mat-flat-button type="button" data-test="deck-new-empty" (click)="creating.set(true)">
+          <button mat-flat-button type="button" data-test="deck-new-empty" (click)="startCreate()">
             <mat-icon>add</mat-icon>
             {{ t('newDeck') }}
           </button>

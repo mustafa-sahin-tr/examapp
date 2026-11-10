@@ -53,6 +53,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../services/auth.service';
 import { EntitlementStateService } from '../../services/entitlement-state.service';
+import { EntitlementLimitHandler } from '../../shared/interceptors/entitlement-limit.interceptor';
 import { TestCreateEnhancedComponent } from '../test-create-enhanced/test-create-enhanced.component';
 import { ClassificationSource, QuestionRegion } from '../../models/draws';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
@@ -151,6 +152,7 @@ export class QuestionCanvasComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
   private authService = inject(AuthService);
   private readonly entitlements = inject(EntitlementStateService);
+  private readonly entitlementLimits = inject(EntitlementLimitHandler);
   /** #1087: tuvalde Claude tespiti (içerik ekibi ya da planda `canvas-ai`); açıksa sayfa kaynağı dışarıdan seçilir. */
   readonly canvasAi = signal(false);
   /** #1087: planda `auto-detect` yoksa tespit düğmeleri gizlenir, sayfa boş tuvalle açılır. */
@@ -798,6 +800,11 @@ export class QuestionCanvasComponent implements OnInit {
   insSetInteractionType(type: QuestionInteractionType) {
     const name = this.insName;
     if (!name) {
+      return;
+    }
+    // Issue #1088: çoktan seçmeli dışı tip (etkinlik) planda `activity-editor` ister; sunucu da kaydı reddeder.
+    if (type !== 'mcq' && !this.entitlements.has('activity-editor')) {
+      this.entitlementLimits.showNotInPlan('activity-editor', this.entitlements.plan()?.planKey ?? null);
       return;
     }
     // Issue #581: etkinlik bloğunda tip bileşeni de belirler; "Çoktan seçmeli" bloğu soruya çevirir.

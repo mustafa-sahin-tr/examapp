@@ -5,6 +5,7 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.ParentLinks;
 using ExamApp.Api.Services.Coaching;
+using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Teachers.Authorization;
 using ExamApp.Api.Services.Tenancy;
@@ -24,6 +25,7 @@ namespace ExamApp.Api.Controllers;
 [Route("api/teacher/coach/students")]
 [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)]
 [Authorize(Roles = "Teacher")]
+[RequiresEntitlement(EntitlementFeatures.CoachPanel, InPlanOnly = true)] // #1088: koç paneli Essential+; öğrencinin hedef listesi açık kalır
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public class TeacherCoachController(
     ICoachService coach,

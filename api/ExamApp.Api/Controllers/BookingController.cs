@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Bookings;
 using ExamApp.Api.Services.Bookings;
+using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Parents;
 using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
@@ -46,6 +47,7 @@ public class BookingController : BaseController
     [HttpPost("slots")]
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     [Authorize(Roles = "Teacher")]
+    [RequiresEntitlement(EntitlementFeatures.Tutoring, InPlanOnly = true)] // #1088: yeni müsaitlik planda özel ders ister
     public async Task<IActionResult> CreateSlot([FromBody] CreateAvailabilitySlotDto request, CancellationToken ct)
     {
         var user = await GetAuthenticatedUserAsync();
@@ -101,6 +103,7 @@ public class BookingController : BaseController
     [HttpPost("recurring-rules")]
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     [Authorize(Roles = "Teacher")]
+    [RequiresEntitlement(EntitlementFeatures.Tutoring, InPlanOnly = true)] // #1088: yeni müsaitlik planda özel ders ister
     public async Task<IActionResult> CreateRecurringRule(
         [FromBody] CreateRecurringAvailabilityRuleDto request, CancellationToken ct)
     {
@@ -169,11 +172,16 @@ public class BookingController : BaseController
     [HttpPost("requests")]
     [Authorize(Roles = "Student")]
     [Authorize(Policy = ExamApp.Api.Services.Parents.Enforcement.ParentRequirementPolicies.ParentActivated)] // issue #440: veli daveti aktive edilmemiş öğrenci 403 ParentActivationRequired
-    public async Task<IActionResult> CreateRequest([FromBody] CreateBookingDto request, CancellationToken ct)
+    public async Task<IActionResult> CreateRequest([FromBody] CreateBookingDto request,
+        [FromServices] ISharedEntitlementGate gate, CancellationToken ct)
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
             return UserNotResolved(_localizer["booking.unauthorized"].Value);
+        // #1088: randevu iki tarafın da planında özel ders ister.
+        if (await gate.SlotTeacherUserIdAsync(request.AvailabilitySlotId, ct) is int teacherUserId
+            && await DenyUnlessBothAsync(gate, EntitlementFeatures.Tutoring, user.Id, teacherUserId, counterpartIsTeacher: true, ct) is { } planDenied)
+            return planDenied;
 
         var result = await _bookingService.CreateBookingAsync(user.Id, request, ParentRequirement.RequiresParent(User), ct);
         if (!result.Success)
@@ -229,11 +237,14 @@ public class BookingController : BaseController
     [HttpPost("requests/{id:int}/approve")]
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     [Authorize(Roles = "Teacher")]
-    public async Task<IActionResult> ApproveRequest(int id, CancellationToken ct)
+    public async Task<IActionResult> ApproveRequest(int id, [FromServices] ISharedEntitlementGate gate, CancellationToken ct)
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
             return UserNotResolved(_localizer["booking.unauthorized"].Value);
+        if (await gate.BookingParticipantsAsync(id, ct) is { } participants && participants.TeacherUserId == user.Id
+            && await DenyUnlessBothAsync(gate, EntitlementFeatures.Tutoring, user.Id, participants.StudentUserId, counterpartIsTeacher: false, ct) is { } planDenied)
+            return planDenied;
 
         var result = await _bookingService.ApproveBookingAsync(user.Id, id, ct);
         return result.Success ? Ok(result) : MapFailure(result);
@@ -345,14 +356,47 @@ public class BookingController : BaseController
     [HttpPost("requests/{id:int}/video-session")]
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287
     [Authorize(Roles = "Teacher,Student")]
-    public async Task<IActionResult> CreateVideoSession(int id, CancellationToken ct)
+    public async Task<IActionResult> CreateVideoSession(int id, [FromServices] ISharedEntitlementGate gate,
+        [FromServices] IEntitlementService entitlements, CancellationToken ct)
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
             return UserNotResolved(_localizer["booking.unauthorized"].Value);
 
+        // #1088: canlı ders iki tarafın da planında olmalı; her taraf için ders başına bir kullanım (aynı derse yeniden katılım
+        // sayılmaz, hakkı yeni dolmuş tarafı da engellemez). Randevunun tarafı olmayanı servis 403 ile karşılar.
+        var participants = await gate.BookingParticipantsAsync(id, ct);
+        var counterpart = participants switch
+        {
+            { } p when p.TeacherUserId == user.Id => p.StudentUserId,
+            { } p when p.StudentUserId == user.Id => p.TeacherUserId,
+            _ => (int?)null,
+        };
+        if (counterpart is int other)
+        {
+            var decision = await gate.CheckAsync(EntitlementFeatures.LiveLesson, EntitlementSubject.FromPrincipal(user.Id, User), other, ct,
+                LiveLessonReference(id, user.Id), LiveLessonReference(id, other));
+            var counterpartIsTeacher = participants!.TeacherUserId == other;
+            if (EntitlementLimitResponse.ForShared(EntitlementFeatures.LiveLesson, decision,
+                    _localizer[SharedEntitlementMessages.Key(counterpartIsTeacher, EntitlementFeatures.LiveLesson)].Value) is { } planDenied)
+                return planDenied;
+        }
+
         var result = await _bookingService.GetVideoSessionAsync(user.Id, id, ct);
+        if (result.Success && counterpart != null)
+            await entitlements.RecordUsageAsync(user.Id, EntitlementFeatures.LiveLesson, LiveLessonReference(id, user.Id), ct);
         return result.Success ? Ok(result) : MapFailure(result);
+    }
+
+    private static string LiveLessonReference(int bookingId, int userId) => $"live-lesson:{bookingId}:{userId}";
+
+    /// <summary>Issue #1088: iki taraflı özellik (<c>tutoring</c>); izin yoksa 403 / 429 ya da karşı tarafın mesajı.</summary>
+    private async Task<IActionResult?> DenyUnlessBothAsync(ISharedEntitlementGate gate, string featureKey, int userId,
+        int counterpartUserId, bool counterpartIsTeacher, CancellationToken ct)
+    {
+        var decision = await gate.CheckAsync(featureKey, EntitlementSubject.FromPrincipal(userId, User), counterpartUserId, ct);
+        return EntitlementLimitResponse.ForShared(featureKey, decision,
+            _localizer[SharedEntitlementMessages.Key(counterpartIsTeacher, featureKey)].Value);
     }
 
     /// <summary>

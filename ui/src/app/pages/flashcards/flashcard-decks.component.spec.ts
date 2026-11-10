@@ -6,9 +6,11 @@ import { of, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import flashcardsTr from '../../../../public/i18n/flashcards/tr.json';
 import { FlashcardDeckSummary, FlashcardMode } from '../../models/flashcard.model';
+import { EntitlementStateService } from '../../services/entitlement-state.service';
 import { FlashcardService } from '../../services/flashcard.service';
 import { GradesService } from '../../services/grades.service';
 import { SubjectService } from '../../services/subject.service';
+import { EntitlementLimitHandler } from '../../shared/interceptors/entitlement-limit.interceptor';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import { FlashcardDecksComponent } from './flashcard-decks.component';
 
@@ -29,9 +31,12 @@ const deck = (id: number, isOwner: boolean, dueCount: number | null = 0): Flashc
 describe('FlashcardDecksComponent (issue #699)', () => {
   let service: { listDecks: ReturnType<typeof vi.fn>; createDeck: ReturnType<typeof vi.fn>; deleteDeck: ReturnType<typeof vi.fn> };
   let dialogResult: boolean;
+  let hasFlashcardSets = true;
+  let showNotInPlan: ReturnType<typeof vi.fn>;
 
   function create(decks: FlashcardDeckSummary[], mode: FlashcardMode = 'student'): ComponentFixture<FlashcardDecksComponent> {
     dialogResult = true;
+    showNotInPlan = vi.fn();
     service = {
       listDecks: vi.fn().mockReturnValue(of(decks)),
       createDeck: vi.fn().mockReturnValue(of(deck(9, true))),
@@ -46,6 +51,11 @@ describe('FlashcardDecksComponent (issue #699)', () => {
         { provide: MatDialog, useValue: { open: () => ({ afterClosed: () => of(dialogResult) }) } },
         { provide: GradesService, useValue: { getGrades: () => of([]) } },
         { provide: SubjectService, useValue: {} },
+        {
+          provide: EntitlementStateService,
+          useValue: { load: () => of(null), has: () => hasFlashcardSets, plan: () => ({ planKey: 'teacher-basic' }) },
+        },
+        { provide: EntitlementLimitHandler, useValue: { showNotInPlan } },
       ],
     });
     const fixture = TestBed.createComponent(FlashcardDecksComponent);
@@ -55,6 +65,31 @@ describe('FlashcardDecksComponent (issue #699)', () => {
 
   const query = (fixture: ComponentFixture<FlashcardDecksComponent>, test: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-test="${test}"]`);
+
+  afterEach(() => (hasFlashcardSets = true));
+
+  it('teacherWithoutFlashcardSets_NewDeckOpensTheUpgradeDialog (#1088)', () => {
+    hasFlashcardSets = false;
+    const fixture = create([deck(1, true)], 'teacher');
+
+    query(fixture, 'deck-new')!.click();
+    fixture.detectChanges();
+
+    expect(showNotInPlan).toHaveBeenCalledWith('flashcard-sets', 'teacher-basic');
+    expect(fixture.nativeElement.querySelector('app-flashcard-deck-form')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Deck 1');
+  });
+
+  it('studentWithoutTheFeature_StillCreatesOwnDeck (#1088)', () => {
+    hasFlashcardSets = false;
+    const fixture = create([]);
+
+    query(fixture, 'deck-new-empty')!.click();
+    fixture.detectChanges();
+
+    expect(showNotInPlan).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('app-flashcard-deck-form')).not.toBeNull();
+  });
 
   it('empty_ShowsEmptyState', () => {
     expect(query(create([]), 'decks-empty')).not.toBeNull();

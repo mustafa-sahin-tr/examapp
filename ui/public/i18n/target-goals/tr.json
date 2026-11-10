@@ -153,5 +153,8 @@
     "say": "Sayısal",
     "ea": "Eşit Ağırlık",
     "soz": "Sözel"
-  }
+  },
+  "ranking": "{{ name }}: {{ takers }} öğrenci arasında {{ rank }}. (ilk %{{ top }})",
+  "rankingFew": "{{ name }}: şu ana kadar {{ takers }} öğrenci çözdü",
+  "rankingNote": "Sıralama, denemeyi bitiren öğrenciler arasında şu ana kadarki yerdir."
 }

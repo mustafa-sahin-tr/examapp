@@ -88,6 +88,14 @@ describe('TargetGoalCardComponent (#695)', () => {
     expect(el.textContent).not.toContain(goalsTr.obpNote);
   });
 
+  it('lists the rank in the latest mock exams (issue #1094)', async () => {
+    const el = await render(of({ target: program, results: [{ ...lgsResult, ranking: { takers: 120, rank: 12, topPercent: 10 } }] }), 42);
+
+    expect(el.querySelector('[data-testid="target-ranks"]')?.textContent?.trim())
+      .toBe(`${lgsResult.name}: 120 öğrenci arasında 12. (ilk %10)`);
+    expect(el.textContent).toContain(goalsTr.rankingNote);
+  });
+
   it('a parent reads the child target and cannot change it', async () => {
     const el = await render(of({ target: { ...program, sourceReference: null }, results: [lgsResult] }), 42);
 

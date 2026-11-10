@@ -214,4 +214,26 @@ public class MockExamResultDto
 
     /// <summary>Yalnız geçmiş listesinde dolu: son oturumun bitişi.</summary>
     public DateTime? FinishedAt { get; set; }
+
+    /// <summary>#1094: sonuç tamamsa bütün tamamlayanlar içindeki yeri (şu ana kadar); geçmiş listesinde null.</summary>
+    public MockExamRankingDto? Ranking { get; set; }
+}
+
+/// <summary>
+/// #1094: denemeyi bütün oturumlarıyla bitiren öğrenciler arasında toplam nete göre yer. Eşit net aynı sırayı paylaşır (1, 2, 2, 4).
+/// <see cref="Takers"/> en az <see cref="MockExamRankingRules.MinTakers"/> değilse sıra ve yüzde gösterilmez (null).
+/// </summary>
+public class MockExamRankingDto
+{
+    public int Takers { get; set; }
+    public int? Rank { get; set; }
+
+    /// <summary>İlk yüzde: ⌈100 × sıra / katılımcı⌉.</summary>
+    public int? TopPercent { get; set; }
+}
+
+public static class MockExamRankingRules
+{
+    /// <summary>Bunun altında sıra gösterilmez: "1 kişiden 1." anlamsız.</summary>
+    public const int MinTakers = 5;
 }

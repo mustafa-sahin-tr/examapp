@@ -153,5 +153,8 @@
     "say": "Science & Maths",
     "ea": "Equal Weight",
     "soz": "Verbal"
-  }
+  },
+  "ranking": "{{ name }}: #{{ rank }} of {{ takers }} students (top {{ top }}%)",
+  "rankingFew": "{{ name }}: {{ takers }} students so far",
+  "rankingNote": "The ranking is the place so far among students who finished the mock exam."
 }

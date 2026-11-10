@@ -83,6 +83,22 @@
             }
           }
 
+          <!-- #1094: son denemelerdeki yer (şu ana kadar, denemeyi bitirenler arasında). -->
+          @if (rankedResults().length > 0) {
+            <ul class="tg__ranks" data-testid="target-ranks">
+              @for (r of rankedResults(); track r.id) {
+                <li>
+                  @if (r.ranking!.rank !== null) {
+                    {{ t('ranking', { name: r.name, takers: r.ranking!.takers, rank: r.ranking!.rank, top: r.ranking!.topPercent }) }}
+                  } @else {
+                    {{ t('rankingFew', { name: r.name, takers: r.ranking!.takers }) }}
+                  }
+                </li>
+              }
+            </ul>
+            <p class="tg__note">{{ t('rankingNote') }}</p>
+          }
+
           @if (!readOnly()) {
             @if (saveFailed()) {
               <p class="tg__state" role="alert">{{ t('saveFailed') }}</p>

@@ -555,7 +555,9 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
         if (exam is null)
             return null;
 
-        return await BuildResultAsync(exam, student.Id, now, ct);
+        var result = await BuildResultAsync(exam, student.Id, now, ct);
+        result.Ranking = await RankingAsync(exam, result, now, ct);
+        return result;
     }
 
     public async Task<List<MockExamResultDto>> GetLatestCompleteResultsAsync(int studentId, IReadOnlyCollection<string> templateCodes, CancellationToken ct)
@@ -575,7 +577,11 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
 
         var results = new List<MockExamResultDto>(exams.Count);
         foreach (var exam in exams)
-            results.Add(await BuildResultAsync(exam, studentId, now, ct));
+        {
+            var result = await BuildResultAsync(exam, studentId, now, ct);
+            result.Ranking = await RankingAsync(exam, result, now, ct);
+            results.Add(result);
+        }
         return results;
     }
 
@@ -687,6 +693,59 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
             Net = Net(scores.Sum(s => s.Correct), scores.Sum(s => s.Wrong), penalty),
         };
     }
+
+    /// <summary>
+    /// #1094: denemeyi bütün oturumlarıyla bitiren öğrenciler arasında öğrencinin yeri; sonucu tamam değilse null. Netler
+    /// <see cref="BuildResultAsync"/> ile aynı kuralla (oturum satırı, #684; yanlış = toplam − doğru − boş) toplu hesaplanır.
+    /// </summary>
+    private async Task<MockExamRankingDto?> RankingAsync(MockExam exam, MockExamResultDto result, DateTime now, CancellationToken ct)
+    {
+        if (!result.Complete)
+            return null;
+
+        var worksheetIds = exam.Sessions.Select(s => s.WorksheetId).ToList();
+        var instances = await db.TestInstances.AsNoTracking()
+            .Where(i => worksheetIds.Contains(i.WorksheetId))
+            .Select(i => new { i.Id, i.StudentId, i.WorksheetId, i.Status, i.StartTime, i.MaxDurationSeconds })
+            .ToListAsync(ct);
+        // Bütün oturumları bitmiş öğrenciler (süren ya da başlanmamış oturumu olan sayılmaz).
+        var finished = instances
+            .Where(i => TestTimeLimit.EffectiveStatus(i.Status, i.StartTime, i.MaxDurationSeconds, now) != WorksheetInstanceStatus.Started)
+            .GroupBy(i => i.StudentId)
+            .Where(g => g.Select(i => i.WorksheetId).Distinct().Count() == worksheetIds.Count)
+            .SelectMany(g => g)
+            .ToList();
+        var studentOf = finished.ToDictionary(i => i.Id, i => i.StudentId);
+        var finishedIds = studentOf.Keys.ToList();
+
+        var rows = db.TestInstanceQuestions.AsNoTracking().WithRemovedWorksheetItems().Where(r => finishedIds.Contains(r.WorksheetInstanceId));
+        var correct = await CountByInstanceAsync(rows.Where(WorksheetScoring.IsCorrectRow), ct);
+        var blank = await CountByInstanceAsync(rows.Where(WorksheetScoring.IsBlankRow), ct);
+        var total = await CountByInstanceAsync(rows, ct);
+
+        var penalty = exam.ExamTemplate.WrongAnswersPerCorrect;
+        var nets = finishedIds
+            .GroupBy(id => studentOf[id])
+            .Select(g =>
+            {
+                var c = g.Sum(id => correct.GetValueOrDefault(id));
+                var w = g.Sum(id => total.GetValueOrDefault(id)) - c - g.Sum(id => blank.GetValueOrDefault(id));
+                return Net(c, w, penalty);
+            })
+            .ToList();
+
+        var takers = nets.Count;
+        if (takers < MockExamRankingRules.MinTakers)
+            return new MockExamRankingDto { Takers = takers };
+        var rank = 1 + nets.Count(n => n > result.Net);
+        return new MockExamRankingDto { Takers = takers, Rank = rank, TopPercent = (int)Math.Ceiling(100m * rank / takers) };
+    }
+
+    private Task<Dictionary<int, int>> CountByInstanceAsync(IQueryable<WorksheetInstanceQuestion> rows, CancellationToken ct) =>
+        rows.Join(db.Set<MockExamQuestion>(), r => r.WorksheetQuestionId, m => m.WorksheetQuestionId, (r, m) => r.WorksheetInstanceId)
+            .GroupBy(id => id)
+            .Select(g => new { Id = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Id, x => x.Count, ct);
 
     /// <summary>Doğru − yanlış / ceza; ceza 0 ise yanlış düşülmez.</summary>
     internal static decimal Net(int correct, int wrong, int wrongAnswersPerCorrect) =>

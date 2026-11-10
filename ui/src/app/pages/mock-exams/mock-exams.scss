@@ -571,3 +571,10 @@
   gap: 8px;
   margin-top: 8px;
 }
+
+// #1094: denemeyi bitirenler arasında yer.
+.me-rank {
+  margin: 8px 0 0;
+  font-weight: 600;
+  color: var(--primaryColor);
+}

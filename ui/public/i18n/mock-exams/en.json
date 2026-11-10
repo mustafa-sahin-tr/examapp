@@ -108,7 +108,19 @@
     "back": "Back to mock exams",
     "rank": "{{ takers }} students took it, you are #{{ rank }} (top {{ top }}%).",
     "rankFew": "{{ takers }} students have taken it so far; the ranking appears from 5 students.",
-    "rankAsOf": "The ranking is as of now and changes as more students finish."
+    "rankAsOf": "The ranking is as of now and changes as more students finish.",
+    "questions": {
+      "title": "By question ({{count}} questions)",
+      "number": "Question",
+      "yours": "Your answer",
+      "takers": "Takers' success",
+      "correct": "Correct",
+      "wrong": "Wrong",
+      "blank": "Blank",
+      "rate": "{{percent}}% correct",
+      "few": "Too few answers",
+      "note": "Success comes from the first answer of students who finished; blanks don't count. Hidden below 5 answers."
+    }
   },
   "templates": {
     "title": "Exam Templates",

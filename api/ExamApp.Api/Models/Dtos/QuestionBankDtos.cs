@@ -150,6 +150,31 @@ public class QuestionBankItemDto
     public bool CanLink { get; set; }
 
     public DateTime CreateTime { get; set; }
+
+    /// <summary>Issue #1094: öğrencilerin bu soruya cevabı (<c>QuestionAnswerStatsReader</c>); hiç cevap yoksa null.</summary>
+    public QuestionAnswerStatsDto? AnswerStats { get; set; }
+}
+
+/// <summary>
+/// Issue #1094: soru başına cevap istatistiği. <see cref="Answered"/> farklı öğrenci sayısıdır; oran ve ortalama süre
+/// <see cref="MinAnswers"/> cevaptan az ise gösterilmez (null, arayüzde "az veri").
+/// </summary>
+public class QuestionAnswerStatsDto
+{
+    public const int MinAnswers = 5;
+
+    public int Answered { get; set; }
+    public int? SuccessPercent { get; set; }
+    public int? AverageSeconds { get; set; }
+
+    public static QuestionAnswerStatsDto From(int answered, int correct, long totalSeconds) => answered < MinAnswers
+        ? new QuestionAnswerStatsDto { Answered = answered }
+        : new QuestionAnswerStatsDto
+        {
+            Answered = answered,
+            SuccessPercent = (int)Math.Round(100m * correct / answered, MidpointRounding.AwayFromZero),
+            AverageSeconds = (int)Math.Round((decimal)totalSeconds / answered, MidpointRounding.AwayFromZero),
+        };
 }
 
 /// <summary>issue #471: sayfalı soru bankası arama sonucu.</summary>

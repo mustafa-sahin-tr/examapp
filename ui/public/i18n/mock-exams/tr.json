@@ -108,7 +108,19 @@
     "back": "Denemelere dön",
     "rank": "{{ takers }} öğrenci çözdü, sen {{ rank }}. sıradasın (ilk %{{ top }}).",
     "rankFew": "Şu ana kadar {{ takers }} öğrenci çözdü; sıralama 5 öğrenciden sonra görünür.",
-    "rankAsOf": "Sıralama şu ana kadarki durumdur; daha çok öğrenci bitirdikçe değişir."
+    "rankAsOf": "Sıralama şu ana kadarki durumdur; daha çok öğrenci bitirdikçe değişir.",
+    "questions": {
+      "title": "Soru bazında ({{count}} soru)",
+      "number": "Soru",
+      "yours": "Senin cevabın",
+      "takers": "Çözenlerin başarısı",
+      "correct": "Doğru",
+      "wrong": "Yanlış",
+      "blank": "Boş",
+      "rate": "%{{percent}} doğru",
+      "few": "Az veri",
+      "note": "Başarı, denemeyi bitiren öğrencilerin ilk cevabından hesaplanır; boş bırakılan sayılmaz. 5 cevaptan az ise gösterilmez."
+    }
   },
   "templates": {
     "title": "Sınav Şablonları",

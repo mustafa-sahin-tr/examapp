@@ -517,6 +517,27 @@ describe('mock exam screens', () => {
       expect(view().querySelector('[data-testid="mock-rank"]')).toBeNull();
     });
 
+    it('questions_ShowTheStudentsOutcomeAndTheTakersSuccess_issue1094', () => {
+      const el = view({
+        ...result, complete: true, questions: [
+          { groupName: null, sectionName: 'Türkçe', number: 1, outcome: 'correct', stats: { answered: 12, successPercent: 75, averageSeconds: 40 } },
+          { groupName: null, sectionName: 'Türkçe', number: 2, outcome: 'blank', stats: { answered: 2, successPercent: null, averageSeconds: null } },
+        ],
+      });
+
+      const block = el.querySelector('[data-testid="mock-questions"]')!;
+      expect(block.querySelector('summary')?.textContent).toContain('Soru bazında (2 soru)');
+      const rows = Array.from(block.querySelectorAll('tbody tr')).map((r) => Array.from(r.querySelectorAll('th, td')).map((c) => c.textContent?.trim()));
+      expect(rows).toEqual([
+        ['Türkçe', '1', tr.result.questions.correct, '%75 doğru'],
+        ['Türkçe', '2', tr.result.questions.blank, tr.result.questions.few],
+      ]);
+    });
+
+    it('noQuestions_ShowsNoQuestionBlock_issue1094', () => {
+      expect(view().querySelector('[data-testid="mock-questions"]')).toBeNull();
+    });
+
     it('showsTheWrongAnswerRule', () => {
       expect(view().textContent).toContain(tr.result.rule.replace('{{count}}', '3'));
     });

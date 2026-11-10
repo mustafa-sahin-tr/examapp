@@ -217,6 +217,24 @@ public class MockExamResultDto
 
     /// <summary>#1094: sonuç tamamsa bütün tamamlayanlar içindeki yeri (şu ana kadar); geçmiş listesinde null.</summary>
     public MockExamRankingDto? Ranking { get; set; }
+
+    /// <summary>#1094: yalnız tek sonuç ucunda ve sonuç tamamsa dolu; ders ve ders içi sırayla.</summary>
+    public List<MockExamQuestionResultDto> Questions { get; set; } = [];
+}
+
+/// <summary>#1094: öğrencinin bir maddeye cevabı ve denemeyi çözenlerin o maddedeki başarısı (doğru şık gösterilmez).</summary>
+public class MockExamQuestionResultDto
+{
+    public string? GroupName { get; set; }
+    public string SectionName { get; set; } = string.Empty;
+
+    /// <summary>Ders içindeki sıra (1'den).</summary>
+    public int Number { get; set; }
+
+    /// <summary><c>correct</c> | <c>wrong</c> | <c>blank</c>.</summary>
+    public string Outcome { get; set; } = string.Empty;
+
+    public QuestionAnswerStatsDto? Stats { get; set; }
 }
 
 /// <summary>

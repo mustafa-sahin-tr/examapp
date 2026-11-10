@@ -557,6 +557,8 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
 
         var result = await BuildResultAsync(exam, student.Id, now, ct);
         result.Ranking = await RankingAsync(exam, result, now, ct);
+        if (result.Complete)
+            result.Questions = await QuestionResultsAsync(exam, student.Id, now, ct);
         return result;
     }
 
@@ -739,6 +741,58 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
             return new MockExamRankingDto { Takers = takers };
         var rank = 1 + nets.Count(n => n > result.Net);
         return new MockExamRankingDto { Takers = takers, Rank = rank, TopPercent = (int)Math.Ceiling(100m * rank / takers) };
+    }
+
+    /// <summary>#1094: maddeler ders ve ders içi sırayla; başarı yalnız bu denemenin oturumlarından (QuestionAnswerStatsReader).</summary>
+    private async Task<List<MockExamQuestionResultDto>> QuestionResultsAsync(MockExam exam, int studentId, DateTime now, CancellationToken ct)
+    {
+        var sections = exam.Sessions
+            .SelectMany(s => s.TemplateSession.Sections.Select(section => (Section: section, SessionOrder: s.TemplateSession.Order)))
+            .ToDictionary(x => x.Section.Id);
+        var items = await db.Set<MockExamQuestion>().AsNoTracking().WithRemovedWorksheetItems()
+            .Where(m => m.MockExamSession.MockExamId == exam.Id)
+            .Select(m => new { m.ExamTemplateSectionId, m.Order, m.WorksheetQuestionId, m.WorksheetQuestion.QuestionId })
+            .ToListAsync(ct);
+
+        var worksheetIds = exam.Sessions.Select(s => s.WorksheetId).ToList();
+        var itemIds = items.Select(i => i.WorksheetQuestionId).ToList();
+        var answers = await db.TestInstanceQuestions.AsNoTracking().WithRemovedWorksheetItems()
+            .Where(r => r.WorksheetInstance.StudentId == studentId && worksheetIds.Contains(r.WorksheetInstance.WorksheetId))
+            .Where(r => itemIds.Contains(r.WorksheetQuestionId))
+            .Select(r => new { r.WorksheetQuestionId, r.SelectedAnswerId, HasPayload = r.AnswerPayload != null, r.IsCorrect })
+            .ToListAsync(ct);
+        var answerOf = answers.GroupBy(a => a.WorksheetQuestionId).ToDictionary(g => g.Key, g => g.First());
+
+        var questionIds = items.Select(i => i.QuestionId).Distinct().ToList();
+        var questions = await db.Questions.AsNoTracking().IgnoreQueryFilters()
+            .Where(q => questionIds.Contains(q.Id))
+            .Select(q => new { q.Id, q.CorrectAnswerId, q.IsDeleted })
+            .ToDictionaryAsync(q => q.Id, ct);
+        var stats = await QuestionAnswerStatsReader.ReadAsync(db, questionIds, now, worksheetIds, ct);
+
+        return items
+            .Where(i => sections.ContainsKey(i.ExamTemplateSectionId))
+            .OrderBy(i => sections[i.ExamTemplateSectionId].SessionOrder)
+            .ThenBy(i => sections[i.ExamTemplateSectionId].Section.Order)
+            .ThenBy(i => i.Order)
+            .Select(i =>
+            {
+                var section = sections[i.ExamTemplateSectionId].Section;
+                var question = questions.GetValueOrDefault(i.QuestionId);
+                var outcome = answerOf.GetValueOrDefault(i.WorksheetQuestionId) is not { } a || WorksheetScoring.IsBlank(a.SelectedAnswerId, a.HasPayload)
+                    ? "blank"
+                    : WorksheetScoring.IsCorrect(a.SelectedAnswerId, question?.CorrectAnswerId, a.HasPayload, a.IsCorrect,
+                        questionKnown: question is { IsDeleted: false }) ? "correct" : "wrong";
+                return new MockExamQuestionResultDto
+                {
+                    GroupName = section.GroupName,
+                    SectionName = section.Name,
+                    Number = i.Order,
+                    Outcome = outcome,
+                    Stats = stats.GetValueOrDefault(i.QuestionId),
+                };
+            })
+            .ToList();
     }
 
     private Task<Dictionary<int, int>> CountByInstanceAsync(IQueryable<WorksheetInstanceQuestion> rows, CancellationToken ct) =>

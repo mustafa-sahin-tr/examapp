@@ -141,6 +141,24 @@ describe('QuestionBankPanelComponent (issue #471)', () => {
             fixture.destroy();
         });
 
+        it('answerStats_ShowRateOrFewDataInRowsAndCards_issue1094', async () => {
+            vi.mocked(search).mockReturnValue(of(makePage([
+                makeItem(1, { answerStats: { answered: 12, successPercent: 75, averageSeconds: 40 } }),
+                makeItem(2, { answerStats: { answered: 3, successPercent: null, averageSeconds: null } }),
+                makeItem(3),
+            ])));
+            fixture.componentRef.setInput('layout', 'list');
+            await settle();
+
+            const stats = () => Array.from(el().querySelectorAll('[data-testid="answer-stats"]')).map((s) => s.textContent?.trim());
+            expect(stats()).toEqual(['%75 doğru · 12 öğrenci · ort. 40 sn', '3 öğrenci · az veri']);
+
+            fixture.componentRef.setInput('layout', 'cards');
+            fixture.detectChanges();
+            expect(stats()).toEqual(['%75 doğru · 12 öğrenci · ort. 40 sn', '3 öğrenci · az veri']);
+            fixture.destroy();
+        });
+
         it('initialAnswerFilter_SearchesAnsweredOnly', async () => {
             fixture.componentRef.setInput('initialAnswerFilter', 'yes');
             await settle();

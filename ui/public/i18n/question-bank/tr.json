@@ -52,6 +52,8 @@
     "aiTooltip": "Yapay zekâ ile sınıflandırıldı",
     "difficulty": "Zorluk {{level}}",
     "testCount": "{{count}} testte",
+    "stats": "%{{percent}} doğru · {{count}} öğrenci · ort. {{seconds}} sn",
+    "statsFew": "{{count}} öğrenci · az veri",
     "unclassified": "Sınıflandırma bitmemiş",
     "noAnswer": "Doğru cevap yok",
     "shared": "Paylaşılan",

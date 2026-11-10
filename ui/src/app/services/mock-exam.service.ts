@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { MockExamRanking } from '../models/target-goal.model';
+import { QuestionAnswerStats } from '../models/question-bank';
 
 export interface ExamTemplateSection {
   id?: number;
@@ -130,6 +131,17 @@ export interface MockExamResult {
   net: number;
   /** #1094: sonuç tamamsa denemeyi bitirenler arasında yer (şu ana kadar). */
   ranking?: MockExamRanking | null;
+  /** #1094: sonuç tamamsa madde başına öğrencinin cevabı ve çözenlerin başarısı. */
+  questions?: MockExamQuestionResult[];
+}
+
+export interface MockExamQuestionResult {
+  groupName: string | null;
+  sectionName: string;
+  /** Ders içindeki sıra. */
+  number: number;
+  outcome: 'correct' | 'wrong' | 'blank';
+  stats: QuestionAnswerStats | null;
 }
 
 @Injectable({ providedIn: 'root' })

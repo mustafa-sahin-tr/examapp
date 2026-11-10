@@ -211,6 +211,44 @@ export class StudentMockExamsComponent {
             </table>
           </mat-card-content>
         </mat-card>
+
+        <!-- #1094: madde başına cevabın ve denemeyi bitirenlerin başarısı (doğru şık gösterilmez). -->
+        @if (current.questions?.length) {
+          <mat-card class="me-card">
+            <mat-card-content>
+              <details class="me-questions" data-testid="mock-questions">
+                <summary>{{ t('result.questions.title', { count: current.questions!.length }) }}</summary>
+                <table class="me-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">{{ t('result.subject') }}</th>
+                      <th scope="col">{{ t('result.questions.number') }}</th>
+                      <th scope="col">{{ t('result.questions.yours') }}</th>
+                      <th scope="col">{{ t('result.questions.takers') }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (question of current.questions; track $index) {
+                      <tr>
+                        <th scope="row">{{ question.sectionName }}</th>
+                        <td>{{ question.number }}</td>
+                        <td [class]="'me-outcome me-outcome--' + question.outcome">{{ t('result.questions.' + question.outcome) }}</td>
+                        <td>
+                          @if (question.stats?.successPercent != null) {
+                            {{ t('result.questions.rate', { percent: question.stats!.successPercent }) }}
+                          } @else {
+                            <span class="me-note">{{ t('result.questions.few') }}</span>
+                          }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+                <p class="me-note">{{ t('result.questions.note') }}</p>
+              </details>
+            </mat-card-content>
+          </mat-card>
+        }
       }
       <a mat-button routerLink="/my-mock-exams">{{ t('result.back') }}</a>
     </div>

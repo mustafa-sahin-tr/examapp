@@ -96,6 +96,17 @@
           @if (busy() === test.id) { <mat-spinner diameter="16" aria-hidden="true"></mat-spinner> }
           {{ t('review.approve') }}
         </button>
+        @if (canReimport()) {
+        @if (reimportingId() === test.id) {
+        <button mat-stroked-button type="button" (click)="reimport(test)">{{ t('review.reimportConfirm') }}</button>
+        <button mat-button type="button" (click)="reimportingId.set(null)">{{ t('review.cancel') }}</button>
+        } @else {
+        <button mat-icon-button type="button" [attr.aria-label]="t('review.reimport', { name: testName(test) })"
+          [attr.title]="t('review.reimportHint')" [disabled]="busy() !== null" (click)="reimportingId.set(test.id)">
+          <mat-icon>replay</mat-icon>
+        </button>
+        }
+        }
         @if (removingId() === test.id) {
         <button mat-stroked-button type="button" class="bir-danger" (click)="remove(test)">{{ t(label('removeConfirm')) }}</button>
         <button mat-button type="button" (click)="removingId.set(null)">{{ t('review.cancel') }}</button>

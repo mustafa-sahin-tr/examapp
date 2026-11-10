@@ -195,6 +195,11 @@ export class BookImportService {
     return this.http.delete<void>(`${this.baseUrl}/${id}/tests/${testId}`);
   }
 
+  /** Onaylanmamış testi baştan aktar: taslakları silinir, sayfa tespitleri önbellekten gelir. */
+  reimportTest(id: string, testId: number): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${id}/tests/${testId}/reimport`, {});
+  }
+
   /** Issue #1023 "İşaretlemede düzelt": testin bir sayfasının taslaklarını işaretleme ekranında düzeltilenlerle değiştirir. */
   replacePage(
     id: string,

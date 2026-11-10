@@ -512,6 +512,37 @@ public class BookQuestionImportTests : IDisposable
     }
 
     [Fact]
+    public async Task Reimporting_a_test_replaces_its_drafts_and_leaves_approved_tests()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "AB", [2]), new(2, 2, 2, "CD", [2])]);
+        Detect(1, 4, 4);
+        Detect(2, 4, 4);
+        await RunAsync(id);
+        var tests = await TestsAsync();
+
+        await using (var ctx = _db.NewContext())
+        {
+            var service = Service(ctx);
+            (await service.ApproveTestAsync(Owner, id, tests[0].Id, default)).ShouldBe(BookImportReviewResult.Ok);
+            (await service.ReimportTestAsync(Owner, id, tests[0].Id, default)).ShouldBe(RetryBookImportResult.InvalidState);
+            (await service.ReimportTestAsync(Owner, id, tests[1].Id, default)).ShouldBe(RetryBookImportResult.Queued);
+        }
+        // Gerçek banka silinmiş taslağı devam saymaz (!Question.IsDeleted); sahte bankanın taslak listesi de öyle olsun.
+        _drafts.Clear();
+        await RunAsync(id);
+
+        await using var check = _db.NewContext();
+        // Eski iki taslak silindi, yerine yenileri yazıldı (devam eski taslakları yeniden kullanmadı).
+        (await check.Questions.IgnoreQueryFilters().CountAsync(q => q.IsDeleted && q.IsDraft)).ShouldBe(2);
+        var reimported = await check.BookImportJobTests.SingleAsync(t => t.Id == tests[1].Id);
+        (reimported.Status, reimported.QuestionsSaved).ShouldBe((BookImportTestStatus.Done, 2));
+        (await check.Questions.WithDrafts().CountAsync()).ShouldBe(4);
+        reimported.WorksheetId.ShouldNotBe(tests[1].WorksheetId);
+        (await check.BookImportJobTests.SingleAsync(t => t.Id == tests[0].Id)).Status.ShouldBe(BookImportTestStatus.Approved);
+        (await check.BookImportJobs.SingleAsync()).Status.ShouldBe(BookImportJobStatus.ReadyForReview);
+    }
+
+    [Fact]
     public async Task Another_user_cannot_review_the_job()
     {
         var id = await SeedAsync([new(1, 1, 1, "AB", [2])]);

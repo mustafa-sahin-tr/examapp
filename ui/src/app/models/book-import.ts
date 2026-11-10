@@ -308,6 +308,8 @@ export interface BookImportReviewApi {
   approveTest(id: string, testId: number): Observable<void>;
   approveAll(id: string): Observable<ApproveAllBookImportResult>;
   removeTest(id: string, testId: number): Observable<void>;
+  /** Kitap aktarımı: onaylanmamış testi baştan aktar (hızlı eklemede yok). */
+  reimportTest?(id: string, testId: number): Observable<void>;
 }
 
 /** Testin kısa adı: "1-03 · Kesirler". */

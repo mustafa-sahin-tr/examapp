@@ -122,6 +122,12 @@ public interface IBookImportService
 
     /// <summary>Issue #1023: testi sil — yalnız o testin taslak testi ve taslak soruları silinir.</summary>
     Task<BookImportReviewResult> RemoveTestAsync(BookImportOwner owner, Guid id, int testId, CancellationToken ct);
+
+    /// <summary>
+    /// İncelemedeki onaylanmamış testi baştan aktarır: taslakları silinir, test yeniden kuyruğa girer (sayfa tespitleri
+    /// önbellekten gelir). Ör. numaralama düzeltmesinden sonra kayık cevaplı testi yeniden üretmek için.
+    /// </summary>
+    Task<RetryBookImportResult> ReimportTestAsync(BookImportOwner owner, Guid id, int testId, CancellationToken ct);
 }
 
 /// <summary>

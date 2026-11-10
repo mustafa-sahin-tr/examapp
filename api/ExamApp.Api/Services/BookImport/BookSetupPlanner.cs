@@ -30,8 +30,11 @@ public sealed record SurveyedPage(
 /// <summary>İçindekiler satırı: ünite no (varsa), başlık, basılı başlangıç sayfası.</summary>
 public sealed record SurveyedTocRow(int? Unit, string Title, int? PrintedPage);
 
-/// <summary>Cevap anahtarındaki bir test satırı: soru no → harf (A–E; okunamayan "?").</summary>
-public sealed record AnswerKeyRow(int Unit, int TestNo, IReadOnlyDictionary<int, char> Answers);
+/// <summary>
+/// Cevap anahtarındaki bir test satırı: soru no → harf (A–E; okunamayan "?"). <paramref name="KeyPage"/>: okunduğu dosya sayfası
+/// (#1122: test numarasız anahtar, sayfadaki yerine göre önündeki bölüme bağlanır); bilinmiyorsa 0.
+/// </summary>
+public sealed record AnswerKeyRow(int Unit, int TestNo, IReadOnlyDictionary<int, char> Answers, int KeyPage = 0);
 
 /// <summary>Planlanan bir test (onay ekranındaki tablo satırı).</summary>
 public sealed record PlannedTest(
@@ -68,6 +71,10 @@ public sealed record BookSetupPlan(
 /// <item>Test: başlığı (ünite + test no) olan test sayfasıyla başlar; başlıksız ardışık test sayfaları ona eklenir; test
 /// olmayan sayfa testi kapatır. Aynı başlık yeniden görülürse (ör. bölüm sonu tekrarı) yeni test açılmaz.</item>
 /// <item>Ofset: basılı = dosya + ofset; basılı sayfa okunan sayfalarda en sık fark (#577 kitap kaydıyla aynı yön).</item>
+/// <item>Bölümlü kitap (#1122; ör. MEB LGS çalışma kitabı): hiçbir sayfada test başlığı yoksa her ünite / sınav bölümü tek test
+/// olur. Bölüm kapak, içindekiler ya da anahtar sayfasında ve soru numarası başa dönünce kapanır; başlık, bölümün ilk sayfasından
+/// önce başlayan son içindekiler satırıdır. Test numarası olmayan anahtar sayfası, önceki anahtardan bu yana biten bölümlere
+/// bağlanır: tek bölüm varsa sayfanın tüm satırları onun, birden çoksa satırın ünite no'su o bölümlerin sırasıdır.</item>
 /// <item>Anahtar: iki okuma soru soru karşılaştırılır; farklıysa (biri boş da olsa) ilk okuma alınır, diğeri
 /// <see cref="PlannedTest.KeyConflicts"/>'ta tutulur ("." uyumlu, harf diğer okuma, "-" diğer okumada yok).</item>
 /// </list>
@@ -78,8 +85,8 @@ public static class BookSetupPlanner
     public const string FlagKeyMismatch = "keyMismatch";
     public const string FlagKeyConflicts = "keyConflicts";
 
-    /// <summary>Bir testteki en fazla soru (anahtar dizgisinin üst sınırı).</summary>
-    public const int MaxQuestionsPerTest = 100;
+    /// <summary>Bir testteki en fazla soru (anahtar dizgisinin üst sınırı); bölümlü kitapta bir ünite tek testtir (#1122).</summary>
+    public const int MaxQuestionsPerTest = Data.BookImportJobTest.MaxKeyLength;
 
     public static BookSetupPlan Plan(
         IReadOnlyList<SurveyedPage> pages,
@@ -91,9 +98,21 @@ public static class BookSetupPlanner
         var keyRanges = Ranges(ordered.Where(p => p.Kind == BookPageKind.AnswerKey).Select(p => p.FilePage));
         var selfAssessment = ordered.Where(p => p.Kind == BookPageKind.SelfAssessment).Select(p => p.FilePage).ToList();
 
-        var first = ByTest(firstRead);
-        var second = ByTest(secondRead);
         var drafts = CollectTests(ordered);
+        var sectioned = drafts.Count == 0;
+        Dictionary<(int Unit, int TestNo), AnswerKeyRow> first, second;
+        var unmatched = new List<string>();
+        if (sectioned)
+        {
+            drafts = CollectSections(ordered, toc, keyRanges);
+            first = SectionKeys(drafts, firstRead, keyRanges, unmatched);
+            second = SectionKeys(drafts, secondRead, keyRanges, unmatched);
+        }
+        else
+        {
+            first = ByTest(firstRead);
+            second = ByTest(secondRead);
+        }
 
         var tests = new List<PlannedTest>();
         foreach (var draft in drafts)
@@ -120,11 +139,13 @@ public static class BookSetupPlanner
             .Where(k => !planned.Contains(k))
             .OrderBy(k => k.Unit).ThenBy(k => k.TestNo)
             .Select(k => $"{k.Unit}-{k.TestNo:D2}")
+            .Concat(unmatched.Distinct())
             .ToList();
 
         var units = tests.GroupBy(t => t.Unit)
             .OrderBy(g => g.Key)
-            .Select(g => new PlannedUnit(g.Key, UnitTitle(g.Key, toc), g.Min(t => t.FileFrom), g.Max(t => t.FileTo)))
+            .Select(g => new PlannedUnit(g.Key, sectioned ? g.First().Title : UnitTitle(g.Key, toc), g.Min(t => t.FileFrom),
+                g.Max(t => t.FileTo)))
             .ToList();
 
         return new BookSetupPlan(Offset(ordered), keyRanges, selfAssessment, units, tests, orphans);
@@ -167,10 +188,7 @@ public static class BookSetupPlanner
             var k = (row.Unit, row.TestNo);
             if (map.TryGetValue(k, out var existing))
             {
-                var merged = new Dictionary<int, char>(existing.Answers);
-                foreach (var (n, answer) in row.Answers)
-                    merged.TryAdd(n, answer);
-                map[k] = existing with { Answers = merged };
+                map[k] = existing with { Answers = MergeAnswers(existing.Answers, row.Answers) };
             }
             else
             {
@@ -231,6 +249,95 @@ public static class BookSetupPlanner
         }
 
         return tests;
+    }
+
+    /// <summary>
+    /// #1122: test başlığı olmayan kitapta bölümler. Kapak / içindekiler / anahtar sayfası bölümü kapatır; arada kalan "diğer" sayfa
+    /// (görsel ağırlıklı soru sayfası yanlış sınıflanabilir) kapatmaz. Soru numarası yarıdan aşağı düşerse yeni bölüm başlar.
+    /// </summary>
+    private static List<TestDraft> CollectSections(List<SurveyedPage> pages, IReadOnlyList<SurveyedTocRow> toc,
+        IReadOnlyList<(int From, int To)> keyRanges)
+    {
+        var sections = new List<TestDraft>();
+        TestDraft? current = null;
+        foreach (var page in pages)
+        {
+            if (page.Kind is BookPageKind.Cover or BookPageKind.Toc or BookPageKind.AnswerKey or BookPageKind.SelfAssessment)
+            {
+                current = null;
+                continue;
+            }
+
+            if (page.Kind != BookPageKind.Test)
+                continue;
+            var max = page.MaxQuestionNumber is > 0 and <= MaxQuestionsPerTest ? page.MaxQuestionNumber : null;
+            if (current is { MaxQuestion: >= 5 and var seen } && max is { } n && n < seen / 2)
+                current = null;
+            if (current is null)
+            {
+                current = new TestDraft(sections.Count + 1, 1, page.FilePage);
+                sections.Add(current);
+            }
+
+            current.To = page.FilePage;
+            if (max is { } m)
+                current.MaxQuestion = Math.Max(current.MaxQuestion ?? 0, m);
+        }
+
+        var offset = Offset(pages) ?? 0;
+        var rows = toc.Where(r => r.PrintedPage is > 0 && !keyRanges.Any(k => r.PrintedPage - offset >= k.From && r.PrintedPage - offset <= k.To))
+            .OrderBy(r => r.PrintedPage)
+            .ToList();
+        foreach (var section in sections)
+        {
+            var row = rows.LastOrDefault(r => r.PrintedPage <= section.From + offset);
+            section.Title = row is null ? null : Clean(row.Unit is { } unit ? $"{unit}. Ünite: {row.Title}" : row.Title);
+        }
+
+        return sections;
+    }
+
+    /// <summary>
+    /// #1122: test numarasız anahtar satırlarını bölümlere bağlar (anahtar = önceki anahtar aralığından bu yana biten bölümler).
+    /// Bağlanamayan satır <paramref name="unmatched"/>'e "s{sayfa}-{ünite}" olarak eklenir.
+    /// </summary>
+    private static Dictionary<(int Unit, int TestNo), AnswerKeyRow> SectionKeys(IReadOnlyList<TestDraft> sections,
+        IReadOnlyList<AnswerKeyRow> rows, IReadOnlyList<(int From, int To)> keyRanges, List<string> unmatched)
+    {
+        var map = new Dictionary<(int, int), AnswerKeyRow>();
+        var previousEnd = 0;
+        foreach (var (from, to) in keyRanges)
+        {
+            var pending = sections.Where(s => s.From > previousEnd && s.To < from).ToList();
+            previousEnd = to;
+            var here = rows.Where(r => r.KeyPage >= from && r.KeyPage <= to).ToList();
+            foreach (var row in here)
+            {
+                var target = pending.Count == 1 ? pending[0]
+                    : row.Unit >= 1 && row.Unit <= pending.Count ? pending[row.Unit - 1]
+                    : null;
+                if (target is null)
+                {
+                    unmatched.Add($"s{row.KeyPage}-{row.Unit}");
+                    continue;
+                }
+
+                var k = (target.Unit, target.TestNo);
+                map[k] = map.TryGetValue(k, out var existing)
+                    ? existing with { Answers = MergeAnswers(existing.Answers, row.Answers) }
+                    : row with { Unit = target.Unit, TestNo = target.TestNo };
+            }
+        }
+
+        return map;
+    }
+
+    private static Dictionary<int, char> MergeAnswers(IReadOnlyDictionary<int, char> first, IReadOnlyDictionary<int, char> more)
+    {
+        var merged = new Dictionary<int, char>(first);
+        foreach (var (n, answer) in more)
+            merged.TryAdd(n, answer);
+        return merged;
     }
 
     private static int? Offset(List<SurveyedPage> pages)

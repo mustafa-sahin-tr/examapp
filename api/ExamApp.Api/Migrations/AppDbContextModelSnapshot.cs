@@ -524,8 +524,8 @@ namespace ExamApp.Api.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("AnswerKey")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<int?>("BookTestId")
                         .HasColumnType("integer");
@@ -571,8 +571,8 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer");
 
                     b.Property<string>("KeyConflicts")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<int?>("Minutes")
                         .HasColumnType("integer");

@@ -131,4 +131,69 @@ public class BookSetupPlannerTests
         plan.Tests[1].KeyConflicts.ShouldBe("..");
         plan.Tests[1].Flags.ShouldBeEmpty();
     }
+
+    /// <summary>
+    /// #1122: MEB LGS çalışma kitabı düzeni — test başlığı yok; ünite kapağı + kesintisiz numaralı sorular, ünitelerin anahtarı
+    /// sonda tek sayfada (ünite ünite), ardından her biri kendi etiketsiz anahtarıyla biten çıkmış sınav bölümleri.
+    /// </summary>
+    [Fact]
+    public void A_book_without_test_headers_becomes_one_test_per_section_with_keys_from_the_following_key_page()
+    {
+        var pages = new[]
+        {
+            Page(1, BookPageKind.Cover),
+            Page(2, BookPageKind.Toc, 2),
+            Page(3, BookPageKind.Cover, 3), // 1. Ünite kapağı
+            Test(4, maxQuestion: 4, printed: 4),
+            Page(5, BookPageKind.Other, 5), // görsel ağırlıklı soru sayfası yanlış sınıflandı: bölümü kapatmaz
+            Test(6, maxQuestion: 150, printed: 6),
+            Test(7, maxQuestion: 3, printed: 7), // kapak okunamadı ama numara başa döndü: 2. Ünite
+            Test(8, maxQuestion: 6, printed: 8),
+            Page(9, BookPageKind.AnswerKey, 9),
+            Page(10, BookPageKind.Cover, 10), // 2018-2019 sınavı
+            Test(11, maxQuestion: 3, printed: 11),
+            Page(12, BookPageKind.AnswerKey, 12),
+        };
+        var toc = new List<SurveyedTocRow>
+        {
+            new(1, "Çarpanlar ve Katlar", 3),
+            new(2, "Kareköklü İfadeler", 7),
+            new(null, "Cevap Anahtarı", 9),
+            new(null, "2018-2019 Merkezî Sınav Soruları", 10),
+            new(null, "Cevap Anahtarı", 12),
+        };
+        var unit1 = new string('A', 150);
+        AnswerKeyRow Key(int unit, string answers, int page) => Row(unit, 1, answers) with { KeyPage = page };
+        var first = new[] { Key(1, unit1, 9), Key(2, "BCDABC", 9), Key(1, "DAB", 12) };
+        var second = new[] { Key(1, unit1, 9), Key(2, "BCDABD", 9), Key(1, "DAB", 12) };
+
+        var plan = BookSetupPlanner.Plan(pages, toc, first, second);
+
+        plan.Tests.Select(t => (t.Unit, t.TestNo, t.Title, t.FileFrom, t.FileTo, t.ExpectedQuestions, t.AnswerKey)).ShouldBe(
+        [
+            (1, 1, "1. Ünite: Çarpanlar ve Katlar", 4, 6, (int?)150, unit1),
+            (2, 1, "2. Ünite: Kareköklü İfadeler", 7, 8, 6, "BCDABC"),
+            (3, 1, "2018-2019 Merkezî Sınav Soruları", 11, 11, 3, "DAB"),
+        ]);
+        plan.Tests[1].KeyConflicts.ShouldBe(".....D");
+        plan.Units.Select(u => (u.Unit, u.Title)).ShouldBe(
+        [
+            (1, "1. Ünite: Çarpanlar ve Katlar"),
+            (2, "2. Ünite: Kareköklü İfadeler"),
+            (3, "2018-2019 Merkezî Sınav Soruları"),
+        ]);
+        plan.OrphanKeys.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void A_sectioned_key_row_that_fits_no_section_is_reported()
+    {
+        var pages = new[] { Test(1, maxQuestion: 2), Page(2, BookPageKind.AnswerKey) };
+        var rows = new[] { Row(1, 1, "AB") with { KeyPage = 2 }, Row(1, 1, "C") with { KeyPage = 7 } };
+        var twoSections = new[] { Test(1, maxQuestion: 2), Page(2, BookPageKind.Cover), Test(3, maxQuestion: 2), Page(4, BookPageKind.AnswerKey) };
+        var thirdUnit = new[] { Row(3, 1, "AB") with { KeyPage = 4 } };
+
+        BookSetupPlanner.Plan(pages, [], rows, []).Tests.Single().AnswerKey.ShouldBe("AB");
+        BookSetupPlanner.Plan(twoSections, [], thirdUnit, []).OrphanKeys.ShouldBe(["s4-3"]);
+    }
 }

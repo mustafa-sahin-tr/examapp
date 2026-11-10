@@ -57,13 +57,21 @@ aktarım aracındaki Python portu referanstır (#1022).
   gruplar halinde, uzun kenarı 1000 px JPEG olarak ucuz modele (`BookImport:SurveyModel`, varsayılan `claude-haiku-5-5`)
   gider. Sayfa başına: tür (`cover|toc|test|answerKey|selfAssessment|other`), basılı sayfa no, test başlığı (ünite, test no,
   başlık, dakika), sayfadaki en büyük soru no; içindekiler sayfalarından ünite satırları.
-- **Cevap anahtarı** iki kez okunur (`BookImport:AnswerKeyModel`, varsayılan `claude-sonnet-5-5`): tam sayfa (uzun kenar
-  1568) ve sayfanın üst / alt %55'lik iki örtüşen döşemesi. İki okuma soru soru karşılaştırılır; farklı hücreler onay
-  ekranında sarı, okunamayanlar (`?`) kırmızı işaretlenir.
+- **Cevap anahtarı** iki kez okunur (`BookImport:AnswerKeyModel`, varsayılan `claude-haiku-5-5`): tam sayfa (uzun kenar
+  1568) ve sayfanın üst / alt %55'lik iki örtüşen döşemesi. İki okuma uyuşmazsa sayfayı hakem okur
+  (`BookImport:AnswerKeyTieBreakModel`, varsayılan `claude-sonnet-5-5`); hakemin okuması alınır, ucuz tam sayfa okuması
+  karşılaştırma olarak kalır (#1122: önce iki okuma da Sonnet'ti; 416 sayfalık LGS kitabında kurulumun $0,40 / $0,46'sı
+  buydu). Okumalar soru soru karşılaştırılır; farklı hücreler onay ekranında sarı, okunamayanlar (`?`) kırmızı işaretlenir.
 - **Planlama** (`BookSetupPlanner`, saf; kurallar orada): test başlıklı sayfayla başlar, başlıksız ardışık test sayfaları ona
   eklenir; ofset (basılı = dosya + ofset) en sık farktır; beklenen soru sayısı anahtar uzunluğu (yoksa sayfadaki en büyük
   soru no). İşaretler: `noKey`, `keyMismatch`, `keyConflicts`; kitapta bulunamayan anahtar satırları "eşleşmeyen" listesi.
   Üniteler (ders seçiliyse) Haiku ile dersin o sınıftaki konularına eşlenir.
+- **Test başlığı olmayan kitap** (#1122; ör. MEB "LGS Çalışma Kitabı": ünite kapağı + ünite boyunca kesintisiz numaralı
+  sorular, ünitelerin anahtarı sonda tek tabloda; ardından kapak + 20 soru + etiketsiz anahtar biçiminde çıkmış sınavlar):
+  hiçbir sayfada test başlığı yoksa her ünite / bölüm bölünmeden tek test olur (test başına en fazla 200 soru). Bölüm kapak,
+  içindekiler, anahtar sayfasında ya da soru numarası başa dönünce kapanır; başlığı bölümden önce başlayan son içindekiler
+  satırıdır. Anahtar satırları okundukları sayfayla gelir: anahtar, önceki anahtardan bu yana biten bölümlere bağlanır (tek
+  bölümse sayfanın tüm satırları onun, birden çoksa satırın ünite no'su bölüm sırasıdır).
 - **Kayıt:** test satırları `BookImportJobTests` (sayfa aralığı, dakika, `AnswerKey` "ABCD…", `KeyConflicts` "." uyumlu /
   diğer okumanın harfi / "-"), özet `BookImportJobs.SetupJson`, maliyet `AiCostUsd` (başarısız çağrılar dahil). Model listesi
   ve fiyatlar `Anthropic:Models`'tan; API anahtarı yoksa iş "Claude is not configured" ile düşer. Hiç test başlığı yoksa

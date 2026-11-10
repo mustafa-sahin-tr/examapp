@@ -29,6 +29,10 @@ public sealed class FakeBookSetupAi : IBookSetupAi
     public List<IReadOnlyList<int>> SurveyBatches { get; } = new();
     public List<(int Page, bool Tiled)> KeyReads { get; } = new();
 
+    /// <summary>#1122: hakem (güçlü model) okumaları; anahtar sayfası → sonuç (tanımsızsa tam sayfa okuması döner).</summary>
+    public Dictionary<int, IReadOnlyList<AnswerKeyRow>> StrongKeys { get; } = new();
+    public List<int> StrongReads { get; } = new();
+
     public static SurveyedPage DefaultPage(int filePage) =>
         new(filePage, BookPageKind.Test, filePage, filePage == 1 ? 1 : null, filePage == 1 ? 1 : null, filePage == 1 ? "Test" : null);
 
@@ -47,12 +51,19 @@ public sealed class FakeBookSetupAi : IBookSetupAi
         return new SurveyResult(surveyed, SurveyBatches.Count == 1 ? Toc : []);
     }
 
-    public async Task<IReadOnlyList<AnswerKeyRow>> ReadAnswerKeyAsync(BookPageImage page, bool tiled, BookSetupCost cost, CancellationToken ct)
+    public async Task<IReadOnlyList<AnswerKeyRow>> ReadAnswerKeyAsync(BookPageImage page, bool tiled, bool strong, BookSetupCost cost,
+        CancellationToken ct)
     {
         await cost.EnsureAsync(ct);
-        KeyReads.Add((page.FilePage, tiled));
         cost.Add(Model, new LabelingAiUsage(2000, 500));
         var reads = Keys.GetValueOrDefault(page.FilePage);
+        if (strong)
+        {
+            StrongReads.Add(page.FilePage);
+            return StrongKeys.GetValueOrDefault(page.FilePage) ?? reads.First ?? [];
+        }
+
+        KeyReads.Add((page.FilePage, tiled));
         return tiled ? reads.Second ?? [] : reads.First ?? [];
     }
 

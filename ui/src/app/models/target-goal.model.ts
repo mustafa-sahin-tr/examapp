@@ -78,6 +78,15 @@ export interface TargetMockResult {
   net: number;
   /** Yalnız geçmiş listesinde dolu. */
   finishedAt?: string | null;
+  /** #1094: tamamlanmış son denemede yer; geçmiş listesinde yok. */
+  ranking?: MockExamRanking | null;
+}
+
+/** #1094: denemeyi bitirenler arasında yer; `rank` 5 katılımcıdan azsa null. */
+export interface MockExamRanking {
+  takers: number;
+  rank: number | null;
+  topPercent: number | null;
 }
 
 export interface TargetGoal {

@@ -155,6 +155,17 @@ export class StudentMockExamsComponent {
         @if (!current.complete) {
           <p class="me-note me-warning" role="status">{{ t('result.incomplete') }}</p>
         }
+        <!-- #1094: denemeyi bitirenler arasında yer (şu ana kadar). -->
+        @if (current.ranking; as ranking) {
+          <p class="me-rank" data-testid="mock-rank">
+            @if (ranking.rank !== null) {
+              {{ t('result.rank', { takers: ranking.takers, rank: ranking.rank, top: ranking.topPercent }) }}
+            } @else {
+              {{ t('result.rankFew', { takers: ranking.takers }) }}
+            }
+          </p>
+          <p class="me-note">{{ t('result.rankAsOf') }}</p>
+        }
 
         <mat-card class="me-card">
           <mat-card-content>

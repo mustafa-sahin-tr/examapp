@@ -149,3 +149,11 @@
   gap: 0.5rem;
   margin-top: 0.75rem;
 }
+
+// #1094: son denemelerdeki yer.
+.tg__ranks {
+  margin: 12px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+}

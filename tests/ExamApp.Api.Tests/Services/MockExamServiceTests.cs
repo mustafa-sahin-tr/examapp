@@ -87,11 +87,13 @@ public class MockExamServiceTests : IDisposable
     }
 
     /// <summary>Gerçek test akışı: başlatır, ders başına verilen sayıda doğru ve yanlış işaretler, bitirir. Kalanlar boş kalır.</summary>
-    private async Task SolveAsync(MockExamSessionDetailDto session, Dictionary<string, (int Correct, int Wrong)> answers)
+    private async Task SolveAsync(MockExamSessionDetailDto session, Dictionary<string, (int Correct, int Wrong)> answers,
+        (StudentProfileDto Profile, int UserId)? who = null, bool finish = true)
     {
+        var (student, userId) = who ?? (_student, StudentUserId);
         int instanceId;
         await using (var ctx = _db.NewContext())
-            instanceId = (await new TestSessionService(ctx).StartTestAsync(session.WorksheetId, _student)).InstanceId;
+            instanceId = (await new TestSessionService(ctx).StartTestAsync(session.WorksheetId, student)).InstanceId;
 
         foreach (var section in session.Sections)
         {
@@ -105,13 +107,29 @@ public class MockExamServiceTests : IDisposable
                 var choices = await ctx.Answers.AsNoTracking().Where(a => a.QuestionId == questionId).OrderBy(a => a.Order).Select(a => a.Id).ToListAsync();
                 var saved = await new TestSessionService(ctx).SaveAnswer(
                     new SaveAnswerDto { TestInstanceId = instanceId, TestQuestionId = row.Id, SelectedAnswerId = i < plan.Correct ? choices[0] : choices[1], TimeTaken = 3 },
-                    new UserProfileDto { Id = StudentUserId, KeycloakId = "kc", Role = "Student" });
+                    new UserProfileDto { Id = userId, KeycloakId = "kc", Role = "Student" });
                 saved.Success.ShouldBeTrue(saved.Message);
             }
         }
 
+        if (!finish)
+            return;
         await using var end = _db.NewContext();
-        (await new TestSessionService(end).EndTest(instanceId, StudentUserId)).Success.ShouldBeTrue();
+        (await new TestSessionService(end).EndTest(instanceId, userId)).Success.ShouldBeTrue();
+    }
+
+    /// <summary>#1094: aynı sınıf ve okulda başka bir öğrenci.</summary>
+    private async Task<(StudentProfileDto Profile, int UserId)> OtherStudentAsync(int userId)
+    {
+        await using var ctx = _db.NewContext();
+        var student = new Student
+        {
+            UserId = userId, StudentNumber = $"S{userId}", SchoolName = "s", SchoolId = _student.SchoolId, SchoolVerifiedAt = DateTime.UtcNow,
+            GradeId = _gradeId,
+        };
+        ctx.Add(student);
+        await ctx.SaveChangesAsync();
+        return (new StudentProfileDto { Id = student.Id, GradeId = _gradeId, SchoolId = _student.SchoolId }, userId);
     }
 
     // ---- şablonlar
@@ -366,6 +384,46 @@ public class MockExamServiceTests : IDisposable
 
         (turkish.Correct, turkish.Wrong, turkish.Blank).ShouldBe((0, 3, 17));
         turkish.Net.ShouldBe(-1m);
+    }
+
+    // ---- #1094: sıralama
+
+    [Fact]
+    public async Task Ranking_counts_students_who_finished_every_session_and_ties_share_a_rank()
+    {
+        var exam = await FilledAsync(ExamTemplateSeed.TytId);
+        await UseAsync(s => s.PublishAsync(exam.Id, true, TeacherId, false, default));
+        var session = exam.Sessions.ShouldHaveSingleItem();
+        var section = session.Sections[0].Name;
+
+        await SolveAsync(session, new() { [section] = (3, 0) }); // net 3
+        var others = new (int Correct, int Wrong)[] { (5, 0), (3, 0), (1, 0), (0, 0), (2, 4) }; // 5, 3, 1, 0, 1
+        for (var i = 0; i < others.Length; i++)
+            await SolveAsync(session, new() { [section] = others[i] }, await OtherStudentAsync(9500 + i));
+        // Süren oturum sayılmaz.
+        await SolveAsync(session, new() { [section] = (10, 0) }, await OtherStudentAsync(9600), finish: false);
+
+        var ranking = (await UseAsync(s => s.GetResultAsync(exam.Id, _student, default)))!.Ranking!;
+
+        ranking.Takers.ShouldBe(6);
+        ranking.Rank.ShouldBe(2); // 5 > 3; eşit 3 aynı sırada
+        ranking.TopPercent.ShouldBe(34); // ⌈200 / 6⌉
+        (await UseAsync(s => s.GetLatestCompleteResultsAsync(_student.Id, ["tyt"], default))).ShouldHaveSingleItem().Ranking!.Rank.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task Ranking_hides_the_rank_below_five_takers_and_is_absent_until_the_result_is_complete()
+    {
+        var lgs = await FilledAsync(ExamTemplateSeed.LgsId);
+        await UseAsync(s => s.PublishAsync(lgs.Id, true, TeacherId, false, default));
+        await SolveAsync(lgs.Sessions[0], new() { ["Türkçe"] = (2, 0) });
+        (await UseAsync(s => s.GetResultAsync(lgs.Id, _student, default)))!.Ranking.ShouldBeNull();
+
+        await SolveAsync(lgs.Sessions[1], []);
+        var ranking = (await UseAsync(s => s.GetResultAsync(lgs.Id, _student, default)))!.Ranking!;
+        ranking.Takers.ShouldBe(1);
+        ranking.Rank.ShouldBeNull();
+        ranking.TopPercent.ShouldBeNull();
     }
 
     [Fact]

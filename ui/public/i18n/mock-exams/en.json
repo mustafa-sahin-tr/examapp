@@ -105,7 +105,10 @@
     "net": "Net",
     "total": "Total",
     "pending": "Session not finished",
-    "back": "Back to mock exams"
+    "back": "Back to mock exams",
+    "rank": "{{ takers }} students took it, you are #{{ rank }} (top {{ top }}%).",
+    "rankFew": "{{ takers }} students have taken it so far; the ranking appears from 5 students.",
+    "rankAsOf": "The ranking is as of now and changes as more students finish."
   },
   "templates": {
     "title": "Exam Templates",

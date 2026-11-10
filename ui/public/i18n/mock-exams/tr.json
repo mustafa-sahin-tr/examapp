@@ -105,7 +105,10 @@
     "net": "Net",
     "total": "Toplam",
     "pending": "Oturum bitmedi",
-    "back": "Denemelere dön"
+    "back": "Denemelere dön",
+    "rank": "{{ takers }} öğrenci çözdü, sen {{ rank }}. sıradasın (ilk %{{ top }}).",
+    "rankFew": "Şu ana kadar {{ takers }} öğrenci çözdü; sıralama 5 öğrenciden sonra görünür.",
+    "rankAsOf": "Sıralama şu ana kadarki durumdur; daha çok öğrenci bitirdikçe değişir."
   },
   "templates": {
     "title": "Sınav Şablonları",

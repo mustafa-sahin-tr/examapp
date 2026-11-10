@@ -90,6 +90,8 @@ export class TargetGoalCardComponent {
   );
 
   protected readonly readOnly = computed(() => this.childId() !== null);
+  /** #1094: sıralaması olan son denemeler. */
+  protected readonly rankedResults = computed(() => (this.goal()?.results ?? []).filter((r) => !!r.ranking));
   protected readonly gap = computed(() => {
     const goal = this.goal();
     return goal?.target ? computeTargetGap(goal.target, goal.results) : null;

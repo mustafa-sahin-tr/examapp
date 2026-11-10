@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { MockExamRanking } from '../models/target-goal.model';
 
 export interface ExamTemplateSection {
   id?: number;
@@ -127,6 +128,8 @@ export interface MockExamResult {
   wrong: number;
   blank: number;
   net: number;
+  /** #1094: sonuç tamamsa denemeyi bitirenler arasında yer (şu ana kadar). */
+  ranking?: MockExamRanking | null;
 }
 
 @Injectable({ providedIn: 'root' })

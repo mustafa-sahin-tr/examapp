@@ -478,8 +478,8 @@ describe('mock exam screens', () => {
       ],
     };
 
-    function view() {
-      service.getResult.mockReturnValue(of(result));
+    function view(value: MockExamResult = result) {
+      service.getResult.mockReturnValue(of(value));
       const fixture = TestBed.createComponent(MockExamResultComponent);
         fixture.detectChanges();
       return fixture.nativeElement as HTMLElement;
@@ -499,6 +499,22 @@ describe('mock exam screens', () => {
 
       expect(math.textContent).toContain(tr.result.pending);
       expect(el.textContent).toContain(tr.result.incomplete);
+    });
+
+    it('completeResult_ShowsTheRankAmongTakers_issue1094', () => {
+      const el = view({ ...result, complete: true, ranking: { takers: 40, rank: 3, topPercent: 8 } });
+
+      expect(el.querySelector('[data-testid="mock-rank"]')?.textContent?.trim()).toBe('40 öğrenci çözdü, sen 3. sıradasın (ilk %8).');
+      expect(el.textContent).toContain(tr.result.rankAsOf);
+    });
+
+    it('fewTakers_ShowsOnlyTheCount_issue1094', () => {
+      expect(view({ ...result, complete: true, ranking: { takers: 3, rank: null, topPercent: null } })
+        .querySelector('[data-testid="mock-rank"]')?.textContent).toContain('Şu ana kadar 3 öğrenci çözdü');
+    });
+
+    it('noRanking_ShowsNoRankLine_issue1094', () => {
+      expect(view().querySelector('[data-testid="mock-rank"]')).toBeNull();
     });
 
     it('showsTheWrongAnswerRule', () => {

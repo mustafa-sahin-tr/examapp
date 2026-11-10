@@ -59,6 +59,9 @@ export interface ParentChildActivitySummary {
 /** Seçili çocuğu hatırlayan query param (`/parent?child=<studentId>`). */
 export const PARENT_CHILD_QUERY_PARAM = 'child';
 
+/** Issue #1091: veli panelinde açılacak sekme (`?tab=plan`; bildirimden derin bağlantı). */
+export const PARENT_TAB_QUERY_PARAM = 'tab';
+
 /**
  * Issue #421 (epic #407 V3): veli ödev/test takibi. Backend: `/api/exam/parent/children/{studentId}/assignments` ve
  * `/api/exam/parent/children/{studentId}/test-results/{testInstanceId}`. Salt okunur; soru metni/görseli, cevap anahtarı ya da

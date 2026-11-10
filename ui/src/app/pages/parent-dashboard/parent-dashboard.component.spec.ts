@@ -16,6 +16,7 @@ import { LocaleService } from '../../services/locale.service';
 import { LinkedChild } from '../../models/parent-link.model';
 import { ParentChildAssignmentList, ParentChildSummary } from '../../models/parent-dashboard.model';
 import { TopicPerformanceService } from '../../services/topic-performance.service';
+import { SubscriptionService } from '../../services/subscription.service';
 import { CoachService } from '../../services/coach.service';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import parentDashboardTr from '../../../../public/i18n/parent-dashboard/tr.json';
@@ -140,6 +141,8 @@ describe('ParentDashboardComponent (issue #420)', () => {
                 { provide: TopicPerformanceService, useValue: { getChild: () => EMPTY } },
                 // Issue #700: koç hedefleri kartı (kendi spec'inde).
                 { provide: CoachService, useValue: { getChildSummary: () => EMPTY } },
+                // Issue #1091: "Plan" sekmesi (kendi spec'inde).
+                { provide: SubscriptionService, useValue: { childPlan: () => EMPTY } },
                 { provide: LocaleService, useValue: { localeDefinition: signal({ angularLocale: lang === 'tr' ? 'tr-TR' : 'en-US' }) } },
             ],
         });
@@ -509,6 +512,12 @@ describe('ParentDashboardComponent (issue #420)', () => {
         expect(dashboardService.getChildAssignments).not.toHaveBeenCalled();
         expect(dashboardService.getChildProgress).not.toHaveBeenCalled();
         expect(dashboardService.getChildSchedule).not.toHaveBeenCalled();
+    });
+
+    it('tabParam_OpensThePlanTab (issue #1091)', async () => {
+        const el = await setup([ayse], `/parent?child=${ayse.studentId}&tab=plan`);
+        expect((harness.routeDebugElement!.componentInstance as unknown as { tab(): number }).tab()).toBe(PARENT_DASHBOARD_TABS.plan);
+        expect(el.querySelector('app-parent-child-plan')).not.toBeNull();
     });
 
     it('assignments404_ShowsNoticeAndReloadsChildren', async () => {

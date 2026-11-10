@@ -96,6 +96,11 @@ public class UserSubscriptionPlan : BaseEntity
 
     /// <summary>Hariç üst sınır; null = süresiz.</summary>
     public DateTime? ValidToUtc { get; set; }
+
+    /// <summary>
+    /// Issue #1091: öğrencinin velisine "plan bitiyor" hatırlatması yazıldı (atama başına bir kez; veli yoksa da işaretlenir).
+    /// </summary>
+    public DateTime? EndingReminderSentAtUtc { get; set; }
 }
 
 /// <summary>

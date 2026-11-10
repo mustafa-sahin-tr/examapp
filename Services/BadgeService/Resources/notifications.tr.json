@@ -306,6 +306,14 @@
     "OpenTextReviewed": {
       "title": "Cevabın değerlendirildi",
       "body": "{0}: öğretmenin açık uçlu cevabını değerlendirdi. Geri bildirimi okumak için dokun."
+    },
+    "ParentChildPlanEnding": {
+      "title": "Plan bitiyor",
+      "body": "{0} için planın süresi {1} tarihinde doluyor. Kesinti olmaması için veli panelinden yenileyebilirsiniz."
+    },
+    "ParentChildPlanEndingTrial": {
+      "title": "Deneme süresi bitiyor",
+      "body": "{0} için deneme süresi {1} tarihinde bitiyor. Devam edebilmesi için veli panelinden bir plan seçebilirsiniz."
     }
   }
 }

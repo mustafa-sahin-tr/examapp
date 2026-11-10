@@ -370,6 +370,12 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   alabilir). Arayüz: veli panelinde "Plan" sekmesi (`ParentChildPlanComponent`, bitişe ≤ 3 gün kala "yakında bitiyor"; seçici
   `childId` ile çocuk adına satın alır); öğrencinin `/plans` sayfası ve kayıt sihirbazı ücretli kartta "velin seçer" gösterir (seçici
   `parentPays`), velisi bağlı değilse "Veli bilgisi ekle" (`/parent-required`) sunar.
+  **Hatırlatma:** `ParentPlanEndingReminderJob` (Hangfire `parent-plan-ending-reminder`, `ParentPlanEndingReminder:Cron` varsayılan saat
+  başı, `LeadDays` 3) bitişine ≤ 3 gün kalan öğrenci planı / denemesi için her Active veliye `ParentChildPlanEndingEvent` yazar;
+  atama başına bir kez (`UserSubscriptionPlans.EndingReminderSentAtUtc`, event'lerle aynı transaction). Velisi olmayan öğrenci
+  işaretlenmez (sonradan bağlanan veli alır); ardından başlayan bir atama varsa (önceden yenilenmiş) hatırlatılmaz. BadgeService
+  `ParentChildPlanEndingConsumer` velinin bildirimini yazar ("Plan bitiyor" / "Deneme süresi bitiyor", tarih İstanbul günü);
+  bildirim `/parent?child=…&tab=plan` açar.
 - **Plan seçimi (#1028):** kayıt sihirbazının (`ui` `/register`) öğrenci / öğretmen kaydından sonra 3. adımı plan kartlarıdır
   (`PlanPickerComponent`, scope `subscription`); veli adımı atlar. "Ücretsiz devam et" API çağırmaz (Free). "Denemeyi başlat"
   → `POST /api/exam/subscription-plans/me/trial`: hesap başına bir kez (silinmiş atamalar dahil; ikincisi 409

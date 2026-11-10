@@ -5,6 +5,7 @@ using ExamApp.Api.Data;
 using ExamApp.Api.IntegrationTests.Infrastructure;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.ParentLinks;
+using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Parents;
 using ExamApp.Api.Services.Worksheets;
 using ExamApp.Foundation.Contracts;
@@ -213,5 +214,38 @@ public class ParentNotificationPostgresTests(IntegrationApiFactory factory) : In
         events.Select(e => e.AssignmentId).Distinct().OrderBy(i => i).ShouldBe(new[] { studentAssignment, gradeAssignment }.OrderBy(i => i));
         events.ShouldAllBe(e => e.StudentDisplayName == "Ayşe K." && e.ParentKeycloakId.StartsWith("kc-"));
         (await WithDbAsync(db => db.ParentHomeworkOverdueMarkers.CountAsync(m => m.StudentId == seeded.StudentId))).ShouldBe(2);
+    }
+
+    /// <summary>Issue #1091: plan bitiyor hatırlatması Npgsql'de (FOR SHARE, koşullu işaret): Active veli başına tek event, bir kez.</summary>
+    [Fact]
+    public async Task Plan_ending_reminder_writes_one_event_per_active_parent_once()
+    {
+        const int studentUser = 44901, parentA = 44902, parentB = 44903;
+        var seeded = await SeedAsync(studentUser, parentA, parentB);
+        await LinkAsync(studentUser, parentA);
+        var assignmentId = await WithDbAsync(async db =>
+        {
+            var trialId = await db.SubscriptionPlans.Where(p => p.Key == SubscriptionPlan.TrialKey).Select(p => p.Id).SingleAsync();
+            var a = new UserSubscriptionPlan
+            {
+                UserId = studentUser, PlanId = trialId, ValidFromUtc = DateTime.UtcNow.AddDays(-12), ValidToUtc = DateTime.UtcNow.AddDays(2),
+            };
+            db.UserSubscriptionPlans.Add(a);
+            await db.SaveChangesAsync();
+            return a.Id;
+        });
+
+        for (var i = 0; i < 2; i++)
+        {
+            await using var scope = Factory.Services.CreateAsyncScope();
+            await scope.ServiceProvider.GetRequiredService<IParentPlanEndingReminderJob>().RunAsync();
+        }
+
+        var e = (await EventsAsync<ParentChildPlanEndingEvent>(x => x.StudentId == seeded.StudentId)).ShouldHaveSingleItem();
+        e.AssignmentId.ShouldBe(assignmentId);
+        e.ParentUserId.ShouldBe(parentA);
+        e.IsTrial.ShouldBeTrue();
+        e.StudentDisplayName.ShouldBe("Ayşe K.");
+        (await WithDbAsync(db => db.UserSubscriptionPlans.SingleAsync(a => a.Id == assignmentId))).EndingReminderSentAtUtc.ShouldNotBeNull();
     }
 }

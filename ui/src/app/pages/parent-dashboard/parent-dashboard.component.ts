@@ -21,6 +21,7 @@ import { ParentRescheduleRequestsComponent } from './reschedule-requests/parent-
 import { ParentChildAssignmentsComponent } from './child-assignments/parent-child-assignments.component';
 import { ParentChildProgressComponent } from './child-progress/parent-child-progress.component';
 import { ParentChildScheduleComponent } from './child-schedule/parent-child-schedule.component';
+import { ParentChildPlanComponent } from './child-plan/parent-child-plan.component';
 import { OutcomeMasteryCardComponent } from '../../shared/components/outcome-mastery-card/outcome-mastery-card.component';
 import { TargetGoalCardComponent } from '../../shared/components/target-goal-card/target-goal-card.component';
 import { CoachGoalsCardComponent } from '../../shared/components/coach-goals-card/coach-goals-card.component';
@@ -31,7 +32,7 @@ import { PageHeaderComponent } from '../../shared/components/page-header/page-he
 export const PARENT_DASHBOARD_SCOPE = 'parent-dashboard';
 
 /** #883: ayrıntı sekmelerinin sırası (şablondaki `mat-tab` sırasıyla aynı). */
-export const PARENT_DASHBOARD_TABS = { progress: 0, outcomes: 1, goal: 2, schedule: 3, assignments: 4 } as const;
+export const PARENT_DASHBOARD_TABS = { progress: 0, outcomes: 1, goal: 2, schedule: 3, assignments: 4, plan: 5 } as const;
 
 /** Bağlı çocuk + özet anahtarı (yalnızca Active ve studentId dolu satırlar). */
 type ActiveChild = LinkedChild & { studentId: number };
@@ -81,6 +82,7 @@ export function parseChildParam(value: string | null): number | null {
     ParentChildAssignmentsComponent,
     ParentChildProgressComponent,
     ParentChildScheduleComponent,
+    ParentChildPlanComponent,
     OutcomeMasteryCardComponent, TargetGoalCardComponent, CoachGoalsCardComponent, WeakTopicsCardComponent,
     RouterLink,
     TranslocoDirective,
@@ -138,6 +140,8 @@ export class ParentDashboardComponent implements OnInit {
   /** Süren çocuk listesi isteği (çift yenilemeyi önler). */
   private childrenRequest?: Subscription;
   private readonly summaryRequests = new Subject<number>();
+  /** Issue #1089 / #1091: çocuğun plan özellikleri (çocuk seçilince ve plan alınınca). */
+  private readonly planFeatureRequests = new Subject<number>();
 
   ngOnInit(): void {
     this.summaryRequests
@@ -147,7 +151,8 @@ export class ParentDashboardComponent implements OnInit {
       )
       .subscribe();
 
-    this.summaryRequests
+    this.summaryRequests.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((id) => this.planFeatureRequests.next(id));
+    this.planFeatureRequests
       .pipe(
         switchMap((id) => {
           this.childAnalytics.set(null);
@@ -208,6 +213,12 @@ export class ParentDashboardComponent implements OnInit {
       queryParams: { [PARENT_CHILD_QUERY_PARAM]: studentId },
       queryParamsHandling: 'merge',
     });
+  }
+
+  /** Issue #1091: veli çocuğa plan aldı — planın açtığı bölümler (analiz) yeniden okunur. */
+  protected onPlanChanged(): void {
+    const id = this.selectedId();
+    if (id != null) this.planFeatureRequests.next(id);
   }
 
   /** Bir bölüm (ödevler, puan, program) 404 döndü: bağlantı kaldırılmış olabilir — özetteki 404 ile aynı davranış (not + listeyi yenile). */

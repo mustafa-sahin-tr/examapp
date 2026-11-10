@@ -60,6 +60,20 @@ export interface SubscriptionPlanUpdate {
   monthlyLimits: Record<string, number | null>;
 }
 
+/** Issue #1091: veli panelinde çocuğun planı ve velinin alabileceği öğrenci planları. */
+export interface ChildSubscriptionPlan {
+  planKey: string | null;
+  displayNameKey: string | null;
+  validToUtc: string | null;
+  isTrial: boolean;
+  plans: SubscriptionPlan[];
+  /** Öğrenci özellikleri (kart satırları). */
+  features: EntitlementFeature[];
+}
+
+/** Issue #1091: öğrenci kendine plan alamaz (403); planı velisi alır. */
+export const PARENT_PAYS_CODE = 'subscription.parentPays';
+
 export const FREE_PLAN_KEY = 'free';
 export const TRIAL_PLAN_KEY = 'trial';
 

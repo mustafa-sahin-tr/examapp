@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 import {
   AdminSubscriptionUser,
   AdminSubscriptionUserDetail,
+  ChildSubscriptionPlan,
   CurrentSubscriptionPlan,
   EntitlementFeature,
   PlanAssignment,
@@ -44,6 +45,19 @@ export class SubscriptionService {
   /** Sahte ödeme: ücretli planı bir aylık atar, ödeme alınmaz. */
   checkout(planKey: string): Observable<CurrentSubscriptionPlan> {
     return this.http.post<CurrentSubscriptionPlan>(`${this.baseUrl}/me/checkout`, { planKey });
+  }
+
+  // ---- Issue #1091: veli çocuğunun planını alır (yalnız Active bağlantı; diğer her durum 404) ----
+
+  private readonly childUrl = (studentId: number) => `/api/exam/parent/children/${studentId}/plan`;
+
+  childPlan(studentId: number): Observable<ChildSubscriptionPlan> {
+    return this.http.get<ChildSubscriptionPlan>(this.childUrl(studentId));
+  }
+
+  /** Sahte ödeme: öğrenci planını çocuğa bir aylık atar; plan kaydında aktör velidir. */
+  childCheckout(studentId: number, planKey: string): Observable<ChildSubscriptionPlan> {
+    return this.http.post<ChildSubscriptionPlan>(`${this.childUrl(studentId)}/checkout`, { planKey });
   }
 
   // ---- Issue #1030: admin plan ataması (yalnız Admin / SuperAdmin) ----

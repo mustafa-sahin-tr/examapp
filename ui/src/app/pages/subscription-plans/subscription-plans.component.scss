@@ -30,3 +30,18 @@
   background: var(--ms-warning-surface-weak);
   color: var(--ms-warning-text);
 }
+
+// Issue #1091: öğrencinin planını velisi seçer.
+.notice--info {
+  align-items: flex-start;
+  border-color: var(--ms-info-border);
+  background: var(--ms-info-surface-weak);
+  color: var(--ms-info-text);
+
+  div {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}

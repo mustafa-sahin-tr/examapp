@@ -1,10 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { RouterLink } from '@angular/router';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 
+import { PARENT_REQUIRED_PATH } from '../../models/parent-status.model';
 import { CurrentSubscriptionPlan, planNameKey } from '../../models/subscription';
 import { AuthService } from '../../services/auth.service';
 import { EntitlementStateService } from '../../services/entitlement-state.service';
+import { StudentParentService } from '../../services/student-parent.service';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { PlanPickerComponent } from '../../shared/components/plan-picker/plan-picker.component';
 
@@ -15,7 +19,7 @@ import { PlanPickerComponent } from '../../shared/components/plan-picker/plan-pi
 @Component({
   selector: 'app-subscription-plans',
   standalone: true,
-  imports: [MatIconModule, TranslocoDirective, PageHeaderComponent, PlanPickerComponent],
+  imports: [MatButtonModule, MatIconModule, RouterLink, TranslocoDirective, PageHeaderComponent, PlanPickerComponent],
   providers: [provideTranslocoScope('subscription')],
   templateUrl: './subscription-plans.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -29,10 +33,23 @@ export class SubscriptionPlansComponent {
 
   /** Issue #1090: deneme bitti, plan yok; uygulamanın geri kalanı bu sayfaya yönlenir. Öğrencide planı veli seçer. */
   readonly locked = computed(() => this.entitlements.plan()?.locked === true);
-  readonly lockedKey = inject(AuthService).hasRealmRole('Student') ? 'page.lockedStudent' : 'page.lockedTeacher';
+  private readonly auth = inject(AuthService);
+  readonly lockedKey = this.auth.hasRealmRole('Student') ? 'page.lockedStudent' : 'page.lockedTeacher';
+
+  /** Issue #1091: öğrencinin planını velisi alır (öğretmen / admin rolü de taşıyan hesap kendisi alır). */
+  readonly parentPays =
+    this.auth.hasRealmRole('Student') && !this.auth.hasRealmRole('Teacher') && !this.auth.hasRealmRole('Admin');
+  /** Bağlı (aktif) velisi yok: plan seçimi için önce veli eklenir (#440 akışı). */
+  readonly needsParent = signal(false);
+  readonly parentRequiredLink = '/' + PARENT_REQUIRED_PATH;
 
   constructor() {
     this.entitlements.load().subscribe();
+    if (this.parentPays) {
+      inject(StudentParentService)
+        .ensureLoaded()
+        .subscribe((status) => this.needsParent.set(!!status && status.mode !== 'Ok'));
+    }
   }
 
   onCompleted(plan: CurrentSubscriptionPlan | null): void {

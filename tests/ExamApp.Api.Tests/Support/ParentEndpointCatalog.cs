@@ -69,6 +69,9 @@ public static class ParentEndpointCatalog
         new($"{nameof(ParentDashboardController)}.{nameof(ParentDashboardController.GetChildPlanFeatures)}",
             ParentEndpointScope.Child, ParentAccessEndpoints.ChildPlanFeatures,
             (s, _) => $"/api/parent/children/{s}/plan-features"),
+        new($"{nameof(ParentChildPlanController)}.{nameof(ParentChildPlanController.Get)}",
+            ParentEndpointScope.Child, ParentAccessEndpoints.ChildPlan,
+            (s, _) => $"/api/parent/children/{s}/plan"),
         new($"{nameof(ParentDashboardController)}.{nameof(ParentDashboardController.GetChildProgress)}",
             ParentEndpointScope.Child, ParentAccessEndpoints.ChildProgress,
             (s, _) => $"/api/parent/children/{s}/progress"),
@@ -145,6 +148,10 @@ public static class ParentEndpointCatalog
             "server-side account email equals the invited email (mismatch 403) before consent + Active link; returns only flags; " +
             "ParentInvitationEndpointsTests.",
         [$"{nameof(ParentController)}.{nameof(ParentController.RegisterParent)}"] = "Role registration; no child data.",
+        [$"{nameof(ParentChildPlanController)}.{nameof(ParentChildPlanController.Checkout)}"] =
+            "Parent write (#1091): Active-link gate on studentId (unlinked / Pending 404, IDOR); assigns a paid student plan to the " +
+            "child, plan audit actor = parent, audited as children.plan-checkout; returns only the child's plan and the plan " +
+            "catalog; ParentChildPlanEndpointsTests.",
         [$"{nameof(ParentController)}.{nameof(ParentController.CheckParent)}"] = "Own profile flag only; no child data.",
     };
 

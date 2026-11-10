@@ -33,6 +33,7 @@ büyük işte, paralel bağımsız işte ya da bağımsız inceleme (güvenlik, 
 | `test-engineer` | xUnit ve frontend testleri |
 | `devops-aspire` | docker-compose, Aspire AppHost, portlar, deploy |
 | `ui-tester` | Tarayıcıda uçtan uca akış doğrulama (Puppeteer) |
+| `perf-verifier` | Verify sırasında sayfa performansı ölçümü (Chrome DevTools MCP yalnız bu agent'ta; geliştirmede kullanılmaz) |
 | `code-reviewer` | Kalite incelemesi (salt okunur) |
 | `security-reviewer` | Güvenlik incelemesi (salt okunur) |
 | `business-analyst` | Issue detaylandırma, kabul kriteri, epic → alt issue (kod yazmaz) |
@@ -52,7 +53,7 @@ Kod öncesi ürün hazırlığı için: `/refine` (issue detaylandır), `/mockup
 
 Tekrar eden işlerin adımları `.claude/skills/` altındadır: `dotnet-endpoint`, `angular-feature`,
 `outbox-event`, `ef-migration`, `gateway-route`, `aspire-migration`, `security-review-checklist`,
-`issue-refinement`, `issue-breakdown`, `design-mockup`.
+`issue-refinement`, `issue-breakdown`, `design-mockup`, `verify` (canlı doğrulama: console / API hatası kontrolü, gerekirse `perf-verifier`).
 İlgili işe başlarken önce skill'i oku.
 
 ## Üçüncü parti referans skill'ler

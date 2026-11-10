@@ -200,7 +200,7 @@ describe('BookImportDetailComponent (#1018)', () => {
     expect(text()).not.toContain(tr.detail.cancelImport);
   });
 
-  it('tests_RenderGridWithLabelsAndAttentionList', () => {
+  it('tests_RenderGridWithLabels_FailedInAttention_ReviewDuringTheRun', () => {
     response = of(detail({
       stage: 'Questions',
       tests: [
@@ -224,17 +224,12 @@ describe('BookImportDetailComponent (#1018)', () => {
     expect(cells[1].getAttribute('aria-label')).toBe('Ünite 1, test 2: Kontrol gerekli · 9 soru bulundu, anahtarda 10');
     expect(cells[3].getAttribute('aria-label')).toBe('Ünite 2, test 2: Bekliyor');
     expect(cells[2].classList).toContain('bid-grid__cell--failed');
+    // #1129: yan kartta yalnız hatalı testler; işaretler inceleme bölümünde test başına.
     const attention = el().querySelector('.bid-attention')!.textContent ?? '';
-    expect(attention).toContain('Ünite 1 · Test 2');
-    expect(attention).toContain(tr.flags.keyMismatch);
     expect(attention).toContain('Sayfa okunamadı');
-    expect(attention).not.toContain('Ünite 1 · Test 1');
-    expect(attention).toContain('9 / 10 soru · 8 kaydedildi');
-    expect(attention).toContain('1 tekrar atlandı');
-    expect(attention).toContain(tr.reviewFlags.missingNumbers);
-    expect(attention).toContain('sayfa 12 · soru 7');
-    expect(attention).toContain('9 soru bulundu, anahtarda 10');
-    expect(attention).toContain('sayfa 12, 13');
+    expect(attention).not.toContain('Ünite 1 · Test 2');
+    expect(attention).not.toContain(tr.reviewFlags.missingNumbers);
+    expect(el().querySelector('app-book-import-review')).not.toBeNull();
   });
 
   it('notFound_ShowsMessage', () => {

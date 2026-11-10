@@ -3,7 +3,6 @@ import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, injec
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { RouterLink } from '@angular/router';
@@ -14,9 +13,12 @@ import {
   BookImportJobKind,
   BookImportJobTest,
   BookImportReviewApi,
+  BookImportReviewFlag,
   BookImportReviewQuestion,
   bookImportTestName,
   isApprovable,
+  bookImportTestPages,
+  compactNumbers,
   labelingFixParams,
   needsAttention,
 } from '../../models/book-import';
@@ -39,7 +41,6 @@ export const ANSWER_LETTERS = ['A', 'B', 'C', 'D', 'E'];
   imports: [
     MatButtonModule,
     MatIconModule,
-    MatMenuModule,
     MatProgressSpinnerModule,
     MatSlideToggleModule,
     RouterLink,
@@ -56,6 +57,9 @@ export class BookImportReviewComponent implements OnInit {
   readonly jobId = input.required<string>();
   readonly tests = input.required<BookImportJobTest[]>();
   readonly editable = input(true);
+  /** Aktarım sürerken bölüm görünür, düğmeler iş bitene kadar kapalı (#1129). */
+  readonly locked = input(false);
+  readonly actions = computed(() => this.editable() || this.locked());
   readonly kind = input<BookImportJobKind>('Book');
   readonly reviewApi = input<BookImportReviewApi | null>(null);
   readonly canFix = input(true);
@@ -71,6 +75,8 @@ export class BookImportReviewComponent implements OnInit {
   readonly error = signal<string | null>(null);
   readonly result = signal<ApproveAllBookImportResult | null>(null);
   readonly previewId = signal<number | null>(null);
+  /** Uyarıları açık test: işaretler satırın altında, yerleriyle. */
+  readonly flagsId = signal<number | null>(null);
   readonly previewLoading = signal(false);
   readonly questions = signal<BookImportReviewQuestion[]>([]);
   readonly removingId = signal<number | null>(null);
@@ -107,14 +113,10 @@ export class BookImportReviewComponent implements OnInit {
     return this.thumbs()[test.fileFrom ?? test.order] ?? '';
   }
 
-  /** Testin sayfaları; inceleme işaretinde geçenler `flagged`. */
-  fixPages(test: BookImportJobTest): { page: number; flagged: boolean }[] {
-    if (test.fileFrom == null || test.fileTo == null) return [];
-    const flagged = new Set(test.reviewFlags.filter((f) => f.code !== 'countMismatch').flatMap((f) => f.pages));
-    return Array.from({ length: test.fileTo - test.fileFrom + 1 }, (_, i) => test.fileFrom! + i).map((page) => ({
-      page,
-      flagged: flagged.has(page),
-    }));
+  /** Tuval testin bütün sayfalarıyla açılır; ilk işaretli sayfadan (yoksa ilk sayfadan) başlar, sayfalar orada gezilir. */
+  fixStart(test: BookImportJobTest): number | null {
+    const pages = bookImportTestPages(test);
+    return (pages.find((p) => p.flagged) ?? pages[0])?.page ?? null;
   }
 
   testName(test: BookImportJobTest): string {
@@ -124,6 +126,23 @@ export class BookImportReviewComponent implements OnInit {
 
   testById(id: number): BookImportJobTest | undefined {
     return this.tests().find((t) => t.id === id);
+  }
+
+  /** Kurulum ve aktarım işaretleri, atlanan tekrarlar. */
+  flagCount(test: BookImportJobTest): number {
+    return test.flags.length + test.reviewFlags.length + (test.duplicatesSkipped > 0 ? 1 : 0);
+  }
+
+  toggleFlags(test: BookImportJobTest): void {
+    this.flagsId.update((id) => (id === test.id ? null : test.id));
+  }
+
+  /** İşaretin yeri: "sayfa 69–85 · soru 114, 116". */
+  flagWhere(flag: BookImportReviewFlag, t: (key: string, params?: Record<string, unknown>) => string): string {
+    const parts = [];
+    if (flag.pages.length > 0) parts.push(t('detail.flagPages', { pages: compactNumbers(flag.pages) }));
+    if (flag.numbers?.length) parts.push(t('detail.flagNumbers', { numbers: compactNumbers(flag.numbers) }));
+    return parts.join(' · ');
   }
 
   togglePreview(test: BookImportJobTest): void {

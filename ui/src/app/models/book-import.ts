@@ -287,6 +287,28 @@ export interface BookImportPageFix {
   answerless: number;
 }
 
+/** Ardışık sayıları aralık olarak yazar: [8, 9, 10, 12] → "8–10, 12" (uzun sayfa / soru listeleri okunur kalsın). */
+export function compactNumbers(numbers: readonly number[]): string {
+  const sorted = [...new Set(numbers)].sort((a, b) => a - b);
+  const parts: string[] = [];
+  for (let i = 0; i < sorted.length; i++) {
+    const start = sorted[i];
+    while (i + 1 < sorted.length && sorted[i + 1] === sorted[i] + 1) i++;
+    parts.push(sorted[i] - start >= 2 ? `${start}–${sorted[i]}` : sorted[i] === start ? `${start}` : `${start}, ${sorted[i]}`);
+  }
+  return parts.join(', ');
+}
+
+/** Testin sayfaları; inceleme işaretinde geçenler `flagged` (sayı uyuşmazlığı bütün testi kapsar, sayılmaz). */
+export function bookImportTestPages(
+  test: Pick<BookImportJobTest, 'fileFrom' | 'fileTo' | 'reviewFlags'>,
+): { page: number; flagged: boolean }[] {
+  if (test.fileFrom == null || test.fileTo == null) return [];
+  const from = test.fileFrom;
+  const flagged = new Set(test.reviewFlags.filter((f) => f.code !== 'countMismatch').flatMap((f) => f.pages));
+  return Array.from({ length: test.fileTo - from + 1 }, (_, i) => from + i).map((page) => ({ page, flagged: flagged.has(page) }));
+}
+
 /** İşaretleme ekranını aktarımın bir sayfasında açan sorgu parametreleri (`/labeling?bookImport=…&test=…&page=…`). */
 export function labelingFixParams(
   jobId: string,

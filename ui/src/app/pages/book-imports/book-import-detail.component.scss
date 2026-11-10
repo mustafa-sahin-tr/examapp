@@ -389,25 +389,6 @@
 }
 
 // #1022: aktarım işaretleri, her biri sayfa / soru referansıyla.
-.bid-review-flags {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex-basis: 100%;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-
-  li {
-    gap: 6px;
-  }
-
-  &__where {
-    font-size: 0.8125rem;
-    color: var(--ms-text-medium);
-  }
-}
-
 .bid-flag {
   padding: 2px 8px;
   border-radius: 999px;

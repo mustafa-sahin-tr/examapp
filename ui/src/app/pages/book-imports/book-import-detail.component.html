@@ -147,7 +147,7 @@
   }
 
   @if (reviewing()) {
-  <app-book-import-review [jobId]="j.id" [tests]="j.tests" [editable]="reviewEditable()" [canFix]="!j.isDemo" (changed)="load()" />
+  <app-book-import-review [jobId]="j.id" [tests]="j.tests" [editable]="reviewEditable()" [locked]="reviewLocked()" [canFix]="!j.isDemo" (changed)="load()" />
   }
 
   <div class="bid-body">
@@ -203,29 +203,6 @@
           @if (test.error) {
           <small class="bid-attention__error">{{ t('detail.errorDetail', { error: test.error }) }}</small>
           }
-          }
-          @for (flag of test.flags; track flag) {
-          <span class="bid-flag">{{ t('flags.' + flag) }}</span>
-          }
-          @if (test.status !== 'Failed' || test.questionsFound > 0) {
-          <span class="bid-attention__counts">
-            {{ test.keyAnswers > 0
-              ? t('detail.testCounts', { found: test.questionsFound, key: test.keyAnswers, saved: test.questionsSaved })
-              : t('detail.testCountsNoKey', { found: test.questionsFound, saved: test.questionsSaved }) }}
-            @if (test.duplicatesSkipped > 0) {
-            · {{ t('detail.duplicates', { count: test.duplicatesSkipped }) }}
-            }
-          </span>
-          }
-          @if (test.reviewFlags.length > 0) {
-          <ul class="bid-review-flags">
-            @for (flag of test.reviewFlags; track flag.code) {
-            <li>
-              <span class="bid-flag">{{ t('reviewFlags.' + flag.code, { found: flag.found, expected: flag.expected }) }}</span>
-              <span class="bid-review-flags__where">{{ flagWhere(flag, t) }}</span>
-            </li>
-            }
-          </ul>
           }
         </li>
         }

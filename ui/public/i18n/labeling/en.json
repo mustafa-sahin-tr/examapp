@@ -39,7 +39,13 @@
     "emptyMessage": "There are no questions on the page. Saving removes the draft questions of page {{page}} from the test.",
     "emptyConfirm": "Delete drafts",
     "cancel": "Cancel",
-    "bannerQuickAdd": "Quick add fix: {{test}}. Saving replaces this photo's draft questions with these."
+    "bannerQuickAdd": "Quick add fix: {{test}}. Saving replaces this photo's draft questions with these.",
+    "prev": "Previous page",
+    "next": "Next page",
+    "position": "Page {{at}} / {{total}}",
+    "outside": "{{total}} pages",
+    "onlyFlagged": "Only flagged pages",
+    "skipHint": "Moves without saving; changes on this page are discarded."
   },
   "bank": {
     "save": "Save to pool",

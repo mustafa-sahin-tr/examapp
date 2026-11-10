@@ -39,7 +39,13 @@
     "emptyMessage": "Sayfada soru yok. Kaydedilirse {{page}}. sayfadaki taslak sorular testten çıkarılır.",
     "emptyConfirm": "Taslakları sil",
     "cancel": "Vazgeç",
-    "bannerQuickAdd": "Hızlı ekleme düzeltmesi: {{test}}. Kaydedince bu fotoğrafın taslak soruları bunlarla değişir."
+    "bannerQuickAdd": "Hızlı ekleme düzeltmesi: {{test}}. Kaydedince bu fotoğrafın taslak soruları bunlarla değişir.",
+    "prev": "Önceki sayfa",
+    "next": "Sonraki sayfa",
+    "position": "Sayfa {{at}} / {{total}}",
+    "outside": "{{total}} sayfa",
+    "onlyFlagged": "Yalnız işaretli sayfalar",
+    "skipHint": "Kaydetmeden geçer; bu sayfadaki değişiklikler atılır."
   },
   "bank": {
     "save": "Havuza kaydet",

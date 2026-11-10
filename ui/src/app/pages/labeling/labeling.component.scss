@@ -49,9 +49,32 @@
   background: var(--ms-info-surface-weak);
   color: var(--ms-text-strong);
 
+  flex-wrap: wrap;
+
   &__text {
     flex: 1;
     min-width: 0;
+  }
+
+  &__nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+  }
+
+  &__pos {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+
+  &__flag {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: var(--ms-warning-text);
   }
 }
 

@@ -10,10 +10,12 @@ import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@js
 import { StudentProfile } from '../../models/student-profile';
 import { BadgeProgressSummary, BadgeService } from '../../services/badge.service';
 import { AuthService } from '../../services/auth.service';
+import { EntitlementStateService } from '../../services/entitlement-state.service';
 import { StudentService } from '../../services/student.service';
 import { STUDENT_SETTINGS_URL } from '../../shared/guards/settings.guard';
 import { currentUserId } from '../../shared/utils/current-user-id.util';
 import { LeaderboardComponent } from '../../shared/components/leaderboard/leaderboard.component';
+import { PlanLockedCardComponent } from '../../shared/components/plan-locked-card/plan-locked-card.component';
 import { OutcomeMasteryCardComponent } from '../../shared/components/outcome-mastery-card/outcome-mastery-card.component';
 import { TopicProgressCardComponent } from '../../shared/components/topic-progress-card/topic-progress-card.component';
 import { WeakTopicsCardComponent } from '../../shared/components/weak-topics-card/weak-topics-card.component';
@@ -40,6 +42,7 @@ const SCOPE = 'student-profile';
     TranslocoDirective,
     LeaderboardComponent,
     OutcomeMasteryCardComponent,
+    PlanLockedCardComponent,
     TopicProgressCardComponent,
     WeakTopicsCardComponent,
   ],
@@ -53,6 +56,7 @@ export class StudentProfileComponent implements OnInit {
   private readonly transloco = inject(TranslocoService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
+  private readonly entitlements = inject(EntitlementStateService);
 
   protected readonly settingsUrl = STUDENT_SETTINGS_URL;
   readonly student = signal<StudentProfile | null>(null);
@@ -69,10 +73,13 @@ export class StudentProfileComponent implements OnInit {
       .map((part) => part[0]!.toLocaleUpperCase('tr'))
       .join('')
   );
+  /** Issue #1089: analiz kartları (konu, gelişim, kazanım) planda `analytics` ister; plan okunana dek hiçbiri istek atmaz. */
+  readonly analytics = computed(() => (this.entitlements.loaded() ? this.entitlements.has('analytics') : null));
   /** "5. Sınıf · Okul adı" — eksik parça yazılmaz. */
   readonly subtitle = computed(() => [this.gradeName(), this.student()?.schoolName].filter(Boolean).join(' · '));
 
   ngOnInit(): void {
+    this.entitlements.load().pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
     this.studentService
       .getProfile()
       .pipe(takeUntilDestroyed(this.destroyRef))

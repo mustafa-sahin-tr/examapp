@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
@@ -38,9 +39,11 @@ public class StudyItemsController : BaseController
     [Authorize(Roles = "Teacher,Student")]
     [HttpGet]
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287
-    public async Task<IActionResult> GetPaged([FromQuery] StudyItemFilterDto filter)
+    public async Task<IActionResult> GetPaged([FromQuery] StudyItemFilterDto filter, [FromServices] IEntitlementService entitlements)
     {
         var user = await GetAuthenticatedUserAsync();
+        if (await DenyStudentWithoutStudyToolsAsync(user, entitlements) is { } denied)
+            return denied;
         var result = await _studyItemService.GetPagedAsync(filter, user);
         return Ok(result);
     }
@@ -48,9 +51,11 @@ public class StudyItemsController : BaseController
     [Authorize(Roles = "Teacher,Student")]
     [HttpGet("{id}")]
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287
-    public async Task<IActionResult> GetById(int id)
+    public async Task<IActionResult> GetById(int id, [FromServices] IEntitlementService entitlements)
     {
         var user = await GetAuthenticatedUserAsync();
+        if (await DenyStudentWithoutStudyToolsAsync(user, entitlements) is { } denied)
+            return denied;
         var result = await _studyItemService.GetByIdAsync(id, user);
         if (result == null)
         {
@@ -181,5 +186,15 @@ public class StudyItemsController : BaseController
             return BadRequest(result);
         }
         return Ok(result);
+    }
+
+    /// <summary>Issue #1089: öğrenci çalışma sayfalarını planında <c>study-tools</c> varsa görür; öğretmen plana bakmaz.</summary>
+    private async Task<IActionResult?> DenyStudentWithoutStudyToolsAsync(UserProfileDto user, IEntitlementService entitlements)
+    {
+        if (!IsResolvedUser(user) || !User.IsInRole("Student"))
+            return null;
+        var check = await entitlements.CheckAsync(EntitlementSubject.FromPrincipal(user.Id, User), EntitlementFeatures.StudyTools,
+            HttpContext.RequestAborted);
+        return check.Limit == 0 ? EntitlementLimitResponse.NotInPlan(EntitlementFeatures.StudyTools, check) : null;
     }
 }

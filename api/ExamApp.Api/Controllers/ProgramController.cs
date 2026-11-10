@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services;
+using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Foundation.Localization;
 using Microsoft.Extensions.Localization;
@@ -16,7 +17,8 @@ namespace ExamApp.Api.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize(Roles = "Student")]
-    public class ProgramController : ControllerBase
+    // Issue #1089: çalışma programı ve takibi planda `study-tools` ister (adım listesi ve programı silmek açık).
+    public class ProgramController : BaseController
     {
         private readonly IProgramService _programService;
 
@@ -44,6 +46,7 @@ namespace ExamApp.Api.Controllers
         }
 
         [HttpPost("create")]
+        [RequiresEntitlement(EntitlementFeatures.StudyTools, InPlanOnly = true)]
         public async Task<ActionResult<UserProgramDto>> CreateProgram([FromBody] CreateProgramRequestDto request)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -61,6 +64,7 @@ namespace ExamApp.Api.Controllers
 
         /// <summary>issue #885: sihirbazın ders adımı ve önizlemesi — takvime girecek dersler (öğrencinin sınıfı).</summary>
         [HttpGet("subjects")]
+        [RequiresEntitlement(EntitlementFeatures.StudyTools, InPlanOnly = true)]
         public async Task<ActionResult<List<ProgramSubjectDto>>> GetProgramSubjects()
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -75,6 +79,7 @@ namespace ExamApp.Api.Controllers
         }
 
         [HttpGet("my-programs")]
+        [RequiresEntitlement(EntitlementFeatures.StudyTools, InPlanOnly = true)]
         public async Task<ActionResult<List<UserProgramDto>>> GetMyPrograms()
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -88,6 +93,7 @@ namespace ExamApp.Api.Controllers
         }
 
         [HttpGet("{id:int}")]
+        [RequiresEntitlement(EntitlementFeatures.StudyTools, InPlanOnly = true)]
         public async Task<ActionResult<UserProgramDto>> GetProgramById(int id)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -106,6 +112,7 @@ namespace ExamApp.Api.Controllers
         }
 
         [HttpPost("{id:int}/study-pages")]
+        [RequiresEntitlement(EntitlementFeatures.StudyTools, InPlanOnly = true)]
         public async Task<ActionResult<UserProgramDto>> AddStudyItems(int id, [FromBody] ProgramStudyItemScheduleRequestDto request)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -124,6 +131,7 @@ namespace ExamApp.Api.Controllers
         }
 
         [HttpPut("{programId:int}/study-pages/{scheduleId:int}/complete")]
+        [RequiresEntitlement(EntitlementFeatures.StudyTools, InPlanOnly = true)]
         public async Task<IActionResult> CompleteStudyItem(int programId, int scheduleId, CancellationToken ct)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -142,6 +150,7 @@ namespace ExamApp.Api.Controllers
         }
 
         [HttpDelete("{programId:int}/study-pages/{scheduleId:int}/complete")]
+        [RequiresEntitlement(EntitlementFeatures.StudyTools, InPlanOnly = true)]
         public async Task<IActionResult> UncompleteStudyItem(int programId, int scheduleId, CancellationToken ct)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -161,11 +170,13 @@ namespace ExamApp.Api.Controllers
 
         /// <summary>issue #886: günün ders oturumu yapıldı.</summary>
         [HttpPut("{programId:int}/sessions/{scheduleId:int}/complete")]
+        [RequiresEntitlement(EntitlementFeatures.StudyTools, InPlanOnly = true)]
         public Task<IActionResult> CompleteSession(int programId, int scheduleId, CancellationToken ct)
             => SetSessionCompletion(programId, scheduleId, completed: true, ct);
 
         /// <summary>issue #886: "yapıldı" işareti geri alınır.</summary>
         [HttpDelete("{programId:int}/sessions/{scheduleId:int}/complete")]
+        [RequiresEntitlement(EntitlementFeatures.StudyTools, InPlanOnly = true)]
         public Task<IActionResult> UncompleteSession(int programId, int scheduleId, CancellationToken ct)
             => SetSessionCompletion(programId, scheduleId, completed: false, ct);
 

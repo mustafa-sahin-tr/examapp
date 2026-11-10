@@ -51,7 +51,8 @@ public class SubscriptionPlansControllerTests : IDisposable
             [EntitlementFeatures.QuickAdd] = 5, [EntitlementFeatures.ManualLabeling] = null, [EntitlementFeatures.AutoDetect] = null,
             [EntitlementFeatures.ActivityEditor] = null, [EntitlementFeatures.FlashcardSets] = null, [EntitlementFeatures.CoachPanel] = null,
             [EntitlementFeatures.PrintTest] = null, [EntitlementFeatures.Messaging] = null, [EntitlementFeatures.Tutoring] = null,
-            [EntitlementFeatures.LiveLesson] = null,
+            [EntitlementFeatures.LiveLesson] = null, [EntitlementFeatures.MixedMini] = null, [EntitlementFeatures.Practice] = null,
+            [EntitlementFeatures.SelfActivity] = null, [EntitlementFeatures.StudyTools] = null, [EntitlementFeatures.Analytics] = null,
         });
         Limits(plans, SubscriptionPlan.TeacherBasicKey).ShouldBe(new Dictionary<string, int?> { [EntitlementFeatures.ManualLabeling] = null });
         var essential = Limits(plans, SubscriptionPlan.TeacherEssentialKey);

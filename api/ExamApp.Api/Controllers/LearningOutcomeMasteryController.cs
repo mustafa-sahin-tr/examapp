@@ -3,8 +3,10 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.ParentLinks;
 using ExamApp.Api.Services.Coaching;
+using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Questions;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Parents;
 using ExamApp.Api.Services.Teachers.Authorization;
 using ExamApp.Api.Services.Tenancy;
 using ExamApp.Api.Services.TopicPerformance;
@@ -20,6 +22,7 @@ namespace ExamApp.Api.Controllers;
 [ApiController]
 [Route("api/student/me/learning-outcome-mastery")]
 [Authorize(Roles = "Student")]
+[RequiresEntitlement(EntitlementFeatures.Analytics, InPlanOnly = true)] // #1089
 public class StudentLearningOutcomeMasteryController(
     ILearningOutcomeMasteryService service,
     IStudentService students,
@@ -54,7 +57,8 @@ public class ParentLearningOutcomeMasteryController(
 {
     [HttpGet("{studentId:int}/learning-outcome-mastery")]
     [EnableRateLimiting(ParentLinkRateLimiting.ChildActivityPolicy)]
-    public async Task<IActionResult> Get(int studentId, [FromQuery] int? subjectId = null, [FromQuery] string? curriculumVersion = null, CancellationToken ct = default)
+    public async Task<IActionResult> Get(int studentId, [FromQuery] int? subjectId = null, [FromQuery] string? curriculumVersion = null,
+        [FromServices] IParentChildAccess access = null!, [FromServices] IEntitlementService entitlements = null!, CancellationToken ct = default)
     {
         if (!MasteryQuery.TryParseCurriculum(curriculumVersion, out var curriculum))
             return BadRequest();
@@ -62,6 +66,9 @@ public class ParentLearningOutcomeMasteryController(
         var user = await GetAuthenticatedUserAsync(ct);
         if (!IsResolvedUser(user))
             return UserNotResolved(new { message = localizer["auth.userNotResolved"].Value });
+        // Issue #1089: kazanım seviyeleri çocuğun planında `analytics` ister.
+        if (await ChildEntitlements.DenyUnlessChildHasAsync(access, entitlements, user.Id, studentId, EntitlementFeatures.Analytics, ct) is { } denied)
+            return denied;
 
         var result = await service.GetAsync(user.Id, studentId, subjectId, curriculum, ct);
         return result is null

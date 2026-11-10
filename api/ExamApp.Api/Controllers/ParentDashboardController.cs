@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos.ParentLinks;
+using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Parents;
 using ExamApp.Api.Services.TopicPerformance;
 using ExamApp.Foundation.Localization;
@@ -193,6 +194,8 @@ public class ParentDashboardController : BaseController
         [FromQuery] int? subjectId = null,
         [FromQuery] string groupBy = TopicPerformanceQuery.DefaultGroupBy,
         [FromQuery] int minQuestions = TopicPerformanceQuery.DefaultMinQuestions,
+        [FromServices] IParentChildAccess access = null!,
+        [FromServices] IEntitlementService entitlements = null!,
         CancellationToken ct = default)
     {
         // Parametre doğrulaması veri okumaz (kapıdan önce yapılması bir şey sızdırmaz). #767: veli 5'in altını isteyemez.
@@ -203,9 +206,29 @@ public class ParentDashboardController : BaseController
         var user = await GetAuthenticatedUserAsync(ct);
         if (!IsResolvedUser(user))
             return UserNotResolved(new { message = _localizer["auth.userNotResolved"].Value });
+        // Issue #1089: analiz çocuğun planında (Pro) yoksa 403; başka velinin çocuğu aşağıda 404 olur.
+        if (await ChildEntitlements.DenyUnlessChildHasAsync(access, entitlements, user.Id, studentId, EntitlementFeatures.Analytics, ct) is { } denied)
+            return denied;
 
         var result = await _topicPerformance.GetAsync(user.Id, studentId, days, subjectId, grouping, minQuestions, ct);
         return result == null ? ChildNotFound() : Ok(result);
+    }
+
+    /// <summary>
+    /// Issue #1089: çocuğun planındaki öğrenci özellikleri — veli paneli planda olmayan bölümü (ör. Basic'te analiz) hiç göstermez.
+    /// Başka velinin ya da Active olmayan bağlantının çocuğu 404.
+    /// </summary>
+    [HttpGet("{studentId:int}/plan-features")]
+    [EnableRateLimiting(ParentLinkRateLimiting.ChildActivityPolicy)]
+    public async Task<IActionResult> GetChildPlanFeatures(int studentId, [FromServices] IParentChildAccess access,
+        [FromServices] IParentAccessAuditLog audit, [FromServices] IEntitlementService entitlements, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync(ct);
+        if (!IsResolvedUser(user))
+            return UserNotResolved(new { message = _localizer["auth.userNotResolved"].Value });
+
+        var features = await ChildEntitlements.FeaturesAsync(access, audit, entitlements, user.Id, studentId, ct);
+        return features == null ? ChildNotFound() : Ok(features);
     }
 
     private NotFoundObjectResult ChildNotFound() => NotFound(new

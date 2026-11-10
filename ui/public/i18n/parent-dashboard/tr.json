@@ -178,5 +178,6 @@
     "notFound": "Bu talebe artık erişiminiz yok. Liste yenilendi.",
     "actionError": "İşlem tamamlanamadı.",
     "ok": "Tamam"
-  }
+  },
+  "analyticsLocked": "Ayrıntılı analiz (zayıf konular, kazanım haritası) çocuğunun mevcut planında yok."
 }

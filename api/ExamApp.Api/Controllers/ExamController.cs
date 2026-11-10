@@ -608,9 +608,16 @@ public class ExamController : BaseController
 
             return Ok(result);
         }
-        catch (EntitlementLimitException ex)
+        catch (EntitlementLimitException ex) when (ex.FeatureKey == EntitlementFeatures.MockExam)
         {
             return EntitlementLimitResponse.Create(ex.FeatureKey, ex.Check, _localizer["exam.mockExamLimitReached"].Value);
+        }
+        catch (EntitlementLimitException ex)
+        {
+            // Issue #1089: kendi seçtiği test / etkinlik. Planda yoksa 403, sınır doluysa 429; arayüz yükseltme penceresini açar.
+            return ex.Check.Limit == 0
+                ? EntitlementLimitResponse.NotInPlan(ex.FeatureKey, ex.Check)
+                : EntitlementLimitResponse.Create(ex.FeatureKey, ex.Check);
         }
         catch (UnauthorizedAccessException ex)
         {

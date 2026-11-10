@@ -1,5 +1,6 @@
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.TopicPerformance;
 using ExamApp.Foundation.Localization;
@@ -14,6 +15,7 @@ namespace ExamApp.Api.Controllers;
 [ApiController]
 [Route("api/student/me/topic-performance")]
 [Authorize(Roles = "Student")]
+[RequiresEntitlement(EntitlementFeatures.Analytics, InPlanOnly = true)] // #1089: konu performansı ve haftalık gelişim Pro
 public class StudentTopicPerformanceController(
     ITopicPerformanceService service,
     ITopicProgressTimelineService timeline,

@@ -31,10 +31,12 @@ public sealed class EntitlementService : IEntitlementService
         var assigned = await _db.UserSubscriptionPlans.AsNoTracking()
             .Where(a => a.UserId == userId && a.ValidFromUtc <= now && (a.ValidToUtc == null || a.ValidToUtc > now) && a.Plan.IsActive)
             .OrderByDescending(a => a.ValidFromUtc).ThenByDescending(a => a.Id)
-            .Select(a => new ResolvedPlan(a.PlanId, a.Plan.Key, a.Plan.Name, a.ValidToUtc))
+            .Select(a => new { Plan = new ResolvedPlan(a.PlanId, a.Plan.Key, a.Plan.Name, a.ValidToUtc, false), a.Plan.SortOrder })
             .FirstOrDefaultAsync(ct);
-        if (assigned is not null)
-            return assigned;
+        // Issue #1092: okul lisansı kişisel atamadan üst kademede değilse lisans kazanır.
+        var license = (await SchoolLicensePlans.ForUsersAsync(_db, [userId], now, ct)).GetValueOrDefault(userId);
+        if (SchoolLicensePlans.Pick(assigned?.Plan, assigned?.SortOrder, license) is { } plan)
+            return plan;
 
         return await _db.SubscriptionPlans.AsNoTracking()
             .Where(p => p.Key == SubscriptionPlan.FreeKey)

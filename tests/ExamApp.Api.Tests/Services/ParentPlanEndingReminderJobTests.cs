@@ -154,6 +154,30 @@ public class ParentPlanEndingReminderJobTests : IDisposable
         (await EventsAsync()).ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task A_student_covered_by_the_school_license_is_marked_without_a_reminder_issue1092()
+    {
+        var w = await SeedAsync();
+        await LinkAsync(w.ParentA, w.StudentId);
+        var assignment = await AssignAsync(StudentUser, SubscriptionPlan.TrialKey, Now.AddDays(-12), Now.AddDays(2));
+        await using (var ctx = _db.NewContext())
+        {
+            var school = new School { Name = "Lisanslı" };
+            ctx.Schools.Add(school);
+            await ctx.SaveChangesAsync();
+            var student = await ctx.Students.SingleAsync(s => s.Id == w.StudentId);
+            student.SchoolId = school.Id;
+            student.SchoolVerifiedAt = Now;
+            await ctx.SaveChangesAsync();
+            await new SchoolLicenseService(ctx, _time).SaveAsync(school.Id, new SaveSchoolLicenseDto(), adminUserId: 1);
+        }
+
+        (await RunAsync()).ShouldBe(1);
+        (await EventsAsync()).ShouldBeEmpty();
+        await using var read = _db.NewContext();
+        (await read.UserSubscriptionPlans.SingleAsync(a => a.Id == assignment)).EndingReminderSentAtUtc.ShouldBe(Now);
+    }
+
     private sealed class StaticOptionsMonitor<T>(T value) : IOptionsMonitor<T>
     {
         public T CurrentValue => value;

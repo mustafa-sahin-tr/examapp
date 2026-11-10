@@ -224,6 +224,9 @@
                   <button mat-menu-item type="button" (click)="startEdit(sc)">
                     <mat-icon>edit</mat-icon>{{ t('edit') }}
                   </button>
+                  <button mat-menu-item type="button" data-test="school-license" (click)="openLicense(sc)">
+                    <mat-icon>workspace_premium</mat-icon>{{ t('license') }}
+                  </button>
                   @if (deleteBlocked(sc)) {
                     <button mat-menu-item type="button" disabled data-test="school-delete-blocked">
                       <mat-icon>delete</mat-icon>

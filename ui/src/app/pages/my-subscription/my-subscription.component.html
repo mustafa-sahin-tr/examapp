@@ -14,6 +14,10 @@
         <div>
           <p class="card__label">{{ t('mine.currentPlan') }}</p>
           <h2 class="card__plan" data-testid="my-plan-name">{{ t(nameKey()) }}</h2>
+          @if (plan.schoolLicense) {
+            <!-- Issue #1092: plan okulun lisansından -->
+            <p class="card__validity" data-testid="my-plan-school-license">{{ t('mine.schoolLicense') }}</p>
+          }
           @if (plan.validToUtc) {
             <p class="card__validity" data-testid="my-plan-validity">
               {{ t(isTrial() ? 'mine.trialEnds' : 'mine.validTo', { date: (plan.validToUtc | date: 'd MMMM y') }) }}

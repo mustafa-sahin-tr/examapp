@@ -1,0 +1,108 @@
+<div class="license" *transloco="let t; prefix: 'subscription'">
+  <h2 mat-dialog-title>{{ t('admin.license.title') }}</h2>
+  <mat-dialog-content>
+    <p class="school">{{ data.schoolName }}</p>
+    @if (loading()) {
+      <p class="muted" role="status">{{ t('admin.license.loading') }}</p>
+    } @else if (loadError()) {
+      <p class="ms-error" role="alert">{{ t('admin.license.errors.load') }}</p>
+    } @else {
+      @let current = license();
+      <p class="status" [class.status--active]="status() === 'active'" data-test="license-status">
+        @switch (status()) {
+          @case ('active') {
+            {{ current?.validToUtc ? t('admin.license.status.activeUntil', { date: (current?.validToUtc | date: 'd MMMM y') }) : t('admin.license.status.activeOpen') }}
+          }
+          @case ('scheduled') {
+            {{ t('admin.license.status.scheduled', { date: (current?.validFromUtc | date: 'd MMMM y') }) }}
+          }
+          @case ('ended') {
+            {{ t('admin.license.status.ended') }}
+          }
+          @default {
+            {{ t('admin.license.status.none') }}
+          }
+        }
+      </p>
+      <p class="muted">{{ t('admin.license.hint') }}</p>
+
+      <div class="fields">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>{{ t('admin.license.teacherPlan') }}</mat-label>
+          <mat-select [ngModel]="teacherPlanKey()" (ngModelChange)="teacherPlanKey.set($event)" data-test="license-teacher-plan">
+            @for (plan of teacherPlans(); track plan.key) {
+              <mat-option [value]="plan.key">{{ planName(t, plan.key) }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>{{ t('admin.license.studentPlan') }}</mat-label>
+          <mat-select [ngModel]="studentPlanKey()" (ngModelChange)="studentPlanKey.set($event)" data-test="license-student-plan">
+            @for (plan of studentPlans(); track plan.key) {
+              <mat-option [value]="plan.key">{{ planName(t, plan.key) }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+          <mat-label>{{ t('admin.license.from') }}</mat-label>
+          <input matInput [matDatepicker]="fromPicker" [ngModel]="from()" (ngModelChange)="from.set($event)" data-test="license-from" />
+          <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
+          <mat-datepicker #fromPicker />
+          <mat-hint>{{ t('admin.license.fromHint') }}</mat-hint>
+        </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+          <mat-label>{{ t('admin.license.to') }}</mat-label>
+          <input matInput [matDatepicker]="toPicker" [min]="from()" [ngModel]="to()" (ngModelChange)="to.set($event)" data-test="license-to" />
+          <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
+          <mat-datepicker #toPicker />
+          <mat-hint>{{ t('admin.license.toHint') }}</mat-hint>
+        </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="fields__wide">
+          <mat-label>{{ t('admin.license.note') }}</mat-label>
+          <input matInput [maxlength]="noteMaxLength" [ngModel]="note()" (ngModelChange)="note.set($event)" data-test="license-note" />
+          <mat-hint>{{ t('admin.license.noteHint') }}</mat-hint>
+        </mat-form-field>
+      </div>
+
+      @if (error(); as key) {
+        <p class="ms-error" role="alert" data-test="license-error">{{ t('admin.license.errors.' + key) }}</p>
+      }
+      @if (done(); as outcome) {
+        <p class="success" role="status" data-test="license-saved">{{ t('admin.license.' + outcome) }}</p>
+      }
+
+      @if (current?.history?.length) {
+        <h3>{{ t('admin.license.history.title') }}</h3>
+        <ul class="history" data-test="license-history">
+          @for (h of current!.history; track $index) {
+            <li>
+              <strong>{{ t('admin.license.history.' + h.action) }}</strong>
+              <span class="muted">{{ h.occurredAtUtc | date: 'd MMM y HH:mm' }}</span>
+              <span>
+                {{ planName(t, h.teacherPlanKey) }} / {{ planName(t, h.studentPlanKey) }} ·
+                {{ h.validFromUtc | date: 'd MMM y' }} – {{ h.validToUtc ? (h.validToUtc | date: 'd MMM y') : t('admin.license.openEnded') }}
+              </span>
+              @if (h.note) {
+                <span class="muted">{{ h.note }}</span>
+              }
+            </li>
+          }
+        </ul>
+      }
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    @if (license()?.active) {
+      @if (confirmEnd()) {
+        <span class="confirm" data-test="license-end-confirm">{{ t('admin.license.endConfirm') }}</span>
+      }
+      <button mat-button type="button" class="danger" [disabled]="busy()" (click)="end()" data-test="license-end">
+        {{ confirmEnd() ? t('admin.license.endYes') : t('admin.license.end') }}
+      </button>
+    }
+    <button mat-button type="button" mat-dialog-close>{{ t('admin.license.close') }}</button>
+    <button mat-flat-button type="button" [disabled]="busy() || loading() || loadError()" (click)="save()" data-test="license-save">
+      {{ license()?.exists ? t('admin.license.update') : t('admin.license.create') }}
+    </button>
+  </mat-dialog-actions>
+</div>

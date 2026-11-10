@@ -89,7 +89,8 @@
     "trialEnds": "Deneme süren {{ date }} tarihinde biter.",
     "usageTitle": "Bu ayki kullanım",
     "usedOf": "{{ used }} / {{ limit }}",
-    "resets": "Sayaçlar {{ date }} tarihinde sıfırlanır."
+    "resets": "Sayaçlar {{ date }} tarihinde sıfırlanır.",
+    "schoolLicense": "Okulunun lisansıyla"
   },
   "limitDialog": {
     "title": "Bu ayki limitine ulaştın",
@@ -207,6 +208,50 @@
         "planRequired": "Ücretsiz ve deneme planları kapatılamaz.",
         "unknownPlan": "Plan bulunamadı."
       }
+    },
+    "license": {
+      "title": "Okul lisansı",
+      "loading": "Lisans yükleniyor…",
+      "hint": "Lisans okulun bütün öğretmen ve doğrulanmış öğrencilerine plan verir; okula sonradan katılan da alır, ayrılan düşer. Üyenin kendi planı daha üst kademedeyse o geçerlidir.",
+      "status": {
+        "none": "Bu okulun lisansı yok.",
+        "activeUntil": "Lisans geçerli: {{ date }} tarihine kadar.",
+        "activeOpen": "Lisans geçerli (süresiz).",
+        "scheduled": "Lisans {{ date }} tarihinde başlayacak.",
+        "ended": "Lisans bitti."
+      },
+      "teacherPlan": "Öğretmen planı",
+      "studentPlan": "Öğrenci planı",
+      "from": "Başlangıç",
+      "fromHint": "Boş: bugün",
+      "to": "Bitiş (dahil)",
+      "toHint": "Boş: süresiz",
+      "note": "Anlaşma notu",
+      "noteHint": "Sözleşme numarası ya da yazışma referansı",
+      "create": "Lisans tanımla",
+      "update": "Kaydet",
+      "end": "Lisansı bitir",
+      "endConfirm": "Üyeler kendi planına döner. Emin misin?",
+      "endYes": "Evet, bitir",
+      "close": "Kapat",
+      "saved": "Lisans kaydedildi.",
+      "openEnded": "süresiz",
+      "history": {
+        "title": "Geçmiş",
+        "Created": "Tanımlandı",
+        "Updated": "Güncellendi",
+        "Ended": "Bitirildi"
+      },
+      "errors": {
+        "load": "Lisans yüklenemedi.",
+        "invalidRange": "Bitiş, başlangıçtan ve bugünden sonra olmalı.",
+        "unknownPlan": "Plan bulunamadı ya da lisans planı olamaz.",
+        "audienceMismatch": "Plan bu kitleye ait değil.",
+        "noteTooLong": "Not en fazla 200 karakter.",
+        "noLicense": "Geçerli bir lisans yok.",
+        "generic": "İşlem yapılamadı. Tekrar dene."
+      },
+      "ended": "Lisans bitirildi."
     }
   },
   "units": {

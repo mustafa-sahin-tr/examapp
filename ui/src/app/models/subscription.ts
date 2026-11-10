@@ -48,6 +48,8 @@ export interface CurrentSubscriptionPlan {
   trialAvailable: boolean;
   /** Issue #1090: deneme bitti, plan yok; uygulama yalnız plan sayfasını açar. Eski yanıtlarda yok (false). */
   locked?: boolean;
+  /** Issue #1092: plan okulun lisansından geliyor (`validToUtc` lisansın bitişi). */
+  schoolLicense?: boolean;
   features: FeatureUsage[];
 }
 
@@ -66,6 +68,8 @@ export interface ChildSubscriptionPlan {
   displayNameKey: string | null;
   validToUtc: string | null;
   isTrial: boolean;
+  /** Issue #1092: çocuğun planı okulunun lisansından geliyor. */
+  schoolLicense?: boolean;
   plans: SubscriptionPlan[];
   /** Öğrenci özellikleri (kart satırları). */
   features: EntitlementFeature[];
@@ -183,4 +187,37 @@ export interface SchoolSubscriptionMembers {
   schoolId: number;
   teachers: number;
   students: number;
+}
+
+/** Issue #1092: okul lisansı; `exists` false ise lisans hiç kurulmadı. */
+export interface SchoolLicense {
+  schoolId: number;
+  exists: boolean;
+  active: boolean;
+  teacherPlanKey: string | null;
+  studentPlanKey: string | null;
+  validFromUtc: string | null;
+  validToUtc: string | null;
+  note: string | null;
+  history: SchoolLicenseHistory[];
+}
+
+export interface SchoolLicenseHistory {
+  action: 'Created' | 'Updated' | 'Ended';
+  actorUserId: number;
+  teacherPlanKey: string | null;
+  studentPlanKey: string | null;
+  validFromUtc: string | null;
+  validToUtc: string | null;
+  note: string | null;
+  occurredAtUtc: string;
+}
+
+/** Boş plan = o kitlenin Pro'su, boş başlangıç = şimdi, boş bitiş = süresiz. */
+export interface SaveSchoolLicense {
+  teacherPlanKey: string | null;
+  studentPlanKey: string | null;
+  validFromUtc: string | null;
+  validToUtc: string | null;
+  note: string | null;
 }

@@ -92,7 +92,7 @@ public sealed class AdminSubscriptionService(AppDbContext db, IEntitlementServic
         var now = clock.GetUtcNow().UtcDateTime;
         var current = (await db.UserSubscriptionPlans.AsNoTracking()
                 .Where(a => userIds.Contains(a.UserId) && a.ValidFromUtc <= now && (a.ValidToUtc == null || a.ValidToUtc > now) && a.Plan.IsActive)
-                .Select(a => new { a.UserId, a.ValidFromUtc, a.Id, a.PlanId, a.Plan.Key, a.Plan.Name, a.ValidToUtc })
+                .Select(a => new { a.UserId, a.ValidFromUtc, a.Id, a.PlanId, a.Plan.Key, a.Plan.Name, a.ValidToUtc, a.Plan.SortOrder })
                 .ToListAsync(ct))
             .GroupBy(a => a.UserId)
             .ToDictionary(g => g.Key, g => g.OrderByDescending(a => a.ValidFromUtc).ThenByDescending(a => a.Id).First());
@@ -102,9 +102,17 @@ public sealed class AdminSubscriptionService(AppDbContext db, IEntitlementServic
             .Select(p => new { p.Id, p.Key, p.Name })
             .FirstOrDefaultAsync(ct);
 
-        return userIds.Distinct().ToDictionary(id => id, id => current.TryGetValue(id, out var plan)
-            ? new ResolvedPlan(plan.PlanId, plan.Key, plan.Name, plan.ValidToUtc)
-            : new ResolvedPlan(free?.Id, free?.Key, free?.Name));
+        // Issue #1092: ResolvePlanAsync ile aynı sıra (lisans kişisel atamadan üst kademede değilse lisans).
+        var licenses = await SchoolLicensePlans.ForUsersAsync(db, userIds, now, ct);
+
+        return userIds.Distinct().ToDictionary(id => id, id =>
+        {
+            var personal = current.TryGetValue(id, out var plan) ? plan : null;
+            return SchoolLicensePlans.Pick(
+                    personal is null ? null : new ResolvedPlan(personal.PlanId, personal.Key, personal.Name, personal.ValidToUtc),
+                    personal?.SortOrder, licenses.GetValueOrDefault(id))
+                ?? new ResolvedPlan(free?.Id, free?.Key, free?.Name);
+        });
     }
 
     public async Task<AdminSubscriptionUserDetailDto?> GetDetailAsync(int userId, CancellationToken ct = default)

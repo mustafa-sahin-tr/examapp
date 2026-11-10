@@ -191,6 +191,7 @@
     "choose": "Choose a plan",
     "change": "Change plan",
     "cancel": "Cancel",
-    "bought": "Plan bought: {{ plan }}."
+    "bought": "Plan bought: {{ plan }}.",
+    "schoolLicense": "Through the school's license"
   }
 }

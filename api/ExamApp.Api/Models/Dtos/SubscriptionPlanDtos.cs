@@ -76,6 +76,9 @@ public class CurrentSubscriptionPlanDto
     /// <summary>#1090: planı yok, uygulama yalnız plan sayfasını açar (<c>Subscriptions:RequirePlan</c> kapalıyken hep false).</summary>
     public bool Locked { get; set; }
 
+    /// <summary>#1092: plan okulun lisansından geliyor; <see cref="ValidToUtc"/> lisansın bitişidir.</summary>
+    public bool SchoolLicense { get; set; }
+
     public List<FeatureUsageDto> Features { get; set; } = new();
 }
 
@@ -139,9 +142,55 @@ public class ChildSubscriptionPlanDto
 
     public bool IsTrial { get; set; }
 
+    /// <summary>#1092: plan çocuğun okulunun lisansından geliyor.</summary>
+    public bool SchoolLicense { get; set; }
+
     /// <summary>Velinin alabileceği ücretli öğrenci planları (sıralı).</summary>
     public List<SubscriptionPlanDto> Plans { get; set; } = new();
 
     /// <summary>Plan kartlarının öğrenci özellikleri (veli kendi rolüyle <c>features</c> ucundan bunları alamaz).</summary>
     public List<EntitlementFeatureDto> Features { get; set; } = new();
+}
+
+/// <summary>Issue #1092: okulun lisansı ve son değişiklikleri; lisans hiç yoksa <see cref="Exists"/> false.</summary>
+public class SchoolLicenseDto
+{
+    public int SchoolId { get; set; }
+    public bool Exists { get; set; }
+
+    /// <summary>Lisans şu an geçerli (başlamış, bitmemiş).</summary>
+    public bool Active { get; set; }
+
+    public string? TeacherPlanKey { get; set; }
+    public string? StudentPlanKey { get; set; }
+    public DateTime? ValidFromUtc { get; set; }
+    public DateTime? ValidToUtc { get; set; }
+    public string? Note { get; set; }
+    public List<SchoolLicenseHistoryDto> History { get; set; } = new();
+}
+
+public class SchoolLicenseHistoryDto
+{
+    /// <summary><c>Created</c>, <c>Updated</c> ya da <c>Ended</c>.</summary>
+    public string Action { get; set; } = string.Empty;
+    public int ActorUserId { get; set; }
+    public string? TeacherPlanKey { get; set; }
+    public string? StudentPlanKey { get; set; }
+    public DateTime? ValidFromUtc { get; set; }
+    public DateTime? ValidToUtc { get; set; }
+    public string? Note { get; set; }
+    public DateTime OccurredAtUtc { get; set; }
+}
+
+/// <summary>Issue #1092: lisansı oluşturur ya da günceller (uzatma dahil). Boş plan = o kitlenin Pro'su, boş başlangıç = şimdi.</summary>
+public class SaveSchoolLicenseDto
+{
+    public string? TeacherPlanKey { get; set; }
+    public string? StudentPlanKey { get; set; }
+    public DateTime? ValidFromUtc { get; set; }
+
+    /// <summary>Hariç bitiş; null = süresiz.</summary>
+    public DateTime? ValidToUtc { get; set; }
+
+    public string? Note { get; set; }
 }

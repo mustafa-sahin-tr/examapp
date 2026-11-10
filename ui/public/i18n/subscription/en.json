@@ -89,7 +89,8 @@
     "trialEnds": "Your trial ends on {{ date }}.",
     "usageTitle": "This month's usage",
     "usedOf": "{{ used }} / {{ limit }}",
-    "resets": "Counters reset on {{ date }}."
+    "resets": "Counters reset on {{ date }}.",
+    "schoolLicense": "Through your school's license"
   },
   "limitDialog": {
     "title": "You've reached this month's limit",
@@ -207,6 +208,50 @@
         "planRequired": "The free and trial plans cannot be turned off.",
         "unknownPlan": "Plan not found."
       }
+    },
+    "license": {
+      "title": "School license",
+      "loading": "Loading license…",
+      "hint": "The license gives a plan to every teacher and verified student of the school; people who join later get it too, people who leave lose it. A member's own plan applies if it is a higher tier.",
+      "status": {
+        "none": "This school has no license.",
+        "activeUntil": "License active until {{ date }}.",
+        "activeOpen": "License active (no end date).",
+        "scheduled": "License starts on {{ date }}.",
+        "ended": "License ended."
+      },
+      "teacherPlan": "Teacher plan",
+      "studentPlan": "Student plan",
+      "from": "Start",
+      "fromHint": "Empty: today",
+      "to": "End (inclusive)",
+      "toHint": "Empty: no end date",
+      "note": "Agreement note",
+      "noteHint": "Contract number or correspondence reference",
+      "create": "Create license",
+      "update": "Save",
+      "end": "End license",
+      "endConfirm": "Members go back to their own plan. Are you sure?",
+      "endYes": "Yes, end it",
+      "close": "Close",
+      "saved": "License saved.",
+      "openEnded": "no end",
+      "history": {
+        "title": "History",
+        "Created": "Created",
+        "Updated": "Updated",
+        "Ended": "Ended"
+      },
+      "errors": {
+        "load": "Couldn't load the license.",
+        "invalidRange": "The end must be after the start and after today.",
+        "unknownPlan": "Plan not found or it can't be a license plan.",
+        "audienceMismatch": "The plan doesn't belong to this audience.",
+        "noteTooLong": "The note can be at most 200 characters.",
+        "noLicense": "There is no active license.",
+        "generic": "Something went wrong. Try again."
+      },
+      "ended": "License ended."
     }
   },
   "units": {

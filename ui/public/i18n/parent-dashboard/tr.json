@@ -191,6 +191,7 @@
     "choose": "Plan seç",
     "change": "Planı değiştir",
     "cancel": "Vazgeç",
-    "bought": "Plan alındı: {{ plan }}."
+    "bought": "Plan alındı: {{ plan }}.",
+    "schoolLicense": "Okulunun lisansıyla"
   }
 }

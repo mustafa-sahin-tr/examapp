@@ -659,6 +659,7 @@ builder.Services.AddScoped<QuestionTransferJobRunner>();
 builder.Services.AddScoped<ExamApp.Api.Services.Entitlements.IEntitlementService, ExamApp.Api.Services.Entitlements.EntitlementService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Entitlements.ISharedEntitlementGate, ExamApp.Api.Services.Entitlements.SharedEntitlementGate>();
 builder.Services.AddScoped<ExamApp.Api.Services.Entitlements.IAdminSubscriptionService, ExamApp.Api.Services.Entitlements.AdminSubscriptionService>(); // Issue #1030
+builder.Services.AddScoped<ExamApp.Api.Services.Entitlements.ISchoolLicenseService, ExamApp.Api.Services.Entitlements.SchoolLicenseService>(); // Issue #1092
 ExamApp.Api.Services.Entitlements.PlanRequirementServiceCollectionExtensions.AddPlanRequirement(builder.Services, builder.Configuration); // Issue #1090
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IBookImportService, ExamApp.Api.Services.BookImport.BookImportService>();
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IQuickAddService, ExamApp.Api.Services.BookImport.QuickAddService>(); // issue #1052

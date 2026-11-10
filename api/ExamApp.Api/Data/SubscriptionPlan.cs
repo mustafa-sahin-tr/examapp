@@ -98,7 +98,7 @@ public class UserSubscriptionPlan : BaseEntity
     public DateTime? ValidToUtc { get; set; }
 
     /// <summary>
-    /// Issue #1091: öğrencinin velisine "plan bitiyor" hatırlatması yazıldı (atama başına bir kez; veli yoksa da işaretlenir).
+    /// Issue #1091: öğrencinin velisine "plan bitiyor" hatırlatması yazıldı (atama başına bir kez; Active velisi olmayan öğrenci işaretlenmez, sonradan bağlanan veli de alır).
     /// </summary>
     public DateTime? EndingReminderSentAtUtc { get; set; }
 }

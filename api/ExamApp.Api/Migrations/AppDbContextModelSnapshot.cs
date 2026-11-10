@@ -662,6 +662,53 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("BookImportPages");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.BookImportUpload", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BookName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FileName")
+                        .HasMaxLength(260)
+                        .HasColumnType("character varying(260)");
+
+                    b.Property<long>("FileSizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("GradeId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("OwnerUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PartCount")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("PartSizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("SubjectId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("GradeId");
+
+                    b.HasIndex("SubjectId");
+
+                    b.ToTable("BookImportUploads");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.BookPageOffset", b =>
                 {
                     b.Property<int>("Id")
@@ -9883,6 +9930,20 @@ namespace ExamApp.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Job");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.BookImportUpload", b =>
+                {
+                    b.HasOne("Grade", null)
+                        .WithMany()
+                        .HasForeignKey("GradeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Subject", null)
+                        .WithMany()
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.BookPageOffset", b =>

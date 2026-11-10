@@ -91,6 +91,8 @@ export class BookImportsComponent implements OnInit {
   readonly submitting = signal(false);
   /** Sunucudan gelen hata kodu (`bookImport.notPdf` …) ya da `generic`. */
   readonly submitError = signal<string | null>(null);
+  /** Issue #1122: gönderilen / toplam parça; yükleme sürerken. */
+  readonly uploadProgress = signal<{ part: number; parts: number } | null>(null);
 
   readonly form = new FormGroup({
     bookName: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(200)] }),
@@ -271,16 +273,23 @@ export class BookImportsComponent implements OnInit {
     const value = this.form.getRawValue();
     this.submitting.set(true);
     this.submitError.set(null);
+    this.uploadProgress.set(null);
     this.api
       .start({ file, bookName: value.bookName.trim(), gradeId: value.gradeId!, subjectId: value.subjectId })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (job) => {
+        next: (event) => {
+          if (event.type === 'progress') {
+            this.uploadProgress.set({ part: event.part, parts: event.parts });
+            return;
+          }
           this.submitting.set(false);
-          this.router.navigate(['/book-imports', job.id]);
+          this.uploadProgress.set(null);
+          this.router.navigate(['/book-imports', event.job.id]);
         },
         error: (error: HttpErrorResponse) => {
           this.submitting.set(false);
+          this.uploadProgress.set(null);
           const code = typeof error.error?.code === 'string' ? (error.error.code as string) : null;
           this.submitError.set(code ?? 'generic');
         },
@@ -289,7 +298,7 @@ export class BookImportsComponent implements OnInit {
 
   /** Hata kodunu scope'taki anahtara çevirir (`bookImport.notPdf` → `errors.notPdf`). */
   errorKey(code: string): string {
-    const known = ['invalidBookName', 'invalidGrade', 'invalidSubject', 'notPdf', 'fileTooLarge'];
+    const known = ['invalidBookName', 'invalidGrade', 'invalidSubject', 'notPdf', 'fileTooLarge', 'uploadNotFound', 'uploadIncomplete'];
     const name = code.replace(/^bookImport\./, '');
     if (code === 'entitlement.limitReached') return 'errors.quotaReached';
     return known.includes(name) ? `errors.${name}` : 'errors.generic';

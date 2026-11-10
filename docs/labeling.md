@@ -223,3 +223,14 @@ test ızgarası ve dikkat listesi gösterir; iş Queued/Running iken liste ve ay
 `BookImport:MaxUploadBytes` (üst tavan 200 MB), PDF `%PDF-` imzasıyla doğrulanır. Kota `IEntitlementService` üzerinden
 (`book-import`); şimdilik `UnlimitedEntitlementService` (#1019 gerçek planlarla değiştirir); dolunca 429
 `entitlement.limitReached`. Görünürlük: Admin tüm işleri, diğerleri yalnız kendi işini görür.
+
+**Issue #1122 — parçalı yükleme.** Demo Cloudflare Tunnel arkasında; ücretsiz plan 100 MB üstü isteği keser, gateway'in Kestrel
+gövde sınırı da 30 MB (tek istekli `POST /book-imports` bu yüzden 30 MB üstünde gateway'de düşer). UI artık her dosyayı parçalı
+gönderir: `POST /book-imports/uploads` (ad, sınıf, ders, dosya adı, toplam boyut; tek istekli yüklemeyle aynı kurallar ve hak
+kontrolü) oturum açar → `PUT …/uploads/{id}/parts/{n}` ham bayt (1'den, `BookImportService.UploadPartSizeBytes` = 25 MiB, son
+parça kalan; boyut tam tutmalı, aynı parçayı yeniden göndermek üzerine yazar, ilk parça `%PDF-` değilse oturum bırakılır) →
+`POST …/complete` parçaları exam API'nin geçici dosyasında birleştirir, boyut + imza denetler, hakkı yeniden kontrol eder ve işi
+tek istekli yüklemedeki yoldan başlatır (`DELETE …/uploads/{id}` bırakır). Parçalar MinIO'da `book-import-uploads/<id>/part-NNN`,
+oturum `BookImportUploads` tablosunda (soft-delete yok). Oturuma yalnız sahibi dokunur (Admin dahil, başkasınınki 404); kullanıcı
+başına 3 açık oturum, yenisi en eskisini bırakır. `book-import-upload-sweep` (saatlik, `BookImport:UploadSweepCron`) 24 saatten
+eski oturumları ve parçalarını siler. UI ağ / 5xx hatasında parçayı 3 kez yeniden dener (4xx denenmez), ilerlemeyi "2 / 7" gösterir.

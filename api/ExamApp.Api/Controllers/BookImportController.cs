@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos;
@@ -61,6 +62,82 @@ public class BookImportController : BaseController
             StartBookImportError.QuotaReached => QuotaReached(result.Quota),
             var error => BadRequest(new { code = $"bookImport.{Camel(error)}", message = _localizer[$"bookImport.{Camel(error)}"].Value }),
         };
+    }
+
+    /// <summary>
+    /// Issue #1122: büyük PDF'i Cloudflare'in 100 MB istek sınırına takılmadan yüklemek için parçalı oturum açar. Kurallar tek istekli
+    /// yüklemeyle aynı (ad, sınıf, ders, boyut, aylık hak); dönüşteki parça boyutuyla dosya bölünüp sırayla gönderilir.
+    /// </summary>
+    [HttpPost("uploads")]
+    [RequiresEntitlement(EntitlementFeatures.BookImport)]
+    public async Task<IActionResult> BeginUpload([FromBody] BeginBookImportUploadDto request, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+
+        var result = await _service.BeginUploadAsync(owner,
+            new BeginBookImportUploadRequest(request.BookName ?? string.Empty, request.GradeId, request.SubjectId, request.FileName,
+                request.FileSizeBytes), ct);
+        return result.Error switch
+        {
+            StartBookImportError.None => Ok(result.Upload),
+            StartBookImportError.QuotaReached => QuotaReached(result.Quota),
+            var error => BadRequest(new { code = $"bookImport.{Camel(error)}", message = _localizer[$"bookImport.{Camel(error)}"].Value }),
+        };
+    }
+
+    /// <summary>Issue #1122: bir parça (gövde ham bayt, 1'den numaralı). Aynı parçayı yeniden göndermek üzerine yazar.</summary>
+    [HttpPut("uploads/{id:guid}/parts/{partNumber:int}")]
+    [RequiresEntitlement(EntitlementFeatures.BookImport)]
+    [RequestSizeLimit(BookImportService.UploadPartSizeBytes + 1)]
+    public async Task<IActionResult> UploadPart(Guid id, int partNumber, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        if (Request.ContentLength is not { } length || length <= 0 || length > BookImportService.UploadPartSizeBytes)
+            return InvalidPart();
+
+        using var content = new MemoryStream((int)length);
+        await Request.Body.CopyToAsync(content, ct);
+        return await _service.UploadPartAsync(owner, id, partNumber, content, ct) switch
+        {
+            BookImportUploadPartResult.Ok => NoContent(),
+            BookImportUploadPartResult.NotFound => UploadNotFound(),
+            BookImportUploadPartResult.NotPdf => BadRequest(new { code = "bookImport.notPdf", message = _localizer["bookImport.notPdf"].Value }),
+            _ => InvalidPart(),
+        };
+    }
+
+    /// <summary>Issue #1122: parçaları birleştirir ve aktarım işini başlatır (dönüş tek istekli yüklemeyle aynı).</summary>
+    [HttpPost("uploads/{id:guid}/complete")]
+    [RequiresEntitlement(EntitlementFeatures.BookImport)]
+    public async Task<IActionResult> CompleteUpload(Guid id, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+
+        var result = await _service.CompleteUploadAsync(owner, id, ct);
+        return result.Error switch
+        {
+            CompleteBookImportUploadError.None => Ok(result.Job),
+            CompleteBookImportUploadError.NotFound => UploadNotFound(),
+            CompleteBookImportUploadError.QuotaReached => QuotaReached(result.Quota),
+            CompleteBookImportUploadError.Incomplete => Conflict(new { code = "bookImport.uploadIncomplete", message = _localizer["bookImport.uploadIncomplete"].Value }),
+            _ => BadRequest(new { code = "bookImport.notPdf", message = _localizer["bookImport.notPdf"].Value }),
+        };
+    }
+
+    /// <summary>Issue #1122: yarım yüklemeyi bırakır; parçalar silinir.</summary>
+    [HttpDelete("uploads/{id:guid}")]
+    public async Task<IActionResult> AbortUpload(Guid id, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        return await _service.AbortUploadAsync(owner, id, ct) ? NoContent() : UploadNotFound();
     }
 
     [HttpGet]
@@ -350,6 +427,12 @@ public class BookImportController : BaseController
         BookImportReviewResult.InvalidOption => BadRequest(new { code = "bookImport.invalidOption", message = _localizer["bookImport.invalidOption"].Value }),
         _ => Conflict(new { code = "bookImport.notInReview", message = _localizer["bookImport.notInReview"].Value }),
     };
+
+    private NotFoundObjectResult UploadNotFound() =>
+        NotFound(new { code = "bookImport.uploadNotFound", message = _localizer["bookImport.uploadNotFound"].Value });
+
+    private BadRequestObjectResult InvalidPart() =>
+        BadRequest(new { code = "bookImport.invalidPart", message = _localizer["bookImport.invalidPart"].Value });
 
     private ObjectResult QuotaReached(EntitlementCheck? quota) =>
         EntitlementLimitResponse.Create(EntitlementFeatures.BookImport, quota, _localizer["bookImport.quotaReached"].Value);

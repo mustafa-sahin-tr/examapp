@@ -51,13 +51,22 @@
         </mat-form-field>
       </div>
 
+      @if (uploadProgress(); as p) {
+      <mat-progress-bar mode="determinate" [value]="(100 * p.part) / p.parts"
+        [attr.aria-label]="t('form.uploadingParts', { part: p.part, parts: p.parts })"></mat-progress-bar>
+      }
       @if (submitError(); as code) {
       <p class="bi-error" role="alert">{{ t(errorKey(code)) }}</p>
       }
       <div class="bi-form__actions">
         <button mat-flat-button type="submit" [disabled]="submitting() || quotaBlocked() || !file()">
           @if (submitting()) {
-          <mat-spinner diameter="18" aria-hidden="true"></mat-spinner>{{ t('form.uploading') }}
+          <mat-spinner diameter="18" aria-hidden="true"></mat-spinner>
+          @if (uploadProgress(); as p) {
+          {{ t('form.uploadingParts', { part: p.part, parts: p.parts }) }}
+          } @else {
+          {{ t('form.uploading') }}
+          }
           } @else {
           {{ t('form.start') }}
           }

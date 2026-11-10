@@ -240,6 +240,7 @@ public class AppDbContext : DbContext
     // Issue #1018 (epic #1017): kitaptan aktarım işleri.
     public DbSet<BookImportJob> BookImportJobs { get; set; }
     public DbSet<BookImportJobTest> BookImportJobTests { get; set; }
+    public DbSet<BookImportUpload> BookImportUploads { get; set; }
     public DbSet<BookImportPage> BookImportPages { get; set; } // issue #1020
     public DbSet<BookImportCost> BookImportCosts { get; set; } // issue #1024
     public DbSet<SubscriptionPlan> SubscriptionPlans { get; set; } // issue #1019
@@ -1418,6 +1419,13 @@ public class AppDbContext : DbContext
             // Issue #1032: tek demo kaynağı; demo işi kaynağına bağlıdır.
             e.HasIndex(j => j.IsDemoSource).IsUnique().HasFilter("\"IsDemoSource\" AND NOT \"IsDeleted\"");
             e.HasOne<BookImportJob>().WithMany().HasForeignKey(j => j.DemoSourceJobId).OnDelete(DeleteBehavior.Restrict);
+        });
+        // Issue #1122: parçalı yükleme oturumu; süpürücü eski oturumları CreatedAt ile bulur.
+        modelBuilder.Entity<BookImportUpload>(e =>
+        {
+            e.HasOne<Grade>().WithMany().HasForeignKey(u => u.GradeId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Subject>().WithMany().HasForeignKey(u => u.SubjectId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(u => u.CreatedAt);
         });
         modelBuilder.Entity<BookImportJobTest>(e =>
         {

@@ -14,6 +14,7 @@
     "subjectAuto": "Kitaptan belirlensin",
     "start": "Aktarımı başlat",
     "uploading": "Yükleniyor…",
+    "uploadingParts": "Yükleniyor… {{part}} / {{parts}}",
     "cancel": "Vazgeç"
   },
   "errors": {
@@ -23,6 +24,8 @@
     "invalidGrade": "Geçerli bir sınıf seçin.",
     "invalidSubject": "Geçerli bir ders seçin.",
     "quotaReached": "Bu ayki kitap aktarım hakkınız doldu.",
+    "uploadNotFound": "Yükleme yarıda kaldı; dosyayı yeniden seçin.",
+    "uploadIncomplete": "Dosyanın bazı parçaları gönderilemedi. Tekrar deneyin.",
     "generic": "Aktarım başlatılamadı. Tekrar deneyin."
   },
   "demo": {

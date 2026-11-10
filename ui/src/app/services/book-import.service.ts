@@ -1,6 +1,6 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, catchError, concat, concatMap, defer, map, of, range, retry, switchMap, throwError, timer } from 'rxjs';
 
 import {
   ApproveAllBookImportResult,
@@ -11,10 +11,16 @@ import {
   BookImportReviewQuestion,
   BookImportQuota,
   BookImportSetup,
+  BookImportUploadEvent,
+  BookImportUploadSession,
   ConfirmBookImportSetup,
   StartBookImportRequest,
 } from '../models/book-import';
 import { LabelingBankQuestion } from '../models/labeling';
+
+/** Issue #1122: ağ ya da sunucu hatasında bir parça en fazla bu kadar yeniden denenir (bekleme her denemede uzar). */
+export const BOOK_IMPORT_PART_RETRIES = 3;
+export const BOOK_IMPORT_PART_RETRY_MS = 1000;
 
 /** Issue #1018 (epic #1017): kitaptan aktarım işleri. Pilot: Admin + QuestionTrainer; öğretmen yalnız demo (#1032). */
 @Injectable({ providedIn: 'root' })
@@ -48,13 +54,55 @@ export class BookImportService {
     return this.http.put<void>(`${this.baseUrl}/${id}/demo-source`, { isDemoSource });
   }
 
-  start(request: StartBookImportRequest): Observable<BookImportJob> {
-    const form = new FormData();
-    form.append('file', request.file, request.file.name);
-    form.append('bookName', request.bookName);
-    form.append('gradeId', String(request.gradeId));
-    if (request.subjectId != null) form.append('subjectId', String(request.subjectId));
-    return this.http.post<BookImportJob>(this.baseUrl, form);
+  /**
+   * Issue #1122: PDF parça parça gider (Cloudflare 100 MB, gateway 30 MB istek sınırı). Oturum açılır, parçalar sırayla gönderilir
+   * (ağ / sunucu hatasında parça yeniden denenir), sonra sunucu birleştirip işi başlatır. Hata olursa oturum bırakılır.
+   */
+  start(request: StartBookImportRequest): Observable<BookImportUploadEvent> {
+    const { file } = request;
+    return this.http
+      .post<BookImportUploadSession>(`${this.baseUrl}/uploads`, {
+        bookName: request.bookName,
+        gradeId: request.gradeId,
+        subjectId: request.subjectId,
+        fileName: file.name,
+        fileSizeBytes: file.size,
+      })
+      .pipe(
+        switchMap((session) => {
+          const parts = session.partCount;
+          const sent = range(1, parts).pipe(
+            concatMap((part) =>
+              this.sendPart(session, file, part).pipe(map((): BookImportUploadEvent => ({ type: 'progress', part, parts }))),
+            ),
+          );
+          const complete = defer(() => this.http.post<BookImportJob>(`${this.baseUrl}/uploads/${session.id}/complete`, {})).pipe(
+            map((job): BookImportUploadEvent => ({ type: 'done', job })),
+          );
+          return concat(of<BookImportUploadEvent>({ type: 'progress', part: 0, parts }), sent, complete).pipe(
+            catchError((error) => {
+              this.http.delete<void>(`${this.baseUrl}/uploads/${session.id}`).subscribe({ error: () => undefined });
+              return throwError(() => error);
+            }),
+          );
+        }),
+      );
+  }
+
+  private sendPart(session: BookImportUploadSession, file: File, part: number): Observable<void> {
+    const from = (part - 1) * session.partSizeBytes;
+    const blob = file.slice(from, Math.min(from + session.partSizeBytes, file.size));
+    return defer(() =>
+      this.http.put<void>(`${this.baseUrl}/uploads/${session.id}/parts/${part}`, blob, {
+        headers: { 'Content-Type': 'application/octet-stream' },
+      }),
+    ).pipe(
+      retry({
+        count: BOOK_IMPORT_PART_RETRIES,
+        delay: (error: HttpErrorResponse, attempt) =>
+          error.status === 0 || error.status >= 500 ? timer(attempt * BOOK_IMPORT_PART_RETRY_MS) : throwError(() => error),
+      }),
+    );
   }
 
   /** Issue #1021: kurulum onay ekranı. */

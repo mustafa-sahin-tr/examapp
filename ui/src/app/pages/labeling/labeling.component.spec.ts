@@ -1899,9 +1899,9 @@ describe('LabelingComponent', () => {
         }
 
         /** Mock'lar `setup` içinde kurulur: yanıtlar bileşen oluşmadan önce verilir. */
-        async function setupWith(responses: () => void): Promise<void> {
+        async function setupWith(responses: () => void, aiModels: LabelingAiModel[] = []): Promise<void> {
             beforeCreate = responses;
-            await setup();
+            await setup([], false, aiModels);
         }
 
         function pageResponses(): void {
@@ -1995,6 +1995,19 @@ describe('LabelingComponent', () => {
 
             expect(navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { page: 14 }, queryParamsHandling: 'merge' }));
             expect(navigate).not.toHaveBeenCalledWith(['/book-imports', 'j1']);
+        });
+
+        // #1129: aktarım sayfası Claude ile tespit edilmişti; düzeltmede YOLO yerine Claude (kayıtlı sonuç önbellekten).
+        it('fix_DetectsWithClaudeEvenWhenModelIsPreferred', async () => {
+            routeUrl = '/?bookImport=j1&test=3&page=12';
+            const claude: LabelingAiModel = { id: 'claude-a', displayName: 'Claude A', inputUsdPerMTok: 3, outputUsdPerMTok: 15, isDefault: true };
+            await setupWith(() => {
+                pageResponses();
+                labelingApi.aiDetect.mockReturnValue(throwError(() => ({ error: {} })));
+            }, [claude]);
+
+            expect(component.preferredSource()).toBe('Model');
+            expect(labelingApi.aiDetect).toHaveBeenCalledWith(expect.objectContaining({ model: 'claude-a', force: false }));
         });
 
         it('fix_EmptyPage_AsksBeforeDeletingTheDrafts', async () => {

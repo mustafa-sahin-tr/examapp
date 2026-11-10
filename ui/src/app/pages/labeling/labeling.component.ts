@@ -602,7 +602,8 @@ export class LabelingComponent {
       selector.applyExternalPrediction(seq, manual.predictions, manualDetectionSource(manual));
       return;
     }
-    if (this.preferredSource() === 'Ai' && this.aiModels().length > 0) {
+    // #1129: aktarım düzeltmesinde sayfa aktarımdaki gibi Claude ile açılır (kayıtlı sonuç önbellekten, maliyetsiz).
+    if ((this.fix() || this.preferredSource() === 'Ai') && this.aiModels().length > 0) {
       void this.runClaude(false, true);
     } else {
       selector.predict();

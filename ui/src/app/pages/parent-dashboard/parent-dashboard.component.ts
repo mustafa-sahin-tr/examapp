@@ -9,7 +9,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTabsModule } from '@angular/material/tabs';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
-import { EMPTY, Observable, Subject, Subscription, catchError, defer, finalize, map, switchMap, tap } from 'rxjs';
+import { EMPTY, Observable, Subject, Subscription, catchError, defer, finalize, map, of, switchMap, tap } from 'rxjs';
 
 import { LinkedChild } from '../../models/parent-link.model';
 import { PARENT_CHILD_QUERY_PARAM, ParentChildSummary } from '../../models/parent-dashboard.model';
@@ -109,6 +109,11 @@ export class ParentDashboardComponent implements OnInit {
   protected readonly summary = signal<ParentChildSummary | null>(null);
   protected readonly summaryLoading = signal(false);
   protected readonly summaryError = signal<string | null>(null);
+  /**
+   * Issue #1089: çocuğun planında ayrıntılı analiz var mı (zayıf konular, kazanım haritası). Okunana dek (null) kartlar istek
+   * atmaz; okunamazsa açık kalır (sunucu karar verir).
+   */
+  protected readonly childAnalytics = signal<boolean | null>(null);
   /** 404 sonrası (bağlantı kaldırılmış olabilir) liste yenilenince gösterilen bilgi notu; seçim değişince kalkar. */
   protected readonly notice = signal<string | null>(null);
 
@@ -141,6 +146,19 @@ export class ParentDashboardComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe();
+
+    this.summaryRequests
+      .pipe(
+        switchMap((id) => {
+          this.childAnalytics.set(null);
+          return this.dashboardService.getChildPlanFeatures(id).pipe(
+            map((plan) => plan.features['analytics'] !== false),
+            catchError(() => of(true))
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((analytics) => this.childAnalytics.set(analytics));
 
     this.route.queryParamMap
       .pipe(

@@ -23,6 +23,7 @@ import accountSecurityEn from '../../../../public/i18n/account-security/en.json'
 import parentLinksTr from '../../../../public/i18n/parent-links/tr.json';
 import parentLinksEn from '../../../../public/i18n/parent-links/en.json';
 import { ParentLinkService } from '../../services/parent-link.service';
+import { EntitlementStateService } from '../../services/entitlement-state.service';
 
 /**
  * Sayfa cevirileri kendi Transloco scope'undadir (issue #183); testte gercek sozluk verilir,
@@ -51,6 +52,7 @@ describe('StudentProfileComponent', () => {
     let studentService: MockedObject<StudentService>;
     let testService: MockedObject<TestService>;
     let badgeService: MockedObject<BadgeService>;
+    let hasAnalytics = true;
 
     const emptyStatistics: StudentStatisticsResponse = {
         total: {
@@ -111,6 +113,10 @@ describe('StudentProfileComponent', () => {
                 { provide: StudentService, useValue: studentService },
                 { provide: TestService, useValue: testService },
                 { provide: BadgeService, useValue: badgeService },
+                {
+                    provide: EntitlementStateService,
+                    useValue: { load: () => of(null), loaded: () => true, has: () => hasAnalytics, plan: () => null },
+                },
                 // Issue #419: veli davet kartı kendi servisini çağırır; profil testlerinde boş liste.
                 {
                     provide: ParentLinkService,
@@ -186,6 +192,21 @@ describe('StudentProfileComponent', () => {
         expect(el.querySelector('app-user-theme-switcher')).toBeNull();
         for (const card of ['app-weak-topics-card', 'app-topic-progress-card', 'app-outcome-mastery-card', 'app-leaderboard']) {
             expect(el.querySelector(card), card).not.toBeNull();
+        }
+    });
+
+    it('analyticsNotInPlan_ShowsTheLockedCardInsteadOfTheAnalyticsCards (#1089)', () => {
+        hasAnalytics = false;
+        try {
+            const el = render({ fullName: 'A', gradeId: 22 });
+
+            for (const card of ['app-weak-topics-card', 'app-topic-progress-card', 'app-outcome-mastery-card']) {
+                expect(el.querySelector(card), card).toBeNull();
+            }
+            expect(el.querySelector('[data-test="plan-locked"]')!.getAttribute('data-feature')).toBe('analytics');
+            expect(el.querySelector('app-leaderboard')).not.toBeNull();
+        } finally {
+            hasAnalytics = true;
         }
     });
 

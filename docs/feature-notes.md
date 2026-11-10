@@ -345,6 +345,14 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   mesajı (`Resources/entitlements.*.json`; karşı tarafın planı yanıtta yok). Rol muafiyeti yalnız çağırana uygulanır. Arayüzde
   bu yanıt yükseltme penceresi açmaz, mesaj bildirim olarak görünür (öğrencide karşı taraf öğretmen, öğretmende öğrencinin
   velisi yükseltir). Free yeni anahtarların hepsini #1090'a kadar sınırsız taşır.
+- **Öğrencinin kendi çalışması plana bağlı (#1089):** öğretmenin atadığı iş (atama, ödev, sınıf denemesi) hiçbir zaman sayılmaz.
+  `practice`: kendi seçtiği test (`start-test`, atama yokken) ve konu çalışması oturumu; `self-activity`: kendi seçtiği etkinlik
+  (çalışma sayfası `Kind=Activity`); `mixed-mini`: karışık mini deneme. Üçü **başlarken** sayılır (`practice:worksheet:{id}:{userId}`,
+  `{feature}:session:{id}`); dolu → 429, planda yok → 403. Günlük set açık. `study-tools` (planda var / yok): tekrar zamanı gelenler,
+  kaydedilenler, yanlışlar (oturum ve liste), çalışma sayfaları, program ve kendi kart destesi yazımı; silme uçları açık kalır.
+  `analytics`: konu performansı, gelişim zaman çizelgesi ve kazanım ustalığı; profilde kartların yerine `PlanLockedCardComponent`
+  (karşılaştırma penceresini açar). Veli paneli **çocuğun** planına bakar: `GET /api/parent/children/{id}/plan-features`
+  (bağlantı kapısı önce, audit `children.plan-features`), velinin konu performansı / kazanım uçları çocuğun planında yoksa 403.
 - **Plan seçimi (#1028):** kayıt sihirbazının (`ui` `/register`) öğrenci / öğretmen kaydından sonra 3. adımı plan kartlarıdır
   (`PlanPickerComponent`, scope `subscription`); veli adımı atlar. "Ücretsiz devam et" API çağırmaz (Free). "Denemeyi başlat"
   → `POST /api/exam/subscription-plans/me/trial`: hesap başına bir kez (silinmiş atamalar dahil; ikincisi 409

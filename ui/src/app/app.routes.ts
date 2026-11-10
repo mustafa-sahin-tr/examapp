@@ -195,14 +195,15 @@ export const routes: Routes = [
       },
       { path: 'exam', component: TestCreateEnhancedComponent, canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard] },
       { path: 'exam/:id', component: TestCreateEnhancedComponent, canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard] },
-      { path: 'programs', component: MyProgramsComponent, canActivate: [authGuard, roleGuard('Student')] },
+      // Issue #1089: çalışma programı ve takibi planda `study-tools` ister.
+      { path: 'programs', component: MyProgramsComponent, canActivate: [authGuard, roleGuard('Student'), entitlementGuard('study-tools')] },
       {
         path: 'programs/:id/detail',
         loadComponent: () =>
           import('./pages/my-programs/program-detail.component').then((m) => m.ProgramDetailComponent),
-        canActivate: [authGuard, roleGuard('Student')],
+        canActivate: [authGuard, roleGuard('Student'), entitlementGuard('study-tools')],
       },
-      { path: 'program-create', component: ProgramCreateComponent, canActivate: [authGuard, roleGuard('Student')] },
+      { path: 'program-create', component: ProgramCreateComponent, canActivate: [authGuard, roleGuard('Student'), entitlementGuard('study-tools')] },
       // #889: rozetler /badges; eski /certificates bağlantıları (bildirimler, yer imleri) oraya yönlenir.
       { path: 'badges', component: BadgeThropyComponent, canActivate: [authGuard] },
       { path: 'certificates', redirectTo: 'badges' },
@@ -387,14 +388,14 @@ export const routes: Routes = [
       {
         // Issue #532: kaydedilen sorular.
         path: 'saved-questions',
-        canActivate: [authGuard, studentGuard],
+        canActivate: [authGuard, studentGuard, entitlementGuard('study-tools')],
         loadComponent: () =>
           import('./pages/saved-questions/saved-questions.component').then((m) => m.SavedQuestionsComponent),
       },
       {
         // Issue #698: yanlış defteri.
         path: 'mistakes',
-        canActivate: [authGuard, studentGuard],
+        canActivate: [authGuard, studentGuard, entitlementGuard('study-tools')],
         loadComponent: () =>
           import('./pages/mistake-notebook/mistake-notebook.component').then((m) => m.MistakeNotebookComponent),
       },

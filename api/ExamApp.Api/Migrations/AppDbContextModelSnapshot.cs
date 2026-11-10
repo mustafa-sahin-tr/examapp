@@ -6538,6 +6538,46 @@ namespace ExamApp.Api.Migrations
                             FeatureKey = "live-lesson",
                             IsDeleted = false,
                             PlanId = 1
+                        },
+                        new
+                        {
+                            Id = 83,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "mixed-mini",
+                            IsDeleted = false,
+                            PlanId = 1
+                        },
+                        new
+                        {
+                            Id = 84,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "practice",
+                            IsDeleted = false,
+                            PlanId = 1
+                        },
+                        new
+                        {
+                            Id = 85,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "self-activity",
+                            IsDeleted = false,
+                            PlanId = 1
+                        },
+                        new
+                        {
+                            Id = 86,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "study-tools",
+                            IsDeleted = false,
+                            PlanId = 1
+                        },
+                        new
+                        {
+                            Id = 87,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "analytics",
+                            IsDeleted = false,
+                            PlanId = 1
                         });
                 });
 

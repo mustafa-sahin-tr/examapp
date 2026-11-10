@@ -113,6 +113,13 @@ public static class SubscriptionPlanSeed
         (FreePlanId, EntitlementFeatures.Messaging, null),
         (FreePlanId, EntitlementFeatures.Tutoring, null),
         (FreePlanId, EntitlementFeatures.LiveLesson, null),
+
+        // #1089: öğrencinin kendi çalışması plana bağlandı; Free bugünkü davranışı #1090'a kadar korur (deneme sınavı #1031'deki gibi 0).
+        (FreePlanId, EntitlementFeatures.MixedMini, null),
+        (FreePlanId, EntitlementFeatures.Practice, null),
+        (FreePlanId, EntitlementFeatures.SelfActivity, null),
+        (FreePlanId, EntitlementFeatures.StudyTools, null),
+        (FreePlanId, EntitlementFeatures.Analytics, null),
     ];
 
     private const int FirstTierLimitId = 13;

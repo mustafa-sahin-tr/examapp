@@ -300,3 +300,13 @@ app-parent-reschedule-requests:not(:empty) {
     color: var(--ms-text-medium);
   }
 }
+
+// Issue #1089: çocuğun planında olmayan analiz bölümünün yerine kısa not.
+.pdb__locked {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border: 1px dashed var(--ms-border);
+  border-radius: 8px;
+  color: var(--ms-text-weak);
+  font-size: 0.875rem;
+}

@@ -152,13 +152,21 @@
         <mat-tab [label]="t('tabs.progress')">
           <ng-template matTabContent>
             <app-parent-child-progress [studentId]="studentId" (notFound)="onChildNotFound()" />
-            <app-weak-topics-card [childId]="studentId" />
+            @if (childAnalytics() === true) {
+              <app-weak-topics-card [childId]="studentId" />
+            } @else if (childAnalytics() === false) {
+              <p class="pdb__locked" data-test="analytics-locked">{{ t('analyticsLocked') }}</p>
+            }
             <app-coach-goals-card [childId]="studentId" />
           </ng-template>
         </mat-tab>
         <mat-tab [label]="t('tabs.outcomes')">
           <ng-template matTabContent>
-            <app-outcome-mastery-card [childId]="studentId" />
+            @if (childAnalytics() === true) {
+              <app-outcome-mastery-card [childId]="studentId" />
+            } @else if (childAnalytics() === false) {
+              <p class="pdb__locked" data-test="analytics-locked">{{ t('analyticsLocked') }}</p>
+            }
           </ng-template>
         </mat-tab>
         <mat-tab [label]="t('tabs.goal')">

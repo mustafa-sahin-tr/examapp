@@ -61,13 +61,17 @@ export class FlashcardDecksComponent implements OnInit {
 
   ngOnInit(): void {
     this.load();
-    if (!this.isStudent) this.entitlements.load().subscribe();
+    this.entitlements.load().subscribe();
   }
 
-  /** Issue #1088: öğretmende yeni deste planda `flashcard-sets` ister; yoksa yükseltme penceresi (mevcut desteler açık kalır). */
+  /**
+   * Yeni deste planda ister: öğretmende `flashcard-sets` (#1088), öğrencinin kendi destesinde `study-tools` (#1089). Yoksa yükseltme
+   * penceresi; mevcut ve atanmış desteler açık kalır.
+   */
   startCreate(): void {
-    if (!this.isStudent && !this.entitlements.has('flashcard-sets')) {
-      this.entitlementLimits.showNotInPlan('flashcard-sets', this.entitlements.plan()?.planKey ?? null);
+    const feature = this.isStudent ? 'study-tools' : 'flashcard-sets';
+    if (!this.entitlements.has(feature)) {
+      this.entitlementLimits.showNotInPlan(feature, this.entitlements.plan()?.planKey ?? null);
       return;
     }
     this.creating.set(true);

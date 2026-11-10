@@ -40,10 +40,12 @@ public class FlashcardsController(
         AsLearnerAsync(async learner => await study.GetDeckAsync(learner, id, ct) is { } deck ? Ok(deck) : NotFound(), ct);
 
     [HttpPost("decks")]
+    [RequiresEntitlement(EntitlementFeatures.StudyTools, InPlanOnly = true)] // #1089: kendi destesi
     public Task<IActionResult> CreateDeck([FromBody] SaveFlashcardDeckDto request, CancellationToken ct) =>
         AsLearnerAsync(async learner => Ok(await decks.CreateAsync(Owner(learner), request, ct)), ct);
 
     [HttpPut("decks/{id:int}")]
+    [RequiresEntitlement(EntitlementFeatures.StudyTools, InPlanOnly = true)] // #1089: kendi destesi
     public Task<IActionResult> UpdateDeck(int id, [FromBody] SaveFlashcardDeckDto request, CancellationToken ct) =>
         AsLearnerAsync(async learner => await decks.UpdateAsync(Owner(learner), id, request, ct) is { } deck ? Ok(deck) : NotFound(), ct);
 
@@ -52,10 +54,12 @@ public class FlashcardsController(
         AsLearnerAsync(async learner => await decks.DeleteAsync(Owner(learner), id, ct) ? NoContent() : NotFound(), ct);
 
     [HttpPost("decks/{id:int}/cards")]
+    [RequiresEntitlement(EntitlementFeatures.StudyTools, InPlanOnly = true)] // #1089: kendi destesi
     public Task<IActionResult> AddCard(int id, [FromBody] SaveFlashcardDto request, CancellationToken ct) =>
         AsLearnerAsync(async learner => await decks.AddCardAsync(Owner(learner), id, request, ct) is { } card ? Ok(card) : NotFound(), ct);
 
     [HttpPut("cards/{cardId:int}")]
+    [RequiresEntitlement(EntitlementFeatures.StudyTools, InPlanOnly = true)] // #1089: kendi destesi
     public Task<IActionResult> UpdateCard(int cardId, [FromBody] SaveFlashcardDto request, CancellationToken ct) =>
         AsLearnerAsync(async learner => await decks.UpdateCardAsync(Owner(learner), cardId, request, ct) is { } card ? Ok(card) : NotFound(), ct);
 

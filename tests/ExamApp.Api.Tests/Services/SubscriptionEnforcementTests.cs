@@ -400,4 +400,94 @@ public class SubscriptionEnforcementTests : IDisposable
         var ex = await Should.ThrowAsync<MockExamRuleException>(() => NewMockExamService(service).SetFreeTrialAsync(world.ExamId, true, 1, default));
         ex.Message.ShouldBe(MockExamService.FreeTrialNotOpen);
     }
+
+    // ---- #1089: öğrencinin kendi seçtiği test / etkinlik
+
+    private async Task<int> AddOpenWorksheetAsync(MockWorld world, WorksheetKind kind, string name)
+    {
+        await using var ctx = _db.NewContext();
+        var worksheet = new Worksheet
+        {
+            Name = name,
+            Description = "",
+            GradeId = world.GradeId,
+            Kind = kind,
+            StudentVisibility = WorksheetStudentVisibility.Normal,
+        };
+        ctx.Add(worksheet);
+        await ctx.SaveChangesAsync();
+        return worksheet.Id;
+    }
+
+    private async Task<int> UsagesAsync(string feature)
+    {
+        await using var ctx = _db.NewContext();
+        return await ctx.EntitlementUsages.CountAsync(u => u.FeatureKey == feature && u.UserId == StudentUserId);
+    }
+
+    [Fact]
+    public async Task Self_chosen_test_counts_as_practice_and_activity_as_self_activity_issue1089()
+    {
+        var world = await SeedMockExamAsync();
+        await AssignPlanAsync(SubscriptionPlan.StudentBasicKey);
+        var test = await AddOpenWorksheetAsync(world, WorksheetKind.Test, "Test");
+        var activity = await AddOpenWorksheetAsync(world, WorksheetKind.Activity, "Etkinlik");
+
+        (await StartAsync(world, test)).Success.ShouldBeTrue();
+        (await StartAsync(world, activity)).Success.ShouldBeTrue();
+        (await StartAsync(world, test)).Success.ShouldBeTrue(); // kendi oturumuna dönmek yeniden sayılmaz
+
+        (await UsagesAsync(EntitlementFeatures.Practice)).ShouldBe(1);
+        (await UsagesAsync(EntitlementFeatures.SelfActivity)).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Basic_practice_limit_blocks_the_next_self_chosen_test_but_not_assigned_work_issue1089()
+    {
+        var world = await SeedMockExamAsync();
+        await AssignPlanAsync(SubscriptionPlan.StudentBasicKey);
+        await UseAsync(StudentUserId, EntitlementFeatures.Practice, 10); // Basic sınırı 10
+        var test = await AddOpenWorksheetAsync(world, WorksheetKind.Test, "Test");
+        var assigned = await AddOpenWorksheetAsync(world, WorksheetKind.Test, "Ödev");
+        await using (var seed = _db.NewContext())
+        {
+            seed.WorksheetAssignments.Add(new WorksheetAssignment
+            {
+                WorksheetId = assigned,
+                StudentId = world.StudentId,
+                StartAt = DateTime.UtcNow.AddDays(-1),
+            });
+            await seed.SaveChangesAsync();
+        }
+
+        var ex = await Should.ThrowAsync<EntitlementLimitException>(() => StartAsync(world, test));
+        ex.FeatureKey.ShouldBe(EntitlementFeatures.Practice);
+        ex.Check.Limit.ShouldBe(10);
+
+        (await StartAsync(world, assigned)).Success.ShouldBeTrue();
+        (await UsagesAsync(EntitlementFeatures.Practice)).ShouldBe(10);
+    }
+
+    [Fact]
+    public async Task Free_student_keeps_self_study_until_the_lockout_issue1089()
+    {
+        var world = await SeedMockExamAsync();
+        var activity = await AddOpenWorksheetAsync(world, WorksheetKind.Activity, "Etkinlik");
+
+        (await StartAsync(world, activity)).Success.ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData(true, false, false, false, null, EntitlementFeatures.MixedMini, true)]
+    [InlineData(false, true, false, false, null, EntitlementFeatures.StudyTools, false)]
+    [InlineData(false, false, true, false, null, EntitlementFeatures.StudyTools, false)]
+    [InlineData(false, false, false, true, null, EntitlementFeatures.StudyTools, false)]
+    [InlineData(false, false, false, false, 5, EntitlementFeatures.StudyTools, false)]
+    [InlineData(false, false, false, false, null, EntitlementFeatures.Practice, true)]
+    public void Practice_session_kind_decides_the_plan_feature_issue1089(bool mixed, bool due, bool mistakes, bool saved, int? studyItemId,
+        string feature, bool counted) =>
+        ExamApp.Api.Controllers.PracticeController.PlanFeatureOf(new PracticeSessionStartDto
+        {
+            MixedReview = mixed, DueReview = due, Mistakes = mistakes, Saved = saved, StudyItemId = studyItemId,
+        }).ShouldBe((feature, counted));
 }

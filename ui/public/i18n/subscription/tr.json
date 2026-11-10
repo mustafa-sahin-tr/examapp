@@ -212,5 +212,9 @@
     "test": "test",
     "activity": "etkinlik",
     "lesson": "ders"
+  },
+  "locked": {
+    "text": "Mevcut planında yok. Hangi planlarda olduğunu görebilirsin.",
+    "compare": "Planları karşılaştır"
   }
 }

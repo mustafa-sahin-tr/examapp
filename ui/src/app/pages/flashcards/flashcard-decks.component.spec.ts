@@ -31,7 +31,7 @@ const deck = (id: number, isOwner: boolean, dueCount: number | null = 0): Flashc
 describe('FlashcardDecksComponent (issue #699)', () => {
   let service: { listDecks: ReturnType<typeof vi.fn>; createDeck: ReturnType<typeof vi.fn>; deleteDeck: ReturnType<typeof vi.fn> };
   let dialogResult: boolean;
-  let hasFlashcardSets = true;
+  let inPlan = (_feature: string) => true;
   let showNotInPlan: ReturnType<typeof vi.fn>;
 
   function create(decks: FlashcardDeckSummary[], mode: FlashcardMode = 'student'): ComponentFixture<FlashcardDecksComponent> {
@@ -53,7 +53,7 @@ describe('FlashcardDecksComponent (issue #699)', () => {
         { provide: SubjectService, useValue: {} },
         {
           provide: EntitlementStateService,
-          useValue: { load: () => of(null), has: () => hasFlashcardSets, plan: () => ({ planKey: 'teacher-basic' }) },
+          useValue: { load: () => of(null), has: (feature: string) => inPlan(feature), plan: () => ({ planKey: 'teacher-basic' }) },
         },
         { provide: EntitlementLimitHandler, useValue: { showNotInPlan } },
       ],
@@ -66,10 +66,10 @@ describe('FlashcardDecksComponent (issue #699)', () => {
   const query = (fixture: ComponentFixture<FlashcardDecksComponent>, test: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-test="${test}"]`);
 
-  afterEach(() => (hasFlashcardSets = true));
+  afterEach(() => (inPlan = () => true));
 
   it('teacherWithoutFlashcardSets_NewDeckOpensTheUpgradeDialog (#1088)', () => {
-    hasFlashcardSets = false;
+    inPlan = (feature) => feature !== 'flashcard-sets';
     const fixture = create([deck(1, true)], 'teacher');
 
     query(fixture, 'deck-new')!.click();
@@ -80,15 +80,25 @@ describe('FlashcardDecksComponent (issue #699)', () => {
     expect(fixture.nativeElement.textContent).toContain('Deck 1');
   });
 
-  it('studentWithoutTheFeature_StillCreatesOwnDeck (#1088)', () => {
-    hasFlashcardSets = false;
+  it('studentOwnDeck_NeedsStudyTools_NotTheTeacherFeature (#1089)', () => {
+    inPlan = (feature) => feature !== 'flashcard-sets';
     const fixture = create([]);
 
     query(fixture, 'deck-new-empty')!.click();
     fixture.detectChanges();
-
     expect(showNotInPlan).not.toHaveBeenCalled();
     expect(fixture.nativeElement.querySelector('app-flashcard-deck-form')).not.toBeNull();
+  });
+
+  it('studentWithoutStudyTools_NewDeckOpensTheUpgradeDialog_AssignedDecksStay (#1089)', () => {
+    inPlan = (feature) => feature !== 'study-tools';
+    const fixture = create([deck(1, false)]);
+
+    query(fixture, 'deck-new')!.click();
+    fixture.detectChanges();
+
+    expect(showNotInPlan).toHaveBeenCalledWith('study-tools', 'teacher-basic');
+    expect(fixture.nativeElement.textContent).toContain('Deck 1');
   });
 
   it('empty_ShowsEmptyState', () => {

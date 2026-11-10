@@ -106,7 +106,7 @@ public class TestSessionService : ITestSessionService
     {
         var worksheet = await _context.Worksheets
             .Where(w => w.Id == testId)
-            .Select(w => new { w.Id, w.GradeId, w.StudentVisibility, w.MaxDurationSeconds })
+            .Select(w => new { w.Id, w.GradeId, w.StudentVisibility, w.MaxDurationSeconds, w.Kind })
             .FirstOrDefaultAsync();
 
         if (worksheet == null)
@@ -151,10 +151,13 @@ public class TestSessionService : ITestSessionService
         if (existing != null)
             return existing;
 
-        // Issue #1031: yeni oturum açılırken. Atanan deneme öğrencinin planına sayılmaz (öğretmen atadı); kalan oturuma dönmek de.
-        var mockExamUsage = openMockExamSession && !hasActiveAssignment
-            ? await CheckMockExamPlanAsync(testId, student.Id)
-            : null;
+        // Issue #1031 / #1089: yeni oturum açılırken. Öğrencinin kendi seçtiği iş planına sayılır (deneme, test, etkinlik); atanan iş
+        // sayılmaz (öğretmen atadı), kalan oturuma dönmek de.
+        var planUsage = hasActiveAssignment
+            ? null
+            : openMockExamSession
+                ? await CheckMockExamPlanAsync(testId, student.Id)
+                : await CheckSelfStudyPlanAsync(testId, worksheet.Kind, student.Id);
 
         // Teste ait soruları TestQuestion tablosundan çekiyoruz (kilit dışında okunur). Include'lar korunur: soft-delete
         // filtreli soru gezinmesi silinmiş sorunun satırını önceki davranıştaki gibi dışarıda bırakır.
@@ -227,8 +230,8 @@ public class TestSessionService : ITestSessionService
                 ?? throw new InvalidOperationException("Test instance unique violation but no existing instance found.");
         }
 
-        if (mockExamUsage is { } usage)
-            await _entitlements!.RecordUsageAsync(usage.UserId, EntitlementFeatures.MockExam, usage.ReferenceKey);
+        if (planUsage is { } usage)
+            await _entitlements!.RecordUsageAsync(usage.UserId, usage.FeatureKey, usage.ReferenceKey);
 
         return new TestStartResultDto
         {
@@ -243,7 +246,7 @@ public class TestSessionService : ITestSessionService
     /// bütün oturumları tek kullanım sayılır (başka oturumu önce başladıysa yeniden sorulmaz). Sınır doluysa
     /// <see cref="EntitlementLimitException"/>; sayılacaksa kullanıcı ve kayıt anahtarı döner (oturum açıldıktan sonra yazılır).
     /// </summary>
-    private async Task<(int UserId, string ReferenceKey)?> CheckMockExamPlanAsync(int worksheetId, int studentId)
+    private async Task<PlanUsage?> CheckMockExamPlanAsync(int worksheetId, int studentId)
     {
         if (_entitlements is null)
             return null;
@@ -263,8 +266,31 @@ public class TestSessionService : ITestSessionService
         var check = await _entitlements.CheckAsync(EntitlementSubject.Create(userId), EntitlementFeatures.MockExam);
         if (!check.Allowed)
             throw new EntitlementLimitException(EntitlementFeatures.MockExam, check);
-        return (userId, referenceKey);
+        return new PlanUsage(userId, EntitlementFeatures.MockExam, referenceKey);
     }
+
+    /// <summary>
+    /// Issue #1089: öğrencinin atanmadan açtığı test <c>practice</c>, etkinlik <c>self-activity</c> sayılır (test başına bir kez;
+    /// tekrar çözüm yok, #367). Planda yoksa ya da sınır doluysa <see cref="EntitlementLimitException"/>.
+    /// </summary>
+    private async Task<PlanUsage?> CheckSelfStudyPlanAsync(int worksheetId, WorksheetKind kind, int studentId)
+    {
+        if (_entitlements is null)
+            return null;
+
+        var feature = kind == WorksheetKind.Activity ? EntitlementFeatures.SelfActivity : EntitlementFeatures.Practice;
+        var userId = await _context.Students.AsNoTracking().Where(s => s.Id == studentId).Select(s => s.UserId).FirstAsync();
+        var referenceKey = $"{feature}:worksheet:{worksheetId}:{userId}";
+        if (await _context.EntitlementUsages.AsNoTracking().AnyAsync(u => u.FeatureKey == feature && u.ReferenceKey == referenceKey))
+            return null;
+
+        var check = await _entitlements.CheckAsync(EntitlementSubject.Create(userId), feature);
+        if (!check.Allowed)
+            throw new EntitlementLimitException(feature, check);
+        return new PlanUsage(userId, feature, referenceKey);
+    }
+
+    private sealed record PlanUsage(int UserId, string FeatureKey, string ReferenceKey);
 
     /// <summary>Unique index adı — <see cref="AppDbContext"/> (StudentId, WorksheetId) filtreli unique index'i.</summary>
     internal const string LiveInstanceUniqueIndexName = "IX_TestInstances_StudentId_WorksheetId";

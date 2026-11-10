@@ -1,0 +1,12 @@
+<section *transloco="let t; prefix: 'subscription'" data-test="plan-locked" [attr.data-feature]="feature()">
+  <mat-card appearance="outlined" class="pl__card">
+    <mat-card-header>
+      <mat-icon mat-card-avatar aria-hidden="true">workspace_premium</mat-icon>
+      <mat-card-title>{{ t('features.' + feature()) }}</mat-card-title>
+      <mat-card-subtitle>{{ t('locked.text') }}</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-actions>
+      <button mat-stroked-button type="button" data-test="plan-locked-compare" (click)="compare()">{{ t('locked.compare') }}</button>
+    </mat-card-actions>
+  </mat-card>
+</section>

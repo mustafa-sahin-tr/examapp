@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
+  ChildPlanFeatures,
   ParentAssignmentStatus,
   ParentChildAssignmentList,
   ParentChildProgress,
@@ -20,6 +21,11 @@ export class ParentDashboardService {
 
   getChildSummary(studentId: number): Observable<ParentChildSummary> {
     return this.http.get<ParentChildSummary>(`${this.baseUrl}/${studentId}/summary`);
+  }
+
+  /** Issue #1089: çocuğun planı hangi bölümleri içeriyor (analiz, çalışma araçları …). */
+  getChildPlanFeatures(studentId: number): Observable<ChildPlanFeatures> {
+    return this.http.get<ChildPlanFeatures>(`${this.baseUrl}/${studentId}/plan-features`);
   }
 
   /** Issue #421: ödev/test listesi (sayfa başına 20, en yeni teslim tarihi önce). `status` null = hepsi. */

@@ -199,3 +199,9 @@ export interface ParentChildSchedule {
   plans: ParentPlanItem[];
   lessons: ParentLessonItem[];
 }
+
+/** Issue #1089: çocuğun planındaki öğrenci özellikleri (`GET parent/children/{id}/plan-features`); panel planda olmayanı göstermez. */
+export interface ChildPlanFeatures {
+  planKey: string | null;
+  features: Record<string, boolean>;
+}

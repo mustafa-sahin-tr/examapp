@@ -89,6 +89,9 @@ describe('ParentDashboardComponent (issue #420)', () => {
         };
     }
 
+    /** Issue #1089: çocuğun planında analiz var mı (`plan-features`). */
+    let childAnalytics = true;
+
     async function setup(children: LinkedChild[], url = '/parent', lang = 'tr'): Promise<HTMLElement> {
         linkService = {
             getMyChildren: vi.fn().mockName("ParentLinkService.getMyChildren"),
@@ -101,8 +104,10 @@ describe('ParentDashboardComponent (issue #420)', () => {
             getChildAssignments: vi.fn().mockName("ParentDashboardService.getChildAssignments"),
             getChildTestResult: vi.fn().mockName("ParentDashboardService.getChildTestResult"),
             getChildProgress: vi.fn().mockName("ParentDashboardService.getChildProgress"),
-            getChildSchedule: vi.fn().mockName("ParentDashboardService.getChildSchedule")
+            getChildSchedule: vi.fn().mockName("ParentDashboardService.getChildSchedule"),
+            getChildPlanFeatures: vi.fn().mockName("ParentDashboardService.getChildPlanFeatures")
         } as unknown as MockedObject<ParentDashboardService>;
+        dashboardService.getChildPlanFeatures.mockReturnValue(of({ planKey: 'student-pro', features: { analytics: childAnalytics } }));
         dashboardService.getChildSummary.mockImplementation((id: number) => of(summaryFor(id)));
         bookingService = {
             getParentBookingRequests: vi.fn().mockName("BookingService.getParentBookingRequests"),
@@ -445,6 +450,19 @@ describe('ParentDashboardComponent (issue #420)', () => {
             childId(): number | null;
         };
         expect(card.childId()).toBe(11);
+    });
+
+    it('basicChild_HidesAnalytics_AndNeverAsksForIt (#1089)', async () => {
+        childAnalytics = false;
+        const el = await setup([ayse, mert]);
+        childAnalytics = true;
+
+        expect(dashboardService.getChildPlanFeatures).toHaveBeenCalledWith(11);
+        expect(el.querySelector('app-weak-topics-card')).toBeNull();
+        expect(el.querySelector('[data-test="analytics-locked"]')!.textContent).toContain('çocuğunun mevcut planında yok');
+        await openTab(PARENT_DASHBOARD_TABS.outcomes);
+        expect(el.querySelector('app-outcome-mastery-card')).toBeNull();
+        expect(el.querySelector('[data-test="analytics-locked"]')).not.toBeNull();
     });
 
     it('progressAndScheduleSections_FollowTheSelectedChild', async () => {

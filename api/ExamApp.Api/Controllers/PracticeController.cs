@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Practice;
 using ExamApp.Foundation.Localization;
@@ -47,15 +48,26 @@ public class PracticeController : BaseController
 
     /// <summary>Yeni pratik oturumu açar. Gövde boş/eksikse: öğrencinin sınıfı + tüm dersler.</summary>
     [HttpPost("sessions")]
-    public async Task<IActionResult> StartSession([FromBody] PracticeSessionStartDto? request, CancellationToken ct)
+    public async Task<IActionResult> StartSession([FromBody] PracticeSessionStartDto? request, [FromServices] IEntitlementService entitlements,
+        CancellationToken ct)
     {
-        var (student, error) = await ResolveStudentAsync();
+        var (student, error, userId) = await ResolveStudentWithUserAsync();
         if (error != null)
             return error;
 
+        request ??= new PracticeSessionStartDto();
+        var (feature, counted) = PlanFeatureOf(request);
+        var check = await entitlements.CheckAsync(EntitlementSubject.FromPrincipal(userId, User), feature, ct);
+        if (check.Limit == 0)
+            return EntitlementLimitResponse.NotInPlan(feature, check);
+        if (counted && !check.Allowed)
+            return EntitlementLimitResponse.Create(feature, check);
+
         try
         {
-            var result = await _practice.StartAsync(student!, request ?? new PracticeSessionStartDto(), ct);
+            var result = await _practice.StartAsync(student!, request, ct);
+            if (counted)
+                await entitlements.RecordUsageAsync(userId, feature, $"{feature}:session:{result.Id}", ct);
             return CreatedAtAction(nameof(GetSession), new { id = result.Id }, result);
         }
         catch (InvalidOperationException ex)
@@ -66,6 +78,7 @@ public class PracticeController : BaseController
 
     /// <summary>Issue #529: tekrar zamanı gelen sorular. Hesaplanır; sınıfı olmayan öğrencide boş döner.</summary>
     [HttpGet("due-review")]
+    [RequiresEntitlement(EntitlementFeatures.StudyTools, InPlanOnly = true)]
     public async Task<IActionResult> GetDueReview([FromQuery] int? subjectId, [FromQuery] int take = 15, CancellationToken ct = default)
     {
         var (student, error) = await ResolveStudentAsync();
@@ -77,6 +90,7 @@ public class PracticeController : BaseController
 
     /// <summary>Issue #532: kaydedilen sorular.</summary>
     [HttpGet("saved")]
+    [RequiresEntitlement(EntitlementFeatures.StudyTools, InPlanOnly = true)]
     public async Task<IActionResult> GetSavedQuestions(CancellationToken ct = default)
     {
         var (student, error) = await ResolveStudentAsync();
@@ -88,6 +102,7 @@ public class PracticeController : BaseController
 
     /// <summary>Issue #532: soruyu kaydeder (idempotent). Görülmemiş ya da bitmemiş testteki soru 403, sınır dolduysa 409.</summary>
     [HttpPut("saved/{questionId:int}")]
+    [RequiresEntitlement(EntitlementFeatures.StudyTools, InPlanOnly = true)]
     public async Task<IActionResult> SaveQuestion(int questionId, CancellationToken ct = default)
     {
         var (student, error) = await ResolveStudentAsync();
@@ -116,6 +131,7 @@ public class PracticeController : BaseController
 
     /// <summary>Issue #698: yanlış defteri; sınıfı olmayan öğrencide boş döner.</summary>
     [HttpGet("mistakes")]
+    [RequiresEntitlement(EntitlementFeatures.StudyTools, InPlanOnly = true)]
     public async Task<IActionResult> GetMistakes([FromQuery] int? subjectId, [FromQuery] int? topicId, CancellationToken ct = default)
     {
         var (student, error) = await ResolveStudentAsync();
@@ -127,6 +143,7 @@ public class PracticeController : BaseController
 
     /// <summary>Issue #698: yanlış nedeni etiketi; soru öğrencinin defterinde değilse 404.</summary>
     [HttpPut("mistakes/{questionId:int}/reason")]
+    [RequiresEntitlement(EntitlementFeatures.StudyTools, InPlanOnly = true)]
     public async Task<IActionResult> SetMistakeReason(int questionId, [FromBody] MistakeReasonUpdateDto request, CancellationToken ct = default)
     {
         var (student, error) = await ResolveStudentAsync();
@@ -299,14 +316,29 @@ public class PracticeController : BaseController
 
     private async Task<(StudentProfileDto? Student, IActionResult? Error)> ResolveStudentAsync()
     {
+        var (student, error, _) = await ResolveStudentWithUserAsync();
+        return (student, error);
+    }
+
+    private async Task<(StudentProfileDto? Student, IActionResult? Error, int UserId)> ResolveStudentWithUserAsync()
+    {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return (null, UserNotResolved(_localizer["auth.authenticationFailed"].Value));
+            return (null, UserNotResolved(_localizer["auth.authenticationFailed"].Value), 0);
 
         var student = await _studentService.GetStudentProfile(user.Id);
         if (student == null)
-            return (null, NotFound(_localizer["student.profileNotFound"].Value));
+            return (null, NotFound(_localizer["student.profileNotFound"].Value), 0);
 
-        return (student, null);
+        return (student, null, user.Id);
     }
+
+    /// <summary>
+    /// Issue #1089: oturumun plan özelliği. Karışık mini deneme <c>mixed-mini</c>, konu seçip çözme <c>practice</c> (açılışta
+    /// sayılır); tekrar, yanlış defteri, kaydedilenler ve çalışma sayfası <c>study-tools</c> (yalnız planda olması).
+    /// </summary>
+    internal static (string Feature, bool Counted) PlanFeatureOf(PracticeSessionStartDto request) =>
+        request.MixedReview ? (EntitlementFeatures.MixedMini, true)
+        : request.DueReview || request.Mistakes || request.Saved || request.StudyItemId != null ? (EntitlementFeatures.StudyTools, false)
+        : (EntitlementFeatures.Practice, true);
 }

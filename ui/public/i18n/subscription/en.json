@@ -212,5 +212,9 @@
     "test": "tests",
     "activity": "activities",
     "lesson": "lessons"
+  },
+  "locked": {
+    "text": "Not in your current plan. See which plans include it.",
+    "compare": "Compare plans"
   }
 }

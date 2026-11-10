@@ -178,5 +178,6 @@
     "notFound": "You no longer have access to this request. The list was refreshed.",
     "actionError": "The action could not be completed.",
     "ok": "OK"
-  }
+  },
+  "analyticsLocked": "Detailed analytics (weak topics, outcome map) is not in your child's current plan."
 }

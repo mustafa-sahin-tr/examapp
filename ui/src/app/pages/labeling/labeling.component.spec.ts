@@ -1969,6 +1969,34 @@ describe('LabelingComponent', () => {
             expect(navigate).toHaveBeenCalledWith(['/quick-add', 'q1']);
         });
 
+        // #1129: testin bütün sayfaları tuvalde; "yalnız işaretli sayfalar" açıkken yalnız işaretlilerde gezilir.
+        it('fix_WalksTheTestPages_OnlyFlaggedByDefault_AndSaveMovesToTheNext', async () => {
+            routeUrl = '/?bookImport=j1&test=3&page=12';
+            const paged = {
+                ...test, fileFrom: 11, fileTo: 14,
+                reviewFlags: [{ code: 'extraQuestions', pages: [12, 14], numbers: [5], found: null, expected: null }],
+            } as BookImportJobTest;
+            await setupWith(() => {
+                bookImportsApi.get.mockReturnValue(of({ ...job, tests: [paged] }));
+                bookImportsApi.pageImage.mockReturnValue(of(new Blob(['webp'], { type: 'image/webp' })));
+                bookImportsApi.replacePage.mockReturnValue(of({ saved: 1, duplicates: 0, removed: 1, answerless: 0 }));
+            });
+            const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+            expect(component.fixNav()).toMatchObject({ pages: [12, 14], position: 1, prev: null, next: 14, flagged: true });
+            expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid="labeling-fix-nav"]')?.textContent).toContain('Sayfa 1 / 2');
+            component.fixOnlyFlagged.set(false);
+            expect(component.fixNav()).toMatchObject({ pages: [11, 12, 13, 14], position: 2, prev: 11, next: 13 });
+            component.fixOnlyFlagged.set(true);
+
+            selector().regions.set([mcq('q1', 1)]);
+            fixture.detectChanges();
+            (fixture.nativeElement.querySelector('[data-testid="labeling-fix-save"]') as HTMLButtonElement).click();
+
+            expect(navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { page: 14 }, queryParamsHandling: 'merge' }));
+            expect(navigate).not.toHaveBeenCalledWith(['/book-imports', 'j1']);
+        });
+
         it('fix_EmptyPage_AsksBeforeDeletingTheDrafts', async () => {
             routeUrl = '/?bookImport=j1&test=3&page=12';
             await setupWith(() => {

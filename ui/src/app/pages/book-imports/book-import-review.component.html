@@ -7,8 +7,8 @@
     <mat-slide-toggle [checked]="onlyAttention()" (change)="onlyAttention.set($event.checked)">
       {{ t('review.onlyAttention') }}
     </mat-slide-toggle>
-    @if (editable() && open().length > 0) {
-    <button mat-flat-button type="button" class="bir-head__bulk" [disabled]="approvable() === 0 || busy() !== null"
+    @if (actions() && open().length > 0) {
+    <button mat-flat-button type="button" class="bir-head__bulk" [disabled]="approvable() === 0 || busy() !== null || locked()"
       (click)="confirmingAll.set(true)">
       <mat-icon aria-hidden="true">done_all</mat-icon>
       {{ t(label('approveAll'), { count: approvable(), total: open().length }) }}
@@ -72,26 +72,24 @@
         </span>
       </div>
       <div class="bir-row__actions">
+        @if (flagCount(test) > 0) {
+        <button mat-stroked-button type="button" [attr.aria-expanded]="flagsId() === test.id" (click)="toggleFlags(test)">
+          <mat-icon aria-hidden="true">{{ flagsId() === test.id ? 'expand_less' : 'flag' }}</mat-icon>
+          {{ t('review.flags', { count: flagCount(test) }) }}
+        </button>
+        }
         @if (test.worksheetId) {
         <button mat-stroked-button type="button" [attr.aria-expanded]="previewId() === test.id" (click)="togglePreview(test)">
           <mat-icon aria-hidden="true">{{ previewId() === test.id ? 'expand_less' : 'visibility' }}</mat-icon>{{ t('review.preview') }}
         </button>
         }
-        @if (editable() && canFix() && test.fileFrom) {
-        <button mat-stroked-button type="button" [matMenuTriggerFor]="fixMenu" [disabled]="busy() !== null">
+        @if (editable() && canFix() && fixStart(test); as page) {
+        <a mat-stroked-button routerLink="/labeling" [queryParams]="fixParams(test.id, page)">
           <mat-icon aria-hidden="true">edit_square</mat-icon>{{ t('review.fix') }}
-        </button>
-        <mat-menu #fixMenu="matMenu">
-          @for (p of fixPages(test); track p.page) {
-          <a mat-menu-item routerLink="/labeling" [queryParams]="fixParams(test.id, p.page)">
-            <mat-icon aria-hidden="true">{{ p.flagged ? 'flag' : 'description' }}</mat-icon>
-            <span>{{ t(label(p.flagged ? 'fixPageFlagged' : 'fixPage'), { page: p.page }) }}</span>
-          </a>
-          }
-        </mat-menu>
+        </a>
         }
-        @if (editable()) {
-        <button mat-flat-button type="button" [disabled]="!isApprovable(test) || busy() !== null"
+        @if (actions()) {
+        <button mat-flat-button type="button" [disabled]="!isApprovable(test) || busy() !== null || locked()"
           [attr.title]="test.answerless > 0 ? t('review.answerlessHint') : null" (click)="approve(test)">
           @if (busy() === test.id) { <mat-spinner diameter="16" aria-hidden="true"></mat-spinner> }
           {{ t('review.approve') }}
@@ -102,7 +100,7 @@
         <button mat-button type="button" (click)="reimportingId.set(null)">{{ t('review.cancel') }}</button>
         } @else {
         <button mat-icon-button type="button" [attr.aria-label]="t('review.reimport', { name: testName(test) })"
-          [attr.title]="t('review.reimportHint')" [disabled]="busy() !== null" (click)="reimportingId.set(test.id)">
+          [attr.title]="t('review.reimportHint')" [disabled]="busy() !== null || locked()" (click)="reimportingId.set(test.id)">
           <mat-icon>replay</mat-icon>
         </button>
         }
@@ -112,12 +110,29 @@
         <button mat-button type="button" (click)="removingId.set(null)">{{ t('review.cancel') }}</button>
         } @else {
         <button mat-icon-button type="button" [attr.aria-label]="t(label('remove'), { name: testName(test) })"
-          [disabled]="busy() !== null" (click)="removingId.set(test.id)">
+          [disabled]="busy() !== null || locked()" (click)="removingId.set(test.id)">
           <mat-icon>delete_outline</mat-icon>
         </button>
         }
         }
       </div>
+
+      @if (flagsId() === test.id) {
+      <ul class="bir-flags">
+        @for (flag of test.flags; track flag) {
+        <li><span class="bir-chip">{{ t('flags.' + flag) }}</span></li>
+        }
+        @if (test.duplicatesSkipped > 0) {
+        <li><span class="bir-chip">{{ t('detail.duplicates', { count: test.duplicatesSkipped }) }}</span></li>
+        }
+        @for (flag of test.reviewFlags; track flag.code) {
+        <li>
+          <span class="bir-chip">{{ t('reviewFlags.' + flag.code, { found: flag.found, expected: flag.expected }) }}</span>
+          <span class="bir-flags__where">{{ flagWhere(flag, t) }}</span>
+        </li>
+        }
+      </ul>
+      }
 
       @if (previewId() === test.id) {
       <div class="bir-preview">

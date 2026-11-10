@@ -15,7 +15,6 @@ import {
   BookImportJobDetail,
   BookImportStatus,
   BookImportJobTest,
-  BookImportReviewFlag,
   BookImportStage,
   bookImportStatusTone,
   isBookImportActive,
@@ -88,20 +87,19 @@ export class BookImportDetailComponent implements OnInit {
   readonly stages = BOOK_IMPORT_STAGES;
   readonly tone = bookImportStatusTone;
 
-  readonly attention = computed(() =>
-    (this.job()?.tests ?? []).filter((t) => t.status === 'NeedsReview' || t.status === 'Failed'),
-  );
-  /** #1023: inceleme ekranı aktarım bitince (incelemede düzenlenebilir, tamamlanınca salt okunur). */
+  /** #1129: yalnız hatalı testler; inceleme işaretleri inceleme bölümünde test başına açılır. */
+  readonly attention = computed(() => (this.job()?.tests ?? []).filter((t) => t.status === 'Failed'));
+  /**
+   * #1023: inceleme bölümü (incelemede düzenlenebilir, tamamlanınca salt okunur). #1129: soru aktarımı başlayınca görünür,
+   * düğmeleri iş bitene kadar kapalı.
+   */
   readonly reviewing = computed(() => {
     const job = this.job();
-    return (
-      !!job &&
-      job.tests.some((t) => t.worksheetId != null) &&
-      (job.status === 'ReadyForReview' || job.status === 'Completed' || job.status === 'Cancelled')
-    );
+    return !!job && job.tests.length > 0 && BOOK_IMPORT_STAGES.indexOf(job.stage) >= BOOK_IMPORT_STAGES.indexOf('Questions');
   });
   /** #1025: iptal edilen işin kalan taslakları da incelenip onaylanabilir. */
   readonly reviewEditable = computed(() => this.job()?.status === 'ReadyForReview' || this.job()?.status === 'Cancelled');
+  readonly reviewLocked = computed(() => this.reviewing() && !this.reviewEditable() && this.job()?.status !== 'Completed');
   /** #1025: iptal edilebilir (onay bekleyen işin iptali kurulum ekranında). */
   readonly cancellable = computed(() => CANCELLABLE.includes(this.job()?.status as BookImportStatus));
   readonly hasDrafts = computed(() =>
@@ -259,14 +257,6 @@ export class BookImportDetailComponent implements OnInit {
         : t('detail.testCellCounts', { ...params, found: test.questionsFound, key: test.keyAnswers });
     // #1024: Admin'e testin maliyeti.
     return test.costUsd != null ? `${label} · $${test.costUsd.toFixed(4)}` : label;
-  }
-
-  /** İşaretin yeri: "sayfa 12, 13 · soru 4, 7" (#1022). */
-  flagWhere(flag: BookImportReviewFlag, t: Translate): string {
-    const parts = [];
-    if (flag.pages.length > 0) parts.push(t('detail.flagPages', { pages: flag.pages.join(', ') }));
-    if (flag.numbers?.length) parts.push(t('detail.flagNumbers', { numbers: flag.numbers.join(', ') }));
-    return parts.join(' · ');
   }
 
   testTone(test: BookImportJobTest): 'done' | 'review' | 'failed' | 'running' | 'pending' | 'approved' | 'removed' {

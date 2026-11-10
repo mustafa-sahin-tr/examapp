@@ -11,6 +11,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
@@ -63,7 +64,7 @@ import { LabelingBookService } from '../../services/labeling-book.service';
 import { AuthService } from '../../services/auth.service';
 import { BookImportService } from '../../services/book-import.service';
 import { QuickAddService } from '../../services/quick-add.service';
-import { BookImportJobKind, BookImportPageFix, bookImportTestName } from '../../models/book-import';
+import { BookImportJobKind, BookImportPageFix, bookImportTestName, bookImportTestPages } from '../../models/book-import';
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
@@ -127,6 +128,7 @@ type DrawMode = 'question' | 'answer';
     MatIconModule,
     MatInputModule,
     MatProgressSpinnerModule,
+    MatSlideToggleModule,
     MatTooltipModule,
     RouterLink,
     TranslocoDirective,
@@ -348,6 +350,23 @@ export class LabelingComponent {
   readonly fixError = signal(false);
   readonly fixSaving = signal(false);
   readonly canReplaceDrafts = computed(() => !!this.fix() && this.canTrain() && !this.fixSaving());
+  /** #1129: tuvalde testin bütün sayfaları gezilir; açıkken yalnız işaretli sayfalar. */
+  readonly fixOnlyFlagged = signal(true);
+  readonly fixNav = computed(() => {
+    const fix = this.fix();
+    if (!fix) return null;
+    const flagged = fix.pages.filter((p) => p.flagged).map((p) => p.page);
+    const onlyFlagged = this.fixOnlyFlagged() && flagged.length > 0;
+    const pages = onlyFlagged ? flagged : fix.pages.map((p) => p.page);
+    return {
+      pages,
+      hasFlagged: flagged.length > 0,
+      position: pages.indexOf(fix.filePage) + 1,
+      prev: [...pages].reverse().find((p) => p < fix.filePage) ?? null,
+      next: pages.find((p) => p > fix.filePage) ?? null,
+      flagged: flagged.includes(fix.filePage),
+    };
+  });
 
   /**
    * C bileşeninin (sürükle-yerleştir ailesi) tip seçenekleri. Issue #581: taslak yapı artık soru tuvalinde çıkarılır; tip
@@ -1057,6 +1076,14 @@ export class LabelingComponent {
     this.startFixFromRoute();
   }
 
+  /** Testin başka bir sayfası tuvalde açılır (kaydedilmemiş kutular atılır); adres güncellenir, yenileyince aynı sayfa. */
+  goToFixPage(page: number | null): void {
+    if (page == null || this.fixLoading() || this.fixSaving()) return;
+    void this.router
+      .navigate([], { relativeTo: this.route, queryParams: { page }, queryParamsHandling: 'merge', replaceUrl: true })
+      .then(() => this.startFixFromRoute());
+  }
+
   private submitFix(fix: LabelingFixTarget, questions: LabelingBankQuestion[]): void {
     this.fixSaving.set(true);
     (fix.kind === 'QuickAdd' ? this.quickAdd : this.bookImports)
@@ -1066,7 +1093,13 @@ export class LabelingComponent {
         next: (result) => {
           this.fixSaving.set(false);
           this.snackBar.open(this.fixSavedMessage(result), this.tr('ok'), { duration: 8000 });
-          void this.router.navigate([fix.kind === 'QuickAdd' ? '/quick-add' : '/book-imports', fix.jobId]);
+          // #1129: sıradaki sayfaya geçilir; son sayfadan sonra incelemeye dönülür.
+          const next = this.fixNav()?.next ?? null;
+          if (next != null) {
+            this.goToFixPage(next);
+          } else {
+            void this.router.navigate([fix.kind === 'QuickAdd' ? '/quick-add' : '/book-imports', fix.jobId]);
+          }
         },
         error: (error) => {
           this.fixSaving.set(false);
@@ -1122,6 +1155,7 @@ export class LabelingComponent {
             bookName: job.bookName,
             testName: kind === 'QuickAdd' ? (test.title ?? '') : bookImportTestName(test),
             kind,
+            pages: bookImportTestPages(test),
           };
           void this.hashFile(file).then((pageId) => {
             this.fixLoading.set(false);
@@ -1542,6 +1576,8 @@ export interface LabelingFixTarget {
   bookName: string;
   testName: string;
   kind: BookImportJobKind;
+  /** #1129: testin sayfaları (işaretliler `flagged`); tuvalde bunlar arasında gezilir. */
+  pages: { page: number; flagged: boolean }[];
 }
 
 function roundBox(box: LabelingBankBox): LabelingBankBox {

@@ -27,6 +27,29 @@
     <mat-icon aria-hidden="true">edit_square</mat-icon>
     <span class="lb-fix__text">{{ t(f.kind === 'QuickAdd' ? 'fix.bannerQuickAdd' : 'fix.banner', { book: f.bookName, test: f.testName, page: f.filePage }) }}</span>
     <a mat-button [routerLink]="[f.kind === 'QuickAdd' ? '/quick-add' : '/book-imports', f.jobId]">{{ t('fix.back') }}</a>
+    @if (fixNav(); as nav) {
+    @if (nav.pages.length > 1 || nav.hasFlagged) {
+    <div class="lb-fix__nav" data-testid="labeling-fix-nav">
+      <button mat-icon-button type="button" [disabled]="nav.prev == null || fixLoading() || fixSaving()"
+        [attr.aria-label]="t('fix.prev')" [matTooltip]="t('fix.skipHint')" (click)="goToFixPage(nav.prev)">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      <span class="lb-fix__pos">
+        {{ nav.position > 0 ? t('fix.position', { at: nav.position, total: nav.pages.length }) : t('fix.outside', { total: nav.pages.length }) }}
+        @if (nav.flagged) { <mat-icon class="lb-fix__flag" aria-hidden="true">flag</mat-icon> }
+      </span>
+      <button mat-icon-button type="button" [disabled]="nav.next == null || fixLoading() || fixSaving()"
+        [attr.aria-label]="t('fix.next')" [matTooltip]="t('fix.skipHint')" (click)="goToFixPage(nav.next)">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+      @if (nav.hasFlagged) {
+      <mat-slide-toggle [checked]="fixOnlyFlagged()" (change)="fixOnlyFlagged.set($event.checked)">
+        {{ t('fix.onlyFlagged') }}
+      </mat-slide-toggle>
+      }
+    </div>
+    }
+    }
   </div>
   } @else if (fixLoading()) {
   <div class="lb-state" role="status">

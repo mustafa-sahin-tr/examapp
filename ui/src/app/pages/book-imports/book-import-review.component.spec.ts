@@ -147,17 +147,36 @@ describe('BookImportReviewComponent (#1023)', () => {
     expect(api.removeTest).toHaveBeenCalledWith('a1', 2);
   });
 
-  it('fixInLabeling_ListsTheTestPagesMarksFlaggedOnesAndLinksToLabeling', async () => {
+  it('fixInLabeling_OpensTheCanvasAtTheFirstFlaggedPage', () => {
     setup([test({ status: 'NeedsReview', reviewFlags: [{ code: 'missingNumbers', pages: [4], numbers: [3], found: null, expected: null }] })]);
 
-    button(rows()[0], 'İşaretlemede düzelt').click();
-    fixture.detectChanges();
-    await fixture.whenStable();
+    const link = Array.from(rows()[0].querySelectorAll('a')).find((a) => a.textContent?.includes('İşaretlemede düzelt'));
+    expect(link?.getAttribute('href')).toBe('/labeling?bookImport=a1&test=1&page=4');
+  });
 
-    const items = Array.from(document.querySelectorAll<HTMLAnchorElement>('.mat-mdc-menu-panel a[mat-menu-item]'));
-    expect(items.map((a) => a.querySelector('span')?.textContent?.trim())).toEqual(['Sayfa 3', 'Sayfa 4 · işaretli']);
-    expect(items.map((a) => a.querySelector('mat-icon')?.textContent?.trim())).toEqual(['description', 'flag']);
-    expect(items[1].getAttribute('href')).toBe('/labeling?bookImport=a1&test=1&page=4');
+  it('flags_OpenPerTestWithCompactPagesAndNumbers', () => {
+    setup([test({
+      status: 'NeedsReview', flags: ['keyMismatch'], duplicatesSkipped: 1,
+      reviewFlags: [{ code: 'extraQuestions', pages: [69, 70, 71, 72, 75], numbers: [114, 116], found: null, expected: null }],
+    })]);
+    expect(rows()[0].querySelector('.bir-flags')).toBeNull();
+
+    button(rows()[0], 'Uyarılar (3)').click();
+    fixture.detectChanges();
+
+    const flags = rows()[0].querySelector('.bir-flags')!.textContent ?? '';
+    expect(flags).toContain(tr.flags.keyMismatch);
+    expect(flags).toContain('1 tekrar atlandı');
+    expect(flags).toContain('sayfa 69–72, 75 · soru 114, 116');
+  });
+
+  it('locked_ShowsActionsDisabledUntilTheImportEnds', () => {
+    setup([test({ status: 'NeedsReview', reviewFlags: [{ code: 'noAnswer', pages: [3], numbers: [1], found: null, expected: null }] })], false);
+    fixture.componentRef.setInput('locked', true);
+    fixture.detectChanges();
+
+    expect(button(rows()[0], 'Onayla').disabled).toBe(true);
+    expect(button(rows()[0], 'Önizle').disabled).toBe(false);
   });
 
   it('completedJob_IsReadOnly', () => {
@@ -165,7 +184,7 @@ describe('BookImportReviewComponent (#1023)', () => {
 
     expect(text()).toContain('İncelenecek test kalmadı.');
     expect(button(el(), 'Sorunsuz testleri onayla')).toBeUndefined();
-    expect(button(el(), 'İşaretlemede düzelt')).toBeUndefined();
+    expect(el().textContent).not.toContain('İşaretlemede düzelt');
   });
 
   // Issue #1054: hızlı ekleme aynı ekranı kullanır.

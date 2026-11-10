@@ -297,6 +297,7 @@
     "question": "Soru {{number}} · sayfa {{page}}",
     "passage": "Soru {{number}} pasajı",
     "answerFor": "Soru {{number}} cevabı",
+    "flags": "Uyarılar ({{count}})",
     "fix": "İşaretlemede düzelt",
     "fixPage": "Sayfa {{page}}",
     "fixPageFlagged": "Sayfa {{page}} · işaretli",

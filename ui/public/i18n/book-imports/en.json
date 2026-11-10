@@ -297,6 +297,7 @@
     "question": "Question {{number}} · page {{page}}",
     "passage": "Passage of question {{number}}",
     "answerFor": "Answer of question {{number}}",
+    "flags": "Warnings ({{count}})",
     "fix": "Fix in labeling",
     "fixPage": "Page {{page}}",
     "fixPageFlagged": "Page {{page}} · flagged",

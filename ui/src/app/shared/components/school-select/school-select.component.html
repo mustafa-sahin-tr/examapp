@@ -35,7 +35,7 @@
           data-testid="school-select-district"
           [value]="districtId()"
           [disabled]="disabled() || provinceId() == null"
-          (valueChange)="districtId.set($event)"
+          (valueChange)="onDistrictChange($event)"
         >
           <mat-option [value]="null">{{ t('allDistricts') }}</mat-option>
           @for (d of districts(); track d.id) {

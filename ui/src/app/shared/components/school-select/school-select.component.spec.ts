@@ -256,4 +256,44 @@ describe('SchoolSelectComponent (issue #277)', () => {
         create();
         expect(component.hasMore()).toBe(false);
     });
+
+    it('pickingASchool_MovesTheFiltersToItsProvinceAndDistrict_issue1106', () => {
+        const located = { ...school(9, 'Kadıköy Fen Lisesi', 'Kadıköy', 'İstanbul'), provinceId: 34, districtId: 7 };
+        create(() => of([located]));
+        component.select(9);
+        fixture.detectChanges();
+        expect(component.provinceId()).toBe(34);
+        expect(component.districtId()).toBe(7);
+        expect(schoolService.provinces).toHaveBeenCalledTimes(1);
+        expect(schoolService.districts).toHaveBeenCalledWith(34);
+        expect(component.value()).toBe(9);
+    });
+
+    it('filterThatExcludesThePickedSchool_DropsIt_issue1106', () => {
+        const located = { ...school(9, 'Kadıköy Fen Lisesi', 'Kadıköy', 'İstanbul'), provinceId: 34, districtId: 7 };
+        create(() => of([located]));
+        const emitted: (SchoolOption | null)[] = [];
+        component.selectionChange.subscribe((v) => emitted.push(v));
+        component.select(9);
+
+        component.onDistrictChange(null);
+        component.onProvinceChange(34);
+        expect(component.value()).toBe(9);
+
+        component.onDistrictChange(8);
+        expect(component.value()).toBeNull();
+        expect(component.query()).toBe('');
+
+        component.select(9);
+        component.onProvinceChange(6);
+        expect(component.value()).toBeNull();
+        expect(emitted.map((s) => s?.id ?? null)).toEqual([9, null, 9, null]);
+    });
+
+    it('schoolWithoutAddress_LeavesTheFilters_issue1106', () => {
+        create();
+        component.select(1);
+        expect(component.provinceId()).toBeNull();
+        expect(schoolService.provinces).not.toHaveBeenCalled();
+    });
 });

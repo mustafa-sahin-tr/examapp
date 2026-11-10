@@ -32,7 +32,8 @@ export const SCHOOL_SELECT_DEBOUNCE_MS = 250;
 /**
  * Issue #277 — aranabilir okul seçimi (mat-autocomplete). Seçenekler yazdıkça `GET /api/exam/school`'dan gelir; serbest metin
  * gönderilmez, yalnız listeden seçilen okulun id'si `value` olur. Yazı seçili okulun adından saparsa seçim düşer (null).
- * #1106: il / ilçe seçimi aramayı daraltır; iller seçim kutusu ilk açılınca iner. İl değişince seçili okul korunur.
+ * #1106: il / ilçe seçimi aramayı daraltır; iller seçim kutusu ilk açılınca iner. Okul seçilince il / ilçe okulun yerine
+ * geçer; seçili okulu dışarıda bırakan il / ilçe seçimi okulu düşürür (filtre ile seçim çelişmez).
  * Kullananlar: kayıt sihirbazı (öğrenci/öğretmen), admin öğrenci okul değişikliği dialog'u.
  */
 @Component({
@@ -178,8 +179,18 @@ export class SchoolSelectComponent {
   }
 
   onProvinceChange(provinceId: number | null): void {
-    this.provinceId.set(provinceId);
+    this.setProvince(provinceId);
     this.districtId.set(null);
+    if (provinceId != null && this.selectedSchool()?.provinceId !== provinceId) this.dropSelection();
+  }
+
+  onDistrictChange(districtId: number | null): void {
+    this.districtId.set(districtId);
+    if (districtId != null && this.selectedSchool()?.districtId !== districtId) this.dropSelection();
+  }
+
+  private setProvince(provinceId: number | null): void {
+    this.provinceId.set(provinceId);
     this.districts.set([]);
     if (provinceId == null) return;
     this.schoolService.districts(provinceId).subscribe({
@@ -188,6 +199,22 @@ export class SchoolSelectComponent {
       },
       error: () => this.districts.set([]),
     });
+  }
+
+  /** Seçilen okulun il / ilçesini filtreye yazar; adresi olmayan okulda filtreye dokunulmaz. */
+  private followSchoolLocation(school: SchoolOption): void {
+    if (school.provinceId == null) return;
+    this.loadProvinces();
+    if (this.provinceId() !== school.provinceId) this.setProvince(school.provinceId);
+    this.districtId.set(school.districtId ?? null);
+  }
+
+  private dropSelection(): void {
+    if (this.value() == null) return;
+    this.value.set(null);
+    this.selectionChange.emit(null);
+    this.query.set('');
+    this.emitUnmatched();
   }
 
   onInput(text: string): void {
@@ -210,6 +237,7 @@ export class SchoolSelectComponent {
     this.picked.set(school);
     this.value.set(school.id);
     this.query.set(school.name);
+    this.followSchoolLocation(school);
     this.selectionChange.emit(school);
     this.emitUnmatched();
   }

@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { provideHttpClient, withXhr } from '@angular/common/http';
+import { HttpEventType, provideHttpClient, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 
 import { BookImportUploadEvent } from '../models/book-import';
@@ -50,17 +50,22 @@ describe('BookImportService chunked upload (#1122)', () => {
     const sent: string[] = [];
     for (const n of [1, 2, 3]) {
       const { req, text } = await partText(n);
+      expect(req.request.reportProgress).toBe(true);
       sent.push(text);
+      if (n === 2) req.event({ type: HttpEventType.UploadProgress, loaded: 1, total: 4 });
       req.flush(null);
     }
     http.expectOne({ method: 'POST', url: `${base}/uploads/u1/complete` }).flush({ id: 'job-1' });
 
     expect(sent).toEqual(['%PDF', '-123', '45']);
+    const p = (part: number, sentBytes: number) => ({ type: 'progress', part, parts: 3, sentBytes, totalBytes: 10 });
     expect(events).toEqual([
-      { type: 'progress', part: 0, parts: 3 },
-      { type: 'progress', part: 1, parts: 3 },
-      { type: 'progress', part: 2, parts: 3 },
-      { type: 'progress', part: 3, parts: 3 },
+      p(0, 0),
+      p(1, 4),
+      p(1, 5), // 2. parçanın içinden: 4 + 1 bayt
+      p(2, 8),
+      p(3, 10),
+      { type: 'assembling' },
       { type: 'done', job: { id: 'job-1' } },
     ]);
   });
@@ -89,6 +94,6 @@ describe('BookImportService chunked upload (#1122)', () => {
 
     http.expectOne({ method: 'DELETE', url: `${base}/uploads/u1` }).flush(null);
     expect(errors).toHaveLength(1);
-    expect(events).toEqual([{ type: 'progress', part: 0, parts: 3 }]);
+    expect(events).toEqual([{ type: 'progress', part: 0, parts: 3, sentBytes: 0, totalBytes: 10 }]);
   });
 });

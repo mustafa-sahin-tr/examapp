@@ -168,9 +168,13 @@ export interface BookImportUploadSession {
   partCount: number;
 }
 
-/** Issue #1122: yükleme ilerlemesi (`part` gönderilen parça sayısı), sonunda başlayan iş. */
+/**
+ * Issue #1122: yükleme ilerlemesi (`part` biten parça sayısı, `sentBytes` sunucuya ulaşan bayt; parça içinde de artar),
+ * parçalar bitince sunucuda birleştirme (`assembling`), sonunda başlayan iş.
+ */
 export type BookImportUploadEvent =
-  | { type: 'progress'; part: number; parts: number }
+  | { type: 'progress'; part: number; parts: number; sentBytes: number; totalBytes: number }
+  | { type: 'assembling' }
   | { type: 'done'; job: BookImportJob };
 
 /** İş hâlâ ilerliyor mu (takip ekranı yoklamaya devam eder). */

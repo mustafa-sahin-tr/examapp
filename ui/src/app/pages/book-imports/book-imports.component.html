@@ -52,8 +52,33 @@
       </div>
 
       @if (uploadProgress(); as p) {
-      <mat-progress-bar mode="determinate" [value]="(100 * p.part) / p.parts"
-        [attr.aria-label]="t('form.uploadingParts', { part: p.part, parts: p.parts })"></mat-progress-bar>
+      <section class="bi-upload" role="status" aria-live="polite" data-testid="upload-progress">
+        <div class="bi-upload__head">
+          <mat-icon aria-hidden="true">cloud_upload</mat-icon>
+          <strong class="bi-upload__title">{{ p.assembling ? t('form.assembling') : t('form.uploadingTitle') }}</strong>
+          <span class="bi-upload__percent">%{{ uploadPercent() }}</span>
+        </div>
+        <mat-progress-bar class="bi-upload__bar" [mode]="p.assembling ? 'indeterminate' : 'determinate'" [value]="uploadPercent()"
+          [attr.aria-label]="t('form.uploadingTitle')"></mat-progress-bar>
+        <div class="bi-upload__meta">
+          <span>{{ fileSize(p.sentBytes) }} / {{ fileSize(p.totalBytes) }}</span>
+          <span>{{ t('form.uploadingParts', { part: p.part, parts: p.parts }) }}</span>
+          @if (!p.assembling) {
+          <span class="bi-upload__eta">
+            @if (p.etaSeconds !== null) {
+            @let r = remaining(p.etaSeconds);
+            {{ t(r.key, r.params) }}
+            } @else {
+            {{ t('form.etaCalculating') }}
+            }
+          </span>
+          }
+        </div>
+        <p class="bi-upload__warning">
+          <mat-icon aria-hidden="true">warning</mat-icon>
+          <span>{{ t('form.keepOpen') }}</span>
+        </p>
+      </section>
       }
       @if (submitError(); as code) {
       <p class="bi-error" role="alert">{{ t(errorKey(code)) }}</p>
@@ -62,11 +87,7 @@
         <button mat-flat-button type="submit" [disabled]="submitting() || quotaBlocked() || !file()">
           @if (submitting()) {
           <mat-spinner diameter="18" aria-hidden="true"></mat-spinner>
-          @if (uploadProgress(); as p) {
-          {{ t('form.uploadingParts', { part: p.part, parts: p.parts }) }}
-          } @else {
           {{ t('form.uploading') }}
-          }
           } @else {
           {{ t('form.start') }}
           }

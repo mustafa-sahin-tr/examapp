@@ -312,3 +312,77 @@
 .bi-demo {
   text-align: center;
 }
+
+// Issue #1122: yükleme sürerken göze çarpan panel — yüzde, boyut, parça, kalan süre ve sayfayı kapatma uyarısı.
+.bi-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--ms-action-border);
+  border-radius: 12px;
+  background: var(--ms-action-background-weak);
+
+  &__head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--ms-text-strong);
+
+    mat-icon {
+      color: var(--ms-action-text);
+    }
+  }
+
+  &__title {
+    flex: 1;
+    font-size: 1rem;
+  }
+
+  &__percent {
+    font-size: 1.5rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--ms-action-text);
+  }
+
+  &__bar {
+    --mat-progress-bar-track-height: 10px;
+    --mat-progress-bar-active-indicator-height: 10px;
+    border-radius: 5px;
+  }
+
+  &__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--ms-text-medium);
+  }
+
+  &__eta {
+    margin-left: auto;
+    font-weight: 600;
+    color: var(--ms-text-strong);
+  }
+
+  &__warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--ms-warning-surface-weak);
+    color: var(--ms-warning-text);
+    font-size: 0.875rem;
+
+    mat-icon {
+      flex: none;
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+  }
+}

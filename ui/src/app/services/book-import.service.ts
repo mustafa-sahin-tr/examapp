@@ -1,6 +1,20 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpEventType } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, catchError, concat, concatMap, defer, map, of, range, retry, switchMap, throwError, timer } from 'rxjs';
+import {
+  Observable,
+  catchError,
+  concat,
+  concatMap,
+  defer,
+  filter,
+  map,
+  of,
+  range,
+  retry,
+  switchMap,
+  throwError,
+  timer,
+} from 'rxjs';
 
 import {
   ApproveAllBookImportResult,
@@ -71,37 +85,58 @@ export class BookImportService {
       .pipe(
         switchMap((session) => {
           const parts = session.partCount;
+          const progress = (part: number, sentBytes: number): BookImportUploadEvent => ({
+            type: 'progress',
+            part,
+            parts,
+            sentBytes,
+            totalBytes: file.size,
+          });
           const sent = range(1, parts).pipe(
-            concatMap((part) =>
-              this.sendPart(session, file, part).pipe(map((): BookImportUploadEvent => ({ type: 'progress', part, parts }))),
-            ),
+            concatMap((part) => {
+              const before = (part - 1) * session.partSizeBytes;
+              return this.sendPart(session, file, part).pipe(
+                map((loaded) =>
+                  loaded === null
+                    ? progress(part, Math.min(part * session.partSizeBytes, file.size))
+                    : progress(part - 1, before + loaded)
+                )
+              );
+            })
           );
-          const complete = defer(() => this.http.post<BookImportJob>(`${this.baseUrl}/uploads/${session.id}/complete`, {})).pipe(
-            map((job): BookImportUploadEvent => ({ type: 'done', job })),
-          );
-          return concat(of<BookImportUploadEvent>({ type: 'progress', part: 0, parts }), sent, complete).pipe(
+          const complete = defer(() =>
+            this.http.post<BookImportJob>(`${this.baseUrl}/uploads/${session.id}/complete`, {})
+          ).pipe(map((job): BookImportUploadEvent => ({ type: 'done', job })));
+          return concat(of(progress(0, 0)), sent, of<BookImportUploadEvent>({ type: 'assembling' }), complete).pipe(
             catchError((error) => {
               this.http.delete<void>(`${this.baseUrl}/uploads/${session.id}`).subscribe({ error: () => undefined });
               return throwError(() => error);
-            }),
+            })
           );
-        }),
+        })
       );
   }
 
-  private sendPart(session: BookImportUploadSession, file: File, part: number): Observable<void> {
+  /** Parçanın gönderilen baytları (yükleme olaylarından), bitince `null`. Yeniden denemede sayaç sıfırdan başlar. */
+  private sendPart(session: BookImportUploadSession, file: File, part: number): Observable<number | null> {
     const from = (part - 1) * session.partSizeBytes;
     const blob = file.slice(from, Math.min(from + session.partSizeBytes, file.size));
     return defer(() =>
       this.http.put<void>(`${this.baseUrl}/uploads/${session.id}/parts/${part}`, blob, {
         headers: { 'Content-Type': 'application/octet-stream' },
-      }),
+        observe: 'events',
+        reportProgress: true,
+      })
     ).pipe(
       retry({
         count: BOOK_IMPORT_PART_RETRIES,
         delay: (error: HttpErrorResponse, attempt) =>
-          error.status === 0 || error.status >= 500 ? timer(attempt * BOOK_IMPORT_PART_RETRY_MS) : throwError(() => error),
+          error.status === 0 || error.status >= 500
+            ? timer(attempt * BOOK_IMPORT_PART_RETRY_MS)
+            : throwError(() => error),
       }),
+      filter((event) => event.type === HttpEventType.UploadProgress || event.type === HttpEventType.Response),
+      map((event) => (event.type === HttpEventType.UploadProgress ? event.loaded : null))
     );
   }
 
@@ -161,8 +196,15 @@ export class BookImportService {
   }
 
   /** Issue #1023 "İşaretlemede düzelt": testin bir sayfasının taslaklarını işaretleme ekranında düzeltilenlerle değiştirir. */
-  replacePage(id: string, testId: number, filePage: number, questions: LabelingBankQuestion[]): Observable<BookImportPageFix> {
-    return this.http.put<BookImportPageFix>(`${this.baseUrl}/${id}/tests/${testId}/pages/${filePage}/questions`, { questions });
+  replacePage(
+    id: string,
+    testId: number,
+    filePage: number,
+    questions: LabelingBankQuestion[]
+  ): Observable<BookImportPageFix> {
+    return this.http.put<BookImportPageFix>(`${this.baseUrl}/${id}/tests/${testId}/pages/${filePage}/questions`, {
+      questions,
+    });
   }
 
   /** Sayfa görseli (WebP, #1020); yetkili istek olduğundan <img src> yerine blob. */

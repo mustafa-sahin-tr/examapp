@@ -167,20 +167,54 @@ describe('BookImportsComponent (#1018)', () => {
     expect(navigate).toHaveBeenCalledWith(['/book-imports', 'new-id']);
   });
 
-  it('submit_ShowsPartProgressWhileUploading (#1122)', () => {
+  it('submit_ShowsBytesPartsAndTimeLeftWhileUploading (#1122)', () => {
+    vi.useFakeTimers();
+    try {
+      setup();
+      const events = new Subject<BookImportUploadEvent>();
+      api.start.mockReturnValue(events);
+      component.openForm();
+      component.pickFile(pdf());
+      component.form.controls.gradeId.setValue(4);
+
+      component.submit();
+      events.next({ type: 'progress', part: 0, parts: 7, sentBytes: 0, totalBytes: 175_000_000 });
+      fixture.detectChanges();
+      expect(text()).toContain(tr.form.etaCalculating);
+      expect(text()).toContain(tr.form.keepOpen);
+
+      // 10 sn'de 25 MB → kalan 150 MB için 60 sn.
+      vi.advanceTimersByTime(10_000);
+      events.next({ type: 'progress', part: 1, parts: 7, sentBytes: 25_000_000, totalBytes: 175_000_000 });
+      fixture.detectChanges();
+      expect(text()).toContain('%14');
+      expect(text()).toContain('25.0 MB / 175.0 MB');
+      expect(text()).toContain('Parça 1 / 7');
+      expect(text()).toContain('Yaklaşık 1 dk 0 sn kaldı');
+
+      events.next({ type: 'assembling' });
+      fixture.detectChanges();
+      expect(text()).toContain(tr.form.assembling);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('beforeUnload_WarnsOnlyWhileUploading (#1122)', () => {
     setup();
-    const events = new Subject<BookImportUploadEvent>();
-    api.start.mockReturnValue(events);
+    const idle = new Event('beforeunload', { cancelable: true }) as BeforeUnloadEvent;
+    component.warnBeforeUnload(idle);
+    expect(idle.defaultPrevented).toBe(false);
+
+    api.start.mockReturnValue(new Subject<BookImportUploadEvent>());
     component.openForm();
     component.pickFile(pdf());
     component.form.controls.gradeId.setValue(4);
-
     component.submit();
-    events.next({ type: 'progress', part: 2, parts: 7 });
-    fixture.detectChanges();
 
-    expect(text()).toContain('Yükleniyor… 2 / 7');
-    expect(el().querySelector('.bi-form mat-progress-bar')).not.toBeNull();
+    const uploading = new Event('beforeunload', { cancelable: true }) as BeforeUnloadEvent;
+    component.warnBeforeUnload(uploading);
+    expect(uploading.defaultPrevented).toBe(true);
   });
 
   it('teacherWithBookImportInPlan_UploadsInsteadOfDemo (#1087)', () => {

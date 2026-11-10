@@ -73,6 +73,9 @@ public class CurrentSubscriptionPlanDto
     /// <summary>#1028: deneme planı çağırana açık ve hesap daha önce deneme almadı.</summary>
     public bool TrialAvailable { get; set; }
 
+    /// <summary>#1090: planı yok, uygulama yalnız plan sayfasını açar (<c>Subscriptions:RequirePlan</c> kapalıyken hep false).</summary>
+    public bool Locked { get; set; }
+
     public List<FeatureUsageDto> Features { get; set; } = new();
 }
 

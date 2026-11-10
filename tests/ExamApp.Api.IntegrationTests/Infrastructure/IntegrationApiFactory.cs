@@ -149,6 +149,11 @@ public sealed class IntegrationApiFactory : WebApplicationFactory<Program>, IAsy
             services.RemoveAll<Microsoft.Extensions.Caching.Distributed.IDistributedCache>();
             services.AddDistributedMemoryCache();
 
+            // Issue #1090: plan kilidi testlerde kapalı başlar (test kullanıcılarının planı yok); kilit testleri istek başına açar.
+            services.AddSingleton<PlanRequirementSwitch>();
+            services.AddOptions<ExamApp.Api.Services.Entitlements.SubscriptionOptions>()
+                .PostConfigure<PlanRequirementSwitch>((options, toggle) => options.RequirePlan = toggle.RequirePlan);
+
             // issue #262: admin veri uçlarının rate limit sayacı üretimde Redis'te (fail-open). Test ortamında Redis yok
             // ("unused") → fail-open her isteği geçirirdi; süreç içi sayaçla limit davranışı uçtan uca doğrulanır.
             services.RemoveAll<ExamApp.Api.Helpers.IFixedWindowCounterStore>();
@@ -173,4 +178,10 @@ public sealed class IntegrationApiFactory : WebApplicationFactory<Program>, IAsy
             }).AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.Scheme, _ => { });
         });
     }
+}
+
+/// <summary>Issue #1090: <c>Subscriptions:RequirePlan</c> test anahtarı (her test kapalı başlar, <c>IntegrationTestBase</c> sıfırlar).</summary>
+public sealed class PlanRequirementSwitch
+{
+    public bool RequirePlan { get; set; }
 }

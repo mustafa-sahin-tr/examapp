@@ -344,6 +344,18 @@ export class WorksheetDetailComponent implements OnInit {
     this.assignmentPanelState().assignments.flatMap((assignment) => assignment.students ?? [])
   );
 
+  /**
+   * Issue #1090: planı olmadığı (deneme bittiği) için işi açamayan öğrencilerin adları; aynı öğrenci birden çok atamada tek sayılır.
+   * Sınıf kısmen kilitli olabilir, öğretmen kime hatırlatacağını bilir.
+   */
+  protected readonly planLockedStudents = computed<string[]>(() => {
+    const names = new Map<number, string>();
+    for (const student of this.activityTrackingStudents()) {
+      if (student.planLocked) names.set(student.studentId, student.studentName || student.studentNumber);
+    }
+    return [...names.values()];
+  });
+
   protected readonly view = computed<WorksheetView>(() => {
     if (this.isTeacher) {
       return 'teacher';

@@ -18,23 +18,28 @@ namespace ExamApp.Api.Controllers;
 [ApiController]
 [Route("api/subscription-plans")]
 [Authorize]
+[AllowWithoutPlan] // issue #1090: kilitli kullanıcı planını burada seçer
 public class SubscriptionPlansController : BaseController
 {
     private readonly AppDbContext _db;
     private readonly IEntitlementService _entitlements;
+    private readonly IPlanLockService? _locks;
 
-    public SubscriptionPlansController(AppDbContext db, IEntitlementService entitlements)
+    public SubscriptionPlansController(AppDbContext db, IEntitlementService entitlements, IPlanLockService? locks = null)
     {
         _db = db;
         _entitlements = entitlements;
+        _locks = locks;
     }
 
-    /// <summary>Çağıranın rolüne uygun aktif planlar (sıralı).</summary>
+    /// <summary>Çağıranın rolüne uygun aktif planlar (sıralı). #1090: plan kilidi açıkken Free seçilebilir bir plan değildir.</summary>
     [HttpGet]
     public async Task<ActionResult<List<SubscriptionPlanDto>>> List(CancellationToken ct)
     {
         var audiences = SubscriptionPlanCatalog.AudiencesFor(User);
-        return await SubscriptionPlanCatalog.ListAsync(_db, p => p.IsActive && audiences.Contains(p.Audience), ct);
+        var withoutFree = _locks?.Enabled == true;
+        return await SubscriptionPlanCatalog.ListAsync(_db,
+            p => p.IsActive && audiences.Contains(p.Audience) && !(withoutFree && p.Key == SubscriptionPlan.FreeKey), ct);
     }
 
     /// <summary>
@@ -81,6 +86,8 @@ public class SubscriptionPlansController : BaseController
 
     private async Task<CurrentSubscriptionPlanDto> CurrentAsync(int userId, CancellationToken ct)
     {
+        // #1090: önce kilit (denemesi hiç başlamamış kullanıcının denemesi burada başlar, plan aşağıda deneme olarak okunur).
+        var locked = _locks is not null && await _locks.IsLockedAsync(userId, User, ct);
         var subject = EntitlementSubject.FromPrincipal(userId, User);
         var plan = await _entitlements.ResolvePlanAsync(userId, ct);
         var displayNameKey = plan.PlanId is { } planId
@@ -112,6 +119,7 @@ public class SubscriptionPlansController : BaseController
             DisplayNameKey = displayNameKey,
             ValidToUtc = plan.ValidToUtc,
             TrialAvailable = await IsTrialAvailableAsync(userId, ct),
+            Locked = locked,
             Features = features,
         };
     }

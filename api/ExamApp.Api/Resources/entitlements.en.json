@@ -11,6 +11,10 @@
         "tutoring": "The student's plan does not include tutoring bookings. Their parent needs to choose a plan that includes them.",
         "liveLesson": "The student's plan does not include live lessons. Their parent needs to choose a plan that includes them."
       }
+    },
+    "subscriptionRequired": {
+      "teacher": "Your trial has ended. Choose a plan to continue.",
+      "student": "Your trial has ended. Your parent needs to choose a plan for you to continue."
     }
   }
 }

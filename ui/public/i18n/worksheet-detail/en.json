@@ -150,7 +150,8 @@
       "bankHint": "From ready-made questions",
       "text": "Write without an image",
       "textHint": "New item from text"
-    }
+    },
+    "planLocked": "{{count}} students cannot open this because they have no plan: {{names}}. It opens once their parent chooses a plan."
   },
   "status": {
     "completed": "Completed",

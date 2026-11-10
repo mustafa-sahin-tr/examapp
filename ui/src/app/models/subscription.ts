@@ -46,6 +46,8 @@ export interface CurrentSubscriptionPlan {
   displayNameKey: string | null;
   validToUtc: string | null;
   trialAvailable: boolean;
+  /** Issue #1090: deneme bitti, plan yok; uygulama yalnız plan sayfasını açar. Eski yanıtlarda yok (false). */
+  locked?: boolean;
   features: FeatureUsage[];
 }
 
@@ -104,6 +106,15 @@ export function entitlementCounterpartMessageOf(error: unknown): string | null {
   return body?.code === ENTITLEMENT_COUNTERPART_NOT_IN_PLAN_CODE && typeof body.message === 'string' && body.message
     ? body.message
     : null;
+}
+
+/** Issue #1090: planı olmayan (deneme bitmiş) öğretmen / öğrencinin her kilitli uçtaki 402 yanıtı. */
+export const SUBSCRIPTION_REQUIRED_CODE = 'subscription.required';
+
+/** 402 + `subscription.required` ise true. */
+export function isSubscriptionRequired(error: unknown): boolean {
+  if (!(error instanceof HttpErrorResponse) || error.status !== 402) return false;
+  return (error.error as { code?: unknown } | null)?.code === SUBSCRIPTION_REQUIRED_CODE;
 }
 
 /** Issue #1030: admin plan ataması. E-posta maskelidir. */

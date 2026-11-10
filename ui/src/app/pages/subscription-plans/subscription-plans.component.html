@@ -1,5 +1,11 @@
 <div class="subscription-plans" *transloco="let t; prefix: 'subscription'">
   <app-page-header icon="workspace_premium" [title]="t('page.title')" [description]="t('page.subtitle')" />
+  @if (locked()) {
+    <div class="notice notice--locked" role="alert" data-testid="plan-locked">
+      <mat-icon aria-hidden="true">lock</mat-icon>
+      <p>{{ t(lockedKey) }}</p>
+    </div>
+  }
   @if (changedTo(); as nameKey) {
     <div class="notice" role="status" data-testid="plan-changed">
       <mat-icon aria-hidden="true">check_circle</mat-icon>

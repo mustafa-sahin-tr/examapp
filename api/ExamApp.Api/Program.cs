@@ -653,6 +653,7 @@ builder.Services.AddScoped<QuestionTransferJobRunner>();
 builder.Services.AddScoped<ExamApp.Api.Services.Entitlements.IEntitlementService, ExamApp.Api.Services.Entitlements.EntitlementService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Entitlements.ISharedEntitlementGate, ExamApp.Api.Services.Entitlements.SharedEntitlementGate>();
 builder.Services.AddScoped<ExamApp.Api.Services.Entitlements.IAdminSubscriptionService, ExamApp.Api.Services.Entitlements.AdminSubscriptionService>(); // Issue #1030
+ExamApp.Api.Services.Entitlements.PlanRequirementServiceCollectionExtensions.AddPlanRequirement(builder.Services, builder.Configuration); // Issue #1090
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IBookImportService, ExamApp.Api.Services.BookImport.BookImportService>();
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IQuickAddService, ExamApp.Api.Services.BookImport.QuickAddService>(); // issue #1052
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IBookImportCostReportService, ExamApp.Api.Services.BookImport.BookImportCostReportService>(); // issue #1056
@@ -806,6 +807,10 @@ app.UseRequestLocalization(); // Ayarlar yukarıdaki Configure<RequestLocalizati
 // issue #441: hoşgörü süresi dolmuş öğrenciye [AllowWhenParentRequired] dışındaki yetkili uçlarda 403 ParentRequired. Auth + localization'dan
 // SONRA (kimlik ve mesaj dili hazır), rate limiter'dan ÖNCE (reddedilen istek kova tüketmez).
 ExamApp.Api.Services.Parents.Enforcement.ParentRequirementEnforcementServiceCollectionExtensions.UseParentRequirementEnforcement(app);
+
+// issue #1090: planı olmayan öğretmen / öğrenciye [AllowWithoutPlan] / [AllowWhenParentRequired] dışındaki yetkili uçlarda 402
+// subscription.required. #441 ile aynı yer: kimlik ve mesaj dili hazır, reddedilen istek rate limit kovası tüketmez.
+ExamApp.Api.Services.Entitlements.PlanRequirementServiceCollectionExtensions.UsePlanRequirement(app);
 
 // issue #246: yalnızca [EnableRateLimiting] taşıyan uçlar (admin kullanıcı listeleri). Auth'tan SONRA: partition
 // anahtarı kullanıcının sub'ıdır ve 401/403 alan istekler kovayı tüketmez; localization'dan sonra: 429 metni çevrilir.

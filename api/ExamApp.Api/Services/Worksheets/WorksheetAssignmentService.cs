@@ -1,6 +1,7 @@
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Tenancy;
 using Microsoft.EntityFrameworkCore;
@@ -26,17 +27,20 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
 
     // issue #715: öğrenci adları auth-api'de; yanıt yoksa görünüm öğrenci numarasına düşer.
     private readonly IAuthApiClient? _authApiClient;
+    private readonly IPlanLockService? _planLocks;
 
     public WorksheetAssignmentService(
         AppDbContext context,
         ISchoolAccessPolicy schoolAccessPolicy,
         IStringLocalizer<Messages>? localizer = null,
-        IAuthApiClient? authApiClient = null)
+        IAuthApiClient? authApiClient = null,
+        IPlanLockService? planLocks = null)
     {
         _context = context;
         _schoolAccessPolicy = schoolAccessPolicy;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         _authApiClient = authApiClient;
+        _planLocks = planLocks;
     }
 
     public async Task<ResponseBaseDto> AssignWorksheetAsync(
@@ -569,6 +573,18 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
             if (assignment.StartAt > now)
             {
                 summary.UpcomingAssignments++;
+            }
+        }
+
+        // Issue #1090: planı olmayan öğrenci atanan işi açamaz; öğretmen kimlerin açamadığını görür (sınıf kısmen kilitli olabilir).
+        if (_planLocks is not null)
+        {
+            var locked = await _planLocks.LockedAmongAsync(assignmentDtos.SelectMany(a => a.Students).Select(s => s.UserId).ToList());
+            foreach (var assignmentDto in assignmentDtos)
+            {
+                foreach (var student in assignmentDto.Students)
+                    student.PlanLocked = locked.Contains(student.UserId);
+                assignmentDto.PlanLockedCount = assignmentDto.Students.Count(s => s.PlanLocked);
             }
         }
 

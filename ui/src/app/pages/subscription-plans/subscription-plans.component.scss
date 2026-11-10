@@ -23,3 +23,10 @@
     margin: 0;
   }
 }
+
+// Issue #1090: deneme bitti, plan seçilmeli.
+.notice--locked {
+  border-color: var(--ms-warning-border);
+  background: var(--ms-warning-surface-weak);
+  color: var(--ms-warning-text);
+}

@@ -87,6 +87,9 @@ public class UpdateSubscriptionPlanDto
     public int? TrialDays { get; set; }
     public bool IsActive { get; set; } = true;
     public Dictionary<string, int?> MonthlyLimits { get; set; } = new();
+
+    /// <summary>Issue #1108: öğrenci planının bütün fiyat tablosu; null = değişmez. Listede olmayan seçenek satılmaz.</summary>
+    public List<SubscriptionPlanPriceRowDto>? Prices { get; set; }
 }
 
 public class AssignSchoolSubscriptionPlanResultDto

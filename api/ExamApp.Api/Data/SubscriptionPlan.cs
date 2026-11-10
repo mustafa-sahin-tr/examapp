@@ -57,6 +57,9 @@ public class SubscriptionPlan : BaseEntity
     public bool IsActive { get; set; } = true;
 
     public ICollection<SubscriptionPlanFeatureLimit> FeatureLimits { get; set; } = new List<SubscriptionPlanFeatureLimit>();
+
+    /// <summary>Issue #1108: öğrenci planlarının band / kapsam / süre fiyatları; öğretmen planlarında boş (<see cref="MonthlyPrice"/>).</summary>
+    public ICollection<SubscriptionPlanPrice> Prices { get; set; } = new List<SubscriptionPlanPrice>();
 }
 
 /// <summary>Planın gösterildiği rol. <see cref="Any"/> her role görünür.</summary>
@@ -101,6 +104,18 @@ public class UserSubscriptionPlan : BaseEntity
     /// Issue #1091: öğrencinin velisine "plan bitiyor" hatırlatması yazıldı (atama başına bir kez; Active velisi olmayan öğrenci işaretlenmez, sonradan bağlanan veli de alır).
     /// </summary>
     public DateTime? EndingReminderSentAtUtc { get; set; }
+
+    /// <summary>Issue #1108: tek ders planında ders (Subjects.Id); null = bütün dersler (eski atamalar dahil).</summary>
+    public int? ScopeSubjectId { get; set; }
+
+    /// <summary>Issue #1108: satın alınan süre; admin ataması ve eski atamalar <see cref="PlanDuration.Monthly"/>.</summary>
+    public PlanDuration Duration { get; set; } = PlanDuration.Monthly;
+
+    /// <summary>Issue #1108: ödenen (yer tutucu) fiyat, indirim sonrası; admin ataması ve deneme null.</summary>
+    public decimal? PricePaid { get; set; }
+
+    /// <summary>Issue #1108: uygulanan kardeş indirimi yüzdesi (0 = yok).</summary>
+    public int DiscountPercent { get; set; }
 }
 
 /// <summary>

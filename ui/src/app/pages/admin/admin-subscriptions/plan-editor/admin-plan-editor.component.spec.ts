@@ -114,4 +114,55 @@ describe('AdminPlanEditorComponent (issue #1086)', () => {
 
     expect(q('plan-editor-error')!.textContent).toContain('Ücretsiz ve deneme planları kapatılamaz.');
   });
+
+  it('issue #1108: edits the student price grid, adds a grade row and sends only filled cells', async () => {
+    const student: SubscriptionPlan = {
+      ...plan('student-basic', 'Student', { 'mock-exam': 3 }),
+      prices: [
+        { band: 'Middle', gradeLevel: null, scope: 'AllSubjects', duration: 'Monthly', price: 199 },
+        { band: 'Middle', gradeLevel: null, scope: 'SingleSubject', duration: 'Monthly', price: 119 },
+      ],
+    };
+    fixture.componentRef.setInput('plans', [...PLANS, student]);
+    const c = fixture.componentInstance;
+    c.selectPlan('teacher-pro');
+    fixture.detectChanges();
+    expect(q('plan-editor-prices')).toBeNull();
+
+    c.selectPlan('student-basic');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(q('plan-editor-prices')).not.toBeNull();
+    // Her band satırı vardır (fiyatı olmasa da).
+    expect(c.priceGrid()!.map((r) => r.band)).toEqual(['Primary', 'Middle', 'Lgs', 'HighSchool', 'Yks']);
+    expect((q('price-Middle-AllSubjects.Monthly') as HTMLInputElement).value).toBe('199');
+
+    const middle = c.priceGrid()![1];
+    c.setPrice(middle, c.priceColumns[0], 210);
+    c.setPrice(c.priceGrid()![1], c.priceColumns[4], '');
+    c.addGradeRow(6);
+    fixture.detectChanges();
+    expect(c.priceGrid()!.map((r) => `${r.band}${r.gradeLevel ?? ''}`)).toEqual(['Primary', 'Middle', 'Middle6', 'Lgs', 'HighSchool', 'Yks']);
+    expect(c.freeGrades()).not.toContain(6);
+    c.setPrice(c.priceGrid()![2], c.priceColumns[0], 189.9);
+
+    c.setPrice(c.priceGrid()![0], c.priceColumns[1], 0);
+    expect(c.valid()).toBe(false);
+    c.setPrice(c.priceGrid()![0], c.priceColumns[1], null);
+    expect(c.valid()).toBe(true);
+
+    c.save();
+    expect(updatePlan).toHaveBeenCalledWith('student-basic', expect.objectContaining({
+      prices: [
+        { band: 'Middle', gradeLevel: null, scope: 'AllSubjects', duration: 'Monthly', price: 210 },
+        { band: 'Middle', gradeLevel: 6, scope: 'AllSubjects', duration: 'Monthly', price: 189.9 },
+      ],
+    }));
+  });
+
+  it('issue #1108: a teacher plan save sends no price table', () => {
+    fixture.componentInstance.save();
+    expect(updatePlan.mock.calls[0][1]).not.toHaveProperty('prices');
+  });
 });
+

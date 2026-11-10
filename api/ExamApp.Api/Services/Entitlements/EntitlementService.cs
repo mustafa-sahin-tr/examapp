@@ -99,8 +99,13 @@ public sealed class EntitlementService : IEntitlementService
         int assignedByUserId, CancellationToken ct = default) =>
         AssignPlanToUsersAsync([userId], planKey, validFromUtc, validToUtc, assignedByUserId, schoolId: null, ct);
 
-    public async Task<AssignPlanError> AssignPlanToUsersAsync(IReadOnlyCollection<int> userIds, string planKey, DateTime? validFromUtc,
-        DateTime? validToUtc, int assignedByUserId, int? schoolId, CancellationToken ct = default)
+    public Task<AssignPlanError> AssignPlanToUsersAsync(IReadOnlyCollection<int> userIds, string planKey, DateTime? validFromUtc,
+        DateTime? validToUtc, int assignedByUserId, int? schoolId, CancellationToken ct = default) =>
+        AssignPlanToUsersAsync(userIds, planKey, validFromUtc, validToUtc, assignedByUserId, schoolId, terms: null, ct);
+
+    /// <summary><paramref name="terms"/>: #1108 satın almanın kapsamı, süresi ve ödenen fiyatı (yalnız sahte ödemede).</summary>
+    private async Task<AssignPlanError> AssignPlanToUsersAsync(IReadOnlyCollection<int> userIds, string planKey, DateTime? validFromUtc,
+        DateTime? validToUtc, int assignedByUserId, int? schoolId, PurchaseTerms? terms, CancellationToken ct)
     {
         var plan = await _db.SubscriptionPlans.FirstOrDefaultAsync(p => p.Key == planKey && p.IsActive, ct);
         if (plan is null)
@@ -140,6 +145,10 @@ public sealed class EntitlementService : IEntitlementService
                 PlanId = plan.Id,
                 ValidFromUtc = from,
                 ValidToUtc = to,
+                ScopeSubjectId = terms?.SubjectId,
+                Duration = terms?.Duration ?? PlanDuration.Monthly,
+                PricePaid = terms?.Price,
+                DiscountPercent = terms?.DiscountPercent ?? 0,
             });
             _db.SubscriptionPlanAssignmentAudits.Add(new SubscriptionPlanAssignmentAudit
             {
@@ -230,7 +239,7 @@ public sealed class EntitlementService : IEntitlementService
     }
 
     public async Task<SelfServicePlanError> CheckoutAsync(int userId, string planKey, IReadOnlySet<SubscriptionPlanAudience> audiences,
-        int? purchasedByUserId = null, CancellationToken ct = default)
+        int? purchasedByUserId = null, PlanPurchase? purchase = null, CancellationToken ct = default)
     {
         var plan = await _db.SubscriptionPlans.AsNoTracking().FirstOrDefaultAsync(p => p.Key == planKey && p.IsActive, ct);
         if (plan is null)
@@ -239,8 +248,57 @@ public sealed class EntitlementService : IEntitlementService
             return SelfServicePlanError.NotAvailable;
 
         var now = _clock.GetUtcNow().UtcDateTime;
-        await AssignPlanAsync(userId, plan.Key, now, now.AddMonths(1), assignedByUserId: purchasedByUserId ?? userId, ct);
+        purchase ??= new PlanPurchase();
+        var terms = await PriceAsync(userId, plan, purchase, purchasedByUserId ?? userId, now, ct);
+        if (terms is null)
+            return SelfServicePlanError.InvalidOption;
+
+        await AssignPlanToUsersAsync([userId], plan.Key, now, StudentPlanPricing.ValidTo(now, purchase.Duration),
+            purchasedByUserId ?? userId, schoolId: null, terms, ct);
         return SelfServicePlanError.None;
+    }
+
+    /// <summary>
+    /// Issue #1108: seçeneğin fiyatı; satılmayan seçenekte null. Sınıfı olan öğrencinin planı fiyat tablosundan (band, sınıf, kapsam,
+    /// süre); öğretmen planı ve sınıfı olmayan öğrenci yalnız aylık + bütün dersler, kartın aylık fiyatıyla.
+    /// </summary>
+    private async Task<PurchaseTerms?> PriceAsync(int userId, SubscriptionPlan plan, PlanPurchase purchase, int payerUserId, DateTime now,
+        CancellationToken ct)
+    {
+        if (purchase.Duration == PlanDuration.Summer && !StudentPlanPricing.SummerOnSale(now))
+            return null;
+
+        var (gradeId, gradeLevel) = plan.Audience == SubscriptionPlanAudience.Student
+            ? await StudentPlanPricing.GradeOfAsync(_db, userId, ct)
+            : (null, null);
+        decimal price;
+        if (StudentPlanPricing.BandOf(gradeLevel) is { } band)
+        {
+            if (purchase.SubjectId is { } subjectId
+                && !await StudentPlanPricing.SingleSubjectsOf(_db, gradeId).AnyAsync(gs => gs.SubjectId == subjectId, ct))
+                return null;
+            var scope = purchase.SubjectId is null ? PlanScope.AllSubjects : PlanScope.SingleSubject;
+            var row = await _db.SubscriptionPlanPrices.AsNoTracking()
+                .Where(p => p.PlanId == plan.Id && p.Band == band && (p.GradeLevel == null || p.GradeLevel == gradeLevel)
+                    && p.Scope == scope && p.Duration == purchase.Duration)
+                .OrderByDescending(p => p.GradeLevel != null)
+                .Select(p => (decimal?)p.Price)
+                .FirstOrDefaultAsync(ct);
+            if (row is null)
+                return null;
+            price = row.Value;
+        }
+        else
+        {
+            if (purchase.SubjectId is not null || purchase.Duration != PlanDuration.Monthly)
+                return null;
+            price = plan.MonthlyPrice;
+        }
+
+        var discount = plan.Audience == SubscriptionPlanAudience.Student && payerUserId != userId
+            ? await StudentPlanPricing.SiblingDiscountAsync(_db, payerUserId, userId, now, ct)
+            : 0;
+        return new PurchaseTerms(purchase.SubjectId, purchase.Duration, StudentPlanPricing.Discounted(price, discount), discount);
     }
 
     private static bool IsRoleUnlimited(EntitlementSubject subject, string featureKey) =>

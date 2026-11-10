@@ -9,6 +9,7 @@ import {
   CurrentSubscriptionPlan,
   EntitlementFeature,
   PlanAssignment,
+  PlanPurchase,
   SaveSchoolLicense,
   SchoolLicense,
   SchoolPlanAudience,
@@ -58,8 +59,9 @@ export class SubscriptionService {
   }
 
   /** Sahte ödeme: öğrenci planını çocuğa bir aylık atar; plan kaydında aktör velidir. */
-  childCheckout(studentId: number, planKey: string): Observable<ChildSubscriptionPlan> {
-    return this.http.post<ChildSubscriptionPlan>(`${this.childUrl(studentId)}/checkout`, { planKey });
+  /** #1108: `purchase` kapsam (tek ders) ve süre; boşsa aylık, bütün dersler. */
+  childCheckout(studentId: number, planKey: string, purchase?: PlanPurchase): Observable<ChildSubscriptionPlan> {
+    return this.http.post<ChildSubscriptionPlan>(`${this.childUrl(studentId)}/checkout`, { planKey, ...purchase });
   }
 
   // ---- Issue #1030: admin plan ataması (yalnız Admin / SuperAdmin) ----

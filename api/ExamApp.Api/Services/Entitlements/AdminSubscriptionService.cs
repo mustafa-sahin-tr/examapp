@@ -45,6 +45,9 @@ public enum AdminPlanUpdateError
     AudienceMismatch,
     InvalidLimit,
     PlanRequired,
+
+    /// <summary>Issue #1108: fiyat satırı geçersiz (bilinmeyen band / kapsam / süre, banda uymayan sınıf, fiyat, tekrar) ya da plan öğrenci planı değil.</summary>
+    InvalidPriceRow,
 }
 
 public enum AdminSchoolAssignError
@@ -229,7 +232,8 @@ public sealed class AdminSubscriptionService(AppDbContext db, IEntitlementServic
     public async Task<AdminPlanUpdateError> UpdatePlanAsync(
         string planKey, UpdateSubscriptionPlanDto request, int adminUserId, CancellationToken ct = default)
     {
-        var plan = await db.SubscriptionPlans.Include(p => p.FeatureLimits).FirstOrDefaultAsync(p => p.Key == planKey, ct);
+        var plan = await db.SubscriptionPlans.Include(p => p.FeatureLimits).Include(p => p.Prices)
+            .FirstOrDefaultAsync(p => p.Key == planKey, ct);
         if (plan is null)
             return AdminPlanUpdateError.PlanNotFound;
 
@@ -265,6 +269,14 @@ public sealed class AdminSubscriptionService(AppDbContext db, IEntitlementServic
             limits[featureKey] = feature.Kind == EntitlementFeatureKind.Toggle ? null : limit;
         }
 
+        List<SubscriptionPlanPrice>? prices = null;
+        if (request.Prices is not null)
+        {
+            prices = ParsePrices(plan, request.Prices);
+            if (prices is null)
+                return AdminPlanUpdateError.InvalidPriceRow;
+        }
+
         var before = Snapshot(plan);
         plan.Name = name;
         plan.MonthlyPrice = request.MonthlyPrice;
@@ -280,6 +292,8 @@ public sealed class AdminSubscriptionService(AppDbContext db, IEntitlementServic
         }
         foreach (var (featureKey, limit) in limits)
             plan.FeatureLimits.Add(new SubscriptionPlanFeatureLimit { FeatureKey = featureKey, MonthlyLimit = limit });
+        if (prices is not null)
+            await ReplacePricesAsync(plan, prices, ct);
 
         db.SubscriptionPlanChangeAudits.Add(new SubscriptionPlanChangeAudit
         {
@@ -298,6 +312,67 @@ public sealed class AdminSubscriptionService(AppDbContext db, IEntitlementServic
     public const int MaxTrialDays = 365;
     public const int MaxMonthlyLimit = 1_000_000;
 
+    /// <summary>İstekteki fiyat satırları; biri geçersizse null. Fiyat tablosu yalnız deneme olmayan öğrenci planındadır.</summary>
+    private static List<SubscriptionPlanPrice>? ParsePrices(SubscriptionPlan plan, List<SubscriptionPlanPriceRowDto> rows)
+    {
+        if (plan.Audience != SubscriptionPlanAudience.Student || plan.TrialDays is not null || rows.Count > MaxPriceRows)
+            return null;
+        var parsed = new List<SubscriptionPlanPrice>(rows.Count);
+        foreach (var row in rows)
+        {
+            if (!TryParseName(row.Band, out StudentGradeBand band) || !TryParseName(row.Scope, out PlanScope scope)
+                || !TryParseName(row.Duration, out PlanDuration duration))
+                return null;
+            if (row.GradeLevel is { } level && StudentPlanPricing.BandOf(level) != band)
+                return null;
+            if (row.Price is <= 0 or > MaxMonthlyPrice || decimal.Round(row.Price, 2) != row.Price)
+                return null;
+            parsed.Add(new SubscriptionPlanPrice
+            {
+                PlanId = plan.Id, Band = band, GradeLevel = row.GradeLevel, Scope = scope, Duration = duration, Price = row.Price,
+            });
+        }
+        return parsed.DistinctBy(PriceKey).Count() == parsed.Count ? parsed : null;
+    }
+
+    /// <summary>
+    /// Aynı seçeneğin satırı yerinde güncellenir, listede olmayan silinir (soft delete). Tekil indeks silinmiş satırı da sayar:
+    /// yeniden eklenen seçenek silinmiş satırını canlandırır.
+    /// </summary>
+    private async Task ReplacePricesAsync(SubscriptionPlan plan, List<SubscriptionPlanPrice> prices, CancellationToken ct)
+    {
+        var existing = await db.SubscriptionPlanPrices.IgnoreQueryFilters().Where(p => p.PlanId == plan.Id).ToListAsync(ct);
+        var incoming = prices.ToDictionary(PriceKey);
+        foreach (var row in existing)
+        {
+            if (incoming.Remove(PriceKey(row), out var next))
+            {
+                row.Price = next.Price;
+                if (row.IsDeleted)
+                {
+                    row.IsDeleted = false;
+                    row.DeleteTime = null;
+                    row.DeleteUserId = null;
+                }
+            }
+            else
+            {
+                // Soft delete elle: kayıt (Snapshot) silineni hemen görmesin.
+                row.IsDeleted = true;
+            }
+        }
+        foreach (var row in incoming.Values)
+            plan.Prices.Add(row);
+    }
+
+    private static (StudentGradeBand, int?, PlanScope, PlanDuration) PriceKey(SubscriptionPlanPrice p) => (p.Band, p.GradeLevel, p.Scope, p.Duration);
+
+    // Ad ile (sayı değil) ve tanımlı değer.
+    private static bool TryParseName<TEnum>(string? name, out TEnum value) where TEnum : struct, Enum =>
+        Enum.TryParse(name, ignoreCase: false, out value) && Enum.IsDefined(value) && !string.IsNullOrEmpty(name) && !char.IsDigit(name[0]);
+
+    public const int MaxPriceRows = 500;
+
     // Kayıtta 0 sınırlı satırlar yazılmaz: "planda yok" ile aynıdır.
     private static string Snapshot(SubscriptionPlan plan) => JsonSerializer.Serialize(new
     {
@@ -307,6 +382,9 @@ public sealed class AdminSubscriptionService(AppDbContext db, IEntitlementServic
         plan.IsActive,
         MonthlyLimits = plan.FeatureLimits.Where(l => l.MonthlyLimit != 0).OrderBy(l => l.FeatureKey, StringComparer.Ordinal)
             .ToDictionary(l => l.FeatureKey, l => l.MonthlyLimit),
+        // #1108: fiyat tablosu (öğretmen planında boş).
+        Prices = plan.Prices.Where(p => !p.IsDeleted).OrderBy(p => p.Band).ThenBy(p => p.GradeLevel).ThenBy(p => p.Scope).ThenBy(p => p.Duration)
+            .Select(p => new { Band = p.Band.ToString(), p.GradeLevel, Scope = p.Scope.ToString(), Duration = p.Duration.ToString(), p.Price }),
     });
 
     // Öğretmen: okula bağlı (Teacher.SchoolId; başvurusu bekleyen RequestedSchoolId sayılmaz). Öğrenci: yalnız doğrulanmış üyelik.

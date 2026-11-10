@@ -9,6 +9,9 @@ public static class SubscriptionPlanErrorCodes
     public const string PlanNotAvailable = "subscription.planNotAvailable";
     public const string UnknownPlan = "subscription.unknownPlan";
 
+    /// <summary>#1108: kapsam / süre bu plan ve sınıf için satılmıyor.</summary>
+    public const string InvalidOption = "subscription.invalidOption";
+
     /// <summary>#1091: öğrenci planını kendisi alamaz; velisi alır.</summary>
     public const string ParentPays = "subscription.parentPays";
 
@@ -16,6 +19,7 @@ public static class SubscriptionPlanErrorCodes
     {
         SelfServicePlanError.TrialAlreadyUsed => controller.Conflict(new { code = TrialUsed }),
         SelfServicePlanError.NotAvailable => controller.BadRequest(new { code = PlanNotAvailable }),
+        SelfServicePlanError.InvalidOption => controller.BadRequest(new { code = InvalidOption }),
         _ => controller.BadRequest(new { code = UnknownPlan }),
     };
 }

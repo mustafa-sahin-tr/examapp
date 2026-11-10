@@ -75,3 +75,48 @@
   color: var(--ms-text-medium);
   font-size: 0.875rem;
 }
+
+// Issue #1108: öğrenci planı fiyat tablosu (band × kapsam × süre). Fieldset tablo kadar genişlemesin: tablo kendi içinde kayar.
+.plan-editor__prices {
+  min-width: 0;
+}
+
+.plan-editor__table-wrap {
+  overflow-x: auto;
+}
+
+.plan-editor__table {
+  border-collapse: collapse;
+  font-family: var(--paragraphFontFamily);
+
+  th,
+  td {
+    padding: 4px;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  thead th {
+    font-weight: 600;
+    color: var(--ms-text-medium);
+    border-bottom: 1px solid var(--ms-border-weak);
+  }
+
+  tbody th small {
+    display: block;
+    font-weight: 400;
+    color: var(--ms-text-medium);
+  }
+}
+
+.plan-editor__grade-row th {
+  padding-left: 16px;
+}
+
+.plan-editor__cell {
+  width: 116px;
+}
+
+.plan-editor__add-grade {
+  width: 240px;
+}

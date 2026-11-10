@@ -192,6 +192,7 @@
     "change": "Change plan",
     "cancel": "Cancel",
     "bought": "Plan bought: {{ plan }}.",
-    "schoolLicense": "Through the school's license"
+    "schoolLicense": "Through the school's license",
+    "singleSubject": "Single subject: {{ subject }}"
   }
 }

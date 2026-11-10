@@ -5,7 +5,13 @@ import { of, throwError } from 'rxjs';
 
 import { PlanPickerComponent } from './plan-picker.component';
 import { SubscriptionService } from '../../../services/subscription.service';
-import { ChildSubscriptionPlan, CurrentSubscriptionPlan, EntitlementFeature, SubscriptionPlan } from '../../../models/subscription';
+import {
+  ChildSubscriptionPlan,
+  CurrentSubscriptionPlan,
+  EntitlementFeature,
+  StudentPlanOffer,
+  SubscriptionPlan,
+} from '../../../models/subscription';
 import { translocoTestingModule } from '../../testing/transloco-testing';
 import subscriptionTr from '../../../../../public/i18n/subscription/tr.json';
 import subscriptionEn from '../../../../../public/i18n/subscription/en.json';
@@ -208,8 +214,89 @@ describe('PlanPickerComponent (issue #1028)', () => {
     (el().querySelector('[data-testid="complete-checkout"]') as HTMLButtonElement).click();
     fixture.detectChanges();
 
-    expect(service.childCheckout).toHaveBeenCalledWith(7, 'student-pro');
+    expect(service.childCheckout).toHaveBeenCalledWith(7, 'student-pro', undefined);
     expect(service.checkout).not.toHaveBeenCalled();
     expect(emitted).toEqual([expect.objectContaining({ planKey: 'student-pro' })]);
+  });
+
+  describe('issue #1108: scope, subject and duration for a child with a grade', () => {
+    const OFFER: StudentPlanOffer = {
+      band: 'Middle',
+      gradeLevel: 7,
+      subjects: [{ id: 3, name: 'Matematik' }, { id: 4, name: 'Fen Bilimleri' }],
+      summerOnSale: false,
+      siblingDiscountPercent: 0,
+      prices: [
+        { planKey: 'student-basic', scope: 'AllSubjects', duration: 'Monthly', amount: 199 },
+        { planKey: 'student-basic', scope: 'AllSubjects', duration: 'SixMonths', amount: 1075 },
+        { planKey: 'student-basic', scope: 'AllSubjects', duration: 'Summer', amount: 100 },
+        { planKey: 'student-basic', scope: 'SingleSubject', duration: 'Monthly', amount: 119 },
+        { planKey: 'student-basic', scope: 'SingleSubject', duration: 'SixMonths', amount: 645 },
+        { planKey: 'student-pro', scope: 'AllSubjects', duration: 'Monthly', amount: 549 },
+      ],
+    };
+
+    function openCheckout(key: string, offer: StudentPlanOffer = OFFER): void {
+      const child: ChildSubscriptionPlan = { ...CHILD, planKey: 'free', displayNameKey: null, offer };
+      create('change', current('free'), { childId: 7 });
+      service.childPlan.mockReturnValue(of(child));
+      component.load();
+      fixture.detectChanges();
+      button(card(key)).click();
+      fixture.detectChanges();
+    }
+
+    const query = (selector: string): HTMLElement | null => el().querySelector(selector);
+    const radio = (testId: string): HTMLInputElement => query(`[data-testid="${testId}"] input`) as HTMLInputElement;
+    const complete = (): HTMLButtonElement => query('[data-testid="complete-checkout"]') as HTMLButtonElement;
+
+    it('shows the band, the durations on sale and the total; summer only in season', () => {
+      openCheckout('student-basic');
+      expect(query('[data-testid="checkout-band"]')!.textContent).toContain('7. sınıf · Ortaokul');
+      expect(query('[data-testid="duration-Monthly"]')).not.toBeNull();
+      expect(query('[data-testid="duration-SixMonths"]')!.textContent).toContain('aylık');
+      expect(query('[data-testid="duration-TwelveMonths"]')).toBeNull();
+      expect(query('[data-testid="duration-Summer"]')).toBeNull();
+      expect(query('[data-testid="checkout-total"]')!.textContent).toContain('199');
+    });
+
+    it('buys a single subject for six months once a subject is picked', () => {
+      openCheckout('student-basic');
+      service.childCheckout.mockReturnValue(of({ ...CHILD, offer: OFFER }));
+      radio('scope-single').click();
+      fixture.detectChanges();
+      expect(complete().disabled).toBe(true);
+
+      component.subjectId.set(3);
+      radio('duration-SixMonths').click();
+      fixture.detectChanges();
+      expect(query('[data-testid="checkout-total"]')!.textContent).toContain('645');
+      expect(complete().disabled).toBe(false);
+      complete().click();
+
+      expect(service.childCheckout).toHaveBeenCalledWith(7, 'student-basic', { subjectId: 3, duration: 'SixMonths' });
+    });
+
+    it('hides the single-subject choice when the plan has no single-subject price (Pro)', () => {
+      openCheckout('student-pro');
+      expect(query('[data-testid="scope-single"]')).toBeNull();
+      expect(query('[data-testid="duration-Monthly"]')).not.toBeNull();
+    });
+
+    it('shows the sibling discount with the original price struck through', () => {
+      openCheckout('student-basic', { ...OFFER, siblingDiscountPercent: 20 });
+      expect(query('[data-testid="sibling-discount"]')!.textContent).toContain('%20');
+      expect(query('[data-testid="duration-Monthly"] s')!.textContent).toContain('199');
+      expect(query('[data-testid="checkout-total"]')!.textContent).toContain('159.2');
+    });
+
+    it('falls back to the monthly card price without options when the child has no grade', () => {
+      openCheckout('student-basic', { ...OFFER, band: null, gradeLevel: null, prices: [], subjects: [] });
+      expect(query('[data-testid="checkout-band"]')).toBeNull();
+      expect(query('[data-testid="duration-Monthly"]')).toBeNull();
+      service.childCheckout.mockReturnValue(of(CHILD));
+      complete().click();
+      expect(service.childCheckout).toHaveBeenCalledWith(7, 'student-basic', undefined);
+    });
   });
 });

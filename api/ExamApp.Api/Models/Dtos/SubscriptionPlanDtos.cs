@@ -20,6 +20,19 @@ public class SubscriptionPlanDto
 
     /// <summary>Özellik anahtarı → aylık sınır (null = sınırsız).</summary>
     public Dictionary<string, int?> MonthlyLimits { get; set; } = new();
+
+    /// <summary>Issue #1108: öğrenci planının band / kapsam / süre fiyatları (yalnız admin kataloğunda dolu).</summary>
+    public List<SubscriptionPlanPriceRowDto>? Prices { get; set; }
+}
+
+/// <summary>Issue #1108: admin fiyat tablosunun bir satırı. <see cref="GradeLevel"/> doluysa yalnız o sınıfa özel fiyat.</summary>
+public class SubscriptionPlanPriceRowDto
+{
+    public string Band { get; set; } = string.Empty;
+    public int? GradeLevel { get; set; }
+    public string Scope { get; set; } = string.Empty;
+    public string Duration { get; set; } = string.Empty;
+    public decimal Price { get; set; }
 }
 
 /// <summary>Issue #1093: özellik listesinden bir satır. <see cref="Kind"/> <c>Toggle</c> ya da <c>Metered</c>.</summary>
@@ -128,6 +141,46 @@ public class EntitlementLimitReachedDto
 public class SubscriptionCheckoutDto
 {
     public string PlanKey { get; set; } = string.Empty;
+
+    /// <summary>Issue #1108: tek ders planında ders (öğrencinin sınıfının dersi); null = bütün dersler.</summary>
+    public int? SubjectId { get; set; }
+
+    /// <summary>Issue #1108: <c>Monthly</c> (boşken de), <c>SixMonths</c>, <c>TwelveMonths</c> ya da <c>Summer</c>.</summary>
+    public string? Duration { get; set; }
+}
+
+/// <summary>Issue #1108: öğrenci planı fiyatı (bir kademe × kapsam × süre).</summary>
+public class StudentPlanPriceDto
+{
+    public string PlanKey { get; set; } = string.Empty;
+
+    /// <summary><c>AllSubjects</c> ya da <c>SingleSubject</c>.</summary>
+    public string Scope { get; set; } = string.Empty;
+
+    public string Duration { get; set; } = string.Empty;
+
+    /// <summary>Süre boyunca toplam (indirimsiz) fiyat. Adı <c>price</c> değil: veli yanıtlarında <c>price</c> yasak alan (ders ücreti).</summary>
+    public decimal Amount { get; set; }
+}
+
+public class StudentPlanSubjectDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Issue #1108: velinin çocuğa plan seçerken gördüğü seçenekler. <see cref="Band"/> null ise çocuğun sınıfı yok: plan aylık ve
+/// bütün dersler, kartın aylık fiyatıyla satılır.
+/// </summary>
+public class StudentPlanOfferDto
+{
+    public string? Band { get; set; }
+    public int? GradeLevel { get; set; }
+    public List<StudentPlanPriceDto> Prices { get; set; } = new();
+    public List<StudentPlanSubjectDto> Subjects { get; set; } = new();
+    public bool SummerOnSale { get; set; }
+    public int SiblingDiscountPercent { get; set; }
 }
 
 /// <summary>Issue #1091: veli panelinde çocuğun planı ve velinin alabileceği öğrenci planları.</summary>
@@ -150,6 +203,14 @@ public class ChildSubscriptionPlanDto
 
     /// <summary>Plan kartlarının öğrenci özellikleri (veli kendi rolüyle <c>features</c> ucundan bunları alamaz).</summary>
     public List<EntitlementFeatureDto> Features { get; set; } = new();
+
+    /// <summary>Issue #1108: band, kapsam, süre ve fiyat seçenekleri.</summary>
+    public StudentPlanOfferDto Offer { get; set; } = new();
+
+    /// <summary>Issue #1108: çocuğun şu anki planının tek dersi (Subjects.Id); bütün derslerde null.</summary>
+    public int? ScopeSubjectId { get; set; }
+
+    public string? ScopeSubjectName { get; set; }
 }
 
 /// <summary>Issue #1092: okulun lisansı ve son değişiklikleri; lisans hiç yoksa <see cref="Exists"/> false.</summary>

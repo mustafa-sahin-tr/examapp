@@ -245,6 +245,7 @@ public class AppDbContext : DbContext
     public DbSet<SubscriptionPlan> SubscriptionPlans { get; set; } // issue #1019
     public DbSet<SubscriptionPlanFeatureLimit> SubscriptionPlanFeatureLimits { get; set; }
     public DbSet<UserSubscriptionPlan> UserSubscriptionPlans { get; set; }
+    public DbSet<SubscriptionPlanPrice> SubscriptionPlanPrices { get; set; } // issue #1108
     public DbSet<SubscriptionPlanChangeAudit> SubscriptionPlanChangeAudits { get; set; } // issue #1086
     public DbSet<SubscriptionPlanAssignmentAudit> SubscriptionPlanAssignmentAudits { get; set; } // issue #1030
     public DbSet<EntitlementUsage> EntitlementUsages { get; set; }
@@ -1453,6 +1454,19 @@ public class AppDbContext : DbContext
         {
             e.HasOne(a => a.Plan).WithMany().HasForeignKey(a => a.PlanId).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(a => new { a.UserId, a.ValidFromUtc });
+            e.Property(a => a.Duration).HasConversion<string>().HasMaxLength(16); // issue #1108
+            e.Property(a => a.PricePaid).HasPrecision(10, 2);
+        });
+        // Issue #1108: öğrenci planı fiyatı (band × sınıf × kapsam × süre); seçenek başına tek satır.
+        modelBuilder.Entity<SubscriptionPlanPrice>(e =>
+        {
+            e.HasOne(p => p.Plan).WithMany(p => p.Prices).HasForeignKey(p => p.PlanId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(p => new { p.PlanId, p.Band, p.GradeLevel, p.Scope, p.Duration }).IsUnique().AreNullsDistinct(false);
+            e.Property(p => p.Id).HasIdentityOptions(startValue: 1000);
+            e.Property(p => p.Band).HasConversion<string>().HasMaxLength(16);
+            e.Property(p => p.Scope).HasConversion<string>().HasMaxLength(16);
+            e.Property(p => p.Duration).HasConversion<string>().HasMaxLength(16);
+            e.Property(p => p.Price).HasPrecision(10, 2);
         });
         // Issue #1030: atama değişikliği kaydı; kullanıcının geçmişi en yeni önce okunur.
         modelBuilder.Entity<SubscriptionPlanAssignmentAudit>(e =>

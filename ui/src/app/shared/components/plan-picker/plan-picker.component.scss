@@ -173,3 +173,57 @@
     }
   }
 }
+
+// Issue #1108: ödeme ekranında kapsam ve süre seçenekleri.
+.options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+
+  &--durations {
+    flex-direction: column;
+    gap: 4px;
+
+    mat-radio-button {
+      padding: 6px 8px;
+      border: 1px solid var(--ms-border-weak);
+      border-radius: 10px;
+    }
+  }
+}
+
+.option-label {
+  font-weight: 600;
+  margin-right: 12px;
+}
+
+.option-price {
+  font-family: var(--paragraphFontFamily);
+
+  s {
+    color: var(--ms-text-weak);
+    margin-right: 4px;
+  }
+
+  small {
+    margin-left: 6px;
+    color: var(--ms-text-medium);
+  }
+}
+
+.subject-field {
+  max-width: 320px;
+}
+
+.discount {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--ms-success-border);
+  background: var(--ms-success-surface-weak);
+  color: var(--ms-success-text-medium);
+  font-family: var(--paragraphFontFamily);
+}

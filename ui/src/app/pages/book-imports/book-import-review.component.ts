@@ -74,6 +74,7 @@ export class BookImportReviewComponent implements OnInit {
   readonly previewLoading = signal(false);
   readonly questions = signal<BookImportReviewQuestion[]>([]);
   readonly removingId = signal<number | null>(null);
+  readonly reimportingId = signal<number | null>(null);
 
   /** İncelemedeki testler (onaylanan / silinen hariç); filtre açıkken yalnız bakılması gerekenler. */
   readonly open = computed(() => this.tests().filter((t) => t.status !== 'Approved' && t.status !== 'Removed'));
@@ -172,6 +173,20 @@ export class BookImportReviewComponent implements OnInit {
   remove(test: BookImportJobTest): void {
     this.removingId.set(null);
     this.run(test.id, this.api.removeTest(this.jobId(), test.id), () => {
+      if (this.previewId() === test.id) this.previewId.set(null);
+    });
+  }
+
+  /** Yalnız kitap aktarımında (hızlı eklemenin API'sinde yok). */
+  canReimport(): boolean {
+    return !!this.api.reimportTest;
+  }
+
+  reimport(test: BookImportJobTest): void {
+    this.reimportingId.set(null);
+    const request = this.api.reimportTest?.(this.jobId(), test.id);
+    if (!request) return;
+    this.run(test.id, request, () => {
       if (this.previewId() === test.id) this.previewId.set(null);
     });
   }

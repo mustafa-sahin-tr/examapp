@@ -375,6 +375,17 @@ public class BookImportController : BaseController
         return result is null ? NotFound(new { message = _localizer["bookImport.notFound"].Value }) : Ok(result);
     }
 
+    /// <summary>İncelemedeki onaylanmamış testi baştan aktar (taslakları silinir, sayfa tespitleri önbellekten).</summary>
+    [HttpPost("{id:guid}/tests/{testId:int}/reimport")]
+    [RequiresEntitlement(EntitlementFeatures.BookImport, InPlanOnly = true)]
+    public async Task<IActionResult> ReimportTest(Guid id, int testId, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        return RetryResult(await _service.ReimportTestAsync(owner, id, testId, ct));
+    }
+
     /// <summary>Issue #1023: testi sil — yalnız o testin taslak testi ve taslak soruları.</summary>
     [HttpDelete("{id:guid}/tests/{testId:int}")]
     public async Task<IActionResult> RemoveTest(Guid id, int testId, CancellationToken ct)

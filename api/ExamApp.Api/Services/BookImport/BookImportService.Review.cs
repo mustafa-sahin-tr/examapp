@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
+using Hangfire;
 using ExamApp.Api.Models.Dtos;
 using Microsoft.EntityFrameworkCore;
 
@@ -147,27 +148,62 @@ public sealed partial class BookImportService
         await strategy.ExecuteAsync(async () =>
         {
             await using var tx = await _db.Database.BeginTransactionAsync(ct);
-            if (test.WorksheetId is { } worksheetId)
-            {
-                var now = DateTime.UtcNow;
-                // Yalnız bu testin taslakları: onaylanmış (etkin) bir soru başka bir yerde kullanılıyor olabilir.
-                await DraftQuestions(worksheetId).ExecuteUpdateAsync(s => s
-                    .SetProperty(q => q.IsDeleted, true)
-                    .SetProperty(q => q.DeleteTime, now)
-                    .SetProperty(q => q.DeleteUserId, owner.UserId), ct);
-                await _db.Worksheets.IgnoreQueryFilters([DraftQueryFilter.Key])
-                    .Where(w => w.Id == worksheetId && w.IsDraft)
-                    .ExecuteUpdateAsync(s => s
-                        .SetProperty(w => w.IsDeleted, true)
-                        .SetProperty(w => w.DeleteTime, now)
-                        .SetProperty(w => w.DeleteUserId, owner.UserId), ct);
-            }
+            await DeleteTestDraftsAsync(test, owner.UserId, ct);
             test.Status = BookImportTestStatus.Removed;
             await _db.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
         });
         await CompleteIfReviewedAsync(id, ct);
         return BookImportReviewResult.Ok;
+    }
+
+    public async Task<RetryBookImportResult> ReimportTestAsync(BookImportOwner owner, Guid id, int testId, CancellationToken ct)
+    {
+        var job = await Visible(owner).AsTracking().FirstOrDefaultAsync(j => j.Id == id, ct);
+        var test = job is null ? null : await ReviewTestAsync(owner, id, testId, ct, tracking: true);
+        if (job is null || test is null)
+            return RetryBookImportResult.NotFound;
+        if (job.Status != BookImportJobStatus.ReadyForReview || !IsReviewable(test))
+            return RetryBookImportResult.InvalidState;
+
+        var strategy = _db.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var tx = await _db.Database.BeginTransactionAsync(ct);
+            // Eski taslaklar silinir: kalırlarsa devam (ResumeDrafts) onları eski numara ve cevaplarıyla yeniden kullanırdı.
+            await DeleteTestDraftsAsync(test, owner.UserId, ct);
+            test.WorksheetId = null;
+            test.Status = BookImportTestStatus.Pending;
+            test.Error = null;
+            test.QuestionsFound = 0;
+            test.QuestionsSaved = 0;
+            test.DuplicatesSkipped = 0;
+            test.ReviewFlagsJson = null;
+            Requeue(job);
+            job.Stage = BookImportStage.Questions;
+            await _db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+        });
+        _jobs.Enqueue<BookImportJobRunner>(r => r.RunAsync(id));
+        return RetryBookImportResult.Queued;
+    }
+
+    /// <summary>Yalnız bu testin taslakları: onaylanmış (etkin) bir soru başka bir yerde kullanılıyor olabilir.</summary>
+    private async Task DeleteTestDraftsAsync(BookImportJobTest test, int userId, CancellationToken ct)
+    {
+        if (test.WorksheetId is not { } worksheetId)
+            return;
+        var now = DateTime.UtcNow;
+        await DraftQuestions(worksheetId).ExecuteUpdateAsync(s => s
+            .SetProperty(q => q.IsDeleted, true)
+            .SetProperty(q => q.DeleteTime, now)
+            .SetProperty(q => q.DeleteUserId, userId), ct);
+        await _db.Worksheets.IgnoreQueryFilters([DraftQueryFilter.Key])
+            .Where(w => w.Id == worksheetId && w.IsDraft)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(w => w.IsDeleted, true)
+                .SetProperty(w => w.DeleteTime, now)
+                .SetProperty(w => w.DeleteUserId, userId), ct);
     }
 
     /// <summary>Taslak test başına cevapsız taslak soru sayısı (takip ekranı; onayı engeller).</summary>

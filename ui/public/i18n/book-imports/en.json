@@ -14,8 +14,14 @@
     "subjectAuto": "Detect from the book",
     "start": "Start import",
     "uploading": "Uploading…",
-    "uploadingParts": "Uploading… {{part}} / {{parts}}",
-    "cancel": "Cancel"
+    "uploadingParts": "Part {{part}} / {{parts}}",
+    "cancel": "Cancel",
+    "uploadingTitle": "Uploading the book",
+    "assembling": "Joining the file on the server…",
+    "etaCalculating": "Estimating time left…",
+    "etaMinutes": "About {{minutes}} min {{seconds}} s left",
+    "etaSeconds": "About {{seconds}} s left",
+    "keepOpen": "Keep this page open and do not reload it until the upload finishes; closing it cancels the upload. The time depends on the file size and your connection speed."
   },
   "errors": {
     "notPdf": "The selected file is not a PDF.",

@@ -14,7 +14,13 @@ import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { Subscription, timer } from 'rxjs';
 
-import { BookImportDemo, BookImportJob, BookImportQuota, bookImportStatusTone, isBookImportActive } from '../../models/book-import';
+import {
+  BookImportDemo,
+  BookImportJob,
+  BookImportQuota,
+  bookImportStatusTone,
+  isBookImportActive,
+} from '../../models/book-import';
 import { Grade } from '../../models/student';
 import { Subject } from '../../models/subject';
 import { AuthService } from '../../services/auth.service';
@@ -33,6 +39,19 @@ const MAX_UPLOAD_BYTES = 200_000_000;
 
 type StatusFilter = 'all' | 'awaiting' | 'failed';
 
+/** Issue #1122: kalan süre ilk bu kadar ms sonra gösterilir. */
+const UPLOAD_ETA_WARMUP_MS = 3000;
+
+interface UploadProgress {
+  part: number;
+  parts: number;
+  sentBytes: number;
+  totalBytes: number;
+  /** Tahmini kalan saniye; ısınma süresinde ve birleştirmede null. */
+  etaSeconds: number | null;
+  assembling: boolean;
+}
+
 /**
  * Issue #1018 (epic #1017): kitaptan aktarım — PDF yükleme formu ve aktarımlar listesi. Pilot: Admin + QuestionTrainer.
  * Issue #1032: öğretmen yükleme yerine örnek kitapla demo görür.
@@ -41,6 +60,7 @@ type StatusFilter = 'all' | 'awaiting' | 'failed';
 @Component({
   selector: 'app-book-imports',
   standalone: true,
+  host: { '(window:beforeunload)': 'warnBeforeUnload($event)' },
   imports: [
     DatePipe,
     MatButtonModule,
@@ -91,8 +111,13 @@ export class BookImportsComponent implements OnInit {
   readonly submitting = signal(false);
   /** Sunucudan gelen hata kodu (`bookImport.notPdf` …) ya da `generic`. */
   readonly submitError = signal<string | null>(null);
-  /** Issue #1122: gönderilen / toplam parça; yükleme sürerken. */
-  readonly uploadProgress = signal<{ part: number; parts: number } | null>(null);
+  /** Issue #1122: yükleme sürerken gönderilen bayt, parça ve kalan süre tahmini; parçalar bitince sunucuda birleştirme. */
+  readonly uploadProgress = signal<UploadProgress | null>(null);
+  readonly uploadPercent = computed(() => {
+    const p = this.uploadProgress();
+    return p ? Math.min(100, Math.floor((100 * p.sentBytes) / Math.max(1, p.totalBytes))) : 0;
+  });
+  private uploadStartedAt = 0;
 
   readonly form = new FormGroup({
     bookName: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(200)] }),
@@ -179,7 +204,11 @@ export class BookImportsComponent implements OnInit {
           this.startingDemo.set(false);
           const code = error.error?.code;
           this.demoError.set(
-            code === 'bookImport.demoLimitReached' ? 'limitReached' : code === 'bookImport.demoUnavailable' ? 'unavailable' : 'startFailed',
+            code === 'bookImport.demoLimitReached'
+              ? 'limitReached'
+              : code === 'bookImport.demoUnavailable'
+                ? 'unavailable'
+                : 'startFailed'
           );
           this.loadDemo();
         },
@@ -274,13 +303,18 @@ export class BookImportsComponent implements OnInit {
     this.submitting.set(true);
     this.submitError.set(null);
     this.uploadProgress.set(null);
+    this.uploadStartedAt = Date.now();
     this.api
       .start({ file, bookName: value.bookName.trim(), gradeId: value.gradeId!, subjectId: value.subjectId })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (event) => {
           if (event.type === 'progress') {
-            this.uploadProgress.set({ part: event.part, parts: event.parts });
+            this.trackUpload(event.part, event.parts, event.sentBytes, event.totalBytes);
+            return;
+          }
+          if (event.type === 'assembling') {
+            this.uploadProgress.update((p) => (p ? { ...p, assembling: true, etaSeconds: null } : p));
             return;
           }
           this.submitting.set(false);
@@ -296,9 +330,45 @@ export class BookImportsComponent implements OnInit {
       });
   }
 
+  /**
+   * Issue #1122: ortalama hızla kalan süre. İlk saniyelerde ve hiç bayt gitmemişken tahmin yok (bağlantı açılırken hız
+   * yanıltıcıdır).
+   */
+  private trackUpload(part: number, parts: number, sentBytes: number, totalBytes: number): void {
+    const elapsedMs = Date.now() - this.uploadStartedAt;
+    const etaSeconds =
+      sentBytes > 0 && elapsedMs >= UPLOAD_ETA_WARMUP_MS
+        ? Math.ceil(((totalBytes - sentBytes) * elapsedMs) / sentBytes / 1000)
+        : null;
+    this.uploadProgress.set({ part, parts, sentBytes, totalBytes, etaSeconds, assembling: false });
+  }
+
+  /** Kalan süre: "2 dk 30 sn", bir dakikanın altında "40 sn". */
+  remaining(seconds: number): { key: string; params: Record<string, number> } {
+    const s = Math.max(1, seconds);
+    return s < 60
+      ? { key: 'form.etaSeconds', params: { seconds: s } }
+      : { key: 'form.etaMinutes', params: { minutes: Math.floor(s / 60), seconds: s % 60 } };
+  }
+
+  /** Issue #1122: yükleme sürerken sekmeyi kapatmak / yenilemek tarayıcının "ayrıl" onayını açar (yükleme tarayıcıda yürür). */
+  warnBeforeUnload(event: BeforeUnloadEvent): void {
+    if (!this.submitting()) return;
+    event.preventDefault();
+    event.returnValue = '';
+  }
+
   /** Hata kodunu scope'taki anahtara çevirir (`bookImport.notPdf` → `errors.notPdf`). */
   errorKey(code: string): string {
-    const known = ['invalidBookName', 'invalidGrade', 'invalidSubject', 'notPdf', 'fileTooLarge', 'uploadNotFound', 'uploadIncomplete'];
+    const known = [
+      'invalidBookName',
+      'invalidGrade',
+      'invalidSubject',
+      'notPdf',
+      'fileTooLarge',
+      'uploadNotFound',
+      'uploadIncomplete',
+    ];
     const name = code.replace(/^bookImport\./, '');
     if (code === 'entitlement.limitReached') return 'errors.quotaReached';
     return known.includes(name) ? `errors.${name}` : 'errors.generic';

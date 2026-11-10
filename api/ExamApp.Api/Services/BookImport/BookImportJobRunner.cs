@@ -32,7 +32,7 @@ public class BookImportJobRunner
     public const string OwnerNotApprovedMessage = "Job owner's teacher account is not approved (or is suspended); job was not run.";
 
     /// <summary>Varsayılan sayfa sınırı; <c>BookImport:MaxPages</c> ile değişir.</summary>
-    public const int DefaultMaxPages = 400;
+    public const int DefaultMaxPages = 600;
 
     /// <summary>Kurulum taramasında tek Claude çağrısına giden sayfa; <c>BookImport:SurveyBatchSize</c>.</summary>
     public const int DefaultSurveyBatchSize = 8;

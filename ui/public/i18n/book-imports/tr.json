@@ -14,8 +14,14 @@
     "subjectAuto": "Kitaptan belirlensin",
     "start": "Aktarımı başlat",
     "uploading": "Yükleniyor…",
-    "uploadingParts": "Yükleniyor… {{part}} / {{parts}}",
-    "cancel": "Vazgeç"
+    "uploadingParts": "Parça {{part}} / {{parts}}",
+    "cancel": "Vazgeç",
+    "uploadingTitle": "Kitap yükleniyor",
+    "assembling": "Dosya sunucuda birleştiriliyor…",
+    "etaCalculating": "Kalan süre hesaplanıyor…",
+    "etaMinutes": "Yaklaşık {{minutes}} dk {{seconds}} sn kaldı",
+    "etaSeconds": "Yaklaşık {{seconds}} sn kaldı",
+    "keepOpen": "Yükleme bitene kadar bu sayfayı kapatmayın ve yenilemeyin; kapatırsanız yükleme iptal olur. Süre dosyanın boyutuna ve internet hızınıza göre değişir."
   },
   "errors": {
     "notPdf": "Seçilen dosya PDF değil.",

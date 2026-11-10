@@ -40,7 +40,7 @@ aktarım aracındaki Python portu referanstır (#1022).
 ## Sayfalar aşaması (#1020)
 
 - `BookImportJobRunner.RenderPagesAsync`: kaynak PDF MinIO'dan okunur → `IPdfRasterizer.GetPageCount` → sınır
-  `BookImport:MaxPages` (varsayılan 400; aşılırsa "The PDF has N pages; the limit is M.") → sayfalar 2363 px genişlikte
+  `BookImport:MaxPages` (varsayılan 600, #1122 öncesi 400 — 416 sayfalık LGS kitabı; aşılırsa "The PDF has N pages; the limit is M.") → sayfalar 2363 px genişlikte
   (el ile aktarımdaki görsellerle aynı) WebP (kalite 82) olarak `book-imports/<jobId>/pages/<0001>.webp`'ye yazılır,
   her sayfa `BookImportPages` satırı (dosya sayfası, URL, boyut) ve `StageProcessed` artışı ile kaydedilir. Takip ekranı
   "Geçerli aşama: Sayfalar · N / M" gösterir.

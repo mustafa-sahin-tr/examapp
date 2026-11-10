@@ -352,7 +352,7 @@ internal sealed class BookQuestionImportStage(
 
     /// <summary>
     /// Sayfaların ilk soru no'su ve beklenen en büyük no'su. Numaralama sayfaya dayanır: kurulumda okunan basılı en büyük no
-    /// biliniyorsa sayfa önceki sayfanın sonundan başlar ve orada biter; tespiti başarısız sayfa numaralarını yine tüketir.
+    /// biliniyorsa sayfa önceki sayfanın basılı en büyük no'sundan sonra başlar ve orada biter; tespiti başarısız sayfa numaralarını yine tüketir.
     /// Her sayfa tespit edildi ve bulunan toplam anahtarın uzunluğuna eşitse basılı numaralar yok sayılır, sorular sırayla
     /// numaralanır: kurulumda yanlış okunan bir sayfa no'su sonraki soruları kaydırıp cevapsız bırakmasın.
     /// </summary>
@@ -363,12 +363,16 @@ internal sealed class BookQuestionImportStage(
         var sequential = keyLength is { } n && pages.All(p => p.Found is not null) && pages.Sum(p => p.Found!.Value) == n;
         var result = new List<(int Start, int? Max)>(pages.Count);
         var last = 0;
+        int? previousMax = null;
         foreach (var (printedMax, foundOnPage) in pages)
         {
-            var start = last + 1;
+            // Önceki sayfanın basılı no'su ile bu sayfanınki tutarlıysa sayfa oradan başlar: önceki sayfadaki fazla kutu
+            // (ör. sorunun ayrı kutu sanılan kural satırı) sonraki sayfaların numaralarını ve cevaplarını kaydırmasın.
+            var start = previousMax is { } pm && printedMax is { } pmax && pmax > pm ? pm + 1 : last + 1;
             var max = !sequential && printedMax is { } m && m >= start ? m : (int?)null;
             result.Add((start, max));
             last = foundOnPage is { } count ? Math.Max(max ?? 0, start + count - 1) : max ?? last;
+            previousMax = max;
         }
         return result;
     }

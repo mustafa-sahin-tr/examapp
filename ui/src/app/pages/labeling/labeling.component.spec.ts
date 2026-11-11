@@ -1899,9 +1899,9 @@ describe('LabelingComponent', () => {
         }
 
         /** Mock'lar `setup` içinde kurulur: yanıtlar bileşen oluşmadan önce verilir. */
-        async function setupWith(responses: () => void, aiModels: LabelingAiModel[] = []): Promise<void> {
+        async function setupWith(responses: () => void, aiModels: LabelingAiModel[] = [], labeledFails = false): Promise<void> {
             beforeCreate = responses;
-            await setup([], false, aiModels);
+            await setup([], labeledFails, aiModels);
         }
 
         function pageResponses(): void {
@@ -2008,6 +2008,14 @@ describe('LabelingComponent', () => {
 
             expect(component.preferredSource()).toBe('Model');
             expect(labelingApi.aiDetect).toHaveBeenCalledWith(expect.objectContaining({ model: 'claude-a', force: false }));
+        });
+
+        it('fix_HidesTheLabeledPagesError', async () => {
+            routeUrl = '/?bookImport=j1&test=3&page=12';
+            await setupWith(pageResponses, [], true);
+
+            expect(component.labeledError()).toBe(true);
+            expect((fixture.nativeElement as HTMLElement).textContent).not.toContain(labelingTr.labeledError);
         });
 
         it('fix_EmptyPage_AsksBeforeDeletingTheDrafts', async () => {

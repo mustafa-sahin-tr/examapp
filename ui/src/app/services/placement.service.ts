@@ -1,4 +1,4 @@
-import { HttpClient, HttpResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 
@@ -33,11 +33,11 @@ export class PlacementService {
     return this.http.get<PlacementReport>(`${this.base}/report`);
   }
 
-  /** Rapor yoksa (204) null. */
+  /** Çözülmemişse null. */
   childReport(studentId: number): Observable<PlacementReport | null> {
     return this.http
-      .get<PlacementReport>(`/api/exam/parent/children/${studentId}/placement`, { observe: 'response' })
-      .pipe(map((res: HttpResponse<PlacementReport>) => (res.status === 204 ? null : res.body)));
+      .get<{ report: PlacementReport | null }>(`/api/exam/parent/children/${studentId}/placement`)
+      .pipe(map((res) => res.report));
   }
 
   adminList(): Observable<AdminPlacementTest[]> {

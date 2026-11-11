@@ -582,5 +582,5 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   `/placement`; öğrenci `/plans`'ta yayımlanmış test varsa bağlantıyı görür.
 - **Öneri:** genel başarı %50 altı → Pro, %75 altı → Essential, değilse Basic. Pro dışında tek zayıf ders (%60 altı) varsa ve o ders tek
   satılıyorsa öneri yalnız o ders (#1109); `band` öğrencinin fiyat bandı. Eşikler `PlacementService` sabitleri.
-- **Veli:** panelin Plan sekmesinde rapor (`GET /api/exam/parent/children/{id}/placement`, rapor yoksa 204; plan gerekmez; denetim
+- **Veli:** panelin Plan sekmesinde rapor (`GET /api/exam/parent/children/{id}/placement`, yanıt `{ report }`, çözülmemişse `null`; plan gerekmez; denetim
   kaydı `children.placement`).

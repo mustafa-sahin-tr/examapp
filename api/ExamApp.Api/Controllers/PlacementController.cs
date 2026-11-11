@@ -105,7 +105,7 @@ public class AdminPlacementTestsController(IPlacementService service, IStringLoc
     }
 }
 
-/// <summary>Issue #1114: çocuğun seviye tespiti raporu (ücretsiz; plan gerekmez). Başka velinin çocuğu 404, rapor yoksa 204.</summary>
+/// <summary>Issue #1114: çocuğun seviye tespiti raporu (ücretsiz; plan gerekmez). Başka velinin çocuğu 404; rapor yoksa <c>report=null</c>.</summary>
 [ApiController]
 [Route("api/parent/children")]
 [Authorize(Roles = "Parent")]
@@ -114,6 +114,7 @@ public class ParentPlacementController(IPlacementService service, IStringLocaliz
 {
     [HttpGet("{studentId:int}/placement")]
     [EnableRateLimiting(ParentLinkRateLimiting.ChildActivityPolicy)]
+    [ProducesResponseType(typeof(ParentPlacementDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Get(int studentId, CancellationToken ct = default)
     {
         var user = await GetAuthenticatedUserAsync(ct);
@@ -122,6 +123,6 @@ public class ParentPlacementController(IPlacementService service, IStringLocaliz
         var (found, report) = await service.ReportForParentAsync(user.Id, studentId, ct);
         if (!found)
             return NotFound(new { message = localizer["parentLinks.errors.childNotFound"].Value, errorCode = ParentLinkErrorCodes.NotFound });
-        return report is null ? NoContent() : Ok(report);
+        return Ok(new ParentPlacementDto { Report = report });
     }
 }

@@ -105,3 +105,9 @@ public class AdminPlacementPublishDto
 {
     public bool Published { get; set; }
 }
+
+/// <summary>Veli: çocuğun raporu; çözülmemişse null.</summary>
+public sealed class ParentPlacementDto
+{
+    public PlacementReportDto? Report { get; set; }
+}

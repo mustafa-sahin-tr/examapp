@@ -1,0 +1,17 @@
+{
+  "askTeacher": {
+    "userNotResolved": "User not found.",
+    "studentNotFound": "Student record not found.",
+    "quotaReached": "You have used this month's questions to teachers (questions awaiting an answer count too).",
+    "teacherNotAvailable": "You cannot send a question to this teacher.",
+    "invalidSubject": "Choose a valid subject.",
+    "invalidImage": "The photo could not be read (JPEG, PNG or WebP).",
+    "imageTooLarge": "The photo is too large (up to 15 MB).",
+    "noteTooLong": "The note can be at most 1000 characters.",
+    "notFound": "Question not found.",
+    "invalidState": "This question can no longer be changed (answered or expired).",
+    "answerRequired": "Add text or an image to answer.",
+    "answerTooLong": "The answer can be at most 4000 characters.",
+    "invalidRating": "The rating must be between 1 and 5."
+  }
+}

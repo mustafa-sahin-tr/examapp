@@ -1,0 +1,17 @@
+{
+  "askTeacher": {
+    "userNotResolved": "Kullanıcı bulunamadı.",
+    "studentNotFound": "Öğrenci kaydı bulunamadı.",
+    "quotaReached": "Bu ayki öğretmene soru hakkınız doldu (cevap bekleyen sorular da sayılır).",
+    "teacherNotAvailable": "Bu öğretmene soru gönderemezsiniz.",
+    "invalidSubject": "Geçerli bir ders seçin.",
+    "invalidImage": "Fotoğraf okunamadı (JPEG, PNG ya da WebP).",
+    "imageTooLarge": "Fotoğraf çok büyük (en fazla 15 MB).",
+    "noteTooLong": "Not en fazla 1000 karakter olabilir.",
+    "notFound": "Soru bulunamadı.",
+    "invalidState": "Bu soru artık bu işlem için uygun değil (cevaplanmış ya da süresi dolmuş).",
+    "answerRequired": "Cevap için yazı ya da görsel ekleyin.",
+    "answerTooLong": "Cevap en fazla 4000 karakter olabilir.",
+    "invalidRating": "Puan 1 ile 5 arasında olmalı."
+  }
+}

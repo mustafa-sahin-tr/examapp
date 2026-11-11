@@ -690,6 +690,11 @@ builder.Services.AddScoped<ExamApp.Api.Services.Entitlements.ISchoolLicenseServi
 ExamApp.Api.Services.Entitlements.PlanRequirementServiceCollectionExtensions.AddPlanRequirement(builder.Services, builder.Configuration); // Issue #1090
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IBookImportService, ExamApp.Api.Services.BookImport.BookImportService>();
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IQuickAddService, ExamApp.Api.Services.BookImport.QuickAddService>(); // issue #1052
+// issue #1111: öğretmene soru sor + süresi dolan soruları kapatan iş.
+builder.Services.Configure<ExamApp.Api.Services.AskTeacher.AskTeacherOptions>(
+    builder.Configuration.GetSection(ExamApp.Api.Services.AskTeacher.AskTeacherOptions.Section));
+builder.Services.AddScoped<ExamApp.Api.Services.AskTeacher.IAskTeacherService, ExamApp.Api.Services.AskTeacher.AskTeacherService>();
+builder.Services.AddScoped<ExamApp.Api.Services.AskTeacher.IAskTeacherExpiryJob, ExamApp.Api.Services.AskTeacher.AskTeacherExpiryJob>();
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IBookImportCostReportService, ExamApp.Api.Services.BookImport.BookImportCostReportService>(); // issue #1056
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IBookImportPageFixService, ExamApp.Api.Services.BookImport.BookImportPageFixService>();
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IBookImportTrainingExport, ExamApp.Api.Services.BookImport.BookImportTrainingExport>();
@@ -906,6 +911,12 @@ RecurringJob.AddOrUpdate<ExamApp.Api.Services.Bookings.IAwaitingParentBookingExp
     ExamApp.Api.Services.Bookings.AwaitingParentBookingExpiryJob.RecurringJobId,
     j => j.ExpireAsync(CancellationToken.None),
     app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Bookings.AwaitingParentBookingExpiryOptions>>().Value.Cron);
+
+// issue #1111: cevap süresi dolan öğretmene sorular kapanır (hak düşmez).
+RecurringJob.AddOrUpdate<ExamApp.Api.Services.AskTeacher.IAskTeacherExpiryJob>(
+    ExamApp.Api.Services.AskTeacher.AskTeacherExpiryJob.RecurringJobId,
+    j => j.ExpireAsync(CancellationToken.None),
+    app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.AskTeacher.AskTeacherOptions>>().Value.Cron);
 
 // issue #396: öğrenci dönmeyince istek anında kapanamayan, süresi dolmuş Started test oturumlarını Expired'a çeker.
 RecurringJob.AddOrUpdate<ExamApp.Api.Services.Worksheets.IExpiredTestInstanceSweepJob>(

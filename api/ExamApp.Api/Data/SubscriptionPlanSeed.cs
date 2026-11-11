@@ -126,6 +126,11 @@ public static class SubscriptionPlanSeed
         (StudentEssentialPlanId, EntitlementFeatures.WeeklyReport, null),
         (StudentProPlanId, EntitlementFeatures.WeeklyReport, null),
         (TrialPlanId, EntitlementFeatures.WeeklyReport, null),
+
+        // #1111: öğretmene soru sor — Basic'te yok, Essential 10, Pro 40 (ayda); deneme Pro gibi.
+        (StudentEssentialPlanId, EntitlementFeatures.AskTeacher, 10),
+        (StudentProPlanId, EntitlementFeatures.AskTeacher, 40),
+        (TrialPlanId, EntitlementFeatures.AskTeacher, 40),
     ];
 
     private const int FirstTierLimitId = 13;

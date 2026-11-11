@@ -406,5 +406,26 @@
     "fixPage": "Photo {{page}}",
     "fixPageFlagged": "Photo {{page}} · flagged",
     "footer": "Approved questions go to your question pool and are visible only to you (private). No test is created."
+  },
+  "training": {
+    "title": "Training data (question detection)",
+    "hint": "Pages and boxes of approved tests, to retrain the question detection model (YOLO). Flagged pages are included only when fixed in labeling.",
+    "summarize": "Show summary",
+    "refresh": "Refresh summary",
+    "download": "Download ZIP",
+    "error": "Training data could not be loaded. Try again.",
+    "totals": "{{pages}} pages ({{complete}} full pages, {{empty}} without questions) · {{questions}} questions",
+    "choices": "{{choices}} choices: {{count}}",
+    "book": "{{bookName}}: {{pages}} pages, {{questions}} questions, {{manualPages}} pages fixed",
+    "skippedTitle": "Skipped pages ({{count}})",
+    "pages": "pages {{pages}}",
+    "skip": {
+      "openTest": "shared with an unapproved test",
+      "flagged": "flagged, not fixed",
+      "noDetection": "no detection",
+      "fewChoices": "question with fewer than two choices",
+      "imageMissing": "image missing"
+    },
+    "next": "Write the ZIP into the dataset with \"python training/import_book_export.py <zip>\" in the question-detector folder, then upload to Drive as usual."
   }
 }

@@ -444,3 +444,17 @@ export interface BookImportCostReport {
   jobs: BookImportCostJob[];
   stages: BookImportCostStage[];
 }
+
+/** Issue #1133: eğitim verisi dışa aktarımının özeti (kuru çalıştırma). */
+export interface BookImportTrainingSummary {
+  pages: number;
+  completePages: number;
+  emptyPages: number;
+  questions: number;
+  /** Şık sayısı → soru sayısı. */
+  choiceCounts: Record<string, number>;
+  books: { jobId: string; bookName: string; pages: number; questions: number; manualPages: number }[];
+  skipped: { jobId: string; bookName: string; filePage: number; reason: BookImportTrainingSkip }[];
+}
+
+export type BookImportTrainingSkip = 'openTest' | 'flagged' | 'noDetection' | 'fewChoices' | 'imageMissing';

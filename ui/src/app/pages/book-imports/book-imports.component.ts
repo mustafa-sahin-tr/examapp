@@ -29,6 +29,7 @@ import { BookImportService } from '../../services/book-import.service';
 import { GradesService } from '../../services/grades.service';
 import { SubjectService } from '../../services/subject.service';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { BookImportTrainingComponent } from './book-import-training.component';
 
 /** Sayfa metinleri kendi Transloco scope'unda: `public/i18n/book-imports/<lang>.json`. */
 export const BOOK_IMPORTS_SCOPE = 'book-imports';
@@ -70,6 +71,7 @@ interface UploadProgress {
     MatProgressBarModule,
     MatProgressSpinnerModule,
     MatSelectModule,
+    BookImportTrainingComponent,
     PageHeaderComponent,
     ReactiveFormsModule,
     RouterLink,
@@ -92,6 +94,8 @@ export class BookImportsComponent implements OnInit {
 
   /** Gerçek yükleme içerik ekibinde ve (#1087) planında `book-import` olan öğretmende; diğerleri demo görür. */
   readonly canUpload = signal(false);
+  /** #1133: eğitim verisi kartı. */
+  readonly isAdmin = this.auth.hasRealmRole('Admin');
   readonly demo = signal<BookImportDemo | null>(null);
   readonly startingDemo = signal(false);
   readonly demoError = signal<'limitReached' | 'unavailable' | 'startFailed' | null>(null);

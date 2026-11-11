@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
@@ -9,6 +11,7 @@ using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Labeling;
 using ExamApp.Api.Services.Labeling;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace ExamApp.Api.Services.BookImport;
 
@@ -40,7 +43,9 @@ public interface IBookImportPageFixService
 /// (eskilerin kırpmaları tekrar sayılmaz), sonra tek transaction'da eskiler silinir ve sıra yeniden yazılır; kayıt başarısızsa
 /// test değişmez.
 /// </summary>
-public sealed class BookImportPageFixService(AppDbContext db, IMinIoService minio, ILabelingBankService bank) : IBookImportPageFixService
+public sealed class BookImportPageFixService(
+    AppDbContext db, IMinIoService minio, ILabelingBankService bank, ILabelingService labeling, ILogger<BookImportPageFixService> logger)
+    : IBookImportPageFixService
 {
     public async Task<BookImportPageFixResult> ReplacePageAsync(BookImportOwner owner, Guid id, int testId, int filePage,
         IReadOnlyList<LabelingBankQuestionDto> questions, CancellationToken ct)
@@ -93,9 +98,10 @@ public sealed class BookImportPageFixService(AppDbContext db, IMinIoService mini
         }).ToList();
 
         var saved = new LabelingImportPageResult(0, [], []);
+        string? image = null;
         if (toSave.Count > 0)
         {
-            var image = await LoadAsync(page);
+            image = await LoadAsync(page);
             saved = await bank.SaveImportedPageAsync(new LabelingImportPageRequest(
                 image, bookId, filePage, job.GradeId, QuestionBankSharing.Private, toSave, oldIds), job.CreateUserId.Value, ct);
         }
@@ -154,6 +160,8 @@ public sealed class BookImportPageFixService(AppDbContext db, IMinIoService mini
             await db.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
         });
+
+        await RecordManualAsync(page, image, questions, owner, ct);
 
         return new(BookImportPageFixError.None, new BookImportPageFixDto
         {
@@ -271,6 +279,48 @@ public sealed class BookImportPageFixService(AppDbContext db, IMinIoService mini
             result.Add(new BookImportReviewFlag(BookImportReviewFlag.CountMismatch, Enumerable.Range(from, to - from + 1).ToList(),
                 Found: found, Expected: expected));
         return result;
+    }
+
+    /// <summary>
+    /// Issue #1133: düzeltilen kutular sayfanın elle doğrulanmış sonucu (<see cref="LabelingSource.Manual"/>) olarak da yazılır;
+    /// eğitim dışa aktarımı Claude sonucu yerine bunu kullanır. Düzeltme yalnız çoktan seçmeli soruları taşır: Claude
+    /// sonucundaki diğer bloklar (etkinlik, bilgi kutusu …) korunur. Yazılamazsa düzeltme geçerli kalır (loglanır).
+    /// </summary>
+    private async Task RecordManualAsync(BookImportPage page, string? image, IReadOnlyList<LabelingBankQuestionDto> questions,
+        BookImportOwner owner, CancellationToken ct)
+    {
+        try
+        {
+            image ??= await LoadAsync(page);
+            var sha = Convert.ToHexStringLower(SHA256.HashData(Convert.FromBase64String(image[(image.IndexOf(',') + 1)..])));
+            var ai = await db.LabelingResults.AsNoTracking()
+                .Where(r => r.Page.ImageSha256 == sha && r.Source == LabelingSource.Ai)
+                .OrderByDescending(r => r.UpdatedAt).Select(r => r.BoxesJson).FirstOrDefaultAsync(ct);
+            var others = ai is null
+                ? []
+                : (JsonSerializer.Deserialize<PredictionListDto>(ai)?.Predictions ?? [])
+                    .Where(p => (p.Kind ?? LabelingBlocks.McqQuestion) != LabelingBlocks.McqQuestion);
+            var predictions = questions.Select(q => new PredictionDto
+            {
+                X = q.X,
+                Y = q.Y,
+                Width = q.Width,
+                Height = q.Height,
+                Kind = LabelingBlocks.McqQuestion,
+                Subpredictions = q.Options.Select(o => new PredictionDto { X = o.X, Y = o.Y, Width = o.Width, Height = o.Height }).ToList(),
+            }).Concat(others).ToList();
+            await labeling.SaveManualAsync(new LabelingSaveManualRequestDto
+            {
+                ImageBase64 = image,
+                Predictions = new PredictionListDto { Predictions = predictions },
+                BaseSource = ai is null ? null : nameof(LabelingSource.Ai),
+            }, new LabelingActor(null, null, owner.IsAdmin), ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Book import fix: manual labeling result for page {FilePage} of job {JobId} could not be saved",
+                page.FilePage, page.JobId);
+        }
     }
 
     private async Task<string> LoadAsync(BookImportPage page)

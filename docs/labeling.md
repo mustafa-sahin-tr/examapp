@@ -234,3 +234,17 @@ tek istekli yüklemedeki yoldan başlatır (`DELETE …/uploads/{id}` bırakır)
 oturum `BookImportUploads` tablosunda (soft-delete yok). Oturuma yalnız sahibi dokunur (Admin dahil, başkasınınki 404); kullanıcı
 başına 3 açık oturum, yenisi en eskisini bırakır. `book-import-upload-sweep` (saatlik, `BookImport:UploadSweepCron`) 24 saatten
 eski oturumları ve parçalarını siler. UI ağ / 5xx hatasında parçayı 3 kez yeniden dener (4xx denenmez), ilerlemeyi "2 / 7" gösterir.
+
+**Issue #1133 — kitap aktarımından eğitim verisi.** `GET /api/exam/book-imports/training-export` (Admin; `jobId` isteğe bağlı,
+boşsa bütün kitap işleri; hızlı ekleme alınmaz). `dryRun=true` (varsayılan) özet döner: sayfa / tam sayfa / sorusuz sayfa / soru
+sayısı, şık dağılımı, kitap başına sayılar ve atlanan sayfalar nedeniyle. `dryRun=false` ZIP: `pages/<page_id>.webp` + `manifest.json`
+(sayfa başına `pageId`, `source`, `complete`, soru kutuları `[x, y, w, h]` + şıklar, sayfa pikseli). Kurallar: sayfa **onaylı** bir
+testin sayfası olmalı ve onaylanmamış (silinen hariç) bir testle paylaşılmamalı (`openTest`); kutular sayfanın `Manual` sonucundan,
+yoksa en son Claude (`Ai`) sonucundan; uyarılı sayfa (`countMismatch` dışı) yalnız `Manual` varsa (`flagged`); Claude sonucunda
+ikiden az şıklı soru varsa atlanır (`fewChoices`); sonuç yok `noDetection`, görsel yok `imageMissing`. Etkinlik bloğu olan sayfa
+`complete=false`: tam sayfa soru modeline girmez (etkinlik "arka plan" öğrenilmesin), yalnız şık kırpmaları. İşaretlemede düzeltme
+(`PUT …/pages/{filePage}/questions`) düzeltilen kutuları sayfanın `Manual` sonucu olarak da yazar (Claude'un mcq dışı blokları
+korunur; yazılamazsa düzeltme geçerli kalır, loglanır). Arayüz: kitap aktarımları sayfasında Admin'e "Eğitim verisi" kartı (özet +
+ZIP indir). Veri setine yazma: `question-detector/training/import_book_export.py <zip> [--dry-run]` (`dataset_store.save_page`;
+`page_id` = görsel SHA-256'sının ilk 16 hanesi, işaretleme ekranıyla aynı; veri setinde olan sayfa atlanır, görsel / hash
+uyuşmazsa sayılır ve yazılmaz). Kitap görselleri yayınevi içeriği: yalnız eğitim için, dışarı paylaşılmaz.

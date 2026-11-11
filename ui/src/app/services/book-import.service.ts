@@ -25,6 +25,7 @@ import {
   BookImportReviewQuestion,
   BookImportQuota,
   BookImportSetup,
+  BookImportTrainingSummary,
   BookImportUploadEvent,
   BookImportUploadSession,
   ConfirmBookImportSetup,
@@ -167,6 +168,16 @@ export class BookImportService {
   /** #1025: hatalı testi yeniden aktar. */
   retryTest(id: string, testId: number): Observable<void> {
     return this.http.post<void>(`${this.baseUrl}/${id}/tests/${testId}/retry`, {});
+  }
+
+  /** #1133 (Admin): eğitim verisi özeti; dosya üretmez. */
+  trainingSummary(): Observable<BookImportTrainingSummary> {
+    return this.http.get<BookImportTrainingSummary>(`${this.baseUrl}/training-export`);
+  }
+
+  /** #1133 (Admin): sayfa görselleri + manifest.json ZIP'i (question-detector `training/import_book_export.py`). */
+  trainingZip(): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/training-export`, { params: { dryRun: false }, responseType: 'blob' });
   }
 
   /** #1025: bütün hatalı testleri yeniden aktar. */

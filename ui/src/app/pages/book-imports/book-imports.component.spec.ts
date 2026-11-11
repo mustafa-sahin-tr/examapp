@@ -237,6 +237,12 @@ describe('BookImportsComponent (#1018)', () => {
     expect(text()).toContain(tr.demo.start);
     expect(text()).not.toContain(tr.new);
     expect(api.quota).not.toHaveBeenCalled();
+    expect(el().querySelector('app-book-import-training')).toBeNull();
+  });
+
+  it('admin_SeesTheTrainingDataCard (#1133)', () => {
+    setup();
+    expect(el().querySelector('app-book-import-training')).not.toBeNull();
   });
 
   it('teacher_StartDemo_OpensTheDemoJob (#1032)', () => {

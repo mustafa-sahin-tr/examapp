@@ -516,6 +516,13 @@ builder.Services.AddOptions<ExamApp.Api.Services.Entitlements.ParentPlanEndingRe
     .ValidateDataAnnotations()
     .ValidateOnStart();
 builder.Services.AddScoped<ExamApp.Api.Services.Entitlements.IParentPlanEndingReminderJob, ExamApp.Api.Services.Entitlements.ParentPlanEndingReminderJob>();
+// issue #1110: 1 Ağustos sınıf atlaması (Hangfire, her gece; iş yalnız atlama haftasında) + admin geri alma.
+builder.Services.AddOptions<ExamApp.Api.Services.GradePromotion.StudentGradePromotionOptions>()
+    .BindConfiguration(ExamApp.Api.Services.GradePromotion.StudentGradePromotionOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddScoped<ExamApp.Api.Services.GradePromotion.IStudentGradePromotionJob, ExamApp.Api.Services.GradePromotion.StudentGradePromotionJob>();
+builder.Services.AddScoped<ExamApp.Api.Services.GradePromotion.IStudentGradePromotionService, ExamApp.Api.Services.GradePromotion.StudentGradePromotionService>();
 // issue #424: veli erişim kaydı saklama süresi (KVKK) — ParentAccessAudit:RetentionDays (varsayılan 180), günlük Hangfire temizliği;
 // admin okuma yüzeyi GET api/admin/parent-access-audits.
 builder.Services.AddOptions<ExamApp.Api.Services.Parents.ParentAccessAuditOptions>()
@@ -897,6 +904,12 @@ RecurringJob.AddOrUpdate<ExamApp.Api.Services.Entitlements.IParentPlanEndingRemi
     ExamApp.Api.Services.Entitlements.ParentPlanEndingReminderJob.RecurringJobId,
     j => j.RunAsync(CancellationToken.None),
     app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Entitlements.ParentPlanEndingReminderOptions>>().Value.Cron);
+
+// issue #1110: her yıl 1 Ağustos'ta (Europe/Istanbul) öğrencileri bir üst sınıfa taşır; telafi için ilk hafta her gece.
+RecurringJob.AddOrUpdate<ExamApp.Api.Services.GradePromotion.IStudentGradePromotionJob>(
+    ExamApp.Api.Services.GradePromotion.StudentGradePromotionJob.RecurringJobId,
+    j => j.RunAsync(CancellationToken.None),
+    app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.GradePromotion.StudentGradePromotionOptions>>().Value.Cron);
 
 // issue #424: ParentAccessAudits saklama süresi (KVKK) — süresi dolan satırları günlük, parti parti siler.
 RecurringJob.AddOrUpdate<ExamApp.Api.Services.Parents.IParentAccessAuditRetentionJob>(

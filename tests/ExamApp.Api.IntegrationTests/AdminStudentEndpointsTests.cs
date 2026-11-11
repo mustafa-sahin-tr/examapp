@@ -142,4 +142,42 @@ public class AdminStudentEndpointsTests(IntegrationApiFactory factory) : Integra
         (await admin.GetAsync("/api/admin/students?schoolId=1&unassigned=true"))
             .StatusCode.ShouldBe(HttpStatusCode.BadRequest);
     }
+
+    /// <summary>Issue #1110: liste geri alınabilir sınıf atlamasını gösterir; geri alma öğrenciyi eski sınıfına döndürür, ikincisi 404.</summary>
+    [Fact]
+    public async Task Admin_reverts_a_grade_promotion_issue1110()
+    {
+        var (studentId, fromGrade) = await WithDbAsync(async db =>
+        {
+            var seventh = new Grade { Name = "7. Sınıf" };
+            var eighth = new Grade { Name = "8. Sınıf" };
+            db.Grades.AddRange(seventh, eighth);
+            await db.SaveChangesAsync();
+            var student = new Student { UserId = 4100, StudentNumber = "P4100", GradeId = eighth.Id };
+            db.Students.Add(student);
+            await db.SaveChangesAsync();
+            db.StudentGradePromotions.Add(new StudentGradePromotion
+            {
+                StudentId = student.Id, Year = 2026, FromGradeId = seventh.Id, ToGradeId = eighth.Id, PromotedAtUtc = DateTime.UtcNow,
+            });
+            await db.SaveChangesAsync();
+            return (student.Id, seventh.Id);
+        });
+        var admin = await ClientAsAsync(2, "Admin", NewAdminSub(), realmRoles: "Admin");
+
+        var listed = (await admin.GetFromJsonAsync<Paged<AdminStudentListItemDto>>("/api/admin/students?pageSize=1000", Json))!
+            .Items.Single(i => i.Id == studentId);
+        (listed.PromotionYear, listed.PromotedFromGradeName).ShouldBe(((int?)2026, "7. Sınıf"));
+
+        (await admin.PostAsync($"/api/admin/students/{studentId}/grade-promotion/revert", null)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        (await WithDbAsync(db => Task.FromResult(db.Students.Single(s => s.Id == studentId).GradeId))).ShouldBe(fromGrade);
+        (await admin.PostAsync($"/api/admin/students/{studentId}/grade-promotion/revert", null)).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+
+        var after = (await admin.GetFromJsonAsync<Paged<AdminStudentListItemDto>>("/api/admin/students?pageSize=1000", Json))!
+            .Items.Single(i => i.Id == studentId);
+        after.PromotionYear.ShouldBeNull();
+
+        var teacher = await ClientAsAsync(1, "Teacher", "kc-teacher", realmRoles: "Teacher");
+        (await teacher.PostAsync($"/api/admin/students/{studentId}/grade-promotion/revert", null)).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
 }

@@ -87,7 +87,9 @@ public enum AdminUserAction
     /// <summary>issue #361: öğrencinin bekleyen okul üyeliği reddedildi (Students.SchoolId temizlendi). Aktör admin ya da aynı okulun onaylı öğretmeni.</summary>
     StudentSchoolRejected = 15,
     /// <summary>issue #436: admin bir veli–öğrenci bağlantısını kopardı (<see cref="AdminUserTargetType.ParentLink"/>).</summary>
-    ParentLinkRevoked = 16
+    ParentLinkRevoked = 16,
+    /// <summary>issue #1110: admin öğrencinin 1 Ağustos sınıf atlamasını geri aldı (sınıfta kaldı).</summary>
+    GradePromotionReverted = 17
 }
 
 /// <summary>Admin hesap aksiyonunun sonucu. Kalıcı değer string'dir.</summary>

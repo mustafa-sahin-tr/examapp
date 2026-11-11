@@ -80,7 +80,8 @@ describe('AdminStudentsComponent', () => {
             getStudents: vi.fn().mockName("AdminService.getStudents"),
             resetPassword: vi.fn().mockName("AdminService.resetPassword"),
             setAccountStatus: vi.fn().mockName("AdminService.setAccountStatus"),
-            changeStudentSchool: vi.fn().mockName("AdminService.changeStudentSchool")
+            changeStudentSchool: vi.fn().mockName("AdminService.changeStudentSchool"),
+            revertGradePromotion: vi.fn().mockName("AdminService.revertGradePromotion")
         } as unknown as MockedObject<AdminService>;
         
         adminService.getStudents.mockReturnValue(of(paged([student()], 45)));
@@ -820,5 +821,63 @@ describe('AdminStudentsComponent', () => {
         expect(component.rows()[0].noSchool).toBe(false);
         expect(component.rows()[0].schoolId).toBe(8);
         expect(cellTexts('school')).toEqual(['İzmir Lisesi']);
+    });
+
+    // ── Sınıf atlamasını geri alma (#1110) ─────────────────────────────────
+
+    function confirmButton(): HTMLButtonElement {
+        return TestBed.inject(OverlayContainer).getContainerElement().querySelector<HTMLButtonElement>('button.confirm-btn')!;
+    }
+
+    it('revertPromotion_OnlyRowsWithAPromotionHaveTheAction_issue1110', () => {
+        configure();
+        adminService.getStudents.mockReturnValue(of(paged([
+            student(),
+            student({ id: 8, gradeName: '8. Sınıf', promotionYear: 2027, promotedFromGradeName: '7. Sınıf' }),
+        ])));
+        create();
+
+        expect(rowMenuItems('revert-promotion').length).toBe(1);
+    });
+
+    it('revertPromotion_Confirm_RevertsAndShowsTheOldGradeWithoutReload_issue1110', async () => {
+        configure();
+        adminService.getStudents.mockReturnValue(of(paged([
+            student({ gradeName: '8. Sınıf', promotionYear: 2027, promotedFromGradeName: '7. Sınıf' }),
+        ])));
+        adminService.revertGradePromotion.mockReturnValue(of(undefined));
+        create();
+        adminService.getStudents.mockClear();
+
+        rowMenuItems('revert-promotion')[0].click();
+        await settle();
+        expect(TestBed.inject(OverlayContainer).getContainerElement().textContent).toContain('7. Sınıf');
+        expect(adminService.revertGradePromotion).not.toHaveBeenCalled();
+        confirmButton().click();
+        await settle();
+
+        expect(adminService.revertGradePromotion).toHaveBeenCalledWith(7);
+        expect(cellTexts('grade')).toEqual(['7. Sınıf']);
+        expect(component.rows()[0].promotion).toBeNull();
+        expect(adminService.getStudents).not.toHaveBeenCalled();
+        expect(component.promotionBusy()).toBe(false);
+    });
+
+    it('revertPromotion_Conflict_ReloadsTheList_issue1110', async () => {
+        configure();
+        adminService.getStudents.mockReturnValue(of(paged([
+            student({ gradeName: '8. Sınıf', promotionYear: 2027, promotedFromGradeName: '7. Sınıf' }),
+        ])));
+        adminService.revertGradePromotion.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 409 })));
+        create();
+        adminService.getStudents.mockClear();
+
+        rowMenuItems('revert-promotion')[0].click();
+        await settle();
+        confirmButton().click();
+        await settle();
+
+        expect(adminService.getStudents).toHaveBeenCalledTimes(1);
+        expect(component.promotionBusy()).toBe(false);
     });
 });

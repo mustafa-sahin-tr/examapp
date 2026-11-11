@@ -267,6 +267,14 @@ export class AdminService {
   }
 
   /**
+   * Issue #1110 — öğrencinin (Student.Id) son 1 Ağustos sınıf atlamasını geri alır (sınıfta kaldı). 204; geri alınabilir atlama
+   * yok → 404; sınıf atlamadan sonra değiştiyse → 409.
+   */
+  revertGradePromotion(studentId: number): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/students/${studentId}/grade-promotion/revert`, null);
+  }
+
+  /**
    * Issue #313 — öğretmeni (Teacher.Id) okula bağlar / okulunu değiştirir. Bağımsız öğretmenin bağımsız profili değişmez;
    * yalnız okul yazılır. Hatalar: 400, 403, 404, 409 (eşzamanlı değişiklik → listeyi yenileyip tekrar dene),
    * 429 (`Retry-After`), 502 (okul değişmedi).

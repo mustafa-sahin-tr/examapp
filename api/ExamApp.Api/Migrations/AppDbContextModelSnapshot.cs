@@ -5210,6 +5210,43 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("StudentDailyXps");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.StudentGradePromotion", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("FromGradeId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("PromotedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("RevertedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("RevertedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ToGradeId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentId", "Year")
+                        .IsUnique();
+
+                    b.ToTable("StudentGradePromotions");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.StudentMistakeReason", b =>
                 {
                     b.Property<int>("Id")
@@ -10776,6 +10813,15 @@ namespace ExamApp.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.StudentGradePromotion", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Student", null)
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.StudentMistakeReason", b =>

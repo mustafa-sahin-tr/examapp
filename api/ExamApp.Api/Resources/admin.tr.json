@@ -66,7 +66,6 @@
     "userList": {
       "rateLimited": "Kısa sürede çok fazla liste isteği yapıldı. Lütfen biraz bekleyip tekrar deneyin."
     },
-
     "dashboard": {
       "invalidDays": "days 1 ile 365 arasında olmalı."
     },
@@ -74,7 +73,6 @@
       "invalidRange": "from, to'dan önce olmalı.",
       "rangeTooLong": "from/to aralığı en fazla {0} gün olabilir."
     },
-
     "teacherApplication": {
       "invalidStatusFilter": "\"status\" yalnızca \"pending\" veya \"all\" olabilir.",
       "notFound": "Başvuru bulunamadı.",
@@ -86,6 +84,10 @@
       "rejectReasonRequired": "Red nedeni boş olamaz.",
       "rejectReasonTooLong": "Red nedeni en fazla {0} karakter olabilir.",
       "rejectReasonMaxLength": "Red nedeni en fazla 500 karakter olabilir."
+    },
+    "gradePromotion": {
+      "notFound": "Bu öğrencinin geri alınabilecek bir sınıf atlaması yok.",
+      "gradeChanged": "Öğrencinin sınıfı atlamadan sonra değişmiş; geri alma yapılmadı."
     }
   }
 }

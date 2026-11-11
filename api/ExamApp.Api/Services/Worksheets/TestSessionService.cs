@@ -106,7 +106,7 @@ public class TestSessionService : ITestSessionService
     {
         var worksheet = await _context.Worksheets
             .Where(w => w.Id == testId)
-            .Select(w => new { w.Id, w.GradeId, w.StudentVisibility, w.MaxDurationSeconds, w.Kind })
+            .Select(w => new { w.Id, w.GradeId, w.StudentVisibility, w.MaxDurationSeconds, w.Kind, w.SubjectId })
             .FirstOrDefaultAsync();
 
         if (worksheet == null)
@@ -150,6 +150,11 @@ public class TestSessionService : ITestSessionService
         var existing = await ExistingInstanceResultAsync(student.Id, testId);
         if (existing != null)
             return existing;
+
+        // Issue #1109: tek ders planında öğrencinin kendi açtığı test, etkinlik ve deneme oturumu planın dersinden olmalı;
+        // atanan iş daralmaz. Hak sayımından önce: kapsam dışı istek hak harcamaz.
+        if (!hasActiveAssignment)
+            await EnsureInPlanScopeAsync(testId, worksheet.SubjectId, openMockExamSession, student.Id);
 
         // Issue #1031 / #1089: yeni oturum açılırken. Öğrencinin kendi seçtiği iş planına sayılır (deneme, test, etkinlik); atanan iş
         // sayılmaz (öğretmen atadı), kalan oturuma dönmek de.
@@ -291,6 +296,28 @@ public class TestSessionService : ITestSessionService
     }
 
     private sealed record PlanUsage(int UserId, string FeatureKey, string ReferenceKey);
+
+    /// <summary>
+    /// Issue #1109: deneme oturumu birden çok dersi taşıyabilir; bütün soruları planın dersindense açılır (o dersin oturumu).
+    /// Test ve etkinlikte sayfanın dersine bakılır; dersi olmayan sayfa kapsamda sayılır.
+    /// </summary>
+    private async Task EnsureInPlanScopeAsync(int worksheetId, int? subjectId, bool mockExamSession, int studentId)
+    {
+        if (_entitlements is null)
+            return;
+
+        var userId = await _context.Students.AsNoTracking().Where(s => s.Id == studentId).Select(s => s.UserId).FirstAsync();
+        var scope = await StudyScope.ForAsync(_entitlements, userId);
+        if (scope.SubjectId is not { } planSubjectId)
+            return;
+
+        var outside = mockExamSession
+            ? await _context.TestQuestions.AsNoTracking()
+                .AnyAsync(tq => tq.TestId == worksheetId && tq.Question.SubjectId != null && tq.Question.SubjectId != planSubjectId)
+            : !scope.Covers(subjectId);
+        if (outside)
+            throw new StudyScopeException(planSubjectId, scope.PlanKey);
+    }
 
     /// <summary>Unique index adı — <see cref="AppDbContext"/> (StudentId, WorksheetId) filtreli unique index'i.</summary>
     internal const string LiveInstanceUniqueIndexName = "IX_TestInstances_StudentId_WorksheetId";

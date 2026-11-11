@@ -608,6 +608,11 @@ public class ExamController : BaseController
 
             return Ok(result);
         }
+        catch (StudyScopeException ex)
+        {
+            // Issue #1109: tek ders planı, kendi açtığı başka ders testi / etkinliği / deneme oturumu.
+            return EntitlementLimitResponse.OutOfScope(ex.ScopeSubjectId, ex.PlanKey);
+        }
         catch (EntitlementLimitException ex) when (ex.FeatureKey == EntitlementFeatures.MockExam)
         {
             return EntitlementLimitResponse.Create(ex.FeatureKey, ex.Check, _localizer["exam.mockExamLimitReached"].Value);

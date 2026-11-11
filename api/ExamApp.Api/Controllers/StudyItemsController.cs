@@ -44,6 +44,15 @@ public class StudyItemsController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (await DenyStudentWithoutStudyToolsAsync(user, entitlements) is { } denied)
             return denied;
+
+        // #1109: tek ders planında öğrencinin listesi o derse daralır (başka dersin konusu boş döner); başka ders 403.
+        if (await StudentScopeAsync(user, entitlements) is { SubjectId: not null } scope)
+        {
+            if (!scope.Covers(filter.SubjectId))
+                return EntitlementLimitResponse.OutOfScope(scope.SubjectId.Value, scope.PlanKey);
+            filter.SubjectId ??= scope.SubjectId;
+        }
+
         var result = await _studyItemService.GetPagedAsync(filter, user);
         return Ok(result);
     }
@@ -61,6 +70,8 @@ public class StudyItemsController : BaseController
         {
             return NotFound();
         }
+        if (await StudentScopeAsync(user, entitlements) is { } scope && !scope.Covers(result.SubjectId))
+            return EntitlementLimitResponse.OutOfScope(scope.SubjectId!.Value, scope.PlanKey);
         return Ok(result);
     }
 
@@ -187,6 +198,12 @@ public class StudyItemsController : BaseController
         }
         return Ok(result);
     }
+
+    /// <summary>Issue #1109: öğrencinin plan kapsamı; öğretmende null (daralmaz).</summary>
+    private async Task<StudyScope?> StudentScopeAsync(UserProfileDto user, IEntitlementService entitlements) =>
+        IsResolvedUser(user) && User.IsInRole("Student")
+            ? await StudyScope.ForAsync(entitlements, user.Id, HttpContext.RequestAborted)
+            : null;
 
     /// <summary>Issue #1089: öğrenci çalışma sayfalarını planında <c>study-tools</c> varsa görür; öğretmen plana bakmaz.</summary>
     private async Task<IActionResult?> DenyStudentWithoutStudyToolsAsync(UserProfileDto user, IEntitlementService entitlements)

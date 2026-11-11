@@ -1,3 +1,4 @@
+using ExamApp.Api.Helpers;
 using System.Text.Json;
 using ExamApp.Api.Data;
 using ExamApp.Api.Services.Entitlements;
@@ -77,8 +78,8 @@ public sealed class PlacementService(AppDbContext db, IParentChildAccess access,
                 AttemptCount = db.PlacementAttempts.Count(a => a.PlacementTestId == t.Id),
             })
             .ToDictionaryAsync(t => t.GradeId, ct);
-        var grades = await db.Grades.AsNoTracking().OrderBy(g => g.Id).Select(g => new { g.Id, g.Name }).ToListAsync(ct);
-        return grades.Select(g => tests.TryGetValue(g.Id, out var t)
+        var grades = await db.Grades.AsNoTracking().Select(g => new { g.Id, g.Code, g.Name }).ToListAsync(ct);
+        return GradeOrder.Sort(grades, g => g.Code, g => g.Name, g => g.Id).Select(g => tests.TryGetValue(g.Id, out var t)
                 ? new AdminPlacementTestDto
                 {
                     GradeId = g.Id, GradeName = g.Name, QuestionCount = t.QuestionCount, GeneratedAtUtc = t.GeneratedAtUtc,

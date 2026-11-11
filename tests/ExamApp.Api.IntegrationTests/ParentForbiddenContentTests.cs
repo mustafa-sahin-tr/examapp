@@ -105,6 +105,10 @@ public class ParentForbiddenContentTests(IntegrationApiFactory factory) : Integr
             };
             db.Teachers.Add(teacher);
             await db.SaveChangesAsync();
+            // #1112: plana bağlı uçlar (haftalık rapor Essential+) taramada 200 dönsün: çocuk Pro.
+            var proPlanId = await db.SubscriptionPlans.Where(x => x.Key == SubscriptionPlan.StudentProKey).Select(x => x.Id).SingleAsync();
+            db.UserSubscriptionPlans.Add(new UserSubscriptionPlan { UserId = StudentUser, PlanId = proPlanId, ValidFromUtc = now.AddDays(-1) });
+            await db.SaveChangesAsync();
 
             // issue #436: birincil veli (çocuğun hesabını açan) + birincil velinin onayladığı ikinci veli (Active, birincil değil).
             var primaryLink = new ParentStudentLink

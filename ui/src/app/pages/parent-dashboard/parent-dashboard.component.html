@@ -194,6 +194,7 @@
         </mat-tab>
         <mat-tab [label]="t('tabs.plan')">
           <ng-template matTabContent>
+            <app-parent-child-placement [studentId]="studentId" />
             <app-parent-child-plan [studentId]="studentId" (notFound)="onChildNotFound()" (changed)="onPlanChanged()" />
           </ng-template>
         </mat-tab>

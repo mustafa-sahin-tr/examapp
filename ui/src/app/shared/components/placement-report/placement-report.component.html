@@ -1,0 +1,63 @@
+@let r = report();
+<section class="pr" *transloco="let t; prefix: 'placement'" data-testid="placement-report">
+  <h3 class="pr__title">{{ heading() ?? t('report.title') }}</h3>
+  <p class="pr__score" data-testid="placement-score">
+    {{ t('report.score', { correct: r.correct, total: r.total, percent: r.percent }) }}
+  </p>
+  <mat-progress-bar mode="determinate" [value]="r.percent" [attr.aria-label]="t('report.title')" />
+
+  <h4>{{ t('report.subjects') }}</h4>
+  <ul class="pr__subjects">
+    @for (s of r.subjects; track s.subjectId) {
+      <li data-testid="placement-subject">
+        <span>{{ s.subjectName }}</span>
+        <span class="pr__muted">{{ s.correct }} / {{ s.total }} (%{{ s.percent }})</span>
+      </li>
+    }
+  </ul>
+
+  <div class="pr__topics">
+    <div>
+      <h4><mat-icon aria-hidden="true">thumb_up</mat-icon>{{ t('report.strong') }}</h4>
+      <ul data-testid="placement-strong">
+        @for (tp of r.strongTopics; track tp.topicId) {
+          <li>
+            {{ tp.topicName }} <span class="pr__muted">{{ tp.subjectName }}</span>
+          </li>
+        } @empty {
+          <li class="pr__muted">{{ t('report.none') }}</li>
+        }
+      </ul>
+    </div>
+    <div>
+      <h4><mat-icon aria-hidden="true">construction</mat-icon>{{ t('report.weak') }}</h4>
+      <ul data-testid="placement-weak">
+        @for (tp of r.weakTopics; track tp.topicId) {
+          <li>
+            {{ tp.topicName }} <span class="pr__muted">{{ tp.subjectName }}</span>
+          </li>
+        } @empty {
+          <li class="pr__muted">{{ t('report.none') }}</li>
+        }
+      </ul>
+    </div>
+  </div>
+
+  <div class="pr__suggestion" data-testid="placement-suggestion">
+    <h4><mat-icon aria-hidden="true">workspace_premium</mat-icon>{{ t('report.suggestion') }}</h4>
+    <p class="pr__plan">
+      @if (r.suggestion.subjectName) {
+        {{ t('report.tierSubject', { tier: t('tier.' + r.suggestion.tier), subject: r.suggestion.subjectName }) }}
+      } @else {
+        {{ t('report.tierAll', { tier: t('tier.' + r.suggestion.tier) }) }}
+      }
+    </p>
+    <p class="pr__muted">{{ t('report.reason.' + r.suggestion.tier) }}</p>
+    @if (audience() === 'student') {
+      <p class="pr__muted">{{ t('report.askParent') }}</p>
+      <a mat-flat-button color="primary" routerLink="/plans" data-testid="placement-see-plans">{{
+        t('report.seePlans')
+      }}</a>
+    }
+  </div>
+</section>

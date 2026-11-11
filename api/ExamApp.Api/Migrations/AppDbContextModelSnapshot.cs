@@ -3436,6 +3436,121 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("Passage");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.PlacementAttempt", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AnswersJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("CorrectCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("GradeId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PlacementTestId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ReportJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("SubmittedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("TotalCount")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentId", "GradeId")
+                        .IsUnique();
+
+                    b.ToTable("PlacementAttempts");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.PlacementTest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("GeneratedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("GradeId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("PublishedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GradeId")
+                        .IsUnique();
+
+                    b.ToTable("PlacementTests");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.PlacementTestQuestion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PlacementTestId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("QuestionId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuestionId");
+
+                    b.HasIndex("PlacementTestId", "QuestionId")
+                        .IsUnique();
+
+                    b.ToTable("PlacementTestQuestions");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.PracticeSession", b =>
                 {
                     b.Property<int>("Id")
@@ -10995,6 +11110,47 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Student");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.PlacementAttempt", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.PlacementTest", b =>
+                {
+                    b.HasOne("Grade", "Grade")
+                        .WithMany()
+                        .HasForeignKey("GradeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Grade");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.PlacementTestQuestion", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.PlacementTest", "PlacementTest")
+                        .WithMany("Questions")
+                        .HasForeignKey("PlacementTestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ExamApp.Api.Data.Question", "Question")
+                        .WithMany()
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PlacementTest");
+
+                    b.Navigation("Question");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.PracticeSession", b =>
                 {
                     b.HasOne("Grade", "Grade")
@@ -12016,6 +12172,11 @@ namespace ExamApp.Api.Migrations
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Passage", b =>
+                {
+                    b.Navigation("Questions");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.PlacementTest", b =>
                 {
                     b.Navigation("Questions");
                 });

@@ -1,0 +1,79 @@
+<div class="placement" *transloco="let t; prefix: 'placement'">
+  <app-page-header icon="quiz" [title]="t('title')" [description]="t('subtitle')" />
+  @switch (view()) {
+    @case ('loading') {
+      <mat-spinner diameter="40" />
+    }
+    @case ('error') {
+      <p role="alert">{{ t('loadError') }}</p>
+      <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+    }
+    @case ('unavailable') {
+      <p data-testid="placement-unavailable">{{ t('notAvailable') }}</p>
+    }
+    @case ('intro') {
+      <div class="placement__intro">
+        <p>{{ t('intro', { grade: status()?.gradeName ?? '', count: status()?.questionCount ?? 0 }) }}</p>
+        <button mat-flat-button color="primary" type="button" (click)="start()" data-testid="placement-start">
+          {{ t('start') }}
+        </button>
+      </div>
+    }
+    @case ('questions') {
+      <p class="placement__progress" aria-live="polite">
+        {{ t('answered', { answered: answeredCount(), total: questions().length }) }}
+      </p>
+      <ol class="placement__questions">
+        @for (q of questions(); track q.id; let i = $index) {
+          <li class="placement__question" data-testid="placement-question">
+            <p class="placement__label">
+              {{ t('questionLabel', { number: i + 1 }) }}
+              @if (q.subjectName) {
+                <span class="placement__subject">{{ q.subjectName }}</span>
+              }
+            </p>
+            @if (q.imageUrl) {
+              <img [src]="q.imageUrl" [alt]="t('questionImage')" loading="lazy" />
+            }
+            @if (q.text && q.text !== '?') {
+              <p class="placement__text">{{ q.text }}</p>
+            }
+            <mat-radio-group
+              [attr.aria-label]="t('questionLabel', { number: i + 1 })"
+              [value]="answers()[q.id]"
+              (change)="choose(q.id, $event.value)"
+            >
+              @for (o of q.options; track o.id; let j = $index) {
+                <mat-radio-button [value]="o.id" data-testid="placement-option">
+                  <span class="placement__tag">{{ 'ABCDE'[j] }})</span>
+                  @if (o.imageUrl) {
+                    <img [src]="o.imageUrl" [alt]="t('optionImage')" loading="lazy" />
+                  }
+                  {{ o.text }}
+                </mat-radio-button>
+              }
+            </mat-radio-group>
+          </li>
+        }
+      </ol>
+      @if (submitError()) {
+        <p role="alert">{{ t('submitError') }}</p>
+      }
+      <button
+        mat-flat-button
+        color="primary"
+        type="button"
+        [disabled]="submitting()"
+        (click)="submit()"
+        data-testid="placement-submit"
+      >
+        {{ t('submit') }}
+      </button>
+    }
+    @case ('report') {
+      @if (report(); as r) {
+        <app-placement-report [report]="r" audience="student" />
+      }
+    }
+  }
+</div>

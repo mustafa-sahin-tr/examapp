@@ -1,0 +1,9 @@
+{
+  "placement": {
+    "notAvailable": "Sınıfın için seviye tespit testi henüz hazır değil.",
+    "alreadyTaken": "Seviye tespit testini zaten çözdün; raporun hazır.",
+    "notTaken": "Seviye tespit testini henüz çözmedin.",
+    "invalidAnswers": "Cevaplar bu teste ait değil.",
+    "notEnoughQuestions": "Bu sınıfın derslerinde soru bankasında yeterli çoktan seçmeli soru yok."
+  }
+}

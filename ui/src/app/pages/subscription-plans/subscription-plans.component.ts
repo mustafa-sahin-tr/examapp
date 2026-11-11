@@ -5,9 +5,11 @@ import { RouterLink } from '@angular/router';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 
 import { PARENT_REQUIRED_PATH } from '../../models/parent-status.model';
+import { PlacementStatus } from '../../models/placement.model';
 import { CurrentSubscriptionPlan, planNameKey } from '../../models/subscription';
 import { AuthService } from '../../services/auth.service';
 import { EntitlementStateService } from '../../services/entitlement-state.service';
+import { PlacementService } from '../../services/placement.service';
 import { StudentParentService } from '../../services/student-parent.service';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { PlanPickerComponent } from '../../shared/components/plan-picker/plan-picker.component';
@@ -20,7 +22,7 @@ import { PlanPickerComponent } from '../../shared/components/plan-picker/plan-pi
   selector: 'app-subscription-plans',
   standalone: true,
   imports: [MatButtonModule, MatIconModule, RouterLink, TranslocoDirective, PageHeaderComponent, PlanPickerComponent],
-  providers: [provideTranslocoScope('subscription')],
+  providers: [provideTranslocoScope('subscription', 'placement')],
   templateUrl: './subscription-plans.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './subscription-plans.component.scss',
@@ -42,6 +44,8 @@ export class SubscriptionPlansComponent {
   /** Bağlı (aktif) velisi yok: plan seçimi için önce veli eklenir (#440 akışı). */
   readonly needsParent = signal(false);
   readonly parentRequiredLink = '/' + PARENT_REQUIRED_PATH;
+  /** Issue #1114: öğrencinin sınıfı için yayımlanmış seviye tespiti (çözülmüşse rapora gider). */
+  readonly placement = signal<PlacementStatus | null>(null);
 
   constructor() {
     this.entitlements.load().subscribe();
@@ -49,6 +53,11 @@ export class SubscriptionPlansComponent {
       inject(StudentParentService)
         .ensureLoaded()
         .subscribe((status) => this.needsParent.set(!!status && status.mode !== 'Ok'));
+    }
+    if (this.auth.hasRealmRole('Student')) {
+      inject(PlacementService)
+        .status()
+        .subscribe({ next: (status) => this.placement.set(status.available ? status : null), error: () => this.placement.set(null) });
     }
   }
 

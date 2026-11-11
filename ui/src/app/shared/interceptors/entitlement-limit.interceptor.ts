@@ -50,7 +50,8 @@ export class EntitlementLimitHandler {
   showLocked(): void {
     if (!this.entitlements.plan()?.locked) this.entitlements.load(true).subscribe();
     const path = this.router.url.split('?')[0];
-    if (path === '/plans' || path === '/subscription') return;
+    // Issue #1114: seviye tespiti de kilitliyken açık.
+    if (path === '/plans' || path === '/subscription' || path === '/placement') return;
     void this.router.navigateByUrl('/plans');
   }
 }

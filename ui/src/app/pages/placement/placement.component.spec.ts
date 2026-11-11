@@ -108,6 +108,26 @@ describe('PlacementComponent (issue #1114)', () => {
     expect(q(el, 'placement-see-plans')!.getAttribute('href')).toBe('/plans');
   });
 
+  it('does not repeat the letter on image options (kitap kırpımında harf görselde)', () => {
+    const imageQuestion: PlacementQuestion = {
+      ...questions[0],
+      options: [
+        { id: 11, text: 'A', imageUrl: 'https://x/a.png' },
+        { id: 12, text: '5', imageUrl: null },
+      ],
+    };
+    const { fixture, el } = create(available, { questions: vi.fn().mockReturnValue(of([imageQuestion])) });
+    q(el, 'placement-start')!.click();
+    fixture.detectChanges();
+
+    const [imageOption, textOption] = Array.from(el.querySelectorAll<HTMLElement>('[data-testid="placement-option"]'));
+    expect(imageOption.querySelector('.placement__tag')).toBeNull();
+    expect(imageOption.querySelector('img')!.getAttribute('alt')).toContain('A');
+    expect(imageOption.textContent!.trim()).toBe('');
+    expect(textOption.querySelector('.placement__tag')!.textContent).toBe('B)');
+    expect(textOption.textContent).toContain('5');
+  });
+
   it('keeps the answers when the blank-question warning is dismissed', () => {
     const { fixture, el, api } = create(available, {}, false);
     q(el, 'placement-start')!.click();

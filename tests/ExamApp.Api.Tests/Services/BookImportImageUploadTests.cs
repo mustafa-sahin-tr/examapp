@@ -72,9 +72,10 @@ public class BookImportImageUploadTests : IDisposable
         return await action(new BookImportService(ctx, _minio, _jobs, _entitlements, new BookRegistryService(ctx, TimeProvider.System), config));
     }
 
-    private Task<BeginBookImportUploadResult> Begin(int images, int maxPages = 600) =>
+    private Task<BeginBookImportUploadResult> Begin(int images, int maxPages = 600,
+        BookImportSource source = BookImportSource.Images) =>
         As(s => s.BeginUploadAsync(BookImportOwner.Create(41),
-            new BeginBookImportUploadRequest("Fen 5", _gradeId, null, "fen-5", 0, BookImportSource.Images, images), default), maxPages);
+            new BeginBookImportUploadRequest("Fen 5", _gradeId, null, "fen-5", 0, source, images), default), maxPages);
 
     private Task<BookImportUploadPartResult> Put(Guid id, int n, byte[] bytes) =>
         As(s => s.UploadPartAsync(BookImportOwner.Create(41), id, n, new MemoryStream(bytes), default));
@@ -157,6 +158,17 @@ public class BookImportImageUploadTests : IDisposable
         (await Put(id, 3, Image(1200, 1700))).ShouldBe(BookImportUploadPartResult.InvalidPart);
         (await Put(id, 0, Image(1200, 1700))).ShouldBe(BookImportUploadPartResult.InvalidPart);
         _objects.Keys.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task A_loose_question_image_only_needs_the_lower_width()
+    {
+        var id = (await Begin(2, source: BookImportSource.LooseImages)).Upload!.Id;
+
+        // Tek soru kırpımı tam sayfa eşiğinin altında kabul edilir; okunaksız küçük görsel yine reddedilir.
+        (await Put(id, 1, Image(620, 440))).ShouldBe(BookImportUploadPartResult.Ok);
+        (await Put(id, 2, Image(BookImportService.MinLooseImageWidth - 1, 300)))
+            .ShouldBe(BookImportUploadPartResult.LooseImageTooSmall);
     }
 
     [Fact]

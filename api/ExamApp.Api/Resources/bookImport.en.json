@@ -11,6 +11,7 @@
     "invalidSubject": "Choose a valid subject.",
     "notImage": "The file is not a JPEG, PNG or WebP image.",
     "imageTooSmall": "The page image is too small; it must be at least {0} pixels wide.",
+    "looseImageTooSmall": "The question image is too small; it must be at least {0} pixels wide.",
     "tooManyPages": "The number of images is outside the page limit.",
     "notPdf": "The file is not a PDF.",
     "fileTooLarge": "The file is too large.",

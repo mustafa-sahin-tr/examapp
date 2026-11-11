@@ -30,6 +30,8 @@ public enum BookImportUploadPartResult
     NotImage,
     /// <summary>Issue #1144: sayfa görseli <see cref="BookImportService.MinPageImageWidth"/>'ten dar.</summary>
     ImageTooSmall,
+    /// <summary>Karışık sorular görseli <see cref="BookImportService.MinLooseImageWidth"/>'ten dar.</summary>
+    LooseImageTooSmall,
 }
 
 public enum CompleteBookImportUploadError
@@ -68,6 +70,12 @@ public sealed partial class BookImportService
 
     /// <summary>Issue #1144: daha dar sayfa görseli okunmaz (sayfa 2363 px'e büyütülür; tespit küçük yazıda bozulur).</summary>
     public const int MinPageImageWidth = 1000;
+
+    /// <summary>
+    /// Karışık sorularda görsel tek bir sorudur (sayfa değil): yazı görselin büyük kısmını kaplar, tam sayfa eşiği tek soru
+    /// kırpımını gereksiz yere reddederdi. Hızlı eklemede alt sınır yok; bu kadarı okunaksız küçük görseli ayıklar.
+    /// </summary>
+    public const int MinLooseImageWidth = 400;
 
     private static readonly SkiaSharp.SKEncodedImageFormat[] PageImageFormats =
         [SkiaSharp.SKEncodedImageFormat.Jpeg, SkiaSharp.SKEncodedImageFormat.Png, SkiaSharp.SKEncodedImageFormat.Webp];
@@ -250,7 +258,13 @@ public sealed partial class BookImportService
         }
         if (!PageImageFormats.Contains(header.Format) || !SkiaImaging.IsWithinLimits(header.Width, header.Height))
             return BookImportUploadPartResult.NotImage;
-        if ((header.IsTransposed ? header.Height : header.Width) < MinPageImageWidth)
+        var width = header.IsTransposed ? header.Height : header.Width;
+        if (upload.Source == BookImportSource.LooseImages)
+        {
+            if (width < MinLooseImageWidth)
+                return BookImportUploadPartResult.LooseImageTooSmall;
+        }
+        else if (width < MinPageImageWidth)
             return BookImportUploadPartResult.ImageTooSmall;
 
         content.Position = 0;

@@ -45,11 +45,15 @@
             >
               @for (o of q.options; track o.id; let j = $index) {
                 <mat-radio-button [value]="o.id" data-testid="placement-option">
-                  <span class="placement__tag">{{ 'ABCDE'[j] }})</span>
                   @if (o.imageUrl) {
-                    <img [src]="o.imageUrl" [alt]="t('optionImage')" loading="lazy" />
+                    <!-- Görsel şıkta harf görselin içinde; ayrı etiket ve tek harflik metin ("A") tekrar olur. -->
+                    <img [src]="o.imageUrl" [alt]="t('optionImage') + ' ' + 'ABCDE'[j]" loading="lazy" />
+                  } @else {
+                    <span class="placement__tag">{{ 'ABCDE'[j] }})</span>
                   }
-                  {{ o.text }}
+                  @if (o.text && !(o.imageUrl && o.text.trim().length <= 2)) {
+                    {{ o.text }}
+                  }
                 </mat-radio-button>
               }
             </mat-radio-group>

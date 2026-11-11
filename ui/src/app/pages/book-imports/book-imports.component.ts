@@ -483,6 +483,7 @@ export class BookImportsComponent implements OnInit {
       'uploadIncomplete',
       'notImage',
       'imageTooSmall',
+      'looseImageTooSmall',
       'tooManyPages',
     ];
     const name = code.replace(/^bookImport\./, '');

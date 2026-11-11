@@ -10,6 +10,7 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Dashboard;
+using ExamApp.Api.Services.Entitlements;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -33,6 +34,10 @@ namespace ExamApp.Api.Services.Practice;
 /// <see cref="DailySetAlreadyStartedException"/>. Tek seferlik olması güvenlik kuralıdır (#99): set A'dan B'ye geçince A'nın
 /// soruları serbest pratiğe açılır; A'ya geri dönülebilseydi öğrenci cevaplarını görüp bildiği sorulardan puan alırdı.
 /// Aynı kapsamı yeniden göndermek hiçbir şeyi değiştirmez.</item>
+/// <item>Plan kapsamı (#1109): tek ders planında set (ve eksiği dolduran havuz, tekrar zamanı gelenler) yalnız planın
+/// dersinden üretilir; başka ders seçimi <see cref="StudyScopeException"/>. Kapsamsız (plan) set
+/// <see cref="DailyQuestionSet.ScopeJson"/>'a yazılmaz: öğrenci o dersin konusunu yine seçebilir. Gün içinde plan değişirse
+/// o günün mevcut seti olduğu gibi kalır.</item>
 /// </list>
 /// </summary>
 public sealed class DailyQuestionSetService : IDailyQuestionSetService
@@ -48,10 +53,10 @@ public sealed class DailyQuestionSetService : IDailyQuestionSetService
         _options = options.Value;
     }
 
-    public async Task<DailySetDto> GetTodayAsync(StudentProfileDto student, CancellationToken ct = default)
+    public async Task<DailySetDto> GetTodayAsync(StudentProfileDto student, CancellationToken ct = default, int? scopeSubjectId = null)
     {
         var today = _calendar.Today;
-        var set = await GetOrCreateSetAsync(student, today, ct);
+        var set = await GetOrCreateSetAsync(student, today, scopeSubjectId, ct);
         if (set == null)
             return EmptyDto(today, _options.QuestionCount);
 
@@ -78,10 +83,14 @@ public sealed class DailyQuestionSetService : IDailyQuestionSetService
     public async Task<DailyStartResultDto?> StartTodayAsync(
         StudentProfileDto student,
         DailyStartRequestDto? scopeRequest = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        int? scopeSubjectId = null)
     {
+        if (scopeSubjectId is { } planSubjectId && scopeRequest?.SubjectId is { } requested && requested != planSubjectId)
+            throw new StudyScopeException(planSubjectId);
+
         var today = _calendar.Today;
-        var set = await GetOrCreateSetAsync(student, today, ct);
+        var set = await GetOrCreateSetAsync(student, today, scopeSubjectId, ct);
         if (set == null || (set.QuestionIds.Count == 0 && set.PracticeSessionId == null))
             return null;
 
@@ -89,7 +98,7 @@ public sealed class DailyQuestionSetService : IDailyQuestionSetService
         {
             // Sınıf = setin sınıfı (havuzla aynı).
             var scope = await ValidateScopeAsync(scopeRequest, set.GradeId, ct);
-            var selection = scope == null ? null : await SelectScopedAsync(set, scope, today, ct);
+            var selection = scope == null ? null : await SelectScopedAsync(set, scope, today, scopeSubjectId, ct);
             await LinkNewSessionAsync(set, selection, ct);
 
             // Kazanan istek (bizimki ya da eşzamanlı rakip) seti yeniden üretmiş olabilir: canlı listeyi ve kapsamı tazele.
@@ -98,7 +107,7 @@ public sealed class DailyQuestionSetService : IDailyQuestionSetService
         }
         else if (HasScope(scopeRequest))
         {
-            set = await RescopeStartedSetAsync(set, scopeRequest!, today, ct);
+            set = await RescopeStartedSetAsync(set, scopeRequest!, today, scopeSubjectId, ct);
         }
 
         var sessionId = set.PracticeSessionId
@@ -136,7 +145,7 @@ public sealed class DailyQuestionSetService : IDailyQuestionSetService
     private sealed record SetSnapshot(
         int Id, int StudentId, int GradeId, int TargetCount, int? PracticeSessionId, string? ScopeJson, IReadOnlyList<int> QuestionIds);
 
-    private async Task<SetSnapshot?> GetOrCreateSetAsync(StudentProfileDto student, DateOnly day, CancellationToken ct)
+    private async Task<SetSnapshot?> GetOrCreateSetAsync(StudentProfileDto student, DateOnly day, int? scopeSubjectId, CancellationToken ct)
     {
         var existing = await LoadSetAsync(student.Id, day, ct);
         if (existing != null)
@@ -145,7 +154,7 @@ public sealed class DailyQuestionSetService : IDailyQuestionSetService
         if (!student.GradeId.HasValue)
             return null;
 
-        var questionIds = await PickQuestionIdsAsync(student, student.GradeId.Value, day, ct);
+        var questionIds = await PickQuestionIdsAsync(student, student.GradeId.Value, day, scopeSubjectId, ct);
         if (questionIds.Count == 0)
             return null;
 
@@ -192,10 +201,12 @@ public sealed class DailyQuestionSetService : IDailyQuestionSetService
         return new SetSnapshot(row.Id, row.StudentId, row.GradeId, row.TargetCount, row.PracticeSessionId, row.ScopeJson, live);
     }
 
-    private async Task<List<int>> PickQuestionIdsAsync(StudentProfileDto student, int gradeId, DateOnly day, CancellationToken ct)
+    private async Task<List<int>> PickQuestionIdsAsync(
+        StudentProfileDto student, int gradeId, DateOnly day, int? scopeSubjectId, CancellationToken ct)
     {
         // Yalnız id'ler çekilir (deterministik karıştırma bellekte; sıralı okuma tohumu sabit tutar).
-        var pool = await PracticeQuestionPool.Build(_context, gradeId, Array.Empty<int>(), Array.Empty<int>())
+        var planSubjects = PlanSubjects(scopeSubjectId);
+        var pool = await PracticeQuestionPool.Build(_context, gradeId, planSubjects, Array.Empty<int>())
             .Select(q => new { q.Id, q.TopicId })
             .OrderBy(q => q.Id)
             .ToListAsync(ct);
@@ -205,7 +216,7 @@ public sealed class DailyQuestionSetService : IDailyQuestionSetService
 
         var recent = await LoadRecentlyAnsweredAsync(student.Id, day, ct);
         var due = _options.DueReviewShare > 0
-            ? await DueReviewQueries.LoadAsync(_context, _calendar, student, Array.Empty<int>(), ct)
+            ? await DueReviewQueries.LoadAsync(_context, _calendar, student, planSubjects, ct)
             : new List<DueReviewItemDto>();
         var lastTopicId = await LoadLastPracticedTopicIdAsync(student.Id, ct);
 
@@ -446,6 +457,9 @@ public sealed class DailyQuestionSetService : IDailyQuestionSetService
 
     // --- yeniden kapsam (#500) ---
 
+    /// <summary>#1109: planın dersi (havuz filtresi); kapsamsız planda boş = bütün dersler.</summary>
+    private static int[] PlanSubjects(int? scopeSubjectId) => scopeSubjectId is { } id ? new[] { id } : Array.Empty<int>();
+
     private static bool HasScope(DailyStartRequestDto? request) =>
         request != null && (request.SubjectId != null || request.TopicId != null || request.SubTopicId != null);
 
@@ -474,7 +488,8 @@ public sealed class DailyQuestionSetService : IDailyQuestionSetService
     /// Aynı kapsam ilk bakılan şeydir: öğrenci aynı bağlantıyla döndüğünde, konu sonradan taşınmış olsa da devam eden set
     /// 400 almaz. Tohum ve son-cevap kuralı ilk üretimle aynıdır (<see cref="SelectScopedAsync"/>).
     /// </summary>
-    private async Task<SetSnapshot> RescopeStartedSetAsync(SetSnapshot set, DailyStartRequestDto request, DateOnly day, CancellationToken ct)
+    private async Task<SetSnapshot> RescopeStartedSetAsync(
+        SetSnapshot set, DailyStartRequestDto request, DateOnly day, int? scopeSubjectId, CancellationToken ct)
     {
         if (IsSameScope(set.ScopeJson, request))
             return set;
@@ -484,7 +499,7 @@ public sealed class DailyQuestionSetService : IDailyQuestionSetService
             throw new DailySetAlreadyStartedException();
 
         var scope = await ValidateScopeAsync(request, set.GradeId, ct);
-        var selection = scope == null ? null : await SelectScopedAsync(set, scope, day, ct);
+        var selection = scope == null ? null : await SelectScopedAsync(set, scope, day, scopeSubjectId, ct);
         if (selection == null)
             return set;
 
@@ -583,7 +598,8 @@ public sealed class DailyQuestionSetService : IDailyQuestionSetService
     /// Kapsamlı seçim: kapsam havuzu + (eksik için) setin sınıf havuzu; tohum ve son-cevap kuralı #99 ile aynı. Sınıf havuzu
     /// gün içinde boşaldıysa null: set olduğu gibi (rastgele) kalır.
     /// </summary>
-    private async Task<ScopedSelection?> SelectScopedAsync(SetSnapshot set, ValidScope scope, DateOnly day, CancellationToken ct)
+    private async Task<ScopedSelection?> SelectScopedAsync(
+        SetSnapshot set, ValidScope scope, DateOnly day, int? scopeSubjectId, CancellationToken ct)
     {
         var scopedPool = await PracticeQuestionPool.Build(
                 _context,
@@ -595,7 +611,8 @@ public sealed class DailyQuestionSetService : IDailyQuestionSetService
             .OrderBy(id => id)
             .ToListAsync(ct);
 
-        var generalPool = await PracticeQuestionPool.Build(_context, set.GradeId, Array.Empty<int>(), Array.Empty<int>())
+        // #1109: tek ders planında eksik yine planın dersinden tamamlanır.
+        var generalPool = await PracticeQuestionPool.Build(_context, set.GradeId, PlanSubjects(scopeSubjectId), Array.Empty<int>())
             .Select(q => q.Id)
             .OrderBy(id => id)
             .ToListAsync(ct);

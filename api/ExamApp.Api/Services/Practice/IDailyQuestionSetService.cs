@@ -11,7 +11,8 @@ namespace ExamApp.Api.Services.Practice;
 public interface IDailyQuestionSetService
 {
     /// <summary>Bugünün seti ve ilerlemesi; set yoksa üretir. Havuz boşsa/sınıf yoksa <c>Status = Empty</c> (hata değil).</summary>
-    Task<DailySetDto> GetTodayAsync(StudentProfileDto student, CancellationToken ct = default);
+    /// <param name="scopeSubjectId">#1109: tek ders planının dersi; set yalnız o dersten üretilir.</param>
+    Task<DailySetDto> GetTodayAsync(StudentProfileDto student, CancellationToken ct = default, int? scopeSubjectId = null);
 
     /// <summary>
     /// Bugünün setinin pratik oturumunu açar ya da mevcut oturumu döner (idempotent; eşzamanlı çağrılarda tek oturum).
@@ -20,5 +21,7 @@ public interface IDailyQuestionSetService
     /// <returns>null: set boş (havuzda soru yok / sınıf yok) — başlatılacak bir şey yok.</returns>
     /// <param name="scopeRequest">#66: isteğe bağlı ders/konu/alt konu; yalnız oturum açılmamış sette uygulanır, geçersizse
     /// <see cref="DailyScopeInvalidException"/>.</param>
-    Task<DailyStartResultDto?> StartTodayAsync(StudentProfileDto student, DailyStartRequestDto? scopeRequest = null, CancellationToken ct = default);
+    /// <param name="scopeSubjectId">#1109: tek ders planının dersi; başka ders seçimi <see cref="Entitlements.StudyScopeException"/>.</param>
+    Task<DailyStartResultDto?> StartTodayAsync(StudentProfileDto student, DailyStartRequestDto? scopeRequest = null, CancellationToken ct = default,
+        int? scopeSubjectId = null);
 }

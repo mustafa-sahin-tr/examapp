@@ -363,6 +363,11 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
       { id: 'tab-calendar', labelKey: 'menu.calendar', icon: '', route: '/my-calendar', type: 'menu', roles: ['Student'] },
       { id: 'tab-programs', labelKey: 'menu.programs', icon: '', route: '/programs', type: 'menu', roles: ['Student'] },
     ],
+    // Issue #1111: öğretmene sor Mesajlar'ın yanında; ana menü #719 sınırında kalır.
+    [
+      { id: 'tab-teacher-messages', labelKey: 'menu.teacherMessages', icon: '', route: '/teacher-messages', type: 'menu', roles: ['Student'] },
+      { id: 'tab-ask-teacher', labelKey: 'menu.askTeacher', icon: '', route: '/ask-teacher', type: 'menu', roles: ['Student'] },
+    ],
     [
       { id: 'tab-tutors', labelKey: 'menu.findTutor', icon: '', route: '/tutors', type: 'menu', roles: ['Student'] },
       { id: 'tab-bookings', labelKey: 'menu.myBookings', icon: '', route: '/my-bookings', type: 'menu', roles: ['Student'] },

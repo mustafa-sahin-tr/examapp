@@ -1,0 +1,185 @@
+<section class="at" *transloco="let t; prefix: 'ask-teacher'">
+  <app-page-header [title]="t('title')" [description]="t('subtitle')" />
+
+  @if (loading()) {
+    <div class="at__state"><mat-spinner diameter="32" /></div>
+  } @else if (loadError()) {
+    <div class="at__state at__state--error" data-testid="ask-load-error">
+      <mat-icon aria-hidden="true">error_outline</mat-icon>
+      <p>{{ t('loadError') }}</p>
+      <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+    </div>
+  } @else if (notInPlan()) {
+    <app-plan-locked-card [feature]="feature" />
+  } @else {
+    @if (quota(); as q) {
+      <p class="at__quota" data-testid="ask-quota">
+        @if (q.limit === null) {
+          {{ t('quota.unlimited', { pending: q.pending }) }}
+        } @else {
+          {{ t('quota.limited', { used: q.used, limit: q.limit, pending: q.pending, remaining: remaining() }) }}
+        }
+      </p>
+    }
+
+    <mat-card appearance="outlined" class="at__form">
+      <mat-card-header>
+        <mat-icon mat-card-avatar aria-hidden="true">contact_support</mat-icon>
+        <mat-card-title>{{ t('form.title') }}</mat-card-title>
+        <mat-card-subtitle>{{ t('form.hint') }}</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content class="at__form-body">
+        <div class="at__row">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>{{ t('form.subject') }}</mat-label>
+            <mat-select [value]="subjectId()" (valueChange)="setSubject($event)" data-testid="ask-subject">
+              <mat-option [value]="null">{{ t('form.anySubject') }}</mat-option>
+              @for (s of subjects(); track s.id) {
+                <mat-option [value]="s.id">{{ s.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>{{ t('form.teacher') }}</mat-label>
+            <mat-select [value]="teacherId()" (valueChange)="teacherId.set($event)" data-testid="ask-teacher">
+              @for (teacher of teachers(); track teacher.teacherId) {
+                <mat-option [value]="teacher.teacherId">
+                  {{ teacher.fullName }}
+                  @if (subjectId() !== null && teacher.teachesSubject) {
+                    <span class="at__tag">· {{ t('form.teachesSubject') }}</span>
+                  }
+                </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+        @if (teachers().length === 0) {
+          <p class="at__muted" data-testid="ask-no-teachers">{{ t('form.noTeachers') }}</p>
+        }
+
+        <div class="at__photo">
+          @if (photoPreview(); as preview) {
+            <img [src]="preview" [alt]="t('form.photoAlt')" class="at__preview" data-testid="ask-photo-preview" />
+            <button mat-button type="button" (click)="clearPhoto()">
+              <mat-icon>close</mat-icon>{{ t('form.removePhoto') }}
+            </button>
+          } @else {
+            <button mat-stroked-button type="button" (click)="photoInput.click()" data-testid="ask-photo">
+              <mat-icon>add_a_photo</mat-icon>{{ t('form.photo') }}
+            </button>
+          }
+          <input
+            #photoInput
+            class="cdk-visually-hidden"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            (change)="onPhotoPicked($event)"
+            data-testid="ask-photo-input"
+          />
+        </div>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="at__note">
+          <mat-label>{{ t('form.note') }}</mat-label>
+          <textarea
+            matInput
+            rows="3"
+            [maxlength]="maxNote"
+            [ngModel]="note()"
+            (ngModelChange)="note.set($event)"
+            [placeholder]="t('form.notePlaceholder')"
+            data-testid="ask-note"
+          ></textarea>
+          <mat-hint align="end">{{ note().length }} / {{ maxNote }}</mat-hint>
+        </mat-form-field>
+
+        @if (formError(); as error) {
+          <p class="at__error" role="alert" data-testid="ask-form-error">{{ error }}</p>
+        }
+        @if (remaining() === 0) {
+          <p class="at__muted" data-testid="ask-quota-full">{{ t('quota.full') }}</p>
+        }
+      </mat-card-content>
+      <mat-card-actions align="end">
+        <button mat-flat-button type="button" [disabled]="!canSend()" (click)="send()" data-testid="ask-send">
+          @if (sending()) {
+            <mat-spinner diameter="18" />
+          } @else {
+            <mat-icon>send</mat-icon>
+          }
+          {{ t('form.send') }}
+        </button>
+      </mat-card-actions>
+    </mat-card>
+
+    <h2 class="at__heading">{{ t('list.title') }}</h2>
+    @if (questions().length === 0) {
+      <p class="at__muted" data-testid="ask-empty">{{ t('list.empty') }}</p>
+    } @else {
+      <ul class="at__list">
+        @for (q of questions(); track q.id) {
+          <li
+            class="at__item"
+            [id]="'ask-q-' + q.id"
+            [class.at__item--highlight]="highlightId() === q.id"
+            [attr.data-status]="q.status"
+            data-testid="ask-question"
+          >
+            <div class="at__item-head">
+              <span class="at__chip at__chip--{{ q.status.toLowerCase() }}">{{ t(statusKey(q)) }}</span>
+              <span class="at__who">{{ q.teacherName }}@if (q.subjectName) { · {{ q.subjectName }} }</span>
+              <span class="at__when">{{ formatDate(q.createdAt) }}</span>
+            </div>
+            <div class="at__item-body">
+              <app-ask-teacher-image class="at__thumb" [questionId]="q.id" [alt]="t('list.questionImage')" />
+              <div class="at__texts">
+                @if (q.note) {
+                  <p class="at__note-text">{{ q.note }}</p>
+                }
+                @if (q.status === 'Open') {
+                  <p class="at__muted">{{ t('list.dueAt', { date: formatDate(q.dueAt) }) }}</p>
+                } @else if (q.status === 'Expired') {
+                  <p class="at__muted">{{ t('list.expired') }}</p>
+                }
+              </div>
+            </div>
+            @if (q.status === 'Answered') {
+              <div class="at__answer" data-testid="ask-answer">
+                <h3 class="at__answer-title">{{ t('list.answer') }}</h3>
+                @if (q.answerText) {
+                  <p class="at__answer-text">{{ q.answerText }}</p>
+                }
+                @if (q.hasAnswerImage) {
+                  <app-ask-teacher-image [questionId]="q.id" [answer]="true" [alt]="t('list.answerImage')" />
+                }
+                <div class="at__rating" role="group" [attr.aria-label]="t('list.rate')">
+                  <span class="at__muted">{{ t('list.rate') }}</span>
+                  @for (star of stars; track star) {
+                    <button
+                      mat-icon-button
+                      type="button"
+                      [disabled]="busyId() === q.id"
+                      [attr.aria-label]="t('list.star', { n: star })"
+                      [attr.aria-pressed]="(q.rating ?? 0) >= star"
+                      (click)="rate(q, star)"
+                      [attr.data-testid]="'ask-star-' + star"
+                    >
+                      <mat-icon>{{ (q.rating ?? 0) >= star ? 'star' : 'star_border' }}</mat-icon>
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+            @if (q.status === 'Open') {
+              <div class="at__actions">
+                <button mat-button type="button" [disabled]="busyId() === q.id" (click)="cancel(q)" data-testid="ask-cancel">
+                  {{ t('list.cancel') }}
+                </button>
+              </div>
+            }
+          </li>
+        }
+      </ul>
+    }
+  }
+</section>

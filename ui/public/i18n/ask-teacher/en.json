@@ -1,0 +1,57 @@
+{
+  "title": "Ask a teacher",
+  "subtitle": "Snap the question you're stuck on and send it to your teacher; the answer shows up here.",
+  "loadError": "Couldn't load your questions.",
+  "retry": "Try again",
+  "sent": "Question sent. You'll be notified when it's answered.",
+  "quota": {
+    "limited": "This month {{used}} / {{limit}} questions answered, {{pending}} waiting for an answer. Remaining: {{remaining}}.",
+    "unlimited": "Your plan has no question limit. Waiting for an answer: {{pending}}.",
+    "full": "You've used this month's questions (waiting ones count too). Expired or withdrawn questions don't count."
+  },
+  "form": {
+    "title": "New question",
+    "hint": "You can ask your class teachers and teachers you take lessons from.",
+    "subject": "Subject (optional)",
+    "anySubject": "Any",
+    "teacher": "Teacher",
+    "teachesSubject": "teaches this subject",
+    "noTeachers": "There's no teacher you can ask right now. Your class teachers and tutors appear here.",
+    "photo": "Take / choose a photo",
+    "photoAlt": "Question photo",
+    "removePhoto": "Remove photo",
+    "note": "Note (optional)",
+    "notePlaceholder": "Where are you stuck?",
+    "send": "Send"
+  },
+  "list": {
+    "title": "My questions",
+    "empty": "You haven't sent a question yet.",
+    "questionImage": "Question photo",
+    "answerImage": "Teacher's answer",
+    "dueAt": "Your teacher can answer until {{date}}.",
+    "expired": "Your teacher couldn't answer in time; it didn't count against your quota.",
+    "answer": "Answer",
+    "rate": "Was the answer helpful?",
+    "star": "{{n}} stars",
+    "cancel": "Withdraw"
+  },
+  "status": {
+    "open": "Waiting",
+    "answered": "Answered",
+    "expired": "Expired",
+    "cancelled": "Withdrawn"
+  },
+  "errors": {
+    "generic": "Something went wrong. Try again.",
+    "quotaReached": "You've used this month's questions.",
+    "notInPlan": "Your plan doesn't include asking a teacher.",
+    "teacherNotAvailable": "You can't send a question to this teacher.",
+    "invalidImage": "Couldn't read the photo (JPEG, PNG or WebP).",
+    "imageTooLarge": "The photo is too large (max 15 MB).",
+    "noteTooLong": "The note can be at most 1000 characters.",
+    "invalidSubject": "Pick a valid subject.",
+    "invalidState": "This question can no longer be changed.",
+    "notFound": "Question not found."
+  }
+}

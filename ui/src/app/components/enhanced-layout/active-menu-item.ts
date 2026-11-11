@@ -32,6 +32,7 @@ const ROUTE_ALIASES: ReadonlyArray<readonly [prefix: string, target: string]> = 
   ['/my-mock-exams', '/tests'],
   ['/availability', '/tutor-profile'],
   ['/study-links', '/study-pages'],
+  ['/ask-teacher', '/teacher-messages'],
   ['/my-bookings', '/tutors'],
   ['/mock-exams', '/tests'],
   ['/flashcards', '/practice'],

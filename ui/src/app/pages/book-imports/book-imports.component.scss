@@ -72,6 +72,43 @@
   }
 }
 
+.bi-source {
+  align-self: flex-start;
+}
+
+.bi-images {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  &__actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  // Klasör seçici yalnız düğmeden açılır.
+  &__folder {
+    display: none;
+  }
+
+  &__hint {
+    margin: 0;
+    color: var(--ms-text-weak);
+    font-size: 0.875rem;
+  }
+
+  &__list {
+    max-height: 180px;
+    margin: 0;
+    padding: 8px 8px 8px 40px;
+    overflow-y: auto;
+    border: 1px solid var(--ms-border);
+    border-radius: 8px;
+    font-size: 0.875rem;
+    overflow-wrap: anywhere;
+  }
+}
+
 .bi-drop {
   position: relative;
   display: flex;

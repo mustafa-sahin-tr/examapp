@@ -59,6 +59,11 @@ aktarım aracındaki Python portu referanstır (#1022).
   döndürür, 2363 px genişliğe ölçekler, WebP 82 olarak aynı `pages/` yoluna yazar (kaldığı sayfadan devam eder), bitince
   kaynak görselleri siler. Sonraki aşamalar PDF'le aynıdır. Hatalar: "The uploaded page images are missing.", "Page image N could not be read from
   storage.", "… could not be decoded.", "… is too tall for a page.".
+  Ekranda (`/book-imports`) "PDF / Sayfa görselleri" seçimi: görseller çoklu seçimle, "Klasör seç" düğmesiyle
+  (`webkitdirectory`) ya da klasör sürükle-bırakla alınır; görsel olmayan ve gizli dosyalar atlanır, kalanlar göreli yola
+  göre doğal sırayla (`sayfa2` < `sayfa10`) dizilip liste olarak gösterilir, kitap adı boşsa klasör adı olur. İstemci tür,
+  15 MB ve 600 görsel sınırını önceden denetler; genişlik denetimi sunucuda. Ayrıntı ekranında dosya yerine "Görseller"
+  (klasör adı) yazar.
 
 ## Kurulum aşaması ve onay (#1021)
 

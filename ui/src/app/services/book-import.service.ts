@@ -37,6 +37,12 @@ import { LabelingBankQuestion } from '../models/labeling';
 export const BOOK_IMPORT_PART_RETRIES = 3;
 export const BOOK_IMPORT_PART_RETRY_MS = 1000;
 
+/** Görsellerle aktarımda işin dosya adı: klasör seçildiyse klasörün adı, yoksa ilk görselin adı. */
+function imagesName(first: File): string {
+  const path = first.webkitRelativePath || first.name;
+  return path.includes('/') ? path.split('/')[0] : path;
+}
+
 /** Issue #1018 (epic #1017): kitaptan aktarım işleri. Pilot: Admin + QuestionTrainer; öğretmen yalnız demo (#1032). */
 @Injectable({ providedIn: 'root' })
 export class BookImportService {
@@ -72,35 +78,50 @@ export class BookImportService {
   /**
    * Issue #1122: PDF parça parça gider (Cloudflare 100 MB, gateway 30 MB istek sınırı). Oturum açılır, parçalar sırayla gönderilir
    * (ağ / sunucu hatasında parça yeniden denenir), sonra sunucu birleştirip işi başlatır. Hata olursa oturum bırakılır.
+   * Issue #1144: `images` doluysa PDF yerine sayfa görselleri gider; her görsel bir parça (1. görsel = 1. sayfa).
    */
   start(request: StartBookImportRequest): Observable<BookImportUploadEvent> {
-    const { file } = request;
+    const images = request.images ?? [];
+    const isImages = images.length > 0;
+    const totalBytes = isImages ? images.reduce((sum, image) => sum + image.size, 0) : request.file!.size;
     return this.http
       .post<BookImportUploadSession>(`${this.baseUrl}/uploads`, {
         bookName: request.bookName,
         gradeId: request.gradeId,
         subjectId: request.subjectId,
-        fileName: file.name,
-        fileSizeBytes: file.size,
+        ...(isImages
+          ? { fileName: imagesName(images[0]), fileSizeBytes: totalBytes, source: 'Images', imageCount: images.length }
+          : { fileName: request.file!.name, fileSizeBytes: totalBytes }),
       })
       .pipe(
         switchMap((session) => {
           const parts = session.partCount;
+          // Parçanın blob'u ve kendinden önceki parçaların toplam baytı.
+          const blobAt = (part: number): { blob: Blob; before: number } => {
+            if (isImages) {
+              let before = 0;
+              for (let i = 0; i < part - 1; i++) before += images[i].size;
+              return { blob: images[part - 1], before };
+            }
+            const from = (part - 1) * session.partSizeBytes;
+            return {
+              blob: request.file!.slice(from, Math.min(from + session.partSizeBytes, totalBytes)),
+              before: from,
+            };
+          };
           const progress = (part: number, sentBytes: number): BookImportUploadEvent => ({
             type: 'progress',
             part,
             parts,
             sentBytes,
-            totalBytes: file.size,
+            totalBytes,
           });
           const sent = range(1, parts).pipe(
             concatMap((part) => {
-              const before = (part - 1) * session.partSizeBytes;
-              return this.sendPart(session, file, part).pipe(
+              const { blob, before } = blobAt(part);
+              return this.sendPart(session, blob, part).pipe(
                 map((loaded) =>
-                  loaded === null
-                    ? progress(part, Math.min(part * session.partSizeBytes, file.size))
-                    : progress(part - 1, before + loaded)
+                  loaded === null ? progress(part, before + blob.size) : progress(part - 1, before + loaded)
                 )
               );
             })
@@ -119,9 +140,7 @@ export class BookImportService {
   }
 
   /** Parçanın gönderilen baytları (yükleme olaylarından), bitince `null`. Yeniden denemede sayaç sıfırdan başlar. */
-  private sendPart(session: BookImportUploadSession, file: File, part: number): Observable<number | null> {
-    const from = (part - 1) * session.partSizeBytes;
-    const blob = file.slice(from, Math.min(from + session.partSizeBytes, file.size));
+  private sendPart(session: BookImportUploadSession, blob: Blob, part: number): Observable<number | null> {
     return defer(() =>
       this.http.put<void>(`${this.baseUrl}/uploads/${session.id}/parts/${part}`, blob, {
         headers: { 'Content-Type': 'application/octet-stream' },

@@ -21,7 +21,18 @@
     "etaCalculating": "Estimating time left…",
     "etaMinutes": "About {{minutes}} min {{seconds}} s left",
     "etaSeconds": "About {{seconds}} s left",
-    "keepOpen": "Keep this page open and do not reload it until the upload finishes; closing it cancels the upload. The time depends on the file size and your connection speed."
+    "keepOpen": "Keep this page open and do not reload it until the upload finishes; closing it cancels the upload. The time depends on the file size and your connection speed.",
+    "sourceLabel": "Book format",
+    "sourcePdf": "PDF",
+    "sourceImages": "Page images",
+    "imagesDropTitle": "Drop the page images here or click to choose",
+    "imagesDropHint": "JPEG, PNG or WebP; one image per page, at least 1000 pixels wide, up to 15 MB",
+    "imagesPicked": "{{count}} page images",
+    "replaceImages": "Choose other images or a folder to replace them",
+    "pickFolder": "Choose folder",
+    "orderTitle": "Page order",
+    "orderHint": "Pages are imported in this order, sorted by file name (page2 comes before page10).",
+    "skippedFiles": "{{count}} files that are not images were skipped."
   },
   "errors": {
     "notPdf": "The selected file is not a PDF.",
@@ -32,7 +43,13 @@
     "quotaReached": "You have used this month's book imports.",
     "uploadNotFound": "The upload was interrupted; choose the file again.",
     "uploadIncomplete": "Some parts of the file could not be sent. Try again.",
-    "generic": "The import could not be started. Try again."
+    "generic": "The import could not be started. Try again.",
+    "noImages": "The selection has no page images (JPEG, PNG or WebP).",
+    "imageTooLarge": "{{name}} is too large (up to 15 MB per image).",
+    "tooManyImages": "At most 600 page images can be uploaded.",
+    "notImage": "A file is not a readable image (JPEG, PNG or WebP).",
+    "imageTooSmall": "A page image is too small; images must be at least 1000 pixels wide.",
+    "tooManyPages": "The page limit was exceeded."
   },
   "demo": {
     "badge": "Demo",
@@ -201,7 +218,8 @@
     "working": "Working…",
     "testFailed": "This test's questions could not be imported",
     "retryTest": "Retry test",
-    "retryFailedTests": "Retry failed tests ({{count}})"
+    "retryFailedTests": "Retry failed tests ({{count}})",
+    "folder": "Images"
   },
   "setup": {
     "title": "Confirm the book setup",

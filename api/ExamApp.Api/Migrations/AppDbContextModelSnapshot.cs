@@ -6776,6 +6776,30 @@ namespace ExamApp.Api.Migrations
                             FeatureKey = "analytics",
                             IsDeleted = false,
                             PlanId = 1
+                        },
+                        new
+                        {
+                            Id = 88,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "weekly-report",
+                            IsDeleted = false,
+                            PlanId = 8
+                        },
+                        new
+                        {
+                            Id = 89,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "weekly-report",
+                            IsDeleted = false,
+                            PlanId = 9
+                        },
+                        new
+                        {
+                            Id = 90,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "weekly-report",
+                            IsDeleted = false,
+                            PlanId = 2
                         });
                 });
 

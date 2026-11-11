@@ -19,6 +19,7 @@
       "childNotFound": "Child not found or the link is not active.",
       "testResultNotFound": "Test result not found.",
       "invalidPage": "Invalid page number.",
+      "invalidWeek": "Invalid week: it must be a Monday within the last 12 weeks.",
       "invalidStatus": "Invalid status filter. Use completed, overdue or pending.",
       "invalidRange": "Invalid date range. Provide from and to together, as yyyy-MM-dd, spanning at most 31 days.",
       "busy": "The operation could not be completed right now. Please try again.",

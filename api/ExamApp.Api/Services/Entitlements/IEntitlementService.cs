@@ -65,6 +65,9 @@ public static class EntitlementFeatures
     /// <summary>Konu performansı, haftalık gelişim, kazanım seviyesi.</summary>
     public const string Analytics = "analytics";
 
+    /// <summary>Issue #1112: velisine haftalık rapor (panel, bildirim, e-posta).</summary>
+    public const string WeeklyReport = "weekly-report";
+
     /// <summary>
     /// Bütün özellikler, plan kartlarındaki sırayla. Admin plan düzenleyicisi (#1086) yalnız bu anahtarları kabul eder; arayüz
     /// adları ve birimleri buradan alır.
@@ -88,6 +91,7 @@ public static class EntitlementFeatures
         new(SelfActivity, EntitlementAudience.Student, EntitlementFeatureKind.Metered, "activity"),
         new(StudyTools, EntitlementAudience.Student, EntitlementFeatureKind.Toggle),
         new(Analytics, EntitlementAudience.Student, EntitlementFeatureKind.Toggle),
+        new(WeeklyReport, EntitlementAudience.Student, EntitlementFeatureKind.Toggle),
         new(Messaging, EntitlementAudience.Both, EntitlementFeatureKind.Toggle),
         new(Tutoring, EntitlementAudience.Both, EntitlementFeatureKind.Toggle),
         new(LiveLesson, EntitlementAudience.Both, EntitlementFeatureKind.Metered, "lesson"),

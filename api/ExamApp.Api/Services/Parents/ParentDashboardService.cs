@@ -82,7 +82,7 @@ public sealed class ParentDashboardService : IParentDashboardService
         var weekEndUtc = _calendar.StartOfDayUtc(weekStart.AddDays(7));
 
         // AppDbContext thread-safe değil: sorgular art arda (her biri tek COUNT/SUM/MAX; N+1 yok).
-        var week = await WeekAnswersAsync(grant.StudentId, weekStartUtc, weekEndUtc, ct);
+        var week = await WeekAnswersAsync(_context, _calendar.TimeZone, grant.StudentId, weekStartUtc, weekEndUtc, ct);
         var assignments = await CountAssignmentsAsync(grant, now, ct);
         var points = await _context.StudentPoints.AsNoTracking()
             .Where(sp => sp.StudentId == grant.StudentId)
@@ -136,23 +136,24 @@ public sealed class ParentDashboardService : IParentDashboardService
     /// <summary>Haftanın Pazartesi'si (ISO haftası; Pazar bir önceki Pazartesi'ye bağlanır).</summary>
     internal static DateOnly StartOfWeek(DateOnly day) => day.AddDays(-(((int)day.DayOfWeek + 6) % 7));
 
-    private sealed record WeekAnswers(int Solved, int Correct, int ActiveDays);
+    internal sealed record WeekAnswers(int Solved, int Correct, int ActiveDays);
 
     /// <summary>
-    /// Bu haftanın cevapları: sayı, doğru sayısı ve cevap verilen yerel gün sayısı. Bir haftanın cevap anları okunur (iki kolon);
-    /// gün hesabı yerel saat diliminde bellekte yapılır.
+    /// Haftanın cevapları: sayı, doğru sayısı ve cevap verilen yerel gün sayısı. Bir haftanın cevap anları okunur (iki kolon);
+    /// gün hesabı yerel saat diliminde bellekte yapılır. #1112 haftalık rapor da bunu kullanır (panelle aynı sayı).
     /// </summary>
-    private async Task<WeekAnswers> WeekAnswersAsync(int studentId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+    internal static async Task<WeekAnswers> WeekAnswersAsync(
+        AppDbContext context, TimeZoneInfo timeZone, int studentId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
     {
         // IX_TestInstanceQuestions_UpdateTime_Answered yüklemiyle aynı şekil (cevaplı + UpdateTime aralığı).
-        var worksheetAnswers = await _context.TestInstanceQuestions.AsNoTracking()
+        var worksheetAnswers = await context.TestInstanceQuestions.AsNoTracking()
             .Where(q => q.WorksheetInstance.StudentId == studentId
                 && (q.SelectedAnswerId != null || q.AnswerPayload != null)
                 && q.UpdateTime != null && q.UpdateTime >= fromUtc && q.UpdateTime < toUtc)
             .Select(q => new { At = q.UpdateTime!.Value, q.IsCorrect })
             .ToListAsync(ct);
 
-        var practiceAnswers = await _context.PracticeSessionQuestions.AsNoTracking()
+        var practiceAnswers = await context.PracticeSessionQuestions.AsNoTracking()
             .Where(p => p.PracticeSession.StudentId == studentId
                 && p.AnsweredAt != null && p.AnsweredAt >= fromUtc && p.AnsweredAt < toUtc && !p.IsSkipped)
             .Select(p => new { At = p.AnsweredAt!.Value, p.IsCorrect })
@@ -160,7 +161,7 @@ public sealed class ParentDashboardService : IParentDashboardService
 
         var all = worksheetAnswers.Concat(practiceAnswers).ToList();
         var days = all
-            .Select(a => DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(a.At, DateTimeKind.Utc), _calendar.TimeZone)))
+            .Select(a => DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(a.At, DateTimeKind.Utc), timeZone)))
             .Distinct()
             .Count();
         return new WeekAnswers(all.Count, all.Count(a => a.IsCorrect), days);

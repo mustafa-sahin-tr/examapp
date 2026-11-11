@@ -102,6 +102,9 @@ public class CurrentSubscriptionPlanDto
     /// <summary>#1092: plan okulun lisansından geliyor; <see cref="ValidToUtc"/> lisansın bitişidir.</summary>
     public bool SchoolLicense { get; set; }
 
+    /// <summary>Issue #1115: öğretmenin planı ücretli planı olan öğrencilerinden geliyor; grace'teyse <c>ValidToUtc</c> bitişi.</summary>
+    public bool StudentSponsored { get; set; }
+
     /// <summary>Issue #1116: süren satın alma (iptal koşuluyla); Free, deneme, admin ataması ve okul lisansında null.</summary>
     public PlanPurchaseDto? Purchase { get; set; }
 

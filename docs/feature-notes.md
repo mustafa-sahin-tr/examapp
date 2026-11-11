@@ -469,6 +469,17 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   da sürüyorsa yazılmaz (atama yine işaretlenir). Admin: `/admin/schools` satır menüsü "Lisans" → `SchoolLicenseDialogComponent`;
   `GET|PUT /api/exam/admin/subscription-plans/schools/{id}/license` (oluştur / uzat / değiştir), `POST …/license/end` (şimdi bitirir);
   her değişiklik `SchoolLicenseAudits` (Created / Updated / Ended, aktör, planlar, tarihler, not), diyalogda son 20 kayıt.
+- **Öğrencilerin sayesinde Essential (#1115, epic #1118):** en az bir öğrencisi ücretli öğrenci planındaki (kitlesi Student, aktif;
+  Free ve deneme sayılmaz) onaylı, askıda olmayan öğretmen Teacher Essential'ı ücretsiz kullanır. "Öğrencisi" üç yoldan biridir:
+  aynı okulun doğrulanmış öğrencisi, öğretmenle `Approved` randevusu olan öğrenci, öğretmenin oluşturduğu süren doğrudan ödev
+  ataması (`WorksheetAccess.ActiveAt`). Atama yazılmaz: `TeacherSponsorships` (öğretmen başına tek açık satır; başlangıç, son uygunluk,
+  grace bitişi, bitiş) günlük `teacher-sponsorship` Hangfire işiyle (`TeacherSponsorship:Cron`, varsayılan 02:30) güncellenir ve plan
+  çözümünde okul lisansı gibi bindirilir (`SchoolLicensePlans.ForUsersAsync`; `ResolvedPlan.FromStudentSponsorship`). Uygun öğretmen
+  yoksa satır açılır; uygunluk düşünce `TeacherSponsorship:GraceDays` (varsayılan 14, 0–90) gün grace başlar (`validToUtc` = grace
+  bitişi), içinde yeniden uygun olursa grace silinir, bitince satır kapanır (plan çözümü grace bitişinde iş koşmadan da düşer). Sıra:
+  kişisel ücretli plan ya da okul lisansı Essential'dan üstse o kazanır (Teacher Pro), Basic Essential'a çıkar. `/me`
+  `studentSponsored` döner; Aboneliğim "Ücretli planı olan öğrencilerin sayesinde" ve grace'te bitiş tarihini yazar. Admin
+  kilit listesi (`LockedAmongAsync`) lisans gibi sponsorluğu da hesaba katmaz.
 - **Plan seçimi (#1028):** kayıt sihirbazının (`ui` `/register`) öğrenci / öğretmen kaydından sonra 3. adımı plan kartlarıdır
   (`PlanPickerComponent`, scope `subscription`); veli adımı atlar. "Ücretsiz devam et" API çağırmaz (Free). "Denemeyi başlat"
   → `POST /api/exam/subscription-plans/me/trial`: hesap başına bir kez (silinmiş atamalar dahil; ikincisi 409

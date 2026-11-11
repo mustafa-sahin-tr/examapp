@@ -359,6 +359,12 @@ builder.Services.AddOptions<ExamApp.Api.Services.Parents.ParentWeeklyReportOptio
     .ValidateDataAnnotations()
     .ValidateOnStart();
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentWeeklyReportJob, ExamApp.Api.Services.Parents.ParentWeeklyReportJob>();
+// issue #1115: ücretli planı olan öğrencisi bulunan öğretmene Teacher Essential (günlük değerlendirme, 14 gün grace).
+builder.Services.AddOptions<ExamApp.Api.Services.Entitlements.TeacherSponsorshipOptions>()
+    .BindConfiguration(ExamApp.Api.Services.Entitlements.TeacherSponsorshipOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddScoped<ExamApp.Api.Services.Entitlements.ITeacherSponsorshipJob, ExamApp.Api.Services.Entitlements.TeacherSponsorshipJob>();
 // issue #421 (veli V3): ödev/test listesi + test sonuç özeti (salt okunur; kapı → audit → veri).
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentAssignmentService, ExamApp.Api.Services.Parents.ParentAssignmentService>();
 // issue #421 review: test sonucu 404 taraması uyarısı (süreç içi sayaç, veli başına 10 dk'da 20'yi aşınca Warning).
@@ -947,6 +953,12 @@ RecurringJob.AddOrUpdate<ExamApp.Api.Services.Entitlements.IPlanPriceChangeJob>(
     ExamApp.Api.Services.Entitlements.PlanPriceChangeJob.RecurringJobId,
     j => j.RunAsync(CancellationToken.None),
     app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Entitlements.PlanPriceChangeOptions>>().Value.Cron);
+
+// issue #1115: öğrenci sponsorluğu (öğretmene ücretsiz Teacher Essential) günlük değerlendirme.
+RecurringJob.AddOrUpdate<ExamApp.Api.Services.Entitlements.ITeacherSponsorshipJob>(
+    ExamApp.Api.Services.Entitlements.TeacherSponsorshipJob.RecurringJobId,
+    j => j.RunAsync(CancellationToken.None),
+    app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Entitlements.TeacherSponsorshipOptions>>().Value.Cron);
 
 // issue #1112: haftalık veli raporu (bağlantı başına hafta başına bir kez).
 RecurringJob.AddOrUpdate<ExamApp.Api.Services.Parents.IParentWeeklyReportJob>(

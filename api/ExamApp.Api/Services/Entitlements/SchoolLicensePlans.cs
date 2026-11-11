@@ -25,6 +25,7 @@ public static class SchoolLicensePlans
             .Where(t => ids.Contains(t.UserId))
             .Select(t => new { t.UserId, t.SchoolId })
             .ToListAsync(ct);
+        await AddStudentSponsorshipsAsync(db, teacherRows.Select(t => t.UserId).Distinct().ToList(), now, result, ct);
         var withoutTeacherRow = ids.Except(teacherRows.Select(t => t.UserId)).ToList();
         var studentRows = withoutTeacherRow.Count == 0
             ? []
@@ -63,10 +64,42 @@ public static class SchoolLicensePlans
             var plan = m.IsTeacher ? license.Teacher : license.Student;
             if (!plan.IsActive)
                 continue;
+            // Issue #1115: öğrenci sponsorluğu lisanstan üst kademedeyse kalır.
+            if (result.TryGetValue(m.UserId, out var sponsored) && sponsored.SortOrder > plan.SortOrder)
+                continue;
             result[m.UserId] = new LicensePlan(
                 new ResolvedPlan(plan.Id, plan.Key, plan.Name, license.ValidToUtc, FromSchoolLicense: true), plan.SortOrder);
         }
         return result;
+    }
+
+    /// <summary>
+    /// Issue #1115: açık sponsorluğu olan öğretmene Teacher Essential (grace'teyse bitişi <see cref="ResolvedPlan.ValidToUtc"/>).
+    /// Grace'i geçmiş ama iş henüz kapatmamış satır sayılmaz.
+    /// </summary>
+    private static async Task AddStudentSponsorshipsAsync(
+        AppDbContext db, IReadOnlyCollection<int> teacherUserIds, DateTime now, Dictionary<int, LicensePlan> result, CancellationToken ct)
+    {
+        if (teacherUserIds.Count == 0)
+            return;
+        var sponsored = await db.TeacherSponsorships.AsNoTracking()
+            .Where(x => teacherUserIds.Contains(x.TeacherUserId) && x.EndedAtUtc == null
+                        && (x.GraceEndsAtUtc == null || x.GraceEndsAtUtc > now))
+            .Select(x => new { x.TeacherUserId, x.GraceEndsAtUtc })
+            .ToListAsync(ct);
+        if (sponsored.Count == 0)
+            return;
+        var plan = await db.SubscriptionPlans.AsNoTracking()
+            .Where(p => p.Key == SubscriptionPlan.TeacherEssentialKey && p.IsActive)
+            .Select(p => new { p.Id, p.Key, p.Name, p.SortOrder })
+            .FirstOrDefaultAsync(ct);
+        if (plan is null)
+            return;
+        foreach (var x in sponsored)
+        {
+            result[x.TeacherUserId] = new LicensePlan(
+                new ResolvedPlan(plan.Id, plan.Key, plan.Name, x.GraceEndsAtUtc, FromStudentSponsorship: true), plan.SortOrder);
+        }
     }
 
     /// <summary>

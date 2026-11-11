@@ -109,6 +109,8 @@ export interface CurrentSubscriptionPlan {
   locked?: boolean;
   /** Issue #1092: plan okulun lisansından geliyor (`validToUtc` lisansın bitişi). */
   schoolLicense?: boolean;
+  /** Issue #1115: öğretmenin Essential'ı ücretli öğrencisinden geliyor; `validToUtc` doluysa grace'in bitişi. */
+  studentSponsored?: boolean;
   /** Issue #1116: süren satın alma (iptal koşuluyla); Free, deneme, admin ataması ve okul lisansında null. */
   purchase?: PurchaseStatus | null;
   features: FeatureUsage[];

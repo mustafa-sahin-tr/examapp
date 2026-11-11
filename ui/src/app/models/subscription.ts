@@ -18,6 +18,9 @@ export interface SubscriptionPlan {
   monthlyLimits: Record<string, number | null>;
   /** Issue #1108: öğrenci planının fiyat tablosu (yalnız admin kataloğunda). */
   prices?: PlanPriceRow[] | null;
+  /** Issue #1116: planlanmış aylık fiyat artışı ve yürürlük tarihi (yalnız admin kataloğunda). */
+  pendingMonthlyPrice?: number | null;
+  pendingMonthlyPriceFromUtc?: string | null;
 }
 
 /** Issue #1108: sınıf bandı, kapsam ve süre (API'de enum adları). */
@@ -45,6 +48,9 @@ export interface PlanPriceRow {
   scope: PlanScope;
   duration: PlanDuration;
   price: number;
+  /** Issue #1116: planlanmış artış ve yürürlük tarihi; yalnız okumada. */
+  pendingPrice?: number | null;
+  pendingFromUtc?: string | null;
 }
 
 /** Issue #1108: velinin gördüğü fiyat (süre boyunca toplam, indirimsiz). */

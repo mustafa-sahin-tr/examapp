@@ -147,6 +147,9 @@ const SCHOOL_CHANGE_SELF_NOTIFICATIONS: ReadonlySet<string> = new Set([
 /** Issue #1110: öğrencinin kendi sınıf atlaması — yalnız bilgi, hedef yok. Velininki PARENT_NOTIFICATION_PRESENTATION'da. */
 const GRADE_PROMOTED_SELF_NOTIFICATION = 'GradePromotedToStudent';
 
+/** Issue #1116: kendi planının fiyatı değişiyor → Aboneliğim. Velininki PARENT_NOTIFICATION_PRESENTATION'da. */
+const PLAN_PRICE_CHANGE_SELF_NOTIFICATION = 'PlanPriceChange';
+
 /** Admin'in öğretmen başvurusu ve okul katılım talebi onay ekranı. */
 export const ADMIN_TEACHER_APPROVALS_ROUTE = '/admin/teacher-approvals';
 
@@ -278,6 +281,9 @@ export function describeNotification(
   if (notification.type === GRADE_PROMOTED_SELF_NOTIFICATION) {
     return { icon: 'upgrade', badge: null, route: null, questionOrder: null };
   }
+  if (notification.type === PLAN_PRICE_CHANGE_SELF_NOTIFICATION) {
+    return { icon: 'sell', badge: null, route: { commands: ['/subscription'] }, questionOrder: null };
+  }
   const requirement = PARENT_REQUIREMENT_NOTIFICATIONS[notification.type];
   if (requirement) {
     return { icon: requirement.icon, badge: null, route: { commands: [requirement.route] }, questionOrder: null };
@@ -339,6 +345,8 @@ const PARENT_NOTIFICATION_PRESENTATION: Readonly<
   ParentChildPlanEndingTrial: { icon: 'event_upcoming', toParentPage: true, tab: 'plan' },
   // Issue #1110: çocuğun 1 Ağustos sınıf atlaması → o çocuğun paneli.
   GradePromotedToParent: { icon: 'upgrade', toParentPage: true },
+  // Issue #1116: çocuğun planının yenileme fiyatı değişiyor → o çocuğun "Plan" sekmesi.
+  PlanPriceChangeToParent: { icon: 'sell', toParentPage: true, tab: 'plan' },
 };
 
 /** Issue #439: öğrenciye giden veli kararı bildirimleri → ikon (hepsi `/my-bookings`). */

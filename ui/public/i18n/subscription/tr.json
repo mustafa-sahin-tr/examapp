@@ -208,6 +208,7 @@
       "inactive": "pasif",
       "name": "Plan adı (yönetim)",
       "nameHint": "Kullanıcıların gördüğü ad çeviri dosyasından gelir.",
+      "pendingPrice": "Bugün {{current}}; yeni fiyat {{date}} tarihinde geçerli olur.",
       "price": "Aylık fiyat",
       "trialDays": "Deneme süresi (gün)",
       "active": "Satışta (etkin)",
@@ -237,6 +238,7 @@
       "prices": {
         "title": "Sınıf bandı fiyatları",
         "hint": "Boş hücre o seçeneğin satılmadığı anlamına gelir. Sınıfa özel satırda boş hücre bandın fiyatını kullanır. 6 ve 12 ay, yaz fiyatı süre boyunca toplamdır.",
+        "increaseHint": "Artış 30 gün sonra geçerli olur ve süren satın almaların ödeyenine bildirilir; indirim hemen geçerlidir. Ödenmiş dönemin fiyatı değişmez.",
         "band": "Sınıf bandı",
         "actions": "İşlemler",
         "grade": "{{ grade }}. sınıf",

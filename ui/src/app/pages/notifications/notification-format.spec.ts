@@ -278,6 +278,14 @@ describe('describeNotification (issue #105)', () => {
         expect(self.icon).toBe('upgrade');
     });
 
+    it('PlanPriceChange_ParentLinksChildPlanTab_SelfLinksSubscription (issue #1116)', () => {
+        const parent = describeNotification({ type: 'PlanPriceChangeToParent', data: JSON.stringify({ studentId: 21, assignmentId: 5 }) });
+        expect(parent.route).toEqual({ commands: ['/parent'], queryParams: { child: 21, tab: 'plan' } });
+        expect(parent.icon).toBe('sell');
+        const self = describeNotification({ type: 'PlanPriceChange', data: JSON.stringify({ studentId: null, assignmentId: 5 }) });
+        expect(self.route).toEqual({ commands: ['/subscription'] });
+    });
+
     it('OpenTextReviewed_LinksTheReviewedActivityItem (issue #614)', () => {
         const result = describeNotification({
             type: 'OpenTextReviewed',

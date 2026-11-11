@@ -1452,6 +1452,7 @@ public class AppDbContext : DbContext
             e.Property(p => p.Id).HasIdentityOptions(startValue: 1000);
             e.Property(p => p.Audience).HasConversion<string>().HasMaxLength(16); // issue #1027
             e.Property(p => p.MonthlyPrice).HasPrecision(10, 2);
+            e.Property(p => p.PendingMonthlyPrice).HasPrecision(10, 2); // #1116
         });
         modelBuilder.Entity<SubscriptionPlanFeatureLimit>(e =>
         {
@@ -1477,6 +1478,7 @@ public class AppDbContext : DbContext
             e.Property(p => p.Scope).HasConversion<string>().HasMaxLength(16);
             e.Property(p => p.Duration).HasConversion<string>().HasMaxLength(16);
             e.Property(p => p.Price).HasPrecision(10, 2);
+            e.Property(p => p.PendingPrice).HasPrecision(10, 2); // #1116
         });
         // Issue #1030: atama değişikliği kaydı; kullanıcının geçmişi en yeni önce okunur.
         modelBuilder.Entity<SubscriptionPlanAssignmentAudit>(e =>

@@ -522,6 +522,12 @@ builder.Services.AddOptions<ExamApp.Api.Services.Entitlements.PlanBandChangeNoti
     .ValidateDataAnnotations()
     .ValidateOnStart();
 builder.Services.AddScoped<ExamApp.Api.Services.Entitlements.IPlanBandChangeNoticeJob, ExamApp.Api.Services.Entitlements.PlanBandChangeNoticeJob>();
+// issue #1116: planlanmış fiyat artışını süren satın almaların ödeyenine bildirir (30 gün önce), vadesi geleni fiyata geçirir.
+builder.Services.AddOptions<ExamApp.Api.Services.Entitlements.PlanPriceChangeOptions>()
+    .BindConfiguration(ExamApp.Api.Services.Entitlements.PlanPriceChangeOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddScoped<ExamApp.Api.Services.Entitlements.IPlanPriceChangeJob, ExamApp.Api.Services.Entitlements.PlanPriceChangeJob>();
 // issue #1110: 1 Ağustos sınıf atlaması (Hangfire, her gece; iş yalnız atlama haftasında) + admin geri alma.
 builder.Services.AddOptions<ExamApp.Api.Services.GradePromotion.StudentGradePromotionOptions>()
     .BindConfiguration(ExamApp.Api.Services.GradePromotion.StudentGradePromotionOptions.SectionName)
@@ -916,6 +922,12 @@ RecurringJob.AddOrUpdate<ExamApp.Api.Services.Entitlements.IPlanBandChangeNotice
     ExamApp.Api.Services.Entitlements.PlanBandChangeNoticeJob.RecurringJobId,
     j => j.RunAsync(CancellationToken.None),
     app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Entitlements.PlanBandChangeNoticeOptions>>().Value.Cron);
+
+// issue #1116: fiyat artışı bildirimi (değişiklik başına satın alma başına bir kez) ve yürürlüğe giriş.
+RecurringJob.AddOrUpdate<ExamApp.Api.Services.Entitlements.IPlanPriceChangeJob>(
+    ExamApp.Api.Services.Entitlements.PlanPriceChangeJob.RecurringJobId,
+    j => j.RunAsync(CancellationToken.None),
+    app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Entitlements.PlanPriceChangeOptions>>().Value.Cron);
 
 // issue #1110: her yıl 1 Ağustos'ta (Europe/Istanbul) öğrencileri bir üst sınıfa taşır; telafi için ilk hafta her gece.
 RecurringJob.AddOrUpdate<ExamApp.Api.Services.GradePromotion.IStudentGradePromotionJob>(

@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MatButtonModule } from '@angular/material/button';
@@ -53,6 +54,14 @@ export interface PriceGridRow {
   band: StudentGradeBand;
   gradeLevel: number | null;
   cells: Record<string, number | null>;
+  /** Issue #1116: hücrede bekleyen artış (hücre değeri yeni fiyattır): bugünkü fiyat ve yürürlük tarihi. */
+  pending?: Record<string, PendingPrice>;
+}
+
+/** Issue #1116: bekleyen fiyat artışı — `current` bugünkü fiyat, `fromUtc` yeni fiyatın geçerli olduğu an. */
+export interface PendingPrice {
+  current: number;
+  fromUtc: string;
 }
 
 export const PRICE_COLUMNS: readonly PriceColumn[] = PLAN_SCOPES.flatMap((scope) =>
@@ -69,6 +78,7 @@ export const PRICE_COLUMNS: readonly PriceColumn[] = PLAN_SCOPES.flatMap((scope)
   selector: 'app-admin-plan-editor',
   standalone: true,
   imports: [
+    DatePipe,
     FormsModule,
     MatButtonModule,
     MatButtonToggleModule,
@@ -95,6 +105,7 @@ export class AdminPlanEditorComponent implements OnInit {
   readonly planKey = signal<string | null>(null);
   readonly name = signal('');
   readonly monthlyPrice = signal<number | null>(0);
+  readonly pendingMonthly = signal<PendingPrice | null>(null);
   readonly trialDays = signal<number | null>(null);
   readonly isActive = signal(true);
   readonly rows = signal<LimitRow[]>([]);
@@ -154,7 +165,13 @@ export class AdminPlanEditorComponent implements OnInit {
     if (!plan) return;
     this.planKey.set(planKey);
     this.name.set(plan.name);
-    this.monthlyPrice.set(plan.monthlyPrice);
+    // #1116: bekleyen artış varsa alan yeni fiyatı gösterir (aynısını kaydetmek artışı korur, düşürmek iptal eder).
+    this.monthlyPrice.set(plan.pendingMonthlyPrice ?? plan.monthlyPrice);
+    this.pendingMonthly.set(
+      plan.pendingMonthlyPrice != null && plan.pendingMonthlyPriceFromUtc
+        ? { current: plan.monthlyPrice, fromUtc: plan.pendingMonthlyPriceFromUtc }
+        : null,
+    );
     this.trialDays.set(plan.trialDays);
     this.isActive.set(plan.isActive);
     this.rows.set(this.rowsFor(plan));
@@ -274,7 +291,11 @@ function gridOf(prices: PlanPriceRow[]): PriceGridRow[] {
       row = { band: price.band, gradeLevel: price.gradeLevel, cells: emptyCells() };
       rows.push(row);
     }
-    row.cells[`${price.scope}.${price.duration}`] = price.price;
+    const key = `${price.scope}.${price.duration}`;
+    row.cells[key] = price.pendingPrice ?? price.price;
+    if (price.pendingPrice != null && price.pendingFromUtc) {
+      row.pending = { ...row.pending, [key]: { current: price.price, fromUtc: price.pendingFromUtc } };
+    }
   }
   return sortGrid(rows);
 }

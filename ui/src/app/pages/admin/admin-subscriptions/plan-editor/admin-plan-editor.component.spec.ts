@@ -160,6 +160,29 @@ describe('AdminPlanEditorComponent (issue #1086)', () => {
     }));
   });
 
+  it('issue #1116: shows a pending increase as the new price with today\'s price and its date', async () => {
+    const student: SubscriptionPlan = {
+      ...plan('student-basic', 'Student', {}),
+      pendingMonthlyPrice: 179,
+      pendingMonthlyPriceFromUtc: '2026-12-11T08:00:00Z',
+      prices: [
+        { band: 'Middle', gradeLevel: null, scope: 'AllSubjects', duration: 'Monthly', price: 199, pendingPrice: 229, pendingFromUtc: '2026-12-11T08:00:00Z' },
+        { band: 'Middle', gradeLevel: null, scope: 'SingleSubject', duration: 'Monthly', price: 119 },
+      ],
+    };
+    fixture.componentRef.setInput('plans', [...PLANS, student]);
+    const c = fixture.componentInstance;
+    c.selectPlan('student-basic');
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(c.monthlyPrice()).toBe(179);
+    expect(q('plan-editor-price-pending')!.textContent).toContain('149');
+    expect(c.priceGrid()!.find((r) => r.band === 'Middle')!.cells['AllSubjects.Monthly']).toBe(229);
+    expect(q('price-pending-Middle-AllSubjects.Monthly')!.textContent).toContain('199');
+    expect(q('price-pending-Middle-SingleSubject.Monthly')).toBeNull();
+  });
+
   it('issue #1108: a teacher plan save sends no price table', () => {
     fixture.componentInstance.save();
     expect(updatePlan.mock.calls[0][1]).not.toHaveProperty('prices');

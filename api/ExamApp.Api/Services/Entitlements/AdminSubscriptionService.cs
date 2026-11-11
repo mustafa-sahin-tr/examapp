@@ -278,8 +278,14 @@ public sealed class AdminSubscriptionService(AppDbContext db, IEntitlementServic
         }
 
         var before = Snapshot(plan);
+        var now = clock.GetUtcNow().UtcDateTime;
         plan.Name = name;
-        plan.MonthlyPrice = request.MonthlyPrice;
+        // #1116: artış 30 gün sonra geçerli (süren satın almaların ödeyenine PlanPriceChangeJob bildirir); deneme / ücretsiz planda hemen.
+        if (plan.MonthlyPrice > 0 && plan.TrialDays is null)
+            (plan.MonthlyPrice, plan.PendingMonthlyPrice, plan.PendingMonthlyPriceFromUtc) = PurchaseTermsPolicy.Apply(
+                plan.MonthlyPrice, plan.PendingMonthlyPrice, plan.PendingMonthlyPriceFromUtc, request.MonthlyPrice, now);
+        else
+            (plan.MonthlyPrice, plan.PendingMonthlyPrice, plan.PendingMonthlyPriceFromUtc) = (request.MonthlyPrice, null, null);
         plan.TrialDays = request.TrialDays;
         plan.IsActive = request.IsActive;
         // Listede olmayan özellik planda yoktur: satırı silinmez, 0'a çekilir (satır yok = 0; tekil indeks yeniden eklemeyi engellemez).
@@ -293,7 +299,7 @@ public sealed class AdminSubscriptionService(AppDbContext db, IEntitlementServic
         foreach (var (featureKey, limit) in limits)
             plan.FeatureLimits.Add(new SubscriptionPlanFeatureLimit { FeatureKey = featureKey, MonthlyLimit = limit });
         if (prices is not null)
-            await ReplacePricesAsync(plan, prices, ct);
+            await ReplacePricesAsync(plan, prices, now, ct);
 
         db.SubscriptionPlanChangeAudits.Add(new SubscriptionPlanChangeAudit
         {
@@ -302,7 +308,7 @@ public sealed class AdminSubscriptionService(AppDbContext db, IEntitlementServic
             ActorUserId = adminUserId,
             BeforeJson = before,
             AfterJson = Snapshot(plan),
-            OccurredAtUtc = clock.GetUtcNow().UtcDateTime,
+            OccurredAtUtc = now,
         });
         await db.SaveChangesAsync(ct);
         return AdminPlanUpdateError.None;
@@ -337,9 +343,10 @@ public sealed class AdminSubscriptionService(AppDbContext db, IEntitlementServic
 
     /// <summary>
     /// Aynı seçeneğin satırı yerinde güncellenir, listede olmayan silinir (soft delete). Tekil indeks silinmiş satırı da sayar:
-    /// yeniden eklenen seçenek silinmiş satırını canlandırır.
+    /// yeniden eklenen seçenek silinmiş satırını canlandırır. #1116: satıştaki satırda artış 30 gün bekler
+    /// (<see cref="PurchaseTermsPolicy.Apply"/>); yeni ya da canlanan satır hemen geçerlidir (o fiyatla süren satın alma yok).
     /// </summary>
-    private async Task ReplacePricesAsync(SubscriptionPlan plan, List<SubscriptionPlanPrice> prices, CancellationToken ct)
+    private async Task ReplacePricesAsync(SubscriptionPlan plan, List<SubscriptionPlanPrice> prices, DateTime now, CancellationToken ct)
     {
         var existing = await db.SubscriptionPlanPrices.IgnoreQueryFilters().Where(p => p.PlanId == plan.Id).ToListAsync(ct);
         var incoming = prices.ToDictionary(PriceKey);
@@ -347,12 +354,17 @@ public sealed class AdminSubscriptionService(AppDbContext db, IEntitlementServic
         {
             if (incoming.Remove(PriceKey(row), out var next))
             {
-                row.Price = next.Price;
                 if (row.IsDeleted)
                 {
                     row.IsDeleted = false;
                     row.DeleteTime = null;
                     row.DeleteUserId = null;
+                    (row.Price, row.PendingPrice, row.PendingFromUtc) = (next.Price, null, null);
+                }
+                else
+                {
+                    (row.Price, row.PendingPrice, row.PendingFromUtc) =
+                        PurchaseTermsPolicy.Apply(row.Price, row.PendingPrice, row.PendingFromUtc, next.Price, now);
                 }
             }
             else
@@ -378,13 +390,19 @@ public sealed class AdminSubscriptionService(AppDbContext db, IEntitlementServic
     {
         plan.Name,
         plan.MonthlyPrice,
+        plan.PendingMonthlyPrice,
+        plan.PendingMonthlyPriceFromUtc,
         plan.TrialDays,
         plan.IsActive,
         MonthlyLimits = plan.FeatureLimits.Where(l => l.MonthlyLimit != 0).OrderBy(l => l.FeatureKey, StringComparer.Ordinal)
             .ToDictionary(l => l.FeatureKey, l => l.MonthlyLimit),
         // #1108: fiyat tablosu (öğretmen planında boş).
         Prices = plan.Prices.Where(p => !p.IsDeleted).OrderBy(p => p.Band).ThenBy(p => p.GradeLevel).ThenBy(p => p.Scope).ThenBy(p => p.Duration)
-            .Select(p => new { Band = p.Band.ToString(), p.GradeLevel, Scope = p.Scope.ToString(), Duration = p.Duration.ToString(), p.Price }),
+            .Select(p => new
+            {
+                Band = p.Band.ToString(), p.GradeLevel, Scope = p.Scope.ToString(), Duration = p.Duration.ToString(), p.Price,
+                p.PendingPrice, p.PendingFromUtc,
+            }),
     });
 
     // Öğretmen: okula bağlı (Teacher.SchoolId; başvurusu bekleyen RequestedSchoolId sayılmaz). Öğrenci: yalnız doğrulanmış üyelik.

@@ -10,6 +10,7 @@ import {
   ParentChildSchedule,
   ParentChildSummary,
   ParentChildTestResult,
+  ParentWeeklyReport,
 } from '../models/parent-dashboard.model';
 
 /** Veli paneli (issue #420, #421, #422). Yetki sunucuda: yalnızca Active bağlantı; diğer her durum 404. */
@@ -56,5 +57,11 @@ export class ParentDashboardService {
   getChildSchedule(studentId: number, range?: { from: string; to: string }): Observable<ParentChildSchedule> {
     const params = range ? new HttpParams().set('from', range.from).set('to', range.to) : undefined;
     return this.http.get<ParentChildSchedule>(`${this.baseUrl}/${studentId}/schedule`, { params });
+  }
+
+  /** Issue #1112: haftalık rapor; `weekStart` (Pazartesi, "yyyy-MM-dd") boşsa son biten hafta. Plan dışı 403, geçersiz hafta 400. */
+  getChildWeeklyReport(studentId: number, weekStart?: string): Observable<ParentWeeklyReport> {
+    const params = weekStart ? new HttpParams().set('weekStart', weekStart) : undefined;
+    return this.http.get<ParentWeeklyReport>(`${this.baseUrl}/${studentId}/weekly-report`, { params });
   }
 }

@@ -455,6 +455,9 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   kopunca nötrlenir) + raporun tamamıyla e-posta (`NotificationEventLog` `ParentWeeklyReportEmail` ile tek). E-posta veli ayarından
   kapanır: `GET|PUT api/parent/settings { weeklyReportEmail }` (`Parents.WeeklyReportEmailOptOut`), Ayarlar → Bildirimler; kapalıysa
   event e-postasız yazılır (yalnız in-app).
+  **Veli panelinde:** "Rapor" sekmesi (Gelişim'den sonra, `?tab=report`; bildirim buraya açar) `ParentChildReportComponent`: öneri
+  satırı, sayılar (çözülen, doğru, gün, süre, puan, ödevler), dersler, düşen konular, denemeler, rozetler; son 12 hafta arasında
+  önceki / sonraki hafta. Planında hak yoksa (403) kilit notu + "Planları gör" (Plan sekmesi).
 - **Okul lisansı (#1092):** özel anlaşmayla okulun bütün üyelerine plan: `SchoolLicenses` (okul başına tek satır; öğretmen ve öğrenci
   planı, varsayılan iki kitlenin Pro'su; başlangıç / hariç bitiş; anlaşma notu ≤ 200). Kimseye atama yazılmaz: plan çözümü
   (`EntitlementService.ResolvePlanAsync`, admin listesi `CurrentPlansAsync`, ortak kural `SchoolLicensePlans`) kullanıcının okuluna

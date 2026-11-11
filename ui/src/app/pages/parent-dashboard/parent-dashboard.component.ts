@@ -21,6 +21,7 @@ import { ParentRescheduleRequestsComponent } from './reschedule-requests/parent-
 import { ParentChildAssignmentsComponent } from './child-assignments/parent-child-assignments.component';
 import { ParentChildProgressComponent } from './child-progress/parent-child-progress.component';
 import { ParentChildScheduleComponent } from './child-schedule/parent-child-schedule.component';
+import { ParentChildReportComponent } from './child-report/parent-child-report.component';
 import { ParentChildPlanComponent } from './child-plan/parent-child-plan.component';
 import { OutcomeMasteryCardComponent } from '../../shared/components/outcome-mastery-card/outcome-mastery-card.component';
 import { TargetGoalCardComponent } from '../../shared/components/target-goal-card/target-goal-card.component';
@@ -32,7 +33,7 @@ import { PageHeaderComponent } from '../../shared/components/page-header/page-he
 export const PARENT_DASHBOARD_SCOPE = 'parent-dashboard';
 
 /** #883: ayrıntı sekmelerinin sırası (şablondaki `mat-tab` sırasıyla aynı). */
-export const PARENT_DASHBOARD_TABS = { progress: 0, outcomes: 1, goal: 2, schedule: 3, assignments: 4, plan: 5 } as const;
+export const PARENT_DASHBOARD_TABS = { progress: 0, report: 1, outcomes: 2, goal: 3, schedule: 4, assignments: 5, plan: 6 } as const;
 
 /** Bağlı çocuk + özet anahtarı (yalnızca Active ve studentId dolu satırlar). */
 type ActiveChild = LinkedChild & { studentId: number };
@@ -82,6 +83,7 @@ export function parseChildParam(value: string | null): number | null {
     ParentChildAssignmentsComponent,
     ParentChildProgressComponent,
     ParentChildScheduleComponent,
+    ParentChildReportComponent,
     ParentChildPlanComponent,
     OutcomeMasteryCardComponent, TargetGoalCardComponent, CoachGoalsCardComponent, WeakTopicsCardComponent,
     RouterLink,

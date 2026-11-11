@@ -1,0 +1,129 @@
+<section class="prp" *transloco="let t; prefix: 'parent-dashboard'" aria-labelledby="prp-title" data-test="report-section">
+  <header class="prp__head">
+    <div>
+      <h2 id="prp-title">{{ t('report.title') }}</h2>
+      <p>{{ t('report.subtitle') }}</p>
+    </div>
+    @if (!locked()) {
+      <div class="prp__nav">
+        <button mat-icon-button type="button" [disabled]="!canGoBack() || loading()"
+          [attr.aria-label]="t('report.previousWeek')" [matTooltip]="t('report.previousWeek')"
+          (click)="previousWeek()" data-test="report-prev">
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+        <span class="prp__range" aria-live="polite" data-test="report-range">
+          @if (weekLabel(); as w) {
+            {{ t('report.range', w) }}
+          }
+        </span>
+        <button mat-icon-button type="button" [disabled]="!canGoForward() || loading()"
+          [attr.aria-label]="t('report.nextWeek')" [matTooltip]="t('report.nextWeek')"
+          (click)="nextWeek()" data-test="report-next">
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+    }
+  </header>
+
+  @if (loading()) {
+    <div class="prp__state" aria-busy="true" data-test="report-loading">
+      <mat-spinner diameter="28" />
+      <span>{{ t('loading') }}</span>
+    </div>
+  } @else if (locked()) {
+    <div class="prp__locked" data-test="report-locked">
+      <mat-icon aria-hidden="true">lock</mat-icon>
+      <p>{{ t('report.locked') }}</p>
+      <button mat-stroked-button type="button" (click)="openPlan.emit()" data-test="report-open-plan">{{ t('report.seePlans') }}</button>
+    </div>
+  } @else if (error()) {
+    <div class="prp__state" role="alert" data-test="report-error">
+      <span>{{ error() }}</span>
+      <button mat-stroked-button type="button" (click)="reload()">{{ t('retry') }}</button>
+    </div>
+  } @else if (report(); as r) {
+    <p class="prp__suggestion" data-test="report-suggestion">
+      <mat-icon aria-hidden="true">tips_and_updates</mat-icon>
+      <span>{{ t('report.suggestion.' + r.suggestion, { topic: r.suggestionTopic ?? '' }) }}</span>
+    </p>
+
+    <dl class="prp__stats">
+      <div data-test="stat-solved"><dt>{{ t('report.solved') }}</dt><dd>{{ r.questionsSolved }}</dd></div>
+      <div data-test="stat-accuracy"><dt>{{ t('report.accuracy') }}</dt><dd>{{ accuracy() === null ? '–' : '%' + accuracy() }}</dd></div>
+      <div data-test="stat-days"><dt>{{ t('report.activeDays') }}</dt><dd>{{ r.activeDays }}/7</dd></div>
+      <div data-test="stat-minutes"><dt>{{ t('report.studyMinutes') }}</dt><dd>{{ t('report.minutes', { n: r.studyMinutes }) }}</dd></div>
+      <div data-test="stat-points"><dt>{{ t('report.points') }}</dt><dd>{{ r.points }}</dd></div>
+      <div data-test="stat-assignments">
+        <dt>{{ t('report.assignments') }}</dt>
+        <dd>{{ t('report.assignmentsValue', { done: r.assignmentsCompleted, overdue: r.assignmentsOverdue }) }}</dd>
+      </div>
+    </dl>
+
+    @if (!isQuiet()) {
+      <div class="prp__grid">
+        <section class="prp__card" aria-labelledby="prp-subjects">
+          <h3 id="prp-subjects">{{ t('report.subjects') }}</h3>
+          @if (r.subjects.length === 0) {
+            <p class="prp__none">{{ t('report.noSubjects') }}</p>
+          } @else {
+            <ul class="prp__list">
+              @for (s of r.subjects; track s.subjectId) {
+                <li data-test="report-subject">
+                  <span class="prp__name">{{ s.subjectName }}</span>
+                  <span class="prp__meta">{{ t('report.subjectMeta', { n: s.answered }) }}</span>
+                  <span class="prp__bar" aria-hidden="true"><span [style.width.%]="s.accuracyPercent"></span></span>
+                  <span class="prp__pct">%{{ s.accuracyPercent }}</span>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+
+        @if (r.droppedTopics.length > 0) {
+          <section class="prp__card" aria-labelledby="prp-dropped">
+            <h3 id="prp-dropped">{{ t('report.dropped') }}</h3>
+            <ul class="prp__list">
+              @for (d of r.droppedTopics; track d.topicId) {
+                <li data-test="report-dropped">
+                  <span class="prp__name">{{ d.topicName }}</span>
+                  <span class="prp__meta">{{ d.subjectName }}</span>
+                  <span class="prp__drop">%{{ d.previousAccuracyPercent }} → %{{ d.accuracyPercent }}</span>
+                </li>
+              }
+            </ul>
+          </section>
+        }
+
+        @if (r.mockExams.length > 0) {
+          <section class="prp__card" aria-labelledby="prp-mock">
+            <h3 id="prp-mock">{{ t('report.mockExams') }}</h3>
+            <ul class="prp__list">
+              @for (m of r.mockExams; track $index) {
+                <li data-test="report-mock">
+                  <span class="prp__name">{{ m.name }}</span>
+                  <span class="prp__meta">
+                    {{ t('report.net', { net: net(m.net) }) }}
+                    @if (m.rank !== null && m.takers !== null) {
+                      · {{ t('report.rank', { rank: m.rank, takers: m.takers }) }}
+                    }
+                  </span>
+                </li>
+              }
+            </ul>
+          </section>
+        }
+
+        @if (r.badges.length > 0) {
+          <section class="prp__card" aria-labelledby="prp-badges">
+            <h3 id="prp-badges">{{ t('report.badges') }}</h3>
+            <ul class="prp__badges">
+              @for (b of r.badges; track $index) {
+                <li data-test="report-badge"><mat-icon aria-hidden="true">{{ badgeIcon(b.icon) }}</mat-icon>{{ b.name }}</li>
+              }
+            </ul>
+          </section>
+        }
+      </div>
+    }
+  }
+</section>

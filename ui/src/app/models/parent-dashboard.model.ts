@@ -208,3 +208,26 @@ export interface ChildPlanFeatures {
   planKey: string | null;
   features: Record<string, boolean>;
 }
+
+/** Issue #1112: haftalık raporun öneri anahtarı (`parent-dashboard.report.suggestion.<key>`). */
+export type ParentWeeklySuggestion = 'noActivity' | 'overdue' | 'reviewTopic' | 'moreDays' | 'keepGoing';
+
+/** Issue #1112: `GET parent/children/{id}/weekly-report?weekStart=` — panelle aynı hesap, saklanmaz. */
+export interface ParentWeeklyReport {
+  studentId: number;
+  /** Haftanın Pazartesi'si ("yyyy-MM-dd", Europe/Istanbul). */
+  weekStart: string;
+  questionsSolved: number;
+  correct: number;
+  activeDays: number;
+  studyMinutes: number;
+  points: number;
+  subjects: { subjectId: number; subjectName: string; answered: number; correct: number; accuracyPercent: number }[];
+  droppedTopics: { topicId: number; topicName: string; subjectName: string | null; accuracyPercent: number; previousAccuracyPercent: number }[];
+  assignmentsCompleted: number;
+  assignmentsOverdue: number;
+  mockExams: { name: string; net: number; rank: number | null; takers: number | null; finishedAtUtc: string }[];
+  badges: { name: string; icon: string | null }[];
+  suggestion: ParentWeeklySuggestion;
+  suggestionTopic: string | null;
+}

@@ -50,6 +50,7 @@
   "tabs": {
     "label": "Details",
     "progress": "Progress",
+    "report": "Report",
     "outcomes": "Outcomes",
     "goal": "Target school",
     "schedule": "Calendar",
@@ -194,5 +195,38 @@
     "bought": "Plan bought: {{ plan }}.",
     "schoolLicense": "Through the school's license",
     "singleSubject": "Single subject: {{ subject }}"
+  },
+  "report": {
+    "title": "Weekly report",
+    "subtitle": "Summary of the last completed week, computed like the rest of the parent panel. It also arrives as a notification every Monday.",
+    "previousWeek": "Previous week",
+    "nextWeek": "Next week",
+    "range": "{{from}} – {{to}}",
+    "loadError": "The report could not be loaded.",
+    "locked": "The weekly report is included in the Essential and Pro plans.",
+    "seePlans": "See plans",
+    "solved": "Questions solved",
+    "accuracy": "Correct",
+    "activeDays": "Study days",
+    "studyMinutes": "Study time",
+    "minutes": "{{n}} min",
+    "points": "Points",
+    "assignments": "Assignments",
+    "assignmentsValue": "{{done}} done · {{overdue}} overdue",
+    "subjects": "Subjects",
+    "noSubjects": "No answers by subject this week.",
+    "subjectMeta": "{{n}} questions",
+    "dropped": "Topics that dropped",
+    "mockExams": "Mock exams",
+    "net": "{{net}} net",
+    "rank": "rank {{rank}} of {{takers}}",
+    "badges": "Badges earned",
+    "suggestion": {
+      "noActivity": "No questions this week; a short study plan together could help.",
+      "overdue": "There are overdue assignments; helping to finish those first is a good start.",
+      "reviewTopic": "Reviewing {{topic}} would help.",
+      "moreDays": "Aim for at least 3 study days next week.",
+      "keepGoing": "A good week; keep the same pace."
+    }
   }
 }

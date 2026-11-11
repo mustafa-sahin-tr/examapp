@@ -160,6 +160,11 @@
             <app-coach-goals-card [childId]="studentId" />
           </ng-template>
         </mat-tab>
+        <mat-tab [label]="t('tabs.report')">
+          <ng-template matTabContent>
+            <app-parent-child-report [studentId]="studentId" (notFound)="onChildNotFound()" (openPlan)="openTab(tabs.plan)" />
+          </ng-template>
+        </mat-tab>
         <mat-tab [label]="t('tabs.outcomes')">
           <ng-template matTabContent>
             @if (childAnalytics() === true) {

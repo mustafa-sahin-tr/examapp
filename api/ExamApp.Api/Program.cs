@@ -353,6 +353,12 @@ builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentAccessAuditLog, E
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentDashboardService, ExamApp.Api.Services.Parents.ParentDashboardService>();
 // issue #1112: velinin haftalık raporu (Essential / Pro).
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentWeeklyReportService, ExamApp.Api.Services.Parents.ParentWeeklyReportService>();
+// issue #1112: Pazartesi sabahı son biten haftanın raporunu her Active veliye gönderir (in-app + e-posta).
+builder.Services.AddOptions<ExamApp.Api.Services.Parents.ParentWeeklyReportOptions>()
+    .BindConfiguration(ExamApp.Api.Services.Parents.ParentWeeklyReportOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentWeeklyReportJob, ExamApp.Api.Services.Parents.ParentWeeklyReportJob>();
 // issue #421 (veli V3): ödev/test listesi + test sonuç özeti (salt okunur; kapı → audit → veri).
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentAssignmentService, ExamApp.Api.Services.Parents.ParentAssignmentService>();
 // issue #421 review: test sonucu 404 taraması uyarısı (süreç içi sayaç, veli başına 10 dk'da 20'yi aşınca Warning).
@@ -930,6 +936,12 @@ RecurringJob.AddOrUpdate<ExamApp.Api.Services.Entitlements.IPlanPriceChangeJob>(
     ExamApp.Api.Services.Entitlements.PlanPriceChangeJob.RecurringJobId,
     j => j.RunAsync(CancellationToken.None),
     app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Entitlements.PlanPriceChangeOptions>>().Value.Cron);
+
+// issue #1112: haftalık veli raporu (bağlantı başına hafta başına bir kez).
+RecurringJob.AddOrUpdate<ExamApp.Api.Services.Parents.IParentWeeklyReportJob>(
+    ExamApp.Api.Services.Parents.ParentWeeklyReportJob.RecurringJobId,
+    j => j.RunAsync(CancellationToken.None),
+    app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Parents.ParentWeeklyReportOptions>>().Value.Cron);
 
 // issue #1110: her yıl 1 Ağustos'ta (Europe/Istanbul) öğrencileri bir üst sınıfa taşır; telafi için ilk hafta her gece.
 RecurringJob.AddOrUpdate<ExamApp.Api.Services.GradePromotion.IStudentGradePromotionJob>(

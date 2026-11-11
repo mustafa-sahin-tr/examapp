@@ -2929,6 +2929,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("WeeklyReportEmailOptOut")
+                        .HasColumnType("boolean");
+
                     b.HasKey("Id");
 
                     b.ToTable("Parents");
@@ -3233,6 +3236,9 @@ namespace ExamApp.Api.Migrations
 
                     b.Property<int>("StudentId")
                         .HasColumnType("integer");
+
+                    b.Property<DateOnly?>("WeeklyReportSentFor")
+                        .HasColumnType("date");
 
                     b.HasKey("Id");
 

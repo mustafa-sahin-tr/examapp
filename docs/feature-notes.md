@@ -447,6 +447,14 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   ≥ 15 puan düşüş, iki haftada en az 3 cevap, en çok 3) konu performansından, ödevler hafta sonu anına göre (bu hafta tamamlanan,
   gecikmiş), hafta içinde biten denemeler (net, sıra), kazanılan rozetler. Tek satır öneri (öncelik): hareket yok → gecikmiş ödev →
   düşen / %70 altı konu → 3 günden az çalışma → devam.
+  **Gönderim:** `ParentWeeklyReportJob` (`ParentWeeklyReport:Cron`, Pazartesi 04–09 UTC = 07–12 İstanbul saat başı) son biten
+  haftayı, planında hak olan çocuğun her Active bağlantısına gönderir: rapor çocuk başına bir kez hesaplanır, bağlantıya
+  `WeeklyReportSentFor` = haftanın Pazartesi'si koşullu güncellemeyle event'le aynı transaction'da yazılır (bağlantı başına hafta
+  başına tek rapor; hakkı olmayan işaretlenmez, sonradan plan alınırsa sonraki turda gider). `ParentWeeklyReportEvent` →
+  BadgeService `ParentWeeklyReportConsumer`: in-app `ParentWeeklyReport` (kısa özet + öneri, çocuğun Rapor sekmesine; bağlantı
+  kopunca nötrlenir) + raporun tamamıyla e-posta (`NotificationEventLog` `ParentWeeklyReportEmail` ile tek). E-posta veli ayarından
+  kapanır: `GET|PUT api/parent/settings { weeklyReportEmail }` (`Parents.WeeklyReportEmailOptOut`), Ayarlar → Bildirimler; kapalıysa
+  event e-postasız yazılır (yalnız in-app).
 - **Okul lisansı (#1092):** özel anlaşmayla okulun bütün üyelerine plan: `SchoolLicenses` (okul başına tek satır; öğretmen ve öğrenci
   planı, varsayılan iki kitlenin Pro'su; başlangıç / hariç bitiş; anlaşma notu ≤ 200). Kimseye atama yazılmaz: plan çözümü
   (`EntitlementService.ResolvePlanAsync`, admin listesi `CurrentPlansAsync`, ortak kural `SchoolLicensePlans`) kullanıcının okuluna

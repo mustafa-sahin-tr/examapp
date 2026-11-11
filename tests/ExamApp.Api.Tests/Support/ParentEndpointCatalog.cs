@@ -89,6 +89,10 @@ public static class ParentEndpointCatalog
     /// <summary>Veli kapsamında keşfedilen ama okuma matrisi dışında kalan aksiyonlar — her biri gerekçeli.</summary>
     public static readonly IReadOnlyDictionary<string, string> Exempt = new Dictionary<string, string>
     {
+        [$"{nameof(ParentSettingsController)}.{nameof(ParentSettingsController.Get)}"] =
+            "Own settings (#1112): the caller's weekly-report e-mail switch; no child data; ParentSettingsEndpointsTests.",
+        [$"{nameof(ParentSettingsController)}.{nameof(ParentSettingsController.Update)}"] =
+            "Own settings write (#1112): the caller's weekly-report e-mail switch; no child data; ParentSettingsEndpointsTests.",
         [$"{nameof(ParentLinksController)}.{nameof(ParentLinksController.CreateSecondParentCode)}"] =
             "Parent write (#436): primary parent issues a second-parent code for their own Active link (other link 404, " +
             "non-primary 403); returns only the code + expiry; ParentLinkEndpointsTests, ParentForbiddenContentTests.",

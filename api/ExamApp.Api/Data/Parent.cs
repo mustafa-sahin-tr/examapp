@@ -11,5 +11,8 @@ public class Parent : BaseEntity
     [Required]
     public int UserId { get; set; }    
 
+    /// <summary>Issue #1112: veli haftalık raporun e-postasını kapattı (uygulama içi bildirim yine gelir).</summary>
+    public bool WeeklyReportEmailOptOut { get; set; }
+
     public virtual ICollection<Student> Children { get; set; }
 }

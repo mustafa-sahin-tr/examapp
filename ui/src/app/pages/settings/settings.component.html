@@ -101,6 +101,25 @@
     }
   </article>
 
+  @if (isParent) {
+    <!-- Issue #1112: velinin bildirim tercihi (haftalık rapor e-postası). -->
+    <article class="stg__card stg-notifications" aria-labelledby="stg-notifications-title">
+      <h2 id="stg-notifications-title">{{ t('notifications.title') }}</h2>
+      <mat-slide-toggle
+        data-testid="weekly-report-email"
+        [checked]="weeklyReportEmail() ?? false"
+        [disabled]="weeklyReportEmail() === null || savingParentSettings()"
+        (change)="setWeeklyReportEmail($event.checked)"
+      >
+        {{ t('notifications.weeklyReportEmail') }}
+      </mat-slide-toggle>
+      <p class="stg__hint">{{ t('notifications.weeklyReportHint') }}</p>
+      @if (parentSettingsError(); as err) {
+        <p class="stg__error" role="alert">{{ t(err === 'load' ? 'notifications.loadError' : 'notifications.saveError') }}</p>
+      }
+    </article>
+  }
+
   <!-- Issue #417: tüm rollerde ortak hesap kartı (öğrencide /student-profile de kullanır). -->
   <app-account-security-card class="stg-account" />
 </section>

@@ -334,6 +334,30 @@
     "ParentChildPlanEndingBandChange": {
       "title": "Renewal price changes",
       "body": "{0}'s plan ends on {1}. {0} is now in grade {2}, so the renewal uses the grade {2} price. You can see it in the parent panel."
+    },
+    "ParentWeeklyReport": {
+      "title": "Weekly report for {0}",
+      "body": "Week of {1}: {0} solved {2} questions, {3}% correct, studied on {4} days. {5}"
+    },
+    "weeklyReport": {
+      "studyTime": "Study time: {0} min · Points: {1}",
+      "assignments": "Assignments: {0} completed, {1} overdue",
+      "subjectsTitle": "Subjects",
+      "subjectLine": "{0}: {1} questions, {2}% correct",
+      "droppedTitle": "Topics that dropped",
+      "droppedLine": "{0}: {1}% → {2}%",
+      "mockExamsTitle": "Mock exams",
+      "mockExamLine": "{0}: {1} net",
+      "mockExamRanked": "{0}: {1} net, rank {2} of {3}",
+      "badges": "Badges earned: {0}",
+      "panelHint": "The full report is in the parent panel, on your child's Report tab.",
+      "suggestion": {
+        "noActivity": "No questions this week; a short study plan together could help.",
+        "overdue": "There are overdue assignments; helping to finish those first is a good start.",
+        "reviewTopic": "Reviewing {0} would help.",
+        "moreDays": "Aim for at least 3 study days next week.",
+        "keepGoing": "A good week; keep the same pace."
+      }
     }
   }
 }

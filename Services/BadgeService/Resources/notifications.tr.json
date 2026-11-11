@@ -334,6 +334,30 @@
     "ParentChildPlanEndingBandChange": {
       "title": "Yenileme fiyatı değişiyor",
       "body": "{0} için planın süresi {1} tarihinde doluyor. {0} artık {2}. sınıfta; yenileme {2}. sınıfın fiyatıyla yapılır. Fiyatı veli panelinde görebilirsiniz."
+    },
+    "ParentWeeklyReport": {
+      "title": "{0} için haftalık rapor",
+      "body": "{1} haftası: {0} {2} soru çözdü, %{3} doğru, {4} gün çalıştı. {5}"
+    },
+    "weeklyReport": {
+      "studyTime": "Çalışma süresi: {0} dk · Puan: {1}",
+      "assignments": "Ödevler: {0} tamamlandı, {1} gecikmiş",
+      "subjectsTitle": "Dersler",
+      "subjectLine": "{0}: {1} soru, %{2} doğru",
+      "droppedTitle": "Düşen konular",
+      "droppedLine": "{0}: %{1} → %{2}",
+      "mockExamsTitle": "Denemeler",
+      "mockExamLine": "{0}: {1} net",
+      "mockExamRanked": "{0}: {1} net, {2}/{3}. sıra",
+      "badges": "Kazanılan rozetler: {0}",
+      "panelHint": "Raporun tamamı veli panelinde, çocuğunuzun Rapor sekmesinde.",
+      "suggestion": {
+        "noActivity": "Bu hafta hiç soru çözmedi; birlikte kısa bir çalışma planı yapabilirsiniz.",
+        "overdue": "Gecikmiş ödevleri var; önce onları bitirmesine yardım edebilirsiniz.",
+        "reviewTopic": "{0} konusunu tekrar etmesi iyi olur.",
+        "moreDays": "Haftaya en az 3 gün çalışmayı hedefleyebilir.",
+        "keepGoing": "Güzel bir hafta; aynı tempoyla devam."
+      }
     }
   }
 }

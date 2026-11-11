@@ -286,6 +286,12 @@ describe('describeNotification (issue #105)', () => {
         expect(self.route).toEqual({ commands: ['/subscription'] });
     });
 
+    it('ParentWeeklyReport_LinksChildReportTab (issue #1112)', () => {
+        const result = describeNotification({ type: 'ParentWeeklyReport', data: JSON.stringify({ studentId: 21, weekStart: '2026-11-02' }) });
+        expect(result.route).toEqual({ commands: ['/parent'], queryParams: { child: 21, tab: 'report' } });
+        expect(result.icon).toBe('summarize');
+    });
+
     it('OpenTextReviewed_LinksTheReviewedActivityItem (issue #614)', () => {
         const result = describeNotification({
             type: 'OpenTextReviewed',

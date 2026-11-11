@@ -238,3 +238,10 @@ public class CoParentDto
 
     public DateTime? PendingExpiresAt { get; set; }
 }
+
+/// <summary>Issue #1112: velinin kendi ayarları (<c>GET|PUT api/parent/settings</c>).</summary>
+public class ParentSettingsDto
+{
+    /// <summary>Haftalık rapor e-postayla da gelsin (varsayılan açık; uygulama içi bildirim her zaman gelir).</summary>
+    public bool WeeklyReportEmail { get; set; } = true;
+}

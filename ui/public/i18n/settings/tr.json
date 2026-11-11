@@ -31,5 +31,12 @@
     "title": "Dil",
     "hint": "Seçtiğin dil hesabına kaydedilir ve tüm cihazlarında kullanılır.",
     "saving": "Dil tercihin kaydediliyor..."
+  },
+  "notifications": {
+    "title": "Bildirimler",
+    "weeklyReportEmail": "Haftalık raporu e-postayla da gönder",
+    "weeklyReportHint": "Rapor her Pazartesi sabahı uygulama içi bildirim olarak gelir; e-postayı buradan kapatabilirsin.",
+    "loadError": "Bildirim tercihin yüklenemedi.",
+    "saveError": "Tercihin kaydedilemedi; tekrar dene."
   }
 }

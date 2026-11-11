@@ -32,7 +32,12 @@
     "pickFolder": "Klasör seç",
     "orderTitle": "Sayfa sırası",
     "orderHint": "Sayfalar dosya adlarına göre bu sırayla aktarılır (sayfa2, sayfa10'dan önce gelir).",
-    "skippedFiles": "Görsel olmayan {{count}} dosya atlandı."
+    "skippedFiles": "Görsel olmayan {{count}} dosya atlandı.",
+    "imagesKindLabel": "Görseller nedir",
+    "imagesBook": "Kitap sayfaları",
+    "imagesLoose": "Karışık sorular",
+    "imagesBookHint": "Görseller bir kitabın sırayla sayfalarıdır; kitap kurulumu ve cevap anahtarı PDF'teki gibi okunur.",
+    "imagesLooseHint": "Her görsel ayrı bir soru kaynağıdır (farklı kitaplardan). Kitap kurulumu yok; cevaplar incelemede girilir, onaylanan sorular soru havuzuna eklenir."
   },
   "errors": {
     "notPdf": "Seçilen dosya PDF değil.",
@@ -424,6 +429,26 @@
     "fixPage": "Fotoğraf {{page}}",
     "fixPageFlagged": "Fotoğraf {{page}} · işaretli",
     "footer": "Onaylanan sorular soru havuzunuza eklenir ve yalnız size açıktır (özel). Test oluşturulmaz."
+  },
+  "reviewLoose": {
+    "title": "İnceleme ve onay",
+    "summary": "{{open}} görsel inceleme bekliyor · {{approved}} onaylandı",
+    "approveAll": "Hazır görselleri onayla ({{count}}/{{total}})",
+    "approveAllConfirm": "{{count}} görselin soruları soru havuzuna eklenecek. Cevapsız sorusu olan ya da hatalı görseller atlanır.",
+    "approvedAll": "{{count}} görsel onaylandı.",
+    "allDone": "İncelenecek görsel kalmadı.",
+    "nothingToCheck": "Bakılması gereken görsel yok. Hepsini görmek için filtreyi kapatın.",
+    "remove": "{{name}} sorularını sil",
+    "removeConfirm": "Soruları sil",
+    "counts": "{{saved}} soru",
+    "question": "Soru {{number}}",
+    "passage": "Soru {{number}} pasajı",
+    "fixPage": "Görsel {{page}}",
+    "fixPageFlagged": "Görsel {{page}} · işaretli",
+    "footer": "Onaylanan sorular soru havuzunuza eklenir ve yalnız size açıktır (özel). İsterseniz hepsini onaylarken yeni bir teste de toplanır.",
+    "collect": "Bu soruları yeni bir teste de topla",
+    "collectName": "Test adı",
+    "collected": "Oluşturulan testi aç"
   },
   "training": {
     "title": "Eğitim verisi (soru tespiti)",

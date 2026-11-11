@@ -64,6 +64,15 @@ aktarım aracındaki Python portu referanstır (#1022).
   göre doğal sırayla (`sayfa2` < `sayfa10`) dizilip liste olarak gösterilir, kitap adı boşsa klasör adı olur. İstemci tür,
   15 MB ve 600 görsel sınırını önceden denetler; genişlik denetimi sunucuda. Ayrıntı ekranında dosya yerine "Görseller"
   (klasör adı) yazar.
+- **Karışık sorular (#1144):** görsellerde ikinci seçim "Kitap sayfaları / Karışık sorular". Karışık: `source: "LooseImages"`;
+  yükleme ve Sayfalar aşaması aynı, ama tamamlamada görsel başına bir test satırı ("Görsel n", `FileFrom = FileTo = n`) açılır ve
+  kitap hakkı (iş başına bir, `BookImport` kullanımı iş id'siyle) burada düşer; kurulum ve kurulum onayı yok, koşucu Sayfalar'dan
+  doğrudan Sorular'a geçer. Kitap kaydı yok (`BookId` boş, soru kaynağı kitapsız), cevap anahtarı yok (cevaplar incelemede),
+  bütçe kitap aktarımının sayacı. İnceleme hızlı ekleme gibi (`HasLooseQuestions`): onayda sorular etkinleşir, iç taslak testler
+  silinir. "Hazır görselleri onayla" onayında isteğe bağlı **"Bu soruları yeni bir teste de topla"** + ad (varsayılan aktarımın adı):
+  `POST {id}/approve` gövdesi `{ collectTestName }`; o çağrıda onaylanan sorular sırayla yeni bir teste (taslak değil, öğretmen
+  paylaşımı özel) eklenir, yanıt `collectedTestId` (ekranda "Oluşturulan testi aç" → `/test/:id`). Tek tek onaylananlar
+  toplanmaz; kitap ve hızlı eklemede ad yok sayılır.
 
 ## Kurulum aşaması ve onay (#1021)
 

@@ -125,9 +125,10 @@ public class BookImportJobRunner
         try
         {
             if (job.Stage < BookImportStage.SetupConfirmation)
-            {
                 await RenderPagesAsync(job);
-
+            // #1144 karışık sorular: kurulum ve onay yok, test satırları yüklemede açıldı; sayfalardan sonra sorulara geçer.
+            if (job.Stage < BookImportStage.SetupConfirmation && job.Source != BookImportSource.LooseImages)
+            {
                 await EnterStageAsync(job, BookImportStage.Setup);
                 await new BookSetupStage(_db, _minio, _setupAi, budget, _surveyBatchSize, _logger).RunAsync(job);
                 await BookQuestionImportStage.StopIfCancelledAsync(_db, job.Id, default);
@@ -185,7 +186,7 @@ public class BookImportJobRunner
         if (job.Stage != BookImportStage.Pages)
             await EnterStageAsync(job, BookImportStage.Pages);
 
-        if (job.Source == BookImportSource.Images)
+        if (BookImportService.IsImageSource(job.Source))
         {
             await NormalizeImagesAsync(job);
             return;

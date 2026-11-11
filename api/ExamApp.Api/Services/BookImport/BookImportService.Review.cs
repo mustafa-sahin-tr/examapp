@@ -25,7 +25,8 @@ public enum BookImportReviewResult
 /// Issue #1023: inceleme ve onay. Aktarımın oluşturduğu test ve sorular taslaktır (<see cref="DraftQueryFilter"/>); onay
 /// taslak bayrağını kaldırır (öğretmen paylaşımı Private ve soru bankası paylaşımı olduğu gibi kalır), silme yalnız o testin
 /// taslak testini ve taslak sorularını siler. İşlemler yalnız sahibi / Admin için ve iş incelemedeyken. #1054: hızlı ekleme test
-/// değil soru üretir; onayda sorular etkinleşir, iç taslak test bağlantılarıyla silinir.
+/// değil soru üretir; onayda sorular etkinleşir, iç taslak test bağlantılarıyla silinir. #1144 karışık sorular da öyle; hepsini
+/// onaylarken sorular isteğe bağlı olarak yeni bir teste toplanır.
 /// </summary>
 public sealed partial class BookImportService
 {
@@ -100,14 +101,18 @@ public sealed partial class BookImportService
         if (await DraftQuestions(test.WorksheetId!.Value).AnyAsync(q => q.CorrectAnswerId == null, ct))
             return BookImportReviewResult.Answerless;
 
-        await ApproveAsync(owner, test, ct);
+        await ApproveAsync(owner, test, await HasLooseQuestionsAsync(owner, id, ct), ct);
         await CompleteIfReviewedAsync(id, ct);
         return BookImportReviewResult.Ok;
     }
 
-    public async Task<ApproveAllBookImportResultDto?> ApproveAllAsync(BookImportOwner owner, Guid id, CancellationToken ct)
+    /// <param name="collectTestName">#1144: karışık sorularda doluysa bu çağrıda onaylanan sorular bu adla yeni bir teste (özel,
+    /// yayımlanmamış) sırasıyla toplanır; kitap ve hızlı eklemede yok sayılır.</param>
+    public async Task<ApproveAllBookImportResultDto?> ApproveAllAsync(BookImportOwner owner, Guid id, CancellationToken ct,
+        string? collectTestName = null)
     {
-        if (!await Visible(owner).AnyAsync(j => j.Id == id, ct))
+        var job = await Visible(owner).AsNoTracking().FirstOrDefaultAsync(j => j.Id == id, ct);
+        if (job is null)
             return null;
         if (!await InReviewAsync(id, ct))
             return new ApproveAllBookImportResultDto();
@@ -117,6 +122,9 @@ public sealed partial class BookImportService
             .OrderBy(t => t.Order)
             .ToListAsync(ct);
         var result = new ApproveAllBookImportResultDto();
+        var loose = job.HasLooseQuestions;
+        var collectName = job.Source == BookImportSource.LooseImages ? collectTestName?.Trim() : null;
+        var collected = new List<int>();
         foreach (var test in tests)
         {
             if (!IsReviewable(test))
@@ -129,12 +137,49 @@ public sealed partial class BookImportService
                 result.Skipped.Add(new BookImportSkippedTestDto(test.Id, SkipAnswerless));
                 continue;
             }
-            await ApproveAsync(owner, test, ct);
+            if (!string.IsNullOrEmpty(collectName))
+            {
+                collected.AddRange(await _db.TestQuestions.IgnoreQueryFilters([DraftQueryFilter.Key])
+                    .Where(wq => wq.TestId == test.WorksheetId!.Value && !wq.IsDeleted)
+                    .OrderBy(wq => wq.Order).ThenBy(wq => wq.Id)
+                    .Select(wq => wq.QuestionId)
+                    .ToListAsync(ct));
+            }
+            await ApproveAsync(owner, test, loose, ct);
             result.Approved.Add(test.Id);
         }
+        if (!string.IsNullOrEmpty(collectName) && collected.Count > 0)
+            result.CollectedTestId = await CollectIntoTestAsync(owner, job, collectName, collected, ct);
         await CompleteIfReviewedAsync(id, ct);
         return result;
     }
+
+    /// <summary>#1144: onaylanan karışık soruları yeni bir teste toplar (taslak değil, öğretmen paylaşımı özel).</summary>
+    private async Task<int> CollectIntoTestAsync(BookImportOwner owner, BookImportJob job, string name, List<int> questionIds,
+        CancellationToken ct)
+    {
+        var worksheet = new Worksheet
+        {
+            Name = name.Length <= CollectedTestNameLength ? name : name[..CollectedTestNameLength],
+            Description = $"{job.BookName}. Görsellerden eklenen sorular.",
+            GradeId = job.GradeId,
+            SubjectId = job.SubjectId,
+            TeacherSharing = WorksheetTeacherSharing.Private,
+        };
+        var order = 0;
+        foreach (var questionId in questionIds.Distinct())
+            worksheet.WorksheetQuestions.Add(new WorksheetQuestion { QuestionId = questionId, Order = ++order });
+        _db.SetCurrentUser(owner.UserId);
+        _db.Worksheets.Add(worksheet);
+        await _db.SaveChangesAsync(ct);
+        return worksheet.Id;
+    }
+
+    internal const int CollectedTestNameLength = 200;
+
+    private async Task<bool> HasLooseQuestionsAsync(BookImportOwner owner, Guid id, CancellationToken ct) =>
+        owner.Kind == BookImportJobKind.QuickAdd
+        || await _db.BookImportJobs.AnyAsync(j => j.Id == id && j.Source == BookImportSource.LooseImages, ct);
 
     public async Task<BookImportReviewResult> RemoveTestAsync(BookImportOwner owner, Guid id, int testId, CancellationToken ct)
     {
@@ -238,7 +283,7 @@ public sealed partial class BookImportService
         _db.Questions.IgnoreQueryFilters([DraftQueryFilter.Key])
             .Where(q => q.IsDraft && _db.TestQuestions.Any(wq => wq.TestId == worksheetId && wq.QuestionId == q.Id && !wq.IsDeleted));
 
-    private async Task ApproveAsync(BookImportOwner owner, BookImportJobTest test, CancellationToken ct)
+    private async Task ApproveAsync(BookImportOwner owner, BookImportJobTest test, bool loose, CancellationToken ct)
     {
         var worksheetId = test.WorksheetId!.Value;
         var strategy = _db.Database.CreateExecutionStrategy();
@@ -246,7 +291,7 @@ public sealed partial class BookImportService
         {
             await using var tx = await _db.Database.BeginTransactionAsync(ct);
             await DraftQuestions(worksheetId).ExecuteUpdateAsync(s => s.SetProperty(q => q.IsDraft, false), ct);
-            if (owner.Kind == BookImportJobKind.QuickAdd)
+            if (loose)
             {
                 var now = DateTime.UtcNow;
                 await _db.TestQuestions.IgnoreQueryFilters([DraftQueryFilter.Key])

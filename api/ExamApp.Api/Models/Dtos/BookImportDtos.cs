@@ -190,6 +190,16 @@ public class ApproveAllBookImportResultDto
 {
     public List<int> Approved { get; set; } = new();
     public List<BookImportSkippedTestDto> Skipped { get; set; } = new();
+
+    /// <summary>Issue #1144: karışık soruların toplandığı yeni testin id'si (istenmediyse ya da onaylanan yoksa null).</summary>
+    public int? CollectedTestId { get; set; }
+}
+
+/// <summary>Issue #1144: "hepsini onayla" gövdesi (isteğe bağlı); karışık sorularda <see cref="CollectTestName"/> yeni test adı.</summary>
+public class ApproveAllBookImportDto
+{
+    [System.ComponentModel.DataAnnotations.MaxLength(200)]
+    public string? CollectTestName { get; set; }
 }
 
 public record BookImportSkippedTestDto(int Id, string Reason);

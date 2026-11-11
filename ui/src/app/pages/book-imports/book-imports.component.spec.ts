@@ -212,6 +212,27 @@ describe('BookImportsComponent (#1018)', () => {
     expect(api.start).toHaveBeenCalledWith({ images: [a, b], bookName: 'Taranmış', gradeId: 5, subjectId: null });
   });
 
+  it('submit_LooseImages_StartsAsMixedQuestions (#1144)', () => {
+    setup();
+    api.start.mockReturnValue(of({ type: 'done', job: job({ id: 'loose-job' }) }));
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    component.openForm();
+    component.setMode('images');
+    fixture.detectChanges();
+    const kind = el().querySelector('[data-testid="images-kind"]')!;
+    (Array.from(kind.querySelectorAll('button')).find((b) => b.textContent?.includes(tr.form.imagesLoose)) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(text()).toContain(tr.form.imagesLooseHint);
+    const image = new File(['a'], 'soru.jpg', { type: 'image/jpeg' });
+    component.pickImages([image]);
+    component.form.controls.bookName.setValue('Karışık');
+    component.form.controls.gradeId.setValue(5);
+
+    component.submit();
+
+    expect(api.start).toHaveBeenCalledWith({ images: [image], loose: true, bookName: 'Karışık', gradeId: 5, subjectId: null });
+  });
+
   it('submit_StartsAndNavigatesToDetail', () => {
     setup();
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);

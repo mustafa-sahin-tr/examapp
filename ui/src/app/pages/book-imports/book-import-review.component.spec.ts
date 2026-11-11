@@ -137,6 +137,45 @@ describe('BookImportReviewComponent (#1023)', () => {
     expect(changed).toBe(1);
   });
 
+  it('approveAll_LooseImages_CanCollectTheQuestionsIntoANewTest (#1144)', () => {
+    setup([test({ title: 'Görsel 1', unit: 0, testNo: 1, fileFrom: 1, fileTo: 1 })]);
+    api.approveAll.mockReturnValue(of({ approved: [1], skipped: [], collectedTestId: 77 }));
+    fixture.componentRef.setInput('loose', true);
+    fixture.componentRef.setInput('bookName', 'Karışık sorular');
+    fixture.componentInstance.onlyAttention.set(false);
+    fixture.detectChanges();
+    expect(text()).toContain('Görsel 1');
+    expect(text()).not.toContain('sayfa 1');
+
+    button(el(), 'Hazır görselleri onayla').click();
+    fixture.detectChanges();
+    (el().querySelector('[data-testid="collect-toggle"] input') as HTMLInputElement).click();
+    fixture.detectChanges();
+    const name = el().querySelector('[data-testid="collect-name"]') as HTMLInputElement;
+    expect(name.value).toBe('Karışık sorular');
+    name.value = '  Deneme 1  ';
+    name.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    button(el().querySelector('.bir-confirm')!, 'Onayla').click();
+    fixture.detectChanges();
+
+    expect(api.approveAll).toHaveBeenCalledWith('a1', 'Deneme 1');
+    expect(text()).toContain(tr.reviewLoose.approvedAll.replace('{{count}}', '1'));
+    expect(el().querySelector('[data-testid="collected-test"]')?.getAttribute('href')).toBe('/test/77');
+  });
+
+  it('approveAll_LooseImages_WithoutCollect_SendsNoName (#1144)', () => {
+    setup([test({ title: 'Görsel 1' })]);
+    fixture.componentRef.setInput('loose', true);
+    fixture.detectChanges();
+    button(el(), 'Hazır görselleri onayla').click();
+    fixture.detectChanges();
+    button(el().querySelector('.bir-confirm')!, 'Onayla').click();
+
+    expect(api.approveAll).toHaveBeenCalledWith('a1');
+  });
+
   it('remove_NeedsASecondClick', () => {
     setup(mixed());
     (rows()[0].querySelector('button[aria-label^="1-02"]') as HTMLButtonElement).click();

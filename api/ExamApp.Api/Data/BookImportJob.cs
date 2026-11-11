@@ -46,12 +46,14 @@ public enum BookImportJobKind
 
 /// <summary>
 /// Issue #1144: kitap işinin kaynağı. <see cref="Images"/>: sayfa başına bir görsel (klasörden); Sayfalar aşaması PDF yerine
-/// görselleri sayfa biçimine çevirir, sonrası aynı.
+/// görselleri sayfa biçimine çevirir, sonrası aynı. <see cref="LooseImages"/>: her görsel bağımsız bir soru kaynağı (karışık sorular;
+/// hızlı ekleme gibi görsel başına bir test satırı, kitap ve kurulum yok, onayda sorular havuza).
 /// </summary>
 public enum BookImportSource
 {
     Pdf = 1,
     Images = 2,
+    LooseImages = 3,
 }
 
 public enum BookImportTestStatus
@@ -89,6 +91,9 @@ public class BookImportJob : BaseEntity
     /// (<c>…/book-import-uploads/&lt;uploadId&gt;/</c>, görseller <c>image-0001</c>…); Sayfalar aşaması bitince silinir.
     /// </summary>
     public BookImportSource Source { get; set; } = BookImportSource.Pdf;
+
+    /// <summary>Görsel başına bağımsız test satırı (hızlı ekleme ya da karışık sorular, #1144): kitap / kurulum yok, onayda test kalmaz.</summary>
+    public bool HasLooseQuestions => Kind == BookImportJobKind.QuickAdd || Source == BookImportSource.LooseImages;
 
     [Required, MaxLength(MaxBookNameLength)]
     public string BookName { get; set; } = string.Empty;

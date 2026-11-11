@@ -58,7 +58,7 @@ public sealed class BookImportPageFixService(
             : await db.BookImportJobTests.AsTracking().FirstOrDefaultAsync(t => t.Id == testId && t.JobId == id, ct);
         if (job is null || test is null)
             return new(BookImportPageFixError.NotFound);
-        if (job.Status is not (BookImportJobStatus.ReadyForReview or BookImportJobStatus.Cancelled) || (job.Kind == BookImportJobKind.Book && job.BookId is null) || job.CreateUserId is not > 0
+        if (job.Status is not (BookImportJobStatus.ReadyForReview or BookImportJobStatus.Cancelled) || (!job.HasLooseQuestions && job.BookId is null) || job.CreateUserId is not > 0
             || test.Status is not (BookImportTestStatus.Done or BookImportTestStatus.NeedsReview or BookImportTestStatus.Failed)
             || test.FileFrom is not { } from || test.FileTo is not { } to || filePage < from || filePage > to)
             return new(BookImportPageFixError.InvalidState);
@@ -75,7 +75,7 @@ public sealed class BookImportPageFixService(
 
         var label = BookQuestionImportStage.SourceLabel(job, test);
         // #1054: hızlı eklemede anahtar yalnız bulunan sayı anahtar uzunluğuna eşitse uygulanır (#1052 ile aynı kural).
-        var answerKey = job.Kind == BookImportJobKind.QuickAdd && test.AnswerKey?.Length != questions.Count ? null : test.AnswerKey;
+        var answerKey = job.HasLooseQuestions && test.AnswerKey?.Length != questions.Count ? null : test.AnswerKey;
         var numbers = new List<int>();
         var toSave = questions.Select((q, i) =>
         {

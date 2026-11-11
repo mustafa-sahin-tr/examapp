@@ -143,4 +143,18 @@ describe('BookImportService page images upload (#1144)', () => {
     const p = (part: number, sentBytes: number) => ({ type: 'progress', part, parts: 2, sentBytes, totalBytes: 8 });
     expect(events).toEqual([p(0, 0), p(1, 3), p(2, 8), { type: 'assembling' }, { type: 'done', job: { id: 'job-2' } }]);
   });
+
+  it('start_LooseImages_AndApproveAllWithACollectName', () => {
+    const image = new File(['a'], 'soru.jpg', { type: 'image/jpeg' });
+    service.start({ images: [image], loose: true, bookName: 'K', gradeId: 5, subjectId: null }).subscribe();
+    const begin = http.expectOne(`${base}/uploads`);
+    expect(begin.request.body.source).toBe('LooseImages');
+    begin.flush({ id: 'u3', partSizeBytes: 1, partCount: 0 });
+    http.expectOne(`${base}/uploads/u3/complete`).flush({ id: 'j' });
+
+    service.approveAll('j', 'Deneme').subscribe();
+    expect(http.expectOne(`${base}/j/approve`).request.body).toEqual({ collectTestName: 'Deneme' });
+    service.approveAll('j').subscribe();
+    expect(http.expectOne(`${base}/j/approve`).request.body).toEqual({});
+  });
 });

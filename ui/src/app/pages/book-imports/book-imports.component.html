@@ -34,6 +34,12 @@
       <p class="bi-error" role="alert">{{ t('errors.' + (error === 'notPdf' ? 'notPdf' : 'fileTooLarge')) }}</p>
       }
       } @else {
+      <mat-button-toggle-group class="bi-source" [value]="loose() ? 'loose' : 'book'" (change)="loose.set($event.value === 'loose')"
+        [disabled]="submitting()" [attr.aria-label]="t('form.imagesKindLabel')" data-testid="images-kind">
+        <mat-button-toggle value="book">{{ t('form.imagesBook') }}</mat-button-toggle>
+        <mat-button-toggle value="loose">{{ t('form.imagesLoose') }}</mat-button-toggle>
+      </mat-button-toggle-group>
+      <p class="bi-images__hint">{{ t(loose() ? 'form.imagesLooseHint' : 'form.imagesBookHint') }}</p>
       <label class="bi-drop" [class.is-over]="dragOver()" [class.has-file]="images().length > 0" (dragover)="onDragOver($event)"
         (dragleave)="dragOver.set(false)" (drop)="onImagesDrop($event)">
         <input class="bi-drop__input" type="file" multiple accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"

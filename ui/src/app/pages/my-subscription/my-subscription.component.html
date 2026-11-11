@@ -29,6 +29,11 @@
         </a>
       </div>
 
+      @if (!parentPays) {
+        <!-- Issue #1116: satın alınmış planın iptali (öğrencinin planını velisi iptal eder); iadeli iptalden sonra iade notu kalır -->
+        <app-plan-cancel class="card__cancel" [purchase]="plan.purchase" [validToUtc]="plan.validToUtc" (cancelled)="load(true)" />
+      }
+
       <h3 class="card__section">{{ t('mine.usageTitle') }}</h3>
       <ul class="usage">
         @for (feature of plan.features; track feature.featureKey) {
@@ -56,6 +61,7 @@
       @if (resetsAtUtc(); as resetsAt) {
         <p class="card__reset" data-testid="my-plan-reset">{{ t('mine.resets', { date: (resetsAt | date: 'd MMMM y') }) }}</p>
       }
+      <app-purchase-terms class="card__terms" />
     </section>
   }
 </div>

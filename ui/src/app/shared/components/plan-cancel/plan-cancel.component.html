@@ -1,0 +1,44 @@
+<div class="plan-cancel" *transloco="let t; prefix: 'subscription'">
+  @if (refund(); as r) {
+    <p class="plan-cancel__status" role="status" data-testid="plan-refunded">
+      <mat-icon aria-hidden="true">check_circle</mat-icon>
+      {{ t('cancel.refunded', { amount: (r.refundAmount | currency: r.currency ?? 'TRY' : 'symbol' : '1.0-2') }) }}
+      {{ t('cancel.demoNote') }}
+    </p>
+  } @else if (purchase(); as p) {
+    @if (p.cancelledAtUtc) {
+      <p class="plan-cancel__status" data-testid="plan-cancelled">
+        {{ t('cancel.cancelled', { date: (validToUtc() | date: 'd MMMM y') }) }}
+      </p>
+    } @else if (confirming()) {
+      <div class="plan-cancel__confirm" role="group" [attr.aria-label]="t('cancel.confirmTitle')" data-testid="plan-cancel-confirm">
+        <strong>{{ t('cancel.confirmTitle') }}</strong>
+        <p data-testid="plan-cancel-effect">
+          @if (inRefundWindow()) {
+            {{ t('cancel.refundBody', { amount: (p.pricePaid | currency: p.currency : 'symbol' : '1.0-2') }) }}
+          } @else {
+            {{ t(p.fullRefundUntilUtc ? 'cancel.lateBody' : 'cancel.monthlyBody', { date: (validToUtc() | date: 'd MMMM y') }) }}
+          }
+        </p>
+        @if (error(); as e) {
+          <p class="plan-cancel__error" role="alert">{{ t(e) }}</p>
+        }
+        <div class="plan-cancel__actions">
+          <button mat-button type="button" (click)="confirming.set(false)" [disabled]="busy()">{{ t('cancel.keep') }}</button>
+          <button mat-stroked-button color="warn" type="button" data-testid="plan-cancel-yes" (click)="confirm()" [disabled]="busy()">
+            {{ t('cancel.confirm') }}
+          </button>
+        </div>
+      </div>
+    } @else {
+      <div class="plan-cancel__row">
+        @if (inRefundWindow()) {
+          <span class="plan-cancel__hint" data-testid="plan-refund-until">
+            {{ t('cancel.refundUntil', { date: (p.fullRefundUntilUtc | date: 'd MMMM y') }) }}
+          </span>
+        }
+        <button mat-button type="button" data-testid="plan-cancel" (click)="error.set(null); confirming.set(true)">{{ t('cancel.action') }}</button>
+      </div>
+    }
+  }
+</div>

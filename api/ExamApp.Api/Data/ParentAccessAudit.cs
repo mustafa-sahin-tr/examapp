@@ -78,6 +78,9 @@ public static class ParentAccessEndpoints
     /// </summary>
     public const string ChildPlanCheckout = "children.plan-checkout";
 
+    /// <summary>Issue #1116: veli çocuğun satın alınmış planını iptal etti. ResourceId = planın id'si.</summary>
+    public const string ChildPlanCancel = "children.plan-cancel";
+
     /// <summary>
     /// <c>POST api/parent/children/{studentId}/reset-password</c> (issue #438) — veri okuma değil, velinin çocuk hesabındaki yazma
     /// işlemi; her başarılı sıfırlama ayrı satır (tekilleştirme yok).

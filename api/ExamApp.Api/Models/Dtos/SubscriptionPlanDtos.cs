@@ -92,8 +92,42 @@ public class CurrentSubscriptionPlanDto
     /// <summary>#1092: plan okulun lisansından geliyor; <see cref="ValidToUtc"/> lisansın bitişidir.</summary>
     public bool SchoolLicense { get; set; }
 
+    /// <summary>Issue #1116: süren satın alma (iptal koşuluyla); Free, deneme, admin ataması ve okul lisansında null.</summary>
+    public PlanPurchaseDto? Purchase { get; set; }
+
     public List<FeatureUsageDto> Features { get; set; } = new();
 }
+
+/// <summary>
+/// Issue #1116: süren satın alma ve iptal koşulu. Aylık planda <see cref="FullRefundUntilUtc"/> null (iade yok, dönem sonuna kadar
+/// erişim); 6 / 12 ay / yaz planında tam iade bu ana kadar.
+/// </summary>
+public class PlanPurchaseDto
+{
+    public string Duration { get; set; } = string.Empty;
+    public decimal PricePaid { get; set; }
+    public string Currency { get; set; } = string.Empty;
+    public DateTime? CancelledAtUtc { get; set; }
+    public DateTime? FullRefundUntilUtc { get; set; }
+
+    public static PlanPurchaseDto? From(ExamApp.Api.Services.Entitlements.PlanPurchaseStatus? status) => status is null ? null : new PlanPurchaseDto
+    {
+        Duration = status.Duration.ToString(),
+        PricePaid = status.PricePaid,
+        Currency = status.Currency,
+        CancelledAtUtc = status.CancelledAtUtc,
+        FullRefundUntilUtc = status.FullRefundUntilUtc,
+    };
+}
+
+/// <summary>Issue #1116: iptalin sonucu. <see cref="RefundAmount"/> yalnız cayma süresindeki iptalde (plan hemen biter).</summary>
+public class PlanCancellationDto
+{
+    public DateTime? AccessUntilUtc { get; set; }
+    public decimal? RefundAmount { get; set; }
+    public string? Currency { get; set; }
+}
+
 
 /// <summary>Bir özelliğin bu ayki (UTC takvim ayı) hakkı; <see cref="Limit"/> null = sınırsız.</summary>
 public class FeatureUsageDto
@@ -218,6 +252,9 @@ public class ChildSubscriptionPlanDto
     public int? ScopeSubjectId { get; set; }
 
     public string? ScopeSubjectName { get; set; }
+
+    /// <summary>Issue #1116: süren satın alma (veli iptal edebilir); satın alma yoksa null.</summary>
+    public PlanPurchaseDto? Purchase { get; set; }
 }
 
 /// <summary>Issue #1092: okulun lisansı ve son değişiklikleri; lisans hiç yoksa <see cref="Exists"/> false.</summary>

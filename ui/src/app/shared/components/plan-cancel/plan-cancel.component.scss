@@ -1,0 +1,52 @@
+// Issue #1116: plan iptali (Aboneliğim, veli panelinde çocuğun planı).
+:host {
+  display: block;
+}
+
+.plan-cancel {
+  font-family: var(--paragraphFontFamily);
+  font-size: 14px;
+  color: var(--ms-text-medium);
+
+  p {
+    margin: 0;
+  }
+}
+
+.plan-cancel__status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.plan-cancel__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.plan-cancel__confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--ms-border);
+  border-radius: 8px;
+
+  strong {
+    color: var(--ms-text-strong);
+  }
+}
+
+.plan-cancel__error {
+  color: var(--ms-danger-text-medium);
+}
+
+.plan-cancel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}

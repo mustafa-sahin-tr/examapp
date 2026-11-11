@@ -46,6 +46,11 @@
         </button>
       }
     </div>
+    @if (!picking()) {
+      <!-- Issue #1116: veli çocuğun satın alınmış planını iptal eder; iadeli iptalden sonra iade notu kalır -->
+      <app-plan-cancel [purchase]="p.purchase" [validToUtc]="p.validToUtc" [studentId]="studentId()" (cancelled)="onCancelled()" />
+      <app-purchase-terms />
+    }
     @if (picking()) {
       <app-plan-picker mode="change" [childId]="studentId()" (completed)="onCompleted($event)" />
       <button mat-button type="button" (click)="picking.set(false)">{{ t('parent-dashboard.plan.cancel') }}</button>

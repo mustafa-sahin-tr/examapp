@@ -258,6 +258,56 @@ public sealed class EntitlementService : IEntitlementService
         return SelfServicePlanError.None;
     }
 
+    public async Task<PlanPurchaseStatus?> PurchaseStatusAsync(int userId, CancellationToken ct = default)
+    {
+        var now = _clock.GetUtcNow().UtcDateTime;
+        var purchase = await CurrentPurchase(userId, now).AsNoTracking()
+            .Select(a => new { a.Duration, a.PricePaid, a.Plan.Currency, a.ValidFromUtc, a.ValidToUtc, a.CancelledAtUtc })
+            .FirstOrDefaultAsync(ct);
+        return purchase is null ? null : new PlanPurchaseStatus(purchase.Duration, purchase.PricePaid!.Value, purchase.Currency,
+            purchase.ValidToUtc, purchase.CancelledAtUtc, PurchaseTermsPolicy.FullRefundUntil(purchase.Duration, purchase.ValidFromUtc));
+    }
+
+    public async Task<PlanCancellationResult> CancelPlanAsync(int userId, int cancelledByUserId, CancellationToken ct = default)
+    {
+        var now = _clock.GetUtcNow().UtcDateTime;
+        var purchase = await CurrentPurchase(userId, now).Include(a => a.Plan).FirstOrDefaultAsync(ct);
+        if (purchase is null)
+            return new PlanCancellationResult(CancelPlanError.NothingToCancel);
+        if (purchase.CancelledAtUtc is not null)
+            return new PlanCancellationResult(CancelPlanError.AlreadyCancelled, purchase.ValidToUtc);
+
+        purchase.CancelledAtUtc = now;
+        purchase.CancelledByUserId = cancelledByUserId;
+        // Cayma süresinde: plan şimdi biter, ödenen tutarın tamamı iade kaydına.
+        if (PurchaseTermsPolicy.FullRefundUntil(purchase.Duration, purchase.ValidFromUtc) is { } refundUntil && now < refundUntil)
+        {
+            purchase.ValidToUtc = now;
+            purchase.RefundAmount = purchase.PricePaid;
+        }
+
+        _db.SubscriptionPlanAssignmentAudits.Add(new SubscriptionPlanAssignmentAudit
+        {
+            UserId = userId,
+            ActorUserId = cancelledByUserId,
+            Action = SubscriptionPlanAuditAction.Cancelled,
+            FromPlanKey = purchase.Plan.Key,
+            ToPlanKey = purchase.RefundAmount is null ? purchase.Plan.Key : null,
+            ValidFromUtc = purchase.ValidFromUtc,
+            ValidToUtc = purchase.ValidToUtc,
+            OccurredAtUtc = now,
+        });
+        _db.SetCurrentUser(cancelledByUserId);
+        await _db.SaveChangesAsync(ct);
+        return new PlanCancellationResult(CancelPlanError.None, purchase.ValidToUtc, purchase.RefundAmount, purchase.Plan.Currency);
+    }
+
+    // Süren satın alma: ödenmiş (PricePaid) ve şu an geçerli atama; çözümleme gibi en son başlayan.
+    private IQueryable<UserSubscriptionPlan> CurrentPurchase(int userId, DateTime now) =>
+        _db.UserSubscriptionPlans
+            .Where(a => a.UserId == userId && a.PricePaid != null && a.ValidFromUtc <= now && (a.ValidToUtc == null || a.ValidToUtc > now))
+            .OrderByDescending(a => a.ValidFromUtc).ThenByDescending(a => a.Id);
+
     /// <summary>
     /// Issue #1108: seçeneğin fiyatı; satılmayan seçenekte null. Sınıfı olan öğrencinin planı fiyat tablosundan (band, sınıf, kapsam,
     /// süre); öğretmen planı ve sınıfı olmayan öğrenci yalnız aylık + bütün dersler, kartın aylık fiyatıyla.

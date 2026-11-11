@@ -99,13 +99,13 @@
       "description": "{{ brand.name }} terms of use: accounts, rules, content, private lessons and liability."
     },
     "title": "Terms of Use",
-    "version": "Version 1.0",
-    "updated": "Last updated: 7 November 2026",
+    "version": "Version 1.1",
+    "updated": "Last updated: 11 November 2026",
     "intro": "By using {{ brand.name }} you accept these terms. Your personal data is processed under the Privacy Policy.",
     "sections": {
       "service": {
         "title": "Service",
-        "body": "{{ brand.name }} is a learning platform where teachers prepare and assign tests, students solve them and follow their progress, parents keep track, and private lessons take place over video. Sign-up and use are free."
+        "body": "{{ brand.name }} is a learning platform where teachers prepare and assign tests, students solve them and follow their progress, parents keep track, and private lessons take place over video. Sign-up is free; what you can use depends on the chosen plan."
       },
       "accounts": {
         "title": "Accounts and roles",
@@ -138,6 +138,16 @@
       "tutoring": {
         "title": "Private lessons",
         "body": "The fee on a tutor's profile is for information; no payment is taken through the platform and {{ brand.name }} is not a party to the agreement between the tutor and the student or parent."
+      },
+      "plans": {
+        "title": "Plans, cancellation and refunds",
+        "body": "These terms apply to paid plans (a student's plan is bought and cancelled by their parent):",
+        "items": {
+          "1": "Monthly plans renew every month. You can cancel any time from the plan page; access runs to the end of the paid month.",
+          "2": "6- and 12-month plans get a full refund within 14 days of purchase, no questions asked; the plan ends when cancelled. After that, a pro-rata refund of the remaining time is given on request.",
+          "3": "Price changes apply only from the next period, with at least 30 days' notice in the app and by e-mail.",
+          "4": "Counted allowances (such as monthly usage counts) show exact numbers on the plan; unused allowances do not roll over."
+        }
       },
       "suspension": {
         "title": "Suspension",

@@ -99,13 +99,13 @@
       "description": "{{ brand.name }} kullanım koşulları: hesaplar, kullanım kuralları, içerik, özel ders ve sorumluluk."
     },
     "title": "Kullanım Koşulları",
-    "version": "Sürüm 1.0",
-    "updated": "Son güncelleme: 7 Kasım 2026",
+    "version": "Sürüm 1.1",
+    "updated": "Son güncelleme: 11 Kasım 2026",
     "intro": "{{ brand.name }}'u kullanarak bu koşulları kabul etmiş olursun. Kişisel verilerin Gizlilik Politikası'na göre işlenir.",
     "sections": {
       "service": {
         "title": "Hizmet",
-        "body": "{{ brand.name }}; öğretmenlerin test hazırlayıp atadığı, öğrencilerin çözüp gelişimini izlediği, velilerin takip ettiği ve özel derslerin görüntülü yapıldığı bir eğitim platformudur. Kayıt ve kullanım ücretsizdir."
+        "body": "{{ brand.name }}; öğretmenlerin test hazırlayıp atadığı, öğrencilerin çözüp gelişimini izlediği, velilerin takip ettiği ve özel derslerin görüntülü yapıldığı bir eğitim platformudur. Kayıt ücretsizdir; özelliklerin kullanımı seçilen plana bağlıdır."
       },
       "accounts": {
         "title": "Hesaplar ve roller",
@@ -138,6 +138,16 @@
       "tutoring": {
         "title": "Özel ders",
         "body": "Özel ders öğretmenlerinin profilinde yazan ücret bilgi amaçlıdır; ödeme platform üzerinden alınmaz ve {{ brand.name }} öğretmen ile öğrenci/veli arasındaki anlaşmanın tarafı değildir."
+      },
+      "plans": {
+        "title": "Planlar, iptal ve iade",
+        "body": "Ücretli planlar için şu koşullar geçerlidir (öğrencinin planını velisi alır ve iptal eder):",
+        "items": {
+          "1": "Aylık plan her ay yenilenir. Plan sayfasından istediğin zaman iptal edebilirsin; erişim ödenen ayın sonuna kadar sürer.",
+          "2": "6 ve 12 aylık planlarda satın almadan sonraki 14 gün içinde koşulsuz tam iade yapılır; plan iptal anında biter. Sonrasında kalan süre için kısmi iade talep üzerine yapılır.",
+          "3": "Fiyat değişiklikleri yalnız bir sonraki dönemde geçerli olur ve en az 30 gün önce uygulama içinde ve e-postayla bildirilir.",
+          "4": "Sayılı hakların (ör. aylık kullanım sayıları) adedi planda yazar; kullanılmayan haklar sonraki aya devretmez."
+        }
       },
       "suspension": {
         "title": "Hesabın askıya alınması",

@@ -135,6 +135,9 @@
                     <span class="muted">{{ c.occurredAtUtc | date: 'd MMM y HH:mm' }}</span>
                     <span class="entry__main">
                       {{ planLabel(t, c.fromPlanKey) }} → {{ c.action === 'Ended' ? planLabel(t, null) : planLabel(t, c.toPlanKey) }}
+                      @if (c.action === 'Cancelled') {
+                        <span class="muted">· {{ t('admin.history.cancelled') }}</span>
+                      }
                       @if (c.schoolId) {
                         <span class="muted">· {{ t('admin.history.bySchool') }}</span>
                       }

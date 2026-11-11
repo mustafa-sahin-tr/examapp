@@ -12,7 +12,6 @@ import { Subscription, timer } from 'rxjs';
 
 import { BookImportJobDetail, BookImportJobTest, BookImportReviewFlag } from '../../models/book-import';
 import { canRetryQuickAdd, isQuickAddPending, quickAddPhase } from '../../models/quick-add';
-import { AuthService } from '../../services/auth.service';
 import { QuickAddService } from '../../services/quick-add.service';
 import { BookImportReviewComponent } from '../book-imports/book-import-review.component';
 import { BOOK_IMPORTS_SCOPE } from '../book-imports/book-imports.component';
@@ -50,7 +49,6 @@ const QUICK_ADD_FLAG_CODES = [
 })
 export class QuickAddDetailComponent implements OnInit {
   readonly api = inject(QuickAddService);
-  private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly id = inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '';
 
@@ -78,8 +76,6 @@ export class QuickAddDetailComponent implements OnInit {
     return (phase === 'ready' || phase === 'completed' || phase === 'cancelled') && this.photos().some((p) => p.worksheetId != null);
   });
   readonly completed = computed(() => this.phase() === 'completed');
-  /** İşaretleme ekranı öğretmene kapalı (route ve uç). */
-  readonly canFix = computed(() => this.auth.hasRealmRole('Admin') || this.auth.hasRealmRole('QuestionTrainer'));
 
   private poll?: Subscription;
 

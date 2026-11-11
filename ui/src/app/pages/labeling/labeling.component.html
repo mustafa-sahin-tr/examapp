@@ -2,12 +2,13 @@
   <ng-container *transloco="let t; prefix: 'labeling'">
   <header class="lb-top">
     <div class="lb-heading">
-      <h1 class="lb-title"><mat-icon aria-hidden="true">model_training</mat-icon>{{ t('title') }}</h1>
-      <p class="lb-subtitle">{{ t('subtitle') }}</p>
+      <h1 class="lb-title"><mat-icon aria-hidden="true">{{ contentTeam ? 'model_training' : 'crop_free' }}</mat-icon>{{ t(contentTeam ? 'title' : 'teacherTitle') }}</h1>
+      <p class="lb-subtitle">{{ t(contentTeam ? 'subtitle' : 'teacherSubtitle') }}</p>
     </div>
 
+    <input #folderInput type="file" webkitdirectory multiple hidden (change)="onFolderSelected($event)" />
+    @if (contentTeam) {
     <div class="lb-top__actions">
-      <input #folderInput type="file" webkitdirectory multiple hidden (change)="onFolderSelected($event)" />
       @if (!folderPicked() && recentFolders().length) {
       <!-- #867: son klasörler varken asıl eylem "Devam et"; klasör seçimi ikincil. -->
       <button mat-stroked-button type="button" (click)="folderInput.click()" [disabled]="labeledLoading()">
@@ -19,6 +20,7 @@
       </button>
       }
     </div>
+    }
   </header>
 
   @if (fix(); as f) {
@@ -214,7 +216,9 @@
       }
     </span>
 
-    <!-- Havuz paylaşımı (issue #826): Havuza kaydet ile oluşan soruları kimin havuzunda göreceği. -->
+    <!-- Havuz paylaşımı (issue #826): Havuza kaydet ile oluşan soruları kimin havuzunda göreceği. Düzeltme taslağı
+         değiştirir, havuza kaydetmez: öğretmene gösterilmez (#1060). -->
+    @if (contentTeam) {
     <span class="lb-group">
       <span class="lb-group__label" id="lb-sharing-label">{{ t('sharing.label') }}</span>
       <mat-form-field class="lb-grade" appearance="outline" subscriptSizing="dynamic">
@@ -226,9 +230,10 @@
         </mat-select>
       </mat-form-field>
     </span>
+    }
 
     <!-- Kaynak kitap (issue #577): dosya sayfası → basılı sayfa, cevap anahtarı, içindekiler varsayılanı. -->
-    @if (books().length > 0) {
+    @if (contentTeam && books().length > 0) {
     <span class="lb-group lb-book">
       <span class="lb-group__label" id="lb-book-label">{{ t('book.label') }}</span>
       <mat-form-field class="lb-grade" appearance="outline" subscriptSizing="dynamic">
@@ -291,7 +296,7 @@
     <button mat-stroked-button type="button" (click)="align()" [disabled]="analysing() || sendingToFix()">
       <mat-icon>align_horizontal_center</mat-icon>{{ t('align') }}
     </button>
-    @if (aiModels().length > 0) {
+    @if (contentTeam && aiModels().length > 0) {
     <button mat-stroked-button type="button" (click)="openPromptDialog()" [matTooltip]="t('source.promptHint')">
       <mat-icon>tune</mat-icon>{{ t('source.prompt') }}
     </button>

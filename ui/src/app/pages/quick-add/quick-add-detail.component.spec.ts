@@ -37,7 +37,7 @@ describe('QuickAddDetailComponent (#1053)', () => {
   let component: QuickAddDetailComponent;
   let api: MockedObject<QuickAddService>;
   let response: Observable<BookImportJobDetail>;
-  let roles: string[] = ['Teacher'];
+  const roles: string[] = ['Teacher'];
 
   const el = () => fixture.nativeElement as HTMLElement;
   const text = () => el().textContent ?? '';
@@ -165,29 +165,15 @@ describe('QuickAddDetailComponent (#1053)', () => {
     expect(component.job()).toBeNull();
   });
 
-  // Issue #1054: taslak varsa inceleme ekranı; işaretlemede düzeltme yalnız Admin / QuestionTrainer.
+  // Issue #1054: taslak varsa inceleme ekranı; #1060: işaretlemede düzeltme öğretmene de açık (yalnız kendi fotoğrafı).
   describe('review', () => {
-    afterEach(() => {
-      roles = ['Teacher'];
-    });
-
-    it('shows the review without the labeling fix for a teacher', () => {
+    it('shows the review with the labeling fix for a teacher', () => {
       response = of(detail());
       setup();
       fixture.detectChanges();
 
       expect(el().querySelector('app-book-import-review')).not.toBeNull();
       expect(el().querySelector('.qa-results')).toBeNull();
-      expect(component.canFix()).toBe(false);
-      expect(text()).not.toContain(bookImportsTr.review.fix);
-    });
-
-    it('offers the labeling fix to a question trainer', () => {
-      roles = ['QuestionTrainer'];
-      response = of(detail());
-      setup();
-      fixture.detectChanges();
-
       expect(text()).toContain(bookImportsTr.review.fix);
     });
 

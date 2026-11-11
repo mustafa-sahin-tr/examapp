@@ -1,6 +1,8 @@
 {
   "title": "İşaretleme modu",
   "subtitle": "Soru tespit modelini eğitmek için klasördeki sayfaları sırayla işaretle. \"Bankaya kaydet\" soruları ayrıca soru bankasına ekler (teste bağlamadan).",
+  "teacherTitle": "Fotoğrafı düzelt",
+  "teacherSubtitle": "Soru ve şık kutularını düzelt; kaydedince bu fotoğrafın taslak soruları değişir.",
   "chooseFolder": "Klasör seç",
   "changeFolder": "Klasörü değiştir",
   "loadingLabeled": "Daha önce işaretlenen sayfalar yükleniyor…",

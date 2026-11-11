@@ -1,6 +1,8 @@
 {
   "title": "Labeling mode",
   "subtitle": "Label the pages of a folder in order to train the question detection model. \"Save to bank\" also adds the questions to the question bank (no test).",
+  "teacherTitle": "Fix the photo",
+  "teacherSubtitle": "Correct the question and option boxes; saving replaces this photo's draft questions.",
   "chooseFolder": "Choose folder",
   "changeFolder": "Change folder",
   "loadingLabeled": "Loading previously labeled pages…",

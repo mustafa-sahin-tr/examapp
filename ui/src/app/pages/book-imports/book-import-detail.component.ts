@@ -69,6 +69,8 @@ export class BookImportDetailComponent implements OnInit {
 
   /** Issue #1032: demo kaynağını yalnız admin seçer. */
   readonly isAdmin = this.auth.hasRealmRole('Admin');
+  /** İşaretleme ekranındaki kitap düzeltmesi Admin / QuestionTrainer işi; öğretmene yalnız hızlı ekleme düzeltmesi açık (#1060). */
+  readonly canFix = this.isAdmin || this.auth.hasRealmRole('QuestionTrainer');
   readonly demoSourceFailed = signal(false);
 
   readonly job = signal<BookImportJobDetail | null>(null);

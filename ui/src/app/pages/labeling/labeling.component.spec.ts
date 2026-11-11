@@ -20,6 +20,7 @@ import { GradesService } from '../../services/grades.service';
 import { LabelingBookService } from '../../services/labeling-book.service';
 import { BookImportService } from '../../services/book-import.service';
 import { QuickAddService } from '../../services/quick-add.service';
+import { AuthService } from '../../services/auth.service';
 import { BookImportJobDetail, BookImportJobTest } from '../../models/book-import';
 import { LabelingBook, LabelingBookPageInfo } from '../../models/labeling-book';
 import { LabelingCropDuplicateDialogComponent } from './labeling-crop-duplicate-dialog/labeling-crop-duplicate-dialog.component';
@@ -202,6 +203,8 @@ describe('LabelingComponent', () => {
     let routeUrl: string;
     /** `setup` içinde mock'lar kurulduktan sonra, bileşen oluşmadan önce çağrılır. */
     let beforeCreate: (() => void) | null;
+    /** `setup` öncesi değiştirilebilir: oturumun realm rolleri (varsayılan içerik ekibi; #1060 öğretmen düzeltmesi). */
+    let roles: string[];
 
     function selector(): ImageSelectorStub {
         return fixture.debugElement.query((de) => de.componentInstance instanceof ImageSelectorStub)
@@ -263,6 +266,7 @@ describe('LabelingComponent', () => {
                 { provide: LabelingBookService, useValue: booksApi },
                 { provide: LabelingService, useValue: labelingApi },
                 { provide: GradesService, useValue: gradesApi },
+                { provide: AuthService, useValue: { hasRealmRole: (role: string) => roles.includes(role) } },
             ],
         });
         TestBed.overrideComponent(LabelingComponent, {
@@ -279,6 +283,7 @@ describe('LabelingComponent', () => {
     }
 
     beforeEach(() => {
+        roles = ['QuestionTrainer'];
         pendingNative.clear();
         const digest = crypto.subtle.digest.bind(crypto.subtle);
         vi.spyOn(crypto.subtle, 'digest').mockImplementation((algorithm: AlgorithmIdentifier, data: BufferSource) =>
@@ -1967,6 +1972,25 @@ describe('LabelingComponent', () => {
             expect(quickAddApi.replacePage.mock.calls[0].slice(0, 3)).toEqual(['q1', 3, 1]);
             expect(bookImportsApi.replacePage).not.toHaveBeenCalled();
             expect(navigate).toHaveBeenCalledWith(['/quick-add', 'q1']);
+        });
+
+        // Issue #1060: öğretmen yalnız hızlı ekleme düzeltmesi için gelir; klasör, eğitim, prompt ve paylaşım gizli.
+        it('fix_QuickAdd_Teacher_ShowsOnlyTheFix', async () => {
+            roles = ['Teacher'];
+            routeUrl = '/?bookImport=q1&test=3&page=1&kind=QuickAdd';
+            await setupWith(() => {
+                quickAddApi.get.mockReturnValue(of({ ...job, id: 'q1', kind: 'QuickAdd', bookId: null, bookName: 'Hızlı ekleme', tests: [{ ...job.tests[0], title: 'Fotoğraf 1' }] }));
+                quickAddApi.photo.mockReturnValue(of(new Blob(['jpeg'], { type: 'image/jpeg' })));
+            }, [{ id: 'claude', displayName: 'Claude', isDefault: true } as LabelingAiModel]);
+
+            const el = fixture.nativeElement as HTMLElement;
+            expect(detector.getLabeledPages).not.toHaveBeenCalled();
+            expect(el.querySelector('.lb-title')?.textContent).toContain(labelingTr.teacherTitle);
+            expect(el.querySelector('.lb-top__actions')).toBeNull();
+            expect(el.querySelector('[data-testid="labeling-fix-save"]')).not.toBeNull();
+            expect(el.textContent).not.toContain(labelingTr.source.prompt);
+            expect(el.textContent).not.toContain(labelingTr.sharing.label);
+            expect(el.querySelector('.lb-train')).toBeNull();
         });
 
         // #1129: testin bütün sayfaları tuvalde; "yalnız işaretli sayfalar" açıkken yalnız işaretlilerde gezilir.

@@ -147,7 +147,7 @@
   }
 
   @if (reviewing()) {
-  <app-book-import-review [jobId]="j.id" [tests]="j.tests" [loose]="j.source === 'LooseImages'" [bookName]="j.bookName" [editable]="reviewEditable()" [locked]="reviewLocked()" [canFix]="!j.isDemo" (changed)="load()" />
+  <app-book-import-review [jobId]="j.id" [tests]="j.tests" [loose]="j.source === 'LooseImages'" [bookName]="j.bookName" [editable]="reviewEditable()" [locked]="reviewLocked()" [canFix]="canFix && !j.isDemo" (changed)="load()" />
   }
 
   <div class="bid-body">

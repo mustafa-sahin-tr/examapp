@@ -46,6 +46,14 @@ public class SubscriptionPlan : BaseEntity
     /// <summary>Aylık fiyat — şimdilik yer tutucu, gerçek ödeme yok (#1028 sahte ödeme ekranı).</summary>
     public decimal MonthlyPrice { get; set; }
 
+    /// <summary>
+    /// Issue #1116: planlanmış aylık fiyat artışı; <see cref="PendingMonthlyPriceFromUtc"/>'da <see cref="MonthlyPrice"/>'a geçer
+    /// (<c>PlanPriceChangeJob</c>). Artış en erken 30 gün sonra geçerli olur; indirim hemen.
+    /// </summary>
+    public decimal? PendingMonthlyPrice { get; set; }
+
+    public DateTime? PendingMonthlyPriceFromUtc { get; set; }
+
     [MaxLength(CurrencyMaxLength)]
     public string Currency { get; set; } = DefaultCurrency;
 
@@ -137,6 +145,12 @@ public class UserSubscriptionPlan : BaseEntity
     /// (canlıya geçiş) yapılır; şimdilik yalnız kayıt.
     /// </summary>
     public decimal? RefundAmount { get; set; }
+
+    /// <summary>
+    /// Issue #1116: ödeyenine "yenilemede yeni fiyat" bildirimi yazılan fiyat değişikliğinin yürürlük tarihi (değişiklik başına bir kez;
+    /// yeniden planlanan değişiklik yeniden bildirilir; <c>PlanPriceChangeJob</c>).
+    /// </summary>
+    public DateTime? PriceChangeNoticeForUtc { get; set; }
 }
 
 /// <summary>

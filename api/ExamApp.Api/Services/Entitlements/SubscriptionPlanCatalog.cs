@@ -46,6 +46,8 @@ public static class SubscriptionPlanCatalog
                     IsActive = p.IsActive,
                 },
                 p.Audience,
+                p.PendingMonthlyPrice,
+                p.PendingMonthlyPriceFromUtc,
                 Limits = p.FeatureLimits.OrderBy(l => l.Id).Select(l => new { l.FeatureKey, l.MonthlyLimit }).ToList(),
             })
             .ToListAsync(ct);
@@ -58,10 +60,12 @@ public static class SubscriptionPlanCatalog
 
         if (includePrices)
         {
+            foreach (var p in plans)
+                (p.Plan.PendingMonthlyPrice, p.Plan.PendingMonthlyPriceFromUtc) = (p.PendingMonthlyPrice, p.PendingMonthlyPriceFromUtc);
             var keys = plans.Select(p => p.Plan.Key).ToList();
             var prices = (await db.SubscriptionPlanPrices.AsNoTracking()
                     .Where(p => keys.Contains(p.Plan.Key))
-                    .Select(p => new { p.Plan.Key, p.Band, p.GradeLevel, p.Scope, p.Duration, p.Price })
+                    .Select(p => new { p.Plan.Key, p.Band, p.GradeLevel, p.Scope, p.Duration, p.Price, p.PendingPrice, p.PendingFromUtc })
                     .ToListAsync(ct))
                 .OrderBy(p => p.Band).ThenBy(p => p.GradeLevel).ThenBy(p => p.Scope).ThenBy(p => p.Duration)
                 .ToLookup(p => p.Key);
@@ -70,6 +74,7 @@ public static class SubscriptionPlanCatalog
                 p.Plan.Prices = prices[p.Plan.Key].Select(r => new SubscriptionPlanPriceRowDto
                 {
                     Band = r.Band.ToString(), GradeLevel = r.GradeLevel, Scope = r.Scope.ToString(), Duration = r.Duration.ToString(), Price = r.Price,
+                    PendingPrice = r.PendingPrice, PendingFromUtc = r.PendingFromUtc,
                 }).ToList();
             }
         }

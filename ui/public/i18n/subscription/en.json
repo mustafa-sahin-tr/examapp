@@ -208,6 +208,7 @@
       "inactive": "inactive",
       "name": "Plan name (admin)",
       "nameHint": "The name users see comes from the translation file.",
+      "pendingPrice": "Today {{current}}; the new price applies on {{date}}.",
       "price": "Monthly price",
       "trialDays": "Trial length (days)",
       "active": "On sale (active)",
@@ -237,6 +238,7 @@
       "prices": {
         "title": "Grade band prices",
         "hint": "An empty cell means the option is not sold. In a grade row an empty cell uses the band price. 6-month, 12-month and summer prices are totals for the whole period.",
+        "increaseHint": "An increase applies after 30 days and is announced to the payers of running purchases; a decrease applies now. The paid period keeps its price.",
         "band": "Grade band",
         "actions": "Actions",
         "grade": "Grade {{ grade }}",

@@ -250,6 +250,7 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<OpenTextReviewedConsumer, OpenTextReviewedConsumerDefinition>(); // issue #614
     x.AddConsumer<ParentChildPlanEndingConsumer, ParentChildPlanEndingConsumerDefinition>(); // issue #1091
     x.AddConsumer<StudentGradePromotedConsumer, StudentGradePromotedConsumerDefinition>(); // issue #1110
+    x.AddConsumer<PlanPriceChangeNoticeConsumer, PlanPriceChangeNoticeConsumerDefinition>(); // issue #1116
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -302,6 +303,7 @@ builder.Services.AddMassTransit(x =>
             e.ConfigureConsumer<OpenTextReviewedConsumer>(context); // issue #614
             e.ConfigureConsumer<ParentChildPlanEndingConsumer>(context); // issue #1091
             e.ConfigureConsumer<StudentGradePromotedConsumer>(context); // issue #1110
+            e.ConfigureConsumer<PlanPriceChangeNoticeConsumer>(context); // issue #1116
         });
     });
 });

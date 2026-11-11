@@ -70,6 +70,13 @@
   color: var(--ms-success-text);
 }
 
+.plan-editor__pending {
+  display: block;
+  margin-top: 2px;
+  color: var(--ms-text-medium);
+  font-size: 0.75rem;
+}
+
 .plan-editor__note {
   margin: 0;
   color: var(--ms-text-medium);

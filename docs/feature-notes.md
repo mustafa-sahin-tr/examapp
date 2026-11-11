@@ -427,7 +427,18 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   kadar (yenilenmez). 6 / 12 ay / yaz planı satın almadan sonraki 14 gün (`PurchaseTermsPolicy.FullRefundDays`) içinde: plan hemen
   biter, `RefundAmount` = ödenen tutar (gerçek iade ödeme sağlayıcısıyla, canlıya geçişte). Plan yanıtları `purchase` taşır (süre,
   ödenen, iptal, tam iade sonu). Koşul metni ödeme ekranında (açık), Aboneliğim ve veli panelinde (kapalı kutu) ve Kullanım
-  Koşulları § Planlar'da; maddeler birlikte güncellenir. Fiyat değişikliği bildirimi ayrı dilimde.
+  Koşulları § Planlar'da; maddeler birlikte güncellenir.
+  **Fiyat değişikliği:** admin düzenleyicisinde satıştaki fiyatın artışı hemen geçmez: `PendingPrice` / `PendingFromUtc` (fiyat
+  satırı) ya da `PendingMonthlyPrice` / `PendingMonthlyPriceFromUtc` (aylık plan fiyatı) olarak +30 gün (`PurchaseTermsPolicy.Apply`,
+  `PriceIncreaseNoticeDays`) bekler; aynı artışı yeniden kaydetmek tarihi korur, farklı artış yeniden planlar, indirim / aynı fiyat hemen
+  geçerli olup bekleyeni siler; yeni ya da canlanan satır hemen geçerli. Düzenleyici hücrede yeni fiyatı, altında bugünkü fiyat ve
+  tarihi gösterir. `PlanPriceChangeJob` (`PlanPriceChange:Cron`, saat başı 40) süren satın almaların (ödenmiş, iptalsiz, bitmemiş,
+  ardından atama yok, yaz değil) yenileme fiyatını bulur (öğrencinin bugünkü bandı / sınıfı, kapsam, süre; öğretmende ve sınıfsız
+  öğrencide aylık fiyat), bekleyen artış varsa ödeyene `PlanPriceChangeNoticeEvent` yazar (Active veliler, yoksa öğrenci; öğretmen)
+  ve atamaya `PriceChangeNoticeForUtc` = yürürlük tarihi işaretler (değişiklik başına bir kez); sonra vadesi gelen fiyatları geçirir.
+  BadgeService `PlanPriceChangeNoticeConsumer`: in-app (`PlanPriceChangeToParent` → çocuğun Plan sekmesi, bağlantı kopunca
+  nötrlenir; `PlanPriceChange` → Aboneliğim) + aynı metinle e-posta (`NotificationEventLog` `PlanPriceChangeEmail` ile tek).
+  Ödenmiş dönemin fiyatı değişmez; yenileme yeni satın almadır. auth-api'ye ulaşılamazsa event e-postasız yazılır (yalnız in-app).
 - **Okul lisansı (#1092):** özel anlaşmayla okulun bütün üyelerine plan: `SchoolLicenses` (okul başına tek satır; öğretmen ve öğrenci
   planı, varsayılan iki kitlenin Pro'su; başlangıç / hariç bitiş; anlaşma notu ≤ 200). Kimseye atama yazılmaz: plan çözümü
   (`EntitlementService.ResolvePlanAsync`, admin listesi `CurrentPlansAsync`, ortak kural `SchoolLicensePlans`) kullanıcının okuluna

@@ -23,6 +23,11 @@ public class SubscriptionPlanDto
 
     /// <summary>Issue #1108: öğrenci planının band / kapsam / süre fiyatları (yalnız admin kataloğunda dolu).</summary>
     public List<SubscriptionPlanPriceRowDto>? Prices { get; set; }
+
+    /// <summary>Issue #1116: planlanmış aylık fiyat artışı ve yürürlük tarihi (yalnız admin kataloğunda dolu).</summary>
+    public decimal? PendingMonthlyPrice { get; set; }
+
+    public DateTime? PendingMonthlyPriceFromUtc { get; set; }
 }
 
 /// <summary>Issue #1108: admin fiyat tablosunun bir satırı. <see cref="GradeLevel"/> doluysa yalnız o sınıfa özel fiyat.</summary>
@@ -33,6 +38,11 @@ public class SubscriptionPlanPriceRowDto
     public string Scope { get; set; } = string.Empty;
     public string Duration { get; set; } = string.Empty;
     public decimal Price { get; set; }
+
+    /// <summary>Issue #1116: planlanmış artış ve yürürlük tarihi; yalnız çıktıda (istekte yok sayılır).</summary>
+    public decimal? PendingPrice { get; set; }
+
+    public DateTime? PendingFromUtc { get; set; }
 }
 
 /// <summary>Issue #1093: özellik listesinden bir satır. <see cref="Kind"/> <c>Toggle</c> ya da <c>Metered</c>.</summary>

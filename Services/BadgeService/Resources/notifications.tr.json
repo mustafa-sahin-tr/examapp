@@ -319,6 +319,14 @@
       "title": "Artık {0}. sınıftasın",
       "body": "Yeni eğitim yılı başladı: artık {0}. sınıftasın. Dersler, denemeler ve önerilen içerikler yeni sınıfına göre geliyor."
     },
+    "PlanPriceChangeToParent": {
+      "title": "Plan fiyatı değişiyor",
+      "body": "{5} için {0} planının fiyatı {3} tarihinden itibaren {1} yerine {2} olacak. Ödenmiş dönem aynı fiyatla sürer ({4} tarihine kadar); yeni fiyat bu tarihten sonraki yenilemede uygulanır. Yenilemek istemezseniz planı veli panelinden iptal edebilirsiniz."
+    },
+    "PlanPriceChange": {
+      "title": "Plan fiyatı değişiyor",
+      "body": "{0} planının fiyatı {3} tarihinden itibaren {1} yerine {2} olacak. Ödenmiş dönem aynı fiyatla sürer ({4} tarihine kadar); yeni fiyat bu tarihten sonraki yenilemede uygulanır. Yenilemek istemezseniz planı Aboneliğim sayfasından iptal edebilirsiniz."
+    },
     "GradePromotedToParent": {
       "title": "Yeni sınıf",
       "body": "{1} artık {0}. sınıfta; içerikler yeni sınıfa göre geliyor. Ödenmiş dönem aynı fiyatla sürer, yeni sınıfın fiyatı yenilemede uygulanır."

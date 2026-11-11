@@ -319,6 +319,14 @@
       "title": "You're in grade {0} now",
       "body": "A new school year has started: you're now in grade {0}. Lessons, mock exams and suggested content follow your new grade."
     },
+    "PlanPriceChangeToParent": {
+      "title": "Plan price is changing",
+      "body": "The price of {5}'s {0} plan changes from {1} to {2} on {3}. The paid period keeps its price (until {4}); the new price applies to renewals after that date. If you don't want to renew, you can cancel the plan from the parent panel."
+    },
+    "PlanPriceChange": {
+      "title": "Plan price is changing",
+      "body": "The price of your {0} plan changes from {1} to {2} on {3}. The paid period keeps its price (until {4}); the new price applies to renewals after that date. If you don't want to renew, you can cancel the plan from My subscription."
+    },
     "GradePromotedToParent": {
       "title": "New grade",
       "body": "{1} is now in grade {0}; content follows the new grade. The paid period keeps its price; the new grade's price applies at renewal."

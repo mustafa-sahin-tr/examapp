@@ -5761,6 +5761,13 @@ namespace ExamApp.Api.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<decimal?>("PendingMonthlyPrice")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<DateTime?>("PendingMonthlyPriceFromUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");
 
@@ -6808,6 +6815,13 @@ namespace ExamApp.Api.Migrations
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("PendingFromUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("PendingPrice")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
 
                     b.Property<int>("PlanId")
                         .HasColumnType("integer");
@@ -8595,6 +8609,9 @@ namespace ExamApp.Api.Migrations
 
                     b.Property<int>("PlanId")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime?>("PriceChangeNoticeForUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<decimal?>("PricePaid")
                         .HasPrecision(10, 2)

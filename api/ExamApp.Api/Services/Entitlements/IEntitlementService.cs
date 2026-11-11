@@ -284,11 +284,23 @@ public sealed record PlanCancellationResult(CancelPlanError Error, DateTime? Acc
 /// <summary>
 /// Issue #1116: satın alma koşulları. Aylık plan her ay yenilenir, istenince iptal edilir, erişim ödenen ayın sonuna kadar sürer.
 /// 6 / 12 aylık (ve yaz) planda ilk <see cref="FullRefundDays"/> gün koşulsuz tam iade; sonrasında kalan süre için kısmi iade
-/// talep üzerine (destek). Gerçek tahsilat ve iade ödeme sağlayıcısı kararını bekliyor (canlıya geçiş).
+/// talep üzerine (destek). Gerçek tahsilat ve iade ödeme sağlayıcısı kararını bekliyor (canlıya geçiş). Fiyat artışı en erken
+/// <see cref="PriceIncreaseNoticeDays"/> gün sonra geçerli olur ve ödeyene bildirilir; ödenmiş dönemin fiyatı değişmez.
 /// </summary>
 public static class PurchaseTermsPolicy
 {
     public const int FullRefundDays = 14;
+    public const int PriceIncreaseNoticeDays = 30;
+
+    /// <summary>
+    /// Admin'in yeni fiyatı: artış (bekleyen artıştan farklıysa) <paramref name="nowUtc"/> + <see cref="PriceIncreaseNoticeDays"/>'da
+    /// geçerli olmak üzere bekler, bekleyen artışın aynısı olduğu gibi kalır; indirim ya da aynı fiyat hemen geçerlidir ve bekleyeni siler.
+    /// </summary>
+    public static (decimal Price, decimal? PendingPrice, DateTime? PendingFromUtc) Apply(
+        decimal price, decimal? pendingPrice, DateTime? pendingFromUtc, decimal requested, DateTime nowUtc) =>
+        requested <= price ? (requested, null, null)
+        : requested == pendingPrice ? (price, pendingPrice, pendingFromUtc)
+        : (price, requested, nowUtc.AddDays(PriceIncreaseNoticeDays));
 
     /// <summary>Tam iade süresinin sonu; aylık planda null (iade yok, dönem sonuna kadar erişim).</summary>
     public static DateTime? FullRefundUntil(PlanDuration duration, DateTime validFromUtc) =>

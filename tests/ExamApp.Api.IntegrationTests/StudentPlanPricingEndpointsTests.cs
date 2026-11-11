@@ -223,7 +223,8 @@ public class StudentPlanPricingEndpointsTests(IntegrationApiFactory factory) : I
         ]));
         res.StatusCode.ShouldBe(HttpStatusCode.OK);
         var saved = (await res.Content.ReadFromJsonAsync<SubscriptionPlanDto>(Json))!;
-        saved.Prices!.Select(p => (p.GradeLevel, p.Price)).ShouldBe([(null, 210m), (6, 189.90m)]);
+        // #1116: satıştaki band satırının artışı 30 gün bekler (199 → 210); yeni sınıf satırı hemen geçerli.
+        saved.Prices!.Select(p => (p.GradeLevel, p.Price, p.PendingPrice)).ShouldBe([(null, 199m, (decimal?)210m), (6, 189.90m, null)]);
         (await WithDbAsync(db => db.SubscriptionPlanChangeAudits.CountAsync(a => a.PlanKey == SubscriptionPlan.StudentBasicKey))).ShouldBe(1);
         // Audit'in "sonra"sı yalnız kalan iki satırı taşır.
         (await WithDbAsync(db => db.SubscriptionPlanChangeAudits.SingleAsync(a => a.PlanKey == SubscriptionPlan.StudentBasicKey)))
@@ -238,8 +239,9 @@ public class StudentPlanPricingEndpointsTests(IntegrationApiFactory factory) : I
             new() { Band = "Middle", GradeLevel = 6, Scope = "AllSubjects", Duration = "Monthly", Price = 179m },
         ]));
         readded.StatusCode.ShouldBe(HttpStatusCode.OK);
-        (await readded.Content.ReadFromJsonAsync<SubscriptionPlanDto>(Json))!.Prices!.Select(p => (p.GradeLevel, p.Price))
-            .ShouldBe([(null, 210m), (6, 179m)]);
+        // Aynı artış tarihini korur; canlanan sınıf satırı hemen geçerli.
+        (await readded.Content.ReadFromJsonAsync<SubscriptionPlanDto>(Json))!.Prices!.Select(p => (p.GradeLevel, p.Price, p.PendingPrice))
+            .ShouldBe([(null, 199m, (decimal?)210m), (6, 179m, null)]);
 
         var bad = new List<SubscriptionPlanPriceRowDto>[]
         {

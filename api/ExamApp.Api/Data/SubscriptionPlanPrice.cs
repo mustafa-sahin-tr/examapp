@@ -19,6 +19,14 @@ public class SubscriptionPlanPrice : BaseEntity
     public PlanDuration Duration { get; set; }
 
     public decimal Price { get; set; }
+
+    /// <summary>
+    /// Issue #1116: planlanmış fiyat artışı; <see cref="PendingFromUtc"/>'da <see cref="Price"/>'a geçer (<c>PlanPriceChangeJob</c>).
+    /// Ödenmiş dönemin fiyatı değişmez; yenileme (yeni satın alma) o tarihten sonra yeni fiyatla olur.
+    /// </summary>
+    public decimal? PendingPrice { get; set; }
+
+    public DateTime? PendingFromUtc { get; set; }
 }
 
 /// <summary>Sınıf bandı; öğrencinin sınıfından çözülür (<c>StudentPlanPricing.BandOf</c>). Kalıcı değer string'dir.</summary>

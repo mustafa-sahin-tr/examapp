@@ -263,6 +263,18 @@ describe('BookImportDetailComponent (#1018)', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).toContain(tr.demo.setSource);
   });
 
+  it('labelingFix_OnlyForTheContentTeam (#1060)', () => {
+    roles = ['Teacher'];
+    setup();
+    expect(fixture.componentInstance.canFix).toBe(false);
+
+    TestBed.resetTestingModule();
+    roles = ['QuestionTrainer'];
+    setup();
+    expect(fixture.componentInstance.canFix).toBe(true);
+    roles = ['Admin'];
+  });
+
   it('poll_ReloadsWhileRunning_StopsAtCheckpoint', async () => {
     vi.useFakeTimers();
     setup();

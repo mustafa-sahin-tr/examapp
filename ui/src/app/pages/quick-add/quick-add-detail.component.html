@@ -51,7 +51,7 @@
   </section>
 
   @if (reviewing()) {
-  <app-book-import-review [jobId]="j.id" [tests]="j.tests" kind="QuickAdd" [reviewApi]="api" [canFix]="canFix()" [thumbs]="thumbs()"
+  <app-book-import-review [jobId]="j.id" [tests]="j.tests" kind="QuickAdd" [reviewApi]="api" [thumbs]="thumbs()"
     (changed)="load()" />
   } @else {
   <ol class="qa-results">

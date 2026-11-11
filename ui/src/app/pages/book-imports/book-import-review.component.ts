@@ -50,7 +50,7 @@ export const ANSWER_LETTERS = ['A', 'B', 'C', 'D', 'E'];
  * bildirir. Onaylanan test etkinleşir, öğretmen paylaşımı Private kalır. "İşaretlemede düzelt" testin bir sayfasını işaretleme
  * ekranında açar (inceleme işaretinde geçen sayfalar bayraklı); orada kaydedilen sorular o sayfanın taslaklarının yerine geçer.
  * #1054: hızlı ekleme de aynı ekranı kullanır: satır = fotoğraf (küçük resimli), uçlar `reviewApi`, metinler `reviewQuickAdd`,
- * "İşaretlemede düzelt" yalnız `canFix` iken (işaretleme ekranı öğretmene kapalı).
+ * "İşaretlemede düzelt" yalnız `canFix` iken (öğretmen işaretleme ekranına yalnız hızlı ekleme düzeltmesi için girer, #1060).
  */
 @Component({
   selector: 'app-book-import-review',

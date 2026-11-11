@@ -345,6 +345,11 @@ export class LabelingComponent {
    * `/labeling?bookImport=<iş>&test=<test>&page=<dosya sayfası>`: klasör yerine aktarımın sayfa görseli açılır; kayıt o sayfanın
    * taslak sorularının yerine geçer (cevap işaretlenmezse kitabın anahtarından). Klasör seçilince mod kapanır.
    */
+  /**
+   * #1060: klasör oturumu, eğitime gönderme ve prompt Admin / QuestionTrainer işidir (gateway ve uç da öyle). Öğretmen
+   * ekrana yalnız kendi hızlı ekleme fotoğrafını düzeltmek için girer (`labelingGuard`); bu kontroller ona gösterilmez.
+   */
+  readonly contentTeam = this.auth.hasRealmRole('Admin') || this.auth.hasRealmRole('QuestionTrainer');
   readonly fix = signal<LabelingFixTarget | null>(null);
   readonly fixLoading = signal(false);
   readonly fixError = signal(false);
@@ -402,7 +407,9 @@ export class LabelingComponent {
       const filePage = this.filePage();
       untracked(() => this.loadBookPage(bookId, filePage));
     });
-    void this.loadLabeledPages();
+    if (this.contentTeam) {
+      void this.loadLabeledPages();
+    }
     this.startFixFromRoute();
     this.loadAiModels();
     this.loadGrades();

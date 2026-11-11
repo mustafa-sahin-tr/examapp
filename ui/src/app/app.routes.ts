@@ -7,6 +7,7 @@ import { adminSchoolFilterRedirectGuard } from './shared/guards/admin-school-fil
 import { rootRedirect } from './shared/guards/root-redirect';
 import { independentTeacherGuard } from './shared/guards/independent-teacher.guard';
 import { studentGuard } from './shared/guards/student.guard';
+import { labelingGuard } from './shared/guards/labeling.guard';
 import { roleGuard } from './shared/guards/role.guard';
 import { approvedTeacherGuard } from './shared/guards/approved-teacher.guard';
 import { entitlementGuard } from './shared/guards/entitlement.guard';
@@ -116,9 +117,10 @@ export const routes: Routes = [
       { path: 'questioncanvas/:id', component: QuestionCanvasComponent, canActivate: [authGuard, ...authoringGuards, entitlementGuard('manual-labeling')] },
       {
         // Soru tespit modeli için işaretleme modu: yalnız eğitim verisi (send-to-fix), test/soru kaydı yok.
-        // Gateway send-to-fix'i de yalnız bu iki realm rolüne açar. Öğretmenin soru girişi soru tuvalidir (#1087).
+        // Gateway send-to-fix'i de yalnız bu iki realm rolüne açar. Öğretmenin soru girişi soru tuvalidir (#1087);
+        // öğretmen buraya yalnız kendi hızlı ekleme fotoğrafını düzeltmek için girer (#1060).
         path: 'labeling',
-        canActivate: [authGuard, roleGuard('Admin', 'QuestionTrainer')],
+        canActivate: [authGuard, labelingGuard],
         loadComponent: () => import('./pages/labeling/labeling.component').then((m) => m.LabelingComponent),
       },
       {

@@ -314,6 +314,14 @@
     "ParentChildPlanEndingTrial": {
       "title": "Deneme süresi bitiyor",
       "body": "{0} için deneme süresi {1} tarihinde bitiyor. Devam edebilmesi için veli panelinden bir plan seçebilirsiniz."
+    },
+    "GradePromotedToStudent": {
+      "title": "Artık {0}. sınıftasın",
+      "body": "Yeni eğitim yılı başladı: artık {0}. sınıftasın. Dersler, denemeler ve önerilen içerikler yeni sınıfına göre geliyor."
+    },
+    "GradePromotedToParent": {
+      "title": "Yeni sınıf",
+      "body": "{1} artık {0}. sınıfta; içerikler yeni sınıfa göre geliyor. Ödenmiş dönem aynı fiyatla sürer, yeni sınıfın fiyatı yenilemede uygulanır."
     }
   }
 }

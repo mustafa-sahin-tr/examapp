@@ -1,7 +1,9 @@
+using System.Text.Json;
 using ExamApp.Api.Data;
 using ExamApp.Api.Services.Dashboard;
 using ExamApp.Api.Services.GradePromotion;
 using ExamApp.Api.Tests.Support;
+using ExamApp.Foundation.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -82,6 +84,51 @@ public class StudentGradePromotionTests : IDisposable
         await using var ctx = _db.NewContext();
         var row = await ctx.StudentGradePromotions.SingleAsync(p => p.StudentId == fourth);
         (row.Year, row.FromGradeId, row.ToGradeId).ShouldBe((2027, w.GradeOfLevel[4], w.GradeOfLevel[5]));
+    }
+
+    [Fact]
+    public async Task Promotion_notifies_the_student_and_active_parents_once()
+    {
+        var w = await SeedGradesAsync();
+        var student = await AddStudentAsync(1, w.GradeOfLevel[6]);
+        var twelfth = await AddStudentAsync(2, w.GradeOfLevel[12]);
+        int active, pending;
+        await using (var ctx = _db.NewContext())
+        {
+            var a = new Parent { UserId = 501 };
+            var b = new Parent { UserId = 502 };
+            ctx.AddRange(a, b);
+            await ctx.SaveChangesAsync();
+            (active, pending) = (a.Id, b.Id);
+            foreach (var (parentId, status) in new[] { (a.Id, ParentStudentLinkStatus.Active), (b.Id, ParentStudentLinkStatus.Pending) })
+            {
+                ctx.ParentStudentLinks.Add(new ParentStudentLink
+                {
+                    Origin = ParentStudentLinkOrigin.ParentCreated, ParentId = parentId, StudentId = student, Status = status,
+                    CreatedAt = new DateTime(2027, 1, 1), ActivatedAt = status == ParentStudentLinkStatus.Active ? new DateTime(2027, 1, 1) : null,
+                });
+            }
+            await ctx.SaveChangesAsync();
+        }
+
+        await RunAsync();
+        _time.Now = _time.Now.AddDays(1);
+        await RunAsync(); // ikinci tur yeni event yazmaz
+
+        await using var check = _db.NewContext();
+        var events = (await check.OutboxMessages
+                .Where(o => o.Type == OutboxEventRegistry.NameFor<StudentGradePromotedEvent>()).ToListAsync())
+            .Select(o => JsonSerializer.Deserialize<StudentGradePromotedEvent>(o.Content)!)
+            .OrderBy(e => e.Audience)
+            .ToList();
+        events.Select(e => (e.Audience, e.RecipientUserId)).ShouldBe(new[]
+        {
+            (StudentGradePromotedEvent.ParentAudience, 501),
+            (StudentGradePromotedEvent.StudentAudience, 1),
+        });
+        events.ShouldAllBe(e => e.StudentId == student && e.ToGradeLevel == 7 && e.Year == 2027);
+        events.Select(e => e.EventId).Distinct().Count().ShouldBe(2);
+        events.ShouldNotContain(e => e.StudentId == twelfth);
     }
 
     [Fact]

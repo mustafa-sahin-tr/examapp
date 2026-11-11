@@ -412,8 +412,11 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   aynı transaction'da yazılır: ikinci tur hiçbir şey yapmaz. Ödenmiş dönem fiyatı değişmez; yeni bandın fiyatı yenilemede geçerli
   olur (teklif öğrencinin o anki sınıfından). Admin öğrenci listesinde "Sınıf atlamasını geri al" (`POST
   api/admin/students/{id}/grade-promotion/revert`): yalnız en yeni yılın, geri alınmamış atlaması ve öğrenci hâlâ o sınıftaysa
-  (yoksa 404 / sınıf değiştiyse 409); satır kalır, o yıl yeniden atlatılmaz; audit `GradePromotionReverted`. Sıradakiler: öğrenci ve
-  veli bildirimi, yenilemeden 30 gün önce band uyarısı.
+  (yoksa 404 / sınıf değiştiyse 409); satır kalır, o yıl yeniden atlatılmaz; audit `GradePromotionReverted`. Bildirim: atlamayla
+  aynı transaction'da öğrenciye ve o an Active her veliye birer `StudentGradePromotedEvent` (tek alıcı / event, veli listesi
+  `FOR SHARE` ile yeniden okunur); BadgeService `StudentGradePromotedConsumer` → `GradePromotedToStudent` (yalnız bilgi) /
+  `GradePromotedToParent` (çocuğun paneline gider, bağ koparılınca nötrlenir). Geri almada bildirim yok. Sırada: yenilemeden 30 gün
+  önce band uyarısı.
 - **Okul lisansı (#1092):** özel anlaşmayla okulun bütün üyelerine plan: `SchoolLicenses` (okul başına tek satır; öğretmen ve öğrenci
   planı, varsayılan iki kitlenin Pro'su; başlangıç / hariç bitiş; anlaşma notu ≤ 200). Kimseye atama yazılmaz: plan çözümü
   (`EntitlementService.ResolvePlanAsync`, admin listesi `CurrentPlansAsync`, ortak kural `SchoolLicensePlans`) kullanıcının okuluna

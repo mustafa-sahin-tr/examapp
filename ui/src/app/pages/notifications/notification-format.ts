@@ -144,6 +144,9 @@ const SCHOOL_CHANGE_SELF_NOTIFICATIONS: ReadonlySet<string> = new Set([
   'SchoolAssignedToTeacher',
 ]);
 
+/** Issue #1110: öğrencinin kendi sınıf atlaması — yalnız bilgi, hedef yok. Velininki PARENT_NOTIFICATION_PRESENTATION'da. */
+const GRADE_PROMOTED_SELF_NOTIFICATION = 'GradePromotedToStudent';
+
 /** Admin'in öğretmen başvurusu ve okul katılım talebi onay ekranı. */
 export const ADMIN_TEACHER_APPROVALS_ROUTE = '/admin/teacher-approvals';
 
@@ -272,6 +275,9 @@ export function describeNotification(
     // Issue #542: öğrencinin / öğretmenin kendi okul değişimi — yalnız bilgi, hedef yok.
     return { icon: 'school', badge: null, route: null, questionOrder: null };
   }
+  if (notification.type === GRADE_PROMOTED_SELF_NOTIFICATION) {
+    return { icon: 'upgrade', badge: null, route: null, questionOrder: null };
+  }
   const requirement = PARENT_REQUIREMENT_NOTIFICATIONS[notification.type];
   if (requirement) {
     return { icon: requirement.icon, badge: null, route: { commands: [requirement.route] }, questionOrder: null };
@@ -331,6 +337,8 @@ const PARENT_NOTIFICATION_PRESENTATION: Readonly<
   // Issue #1091: çocuğun planı / denemesi bitiyor → o çocuğun "Plan" sekmesi.
   ParentChildPlanEnding: { icon: 'event_upcoming', toParentPage: true, tab: 'plan' },
   ParentChildPlanEndingTrial: { icon: 'event_upcoming', toParentPage: true, tab: 'plan' },
+  // Issue #1110: çocuğun 1 Ağustos sınıf atlaması → o çocuğun paneli.
+  GradePromotedToParent: { icon: 'upgrade', toParentPage: true },
 };
 
 /** Issue #439: öğrenciye giden veli kararı bildirimleri → ikon (hepsi `/my-bookings`). */

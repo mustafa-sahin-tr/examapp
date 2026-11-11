@@ -116,7 +116,8 @@ public class OutboxEventRegistryTests
         nameof(ParentHomeworkOverdueEvent), nameof(ParentChildTestCompletedEvent),
         nameof(BookingParentApprovalRequestedEvent), nameof(BookingParentDecisionEvent), // issue #439
         nameof(ParentInvitationRequestedEvent), nameof(StudentParentGraceReminderEvent), // issue #440, #441
-        nameof(ParentChildPlanEndingEvent) // issue #1091
+        nameof(ParentChildPlanEndingEvent), // issue #1091
+        nameof(StudentGradePromotedEvent) // issue #1110
     };
 
     private static string RepoFile(string relativePath)

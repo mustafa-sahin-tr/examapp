@@ -121,6 +121,7 @@ public class ParentLinkChangedConsumer :
         ParentChildTestCompletedConsumer.NotificationType,
         ParentHomeworkOverdueConsumer.NotificationType,
         ParentChildPlanEndingConsumer.NotificationType, // issue #1091
+        StudentGradePromotedConsumer.ToParentType, // issue #1110
         LinkedToParentType,
         // issue #542: çocuğun okul değişimi
         SchoolChangedConsumer.ChangedToParentType,

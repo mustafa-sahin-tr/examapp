@@ -1,8 +1,13 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using ExamApp.Api.Data;
 using ExamApp.Api.Services.Dashboard;
+using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Parents;
 using ExamApp.Api.Services.TargetGoals;
 using ExamApp.Api.Helpers;
+using ExamApp.Foundation.Contracts;
+using ExamApp.Foundation.Persistence;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -46,6 +51,9 @@ public interface IStudentGradePromotionJob
 /// seviyesi okunamayan ya da üst sınıfı tanımlı olmayan sınıf atlatılmaz.</item>
 /// <item>İdempotent: öğrenci + yıl başına tek <see cref="StudentGradePromotion"/> (tekil indeks); satır sınıf değişikliğiyle AYNI
 /// transaction'da yazılır. Sınıf arada değiştiyse (koşullu güncelleme 0 satır) öğrenci atlanmaz.</item>
+/// <item>Bildirim: atlatılan öğrenciye ve o an Active her velisine birer <see cref="StudentGradePromotedEvent"/>, sınıf değişikliğiyle
+/// AYNI transaction'da (veli listesi transaction içinde <c>FOR SHARE</c> ile yeniden okunur, #423). Ad / sub auth-api'den parti
+/// başına best-effort çözülür; çözülemezse event boş değerlerle yazılır, consumer yedeğe düşer.</item>
 /// <item>Ödenmiş dönem fiyatını korur (atamaya dokunulmaz); yeni bandın fiyatı yenilemede uygulanır, çünkü teklif öğrencinin o
 /// anki sınıfından hesaplanır (<c>StudentPlanPricing</c>).</item>
 /// </list>
@@ -59,14 +67,17 @@ public sealed class StudentGradePromotionJob : IStudentGradePromotionJob
     private readonly IOptionsMonitor<StudentGradePromotionOptions> _options;
     private readonly TimeProvider _clock;
     private readonly ILogger<StudentGradePromotionJob> _logger;
+    private readonly IAuthApiClient? _authApi;
 
     public StudentGradePromotionJob(
         AppDbContext context,
         ILocalDayCalendar calendar,
         IOptionsMonitor<StudentGradePromotionOptions> options,
         TimeProvider? clock = null,
-        ILogger<StudentGradePromotionJob>? logger = null)
+        ILogger<StudentGradePromotionJob>? logger = null,
+        IAuthApiClient? authApi = null)
     {
+        _authApi = authApi;
         _context = context;
         _calendar = calendar;
         _options = options;
@@ -80,6 +91,14 @@ public sealed class StudentGradePromotionJob : IStudentGradePromotionJob
         var start = new DateOnly(today.Year, 8, 1);
         return today >= start && today < start.AddDays(catchUpDays) ? today.Year : null;
     }
+
+    /// <summary>Bir üst sınıf: id ve seviyesi (bildirim metni).</summary>
+    internal sealed record NextGrade(int GradeId, int Level);
+
+    private sealed record ParentRecipient(int ParentId, int ParentUserId);
+
+    private sealed record Recipients(
+        int StudentUserId, IReadOnlyList<ParentRecipient> Parents, IReadOnlyDictionary<int, NotificationUser> Users);
 
     public async Task<int> RunAsync(CancellationToken ct = default)
     {
@@ -102,16 +121,27 @@ public sealed class StudentGradePromotionJob : IStudentGradePromotionJob
                 .Where(s => s.Id > lastId && s.GradeId != null && fromGradeIds.Contains(s.GradeId.Value) && s.CreateTime < cutoffUtc
                     && !_context.StudentGradePromotions.Any(p => p.StudentId == s.Id && p.Year == year))
                 .OrderBy(s => s.Id)
-                .Select(s => new { s.Id, GradeId = s.GradeId!.Value })
+                .Select(s => new { s.Id, GradeId = s.GradeId!.Value, s.UserId })
                 .Take(opts.BatchSize)
                 .ToListAsync(ct);
             if (batch.Count == 0)
                 break;
 
+            var studentIds = batch.Select(s => s.Id).ToList();
+            var links = await _context.ParentStudentLinks.AsNoTracking()
+                .Where(ParentChildAccess.GrantsAccess)
+                .Where(l => studentIds.Contains(l.StudentId))
+                .Select(l => new { l.StudentId, l.ParentId, ParentUserId = l.Parent.UserId })
+                .ToListAsync(ct);
+            var parentsByStudent = links.ToLookup(l => l.StudentId, l => new ParentRecipient(l.ParentId, l.ParentUserId));
+            var users = await ParentNotificationSupport.LookupAsync(
+                _authApi, links.Select(l => l.ParentUserId).Concat(batch.Select(s => s.UserId)), _logger, ct);
+
             foreach (var s in batch)
             {
                 ct.ThrowIfCancellationRequested();
-                if (await PromoteAsync(s.Id, s.GradeId, next[s.GradeId], year, now, ct))
+                var recipients = new Recipients(s.UserId, parentsByStudent[s.Id].ToList(), users);
+                if (await PromoteAsync(s.Id, s.GradeId, next[s.GradeId], year, now, recipients, ct))
                     promoted++;
             }
             lastId = batch[^1].Id;
@@ -121,7 +151,8 @@ public sealed class StudentGradePromotionJob : IStudentGradePromotionJob
         return promoted;
     }
 
-    private async Task<bool> PromoteAsync(int studentId, int fromGradeId, int toGradeId, int year, DateTime now, CancellationToken ct)
+    private async Task<bool> PromoteAsync(
+        int studentId, int fromGradeId, NextGrade to, int year, DateTime now, Recipients recipients, CancellationToken ct)
     {
         var strategy = _context.Database.CreateExecutionStrategy();
         try
@@ -133,7 +164,7 @@ public sealed class StudentGradePromotionJob : IStudentGradePromotionJob
 
                 var moved = await _context.Students
                     .Where(s => s.Id == studentId && s.GradeId == fromGradeId)
-                    .ExecuteUpdateAsync(u => u.SetProperty(s => s.GradeId, toGradeId), ct);
+                    .ExecuteUpdateAsync(u => u.SetProperty(s => s.GradeId, to.GradeId), ct);
                 if (moved == 0)
                 {
                     await tx.RollbackAsync(ct);
@@ -145,9 +176,10 @@ public sealed class StudentGradePromotionJob : IStudentGradePromotionJob
                     StudentId = studentId,
                     Year = year,
                     FromGradeId = fromGradeId,
-                    ToGradeId = toGradeId,
+                    ToGradeId = to.GradeId,
                     PromotedAtUtc = now,
                 });
+                await AddNotificationsAsync(studentId, to.Level, year, now, recipients, ct);
                 await _context.SaveChangesAsync(ct);
                 await tx.CommitAsync(ct);
                 return true;
@@ -161,8 +193,38 @@ public sealed class StudentGradePromotionJob : IStudentGradePromotionJob
         }
     }
 
-    /// <summary>Sınıf id → bir üst sınıfın id'si (1–11). Aynı seviyede birden çok sınıf varsa üst sınıf en küçük id'lidir.</summary>
-    internal static async Task<Dictionary<int, int>> NextGradesAsync(AppDbContext context, CancellationToken ct)
+    private async Task AddNotificationsAsync(int studentId, int toLevel, int year, DateTime now, Recipients r, CancellationToken ct)
+    {
+        void Add(string audience, int recipientUserId, string studentName) => _context.OutboxMessages.Add(new OutboxMessage
+        {
+            Type = OutboxEventRegistry.NameFor<StudentGradePromotedEvent>(),
+            Content = JsonSerializer.Serialize(new StudentGradePromotedEvent
+            {
+                EventId = Guid.NewGuid(),
+                Audience = audience,
+                RecipientUserId = recipientUserId,
+                RecipientKeycloakId = ParentNotificationSupport.Of(r.Users, recipientUserId).KeycloakId,
+                StudentId = studentId,
+                StudentDisplayName = studentName,
+                Year = year,
+                ToGradeLevel = toLevel,
+                PromotedAtUtc = DateTime.SpecifyKind(now, DateTimeKind.Utc),
+            }),
+            CreatedAt = now
+        });
+
+        Add(StudentGradePromotedEvent.StudentAudience, r.StudentUserId, string.Empty);
+        if (r.Parents.Count == 0)
+            return;
+        // Security M1 (#423): yalnız hem partide hem transaction içi okumada Active olan veliler.
+        var stillActive = await ParentNotificationSupport.ActiveParentIdsLockedAsync(_context, studentId, ct);
+        var studentName = ParentNotificationSupport.Of(r.Users, r.StudentUserId).DisplayName;
+        foreach (var p in r.Parents.Where(p => stillActive.Contains(p.ParentId)))
+            Add(StudentGradePromotedEvent.ParentAudience, p.ParentUserId, studentName);
+    }
+
+    /// <summary>Sınıf id → bir üst sınıf (1–11). Aynı seviyede birden çok sınıf varsa üst sınıf en küçük id'lidir.</summary>
+    internal static async Task<Dictionary<int, NextGrade>> NextGradesAsync(AppDbContext context, CancellationToken ct)
     {
         var grades = (await context.Grades.AsNoTracking()
                 .Select(g => new { g.Id, g.Code, g.Name })
@@ -176,6 +238,6 @@ public sealed class StudentGradePromotionJob : IStudentGradePromotionJob
 
         return grades
             .Where(g => g.Level < 12 && firstOfLevel.ContainsKey(g.Level!.Value + 1))
-            .ToDictionary(g => g.Id, g => firstOfLevel[g.Level!.Value + 1]);
+            .ToDictionary(g => g.Id, g => new NextGrade(firstOfLevel[g.Level!.Value + 1], g.Level!.Value + 1));
     }
 }

@@ -360,6 +360,8 @@ public class ApprovedTeacherAuthorizationTests : IDisposable
         // #1028: kayıt sihirbazının plan adımı onaydan önce gelir (onay bekleyen öğretmen de plan seçer).
         (typeof(SubscriptionPlansController), nameof(SubscriptionPlansController.StartTrial)),
         (typeof(SubscriptionPlansController), nameof(SubscriptionPlansController.Checkout)),
+        // #1116: onay beklerken satın alınan plan da 14 gün içinde iptal edilebilmeli.
+        (typeof(SubscriptionPlansController), nameof(SubscriptionPlansController.Cancel)),
     };
 
     private static IEnumerable<AuthorizeAttribute> AuthorizeAttributesOf(MethodInfo action) =>

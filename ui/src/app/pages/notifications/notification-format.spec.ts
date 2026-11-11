@@ -269,6 +269,15 @@ describe('describeNotification (issue #105)', () => {
         }
     });
 
+    it('GradePromoted_ParentLinksChild_StudentHasNoRoute (issue #1110)', () => {
+        const parent = describeNotification({ type: 'GradePromotedToParent', data: JSON.stringify({ studentId: 21, toGradeLevel: 7 }) });
+        expect(parent.route).toEqual({ commands: ['/parent'], queryParams: { child: 21 } });
+        expect(parent.icon).toBe('upgrade');
+        const self = describeNotification({ type: 'GradePromotedToStudent', data: JSON.stringify({ studentId: null, toGradeLevel: 7 }) });
+        expect(self.route).toBeNull();
+        expect(self.icon).toBe('upgrade');
+    });
+
     it('OpenTextReviewed_LinksTheReviewedActivityItem (issue #614)', () => {
         const result = describeNotification({
             type: 'OpenTextReviewed',

@@ -314,6 +314,14 @@
     "ParentChildPlanEndingTrial": {
       "title": "Trial ending",
       "body": "{0}'s trial ends on {1}. Choose a plan from the parent panel so they can keep going."
+    },
+    "GradePromotedToStudent": {
+      "title": "You're in grade {0} now",
+      "body": "A new school year has started: you're now in grade {0}. Lessons, mock exams and suggested content follow your new grade."
+    },
+    "GradePromotedToParent": {
+      "title": "New grade",
+      "body": "{1} is now in grade {0}; content follows the new grade. The paid period keeps its price; the new grade's price applies at renewal."
     }
   }
 }

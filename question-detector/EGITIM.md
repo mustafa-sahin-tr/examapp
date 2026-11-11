@@ -94,6 +94,17 @@ Biriken veriyi görmek için:
 
 **İlk kayıttan sonra mutlaka `status` çalıştır** ve sayıların arttığını gör.
 
+**Kitap aktarımından toplu veri (#1133):** kitap aktarımları sayfasında (Admin) "Eğitim verisi" kartından özeti gör, ZIP'i indir,
+sonra `question-detector/` içinden:
+
+```bash
+python training/import_book_export.py ~/Downloads/book-import-training-<tarih>.zip --dry-run   # önce say
+python training/import_book_export.py ~/Downloads/book-import-training-<tarih>.zip
+./commands.sh status
+```
+
+Yalnız onaylı testlerin sayfaları gelir; veri setinde olan sayfa tekrar yazılmaz. Kurallar: `docs/labeling.md` § #1133.
+
 ## 3. Haftalık: eğitim (Colab)
 
 1. Mac'te Drive senkronunun bitmesini bekle; `dataset/` Drive'da görünmeli.

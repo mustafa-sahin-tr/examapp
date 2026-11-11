@@ -1,0 +1,66 @@
+// Issue #1133: eğitim verisi kartı (yalnız Admin).
+.bit {
+  border: 1px solid var(--ms-border);
+  border-radius: 12px;
+  background: var(--ms-surface);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  &__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--ms-text-strong);
+  }
+
+  &__sub {
+    margin: 8px 0 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--ms-text-strong);
+  }
+
+  &__hint,
+  &__line,
+  &__totals,
+  &__list {
+    margin: 0;
+    font-size: 13px;
+    color: var(--ms-text-medium);
+  }
+
+  &__totals {
+    font-size: 14px;
+    color: var(--ms-text-strong);
+  }
+
+  &__list {
+    padding-left: 18px;
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+
+    mat-spinner {
+      display: inline-block;
+      margin-right: 6px;
+    }
+  }
+
+  &__error {
+    margin: 0;
+    color: var(--ms-danger-text, var(--ms-text-strong));
+  }
+}

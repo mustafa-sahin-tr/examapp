@@ -1,0 +1,49 @@
+<section class="bit" *transloco="let t; prefix: 'book-imports.training'" [attr.aria-label]="t('title')">
+  <div class="bit__head">
+    <div>
+      <h2 class="bit__title">{{ t('title') }}</h2>
+      <p class="bit__hint">{{ t('hint') }}</p>
+    </div>
+    <div class="bit__actions">
+      <button mat-stroked-button type="button" [disabled]="loading()" (click)="load()">
+        @if (loading()) { <mat-spinner diameter="16" aria-hidden="true"></mat-spinner> } @else { <mat-icon aria-hidden="true">query_stats</mat-icon> }
+        {{ t(summary() ? 'refresh' : 'summarize') }}
+      </button>
+      <button mat-flat-button type="button" [disabled]="!summary()?.pages || downloading()" (click)="download()">
+        @if (downloading()) { <mat-spinner diameter="16" aria-hidden="true"></mat-spinner> } @else { <mat-icon aria-hidden="true">download</mat-icon> }
+        {{ t('download') }}
+      </button>
+    </div>
+  </div>
+
+  @if (error()) {
+  <p class="bit__error" role="alert">{{ t('error') }}</p>
+  }
+
+  @if (summary(); as s) {
+  <p class="bit__totals" data-testid="training-totals">
+    {{ t('totals', { pages: s.pages, complete: s.completePages, empty: s.emptyPages, questions: s.questions }) }}
+  </p>
+  @if (choices().length > 0) {
+  <p class="bit__line">
+    @for (c of choices(); track c.choices; let last = $last) {{{ t('choices', c) }}{{ last ? '' : ' · ' }}}
+  </p>
+  }
+  @if (s.books.length > 0) {
+  <ul class="bit__list">
+    @for (b of s.books; track b.jobId) {
+    <li>{{ t('book', b) }}</li>
+    }
+  </ul>
+  }
+  @if (skipped().length > 0) {
+  <h3 class="bit__sub">{{ t('skippedTitle', { count: s.skipped.length }) }}</h3>
+  <ul class="bit__list" data-testid="training-skipped">
+    @for (g of skipped(); track g.bookName + g.reason) {
+    <li><b>{{ g.bookName }}</b> · {{ t('skip.' + g.reason) }} · {{ t('pages', { pages: g.pages }) }}</li>
+    }
+  </ul>
+  }
+  <p class="bit__hint">{{ t('next') }}</p>
+  }
+</section>

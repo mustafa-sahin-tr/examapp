@@ -406,5 +406,26 @@
     "fixPage": "Fotoğraf {{page}}",
     "fixPageFlagged": "Fotoğraf {{page}} · işaretli",
     "footer": "Onaylanan sorular soru havuzunuza eklenir ve yalnız size açıktır (özel). Test oluşturulmaz."
+  },
+  "training": {
+    "title": "Eğitim verisi (soru tespiti)",
+    "hint": "Onaylanan testlerin sayfaları ve kutuları, soru tespit modelini (YOLO) yeniden eğitmek için. Uyarılı sayfalar yalnız işaretlemede düzeltildiyse alınır.",
+    "summarize": "Özeti göster",
+    "refresh": "Özeti yenile",
+    "download": "ZIP indir",
+    "error": "Eğitim verisi alınamadı. Tekrar deneyin.",
+    "totals": "{{pages}} sayfa ({{complete}} tam sayfa, {{empty}} sorusuz) · {{questions}} soru",
+    "choices": "{{choices}} şık: {{count}}",
+    "book": "{{bookName}}: {{pages}} sayfa, {{questions}} soru, {{manualPages}} sayfa düzeltilmiş",
+    "skippedTitle": "Atlanan sayfalar ({{count}})",
+    "pages": "sayfa {{pages}}",
+    "skip": {
+      "openTest": "onaylanmamış testle ortak",
+      "flagged": "uyarılı, düzeltilmedi",
+      "noDetection": "tespit yok",
+      "fewChoices": "ikiden az şıklı soru",
+      "imageMissing": "görsel yok"
+    },
+    "next": "ZIP'i question-detector klasöründe \"python training/import_book_export.py <zip>\" ile veri setine yazın; sonra her zamanki gibi Drive'a yükleyin."
   }
 }

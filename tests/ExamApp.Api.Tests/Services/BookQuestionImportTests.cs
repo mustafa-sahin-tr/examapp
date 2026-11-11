@@ -14,6 +14,7 @@ using ExamApp.Api.Tests.Support;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace ExamApp.Api.Tests.Services;
@@ -617,6 +618,41 @@ public class BookQuestionImportTests : IDisposable
         (await check.Questions.IgnoreQueryFilters().CountAsync(q => q.IsDeleted && q.IsDraft && q.Text == "1")).ShouldBe(1);
     }
 
+    /// <summary>Issue #1133: düzeltilen kutular eğitim verisi için elle doğrulanmış sonuç olur; Claude'un diğer blokları kalır.</summary>
+    [Fact]
+    public async Task Fixing_a_page_records_the_boxes_as_the_manual_labeling_result()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "AB", [2])]);
+        Detect(1, 4, 4);
+        await RunAsync(id);
+        var test = await SingleTestAsync();
+        await using (var seed = _db.NewContext())
+        {
+            var sha = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes("http://minio/pages/1")));
+            var page = new LabelingPage { ImageSha256 = sha, Width = PageWidth, Height = PageHeight, CreatedAt = DateTime.UtcNow };
+            page.Results.Add(new LabelingResult
+            {
+                Source = LabelingSource.Ai, ModelName = Model, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+                BoxesJson = System.Text.Json.JsonSerializer.Serialize(new PredictionListDto
+                {
+                    Predictions = [Question(100, 100, 4), new PredictionDto { X = 100, Y = 1500, Width = 900, Height = 900, Kind = LabelingBlocks.Activity }],
+                }),
+            });
+            seed.LabelingPages.Add(page);
+            await seed.SaveChangesAsync();
+        }
+
+        await using (var ctx = _db.NewContext())
+            (await Fix(ctx).ReplacePageAsync(Owner, id, test.Id, 1, [Box(0), Box(1)], default)).Error.ShouldBe(BookImportPageFixError.None);
+
+        await _labeling.Received(1).SaveManualAsync(Arg.Is<LabelingSaveManualRequestDto>(r =>
+            r.BaseSource == "Ai"
+            && r.ImageBase64 == "data:image/webp;base64," + Convert.ToBase64String(Encoding.UTF8.GetBytes("http://minio/pages/1"))
+            && r.Predictions.Predictions.Select(p => p.Kind).SequenceEqual(new[] { LabelingBlocks.McqQuestion, LabelingBlocks.McqQuestion, LabelingBlocks.Activity })
+            && r.Predictions.Predictions[1].Y == 800 && r.Predictions.Predictions[1].Subpredictions.Count == 4),
+            Arg.Any<LabelingActor>(), Arg.Any<CancellationToken>());
+    }
+
     [Fact]
     public async Task A_marked_answer_wins_over_the_key_and_an_unanswered_question_stays_flagged()
     {
@@ -1108,7 +1144,8 @@ public class BookQuestionImportTests : IDisposable
             .ShouldBe(ExamApp.Api.Services.Entitlements.EntitlementFeatures.ManualLabeling);
     }
 
-    private BookImportPageFixService Fix(AppDbContext ctx) => new(ctx, _minio, _bank);
+    private BookImportPageFixService Fix(AppDbContext ctx) =>
+        new(ctx, _minio, _bank, _labeling, NullLogger<BookImportPageFixService>.Instance);
 
     private static LabelingBankQuestionDto Box(int row, int correct = -1, string? label = null) => new()
     {

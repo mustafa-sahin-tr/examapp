@@ -187,6 +187,35 @@ public class BookImportController : BaseController
             _ => NotFound(),
         };
 
+    /// <summary>
+    /// Issue #1133: incelenmiş kitap sayfalarının eğitim verisi. <paramref name="dryRun"/> (varsayılan) yalnız özet döner;
+    /// false iken sayfa görselleri + <c>manifest.json</c> ZIP olarak iner (question-detector
+    /// <c>training/import_book_export.py</c> veri setine yazar). <paramref name="jobId"/> boşsa bütün kitap işleri.
+    /// </summary>
+    [HttpGet("training-export")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(BookImportTrainingSummaryDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> TrainingExport([FromServices] IBookImportTrainingExport export, [FromQuery] Guid? jobId,
+        [FromQuery] bool dryRun = true, CancellationToken ct = default)
+    {
+        if (dryRun)
+            return Ok(await export.SummarizeAsync(jobId, ct));
+        // Sayfalar yüzlerce MB olabilir: geçici dosyaya yazılır, yanıt bitince silinir.
+        var file = new FileStream(Path.GetTempFileName(), FileMode.Create, FileAccess.ReadWrite, FileShare.None, 81920,
+            FileOptions.DeleteOnClose | FileOptions.Asynchronous);
+        try
+        {
+            await export.WriteZipAsync(jobId, file, ct);
+            file.Position = 0;
+            return File(file, "application/zip", $"book-import-training-{DateTime.UtcNow:yyyyMMdd-HHmm}.zip");
+        }
+        catch
+        {
+            await file.DisposeAsync();
+            throw;
+        }
+    }
+
     [HttpGet("quota")]
     public async Task<IActionResult> Quota(CancellationToken ct)
     {

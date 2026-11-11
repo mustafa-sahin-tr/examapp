@@ -60,6 +60,9 @@ public static class ParentAccessEndpoints
     /// <summary>Issue #1113: çocuğun haftalık çalışma planı.</summary>
     public const string ChildStudyPlan = "children.study-plan";
 
+    /// <summary>Issue #1114: çocuğun seviye tespiti raporu.</summary>
+    public const string ChildPlacement = "children.placement";
+
     /// <summary><c>GET api/parent/children/{studentId}/topic-performance</c> (issue #498).</summary>
     public const string ChildTopicPerformance = "children.topic-performance";
 

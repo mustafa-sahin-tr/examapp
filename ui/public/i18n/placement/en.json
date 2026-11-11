@@ -1,0 +1,63 @@
+{
+  "title": "Placement test",
+  "subtitle": "A short free test shows your strong and weak topics; we'll suggest the plan that fits you.",
+  "loadError": "The placement test couldn't be loaded.",
+  "retry": "Try again",
+  "notAvailable": "The placement test for your grade isn't ready yet.",
+  "intro": "{{ count }} questions for {{ grade }}. You can take it once; leave a question blank if you don't know it.",
+  "start": "Start the test",
+  "answered": "{{ answered }} / {{ total }} answered",
+  "questionLabel": "Question {{ number }}",
+  "optionImage": "Option image",
+  "questionImage": "Question image",
+  "submit": "Finish and see the report",
+  "submitConfirm": "{{ blank }} questions are blank. Finish anyway?",
+  "submitError": "The answers couldn't be sent. Try again.",
+  "report": {
+    "title": "Level report",
+    "score": "{{ correct }} of {{ total }} correct ({{ percent }}%)",
+    "subjects": "By subject",
+    "strong": "Strong topics",
+    "weak": "Topics to work on",
+    "none": "—",
+    "suggestion": "Suggested plan",
+    "tierAll": "{{ tier }}: all subjects",
+    "tierSubject": "{{ tier }}: {{ subject }} only",
+    "reason": {
+      "pro": "Several topics need work; step-by-step hints, weekly tasks and asking a teacher help most.",
+      "essential": "The basics are solid; a few topics need support.",
+      "basic": "Good results; regular practice is enough."
+    },
+    "seePlans": "See plans",
+    "askParent": "Your parent picks the plan; they can see this report too."
+  },
+  "tier": {
+    "basic": "Basic",
+    "essential": "Essential",
+    "pro": "Pro"
+  },
+  "plansNotice": "Not sure which plan fits? Take the free placement test.",
+  "plansNoticeTaken": "Your level report and plan suggestion are ready.",
+  "plansNoticeAction": "Placement test",
+  "parent": {
+    "title": "Placement report"
+  },
+  "admin": {
+    "title": "Placement tests",
+    "subtitle": "A free test per grade, generated from the question bank and balanced across the subjects sold on their own. A published test is open to students.",
+    "grade": "Grade",
+    "questions": "Questions",
+    "subjects": "Subjects",
+    "attempts": "Taken",
+    "status": "Status",
+    "published": "Published",
+    "draft": "Draft",
+    "empty": "None",
+    "generate": "Generate",
+    "regenerate": "Regenerate",
+    "publish": "Publish",
+    "unpublish": "Unpublish",
+    "notEnough": "The bank doesn't have enough multiple-choice questions for this grade's subjects.",
+    "error": "The action failed."
+  }
+}

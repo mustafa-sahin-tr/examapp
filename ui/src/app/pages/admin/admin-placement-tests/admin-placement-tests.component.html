@@ -1,0 +1,65 @@
+<div class="placement-tests" *transloco="let t; prefix: 'placement'">
+  <app-page-header icon="quiz" [title]="t('admin.title')" [description]="t('admin.subtitle')" />
+  @if (loadError()) {
+    <p class="ms-error" role="alert">{{ t('loadError') }}</p>
+  } @else if (tests(); as list) {
+    <div class="table-wrap">
+      <table class="placement-tests__table">
+        <thead>
+          <tr>
+            <th scope="col">{{ t('admin.grade') }}</th>
+            <th scope="col">{{ t('admin.questions') }}</th>
+            <th scope="col">{{ t('admin.subjects') }}</th>
+            <th scope="col">{{ t('admin.attempts') }}</th>
+            <th scope="col">{{ t('admin.status') }}</th>
+            <th scope="col">
+              <span class="cdk-visually-hidden">{{ t('admin.generate') }}</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (test of list; track test.gradeId) {
+            <tr data-testid="placement-test-row">
+              <th scope="row">{{ test.gradeName }}</th>
+              <td>{{ test.questionCount }}</td>
+              <td class="muted">{{ subjects(test) }}</td>
+              <td>{{ test.attemptCount }}</td>
+              <td data-testid="placement-test-status">
+                {{
+                  t(test.questionCount === 0 ? 'admin.empty' : test.publishedAtUtc ? 'admin.published' : 'admin.draft')
+                }}
+              </td>
+              <td class="actions">
+                <button
+                  mat-stroked-button
+                  type="button"
+                  [disabled]="busy() !== null"
+                  (click)="generate(test)"
+                  data-testid="placement-generate"
+                >
+                  {{ t(test.questionCount === 0 ? 'admin.generate' : 'admin.regenerate') }}
+                </button>
+                @if (test.questionCount > 0) {
+                  <button
+                    mat-flat-button
+                    type="button"
+                    [disabled]="busy() !== null"
+                    (click)="togglePublished(test)"
+                    data-testid="placement-publish"
+                  >
+                    {{ t(test.publishedAtUtc ? 'admin.unpublish' : 'admin.publish') }}
+                  </button>
+                }
+                @if (errors()[test.gradeId]; as key) {
+                  <p class="ms-error" role="alert">{{ t(key) }}</p>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <mat-spinner diameter="40" />
+  }
+</div>

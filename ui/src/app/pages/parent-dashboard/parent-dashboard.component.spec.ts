@@ -16,6 +16,7 @@ import { LocaleService } from '../../services/locale.service';
 import { LinkedChild } from '../../models/parent-link.model';
 import { ParentChildAssignmentList, ParentChildSummary } from '../../models/parent-dashboard.model';
 import { TopicPerformanceService } from '../../services/topic-performance.service';
+import { PlacementService } from '../../services/placement.service';
 import { SubscriptionService } from '../../services/subscription.service';
 import { CoachService } from '../../services/coach.service';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
@@ -143,6 +144,7 @@ describe('ParentDashboardComponent (issue #420)', () => {
                 { provide: CoachService, useValue: { getChildSummary: () => EMPTY } },
                 // Issue #1091: "Plan" sekmesi (kendi spec'inde).
                 { provide: SubscriptionService, useValue: { childPlan: () => EMPTY } },
+                { provide: PlacementService, useValue: { childReport: () => EMPTY } },
                 { provide: LocaleService, useValue: { localeDefinition: signal({ angularLocale: lang === 'tr' ? 'tr-TR' : 'en-US' }) } },
             ],
         });

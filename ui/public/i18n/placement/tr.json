@@ -1,0 +1,63 @@
+{
+  "title": "Seviye tespiti",
+  "subtitle": "Ücretsiz kısa bir testle güçlü ve zayıf konularını gör; sana uygun planı önerelim.",
+  "loadError": "Seviye tespiti yüklenemedi.",
+  "retry": "Yeniden dene",
+  "notAvailable": "Sınıfın için seviye tespit testi henüz hazır değil.",
+  "intro": "{{ grade }} için {{ count }} soru. Bir kez çözülür; bilmediğin soruyu boş bırakabilirsin.",
+  "start": "Teste başla",
+  "answered": "{{ answered }} / {{ total }} cevaplandı",
+  "questionLabel": "Soru {{ number }}",
+  "optionImage": "Şık görseli",
+  "questionImage": "Soru görseli",
+  "submit": "Bitir ve raporu gör",
+  "submitConfirm": "{{ blank }} soru boş. Yine de bitirmek istiyor musun?",
+  "submitError": "Cevaplar gönderilemedi. Yeniden dene.",
+  "report": {
+    "title": "Seviye raporu",
+    "score": "{{ total }} sorudan {{ correct }} doğru (%{{ percent }})",
+    "subjects": "Derslere göre",
+    "strong": "Güçlü konular",
+    "weak": "Çalışılacak konular",
+    "none": "—",
+    "suggestion": "Önerilen plan",
+    "tierAll": "{{ tier }}: bütün dersler",
+    "tierSubject": "{{ tier }}: yalnız {{ subject }}",
+    "reason": {
+      "pro": "Birçok konuda eksik var; adım adım ipucu, haftalık görevler ve öğretmene soru en çok fayda sağlar.",
+      "essential": "Temel sağlam, birkaç konuda destek gerekiyor.",
+      "basic": "Sonuçlar iyi; düzenli pratik yeterli."
+    },
+    "seePlans": "Planlara bak",
+    "askParent": "Planı velin seçer; bu raporu velin de görüyor."
+  },
+  "tier": {
+    "basic": "Basic",
+    "essential": "Essential",
+    "pro": "Pro"
+  },
+  "plansNotice": "Hangi plan sana uygun? Ücretsiz seviye tespitini çöz.",
+  "plansNoticeTaken": "Seviye raporun ve plan önerin hazır.",
+  "plansNoticeAction": "Seviye tespiti",
+  "parent": {
+    "title": "Seviye tespiti raporu"
+  },
+  "admin": {
+    "title": "Seviye tespiti",
+    "subtitle": "Sınıf başına ücretsiz test: soru bankasından, tek ders satılan dersler arasında dengeli üretilir. Yayımlanan test öğrencilere açılır.",
+    "grade": "Sınıf",
+    "questions": "Soru",
+    "subjects": "Dersler",
+    "attempts": "Çözen",
+    "status": "Durum",
+    "published": "Yayında",
+    "draft": "Taslak",
+    "empty": "Yok",
+    "generate": "Üret",
+    "regenerate": "Yeniden üret",
+    "publish": "Yayımla",
+    "unpublish": "Yayından kaldır",
+    "notEnough": "Bankada bu sınıfın derslerinde yeterli çoktan seçmeli soru yok.",
+    "error": "İşlem yapılamadı."
+  }
+}

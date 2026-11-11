@@ -23,5 +23,14 @@
       </div>
     </div>
   }
+  @if (placement(); as p) {
+    <div class="notice notice--info" role="note" data-testid="placement-notice" *transloco="let pt; prefix: 'placement'">
+      <mat-icon aria-hidden="true">quiz</mat-icon>
+      <div>
+        <p>{{ pt(p.taken ? 'plansNoticeTaken' : 'plansNotice') }}</p>
+        <a mat-stroked-button color="primary" routerLink="/placement" data-testid="placement-link">{{ pt('plansNoticeAction') }}</a>
+      </div>
+    </div>
+  }
   <app-plan-picker mode="change" [parentPays]="parentPays" (completed)="onCompleted($event)" />
 </div>

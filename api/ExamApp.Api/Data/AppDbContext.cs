@@ -258,6 +258,9 @@ public class AppDbContext : DbContext
     public DbSet<StudentHintReveal> StudentHintReveals { get; set; } // issue #1113
     public DbSet<WeeklyStudyPlan> WeeklyStudyPlans { get; set; } // issue #1113
     public DbSet<WeeklyStudyPlanTask> WeeklyStudyPlanTasks { get; set; } // issue #1113
+    public DbSet<PlacementTest> PlacementTests { get; set; } // issue #1114
+    public DbSet<PlacementTestQuestion> PlacementTestQuestions { get; set; } // issue #1114
+    public DbSet<PlacementAttempt> PlacementAttempts { get; set; } // issue #1114
     public DbSet<SchoolLicenseAudit> SchoolLicenseAudits { get; set; }
 
     // Issue #693: deneme sınavları.
@@ -1099,6 +1102,22 @@ public class AppDbContext : DbContext
         });
         modelBuilder.Entity<QuestionHintStep>().HasIndex(s => new { s.HintSetId, s.Step }).IsUnique();
         modelBuilder.Entity<StudentHintReveal>().HasIndex(r => new { r.StudentUserId, r.QuestionId, r.Step }).IsUnique();
+        modelBuilder.Entity<PlacementTest>(e =>
+        {
+            e.HasOne(p => p.Grade).WithMany().HasForeignKey(p => p.GradeId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(p => p.GradeId).IsUnique();
+            e.HasMany(p => p.Questions).WithOne(q => q.PlacementTest).HasForeignKey(q => q.PlacementTestId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<PlacementTestQuestion>(e =>
+        {
+            e.HasOne(q => q.Question).WithMany().HasForeignKey(q => q.QuestionId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(q => new { q.PlacementTestId, q.QuestionId }).IsUnique();
+        });
+        modelBuilder.Entity<PlacementAttempt>(e =>
+        {
+            e.HasOne(a => a.Student).WithMany().HasForeignKey(a => a.StudentId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(a => new { a.StudentId, a.GradeId }).IsUnique();
+        });
         modelBuilder.Entity<WeeklyStudyPlan>(e =>
         {
             e.HasOne(p => p.Student).WithMany().HasForeignKey(p => p.StudentId).OnDelete(DeleteBehavior.Cascade);

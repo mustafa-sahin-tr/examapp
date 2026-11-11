@@ -371,6 +371,7 @@ builder.Services.AddOptions<ExamApp.Api.Services.StudyPlans.StudyPlanOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 builder.Services.AddScoped<ExamApp.Api.Services.StudyPlans.IStudyPlanService, ExamApp.Api.Services.StudyPlans.StudyPlanService>();
+builder.Services.AddScoped<ExamApp.Api.Services.Placement.IPlacementService, ExamApp.Api.Services.Placement.PlacementService>();
 builder.Services.AddScoped<ExamApp.Api.Services.StudyPlans.IStudyPlanJob, ExamApp.Api.Services.StudyPlans.StudyPlanJob>();
 // issue #421 (veli V3): ödev/test listesi + test sonuç özeti (salt okunur; kapı → audit → veri).
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentAssignmentService, ExamApp.Api.Services.Parents.ParentAssignmentService>();

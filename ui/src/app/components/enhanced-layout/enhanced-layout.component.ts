@@ -311,6 +311,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'group-content', labelKey: 'menu.groupContent', icon: '', route: '', type: 'header', roles: ['Admin'] },
     { id: 'mock-exams', labelKey: 'menu.mockExams', icon: 'assignment_turned_in', route: '/mock-exams', type: 'menu', roles: ['Admin'] },
     { id: 'exam-templates', labelKey: 'menu.examTemplates', icon: 'rule', route: '/exam-templates', type: 'menu', roles: ['Admin'] },
+    // Issue #1114: sınıf başına ücretsiz seviye tespit testi.
+    { id: 'admin-placement-tests', labelKey: 'menu.adminPlacementTests', icon: 'quiz', route: '/admin/placement-tests', type: 'menu', roles: ['Admin'] },
     // Issue #695: `TargetGoals:Enabled` kapalıyken görünmez.
     { id: TARGET_PROGRAMS_MENU_ID, labelKey: 'menu.targetPrograms', icon: 'flag_circle', route: '/target-programs', type: 'menu', roles: ['Admin'] },
     { id: 'questiongeneration', labelKey: 'menu.questionGeneration', icon: 'auto_awesome', route: '/question-generation', type: 'menu', roles: ['Admin', 'QuestionTrainer', 'Teacher'] },

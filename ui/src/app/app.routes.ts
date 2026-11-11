@@ -538,6 +538,19 @@ export const routes: Routes = [
           import('./pages/teacher-messages/teacher-messages.component').then((m) => m.TeacherMessagesComponent),
       },
       {
+        // Issue #1114: ücretsiz seviye tespiti (plan kilidinde de açık).
+        path: 'placement',
+        canActivate: [authGuard, studentGuard],
+        loadComponent: () => import('./pages/placement/placement.component').then((m) => m.PlacementComponent),
+      },
+      {
+        // Issue #1114: admin seviye tespit testleri.
+        path: 'admin/placement-tests',
+        canActivate: [authGuard, adminGuard],
+        loadComponent: () =>
+          import('./pages/admin/admin-placement-tests/admin-placement-tests.component').then((m) => m.AdminPlacementTestsComponent),
+      },
+      {
         // Issue #1113: haftalık görevler (Pro).
         path: 'study-plan',
         canActivate: [authGuard, studentGuard, entitlementGuard('weekly-plan')],

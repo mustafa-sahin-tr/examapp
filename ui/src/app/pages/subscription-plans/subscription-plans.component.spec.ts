@@ -10,22 +10,27 @@ import { ParentStatus } from '../../models/parent-status.model';
 import { StudentParentService } from '../../services/student-parent.service';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import subscriptionTr from '../../../../public/i18n/subscription/tr.json';
+import placementTr from '../../../../public/i18n/placement/tr.json';
+import { PlacementStatus } from '../../models/placement.model';
+import { PlacementService } from '../../services/placement.service';
 
 /** Issue #1090: deneme bitip planı olmayan kullanıcı plan sayfasında nedenini görür; öğrencide planı veli seçer. */
 describe('SubscriptionPlansComponent (issue #1090)', () => {
-  function create(role: 'Teacher' | 'Student', locked: boolean, parentMode: ParentStatus['mode'] = 'Ok'): HTMLElement {
+  function create(role: 'Teacher' | 'Student', locked: boolean, parentMode: ParentStatus['mode'] = 'Ok',
+    placement: PlacementStatus = { available: false, taken: false, gradeName: null, questionCount: 0 }): HTMLElement {
     const me: CurrentSubscriptionPlan = {
       planKey: 'free', planName: 'Free', displayNameKey: 'subscription.plans.free', validToUtc: null, trialAvailable: false, locked,
       features: [],
     };
     TestBed.configureTestingModule({
-      imports: [SubscriptionPlansComponent, translocoTestingModule({ langs: { 'subscription/tr': subscriptionTr } })],
+      imports: [SubscriptionPlansComponent, translocoTestingModule({ langs: { 'subscription/tr': subscriptionTr, 'placement/tr': placementTr } })],
       providers: [
         provideRouter([]),
         {
           provide: SubscriptionService,
           useValue: { current: vi.fn().mockReturnValue(of(me)), plans: vi.fn().mockReturnValue(of([])), features: vi.fn().mockReturnValue(of([])) },
         },
+        { provide: PlacementService, useValue: { status: () => of(placement) } },
         { provide: AuthService, useValue: { hasRealmRole: (r: string) => r === role } },
         {
           provide: StudentParentService,
@@ -68,5 +73,17 @@ describe('SubscriptionPlansComponent (issue #1090)', () => {
 
   it('issue #1091: a teacher buys for themselves', () => {
     expect(parentNotice(create('Teacher', false))).toBeNull();
+  });
+
+  const placementNotice = (el: HTMLElement) => el.querySelector('[data-testid="placement-notice"]');
+
+  it('issue #1114: a student is pointed to the free placement test when one is published', () => {
+    const el = create('Student', true, 'Ok', { available: true, taken: false, gradeName: '7. Sınıf', questionCount: 20 });
+    expect(placementNotice(el)!.textContent).toContain('Ücretsiz seviye tespitini çöz');
+    expect(el.querySelector('[data-testid="placement-link"]')!.getAttribute('href')).toBe('/placement');
+  });
+
+  it('issue #1114: no placement notice without a published test', () => {
+    expect(placementNotice(create('Student', false))).toBeNull();
   });
 });

@@ -1,0 +1,9 @@
+{
+  "placement": {
+    "notAvailable": "The placement test for your grade isn't ready yet.",
+    "alreadyTaken": "You have already taken the placement test; your report is ready.",
+    "notTaken": "You haven't taken the placement test yet.",
+    "invalidAnswers": "The answers don't belong to this test.",
+    "notEnoughQuestions": "The question bank doesn't have enough multiple-choice questions for this grade's subjects."
+  }
+}

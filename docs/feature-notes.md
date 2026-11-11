@@ -567,3 +567,20 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   `entitlementGuard('weekly-plan')`; ana menü #719 sınırında kalır), her görev ilgili sayfayı açar (konu görevi
   `/practice?subjectId=&topicId=`). Veli: Gelişim sekmesinde `app-study-plan-progress` (yalnız çocuğun planında `weekly-plan` varken;
   `GET /api/exam/parent/children/{id}/study-plan`, denetim kaydı `children.study-plan`).
+
+## Seviye tespiti (#1114, epic #1118)
+
+- **Amaç:** plan seçmeden önce ücretsiz kısa test; rapor (ders kırılımı, güçlü / zayıf konular) ve plan önerisi. Hak sayılmaz, plan
+  kilidi (#1090) altında da açık: uçlar `[AllowWithoutPlan]`, arayüzde kilit yönlendirmesi `/placement`'ta kalır.
+- **Test:** sınıf başına bir test (`PlacementTests`, `GradeId` tekil; sorular `PlacementTestQuestions`). Admin `/admin/placement-tests`
+  sayfasında üretir (`POST /api/exam/admin/placement-tests/{gradeId}/generate`) ve yayımlar (`PUT …/published`). Üretim: sınıfın tek
+  ders satılan dersleri (`StudentPlanPricing.SingleSubjectsOf`) arasında dengeli, hedef 24 soru (ders başına 3–10, en çok 30), ders
+  içinde konulara sırayla dağıtılır; havuz pratikle aynı (`PracticeQuestionPool`, yalnız `CorrectAnswerId` olan çoktan seçmeli).
+  10 sorudan azsa 409 `notEnoughQuestions`. Yeniden üretmek yayım durumunu ve çözülmüş raporları değiştirmez (rapor JSON saklanır).
+- **Öğrenci:** `GET /api/exam/placement/status|questions|report`, `POST …/submit` (tek gönderim; boş soru `answerId=null`). Sınıfı
+  başına bir kez (`PlacementAttempts`, `(StudentId, GradeId)` tekil; ikinci gönderim 409). Doğru şık soruyla gönderilmez. Sayfa
+  `/placement`; öğrenci `/plans`'ta yayımlanmış test varsa bağlantıyı görür.
+- **Öneri:** genel başarı %50 altı → Pro, %75 altı → Essential, değilse Basic. Pro dışında tek zayıf ders (%60 altı) varsa ve o ders tek
+  satılıyorsa öneri yalnız o ders (#1109); `band` öğrencinin fiyat bandı. Eşikler `PlacementService` sabitleri.
+- **Veli:** panelin Plan sekmesinde rapor (`GET /api/exam/parent/children/{id}/placement`, yanıt `{ report }`, çözülmemişse `null`; plan gerekmez; denetim
+  kaydı `children.placement`).

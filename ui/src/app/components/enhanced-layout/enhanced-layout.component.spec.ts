@@ -1291,7 +1291,7 @@ describe('EnhancedLayoutComponent role navigation (issue #719)', () => {
             'admin-dashboard', 'admin', 'admin-pending', 'question-bank',
             'group-users', 'admin-teachers', 'admin-students', 'admin-subscriptions',
             'group-schools', 'admin-schools',
-            'group-content', 'mock-exams', 'exam-templates', 'questiongeneration', 'questiontransfer', 'labeling', 'labeling-books', 'book-imports', 'admin-import-costs', 'admin-badge-definitions',
+            'group-content', 'mock-exams', 'exam-templates', 'admin-placement-tests', 'questiongeneration', 'questiontransfer', 'labeling', 'labeling-books', 'book-imports', 'admin-import-costs', 'admin-badge-definitions',
             'settings',
         ]);
     });

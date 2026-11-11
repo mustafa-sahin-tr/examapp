@@ -1,0 +1,135 @@
+<section class="aq" *transloco="let t; prefix: 'ask-teacher-queue'">
+  <app-page-header [title]="t('title')" [description]="t('subtitle')">
+    <mat-button-toggle-group
+      [value]="filter()"
+      (change)="setFilter($event.value)"
+      [attr.aria-label]="t('filter.label')"
+      data-testid="queue-filter"
+    >
+      <mat-button-toggle value="Open">{{ t('filter.open') }}</mat-button-toggle>
+      <mat-button-toggle value="Answered">{{ t('filter.answered') }}</mat-button-toggle>
+      <mat-button-toggle value="all">{{ t('filter.all') }}</mat-button-toggle>
+    </mat-button-toggle-group>
+  </app-page-header>
+
+  @if (loading()) {
+    <div class="aq__state"><mat-spinner diameter="32" /></div>
+  } @else if (loadError()) {
+    <div class="aq__state aq__state--error" data-testid="queue-load-error">
+      <mat-icon aria-hidden="true">error_outline</mat-icon>
+      <p>{{ t('loadError') }}</p>
+      <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+    </div>
+  } @else if (questions().length === 0) {
+    <div class="aq__state" data-testid="queue-empty">
+      <mat-icon class="aq__empty-icon" aria-hidden="true">inbox</mat-icon>
+      <p>{{ filter() === 'Open' ? t('emptyOpen') : t('empty') }}</p>
+    </div>
+  } @else {
+    <ul class="aq__list">
+      @for (q of questions(); track q.id) {
+        <li
+          class="aq__item"
+          [id]="'ask-queue-' + q.id"
+          [class.aq__item--highlight]="highlightId() === q.id"
+          [attr.data-status]="q.status"
+          data-testid="queue-question"
+        >
+          <div class="aq__head">
+            <span class="aq__chip aq__chip--{{ q.status.toLowerCase() }}">{{ t(statusKey(q)) }}</span>
+            <span class="aq__who">{{ q.studentName }}@if (q.subjectName) { · {{ q.subjectName }} }</span>
+            <span class="aq__when">{{ formatDate(q.createdAt) }}</span>
+          </div>
+          <div class="aq__body">
+            <app-ask-teacher-image class="aq__image" [questionId]="q.id" [alt]="t('questionImage')" />
+            <div class="aq__texts">
+              @if (q.note) {
+                <p class="aq__note">{{ q.note }}</p>
+              }
+              @if (q.status === 'Open') {
+                <p class="aq__due" data-testid="queue-due">
+                  {{ hoursLeft(q) > 0 ? t('hoursLeft', { hours: hoursLeft(q) }) : t('lessThanHour') }}
+                </p>
+              }
+            </div>
+          </div>
+
+          @if (q.status === 'Open') {
+            <div class="aq__answer-form">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>{{ t('form.text') }}</mat-label>
+                <textarea
+                  matInput
+                  rows="4"
+                  [maxlength]="maxAnswer"
+                  [ngModel]="draft(q.id).text"
+                  (ngModelChange)="setText(q.id, $event)"
+                  data-testid="queue-answer-text"
+                ></textarea>
+                <mat-hint align="end">{{ draft(q.id).text.length }} / {{ maxAnswer }}</mat-hint>
+              </mat-form-field>
+              <div class="aq__answer-row">
+                @if (draft(q.id).preview; as preview) {
+                  <img [src]="preview" [alt]="t('form.imageAlt')" class="aq__preview" />
+                  <button mat-button type="button" (click)="clearImage(q.id)">
+                    <mat-icon>close</mat-icon>{{ t('form.removeImage') }}
+                  </button>
+                } @else {
+                  <button mat-stroked-button type="button" (click)="imageInput.click()" data-testid="queue-answer-image">
+                    <mat-icon>add_a_photo</mat-icon>{{ t('form.image') }}
+                  </button>
+                }
+                <input
+                  #imageInput
+                  class="cdk-visually-hidden"
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  (change)="onImagePicked(q.id, $event)"
+                />
+                <span class="aq__spacer"></span>
+                <button
+                  mat-flat-button
+                  type="button"
+                  [disabled]="!canAnswer(q.id)"
+                  (click)="answer(q)"
+                  data-testid="queue-answer-send"
+                >
+                  @if (busyId() === q.id) {
+                    <mat-spinner diameter="18" />
+                  } @else {
+                    <mat-icon>send</mat-icon>
+                  }
+                  {{ t('form.send') }}
+                </button>
+              </div>
+              @if (draft(q.id).error; as error) {
+                <p class="aq__error" role="alert" data-testid="queue-answer-error">{{ error }}</p>
+              }
+            </div>
+          } @else if (q.status === 'Answered') {
+            <div class="aq__answer" data-testid="queue-answer">
+              @if (q.answerText) {
+                <p class="aq__answer-text">{{ q.answerText }}</p>
+              }
+              @if (q.hasAnswerImage) {
+                <app-ask-teacher-image [questionId]="q.id" [answer]="true" [alt]="t('answerImage')" />
+              }
+              <p class="aq__rating" data-testid="queue-rating">
+                @if (q.rating) {
+                  {{ t('rating') }}
+                  @for (star of stars; track star) {
+                    <mat-icon class="aq__star" aria-hidden="true">{{ q.rating >= star ? 'star' : 'star_border' }}</mat-icon>
+                  }
+                  <span class="cdk-visually-hidden">{{ t('ratingValue', { n: q.rating }) }}</span>
+                } @else {
+                  {{ t('notRated') }}
+                }
+              </p>
+            </div>
+          }
+        </li>
+      }
+    </ul>
+  }
+</section>

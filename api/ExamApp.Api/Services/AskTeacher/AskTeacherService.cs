@@ -215,6 +215,12 @@ public sealed class AskTeacherService(
         var query = db.AskTeacherQuestions.AsNoTracking().Where(q => q.TeacherUserId == teacherUserId);
         if (status is { } s)
             query = query.Where(q => q.Status == s);
+        // Süresi geçmiş ama iş henüz kapatmamış soru "bekleyen" kuyruğunda görünmez (cevaplanamaz).
+        if (status == AskTeacherStatus.Open)
+        {
+            var now = clock.GetUtcNow().UtcDateTime;
+            query = query.Where(q => q.DueAt > now);
+        }
         // Açıklar süresi en yakın olandan, diğerleri en yeniden.
         var rows = status == AskTeacherStatus.Open
             ? await query.OrderBy(q => q.DueAt).Take(200).ToListAsync(ct)

@@ -187,6 +187,8 @@ public class AskTeacherServiceTests : IDisposable
         _clock.Advance(TimeSpan.FromHours(49));
         (await With(s => s.GetForStudentAsync(StudentUser, expiring.Id, default)))!.Status.ShouldBe("Expired");
         (await Answer(RelatedTeacherUser, expiring.Id)).Error.ShouldBe(AskTeacherError.InvalidState);
+        // İş kapatmadan önce de süresi geçen soru bekleyen kuyrukta görünmez.
+        (await With(s => s.QueueAsync(RelatedTeacherUser, AskTeacherStatus.Open, default))).ShouldBeEmpty();
         (await With(s => s.ExpireAsync(default))).ShouldBe(1);
 
         _recorded.ShouldBeEmpty();

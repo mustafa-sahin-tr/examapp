@@ -312,6 +312,8 @@ describe('describeNotification (issue #105)', () => {
 
         expect(describeNotification({ type: 'AskTeacherExpired', data: '{' }).route).toEqual({ commands: ['/ask-teacher'] });
         expect(describeNotification({ type: 'AskTeacherExpired', data: JSON.stringify({ questionId: 0 }) }).icon).toBe('timer_off');
+        expect(describeNotification({ type: 'AskTeacherAsked', data: JSON.stringify({ questionId: 7 }) }).route)
+            .toEqual({ commands: ['/teacher/ask-queue'], queryParams: { q: 7 } });
     });
 
     it('ParentCoParentLeftToPrimary_LinksParentPageForThatChild (issue #436)', () => {

@@ -72,6 +72,7 @@ describe('resolveActiveMenuItemId (issue #385)', () => {
         url: string,
         expected: string | null
     ]> = [
+        ['/teacher/ask-queue?q=3', 'student-messages'],
         ['/exam', 'exams'],
         ['/exam/7', 'exams'],
         ['/questioncanvas', 'exams'],

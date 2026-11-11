@@ -1,0 +1,44 @@
+{
+  "title": "Student questions",
+  "subtitle": "Photo questions from your students. Expired questions don't count against the student's quota.",
+  "loadError": "Couldn't load the questions.",
+  "retry": "Try again",
+  "answered": "Your answer was sent to the student.",
+  "filter": {
+    "label": "Question status",
+    "open": "Waiting",
+    "answered": "Answered",
+    "all": "All"
+  },
+  "emptyOpen": "No questions waiting for an answer.",
+  "empty": "No questions yet.",
+  "questionImage": "Question photo",
+  "answerImage": "Answer image",
+  "hoursLeft": "{{hours}} hours left to answer.",
+  "lessThanHour": "Less than an hour left to answer.",
+  "rating": "Student's rating:",
+  "ratingValue": "{{n}} / 5",
+  "notRated": "The student hasn't rated yet.",
+  "form": {
+    "text": "Your answer",
+    "image": "Add image",
+    "imageAlt": "Answer image",
+    "removeImage": "Remove image",
+    "send": "Answer"
+  },
+  "status": {
+    "open": "Waiting",
+    "answered": "Answered",
+    "expired": "Expired",
+    "cancelled": "Withdrawn"
+  },
+  "errors": {
+    "generic": "Couldn't send the answer. Try again.",
+    "invalidState": "This question can no longer be answered (expired or withdrawn).",
+    "answerRequired": "Add text or an image.",
+    "answerTooLong": "The answer can be at most 4000 characters.",
+    "invalidImage": "Couldn't read the image (JPEG, PNG or WebP).",
+    "imageTooLarge": "The image is too large (max 15 MB).",
+    "notFound": "Question not found."
+  }
+}

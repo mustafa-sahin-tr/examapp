@@ -468,6 +468,85 @@ public class SubscriptionEnforcementTests : IDisposable
         (await UsagesAsync(EntitlementFeatures.Practice)).ShouldBe(10);
     }
 
+    // ---- #1109: tek ders planı öğrencinin kendi açtığı oturumu daraltır
+
+    private async Task<(int Math, int Turkish)> AssignSingleSubjectPlanAsync()
+    {
+        await using var ctx = _db.NewContext();
+        var math = new Subject { Name = "Matematik" };
+        var turkish = new Subject { Name = "Türkçe" };
+        ctx.AddRange(math, turkish);
+        await ctx.SaveChangesAsync();
+        var plan = await ctx.SubscriptionPlans.SingleAsync(p => p.Key == SubscriptionPlan.StudentProKey);
+        ctx.UserSubscriptionPlans.Add(new UserSubscriptionPlan
+        {
+            UserId = StudentUserId, PlanId = plan.Id, ValidFromUtc = DateTime.UtcNow.AddDays(-1), ScopeSubjectId = math.Id,
+        });
+        await ctx.SaveChangesAsync();
+        return (math.Id, turkish.Id);
+    }
+
+    private async Task SetSubjectAsync(int worksheetId, int subjectId)
+    {
+        await using var ctx = _db.NewContext();
+        var worksheet = await ctx.Worksheets.AsTracking().SingleAsync(w => w.Id == worksheetId);
+        worksheet.SubjectId = subjectId;
+        await ctx.SaveChangesAsync();
+    }
+
+    private async Task AddQuestionAsync(int worksheetId, int subjectId)
+    {
+        await using var ctx = _db.NewContext();
+        var question = new Question { Text = "Q", SubjectId = subjectId, Point = 10, DifficultyLevel = 1 };
+        ctx.Questions.Add(question);
+        await ctx.SaveChangesAsync();
+        ctx.TestQuestions.Add(new WorksheetQuestion { TestId = worksheetId, QuestionId = question.Id, Order = 1 });
+        await ctx.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task Single_subject_plan_refuses_a_self_chosen_test_of_another_subject_but_not_assigned_work_issue1109()
+    {
+        var world = await SeedMockExamAsync();
+        var (math, turkish) = await AssignSingleSubjectPlanAsync();
+        var mathTest = await AddOpenWorksheetAsync(world, WorksheetKind.Test, "Mat");
+        var turkishActivity = await AddOpenWorksheetAsync(world, WorksheetKind.Activity, "Türkçe");
+        var assigned = await AddOpenWorksheetAsync(world, WorksheetKind.Test, "Ödev");
+        await SetSubjectAsync(mathTest, math);
+        await SetSubjectAsync(turkishActivity, turkish);
+        await SetSubjectAsync(assigned, turkish);
+        await using (var seed = _db.NewContext())
+        {
+            seed.WorksheetAssignments.Add(new WorksheetAssignment
+            {
+                WorksheetId = assigned,
+                StudentId = world.StudentId,
+                StartAt = DateTime.UtcNow.AddDays(-1),
+            });
+            await seed.SaveChangesAsync();
+        }
+
+        var ex = await Should.ThrowAsync<StudyScopeException>(() => StartAsync(world, turkishActivity));
+        (ex.ScopeSubjectId, ex.PlanKey).ShouldBe((math, SubscriptionPlan.StudentProKey));
+        (await UsagesAsync(EntitlementFeatures.SelfActivity)).ShouldBe(0); // kapsam dışı istek hak harcamaz
+
+        (await StartAsync(world, mathTest)).Success.ShouldBeTrue();
+        (await StartAsync(world, assigned)).Success.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Single_subject_plan_opens_only_the_mock_exam_session_of_its_subject_issue1109()
+    {
+        var world = await SeedMockExamAsync();
+        var (math, turkish) = await AssignSingleSubjectPlanAsync();
+        await AddQuestionAsync(world.Worksheet1, turkish);
+        await AddQuestionAsync(world.Worksheet1, math);
+        await AddQuestionAsync(world.Worksheet2, math);
+
+        (await Should.ThrowAsync<StudyScopeException>(() => StartAsync(world, world.Worksheet1))).ScopeSubjectId.ShouldBe(math);
+        (await StartAsync(world, world.Worksheet2)).Success.ShouldBeTrue();
+    }
+
     [Fact]
     public async Task Free_student_keeps_self_study_until_the_lockout_issue1089()
     {

@@ -27,7 +27,10 @@ public sealed record StudyScope(int? SubjectId, string? PlanKey)
 }
 
 /// <summary>Issue #1109: servis katmanında kapsam dışı istek; denetleyici 403 <c>entitlement.outOfScope</c>'a çevirir.</summary>
-public sealed class StudyScopeException(int scopeSubjectId) : Exception("The request is outside the plan's subject.")
+public sealed class StudyScopeException(int scopeSubjectId, string? planKey = null) : Exception("The request is outside the plan's subject.")
 {
     public int ScopeSubjectId { get; } = scopeSubjectId;
+
+    /// <summary>Planın anahtarı; denetleyici kapsamı kendisi çözmediyse yanıta buradan yazılır.</summary>
+    public string? PlanKey { get; } = planKey;
 }

@@ -54,6 +54,9 @@ public static class ParentAccessEndpoints
     /// <summary><c>GET api/parent/children/{studentId}/schedule</c> (issue #422).</summary>
     public const string ChildSchedule = "children.schedule";
 
+    /// <summary><c>GET api/parent/children/{studentId}/weekly-report</c> (issue #1112).</summary>
+    public const string ChildWeeklyReport = "children.weekly-report";
+
     /// <summary><c>GET api/parent/children/{studentId}/topic-performance</c> (issue #498).</summary>
     public const string ChildTopicPerformance = "children.topic-performance";
 

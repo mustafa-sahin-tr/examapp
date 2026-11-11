@@ -19,6 +19,7 @@
       "childNotFound": "Çocuk bulunamadı ya da bağlantı etkin değil.",
       "testResultNotFound": "Test sonucu bulunamadı.",
       "invalidPage": "Geçersiz sayfa numarası.",
+      "invalidWeek": "Hafta geçersiz: son 12 haftadan biri, Pazartesi günü olmalı.",
       "invalidStatus": "Geçersiz durum filtresi. completed, overdue ya da pending olmalıdır.",
       "invalidRange": "Geçersiz tarih aralığı. from ve to birlikte, yyyy-MM-dd biçiminde ve en fazla 31 gün olmalıdır.",
       "busy": "İşlem şu anda tamamlanamadı. Lütfen tekrar deneyin.",

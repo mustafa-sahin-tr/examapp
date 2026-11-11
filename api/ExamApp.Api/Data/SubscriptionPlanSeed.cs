@@ -121,6 +121,11 @@ public static class SubscriptionPlanSeed
         (FreePlanId, EntitlementFeatures.SelfActivity, null),
         (FreePlanId, EntitlementFeatures.StudyTools, null),
         (FreePlanId, EntitlementFeatures.Analytics, null),
+
+        // #1112: haftalık veli raporu Essential ve Pro'da (Basic yalnız panel); deneme Pro gibi.
+        (StudentEssentialPlanId, EntitlementFeatures.WeeklyReport, null),
+        (StudentProPlanId, EntitlementFeatures.WeeklyReport, null),
+        (TrialPlanId, EntitlementFeatures.WeeklyReport, null),
     ];
 
     private const int FirstTierLimitId = 13;

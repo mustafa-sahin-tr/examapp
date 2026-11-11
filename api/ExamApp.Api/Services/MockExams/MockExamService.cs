@@ -28,6 +28,9 @@ public interface IMockExamService
 
     /// <summary>Bütün oturumları bitmiş son <paramref name="take"/> deneme, eskiden yeniye; öğrencinin hedefe yaklaşımı için.</summary>
     Task<List<MockExamResultDto>> GetCompleteResultHistoryAsync(int studentId, IReadOnlyCollection<string> templateCodes, int take, CancellationToken ct);
+
+    /// <summary>Issue #1112: öğrencinin [from, to) içinde bitirdiği tamam denemelerin sonucu ve sırası (soru listesi yok).</summary>
+    Task<List<MockExamResultDto>> GetResultsFinishedBetweenAsync(int studentId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
 }
 
 /// <summary>İstek kurallara uymuyor; <see cref="Exception.Message"/> ekranın çevirdiği koddur.</summary>
@@ -612,10 +615,38 @@ public sealed class MockExamService(AppDbContext db, IQuestionTestLinkService li
         return results;
     }
 
-    private async Task<List<(int Id, string Code, DateTime FinishedAt)>> CompleteAttemptsAsync(
-        int studentId, IReadOnlyCollection<string> templateCodes, DateTime now, CancellationToken ct)
+    public async Task<List<MockExamResultDto>> GetResultsFinishedBetweenAsync(int studentId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
     {
-        var sessions = db.Set<MockExamSession>().Where(s => s.MockExam.PublishedAt != null && templateCodes.Contains(s.MockExam.ExamTemplate.Code));
+        var now = DateTime.UtcNow;
+        var finished = (await CompleteAttemptsAsync(studentId, null, now, ct))
+            .Where(e => e.FinishedAt >= fromUtc && e.FinishedAt < toUtc)
+            .OrderBy(e => e.FinishedAt)
+            .ToList();
+        var ids = finished.Select(e => e.Id).ToList();
+        var exams = await db.Set<MockExam>().AsNoTracking()
+            .Include(e => e.ExamTemplate)
+            .Include(e => e.Sessions).ThenInclude(s => s.TemplateSession).ThenInclude(s => s.Sections)
+            .Where(e => ids.Contains(e.Id))
+            .ToListAsync(ct);
+
+        var results = new List<MockExamResultDto>(exams.Count);
+        foreach (var attempt in finished)
+        {
+            var exam = exams.First(e => e.Id == attempt.Id);
+            var result = await BuildResultAsync(exam, studentId, now, ct);
+            result.FinishedAt = attempt.FinishedAt;
+            result.Ranking = await RankingAsync(exam, result, now, ct);
+            results.Add(result);
+        }
+        return results;
+    }
+
+    /// <param name="templateCodes">null = bütün şablonlar.</param>
+    private async Task<List<(int Id, string Code, DateTime FinishedAt)>> CompleteAttemptsAsync(
+        int studentId, IReadOnlyCollection<string>? templateCodes, DateTime now, CancellationToken ct)
+    {
+        var sessions = db.Set<MockExamSession>().Where(s => s.MockExam.PublishedAt != null
+            && (templateCodes == null || templateCodes.Contains(s.MockExam.ExamTemplate.Code)));
         var attempts = await db.TestInstances.AsNoTracking()
             .Where(i => i.StudentId == studentId)
             .Join(sessions, i => i.WorksheetId, s => s.WorksheetId, (i, s) => new

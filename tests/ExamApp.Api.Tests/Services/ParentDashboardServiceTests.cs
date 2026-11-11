@@ -441,6 +441,88 @@ public class ParentDashboardServiceTests : IDisposable
         summary.Attention.WeakTopic.ShouldBeNull();
     }
 
+    // Issue #1112: haftalık rapor, o haftanın panel özetiyle aynı sayıları verir; hafta bitince (sonraki hafta) okunur.
+    private async Task<ExamApp.Api.Models.Dtos.ParentDashboard.ParentWeeklyReportDto> WeeklyReportAsync(
+        ITopicPerformanceService? topicPerformance = null, int days = 7)
+    {
+        var later = new FixedTimeProvider(new DateTimeOffset(Now.AddDays(days)));
+        await using var ctx = _db.NewContext();
+        var mockExams = Substitute.For<ExamApp.Api.Services.MockExams.IMockExamService>();
+        mockExams.GetResultsFinishedBetweenAsync(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns([new MockExamResultDto { Name = "LGS 1", Net = 72.5m, FinishedAt = Now, Ranking = new MockExamRankingDto { Takers = 40, Rank = 6 } }]);
+        var service = new ParentWeeklyReportService(ctx, new ParentChildAccess(ctx), new ParentAccessAuditLog(ctx, later),
+            topicPerformance ?? new StubTopicPerformance(), mockExams, new LocalDayCalendar(LocalDayCalendar.DefaultTimeZoneId, later));
+        service.LastCompletedWeek.ShouldBe(new DateOnly(2026, 10, 5));
+        return (await service.GetForParentAsync(ParentUser, _studentId, service.LastCompletedWeek)).ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task Weekly_report_matches_the_panel_numbers_of_that_week_issue1112()
+    {
+        await SeedAsync();
+        var ws = await WorksheetAsync();
+        var instance = await InstanceAsync(ws, Now.AddDays(-1), WorksheetInstanceStatus.Completed, endTime: Now.AddHours(-3));
+        await AssignAsync(ws, Now.AddDays(-2), Now.AddDays(3));
+        await AnswerAsync(instance, ws, WeekStartUtc.AddMinutes(30));
+        await AnswerAsync(instance, ws, WeekStartUtc.AddMinutes(-30)); // geçen hafta
+        await AnswerAsync(instance, ws, Now.AddHours(-4), correct: true);
+        await PracticeAsync(Now.AddHours(-2), correct: true);
+        await PracticeAsync(Now.AddDays(5)); // sonraki hafta
+        var late = await WorksheetAsync();
+        await AssignAsync(late, Now.AddDays(-6), Now.AddDays(-1)); // teslim geçti, çözülmedi
+
+        var summary = await SummaryAsync();
+        var report = await WeeklyReportAsync();
+
+        report.WeekStart.ShouldBe(summary.WeekStart);
+        (report.QuestionsSolved, report.Correct, report.ActiveDays)
+            .ShouldBe((summary.QuestionsSolvedThisWeek, summary.CorrectThisWeek, summary.ActiveDaysThisWeek));
+        (report.AssignmentsCompleted, report.AssignmentsOverdue).ShouldBe((summary.Assignments.Completed, summary.Assignments.Overdue));
+        report.MockExams.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
+            e => e.Name.ShouldBe("LGS 1"), e => e.Net.ShouldBe(72.5m), e => (e.Rank, e.Takers).ShouldBe((6, 40)));
+        report.Suggestion.ShouldBe("overdue");
+    }
+
+    [Fact]
+    public async Task Weekly_report_groups_subjects_lists_dropped_topics_and_suggests_the_weakest_issue1112()
+    {
+        await SeedAsync();
+        var ws = await WorksheetAsync();
+        var instance = await InstanceAsync(ws, Now.AddDays(-1), WorksheetInstanceStatus.Started);
+        await AnswerAsync(instance, ws, Now.AddHours(-1), correct: true);
+        var topics = new StubTopicPerformance(
+            new TopicPerformanceItemDto { SubjectId = 1, SubjectName = "Matematik", TopicId = 10, TopicName = "Kesirler", Correct = 2, Wrong = 4, AccuracyPct = 33.3m, PrevAnswered = 5, PrevAccuracyPct = 80m, Trend = -46.7m },
+            new TopicPerformanceItemDto { SubjectId = 1, SubjectName = "Matematik", TopicId = 11, TopicName = "Oran", Correct = 6, Wrong = 0, AccuracyPct = 100m },
+            new TopicPerformanceItemDto { SubjectId = 2, SubjectName = "Fen", TopicId = 20, TopicName = "Kuvvet", Correct = 1, Wrong = 1, AccuracyPct = 50m, PrevAnswered = 1, PrevAccuracyPct = 100m, Trend = -50m });
+
+        var report = await WeeklyReportAsync(topics);
+
+        report.Subjects.Select(x => (x.SubjectName, x.Answered, x.Correct, x.AccuracyPercent))
+            .ShouldBe([("Matematik", 12, 8, 67), ("Fen", 2, 1, 50)]);
+        // Kuvvet önceki haftada 3'ten az cevap: düşüş sayılmaz.
+        report.DroppedTopics.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
+            t => t.TopicName.ShouldBe("Kesirler"), t => (t.AccuracyPercent, t.PreviousAccuracyPercent).ShouldBe((33, 80)));
+        (report.Suggestion, report.SuggestionTopic).ShouldBe(("reviewTopic", "Kesirler"));
+    }
+
+    [Fact]
+    public async Task Weekly_report_of_a_quiet_week_suggests_starting_issue1112()
+    {
+        await SeedAsync();
+        var later = new FixedTimeProvider(new DateTimeOffset(Now.AddDays(7)));
+        await using var ctx = _db.NewContext();
+        var mockExams = Substitute.For<ExamApp.Api.Services.MockExams.IMockExamService>();
+        mockExams.GetResultsFinishedBetweenAsync(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(new List<MockExamResultDto>());
+        var service = new ParentWeeklyReportService(ctx, new ParentChildAccess(ctx), new ParentAccessAuditLog(ctx, later),
+            new StubTopicPerformance(), mockExams, new LocalDayCalendar(LocalDayCalendar.DefaultTimeZoneId, later));
+
+        var report = (await service.GetForParentAsync(ParentUser, _studentId, service.LastCompletedWeek)).ShouldNotBeNull();
+
+        (report.QuestionsSolved, report.Suggestion).ShouldBe((0, "noActivity"));
+        (await service.GetForParentAsync(ParentUser, _otherStudentId, service.LastCompletedWeek)).ShouldBeNull();
+    }
+
     private sealed class StubTopicPerformance(params TopicPerformanceItemDto[] items) : ITopicPerformanceService
     {
         private List<TopicPerformanceItemDto> Items { get; } = items.ToList();

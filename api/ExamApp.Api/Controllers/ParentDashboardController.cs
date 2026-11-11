@@ -215,6 +215,35 @@ public class ParentDashboardController : BaseController
     }
 
     /// <summary>
+    /// Issue #1112: çocuğun haftalık raporu (Pazartesi–Pazar, Europe/Istanbul) — panel sayılarıyla aynı kaynak. Plan
+    /// Essential / Pro değilse 403 (<c>weekly-report</c>); başka velinin çocuğu 404.
+    /// </summary>
+    /// <param name="weekStart">"yyyy-MM-dd" Pazartesi; boş = son biten hafta. Son biten haftadan sonrası ve 12 haftadan eskisi 400.</param>
+    [HttpGet("{studentId:int}/weekly-report")]
+    [EnableRateLimiting(ParentLinkRateLimiting.ChildActivityPolicy)]
+    public async Task<IActionResult> GetChildWeeklyReport(int studentId, [FromQuery] DateOnly? weekStart,
+        [FromServices] IParentChildAccess access, [FromServices] IEntitlementService entitlements,
+        [FromServices] IParentWeeklyReportService weeklyReports, CancellationToken ct)
+    {
+        var last = weeklyReports.LastCompletedWeek;
+        var week = weekStart ?? last;
+        if (week.DayOfWeek != DayOfWeek.Monday || week > last || week < last.AddDays(-7 * (MaxWeeklyReportWeeks - 1)))
+            return InvalidQuery(nameof(weekStart), "parentLinks.errors.invalidWeek");
+
+        var user = await GetAuthenticatedUserAsync(ct);
+        if (!IsResolvedUser(user))
+            return UserNotResolved(new { message = _localizer["auth.userNotResolved"].Value });
+        if (await ChildEntitlements.DenyUnlessChildHasAsync(access, entitlements, user.Id, studentId, EntitlementFeatures.WeeklyReport, ct) is { } denied)
+            return denied;
+
+        var report = await weeklyReports.GetForParentAsync(user.Id, studentId, week, ct);
+        return report == null ? ChildNotFound() : Ok(report);
+    }
+
+    /// <summary>Issue #1112: haftalık raporun geriye gidebildiği hafta sayısı (son biten dahil).</summary>
+    public const int MaxWeeklyReportWeeks = 12;
+
+    /// <summary>
     /// Issue #1089: çocuğun planındaki öğrenci özellikleri — veli paneli planda olmayan bölümü (ör. Basic'te analiz) hiç göstermez.
     /// Başka velinin ya da Active olmayan bağlantının çocuğu 404.
     /// </summary>

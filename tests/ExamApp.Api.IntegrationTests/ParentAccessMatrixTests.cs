@@ -169,6 +169,12 @@ public class ParentAccessMatrixTests(IntegrationApiFactory factory) : Integratio
             db.Parents.AddRange(parents);
             await db.SaveChangesAsync();
             var (p, q, r, s, t, u) = (parents[0], parents[1], parents[2], parents[3], parents[4], parents[5]);
+            // #1112: plana bağlı uçlar (haftalık rapor Essential+) matriste 200 dönsün: çocuklar Pro.
+            var proPlanId = await db.SubscriptionPlans.Where(x => x.Key == SubscriptionPlan.StudentProKey).Select(x => x.Id).SingleAsync();
+            db.UserSubscriptionPlans.AddRange(new[] { w.A, w.B, w.C }.Select(userId => new UserSubscriptionPlan
+            {
+                UserId = userId, PlanId = proPlanId, ValidFromUtc = DateTime.UtcNow.AddDays(-1),
+            }));
 
             var now = DateTime.UtcNow;
             // #436: her öğrencinin tek Active birincil velisi; diğerleri birincil velinin onayladığı / bekleyen ikinci veli istekleri.

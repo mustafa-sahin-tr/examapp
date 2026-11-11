@@ -439,6 +439,14 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   BadgeService `PlanPriceChangeNoticeConsumer`: in-app (`PlanPriceChangeToParent` → çocuğun Plan sekmesi, bağlantı kopunca
   nötrlenir; `PlanPriceChange` → Aboneliğim) + aynı metinle e-posta (`NotificationEventLog` `PlanPriceChangeEmail` ile tek).
   Ödenmiş dönemin fiyatı değişmez; yenileme yeni satın almadır. auth-api'ye ulaşılamazsa event e-postasız yazılır (yalnız in-app).
+- **Haftalık veli raporu (#1112, epic #1118):** hak `weekly-report` (Öğrenci Essential, Pro, deneme). `GET
+  api/parent/children/{id}/weekly-report?weekStart=` (Active veli, audit `children.weekly-report`; çocuğun planında hak yoksa 403);
+  `weekStart` boşsa son biten hafta, Pazartesi olmalı, son 12 hafta içinde ve bitmiş olmalı, değilse 400 `invalidWeek`.
+  Rapor saklanmaz, panelin kaynaklarından hesaplanır (`ParentWeeklyReportService`): çözülen / doğru / aktif gün panelin haftalık
+  özetiyle aynı sorgu, süre cevap başına en çok 10 dk, puan günlük puan defterinden, ders kırılımı ve düşen konular (önceki haftaya göre
+  ≥ 15 puan düşüş, iki haftada en az 3 cevap, en çok 3) konu performansından, ödevler hafta sonu anına göre (bu hafta tamamlanan,
+  gecikmiş), hafta içinde biten denemeler (net, sıra), kazanılan rozetler. Tek satır öneri (öncelik): hareket yok → gecikmiş ödev →
+  düşen / %70 altı konu → 3 günden az çalışma → devam.
 - **Okul lisansı (#1092):** özel anlaşmayla okulun bütün üyelerine plan: `SchoolLicenses` (okul başına tek satır; öğretmen ve öğrenci
   planı, varsayılan iki kitlenin Pro'su; başlangıç / hariç bitiş; anlaşma notu ≤ 200). Kimseye atama yazılmaz: plan çözümü
   (`EntitlementService.ResolvePlanAsync`, admin listesi `CurrentPlansAsync`, ortak kural `SchoolLicensePlans`) kullanıcının okuluna

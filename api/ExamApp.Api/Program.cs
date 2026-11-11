@@ -351,6 +351,8 @@ ExamApp.Api.Services.Parents.ParentChildAccountServiceCollectionExtensions.AddPa
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentChildAccess, ExamApp.Api.Services.Parents.ParentChildAccess>();
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentAccessAuditLog, ExamApp.Api.Services.Parents.ParentAccessAuditLog>();
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentDashboardService, ExamApp.Api.Services.Parents.ParentDashboardService>();
+// issue #1112: velinin haftalık raporu (Essential / Pro).
+builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentWeeklyReportService, ExamApp.Api.Services.Parents.ParentWeeklyReportService>();
 // issue #421 (veli V3): ödev/test listesi + test sonuç özeti (salt okunur; kapı → audit → veri).
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentAssignmentService, ExamApp.Api.Services.Parents.ParentAssignmentService>();
 // issue #421 review: test sonucu 404 taraması uyarısı (süreç içi sayaç, veli başına 10 dk'da 20'yi aşınca Warning).

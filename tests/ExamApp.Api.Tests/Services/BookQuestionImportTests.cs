@@ -589,6 +589,10 @@ public class BookQuestionImportTests : IDisposable
         await RunAsync(id);
         var test = await SingleTestAsync();
         Flags(test).ShouldBe([F("missingNumbers", [1], [2]), F("countMismatch", [1, 2], null, 3, 4)]);
+        // Uyarılar ekranda sayfaya göre gruplansın diye sayfa → numara eşlemesi; sayı uyuşmazlığı testin bütünü.
+        var parsed = BookImportReviewFlag.Parse((await SingleTestAsync()).ReviewFlagsJson);
+        parsed[0].ByPage!.Select(p => $"{p.Key}:{string.Join(',', p.Value)}").ShouldBe(["1:2"]);
+        parsed[1].ByPage.ShouldBeNull();
 
         await using (var ctx = _db.NewContext())
         {
@@ -945,6 +949,20 @@ public class BookQuestionImportTests : IDisposable
         (await service.GetAsync(Owner, quickAdd, CancellationToken.None)).ShouldBeNull();
         (await service.GetAsync(Admin, quickAdd, CancellationToken.None)).ShouldBeNull();
         (await service.GetAsync(Admin with { Kind = BookImportJobKind.QuickAdd }, quickAdd, CancellationToken.None)).ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void Page_flags_keep_the_page_map_without_the_fixed_page()
+    {
+        var flags = BookImportPageFixService.ReplacePageFlags(
+            [
+                new(BookImportReviewFlag.OptionCount, [1, 2], [2, 6],
+                    ByPage: new Dictionary<int, IReadOnlyList<int>> { [1] = [2], [2] = [6] }),
+            ],
+            filePage: 1, pageNumbers: new HashSet<int> { 1, 2, 3 }, answerless: [3], optionCount: [1], found: 6, keyLength: 6, from: 1, to: 2);
+
+        flags.Select(f => $"{f.Code} {string.Join(' ', f.ByPage!.OrderBy(p => p.Key).Select(p => $"{p.Key}:{string.Join(',', p.Value)}"))}")
+            .ShouldBe(["optionCount 1:1 2:6", "noAnswer 1:3"]);
     }
 
     [Fact]

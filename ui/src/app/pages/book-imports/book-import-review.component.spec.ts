@@ -20,7 +20,7 @@ function test(overrides: Partial<BookImportJobTest> = {}): BookImportJobTest {
 }
 
 function question(id: number, answerIndex: number | null): BookImportReviewQuestion {
-  return { id, number: String(id), filePage: 3, optionCount: 4, imageUrl: null, answerIndex };
+  return { id, number: String(id), filePage: 3, optionCount: 4, imageUrl: `data:image/gif;base64,R0lGODlhAQABAAAAACw=#${id}`, answerIndex };
 }
 
 describe('BookImportReviewComponent (#1023)', () => {
@@ -168,6 +168,54 @@ describe('BookImportReviewComponent (#1023)', () => {
     expect(flags).toContain(tr.flags.keyMismatch);
     expect(flags).toContain('1 tekrar atlandı');
     expect(flags).toContain('sayfa 69–72, 75 · soru 114, 116');
+  });
+
+  it('flags_GroupByPageAndQuestionOnce', () => {
+    setup([test({
+      status: 'NeedsReview',
+      reviewFlags: [
+        { code: 'optionCount', pages: [9, 69], numbers: [4, 112, 114], found: null, expected: null, byPage: { 9: [4], 69: [112, 114] } },
+        { code: 'extraQuestions', pages: [69], numbers: [114], found: null, expected: null, byPage: { 69: [114] } },
+        { code: 'notSaved', pages: [69], numbers: [112, 114], found: null, expected: null, byPage: { 69: [112, 114] } },
+        { code: 'countMismatch', pages: [8, 9, 10], numbers: null, found: 155, expected: 154 },
+      ],
+    })]);
+    button(rows()[0], 'Uyarılar').click();
+    fixture.detectChanges();
+
+    const pages = Array.from(rows()[0].querySelectorAll('.bir-flags__page')).map((p) =>
+      Array.from(p.children).map((c) => c.textContent!.replace(/\s+/g, ' ').trim()));
+    expect(pages).toEqual([
+      ['Sayfa 9', '4: şık sayısı 4 değil'],
+      ['Sayfa 69', '112: kaydedilmedi (ikiden az şık)', '114: fazla kutu, kaydedilmedi (ikiden az şık)'],
+    ]);
+    const flags = rows()[0].querySelector('.bir-flags')!.textContent ?? '';
+    expect(flags).toContain('155 soru bulundu, anahtarda 154');
+    expect(flags).not.toContain('sayfa 8–10');
+  });
+
+  it('preview_ZoomsAQuestionAndWalksWithArrows', () => {
+    setup(mixed());
+    button(rows()[0], 'Önizle').click();
+    fixture.detectChanges();
+
+    (el().querySelector('.bir-q__zoom') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const zoom = () => el().querySelector('[data-testid="review-zoom"]') as HTMLElement | null;
+    expect(zoom()!.textContent).toContain('1 / 2');
+    expect(zoom()!.querySelector('img')!.getAttribute('src')).toBe(question(1, 0).imageUrl);
+
+    zoom()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    fixture.detectChanges();
+    expect(zoom()!.textContent).toContain('2 / 2');
+    const c = Array.from(zoom()!.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'C')!;
+    c.click();
+    fixture.detectChanges();
+    expect(api.setAnswer).toHaveBeenCalledWith('a1', 2, 2, 2);
+
+    zoom()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    expect(zoom()).toBeNull();
   });
 
   it('locked_ShowsActionsDisabledUntilTheImportEnds', () => {

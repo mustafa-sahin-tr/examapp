@@ -1,5 +1,18 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  OnInit,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -19,6 +32,7 @@ import {
   isApprovable,
   bookImportTestPages,
   compactNumbers,
+  groupReviewFlags,
   labelingFixParams,
   needsAttention,
 } from '../../models/book-import';
@@ -81,6 +95,16 @@ export class BookImportReviewComponent implements OnInit {
   readonly questions = signal<BookImportReviewQuestion[]>([]);
   readonly removingId = signal<number | null>(null);
   readonly reimportingId = signal<number | null>(null);
+  /** Büyütülen önizleme sorusu (sıra); ok tuşları / düğmelerle önceki-sonraki. */
+  readonly zoomIndex = signal<number | null>(null);
+  readonly zoomed = computed(() => {
+    const index = this.zoomIndex();
+    return index == null ? null : (this.questions()[index] ?? null);
+  });
+  private readonly zoomClose = viewChild('zoomClose', { read: ElementRef<HTMLElement> });
+  private readonly zoomFocus = effect(() => {
+    if (this.zoomIndex() != null) this.zoomClose()?.nativeElement.focus();
+  });
 
   /** İncelemedeki testler (onaylanan / silinen hariç); filtre açıkken yalnız bakılması gerekenler. */
   readonly open = computed(() => this.tests().filter((t) => t.status !== 'Approved' && t.status !== 'Removed'));
@@ -133,6 +157,12 @@ export class BookImportReviewComponent implements OnInit {
     return test.flags.length + test.reviewFlags.length + (test.duplicatesSkipped > 0 ? 1 : 0);
   }
 
+  /** Açık testin uyarıları sayfaya göre (her sayfa ve soru bir kez). */
+  readonly openFlags = computed(() => {
+    const test = this.tests().find((t) => t.id === this.flagsId());
+    return test ? groupReviewFlags(test.reviewFlags) : null;
+  });
+
   toggleFlags(test: BookImportJobTest): void {
     this.flagsId.update((id) => (id === test.id ? null : test.id));
   }
@@ -145,7 +175,30 @@ export class BookImportReviewComponent implements OnInit {
     return parts.join(' · ');
   }
 
+  zoom(index: number): void {
+    this.zoomIndex.set(index);
+  }
+
+  zoomBy(step: number): void {
+    const index = this.zoomIndex();
+    if (index == null) return;
+    this.zoomIndex.set(Math.min(Math.max(index + step, 0), this.questions().length - 1));
+  }
+
+  closeZoom(): void {
+    this.zoomIndex.set(null);
+  }
+
+  zoomKey(event: KeyboardEvent): void {
+    if (event.key === 'Escape') this.closeZoom();
+    else if (event.key === 'ArrowLeft') this.zoomBy(-1);
+    else if (event.key === 'ArrowRight') this.zoomBy(1);
+    else return;
+    event.preventDefault();
+  }
+
   togglePreview(test: BookImportJobTest): void {
+    this.zoomIndex.set(null);
     if (this.previewId() === test.id) {
       this.previewId.set(null);
       return;

@@ -263,6 +263,15 @@
     "detectionFailed": "Tespit başarısız",
     "saveFailed": "Kayıt başarısız"
   },
+  "reviewFlagsShort": {
+    "missingNumbers": "bulunamadı",
+    "extraQuestions": "fazla kutu",
+    "optionCount": "şık sayısı 4 değil",
+    "noAnswer": "cevapsız",
+    "notSaved": "kaydedilmedi (ikiden az şık)",
+    "detectionFailed": "tespit başarısız",
+    "saveFailed": "kayıt başarısız"
+  },
   "review": {
     "title": "İnceleme ve onay",
     "summary": "{{open}} test inceleme bekliyor · {{approved}} onaylandı",
@@ -298,10 +307,16 @@
     "passage": "Soru {{number}} pasajı",
     "answerFor": "Soru {{number}} cevabı",
     "flags": "Uyarılar ({{count}})",
+    "flagPage": "Sayfa {{page}}",
     "fix": "İşaretlemede düzelt",
     "fixPage": "Sayfa {{page}}",
     "fixPageFlagged": "Sayfa {{page}} · işaretli",
-    "footer": "Onaylanan testler normal test ayarlarına uyar ve varsayılan olarak yalnız size açıktır (özel)."
+    "footer": "Onaylanan testler normal test ayarlarına uyar ve varsayılan olarak yalnız size açıktır (özel).",
+    "zoom": "Soru {{number}} görselini büyüt",
+    "zoomClose": "Kapat",
+    "zoomPosition": "{{index}} / {{total}}",
+    "zoomPrev": "Önceki soru",
+    "zoomNext": "Sonraki soru"
   },
   "cost": {
     "title": "Maliyet",

@@ -18,8 +18,13 @@ namespace ExamApp.Api.Services.BookImport;
 /// Issue #1022: testin inceleme işareti. <c>Pages</c> dosya sayfaları; <c>Numbers</c> ilgili soru numaraları (varsa);
 /// <c>Found</c> / <c>Expected</c> sayı işaretlerinde.
 /// </summary>
+/// <remarks>
+/// <c>ByPage</c>: sayfa → o sayfadaki numaralar (numarasız işarette boş liste); ekranda uyarılar sayfaya göre gruplanır. Eski
+/// kayıtlarda yok (null): ekran <c>Pages</c> / <c>Numbers</c> ile yazar. Sayı uyuşmazlığında yok (testin bütünü).
+/// </remarks>
 public sealed record BookImportReviewFlag(
-    string Code, IReadOnlyList<int> Pages, IReadOnlyList<int>? Numbers = null, int? Found = null, int? Expected = null)
+    string Code, IReadOnlyList<int> Pages, IReadOnlyList<int>? Numbers = null, int? Found = null, int? Expected = null,
+    IReadOnlyDictionary<int, IReadOnlyList<int>>? ByPage = null)
 {
     /// <summary>Testte bulunan soru sayısı anahtardakinden farklı.</summary>
     public const string CountMismatch = "countMismatch";
@@ -459,6 +464,7 @@ internal sealed class BookQuestionImportStage(
     private sealed class FlagSet
     {
         private readonly Dictionary<string, (SortedSet<int> Pages, SortedSet<int> Numbers, int? Found, int? Expected)> _flags = new();
+        private readonly Dictionary<string, SortedDictionary<int, SortedSet<int>>> _byPage = new();
         private readonly List<string> _order = [];
 
         public bool IsEmpty => _flags.Count == 0;
@@ -467,8 +473,14 @@ internal sealed class BookQuestionImportStage(
         {
             var flag = Get(code);
             flag.Pages.Add(page);
+            var byPage = _byPage.TryGetValue(code, out var existing) ? existing : _byPage[code] = new();
+            var onPage = byPage.TryGetValue(page, out var set) ? set : byPage[page] = [];
             if (numbers is not null)
-                flag.Numbers.UnionWith(numbers);
+            {
+                var list = numbers.ToList();
+                flag.Numbers.UnionWith(list);
+                onPage.UnionWith(list);
+            }
         }
 
         public void AddCount(string code, int from, int to, int found, int expected)
@@ -491,7 +503,11 @@ internal sealed class BookQuestionImportStage(
         public List<BookImportReviewFlag> ToList() => _order.Select(code =>
         {
             var f = _flags[code];
-            return new BookImportReviewFlag(code, f.Pages.ToList(), f.Numbers.Count == 0 ? null : f.Numbers.ToList(), f.Found, f.Expected);
+            var byPage = _byPage.TryGetValue(code, out var pages)
+                ? pages.ToDictionary(p => p.Key, p => (IReadOnlyList<int>)p.Value.ToList())
+                : null;
+            return new BookImportReviewFlag(code, f.Pages.ToList(), f.Numbers.Count == 0 ? null : f.Numbers.ToList(), f.Found, f.Expected,
+                byPage);
         }).ToList();
     }
 }

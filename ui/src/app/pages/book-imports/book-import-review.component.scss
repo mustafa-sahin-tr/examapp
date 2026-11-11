@@ -230,7 +230,17 @@
     }
   }
 
+  &__zoom {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: zoom-in;
+  }
+
   &__image {
+    display: block;
     width: 100%;
     height: auto;
     border-radius: 6px;
@@ -266,8 +276,71 @@
   }
 }
 
+.bir-flags__label {
+  font-weight: 600;
+  color: var(--ms-text-strong);
+}
+
+.bir-flags__item {
+  font-size: 13px;
+  color: var(--ms-text-medium);
+
+  b {
+    color: var(--ms-text-strong);
+  }
+
+  & + &::before {
+    content: '·';
+    margin-right: 8px;
+  }
+}
+
 .bir-flags__where {
   font-size: 13px;
   color: var(--ms-text-medium);
   overflow-wrap: anywhere;
+}
+
+// Önizlemede büyütülen soru: ekranı kaplar, numara + cevap üstte, önceki / sonraki altta.
+.bir-zoom {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: color-mix(in srgb, var(--ms-surface) 92%, transparent);
+
+  &__bar,
+  &__nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 12px;
+    border-radius: 12px;
+    background: var(--ms-surface);
+    color: var(--ms-text-strong);
+  }
+
+  &__title {
+    font-weight: 600;
+  }
+
+  &__body {
+    flex: 1;
+    min-height: 0;
+    width: min(100%, 1000px);
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__image {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+  }
 }

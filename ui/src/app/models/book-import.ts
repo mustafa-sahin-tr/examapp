@@ -127,6 +127,52 @@ export interface BookImportReviewFlag {
   numbers: number[] | null;
   found: number | null;
   expected: number | null;
+  /** Sayfa → o sayfadaki numaralar; uyarılar sayfaya göre gruplanır (eski kayıtlarda yok). */
+  byPage?: Record<string, number[]> | null;
+}
+
+/** Bir sayfanın uyarıları: numara başına kodlar, numarasız (sayfanın bütünü) `number: null`. */
+export interface BookImportPageFlags {
+  page: number;
+  items: { number: number | null; codes: string[] }[];
+}
+
+/**
+ * Uyarıları sayfaya göre gruplar: her sayfa ve soru bir kez yazılır. "Kaydedilemedi" olan soruda "şık sayısı" tekrar edilmez.
+ * Eşlemesi olmayan işaretler (eski kayıt, sayı uyuşmazlığı) `rest`te kalır.
+ */
+export function groupReviewFlags(flags: readonly BookImportReviewFlag[]): {
+  pages: BookImportPageFlags[];
+  rest: BookImportReviewFlag[];
+} {
+  const byPage = new Map<number, Map<number | null, string[]>>();
+  const rest: BookImportReviewFlag[] = [];
+  for (const flag of flags) {
+    if (!flag.byPage) {
+      rest.push(flag);
+      continue;
+    }
+    for (const [key, numbers] of Object.entries(flag.byPage)) {
+      const page = Number(key);
+      const items = byPage.get(page) ?? new Map<number | null, string[]>();
+      byPage.set(page, items);
+      for (const number of numbers.length > 0 ? numbers : [null]) {
+        items.set(number, [...(items.get(number) ?? []), flag.code]);
+      }
+    }
+  }
+  const pages = [...byPage.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([page, items]) => ({
+      page,
+      items: [...items.entries()]
+        .sort(([a], [b]) => (a ?? -1) - (b ?? -1))
+        .map(([number, codes]) => ({
+          number,
+          codes: codes.includes('notSaved') ? codes.filter((c) => c !== 'optionCount') : codes,
+        })),
+    }));
+  return { pages, rest };
 }
 
 export interface BookImportJobDetail extends BookImportJob {

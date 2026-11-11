@@ -243,16 +243,29 @@ public sealed class BookImportPageFixService(AppDbContext db, IMinIoService mini
             }
             if (pages.Count == 0)
                 continue;
+            // Sayfa eşlemesi (eski kayıtlarda yok, öyle kalır): düzeltilen sayfanınki yeni sorularla değişir.
+            Dictionary<int, IReadOnlyList<int>>? byPage = null;
+            if (flag.ByPage is not null)
+            {
+                byPage = flag.ByPage.Where(p => p.Key != filePage).ToDictionary(p => p.Key, p => p.Value);
+                if (add.Count > 0)
+                    byPage[filePage] = add.Distinct().Order().ToList();
+            }
             result.Add(flag with
             {
                 Pages = pages.Distinct().Order().ToList(),
                 Numbers = numbers is null || numbers.Count == 0 ? null : numbers.Distinct().Order().ToList(),
+                ByPage = byPage,
             });
         }
         foreach (var (code, add) in new[] { (BookImportReviewFlag.OptionCount, optionCount), (BookImportReviewFlag.NoAnswer, answerless) })
         {
             if (add.Count > 0 && result.All(f => f.Code != code))
-                result.Add(new BookImportReviewFlag(code, [filePage], add.Distinct().Order().ToList()));
+            {
+                var numbers = add.Distinct().Order().ToList();
+                result.Add(new BookImportReviewFlag(code, [filePage], numbers,
+                    ByPage: new Dictionary<int, IReadOnlyList<int>> { [filePage] = numbers }));
+            }
         }
         if (keyLength is { } expected && found != expected)
             result.Add(new BookImportReviewFlag(BookImportReviewFlag.CountMismatch, Enumerable.Range(from, to - from + 1).ToList(),

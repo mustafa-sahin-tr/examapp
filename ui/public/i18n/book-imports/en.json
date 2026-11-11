@@ -263,6 +263,15 @@
     "detectionFailed": "Detection failed",
     "saveFailed": "Saving failed"
   },
+  "reviewFlagsShort": {
+    "missingNumbers": "not found",
+    "extraQuestions": "extra box",
+    "optionCount": "not 4 choices",
+    "noAnswer": "no answer",
+    "notSaved": "not saved (fewer than two choices)",
+    "detectionFailed": "detection failed",
+    "saveFailed": "save failed"
+  },
   "review": {
     "title": "Review and approve",
     "summary": "{{open}} tests awaiting review · {{approved}} approved",
@@ -298,10 +307,16 @@
     "passage": "Passage of question {{number}}",
     "answerFor": "Answer of question {{number}}",
     "flags": "Warnings ({{count}})",
+    "flagPage": "Page {{page}}",
     "fix": "Fix in labeling",
     "fixPage": "Page {{page}}",
     "fixPageFlagged": "Page {{page}} · flagged",
-    "footer": "Approved tests follow normal test settings and are private (only you) by default."
+    "footer": "Approved tests follow normal test settings and are private (only you) by default.",
+    "zoom": "Enlarge question {{number}}",
+    "zoomClose": "Close",
+    "zoomPosition": "{{index}} of {{total}}",
+    "zoomPrev": "Previous question",
+    "zoomNext": "Next question"
   },
   "cost": {
     "title": "Cost",

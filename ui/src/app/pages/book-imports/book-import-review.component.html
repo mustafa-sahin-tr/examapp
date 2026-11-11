@@ -125,11 +125,26 @@
         @if (test.duplicatesSkipped > 0) {
         <li><span class="bir-chip">{{ t('detail.duplicates', { count: test.duplicatesSkipped }) }}</span></li>
         }
-        @for (flag of test.reviewFlags; track flag.code) {
+        @if (openFlags(); as grouped) {
+        @for (flag of grouped.rest; track flag.code) {
         <li>
           <span class="bir-chip">{{ t('reviewFlags.' + flag.code, { found: flag.found, expected: flag.expected }) }}</span>
+          @if (flag.code !== 'countMismatch') {
           <span class="bir-flags__where">{{ flagWhere(flag, t) }}</span>
+          }
         </li>
+        }
+        @for (p of grouped.pages; track p.page) {
+        <li class="bir-flags__page">
+          <span class="bir-flags__label">{{ t('review.flagPage', { page: p.page }) }}</span>
+          @for (item of p.items; track item.number) {
+          <span class="bir-flags__item">
+            @if (item.number != null) { <b>{{ item.number }}:</b>{{ ' ' }} }
+            @for (code of item.codes; track code; let last = $last) {{{ t('reviewFlagsShort.' + code) }}{{ last ? '' : ', ' }}}
+          </span>
+          }
+        </li>
+        }
         }
       </ul>
       }
@@ -158,15 +173,53 @@
                 }
               </div>
             </div>
-            @if (q.passageImageUrl) {
-            <img class="bir-q__image bir-q__image--passage" [src]="q.passageImageUrl" [alt]="t(label('passage'), { number: q.number ?? '?' })" loading="lazy" />
-            }
-            @if (q.imageUrl) {
-            <img class="bir-q__image" [src]="q.imageUrl" [alt]="t(label('question'), { number: q.number ?? '?', page: q.filePage })" loading="lazy" />
+            @if (q.passageImageUrl || q.imageUrl) {
+            <button type="button" class="bir-q__zoom" [attr.aria-label]="t('review.zoom', { number: q.number ?? '?' })" (click)="zoom($index)">
+              @if (q.passageImageUrl) {
+              <img class="bir-q__image bir-q__image--passage" [src]="q.passageImageUrl" [alt]="t(label('passage'), { number: q.number ?? '?' })" loading="lazy" />
+              }
+              @if (q.imageUrl) {
+              <img class="bir-q__image" [src]="q.imageUrl" [alt]="t(label('question'), { number: q.number ?? '?', page: q.filePage })" loading="lazy" />
+              }
+            </button>
             }
           </li>
           }
         </ol>
+        @if (zoomed(); as z) {
+        <div class="bir-zoom" role="dialog" aria-modal="true" [attr.aria-label]="t(label('question'), { number: z.number ?? '?', page: z.filePage })"
+          data-testid="review-zoom" (click)="closeZoom()" (keydown)="zoomKey($event)">
+          <div class="bir-zoom__bar" (click)="$event.stopPropagation()">
+            <span class="bir-zoom__title">{{ t(label('question'), { number: z.number ?? '?', page: z.filePage }) }}</span>
+            <div class="bir-q__answers" role="group" [attr.aria-label]="t('review.answerFor', { number: z.number ?? '?' })">
+              @for (letter of letters.slice(0, z.optionCount); track letter; let i = $index) {
+              <button type="button" class="bir-q__answer" [class.bir-q__answer--on]="z.answerIndex === i"
+                [attr.aria-pressed]="z.answerIndex === i" [disabled]="!editable()" (click)="pick(test, z, i)">{{ letter }}</button>
+              }
+            </div>
+            <button #zoomClose mat-icon-button type="button" [attr.aria-label]="t('review.zoomClose')" (click)="closeZoom()">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          <div class="bir-zoom__body" (click)="$event.stopPropagation()">
+            @if (z.passageImageUrl) {
+            <img class="bir-zoom__image" [src]="z.passageImageUrl" [alt]="t(label('passage'), { number: z.number ?? '?' })" />
+            }
+            @if (z.imageUrl) {
+            <img class="bir-zoom__image" [src]="z.imageUrl" [alt]="t(label('question'), { number: z.number ?? '?', page: z.filePage })" />
+            }
+          </div>
+          <div class="bir-zoom__nav" (click)="$event.stopPropagation()">
+            <button mat-icon-button type="button" [attr.aria-label]="t('review.zoomPrev')" [disabled]="zoomIndex() === 0" (click)="zoomBy(-1)">
+              <mat-icon>chevron_left</mat-icon>
+            </button>
+            <span aria-live="polite">{{ t('review.zoomPosition', { index: zoomIndex()! + 1, total: questions().length }) }}</span>
+            <button mat-icon-button type="button" [attr.aria-label]="t('review.zoomNext')" [disabled]="zoomIndex() === questions().length - 1" (click)="zoomBy(1)">
+              <mat-icon>chevron_right</mat-icon>
+            </button>
+          </div>
+        </div>
+        }
         }
       </div>
       }

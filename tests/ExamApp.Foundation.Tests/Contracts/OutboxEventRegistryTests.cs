@@ -100,7 +100,11 @@ public class OutboxEventRegistryTests
 
         var text = File.ReadAllText(Path.Combine(dir!.FullName, relativePath));
         foreach (var name in new[] { nameof(ParentLinkedEvent), nameof(ParentUnlinkedEvent) })
-            text.ShouldContain("|" + name, Case.Sensitive, $"{relativePath} exam_outbox_pub listesinde {name} yok");
+        {
+            // definitions.json listeyi "(A|B)Event" diye kısaltır (RabbitMQ regex sınırı); betikler tam adı taşır.
+            var entry = relativePath.EndsWith(".json", StringComparison.Ordinal) ? name[..^"Event".Length] : name;
+            text.ShouldContain("|" + entry, Case.Sensitive, $"{relativePath} exam_outbox_pub listesinde {name} yok");
+        }
     }
 
     [Fact]
@@ -129,6 +133,20 @@ public class OutboxEventRegistryTests
             dir = dir.Parent;
         dir.ShouldNotBeNull("repo kökü bulunamadı");
         return File.ReadAllText(Path.Combine(dir!.FullName, relativePath));
+    }
+
+    /// <summary>
+    /// RabbitMQ izin regex'i ~1000 baytı geçerse <c>pattern_too_long</c> ile reddeder (1038 düştü, 972 geçti) ve rabbitmq-init
+    /// deploy'u durdurur. Kısaltma: ortak "Event" soneki dışarı alınır ("(A|B)Event"); yine dolarsa listeyi grupla.
+    /// </summary>
+    [Fact]
+    public void Definitions_json_permission_regexes_stay_under_the_rabbitmq_length_limit()
+    {
+        using var doc = System.Text.Json.JsonDocument.Parse(RepoFile("rabbitmq/definitions.json"));
+        foreach (var perm in doc.RootElement.GetProperty("permissions").EnumerateArray())
+            foreach (var field in new[] { "configure", "write", "read" })
+                perm.GetProperty(field).GetString()!.Length.ShouldBeLessThanOrEqualTo(
+                    960, $"{perm.GetProperty("user").GetString()} {field}");
     }
 
     /// <summary>

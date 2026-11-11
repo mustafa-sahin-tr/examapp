@@ -72,8 +72,9 @@ public class SchoolChangedRabbitPermissionsTests
         var lines = RepoFile(relativePath).Split('\n');
         if (relativePath.EndsWith("definitions.json"))
         {
-            // JSON kaynağı: iki izin satırında da olmalı (yukarıdaki testler regex'i zaten değerlendirir).
-            RepoFile(relativePath).ShouldContain("|SchoolChangedEvent");
+            // JSON kaynağı: liste "(A|B)Event" diye kısaltılmış olabilir (RabbitMQ regex sınırı) → regex'i değerlendir.
+            Grants(Permissions(), "exam_outbox_pub", "write").ShouldBeTrue();
+            Grants(Permissions(), "badge_service", "read").ShouldBeTrue();
             return;
         }
 

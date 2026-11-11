@@ -347,10 +347,16 @@ data:
 
     # --- Publishers: configure+write on their message exchanges only, no queue ---
 
+    # RabbitMQ rejects a permission regex over ~1000 bytes (pattern_too_long; 1038 failed, 972 passed).
+    # The long lists share the 'Event' suffix, so it is factored out: ^NS:(A|B)Event$ == ^NS:(AEvent|BEvent)$.
+    stems() { printf '%s' "$1" | sed 's/Event//g'; }
+    EXAM_OUTBOX_STEMS=$(stems "$EXAM_OUTBOX_EVENTS")
+    BADGE_SERVICE_STEMS=$(stems "$BADGE_SERVICE_EVENTS")
+
     create_user exam_outbox_pub "${RABBITMQ_EXAM_OUTBOX_PASSWORD}"
     set_perms exam_outbox_pub \
-      "^${NS}:(${EXAM_OUTBOX_EVENTS})\$" \
-      "^${NS}:(${EXAM_OUTBOX_EVENTS})\$" \
+      "^${NS}:(${EXAM_OUTBOX_STEMS})Event\$" \
+      "^${NS}:(${EXAM_OUTBOX_STEMS})Event\$" \
       '^$'
 
     create_user identity_outbox_pub "${RABBITMQ_IDENTITY_OUTBOX_PASSWORD}"
@@ -369,9 +375,9 @@ data:
 
     create_user badge_service "${RABBITMQ_BADGE_SERVICE_PASSWORD}"
     set_perms badge_service \
-      "^(badge-service(_error|_skipped)?|${NS}:(${BADGE_SERVICE_EVENTS}))\$" \
+      "^(badge-service(_error|_skipped)?|${NS}:(${BADGE_SERVICE_STEMS})Event)\$" \
       '^badge-service(_error|_skipped)?$' \
-      "^(badge-service(_error|_skipped)?|${NS}:(${BADGE_SERVICE_EVENTS}))\$"
+      "^(badge-service(_error|_skipped)?|${NS}:(${BADGE_SERVICE_STEMS})Event)\$"
 
     create_user exam_api "${RABBITMQ_EXAM_API_PASSWORD}"
     set_perms exam_api \

@@ -50,6 +50,7 @@
   "tabs": {
     "label": "Ayrıntılar",
     "progress": "Gelişim",
+    "report": "Rapor",
     "outcomes": "Kazanımlar",
     "goal": "Hedef okul",
     "schedule": "Takvim",
@@ -194,5 +195,38 @@
     "bought": "Plan alındı: {{ plan }}.",
     "schoolLicense": "Okulunun lisansıyla",
     "singleSubject": "Tek ders: {{ subject }}"
+  },
+  "report": {
+    "title": "Haftalık rapor",
+    "subtitle": "Son biten haftanın özeti; veli panelindeki sayılarla aynı hesap. Her Pazartesi bildirim olarak da gelir.",
+    "previousWeek": "Önceki hafta",
+    "nextWeek": "Sonraki hafta",
+    "range": "{{from}} – {{to}}",
+    "loadError": "Rapor yüklenemedi.",
+    "locked": "Haftalık rapor Essential ve Pro planlarında var.",
+    "seePlans": "Planları gör",
+    "solved": "Çözülen soru",
+    "accuracy": "Doğru",
+    "activeDays": "Çalıştığı gün",
+    "studyMinutes": "Çalışma süresi",
+    "minutes": "{{n}} dk",
+    "points": "Puan",
+    "assignments": "Ödevler",
+    "assignmentsValue": "{{done}} bitti · {{overdue}} gecikmiş",
+    "subjects": "Dersler",
+    "noSubjects": "Bu hafta derse göre cevap yok.",
+    "subjectMeta": "{{n}} soru",
+    "dropped": "Düşen konular",
+    "mockExams": "Denemeler",
+    "net": "{{net}} net",
+    "rank": "{{rank}}/{{takers}}. sıra",
+    "badges": "Kazanılan rozetler",
+    "suggestion": {
+      "noActivity": "Bu hafta hiç soru çözmedi; birlikte kısa bir çalışma planı yapabilirsiniz.",
+      "overdue": "Gecikmiş ödevleri var; önce onları bitirmesine yardım edebilirsiniz.",
+      "reviewTopic": "{{topic}} konusunu tekrar etmesi iyi olur.",
+      "moreDays": "Haftaya en az 3 gün çalışmayı hedefleyebilir.",
+      "keepGoing": "Güzel bir hafta; aynı tempoyla devam."
+    }
   }
 }

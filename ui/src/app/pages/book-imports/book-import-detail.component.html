@@ -147,7 +147,7 @@
   }
 
   @if (reviewing()) {
-  <app-book-import-review [jobId]="j.id" [tests]="j.tests" [editable]="reviewEditable()" [locked]="reviewLocked()" [canFix]="!j.isDemo" (changed)="load()" />
+  <app-book-import-review [jobId]="j.id" [tests]="j.tests" [loose]="j.source === 'LooseImages'" [bookName]="j.bookName" [editable]="reviewEditable()" [locked]="reviewLocked()" [canFix]="!j.isDemo" (changed)="load()" />
   }
 
   <div class="bid-body">
@@ -213,7 +213,7 @@
 
   <dl class="bid-meta">
     @if (j.fileName) {
-    <div><dt>{{ t(j.source === 'Images' ? 'detail.folder' : 'detail.file') }}</dt><dd>{{ j.fileName }}</dd></div>
+    <div><dt>{{ t(j.source === 'Images' || j.source === 'LooseImages' ? 'detail.folder' : 'detail.file') }}</dt><dd>{{ j.fileName }}</dd></div>
     }
     @if (j.pageCount) {
     <div><dt>{{ t('detail.pages') }}</dt><dd>{{ j.pageCount }}</dd></div>

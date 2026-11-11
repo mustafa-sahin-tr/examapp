@@ -120,7 +120,8 @@ public interface IBookImportService
     Task<BookImportReviewResult> ApproveTestAsync(BookImportOwner owner, Guid id, int testId, CancellationToken ct);
 
     /// <summary>Issue #1023: onaylanabilen bütün testleri onayla; engellenenler nedeniyle döner. İş yoksa null.</summary>
-    Task<ApproveAllBookImportResultDto?> ApproveAllAsync(BookImportOwner owner, Guid id, CancellationToken ct);
+    Task<ApproveAllBookImportResultDto?> ApproveAllAsync(BookImportOwner owner, Guid id, CancellationToken ct,
+        string? collectTestName = null);
 
     /// <summary>Issue #1023: testi sil — yalnız o testin taslak testi ve taslak soruları silinir.</summary>
     Task<BookImportReviewResult> RemoveTestAsync(BookImportOwner owner, Guid id, int testId, CancellationToken ct);

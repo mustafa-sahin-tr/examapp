@@ -144,6 +144,8 @@ export class BookImportsComponent implements OnInit {
   /** Issue #1144: kaynak türü ve sıralanmış sayfa görselleri; görsel olmayan dosyalar sayılıp atlanır. */
   readonly mode = signal<BookImportSourceMode>('pdf');
   readonly images = signal<File[]>([]);
+  /** Görseller kitabın sıralı sayfaları mı, yoksa her biri bağımsız soru kaynağı mı (karışık sorular). */
+  readonly loose = signal(false);
   readonly skippedFiles = signal(0);
   readonly imagesError = signal<{ code: ImagesError; name?: string } | null>(null);
   readonly imagesBytes = computed(() => this.images().reduce((sum, image) => sum + image.size, 0));
@@ -294,6 +296,7 @@ export class BookImportsComponent implements OnInit {
     this.fileError.set(null);
     this.clearImages();
     this.mode.set('pdf');
+    this.loose.set(false);
     this.submitError.set(null);
   }
 
@@ -411,7 +414,7 @@ export class BookImportsComponent implements OnInit {
     this.uploadStartedAt = Date.now();
     this.api
       .start({
-        ...(images.length > 0 ? { images } : { file: file! }),
+        ...(images.length > 0 ? { images, ...(this.loose() ? { loose: true } : {}) } : { file: file! }),
         bookName: value.bookName.trim(),
         gradeId: value.gradeId!,
         subjectId: value.subjectId,

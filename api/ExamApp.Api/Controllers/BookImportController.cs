@@ -12,6 +12,7 @@ using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Localization;
 
 namespace ExamApp.Api.Controllers;
@@ -405,12 +406,12 @@ public class BookImportController : BaseController
     /// <summary>Issue #1023: onaylanabilen bütün testleri onayla; atlananlar nedeniyle döner.</summary>
     [HttpPost("{id:guid}/approve")]
     [ProducesResponseType(typeof(ApproveAllBookImportResultDto), StatusCodes.Status200OK)]
-    public async Task<IActionResult> ApproveAll(Guid id, CancellationToken ct)
+    public async Task<IActionResult> ApproveAll(Guid id, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] ApproveAllBookImportDto? body, CancellationToken ct)
     {
         var owner = await ResolveOwnerAsync(ct);
         if (owner is null)
             return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
-        var result = await _service.ApproveAllAsync(owner, id, ct);
+        var result = await _service.ApproveAllAsync(owner, id, ct, body?.CollectTestName);
         return result is null ? NotFound(new { message = _localizer["bookImport.notFound"].Value }) : Ok(result);
     }
 

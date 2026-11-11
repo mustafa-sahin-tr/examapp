@@ -9,7 +9,7 @@
     </mat-slide-toggle>
     @if (actions() && open().length > 0) {
     <button mat-flat-button type="button" class="bir-head__bulk" [disabled]="approvable() === 0 || busy() !== null || locked()"
-      (click)="confirmingAll.set(true)">
+      (click)="openApproveAll()">
       <mat-icon aria-hidden="true">done_all</mat-icon>
       {{ t(label('approveAll'), { count: approvable(), total: open().length }) }}
     </button>
@@ -19,9 +19,25 @@
   @if (confirmingAll()) {
   <div class="bir-confirm" role="alertdialog" aria-labelledby="bir-confirm-text">
     <span id="bir-confirm-text">{{ t(label('approveAllConfirm'), { count: approvable() }) }}</span>
+    @if (loose()) {
+    <div class="bir-collect">
+      <mat-checkbox [checked]="collect()" (change)="collect.set($event.checked)" data-testid="collect-toggle">
+        {{ t('reviewLoose.collect') }}
+      </mat-checkbox>
+      @if (collect()) {
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>{{ t('reviewLoose.collectName') }}</mat-label>
+        <input matInput maxlength="200" [value]="collectName()" (input)="collectName.set($any($event.target).value)"
+          data-testid="collect-name" />
+      </mat-form-field>
+      }
+    </div>
+    }
     <div class="bir-confirm__actions">
       <button mat-stroked-button type="button" (click)="confirmingAll.set(false)">{{ t('review.cancel') }}</button>
-      <button mat-flat-button type="button" (click)="approveAll()">{{ t('review.confirm') }}</button>
+      <button mat-flat-button type="button" (click)="approveAll()" [disabled]="loose() && collect() && !collectName().trim()">
+        {{ t('review.confirm') }}
+      </button>
     </div>
   </div>
   }
@@ -39,6 +55,9 @@
     <mat-icon aria-hidden="true">task_alt</mat-icon>
     <span>
       {{ t(label('approvedAll'), { count: r.approved.length }) }}
+      @if (r.collectedTestId) {
+      <a class="bir-collected" [routerLink]="['/test', r.collectedTestId]" data-testid="collected-test">{{ t('reviewLoose.collected') }}</a>
+      }
       @for (skip of r.skipped; track skip.id) {
       @if (testById(skip.id); as s) {
       <span class="bir-skip">{{ t('review.skipped', { name: testName(s), reason: t('review.skipReason.' + skip.reason) }) }}</span>
@@ -68,7 +87,7 @@
         }
         <span class="bir-row__counts">
           {{ t(label('counts'), { saved: test.questionsSaved, key: test.keyAnswers }) }}
-          @if (test.fileFrom && kind() === 'Book') { · {{ t('review.pages', { from: test.fileFrom, to: test.fileTo }) }} }
+          @if (test.fileFrom && !perImage()) { · {{ t('review.pages', { from: test.fileFrom, to: test.fileTo }) }} }
         </span>
       </div>
       <div class="bir-row__actions">

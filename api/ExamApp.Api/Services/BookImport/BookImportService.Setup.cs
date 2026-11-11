@@ -285,7 +285,9 @@ public sealed partial class BookImportService
     /// <summary>Kitap testinin adı: "1-01 · Milyonlar - I" (ünite-test no · başlık).</summary>
     /// <summary>Issue #1052: hızlı eklemede test satırı bir fotoğraftır, adı "Fotoğraf n" (ünite / test no yok).</summary>
     internal static string BookTestName(BookImportJob job, BookImportJobTest test) =>
-        job.Kind == BookImportJobKind.QuickAdd ? test.Title ?? $"Fotoğraf {test.Order}" : BookTestName(test);
+        job.Kind == BookImportJobKind.QuickAdd ? test.Title ?? $"Fotoğraf {test.Order}"
+        : job.Source == BookImportSource.LooseImages ? test.Title ?? LooseTestTitle(test.Order)
+        : BookTestName(test);
 
     internal static string BookTestName(BookImportJobTest test)
     {

@@ -77,7 +77,7 @@ public sealed partial class BookImportService
         ArgumentNullException.ThrowIfNull(owner);
         ArgumentNullException.ThrowIfNull(request);
 
-        var images = request.Source == BookImportSource.Images;
+        var images = IsImageSource(request.Source);
         // Görsellerde toplam boyut sınırı yok (görsel başına sınır parçada); sayfa sınırı yüklemeden önce.
         var error = await ValidateUploadAsync(request.BookName, request.GradeId, request.SubjectId, images ? 1 : request.FileSizeBytes, ct);
         if (error == StartBookImportError.None && images && request.ImageCount is var count && (count < 1 || count > _maxPages))
@@ -109,7 +109,7 @@ public sealed partial class BookImportService
             FileSizeBytes = images ? 0 : request.FileSizeBytes,
             PartSizeBytes = images ? MaxPageImageBytes : UploadPartSizeBytes,
             PartCount = images ? request.ImageCount : (int)((request.FileSizeBytes + UploadPartSizeBytes - 1) / UploadPartSizeBytes),
-            Source = request.Source,
+            Source = images ? request.Source : BookImportSource.Pdf,
         };
         _db.BookImportUploads.Add(upload);
         await _db.SaveChangesAsync(ct);
@@ -129,7 +129,7 @@ public sealed partial class BookImportService
         var upload = await FindUploadAsync(owner, id, ct);
         if (upload is null)
             return BookImportUploadPartResult.NotFound;
-        if (upload.Source == BookImportSource.Images)
+        if (IsImageSource(upload.Source))
             return await UploadImageAsync(upload, partNumber, content, ct);
         if (partNumber < 1 || partNumber > upload.PartCount || !content.CanSeek || content.Length != ExpectedPartSize(upload, partNumber))
             return BookImportUploadPartResult.InvalidPart;
@@ -158,7 +158,7 @@ public sealed partial class BookImportService
         if (!quota.Allowed)
             return new(null, CompleteBookImportUploadError.QuotaReached, quota);
 
-        if (upload.Source == BookImportSource.Images)
+        if (IsImageSource(upload.Source))
             return await CompleteImagesAsync(owner, upload, ct);
 
         // 200 MB'a kadar: bellek yerine diskte birleştirilir; dosya kapanınca silinir.
@@ -223,7 +223,7 @@ public sealed partial class BookImportService
     private async Task DeletePartsAsync(BookImportUpload upload)
     {
         for (var part = 1; part <= upload.PartCount; part++)
-            await _minio.DeleteFileByUrlAsync(upload.Source == BookImportSource.Images ? ImageUrl(upload.Id, part) : PartUrl(upload.Id, part));
+            await _minio.DeleteFileByUrlAsync(IsImageSource(upload.Source) ? ImageUrl(upload.Id, part) : PartUrl(upload.Id, part));
     }
 
     /// <summary>
@@ -280,19 +280,39 @@ public sealed partial class BookImportService
             GradeId = upload.GradeId,
             SubjectId = upload.SubjectId,
             FileName = upload.FileName,
-            Source = BookImportSource.Images,
+            Source = upload.Source,
             FileUrl = ImagePrefixUrl(upload.Id),
             PageCount = upload.PartCount,
             Status = BookImportJobStatus.Queued,
             Stage = BookImportStage.Upload,
         };
+        // Karışık sorular: görsel başına bir test satırı (hızlı ekleme gibi); kurulum yok, sorular Sayfalar'dan sonra aktarılır.
+        if (job.Source == BookImportSource.LooseImages)
+        {
+            for (var image = 1; image <= upload.PartCount; image++)
+            {
+                job.Tests.Add(new BookImportJobTest
+                {
+                    Order = image, TestNo = image, Title = LooseTestTitle(image), FileFrom = image, FileTo = image,
+                });
+            }
+        }
         _db.SetCurrentUser(owner.UserId);
         _db.BookImportJobs.Add(job);
         await _db.SaveChangesAsync(ct);
+        // Kitapta hak kurulum onayında düşer; karışık sorularda onay yok, iş başına bir kitap aktarımı burada.
+        if (job.Source == BookImportSource.LooseImages)
+            await _entitlements.RecordUsageAsync(owner.UserId, EntitlementFeatures.BookImport, job.Id.ToString(), ct);
 
         _jobs.Enqueue<BookImportJobRunner>(r => r.RunAsync(job.Id));
         return new(ToDto(job), CompleteBookImportUploadError.None);
     }
+
+    internal static bool IsImageSource(BookImportSource source) =>
+        source is BookImportSource.Images or BookImportSource.LooseImages;
+
+    /// <summary>Issue #1144: karışık sorularda görselin test satırı adı (inceleme ve soru kaynağı etiketi).</summary>
+    internal static string LooseTestTitle(int image) => $"Görsel {image}";
 
     private static string ImageObjectName(Guid id, int imageNumber) => $"book-import-uploads/{id}/{PageImageFileName(imageNumber)}";
 

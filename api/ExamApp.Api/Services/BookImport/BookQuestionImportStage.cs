@@ -83,9 +83,9 @@ internal sealed class BookQuestionImportStage(
 
     public async Task RunAsync(BookImportJob job, CancellationToken ct = default)
     {
-        // #1052: hızlı eklemenin kitabı yok; kitap aktarımında kurulum onayı kitabı bağlar.
+        // #1052 / #1144: hızlı ekleme ve karışık soruların kitabı yok; kitap aktarımında kurulum onayı kitabı bağlar.
         var bookId = job.BookId;
-        if (bookId is null && job.Kind == BookImportJobKind.Book)
+        if (bookId is null && !job.HasLooseQuestions)
             throw new BookImportFailure("The book record is missing (setup was not confirmed).");
         if (labeling.GetAiModels().All(m => m.Id != detectModel))
             throw new BookImportFailure(labeling.GetAiModels().Count == 0
@@ -190,7 +190,7 @@ internal sealed class BookQuestionImportStage(
         var found = detected.Sum(d => d.Questions?.Count ?? 0);
         // #1052: hızlı eklemede anahtar yalnız bulunan sayı tutarsa uygulanır (sırayla eşlenir); tutmazsa sorular cevapsız kalır
         // ve sayı uyuşmazlığı işaretlenir, cevaplar incelemede girilir.
-        var answers = job.Kind == BookImportJobKind.QuickAdd && key is not null && found != key.Length ? null : key;
+        var answers = job.HasLooseQuestions && key is not null && found != key.Length ? null : key;
         var numbering = NumberPages(
             detected.Select(d => (d.Page is null ? null : d.Page.MaxQuestionNumber, d.Questions?.Count)).ToList(), key?.Length);
 
@@ -332,6 +332,8 @@ internal sealed class BookQuestionImportStage(
             Name = name.Length <= DraftTestNameLength ? name : name[..DraftTestNameLength],
             Description = job.Kind == BookImportJobKind.QuickAdd
                 ? $"{job.BookName}. Fotoğraftan eklenen sorular."
+                : job.Source == BookImportSource.LooseImages
+                ? $"{job.BookName}. Görsellerden eklenen sorular."
                 : $"{job.BookName}. Cevaplar kitabın cevap anahtarından.",
             GradeId = job.GradeId,
             SubjectId = job.SubjectId,

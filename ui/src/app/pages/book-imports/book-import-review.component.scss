@@ -36,6 +36,23 @@
   }
 }
 
+.bir-collect {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  flex-basis: 100%;
+
+  mat-form-field {
+    flex: 1 1 260px;
+  }
+}
+
+.bir-collected {
+  margin-left: 6px;
+  color: var(--ms-action-text, var(--primaryColor));
+}
+
 .bir-confirm {
   display: flex;
   flex-wrap: wrap;

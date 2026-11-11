@@ -48,8 +48,8 @@ export interface BookImportJob {
   bookId: number | null;
   status: BookImportStatus;
   stage: BookImportStage;
-  /** Issue #1144: `Pdf` ya da `Images` (sayfa görselleri). */
-  source?: 'Pdf' | 'Images';
+  /** Issue #1144: `Pdf`, `Images` (kitap sayfaları) ya da `LooseImages` (karışık sorular). */
+  source?: 'Pdf' | 'Images' | 'LooseImages';
   fileName: string | null;
   fileSizeBytes: number;
   pageCount: number | null;
@@ -110,6 +110,8 @@ export interface BookImportReviewQuestion {
 export interface ApproveAllBookImportResult {
   approved: number[];
   skipped: { id: number; reason: 'answerless' | 'failed' }[];
+  /** Issue #1144: karışık soruların toplandığı yeni test. */
+  collectedTestId?: number | null;
 }
 
 /** #1023: onaylanabilir test — aktarımı bitmiş, taslak testi var ve cevapsız sorusu yok. */
@@ -202,10 +204,11 @@ export interface BookImportQuota {
   planKey: string | null;
 }
 
-/** PDF için `file`, sayfa görselleri için (#1144) sırasıyla `images`. */
+/** PDF için `file`, sayfa görselleri için (#1144) sırasıyla `images`; `loose` görseller bağımsız sorular. */
 export interface StartBookImportRequest {
   file?: File;
   images?: File[];
+  loose?: boolean;
   bookName: string;
   gradeId: number;
   subjectId: number | null;
@@ -378,7 +381,8 @@ export interface BookImportReviewApi {
   reviewQuestions(id: string, testId: number): Observable<BookImportReviewQuestion[]>;
   setAnswer(id: string, testId: number, questionId: number, optionIndex: number): Observable<void>;
   approveTest(id: string, testId: number): Observable<void>;
-  approveAll(id: string): Observable<ApproveAllBookImportResult>;
+  /** `collectTestName`: karışık sorularda onaylananları bu adla yeni teste topla (#1144). */
+  approveAll(id: string, collectTestName?: string): Observable<ApproveAllBookImportResult>;
   removeTest(id: string, testId: number): Observable<void>;
   /** Kitap aktarımı: onaylanmamış testi baştan aktar (hızlı eklemede yok). */
   reimportTest?(id: string, testId: number): Observable<void>;

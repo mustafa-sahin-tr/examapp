@@ -15,7 +15,10 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { RouterLink } from '@angular/router';
@@ -54,7 +57,10 @@ export const ANSWER_LETTERS = ['A', 'B', 'C', 'D', 'E'];
   standalone: true,
   imports: [
     MatButtonModule,
+    MatCheckboxModule,
+    MatFormFieldModule,
     MatIconModule,
+    MatInputModule,
     MatProgressSpinnerModule,
     MatSlideToggleModule,
     RouterLink,
@@ -75,6 +81,12 @@ export class BookImportReviewComponent implements OnInit {
   readonly locked = input(false);
   readonly actions = computed(() => this.editable() || this.locked());
   readonly kind = input<BookImportJobKind>('Book');
+  /** Issue #1144: karışık sorular (görsel başına bağımsız test); hepsini onaylarken sorular yeni bir teste toplanabilir. */
+  readonly loose = input(false);
+  /** Toplanan testin varsayılan adı (aktarımın adı). */
+  readonly bookName = input('');
+  /** Satır bir fotoğraf / görsel (sayfa aralığı yok, ad satırın başlığı). */
+  readonly perImage = computed(() => this.kind() === 'QuickAdd' || this.loose());
   readonly reviewApi = input<BookImportReviewApi | null>(null);
   readonly canFix = input(true);
   /** Fotoğraf sırası → küçük resim (hızlı ekleme). */
@@ -85,6 +97,8 @@ export class BookImportReviewComponent implements OnInit {
   readonly letters = ANSWER_LETTERS;
   readonly onlyAttention = signal(true);
   readonly confirmingAll = signal(false);
+  readonly collect = signal(false);
+  readonly collectName = signal('');
   readonly busy = signal<number | 'all' | null>(null);
   readonly error = signal<string | null>(null);
   readonly result = signal<ApproveAllBookImportResult | null>(null);
@@ -126,7 +140,8 @@ export class BookImportReviewComponent implements OnInit {
 
   /** Türe göre değişen metnin anahtarı. */
   label(key: string): string {
-    return `${this.kind() === 'QuickAdd' ? 'reviewQuickAdd' : 'review'}.${key}`;
+    const scope = this.kind() === 'QuickAdd' ? 'reviewQuickAdd' : this.loose() ? 'reviewLoose' : 'review';
+    return `${scope}.${key}`;
   }
 
   fixParams(testId: number, filePage: number): Record<string, string | number> {
@@ -144,7 +159,7 @@ export class BookImportReviewComponent implements OnInit {
   }
 
   testName(test: BookImportJobTest): string {
-    if (this.kind() === 'QuickAdd') return test.title ?? `${test.order}`;
+    if (this.perImage()) return test.title ?? `${test.order}`;
     return bookImportTestName(test);
   }
 
@@ -263,12 +278,17 @@ export class BookImportReviewComponent implements OnInit {
     });
   }
 
+  openApproveAll(): void {
+    if (this.loose() && !this.collectName()) this.collectName.set(this.bookName());
+    this.confirmingAll.set(true);
+  }
+
   approveAll(): void {
+    const collectName = this.loose() && this.collect() ? this.collectName().trim() : '';
     this.confirmingAll.set(false);
     this.busy.set('all');
     this.error.set(null);
-    this.api
-      .approveAll(this.jobId())
+    (collectName ? this.api.approveAll(this.jobId(), collectName) : this.api.approveAll(this.jobId()))
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {

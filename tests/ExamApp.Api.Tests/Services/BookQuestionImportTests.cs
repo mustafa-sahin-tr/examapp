@@ -1019,6 +1019,75 @@ public class BookQuestionImportTests : IDisposable
 
     private static BookImportOwner QuickOwner => Owner with { Kind = BookImportJobKind.QuickAdd };
 
+    /// <summary>
+    /// Issue #1144: karışık sorular — Sayfalar'dan sonra kurulum olmadan sorulara geçer, görsel başına bağımsız test; hepsini
+    /// onaylarken sorular isteğe bağlı olarak yeni bir teste sırasıyla toplanır, iç taslak testler silinir.
+    /// </summary>
+    [Fact]
+    public async Task Loose_images_skip_setup_and_approve_all_can_collect_the_questions_into_a_new_test()
+    {
+        var id = await SeedQuickAddAsync("AB", "C");
+        await using (var ctx = _db.NewContext())
+        {
+            await ctx.BookImportJobs.Where(j => j.Id == id).ExecuteUpdateAsync(u => u
+                .SetProperty(j => j.Kind, BookImportJobKind.Book)
+                .SetProperty(j => j.Source, BookImportSource.LooseImages)
+                .SetProperty(j => j.BookName, "Karışık")
+                .SetProperty(j => j.FileUrl, "/img/exam-questions/book-import-uploads/u1/")
+                .SetProperty(j => j.Stage, BookImportStage.Pages));
+            await ctx.BookImportJobTests.ExecuteUpdateAsync(u => u.SetProperty(t => t.Title, t => "Görsel " + t.Order));
+        }
+        Detect(1, 4, 4);
+        Detect(2, 4);
+
+        await RunAsync(id);
+
+        await using (var first = _db.NewContext())
+        {
+            var j = await first.BookImportJobs.SingleAsync();
+            (j.Status, j.Stage, j.Error).ShouldBe((BookImportJobStatus.ReadyForReview, BookImportStage.Review, null));
+        }
+        var tests = await TestsAsync();
+        tests.Select(t => (t.Status, t.Error)).ShouldBe([(BookImportTestStatus.Done, null), (BookImportTestStatus.Done, null)]);
+        _saved.ShouldAllBe(s => s.BookId == null);
+        _saved[0].Questions.ShouldAllBe(q => q.ActivityLabel == "Görsel 1");
+        await using (var check = _db.NewContext())
+        {
+            var job = await check.BookImportJobs.SingleAsync();
+            (job.Status, job.Stage).ShouldBe((BookImportJobStatus.ReadyForReview, BookImportStage.Review));
+            (await check.Worksheets.WithDrafts().SingleAsync(w => w.Id == tests[0].WorksheetId)).Name.ShouldBe("Karışık – Görsel 1");
+        }
+
+        ApproveAllBookImportResultDto result;
+        await using (var ctx = _db.NewContext())
+            result = (await Service(ctx).ApproveAllAsync(Owner, id, default, "  Karışık deneme  "))!;
+
+        result.Approved.Count.ShouldBe(2);
+        await using var after = _db.NewContext();
+        var collected = await after.Worksheets.Include(w => w.WorksheetQuestions).SingleAsync();
+        collected.Id.ShouldBe(result.CollectedTestId!.Value);
+        (collected.Name, collected.IsDraft, collected.GradeId).ShouldBe(("Karışık deneme", false, _gradeId));
+        var questionIds = await after.Questions.OrderBy(q => q.Id).Select(q => q.Id).ToListAsync();
+        collected.WorksheetQuestions.OrderBy(wq => wq.Order).Select(wq => wq.QuestionId).ShouldBe(questionIds);
+        (await after.TestQuestions.IgnoreQueryFilters().Where(wq => wq.TestId == tests[0].WorksheetId).AllAsync(wq => wq.IsDeleted)).ShouldBeTrue();
+        (await after.BookImportJobs.SingleAsync()).Status.ShouldBe(BookImportJobStatus.Completed);
+    }
+
+    [Fact]
+    public async Task Collecting_into_a_test_is_ignored_for_quick_add()
+    {
+        var id = await SeedQuickAddAsync("AB");
+        Detect(1, 4, 4);
+        await RunAsync(id);
+
+        await using (var ctx = _db.NewContext())
+            (await Service(ctx).ApproveAllAsync(QuickOwner, id, default, "Yeni test"))!.CollectedTestId.ShouldBeNull();
+
+        await using var check = _db.NewContext();
+        (await check.Worksheets.CountAsync()).ShouldBe(0);
+    }
+
+
     /// <summary>Issue #1054: onayda sorular etkinleşir, iç taslak test bağlantılarıyla silinir; test yayımlanmaz.</summary>
     [Fact]
     public async Task Approving_a_quick_add_photo_activates_questions_and_deletes_the_internal_test()

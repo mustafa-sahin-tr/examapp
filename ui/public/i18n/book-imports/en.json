@@ -32,7 +32,12 @@
     "pickFolder": "Choose folder",
     "orderTitle": "Page order",
     "orderHint": "Pages are imported in this order, sorted by file name (page2 comes before page10).",
-    "skippedFiles": "{{count}} files that are not images were skipped."
+    "skippedFiles": "{{count}} files that are not images were skipped.",
+    "imagesKindLabel": "What the images are",
+    "imagesBook": "Book pages",
+    "imagesLoose": "Mixed questions",
+    "imagesBookHint": "The images are a book's pages in order; book setup and the answer key are read as with a PDF.",
+    "imagesLooseHint": "Each image is a separate question source (from different books). There is no book setup; answers are entered in review and approved questions go to the question pool."
   },
   "errors": {
     "notPdf": "The selected file is not a PDF.",
@@ -424,6 +429,26 @@
     "fixPage": "Photo {{page}}",
     "fixPageFlagged": "Photo {{page}} · flagged",
     "footer": "Approved questions go to your question pool and are visible only to you (private). No test is created."
+  },
+  "reviewLoose": {
+    "title": "Review and approve",
+    "summary": "{{open}} images awaiting review · {{approved}} approved",
+    "approveAll": "Approve ready images ({{count}}/{{total}})",
+    "approveAllConfirm": "Questions from {{count}} images will be added to the question pool. Images with unanswered questions or errors are skipped.",
+    "approvedAll": "{{count}} images approved.",
+    "allDone": "No images left to review.",
+    "nothingToCheck": "No images need attention. Turn off the filter to see them all.",
+    "remove": "Delete questions of {{name}}",
+    "removeConfirm": "Delete questions",
+    "counts": "{{saved}} questions",
+    "question": "Question {{number}}",
+    "passage": "Passage of question {{number}}",
+    "fixPage": "Image {{page}}",
+    "fixPageFlagged": "Image {{page}} · flagged",
+    "footer": "Approved questions go to your question pool and are visible only to you (private). When approving all, they can also be collected into a new test.",
+    "collect": "Also collect these questions into a new test",
+    "collectName": "Test name",
+    "collected": "Open the new test"
   },
   "training": {
     "title": "Training data (question detection)",

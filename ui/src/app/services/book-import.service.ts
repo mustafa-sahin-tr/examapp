@@ -90,7 +90,7 @@ export class BookImportService {
         gradeId: request.gradeId,
         subjectId: request.subjectId,
         ...(isImages
-          ? { fileName: imagesName(images[0]), fileSizeBytes: totalBytes, source: 'Images', imageCount: images.length }
+          ? { fileName: imagesName(images[0]), fileSizeBytes: totalBytes, source: request.loose ? 'LooseImages' : 'Images', imageCount: images.length }
           : { fileName: request.file!.name, fileSizeBytes: totalBytes }),
       })
       .pipe(
@@ -217,8 +217,11 @@ export class BookImportService {
     return this.http.post<void>(`${this.baseUrl}/${id}/tests/${testId}/approve`, {});
   }
 
-  approveAll(id: string): Observable<ApproveAllBookImportResult> {
-    return this.http.post<ApproveAllBookImportResult>(`${this.baseUrl}/${id}/approve`, {});
+  approveAll(id: string, collectTestName?: string): Observable<ApproveAllBookImportResult> {
+    return this.http.post<ApproveAllBookImportResult>(
+      `${this.baseUrl}/${id}/approve`,
+      collectTestName ? { collectTestName } : {}
+    );
   }
 
   removeTest(id: string, testId: number): Observable<void> {

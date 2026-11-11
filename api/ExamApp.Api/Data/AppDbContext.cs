@@ -299,6 +299,7 @@ public class AppDbContext : DbContext
     // Ders planlama / randevu (issue #96)
     public DbSet<TeacherAvailabilitySlot> TeacherAvailabilitySlots { get; set; }
     public DbSet<Booking> Bookings { get; set; }
+    public DbSet<AskTeacherQuestion> AskTeacherQuestions { get; set; } // issue #1111
 
     // Tekrarlayan haftalık müsaitlik kuralı (issue #178)
     public DbSet<RecurringAvailabilityRule> RecurringAvailabilityRules { get; set; }
@@ -1071,6 +1072,17 @@ public class AppDbContext : DbContext
                 .ToTable(t => t.HasCheckConstraint(
                     Services.Bookings.SlotTimeRange.RuleDurationCheckName, Services.Bookings.SlotTimeRange.DurationCheckSql));
         }
+
+        // issue #1111: öğretmene soru — öğretmen kuyruğu (durum, süre) ve öğrencinin listesi; aylık açık soru sayımı.
+        modelBuilder.Entity<AskTeacherQuestion>(e =>
+        {
+            e.HasOne(q => q.Student).WithMany().HasForeignKey(q => q.StudentId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(q => q.Teacher).WithMany().HasForeignKey(q => q.TeacherId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(q => q.Subject).WithMany().HasForeignKey(q => q.SubjectId).OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(q => new { q.TeacherUserId, q.Status, q.DueAt });
+            e.HasIndex(q => new { q.StudentUserId, q.CreatedAt });
+            e.HasIndex(q => new { q.Status, q.DueAt });
+        });
 
         modelBuilder.Entity<Booking>()
             .HasOne(b => b.AvailabilitySlot)

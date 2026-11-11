@@ -70,7 +70,11 @@ public class SubscriptionPlansControllerTests : IDisposable
             [EntitlementFeatures.SelfActivity] = 10,
         });
         Limits(plans, SubscriptionPlan.StudentEssentialKey).ShouldNotContainKey(EntitlementFeatures.Analytics);
-        Limits(plans, SubscriptionPlan.StudentProKey).Values.ShouldAllBe(v => v == null);
+        // #1111: öğretmene soru Pro'da da sayılı (Essential 10, Pro 40); diğer her şey sınırsız.
+        var studentPro = Limits(plans, SubscriptionPlan.StudentProKey);
+        studentPro[EntitlementFeatures.AskTeacher].ShouldBe(40);
+        Limits(plans, SubscriptionPlan.StudentEssentialKey)[EntitlementFeatures.AskTeacher].ShouldBe(10);
+        studentPro.Where(l => l.Key != EntitlementFeatures.AskTeacher).ShouldAllBe(l => l.Value == null);
         Limits(plans, SubscriptionPlan.TrialKey)[EntitlementFeatures.BookImport].ShouldBe(1);
         pro.Keys.Except(Limits(plans, SubscriptionPlan.TrialKey).Keys).ShouldBeEmpty();
     }

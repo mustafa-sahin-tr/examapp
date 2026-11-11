@@ -228,6 +228,102 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("AppliedDataPackages");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.AskTeacherQuestion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AnswerImageUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("AnswerText")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTime?>("AnsweredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("DueAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int?>("Rating")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StudentUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("SubjectId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TeacherId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TeacherUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentId");
+
+                    b.HasIndex("SubjectId");
+
+                    b.HasIndex("TeacherId");
+
+                    b.HasIndex("Status", "DueAt");
+
+                    b.HasIndex("StudentUserId", "CreatedAt");
+
+                    b.HasIndex("TeacherUserId", "Status", "DueAt");
+
+                    b.ToTable("AskTeacherQuestions");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.Badge", b =>
                 {
                     b.Property<int>("Id")
@@ -6816,6 +6912,33 @@ namespace ExamApp.Api.Migrations
                             FeatureKey = "weekly-report",
                             IsDeleted = false,
                             PlanId = 2
+                        },
+                        new
+                        {
+                            Id = 91,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "ask-teacher",
+                            IsDeleted = false,
+                            MonthlyLimit = 10,
+                            PlanId = 8
+                        },
+                        new
+                        {
+                            Id = 92,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "ask-teacher",
+                            IsDeleted = false,
+                            MonthlyLimit = 40,
+                            PlanId = 9
+                        },
+                        new
+                        {
+                            Id = 93,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "ask-teacher",
+                            IsDeleted = false,
+                            MonthlyLimit = 40,
+                            PlanId = 2
                         });
                 });
 
@@ -9946,6 +10069,32 @@ namespace ExamApp.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Question");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.AskTeacherQuestion", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Subject", "Subject")
+                        .WithMany()
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("ExamApp.Api.Data.Teacher", "Teacher")
+                        .WithMany()
+                        .HasForeignKey("TeacherId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Student");
+
+                    b.Navigation("Subject");
+
+                    b.Navigation("Teacher");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Book", b =>

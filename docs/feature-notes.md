@@ -498,3 +498,22 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   sayılmaz (öğretmen planında `mock-exam` sınırı yok). `book-import` kapısı #1019'dan beri yüklemededir.
 - **Genişletme (abonelik epic'i):** yeni özellik = `EntitlementFeatures`'a sabit + plan başına sınır satırı + kullanım anında
   `RecordUsageAsync`, karar anında `CheckAsync`. Yeni planlar (#1027) satır ekler; plan tablolarında özelliğe özgü mantık yok.
+
+## Öğretmene sor (#1111, epic #1118)
+
+- **Model:** `AskTeacherQuestion` (öğrenci → öğretmen, fotoğraf + not ≤ 1000, isteğe bağlı ders). Durum `Open` → `Answered` /
+  `Expired` / `Cancelled`. Cevap metin (≤ 4000) ve / veya görsel; öğrenci cevaba 1–5 puan verir. Görseller MinIO'da
+  `ask-teacher/{guid}/…jpg` (uzun kenar 2400 px JPEG); DTO'da URL yok, görsel yalnız soran öğrenciye ve muhatap öğretmene
+  `GET api/ask-teacher/{id}/image|answer-image` ile akar.
+- **Kime sorulur:** `IDirectMessagePolicy.RelatedTeachers` (sınıf öğretmeni, ödev / atama ilişkisi) ∪ onaylı özel ders rezervasyonu
+  olan öğretmenler; öğretmen onaylı ve askıda değil olmalı.
+- **Hak:** `ask-teacher` (öğrenci, ölçülü, birim soru): Essential 10, Pro 40, deneme 40 / ay. Gönderimde `Remaining` açık soru
+  sayısından büyük olmalı (bekleyenler hakkı rezerve eder); kullanım **cevapta** yazılır (`ask-teacher:{id}`), süresi dolan ya da
+  iptal edilen soru hak yemez. Planda yoksa 403 `NotInPlan`, dolu → 429.
+- **Süre:** `AskTeacher:AnswerHours` (48). `AskTeacherExpiryJob` (`ask-teacher-expiry`, `AskTeacher:ExpiryCron`, 15 dk) süresi
+  geçen açık soruları `Expired` yapar; iş koşmadan önce de DTO süresi geçmiş soruyu `Expired` gösterir, cevap koşullu güncellemeyle
+  yazılır (yarış yok).
+- **Uçlar:** öğrenci `GET teachers|quota|/|{id}`, `POST /` (multipart; veli aktivasyonu politikası), `POST {id}/cancel`,
+  `PUT {id}/rating`; öğretmen `GET queue?status`, `GET queue/{id}`, `POST queue/{id}/answer` (multipart). Hepsi Student / Teacher
+  rolünde; veliye kapalı.
+- **Sonraki dilimler:** bildirimler (outbox → BadgeService, iki yön), öğrenci arayüzü, öğretmen kuyruğu, puanlama + hata defteri.

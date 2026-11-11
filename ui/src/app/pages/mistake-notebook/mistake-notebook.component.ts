@@ -12,6 +12,7 @@ import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { MISTAKE_REASONS, MistakeItem, MistakeReason, PracticeSessionStartRequest } from '../../models/practice';
 import { PracticeService } from '../../services/practice.service';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { AskTeacherNotebookComponent } from '../../shared/components/ask-teacher-notebook/ask-teacher-notebook.component';
 
 /** Issue #698: testler ve pratikteki yanlışlar tek listede; ders süzülür, süzülen yanlışlardan pratik açılır. */
 @Component({
@@ -19,6 +20,7 @@ import { PageHeaderComponent } from '../../shared/components/page-header/page-he
   standalone: true,
   imports: [
     PageHeaderComponent,
+    AskTeacherNotebookComponent,
     DatePipe,
     RouterLink,
     MatButtonModule,

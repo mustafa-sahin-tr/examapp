@@ -35,6 +35,11 @@ public class AskTeacherRatingDto
     public int Rating { get; set; }
 }
 
+public class AskTeacherNotebookDto
+{
+    public bool Saved { get; set; }
+}
+
 /// <summary>
 /// Issue #1111: öğretmene soru sor. Öğrenci uçları kendi sorularını, öğretmen uçları (<c>queue</c>) kendisine gelenleri görür;
 /// başkasının sorusu 404. Görseller yalnız bu uçlardan (sorunun öğrencisi ve öğretmeni) okunur. Gateway: <c>/api/exam/ask-teacher</c>.
@@ -137,6 +142,27 @@ public class AskTeacherController : BaseController
         if (userId is null)
             return NotResolved();
         var error = await _service.CancelAsync(userId.Value, id, ct);
+        return error == AskTeacherError.None ? NoContent() : Error(error);
+    }
+
+    /// <summary>Yanlışlar defterindeki ("Öğretmene sorduklarım") sorular.</summary>
+    [HttpGet("notebook")]
+    [Authorize(Roles = "Student")]
+    [ProducesResponseType(typeof(List<AskTeacherQuestionDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Notebook(CancellationToken ct)
+    {
+        var userId = await UserIdAsync(ct);
+        return userId is null ? NotResolved() : Ok(await _service.ListNotebookAsync(userId.Value, ct));
+    }
+
+    [HttpPut("{id:int}/notebook")]
+    [Authorize(Roles = "Student")]
+    public async Task<IActionResult> SetNotebook(int id, [FromBody] AskTeacherNotebookDto body, CancellationToken ct)
+    {
+        var userId = await UserIdAsync(ct);
+        if (userId is null)
+            return NotResolved();
+        var error = await _service.SetNotebookAsync(userId.Value, id, body?.Saved ?? false, ct);
         return error == AskTeacherError.None ? NoContent() : Error(error);
     }
 

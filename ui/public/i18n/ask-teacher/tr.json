@@ -34,7 +34,10 @@
     "answer": "Cevap",
     "rate": "Cevap işine yaradı mı?",
     "star": "{{n}} yıldız",
-    "cancel": "Geri çek"
+    "cancel": "Geri çek",
+    "saveToNotebook": "Yanlışlar defterime ekle",
+    "inNotebook": "Defterimde",
+    "savedToNotebook": "Soru yanlışlar defterine eklendi."
   },
   "status": {
     "open": "Cevap bekliyor",
@@ -53,5 +56,12 @@
     "invalidSubject": "Geçerli bir ders seç.",
     "invalidState": "Bu soru artık bu işlem için uygun değil.",
     "notFound": "Soru bulunamadı."
+  },
+  "notebook": {
+    "title": "Öğretmene sorduklarım",
+    "subtitle": "Kaydettiğin sorular ve öğretmenlerinin cevapları.",
+    "questionImage": "Soru fotoğrafı",
+    "open": "Soruyu aç",
+    "remove": "Defterden çıkar"
   }
 }

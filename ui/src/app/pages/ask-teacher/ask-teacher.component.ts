@@ -244,6 +244,24 @@ export class AskTeacherComponent implements OnInit {
       });
   }
 
+  toggleNotebook(question: AskTeacherQuestion): void {
+    const saved = !question.inNotebook;
+    this.busyId.set(question.id);
+    this.service
+      .setNotebook(question.id, saved)
+      .pipe(
+        finalize(() => this.busyId.set(null)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: () => {
+          this.replace({ ...question, inNotebook: saved });
+          if (saved) this.snackBar.open(this.t('list.savedToNotebook'), undefined, { duration: 4000 });
+        },
+        error: (error: unknown) => this.snack(this.errorText(error)),
+      });
+  }
+
   formatDate(iso: string): string {
     return new Intl.DateTimeFormat(this.locale.localeDefinition().angularLocale, {
       day: 'numeric',

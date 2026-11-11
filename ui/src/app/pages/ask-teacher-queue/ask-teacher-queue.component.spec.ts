@@ -34,6 +34,7 @@ describe('AskTeacherQueueComponent (issue #1111)', () => {
       answerText: null,
       hasAnswerImage: false,
       rating: null,
+      inNotebook: false,
       ...overrides,
     };
   }

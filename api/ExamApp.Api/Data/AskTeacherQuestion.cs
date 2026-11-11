@@ -71,4 +71,7 @@ public class AskTeacherQuestion : BaseEntity
 
     /// <summary>Öğrencinin cevaba verdiği puan (1–5).</summary>
     public int? Rating { get; set; }
+
+    /// <summary>Öğrenci cevaplanan soruyu yanlışlar defterine kaydettiyse zamanı (defterin "Öğretmene sorduklarım" bölümü).</summary>
+    public DateTime? SavedToNotebookAt { get; set; }
 }

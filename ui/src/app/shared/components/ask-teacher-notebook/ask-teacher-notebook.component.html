@@ -1,0 +1,25 @@
+@if (items().length > 0) {
+  <section class="atn" *transloco="let t; prefix: 'ask-teacher.notebook'" data-testid="ask-notebook">
+    <h2 class="atn__title">{{ t('title') }}</h2>
+    <p class="atn__sub">{{ t('subtitle') }}</p>
+    <ul class="atn__list">
+      @for (q of items(); track q.id) {
+        <li class="atn__item" data-testid="ask-notebook-item">
+          <app-ask-teacher-image class="atn__image" [questionId]="q.id" [alt]="t('questionImage')" />
+          <div class="atn__texts">
+            <strong>{{ q.teacherName }}@if (q.subjectName) { · {{ q.subjectName }} }</strong>
+            @if (q.answerText) {
+              <p class="atn__answer">{{ q.answerText }}</p>
+            }
+            <div class="atn__actions">
+              <a mat-button [routerLink]="route" [queryParams]="{ q: q.id }">{{ t('open') }}</a>
+              <button mat-button type="button" (click)="remove(q)" data-testid="ask-notebook-remove">
+                <mat-icon>bookmark_remove</mat-icon>{{ t('remove') }}
+              </button>
+            </div>
+          </div>
+        </li>
+      }
+    </ul>
+  </section>
+}

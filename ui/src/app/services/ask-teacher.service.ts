@@ -46,6 +46,14 @@ export class AskTeacherService {
     return this.http.put<void>(`${this.baseUrl}/${id}/rating`, { rating });
   }
 
+  notebook(): Observable<AskTeacherQuestion[]> {
+    return this.http.get<AskTeacherQuestion[]>(`${this.baseUrl}/notebook`);
+  }
+
+  setNotebook(id: number, saved: boolean): Observable<void> {
+    return this.http.put<void>(`${this.baseUrl}/${id}/notebook`, { saved });
+  }
+
   image(id: number, answer: boolean): Observable<Blob> {
     return this.http.get(`${this.baseUrl}/${id}/${answer ? 'answer-image' : 'image'}`, { responseType: 'blob' });
   }

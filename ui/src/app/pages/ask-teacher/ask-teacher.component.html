@@ -152,6 +152,17 @@
                 @if (q.hasAnswerImage) {
                   <app-ask-teacher-image [questionId]="q.id" [answer]="true" [alt]="t('list.answerImage')" />
                 }
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="at__notebook"
+                  [disabled]="busyId() === q.id"
+                  (click)="toggleNotebook(q)"
+                  data-testid="ask-notebook-toggle"
+                >
+                  <mat-icon>{{ q.inNotebook ? 'bookmark_added' : 'bookmark_add' }}</mat-icon>
+                  {{ q.inNotebook ? t('list.inNotebook') : t('list.saveToNotebook') }}
+                </button>
                 <div class="at__rating" role="group" [attr.aria-label]="t('list.rate')">
                   <span class="at__muted">{{ t('list.rate') }}</span>
                   @for (star of stars; track star) {

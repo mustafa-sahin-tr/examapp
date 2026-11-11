@@ -268,6 +268,27 @@ public class AskTeacherServiceTests : IDisposable
         notices.Select(n => n.EventId).Distinct().Count().ShouldBe(4);
     }
 
+    [Fact]
+    public async Task Only_an_answered_question_goes_to_the_notebook_and_it_can_be_removed()
+    {
+        var open = (await Send(_relatedTeacherId)).Question!;
+        var answered = (await Send(_bookedTeacherId)).Question!;
+        (await Answer(BookedTeacherUser, answered.Id)).Error.ShouldBe(AskTeacherError.None);
+
+        (await With(s => s.SetNotebookAsync(StudentUser, open.Id, true, default))).ShouldBe(AskTeacherError.InvalidState);
+        (await With(s => s.SetNotebookAsync(OtherStudentUser, answered.Id, true, default))).ShouldBe(AskTeacherError.NotFound);
+        (await With(s => s.SetNotebookAsync(StudentUser, answered.Id, true, default))).ShouldBe(AskTeacherError.None);
+        (await With(s => s.SetNotebookAsync(StudentUser, answered.Id, true, default))).ShouldBe(AskTeacherError.None);
+
+        var notebook = await With(s => s.ListNotebookAsync(StudentUser, default));
+        notebook.Select(q => q.Id).ShouldBe([answered.Id]);
+        notebook[0].InNotebook.ShouldBeTrue();
+        (await With(s => s.ListNotebookAsync(OtherStudentUser, default))).ShouldBeEmpty();
+
+        (await With(s => s.SetNotebookAsync(StudentUser, answered.Id, false, default))).ShouldBe(AskTeacherError.None);
+        (await With(s => s.ListNotebookAsync(StudentUser, default))).ShouldBeEmpty();
+    }
+
     private async Task<List<AskTeacherNoticeEvent>> NoticesAsync()
     {
         await using var ctx = _db.NewContext();

@@ -36,6 +36,7 @@ describe('AskTeacherComponent (issue #1111)', () => {
       answerText: null,
       hasAnswerImage: false,
       rating: null,
+      inNotebook: false,
       ...overrides,
     };
   }
@@ -48,6 +49,7 @@ describe('AskTeacherComponent (issue #1111)', () => {
       send: vi.fn(),
       cancel: vi.fn().mockReturnValue(of(undefined)),
       rate: vi.fn().mockReturnValue(of(undefined)),
+      setNotebook: vi.fn().mockReturnValue(of(undefined)),
       image: vi.fn().mockReturnValue(of(new Blob(['x'], { type: 'image/jpeg' }))),
     };
     TestBed.configureTestingModule({
@@ -144,6 +146,14 @@ describe('AskTeacherComponent (issue #1111)', () => {
 
     (items[1].querySelector('[data-testid="ask-star-5"]') as HTMLButtonElement).click();
     expect(service['rate']).toHaveBeenCalledWith(2, 5);
+
+    (items[1].querySelector('[data-testid="ask-notebook-toggle"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(service['setNotebook']).toHaveBeenCalledWith(2, true);
+    expect(fixture.componentInstance.questions()[1].inNotebook).toBe(true);
+    expect(items[1].querySelector('[data-testid="ask-notebook-toggle"]')!.textContent).toContain('Defterimde');
+    // Yalnız cevaplanan soru deftere eklenir.
+    expect(items[0].querySelector('[data-testid="ask-notebook-toggle"]')).toBeNull();
 
     (items[0].querySelector('[data-testid="ask-cancel"]') as HTMLButtonElement).click();
     fixture.detectChanges();

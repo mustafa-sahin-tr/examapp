@@ -65,6 +65,12 @@ public interface IAskTeacherService
     Task<AskTeacherError> CancelAsync(int studentUserId, int id, CancellationToken ct);
     Task<AskTeacherError> RateAsync(int studentUserId, int id, int rating, CancellationToken ct);
 
+    /// <summary>Cevaplanan soruyu yanlışlar defterine ekler ya da çıkarır (çıkarmak her durumda serbest).</summary>
+    Task<AskTeacherError> SetNotebookAsync(int studentUserId, int id, bool saved, CancellationToken ct);
+
+    /// <summary>Defterdeki sorular, en son eklenen önce.</summary>
+    Task<IReadOnlyList<AskTeacherQuestionDto>> ListNotebookAsync(int studentUserId, CancellationToken ct);
+
     Task<IReadOnlyList<AskTeacherQuestionDto>> QueueAsync(int teacherUserId, AskTeacherStatus? status, CancellationToken ct);
     Task<AskTeacherQuestionDto?> GetForTeacherAsync(int teacherUserId, int id, CancellationToken ct);
     Task<AskTeacherResult> AnswerAsync(int teacherUserId, int id, string? text, AskTeacherImage? image, CancellationToken ct);
@@ -208,6 +214,28 @@ public sealed class AskTeacherService(
         row.Rating = rating;
         await db.SaveChangesAsync(ct);
         return AskTeacherError.None;
+    }
+
+    public async Task<AskTeacherError> SetNotebookAsync(int studentUserId, int id, bool saved, CancellationToken ct)
+    {
+        var row = await db.AskTeacherQuestions.AsTracking().FirstOrDefaultAsync(q => q.Id == id && q.StudentUserId == studentUserId, ct);
+        if (row is null)
+            return AskTeacherError.NotFound;
+        if (saved && row.Status != AskTeacherStatus.Answered)
+            return AskTeacherError.InvalidState;
+        if (saved == row.SavedToNotebookAt.HasValue)
+            return AskTeacherError.None;
+        row.SavedToNotebookAt = saved ? clock.GetUtcNow().UtcDateTime : null;
+        await db.SaveChangesAsync(ct);
+        return AskTeacherError.None;
+    }
+
+    public async Task<IReadOnlyList<AskTeacherQuestionDto>> ListNotebookAsync(int studentUserId, CancellationToken ct)
+    {
+        var rows = await db.AskTeacherQuestions.AsNoTracking()
+            .Where(q => q.StudentUserId == studentUserId && q.SavedToNotebookAt != null)
+            .OrderByDescending(q => q.SavedToNotebookAt).Take(200).ToListAsync(ct);
+        return await ToDtosAsync(rows, forTeacher: false, ct);
     }
 
     public async Task<IReadOnlyList<AskTeacherQuestionDto>> QueueAsync(int teacherUserId, AskTeacherStatus? status, CancellationToken ct)
@@ -458,6 +486,7 @@ public sealed class AskTeacherService(
             AnswerText = r.AnswerText,
             HasAnswerImage = !string.IsNullOrEmpty(r.AnswerImageUrl),
             Rating = r.Rating,
+            InNotebook = r.SavedToNotebookAt != null,
         }).ToList();
     }
 }

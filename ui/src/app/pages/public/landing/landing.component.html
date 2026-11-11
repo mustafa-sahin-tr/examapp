@@ -10,7 +10,7 @@
 
     <app-landing-spotlight anchor="ogretmenler" section="teachers" kickerIcon="co_present" [itemCount]="4" [alt]="true"
       [ctaUrl]="registerTeacherUrl">
-      <img src="assets/images/landing/detect.svg" width="600" height="440" loading="lazy" [alt]="t('teachers.imageAlt')" />
+      <img [src]="t('images.detect')" width="600" height="440" loading="lazy" [alt]="t('teachers.imageAlt')" />
     </app-landing-spotlight>
 
     <app-landing-spotlight anchor="ogrenciler" section="students" kickerIcon="backpack" [itemCount]="3" [flip]="true"
@@ -28,16 +28,16 @@
     <!-- Veli kendi hesabını açar; dipnot sonrasını (çocuğa hesap / bağlama) anlatır. -->
     <app-landing-spotlight anchor="veliler" section="parents" kickerIcon="family_restroom" [itemCount]="3" [alt]="true"
       [ctaUrl]="registerParentUrl" [showFootnote]="true">
-      <img src="assets/images/landing/parent.svg" width="600" height="440" loading="lazy" [alt]="t('parents.imageAlt')" />
+      <img [src]="t('images.parent')" width="600" height="440" loading="lazy" [alt]="t('parents.imageAlt')" />
     </app-landing-spotlight>
 
     <app-landing-spotlight anchor="motivasyon" section="motivation" kickerIcon="military_tech" [itemCount]="3" [flip]="true">
-      <img src="assets/images/landing/motivation.svg" width="560" height="420" loading="lazy" [alt]="t('motivation.imageAlt')" />
+      <img [src]="t('images.motivation')" width="560" height="420" loading="lazy" [alt]="t('motivation.imageAlt')" />
     </app-landing-spotlight>
 
     <app-landing-spotlight anchor="ozel-ders" section="tutoring" kickerIcon="video_chat" [itemCount]="3" [alt]="true"
       [ctaUrl]="registerStudentUrl" [showFootnote]="true">
-      <img src="assets/images/landing/tutor.svg" width="600" height="440" loading="lazy" [alt]="t('tutoring.imageAlt')" />
+      <img [src]="t('images.tutor')" width="600" height="440" loading="lazy" [alt]="t('tutoring.imageAlt')" />
     </app-landing-spotlight>
 
     <app-how-it-works />

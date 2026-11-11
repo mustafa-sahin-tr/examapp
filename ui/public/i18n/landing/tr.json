@@ -1,4 +1,11 @@
 {
+  "images": {
+    "hero": "assets/images/landing/hero.svg",
+    "detect": "assets/images/landing/detect.svg",
+    "parent": "assets/images/landing/parent.svg",
+    "motivation": "assets/images/landing/motivation.svg",
+    "tutor": "assets/images/landing/tutor.svg"
+  },
   "meta": {
     "title": "{{ brand.name }} | Test hazırlama, çözme ve özel ders platformu",
     "description": "Öğretmenler taranmış sayfalardan soruları otomatik ayıklayıp test hazırlar ve atar; öğrenciler çözer, pratik yapar, rozet kazanır; özel ders öğretmenleriyle görüntülü ders yapılır.",

@@ -322,6 +322,10 @@
     "GradePromotedToParent": {
       "title": "New grade",
       "body": "{1} is now in grade {0}; content follows the new grade. The paid period keeps its price; the new grade's price applies at renewal."
+    },
+    "ParentChildPlanEndingBandChange": {
+      "title": "Renewal price changes",
+      "body": "{0}'s plan ends on {1}. {0} is now in grade {2}, so the renewal uses the grade {2} price. You can see it in the parent panel."
     }
   }
 }

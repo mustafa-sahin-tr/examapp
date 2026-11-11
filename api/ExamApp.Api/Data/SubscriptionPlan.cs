@@ -105,6 +105,12 @@ public class UserSubscriptionPlan : BaseEntity
     /// </summary>
     public DateTime? EndingReminderSentAtUtc { get; set; }
 
+    /// <summary>
+    /// Issue #1110: velisine "yenilemede yeni sınıfın fiyatı" uyarısı yazıldı ya da uyarı gerekmediği görüldü (atama başına bir kez,
+    /// bitişten 30 gün önce; <c>PlanBandChangeNoticeJob</c>).
+    /// </summary>
+    public DateTime? BandChangeNoticeSentAtUtc { get; set; }
+
     /// <summary>Issue #1108: tek ders planında ders (Subjects.Id); null = bütün dersler (eski atamalar dahil).</summary>
     public int? ScopeSubjectId { get; set; }
 

@@ -93,6 +93,21 @@ public class ParentChildPlanEndingConsumerTests : IDisposable
     }
 
     [Fact]
+    public async Task Band_change_notice_names_the_new_grade_issue_1110()
+    {
+        var e = Ending();
+        e.NewGradeLevel = 9;
+
+        await Consumer(NewHub()).Consume(Context(e));
+
+        await using var check = _db.NewContext();
+        var n = await check.Notifications.SingleAsync();
+        n.Type.ShouldBe(ParentChildPlanEndingConsumer.NotificationType);
+        n.Title.ShouldBe("Yenileme fiyatı değişiyor");
+        n.Body.ShouldContain("Ayşe K. artık 9. sınıfta");
+    }
+
+    [Fact]
     public async Task Unresolvable_parent_sub_throws_instead_of_dropping_the_reminder()
     {
         await Should.ThrowAsync<InvalidOperationException>(() => Consumer(NewHub()).Consume(Context(Ending(parentSub: ""))));

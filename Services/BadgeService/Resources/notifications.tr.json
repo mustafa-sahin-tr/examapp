@@ -322,6 +322,10 @@
     "GradePromotedToParent": {
       "title": "Yeni sınıf",
       "body": "{1} artık {0}. sınıfta; içerikler yeni sınıfa göre geliyor. Ödenmiş dönem aynı fiyatla sürer, yeni sınıfın fiyatı yenilemede uygulanır."
+    },
+    "ParentChildPlanEndingBandChange": {
+      "title": "Yenileme fiyatı değişiyor",
+      "body": "{0} için planın süresi {1} tarihinde doluyor. {0} artık {2}. sınıfta; yenileme {2}. sınıfın fiyatıyla yapılır. Fiyatı veli panelinde görebilirsiniz."
     }
   }
 }

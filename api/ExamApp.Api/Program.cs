@@ -516,6 +516,12 @@ builder.Services.AddOptions<ExamApp.Api.Services.Entitlements.ParentPlanEndingRe
     .ValidateDataAnnotations()
     .ValidateOnStart();
 builder.Services.AddScoped<ExamApp.Api.Services.Entitlements.IParentPlanEndingReminderJob, ExamApp.Api.Services.Entitlements.ParentPlanEndingReminderJob>();
+// issue #1110: sınıf bandı değişen öğrencinin velisine yenilemeden 30 gün önce "yeni sınıfın fiyatı" uyarısı.
+builder.Services.AddOptions<ExamApp.Api.Services.Entitlements.PlanBandChangeNoticeOptions>()
+    .BindConfiguration(ExamApp.Api.Services.Entitlements.PlanBandChangeNoticeOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddScoped<ExamApp.Api.Services.Entitlements.IPlanBandChangeNoticeJob, ExamApp.Api.Services.Entitlements.PlanBandChangeNoticeJob>();
 // issue #1110: 1 Ağustos sınıf atlaması (Hangfire, her gece; iş yalnız atlama haftasında) + admin geri alma.
 builder.Services.AddOptions<ExamApp.Api.Services.GradePromotion.StudentGradePromotionOptions>()
     .BindConfiguration(ExamApp.Api.Services.GradePromotion.StudentGradePromotionOptions.SectionName)
@@ -904,6 +910,12 @@ RecurringJob.AddOrUpdate<ExamApp.Api.Services.Entitlements.IParentPlanEndingRemi
     ExamApp.Api.Services.Entitlements.ParentPlanEndingReminderJob.RecurringJobId,
     j => j.RunAsync(CancellationToken.None),
     app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Entitlements.ParentPlanEndingReminderOptions>>().Value.Cron);
+
+// issue #1110: sınıf bandı değişen öğrencinin planı bitmeden 30 gün önce velilerine yenileme fiyatı uyarısı (atama başına bir kez).
+RecurringJob.AddOrUpdate<ExamApp.Api.Services.Entitlements.IPlanBandChangeNoticeJob>(
+    ExamApp.Api.Services.Entitlements.PlanBandChangeNoticeJob.RecurringJobId,
+    j => j.RunAsync(CancellationToken.None),
+    app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Entitlements.PlanBandChangeNoticeOptions>>().Value.Cron);
 
 // issue #1110: her yıl 1 Ağustos'ta (Europe/Istanbul) öğrencileri bir üst sınıfa taşır; telafi için ilk hafta her gece.
 RecurringJob.AddOrUpdate<ExamApp.Api.Services.GradePromotion.IStudentGradePromotionJob>(

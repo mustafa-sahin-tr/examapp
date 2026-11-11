@@ -44,11 +44,13 @@ public class StudentService : IStudentService
 
     public async Task<List<GradeDto>> GetGradesAsync(CancellationToken ct = default)
     {
-        return await _context.Grades
+        var grades = await _context.Grades
             .AsNoTracking()
-            .OrderBy(g => g.Id)
-            .Select(g => new GradeDto { Id = g.Id, Name = g.Name })
+            .Select(g => new { g.Id, g.Code, g.Name })
             .ToListAsync(ct);
+        return GradeOrder.Sort(grades, g => g.Code, g => g.Name, g => g.Id)
+            .Select(g => new GradeDto { Id = g.Id, Name = g.Name })
+            .ToList();
     }
     public async Task<StudentProfileDto> GetStudentProfile(int userId)
     {

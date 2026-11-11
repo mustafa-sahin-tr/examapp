@@ -58,7 +58,7 @@
                 padding: 16px 12px;
                 position: relative;
 
-                .menu-icon {
+                .menu-icon-badge {
                     margin-right: 0;
                 }
 
@@ -213,8 +213,14 @@
             }
         }
 
-        .menu-icon {
+        // #1159: rozet sarmalayıcıda; boşluk sarmalayıcıda ki rozet ikonun köşesinde kalsın.
+        .menu-icon-badge {
+            display: inline-flex;
+            flex-shrink: 0;
             margin-right: 16px;
+        }
+
+        .menu-icon {
             font-size: 20px;
             width: 20px;
             height: 20px;
@@ -636,4 +642,9 @@ button.profile-menu {
         line-height: 18px;
         text-align: center;
     }
+}
+
+// #1159: zil rozeti ikonun sarmalayıcısında (mat-icon aria-hidden olduğundan rozeti taşıyamaz).
+.notification-bell-badge {
+    display: inline-flex;
 }

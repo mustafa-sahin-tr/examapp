@@ -1,3 +1,4 @@
+using ExamApp.Api.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -36,10 +37,11 @@ public class TaxonomyService : ITaxonomyService
 
     public async Task<TaxonomyTreeDto> GetTreeAsync(int? gradeId = null, bool unassignedOnly = false, CancellationToken ct = default)
     {
-        var grades = await _context.Grades
-            .OrderBy(g => g.Id)
+        var grades = GradeOrder.Sort(
+                await _context.Grades.AsNoTracking().Select(g => new { g.Id, g.Code, g.Name }).ToListAsync(ct),
+                g => g.Code, g => g.Name, g => g.Id)
             .Select(g => new TaxonomyGradeDto { Id = g.Id, Name = g.Name })
-            .ToListAsync(ct);
+            .ToList();
 
         // Subject -> linked grade ids (GradeSubject). Soft-deleted links are excluded by the global filter.
         var gradeIdsBySubject = (await _context.GradeSubjects

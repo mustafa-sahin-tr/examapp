@@ -46,11 +46,14 @@
               (keydown.space)="navigateTo(item.route)" [title]="isSidenavCollapsed() ? t(item.labelKey) : ''"
               [matTooltip]="isParentLocked(item.id) ? t('menuLocked') : isSidenavCollapsed() ? t(item.labelKey) : ''"
               matTooltipPosition="right">
-              <mat-icon class="menu-icon"
+              <!-- #1159: rozet sarmalayıcıda; mat-icon aria-hidden olduğundan rozeti taşıyamaz. Sayı ekran okuyucuya ayrı metinle. -->
+              <span class="menu-icon-badge"
                 [matBadge]="menuBadgeCount(item.id) > 99 ? '99+' : menuBadgeCount(item.id)"
                 [matBadgeHidden]="menuBadgeCount(item.id) === 0"
-                [matBadgeDescription]="isDirectMessageItem(item.id) ? t('dmUnreadBadge', { count: menuBadgeCount(item.id) }) : ''"
-              matBadgeColor="warn" matBadgeSize="small">{{ item.icon }}</mat-icon>
+                matBadgeColor="warn" matBadgeSize="small"><mat-icon class="menu-icon">{{ item.icon }}</mat-icon></span>
+              @if (isDirectMessageItem(item.id) && menuBadgeCount(item.id) > 0) {
+                <span class="cdk-visually-hidden">{{ t('dmUnreadBadge', { count: menuBadgeCount(item.id) }) }}</span>
+              }
               @if (!isSidenavCollapsed()) {
                 <span class="menu-text">{{ t(item.labelKey) }}</span>
               }
@@ -234,10 +237,11 @@
         ? t('toolbar.notificationsUnread', { count: unreadNotificationCount() })
         : t('toolbar.notifications')"
           [matTooltip]="t('toolbar.notifications')">
-          <mat-icon class="notification-bell-icon"
+          <!-- #1159: sayı düğmenin aria-label'ında; rozet yalnız görsel. -->
+          <span class="notification-bell-badge"
             [matBadge]="unreadNotificationCount() > 99 ? '99+' : unreadNotificationCount()"
             [matBadgeHidden]="unreadNotificationCount() === 0"
-          matBadgeColor="warn" matBadgeSize="small">notifications</mat-icon>
+            matBadgeColor="warn" matBadgeSize="small"><mat-icon class="notification-bell-icon">notifications</mat-icon></span>
         </button>
         <!-- #914: zil son bildirimleri panelde açar; içerik her açılışta yeniden kurulur. -->
         <mat-menu #bellMenu="matMenu" class="ms-menu-panel bell-menu-panel" xPosition="before">

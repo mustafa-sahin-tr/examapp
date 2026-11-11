@@ -62,7 +62,10 @@ public class AdminSubscriptionPlanEditorEndpointsTests(IntegrationApiFactory fac
         res.StatusCode.ShouldBe(HttpStatusCode.OK);
         var plan = await res.Content.ReadFromJsonAsync<SubscriptionPlanDto>(Json);
         plan!.Name.ShouldBe("IT Teacher v2");
-        plan.MonthlyPrice.ShouldBe(249.90m);
+        // #1116: artış 30 gün sonra geçerli; bugünkü fiyat değişmez.
+        plan.MonthlyPrice.ShouldBe(100m);
+        plan.PendingMonthlyPrice.ShouldBe(249.90m);
+        plan.PendingMonthlyPriceFromUtc!.Value.ShouldBe(DateTime.UtcNow.AddDays(PurchaseTermsPolicy.PriceIncreaseNoticeDays), TimeSpan.FromMinutes(5));
         plan.MonthlyLimits[EntitlementFeatures.BookImport].ShouldBe(4);
         plan.MonthlyLimits[EntitlementFeatures.CoachPanel].ShouldBeNull();
         plan.MonthlyLimits[EntitlementFeatures.ManualLabeling].ShouldBe(0); // listede yok = planda yok

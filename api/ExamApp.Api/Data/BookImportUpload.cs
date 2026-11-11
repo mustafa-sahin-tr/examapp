@@ -33,4 +33,7 @@ public class BookImportUpload
     public long PartSizeBytes { get; set; }
 
     public int PartCount { get; set; }
+
+    /// <summary>Issue #1144: <see cref="BookImportSource.Images"/> ise parça = sayfa görseli (<see cref="PartCount"/> görsel, boyutu serbest).</summary>
+    public BookImportSource Source { get; set; } = BookImportSource.Pdf;
 }

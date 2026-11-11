@@ -78,7 +78,7 @@ public class BookImportController : BaseController
 
         var result = await _service.BeginUploadAsync(owner,
             new BeginBookImportUploadRequest(request.BookName ?? string.Empty, request.GradeId, request.SubjectId, request.FileName,
-                request.FileSizeBytes), ct);
+                request.FileSizeBytes, request.Source, request.ImageCount), ct);
         return result.Error switch
         {
             StartBookImportError.None => Ok(result.Upload),
@@ -87,7 +87,10 @@ public class BookImportController : BaseController
         };
     }
 
-    /// <summary>Issue #1122: bir parça (gövde ham bayt, 1'den numaralı). Aynı parçayı yeniden göndermek üzerine yazar.</summary>
+    /// <summary>
+    /// Issue #1122: bir parça (gövde ham bayt, 1'den numaralı). Aynı parçayı yeniden göndermek üzerine yazar. Issue #1144: görsel
+    /// oturumunda parça = sayfa görseli (en çok 15 MB, JPEG / PNG / WebP, en az 1000 px genişlik).
+    /// </summary>
     [HttpPut("uploads/{id:guid}/parts/{partNumber:int}")]
     [RequiresEntitlement(EntitlementFeatures.BookImport)]
     [RequestSizeLimit(BookImportService.UploadPartSizeBytes + 1)]
@@ -106,6 +109,13 @@ public class BookImportController : BaseController
             BookImportUploadPartResult.Ok => NoContent(),
             BookImportUploadPartResult.NotFound => UploadNotFound(),
             BookImportUploadPartResult.NotPdf => BadRequest(new { code = "bookImport.notPdf", message = _localizer["bookImport.notPdf"].Value }),
+            // Issue #1144: sayfa görseli.
+            BookImportUploadPartResult.NotImage => BadRequest(new { code = "bookImport.notImage", message = _localizer["bookImport.notImage"].Value }),
+            BookImportUploadPartResult.ImageTooSmall => BadRequest(new
+            {
+                code = "bookImport.imageTooSmall",
+                message = _localizer["bookImport.imageTooSmall", BookImportService.MinPageImageWidth].Value,
+            }),
             _ => InvalidPart(),
         };
     }

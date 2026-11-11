@@ -472,6 +472,11 @@ namespace ExamApp.Api.Migrations
                     b.Property<string>("SetupJson")
                         .HasColumnType("text");
 
+                    b.Property<int>("Source")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
                     b.Property<int>("Stage")
                         .HasColumnType("integer");
 
@@ -694,6 +699,11 @@ namespace ExamApp.Api.Migrations
 
                     b.Property<long>("PartSizeBytes")
                         .HasColumnType("bigint");
+
+                    b.Property<int>("Source")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
 
                     b.Property<int?>("SubjectId")
                         .HasColumnType("integer");

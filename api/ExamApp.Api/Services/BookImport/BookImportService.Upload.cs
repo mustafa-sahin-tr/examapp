@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
+using Hangfire;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Entitlements;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +13,8 @@ using Microsoft.EntityFrameworkCore;
 namespace ExamApp.Api.Services.BookImport;
 
 /// <summary>Issue #1122: parçalı yüklemeyi açan formdaki kitap bilgisi ve dosyanın toplam boyutu.</summary>
-public sealed record BeginBookImportUploadRequest(string BookName, int GradeId, int? SubjectId, string? FileName, long FileSizeBytes);
+public sealed record BeginBookImportUploadRequest(string BookName, int GradeId, int? SubjectId, string? FileName, long FileSizeBytes,
+    BookImportSource Source = BookImportSource.Pdf, int ImageCount = 0);
 
 public sealed record BookImportUploadDto(Guid Id, long PartSizeBytes, int PartCount);
 
@@ -23,6 +26,10 @@ public enum BookImportUploadPartResult
     NotFound,
     InvalidPart,
     NotPdf,
+    /// <summary>Issue #1144: JPEG / PNG / WebP değil ya da çözülemiyor.</summary>
+    NotImage,
+    /// <summary>Issue #1144: sayfa görseli <see cref="BookImportService.MinPageImageWidth"/>'ten dar.</summary>
+    ImageTooSmall,
 }
 
 public enum CompleteBookImportUploadError
@@ -54,13 +61,27 @@ public sealed partial class BookImportService
     public static readonly TimeSpan UploadExpiry = TimeSpan.FromHours(24);
 
     private readonly string _uploadBucket;
+    private readonly int _maxPages;
+
+    /// <summary>Issue #1144: tek sayfa görselinin sınırı (hızlı eklemeyle aynı).</summary>
+    public const long MaxPageImageBytes = 15L * 1024 * 1024;
+
+    /// <summary>Issue #1144: daha dar sayfa görseli okunmaz (sayfa 2363 px'e büyütülür; tespit küçük yazıda bozulur).</summary>
+    public const int MinPageImageWidth = 1000;
+
+    private static readonly SkiaSharp.SKEncodedImageFormat[] PageImageFormats =
+        [SkiaSharp.SKEncodedImageFormat.Jpeg, SkiaSharp.SKEncodedImageFormat.Png, SkiaSharp.SKEncodedImageFormat.Webp];
 
     public async Task<BeginBookImportUploadResult> BeginUploadAsync(BookImportOwner owner, BeginBookImportUploadRequest request, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(owner);
         ArgumentNullException.ThrowIfNull(request);
 
-        var error = await ValidateUploadAsync(request.BookName, request.GradeId, request.SubjectId, request.FileSizeBytes, ct);
+        var images = request.Source == BookImportSource.Images;
+        // Görsellerde toplam boyut sınırı yok (görsel başına sınır parçada); sayfa sınırı yüklemeden önce.
+        var error = await ValidateUploadAsync(request.BookName, request.GradeId, request.SubjectId, images ? 1 : request.FileSizeBytes, ct);
+        if (error == StartBookImportError.None && images && request.ImageCount is var count && (count < 1 || count > _maxPages))
+            error = StartBookImportError.TooManyPages;
         if (error != StartBookImportError.None)
             return new(null, error);
 
@@ -85,9 +106,10 @@ public sealed partial class BookImportService
             GradeId = request.GradeId,
             SubjectId = request.SubjectId,
             FileName = TrimFileName(request.FileName),
-            FileSizeBytes = request.FileSizeBytes,
-            PartSizeBytes = UploadPartSizeBytes,
-            PartCount = (int)((request.FileSizeBytes + UploadPartSizeBytes - 1) / UploadPartSizeBytes),
+            FileSizeBytes = images ? 0 : request.FileSizeBytes,
+            PartSizeBytes = images ? MaxPageImageBytes : UploadPartSizeBytes,
+            PartCount = images ? request.ImageCount : (int)((request.FileSizeBytes + UploadPartSizeBytes - 1) / UploadPartSizeBytes),
+            Source = request.Source,
         };
         _db.BookImportUploads.Add(upload);
         await _db.SaveChangesAsync(ct);
@@ -107,6 +129,8 @@ public sealed partial class BookImportService
         var upload = await FindUploadAsync(owner, id, ct);
         if (upload is null)
             return BookImportUploadPartResult.NotFound;
+        if (upload.Source == BookImportSource.Images)
+            return await UploadImageAsync(upload, partNumber, content, ct);
         if (partNumber < 1 || partNumber > upload.PartCount || !content.CanSeek || content.Length != ExpectedPartSize(upload, partNumber))
             return BookImportUploadPartResult.InvalidPart;
 
@@ -133,6 +157,9 @@ public sealed partial class BookImportService
         var quota = await _entitlements.CheckAsync(owner.Subject, EntitlementFeatures.BookImport, ct);
         if (!quota.Allowed)
             return new(null, CompleteBookImportUploadError.QuotaReached, quota);
+
+        if (upload.Source == BookImportSource.Images)
+            return await CompleteImagesAsync(owner, upload, ct);
 
         // 200 MB'a kadar: bellek yerine diskte birleştirilir; dosya kapanınca silinir.
         await using var assembled = new FileStream(Path.GetTempFileName(), FileMode.Create, FileAccess.ReadWrite, FileShare.None,
@@ -196,8 +223,85 @@ public sealed partial class BookImportService
     private async Task DeletePartsAsync(BookImportUpload upload)
     {
         for (var part = 1; part <= upload.PartCount; part++)
-            await _minio.DeleteFileByUrlAsync(PartUrl(upload.Id, part));
+            await _minio.DeleteFileByUrlAsync(upload.Source == BookImportSource.Images ? ImageUrl(upload.Id, part) : PartUrl(upload.Id, part));
     }
+
+    /// <summary>
+    /// Issue #1144: bir sayfa görseli. İçerik başlıktan tanınır (uzantıya bakılmaz), boyut ve genişlik denetlenir; görsel olduğu gibi
+    /// saklanır, sayfa biçimine Sayfalar aşamasında çevrilir. Aynı sırayı yeniden göndermek üzerine yazar.
+    /// </summary>
+    private async Task<BookImportUploadPartResult> UploadImageAsync(BookImportUpload upload, int imageNumber, Stream content,
+        CancellationToken ct)
+    {
+        if (imageNumber < 1 || imageNumber > upload.PartCount || !content.CanSeek || content.Length is <= 0 or > MaxPageImageBytes)
+            return BookImportUploadPartResult.InvalidPart;
+
+        content.Position = 0;
+        var bytes = new byte[content.Length];
+        await content.ReadExactlyAsync(bytes, ct);
+        SkiaImageHeader header;
+        try
+        {
+            header = SkiaImaging.ReadHeader(bytes);
+        }
+        catch (Exception ex) when (ex is ImageDecodeException or NotSupportedException or ArgumentException)
+        {
+            return BookImportUploadPartResult.NotImage;
+        }
+        if (!PageImageFormats.Contains(header.Format) || !SkiaImaging.IsWithinLimits(header.Width, header.Height))
+            return BookImportUploadPartResult.NotImage;
+        if ((header.IsTransposed ? header.Height : header.Width) < MinPageImageWidth)
+            return BookImportUploadPartResult.ImageTooSmall;
+
+        content.Position = 0;
+        await _minio.UploadFileAsync(content, ImageObjectName(upload.Id, imageNumber), contentType: "application/octet-stream");
+        return BookImportUploadPartResult.Ok;
+    }
+
+    /// <summary>
+    /// Issue #1144: bütün görseller geldiyse işi açar. Görseller kopyalanmaz: iş yükleme önekini kaynak alır (<see cref="BookImportJob.FileUrl"/>),
+    /// Sayfalar aşaması bitince siler. Yükleme satırı silinir (yarım oturum süpürücüsü kaynağa dokunmasın).
+    /// </summary>
+    private async Task<CompleteBookImportUploadResult> CompleteImagesAsync(BookImportOwner owner, BookImportUpload upload, CancellationToken ct)
+    {
+        for (var image = 1; image <= upload.PartCount; image++)
+        {
+            if (!await _minio.FileExistsAsync(ImageUrl(upload.Id, image), ct))
+                return new(null, CompleteBookImportUploadError.Incomplete);
+        }
+
+        if (await _db.BookImportUploads.Where(u => u.Id == upload.Id).ExecuteDeleteAsync(ct) == 0)
+            return new(null, CompleteBookImportUploadError.NotFound);
+
+        var job = new BookImportJob
+        {
+            Id = Guid.NewGuid(),
+            BookName = upload.BookName,
+            GradeId = upload.GradeId,
+            SubjectId = upload.SubjectId,
+            FileName = upload.FileName,
+            Source = BookImportSource.Images,
+            FileUrl = ImagePrefixUrl(upload.Id),
+            PageCount = upload.PartCount,
+            Status = BookImportJobStatus.Queued,
+            Stage = BookImportStage.Upload,
+        };
+        _db.SetCurrentUser(owner.UserId);
+        _db.BookImportJobs.Add(job);
+        await _db.SaveChangesAsync(ct);
+
+        _jobs.Enqueue<BookImportJobRunner>(r => r.RunAsync(job.Id));
+        return new(ToDto(job), CompleteBookImportUploadError.None);
+    }
+
+    private static string ImageObjectName(Guid id, int imageNumber) => $"book-import-uploads/{id}/{PageImageFileName(imageNumber)}";
+
+    /// <summary>Issue #1144: kaynak önekinin altında n. sayfa görselinin adı (runner önekle birleştirir).</summary>
+    internal static string PageImageFileName(int imageNumber) => $"image-{imageNumber:D4}";
+
+    private string ImagePrefixUrl(Guid id) => $"/img/{_uploadBucket}/book-import-uploads/{id}/";
+
+    private string ImageUrl(Guid id, int imageNumber) => ImagePrefixUrl(id) + PageImageFileName(imageNumber);
 
     private static long ExpectedPartSize(BookImportUpload upload, int partNumber) =>
         partNumber < upload.PartCount ? upload.PartSizeBytes : upload.FileSizeBytes - upload.PartSizeBytes * (upload.PartCount - 1);

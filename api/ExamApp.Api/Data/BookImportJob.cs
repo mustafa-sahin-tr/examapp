@@ -44,6 +44,16 @@ public enum BookImportJobKind
     QuickAdd = 2,
 }
 
+/// <summary>
+/// Issue #1144: kitap işinin kaynağı. <see cref="Images"/>: sayfa başına bir görsel (klasörden); Sayfalar aşaması PDF yerine
+/// görselleri sayfa biçimine çevirir, sonrası aynı.
+/// </summary>
+public enum BookImportSource
+{
+    Pdf = 1,
+    Images = 2,
+}
+
 public enum BookImportTestStatus
 {
     Pending = 1,
@@ -73,6 +83,12 @@ public class BookImportJob : BaseEntity
 
     /// <summary>Issue #1052: kitap aktarımı ya da hızlı ekleme; iki tür ayrı uçlardan görünür.</summary>
     public BookImportJobKind Kind { get; set; } = BookImportJobKind.Book;
+
+    /// <summary>
+    /// Issue #1144: <see cref="BookImportSource.Images"/> ise <see cref="FileUrl"/> yükleme oturumunun görsel önekidir
+    /// (<c>…/book-import-uploads/&lt;uploadId&gt;/</c>, görseller <c>image-0001</c>…); Sayfalar aşaması bitince silinir.
+    /// </summary>
+    public BookImportSource Source { get; set; } = BookImportSource.Pdf;
 
     [Required, MaxLength(MaxBookNameLength)]
     public string BookName { get; set; } = string.Empty;

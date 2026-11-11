@@ -39,6 +39,8 @@ public enum StartBookImportError
     NotPdf,
     FileTooLarge,
     QuotaReached,
+    /// <summary>Issue #1144: görsel sayısı 1 ile sayfa sınırı arasında değil.</summary>
+    TooManyPages,
 }
 
 public sealed record StartBookImportResult(BookImportJobDto? Job, StartBookImportError Error, EntitlementCheck? Quota = null);
@@ -166,6 +168,7 @@ public sealed partial class BookImportService : IBookImportService
         _maxJobCostUsd = BookImportJobRunner.MaxJobCost(configuration);
         _demoMaxRuns = Math.Max(0, configuration.GetValue<int?>("BookImport:DemoMaxRuns") ?? DefaultDemoMaxRuns);
         _uploadBucket = configuration["MinioConfig:BucketName"] ?? string.Empty;
+        _maxPages = Math.Max(1, configuration.GetValue<int?>("BookImport:MaxPages") ?? BookImportJobRunner.DefaultMaxPages);
         _stallAfter = TimeSpan.FromMinutes(Math.Max(1, configuration.GetValue<int?>("BookImport:StallMinutes") ?? DefaultStallMinutes));
     }
 
@@ -400,6 +403,7 @@ public sealed partial class BookImportService : IBookImportService
     {
         dto.Id = job.Id;
         dto.Kind = job.Kind.ToString();
+        dto.Source = job.Source.ToString();
         dto.BookName = job.BookName;
         dto.GradeId = job.GradeId;
         dto.SubjectId = job.SubjectId;

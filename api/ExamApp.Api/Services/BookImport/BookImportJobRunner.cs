@@ -185,6 +185,12 @@ public class BookImportJobRunner
         if (job.Stage != BookImportStage.Pages)
             await EnterStageAsync(job, BookImportStage.Pages);
 
+        if (job.Source == BookImportSource.Images)
+        {
+            await NormalizeImagesAsync(job);
+            return;
+        }
+
         if (string.IsNullOrEmpty(job.FileUrl))
             throw new BookImportFailure("The uploaded PDF is missing.");
         byte[] pdf;
@@ -230,6 +236,84 @@ public class BookImportJobRunner
 
         _logger.LogInformation("Book import job {JobId}: rendered {Pages} pages in {Seconds:F1}s", job.Id, pageCount - next + 1,
             (DateTime.UtcNow - started).TotalSeconds);
+    }
+
+    /// <summary>
+    /// Issue #1144: sayfa görselleri (klasörden yüklenen) PDF sayfalarıyla aynı biçime çevrilir: EXIF yönü uygulanır, genişlik
+    /// <see cref="PdfiumRasterizer.DefaultPageWidth"/> (oran korunur), WebP kalite <see cref="PdfiumRasterizer.DefaultWebpQuality"/>.
+    /// Kaldığı sayfadan devam eder; hepsi bitince yüklenen kaynak görseller silinir (sayfalar kalır).
+    /// </summary>
+    private async Task NormalizeImagesAsync(BookImportJob job)
+    {
+        var pageCount = job.PageCount ?? 0;
+        if (pageCount < 1 || string.IsNullOrEmpty(job.FileUrl))
+            throw new BookImportFailure("The uploaded page images are missing.");
+        if (pageCount > _maxPages)
+            throw new BookImportFailure($"The book has {pageCount} page images; the limit is {_maxPages}.");
+
+        var done = await _db.BookImportPages.Where(p => p.JobId == job.Id).Select(p => p.FilePage).ToListAsync();
+        var next = done.Count == 0 ? 1 : done.Max() + 1;
+        job.StageTotal = pageCount;
+        job.StageProcessed = next - 1;
+        await _db.SaveChangesAsync();
+
+        var started = DateTime.UtcNow;
+        for (var filePage = next; filePage <= pageCount; filePage++)
+        {
+            byte[] source;
+            await using (var stream = await _minio.GetFileStreamAsync(job.FileUrl + BookImportService.PageImageFileName(filePage))
+                                      ?? throw new BookImportFailure($"Page image {filePage} could not be read from storage."))
+            {
+                using var buffer = new MemoryStream();
+                await stream.CopyToAsync(buffer);
+                source = buffer.ToArray();
+            }
+
+            var page = NormalizePageImage(source, filePage);
+            using var image = new MemoryStream(page.Webp, writable: false);
+            var url = await _minio.UploadFileAsync(image, PageObjectName(job.Id, filePage), contentType: "image/webp");
+            _db.BookImportPages.Add(new BookImportPage
+            {
+                JobId = job.Id,
+                FilePage = filePage,
+                ImageUrl = url,
+                Width = page.Width,
+                Height = page.Height,
+                SizeBytes = page.Webp.LongLength,
+            });
+            job.StageProcessed = filePage;
+            await _db.SaveChangesAsync();
+            await BookQuestionImportStage.StopIfCancelledAsync(_db, job.Id, default);
+        }
+
+        for (var filePage = 1; filePage <= pageCount; filePage++)
+            await _minio.DeleteFileByUrlAsync(job.FileUrl + BookImportService.PageImageFileName(filePage));
+
+        _logger.LogInformation("Book import job {JobId}: normalized {Pages} page images in {Seconds:F1}s", job.Id, pageCount - next + 1,
+            (DateTime.UtcNow - started).TotalSeconds);
+    }
+
+    internal static (byte[] Webp, int Width, int Height) NormalizePageImage(byte[] source, int filePage)
+    {
+        SkiaSharp.SKBitmap decoded;
+        try
+        {
+            decoded = SkiaImaging.DecodeOriented(source, out _);
+        }
+        catch (Exception ex) when (ex is ImageDecodeException or ImageTooLargeException or NotSupportedException)
+        {
+            throw new BookImportFailure($"Page image {filePage} could not be decoded.");
+        }
+
+        using (decoded)
+        {
+            var width = PdfiumRasterizer.DefaultPageWidth;
+            var height = Math.Max(1, (int)Math.Round((double)decoded.Height * width / decoded.Width));
+            if (!SkiaImaging.IsWithinLimits(width, height))
+                throw new BookImportFailure($"Page image {filePage} is too tall for a page.");
+            using var page = SkiaImaging.CropResize(decoded, new SkiaSharp.SKRectI(0, 0, decoded.Width, decoded.Height), width, height);
+            return (SkiaImaging.Encode(page, SkiaSharp.SKEncodedImageFormat.Webp, PdfiumRasterizer.DefaultWebpQuality), width, height);
+        }
     }
 
     /// <summary>

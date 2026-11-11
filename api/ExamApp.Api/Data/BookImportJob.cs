@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace ExamApp.Api.Data;
 
@@ -49,6 +50,8 @@ public enum BookImportJobKind
 /// görselleri sayfa biçimine çevirir, sonrası aynı. <see cref="LooseImages"/>: her görsel bağımsız bir soru kaynağı (karışık sorular;
 /// hızlı ekleme gibi görsel başına bir test satırı, kitap ve kurulum yok, onayda sorular havuza).
 /// </summary>
+// UI "Images" / "LooseImages" adıyla gönderir; dönüştürücüsüz başlangıç isteği 400 alıyordu.
+[JsonConverter(typeof(JsonStringEnumConverter<BookImportSource>))]
 public enum BookImportSource
 {
     Pdf = 1,

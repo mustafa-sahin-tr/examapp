@@ -49,6 +49,19 @@
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
+
+    // Satırın tamamı tıklanır: etiket içerik kadar genişti, dar şık görselinin sağına dokunmak seçmiyordu.
+    mat-radio-button,
+    ::ng-deep .mdc-form-field,
+    ::ng-deep .mdc-form-field > label {
+      width: 100%;
+    }
+
+    // Şık görselleri kitap kırpımı: tam genişlikte telefonda tek şık ekranı dolduruyordu.
+    img {
+      max-height: 6rem;
+      width: auto;
+    }
   }
 }
 

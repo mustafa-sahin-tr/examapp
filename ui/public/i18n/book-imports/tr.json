@@ -54,6 +54,7 @@
     "tooManyImages": "En fazla 600 sayfa görseli yüklenebilir.",
     "notImage": "Bir dosya okunabilir bir görsel değil (JPEG, PNG ya da WebP).",
     "imageTooSmall": "Bir sayfa görseli çok küçük; görseller en az 1000 piksel genişlikte olmalı.",
+    "looseImageTooSmall": "Bir soru görseli çok küçük; görseller en az 400 piksel genişlikte olmalı.",
     "tooManyPages": "Sayfa sayısı sınırı aşıldı."
   },
   "demo": {

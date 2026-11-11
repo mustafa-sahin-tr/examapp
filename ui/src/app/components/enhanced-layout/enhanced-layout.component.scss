@@ -436,6 +436,15 @@ button.profile-menu {
         padding-bottom: calc(#{$mobile-bottom-nav-height} + env(safe-area-inset-bottom) + 20px);
     }
 
+    // styles.scss `.main-content { height: 100% !important }`: uzun sayfada içerik main'den taşar, padding-bottom
+    // taşan içeriğin sonuna değil main'in kutusuna düşer → son satır / gönder düğmesi alt navın altında kalıyordu.
+    // Akıştaki boşluk taşan içeriğin sonuna eklenir.
+    .main-content:not(.no-bottom-nav)::after {
+        content: '';
+        display: block;
+        height: calc(#{$mobile-bottom-nav-height} + env(safe-area-inset-bottom));
+    }
+
     // Alt nav gizliyken (sınav çözme) ona ayrılan boşluk da kalkar
     .main-content-wrapper.no-bottom-nav,
     .main-content.no-bottom-nav {

@@ -54,6 +54,7 @@
     "tooManyImages": "At most 600 page images can be uploaded.",
     "notImage": "A file is not a readable image (JPEG, PNG or WebP).",
     "imageTooSmall": "A page image is too small; images must be at least 1000 pixels wide.",
+    "looseImageTooSmall": "A question image is too small; images must be at least 400 pixels wide.",
     "tooManyPages": "The page limit was exceeded."
   },
   "demo": {

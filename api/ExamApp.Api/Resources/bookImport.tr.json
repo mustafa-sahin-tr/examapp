@@ -11,6 +11,7 @@
     "invalidSubject": "Geçerli bir ders seçin.",
     "notImage": "Dosya JPEG, PNG ya da WebP görseli değil.",
     "imageTooSmall": "Sayfa görseli çok küçük; en az {0} piksel genişlik gerekir.",
+    "looseImageTooSmall": "Soru görseli çok küçük; en az {0} piksel genişlik gerekir.",
     "tooManyPages": "Görsel sayısı sayfa sınırının dışında.",
     "notPdf": "Dosya PDF değil.",
     "fileTooLarge": "Dosya çok büyük.",

@@ -117,6 +117,11 @@ public class BookImportController : BaseController
                 code = "bookImport.imageTooSmall",
                 message = _localizer["bookImport.imageTooSmall", BookImportService.MinPageImageWidth].Value,
             }),
+            BookImportUploadPartResult.LooseImageTooSmall => BadRequest(new
+            {
+                code = "bookImport.looseImageTooSmall",
+                message = _localizer["bookImport.looseImageTooSmall", BookImportService.MinLooseImageWidth].Value,
+            }),
             _ => InvalidPart(),
         };
     }

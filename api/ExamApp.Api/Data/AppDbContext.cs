@@ -252,6 +252,7 @@ public class AppDbContext : DbContext
     public DbSet<SubscriptionPlanAssignmentAudit> SubscriptionPlanAssignmentAudits { get; set; } // issue #1030
     public DbSet<EntitlementUsage> EntitlementUsages { get; set; }
     public DbSet<SchoolLicense> SchoolLicenses { get; set; } // issue #1092
+    public DbSet<TeacherSponsorship> TeacherSponsorships { get; set; } // issue #1115
     public DbSet<SchoolLicenseAudit> SchoolLicenseAudits { get; set; }
 
     // Issue #693: deneme sınavları.
@@ -1510,6 +1511,12 @@ public class AppDbContext : DbContext
             e.HasIndex(u => new { u.UserId, u.FeatureKey, u.UsedAtUtc });
         });
         // Issue #1092: okul başına tek lisans; planlar silinemez (Restrict).
+        // Issue #1115: öğretmen başına tek açık sponsorluk (kapananlar denetim izi olarak kalır).
+        modelBuilder.Entity<TeacherSponsorship>(e =>
+        {
+            e.HasIndex(x => x.TeacherUserId).IsUnique().HasFilter("\"EndedAtUtc\" IS NULL");
+        });
+
         modelBuilder.Entity<SchoolLicense>(e =>
         {
             e.HasOne(l => l.School).WithMany().HasForeignKey(l => l.SchoolId).OnDelete(DeleteBehavior.Cascade);

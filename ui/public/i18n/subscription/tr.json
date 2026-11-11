@@ -114,7 +114,9 @@
     "usageTitle": "Bu ayki kullanım",
     "usedOf": "{{ used }} / {{ limit }}",
     "resets": "Sayaçlar {{ date }} tarihinde sıfırlanır.",
-    "schoolLicense": "Okulunun lisansıyla"
+    "schoolLicense": "Okulunun lisansıyla",
+    "studentSponsored": "Ücretli planı olan öğrencilerin sayesinde",
+    "sponsorGraceEnds": "Ücretli planlı öğrencin kalmadı; bu plan {{ date }} tarihine kadar sürer."
   },
   "limitDialog": {
     "title": "Bu ayki limitine ulaştın",

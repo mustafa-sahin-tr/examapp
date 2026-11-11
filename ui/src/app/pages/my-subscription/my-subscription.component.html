@@ -18,9 +18,13 @@
             <!-- Issue #1092: plan okulun lisansından -->
             <p class="card__validity" data-testid="my-plan-school-license">{{ t('mine.schoolLicense') }}</p>
           }
+          @if (plan.studentSponsored) {
+            <!-- Issue #1115: ücretli öğrencisi olan öğretmene Essential; öğrenci kalmayınca grace -->
+            <p class="card__validity" data-testid="my-plan-student-sponsored">{{ t('mine.studentSponsored') }}</p>
+          }
           @if (plan.validToUtc) {
             <p class="card__validity" data-testid="my-plan-validity">
-              {{ t(isTrial() ? 'mine.trialEnds' : 'mine.validTo', { date: (plan.validToUtc | date: 'd MMMM y') }) }}
+              {{ t(isTrial() ? 'mine.trialEnds' : plan.studentSponsored ? 'mine.sponsorGraceEnds' : 'mine.validTo', { date: (plan.validToUtc | date: 'd MMMM y') }) }}
             </p>
           }
         </div>

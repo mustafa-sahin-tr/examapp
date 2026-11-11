@@ -114,7 +114,9 @@
     "usageTitle": "This month's usage",
     "usedOf": "{{ used }} / {{ limit }}",
     "resets": "Counters reset on {{ date }}.",
-    "schoolLicense": "Through your school's license"
+    "schoolLicense": "Through your school's license",
+    "studentSponsored": "Thanks to your students on a paid plan",
+    "sponsorGraceEnds": "You no longer have a student on a paid plan; this plan lasts until {{ date }}."
   },
   "limitDialog": {
     "title": "You've reached this month's limit",

@@ -145,6 +145,7 @@ public class SubscriptionPlansController : BaseController
             TrialAvailable = await IsTrialAvailableAsync(userId, ct),
             Locked = locked,
             SchoolLicense = plan.FromSchoolLicense,
+            StudentSponsored = plan.FromStudentSponsorship,
             Purchase = PlanPurchaseDto.From(await _entitlements.PurchaseStatusAsync(userId, ct)),
             Features = features,
         };

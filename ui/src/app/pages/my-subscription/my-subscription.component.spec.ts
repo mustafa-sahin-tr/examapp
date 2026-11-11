@@ -66,6 +66,21 @@ describe('MySubscriptionComponent (issue #1029)', () => {
     expect(text('my-plan-school-license')).toBe('Okulunun lisansıyla');
   });
 
+  it('notes a teacher plan sponsored by paid students and the grace end (issue #1115)', () => {
+    create(
+      of({
+        ...TRIAL,
+        planKey: 'teacher-essential',
+        displayNameKey: 'subscription.plans.teacherEssential',
+        validToUtc: '2027-03-01T00:00:00Z',
+        studentSponsored: true,
+      }),
+    );
+
+    expect(text('my-plan-student-sponsored')).toBe('Ücretli planı olan öğrencilerin sayesinde');
+    expect(text('my-plan-validity')).toMatch(/^Ücretli planlı öğrencin kalmadı; bu plan 1 \S+ 2027 tarihine kadar sürer\.$/);
+  });
+
   it('shows a retry on load failure', () => {
     create(throwError(() => new Error('x')));
 

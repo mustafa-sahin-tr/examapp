@@ -402,7 +402,8 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   `ScopeJson`'a yazılmaz, öğrenci o dersin konusunu yine seçer; başka ders 403; gün içinde plan değişirse o günün seti kalır).
   Öğrencinin atanmadan açtığı test / etkinlik (sayfanın dersi; dersi olmayan sayfa kapsamda) ve deneme oturumu (oturumun bütün
   soruları planın dersinden olmalı: yalnız o dersin oturumu açılır) `TestSessionService.StartTestAsync`'te, hak sayımından önce
-  denetlenir; atanan iş ve yarım oturuma dönüş daralmaz. Sıradakiler: bilgi kartları, çalışma sayfaları, soru havuzu.
+  denetlenir; atanan iş ve yarım oturuma dönüş daralmaz. Bilgi kartları: kendi destesi yalnız planın dersiyle (ya da derssiz)
+  oluşturulur / düzenlenir; öğretmen destesi ve var olan destelerin çalışılması daralmaz. Sıradakiler: çalışma sayfaları, soru havuzu.
 - **Okul lisansı (#1092):** özel anlaşmayla okulun bütün üyelerine plan: `SchoolLicenses` (okul başına tek satır; öğretmen ve öğrenci
   planı, varsayılan iki kitlenin Pro'su; başlangıç / hariç bitiş; anlaşma notu ≤ 200). Kimseye atama yazılmaz: plan çözümü
   (`EntitlementService.ResolvePlanAsync`, admin listesi `CurrentPlansAsync`, ortak kural `SchoolLicensePlans`) kullanıcının okuluna

@@ -27,6 +27,7 @@ public class FlashcardsController(
     IFlashcardDeckService decks,
     IFlashcardStudyService study,
     IStudentService studentService,
+    IEntitlementService entitlements,
     IStringLocalizer<Messages> localizer) : BaseController
 {
     private const int MaxDueTake = 50;
@@ -42,12 +43,14 @@ public class FlashcardsController(
     [HttpPost("decks")]
     [RequiresEntitlement(EntitlementFeatures.StudyTools, InPlanOnly = true)] // #1089: kendi destesi
     public Task<IActionResult> CreateDeck([FromBody] SaveFlashcardDeckDto request, CancellationToken ct) =>
-        AsLearnerAsync(async learner => Ok(await decks.CreateAsync(Owner(learner), request, ct)), ct);
+        AsLearnerAsync(async learner => await OutOfScopeAsync(learner, request.SubjectId, ct)
+            ?? Ok(await decks.CreateAsync(Owner(learner), request, ct)), ct);
 
     [HttpPut("decks/{id:int}")]
     [RequiresEntitlement(EntitlementFeatures.StudyTools, InPlanOnly = true)] // #1089: kendi destesi
     public Task<IActionResult> UpdateDeck(int id, [FromBody] SaveFlashcardDeckDto request, CancellationToken ct) =>
-        AsLearnerAsync(async learner => await decks.UpdateAsync(Owner(learner), id, request, ct) is { } deck ? Ok(deck) : NotFound(), ct);
+        AsLearnerAsync(async learner => await OutOfScopeAsync(learner, request.SubjectId, ct)
+            ?? (await decks.UpdateAsync(Owner(learner), id, request, ct) is { } deck ? Ok(deck) : NotFound()), ct);
 
     [HttpDelete("decks/{id:int}")]
     public Task<IActionResult> DeleteDeck(int id, CancellationToken ct) =>
@@ -96,6 +99,16 @@ public class FlashcardsController(
                 _ => NotFound(),
             };
         }, ct);
+    }
+
+    /// <summary>
+    /// Issue #1109: tek ders planında kendi destesi yalnız planın dersine açılır (dersi seçilmemiş deste serbest). Öğretmen
+    /// destesi ve var olan destelerin çalışılması daralmaz.
+    /// </summary>
+    private async Task<IActionResult?> OutOfScopeAsync(FlashcardLearner learner, int? subjectId, CancellationToken ct)
+    {
+        var scope = await StudyScope.ForAsync(entitlements, learner.UserId, ct);
+        return scope.Covers(subjectId) ? null : EntitlementLimitResponse.OutOfScope(scope.SubjectId!.Value, scope.PlanKey);
     }
 
     private static FlashcardOwner Owner(FlashcardLearner learner) => new(learner.UserId, FlashcardDeckOwnerKind.Student);

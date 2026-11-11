@@ -143,6 +143,34 @@ public class PracticeScopePostgresTests(IntegrationApiFactory factory) : Integra
         (await client.GetAsync("/api/practice/mistakes")).StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
+    /// <summary>Issue #1109: tek ders planında kendi destesi yalnız planın dersine (ya da derssiz) açılır.</summary>
+    [Fact]
+    public async Task A_single_subject_plan_keeps_own_flashcard_decks_in_its_subject_issue1109()
+    {
+        var seeded = await SeedAsync();
+        await WithDbAsync(async db =>
+        {
+            var plan = await db.SubscriptionPlans.SingleAsync(p => p.Key == SubscriptionPlan.StudentProKey);
+            db.UserSubscriptionPlans.Add(new UserSubscriptionPlan
+            {
+                UserId = StudentUser, PlanId = plan.Id, ValidFromUtc = DateTime.UtcNow.AddDays(-1), ScopeSubjectId = seeded.Turkish,
+            });
+            await db.SaveChangesAsync();
+        });
+        var client = await StudentAsync();
+
+        var refused = await client.PostAsJsonAsync("/api/flashcards/decks", new { title = "Mat", subjectId = seeded.Math });
+        refused.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await refused.Content.ReadFromJsonAsync<EntitlementLimitReachedDto>(Json))!.Code.ShouldBe(EntitlementLimitReachedDto.OutOfScopeCode);
+
+        var created = await client.PostAsJsonAsync("/api/flashcards/decks", new { title = "Türkçe", subjectId = seeded.Turkish });
+        created.StatusCode.ShouldBe(HttpStatusCode.OK, await created.Content.ReadAsStringAsync());
+        var deck = (await created.Content.ReadFromJsonAsync<FlashcardDeckDetailDto>(Json))!;
+        (await client.PutAsJsonAsync($"/api/flashcards/decks/{deck.Id}", new { title = "Mat", subjectId = seeded.Math }))
+            .StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await client.PostAsJsonAsync("/api/flashcards/decks", new { title = "Genel" })).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
     [Fact]
     public async Task A_free_session_filters_by_subtopic_and_stops_at_the_target()
     {

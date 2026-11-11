@@ -11,6 +11,13 @@
   <section class="bi-start" [attr.aria-label]="t('form.title')">
     <form class="bi-form" [formGroup]="form" (ngSubmit)="submit()">
       <h2 class="bi-section-title">{{ t('form.title') }}</h2>
+      <mat-button-toggle-group class="bi-source" [value]="mode()" (change)="setMode($event.value)" [disabled]="submitting()"
+        [attr.aria-label]="t('form.sourceLabel')" data-testid="source-mode">
+        <mat-button-toggle value="pdf">{{ t('form.sourcePdf') }}</mat-button-toggle>
+        <mat-button-toggle value="images">{{ t('form.sourceImages') }}</mat-button-toggle>
+      </mat-button-toggle-group>
+
+      @if (mode() === 'pdf') {
       <label class="bi-drop" [class.is-over]="dragOver()" [class.has-file]="!!file()" (dragover)="onDragOver($event)"
         (dragleave)="dragOver.set(false)" (drop)="onDrop($event)">
         <input class="bi-drop__input" type="file" accept="application/pdf,.pdf" (change)="onFileInput($event)" />
@@ -25,6 +32,47 @@
       </label>
       @if (fileError(); as error) {
       <p class="bi-error" role="alert">{{ t('errors.' + (error === 'notPdf' ? 'notPdf' : 'fileTooLarge')) }}</p>
+      }
+      } @else {
+      <label class="bi-drop" [class.is-over]="dragOver()" [class.has-file]="images().length > 0" (dragover)="onDragOver($event)"
+        (dragleave)="dragOver.set(false)" (drop)="onImagesDrop($event)">
+        <input class="bi-drop__input" type="file" multiple accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+          (change)="onImagesInput($event)" data-testid="images-input" />
+        <mat-icon aria-hidden="true">photo_library</mat-icon>
+        @if (images().length > 0) {
+        <span class="bi-drop__file">{{ t('form.imagesPicked', { count: images().length }) }} · {{ fileSize(imagesBytes()) }}</span>
+        <span class="bi-drop__hint">{{ t('form.replaceImages') }}</span>
+        } @else {
+        <span class="bi-drop__title">{{ t('form.imagesDropTitle') }}</span>
+        <span class="bi-drop__hint">{{ t('form.imagesDropHint') }}</span>
+        }
+      </label>
+      <div class="bi-images__actions">
+        <button mat-stroked-button type="button" (click)="folderInput.click()" [disabled]="submitting()">
+          <mat-icon aria-hidden="true">folder_open</mat-icon>
+          {{ t('form.pickFolder') }}
+        </button>
+        <input #folderInput class="bi-images__folder" type="file" webkitdirectory (change)="onImagesInput($event)"
+          data-testid="folder-input" tabindex="-1" aria-hidden="true" />
+      </div>
+      @if (imagesError(); as error) {
+      <p class="bi-error" role="alert">{{ t('errors.' + error.code, { name: error.name ?? '' }) }}</p>
+      }
+      @if (images().length > 0) {
+      <section class="bi-images" [attr.aria-label]="t('form.orderTitle')" data-testid="images-order">
+        <p class="bi-images__hint">
+          {{ t('form.orderHint') }}
+          @if (skippedFiles() > 0) {
+          {{ t('form.skippedFiles', { count: skippedFiles() }) }}
+          }
+        </p>
+        <ol class="bi-images__list">
+          @for (image of images(); track $index) {
+          <li>{{ pagePath(image) }}</li>
+          }
+        </ol>
+      </section>
+      }
       }
 
       <mat-form-field appearance="outline">
@@ -84,7 +132,7 @@
       <p class="bi-error" role="alert">{{ t(errorKey(code)) }}</p>
       }
       <div class="bi-form__actions">
-        <button mat-flat-button type="submit" [disabled]="submitting() || quotaBlocked() || !file()">
+        <button mat-flat-button type="submit" [disabled]="submitting() || quotaBlocked() || !hasSource()">
           @if (submitting()) {
           <mat-spinner diameter="18" aria-hidden="true"></mat-spinner>
           {{ t('form.uploading') }}

@@ -97,3 +97,50 @@ describe('BookImportService chunked upload (#1122)', () => {
     expect(events).toEqual([{ type: 'progress', part: 0, parts: 3, sentBytes: 0, totalBytes: 10 }]);
   });
 });
+
+describe('BookImportService page images upload (#1144)', () => {
+  const base = '/api/exam/book-imports';
+  let service: BookImportService;
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [provideHttpClient(withXhr()), provideHttpClientTesting()] });
+    service = TestBed.inject(BookImportService);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  it('start_SendsEachImageAsOnePartInOrder', async () => {
+    const images = [
+      new File(['aaa'], 'p1.jpg', { type: 'image/jpeg' }),
+      new File(['bbbbb'], 'p2.png', { type: 'image/png' }),
+    ];
+    const events: BookImportUploadEvent[] = [];
+    service.start({ images, bookName: 'Fen', gradeId: 5, subjectId: null }).subscribe((e) => events.push(e));
+
+    const begin = http.expectOne(`${base}/uploads`);
+    expect(begin.request.body).toEqual({
+      bookName: 'Fen',
+      gradeId: 5,
+      subjectId: null,
+      fileName: 'p1.jpg',
+      fileSizeBytes: 8,
+      source: 'Images',
+      imageCount: 2,
+    });
+    begin.flush({ id: 'u2', partSizeBytes: 15 * 1024 * 1024, partCount: 2 });
+
+    const sent: string[] = [];
+    for (const n of [1, 2]) {
+      const req = http.expectOne(`${base}/uploads/u2/parts/${n}`);
+      sent.push(await (req.request.body as Blob).text());
+      req.flush(null);
+    }
+    http.expectOne({ method: 'POST', url: `${base}/uploads/u2/complete` }).flush({ id: 'job-2' });
+
+    expect(sent).toEqual(['aaa', 'bbbbb']);
+    const p = (part: number, sentBytes: number) => ({ type: 'progress', part, parts: 2, sentBytes, totalBytes: 8 });
+    expect(events).toEqual([p(0, 0), p(1, 3), p(2, 8), { type: 'assembling' }, { type: 'done', job: { id: 'job-2' } }]);
+  });
+});

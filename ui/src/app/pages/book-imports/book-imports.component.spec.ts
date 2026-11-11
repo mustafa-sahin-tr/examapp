@@ -4,7 +4,7 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { Router, provideRouter } from '@angular/router';
 import { Observable, Subject, of, throwError } from 'rxjs';
 
-import { BOOK_IMPORTS_POLL_MS, BookImportsComponent } from './book-imports.component';
+import { BOOK_IMPORTS_POLL_MS, BookImportsComponent, MAX_PAGE_IMAGE_BYTES } from './book-imports.component';
 import { BookImportDemo, BookImportJob, BookImportQuota, BookImportUploadEvent } from '../../models/book-import';
 import { AuthService } from '../../services/auth.service';
 import { EntitlementStateService } from '../../services/entitlement-state.service';
@@ -151,6 +151,65 @@ describe('BookImportsComponent (#1018)', () => {
     expect(text()).toContain('Puan BTS 4.pdf · 1 KB');
     expect(component.form.controls.bookName.value).toBe('Puan BTS 4');
     expect(text()).not.toContain(tr.errors.notPdf);
+  });
+
+  it('pickImages_SortsNaturallySkipsNonImagesAndNamesTheBookAfterTheFolder (#1144)', () => {
+    setup();
+    component.openForm();
+    component.setMode('images');
+    const image = (path: string, type = 'image/jpeg') => {
+      const f = new File([new Uint8Array(10)], path.split('/').pop()!, { type });
+      Object.defineProperty(f, 'webkitRelativePath', { value: path });
+      return f;
+    };
+
+    component.pickImages([
+      image('Fen 5/sayfa10.jpg'),
+      image('Fen 5/.DS_Store', ''),
+      image('Fen 5/sayfa2.png', 'image/png'),
+      image('Fen 5/notlar.txt', 'text/plain'),
+      image('Fen 5/sayfa1.webp', 'image/webp'),
+    ]);
+    fixture.detectChanges();
+
+    expect(component.images().map((f) => f.name)).toEqual(['sayfa1.webp', 'sayfa2.png', 'sayfa10.jpg']);
+    expect(component.form.controls.bookName.value).toBe('Fen 5');
+    const items = Array.from(el().querySelectorAll('[data-testid="images-order"] li')).map((li) =>
+      li.textContent?.trim()
+    );
+    expect(items).toEqual(['Fen 5/sayfa1.webp', 'Fen 5/sayfa2.png', 'Fen 5/sayfa10.jpg']);
+    expect(text()).toContain(tr.form.skippedFiles.replace('{{count}}', '2'));
+
+    component.pickImages([new File(['x'], 'notlar.docx')]);
+    fixture.detectChanges();
+    expect(component.images()).toEqual([]);
+    expect(text()).toContain(tr.errors.noImages);
+
+    const big = new File([new Uint8Array(1)], 'dev.jpg', { type: 'image/jpeg' });
+    Object.defineProperty(big, 'size', { value: MAX_PAGE_IMAGE_BYTES + 1 });
+    component.pickImages([big]);
+    fixture.detectChanges();
+    expect(text()).toContain(tr.errors.imageTooLarge.replace('{{name}}', 'dev.jpg'));
+
+    component.setMode('pdf');
+    expect(component.imagesError()).toBeNull();
+  });
+
+  it('submit_ImagesMode_StartsWithTheSortedImages (#1144)', () => {
+    setup();
+    api.start.mockReturnValue(of({ type: 'done', job: job({ id: 'img-job' }) }));
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    component.openForm();
+    component.setMode('images');
+    const b = new File(['b'], 'b-2.jpg', { type: 'image/jpeg' });
+    const a = new File(['a'], 'b-1.jpg', { type: 'image/jpeg' });
+    component.pickImages([b, a]);
+    component.form.controls.bookName.setValue('Taranmış');
+    component.form.controls.gradeId.setValue(5);
+
+    component.submit();
+
+    expect(api.start).toHaveBeenCalledWith({ images: [a, b], bookName: 'Taranmış', gradeId: 5, subjectId: null });
   });
 
   it('submit_StartsAndNavigatesToDetail', () => {

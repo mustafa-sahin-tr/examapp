@@ -48,6 +48,8 @@ export interface BookImportJob {
   bookId: number | null;
   status: BookImportStatus;
   stage: BookImportStage;
+  /** Issue #1144: `Pdf` ya da `Images` (sayfa görselleri). */
+  source?: 'Pdf' | 'Images';
   fileName: string | null;
   fileSizeBytes: number;
   pageCount: number | null;
@@ -200,8 +202,10 @@ export interface BookImportQuota {
   planKey: string | null;
 }
 
+/** PDF için `file`, sayfa görselleri için (#1144) sırasıyla `images`. */
 export interface StartBookImportRequest {
-  file: File;
+  file?: File;
+  images?: File[];
   bookName: string;
   gradeId: number;
   subjectId: number | null;

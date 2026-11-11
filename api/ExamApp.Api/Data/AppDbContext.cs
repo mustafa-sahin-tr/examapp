@@ -1416,6 +1416,8 @@ public class AppDbContext : DbContext
             e.HasOne<Subject>().WithMany().HasForeignKey(j => j.SubjectId).OnDelete(DeleteBehavior.Restrict);
             // Issue #1052: mevcut işler kitap aktarımıdır.
             e.Property(j => j.Kind).HasDefaultValue(BookImportJobKind.Book);
+            // Issue #1144: mevcut işler PDF'ten; sentinel 0 → EF her eklemede değeri yazar.
+            e.Property(j => j.Source).HasDefaultValue(BookImportSource.Pdf).HasSentinel((BookImportSource)0);
             e.HasIndex(j => new { j.CreateUserId, j.CreateTime });
             // Issue #1032: tek demo kaynağı; demo işi kaynağına bağlıdır.
             e.HasIndex(j => j.IsDemoSource).IsUnique().HasFilter("\"IsDemoSource\" AND NOT \"IsDeleted\"");
@@ -1427,6 +1429,7 @@ public class AppDbContext : DbContext
             e.HasOne<Grade>().WithMany().HasForeignKey(u => u.GradeId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne<Subject>().WithMany().HasForeignKey(u => u.SubjectId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(u => u.CreatedAt);
+            e.Property(u => u.Source).HasDefaultValue(BookImportSource.Pdf).HasSentinel((BookImportSource)0);
         });
         modelBuilder.Entity<BookImportJobTest>(e =>
         {

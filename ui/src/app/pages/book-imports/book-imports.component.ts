@@ -4,6 +4,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, injec
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -40,6 +41,33 @@ const MAX_UPLOAD_BYTES = 200_000_000;
 
 type StatusFilter = 'all' | 'awaiting' | 'failed';
 
+/** Issue #1144: kitap PDF olarak ya da sayfa görselleri (taranmış / fotoğraflanmış sayfalar) olarak yüklenir. */
+export type BookImportSourceMode = 'pdf' | 'images';
+/** Sunucudaki sınırlar (`BookImportService.MaxPageImageBytes`, `BookImport:MaxPages` varsayılanı). */
+export const MAX_PAGE_IMAGE_BYTES = 15 * 1024 * 1024;
+export const MAX_PAGE_IMAGES = 600;
+const PAGE_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const PAGE_IMAGE_EXTENSIONS = /\.(jpe?g|png|webp)$/i;
+/** Doğal sıra: "sayfa2" "sayfa10"dan önce; klasör seçiminde göreli yol (alt klasörler de sıralanır). */
+const NATURAL_ORDER = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
+type ImagesError = 'noImages' | 'imageTooLarge' | 'tooManyImages';
+
+/** Seçimdeki dosyanın sıralamada kullanılan adı (klasör seçiminde göreli yol). */
+export function pageImagePath(file: File): string {
+  return file.webkitRelativePath || file.name;
+}
+
+/** Sayfa görseli mi (tür boş gelebilir; uzantıya da bakılır). Gizli dosyalar (`.DS_Store`, `._x.jpg`) sayılmaz. */
+export function isPageImage(file: File): boolean {
+  if ((file.name.split('/').pop() ?? '').startsWith('.')) return false;
+  return PAGE_IMAGE_TYPES.includes(file.type) || (!file.type && PAGE_IMAGE_EXTENSIONS.test(file.name));
+}
+
+export function sortPageImages(files: File[]): File[] {
+  return [...files].sort((a, b) => NATURAL_ORDER.compare(pageImagePath(a), pageImagePath(b)));
+}
+
 /** Issue #1122: kalan süre ilk bu kadar ms sonra gösterilir. */
 const UPLOAD_ETA_WARMUP_MS = 3000;
 
@@ -65,6 +93,7 @@ interface UploadProgress {
   imports: [
     DatePipe,
     MatButtonModule,
+    MatButtonToggleModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -112,6 +141,13 @@ export class BookImportsComponent implements OnInit {
   readonly file = signal<File | null>(null);
   readonly fileError = signal<'notPdf' | 'tooLarge' | null>(null);
   readonly dragOver = signal(false);
+  /** Issue #1144: kaynak türü ve sıralanmış sayfa görselleri; görsel olmayan dosyalar sayılıp atlanır. */
+  readonly mode = signal<BookImportSourceMode>('pdf');
+  readonly images = signal<File[]>([]);
+  readonly skippedFiles = signal(0);
+  readonly imagesError = signal<{ code: ImagesError; name?: string } | null>(null);
+  readonly imagesBytes = computed(() => this.images().reduce((sum, image) => sum + image.size, 0));
+  readonly hasSource = computed(() => (this.mode() === 'pdf' ? !!this.file() : this.images().length > 0));
   readonly submitting = signal(false);
   /** Sunucudan gelen hata kodu (`bookImport.notPdf` …) ya da `generic`. */
   readonly submitError = signal<string | null>(null);
@@ -256,7 +292,71 @@ export class BookImportsComponent implements OnInit {
     this.form.reset();
     this.file.set(null);
     this.fileError.set(null);
+    this.clearImages();
+    this.mode.set('pdf');
     this.submitError.set(null);
+  }
+
+  setMode(mode: BookImportSourceMode): void {
+    if (this.submitting() || mode === this.mode()) return;
+    this.mode.set(mode);
+    this.file.set(null);
+    this.fileError.set(null);
+    this.clearImages();
+    this.submitError.set(null);
+  }
+
+  private clearImages(): void {
+    this.images.set([]);
+    this.skippedFiles.set(0);
+    this.imagesError.set(null);
+  }
+
+  onImagesInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.pickImages(Array.from(input.files ?? []));
+    input.value = '';
+  }
+
+  /** Bırakılan klasörler de okunur (tarayıcının dosya sistemi girdileri, alt klasörler dahil). */
+  async onImagesDrop(event: DragEvent): Promise<void> {
+    event.preventDefault();
+    this.dragOver.set(false);
+    const items = Array.from(event.dataTransfer?.items ?? []);
+    const entries = items.map((item) => item.webkitGetAsEntry?.() ?? null);
+    if (entries.length > 0 && entries.every((entry) => entry !== null)) {
+      const files = (await Promise.all(entries.map((entry) => readEntry(entry!, '')))).flat();
+      this.pickImages(files);
+      return;
+    }
+    this.pickImages(Array.from(event.dataTransfer?.files ?? []));
+  }
+
+  pickImages(files: File[]): void {
+    this.submitError.set(null);
+    if (files.length === 0) return;
+    const images = sortPageImages(files.filter(isPageImage));
+    this.images.set([]);
+    this.skippedFiles.set(files.length - images.length);
+    if (images.length === 0) {
+      this.imagesError.set({ code: 'noImages' });
+      return;
+    }
+    if (images.length > MAX_PAGE_IMAGES) {
+      this.imagesError.set({ code: 'tooManyImages' });
+      return;
+    }
+    const tooLarge = images.find((image) => image.size > MAX_PAGE_IMAGE_BYTES);
+    if (tooLarge) {
+      this.imagesError.set({ code: 'imageTooLarge', name: pageImagePath(tooLarge) });
+      return;
+    }
+    this.imagesError.set(null);
+    this.images.set(images);
+    if (!this.form.controls.bookName.value) {
+      const folder = pageImagePath(images[0]).split('/');
+      if (folder.length > 1) this.form.controls.bookName.setValue(folder[0]);
+    }
   }
 
   onFileInput(event: Event): void {
@@ -299,7 +399,8 @@ export class BookImportsComponent implements OnInit {
 
   submit(): void {
     const file = this.file();
-    if (!file || this.form.invalid || this.submitting() || this.quotaBlocked()) {
+    const images = this.mode() === 'images' ? this.images() : [];
+    if (!this.hasSource() || this.form.invalid || this.submitting() || this.quotaBlocked()) {
       this.form.markAllAsTouched();
       return;
     }
@@ -309,7 +410,12 @@ export class BookImportsComponent implements OnInit {
     this.uploadProgress.set(null);
     this.uploadStartedAt = Date.now();
     this.api
-      .start({ file, bookName: value.bookName.trim(), gradeId: value.gradeId!, subjectId: value.subjectId })
+      .start({
+        ...(images.length > 0 ? { images } : { file: file! }),
+        bookName: value.bookName.trim(),
+        gradeId: value.gradeId!,
+        subjectId: value.subjectId,
+      })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (event) => {
@@ -372,11 +478,16 @@ export class BookImportsComponent implements OnInit {
       'fileTooLarge',
       'uploadNotFound',
       'uploadIncomplete',
+      'notImage',
+      'imageTooSmall',
+      'tooManyPages',
     ];
     const name = code.replace(/^bookImport\./, '');
     if (code === 'entitlement.limitReached') return 'errors.quotaReached';
     return known.includes(name) ? `errors.${name}` : 'errors.generic';
   }
+
+  readonly pagePath = pageImagePath;
 
   /** Dosya boyutu: 1 MB altı KB ile (küçük dosya "0 MB" görünmesin). */
   fileSize(bytes: number): string {
@@ -398,4 +509,22 @@ export class BookImportsComponent implements OnInit {
         return 'actions.open';
     }
   }
+}
+
+/** Klasör girdisini dosyalara açar; `readEntries` partiler hâlinde döner, boş parti gelene kadar okunur. */
+async function readEntry(entry: FileSystemEntry, parent: string): Promise<File[]> {
+  const path = parent ? `${parent}/${entry.name}` : entry.name;
+  if (entry.isFile) {
+    const file = await new Promise<File>((resolve, reject) => (entry as FileSystemFileEntry).file(resolve, reject));
+    // Sıralama göreli yola göre; bırakılan dosyada `webkitRelativePath` boştur.
+    return [path.includes('/') ? new File([file], path, { type: file.type, lastModified: file.lastModified }) : file];
+  }
+  const reader = (entry as FileSystemDirectoryEntry).createReader();
+  const children: FileSystemEntry[] = [];
+  for (;;) {
+    const batch = await new Promise<FileSystemEntry[]>((resolve, reject) => reader.readEntries(resolve, reject));
+    if (batch.length === 0) break;
+    children.push(...batch);
+  }
+  return (await Promise.all(children.map((child) => readEntry(child, path)))).flat();
 }

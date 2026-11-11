@@ -50,6 +50,20 @@ aktarım aracındaki Python portu referanstır (#1022).
   işaretleme rolleri `GET /api/exam/labeling/books/{bookId}/pages/{filePage}/image` (kitaba bağlı en son aktarım).
 - **Depolama:** görseller silinmez (işaretleme ekranları okur); kitap başına ~100–150 MB (gerçek sayfa ~300 KB). MinIO
   büyümesi izlenmeli; iş silme / temizleme #1025'te.
+- **Görsellerden kitap (#1144):** PDF yerine sayfa görselleri (taranmış / telefonla çekilmiş kitap) yüklenebilir.
+  `POST …/uploads` gövdesinde `source: "Images"` + `imageCount` (1..`BookImport:MaxPages`, aşılırsa `tooManyPages`); her
+  parça bir sayfa görseli (1. parça = 1. sayfa, sıra istemcide doğal sıralamayla), JPEG / PNG / WebP, ≤ 15 MB, EXIF
+  döndürmesi hesaba katılmış genişlik ≥ 1000 px (`notImage`, `imageTooSmall` → 400). Görseller
+  `book-import-uploads/<uploadId>/image-<0001>`'e yazılır; tamamlamada hepsi varsa iş `Source=Images`, `FileUrl` = bu önek,
+  `PageCount` = görsel sayısı ile açılır. Sayfalar aşaması rasterize yerine `NormalizeImagesAsync`: görseli EXIF'e göre
+  döndürür, 2363 px genişliğe ölçekler, WebP 82 olarak aynı `pages/` yoluna yazar (kaldığı sayfadan devam eder), bitince
+  kaynak görselleri siler. Sonraki aşamalar PDF'le aynıdır. Hatalar: "The uploaded page images are missing.", "Page image N could not be read from
+  storage.", "… could not be decoded.", "… is too tall for a page.".
+  Ekranda (`/book-imports`) "PDF / Sayfa görselleri" seçimi: görseller çoklu seçimle, "Klasör seç" düğmesiyle
+  (`webkitdirectory`) ya da klasör sürükle-bırakla alınır; görsel olmayan ve gizli dosyalar atlanır, kalanlar göreli yola
+  göre doğal sırayla (`sayfa2` < `sayfa10`) dizilip liste olarak gösterilir, kitap adı boşsa klasör adı olur. İstemci tür,
+  15 MB ve 600 görsel sınırını önceden denetler; genişlik denetimi sunucuda. Ayrıntı ekranında dosya yerine "Görseller"
+  (klasör adı) yazar.
 
 ## Kurulum aşaması ve onay (#1021)
 

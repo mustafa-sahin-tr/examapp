@@ -1,3 +1,4 @@
+using ExamApp.Api.Data;
 using System;
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Http;
@@ -28,6 +29,11 @@ public class BeginBookImportUploadDto
     public string? FileName { get; set; }
 
     public long FileSizeBytes { get; set; }
+
+    /// <summary>Issue #1144: <c>Images</c> ise sayfa başına bir görsel gelir (<see cref="ImageCount"/>; <see cref="FileSizeBytes"/> yok sayılır).</summary>
+    public BookImportSource Source { get; set; } = BookImportSource.Pdf;
+
+    public int ImageCount { get; set; }
 }
 
 /// <summary>Issue #1052: hızlı ekleme formu; <see cref="Answers"/>[i] i. fotoğrafın isteğe bağlı cevap anahtarı.</summary>
@@ -49,6 +55,9 @@ public class BookImportJobDto
 
     /// <summary>Issue #1052: <c>Book</c> ya da <c>QuickAdd</c>.</summary>
     public string Kind { get; set; } = string.Empty;
+
+    /// <summary>Issue #1144: <c>Pdf</c> ya da <c>Images</c> (klasörden sayfa görselleri).</summary>
+    public string Source { get; set; } = nameof(BookImportSource.Pdf);
     public string BookName { get; set; } = string.Empty;
     public int GradeId { get; set; }
     public int? SubjectId { get; set; }

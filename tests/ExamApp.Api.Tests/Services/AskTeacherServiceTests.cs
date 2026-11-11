@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Text.Json;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.AskTeacher;
@@ -6,6 +7,7 @@ using ExamApp.Api.Services.DirectMessages;
 using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Tests.Support;
+using ExamApp.Foundation.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using SkiaSharp;
@@ -49,7 +51,7 @@ public class AskTeacherServiceTests : IDisposable
             .Returns(ci => Task.FromResult<Stream?>(_objects.TryGetValue(ci.ArgAt<string>(0), out var b) ? new MemoryStream(b) : null));
         _minio.DeleteFileByUrlAsync(Arg.Any<string>()).Returns(ci => Task.FromResult(_objects.TryRemove(ci.ArgAt<string>(0), out _)));
         _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
-            .Returns(ci => ci.Arg<IEnumerable<int>>().Select(id => new UserLookupResultDto { Id = id, FullName = $"Ad{id} Soyad" }).ToList());
+            .Returns(ci => ci.Arg<IEnumerable<int>>().Select(id => new UserLookupResultDto { Id = id, KeycloakId = $"kc-{id}", FullName = $"Ad{id} Soyad" }).ToList());
         _entitlements.CheckAsync(Arg.Any<EntitlementSubject>(), EntitlementFeatures.AskTeacher, Arg.Any<CancellationToken>())
             .Returns(_ =>
             {
@@ -235,6 +237,41 @@ public class AskTeacherServiceTests : IDisposable
         AskTeacherService.ShortName("Ayşe Nur Kaya").ShouldBe("Ayşe Nur K.");
         AskTeacherService.ShortName("Ayşe").ShouldBe("Ayşe");
         AskTeacherService.ShortName("").ShouldBe("");
+    }
+
+    [Fact]
+    public async Task Teacher_is_notified_of_a_new_question_and_the_student_of_the_answer_or_expiry()
+    {
+        var answered = (await Send(_relatedTeacherId)).Question!;
+        var expiring = (await Send(_bookedTeacherId)).Question!;
+        (await Answer(RelatedTeacherUser, answered.Id)).Error.ShouldBe(AskTeacherError.None);
+        (await Answer(RelatedTeacherUser, answered.Id)).Error.ShouldBe(AskTeacherError.InvalidState);
+        _clock.Advance(TimeSpan.FromHours(49));
+        (await With(s => s.ExpireAsync(default))).ShouldBe(1);
+        (await With(s => s.ExpireAsync(default))).ShouldBe(0);
+
+        var notices = await NoticesAsync();
+        notices.Select(n => (n.Kind, n.QuestionId, n.RecipientUserId)).ShouldBe(
+        [
+            (AskTeacherNoticeEvent.Asked, answered.Id, RelatedTeacherUser),
+            (AskTeacherNoticeEvent.Asked, expiring.Id, BookedTeacherUser),
+            (AskTeacherNoticeEvent.Answered, answered.Id, StudentUser),
+            (AskTeacherNoticeEvent.Expired, expiring.Id, StudentUser),
+        ], ignoreOrder: true);
+        var asked = notices.Single(n => n.Kind == AskTeacherNoticeEvent.Asked && n.QuestionId == answered.Id);
+        asked.CounterpartName.ShouldBe($"Ad{StudentUser} S.");
+        asked.RecipientKeycloakId.ShouldBe($"kc-{RelatedTeacherUser}");
+        asked.DueAtUtc.ShouldBe(new DateTime(2027, 3, 3, 9, 0, 0));
+        notices.Single(n => n.Kind == AskTeacherNoticeEvent.Answered).CounterpartName.ShouldBe($"Ad{RelatedTeacherUser} S.");
+        notices.Select(n => n.EventId).Distinct().Count().ShouldBe(4);
+    }
+
+    private async Task<List<AskTeacherNoticeEvent>> NoticesAsync()
+    {
+        await using var ctx = _db.NewContext();
+        var type = OutboxEventRegistry.NameFor<AskTeacherNoticeEvent>();
+        return (await ctx.OutboxMessages.Where(o => o.Type == type).ToListAsync())
+            .Select(o => JsonSerializer.Deserialize<AskTeacherNoticeEvent>(o.Content)!).ToList();
     }
 
     private sealed class Clock(DateTimeOffset now) : TimeProvider

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
@@ -10,6 +11,8 @@ using ExamApp.Api.Services.DirectMessages;
 using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Labeling;
+using ExamApp.Foundation.Contracts;
+using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -149,16 +152,24 @@ public sealed class AskTeacherService(
             return new(null, AskTeacherError.InvalidImage);
 
         var now = clock.GetUtcNow().UtcDateTime;
-        var question = new AskTeacherQuestion
+        var imageUrl = await UploadAsync(jpeg, $"ask-teacher/{Guid.NewGuid():N}/question.jpg");
+        var people = await PeopleAsync([subject.UserId, teacher.UserId], ct);
+        AskTeacherQuestion question = null!;
+        // Soru + öğretmene bildirim tek transaction'da; Id payload'da olduğundan iki SaveChanges (retry'da tracker temizlenir).
+        await InTransactionAsync(async () =>
         {
-            StudentId = student.StudentId, StudentUserId = subject.UserId, TeacherId = teacher.Id, TeacherUserId = teacher.UserId,
-            SubjectId = request.SubjectId, Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim(),
-            CreatedAt = now, DueAt = now.AddHours(options.Value.AnswerHours),
-        };
-        question.ImageUrl = await UploadAsync(jpeg, $"ask-teacher/{Guid.NewGuid():N}/question.jpg");
-        db.SetCurrentUser(subject.UserId);
-        db.AskTeacherQuestions.Add(question);
-        await db.SaveChangesAsync(ct);
+            question = new AskTeacherQuestion
+            {
+                StudentId = student.StudentId, StudentUserId = subject.UserId, TeacherId = teacher.Id, TeacherUserId = teacher.UserId,
+                SubjectId = request.SubjectId, Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim(),
+                ImageUrl = imageUrl, CreatedAt = now, DueAt = now.AddHours(options.Value.AnswerHours),
+            };
+            db.SetCurrentUser(subject.UserId);
+            db.AskTeacherQuestions.Add(question);
+            await db.SaveChangesAsync(ct);
+            AddNotice(AskTeacherNoticeEvent.Asked, question, recipient: teacher.UserId, counterpart: subject.UserId, people);
+            await db.SaveChangesAsync(ct);
+        }, ct);
         return new((await ToDtosAsync([question], forTeacher: false, ct))[0], AskTeacherError.None);
     }
 
@@ -242,14 +253,23 @@ public sealed class AskTeacherService(
             imageUrl = await UploadAsync(jpeg, $"ask-teacher/{Guid.NewGuid():N}/answer.jpg");
         }
 
-        // Eşzamanlı ikinci cevap ya da süre dolumu ile yarış: yalnız hâlâ açık satır cevaplanır.
-        var updated = await db.AskTeacherQuestions
-            .Where(q => q.Id == id && q.Status == AskTeacherStatus.Open && q.DueAt > now)
-            .ExecuteUpdateAsync(u => u
-                .SetProperty(q => q.Status, AskTeacherStatus.Answered)
-                .SetProperty(q => q.AnsweredAt, now)
-                .SetProperty(q => q.AnswerText, string.IsNullOrEmpty(answer) ? null : answer)
-                .SetProperty(q => q.AnswerImageUrl, imageUrl), ct);
+        var people = await PeopleAsync([row.StudentUserId, teacherUserId], ct);
+        var updated = 0;
+        // Eşzamanlı ikinci cevap ya da süre dolumu ile yarış: yalnız hâlâ açık satır cevaplanır; öğrenciye bildirim aynı transaction'da.
+        await InTransactionAsync(async () =>
+        {
+            updated = await db.AskTeacherQuestions
+                .Where(q => q.Id == id && q.Status == AskTeacherStatus.Open && q.DueAt > now)
+                .ExecuteUpdateAsync(u => u
+                    .SetProperty(q => q.Status, AskTeacherStatus.Answered)
+                    .SetProperty(q => q.AnsweredAt, now)
+                    .SetProperty(q => q.AnswerText, string.IsNullOrEmpty(answer) ? null : answer)
+                    .SetProperty(q => q.AnswerImageUrl, imageUrl), ct);
+            if (updated == 0)
+                return;
+            AddNotice(AskTeacherNoticeEvent.Answered, row, recipient: row.StudentUserId, counterpart: teacherUserId, people);
+            await db.SaveChangesAsync(ct);
+        }, ct);
         if (updated == 0)
         {
             if (imageUrl is not null)
@@ -259,8 +279,8 @@ public sealed class AskTeacherService(
         // Hak cevapta düşer; referans soru başına tek (tekrar sayılmaz).
         await entitlements.RecordUsageAsync(row.StudentUserId, EntitlementFeatures.AskTeacher, $"ask-teacher:{row.Id}", ct);
 
-        await db.Entry(row).ReloadAsync(ct);
-        return new((await ToDtosAsync([row], forTeacher: true, ct))[0], AskTeacherError.None);
+        var answered = await db.AskTeacherQuestions.AsNoTracking().FirstAsync(q => q.Id == id, ct);
+        return new((await ToDtosAsync([answered], forTeacher: true, ct))[0], AskTeacherError.None);
     }
 
     public async Task<Stream?> GetImageAsync(int userId, int id, bool answer, CancellationToken ct)
@@ -275,8 +295,78 @@ public sealed class AskTeacherService(
     public async Task<int> ExpireAsync(CancellationToken ct = default)
     {
         var now = clock.GetUtcNow().UtcDateTime;
-        return await db.AskTeacherQuestions.Where(q => q.Status == AskTeacherStatus.Open && q.DueAt <= now)
-            .ExecuteUpdateAsync(u => u.SetProperty(q => q.Status, AskTeacherStatus.Expired).SetProperty(q => q.ClosedAt, now), ct);
+        var total = 0;
+        while (true)
+        {
+            var batch = await db.AskTeacherQuestions.AsNoTracking()
+                .Where(q => q.Status == AskTeacherStatus.Open && q.DueAt <= now)
+                .OrderBy(q => q.Id).Take(ExpireBatchSize).ToListAsync(ct);
+            if (batch.Count == 0)
+                return total;
+            var people = await PeopleAsync(batch.SelectMany(q => new[] { q.StudentUserId, q.TeacherUserId }), ct);
+            var expired = 0;
+            // Satır başına koşullu güncelleme (aynı anda gelen cevap kazanırsa bildirim yok) + öğrenciye bildirim tek transaction'da.
+            await InTransactionAsync(async () =>
+            {
+                expired = 0;
+                foreach (var q in batch)
+                {
+                    if (await db.AskTeacherQuestions.Where(x => x.Id == q.Id && x.Status == AskTeacherStatus.Open)
+                            .ExecuteUpdateAsync(u => u.SetProperty(x => x.Status, AskTeacherStatus.Expired).SetProperty(x => x.ClosedAt, now), ct) == 0)
+                        continue;
+                    AddNotice(AskTeacherNoticeEvent.Expired, q, recipient: q.StudentUserId, counterpart: q.TeacherUserId, people);
+                    expired++;
+                }
+                await db.SaveChangesAsync(ct);
+            }, ct);
+            total += expired;
+        }
+    }
+
+    private const int ExpireBatchSize = 200;
+
+    private async Task InTransactionAsync(Func<Task> work, CancellationToken ct)
+    {
+        var strategy = db.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            db.ChangeTracker.Clear();
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            await work();
+            await tx.CommitAsync(ct);
+        });
+    }
+
+    private void AddNotice(string kind, AskTeacherQuestion question, int recipient, int counterpart,
+        IReadOnlyDictionary<int, UserLookupResultDto> people) =>
+        db.OutboxMessages.Add(new OutboxMessage
+        {
+            Type = OutboxEventRegistry.NameFor<AskTeacherNoticeEvent>(),
+            Content = JsonSerializer.Serialize(new AskTeacherNoticeEvent
+            {
+                EventId = Guid.NewGuid(),
+                Kind = kind,
+                QuestionId = question.Id,
+                CounterpartName = ShortName(people.GetValueOrDefault(counterpart)?.FullName ?? string.Empty),
+                DueAtUtc = question.DueAt,
+                RecipientUserId = recipient,
+                RecipientKeycloakId = people.GetValueOrDefault(recipient)?.KeycloakId ?? string.Empty,
+            }),
+        });
+
+    /// <summary>Bildirim için ad + Keycloak sub; auth-api'ye ulaşılamazsa boş (consumer sub'ı kendi verisinden çözer).</summary>
+    private async Task<IReadOnlyDictionary<int, UserLookupResultDto>> PeopleAsync(IEnumerable<int> userIds, CancellationToken ct)
+    {
+        var ids = userIds.Distinct().ToList();
+        try
+        {
+            var users = await authApi.GetUsersByIdsAsync(ids, ct);
+            return users.GroupBy(u => u.Id).ToDictionary(g => g.Key, g => g.First());
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !ct.IsCancellationRequested)
+        {
+            return new Dictionary<int, UserLookupResultDto>();
+        }
     }
 
     /// <summary>İlişkili öğretmenler (mesajlaşma kuralı, engel dahil) ∪ öğrenciyle onaylı randevusu olan onaylı öğretmenler.</summary>

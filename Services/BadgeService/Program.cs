@@ -252,6 +252,7 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<StudentGradePromotedConsumer, StudentGradePromotedConsumerDefinition>(); // issue #1110
     x.AddConsumer<PlanPriceChangeNoticeConsumer, PlanPriceChangeNoticeConsumerDefinition>(); // issue #1116
     x.AddConsumer<ParentWeeklyReportConsumer, ParentWeeklyReportConsumerDefinition>(); // issue #1112
+    x.AddConsumer<AskTeacherNoticeConsumer, AskTeacherNoticeConsumerDefinition>(); // issue #1111
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -306,6 +307,7 @@ builder.Services.AddMassTransit(x =>
             e.ConfigureConsumer<StudentGradePromotedConsumer>(context); // issue #1110
             e.ConfigureConsumer<PlanPriceChangeNoticeConsumer>(context); // issue #1116
             e.ConfigureConsumer<ParentWeeklyReportConsumer>(context); // issue #1112
+            e.ConfigureConsumer<AskTeacherNoticeConsumer>(context); // issue #1111
         });
     });
 });

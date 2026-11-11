@@ -516,4 +516,8 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
 - **Uçlar:** öğrenci `GET teachers|quota|/|{id}`, `POST /` (multipart; veli aktivasyonu politikası), `POST {id}/cancel`,
   `PUT {id}/rating`; öğretmen `GET queue?status`, `GET queue/{id}`, `POST queue/{id}/answer` (multipart). Hepsi Student / Teacher
   rolünde; veliye kapalı.
-- **Sonraki dilimler:** bildirimler (outbox → BadgeService, iki yön), öğrenci arayüzü, öğretmen kuyruğu, puanlama + hata defteri.
+- **Bildirimler:** `AskTeacherNoticeEvent` (`Kind` = `Asked` / `Answered` / `Expired`) durumu yazan işlemle aynı transaction'da
+  outbox'a yazılır: yeni soru öğretmene, cevap ve süre dolumu öğrenciye. BadgeService `AskTeacherNoticeConsumer` in-app bildirim
+  üretir (`AskTeacherAsked` / `AskTeacherAnswered` / `AskTeacherExpired`, `data` = `{ questionId }`); not, cevap ve görsel taşınmaz.
+  Süre dolumu satır başına koşullu güncellenir (aynı anda gelen cevap kazanırsa "süre doldu" bildirimi gitmez).
+- **Sonraki dilimler:** öğrenci arayüzü, öğretmen kuyruğu (bildirim linkleri bu dilimlerde bağlanır), puanlama + hata defteri.

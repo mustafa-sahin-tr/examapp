@@ -415,8 +415,11 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   (yoksa 404 / sınıf değiştiyse 409); satır kalır, o yıl yeniden atlatılmaz; audit `GradePromotionReverted`. Bildirim: atlamayla
   aynı transaction'da öğrenciye ve o an Active her veliye birer `StudentGradePromotedEvent` (tek alıcı / event, veli listesi
   `FOR SHARE` ile yeniden okunur); BadgeService `StudentGradePromotedConsumer` → `GradePromotedToStudent` (yalnız bilgi) /
-  `GradePromotedToParent` (çocuğun paneline gider, bağ koparılınca nötrlenir). Geri almada bildirim yok. Sırada: yenilemeden 30 gün
-  önce band uyarısı.
+  `GradePromotedToParent` (çocuğun paneline gider, bağ koparılınca nötrlenir). Geri almada bildirim yok. Yenileme uyarısı: Hangfire
+  `plan-band-change-notice` (`PlanBandChangeNotice`: saat başı, `LeadDays` 30) bitişine 30 gün kalan ücretli öğrenci planında,
+  plan başladıktan sonra geri alınmamış bir atlama varsa ve satın almadaki sınıfın bandı bugünkünden farklıysa her Active veliye
+  `ParentChildPlanEndingEvent` (`NewGradeLevel` dolu → "Yenileme fiyatı değişiyor" metni, tip ve bağlantı aynı). Atama başına bir kez
+  (`BandChangeNoticeSentAtUtc`); band aynıysa ya da okul lisansı sürüyorsa yalnız işaret; deneme ve velisiz öğrenci aday değil.
 - **Okul lisansı (#1092):** özel anlaşmayla okulun bütün üyelerine plan: `SchoolLicenses` (okul başına tek satır; öğretmen ve öğrenci
   planı, varsayılan iki kitlenin Pro'su; başlangıç / hariç bitiş; anlaşma notu ≤ 200). Kimseye atama yazılmaz: plan çözümü
   (`EntitlementService.ResolvePlanAsync`, admin listesi `CurrentPlansAsync`, ortak kural `SchoolLicensePlans`) kullanıcının okuluna

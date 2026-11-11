@@ -12,7 +12,8 @@ namespace BadgeService.Consumers;
 /// Issue #1091: çocuğun planı / denemesi birkaç gün içinde bitiyor. Exam API'nin hatırlatma job'ının her Active veli için ayrı
 /// yazdığı <see cref="ParentChildPlanEndingEvent"/>'i alır, velinin in-app <see cref="Notification"/> satırını oluşturur ve SignalR
 /// (<c>ParentNotification</c>) ile push eder. Alıcı kararı ve atama başına tek hatırlatma producer'dadır; idempotency
-/// <see cref="ParentHomeworkOverdueConsumer"/> ile aynı (<c>(Type, SourceEventId)</c>).
+/// <see cref="ParentHomeworkOverdueConsumer"/> ile aynı (<c>(Type, SourceEventId)</c>). Issue #1110: <c>NewGradeLevel</c> doluysa aynı
+/// tipte "sınıf bandı değişti, yenileme yeni fiyatla" uyarısı (<c>PlanBandChangeNoticeJob</c>, bitişten 30 gün önce).
 /// </summary>
 public class ParentChildPlanEndingConsumer : IConsumer<ParentChildPlanEndingEvent>
 {
@@ -57,8 +58,12 @@ public class ParentChildPlanEndingConsumer : IConsumer<ParentChildPlanEndingEven
         var cleanChild = CommentNotificationSupport.CleanName(e.StudentDisplayName);
         var child = string.IsNullOrWhiteSpace(cleanChild) ? _texts.Resolve("notifications.common.defaultChild", culture) : cleanChild;
         var endsOn = ActivityCompletionStats.ToIstanbulDate(e.EndsAtUtc).ToString("d MMMM", culture);
-        // Deneme için ayrı metin ("deneme bitiyor, plan seç"); Type aynı (idempotency / arayüz bağlantısı değişmez).
-        var text = _texts.Build(e.IsTrial ? NotificationType + "Trial" : NotificationType, culture, child, endsOn);
+        // Deneme için ayrı metin ("deneme bitiyor, plan seç"), sınıf bandı değişiminde (#1110) "yenileme yeni sınıfın fiyatıyla";
+        // Type aynı (idempotency / arayüz bağlantısı değişmez).
+        var textKey = e.NewGradeLevel is not null ? NotificationType + "BandChange"
+            : e.IsTrial ? NotificationType + "Trial"
+            : NotificationType;
+        var text = _texts.Build(textKey, culture, child, endsOn, e.NewGradeLevel ?? 0);
 
         var data = new { studentId = e.StudentId, assignmentId = e.AssignmentId };
         var notification = await ParentNotificationWriter.TryAddAsync(_db, new Notification

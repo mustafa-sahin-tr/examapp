@@ -20,6 +20,12 @@ public class ParentChildPlanEndingEvent
     /// <summary>Biten plan deneme mi ("deneme bitiyor" metni).</summary>
     public bool IsTrial { get; set; }
 
+    /// <summary>
+    /// Issue #1110: doluysa bu bir "sınıf bandı değişti" uyarısıdır (bitişten 30 gün önce): çocuk artık bu sınıfta ve yenileme yeni
+    /// bandın fiyatıyla olur. Boşsa olağan "plan bitiyor" hatırlatması (#1091).
+    /// </summary>
+    public int? NewGradeLevel { get; set; }
+
     /// <summary>Atamanın bitişi (UTC).</summary>
     public DateTime EndsAtUtc { get; set; }
 

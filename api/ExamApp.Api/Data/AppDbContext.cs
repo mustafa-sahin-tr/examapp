@@ -253,6 +253,11 @@ public class AppDbContext : DbContext
     public DbSet<EntitlementUsage> EntitlementUsages { get; set; }
     public DbSet<SchoolLicense> SchoolLicenses { get; set; } // issue #1092
     public DbSet<TeacherSponsorship> TeacherSponsorships { get; set; } // issue #1115
+    public DbSet<QuestionHintSet> QuestionHintSets { get; set; } // issue #1113
+    public DbSet<QuestionHintStep> QuestionHintSteps { get; set; } // issue #1113
+    public DbSet<StudentHintReveal> StudentHintReveals { get; set; } // issue #1113
+    public DbSet<WeeklyStudyPlan> WeeklyStudyPlans { get; set; } // issue #1113
+    public DbSet<WeeklyStudyPlanTask> WeeklyStudyPlanTasks { get; set; } // issue #1113
     public DbSet<SchoolLicenseAudit> SchoolLicenseAudits { get; set; }
 
     // Issue #693: deneme sınavları.
@@ -1084,6 +1089,21 @@ public class AppDbContext : DbContext
             e.HasIndex(q => new { q.StudentUserId, q.CreatedAt });
             e.HasIndex(q => new { q.StudentUserId, q.SavedToNotebookAt });
             e.HasIndex(q => new { q.Status, q.DueAt });
+        });
+
+        modelBuilder.Entity<QuestionHintSet>(e =>
+        {
+            e.HasOne(h => h.Question).WithMany().HasForeignKey(h => h.QuestionId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(h => new { h.QuestionId, h.SchemaRevision }).IsUnique();
+            e.HasMany(h => h.Steps).WithOne(s => s.HintSet).HasForeignKey(s => s.HintSetId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<QuestionHintStep>().HasIndex(s => new { s.HintSetId, s.Step }).IsUnique();
+        modelBuilder.Entity<StudentHintReveal>().HasIndex(r => new { r.StudentUserId, r.QuestionId, r.Step }).IsUnique();
+        modelBuilder.Entity<WeeklyStudyPlan>(e =>
+        {
+            e.HasOne(p => p.Student).WithMany().HasForeignKey(p => p.StudentId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(p => new { p.StudentId, p.WeekStart }).IsUnique();
+            e.HasMany(p => p.Tasks).WithOne(t => t.Plan).HasForeignKey(t => t.PlanId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Booking>()

@@ -44,6 +44,7 @@ describe('resolveActiveMenuItemId (issue #385)', () => {
     ]> = [
         ['/dashboard', 'dashboard'],
         ['/programs', 'my-calendar'],
+        ['/study-plan', 'my-calendar'],
         ['/programs/5/detail', 'my-calendar'],
         ['/program-create', 'my-calendar'],
         ['/my-bookings', 'tutors'],

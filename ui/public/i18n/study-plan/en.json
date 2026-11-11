@@ -1,0 +1,22 @@
+{
+  "title": "Weekly tasks",
+  "subtitle": "This week's tasks come from your mistakes, weak topics, assignments and mock exams. Tick what you finish.",
+  "loadError": "The tasks could not be loaded.",
+  "retry": "Try again",
+  "progress": "Week of {{ date }}: {{ done }} / {{ total }} tasks done",
+  "progressAria": "Weekly task progress",
+  "due": "Due {{ date }}",
+  "open": "Open",
+  "task": {
+    "assignment": "Finish the assignment: {{ title }}",
+    "mockExam": "Take the mock exam: {{ title }}",
+    "practiceTopic": "Practise {{ title }}",
+    "mistakes": "Redo your mistakes",
+    "flashcards": "Review your flashcards",
+    "practice": "Practise: solve at least 10 questions"
+  },
+  "parent": {
+    "title": "This week's tasks",
+    "progress": "{{ done }} / {{ total }} tasks done"
+  }
+}

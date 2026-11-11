@@ -365,6 +365,13 @@ builder.Services.AddOptions<ExamApp.Api.Services.Entitlements.TeacherSponsorship
     .ValidateDataAnnotations()
     .ValidateOnStart();
 builder.Services.AddScoped<ExamApp.Api.Services.Entitlements.ITeacherSponsorshipJob, ExamApp.Api.Services.Entitlements.TeacherSponsorshipJob>();
+// issue #1113: haftalık çalışma planı (Pro) — Pazartesi kurulur, öğrencinin ilk açılışı da kurar.
+builder.Services.AddOptions<ExamApp.Api.Services.StudyPlans.StudyPlanOptions>()
+    .BindConfiguration(ExamApp.Api.Services.StudyPlans.StudyPlanOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddScoped<ExamApp.Api.Services.StudyPlans.IStudyPlanService, ExamApp.Api.Services.StudyPlans.StudyPlanService>();
+builder.Services.AddScoped<ExamApp.Api.Services.StudyPlans.IStudyPlanJob, ExamApp.Api.Services.StudyPlans.StudyPlanJob>();
 // issue #421 (veli V3): ödev/test listesi + test sonuç özeti (salt okunur; kapı → audit → veri).
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentAssignmentService, ExamApp.Api.Services.Parents.ParentAssignmentService>();
 // issue #421 review: test sonucu 404 taraması uyarısı (süreç içi sayaç, veli başına 10 dk'da 20'yi aşınca Warning).
@@ -465,6 +472,9 @@ builder.Services.AddScoped<ExamApp.Api.Services.TargetGoals.ITargetProgramServic
 builder.Services.AddScoped<ExamApp.Api.Services.TargetGoals.ITargetGoalService, ExamApp.Api.Services.TargetGoals.TargetGoalService>(); // issue #695
 builder.Services.AddScoped<ExamApp.Api.Services.TargetGoals.IParentTargetGoalService, ExamApp.Api.Services.TargetGoals.ParentTargetGoalService>(); // issue #695
 builder.Services.AddSingleton<ExamApp.Api.Services.QuestionGeneration.IQuestionDraftGenerator, ExamApp.Api.Services.QuestionGeneration.ClaudeQuestionDraftGenerator>();
+// Issue #1113: adım adım ipucu (Pro).
+builder.Services.AddSingleton<ExamApp.Api.Services.Hints.IHintGenerator, ExamApp.Api.Services.Hints.ClaudeHintGenerator>();
+builder.Services.AddScoped<ExamApp.Api.Services.Hints.IHintService, ExamApp.Api.Services.Hints.HintService>();
 builder.Services.AddScoped<ExamApp.Api.Services.QuestionGeneration.IQuestionGenerationService, ExamApp.Api.Services.QuestionGeneration.QuestionGenerationService>();
 // issue #262: audit saklama süresi (KVKK) — AdminDataAccessLog:RetentionDays (varsayılan 180), günlük Hangfire temizliği.
 builder.Services.AddOptions<ExamApp.Api.Services.AdminUsers.AdminDataAccessLogOptions>()
@@ -959,6 +969,12 @@ RecurringJob.AddOrUpdate<ExamApp.Api.Services.Entitlements.ITeacherSponsorshipJo
     ExamApp.Api.Services.Entitlements.TeacherSponsorshipJob.RecurringJobId,
     j => j.RunAsync(CancellationToken.None),
     app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Entitlements.TeacherSponsorshipOptions>>().Value.Cron);
+
+// issue #1113: haftalık çalışma planı (Pro öğrencilere Pazartesi sabahı).
+RecurringJob.AddOrUpdate<ExamApp.Api.Services.StudyPlans.IStudyPlanJob>(
+    ExamApp.Api.Services.StudyPlans.StudyPlanJob.RecurringJobId,
+    j => j.RunAsync(CancellationToken.None),
+    app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.StudyPlans.StudyPlanOptions>>().Value.Cron);
 
 // issue #1112: haftalık veli raporu (bağlantı başına hafta başına bir kez).
 RecurringJob.AddOrUpdate<ExamApp.Api.Services.Parents.IParentWeeklyReportJob>(

@@ -362,6 +362,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     [
       { id: 'tab-calendar', labelKey: 'menu.calendar', icon: '', route: '/my-calendar', type: 'menu', roles: ['Student'] },
       { id: 'tab-programs', labelKey: 'menu.programs', icon: '', route: '/programs', type: 'menu', roles: ['Student'] },
+      // Issue #1113: haftalık görevler (Pro) takvimin yanında.
+      { id: 'tab-study-plan', labelKey: 'menu.weeklyTasks', icon: '', route: '/study-plan', type: 'menu', roles: ['Student'] },
     ],
     // Issue #1111: öğretmene sor Mesajlar'ın yanında; ana menü #719 sınırında kalır.
     [

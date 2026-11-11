@@ -158,6 +158,9 @@
               <p class="pdb__locked" data-test="analytics-locked">{{ t('analyticsLocked') }}</p>
             }
             <app-coach-goals-card [childId]="studentId" />
+            @if (childWeeklyPlan()) {
+              <app-study-plan-progress [childId]="studentId" />
+            }
           </ng-template>
         </mat-tab>
         <mat-tab [label]="t('tabs.report')">

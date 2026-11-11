@@ -8,6 +8,7 @@ import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import { MistakeNotebookComponent } from './mistake-notebook.component';
 import practiceTr from '../../../../public/i18n/practice/tr.json';
 import { AskTeacherService } from '../../services/ask-teacher.service';
+import { HintsService } from '../../services/hints.service';
 
 const item = (questionId: number, subjectId: number, subjectName: string): MistakeItem => ({
   questionId,
@@ -40,6 +41,8 @@ describe('MistakeNotebookComponent (issue #698)', () => {
         { provide: PracticeService, useValue: practice },
         // Issue #1111: "Öğretmene sorduklarım" bölümü boş (hiçbir şey çizmez).
         { provide: AskTeacherService, useValue: { notebook: () => of([]) } },
+        // Issue #1113: ipucu tıklanmadan istek atmaz.
+        { provide: HintsService, useValue: {} },
       ],
     });
     const fixture = TestBed.createComponent(MistakeNotebookComponent);

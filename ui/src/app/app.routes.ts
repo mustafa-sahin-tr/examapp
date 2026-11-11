@@ -538,6 +538,12 @@ export const routes: Routes = [
           import('./pages/teacher-messages/teacher-messages.component').then((m) => m.TeacherMessagesComponent),
       },
       {
+        // Issue #1113: haftalık görevler (Pro).
+        path: 'study-plan',
+        canActivate: [authGuard, studentGuard, entitlementGuard('weekly-plan')],
+        loadComponent: () => import('./pages/study-plan/study-plan.component').then((m) => m.StudyPlanComponent),
+      },
+      {
         // Issue #1111: öğrenci → öğretmen fotoğraflı soru (hak, form, sorularım; bildirimden ?q=<id>).
         path: 'ask-teacher',
         canActivate: [authGuard, studentGuard],

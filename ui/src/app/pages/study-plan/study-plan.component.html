@@ -1,0 +1,54 @@
+<section class="sp" *transloco="let t; prefix: 'study-plan'">
+  <header class="sp__head">
+    <h1 class="sp__title">{{ t('title') }}</h1>
+    <p class="sp__sub">{{ t('subtitle') }}</p>
+  </header>
+
+  @if (loading()) {
+    <div class="sp__state"><mat-spinner diameter="32" /></div>
+  } @else if (failed()) {
+    <div class="sp__state sp__state--error" role="alert">
+      <p>{{ t('loadError') }}</p>
+      <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+    </div>
+  } @else if (plan(); as p) {
+    <div class="sp__progress" data-testid="study-plan-progress">
+      <span>{{ t('progress', { done: p.doneCount, total: p.totalCount, date: (p.weekStart | date: 'd MMMM') }) }}</span>
+      <mat-progress-bar mode="determinate" [value]="percent()" [attr.aria-label]="t('progressAria')" />
+    </div>
+
+    <ul class="sp__list">
+      @for (task of p.tasks; track task.id) {
+        <li class="sp__task" [class.is-done]="task.done" data-testid="study-plan-task">
+          <mat-checkbox
+            [checked]="task.done"
+            [disabled]="saving() === task.id"
+            (change)="toggle(task, $event.checked)"
+            [attr.data-testid]="'study-plan-check-' + task.id"
+          >
+            <span class="sp__task-title">{{ t('task.' + task.kind, { title: task.title }) }}</span>
+          </mat-checkbox>
+          <div class="sp__meta">
+            @if (task.subjectName) {
+              <span>{{ task.subjectName }}</span>
+            }
+            @if (task.dueAtUtc) {
+              <span>{{ t('due', { date: (task.dueAtUtc | date: 'd MMM, HH:mm') }) }}</span>
+            }
+          </div>
+          @if (!task.done) {
+            <a
+              mat-button
+              class="sp__open"
+              [routerLink]="link(task).route"
+              [queryParams]="link(task).queryParams ?? {}"
+              data-testid="study-plan-open"
+            >
+              {{ t('open') }}<mat-icon iconPositionEnd aria-hidden="true">arrow_forward</mat-icon>
+            </a>
+          }
+        </li>
+      }
+    </ul>
+  }
+</section>

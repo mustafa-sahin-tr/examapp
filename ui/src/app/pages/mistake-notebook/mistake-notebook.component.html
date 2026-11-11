@@ -96,6 +96,8 @@
                 <p class="mnb__tip" data-test="mistake-tip">{{ t('tip.' + item.reason) }}</p>
               }
             </div>
+            <!-- Issue #1113: adım adım ipucu (Pro); cevabı söylemez, çözüme götürür. -->
+            <app-step-hints class="mnb__hints" [questionId]="item.questionId" />
           </div>
           <button mat-stroked-button type="button" class="mnb__retry" data-test="mistake-retry" [disabled]="starting()"
             (click)="retry(item)">

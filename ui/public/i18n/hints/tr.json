@@ -1,0 +1,9 @@
+{
+  "title": "İpuçları",
+  "open": "İpucu al",
+  "next": "Sonraki ipucu",
+  "stepLabel": "{{ n }}. adım",
+  "remaining": "Bu ay {{ count }} ipucu hakkın kaldı.",
+  "unavailable": "Bu soru için ipucu hazırlanamadı.",
+  "failed": "İpucu hazırlanamadı. Biraz sonra yeniden dene."
+}

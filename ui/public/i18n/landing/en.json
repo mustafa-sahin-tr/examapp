@@ -1,4 +1,11 @@
 {
+  "images": {
+    "hero": "assets/images/landing/hero.en.svg",
+    "detect": "assets/images/landing/detect.en.svg",
+    "parent": "assets/images/landing/parent.en.svg",
+    "motivation": "assets/images/landing/motivation.en.svg",
+    "tutor": "assets/images/landing/tutor.en.svg"
+  },
   "meta": {
     "title": "{{ brand.name }} | Test creation, solving and private lessons",
     "description": "Teachers extract questions from scanned pages, build tests and assign them; students solve, practise and earn badges; private lessons happen over video.",

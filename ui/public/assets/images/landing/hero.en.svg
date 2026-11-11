@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="540" viewBox="0 0 640 540" role="img" aria-labelledby="t d">
+  <title id="t">Hedef Okul product overview</title>
+  <desc id="d">A test question being solved on a tablet, surrounded by a new badge, points earned and a private lesson booking card.</desc>
+  <defs>
+    <linearGradient id="blob" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1C43FE"/>
+      <stop offset="1" stop-color="#4A33D1"/>
+    </linearGradient>
+    <linearGradient id="blob2" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#FE3F10" stop-opacity=".9"/>
+      <stop offset="1" stop-color="#FFBA0D" stop-opacity=".9"/>
+    </linearGradient>
+    <linearGradient id="medal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFD262"/>
+      <stop offset="1" stop-color="#FFBA0D"/>
+    </linearGradient>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#130F25" flood-opacity=".22"/>
+    </filter>
+    <filter id="sh2" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#130F25" flood-opacity=".18"/>
+    </filter>
+    <pattern id="dots" width="18" height="18" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.6" fill="#FFFFFF" opacity=".35"/>
+    </pattern>
+  </defs>
+
+  <!-- backdrop -->
+  <path d="M120 70 C220 10 430 20 530 90 C630 160 640 330 560 420 C480 510 270 530 160 470 C50 410 20 290 40 200 C55 135 80 95 120 70Z" fill="url(#blob)"/>
+  <path d="M120 70 C220 10 430 20 530 90 C630 160 640 330 560 420 C480 510 270 530 160 470 C50 410 20 290 40 200 C55 135 80 95 120 70Z" fill="url(#dots)"/>
+  <circle cx="560" cy="110" r="46" fill="url(#blob2)"/>
+  <circle cx="150" cy="486" r="14" fill="#2FD1BE"/>
+
+  <g transform="translate(36 0)">
+  <!-- tablet -->
+  <g filter="url(#sh)">
+    <rect x="128" y="96" width="384" height="340" rx="26" fill="#130F25"/>
+    <rect x="142" y="110" width="356" height="312" rx="16" fill="#F5F4FB"/>
+  </g>
+  <!-- tablet top bar -->
+  <rect x="142" y="110" width="356" height="44" rx="16" fill="#242145"/>
+  <rect x="142" y="138" width="356" height="16" fill="#242145"/>
+  <rect x="158" y="122" width="22" height="22" rx="6" fill="#4A33D1"/>
+  <path d="M164 133h10M169 128v10" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+  <text x="188" y="138" font-family="Manrope, 'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#F3F3F8">Maths · Fractions</text>
+  <rect x="400" y="121" width="84" height="24" rx="12" fill="#393B6B"/>
+  <circle cx="414" cy="133" r="5" fill="none" stroke="#FFD262" stroke-width="2"/>
+  <path d="M414 130v3l2 1" stroke="#FFD262" stroke-width="1.6" stroke-linecap="round"/>
+  <text x="425" y="137.5" font-family="Inter, 'Segoe UI', sans-serif" font-size="11.5" font-weight="600" fill="#F3F3F8">12:40</text>
+  <!-- progress -->
+  <rect x="142" y="154" width="356" height="4" fill="#E1DEF3"/>
+  <rect x="142" y="154" width="150" height="4" fill="#1C43FE"/>
+
+  <!-- question -->
+  <text x="162" y="186" font-family="Inter, 'Segoe UI', sans-serif" font-size="11" font-weight="600" fill="#5C5A78">QUESTION 4 / 10</text>
+  <text x="162" y="208" font-family="Manrope, 'Segoe UI', sans-serif" font-size="14.5" font-weight="700" fill="#211D3A">If 3/8 of a cake is eaten,</text>
+  <text x="162" y="227" font-family="Manrope, 'Segoe UI', sans-serif" font-size="14.5" font-weight="700" fill="#211D3A">what fraction is left?</text>
+  <!-- pie -->
+  <g transform="translate(436 214)">
+    <circle r="24" fill="#E6E1FA"/>
+    <path d="M0 0 L0 -24 A24 24 0 0 1 16.97 16.97 Z" fill="#FE3F10" opacity=".85"/>
+    <path d="M0 -24v48M-24 0h48M-17 -17l34 34M17 -17l-34 34" stroke="#F5F4FB" stroke-width="1.5"/>
+  </g>
+  <!-- options -->
+  <g font-family="Inter, 'Segoe UI', sans-serif" font-size="13" fill="#211D3A">
+    <rect x="160" y="250" width="320" height="34" rx="9" fill="#FFFFFF" stroke="#D8D5EC"/>
+    <text x="174" y="272"><tspan font-weight="700" fill="#5C5A78">A</tspan>   3/8</text>
+    <rect x="160" y="292" width="320" height="34" rx="9" fill="#D3F7E6" stroke="#009E52" stroke-width="2"/>
+    <text x="174" y="314"><tspan font-weight="700" fill="#007C3A">B</tspan>   5/8</text>
+    <circle cx="460" cy="309" r="10" fill="#009E52"/>
+    <path d="M455 309l3.5 3.5 6.5-7" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="160" y="334" width="320" height="34" rx="9" fill="#FFFFFF" stroke="#D8D5EC"/>
+    <text x="174" y="356"><tspan font-weight="700" fill="#5C5A78">C</tspan>   1/2</text>
+  </g>
+  <!-- question map dots -->
+  <g>
+    <rect x="160" y="384" width="18" height="18" rx="5" fill="#009E52"/>
+    <rect x="183" y="384" width="18" height="18" rx="5" fill="#009E52"/>
+    <rect x="206" y="384" width="18" height="18" rx="5" fill="#009E52"/>
+    <rect x="229" y="384" width="18" height="18" rx="5" fill="#1C43FE"/>
+    <rect x="252" y="384" width="18" height="18" rx="5" fill="#E1DEF3"/>
+    <rect x="275" y="384" width="18" height="18" rx="5" fill="#E1DEF3"/>
+    <rect x="298" y="384" width="18" height="18" rx="5" fill="#FFEDBF" stroke="#C48A00"/>
+    <rect x="321" y="384" width="18" height="18" rx="5" fill="#E1DEF3"/>
+    <rect x="344" y="384" width="18" height="18" rx="5" fill="#E1DEF3"/>
+    <rect x="367" y="384" width="18" height="18" rx="5" fill="#E1DEF3"/>
+    <rect x="404" y="381" width="76" height="24" rx="12" fill="#1C43FE"/>
+    <text x="420" y="397" font-family="Inter, 'Segoe UI', sans-serif" font-size="11.5" font-weight="700" fill="#FFFFFF">Next</text>
+    <path d="M466 389l4 4-4 4" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  </g>
+
+  <!-- floating: badge card -->
+  <g filter="url(#sh2)" transform="translate(436 40)">
+    <rect width="188" height="78" rx="16" fill="#FFFFFF"/>
+    <circle cx="38" cy="39" r="22" fill="url(#medal)"/>
+    <circle cx="38" cy="39" r="15" fill="none" stroke="#FFF6E0" stroke-width="2"/>
+    <path d="M38 29l3 6.2 6.8 1-4.9 4.7 1.2 6.7-6.1-3.2-6.1 3.2 1.2-6.7-4.9-4.7 6.8-1z" fill="#FFFFFF"/>
+    <text x="70" y="34" font-family="Inter, 'Segoe UI', sans-serif" font-size="11" font-weight="600" fill="#5C5A78">Daily questions</text>
+    <text x="70" y="53" font-family="Manrope, 'Segoe UI', sans-serif" font-size="14" font-weight="800" fill="#211D3A">Streak: 7 days</text>
+  </g>
+
+  <!-- floating: points + mini leaderboard -->
+  <g filter="url(#sh2)" transform="translate(10 300)">
+    <rect width="168" height="150" rx="16" fill="#FFFFFF"/>
+    <rect x="14" y="14" width="78" height="26" rx="13" fill="#E6E1FA"/>
+    <text x="26" y="31.5" font-family="Manrope, 'Segoe UI', sans-serif" font-size="13" font-weight="800" fill="#4A33D1">+20 points</text>
+    <text x="14" y="62" font-family="Inter, 'Segoe UI', sans-serif" font-size="10.5" font-weight="700" fill="#5C5A78" letter-spacing=".5">LEADERBOARD</text>
+    <g font-family="Inter, 'Segoe UI', sans-serif" font-size="11.5">
+      <circle cx="24" cy="82" r="8" fill="#FFBA0D"/><text x="20.5" y="86" font-size="10" font-weight="700" fill="#4A3400">1</text>
+      <rect x="38" y="77" width="70" height="9" rx="4.5" fill="#E1DEF3"/>
+      <text x="124" y="86" font-weight="700" fill="#211D3A">420</text>
+      <circle cx="24" cy="106" r="8" fill="#1C43FE"/><text x="20.5" y="110" font-size="10" font-weight="700" fill="#FFFFFF">2</text>
+      <rect x="38" y="101" width="56" height="9" rx="4.5" fill="#4A33D1" opacity=".85"/>
+      <text x="124" y="110" font-weight="700" fill="#4A33D1">385</text>
+      <circle cx="24" cy="130" r="8" fill="#D8D5EC"/><text x="20.5" y="134" font-size="10" font-weight="700" fill="#3E3B5C">3</text>
+      <rect x="38" y="125" width="48" height="9" rx="4.5" fill="#E1DEF3"/>
+      <text x="124" y="134" font-weight="700" fill="#211D3A">340</text>
+    </g>
+  </g>
+
+  <!-- floating: lesson card -->
+  <g filter="url(#sh2)" transform="translate(396 420)">
+    <rect width="228" height="74" rx="16" fill="#FFFFFF"/>
+    <rect x="14" y="15" width="44" height="44" rx="12" fill="#D5FAF5"/>
+    <rect x="24" y="29" width="18" height="16" rx="3" fill="none" stroke="#009380" stroke-width="2.2"/>
+    <path d="M42 34l7-4v14l-7-4z" fill="#009380"/>
+    <text x="70" y="33" font-family="Inter, 'Segoe UI', sans-serif" font-size="11" font-weight="600" fill="#5C5A78">Lesson · tomorrow 17:00</text>
+    <text x="70" y="53" font-family="Manrope, 'Segoe UI', sans-serif" font-size="14" font-weight="800" fill="#211D3A">Join video lesson</text>
+  </g>
+</svg>

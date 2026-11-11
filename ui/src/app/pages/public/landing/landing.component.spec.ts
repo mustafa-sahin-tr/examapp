@@ -79,6 +79,13 @@ describe('LandingComponent (#395)', () => {
     expect(section.querySelector('img')?.getAttribute('src')).toBe('assets/images/landing/parent.svg');
   });
 
+  // #1007: çizimlerin içindeki yazı sayfa dilinde; Türkçe sayfa Türkçe SVG'leri gösterir.
+  it('illustrations_UseTheTurkishFilesInTurkish', () => {
+    const sources = Array.from(el.querySelectorAll<HTMLImageElement>('img[src$=".svg"]')).map((i) => i.getAttribute('src'));
+    expect(sources).toContain('assets/images/landing/hero.svg');
+    expect(sources.some((src) => src?.endsWith('.en.svg'))).toBe(false);
+  });
+
   it('#880: sign-in stays in the top bar on small screens', () => {
     expect(el.querySelector('[data-testid="landing-login"]')?.classList).not.toContain('hide-sm');
   });
@@ -129,5 +136,28 @@ describe('LandingComponent (#395)', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     fixture.detectChanges();
     expect(el.querySelector('[data-testid="landing-mobile-menu"]')).toBeNull();
+  });
+});
+
+describe('LandingComponent in English (#1007)', () => {
+  it('illustrations_UseTheEnglishFiles', async () => {
+    await TestBed.configureTestingModule({
+      imports: [
+        LandingComponent,
+        NoopAnimationsModule,
+        translocoTestingModule({ langs: { 'landing/tr': landingTr, 'landing/en': landingEn }, translocoConfig: { defaultLang: 'en' } }),
+      ],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(LandingComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const sources = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLImageElement>('img[src*="/landing/"]'))
+      .map((i) => i.getAttribute('src'))
+      .filter((src) => !src?.endsWith('brand-mark.svg') && !src?.endsWith('.png'));
+    expect(sources).toEqual(['hero', 'detect', 'parent', 'motivation', 'tutor'].map((n) => `assets/images/landing/${n}.en.svg`));
+    fixture.destroy();
   });
 });

@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="440" viewBox="0 0 600 440" role="img" aria-labelledby="t d">
+  <title id="t">Private lessons: booking, video lesson and shared whiteboard</title>
+  <desc id="d">A teacher profile card with available times, next to a video lesson window and a shared whiteboard being drawn on together.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#D5FAF5"/>
+      <stop offset="1" stop-color="#E6E1FA"/>
+    </linearGradient>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#130F25" flood-opacity=".18"/>
+    </filter>
+  </defs>
+  <rect width="600" height="440" rx="28" fill="url(#bg)"/>
+  <circle cx="84" cy="84" r="50" fill="#FFFFFF" opacity=".45"/>
+
+  <!-- video window -->
+  <g filter="url(#sh)">
+    <rect x="196" y="40" width="374" height="300" rx="20" fill="#130F25"/>
+  </g>
+  <!-- tabs -->
+  <g font-family="Inter, 'Segoe UI', sans-serif" font-size="11.5" font-weight="700">
+    <rect x="212" y="54" width="70" height="26" rx="13" fill="#393B6B"/>
+    <text x="231" y="71.5" fill="#F3F3F8">Video</text>
+    <rect x="288" y="54" width="70" height="26" rx="13" fill="#1C43FE"/>
+    <text x="306" y="71.5" fill="#FFFFFF">Board</text>
+    <circle cx="536" cy="67" r="5" fill="#02E088"/>
+    <text x="470" y="71.5" fill="#A5AACF" font-weight="600">Live</text>
+  </g>
+  <!-- whiteboard -->
+  <rect x="212" y="92" width="342" height="200" rx="12" fill="#FFFFFF"/>
+  <g stroke="#ECEAF8" stroke-width="1">
+    <path d="M212 132h342M212 172h342M212 212h342M212 252h342"/>
+    <path d="M252 92v200M292 92v200M332 92v200M372 92v200M412 92v200M452 92v200M492 92v200M532 92v200"/>
+  </g>
+  <!-- triangle drawing -->
+  <path d="M258 262 L338 128 L408 262 Z" fill="#1C43FE" fill-opacity=".06" stroke="#1C43FE" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M338 128 L338 262" stroke="#FE3F10" stroke-width="2.5" stroke-dasharray="6 5"/>
+  <path d="M338 250 h12 v12" fill="none" stroke="#FE3F10" stroke-width="2"/>
+  <g font-family="Manrope, 'Segoe UI', sans-serif" font-weight="800">
+    <text x="346" y="200" font-size="15" fill="#FE3F10">h</text>
+    <text x="320" y="282" font-size="14" fill="#1C43FE">a = 8</text>
+    <text x="428" y="150" font-size="16" fill="#211D3A">A = a·h / 2</text>
+  </g>
+  <path d="M430 160 C 460 172, 486 168, 512 158" stroke="#00A894" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <!-- cursor of other side -->
+  <g transform="translate(470 220)">
+    <path d="M0 0 L0 18 L5 13 L9 22 L12 20 L8 12 L15 12 Z" fill="#4A33D1" stroke="#fff" stroke-width="1.5"/>
+    <rect x="14" y="16" width="62" height="18" rx="9" fill="#4A33D1"/>
+    <text x="22" y="29" font-family="Inter, 'Segoe UI', sans-serif" font-size="10" font-weight="700" fill="#fff">Teacher</text>
+  </g>
+  <!-- control bar -->
+  <g transform="translate(296 302)">
+    <circle cx="20" cy="16" r="15" fill="#393B6B"/>
+    <rect x="15" y="8" width="10" height="13" rx="5" fill="#F3F3F8"/><path d="M12 17a8 8 0 0 0 16 0M20 25v3" stroke="#F3F3F8" stroke-width="2" fill="none"/>
+    <circle cx="60" cy="16" r="15" fill="#393B6B"/>
+    <rect x="51" y="10" width="13" height="11" rx="2.5" fill="#F3F3F8"/><path d="M64 13l5-3v12l-5-3z" fill="#F3F3F8"/>
+    <rect x="88" y="1" width="86" height="30" rx="15" fill="#B9004B"/>
+    <text x="101" y="20.5" font-family="Inter, 'Segoe UI', sans-serif" font-size="11.5" font-weight="700" fill="#FFF0F6">Leave lesson</text>
+  </g>
+
+  <!-- tutor profile card -->
+  <g filter="url(#sh)" transform="translate(26 120)">
+    <rect width="214" height="274" rx="18" fill="#FFFFFF"/>
+    <circle cx="44" cy="44" r="24" fill="#4A33D1"/>
+    <text x="44" y="49.5" text-anchor="middle" font-family="Manrope, 'Segoe UI', sans-serif" font-size="15" font-weight="800" fill="#FFFFFF">TE</text>
+    <rect x="78" y="30" width="96" height="9" rx="4.5" fill="#211D3A"/>
+    <rect x="78" y="46" width="64" height="18" rx="9" fill="#E6E1FA"/>
+    <text x="86" y="58.5" font-family="Inter, 'Segoe UI', sans-serif" font-size="10" font-weight="700" fill="#2A1A8F">Maths</text>
+    <g font-family="Inter, 'Segoe UI', sans-serif" font-size="11" font-weight="600" fill="#3E3B5C">
+      <rect x="18" y="82" width="10" height="8" rx="2" fill="#5C5A78"/><path d="M28 84l4-2v8l-4-2z" fill="#5C5A78"/>
+      <text x="38" y="90">Online</text>
+      <circle cx="104" cy="86" r="4" fill="none" stroke="#5C5A78" stroke-width="2"/>
+      <text x="114" y="90">In person</text>
+    </g>
+    <text x="18" y="122" font-family="Inter, 'Segoe UI', sans-serif" font-size="10.5" font-weight="700" fill="#5C5A78" letter-spacing=".4">AVAILABLE TIMES</text>
+    <g font-family="Inter, 'Segoe UI', sans-serif" font-size="11" font-weight="700">
+      <rect x="18" y="134" width="56" height="28" rx="8" fill="#F5F4FB" stroke="#D8D5EC"/><text x="31" y="152" fill="#3E3B5C">15:00</text>
+      <rect x="80" y="134" width="56" height="28" rx="8" fill="#1C43FE"/><text x="93" y="152" fill="#FFFFFF">17:00</text>
+      <rect x="142" y="134" width="56" height="28" rx="8" fill="#F5F4FB" stroke="#D8D5EC"/><text x="155" y="152" fill="#3E3B5C">18:00</text>
+      <rect x="18" y="168" width="56" height="28" rx="8" fill="#F5F4FB" stroke="#D8D5EC"/><text x="31" y="186" fill="#3E3B5C">19:00</text>
+      <rect x="80" y="168" width="56" height="28" rx="8" fill="#ECEAF8"/><text x="93" y="186" fill="#B7B2DE">20:00</text>
+    </g>
+    <rect x="18" y="218" width="178" height="38" rx="12" fill="#4A33D1"/>
+    <text x="107" y="242" text-anchor="middle" font-family="Inter, 'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#FFFFFF">Request a lesson</text>
+  </g>
+
+  <!-- approval toast -->
+  <g filter="url(#sh)" transform="translate(300 360)">
+    <rect width="270" height="54" rx="16" fill="#FFFFFF"/>
+    <circle cx="28" cy="27" r="14" fill="#D3F7E6"/>
+    <path d="M21 27l5 5 9-10" stroke="#009E52" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="52" y="23" font-family="Inter, 'Segoe UI', sans-serif" font-size="10.5" font-weight="600" fill="#5C5A78">Notification</text>
+    <text x="52" y="40" font-family="Manrope, 'Segoe UI', sans-serif" font-size="13" font-weight="800" fill="#211D3A">Your lesson request was approved</text>
+  </g>
+</svg>

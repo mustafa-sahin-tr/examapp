@@ -13,7 +13,12 @@ namespace ExamApp.Api.Services.Practice;
 public interface IPracticeSessionService
 {
     /// <exception cref="InvalidOperationException">Öğrencinin sınıfı yoksa.</exception>
-    Task<PracticeSessionDto> StartAsync(StudentProfileDto student, PracticeSessionStartDto request, CancellationToken ct = default);
+    /// <summary>
+    /// <paramref name="scopeSubjectId"/> (#1109): tek ders planının dersi; istek başka dersin ders / konu / alt konu / çalışma
+    /// sayfasını isterse <see cref="Entitlements.StudyScopeException"/>, kapsamsız istek o derse daralır.
+    /// </summary>
+    Task<PracticeSessionDto> StartAsync(StudentProfileDto student, PracticeSessionStartDto request, CancellationToken ct = default,
+        int? scopeSubjectId = null);
 
     /// <returns>null: oturum yok ya da bu öğrenciye ait değil.</returns>
     Task<PracticeSessionDto?> GetAsync(int sessionId, int studentId, CancellationToken ct = default);

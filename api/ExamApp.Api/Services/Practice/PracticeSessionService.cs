@@ -11,6 +11,7 @@ using ExamApp.Api.Services.Dashboard;
 using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Localization;
 using ExamApp.Foundation.Persistence;
+using ExamApp.Api.Services.Entitlements;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using ExamApp.Api.Services.TopicPerformance;
@@ -56,7 +57,8 @@ public class PracticeSessionService : IPracticeSessionService
         _mixedReview = mixedReview;
     }
 
-    public async Task<PracticeSessionDto> StartAsync(StudentProfileDto student, PracticeSessionStartDto request, CancellationToken ct = default)
+    public async Task<PracticeSessionDto> StartAsync(StudentProfileDto student, PracticeSessionStartDto request, CancellationToken ct = default,
+        int? scopeSubjectId = null)
     {
         if (!student.GradeId.HasValue)
             throw new InvalidOperationException(_localizer["practice.gradeRequired"]);
@@ -64,6 +66,12 @@ public class PracticeSessionService : IPracticeSessionService
         var subjectIds = Normalize(request.SubjectIds);
         var topicIds = Normalize(request.TopicIds);
         var subTopicIds = Normalize(request.SubTopicIds);
+        if (scopeSubjectId is { } scope)
+        {
+            await EnsureInScopeAsync(scope, subjectIds, topicIds, subTopicIds, request.StudyItemId, ct);
+            if (subjectIds.Count == 0)
+                subjectIds = [scope];
+        }
 
         // Issue #500: alt konu öğrencinin sınıfından olmalı; başka sınıfın alt konusu boş oturum açmasın. Geçersiz kimlik
         // (Normalize atar) sessizce kapsamsız oturum açmasın, sabit listeli oturumda da yok sayılmasın: öğrenci o konuyu istedi.
@@ -101,6 +109,8 @@ public class PracticeSessionService : IPracticeSessionService
         if (request.Saved)
         {
             var saved = await LoadSavedQuestionsAsync(student, onlyPracticable: true, ct);
+            if (scopeSubjectId is { } savedScope)
+                saved = saved.Where(q => q.SubjectId == savedScope).ToList();
             if (saved.Count == 0)
                 throw new InvalidOperationException(_localizer["practice.noSavedQuestions"]);
 
@@ -823,6 +833,21 @@ public class PracticeSessionService : IPracticeSessionService
     {
         if (session.Status != PracticeSessionStatus.Active)
             throw new InvalidOperationException(_localizer["practice.sessionAlreadyEnded"]);
+    }
+
+    /// <summary>Issue #1109: istenen ders, konu, alt konu ve çalışma sayfası planın dersinden olmalı.</summary>
+    private async Task EnsureInScopeAsync(int scope, List<int> subjectIds, List<int> topicIds, List<int> subTopicIds, int? studyItemId,
+        CancellationToken ct)
+    {
+        var outside = subjectIds.Any(id => id != scope)
+                      || (topicIds.Count > 0 && await _context.Topics.AsNoTracking()
+                          .AnyAsync(t => topicIds.Contains(t.Id) && t.SubjectId != scope, ct))
+                      || (subTopicIds.Count > 0 && await _context.SubTopics.AsNoTracking()
+                          .AnyAsync(s => subTopicIds.Contains(s.Id) && s.Topic.SubjectId != scope, ct))
+                      || (studyItemId is { } id && await _context.StudyItems.AsNoTracking()
+                          .AnyAsync(s => s.Id == id && s.SubjectId != null && s.SubjectId != scope, ct));
+        if (outside)
+            throw new StudyScopeException(scope);
     }
 
     private static List<int> Normalize(IEnumerable<int>? ids) =>

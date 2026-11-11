@@ -107,6 +107,42 @@ public class PracticeScopePostgresTests(IntegrationApiFactory factory) : Integra
         (await StartDailyAsync(client, new { subjectId = seeded.Turkish })).SessionId.ShouldBe(opened.SessionId);
     }
 
+    /// <summary>Issue #1109: tek ders (Türkçe) planında kendi pratiği o derse daralır; başka ders / konu 403 outOfScope.</summary>
+    [Fact]
+    public async Task A_single_subject_plan_narrows_practice_to_its_subject_issue1109()
+    {
+        var seeded = await SeedAsync();
+        await WithDbAsync(async db =>
+        {
+            var plan = await db.SubscriptionPlans.SingleAsync(p => p.Key == SubscriptionPlan.StudentProKey);
+            db.UserSubscriptionPlans.Add(new UserSubscriptionPlan
+            {
+                UserId = StudentUser, PlanId = plan.Id, ValidFromUtc = DateTime.UtcNow.AddDays(-1), ScopeSubjectId = seeded.Turkish,
+            });
+            await db.SaveChangesAsync();
+        });
+        var client = await StudentAsync();
+
+        var created = await client.PostAsJsonAsync("/api/practice/sessions", new { targetCount = 3 });
+        created.StatusCode.ShouldBe(HttpStatusCode.Created, await created.Content.ReadAsStringAsync());
+        var session = (await created.Content.ReadFromJsonAsync<PracticeSessionDto>(Json))!;
+        session.SubjectIds.ShouldBe([seeded.Turkish]);
+        var next = await client.GetFromJsonAsync<PracticeNextQuestionDto>($"/api/practice/sessions/{session.Id}/next", Json);
+        seeded.TurkishQuestions.ShouldContain(next!.Question!.Id);
+
+        foreach (var body in new object[] { new { subjectIds = new[] { seeded.Math } }, new { subTopicIds = new[] { seeded.SubTopic } } })
+        {
+            var refused = await client.PostAsJsonAsync("/api/practice/sessions", body);
+            refused.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+            var limit = (await refused.Content.ReadFromJsonAsync<EntitlementLimitReachedDto>(Json))!;
+            (limit.Code, limit.ScopeSubjectId).ShouldBe((EntitlementLimitReachedDto.OutOfScopeCode, (int?)seeded.Turkish));
+        }
+
+        (await client.GetAsync($"/api/practice/mistakes?subjectId={seeded.Math}")).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await client.GetAsync($"/api/practice/due-review?subjectId={seeded.Math}")).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await client.GetAsync("/api/practice/mistakes")).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
     [Fact]
     public async Task A_free_session_filters_by_subtopic_and_stops_at_the_target()
     {

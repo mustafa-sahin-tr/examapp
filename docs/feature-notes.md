@@ -389,9 +389,16 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   (band, sınıf, fiyatlar, tek ders listesi, `summerOnSale`, `siblingDiscountPercent`) ve mevcut atamanın dersi döner; `checkout
   { planKey, subjectId?, duration? }` geçersiz seçenekte 400 `subscription.invalidOption`. Atama `ScopeSubjectId`, `Duration`,
   `PricePaid`, `DiscountPercent` taşır; mevcut atamalar aylık, bütün dersler. Sınıfı olmayan öğrenci eskisi gibi aylık, bütün
-  dersler, `MonthlyPrice`. Tek ders kapsamı henüz özellik kapılarını daraltmaz. Admin plan düzenleyicisi öğrenci planında fiyat
+  dersler, `MonthlyPrice`. Tek ders kapsamının daraltması #1109'da. Admin plan düzenleyicisi öğrenci planında fiyat
   tablosunu (band / sınıf satırı × kapsam-süre) `prices` ile birlikte yazar: listede olmayan satır silinir, yeniden eklenen silinmiş
   satır canlanır (tekil indeks); geçersiz satır 400 `subscription.invalidPriceRow`.
+- **Tek ders kapsamı (#1109, epic #1118):** `UserSubscriptionPlan.ScopeSubjectId` doluysa (`ResolvedPlan.ScopeSubjectId`; okul
+  lisansı kapsamsız) öğrencinin **kendi** çalışması o derse daralır; öğretmen ataması, veli paneli ve raporlar daralmaz. Kapsam dışı
+  istek 403 `entitlement.outOfScope` (`EntitlementLimitResponse.OutOfScope`, gövdede `scopeSubjectId`); arayüz yükseltme
+  penceresini "Bu ders planında yok / Ders ekle" olarak açar (plan karşılaştırması yok). Yardımcı: `StudyScope.ForAsync`, servis
+  katmanında `StudyScopeException`. Yapılan yüzeyler: pratik oturumu (kapsamsız istek o derse daralır; başka ders / konu / alt konu /
+  çalışma sayfası 403; kayıtlı sorular oturumu yalnız o dersin soruları), `due-review` ve `mistakes` (ders verilmezse planın dersi,
+  başka ders 403). Sıradakiler: günün soruları, denemeler, bilgi kartları, çalışma sayfaları, soru havuzu, kendi etkinlikleri.
 - **Okul lisansı (#1092):** özel anlaşmayla okulun bütün üyelerine plan: `SchoolLicenses` (okul başına tek satır; öğretmen ve öğrenci
   planı, varsayılan iki kitlenin Pro'su; başlangıç / hariç bitiş; anlaşma notu ≤ 200). Kimseye atama yazılmaz: plan çözümü
   (`EntitlementService.ResolvePlanAsync`, admin listesi `CurrentPlansAsync`, ortak kural `SchoolLicensePlans`) kullanıcının okuluna

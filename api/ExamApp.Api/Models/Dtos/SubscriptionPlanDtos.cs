@@ -122,7 +122,14 @@ public class EntitlementLimitReachedDto
     /// <summary>Issue #1088: paylaşılan özellik karşı tarafın planında yok (403); <see cref="Message"/> kimin yükselteceğini söyler.</summary>
     public const string CounterpartNotInPlanCode = "entitlement.counterpartNotInPlan";
 
+    /// <summary>Issue #1109: tek ders planında başka dersin içeriği (403); <see cref="ScopeSubjectId"/> planın dersi.</summary>
+    public const string OutOfScopeCode = "entitlement.outOfScope";
+
     public string Code { get; set; } = LimitReachedCode;
+
+    /// <summary>Issue #1109: <see cref="OutOfScopeCode"/> yanıtında planın dersi.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? ScopeSubjectId { get; set; }
 
     /// <summary>Sınırına ulaşılan özellik anahtarı (ör. <c>book-import</c>).</summary>
     public string Feature { get; set; } = string.Empty;

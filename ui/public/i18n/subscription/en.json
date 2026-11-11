@@ -39,7 +39,8 @@
     "analytics": "Detailed analytics (topics, progress, outcomes)",
     "messaging": "Messaging",
     "tutoring": "Tutoring and bookings",
-    "live-lesson": "Live lessons"
+    "live-lesson": "Live lessons",
+    "subject-scope": "Subject scope"
   },
   "limits": {
     "unlimited": "Unlimited",
@@ -57,7 +58,8 @@
     "upgrade": "Upgrade plan",
     "close": "Close",
     "continueTrial": "Continue with the trial",
-    "addParent": "Add parent details"
+    "addParent": "Add parent details",
+    "widenScope": "Add a subject"
   },
   "checkout": {
     "demoTitle": "This is a demo checkout",
@@ -116,7 +118,9 @@
     "usage": "You've used this month's {{ feature }} allowance ({{ used }} / {{ limit }}).",
     "notIncluded": "{{ feature }} isn't included in your plan.",
     "resets": "Your allowance renews on {{ date }}.",
-    "compare": "{{ feature }} by plan"
+    "compare": "{{ feature }} by plan",
+    "outOfScopeTitle": "This subject is not in your plan",
+    "outOfScope": "Your plan covers a single subject. Add this subject or switch to all subjects to open it. Work your teacher assigns stays open in every subject."
   },
   "admin": {
     "title": "Subscriptions",

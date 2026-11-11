@@ -63,12 +63,17 @@ public class PracticeController : BaseController
         if (counted && !check.Allowed)
             return EntitlementLimitResponse.Create(feature, check);
 
+        var scope = await StudyScope.ForAsync(entitlements, userId, ct);
         try
         {
-            var result = await _practice.StartAsync(student!, request, ct);
+            var result = await _practice.StartAsync(student!, request, ct, scope.SubjectId);
             if (counted)
                 await entitlements.RecordUsageAsync(userId, feature, $"{feature}:session:{result.Id}", ct);
             return CreatedAtAction(nameof(GetSession), new { id = result.Id }, result);
+        }
+        catch (StudyScopeException ex)
+        {
+            return EntitlementLimitResponse.OutOfScope(ex.ScopeSubjectId, scope.PlanKey);
         }
         catch (InvalidOperationException ex)
         {
@@ -79,13 +84,18 @@ public class PracticeController : BaseController
     /// <summary>Issue #529: tekrar zamanı gelen sorular. Hesaplanır; sınıfı olmayan öğrencide boş döner.</summary>
     [HttpGet("due-review")]
     [RequiresEntitlement(EntitlementFeatures.StudyTools, InPlanOnly = true)]
-    public async Task<IActionResult> GetDueReview([FromQuery] int? subjectId, [FromQuery] int take = 15, CancellationToken ct = default)
+    public async Task<IActionResult> GetDueReview([FromServices] IEntitlementService entitlements, [FromQuery] int? subjectId,
+        [FromQuery] int take = 15, CancellationToken ct = default)
     {
-        var (student, error) = await ResolveStudentAsync();
+        var (student, error, userId) = await ResolveStudentWithUserAsync();
         if (error != null)
             return error;
 
-        return Ok(await _practice.GetDueReviewAsync(student!, subjectId, take, ct));
+        // #1109: tek ders planında liste o derse daralır; başka ders istenirse 403.
+        var scope = await StudyScope.ForAsync(entitlements, userId, ct);
+        if (!scope.Covers(subjectId))
+            return EntitlementLimitResponse.OutOfScope(scope.SubjectId!.Value, scope.PlanKey);
+        return Ok(await _practice.GetDueReviewAsync(student!, subjectId ?? scope.SubjectId, take, ct));
     }
 
     /// <summary>Issue #532: kaydedilen sorular.</summary>
@@ -132,13 +142,18 @@ public class PracticeController : BaseController
     /// <summary>Issue #698: yanlış defteri; sınıfı olmayan öğrencide boş döner.</summary>
     [HttpGet("mistakes")]
     [RequiresEntitlement(EntitlementFeatures.StudyTools, InPlanOnly = true)]
-    public async Task<IActionResult> GetMistakes([FromQuery] int? subjectId, [FromQuery] int? topicId, CancellationToken ct = default)
+    public async Task<IActionResult> GetMistakes([FromServices] IEntitlementService entitlements, [FromQuery] int? subjectId,
+        [FromQuery] int? topicId, CancellationToken ct = default)
     {
-        var (student, error) = await ResolveStudentAsync();
+        var (student, error, userId) = await ResolveStudentWithUserAsync();
         if (error != null)
             return error;
 
-        return Ok(await _practice.GetMistakesAsync(student!, subjectId, topicId, ct));
+        // #1109: tek ders planında defter o derse daralır (başka dersin konusu boş döner); başka ders istenirse 403.
+        var scope = await StudyScope.ForAsync(entitlements, userId, ct);
+        if (!scope.Covers(subjectId))
+            return EntitlementLimitResponse.OutOfScope(scope.SubjectId!.Value, scope.PlanKey);
+        return Ok(await _practice.GetMistakesAsync(student!, subjectId ?? scope.SubjectId, topicId, ct));
     }
 
     /// <summary>Issue #698: yanlış nedeni etiketi; soru öğrencinin defterinde değilse 404.</summary>

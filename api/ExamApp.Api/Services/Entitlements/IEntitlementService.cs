@@ -178,8 +178,10 @@ public sealed class EntitlementLimitException(string featureKey, EntitlementChec
 /// <summary>
 /// Kullanıcının o anki planı; <paramref name="ValidToUtc"/> atamanın (ya da lisansın) bitişi (Free / süresiz atamada null).
 /// <paramref name="FromSchoolLicense"/>: plan okulun lisansından geliyor (#1092).
+/// <paramref name="ScopeSubjectId"/>: tek ders planının dersi (#1108); null = bütün dersler (okul lisansı da).
 /// </summary>
-public sealed record ResolvedPlan(int? PlanId, string? Key, string? Name, DateTime? ValidToUtc = null, bool FromSchoolLicense = false);
+public sealed record ResolvedPlan(int? PlanId, string? Key, string? Name, DateTime? ValidToUtc = null, bool FromSchoolLicense = false,
+    int? ScopeSubjectId = null);
 
 public enum AssignPlanError
 {

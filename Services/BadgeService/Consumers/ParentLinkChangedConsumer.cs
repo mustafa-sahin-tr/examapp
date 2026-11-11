@@ -123,6 +123,7 @@ public class ParentLinkChangedConsumer :
         ParentChildPlanEndingConsumer.NotificationType, // issue #1091
         StudentGradePromotedConsumer.ToParentType, // issue #1110
         PlanPriceChangeNoticeConsumer.ToParentType, // issue #1116
+        ParentWeeklyReportConsumer.Type, // issue #1112
         LinkedToParentType,
         // issue #542: çocuğun okul değişimi
         SchoolChangedConsumer.ChangedToParentType,

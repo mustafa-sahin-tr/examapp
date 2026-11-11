@@ -83,4 +83,10 @@ public class ParentStudentLink
     /// aynı kural).
     /// </summary>
     public bool IsPrimary { get; set; }
+
+    /// <summary>
+    /// Issue #1112: bu bağlantıya haftalık raporu gönderilen son haftanın Pazartesi'si. Job koşullu güncelleme ile işaretler
+    /// (event'le aynı transaction): hafta başına tek rapor.
+    /// </summary>
+    public DateOnly? WeeklyReportSentFor { get; set; }
 }

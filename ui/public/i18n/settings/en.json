@@ -31,5 +31,12 @@
     "title": "Language",
     "hint": "Your choice is saved to your account and used on all your devices.",
     "saving": "Saving your language preference..."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "weeklyReportEmail": "Also send the weekly report by e-mail",
+    "weeklyReportHint": "The report arrives every Monday morning as an in-app notification; you can turn the e-mail off here.",
+    "loadError": "Your notification preference could not be loaded.",
+    "saveError": "Your preference could not be saved; try again."
   }
 }

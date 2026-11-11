@@ -9,6 +9,7 @@ import { SettingsComponent } from './settings.component';
 import { AuthService, UserProfile } from '../../services/auth.service';
 import { LocaleService } from '../../services/locale.service';
 import { LocalePreferenceService } from '../../services/locale-preference.service';
+import { ParentService } from '../../services/parent.service';
 import { KEYCLOAK_ACCOUNT_CONSOLE_PATH } from '../../models/account-settings.model';
 import { Teacher } from '../../models/teacher';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
@@ -23,6 +24,8 @@ describe('SettingsComponent (issue #417)', () => {
     let user: WritableSignal<UserProfile | null>;
     let refreshProfile: Mock;
     let persistPreference: Mock;
+    let getSettings: Mock;
+    let updateSettings: Mock;
 
     function profile(role: 'Teacher' | 'Admin', teacher?: Partial<Teacher>): UserProfile {
         return {
@@ -41,6 +44,8 @@ describe('SettingsComponent (issue #417)', () => {
         user = signal(initial);
         refreshProfile = vi.fn().mockName('refreshProfile').mockImplementation(() => refreshed);
         persistPreference = vi.fn().mockName('persistPreference').mockReturnValue(of(undefined));
+        getSettings = vi.fn().mockName('getSettings').mockReturnValue(of({ weeklyReportEmail: true }));
+        updateSettings = vi.fn().mockName('updateSettings').mockImplementation((v) => of(v));
         const authStub: Partial<AuthService> = {
             hasRealmRole: (role: string) => roles.includes(role),
             user,
@@ -64,6 +69,7 @@ describe('SettingsComponent (issue #417)', () => {
                 { provide: AuthService, useValue: authStub },
                 { provide: LocaleService, useValue: { locale: signal('tr').asReadonly() } },
                 { provide: LocalePreferenceService, useValue: { persistPreference } },
+                { provide: ParentService, useValue: { getSettings, updateSettings } },
             ],
         });
         fixture = TestBed.createComponent(SettingsComponent);
@@ -219,6 +225,35 @@ describe('SettingsComponent (issue #417)', () => {
     it('empty_RefreshReturnsNoProfile_ShowsEmptyState', () => {
         const el = setup(['Admin'], null, of(null));
         expect(el.querySelector('.stg__state--empty')).not.toBeNull();
+    });
+
+    it('parent_ShowsWeeklyReportEmailToggle_SavesChange (issue #1112)', () => {
+        const el = setup(['Parent'], null);
+        expect(getSettings).toHaveBeenCalledTimes(1);
+        const input = el.querySelector<HTMLButtonElement>('[data-testid="weekly-report-email"] button')!;
+        expect(input.getAttribute('aria-checked')).toBe('true');
+        input.click();
+        fixture.detectChanges();
+        expect(updateSettings).toHaveBeenCalledWith({ weeklyReportEmail: false });
+        expect(input.getAttribute('aria-checked')).toBe('false');
+    });
+
+    it('parent_SaveFails_RevertsToggleAndShowsError (issue #1112)', () => {
+        const el = setup(['Parent'], null);
+        const response = new Subject<never>();
+        updateSettings.mockReturnValue(response);
+        el.querySelector<HTMLButtonElement>('[data-testid="weekly-report-email"] button')!.click();
+        fixture.detectChanges();
+        response.error(new Error('boom'));
+        fixture.detectChanges();
+        expect(el.querySelector('[data-testid="weekly-report-email"] button')!.getAttribute('aria-checked')).toBe('true');
+        expect(text(el, '.stg-notifications [role="alert"]')).toBe(settingsTr.notifications.saveError);
+    });
+
+    it('teacher_HasNoNotificationsCard (issue #1112)', () => {
+        const el = setup(['Teacher'], profile('Teacher', { schoolName: 'X' }));
+        expect(el.querySelector('.stg-notifications')).toBeNull();
+        expect(getSettings).not.toHaveBeenCalled();
     });
 
     it('i18n_TrAndEnHaveSameKeys', () => {

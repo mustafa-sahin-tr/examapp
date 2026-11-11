@@ -347,6 +347,8 @@ const PARENT_NOTIFICATION_PRESENTATION: Readonly<
   GradePromotedToParent: { icon: 'upgrade', toParentPage: true },
   // Issue #1116: çocuğun planının yenileme fiyatı değişiyor → o çocuğun "Plan" sekmesi.
   PlanPriceChangeToParent: { icon: 'sell', toParentPage: true, tab: 'plan' },
+  // Issue #1112: haftalık rapor → o çocuğun "Rapor" sekmesi.
+  ParentWeeklyReport: { icon: 'summarize', toParentPage: true, tab: 'report' },
 };
 
 /** Issue #439: öğrenciye giden veli kararı bildirimleri → ikon (hepsi `/my-bookings`). */

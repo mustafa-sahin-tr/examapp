@@ -1,0 +1,10 @@
+{
+  "hints": {
+    "userNotResolved": "User not found.",
+    "notEligible": "Hints open only on questions you got wrong or left blank.",
+    "notSupported": "This question type has no hints.",
+    "quotaReached": "You have used this month's hints.",
+    "aiUnavailable": "Hints can't be prepared right now.",
+    "generationFailed": "The hint could not be prepared. Try again shortly."
+  }
+}

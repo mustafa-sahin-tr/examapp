@@ -3916,6 +3916,87 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("Questions");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.QuestionHintSet", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("GeneratedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("QuestionId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SchemaRevision")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("Unavailable")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuestionId", "SchemaRevision")
+                        .IsUnique();
+
+                    b.ToTable("QuestionHintSets");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.QuestionHintStep", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("HintSetId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Step")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HintSetId", "Step")
+                        .IsUnique();
+
+                    b.ToTable("QuestionHintSteps");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.QuestionLearningOutcome", b =>
                 {
                     b.Property<int>("Id")
@@ -5362,6 +5443,34 @@ namespace ExamApp.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("StudentGradePromotions");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.StudentHintReveal", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("QuestionId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("RevealedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Step")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StudentUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentUserId", "QuestionId", "Step")
+                        .IsUnique();
+
+                    b.ToTable("StudentHintReveals");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.StudentMistakeReason", b =>
@@ -6943,6 +7052,24 @@ namespace ExamApp.Api.Migrations
                             FeatureKey = "ask-teacher",
                             IsDeleted = false,
                             MonthlyLimit = 40,
+                            PlanId = 2
+                        },
+                        new
+                        {
+                            Id = 94,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "step-hints",
+                            IsDeleted = false,
+                            MonthlyLimit = 300,
+                            PlanId = 9
+                        },
+                        new
+                        {
+                            Id = 95,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "step-hints",
+                            IsDeleted = false,
+                            MonthlyLimit = 300,
                             PlanId = 2
                         });
                 });
@@ -10872,6 +10999,28 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Topic");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.QuestionHintSet", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Question", "Question")
+                        .WithMany()
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Question");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.QuestionHintStep", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.QuestionHintSet", "HintSet")
+                        .WithMany("Steps")
+                        .HasForeignKey("HintSetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("HintSet");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.QuestionLearningOutcome", b =>
                 {
                     b.HasOne("ExamApp.Api.Data.LearningOutcome", "LearningOutcome")
@@ -11786,6 +11935,11 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("QuestionSubTopics");
 
                     b.Navigation("WorksheetQuestions");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.QuestionHintSet", b =>
+                {
+                    b.Navigation("Steps");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.RecurringAvailabilityRule", b =>

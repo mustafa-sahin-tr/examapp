@@ -39,6 +39,7 @@
     "analytics": "Detailed analytics (topics, progress, outcomes)",
     "weekly-report": "Weekly parent report",
     "ask-teacher": "Ask a teacher",
+    "step-hints": "Step-by-step hints",
     "messaging": "Messaging",
     "tutoring": "Tutoring and bookings",
     "live-lesson": "Live lessons",
@@ -303,7 +304,8 @@
     "exam": "exams",
     "test": "tests",
     "activity": "activities",
-    "lesson": "lessons"
+    "lesson": "lessons",
+    "hint": "hints"
   },
   "locked": {
     "text": "Not in your current plan. See which plans include it.",

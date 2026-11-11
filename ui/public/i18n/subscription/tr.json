@@ -39,6 +39,7 @@
     "analytics": "Ayrıntılı analiz (konu, gelişim, kazanım)",
     "weekly-report": "Haftalık veli raporu",
     "ask-teacher": "Öğretmene sor",
+    "step-hints": "Adım adım ipucu",
     "messaging": "Mesajlaşma",
     "tutoring": "Özel ders ve randevu",
     "live-lesson": "Canlı ders",
@@ -303,7 +304,8 @@
     "exam": "deneme",
     "test": "test",
     "activity": "etkinlik",
-    "lesson": "ders"
+    "lesson": "ders",
+    "hint": "ipucu"
   },
   "locked": {
     "text": "Mevcut planında yok. Hangi planlarda olduğunu görebilirsin.",

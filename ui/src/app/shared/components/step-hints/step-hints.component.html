@@ -1,0 +1,36 @@
+<div class="hints" *transloco="let t; prefix: 'hints'" data-testid="step-hints">
+  @if (state(); as s) {
+    @if (s.unavailable) {
+      <p class="hints__note" data-testid="hints-unavailable">{{ t('unavailable') }}</p>
+    } @else {
+      <ol class="hints__steps" [attr.aria-label]="t('title')">
+        @for (step of s.steps; track step.step) {
+          <li class="hints__step" data-testid="hint-step">
+            <span class="hints__num">{{ t('stepLabel', { n: step.step }) }}</span>
+            <span>{{ step.text }}</span>
+          </li>
+        }
+      </ol>
+    }
+  }
+  @if (canReveal()) {
+    <button
+      mat-stroked-button
+      type="button"
+      data-testid="hint-next"
+      [disabled]="busy()"
+      (click)="state() ? next() : open()"
+    >
+      <mat-icon aria-hidden="true">lightbulb</mat-icon>
+      {{ state()?.steps?.length ? t('next') : t('open') }}
+    </button>
+  }
+  @if (state()?.remaining !== null && state()?.remaining !== undefined) {
+    <span class="hints__note" data-testid="hints-remaining">{{ t('remaining', { count: state()!.remaining }) }}</span>
+  }
+  @if (error(); as message) {
+    <p class="hints__error" role="alert" data-testid="hints-error">
+      {{ message === 'failed' ? t('failed') : message }}
+    </p>
+  }
+</div>

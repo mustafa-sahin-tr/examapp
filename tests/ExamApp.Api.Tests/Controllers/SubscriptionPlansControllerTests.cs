@@ -74,7 +74,10 @@ public class SubscriptionPlansControllerTests : IDisposable
         var studentPro = Limits(plans, SubscriptionPlan.StudentProKey);
         studentPro[EntitlementFeatures.AskTeacher].ShouldBe(40);
         Limits(plans, SubscriptionPlan.StudentEssentialKey)[EntitlementFeatures.AskTeacher].ShouldBe(10);
-        studentPro.Where(l => l.Key != EntitlementFeatures.AskTeacher).ShouldAllBe(l => l.Value == null);
+        // #1113: ipucu yalnız Pro'da, ayda 300 adım.
+        studentPro[EntitlementFeatures.StepHints].ShouldBe(300);
+        Limits(plans, SubscriptionPlan.StudentEssentialKey).ShouldNotContainKey(EntitlementFeatures.StepHints);
+        studentPro.Where(l => l.Key is not (EntitlementFeatures.AskTeacher or EntitlementFeatures.StepHints)).ShouldAllBe(l => l.Value == null);
         Limits(plans, SubscriptionPlan.TrialKey)[EntitlementFeatures.BookImport].ShouldBe(1);
         pro.Keys.Except(Limits(plans, SubscriptionPlan.TrialKey).Keys).ShouldBeEmpty();
     }

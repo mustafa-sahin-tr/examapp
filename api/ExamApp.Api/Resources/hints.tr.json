@@ -1,0 +1,10 @@
+{
+  "hints": {
+    "userNotResolved": "Kullanıcı bulunamadı.",
+    "notEligible": "İpucu yalnız yanlış ya da boş bıraktığın sorularda açılır.",
+    "notSupported": "Bu soru türünde ipucu yok.",
+    "quotaReached": "Bu ayki ipucu hakkın doldu.",
+    "aiUnavailable": "İpucu şu an hazırlanamıyor.",
+    "generationFailed": "İpucu hazırlanamadı. Biraz sonra yeniden dene."
+  }
+}

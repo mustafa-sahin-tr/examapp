@@ -1,0 +1,9 @@
+{
+  "title": "Hints",
+  "open": "Get a hint",
+  "next": "Next hint",
+  "stepLabel": "Step {{ n }}",
+  "remaining": "{{ count }} hints left this month.",
+  "unavailable": "No hint could be prepared for this question.",
+  "failed": "The hint could not be prepared. Try again shortly."
+}

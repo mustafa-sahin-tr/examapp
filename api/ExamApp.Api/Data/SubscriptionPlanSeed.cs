@@ -131,6 +131,10 @@ public static class SubscriptionPlanSeed
         (StudentEssentialPlanId, EntitlementFeatures.AskTeacher, 10),
         (StudentProPlanId, EntitlementFeatures.AskTeacher, 40),
         (TrialPlanId, EntitlementFeatures.AskTeacher, 40),
+
+        // #1113: adım adım ipucu yalnız Pro'da, ayda 300 adım; deneme Pro gibi.
+        (StudentProPlanId, EntitlementFeatures.StepHints, 300),
+        (TrialPlanId, EntitlementFeatures.StepHints, 300),
     ];
 
     private const int FirstTierLimitId = 13;

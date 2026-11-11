@@ -540,3 +540,19 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   `SavedToNotebookAt` ile işaretlenir (`PUT {id}/notebook`, `GET notebook`) ve Yanlışlarım sayfasının sonunda "Öğretmene sorduklarım"
   bölümünde (`app-ask-teacher-notebook`) listelenir.
 - **Sonra:** sesli ve tuval üzerinde cevap (öğretmen şimdilik yazı + görselle cevaplar); ek soru paketi (#1083 sonrası).
+
+## Adım adım ipucu ve haftalık çalışma planı (#1113, epic #1118)
+
+- **İpucu (dilim 1):** Yanlışlarım'daki her soruda "İpucu al" (`app-step-hints`). Yalnız öğrencinin yanlış ya da boş bıraktığı
+  soruda açılır (pratikte cevaplanmış yanlış ya da tamamlanmış testte doğru olmayan madde; başka soru 404) ve yalnız çoktan seçmelide
+  (doğru şıkkı olan; değilse 400 `hints.notSupported`). Uçlar `GET /api/exam/hints/questions/{id}` (açılmış adımlar, hak düşmez) ve
+  `POST …/{id}/next` (sıradaki adım). Hak `step-hints` (Pro 300, deneme 300 adım / ay; Basic ve Essential'da yok → 403 yükseltme
+  penceresi): **ilk kez açılan adım** başına bir kullanım (`hint:{userId}:{questionId}:{step}`), açılmış adımı yeniden okumak ve
+  adımlar bitince basmak sayılmaz.
+- **Üretim ve önbellek:** ipuçları soru başına bir kez üretilir, bütün öğrenciler paylaşır (`QuestionHintSets` + `QuestionHintSteps`,
+  `(QuestionId, SchemaRevision)` tekil; öğrencinin açtıkları `StudentHintReveals`). `ClaudeHintGenerator` görseli (varsa) ve
+  sınıflandırma metnini (#590) okur, doğru şıkkı bilir ama yazması yasak; 2–3 adım. İstem / şema değişince
+  `ClaudeHintGenerator.SchemaRevision` artırılır (eski setler yeniden üretilir). Çağrı işaretleme ekranının Claude kotası ve günlük
+  bütçesini kullanır (`LabelingAiQuota`, öğrencinin Keycloak kimliğiyle); dolu → 429 `hints.budgetExceeded` / `hints.rateLimited`.
+- **Cevap sızıntısı:** `HintLeakGuard` "cevap / doğru şık B" kalıbını ve doğru şıkkın metnini (4+ karakter) arar; bir adım bile
+  sızdırırsa set `Unavailable` kaydedilir (yeniden üretilmez, hak düşmez), arayüz "Bu soru için ipucu hazırlanamadı" yazar.

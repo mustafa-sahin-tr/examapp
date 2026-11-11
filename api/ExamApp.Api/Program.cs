@@ -465,6 +465,9 @@ builder.Services.AddScoped<ExamApp.Api.Services.TargetGoals.ITargetProgramServic
 builder.Services.AddScoped<ExamApp.Api.Services.TargetGoals.ITargetGoalService, ExamApp.Api.Services.TargetGoals.TargetGoalService>(); // issue #695
 builder.Services.AddScoped<ExamApp.Api.Services.TargetGoals.IParentTargetGoalService, ExamApp.Api.Services.TargetGoals.ParentTargetGoalService>(); // issue #695
 builder.Services.AddSingleton<ExamApp.Api.Services.QuestionGeneration.IQuestionDraftGenerator, ExamApp.Api.Services.QuestionGeneration.ClaudeQuestionDraftGenerator>();
+// Issue #1113: adım adım ipucu (Pro).
+builder.Services.AddSingleton<ExamApp.Api.Services.Hints.IHintGenerator, ExamApp.Api.Services.Hints.ClaudeHintGenerator>();
+builder.Services.AddScoped<ExamApp.Api.Services.Hints.IHintService, ExamApp.Api.Services.Hints.HintService>();
 builder.Services.AddScoped<ExamApp.Api.Services.QuestionGeneration.IQuestionGenerationService, ExamApp.Api.Services.QuestionGeneration.QuestionGenerationService>();
 // issue #262: audit saklama süresi (KVKK) — AdminDataAccessLog:RetentionDays (varsayılan 180), günlük Hangfire temizliği.
 builder.Services.AddOptions<ExamApp.Api.Services.AdminUsers.AdminDataAccessLogOptions>()

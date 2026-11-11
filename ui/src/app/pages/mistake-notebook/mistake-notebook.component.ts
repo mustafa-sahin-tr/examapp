@@ -13,6 +13,7 @@ import { MISTAKE_REASONS, MistakeItem, MistakeReason, PracticeSessionStartReques
 import { PracticeService } from '../../services/practice.service';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { AskTeacherNotebookComponent } from '../../shared/components/ask-teacher-notebook/ask-teacher-notebook.component';
+import { StepHintsComponent } from '../../shared/components/step-hints/step-hints.component';
 
 /** Issue #698: testler ve pratikteki yanlışlar tek listede; ders süzülür, süzülen yanlışlardan pratik açılır. */
 @Component({
@@ -21,6 +22,7 @@ import { AskTeacherNotebookComponent } from '../../shared/components/ask-teacher
   imports: [
     PageHeaderComponent,
     AskTeacherNotebookComponent,
+    StepHintsComponent,
     DatePipe,
     RouterLink,
     MatButtonModule,

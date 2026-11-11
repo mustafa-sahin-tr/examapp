@@ -303,6 +303,18 @@
       "title": "Çocuğunuzun okul kaydı kaldırıldı",
       "body": "{2} adlı çocuğunuzun {0} okul kaydı kaldırıldı."
     },
+    "AskTeacherAsked": {
+      "title": "Yeni soru",
+      "body": "{0} sana bir soru gönderdi. {1} saat içinde cevaplayabilirsin."
+    },
+    "AskTeacherAnswered": {
+      "title": "Sorun cevaplandı",
+      "body": "{0} soruna cevap verdi. Görmek için dokun."
+    },
+    "AskTeacherExpired": {
+      "title": "Sorunun süresi doldu",
+      "body": "{0} sorunu süresi içinde cevaplayamadı. Hakkından düşülmedi; yeniden sorabilirsin."
+    },
     "OpenTextReviewed": {
       "title": "Cevabın değerlendirildi",
       "body": "{0}: öğretmenin açık uçlu cevabını değerlendirdi. Geri bildirimi okumak için dokun."

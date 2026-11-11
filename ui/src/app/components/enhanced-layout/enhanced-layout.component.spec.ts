@@ -1347,6 +1347,10 @@ describe('EnhancedLayoutComponent role navigation (issue #719)', () => {
         expect(labels(component.activeSectionTabs())).toEqual(['tab-tutors', 'tab-bookings']);
         expect((fixture.nativeElement as HTMLElement).querySelectorAll('.section-tab').length).toBe(2);
 
+        // Issue #1111: öğretmene sor Mesajlar bölümünün sekmesi.
+        await goTo(fixture, '/ask-teacher?q=4');
+        expect(labels(component.activeSectionTabs())).toEqual(['tab-teacher-messages', 'tab-ask-teacher']);
+
         await goTo(fixture, '/dashboard');
         expect(component.activeSectionTabs()).toEqual([]);
     });

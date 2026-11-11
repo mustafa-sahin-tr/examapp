@@ -538,6 +538,12 @@ export const routes: Routes = [
           import('./pages/teacher-messages/teacher-messages.component').then((m) => m.TeacherMessagesComponent),
       },
       {
+        // Issue #1111: öğrenci → öğretmen fotoğraflı soru (hak, form, sorularım; bildirimden ?q=<id>).
+        path: 'ask-teacher',
+        canActivate: [authGuard, studentGuard],
+        loadComponent: () => import('./pages/ask-teacher/ask-teacher.component').then((m) => m.AskTeacherComponent),
+      },
+      {
         // Issue #106: öğretmenin öğrenci mesajları gelen kutusu (onaysız öğretmen giremez; uç da 403 döner).
         path: 'student-messages',
         canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],

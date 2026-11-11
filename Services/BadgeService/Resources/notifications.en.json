@@ -303,6 +303,18 @@
       "title": "Your child's school was removed",
       "body": "Your child {2} is no longer enrolled at {0}."
     },
+    "AskTeacherAsked": {
+      "title": "New question",
+      "body": "{0} sent you a question. You can answer within {1} hours."
+    },
+    "AskTeacherAnswered": {
+      "title": "Your question was answered",
+      "body": "{0} answered your question. Tap to see it."
+    },
+    "AskTeacherExpired": {
+      "title": "Your question expired",
+      "body": "{0} couldn't answer your question in time. It didn't count against your quota; you can ask again."
+    },
     "OpenTextReviewed": {
       "title": "Your answer was reviewed",
       "body": "{0}: your teacher reviewed your open-ended answer. Tap to read the feedback."

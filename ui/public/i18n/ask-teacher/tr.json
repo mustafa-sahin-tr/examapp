@@ -1,0 +1,57 @@
+{
+  "title": "Öğretmene sor",
+  "subtitle": "Takıldığın sorunun fotoğrafını çek, öğretmenine gönder; cevabı burada görürsün.",
+  "loadError": "Sorular yüklenemedi.",
+  "retry": "Tekrar dene",
+  "sent": "Sorun gönderildi. Cevap gelince bildirim alacaksın.",
+  "quota": {
+    "limited": "Bu ay {{used}} / {{limit}} soru cevaplandı, {{pending}} soru cevap bekliyor. Kalan hakkın: {{remaining}}.",
+    "unlimited": "Planında soru sınırı yok. Cevap bekleyen: {{pending}}.",
+    "full": "Bu ayki hakkın doldu (cevap bekleyen sorular da sayılır). Süresi dolan ya da geri çektiğin sorular hakkından düşmez."
+  },
+  "form": {
+    "title": "Yeni soru",
+    "hint": "Yalnız sınıf öğretmenlerine ve ders aldığın öğretmenlere sorabilirsin.",
+    "subject": "Ders (isteğe bağlı)",
+    "anySubject": "Fark etmez",
+    "teacher": "Öğretmen",
+    "teachesSubject": "bu dersi okutuyor",
+    "noTeachers": "Şu an soru sorabileceğin öğretmen yok. Sınıf öğretmenlerin ve ders aldığın öğretmenler burada görünür.",
+    "photo": "Fotoğraf çek / seç",
+    "photoAlt": "Soru fotoğrafı",
+    "removePhoto": "Fotoğrafı kaldır",
+    "note": "Not (isteğe bağlı)",
+    "notePlaceholder": "Nerede takıldığını yaz…",
+    "send": "Gönder"
+  },
+  "list": {
+    "title": "Sorularım",
+    "empty": "Henüz soru göndermedin.",
+    "questionImage": "Soru fotoğrafı",
+    "answerImage": "Öğretmenin cevabı",
+    "dueAt": "Öğretmen {{date}} tarihine kadar cevaplayabilir.",
+    "expired": "Öğretmen süresi içinde cevaplayamadı; hakkından düşülmedi.",
+    "answer": "Cevap",
+    "rate": "Cevap işine yaradı mı?",
+    "star": "{{n}} yıldız",
+    "cancel": "Geri çek"
+  },
+  "status": {
+    "open": "Cevap bekliyor",
+    "answered": "Cevaplandı",
+    "expired": "Süresi doldu",
+    "cancelled": "Geri çekildi"
+  },
+  "errors": {
+    "generic": "İşlem tamamlanamadı. Tekrar dene.",
+    "quotaReached": "Bu ayki soru hakkın doldu.",
+    "notInPlan": "Planında öğretmene sor yok.",
+    "teacherNotAvailable": "Bu öğretmene soru gönderemezsin.",
+    "invalidImage": "Fotoğraf okunamadı (JPEG, PNG ya da WebP).",
+    "imageTooLarge": "Fotoğraf çok büyük (en fazla 15 MB).",
+    "noteTooLong": "Not en fazla 1000 karakter olabilir.",
+    "invalidSubject": "Geçerli bir ders seç.",
+    "invalidState": "Bu soru artık bu işlem için uygun değil.",
+    "notFound": "Soru bulunamadı."
+  }
+}

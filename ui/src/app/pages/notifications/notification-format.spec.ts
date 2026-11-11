@@ -305,6 +305,15 @@ describe('describeNotification (issue #105)', () => {
         }
     });
 
+    it('AskTeacherAnswered_and_Expired_LinkTheStudentsQuestion (issue #1111)', () => {
+        const answered = describeNotification({ type: 'AskTeacherAnswered', data: JSON.stringify({ questionId: 42 }) });
+        expect(answered.icon).toBe('mark_chat_read');
+        expect(answered.route).toEqual({ commands: ['/ask-teacher'], queryParams: { q: 42 } });
+
+        expect(describeNotification({ type: 'AskTeacherExpired', data: '{' }).route).toEqual({ commands: ['/ask-teacher'] });
+        expect(describeNotification({ type: 'AskTeacherExpired', data: JSON.stringify({ questionId: 0 }) }).icon).toBe('timer_off');
+    });
+
     it('ParentCoParentLeftToPrimary_LinksParentPageForThatChild (issue #436)', () => {
         const result = describeNotification({
             type: 'ParentCoParentLeftToPrimary',

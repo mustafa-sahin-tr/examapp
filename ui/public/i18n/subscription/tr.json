@@ -39,7 +39,8 @@
     "analytics": "Ayrıntılı analiz (konu, gelişim, kazanım)",
     "messaging": "Mesajlaşma",
     "tutoring": "Özel ders ve randevu",
-    "live-lesson": "Canlı ders"
+    "live-lesson": "Canlı ders",
+    "subject-scope": "Ders kapsamı"
   },
   "limits": {
     "unlimited": "Sınırsız",
@@ -57,7 +58,8 @@
     "upgrade": "Planı yükselt",
     "close": "Kapat",
     "continueTrial": "Denemeyle devam et",
-    "addParent": "Veli bilgisi ekle"
+    "addParent": "Veli bilgisi ekle",
+    "widenScope": "Ders ekle"
   },
   "checkout": {
     "demoTitle": "Bu bir demo ödeme ekranıdır",
@@ -116,7 +118,9 @@
     "usage": "{{ feature }} için bu ayki hakkını kullandın ({{ used }} / {{ limit }}).",
     "notIncluded": "{{ feature }} mevcut planında yok.",
     "resets": "Hakların {{ date }} tarihinde yenilenir.",
-    "compare": "Planlarda {{ feature }}"
+    "compare": "Planlarda {{ feature }}",
+    "outOfScopeTitle": "Bu ders planında yok",
+    "outOfScope": "Planın tek bir dersi kapsıyor. Bu dersi açmak için planına ders ekle ya da bütün derslere geç. Öğretmeninin verdiği ödevler her derste açık kalır."
   },
   "admin": {
     "title": "Abonelikler",

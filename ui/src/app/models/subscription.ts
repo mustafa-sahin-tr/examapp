@@ -152,8 +152,12 @@ export const ENTITLEMENT_LIMIT_REACHED_CODE = 'entitlement.limitReached';
 /** Issue #1087: özellik planda yok (sınır 0) — 403, aynı gövde ve aynı yükseltme penceresi. */
 export const ENTITLEMENT_NOT_IN_PLAN_CODE = 'entitlement.notInPlan';
 
+/** Issue #1109: tek ders planında başka dersin içeriği (403); `scopeSubjectId` planın dersi. */
+export const ENTITLEMENT_OUT_OF_SCOPE_CODE = 'entitlement.outOfScope';
+
 export interface EntitlementLimitReached {
-  code: typeof ENTITLEMENT_LIMIT_REACHED_CODE | typeof ENTITLEMENT_NOT_IN_PLAN_CODE;
+  code: typeof ENTITLEMENT_LIMIT_REACHED_CODE | typeof ENTITLEMENT_NOT_IN_PLAN_CODE | typeof ENTITLEMENT_OUT_OF_SCOPE_CODE;
+  scopeSubjectId?: number | null;
   feature: string;
   limit: number | null;
   used: number | null;
@@ -162,13 +166,22 @@ export interface EntitlementLimitReached {
   message?: string | null;
 }
 
-/** 429 + `entitlement.limitReached` ya da 403 + `entitlement.notInPlan` ise gövdeyi döndürür; diğer hatalarda null. */
+/**
+ * 429 + `entitlement.limitReached` ya da 403 + `entitlement.notInPlan` / `entitlement.outOfScope` (#1109) ise gövdeyi döndürür;
+ * diğer hatalarda null.
+ */
 export function entitlementLimitOf(error: unknown): EntitlementLimitReached | null {
   if (!(error instanceof HttpErrorResponse)) return null;
   const body = error.error as Partial<EntitlementLimitReached> | null;
-  const expected =
-    error.status === 429 ? ENTITLEMENT_LIMIT_REACHED_CODE : error.status === 403 ? ENTITLEMENT_NOT_IN_PLAN_CODE : null;
-  return expected && body?.code === expected && typeof body.feature === 'string' ? (body as EntitlementLimitReached) : null;
+  const expected: string[] =
+    error.status === 429
+      ? [ENTITLEMENT_LIMIT_REACHED_CODE]
+      : error.status === 403
+        ? [ENTITLEMENT_NOT_IN_PLAN_CODE, ENTITLEMENT_OUT_OF_SCOPE_CODE]
+        : [];
+  return typeof body?.code === 'string' && expected.includes(body.code) && typeof body.feature === 'string'
+    ? (body as EntitlementLimitReached)
+    : null;
 }
 
 /**

@@ -114,6 +114,18 @@ describe('entitlementLimitInterceptor (issue #1029)', () => {
     expect(el.querySelector('[data-testid="upgrade-reset"]')).toBeNull();
   });
 
+  it('issue #1109: 403 entitlement.outOfScope opens the dialog offering to add the subject, without the plan table', () => {
+    fail('/api/exam/practice/sessions', 403, {
+      code: 'entitlement.outOfScope', feature: 'subject-scope', limit: 0, used: null, resetsAtUtc: null, planKey: 'student-pro', scopeSubjectId: 4,
+    });
+
+    const el = dialog()!;
+    expect(el.textContent).toContain('Bu ders planında yok');
+    expect(el.querySelector('[data-testid="upgrade-usage"]')!.textContent).toContain('Planın tek bir dersi kapsıyor.');
+    expect(el.querySelector('[data-testid="upgrade-compare"]')).toBeNull();
+    expect(el.querySelector('[data-testid="upgrade-button"]')!.textContent).toContain('Ders ekle');
+  });
+
   it('issue #1088: 403 entitlement.counterpartNotInPlan shows the message instead of the upgrade dialog', () => {
     const message = "Öğretmenin planında mesajlaşma yok.";
     const error = fail('/api/exam/direct-messages/teachers/4/messages', 403, {

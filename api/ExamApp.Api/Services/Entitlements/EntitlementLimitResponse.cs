@@ -40,6 +40,24 @@ public static class EntitlementLimitResponse
         };
 
     /// <summary>
+    /// Issue #1109: tek ders planı, istenen içerik başka dersin — 403 <c>entitlement.outOfScope</c>; arayüz "ders ekle / bütün
+    /// dersler" yükseltme penceresini açar.
+    /// </summary>
+    public static ObjectResult OutOfScope(int scopeSubjectId, string? planKey, string? message = null) =>
+        new(new EntitlementLimitReachedDto
+        {
+            Code = EntitlementLimitReachedDto.OutOfScopeCode,
+            Feature = StudyScope.Feature,
+            Limit = 0,
+            PlanKey = planKey,
+            ScopeSubjectId = scopeSubjectId,
+            Message = message,
+        })
+        {
+            StatusCode = StatusCodes.Status403Forbidden,
+        };
+
+    /// <summary>
     /// Issue #1088: karşı tarafın (öğretmen / öğrenci) planı paylaşılan özelliğe izin vermiyor — 403
     /// <c>entitlement.counterpartNotInPlan</c>. Çağıranın yükseltmesi işe yaramaz; arayüz yükseltme penceresi yerine mesajı gösterir.
     /// </summary>

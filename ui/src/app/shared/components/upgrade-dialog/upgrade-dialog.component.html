@@ -1,12 +1,14 @@
 <div class="upgrade" *transloco="let t; prefix: 'subscription'">
   <header class="upgrade__header">
     <mat-icon class="upgrade__icon" aria-hidden="true">workspace_premium</mat-icon>
-    <h2 mat-dialog-title class="upgrade__title">{{ t(notInPlan ? 'limitDialog.notInPlanTitle' : 'limitDialog.title') }}</h2>
+    <h2 mat-dialog-title class="upgrade__title">{{ t(outOfScope ? 'limitDialog.outOfScopeTitle' : notInPlan ? 'limitDialog.notInPlanTitle' : 'limitDialog.title') }}</h2>
   </header>
 
   <mat-dialog-content class="upgrade__content">
     <p data-testid="upgrade-usage">
-      @if (!notInPlan && data.limit != null && data.used != null) {
+      @if (outOfScope) {
+        {{ t('limitDialog.outOfScope') }}
+      } @else if (!notInPlan && data.limit != null && data.used != null) {
         {{ t('limitDialog.usage', { feature: t('features.' + data.feature), used: data.used, limit: data.limit }) }}
       } @else {
         {{ t('limitDialog.notIncluded', { feature: t('features.' + data.feature) }) }}
@@ -49,7 +51,7 @@
   <mat-dialog-actions align="end">
     <button mat-button mat-dialog-close type="button">{{ t('actions.close') }}</button>
     <button mat-flat-button type="button" data-testid="upgrade-button" (click)="upgrade()">
-      {{ t('actions.upgrade') }}
+      {{ t(outOfScope ? 'actions.widenScope' : 'actions.upgrade') }}
     </button>
   </mat-dialog-actions>
 </div>

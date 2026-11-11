@@ -8,6 +8,7 @@ import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 
 import {
   ENTITLEMENT_NOT_IN_PLAN_CODE,
+  ENTITLEMENT_OUT_OF_SCOPE_CODE,
   EntitlementLimitReached,
   SubscriptionPlan,
   planNameKey,
@@ -44,10 +45,13 @@ export class UpgradeDialogComponent implements OnInit {
   protected readonly data = inject<EntitlementLimitReached>(MAT_DIALOG_DATA);
   /** Issue #1087: özellik planda hiç yok (403) — kullanım satırı yerine "planında yok". */
   protected readonly notInPlan = this.data.code === ENTITLEMENT_NOT_IN_PLAN_CODE || this.data.limit === 0;
+  /** Issue #1109: tek ders planında başka ders — "ders ekle / bütün dersler"; plan karşılaştırması gösterilmez. */
+  protected readonly outOfScope = this.data.code === ENTITLEMENT_OUT_OF_SCOPE_CODE;
   /** Plan listesi yüklenemezse karşılaştırma gizlenir; pencere yine yükseltmeye götürür. */
   readonly rows = signal<PlanLimitRow[]>([]);
 
   ngOnInit(): void {
+    if (this.outOfScope) return;
     this.subscriptions.plans().subscribe({
       next: (plans) => this.rows.set(plans.map((plan) => this.rowOf(plan))),
       error: () => this.rows.set([]),

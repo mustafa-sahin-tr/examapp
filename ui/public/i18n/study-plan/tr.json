@@ -1,0 +1,22 @@
+{
+  "title": "Haftalık görevler",
+  "subtitle": "Bu haftanın görevleri yanlışlarından, zayıf konularından, ödevlerinden ve denemelerinden seçildi. Yaptıklarını işaretle.",
+  "loadError": "Görevler yüklenemedi.",
+  "retry": "Yeniden dene",
+  "progress": "{{ date }} haftası: {{ done }} / {{ total }} görev tamamlandı",
+  "progressAria": "Haftalık görev ilerlemesi",
+  "due": "Son gün {{ date }}",
+  "open": "Aç",
+  "task": {
+    "assignment": "Ödevi bitir: {{ title }}",
+    "mockExam": "Denemeyi çöz: {{ title }}",
+    "practiceTopic": "{{ title }} konusunda pratik yap",
+    "mistakes": "Yanlışlarını yeniden çöz",
+    "flashcards": "Bilgi kartlarını tekrar et",
+    "practice": "Pratik yap: en az 10 soru çöz"
+  },
+  "parent": {
+    "title": "Bu haftanın görevleri",
+    "progress": "{{ done }} / {{ total }} görev tamamlandı"
+  }
+}

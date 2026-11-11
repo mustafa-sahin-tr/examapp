@@ -27,6 +27,8 @@ import { OutcomeMasteryCardComponent } from '../../shared/components/outcome-mas
 import { TargetGoalCardComponent } from '../../shared/components/target-goal-card/target-goal-card.component';
 import { CoachGoalsCardComponent } from '../../shared/components/coach-goals-card/coach-goals-card.component';
 import { WeakTopicsCardComponent } from '../../shared/components/weak-topics-card/weak-topics-card.component';
+import { StudyPlanProgressComponent } from '../../shared/components/study-plan-progress/study-plan-progress.component';
+import { STUDY_PLAN_FEATURE } from '../../models/study-plan.model';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 /** Veli paneli ekranlarının Transloco scope'u (`public/i18n/parent-dashboard/<lang>.json`). */
@@ -85,7 +87,7 @@ export function parseChildParam(value: string | null): number | null {
     ParentChildScheduleComponent,
     ParentChildReportComponent,
     ParentChildPlanComponent,
-    OutcomeMasteryCardComponent, TargetGoalCardComponent, CoachGoalsCardComponent, WeakTopicsCardComponent,
+    OutcomeMasteryCardComponent, TargetGoalCardComponent, CoachGoalsCardComponent, WeakTopicsCardComponent, StudyPlanProgressComponent,
     RouterLink,
     TranslocoDirective,
   ],
@@ -118,6 +120,8 @@ export class ParentDashboardComponent implements OnInit {
    * atmaz; okunamazsa açık kalır (sunucu karar verir).
    */
   protected readonly childAnalytics = signal<boolean | null>(null);
+  /** Issue #1113: çocuğun planında haftalık görevler var mı. */
+  protected readonly childWeeklyPlan = signal(false);
   /** 404 sonrası (bağlantı kaldırılmış olabilir) liste yenilenince gösterilen bilgi notu; seçim değişince kalkar. */
   protected readonly notice = signal<string | null>(null);
 
@@ -158,14 +162,18 @@ export class ParentDashboardComponent implements OnInit {
       .pipe(
         switchMap((id) => {
           this.childAnalytics.set(null);
+          this.childWeeklyPlan.set(false);
           return this.dashboardService.getChildPlanFeatures(id).pipe(
-            map((plan) => plan.features['analytics'] !== false),
-            catchError(() => of(true))
+            map((plan) => ({ analytics: plan.features['analytics'] !== false, weeklyPlan: plan.features[STUDY_PLAN_FEATURE] === true })),
+            catchError(() => of({ analytics: true, weeklyPlan: false }))
           );
         }),
         takeUntilDestroyed(this.destroyRef)
       )
-      .subscribe((analytics) => this.childAnalytics.set(analytics));
+      .subscribe(({ analytics, weeklyPlan }) => {
+        this.childAnalytics.set(analytics);
+        this.childWeeklyPlan.set(weeklyPlan);
+      });
 
     // Issue #1091: `?tab=plan` (bildirimden) ilgili sekmeyi açar.
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {

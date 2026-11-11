@@ -7071,6 +7071,22 @@ namespace ExamApp.Api.Migrations
                             IsDeleted = false,
                             MonthlyLimit = 300,
                             PlanId = 2
+                        },
+                        new
+                        {
+                            Id = 96,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "weekly-plan",
+                            IsDeleted = false,
+                            PlanId = 9
+                        },
+                        new
+                        {
+                            Id = 97,
+                            CreateTime = new DateTime(2026, 11, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FeatureKey = "weekly-plan",
+                            IsDeleted = false,
+                            PlanId = 2
                         });
                 });
 
@@ -8994,6 +9010,81 @@ namespace ExamApp.Api.Migrations
                     b.HasIndex("UserId", "ValidFromUtc");
 
                     b.ToTable("UserSubscriptionPlans");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.WeeklyStudyPlan", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("WeekStart")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentId", "WeekStart")
+                        .IsUnique();
+
+                    b.ToTable("WeeklyStudyPlans");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.WeeklyStudyPlanTask", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("CompletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DueAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("MockExamId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PlanId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("SubjectId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SubjectName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int?>("TopicId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("WorksheetId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlanId");
+
+                    b.ToTable("WeeklyStudyPlanTasks");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.WorksheetAccessGrant", b =>
@@ -11541,6 +11632,28 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Plan");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.WeeklyStudyPlan", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.WeeklyStudyPlanTask", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.WeeklyStudyPlan", "Plan")
+                        .WithMany("Tasks")
+                        .HasForeignKey("PlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Plan");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.WorksheetAccessGrant", b =>
                 {
                     b.HasOne("Worksheet", "Worksheet")
@@ -11988,6 +12101,11 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Schedules");
 
                     b.Navigation("StudyItemSchedules");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.WeeklyStudyPlan", b =>
+                {
+                    b.Navigation("Tasks");
                 });
 
             modelBuilder.Entity("Grade", b =>

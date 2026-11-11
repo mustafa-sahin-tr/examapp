@@ -556,3 +556,14 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   bütçesini kullanır (`LabelingAiQuota`, öğrencinin Keycloak kimliğiyle); dolu → 429 `hints.budgetExceeded` / `hints.rateLimited`.
 - **Cevap sızıntısı:** `HintLeakGuard` "cevap / doğru şık B" kalıbını ve doğru şıkkın metnini (4+ karakter) arar; bir adım bile
   sızdırırsa set `Unavailable` kaydedilir (yeniden üretilmez, hak düşmez), arayüz "Bu soru için ipucu hazırlanamadı" yazar.
+- **Haftalık görevler (dilim 2):** Pro (`weekly-plan`, deneme dahil) öğrenciye hafta (Pazartesi, Europe/Istanbul) başına bir plan:
+  `WeeklyStudyPlans` + `WeeklyStudyPlanTasks` (`(StudentId, WeekStart)` tekil). Pazartesi 03:00 UTC `weekly-study-plan` işi
+  (`StudyPlan:Cron`, `BatchSize`) planında hak olan öğrencilere kurar; plan sonradan alınırsa öğrencinin (ya da velinin) ilk açılışı
+  kurar. Kurulan plan hafta boyunca değişmez. **Görevler kurallarla (AI yok)**, sırayla: süren / gecikmiş ödevler (en çok 3, bitişi
+  yakın önce; `ParentAssignmentScope` ile aynı kural), çözülmemiş ilk deneme, zayıf konularda pratik (son 30 gün, en az 5 soru, %70
+  altı; en çok 3), Yanlışlarım (aktif yanlış varsa), bilgi kartları (destesi varsa); 5'ten azsa diğer konular en düşük başarılıdan,
+  hâlâ azsa konu seçmeden pratik; en çok 10. Görev kendiliğinden kapanmaz, öğrenci işaretler (`PUT /api/exam/study-plan/tasks/{id}`,
+  yalnız bu haftanın kendi görevi). Ekran: öğrencide takvim grubunda "Haftalık görevler" sekmesi (`/study-plan`,
+  `entitlementGuard('weekly-plan')`; ana menü #719 sınırında kalır), her görev ilgili sayfayı açar (konu görevi
+  `/practice?subjectId=&topicId=`). Veli: Gelişim sekmesinde `app-study-plan-progress` (yalnız çocuğun planında `weekly-plan` varken;
+  `GET /api/exam/parent/children/{id}/study-plan`, denetim kaydı `children.study-plan`).

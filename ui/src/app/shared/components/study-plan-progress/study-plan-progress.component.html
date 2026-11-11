@@ -1,0 +1,15 @@
+@if (plan(); as p) {
+  <section class="spp" *transloco="let t; prefix: 'study-plan'" data-testid="study-plan-progress-card">
+    <h3 class="spp__title">{{ t('parent.title') }}</h3>
+    <p class="spp__count">{{ t('parent.progress', { done: p.doneCount, total: p.totalCount }) }}</p>
+    <mat-progress-bar mode="determinate" [value]="percent(p)" [attr.aria-label]="t('progressAria')" />
+    <ul class="spp__list">
+      @for (task of p.tasks; track task.id) {
+        <li class="spp__task" [class.is-done]="task.done" data-testid="study-plan-progress-task">
+          <mat-icon aria-hidden="true">{{ task.done ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
+          <span>{{ t('task.' + task.kind, { title: task.title }) }}</span>
+        </li>
+      }
+    </ul>
+  </section>
+}

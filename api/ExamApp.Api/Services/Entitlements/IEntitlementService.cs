@@ -77,6 +77,9 @@ public static class EntitlementFeatures
     /// <summary>Issue #1113: yanlış ya da boş bırakılan soruda adım adım ipucu — ilk kez açılan adım başına bir kullanım.</summary>
     public const string StepHints = "step-hints";
 
+    /// <summary>Issue #1113: haftalık çalışma planı (görevler, işaretleme; veli ilerlemeyi görür).</summary>
+    public const string WeeklyPlan = "weekly-plan";
+
     /// <summary>
     /// Bütün özellikler, plan kartlarındaki sırayla. Admin plan düzenleyicisi (#1086) yalnız bu anahtarları kabul eder; arayüz
     /// adları ve birimleri buradan alır.
@@ -103,6 +106,7 @@ public static class EntitlementFeatures
         new(WeeklyReport, EntitlementAudience.Student, EntitlementFeatureKind.Toggle),
         new(AskTeacher, EntitlementAudience.Student, EntitlementFeatureKind.Metered, "question"),
         new(StepHints, EntitlementAudience.Student, EntitlementFeatureKind.Metered, "hint"),
+        new(WeeklyPlan, EntitlementAudience.Student, EntitlementFeatureKind.Toggle),
         new(Messaging, EntitlementAudience.Both, EntitlementFeatureKind.Toggle),
         new(Tutoring, EntitlementAudience.Both, EntitlementFeatureKind.Toggle),
         new(LiveLesson, EntitlementAudience.Both, EntitlementFeatureKind.Metered, "lesson"),

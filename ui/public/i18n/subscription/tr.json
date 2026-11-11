@@ -89,7 +89,9 @@
     "load": "Planlar yüklenemedi.",
     "trialUsed": "Bu hesap deneme hakkını daha önce kullandı.",
     "generic": "İşlem tamamlanamadı. Lütfen tekrar dene.",
-    "loadMine": "Abonelik bilgin yüklenemedi."
+    "loadMine": "Abonelik bilgin yüklenemedi.",
+    "nothingToCancel": "İptal edilecek bir satın alma yok.",
+    "alreadyCancelled": "Bu plan zaten iptal edildi."
   },
   "page": {
     "title": "Planı yükselt",
@@ -173,7 +175,8 @@
       "title": "Değişiklik geçmişi",
       "empty": "Henüz değişiklik yok.",
       "bySelf": "Kendisi",
-      "bySchool": "okula toplu atama"
+      "bySchool": "okula toplu atama",
+      "cancelled": "iptal"
     },
     "school": {
       "school": "Okul",
@@ -322,5 +325,26 @@
     "SixMonths": "6 ay",
     "TwelveMonths": "12 ay",
     "Summer": "Yaz (Haziran–Ağustos)"
+  },
+  "terms": {
+    "title": "Satın alma koşulları",
+    "monthly": "Aylık plan her ay yenilenir. İstediğin zaman iptal edebilirsin; erişimin ödenen ayın sonuna kadar sürer.",
+    "long": "6 ve 12 aylık planlarda ilk 14 gün içinde koşulsuz tam iade yapılır. Sonrasında kalan süre için kısmi iadeyi destekten isteyebilirsin.",
+    "price": "Fiyat değişiklikleri yalnız bir sonraki dönemde geçerli olur ve en az 30 gün önce uygulama içinde ve e-postayla bildirilir.",
+    "credits": "Sayılı hakların adedi planda yazar; kullanılmayan haklar sonraki aya devretmez.",
+    "link": "Kullanım koşullarının tamamı"
+  },
+  "cancel": {
+    "action": "Planı iptal et",
+    "confirmTitle": "Planı iptal etmek istiyor musun?",
+    "monthlyBody": "Plan yenilenmez. {{ date }} tarihine kadar kullanmaya devam edebilirsin.",
+    "refundBody": "Satın almanın ilk 14 günü içindesin: plan hemen biter ve ödenen {{ amount }} tutarın tamamı iade edilir.",
+    "lateBody": "Plan yenilenmez; {{ date }} tarihine kadar kullanmaya devam edebilirsin. Kalan süre için kısmi iadeyi destekten isteyebilirsin.",
+    "confirm": "Evet, iptal et",
+    "keep": "Vazgeç",
+    "cancelled": "İptal edildi: plan yenilenmeyecek, {{ date }} tarihine kadar geçerli.",
+    "refunded": "Plan iptal edildi. {{ amount }} iade edilecek.",
+    "refundUntil": "Tam iade hakkı {{ date }} tarihine kadar.",
+    "demoNote": "Demo: ödeme alınmadığı için iade de yapılmaz."
   }
 }

@@ -92,6 +92,31 @@ public class ParentChildPlanController : BaseController
         return Ok(plan);
     }
 
+    /// <summary>
+    /// Issue #1116: çocuğun satın alınmış planını iptal eder (her Active veli). Koşullar <see cref="PurchaseTermsPolicy"/>; satın alma
+    /// yoksa 409 <c>subscription.nothingToCancel</c>, ikinci iptal 409 <c>subscription.alreadyCancelled</c>.
+    /// </summary>
+    [HttpPost("cancel")]
+    [EnableRateLimiting(ParentLinkRateLimiting.ManagePolicy)]
+    public async Task<IActionResult> Cancel(int studentId, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync(ct);
+        if (!IsResolvedUser(user))
+            return UserNotResolved(new { message = _localizer["auth.userNotResolved"].Value });
+
+        var grant = await _access.EnsureActiveChildAsync(user.Id, studentId, ct);
+        if (grant is null)
+            return ChildNotFound();
+
+        var planId = (await _entitlements.ResolvePlanAsync(grant.StudentUserId, ct)).PlanId;
+        var result = await _entitlements.CancelPlanAsync(grant.StudentUserId, user.Id, ct);
+        if (result.Error != CancelPlanError.None)
+            return SubscriptionPlanErrorCodes.ToResult(this, result);
+
+        await _audit.RecordAsync(grant.ParentId, grant.StudentId, ParentAccessEndpoints.ChildPlanCancel, planId, ct);
+        return Ok(new PlanCancellationDto { AccessUntilUtc = result.AccessUntilUtc, RefundAmount = result.RefundAmount, Currency = result.Currency });
+    }
+
     private async Task<ChildSubscriptionPlanDto> ChildPlanAsync(int studentUserId, int parentUserId, CancellationToken ct)
     {
         var resolved = await _entitlements.ResolvePlanAsync(studentUserId, ct);
@@ -132,6 +157,7 @@ public class ParentChildPlanController : BaseController
             Offer = offer,
             ScopeSubjectId = scope?.ScopeSubjectId,
             ScopeSubjectName = scope?.Name,
+            Purchase = PlanPurchaseDto.From(await _entitlements.PurchaseStatusAsync(studentUserId, ct)),
         };
     }
 

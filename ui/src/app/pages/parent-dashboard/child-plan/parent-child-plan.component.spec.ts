@@ -1,6 +1,7 @@
 import type { MockedObject } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
 import { ParentChildPlanComponent } from './parent-child-plan.component';
@@ -24,13 +25,14 @@ describe('ParentChildPlanComponent (issue #1091)', () => {
     service = {
       childPlan: vi.fn().mockReturnValue(plan instanceof HttpErrorResponse ? throwError(() => plan) : of(plan)),
       childCheckout: vi.fn(),
+      cancelChildPlan: vi.fn(),
     } as unknown as MockedObject<SubscriptionService>;
     TestBed.configureTestingModule({
       imports: [
         ParentChildPlanComponent,
         translocoTestingModule({ langs: { 'parent-dashboard/tr': parentDashboardTr, 'subscription/tr': subscriptionTr } }),
       ],
-      providers: [{ provide: SubscriptionService, useValue: service }],
+      providers: [provideRouter([]), { provide: SubscriptionService, useValue: service }],
     });
     fixture = TestBed.createComponent(ParentChildPlanComponent);
     fixture.componentInstance.now = () => now;
@@ -97,5 +99,28 @@ describe('ParentChildPlanComponent (issue #1091)', () => {
     fixture.componentInstance.reload();
     expect(notFound).toHaveBeenCalled();
     expect(q(el, 'child-plan-error')).toBeNull();
+  });
+
+  // Issue #1116
+  it('lets the parent cancel a refundable purchase, then reloads the plan and notifies the panel', () => {
+    const el = create({
+      ...PLAN,
+      purchase: { duration: 'SixMonths', pricePaid: 1500, currency: 'TRY', cancelledAtUtc: null, fullRefundUntilUtc: '2026-11-25T00:00:00Z' },
+    });
+    expect(el.querySelector('[data-testid="purchase-terms"]')).not.toBeNull();
+    service.cancelChildPlan.mockReturnValue(of({ accessUntilUtc: '2026-11-20T00:00:00Z', refundAmount: 1500, currency: 'TRY' }));
+    service.childPlan.mockReturnValue(of({ ...PLAN, planKey: 'free', purchase: null }));
+    const changed = vi.fn();
+    fixture.componentInstance.changed.subscribe(changed);
+
+    (el.querySelector('[data-testid="plan-cancel"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (el.querySelector('[data-testid="plan-cancel-yes"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(service.cancelChildPlan).toHaveBeenCalledWith(7);
+    expect(service.childPlan).toHaveBeenCalledTimes(2);
+    expect(changed).toHaveBeenCalled();
+    expect(el.querySelector('[data-testid="plan-refunded"]')).not.toBeNull();
   });
 });

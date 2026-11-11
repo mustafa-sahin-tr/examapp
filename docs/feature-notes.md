@@ -420,6 +420,14 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   plan başladıktan sonra geri alınmamış bir atlama varsa ve satın almadaki sınıfın bandı bugünkünden farklıysa her Active veliye
   `ParentChildPlanEndingEvent` (`NewGradeLevel` dolu → "Yenileme fiyatı değişiyor" metni, tip ve bağlantı aynı). Atama başına bir kez
   (`BandChangeNoticeSentAtUtc`); band aynıysa ya da okul lisansı sürüyorsa yalnız işaret; deneme ve velisiz öğrenci aday değil.
+- **Satın alma koşulları (#1116, epic #1118):** iptal `POST api/subscription-plans/me/cancel` (öğretmen; öğrenci 403
+  `subscription.parentPays`) ve `POST api/parent/children/{id}/plan/cancel` (her Active veli, audit `children.plan-cancel`). Yalnız
+  ödenmiş (`PricePaid`) süren atama iptal edilir; deneme / admin ataması / okul lisansı 409 `subscription.nothingToCancel`, ikinci
+  iptal 409 `subscription.alreadyCancelled`. Aylık ve cayma süresi geçmiş uzun plan: `CancelledAtUtc` yazılır, erişim `ValidToUtc`'ye
+  kadar (yenilenmez). 6 / 12 ay / yaz planı satın almadan sonraki 14 gün (`PurchaseTermsPolicy.FullRefundDays`) içinde: plan hemen
+  biter, `RefundAmount` = ödenen tutar (gerçek iade ödeme sağlayıcısıyla, canlıya geçişte). Plan yanıtları `purchase` taşır (süre,
+  ödenen, iptal, tam iade sonu). Koşul metni ödeme ekranında (açık), Aboneliğim ve veli panelinde (kapalı kutu) ve Kullanım
+  Koşulları § Planlar'da; maddeler birlikte güncellenir. Fiyat değişikliği bildirimi ayrı dilimde.
 - **Okul lisansı (#1092):** özel anlaşmayla okulun bütün üyelerine plan: `SchoolLicenses` (okul başına tek satır; öğretmen ve öğrenci
   planı, varsayılan iki kitlenin Pro'su; başlangıç / hariç bitiş; anlaşma notu ≤ 200). Kimseye atama yazılmaz: plan çözümü
   (`EntitlementService.ResolvePlanAsync`, admin listesi `CurrentPlansAsync`, ortak kural `SchoolLicensePlans`) kullanıcının okuluna

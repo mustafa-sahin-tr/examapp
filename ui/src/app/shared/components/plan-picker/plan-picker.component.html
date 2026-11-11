@@ -79,6 +79,8 @@
         </p>
         <p class="hint">{{ t('checkout.validity') }}</p>
       }
+      <!-- Issue #1116: koşullar ödemeden önce -->
+      <app-purchase-terms [open]="true" />
       @if (actionError(); as error) {
         <p class="error" role="alert">{{ t(error) }}</p>
       }

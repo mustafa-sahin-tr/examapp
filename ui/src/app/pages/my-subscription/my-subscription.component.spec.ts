@@ -3,6 +3,7 @@ import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
 import { MySubscriptionComponent } from './my-subscription.component';
+import { AuthService } from '../../services/auth.service';
 import { SubscriptionService } from '../../services/subscription.service';
 import { CurrentSubscriptionPlan } from '../../models/subscription';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
@@ -27,10 +28,14 @@ const TRIAL: CurrentSubscriptionPlan = {
 describe('MySubscriptionComponent (issue #1029)', () => {
   let fixture: ComponentFixture<MySubscriptionComponent>;
 
-  function create(current: ReturnType<SubscriptionService['current']>): void {
+  function create(current: ReturnType<SubscriptionService['current']>, roles: string[] = ['Teacher']): void {
     TestBed.configureTestingModule({
       imports: [MySubscriptionComponent, translocoTestingModule({ langs: { 'subscription/tr': subscriptionTr } })],
-      providers: [provideRouter([]), { provide: SubscriptionService, useValue: { current: vi.fn().mockReturnValue(current) } }],
+      providers: [
+        provideRouter([]),
+        { provide: SubscriptionService, useValue: { current: vi.fn().mockReturnValue(current), cancel: vi.fn() } },
+        { provide: AuthService, useValue: { hasRealmRole: (role: string) => roles.includes(role) } },
+      ],
     });
     fixture = TestBed.createComponent(MySubscriptionComponent);
     fixture.detectChanges();
@@ -65,5 +70,22 @@ describe('MySubscriptionComponent (issue #1029)', () => {
     create(throwError(() => new Error('x')));
 
     expect(el().textContent).toContain('Abonelik bilgin yüklenemedi.');
+  });
+
+  // Issue #1116
+  it('offers cancelling a purchased plan to a teacher but not to a student (the parent cancels)', () => {
+    const bought: CurrentSubscriptionPlan = {
+      ...TRIAL,
+      planKey: 'teacher-basic',
+      validToUtc: '2026-12-11T12:00:00Z',
+      purchase: { duration: 'Monthly', pricePaid: 200, currency: 'TRY', cancelledAtUtc: null, fullRefundUntilUtc: null },
+    };
+    create(of(bought));
+    expect(el().querySelector('[data-testid="plan-cancel"]')).not.toBeNull();
+    expect(el().querySelector('[data-testid="purchase-terms"]')).not.toBeNull();
+
+    TestBed.resetTestingModule();
+    create(of(bought), ['Student']);
+    expect(el().querySelector('[data-testid="plan-cancel"]')).toBeNull();
   });
 });

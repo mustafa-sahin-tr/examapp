@@ -122,6 +122,21 @@ public class UserSubscriptionPlan : BaseEntity
 
     /// <summary>Issue #1108: uygulanan kardeş indirimi yüzdesi (0 = yok).</summary>
     public int DiscountPercent { get; set; }
+
+    /// <summary>
+    /// Issue #1116: satın alma iptal edildi (yenilenmez). 14 günlük cayma süresinde iptal planı hemen bitirir ve
+    /// <see cref="RefundAmount"/> yazılır; sonrasında erişim <see cref="UserSubscriptionPlan.ValidToUtc"/>'ya kadar sürer.
+    /// </summary>
+    public DateTime? CancelledAtUtc { get; set; }
+
+    /// <summary>Issue #1116: iptal eden (kullanıcının kendisi ya da velisi).</summary>
+    public int? CancelledByUserId { get; set; }
+
+    /// <summary>
+    /// Issue #1116: cayma süresinde iptalde iade edilecek tutar (ödenen fiyatın tamamı). Gerçek iade ödeme sağlayıcısıyla
+    /// (canlıya geçiş) yapılır; şimdilik yalnız kayıt.
+    /// </summary>
+    public decimal? RefundAmount { get; set; }
 }
 
 /// <summary>
@@ -194,4 +209,7 @@ public enum SubscriptionPlanAuditAction
 {
     Assigned = 1,
     Ended = 2,
+
+    /// <summary>Issue #1116: kullanıcı ya da velisi satın almayı iptal etti (cayma süresindeyse plan da bitti).</summary>
+    Cancelled = 3,
 }

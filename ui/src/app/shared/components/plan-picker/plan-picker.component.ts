@@ -24,6 +24,7 @@ import {
 } from '../../../models/subscription';
 import { SubscriptionService } from '../../../services/subscription.service';
 import { EntitlementStateService } from '../../../services/entitlement-state.service';
+import { PurchaseTermsComponent } from '../purchase-terms/purchase-terms.component';
 
 const SCOPE = 'subscription';
 
@@ -60,7 +61,8 @@ export type PlanAction = 'free' | 'trial' | 'paid';
 @Component({
   selector: 'app-plan-picker',
   standalone: true,
-  imports: [CurrencyPipe, MatButtonModule, MatFormFieldModule, MatIconModule, MatRadioModule, MatSelectModule, TranslocoDirective],
+  imports: [CurrencyPipe, MatButtonModule, MatFormFieldModule, MatIconModule, MatRadioModule, MatSelectModule, TranslocoDirective,
+    PurchaseTermsComponent],
   providers: [provideTranslocoScope(SCOPE)],
   templateUrl: './plan-picker.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

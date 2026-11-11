@@ -249,6 +249,50 @@ public interface IEntitlementService
     /// </summary>
     Task<SelfServicePlanError> CheckoutAsync(int userId, string planKey, IReadOnlySet<SubscriptionPlanAudience> audiences,
         int? purchasedByUserId = null, PlanPurchase? purchase = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Issue #1116: süren satın alınmış planın durumu (iptal edilebilir mi, cayma süresi); satın alma yoksa (Free, deneme, admin
+    /// ataması, okul lisansı) null.
+    /// </summary>
+    Task<PlanPurchaseStatus?> PurchaseStatusAsync(int userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Issue #1116: süren satın almayı iptal eder (<see cref="PurchaseTermsPolicy"/>). Aylık plan ve cayma süresi geçmiş uzun plan
+    /// yenilenmez, erişim dönem sonuna kadar sürer; 6 / 12 ay / yaz planı ilk 14 günde iptal edilirse plan hemen biter ve ödenen
+    /// tutarın tamamı iade kaydına yazılır.
+    /// </summary>
+    Task<PlanCancellationResult> CancelPlanAsync(int userId, int cancelledByUserId, CancellationToken ct = default);
+}
+
+/// <summary>Issue #1116: süren satın alma. <see cref="FullRefundUntilUtc"/> aylık planda null.</summary>
+public sealed record PlanPurchaseStatus(PlanDuration Duration, decimal PricePaid, string Currency, DateTime? ValidToUtc,
+    DateTime? CancelledAtUtc, DateTime? FullRefundUntilUtc);
+
+public enum CancelPlanError
+{
+    None,
+
+    /// <summary>Süren satın alma yok (Free, deneme, admin ataması, okul lisansı).</summary>
+    NothingToCancel,
+    AlreadyCancelled,
+}
+
+/// <summary>Issue #1116: iptal sonucu. <see cref="AccessUntilUtc"/> erişimin bittiği an; <see cref="RefundAmount"/> cayma iadesi.</summary>
+public sealed record PlanCancellationResult(CancelPlanError Error, DateTime? AccessUntilUtc = null, decimal? RefundAmount = null,
+    string? Currency = null);
+
+/// <summary>
+/// Issue #1116: satın alma koşulları. Aylık plan her ay yenilenir, istenince iptal edilir, erişim ödenen ayın sonuna kadar sürer.
+/// 6 / 12 aylık (ve yaz) planda ilk <see cref="FullRefundDays"/> gün koşulsuz tam iade; sonrasında kalan süre için kısmi iade
+/// talep üzerine (destek). Gerçek tahsilat ve iade ödeme sağlayıcısı kararını bekliyor (canlıya geçiş).
+/// </summary>
+public static class PurchaseTermsPolicy
+{
+    public const int FullRefundDays = 14;
+
+    /// <summary>Tam iade süresinin sonu; aylık planda null (iade yok, dönem sonuna kadar erişim).</summary>
+    public static DateTime? FullRefundUntil(PlanDuration duration, DateTime validFromUtc) =>
+        duration == PlanDuration.Monthly ? null : validFromUtc.AddDays(FullRefundDays);
 }
 
 /// <summary>Issue #1108: satın alınan seçenek. <see cref="SubjectId"/> null = bütün dersler.</summary>

@@ -10,7 +10,9 @@ import { Subject, catchError, of, switchMap } from 'rxjs';
 import { ChildSubscriptionPlan, CurrentSubscriptionPlan, FREE_PLAN_KEY, planNameKey } from '../../../models/subscription';
 import { LocaleService } from '../../../services/locale.service';
 import { SubscriptionService } from '../../../services/subscription.service';
+import { PlanCancelComponent } from '../../../shared/components/plan-cancel/plan-cancel.component';
 import { PlanPickerComponent } from '../../../shared/components/plan-picker/plan-picker.component';
+import { PurchaseTermsComponent } from '../../../shared/components/purchase-terms/purchase-terms.component';
 
 /** Bitişine bu kadar gün (ya da daha az) kalan plan "yakında bitiyor" diye vurgulanır (#1091 hatırlatmasıyla aynı eşik). */
 export const PLAN_ENDING_SOON_DAYS = 3;
@@ -18,11 +20,13 @@ export const PLAN_ENDING_SOON_DAYS = 3;
 /**
  * Issue #1091: veli panelinde seçili çocuğun planı — mevcut plan, bitişi ve "Plan seç" (öğrenci planları, sahte ödeme çocuk adına).
  * 404 (bağlantı kaldırılmış olabilir) panelin diğer bölümleri gibi `notFound` ile bildirilir.
+ * Issue #1116: satın alınmış planın iptali ve satın alma koşulları.
  */
 @Component({
   selector: 'app-parent-child-plan',
   standalone: true,
-  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, TranslocoDirective, PlanPickerComponent],
+  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, TranslocoDirective, PlanPickerComponent, PlanCancelComponent,
+    PurchaseTermsComponent],
   providers: [provideTranslocoScope('parent-dashboard', 'subscription')],
   templateUrl: './parent-child-plan.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -103,6 +107,12 @@ export class ParentChildPlanComponent {
 
   reload(): void {
     this.requests.next(this.studentId());
+  }
+
+  /** Issue #1116: iptal (iadeli iptalde plan bitti; panel çocuğun özelliklerini yeniden okur). */
+  onCancelled(): void {
+    this.reload();
+    this.changed.emit();
   }
 
   onCompleted(bought: CurrentSubscriptionPlan | null): void {

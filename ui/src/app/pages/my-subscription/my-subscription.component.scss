@@ -80,3 +80,9 @@
     margin: 0;
   }
 }
+
+// Issue #1116
+.card__cancel,
+.card__terms {
+  margin-top: 12px;
+}

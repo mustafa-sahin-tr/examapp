@@ -87,6 +87,25 @@ public class SubscriptionPlansController : BaseController
         return error == SelfServicePlanError.None ? await CurrentAsync(user.Id, ct) : PlanError(error);
     }
 
+    /// <summary>
+    /// Issue #1116: satın alınmış planı iptal eder (öğretmen; öğrencinin planını velisi iptal eder, 403 <c>subscription.parentPays</c>).
+    /// Aylık / cayma süresi geçmiş plan dönem sonuna kadar sürer; 14 gün içindeki uzun plan hemen biter, tam iade kaydı yazılır.
+    /// Satın alma yoksa 409 <c>subscription.nothingToCancel</c>, ikinci iptal 409 <c>subscription.alreadyCancelled</c>.
+    /// </summary>
+    [HttpPost("me/cancel")]
+    [Authorize(Roles = "Teacher,Student,Admin")]
+    public async Task<ActionResult<PlanCancellationDto>> Cancel(CancellationToken ct)
+    {
+        if (User.IsInRole("Student") && !User.IsInRole("Teacher") && !User.IsInRole(EntitlementRoles.Admin))
+            return StatusCode(StatusCodes.Status403Forbidden, new { code = SubscriptionPlanErrorCodes.ParentPays });
+
+        var user = await GetAuthenticatedUserAsync(ct);
+        var result = await _entitlements.CancelPlanAsync(user.Id, user.Id, ct);
+        return result.Error == CancelPlanError.None
+            ? new PlanCancellationDto { AccessUntilUtc = result.AccessUntilUtc, RefundAmount = result.RefundAmount, Currency = result.Currency }
+            : SubscriptionPlanErrorCodes.ToResult(this, result);
+    }
+
     private ActionResult PlanError(SelfServicePlanError error) => SubscriptionPlanErrorCodes.ToResult(this, error);
 
     private async Task<CurrentSubscriptionPlanDto> CurrentAsync(int userId, CancellationToken ct)
@@ -126,6 +145,7 @@ public class SubscriptionPlansController : BaseController
             TrialAvailable = await IsTrialAvailableAsync(userId, ct),
             Locked = locked,
             SchoolLicense = plan.FromSchoolLicense,
+            Purchase = PlanPurchaseDto.From(await _entitlements.PurchaseStatusAsync(userId, ct)),
             Features = features,
         };
     }

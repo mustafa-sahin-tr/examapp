@@ -103,7 +103,28 @@ export interface CurrentSubscriptionPlan {
   locked?: boolean;
   /** Issue #1092: plan okulun lisansından geliyor (`validToUtc` lisansın bitişi). */
   schoolLicense?: boolean;
+  /** Issue #1116: süren satın alma (iptal koşuluyla); Free, deneme, admin ataması ve okul lisansında null. */
+  purchase?: PurchaseStatus | null;
   features: FeatureUsage[];
+}
+
+/**
+ * Issue #1116: süren satın alma. Aylık planda `fullRefundUntilUtc` null (iade yok, erişim dönem sonuna kadar); 6 / 12 ay / yaz
+ * planında tam iade bu ana kadar.
+ */
+export interface PurchaseStatus {
+  duration: PlanDuration;
+  pricePaid: number;
+  currency: string;
+  cancelledAtUtc: string | null;
+  fullRefundUntilUtc: string | null;
+}
+
+/** Issue #1116: iptalin sonucu; `refundAmount` yalnız cayma süresindeki iptalde (plan hemen biter). */
+export interface PlanCancellation {
+  accessUntilUtc: string | null;
+  refundAmount: number | null;
+  currency: string | null;
 }
 
 /** Issue #1086: admin plan düzenleyicisinin gövdesi; `monthlyLimits`'te olmayan özellik planda yoktur (null = sınırsız / dahil). */
@@ -133,6 +154,8 @@ export interface ChildSubscriptionPlan {
   /** Issue #1108: şu anki planın tek dersi; bütün derslerde null. */
   scopeSubjectId?: number | null;
   scopeSubjectName?: string | null;
+  /** Issue #1116: süren satın alma (veli iptal edebilir). */
+  purchase?: PurchaseStatus | null;
 }
 
 /** Issue #1091: öğrenci kendine plan alamaz (403); planı velisi alır. */
@@ -232,7 +255,8 @@ export interface AdminSubscriptionAssignment {
 
 export interface AdminSubscriptionChange {
   occurredAtUtc: string;
-  action: 'Assigned' | 'Ended';
+  /** Issue #1116: `Cancelled` = kullanıcı / veli iptal etti (cayma süresindeyse `toPlanKey` null, plan bitti). */
+  action: 'Assigned' | 'Ended' | 'Cancelled';
   /** `null` = atama yoktu (Free). */
   fromPlanKey: string | null;
   toPlanKey: string | null;

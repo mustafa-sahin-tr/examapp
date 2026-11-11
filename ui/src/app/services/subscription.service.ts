@@ -9,6 +9,7 @@ import {
   CurrentSubscriptionPlan,
   EntitlementFeature,
   PlanAssignment,
+  PlanCancellation,
   PlanPurchase,
   SaveSchoolLicense,
   SchoolLicense,
@@ -50,6 +51,11 @@ export class SubscriptionService {
     return this.http.post<CurrentSubscriptionPlan>(`${this.baseUrl}/me/checkout`, { planKey });
   }
 
+  /** Issue #1116: satın alınmış planı iptal eder (öğrencinin planını velisi iptal eder: `cancelChildPlan`). */
+  cancel(): Observable<PlanCancellation> {
+    return this.http.post<PlanCancellation>(`${this.baseUrl}/me/cancel`, {});
+  }
+
   // ---- Issue #1091: veli çocuğunun planını alır (yalnız Active bağlantı; diğer her durum 404) ----
 
   private readonly childUrl = (studentId: number) => `/api/exam/parent/children/${studentId}/plan`;
@@ -62,6 +68,11 @@ export class SubscriptionService {
   /** #1108: `purchase` kapsam (tek ders) ve süre; boşsa aylık, bütün dersler. */
   childCheckout(studentId: number, planKey: string, purchase?: PlanPurchase): Observable<ChildSubscriptionPlan> {
     return this.http.post<ChildSubscriptionPlan>(`${this.childUrl(studentId)}/checkout`, { planKey, ...purchase });
+  }
+
+  /** Issue #1116: çocuğun satın alınmış planını iptal eder. */
+  cancelChildPlan(studentId: number): Observable<PlanCancellation> {
+    return this.http.post<PlanCancellation>(`${this.childUrl(studentId)}/cancel`, {});
   }
 
   // ---- Issue #1030: admin plan ataması (yalnız Admin / SuperAdmin) ----

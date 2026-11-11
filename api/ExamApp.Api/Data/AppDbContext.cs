@@ -1465,6 +1465,7 @@ public class AppDbContext : DbContext
             e.HasIndex(a => new { a.UserId, a.ValidFromUtc });
             e.Property(a => a.Duration).HasConversion<string>().HasMaxLength(16); // issue #1108
             e.Property(a => a.PricePaid).HasPrecision(10, 2);
+            e.Property(a => a.RefundAmount).HasPrecision(10, 2); // #1116
         });
         // Issue #1108: öğrenci planı fiyatı (band × sınıf × kapsam × süre); seçenek başına tek satır.
         modelBuilder.Entity<SubscriptionPlanPrice>(e =>

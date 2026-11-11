@@ -152,6 +152,10 @@ public static class ParentEndpointCatalog
             "Parent write (#1091): Active-link gate on studentId (unlinked / Pending 404, IDOR); assigns a paid student plan to the " +
             "child, plan audit actor = parent, audited as children.plan-checkout; returns only the child's plan and the plan " +
             "catalog; ParentChildPlanEndpointsTests.",
+        [$"{nameof(ParentChildPlanController)}.{nameof(ParentChildPlanController.Cancel)}"] =
+            "Parent write (#1116): Active-link gate on studentId (unlinked / Pending 404, IDOR); cancels the child's purchased plan " +
+            "(14-day full refund for long plans), audited as children.plan-cancel; returns only access end + refund amount; " +
+            "PlanCancellationEndpointsTests.",
         [$"{nameof(ParentController)}.{nameof(ParentController.CheckParent)}"] = "Own profile flag only; no child data.",
     };
 

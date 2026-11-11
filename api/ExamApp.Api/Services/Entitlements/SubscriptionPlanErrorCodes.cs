@@ -15,6 +15,18 @@ public static class SubscriptionPlanErrorCodes
     /// <summary>#1091: öğrenci planını kendisi alamaz; velisi alır.</summary>
     public const string ParentPays = "subscription.parentPays";
 
+    /// <summary>#1116: iptal edilecek satın alma yok (Free, deneme, admin ataması, okul lisansı).</summary>
+    public const string NothingToCancel = "subscription.nothingToCancel";
+
+    /// <summary>#1116: satın alma zaten iptal edildi.</summary>
+    public const string AlreadyCancelled = "subscription.alreadyCancelled";
+
+    public static ActionResult ToResult(ControllerBase controller, PlanCancellationResult result) => result.Error switch
+    {
+        CancelPlanError.AlreadyCancelled => controller.Conflict(new { code = AlreadyCancelled }),
+        _ => controller.Conflict(new { code = NothingToCancel }),
+    };
+
     public static ActionResult ToResult(ControllerBase controller, SelfServicePlanError error) => error switch
     {
         SelfServicePlanError.TrialAlreadyUsed => controller.Conflict(new { code = TrialUsed }),

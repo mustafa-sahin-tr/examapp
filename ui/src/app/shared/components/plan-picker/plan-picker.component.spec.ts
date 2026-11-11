@@ -1,6 +1,7 @@
 import type { MockedObject } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
 import { PlanPickerComponent } from './plan-picker.component';
@@ -70,7 +71,7 @@ describe('PlanPickerComponent (issue #1028)', () => {
     } as unknown as MockedObject<SubscriptionService>;
     TestBed.configureTestingModule({
       imports: [PlanPickerComponent, translocoTestingModule({ langs: { 'subscription/tr': subscriptionTr } })],
-      providers: [{ provide: SubscriptionService, useValue: service }],
+      providers: [provideRouter([]), { provide: SubscriptionService, useValue: service }],
     });
     fixture = TestBed.createComponent(PlanPickerComponent);
     fixture.componentRef.setInput('mode', mode);

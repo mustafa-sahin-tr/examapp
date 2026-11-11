@@ -8561,6 +8561,12 @@ namespace ExamApp.Api.Migrations
                     b.Property<DateTime?>("BandChangeNoticeSentAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("CancelledAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CancelledByUserId")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("CreateTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -8591,6 +8597,10 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer");
 
                     b.Property<decimal?>("PricePaid")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<decimal?>("RefundAmount")
                         .HasPrecision(10, 2)
                         .HasColumnType("numeric(10,2)");
 

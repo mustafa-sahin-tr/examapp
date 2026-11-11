@@ -405,6 +405,15 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   denetlenir; atanan iş ve yarım oturuma dönüş daralmaz. Bilgi kartları: kendi destesi yalnız planın dersiyle (ya da derssiz)
   oluşturulur / düzenlenir; öğretmen destesi ve var olan destelerin çalışılması daralmaz. Çalışma sayfaları: öğrencinin listesi
   (`GET /api/study-items`) ders verilmezse planın dersine daralır, başka ders ve başka dersin sayfası 403. Sıradaki: soru havuzu.
+- **Sınıf atlama (#1110, epic #1118):** Hangfire `student-grade-promotion` her gece 21:10 UTC (00:10 İstanbul) koşar, iş yalnız
+  1 Ağustos'tan itibaren `StudentGradePromotion:CatchUpDays` (7) gün yapılır (sunucu kapalı kaldıysa telafi). 1 Ağustos'tan önce
+  kaydolmuş, sınıfı 1–11 olan öğrenci bir üst sınıfa geçer (seviye sınıf kodundan / adından; üst sınıfı tanımlı değilse atlanmaz);
+  12. sınıf yerinde kalır (YKS bandı). Öğrenci + yıl başına bir `StudentGradePromotions` satırı (tekil indeks) sınıf güncellemesiyle
+  aynı transaction'da yazılır: ikinci tur hiçbir şey yapmaz. Ödenmiş dönem fiyatı değişmez; yeni bandın fiyatı yenilemede geçerli
+  olur (teklif öğrencinin o anki sınıfından). Admin öğrenci listesinde "Sınıf atlamasını geri al" (`POST
+  api/admin/students/{id}/grade-promotion/revert`): yalnız en yeni yılın, geri alınmamış atlaması ve öğrenci hâlâ o sınıftaysa
+  (yoksa 404 / sınıf değiştiyse 409); satır kalır, o yıl yeniden atlatılmaz; audit `GradePromotionReverted`. Sıradakiler: öğrenci ve
+  veli bildirimi, yenilemeden 30 gün önce band uyarısı.
 - **Okul lisansı (#1092):** özel anlaşmayla okulun bütün üyelerine plan: `SchoolLicenses` (okul başına tek satır; öğretmen ve öğrenci
   planı, varsayılan iki kitlenin Pro'su; başlangıç / hariç bitiş; anlaşma notu ≤ 200). Kimseye atama yazılmaz: plan çözümü
   (`EntitlementService.ResolvePlanAsync`, admin listesi `CurrentPlansAsync`, ortak kural `SchoolLicensePlans`) kullanıcının okuluna

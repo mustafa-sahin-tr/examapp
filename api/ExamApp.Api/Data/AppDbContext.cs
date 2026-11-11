@@ -246,6 +246,7 @@ public class AppDbContext : DbContext
     public DbSet<SubscriptionPlan> SubscriptionPlans { get; set; } // issue #1019
     public DbSet<SubscriptionPlanFeatureLimit> SubscriptionPlanFeatureLimits { get; set; }
     public DbSet<UserSubscriptionPlan> UserSubscriptionPlans { get; set; }
+    public DbSet<StudentGradePromotion> StudentGradePromotions { get; set; }
     public DbSet<SubscriptionPlanPrice> SubscriptionPlanPrices { get; set; } // issue #1108
     public DbSet<SubscriptionPlanChangeAudit> SubscriptionPlanChangeAudits { get; set; } // issue #1086
     public DbSet<SubscriptionPlanAssignmentAudit> SubscriptionPlanAssignmentAudits { get; set; } // issue #1030
@@ -1558,6 +1559,13 @@ public class AppDbContext : DbContext
             e.Property(a => a.StatusFilter).HasConversion<string>().HasMaxLength(16);
             e.HasIndex(a => new { a.ActorKeycloakId, a.OccurredAtUtc });
             e.HasIndex(a => a.OccurredAtUtc); // saklama süresi temizliği (issue #262) de bu index'i kullanır
+        });
+
+        // Issue #1110: sınıf atlaması; öğrenci + yıl başına tek satır (job idempotent).
+        modelBuilder.Entity<StudentGradePromotion>(e =>
+        {
+            e.HasIndex(p => new { p.StudentId, p.Year }).IsUnique();
+            e.HasOne<Student>().WithMany().HasForeignKey(p => p.StudentId).OnDelete(DeleteBehavior.Cascade);
         });
 
         // Admin hesap aksiyonu kaydı (issue #156, şifre sıfırlama). #246 ile aynı: enum'lar string; yalnızca Outcome güncellenir.

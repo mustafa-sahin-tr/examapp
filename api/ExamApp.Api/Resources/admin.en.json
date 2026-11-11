@@ -66,7 +66,6 @@
     "userList": {
       "rateLimited": "Too many list requests in a short time. Please wait a moment and try again."
     },
-
     "dashboard": {
       "invalidDays": "days must be between 1 and 365."
     },
@@ -74,7 +73,6 @@
       "invalidRange": "from must be earlier than to.",
       "rangeTooLong": "The from/to range can be at most {0} days."
     },
-
     "teacherApplication": {
       "invalidStatusFilter": "\"status\" must be \"pending\" or \"all\".",
       "notFound": "Application not found.",
@@ -86,6 +84,10 @@
       "rejectReasonRequired": "The rejection reason cannot be empty.",
       "rejectReasonTooLong": "The rejection reason can be at most {0} characters.",
       "rejectReasonMaxLength": "The rejection reason can be at most 500 characters."
+    },
+    "gradePromotion": {
+      "notFound": "This student has no grade promotion to undo.",
+      "gradeChanged": "The student's grade changed after the promotion; nothing was undone."
     }
   }
 }

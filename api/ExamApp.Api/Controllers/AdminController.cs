@@ -9,6 +9,7 @@ using ExamApp.Api.Models.Dtos.Admin;
 using ExamApp.Api.Services.AdminUsers;
 using ExamApp.Api.Services.Classifier;
 using ExamApp.Api.Services.Dashboard;
+using ExamApp.Api.Services.GradePromotion;
 using ExamApp.Api.Services.Locations;
 using ExamApp.Api.Services.Schools;
 using ExamApp.Api.Services.Taxonomy;
@@ -492,6 +493,33 @@ public class AdminController : BaseController
             AdminAccountStatusChangeStatus.SessionRevokeFailed =>
                 StatusCode(StatusCodes.Status502BadGateway, Message("admin.accountStatus.sessionRevokeFailed")),
             _ => StatusCode(StatusCodes.Status502BadGateway, Message("admin.accountStatus.upstreamFailed"))
+        };
+    }
+
+    /// <summary>
+    /// POST api/admin/students/{id}/grade-promotion/revert → issue #1110: öğrenci sınıfta kaldı; son 1 Ağustos sınıf atlaması
+    /// (Student.Id) geri alınır ve öğrenci eski sınıfına döner. 204; geri alınabilir atlama yok → 404; sınıf atlamadan sonra
+    /// değiştiyse → 409 (yan etki yok). AdminUserActionLogs'a audit'lenir.
+    /// </summary>
+    [HttpPost("students/{id:int}/grade-promotion/revert")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> RevertGradePromotion(int id, [FromServices] IStudentGradePromotionService promotions,
+        [FromServices] IAdminUserActionAuditService audit, CancellationToken ct)
+    {
+        var actor = KeyCloakId;
+        if (string.IsNullOrWhiteSpace(actor))
+            return Forbid();
+
+        var status = await promotions.RevertAsync(id, await CurrentUserIdAsync(), ct);
+        if (status == GradePromotionRevertStatus.Reverted)
+            await audit.TryRecordAsync(
+                new AdminUserActionRecord(actor, AdminUserAction.GradePromotionReverted, AdminUserTargetType.Student, id),
+                AdminUserActionOutcome.Succeeded);
+        return status switch
+        {
+            GradePromotionRevertStatus.Reverted => NoContent(),
+            GradePromotionRevertStatus.NotFound => NotFound(Message("admin.gradePromotion.notFound")),
+            _ => Conflict(Message("admin.gradePromotion.gradeChanged")),
         };
     }
 

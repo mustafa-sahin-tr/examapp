@@ -131,6 +131,19 @@
                 <mat-icon>lock_reset</mat-icon>
                 <span>{{ 'admin.passwordReset.action' | transloco }}</span>
               </button>
+              @if (row.promotion) {
+                <button
+                  mat-menu-item
+                  type="button"
+                  data-testid="revert-promotion"
+                  [attr.aria-label]="'admin.gradePromotion.actionFor' | transloco: { name: rowDisplayName(row) }"
+                  [disabled]="promotionBusy()"
+                  (click)="revertPromotion(row)"
+                >
+                  <mat-icon>undo</mat-icon>
+                  <span>{{ 'admin.gradePromotion.action' | transloco }}</span>
+                </button>
+              }
               @if (row.accountStatus === 'inactive') {
                 <button
                   mat-menu-item

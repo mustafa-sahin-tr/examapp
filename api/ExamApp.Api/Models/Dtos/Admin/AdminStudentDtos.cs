@@ -54,6 +54,12 @@ public class AdminStudentListItemDto
     /// <summary>Sınıf adı (Grade.Name, örn. "9. Sınıf"); sınıf yoksa null.</summary>
     public string? GradeName { get; set; }
 
+    /// <summary>issue #1110: geri alınabilir son 1 Ağustos sınıf atlamasının yılı; yoksa null.</summary>
+    public int? PromotionYear { get; set; }
+
+    /// <summary>issue #1110: atlamadan önceki sınıfın adı (geri alınınca dönülecek sınıf); atlama yoksa null.</summary>
+    public string? PromotedFromGradeName { get; set; }
+
     /// <summary>
     /// Keycloak hesap durumu: true = aktif, false = devre dışı, null = bilinmiyor
     /// (auth-api/Keycloak erişilemedi ya da kullanıcı Keycloak'ta yok).

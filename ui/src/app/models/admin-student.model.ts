@@ -26,6 +26,10 @@ export interface AdminStudentListItem {
   schoolPending?: boolean;
   gradeId: number | null;
   gradeName: string | null;
+  /** Issue #1110: geri alınabilir son 1 Ağustos sınıf atlamasının yılı; yoksa null/eksik. */
+  promotionYear?: number | null;
+  /** Issue #1110: atlamadan önceki sınıfın adı (geri alınınca dönülecek sınıf). */
+  promotedFromGradeName?: string | null;
   /** Keycloak hesap durumu: true aktif, false devre dışı, null bilinmiyor (auth-api erişilemedi). */
   isEnabled: boolean | null;
 }

@@ -816,5 +816,16 @@
   "rowMenu": {
     "manage": "Manage",
     "manageFor": "Actions for {{name}}"
+  },
+  "gradePromotion": {
+    "action": "Undo grade promotion",
+    "actionFor": "Undo the grade promotion of {{name}}",
+    "title": "Undo the grade promotion?",
+    "message": "{{name}} goes back to the grade before the {{year}} promotion ({{grade}}). They are not promoted again this year; next August 1 they move up as usual.",
+    "confirm": "Undo",
+    "done": "Grade promotion undone.",
+    "notFound": "This student has no grade promotion to undo.",
+    "gradeChanged": "The student's grade changed after the promotion; nothing was undone.",
+    "failed": "The grade promotion could not be undone."
   }
 }

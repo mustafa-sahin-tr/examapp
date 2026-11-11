@@ -67,6 +67,18 @@ public class AdminStudentService : IAdminStudentService
             })
             .ToListAsync(ct);
 
+        // issue #1110: geri alınabilir sınıf atlaması = öğrencinin en yeni yılın atlaması, geri alınmamış ve öğrenci hâlâ o sınıfta
+        // (StudentGradePromotionService.RevertAsync ile aynı kural).
+        var pageIds = rows.Select(r => r.Id).ToList();
+        var promotions = (await (
+                from p in _context.StudentGradePromotions.AsNoTracking()
+                join g in _context.Grades on p.FromGradeId equals g.Id
+                where pageIds.Contains(p.StudentId)
+                    && !_context.StudentGradePromotions.Any(newer => newer.StudentId == p.StudentId && newer.Year > p.Year)
+                select new { p.StudentId, p.Year, p.ToGradeId, p.RevertedAtUtc, FromGradeName = g.Name })
+                .ToListAsync(ct))
+            .ToDictionary(p => p.StudentId);
+
         IReadOnlyDictionary<int, UserLookupResultDto> users = rows.Count == 0
             ? new Dictionary<int, UserLookupResultDto>()
             : await _userDirectory.ResolveWithAccountStatusAsync(rows.Select(r => r.UserId).Distinct().ToList(), ct);
@@ -79,6 +91,7 @@ public class AdminStudentService : IAdminStudentService
             Items = rows.Select(r =>
             {
                 users.TryGetValue(r.UserId, out var user);
+                var promotion = promotions.TryGetValue(r.Id, out var p) && p.RevertedAtUtc == null && p.ToGradeId == r.GradeId ? p : null;
                 return new AdminStudentListItemDto
                 {
                     Id = r.Id,
@@ -92,6 +105,8 @@ public class AdminStudentService : IAdminStudentService
                     SchoolPending = r.SchoolPending,
                     GradeId = r.GradeId,
                     GradeName = r.GradeName,
+                    PromotionYear = promotion?.Year,
+                    PromotedFromGradeName = promotion?.FromGradeName,
                     IsEnabled = user?.Enabled
                 };
             }).ToList()

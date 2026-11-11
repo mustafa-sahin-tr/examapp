@@ -816,5 +816,16 @@
   "rowMenu": {
     "manage": "Yönet",
     "manageFor": "{{name}} için işlemler"
+  },
+  "gradePromotion": {
+    "action": "Sınıf atlamasını geri al",
+    "actionFor": "{{name}} öğrencisinin sınıf atlamasını geri al",
+    "title": "Sınıf atlaması geri alınsın mı?",
+    "message": "{{name}} {{year}} sınıf atlamasından önceki sınıfına ({{grade}}) dönecek. Bu yıl yeniden atlatılmaz; gelecek 1 Ağustos'ta yine bir üst sınıfa geçer.",
+    "confirm": "Geri al",
+    "done": "Sınıf atlaması geri alındı.",
+    "notFound": "Bu öğrencinin geri alınabilecek bir sınıf atlaması yok.",
+    "gradeChanged": "Öğrencinin sınıfı atlamadan sonra değişmiş; geri alma yapılmadı.",
+    "failed": "Sınıf atlaması geri alınamadı."
   }
 }

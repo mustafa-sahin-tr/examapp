@@ -13,6 +13,8 @@ import { map, take } from 'rxjs';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { HttpErrorResponse } from '@angular/common/http';
 import { AdminService } from '../../../services/admin.service';
 import { ADMIN_STUDENT_PARENT_FILTERS, AdminStudentListItem, AdminStudentParentFilter } from '../../../models/admin-student.model';
 import { SchoolFilterComponent } from '../../../shared/components/school-filter/school-filter.component';
@@ -23,6 +25,7 @@ import { SchoolPagedList, adminListErrorMessage } from '../../../shared/utils/sc
 import { openAdminResetPasswordDialog } from '../../../shared/components/admin-reset-password-dialog/admin-reset-password-dialog.component';
 import { openAdminAccountStatusDialog } from '../../../shared/components/admin-account-status-dialog/admin-account-status-dialog.component';
 import { openAdminStudentSchoolDialog } from '../../../shared/components/admin-student-school-dialog/admin-student-school-dialog.component';
+import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 
 /** Yönetim ekranlarının ortak Transloco scope'u: `public/i18n/admin/<lang>.json` (issue #183). */
 const ADMIN_SCOPE = 'admin';
@@ -45,6 +48,8 @@ export interface AdminStudentRow {
   noSchool: boolean;
   /** null → "—" */
   gradeName: string | null;
+  /** Issue #1110: geri alınabilir sınıf atlaması; yoksa null (menüde eylem gösterilmez). */
+  promotion: { year: number; fromGradeName: string } | null;
   accountStatus: AccountStatus;
 }
 
@@ -85,6 +90,7 @@ export class AdminStudentsComponent {
   private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly snackBar = inject(MatSnackBar);
 
   /**
    * #917: panodaki veli durumu sayacından gelinirse `?parentStatus=`. `list`'ten ÖNCE tanımlı: aynı
@@ -211,6 +217,55 @@ export class AdminStudentsComponent {
       });
   }
 
+  /** Geri alma onayı / isteği sürerken ikinci bir istek açılmaz (çift tıklama). */
+  readonly promotionBusy = signal(false);
+
+  /**
+   * Issue #1110 — öğrenci sınıfta kaldı: son 1 Ağustos sınıf atlaması geri alınır. Başarıda satır eski sınıfla anında güncellenir;
+   * hata (404 / 409) mesajla bildirilir ve liste yeniden yüklenir.
+   */
+  revertPromotion(row: AdminStudentRow): void {
+    const promotion = row.promotion;
+    if (this.promotionBusy() || !promotion) return;
+    this.promotionBusy.set(true);
+    const key = (k: string, params?: Record<string, unknown>) =>
+      this.transloco.translate<string>(`${ADMIN_SCOPE}.gradePromotion.${k}`, params);
+    const data: ConfirmDialogData = {
+      title: key('title'),
+      message: key('message', { name: this.rowDisplayName(row), year: promotion.year, grade: promotion.fromGradeName }),
+      confirmText: key('confirm'),
+      icon: 'undo',
+    };
+    this.dialog
+      .open(ConfirmDialogComponent, { width: '480px', maxWidth: '90vw', data })
+      .afterClosed()
+      .subscribe((confirmed: boolean) => {
+        if (!confirmed) {
+          this.promotionBusy.set(false);
+          return;
+        }
+        this.adminService.revertGradePromotion(row.id).subscribe({
+          next: () => {
+            this.promotionBusy.set(false);
+            this.list.items.update((items) =>
+              items.map((item) =>
+                item.id === row.id
+                  ? { ...item, gradeName: promotion.fromGradeName, promotionYear: null, promotedFromGradeName: null }
+                  : item,
+              ),
+            );
+            this.snackBar.open(key('done'), undefined, { duration: 4000 });
+          },
+          error: (err: HttpErrorResponse) => {
+            this.promotionBusy.set(false);
+            const message = err.status === 404 ? 'notFound' : err.status === 409 ? 'gradeChanged' : 'failed';
+            this.snackBar.open(key(message), undefined, { duration: 6000 });
+            this.list.load();
+          },
+        });
+      });
+  }
+
   /**
    * Ham liste öğesi güncellenir; `noSchool` dahil satır alanları `rows` computed'ında `toRow` ile yeniden türetilir
    * (ayrı tutulan bir `noSchool` yok, bayat kalamaz).
@@ -261,6 +316,10 @@ function toRow(item: AdminStudentListItem): AdminStudentRow {
     schoolName: item.schoolName?.trim() || null,
     noSchool: item.schoolId == null,
     gradeName: item.gradeName?.trim() || null,
+    promotion:
+      item.promotionYear != null && item.promotedFromGradeName
+        ? { year: item.promotionYear, fromGradeName: item.promotedFromGradeName }
+        : null,
     accountStatus: item.isEnabled === true ? 'active' : item.isEnabled === false ? 'inactive' : 'unknown',
   };
 }

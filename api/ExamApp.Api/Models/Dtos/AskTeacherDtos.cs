@@ -29,6 +29,7 @@ public class AskTeacherQuestionDto
     public string? AnswerText { get; set; }
     public bool HasAnswerImage { get; set; }
     public int? Rating { get; set; }
+    public bool InNotebook { get; set; }
 }
 
 /// <summary>Bu ayki hak: <c>Limit</c> null sınırsız, 0 planda yok; <c>Pending</c> cevap bekleyen sorular (kalandan düşer).</summary>

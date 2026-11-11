@@ -520,4 +520,12 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   outbox'a yazılır: yeni soru öğretmene, cevap ve süre dolumu öğrenciye. BadgeService `AskTeacherNoticeConsumer` in-app bildirim
   üretir (`AskTeacherAsked` / `AskTeacherAnswered` / `AskTeacherExpired`, `data` = `{ questionId }`); not, cevap ve görsel taşınmaz.
   Süre dolumu satır başına koşullu güncellenir (aynı anda gelen cevap kazanırsa "süre doldu" bildirimi gitmez).
-- **Sonraki dilimler:** öğrenci arayüzü, öğretmen kuyruğu (bildirim linkleri bu dilimlerde bağlanır), puanlama + hata defteri.
+- **Arayüz:** öğrenci `/ask-teacher` (Mesajlar bölümünün sekmesi; ana menü #719 sınırında): hak satırı, fotoğraf + ders + not
+  formu (mobilde kamera), sorularım listesi (cevap yazı / görsel, geri çek, 1–5 puan, deftere ekle). Öğretmen `/teacher/ask-queue`
+  (Öğrenci mesajları bölümünün sekmesi): Bekleyen (süresi en yakın önce, kalan saat) / Cevaplanan / Tümü; cevap yazı ve / veya görsel;
+  öğrencinin puanı görünür. Görseller `app-ask-teacher-image` ile yetkili uçtan blob. Bildirimler `?q=<id>` ile soruyu açar.
+  Süresi geçmiş ama iş kapatmamış soru bekleyen kuyrukta görünmez.
+- **Yanlışlar defteri:** defter banka sorularının yanlış cevaplarından türetilir, fotoğraf tutamaz; bu yüzden cevaplanan soru
+  `SavedToNotebookAt` ile işaretlenir (`PUT {id}/notebook`, `GET notebook`) ve Yanlışlarım sayfasının sonunda "Öğretmene sorduklarım"
+  bölümünde (`app-ask-teacher-notebook`) listelenir.
+- **Sonra:** sesli ve tuval üzerinde cevap (öğretmen şimdilik yazı + görselle cevaplar); ek soru paketi (#1083 sonrası).

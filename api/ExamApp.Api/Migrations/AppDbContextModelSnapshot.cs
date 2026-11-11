@@ -283,6 +283,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("Rating")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("SavedToNotebookAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
@@ -318,6 +321,8 @@ namespace ExamApp.Api.Migrations
                     b.HasIndex("Status", "DueAt");
 
                     b.HasIndex("StudentUserId", "CreatedAt");
+
+                    b.HasIndex("StudentUserId", "SavedToNotebookAt");
 
                     b.HasIndex("TeacherUserId", "Status", "DueAt");
 

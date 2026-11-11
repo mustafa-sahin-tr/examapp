@@ -369,6 +369,10 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
       { id: 'tab-ask-teacher', labelKey: 'menu.askTeacher', icon: '', route: '/ask-teacher', type: 'menu', roles: ['Student'] },
     ],
     [
+      { id: 'tab-student-messages', labelKey: 'menu.studentMessages', icon: '', route: '/student-messages', type: 'menu', roles: ['Teacher'] },
+      { id: 'tab-ask-queue', labelKey: 'menu.askQueue', icon: '', route: '/teacher/ask-queue', type: 'menu', roles: ['Teacher'] },
+    ],
+    [
       { id: 'tab-tutors', labelKey: 'menu.findTutor', icon: '', route: '/tutors', type: 'menu', roles: ['Student'] },
       { id: 'tab-bookings', labelKey: 'menu.myBookings', icon: '', route: '/my-bookings', type: 'menu', roles: ['Student'] },
     ],

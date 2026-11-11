@@ -544,6 +544,13 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/ask-teacher/ask-teacher.component').then((m) => m.AskTeacherComponent),
       },
       {
+        // Issue #1111: öğretmenin "Öğretmene sor" kuyruğu (bildirimden ?q=<id>); onaysız öğretmen giremez, uç da 403 döner.
+        path: 'teacher/ask-queue',
+        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],
+        loadComponent: () =>
+          import('./pages/ask-teacher-queue/ask-teacher-queue.component').then((m) => m.AskTeacherQueueComponent),
+      },
+      {
         // Issue #106: öğretmenin öğrenci mesajları gelen kutusu (onaysız öğretmen giremez; uç da 403 döner).
         path: 'student-messages',
         canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],

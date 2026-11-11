@@ -24,6 +24,8 @@ export interface AskTeacherQuestion {
   answerText: string | null;
   hasAnswerImage: boolean;
   rating: number | null;
+  /** Yanlışlar defterinde mi ("Öğretmene sorduklarım"). */
+  inNotebook: boolean;
 }
 
 export interface AskTeacherQuota {

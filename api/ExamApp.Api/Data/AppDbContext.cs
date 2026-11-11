@@ -1081,6 +1081,7 @@ public class AppDbContext : DbContext
             e.HasOne(q => q.Subject).WithMany().HasForeignKey(q => q.SubjectId).OnDelete(DeleteBehavior.SetNull);
             e.HasIndex(q => new { q.TeacherUserId, q.Status, q.DueAt });
             e.HasIndex(q => new { q.StudentUserId, q.CreatedAt });
+            e.HasIndex(q => new { q.StudentUserId, q.SavedToNotebookAt });
             e.HasIndex(q => new { q.Status, q.DueAt });
         });
 

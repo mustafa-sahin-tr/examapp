@@ -1,5 +1,5 @@
 import { Router } from '@angular/router';
-import { ASK_TEACHER_ROUTE, parseAskTeacherNotificationData } from '../../models/ask-teacher.model';
+import { ASK_TEACHER_QUEUE_ROUTE, ASK_TEACHER_ROUTE, parseAskTeacherNotificationData } from '../../models/ask-teacher.model';
 import { PARENT_CHILD_QUERY_PARAM, PARENT_TAB_QUERY_PARAM } from '../../models/parent-dashboard.model';
 import { PARENT_HOME_URL } from '../../shared/guards/parent.guard';
 import { PARENT_REQUIRED_URL } from '../../models/parent-status.model';
@@ -164,10 +164,11 @@ export const STUDENT_SETTINGS_ROUTE = '/student-settings';
  * Sabit hedefli bildirimler: aksiyon gerektirenler işin yapıldığı ekrana, sonuç bildirimleri ilgili listeye gider
  * (`data` linke taşınmaz).
  */
-/** Issue #1111: `AskTeacherNoticeConsumer` öğrenci türleri → ikon. */
-const ASK_TEACHER_STUDENT_NOTIFICATIONS: Readonly<Record<string, string>> = {
-  AskTeacherAnswered: 'mark_chat_read',
-  AskTeacherExpired: 'timer_off',
+/** Issue #1111: `AskTeacherNoticeConsumer` türleri → ikon + sayfa. */
+const ASK_TEACHER_NOTIFICATIONS: Readonly<Record<string, { icon: string; route: string }>> = {
+  AskTeacherAsked: { icon: 'contact_support', route: ASK_TEACHER_QUEUE_ROUTE },
+  AskTeacherAnswered: { icon: 'mark_chat_read', route: ASK_TEACHER_ROUTE },
+  AskTeacherExpired: { icon: 'timer_off', route: ASK_TEACHER_ROUTE },
 };
 
 const FIXED_ROUTE_NOTIFICATIONS: Readonly<Record<string, { icon: string; route: string }>> = {
@@ -267,13 +268,14 @@ export function describeNotification(
       questionOrder: null,
     };
   }
-  if (ASK_TEACHER_STUDENT_NOTIFICATIONS[notification.type]) {
-    // Issue #1111: cevap / süre dolumu öğrenciyi sorusuna götürür; bozuk `data` → yalnız sayfa.
+  const askTeacher = ASK_TEACHER_NOTIFICATIONS[notification.type];
+  if (askTeacher) {
+    // Issue #1111: yeni soru öğretmeni kuyruğa, cevap / süre dolumu öğrenciyi sorusuna götürür; bozuk `data` → yalnız sayfa.
     const questionId = parseAskTeacherNotificationData(notification.data);
     return {
-      icon: ASK_TEACHER_STUDENT_NOTIFICATIONS[notification.type],
+      icon: askTeacher.icon,
       badge: null,
-      route: { commands: [ASK_TEACHER_ROUTE], ...(questionId ? { queryParams: { q: questionId } } : {}) },
+      route: { commands: [askTeacher.route], ...(questionId ? { queryParams: { q: questionId } } : {}) },
       questionOrder: null,
     };
   }

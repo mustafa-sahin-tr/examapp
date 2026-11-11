@@ -187,6 +187,8 @@ public class AskTeacherServiceTests : IDisposable
         _clock.Advance(TimeSpan.FromHours(49));
         (await With(s => s.GetForStudentAsync(StudentUser, expiring.Id, default)))!.Status.ShouldBe("Expired");
         (await Answer(RelatedTeacherUser, expiring.Id)).Error.ShouldBe(AskTeacherError.InvalidState);
+        // İş kapatmadan önce de süresi geçen soru bekleyen kuyrukta görünmez.
+        (await With(s => s.QueueAsync(RelatedTeacherUser, AskTeacherStatus.Open, default))).ShouldBeEmpty();
         (await With(s => s.ExpireAsync(default))).ShouldBe(1);
 
         _recorded.ShouldBeEmpty();
@@ -264,6 +266,27 @@ public class AskTeacherServiceTests : IDisposable
         asked.DueAtUtc.ShouldBe(new DateTime(2027, 3, 3, 9, 0, 0));
         notices.Single(n => n.Kind == AskTeacherNoticeEvent.Answered).CounterpartName.ShouldBe($"Ad{RelatedTeacherUser} S.");
         notices.Select(n => n.EventId).Distinct().Count().ShouldBe(4);
+    }
+
+    [Fact]
+    public async Task Only_an_answered_question_goes_to_the_notebook_and_it_can_be_removed()
+    {
+        var open = (await Send(_relatedTeacherId)).Question!;
+        var answered = (await Send(_bookedTeacherId)).Question!;
+        (await Answer(BookedTeacherUser, answered.Id)).Error.ShouldBe(AskTeacherError.None);
+
+        (await With(s => s.SetNotebookAsync(StudentUser, open.Id, true, default))).ShouldBe(AskTeacherError.InvalidState);
+        (await With(s => s.SetNotebookAsync(OtherStudentUser, answered.Id, true, default))).ShouldBe(AskTeacherError.NotFound);
+        (await With(s => s.SetNotebookAsync(StudentUser, answered.Id, true, default))).ShouldBe(AskTeacherError.None);
+        (await With(s => s.SetNotebookAsync(StudentUser, answered.Id, true, default))).ShouldBe(AskTeacherError.None);
+
+        var notebook = await With(s => s.ListNotebookAsync(StudentUser, default));
+        notebook.Select(q => q.Id).ShouldBe([answered.Id]);
+        notebook[0].InNotebook.ShouldBeTrue();
+        (await With(s => s.ListNotebookAsync(OtherStudentUser, default))).ShouldBeEmpty();
+
+        (await With(s => s.SetNotebookAsync(StudentUser, answered.Id, false, default))).ShouldBe(AskTeacherError.None);
+        (await With(s => s.ListNotebookAsync(StudentUser, default))).ShouldBeEmpty();
     }
 
     private async Task<List<AskTeacherNoticeEvent>> NoticesAsync()

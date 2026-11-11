@@ -34,7 +34,10 @@
     "answer": "Answer",
     "rate": "Was the answer helpful?",
     "star": "{{n}} stars",
-    "cancel": "Withdraw"
+    "cancel": "Withdraw",
+    "saveToNotebook": "Add to my mistake notebook",
+    "inNotebook": "In my notebook",
+    "savedToNotebook": "Added to your mistake notebook."
   },
   "status": {
     "open": "Waiting",
@@ -53,5 +56,12 @@
     "invalidSubject": "Pick a valid subject.",
     "invalidState": "This question can no longer be changed.",
     "notFound": "Question not found."
+  },
+  "notebook": {
+    "title": "Asked my teacher",
+    "subtitle": "Questions you saved with your teachers' answers.",
+    "questionImage": "Question photo",
+    "open": "Open question",
+    "remove": "Remove from notebook"
   }
 }

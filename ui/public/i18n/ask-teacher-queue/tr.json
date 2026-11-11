@@ -1,0 +1,44 @@
+{
+  "title": "Öğrenci soruları",
+  "subtitle": "Öğrencilerinin gönderdiği fotoğraflı sorular. Süresi dolan soru öğrencinin hakkından düşmez.",
+  "loadError": "Sorular yüklenemedi.",
+  "retry": "Tekrar dene",
+  "answered": "Cevabın öğrenciye gönderildi.",
+  "filter": {
+    "label": "Soru durumu",
+    "open": "Bekleyen",
+    "answered": "Cevaplanan",
+    "all": "Tümü"
+  },
+  "emptyOpen": "Cevap bekleyen soru yok.",
+  "empty": "Henüz soru yok.",
+  "questionImage": "Soru fotoğrafı",
+  "answerImage": "Cevap görseli",
+  "hoursLeft": "Cevap için {{hours}} saat kaldı.",
+  "lessThanHour": "Cevap için 1 saatten az kaldı.",
+  "rating": "Öğrencinin puanı:",
+  "ratingValue": "{{n}} / 5",
+  "notRated": "Öğrenci henüz puan vermedi.",
+  "form": {
+    "text": "Cevabın",
+    "image": "Görsel ekle",
+    "imageAlt": "Cevap görseli",
+    "removeImage": "Görseli kaldır",
+    "send": "Cevapla"
+  },
+  "status": {
+    "open": "Bekliyor",
+    "answered": "Cevaplandı",
+    "expired": "Süresi doldu",
+    "cancelled": "Geri çekildi"
+  },
+  "errors": {
+    "generic": "Cevap gönderilemedi. Tekrar dene.",
+    "invalidState": "Bu soru artık cevaplanamaz (süresi doldu ya da geri çekildi).",
+    "answerRequired": "Yazı ya da görsel ekle.",
+    "answerTooLong": "Cevap en fazla 4000 karakter olabilir.",
+    "invalidImage": "Görsel okunamadı (JPEG, PNG ya da WebP).",
+    "imageTooLarge": "Görsel çok büyük (en fazla 15 MB).",
+    "notFound": "Soru bulunamadı."
+  }
+}

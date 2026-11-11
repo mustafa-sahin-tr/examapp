@@ -7,6 +7,7 @@ import { PracticeService } from '../../services/practice.service';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import { MistakeNotebookComponent } from './mistake-notebook.component';
 import practiceTr from '../../../../public/i18n/practice/tr.json';
+import { AskTeacherService } from '../../services/ask-teacher.service';
 
 const item = (questionId: number, subjectId: number, subjectName: string): MistakeItem => ({
   questionId,
@@ -34,7 +35,12 @@ describe('MistakeNotebookComponent (issue #698)', () => {
     };
     TestBed.configureTestingModule({
       imports: [MistakeNotebookComponent, NoopAnimationsModule, translocoTestingModule({ langs: { 'practice/tr': practiceTr } })],
-      providers: [provideRouter([]), { provide: PracticeService, useValue: practice }],
+      providers: [
+        provideRouter([]),
+        { provide: PracticeService, useValue: practice },
+        // Issue #1111: "Öğretmene sorduklarım" bölümü boş (hiçbir şey çizmez).
+        { provide: AskTeacherService, useValue: { notebook: () => of([]) } },
+      ],
     });
     const fixture = TestBed.createComponent(MistakeNotebookComponent);
     fixture.detectChanges();

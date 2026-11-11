@@ -398,7 +398,9 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   penceresini "Bu ders planında yok / Ders ekle" olarak açar (plan karşılaştırması yok). Yardımcı: `StudyScope.ForAsync`, servis
   katmanında `StudyScopeException`. Yapılan yüzeyler: pratik oturumu (kapsamsız istek o derse daralır; başka ders / konu / alt konu /
   çalışma sayfası 403; kayıtlı sorular oturumu yalnız o dersin soruları), `due-review` ve `mistakes` (ders verilmezse planın dersi,
-  başka ders 403). Sıradakiler: günün soruları, denemeler, bilgi kartları, çalışma sayfaları, soru havuzu, kendi etkinlikleri.
+  başka ders 403), günün soruları (set, eksiği dolduran havuz ve tekrar zamanı gelenler yalnız planın dersinden; plan kapsamı
+  `ScopeJson`'a yazılmaz, öğrenci o dersin konusunu yine seçer; başka ders 403; gün içinde plan değişirse o günün seti kalır).
+  Sıradakiler: denemeler, bilgi kartları, çalışma sayfaları, soru havuzu, kendi etkinlikleri.
 - **Okul lisansı (#1092):** özel anlaşmayla okulun bütün üyelerine plan: `SchoolLicenses` (okul başına tek satır; öğretmen ve öğrenci
   planı, varsayılan iki kitlenin Pro'su; başlangıç / hariç bitiş; anlaşma notu ≤ 200). Kimseye atama yazılmaz: plan çözümü
   (`EntitlementService.ResolvePlanAsync`, admin listesi `CurrentPlansAsync`, ortak kural `SchoolLicensePlans`) kullanıcının okuluna

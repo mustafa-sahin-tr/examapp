@@ -182,33 +182,41 @@ public class PracticeController : BaseController
     /// </summary>
     [HttpGet("daily")]
     [EnableRateLimiting(DailyQuestionsRateLimiting.Policy)]
-    public async Task<IActionResult> GetDaily(CancellationToken ct)
+    public async Task<IActionResult> GetDaily([FromServices] IEntitlementService entitlements, CancellationToken ct)
     {
-        var (student, error) = await ResolveStudentAsync();
+        var (student, error, userId) = await ResolveStudentWithUserAsync();
         if (error != null)
             return error;
 
-        return Ok(await _daily.GetTodayAsync(student!, ct));
+        // #1109: tek ders planında set planın dersinden üretilir.
+        var scope = await StudyScope.ForAsync(entitlements, userId, ct);
+        return Ok(await _daily.GetTodayAsync(student!, ct, scope.SubjectId));
     }
 
     /// <summary>
     /// Bugünün setinin pratik oturumunu açar ya da mevcut oturumu döner (idempotent). Tamamlanmış sette yeni oturum
     /// açılmaz: 200 + mevcut <c>sessionId</c> + <c>status: "Completed"</c>. Set boşsa 409.
     /// #66: gövde isteğe bağlı ders/konu/alt konu taşır; oturum açılmamış sette set bu kapsamdan üretilir, açılmış sette
-    /// yok sayılır. Geçersiz kapsam 400.
+    /// yok sayılır. Geçersiz kapsam 400; tek ders planında başka ders 403 <c>entitlement.outOfScope</c> (#1109).
     /// </summary>
     [HttpPost("daily/start")]
     [EnableRateLimiting(DailyQuestionsRateLimiting.Policy)]
-    public async Task<IActionResult> StartDaily([FromBody] DailyStartRequestDto? request, CancellationToken ct)
+    public async Task<IActionResult> StartDaily([FromServices] IEntitlementService entitlements, [FromBody] DailyStartRequestDto? request,
+        CancellationToken ct)
     {
-        var (student, error) = await ResolveStudentAsync();
+        var (student, error, userId) = await ResolveStudentWithUserAsync();
         if (error != null)
             return error;
 
+        var scope = await StudyScope.ForAsync(entitlements, userId, ct);
         DailyStartResultDto? result;
         try
         {
-            result = await _daily.StartTodayAsync(student!, request, ct);
+            result = await _daily.StartTodayAsync(student!, request, ct, scope.SubjectId);
+        }
+        catch (StudyScopeException ex)
+        {
+            return EntitlementLimitResponse.OutOfScope(ex.ScopeSubjectId, scope.PlanKey);
         }
         catch (DailyScopeInvalidException)
         {

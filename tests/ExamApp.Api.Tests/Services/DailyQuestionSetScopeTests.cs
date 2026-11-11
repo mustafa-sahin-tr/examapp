@@ -2,6 +2,7 @@ using System.Data.Common;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Dashboard;
+using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Practice;
 using ExamApp.Api.Tests.Support;
 using Microsoft.EntityFrameworkCore;
@@ -614,6 +615,62 @@ public class DailyQuestionSetScopeTests : IDisposable
 
         again!.SessionId.ShouldBe(first!.SessionId);
         (await SetQuestionIdsAsync(s.Id, Today)).ShouldAllBe(id => fractions.Contains(id));
+    }
+
+    // --- #1109: tek ders planı ---
+
+    [Fact]
+    public async Task PlanScope_RandomSetComesOnlyFromPlanSubject()
+    {
+        var w = await SeedWorldAsync();
+        var math = await AddQuestionsAsync(w, 8, w.MathId);
+        await AddQuestionsAsync(w, 8, w.TurkishId);
+        var s = await AddStudentAsync(w, 101);
+
+        await using (var ctx = _db.NewContext())
+        {
+            var dto = await NewDaily(ctx).GetTodayAsync(s, scopeSubjectId: w.MathId);
+            dto.Total.ShouldBe(5);
+            dto.Scope.ShouldBeNull(); // plan kapsamı ScopeJson'a yazılmaz; konu seçimi açık kalır
+        }
+
+        (await SetQuestionIdsAsync(s.Id, Today)).ShouldAllBe(id => math.Contains(id));
+    }
+
+    [Fact]
+    public async Task PlanScope_OtherSubject_Refused()
+    {
+        var w = await SeedWorldAsync();
+        await AddQuestionsAsync(w, 8, w.MathId);
+        await AddQuestionsAsync(w, 8, w.TurkishId);
+        var s = await AddStudentAsync(w, 101);
+
+        await using var ctx = _db.NewContext();
+        var ex = await Should.ThrowAsync<StudyScopeException>(() =>
+            NewDaily(ctx).StartTodayAsync(s, new DailyStartRequestDto { SubjectId = w.TurkishId }, scopeSubjectId: w.MathId));
+        ex.ScopeSubjectId.ShouldBe(w.MathId);
+    }
+
+    [Fact]
+    public async Task PlanScope_TopicWithFewQuestions_FilledOnlyFromPlanSubject()
+    {
+        var w = await SeedWorldAsync();
+        var fractions = await AddQuestionsAsync(w, 2, w.MathId, w.FractionsTopicId);
+        var otherMath = await AddQuestionsAsync(w, 6, w.MathId);
+        await AddQuestionsAsync(w, 10, w.TurkishId);
+        var s = await AddStudentAsync(w, 101);
+
+        await using (var ctx = _db.NewContext())
+        {
+            var result = await NewDaily(ctx).StartTodayAsync(
+                s, new DailyStartRequestDto { SubjectId = w.MathId, TopicId = w.FractionsTopicId }, scopeSubjectId: w.MathId);
+            result!.Total.ShouldBe(5);
+            result.Scope!.ScopedCount.ShouldBe(2);
+        }
+
+        var ids = await SetQuestionIdsAsync(s.Id, Today);
+        ids.Take(2).OrderBy(x => x).ShouldBe(fractions.OrderBy(x => x));
+        ids.Skip(2).ShouldAllBe(id => otherMath.Contains(id));
     }
 
     private async Task<int> ScienceIdAsync()

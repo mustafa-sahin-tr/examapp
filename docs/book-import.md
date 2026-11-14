@@ -101,6 +101,9 @@ aktarım aracındaki Python portu referanstır (#1022).
   başladıkları içindekiler konusunun ünitesine girer (içindekiler yoksa başlıktaki konu), ünite içinde sayfa sırasıyla numaralanır,
   başlık "Kavramları Kavra 01" olur. Anahtarda hiç harfli satırı olmayan bölüm (açık uçlu "Şimdi Uygula") test sayılmaz; test
   sayfası olmayan anahtar satırı (tek soruluk "Doğru Yorumla") "eşleşmeyen" listesine düşer.
+  Bölüm adıyla eşleme yalnız anahtar da bölüm adlıysa yapılır (#1165; ör. Define soru bankası: başlık "Pusula Kavrama Testi - 1",
+  numara ünite içinde türden bağımsız sıralı, anahtar "1. ÜNİTE: Test 1 …"). Değilse normal ünite + test no yolu: başlıkların
+  çoğunda ünite yoksa ünite, test numarasının geri düşmesinden çıkar; bölüm adı başlığa eklenir ("Pusula Kavrama Testi: Güneş").
 - **Kayıt:** test satırları `BookImportJobTests` (sayfa aralığı, dakika, `AnswerKey` "ABCD…", `KeyConflicts` "." uyumlu /
   diğer okumanın harfi / "-"), özet `BookImportJobs.SetupJson`, maliyet `AiCostUsd` (başarısız çağrılar dahil). Model listesi
   ve fiyatlar `Anthropic:Models`'tan; API anahtarı yoksa iş "Claude is not configured" ile düşer. Hiç test başlığı yoksa

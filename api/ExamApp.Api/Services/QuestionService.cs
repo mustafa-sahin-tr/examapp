@@ -1085,6 +1085,10 @@ public class QuestionService : IQuestionService
                             ActivityLabel = source.ActivityLabel,
                             ItemLabel = source.ItemLabel,
                             CropSha256 = ExamApp.Api.Services.Labeling.QuestionCropHash.Of(croppedQuestionImage),
+                            BoxX = source.Box?.X,
+                            BoxY = source.Box?.Y,
+                            BoxWidth = source.Box?.Width,
+                            BoxHeight = source.Box?.Height,
                         });
                         await _context.SaveChangesAsync();
                     }

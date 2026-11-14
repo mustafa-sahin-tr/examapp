@@ -174,8 +174,11 @@ aktarım aracındaki Python portu referanstır (#1022).
   sonucu önbellekte, maliyetsiz). "Taslakları değiştir" → `PUT {id}/tests/{testId}/pages/{filePage}/questions`
   (`BookImportPageFixService`): görsel sunucuda işin sayfasından okunur; yeni sorular taslak kaydedilir (eski taslakların
   kırpmaları tekrar sayılmaz, `ReplacingQuestionIds`), sonra tek transaction'da eskiler soft-delete, yeniler eskilerin
-  sırasına (eskisi yoksa önceki sayfaların sorularından sonra) bağlanır. Numara: madde etiketi sayıysa o, yoksa sayfanın eski
-  ilk numarasından sırayla; cevap: işaretlenen şık, yoksa anahtar. Sayfanın inceleme işaretleri yeniden hesaplanır, sayı
+  sırasına (eskisi yoksa önceki sayfaların sorularından sonra) bağlanır. Numara (#1171): madde etiketi sayıysa o; yoksa kutunun
+  örtüştüğü eski taslağın numarası (kesişim / küçük kutu ≥ 0.6; kutu `QuestionSources.Box*`'ta, kutusuz eski taslaklarda
+  önbellekteki Claude tespitinden aktarımla aynı sıralama ve numarayla); o da yoksa okuma sırasında önceki kutudan sonraki boş
+  numara. Böylece ortadan silinen kutu kalanların numarasını ve anahtar cevabını kaydırmaz; yeni sorular numara sırasıyla
+  bağlanır. Cevap: işaretlenen şık, yoksa anahtar. Sayfanın inceleme işaretleri yeniden hesaplanır, sayı
   uyuşmazlığı testin güncel soru sayısıyla; işaret kalmazsa test `Done`. Başarısız testte (taslak testi yok) düzeltme taslak
   testi açar. Boş sayfa kaydı onayla sayfanın taslaklarını siler. Kayıt başarısızsa test değişmez. Kırpması başka bir aktarımda
   ya da bankada etkin olan soru tekrar sayılır ve bağlanmaz (aktarımla aynı kural).

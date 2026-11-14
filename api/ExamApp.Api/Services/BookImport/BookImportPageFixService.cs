@@ -37,8 +37,9 @@ public interface IBookImportPageFixService
 }
 
 /// <summary>
-/// Numara: istemcinin madde etiketi (sayıysa), yoksa sayfanın eski ilk numarasından (yoksa önceki sayfaların son numarasından)
-/// sırayla. Cevap: işaretlenen doğru şık, yoksa testin cevap anahtarı, yoksa cevapsız. Sayfanın inceleme işaretleri yeniden
+/// Numara (#1171): istemcinin madde etiketi (sayıysa); yoksa kutunun örtüştüğü eski taslağın numarası (eski kutular kaynakta,
+/// kutusuz eski taslaklar için önbellekteki tespitten aktarımla aynı sıralamayla); o da yoksa okuma sırasında önceki kutudan
+/// sonraki boş numara (ilk kutu için sayfanın eski ilk numarası, yoksa önceki sayfaların son numarasından sonrası). Cevap: işaretlenen doğru şık, yoksa testin cevap anahtarı, yoksa cevapsız. Sayfanın inceleme işaretleri yeniden
 /// hesaplanır; test sorunsuz kalırsa Done olur. Kayıt kendi transaction'ını açtığından önce yeni taslaklar kaydedilir
 /// (eskilerin kırpmaları tekrar sayılmaz), sonra tek transaction'da eskiler silinir ve sıra yeniden yazılır; kayıt başarısızsa
 /// test değişmez.
@@ -73,14 +74,26 @@ public sealed class BookImportPageFixService(
         var start = old.Select(l => l.Number).Where(n => n is not null).Min()
                     ?? (links.Where(l => l.FilePage < filePage).Select(l => l.Number).Max() ?? 0) + 1;
 
+        string? image = null;
+        var reference = old.Where(l => l is { Number: not null, Box: not null })
+            .Select(l => new NumberedBox(l.Box!.Value, l.Number!.Value)).ToList();
+        var boxless = old.Where(l => l is { Number: not null, Box: null }).Select(l => l.Number!.Value).ToHashSet();
+        if (boxless.Count > 0 && questions.Any(q => !int.TryParse(q.ItemLabel?.Trim(), out var n) || n <= 0))
+        {
+            image = await LoadAsync(page);
+            var previousMax = links.Where(l => l.FilePage < filePage).Select(l => l.Number).Max() ?? 0;
+            reference.AddRange(ImportNumbering(await DetectedBoxesAsync(page, image, ct), boxless, previousMax));
+        }
+        var numbered = NumberBoxes(questions.Select(q => new LayoutBox(q.X, q.Y, q.Width, q.Height)).ToList(),
+            questions.Select(q => q.ItemLabel).ToList(), reference, start, page.Width);
+
         var label = BookQuestionImportStage.SourceLabel(job, test);
         // #1054: hızlı eklemede anahtar yalnız bulunan sayı anahtar uzunluğuna eşitse uygulanır (#1052 ile aynı kural).
         var answerKey = job.HasLooseQuestions && test.AnswerKey?.Length != questions.Count ? null : test.AnswerKey;
-        var numbers = new List<int>();
-        var toSave = questions.Select((q, i) =>
+        var numbers = numbered.Select(n => n.Number).ToList();
+        var toSave = numbered.Select(item =>
         {
-            var number = int.TryParse(q.ItemLabel?.Trim(), out var n) && n > 0 ? n : start + i;
-            numbers.Add(number);
+            var (q, number) = (questions[item.Index], item.Number);
             var answer = q.CorrectOptionIndex >= 0 && q.CorrectOptionIndex < q.Options.Count
                 ? q.CorrectOptionIndex
                 : BookQuestionImportStage.AnswerIndex(answerKey, number);
@@ -98,10 +111,9 @@ public sealed class BookImportPageFixService(
         }).ToList();
 
         var saved = new LabelingImportPageResult(0, [], []);
-        string? image = null;
         if (toSave.Count > 0)
         {
-            image = await LoadAsync(page);
+            image ??= await LoadAsync(page);
             saved = await bank.SaveImportedPageAsync(new LabelingImportPageRequest(
                 image, bookId, filePage, job.GradeId, QuestionBankSharing.Private, toSave, oldIds), job.CreateUserId.Value, ct);
         }
@@ -184,11 +196,12 @@ public sealed class BookImportPageFixService(
                 wq.QuestionId,
                 wq.Question.IsDraft,
                 Source = db.QuestionSources.Where(s => s.QuestionId == wq.QuestionId && s.BookId == bookId)
-                    .Select(s => new { s.FilePage, s.ItemLabel }).FirstOrDefault(),
+                    .Select(s => new { s.FilePage, s.ItemLabel, s.BoxX, s.BoxY, s.BoxWidth, s.BoxHeight }).FirstOrDefault(),
             })
             .ToListAsync(ct);
         return rows.Select(r => new Link(r.QuestionId, r.IsDraft, r.Source?.FilePage ?? 0,
-            int.TryParse(r.Source?.ItemLabel, out var n) ? n : null)).ToList();
+            int.TryParse(r.Source?.ItemLabel, out var n) ? n : null,
+            r.Source is { BoxX: { } x, BoxY: { } y, BoxWidth: { } w, BoxHeight: { } h } ? new LayoutBox(x, y, w, h) : null)).ToList();
     }
 
     /// <summary>
@@ -292,10 +305,7 @@ public sealed class BookImportPageFixService(
         try
         {
             image ??= await LoadAsync(page);
-            var sha = Convert.ToHexStringLower(SHA256.HashData(Convert.FromBase64String(image[(image.IndexOf(',') + 1)..])));
-            var ai = await db.LabelingResults.AsNoTracking()
-                .Where(r => r.Page.ImageSha256 == sha && r.Source == LabelingSource.Ai)
-                .OrderByDescending(r => r.UpdatedAt).Select(r => r.BoxesJson).FirstOrDefaultAsync(ct);
+            var ai = await AiBoxesJsonAsync(image, ct);
             var others = ai is null
                 ? []
                 : (JsonSerializer.Deserialize<PredictionListDto>(ai)?.Predictions ?? [])
@@ -323,6 +333,102 @@ public sealed class BookImportPageFixService(
         }
     }
 
+    /// <summary>Sayfanın en son Claude tespiti (önbellek; aktarım bunu kullandı).</summary>
+    private async Task<string?> AiBoxesJsonAsync(string image, CancellationToken ct)
+    {
+        var sha = Convert.ToHexStringLower(SHA256.HashData(Convert.FromBase64String(image[(image.IndexOf(',') + 1)..])));
+        return await db.LabelingResults.AsNoTracking()
+            .Where(r => r.Page.ImageSha256 == sha && r.Source == LabelingSource.Ai)
+            .OrderByDescending(r => r.UpdatedAt).Select(r => r.BoxesJson).FirstOrDefaultAsync(ct);
+    }
+
+    /// <summary>#1171: aktarımın kaydettiği kutular, aktarımdaki sırayla (okuma sırası, bölünmüş soru birleşik, şıklarla büyümüş).</summary>
+    private async Task<List<LayoutBox>> DetectedBoxesAsync(BookImportPage page, string image, CancellationToken ct)
+    {
+        var ai = await AiBoxesJsonAsync(image, ct);
+        if (ai is null || JsonSerializer.Deserialize<PredictionListDto>(ai) is not { } predictions)
+            return [];
+        return BookQuestionLayout.MergeSplit(
+                BookQuestionLayout.Order(BookQuestionImportStage.ToLayout(predictions), page.Width), page.Width, page.Height)
+            .Select(q => BookQuestionLayout.Prepare(q, page.Width, page.Height).Box).ToList();
+    }
+
+    internal sealed record NumberedBox(LayoutBox Box, int Number);
+
+    /// <summary>Kutunun eski taslakla eşlenmesi için örtüşme alt sınırı (kesişim / küçük kutunun alanı).</summary>
+    internal const double MinOverlap = 0.6;
+
+    /// <summary>
+    /// #1171: kutusu kaydedilmemiş eski taslakların kutuları. Aktarım sayfanın soru kutularını sırayla <c>ilk + i</c> diye
+    /// numaraladı; <paramref name="numbers"/> (sayfanın yaşayan kutusuz taslakları) bu aralığa sığacak ilk numara seçilir, önceki
+    /// sayfaların son numarasının ardına en yakını. Sığmazsa (tespit değişmiş) eşleme yok.
+    /// </summary>
+    internal static List<NumberedBox> ImportNumbering(IReadOnlyList<LayoutBox> ordered, IReadOnlySet<int> numbers, int previousMax)
+    {
+        if (ordered.Count == 0 || numbers.Count == 0)
+            return [];
+        var (lo, hi) = (numbers.Max() - ordered.Count + 1, numbers.Min());
+        if (lo > hi)
+            return [];
+        var first = Math.Clamp(previousMax + 1, lo, hi);
+        return ordered.Select((box, i) => new NumberedBox(box, first + i)).Where(b => numbers.Contains(b.Number)).ToList();
+    }
+
+    /// <summary>
+    /// #1171: kutular okuma sırasına dizilir ve numaralanır. Madde etiketi (sayı) önce; etiketsiz kutu en çok örtüştüğü eski
+    /// kutunun numarasını alır (<see cref="MinOverlap"/>); kalan kutu okuma sırasında önceki kutunun numarasından sonraki boş
+    /// numarayı alır. Sonuç numara sırasıyla (kutunun istekteki sırası + numarası).
+    /// </summary>
+    internal static List<(int Index, int Number)> NumberBoxes(IReadOnlyList<LayoutBox> boxes, IReadOnlyList<string?> labels,
+        IReadOnlyList<NumberedBox> reference, int start, int pageWidth)
+    {
+        var items = boxes.Select(b => new LayoutQuestion(b, [])).ToList();
+        var order = BookQuestionLayout.Order(items, pageWidth).Select(q => items.FindIndex(x => ReferenceEquals(x, q))).ToList();
+        var number = new int?[boxes.Count];
+        for (var i = 0; i < boxes.Count; i++)
+        {
+            if (int.TryParse(labels[i]?.Trim(), out var n) && n > 0)
+                number[i] = n;
+        }
+        var used = number.OfType<int>().ToHashSet();
+        var matches = (from i in order
+                       where number[i] is null
+                       from r in reference
+                       where !used.Contains(r.Number)
+                       let score = Overlap(boxes[i], r.Box)
+                       where score >= MinOverlap
+                       orderby score descending
+                       select (Index: i, r.Number)).ToList();
+        foreach (var (i, n) in matches)
+        {
+            if (number[i] is null && used.Add(n))
+                number[i] = n;
+        }
+
+        var previous = start - 1;
+        foreach (var i in order)
+        {
+            if (number[i] is null)
+            {
+                var n = previous + 1;
+                while (used.Contains(n))
+                    n++;
+                number[i] = n;
+                used.Add(n);
+            }
+            previous = number[i]!.Value;
+        }
+        return order.Select(i => (Index: i, Number: number[i]!.Value)).OrderBy(x => x.Number).ToList();
+    }
+
+    private static double Overlap(LayoutBox a, LayoutBox b)
+    {
+        var w = Math.Min(a.Right, b.Right) - Math.Max(a.X, b.X);
+        var h = Math.Min(a.Bottom, b.Bottom) - Math.Max(a.Y, b.Y);
+        var smaller = Math.Min((double)a.Width * a.Height, (double)b.Width * b.Height);
+        return w <= 0 || h <= 0 || smaller <= 0 ? 0 : w * (double)h / smaller;
+    }
+
     private async Task<string> LoadAsync(BookImportPage page)
     {
         await using var stream = await minio.GetFileStreamAsync(page.ImageUrl)
@@ -332,5 +438,5 @@ public sealed class BookImportPageFixService(
         return "data:image/webp;base64," + Convert.ToBase64String(buffer.GetBuffer(), 0, (int)buffer.Length);
     }
 
-    private sealed record Link(int QuestionId, bool IsDraft, int FilePage, int? Number);
+    private sealed record Link(int QuestionId, bool IsDraft, int FilePage, int? Number, LayoutBox? Box);
 }

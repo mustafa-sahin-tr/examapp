@@ -37,4 +37,16 @@ public class QuestionSource
     /// <summary>Küçük harf hex, 64 karakter.</summary>
     [MaxLength(64)]
     public string CropSha256 { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Issue #1171: sorunun sayfadaki kutusu (sayfa pikseli). Kitap aktarımında sayfa düzeltmesi kutuyu eski taslağıyla bununla
+    /// eşler ve numarasını korur. Eski kayıtlarda null.
+    /// </summary>
+    public int? BoxX { get; set; }
+
+    public int? BoxY { get; set; }
+
+    public int? BoxWidth { get; set; }
+
+    public int? BoxHeight { get; set; }
 }

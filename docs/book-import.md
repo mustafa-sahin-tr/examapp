@@ -178,7 +178,9 @@ aktarım aracındaki Python portu referanstır (#1022).
   örtüştüğü eski taslağın numarası (kesişim / küçük kutu ≥ 0.6; kutu `QuestionSources.Box*`'ta, kutusuz eski taslaklarda
   önbellekteki Claude tespitinden aktarımla aynı sıralama ve numarayla); o da yoksa okuma sırasında önceki kutudan sonraki boş
   numara. Böylece ortadan silinen kutu kalanların numarasını ve anahtar cevabını kaydırmaz; yeni sorular numara sırasıyla
-  bağlanır. Cevap: işaretlenen şık, yoksa anahtar. Sayfanın inceleme işaretleri yeniden hesaplanır, sayı
+  bağlanır. Cevap: işaretlenen şık, yoksa anahtar. Tuval açılırken (#1173) `GET {id}/tests/{testId}/pages/{filePage}/questions` sayfanın taslaklarını
+  (numara, kutu, doğru şık) verir; örtüşen soru kutusu Madde'de taslağın numarasını, doğru şıkkı işaretli alır (elle yazılan
+  etiket ve işaretli şık korunur). Böylece kaydedilecek numara ve cevap görünür, incelemede seçilen cevap kaybolmaz. Sayfanın inceleme işaretleri yeniden hesaplanır, sayı
   uyuşmazlığı testin güncel soru sayısıyla; işaret kalmazsa test `Done`. Başarısız testte (taslak testi yok) düzeltme taslak
   testi açar. Boş sayfa kaydı onayla sayfanın taslaklarını siler. Kayıt başarısızsa test değişmez. Kırpması başka bir aktarımda
   ya da bankada etkin olan soru tekrar sayılır ve bağlanmaz (aktarımla aynı kural).

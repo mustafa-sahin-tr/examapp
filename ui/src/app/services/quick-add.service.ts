@@ -6,6 +6,7 @@ import {
   ApproveAllBookImportResult,
   BookImportJob,
   BookImportJobDetail,
+  BookImportPageDraft,
   BookImportPageFix,
   BookImportQuota,
   BookImportReviewQuestion,
@@ -76,6 +77,11 @@ export class QuickAddService {
   /** Issue #1054 "İşaretlemede düzelt" (yalnız Admin / QuestionTrainer): fotoğrafın taslaklarını düzeltilenlerle değiştirir. */
   replacePage(id: string, testId: number, filePage: number, questions: LabelingBankQuestion[]): Observable<BookImportPageFix> {
     return this.http.put<BookImportPageFix>(`${this.baseUrl}/${id}/tests/${testId}/pages/${filePage}/questions`, { questions });
+  }
+
+  /** Issue #1173: düzeltilecek fotoğrafın taslakları (numara, kutu, doğru şık). */
+  pageDrafts(id: string, testId: number, filePage: number): Observable<BookImportPageDraft[]> {
+    return this.http.get<BookImportPageDraft[]>(`${this.baseUrl}/${id}/tests/${testId}/pages/${filePage}/questions`);
   }
 
   /** Yüklenen (yönü düzeltilmiş) fotoğraf; yetkili istek olduğundan <img src> yerine blob. */

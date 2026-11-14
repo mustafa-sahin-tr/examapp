@@ -209,6 +209,25 @@ public class QuickAddController : BaseController
         return ReviewResult(await _jobs.RemoveTestAsync(owner, id, testId, ct));
     }
 
+    /// <summary>Issue #1173: düzeltilecek sayfanın taslakları (numara, kutu, doğru şık); tuval bunlarla işaretlenir.</summary>
+    [HttpGet("{id:guid}/tests/{testId:int}/pages/{filePage:int}/questions")]
+    [RequiresEntitlement(EntitlementFeatures.ManualLabeling)]
+    [ProducesResponseType(typeof(IReadOnlyList<BookImportPageDraftDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> PageDrafts(Guid id, int testId, int filePage, [FromServices] IBookImportPageFixService fix,
+        CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["quickAdd.userNotResolved"].Value });
+        var (error, drafts) = await fix.GetPageDraftsAsync(owner, id, testId, filePage, ct);
+        return error switch
+        {
+            BookImportPageFixError.None => Ok(drafts),
+            BookImportPageFixError.NotFound => NotFound(new { message = _localizer["quickAdd.notFound"].Value }),
+            _ => Conflict(new { code = "bookImport.notInReview", message = _localizer["bookImport.notInReview"].Value }),
+        };
+    }
+
     /// <summary>
     /// Issue #1054 "İşaretlemede düzelt": fotoğrafın taslaklarını işaretleme ekranında düzeltilenlerle değiştirir. #1087: işaretleme
     /// ekranı planın <c>manual-labeling</c> hakkıyla açılır (Admin ve QuestionTrainer muaf).

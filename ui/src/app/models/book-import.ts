@@ -340,6 +340,58 @@ export interface BookImportPageFix {
   answerless: number;
 }
 
+/** Issue #1173: düzeltilen sayfanın taslağı; kutu sayfa pikseli (bilinmiyorsa null), doğru şık yoksa -1. */
+export interface BookImportPageDraft {
+  questionId: number;
+  number: number;
+  x: number | null;
+  y: number | null;
+  width: number | null;
+  height: number | null;
+  correctOptionIndex: number;
+}
+
+interface Box {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Issue #1173: tuvaldeki kutular taslaklarla örtüşmeye göre eşlenir (kesişim / küçük kutunun alanı ≥ 0.6, sunucudaki
+ * numaralamayla aynı ölçü); en iyi örtüşen önce. Sonuç kutu sırası → taslak.
+ */
+export function matchPageDrafts(boxes: Box[], drafts: BookImportPageDraft[]): Map<number, BookImportPageDraft> {
+  const overlap = (a: Box, b: Box): number => {
+    const w = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
+    const h = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
+    const smaller = Math.min(a.width * a.height, b.width * b.height);
+    return w <= 0 || h <= 0 || smaller <= 0 ? 0 : (w * h) / smaller;
+  };
+  const pairs: { box: number; draft: BookImportPageDraft; score: number }[] = [];
+  boxes.forEach((box, i) => {
+    for (const draft of drafts) {
+      if (draft.x == null || draft.y == null || draft.width == null || draft.height == null) {
+        continue;
+      }
+      const score = overlap(box, { x: draft.x, y: draft.y, width: draft.width, height: draft.height });
+      if (score >= 0.6) {
+        pairs.push({ box: i, draft, score });
+      }
+    }
+  });
+  const result = new Map<number, BookImportPageDraft>();
+  const used = new Set<number>();
+  for (const { box, draft } of pairs.sort((a, b) => b.score - a.score)) {
+    if (!result.has(box) && !used.has(draft.questionId)) {
+      result.set(box, draft);
+      used.add(draft.questionId);
+    }
+  }
+  return result;
+}
+
 /** Ardışık sayıları aralık olarak yazar: [8, 9, 10, 12] → "8–10, 12" (uzun sayfa / soru listeleri okunur kalsın). */
 export function compactNumbers(numbers: readonly number[]): string {
   const sorted = [...new Set(numbers)].sort((a, b) => a - b);

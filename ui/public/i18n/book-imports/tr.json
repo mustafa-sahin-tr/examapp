@@ -252,7 +252,7 @@
     "keyImageAlt": "Cevap anahtarı, dosya sayfası {{page}}",
     "legendConflict": "İki okuma farklı",
     "legendUnreadable": "Okunamadı",
-    "keyboardHint": "Harf yazınca sağa geçer; oklarla gezin.",
+    "keyboardHint": "Harf yazınca sağa geçer; oklarla gezin. Sondaki kutuyu silmek anahtarı kısaltır.",
     "include": "Aktar",
     "includeTest": "{{unit}}-{{no}} testini aktar",
     "colTest": "Test",

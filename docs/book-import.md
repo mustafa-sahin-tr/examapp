@@ -104,6 +104,9 @@ aktarım aracındaki Python portu referanstır (#1022).
   Bölüm adıyla eşleme yalnız anahtar da bölüm adlıysa yapılır (#1165; ör. Define soru bankası: başlık "Pusula Kavrama Testi - 1",
   numara ünite içinde türden bağımsız sıralı, anahtar "1. ÜNİTE: Test 1 …"). Değilse normal ünite + test no yolu: başlıkların
   çoğunda ünite yoksa ünite, test numarasının geri düşmesinden çıkar; bölüm adı başlığa eklenir ("Pusula Kavrama Testi: Güneş").
+- **Anahtar sayfası ünitenin devamıyla başlarsa** (#1167; Define s.225 "5. ÜNİTE"nin Test 3'üyle başlıyor): okuyucu üstünde
+  başlık olmayan satıra ünite 0 verir, kurulum önceki satırın ünitesinden devam ettirir (ardışık anahtar sayfalarında; yeni anahtar
+  aralığında 1). Onay ekranında sondaki kutuyu silmek anahtarı kısaltır (fazla okunan soru); aradaki boş kutu okunamadı sayılır.
 - **Kayıt:** test satırları `BookImportJobTests` (sayfa aralığı, dakika, `AnswerKey` "ABCD…", `KeyConflicts` "." uyumlu /
   diğer okumanın harfi / "-"), özet `BookImportJobs.SetupJson`, maliyet `AiCostUsd` (başarısız çağrılar dahil). Model listesi
   ve fiyatlar `Anthropic:Models`'tan; API anahtarı yoksa iş "Claude is not configured" ile düşer. Hiç test başlığı yoksa

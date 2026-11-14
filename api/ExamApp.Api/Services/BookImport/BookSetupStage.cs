@@ -98,13 +98,21 @@ internal sealed class BookSetupStage(
 
             var firstRead = new List<AnswerKeyRow>();
             var secondRead = new List<AnswerKeyRow>();
+            var carry = 1;
+            var previousPage = 0;
             foreach (var filePage in keyPages)
             {
+                // #1167: başlıksız satır (sayfa ünitenin devamıyla başlıyor) önceki satırın ünitesidir; yeni anahtar aralığında 1.
+                if (filePage != previousPage + 1)
+                    carry = 1;
+                previousPage = filePage;
+                var start = carry;
                 var image = await LoadAsync(filePage, pages.First(p => p.FilePage == filePage).ImageUrl);
-                var whole = Tag(await ai.ReadAnswerKeyAsync(image, tiled: false, strong: false, cost, ct), filePage);
+                var whole = Tag(await ai.ReadAnswerKeyAsync(image, tiled: false, strong: false, cost, ct), filePage, start);
+                carry = whole.Count > 0 ? whole[^1].Unit : start;
                 job.StageProcessed++;
                 await db.SaveChangesAsync(ct);
-                var tiles = Tag(await ai.ReadAnswerKeyAsync(image, tiled: true, strong: false, cost, ct), filePage);
+                var tiles = Tag(await ai.ReadAnswerKeyAsync(image, tiled: true, strong: false, cost, ct), filePage, start);
                 job.StageProcessed++;
                 await db.SaveChangesAsync(ct);
 
@@ -118,7 +126,9 @@ internal sealed class BookSetupStage(
                 }
 
                 job.StageTotal++;
-                firstRead.AddRange(Tag(await ai.ReadAnswerKeyAsync(image, tiled: false, strong: true, cost, ct), filePage));
+                var strong = Tag(await ai.ReadAnswerKeyAsync(image, tiled: false, strong: true, cost, ct), filePage, start);
+                carry = strong.Count > 0 ? strong[^1].Unit : carry;
+                firstRead.AddRange(strong);
                 secondRead.AddRange(whole);
                 job.StageProcessed++;
                 await db.SaveChangesAsync(ct);
@@ -143,8 +153,19 @@ internal sealed class BookSetupStage(
         }
     }
 
-    private static List<AnswerKeyRow> Tag(IReadOnlyList<AnswerKeyRow> rows, int filePage) =>
-        rows.Select(r => r with { KeyPage = filePage }).ToList();
+    /// <summary>Satırlara okunduğu sayfayı yazar; ünitesiz satır (0) önceki satırın ünitesini alır (ilk satır için <paramref name="unit"/>).</summary>
+    private static List<AnswerKeyRow> Tag(IReadOnlyList<AnswerKeyRow> rows, int filePage, int unit)
+    {
+        var tagged = new List<AnswerKeyRow>(rows.Count);
+        foreach (var row in rows)
+        {
+            if (row.Unit > 0)
+                unit = row.Unit;
+            tagged.Add(row with { KeyPage = filePage, Unit = unit });
+        }
+
+        return tagged;
+    }
 
     /// <summary>İki okuma aynı (bölüm adı, ünite, test, soru) hücrelerinde aynı harfi mi verdi (döşemelerde iki kez okunan satır bir sayılır).</summary>
     private static bool SameAnswers(IReadOnlyList<AnswerKeyRow> a, IReadOnlyList<AnswerKeyRow> b)

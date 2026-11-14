@@ -77,7 +77,7 @@ public interface IBookSetupAi
 public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
 {
     /// <summary>1: ilk sürüm (#1021). 2: test başlığı olmayan bölümlü kitaplar ve test numarasız anahtarlar (#1122).</summary>
-    public const int SchemaRevision = 3;
+    public const int SchemaRevision = 4;
 
     public const string DefaultSurveyModel = "claude-haiku-5-5";
     public const string DefaultAnswerKeyModel = "claude-haiku-5-5";
@@ -119,10 +119,12 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
 
     private const string KeyInstruction =
         "Transcribe every row of the answer key table(s). A row belongs to one test (\"Test 01\" → testNo 1) inside a " +
-        "section heading such as \"1. Bölüm\" or \"1. Ünite\" (unit 1); use unit 1 when the key has no sections. " +
+        "section heading such as \"1. Bölüm\" or \"1. Ünite\" (unit 1). Use unit 0 when no section heading is printed above the " +
+        "row in this image (the key has no sections, or the section continues from the previous page or from above the image); " +
+        "never guess the section. " +
         "Cells look like \"3. B\": number 3, answer B. Skip empty cells. Rows cut off at the image edge are skipped. " +
         "Keys without test numbers: a block per unit (\"1. Ünite\" beside it) is one row with that unit and testNo 1; " +
-        "a single numbered list is one row with unit 1 and testNo 1. Keys grouped under section labels (\"Kavramları Kavra\", " +
+        "a single numbered list is one row with unit 0 and testNo 1. Keys grouped under section labels (\"Kavramları Kavra\", " +
         "\"Öğrendiğini Kanıtla\") with numbered blocks (01, 02): each block is one row with series the label, testNo the block " +
         "number and unit 1; series is null otherwise. Skip blocks whose answers are not letters (open-ended answers such as " +
         "\"40 cm\").";
@@ -290,7 +292,8 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
             answers.TryAdd(cell.Number, letter);
         }
 
-        return new AnswerKeyRow(row.Unit is > 0 ? row.Unit : 1, row.TestNo, answers, Series: Series(row.Series));
+        // #1167: ünite 0 = görüntüde üstünde ünite başlığı yok; kurulum önceki satırın ünitesinden devam ettirir.
+        return new AnswerKeyRow(row.Unit is > 0 ? row.Unit : 0, row.TestNo, answers, Series: Series(row.Series));
     }
 
     private static int? Positive(int? value) => value is > 0 ? value : null;
@@ -319,7 +322,9 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
 
     internal sealed record KeyTable(List<KeyTableRow> Rows);
 
-    internal sealed record KeyTableRow(int Unit, int TestNo, List<KeyCell> Answers,
+    internal sealed record KeyTableRow(
+        [property: Description("Section number from the heading above the row in this image; 0 when none is printed above it.")] int Unit,
+        int TestNo, List<KeyCell> Answers,
         [property: Description("Section label the row is listed under (\"Kavramları Kavra\"); null when none.")] string? Series);
 
     internal sealed record KeyCell(int Number, [property: Description("A, B, C, D, E or ? when unreadable.")] string Answer);

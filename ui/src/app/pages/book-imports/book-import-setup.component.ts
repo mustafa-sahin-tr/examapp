@@ -298,6 +298,9 @@ export class BookImportSetupComponent implements OnInit {
         key[cell] = value;
         // Öğretmen hücreyi düzeltti/onayladı: uyuşmazlık kapandı.
         if (value) conflicts[cell] = '.';
+        // #1167: sondaki hücre silinince anahtar kısalır (fazla okunmuş soru); aradaki boş hücre okunamadı olarak kalır.
+        while (key.length > 0 && key[key.length - 1] === '') key.pop();
+        conflicts.length = key.length;
         return { ...r, key, conflicts };
       }),
     );

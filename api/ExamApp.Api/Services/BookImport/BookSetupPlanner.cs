@@ -81,7 +81,8 @@ public sealed record BookSetupPlan(
 /// önce başlayan son içindekiler satırıdır. Test numarası olmayan anahtar sayfası, önceki anahtardan bu yana biten bölümlere
 /// bağlanır: tek bölüm varsa sayfanın tüm satırları onun, birden çoksa satırın ünite no'su o bölümlerin sırasıdır.</item>
 /// <item>Bölüm adlı kitap (#1163; ör. "Kavramları Kavra 01", "Öğrendiğini Kanıtla 02"): test, bölüm adı + numarayla tanınır ve
-/// anahtardaki aynı adlı bölümün satırıyla eşlenir; testler içindekilerdeki konulara gruplanır (bkz. <c>SeriesPlan</c>).</item>
+/// anahtardaki aynı adlı bölümün satırıyla eşlenir; testler içindekilerdeki konulara gruplanır (bkz. <c>SeriesPlan</c>). Anahtarda
+/// bölüm adı yoksa (#1165) normal "ünite + test no" yolu; başlıkta ünite yoksa ünite numaranın başa dönmesinden çıkar.</item>
 /// <item>Anahtar: iki okuma soru soru karşılaştırılır; farklıysa (biri boş da olsa) ilk okuma alınır, diğeri
 /// <see cref="PlannedTest.KeyConflicts"/>'ta tutulur ("." uyumlu, harf diğer okuma, "-" diğer okumada yok).</item>
 /// </list>
@@ -105,11 +106,14 @@ public static class BookSetupPlanner
         var keyRanges = Ranges(ordered.Where(p => p.Kind == BookPageKind.AnswerKey).Select(p => p.FilePage));
         var selfAssessment = ordered.Where(p => p.Kind == BookPageKind.SelfAssessment).Select(p => p.FilePage).ToList();
 
-        var series = SeriesIds(ordered);
-        if (series.Count > 0)
-            ordered = ordered.Select(p => p.Series is not null && series.TryGetValue(Fold(p.Series), out var id) && p.TestNo is > 0
+        // Bölüm adıyla eşleme yalnız anahtar da bölüm adlıysa: sayfada ad olup anahtarı "Ünite + Test n" olan kitapta (Define)
+        // ad yalnız başlığa eklenir.
+        var series = firstRead.Concat(secondRead).Any(r => Fold(r.Series).Length > 0) ? SeriesIds(ordered) : [];
+        ordered = series.Count > 0
+            ? ordered.Select(p => p.Series is not null && series.TryGetValue(Fold(p.Series), out var id) && p.TestNo is > 0
                 ? p with { Unit = id }
-                : p with { Unit = null, TestNo = null }).ToList();
+                : p with { Unit = null, TestNo = null }).ToList()
+            : InferUnits(ordered);
         var drafts = CollectTests(ordered);
         var sectioned = drafts.Count == 0;
         Dictionary<(int Unit, int TestNo), AnswerKeyRow> first, second;
@@ -351,6 +355,34 @@ public static class BookSetupPlanner
         }
 
         return map;
+    }
+
+    /// <summary>
+    /// #1165: başlıklarda ünite no'su yoksa (çoğunda) ünite, test numarasının geri düşmesinden çıkarılır ("Kavrama Testi - 14" →
+    /// "Kavrama Testi - 1": yeni ünite); aynı numaranın tekrarı (testin ikinci sayfası) aynı testtir. Bölüm adı başlığa eklenir
+    /// ("Kavrama Testi: Güneş").
+    /// </summary>
+    private static List<SurveyedPage> InferUnits(List<SurveyedPage> pages)
+    {
+        var headers = pages.Where(p => p.Kind == BookPageKind.Test && p.TestNo is > 0).ToList();
+        var inferUnits = headers.Count(p => p.Unit is > 0) * 2 < headers.Count;
+        var unit = 1;
+        var last = 0;
+        return pages.Select(p =>
+        {
+            if (p.Kind != BookPageKind.Test || p.TestNo is not > 0)
+                return p;
+            if (inferUnits)
+            {
+                if (p.TestNo < last)
+                    unit++;
+                last = p.TestNo.Value;
+            }
+
+            var series = Clean(p.Series);
+            var title = series is null ? p.TestTitle : Clean(p.TestTitle) is { } topic ? $"{series}: {topic}" : series;
+            return p with { Unit = inferUnits ? unit : p.Unit, TestTitle = title };
+        }).ToList();
     }
 
     /// <summary>

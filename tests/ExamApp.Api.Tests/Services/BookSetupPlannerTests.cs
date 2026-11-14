@@ -262,10 +262,43 @@ public class BookSetupPlannerTests
             Series(3, "Öğrendiğini Kanıtla", 1, "Alan", 2, 3),
         };
 
-        var plan = BookSetupPlanner.Plan(pages, [], [], []);
+        AnswerKeyRow Key(string series, int testNo) => Row(1, testNo, "AB") with { Series = series };
+        var key = new[] { Key("Kavramları Kavra", 1), Key("Kavramları Kavra", 2), Key("Öğrendiğini Kanıtla", 1) };
+
+        var plan = BookSetupPlanner.Plan(pages, [], key, key);
 
         plan.Tests.Select(t => (t.Unit, t.TestNo, t.Title)).ShouldBe(
             [(1, 1, "Kavramları Kavra 01"), (2, 1, "Kavramları Kavra 02"), (2, 2, "Öğrendiğini Kanıtla 01")]);
         plan.Units.Select(u => u.Title).ShouldBe(["Çevre", "Alan"]);
+    }
+
+    [Fact]
+    public void Section_labels_with_a_unit_test_key_use_unit_and_test_number_and_infer_units_from_restarts()
+    {
+        // Issue #1165 (Define soru bankası): başlık "Pusula Kavrama Testi - 1", numara ünite içinde türden bağımsız sıralı;
+        // anahtar "1. ÜNİTE: Test 1, Test 2 ..." (bölüm adı yok).
+        var pages = new[]
+        {
+            Page(1, BookPageKind.Cover),
+            Series(2, "Pusula Kavrama Testi", 1, "Güneş", 4, 2),
+            Series(3, "Pusula Kavrama Testi", 1, "Güneş", 8, 3), // testin ikinci sayfası
+            Series(4, "Anahtar Geçiş Testi", 2, "Güneş", 6, 4),
+            Page(5, BookPageKind.Cover, 5), // 2. Ünite kapağı
+            Series(6, "Pusula Kavrama Testi", 1, "Kuvvet", 8, 6),
+            Series(7, "Define Beceri Temelli Test", 2, "Kuvvet", 5, 7),
+            Page(8, BookPageKind.AnswerKey, 8),
+        };
+        var key = new[] { Row(1, 1, "BDABCCBB"), Row(1, 2, "ABCDDB"), Row(2, 1, "DCACCCDA"), Row(2, 2, "ADCCD") };
+
+        var plan = BookSetupPlanner.Plan(pages, [], key, key);
+
+        plan.Tests.Select(t => (t.Unit, t.TestNo, t.Title, t.FileFrom, t.FileTo, t.AnswerKey)).ShouldBe(
+        [
+            (1, 1, "Pusula Kavrama Testi: Güneş", 2, 3, "BDABCCBB"),
+            (1, 2, "Anahtar Geçiş Testi: Güneş", 4, 4, "ABCDDB"),
+            (2, 1, "Pusula Kavrama Testi: Kuvvet", 6, 6, "DCACCCDA"),
+            (2, 2, "Define Beceri Temelli Test: Kuvvet", 7, 7, "ADCCD"),
+        ]);
+        plan.OrphanKeys.ShouldBeEmpty();
     }
 }

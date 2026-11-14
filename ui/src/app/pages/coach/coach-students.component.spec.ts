@@ -9,7 +9,7 @@ import { CoachStudent } from '../../models/coach.model';
 import { CoachService } from '../../services/coach.service';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import { CoachStudentComponent } from './coach-student.component';
-import { CoachStudentsComponent, coachSignals, daysBetween } from './coach-students.component';
+import { CoachStudentsComponent, coachSignals, daysBetween, localToday } from './coach-students.component';
 
 const student = (overrides: Partial<CoachStudent>): CoachStudent => ({
   id: 1,
@@ -109,8 +109,10 @@ describe('CoachStudentsComponent (issue #700)', () => {
   });
 
   it('goalChangesInThePanel_UpdateTheRow_issue893', async () => {
+    // Satırın uyarısı yalnız hedef sayısından gelsin: son etkinlik bugün (sabit tarih bir hafta sonra "etkin değil" olur).
+    const activeToday = students.map((s) => (s.id === 5 ? { ...s, lastActiveDay: localToday() } : s));
     const service = {
-      listStudents: () => of(students),
+      listStudents: () => of(activeToday),
       getOverview: () =>
         of({
           studentId: 5, fullName: 'Can Demir', recentMockExams: [], weakTopics: [], activeMistakeCount: 0, goals: [],

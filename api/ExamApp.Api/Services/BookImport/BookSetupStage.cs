@@ -146,15 +146,15 @@ internal sealed class BookSetupStage(
     private static List<AnswerKeyRow> Tag(IReadOnlyList<AnswerKeyRow> rows, int filePage) =>
         rows.Select(r => r with { KeyPage = filePage }).ToList();
 
-    /// <summary>İki okuma aynı (ünite, test, soru) hücrelerinde aynı harfi mi verdi (döşemelerde iki kez okunan satır bir sayılır).</summary>
+    /// <summary>İki okuma aynı (bölüm adı, ünite, test, soru) hücrelerinde aynı harfi mi verdi (döşemelerde iki kez okunan satır bir sayılır).</summary>
     private static bool SameAnswers(IReadOnlyList<AnswerKeyRow> a, IReadOnlyList<AnswerKeyRow> b)
     {
-        static Dictionary<(int, int, int), char> Cells(IReadOnlyList<AnswerKeyRow> rows)
+        static Dictionary<(string, int, int, int), char> Cells(IReadOnlyList<AnswerKeyRow> rows)
         {
-            var cells = new Dictionary<(int, int, int), char>();
+            var cells = new Dictionary<(string, int, int, int), char>();
             foreach (var row in rows)
                 foreach (var (n, answer) in row.Answers)
-                    cells.TryAdd((row.Unit, row.TestNo, n), answer);
+                    cells.TryAdd((BookSetupPlanner.Fold(row.Series), row.Unit, row.TestNo, n), answer);
             return cells;
         }
 

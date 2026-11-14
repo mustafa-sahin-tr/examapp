@@ -16,7 +16,10 @@ public enum BookPageKind
     SelfAssessment,
 }
 
-/// <summary>Bir sayfanın tarama sonucu: tür, basılı sayfa no ve (test sayfasıysa) test başlığı.</summary>
+/// <summary>
+/// Bir sayfanın tarama sonucu: tür, basılı sayfa no ve (test sayfasıysa) test başlığı. <paramref name="Series"/>: testi "Test 01"
+/// yerine bölüm adı + numarayla adlandıran kitaplarda bölüm adı ("Kavramları Kavra 01" → "Kavramları Kavra"; #1163).
+/// </summary>
 public sealed record SurveyedPage(
     int FilePage,
     BookPageKind Kind,
@@ -25,16 +28,18 @@ public sealed record SurveyedPage(
     int? TestNo = null,
     string? TestTitle = null,
     int? Minutes = null,
-    int? MaxQuestionNumber = null);
+    int? MaxQuestionNumber = null,
+    string? Series = null);
 
 /// <summary>İçindekiler satırı: ünite no (varsa), başlık, basılı başlangıç sayfası.</summary>
 public sealed record SurveyedTocRow(int? Unit, string Title, int? PrintedPage);
 
 /// <summary>
 /// Cevap anahtarındaki bir test satırı: soru no → harf (A–E; okunamayan "?"). <paramref name="KeyPage"/>: okunduğu dosya sayfası
-/// (#1122: test numarasız anahtar, sayfadaki yerine göre önündeki bölüme bağlanır); bilinmiyorsa 0.
+/// (#1122: test numarasız anahtar, sayfadaki yerine göre önündeki bölüme bağlanır); bilinmiyorsa 0. <paramref name="Series"/>:
+/// satırın altında durduğu bölüm adı (#1163; <see cref="SurveyedPage.Series"/>).
 /// </summary>
-public sealed record AnswerKeyRow(int Unit, int TestNo, IReadOnlyDictionary<int, char> Answers, int KeyPage = 0);
+public sealed record AnswerKeyRow(int Unit, int TestNo, IReadOnlyDictionary<int, char> Answers, int KeyPage = 0, string? Series = null);
 
 /// <summary>Planlanan bir test (onay ekranındaki tablo satırı).</summary>
 public sealed record PlannedTest(
@@ -75,6 +80,8 @@ public sealed record BookSetupPlan(
 /// olur. Bölüm kapak, içindekiler ya da anahtar sayfasında ve soru numarası başa dönünce kapanır; başlık, bölümün ilk sayfasından
 /// önce başlayan son içindekiler satırıdır. Test numarası olmayan anahtar sayfası, önceki anahtardan bu yana biten bölümlere
 /// bağlanır: tek bölüm varsa sayfanın tüm satırları onun, birden çoksa satırın ünite no'su o bölümlerin sırasıdır.</item>
+/// <item>Bölüm adlı kitap (#1163; ör. "Kavramları Kavra 01", "Öğrendiğini Kanıtla 02"): test, bölüm adı + numarayla tanınır ve
+/// anahtardaki aynı adlı bölümün satırıyla eşlenir; testler içindekilerdeki konulara gruplanır (bkz. <c>SeriesPlan</c>).</item>
 /// <item>Anahtar: iki okuma soru soru karşılaştırılır; farklıysa (biri boş da olsa) ilk okuma alınır, diğeri
 /// <see cref="PlannedTest.KeyConflicts"/>'ta tutulur ("." uyumlu, harf diğer okuma, "-" diğer okumada yok).</item>
 /// </list>
@@ -98,11 +105,21 @@ public static class BookSetupPlanner
         var keyRanges = Ranges(ordered.Where(p => p.Kind == BookPageKind.AnswerKey).Select(p => p.FilePage));
         var selfAssessment = ordered.Where(p => p.Kind == BookPageKind.SelfAssessment).Select(p => p.FilePage).ToList();
 
+        var series = SeriesIds(ordered);
+        if (series.Count > 0)
+            ordered = ordered.Select(p => p.Series is not null && series.TryGetValue(Fold(p.Series), out var id) && p.TestNo is > 0
+                ? p with { Unit = id }
+                : p with { Unit = null, TestNo = null }).ToList();
         var drafts = CollectTests(ordered);
         var sectioned = drafts.Count == 0;
         Dictionary<(int Unit, int TestNo), AnswerKeyRow> first, second;
         var unmatched = new List<string>();
-        if (sectioned)
+        if (series.Count > 0)
+        {
+            first = ByTest(SeriesRows(firstRead, series));
+            second = ByTest(SeriesRows(secondRead, series));
+        }
+        else if (sectioned)
         {
             drafts = CollectSections(ordered, toc, keyRanges);
             first = SectionKeys(drafts, firstRead, keyRanges, unmatched);
@@ -135,12 +152,16 @@ public static class BookSetupPlanner
         }
 
         var planned = tests.Select(t => (t.Unit, t.TestNo)).ToHashSet();
+        var labels = series.Count == 0 ? null : SeriesLabels(ordered, firstRead.Concat(secondRead), series);
         var orphans = first.Keys.Concat(second.Keys).Distinct()
             .Where(k => !planned.Contains(k))
             .OrderBy(k => k.Unit).ThenBy(k => k.TestNo)
-            .Select(k => $"{k.Unit}-{k.TestNo:D2}")
+            .Select(k => labels is null ? $"{k.Unit}-{k.TestNo:D2}" : $"{labels[k.Unit]} {k.TestNo:D2}")
             .Concat(unmatched.Distinct())
             .ToList();
+
+        if (labels is not null)
+            return SeriesPlan(ordered, toc, keyRanges, selfAssessment, tests, labels, orphans);
 
         var units = tests.GroupBy(t => t.Unit)
             .OrderBy(g => g.Key)
@@ -330,6 +351,115 @@ public static class BookSetupPlanner
         }
 
         return map;
+    }
+
+    /// <summary>
+    /// #1163: test sayfalarındaki bölüm adlarına (katlanmış: büyük/küçük harf, Türkçe harf ve boşluk farkı yok) kitaptaki ilk
+    /// görülme sırasıyla geçici ünite no'su verir. Hiçbir test sayfasında bölüm adı yoksa boştur (kitap bölüm adlı değil).
+    /// </summary>
+    private static Dictionary<string, int> SeriesIds(List<SurveyedPage> pages)
+    {
+        var ids = new Dictionary<string, int>();
+        foreach (var page in pages)
+        {
+            if (page.Kind == BookPageKind.Test && page.TestNo is > 0 && Fold(page.Series) is { Length: > 0 } key)
+                ids.TryAdd(key, ids.Count + 1);
+        }
+
+        return ids;
+    }
+
+    /// <summary>
+    /// #1163: anahtar satırını bölüm adının geçici ünite no'suna taşır. Test sayfası olmayan bölümün satırı (ör. tek soruluk
+    /// "Doğru Yorumla") yeni no alır ve sahipsiz kalır; bölüm adı okunmamış satır alınmaz.
+    /// </summary>
+    private static List<AnswerKeyRow> SeriesRows(IReadOnlyList<AnswerKeyRow> rows, Dictionary<string, int> ids)
+    {
+        var mapped = new List<AnswerKeyRow>();
+        foreach (var row in rows)
+        {
+            if (Fold(row.Series) is not { Length: > 0 } key)
+                continue;
+            if (!ids.TryGetValue(key, out var id))
+                ids[key] = id = ids.Count + 1;
+            mapped.Add(row with { Unit = id });
+        }
+
+        return mapped;
+    }
+
+    /// <summary>Geçici ünite no → görünen bölüm adı (sayfadaki ilk yazılış; yoksa anahtardaki).</summary>
+    private static Dictionary<int, string> SeriesLabels(List<SurveyedPage> pages, IEnumerable<AnswerKeyRow> rows,
+        Dictionary<string, int> ids)
+    {
+        var labels = new Dictionary<int, string>();
+        foreach (var name in pages.Select(p => p.Series).Concat(rows.Select(r => r.Series)))
+        {
+            if (Fold(name) is { Length: > 0 } key && ids.TryGetValue(key, out var id))
+                labels.TryAdd(id, Clean(name)!);
+        }
+
+        return labels;
+    }
+
+    /// <summary>
+    /// #1163: bölüm adlı kitapta testler konulara gruplanır: ünite, testin ilk sayfasından önce başlayan son içindekiler satırıdır
+    /// (içindekiler yoksa test başlığındaki konu). Ünite içinde test no sayfa sırasıdır; başlık "Kavramları Kavra 01" olur.
+    /// Anahtar varken hiçbir testi anahtarda bulunmayan bölüm (açık uçlu "Şimdi Uygula" gibi) test sayılmaz.
+    /// </summary>
+    private static BookSetupPlan SeriesPlan(List<SurveyedPage> pages, IReadOnlyList<SurveyedTocRow> toc,
+        IReadOnlyList<(int From, int To)> keyRanges, IReadOnlyList<int> selfAssessment, List<PlannedTest> tests,
+        Dictionary<int, string> labels, List<string> orphans)
+    {
+        if (keyRanges.Count > 0)
+        {
+            var keyed = tests.Where(t => t.AnswerKey is not null).Select(t => t.Unit).ToHashSet();
+            tests = tests.Where(t => keyed.Contains(t.Unit)).ToList();
+        }
+
+        var offset = Offset(pages) ?? 0;
+        var rows = toc.Where(r => r.PrintedPage is > 0 && !keyRanges.Any(k => r.PrintedPage - offset >= k.From && r.PrintedPage - offset <= k.To))
+            .OrderBy(r => r.PrintedPage)
+            .ToList();
+        var unitOf = new Dictionary<string, (int Unit, string? Title)>();
+        var counts = new Dictionary<int, int>();
+        var planned = new List<PlannedTest>();
+        var units = new List<PlannedUnit>();
+        foreach (var test in tests)
+        {
+            var topic = rows.Count > 0 ? Clean(rows.LastOrDefault(r => r.PrintedPage <= test.FileFrom + offset)?.Title) : test.Title;
+            if (!unitOf.TryGetValue(topic ?? "", out var unit))
+                unitOf[topic ?? ""] = unit = (unitOf.Count + 1, topic);
+            var testNo = counts[unit.Unit] = counts.GetValueOrDefault(unit.Unit) + 1;
+            planned.Add(test with
+            {
+                Order = planned.Count + 1, Unit = unit.Unit, TestNo = testNo, Title = Clean($"{labels[test.Unit]} {test.TestNo:D2}"),
+            });
+        }
+
+        foreach (var group in planned.GroupBy(t => t.Unit))
+        {
+            var title = unitOf.Values.First(u => u.Unit == group.Key).Title;
+            units.Add(new PlannedUnit(group.Key, title, group.Min(t => t.FileFrom), group.Max(t => t.FileTo)));
+        }
+
+        return new BookSetupPlan(Offset(pages), keyRanges, selfAssessment, units, planned, orphans);
+    }
+
+    /// <summary>Bölüm adını karşılaştırma için katlar: yalnız harfler, küçük, Türkçe harfler ASCII ("Kavramları Kavra" → "kavramlarikavra").</summary>
+    internal static string Fold(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "";
+        var folded = new StringBuilder(value.Length);
+        foreach (var c in value.ToLowerInvariant())
+        {
+            var ascii = c switch { 'ı' or 'i' or 'î' or 'İ' => 'i', 'ş' => 's', 'ğ' => 'g', 'ü' or 'û' => 'u', 'ö' => 'o', 'ç' => 'c', 'â' => 'a', _ => c };
+            if (ascii is >= 'a' and <= 'z')
+                folded.Append(ascii);
+        }
+
+        return folded.ToString();
     }
 
     private static Dictionary<int, char> MergeAnswers(IReadOnlyDictionary<int, char> first, IReadOnlyDictionary<int, char> more)

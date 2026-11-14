@@ -95,6 +95,12 @@ aktarım aracındaki Python portu referanstır (#1022).
   içindekiler, anahtar sayfasında ya da soru numarası başa dönünce kapanır; başlığı bölümden önce başlayan son içindekiler
   satırıdır. Anahtar satırları okundukları sayfayla gelir: anahtar, önceki anahtardan bu yana biten bölümlere bağlanır (tek
   bölümse sayfanın tüm satırları onun, birden çoksa satırın ünite no'su bölüm sırasıdır).
+- **Bölüm adlı testler** (#1163; ör. HiperZeka "MAX Fasiküller": "Kavramları Kavra 01", "Öğrendiğini Kanıtla 02", "Becerini
+  Sergile 01"; anahtar da bu adların altında, ünite yok): tarama ve anahtar okuması bölüm adını (`series`) döner. Test, bölüm
+  adı + numarayla tanınır ve anahtarın aynı adlı satırıyla eşlenir (ad büyük/küçük harf ve Türkçe harf farkı gözetmeden). Testler
+  başladıkları içindekiler konusunun ünitesine girer (içindekiler yoksa başlıktaki konu), ünite içinde sayfa sırasıyla numaralanır,
+  başlık "Kavramları Kavra 01" olur. Anahtarda hiç harfli satırı olmayan bölüm (açık uçlu "Şimdi Uygula") test sayılmaz; test
+  sayfası olmayan anahtar satırı (tek soruluk "Doğru Yorumla") "eşleşmeyen" listesine düşer.
 - **Kayıt:** test satırları `BookImportJobTests` (sayfa aralığı, dakika, `AnswerKey` "ABCD…", `KeyConflicts` "." uyumlu /
   diğer okumanın harfi / "-"), özet `BookImportJobs.SetupJson`, maliyet `AiCostUsd` (başarısız çağrılar dahil). Model listesi
   ve fiyatlar `Anthropic:Models`'tan; API anahtarı yoksa iş "Claude is not configured" ile düşer. Hiç test başlığı yoksa

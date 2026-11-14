@@ -95,6 +95,28 @@ describe('BookImportSetupComponent (#1021)', () => {
     expect(confirmButton().disabled).toBe(false);
   });
 
+  it('deletingTrailingCells_ShortensTheKey_issue1167', () => {
+    create(setupData({
+      tests: [
+        { order: 1, unit: 1, testNo: 3, title: 'Beceri', minutes: null, fileFrom: 7, fileTo: 8, expectedQuestions: 6,
+          answerKey: 'CDAB??', keyConflicts: '....--', flags: ['keyMismatch', 'keyConflicts'] },
+      ],
+    }));
+    expect(confirmButton().disabled).toBe(true);
+
+    cell(0, 5).focus();
+    press(cell(0, 5), 'Backspace');
+    press(cell(0, 4), 'Backspace');
+
+    expect(cell(0, 4)).toBeNull();
+    expect(cell(0, 3).value).toBe('B');
+    expect(confirmButton().disabled).toBe(false);
+
+    press(cell(0, 1), 'Delete'); // aradaki hücre: okunamadı olarak kalır
+    expect(cell(0, 1).closest('label')!.classList).toContain('bis-key__cell--unreadable');
+    expect(confirmButton().disabled).toBe(true);
+  });
+
   it('confirm_SendsEditedTestsAndEmitsChanged', () => {
     create();
     const changed = vi.fn();

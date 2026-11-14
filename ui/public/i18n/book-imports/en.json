@@ -252,7 +252,7 @@
     "keyImageAlt": "Answer key, file page {{page}}",
     "legendConflict": "Reads differ",
     "legendUnreadable": "Unreadable",
-    "keyboardHint": "Typing a letter moves right; use the arrow keys to move.",
+    "keyboardHint": "Typing a letter moves right; use the arrow keys to move. Deleting the last box shortens the key.",
     "include": "Import",
     "includeTest": "Import test {{unit}}-{{no}}",
     "colTest": "Test",

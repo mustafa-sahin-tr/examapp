@@ -64,6 +64,28 @@ public class BookImportSetupTests : IDisposable
     }
 
     [Fact]
+    public async Task A_key_page_starting_without_a_unit_heading_continues_the_previous_pages_unit()
+    {
+        // Issue #1167 (Define): s.225 5. ünitenin Test 3'ünden başlıyor; başlıksız satırlar 1. üniteye yazılıyordu.
+        _ai.Pages[3] = new SurveyedPage(3, BookPageKind.Test, 3, 2, 1, "Kuvvet", null, 2);
+        _ai.Pages[4] = new SurveyedPage(4, BookPageKind.Test, 4, 2, 2, "Kuvvet", null, 2);
+        _ai.Pages[6] = new SurveyedPage(6, BookPageKind.AnswerKey, 6);
+        _ai.Keys[5] = ([Row(1, 1, "ABCD"), Row(2, 1, "DA")], [Row(1, 1, "ABCD"), Row(2, 1, "DA"), Row(2, 1, "DA")]);
+        _ai.Keys[6] = ([Row(0, 2, "CB")], [Row(0, 2, "CB")]); // sayfa 2. ünitenin devamıyla başlıyor
+        var id = await SeedJobAsync();
+
+        await RunAsync(id, batchSize: 4);
+
+        await using var check = _db.NewContext();
+        var tests = await check.BookImportJobTests.OrderBy(t => t.Order).ToListAsync();
+        tests.Select(t => (t.Unit, t.TestNo, t.AnswerKey, t.KeyConflicts)).ShouldBe(
+            [(1, 1, "ABCD", "...."), (2, 1, "DA", ".."), (2, 2, "CB", "..")]);
+        _ai.StrongReads.ShouldBeEmpty();
+        var summary = BookSetupSummary.Parse((await check.BookImportJobs.SingleAsync()).SetupJson)!;
+        summary.OrphanKeys.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task Setup_skips_the_tie_break_when_both_cheap_reads_agree()
     {
         _ai.Keys[5] = ([Row(1, 1, "ABCD"), Row(1, 2, "DDA")], [Row(1, 1, "ABCD"), Row(1, 2, "DDA")]);

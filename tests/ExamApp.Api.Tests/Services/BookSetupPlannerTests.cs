@@ -196,4 +196,76 @@ public class BookSetupPlannerTests
         BookSetupPlanner.Plan(pages, [], rows, []).Tests.Single().AnswerKey.ShouldBe("AB");
         BookSetupPlanner.Plan(twoSections, [], thirdUnit, []).OrphanKeys.ShouldBe(["s4-3"]);
     }
+
+    private static SurveyedPage Series(int file, string series, int testNo, string topic, int maxQuestion, int printed) =>
+        new(file, BookPageKind.Test, printed, null, testNo, topic, null, maxQuestion, series);
+
+    [Fact]
+    public void A_book_naming_tests_by_section_label_matches_keys_by_label_and_groups_tests_by_toc_topic()
+    {
+        // Issue #1163 (HiperZeka MAX fasikülleri): "Kavramları Kavra 01", "Öğrendiğini Kanıtla 01" ...; anahtar bölüm adına göre.
+        var pages = new[]
+        {
+            Page(1, BookPageKind.Toc, 1),
+            Page(2, BookPageKind.Other, 2), // Şimdi Uygula: açık uçlu
+            Series(3, "Kavramları Kavra", 1, "Dikdörtgenin Çevre Uzunluğu", 6, 3),
+            Series(4, "KAVRAMLARI KAVRA", 1, "Dikdörtgenin Çevre Uzunluğu", 11, 4), // aynı test, farklı yazılış
+            Series(5, "Öğrendiğini Kanıtla", 1, "Dikdörtgenin Çevre Uzunluğu", 8, 5),
+            Series(6, "Öğrendiğini Kanıtla", 2, "Dikdörtgenin Çevre Uzunluğu", 8, 6),
+            Series(7, "Kavramları Kavra", 2, "Dikdörtgenin Alanı", 12, 7),
+            Series(8, "Şimdi Uygula", 30, "Dikdörtgenin Alanı", 2, 8), // anahtarda harf yok: test değil
+            Series(9, "Becerini Sergile", 1, "Geometrik Nicelikler", 4, 9),
+            Page(10, BookPageKind.AnswerKey, 10),
+        };
+        var toc = new List<SurveyedTocRow>
+        {
+            new(null, "Geometrik Nicelikler", 1),
+            new(null, "Dikdörtgenin Çevre Uzunluğu", 2),
+            new(null, "Dikdörtgenin Alanı", 7),
+            new(null, "Cevap Anahtarı", 10),
+        };
+        AnswerKeyRow Key(string series, int testNo, string answers) => Row(1, testNo, answers) with { KeyPage = 10, Series = series };
+        var first = new[]
+        {
+            Key("Kavramları Kavra", 1, "DCADBBBCDCC"), Key("Kavramları Kavra", 2, "DBDDBDDDBABA"),
+            Key("Öğrendiğini Kanıtla", 1, "CABDACCB"), Key("Öğrendiğini Kanıtla", 2, "BDACABDC"),
+            Key("Becerini Sergile", 1, "ABCB"), Key("Doğru Yorumla", 1, "B"),
+        };
+        var second = first.Select(r => r.Series == "Becerini Sergile" ? r with { Series = "BECERİNİ SERGİLE" } : r).ToArray();
+
+        var plan = BookSetupPlanner.Plan(pages, toc, first, second);
+
+        plan.Tests.Select(t => (t.Order, t.Unit, t.TestNo, t.Title, t.FileFrom, t.FileTo, t.AnswerKey)).ShouldBe(
+        [
+            (1, 1, 1, "Kavramları Kavra 01", 3, 4, "DCADBBBCDCC"),
+            (2, 1, 2, "Öğrendiğini Kanıtla 01", 5, 5, "CABDACCB"),
+            (3, 1, 3, "Öğrendiğini Kanıtla 02", 6, 6, "BDACABDC"),
+            (4, 2, 1, "Kavramları Kavra 02", 7, 7, "DBDDBDDDBABA"),
+            (5, 2, 2, "Becerini Sergile 01", 9, 9, "ABCB"),
+        ]);
+        plan.Tests.ShouldAllBe(t => t.Flags.Count == 0);
+        plan.Units.ShouldBe(
+        [
+            new PlannedUnit(1, "Dikdörtgenin Çevre Uzunluğu", 3, 6),
+            new PlannedUnit(2, "Dikdörtgenin Alanı", 7, 9),
+        ]);
+        plan.OrphanKeys.ShouldBe(["Doğru Yorumla 01"]);
+    }
+
+    [Fact]
+    public void A_section_label_book_without_toc_groups_tests_by_the_header_topic()
+    {
+        var pages = new[]
+        {
+            Series(1, "Kavramları Kavra", 1, "Çevre", 2, 1),
+            Series(2, "Kavramları Kavra", 2, "Alan", 2, 2),
+            Series(3, "Öğrendiğini Kanıtla", 1, "Alan", 2, 3),
+        };
+
+        var plan = BookSetupPlanner.Plan(pages, [], [], []);
+
+        plan.Tests.Select(t => (t.Unit, t.TestNo, t.Title)).ShouldBe(
+            [(1, 1, "Kavramları Kavra 01"), (2, 1, "Kavramları Kavra 02"), (2, 2, "Öğrendiğini Kanıtla 01")]);
+        plan.Units.Select(u => u.Title).ShouldBe(["Çevre", "Alan"]);
+    }
 }

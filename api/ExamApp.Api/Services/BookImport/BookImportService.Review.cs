@@ -19,6 +19,8 @@ public enum BookImportReviewResult
     /// <summary>Testte cevapsız soru var.</summary>
     Answerless,
     InvalidOption,
+    /// <summary>#1169: testin son sorusu çıkarılamaz (testi silmek gerekir).</summary>
+    LastQuestion,
 }
 
 /// <summary>
@@ -86,6 +88,43 @@ public sealed partial class BookImportService
             return BookImportReviewResult.InvalidOption;
 
         question.CorrectAnswerId = answers[optionIndex].Id;
+        _db.SetCurrentUser(owner.UserId);
+        await _db.SaveChangesAsync(ct);
+        return BookImportReviewResult.Ok;
+    }
+
+    /// <summary>
+    /// #1169: hatalı tespit edilmiş taslak soruyu testten çıkarır (soru ve test bağlantısı silinir; testin kalan soruları ve
+    /// sırası değişmez). Son soru çıkarılamaz.
+    /// </summary>
+    public async Task<BookImportReviewResult> RemoveQuestionAsync(BookImportOwner owner, Guid id, int testId, int questionId,
+        CancellationToken ct)
+    {
+        var test = await ReviewTestAsync(owner, id, testId, ct);
+        if (test is null)
+            return BookImportReviewResult.NotFound;
+        if (!IsReviewable(test) || !await InReviewAsync(id, ct))
+            return BookImportReviewResult.InvalidState;
+
+        var worksheetId = test.WorksheetId!.Value;
+        var links = await _db.TestQuestions.IgnoreQueryFilters([DraftQueryFilter.Key]).AsTracking()
+            .Where(wq => wq.TestId == worksheetId && !wq.IsDeleted && !wq.Question.IsDeleted)
+            .Include(wq => wq.Question)
+            .ToListAsync(ct);
+        var link = links.FirstOrDefault(wq => wq.QuestionId == questionId && wq.Question.IsDraft);
+        if (link is null)
+            return BookImportReviewResult.NotFound;
+        if (links.Count == 1)
+            return BookImportReviewResult.LastQuestion;
+
+        var now = DateTime.UtcNow;
+        foreach (var deleted in new BaseEntity[] { link, link.Question })
+        {
+            deleted.IsDeleted = true;
+            deleted.DeleteTime = now;
+            deleted.DeleteUserId = owner.UserId;
+        }
+
         _db.SetCurrentUser(owner.UserId);
         await _db.SaveChangesAsync(ct);
         return BookImportReviewResult.Ok;

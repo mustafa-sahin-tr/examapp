@@ -220,6 +220,23 @@
     color: var(--ms-text-medium);
   }
 
+  // #1169: çıkar düğmesi düzelt simgesinin yanında durur; boşluğu o iter.
+  &__fix:has(+ .bir-q__remove, + .bir-q__remove-confirm) {
+    margin-right: 0;
+  }
+
+  &__remove {
+    margin-right: auto;
+    color: var(--ms-text-medium);
+  }
+
+  &__remove-confirm {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-right: auto;
+  }
+
   &__answers {
     display: flex;
     gap: 4px;

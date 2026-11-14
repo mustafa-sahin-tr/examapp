@@ -322,6 +322,8 @@
     "answerlessHint": "Önce cevapsız soruların cevabını seçin.",
     "remove": "{{name}} testini sil",
     "removeConfirm": "Testi sil",
+    "removeQuestion": "Soru {{number}}: testten çıkar",
+    "removeQuestionConfirm": "Testten çıkar",
     "reimport": "{{name}} testini baştan aktar",
     "reimportConfirm": "Baştan aktar",
     "reimportHint": "Taslak sorular silinir ve test yeniden aktarılır; sayfa tespitleri önbellekten gelir.",

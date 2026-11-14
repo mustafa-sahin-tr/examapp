@@ -185,6 +185,21 @@
                 <mat-icon>edit_square</mat-icon>
               </a>
               }
+              @if (editable() && canRemoveQuestion()) {
+              @if (removingQuestionId() === q.id) {
+              <span class="bir-q__remove-confirm">
+                <button mat-stroked-button type="button" class="bir-danger" [disabled]="busy() !== null" data-testid="remove-question-confirm"
+                  (click)="removeQuestion(test, q)">{{ t('review.removeQuestionConfirm') }}</button>
+                <button mat-button type="button" (click)="removingQuestionId.set(null)">{{ t('review.cancel') }}</button>
+              </span>
+              } @else {
+              <button mat-icon-button type="button" class="bir-q__remove" data-testid="remove-question" [disabled]="busy() !== null"
+                [attr.aria-label]="t('review.removeQuestion', { number: q.number ?? '?' })" [title]="t('review.removeQuestion', { number: q.number ?? '?' })"
+                (click)="removingQuestionId.set(q.id)">
+                <mat-icon>remove_circle_outline</mat-icon>
+              </button>
+              }
+              }
               <div class="bir-q__answers" role="group" [attr.aria-label]="t('review.answerFor', { number: q.number ?? '?' })">
                 @for (letter of letters.slice(0, q.optionCount); track letter; let i = $index) {
                 <button type="button" class="bir-q__answer" [class.bir-q__answer--on]="q.answerIndex === i"

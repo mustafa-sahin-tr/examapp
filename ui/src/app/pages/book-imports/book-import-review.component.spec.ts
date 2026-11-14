@@ -186,6 +186,29 @@ describe('BookImportReviewComponent (#1023)', () => {
     expect(api.removeTest).toHaveBeenCalledWith('a1', 2);
   });
 
+  it('removeQuestion_AsksFirstThenDropsTheQuestion (#1169)', () => {
+    setup(mixed());
+    api.removeQuestion = vi.fn().mockReturnValue(of(undefined));
+    button(rows()[0], 'Önizle').click();
+    fixture.detectChanges();
+
+    const removes = () => el().querySelectorAll('[data-testid="remove-question"]');
+    expect(removes().length).toBe(2);
+    (removes()[1] as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(api.removeQuestion).not.toHaveBeenCalled();
+
+    (el().querySelector('[data-testid="remove-question-confirm"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(api.removeQuestion).toHaveBeenCalledWith('a1', 2, 2);
+    expect(el().querySelectorAll('.bir-q').length).toBe(1);
+    expect(text()).toContain('Cevaplanan 1/1');
+    expect(changed).toBe(1);
+    // Son soru çıkarılamaz: düğme kalkar.
+    expect(removes().length).toBe(0);
+  });
+
   it('fixInLabeling_OpensTheCanvasAtTheFirstFlaggedPage', () => {
     setup([test({ status: 'NeedsReview', reviewFlags: [{ code: 'missingNumbers', pages: [4], numbers: [3], found: null, expected: null }] })]);
 

@@ -155,6 +155,9 @@ aktarım aracındaki Python portu referanstır (#1022).
   `PUT …/questions/{questionId}/answer`, `POST {id}/tests/{testId}/approve` (cevapsız soru → 409 `bookImport.answerless`),
   `POST {id}/approve` (onaylanabilenler; atlananlar `answerless` / `failed`), `DELETE {id}/tests/{testId}` (yalnız o testin taslak
   testi ve taslak soruları soft-delete). Onaylanacak test kalmayınca iş `Completed` / `Approval`.
+- **Soruyu testten çıkar** (#1169): önizlemede soru başına iki tıkla; `DELETE {id}/tests/{testId}/questions/{questionId}` taslak
+  soruyu ve bağını soft-delete eder, kalanların sırası değişmez. Yalnız inceleme sürerken ve onaylanmamış testte; testin son
+  sorusu çıkarılamaz (409 `bookImport.lastQuestion`, testi silin). Cevapsız soru çıkınca test onaylanabilir.
 - **Onay** `IsDraft`'ı kaldırır; öğretmen paylaşımı Private, soru havuzu paylaşımı olduğu gibi kalır. Sınıflandırma taslakta da
   yazar (`WithDrafts`), onaydan sonra gelen sonuç da uygulanır.
 - **Sızıntı:** taslaklar adlı global filtreyle her sorgudan gizlidir. `IgnoreQueryFilters()` kullanan okumalar yalnız oturum /

@@ -126,7 +126,9 @@ public class BulkQuestionDto
 }
 
 /// <summary>Issue #577: <see cref="BulkQuestionDto.Source"/> — sunucu içi kitap kaynağı bilgisi.</summary>
-public sealed record BulkQuestionSourceInfo(int? BookId, int FilePage, int? PrintedPage, string? ActivityLabel, string? ItemLabel);
+/// <summary>#1171: <paramref name="Box"/> sorunun sayfadaki kutusu (sayfa pikseli).</summary>
+public sealed record BulkQuestionSourceInfo(int? BookId, int FilePage, int? PrintedPage, string? ActivityLabel, string? ItemLabel,
+    (int X, int Y, int Width, int Height)? Box = null);
 
 public class BulkQuestionClassificationDto
 {

@@ -416,7 +416,7 @@ public sealed class LabelingBankService(
             bulkQuestions[i].BookName = bookPage.BookName;
             bulkQuestions[i].Source = new BulkQuestionSourceInfo(
                 bookPage.BookId, bookPage.FilePage, bookPage.PrintedPage,
-                NormalizeLabel(questions[i].ActivityLabel), NormalizeLabel(questions[i].ItemLabel));
+                NormalizeLabel(questions[i].ActivityLabel), NormalizeLabel(questions[i].ItemLabel), BoxOf(questions[i]));
         }
     }
 
@@ -425,8 +425,10 @@ public sealed class LabelingBankService(
     {
         for (var i = 0; i < bulkQuestions.Count; i++)
             bulkQuestions[i].Source = new BulkQuestionSourceInfo(
-                null, photo, null, NormalizeLabel(questions[i].ActivityLabel), NormalizeLabel(questions[i].ItemLabel));
+                null, photo, null, NormalizeLabel(questions[i].ActivityLabel), NormalizeLabel(questions[i].ItemLabel), BoxOf(questions[i]));
     }
+
+    private static (int X, int Y, int Width, int Height) BoxOf(LabelingBankQuestionDto q) => (q.X, q.Y, q.Width, q.Height);
 
     private static string? NormalizeLabel(string? value)
     {

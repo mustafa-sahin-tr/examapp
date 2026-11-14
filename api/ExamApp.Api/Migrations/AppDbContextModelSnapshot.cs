@@ -4296,6 +4296,18 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("BookId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("BoxHeight")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("BoxWidth")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("BoxX")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("BoxY")
+                        .HasColumnType("integer");
+
                     b.Property<string>("CropSha256")
                         .IsRequired()
                         .HasMaxLength(64)

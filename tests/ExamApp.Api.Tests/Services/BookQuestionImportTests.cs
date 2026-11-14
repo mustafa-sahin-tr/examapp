@@ -91,7 +91,7 @@ public class BookQuestionImportTests : IDisposable
                 ctx.QuestionSources.Add(new QuestionSource
                 {
                     Question = question, BookId = request.BookId, FilePage = request.FilePage, ItemLabel = q.ItemLabel,
-                    CropSha256 = Guid.NewGuid().ToString("N"),
+                    CropSha256 = Guid.NewGuid().ToString("N"), BoxX = q.X, BoxY = q.Y, BoxWidth = q.Width, BoxHeight = q.Height,
                 });
                 return (question, q.CorrectOptionIndex);
             }).ToList();
@@ -651,6 +651,59 @@ public class BookQuestionImportTests : IDisposable
         worksheet.WorksheetQuestions.OrderBy(wq => wq.Order).Select(wq => (wq.Order, wq.Question.Text))
             .ShouldBe([(1, "1"), (2, "2"), (3, "3"), (4, "4")]);
         (await check.Questions.IgnoreQueryFilters().CountAsync(q => q.IsDeleted && q.IsDraft && q.Text == "1")).ShouldBe(1);
+    }
+
+    /// <summary>Issue #1171: ortadaki kutu silinince kalanlar numaralarını ve anahtardaki cevaplarını korur; sıra okuma sırası.</summary>
+    [Fact]
+    public async Task Fixing_a_page_keeps_the_numbers_of_the_remaining_boxes_when_one_is_deleted()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "ABCD", [4])]);
+        Detect(1, 4, 4, 4, 4);
+        await RunAsync(id);
+        var test = await SingleTestAsync();
+
+        await using (var ctx = _db.NewContext())
+        {
+            var result = await Fix(ctx).ReplacePageAsync(Owner, id, test.Id, 1, [Box(3), Box(0), Box(2)], default);
+            result.Error.ShouldBe(BookImportPageFixError.None);
+            result.Page!.Removed.ShouldBe(4);
+        }
+
+        _saved.Last().Questions.Select(q => (q.ItemLabel, q.CorrectOptionIndex)).ShouldBe([("1", 0), ("3", 2), ("4", 3)]);
+        await using var check = _db.NewContext();
+        var worksheet = await check.Worksheets.WithDrafts().Include(w => w.WorksheetQuestions).ThenInclude(wq => wq.Question)
+            .SingleAsync(w => w.Id == test.WorksheetId);
+        worksheet.WorksheetQuestions.Where(wq => !wq.IsDeleted).OrderBy(wq => wq.Order).Select(wq => wq.Question.Text)
+            .ShouldBe(["1", "3", "4"]);
+    }
+
+    [Fact]
+    public void Page_fix_numbering_matches_old_boxes_then_fills_the_next_free_number()
+    {
+        static LayoutBox Row(int row, int x = 100) => new(x, 100 + row * 700, 900, 400);
+        var reference = new[] { new BookImportPageFixService.NumberedBox(Row(0), 5), new(Row(1), 6), new(Row(0, 1300), 7), new(Row(1, 1300), 8) };
+
+        // 6 silindi, 7 biraz büyütüldü: eşleşmeler korunur.
+        BookImportPageFixService.NumberBoxes([new(1300, 80, 950, 450), Row(0), Row(1, 1300)], [null, null, null], reference, 5, 2363)
+            .ShouldBe([(1, 5), (0, 7), (2, 8)]);
+        // Eski kutuya uymayan yeni kutu öncekinden sonraki boş numarayı alır; etiket önce gelir.
+        BookImportPageFixService.NumberBoxes([Row(0), Row(2), Row(0, 1300)], [null, null, "9"], reference, 5, 2363)
+            .ShouldBe([(0, 5), (1, 6), (2, 9)]);
+        // Eşleşme yoksa okuma sırasıyla baştan.
+        BookImportPageFixService.NumberBoxes([Row(0, 1300), Row(0)], [null, null], [], 3, 2363).ShouldBe([(1, 3), (0, 4)]);
+    }
+
+    [Fact]
+    public void Boxless_old_drafts_take_their_boxes_from_the_import_order()
+    {
+        LayoutBox[] ordered = [new(0, 0, 10, 10), new(0, 20, 10, 10), new(0, 40, 10, 10)];
+
+        BookImportPageFixService.ImportNumbering(ordered, new HashSet<int> { 4, 6 }, 3).Select(b => (b.Box.Y, b.Number))
+            .ShouldBe([(0, 4), (40, 6)]);
+        // Sayfanın ilk sorusu testten çıkarılmış: önceki sayfanın sonundan devam.
+        BookImportPageFixService.ImportNumbering(ordered, new HashSet<int> { 5, 6 }, 3).Select(b => (b.Box.Y, b.Number))
+            .ShouldBe([(20, 5), (40, 6)]);
+        BookImportPageFixService.ImportNumbering(ordered, new HashSet<int> { 1, 9 }, 0).ShouldBeEmpty();
     }
 
     /// <summary>Issue #1133: düzeltilen kutular eğitim verisi için elle doğrulanmış sonuç olur; Claude'un diğer blokları kalır.</summary>

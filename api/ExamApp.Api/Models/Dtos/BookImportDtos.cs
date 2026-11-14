@@ -316,6 +316,20 @@ public class BookImportPageFixDto
     public int Answerless { get; set; }
 }
 
+/// <summary>
+/// Issue #1173: düzeltilen sayfanın yaşayan taslağı. Kutu sayfa pikseli (bilinmiyorsa null); doğru şık sırası, yoksa -1.
+/// </summary>
+public class BookImportPageDraftDto
+{
+    public int QuestionId { get; set; }
+    public int Number { get; set; }
+    public int? X { get; set; }
+    public int? Y { get; set; }
+    public int? Width { get; set; }
+    public int? Height { get; set; }
+    public int CorrectOptionIndex { get; set; } = -1;
+}
+
 /// <summary>Issue #1056: kitap aktarımı ve hızlı ekleme maliyet raporu (yalnız Admin).</summary>
 public class BookImportCostReportDto
 {

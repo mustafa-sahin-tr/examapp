@@ -1,7 +1,7 @@
 import { Component, DestroyRef, computed, effect, inject, signal, untracked, viewChild, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { Subject, firstValueFrom, map, switchMap, takeUntil, throwError } from 'rxjs';
+import { Subject, catchError, firstValueFrom, forkJoin, map, of, switchMap, takeUntil, throwError } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleChange, MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog } from '@angular/material/dialog';
@@ -64,7 +64,14 @@ import { LabelingBookService } from '../../services/labeling-book.service';
 import { AuthService } from '../../services/auth.service';
 import { BookImportService } from '../../services/book-import.service';
 import { QuickAddService } from '../../services/quick-add.service';
-import { BookImportJobKind, BookImportPageFix, bookImportTestName, bookImportTestPages } from '../../models/book-import';
+import {
+  BookImportJobKind,
+  BookImportPageDraft,
+  BookImportPageFix,
+  bookImportTestName,
+  bookImportTestPages,
+  matchPageDrafts,
+} from '../../models/book-import';
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
@@ -351,6 +358,8 @@ export class LabelingComponent {
    */
   readonly contentTeam = this.auth.hasRealmRole('Admin') || this.auth.hasRealmRole('QuestionTrainer');
   readonly fix = signal<LabelingFixTarget | null>(null);
+  /** Issue #1173: düzeltilen sayfanın taslakları; tespit uygulanınca kutulara numara ve doğru şık olarak işlenir. */
+  private fixDrafts: BookImportPageDraft[] = [];
   readonly fixLoading = signal(false);
   readonly fixError = signal(false);
   readonly fixSaving = signal(false);
@@ -490,6 +499,32 @@ export class LabelingComponent {
     this.loadBookPage(this.bookId(), this.filePage());
   }
 
+  /**
+   * Issue #1173: düzeltmede tuvaldeki soru kutusu örtüştüğü taslağın numarasını Madde'ye, doğru şıkkını işaretli alır
+   * (kayıtta ne yazılacağı görünsün; incelemede seçilen cevap kaybolmasın). Elle yazılmış etiket ve işaretli şık korunur.
+   */
+  private prefillFromDrafts(): void {
+    const selector = this.selectorRef();
+    if (!this.fix() || !selector || this.fixDrafts.length === 0) {
+      return;
+    }
+    const regions = selector.regions();
+    const mcq = regions.filter((r) => selector.isMcqRegion(r.name));
+    for (const [i, draft] of matchPageDrafts(mcq, this.fixDrafts)) {
+      const region = mcq[i];
+      if (!this.labelsOf(region.name).itemLabel) {
+        this.questionLabels.update((all) => ({
+          ...all,
+          [region.name]: { ...this.labelsOf(region.name), itemLabel: String(draft.number) },
+        }));
+      }
+      const answers = region.answers ?? [];
+      if (draft.correctOptionIndex >= 0 && draft.correctOptionIndex < answers.length && !answers.some((a) => a.isCorrect)) {
+        selector.setCorrectAnswer(regions.indexOf(region), draft.correctOptionIndex, 1);
+      }
+    }
+  }
+
   /** Müfettişteki seçili sorunun etiketleri. */
   labelsOf(name: string): QuestionLabels {
     return this.questionLabels()[name] ?? { activityLabel: '', itemLabel: '' };
@@ -607,6 +642,7 @@ export class LabelingComponent {
     const manual = page?.results.find((r) => r.source === 'Manual');
     if (manual) {
       selector.applyExternalPrediction(seq, manual.predictions, manualDetectionSource(manual));
+      this.prefillFromDrafts();
       return;
     }
     // #1129: aktarım düzeltmesinde sayfa aktarımdaki gibi Claude ile açılır (kayıtlı sonuç önbellekten, maliyetsiz).
@@ -756,6 +792,7 @@ export class LabelingComponent {
           manual.predictions,
           manualDetectionSource(manual)
         );
+        this.prefillFromDrafts();
       }
     }
   }
@@ -788,6 +825,7 @@ export class LabelingComponent {
         modelName: response.result.modelName,
         promptVersion: response.result.promptVersion,
       });
+      this.prefillFromDrafts();
       if (response.origin === 'live' && response.result.estimatedCostUsd != null) {
         this.snackBar.open(
           this.tr('source.liveDone', { cost: response.result.estimatedCostUsd.toFixed(4) }),
@@ -1148,12 +1186,20 @@ export class LabelingComponent {
           if (!test) {
             return throwError(() => new Error('book import test not found'));
           }
-          return image(filePage).pipe(map((blob) => ({ job, test, blob })));
+          // Taslaklar okunamazsa düzeltme yine açılır (kutular boş numarayla, eskisi gibi).
+          const drafts = jobs.pageDrafts(jobId, testId, filePage).pipe(
+            catchError((error) => {
+              console.error('labeling book import page drafts failed', error);
+              return of([] as BookImportPageDraft[]);
+            })
+          );
+          return forkJoin({ blob: image(filePage), drafts }).pipe(map(({ blob, drafts }) => ({ job, test, blob, drafts })));
         }),
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
-        next: ({ job, test, blob }) => {
+        next: ({ job, test, blob, drafts }) => {
+          this.fixDrafts = drafts;
           const name = `page_${String(filePage).padStart(3, '0')}.webp`;
           const file = new File([blob], name, { type: blob.type || 'image/webp' });
           const target: LabelingFixTarget = {

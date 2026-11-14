@@ -34,6 +34,13 @@ public interface IBookImportPageFixService
     /// </summary>
     Task<BookImportPageFixResult> ReplacePageAsync(BookImportOwner owner, Guid id, int testId, int filePage,
         IReadOnlyList<LabelingBankQuestionDto> questions, CancellationToken ct);
+
+    /// <summary>
+    /// Issue #1173: sayfanın yaşayan taslakları (numara, sayfadaki kutu, doğru şık); düzeltme tuvali kutularına numara ve cevabı
+    /// bunlardan işaretler. Kutusu bilinmeyen taslak listede kutusuz döner.
+    /// </summary>
+    Task<(BookImportPageFixError Error, IReadOnlyList<BookImportPageDraftDto> Drafts)> GetPageDraftsAsync(BookImportOwner owner,
+        Guid id, int testId, int filePage, CancellationToken ct);
 }
 
 /// <summary>
@@ -52,22 +59,12 @@ public sealed class BookImportPageFixService(
         IReadOnlyList<LabelingBankQuestionDto> questions, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(owner);
-        var job = await (owner.IsAdmin ? db.BookImportJobs : db.BookImportJobs.Where(j => j.CreateUserId == owner.UserId))
-            .AsNoTracking().FirstOrDefaultAsync(j => j.Id == id && j.Kind == owner.Kind, ct);
-        var test = job is null
-            ? null
-            : await db.BookImportJobTests.AsTracking().FirstOrDefaultAsync(t => t.Id == testId && t.JobId == id, ct);
-        if (job is null || test is null)
-            return new(BookImportPageFixError.NotFound);
-        if (job.Status is not (BookImportJobStatus.ReadyForReview or BookImportJobStatus.Cancelled) || (!job.HasLooseQuestions && job.BookId is null) || job.CreateUserId is not > 0
-            || test.Status is not (BookImportTestStatus.Done or BookImportTestStatus.NeedsReview or BookImportTestStatus.Failed)
-            || test.FileFrom is not { } from || test.FileTo is not { } to || filePage < from || filePage > to)
-            return new(BookImportPageFixError.InvalidState);
-        var page = await db.BookImportPages.AsNoTracking().FirstOrDefaultAsync(p => p.JobId == id && p.FilePage == filePage, ct);
-        if (page is null)
-            return new(BookImportPageFixError.NotFound);
+        var (error, job, test, page) = await TargetAsync(owner, id, testId, filePage, ct);
+        if (error != BookImportPageFixError.None)
+            return new(error);
+        var (from, to) = (test!.FileFrom!.Value, test.FileTo!.Value);
 
-        var bookId = job.BookId;
+        var bookId = job!.BookId;
         var links = await LinksAsync(test.WorksheetId, bookId, ct);
         var old = links.Where(l => l.FilePage == filePage && l.IsDraft).ToList();
         var oldIds = old.Select(l => l.QuestionId).ToList();
@@ -75,15 +72,9 @@ public sealed class BookImportPageFixService(
                     ?? (links.Where(l => l.FilePage < filePage).Select(l => l.Number).Max() ?? 0) + 1;
 
         string? image = null;
-        var reference = old.Where(l => l is { Number: not null, Box: not null })
-            .Select(l => new NumberedBox(l.Box!.Value, l.Number!.Value)).ToList();
-        var boxless = old.Where(l => l is { Number: not null, Box: null }).Select(l => l.Number!.Value).ToHashSet();
-        if (boxless.Count > 0 && questions.Any(q => !int.TryParse(q.ItemLabel?.Trim(), out var n) || n <= 0))
-        {
-            image = await LoadAsync(page);
-            var previousMax = links.Where(l => l.FilePage < filePage).Select(l => l.Number).Max() ?? 0;
-            reference.AddRange(ImportNumbering(await DetectedBoxesAsync(page, image, ct), boxless, previousMax));
-        }
+        var reference = new List<NumberedBox>();
+        if (questions.Any(q => !int.TryParse(q.ItemLabel?.Trim(), out var n) || n <= 0))
+            (reference, image) = await ReferenceAsync(page!, links, old, filePage, ct);
         var numbered = NumberBoxes(questions.Select(q => new LayoutBox(q.X, q.Y, q.Width, q.Height)).ToList(),
             questions.Select(q => q.ItemLabel).ToList(), reference, start, page.Width);
 
@@ -113,7 +104,7 @@ public sealed class BookImportPageFixService(
         var saved = new LabelingImportPageResult(0, [], []);
         if (toSave.Count > 0)
         {
-            image ??= await LoadAsync(page);
+            image ??= await LoadAsync(page!);
             saved = await bank.SaveImportedPageAsync(new LabelingImportPageRequest(
                 image, bookId, filePage, job.GradeId, QuestionBankSharing.Private, toSave, oldIds), job.CreateUserId.Value, ct);
         }
@@ -173,7 +164,7 @@ public sealed class BookImportPageFixService(
             await tx.CommitAsync(ct);
         });
 
-        await RecordManualAsync(page, image, questions, owner, ct);
+        await RecordManualAsync(page!, image, questions, owner, ct);
 
         return new(BookImportPageFixError.None, new BookImportPageFixDto
         {
@@ -182,6 +173,77 @@ public sealed class BookImportPageFixService(
             Removed = oldIds.Count,
             Answerless = kept.Count(k => k.Question.CorrectOptionIndex < 0),
         });
+    }
+
+    public async Task<(BookImportPageFixError Error, IReadOnlyList<BookImportPageDraftDto> Drafts)> GetPageDraftsAsync(
+        BookImportOwner owner, Guid id, int testId, int filePage, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+        var (error, job, test, page) = await TargetAsync(owner, id, testId, filePage, ct);
+        if (error != BookImportPageFixError.None)
+            return (error, []);
+        var links = await LinksAsync(test!.WorksheetId, job!.BookId, ct);
+        var old = links.Where(l => l.FilePage == filePage && l.IsDraft).ToList();
+        if (old.Count == 0)
+            return (error, []);
+
+        var (reference, _) = await ReferenceAsync(page!, links, old, filePage, ct);
+        var boxes = reference.ToDictionary(r => r.Number, r => r.Box);
+        var ids = old.Select(l => l.QuestionId).ToList();
+        var answers = await db.Questions.IgnoreQueryFilters([DraftQueryFilter.Key]).AsNoTracking()
+            .Where(q => ids.Contains(q.Id) && q.CorrectAnswerId != null)
+            .Select(q => new { q.Id, Correct = q.Answers.Where(a => a.Id == q.CorrectAnswerId).Select(a => a.Order).FirstOrDefault(),
+                Orders = q.Answers.Select(a => a.Order).ToList() })
+            .ToListAsync(ct);
+        var correct = answers.ToDictionary(a => a.Id, a => a.Orders.Order().ToList().IndexOf(a.Correct));
+        return (error, old.Where(l => l.Number is not null).OrderBy(l => l.Number).Select(l =>
+        {
+            var box = boxes.TryGetValue(l.Number!.Value, out var b) ? b : (LayoutBox?)null;
+            return new BookImportPageDraftDto
+            {
+                QuestionId = l.QuestionId,
+                Number = l.Number.Value,
+                X = box?.X, Y = box?.Y, Width = box?.Width, Height = box?.Height,
+                CorrectOptionIndex = correct.GetValueOrDefault(l.QuestionId, -1),
+            };
+        }).ToList());
+    }
+
+    /// <summary>İş, test ve sayfa; düzeltilebilir değilse hata (#1023 kuralları).</summary>
+    private async Task<(BookImportPageFixError Error, BookImportJob? Job, BookImportJobTest? Test, BookImportPage? Page)> TargetAsync(
+        BookImportOwner owner, Guid id, int testId, int filePage, CancellationToken ct)
+    {
+        var job = await (owner.IsAdmin ? db.BookImportJobs : db.BookImportJobs.Where(j => j.CreateUserId == owner.UserId))
+            .AsNoTracking().FirstOrDefaultAsync(j => j.Id == id && j.Kind == owner.Kind, ct);
+        var test = job is null
+            ? null
+            : await db.BookImportJobTests.AsTracking().FirstOrDefaultAsync(t => t.Id == testId && t.JobId == id, ct);
+        if (job is null || test is null)
+            return (BookImportPageFixError.NotFound, null, null, null);
+        if (job.Status is not (BookImportJobStatus.ReadyForReview or BookImportJobStatus.Cancelled) || (!job.HasLooseQuestions && job.BookId is null) || job.CreateUserId is not > 0
+            || test.Status is not (BookImportTestStatus.Done or BookImportTestStatus.NeedsReview or BookImportTestStatus.Failed)
+            || test.FileFrom is not { } from || test.FileTo is not { } to || filePage < from || filePage > to)
+            return (BookImportPageFixError.InvalidState, null, null, null);
+        var page = await db.BookImportPages.AsNoTracking().FirstOrDefaultAsync(p => p.JobId == id && p.FilePage == filePage, ct);
+        return page is null ? (BookImportPageFixError.NotFound, null, null, null) : (BookImportPageFixError.None, job, test, page);
+    }
+
+    /// <summary>
+    /// #1171: sayfanın eski taslaklarının kutuları ve numaraları. Kaynakta kutusu olmayanlar önbellekteki tespitten, aktarımla
+    /// aynı sıralama ve numarayla (görsel o zaman okunur ve döner).
+    /// </summary>
+    private async Task<(List<NumberedBox> Reference, string? Image)> ReferenceAsync(BookImportPage page, List<Link> links,
+        List<Link> old, int filePage, CancellationToken ct)
+    {
+        var reference = old.Where(l => l is { Number: not null, Box: not null })
+            .Select(l => new NumberedBox(l.Box!.Value, l.Number!.Value)).ToList();
+        var boxless = old.Where(l => l is { Number: not null, Box: null }).Select(l => l.Number!.Value).ToHashSet();
+        if (boxless.Count == 0)
+            return (reference, null);
+        var image = await LoadAsync(page);
+        var previousMax = links.Where(l => l.FilePage < filePage).Select(l => l.Number).Max() ?? 0;
+        reference.AddRange(ImportNumbering(await DetectedBoxesAsync(page, image, ct), boxless, previousMax));
+        return (reference, image);
     }
 
     /// <summary>Taslak testin silinmemiş bağlantıları: soru, kaynak sayfası, numarası (madde etiketi sayıysa).</summary>

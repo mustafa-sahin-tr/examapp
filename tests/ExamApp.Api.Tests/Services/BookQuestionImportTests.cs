@@ -677,6 +677,27 @@ public class BookQuestionImportTests : IDisposable
             .ShouldBe(["1", "3", "4"]);
     }
 
+    /// <summary>Issue #1173: düzeltme tuvali sayfanın taslaklarını numara, kutu ve doğru şıkla alır.</summary>
+    [Fact]
+    public async Task Page_drafts_list_numbers_boxes_and_correct_options_for_the_canvas()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "B", [2])]);
+        Detect(1, 4, 4);
+        await RunAsync(id);
+        var test = await SingleTestAsync();
+
+        await using var ctx = _db.NewContext();
+        var (error, drafts) = await Fix(ctx).GetPageDraftsAsync(Owner, id, test.Id, 1, default);
+
+        error.ShouldBe(BookImportPageFixError.None);
+        drafts.Select(d => (d.Number, d.CorrectOptionIndex)).ShouldBe([(1, 1), (2, -1)]);
+        var saved = _saved.Single().Questions;
+        drafts.Select(d => (d.X, d.Y, d.Width, d.Height)).ShouldBe(saved.Select(q => ((int?)q.X, (int?)q.Y, (int?)q.Width, (int?)q.Height)));
+        (await Fix(ctx).GetPageDraftsAsync(BookImportOwner.Create(OwnerId + 1, "QuestionTrainer"), id, test.Id, 1, default)).Error
+            .ShouldBe(BookImportPageFixError.NotFound);
+        (await Fix(ctx).GetPageDraftsAsync(Owner, id, test.Id, 2, default)).Error.ShouldBe(BookImportPageFixError.InvalidState);
+    }
+
     [Fact]
     public void Page_fix_numbering_matches_old_boxes_then_fills_the_next_free_number()
     {

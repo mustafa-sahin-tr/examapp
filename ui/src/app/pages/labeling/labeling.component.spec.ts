@@ -248,11 +248,13 @@ describe('LabelingComponent', () => {
             get: vi.fn().mockName('BookImportService.get'),
             pageImage: vi.fn().mockName('BookImportService.pageImage'),
             replacePage: vi.fn().mockName('BookImportService.replacePage'),
+            pageDrafts: vi.fn().mockName('BookImportService.pageDrafts').mockReturnValue(of([])),
         } as unknown as MockedObject<BookImportService>;
         quickAddApi = {
             get: vi.fn().mockName('QuickAddService.get'),
             photo: vi.fn().mockName('QuickAddService.photo'),
             replacePage: vi.fn().mockName('QuickAddService.replacePage'),
+            pageDrafts: vi.fn().mockName('QuickAddService.pageDrafts').mockReturnValue(of([])),
         } as unknown as MockedObject<QuickAddService>;
         beforeCreate?.();
         TestBed.configureTestingModule({
@@ -1927,6 +1929,36 @@ describe('LabelingComponent', () => {
             expect(el.querySelector('.lb-stats')).toBeNull();
             expect(el.querySelector('.lb-train')).toBeNull();
             expect(localStorage.getItem('labeling.bookId')).toBeNull();
+        });
+
+        // Issue #1173: tuvaldeki kutular taslaklarla eşlenir: numara Madde'ye, doğru şık işaretli; işaretli şık korunur.
+        it('fix_PrefillsNumbersAndCorrectOptionsFromTheDrafts', async () => {
+            routeUrl = '/?bookImport=j1&test=3&page=12';
+            await setupWith(() => {
+                pageResponses();
+                bookImportsApi.pageDrafts.mockReturnValue(of([
+                    { questionId: 1, number: 5, x: 10, y: 20, width: 300, height: 200, correctOptionIndex: 2 },
+                    { questionId: 2, number: 7, x: 14, y: 410, width: 290, height: 190, correctOptionIndex: 0 },
+                    { questionId: 3, number: 8, x: null, y: null, width: null, height: null, correctOptionIndex: 1 },
+                ]));
+                labelingApi.getPage.mockReturnValue(of({
+                    imageSha256: 'f'.repeat(64), width: 100, height: 100,
+                    results: [{ source: 'Manual', predictions: { success: true, predictions: [] } }],
+                } as unknown as LabelingPage));
+            });
+            await fixture.whenStable();
+
+            expect(bookImportsApi.pageDrafts).toHaveBeenCalledWith('j1', 3, 12);
+            // Tespit uygulanınca: kutular taslaklarla eşlenir (ikincisinin şıkkı zaten işaretli).
+            selector().regions.set([mcq('q1', -1), { ...mcq('q2', 1), y: 400 }, { ...mcq('q3', -1), y: 800 }]);
+            selector().applyExternalPrediction.mockClear();
+            (component as unknown as { prefillFromDrafts(): void }).prefillFromDrafts();
+
+            expect(component.labelsOf('q1').itemLabel).toBe('5');
+            expect(component.labelsOf('q2').itemLabel).toBe('7');
+            expect(component.labelsOf('q3').itemLabel).toBe('');
+            expect(selector().setCorrectAnswer).toHaveBeenCalledTimes(1);
+            expect(selector().setCorrectAnswer).toHaveBeenCalledWith(0, 2, 1);
         });
 
         it('fix_Save_ReplacesThePageDraftsWithoutRequiringAnswersAndGoesBack', async () => {

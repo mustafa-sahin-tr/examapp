@@ -21,6 +21,7 @@ import {
   BookImportDemo,
   BookImportJob,
   BookImportJobDetail,
+  BookImportPageDraft,
   BookImportPageFix,
   BookImportReviewQuestion,
   BookImportQuota,
@@ -248,6 +249,11 @@ export class BookImportService {
     return this.http.put<BookImportPageFix>(`${this.baseUrl}/${id}/tests/${testId}/pages/${filePage}/questions`, {
       questions,
     });
+  }
+
+  /** Issue #1173: düzeltilecek sayfanın taslakları (numara, kutu, doğru şık). */
+  pageDrafts(id: string, testId: number, filePage: number): Observable<BookImportPageDraft[]> {
+    return this.http.get<BookImportPageDraft[]>(`${this.baseUrl}/${id}/tests/${testId}/pages/${filePage}/questions`);
   }
 
   /** Sayfa görseli (WebP, #1020); yetkili istek olduğundan <img src> yerine blob. */

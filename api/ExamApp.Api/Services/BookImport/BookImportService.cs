@@ -116,6 +116,9 @@ public interface IBookImportService
     /// <summary>Issue #1023: taslak sorunun doğru şıkkını seç (cevapsız sorular için).</summary>
     Task<BookImportReviewResult> SetAnswerAsync(BookImportOwner owner, Guid id, int testId, int questionId, int optionIndex, CancellationToken ct);
 
+    /// <summary>#1169: hatalı tespit edilmiş taslak soruyu testten çıkar (son soru çıkarılamaz).</summary>
+    Task<BookImportReviewResult> RemoveQuestionAsync(BookImportOwner owner, Guid id, int testId, int questionId, CancellationToken ct);
+
     /// <summary>Issue #1023: testi onayla — taslak test ve soruları etkinleşir; cevapsız soru varsa engellenir.</summary>
     Task<BookImportReviewResult> ApproveTestAsync(BookImportOwner owner, Guid id, int testId, CancellationToken ct);
 

@@ -34,6 +34,7 @@
     "notRetryable": "Bu aktarım şu anda yeniden denenemez.",
     "answerless": "Cevapsız sorusu olan test onaylanamaz; önce cevapları seçin.",
     "invalidOption": "Geçersiz şık.",
+    "lastQuestion": "Testin son sorusu çıkarılamaz; testi silin.",
     "notInReview": "Bu test şu anda onaylanamaz ya da silinemez.",
     "fixFailed": "Sayfa düzeltmesi kaydedilemedi; yeniden deneyin."
   }

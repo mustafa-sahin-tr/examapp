@@ -228,6 +228,11 @@ export class BookImportService {
     return this.http.delete<void>(`${this.baseUrl}/${id}/tests/${testId}`);
   }
 
+  /** #1169: hatalı tespit edilmiş taslak soruyu testten çıkar (son soru çıkarılamaz: 409). */
+  removeQuestion(id: string, testId: number, questionId: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}/tests/${testId}/questions/${questionId}`);
+  }
+
   /** Onaylanmamış testi baştan aktar: taslakları silinir, sayfa tespitleri önbellekten gelir. */
   reimportTest(id: string, testId: number): Observable<void> {
     return this.http.post<void>(`${this.baseUrl}/${id}/tests/${testId}/reimport`, {});

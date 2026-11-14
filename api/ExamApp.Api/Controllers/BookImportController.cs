@@ -398,6 +398,16 @@ public class BookImportController : BaseController
         return ReviewResult(await _service.SetAnswerAsync(owner, id, testId, questionId, request?.OptionIndex ?? -1, ct));
     }
 
+    /// <summary>#1169: hatalı tespit edilmiş taslak soruyu testten çıkar; testin son sorusuysa 409 <c>bookImport.lastQuestion</c>.</summary>
+    [HttpDelete("{id:guid}/tests/{testId:int}/questions/{questionId:int}")]
+    public async Task<IActionResult> RemoveQuestion(Guid id, int testId, int questionId, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        return ReviewResult(await _service.RemoveQuestionAsync(owner, id, testId, questionId, ct));
+    }
+
     /// <summary>Issue #1023: testi onayla; cevapsız soru varsa 409 <c>bookImport.answerless</c>.</summary>
     [HttpPost("{id:guid}/tests/{testId:int}/approve")]
     public async Task<IActionResult> ApproveTest(Guid id, int testId, CancellationToken ct)
@@ -481,6 +491,7 @@ public class BookImportController : BaseController
         BookImportReviewResult.NotFound => NotFound(new { message = _localizer["bookImport.notFound"].Value }),
         BookImportReviewResult.Answerless => Conflict(new { code = "bookImport.answerless", message = _localizer["bookImport.answerless"].Value }),
         BookImportReviewResult.InvalidOption => BadRequest(new { code = "bookImport.invalidOption", message = _localizer["bookImport.invalidOption"].Value }),
+        BookImportReviewResult.LastQuestion => Conflict(new { code = "bookImport.lastQuestion", message = _localizer["bookImport.lastQuestion"].Value }),
         _ => Conflict(new { code = "bookImport.notInReview", message = _localizer["bookImport.notInReview"].Value }),
     };
 

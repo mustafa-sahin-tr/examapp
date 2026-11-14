@@ -512,6 +512,41 @@ public class BookQuestionImportTests : IDisposable
         (await check.BookImportJobs.SingleAsync()).Status.ShouldBe(BookImportJobStatus.Completed);
     }
 
+    // #1169: yanlış bulunan soru inceleme ekranından testten çıkarılır; son soru çıkarılamaz.
+    [Fact]
+    public async Task Removing_a_question_drops_it_from_the_draft_test_but_not_the_last_one()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "A", [2]), new(2, 2, 2, "CD", [2])]);
+        Detect(1, 4, 4);
+        Detect(2, 4, 4);
+        await RunAsync(id);
+        var tests = await TestsAsync();
+        int kept;
+
+        await using (var ctx = _db.NewContext())
+        {
+            var service = Service(ctx);
+            var questions = await service.GetReviewQuestionsAsync(Owner, id, tests[0].Id, default);
+            kept = questions![0].Id;
+            var other = await service.GetReviewQuestionsAsync(Owner, id, tests[1].Id, default);
+            (await service.RemoveQuestionAsync(Owner, id, tests[0].Id, other![0].Id, default)).ShouldBe(BookImportReviewResult.NotFound);
+            (await service.RemoveQuestionAsync(BookImportOwner.Create(OwnerId + 1, "QuestionTrainer"), id, tests[0].Id, questions[1].Id, default))
+                .ShouldBe(BookImportReviewResult.NotFound);
+
+            (await service.RemoveQuestionAsync(Owner, id, tests[0].Id, questions[1].Id, default)).ShouldBe(BookImportReviewResult.Ok);
+            (await service.GetReviewQuestionsAsync(Owner, id, tests[0].Id, default))!.Select(q => q.Id).ShouldBe([questions[0].Id]);
+            (await service.RemoveQuestionAsync(Owner, id, tests[0].Id, questions[0].Id, default)).ShouldBe(BookImportReviewResult.LastQuestion);
+            // Cevapsız soru çıkınca test onaylanabilir.
+            (await service.ApproveTestAsync(Owner, id, tests[0].Id, default)).ShouldBe(BookImportReviewResult.Ok);
+            (await service.RemoveQuestionAsync(Owner, id, tests[0].Id, questions[0].Id, default)).ShouldBe(BookImportReviewResult.InvalidState);
+        }
+
+        await using var check = _db.NewContext();
+        var worksheet = await check.Worksheets.Include(w => w.WorksheetQuestions).SingleAsync();
+        worksheet.WorksheetQuestions.Select(wq => wq.QuestionId).ShouldBe([kept]);
+        (await check.Questions.IgnoreQueryFilters().CountAsync(q => q.IsDeleted)).ShouldBe(1);
+    }
+
     [Fact]
     public async Task Reimporting_a_test_replaces_its_drafts_and_leaves_approved_tests()
     {

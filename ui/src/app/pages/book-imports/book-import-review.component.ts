@@ -107,6 +107,8 @@ export class BookImportReviewComponent implements OnInit {
   readonly flagsId = signal<number | null>(null);
   readonly previewLoading = signal(false);
   readonly questions = signal<BookImportReviewQuestion[]>([]);
+  /** #1169: testten çıkarılması onay bekleyen soru. */
+  readonly removingQuestionId = signal<number | null>(null);
   readonly removingId = signal<number | null>(null);
   readonly reimportingId = signal<number | null>(null);
   /** Büyütülen önizleme sorusu (sıra); ok tuşları / düğmelerle önceki-sonraki. */
@@ -249,6 +251,26 @@ export class BookImportReviewComponent implements OnInit {
           this.fail(e);
         },
       });
+  }
+
+  /** #1169: yalnız kitap aktarımında; testin son sorusu çıkarılmaz (testi silmek gerekir). */
+  canRemoveQuestion(): boolean {
+    return !!this.api.removeQuestion && this.questions().length > 1;
+  }
+
+  removeQuestion(test: BookImportJobTest, question: BookImportReviewQuestion): void {
+    this.removingQuestionId.set(null);
+    const request = this.api.removeQuestion?.(this.jobId(), test.id, question.id);
+    if (!request) return;
+    this.busy.set(test.id);
+    request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.busy.set(null);
+        this.questions.update((questions) => questions.filter((q) => q.id !== question.id));
+        this.changed.emit();
+      },
+      error: (e: HttpErrorResponse) => this.fail(e),
+    });
   }
 
   approve(test: BookImportJobTest): void {

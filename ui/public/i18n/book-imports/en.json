@@ -322,6 +322,8 @@
     "answerlessHint": "Pick the answers of unanswered questions first.",
     "remove": "Remove test {{name}}",
     "removeConfirm": "Remove test",
+    "removeQuestion": "Question {{number}}: remove from the test",
+    "removeQuestionConfirm": "Remove from test",
     "reimport": "Re-import {{name}}",
     "reimportConfirm": "Re-import",
     "reimportHint": "Draft questions are deleted and the test is imported again; page detections come from the cache.",

@@ -190,6 +190,14 @@
     "hint": "Stays on this device only, and teachers cannot see it. Deleted when the test ends.",
     "saveError": "Could not save on this device. Notes are lost when the page closes."
   },
+  "ink": {
+    "open": "Pen",
+    "title": "Draw on the question",
+    "stop": "Turn off the pen: taps go to the question again",
+    "drawingAria": "Drawing area over the question image. Draw with a finger, a pen or the mouse.",
+    "undo": "Undo drawing",
+    "clear": "Clear the drawing on the question"
+  },
   "report": {
     "action": "Report question",
     "title": "Report question",

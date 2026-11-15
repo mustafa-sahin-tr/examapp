@@ -684,6 +684,13 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
   }
 }
 
+// Issue #1175: kalem açıkken geri al / temizle.
+.solve-dock__icon {
+  --mat-icon-button-icon-color: var(--solve-ink);
+  flex: 0 0 auto;
+  align-self: center;
+}
+
 .solve-dock__review {
   min-height: 48px;
   border-radius: 14px;

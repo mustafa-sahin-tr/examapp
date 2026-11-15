@@ -157,6 +157,11 @@ Seçili şık nötr mavi ve işaretlidir; yeşil yalnız doğru cevap içindir. 
 - **Çizim:** SVG yolu; koordinatlar alan genişliği 1000 sayılarak tutulur, ekran döndüğünde çizim genişliğe göre ölçeklenir, alan kısaldıysa alttaki kısım geri dönene kadar görünmez. Kalem kullanıldıktan sonra dokunma çizmez (avuç içi). Silgi yok: geri al ve temizle var, temizleme de geri alınır.
 - **Yerleşim:** masaüstünde yan paneli kaplar (panel 260 → 360 px), telefon ve tablette dock'un üstünde `42dvh`. Soru görünür ve kaydırılabilir kalır, pad açıkken cevap verilebilir.
 - **Dock:** ≤1024 px otomatik geçiş harita sayfasına taşındı; ≤350 px araçlarda yalnız ikon kalır.
+- **Soru görseline çizim (#1175):** dock'taki "Kalem" görselli çoktan seçmeli soruda görselin üstüne şeffaf katman açar
+  (`test-solve-question-ink`; görsel `question-canvas-view-v5`'in `[qcvImageOverlay]` yuvasına verilir). Şıklar görselin
+  dışında olduğu için seçimi engellemez; kalem açıkken parmak görselin üstünde sayfayı kaydırmaz. Kapalıyken çizgiler görünür
+  kalır. Aynı kurallarla saklanır (`testSolve.ink.<oturum>`, soru başına ayrı yazılır, test bitince ve 30 günde silinir); geri
+  al / temizle dock'ta, etkin soruya. Etkinlik türlerinde ve tam ekran büyütmede yok.
 
 **Issue #534 — karışık mini deneme.** `POST practice/sessions` `mixedReview: true` ile sabit listeli oturum açar (`MixedReview.cs`). Varsayılan 15 soru: %40 tekrar zamanı gelen (#529), %30 yanlış defteri, %30 zayıf konulardan (son 30 gün, en az 5 cevap, doğruluk %70 altı, #497) hiç cevaplanmamış soru. Pay ve sayı `PracticeMixedReview` bölümünde; `TargetCount` sayıyı ezer. Aynı soru iki kez girmez, eksik pay diğer kaynaklardan tamamlanır, kaynaklar yetmezse oturum kısa kalır, hepsi boşsa 400 `practice.noMixedReview`. "Zor sorular" kaynağı (#526) henüz yok; yerine yanlış defteri kullanılır, #526 gelince değiştirilir. Bitmemiş test ve atama soruları ile bugünün günlük seti girmez. Süre ve net hesabı yok. Giriş pratik kurulum ekranındaki kart; asistan aracı sonraki adım, aynı isteği kullanır.
 

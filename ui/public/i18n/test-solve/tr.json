@@ -190,6 +190,14 @@
     "hint": "Yalnız bu cihazda kalır, öğretmen görmez. Test bitince silinir.",
     "saveError": "Bu cihazda kaydedilemedi. Notlar sayfa kapanınca kaybolur."
   },
+  "ink": {
+    "open": "Kalem",
+    "title": "Sorunun üstüne çiz",
+    "stop": "Kalemi kapat: dokunuş yine soruya gider",
+    "drawingAria": "Soru görselinin üstüne çizim alanı. Parmağınla, kalemle ya da fareyle çiz.",
+    "undo": "Çizimi geri al",
+    "clear": "Sorudaki çizimi temizle"
+  },
   "report": {
     "action": "Soruyu bildir",
     "title": "Soruyu bildir",

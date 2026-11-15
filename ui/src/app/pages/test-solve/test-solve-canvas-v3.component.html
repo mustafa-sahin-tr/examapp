@@ -171,6 +171,27 @@
             <span class="solve-dock__label">{{ t('scratch.open') }}</span>
           </button>
 
+          <!-- Issue #1175: soru görselinin üstüne çizme; açıkken geri al / temizle etkin sorunun çizimine. -->
+          @if (activeQuestion && inkAvailable(activeQuestion)) {
+          <button mat-stroked-button class="solve-dock__tool" [class.is-active]="inkMode()" data-testid="solve-ink-toggle"
+            (click)="inkMode.set(!inkMode())" [matTooltip]="inkMode() ? t('ink.stop') : t('ink.title')"
+            [attr.aria-label]="t('ink.title')" [attr.aria-pressed]="inkMode()">
+            <mat-icon>edit</mat-icon>
+            <span class="solve-dock__label">{{ t('ink.open') }}</span>
+          </button>
+          @if (inkMode()) {
+          @let ink = inkLayerFor(activeQuestion.question.id);
+          <button mat-icon-button class="solve-dock__icon" [matTooltip]="t('ink.undo')" [attr.aria-label]="t('ink.undo')"
+            [disabled]="!ink?.canUndo()" (click)="ink?.undo()">
+            <mat-icon>undo</mat-icon>
+          </button>
+          <button mat-icon-button class="solve-dock__icon" [matTooltip]="t('ink.clear')" [attr.aria-label]="t('ink.clear')"
+            [disabled]="!ink?.strokes()?.length" (click)="ink?.clear()">
+            <mat-icon>delete_outline</mat-icon>
+          </button>
+          }
+          }
+
           <!-- Dar ekranda otomatik geçiş harita sayfasında (#782: karalamaya yer açar). -->
           @if (!usesMapSheet()) {
           <button mat-stroked-button class="solve-dock__tool" [class.is-active]="autoNextQuestion()"
@@ -676,7 +697,10 @@
           [selectedChoice]="selectedChoices().get(questionData.region.id)"
           (choiceSelected)="selectChoiceForQuestion($event, questionData.index)"
           (answerOpened)="openAnswer($event)"
-          [correctAnswerVisible]="correctAnswerVisible"></app-question-canvas-view-v5>
+          [correctAnswerVisible]="correctAnswerVisible">
+          <app-test-solve-question-ink qcvImageOverlay [instanceId]="testInstance.id"
+            [questionId]="questionData.question.id" [active]="inkMode()" />
+        </app-question-canvas-view-v5>
         }
         }
       </div>

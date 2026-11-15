@@ -12,7 +12,7 @@ import { isTestCompletedRejection, isTimeExpiredRejection } from './test-solve-c
 import { TestService } from '../../services/test.service';
 import { QuestionReportService } from '../../services/question-report.service';
 import { QuestionReportDialogData } from './question-report-dialog.component';
-import { readScratchNotes, writeScratchNotes } from './test-solve-scratch-store';
+import { readInkStrokes, readScratchNotes, writeInkStrokes, writeScratchNotes } from './test-solve-scratch-store';
 import { TestInstance, TestSessionResult, TestStatus } from '../../models/test-instance';
 import { ConfirmDialogData } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { ReviewDialogData } from './test-solve-review-dialog.component';
@@ -1013,12 +1013,14 @@ describe('TestSolveCanvasComponentv3 — finish flow (issue #383)', () => {
             });
         });
 
-        it('finishing removes the scratch notes of this session (#782)', () => {
+        it('finishing removes the scratch notes and the drawings on questions of this session (#782, #1175)', () => {
             writeScratchNotes(component.testInstance.id, { 1: { strokes: [], text: 'x' } });
+            writeInkStrokes(component.testInstance.id, 1, ['M1 2L3 4']);
 
             component['navigateToResult']();
 
             expect(readScratchNotes(component.testInstance.id)).toEqual({});
+            expect(readInkStrokes(component.testInstance.id, 1)).toEqual([]);
         });
 
         it('the old copy is gone', () => {
@@ -1070,6 +1072,20 @@ describe('TestSolveCanvasComponentv3 — matrixChoice (#574)', () => {
         expect(component.interactionKind('MATCH')).toBe('match');
         expect(component.interactionKind('OpenText')).toBe('openText');
         expect(component.interactionKind('TextSelect')).toBe('textSelect');
+    });
+
+    it('penIsOfferedOnlyOnImageMultipleChoice (#1175)', () => {
+        const card = (isCanvasQuestion: boolean, interactionType: string | null) =>
+            ({ index: 0, question: { question: { isCanvasQuestion, interactionType } } });
+        const available = (c: ReturnType<typeof card>) =>
+            (component as unknown as { inkAvailable: (q: unknown) => boolean }).inkAvailable(c);
+
+        expect(available(card(true, null))).toBe(true);
+        expect(available(card(true, 'matrixChoice'))).toBe(false);
+        expect(available(card(false, null))).toBe(false);
+
+        vi.spyOn(component, 'isShowingPassageOnly').mockReturnValue(true);
+        expect(available(card(true, null))).toBe(false);
     });
 
     it('blankDragPlaceAndMatchPayloads_AreSentButCountAsUnanswered (#576)', () => {

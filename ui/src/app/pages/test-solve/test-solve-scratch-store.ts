@@ -16,16 +16,23 @@ export const SCRATCH_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 const KEY_PREFIX = 'testSolve.scratch.';
 const scratchKey = (instanceId: number) => `${KEY_PREFIX}${instanceId}`;
+/** #1175: soru görselinin üstüne çizilenler; karalama notlarıyla aynı kurallar, ayrı anahtar. */
+const INK_KEY_PREFIX = 'testSolve.ink.';
+const inkKey = (instanceId: number) => `${INK_KEY_PREFIX}${instanceId}`;
 /** Eldeki yol yalnız bizim ürettiğimiz biçimde olabilir: M ile başlar, sayı ve L taşır. */
 const STROKE_PATTERN = /^M[\d L]+$/;
+
+function sanitizeStrokes(strokes: unknown): string[] {
+  return Array.isArray(strokes)
+    ? strokes.filter((stroke): stroke is string => typeof stroke === 'string' && STROKE_PATTERN.test(stroke))
+    : [];
+}
 
 function sanitizeNote(value: unknown): ScratchNote | null {
   if (!value || typeof value !== 'object') return null;
   const { strokes, text } = value as Partial<ScratchNote>;
   return {
-    strokes: Array.isArray(strokes)
-      ? strokes.filter((stroke): stroke is string => typeof stroke === 'string' && STROKE_PATTERN.test(stroke))
-      : [],
+    strokes: sanitizeStrokes(strokes),
     text: typeof text === 'string' ? text.slice(0, SCRATCH_TEXT_MAX_LENGTH) : '',
   };
 }
@@ -54,9 +61,48 @@ export function writeScratchNotes(instanceId: number, notes: ScratchNotes, now =
   }
 }
 
+/**
+ * Issue #1175: bir sorunun görseline çizilenler. Koordinatlar görsel genişliği {@link SCRATCH_VIEW_WIDTH} sayılarak tutulur.
+ */
+export function readInkStrokes(instanceId: number, questionId: number): string[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(inkKey(instanceId)) ?? 'null');
+    return sanitizeStrokes(parsed?.strokes?.[questionId]);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Yalnız bu sorunun kaydını değiştirir: aynı anda görünen iki sorunun katmanı birbirinin çizgisini ezmez.
+ * Yazılamazsa false (bkz. {@link writeScratchNotes}).
+ */
+export function writeInkStrokes(instanceId: number, questionId: number, strokes: string[], now = Date.now()): boolean {
+  try {
+    let all: Record<string, unknown> = {};
+    try {
+      const parsed = JSON.parse(localStorage.getItem(inkKey(instanceId)) ?? 'null');
+      if (parsed?.strokes && typeof parsed.strokes === 'object') all = parsed.strokes;
+    } catch {
+      // Okunamayan kayıt yeniden yazılır.
+    }
+    if (strokes.length) {
+      all[questionId] = strokes;
+    } else {
+      delete all[questionId];
+    }
+    localStorage.setItem(inkKey(instanceId), JSON.stringify({ updatedAt: now, strokes: all }));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Testin karalama notlarını ve görsel üstü çizimlerini siler. */
 export function clearScratchNotes(instanceId: number): void {
   try {
     localStorage.removeItem(scratchKey(instanceId));
+    localStorage.removeItem(inkKey(instanceId));
   } catch {
     // Bkz. writeScratchNotes.
   }
@@ -65,7 +111,7 @@ export function clearScratchNotes(instanceId: number): void {
 export function purgeOldScratchNotes(now = Date.now()): void {
   try {
     for (const key of Object.keys(localStorage)) {
-      if (!key.startsWith(KEY_PREFIX)) continue;
+      if (!key.startsWith(KEY_PREFIX) && !key.startsWith(INK_KEY_PREFIX)) continue;
       let updatedAt = 0;
       try {
         updatedAt = Number(JSON.parse(localStorage.getItem(key) ?? 'null')?.updatedAt) || 0;

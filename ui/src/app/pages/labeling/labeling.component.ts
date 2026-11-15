@@ -88,6 +88,7 @@ import {
   rootFolderName,
   upsertRecentFolder,
 } from './labeling-recent';
+import { LabelingKeyPageComponent } from './labeling-key-page/labeling-key-page.component';
 
 /** Sayfa metinleri kendi Transloco scope'unda: `public/i18n/labeling/<lang>.json`. */
 const LABELING_SCOPE = 'labeling';
@@ -126,6 +127,7 @@ type DrawMode = 'question' | 'answer';
   selector: 'app-labeling',
   standalone: true,
   imports: [
+    LabelingKeyPageComponent,
     MatButtonModule,
     MatButtonToggleModule,
     MatFormFieldModule,
@@ -1210,6 +1212,7 @@ export class LabelingComponent {
             testName: kind === 'QuickAdd' ? (test.title ?? '') : bookImportTestName(test),
             kind,
             pages: bookImportTestPages(test),
+            keyPages: kind === 'Book' ? (test.keyPages ?? []) : [],
           };
           void this.hashFile(file).then((pageId) => {
             this.fixLoading.set(false);
@@ -1632,6 +1635,8 @@ export interface LabelingFixTarget {
   kind: BookImportJobKind;
   /** #1129: testin sayfaları (işaretliler `flagged`); tuvalde bunlar arasında gezilir. */
   pages: { page: number; flagged: boolean }[];
+  /** #1176: testin cevap anahtarı sayfaları (hızlı eklemede yok); şeritte küçük görsel, tıklayınca büyür. */
+  keyPages: number[];
 }
 
 function roundBox(box: LabelingBankBox): LabelingBankBox {

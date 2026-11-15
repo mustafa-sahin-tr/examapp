@@ -47,7 +47,18 @@
     "position": "Sayfa {{at}} / {{total}}",
     "outside": "{{total}} sayfa",
     "onlyFlagged": "Yalnız işaretli sayfalar",
-    "skipHint": "Kaydetmeden geçer; bu sayfadaki değişiklikler atılır."
+    "skipHint": "Kaydetmeden geçer; bu sayfadaki değişiklikler atılır.",
+    "key": {
+      "label": "Cevap anahtarı · s. {{page}}",
+      "open": "Cevap anahtarı sayfasını büyüt (dosya sayfası {{page}})",
+      "failed": "Anahtar sayfası açılamadı",
+      "title": "Cevap anahtarı",
+      "positioned": "Cevap anahtarı · s. {{page}} ({{at}} / {{total}})",
+      "bookPagesHint": "Bu test kurulurken anahtarın hangi sayfadan okunduğu kaydedilmemiş; kitabın bütün anahtar sayfaları gösteriliyor.",
+      "prev": "Önceki anahtar sayfası",
+      "next": "Sonraki anahtar sayfası",
+      "close": "Kapat"
+    }
   },
   "bank": {
     "save": "Havuza kaydet",

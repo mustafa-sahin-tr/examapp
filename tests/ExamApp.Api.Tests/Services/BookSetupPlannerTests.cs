@@ -105,6 +105,19 @@ public class BookSetupPlannerTests
     }
 
     [Fact]
+    public void Each_test_keeps_the_page_its_key_was_read_from()
+    {
+        var pages = new[] { Test(1, 1, 1), Test(2, 1, 2), Test(3, 1, 3), Page(4, BookPageKind.AnswerKey), Page(5, BookPageKind.AnswerKey) };
+        AnswerKeyRow[] first = [Row(1, 1, "AB") with { KeyPage = 4 }, Row(1, 2, "C") with { KeyPage = 0 }];
+        AnswerKeyRow[] second = [Row(1, 1, "AB") with { KeyPage = 5 }, Row(1, 2, "C") with { KeyPage = 5 }];
+
+        var plan = BookSetupPlanner.Plan(pages, [], first, second);
+
+        // İlk okuma önce; onda sayfa yoksa ikinci okumanınki; anahtarı olmayan testte yok.
+        plan.Tests.Select(t => t.KeyPage).ShouldBe([4, 5, null]);
+    }
+
+    [Fact]
     public void Key_length_drives_the_expected_count_and_a_different_page_count_is_flagged()
     {
         var pages = new[] { Test(1, 1, 1, maxQuestion: 4), Page(2, BookPageKind.AnswerKey) };

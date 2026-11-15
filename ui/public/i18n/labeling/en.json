@@ -47,7 +47,18 @@
     "position": "Page {{at}} / {{total}}",
     "outside": "{{total}} pages",
     "onlyFlagged": "Only flagged pages",
-    "skipHint": "Moves without saving; changes on this page are discarded."
+    "skipHint": "Moves without saving; changes on this page are discarded.",
+    "key": {
+      "label": "Answer key · p. {{page}}",
+      "open": "Enlarge the answer key page (file page {{page}})",
+      "failed": "Could not open the key page",
+      "title": "Answer key",
+      "positioned": "Answer key · p. {{page}} ({{at}} / {{total}})",
+      "bookPagesHint": "This test was set up before the key page was recorded; all answer key pages of the book are shown.",
+      "prev": "Previous key page",
+      "next": "Next key page",
+      "close": "Close"
+    }
   },
   "bank": {
     "save": "Save to pool",

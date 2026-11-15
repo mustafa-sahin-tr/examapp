@@ -141,6 +141,11 @@ public class BookImportJobTestDto
     public int? FileTo { get; set; }
     public int Answerless { get; set; }
 
+    /// <summary>
+    /// Issue #1176: cevap anahtarının okunduğu dosya sayfası; eski kurulumda kitabın bütün anahtar sayfaları. Anahtar yoksa boş.
+    /// </summary>
+    public List<int> KeyPages { get; set; } = new();
+
     /// <summary>Issue #1024: yalnız Admin'e — testin soru aktarımı maliyeti.</summary>
     public decimal? CostUsd { get; set; }
 

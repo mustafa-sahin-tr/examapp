@@ -226,6 +226,7 @@ internal sealed class BookSetupStage(
             ExpectedQuestions = t.ExpectedQuestions,
             AnswerKey = t.AnswerKey,
             KeyConflicts = t.KeyConflicts,
+            KeyFilePage = t.KeyPage,
             KeyAnswers = t.AnswerKey?.Count(c => c != '?') ?? 0,
             FlagsJson = t.Flags.Count == 0 ? null : JsonSerializer.Serialize(t.Flags),
         }));

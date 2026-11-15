@@ -184,6 +184,10 @@ aktarım aracındaki Python portu referanstır (#1022).
   uyuşmazlığı testin güncel soru sayısıyla; işaret kalmazsa test `Done`. Başarısız testte (taslak testi yok) düzeltme taslak
   testi açar. Boş sayfa kaydı onayla sayfanın taslaklarını siler. Kayıt başarısızsa test değişmez. Kırpması başka bir aktarımda
   ya da bankada etkin olan soru tekrar sayılır ve bağlanmaz (aktarımla aynı kural).
+  **Anahtar sayfası (#1176):** kurulum her testin anahtarının okunduğu dosya sayfasını `BookImportJobTests.KeyFilePage`'e yazar
+  (ilk okumanınki, yoksa ikincininki). İş detayındaki `keyPages` bu sayfayı, alan boşsa (önceki kurulumlar, demo kopyası)
+  kitabın bütün anahtar sayfalarını (`SetupJson.AnswerKeyRanges`) verir; anahtarsız testte boş. Düzeltme şeridinde küçük görsel,
+  tıklayınca büyür (birden çok sayfada önceki / sonraki). Hızlı eklemede yok.
 
 ## Maliyet ve bütçe (#1024)
 

@@ -442,6 +442,8 @@ export interface BookImportReviewApi {
   reimportTest?(id: string, testId: number): Observable<void>;
   /** #1169 Kitap aktarımı: hatalı tespit edilmiş taslak soruyu testten çıkar (hızlı eklemede yok). */
   removeQuestion?(id: string, testId: number, questionId: number): Observable<void>;
+  /** #1190 Kitap aktarımı: uyarılı sayfanın görseli (hızlı eklemede yok). */
+  pageImage?(id: string, filePage: number): Observable<Blob>;
 }
 
 /** Testin kısa adı: "1-03 · Kesirler". */

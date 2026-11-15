@@ -162,10 +162,61 @@
             @for (code of item.codes; track code; let last = $last) {{{ t('reviewFlagsShort.' + code) }}{{ last ? '' : ', ' }}}
           </span>
           }
+          @if (canViewPage()) {
+          <button mat-stroked-button type="button" class="bir-flags__view" data-testid="view-page" (click)="openPage(test, p.page)">
+            <mat-icon aria-hidden="true">image</mat-icon>{{ t('review.viewPage') }}
+          </button>
+          }
         </li>
         }
         }
       </ul>
+      @if (pageView(); as v) {
+      <div class="bir-zoom" role="dialog" aria-modal="true" [attr.aria-label]="t('review.flagPage', { page: v.page })"
+        data-testid="page-view" (click)="closePage()" (keydown)="pageKey($event)">
+        <div class="bir-zoom__bar" (click)="$event.stopPropagation()">
+          <span class="bir-zoom__title">{{ testName(test) }} · {{ t('review.flagPage', { page: v.page }) }}</span>
+          @if (pageViewFlags(); as p) {
+          <span class="bir-zoom__flags">
+            @for (item of p.items; track item.number) {
+            <span class="bir-flags__item">
+              @if (item.number != null) { <b>{{ item.number }}:</b>{{ ' ' }} }
+              @for (code of item.codes; track code; let last = $last) {{{ t('reviewFlagsShort.' + code) }}{{ last ? '' : ', ' }}}
+            </span>
+            }
+          </span>
+          }
+          @if (editable() && canFix()) {
+          <a mat-stroked-button routerLink="/labeling" [queryParams]="fixParams(test.id, v.page)">
+            <mat-icon aria-hidden="true">edit_square</mat-icon>{{ t('review.fix') }}
+          </a>
+          }
+          <button #pageClose mat-icon-button type="button" [attr.aria-label]="t('review.zoomClose')" (click)="closePage()">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+        <div class="bir-zoom__body" (click)="$event.stopPropagation()">
+          @if (pageViewLoading()) {
+          <div class="bir-note" role="status"><mat-spinner diameter="18" aria-hidden="true"></mat-spinner>{{ t('review.loading') }}</div>
+          } @else if (pageViewUrl(); as url) {
+          <img class="bir-zoom__image" [src]="url" [alt]="t('review.pageAlt', { page: v.page })" />
+          } @else {
+          <p class="bir-note bir-note--danger" role="alert">{{ t('review.pageFailed') }}</p>
+          }
+        </div>
+        @if (pageViewPages().length > 1) {
+        <div class="bir-zoom__nav" (click)="$event.stopPropagation()">
+          <button mat-icon-button type="button" [attr.aria-label]="t('review.pagePrev')" [disabled]="pageViewPages()[0] === v.page" (click)="pageBy(-1)">
+            <mat-icon>chevron_left</mat-icon>
+          </button>
+          <span aria-live="polite">{{ t('review.zoomPosition', { index: pageViewPages().indexOf(v.page) + 1, total: pageViewPages().length }) }}</span>
+          <button mat-icon-button type="button" [attr.aria-label]="t('review.pageNext')" [disabled]="pageViewPages()[pageViewPages().length - 1] === v.page" (click)="pageBy(1)">
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+        </div>
+        }
+      </div>
+      }
       }
 
       @if (previewId() === test.id) {

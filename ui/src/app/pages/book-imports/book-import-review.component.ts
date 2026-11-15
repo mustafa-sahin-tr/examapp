@@ -122,6 +122,22 @@ export class BookImportReviewComponent implements OnInit {
     if (this.zoomIndex() != null) this.zoomClose()?.nativeElement.focus();
   });
 
+  /** #1190: uyarılı sayfa işaretlemeye gitmeden büyük görselde; uyarılı sayfalar arasında gezilir. */
+  readonly pageView = signal<{ testId: number; page: number } | null>(null);
+  readonly pageViewUrl = signal<string | null>(null);
+  readonly pageViewLoading = signal(false);
+  readonly pageViewPages = computed(() => this.openFlags()?.pages.map((p) => p.page) ?? []);
+  readonly pageViewFlags = computed(() => {
+    const view = this.pageView();
+    return view ? (this.openFlags()?.pages.find((p) => p.page === view.page) ?? null) : null;
+  });
+  readonly canViewPage = computed(() => !!this.api.pageImage);
+  private pageViewObjectUrl: string | null = null;
+  private readonly pageClose = viewChild('pageClose', { read: ElementRef<HTMLElement> });
+  private readonly pageFocus = effect(() => {
+    if (this.pageView() != null) this.pageClose()?.nativeElement.focus();
+  });
+
   /** İncelemedeki testler (onaylanan / silinen hariç); filtre açıkken yalnız bakılması gerekenler. */
   readonly open = computed(() => this.tests().filter((t) => t.status !== 'Approved' && t.status !== 'Removed'));
   readonly visible = computed(() => (this.onlyAttention() ? this.open().filter(needsAttention) : this.open()));
@@ -130,6 +146,10 @@ export class BookImportReviewComponent implements OnInit {
   readonly answered = computed(() => this.questions().filter((q) => q.answerIndex != null).length);
 
   readonly isApprovable = isApprovable;
+
+  constructor() {
+    this.destroyRef.onDestroy(() => this.revokePageView());
+  }
 
   ngOnInit(): void {
     // Hızlı eklemede az fotoğraf var ve hepsi onaylanır: bütün satırlar görünür.
@@ -212,6 +232,57 @@ export class BookImportReviewComponent implements OnInit {
     else if (event.key === 'ArrowRight') this.zoomBy(1);
     else return;
     event.preventDefault();
+  }
+
+  openPage(test: BookImportJobTest, page: number): void {
+    const load = this.api.pageImage;
+    if (!load) return;
+    this.pageView.set({ testId: test.id, page });
+    this.revokePageView();
+    this.pageViewLoading.set(true);
+    load
+      .call(this.api, this.jobId(), page)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (blob) => {
+          // Hızlı geçişte geç gelen eski sayfa yeni sayfanın yerine geçmesin.
+          if (this.pageView()?.page !== page) return;
+          this.pageViewObjectUrl = URL.createObjectURL(blob);
+          this.pageViewUrl.set(this.pageViewObjectUrl);
+          this.pageViewLoading.set(false);
+        },
+        error: () => {
+          if (this.pageView()?.page === page) this.pageViewLoading.set(false);
+        },
+      });
+  }
+
+  pageBy(step: number): void {
+    const view = this.pageView();
+    const test = view ? this.testById(view.testId) : undefined;
+    if (!view || !test) return;
+    const pages = this.pageViewPages();
+    const next = pages[pages.indexOf(view.page) + step];
+    if (next != null) this.openPage(test, next);
+  }
+
+  closePage(): void {
+    this.pageView.set(null);
+    this.revokePageView();
+  }
+
+  pageKey(event: KeyboardEvent): void {
+    if (event.key === 'Escape') this.closePage();
+    else if (event.key === 'ArrowLeft') this.pageBy(-1);
+    else if (event.key === 'ArrowRight') this.pageBy(1);
+    else return;
+    event.preventDefault();
+  }
+
+  private revokePageView(): void {
+    if (this.pageViewObjectUrl) URL.revokeObjectURL(this.pageViewObjectUrl);
+    this.pageViewObjectUrl = null;
+    this.pageViewUrl.set(null);
   }
 
   togglePreview(test: BookImportJobTest): void {

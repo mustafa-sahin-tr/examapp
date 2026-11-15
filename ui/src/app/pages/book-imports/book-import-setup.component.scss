@@ -140,16 +140,19 @@
   }
 }
 
+.bis-keypage__open {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+
 .bis-keypage {
   position: sticky;
   top: 12px;
   margin: 0;
-
-  &__test {
-    margin-left: 4px;
-    font-weight: 700;
-    color: var(--ms-text-strong);
-  }
 
   &__tabs {
     display: flex;
@@ -382,4 +385,77 @@
   align-items: center;
   gap: 8px;
   color: var(--ms-text-medium);
+}
+
+// #1192: testin sayfaları tam ekran; üstte anahtar, altta önceki / sonraki.
+.bis-view {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: color-mix(in srgb, var(--ms-surface) 92%, transparent);
+
+  &__bar,
+  &__nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    max-width: 100%;
+    padding: 6px 12px;
+    border-radius: 12px;
+    background: var(--ms-surface);
+    color: var(--ms-text-strong);
+  }
+
+  &__title {
+    font-weight: 600;
+  }
+
+  &__key {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  &__cell {
+    padding: 0 6px;
+    border: 1px solid var(--ms-border);
+    border-radius: 6px;
+    font-weight: 700;
+
+    small {
+      margin-right: 3px;
+      font-weight: 400;
+      color: var(--ms-text-medium);
+    }
+
+    &--conflict {
+      background: var(--ms-warning-surface-weak);
+      border-color: var(--ms-warning-text);
+
+      small:last-child {
+        margin: 0 0 0 2px;
+        color: var(--ms-warning-text);
+      }
+    }
+  }
+
+  &__body {
+    flex: 1;
+    min-height: 0;
+    width: min(100%, 1000px);
+    overflow: auto;
+
+    img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 8px;
+    }
+  }
 }

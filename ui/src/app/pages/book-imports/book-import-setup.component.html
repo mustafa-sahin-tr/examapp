@@ -55,19 +55,12 @@
   </div>
 
   <div class="bis-body">
-    @if (keyPages().length || viewedRow()) {
+    @if (keyPages().length) {
     <figure class="bis-keypage" [class.bis-keypage--large]="keyImageLarge()">
       <div class="bis-keypage__tabs" role="group" [attr.aria-label]="t('setup.keyPages')">
         @for (page of keyPages(); track page) {
-        <button mat-stroked-button type="button" [class.bis-active]="!viewedRow() && keyPage() === page"
-          [attr.aria-pressed]="!viewedRow() && keyPage() === page" (click)="showAnswerKey(page)">{{ t('setup.page', { page }) }}</button>
-        }
-        @if (viewedRow(); as v) {
-        <span class="bis-keypage__test" data-testid="viewed-test">{{ v.unit }}-{{ v.testNo < 10 ? '0' + v.testNo : v.testNo }}</span>
-        @for (page of viewedPages(); track page) {
         <button mat-stroked-button type="button" [class.bis-active]="keyPage() === page" [attr.aria-pressed]="keyPage() === page"
           (click)="showKeyPage(page)">{{ t('setup.page', { page }) }}</button>
-        }
         }
         <button mat-icon-button type="button" (click)="keyImageLarge.set(!keyImageLarge())"
           [attr.aria-label]="keyImageLarge() ? t('setup.shrink') : t('setup.enlarge')">
@@ -75,7 +68,10 @@
         </button>
       </div>
       @if (keyImage(); as src) {
-      <img [src]="src" [alt]="viewedRow() ? t('setup.testPageAlt', { page: keyPage() }) : t('setup.keyImageAlt', { page: keyPage() })" />
+      <button type="button" class="bis-keypage__open" data-testid="key-open" [attr.aria-label]="t('setup.openKeyLarge')"
+        [attr.title]="t('setup.openKeyLarge')" (click)="showKeyLarge()">
+        <img [src]="src" [alt]="t('setup.keyImageAlt', { page: keyPage() })" />
+      </button>
       } @else {
       <div class="bis-keypage__empty"><mat-spinner diameter="20" aria-hidden="true"></mat-spinner></div>
       }
@@ -130,7 +126,7 @@
                   [attr.aria-label]="t('setup.toPage')" />
               </mat-form-field>
               <button mat-icon-button type="button" class="bis-pages__view" data-testid="view-test-pages"
-                [class.bis-active]="viewedTest() === row.order" [disabled]="row.fileFrom == null"
+                [disabled]="row.fileFrom == null"
                 [attr.aria-label]="t('setup.viewTestPages', { unit: row.unit, no: row.testNo })"
                 [attr.title]="t('setup.viewTestPages', { unit: row.unit, no: row.testNo })" (click)="showTestPages(row)">
                 <mat-icon>visibility</mat-icon>
@@ -167,6 +163,50 @@
       </table>
     </div>
   </div>
+
+  @if (viewerOpen()) {
+  <div class="bis-view" role="dialog" aria-modal="true" data-testid="test-pages"
+    [attr.aria-label]="viewedRow() ? t('setup.viewTestPages', { unit: viewedRow()!.unit, no: viewedRow()!.testNo }) : t('setup.keyPages')"
+    (click)="closeTestPages()" (keydown)="testPagesKey($event)">
+    <div class="bis-view__bar" (click)="$event.stopPropagation()">
+      @if (viewedRow(); as v) {
+      <span class="bis-view__title">{{ v.unit }}-{{ v.testNo < 10 ? '0' + v.testNo : v.testNo }} · {{ v.title }}</span>
+      @if (v.key; as key) {
+      <span class="bis-view__key" [attr.aria-label]="t('setup.keyOf', { unit: v.unit, no: v.testNo })">
+        @for (cell of key; track $index; let c = $index) {
+        <span class="bis-view__cell" [class.bis-view__cell--conflict]="conflictLabel(v, c)">
+          <small>{{ c + 1 }}</small>{{ cell || '?' }}@if (conflictLabel(v, c); as other) {<small>/{{ other }}</small>}
+        </span>
+        }
+      </span>
+      }
+      } @else {
+      <span class="bis-view__title">{{ t('setup.keyPages') }}</span>
+      }
+      <button #viewClose mat-icon-button type="button" [attr.aria-label]="t('setup.closePages')" (click)="closeTestPages()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+    <div class="bis-view__body" (click)="$event.stopPropagation()">
+      @if (viewedImage(); as src) {
+      <img [src]="src" [alt]="viewedRow() ? t('setup.testPageAlt', { page: viewedPage() }) : t('setup.keyImageAlt', { page: viewedPage() })" />
+      } @else if (viewedFailed()) {
+      <p class="bis-error" role="alert">{{ t('setup.pageFailed') }}</p>
+      } @else {
+      <div class="bis-keypage__empty"><mat-spinner diameter="20" aria-hidden="true"></mat-spinner></div>
+      }
+    </div>
+    <div class="bis-view__nav" (click)="$event.stopPropagation()">
+      <button mat-stroked-button type="button" [disabled]="viewedPages()[0] === viewedPage()" (click)="testPageBy(-1)">
+        <mat-icon aria-hidden="true">chevron_left</mat-icon>{{ t('setup.prevPage') }}
+      </button>
+      <span aria-live="polite">{{ t('setup.page', { page: viewedPage() }) }} · {{ viewedPages().indexOf(viewedPage()!) + 1 }} / {{ viewedPages().length }}</span>
+      <button mat-stroked-button type="button" [disabled]="viewedPages()[viewedPages().length - 1] === viewedPage()" (click)="testPageBy(1)">
+        {{ t('setup.nextPage') }}<mat-icon iconPositionEnd aria-hidden="true">chevron_right</mat-icon>
+      </button>
+    </div>
+  </div>
+  }
 
   <footer class="bis-confirm">
     @if (s.existingBook; as existing) {

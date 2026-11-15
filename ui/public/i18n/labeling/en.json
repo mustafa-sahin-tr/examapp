@@ -131,6 +131,7 @@
     "answers": "Choices",
     "noAnswers": "This question has no choices.",
     "removeAnswerAria": "Remove choice {{label}}",
+    "letterAria": "Change the letter of choice {{label}}",
     "answerCountMismatch": "Must have {{count}} choices; a mismatched question cannot be sent for training.",
     "align": "Align",
     "drawAnswer": "Draw choice",

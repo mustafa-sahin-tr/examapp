@@ -89,6 +89,7 @@ import {
   upsertRecentFolder,
 } from './labeling-recent';
 import { LabelingKeyPageComponent } from './labeling-key-page/labeling-key-page.component';
+import { AnswerLetterPickerComponent } from '../../shared/components/answer-letter-picker/answer-letter-picker.component';
 
 /** Sayfa metinleri kendi Transloco scope'unda: `public/i18n/labeling/<lang>.json`. */
 const LABELING_SCOPE = 'labeling';
@@ -127,6 +128,7 @@ type DrawMode = 'question' | 'answer';
   selector: 'app-labeling',
   standalone: true,
   imports: [
+    AnswerLetterPickerComponent,
     LabelingKeyPageComponent,
     MatButtonModule,
     MatButtonToggleModule,
@@ -1462,6 +1464,14 @@ export class LabelingComponent {
     const index = this.inspector?.index;
     if (index != null && !this.inspectorLocked) {
       this.selectorRef()?.setCorrectAnswer(index, answerIndex, 1);
+    }
+  }
+
+  /** Issue #1183: şıkkın harfini seçer (şık o sıraya taşınır); bkz. `ImageSelectorComponent.setAnswerLetter`. */
+  insSetAnswerLetter(answerIndex: number, letterIndex: number): void {
+    const index = this.inspector?.index;
+    if (index != null && !this.inspectorLocked) {
+      this.selectorRef()?.setAnswerLetter(index, answerIndex, letterIndex);
     }
   }
 

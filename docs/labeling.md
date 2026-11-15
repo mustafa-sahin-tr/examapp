@@ -248,3 +248,14 @@ korunur; yazılamazsa düzeltme geçerli kalır, loglanır). Arayüz: kitap akta
 ZIP indir). Veri setine yazma: `question-detector/training/import_book_export.py <zip> [--dry-run]` (`dataset_store.save_page`;
 `page_id` = görsel SHA-256'sının ilk 16 hanesi, işaretleme ekranıyla aynı; veri setinde olan sayfa atlanır, görsel / hash
 uyuşmazsa sayılır ve yazılmaz). Kitap görselleri yayınevi içeriği: yalnız eğitim için, dışarı paylaşılmaz.
+
+## Şık harfleri (#1181, #1183)
+
+- Şıkkın harfi dizideki sırasıdır (0 → A); kayıtta `Answer.Text` ve `Answer.Tag` harfi, `Answer.Order` sırayı tutar.
+- Konumdan harflendirme (`renameAnswers`) okuma sırasıdır: kutular dikey örtüşmeyle satırlara, satırlar yukarıdan aşağı, satır
+  içi soldan sağa (2x2 dizilimde birkaç piksel kayma B'yi D yapmaz).
+- Claude şık tespiti her şıkkın basılı harfini `label` olarak döndürür; elle kayıt da saklar. Harfler tam takımsa (A'dan
+  boşluksuz, tekil) tuval şıkları o harflere dizer ve **kilitler** (`QuestionRegion.lettersLocked`): hizalama / yeni şık konumdan
+  yeniden harflendirmez. Kitap aktarımı da aynı kuralla sıralar.
+- Müfettişte (işaretleme ve soru tuvali) şık çipindeki ▾ harfi seçtirir: şık o sıraya taşınır, diğerleri kayar, doğru şık
+  işareti aynı kutuda kalır, harfler kilitlenir. Kayıtlı soru önizlemesinde kapalı (sıra sunucuya yazılmaz).

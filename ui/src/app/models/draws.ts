@@ -68,6 +68,11 @@ export interface QuestionRegion {
   /** Issue #692: kayıtla birlikte yazılacak MEB kazanımları. */
   learningOutcomes?: LearningOutcome[];
   answers: AnswerChoice[];
+  /**
+   * Issue #1183: şıkların harfi okunmuş (Claude), kayıttan gelmiş ya da elle seçilmiş; hizalama / yeni şık konumdan yeniden
+   * harflendirmez, şıklar dizideki sırayla A, B, C … kalır.
+   */
+  lettersLocked?: boolean;
   passage?: PassageRegion;
   // Optional authoring/solve hint: show passage first, then reveal question.
   showPassageFirst?: boolean;

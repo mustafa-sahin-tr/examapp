@@ -1,0 +1,15 @@
+<button
+  type="button"
+  class="alp-trigger"
+  data-testid="answer-letter-picker"
+  [matMenuTriggerFor]="menu"
+  [disabled]="disabled() || count() < 2"
+  [attr.aria-label]="ariaLabel()"
+>
+  <mat-icon>expand_more</mat-icon>
+</button>
+<mat-menu #menu="matMenu" class="alp-menu">
+  @for (letter of letters(); track letter; let i = $index) {
+    <button mat-menu-item type="button" [disabled]="i === index()" (click)="picked.emit(i)">{{ letter }}</button>
+  }
+</mat-menu>

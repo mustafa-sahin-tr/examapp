@@ -131,6 +131,7 @@
     "answers": "Şıklar",
     "noAnswers": "Bu soruda şık yok.",
     "removeAnswerAria": "{{label}} şıkkını sil",
+    "letterAria": "{{label}} şıkkının harfini değiştir",
     "answerCountMismatch": "Şık sayısı {{count}} olmalı; uyumsuz soru eğitime gönderilemez.",
     "align": "Hizala",
     "drawAnswer": "Şık çiz",

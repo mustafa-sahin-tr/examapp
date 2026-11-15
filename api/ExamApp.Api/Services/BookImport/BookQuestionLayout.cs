@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExamApp.Api.Services.Labeling;
 
 namespace ExamApp.Api.Services.BookImport;
 
@@ -13,8 +14,11 @@ public readonly record struct LayoutBox(int X, int Y, int Width, int Height)
     public double CenterY => Y + Height / 2d;
 }
 
-/// <summary>Tespit edilen soru kutusu ve şıkları.</summary>
-public sealed record LayoutQuestion(LayoutBox Box, IReadOnlyList<LayoutBox> Options);
+/// <summary>
+/// Tespit edilen soru kutusu ve şıkları; <paramref name="Letters"/> şıkların Claude'un okuduğu harfleri (#1183, şıklarla aynı
+/// sırada, okunamayan null; YOLO / eski kayıtta yok).
+/// </summary>
+public sealed record LayoutQuestion(LayoutBox Box, IReadOnlyList<LayoutBox> Options, IReadOnlyList<string?>? Letters = null);
 
 /// <summary>Sorudan ayrı çerçevedeki uyaran (<c>info_box</c>); <paramref name="SharedQuestions"/> kaç soruya ortak olduğu.</summary>
 public sealed record LayoutStimulus(LayoutBox Box, int SharedQuestions = 1);
@@ -117,8 +121,8 @@ public static class BookQuestionLayout
     }
 
     /// <summary>
-    /// Kayda gidecek soru: soru kutusu taşan şıkları (dolgu dahil) içerecek kadar büyür; şıklar okuma sırasına (satır, x)
-    /// dizilir, dolgulanır, hizalanır ve komşuya taşan dolgu tespit kutularının ortasından kesilir.
+    /// Kayda gidecek soru: soru kutusu taşan şıkları (dolgu dahil) içerecek kadar büyür; şıklar harflerine ya da okuma
+    /// sırasına (satır, x) dizilir, dolgulanır, hizalanır ve komşuya taşan dolgu tespit kutularının ortasından kesilir.
     /// </summary>
     public static LayoutQuestion Prepare(LayoutQuestion question, int pageWidth, int pageHeight)
     {
@@ -135,7 +139,10 @@ public static class BookQuestionLayout
         }
 
         var row = 60 * pageWidth / BaseWidth;
-        var ordered = raw.OrderBy(o => (int)(o.Y / row)).ThenBy(o => o.X).ToList();
+        // Issue #1183: Claude'un okuduğu harfler tam bir takımsa (A, B, C, D) sıra onlardan; değilse okuma sırası.
+        var ordered = question.Letters is { } letters && letters.Count == raw.Count && OptionLetters.IsCompleteSet(letters)
+            ? raw.Zip(letters).OrderBy(p => p.Second, StringComparer.Ordinal).Select(p => p.First).ToList()
+            : raw.OrderBy(o => (int)(o.Y / row)).ThenBy(o => o.X).ToList();
         var options = TrimOverlaps(ordered, AlignChoices(ordered.Select(o => Padded(o, q, pad)).ToList(), pageWidth));
         return new LayoutQuestion(q, options);
     }

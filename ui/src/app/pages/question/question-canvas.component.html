@@ -583,6 +583,8 @@
                   {{ answer.label }}
                   @if (answer.isCorrect) { <mat-icon>check</mat-icon> }
                 </button>
+                <app-answer-letter-picker [count]="d.answers.length" [index]="j" [disabled]="previewOn"
+                  [ariaLabel]="t('inspector.letterAria', { label: answer.label })" (picked)="insSetAnswerLetter(j, $event)" />
                 <button type="button" class="qc-choice__del" (click)="insRemoveAnswer(j)"
                   [attr.aria-label]="t('inspector.removeAnswerAria', { label: answer.label })">
                   <mat-icon>close</mat-icon>

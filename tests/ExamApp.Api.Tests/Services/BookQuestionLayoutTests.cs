@@ -176,4 +176,32 @@ public class BookQuestionLayoutTests
         prepared.Options.Select(o => (o.X, o.Y)).ShouldBe([(125, 475), (575, 475), (125, 625), (575, 625)]);
         prepared.Options.ShouldAllBe(o => o.Width == 250);
     }
+
+    [Fact]
+    public void Prepare_OrdersOptionsByTheirReadLetters_WhenTheyFormACompleteSet()
+    {
+        // #1183: B kutusu D'nin satırına kaymış; Claude'un harfleri sırayı belirler.
+        var question = new LayoutQuestion(B(100, 100, 1000, 600),
+            [B(600, 560, 200, 60), B(150, 500, 200, 60), B(600, 505, 200, 50), B(150, 652, 200, 60)],
+            ["D", "A", "B", "C"]);
+
+        var prepared = BookQuestionLayout.Prepare(question, Width, Height);
+
+        prepared.Options.Select(o => o.X).ShouldBe([125, 575, 125, 575]);
+        prepared.Options[1].Y.ShouldBeLessThan(prepared.Options[3].Y);
+    }
+
+    [Theory]
+    [InlineData("A", "A", "C", "D")]
+    [InlineData("A", null, "C", "D")]
+    [InlineData("A", "B", "C", "E")]
+    public void Prepare_FallsBackToReadingOrder_WhenLettersAreIncompleteOrRepeated(string? a, string? b, string? c, string? d)
+    {
+        var question = new LayoutQuestion(B(100, 100, 1000, 600),
+            [B(600, 650, 200, 60), B(150, 500, 200, 60), B(600, 505, 200, 50), B(150, 652, 200, 60)], [a, b, c, d]);
+
+        var prepared = BookQuestionLayout.Prepare(question, Width, Height);
+
+        prepared.Options.Select(o => (o.X, o.Y)).ShouldBe([(125, 475), (575, 475), (125, 625), (575, 625)]);
+    }
 }

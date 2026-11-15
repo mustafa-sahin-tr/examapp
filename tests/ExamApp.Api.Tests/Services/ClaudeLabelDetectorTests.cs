@@ -165,6 +165,8 @@ public class ClaudeLabelDetectorTests
         // Soru kutusu = pay + şıkların birleşimi (şıklar kırpma içinde sahte koordinatlarla dönüyor).
         box.Subpredictions.ShouldAllBe(o =>
             o.X >= box.X && o.Y >= box.Y && o.X + o.Width <= box.X + box.Width && o.Y + o.Height <= box.Y + box.Height);
+        // #1183: şıkkın okunan harfi kutusuyla gelir.
+        box.Subpredictions.Select(o => o.Label).ShouldBe(["A", "B"]);
     }
 
     [Fact]

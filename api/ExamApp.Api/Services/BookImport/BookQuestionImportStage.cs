@@ -418,7 +418,8 @@ internal sealed class BookQuestionImportStage(
     internal static IEnumerable<LayoutQuestion> ToLayout(PredictionListDto predictions) =>
         (predictions.Predictions ?? [])
         .Where(p => (p.Kind ?? LabelingBlocks.McqQuestion) == LabelingBlocks.McqQuestion)
-        .Select(p => new LayoutQuestion(Box(p), (p.Subpredictions ?? []).Select(Box).ToList()));
+        .Select(p => new LayoutQuestion(Box(p), (p.Subpredictions ?? []).Select(Box).ToList(),
+            (p.Subpredictions ?? []).Select(o => OptionLetters.Normalize(o.Label)).ToList()));
 
     /// <summary>Issue #1062: sorudan ayrı çerçevedeki uyaranlar; soruyla örtüşmeyenler pasaj olur.</summary>
     internal static IEnumerable<LayoutStimulus> ToStimuli(PredictionListDto predictions) =>

@@ -124,6 +124,7 @@
     "dragDrop": "Drag & drop",
     "answers": "Choices",
     "removeAnswerAria": "Delete choice {{label}}",
+    "letterAria": "Change the letter of choice {{label}}",
     "noAnswers": "No choices yet.",
     "autoBadge": "automatic",
     "drawAnswer": "Draw choice",

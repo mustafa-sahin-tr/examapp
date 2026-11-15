@@ -124,6 +124,7 @@
     "dragDrop": "Sürükle-Bırak",
     "answers": "Şıklar",
     "removeAnswerAria": "{{label}} şıkkını sil",
+    "letterAria": "{{label}} şıkkının harfini değiştir",
     "noAnswers": "Henüz şık yok.",
     "autoBadge": "otomatik",
     "drawAnswer": "Şık çiz",

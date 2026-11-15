@@ -582,6 +582,7 @@ public sealed class LabelingBankService(
                         Width = box.Width,
                         Height = box.Height,
                         IsCorrect = j == q.CorrectOptionIndex,
+                        Tag = OptionLetters.At(j),
                         Order = j,
                     };
                 })

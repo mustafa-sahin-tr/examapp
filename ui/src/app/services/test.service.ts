@@ -326,9 +326,11 @@ export class TestService {
           imageUrl: question.imageUrl,
           imageUrlV2: question.imageUrlV2 ?? null,
           exampleAnswer: question.isExample ? question.practiceCorrectAnswer : null,
+          // Issue #1183: kayıtlı harf (Tag) korunur; şıklar sıralarıyla gelir.
+          lettersLocked: true,
           answers: question.answers.map((answer) => ({
             id: answer.id,
-            label: answer.text,
+            label: answer.tag || answer.text,
             x: answer.x,
             y: answer.y,
             width: answer.width,
@@ -390,9 +392,11 @@ export class TestService {
           imageUrl: question.imageUrl,
           imageUrlV2: question.imageUrlV2 ?? null,
           exampleAnswer: question.isExample ? question.practiceCorrectAnswer : null,
+          // Issue #1183: kayıtlı harf (Tag) korunur; şıklar sıralarıyla gelir.
+          lettersLocked: true,
           answers: question.answers.map((answer) => ({
             id: answer.id,
-            label: answer.text,
+            label: answer.tag || answer.text,
             x: answer.x,
             y: answer.y,
             width: answer.width,

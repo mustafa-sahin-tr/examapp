@@ -703,6 +703,27 @@ public class LabelingServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task SaveManualAsync_KeepsEachOptionLetter_AndDropsInvalidOnes()
+    {
+        var png = Png(100, 100);
+        var predictions = Blocks(("mcq_question", null, null));
+        predictions.Predictions[0].Subpredictions =
+        [
+            new PredictionDto { X = 2, Y = 2, Width = 5, Height = 5, Label = "b)" },
+            new PredictionDto { X = 10, Y = 2, Width = 5, Height = 5, Label = "Şık 2" },
+            new PredictionDto { X = 20, Y = 2, Width = 5, Height = 5 },
+        ];
+        await using (var ctx = _db.NewContext())
+            await NewService(ctx).SaveManualAsync(ManualRequest(png, predictions), Actor);
+
+        // #1183: harf kayıtla saklanır, sayfa yeniden açılınca geri gelir.
+        await using var read = _db.NewContext();
+        var page = await NewService(read).GetPageAsync(Sha256Hex(png));
+        var options = page!.Results.Single(r => r.Source == "Manual").Predictions.Predictions.Single().Subpredictions;
+        options.Select(o => o.Label).ShouldBe(["B", null, null]);
+    }
+
+    [Fact]
     public async Task SaveManualAsync_OptionCarryingBlockFields_AreNotStored()
     {
         var png = Png(100, 100);

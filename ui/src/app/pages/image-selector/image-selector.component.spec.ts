@@ -145,6 +145,71 @@ describe('ImageSelectorComponent', () => {
         });
     });
 
+    describe('option letters (#1183)', () => {
+        const option = (x: number, y: number, label?: string) => ({
+            class_id: 0, x, y, width: 40, height: 20, subpredictions: [], ...(label ? { label } : {}),
+        });
+        const detect = (options: any[]) => {
+            const seq = component.beginExternalDetection();
+            component.applyExternalPrediction(seq, {
+                success: true,
+                predictions: [{ class_id: 0, x: 0, y: 0, width: 600, height: 200, subpredictions: options }],
+            } as any, { kind: 'Ai', modelName: 'claude', promptVersion: null } as any);
+            return component.regions()[0];
+        };
+
+        it('detection_WithACompleteSetOfReadLetters_KeepsThemAndLocksTheLetters', () => {
+            // B kutusu D'den 2 px sağda: konumdan harflendirme B'yi D yapardı.
+            const region = detect([option(463, 62, 'D'), option(230, 10, 'A'), option(465, 10, 'B'), option(231, 60, 'C')]);
+
+            expect(region.lettersLocked).toBe(true);
+            expect(region.answers.map((a) => [a.label, a.x])).toEqual([['A', 230], ['B', 465], ['C', 231], ['D', 463]]);
+        });
+
+        it('detection_WithMissingLetters_FallsBackToPositionLetters', () => {
+            const region = detect([option(463, 62, 'D'), option(230, 10), option(465, 10, 'B'), option(231, 60, 'C')]);
+
+            expect(region.lettersLocked).toBe(false);
+        });
+
+        it('setAnswerLetter_MovesTheOptionShiftsTheOthersAndKeepsTheCorrectMark', () => {
+            const [a, b, c, d] = [answer(0, 10), answer(100, 10), answer(0, 60), answer(100, 60)];
+            d.isCorrect = true;
+            component.regions.set([region('Soru 1', [a, b, c, d])] as any);
+            component.renameAnswers(0);
+
+            component.setAnswerLetter(0, 3, 1);
+
+            const answers = component.regions()[0].answers;
+            expect(answers).toEqual([a, d, b, c]);
+            expect(answers.map((x) => x.label)).toEqual(['A', 'B', 'C', 'D']);
+            expect(d.isCorrect).toBe(true);
+            expect(component.regions()[0].lettersLocked).toBe(true);
+        });
+
+        it('lockedLetters_SurviveAlignmentAndANewOption', () => {
+            const [a, b, c] = [answer(200, 10), answer(0, 10), answer(100, 10)];
+            component.regions.set([{ ...region('Soru 1', [a, b, c]), lettersLocked: true }] as any);
+
+            component.alignAnswers(0, true);
+            component.regions()[0].answers.push(answer(300, 10));
+            component.renameAnswers(0);
+
+            expect(component.regions()[0].answers.slice(0, 3)).toEqual([a, b, c]);
+            expect(component.regions()[0].answers.map((x) => x.label)).toEqual(['A', 'B', 'C', 'D']);
+        });
+
+        it('setAnswerLetter_InPreview_DoesNothing', () => {
+            const [a, b] = [answer(0, 10), answer(100, 10)];
+            component.regions.set([region('Soru 1', [a, b])] as any);
+            component.previewMode.set(true);
+
+            component.setAnswerLetter(0, 1, 0);
+
+            expect(component.regions()[0].answers).toEqual([a, b]);
+        });
+    });
+
     describe('question selection', () => {
         it('activeRegionIndex_NoRegions_ReturnsNull', () => {
             component.regions.set([]);

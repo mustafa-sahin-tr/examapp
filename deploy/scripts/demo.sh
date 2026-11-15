@@ -41,12 +41,13 @@ case "${1:-}" in
     compose exec -T postgres sh -c 'pg_dumpall -U "$POSTGRES_USER"' | gzip > "$target/postgres.sql.gz"
     if [[ -n "$MINIO_DIR" ]]; then
       # #1198: hundreds of GB do not fit 14 full copies; one mirror is updated with the changes only.
-      rsync -a --delete "$MINIO_DIR/" "$MINIO_MIRROR/"
+      # MinIO's own tmp / trash changes while it runs; files that vanish mid-copy (exit 24) are not an error.
+      rsync -a --delete --delete-excluded --exclude '/.minio.sys/tmp/' "$MINIO_DIR/" "$MINIO_MIRROR/" || [[ $? -eq 24 ]]
     else
       # The MinIO image has no tar, so a small helper reads the volume.
       docker run --rm -v "$MINIO_SRC":/data:ro postgres:18.3 tar -C /data -czf - . > "$target/minio.tar.gz"
     fi
-    ls -1dt "$BACKUP_ROOT"/*/ | tail -n +15 | while read -r old; do rm -rf "$old"; done
+    ls -1dt "$BACKUP_ROOT"/[0-9]*/ | tail -n +15 | while read -r old; do rm -rf "$old"; done
     echo "Backup: $target"
     ;;
   restore)

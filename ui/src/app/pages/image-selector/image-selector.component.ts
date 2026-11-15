@@ -5498,6 +5498,9 @@ export class ImageSelectorComponent {
     const questionCount = this.regions().length;
 
     for (let i = 0; i < questionCount; i++) {
+      // Issue #1183: harfsiz tespit (YOLO, eski kayıt) hemen okuma sırasıyla harflenir; otomatik hizalama kapalıyken
+      // (işaretleme ekranı) "Şık 1" adları kalmasın.
+      this.renameAnswers(i);
       this.alignAnswers(i);
     }
     this.appliedSnapshot = this.serializeBoxes();

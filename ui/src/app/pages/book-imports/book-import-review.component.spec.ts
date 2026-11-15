@@ -34,8 +34,9 @@ describe('BookImportReviewComponent (#1023)', () => {
   const button = (root: Element, label: string) =>
     Array.from(root.querySelectorAll('button')).find((b) => b.textContent?.includes(label)) as HTMLButtonElement;
 
-  function setup(tests: BookImportJobTest[], editable = true): void {
+  function setup(tests: BookImportJobTest[], editable = true, extra: Record<string, unknown> = {}): void {
     api = {
+      ...extra,
       reviewQuestions: vi.fn().mockReturnValue(of([question(1, 0), question(2, null)])),
       setAnswer: vi.fn().mockReturnValue(of(undefined)),
       approveTest: vi.fn().mockReturnValue(of(undefined)),
@@ -254,6 +255,50 @@ describe('BookImportReviewComponent (#1023)', () => {
     const flags = rows()[0].querySelector('.bir-flags')!.textContent ?? '';
     expect(flags).toContain('155 soru bulundu, anahtarda 154');
     expect(flags).not.toContain('sayfa 8–10');
+  });
+
+  it('flags_ViewPageOpensFlaggedPagesWithoutLeaving (#1190)', () => {
+    const pageImage = vi.fn().mockReturnValue(of(new Blob(['x'], { type: 'image/webp' })));
+    setup([test({
+      status: 'NeedsReview',
+      reviewFlags: [
+        { code: 'optionCount', pages: [9, 69], numbers: [4, 112], found: null, expected: null, byPage: { 9: [4], 69: [112] } },
+      ],
+    })], true, { pageImage });
+    button(rows()[0], 'Uyarılar').click();
+    fixture.detectChanges();
+
+    const viewButtons = () => Array.from(el().querySelectorAll<HTMLButtonElement>('[data-testid="view-page"]'));
+    expect(viewButtons().length).toBe(2);
+    viewButtons()[0].click();
+    fixture.detectChanges();
+    const view = () => el().querySelector('[data-testid="page-view"]') as HTMLElement | null;
+    const viewText = () => view()!.textContent!.replace(/\s+/g, ' ');
+    expect(pageImage).toHaveBeenCalledWith('a1', 9);
+    expect(view()!.textContent).toContain('Sayfa 9');
+    expect(viewText()).toContain('4: şık sayısı 4 değil');
+    expect(view()!.textContent).toContain('1 / 2');
+    expect(view()!.querySelector('img')!.getAttribute('src')).toMatch(/^blob:/);
+    expect(view()!.querySelector('a[href*="labeling"]')).not.toBeNull();
+
+    view()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    fixture.detectChanges();
+    expect(pageImage).toHaveBeenLastCalledWith('a1', 69);
+    expect(view()!.textContent).toContain('112:');
+
+    view()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    expect(view()).toBeNull();
+  });
+
+  it('flags_NoViewPageWithoutPageImages', () => {
+    setup([test({
+      status: 'NeedsReview',
+      reviewFlags: [{ code: 'optionCount', pages: [9], numbers: [4], found: null, expected: null, byPage: { 9: [4] } }],
+    })]);
+    button(rows()[0], 'Uyarılar').click();
+    fixture.detectChanges();
+    expect(el().querySelector('[data-testid="view-page"]')).toBeNull();
   });
 
   it('preview_ZoomsAQuestionAndWalksWithArrows', () => {

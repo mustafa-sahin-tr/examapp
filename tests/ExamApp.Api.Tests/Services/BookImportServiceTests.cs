@@ -176,6 +176,27 @@ public class BookImportServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Get_lists_the_key_page_of_each_test_and_the_book_key_pages_for_older_setups()
+    {
+        var id = (await StartAs(41, Pdf())).Job!.Id;
+        await using (var seed = _db.NewContext())
+        {
+            var job = await seed.BookImportJobs.SingleAsync(j => j.Id == id);
+            job.SetupJson = new BookSetupSummary { AnswerKeyRanges = [new BookSetupRange(40, 41), new BookSetupRange(44, 44)] }.Serialize();
+            seed.BookImportJobTests.AddRange(
+                new BookImportJobTest { JobId = id, Order = 1, Unit = 1, TestNo = 1, AnswerKey = "AB", KeyFilePage = 41 },
+                new BookImportJobTest { JobId = id, Order = 2, Unit = 1, TestNo = 2, AnswerKey = "CD" },
+                new BookImportJobTest { JobId = id, Order = 3, Unit = 1, TestNo = 3 });
+            await seed.SaveChangesAsync();
+        }
+
+        await using var ctx = _db.NewContext();
+        var detail = await NewService(ctx).GetAsync(BookImportOwner.Create(41), id, default);
+
+        detail!.Tests.Select(t => t.KeyPages).ShouldBe([[41], [40, 41, 44], []]);
+    }
+
+    [Fact]
     public async Task Runner_walks_the_stub_stages_and_waits_for_setup_confirmation()
     {
         var id = (await StartAs(41, Pdf())).Job!.Id;

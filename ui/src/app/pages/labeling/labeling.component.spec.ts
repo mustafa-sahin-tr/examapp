@@ -1931,6 +1931,38 @@ describe('LabelingComponent', () => {
             expect(localStorage.getItem('labeling.bookId')).toBeNull();
         });
 
+        // Issue #1176: testin cevap anahtarı sayfası şeritte küçük görsel; tıklayınca büyür.
+        it('fix_ShowsTheAnswerKeyPageAndEnlargesItOnClick', async () => {
+            routeUrl = '/?bookImport=j1&test=3&page=12';
+            const keyed = { ...job, tests: [{ ...test, keyPages: [41] }] };
+            await setupWith(() => {
+                bookImportsApi.get.mockReturnValue(of(keyed));
+                bookImportsApi.pageImage.mockReturnValue(of(new Blob(['webp'], { type: 'image/webp' })));
+            });
+            fixture.detectChanges();
+            await fixture.whenStable();
+
+            expect(bookImportsApi.pageImage).toHaveBeenCalledWith('j1', 41);
+            const el = fixture.nativeElement as HTMLElement;
+            const thumb = el.querySelector<HTMLButtonElement>('[data-testid="labeling-key-page"]')!;
+            expect(thumb.textContent).toContain('s. 41');
+            expect(thumb.disabled).toBe(false);
+
+            thumb.click();
+            fixture.detectChanges();
+            const dialog = el.querySelector<HTMLDialogElement>('dialog.lkp-zoom')!;
+            expect(dialog.open).toBe(true);
+            expect(dialog.querySelector('img.lkp-zoom__image')).not.toBeNull();
+            dialog.close();
+        });
+
+        it('fix_WithoutAKeyPageShowsNoThumbnail', async () => {
+            routeUrl = '/?bookImport=j1&test=3&page=12';
+            await setupWith(pageResponses);
+
+            expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid="labeling-key-page"]')).toBeNull();
+        });
+
         // Issue #1173: tuvaldeki kutular taslaklarla eşlenir: numara Madde'ye, doğru şık işaretli; işaretli şık korunur.
         it('fix_PrefillsNumbersAndCorrectOptionsFromTheDrafts', async () => {
             routeUrl = '/?bookImport=j1&test=3&page=12';

@@ -53,7 +53,8 @@ public sealed record PlannedTest(
     int? ExpectedQuestions,
     string? AnswerKey,
     string? KeyConflicts,
-    IReadOnlyList<string> Flags);
+    IReadOnlyList<string> Flags,
+    int? KeyPage = null);
 
 /// <summary>Ünite: içindekiler başlığı ve testlerinin kapsadığı dosya sayfaları (kitap kaydındaki içindekiler satırı).</summary>
 public sealed record PlannedUnit(int Unit, string? Title, int FileFrom, int FileTo);
@@ -152,7 +153,7 @@ public static class BookSetupPlanner
                 flags.Add(FlagKeyConflicts);
 
             tests.Add(new PlannedTest(tests.Count + 1, draft.Unit, draft.TestNo, draft.Title, draft.Minutes, draft.From, draft.To,
-                expected, key, conflicts, flags));
+                expected, key, conflicts, flags, KeyPageOf(a, b)));
         }
 
         var planned = tests.Select(t => (t.Unit, t.TestNo)).ToHashSet();
@@ -175,6 +176,10 @@ public static class BookSetupPlanner
 
         return new BookSetupPlan(Offset(ordered), keyRanges, selfAssessment, units, tests, orphans);
     }
+
+    /// <summary>Issue #1176: anahtarın okunduğu dosya sayfası (ilk okuma önce); bilinmiyorsa null.</summary>
+    private static int? KeyPageOf(AnswerKeyRow? first, AnswerKeyRow? second) =>
+        first is { KeyPage: > 0 } ? first.KeyPage : second is { KeyPage: > 0 } ? second.KeyPage : null;
 
     /// <summary>İki okumayı soru soru birleştirir. İkisi de yoksa (null, null).</summary>
     internal static (string? Key, string? Conflicts) MergeKey(AnswerKeyRow? first, AnswerKeyRow? second)

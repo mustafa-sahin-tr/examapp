@@ -303,6 +303,9 @@ public sealed partial class BookImportService : IBookImportService
             testCosts = costs.Where(c => c.TestId is not null).GroupBy(c => c.TestId!.Value).ToDictionary(g => g.Key, g => g.Sum(c => c.Usd));
         }
         var answerless = await AnswerlessCountsAsync(tests.Where(t => t.WorksheetId is not null).Select(t => t.WorksheetId!.Value).ToList(), ct);
+        var bookKeyPages = (BookSetupSummary.Parse(job.SetupJson)?.AnswerKeyRanges ?? [])
+            .SelectMany(r => Enumerable.Range(r.FileFrom, Math.Max(0, r.FileTo - r.FileFrom + 1)))
+            .Distinct().Order().ToList();
         detail.Tests = tests.Select(t => new BookImportJobTestDto
         {
             Id = t.Id,
@@ -321,6 +324,7 @@ public sealed partial class BookImportService : IBookImportService
             FileFrom = t.FileFrom,
             FileTo = t.FileTo,
             Answerless = t.WorksheetId is { } w ? answerless.GetValueOrDefault(w) : 0,
+            KeyPages = t.AnswerKey is null ? [] : t.KeyFilePage is { } keyPage ? [keyPage] : bookKeyPages,
             CostUsd = owner.IsAdmin ? testCosts.GetValueOrDefault(t.Id) : null,
             Error = t.Error,
         }).ToList();

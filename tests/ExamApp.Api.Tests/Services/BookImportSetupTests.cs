@@ -137,6 +137,8 @@ public class BookImportSetupTests : IDisposable
         ]);
         tests[0].FlagsJson.ShouldBe("[\"keyConflicts\"]");
         tests[0].KeyAnswers.ShouldBe(4);
+        // #1176: düzeltme ekranı anahtar sayfasını gösterir.
+        tests.Select(t => t.KeyFilePage).ShouldBe([5, 5]);
     }
 
     [Fact]

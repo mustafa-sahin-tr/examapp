@@ -224,6 +224,12 @@ public class BookImportJobTest : BaseEntity
     [MaxLength(MaxKeyLength)]
     public string? KeyConflicts { get; set; }
 
+    /// <summary>
+    /// Issue #1176: <see cref="AnswerKey"/>'in okunduğu dosya sayfası; düzeltme ekranında gösterilir. Bu alandan önce kurulan
+    /// işlerde null (ekran kitabın anahtar sayfalarını gösterir).
+    /// </summary>
+    public int? KeyFilePage { get; set; }
+
     /// <summary>Kurulum onayında oluşturulan kitap testi (#577 kitap kaydı).</summary>
     public int? BookTestId { get; set; }
 

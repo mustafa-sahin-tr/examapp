@@ -90,6 +90,8 @@ export interface BookImportJobTest {
   fileFrom: number | null;
   fileTo: number | null;
   answerless: number;
+  /** #1176: cevap anahtarının okunduğu dosya sayfası; eski kurulumda kitabın bütün anahtar sayfaları. Anahtar yoksa boş. */
+  keyPages?: number[];
   /** #1024: yalnız Admin'e — testin soru aktarımı maliyeti. */
   costUsd: number | null;
   error: string | null;

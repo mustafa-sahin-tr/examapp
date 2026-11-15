@@ -16,6 +16,9 @@ services:
   minio:
     image: minio/minio:latest
     pull_policy: never
+    # #1198: DEMO_MINIO_DIR (in .env.demo) is a folder on the external disk; unset keeps the Docker volume.
+    volumes: !override
+      - ${DEMO_MINIO_DIR:-minio_data}:/data
 
   minio-presign-init:
     image: minio/minio:latest

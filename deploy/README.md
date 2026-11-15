@@ -282,6 +282,12 @@ deploy/scripts/demo.sh restore <yedek klasörü> --yes  # bütün demo verisini 
 - **Tünel:** `cloudflared tunnel login`, `tunnel create hedefokul-demo` ve `tunnel route dns` ile kurulur (Zero Trust kaydı
   gerekmedi); sertifika, kimlik dosyası ve `config.yml` git'e girmeyen `deploy/cloudflared/` altındadır. `config.yml` tek
   hostname'i `http://caddy:80`'e, gerisini 404'e yönlendirir. Yönetim arayüzleri tünele eklenmez.
+- **MinIO harici diskte (#1198):** `.env.demo`'da `DEMO_MINIO_DIR=/Volumes/Mustafas HDD/Builds/examapp/demo-minio` MinIO verisini
+  Docker volume'u yerine o klasöre koyar (kitap aktarımı kitap başına 150–250 MB; iç SSD yetmez). Boşsa volume kullanılır.
+  Disk takılı değilse MinIO açılmaz. Bu durumda `backup` MinIO'yu her seferinde tar'lamaz; tek ayna
+  (`demo-backups/minio-mirror`) `rsync --delete` ile güncellenir, `restore` aynayı geri yazar (aynanın içeriği son yedeğinkidir).
+  Taşıma: stack'i durdur, `docker run --rm -v hedefokul-demo_minio_data:/from:ro -v <klasör>:/to postgres:18.3 cp -a /from/. /to/`,
+  `diff -rq` ile karşılaştır, satırı ekle, `up`; eski volume doğrulanınca silinir.
 - **Geri yükleme:** Postgres ve MinIO volume'leri silinip yedekten kurulur, Redis önbelleği boşalır. Yedek `examuser` parolasını
   da taşır: `.env.demo` yedeğin alındığı dosyayla aynı olmalı. Tek beklenen hata "role already exists"; başka hata varsa
   stack kapalı bırakılır.

@@ -179,7 +179,7 @@ public class BookImportJobRunner
 
     /// <summary>
     /// Issue #1020: PDF'i indirir, sayfa sayısını ve sınırı denetler, sayfaları tek tek WebP olarak MinIO'ya yazar. Yarıda kalan
-    /// iş kaydı olan sayfaları atlayarak devam eder (#1025 yeniden dene).
+    /// iş kaydı olan sayfaları atlayarak devam eder (#1025 yeniden dene). Hepsi bitince PDF silinir (#1198).
     /// </summary>
     private async Task RenderPagesAsync(BookImportJob job)
     {
@@ -192,6 +192,9 @@ public class BookImportJobRunner
             return;
         }
 
+        // #1198: sayfalar bitince PDF silinir; kurulumda yeniden denenen iş PDF'i yeniden aramaz.
+        if (job.PageCount is { } rendered && await _db.BookImportPages.CountAsync(p => p.JobId == job.Id) >= rendered)
+            return;
         if (string.IsNullOrEmpty(job.FileUrl))
             throw new BookImportFailure("The uploaded PDF is missing.");
         byte[] pdf;
@@ -234,6 +237,9 @@ public class BookImportJobRunner
             await _db.SaveChangesAsync();
             await BookQuestionImportStage.StopIfCancelledAsync(_db, job.Id, default);
         }
+
+        // #1198: PDF yalnız sayfa çıkarmak için gerekir (kitap başına onlarca-yüzlerce MB); sayfalar kalır.
+        await _minio.DeleteFileByUrlAsync(job.FileUrl);
 
         _logger.LogInformation("Book import job {JobId}: rendered {Pages} pages in {Seconds:F1}s", job.Id, pageCount - next + 1,
             (DateTime.UtcNow - started).TotalSeconds);

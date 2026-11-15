@@ -93,7 +93,7 @@ internal static class LabelingClaude
         if (response.FinishReason == ChatFinishReason.ContentFilter)
             throw new LabelingAiException("Claude declined the request.", usage: usage);
         if (response.FinishReason == ChatFinishReason.Length)
-            throw new LabelingAiException("Claude response was truncated.", usage: usage);
+            throw new LabelingAiException("Claude response was truncated.", usage: usage, truncated: true);
         if (!response.TryGetResult(out var result) || result is null)
             throw new LabelingAiException("Claude response did not match the schema.", usage: usage);
 

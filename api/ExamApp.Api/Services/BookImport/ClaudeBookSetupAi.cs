@@ -89,6 +89,8 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
     // Döşemeler sayfanın üst ve alt %55'i: ortadaki satır iki döşemede de görünür (planlayıcı birleştirir).
     private const double TileShare = 0.55;
     private const int SurveyOutputTokensPerPage = 400;
+    // #1196: uzun içindekiler sayfası (yüzlerce satır) sayfa başı bütçeyi aşar; kesik tarama bu sınırla bir kez yeniden sorulur.
+    internal const int SurveyRetryMaxOutputTokens = 16000;
     private const int KeyMaxOutputTokens = 16000;
     private const int MapMaxOutputTokens = 2000;
 
@@ -140,10 +142,17 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
     private readonly string _tieBreakModelId;
 
     public ClaudeBookSetupAi(IOptions<LabelingAiOptions> options, IConfiguration configuration, ILoggerFactory loggerFactory)
+        : this(null, options, configuration, loggerFactory)
+    {
+    }
+
+    /// <summary>Test dikişi: ağa çıkmayan sahte <see cref="IChatClient"/> ile (DI yalnız public kurucuyu görür).</summary>
+    internal ClaudeBookSetupAi(IChatClient? chat, IOptions<LabelingAiOptions> options, IConfiguration configuration,
+        ILoggerFactory loggerFactory)
     {
         _options = options.Value;
         _logger = loggerFactory.CreateLogger<ClaudeBookSetupAi>();
-        _chat = LabelingClaude.CreateClient(_options, loggerFactory);
+        _chat = chat ?? LabelingClaude.CreateClient(_options, loggerFactory);
         _surveyModelId = configuration["BookImport:SurveyModel"] is { Length: > 0 } survey ? survey : DefaultSurveyModel;
         _keyModelId = configuration["BookImport:AnswerKeyModel"] is { Length: > 0 } key ? key : DefaultAnswerKeyModel;
         _tieBreakModelId = configuration["BookImport:AnswerKeyTieBreakModel"] is { Length: > 0 } tie ? tie : DefaultAnswerKeyTieBreakModel;
@@ -162,7 +171,18 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
 
         content.Add(new TextContent(SurveyInstruction));
         var model = Model(_surveyModelId);
-        var batch = await AskAsync<SurveyBatch>(model, SurveyOutputTokensPerPage * pages.Count + 1000, SurveySystemPrompt, content, cost, ct);
+        SurveyBatch batch;
+        try
+        {
+            batch = await AskAsync<SurveyBatch>(model, SurveyOutputTokensPerPage * pages.Count + 1000, SurveySystemPrompt, content,
+                cost, ct, retryTruncated: true);
+        }
+        catch (LabelingAiException ex) when (ex.Truncated)
+        {
+            _logger.LogInformation("[BookSetup] Survey of {Count} pages was truncated; retrying with {Tokens} output tokens",
+                pages.Count, SurveyRetryMaxOutputTokens);
+            batch = await AskAsync<SurveyBatch>(model, SurveyRetryMaxOutputTokens, SurveySystemPrompt, content, cost, ct);
+        }
 
         var asked = pages.Select(p => p.FilePage).ToHashSet();
         var surveyed = (batch.Pages ?? [])
@@ -227,15 +247,16 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
     public void Dispose() => _chat?.Dispose();
 
     private async Task<T> AskAsync<T>(LabelingAiModelOption model, int maxOutputTokens, string system, List<AIContent> content,
-        BookSetupCost cost, CancellationToken ct)
+        BookSetupCost cost, CancellationToken ct, bool retryTruncated = false)
     {
         var (result, _) = await Call(() => LabelingClaude.AskContentAsync<T>(
-            _chat!, _options, _logger, model, maxOutputTokens, system, content, ct), model, cost, ct);
+            _chat!, _options, _logger, model, maxOutputTokens, system, content, ct), model, cost, ct, retryTruncated);
         return result;
     }
 
     private async Task<(T Result, LabelingAiUsage Usage)> Call<T>(
-        Func<Task<(T, LabelingAiUsage)>> call, LabelingAiModelOption model, BookSetupCost cost, CancellationToken ct)
+        Func<Task<(T, LabelingAiUsage)>> call, LabelingAiModelOption model, BookSetupCost cost, CancellationToken ct,
+        bool retryTruncated = false)
     {
         if (_chat is null)
             throw new BookImportFailure("Claude is not configured (Anthropic:ApiKey is empty).");
@@ -250,6 +271,9 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
         {
             if (ex.Usage is { } usage)
                 cost.Add(model, usage);
+            // Kesik yanıtı çağıran geniş sınırla yeniden sorar; ödenen token yukarıda sayıldı.
+            if (retryTruncated && ex.Truncated)
+                throw;
             throw new BookImportFailure($"Book setup failed: {ex.Message}");
         }
     }

@@ -89,6 +89,10 @@ aktarım aracındaki Python portu referanstır (#1022).
   tıklayınca kutu silinir), Enter mevcut harfi onaylar, durum satırı ilk açık uyuşmazlığa götürür. Satırdaki göz düğmesi testin
   sayfalarını tam ekran açar (üstte testin anahtarı, uyuşmazlıklar `harf/diğer`; altta önceki / sonraki, ←/→, Esc); soldaki
   anahtar görseline tıklamak anahtar sayfalarını aynı görünümde açar.
+- **Kesik tarama (#1196):** tarama çağrısının çıktı sınırı sayfa başı 400 + 1000 token; uzun içindekiler sayfası (yüzlerce
+  satır) bunu aşınca yanıt kesilir (`FinishReason Length`). Kesik tarama aynı sayfalarla bir kez 16 000 token sınırıyla yeniden
+  sorulur (iki çağrının token'ı da sayılır); o da kesilirse kurulum hatayla durur. Anahtar okuması zaten 16 000 ile sorulur, yeniden
+  denenmez.
 - **Planlama** (`BookSetupPlanner`, saf; kurallar orada): test başlıklı sayfayla başlar, başlıksız ardışık test sayfaları ona
   eklenir; ofset (basılı = dosya + ofset) en sık farktır; beklenen soru sayısı anahtar uzunluğu (yoksa sayfadaki en büyük
   soru no). İşaretler: `noKey`, `keyMismatch`, `keyConflicts`; kitapta bulunamayan anahtar satırları "eşleşmeyen" listesi.

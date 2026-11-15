@@ -28,10 +28,14 @@ public sealed record ClaudeDetection(PredictionListDto Predictions, int InputTok
 /// Claude yanıtı kullanılamadı (ret, eksik/bozuk JSON, API hatası) → 502. <see cref="Usage"/>: yanıt geldiyse harcanan token
 /// (ödenmiş başarısız çağrı da bütçeye/toplama sayılır); istek hiç yanıt almadıysa null.
 /// </summary>
-public sealed class LabelingAiException(string message, Exception? inner = null, LabelingAiUsage? usage = null)
+public sealed class LabelingAiException(string message, Exception? inner = null, LabelingAiUsage? usage = null,
+    bool truncated = false)
     : Exception(message, inner)
 {
     public LabelingAiUsage? Usage { get; } = usage;
+
+    /// <summary>Yanıt çıktı sınırında kesildi (FinishReason Length); daha geniş sınırla yeniden denenebilir.</summary>
+    public bool Truncated { get; } = truncated;
 }
 
 /// <summary>Bir ya da birkaç Claude çağrısının girdi/çıktı token'ı.</summary>

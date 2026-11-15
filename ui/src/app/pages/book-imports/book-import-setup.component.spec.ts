@@ -113,26 +113,44 @@ describe('BookImportSetupComponent (#1021)', () => {
     expect(confirmButton().disabled).toBe(false);
   });
 
-  it('testPages_ShownInThePanel_AndBackToTheKey (#1192)', () => {
+  it('testPages_OpenFullSize_WithPrevNext (#1192)', () => {
     create();
-    const tab = (label: string) =>
-      Array.from(el().querySelectorAll<HTMLButtonElement>('.bis-keypage__tabs button')).find((b) => b.textContent?.trim() === label)!;
+    const view = () => el().querySelector<HTMLElement>('[data-testid="test-pages"]');
+    const navButton = (label: string) =>
+      Array.from(view()!.querySelectorAll<HTMLButtonElement>('.bis-view__nav button')).find((b) => b.textContent?.includes(label))!;
 
     el().querySelectorAll<HTMLButtonElement>('[data-testid="view-test-pages"]')[0].click();
     fixture.detectChanges();
     expect(api.pageImage).toHaveBeenLastCalledWith('a1', 7);
-    expect(el().querySelector('[data-testid="viewed-test"]')!.textContent).toContain('1-01');
-    expect(tab('s. 8')).toBeTruthy();
-    expect(tab('s. 7').getAttribute('aria-pressed')).toBe('true');
+    expect(view()!.textContent).toContain('1-01');
+    expect(view()!.querySelector('.bis-view__cell--conflict')!.textContent!.replace(/\s+/g, '')).toBe('2B/D');
+    expect(view()!.textContent).toContain('1 / 2');
+    expect(navButton(tr.setup.prevPage).disabled).toBe(true);
 
-    tab('s. 8').click();
+    navButton(tr.setup.nextPage).click();
     fixture.detectChanges();
     expect(api.pageImage).toHaveBeenLastCalledWith('a1', 8);
+    expect(navButton(tr.setup.nextPage).disabled).toBe(true);
 
-    tab('s. 237').click();
+    view()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
     fixture.detectChanges();
+    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 7);
+
+    view()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    expect(view()).toBeNull();
+  });
+
+  it('keyPage_ClickOpensItFullSize (#1192)', () => {
+    create();
+    el().querySelector<HTMLButtonElement>('[data-testid="key-open"]')!.click();
+    fixture.detectChanges();
+
+    const view = el().querySelector<HTMLElement>('[data-testid="test-pages"]')!;
+    expect(view.textContent).toContain(tr.setup.keyPages);
+    expect(view.textContent).toContain('1 / 1');
+    expect(view.querySelector('.bis-view__key')).toBeNull();
     expect(api.pageImage).toHaveBeenLastCalledWith('a1', 237);
-    expect(el().querySelector('[data-testid="viewed-test"]')).toBeNull();
   });
 
   it('keyboard_TypingFixesCellsAndMovesFocus', () => {

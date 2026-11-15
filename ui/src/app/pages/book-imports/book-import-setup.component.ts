@@ -6,10 +6,12 @@ import {
   ElementRef,
   OnInit,
   computed,
+  effect,
   inject,
   input,
   output,
   signal,
+  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -28,8 +30,6 @@ import { BookImportService } from '../../services/book-import.service';
 const KEY_LETTER = /^[A-Ea-e]$/;
 /** Uyuşmazlıkta "-": diğer okumada bu soru yok (BookSetupPlanner). */
 const MISSING_READ = '-';
-/** Panelde bir testin en çok bu kadar sayfası sekme olur. */
-const MAX_VIEWED_PAGES = 12;
 
 /** Onay tablosunun düzenlenebilir satırı. Anahtar hücreleri: "A"–"E", okunamayan "?", boş "". */
 export interface EditableSetupTest {
@@ -107,14 +107,26 @@ export class BookImportSetupComponent implements OnInit {
   readonly keyPage = signal<number | null>(null);
   readonly keyImage = signal<string | null>(null);
   readonly keyImageLarge = signal(false);
-  /** #1192: soldaki panelde sayfaları gösterilen test (null: yalnız cevap anahtarı). */
+  /** #1192: sayfaları tam ekranda gösterilen test (null: kapalı); altta önceki / sonraki sayfa. */
   readonly viewedTest = signal<number | null>(null);
+  /** Cevap anahtarı da aynı görünümde büyür. */
+  readonly viewingKey = signal(false);
+  readonly viewerOpen = computed(() => this.viewingKey() || this.viewedRow() != null);
   readonly viewedRow = computed(() => this.rows().find((r) => r.order === this.viewedTest()) ?? null);
   readonly viewedPages = computed(() => {
+    if (this.viewingKey()) return this.keyPages();
     const row = this.viewedRow();
     if (!row || row.fileFrom == null || row.fileTo == null || row.fileTo < row.fileFrom) return [];
-    const last = Math.min(row.fileTo, row.fileFrom + MAX_VIEWED_PAGES - 1, this.setup()?.pageCount ?? Number.MAX_SAFE_INTEGER);
+    const last = Math.min(row.fileTo, this.setup()?.pageCount ?? Number.MAX_SAFE_INTEGER);
     return Array.from({ length: Math.max(last - row.fileFrom + 1, 0) }, (_, i) => row.fileFrom! + i);
+  });
+  readonly viewedPage = signal<number | null>(null);
+  readonly viewedImage = signal<string | null>(null);
+  readonly viewedFailed = signal(false);
+  private viewedObjectUrl: string | null = null;
+  private readonly viewClose = viewChild('viewClose', { read: ElementRef<HTMLElement> });
+  private readonly viewFocus = effect(() => {
+    if (this.viewerOpen()) this.viewClose()?.nativeElement.focus();
   });
 
   readonly keyPages = computed(() =>
@@ -155,7 +167,10 @@ export class BookImportSetupComponent implements OnInit {
   private objectUrl: string | null = null;
 
   constructor() {
-    this.destroyRef.onDestroy(() => this.revokeImage());
+    this.destroyRef.onDestroy(() => {
+      this.revokeImage();
+      this.revokeViewed();
+    });
   }
 
   ngOnInit(): void {
@@ -198,17 +213,60 @@ export class BookImportSetupComponent implements OnInit {
       });
   }
 
-  /** #1192: testin sayfalarını soldaki panelde aç (anahtarla karşılaştırmak için). */
+  /** #1192: testin sayfalarını tam ekranda aç (anahtardaki şüpheli hücreye karar vermek için). */
   showTestPages(row: EditableSetupTest): void {
+    this.viewingKey.set(false);
     this.viewedTest.set(row.order);
     const first = this.viewedPages()[0];
-    if (first != null) this.showKeyPage(first);
+    if (first != null) this.showTestPage(first);
   }
 
-  /** Panelde cevap anahtarına dön. */
-  showAnswerKey(filePage: number): void {
+  /** Soldaki anahtar görseline tıklanınca o anahtar sayfası büyük açılır. */
+  showKeyLarge(): void {
     this.viewedTest.set(null);
-    this.showKeyPage(filePage);
+    this.viewingKey.set(true);
+    const page = this.keyPage() ?? this.keyPages()[0];
+    if (page != null) this.showTestPage(page);
+  }
+
+  showTestPage(filePage: number): void {
+    this.viewedPage.set(filePage);
+    this.viewedFailed.set(false);
+    this.revokeViewed();
+    this.api
+      .pageImage(this.jobId(), filePage)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (blob) => {
+          if (this.viewedPage() !== filePage || !this.viewerOpen()) return;
+          this.viewedObjectUrl = URL.createObjectURL(blob);
+          this.viewedImage.set(this.viewedObjectUrl);
+        },
+        error: () => {
+          if (this.viewedPage() === filePage) this.viewedFailed.set(true);
+        },
+      });
+  }
+
+  testPageBy(step: number): void {
+    const pages = this.viewedPages();
+    const next = pages[pages.indexOf(this.viewedPage() ?? -1) + step];
+    if (next != null) this.showTestPage(next);
+  }
+
+  closeTestPages(): void {
+    this.viewedTest.set(null);
+    this.viewingKey.set(false);
+    this.viewedPage.set(null);
+    this.revokeViewed();
+  }
+
+  testPagesKey(event: KeyboardEvent): void {
+    if (event.key === 'Escape') this.closeTestPages();
+    else if (event.key === 'ArrowLeft') this.testPageBy(-1);
+    else if (event.key === 'ArrowRight') this.testPageBy(1);
+    else return;
+    event.preventDefault();
   }
 
   update(row: EditableSetupTest, patch: Partial<EditableSetupTest>): void {
@@ -373,6 +431,12 @@ export class BookImportSetupComponent implements OnInit {
     const target = this.host.nativeElement.querySelector<HTMLInputElement>(`[data-cell="${rowIndex}-${cell}"]`);
     target?.focus();
     target?.select();
+  }
+
+  private revokeViewed(): void {
+    if (this.viewedObjectUrl) URL.revokeObjectURL(this.viewedObjectUrl);
+    this.viewedObjectUrl = null;
+    this.viewedImage.set(null);
   }
 
   private revokeImage(): void {

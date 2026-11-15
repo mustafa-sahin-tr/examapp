@@ -220,6 +220,12 @@ export class BookImportSetupComponent implements OnInit {
         this.setCell(rowIndex, cell, '');
         if (key === 'Backspace') this.focusCell(rowIndex, cell - 1);
         return;
+      case 'Enter':
+        // #1188: farklı okunan kutuda Enter mevcut harfi onaylar, sıradaki farklı kutuya geçer.
+        event.preventDefault();
+        if (KEY_LETTER.test(row.key[cell] ?? '')) this.setCell(rowIndex, cell, row.key[cell]);
+        this.focusFirstConflict();
+        return;
       case 'Tab':
         return;
       default:
@@ -277,6 +283,27 @@ export class BookImportSetupComponent implements OnInit {
           this.fail(error);
         },
       });
+  }
+
+  /** #1188: kutunun altındaki diğer okumaya tıklanınca o harf alınır. */
+  takeOtherRead(rowIndex: number, cell: number): void {
+    const other = this.conflictLabel(this.rows()[rowIndex], cell);
+    if (!other) return;
+    this.setCell(rowIndex, cell, other);
+    this.focusFirstConflict();
+  }
+
+  /** #1188: aktarılacak testlerde ilk açık uyuşmazlığa odaklan. */
+  focusFirstConflict(): void {
+    const rows = this.rows();
+    for (let r = 0; r < rows.length; r++) {
+      if (!rows[r].include) continue;
+      const c = rows[r].conflicts.findIndex((x) => x !== '.');
+      if (c >= 0) {
+        this.focusCell(r, c);
+        return;
+      }
+    }
   }
 
   conflictLabel(row: EditableSetupTest, cell: number): string | null {

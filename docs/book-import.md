@@ -89,6 +89,9 @@ aktarım aracındaki Python portu referanstır (#1022).
   tıklayınca kutu silinir), Enter mevcut harfi onaylar, durum satırı ilk açık uyuşmazlığa götürür. Satırdaki göz düğmesi testin
   sayfalarını tam ekran açar (üstte testin anahtarı, uyuşmazlıklar `harf/diğer`; altta önceki / sonraki, ←/→, Esc); soldaki
   anahtar görseline tıklamak anahtar sayfalarını aynı görünümde açar.
+- **Kaynak PDF (#1198):** bütün sayfalar WebP olarak yazılınca `source.pdf` silinir (sayfa görselleri kalır; eğitim verisi için de
+  gerekir). Sayfalar bitmişse (`PageCount` kadar `BookImportPages` satırı) yeniden deneme PDF'i aramaz. Klasör yüklemesinde kaynak
+  görseller zaten çevrilince siliniyordu (#1144).
 - **Kesik tarama (#1196):** tarama çağrısının çıktı sınırı sayfa başı 400 + 1000 token; uzun içindekiler sayfası (yüzlerce
   satır) bunu aşınca yanıt kesilir (`FinishReason Length`). Kesik tarama aynı sayfalarla bir kez 16 000 token sınırıyla yeniden
   sorulur (iki çağrının token'ı da sayılır); o da kesilirse kurulum hatayla durur. Anahtar okuması zaten 16 000 ile sorulur, yeniden

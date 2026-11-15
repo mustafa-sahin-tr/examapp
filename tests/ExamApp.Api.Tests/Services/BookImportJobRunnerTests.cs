@@ -64,6 +64,30 @@ public class BookImportJobRunnerTests : IDisposable
         }
 
         await _minio.Received(3).UploadFileAsync(Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<string>(), "image/webp");
+        await _minio.Received(1).DeleteFileByUrlAsync("http://minio/exam-questions/book-imports/x/source.pdf");
+    }
+
+    [Fact]
+    public async Task Retry_after_all_pages_were_rendered_does_not_need_the_deleted_pdf()
+    {
+        _minio.GetFileStreamAsync(Arg.Any<string>()).Returns(Task.FromResult<Stream?>(null));
+        var id = await SeedJobAsync(stage: BookImportStage.Setup, status: BookImportJobStatus.Queued);
+        await using (var seed = _db.NewContext())
+        {
+            var job = await seed.BookImportJobs.SingleAsync();
+            job.PageCount = 2;
+            for (var page = 1; page <= 2; page++)
+                seed.BookImportPages.Add(new BookImportPage { JobId = id, FilePage = page, ImageUrl = $"http://minio/p/{page}.webp", Width = 400, Height = 566 });
+            await seed.SaveChangesAsync();
+        }
+
+        await RunAsync(id);
+
+        await using var check = _db.NewContext();
+        var after = await check.BookImportJobs.SingleAsync();
+        after.Error.ShouldNotBe("The uploaded PDF could not be read from storage.");
+        await _minio.DidNotReceive().GetFileStreamAsync("http://minio/exam-questions/book-imports/x/source.pdf");
+        await _minio.DidNotReceive().DeleteFileByUrlAsync(Arg.Any<string>());
     }
 
     [Fact]

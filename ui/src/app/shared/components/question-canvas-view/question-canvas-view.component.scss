@@ -9,6 +9,12 @@
   flex-direction: column;
   align-items: center;
   gap: 10px;
+
+  // Issue #1185: geniş soru kırpıntısı kartı aşmaz, genişliğe sığacak kadar küçülür (tıklama koordinatı TS'te çevrilir).
+  canvas {
+    max-width: 100%;
+    height: auto;
+  }
 }
 
 /* ---------- Önizleme aksiyon grubu ---------- */

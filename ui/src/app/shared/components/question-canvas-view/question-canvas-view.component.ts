@@ -288,12 +288,21 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
     }
   }
 
+  /**
+   * Issue #1185: tuval kartı aşmasın diye CSS ile küçülebilir; fare konumu CSS pikselinden tuval pikseline çevrilir.
+   */
+  private toCanvasPoint(event: MouseEvent): { x: number; y: number } {
+    const canvas = this.canvas.nativeElement;
+    const rect = canvas.getBoundingClientRect();
+    const ratioX = rect.width > 0 ? canvas.width / rect.width : 1;
+    const ratioY = rect.height > 0 ? canvas.height / rect.height : 1;
+    return { x: (event.clientX - rect.left) * ratioX, y: (event.clientY - rect.top) * ratioY };
+  }
+
   onMouseMove(event: MouseEvent) {
     if (!this.canvas?.nativeElement) return;
 
-    const rect = this.canvas.nativeElement.getBoundingClientRect();
-    const mouseX = event.clientX - rect.left;
-    const mouseY = event.clientY - rect.top;
+    const { x: mouseX, y: mouseY } = this.toCanvasPoint(event);
 
     // Normalize to unscaled coordinate space
     const scale = this.contentScale || 1;
@@ -327,9 +336,7 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
   selectChoice(event: MouseEvent) {
     if (!this.canvas?.nativeElement) return;
 
-    const rect = this.canvas.nativeElement.getBoundingClientRect();
-    const mouseX = event.clientX - rect.left;
-    const mouseY = event.clientY - rect.top;
+    const { x: mouseX, y: mouseY } = this.toCanvasPoint(event);
 
     const scale = this.contentScale || 1;
     const nx = mouseX / scale;

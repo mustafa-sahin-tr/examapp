@@ -520,9 +520,12 @@ export class LabelingComponent {
           [region.name]: { ...this.labelsOf(region.name), itemLabel: String(draft.number) },
         }));
       }
+      // Tespit yeni uygulandı: işaretli şık kullanıcının değil, tespitin (ör. eski düzeltmenin elle kaydı). Taslaktaki cevap
+      // güncel olandır (incelemede değişmiş olabilir), o kazanır.
       const answers = region.answers ?? [];
-      if (draft.correctOptionIndex >= 0 && draft.correctOptionIndex < answers.length && !answers.some((a) => a.isCorrect)) {
-        selector.setCorrectAnswer(regions.indexOf(region), draft.correctOptionIndex, 1);
+      const correct = draft.correctOptionIndex;
+      if (correct >= 0 && correct < answers.length && !answers[correct].isCorrect) {
+        selector.setCorrectAnswer(regions.indexOf(region), correct, 1);
       }
     }
   }

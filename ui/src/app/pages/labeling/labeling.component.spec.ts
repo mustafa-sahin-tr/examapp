@@ -1981,7 +1981,8 @@ describe('LabelingComponent', () => {
             await fixture.whenStable();
 
             expect(bookImportsApi.pageDrafts).toHaveBeenCalledWith('j1', 3, 12);
-            // Tespit uygulanınca: kutular taslaklarla eşlenir (ikincisinin şıkkı zaten işaretli).
+            // Tespit uygulanınca: kutular taslaklarla eşlenir. İkincisinde eski elle kayıttan B işaretli; incelemede A seçilmiş,
+            // taslağın cevabı kazanır. Üçüncüsü hiçbir taslakla örtüşmez.
             selector().regions.set([mcq('q1', -1), { ...mcq('q2', 1), y: 400 }, { ...mcq('q3', -1), y: 800 }]);
             selector().applyExternalPrediction.mockClear();
             (component as unknown as { prefillFromDrafts(): void }).prefillFromDrafts();
@@ -1989,8 +1990,15 @@ describe('LabelingComponent', () => {
             expect(component.labelsOf('q1').itemLabel).toBe('5');
             expect(component.labelsOf('q2').itemLabel).toBe('7');
             expect(component.labelsOf('q3').itemLabel).toBe('');
-            expect(selector().setCorrectAnswer).toHaveBeenCalledTimes(1);
+            expect(selector().setCorrectAnswer).toHaveBeenCalledTimes(2);
             expect(selector().setCorrectAnswer).toHaveBeenCalledWith(0, 2, 1);
+            expect(selector().setCorrectAnswer).toHaveBeenCalledWith(1, 0, 1);
+
+            // Zaten taslaktaki şık işaretliyse dokunulmaz.
+            selector().setCorrectAnswer.mockClear();
+            selector().regions.set([mcq('q1', 2)]);
+            (component as unknown as { prefillFromDrafts(): void }).prefillFromDrafts();
+            expect(selector().setCorrectAnswer).not.toHaveBeenCalled();
         });
 
         it('fix_Save_ReplacesThePageDraftsWithoutRequiringAnswersAndGoesBack', async () => {

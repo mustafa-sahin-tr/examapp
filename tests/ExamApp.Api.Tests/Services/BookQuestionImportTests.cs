@@ -691,6 +691,10 @@ public class BookQuestionImportTests : IDisposable
 
         error.ShouldBe(BookImportPageFixError.None);
         drafts.Select(d => (d.Number, d.CorrectOptionIndex)).ShouldBe([(1, 1), (2, -1)]);
+        // Aktarımın şıklarında Order boş olabilir (demo verisi): sıra incelemedeki gibi Id'den; hep A olmamalı.
+        await using (var clear = _db.NewContext())
+            await clear.Answers.ExecuteUpdateAsync(a => a.SetProperty(x => x.Order, (int?)null));
+        (await Fix(ctx).GetPageDraftsAsync(Owner, id, test.Id, 1, default)).Drafts.Select(d => d.CorrectOptionIndex).ShouldBe([1, -1]);
         var saved = _saved.Single().Questions;
         drafts.Select(d => (d.X, d.Y, d.Width, d.Height)).ShouldBe(saved.Select(q => ((int?)q.X, (int?)q.Y, (int?)q.Width, (int?)q.Height)));
         (await Fix(ctx).GetPageDraftsAsync(BookImportOwner.Create(OwnerId + 1, "QuestionTrainer"), id, test.Id, 1, default)).Error

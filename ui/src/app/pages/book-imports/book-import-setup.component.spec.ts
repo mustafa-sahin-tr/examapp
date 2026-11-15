@@ -67,8 +67,33 @@ describe('BookImportSetupComponent (#1021)', () => {
     expect(cell(0, 1).closest('label')!.classList).toContain('bis-key__cell--conflict');
     expect(cell(0, 1).closest('label')!.getAttribute('title')).toBe('Diğer okuma: D');
     expect(cell(1, 1).closest('label')!.classList).toContain('bis-key__cell--unreadable');
-    expect(text()).toContain('1 hücrede okumalar farklı.');
+    expect(text()).toContain('1 hücrede okumalar farklı — ilkine git');
     expect(confirmButton().disabled).toBe(true);
+  });
+
+  it('conflict_EnterKeepsCurrentLetter_AndOtherReadCanBeTaken (#1188)', () => {
+    create(setupData({
+      tests: [
+        { order: 1, unit: 1, testNo: 1, title: 'Milyonlar - I', minutes: 16, fileFrom: 7, fileTo: 8, expectedQuestions: 3,
+          answerKey: 'ABC', keyConflicts: '.DA', flags: ['keyConflicts'] },
+      ],
+    }));
+    const other = (col: number) => cell(0, col).closest('label')!.querySelector<HTMLButtonElement>('.bis-key__other');
+
+    expect(other(1)!.textContent!.trim()).toBe('D');
+    el().querySelector<HTMLButtonElement>('.bis-status__link')!.click();
+    expect(document.activeElement).toBe(cell(0, 1));
+
+    press(cell(0, 1), 'Enter');
+    expect(cell(0, 1).value).toBe('B');
+    expect(other(1)).toBeNull();
+    expect(document.activeElement).toBe(cell(0, 2));
+
+    other(2)!.click();
+    fixture.detectChanges();
+    expect(cell(0, 2).value).toBe('A');
+    expect(other(2)).toBeNull();
+    expect(confirmButton().disabled).toBe(false);
   });
 
   it('keyboard_TypingFixesCellsAndMovesFocus', () => {

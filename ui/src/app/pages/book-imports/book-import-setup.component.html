@@ -136,6 +136,11 @@
                   <input [value]="cell" maxlength="1" autocomplete="off" [attr.data-cell]="r + '-' + c"
                     [attr.aria-label]="t('setup.keyCell', { no: c + 1, other: conflictLabel(row, c) || '' })"
                     (keydown)="onKeyCell($event, r, c)" (focus)="$any($event.target).select()" />
+                  @if (conflictLabel(row, c); as other) {
+                  <button type="button" class="bis-key__other" tabindex="-1"
+                    [attr.aria-label]="t('setup.takeOtherRead', { answer: other })"
+                    (click)="takeOtherRead(r, c)">{{ other }}</button>
+                  }
                 </label>
                 }
               </div>
@@ -167,7 +172,9 @@
     }
 
     <p class="bis-status" role="status">
-      @if (openConflicts() > 0) { {{ t('setup.openConflicts', { count: openConflicts() }) }} }
+      @if (openConflicts() > 0) {
+      <button type="button" class="bis-status__link" (click)="focusFirstConflict()">{{ t('setup.openConflicts', { count: openConflicts() }) }}</button>
+      }
       @if (unreadable() > 0) { {{ t('setup.unreadable', { count: unreadable() }) }} }
       @if (invalidPages()) { {{ t('setup.invalidPages') }} }
       @if (openConflicts() === 0 && unreadable() === 0 && !invalidPages()) { {{ t('setup.ready', { count: included().length }) }} }

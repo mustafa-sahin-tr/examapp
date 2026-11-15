@@ -285,7 +285,7 @@ deploy/scripts/demo.sh restore <yedek klasörü> --yes  # bütün demo verisini 
 - **MinIO harici diskte (#1198):** `.env.demo`'da `DEMO_MINIO_DIR=/Volumes/Mustafas HDD/Builds/examapp/demo-minio` MinIO verisini
   Docker volume'u yerine o klasöre koyar (kitap aktarımı kitap başına 150–250 MB; iç SSD yetmez). Boşsa volume kullanılır.
   Disk takılı değilse MinIO açılmaz. Bu durumda `backup` MinIO'yu her seferinde tar'lamaz; tek ayna
-  (`demo-backups/minio-mirror`) `rsync --delete` ile güncellenir, `restore` aynayı geri yazar (aynanın içeriği son yedeğinkidir).
+  (`demo-backups/minio-mirror`, MinIO'nun `.minio.sys/tmp` klasörü hariç) `rsync --delete` ile güncellenir; eski yedek temizliği yalnız tarih adlı klasörlere bakar, `restore` aynayı geri yazar (aynanın içeriği son yedeğinkidir).
   Taşıma: stack'i durdur, `docker run --rm -v hedefokul-demo_minio_data:/from:ro -v <klasör>:/to postgres:18.3 cp -a /from/. /to/`,
   `diff -rq` ile karşılaştır, satırı ekle, `up`; eski volume doğrulanınca silinir.
 - **Geri yükleme:** Postgres ve MinIO volume'leri silinip yedekten kurulur, Redis önbelleği boşalır. Yedek `examuser` parolasını

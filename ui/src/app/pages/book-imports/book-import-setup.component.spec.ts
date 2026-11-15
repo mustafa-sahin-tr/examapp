@@ -96,6 +96,45 @@ describe('BookImportSetupComponent (#1021)', () => {
     expect(confirmButton().disabled).toBe(false);
   });
 
+  it('conflict_MissingInOtherRead_DropsTheBox (#1192)', () => {
+    create(setupData({
+      tests: [
+        { order: 1, unit: 1, testNo: 1, title: 'Milyonlar - I', minutes: 16, fileFrom: 7, fileTo: 8, expectedQuestions: 3,
+          answerKey: 'ABC', keyConflicts: '..-', flags: ['keyConflicts'] },
+      ],
+    }));
+    const other = cell(0, 2).closest('label')!.querySelector<HTMLButtonElement>('.bis-key__other')!;
+    expect(other.getAttribute('aria-label')).toBe(tr.setup.dropMissingRead);
+
+    other.click();
+    fixture.detectChanges();
+    expect(cell(0, 2)).toBeNull();
+    expect(cell(0, 1).value).toBe('B');
+    expect(confirmButton().disabled).toBe(false);
+  });
+
+  it('testPages_ShownInThePanel_AndBackToTheKey (#1192)', () => {
+    create();
+    const tab = (label: string) =>
+      Array.from(el().querySelectorAll<HTMLButtonElement>('.bis-keypage__tabs button')).find((b) => b.textContent?.trim() === label)!;
+
+    el().querySelectorAll<HTMLButtonElement>('[data-testid="view-test-pages"]')[0].click();
+    fixture.detectChanges();
+    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 7);
+    expect(el().querySelector('[data-testid="viewed-test"]')!.textContent).toContain('1-01');
+    expect(tab('s. 8')).toBeTruthy();
+    expect(tab('s. 7').getAttribute('aria-pressed')).toBe('true');
+
+    tab('s. 8').click();
+    fixture.detectChanges();
+    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 8);
+
+    tab('s. 237').click();
+    fixture.detectChanges();
+    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 237);
+    expect(el().querySelector('[data-testid="viewed-test"]')).toBeNull();
+  });
+
   it('keyboard_TypingFixesCellsAndMovesFocus', () => {
     create();
 

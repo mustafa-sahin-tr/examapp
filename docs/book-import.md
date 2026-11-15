@@ -85,6 +85,9 @@ aktarım aracındaki Python portu referanstır (#1022).
   (`BookImport:AnswerKeyTieBreakModel`, varsayılan `claude-sonnet-5-5`); hakemin okuması alınır, ucuz tam sayfa okuması
   karşılaştırma olarak kalır (#1122: önce iki okuma da Sonnet'ti; 416 sayfalık LGS kitabında kurulumun $0,40 / $0,46'sı
   buydu). Okumalar soru soru karşılaştırılır; farklı hücreler onay ekranında sarı, okunamayanlar (`?`) kırmızı işaretlenir.
+  Onay ekranı (#1188, #1192): sarı hücrenin altında diğer okuma durur (tıklayınca alınır; `-` diğer okumada soru yok demek,
+  tıklayınca kutu silinir), Enter mevcut harfi onaylar, durum satırı ilk açık uyuşmazlığa götürür. Satırdaki göz düğmesi testin
+  sayfalarını (en çok 12) soldaki panelde anahtar sekmelerinin yanında açar; anahtar sekmesi panele geri döner.
 - **Planlama** (`BookSetupPlanner`, saf; kurallar orada): test başlıklı sayfayla başlar, başlıksız ardışık test sayfaları ona
   eklenir; ofset (basılı = dosya + ofset) en sık farktır; beklenen soru sayısı anahtar uzunluğu (yoksa sayfadaki en büyük
   soru no). İşaretler: `noKey`, `keyMismatch`, `keyConflicts`; kitapta bulunamayan anahtar satırları "eşleşmeyen" listesi.

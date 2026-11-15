@@ -371,7 +371,7 @@ public sealed class LabelingService(
     /// İstemcinin gönderdiği kutuları sınırlar: adet, negatif değer ve yalnız <c>class_id = 0</c> (question-detector'ın tek
     /// sınıfı); koordinatlar sayfa sınırına kırpılır. JSONB'ye yalnız bilinen alanlar yazılır. Issue #578: üst düzey kutunun
     /// <c>kind</c>/<c>component</c>/<c>interaction_type</c>'ı <see cref="LabelingBlocks.IsValidManual"/> ile doğrulanır
-    /// (geçersiz → <c>labeling.invalidBlockKind</c>); şıklarda bu alanlar yazılmaz. Issue #581: üst düzey kutunun <c>masks</c>'ı
+    /// (geçersiz → <c>labeling.invalidBlockKind</c>); şıklarda bu alanlar yazılmaz, yalnız harf (#1183). Issue #581: üst düzey kutunun <c>masks</c>'ı
     /// doğrulanıp kopyalanır (geçersiz → <c>labeling.invalidMask</c>); şıklarda atılır.
     /// </summary>
     private static PredictionListDto Sanitize(PredictionListDto input, int pageWidth, int pageHeight)
@@ -401,7 +401,13 @@ public sealed class LabelingService(
         {
             if (!LabelingBlocks.IsValidManual(q.Kind, q.Component, q.InteractionType))
                 throw new LabelingValidationException("labeling.invalidBlockKind");
-            var block = Box(q, (q.Subpredictions ?? []).Select(a => Box(a, [])).ToList());
+            // Issue #1183: şıkkın harfi (A–E) saklanır; geçersiz harf atılır.
+            var block = Box(q, (q.Subpredictions ?? []).Select(a =>
+            {
+                var option = Box(a, []);
+                option.Label = OptionLetters.Normalize(a.Label);
+                return option;
+            }).ToList());
             block.Kind = q.Kind;
             block.Component = q.Component;
             block.InteractionType = q.InteractionType;

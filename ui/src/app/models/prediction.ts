@@ -56,6 +56,10 @@ export interface Prediction {
      * sonucunda ve yalnız `true` gelir; manuel kayıtta saklanmaz.
      */
     answer_shown?: boolean | null;
+    /**
+     * Issue #1183: şıkkın basılı harfi (A–E); yalnız Claude'un şık kutusunda ve okunabildiyse. YOLO / eski kayıtta yok.
+     */
+    label?: string | null;
 }
 
 /** Issue #581: bölgeye göreli maske dikdörtgeni (exam API `RegionBoxDto`). */

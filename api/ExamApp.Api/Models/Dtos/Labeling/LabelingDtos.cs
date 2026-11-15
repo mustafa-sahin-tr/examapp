@@ -73,6 +73,14 @@ public class PredictionDto
     [JsonPropertyName("answer_shown")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public bool? AnswerShown { get; set; }
+
+    /// <summary>
+    /// Issue #1183: şıkkın basılı harfi (<c>A</c>..<c>E</c>, <see cref="Services.Labeling.OptionLetters"/>); yalnız şık kutusunda,
+    /// Claude okuyabildiyse. YOLO ve eski kayıtlarda null: sıra konumdan çıkarılır.
+    /// </summary>
+    [JsonPropertyName("label")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Label { get; set; }
 }
 
 public class PredictionListDto

@@ -458,6 +458,7 @@ public class LabelingBankServiceTests : IDisposable
         q1.Answers.Select(a => a.Label).ShouldBe(["A", "B", "C"]);
         q1.Answers.Select(a => a.IsCorrect).ShouldBe([false, true, false]);
         q1.Answers.Select(a => a.Order).ShouldBe([0, 1, 2]);
+        q1.Answers.Select(a => a.Tag).ShouldBe(["A", "B", "C"]);
         q1.Answers[1].X.ShouldBe(40d);
         q1.Answers[1].Width.ShouldBe(20);
 

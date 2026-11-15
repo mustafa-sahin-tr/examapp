@@ -505,6 +505,8 @@
           <span class="lb-choice" [class.is-selected]="answer.isCorrect">
             <button type="button" class="lb-choice__set" (click)="insSelectAnswer(j)" [disabled]="inspectorLocked"
               [attr.aria-pressed]="answer.isCorrect">{{ answer.label }}</button>
+            <app-answer-letter-picker [count]="d.answers.length" [index]="j" [disabled]="inspectorLocked"
+              [ariaLabel]="t('letterAria', { label: answer.label })" (picked)="insSetAnswerLetter(j, $event)" />
             <button type="button" class="lb-choice__del" (click)="insRemoveAnswer(j)" [disabled]="inspectorLocked"
               [attr.aria-label]="t('removeAnswerAria', { label: answer.label })"><mat-icon>close</mat-icon></button>
           </span>

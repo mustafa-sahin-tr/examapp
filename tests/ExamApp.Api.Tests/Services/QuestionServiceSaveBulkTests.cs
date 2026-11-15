@@ -85,6 +85,26 @@ public class QuestionServiceSaveBulkTests : IDisposable
     }
 
     [Fact]
+    public async Task Stores_each_option_letter_and_position()
+    {
+        var tax = await SeedTaxonomyAsync();
+        var question = Mcq("S1", "B");
+        question.Answers.Add(new BulkAnswerDto { Label = "Şık 3" });
+        question.Answers[1].Tag = "b)";
+        question.Answers[1].Order = 7;
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).SaveBulkQuestion(Dto(new HeaderInfo { SubjectId = tax.SubjectId, TopicId = tax.TopicId }, question)))
+                .Success.ShouldBeTrue();
+
+        // #1183: harf Tag'e, sıra Order'a yazılır; tek harf olmayan etiketin Tag'i boş, eksik sıra konumdan.
+        await using var check = _db.NewContext();
+        var answers = await check.Answers.OrderBy(a => a.Id).ToListAsync();
+        answers.Select(a => a.Tag).ShouldBe(["A", "B", null]);
+        answers.Select(a => a.Order).ShouldBe([0, 7, 2]);
+    }
+
+    [Fact]
     public async Task Inherits_missing_classification_from_the_worksheet()
     {
         var tax = await SeedTaxonomyAsync();

@@ -132,7 +132,8 @@ aktarım aracındaki Python portu referanstır (#1022).
   1. Tespit: `ILabelingService.DetectForImportAsync` — işaretleme ekranının "Claude ile tespit"iyle aynı model listesi, etkin prompt,
      kayıt ve önbellek (`LabelingResults`); kullanıcı kotası yok, aktarım bütçesi ve maliyet aşağıda (#1024). Model `BookImport:DetectModel` (varsayılan `claude-haiku-5-5`, izinli listede olmalı).
   2. Yalnız `mcq_question` blokları; okuma sırası (sütun, sonra yukarıdan aşağı), şıksız kök + hemen altındaki şık kutusu birleşir.
-  3. `BookQuestionLayout.Prepare`: soru kutusu taşan şıkları içine alır, şıklar (satır, x) sırasıyla dolgulanır (25 px),
+  3. `BookQuestionLayout.Prepare`: soru kutusu taşan şıkları içine alır, şıklar Claude'un okuduğu harflere (tam takımsa, #1183)
+     ya da (satır, x) sırasına dizilip dolgulanır (25 px),
      "Cevapları Hizala" kurallarıyla hizalanır, örtüşen dolgu tespit kutularının ortasından kesilir. Kurallar ve toleranslar el ile
      aktarım aracının Python portuyla aynı (2363 px genişliğe ölçekli); testler aynı girdilerde Python sonucuyla karşılaştırıldı.
   4. Numaralama sayfaya dayanır: kurulum taramasının okuduğu "sayfadaki en büyük soru no" (`BookImportPages.MaxQuestionNumber`)

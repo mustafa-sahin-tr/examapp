@@ -15,6 +15,7 @@ import { Question } from '../../models/question';
 import { QuestionCanvasForm } from '../../models/question-form';
 import { Book, BookTest } from '../../models/book';
 import { BookService } from '../../services/book.service';
+import { AnswerLetterPickerComponent } from '../../shared/components/answer-letter-picker/answer-letter-picker.component';
 import {
   ImageSelectorComponent,
   ActiveInspector,
@@ -72,6 +73,7 @@ const QUESTION_TRAINER_ROLE = 'QuestionTrainer';
   templateUrl: './question-canvas.component.html',
   styleUrls: ['./question-canvas.component.scss'],
   imports: [
+    AnswerLetterPickerComponent,
     MatSnackBarModule,
     ReactiveFormsModule,
     FormsModule,
@@ -851,6 +853,14 @@ export class QuestionCanvasComponent implements OnInit {
     const idx = this.insIndex;
     if (idx != null) {
       this.imageSelector.setCorrectAnswer(idx, answerIndex, 1);
+    }
+  }
+
+  /** Issue #1183: şıkkın harfini seçer (şık o sıraya taşınır); kayıtlı soru önizlemesinde kapalı. */
+  insSetAnswerLetter(answerIndex: number, letterIndex: number) {
+    const idx = this.insIndex;
+    if (idx != null) {
+      this.imageSelector.setAnswerLetter(idx, answerIndex, letterIndex);
     }
   }
 

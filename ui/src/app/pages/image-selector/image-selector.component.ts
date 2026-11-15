@@ -229,6 +229,7 @@ import {
   selectCoordinateImageFiles,
 } from './coordinate-json';
 import { downscaleOversizedPage } from './page-image-limits';
+import { moveOption, normalizeOptionLetter, optionLetterAt, orderByLetters } from './option-letters';
 
 /**
  * Soru kırpma/yükleme akışının metinleri kendi scope'unda: `public/i18n/image-selector/<lang>.json`
@@ -3456,6 +3457,39 @@ export class ImageSelectorComponent {
   }
 
   /** Tespit sonucundaki türü bölgeye yazar; tipli etkinlik, tür seçicide o tipi seçmekle aynıdır. */
+  /**
+   * Issue #1183: tespitin şıkları. Harfleri (Claude ya da elle kayıt) tam takımsa şıklar o harflere dizilir ve harfler
+   * kilitlenir: hizalama konumdan yeniden harflendirmez.
+   */
+  private detectedAnswers(subpredictions: Prediction[] | undefined): Pick<QuestionRegion, 'answers' | 'lettersLocked'> {
+    const options = (subpredictions ?? []).filter((a) => a.class_id === 0);
+    const lettered = orderByLetters(options, (o) => o.label);
+    return {
+      lettersLocked: lettered != null,
+      answers: (lettered ?? options).map((a: any, index: number) => ({
+        ...a,
+        label: lettered ? optionLetterAt(index) : this.tr('labels.answerNumbered', { number: index + 1 }),
+        isCorrect: false,
+        id: index,
+      })),
+    };
+  }
+
+  /**
+   * Issue #1183: şıkkın harfini seçer — şık o sıraya taşınır, diğerleri kayar, harfler kilitlenir. Doğru şık işareti aynı
+   * kutuda kalır. Önizlemede (kayıtlı soru) sıra sunucuya yazılmadığı için yapılmaz.
+   */
+  setAnswerLetter(questionIndex: number, answerIndex: number, letterIndex: number) {
+    const region = this.regions()[questionIndex];
+    if (!region || this.previewMode() || answerIndex === letterIndex) return;
+    if (letterIndex < 0 || letterIndex >= region.answers.length) return;
+    region.answers = moveOption(region.answers, answerIndex, letterIndex);
+    region.lettersLocked = true;
+    this.renameAnswers(questionIndex);
+    this.regions.set([...this.regions()]);
+    this.drawImage();
+  }
+
   private applyPredictedKind(regionName: string, prediction: Prediction) {
     const kind = blockKindOf(prediction);
     if (kind === 'mcq_question') {
@@ -5319,7 +5353,12 @@ export class ImageSelectorComponent {
         if (kind === 'mcq_question') {
           return {
             ...toPrediction(q),
-            subpredictions: (q.answers ?? []).map((a) => ({ ...toPrediction(a), subpredictions: [] })),
+            // Issue #1183: şıkkın harfi saklanır; kayıt yeniden açılınca şıklar bu harflerle gelir.
+            subpredictions: (q.answers ?? []).map((a) => ({
+              ...toPrediction(a),
+              subpredictions: [],
+              ...(normalizeOptionLetter(a.label) && a.label.trim().length === 1 ? { label: a.label.trim() } : {}),
+            })),
             ...maskPart,
           };
         }
@@ -5431,14 +5470,7 @@ export class ImageSelectorComponent {
         .map(({ kind: _kind, component: _component, interaction_type: _type, masks: _masks, answer_shown: _shown, ...q }, index) => ({
           ...q,
           name: `Soru ${index + 1}`,
-          answers: q.subpredictions
-            .filter((a: any) => a.class_id === 0)
-            .map((a: any, index: number) => ({
-              label: this.tr('labels.answerNumbered', { number: index + 1 }),
-              ...a,
-              isCorrect: false,
-              id: index,
-            })),
+          ...this.detectedAnswers(q.subpredictions),
           // this.getAnswers(questions.predictions, q).map((a, index) => ({
           //   label: `Şık ${index + 1}`,
           //   ...a,
@@ -6003,7 +6035,8 @@ export class ImageSelectorComponent {
       }
     }
 
-    region.answers = rows.flat();
+    // Issue #1183: harfleri kilitli şıkların sırası (= harfleri) hizalamayla değişmez.
+    if (!region.lettersLocked) region.answers = rows.flat();
     this.renameAnswers(questionIndex);
     this.regions.set([...this.regions()]);
     this.drawImage();
@@ -6044,6 +6077,12 @@ export class ImageSelectorComponent {
   renameAnswers(questionIndex: number) {
     const region = this.regions()[questionIndex];
     if (region.answers.length === 0) return;
+
+    // Issue #1183: harfler okunmuş / kayıtlı / elle seçilmişse sıra korunur, yalnız harfler sırayla yazılır.
+    if (region.lettersLocked) {
+      region.answers.forEach((answer, index) => (answer.label = String.fromCharCode(65 + index)));
+      return;
+    }
 
     // Issue #1181: okuma sırası — kutular dikey örtüşmeye göre satırlara ayrılır, satırlar yukarıdan aşağı, her satır
     // soldan sağa. Yalnız x'e göre sıralamak 2x2 dizilimde (A B / C D) birkaç piksel farkla B'yi D yapıyordu.

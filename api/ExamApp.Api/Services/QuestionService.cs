@@ -8,6 +8,7 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interactions;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Labeling;
 using ExamApp.Api.Services.Storage;
 using ExamApp.Api.Services.Worksheets;
 using ExamApp.Foundation.Contracts;
@@ -1095,7 +1096,8 @@ public class QuestionService : IQuestionService
 
                     if (!questionDto.IsExample)
                     {
-                        var answers = sourceAnswers.Select(a => new Answer
+                        // Issue #1183: şıkkın harfi ve sırası saklanır (tuvaldeki harf = sıra); okunur harf yoksa Tag boş.
+                        var answers = sourceAnswers.Select((a, index) => new Answer
                         {
                             QuestionId = question.Id,
                             Text = a.Label,
@@ -1103,7 +1105,9 @@ public class QuestionService : IQuestionService
                             Y = a.Y,
                             Width = a.Width,
                             Height = a.Height,
-                            IsCanvasQuestion = true
+                            IsCanvasQuestion = true,
+                            Tag = OptionLetters.Normalize(a.Tag) ?? (a.Label?.Trim() is { Length: 1 } letter ? OptionLetters.Normalize(letter) : null),
+                            Order = a.Order ?? index,
                         }).ToList();
 
                         // Etkileşimli soruda (MCQ dışı) doğruluk InteractionSolution'dadır; doğru şık gerekmez.

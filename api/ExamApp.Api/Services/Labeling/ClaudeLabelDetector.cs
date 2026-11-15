@@ -168,11 +168,13 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
                 }
                 AddUsage(usage);
 
-                var optionRects = (options.Options ?? [])
-                    .Select(o => crop.ToPage(o.X1, o.Y1, o.X2, o.Y2))
-                    .Where(r => r.Width > 2 && r.Height > 2)
-                    .Select(r => Rectangle.Intersect(Rectangle.Inflate(r, prompt.OptionPadding, prompt.OptionPadding), pageBounds))
+                // Issue #1183: şıkkın basılı harfi kutusuyla birlikte taşınır (kitap aktarımı ve tuval sırayı ondan alır).
+                var optionBoxes = (options.Options ?? [])
+                    .Select(o => (Rect: crop.ToPage(o.X1, o.Y1, o.X2, o.Y2), Letter: OptionLetters.Normalize(o.Label)))
+                    .Where(o => o.Rect.Width > 2 && o.Rect.Height > 2)
+                    .Select(o => (Rect: Rectangle.Intersect(Rectangle.Inflate(o.Rect, prompt.OptionPadding, prompt.OptionPadding), pageBounds), o.Letter))
                     .ToList();
+                var optionRects = optionBoxes.Select(o => o.Rect).ToList();
                 if (probe && optionRects.Count < MinProbeOptions)
                     return ToPrediction(padded, block, []);
                 var detected = probe ? block with { Kind = McqClassification } : block;
@@ -181,8 +183,8 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
                 if (prompt.ExpandQuestionToOptions)
                     question = optionRects.Aggregate(question, Rectangle.Union);
 
-                return ToPrediction(question, detected, optionRects
-                    .Select(r => new PredictionDto { ClassId = 0, X = r.X, Y = r.Y, Width = r.Width, Height = r.Height })
+                return ToPrediction(question, detected, optionBoxes
+                    .Select(o => new PredictionDto { ClassId = 0, X = o.Rect.X, Y = o.Rect.Y, Width = o.Rect.Width, Height = o.Rect.Height, Label = o.Letter })
                     .ToList());
             }
             finally

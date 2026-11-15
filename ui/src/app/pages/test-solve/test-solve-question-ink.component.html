@@ -1,0 +1,12 @@
+<svg class="ink" *transloco="let t; prefix: 'test-solve.ink'" [attr.viewBox]="'0 0 ' + viewWidth + ' ' + viewHeight()"
+  preserveAspectRatio="xMinYMin meet" [attr.role]="active() ? 'img' : null"
+  [attr.aria-label]="active() ? t('drawingAria') : null" [attr.aria-hidden]="active() ? null : 'true'"
+  (pointerdown)="startStroke($event)" (pointermove)="extendStroke($event)" (pointerup)="endStroke($event)"
+  (pointercancel)="endStroke($event)">
+  @for (stroke of strokes(); track $index) {
+    <path class="ink__stroke" [attr.d]="stroke" />
+  }
+  @if (currentStroke(); as stroke) {
+    <path class="ink__stroke" [attr.d]="stroke" />
+  }
+</svg>

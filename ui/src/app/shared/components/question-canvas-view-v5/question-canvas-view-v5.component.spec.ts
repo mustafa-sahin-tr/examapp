@@ -1,3 +1,4 @@
+import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 
@@ -653,4 +654,55 @@ describe('QuestionCanvasViewComponentv5', () => {
             expect(component.questionImageSource()).toBeNull();
         });
     });
+});
+
+// Issue #1175: görselin üstüne verilen katman (kalemle karalama) görselle aynı kutuyu kaplar.
+@Component({
+    standalone: true,
+    imports: [QuestionCanvasViewComponentv5],
+    template: `<app-question-canvas-view-v5 [questionRegion]="region" [enableHeightFit]="true">
+        <div qcvImageOverlay class="probe" style="position:absolute;inset:0"></div>
+    </app-question-canvas-view-v5>`,
+})
+class OverlayHostComponent {
+    region!: QuestionRegion;
+}
+
+describe('QuestionCanvasViewComponentv5 image overlay (issue #1175)', () => {
+    function svgUrl(width: number, height: number): string {
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="100%" height="100%" fill="#ccc"/></svg>`;
+        return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+    }
+
+    beforeEach(async () => {
+        await TestBed.configureTestingModule({ imports: [OverlayHostComponent, translocoTestingModule()] }).compileComponents();
+    });
+
+    for (const containerWidth of [900, 360]) {
+        it(`covers exactly the question image at ${containerWidth}px`, async () => {
+            const fixture = TestBed.createComponent(OverlayHostComponent);
+            const host = fixture.nativeElement as HTMLElement;
+            host.style.display = 'block';
+            host.style.width = `${containerWidth}px`;
+            fixture.componentInstance.region = buildRegion({
+                width: 600,
+                height: 300,
+                imageUrl: svgUrl(600, 300),
+                answers: fourEqualAnswers(200).map((a) => ({ ...a, imageUrl: svgUrl(200, 40) })),
+            });
+            fixture.detectChanges();
+            await Promise.all(Array.from(host.querySelectorAll('img')).map((img) => img.decode()));
+            fixture.debugElement.query(By.directive(QuestionCanvasViewComponentv5)).componentInstance.updateVisualScale();
+            fixture.detectChanges();
+
+            const image = host.querySelector('.qcv4-question-image')!.getBoundingClientRect();
+            const probe = host.querySelector('.probe')!.getBoundingClientRect();
+            expect(image.width).toBeGreaterThan(0);
+            expect(image.width).toBeLessThanOrEqual(containerWidth);
+            for (const side of ['left', 'top', 'width', 'height'] as const) {
+                expect(Math.abs(probe[side] - image[side])).toBeLessThanOrEqual(1);
+            }
+            fixture.destroy();
+        });
+    }
 });

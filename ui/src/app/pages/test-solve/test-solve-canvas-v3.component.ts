@@ -34,6 +34,7 @@ import { QuestionReportService } from '../../services/question-report.service';
 import { QuestionReportCreated } from '../../models/question-report';
 import { QuestionReportDialogComponent, QuestionReportDialogData } from './question-report-dialog.component';
 import { TestSolveScratchPadComponent } from './test-solve-scratch-pad.component';
+import { TestSolveQuestionInkComponent } from './test-solve-question-ink.component';
 import { QuestionLiteViewComponent } from '../question-lite-view/question-lite-view.component';
 import { CountdownComponent } from '../../shared/components/countdown/countdown.component';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
@@ -111,6 +112,7 @@ function isShortcutBlockedTarget(target: EventTarget | null): boolean {
   imports: [
     CommonModule,
     TestSolveScratchPadComponent,
+    TestSolveQuestionInkComponent,
     MatButtonModule,
     MatIconModule,
     MatTooltipModule,
@@ -156,6 +158,9 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
   protected readonly canReportQuestion = inject(AuthService).hasRole('Student');
   /** Issue #782. */
   protected readonly scratchPadOpen = signal(false);
+  /** Issue #1175: açıkken soru görselinin üstüne çizilir; şıklar görselin dışında olduğu için seçim etkilenmez. */
+  protected readonly inkMode = signal(false);
+  private readonly inkLayers = viewChildren(TestSolveQuestionInkComponent);
   private readonly overlay = inject(Overlay);
   private readonly viewContainerRef = inject(ViewContainerRef);
   @ViewChild('mapSheetContent') private mapSheetContent?: TemplateRef<unknown>;
@@ -248,6 +253,18 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
   public showPassageOnly(questionIndex: number) {
     if (!this.isPassageFirstActive(questionIndex)) return;
     this.passageOnlyByQuestionIndex.set(questionIndex, true);
+  }
+
+  /** Issue #1175: kalem katmanı yalnız görselli çoktan seçmeli soruda (etkinlikler görsele dokunmayla çalışır). */
+  protected inkAvailable(questionData: { index: number; question: { question: { isCanvasQuestion?: boolean; interactionType?: string | null } } }): boolean {
+    return !!questionData.question.question.isCanvasQuestion
+      && this.interactionKind(questionData.question.question.interactionType) === 'mcq'
+      && !this.isShowingPassageOnly(questionData.index);
+  }
+
+  /** Dock'taki geri al / temizle etkin sorunun katmanına gider. */
+  protected inkLayerFor(questionId: number): TestSolveQuestionInkComponent | null {
+    return this.inkLayers().find((layer) => layer.questionId() === questionId) ?? null;
   }
 
   /**

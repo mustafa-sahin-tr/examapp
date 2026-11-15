@@ -1,0 +1,35 @@
+// Görselin çerçevesini kaplar (çerçeve: question-canvas-view-v5 `.qcv4-image-frame`).
+:host {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+}
+
+.ink {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  color: var(--primaryColor);
+}
+
+// Açıkken dokunuş görsele değil çizime gider; parmakla kaydırma da görselin üstünde durur.
+:host(.is-active) {
+  pointer-events: auto;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+  outline: 2px dashed var(--primaryColor);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.ink__stroke {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}

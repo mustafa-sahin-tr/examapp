@@ -4,7 +4,9 @@ import {
   SCRATCH_TEXT_MAX_LENGTH,
   clearScratchNotes,
   purgeOldScratchNotes,
+  readInkStrokes,
   readScratchNotes,
+  writeInkStrokes,
   writeScratchNotes,
 } from './test-solve-scratch-store';
 
@@ -66,5 +68,27 @@ describe('test solve scratch store (#782)', () => {
     expect(localStorage.getItem('testSolve.scratch.2')).not.toBeNull();
     expect(localStorage.getItem('testSolve.scratch.3')).toBeNull();
     expect(localStorage.getItem('testSolve.instance.1')).toBe('keep');
+  });
+
+  it('keeps ink per question without overwriting other questions, and clears it with the notes (#1175)', () => {
+    writeInkStrokes(1, 10, ['M1 2L3 4']);
+    writeInkStrokes(1, 11, ['M5 6L7 8', 'bad']);
+    expect(readInkStrokes(1, 10)).toEqual(['M1 2L3 4']);
+    expect(readInkStrokes(1, 11)).toEqual(['M5 6L7 8']);
+
+    writeInkStrokes(1, 10, []);
+    expect(readInkStrokes(1, 10)).toEqual([]);
+    expect(readInkStrokes(1, 11)).toEqual(['M5 6L7 8']);
+
+    clearScratchNotes(1);
+    expect(readInkStrokes(1, 11)).toEqual([]);
+  });
+
+  it('purges old ink like old notes (#1175)', () => {
+    writeInkStrokes(1, 10, ['M1 2L3 4'], Date.now() - SCRATCH_MAX_AGE_MS - 1000);
+    writeInkStrokes(2, 10, ['M1 2L3 4']);
+    purgeOldScratchNotes();
+    expect(readInkStrokes(1, 10)).toEqual([]);
+    expect(readInkStrokes(2, 10)).toEqual(['M1 2L3 4']);
   });
 });

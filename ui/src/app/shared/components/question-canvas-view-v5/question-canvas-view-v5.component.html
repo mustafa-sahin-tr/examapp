@@ -30,9 +30,13 @@
   <div class="qcv4-container" [class]="containerClass()" [class.qcv4-pane-hidden]="passageArrangement() === 'tabs' && activePane() !== 'question'" [style.--qcv-answer-cols]="plan()?.answerColumns ?? null">
     <div class="qcv4-question-image-wrapper">
       <div #questionImageBox class="qcv4-main-image-box" [class.qcv4-main-image-box--zoom-row]="questionZoomAvailable()">
-        <img #questionImage class="qcv4-question-image" [src]="displayedQuestionSource()" [alt]="t('questionAlt')"
-          [style.width.px]="questionImageWidth()" [style.aspect-ratio]="questionAspectRatio()"
-          (load)="updateVisualScale()" [appStorageImageRetry]="imageRefresh" />
+        <!-- #1175: görselin üstüne katman (ör. kalemle karalama) koyulabilsin diye görsel kadar çerçeve. -->
+        <div class="qcv4-image-frame">
+          <img #questionImage class="qcv4-question-image" [src]="displayedQuestionSource()" [alt]="t('questionAlt')"
+            [style.width.px]="questionImageWidth()" [style.aspect-ratio]="questionAspectRatio()"
+            (load)="updateVisualScale()" [appStorageImageRetry]="imageRefresh" />
+          <ng-content select="[qcvImageOverlay]" />
+        </div>
         @if (questionZoomAvailable()) {
           <button mat-button type="button" class="qcv4-zoom-button" [attr.aria-label]="t('zoomQuestion')"
             (click)="openQuestionZoom(questionImage, t('questionAlt'), choiceAlt(t))">

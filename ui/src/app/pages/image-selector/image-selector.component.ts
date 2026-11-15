@@ -6045,15 +6045,16 @@ export class ImageSelectorComponent {
     const region = this.regions()[questionIndex];
     if (region.answers.length === 0) return;
 
-    // Tüm şıkların X ve Y değerlerini kontrol et
-    const minX = Math.min(...region.answers.map((a) => a.x));
-    const minY = Math.min(...region.answers.map((a) => a.y));
-
-    // **Dikey mi, yatay mı olduğunu belirle**
-    const isVertical = region.answers.every((a) => Math.abs(a.x - minX) < 10); // X'ler yakınsa dikey hizalanmış demektir.
-
-    // **Şıkları sıralayıp A, B, C, D olarak yeniden isimlendir**
-    const sortedAnswers = [...region.answers].sort((a, b) => (isVertical ? a.y - b.y : a.x - b.x));
+    // Issue #1181: okuma sırası — kutular dikey örtüşmeye göre satırlara ayrılır, satırlar yukarıdan aşağı, her satır
+    // soldan sağa. Yalnız x'e göre sıralamak 2x2 dizilimde (A B / C D) birkaç piksel farkla B'yi D yapıyordu.
+    const rows: AnswerChoice[][] = [];
+    for (const answer of [...region.answers].sort((a, b) => a.y + a.height / 2 - (b.y + b.height / 2))) {
+      const center = answer.y + answer.height / 2;
+      const row = rows.find((r) => r.some((a) => center > a.y && center < a.y + a.height));
+      if (row) row.push(answer);
+      else rows.push([answer]);
+    }
+    const sortedAnswers = rows.flatMap((row) => row.sort((a, b) => a.x - b.x));
 
     // A, B, C, D, E ... — şık sayısı kaç olursa olsun son şık dahil harflenir.
     sortedAnswers.forEach((answer, index) => {

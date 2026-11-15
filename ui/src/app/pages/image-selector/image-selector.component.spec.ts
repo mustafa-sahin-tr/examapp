@@ -119,6 +119,30 @@ describe('ImageSelectorComponent', () => {
             const sorted = [...component.regions()[0].answers].sort((a, b) => a.x - b.x);
             expect(sorted.map((a) => a.label)).toEqual(['A', 'B', 'C', 'D']);
         });
+
+        // #1181: 2x2 grid — the right column's x differs by a few pixels; B must not become D.
+        it('renameAnswers_TwoByTwoGrid_LabelsInReadingOrder', () => {
+            const a = answer(230, 10);
+            const b = answer(465, 10);
+            const c = answer(231, 60);
+            const d = answer(463, 62);
+            component.regions.set([region('Soru 1', [d, c, b, a])] as any);
+
+            component.renameAnswers(0);
+
+            expect(component.regions()[0].answers).toEqual([a, b, c, d]);
+            expect([a, b, c, d].map((x) => x.label)).toEqual(['A', 'B', 'C', 'D']);
+        });
+
+        it('renameAnswers_TwoRowsOfThree_LabelsRowByRow', () => {
+            const top = [answer(0, 10), answer(100, 12), answer(200, 8)];
+            const bottom = [answer(0, 50), answer(100, 50), answer(200, 52)];
+            component.regions.set([region('Soru 1', [bottom[2], top[1], bottom[0], top[2], top[0], bottom[1]])] as any);
+
+            component.renameAnswers(0);
+
+            expect([...top, ...bottom].map((x) => x.label)).toEqual(['A', 'B', 'C', 'D', 'E', 'F']);
+        });
     });
 
     describe('question selection', () => {

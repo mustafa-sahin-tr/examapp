@@ -145,6 +145,12 @@
   top: 12px;
   margin: 0;
 
+  &__test {
+    margin-left: 4px;
+    font-weight: 700;
+    color: var(--ms-text-strong);
+  }
+
   &__tabs {
     display: flex;
     flex-wrap: wrap;

@@ -26,6 +26,10 @@ import { BookImportSetup, BookImportSetupTest, ConfirmBookImportSetup } from '..
 import { BookImportService } from '../../services/book-import.service';
 
 const KEY_LETTER = /^[A-Ea-e]$/;
+/** Uyuşmazlıkta "-": diğer okumada bu soru yok (BookSetupPlanner). */
+const MISSING_READ = '-';
+/** Panelde bir testin en çok bu kadar sayfası sekme olur. */
+const MAX_VIEWED_PAGES = 12;
 
 /** Onay tablosunun düzenlenebilir satırı. Anahtar hücreleri: "A"–"E", okunamayan "?", boş "". */
 export interface EditableSetupTest {
@@ -103,6 +107,15 @@ export class BookImportSetupComponent implements OnInit {
   readonly keyPage = signal<number | null>(null);
   readonly keyImage = signal<string | null>(null);
   readonly keyImageLarge = signal(false);
+  /** #1192: soldaki panelde sayfaları gösterilen test (null: yalnız cevap anahtarı). */
+  readonly viewedTest = signal<number | null>(null);
+  readonly viewedRow = computed(() => this.rows().find((r) => r.order === this.viewedTest()) ?? null);
+  readonly viewedPages = computed(() => {
+    const row = this.viewedRow();
+    if (!row || row.fileFrom == null || row.fileTo == null || row.fileTo < row.fileFrom) return [];
+    const last = Math.min(row.fileTo, row.fileFrom + MAX_VIEWED_PAGES - 1, this.setup()?.pageCount ?? Number.MAX_SAFE_INTEGER);
+    return Array.from({ length: Math.max(last - row.fileFrom + 1, 0) }, (_, i) => row.fileFrom! + i);
+  });
 
   readonly keyPages = computed(() =>
     (this.setup()?.answerKeyRanges ?? []).flatMap((r) =>
@@ -169,17 +182,33 @@ export class BookImportSetupComponent implements OnInit {
 
   showKeyPage(filePage: number): void {
     this.keyPage.set(filePage);
+    this.keyImage.set(null);
     this.api
       .pageImage(this.jobId(), filePage)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (blob) => {
+          // Hızlı geçişte geç gelen eski sayfa yenisinin yerine geçmesin.
+          if (this.keyPage() !== filePage) return;
           this.revokeImage();
           this.objectUrl = URL.createObjectURL(blob);
           this.keyImage.set(this.objectUrl);
         },
         error: () => this.keyImage.set(null),
       });
+  }
+
+  /** #1192: testin sayfalarını soldaki panelde aç (anahtarla karşılaştırmak için). */
+  showTestPages(row: EditableSetupTest): void {
+    this.viewedTest.set(row.order);
+    const first = this.viewedPages()[0];
+    if (first != null) this.showKeyPage(first);
+  }
+
+  /** Panelde cevap anahtarına dön. */
+  showAnswerKey(filePage: number): void {
+    this.viewedTest.set(null);
+    this.showKeyPage(filePage);
   }
 
   update(row: EditableSetupTest, patch: Partial<EditableSetupTest>): void {
@@ -289,7 +318,8 @@ export class BookImportSetupComponent implements OnInit {
   takeOtherRead(rowIndex: number, cell: number): void {
     const other = this.conflictLabel(this.rows()[rowIndex], cell);
     if (!other) return;
-    this.setCell(rowIndex, cell, other);
+    // "-": diğer okumada bu soru yok; kutu silinir (sondaysa anahtar kısalır).
+    this.setCell(rowIndex, cell, other === MISSING_READ ? '' : other, true);
     this.focusFirstConflict();
   }
 
@@ -316,7 +346,7 @@ export class BookImportSetupComponent implements OnInit {
     this.error.set(typeof error.error?.message === 'string' ? error.error.message : 'generic');
   }
 
-  private setCell(rowIndex: number, cell: number, value: string): void {
+  private setCell(rowIndex: number, cell: number, value: string, resolve = false): void {
     this.rows.update((rows) =>
       rows.map((r, i) => {
         if (i !== rowIndex || !r.key) return r;
@@ -324,7 +354,7 @@ export class BookImportSetupComponent implements OnInit {
         const conflicts = [...r.conflicts];
         key[cell] = value;
         // Öğretmen hücreyi düzeltti/onayladı: uyuşmazlık kapandı.
-        if (value) conflicts[cell] = '.';
+        if (value || resolve) conflicts[cell] = '.';
         // #1167: sondaki hücre silinince anahtar kısalır (fazla okunmuş soru); aradaki boş hücre okunamadı olarak kalır.
         while (key.length > 0 && key[key.length - 1] === '') key.pop();
         conflicts.length = key.length;

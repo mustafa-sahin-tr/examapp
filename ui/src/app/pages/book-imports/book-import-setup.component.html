@@ -55,12 +55,19 @@
   </div>
 
   <div class="bis-body">
-    @if (keyPages().length) {
+    @if (keyPages().length || viewedRow()) {
     <figure class="bis-keypage" [class.bis-keypage--large]="keyImageLarge()">
       <div class="bis-keypage__tabs" role="group" [attr.aria-label]="t('setup.keyPages')">
         @for (page of keyPages(); track page) {
+        <button mat-stroked-button type="button" [class.bis-active]="!viewedRow() && keyPage() === page"
+          [attr.aria-pressed]="!viewedRow() && keyPage() === page" (click)="showAnswerKey(page)">{{ t('setup.page', { page }) }}</button>
+        }
+        @if (viewedRow(); as v) {
+        <span class="bis-keypage__test" data-testid="viewed-test">{{ v.unit }}-{{ v.testNo < 10 ? '0' + v.testNo : v.testNo }}</span>
+        @for (page of viewedPages(); track page) {
         <button mat-stroked-button type="button" [class.bis-active]="keyPage() === page" [attr.aria-pressed]="keyPage() === page"
           (click)="showKeyPage(page)">{{ t('setup.page', { page }) }}</button>
+        }
         }
         <button mat-icon-button type="button" (click)="keyImageLarge.set(!keyImageLarge())"
           [attr.aria-label]="keyImageLarge() ? t('setup.shrink') : t('setup.enlarge')">
@@ -68,7 +75,7 @@
         </button>
       </div>
       @if (keyImage(); as src) {
-      <img [src]="src" [alt]="t('setup.keyImageAlt', { page: keyPage() })" />
+      <img [src]="src" [alt]="viewedRow() ? t('setup.testPageAlt', { page: keyPage() }) : t('setup.keyImageAlt', { page: keyPage() })" />
       } @else {
       <div class="bis-keypage__empty"><mat-spinner diameter="20" aria-hidden="true"></mat-spinner></div>
       }
@@ -122,6 +129,12 @@
                 <input matInput type="number" min="1" [ngModel]="row.fileTo" (ngModelChange)="update(row, { fileTo: $event })"
                   [attr.aria-label]="t('setup.toPage')" />
               </mat-form-field>
+              <button mat-icon-button type="button" class="bis-pages__view" data-testid="view-test-pages"
+                [class.bis-active]="viewedTest() === row.order" [disabled]="row.fileFrom == null"
+                [attr.aria-label]="t('setup.viewTestPages', { unit: row.unit, no: row.testNo })"
+                [attr.title]="t('setup.viewTestPages', { unit: row.unit, no: row.testNo })" (click)="showTestPages(row)">
+                <mat-icon>visibility</mat-icon>
+              </button>
             </td>
             <td>
               @if (row.key; as key) {
@@ -131,14 +144,14 @@
                 <label class="bis-key__cell"
                   [class.bis-key__cell--conflict]="conflictLabel(row, c)"
                   [class.bis-key__cell--unreadable]="cell === '?' || cell === ''"
-                  [attr.title]="conflictLabel(row, c) ? t('setup.otherRead', { answer: conflictLabel(row, c) }) : null">
+                  [attr.title]="conflictLabel(row, c) === '-' ? t('setup.otherMissing') : conflictLabel(row, c) ? t('setup.otherRead', { answer: conflictLabel(row, c) }) : null">
                   <span class="bis-key__no">{{ c + 1 }}</span>
                   <input [value]="cell" maxlength="1" autocomplete="off" [attr.data-cell]="r + '-' + c"
                     [attr.aria-label]="t('setup.keyCell', { no: c + 1, other: conflictLabel(row, c) || '' })"
                     (keydown)="onKeyCell($event, r, c)" (focus)="$any($event.target).select()" />
                   @if (conflictLabel(row, c); as other) {
                   <button type="button" class="bis-key__other" tabindex="-1"
-                    [attr.aria-label]="t('setup.takeOtherRead', { answer: other })"
+                    [attr.aria-label]="other === '-' ? t('setup.dropMissingRead') : t('setup.takeOtherRead', { answer: other })"
                     (click)="takeOtherRead(r, c)">{{ other }}</button>
                   }
                 </label>

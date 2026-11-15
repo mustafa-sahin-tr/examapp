@@ -192,10 +192,14 @@ public sealed class BookImportPageFixService(
         var ids = old.Select(l => l.QuestionId).ToList();
         var answers = await db.Questions.IgnoreQueryFilters([DraftQueryFilter.Key]).AsNoTracking()
             .Where(q => ids.Contains(q.Id) && q.CorrectAnswerId != null)
-            .Select(q => new { q.Id, Correct = q.Answers.Where(a => a.Id == q.CorrectAnswerId).Select(a => a.Order).FirstOrDefault(),
-                Orders = q.Answers.Select(a => a.Order).ToList() })
+            // İnceleme ekranıyla aynı şık sırası: aktarımın şıklarında Order boş olabilir, sıra Id'den gelir.
+            .Select(q => new
+            {
+                q.Id, q.CorrectAnswerId,
+                Answers = q.Answers.Where(a => !a.IsDeleted).OrderBy(a => a.Order).ThenBy(a => a.Id).Select(a => a.Id).ToList(),
+            })
             .ToListAsync(ct);
-        var correct = answers.ToDictionary(a => a.Id, a => a.Orders.Order().ToList().IndexOf(a.Correct));
+        var correct = answers.ToDictionary(a => a.Id, a => a.Answers.IndexOf(a.CorrectAnswerId!.Value));
         return (error, old.Where(l => l.Number is not null).OrderBy(l => l.Number).Select(l =>
         {
             var box = boxes.TryGetValue(l.Number!.Value, out var b) ? b : (LayoutBox?)null;

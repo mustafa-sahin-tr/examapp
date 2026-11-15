@@ -180,7 +180,8 @@ aktarım aracındaki Python portu referanstır (#1022).
   numara. Böylece ortadan silinen kutu kalanların numarasını ve anahtar cevabını kaydırmaz; yeni sorular numara sırasıyla
   bağlanır. Cevap: işaretlenen şık, yoksa anahtar. Tuval açılırken (#1173) `GET {id}/tests/{testId}/pages/{filePage}/questions` sayfanın taslaklarını
   (numara, kutu, doğru şık) verir; örtüşen soru kutusu Madde'de taslağın numarasını, doğru şıkkı işaretli alır (elle yazılan
-  etiket ve işaretli şık korunur). Böylece kaydedilecek numara ve cevap görünür, incelemede seçilen cevap kaybolmaz. Sayfanın inceleme işaretleri yeniden hesaplanır, sayı
+  etiket korunur; tespitin işaretli şıkkı, ör. eski elle kayıttan, taslağın cevabına yerini bırakır, #1179). Şık sırası incelemeyle
+  aynı (`Order`, sonra `Id`; aktarımın şıklarında `Order` boş olabilir). Böylece kaydedilecek numara ve cevap görünür, incelemede seçilen cevap kaybolmaz. Sayfanın inceleme işaretleri yeniden hesaplanır, sayı
   uyuşmazlığı testin güncel soru sayısıyla; işaret kalmazsa test `Done`. Başarısız testte (taslak testi yok) düzeltme taslak
   testi açar. Boş sayfa kaydı onayla sayfanın taslaklarını siler. Kayıt başarısızsa test değişmez. Kırpması başka bir aktarımda
   ya da bankada etkin olan soru tekrar sayılır ve bağlanmaz (aktarımla aynı kural).

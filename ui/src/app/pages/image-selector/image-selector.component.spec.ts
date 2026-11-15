@@ -169,7 +169,10 @@ describe('ImageSelectorComponent', () => {
         it('detection_WithMissingLetters_FallsBackToPositionLetters', () => {
             const region = detect([option(463, 62, 'D'), option(230, 10), option(465, 10, 'B'), option(231, 60, 'C')]);
 
+            // Otomatik hizalama kapalı olsa da şıklar okuma sırasıyla harflenir ("Şık 1" kalmaz).
+            expect(component.autoAlign()).toBe(false);
             expect(region.lettersLocked).toBe(false);
+            expect(region.answers.map((a) => [a.label, a.x])).toEqual([['A', 230], ['B', 465], ['C', 231], ['D', 463]]);
         });
 
         it('setAnswerLetter_MovesTheOptionShiftsTheOthersAndKeepsTheCorrectMark', () => {

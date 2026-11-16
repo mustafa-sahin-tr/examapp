@@ -125,6 +125,9 @@ export class BookImportSetupComponent implements OnInit {
   readonly error = signal<string | null>(null);
   /** Anahtar sayfalarının küçük resimleri (dosya sayfası → object URL); hepsi yan yana gösterilir. */
   readonly keyImages = signal<ReadonlyMap<number, string>>(new Map());
+  /** Altta sabit anahtar paneli: gösterilen sayfa (null kapalı) ve yakınlaştırma (görsel genişliği, %). Cevap girerken açık kalır. */
+  readonly dockPage = signal<number | null>(null);
+  readonly dockZoom = signal(100);
   /** #1192: sayfaları tam ekranda gösterilen test (null: kapalı); altta önceki / sonraki sayfa. */
   readonly viewedTest = signal<number | null>(null);
   /** Cevap anahtarı da aynı görünümde büyür. */
@@ -237,6 +240,18 @@ export class BookImportSetupComponent implements OnInit {
     if (first != null) this.showTestPage(first);
   }
 
+  openDock(filePage: number | null = this.keyPages()[0] ?? null): void {
+    if (filePage != null) this.dockPage.set(filePage);
+  }
+
+  closeDock(): void {
+    this.dockPage.set(null);
+  }
+
+  zoomDock(step: number): void {
+    this.dockZoom.update((z) => Math.min(Math.max(z + step, 50), 300));
+  }
+
   /** Anahtar sayfasının küçük resmine tıklanınca o sayfa büyük açılır (alttan diğer anahtar sayfalarına geçilir). */
   showKeyLarge(filePage: number): void {
     this.viewedTest.set(null);
@@ -342,6 +357,8 @@ export class BookImportSetupComponent implements OnInit {
     if (!row || row.key) return;
     const length = Math.min(Math.max(row.expected ?? DEFAULT_KEY_LENGTH, 1), MAX_KEY_LENGTH);
     this.update(row, { key: Array<string>(length).fill(''), conflicts: Array<string>(length).fill('.') });
+    // Cevaplar basılı anahtara bakarak yazılır: anahtar sayfası altta açık kalır.
+    if (this.dockPage() == null) this.openDock();
     // Satır yeniden çizildikten sonra ilk hücreye geç.
     setTimeout(() => this.focusCell(rowIndex, 0));
   }
@@ -526,6 +543,8 @@ export class BookImportSetupComponent implements OnInit {
     const target = this.host.nativeElement.querySelector<HTMLInputElement>(`[data-cell="${rowIndex}-${cell}"]`);
     target?.focus();
     target?.select();
+    // Altta anahtar paneli açıkken kutu panelin arkasında kalmasın (scroll-margin-bottom panel yüksekliği kadar).
+    target?.scrollIntoView({ block: 'nearest' });
   }
 
   private revokeViewed(): void {

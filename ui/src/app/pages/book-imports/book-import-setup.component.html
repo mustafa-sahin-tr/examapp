@@ -88,6 +88,11 @@
         </button>
       </li>
       }
+      <li class="bis-keypages__dock">
+        <button mat-stroked-button type="button" data-testid="open-dock" (click)="openDock()">
+          <mat-icon aria-hidden="true">vertical_split</mat-icon>{{ t('setup.dockOpen') }}
+        </button>
+      </li>
     </ul>
     }
 
@@ -184,7 +189,7 @@
               </div>
               } @else {
               <div class="bis-key-missing">
-                <span class="bis-muted">{{ t(notFound().has(row.order) ? 'setup.aiNotFound' : 'setup.noKeyForTest') }}</span>
+                <span class="bis-muted bis-key-missing__text">{{ t(notFound().has(row.order) ? 'setup.aiNotFound' : 'setup.noKeyForTest') }}</span>
                 @if (!s.isDemo && !s.noAnswerKey && !notFound().has(row.order)) {
                 <button mat-stroked-button type="button" data-testid="ai-find-key" [disabled]="finding().has(row.order)"
                   [attr.aria-label]="t('setup.aiFindOf', { unit: row.unit, no: row.testNo })" (click)="findKey(row.order)">
@@ -203,6 +208,32 @@
         </tbody>
       </table>
     </div>
+
+    @if (dockPage(); as page) {
+    <!-- Altta sabit anahtar paneli: tablo üstte kayarken basılı anahtar görünür kalır. -->
+    <section class="bis-dock" data-testid="key-dock" [attr.aria-label]="t('setup.keyPages')">
+      <div class="bis-dock__bar">
+        @for (p of keyPages(); track p) {
+        <button mat-stroked-button type="button" [class.bis-dock__active]="p === page" [attr.aria-pressed]="p === page"
+          (click)="openDock(p)">{{ t('setup.page', { page: p }) }}</button>
+        }
+        <span class="bis-dock__spacer"></span>
+        <button mat-icon-button type="button" [attr.aria-label]="t('setup.shrink')" (click)="zoomDock(-25)"><mat-icon>zoom_out</mat-icon></button>
+        <span class="bis-muted">{{ dockZoom() }}%</span>
+        <button mat-icon-button type="button" [attr.aria-label]="t('setup.enlarge')" (click)="zoomDock(25)"><mat-icon>zoom_in</mat-icon></button>
+        <button mat-icon-button type="button" data-testid="close-dock" [attr.aria-label]="t('setup.dockClose')" (click)="closeDock()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <div class="bis-dock__image">
+        @if (keyImages().get(page); as src) {
+        <img [src]="src" [style.width.%]="dockZoom()" [alt]="t('setup.keyImageAlt', { page })" />
+        } @else {
+        <div class="bis-keypage__empty"><mat-spinner diameter="20" aria-hidden="true"></mat-spinner></div>
+        }
+      </div>
+    </section>
+    }
   </div>
 
   @if (viewerOpen()) {

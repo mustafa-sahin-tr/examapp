@@ -86,17 +86,22 @@ public sealed class FakeBookSetupAi : IBookSetupAi
         return KeyMatches;
     }
 
-    /// <summary>"AI ile bul" görsel araması: test sırası → okunan cevaplar.</summary>
-    public Dictionary<int, string> FoundKeys { get; } = new();
+    /// <summary>"AI ile bul" görsel araması: test sırası → okunan cevaplar (tam sayfa, yarılar, güçlü model).</summary>
+    public Dictionary<int, (string? Whole, string? Halves, string? Strong)> FoundKeys { get; } = new();
 
     public List<int> FindKeyPages { get; } = new();
 
+    /// <summary>Arama çağrıları: (tiled, strong).</summary>
+    public List<(bool Tiled, bool Strong)> FindKeyCalls { get; } = new();
+
     public async Task<string?> FindKeyAsync(IReadOnlyList<BookPageImage> keyPages, KeyMatchTest test,
-        IReadOnlyList<KeyMatchTest> neighbours, BookSetupCost cost, CancellationToken ct)
+        IReadOnlyList<KeyMatchTest> neighbours, bool tiled, bool strong, BookSetupCost cost, CancellationToken ct)
     {
         await cost.EnsureAsync(ct);
         cost.Add(Model, new LabelingAiUsage(1000, 50));
         FindKeyPages.AddRange(keyPages.Select(p => p.FilePage));
-        return FoundKeys.GetValueOrDefault(test.Order);
+        FindKeyCalls.Add((tiled, strong));
+        var found = FoundKeys.GetValueOrDefault(test.Order);
+        return strong ? found.Strong : tiled ? found.Halves : found.Whole;
     }
 }

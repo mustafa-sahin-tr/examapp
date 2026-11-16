@@ -81,11 +81,12 @@ public interface IBookSetupAi
         IReadOnlyList<KeyMatchTest> tests, IReadOnlyList<KeyMatchRow> rows, BookSetupCost cost, CancellationToken ct);
 
     /// <summary>
-    /// "AI ile bul", sahipsiz satır yoksa ya da eşleşmediyse: anahtar sayfalarında bu testin satırını arar ve cevaplarını okur (güçlü
-    /// model). Bulamazsa null; cevap A–E, okunamayan "?".
+    /// "AI ile bul", sahipsiz satır yoksa ya da eşleşmediyse: anahtar sayfalarında bu testin satırını arar ve cevaplarını okur. Anahtar
+    /// okumasının düzeni: ucuz model iki kez (sayfanın tamamı, <paramref name="tiled"/> üst ve alt yarısı), uyuşmazsa
+    /// <paramref name="strong"/>. Bulamazsa null; cevap A–E, okunamayan "?".
     /// </summary>
     Task<string?> FindKeyAsync(IReadOnlyList<BookPageImage> keyPages, KeyMatchTest test, IReadOnlyList<KeyMatchTest> neighbours,
-        BookSetupCost cost, CancellationToken ct);
+        bool tiled, bool strong, BookSetupCost cost, CancellationToken ct);
 }
 
 /// <summary>
@@ -97,7 +98,7 @@ public interface IBookSetupAi
 public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
 {
     /// <summary>1: ilk sürüm (#1021). 2: test başlığı olmayan bölümlü kitaplar ve test numarasız anahtarlar (#1122). 5: "AI ile eşle" (sahipsiz anahtar satırı → anahtarsız test).</summary>
-    public const int SchemaRevision = 5;
+    public const int SchemaRevision = 6;
 
     public const string DefaultSurveyModel = "claude-haiku-5-5";
     public const string DefaultAnswerKeyModel = "claude-haiku-5-5";
@@ -306,7 +307,7 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
     }
 
     public async Task<string?> FindKeyAsync(IReadOnlyList<BookPageImage> keyPages, KeyMatchTest test,
-        IReadOnlyList<KeyMatchTest> neighbours, BookSetupCost cost, CancellationToken ct)
+        IReadOnlyList<KeyMatchTest> neighbours, bool tiled, bool strong, BookSetupCost cost, CancellationToken ct)
     {
         if (keyPages.Count == 0)
             return null;
@@ -314,8 +315,17 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
         var content = new List<AIContent>();
         foreach (var page in keyPages)
         {
-            content.Add(new TextContent($"Answer key, file page {page.FilePage}:"));
-            content.Add(new DataContent(Encode(page.Image, KeyImageEdge, null), "image/jpeg"));
+            if (!tiled)
+            {
+                content.Add(new TextContent($"Answer key, file page {page.FilePage}:"));
+                content.Add(new DataContent(Encode(page.Image, KeyImageEdge, null), "image/jpeg"));
+                continue;
+            }
+
+            content.Add(new TextContent($"Answer key, file page {page.FilePage}, top part:"));
+            content.Add(new DataContent(Encode(page.Image, KeyImageEdge, (0d, TileShare)), "image/jpeg"));
+            content.Add(new TextContent($"Answer key, file page {page.FilePage}, bottom part (overlaps the top part):"));
+            content.Add(new DataContent(Encode(page.Image, KeyImageEdge, (1 - TileShare, TileShare)), "image/jpeg"));
         }
 
         static string Describe(KeyMatchTest t) =>
@@ -324,7 +334,7 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
             "The book's tests in order (the test pages may number them through the whole book while the key groups them by unit " +
             "or section):\n" + string.Join("\n", neighbours.Select(Describe)) +
             $"\n\nFind the key row of test {Describe(test)} and give its answers in question order."));
-        var model = Model(_tieBreakModelId);
+        var model = Model(strong ? _tieBreakModelId : _keyModelId);
         var found = await AskAsync<FoundKey>(model, KeyMaxOutputTokens, FindSystemPrompt, content, cost, ct);
         return found is { Found: true, Answers: { Length: > 0 } answers } ? answers.Trim().ToUpperInvariant() : null;
     }

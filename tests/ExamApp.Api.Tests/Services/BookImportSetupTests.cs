@@ -456,15 +456,17 @@ public class BookImportSetupTests : IDisposable
     }
 
     [Theory]
-    [InlineData("DDA", "DDA")]
-    [InlineData("DDAB", null)] // soru sayısı (3) tutmuyor
-    [InlineData("DXA", null)]
-    public async Task Ai_find_reads_the_key_pages_when_no_orphan_row_fits(string read, string? expected)
+    [InlineData("DDA", "DDA", null, "DDA", false)] // iki ucuz okuma uyuştu: güçlü model çağrılmaz
+    [InlineData("DDA", "DCA", "DCA", "DCA", true)] // uyuşmadı: güçlü model karar verir
+    [InlineData("DDAB", "DDAB", "DDA", "DDA", true)] // soru sayısı (3) tutmuyor: geçersiz okuma uyuşma sayılmaz
+    [InlineData(null, null, "DXA", null, true)] // güçlü model de geçersiz: öneri yok
+    public async Task Ai_find_reads_the_key_pages_twice_cheaply_and_asks_the_strong_model_when_they_disagree(
+        string? whole, string? halves, string? strong, string? expected, bool strongCalled)
     {
         _ai.Keys[5] = ([Row(1, 1, "ABCD")], [Row(1, 1, "ABCD")]);
         var id = await SeedJobAsync();
         await RunAsync(id);
-        _ai.FoundKeys[2] = read;
+        _ai.FoundKeys[2] = (whole, halves, strong);
 
         await using var ctx = _db.NewContext();
         var result = await NewMatcher(ctx).FindAsync(id, 2, CancellationToken.None);
@@ -473,7 +475,9 @@ public class BookImportSetupTests : IDisposable
         result.Match?.AnswerKey.ShouldBe(expected);
         if (expected is not null)
             result.Match!.Label.ShouldBeNull();
-        _ai.FindKeyPages.ShouldBe([5]);
+        _ai.FindKeyCalls.Take(2).ShouldBe([(false, false), (true, false)]);
+        _ai.FindKeyCalls.Any(c => c.Strong).ShouldBe(strongCalled);
+        _ai.FindKeyPages.Distinct().ShouldBe([5]);
     }
 
     [Fact]

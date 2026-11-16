@@ -127,8 +127,9 @@ aktarım aracındaki Python portu referanstır (#1022).
 - **"AI ile bul" (isteğe bağlı, kurulum kendiliğinden çağırmaz):** anahtarsız satırda "Anahtar gir"in yanında; üstte "Hepsini
   AI ile bul" anahtarsız testleri sırayla (tek tek, durdurulabilir) sorar. `POST {id}/setup/tests/{order}/ai-key`
   (`BookKeyMatchService`): önce kurulumun hiçbir teste bağlayamadığı anahtar satırlarından (`SetupJson.OrphanRows`, cevaplarıyla
-  saklanır) birini ucuz modelle seçer; uymazsa anahtar sayfalarının görsellerinde testin satırını güçlü modelle arar (komşu testler
-  bağlam olarak verilir). Kod denetler: soru sayısı biliniyorsa cevap sayısı tutmalı, yalnız A–E / "?", bir satır iki teste
+  saklanır) birini ucuz modelle seçer; uymazsa anahtar sayfalarının görsellerinde testin satırını arar (komşu testler bağlam
+  olarak verilir). Arama kurulumdaki anahtar okumasının düzeninde: ucuz model iki kez (sayfanın tamamı, üst / alt yarısı), iki
+  geçerli okuma aynıysa kabul, değilse güçlü model. Kod denetler: soru sayısı biliniyorsa cevap sayısı tutmalı, yalnız A–E / "?", bir satır iki teste
   gitmez. Öneri kaydedilmez, ekranda "AI" çipiyle doldurulur, onayla gider; bulunamazsa satırda "AI bulamadı" yazar, anahtar elle
   girilebilir. Maliyet `SetupConfirmation` aşamasına ve iş bütçesine yazılır (429 bütçe, 502 Claude hatası).
 - **Kayıt:** test satırları `BookImportJobTests` (sayfa aralığı, dakika, `AnswerKey` "ABCD…", `KeyConflicts` "." uyumlu /

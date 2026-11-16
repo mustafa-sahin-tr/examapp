@@ -246,17 +246,32 @@
   font-variant-numeric: tabular-nums;
 }
 
+.bis-test {
+  min-width: 220px;
+
+  &__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    margin-top: 4px;
+  }
+}
+
 .bis-pages {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   white-space: nowrap;
 }
 
 .bis-field {
   &--title {
-    width: 220px;
+    width: 100%;
   }
 
   &--num {
-    width: 92px;
+    width: 76px;
   }
 }
 

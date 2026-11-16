@@ -235,6 +235,8 @@ describe('BookImportSetupComponent (#1021)', () => {
 
   it('aiFind_FillsTheSuggestedKeyWithAnAiChip_OrSaysItWasNotFound', async () => {
     create(setupData({ tests: [keyless(1, 36, 2), keyless(2, 37, 1)] }));
+    const changed = vi.fn();
+    fixture.componentInstance.changed.subscribe(changed);
     api.findKeyWithAi
       .mockReturnValueOnce(of({ match: { order: 1, label: '5-36', answerKey: 'CB', keyConflicts: null }, aiCostUsd: 0.4 }))
       .mockReturnValueOnce(of({ match: null, aiCostUsd: 0.5 }));
@@ -244,6 +246,7 @@ describe('BookImportSetupComponent (#1021)', () => {
     fixture.detectChanges();
 
     expect(api.findKeyWithAi).toHaveBeenCalledWith('a1', 1);
+    expect(changed).toHaveBeenCalledTimes(1); // sayfanın maliyet kartı yenilenir
     expect(cell(0, 0).value).toBe('C');
     expect(cell(0, 1).value).toBe('B');
     expect(el().querySelector('[data-testid="ai-key-chip"]')!.textContent).toContain('AI: 5-36');

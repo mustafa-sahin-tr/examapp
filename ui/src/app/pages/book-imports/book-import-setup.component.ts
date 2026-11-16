@@ -363,6 +363,8 @@ export class BookImportSetupComponent implements OnInit {
     try {
       const result = await firstValueFrom(this.api.findKeyWithAi(this.jobId(), order));
       this.setup.update((s) => (s ? { ...s, aiCostUsd: result.aiCostUsd } : s));
+      // Sayfanın maliyet kartı (toplam + aşama tablosu) işi yeniden okur.
+      this.changed.emit();
       const match = result.match;
       const row = this.rows().find((r) => r.order === order);
       const taken = match?.label && this.rows().some((r) => r.order !== order && r.aiLabel === match.label);

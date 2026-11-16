@@ -72,26 +72,23 @@
 
   <div class="bis-body">
     @if (keyPages().length) {
-    <figure class="bis-keypage" [class.bis-keypage--large]="keyImageLarge()">
-      <div class="bis-keypage__tabs" role="group" [attr.aria-label]="t('setup.keyPages')">
-        @for (page of keyPages(); track page) {
-        <button mat-stroked-button type="button" [class.bis-active]="keyPage() === page" [attr.aria-pressed]="keyPage() === page"
-          (click)="showKeyPage(page)">{{ t('setup.page', { page }) }}</button>
-        }
-        <button mat-icon-button type="button" (click)="keyImageLarge.set(!keyImageLarge())"
-          [attr.aria-label]="keyImageLarge() ? t('setup.shrink') : t('setup.enlarge')">
-          <mat-icon>{{ keyImageLarge() ? 'zoom_out' : 'zoom_in' }}</mat-icon>
+    <!-- Anahtar sayfaları yan yana küçük resim; tıklanınca büyük açılır. -->
+    <ul class="bis-keypages" [attr.aria-label]="t('setup.keyPages')">
+      @for (page of keyPages(); track page) {
+      <li>
+        <button type="button" class="bis-keypages__item" data-testid="key-open"
+          [attr.aria-label]="t('setup.openKeyLarge') + ' · ' + t('setup.page', { page })" [attr.title]="t('setup.openKeyLarge')"
+          (click)="showKeyLarge(page)">
+          @if (keyImages().get(page); as src) {
+          <img [src]="src" [alt]="t('setup.keyImageAlt', { page })" />
+          } @else {
+          <span class="bis-keypages__empty"><mat-spinner diameter="20" aria-hidden="true"></mat-spinner></span>
+          }
+          <span class="bis-keypages__label">{{ t('setup.page', { page }) }}</span>
         </button>
-      </div>
-      @if (keyImage(); as src) {
-      <button type="button" class="bis-keypage__open" data-testid="key-open" [attr.aria-label]="t('setup.openKeyLarge')"
-        [attr.title]="t('setup.openKeyLarge')" (click)="showKeyLarge()">
-        <img [src]="src" [alt]="t('setup.keyImageAlt', { page: keyPage() })" />
-      </button>
-      } @else {
-      <div class="bis-keypage__empty"><mat-spinner diameter="20" aria-hidden="true"></mat-spinner></div>
+      </li>
       }
-    </figure>
+    </ul>
     }
 
     <div class="bis-table-wrap">

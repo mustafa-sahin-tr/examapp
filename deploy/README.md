@@ -276,6 +276,7 @@ deploy/scripts/demo.sh build
 deploy/scripts/demo.sh up --tunnel
 deploy/scripts/demo.sh down    # veri kalır
 deploy/scripts/demo.sh backup  # harici diske; son 14 yedek kalır
+deploy/scripts/demo.sh backup --db  # yalnız veritabanı (dosyalara dokunmayan deploy'larda; MinIO aynası taraması uzun sürer)
 deploy/scripts/demo.sh restore <yedek klasörü> --yes  # bütün demo verisini yedekle değiştirir; önce güncel veriyi yedekler
 ```
 

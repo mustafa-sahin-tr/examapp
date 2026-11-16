@@ -106,8 +106,6 @@
             <th scope="col"><span class="cdk-visually-hidden">{{ t('setup.include') }}</span></th>
             <th scope="col">{{ t('setup.colTest') }}</th>
             <th scope="col">{{ t('setup.colTitle') }}</th>
-            <th scope="col">{{ t('setup.colMinutes') }}</th>
-            <th scope="col">{{ t('setup.colPages') }}</th>
             <th scope="col">{{ t('setup.colKey') }}</th>
           </tr>
         </thead>
@@ -119,19 +117,20 @@
                 [aria-label]="t('setup.includeTest', { unit: row.unit, no: row.testNo })"></mat-checkbox>
             </td>
             <th scope="row" class="bis-code">{{ row.unit }}-{{ row.testNo < 10 ? '0' + row.testNo : row.testNo }}</th>
-            <td>
+            <!-- Başlık üstte, süre ve sayfalar altında: dar ekranda anahtar sütununa yer kalır. -->
+            <td class="bis-test">
               <mat-form-field class="bis-field bis-field--title" appearance="outline" subscriptSizing="dynamic">
                 <input matInput [ngModel]="row.title" (ngModelChange)="update(row, { title: $event })" maxlength="300"
                   [attr.aria-label]="t('setup.colTitle')" />
               </mat-form-field>
-            </td>
-            <td>
+              <div class="bis-test__meta">
+              <span class="bis-muted" aria-hidden="true">{{ t('setup.colMinutes') }}</span>
               <mat-form-field class="bis-field bis-field--num" appearance="outline" subscriptSizing="dynamic">
                 <input matInput type="number" min="1" max="600" [ngModel]="row.minutes"
                   (ngModelChange)="update(row, { minutes: $event || null })" [attr.aria-label]="t('setup.colMinutes')" />
               </mat-form-field>
-            </td>
-            <td class="bis-pages">
+              <span class="bis-pages">
+              <span class="bis-muted" aria-hidden="true">{{ t('setup.colPages') }}</span>
               <mat-form-field class="bis-field bis-field--num" appearance="outline" subscriptSizing="dynamic">
                 <input matInput type="number" min="1" [ngModel]="row.fileFrom" (ngModelChange)="update(row, { fileFrom: $event })"
                   [attr.aria-label]="t('setup.fromPage')" />
@@ -147,6 +146,8 @@
                 [attr.title]="t('setup.viewTestPages', { unit: row.unit, no: row.testNo })" (click)="showTestPages(row)">
                 <mat-icon>visibility</mat-icon>
               </button>
+              </span>
+              </div>
             </td>
             <td>
               @if (row.key; as key) {

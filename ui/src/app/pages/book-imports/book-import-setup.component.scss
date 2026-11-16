@@ -135,8 +135,30 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  @media (max-width: 960px) {
+  // Dar ekranda (ör. 1280px pencere) anahtar sayfası tablonun üstünde küçük bir şerittir; tıklayınca büyük açılır.
+  @media (max-width: 1440px) {
     grid-template-columns: minmax(0, 1fr);
+
+    .bis-keypage:not(.bis-keypage--large) {
+      position: static;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 8px 16px;
+
+      .bis-keypage__tabs {
+        margin-bottom: 0;
+      }
+
+      .bis-keypage__open {
+        width: auto;
+      }
+
+      img {
+        width: auto;
+        max-height: 160px;
+      }
+    }
   }
 }
 
@@ -246,17 +268,32 @@
   font-variant-numeric: tabular-nums;
 }
 
+.bis-test {
+  min-width: 220px;
+
+  &__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    margin-top: 4px;
+  }
+}
+
 .bis-pages {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   white-space: nowrap;
 }
 
 .bis-field {
   &--title {
-    width: 220px;
+    width: 100%;
   }
 
   &--num {
-    width: 92px;
+    width: 76px;
   }
 }
 

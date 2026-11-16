@@ -52,6 +52,22 @@
       <p>{{ s.orphanKeys.join(', ') }}</p>
     </details>
     }
+    @if (!s.isDemo && !s.noAnswerKey && (keylessCount() > 0 || bulk() || matchError())) {
+    <div class="bis-aimatch" role="status">
+      @if (bulk(); as b) {
+      <span data-testid="find-all-progress">{{ t('setup.findAllProgress', { done: b.done, total: b.total }) }}</span>
+      <button mat-stroked-button type="button" (click)="stopFindAll()">{{ t('setup.findAllStop') }}</button>
+      } @else if (keylessCount() > 0) {
+      <span>{{ t('setup.findAllIntro', { count: keylessCount() }) }}</span>
+      <button mat-stroked-button type="button" data-testid="find-all-keys" (click)="findAllKeys()">
+        <mat-icon aria-hidden="true">auto_awesome</mat-icon>{{ t('setup.findAll') }}
+      </button>
+      }
+      @if (matchError(); as e) {
+      <span class="bis-error">{{ e === 'generic' ? t('setup.aiFindFailed') : e }}</span>
+      }
+    </div>
+    }
   </div>
 
   <div class="bis-body">
@@ -152,6 +168,12 @@
                   }
                 </label>
                 }
+                @if (row.aiLabel !== undefined) {
+                <span class="bis-chip bis-key__ai" data-testid="ai-key-chip"
+                  [attr.title]="row.aiLabel ? t('setup.aiFoundRowTitle', { label: row.aiLabel }) : t('setup.aiFoundPageTitle')">
+                  {{ row.aiLabel ? t('setup.aiFoundRow', { label: row.aiLabel }) : t('setup.aiFoundPage') }}
+                </span>
+                }
                 <button mat-icon-button type="button" class="bis-key__add" data-testid="add-key-cell"
                   [attr.aria-label]="t('setup.addKeyCell')" [attr.title]="t('setup.addKeyCell')" (click)="addKeyCell(r)">
                   <mat-icon>add</mat-icon>
@@ -159,7 +181,13 @@
               </div>
               } @else {
               <div class="bis-key-missing">
-                <span class="bis-muted">{{ t('setup.noKeyForTest') }}</span>
+                <span class="bis-muted">{{ t(notFound().has(row.order) ? 'setup.aiNotFound' : 'setup.noKeyForTest') }}</span>
+                @if (!s.isDemo && !s.noAnswerKey && !notFound().has(row.order)) {
+                <button mat-stroked-button type="button" data-testid="ai-find-key" [disabled]="finding().has(row.order)"
+                  [attr.aria-label]="t('setup.aiFindOf', { unit: row.unit, no: row.testNo })" (click)="findKey(row.order)">
+                  <mat-icon aria-hidden="true">auto_awesome</mat-icon>{{ t(finding().has(row.order) ? 'setup.aiFinding' : 'setup.aiFind') }}
+                </button>
+                }
                 <button mat-stroked-button type="button" data-testid="enter-key"
                   [attr.aria-label]="t('setup.enterKeyOf', { unit: row.unit, no: row.testNo })" (click)="enterKey(r)">
                   {{ t('setup.enterKey') }}

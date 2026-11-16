@@ -303,6 +303,38 @@ public class BookImportController : BaseController
     }
 
     /// <summary>
+    /// Onay ekranında anahtarsız testte "AI ile bul": testi bulunamamış anahtar satırlarından ya da anahtar sayfalarından testin anahtarını
+    /// önerir; kaydetmez (öneri ekranda doldurulur, onayla gider). Bulunamazsa <c>match</c> null. 409 kurulum onayı beklemiyor, 429
+    /// bütçe doldu, 502 Claude yanıtı alınamadı.
+    /// </summary>
+    [HttpPost("{id:guid}/setup/tests/{order:int}/ai-key")]
+    [RequiresEntitlement(EntitlementFeatures.BookImport, InPlanOnly = true)]
+    [ProducesResponseType(typeof(BookImportKeyMatchResponseDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> FindKeyWithAi(Guid id, int order, [FromServices] BookKeyMatchService matcher, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        // Görünürlük (sahip / admin) kurulum okumasıyla denetlenir.
+        if (await _service.GetSetupAsync(owner, id, ct) is null)
+            return NotFound(new { message = _localizer["bookImport.notFound"].Value });
+
+        var result = await matcher.FindAsync(id, order, ct);
+        return result.Error switch
+        {
+            KeyMatchError.None => Ok(new BookImportKeyMatchResponseDto { Match = result.Match, AiCostUsd = result.AiCostUsd }),
+            KeyMatchError.NotFound => NotFound(new { message = _localizer["bookImport.notFound"].Value }),
+            KeyMatchError.InvalidState => Conflict(new { code = "bookImport.notAwaitingSetup", message = _localizer["bookImport.notAwaitingSetup"].Value }),
+            KeyMatchError.Budget => StatusCode(StatusCodes.Status429TooManyRequests,
+                new { code = "bookImport.keyMatchBudget", message = _localizer["bookImport.keyMatchBudget"].Value }),
+            KeyMatchError.NotConfigured => StatusCode(StatusCodes.Status503ServiceUnavailable,
+                new { code = "bookImport.keyMatchNotConfigured", message = _localizer["bookImport.keyMatchNotConfigured"].Value }),
+            _ => StatusCode(StatusCodes.Status502BadGateway,
+                new { code = "bookImport.keyMatchFailed", message = _localizer["bookImport.keyMatchFailed"].Value }),
+        };
+    }
+
+    /// <summary>
     /// İşi iptal et (#1021 onay bekleyen, ör. cevap anahtarı bulunamadı; #1025 kuyrukta / çalışan / bekleyen / hatalı).
     /// <paramref name="deleteDrafts"/>: onaylanmamış taslak testler ve soruları da silinir.
     /// </summary>

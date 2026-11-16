@@ -716,6 +716,7 @@ builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IBookImportCostReport
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IBookImportPageFixService, ExamApp.Api.Services.BookImport.BookImportPageFixService>();
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IBookImportTrainingExport, ExamApp.Api.Services.BookImport.BookImportTrainingExport>();
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.BookImportJobRunner>();
+builder.Services.AddScoped<ExamApp.Api.Services.BookImport.BookKeyMatchService>(); // onay ekranında "AI ile bul"
 // Issue #1020: PDFium tabanlı sayfa görselleri (durumsuz).
 builder.Services.AddSingleton<ExamApp.Api.Services.BookImport.IPdfRasterizer>(_ => new ExamApp.Api.Services.BookImport.PdfiumRasterizer());
 builder.Services.AddSingleton<ExamApp.Api.Services.BookImport.IBookSetupAi, ExamApp.Api.Services.BookImport.ClaudeBookSetupAi>(); // issue #1021

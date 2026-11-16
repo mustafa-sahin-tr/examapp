@@ -56,6 +56,12 @@ public sealed record PlannedTest(
     IReadOnlyList<string> Flags,
     int? KeyPage = null);
 
+/// <summary>
+/// Anahtarda olup testi bulunamayan satır: etiket ("5-36" ya da bölüm adı + no), iki okumanın birleşimi ve okunduğu sayfa. Onay
+/// ekranında "AI ile eşle" bunları anahtarsız testlere önerir.
+/// </summary>
+public sealed record OrphanKey(string Label, string AnswerKey, string? KeyConflicts, int? KeyPage);
+
 /// <summary>Ünite: içindekiler başlığı ve testlerinin kapsadığı dosya sayfaları (kitap kaydındaki içindekiler satırı).</summary>
 public sealed record PlannedUnit(int Unit, string? Title, int FileFrom, int FileTo);
 
@@ -65,7 +71,8 @@ public sealed record BookSetupPlan(
     IReadOnlyList<int> SelfAssessmentPages,
     IReadOnlyList<PlannedUnit> Units,
     IReadOnlyList<PlannedTest> Tests,
-    IReadOnlyList<string> OrphanKeys)
+    IReadOnlyList<string> OrphanKeys,
+    IReadOnlyList<OrphanKey>? OrphanRows = null)
 {
     public bool NoAnswerKey => AnswerKeyRanges.Count == 0 || Tests.All(t => t.AnswerKey is null);
 }
@@ -165,15 +172,23 @@ public static class BookSetupPlanner
 
         var planned = tests.Select(t => (t.Unit, t.TestNo)).ToHashSet();
         var labels = series.Count == 0 ? null : SeriesLabels(ordered, firstRead.Concat(secondRead), series);
-        var orphans = first.Keys.Concat(second.Keys).Distinct()
+        var orphanKeys = first.Keys.Concat(second.Keys).Distinct()
             .Where(k => !planned.Contains(k))
             .OrderBy(k => k.Unit).ThenBy(k => k.TestNo)
-            .Select(k => labels is null ? $"{k.Unit}-{k.TestNo:D2}" : $"{labels[k.Unit]} {k.TestNo:D2}")
-            .Concat(unmatched.Distinct())
             .ToList();
+        string Label((int Unit, int TestNo) k) => labels is null ? $"{k.Unit}-{k.TestNo:D2}" : $"{labels[k.Unit]} {k.TestNo:D2}";
+        var orphans = orphanKeys.Select(Label).Concat(unmatched.Distinct()).ToList();
+        var orphanRows = new List<OrphanKey>();
+        foreach (var k in orphanKeys)
+        {
+            first.TryGetValue(k, out var a);
+            second.TryGetValue(k, out var b);
+            if (MergeKey(a, b) is ({ } key, var conflicts))
+                orphanRows.Add(new OrphanKey(Label(k), key, conflicts, KeyPageOf(a, b)));
+        }
 
         if (labels is not null)
-            return SeriesPlan(ordered, toc, keyRanges, selfAssessment, tests, labels, orphans);
+            return SeriesPlan(ordered, toc, keyRanges, selfAssessment, tests, labels, orphans) with { OrphanRows = orphanRows };
 
         var units = tests.GroupBy(t => t.Unit)
             .OrderBy(g => g.Key)
@@ -181,7 +196,7 @@ public static class BookSetupPlanner
                 g.Max(t => t.FileTo)))
             .ToList();
 
-        return new BookSetupPlan(Offset(ordered), keyRanges, selfAssessment, units, tests, orphans);
+        return new BookSetupPlan(Offset(ordered), keyRanges, selfAssessment, units, tests, orphans, orphanRows);
     }
 
     /// <summary>

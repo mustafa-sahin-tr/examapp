@@ -14,6 +14,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { firstValueFrom } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -46,6 +47,8 @@ export interface EditableSetupTest {
   fileFrom: number | null;
   fileTo: number | null;
   key: string[] | null;
+  /** "AI ile bul" önerisiyle doldurulduysa: anahtardaki etiket ("5-36"), anahtar sayfasından okunduysa null. */
+  aiLabel?: string | null;
   /** Sayfalarda görülen soru sayısı; anahtarsız teste elle girilen anahtarın hücre sayısı. */
   expected: number | null;
   /** Hücre başına ikinci okumanın değeri; "." uyumlu ya da öğretmen düzeltti. */
@@ -109,6 +112,15 @@ export class BookImportSetupComponent implements OnInit {
   readonly bookName = signal('');
   readonly useExisting = signal<'existing' | 'new'>('existing');
   readonly noKeyAcknowledged = signal(false);
+  /** "AI ile bul": aranan testler (sıra), AI'nın bulamadıkları, toplu aramanın ilerlemesi; hata mesajı ('generic' çevrilir). */
+  readonly finding = signal<ReadonlySet<number>>(new Set());
+  readonly notFound = signal<ReadonlySet<number>>(new Set());
+  readonly bulk = signal<{ done: number; total: number } | null>(null);
+  readonly matchError = signal<string | null>(null);
+  /** Onaya giren, anahtarı olmayan ve AI'ya henüz sorulmamış test: "Hepsini AI ile bul" bunları arar. */
+  readonly keylessCount = computed(() => this.included().filter((r) => !r.key && !this.notFound().has(r.order)).length);
+  private bulkStopped = false;
+  private destroyed = false;
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
   readonly keyPage = signal<number | null>(null);
@@ -174,6 +186,7 @@ export class BookImportSetupComponent implements OnInit {
   private objectUrl: string | null = null;
 
   constructor() {
+    this.destroyRef.onDestroy(() => (this.destroyed = true));
     this.destroyRef.onDestroy(() => {
       this.revokeImage();
       this.revokeViewed();
@@ -338,6 +351,64 @@ export class BookImportSetupComponent implements OnInit {
     setTimeout(() => this.focusCell(rowIndex, 0));
   }
 
+  /**
+   * "AI ile bul" (isteğe bağlı; diğer yol "Anahtar gir"): testin anahtarını AI'ya arattırır. Öneri yalnız ekranda doldurulur (AI
+   * etiketiyle), öğretmen bakıp onaylar; bulunamazsa satırda söylenir, anahtar elle girilebilir. Bu arada elle girilmiş anahtarın
+   * üstüne yazılmaz; başka teste önerilmiş anahtar satırı ikinci kez kullanılmaz.
+   */
+  async findKey(order: number): Promise<boolean> {
+    if (this.finding().has(order) || this.rows().find((r) => r.order === order)?.key) return true;
+    this.finding.update((set) => new Set(set).add(order));
+    this.matchError.set(null);
+    try {
+      const result = await firstValueFrom(this.api.findKeyWithAi(this.jobId(), order));
+      this.setup.update((s) => (s ? { ...s, aiCostUsd: result.aiCostUsd } : s));
+      const match = result.match;
+      const row = this.rows().find((r) => r.order === order);
+      const taken = match?.label && this.rows().some((r) => r.order !== order && r.aiLabel === match.label);
+      if (!row || row.key) return true;
+      if (!match || taken) {
+        this.notFound.update((set) => new Set(set).add(order));
+        return true;
+      }
+      const key = match.answerKey.split('');
+      const conflicts = (match.keyConflicts ?? '').padEnd(key.length, '.').split('').slice(0, key.length);
+      this.update(row, { key, conflicts, aiLabel: match.label });
+      return true;
+    } catch (error) {
+      const message = (error as HttpErrorResponse).error?.message;
+      this.matchError.set(typeof message === 'string' ? message : 'generic');
+      return false;
+    } finally {
+      this.finding.update((set) => {
+        const next = new Set(set);
+        next.delete(order);
+        return next;
+      });
+    }
+  }
+
+  /** "Hepsini AI ile bul": anahtarsız testleri sırayla arar (tek tek, durdurulabilir); hata olursa durur. */
+  async findAllKeys(): Promise<void> {
+    if (this.bulk()) return;
+    const orders = this.included()
+      .filter((r) => !r.key && !this.notFound().has(r.order))
+      .map((r) => r.order);
+    this.bulkStopped = false;
+    this.bulk.set({ done: 0, total: orders.length });
+    for (const order of orders) {
+      if (this.bulkStopped || this.destroyed) break;
+      const ok = await this.findKey(order);
+      if (!ok) break;
+      this.bulk.update((b) => (b ? { ...b, done: b.done + 1 } : b));
+    }
+    this.bulk.set(null);
+  }
+
+  stopFindAll(): void {
+    this.bulkStopped = true;
+  }
+
   /** Anahtarın sonuna bir soru ekler (okumada eksik kalan soru). */
   addKeyCell(rowIndex: number): void {
     const row = this.rows()[rowIndex];
@@ -443,7 +514,7 @@ export class BookImportSetupComponent implements OnInit {
         if (!value && cell === key.length - 1) while (key.length > 0 && key[key.length - 1] === '') key.pop();
         conflicts.length = key.length;
         // Bütün hücreler silindi: test anahtarsız kalır.
-        return { ...r, key: key.length > 0 ? key : null, conflicts };
+        return { ...r, key: key.length > 0 ? key : null, conflicts, aiLabel: key.length > 0 ? r.aiLabel : undefined };
       }),
     );
   }

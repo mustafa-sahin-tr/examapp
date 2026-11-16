@@ -331,6 +331,14 @@
   }
 }
 
+.bis-aimatch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 8px;
+}
+
 .bis-key-missing {
   display: flex;
   flex-wrap: wrap;

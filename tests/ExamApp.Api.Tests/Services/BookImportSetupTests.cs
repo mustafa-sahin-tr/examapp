@@ -426,6 +426,86 @@ public class BookImportSetupTests : IDisposable
         (await check.Books.CountAsync()).ShouldBe(0);
     }
 
+    [Fact]
+    public async Task Ai_find_suggests_an_orphan_key_row_for_a_keyless_test_without_saving_it()
+    {
+        // Test 1-02'nin anahtarı başka etiketle okunmuş ("3-07"): kurulum bağlayamaz, satır cevaplarıyla saklanır.
+        _ai.Keys[5] = ([Row(1, 1, "ABCD"), Row(3, 7, "DDA"), Row(4, 9, "AB")], [Row(1, 1, "ABCD"), Row(3, 7, "DDA"), Row(4, 9, "AB")]);
+        var id = await SeedJobAsync();
+        await RunAsync(id);
+
+        await using (var check = _db.NewContext())
+        {
+            var summary = BookSetupSummary.Parse((await check.BookImportJobs.SingleAsync()).SetupJson)!;
+            summary.OrphanRows.Select(r => (r.Label, r.AnswerKey)).ShouldBe([("3-07", "DDA"), ("4-09", "AB")]);
+            (await check.BookImportJobTests.SingleAsync(t => t.Order == 2)).AnswerKey.ShouldBeNull();
+        }
+
+        _ai.KeyMatches[2] = "3-07";
+        await using var ctx = _db.NewContext();
+        var costBefore = (await ctx.BookImportJobs.AsNoTracking().SingleAsync()).AiCostUsd;
+        var result = await NewMatcher(ctx).FindAsync(id, 2, CancellationToken.None);
+
+        result.Error.ShouldBe(KeyMatchError.None);
+        (result.Match!.Order, result.Match.Label, result.Match.AnswerKey).ShouldBe((2, "3-07", "DDA"));
+        result.AiCostUsd.ShouldBeGreaterThan(costBefore);
+        _ai.FindKeyPages.ShouldBeEmpty(); // satır bulundu, sayfaya bakılmadı
+        await using var after = _db.NewContext();
+        (await after.BookImportJobTests.SingleAsync(t => t.Order == 2)).AnswerKey.ShouldBeNull(); // öneri kaydedilmez
+        (await after.BookImportCosts.CountAsync(c => c.Stage == BookImportStage.SetupConfirmation)).ShouldBe(1);
+    }
+
+    [Theory]
+    [InlineData("DDA", "DDA")]
+    [InlineData("DDAB", null)] // soru sayısı (3) tutmuyor
+    [InlineData("DXA", null)]
+    public async Task Ai_find_reads_the_key_pages_when_no_orphan_row_fits(string read, string? expected)
+    {
+        _ai.Keys[5] = ([Row(1, 1, "ABCD")], [Row(1, 1, "ABCD")]);
+        var id = await SeedJobAsync();
+        await RunAsync(id);
+        _ai.FoundKeys[2] = read;
+
+        await using var ctx = _db.NewContext();
+        var result = await NewMatcher(ctx).FindAsync(id, 2, CancellationToken.None);
+
+        result.Error.ShouldBe(KeyMatchError.None);
+        result.Match?.AnswerKey.ShouldBe(expected);
+        if (expected is not null)
+            result.Match!.Label.ShouldBeNull();
+        _ai.FindKeyPages.ShouldBe([5]);
+    }
+
+    [Fact]
+    public void Ai_match_drops_rows_with_another_question_count_rows_given_twice_and_unknown_labels()
+    {
+        KeyMatchTest Test(int order, int? expected) => new(order, 1, order, null, order, order, expected);
+        var tests = new[] { Test(1, 3), Test(2, null), Test(3, 2), Test(4, 2) };
+        var rows = new[] { new OrphanKey("5-36", "ABC", null, 9), new OrphanKey("5-37", "AB", "..", 9), new OrphanKey("5-38", "CD", null, 9) };
+
+        var matches = BookKeyMatchService.Accept(tests, rows,
+            new Dictionary<int, string> { [1] = "5-37", [2] = "5-36", [3] = "5-38", [4] = "5-38", [9] = "5-37" });
+
+        // 1: soru sayısı tutmuyor; 3 ve 4 aynı satır; 9 bilinmeyen test; 2: soru sayısı bilinmiyor → kabul.
+        matches.Select(m => (m.Order, m.Label)).ShouldBe([(2, "5-36")]);
+    }
+
+    [Fact]
+    public async Task Ai_find_is_only_for_jobs_waiting_for_setup_confirmation_and_known_tests()
+    {
+        var id = await SeedJobAsync();
+        await using (var ctx = _db.NewContext())
+            (await NewMatcher(ctx).FindAsync(id, 1, CancellationToken.None)).Error.ShouldBe(KeyMatchError.InvalidState);
+
+        await RunAsync(id);
+        await using var again = _db.NewContext();
+        (await NewMatcher(again).FindAsync(id, 99, CancellationToken.None)).Error.ShouldBe(KeyMatchError.NotFound);
+    }
+
+    private BookKeyMatchService NewMatcher(AppDbContext ctx) =>
+        new(ctx, _minio, _ai, new InMemoryFixedWindowCounterStore(), Microsoft.Extensions.Options.Options.Create(new LabelingAiOptions()),
+            new ConfigurationBuilder().Build());
+
     private BookImportService NewService(AppDbContext ctx) =>
         new(ctx, _minio, _jobs, _entitlements, new BookRegistryService(ctx, TimeProvider.System), new ConfigurationBuilder().Build());
 

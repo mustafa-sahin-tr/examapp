@@ -316,6 +316,44 @@ public class BookSetupPlannerTests
     }
 
     [Fact]
+    public void Tests_numbered_through_the_book_take_unit_keys_by_unique_test_number()
+    {
+        // Sayfalar: Test 1–3 kitap boyunca (ünite yazmıyor → hepsi ünite 1); anahtar ünite ünite: "2. Ünite → Test 3".
+        var pages = new[]
+        {
+            Test(2, testNo: 1, maxQuestion: 2),
+            Test(3, testNo: 2, maxQuestion: 2),
+            Test(4, testNo: 3, maxQuestion: 3),
+            Page(5, BookPageKind.AnswerKey),
+        };
+        AnswerKeyRow Row(int unit, int testNo, string key) =>
+            new(unit, testNo, key.Select((c, i) => (i + 1, c)).ToDictionary(x => x.Item1, x => x.c), 5);
+        var read = new[] { Row(1, 1, "AB"), Row(1, 2, "CD"), Row(2, 3, "ABC") };
+
+        var plan = BookSetupPlanner.Plan(pages, [], read, read);
+
+        plan.Tests.Select(t => (t.Unit, t.TestNo, t.AnswerKey)).ShouldBe([(1, 1, "AB"), (1, 2, "CD"), (1, 3, "ABC")]);
+        plan.Tests[2].Flags.ShouldBe([BookSetupPlanner.FlagKeyByNumber]);
+        plan.Tests[0].Flags.ShouldBeEmpty();
+        plan.OrphanKeys.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Repeated_test_numbers_are_not_matched_across_units()
+    {
+        // Her ünitede Test 1: ünitesi tutmayan anahtar satırı başka üniteye bağlanmaz.
+        var pages = new[] { Test(2, 1, 1, maxQuestion: 2), Test(3, 2, 1, maxQuestion: 2), Page(4, BookPageKind.AnswerKey) };
+        var read = new[] { new AnswerKeyRow(1, 1, new Dictionary<int, char> { [1] = 'A', [2] = 'B' }, 4),
+            new AnswerKeyRow(3, 1, new Dictionary<int, char> { [1] = 'C', [2] = 'D' }, 4) };
+
+        var plan = BookSetupPlanner.Plan(pages, [], read, read);
+
+        plan.Tests[0].AnswerKey.ShouldBe("AB");
+        plan.Tests[1].AnswerKey.ShouldBeNull();
+        plan.OrphanKeys.ShouldBe(["3-01"]);
+    }
+
+    [Fact]
     public void Setup_log_describes_pages_in_order_and_key_rows()
     {
         var pages = new[]

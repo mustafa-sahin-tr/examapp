@@ -5,7 +5,8 @@
 #   up [--tunnel]   start the stack, optionally public through the tunnel
 #   down            stop it, data stays
 #   status | logs [service]
-#   backup          database dump and files to the external disk, keeps the last 14 (MinIO on the disk: one mirror)
+#   backup [--db]   database dump and files to the external disk, keeps the last 14 (MinIO on the disk: one mirror);
+#                   --db: database dump only (deploys that do not touch files; the mirror scan takes long)
 #   restore <dir> --yes   replace demo data with a backup (takes a backup of the current data first)
 #   seed-schools [--dry-run]   public and private schools for all provinces
 set -euo pipefail
@@ -39,7 +40,9 @@ case "${1:-}" in
     target="$BACKUP_ROOT/$(date +%Y%m%d-%H%M%S)"
     mkdir -p "$target"
     compose exec -T postgres sh -c 'pg_dumpall -U "$POSTGRES_USER"' | gzip > "$target/postgres.sql.gz"
-    if [[ -n "$MINIO_DIR" ]]; then
+    if [[ "${2:-}" == "--db" ]]; then
+      echo "Files not backed up (--db)"
+    elif [[ -n "$MINIO_DIR" ]]; then
       # #1198: hundreds of GB do not fit 14 full copies; one mirror is updated with the changes only.
       # MinIO's own tmp / trash changes while it runs; files that vanish mid-copy (exit 24) are not an error.
       rsync -a --delete --delete-excluded --exclude '/.minio.sys/tmp/' "$MINIO_DIR/" "$MINIO_MIRROR/" || [[ $? -eq 24 ]]

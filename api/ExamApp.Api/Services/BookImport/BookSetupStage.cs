@@ -136,6 +136,9 @@ internal sealed class BookSetupStage(
 
             await SavePageNumbersAsync(job, surveyed, ct);
             var plan = BookSetupPlanner.Plan(surveyed, toc, firstRead, secondRead);
+            // Tarama sonucu başka yerde saklanmıyor; "test yok" gibi kurulum sonuçlarının sebebi logdan okunur.
+            logger.LogInformation("Book import job {JobId}: survey {Pages}; key rows {Keys}", job.Id, DescribePages(surveyed),
+                DescribeKeys(firstRead));
             if (plan.Tests.Count == 0)
                 throw new BookImportFailure("No tests were found in the book (no page with a test header).");
 
@@ -152,6 +155,21 @@ internal sealed class BookSetupStage(
             await db.SaveChangesAsync(CancellationToken.None);
         }
     }
+
+    /// <summary>
+    /// Taramanın kısa dökümü, sayfa sırasıyla ("10:test u1 t1 s="Kavrama" 11:test 12:other"); boş alanlar yazılmaz.
+    /// </summary>
+    internal static string DescribePages(IEnumerable<SurveyedPage> pages) =>
+        string.Join(' ', pages.OrderBy(p => p.FilePage).Select(p =>
+            $"{p.FilePage}:{p.Kind.ToString().ToLowerInvariant()}" +
+            (p.Unit is { } unit ? $" u{unit}" : "") +
+            (p.TestNo is { } testNo ? $" t{testNo}" : "") +
+            (p.Series is { Length: > 0 } series ? $" s=\"{series}\"" : "")));
+
+    /// <summary>Anahtar satırlarının kısa dökümü ("p223 u5 t36 s="Prova" n=7").</summary>
+    internal static string DescribeKeys(IEnumerable<AnswerKeyRow> rows) =>
+        string.Join(' ', rows.Select(r =>
+            $"p{r.KeyPage} u{r.Unit} t{r.TestNo}" + (r.Series is { Length: > 0 } series ? $" s=\"{series}\"" : "") + $" n={r.Answers.Count}"));
 
     /// <summary>Satırlara okunduğu sayfayı yazar; ünitesiz satır (0) önceki satırın ünitesini alır (ilk satır için <paramref name="unit"/>).</summary>
     private static List<AnswerKeyRow> Tag(IReadOnlyList<AnswerKeyRow> rows, int filePage, int unit)

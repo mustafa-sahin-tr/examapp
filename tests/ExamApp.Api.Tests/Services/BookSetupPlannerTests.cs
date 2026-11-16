@@ -314,4 +314,19 @@ public class BookSetupPlannerTests
         ]);
         plan.OrphanKeys.ShouldBeEmpty();
     }
+
+    [Fact]
+    public void Setup_log_describes_pages_in_order_and_key_rows()
+    {
+        var pages = new[]
+        {
+            Page(12, BookPageKind.Other),
+            new SurveyedPage(10, BookPageKind.Test, 10, 1, 1, Series: "Kavrama"),
+            Test(11),
+        };
+        var keys = new[] { new AnswerKeyRow(5, 36, new Dictionary<int, char> { [1] = 'A', [2] = 'B' }, 223, "Prova") };
+
+        BookSetupStage.DescribePages(pages).ShouldBe("10:test u1 t1 s=\"Kavrama\" 11:test 12:other");
+        BookSetupStage.DescribeKeys(keys).ShouldBe("p223 u5 t36 s=\"Prova\" n=2");
+    }
 }

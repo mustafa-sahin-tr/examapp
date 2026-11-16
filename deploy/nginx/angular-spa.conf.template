@@ -26,6 +26,9 @@ server {
         add_header X-Frame-Options "SAMEORIGIN" always;
         add_header X-Content-Type-Options "nosniff" always;
         add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' ${CSP_JITSI_ORIGIN}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com ${CSP_JITSI_ORIGIN}; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; report-uri /csp-report" always;
+        # Kabuk (index.html) ve parmak izsiz dosyalar (i18n/*.json): başlıksız gidince tarayıcı kendi tahminiyle saklıyor, deploy
+        # sonrası eski düğme / eski çeviri kalıyordu. no-cache: her açılışta ETag ile sorar (değişmediyse 304).
+        add_header Cache-Control "no-cache";
         try_files $uri $uri/index.html /index.csr.html /index.html =404;
     }
 

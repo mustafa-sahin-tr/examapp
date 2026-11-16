@@ -111,18 +111,23 @@
         </thead>
         <tbody>
           @for (row of rows(); track row.order; let r = $index) {
-          <tr [class.bis-excluded]="!row.include">
+          <!-- Test iki satır: üstte numara + tüm genişlikte başlık, altta süre / sayfalar ve anahtar. -->
+          <tr class="bis-row-head" [class.bis-excluded]="!row.include">
             <td>
               <mat-checkbox [checked]="row.include" (change)="update(row, { include: $event.checked })"
                 [aria-label]="t('setup.includeTest', { unit: row.unit, no: row.testNo })"></mat-checkbox>
             </td>
             <th scope="row" class="bis-code">{{ row.unit }}-{{ row.testNo < 10 ? '0' + row.testNo : row.testNo }}</th>
-            <!-- Başlık üstte, süre ve sayfalar altında: dar ekranda anahtar sütununa yer kalır. -->
-            <td class="bis-test">
+            <td colspan="2">
               <mat-form-field class="bis-field bis-field--title" appearance="outline" subscriptSizing="dynamic">
                 <input matInput [ngModel]="row.title" (ngModelChange)="update(row, { title: $event })" maxlength="300"
                   [attr.aria-label]="t('setup.colTitle')" />
               </mat-form-field>
+            </td>
+          </tr>
+          <tr [class.bis-excluded]="!row.include">
+            <td colspan="2"></td>
+            <td class="bis-test">
               <div class="bis-test__meta">
               <span class="bis-muted" aria-hidden="true">{{ t('setup.colMinutes') }}</span>
               <mat-form-field class="bis-field bis-field--num" appearance="outline" subscriptSizing="dynamic">

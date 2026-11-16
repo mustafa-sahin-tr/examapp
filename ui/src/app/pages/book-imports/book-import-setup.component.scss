@@ -268,15 +268,19 @@
   font-variant-numeric: tabular-nums;
 }
 
+.bis-row-head > td,
+.bis-row-head > th {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
 .bis-test {
-  min-width: 220px;
+  white-space: nowrap;
 
   &__meta {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 4px 8px;
-    margin-top: 4px;
+    gap: 6px;
   }
 }
 
@@ -293,7 +297,11 @@
   }
 
   &--num {
-    width: 76px;
+    width: 64px;
+
+    ::ng-deep .mat-mdc-text-field-wrapper {
+      padding-inline: 8px;
+    }
   }
 }
 

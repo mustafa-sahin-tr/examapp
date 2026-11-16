@@ -63,7 +63,7 @@ describe('BookImportSetupComponent (#1021)', () => {
 
     expect(api.setup).toHaveBeenCalledWith('a1');
     expect(api.pageImage).toHaveBeenCalledWith('a1', 237);
-    expect(el().querySelector('.bis-keypage img')).not.toBeNull();
+    expect(el().querySelector('.bis-keypages img')).not.toBeNull();
     expect(text()).toContain('Doğal Sayılar');
     expect(cell(0, 1).closest('label')!.classList).toContain('bis-key__cell--conflict');
     expect(cell(0, 1).closest('label')!.getAttribute('title')).toBe('Diğer okuma: D');
@@ -152,6 +152,20 @@ describe('BookImportSetupComponent (#1021)', () => {
     expect(view.textContent).toContain('1 / 1');
     expect(view.querySelector('.bis-view__key')).toBeNull();
     expect(api.pageImage).toHaveBeenLastCalledWith('a1', 237);
+  });
+
+  it('keyPages_AreAllShownSideBySide_AndEachOpensItself', () => {
+    create(setupData({ answerKeyRanges: [{ fileFrom: 172, fileTo: 172 }, { fileFrom: 223, fileTo: 224 }] }));
+
+    const items = el().querySelectorAll<HTMLButtonElement>('[data-testid="key-open"]');
+    expect(Array.from(items, (b) => b.textContent!.trim())).toEqual(['s. 172', 's. 223', 's. 224']);
+    expect(api.pageImage.mock.calls.map((c: unknown[]) => c[1])).toEqual([172, 223, 224]);
+    expect(el().querySelectorAll('.bis-keypages img').length).toBe(3);
+
+    items[2].click();
+    fixture.detectChanges();
+    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 224);
+    expect(el().querySelector('[data-testid="test-pages"]')!.textContent).toContain('3 / 3');
   });
 
   it('keyboard_TypingFixesCellsAndMovesFocus', () => {

@@ -123,9 +123,8 @@ export class BookImportSetupComponent implements OnInit {
   private destroyed = false;
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
-  readonly keyPage = signal<number | null>(null);
-  readonly keyImage = signal<string | null>(null);
-  readonly keyImageLarge = signal(false);
+  /** Anahtar sayfalarının küçük resimleri (dosya sayfası → object URL); hepsi yan yana gösterilir. */
+  readonly keyImages = signal<ReadonlyMap<number, string>>(new Map());
   /** #1192: sayfaları tam ekranda gösterilen test (null: kapalı); altta önceki / sonraki sayfa. */
   readonly viewedTest = signal<number | null>(null);
   /** Cevap anahtarı da aynı görünümde büyür. */
@@ -183,12 +182,11 @@ export class BookImportSetupComponent implements OnInit {
           (!this.setup()?.noAnswerKey || this.noKeyAcknowledged()))),
   );
 
-  private objectUrl: string | null = null;
 
   constructor() {
     this.destroyRef.onDestroy(() => (this.destroyed = true));
     this.destroyRef.onDestroy(() => {
-      this.revokeImage();
+      this.revokeKeyImages();
       this.revokeViewed();
     });
   }
@@ -208,29 +206,27 @@ export class BookImportSetupComponent implements OnInit {
           if (setup.isDemo) this.noKeyAcknowledged.set(true);
           this.rows.set(setup.tests.map(toEditable));
           this.bookName.set(setup.bookName);
-          const first = this.keyPages()[0];
-          if (first != null) this.showKeyPage(first);
+          this.loadKeyImages();
         },
         error: () => this.loadError.set(true),
       });
   }
 
-  showKeyPage(filePage: number): void {
-    this.keyPage.set(filePage);
-    this.keyImage.set(null);
-    this.api
-      .pageImage(this.jobId(), filePage)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (blob) => {
-          // Hızlı geçişte geç gelen eski sayfa yenisinin yerine geçmesin.
-          if (this.keyPage() !== filePage) return;
-          this.revokeImage();
-          this.objectUrl = URL.createObjectURL(blob);
-          this.keyImage.set(this.objectUrl);
-        },
-        error: () => this.keyImage.set(null),
-      });
+  private loadKeyImages(): void {
+    for (const filePage of this.keyPages()) {
+      if (this.keyImages().has(filePage)) continue;
+      this.api
+        .pageImage(this.jobId(), filePage)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (blob) => {
+            const url = URL.createObjectURL(blob);
+            this.keyImages.update((images) => new Map(images).set(filePage, url));
+          },
+          // Yüklenemeyen sayfa küçük resimsiz kalır; tıklanınca büyük görünüm yeniden dener.
+          error: () => undefined,
+        });
+    }
   }
 
   /** #1192: testin sayfalarını tam ekranda aç (anahtardaki şüpheli hücreye karar vermek için). */
@@ -241,12 +237,11 @@ export class BookImportSetupComponent implements OnInit {
     if (first != null) this.showTestPage(first);
   }
 
-  /** Soldaki anahtar görseline tıklanınca o anahtar sayfası büyük açılır. */
-  showKeyLarge(): void {
+  /** Anahtar sayfasının küçük resmine tıklanınca o sayfa büyük açılır (alttan diğer anahtar sayfalarına geçilir). */
+  showKeyLarge(filePage: number): void {
     this.viewedTest.set(null);
     this.viewingKey.set(true);
-    const page = this.keyPage() ?? this.keyPages()[0];
-    if (page != null) this.showTestPage(page);
+    this.showTestPage(filePage);
   }
 
   showTestPage(filePage: number): void {
@@ -539,8 +534,7 @@ export class BookImportSetupComponent implements OnInit {
     this.viewedImage.set(null);
   }
 
-  private revokeImage(): void {
-    if (this.objectUrl) URL.revokeObjectURL(this.objectUrl);
-    this.objectUrl = null;
+  private revokeKeyImages(): void {
+    for (const url of this.keyImages().values()) URL.revokeObjectURL(url);
   }
 }

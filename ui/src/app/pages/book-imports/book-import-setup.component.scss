@@ -127,85 +127,64 @@
 
 .bis-body {
   display: grid;
-  grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
-  align-items: start;
-
-  &:not(:has(.bis-keypage)) {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  // Dar ekranda (ör. 1280px pencere) anahtar sayfası tablonun üstünde küçük bir şerittir; tıklayınca büyük açılır.
-  @media (max-width: 1440px) {
-    grid-template-columns: minmax(0, 1fr);
-
-    .bis-keypage:not(.bis-keypage--large) {
-      position: static;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: flex-start;
-      gap: 8px 16px;
-
-      .bis-keypage__tabs {
-        margin-bottom: 0;
-      }
-
-      .bis-keypage__open {
-        width: auto;
-      }
-
-      img {
-        width: auto;
-        max-height: 160px;
-      }
-    }
-  }
 }
 
-.bis-keypage__open {
-  display: block;
-  width: 100%;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  cursor: zoom-in;
-}
-
-.bis-keypage {
-  position: sticky;
-  top: 12px;
+.bis-keypages {
+  display: flex;
+  gap: 12px;
   margin: 0;
+  padding: 0 0 4px;
+  list-style: none;
+  overflow-x: auto;
 
-  &__tabs {
+  &__item {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     align-items: center;
     gap: 6px;
-    margin-bottom: 8px;
-  }
-
-  img {
-    display: block;
-    width: 100%;
+    padding: 6px;
     border: 1px solid var(--ms-border);
-    border-radius: 8px;
-    background: var(--ms-surface);
+    border-radius: 10px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: zoom-in;
+
+    &:hover,
+    &:focus-visible {
+      border-color: var(--ms-action-border-focus);
+    }
+
+    img {
+      display: block;
+      height: 180px;
+      width: auto;
+      border-radius: 6px;
+      background: var(--ms-surface);
+    }
   }
 
   &__empty {
     display: flex;
+    align-items: center;
     justify-content: center;
-    padding: 40px 0;
+    width: 128px;
+    height: 180px;
   }
 
-  &--large {
-    position: static;
-    grid-column: 1 / -1;
+  &__label {
+    font-size: 0.85rem;
+    font-weight: 600;
   }
 }
 
-.bis-active {
-  background: var(--ms-info-surface-weak);
+// Büyük görünümde sayfa yüklenirken.
+.bis-keypage__empty {
+  display: flex;
+  justify-content: center;
+  padding: 40px 0;
 }
 
 .bis-table-wrap {
@@ -268,15 +247,19 @@
   font-variant-numeric: tabular-nums;
 }
 
+.bis-row-head > td,
+.bis-row-head > th {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
 .bis-test {
-  min-width: 220px;
+  white-space: nowrap;
 
   &__meta {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 4px 8px;
-    margin-top: 4px;
+    gap: 6px;
   }
 }
 
@@ -293,7 +276,11 @@
   }
 
   &--num {
-    width: 76px;
+    width: 64px;
+
+    ::ng-deep .mat-mdc-text-field-wrapper {
+      padding-inline: 8px;
+    }
   }
 }
 

@@ -284,6 +284,27 @@ public class BookImportSetupTestDto
     public List<string> Flags { get; set; } = new();
 }
 
+/// <summary>"AI ile bul" önerisi: anahtarsız testin (onay tablosundaki sıra) anahtarı. Kaydedilmez.</summary>
+public class BookImportKeyMatchDto
+{
+    public int Order { get; set; }
+
+    /// <summary>Sahipsiz anahtar satırından geldiyse etiketi ("5-36"); anahtar sayfasından okunduysa null.</summary>
+    public string? Label { get; set; }
+
+    public string AnswerKey { get; set; } = string.Empty;
+    public string? KeyConflicts { get; set; }
+}
+
+public class BookImportKeyMatchResponseDto
+{
+    /// <summary>Bulunamadıysa null (öğretmen "Anahtar gir" ile yazar).</summary>
+    public BookImportKeyMatchDto? Match { get; set; }
+
+    /// <summary>İşin güncel toplam Claude maliyeti.</summary>
+    public decimal AiCostUsd { get; set; }
+}
+
 /// <summary>Issue #1021: kurulum onayı. Listede olmayan test aktarılmaz; anahtar boş/null ise test cevapsız aktarılır.</summary>
 public class ConfirmBookImportSetupDto
 {

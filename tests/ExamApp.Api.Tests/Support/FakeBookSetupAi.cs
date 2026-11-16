@@ -74,4 +74,29 @@ public sealed class FakeBookSetupAi : IBookSetupAi
         cost.Add(Model, new LabelingAiUsage(100, 10));
         return units.ToDictionary(u => u.Unit, u => UnitTopics.GetValueOrDefault(u.Unit));
     }
+
+    /// <summary>"AI ile eşle" yanıtı: test sırası → satır etiketi.</summary>
+    public Dictionary<int, string> KeyMatches { get; } = new();
+
+    public async Task<IReadOnlyDictionary<int, string>> MatchKeysAsync(
+        IReadOnlyList<KeyMatchTest> tests, IReadOnlyList<KeyMatchRow> rows, BookSetupCost cost, CancellationToken ct)
+    {
+        await cost.EnsureAsync(ct);
+        cost.Add(Model, new LabelingAiUsage(100, 10));
+        return KeyMatches;
+    }
+
+    /// <summary>"AI ile bul" görsel araması: test sırası → okunan cevaplar.</summary>
+    public Dictionary<int, string> FoundKeys { get; } = new();
+
+    public List<int> FindKeyPages { get; } = new();
+
+    public async Task<string?> FindKeyAsync(IReadOnlyList<BookPageImage> keyPages, KeyMatchTest test,
+        IReadOnlyList<KeyMatchTest> neighbours, BookSetupCost cost, CancellationToken ct)
+    {
+        await cost.EnsureAsync(ct);
+        cost.Add(Model, new LabelingAiUsage(1000, 50));
+        FindKeyPages.AddRange(keyPages.Select(p => p.FilePage));
+        return FoundKeys.GetValueOrDefault(test.Order);
+    }
 }

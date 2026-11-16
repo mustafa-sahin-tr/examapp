@@ -124,6 +124,13 @@ aktarım aracındaki Python portu referanstır (#1022).
   ("survey 10:test u1 t1 …; key rows p223 u5 t36 n=7").
 - **Anahtarı gelmeyen test:** onay ekranında "Anahtar gir" beklenen soru sayısı kadar boş kutu açar (bilinmiyorsa 10);
   "+" anahtarın sonuna kutu ekler; bütün kutular silinirse test anahtarsız kalır.
+- **"AI ile bul" (isteğe bağlı, kurulum kendiliğinden çağırmaz):** anahtarsız satırda "Anahtar gir"in yanında; üstte "Hepsini
+  AI ile bul" anahtarsız testleri sırayla (tek tek, durdurulabilir) sorar. `POST {id}/setup/tests/{order}/ai-key`
+  (`BookKeyMatchService`): önce kurulumun hiçbir teste bağlayamadığı anahtar satırlarından (`SetupJson.OrphanRows`, cevaplarıyla
+  saklanır) birini ucuz modelle seçer; uymazsa anahtar sayfalarının görsellerinde testin satırını güçlü modelle arar (komşu testler
+  bağlam olarak verilir). Kod denetler: soru sayısı biliniyorsa cevap sayısı tutmalı, yalnız A–E / "?", bir satır iki teste
+  gitmez. Öneri kaydedilmez, ekranda "AI" çipiyle doldurulur, onayla gider; bulunamazsa satırda "AI bulamadı" yazar, anahtar elle
+  girilebilir. Maliyet `SetupConfirmation` aşamasına ve iş bütçesine yazılır (429 bütçe, 502 Claude hatası).
 - **Kayıt:** test satırları `BookImportJobTests` (sayfa aralığı, dakika, `AnswerKey` "ABCD…", `KeyConflicts` "." uyumlu /
   diğer okumanın harfi / "-"), özet `BookImportJobs.SetupJson`, maliyet `AiCostUsd` (başarısız çağrılar dahil). Model listesi
   ve fiyatlar `Anthropic:Models`'tan; API anahtarı yoksa iş "Claude is not configured" ile düşer. Hiç test başlığı yoksa

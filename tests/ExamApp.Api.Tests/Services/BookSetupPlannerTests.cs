@@ -351,6 +351,7 @@ public class BookSetupPlannerTests
         plan.Tests[0].AnswerKey.ShouldBe("AB");
         plan.Tests[1].AnswerKey.ShouldBeNull();
         plan.OrphanKeys.ShouldBe(["3-01"]);
+        plan.OrphanRows!.Select(r => (r.Label, r.AnswerKey)).ShouldBe([("3-01", "CD")]);
     }
 
     [Fact]

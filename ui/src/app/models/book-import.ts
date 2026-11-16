@@ -321,6 +321,21 @@ export interface BookImportSetupTest {
   flags: string[];
 }
 
+/** "AI ile bul" önerisi: anahtarsız testin (sıra) anahtarı; kaydedilmez, onayla gider. */
+export interface BookImportKeyMatch {
+  order: number;
+  /** Testi bulunamamış anahtar satırından geldiyse etiketi ("5-36"); anahtar sayfasından okunduysa null. */
+  label: string | null;
+  answerKey: string;
+  keyConflicts: string | null;
+}
+
+export interface BookImportKeyMatchResponse {
+  /** Bulunamadıysa null. */
+  match: BookImportKeyMatch | null;
+  aiCostUsd: number;
+}
+
 export interface ConfirmBookImportSetup {
   bookName: string;
   existingBookId: number | null;

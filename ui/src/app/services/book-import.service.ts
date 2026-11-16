@@ -21,6 +21,7 @@ import {
   BookImportDemo,
   BookImportJob,
   BookImportJobDetail,
+  BookImportKeyMatchResponse,
   BookImportPageDraft,
   BookImportPageFix,
   BookImportReviewQuestion,
@@ -164,6 +165,11 @@ export class BookImportService {
   /** Issue #1021: kurulum onay ekranı. */
   setup(id: string): Observable<BookImportSetup> {
     return this.http.get<BookImportSetup>(`${this.baseUrl}/${id}/setup`);
+  }
+
+  /** Onay ekranında "AI ile bul": anahtarsız testin anahtarını önerir (kaydetmez); bulunamazsa match null. */
+  findKeyWithAi(id: string, order: number): Observable<BookImportKeyMatchResponse> {
+    return this.http.post<BookImportKeyMatchResponse>(`${this.baseUrl}/${id}/setup/tests/${order}/ai-key`, {});
   }
 
   confirmSetup(id: string, request: ConfirmBookImportSetup): Observable<BookImportJob> {

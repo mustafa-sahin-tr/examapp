@@ -46,6 +46,7 @@ describe('BookImportSetupComponent (#1021)', () => {
       setup: vi.fn().mockReturnValue(of(data)),
       pageImage: vi.fn().mockReturnValue(of(new Blob(['x'], { type: 'image/webp' }))),
       confirmSetup: vi.fn().mockReturnValue(of({})),
+      findKeyWithAi: vi.fn().mockReturnValue(of({ match: null, aiCostUsd: 0 })),
       cancel: vi.fn().mockReturnValue(of(undefined)),
     } as unknown as MockedObject<BookImportService>;
     TestBed.configureTestingModule({
@@ -225,6 +226,58 @@ describe('BookImportSetupComponent (#1021)', () => {
     expect(api.confirmSetup).toHaveBeenCalledWith('a1', expect.objectContaining({
       tests: [expect.objectContaining({ order: 1, answerKey: 'ABCD' })],
     }));
+  });
+
+  const keyless = (order: number, testNo: number, expected: number | null) => ({
+    order, unit: 1, testNo, title: 'T' + testNo, minutes: null, fileFrom: 6 + order, fileTo: 6 + order, expectedQuestions: expected,
+    answerKey: null, keyConflicts: null, flags: [],
+  });
+
+  it('aiFind_FillsTheSuggestedKeyWithAnAiChip_OrSaysItWasNotFound', async () => {
+    create(setupData({ tests: [keyless(1, 36, 2), keyless(2, 37, 1)] }));
+    api.findKeyWithAi
+      .mockReturnValueOnce(of({ match: { order: 1, label: '5-36', answerKey: 'CB', keyConflicts: null }, aiCostUsd: 0.4 }))
+      .mockReturnValueOnce(of({ match: null, aiCostUsd: 0.5 }));
+
+    el().querySelectorAll<HTMLButtonElement>('[data-testid="ai-find-key"]')[0].click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(api.findKeyWithAi).toHaveBeenCalledWith('a1', 1);
+    expect(cell(0, 0).value).toBe('C');
+    expect(cell(0, 1).value).toBe('B');
+    expect(el().querySelector('[data-testid="ai-key-chip"]')!.textContent).toContain('AI: 5-36');
+    expect(text()).toContain('$0.40');
+
+    el().querySelector<HTMLButtonElement>('[data-testid="ai-find-key"]')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(text()).toContain('AI bulamadı');
+    expect(el().querySelector('[data-testid="ai-find-key"]')).toBeNull();
+    expect(el().querySelector('[data-testid="enter-key"]')).not.toBeNull(); // elle girmek hâlâ mümkün
+  });
+
+  it('findAll_AsksEachKeylessTestInTurn_AndKeepsTypedKeys', async () => {
+    create(setupData({ tests: [keyless(1, 1, null), keyless(2, 2, null), keyless(3, 3, null)] }));
+    api.findKeyWithAi.mockImplementation((_: string, order: number) =>
+      of({ match: order === 3 ? null : { order, label: null, answerKey: 'AB', keyConflicts: null }, aiCostUsd: 1 }));
+    // 2. teste öğretmen anahtarı elle girdi: toplu arama onu sormaz.
+    el().querySelectorAll<HTMLButtonElement>('[data-testid="enter-key"]')[1].click();
+    fixture.detectChanges();
+    press(cell(1, 0), 'D');
+    expect(text()).toContain('2 testin anahtarı yok.');
+
+    el().querySelector<HTMLButtonElement>('[data-testid="find-all-keys"]')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(api.findKeyWithAi.mock.calls.map((c: unknown[]) => c[1])).toEqual([1, 3]);
+    expect(cell(0, 0).value).toBe('A');
+    expect(cell(1, 0).value).toBe('D');
+    expect(el().querySelector('[data-testid="ai-key-chip"]')!.textContent!.trim()).toBe('AI');
+    expect(text()).toContain('AI bulamadı');
+    expect(el().querySelector('[data-testid="find-all-keys"]')).toBeNull(); // sorulmamış anahtarsız test kalmadı
   });
 
   it('deletingEveryCell_LeavesTheTestWithoutKey', () => {

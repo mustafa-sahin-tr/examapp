@@ -46,6 +46,12 @@ public sealed record SurveyResult(IReadOnlyList<SurveyedPage> Pages, IReadOnlyLi
 /// <summary>Ünite eşlemesi için konu adayı.</summary>
 public sealed record TopicCandidate(int Id, string Name);
 
+/// <summary>"AI ile eşle": anahtarı olmayan test (onay tablosundaki sıra, başlık, dosya sayfaları, görülen soru sayısı).</summary>
+public sealed record KeyMatchTest(int Order, int Unit, int TestNo, string? Title, int? FileFrom, int? FileTo, int? ExpectedQuestions);
+
+/// <summary>"AI ile eşle": testi bulunamayan anahtar satırı (etiket, cevap sayısı, okunduğu sayfa).</summary>
+public sealed record KeyMatchRow(string Label, int Answers, int? KeyPage);
+
 /// <summary>
 /// Issue #1021: kitap kurulumunun Claude çağrıları. Kurulum kuralları <see cref="BookSetupPlanner"/>'da (saf); bu arayüz
 /// yalnız görseli okur, testler sahtesini verir.
@@ -66,6 +72,20 @@ public interface IBookSetupAi
     /// <summary>Ünite başlıklarını dersin konularıyla eşler (ucuz model, görselsiz); eşleşmeyen ünite null.</summary>
     Task<IReadOnlyDictionary<int, int?>> MapUnitsAsync(
         IReadOnlyList<PlannedUnit> units, IReadOnlyList<TopicCandidate> topics, BookSetupCost cost, CancellationToken ct);
+
+    /// <summary>
+    /// "AI ile eşle" (öğretmen ister): anahtarsız testlere sahipsiz anahtar satırlarını önerir (ucuz model, görselsiz). Test sırası →
+    /// satır etiketi; denetim (tek kullanım, cevap sayısı) <see cref="BookKeyMatchService"/>'te.
+    /// </summary>
+    Task<IReadOnlyDictionary<int, string>> MatchKeysAsync(
+        IReadOnlyList<KeyMatchTest> tests, IReadOnlyList<KeyMatchRow> rows, BookSetupCost cost, CancellationToken ct);
+
+    /// <summary>
+    /// "AI ile bul", sahipsiz satır yoksa ya da eşleşmediyse: anahtar sayfalarında bu testin satırını arar ve cevaplarını okur (güçlü
+    /// model). Bulamazsa null; cevap A–E, okunamayan "?".
+    /// </summary>
+    Task<string?> FindKeyAsync(IReadOnlyList<BookPageImage> keyPages, KeyMatchTest test, IReadOnlyList<KeyMatchTest> neighbours,
+        BookSetupCost cost, CancellationToken ct);
 }
 
 /// <summary>
@@ -76,8 +96,8 @@ public interface IBookSetupAi
 /// </summary>
 public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
 {
-    /// <summary>1: ilk sürüm (#1021). 2: test başlığı olmayan bölümlü kitaplar ve test numarasız anahtarlar (#1122).</summary>
-    public const int SchemaRevision = 4;
+    /// <summary>1: ilk sürüm (#1021). 2: test başlığı olmayan bölümlü kitaplar ve test numarasız anahtarlar (#1122). 5: "AI ile eşle" (sahipsiz anahtar satırı → anahtarsız test).</summary>
+    public const int SchemaRevision = 5;
 
     public const string DefaultSurveyModel = "claude-haiku-5-5";
     public const string DefaultAnswerKeyModel = "claude-haiku-5-5";
@@ -133,6 +153,18 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
 
     private const string MapSystemPrompt =
         "You match the units of a Turkish school question bank to curriculum topics. Answer only with ids from the list.";
+
+    private const string MatchSystemPrompt =
+        "You match the answer key rows of a Turkish school question bank to its tests. The key labels a row by unit and test " +
+        "number (or section label and number) as printed in the key; the test pages may number tests differently (through the " +
+        "whole book, or per unit). Use the order of the tests, their numbers, titles and question counts. Answer only with " +
+        "labels from the list; leave a test unmatched (null) when no row clearly belongs to it. Use every label at most once.";
+    private const int MatchMaxOutputTokens = 4000;
+
+    private const string FindSystemPrompt =
+        "You find one test's row in the answer key (Cevap Anahtarı) pages of a Turkish school question bank and transcribe it " +
+        "exactly as printed. Every answer is one letter A, B, C, D or E; use \"?\" for a cell you cannot read. Never infer an " +
+        "answer that is not printed. If you are not sure which row belongs to the test, answer found=false.";
 
     private readonly IChatClient? _chat;
     private readonly LabelingAiOptions _options;
@@ -242,6 +274,59 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
         }
 
         return result;
+    }
+
+    public async Task<IReadOnlyDictionary<int, string>> MatchKeysAsync(
+        IReadOnlyList<KeyMatchTest> tests, IReadOnlyList<KeyMatchRow> rows, BookSetupCost cost, CancellationToken ct)
+    {
+        if (tests.Count == 0 || rows.Count == 0)
+            return new Dictionary<int, string>();
+
+        var instruction =
+            "Tests without an answer key (order: unit-test, title, file pages, questions seen):\n" +
+            string.Join("\n", tests.Select(t =>
+                $"{t.Order}: {t.Unit}-{t.TestNo:D2}, {t.Title ?? "-"}, pages {t.FileFrom}-{t.FileTo}, {t.ExpectedQuestions?.ToString() ?? "?"} questions")) +
+            "\n\nAnswer key rows that matched no test (label: answers, key page):\n" +
+            string.Join("\n", rows.Select(r => $"{r.Label}: {r.Answers} answers, page {r.KeyPage?.ToString() ?? "?"}")) +
+            "\n\nFor every test give the label of its key row, or null.";
+        var model = Model(_surveyModelId);
+        var (matches, _) = await Call(() => LabelingClaude.AskTextAsync<KeyMatches>(
+            _chat!, _options, _logger, model, MatchMaxOutputTokens, MatchSystemPrompt, instruction, ct), model, cost, ct);
+
+        var orders = tests.Select(t => t.Order).ToHashSet();
+        var labels = rows.Select(r => r.Label).ToHashSet();
+        var result = new Dictionary<int, string>();
+        foreach (var match in matches.Matches ?? [])
+        {
+            if (match is { Label: { } label } && orders.Contains(match.Order) && labels.Contains(label))
+                result.TryAdd(match.Order, label);
+        }
+
+        return result;
+    }
+
+    public async Task<string?> FindKeyAsync(IReadOnlyList<BookPageImage> keyPages, KeyMatchTest test,
+        IReadOnlyList<KeyMatchTest> neighbours, BookSetupCost cost, CancellationToken ct)
+    {
+        if (keyPages.Count == 0)
+            return null;
+
+        var content = new List<AIContent>();
+        foreach (var page in keyPages)
+        {
+            content.Add(new TextContent($"Answer key, file page {page.FilePage}:"));
+            content.Add(new DataContent(Encode(page.Image, KeyImageEdge, null), "image/jpeg"));
+        }
+
+        static string Describe(KeyMatchTest t) =>
+            $"#{t.Order} \"Test {t.TestNo}\" ({t.Title ?? "no title"}), pages {t.FileFrom}-{t.FileTo}, {t.ExpectedQuestions?.ToString() ?? "unknown"} questions";
+        content.Add(new TextContent(
+            "The book's tests in order (the test pages may number them through the whole book while the key groups them by unit " +
+            "or section):\n" + string.Join("\n", neighbours.Select(Describe)) +
+            $"\n\nFind the key row of test {Describe(test)} and give its answers in question order."));
+        var model = Model(_tieBreakModelId);
+        var found = await AskAsync<FoundKey>(model, KeyMaxOutputTokens, FindSystemPrompt, content, cost, ct);
+        return found is { Found: true, Answers: { Length: > 0 } answers } ? answers.Trim().ToUpperInvariant() : null;
     }
 
     public void Dispose() => _chat?.Dispose();
@@ -354,6 +439,14 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
     internal sealed record KeyCell(int Number, [property: Description("A, B, C, D, E or ? when unreadable.")] string Answer);
 
     internal sealed record UnitTopics(List<UnitTopic> Units);
+
+    internal sealed record KeyMatches(List<KeyMatch> Matches);
+
+    internal sealed record FoundKey(
+        bool Found,
+        [property: Description("Answers in question order, one letter per question (A-E, ? unreadable), e.g. \"ABDC\".")] string? Answers);
+
+    internal sealed record KeyMatch(int Order, [property: Description("Key row label from the list, or null.")] string? Label);
 
     internal sealed record UnitTopic(int Unit, [property: Description("Topic id from the list, or null.")] int? TopicId);
 }

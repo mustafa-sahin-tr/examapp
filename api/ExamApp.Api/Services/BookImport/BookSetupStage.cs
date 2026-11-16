@@ -23,6 +23,9 @@ public sealed class BookSetupSummary
     /// <summary>Anahtarda olup kitapta testi bulunamayan satırlar ("2-07").</summary>
     public List<string> OrphanKeys { get; set; } = new();
 
+    /// <summary>Sahipsiz satırların cevapları ("AI ile eşle" önerisi için); eski kurulumlarda boş.</summary>
+    public List<OrphanKey> OrphanRows { get; set; } = new();
+
     public bool NoAnswerKey { get; set; }
     public long InputTokens { get; set; }
     public long OutputTokens { get; set; }
@@ -257,6 +260,7 @@ internal sealed class BookSetupStage(
             SelfAssessmentPages = plan.SelfAssessmentPages.ToList(),
             Units = plan.Units.Select(u => new BookSetupUnit(u.Unit, u.Title, u.FileFrom, u.FileTo, topics.GetValueOrDefault(u.Unit))).ToList(),
             OrphanKeys = plan.OrphanKeys.ToList(),
+            OrphanRows = (plan.OrphanRows ?? []).ToList(),
             NoAnswerKey = plan.NoAnswerKey,
             InputTokens = cost.InputTokens,
             OutputTokens = cost.OutputTokens,

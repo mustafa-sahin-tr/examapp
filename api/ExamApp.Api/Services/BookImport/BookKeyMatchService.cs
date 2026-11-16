@@ -31,7 +31,7 @@ public sealed record KeyMatchResult(KeyMatchError Error, BookImportKeyMatchDto? 
 /// <summary>
 /// Onay ekranında anahtarı olmayan testte "AI ile bul" (öğretmen ister, kurulum kendiliğinden çağırmaz; diğer yol "Anahtar gir"):
 /// önce kurulumun hiçbir teste bağlayamadığı anahtar satırlarından (<see cref="BookSetupSummary.OrphanRows"/>) birini ucuz modelle
-/// seçer; satır yoksa ya da uymadıysa anahtar sayfalarında testin satırını güçlü modelle arar. Hiçbir şey kaydedilmez: öneri ekranda
+/// seçer; satır yoksa ya da uymadıysa anahtar sayfalarında testin satırını arar (ucuz model iki görünümle, uyuşmazsa güçlü model). Hiçbir şey kaydedilmez: öneri ekranda
 /// doldurulur, öğretmen bakıp onaylar. Öneri kodla denetlenir: testin görülen soru sayısı biliniyorsa cevap sayısı tutmalı. Maliyet
 /// işin maliyetine ve aktarım bütçesine yazılır.
 /// </summary>
@@ -123,12 +123,21 @@ public sealed partial class BookKeyMatchService(AppDbContext db, IMinIoService m
             images.Add(new BookPageImage(page.FilePage, buffer.ToArray()));
         }
 
-        var answers = await ai.FindKeyAsync(images, test, around, cost, ct);
-        if (answers is null || answers.Length > BookImportJobTest.MaxKeyLength || !KeyPattern().IsMatch(answers)
-            || test.ExpectedQuestions is { } expected && expected != answers.Length)
-            return null;
-        return new BookImportKeyMatchDto { Order = test.Order, Label = null, AnswerKey = answers };
+        // Kurulumdaki anahtar okuması gibi: ucuz model sayfanın tamamından ve yarılarından ayrı ayrı okur; ikisi aynı geçerli cevabı
+        // verirse kabul, yoksa güçlü model karar verir.
+        var whole = Valid(await ai.FindKeyAsync(images, test, around, tiled: false, strong: false, cost, ct), test);
+        var halves = Valid(await ai.FindKeyAsync(images, test, around, tiled: true, strong: false, cost, ct), test);
+        var answers = whole is not null && whole == halves
+            ? whole
+            : Valid(await ai.FindKeyAsync(images, test, around, tiled: false, strong: true, cost, ct), test);
+        return answers is null ? null : new BookImportKeyMatchDto { Order = test.Order, Label = null, AnswerKey = answers };
     }
+
+    private static string? Valid(string? answers, KeyMatchTest test) =>
+        answers is null || answers.Length > BookImportJobTest.MaxKeyLength || !KeyPattern().IsMatch(answers)
+        || test.ExpectedQuestions is { } expected && expected != answers.Length
+            ? null
+            : answers;
 
     private static List<KeyMatchTest> Around(List<KeyMatchTest> tests, int index)
     {

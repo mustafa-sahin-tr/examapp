@@ -325,6 +325,17 @@
     font-size: 0.7rem;
     color: var(--ms-text-medium);
   }
+
+  &__add {
+    align-self: center;
+  }
+}
+
+.bis-key-missing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
 .bis-confirm {

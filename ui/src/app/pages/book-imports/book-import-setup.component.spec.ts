@@ -199,6 +199,46 @@ describe('BookImportSetupComponent (#1021)', () => {
     expect(confirmButton().disabled).toBe(true);
   });
 
+  it('enterKey_OpensEmptyCellsForAKeylessTest_AndSendsTypedKey', () => {
+    create(setupData({
+      tests: [{ order: 1, unit: 1, testNo: 8, title: 'T', minutes: null, fileFrom: 7, fileTo: 8, expectedQuestions: 3,
+        answerKey: null, keyConflicts: null, flags: ['noKey'] }],
+    }));
+    expect(text()).toContain(tr.setup.noKeyForTest);
+
+    el().querySelector<HTMLButtonElement>('[data-testid="enter-key"]')!.click();
+    fixture.detectChanges();
+    expect(cell(0, 2)).not.toBeNull();
+    expect(cell(0, 3)).toBeNull();
+    expect(confirmButton().disabled).toBe(true); // boş hücre okunamadı sayılır
+
+    press(cell(0, 0), 'A');
+    expect(cell(0, 2)).not.toBeNull(); // yazarken sondaki boş hücreler kaybolmaz
+    press(cell(0, 1), 'B');
+    press(cell(0, 2), 'C');
+    el().querySelector<HTMLButtonElement>('[data-testid="add-key-cell"]')!.click();
+    fixture.detectChanges();
+    press(cell(0, 3), 'D');
+    expect(confirmButton().disabled).toBe(false);
+
+    confirmButton().click();
+    expect(api.confirmSetup).toHaveBeenCalledWith('a1', expect.objectContaining({
+      tests: [expect.objectContaining({ order: 1, answerKey: 'ABCD' })],
+    }));
+  });
+
+  it('deletingEveryCell_LeavesTheTestWithoutKey', () => {
+    create(setupData({
+      tests: [{ order: 1, unit: 1, testNo: 1, title: 'T', minutes: null, fileFrom: 7, fileTo: 8, expectedQuestions: 1,
+        answerKey: 'A', keyConflicts: '.', flags: [] }],
+    }));
+
+    press(cell(0, 0), 'Backspace');
+
+    expect(cell(0, 0)).toBeNull();
+    expect(text()).toContain(tr.setup.noKeyForTest);
+  });
+
   it('confirm_SendsEditedTestsAndEmitsChanged', () => {
     create();
     const changed = vi.fn();

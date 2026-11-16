@@ -156,7 +156,8 @@
     "keyMismatch": "Anahtar sayısı tutmuyor",
     "qrAnswers": "Cevaplar karekodda",
     "missedNumbers": "Eksik soru numarası",
-    "keyConflicts": "Anahtar okumaları farklı"
+    "keyConflicts": "Anahtar okumaları farklı",
+    "keyByNumber": "Anahtar test numarasıyla eşlendi"
   },
   "actions": {
     "open": "Aç",
@@ -276,6 +277,9 @@
     "takeOtherRead": "Diğer okumayı al: {{answer}}",
     "dropMissingRead": "Diğer okumada yok: kutuyu sil",
     "noKeyForTest": "Anahtar yok — cevapsız",
+    "enterKey": "Anahtar gir",
+    "enterKeyOf": "{{unit}}-{{no}} için anahtar gir",
+    "addKeyCell": "Soru ekle",
     "existingTitle": "“{{name}}” adlı bir kitap zaten var.",
     "useExisting": "Mevcut kitabı kullan",
     "createNew": "Yeni adla oluştur",

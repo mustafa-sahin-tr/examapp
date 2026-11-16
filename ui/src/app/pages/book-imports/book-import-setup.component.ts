@@ -30,6 +30,10 @@ import { BookImportService } from '../../services/book-import.service';
 const KEY_LETTER = /^[A-Ea-e]$/;
 /** Uyuşmazlıkta "-": diğer okumada bu soru yok (BookSetupPlanner). */
 const MISSING_READ = '-';
+/** Anahtarın en fazla hücresi (sunucu: BookImportJobTest.MaxKeyLength). */
+const MAX_KEY_LENGTH = 200;
+/** Beklenen soru sayısı bilinmeyen teste elle girilen anahtarın ilk hücre sayısı. */
+const DEFAULT_KEY_LENGTH = 10;
 
 /** Onay tablosunun düzenlenebilir satırı. Anahtar hücreleri: "A"–"E", okunamayan "?", boş "". */
 export interface EditableSetupTest {
@@ -42,6 +46,8 @@ export interface EditableSetupTest {
   fileFrom: number | null;
   fileTo: number | null;
   key: string[] | null;
+  /** Sayfalarda görülen soru sayısı; anahtarsız teste elle girilen anahtarın hücre sayısı. */
+  expected: number | null;
   /** Hücre başına ikinci okumanın değeri; "." uyumlu ya da öğretmen düzeltti. */
   conflicts: string[];
   flags: string[];
@@ -59,6 +65,7 @@ export function toEditable(test: BookImportSetupTest): EditableSetupTest {
     fileFrom: test.fileFrom,
     fileTo: test.fileTo,
     key,
+    expected: test.expectedQuestions,
     conflicts: key ? (test.keyConflicts ?? '').padEnd(key.length, '.').split('').slice(0, key.length) : [],
     flags: test.flags,
   };
@@ -321,6 +328,24 @@ export class BookImportSetupComponent implements OnInit {
     }
   }
 
+  /** Anahtarı okunamayan teste boş anahtar açar (beklenen soru sayısı kadar hücre); cevaplar elle yazılır. */
+  enterKey(rowIndex: number): void {
+    const row = this.rows()[rowIndex];
+    if (!row || row.key) return;
+    const length = Math.min(Math.max(row.expected ?? DEFAULT_KEY_LENGTH, 1), MAX_KEY_LENGTH);
+    this.update(row, { key: Array<string>(length).fill(''), conflicts: Array<string>(length).fill('.') });
+    // Satır yeniden çizildikten sonra ilk hücreye geç.
+    setTimeout(() => this.focusCell(rowIndex, 0));
+  }
+
+  /** Anahtarın sonuna bir soru ekler (okumada eksik kalan soru). */
+  addKeyCell(rowIndex: number): void {
+    const row = this.rows()[rowIndex];
+    if (!row?.key || row.key.length >= MAX_KEY_LENGTH) return;
+    this.update(row, { key: [...row.key, ''], conflicts: [...row.conflicts, '.'] });
+    setTimeout(() => this.focusCell(rowIndex, row.key!.length));
+  }
+
   /** Anahtarı bulunmayan kitap: cevapsız aktarıma devam. */
   acknowledgeNoKey(): void {
     this.noKeyAcknowledged.set(true);
@@ -414,9 +439,11 @@ export class BookImportSetupComponent implements OnInit {
         // Öğretmen hücreyi düzeltti/onayladı: uyuşmazlık kapandı.
         if (value || resolve) conflicts[cell] = '.';
         // #1167: sondaki hücre silinince anahtar kısalır (fazla okunmuş soru); aradaki boş hücre okunamadı olarak kalır.
-        while (key.length > 0 && key[key.length - 1] === '') key.pop();
+        // Yalnız son hücre silinince: elle girilen anahtarın henüz boş hücreleri yazarken kaybolmasın.
+        if (!value && cell === key.length - 1) while (key.length > 0 && key[key.length - 1] === '') key.pop();
         conflicts.length = key.length;
-        return { ...r, key, conflicts };
+        // Bütün hücreler silindi: test anahtarsız kalır.
+        return { ...r, key: key.length > 0 ? key : null, conflicts };
       }),
     );
   }

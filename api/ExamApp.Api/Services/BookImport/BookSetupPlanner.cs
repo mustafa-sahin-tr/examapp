@@ -93,6 +93,8 @@ public static class BookSetupPlanner
     public const string FlagNoKey = "noKey";
     public const string FlagKeyMismatch = "keyMismatch";
     public const string FlagKeyConflicts = "keyConflicts";
+    /// <summary>Anahtar ünitesi tutmadı, kitapta tek olan test numarasıyla eşlendi (testler kitap boyunca numaralı).</summary>
+    public const string FlagKeyByNumber = "keyByNumber";
 
     /// <summary>Bir testteki en fazla soru (anahtar dizgisinin üst sınırı); bölümlü kitapta bir ünite tek testtir (#1122).</summary>
     public const int MaxQuestionsPerTest = Data.BookImportJobTest.MaxKeyLength;
@@ -136,6 +138,9 @@ public static class BookSetupPlanner
             second = ByTest(secondRead);
         }
 
+        // Testler kitap boyunca numaralı (Test 1–58), anahtar ünite ünite ("5. Ünite → Test 36"): ünite tutmaz, numara tektir.
+        var byNumber = series.Count == 0 && !sectioned ? MatchByTestNo(drafts, first, second) : [];
+
         var tests = new List<PlannedTest>();
         foreach (var draft in drafts)
         {
@@ -151,6 +156,8 @@ public static class BookSetupPlanner
                 flags.Add(FlagKeyMismatch);
             if (conflicts is not null && conflicts.Any(c => c != '.'))
                 flags.Add(FlagKeyConflicts);
+            if (byNumber.Contains((draft.Unit, draft.TestNo)))
+                flags.Add(FlagKeyByNumber);
 
             tests.Add(new PlannedTest(tests.Count + 1, draft.Unit, draft.TestNo, draft.Title, draft.Minutes, draft.From, draft.To,
                 expected, key, conflicts, flags, KeyPageOf(a, b)));
@@ -175,6 +182,39 @@ public static class BookSetupPlanner
             .ToList();
 
         return new BookSetupPlan(Offset(ordered), keyRanges, selfAssessment, units, tests, orphans);
+    }
+
+    /// <summary>
+    /// Anahtarı bulunamayan testi, ünitesi farklı ama aynı numaralı sahipsiz anahtar satırına bağlar; yalnız o numara hem testlerde
+    /// hem sahipsiz satırlarda tekse (her ünitede "Test 1" olan kitapta bağlamaz). İki okuma ayrı ayrı taşınır; bağlanan testler döner.
+    /// </summary>
+    private static HashSet<(int Unit, int TestNo)> MatchByTestNo(List<TestDraft> drafts,
+        Dictionary<(int Unit, int TestNo), AnswerKeyRow> first, Dictionary<(int Unit, int TestNo), AnswerKeyRow> second)
+    {
+        var tests = drafts.Select(d => (d.Unit, d.TestNo)).ToHashSet();
+        var uniqueTests = drafts.GroupBy(d => d.TestNo).Where(g => g.Count() == 1).Select(g => g.Key).ToHashSet();
+        var orphans = first.Keys.Concat(second.Keys).Distinct().Where(k => !tests.Contains(k))
+            .GroupBy(k => k.TestNo).Where(g => g.Count() == 1).ToDictionary(g => g.Key, g => g.Single());
+        var matched = new HashSet<(int, int)>();
+        foreach (var draft in drafts)
+        {
+            var test = (draft.Unit, draft.TestNo);
+            if (first.ContainsKey(test) || second.ContainsKey(test) || !uniqueTests.Contains(draft.TestNo)
+                || !orphans.TryGetValue(draft.TestNo, out var orphan))
+                continue;
+            Move(first, orphan, test);
+            Move(second, orphan, test);
+            matched.Add(test);
+        }
+
+        return matched;
+
+        static void Move(Dictionary<(int Unit, int TestNo), AnswerKeyRow> keys, (int Unit, int TestNo) from, (int Unit, int TestNo) to)
+        {
+            if (!keys.Remove(from, out var row))
+                return;
+            keys[to] = row with { Unit = to.Unit };
+        }
     }
 
     /// <summary>Issue #1176: anahtarın okunduğu dosya sayfası (ilk okuma önce); bilinmiyorsa null.</summary>

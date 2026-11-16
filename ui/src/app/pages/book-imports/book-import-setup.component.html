@@ -152,9 +152,19 @@
                   }
                 </label>
                 }
+                <button mat-icon-button type="button" class="bis-key__add" data-testid="add-key-cell"
+                  [attr.aria-label]="t('setup.addKeyCell')" [attr.title]="t('setup.addKeyCell')" (click)="addKeyCell(r)">
+                  <mat-icon>add</mat-icon>
+                </button>
               </div>
               } @else {
-              <span class="bis-muted">{{ t('setup.noKeyForTest') }}</span>
+              <div class="bis-key-missing">
+                <span class="bis-muted">{{ t('setup.noKeyForTest') }}</span>
+                <button mat-stroked-button type="button" data-testid="enter-key"
+                  [attr.aria-label]="t('setup.enterKeyOf', { unit: row.unit, no: row.testNo })" (click)="enterKey(r)">
+                  {{ t('setup.enterKey') }}
+                </button>
+              </div>
               }
             </td>
           </tr>

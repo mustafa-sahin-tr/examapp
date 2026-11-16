@@ -156,7 +156,8 @@
     "keyMismatch": "Key count does not match",
     "qrAnswers": "Answers behind a QR code",
     "missedNumbers": "Missing question numbers",
-    "keyConflicts": "Answer key reads differ"
+    "keyConflicts": "Answer key reads differ",
+    "keyByNumber": "Key matched by test number"
   },
   "actions": {
     "open": "Open",
@@ -276,6 +277,9 @@
     "takeOtherRead": "Take the other read: {{answer}}",
     "dropMissingRead": "Missing in the other read: delete the box",
     "noKeyForTest": "No key — without answers",
+    "enterKey": "Enter key",
+    "enterKeyOf": "Enter the key of {{unit}}-{{no}}",
+    "addKeyCell": "Add a question",
     "existingTitle": "A book named “{{name}}” already exists.",
     "useExisting": "Use the existing book",
     "createNew": "Create with a new name",

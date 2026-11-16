@@ -118,6 +118,12 @@ aktarım aracındaki Python portu referanstır (#1022).
 - **Anahtar sayfası ünitenin devamıyla başlarsa** (#1167; Define s.225 "5. ÜNİTE"nin Test 3'üyle başlıyor): okuyucu üstünde
   başlık olmayan satıra ünite 0 verir, kurulum önceki satırın ünitesinden devam ettirir (ardışık anahtar sayfalarında; yeni anahtar
   aralığında 1). Onay ekranında sondaki kutuyu silmek anahtarı kısaltır (fazla okunan soru); aradaki boş kutu okunamadı sayılır.
+- **Testler kitap boyunca numaralıysa** (Sosyal Bilgiler Soru Bankası: sayfada "Test 36", anahtarda "5. ÜNİTE → Test No 36"):
+  ünitesi tutmayan test, numarası hem testlerde hem sahipsiz anahtar satırlarında tekse o satırı alır, `keyByNumber` işaretlenir.
+  Her ünitede "Test 1" olan kitapta bu eşleme yapılmaz. Kurulum taramanın ve anahtar satırlarının kısa dökümünü loglar
+  ("survey 10:test u1 t1 …; key rows p223 u5 t36 n=7").
+- **Anahtarı gelmeyen test:** onay ekranında "Anahtar gir" beklenen soru sayısı kadar boş kutu açar (bilinmiyorsa 10);
+  "+" anahtarın sonuna kutu ekler; bütün kutular silinirse test anahtarsız kalır.
 - **Kayıt:** test satırları `BookImportJobTests` (sayfa aralığı, dakika, `AnswerKey` "ABCD…", `KeyConflicts` "." uyumlu /
   diğer okumanın harfi / "-"), özet `BookImportJobs.SetupJson`, maliyet `AiCostUsd` (başarısız çağrılar dahil). Model listesi
   ve fiyatlar `Anthropic:Models`'tan; API anahtarı yoksa iş "Claude is not configured" ile düşer. Hiç test başlığı yoksa

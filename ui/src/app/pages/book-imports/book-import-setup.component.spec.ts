@@ -214,6 +214,31 @@ describe('BookImportSetupComponent (#1021)', () => {
     expect(confirmButton().disabled).toBe(true);
   });
 
+  it('enterAnswers_OpensTheKeyPageDockedBelow_WhichCanBeSwitchedAndClosed', () => {
+    create(setupData({
+      answerKeyRanges: [{ fileFrom: 223, fileTo: 224 }],
+      tests: [{ order: 1, unit: 1, testNo: 8, title: 'A', minutes: null, fileFrom: 7, fileTo: 8, expectedQuestions: 2,
+        answerKey: null, keyConflicts: null, flags: [] }],
+    }));
+    const dock = () => el().querySelector<HTMLElement>('[data-testid="key-dock"]');
+    expect(dock()).toBeNull();
+
+    el().querySelector<HTMLButtonElement>('[data-testid="enter-key"]')!.click();
+    fixture.detectChanges();
+    expect(dock()!.querySelector('img')!.getAttribute('alt')).toContain('223');
+
+    Array.from(dock()!.querySelectorAll<HTMLButtonElement>('button')).find((b) => b.textContent!.includes('s. 224'))!.click();
+    fixture.detectChanges();
+    expect(dock()!.querySelector('img')!.getAttribute('alt')).toContain('224');
+
+    dock()!.querySelector<HTMLButtonElement>('[data-testid="close-dock"]')!.click();
+    fixture.detectChanges();
+    expect(dock()).toBeNull();
+    el().querySelector<HTMLButtonElement>('[data-testid="open-dock"]')!.click();
+    fixture.detectChanges();
+    expect(dock()).not.toBeNull();
+  });
+
   it('enterKey_OpensEmptyCellsForAKeylessTest_AndSendsTypedKey', () => {
     create(setupData({
       tests: [{ order: 1, unit: 1, testNo: 8, title: 'T', minutes: null, fileFrom: 7, fileTo: 8, expectedQuestions: 3,

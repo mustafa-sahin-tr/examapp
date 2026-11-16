@@ -275,11 +275,23 @@
     width: 100%;
   }
 
+  // Sayfa / süre: rakamlar ortalı, oklar gizli (gerçek yazı tipinde 64px'te rakamlar kesiliyordu).
   &--num {
-    width: 64px;
+    width: 84px;
 
     ::ng-deep .mat-mdc-text-field-wrapper {
-      padding-inline: 8px;
+      padding-inline: 6px;
+    }
+
+    input {
+      text-align: center;
+      appearance: textfield;
+
+      &::-webkit-outer-spin-button,
+      &::-webkit-inner-spin-button {
+        margin: 0;
+        appearance: none;
+      }
     }
   }
 }
@@ -365,9 +377,70 @@
 
 .bis-key-missing {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  white-space: nowrap;
+
+  // Uzun "AI bulamadı" metni kırılır, düğmeler hep yan yana kalır.
+  &__text {
+    white-space: normal;
+  }
+
+  button {
+    flex: none;
+  }
+}
+
+// Odaklanan cevap kutusu alttaki anahtar panelinin (45vh) üstünde kalır.
+.bis-body:has(.bis-dock) [data-cell] {
+  scroll-margin-bottom: calc(45vh + 16px);
+}
+
+.bis-dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  height: 45vh;
+  border: 1px solid var(--ms-border);
+  border-radius: 10px 10px 0 0;
+  background: var(--main-foreground-color, var(--ms-surface));
+  box-shadow: 0 -6px 18px rgb(0 0 0 / 35%);
+
+  &__bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--ms-border);
+  }
+
+  &__active {
+    background: var(--ms-info-surface-weak);
+  }
+
+  &__spacer {
+    flex: 1;
+  }
+
+  &__image {
+    flex: 1;
+    overflow: auto;
+    padding: 8px;
+
+    img {
+      display: block;
+      margin: 0 auto;
+      border-radius: 6px;
+      background: #fff;
+    }
+  }
+}
+
+.bis-keypages__dock {
+  align-self: center;
 }
 
 .bis-confirm {

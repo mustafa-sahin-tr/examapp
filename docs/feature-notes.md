@@ -248,6 +248,9 @@ Kılavuz özeti ve beceri listesinin kaynağı `docs/context-based-questions.md`
   ana derslerden kurulur: `ProgramService.CoreSubjectCodes` (sınav dersleri `StudentPlanPricing.SingleSubjectCodes` + din
   kültürü, hayat bilgisi, felsefe; ilk kurulumun sınıf–ders bağlarıyla aynı küme). Sınıfın ana dersi yoksa sınıfın bütün
   dersleri, sınıf yoksa bütün dersler.
+- Öncelikli dersler her zaman önce: Türkçe (lisede Türk Dili ve Edebiyatı), Matematik, Fen Bilimleri, Sosyal Bilgiler,
+  Tarih (8. sınıfta İnkılap Tarihi); `ProgramService.PrioritySubjectCodes`. Listede başta gelirler; takvim eşitlikte
+  listede öndekini seçtiği için ilk günler bu derslerle başlar. Kalanlar ada göre.
 
 ## Okullar listesi (#898)
 

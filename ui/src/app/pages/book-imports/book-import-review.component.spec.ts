@@ -138,6 +138,14 @@ describe('BookImportReviewComponent (#1023)', () => {
     expect(changed).toBe(1);
   });
 
+  it('approveAll_SkipsFlaggedTests_WhichStayApprovableOneByOne', () => {
+    setup([test({ id: 1 }), test({ id: 2, order: 2, testNo: 2, status: 'NeedsReview' })]);
+    expect(button(el(), 'Sorunsuz testleri onayla').textContent).toContain('(1/2)');
+    // Filtre açık: yalnız işaretli test listede; tek başına onaylanabilir.
+    expect(rows().length).toBe(1);
+    expect(button(rows()[0], 'Onayla').disabled).toBe(false);
+  });
+
   it('approveAll_LooseImages_CanCollectTheQuestionsIntoANewTest (#1144)', () => {
     setup([test({ title: 'Görsel 1', unit: 0, testNo: 1, fileFrom: 1, fileTo: 1 })]);
     api.approveAll.mockReturnValue(of({ approved: [1], skipped: [], collectedTestId: 77 }));

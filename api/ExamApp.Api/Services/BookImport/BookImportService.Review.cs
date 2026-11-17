@@ -34,6 +34,7 @@ public sealed partial class BookImportService
 {
     internal const string SkipAnswerless = "answerless";
     internal const string SkipFailed = "failed";
+    internal const string SkipFlagged = "flagged";
 
     public async Task<List<BookImportReviewQuestionDto>?> GetReviewQuestionsAsync(BookImportOwner owner, Guid id, int testId, CancellationToken ct)
     {
@@ -174,6 +175,12 @@ public sealed partial class BookImportService
             if (await DraftQuestions(test.WorksheetId!.Value).AnyAsync(q => q.CorrectAnswerId == null, ct))
             {
                 result.Skipped.Add(new BookImportSkippedTestDto(test.Id, SkipAnswerless));
+                continue;
+            }
+            // İşaretli test (eksik / fazla soru, şık sayısı …) toplu onaylanmaz: öğretmen bakıp tek tek onaylar.
+            if (test.Status == BookImportTestStatus.NeedsReview)
+            {
+                result.Skipped.Add(new BookImportSkippedTestDto(test.Id, SkipFlagged));
                 continue;
             }
             if (!string.IsNullOrEmpty(collectName))

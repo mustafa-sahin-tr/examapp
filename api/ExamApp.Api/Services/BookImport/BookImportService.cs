@@ -56,7 +56,8 @@ public enum ContinueBookImportResult
 public interface IBookImportService
 {
     Task<StartBookImportResult> StartAsync(BookImportOwner owner, StartBookImportRequest request, CancellationToken ct);
-    Task<List<BookImportJobDto>> ListAsync(BookImportOwner owner, int take, CancellationToken ct);
+    Task<List<BookImportJobDto>> ListAsync(BookImportOwner owner, int take, CancellationToken ct, BookImportJobStatus? status = null);
+    Task<BookImportJobCountsDto> CountsAsync(BookImportOwner owner, CancellationToken ct);
     Task<BookImportJobDetailDto?> GetAsync(BookImportOwner owner, Guid id, CancellationToken ct);
     Task<BookImportQuotaDto> GetQuotaAsync(BookImportOwner owner, CancellationToken ct);
 
@@ -250,10 +251,13 @@ public sealed partial class BookImportService : IBookImportService
         return job;
     }
 
-    public async Task<List<BookImportJobDto>> ListAsync(BookImportOwner owner, int take, CancellationToken ct)
+    /// <summary>Liste sayfası (en yeni önce); <paramref name="status"/> verilirse yalnız o durumdakiler (eski işler de gelir).</summary>
+    public async Task<List<BookImportJobDto>> ListAsync(BookImportOwner owner, int take, CancellationToken ct,
+        BookImportJobStatus? status = null)
     {
-        take = Math.Clamp(take, 1, 200);
+        take = Math.Clamp(take, 1, MaxListTake);
         var jobs = await Visible(owner)
+            .Where(j => status == null || j.Status == status)
             .OrderByDescending(j => j.CreateTime)
             .Take(take)
             .AsNoTracking()
@@ -266,6 +270,24 @@ public sealed partial class BookImportService : IBookImportService
                 FillCost(dto, job);
             return dto;
         }).ToList();
+    }
+
+    public const int MaxListTake = 500;
+
+    /// <summary>Liste filtrelerinin sayıları; listenin yüklenen sayfasından değil, görünür işlerin hepsinden.</summary>
+    public async Task<BookImportJobCountsDto> CountsAsync(BookImportOwner owner, CancellationToken ct)
+    {
+        var counts = await Visible(owner)
+            .GroupBy(j => j.Status)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+        int Of(BookImportJobStatus s) => counts.FirstOrDefault(c => c.Status == s)?.Count ?? 0;
+        return new BookImportJobCountsDto
+        {
+            Total = counts.Sum(c => c.Count),
+            AwaitingConfirmation = Of(BookImportJobStatus.AwaitingConfirmation),
+            Failed = Of(BookImportJobStatus.Failed),
+        };
     }
 
     public async Task<BookImportJobDetailDto?> GetAsync(BookImportOwner owner, Guid id, CancellationToken ct)

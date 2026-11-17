@@ -49,6 +49,14 @@ public class StartQuickAddFormDto
 }
 
 /// <summary>Issue #1018: aktarımlar listesi satırı ve takip ekranının başlığı.</summary>
+/// <summary>Aktarım listesinin filtre sayıları (bütün görünür işler).</summary>
+public class BookImportJobCountsDto
+{
+    public int Total { get; set; }
+    public int AwaitingConfirmation { get; set; }
+    public int Failed { get; set; }
+}
+
 public class BookImportJobDto
 {
     public Guid Id { get; set; }

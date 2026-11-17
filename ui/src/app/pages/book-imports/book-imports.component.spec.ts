@@ -5,7 +5,7 @@ import { Router, provideRouter } from '@angular/router';
 import { Observable, Subject, of, throwError } from 'rxjs';
 
 import { BOOK_IMPORTS_POLL_MS, BookImportsComponent, MAX_PAGE_IMAGE_BYTES } from './book-imports.component';
-import { BookImportDemo, BookImportJob, BookImportQuota, BookImportUploadEvent } from '../../models/book-import';
+import { BookImportDemo, BookImportJob, BookImportJobCounts, BookImportQuota, BookImportUploadEvent } from '../../models/book-import';
 import { AuthService } from '../../services/auth.service';
 import { EntitlementStateService } from '../../services/entitlement-state.service';
 import { BookImportService } from '../../services/book-import.service';
@@ -31,6 +31,7 @@ describe('BookImportsComponent (#1018)', () => {
   let component: BookImportsComponent;
   let api: MockedObject<BookImportService>;
   let listResponse: Observable<BookImportJob[]>;
+  let countsResponse: Observable<BookImportJobCounts>;
   let quota: BookImportQuota;
   let roles: string[];
   let demo: BookImportDemo;
@@ -44,6 +45,7 @@ describe('BookImportsComponent (#1018)', () => {
   function setup(): void {
     api = {
       list: vi.fn().mockName('list').mockImplementation(() => listResponse),
+      counts: vi.fn().mockName('counts').mockImplementation(() => countsResponse),
       get: vi.fn().mockName('get'),
       quota: vi.fn().mockName('quota').mockImplementation(() => of(quota)),
       start: vi.fn().mockName('start'),
@@ -72,6 +74,7 @@ describe('BookImportsComponent (#1018)', () => {
     planFeatures = [];
     demo = { available: true, bookName: 'Örnek', used: 1, limit: 3, activeJobId: null };
     listResponse = of([job()]);
+    countsResponse = of({ total: 1, awaitingConfirmation: 0, failed: 0 });
     quota = UNLIMITED;
   });
 
@@ -106,21 +109,35 @@ describe('BookImportsComponent (#1018)', () => {
     expect(api.list).toHaveBeenCalledTimes(2);
   });
 
-  it('filters_AwaitingAndFailed_AndBannerCountsAwaiting', () => {
-    listResponse = of([
-      job({ id: 'a', status: 'AwaitingConfirmation', stage: 'SetupConfirmation' }),
-      job({ id: 'b', status: 'Failed' }),
-      job({ id: 'c', status: 'Completed', stage: 'Approval' }),
-    ]);
+  it('filters_AskTheServer_CountsComeFromAllJobs_AndLoadMoreAddsAPage', () => {
+    const page = Array.from({ length: 50 }, (_, i) => job({ id: `j${i}`, status: 'Completed', stage: 'Approval' }));
+    listResponse = of(page);
+    // Onay bekleyen eski iş ilk 50'de yok; sayı yine de bütün işlerden.
+    countsResponse = of({ total: 77, awaitingConfirmation: 3, failed: 1 });
     setup();
 
-    expect(text()).toContain('1 aktarım sizi bekliyor.');
-    component.filter.set('awaiting');
+    expect(api.list).toHaveBeenLastCalledWith(50, undefined);
+    expect(text()).toContain('3 aktarım sizi bekliyor.');
+
+    listResponse = of([...page, job({ id: 'old', status: 'Completed', stage: 'Approval' })]);
+    el().querySelector<HTMLButtonElement>('[data-testid="load-more"]')!.click();
     fixture.detectChanges();
+    expect(api.list).toHaveBeenLastCalledWith(100, undefined);
+    expect(el().querySelectorAll('.bi-table tbody tr').length).toBe(51);
+    // Sayfa dolmadı: daha eski iş yok.
+    expect(el().querySelector('[data-testid="load-more"]')).toBeNull();
+
+    listResponse = of([job({ id: 'a', status: 'AwaitingConfirmation', stage: 'SetupConfirmation' })]);
+    component.setFilter('awaiting');
+    fixture.detectChanges();
+    expect(api.list).toHaveBeenLastCalledWith(50, 'AwaitingConfirmation');
     expect(el().querySelectorAll('.bi-table tbody tr').length).toBe(1);
     expect(el().querySelector('.bi-table tbody')!.textContent).toContain(tr.actions.openSetup);
-    component.filter.set('failed');
+
+    listResponse = of([job({ id: 'b', status: 'Failed' })]);
+    component.setFilter('failed');
     fixture.detectChanges();
+    expect(api.list).toHaveBeenLastCalledWith(50, 'Failed');
     expect(el().querySelector('.bi-table tbody')!.textContent).toContain(tr.status.Failed);
   });
 

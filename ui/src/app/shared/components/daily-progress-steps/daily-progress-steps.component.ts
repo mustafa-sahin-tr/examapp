@@ -5,7 +5,8 @@ import { MatIconModule } from '@angular/material/icon';
 export type DailyStepResult = 'correct' | 'wrong' | 'skipped';
 
 /** Şeritte bir adımın görünür durumu. */
-export type DailyStepState = DailyStepResult | 'current' | 'pending';
+/** `done`: `bar` görünümünde sonucu bilinmeyen çözülmüş parça. */
+export type DailyStepState = DailyStepResult | 'done' | 'current' | 'pending';
 
 export interface DailyStepView {
   /** 1 tabanlı soru sırası. */
@@ -34,7 +35,7 @@ export class DailyProgressStepsComponent {
   readonly variant = input<'bar' | 'steps'>('steps');
   /** Setteki soru sayısı. */
   readonly total = input.required<number>();
-  /** Cevaplanmış adımlar, sırasıyla. `bar` görünümünde yalnız uzunluğu kullanılır. */
+  /** Cevaplanmış adımlar, sırasıyla. `bar` görünümünde verilirse parçalar sonuca göre renklenir. */
   readonly results = input<readonly DailyStepResult[]>([]);
   /** `bar` görünümünde çözülen sayısı; verilmezse `results.length`. */
   readonly done = input<number | null>(null);
@@ -60,7 +61,7 @@ export class DailyProgressStepsComponent {
     return Array.from({ length: total }, (_, i) => {
       let state: DailyStepState = 'pending';
       if (i < results.length) state = results[i];
-      else if (this.variant() === 'bar' && i < done) state = 'correct';
+      else if (this.variant() === 'bar' && i < done) state = 'done';
       else if (current === i) state = 'current';
       return { number: i + 1, state };
     });

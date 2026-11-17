@@ -89,6 +89,30 @@ describe('DailyProgressStepsComponent', () => {
         expect(segments[2].classes['daily-bar__segment--current']).toBe(true);
     });
 
+    it('bar_WithResults_ColorsSegmentsByResult', () => {
+        host.variant.set('bar');
+        host.results.set(['correct', 'wrong', 'skipped']);
+        host.currentIndex.set(3);
+        fixture.detectChanges();
+
+        const segments = fixture.debugElement.queryAll(By.css('.daily-bar__segment'));
+        expect(segments[0].classes['daily-bar__segment--correct']).toBe(true);
+        expect(segments[1].classes['daily-bar__segment--wrong']).toBe(true);
+        expect(segments[2].classes['daily-bar__segment--skipped']).toBe(true);
+        expect(segments[3].classes['daily-bar__segment--current']).toBe(true);
+        expect(segments.filter((s) => s.classes['daily-bar__segment--done']).length).toBe(3);
+    });
+
+    it('bar_DoneWithoutResults_UsesNeutralDoneState', () => {
+        host.variant.set('bar');
+        host.done.set(2);
+        fixture.detectChanges();
+
+        const segments = fixture.debugElement.queryAll(By.css('.daily-bar__segment'));
+        expect(segments[0].classes['daily-bar__segment--done']).toBe(true);
+        expect(segments[0].classes['daily-bar__segment--correct']).toBeFalsy();
+    });
+
     it('bar_DoneAboveTotal_ClampsValueNow', () => {
         host.variant.set('bar');
         host.total.set(3);

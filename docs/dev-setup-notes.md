@@ -384,7 +384,10 @@ MassTransit eski bağlamayı kaldırmaz: `ExamApp.Foundation.Contracts:QuestionC
 mesajlar eski kuyruğa da gider ve tüketicisi olmadığı için `badge-service_skipped`'e düşer. Yeni sürüm açıldıktan sonra bir kez:
 
 ```bash
-docker exec <rabbitmq> rabbitmqadmin -u <admin> -p <parola> delete binding \
-  source='ExamApp.Foundation.Contracts:QuestionCreatedEvent' destination_type=exchange destination=badge-service
+docker exec <rabbitmq> sh -c 'rabbitmqadmin -u "$RABBITMQ_DEFAULT_USER" -p "$RABBITMQ_DEFAULT_PASS" delete binding \
+  --source "ExamApp.Foundation.Contracts:QuestionCreatedEvent" --destination-type exchange --destination badge-service --routing-key ""'
 ```
+
+(rabbitmqadmin v2 sözdizimi; RabbitMQ imajında `curl` yok. Kontrol: `rabbitmqctl list_bindings source_name destination_name | grep
+QuestionCreated` yalnız `badge-question-classifier` göstermeli. Demoda 2026-11-17'de yapıldı.)
 

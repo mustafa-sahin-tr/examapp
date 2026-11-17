@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List
@@ -17,6 +17,7 @@ from guards import (
     MAX_QUESTIONS_PER_REQUEST,
 )
 from dataset_store import QuestionSample, labeled_page_ids, open_oriented_rgb, save_page
+import transcribe
 
 _enable_docs = os.getenv("ENABLE_API_DOCS", "").lower() in ("1", "true", "yes")
 app = FastAPI(
@@ -261,3 +262,27 @@ async def read_qr_code(request: ImageData):
     except Exception:
         logger.exception("read-qr failed")
         raise HTTPException(status_code=500, detail="QR okuma hatasi")
+
+# #1219: kitap aktarımında QR çözümlerinin ses kayıtları (exam API çağırır). faster-whisper yoksa available=false.
+@app.get("/transcribe/status")
+async def transcribe_status():
+    return {"available": transcribe.available(), "model": transcribe.MODEL_NAME}
+
+
+@app.post("/transcribe")
+async def transcribe_audio(request: Request):
+    if not transcribe.available():
+        raise HTTPException(status_code=503, detail="transcription is not available")
+    audio = await request.body()
+    if not audio:
+        raise HTTPException(status_code=400, detail="empty audio")
+    suffix = ".mp4" if request.headers.get("content-type", "").startswith("video/") else ".mp3"
+    try:
+        # Model CPU'da çalışır; olay döngüsünü kilitlememek için iş parçacığında.
+        from starlette.concurrency import run_in_threadpool
+        return {"text": await run_in_threadpool(transcribe.transcribe, audio, suffix)}
+    except RuntimeError:
+        raise HTTPException(status_code=503, detail="transcription is not available")
+    except Exception:
+        logger.exception("transcribe failed")
+        raise HTTPException(status_code=500, detail="transcription failed")

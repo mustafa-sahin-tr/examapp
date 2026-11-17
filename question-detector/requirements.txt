@@ -8,3 +8,8 @@ uvicorn[standard]==0.34.0
 pillow==11.1.0
 ultralytics==8.3.55
 pyzbar==0.1.9
+
+# #1219: QR çözümlerinin ses kayıtları (kitap aktarımı). Yoksa /transcribe kapalı, exam API "QR'dan al"ı göstermez.
+faster-whisper==1.2.1
+av<17  # faster-whisper 1.2.1 av.open(metadata_errors=...) kullanıyor; PyAV 17+ kaldırdı
+requests  # faster-whisper içe aktarır, yeni huggingface_hub artık çekmiyor

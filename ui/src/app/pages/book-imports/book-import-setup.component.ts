@@ -14,7 +14,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { firstValueFrom } from 'rxjs';
+import { Subscription, firstValueFrom, switchMap, timer } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -25,7 +25,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { TranslocoDirective } from '@jsverse/transloco';
 
-import { BookImportSetup, BookImportSetupTest, ConfirmBookImportSetup } from '../../models/book-import';
+import { BookImportSetup, BookImportSetupTest, BookKeySource, ConfirmBookImportSetup } from '../../models/book-import';
 import { BookImportService } from '../../services/book-import.service';
 
 const KEY_LETTER = /^[A-Ea-e]$/;
@@ -35,6 +35,8 @@ const MISSING_READ = '-';
 const MAX_KEY_LENGTH = 200;
 /** Beklenen soru sayısı bilinmeyen teste elle girilen anahtarın ilk hücre sayısı. */
 const DEFAULT_KEY_LENGTH = 10;
+/** #1219: "QR'dan al" okuması sürerken kurulumun yeniden okunma aralığı. */
+const QR_POLL_MS = 4000;
 
 /** Onay tablosunun düzenlenebilir satırı. Anahtar hücreleri: "A"–"E", okunamayan "?", boş "". */
 export interface EditableSetupTest {
@@ -49,6 +51,11 @@ export interface EditableSetupTest {
   key: string[] | null;
   /** "AI ile bul" önerisiyle doldurulduysa: anahtardaki etiket ("5-36"), anahtar sayfasından okunduysa null. */
   aiLabel?: string | null;
+  /** #1219: anahtarın kaynağı (onayla kaydedilir); anahtar yoksa null. */
+  source: BookKeySource | null;
+  /** #1219: testin sayfalarındaki QR bağlantısı ve okuyucusu olup olmadığı. */
+  qrLink: string | null;
+  qrReadable: boolean;
   /** Sayfalarda görülen soru sayısı; anahtarsız teste elle girilen anahtarın hücre sayısı. */
   expected: number | null;
   /** Hücre başına ikinci okumanın değeri; "." uyumlu ya da öğretmen düzeltti. */
@@ -68,6 +75,9 @@ export function toEditable(test: BookImportSetupTest): EditableSetupTest {
     fileFrom: test.fileFrom,
     fileTo: test.fileTo,
     key,
+    source: key ? (test.keySource ?? 'Book') : null,
+    qrLink: test.qrLink ?? null,
+    qrReadable: test.qrReadable ?? false,
     expected: test.expectedQuestions,
     conflicts: key ? (test.keyConflicts ?? '').padEnd(key.length, '.').split('').slice(0, key.length) : [],
     flags: test.flags,
@@ -120,6 +130,15 @@ export class BookImportSetupComponent implements OnInit {
   /** Onaya giren, anahtarı olmayan ve AI'ya henüz sorulmamış test: "Hepsini AI ile bul" bunları arar. */
   readonly keylessCount = computed(() => this.included().filter((r) => !r.key && !this.notFound().has(r.order)).length);
   private bulkStopped = false;
+  /** #1219 "QR'dan al" arka plan okuması: ilerleme sunucudan (kurulum yeniden okunur); başlatma hatası ('generic' çevrilir). */
+  readonly qrRun = computed(() => this.setup()?.qrRun ?? null);
+  readonly qrRunning = computed(() => this.qrRun()?.running === true);
+  readonly qrError = signal<string | null>(null);
+  /** Anahtarı olmayan ve QR'ı okunabilir test: "Hepsini QR'dan al" bunları okur. */
+  readonly qrKeylessCount = computed(() => this.included().filter((r) => !r.key && r.qrReadable).length);
+  /** Kitapta anahtar sayfası yoksa da QR'dan ya da elle anahtar girilmiş test varsa "cevapsız devam" sorulmaz. */
+  readonly anyKey = computed(() => this.rows().some((r) => !!r.key));
+  private qrPoll?: Subscription;
   private destroyed = false;
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
@@ -182,7 +201,8 @@ export class BookImportSetupComponent implements OnInit {
           this.unreadable() === 0 &&
           !this.invalidPages() &&
           this.bookName().trim().length > 0 &&
-          (!this.setup()?.noAnswerKey || this.noKeyAcknowledged()))),
+          !this.qrRunning() &&
+          (!this.setup()?.noAnswerKey || this.noKeyAcknowledged() || this.anyKey()))),
   );
 
 
@@ -210,6 +230,7 @@ export class BookImportSetupComponent implements OnInit {
           this.rows.set(setup.tests.map(toEditable));
           this.bookName.set(setup.bookName);
           this.loadKeyImages();
+          if (setup.qrRun?.running) this.pollQrRun();
         },
         error: () => this.loadError.set(true),
       });
@@ -356,7 +377,7 @@ export class BookImportSetupComponent implements OnInit {
     const row = this.rows()[rowIndex];
     if (!row || row.key) return;
     const length = Math.min(Math.max(row.expected ?? DEFAULT_KEY_LENGTH, 1), MAX_KEY_LENGTH);
-    this.update(row, { key: Array<string>(length).fill(''), conflicts: Array<string>(length).fill('.') });
+    this.update(row, { key: Array<string>(length).fill(''), conflicts: Array<string>(length).fill('.'), source: 'Manual' });
     // Cevaplar basılı anahtara bakarak yazılır: anahtar sayfası altta açık kalır.
     if (this.dockPage() == null) this.openDock();
     // Satır yeniden çizildikten sonra ilk hücreye geç.
@@ -387,7 +408,7 @@ export class BookImportSetupComponent implements OnInit {
       }
       const key = match.answerKey.split('');
       const conflicts = (match.keyConflicts ?? '').padEnd(key.length, '.').split('').slice(0, key.length);
-      this.update(row, { key, conflicts, aiLabel: match.label });
+      this.update(row, { key, conflicts, aiLabel: match.label, source: 'Ai' });
       return true;
     } catch (error) {
       const message = (error as HttpErrorResponse).error?.message;
@@ -421,6 +442,57 @@ export class BookImportSetupComponent implements OnInit {
 
   stopFindAll(): void {
     this.bulkStopped = true;
+  }
+
+  /**
+   * #1219 "QR'dan al" (order verilirse yalnız o test): yayıncının QR çözümleri arka planda okunur (ses kayıtları yazıya çevrilir,
+   * harf öğretmenin söylediğinden). Okuma sürerken kurulum birkaç saniyede bir yeniden okunur; gelen anahtar yalnız hâlâ anahtarsız
+   * satıra QR etiketiyle doldurulur (elle girilenin üstüne yazılmaz). Okunamayan harf "?" kalır, onaydan önce elle girilir.
+   */
+  startQrKeys(order?: number): void {
+    if (this.qrRunning()) return;
+    this.qrError.set(null);
+    this.api
+      .startQrKeys(this.jobId(), order)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (run) => {
+          this.setup.update((s) => (s ? { ...s, qrRun: run } : s));
+          this.pollQrRun();
+        },
+        error: (error: HttpErrorResponse) => {
+          const message = error.error?.message;
+          this.qrError.set(typeof message === 'string' ? message : 'generic');
+        },
+      });
+  }
+
+  private pollQrRun(): void {
+    this.qrPoll?.unsubscribe();
+    this.qrPoll = timer(QR_POLL_MS)
+      .pipe(
+        switchMap(() => this.api.setup(this.jobId())),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (setup) => {
+          this.setup.update((s) => (s ? { ...s, qrRun: setup.qrRun ?? null } : s));
+          for (const test of setup.tests) {
+            const row = this.rows().find((r) => r.order === test.order);
+            if (!row || row.key || !test.answerKey || test.keySource !== 'Qr') continue;
+            const key = test.answerKey.split('');
+            this.update(row, { key, conflicts: Array<string>(key.length).fill('.'), source: 'Qr' });
+          }
+          if (setup.qrRun?.running) this.pollQrRun();
+        },
+        // Geçici hata: biraz sonra yeniden dene.
+        error: () => this.pollQrRun(),
+      });
+  }
+
+  /** QR'dan gelen anahtarın soru sayısı sayfada görülenden farklıysa (onaydan önce bakılmalı). */
+  qrCountDiffers(row: EditableSetupTest): boolean {
+    return row.source === 'Qr' && !!row.key && row.expected != null && row.key.length !== row.expected;
   }
 
   /** Anahtarın sonuna bir soru ekler (okumada eksik kalan soru). */
@@ -461,6 +533,7 @@ export class BookImportSetupComponent implements OnInit {
         fileFrom: r.fileFrom!,
         fileTo: r.fileTo!,
         answerKey: r.key ? r.key.join('') : null,
+        keySource: r.key ? r.source : null,
       })),
     };
 

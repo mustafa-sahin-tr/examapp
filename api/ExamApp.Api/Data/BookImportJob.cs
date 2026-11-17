@@ -230,6 +230,13 @@ public class BookImportJobTest : BaseEntity
     /// </summary>
     public int? KeyFilePage { get; set; }
 
+    /// <summary>
+    /// #1219: <see cref="AnswerKey"/>'in kaynağı (<see cref="BookKeySources"/>): kitabın anahtar sayfası, sayfadaki QR'ın çözümleri,
+    /// "AI ile bul" ya da elle. Anahtar yoksa null; bu alandan önce kurulan işlerde de null (kitaptan okunmuş sayılır).
+    /// </summary>
+    [MaxLength(BookKeySources.MaxLength)]
+    public string? KeySource { get; set; }
+
     /// <summary>Kurulum onayında oluşturulan kitap testi (#577 kitap kaydı).</summary>
     public int? BookTestId { get; set; }
 
@@ -324,4 +331,16 @@ public class BookImportPage
     /// dayandırır (bir sayfada eksik tespit sonraki sayfaları kaydırmaz) ve eksik numaraları sayfasıyla işaretler.
     /// </summary>
     public int? MaxQuestionNumber { get; set; }
+}
+
+/// <summary>#1219: <see cref="BookImportJobTest.KeySource"/> değerleri.</summary>
+public static class BookKeySources
+{
+    public const int MaxLength = 8;
+    public const string Book = "Book";
+    public const string Qr = "Qr";
+    public const string Ai = "Ai";
+    public const string Manual = "Manual";
+
+    public static bool IsValid(string? source) => source is Book or Qr or Ai or Manual;
 }

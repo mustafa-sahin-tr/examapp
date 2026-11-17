@@ -22,6 +22,7 @@ import {
   BookImportJob,
   BookImportJobDetail,
   BookImportKeyMatchResponse,
+  BookImportQrRun,
   BookImportPageDraft,
   BookImportPageFix,
   BookImportReviewQuestion,
@@ -170,6 +171,15 @@ export class BookImportService {
   /** Onay ekranında "AI ile bul": anahtarsız testin anahtarını önerir (kaydetmez); bulunamazsa match null. */
   findKeyWithAi(id: string, order: number): Observable<BookImportKeyMatchResponse> {
     return this.http.post<BookImportKeyMatchResponse>(`${this.baseUrl}/${id}/setup/tests/${order}/ai-key`, {});
+  }
+
+  /**
+   * #1219 "QR'dan al": anahtarsız testlerin (order verilirse yalnız onun) QR çözümlerini arka planda okutur; anahtarlar test
+   * satırlarına QR kaynağıyla yazılır, ilerleme kurulumun qrRun alanında.
+   */
+  startQrKeys(id: string, order?: number): Observable<BookImportQrRun> {
+    const params = order != null ? { order } : undefined;
+    return this.http.post<BookImportQrRun>(`${this.baseUrl}/${id}/setup/qr-keys`, {}, { params });
   }
 
   confirmSetup(id: string, request: ConfirmBookImportSetup): Observable<BookImportJob> {

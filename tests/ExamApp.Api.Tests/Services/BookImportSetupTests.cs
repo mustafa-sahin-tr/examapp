@@ -330,6 +330,36 @@ public class BookImportSetupTests : IDisposable
         await AssertStillAwaitingAsync();
     }
 
+    [Theory]
+    [InlineData("ABCD", null, "Book")]   // kurulumdaki anahtar aynen: kitaptan
+    [InlineData("ABCB", null, "Manual")] // değişti, kaynak bildirilmedi: elle
+    [InlineData("ABCB", "Qr", "Qr")]     // #1219 "QR'dan al"
+    public async Task Confirm_keeps_where_the_answer_key_came_from(string key, string? source, string expected)
+    {
+        var id = await SetUpAsync();
+        await using (var check = _db.NewContext())
+            (await check.BookImportJobTests.SingleAsync(t => t.Order == 1)).KeySource.ShouldBe(BookKeySources.Book);
+        var test = Confirmed(1);
+        test.AnswerKey = key;
+        test.KeySource = source;
+
+        (await ConfirmAsync(id, Request(test))).Error.ShouldBe(ConfirmSetupError.None);
+
+        await using var after = _db.NewContext();
+        (await after.BookImportJobTests.SingleAsync()).KeySource.ShouldBe(expected);
+    }
+
+    [Fact]
+    public async Task Confirm_rejects_an_unknown_key_source()
+    {
+        var id = await SetUpAsync();
+        var test = Confirmed(1);
+        test.KeySource = "Guess";
+
+        (await ConfirmAsync(id, Request(test))).Code.ShouldBe("bookImport.invalidAnswerKey");
+        await AssertStillAwaitingAsync();
+    }
+
     [Fact]
     public async Task Confirm_rejects_pages_outside_the_book_and_unknown_tests()
     {
@@ -395,6 +425,8 @@ public class BookImportSetupTests : IDisposable
         setup.ExistingBook!.Name.ShouldBe("Puan BTS 5 Matematik");
         setup.Tests.Select(t => t.KeyConflicts).ShouldBe(["...D", "..."]);
         setup.Tests[0].Flags.ShouldBe(["keyConflicts"]);
+        setup.Tests.Select(t => t.KeySource).ShouldBe(["Book", "Book"]);
+        setup.Tests.ShouldAllBe(t => t.QrLink == null);
         (await NewService(ctx).GetSetupAsync(BookImportOwner.Create(99), id, default)).ShouldBeNull();
     }
 

@@ -177,7 +177,8 @@ services:
     networks:
       - exam-net
 
-  # Optional: only the admin dev page and labeling suggestions use it. Enable with `--profile detector`.
+  # Optional: the admin dev page, labeling suggestions and (#1219) book-import "QR'dan al" transcription use it.
+  # Enable with `--profile detector`; for transcription also set BOOK_IMPORT_TRANSCRIBER_URL=http://exam-question-detector:8080.
   question-detector:
     profiles: [detector]
     build:
@@ -185,6 +186,12 @@ services:
       dockerfile: deploy/dockerfiles/question-detector.Dockerfile
     container_name: exam-question-detector
     restart: unless-stopped
+    environment:
+      # #1219: whisper modeli ilk kullanımda iner; volume'da kalır (yeniden kurulumda tekrar inmez).
+      WHISPER_MODEL: ${WHISPER_MODEL:-large-v3-turbo}
+      WHISPER_CACHE: /whisper-cache
+    volumes:
+      - whisper_cache:/whisper-cache
     networks:
       - exam-net
 
@@ -249,6 +256,8 @@ services:
       RabbitMQ__Username: exam_api
       RabbitMQ__Password: ${RABBITMQ_EXAM_API_PASSWORD}
       Anthropic__ApiKey: ${ANTHROPIC_API_KEY}
+      # #1219: kitap aktarımında "QR'dan al" (ses → yazı). `--profile detector` ile http://exam-question-detector:8080; boşsa kapalı.
+      BookImport__TranscriberUrl: ${BOOK_IMPORT_TRANSCRIBER_URL:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -555,3 +564,4 @@ volumes:
   minio_data:
   caddy_data:
   caddy_config:
+  whisper_cache:

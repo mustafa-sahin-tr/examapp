@@ -241,6 +241,12 @@ public class BookImportSetupDto
     /// <summary>Kitapta cevap anahtarı bulunamadı: sorular cevapsız aktarılır (devam / iptal).</summary>
     public bool NoAnswerKey { get; set; }
 
+    /// <summary>#1219: "QR'dan al" kullanılabilir (ses hizmeti ayarlı ve çalışıyor).</summary>
+    public bool QrKeysAvailable { get; set; }
+
+    /// <summary>#1219: son "QR'dan al" okumasının ilerlemesi; hiç başlatılmadıysa null.</summary>
+    public BookImportQrRunDto? QrRun { get; set; }
+
     public decimal AiCostUsd { get; set; }
     public int SchemaRevision { get; set; }
 
@@ -281,7 +287,27 @@ public class BookImportSetupTestDto
     /// <summary>"." uyumlu; harf ikinci okumanın değeri; "-" ikinci okumada yok.</summary>
     public string? KeyConflicts { get; set; }
 
+    /// <summary>#1219: anahtarın kaynağı (<c>Book</c>, <c>Qr</c>, <c>Ai</c>, <c>Manual</c>); anahtar yoksa null.</summary>
+    public string? KeySource { get; set; }
+
+    /// <summary>#1219: testin sayfalarındaki ilk QR bağlantısı (yayıncının çözümleri); yoksa null.</summary>
+    public string? QrLink { get; set; }
+
+    /// <summary>#1219: QR bağlantısının okuyucusu var ("QR'dan al" bu testte denenebilir).</summary>
+    public bool QrReadable { get; set; }
+
     public List<string> Flags { get; set; } = new();
+}
+
+/// <summary>#1219 "QR'dan al" arka plan okumasının ilerlemesi; okunan anahtarlar test satırlarına <c>Qr</c> kaynağıyla yazılır.</summary>
+public class BookImportQrRunDto
+{
+    public bool Running { get; set; }
+    public int Total { get; set; }
+    public int Done { get; set; }
+
+    /// <summary>Çözüm sayfası / ses alınamayan test sayısı.</summary>
+    public int Failed { get; set; }
 }
 
 /// <summary>"AI ile bul" önerisi: anahtarsız testin (onay tablosundaki sıra) anahtarı. Kaydedilmez.</summary>
@@ -324,6 +350,9 @@ public class ConfirmBookImportTestDto
     public int FileFrom { get; set; }
     public int FileTo { get; set; }
     public string? AnswerKey { get; set; }
+
+    /// <summary>#1219: anahtarın kaynağı (<c>Book</c>, <c>Qr</c>, <c>Ai</c>, <c>Manual</c>); boşsa kurulumdaki anahtar değişmediyse onun kaynağı, değiştiyse elle.</summary>
+    public string? KeySource { get; set; }
 }
 
 /// <summary>Issue #1023 "İşaretlemede düzelt": sayfanın işaretleme ekranında düzeltilen soruları (boş = sayfanın taslaklarını sil).</summary>

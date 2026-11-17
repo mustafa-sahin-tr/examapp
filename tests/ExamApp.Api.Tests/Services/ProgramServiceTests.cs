@@ -874,6 +874,40 @@ public class ProgramServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task High_school_sciences_take_the_place_of_fen_in_the_priority_order()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            var g10 = new Grade { Name = "10. Sınıf" };
+            var subjects = new[]
+            {
+                new Subject { Name = "Biyoloji", Code = "biyoloji" },
+                new Subject { Name = "Coğrafya", Code = "cografya" },
+                new Subject { Name = "Felsefe", Code = "felsefe" },
+                new Subject { Name = "Fizik", Code = "fizik" },
+                new Subject { Name = "Kimya", Code = "kimya" },
+                new Subject { Name = "Matematik", Code = "matematik" },
+                new Subject { Name = "Tarih", Code = "tarih" },
+                new Subject { Name = "Türk Dili ve Edebiyatı", Code = "turk-dili-ve-edebiyati" },
+            };
+            ctx.Add(g10);
+            ctx.Subjects.AddRange(subjects);
+            await ctx.SaveChangesAsync();
+            foreach (var sub in subjects)
+                ctx.GradeSubjects.Add(new GradeSubject { GradeId = g10.Id, SubjectId = sub.Id });
+            ctx.Students.Add(new Student { UserId = StudentUserId, StudentNumber = "S501", GradeId = g10.Id });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var read = _db.NewContext();
+        var list = await NewService(read).GetProgramSubjectsAsync(StudentUserId);
+        list.Select(s => s.Name).ShouldBe(new[]
+        {
+            "Türk Dili ve Edebiyatı", "Matematik", "Fizik", "Kimya", "Biyoloji", "Tarih", "Coğrafya", "Felsefe",
+        });
+    }
+
+    [Fact]
     public async Task Fifth_grade_program_uses_only_fifth_grade_subjects()
     {
         var ids = await SeedGradesWithSubjectsAsync();

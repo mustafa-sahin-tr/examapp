@@ -33,6 +33,7 @@ import {
   BookImportReviewQuestion,
   bookImportTestName,
   isApprovable,
+  isBulkApprovable,
   bookImportTestPages,
   compactNumbers,
   groupReviewFlags,
@@ -141,7 +142,7 @@ export class BookImportReviewComponent implements OnInit {
   /** İncelemedeki testler (onaylanan / silinen hariç); filtre açıkken yalnız bakılması gerekenler. */
   readonly open = computed(() => this.tests().filter((t) => t.status !== 'Approved' && t.status !== 'Removed'));
   readonly visible = computed(() => (this.onlyAttention() ? this.open().filter(needsAttention) : this.open()));
-  readonly approvable = computed(() => this.open().filter(isApprovable).length);
+  readonly approvable = computed(() => this.open().filter(isBulkApprovable).length);
   readonly approvedCount = computed(() => this.tests().filter((t) => t.status === 'Approved').length);
   readonly answered = computed(() => this.questions().filter((q) => q.answerIndex != null).length);
 

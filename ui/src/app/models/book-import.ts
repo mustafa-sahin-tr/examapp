@@ -118,7 +118,7 @@ export interface BookImportReviewQuestion {
 /** #1023: "Sorunsuz testleri onayla" sonucu; atlananların nedeni `answerless` ya da `failed`. */
 export interface ApproveAllBookImportResult {
   approved: number[];
-  skipped: { id: number; reason: 'answerless' | 'failed' }[];
+  skipped: { id: number; reason: 'answerless' | 'failed' | 'flagged' }[];
   /** Issue #1144: karışık soruların toplandığı yeni test. */
   collectedTestId?: number | null;
 }
@@ -126,6 +126,11 @@ export interface ApproveAllBookImportResult {
 /** #1023: onaylanabilir test — aktarımı bitmiş, taslak testi var ve cevapsız sorusu yok. */
 export function isApprovable(test: BookImportJobTest): boolean {
   return (test.status === 'Done' || test.status === 'NeedsReview') && test.worksheetId != null && test.answerless === 0;
+}
+
+/** Toplu onaya girer: onaylanabilir ve işaretsiz (işaretli test bakılıp tek tek onaylanır). */
+export function isBulkApprovable(test: BookImportJobTest): boolean {
+  return isApprovable(test) && test.status !== 'NeedsReview';
 }
 
 /** #1023: incelemede bakılması gereken: işaretli, hatalı ya da cevapsız sorusu olan (onaylanmamış / silinmemiş). */

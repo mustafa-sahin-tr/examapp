@@ -220,8 +220,9 @@ aktarım aracındaki Python portu referanstır (#1022).
   (`WorksheetAssignmentServiceSchoolOnlyTests`), çözme (`TestSessionServiceActivityKindTests`), sayılar
   (`TeacherServiceDashboardSummaryTests`), veli (`ParentAssignmentServiceTests`). Liderlik tablosu yalnız öğrenci puanından okur.
 - **Ekran:** takip sayfasında "İnceleme ve onay" (`book-import-review`): "Yalnız bakılması gerekenler" varsayılan açık, satırda
-  işaretler, Önizle (soru görselleri + A–D seçici, "Cevaplanan x/y"), Onayla, Sil (ikinci tıkla); toplu onay onay ister ve
-  atlananları bildirir. Önizleme taslağı genel test ekranına açmaz (aktarım uç noktasından okur).
+  işaretler, Önizle (soru görselleri + A–D seçici, "Cevaplanan x/y"), Onayla, Sil (ikinci tıkla); toplu onay ("Sorunsuz testleri onayla") onay ister,
+  işaretli (`NeedsReview`), cevapsız sorulu ve hatalı testleri atlar (`flagged` / `answerless` / `failed`) ve atlananları bildirir;
+  işaretli test bakılıp satırından tek tek onaylanır. Önizleme taslağı genel test ekranına açmaz (aktarım uç noktasından okur).
 - **Sayfayı gör (#1190):** Uyarılar açılınca sayfa başlıklı her satırda "Sayfayı gör" işin sayfa görselini
   (`GET {id}/pages/{filePage}`) tam ekran açar: o sayfanın uyarıları üstte, oklarla uyarılı sayfalar arasında gezilir, oradan
   "İşaretlemede düzelt". Hızlı eklemede (sayfa görseli yok, `BookImportReviewApi.pageImage` tanımsız) düğme görünmez.

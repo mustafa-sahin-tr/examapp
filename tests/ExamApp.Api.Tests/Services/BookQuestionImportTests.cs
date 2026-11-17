@@ -522,6 +522,35 @@ public class BookQuestionImportTests : IDisposable
     }
 
     [Fact]
+    public async Task Approve_all_skips_flagged_tests_which_are_approved_one_by_one()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "AB", [2]), new(2, 2, 2, "CD", [2])]);
+        Detect(1, 4, 4);
+        Detect(2, 4, 4);
+        await RunAsync(id);
+        var tests = await TestsAsync();
+        await using (var ctx = _db.NewContext())
+            await ctx.BookImportJobTests.Where(t => t.Id == tests[1].Id)
+                .ExecuteUpdateAsync(u => u.SetProperty(t => t.Status, BookImportTestStatus.NeedsReview));
+
+        await using (var ctx = _db.NewContext())
+        {
+            var result = await Service(ctx).ApproveAllAsync(Owner, id, default);
+            result!.Skipped.ShouldBe([new(tests[1].Id, "flagged")]);
+            result.Approved.ShouldBe([tests[0].Id]);
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            (await ctx.BookImportJobs.SingleAsync()).Status.ShouldBe(BookImportJobStatus.ReadyForReview);
+            (await Service(ctx).ApproveTestAsync(Owner, id, tests[1].Id, default)).ShouldBe(BookImportReviewResult.Ok);
+        }
+
+        await using var check = _db.NewContext();
+        (await check.BookImportJobs.SingleAsync()).Status.ShouldBe(BookImportJobStatus.Completed);
+    }
+
+    [Fact]
     public async Task Removing_a_test_deletes_only_its_draft_worksheet_and_questions()
     {
         var id = await SeedAsync([new(1, 1, 1, "AB", [2]), new(2, 2, 2, "CD", [2])]);

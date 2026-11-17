@@ -344,7 +344,7 @@
     "summary": "{{open}} tests awaiting review · {{approved}} approved",
     "onlyAttention": "Only tests that need a look",
     "approveAll": "Approve tests without issues ({{count}}/{{total}})",
-    "approveAllConfirm": "{{count}} tests will be approved and become active. Tests with unanswered questions or failures are skipped.",
+    "approveAllConfirm": "{{count}} tests will be approved and become active. Flagged tests and tests with unanswered questions or failures are skipped; review flagged tests and approve them one by one.",
     "confirm": "Approve",
     "cancel": "Cancel",
     "approving": "Approving…",
@@ -353,7 +353,8 @@
     "skipped": "{{name}} skipped: {{reason}}",
     "skipReason": {
       "answerless": "has unanswered questions",
-      "failed": "import failed"
+      "failed": "import failed",
+      "flagged": "flagged, review and approve it on its own"
     },
     "allDone": "No tests left to review.",
     "nothingToCheck": "No tests need a look. Turn off the filter to see all tests.",
@@ -468,7 +469,7 @@
     "title": "Review and approve",
     "summary": "{{open}} photos awaiting review · {{approved}} approved",
     "approveAll": "Approve ready photos ({{count}}/{{total}})",
-    "approveAllConfirm": "Questions from {{count}} photos will be added to the question pool. Photos with unanswered questions or errors are skipped.",
+    "approveAllConfirm": "Questions from {{count}} photos will be added to the question pool. Flagged photos and photos with unanswered questions or errors are skipped.",
     "approvedAll": "{{count}} photos approved.",
     "allDone": "No photos left to review.",
     "nothingToCheck": "No photos need attention. Turn off the filter to see them all.",
@@ -485,7 +486,7 @@
     "title": "Review and approve",
     "summary": "{{open}} images awaiting review · {{approved}} approved",
     "approveAll": "Approve ready images ({{count}}/{{total}})",
-    "approveAllConfirm": "Questions from {{count}} images will be added to the question pool. Images with unanswered questions or errors are skipped.",
+    "approveAllConfirm": "Questions from {{count}} images will be added to the question pool. Flagged images and images with unanswered questions or errors are skipped.",
     "approvedAll": "{{count}} images approved.",
     "allDone": "No images left to review.",
     "nothingToCheck": "No images need attention. Turn off the filter to see them all.",

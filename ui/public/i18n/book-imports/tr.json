@@ -344,7 +344,7 @@
     "summary": "{{open}} test inceleme bekliyor · {{approved}} onaylandı",
     "onlyAttention": "Yalnız bakılması gerekenler",
     "approveAll": "Sorunsuz testleri onayla ({{count}}/{{total}})",
-    "approveAllConfirm": "{{count}} test onaylanacak ve etkinleşecek. Cevapsız sorusu olan ya da hatalı testler atlanır.",
+    "approveAllConfirm": "{{count}} test onaylanacak ve etkinleşecek. İşaretli, cevapsız sorusu olan ya da hatalı testler atlanır; işaretlileri inceleyip tek tek onaylayın.",
     "confirm": "Onayla",
     "cancel": "Vazgeç",
     "approving": "Onaylanıyor…",
@@ -353,7 +353,8 @@
     "skipped": "{{name}} atlandı: {{reason}}",
     "skipReason": {
       "answerless": "cevapsız soru var",
-      "failed": "aktarım hatalı"
+      "failed": "aktarım hatalı",
+      "flagged": "işaretli, inceleyip tek tek onaylayın"
     },
     "allDone": "İncelenecek test kalmadı.",
     "nothingToCheck": "Bakılması gereken test yok. Bütün testleri görmek için filtreyi kapatın.",
@@ -468,7 +469,7 @@
     "title": "İnceleme ve onay",
     "summary": "{{open}} fotoğraf inceleme bekliyor · {{approved}} onaylandı",
     "approveAll": "Hazır fotoğrafları onayla ({{count}}/{{total}})",
-    "approveAllConfirm": "{{count}} fotoğrafın soruları soru havuzuna eklenecek. Cevapsız sorusu olan ya da hatalı fotoğraflar atlanır.",
+    "approveAllConfirm": "{{count}} fotoğrafın soruları soru havuzuna eklenecek. İşaretli, cevapsız sorusu olan ya da hatalı fotoğraflar atlanır.",
     "approvedAll": "{{count}} fotoğraf onaylandı.",
     "allDone": "İncelenecek fotoğraf kalmadı.",
     "nothingToCheck": "Bakılması gereken fotoğraf yok. Hepsini görmek için filtreyi kapatın.",
@@ -485,7 +486,7 @@
     "title": "İnceleme ve onay",
     "summary": "{{open}} görsel inceleme bekliyor · {{approved}} onaylandı",
     "approveAll": "Hazır görselleri onayla ({{count}}/{{total}})",
-    "approveAllConfirm": "{{count}} görselin soruları soru havuzuna eklenecek. Cevapsız sorusu olan ya da hatalı görseller atlanır.",
+    "approveAllConfirm": "{{count}} görselin soruları soru havuzuna eklenecek. İşaretli, cevapsız sorusu olan ya da hatalı görseller atlanır.",
     "approvedAll": "{{count}} görsel onaylandı.",
     "allDone": "İncelenecek görsel kalmadı.",
     "nothingToCheck": "Bakılması gereken görsel yok. Hepsini görmek için filtreyi kapatın.",

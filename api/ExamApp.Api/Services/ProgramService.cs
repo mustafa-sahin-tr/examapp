@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Services.Entitlements;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System;
@@ -517,6 +518,16 @@ namespace ExamApp.Api.Services
         /// Öğrencinin sınıfının dersleri (GradeSubjects). Öğrenci ya da sınıfı bilinmiyorsa (veya sınıfa ders
         /// bağlanmamışsa) bütün dersler — eski "ilk 4 ders" davranışı yerine hiçbir dersi sessizce düşürmez.
         /// </summary>
+        /// <summary>
+        /// Issue #1213: çalışma programına giren ana dersler (Subjects.Code): sınav dersleri (<see cref="StudentPlanPricing.SingleSubjectCodes"/>)
+        /// ile din kültürü, hayat bilgisi ve felsefe. İlk kurulumun sınıf–ders bağlarıyla aynı küme.
+        /// </summary>
+        internal static readonly string[] CoreSubjectCodes =
+        [
+            .. StudentPlanPricing.SingleSubjectCodes,
+            "din-kulturu-ve-ahlak-bilgisi", "hayat-bilgisi", "felsefe",
+        ];
+
         private async Task<List<Subject>> LoadProgramSubjectsAsync(int? studentUserId)
         {
             int? gradeId = studentUserId is int uid
@@ -525,8 +536,13 @@ namespace ExamApp.Api.Services
 
             if (gradeId is int gid)
             {
-                var gradeSubjects = await _context.GradeSubjects
-                    .Where(gs => gs.GradeId == gid)
+                // Issue #1213: katalog sınıfa bütün seçmelileri bağlar (çalgı modülleri, lehçeler…); program yalnız ana
+                // derslerden kurulur. Sınıfın ana dersi yoksa sınıfın bütün dersleri.
+                var links = _context.GradeSubjects.Where(gs => gs.GradeId == gid);
+                var core = links.Where(gs => gs.Subject.Code != null && CoreSubjectCodes.Contains(gs.Subject.Code));
+                if (await core.AnyAsync())
+                    links = core;
+                var gradeSubjects = await links
                     .Select(gs => gs.Subject)
                     .Distinct()
                     .OrderBy(s => s.Name)

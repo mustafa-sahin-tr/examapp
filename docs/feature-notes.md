@@ -237,13 +237,17 @@ Kılavuz özeti ve beceri listesinin kaynağı `docs/context-based-questions.md`
 ## Program sihirbazı (#885)
 
 - Dört adım: Ne kadar? (süre ya da günlük soru + günde kaç ders) · Hangi günler? (yedi gün, hepsi açık) · Hangi dersler?
-  (öğrencinin sınıfının dersleri, `GET api/program/subjects`) · Ne zamana kadar? (2 hafta / 1 ay / 2 ay ya da tarih; ad boşsa
+  (öğrencinin sınıfının ana dersleri, `GET api/program/subjects`) · Ne zamana kadar? (2 hafta / 1 ay / 2 ay ya da tarih; ad boşsa
   "Kasım programı").
 - Gönderim eski adım id'leriyle (`userSelections` 1/2/3/5/6) + `difficultSubjectIds`; doluysa eski 7. adım (sabit dört ders)
   yok sayılır, `UserProgram.DifficultSubjects` ders adlarını tutar (bilgi amaçlı).
 - Sağdaki örnek hafta sunucunun takvim kuralının TS kopyası (`pickDailySubjects` ↔ `ProgramService.PickDailySubjects`);
   biri değişirse diğeri de değişmeli.
 - `GET api/program/steps` ucu duruyor ama arayüz artık kullanmıyor.
+- #1213: Maarif kataloğu sınıfa bütün seçmelileri bağlar (5. sınıfa 42 ders: çalgı modülleri, lehçeler…). Program yalnız
+  ana derslerden kurulur: `ProgramService.CoreSubjectCodes` (sınav dersleri `StudentPlanPricing.SingleSubjectCodes` + din
+  kültürü, hayat bilgisi, felsefe; ilk kurulumun sınıf–ders bağlarıyla aynı küme). Sınıfın ana dersi yoksa sınıfın bütün
+  dersleri, sınıf yoksa bütün dersler.
 
 ## Okullar listesi (#898)
 

@@ -806,6 +806,38 @@ public class ProgramServiceTests : IDisposable
     };
 
     [Fact]
+    public async Task Catalog_electives_of_the_grade_stay_out_when_it_has_core_subjects()
+    {
+        // Issue #1213: katalog 5. sınıfa çalgı modülü ve lehçe gibi seçmelileri de bağlar.
+        int coreMath, coreTurkish;
+        await using (var ctx = _db.NewContext())
+        {
+            var g5 = new Grade { Name = "5. Sınıf" };
+            var math = new Subject { Name = "Matematik", Code = "matematik" };
+            var turkish = new Subject { Name = "Türkçe", Code = "turkce" };
+            var violin = new Subject { Name = "Bireysel Çalgı Eğitimi Keman Modülü", Code = "bireysel-calgi-egitimi-keman-modulu" };
+            var abaza = new Subject { Name = "Yaşayan Dil ve Lehçeler (Abazaca)", Code = "yasayan-dil-ve-lehceler-abazaca" };
+            var noCode = new Subject { Name = "Almanca" };
+            ctx.Add(g5);
+            ctx.Subjects.AddRange(math, turkish, violin, abaza, noCode);
+            await ctx.SaveChangesAsync();
+            foreach (var sub in new[] { math, turkish, violin, abaza, noCode })
+                ctx.GradeSubjects.Add(new GradeSubject { GradeId = g5.Id, SubjectId = sub.Id });
+            ctx.Students.Add(new Student { UserId = StudentUserId, StudentNumber = "S501", GradeId = g5.Id });
+            await ctx.SaveChangesAsync();
+            (coreMath, coreTurkish) = (math.Id, turkish.Id);
+        }
+
+        await using var read = _db.NewContext();
+        var subjects = await NewService(read).GetProgramSubjectsAsync(StudentUserId);
+        subjects.Select(s => s.Name).ShouldBe(new[] { "Matematik", "Türkçe" });
+
+        var dto = await NewService(read).CreateUserProgramAsync(User, FourWeekRequest(), StudentUserId);
+        dto.Schedules.ShouldNotBeEmpty();
+        dto.Schedules.ShouldAllBe(s => s.SubjectId == coreMath || s.SubjectId == coreTurkish);
+    }
+
+    [Fact]
     public async Task Fifth_grade_program_uses_only_fifth_grade_subjects()
     {
         var ids = await SeedGradesWithSubjectsAsync();

@@ -3,8 +3,8 @@
   [attr.aria-valuenow]="doneCount()" [attr.aria-valuetext]="valueText() || null"
   [attr.aria-label]="ariaLabel() || null">
   @for (step of steps(); track step.number) {
-  <span class="daily-bar__segment" [class.daily-bar__segment--done]="step.number <= doneCount()"
-    [class.daily-bar__segment--current]="step.state === 'current'"></span>
+  <span class="daily-bar__segment daily-bar__segment--{{ step.state }}"
+    [class.daily-bar__segment--done]="step.number <= doneCount()"></span>
   }
 </div>
 } @else {

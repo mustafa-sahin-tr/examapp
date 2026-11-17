@@ -4,7 +4,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { DailySet, DailyStartScope } from '../../../models/practice';
-import { DailyProgressStepsComponent } from '../daily-progress-steps/daily-progress-steps.component';
+import { DailyProgressStepsComponent, DailyStepResult } from '../daily-progress-steps/daily-progress-steps.component';
 import { DailyScopePickerComponent } from '../daily-scope-picker/daily-scope-picker.component';
 
 /** Kartın görsel durumu (issue #99 tasarım notu, durum tablosu). */
@@ -79,6 +79,19 @@ export class DailyQuestionsCardComponent {
   readonly correct = computed(() => this.dailySet()?.correct ?? 0);
   readonly wrong = computed(() => this.dailySet()?.wrong ?? 0);
   readonly skipped = computed(() => this.dailySet()?.skipped ?? 0);
+  /**
+   * Şeritte parça renkleri: API soru sırasını değil yalnız sayıları verir, bu yüzden doğrular önce, sonra yanlışlar,
+   * sonra boşlar. Sayıların toplamı `answered` ile uyuşmazsa sonuçsuz (tek renk) şerit çizilir.
+   */
+  readonly results = computed<DailyStepResult[]>(() => {
+    const [c, w, s] = [this.correct(), this.wrong(), this.skipped()].map((n) => Math.max(0, n));
+    if (c + w + s !== this.answered()) return [];
+    return [
+      ...Array<DailyStepResult>(c).fill('correct'),
+      ...Array<DailyStepResult>(w).fill('wrong'),
+      ...Array<DailyStepResult>(s).fill('skipped'),
+    ];
+  });
   readonly targetCount = computed(() => this.dailySet()?.targetCount ?? 0);
   readonly minutes = computed(() => Math.max(1, Math.ceil(this.total() * MINUTES_PER_QUESTION)));
   /** Devam eden sette şu anki parça; tamamlanmış/başlamamış sette yok. */

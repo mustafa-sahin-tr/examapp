@@ -165,6 +165,7 @@ describe('DailyQuestionsCardComponent', () => {
         const segments = fixture.debugElement.queryAll(By.css('.daily-bar__segment'));
         expect(segments.filter((s) => s.classes['daily-bar__segment--done']).length).toBe(3);
         expect(segments[3].classes['daily-bar__segment--current']).toBe(true);
+        expect(segments.map((s) => s.classes['daily-bar__segment--wrong'] ?? false)).toEqual([false, false, true, false, false]);
 
         expect(text('[data-cta="start"]')).toBe('play_arrow Devam et');
         q('[data-cta="start"]').nativeElement.click();
@@ -190,6 +191,22 @@ describe('DailyQuestionsCardComponent', () => {
         render({ set: dailySet({ status: 'Completed', answered: 5, correct: 3, wrong: 1, skipped: 1, sessionId: 4 }) });
 
         expect(text('.daily-card__sub')).toBe('3 doğru, 1 yanlış, 1 pas. Yarın yeni set gelir.');
+    });
+
+    it('completed_OneCorrectFourWrong_ColorsSegmentsByResult', () => {
+        render({ set: dailySet({ status: 'Completed', answered: 5, correct: 1, wrong: 4, sessionId: 4 }) });
+
+        const segments = fixture.debugElement.queryAll(By.css('.daily-bar__segment'));
+        expect(segments.filter((s) => s.classes['daily-bar__segment--correct']).length).toBe(1);
+        expect(segments.filter((s) => s.classes['daily-bar__segment--wrong']).length).toBe(4);
+    });
+
+    it('countsMismatchAnswered_FallsBackToPlainDoneSegments', () => {
+        render({ set: dailySet({ status: 'InProgress', answered: 3, correct: 1, wrong: 0, sessionId: 4 }) });
+
+        const segments = fixture.debugElement.queryAll(By.css('.daily-bar__segment'));
+        expect(segments.filter((s) => s.classes['daily-bar__segment--done']).length).toBe(3);
+        expect(segments.some((s) => s.classes['daily-bar__segment--correct'])).toBe(false);
     });
 
     it('lowPool_ThreeOfFive_ShowsCountTitleAndInfoNote', () => {

@@ -82,6 +82,7 @@
   <div class="daily-card__progress">
     <div class="daily-card__bar-row">
       <app-daily-progress-steps class="daily-card__bar" variant="bar" [total]="total()" [done]="answered()"
+        [results]="results()"
         [currentIndex]="currentIndex()" [ariaLabel]="t('eyebrow')"
         [valueText]="t('progressAria', { total: total(), done: answered() })" />
       <span class="daily-card__count" aria-hidden="true">{{ answered() }} / {{ total() }}</span>

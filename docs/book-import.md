@@ -152,7 +152,8 @@ aktarım aracındaki Python portu referanstır (#1022).
   ULA yok), sayfa 2 MB, ses 24 MB (question-detector gövde sınırı 25 MiB), istek 30 sn.
   **Ses hizmeti:** `BookImport:TranscriberUrl` (Aspire question-detector'a bağlar; prod `BOOK_IMPORT_TRANSCRIBER_URL`,
   `--profile detector` ile `http://exam-question-detector:8080`; demoda adres `.env.demo`'da hep dolu, servis gerektiğinde
-  `deploy/scripts/demo.sh detector up|down` ile açılıp kapatılır). Boşsa, servis çalışmıyorsa ya da faster-whisper / model yoksa
+  `deploy/scripts/demo.sh detector up|down` ile açılıp kapatılır; model `.env.demo`'daki `DEMO_WHISPER_DIR` ile harici diskte,
+  ilk okumada ~35 sn yüklenir). Boşsa, servis çalışmıyorsa ya da faster-whisper / model yoksa
   (`GET /transcribe/status` → `available: false`, 1 dk önbellek) "QR'dan al" görünmez; kurulumun geri kalanı değişmez. Model
   `WHISPER_MODEL` (varsayılan `large-v3-turbo`, ~1,6 GB; `small` şık harflerinde zayıf), ilk kullanımda iner, prod'da
   `whisper_cache` volume'unda kalır. Sesler sırayla çevrilir (CPU'da soru başına ~13 sn). Claude kullanılmaz, iş bütçesine yazılmaz.

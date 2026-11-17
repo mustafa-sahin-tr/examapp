@@ -874,7 +874,7 @@ public class ProgramServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task High_school_sciences_take_the_place_of_fen_in_the_priority_order()
+    public async Task High_school_branches_take_the_place_of_fen_and_sosyal_in_the_priority_order()
     {
         await using (var ctx = _db.NewContext())
         {
@@ -903,7 +903,7 @@ public class ProgramServiceTests : IDisposable
         var list = await NewService(read).GetProgramSubjectsAsync(StudentUserId);
         list.Select(s => s.Name).ShouldBe(new[]
         {
-            "Türk Dili ve Edebiyatı", "Matematik", "Fizik", "Kimya", "Biyoloji", "Tarih", "Coğrafya", "Felsefe",
+            "Türk Dili ve Edebiyatı", "Matematik", "Fizik", "Kimya", "Biyoloji", "Coğrafya", "Tarih", "Felsefe",
         });
     }
 

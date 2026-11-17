@@ -4,6 +4,8 @@
 #   build           build the images
 #   up [--tunnel]   start the stack, optionally public through the tunnel
 #   down            stop it, data stays
+#   detector up|down  start / stop question-detector on demand (#1219 "QR'dan al", labeling suggestions); the API hides
+#                   the button while it is down (BOOK_IMPORT_TRANSCRIBER_URL in .env.demo stays set)
 #   status | logs [service]
 #   backup [--db]   database dump and files to the external disk, keeps the last 14 (MinIO on the disk: one mirror);
 #                   --db: database dump only (deploys that do not touch files; the mirror scan takes long)
@@ -33,9 +35,16 @@ case "${1:-}" in
   up)
     if [[ "${2:-}" == "--tunnel" ]]; then compose --profile tunnel up -d; else compose up -d; fi
     ;;
-  down) compose --profile tunnel down ;;
-  status) compose --profile tunnel ps ;;
-  logs) compose --profile tunnel logs --tail=100 "${@:2}" ;;
+  detector)
+    case "${2:-}" in
+      up) compose --profile detector up -d question-detector ;;
+      down) compose --profile detector rm -sf question-detector ;;
+      *) echo "usage: $0 detector up|down" >&2; exit 1 ;;
+    esac
+    ;;
+  down) compose --profile tunnel --profile detector down ;;
+  status) compose --profile tunnel --profile detector ps ;;
+  logs) compose --profile tunnel --profile detector logs --tail=100 "${@:2}" ;;
   backup)
     target="$BACKUP_ROOT/$(date +%Y%m%d-%H%M%S)"
     mkdir -p "$target"

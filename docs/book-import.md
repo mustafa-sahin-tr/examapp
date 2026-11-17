@@ -151,10 +151,11 @@ aktarım aracındaki Python portu referanstır (#1022).
   denetlenir, bağlantı DNS çözümünden sonra yalnız genel adreslere açılır (`QrSolutionClient`: loopback, özel, link-local, CGNAT,
   ULA yok), sayfa 2 MB, ses 24 MB (question-detector gövde sınırı 25 MiB), istek 30 sn.
   **Ses hizmeti:** `BookImport:TranscriberUrl` (Aspire question-detector'a bağlar; prod `BOOK_IMPORT_TRANSCRIBER_URL`,
-  `--profile detector` ile `http://exam-question-detector:8080`). Boşsa, servis çalışmıyorsa ya da faster-whisper / model yoksa
+  `--profile detector` ile `http://exam-question-detector:8080`; demoda adres `.env.demo`'da hep dolu, servis gerektiğinde
+  `deploy/scripts/demo.sh detector up|down` ile açılıp kapatılır). Boşsa, servis çalışmıyorsa ya da faster-whisper / model yoksa
   (`GET /transcribe/status` → `available: false`, 1 dk önbellek) "QR'dan al" görünmez; kurulumun geri kalanı değişmez. Model
-  `WHISPER_MODEL` (varsayılan `small`), ilk kullanımda iner, prod'da `whisper_cache` volume'unda kalır. Bir testin sesleri 3'er 3'er
-  çevrilir. Claude kullanılmaz, iş bütçesine yazılmaz.
+  `WHISPER_MODEL` (varsayılan `large-v3-turbo`, ~1,6 GB; `small` şık harflerinde zayıf), ilk kullanımda iner, prod'da
+  `whisper_cache` volume'unda kalır. Sesler sırayla çevrilir (CPU'da soru başına ~13 sn). Claude kullanılmaz, iş bütçesine yazılmaz.
 - **Anahtarın kaynağı (#1219):** `BookImportJobTests.KeySource` — `Book` (kurulumun anahtar okuması), `Qr`, `Ai` ("AI ile bul"),
   `Manual` ("Anahtar gir"). Onay isteği satır başına kaynağı taşır; taşımazsa anahtar kurulumdakiyle aynıysa onun kaynağı kalır,
   değiştiyse `Manual`. Onay ekranı `Qr` / `Ai` kaynağını etiketle gösterir. Bu alandan önceki işlerde null (kitaptan sayılır).

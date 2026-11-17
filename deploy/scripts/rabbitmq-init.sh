@@ -121,9 +121,9 @@ set_perms badge_outbox_pub \
 
 create_user badge_service "${RABBITMQ_BADGE_SERVICE_PASSWORD}"
 set_perms badge_service \
-  "^(badge-service(_error|_skipped)?|${NS}:(${BADGE_SERVICE_STEMS})Event)\$" \
-  '^badge-service(_error|_skipped)?$' \
-  "^(badge-service(_error|_skipped)?|${NS}:(${BADGE_SERVICE_STEMS})Event)\$"
+  "^(badge-(service|question-classifier)(_error|_skipped)?|${NS}:(${BADGE_SERVICE_STEMS})Event)\$" \
+  '^badge-(service|question-classifier)(_error|_skipped)?$' \
+  "^(badge-(service|question-classifier)(_error|_skipped)?|${NS}:(${BADGE_SERVICE_STEMS})Event)\$"
 
 create_user exam_api "${RABBITMQ_EXAM_API_PASSWORD}"
 set_perms exam_api \

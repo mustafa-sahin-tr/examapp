@@ -132,7 +132,7 @@
     "Completed": "Completed",
     "Failed": "Failed",
     "Cancelled": "Cancelled",
-    "AwaitingBudget": "Waiting for budget",
+    "AwaitingBudget": "Waiting for AI",
     "AwaitingCostApproval": "Waiting for cost approval"
   },
   "testStatus": {
@@ -193,8 +193,8 @@
     "flagPages": "page {{pages}}",
     "flagNumbers": "question {{numbers}}",
     "legendReview": "{{approved}} approved · {{removed}} removed",
-    "awaitingBudget": "The daily AI budget is used up; the import will continue by itself around {{time}}.",
-    "awaitingBudgetNoTime": "The daily AI budget is used up; the import will continue by itself when budget is available.",
+    "awaitingBudget": "An AI limit was reached (daily budget or Claude load); the import will continue by itself around {{time}}.",
+    "awaitingBudgetNoTime": "An AI limit was reached (daily budget or Claude load); the import will continue by itself.",
     "awaitingCostApproval": "The import reached its cost limit; waiting for an administrator to continue it.",
     "awaitingCostApprovalAdmin": "The import reached its cost limit: {{cost}} spent (limit {{ceiling}}). Continuing raises the limit by the configured per-job ceiling.",
     "continue": "Continue",

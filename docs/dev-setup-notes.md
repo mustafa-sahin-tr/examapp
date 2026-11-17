@@ -372,3 +372,19 @@ Bilgi kartı desteleri, deneme şablonları, hedef / koç verisi kalır. `BADGE_
 
 Önce `--dry-run` (seçilen grupların sayılarını da gösterir); birden fazla Postgres/MinIO konteyneri varsa
 `PG_CONTAINER`/`MINIO_CONTAINER` ile seç.
+
+## Soru sınıflandırıcısı ayrı kuyrukta (Claude hız sınırı)
+
+BadgeService `QuestionCreatedConsumer` artık `badge-service` yerine kendi `badge-question-classifier` kuyruğunda (en fazla 2 eşzamanlı,
+Claude'un geçici hatasında 30 sn → 10 dk aralıklarla yeniden dener; `QuestionCreatedConsumerDefinition`). `badge_service`
+kullanıcısının izinleri `rabbitmq/definitions.json` ve `deploy/scripts/rabbitmq-init.sh`'te genişletildi: compose'da
+`rabbitmq-permission-sync` / prod'da `rabbitmq-init` yeniden çalışınca uygulanır, Aspire'da `rabbitmq` kaynağını yeniden başlat.
+
+MassTransit eski bağlamayı kaldırmaz: `ExamApp.Foundation.Contracts:QuestionCreatedEvent` → `badge-service` exchange bağı kalırsa
+mesajlar eski kuyruğa da gider ve tüketicisi olmadığı için `badge-service_skipped`'e düşer. Yeni sürüm açıldıktan sonra bir kez:
+
+```bash
+docker exec <rabbitmq> rabbitmqadmin -u <admin> -p <parola> delete binding \
+  source='ExamApp.Foundation.Contracts:QuestionCreatedEvent' destination_type=exchange destination=badge-service
+```
+

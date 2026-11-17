@@ -220,7 +220,7 @@ builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<AnswerSubmittedConsumer, AnswerSubmittedConsumerDefinition>();
     x.AddConsumer<ActivityCompletedConsumer, ActivityCompletedConsumerDefinition>(); // issue #572
-    x.AddConsumer<QuestionCreatedConsumer>();
+    x.AddConsumer<QuestionCreatedConsumer, QuestionCreatedConsumerDefinition>();
     x.AddConsumer<WorksheetReminderDueConsumer, WorksheetReminderDueConsumerDefinition>();
     x.AddConsumer<WorksheetAccessRequestedConsumer, WorksheetAccessRequestedConsumerDefinition>();
     x.AddConsumer<WorksheetAccessDecisionConsumer, WorksheetAccessDecisionConsumerDefinition>();
@@ -263,6 +263,15 @@ builder.Services.AddMassTransit(x =>
             h.Password(rabbitSettings.Password);
         });
 
+        // Soru sınıflandırma (Claude) kendi kuyruğunda: toplu kitap aktarımının yüzlerce QuestionCreatedEvent'i ve Claude hız
+        // sınırı beklemeleri (QuestionCreatedConsumerDefinition) puan / rozet / bildirim mesajlarını bekletmesin.
+        cfg.ReceiveEndpoint(QuestionCreatedConsumerDefinition.QueueName, e =>
+        {
+            e.PublishFaults = false;
+            e.PrefetchCount = QuestionCreatedConsumerDefinition.ConcurrentMessageLimit * 2;
+            e.ConfigureConsumer<QuestionCreatedConsumer>(context);
+        });
+
         cfg.ReceiveEndpoint("badge-service", e =>
         {
             // issue #279 review (SHOULD-FIX, least privilege): consumer hataları RabbitMQ fault mesajı
@@ -273,7 +282,6 @@ builder.Services.AddMassTransit(x =>
             // Kullanıcı bazlı sıralı işleme (partitioner) AnswerSubmittedConsumerDefinition'da (issue #225).
             e.ConfigureConsumer<AnswerSubmittedConsumer>(context);
             e.ConfigureConsumer<ActivityCompletedConsumer>(context); // issue #572 (puansız etkinlik rozetleri)
-            e.ConfigureConsumer<QuestionCreatedConsumer>(context);
             // WorksheetReminderDueConsumer'ın retry'ı WorksheetReminderDueConsumerDefinition'da
             // scope'lu; diğer iki consumer'ın davranışı değişmez.
             e.ConfigureConsumer<WorksheetReminderDueConsumer>(context);

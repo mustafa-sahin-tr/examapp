@@ -369,6 +369,9 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
             // Kesik yanıtı çağıran geniş sınırla yeniden sorar; ödenen token yukarıda sayıldı.
             if (retryTruncated && ex.Truncated)
                 throw;
+            // Hız sınırı / aşırı yük: kurulum başarısız sayılmaz, iş bekleyip kaldığı yerden sürer.
+            if (ClaudeTransient.Is(ex))
+                throw new BookImportPause(BookImportPauseReason.RateLimit, ClaudeTransient.RetryAfter);
             throw new BookImportFailure($"Book setup failed: {ex.Message}");
         }
     }

@@ -51,6 +51,8 @@ DEFAULTS = {
     "KEYCLOAK_SERVICE_CLIENT_SECRET": token(),
     "BADGE_AI_ACTIVE": "true",
     "JITSI_PUBLIC_URL": "",
+    # #1219: "QR'dan al" ses çevirisi; question-detector `demo.sh detector up` ile açılınca kullanılır, kapalıyken düğme gizli.
+    "BOOK_IMPORT_TRANSCRIBER_URL": "http://exam-question-detector:8080",
     # Filled in by the owner.
     "ANTHROPIC_API_KEY": "",
     "SMTP_HOST": "",

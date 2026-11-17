@@ -20,6 +20,11 @@ services:
     volumes: !override
       - ${DEMO_MINIO_DIR:-minio_data}:/data
 
+  # #1219: DEMO_WHISPER_DIR (in .env.demo) keeps the whisper model (~1.6 GB) on the external disk; unset keeps the Docker volume.
+  question-detector:
+    volumes: !override
+      - ${DEMO_WHISPER_DIR:-whisper_cache}:/whisper-cache
+
   minio-presign-init:
     image: minio/minio:latest
     pull_policy: never

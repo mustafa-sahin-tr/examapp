@@ -138,6 +138,33 @@ public class BookImportServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task List_filters_by_status_on_the_server_and_counts_cover_every_visible_job()
+    {
+        var waiting = (await StartAs(41, Pdf("Eski bekleyen"))).Job!.Id;
+        var failed = (await StartAs(41, Pdf("Başarısız"))).Job!.Id;
+        var newest = (await StartAs(41, Pdf("En yeni"))).Job!.Id;
+        await StartAs(42, Pdf("Başkası"));
+        await using (var seed = _db.NewContext())
+        {
+            (await seed.BookImportJobs.SingleAsync(j => j.Id == waiting)).Status = BookImportJobStatus.AwaitingConfirmation;
+            (await seed.BookImportJobs.SingleAsync(j => j.Id == failed)).Status = BookImportJobStatus.Failed;
+            await seed.SaveChangesAsync();
+        }
+
+        await using var ctx = _db.NewContext();
+        var service = NewService(ctx);
+        var owner = BookImportOwner.Create(41);
+        // İlk sayfa (1 iş) bekleyen eski işi taşımaz; filtre sunucuda olduğu için yine gelir.
+        (await service.ListAsync(owner, 1, default)).Select(j => j.Id).ShouldBe([newest]);
+        (await service.ListAsync(owner, 1, default, BookImportJobStatus.AwaitingConfirmation)).Select(j => j.Id).ShouldBe([waiting]);
+        (await service.ListAsync(owner, 50, default, BookImportJobStatus.Failed)).Select(j => j.Id).ShouldBe([failed]);
+
+        var counts = await service.CountsAsync(owner, default);
+        (counts.Total, counts.AwaitingConfirmation, counts.Failed).ShouldBe((3, 1, 1));
+        (await service.CountsAsync(BookImportOwner.Create(1, EntitlementRoles.Admin), default)).Total.ShouldBe(4);
+    }
+
+    [Fact]
     public async Task List_and_get_show_only_the_callers_jobs_but_admin_sees_all()
     {
         var mine = (await StartAs(41, Pdf("Benim"))).Job!.Id;

@@ -103,6 +103,7 @@
     "awaiting": "Onay bekleyen ({{count}})",
     "failed": "Hatalı ({{count}})",
     "awaitingBanner": "{{count}} aktarım sizi bekliyor.",
+    "loadMore": "Daha fazla göster",
     "loading": "Aktarımlar yükleniyor…",
     "loadFailed": "Aktarımlar yüklenemedi.",
     "empty": "Henüz kitap aktarımı yok.",

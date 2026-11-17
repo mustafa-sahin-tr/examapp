@@ -222,6 +222,12 @@
   margin-bottom: 12px;
 }
 
+.bi-more {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-3, 12px);
+}
+
 .bi-filters {
   display: flex;
   gap: 6px;

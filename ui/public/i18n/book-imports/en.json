@@ -103,6 +103,7 @@
     "awaiting": "Awaiting you ({{count}})",
     "failed": "Failed ({{count}})",
     "awaitingBanner": "{{count}} imports are waiting for you.",
+    "loadMore": "Show more",
     "loading": "Loading imports…",
     "loadFailed": "Imports could not be loaded.",
     "empty": "No book imports yet.",

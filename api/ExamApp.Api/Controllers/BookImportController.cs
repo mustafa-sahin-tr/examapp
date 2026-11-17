@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.BookImport;
 using ExamApp.Api.Services.Entitlements;
@@ -159,12 +160,24 @@ public class BookImportController : BaseController
 
     [HttpGet]
     [ProducesResponseType(typeof(List<BookImportJobDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> List([FromQuery] int take = 50, CancellationToken ct = default)
+    public async Task<IActionResult> List([FromQuery] int take = 50, [FromQuery] BookImportJobStatus? status = null,
+        CancellationToken ct = default)
     {
         var owner = await ResolveOwnerAsync(ct);
         if (owner is null)
             return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
-        return Ok(await _service.ListAsync(owner, take, ct));
+        return Ok(await _service.ListAsync(owner, take, ct, status));
+    }
+
+    /// <summary>Listenin filtre sayıları (onay bekleyen, başarısız, toplam) — yüklenen sayfadan bağımsız.</summary>
+    [HttpGet("counts")]
+    [ProducesResponseType(typeof(BookImportJobCountsDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Counts(CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        return Ok(await _service.CountsAsync(owner, ct));
     }
 
     /// <summary>Issue #1032: örnek kitapla demonun durumu.</summary>

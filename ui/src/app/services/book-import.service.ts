@@ -20,6 +20,7 @@ import {
   ApproveAllBookImportResult,
   BookImportDemo,
   BookImportJob,
+  BookImportJobCounts,
   BookImportJobDetail,
   BookImportKeyMatchResponse,
   BookImportQrRun,
@@ -28,6 +29,7 @@ import {
   BookImportReviewQuestion,
   BookImportQuota,
   BookImportSetup,
+  BookImportStatus,
   BookImportTrainingSummary,
   BookImportUploadEvent,
   BookImportUploadSession,
@@ -35,6 +37,9 @@ import {
   StartBookImportRequest,
 } from '../models/book-import';
 import { LabelingBankQuestion } from '../models/labeling';
+
+/** Aktarım listesinin bir sayfası ("Daha fazla göster" bu kadar ekler). */
+export const BOOK_IMPORTS_PAGE = 50;
 
 /** Issue #1122: ağ ya da sunucu hatasında bir parça en fazla bu kadar yeniden denenir (bekleme her denemede uzar). */
 export const BOOK_IMPORT_PART_RETRIES = 3;
@@ -53,8 +58,16 @@ export class BookImportService {
   private readonly baseUrl = '/api/exam/book-imports';
   private readonly http = inject(HttpClient);
 
-  list(): Observable<BookImportJob[]> {
-    return this.http.get<BookImportJob[]>(this.baseUrl);
+  /** En yeni önce `take` iş; `status` verilirse yalnız o durumdakiler (eski işler de gelir). */
+  list(take = BOOK_IMPORTS_PAGE, status?: BookImportStatus): Observable<BookImportJob[]> {
+    const params: Record<string, string | number> = { take };
+    if (status) params['status'] = status;
+    return this.http.get<BookImportJob[]>(this.baseUrl, { params });
+  }
+
+  /** Filtre sayıları: bütün görünür işler (listenin yüklenen sayfasından bağımsız). */
+  counts(): Observable<BookImportJobCounts> {
+    return this.http.get<BookImportJobCounts>(`${this.baseUrl}/counts`);
   }
 
   get(id: string): Observable<BookImportJobDetail> {

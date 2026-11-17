@@ -210,11 +210,11 @@
       <h2 class="bi-section-title">{{ t('list.title') }}</h2>
       <div class="bi-filters" role="group" [attr.aria-label]="t('list.filter')">
         <button type="button" class="bi-chip" [class.is-active]="filter() === 'all'" [attr.aria-pressed]="filter() === 'all'"
-          (click)="filter.set('all')">{{ t('list.all') }}</button>
+          (click)="setFilter('all')">{{ t('list.all') }}</button>
         <button type="button" class="bi-chip" [class.is-active]="filter() === 'awaiting'"
-          [attr.aria-pressed]="filter() === 'awaiting'" (click)="filter.set('awaiting')">{{ t('list.awaiting', { count: awaitingCount() }) }}</button>
+          [attr.aria-pressed]="filter() === 'awaiting'" (click)="setFilter('awaiting')">{{ t('list.awaiting', { count: awaitingCount() }) }}</button>
         <button type="button" class="bi-chip" [class.is-active]="filter() === 'failed'"
-          [attr.aria-pressed]="filter() === 'failed'" (click)="filter.set('failed')">{{ t('list.failed', { count: failedCount() }) }}</button>
+          [attr.aria-pressed]="filter() === 'failed'" (click)="setFilter('failed')">{{ t('list.failed', { count: failedCount() }) }}</button>
       </div>
     </div>
 
@@ -268,6 +268,13 @@
         }
       </tbody>
     </table>
+    @if (hasMore()) {
+    <div class="bi-more">
+      <button mat-stroked-button type="button" data-testid="load-more" [disabled]="loadingMore()" (click)="loadMore()">
+        {{ t(loadingMore() ? 'list.loading' : 'list.loadMore') }}
+      </button>
+    </div>
+    }
     }
   </section>
 

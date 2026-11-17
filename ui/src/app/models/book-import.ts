@@ -38,6 +38,13 @@ export interface BookImportDemo {
   activeJobId: string | null;
 }
 
+/** Liste filtrelerinin sayıları: bütün görünür işler. */
+export interface BookImportJobCounts {
+  total: number;
+  awaitingConfirmation: number;
+  failed: number;
+}
+
 export interface BookImportJob {
   isDemo?: boolean;
   isDemoSource?: boolean;

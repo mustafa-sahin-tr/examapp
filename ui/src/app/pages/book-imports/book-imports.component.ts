@@ -18,7 +18,9 @@ import { Subscription, timer } from 'rxjs';
 import {
   BookImportDemo,
   BookImportJob,
+  BookImportJobCounts,
   BookImportQuota,
+  BookImportStatus,
   bookImportStatusTone,
   isBookImportActive,
 } from '../../models/book-import';
@@ -26,7 +28,7 @@ import { Grade } from '../../models/student';
 import { Subject } from '../../models/subject';
 import { AuthService } from '../../services/auth.service';
 import { EntitlementStateService } from '../../services/entitlement-state.service';
-import { BookImportService } from '../../services/book-import.service';
+import { BOOK_IMPORTS_PAGE, BookImportService } from '../../services/book-import.service';
 import { GradesService } from '../../services/grades.service';
 import { SubjectService } from '../../services/subject.service';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
@@ -40,6 +42,11 @@ export const BOOK_IMPORTS_POLL_MS = 5000;
 const MAX_UPLOAD_BYTES = 200_000_000;
 
 type StatusFilter = 'all' | 'awaiting' | 'failed';
+const FILTER_STATUS: Record<StatusFilter, BookImportStatus | undefined> = {
+  all: undefined,
+  awaiting: 'AwaitingConfirmation',
+  failed: 'Failed',
+};
 
 /** Issue #1144: kitap PDF olarak ya da sayfa görselleri (taranmış / fotoğraflanmış sayfalar) olarak yüklenir. */
 export type BookImportSourceMode = 'pdf' | 'images';
@@ -136,6 +143,10 @@ export class BookImportsComponent implements OnInit {
   readonly grades = signal<Grade[]>([]);
   readonly subjects = signal<Subject[]>([]);
   readonly filter = signal<StatusFilter>('all');
+  /** Yüklenen iş sayısı ("Daha fazla göster" artırır); filtre değişince başa döner. */
+  readonly take = signal(BOOK_IMPORTS_PAGE);
+  readonly counts = signal<BookImportJobCounts | null>(null);
+  readonly loadingMore = signal(false);
 
   readonly showForm = signal(false);
   readonly file = signal<File | null>(null);
@@ -167,18 +178,12 @@ export class BookImportsComponent implements OnInit {
     subjectId: new FormControl<number | null>(null),
   });
 
-  readonly awaitingCount = computed(() => this.jobs().filter((j) => j.status === 'AwaitingConfirmation').length);
-  readonly failedCount = computed(() => this.jobs().filter((j) => j.status === 'Failed').length);
-  readonly visibleJobs = computed(() => {
-    switch (this.filter()) {
-      case 'awaiting':
-        return this.jobs().filter((j) => j.status === 'AwaitingConfirmation');
-      case 'failed':
-        return this.jobs().filter((j) => j.status === 'Failed');
-      default:
-        return this.jobs();
-    }
-  });
+  // Sayılar ve filtreler sunucudan: liste yalnız en yeni sayfayı taşır, eski bekleyen / başarısız işler de görünsün.
+  readonly awaitingCount = computed(() => this.counts()?.awaitingConfirmation ?? 0);
+  readonly failedCount = computed(() => this.counts()?.failed ?? 0);
+  readonly visibleJobs = computed(() => this.jobs());
+  /** Son yükleme sayfayı doldurduysa daha eski iş olabilir. */
+  readonly hasMore = computed(() => this.jobs().length >= this.take());
   readonly quotaBlocked = computed(() => this.quota()?.allowed === false);
 
   readonly tone = bookImportStatusTone;
@@ -260,19 +265,40 @@ export class BookImportsComponent implements OnInit {
   load(): void {
     this.loadError.set(false);
     this.api
-      .list()
+      .list(this.take(), FILTER_STATUS[this.filter()])
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (jobs) => {
           this.jobs.set(jobs ?? []);
           this.loading.set(false);
+          this.loadingMore.set(false);
           this.schedulePoll();
         },
         error: () => {
           this.loading.set(false);
+          this.loadingMore.set(false);
           this.loadError.set(true);
         },
       });
+    this.api
+      .counts()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      // Sayılar okunamazsa filtreler sayısız kalır; liste etkilenmez.
+      .subscribe({ next: (counts) => this.counts.set(counts), error: () => undefined });
+  }
+
+  setFilter(filter: StatusFilter): void {
+    if (filter === this.filter()) return;
+    this.filter.set(filter);
+    this.take.set(BOOK_IMPORTS_PAGE);
+    this.loading.set(true);
+    this.load();
+  }
+
+  loadMore(): void {
+    this.take.update((n) => n + BOOK_IMPORTS_PAGE);
+    this.loadingMore.set(true);
+    this.load();
   }
 
   /** Süren iş varken liste yenilenir; hepsi durunca yoklama biter. */

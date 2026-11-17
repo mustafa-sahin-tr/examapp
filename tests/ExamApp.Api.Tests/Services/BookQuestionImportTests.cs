@@ -275,6 +275,41 @@ public class BookQuestionImportTests : IDisposable
     }
 
     [Fact]
+    public async Task A_claude_rate_limit_pauses_the_job_instead_of_failing_the_page_and_it_resumes()
+    {
+        var id = await SeedAsync([new(1, 1, 2, "AB", [1, 2]), new(2, 3, 3, "C", [3])]);
+        Detect(1, 4);
+        Detect(2, 4);
+        Detect(3, 4);
+        // SDK'nın kendi yeniden denemelerinden sonra da 429: 3. sayfanın tespiti.
+        _onDetect[3] = () => throw new LabelingAiException("Claude request failed.",
+            new Anthropic.Exceptions.AnthropicRateLimitException(new HttpRequestException("429"))
+            {
+                StatusCode = System.Net.HttpStatusCode.TooManyRequests, ResponseBody = "",
+            });
+        var jobs = Substitute.For<IBackgroundJobClient>();
+
+        await RunAsync(id, new InMemoryFixedWindowCounterStore(), jobs: jobs);
+
+        await using (var check = _db.NewContext())
+        {
+            var job = await check.BookImportJobs.SingleAsync();
+            job.Status.ShouldBe(BookImportJobStatus.AwaitingBudget);
+            job.ResumeAt.ShouldNotBeNull();
+        }
+        jobs.Received(1).Create(Arg.Any<Hangfire.Common.Job>(), Arg.Any<Hangfire.States.ScheduledState>());
+        // Test başarısız sayılmaz, sayfa "tespit başarısız" işaretlenmez: devamda baştan alınır.
+        (await TestsAsync()).Select(t => t.Status).ShouldBe([BookImportTestStatus.Done, BookImportTestStatus.Running]);
+
+        await RunAsync(id, new InMemoryFixedWindowCounterStore());
+
+        await using var after = _db.NewContext();
+        (await after.BookImportJobs.SingleAsync()).Status.ShouldBe(BookImportJobStatus.ReadyForReview);
+        _saved.Select(s => s.FilePage).ShouldBe([1, 2, 3]);
+        (await TestsAsync()).ShouldAllBe(t => t.Status == BookImportTestStatus.Done && t.ReviewFlagsJson == null);
+    }
+
+    [Fact]
     public async Task A_full_import_budget_pauses_the_job_and_the_unfinished_test_is_redone_when_it_resumes()
     {
         var id = await SeedAsync([new(1, 1, 2, "AB", [1, 2]), new(2, 3, 3, "C", [3])]);

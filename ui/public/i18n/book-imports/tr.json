@@ -132,7 +132,7 @@
     "Completed": "Tamamlandı",
     "Failed": "Hata",
     "Cancelled": "İptal edildi",
-    "AwaitingBudget": "Bütçe bekleniyor",
+    "AwaitingBudget": "Yapay zekâ bekleniyor",
     "AwaitingCostApproval": "Maliyet onayı bekliyor"
   },
   "testStatus": {
@@ -193,8 +193,8 @@
     "flagPages": "sayfa {{pages}}",
     "flagNumbers": "soru {{numbers}}",
     "legendReview": "{{approved}} onaylandı · {{removed}} silindi",
-    "awaitingBudget": "Günlük yapay zekâ bütçesi doldu; aktarım {{time}} civarında kendiliğinden devam edecek.",
-    "awaitingBudgetNoTime": "Günlük yapay zekâ bütçesi doldu; aktarım bütçe açılınca kendiliğinden devam edecek.",
+    "awaitingBudget": "Yapay zekâ sınırına ulaşıldı (günlük bütçe ya da Claude yoğunluğu); aktarım {{time}} civarında kendiliğinden devam edecek.",
+    "awaitingBudgetNoTime": "Yapay zekâ sınırına ulaşıldı (günlük bütçe ya da Claude yoğunluğu); aktarım kendiliğinden devam edecek.",
     "awaitingCostApproval": "Aktarım maliyet sınırına ulaştı; bir yöneticinin devam ettirmesi bekleniyor.",
     "awaitingCostApprovalAdmin": "Aktarım maliyet sınırına ulaştı: {{cost}} harcandı (sınır {{ceiling}}). Devam edersen sınır, ayarlardaki iş başı tavan kadar yükselir.",
     "continue": "Devam et",

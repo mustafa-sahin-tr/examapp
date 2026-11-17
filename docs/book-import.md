@@ -257,6 +257,10 @@ aktarım aracındaki Python portu referanstır (#1022).
 - **Duraklama:** sayaç doluysa iş başarısız olmaz, `AwaitingBudget` ("Bütçe bekleniyor") olur ve pencerenin kalan süresi + 1 dk
   sonra (bilinmiyorsa 30 dk) Hangfire ile yeniden kuyruğa girer (`ResumeAt`). Soru aktarımında bitmiş testler atlanır, yarım test
   baştan alınır (tespit önbelleği tekrar ödetmez); kurulumda aşama baştan çalışır.
+- **Claude hız sınırı / yoğunluk:** SDK 429 / 529 / 5xx / bağlantı hatasını kendi içinde `Anthropic:MaxRetries` kez üstel beklemeyle
+  dener; o da tükenirse (`ClaudeTransient.Is`) sayfa "tespit başarısız", kurulum "başarısız" sayılmaz: iş aynı `AwaitingBudget`
+  durumuna geçer (`BookImportPauseReason.RateLimit`), 2 + 1 dk sonra kaldığı yerden sürer. Ekran metni ikisini birlikte anlatır
+  ("Yapay zekâ bekleniyor").
 - **Tavan:** `BookImport:MaxJobCostUsd` (boş / 0: yok) işin maliyet tavanı. Aşılınca iş `AwaitingCostApproval`; Admin takip
   ekranında "Devam et" der (`POST {id}/continue`, yalnız Admin), tavan şimdiki maliyet + yapılandırılan tavana yükselir
   (`BookImportJobs.CostCeilingUsd`). Bir çağrı tavanı en fazla kendi maliyeti kadar aşar.

@@ -36,19 +36,19 @@ public class ProgramConsumerWiringTests
 
         var programSource = File.ReadAllText(FindProgramCs());
 
-        // ReceiveEndpoint bloğunu (cfg.ReceiveEndpoint("badge-service", e => { ... }); ) izole et — yalnızca
-        // o blok içindeki ConfigureConsumer çağrıları sayılır (AddConsumer'ı da eşleştirip yanlış pozitif
-        // vermemesi için).
-        var endpointBlockMatch = Regex.Match(
-            programSource,
-            @"cfg\.ReceiveEndpoint\(""badge-service"",\s*e\s*=>\s*\{(?<body>.*?)\}\s*\);",
-            RegexOptions.Singleline);
-        endpointBlockMatch.Success.ShouldBeTrue("Program.cs içinde \"badge-service\" ReceiveEndpoint bloğu bulunamadı.");
+        // ReceiveEndpoint bloklarını (cfg.ReceiveEndpoint(..., e => { ... }); ) izole et — yalnızca o bloklardaki
+        // ConfigureConsumer çağrıları sayılır (AddConsumer'ı da eşleştirip yanlış pozitif vermemesi için). Soru
+        // sınıflandırıcısı kendi kuyruğundadır (QuestionCreatedConsumerDefinition.QueueName).
+        var endpoints = Regex.Matches(
+                programSource,
+                @"cfg\.ReceiveEndpoint\((?<name>[^,]+),\s*e\s*=>\s*\{(?<body>.*?)\}\s*\);",
+                RegexOptions.Singleline)
+            .ToDictionary(m => m.Groups["name"].Value.Trim(), m => Regex.Matches(m.Groups["body"].Value, @"ConfigureConsumer<(?<name>\w+)>")
+                .Select(c => c.Groups["name"].Value).ToHashSet());
+        endpoints.ShouldContainKey("\"badge-service\"", "Program.cs içinde \"badge-service\" ReceiveEndpoint bloğu bulunamadı.");
+        endpoints["QuestionCreatedConsumerDefinition.QueueName"].ShouldBe(["QuestionCreatedConsumer"]);
 
-        var endpointBody = endpointBlockMatch.Groups["body"].Value;
-        var wiredConsumers = Regex.Matches(endpointBody, @"ConfigureConsumer<(?<name>\w+)>")
-            .Select(m => m.Groups["name"].Value)
-            .ToHashSet();
+        var wiredConsumers = endpoints.Values.SelectMany(v => v).ToHashSet();
 
         var missing = consumerTypes.Where(c => !wiredConsumers.Contains(c)).ToList();
 

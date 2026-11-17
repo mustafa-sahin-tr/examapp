@@ -329,7 +329,7 @@ public class BookImportJobRunner
     /// </summary>
     private async Task PauseAsync(BookImportJob job, BookImportPause pause)
     {
-        if (pause.Reason == BookImportPauseReason.Budget)
+        if (pause.Reason is BookImportPauseReason.Budget or BookImportPauseReason.RateLimit)
         {
             var delay = (pause.RetryAfter ?? DefaultBudgetRetry) + TimeSpan.FromMinutes(1);
             job.Status = BookImportJobStatus.AwaitingBudget;

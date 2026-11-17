@@ -9,7 +9,7 @@ export type BookImportStatus =
   | 'Completed'
   | 'Failed'
   | 'Cancelled'
-  /** #1024: günlük Claude bütçesi doldu; `resumeAt`'te kendiliğinden devam eder. */
+  /** #1024: günlük Claude bütçesi doldu ya da Claude hız sınırında / yoğun; `resumeAt`'te kendiliğinden devam eder. */
   | 'AwaitingBudget'
   /** #1024: işin maliyet tavanı aşıldı; Admin sürdürür. */
   | 'AwaitingCostApproval';

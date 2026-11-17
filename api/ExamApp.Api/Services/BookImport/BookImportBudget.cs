@@ -17,11 +17,22 @@ public enum BookImportPauseReason
 
     /// <summary>İşin maliyet tavanı aşıldı; Admin sürdürene kadar bekler.</summary>
     CostCeiling,
+
+    /// <summary>
+    /// Claude hız sınırı / aşırı yük, SDK'nın yeniden denemelerinden sonra da sürüyor; <see cref="BookImportPause.RetryAfter"/> sonra
+    /// kendiliğinden devam (bütçe beklemesi gibi). Sayfa "tespit başarısız", iş "başarısız" sayılmaz.
+    /// </summary>
+    RateLimit,
 }
 
 /// <summary>Issue #1024: iş başarısız değil, duraklatıldı (koşucu durumu yazar; bitmemiş test yeniden çalışmada baştan alınır).</summary>
 public sealed class BookImportPause(BookImportPauseReason reason, TimeSpan? retryAfter = null)
-    : Exception(reason == BookImportPauseReason.Budget ? "Daily Claude budget reached." : "Job cost ceiling reached.")
+    : Exception(reason switch
+    {
+        BookImportPauseReason.Budget => "Daily Claude budget reached.",
+        BookImportPauseReason.RateLimit => "Claude is rate limited or overloaded.",
+        _ => "Job cost ceiling reached.",
+    })
 {
     public BookImportPauseReason Reason { get; } = reason;
 

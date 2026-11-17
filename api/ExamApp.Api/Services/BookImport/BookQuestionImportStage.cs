@@ -403,6 +403,11 @@ internal sealed class BookQuestionImportStage(
             budget.Record(detectModel, failed.Usage, failed.CostUsd);
             throw;
         }
+        catch (LabelingAiException ex) when (ClaudeTransient.Is(ex))
+        {
+            // Hız sınırı / aşırı yük: sayfa başarısız sayılmaz, iş bekleyip kaldığı testten sürer (tespit önbelleği ödeneni tutar).
+            throw new BookImportPause(BookImportPauseReason.RateLimit, ClaudeTransient.RetryAfter);
+        }
     }
 
     /// <summary>Anahtardaki harfin şık sırası (A → 0); anahtar yok / anahtarda yok / okunamadı → -1.</summary>

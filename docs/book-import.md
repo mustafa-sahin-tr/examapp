@@ -132,6 +132,32 @@ aktarım aracındaki Python portu referanstır (#1022).
   geçerli okuma aynıysa kabul, değilse güçlü model. Kod denetler: soru sayısı biliniyorsa cevap sayısı tutmalı, yalnız A–E / "?", bir satır iki teste
   gitmez. Öneri kaydedilmez, ekranda "AI" çipiyle doldurulur, onayla gider; bulunamazsa satırda "AI bulamadı" yazar, anahtar elle
   girilebilir. Maliyet `SetupConfirmation` aşamasına ve iş bütçesine yazılır (429 bütçe, 502 Claude hatası).
+- **QR'dan anahtar (#1219, isteğe bağlı, kurulum kendiliğinden çağırmaz):** kitapta anahtar sayfası olmayıp her testin ilk
+  sayfasında yayıncının çözüm QR'ı olan kitaplar için (ör. Define Fen Bilimleri Soru Bankası, Fi Yayınları). Tarama sırasında her
+  sayfanın QR'ı .NET'te okunur (`PageQrReader`, ZXing; yapay zekâ yok, maliyet yok), `SetupJson.QrLinks`'e yazılır; testin bağlantısı
+  sayfa aralığındaki ilk QR'dır (onay ekranında satırda açılır). "QR'dan al" / "Hepsini QR'dan al"
+  (`POST {id}/setup/qr-keys[?order=]`, `BookQrKeyService`) okumayı **Hangfire işine** verir (ses çevirisi CPU'da test başına
+  dakikalar sürebilir; gateway 90 sn / Cloudflare 100 sn'de keser): ilerleme `SetupJson.QrRun`'da (`qrRun` olarak döner), onay
+  ekranı okuma sürerken kurulumu 4 sn'de bir yeniden okur, sürerken onay kapalıdır (`bookImport.qrKeysRunning`). 10 dk ilerlemeyen
+  okuma yarıda kalmış sayılır, yeniden başlatılabilir. Her test için: bağlantının okuyucusu varsa (`IQrKeyReader`; şimdilik
+  `FernusQrKeyReader`: `*.frns.in`, `fideocozum.com`) çözüm sayfası çekilir, sayfadaki `solved_list` soru başına ses kaydı (mp3) ya
+  da mp4 verir; cevap harfi verilerde yok, öğretmen kaydın sonunda söyler ("B seçeneğini işaretleyebiliriz") → ses question-detector'ın
+  `/transcribe` ucunda (faster-whisper, Türkçe) yazıya çevrilir, son "X seçeneği / X şıkkı / cevap(ımız) X" alınır (`QrAnswerLetter`).
+  Bulunamayan harf (YouTube çözüm, harf söylenmemiş) `?` kalır, tahmin yok; onaydan önce elle girilir. Soru sayısı sayfada görülenden
+  farklıysa satırda uyarı çıkar. Okunan anahtar test satırına `KeySource=Qr` ile yazılır (yalnız hâlâ
+  anahtarsız ve iş onay bekliyorsa; elle girilenin üstüne yazılmaz), ekranda "QR" etiketiyle görünür, öğretmen onaylar. Okuyucusu olmayan bağlantı çekilmez, yalnız
+  gösterilir (doğrudan cevap anahtarı gösteren yayıncılar için okuyucu örnek bulundukça eklenir).
+  **Güvenlik:** QR içeriği güvenilmez girdi — yalnız okuyucunun alan adlarına gidilir, yönlendirmeler elle izlenip her adım
+  denetlenir, bağlantı DNS çözümünden sonra yalnız genel adreslere açılır (`QrSolutionClient`: loopback, özel, link-local, CGNAT,
+  ULA yok), sayfa 2 MB, ses 24 MB (question-detector gövde sınırı 25 MiB), istek 30 sn.
+  **Ses hizmeti:** `BookImport:TranscriberUrl` (Aspire question-detector'a bağlar; prod `BOOK_IMPORT_TRANSCRIBER_URL`,
+  `--profile detector` ile `http://exam-question-detector:8080`). Boşsa, servis çalışmıyorsa ya da faster-whisper / model yoksa
+  (`GET /transcribe/status` → `available: false`, 1 dk önbellek) "QR'dan al" görünmez; kurulumun geri kalanı değişmez. Model
+  `WHISPER_MODEL` (varsayılan `small`), ilk kullanımda iner, prod'da `whisper_cache` volume'unda kalır. Bir testin sesleri 3'er 3'er
+  çevrilir. Claude kullanılmaz, iş bütçesine yazılmaz.
+- **Anahtarın kaynağı (#1219):** `BookImportJobTests.KeySource` — `Book` (kurulumun anahtar okuması), `Qr`, `Ai` ("AI ile bul"),
+  `Manual` ("Anahtar gir"). Onay isteği satır başına kaynağı taşır; taşımazsa anahtar kurulumdakiyle aynıysa onun kaynağı kalır,
+  değiştiyse `Manual`. Onay ekranı `Qr` / `Ai` kaynağını etiketle gösterir. Bu alandan önceki işlerde null (kitaptan sayılır).
 - **Kayıt:** test satırları `BookImportJobTests` (sayfa aralığı, dakika, `AnswerKey` "ABCD…", `KeyConflicts` "." uyumlu /
   diğer okumanın harfi / "-"), özet `BookImportJobs.SetupJson`, maliyet `AiCostUsd` (başarısız çağrılar dahil). Model listesi
   ve fiyatlar `Anthropic:Models`'tan; API anahtarı yoksa iş "Claude is not configured" ile düşer. Hiç test başlığı yoksa

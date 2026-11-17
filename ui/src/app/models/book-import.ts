@@ -286,6 +286,10 @@ export interface BookImportSetup {
   units: BookImportSetupUnit[];
   orphanKeys: string[];
   noAnswerKey: boolean;
+  /** #1219: "QR'dan al" kullanılabilir (QR'ı okunabilir test var ve ses hizmeti çalışıyor). */
+  qrKeysAvailable?: boolean;
+  /** #1219: son "QR'dan al" okuması; hiç başlatılmadıysa null. */
+  qrRun?: BookImportQrRun | null;
   aiCostUsd: number;
   schemaRevision: number;
   existingBook: BookImportBookRef | null;
@@ -318,7 +322,25 @@ export interface BookImportSetupTest {
   answerKey: string | null;
   /** "." uyumlu, harf ikinci okumanın değeri, "-" ikinci okumada yok. */
   keyConflicts: string | null;
+  /** #1219: anahtarın kaynağı; anahtar yoksa null. */
+  keySource?: BookKeySource | null;
+  /** #1219: testin sayfalarındaki ilk QR bağlantısı (yayıncının çözümleri). */
+  qrLink?: string | null;
+  /** #1219: bağlantının okuyucusu var ("QR'dan al" denenebilir). */
+  qrReadable?: boolean;
   flags: string[];
+}
+
+/** #1219: cevap anahtarının kaynağı — kitabın anahtar sayfası, QR çözümleri, "AI ile bul" ya da elle. */
+export type BookKeySource = 'Book' | 'Qr' | 'Ai' | 'Manual';
+
+/** #1219 "QR'dan al" arka plan okumasının ilerlemesi; okunan anahtarlar test satırlarına QR kaynağıyla yazılır. */
+export interface BookImportQrRun {
+  running: boolean;
+  total: number;
+  done: number;
+  /** Çözüm sayfası / ses alınamayan test sayısı. */
+  failed: number;
 }
 
 /** "AI ile bul" önerisi: anahtarsız testin (sıra) anahtarı; kaydedilmez, onayla gider. */
@@ -346,6 +368,7 @@ export interface ConfirmBookImportSetup {
     fileFrom: number;
     fileTo: number;
     answerKey: string | null;
+    keySource: BookKeySource | null;
   }[];
 }
 

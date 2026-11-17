@@ -47,6 +47,7 @@ describe('BookImportSetupComponent (#1021)', () => {
       pageImage: vi.fn().mockReturnValue(of(new Blob(['x'], { type: 'image/webp' }))),
       confirmSetup: vi.fn().mockReturnValue(of({})),
       findKeyWithAi: vi.fn().mockReturnValue(of({ match: null, aiCostUsd: 0 })),
+      startQrKeys: vi.fn().mockReturnValue(of({ running: true, total: 2, done: 0, failed: 0 })),
       cancel: vi.fn().mockReturnValue(of(undefined)),
     } as unknown as MockedObject<BookImportService>;
     TestBed.configureTestingModule({
@@ -350,9 +351,72 @@ describe('BookImportSetupComponent (#1021)', () => {
     expect(api.confirmSetup).toHaveBeenCalledWith('a1', {
       bookName: 'Puan BTS 5 Matematik',
       existingBookId: null,
-      tests: [{ order: 1, title: 'Milyonlar - I', minutes: 16, fileFrom: 7, fileTo: 8, answerKey: 'ADC' }],
+      tests: [{ order: 1, title: 'Milyonlar - I', minutes: 16, fileFrom: 7, fileTo: 8, answerKey: 'ADC', keySource: 'Book' }],
     });
     expect(changed).toHaveBeenCalled();
+  });
+
+  it('qrFind_ReadsInTheBackground_FillsTheKeysWithAQrChip_AndSendsTheirSource (#1219)', async () => {
+    vi.useFakeTimers();
+    const qr = (order: number, testNo: number, expected: number) => ({
+      ...keyless(order, testNo, expected), qrLink: `http://fi.frns.in/fen501-00${order}`, qrReadable: true,
+    });
+    const data = setupData({ noAnswerKey: true, answerKeyRanges: [], qrKeysAvailable: true, tests: [qr(1, 1, 3), qr(2, 2, 2)] });
+    create(data);
+    const read = (key: string) => ({ answerKey: key, keySource: 'Qr' as const });
+    api.setup
+      .mockReturnValueOnce(of({ ...data, qrRun: { running: true, total: 2, done: 1, failed: 0 },
+        tests: [{ ...data.tests[0], ...read('B?A') }, data.tests[1]] }))
+      .mockReturnValueOnce(of({ ...data, qrRun: { running: false, total: 2, done: 2, failed: 0 },
+        tests: [{ ...data.tests[0], ...read('B?A') }, { ...data.tests[1], ...read('DCA') }] }));
+
+    expect(text()).toContain(tr.setup.noKeyQrHint);
+    expect(el().querySelector<HTMLAnchorElement>('[data-testid="qr-open"]')!.href).toBe('http://fi.frns.in/fen501-001');
+    el().querySelector<HTMLButtonElement>('[data-testid="qr-find-all-keys"]')!.click();
+    fixture.detectChanges();
+
+    expect(api.startQrKeys).toHaveBeenCalledWith('a1', undefined);
+    expect(el().querySelector('[data-testid="qr-find-all-progress"]')).not.toBeNull();
+    // Okuma sürerken onaylanmaz (okuma test satırlarına yazar).
+    expect(confirmButton().disabled).toBe(true);
+
+    await vi.advanceTimersByTimeAsync(4000);
+    fixture.detectChanges();
+    expect([cell(0, 0).value, cell(0, 1).value, cell(0, 2).value]).toEqual(['B', '?', 'A']);
+    expect(el().querySelectorAll('[data-testid="qr-key-chip"]').length).toBe(1);
+
+    await vi.advanceTimersByTimeAsync(4000);
+    fixture.detectChanges();
+    vi.useRealTimers();
+    expect(api.setup).toHaveBeenCalledTimes(3); // bitti: yeniden okuma durdu
+    expect(el().querySelector('[data-testid="qr-find-all-progress"]')).toBeNull();
+    expect(el().querySelectorAll('[data-testid="qr-key-chip"]').length).toBe(2);
+    // QR'da 3 çözüm var, sayfada 2 soru görüldü: onaydan önce bakılmalı.
+    expect(el().querySelectorAll('[data-testid="qr-count-differs"]').length).toBe(1);
+    // Anahtar geldi: "cevapsız devam" sorulmaz; okunamayan harf girilene kadar onay kapalı.
+    expect(text()).not.toContain(tr.setup.continueWithoutKey);
+    expect(confirmButton().disabled).toBe(true);
+
+    press(cell(0, 1), 'C');
+    confirmButton().click();
+
+    expect(api.confirmSetup).toHaveBeenCalledWith('a1', expect.objectContaining({
+      tests: [
+        expect.objectContaining({ order: 1, answerKey: 'BCA', keySource: 'Qr' }),
+        expect.objectContaining({ order: 2, answerKey: 'DCA', keySource: 'Qr' }),
+      ],
+    }));
+  });
+
+  it('qrFind_IsHiddenWithoutTheTranscriber_ButTheLinkCanBeOpened (#1219)', () => {
+    create(setupData({
+      qrKeysAvailable: false,
+      tests: [{ ...keyless(1, 1, 2), qrLink: 'http://fi.frns.in/fen501-001', qrReadable: true }],
+    }));
+
+    expect(el().querySelector('[data-testid="qr-find-key"]')).toBeNull();
+    expect(el().querySelector('[data-testid="qr-find-all-keys"]')).toBeNull();
+    expect(el().querySelector('[data-testid="qr-open"]')).not.toBeNull();
   });
 
   it('noKey_RequiresContinueOrCancel', () => {

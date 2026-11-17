@@ -683,6 +683,10 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("KeyFilePage")
                         .HasColumnType("integer");
 
+                    b.Property<string>("KeySource")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
                     b.Property<int?>("Minutes")
                         .HasColumnType("integer");
 

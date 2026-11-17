@@ -27,6 +27,19 @@ public sealed class BookSetupSummary
     public List<OrphanKey> OrphanRows { get; set; } = new();
 
     public bool NoAnswerKey { get; set; }
+
+    /// <summary>#1219: QR'ı olan sayfalar ve bağlantıları (sayfa sırasıyla); testin bağlantısı sayfa aralığındaki ilk QR.</summary>
+    public List<BookSetupQr> QrLinks { get; set; } = new();
+
+    /// <summary>Testin sayfa aralığındaki ilk QR bağlantısı; yoksa null.</summary>
+    public string? QrLinkFor(int? fileFrom, int? fileTo) =>
+        fileFrom is { } from && fileTo is { } to
+            ? QrLinks.Where(q => q.FilePage >= from && q.FilePage <= to).OrderBy(q => q.FilePage).Select(q => q.Url).FirstOrDefault()
+            : null;
+
+    /// <summary>#1219: "QR'dan al" arka plan okuması (son başlatılan); hiç başlatılmadıysa null.</summary>
+    public BookSetupQrRun? QrRun { get; set; }
+
     public long InputTokens { get; set; }
     public long OutputTokens { get; set; }
 
@@ -50,6 +63,21 @@ public sealed class BookSetupSummary
 }
 
 public sealed record BookSetupRange(int FileFrom, int FileTo);
+
+public sealed record BookSetupQr(int FilePage, string Url);
+
+/// <summary>#1219: "QR'dan al" okumasının ilerlemesi; <see cref="Orders"/> sırayla okunur, <see cref="Done"/> okunanların sayısı.</summary>
+public sealed class BookSetupQrRun
+{
+    public List<int> Orders { get; set; } = new();
+    public int Done { get; set; }
+
+    /// <summary>Çözüm sayfası / ses alınamayan test sayısı.</summary>
+    public int Failed { get; set; }
+
+    public bool Finished { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+}
 
 public sealed record BookSetupUnit(int Unit, string? Title, int FileFrom, int FileTo, int? TopicId);
 
@@ -83,11 +111,18 @@ internal sealed class BookSetupStage(
 
             var surveyed = new List<SurveyedPage>();
             var toc = new List<SurveyedTocRow>();
+            var qrLinks = new List<BookSetupQr>();
             foreach (var batch in batches)
             {
                 var images = new List<BookPageImage>(batch.Length);
                 foreach (var page in batch)
-                    images.Add(await LoadAsync(page.FilePage, page.ImageUrl));
+                {
+                    var image = await LoadAsync(page.FilePage, page.ImageUrl);
+                    images.Add(image);
+                    // #1219: sayfadaki QR (yayıncının çözüm bağlantısı); yapay zekâ yok, maliyeti yok.
+                    if (PageQrReader.Read(image.Image) is { } link)
+                        qrLinks.Add(new BookSetupQr(page.FilePage, link));
+                }
                 var result = await ai.SurveyAsync(images, cost, ct);
                 surveyed.AddRange(result.Pages);
                 toc.AddRange(result.Toc);
@@ -146,7 +181,7 @@ internal sealed class BookSetupStage(
                 throw new BookImportFailure("No tests were found in the book (no page with a test header).");
 
             var topics = await MapUnitsAsync(job, plan, cost, ct);
-            await SaveAsync(job, plan, topics, cost, ct);
+            await SaveAsync(job, plan, topics, qrLinks, cost, ct);
             logger.LogInformation(
                 "Book import job {JobId}: setup found {Tests} tests, {KeyPages} key pages; cost ${Cost:F4} ({Input} in / {Output} out tokens)",
                 job.Id, plan.Tests.Count, keyPages.Count, cost.Usd, cost.InputTokens, cost.OutputTokens);
@@ -229,8 +264,8 @@ internal sealed class BookSetupStage(
         return await ai.MapUnitsAsync(plan.Units, topics, cost, ct);
     }
 
-    private async Task SaveAsync(BookImportJob job, BookSetupPlan plan, IReadOnlyDictionary<int, int?> topics, BookSetupCost cost,
-        CancellationToken ct)
+    private async Task SaveAsync(BookImportJob job, BookSetupPlan plan, IReadOnlyDictionary<int, int?> topics,
+        IReadOnlyList<BookSetupQr> qrLinks, BookSetupCost cost, CancellationToken ct)
     {
         // Yeniden çalışmada önceki kurulumun test satırları silinir (henüz soru aktarılmadı: aşama onaydan önce).
         await db.BookImportJobTests.Where(t => t.JobId == job.Id).ExecuteDeleteAsync(ct);
@@ -248,6 +283,7 @@ internal sealed class BookSetupStage(
             AnswerKey = t.AnswerKey,
             KeyConflicts = t.KeyConflicts,
             KeyFilePage = t.KeyPage,
+            KeySource = t.AnswerKey is null ? null : BookKeySources.Book,
             KeyAnswers = t.AnswerKey?.Count(c => c != '?') ?? 0,
             FlagsJson = t.Flags.Count == 0 ? null : JsonSerializer.Serialize(t.Flags),
         }));
@@ -262,6 +298,7 @@ internal sealed class BookSetupStage(
             OrphanKeys = plan.OrphanKeys.ToList(),
             OrphanRows = (plan.OrphanRows ?? []).ToList(),
             NoAnswerKey = plan.NoAnswerKey,
+            QrLinks = qrLinks.ToList(),
             InputTokens = cost.InputTokens,
             OutputTokens = cost.OutputTokens,
         }.Serialize();

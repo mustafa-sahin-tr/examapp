@@ -941,4 +941,8 @@ ocelotGateway = ocelotGateway
     .WithEnvironment("QUESTION_DETECTOR_HOST", "localhost")
     .WithEnvironment("QUESTION_DETECTOR_PORT", "8080");
 
+// #1219: kitap aktarımında "QR'dan al" — QR çözümlerinin ses kayıtları question-detector'ın /transcribe ucunda (faster-whisper)
+// yazıya çevrilir. Paket / model yoksa uç available=false döner, exam API düğmeyi göstermez.
+examDotnetApi.WithEnvironment("BookImport__TranscriberUrl", questionDetector.GetEndpoint("http"));
+
 builder.Build().Run();

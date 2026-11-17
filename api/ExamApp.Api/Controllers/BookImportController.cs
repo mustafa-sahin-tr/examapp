@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos;
@@ -265,13 +266,22 @@ public class BookImportController : BaseController
     /// <summary>Issue #1021: kurulum onay ekranı (testler, cevap anahtarı, üniteler); kurulum yoksa 404.</summary>
     [HttpGet("{id:guid}/setup")]
     [ProducesResponseType(typeof(BookImportSetupDto), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetSetup(Guid id, CancellationToken ct)
+    public async Task<IActionResult> GetSetup(Guid id, [FromServices] IAudioTranscriber transcriber,
+        [FromServices] IEnumerable<IQrKeyReader> qrReaders, CancellationToken ct)
     {
         var owner = await ResolveOwnerAsync(ct);
         if (owner is null)
             return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
         var setup = await _service.GetSetupAsync(owner, id, ct);
-        return setup is null ? NotFound(new { message = _localizer["bookImport.notFound"].Value }) : Ok(setup);
+        if (setup is null)
+            return NotFound(new { message = _localizer["bookImport.notFound"].Value });
+
+        // #1219: QR'ı okuyucusu olan test var mı; varsa ses hizmeti denetlenir ("QR'dan al" yalnız ikisi de varsa görünür).
+        var readers = qrReaders.ToList();
+        foreach (var test in setup.Tests)
+            test.QrReadable = Uri.TryCreate(test.QrLink, UriKind.Absolute, out var link) && readers.Any(r => r.Handles(link));
+        setup.QrKeysAvailable = !setup.IsDemo && setup.Tests.Any(t => t.QrReadable) && await transcriber.IsAvailableAsync(ct);
+        return Ok(setup);
     }
 
     /// <summary>
@@ -331,6 +341,36 @@ public class BookImportController : BaseController
                 new { code = "bookImport.keyMatchNotConfigured", message = _localizer["bookImport.keyMatchNotConfigured"].Value }),
             _ => StatusCode(StatusCodes.Status502BadGateway,
                 new { code = "bookImport.keyMatchFailed", message = _localizer["bookImport.keyMatchFailed"].Value }),
+        };
+    }
+
+    /// <summary>
+    /// #1219 onay ekranında "QR'dan al": anahtarı olmayan testlerin (<paramref name="order"/> verilirse yalnız onun) sayfasındaki QR
+    /// bağlantısından yayıncının çözümlerini arka planda okur (ses kayıtları yazıya çevrilir, harf öğretmenin söylediği); okunan
+    /// anahtar test satırına <c>Qr</c> kaynağıyla yazılır, onay ekranı ilerlemeyi (<c>qrRun</c>) izler. 202 başladı; 404 QR'ı
+    /// okunabilir anahtarsız test yok, 409 kurulum onayı beklemiyor ya da okuma zaten sürüyor, 503 ses hizmeti yok.
+    /// </summary>
+    [HttpPost("{id:guid}/setup/qr-keys")]
+    [RequiresEntitlement(EntitlementFeatures.BookImport, InPlanOnly = true)]
+    [ProducesResponseType(typeof(BookImportQrRunDto), StatusCodes.Status202Accepted)]
+    public async Task<IActionResult> StartQrKeys(Guid id, [FromQuery] int? order, [FromServices] BookQrKeyService qrKeys,
+        CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        if (await _service.GetSetupAsync(owner, id, ct) is null)
+            return NotFound(new { message = _localizer["bookImport.notFound"].Value });
+
+        var result = await qrKeys.StartAsync(id, order, ct);
+        return result.Error switch
+        {
+            QrKeyError.None => Accepted(new BookImportQrRunDto { Running = true, Total = result.Run!.Orders.Count }),
+            QrKeyError.NotFound or QrKeyError.NoQr => NotFound(new { code = "bookImport.qrKeyNoQr", message = _localizer["bookImport.qrKeyNoQr"].Value }),
+            QrKeyError.Running => Conflict(new { code = "bookImport.qrKeysRunning", message = _localizer["bookImport.qrKeysRunning"].Value }),
+            QrKeyError.NotAvailable => StatusCode(StatusCodes.Status503ServiceUnavailable,
+                new { code = "bookImport.qrKeyNotAvailable", message = _localizer["bookImport.qrKeyNotAvailable"].Value }),
+            _ => Conflict(new { code = "bookImport.notAwaitingSetup", message = _localizer["bookImport.notAwaitingSetup"].Value }),
         };
     }
 

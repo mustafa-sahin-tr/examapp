@@ -11,3 +11,8 @@ uvicorn
 pillow
 ultralytics
 pyzbar
+
+# #1219: QR çözümlerinin ses kayıtları (yoksa /transcribe kapalı)
+faster-whisper==1.2.1
+av<17
+requests

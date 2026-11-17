@@ -73,6 +73,12 @@ public sealed partial class BookImportService
             }).ToList(),
             OrphanKeys = summary.OrphanKeys,
             NoAnswerKey = summary.NoAnswerKey,
+            QrRun = summary.QrRun is { } run
+                ? new BookImportQrRunDto
+                {
+                    Running = BookQrKeyService.IsActive(run), Total = run.Orders.Count, Done = run.Done, Failed = run.Failed,
+                }
+                : null,
             AiCostUsd = job.AiCostUsd,
             SchemaRevision = summary.SchemaRevision,
             IsDemo = job.DemoSourceJobId is not null,
@@ -81,6 +87,8 @@ public sealed partial class BookImportService
             {
                 Order = t.Order, Unit = t.Unit, TestNo = t.TestNo, Title = t.Title, Minutes = t.Minutes, FileFrom = t.FileFrom,
                 FileTo = t.FileTo, ExpectedQuestions = t.ExpectedQuestions, AnswerKey = t.AnswerKey, KeyConflicts = t.KeyConflicts,
+                KeySource = t.AnswerKey is null ? null : t.KeySource ?? BookKeySources.Book,
+                QrLink = summary.QrLinkFor(t.FileFrom, t.FileTo),
                 Flags = ParseFlags(t.FlagsJson),
             }).ToList(),
         };
@@ -99,6 +107,9 @@ public sealed partial class BookImportService
             return new(ConfirmSetupError.InvalidState);
         if (job.DemoSourceJobId is not null)
             return await ConfirmDemoSetupAsync(id, ct);
+        // #1219: "QR'dan al" sürerken onaylanmaz (okuma test satırlarına yazar).
+        if (summary.QrRun is { } qrRun && BookQrKeyService.IsActive(qrRun))
+            return new(ConfirmSetupError.Invalid, Code: "bookImport.qrKeysRunning");
 
         var jobTests = await _db.BookImportJobTests.AsNoTracking().Where(t => t.JobId == id).ToDictionaryAsync(t => t.Order, ct);
         var bookName = request.BookName?.Trim() ?? string.Empty;
@@ -182,6 +193,8 @@ public sealed partial class BookImportService
             if (!string.IsNullOrEmpty(test.AnswerKey) &&
                 (test.AnswerKey.Length > BookImportJobTest.MaxKeyLength || !AnswerKeyPattern().IsMatch(test.AnswerKey)))
                 return "bookImport.invalidAnswerKey";
+            if (test.KeySource is not null && !BookKeySources.IsValid(test.KeySource))
+                return "bookImport.invalidAnswerKey";
         }
 
         return null;
@@ -245,6 +258,9 @@ public sealed partial class BookImportService
             row.Minutes = input.Minutes;
             row.FileFrom = input.FileFrom;
             row.FileTo = input.FileTo;
+            // #1219: istemci kaynağı bildirmezse kurulumdaki anahtar aynen geldiyse onun kaynağı kalır, değiştiyse elle girilmiştir.
+            row.KeySource = key is null ? null
+                : input.KeySource ?? (key == row.AnswerKey ? row.KeySource ?? BookKeySources.Book : BookKeySources.Manual);
             row.AnswerKey = key;
             row.KeyConflicts = null;
             row.KeyAnswers = key?.Length ?? 0;

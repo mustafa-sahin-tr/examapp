@@ -717,6 +717,14 @@ builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IBookImportPageFixSer
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IBookImportTrainingExport, ExamApp.Api.Services.BookImport.BookImportTrainingExport>();
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.BookImportJobRunner>();
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.BookKeyMatchService>(); // onay ekranında "AI ile bul"
+// #1219: onay ekranında "QR'dan al" — yayıncı çözüm sayfası (izinli alan adları, iç ağa bağlantı yok) + ses → yazı (question-detector).
+builder.Services.AddHttpClient(ExamApp.Api.Services.BookImport.QrSolutionClient.HttpClientName, c => c.Timeout = TimeSpan.FromSeconds(30))
+    .ConfigurePrimaryHttpMessageHandler(ExamApp.Api.Services.BookImport.QrSolutionClient.CreateHandler);
+builder.Services.AddHttpClient(ExamApp.Api.Services.BookImport.DetectorAudioTranscriber.HttpClientName, c => c.Timeout = TimeSpan.FromMinutes(2));
+builder.Services.AddScoped<ExamApp.Api.Services.BookImport.QrSolutionClient>();
+builder.Services.AddSingleton<ExamApp.Api.Services.BookImport.IAudioTranscriber, ExamApp.Api.Services.BookImport.DetectorAudioTranscriber>();
+builder.Services.AddSingleton<ExamApp.Api.Services.BookImport.IQrKeyReader, ExamApp.Api.Services.BookImport.FernusQrKeyReader>();
+builder.Services.AddScoped<ExamApp.Api.Services.BookImport.BookQrKeyService>();
 // Issue #1020: PDFium tabanlı sayfa görselleri (durumsuz).
 builder.Services.AddSingleton<ExamApp.Api.Services.BookImport.IPdfRasterizer>(_ => new ExamApp.Api.Services.BookImport.PdfiumRasterizer());
 builder.Services.AddSingleton<ExamApp.Api.Services.BookImport.IBookSetupAi, ExamApp.Api.Services.BookImport.ClaudeBookSetupAi>(); // issue #1021

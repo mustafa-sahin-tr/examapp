@@ -15,10 +15,10 @@
     <mat-icon aria-hidden="true">science</mat-icon>{{ t('demo.setupNote') }}
   </div>
   }
-  @if (s.noAnswerKey && !noKeyAcknowledged()) {
+  @if (s.noAnswerKey && !noKeyAcknowledged() && !anyKey()) {
   <div class="bis-banner bis-banner--warning" role="alert">
     <mat-icon aria-hidden="true">help_outline</mat-icon>
-    <span>{{ t('setup.noKey') }}</span>
+    <span>{{ t('setup.noKey') }}@if (s.qrKeysAvailable) { {{ t('setup.noKeyQrHint') }} }</span>
     <span class="bis-banner__actions">
       <button mat-flat-button type="button" (click)="acknowledgeNoKey()">{{ t('setup.continueWithoutKey') }}</button>
       <button mat-stroked-button type="button" [disabled]="saving()" (click)="cancel()">{{ t('setup.cancelImport') }}</button>
@@ -51,6 +51,25 @@
       <summary>{{ t('setup.orphanKeys', { count: s.orphanKeys.length }) }}</summary>
       <p>{{ s.orphanKeys.join(', ') }}</p>
     </details>
+    }
+    @if (!s.isDemo && (qrRunning() || (s.qrKeysAvailable && (qrKeylessCount() > 0 || qrError())))) {
+    <div class="bis-aimatch" role="status">
+      @if (qrRunning()) {
+      <mat-spinner diameter="18" aria-hidden="true" />
+      <span data-testid="qr-find-all-progress">{{ t('setup.qrFindAllProgress', { done: qrRun()!.done, total: qrRun()!.total }) }}</span>
+      } @else if (qrKeylessCount() > 0) {
+      <span>{{ t('setup.qrFindAllIntro', { count: qrKeylessCount() }) }}</span>
+      <button mat-stroked-button type="button" data-testid="qr-find-all-keys" (click)="startQrKeys()">
+        <mat-icon aria-hidden="true">qr_code_2</mat-icon>{{ t('setup.qrFindAll') }}
+      </button>
+      }
+      @if (!qrRunning() && qrRun()?.failed) {
+      <span class="bis-error" data-testid="qr-run-failed">{{ t('setup.qrRunFailed', { count: qrRun()!.failed }) }}</span>
+      }
+      @if (qrError(); as e) {
+      <span class="bis-error">{{ e === 'generic' ? t('setup.qrFindFailed') : e }}</span>
+      }
+    </div>
     }
     @if (!s.isDemo && !s.noAnswerKey && (keylessCount() > 0 || bulk() || matchError())) {
     <div class="bis-aimatch" role="status">
@@ -176,7 +195,14 @@
                   }
                 </label>
                 }
-                @if (row.aiLabel !== undefined) {
+                @if (row.source === 'Qr') {
+                <span class="bis-chip bis-key__ai" data-testid="qr-key-chip" [attr.title]="t('setup.qrFoundTitle')">{{ t('setup.qrFound') }}</span>
+                @if (qrCountDiffers(row)) {
+                <span class="bis-error" data-testid="qr-count-differs">
+                  {{ t('setup.qrCountDiffers', { count: row.key!.length, expected: row.expected }) }}
+                </span>
+                }
+                } @else if (row.aiLabel !== undefined || row.source === 'Ai') {
                 <span class="bis-chip bis-key__ai" data-testid="ai-key-chip"
                   [attr.title]="row.aiLabel ? t('setup.aiFoundRowTitle', { label: row.aiLabel }) : t('setup.aiFoundPageTitle')">
                   {{ row.aiLabel ? t('setup.aiFoundRow', { label: row.aiLabel }) : t('setup.aiFoundPage') }}
@@ -190,6 +216,16 @@
               } @else {
               <div class="bis-key-missing">
                 <span class="bis-muted bis-key-missing__text">{{ t(notFound().has(row.order) ? 'setup.aiNotFound' : 'setup.noKeyForTest') }}</span>
+                @if (row.qrLink) {
+                <a mat-icon-button [href]="row.qrLink" target="_blank" rel="noopener noreferrer" data-testid="qr-open"
+                  [attr.aria-label]="t('setup.qrOpen')" [attr.title]="t('setup.qrOpen')"><mat-icon>qr_code_2</mat-icon></a>
+                }
+                @if (!s.isDemo && s.qrKeysAvailable && row.qrReadable) {
+                <button mat-stroked-button type="button" data-testid="qr-find-key" [disabled]="qrRunning()"
+                  [attr.aria-label]="t('setup.qrFindOf', { unit: row.unit, no: row.testNo })" (click)="startQrKeys(row.order)">
+                  <mat-icon aria-hidden="true">qr_code_2</mat-icon>{{ t(qrRunning() ? 'setup.qrFinding' : 'setup.qrFind') }}
+                </button>
+                }
                 @if (!s.isDemo && !s.noAnswerKey && !notFound().has(row.order)) {
                 <button mat-stroked-button type="button" data-testid="ai-find-key" [disabled]="finding().has(row.order)"
                   [attr.aria-label]="t('setup.aiFindOf', { unit: row.unit, no: row.testNo })" (click)="findKey(row.order)">

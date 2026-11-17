@@ -830,11 +830,47 @@ public class ProgramServiceTests : IDisposable
 
         await using var read = _db.NewContext();
         var subjects = await NewService(read).GetProgramSubjectsAsync(StudentUserId);
-        subjects.Select(s => s.Name).ShouldBe(new[] { "Matematik", "Türkçe" });
+        subjects.Select(s => s.Name).ShouldBe(new[] { "Türkçe", "Matematik" });
 
         var dto = await NewService(read).CreateUserProgramAsync(User, FourWeekRequest(), StudentUserId);
         dto.Schedules.ShouldNotBeEmpty();
         dto.Schedules.ShouldAllBe(s => s.SubjectId == coreMath || s.SubjectId == coreTurkish);
+    }
+
+    [Fact]
+    public async Task Priority_subjects_come_first_and_start_the_calendar()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            var g5 = new Grade { Name = "5. Sınıf" };
+            var subjects = new[]
+            {
+                new Subject { Name = "Din Kültürü ve Ahlak Bilgisi", Code = "din-kulturu-ve-ahlak-bilgisi" },
+                new Subject { Name = "Fen Bilimleri", Code = "fen-bilimleri" },
+                new Subject { Name = "İngilizce", Code = "ingilizce" },
+                new Subject { Name = "Matematik", Code = "matematik" },
+                new Subject { Name = "Sosyal Bilgiler", Code = "sosyal-bilgiler" },
+                new Subject { Name = "Türkçe", Code = "turkce" },
+            };
+            ctx.Add(g5);
+            ctx.Subjects.AddRange(subjects);
+            await ctx.SaveChangesAsync();
+            foreach (var sub in subjects)
+                ctx.GradeSubjects.Add(new GradeSubject { GradeId = g5.Id, SubjectId = sub.Id });
+            ctx.Students.Add(new Student { UserId = StudentUserId, StudentNumber = "S501", GradeId = g5.Id });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var read = _db.NewContext();
+        var list = await NewService(read).GetProgramSubjectsAsync(StudentUserId);
+        list.Select(s => s.Name).ShouldBe(new[]
+        {
+            "Türkçe", "Matematik", "Fen Bilimleri", "Sosyal Bilgiler", "Din Kültürü ve Ahlak Bilgisi", "İngilizce",
+        });
+
+        var dto = await NewService(read).CreateUserProgramAsync(User, FourWeekRequest(), StudentUserId);
+        var firstDays = dto.Schedules.OrderBy(s => s.ScheduleDate).Take(4).Select(s => s.SubjectName).ToList();
+        firstDays.ShouldBe(new[] { "Türkçe", "Matematik", "Fen Bilimleri", "Sosyal Bilgiler" }, ignoreOrder: true);
     }
 
     [Fact]

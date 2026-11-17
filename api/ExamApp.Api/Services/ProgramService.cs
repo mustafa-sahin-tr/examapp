@@ -515,10 +515,6 @@ namespace ExamApp.Api.Services
         }
 
         /// <summary>
-        /// Öğrencinin sınıfının dersleri (GradeSubjects). Öğrenci ya da sınıfı bilinmiyorsa (veya sınıfa ders
-        /// bağlanmamışsa) bütün dersler — eski "ilk 4 ders" davranışı yerine hiçbir dersi sessizce düşürmez.
-        /// </summary>
-        /// <summary>
         /// Issue #1213: çalışma programına giren ana dersler (Subjects.Code): sınav dersleri (<see cref="StudentPlanPricing.SingleSubjectCodes"/>)
         /// ile din kültürü, hayat bilgisi ve felsefe. İlk kurulumun sınıf–ders bağlarıyla aynı küme.
         /// </summary>
@@ -528,6 +524,21 @@ namespace ExamApp.Api.Services
             "din-kulturu-ve-ahlak-bilgisi", "hayat-bilgisi", "felsefe",
         ];
 
+        /// <summary>
+        /// Programda her zaman önce gelen dersler, bu sırayla: Türkçe, Matematik, Fen, Sosyal, Tarih (lisede Türk Dili ve
+        /// Edebiyatı Türkçe'nin, 8. sınıfta İnkılap Tarihi Tarih'in yerinde). Takvim eşitlikte listede öndeki dersi seçer.
+        /// </summary>
+        internal static readonly string[] PrioritySubjectCodes =
+        [
+            "turkce", "turk-dili-ve-edebiyati", "matematik", "fen-bilimleri", "sosyal-bilgiler",
+            "tarih", "t-c-inkilap-tarihi-ve-ataturkculuk",
+        ];
+
+        /// <summary>
+        /// Öğrencinin sınıfının dersleri (GradeSubjects). Öğrenci ya da sınıfı bilinmiyorsa (veya sınıfa ders
+        /// bağlanmamışsa) bütün dersler — eski "ilk 4 ders" davranışı yerine hiçbir dersi sessizce düşürmez.
+        /// Öncelikli dersler (<see cref="PrioritySubjectCodes"/>) başta, kalanlar ada göre.
+        /// </summary>
         private async Task<List<Subject>> LoadProgramSubjectsAsync(int? studentUserId)
         {
             int? gradeId = studentUserId is int uid
@@ -548,11 +559,15 @@ namespace ExamApp.Api.Services
                     .OrderBy(s => s.Name)
                     .ToListAsync();
                 if (gradeSubjects.Count > 0)
-                    return gradeSubjects;
+                    return PriorityFirst(gradeSubjects);
             }
 
-            return await _context.Subjects.OrderBy(s => s.Name).ToListAsync();
+            return PriorityFirst(await _context.Subjects.OrderBy(s => s.Name).ToListAsync());
         }
+
+        private static List<Subject> PriorityFirst(List<Subject> subjectsByName) => subjectsByName
+            .OrderBy(s => s.Code is { } code && Array.IndexOf(PrioritySubjectCodes, code) is var i and >= 0 ? i : PrioritySubjectCodes.Length)
+            .ToList();
 
         /// <summary>
         /// Sihirbazın 7. adımı ders id'si değil seçenek değeri ("3" = Matematik) taşır; seçenek etiketi ders adıyla eşlenir.

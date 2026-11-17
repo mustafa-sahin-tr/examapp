@@ -78,7 +78,7 @@ export function pickDailySubjects(planned: readonly number[], weights: readonly 
 
 /**
  * Başlangıçtan itibaren `days` günün önizlemesi; sunucunun takvim üretimiyle aynı dağılım. `subjects` sunucunun sıralamasıyla
- * (ders adı) gelir.
+ * gelir (öncelikli dersler başta, kalanlar ada göre); sıra takvimde eşitliği bozar.
  */
 export function buildPreview(
   choices: WizardChoices,

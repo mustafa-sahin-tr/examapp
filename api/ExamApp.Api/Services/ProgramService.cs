@@ -526,13 +526,13 @@ namespace ExamApp.Api.Services
 
         /// <summary>
         /// Programda her zaman önce gelen dersler, bu sırayla: Türkçe, Matematik, Fen, Sosyal, Tarih (lisede Türk Dili ve
-        /// Edebiyatı Türkçe'nin, Fizik / Kimya / Biyoloji Fen'in, 8. sınıfta İnkılap Tarihi Tarih'in yerinde). Takvim eşitlikte
-        /// listede öndeki dersi seçer.
+        /// Edebiyatı Türkçe'nin, Fizik / Kimya / Biyoloji Fen'in, Coğrafya Sosyal'in, 8. sınıfta İnkılap Tarihi Tarih'in yerinde).
+        /// Takvim eşitlikte listede öndeki dersi seçer.
         /// </summary>
         internal static readonly string[] PrioritySubjectCodes =
         [
             "turkce", "turk-dili-ve-edebiyati", "matematik", "fen-bilimleri", "fizik", "kimya", "biyoloji",
-            "sosyal-bilgiler", "tarih", "t-c-inkilap-tarihi-ve-ataturkculuk",
+            "sosyal-bilgiler", "cografya", "tarih", "t-c-inkilap-tarihi-ve-ataturkculuk",
         ];
 
         /// <summary>

@@ -173,19 +173,24 @@ badge_psql_exec -At -c "
       || '  StudentDailyActivities=' || (SELECT count(*) FROM \"StudentDailyActivities\")
       || '  StudentActivityCompletions=' || (SELECT count(*) FROM \"StudentActivityCompletions\")
       || '  BadgeEarned bildirimi=' || (SELECT count(*) FROM \"Notifications\" WHERE \"Type\" = 'BadgeEarned');"
-echo "MinIO nesneleri:"
-for p in "${MINIO_PREFIXES[@]}"; do
-  n="$(mc_exec ls --recursive "local/${MINIO_BUCKET}/${p}" 2>/dev/null | wc -l | tr -d ' ')"
-  echo "  ${MINIO_BUCKET}/${p} → $n nesne"
-done
+# Nesne sayımı yalnız onay sorusu için: büyük / yavaş diskteki MinIO'da (demo harici disk) dakikalar sürer, --yes'te atlanır.
+if [[ "$ASSUME_YES" -ne 1 ]]; then
+  echo "MinIO nesneleri:"
+  for p in "${MINIO_PREFIXES[@]}"; do
+    n="$(mc_exec ls --recursive "local/${MINIO_BUCKET}/${p}" 2>/dev/null | wc -l | tr -d ' ')"
+    echo "  ${MINIO_BUCKET}/${p} → $n nesne"
+  done
+fi
 if [[ "$WIPE_TESTS" -eq 1 ]]; then
   psql_exec -At -c "
     SELECT '  [tests] Worksheets=' || (SELECT count(*) FROM \"Worksheets\")
         || '  WorksheetAssignments=' || (SELECT count(*) FROM \"WorksheetAssignments\")
         || '  MockExams=' || (SELECT count(*) FROM \"MockExams\");"
-  for b in "${TEST_BUCKETS[@]}"; do
-    echo "  [tests] $b → $(mc_exec ls --recursive "local/${b}" 2>/dev/null | wc -l | tr -d ' ') nesne"
-  done
+  if [[ "$ASSUME_YES" -ne 1 ]]; then
+    for b in "${TEST_BUCKETS[@]}"; do
+      echo "  [tests] $b → $(mc_exec ls --recursive "local/${b}" 2>/dev/null | wc -l | tr -d ' ') nesne"
+    done
+  fi
 fi
 if [[ "$WIPE_SOCIAL" -eq 1 ]]; then
   psql_exec -At -c "

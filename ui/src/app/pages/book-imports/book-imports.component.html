@@ -215,6 +215,11 @@
           [attr.aria-pressed]="filter() === 'awaiting'" (click)="setFilter('awaiting')">{{ t('list.awaiting', { count: awaitingCount() }) }}</button>
         <button type="button" class="bi-chip" [class.is-active]="filter() === 'failed'"
           [attr.aria-pressed]="filter() === 'failed'" (click)="setFilter('failed')">{{ t('list.failed', { count: failedCount() }) }}</button>
+        @if (deferredCount() > 0) {
+        <a class="bi-chip bi-chip--link" routerLink="/book-imports/later" data-testid="later-link">
+          <mat-icon aria-hidden="true">schedule</mat-icon>{{ t('list.later', { count: deferredCount() }) }}
+        </a>
+        }
       </div>
     </div>
 

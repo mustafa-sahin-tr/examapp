@@ -519,6 +519,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("CreateUserId")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("DeferredAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime?>("DeleteTime")
                         .HasColumnType("timestamp with time zone");
 

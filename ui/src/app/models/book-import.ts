@@ -43,6 +43,8 @@ export interface BookImportJobCounts {
   total: number;
   awaitingConfirmation: number;
   failed: number;
+  /** #1231: sonraya bırakılan, incelemesi süren işler (`total`'a dahil değil). */
+  deferred?: number;
 }
 
 export interface BookImportJob {
@@ -70,6 +72,8 @@ export interface BookImportJob {
   ownerId: number | null;
   /** #1024: bütçe beklenirken yeniden deneme zamanı. */
   resumeAt: string | null;
+  /** #1231: kalan testler sonraya bırakıldı; iş incelemede kaldıkça listede değil "Sonra bakılacaklar"da. */
+  deferredAt?: string | null;
   /** #1025: kuyrukta / çalışıyor görünüyor ama uzun süredir ilerlemedi; "Yeniden dene" gösterilir. */
   stalled: boolean;
   /** #1024: yalnız Admin'e dolu — toplam Claude maliyeti ve tavan (null: tavan yok). */
@@ -103,6 +107,21 @@ export interface BookImportJobTest {
   costUsd: number | null;
   error: string | null;
 }
+
+/** #1231: "Sonra bakılacaklar" — sonraya bırakılan iş ve onaylanmamış testleri. */
+export interface BookImportDeferredJob {
+  id: string;
+  bookName: string;
+  pageCount: number | null;
+  deferredAt: string;
+  ownerId: number | null;
+  tests: BookImportDeferredTest[];
+}
+
+export type BookImportDeferredTest = Pick<
+  BookImportJobTest,
+  'id' | 'order' | 'unit' | 'testNo' | 'title' | 'status' | 'fileFrom' | 'fileTo' | 'flags' | 'reviewFlags' | 'error'
+>;
 
 /** #1023: incelemedeki testin sorusu; `answerIndex` A = 0, cevapsızsa null. */
 export interface BookImportReviewQuestion {

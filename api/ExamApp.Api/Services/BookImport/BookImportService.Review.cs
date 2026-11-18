@@ -248,6 +248,56 @@ public sealed partial class BookImportService
         return BookImportReviewResult.Ok;
     }
 
+    public async Task<BookImportReviewResult> SetDeferredAsync(BookImportOwner owner, Guid id, bool deferred, CancellationToken ct)
+    {
+        var job = await Visible(owner).AsTracking().FirstOrDefaultAsync(j => j.Id == id, ct);
+        if (job is null)
+            return BookImportReviewResult.NotFound;
+        if (job.Status != BookImportJobStatus.ReadyForReview)
+            return BookImportReviewResult.InvalidState;
+
+        job.DeferredAt = deferred ? job.DeferredAt ?? DateTime.UtcNow : null;
+        await _db.SaveChangesAsync(ct);
+        return BookImportReviewResult.Ok;
+    }
+
+    public async Task<List<BookImportDeferredJobDto>> ListDeferredAsync(BookImportOwner owner, CancellationToken ct)
+    {
+        var jobs = await Visible(owner).AsNoTracking()
+            .Where(j => j.DeferredAt != null && j.Status == BookImportJobStatus.ReadyForReview)
+            .OrderBy(j => j.DeferredAt)
+            .Select(j => new BookImportDeferredJobDto
+            {
+                Id = j.Id, BookName = j.BookName, PageCount = j.PageCount, DeferredAt = j.DeferredAt!.Value, OwnerId = j.CreateUserId,
+            })
+            .ToListAsync(ct);
+        var ids = jobs.Select(j => j.Id).ToList();
+        var tests = await _db.BookImportJobTests.AsNoTracking()
+            .Where(t => ids.Contains(t.JobId) && t.Status != BookImportTestStatus.Approved && t.Status != BookImportTestStatus.Removed)
+            .OrderBy(t => t.Order)
+            .ToListAsync(ct);
+        var byJob = tests.ToLookup(t => t.JobId);
+        foreach (var job in jobs)
+        {
+            job.Tests = byJob[job.Id].Select(t => new BookImportDeferredTestDto
+            {
+                Id = t.Id,
+                Order = t.Order,
+                Unit = t.Unit,
+                TestNo = t.TestNo,
+                Title = t.Title,
+                Status = t.Status.ToString(),
+                FileFrom = t.FileFrom,
+                FileTo = t.FileTo,
+                Flags = ParseFlags(t.FlagsJson),
+                ReviewFlags = BookImportReviewFlag.Parse(t.ReviewFlagsJson),
+                Error = t.Error,
+            }).ToList();
+        }
+
+        return jobs;
+    }
+
     public async Task<RetryBookImportResult> ReimportTestAsync(BookImportOwner owner, Guid id, int testId, CancellationToken ct)
     {
         var job = await Visible(owner).AsTracking().FirstOrDefaultAsync(j => j.Id == id, ct);

@@ -181,6 +181,7 @@ export class BookImportsComponent implements OnInit {
   // Sayılar ve filtreler sunucudan: liste yalnız en yeni sayfayı taşır, eski bekleyen / başarısız işler de görünsün.
   readonly awaitingCount = computed(() => this.counts()?.awaitingConfirmation ?? 0);
   readonly failedCount = computed(() => this.counts()?.failed ?? 0);
+  readonly deferredCount = computed(() => this.counts()?.deferred ?? 0);
   readonly visibleJobs = computed(() => this.jobs());
   /** Son yükleme sayfayı doldurduysa daha eski iş olabilir. */
   readonly hasMore = computed(() => this.jobs().length >= this.take());

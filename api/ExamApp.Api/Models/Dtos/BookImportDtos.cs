@@ -55,6 +55,8 @@ public class BookImportJobCountsDto
     public int Total { get; set; }
     public int AwaitingConfirmation { get; set; }
     public int Failed { get; set; }
+    /// <summary>Issue #1231: sonraya bırakılan, incelemesi süren işler (<see cref="Total"/>'a dahil değil).</summary>
+    public int Deferred { get; set; }
 }
 
 public class BookImportJobDto
@@ -91,6 +93,9 @@ public class BookImportJobDto
 
     /// <summary>Issue #1024: bütçe beklenirken yeniden deneme zamanı.</summary>
     public DateTime? ResumeAt { get; set; }
+
+    /// <summary>Issue #1231: kalan testler sonraya bırakıldı.</summary>
+    public DateTime? DeferredAt { get; set; }
 
     /// <summary>
     /// Issue #1025: iş kuyrukta / çalışıyor görünüyor ama <c>BookImport:StallMinutes</c>'tan uzun süredir ilerlemedi
@@ -161,6 +166,32 @@ public class BookImportJobTestDto
 }
 
 /// <summary>Issue #1023: incelemedeki testin sorusu (cevapsızlar için satır içi A–D seçici).</summary>
+/// <summary>Issue #1231: "Sonra bakılacaklar" — sonraya bırakılan iş ve onaylanmamış testleri.</summary>
+public class BookImportDeferredJobDto
+{
+    public Guid Id { get; set; }
+    public string BookName { get; set; } = string.Empty;
+    public int? PageCount { get; set; }
+    public DateTime DeferredAt { get; set; }
+    public int? OwnerId { get; set; }
+    public List<BookImportDeferredTestDto> Tests { get; set; } = new();
+}
+
+public class BookImportDeferredTestDto
+{
+    public int Id { get; set; }
+    public int Order { get; set; }
+    public int Unit { get; set; }
+    public int TestNo { get; set; }
+    public string? Title { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public int? FileFrom { get; set; }
+    public int? FileTo { get; set; }
+    public List<string> Flags { get; set; } = new();
+    public IReadOnlyList<Services.BookImport.BookImportReviewFlag> ReviewFlags { get; set; } = [];
+    public string? Error { get; set; }
+}
+
 public class BookImportReviewQuestionDto
 {
     public int Id { get; set; }

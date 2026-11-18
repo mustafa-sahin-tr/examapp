@@ -180,6 +180,17 @@ public class BookImportController : BaseController
         return Ok(await _service.CountsAsync(owner, ct));
     }
 
+    /// <summary>Issue #1231: "Sonra bakılacaklar" — sonraya bırakılan işler ve onaylanmamış testleri.</summary>
+    [HttpGet("deferred")]
+    [ProducesResponseType(typeof(List<BookImportDeferredJobDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Deferred(CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        return Ok(await _service.ListDeferredAsync(owner, ct));
+    }
+
     /// <summary>Issue #1032: örnek kitapla demonun durumu.</summary>
     [HttpGet("demo")]
     public async Task<IActionResult> GetDemo(CancellationToken ct)
@@ -534,6 +545,22 @@ public class BookImportController : BaseController
         if (owner is null)
             return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
         return ReviewResult(await _service.RemoveTestAsync(owner, id, testId, ct));
+    }
+
+    /// <summary>Issue #1231: kalan testleri sonraya bırak; iş aktarım listesinden "Sonra bakılacaklar"a geçer.</summary>
+    [HttpPost("{id:guid}/defer")]
+    public async Task<IActionResult> Defer(Guid id, CancellationToken ct) => await SetDeferred(id, true, ct);
+
+    /// <summary>Issue #1231: sonraya bırakılan işi aktarım listesine geri al.</summary>
+    [HttpDelete("{id:guid}/defer")]
+    public async Task<IActionResult> Undefer(Guid id, CancellationToken ct) => await SetDeferred(id, false, ct);
+
+    private async Task<IActionResult> SetDeferred(Guid id, bool deferred, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        return ReviewResult(await _service.SetDeferredAsync(owner, id, deferred, ct));
     }
 
     /// <summary>Issue #1173: düzeltilecek sayfanın taslakları (numara, kutu, doğru şık); tuval bunlarla işaretlenir.</summary>

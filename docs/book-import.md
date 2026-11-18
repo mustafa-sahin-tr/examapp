@@ -230,6 +230,12 @@ aktarım aracındaki Python portu referanstır (#1022).
   oklar / ←→ bütün sayfaları (1…`pageCount`) gezer, alttaki numara alanı sayfaya atlar (aralık dışı yok sayılır). Başlıkta sayfayı
   kapsayan testler (kurulumda satırlardaki güncel aralıklarla), incelemede bütün testlerin o sayfadaki uyarıları ve ilk testine
   "İşaretlemede düzelt". Yalnız arayüz; sayfa görseli yine `GET {id}/pages/{filePage}`. Hızlı ekleme / karışık görsellerde yok.
+- **Sonraya bırak (#1231):** inceleme başındaki "Kalanları sonraya bırak (n)" (toplu onay sonucunda da) `POST {id}/defer` ile
+  `BookImportJob.DeferredAt`'i yazar; durum `ReadyForReview` kalır, inceleme uçları aynen çalışır, taslaklar gizli kalır.
+  İncelemesi süren bırakılmış iş `GET book-imports` listesinden ve `counts`'tan çıkar (`counts.deferred` ayrı), "Sonra
+  bakılacaklar" sayfası (`/book-imports/later`, `GET deferred`) kitapları ve onaylanmamış testlerini gösterir; teste tıklayınca
+  `/book-imports/{id}?test=` incelemeyi o test görünür, uyarıları açık ve satırına kaydırılmış açar. `DELETE {id}/defer`
+  ("Listeye geri al") geri alır. Son test onaylanınca / silinince iş `Completed` olur ve listeye tamamlanmış olarak döner.
 - **İşaretlemede düzelt** (karar: seçenek 1 — sayfanın taslaklarını değiştir): satırdaki menü testin sayfalarını listeler
   (inceleme işaretinde geçenler bayraklı), önizlemede her sorunun yanında da kısayol var. `/labeling?bookImport=&test=&page=`
   klasör yerine işin sayfa görselini açar (kitap kilitli, sayaçlar gizli); tespit her zamanki kaynaklardan (aktarımın Claude

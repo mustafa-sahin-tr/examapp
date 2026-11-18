@@ -12,6 +12,11 @@
     <mat-slide-toggle [checked]="onlyAttention()" (change)="onlyAttention.set($event.checked)">
       {{ t('review.onlyAttention') }}
     </mat-slide-toggle>
+    @if (canDefer()) {
+    <button mat-stroked-button type="button" data-testid="defer" [disabled]="busy() !== null" (click)="deferChange.emit(true)">
+      <mat-icon aria-hidden="true">schedule</mat-icon>{{ t('review.defer', { count: open().length }) }}
+    </button>
+    }
     @if (actions() && open().length > 0) {
     <button mat-flat-button type="button" class="bir-head__bulk" [disabled]="approvable() === 0 || busy() !== null || locked()"
       (click)="openApproveAll()">
@@ -20,6 +25,16 @@
     </button>
     }
   </div>
+
+  @if (deferrable() && deferred() && open().length > 0) {
+  <div class="bir-note" role="status" data-testid="deferred-note">
+    <mat-icon aria-hidden="true">schedule</mat-icon>
+    <span>{{ t('review.deferredNote') }} <a routerLink="/book-imports/later">{{ t('review.laterLink') }}</a></span>
+    @if (editable()) {
+    <button mat-button type="button" data-testid="undefer" (click)="deferChange.emit(false)">{{ t('review.undefer') }}</button>
+    }
+  </div>
+  }
 
   @if (confirmingAll()) {
   <div class="bir-confirm" role="alertdialog" aria-labelledby="bir-confirm-text">
@@ -69,6 +84,11 @@
       }
       }
     </span>
+    @if (canDefer() && r.skipped.length > 0) {
+    <button mat-stroked-button type="button" data-testid="defer-rest" (click)="deferChange.emit(true)">
+      <mat-icon aria-hidden="true">schedule</mat-icon>{{ t('review.defer', { count: open().length }) }}
+    </button>
+    }
   </div>
   }
 
@@ -77,7 +97,7 @@
   } @else {
   <ul class="bir-list">
     @for (test of visible(); track test.id) {
-    <li class="bir-row">
+    <li class="bir-row" [attr.data-test-row]="test.id">
       <div class="bir-row__main">
         @if (thumb(test); as url) {
         <img class="bir-row__thumb" [src]="url" [alt]="testName(test)" />

@@ -4,6 +4,11 @@
       <h2>{{ t(label('title')) }}</h2>
       <p>{{ t(label('summary'), { open: open().length, approved: approvedCount() }) }}</p>
     </div>
+    @if (canBrowseBook()) {
+    <button mat-stroked-button type="button" data-testid="browse-book" (click)="browseBook()">
+      <mat-icon aria-hidden="true">menu_book</mat-icon>{{ t('review.browseBook') }}
+    </button>
+    }
     <mat-slide-toggle [checked]="onlyAttention()" (change)="onlyAttention.set($event.checked)">
       {{ t('review.onlyAttention') }}
     </mat-slide-toggle>
@@ -171,52 +176,6 @@
         }
         }
       </ul>
-      @if (pageView(); as v) {
-      <div class="bir-zoom" role="dialog" aria-modal="true" [attr.aria-label]="t('review.flagPage', { page: v.page })"
-        data-testid="page-view" (click)="closePage()" (keydown)="pageKey($event)">
-        <div class="bir-zoom__bar" (click)="$event.stopPropagation()">
-          <span class="bir-zoom__title">{{ testName(test) }} · {{ t('review.flagPage', { page: v.page }) }}</span>
-          @if (pageViewFlags(); as p) {
-          <span class="bir-zoom__flags">
-            @for (item of p.items; track item.number) {
-            <span class="bir-flags__item">
-              @if (item.number != null) { <b>{{ item.number }}:</b>{{ ' ' }} }
-              @for (code of item.codes; track code; let last = $last) {{{ t('reviewFlagsShort.' + code) }}{{ last ? '' : ', ' }}}
-            </span>
-            }
-          </span>
-          }
-          @if (editable() && canFix()) {
-          <a mat-stroked-button routerLink="/labeling" [queryParams]="fixParams(test.id, v.page)">
-            <mat-icon aria-hidden="true">edit_square</mat-icon>{{ t('review.fix') }}
-          </a>
-          }
-          <button #pageClose mat-icon-button type="button" [attr.aria-label]="t('review.zoomClose')" (click)="closePage()">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-        <div class="bir-zoom__body" (click)="$event.stopPropagation()">
-          @if (pageViewLoading()) {
-          <div class="bir-note" role="status"><mat-spinner diameter="18" aria-hidden="true"></mat-spinner>{{ t('review.loading') }}</div>
-          } @else if (pageViewUrl(); as url) {
-          <img class="bir-zoom__image" [src]="url" [alt]="t('review.pageAlt', { page: v.page })" />
-          } @else {
-          <p class="bir-note bir-note--danger" role="alert">{{ t('review.pageFailed') }}</p>
-          }
-        </div>
-        @if (pageViewPages().length > 1) {
-        <div class="bir-zoom__nav" (click)="$event.stopPropagation()">
-          <button mat-icon-button type="button" [attr.aria-label]="t('review.pagePrev')" [disabled]="pageViewPages()[0] === v.page" (click)="pageBy(-1)">
-            <mat-icon>chevron_left</mat-icon>
-          </button>
-          <span aria-live="polite">{{ t('review.zoomPosition', { index: pageViewPages().indexOf(v.page) + 1, total: pageViewPages().length }) }}</span>
-          <button mat-icon-button type="button" [attr.aria-label]="t('review.pageNext')" [disabled]="pageViewPages()[pageViewPages().length - 1] === v.page" (click)="pageBy(1)">
-            <mat-icon>chevron_right</mat-icon>
-          </button>
-        </div>
-        }
-      </div>
-      }
       }
 
       @if (previewId() === test.id) {
@@ -313,4 +272,64 @@
   </ul>
   }
   <p class="bir-footer">{{ t(label('footer')) }}</p>
+
+  @if (pageView(); as v) {
+  <div class="bir-zoom" role="dialog" aria-modal="true" [attr.aria-label]="t('review.flagPage', { page: v.page })"
+    data-testid="page-view" (click)="closePage()" (keydown)="pageKey($event)">
+    <div class="bir-zoom__bar" (click)="$event.stopPropagation()">
+      <span class="bir-zoom__title">
+        @if (bookView()) {
+        {{ t('review.flagPage', { page: v.page }) }} ·
+        @for (pt of pageViewTests(); track pt.id; let last = $last) {{{ testName(pt) }}{{ last ? '' : ', ' }}} @empty {{{ t('review.noTestOnPage') }}}
+        } @else if (testById(v.testId!); as vt) {
+        {{ testName(vt) }} · {{ t('review.flagPage', { page: v.page }) }}
+        }
+      </span>
+      @if (pageViewFlags(); as p) {
+      <span class="bir-zoom__flags">
+        @for (item of p.items; track item.number) {
+        <span class="bir-flags__item">
+          @if (item.number != null) { <b>{{ item.number }}:</b>{{ ' ' }} }
+          @for (code of item.codes; track code; let last = $last) {{{ t('reviewFlagsShort.' + code) }}{{ last ? '' : ', ' }}}
+        </span>
+        }
+      </span>
+      }
+      @if (editable() && canFix() && (v.testId ?? pageViewTests()[0]?.id); as fixTest) {
+      <a mat-stroked-button routerLink="/labeling" [queryParams]="fixParams(fixTest, v.page)">
+        <mat-icon aria-hidden="true">edit_square</mat-icon>{{ t('review.fix') }}
+      </a>
+      }
+      <button #pageClose mat-icon-button type="button" [attr.aria-label]="t('review.zoomClose')" (click)="closePage()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+    <div class="bir-zoom__body" (click)="$event.stopPropagation()">
+      @if (pageViewLoading()) {
+      <div class="bir-note" role="status"><mat-spinner diameter="18" aria-hidden="true"></mat-spinner>{{ t('review.loading') }}</div>
+      } @else if (pageViewUrl(); as url) {
+      <img class="bir-zoom__image" [src]="url" [alt]="t('review.pageAlt', { page: v.page })" />
+      } @else {
+      <p class="bir-note bir-note--danger" role="alert">{{ t('review.pageFailed') }}</p>
+      }
+    </div>
+    @if (pageViewPages().length > 1) {
+    <div class="bir-zoom__nav" (click)="$event.stopPropagation()">
+      <button mat-icon-button type="button" [attr.aria-label]="t(bookView() ? 'review.bookPrev' : 'review.pagePrev')" [disabled]="pageViewPages()[0] === v.page" (click)="pageBy(-1)">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      @if (bookView()) {
+      <input class="bir-zoom__jump" type="number" inputmode="numeric" min="1" [max]="pageCount()" [value]="v.page"
+        [attr.aria-label]="t('review.goToPage')" data-testid="page-jump" (change)="jumpToPage($any($event.target).value)" />
+      <span aria-live="polite">/ {{ pageCount() }}</span>
+      } @else {
+      <span aria-live="polite">{{ t('review.zoomPosition', { index: pageViewPages().indexOf(v.page) + 1, total: pageViewPages().length }) }}</span>
+      }
+      <button mat-icon-button type="button" [attr.aria-label]="t(bookView() ? 'review.bookNext' : 'review.pageNext')" [disabled]="pageViewPages()[pageViewPages().length - 1] === v.page" (click)="pageBy(1)">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+    </div>
+    }
+  </div>
+  }
 </section>

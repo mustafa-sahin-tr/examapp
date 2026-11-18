@@ -226,6 +226,10 @@ aktarım aracındaki Python portu referanstır (#1022).
 - **Sayfayı gör (#1190):** Uyarılar açılınca sayfa başlıklı her satırda "Sayfayı gör" işin sayfa görselini
   (`GET {id}/pages/{filePage}`) tam ekran açar: o sayfanın uyarıları üstte, oklarla uyarılı sayfalar arasında gezilir, oradan
   "İşaretlemede düzelt". Hızlı eklemede (sayfa görseli yok, `BookImportReviewApi.pageImage` tanımsız) düğme görünmez.
+- **Kitabı gez (#1229):** kurulum ve inceleme ekranının başındaki düğme aynı tam ekran görünümü kitabın 1. sayfasından açar;
+  oklar / ←→ bütün sayfaları (1…`pageCount`) gezer, alttaki numara alanı sayfaya atlar (aralık dışı yok sayılır). Başlıkta sayfayı
+  kapsayan testler (kurulumda satırlardaki güncel aralıklarla), incelemede bütün testlerin o sayfadaki uyarıları ve ilk testine
+  "İşaretlemede düzelt". Yalnız arayüz; sayfa görseli yine `GET {id}/pages/{filePage}`. Hızlı ekleme / karışık görsellerde yok.
 - **İşaretlemede düzelt** (karar: seçenek 1 — sayfanın taslaklarını değiştir): satırdaki menü testin sayfalarını listeler
   (inceleme işaretinde geçenler bayraklı), önizlemede her sorunun yanında da kısayol var. `/labeling?bookImport=&test=&page=`
   klasör yerine işin sayfa görselini açar (kitap kilitli, sayaçlar gizli); tespit her zamanki kaynaklardan (aktarımın Claude

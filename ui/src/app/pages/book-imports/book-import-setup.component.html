@@ -8,6 +8,11 @@
   <header class="bis-head">
     <h2>{{ t('setup.title') }}</h2>
     <p>{{ t(s.isDemo ? 'demo.setupIntro' : 'setup.intro') }}</p>
+    @if ((s.pageCount ?? 0) > 0) {
+    <button mat-stroked-button type="button" class="bis-head__browse" data-testid="browse-book" (click)="browseBook()">
+      <mat-icon aria-hidden="true">menu_book</mat-icon>{{ t('setup.browseBook') }}
+    </button>
+    }
   </header>
 
   @if (s.isDemo) {
@@ -274,10 +279,15 @@
 
   @if (viewerOpen()) {
   <div class="bis-view" role="dialog" aria-modal="true" data-testid="test-pages"
-    [attr.aria-label]="viewedRow() ? t('setup.viewTestPages', { unit: viewedRow()!.unit, no: viewedRow()!.testNo }) : t('setup.keyPages')"
+    [attr.aria-label]="viewingBook() ? t('setup.bookPages') : viewedRow() ? t('setup.viewTestPages', { unit: viewedRow()!.unit, no: viewedRow()!.testNo }) : t('setup.keyPages')"
     (click)="closeTestPages()" (keydown)="testPagesKey($event)">
     <div class="bis-view__bar" (click)="$event.stopPropagation()">
-      @if (viewedRow(); as v) {
+      @if (viewingBook()) {
+      <span class="bis-view__title">
+        {{ t('setup.page', { page: viewedPage() }) }} ·
+        @for (r of viewedPageRows(); track r.order; let last = $last) {{{ r.unit }}-{{ r.testNo < 10 ? '0' + r.testNo : r.testNo }}@if (r.title) { {{ r.title }}}{{ last ? '' : ', ' }}} @empty {{{ t('setup.noTestOnPage') }}}
+      </span>
+      } @else if (viewedRow(); as v) {
       <span class="bis-view__title">{{ v.unit }}-{{ v.testNo < 10 ? '0' + v.testNo : v.testNo }} · {{ v.title }}</span>
       @if (v.key; as key) {
       <span class="bis-view__key" [attr.aria-label]="t('setup.keyOf', { unit: v.unit, no: v.testNo })">
@@ -297,7 +307,7 @@
     </div>
     <div class="bis-view__body" (click)="$event.stopPropagation()">
       @if (viewedImage(); as src) {
-      <img [src]="src" [alt]="viewedRow() ? t('setup.testPageAlt', { page: viewedPage() }) : t('setup.keyImageAlt', { page: viewedPage() })" />
+      <img [src]="src" [alt]="viewedRow() || viewingBook() ? t('setup.testPageAlt', { page: viewedPage() }) : t('setup.keyImageAlt', { page: viewedPage() })" />
       } @else if (viewedFailed()) {
       <p class="bis-error" role="alert">{{ t('setup.pageFailed') }}</p>
       } @else {
@@ -308,7 +318,15 @@
       <button mat-stroked-button type="button" [disabled]="viewedPages()[0] === viewedPage()" (click)="testPageBy(-1)">
         <mat-icon aria-hidden="true">chevron_left</mat-icon>{{ t('setup.prevPage') }}
       </button>
+      @if (viewingBook()) {
+      <span class="bis-view__jump">
+        <input type="number" inputmode="numeric" min="1" [max]="viewedPages().length" [value]="viewedPage()"
+          [attr.aria-label]="t('setup.goToPage')" data-testid="page-jump" (change)="jumpToPage($any($event.target).value)" />
+        <span aria-live="polite">/ {{ viewedPages().length }}</span>
+      </span>
+      } @else {
       <span aria-live="polite">{{ t('setup.page', { page: viewedPage() }) }} · {{ viewedPages().indexOf(viewedPage()!) + 1 }} / {{ viewedPages().length }}</span>
+      }
       <button mat-stroked-button type="button" [disabled]="viewedPages()[viewedPages().length - 1] === viewedPage()" (click)="testPageBy(1)">
         {{ t('setup.nextPage') }}<mat-icon iconPositionEnd aria-hidden="true">chevron_right</mat-icon>
       </button>

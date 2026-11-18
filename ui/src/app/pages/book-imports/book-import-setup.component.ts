@@ -151,9 +151,12 @@ export class BookImportSetupComponent implements OnInit {
   readonly viewedTest = signal<number | null>(null);
   /** Cevap anahtarı da aynı görünümde büyür. */
   readonly viewingKey = signal(false);
-  readonly viewerOpen = computed(() => this.viewingKey() || this.viewedRow() != null);
+  /** #1229: "Kitabı gez" — aynı görünümde kitabın bütün sayfaları; başlıkta sayfanın testleri. */
+  readonly viewingBook = signal(false);
+  readonly viewerOpen = computed(() => this.viewingKey() || this.viewingBook() || this.viewedRow() != null);
   readonly viewedRow = computed(() => this.rows().find((r) => r.order === this.viewedTest()) ?? null);
   readonly viewedPages = computed(() => {
+    if (this.viewingBook()) return Array.from({ length: this.setup()?.pageCount ?? 0 }, (_, i) => i + 1);
     if (this.viewingKey()) return this.keyPages();
     const row = this.viewedRow();
     if (!row || row.fileFrom == null || row.fileTo == null || row.fileTo < row.fileFrom) return [];
@@ -161,6 +164,11 @@ export class BookImportSetupComponent implements OnInit {
     return Array.from({ length: Math.max(last - row.fileFrom + 1, 0) }, (_, i) => row.fileFrom! + i);
   });
   readonly viewedPage = signal<number | null>(null);
+  /** Gösterilen sayfayı kapsayan testler (satırlardaki güncel aralıklarla). */
+  readonly viewedPageRows = computed(() => {
+    const page = this.viewedPage();
+    return page == null ? [] : this.rows().filter((r) => r.fileFrom != null && r.fileTo != null && r.fileFrom <= page && page <= r.fileTo);
+  });
   readonly viewedImage = signal<string | null>(null);
   readonly viewedFailed = signal(false);
   private viewedObjectUrl: string | null = null;
@@ -253,8 +261,23 @@ export class BookImportSetupComponent implements OnInit {
     }
   }
 
+  /** #1229: kitabın bütün sayfaları, 1. sayfadan. */
+  browseBook(page = 1): void {
+    this.viewedTest.set(null);
+    this.viewingKey.set(false);
+    this.viewingBook.set(true);
+    this.showTestPage(page);
+  }
+
+  /** Kitap görünümünde sayfa numarasıyla atla; aralık dışı / geçersiz değer yok sayılır. */
+  jumpToPage(value: string): void {
+    const page = Number(value);
+    if (Number.isInteger(page) && this.viewedPages().includes(page) && page !== this.viewedPage()) this.showTestPage(page);
+  }
+
   /** #1192: testin sayfalarını tam ekranda aç (anahtardaki şüpheli hücreye karar vermek için). */
   showTestPages(row: EditableSetupTest): void {
+    this.viewingBook.set(false);
     this.viewingKey.set(false);
     this.viewedTest.set(row.order);
     const first = this.viewedPages()[0];
@@ -276,6 +299,7 @@ export class BookImportSetupComponent implements OnInit {
   /** Anahtar sayfasının küçük resmine tıklanınca o sayfa büyük açılır (alttan diğer anahtar sayfalarına geçilir). */
   showKeyLarge(filePage: number): void {
     this.viewedTest.set(null);
+    this.viewingBook.set(false);
     this.viewingKey.set(true);
     this.showTestPage(filePage);
   }
@@ -308,11 +332,14 @@ export class BookImportSetupComponent implements OnInit {
   closeTestPages(): void {
     this.viewedTest.set(null);
     this.viewingKey.set(false);
+    this.viewingBook.set(false);
     this.viewedPage.set(null);
     this.revokeViewed();
   }
 
   testPagesKey(event: KeyboardEvent): void {
+    // Sayfa numarası alanında oklar imleci gezdirir, sayfa değiştirmez.
+    if (event.target instanceof HTMLInputElement && event.key !== 'Escape') return;
     if (event.key === 'Escape') this.closeTestPages();
     else if (event.key === 'ArrowLeft') this.testPageBy(-1);
     else if (event.key === 'ArrowRight') this.testPageBy(1);

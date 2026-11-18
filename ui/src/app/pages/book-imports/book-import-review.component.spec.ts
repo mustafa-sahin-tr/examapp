@@ -299,6 +299,58 @@ describe('BookImportReviewComponent (#1023)', () => {
     expect(view()).toBeNull();
   });
 
+  it('browseBook_WalksEveryPageWithTheTestsAndFlagsOfThePage (#1229)', () => {
+    const pageImage = vi.fn().mockReturnValue(of(new Blob(['x'], { type: 'image/webp' })));
+    setup([
+      test({ id: 1, fileFrom: 3, fileTo: 4 }),
+      test({ id: 2, order: 2, testNo: 2, title: 'Oranlar', fileFrom: 4, fileTo: 5, status: 'NeedsReview',
+        reviewFlags: [{ code: 'optionCount', pages: [5], numbers: [7], found: null, expected: null, byPage: { 5: [7] } }] }),
+    ], true, { pageImage });
+    fixture.componentRef.setInput('pageCount', 6);
+    fixture.detectChanges();
+
+    (el().querySelector('[data-testid="browse-book"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const view = () => el().querySelector('[data-testid="page-view"]') as HTMLElement | null;
+    const viewText = () => view()!.textContent!.replace(/\s+/g, ' ');
+    expect(pageImage).toHaveBeenCalledWith('a1', 1);
+    expect(viewText()).toContain('bu sayfada test yok');
+    expect(view()!.querySelector('a[href*="labeling"]')).toBeNull();
+
+    const jump = view()!.querySelector('[data-testid="page-jump"]') as HTMLInputElement;
+    jump.value = '4';
+    jump.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(pageImage).toHaveBeenLastCalledWith('a1', 4);
+    expect(viewText()).toContain('1-01 · Kesirler, 1-02 · Oranlar');
+
+    view()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    fixture.detectChanges();
+    expect(pageImage).toHaveBeenLastCalledWith('a1', 5);
+    expect(viewText()).toContain('7: şık sayısı 4 değil');
+    expect(view()!.querySelector('a[href*="labeling"]')).not.toBeNull();
+
+    // Aralık dışı numara ve sayfa numarası alanındaki oklar sayfayı değiştirmez.
+    jump.value = '99';
+    jump.dispatchEvent(new Event('change'));
+    jump.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    fixture.detectChanges();
+    expect(pageImage).toHaveBeenLastCalledWith('a1', 5);
+
+    view()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    view()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    fixture.detectChanges();
+    expect(pageImage).toHaveBeenLastCalledWith('a1', 6);
+    expect((view()!.querySelector('[aria-label="Sonraki sayfa"]') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('browseBook_HiddenWithoutPageImagesOrPageCount (#1229)', () => {
+    setup([test()]);
+    fixture.componentRef.setInput('pageCount', 6);
+    fixture.detectChanges();
+    expect(el().querySelector('[data-testid="browse-book"]')).toBeNull();
+  });
+
   it('flags_NoViewPageWithoutPageImages', () => {
     setup([test({
       status: 'NeedsReview',

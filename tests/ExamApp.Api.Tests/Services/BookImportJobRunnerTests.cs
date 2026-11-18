@@ -7,6 +7,7 @@ using ExamApp.Api.Tests.Support;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using SkiaSharp;
 
 namespace ExamApp.Api.Tests.Services;
@@ -22,6 +23,7 @@ public class BookImportJobRunnerTests : IDisposable
     private readonly Dictionary<string, byte[]> _uploads = new();
     private byte[] _pdf = SamplePdf.Create(3);
     private readonly FakeBookSetupAi _ai = new();
+    private FakePageCleaner? _cleaner;
 
     public BookImportJobRunnerTests()
     {
@@ -180,6 +182,138 @@ public class BookImportJobRunnerTests : IDisposable
         await _minio.Received().GetFileStreamAsync("http://minio/exam-questions/" + BookImportJobRunner.PageObjectName(id, 2));
     }
 
+    [Fact]
+    public async Task Pages_are_cleaned_before_setup_and_the_originals_are_kept()
+    {
+        _cleaner = new FakePageCleaner { Watermark = true, MarkColour = [182, 23, 113] };
+        var id = await SeedJobAsync();
+
+        await RunAsync(id);
+
+        await using var check = _db.NewContext();
+        var job = await check.BookImportJobs.SingleAsync();
+        job.Status.ShouldBe(BookImportJobStatus.AwaitingConfirmation);
+        var cleaning = BookPageCleaning.Parse(job.CleanJson).ShouldNotBeNull();
+        cleaning.Status.ShouldBe(BookPageCleaning.Done);
+        cleaning.Watermark.ShouldBeTrue();
+        cleaning.MarkColour.ShouldBe([182, 23, 113]);
+        cleaning.Marks.ShouldBe(3);
+        cleaning.Processed.ShouldBe(3);
+        _cleaner.Sampled.ShouldBe(3);
+
+        foreach (var page in await check.BookImportPages.OrderBy(p => p.FilePage).ToListAsync())
+        {
+            page.OriginalImageUrl.ShouldBe("http://minio/exam-questions/" + BookImportJobRunner.PageObjectName(id, page.FilePage));
+            page.CleanImageUrl.ShouldBe("http://minio/exam-questions/" + BookPageCleaningService.CleanObjectName(id, page.FilePage));
+            page.ImageUrl.ShouldBe(page.CleanImageUrl);
+            page.MarksJson.ShouldNotBeNull().ShouldContain("\"letter\":\"B\"");
+            _uploads[BookPageCleaningService.CleanObjectName(id, page.FilePage)].ShouldBe(FakePageCleaner.Cleaned);
+        }
+
+        // "Orijinal sayfaları kullan": etkin görsel orijinale döner, geri alınınca temize.
+        await using (var ctx = _db.NewContext())
+        {
+            var service = new BookPageCleaningService(ctx, _minio, _cleaner, null, NullLogger<BookPageCleaningService>.Instance);
+            (await service.SetUseOriginalAsync(id, true, default)).ShouldBe(PageCleaningError.None);
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            (await ctx.BookImportPages.Where(p => p.JobId == id).ToListAsync()).ShouldAllBe(p => p.ImageUrl == p.OriginalImageUrl);
+            BookPageCleaning.Parse((await ctx.BookImportJobs.SingleAsync()).CleanJson)!.UseOriginal.ShouldBeTrue();
+            var service = new BookPageCleaningService(ctx, _minio, _cleaner, null, NullLogger<BookPageCleaningService>.Instance);
+            (await service.SetUseOriginalAsync(id, false, default)).ShouldBe(PageCleaningError.None);
+        }
+
+        await using var after = _db.NewContext();
+        (await after.BookImportPages.Where(p => p.JobId == id).ToListAsync()).ShouldAllBe(p => p.ImageUrl == p.CleanImageUrl);
+    }
+
+    [Fact]
+    public async Task Pages_stay_original_when_nothing_is_found_or_the_cleaner_fails()
+    {
+        _cleaner = new FakePageCleaner();
+        var nothing = await SeedJobAsync();
+        await RunAsync(nothing);
+
+        _cleaner = new FakePageCleaner { Watermark = true, FailOnPage = 2 };
+        var failed = await SeedJobAsync();
+        await RunAsync(failed);
+
+        await using var check = _db.NewContext();
+        foreach (var (id, status) in new[] { (nothing, BookPageCleaning.NothingFound), (failed, BookPageCleaning.Failed) })
+        {
+            var job = await check.BookImportJobs.SingleAsync(j => j.Id == id);
+            job.Status.ShouldBe(BookImportJobStatus.AwaitingConfirmation);
+            BookPageCleaning.Parse(job.CleanJson)!.Status.ShouldBe(status);
+            (await check.BookImportPages.Where(p => p.JobId == id).ToListAsync())
+                .ShouldAllBe(p => p.CleanImageUrl == null && p.MarksJson == null
+                                  && p.ImageUrl == "http://minio/exam-questions/" + BookImportJobRunner.PageObjectName(id, p.FilePage));
+        }
+    }
+
+    [Fact]
+    public async Task Cleaning_again_with_a_picked_colour_starts_from_the_original_pages()
+    {
+        _cleaner = new FakePageCleaner { Watermark = true };
+        var id = await SeedJobAsync();
+        await RunAsync(id);
+        var jobs = Substitute.For<Hangfire.IBackgroundJobClient>();
+
+        await using (var ctx = _db.NewContext())
+        {
+            var service = new BookPageCleaningService(ctx, _minio, _cleaner, jobs, NullLogger<BookPageCleaningService>.Instance);
+            (await service.StartAsync(id, [200, 40, 120], default)).ShouldBe(PageCleaningError.None);
+            jobs.ReceivedCalls().Count().ShouldBe(1);
+            await service.RunAsync(id, [200, 40, 120], default);
+        }
+
+        _cleaner.LastColour.ShouldBe([200, 40, 120]);
+        // Temizlik orijinali okur, temiz kopyayı değil.
+        _cleaner.Inputs.ShouldAllBe(bytes => !bytes.SequenceEqual(FakePageCleaner.Cleaned));
+        await using var check = _db.NewContext();
+        var cleaning = BookPageCleaning.Parse((await check.BookImportJobs.SingleAsync()).CleanJson)!;
+        cleaning.Status.ShouldBe(BookPageCleaning.Done);
+        cleaning.ColourPicked.ShouldBeTrue();
+        cleaning.MarkColour.ShouldBe([200, 40, 120]);
+
+        // Onay beklemeyen iş elle temizlenmez.
+        (await check.BookImportJobs.SingleAsync()).Status = BookImportJobStatus.ReadyForReview;
+        await check.SaveChangesAsync();
+        var other = new BookPageCleaningService(check, _minio, _cleaner, jobs, NullLogger<BookPageCleaningService>.Instance);
+        (await other.StartAsync(id, null, default)).ShouldBe(PageCleaningError.InvalidState);
+    }
+
+    private sealed class FakePageCleaner : IPageCleaner
+    {
+        public static readonly byte[] Cleaned = Encoding.ASCII.GetBytes("clean");
+        public bool Watermark { get; init; }
+        public int[]? MarkColour { get; init; }
+        public int? FailOnPage { get; init; }
+        public int Sampled { get; private set; }
+        public int[]? LastColour { get; private set; }
+        public List<byte[]> Inputs { get; } = [];
+        private int _cleaned;
+
+        public Task<bool> IsAvailableAsync(CancellationToken ct) => Task.FromResult(true);
+
+        public Task<PageCleanAnalysis> AnalyzeAsync(IReadOnlyList<byte[]> pages, int[]? markColour, CancellationToken ct)
+        {
+            Sampled = pages.Count;
+            LastColour = markColour;
+            Inputs.AddRange(pages);
+            return Task.FromResult(new PageCleanAnalysis("t", Watermark, markColour ?? MarkColour, 0));
+        }
+
+        public Task<PageCleanResult> CleanAsync(string token, byte[] page, CancellationToken ct)
+        {
+            Inputs.Add(page);
+            if (++_cleaned == FailOnPage)
+                throw new HttpRequestException("detector down");
+            return Task.FromResult(new PageCleanResult(Cleaned, [new PageMark("B", 10, 10, 20, 20)], Watermark));
+        }
+    }
+
     private async Task<Guid> SeedJobAsync(BookImportStage stage = BookImportStage.Upload, BookImportJobStatus status = BookImportJobStatus.Queued)
     {
         await using var ctx = _db.NewContext();
@@ -211,7 +345,7 @@ public class BookImportJobRunnerTests : IDisposable
         await using var ctx = _db.NewContext();
         await new BookImportJobRunner(ctx, _guard, _minio, new PdfiumRasterizer(pageWidth: 400), _ai,
             Substitute.For<ExamApp.Api.Services.Labeling.ILabelingService>(), Substitute.For<IServiceScopeFactory>(),
-            new ConfigurationBuilder().AddInMemoryCollection(settings).Build()).RunLockedAsync(id);
+            new ConfigurationBuilder().AddInMemoryCollection(settings).Build(), pageCleaner: _cleaner).RunLockedAsync(id);
     }
 
     public void Dispose() => _db.Dispose();

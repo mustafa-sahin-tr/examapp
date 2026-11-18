@@ -176,6 +176,9 @@ public class BookImportJob : BaseEntity
     /// </summary>
     public DateTime? DeferredAt { get; set; }
 
+    /// <summary>#1234: sayfa temizliğinin özeti (JSON, <see cref="Services.BookImport.BookPageCleaning"/>); temizlik denenmediyse boş.</summary>
+    public string? CleanJson { get; set; }
+
     public ICollection<BookImportJobTest> Tests { get; set; } = new List<BookImportJobTest>();
 
     public ICollection<BookImportPage> Pages { get; set; } = new List<BookImportPage>();
@@ -325,8 +328,20 @@ public class BookImportPage
     /// <summary>PDF'teki 1 tabanlı sayfa sırası (kitap kaydındaki "dosya sayfası").</summary>
     public int FilePage { get; set; }
 
+    /// <summary>Etkin sayfa görseli: temizlendiyse (#1234) temiz kopya, değilse ya da "orijinali kullan" denildiyse orijinal.</summary>
     [MaxLength(1000)]
     public string ImageUrl { get; set; } = string.Empty;
+
+    /// <summary>#1234: temizlenmeden önceki görsel (temizlik uygulandıysa dolu).</summary>
+    [MaxLength(1000)]
+    public string? OriginalImageUrl { get; set; }
+
+    /// <summary>#1234: filigranı ve cevap işaretleri silinmiş kopya.</summary>
+    [MaxLength(1000)]
+    public string? CleanImageUrl { get; set; }
+
+    /// <summary>#1234 / #1235: temizlikte silinen cevap işaretleri (JSON, <see cref="Services.BookImport.PageMark"/> listesi).</summary>
+    public string? MarksJson { get; set; }
 
     public int Width { get; set; }
     public int Height { get; set; }

@@ -286,6 +286,12 @@ public class BookImportSetupDto
     /// <summary>#1219: son "QR'dan al" okumasının ilerlemesi; hiç başlatılmadıysa null.</summary>
     public BookImportQrRunDto? QrRun { get; set; }
 
+    /// <summary>#1234: sayfa temizliğinin sonucu; denenmediyse null.</summary>
+    public BookImportCleaningDto? Cleaning { get; set; }
+
+    /// <summary>#1234: "Sayfaları temizle" kullanılabilir (temizlik hizmeti ayarlı ve çalışıyor).</summary>
+    public bool CleaningAvailable { get; set; }
+
     public decimal AiCostUsd { get; set; }
     public int SchemaRevision { get; set; }
 
@@ -296,6 +302,32 @@ public class BookImportSetupDto
 }
 
 public record BookImportPageRangeDto(int FileFrom, int FileTo);
+
+/// <summary>#1234: sayfa temizliği; <c>Status</c>: Running, Done, NothingFound, Unavailable, Failed.</summary>
+public class BookImportCleaningDto
+{
+    public string Status { get; set; } = string.Empty;
+    /// <summary>Temizlik sürüyor (yarıda kalmışsa false; yeniden başlatılabilir).</summary>
+    public bool Running { get; set; }
+    public bool Watermark { get; set; }
+    public int[]? MarkColour { get; set; }
+    public bool ColourPicked { get; set; }
+    public int Marks { get; set; }
+    public int Pages { get; set; }
+    public int Processed { get; set; }
+    public bool UseOriginal { get; set; }
+}
+
+/// <summary>#1234: "Sayfaları temizle"; işaret rengi verilirse öğrenilmez, bu renk kullanılır.</summary>
+public class StartBookImportCleaningDto
+{
+    public int[]? MarkColour { get; set; }
+}
+
+public class SetBookImportCleaningDto
+{
+    public bool UseOriginal { get; set; }
+}
 
 public record BookImportBookRefDto(int Id, string Name);
 

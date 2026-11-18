@@ -178,7 +178,7 @@ services:
       - exam-net
 
   # Optional: the admin dev page, labeling suggestions and (#1219) book-import "QR'dan al" transcription use it.
-  # Enable with `--profile detector`; for transcription also set BOOK_IMPORT_TRANSCRIBER_URL=http://exam-question-detector:8080.
+  # Enable with `--profile detector`; for transcription and page cleaning (#1234) also set BOOK_IMPORT_TRANSCRIBER_URL=http://exam-question-detector:8080.
   question-detector:
     profiles: [detector]
     build:

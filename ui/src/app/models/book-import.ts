@@ -321,6 +321,10 @@ export interface BookImportSetup {
   qrKeysAvailable?: boolean;
   /** #1219: son "QR'dan al" okuması; hiç başlatılmadıysa null. */
   qrRun?: BookImportQrRun | null;
+  /** #1234: sayfa temizliği (filigran + renkli cevap işaretleri); denenmediyse null. */
+  cleaning?: BookImportCleaning | null;
+  /** #1234: "Sayfaları temizle" kullanılabilir (temizlik hizmeti çalışıyor). */
+  cleaningAvailable?: boolean;
   aiCostUsd: number;
   schemaRevision: number;
   existingBook: BookImportBookRef | null;
@@ -372,6 +376,23 @@ export interface BookImportQrRun {
   done: number;
   /** Çözüm sayfası / ses alınamayan test sayısı. */
   failed: number;
+}
+
+/** #1234: sayfa temizliğinin sonucu. */
+export interface BookImportCleaning {
+  status: 'Running' | 'Done' | 'NothingFound' | 'Unavailable' | 'Failed';
+  /** Sürüyor (yarıda kaldıysa false; yeniden başlatılabilir). */
+  running: boolean;
+  watermark: boolean;
+  /** İşaret rengi (RGB); bulunamadıysa null. */
+  markColour?: number[] | null;
+  /** Kullanıcının seçtiği renkle mi temizlendi. */
+  colourPicked: boolean;
+  marks: number;
+  pages: number;
+  processed: number;
+  /** "Orijinal sayfaları kullan" açık. */
+  useOriginal: boolean;
 }
 
 /** "AI ile bul" önerisi: anahtarsız testin (sıra) anahtarı; kaydedilmez, onayla gider. */

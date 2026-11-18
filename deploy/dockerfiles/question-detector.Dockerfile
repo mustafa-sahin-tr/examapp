@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxext6 \
     libxrender-dev \
     libzbar0 \
+    fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -16,7 +17,7 @@ COPY question-detector/requirements.prod.txt ./requirements.txt
 RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
 RUN mkdir -p /app/models
-COPY question-detector/main.py question-detector/guards.py question-detector/dataset_store.py question-detector/transcribe.py ./
+COPY question-detector/main.py question-detector/guards.py question-detector/dataset_store.py question-detector/transcribe.py question-detector/page_clean.py ./
 
 # Only ship the weights actually used by the API (training/train.py promotes new ones into models/).
 COPY question-detector/models/question-best.pt question-detector/models/answer-best.pt /app/models/

@@ -16,3 +16,7 @@ pyzbar
 faster-whisper==1.2.1
 av<17
 requests
+
+# #1234: sayfa temizliği (yoksa /clean kapalı)
+numpy
+scipy

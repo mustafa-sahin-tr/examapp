@@ -26,6 +26,8 @@
     "qrKeyNoQr": "No QR code was found on this test’s pages.",
     "qrKeyNotAvailable": "The transcription service is not running; keys cannot be read from QR solutions.",
     "qrKeysRunning": "QR solutions are being read; confirm when they finish.",
+    "cleaningRunning": "Page cleaning is running; confirm when it finishes.",
+    "cleaningUnavailable": "Page cleaning is not available right now.",
     "bookNameTaken": "A book with this name already exists. Use the existing book or enter another name.",
     "bookNotFound": "The selected book was not found.",
     "noTests": "Select at least one test.",

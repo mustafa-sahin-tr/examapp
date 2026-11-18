@@ -48,6 +48,8 @@ describe('BookImportSetupComponent (#1021)', () => {
       confirmSetup: vi.fn().mockReturnValue(of({})),
       findKeyWithAi: vi.fn().mockReturnValue(of({ match: null, aiCostUsd: 0 })),
       startQrKeys: vi.fn().mockReturnValue(of({ running: true, total: 2, done: 0, failed: 0 })),
+      startCleaning: vi.fn().mockReturnValue(of(undefined)),
+      setCleaning: vi.fn().mockReturnValue(of(undefined)),
       cancel: vi.fn().mockReturnValue(of(undefined)),
     } as unknown as MockedObject<BookImportService>;
     TestBed.configureTestingModule({
@@ -123,7 +125,7 @@ describe('BookImportSetupComponent (#1021)', () => {
 
     el().querySelectorAll<HTMLButtonElement>('[data-testid="view-test-pages"]')[0].click();
     fixture.detectChanges();
-    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 7);
+    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 7, false);
     expect(view()!.textContent).toContain('1-01');
     expect(view()!.querySelector('.bis-view__cell--conflict')!.textContent!.replace(/\s+/g, '')).toBe('2B/D');
     expect(view()!.textContent).toContain('1 / 2');
@@ -131,12 +133,12 @@ describe('BookImportSetupComponent (#1021)', () => {
 
     navButton(tr.setup.nextPage).click();
     fixture.detectChanges();
-    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 8);
+    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 8, false);
     expect(navButton(tr.setup.nextPage).disabled).toBe(true);
 
     view()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
     fixture.detectChanges();
-    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 7);
+    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 7, false);
 
     view()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     fixture.detectChanges();
@@ -152,7 +154,7 @@ describe('BookImportSetupComponent (#1021)', () => {
 
     el().querySelector<HTMLButtonElement>('[data-testid="browse-book"]')!.click();
     fixture.detectChanges();
-    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 1);
+    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 1, false);
     expect(viewText()).toContain('bu sayfada test yok');
     expect(viewText()).toContain('/ 240');
     expect(navButton(tr.setup.prevPage).disabled).toBe(true);
@@ -161,18 +163,18 @@ describe('BookImportSetupComponent (#1021)', () => {
     jump.value = '8';
     jump.dispatchEvent(new Event('change'));
     fixture.detectChanges();
-    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 8);
+    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 8, false);
     expect(viewText()).toContain('1-01 Milyonlar - I');
 
     navButton(tr.setup.nextPage).click();
     fixture.detectChanges();
-    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 9);
+    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 9, false);
     expect(viewText()).toContain('1-02 Milyonlar - II');
 
     jump.value = '0';
     jump.dispatchEvent(new Event('change'));
     fixture.detectChanges();
-    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 9);
+    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 9, false);
 
     view()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     fixture.detectChanges();
@@ -188,7 +190,7 @@ describe('BookImportSetupComponent (#1021)', () => {
     expect(view.textContent).toContain(tr.setup.keyPages);
     expect(view.textContent).toContain('1 / 1');
     expect(view.querySelector('.bis-view__key')).toBeNull();
-    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 237);
+    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 237, false);
   });
 
   it('keyPages_AreAllShownSideBySide_AndEachOpensItself', () => {
@@ -201,7 +203,7 @@ describe('BookImportSetupComponent (#1021)', () => {
 
     items[2].click();
     fixture.detectChanges();
-    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 224);
+    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 224, false);
     expect(el().querySelector('[data-testid="test-pages"]')!.textContent).toContain('3 / 3');
   });
 
@@ -495,5 +497,71 @@ describe('BookImportSetupComponent (#1021)', () => {
     expect(text()).toContain('Var');
     confirmButton().click();
     expect(api.confirmSetup).toHaveBeenLastCalledWith('a1', expect.objectContaining({ existingBookId: 9 }));
+  });
+
+  describe('page cleaning (#1234)', () => {
+    const cleaned = {
+      status: 'Done' as const, running: false, watermark: true, markColour: [182, 23, 113], colourPicked: false,
+      marks: 131, pages: 80, processed: 80, useOriginal: false,
+    };
+    const testId = (id: string) => el().querySelector<HTMLElement>(`[data-testid="${id}"]`);
+
+    it('done_ShowsResult_UseOriginalAndCompareOriginal', () => {
+      create(setupData({ cleaning: cleaned, cleaningAvailable: true }));
+
+      expect(testId('cleaning-done')!.textContent).toContain('filigran ve 131 cevap işareti silindi');
+      testId('cleaning-use-original')!.querySelector('input')!.click();
+      fixture.detectChanges();
+      expect(api.setCleaning).toHaveBeenCalledWith('a1', true);
+
+      testId('cleaning-compare')!.click();
+      fixture.detectChanges();
+      expect(api.pageImage).toHaveBeenLastCalledWith('a1', 1, false);
+      testId('toggle-original')!.click();
+      fixture.detectChanges();
+      expect(api.pageImage).toHaveBeenLastCalledWith('a1', 1, true);
+      expect(testId('toggle-original')!.getAttribute('aria-pressed')).toBe('true');
+    });
+
+    it('start_RunsInBackground_AndBlocksConfirmUntilDone', () => {
+      vi.useFakeTimers();
+      try {
+        create(setupData({ cleaning: null, cleaningAvailable: true, tests: [] }));
+        expect(text()).toContain(tr.setup.cleaningIntro);
+
+        testId('cleaning-start')!.click();
+        fixture.detectChanges();
+        expect(api.startCleaning).toHaveBeenCalledWith('a1', undefined);
+        expect(testId('cleaning-progress')).not.toBeNull();
+        expect(fixture.componentInstance.canConfirm()).toBe(false);
+
+        api.setup.mockReturnValue(of(setupData({ cleaning: cleaned, cleaningAvailable: true })));
+        vi.advanceTimersByTime(4000);
+        fixture.detectChanges();
+        expect(testId('cleaning-progress')).toBeNull();
+        expect(testId('cleaning-done')).not.toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('pickColour_OpensOriginalPages_AndIgnoresGreyClicks', () => {
+      create(setupData({ cleaning: { ...cleaned, status: 'NothingFound', watermark: false, markColour: null, marks: 0 }, cleaningAvailable: true }));
+      expect(testId('cleaning-nothing')).not.toBeNull();
+
+      testId('cleaning-pick')!.click();
+      fixture.detectChanges();
+      expect(testId('cleaning-pick-hint')).not.toBeNull();
+      expect(api.pageImage).toHaveBeenLastCalledWith('a1', 1, true);
+
+      // jsdom görseli çizmez: renk okunamaz, temizlik başlamaz.
+      el().querySelector<HTMLImageElement>('.bis-view__body img')!.click();
+      expect(api.startCleaning).not.toHaveBeenCalled();
+    });
+
+    it('demoOrUnavailable_HidesCleaning', () => {
+      create(setupData({ isDemo: true, cleaningAvailable: true }));
+      expect(testId('cleaning')).toBeNull();
+    });
   });
 });

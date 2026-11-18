@@ -355,6 +355,10 @@ bu cevaplardan türeyen puan/rozet verisini **her iki DB'de** (worksheet: `Stude
 `POST api/student/me/reset` öğrenci başına ve soft-delete'tir), MinIO `exam-questions`'daki
 `questions/ answers/ passages/ question-transfer/` nesnelerini ve bekleyen QuestionCreated / ActivityCompleted / StudentPointsChanged /
 StudentBadgeEarned outbox mesajlarını siler; `Worksheets`, taksonomi, kullanıcılar, `BadgeDefinitions` kalır.
+2026-11-18: `--wipe-books` kitap aktarımlarını (`BookImportJobs`, `BookImportUploads`), kitapları (`Books` + içindekiler, anahtar
+aralıkları, sayfa kaymaları) ve MinIO `book-imports/`'u siler; testler kitaplara FK'lı olduğundan `--wipe-tests`'i de açar,
+kitaba bağlı `StudyItems` varsa hiçbir şey silmeden durur. MinIO nesne sayımı yalnız `--count-minio` ile (yavaş). Demoda
+kullanımı ve kontrol komutları `deploy/README.md` § Mac üzerinde kapalı demo.
 2026-11-08 güncellemesi: soruya bağlı yeni tablolar (kazanım / beceri bağları, soru bildirimleri, kaydedilenler, hata
 nedenleri, deneme soruları) CASCADE ile gider; öğrenci oturumu olan `PracticeSessions` (+ günlük setler), bilgi kartı
 ilerlemesi `FlashcardReviews` ve FK'sız soru id'si tutan `QuestionTransfer{Export,Import}Maps` artık temel silmede.

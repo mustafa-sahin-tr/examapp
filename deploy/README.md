@@ -280,6 +280,28 @@ deploy/scripts/demo.sh backup --db  # yalnız veritabanı (dosyalara dokunmayan 
 deploy/scripts/demo.sh restore <yedek klasörü> --yes  # bütün demo verisini yedekle değiştirir; önce güncel veriyi yedekler
 ```
 
+**Demoda soruları, testleri ve kitapları silme** (kullanıcılar, okullar, taksonomi kalır; geri alınamaz, önce yedek):
+
+```bash
+deploy/scripts/demo.sh backup --db
+PG_CONTAINER=exam-postgres MINIO_CONTAINER=exam-minio PG_DB=worksheet_v2 BADGE_DB=badge IDENTITY_DB=auth_db \
+  deploy/scripts/dev-reset-questions.sh --wipe-books --yes
+```
+
+`--wipe-books` kitap aktarımlarını, kitapları ve testleri de siler; yalnız soruları silmek için bayraksız, soru + test için
+`--wipe-tests`. Önce ne silineceğini görmek için `--yes` yerine `--dry-run` (MinIO sayısı da istenirse `--count-minio`;
+harici diskte yarım saati geçer). MinIO harici diskte olduğu için görsel silme uzun sürer.
+
+**Silindi mi?** Script sonunda `exam-questions` içinde kalan önekleri listeler; `questions/`, `answers/`, `book-imports/`
+görünmüyorsa boşalmıştır (MinIO boş klasör göstermez). Elle:
+
+```bash
+docker exec exam-minio sh -c 'export MC_HOST_local="http://${MINIO_ROOT_USER}:${MINIO_ROOT_PASSWORD}@127.0.0.1:9000"; mc ls local/exam-questions/'
+du -sh "/Volumes/Mustafas HDD/Builds/examapp/demo-minio/exam-questions"/*
+```
+
+Veritabanı: `docker exec exam-postgres sh -c 'psql -U "$POSTGRES_USER" -d worksheet_v2 -Atc "select count(*) from \"Questions\""'` → 0.
+
 - **Tünel:** `cloudflared tunnel login`, `tunnel create hedefokul-demo` ve `tunnel route dns` ile kurulur (Zero Trust kaydı
   gerekmedi); sertifika, kimlik dosyası ve `config.yml` git'e girmeyen `deploy/cloudflared/` altındadır. `config.yml` tek
   hostname'i `http://caddy:80`'e, gerisini 404'e yönlendirir. Yönetim arayüzleri tünele eklenmez.

@@ -40,7 +40,10 @@
 #   --wipe-logs   İşlenmiş outbox mesajları (üç DB; bekleyenler ve hatalılar kalır), LoginEvents, AdminDataAccessLogs,
 #                 AdminUserActionLogs, QuestionSourceActionLogs, QuestionTransfer* işleri, badge ProcessedLoginAttempts; Hangfire'da yalnız
 #                 bitmiş işler (Succeeded/Deleted/Failed) ve stats sayaçları — recurring/zamanlanmış işler kalır.
-#   --all         üçü birden (dataset hariç).
+#   --wipe-books  Kitap aktarımları (BookImportJobs + testleri, sayfaları, maliyetleri; BookImportUploads) ve kitaplar (Books +
+#                 BookTests, içindekiler, cevap anahtarı aralıkları, sayfa kaymaları, QuestionSources). MinIO 'exam-questions/book-imports/'
+#                 (yüklenen PDF'ler, sayfa görselleri) boşalır. --wipe-tests'i de açar (testler kitaplara FK ile bağlı). Bir kitaba bağlı çalışma sayfası (StudyItems) varsa durur, hiçbir şey silmez.
+#   --all         testler + sosyal + loglar (dataset ve kitaplar hariç).
 # Hiçbir bayrakta yok (bilerek): veli bağları/davetleri (silinirse öğrenciler #441 grace süresine düşer), kullanıcılar
 # (seed-teachers / seed-tutors ile yeniden üret), randevular, çalışma sayfaları, programlar, taksonomi, BadgeDefinitions,
 # bilgi kartı desteleri, deneme şablonları (ExamTemplates), hedef programları ve koç not / hedefleri, QuestionTransferOrigins
@@ -69,6 +72,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 WIPE_DATASET=0
 WIPE_TESTS=0
+WIPE_BOOKS=0
 WIPE_SOCIAL=0
 WIPE_LOGS=0
 ASSUME_YES=0
@@ -78,6 +82,7 @@ for arg in "$@"; do
   case "$arg" in
     --wipe-dataset) WIPE_DATASET=1 ;;
     --wipe-tests) WIPE_TESTS=1 ;;
+    --wipe-books) WIPE_BOOKS=1; WIPE_TESTS=1 ;;  # Worksheets Books'a FK'lı: TRUNCATE CASCADE testleri de boşaltır
     --wipe-social) WIPE_SOCIAL=1 ;;
     --wipe-logs) WIPE_LOGS=1 ;;
     --all) WIPE_TESTS=1; WIPE_SOCIAL=1; WIPE_LOGS=1 ;;
@@ -148,9 +153,19 @@ else
 fi
 onoff() { [[ "$1" -eq 1 ]] && echo "SİLİNECEK" || echo "dokunulmayacak ($2 ile silinir)"; }
 echo "  Testler  : $(onoff "$WIPE_TESTS" --wipe-tests)"
+echo "  Kitaplar : $(onoff "$WIPE_BOOKS" --wipe-books)"
 echo "  Sosyal   : $(onoff "$WIPE_SOCIAL" --wipe-social)"
 echo "  Loglar   : $(onoff "$WIPE_LOGS" --wipe-logs)"
 echo
+
+if [[ "$WIPE_BOOKS" -eq 1 ]]; then
+  # TRUNCATE ... CASCADE, Books'a bağlı StudyItems'ı da boşaltırdı (çalışma sayfaları ve programlar gider).
+  linked="$(psql_exec -At -c 'SELECT count(*) FROM "StudyItems" WHERE "BookId" IS NOT NULL OR "BookTestId" IS NOT NULL;')"
+  if [[ "$linked" -ne 0 ]]; then
+    echo "❌ --wipe-books: $linked çalışma sayfası maddesi bir kitaba bağlı; kitaplar silinirse onlar da gider. Hiçbir şey silinmedi." >&2
+    exit 1
+  fi
+fi
 
 echo "Mevcut sayılar:"
 psql_exec -At -c "
@@ -281,6 +296,15 @@ COMMIT;
 SQL
 fi
 
+if [[ "$WIPE_BOOKS" -eq 1 ]]; then
+  echo "▶ Postgres ($PG_DB): kitap aktarımları ve kitaplar boşaltılıyor…"
+  psql_exec <<'SQL'
+BEGIN;
+TRUNCATE TABLE "BookImportJobs", "BookImportUploads", "Books" RESTART IDENTITY CASCADE;
+COMMIT;
+SQL
+fi
+
 if [[ "$WIPE_SOCIAL" -eq 1 ]]; then
   echo "▶ Postgres ($PG_DB + $BADGE_DB): mesajlar ve bildirimler boşaltılıyor…"
   psql_exec <<'SQL'
@@ -336,6 +360,14 @@ if [[ "$WIPE_TESTS" -eq 1 ]]; then
   done
 fi
 
+if [[ "$WIPE_BOOKS" -eq 1 ]]; then
+  mc_exec rm --recursive --force "local/${MINIO_BUCKET}/book-imports/" >/dev/null 2>&1 || true
+  echo "  ${MINIO_BUCKET}/book-imports/ temiz"
+fi
+# Kontrol: silinen önekler bucket listesinde artık görünmez (MinIO boş "klasör" göstermez).
+echo "  ${MINIO_BUCKET} içinde kalan önekler:"
+mc_exec ls "local/${MINIO_BUCKET}/" 2>/dev/null | sed 's/^/    /' || true
+
 if [[ "$WIPE_DATASET" -eq 1 ]]; then
   echo "▶ question-detector dataset siliniyor: $DATASET_DIR"
   if [[ -d "$DATASET_DIR" ]]; then
@@ -349,6 +381,7 @@ echo
 echo "✅ Bitti. Çalışan exam API / BadgeService'i yeniden başlatman gerekmez; bellek önbellekleri soru/puan içermez."
 echo "   Öğrencilerin test geçmişi, puanı, rozetleri ve liderlik tablosu da sıfırlandı (tüm öğrenciler)."
 [[ "$WIPE_TESTS" -eq 1 ]] && echo "   Testler, atamalar, günlük soru setleri ve pratik oturumları silindi (kitaplar ve çalışma sayfaları duruyor)."
+[[ "$WIPE_BOOKS" -eq 1 ]] && echo "   Kitap aktarımları, kitaplar ve aktarım dosyaları silindi."
 [[ "$WIPE_SOCIAL" -eq 1 ]] && echo "   Mesajlar ve tüm bildirimler silindi."
 [[ "$WIPE_LOGS" -eq 1 ]] && echo "   Loglar, işlenmiş outbox mesajları ve bitmiş Hangfire işleri silindi."
 echo "   Tarayıcıda açık işaretleme sayfasını yenile (işaretlenmiş sayfa listesi açılışta çekilir)."

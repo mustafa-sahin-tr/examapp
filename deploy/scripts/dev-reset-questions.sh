@@ -58,6 +58,7 @@
 #
 # Bayraklar:
 #   --wipe-dataset   question-detector/dataset içeriğini de sil (eğitim verisi! Drive arşivine bakmaz).
+#   --count-minio    silmeden önce MinIO nesnelerini de say (yavaş; varsayılan yalnız DB sayıları).
 #   --wipe-tests / --wipe-social / --wipe-logs / --all   yukarıdaki isteğe bağlı gruplar.
 #   --yes            onay sorma.
 #   --dry-run        ne yapılacağını göster, hiçbir şey silme.
@@ -72,6 +73,7 @@ WIPE_SOCIAL=0
 WIPE_LOGS=0
 ASSUME_YES=0
 DRY_RUN=0
+COUNT_MINIO=0
 for arg in "$@"; do
   case "$arg" in
     --wipe-dataset) WIPE_DATASET=1 ;;
@@ -81,6 +83,7 @@ for arg in "$@"; do
     --all) WIPE_TESTS=1; WIPE_SOCIAL=1; WIPE_LOGS=1 ;;
     --yes) ASSUME_YES=1 ;;
     --dry-run) DRY_RUN=1 ;;
+    --count-minio) COUNT_MINIO=1 ;;
     -h|--help) sed -n '2,/^$/p' "$0"; exit 0 ;;
     *) echo "Bilinmeyen argüman: $arg" >&2; exit 2 ;;
   esac
@@ -173,19 +176,24 @@ badge_psql_exec -At -c "
       || '  StudentDailyActivities=' || (SELECT count(*) FROM \"StudentDailyActivities\")
       || '  StudentActivityCompletions=' || (SELECT count(*) FROM \"StudentActivityCompletions\")
       || '  BadgeEarned bildirimi=' || (SELECT count(*) FROM \"Notifications\" WHERE \"Type\" = 'BadgeEarned');"
-echo "MinIO nesneleri:"
-for p in "${MINIO_PREFIXES[@]}"; do
-  n="$(mc_exec ls --recursive "local/${MINIO_BUCKET}/${p}" 2>/dev/null | wc -l | tr -d ' ')"
-  echo "  ${MINIO_BUCKET}/${p} → $n nesne"
-done
+# MinIO nesne sayımı isteğe bağlı (--count-minio): büyük / yavaş diskteki MinIO'da (demo harici disk) yarım saati geçer.
+if [[ "$COUNT_MINIO" -eq 1 ]]; then
+  echo "MinIO nesneleri:"
+  for p in "${MINIO_PREFIXES[@]}"; do
+    n="$(mc_exec ls --recursive "local/${MINIO_BUCKET}/${p}" 2>/dev/null | wc -l | tr -d ' ')"
+    echo "  ${MINIO_BUCKET}/${p} → $n nesne"
+  done
+fi
 if [[ "$WIPE_TESTS" -eq 1 ]]; then
   psql_exec -At -c "
     SELECT '  [tests] Worksheets=' || (SELECT count(*) FROM \"Worksheets\")
         || '  WorksheetAssignments=' || (SELECT count(*) FROM \"WorksheetAssignments\")
         || '  MockExams=' || (SELECT count(*) FROM \"MockExams\");"
-  for b in "${TEST_BUCKETS[@]}"; do
-    echo "  [tests] $b → $(mc_exec ls --recursive "local/${b}" 2>/dev/null | wc -l | tr -d ' ') nesne"
-  done
+  if [[ "$COUNT_MINIO" -eq 1 ]]; then
+    for b in "${TEST_BUCKETS[@]}"; do
+      echo "  [tests] $b → $(mc_exec ls --recursive "local/${b}" 2>/dev/null | wc -l | tr -d ' ') nesne"
+    done
+  fi
 fi
 if [[ "$WIPE_SOCIAL" -eq 1 ]]; then
   psql_exec -At -c "

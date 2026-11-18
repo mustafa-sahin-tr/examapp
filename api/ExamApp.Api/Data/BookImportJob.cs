@@ -170,6 +170,12 @@ public class BookImportJob : BaseEntity
     /// </summary>
     public Guid? DemoSourceJobId { get; set; }
 
+    /// <summary>
+    /// Issue #1231: sahibi kalan testleri sonraya bıraktı. İş incelemede (<see cref="BookImportJobStatus.ReadyForReview"/>) kaldıkça
+    /// aktarım listesinde değil "Sonra bakılacaklar"da görünür; inceleme uçları aynen çalışır, son test bitince iş tamamlanır.
+    /// </summary>
+    public DateTime? DeferredAt { get; set; }
+
     public ICollection<BookImportJobTest> Tests { get; set; } = new List<BookImportJobTest>();
 
     public ICollection<BookImportPage> Pages { get; set; } = new List<BookImportPage>();

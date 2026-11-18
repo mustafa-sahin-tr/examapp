@@ -1,0 +1,47 @@
+<div class="bil" *transloco="let t; prefix: 'book-imports'">
+  <a class="bil-back" routerLink="/book-imports"><mat-icon aria-hidden="true">arrow_back</mat-icon>{{ t('later.back') }}</a>
+  <app-page-header icon="schedule" [title]="t('later.title')" [description]="t('later.subtitle')" />
+
+  @if (loading()) {
+  <div class="bil-state" role="status"><mat-spinner diameter="24" aria-hidden="true"></mat-spinner>{{ t('later.loading') }}</div>
+  } @else if (loadError()) {
+  <div class="bil-state bil-state--error" role="alert">
+    <mat-icon aria-hidden="true">error_outline</mat-icon>{{ t('later.loadFailed') }}
+    <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+  </div>
+  } @else if (jobs().length === 0) {
+  <p class="bil-state" data-testid="later-empty">{{ t('later.empty') }}</p>
+  } @else {
+  @for (job of jobs(); track job.id) {
+  <section class="bil-book" [attr.aria-label]="job.bookName" data-testid="later-book">
+    <div class="bil-book__head">
+      <div>
+        <h2>{{ job.bookName }}</h2>
+        <p>{{ t('later.tests', { count: job.tests.length }) }} · {{ t('later.deferredAt', { date: (job.deferredAt | date: 'd MMM HH:mm') }) }}</p>
+      </div>
+      <button mat-button type="button" [disabled]="busyId() === job.id" (click)="undefer(job)">{{ t('later.undefer') }}</button>
+      <a mat-stroked-button [routerLink]="['/book-imports', job.id]">{{ t('later.open') }}</a>
+    </div>
+    <ul class="bil-tests">
+      @for (test of job.tests; track test.id) {
+      <li>
+        <a class="bil-test" [routerLink]="['/book-imports', job.id]" [queryParams]="{ test: test.id }" data-testid="later-test">
+          <span class="bil-test__name">{{ testName(test) }}</span>
+          <span class="bil-chip bil-chip--{{ test.status }}">{{ t('testStatus.' + test.status) }}</span>
+          @for (flag of test.reviewFlags; track flag.code) {
+          <span class="bil-chip">{{ t('reviewFlags.' + flag.code, { found: flag.found, expected: flag.expected }) }}</span>
+          }
+          @for (flag of test.flags; track flag) {
+          <span class="bil-chip">{{ t('flags.' + flag) }}</span>
+          }
+          @if (test.fileFrom) {
+          <span class="bil-test__pages">{{ t('later.pages', { from: test.fileFrom, to: test.fileTo }) }}</span>
+          }
+        </a>
+      </li>
+      }
+    </ul>
+  </section>
+  }
+  }
+</div>

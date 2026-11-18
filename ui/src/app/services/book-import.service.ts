@@ -20,6 +20,7 @@ import {
   ApproveAllBookImportResult,
   BookImportDemo,
   BookImportJob,
+  BookImportDeferredJob,
   BookImportJobCounts,
   BookImportJobDetail,
   BookImportKeyMatchResponse,
@@ -68,6 +69,17 @@ export class BookImportService {
   /** Filtre sayıları: bütün görünür işler (listenin yüklenen sayfasından bağımsız). */
   counts(): Observable<BookImportJobCounts> {
     return this.http.get<BookImportJobCounts>(`${this.baseUrl}/counts`);
+  }
+
+  /** #1231: sonraya bırakılan işler ve onaylanmamış testleri. */
+  deferred(): Observable<BookImportDeferredJob[]> {
+    return this.http.get<BookImportDeferredJob[]>(`${this.baseUrl}/deferred`);
+  }
+
+  /** #1231: kalan testleri sonraya bırak (`false`: aktarım listesine geri al). */
+  setDeferred(id: string, deferred: boolean): Observable<void> {
+    const url = `${this.baseUrl}/${id}/defer`;
+    return deferred ? this.http.post<void>(url, {}) : this.http.delete<void>(url);
   }
 
   get(id: string): Observable<BookImportJobDetail> {

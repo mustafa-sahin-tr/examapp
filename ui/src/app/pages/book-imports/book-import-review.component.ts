@@ -4,7 +4,9 @@ import {
   Component,
   DestroyRef,
   ElementRef,
+  Injector,
   OnInit,
+  afterNextRender,
   computed,
   effect,
   inject,
@@ -73,6 +75,8 @@ export const ANSWER_LETTERS = ['A', 'B', 'C', 'D', 'E'];
 })
 export class BookImportReviewComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
   private readonly defaultApi = inject(BookImportService);
 
   readonly jobId = input.required<string>();
@@ -96,6 +100,12 @@ export class BookImportReviewComponent implements OnInit {
   readonly thumbs = input<Record<number, string>>({});
   /** Bir işlem testlerin durumunu değiştirdi: takip ekranı yeniden yüklenir. */
   readonly changed = output<void>();
+  /** #1231: kitap aktarımında kalan testler sonraya bırakılabilir; `deferred` bırakıldığını söyler. */
+  readonly deferrable = input(false);
+  readonly deferred = input(false);
+  readonly deferChange = output<boolean>();
+  /** #1231: "Sonra bakılacaklar"dan açılan test: görünür yapılır, uyarıları açılır ve satırına kaydırılır. */
+  readonly focusTest = input<number | null>(null);
 
   readonly letters = ANSWER_LETTERS;
   readonly onlyAttention = signal(true);
@@ -163,6 +173,19 @@ export class BookImportReviewComponent implements OnInit {
   readonly open = computed(() => this.tests().filter((t) => t.status !== 'Approved' && t.status !== 'Removed'));
   readonly visible = computed(() => (this.onlyAttention() ? this.open().filter(needsAttention) : this.open()));
   readonly approvable = computed(() => this.open().filter(isBulkApprovable).length);
+  readonly canDefer = computed(() => this.deferrable() && this.editable() && !this.deferred() && this.open().length > 0);
+  private focused = false;
+  private readonly focusRow = effect(() => {
+    const id = this.focusTest();
+    const test = this.open().find((t) => t.id === id);
+    if (this.focused || !test) return;
+    this.focused = true;
+    if (!needsAttention(test)) this.onlyAttention.set(false);
+    if (this.flagCount(test) > 0) this.flagsId.set(test.id);
+    afterNextRender(() => this.host.nativeElement.querySelector(`[data-test-row="${test.id}"]`)?.scrollIntoView({ block: 'center' }), {
+      injector: this.injector,
+    });
+  });
   readonly approvedCount = computed(() => this.tests().filter((t) => t.status === 'Approved').length);
   readonly answered = computed(() => this.questions().filter((q) => q.answerIndex != null).length);
 

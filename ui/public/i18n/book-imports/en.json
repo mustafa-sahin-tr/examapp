@@ -102,6 +102,7 @@
     "all": "All",
     "awaiting": "Awaiting you ({{count}})",
     "failed": "Failed ({{count}})",
+    "later": "Later ({{count}})",
     "awaitingBanner": "{{count}} imports are waiting for you.",
     "loadMore": "Show more",
     "loading": "Loading imports…",
@@ -349,6 +350,10 @@
     "onlyAttention": "Only tests that need a look",
     "approveAll": "Approve tests without issues ({{count}}/{{total}})",
     "approveAllConfirm": "{{count}} tests will be approved and become active. Flagged tests and tests with unanswered questions or failures are skipped; review flagged tests and approve them one by one.",
+    "defer": "Set the rest aside ({{count}})",
+    "deferredNote": "The remaining tests of this book are set aside; it is not shown in the import list.",
+    "laterLink": "Later",
+    "undefer": "Back to the list",
     "confirm": "Approve",
     "cancel": "Cancel",
     "approving": "Approving…",
@@ -401,6 +406,19 @@
     "zoomPosition": "{{index}} of {{total}}",
     "zoomPrev": "Previous question",
     "zoomNext": "Next question"
+  },
+  "later": {
+    "title": "Later",
+    "subtitle": "Books whose remaining tests you set aside. Click a test to open its review; a book leaves this page when its last test is approved or removed.",
+    "back": "Imports",
+    "loading": "Loading…",
+    "loadFailed": "The list could not be loaded.",
+    "empty": "No tests are set aside.",
+    "tests": "{{count}} tests",
+    "deferredAt": "Set aside {{date}}",
+    "open": "Open review",
+    "pages": "p. {{from}}–{{to}}",
+    "undefer": "Back to the list"
   },
   "cost": {
     "title": "Cost",

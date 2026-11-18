@@ -351,6 +351,67 @@ describe('BookImportReviewComponent (#1023)', () => {
     expect(el().querySelector('[data-testid="browse-book"]')).toBeNull();
   });
 
+  it('defer_SetsTheRestAsideFromTheHeadAndAfterApproveAll (#1231)', () => {
+    setup([test(), test({ id: 2, order: 2, testNo: 2, status: 'NeedsReview' })]);
+    const deferred: boolean[] = [];
+    fixture.componentInstance.deferChange.subscribe((v) => deferred.push(v));
+    expect(el().querySelector('[data-testid="defer"]')).toBeNull();
+
+    fixture.componentRef.setInput('deferrable', true);
+    fixture.detectChanges();
+    (el().querySelector('[data-testid="defer"]') as HTMLButtonElement).click();
+    expect(deferred).toEqual([true]);
+
+    button(el(), 'Sorunsuz testleri onayla').click();
+    fixture.detectChanges();
+    button(el(), 'Onayla').click();
+    fixture.detectChanges();
+    (el().querySelector('[data-testid="defer-rest"]') as HTMLButtonElement).click();
+    expect(deferred).toEqual([true, true]);
+  });
+
+  it('defer_DeferredShowsANoteWithUndo (#1231)', () => {
+    setup([test({ status: 'NeedsReview' })]);
+    fixture.componentRef.setInput('deferrable', true);
+    fixture.componentRef.setInput('deferred', true);
+    fixture.detectChanges();
+    const deferred: boolean[] = [];
+    fixture.componentInstance.deferChange.subscribe((v) => deferred.push(v));
+
+    expect(el().querySelector('[data-testid="defer"]')).toBeNull();
+    const note = el().querySelector('[data-testid="deferred-note"]') as HTMLElement;
+    expect(note.textContent).toContain('sonraya bırakıldı');
+    expect(note.querySelector('a')!.getAttribute('href')).toBe('/book-imports/later');
+    (note.querySelector('[data-testid="undefer"]') as HTMLButtonElement).click();
+    expect(deferred).toEqual([false]);
+  });
+
+  it('focusTest_ShowsTheTestEvenIfCleanAndOpensItsFlags (#1231)', () => {
+    setup([
+      test({ id: 1 }),
+      test({ id: 2, order: 2, testNo: 2, status: 'NeedsReview',
+        reviewFlags: [{ code: 'optionCount', pages: [5], numbers: [7], found: null, expected: null, byPage: { 5: [7] } }] }),
+    ]);
+    fixture.componentRef.setInput('focusTest', 1);
+    fixture.detectChanges();
+    expect(rows().length).toBe(2);
+    expect(fixture.componentInstance.onlyAttention()).toBe(false);
+
+    fixture.componentRef.setInput('focusTest', 2);
+    fixture.detectChanges();
+    // Yalnız ilk açılışta odaklanır.
+    expect(fixture.componentInstance.flagsId()).toBeNull();
+  });
+
+  it('focusTest_OpensTheFlagsOfAFlaggedTest (#1231)', () => {
+    setup([test({ id: 2, status: 'NeedsReview',
+      reviewFlags: [{ code: 'optionCount', pages: [5], numbers: [7], found: null, expected: null, byPage: { 5: [7] } }] })]);
+    fixture.componentRef.setInput('focusTest', 2);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.flagsId()).toBe(2);
+    expect(el().querySelector('[data-test-row="2"] .bir-flags')).not.toBeNull();
+  });
+
   it('flags_NoViewPageWithoutPageImages', () => {
     setup([test({
       status: 'NeedsReview',

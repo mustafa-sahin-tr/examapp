@@ -551,6 +551,53 @@ public class BookQuestionImportTests : IDisposable
     }
 
     [Fact]
+    public async Task Deferred_job_leaves_the_list_for_later_until_its_last_test_is_reviewed()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "AB", [2]), new(2, 2, 2, "CD", [2])]);
+        Detect(1, 4, 4);
+        Detect(2, 4, 4);
+        await RunAsync(id);
+        var tests = await TestsAsync();
+        var stranger = BookImportOwner.Create(OwnerId + 1, "QuestionTrainer");
+
+        await using (var ctx = _db.NewContext())
+        {
+            var service = Service(ctx);
+            (await service.ApproveTestAsync(Owner, id, tests[0].Id, default)).ShouldBe(BookImportReviewResult.Ok);
+            (await service.SetDeferredAsync(stranger, id, true, default)).ShouldBe(BookImportReviewResult.NotFound);
+            (await service.SetDeferredAsync(Owner, id, true, default)).ShouldBe(BookImportReviewResult.Ok);
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            var service = Service(ctx);
+            (await service.ListAsync(Owner, 50, default)).ShouldBeEmpty();
+            var counts = await service.CountsAsync(Owner, default);
+            counts.Total.ShouldBe(0);
+            counts.Deferred.ShouldBe(1);
+            var later = (await service.ListDeferredAsync(Owner, default)).ShouldHaveSingleItem();
+            later.Id.ShouldBe(id);
+            later.Tests.Select(t => t.Id).ShouldBe([tests[1].Id]);
+            (await service.ListDeferredAsync(stranger, default)).ShouldBeEmpty();
+
+            // Geri alınınca listeye döner; yeniden bırakılır.
+            (await service.SetDeferredAsync(Owner, id, false, default)).ShouldBe(BookImportReviewResult.Ok);
+            (await service.ListAsync(Owner, 50, default)).ShouldHaveSingleItem().DeferredAt.ShouldBeNull();
+            (await service.SetDeferredAsync(Owner, id, true, default)).ShouldBe(BookImportReviewResult.Ok);
+            (await service.ApproveTestAsync(Owner, id, tests[1].Id, default)).ShouldBe(BookImportReviewResult.Ok);
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            var service = Service(ctx);
+            (await service.ListDeferredAsync(Owner, default)).ShouldBeEmpty();
+            (await service.ListAsync(Owner, 50, default)).ShouldHaveSingleItem().Status.ShouldBe(nameof(BookImportJobStatus.Completed));
+            (await service.CountsAsync(Owner, default)).Deferred.ShouldBe(0);
+            (await service.SetDeferredAsync(Owner, id, true, default)).ShouldBe(BookImportReviewResult.InvalidState);
+        }
+    }
+
+    [Fact]
     public async Task Removing_a_test_deletes_only_its_draft_worksheet_and_questions()
     {
         var id = await SeedAsync([new(1, 1, 1, "AB", [2]), new(2, 2, 2, "CD", [2])]);

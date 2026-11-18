@@ -136,6 +136,13 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/book-imports/book-imports.component').then((m) => m.BookImportsComponent),
       },
       {
+        // Issue #1231: kalan testleri sonraya bırakılan kitaplar (`:id`'den önce).
+        path: 'book-imports/later',
+        canActivate: [authGuard, roleGuard('Admin', 'QuestionTrainer', 'Teacher'), approvedTeacherGuard],
+        loadComponent: () =>
+          import('./pages/book-imports/book-imports-later.component').then((m) => m.BookImportsLaterComponent),
+      },
+      {
         path: 'book-imports/:id',
         canActivate: [authGuard, roleGuard('Admin', 'QuestionTrainer', 'Teacher'), approvedTeacherGuard],
         loadComponent: () =>

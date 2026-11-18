@@ -130,6 +130,12 @@ public interface IBookImportService
     /// <summary>Issue #1023: testi sil — yalnız o testin taslak testi ve taslak soruları silinir.</summary>
     Task<BookImportReviewResult> RemoveTestAsync(BookImportOwner owner, Guid id, int testId, CancellationToken ct);
 
+    /// <summary>Issue #1231: kalan testleri sonraya bırak (ya da listeye geri al); yalnız incelemedeki iş.</summary>
+    Task<BookImportReviewResult> SetDeferredAsync(BookImportOwner owner, Guid id, bool deferred, CancellationToken ct);
+
+    /// <summary>Issue #1231: sonraya bırakılan, incelemesi süren işler ve onaylanmamış testleri (en eski önce).</summary>
+    Task<List<BookImportDeferredJobDto>> ListDeferredAsync(BookImportOwner owner, CancellationToken ct);
+
     /// <summary>
     /// İncelemedeki onaylanmamış testi baştan aktarır: taslakları silinir, test yeniden kuyruğa girer (sayfa tespitleri
     /// önbellekten gelir). Ör. numaralama düzeltmesinden sonra kayık cevaplı testi yeniden üretmek için.
@@ -258,6 +264,7 @@ public sealed partial class BookImportService : IBookImportService
         take = Math.Clamp(take, 1, MaxListTake);
         var jobs = await Visible(owner)
             .Where(j => status == null || j.Status == status)
+            .Where(j => j.DeferredAt == null || j.Status != BookImportJobStatus.ReadyForReview)
             .OrderByDescending(j => j.CreateTime)
             .Take(take)
             .AsNoTracking()
@@ -278,15 +285,17 @@ public sealed partial class BookImportService : IBookImportService
     public async Task<BookImportJobCountsDto> CountsAsync(BookImportOwner owner, CancellationToken ct)
     {
         var counts = await Visible(owner)
-            .GroupBy(j => j.Status)
-            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .GroupBy(j => new { j.Status, Deferred = j.DeferredAt != null && j.Status == BookImportJobStatus.ReadyForReview })
+            .Select(g => new { g.Key.Status, g.Key.Deferred, Count = g.Count() })
             .ToListAsync(ct);
-        int Of(BookImportJobStatus s) => counts.FirstOrDefault(c => c.Status == s)?.Count ?? 0;
+        var listed = counts.Where(c => !c.Deferred).ToList();
+        int Of(BookImportJobStatus s) => listed.Where(c => c.Status == s).Sum(c => c.Count);
         return new BookImportJobCountsDto
         {
-            Total = counts.Sum(c => c.Count),
+            Total = listed.Sum(c => c.Count),
             AwaitingConfirmation = Of(BookImportJobStatus.AwaitingConfirmation),
             Failed = Of(BookImportJobStatus.Failed),
+            Deferred = counts.Where(c => c.Deferred).Sum(c => c.Count),
         };
     }
 
@@ -454,6 +463,7 @@ public sealed partial class BookImportService : IBookImportService
         dto.FinishedAt = job.FinishedAt;
         dto.OwnerId = job.CreateUserId;
         dto.ResumeAt = job.ResumeAt;
+        dto.DeferredAt = job.DeferredAt;
     }
 
     private void FillCost(BookImportJobDto dto, BookImportJob job)

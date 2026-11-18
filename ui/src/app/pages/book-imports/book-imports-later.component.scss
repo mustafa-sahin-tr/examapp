@@ -1,0 +1,135 @@
+:host {
+  display: block;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+}
+
+.bil {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 20px 24px 40px;
+}
+
+.bil-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  color: var(--ms-text-medium);
+  text-decoration: none;
+  font-size: 0.9rem;
+
+  mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+
+  &:hover {
+    color: var(--ms-text-strong);
+  }
+}
+
+.bil-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 32px 0;
+  color: var(--ms-text-medium);
+
+  &--error {
+    color: var(--ms-danger-text);
+  }
+}
+
+.bil-book {
+  padding: 16px;
+  border: 1px solid var(--ms-border);
+  border-radius: 12px;
+  background: var(--ms-surface);
+
+  &__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+
+    > div {
+      flex: 1 1 240px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 1.05rem;
+      color: var(--ms-text-strong);
+    }
+
+    p {
+      margin: 2px 0 0;
+      font-size: 0.85rem;
+      color: var(--ms-text-medium);
+    }
+  }
+}
+
+.bil-tests {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bil-test {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 8px;
+  color: inherit;
+  text-decoration: none;
+
+  &:hover {
+    background: var(--ms-action-background-weak);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ms-action-border-focus);
+    outline-offset: 2px;
+  }
+
+  &__name {
+    font-weight: 600;
+    color: var(--ms-text-strong);
+  }
+
+  &__pages {
+    margin-left: auto;
+    font-size: 0.8rem;
+    color: var(--ms-text-medium);
+  }
+}
+
+.bil-chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: var(--ms-warning-surface-weak);
+  color: var(--ms-warning-text-weak);
+
+  &--Done {
+    background: var(--ms-success-surface-weak);
+    color: var(--ms-success-text);
+  }
+
+  &--Failed {
+    background: var(--ms-danger-surface-weak);
+    color: var(--ms-danger-text);
+  }
+}

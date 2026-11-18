@@ -148,9 +148,13 @@ export class BookImportDetailComponent implements OnInit {
 
   private poll?: Subscription;
   private id = '';
+  /** #1231: "Sonra bakılacaklar"dan gelinen test (`?test=`). */
+  focusTest: number | null = null;
 
   ngOnInit(): void {
     this.id = this.route.snapshot.paramMap.get('id') ?? '';
+    const focus = Number(this.route.snapshot.queryParamMap?.get('test'));
+    this.focusTest = Number.isInteger(focus) && focus > 0 ? focus : null;
     this.load();
   }
 
@@ -180,6 +184,14 @@ export class BookImportDetailComponent implements OnInit {
     this.poll = timer(BOOK_IMPORTS_POLL_MS)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.load());
+  }
+
+  /** #1231: kalan testleri sonraya bırak ya da aktarım listesine geri al. */
+  setDeferred(deferred: boolean): void {
+    this.api
+      .setDeferred(this.id, deferred)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({ next: () => this.load(), error: () => this.load() });
   }
 
   /** #1024: Admin — maliyet tavanında bekleyen işi sürdür. */

@@ -102,6 +102,7 @@
     "all": "Tümü",
     "awaiting": "Onay bekleyen ({{count}})",
     "failed": "Hatalı ({{count}})",
+    "later": "Sonra bakılacaklar ({{count}})",
     "awaitingBanner": "{{count}} aktarım sizi bekliyor.",
     "loadMore": "Daha fazla göster",
     "loading": "Aktarımlar yükleniyor…",
@@ -349,6 +350,10 @@
     "onlyAttention": "Yalnız bakılması gerekenler",
     "approveAll": "Sorunsuz testleri onayla ({{count}}/{{total}})",
     "approveAllConfirm": "{{count}} test onaylanacak ve etkinleşecek. İşaretli, cevapsız sorusu olan ya da hatalı testler atlanır; işaretlileri inceleyip tek tek onaylayın.",
+    "defer": "Kalanları sonraya bırak ({{count}})",
+    "deferredNote": "Bu kitabın kalan testleri sonraya bırakıldı; aktarım listesinde görünmez.",
+    "laterLink": "Sonra bakılacaklar",
+    "undefer": "Listeye geri al",
     "confirm": "Onayla",
     "cancel": "Vazgeç",
     "approving": "Onaylanıyor…",
@@ -401,6 +406,19 @@
     "zoomPosition": "{{index}} / {{total}}",
     "zoomPrev": "Önceki soru",
     "zoomNext": "Sonraki soru"
+  },
+  "later": {
+    "title": "Sonra bakılacaklar",
+    "subtitle": "Kalan testlerini sonraya bıraktığınız kitaplar. Bir teste tıklayınca incelemesi açılır; son test onaylanınca ya da silinince kitap buradan çıkar.",
+    "back": "Aktarımlar",
+    "loading": "Yükleniyor…",
+    "loadFailed": "Liste yüklenemedi.",
+    "empty": "Sonraya bırakılmış test yok.",
+    "tests": "{{count}} test",
+    "deferredAt": "{{date}} bırakıldı",
+    "open": "İncelemeyi aç",
+    "pages": "s. {{from}}–{{to}}",
+    "undefer": "Listeye geri al"
   },
   "cost": {
     "title": "Maliyet",

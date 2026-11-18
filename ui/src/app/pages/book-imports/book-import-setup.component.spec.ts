@@ -143,6 +143,42 @@ describe('BookImportSetupComponent (#1021)', () => {
     expect(view()).toBeNull();
   });
 
+  it('browseBook_WalksEveryPage_ShowingTheTestsOfThePage (#1229)', () => {
+    create();
+    const view = () => el().querySelector<HTMLElement>('[data-testid="test-pages"]');
+    const viewText = () => view()!.textContent!.replace(/\s+/g, ' ');
+    const navButton = (label: string) =>
+      Array.from(view()!.querySelectorAll<HTMLButtonElement>('.bis-view__nav button')).find((b) => b.textContent?.includes(label))!;
+
+    el().querySelector<HTMLButtonElement>('[data-testid="browse-book"]')!.click();
+    fixture.detectChanges();
+    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 1);
+    expect(viewText()).toContain('bu sayfada test yok');
+    expect(viewText()).toContain('/ 240');
+    expect(navButton(tr.setup.prevPage).disabled).toBe(true);
+
+    const jump = view()!.querySelector<HTMLInputElement>('[data-testid="page-jump"]')!;
+    jump.value = '8';
+    jump.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 8);
+    expect(viewText()).toContain('1-01 Milyonlar - I');
+
+    navButton(tr.setup.nextPage).click();
+    fixture.detectChanges();
+    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 9);
+    expect(viewText()).toContain('1-02 Milyonlar - II');
+
+    jump.value = '0';
+    jump.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(api.pageImage).toHaveBeenLastCalledWith('a1', 9);
+
+    view()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    expect(view()).toBeNull();
+  });
+
   it('keyPage_ClickOpensItFullSize (#1192)', () => {
     create();
     el().querySelector<HTMLButtonElement>('[data-testid="key-open"]')!.click();

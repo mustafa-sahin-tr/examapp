@@ -13,6 +13,11 @@
 }
 
 .bis-head {
+  // #1229
+  &__browse {
+    margin-top: 8px;
+  }
+
   h2 {
     margin: 0 0 4px;
     font-size: 1.05rem;
@@ -516,6 +521,24 @@
   background: color-mix(in srgb, var(--ms-surface) 92%, transparent);
 
   &__bar,
+  // #1229: kitap görünümünde sayfa numarası.
+  &__jump {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    input {
+      width: 4.5em;
+      padding: 4px 6px;
+      border: 1px solid var(--ms-border);
+      border-radius: 8px;
+      background: var(--ms-surface);
+      color: var(--ms-text-strong);
+      font: inherit;
+      text-align: center;
+    }
+  }
+
   &__nav {
     display: flex;
     flex-wrap: wrap;

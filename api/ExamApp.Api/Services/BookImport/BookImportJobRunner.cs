@@ -59,12 +59,14 @@ public class BookImportJobRunner
     private readonly IBackgroundJobClient? _jobs;
     private readonly TimeSpan _demoStep;
     private readonly ILogger<BookImportJobRunner> _logger;
+    private readonly IPageCleaner? _pageCleaner;
 
     public BookImportJobRunner(AppDbContext db, IApprovedTeacherGuard teacherGuard, IMinIoService minio, IPdfRasterizer rasterizer,
         IBookSetupAi setupAi, ILabelingService labeling, IServiceScopeFactory scopes, IConfiguration? configuration = null,
         ILogger<BookImportJobRunner>? logger = null, IFixedWindowCounterStore? budgetStore = null,
-        IOptions<LabelingAiOptions>? aiOptions = null, IBackgroundJobClient? jobs = null)
+        IOptions<LabelingAiOptions>? aiOptions = null, IBackgroundJobClient? jobs = null, IPageCleaner? pageCleaner = null)
     {
+        _pageCleaner = pageCleaner;
         _db = db;
         _teacherGuard = teacherGuard;
         _minio = minio;
@@ -125,7 +127,10 @@ public class BookImportJobRunner
         try
         {
             if (job.Stage < BookImportStage.SetupConfirmation)
+            {
                 await RenderPagesAsync(job);
+                await CleanPagesAsync(job);
+            }
             // #1144 karışık sorular: kurulum ve onay yok, test satırları yüklemede açıldı; sayfalardan sonra sorulara geçer.
             if (job.Stage < BookImportStage.SetupConfirmation && job.Source != BookImportSource.LooseImages)
             {
@@ -175,6 +180,26 @@ public class BookImportJobRunner
             _logger.LogError(ex, "Book import job {JobId} failed in stage {Stage}", job.Id, job.Stage);
             await FailUnlessCancelledAsync(job, ex.Message);
         }
+    }
+
+    /// <summary>
+    /// #1234: kurulumdan önce filigran ve cevap işaretleri temizlenir (kurulum, soru tespiti ve kırpmalar temiz sayfayı okur).
+    /// Hizmet yoksa ya da bir şey bulunamazsa sayfalar orijinal kalır; yarıda kaldıysa temizlenmiş sayfalar atlanır.
+    /// </summary>
+    private async Task CleanPagesAsync(BookImportJob job)
+    {
+        if (_pageCleaner is null || job.Kind != BookImportJobKind.Book || job.Source == BookImportSource.LooseImages
+            || BookPageCleaning.Parse(job.CleanJson) is { Status: not BookPageCleaning.Running })
+            return;
+
+        var service = new BookPageCleaningService(_db, _minio, _pageCleaner, _jobs, NullLogger<BookPageCleaningService>.Instance);
+        await service.CleanAsync(job, null, resume: true, async (done, total) =>
+        {
+            job.StageTotal = total;
+            job.StageProcessed = done;
+            await _db.SaveChangesAsync();
+            await BookQuestionImportStage.StopIfCancelledAsync(_db, job.Id, default);
+        }, default);
     }
 
     /// <summary>

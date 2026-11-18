@@ -5,6 +5,7 @@ FROM python:3.11-slim
 # Sistem paketleri — yalnız gerçekten kullanılanlar, öneriler olmadan:
 #   libgl1 + libglib2.0-0 → ultralytics'in çektiği opencv-python (libGL.so.1, libgthread)
 #   libzbar0              → pyzbar (QR okuma)
+#   fonts-dejavu-core     → sayfa temizliğinde şık harfini tanıma / yeniden yazma (#1234)
 # tesseract/mesa-dri/X11 paketleri kullanılmıyordu; --no-install-recommends olmadan
 # ~120 MB indiriyordu ve yavaş Debian aynasında apt adımı tek başına ~8 dk sürüp
 # Aspire'ın build timeout'una takılıyordu.
@@ -17,7 +18,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
  && apt-get install -y --no-install-recommends -o Acquire::Retries=3 \
       libgl1 \
       libglib2.0-0 \
-      libzbar0
+      libzbar0 \
+      fonts-dejavu-core
 
 # Çalışma dizinine geç
 WORKDIR /app

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List
@@ -6,6 +6,7 @@ from pathlib import Path
 from ultralytics import YOLO
 from PIL import Image
 import base64
+import json
 from io import BytesIO
 import os
 import logging
@@ -18,6 +19,7 @@ from guards import (
 )
 from dataset_store import QuestionSample, labeled_page_ids, open_oriented_rgb, save_page
 import transcribe
+import page_clean
 
 _enable_docs = os.getenv("ENABLE_API_DOCS", "").lower() in ("1", "true", "yes")
 app = FastAPI(
@@ -286,3 +288,52 @@ async def transcribe_audio(request: Request):
     except Exception:
         logger.exception("transcribe failed")
         raise HTTPException(status_code=500, detail="transcription failed")
+
+
+# #1234: kitap aktarımında sayfa temizliği (filigran + renkli cevap işaretleri). exam API önce örnek sayfalarla analiz eder,
+# sonra sayfaları tek tek temizletir. scipy yoksa available=false ve aktarım orijinal sayfalarla sürer.
+MAX_CLEAN_SAMPLE_PAGES = 40
+
+
+class CleanAnalyzeRequest(BaseModel):
+    pages: List[str] = Field(min_length=1, max_length=MAX_CLEAN_SAMPLE_PAGES)
+    mark_colour: List[int] | None = Field(default=None, alias="markColour", min_length=3, max_length=3)
+
+
+@app.get("/clean/status")
+async def clean_status():
+    return {"available": page_clean.available()}
+
+
+@app.post("/clean/analyze")
+async def clean_analyze(request: CleanAnalyzeRequest):
+    if not page_clean.available():
+        raise HTTPException(status_code=503, detail="page cleaning is not available")
+    try:
+        pages = [base64.b64decode(p.split(",", 1)[1] if p.startswith("data:") else p) for p in request.pages]
+        from starlette.concurrency import run_in_threadpool
+        return await run_in_threadpool(page_clean.analyze, pages, request.mark_colour)
+    except Exception:
+        logger.exception("clean analyze failed")
+        raise HTTPException(status_code=500, detail="page analysis failed")
+
+
+@app.post("/clean/page")
+async def clean_page(request: Request, token: str):
+    analysis = page_clean.get_analysis(token)
+    if analysis is None:
+        # Servis yeniden başladı ya da analiz süresi doldu: exam API yeniden analiz eder.
+        raise HTTPException(status_code=410, detail="analysis expired")
+    data = await request.body()
+    if not data:
+        raise HTTPException(status_code=400, detail="empty page")
+    try:
+        from starlette.concurrency import run_in_threadpool
+        image, marks, watermark = await run_in_threadpool(page_clean.clean_page, data, analysis)
+    except Exception:
+        logger.exception("clean page failed")
+        raise HTTPException(status_code=500, detail="page cleaning failed")
+    return Response(content=image, media_type="image/webp", headers={
+        "X-Page-Marks": json.dumps(marks, separators=(",", ":")),
+        "X-Watermark-Removed": "true" if watermark else "false",
+    })

@@ -510,6 +510,9 @@ namespace ExamApp.Api.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<string>("CleanJson")
+                        .HasColumnType("text");
+
                     b.Property<decimal?>("CostCeilingUsd")
                         .HasColumnType("numeric(10,4)");
 
@@ -747,6 +750,10 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<string>("CleanImageUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
                     b.Property<int>("FilePage")
                         .HasColumnType("integer");
 
@@ -761,8 +768,15 @@ namespace ExamApp.Api.Migrations
                     b.Property<Guid>("JobId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("MarksJson")
+                        .HasColumnType("text");
+
                     b.Property<int?>("MaxQuestionNumber")
                         .HasColumnType("integer");
+
+                    b.Property<string>("OriginalImageUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
 
                     b.Property<long>("SizeBytes")
                         .HasColumnType("bigint");

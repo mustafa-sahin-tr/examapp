@@ -76,6 +76,45 @@
       }
     </div>
     }
+    @if (!s.isDemo && (cleaning() || s.cleaningAvailable)) {
+    <div class="bis-aimatch bis-clean" role="status" data-testid="cleaning">
+      @if (cleaningRunning()) {
+      <mat-spinner diameter="18" aria-hidden="true" />
+      <span data-testid="cleaning-progress">{{ t('setup.cleaningProgress', { done: cleaning()!.processed, total: cleaning()!.pages || '…' }) }}</span>
+      } @else {
+      @switch (cleaning()?.status) {
+      @case ('Done') {
+      <span data-testid="cleaning-done">
+        @if (cleaning()!.markColour; as c) {<span class="bis-clean__swatch" [style.background]="'rgb(' + c.join(',') + ')'" aria-hidden="true"></span>}
+        {{ t(cleaning()!.watermark ? 'setup.cleaningDoneWatermark' : 'setup.cleaningDone', { marks: cleaning()!.marks }) }}
+      </span>
+      <mat-checkbox data-testid="cleaning-use-original" [checked]="cleaning()!.useOriginal" (change)="setUseOriginal($event.checked)">
+        {{ t('setup.cleaningUseOriginal') }}
+      </mat-checkbox>
+      <button mat-stroked-button type="button" data-testid="cleaning-compare" (click)="browseBook()">
+        <mat-icon aria-hidden="true">compare</mat-icon>{{ t('setup.cleaningCompare') }}
+      </button>
+      }
+      @case ('NothingFound') { <span data-testid="cleaning-nothing">{{ t('setup.cleaningNothing') }}</span> }
+      @case ('Failed') { <span class="bis-error" data-testid="cleaning-failed">{{ t('setup.cleaningFailed') }}</span> }
+      @case ('Unavailable') { <span class="bis-error">{{ t('setup.cleaningFailed') }}</span> }
+      @case ('Running') { <span>{{ t('setup.cleaningStalled') }}</span> }
+      @default { <span>{{ t('setup.cleaningIntro') }}</span> }
+      }
+      @if (s.cleaningAvailable) {
+      <button mat-stroked-button type="button" data-testid="cleaning-start" (click)="startCleaning()">
+        <mat-icon aria-hidden="true">auto_fix_high</mat-icon>{{ t(cleaning() ? 'setup.cleaningAgain' : 'setup.cleaningStart') }}
+      </button>
+      <button mat-stroked-button type="button" data-testid="cleaning-pick" (click)="pickMarkColour()">
+        <mat-icon aria-hidden="true">colorize</mat-icon>{{ t('setup.cleaningPick') }}
+      </button>
+      }
+      }
+      @if (cleaningError(); as e) {
+      <span class="bis-error">{{ e === 'generic' ? t('setup.cleaningStartFailed') : e }}</span>
+      }
+    </div>
+    }
     @if (!s.isDemo && !s.noAnswerKey && (keylessCount() > 0 || bulk() || matchError())) {
     <div class="bis-aimatch" role="status">
       @if (bulk(); as b) {
@@ -104,7 +143,7 @@
           [attr.aria-label]="t('setup.openKeyLarge') + ' · ' + t('setup.page', { page })" [attr.title]="t('setup.openKeyLarge')"
           (click)="showKeyLarge(page)">
           @if (keyImages().get(page); as src) {
-          <img [src]="src" [alt]="t('setup.keyImageAlt', { page })" />
+          <img [src]="src" [class.bis-view__pick]="pickingColour()" (click)="pickColourAt($event)" [alt]="t('setup.keyImageAlt', { page })" />
           } @else {
           <span class="bis-keypages__empty"><mat-spinner diameter="20" aria-hidden="true"></mat-spinner></span>
           }
@@ -300,6 +339,13 @@
       }
       } @else {
       <span class="bis-view__title">{{ t('setup.keyPages') }}</span>
+      }
+      @if (pickingColour()) {
+      <span class="bis-view__hint" role="status" data-testid="cleaning-pick-hint">{{ t('setup.cleaningPickHint') }}</span>
+      } @else if (cleaning()?.status === 'Done') {
+      <button mat-stroked-button type="button" data-testid="toggle-original" [attr.aria-pressed]="showOriginal()" (click)="toggleOriginal()">
+        {{ t(showOriginal() ? 'setup.showClean' : 'setup.showOriginal') }}
+      </button>
       }
       <button #viewClose mat-icon-button type="button" [attr.aria-label]="t('setup.closePages')" (click)="closeTestPages()">
         <mat-icon>close</mat-icon>

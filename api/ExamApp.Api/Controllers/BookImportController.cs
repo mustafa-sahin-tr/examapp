@@ -278,12 +278,12 @@ public class BookImportController : BaseController
 
     /// <summary>Issue #1020: işin sayfa görseli (WebP); iş sahibine (ve Admin'e).</summary>
     [HttpGet("{id:guid}/pages/{filePage:int}")]
-    public async Task<IActionResult> GetPage(Guid id, int filePage, CancellationToken ct)
+    public async Task<IActionResult> GetPage(Guid id, int filePage, [FromQuery] bool original = false, CancellationToken ct = default)
     {
         var owner = await ResolveOwnerAsync(ct);
         if (owner is null)
             return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
-        var image = await _service.GetPageImageAsync(owner, id, filePage, ct);
+        var image = await _service.GetPageImageAsync(owner, id, filePage, ct, original);
         return image is null ? NotFound(new { message = _localizer["bookImport.notFound"].Value }) : File(image, "image/webp");
     }
 
@@ -291,7 +291,7 @@ public class BookImportController : BaseController
     [HttpGet("{id:guid}/setup")]
     [ProducesResponseType(typeof(BookImportSetupDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetSetup(Guid id, [FromServices] IAudioTranscriber transcriber,
-        [FromServices] IEnumerable<IQrKeyReader> qrReaders, CancellationToken ct)
+        [FromServices] IEnumerable<IQrKeyReader> qrReaders, [FromServices] IPageCleaner pageCleaner, CancellationToken ct)
     {
         var owner = await ResolveOwnerAsync(ct);
         if (owner is null)
@@ -305,8 +305,52 @@ public class BookImportController : BaseController
         foreach (var test in setup.Tests)
             test.QrReadable = Uri.TryCreate(test.QrLink, UriKind.Absolute, out var link) && readers.Any(r => r.Handles(link));
         setup.QrKeysAvailable = !setup.IsDemo && setup.Tests.Any(t => t.QrReadable) && await transcriber.IsAvailableAsync(ct);
+        setup.CleaningAvailable = !setup.IsDemo && await pageCleaner.IsAvailableAsync(ct);
         return Ok(setup);
     }
+
+    /// <summary>
+    /// #1234: kurulum onayı beklerken "Sayfaları temizle" (filigran + renkli cevap işaretleri), isteğe bağlı seçilen işaret rengiyle;
+    /// arka planda çalışır, kurulum ekranı <c>cleaning</c>'i izler. 202 başladı; 409 onay beklemiyor ya da temizlik sürüyor, 503
+    /// hizmet yok.
+    /// </summary>
+    [HttpPost("{id:guid}/setup/clean")]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    public async Task<IActionResult> StartCleaning(Guid id, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] StartBookImportCleaningDto? request,
+        [FromServices] BookPageCleaningService cleaning, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        if (await _service.GetSetupAsync(owner, id, ct) is null)
+            return NotFound(new { message = _localizer["bookImport.notFound"].Value });
+        var colour = request?.MarkColour;
+        if (colour is not null && (colour.Length != 3 || colour.Any(c => c is < 0 or > 255)))
+            return BadRequest(new { code = "bookImport.invalidColour", message = _localizer["bookImport.invalidSetup"].Value });
+        return CleaningResult(await cleaning.StartAsync(id, colour, ct), Accepted());
+    }
+
+    /// <summary>#1234: "Orijinal sayfaları kullan" — soru aktarımı orijinal ya da temiz sayfalardan.</summary>
+    [HttpPut("{id:guid}/setup/clean")]
+    public async Task<IActionResult> SetCleaning(Guid id, [FromBody] SetBookImportCleaningDto request,
+        [FromServices] BookPageCleaningService cleaning, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        if (await _service.GetSetupAsync(owner, id, ct) is null)
+            return NotFound(new { message = _localizer["bookImport.notFound"].Value });
+        return CleaningResult(await cleaning.SetUseOriginalAsync(id, request?.UseOriginal ?? false, ct), NoContent());
+    }
+
+    private IActionResult CleaningResult(PageCleaningError error, IActionResult ok) => error switch
+    {
+        PageCleaningError.None => ok,
+        PageCleaningError.Running => Conflict(new { code = "bookImport.cleaningRunning", message = _localizer["bookImport.cleaningRunning"].Value }),
+        PageCleaningError.NotAvailable => StatusCode(StatusCodes.Status503ServiceUnavailable,
+            new { code = "bookImport.cleaningUnavailable", message = _localizer["bookImport.cleaningUnavailable"].Value }),
+        _ => Conflict(new { code = "bookImport.notAwaitingSetup", message = _localizer["bookImport.notAwaitingSetup"].Value }),
+    };
 
     /// <summary>
     /// Issue #1021: kurulumu onayla — hak düşer, kitap kaydı yazılır, soru aktarımı başlar. 409: aynı adlı kitap var

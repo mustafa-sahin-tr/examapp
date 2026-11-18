@@ -598,3 +598,22 @@
     }
   }
 }
+
+/* #1234 sayfa temizliği */
+.bis-clean__swatch {
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  margin-inline-end: 0.35em;
+  vertical-align: -0.1em;
+  border-radius: 3px;
+  border: 1px solid var(--mat-sys-outline-variant);
+}
+
+.bis-view__hint {
+  font-weight: 600;
+}
+
+.bis-view__pick {
+  cursor: crosshair;
+}

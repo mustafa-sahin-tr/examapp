@@ -26,6 +26,8 @@
     "qrKeyNoQr": "Bu testin sayfalarında QR bulunamadı.",
     "qrKeyNotAvailable": "Ses hizmeti çalışmıyor; QR çözümlerinden anahtar alınamıyor.",
     "qrKeysRunning": "QR çözümleri okunuyor; bitince onaylayın.",
+    "cleaningRunning": "Sayfa temizliği sürüyor; bitince onaylayın.",
+    "cleaningUnavailable": "Sayfa temizliği şu an kullanılamıyor.",
     "bookNameTaken": "Bu adla bir kitap zaten var. Mevcut kitabı kullan ya da başka bir ad gir.",
     "bookNotFound": "Seçilen kitap bulunamadı.",
     "noTests": "En az bir test seçin.",

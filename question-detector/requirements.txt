@@ -13,3 +13,7 @@ pyzbar==0.1.9
 faster-whisper==1.2.1
 av<17  # faster-whisper 1.2.1 av.open(metadata_errors=...) kullanıyor; PyAV 17+ kaldırdı
 requests  # faster-whisper içe aktarır, yeni huggingface_hub artık çekmiyor
+
+# #1234: sayfa temizliği (filigran + cevap işaretleri); ultralytics de çeker, açıkça yazılı
+numpy
+scipy

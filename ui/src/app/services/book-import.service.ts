@@ -298,7 +298,19 @@ export class BookImportService {
   }
 
   /** Sayfa görseli (WebP, #1020); yetkili istek olduğundan <img src> yerine blob. */
-  pageImage(id: string, filePage: number): Observable<Blob> {
-    return this.http.get(`${this.baseUrl}/${id}/pages/${filePage}`, { responseType: 'blob' });
+  /** `original`: #1234 temizlenmiş sayfanın orijinali. */
+  pageImage(id: string, filePage: number, original = false): Observable<Blob> {
+    const params = original ? { original: true } : undefined;
+    return this.http.get(`${this.baseUrl}/${id}/pages/${filePage}`, { responseType: 'blob', params });
+  }
+
+  /** #1234 "Sayfaları temizle": arka planda; işaret rengi verilirse öğrenilmez, bu renk kullanılır. */
+  startCleaning(id: string, markColour?: number[]): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${id}/setup/clean`, markColour ? { markColour } : {});
+  }
+
+  /** #1234 "Orijinal sayfaları kullan". */
+  setCleaning(id: string, useOriginal: boolean): Observable<void> {
+    return this.http.put<void>(`${this.baseUrl}/${id}/setup/clean`, { useOriginal });
   }
 }

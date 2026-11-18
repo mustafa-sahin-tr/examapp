@@ -25,7 +25,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { TranslocoDirective } from '@jsverse/transloco';
 
-import { BookImportSetup, BookImportSetupTest, BookKeySource, ConfirmBookImportSetup } from '../../models/book-import';
+import { BookImportCleaning, BookImportSetup, BookImportSetupTest, BookKeySource, ConfirmBookImportSetup } from '../../models/book-import';
 import { BookImportService } from '../../services/book-import.service';
 
 const KEY_LETTER = /^[A-Ea-e]$/;
@@ -37,6 +37,37 @@ const MAX_KEY_LENGTH = 200;
 const DEFAULT_KEY_LENGTH = 10;
 /** #1219: "QR'dan al" okuması sürerken kurulumun yeniden okunma aralığı. */
 const QR_POLL_MS = 4000;
+
+function emptyCleaning(): BookImportCleaning {
+  return { status: 'Running', running: true, watermark: false, colourPicked: false, marks: 0, pages: 0, processed: 0, useOriginal: false };
+}
+
+/** #1234: görseldeki noktanın (görüntülenen boyutta) 9×9 çevresindeki en doygun piksel; okunamazsa null. */
+function saturatedColourAt(image: HTMLImageElement, x: number, y: number): number[] | null {
+  if (!image.naturalWidth || !image.clientWidth) return null;
+  const scale = image.naturalWidth / image.clientWidth;
+  const cx = Math.round(x * scale);
+  const cy = Math.round(y * scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = 9;
+  canvas.height = 9;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.drawImage(image, cx - 4, cy - 4, 9, 9, 0, 0, 9, 9);
+  const data = ctx.getImageData(0, 0, 9, 9).data;
+  let best: number[] | null = null;
+  let bestSaturation = -1;
+  for (let i = 0; i < data.length; i += 4) {
+    const rgb = [data[i], data[i + 1], data[i + 2]];
+    const saturation = Math.max(...rgb) - Math.min(...rgb);
+    if (saturation > bestSaturation) {
+      bestSaturation = saturation;
+      best = rgb;
+    }
+  }
+  // Gri / beyaz bir yere tıklandı: işaret rengi değil.
+  return best && bestSaturation >= 60 ? best : null;
+}
 
 /** Onay tablosunun düzenlenebilir satırı. Anahtar hücreleri: "A"–"E", okunamayan "?", boş "". */
 export interface EditableSetupTest {
@@ -139,6 +170,15 @@ export class BookImportSetupComponent implements OnInit {
   /** Kitapta anahtar sayfası yoksa da QR'dan ya da elle anahtar girilmiş test varsa "cevapsız devam" sorulmaz. */
   readonly anyKey = computed(() => this.rows().some((r) => !!r.key));
   private qrPoll?: Subscription;
+  /** #1234 sayfa temizliği: sonuç sunucudan (kurulum yeniden okunur); başlatma hatası ('generic' çevrilir). */
+  readonly cleaning = computed(() => this.setup()?.cleaning ?? null);
+  readonly cleaningRunning = computed(() => this.cleaning()?.running === true);
+  readonly cleaningError = signal<string | null>(null);
+  /** Görüntüleyicide temizlenmiş sayfanın orijinali gösteriliyor (önce / sonra). */
+  readonly showOriginal = signal(false);
+  /** Görüntüleyicide işaret rengi seçiliyor: işaretli bir şık kutusuna tıklanır, o renkle yeniden temizlenir. */
+  readonly pickingColour = signal(false);
+  private cleaningPoll?: Subscription;
   private destroyed = false;
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
@@ -210,6 +250,7 @@ export class BookImportSetupComponent implements OnInit {
           !this.invalidPages() &&
           this.bookName().trim().length > 0 &&
           !this.qrRunning() &&
+          !this.cleaningRunning() &&
           (!this.setup()?.noAnswerKey || this.noKeyAcknowledged() || this.anyKey()))),
   );
 
@@ -239,6 +280,7 @@ export class BookImportSetupComponent implements OnInit {
           this.bookName.set(setup.bookName);
           this.loadKeyImages();
           if (setup.qrRun?.running) this.pollQrRun();
+          if (setup.cleaning?.running) this.pollCleaning();
         },
         error: () => this.loadError.set(true),
       });
@@ -309,7 +351,7 @@ export class BookImportSetupComponent implements OnInit {
     this.viewedFailed.set(false);
     this.revokeViewed();
     this.api
-      .pageImage(this.jobId(), filePage)
+      .pageImage(this.jobId(), filePage, this.showOriginal() || this.pickingColour())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (blob) => {
@@ -330,6 +372,7 @@ export class BookImportSetupComponent implements OnInit {
   }
 
   closeTestPages(): void {
+    this.pickingColour.set(false);
     this.viewedTest.set(null);
     this.viewingKey.set(false);
     this.viewingBook.set(false);
@@ -492,6 +535,96 @@ export class BookImportSetupComponent implements OnInit {
           this.qrError.set(typeof message === 'string' ? message : 'generic');
         },
       });
+  }
+
+  /**
+   * #1234 "Sayfaları temizle" (markColour verilirse o renkle): filigran ve renkli cevap işaretleri arka planda silinir, orijinaller
+   * saklanır. Sürerken kurulum birkaç saniyede bir yeniden okunur; onay bitene kadar kapalıdır.
+   */
+  startCleaning(markColour?: number[]): void {
+    if (this.cleaningRunning()) return;
+    this.cleaningError.set(null);
+    this.api
+      .startCleaning(this.jobId(), markColour)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.setup.update((s) =>
+            s ? { ...s, cleaning: { ...emptyCleaning(), ...s.cleaning, status: 'Running', running: true, processed: 0 } } : s,
+          );
+          this.pollCleaning();
+        },
+        error: (error: HttpErrorResponse) => {
+          const message = error.error?.message;
+          this.cleaningError.set(typeof message === 'string' ? message : 'generic');
+        },
+      });
+  }
+
+  /** #1234 "Orijinal sayfaları kullan": soru aktarımı orijinal sayfalardan. */
+  setUseOriginal(useOriginal: boolean): void {
+    this.cleaningError.set(null);
+    this.api
+      .setCleaning(this.jobId(), useOriginal)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => this.setup.update((s) => (s?.cleaning ? { ...s, cleaning: { ...s.cleaning, useOriginal } } : s)),
+        error: (error: HttpErrorResponse) => {
+          const message = error.error?.message;
+          this.cleaningError.set(typeof message === 'string' ? message : 'generic');
+        },
+      });
+  }
+
+  /** Görüntüleyicide orijinal / temiz sayfa. */
+  toggleOriginal(): void {
+    this.showOriginal.update((v) => !v);
+    const page = this.viewedPage();
+    if (page != null) this.showTestPage(page);
+  }
+
+  /** İşaret rengini seç: kitap orijinal sayfalarla açılır, işaretli bir şık kutusuna tıklanır. */
+  pickMarkColour(): void {
+    this.browseBook(this.viewedPage() ?? 1);
+    this.pickingColour.set(true);
+    const page = this.viewedPage();
+    if (page != null) this.showTestPage(page);
+  }
+
+  /** Tıklanan noktanın çevresindeki en doygun renk (harfin üstüne tıklansa da kutunun rengi) ile yeniden temizler. */
+  pickColourAt(event: MouseEvent): void {
+    if (!this.pickingColour()) return;
+    const image = event.target as HTMLImageElement;
+    const colour = saturatedColourAt(image, event.offsetX, event.offsetY);
+    if (!colour) return;
+    this.closeTestPages();
+    this.startCleaning(colour);
+  }
+
+  private pollCleaning(): void {
+    this.cleaningPoll?.unsubscribe();
+    this.cleaningPoll = timer(QR_POLL_MS)
+      .pipe(
+        switchMap(() => this.api.setup(this.jobId())),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (setup) => {
+          this.setup.update((s) => (s ? { ...s, cleaning: setup.cleaning ?? null } : s));
+          if (setup.cleaning?.running) this.pollCleaning();
+          else this.refreshImages();
+        },
+        error: () => this.pollCleaning(),
+      });
+  }
+
+  /** Temizlik bitince anahtar küçük resimleri ve açık sayfa yeniden yüklenir (temiz ya da orijinal görsel). */
+  private refreshImages(): void {
+    this.revokeKeyImages();
+    this.keyImages.set(new Map());
+    this.loadKeyImages();
+    const page = this.viewedPage();
+    if (page != null && this.viewerOpen()) this.showTestPage(page);
   }
 
   private pollQrRun(): void {

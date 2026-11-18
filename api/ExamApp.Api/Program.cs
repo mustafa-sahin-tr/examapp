@@ -723,6 +723,10 @@ builder.Services.AddHttpClient(ExamApp.Api.Services.BookImport.QrSolutionClient.
 builder.Services.AddHttpClient(ExamApp.Api.Services.BookImport.DetectorAudioTranscriber.HttpClientName, c => c.Timeout = TimeSpan.FromMinutes(2));
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.QrSolutionClient>();
 builder.Services.AddSingleton<ExamApp.Api.Services.BookImport.IAudioTranscriber, ExamApp.Api.Services.BookImport.DetectorAudioTranscriber>();
+// #1234: sayfa temizliği (question-detector /clean/*); analiz örnek sayfaların medyanını alır, uzun sürebilir.
+builder.Services.AddHttpClient(ExamApp.Api.Services.BookImport.DetectorPageCleaner.HttpClientName, c => c.Timeout = TimeSpan.FromMinutes(10));
+builder.Services.AddSingleton<ExamApp.Api.Services.BookImport.IPageCleaner, ExamApp.Api.Services.BookImport.DetectorPageCleaner>();
+builder.Services.AddScoped<ExamApp.Api.Services.BookImport.BookPageCleaningService>();
 builder.Services.AddSingleton<ExamApp.Api.Services.BookImport.IQrKeyReader, ExamApp.Api.Services.BookImport.FernusQrKeyReader>();
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.BookQrKeyService>();
 // Issue #1020: PDFium tabanlı sayfa görselleri (durumsuz).

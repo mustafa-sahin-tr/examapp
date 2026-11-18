@@ -73,7 +73,8 @@ public interface IBookImportService
     Task<int> PurgeStaleUploadsAsync(CancellationToken ct = default);
 
     /// <summary>İşin bir sayfa görseli (#1020); iş görünmüyorsa ya da sayfa yoksa null.</summary>
-    Task<Stream?> GetPageImageAsync(BookImportOwner owner, Guid id, int filePage, CancellationToken ct);
+    /// <param name="original">#1234: temizlenmiş sayfanın orijinali (kurulumdaki önce / sonra).</param>
+    Task<Stream?> GetPageImageAsync(BookImportOwner owner, Guid id, int filePage, CancellationToken ct, bool original = false);
 
     /// <summary>
     /// Kitaba bağlı en son aktarımın sayfa görseli (#1020): işaretleme ekranı <c>bookId</c> + <c>filePage</c> ile okur. Kitap
@@ -362,10 +363,11 @@ public sealed partial class BookImportService : IBookImportService
         return detail;
     }
 
-    public async Task<Stream?> GetPageImageAsync(BookImportOwner owner, Guid id, int filePage, CancellationToken ct)
+    public async Task<Stream?> GetPageImageAsync(BookImportOwner owner, Guid id, int filePage, CancellationToken ct, bool original = false)
     {
         var url = await Visible(owner).Where(j => j.Id == id)
-            .SelectMany(j => j.Pages.Where(p => p.FilePage == filePage).Select(p => p.ImageUrl))
+            .SelectMany(j => j.Pages.Where(p => p.FilePage == filePage)
+                .Select(p => original ? p.OriginalImageUrl ?? p.ImageUrl : p.ImageUrl))
             .FirstOrDefaultAsync(ct);
         return url is null ? null : await _minio.GetFileStreamAsync(url);
     }

@@ -79,6 +79,14 @@ public sealed partial class BookImportService
                     Running = BookQrKeyService.IsActive(run), Total = run.Orders.Count, Done = run.Done, Failed = run.Failed,
                 }
                 : null,
+            Cleaning = BookPageCleaning.Parse(job.CleanJson) is { } cleaning
+                ? new BookImportCleaningDto
+                {
+                    Status = cleaning.Status, Running = cleaning.IsActive, Watermark = cleaning.Watermark, MarkColour = cleaning.MarkColour,
+                    ColourPicked = cleaning.ColourPicked, Marks = cleaning.Marks, Pages = cleaning.Pages, Processed = cleaning.Processed,
+                    UseOriginal = cleaning.UseOriginal,
+                }
+                : null,
             AiCostUsd = job.AiCostUsd,
             SchemaRevision = summary.SchemaRevision,
             IsDemo = job.DemoSourceJobId is not null,
@@ -104,6 +112,9 @@ public sealed partial class BookImportService
         if (job is null)
             return new(ConfirmSetupError.NotFound);
         if (!IsAwaitingSetup(job) || BookSetupSummary.Parse(job.SetupJson) is not { } summary)
+            return new(ConfirmSetupError.InvalidState);
+        // #1234: temizlik sürerken onaylanmaz (soru aktarımı yarım temizlenmiş sayfaları okurdu).
+        if (BookPageCleaning.Parse(job.CleanJson) is { IsActive: true })
             return new(ConfirmSetupError.InvalidState);
         if (job.DemoSourceJobId is not null)
             return await ConfirmDemoSetupAsync(id, ct);

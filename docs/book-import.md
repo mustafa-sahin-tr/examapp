@@ -173,6 +173,29 @@ aktarım aracındaki Python portu referanstır (#1022).
   kitap varsa 409 + `existingBook`: mevcut kitabı kullan (kayıt kümeleri boşsa kurulumla doldurulur) ya da yeni ad.
   İptal: `POST /api/exam/book-imports/{id}/cancel` (onay beklerken burada; diğer durumlar aşağıda, #1025).
 
+### Sayfa temizliği (#1234)
+
+Bazı kitaplarda her sayfada aynı yerde filigran (ör. açık gri çapraz yayınevi adı) ve renkli kutuyla işaretli doğru şık
+vardır; ikisi de kırpmalara girer. Sayfalar aşamasının sonunda, kurulum taramasından önce temizlenir:
+
+- **Hizmet:** question-detector `/clean/*` (`page_clean.py`, harici diskteki `clean_pages.py` betiğinin servis hali). Adres
+  `BookImport:PageCleanerUrl`, boşsa `BookImport:TranscriberUrl` (aynı servis); hizmet yoksa (detector kapalı, scipy yok) adım
+  atlanır, sayfalar orijinal kalır. Demoda `demo.sh detector up` gerekir.
+- **Analiz:** en çok 32 örnek sayfa gönderilir. Filigran: sayfaların piksel medyanında sayfa kenarına değmeyen büyük, açık, düz
+  lekeler; çarpma biçimli örtü olarak bölünür (yazının üstündeki filigran da gider). İşaret rengi: doygun renkli küçük kutular
+  renge göre gruplanır, harf okunan ilk kalabalık grup (A–E; rakamlar değil). Analiz bellekte jetonla tutulur (servis yeniden
+  başlarsa API yeniden analiz eder).
+- **Sayfa başına:** kutu silinir, harf sayfanın yazı renginde yeniden yazılır. Temiz kopya `book-imports/{id}/clean/0005.webp`,
+  `BookImportPage.ImageUrl` temiz olanı gösterir, orijinal `OriginalImageUrl`'de; silinen işaretler (harf + kutu) `MarksJson`'da
+  (#1235 cevap anahtarı için). Kurulum, soru tespiti, düzeltme ve görüntüleyiciler değişmeden temiz sayfayı okur.
+- **Özet:** `BookImportJob.CleanJson` (durum `Done` / `NothingFound` / `Failed` / `Unavailable` / `Running`, filigran, renk, işaret
+  sayısı). Hata aktarımı durdurmaz: orijinallere dönülür, `Failed`.
+- **Kurulum ekranı:** sonuç, "Orijinal sayfaları kullan" (`PUT setup/clean`; yalnız etkin görsel değişir), "Önce / sonra"
+  (görüntüleyicide orijinal / temiz; `GET pages/{n}?original=true`), "Sayfaları temizle / Yeniden temizle" ve "İşaret rengini
+  seç" (orijinal sayfada işaretli kutuya tıklanır, o renkle temizlenir; `POST setup/clean {markColour}`, Hangfire). Hesap sabittir:
+  aynı sayfa ve aynı renk aynı sonucu verir, yeniden denemenin anlamı farklı renk. Temizlik sürerken onay kapalıdır.
+  Temizlik özelliğinden önce aktarılıp onay bekleyen kitap da buradan elle temizlenir.
+
 ## Soru aktarımı (#1022)
 
 - **Taslak bayrağı** (karar 3, #1023'ün bayrak kısmı burada): `Question.IsDraft`, `Worksheet.IsDraft`; iki varlıkta da filtreler

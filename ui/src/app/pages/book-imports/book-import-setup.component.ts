@@ -25,7 +25,15 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { TranslocoDirective } from '@jsverse/transloco';
 
-import { BookImportCleaning, BookImportSetup, BookImportSetupTest, BookKeySource, ConfirmBookImportSetup } from '../../models/book-import';
+import {
+  BookImportCleaning,
+  BookImportSetup,
+  BookImportSetupTest,
+  BookKeySource,
+  ConfirmBookImportSetup,
+  bookImportTestCode,
+  isActivitySection,
+} from '../../models/book-import';
 import { BookImportService } from '../../services/book-import.service';
 
 const KEY_LETTER = /^[A-Ea-e]$/;
@@ -159,14 +167,16 @@ export class BookImportSetupComponent implements OnInit {
   readonly bulk = signal<{ done: number; total: number } | null>(null);
   readonly matchError = signal<string | null>(null);
   /** Onaya giren, anahtarı olmayan ve AI'ya henüz sorulmamış test: "Hepsini AI ile bul" bunları arar. */
-  readonly keylessCount = computed(() => this.included().filter((r) => !r.key && !this.notFound().has(r.order)).length);
+  readonly keylessCount = computed(
+    () => this.included().filter((r) => !r.key && !isActivitySection(r) && !this.notFound().has(r.order)).length,
+  );
   private bulkStopped = false;
   /** #1219 "QR'dan al" arka plan okuması: ilerleme sunucudan (kurulum yeniden okunur); başlatma hatası ('generic' çevrilir). */
   readonly qrRun = computed(() => this.setup()?.qrRun ?? null);
   readonly qrRunning = computed(() => this.qrRun()?.running === true);
   readonly qrError = signal<string | null>(null);
   /** Anahtarı olmayan ve QR'ı okunabilir test: "Hepsini QR'dan al" bunları okur. */
-  readonly qrKeylessCount = computed(() => this.included().filter((r) => !r.key && r.qrReadable).length);
+  readonly qrKeylessCount = computed(() => this.included().filter((r) => !r.key && r.qrReadable && !isActivitySection(r)).length);
   /** Kitapta anahtar sayfası yoksa da QR'dan ya da elle anahtar girilmiş test varsa "cevapsız devam" sorulmaz. */
   readonly anyKey = computed(() => this.rows().some((r) => !!r.key));
   private qrPoll?: Subscription;
@@ -320,6 +330,15 @@ export class BookImportSetupComponent implements OnInit {
   }
 
   /** #1192: testin sayfalarını tam ekranda aç (anahtardaki şüpheli hücreye karar vermek için). */
+  /** #1134: etkinlik bölümü satırı (anahtar beklenmez; kod "1-E01"). */
+  isActivity(row: EditableSetupTest): boolean {
+    return isActivitySection(row);
+  }
+
+  testCode(row: Pick<EditableSetupTest, 'unit' | 'testNo' | 'flags'>): string {
+    return bookImportTestCode(row);
+  }
+
   showTestPages(row: EditableSetupTest): void {
     this.viewingBook.set(false);
     this.viewingKey.set(false);

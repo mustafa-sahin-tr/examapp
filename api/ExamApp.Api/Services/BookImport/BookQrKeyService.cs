@@ -54,8 +54,10 @@ public sealed class BookQrKeyService(AppDbContext db, QrSolutionClient client, I
         var tests = await db.BookImportJobTests.AsNoTracking()
             .Where(t => t.JobId == jobId && t.AnswerKey == null && (order == null || t.Order == order))
             .OrderBy(t => t.Order)
-            .Select(t => new { t.Order, t.FileFrom, t.FileTo })
+            .Select(t => new { t.Order, t.FileFrom, t.FileTo, t.FlagsJson })
             .ToListAsync(ct);
+        // #1134: etkinlik bölümünün anahtarı olmaz.
+        tests.RemoveAll(t => BookImportService.ParseFlags(t.FlagsJson).Contains(BookSetupPlanner.FlagActivity));
         if (order is not null && tests.Count == 0)
             return new(QrKeyError.NotFound);
         var orders = tests.Where(t => Readable(summary.QrLinkFor(t.FileFrom, t.FileTo))).Select(t => t.Order).ToList();

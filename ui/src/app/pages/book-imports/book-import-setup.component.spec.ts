@@ -278,6 +278,19 @@ describe('BookImportSetupComponent (#1021)', () => {
     expect(dock()).not.toBeNull();
   });
 
+  it('activitySection_ShowsItsCodeAndNoKeyActions (#1134)', () => {
+    create(setupData({
+      tests: [{ order: 1, unit: 2, testNo: 1, title: 'Kesirler', minutes: null, fileFrom: 7, fileTo: 8, expectedQuestions: null,
+        answerKey: null, keyConflicts: null, flags: ['activity'] }],
+    }));
+
+    expect(el().querySelector('.bis-code')!.textContent).toContain('2-E01');
+    expect(el().querySelector('[data-testid="activity-section"]')!.textContent).toContain(tr.flags.activity);
+    expect(el().querySelector('[data-testid="enter-key"]')).toBeNull();
+    expect(el().querySelector('[data-testid="ai-find-key"]')).toBeNull();
+    expect(text()).not.toContain(tr.setup.noKeyForTest);
+  });
+
   it('enterKey_OpensEmptyCellsForAKeylessTest_AndSendsTypedKey', () => {
     create(setupData({
       tests: [{ order: 1, unit: 1, testNo: 8, title: 'T', minutes: null, fileFrom: 7, fileTo: 8, expectedQuestions: 3,

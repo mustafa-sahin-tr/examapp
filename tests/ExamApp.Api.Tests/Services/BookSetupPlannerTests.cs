@@ -368,4 +368,77 @@ public class BookSetupPlannerTests
         BookSetupStage.DescribePages(pages).ShouldBe("10:test u1 t1 s=\"Kavrama\" 11:test 12:other");
         BookSetupStage.DescribeKeys(keys).ShouldBe("p223 u5 t36 s=\"Prova\" n=2");
     }
+
+    [Fact]
+    public void Activity_pages_outside_tests_become_keyless_activity_sections_issue1134()
+    {
+        var pages = new[]
+        {
+            Page(1, BookPageKind.Cover),
+            Test(2, 1, 1, "Doğal Sayılar", maxQuestion: 4, printed: 12),
+            Page(3, BookPageKind.Activity, printed: 13),
+            Page(4, BookPageKind.Activity, printed: 14),
+            Test(5, 2, 1, "Kesirler", maxQuestion: 3, printed: 15),
+            Page(6, BookPageKind.Activity, printed: 16), // içindekiler satırı burada başlıyor: ayrı bölüm
+            Page(7, BookPageKind.Activity, printed: 17),
+            Page(8, BookPageKind.AnswerKey),
+        };
+        var toc = new[] { new SurveyedTocRow(1, "Doğal Sayılar", 12), new SurveyedTocRow(2, "Kesirler", 15), new SurveyedTocRow(2, "Kesir Etkinlikleri", 17) };
+        var key = new[] { Row(1, 1, "ABCD"), Row(2, 1, "ABC") };
+
+        var plan = BookSetupPlanner.Plan(pages, toc, key, key);
+
+        plan.Tests.Select(t => (t.Order, t.Unit, t.TestNo, t.FileFrom, t.FileTo, Activity: t.Flags.Contains(BookSetupPlanner.FlagActivity)))
+            .ShouldBe(
+            [
+                (1, 1, 1, 2, 2, false),
+                (2, 1, 1, 3, 4, true),
+                (3, 2, 1, 5, 5, false),
+                (4, 2, 1, 6, 6, true),
+                (5, 2, 2, 7, 7, true),
+            ]);
+        plan.Tests[1].Title.ShouldBe("Doğal Sayılar");
+        plan.Tests[4].Title.ShouldBe("Kesir Etkinlikleri");
+        plan.Tests.Where(t => t.Flags.Contains(BookSetupPlanner.FlagActivity))
+            .ShouldAllBe(t => t.AnswerKey == null && t.ExpectedQuestions == null && t.Flags.Count == 1);
+        // Etkinlik bölümü anahtar beklemez: testlerin anahtarı var, kitap "anahtarsız" sayılmaz.
+        plan.NoAnswerKey.ShouldBeFalse();
+        plan.Units.Select(u => (u.Unit, u.FileFrom, u.FileTo)).ShouldBe([(1, 2, 4), (2, 5, 7)]);
+    }
+
+    [Fact]
+    public void A_book_with_only_activity_pages_is_planned_in_sections_of_limited_length_issue1134()
+    {
+        var pages = Enumerable.Range(1, BookSetupPlanner.MaxActivitySectionPages + 2)
+            .Select(file => Page(file, BookPageKind.Activity)).ToArray();
+
+        var plan = BookSetupPlanner.Plan(pages, [], [], []);
+
+        plan.Tests.Select(t => (t.Unit, t.TestNo, t.FileFrom, t.FileTo)).ShouldBe(
+        [
+            (1, 1, 1, BookSetupPlanner.MaxActivitySectionPages),
+            (1, 2, BookSetupPlanner.MaxActivitySectionPages + 1, BookSetupPlanner.MaxActivitySectionPages + 2),
+        ]);
+        plan.NoAnswerKey.ShouldBeFalse();
+        BookImportService.BookTestName(new ExamApp.Api.Data.BookImportJobTest
+        {
+            Unit = 1, TestNo = 2, FlagsJson = "[\"activity\"]",
+        }).ShouldBe("1-E02 · Etkinlikler");
+    }
+
+    [Fact]
+    public void An_activity_page_inside_a_section_of_a_headerless_book_stays_in_that_section_issue1134()
+    {
+        var pages = new[]
+        {
+            Page(1, BookPageKind.Cover),
+            Test(2, maxQuestion: 5),
+            Page(3, BookPageKind.Activity),
+            Test(4, maxQuestion: 12),
+        };
+
+        var plan = BookSetupPlanner.Plan(pages, [], [], []);
+
+        plan.Tests.Select(t => (t.FileFrom, t.FileTo, t.Flags.Count)).ShouldBe([(2, 4, 0)]);
+    }
 }

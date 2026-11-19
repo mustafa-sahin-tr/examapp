@@ -187,7 +187,9 @@ export class BookImportReviewComponent implements OnInit {
     });
   });
   readonly approvedCount = computed(() => this.tests().filter((t) => t.status === 'Approved').length);
-  readonly answered = computed(() => this.questions().filter((q) => q.answerIndex != null).length);
+  /** #1134: etkinlik taslaklarının cevabı yoktur; sayaç yalnız çoktan seçmeli soruları sayar. */
+  readonly choiceQuestions = computed(() => this.questions().filter((q) => !q.interactionType));
+  readonly answered = computed(() => this.choiceQuestions().filter((q) => q.answerIndex != null).length);
 
   readonly isApprovable = isApprovable;
 
@@ -235,7 +237,8 @@ export class BookImportReviewComponent implements OnInit {
 
   /** Kurulum ve aktarım işaretleri, atlanan tekrarlar. */
   flagCount(test: BookImportJobTest): number {
-    return test.flags.length + test.reviewFlags.length + (test.duplicatesSkipped > 0 ? 1 : 0);
+    // #1134: "etkinlik bölümü" bir uyarı değil, satırın türü.
+    return test.flags.filter((f) => f !== 'activity').length + test.reviewFlags.length + (test.duplicatesSkipped > 0 ? 1 : 0);
   }
 
   /** Açık testin uyarıları sayfaya göre (her sayfa ve soru bir kez). */

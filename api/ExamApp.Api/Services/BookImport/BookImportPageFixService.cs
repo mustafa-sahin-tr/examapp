@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Labeling;
+using ExamApp.Api.Services.Interactions;
 using ExamApp.Api.Services.Labeling;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -66,7 +67,8 @@ public sealed class BookImportPageFixService(
 
         var bookId = job!.BookId;
         var links = await LinksAsync(test.WorksheetId, bookId, ct);
-        var old = links.Where(l => l.FilePage == filePage && l.IsDraft).ToList();
+        // #1134: sayfanın etkinlik taslakları düzeltmeden etkilenmez (tuval yalnız çoktan seçmeli soruları kaydeder).
+        var old = links.Where(l => l.FilePage == filePage && l is { IsDraft: true, IsActivity: false }).ToList();
         var oldIds = old.Select(l => l.QuestionId).ToList();
         var start = old.Select(l => l.Number).Where(n => n is not null).Min()
                     ?? (links.Where(l => l.FilePage < filePage).Select(l => l.Number).Max() ?? 0) + 1;
@@ -146,11 +148,13 @@ public sealed class BookImportPageFixService(
             test.WorksheetId = worksheet?.Id ?? test.WorksheetId;
 
             var live = worksheet?.WorksheetQuestions.Count(wq => !wq.IsDeleted) ?? 0;
+            // Anahtarla karşılaştırma yalnız çoktan seçmeli sorularla (etkinlikler anahtarda yok).
+            var liveQuestions = live - links.Count(l => l.IsActivity);
             var flags = ReplacePageFlags(BookImportReviewFlag.Parse(test.ReviewFlagsJson), filePage,
                 old.Select(l => l.Number).OfType<int>().Concat(numbers).ToHashSet(),
                 kept.Where(k => k.Question.CorrectOptionIndex < 0).Select(k => k.Number).ToList(),
                 kept.Where(k => k.Question.Options.Count != BookQuestionImportStage.ExpectedOptions).Select(k => k.Number).ToList(),
-                live, test.AnswerKey?.Length, from, to);
+                liveQuestions, test.AnswerKey?.Length, from, to);
             test.QuestionsFound = Math.Max(0, test.QuestionsFound - old.Count + questions.Count);
             test.QuestionsSaved = live;
             test.DuplicatesSkipped += saved.DuplicateIndexes.Count;
@@ -183,7 +187,7 @@ public sealed class BookImportPageFixService(
         if (error != BookImportPageFixError.None)
             return (error, []);
         var links = await LinksAsync(test!.WorksheetId, job!.BookId, ct);
-        var old = links.Where(l => l.FilePage == filePage && l.IsDraft).ToList();
+        var old = links.Where(l => l.FilePage == filePage && l is { IsDraft: true, IsActivity: false }).ToList();
         if (old.Count == 0)
             return (error, []);
 
@@ -261,13 +265,15 @@ public sealed class BookImportPageFixService(
             {
                 wq.QuestionId,
                 wq.Question.IsDraft,
+                wq.Question.InteractionType,
                 Source = db.QuestionSources.Where(s => s.QuestionId == wq.QuestionId && s.BookId == bookId)
                     .Select(s => new { s.FilePage, s.ItemLabel, s.BoxX, s.BoxY, s.BoxWidth, s.BoxHeight }).FirstOrDefault(),
             })
             .ToListAsync(ct);
         return rows.Select(r => new Link(r.QuestionId, r.IsDraft, r.Source?.FilePage ?? 0,
             int.TryParse(r.Source?.ItemLabel, out var n) ? n : null,
-            r.Source is { BoxX: { } x, BoxY: { } y, BoxWidth: { } w, BoxHeight: { } h } ? new LayoutBox(x, y, w, h) : null)).ToList();
+            r.Source is { BoxX: { } x, BoxY: { } y, BoxWidth: { } w, BoxHeight: { } h } ? new LayoutBox(x, y, w, h) : null,
+            IsActivity: r.InteractionType is not (null or McqGrader.Type))).ToList();
     }
 
     /// <summary>
@@ -504,5 +510,6 @@ public sealed class BookImportPageFixService(
         return "data:image/webp;base64," + Convert.ToBase64String(buffer.GetBuffer(), 0, (int)buffer.Length);
     }
 
-    private sealed record Link(int QuestionId, bool IsDraft, int FilePage, int? Number, LayoutBox? Box);
+    /// <param name="IsActivity">#1134: etkinlik taslağı (numarası ve şıkkı yok; sayfa düzeltmesi dokunmaz).</param>
+    private sealed record Link(int QuestionId, bool IsDraft, int FilePage, int? Number, LayoutBox? Box, bool IsActivity = false);
 }

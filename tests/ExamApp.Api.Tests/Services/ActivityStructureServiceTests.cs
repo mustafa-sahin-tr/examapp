@@ -292,6 +292,34 @@ public class ActivityStructureServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ExtractForImport_HasNoUserQuotaOrBudget_ReturnsThePaidCost_AndSharesTheCache_Issue1134()
+    {
+        // Kullanıcı bütçesi ve toplam bütçe dolu, saatlik kota 0: aktarım işi bunlara takılmaz (bütçeyi iş tutar).
+        await _counters.TryAcquireAsync("labeling-ai-usd:all", 25_000_000, int.MaxValue, TimeSpan.FromHours(24));
+        _extractor.FailTypes.Add(MatchGrader.Type);
+        ActivityStructureBlockDto[] blocks = [Block("0", SlotFillGrader.Type), Block("1", MatchGrader.Type, 120)];
+
+        await using var ctx = _db.NewContext();
+        var first = await NewService(ctx, liveCallsPerHour: 0).ExtractForImportAsync(_page, "claude-test", blocks);
+
+        first.Results.Select(r => (r.Key, r.Status, r.Valid)).ShouldBe([("0", "ok", true), ("1", "error", false)]);
+        // Başarılı ve ödenmiş başarısız çağrı: 2 × $0.006.
+        first.CostUsd.ShouldBe(0.012m);
+        first.Usage.ShouldBe(new LabelingAiUsage(2 * FakeExtractor.InputTokens, 2 * FakeExtractor.OutputTokens));
+        first.Transient.ShouldBeFalse();
+        (await _counters.PeekAsync("labeling-ai-usd:all")).Count.ShouldBe(25_000_000);
+
+        // İkinci çalıştırma: başarılı blok önbellekten (ücretsiz), yalnız düşen blok yeniden sorulur.
+        _extractor.FailTypes.Clear();
+        await using var again = _db.NewContext();
+        var second = await NewService(again, liveCallsPerHour: 0).ExtractForImportAsync(_page, "claude-test", blocks);
+        second.Results.Select(r => r.Origin).ShouldBe(["cached", "live"]);
+        second.CostUsd.ShouldBe(0.006m);
+        // İşaretleme ekranı da aynı kaydı görür.
+        (await ExtractAsync(Request(false, "claude-test", blocks))).Results.ShouldAllBe(r => r.Origin == "cached");
+    }
+
+    [Fact]
     public async Task Extract_LiveCost_IsChargedToUserAndTotalBudgets()
     {
         await ExtractAsync(Request(false, "claude-test", Block("a", SlotFillGrader.Type), Block("b", MatchGrader.Type, 120)));

@@ -419,7 +419,7 @@ public sealed partial class BookImportService : IBookImportService
         return file.Length <= BookImportJob.MaxFileNameLength ? file : file[..BookImportJob.MaxFileNameLength];
     }
 
-    private static List<string> ParseFlags(string? json)
+    internal static List<string> ParseFlags(string? json)
     {
         if (string.IsNullOrWhiteSpace(json))
             return new();

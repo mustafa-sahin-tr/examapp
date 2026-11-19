@@ -97,8 +97,8 @@ public interface IBookSetupAi
 /// </summary>
 public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
 {
-    /// <summary>1: ilk sürüm (#1021). 2: test başlığı olmayan bölümlü kitaplar ve test numarasız anahtarlar (#1122). 5: "AI ile eşle" (sahipsiz anahtar satırı → anahtarsız test).</summary>
-    public const int SchemaRevision = 6;
+    /// <summary>1: ilk sürüm (#1021). 2: test başlığı olmayan bölümlü kitaplar ve test numarasız anahtarlar (#1122). 5: "AI ile eşle" (sahipsiz anahtar satırı → anahtarsız test). 7: etkinlik sayfası türü (#1134).</summary>
+    public const int SchemaRevision = 7;
 
     public const string DefaultSurveyModel = "claude-haiku-5-5";
     public const string DefaultAnswerKeyModel = "claude-haiku-5-5";
@@ -121,14 +121,16 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
 
     private const string SurveyInstruction =
         "Each image above is one page; the text before it gives its file page number. For every page return: " +
-        "kind (cover, toc, test, answerKey, selfAssessment or other); printedPage, the page number printed on the page " +
+        "kind (cover, toc, test, activity, answerKey, selfAssessment or other); printedPage, the page number printed on the page " +
         "(null if none); for test pages the test header if this page shows one: unit (the section number such as " +
         "\"1. Bölüm\" or \"1. Ünite\"), testNo (\"Test 01\" → 1), title (the topic name next to the test number) and " +
         "minutes (\"16 dk.\" → 16); maxQuestionNumber, the highest question number printed on the page. Some books name " +
         "each test by a section label and a number instead of \"Test 01\" (\"Kavramları Kavra 01\", \"Öğrendiğini Kanıtla 02\", " +
         "\"Becerini Sergile 01\"): then series is that label, testNo the number, unit null and title the topic line of the header; " +
-        "series is null for \"Test 01\" headers. A page with only open-ended exercises (no lettered choices A–D) is kind other, " +
-        "even under such a label. A test page " +
+        "series is null for \"Test 01\" headers. A page whose exercises are not multiple choice but are completed on the page " +
+        "(matching, fill in the blanks, true/false or tick tables, sorting into groups, marking words in a text, puzzles) is kind " +
+        "activity, and a page with only free-writing questions (no lettered choices A–D) is kind other, even under such a label. " +
+        "A test page " +
         "without its own header still has kind test. Some books (e.g. LGS workbooks) have no test headers at all: the question " +
         "pages of a unit or of an exam section are kind test with unit and testNo null, and the title page of a unit or " +
         "section (\"1. Ünite\", an exam year cover) is kind cover. answerKey is the answer key table (\"Cevap Anahtarı\"); " +
@@ -398,6 +400,7 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
         "cover" => BookPageKind.Cover,
         "toc" => BookPageKind.Toc,
         "test" => BookPageKind.Test,
+        "activity" => BookPageKind.Activity,
         "answerkey" => BookPageKind.AnswerKey,
         "selfassessment" => BookPageKind.SelfAssessment,
         _ => BookPageKind.Other,
@@ -428,7 +431,7 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
 
     internal sealed record SurveyPage(
         [property: Description("The file page number written before the image.")] int FilePage,
-        [property: Description("One of: cover, toc, test, answerKey, selfAssessment, other.")] string Kind,
+        [property: Description("One of: cover, toc, test, activity, answerKey, selfAssessment, other.")] string Kind,
         [property: Description("Page number printed on the page; null when none is printed.")] int? PrintedPage,
         [property: Description("Unit/section number from the test header on this page; null when the page has no test header.")] int? Unit,
         [property: Description("Test number from the test header on this page; null when the page has no test header.")] int? TestNo,

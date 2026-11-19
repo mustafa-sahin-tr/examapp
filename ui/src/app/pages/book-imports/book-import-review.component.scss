@@ -237,6 +237,16 @@
     margin-right: auto;
   }
 
+  // #1134: etkinlik taslağı (tip çipi + "cevap sonradan" notu) cevap düğmelerinin yerinde.
+  &__activity {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ms-space-2, 8px);
+    margin-left: auto;
+    font-size: 0.8rem;
+    color: var(--ms-text-muted);
+  }
+
   &__answers {
     display: flex;
     gap: 4px;

@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using Hangfire;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Services.Interactions;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.Services.BookImport;
@@ -54,6 +55,7 @@ public sealed partial class BookImportService
                 Answers = wq.Question.Answers.Where(a => !a.IsDeleted).OrderBy(a => a.Order).ThenBy(a => a.Id).Select(a => a.Id).ToList(),
                 wq.Question.CorrectAnswerId,
                 wq.Question.ImageUrl,
+                wq.Question.InteractionType,
                 PassageImageUrl = wq.Question.Passage != null ? wq.Question.Passage.ImageUrl : null,
             })
             .AsAsyncEnumerable()
@@ -66,6 +68,7 @@ public sealed partial class BookImportService
                 ImageUrl = q.ImageUrl,
                 PassageImageUrl = q.PassageImageUrl,
                 AnswerIndex = q.CorrectAnswerId is { } correct && q.Answers.IndexOf(correct) is var index and >= 0 ? index : null,
+                InteractionType = q.InteractionType is null or McqGrader.Type ? null : q.InteractionType,
             })
             .ToListAsync(ct);
     }
@@ -138,7 +141,7 @@ public sealed partial class BookImportService
             return BookImportReviewResult.NotFound;
         if (!IsReviewable(test) || !await InReviewAsync(id, ct))
             return BookImportReviewResult.InvalidState;
-        if (await DraftQuestions(test.WorksheetId!.Value).AnyAsync(q => q.CorrectAnswerId == null, ct))
+        if (await DraftQuestions(test.WorksheetId!.Value).AnyAsync(AnswerlessQuestion, ct))
             return BookImportReviewResult.Answerless;
 
         await ApproveAsync(owner, test, await HasLooseQuestionsAsync(owner, id, ct), ct);
@@ -172,7 +175,7 @@ public sealed partial class BookImportService
                 result.Skipped.Add(new BookImportSkippedTestDto(test.Id, SkipFailed));
                 continue;
             }
-            if (await DraftQuestions(test.WorksheetId!.Value).AnyAsync(q => q.CorrectAnswerId == null, ct))
+            if (await DraftQuestions(test.WorksheetId!.Value).AnyAsync(AnswerlessQuestion, ct))
             {
                 result.Skipped.Add(new BookImportSkippedTestDto(test.Id, SkipAnswerless));
                 continue;
@@ -354,7 +357,8 @@ public sealed partial class BookImportService
             return [];
         return await _db.TestQuestions.IgnoreQueryFilters([DraftQueryFilter.Key]).AsNoTracking()
             .Where(wq => worksheetIds.Contains(wq.TestId) && !wq.IsDeleted && wq.Question.IsDraft && !wq.Question.IsDeleted
-                         && wq.Question.CorrectAnswerId == null)
+                         && wq.Question.CorrectAnswerId == null
+                         && (wq.Question.InteractionType == null || wq.Question.InteractionType == McqGrader.Type))
             .GroupBy(wq => wq.TestId)
             .Select(g => new { g.Key, Count = g.Count() })
             .ToDictionaryAsync(g => g.Key, g => g.Count, ct);
@@ -375,6 +379,13 @@ public sealed partial class BookImportService
         _db.BookImportJobs.AnyAsync(j => j.Id == id && (j.Status == BookImportJobStatus.ReadyForReview || j.Status == BookImportJobStatus.Cancelled), ct);
 
     /// <summary>Testin taslak soruları (silinmemiş bağlantılar).</summary>
+    /// <summary>
+    /// Onayı engelleyen cevapsız soru: yalnız çoktan seçmeli. #1134: etkinlik taslağı çözümsüz aktarılır ve öyle onaylanır
+    /// (cevaplar sonradan etkinlik editöründe elle girilir).
+    /// </summary>
+    private static readonly System.Linq.Expressions.Expression<Func<Question, bool>> AnswerlessQuestion =
+        q => q.CorrectAnswerId == null && (q.InteractionType == null || q.InteractionType == McqGrader.Type);
+
     private IQueryable<Question> DraftQuestions(int worksheetId) =>
         _db.Questions.IgnoreQueryFilters([DraftQueryFilter.Key])
             .Where(q => q.IsDraft && _db.TestQuestions.Any(wq => wq.TestId == worksheetId && wq.QuestionId == q.Id && !wq.IsDeleted));

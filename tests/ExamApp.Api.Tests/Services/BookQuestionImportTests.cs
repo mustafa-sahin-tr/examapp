@@ -34,6 +34,10 @@ public class BookQuestionImportTests : IDisposable
     private readonly IMinIoService _minio = Substitute.For<IMinIoService>();
     private readonly ILabelingService _labeling = Substitute.For<ILabelingService>();
     private readonly ILabelingBankService _bank = Substitute.For<ILabelingBankService>();
+    private readonly IActivityStructureService _activity = Substitute.For<IActivityStructureService>();
+    /// <summary>#1134: yapı çıkarımına giden bloklar (sayfa görseli, tip) ve tipi → sonuç (yoksa geçerli taslak).</summary>
+    private readonly List<ActivityStructureBlockDto> _extracted = new();
+    private readonly Dictionary<string, Func<ActivityStructureBlockDto, ActivityStructureResultDto>> _extraction = new();
     private readonly ServiceProvider _services;
 
     /// <summary>Dosya sayfası → tespit edilen sorular (her biri şık sayısıyla); listede olmayan sayfa tespitte hata verir.</summary>
@@ -82,9 +86,16 @@ public class BookQuestionImportTests : IDisposable
             // Bankaya kayıt gibi: kaydedilen her soru taslak bir satır (şıklar, anahtardaki doğru şık, kitap kaynağı).
             using var ctx = _db.NewContext();
             ctx.SetCurrentUser(OwnerId);
-            var created = request.Questions.Where((_, i) => !duplicates.Contains(i) && !resumed.ContainsKey(i)).Select(q =>
+            var created = request.Questions.Select((q, i) => (q, i)).Where(x => !duplicates.Contains(x.i) && !resumed.ContainsKey(x.i)).Select(x =>
             {
-                var question = new Question { Text = q.ItemLabel!, IsDraft = true };
+                var q = x.q;
+                // #1134: etkinlik taslağı (şıksız, tipi ve planıyla).
+                var activity = request.Activities?.GetValueOrDefault(x.i);
+                var question = new Question
+                {
+                    Text = q.ItemLabel!, IsDraft = true, InteractionType = activity?.InteractionType ?? "mcq",
+                    InteractionPlan = activity?.PlanJson,
+                };
                 question.Answers = Enumerable.Range(0, q.Options.Count)
                     .Select(o => new Answer { Text = ((char)('A' + o)).ToString(), Order = o }).ToList();
                 ctx.Questions.Add(question);
@@ -111,7 +122,130 @@ public class BookQuestionImportTests : IDisposable
             }
             return Task.FromResult(new LabelingImportPageResult(created.Count, duplicates, ids, resumed.Count));
         });
+        _activity.ExtractForImportAsync(Arg.Any<string>(), Model, Arg.Any<IReadOnlyList<ActivityStructureBlockDto>>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var blocks = ci.ArgAt<IReadOnlyList<ActivityStructureBlockDto>>(2);
+                _extracted.AddRange(blocks);
+                var results = blocks.Select(b => _extraction.TryGetValue(b.InteractionType!, out var make) ? make(b) : Plan(b)).ToList();
+                return Task.FromResult(new ActivityImportExtraction(results, 0.02m * blocks.Count, new LabelingAiUsage(2000, 300), false));
+            });
         _services = new ServiceCollection().AddScoped(_ => _bank).BuildServiceProvider();
+    }
+
+    private static ActivityStructureResultDto Plan(ActivityStructureBlockDto block, bool valid = true, string status = "ok") =>
+        new(block.Key!, block.InteractionType!, status, status == "ok" ? "live" : null,
+            status == "ok" ? System.Text.Json.JsonDocument.Parse($"{{\"type\":\"{block.InteractionType}\"}}").RootElement : null,
+            null, valid, [], 0, 2000, 300, 0.02m, status == "ok" ? null : "labeling.activity.aiFailed");
+
+    private static PredictionDto Activity(int x, int y, string? interactionType, string? component = "B") => new()
+    {
+        X = x, Y = y, Width = 900, Height = 400, Kind = LabelingBlocks.Activity, Component = component, InteractionType = interactionType,
+    };
+
+    [Fact]
+    public async Task Activity_blocks_are_extracted_and_saved_as_answerless_drafts_in_reading_order_issue1134()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "AB", [2])]);
+        _detections[1] =
+        [
+            Question(100, 100, 4),
+            Activity(100, 800, "slotFill"),
+            Question(100, 1500, 4),
+            Activity(1300, 100, "match", "C"),
+        ];
+
+        await RunAsync(id);
+
+        _extracted.Select(b => (b.InteractionType, b.X, b.Y)).ShouldBe([("slotFill", 100d, 800d), ("match", 1300d, 100d)]);
+        var request = _saved.Single();
+        request.Questions.Select(q => q.ItemLabel).ShouldBe(["1", "E1", "2", "E2"]);
+        request.Activities!.Keys.Order().ShouldBe([1, 3]);
+        request.Activities[1].InteractionType.ShouldBe("slotFill");
+        request.Activities[1].PlanJson.ShouldBe("{\"type\":\"slotFill\"}");
+        request.Questions[1].Options.ShouldBeEmpty();
+        request.Questions[1].ActivityLabel.ShouldBe(request.Questions[0].ActivityLabel);
+
+        var test = await SingleTestAsync();
+        test.Status.ShouldBe(BookImportTestStatus.Done);
+        test.QuestionsFound.ShouldBe(4);
+        test.QuestionsSaved.ShouldBe(4);
+        await using var check = _db.NewContext();
+        // Tespit 0,01 + iki etkinlik çıkarımı 0,04; çıkarım da testin maliyet satırlarında.
+        (await check.BookImportJobs.SingleAsync()).AiCostUsd.ShouldBe(0.05m);
+        (await check.BookImportCosts.Where(c => c.TestId == test.Id).SumAsync(c => c.CostUsd)).ShouldBe(0.05m);
+
+        // Etkinlikler cevapsız: onayı engellemez, önizlemede tipiyle görünür.
+        var service = Service(check);
+        var questions = await service.GetReviewQuestionsAsync(Owner, id, test.Id, default);
+        questions!.Select(q => (q.Number, q.InteractionType)).ShouldBe([("1", null), ("E1", "slotFill"), ("2", null), ("E2", "match")]);
+        (await service.GetAsync(Owner, id, default))!.Tests.Single().Answerless.ShouldBe(0);
+        (await service.ApproveTestAsync(Owner, id, test.Id, default)).ShouldBe(BookImportReviewResult.Ok);
+    }
+
+    [Fact]
+    public async Task Unsupported_and_invalid_activity_blocks_are_flagged_on_their_page_not_saved_issue1134()
+    {
+        var id = await SeedAsync([new(1, 1, 2, "A", [1, 1])]);
+        _detections[1] = [Question(100, 100, 4), Activity(100, 800, null, null), Activity(100, 1500, "openText", "H")];
+        _detections[2] = [Activity(100, 100, "slotFill"), Activity(100, 800, "match", "C"), Activity(100, 1500, "matrixChoice", "A")];
+        _extraction["slotFill"] = b => Plan(b, valid: false);
+        _extraction["match"] = b => Plan(b, status: "error");
+
+        await RunAsync(id);
+
+        // Tipi belirlenemeyen / çıkarımı desteklenmeyen blok Claude'a gitmez.
+        _extracted.Select(b => b.InteractionType).ShouldBe(["slotFill", "match", "matrixChoice"]);
+        _saved.Select(r => (r.FilePage, Labels: string.Join(",", r.Questions.Select(q => q.ItemLabel))))
+            .ShouldBe([(1, "1"), (2, "E1")]);
+        var test = await SingleTestAsync();
+        test.Status.ShouldBe(BookImportTestStatus.NeedsReview);
+        Flags(test).ShouldBe([F("activityUnsupported", [1]), F("activityInvalid", [2])]);
+        test.QuestionsFound.ShouldBe(6);
+        test.QuestionsSaved.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task An_activity_section_becomes_a_draft_activity_sheet_and_page_fix_leaves_activity_drafts_issue1134()
+    {
+        var id = await SeedAsync([new(1, 1, 1, null, [1])]);
+        await using (var seed = _db.NewContext())
+        {
+            var row = await seed.BookImportJobTests.AsTracking().SingleAsync();
+            row.FlagsJson = "[\"activity\"]";
+            row.Title = null;
+            await seed.SaveChangesAsync();
+        }
+        _detections[1] = [Question(100, 100, 4), Activity(100, 800, "slotFill")];
+
+        await RunAsync(id);
+
+        await using var check = _db.NewContext();
+        var test = await check.BookImportJobTests.SingleAsync();
+        var sheet = await check.Worksheets.WithDrafts().SingleAsync(w => w.Id == test.WorksheetId);
+        sheet.Kind.ShouldBe(WorksheetKind.Activity);
+        sheet.Name.ShouldEndWith("1-E01 · Etkinlikler");
+
+        // İşaretlemede düzeltme yalnız çoktan seçmeli taslağı değiştirir; etkinlik taslağı ve sırası kalır.
+        (await Fix(check).ReplacePageAsync(Owner, id, test.Id, 1, [Box(0, 2)], default)).Error.ShouldBe(BookImportPageFixError.None);
+        await using var after = _db.NewContext();
+        var links = await after.TestQuestions.IgnoreQueryFilters([DraftQueryFilter.Key])
+            .Where(wq => wq.TestId == test.WorksheetId && !wq.IsDeleted).OrderBy(wq => wq.Order)
+            .Select(wq => wq.Question.InteractionType).ToListAsync();
+        links.ShouldBe(["mcq", "slotFill"]);
+    }
+
+    [Fact]
+    public async Task Quick_add_ignores_activity_blocks_issue1134()
+    {
+        var id = await SeedQuickAddAsync("A");
+        _detections[1] = [Question(100, 100, 4), Activity(100, 800, "slotFill")];
+
+        await RunAsync(id);
+
+        _extracted.ShouldBeEmpty();
+        _saved.Single().Questions.Count.ShouldBe(1);
+        (await SingleTestAsync()).ReviewFlagsJson.ShouldBeNull();
     }
 
     [Fact]
@@ -1573,7 +1707,7 @@ public class BookQuestionImportTests : IDisposable
         await using var ctx = _db.NewContext();
         await new BookImportJobRunner(ctx, guard, _minio, Substitute.For<IPdfRasterizer>(), new FakeBookSetupAi(), _labeling,
             _services.GetRequiredService<IServiceScopeFactory>(), _config, budgetStore: budgetStore,
-            aiOptions: aiOptions is null ? null : Options.Create(aiOptions), jobs: jobs).RunLockedAsync(id);
+            aiOptions: aiOptions is null ? null : Options.Create(aiOptions), jobs: jobs, activityStructure: _activity).RunLockedAsync(id);
     }
 
     private static readonly BookImportOwner Owner = BookImportOwner.Create(OwnerId, "QuestionTrainer");

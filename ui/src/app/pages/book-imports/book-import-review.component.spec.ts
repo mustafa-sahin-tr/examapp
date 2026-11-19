@@ -107,6 +107,25 @@ describe('BookImportReviewComponent (#1023)', () => {
     expect(changed).toBe(1);
   });
 
+  it('preview_ActivityDraft_ShowsItsTypeWithoutAnswerButtons_AndIsNotCountedAsAnswerless (#1134)', () => {
+    setup([test({ id: 5, order: 2, unit: 1, testNo: 1, title: null, flags: ['activity'], status: 'Done' })], true);
+    api.reviewQuestions.mockReturnValue(of([question(1, 0), { ...question(2, null), number: 'E1', optionCount: 0, interactionType: 'slotFill' }]));
+    fixture.componentInstance.onlyAttention.set(false);
+    fixture.detectChanges();
+
+    // Etkinlik bölümü "1-E01 · Etkinlikler" adıyla; tür işareti uyarı sayılmaz.
+    expect(text()).toContain('1-E01 · Etkinlikler');
+    expect(text()).not.toContain('Uyarılar (1)');
+    button(rows()[0], 'Önizle').click();
+    fixture.detectChanges();
+
+    expect(text()).toContain('Cevaplanan 1/1');
+    const draft = el().querySelector('[data-testid="activity-draft"]')!;
+    expect(draft.textContent).toContain('Boşluk doldurma');
+    expect(el().querySelectorAll('.bir-q--missing').length).toBe(0);
+    expect(draft.closest('.bir-q')!.querySelectorAll('.bir-q__answer').length).toBe(0);
+  });
+
   it('pick_Failure_RestoresThePreviousAnswerAndShowsTheError', () => {
     setup(mixed());
     api.setAnswer.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 409, error: { message: 'Bu test şu anda onaylanamaz.' } })));

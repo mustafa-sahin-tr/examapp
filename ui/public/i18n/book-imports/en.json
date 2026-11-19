@@ -159,7 +159,8 @@
     "qrAnswers": "Answers behind a QR code",
     "missedNumbers": "Missing question numbers",
     "keyConflicts": "Answer key reads differ",
-    "keyByNumber": "Key matched by test number"
+    "keyByNumber": "Key matched by test number",
+    "activity": "Activity section"
   },
   "actions": {
     "open": "Open",
@@ -343,7 +344,8 @@
     "invalidPages": "Fix the page ranges.",
     "ready": "{{count}} tests are ready to import.",
     "confirm": "Confirm and import questions",
-    "confirmFailed": "The setup could not be confirmed."
+    "confirmFailed": "The setup could not be confirmed.",
+    "activitySection": "Not multiple choice: activities are imported as drafts without answers."
   },
   "reviewFlags": {
     "countMismatch": "{{found}} questions found, {{expected}} in the key",
@@ -354,7 +356,9 @@
     "notSaved": "Not saved (fewer than two choices)",
     "detectionFailed": "Detection failed",
     "saveFailed": "Saving failed",
-    "markMismatch": "Mark differs from the key"
+    "markMismatch": "Mark differs from the key",
+    "activityUnsupported": "Activity type not recognised (not imported)",
+    "activityInvalid": "Activity structure could not be extracted (not imported)"
   },
   "reviewFlagsShort": {
     "missingNumbers": "not found",
@@ -364,7 +368,9 @@
     "notSaved": "not saved (fewer than two choices)",
     "detectionFailed": "detection failed",
     "saveFailed": "save failed",
-    "markMismatch": "mark differs from the key (mark used)"
+    "markMismatch": "mark differs from the key (mark used)",
+    "activityUnsupported": "activity type not recognised, not imported",
+    "activityInvalid": "activity structure could not be extracted, not imported"
   },
   "review": {
     "title": "Review and approve",
@@ -427,7 +433,16 @@
     "zoomClose": "Close",
     "zoomPosition": "{{index}} of {{total}}",
     "zoomPrev": "Previous question",
-    "zoomNext": "Next question"
+    "zoomNext": "Next question",
+    "activityAnswerLater": "Its answer is entered in the activity editor after approval",
+    "activityTypes": {
+      "matrixChoice": "Table choice",
+      "slotFill": "Fill in the blanks",
+      "dragPlace": "Drag and drop",
+      "match": "Matching",
+      "textSelect": "Mark in text",
+      "crossword": "Crossword"
+    }
   },
   "later": {
     "title": "Later",

@@ -60,12 +60,18 @@ public class BookImportJobRunner
     private readonly TimeSpan _demoStep;
     private readonly ILogger<BookImportJobRunner> _logger;
     private readonly IPageCleaner? _pageCleaner;
+    private readonly IActivityStructureService? _activityStructure;
+    private readonly string? _activityModel;
 
     public BookImportJobRunner(AppDbContext db, IApprovedTeacherGuard teacherGuard, IMinIoService minio, IPdfRasterizer rasterizer,
         IBookSetupAi setupAi, ILabelingService labeling, IServiceScopeFactory scopes, IConfiguration? configuration = null,
         ILogger<BookImportJobRunner>? logger = null, IFixedWindowCounterStore? budgetStore = null,
-        IOptions<LabelingAiOptions>? aiOptions = null, IBackgroundJobClient? jobs = null, IPageCleaner? pageCleaner = null)
+        IOptions<LabelingAiOptions>? aiOptions = null, IBackgroundJobClient? jobs = null, IPageCleaner? pageCleaner = null,
+        IActivityStructureService? activityStructure = null)
     {
+        _activityStructure = activityStructure;
+        // #1134: etkinlik yapısı çıkarım modeli; boşsa tespit modeli.
+        _activityModel = configuration?["BookImport:ActivityModel"];
         _pageCleaner = pageCleaner;
         _db = db;
         _teacherGuard = teacherGuard;
@@ -153,7 +159,8 @@ public class BookImportJobRunner
             // #1022: test test soru aktarımı; kaldığı testten devam eder (aşama sayaçları sıfırlanmaz).
             if (job.Stage != BookImportStage.Questions)
                 await EnterStageAsync(job, BookImportStage.Questions);
-            await new BookQuestionImportStage(_db, _minio, _labeling, _scopes, budget, _detectModel, _logger).RunAsync(job);
+            await new BookQuestionImportStage(_db, _minio, _labeling, _scopes, budget, _detectModel, _logger, _activityStructure,
+                _activityModel).RunAsync(job);
             await BookQuestionImportStage.StopIfCancelledAsync(_db, job.Id, default);
             job.Stage = BookImportStage.Review;
             job.Status = BookImportJobStatus.ReadyForReview;

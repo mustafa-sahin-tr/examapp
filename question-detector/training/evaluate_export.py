@@ -15,6 +15,8 @@ soru sayısı tutan sayfa, kusursuz sayfa (bütün sorular 0.75'te eşleşmiş, 
 Hibrit tespit (issue #1250) için kabul kuralı da sınanır: bir sayfa "kabul edilir" sayılır, eğer bulunan soru sayısı
 beklenenle aynıysa ve her soruda --choices kadar şık varsa. "Kabul edilip yanlış" = kabul edilen ama kusursuz olmayan sayfa
 (bir soru 0.75'te ya da bir şık 0.5'te eşleşmiyor): Claude'a sorulmadan geçecek hatalı sayfaların oranı.
+Tahminler güven değeri taşıyorsa (/predict "confidence") kural ayrıca güven eşiğiyle sınanır: sayfadaki en düşük kutu güveni
+eşiğin altındaysa sayfa kabul edilmez; her eşik için kabul edilen ve kabul edilip yanlış oranı ikinci tabloda verilir.
 
 Örnek (question-detector/ içinden):
   python training/evaluate_export.py ~/Downloads/book-import-training.zip --url http://127.0.0.1:8080 --report rapor.md
@@ -34,6 +36,8 @@ from pathlib import Path
 Box = tuple  # (x, y, w, h), sayfa pikseli
 
 IOU_LEVELS = (0.5, 0.75)
+# Kabul kuralının sınandığı güven eşikleri; ilki servisin tahmin eşiği (hiçbir kutuyu elemez).
+CONFIDENCE_LEVELS = (0.25, 0.5, 0.6, 0.7, 0.8, 0.9)
 
 
 def iou(a: Box, b: Box) -> float:
@@ -70,12 +74,12 @@ def new_counts() -> dict:
         "questions": 0, "predicted_questions": 0, "q_matched": {level: 0 for level in IOU_LEVELS},
         "choices": 0, "predicted_choices": 0, "c_matched": {level: 0 for level in IOU_LEVELS},
         "choice_count_match": 0, "choice_count_questions": 0, "seconds": [],
-        "accepted_pages": 0, "accepted_wrong_pages": 0,
+        "accepted_pages": 0, "accepted_wrong_pages": 0, "accepted": [],
     }
 
 
 def score_page(counts: dict, truth: list, predicted: list, seconds: float, expected_choices: int = 4) -> None:
-    """truth / predicted: [{"box": Box, "answers": [Box, ...]}]."""
+    """truth / predicted: [{"box": Box, "answers": [Box, ...]}]; tahminde isteğe bağlı "confidence" (en düşük kutu güveni)."""
     counts["pages"] += 1
     counts["seconds"].append(seconds)
     counts["questions"] += len(truth)
@@ -96,8 +100,12 @@ def score_page(counts: dict, truth: list, predicted: list, seconds: float, expec
             len(match(truth[ti]["answers"], predicted[pi]["answers"], IOU_LEVELS[0])) == len(truth[ti]["answers"])
             for ti, pi, _ in strict
         )
-        if len(strict) != len(truth) or not choices_ok:
+        wrong = len(strict) != len(truth) or not choices_ok
+        if wrong:
             counts["accepted_wrong_pages"] += 1
+        confidences = [q.get("confidence") for q in predicted]
+        page_confidence = None if None in confidences else min(confidences, default=1.0)
+        counts["accepted"].append((page_confidence, wrong))
     # Şıklar yalnız eşleşen sorularda karşılaştırılır (soru kaçtıysa şık hatası soru hatasıdır).
     for ti, pi, _ in match(t_boxes, p_boxes, IOU_LEVELS[0]):
         t_answers, p_answers = truth[ti]["answers"], predicted[pi]["answers"]
@@ -111,6 +119,23 @@ def score_page(counts: dict, truth: list, predicted: list, seconds: float, expec
 
 def ratio(part: int, whole: int) -> float:
     return round(part / whole, 4) if whole else 0.0
+
+
+def acceptance_by_confidence(counts: dict) -> dict:
+    """Eşik başına kabul edilen / kabul edilip yanlış oranı; güven değeri olmayan tahmin varsa boş."""
+    accepted = counts["accepted"]
+    if any(confidence is None for confidence, _ in accepted):
+        return {}
+    result = {}
+    for level in CONFIDENCE_LEVELS:
+        kept = [wrong for confidence, wrong in accepted if confidence >= level]
+        result[str(level)] = {
+            "acceptedPages": ratio(len(kept), counts["pages"]),
+            "acceptedWrongPages": ratio(sum(kept), len(kept)),
+            "accepted": len(kept),
+            "acceptedWrong": sum(kept),
+        }
+    return result
 
 
 def summarize(counts: dict) -> dict:
@@ -130,6 +155,7 @@ def summarize(counts: dict) -> dict:
         "choiceCountMatch": ratio(counts["choice_count_match"], counts["choice_count_questions"]),
         "acceptedPages": ratio(counts["accepted_pages"], counts["pages"]),
         "acceptedWrongPages": ratio(counts["accepted_wrong_pages"], counts["accepted_pages"]),
+        "acceptanceByConfidence": acceptance_by_confidence(counts),
         "secondsPerPage": round(statistics.mean(seconds), 3) if seconds else 0.0,
     }
 
@@ -144,12 +170,18 @@ def is_val_page(page_id: str) -> bool:
 
 # ---------------------------------------------------------------------------- tahmin
 
+def lowest_confidence(values: list):
+    """Sorunun ve şıklarının en düşük güveni; biri bile eksikse None (eski servis güven döndürmez)."""
+    return None if None in values else min(values)
+
+
 def to_questions(predictions: list) -> list:
-    """/predict yanıtı -> [{"box", "answers"}]; yalnız soru sınıfı (class 0)."""
+    """/predict yanıtı -> [{"box", "answers", "confidence"}]; yalnız soru sınıfı (class 0)."""
     return [
         {
             "box": (p["x"], p["y"], p["width"], p["height"]),
             "answers": [(s["x"], s["y"], s["width"], s["height"]) for s in p.get("subpredictions", [])],
+            "confidence": lowest_confidence([p.get("confidence")] + [s.get("confidence") for s in p.get("subpredictions", [])]),
         }
         for p in predictions
         if p.get("class_id") == 0
@@ -179,18 +211,22 @@ def local_predictor(models_dir: Path, conf: float):
     def boxes_of(model, image) -> list:
         result = model.predict(source=image, conf=conf, verbose=False)[0]
         return [
-            (int(x1), int(y1), int(x2 - x1), int(y2 - y1))
-            for (x1, y1, x2, y2), cls in zip(result.boxes.xyxy.tolist(), result.boxes.cls.tolist())
+            (int(x1), int(y1), int(x2 - x1), int(y2 - y1), confidence)
+            for (x1, y1, x2, y2), cls, confidence in zip(result.boxes.xyxy.tolist(), result.boxes.cls.tolist(), result.boxes.conf.tolist())
             if int(cls) == 0
         ]
 
     def predict(image_bytes: bytes) -> list:
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
         questions = []
-        for x, y, w, h in boxes_of(question_model, image):
+        for x, y, w, h, confidence in boxes_of(question_model, image):
             crop = image.crop((x, y, x + w, y + h))
-            answers = [(ax + x, ay + y, aw, ah) for ax, ay, aw, ah in boxes_of(answer_model, crop)]
-            questions.append({"box": (x, y, w, h), "answers": answers})
+            found = boxes_of(answer_model, crop)
+            answers = [(ax + x, ay + y, aw, ah) for ax, ay, aw, ah, _ in found]
+            questions.append({
+                "box": (x, y, w, h), "answers": answers,
+                "confidence": lowest_confidence([confidence] + [answer[4] for answer in found]),
+            })
         return questions
 
     return predict
@@ -240,6 +276,17 @@ def to_markdown(result: dict) -> str:
             f"{pct(g['perfectPages'])} | {pct(g['choiceRecall']['0.5'])} | {pct(g['choiceRecall']['0.75'])} | "
             f"{pct(g['choiceCountMatch'])} | {pct(g['acceptedPages'])} | {pct(g['acceptedWrongPages'])} | {g['secondsPerPage']} |"
         )
+    overall = result["groups"].get("all", {}).get("acceptanceByConfidence")
+    if overall:
+        lines += [
+            "",
+            "| En düşük kutu güveni ≥ | Kabul edilen sayfa | Kabul edilip yanlış |",
+            "|---|---|---|",
+        ]
+        lines += [
+            f"| {level} | {pct(row['acceptedPages'])} ({row['accepted']}) | {pct(row['acceptedWrongPages'])} ({row['acceptedWrong']}) |"
+            for level, row in overall.items()
+        ]
     if result["failedPages"]:
         lines.append(f"\nTahmin alınamayan sayfa: {result['failedPages']}")
     return "\n".join(lines)

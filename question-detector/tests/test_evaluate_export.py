@@ -30,7 +30,16 @@ def test_to_questions_keeps_only_the_question_class():
         {"class_id": 1, "x": 9, "y": 9, "width": 9, "height": 9},
     ]
 
-    assert to_questions(predictions) == [{"box": (1, 2, 3, 4), "answers": [(1, 3, 1, 1)]}]
+    assert to_questions(predictions) == [{"box": (1, 2, 3, 4), "answers": [(1, 3, 1, 1)], "confidence": None}]
+
+
+def test_to_questions_takes_the_lowest_confidence_of_the_question_and_its_choices():
+    predictions = [
+        {"class_id": 0, "confidence": 0.9, "x": 1, "y": 2, "width": 3, "height": 4,
+         "subpredictions": [{"class_id": 0, "confidence": 0.4, "x": 1, "y": 3, "width": 1, "height": 1}]},
+    ]
+
+    assert to_questions(predictions)[0]["confidence"] == 0.4
 
 
 def _export(tmp_path, pages):
@@ -91,6 +100,36 @@ def test_acceptance_rule_passes_pages_with_the_right_counts_and_reports_the_wron
 
     assert result["acceptedPages"] == round(2 / 3, 4)
     assert result["acceptedWrongPages"] == 0.5
+
+
+def test_acceptance_rule_is_also_measured_per_confidence_threshold(tmp_path):
+    question = {"box": [0, 0, 100, 100], "answers": [[0, 50, 20, 10]]}
+    path = _export(tmp_path, [
+        {"pageId": name, "file": f"pages/{name}.webp", "complete": True, "questions": [question]} for name in ("a", "b")
+    ])
+    answers = [
+        # Doğru ve emin.
+        [{"box": (0, 0, 100, 100), "answers": [(0, 50, 20, 10)], "confidence": 0.95}],
+        # Kutu kaymış, model de emin değil: eşik bu sayfayı Claude'a yollar.
+        [{"box": (40, 0, 100, 100), "answers": [(0, 50, 20, 10)], "confidence": 0.55}],
+    ]
+
+    result = evaluate(path, lambda _image: answers.pop(0), expected_choices=1)
+    by_confidence = result["groups"]["all"]["acceptanceByConfidence"]
+
+    assert by_confidence["0.25"] == {"acceptedPages": 1.0, "acceptedWrongPages": 0.5, "accepted": 2, "acceptedWrong": 1}
+    assert by_confidence["0.6"] == {"acceptedPages": 0.5, "acceptedWrongPages": 0.0, "accepted": 1, "acceptedWrong": 0}
+    assert "| 0.6 | 50.0% (1) | 0.0% (0) |" in to_markdown(result)
+
+
+def test_confidence_table_is_left_out_when_predictions_carry_no_confidence(tmp_path):
+    question = {"box": [0, 0, 100, 100], "answers": []}
+    path = _export(tmp_path, [{"pageId": "a", "file": "pages/a.webp", "complete": True, "questions": [question]}])
+
+    result = evaluate(path, lambda _image: [{"box": (0, 0, 100, 100), "answers": []}], expected_choices=0)
+
+    assert result["groups"]["all"]["acceptanceByConfidence"] == {}
+    assert "güveni" not in to_markdown(result)
 
 
 def test_val_only_uses_the_same_split_as_training(tmp_path):

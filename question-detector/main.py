@@ -133,6 +133,8 @@ def predict(data: ImageData):
 
             prediction_data = {
                 "class_id": class_id,
+                # Kutunun güveni (0-1): hibrit tespitin kabul kuralı eşik olarak kullanır (issue #1250).
+                "confidence": round(float(box.conf[0].item()), 4),
                 "x": int(x1),
                 "y": int(y1),
                 "width": int(x2 - x1),
@@ -161,6 +163,7 @@ def predict(data: ImageData):
                     # Alt kutuların koordinatlarını ana resme göre ayarla
                     subpredictions.append({
                         "class_id": sclass_id,
+                        "confidence": round(float(sbox.conf[0].item()), 4),
                         "x": int(sx1 + x1),
                         "y": int(sy1 + y1),
                         "width": int(sx2 - sx1),

@@ -282,6 +282,20 @@ Epic #1136: sayfa tespitinde ve cevap anahtarında Claude'un yerine kendi modell
 - **Sonuç:** eski ağırlıklar soruların çoğunu buluyor ama sayfaların yarısından azı kusursuz, şık kutuları kaba; kabul kuralı
   sayfaların yalnız %16'sını geçiriyor ve bunların üçte biri yanlış. Bu ağırlıklarla hibrit tespit açılmaz. Önce onaylı
   sayfalarla yeniden eğitim (EGITIM.md), sonra aynı betikle `--val-only` ölçüm; karar eşiği #1250'de.
+- **Güven eşiği (#1250, 2026-11-19):** `/predict` her kutuda `confidence` (0–1) döndürür (şıklarda da); betik kabul kuralını
+  sayfadaki en düşük kutu güvenine göre de sınar (ikinci tablo; eşikler 0,25–0,9). Eski ağırlıklarla, 200 sayfa (demo imajı;
+  ilk ölçümden küçük farklar kütüphane sürümünden):
+
+  | En düşük kutu güveni ≥ | Kabul edilen sayfa | Kabul edilip yanlış |
+  |---|---|---|
+  | 0,25 (eşik yok) | %21,5 (43) | %44,2 (19) |
+  | 0,5 | %12,5 (25) | %36,0 (9) |
+  | 0,6 | %7,0 (14) | %35,7 (5) |
+  | 0,7 | %1,0 (2) | %0 (0) |
+  | 0,8 | %0,5 (1) | %0 (0) |
+
+  Eşik hatalı sayfaları eliyor ama doğru sayfaları da: yanlışın sıfıra indiği 0,7'de sayfaların yalnız %1'i geçiyor. Güven tek
+  başına çözüm değil; darboğaz şık modeli (düşük güvenli, kaba kutular). Hibrit yine yeniden eğitimden sonra ölçülür.
 - **Dikkat:** veri iki kitap ve tek yayınevi; dört şıklı çoktan seçmeli. Başka dizgide sonuç farklı olur; her yeni onaylı kitapta
   betik yeniden çalıştırılır. Dışa aktarım yayınevi içeriğidir, repoya ve issue'ya konmaz.
 

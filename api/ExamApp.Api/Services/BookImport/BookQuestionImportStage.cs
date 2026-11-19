@@ -210,8 +210,11 @@ internal sealed class BookQuestionImportStage(
         // #1052: hızlı eklemede anahtar yalnız bulunan sayı tutarsa uygulanır (sırayla eşlenir); tutmazsa sorular cevapsız kalır
         // ve sayı uyuşmazlığı işaretlenir, cevaplar incelemede girilir.
         var answers = job.HasLooseQuestions && key is not null && found != key.Length ? null : key;
+        // #1134: etkinlik bölümünde sayfadaki basılı numaralar etkinliklerindir; soru numarası beklenmez ("eksik soru" yok).
+        var printedNumbers = !BookImportService.IsActivitySection(test);
         var numbering = NumberPages(
-            detected.Select(d => (d.Page is null ? null : d.Page.MaxQuestionNumber, d.Questions?.Count)).ToList(), key?.Length);
+            detected.Select(d => (d.Page is null || !printedNumbers ? null : d.Page.MaxQuestionNumber, d.Questions?.Count)).ToList(),
+            key?.Length);
 
         for (var p = 0; p < detected.Count; p++)
         {

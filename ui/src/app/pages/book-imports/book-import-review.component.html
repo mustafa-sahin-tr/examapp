@@ -203,7 +203,9 @@
         @if (previewLoading()) {
         <div class="bir-note" role="status"><mat-spinner diameter="18" aria-hidden="true"></mat-spinner>{{ t('review.loading') }}</div>
         } @else {
+        @if (choiceQuestions().length > 0) {
         <p class="bir-preview__counter" aria-live="polite">{{ t('review.answered', { done: answered(), total: choiceQuestions().length }) }}</p>
+        }
         <ol class="bir-questions">
           @for (q of questions(); track q.id) {
           <li class="bir-q" [class.bir-q--missing]="q.answerIndex == null && !q.interactionType">

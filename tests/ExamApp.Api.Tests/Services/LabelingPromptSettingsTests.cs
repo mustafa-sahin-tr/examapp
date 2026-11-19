@@ -126,10 +126,10 @@ public class LabelingPromptSettingsTests
     // ---------- Issue #578: blok türleri ----------
 
     [Fact]
-    public void SchemaRevision_IsSevenForPrintedAnswerFlag()
+    public void SchemaRevision_IsNineForQuestionNumberOutsideTheBox()
     {
-        // 6: openText (#583); 7: 1. aşama blokları answerShown taşır (#791).
-        LabelingPromptSettings.SchemaRevision.ShouldBe(8);
+        // 6: openText (#583); 7: 1. aşama blokları answerShown taşır (#791); 9: soru numarası kutunun dışında, şemada (#1233).
+        LabelingPromptSettings.SchemaRevision.ShouldBe(9);
     }
 
 

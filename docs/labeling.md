@@ -34,6 +34,11 @@ QuestionTrainer (onaylı, askıda olmayan öğretmen; gateway'de de kural var).
   boşluklarını, yazım yanlışı bulmayı ve düzeltmeyi kapsar; B'den ayrımı prompt'ta).
   **Kaydedilmiş özel prompt sürümü yeni varsayılanı ezer** (eski "yalnız MCQ" talimatıyla Claude yalnız `mcq_question` döner):
   yeni talimatı almak için Prompt penceresinde varsayılanı yükleyip kaydedin.
+- **Soru numarası kutunun dışında (#1233, `SchemaRevision` 9).** Talimat "numara kutunun dışında" der, ama küçük / renkli ve
+  kökle aynı satırdaki numarada Claude kutuyu numaradan başlatıyordu. Kural şemada da yazılı: `x1` açıklaması (kökün ilk harfi;
+  numara solunda) ve blok listesi açıklaması (dönmeden önce kontrol et). Demodaki örnek sayfada (Kazanım Ölçer, dosya sayfası 68)
+  3 denemenin 3'ünde numara kutudaydı, değişiklikten sonra 13 denemenin 13'ünde dışarıda; diğer örnek sayfalar değişmedi.
+  Önbellek anahtarı değişir: daha önce tespit edilmiş sayfa yeniden sorulur (yeniden aktarımda ücretli).
 - **Basılı cevap uyarısı (#791, `SchemaRevision` 7).** 1. aşama blokları `answerShown` taşır: sayfada cevap basılı/işaretli
   (işaretli ya da renkli şık, "Cevap: B", dolu boşluk). Kural talimatta değil şema açıklamasında (talimat 4000 sınırında;
   özel prompt sürümlerinde de geçerli). `PredictionDto.answer_shown` yalnız `mcq_question` / `activity` için ve yalnız `true`

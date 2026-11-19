@@ -178,6 +178,8 @@ export class BookImportSetupComponent implements OnInit {
   readonly showOriginal = signal(false);
   /** Görüntüleyicide işaret rengi seçiliyor: işaretli bir şık kutusuna tıklanır, o renkle yeniden temizlenir. */
   readonly pickingColour = signal(false);
+  /** Seçimde renksiz (gri / beyaz) bir yere tıklandı. */
+  readonly pickMissed = signal(false);
   private cleaningPoll?: Subscription;
   private destroyed = false;
   readonly saving = signal(false);
@@ -373,6 +375,7 @@ export class BookImportSetupComponent implements OnInit {
 
   closeTestPages(): void {
     this.pickingColour.set(false);
+    this.pickMissed.set(false);
     this.viewedTest.set(null);
     this.viewingKey.set(false);
     this.viewingBook.set(false);
@@ -550,7 +553,15 @@ export class BookImportSetupComponent implements OnInit {
       .subscribe({
         next: () => {
           this.setup.update((s) =>
-            s ? { ...s, cleaning: { ...emptyCleaning(), ...s.cleaning, status: 'Running', running: true, processed: 0 } } : s,
+            s
+              ? {
+                  ...s,
+                  cleaning: {
+                    ...emptyCleaning(), ...s.cleaning, status: 'Running', running: true, processed: 0,
+                    markColour: markColour ?? null, colourPicked: !!markColour,
+                  },
+                }
+              : s,
           );
           this.pollCleaning();
         },
@@ -596,6 +607,7 @@ export class BookImportSetupComponent implements OnInit {
     if (!this.pickingColour()) return;
     const image = event.target as HTMLImageElement;
     const colour = saturatedColourAt(image, event.offsetX, event.offsetY);
+    this.pickMissed.set(!colour);
     if (!colour) return;
     this.closeTestPages();
     this.startCleaning(colour);

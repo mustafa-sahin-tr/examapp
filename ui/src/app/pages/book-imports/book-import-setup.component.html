@@ -80,7 +80,10 @@
     <div class="bis-aimatch bis-clean" role="status" data-testid="cleaning">
       @if (cleaningRunning()) {
       <mat-spinner diameter="18" aria-hidden="true" />
-      <span data-testid="cleaning-progress">{{ t('setup.cleaningProgress', { done: cleaning()!.processed, total: cleaning()!.pages || '…' }) }}</span>
+      <span data-testid="cleaning-progress">
+        @if (cleaning()!.colourPicked && cleaning()!.markColour; as c) {<span class="bis-clean__swatch" [style.background]="'rgb(' + c.join(',') + ')'" aria-hidden="true"></span>{{ t('setup.cleaningPickedColour') }} · }
+        {{ t('setup.cleaningProgress', { done: cleaning()!.processed, total: cleaning()!.pages || '…' }) }}
+      </span>
       } @else {
       @switch (cleaning()?.status) {
       @case ('Done') {
@@ -143,7 +146,7 @@
           [attr.aria-label]="t('setup.openKeyLarge') + ' · ' + t('setup.page', { page })" [attr.title]="t('setup.openKeyLarge')"
           (click)="showKeyLarge(page)">
           @if (keyImages().get(page); as src) {
-          <img [src]="src" [class.bis-view__pick]="pickingColour()" (click)="pickColourAt($event)" [alt]="t('setup.keyImageAlt', { page })" />
+          <img [src]="src" [alt]="t('setup.keyImageAlt', { page })" />
           } @else {
           <span class="bis-keypages__empty"><mat-spinner diameter="20" aria-hidden="true"></mat-spinner></span>
           }
@@ -341,7 +344,9 @@
       <span class="bis-view__title">{{ t('setup.keyPages') }}</span>
       }
       @if (pickingColour()) {
-      <span class="bis-view__hint" role="status" data-testid="cleaning-pick-hint">{{ t('setup.cleaningPickHint') }}</span>
+      <span class="bis-view__hint" role="status" data-testid="cleaning-pick-hint" [class.bis-error]="pickMissed()">
+        {{ t(pickMissed() ? 'setup.cleaningPickMissed' : 'setup.cleaningPickHint') }}
+      </span>
       } @else if (cleaning()?.status === 'Done') {
       <button mat-stroked-button type="button" data-testid="toggle-original" [attr.aria-pressed]="showOriginal()" (click)="toggleOriginal()">
         {{ t(showOriginal() ? 'setup.showClean' : 'setup.showOriginal') }}
@@ -353,7 +358,7 @@
     </div>
     <div class="bis-view__body" (click)="$event.stopPropagation()">
       @if (viewedImage(); as src) {
-      <img [src]="src" [alt]="viewedRow() || viewingBook() ? t('setup.testPageAlt', { page: viewedPage() }) : t('setup.keyImageAlt', { page: viewedPage() })" />
+      <img [src]="src" [class.bis-view__pick]="pickingColour()" (click)="pickColourAt($event)" [alt]="viewedRow() || viewingBook() ? t('setup.testPageAlt', { page: viewedPage() }) : t('setup.keyImageAlt', { page: viewedPage() })" />
       } @else if (viewedFailed()) {
       <p class="bis-error" role="alert">{{ t('setup.pageFailed') }}</p>
       } @else {

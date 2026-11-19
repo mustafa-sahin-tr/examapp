@@ -319,6 +319,8 @@
     "cleaningAgain": "Yeniden temizle",
     "cleaningPick": "İşaret rengini seç",
     "cleaningPickHint": "İşaretli bir şık kutusuna tıklayın",
+    "cleaningPickMissed": "Burada işaret rengi yok; renkli şık kutusunun üstüne tıklayın",
+    "cleaningPickedColour": "Seçilen renkle",
     "cleaningStartFailed": "Temizlik başlatılamadı.",
     "showOriginal": "Orijinali göster",
     "showClean": "Temizi göster",

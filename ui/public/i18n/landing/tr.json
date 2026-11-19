@@ -2,6 +2,7 @@
   "images": {
     "hero": "assets/images/landing/hero.svg",
     "detect": "assets/images/landing/detect.svg",
+    "testSolve": "assets/images/landing/test-solve.png",
     "parent": "assets/images/landing/parent.svg",
     "motivation": "assets/images/landing/motivation.svg",
     "tutor": "assets/images/landing/tutor.svg"

@@ -84,6 +84,7 @@ describe('LandingComponent (#395)', () => {
     const sources = Array.from(el.querySelectorAll<HTMLImageElement>('img[src$=".svg"]')).map((i) => i.getAttribute('src'));
     expect(sources).toContain('assets/images/landing/hero.svg');
     expect(sources.some((src) => src?.endsWith('.en.svg'))).toBe(false);
+    expect(el.querySelector('img[src$=".png"]')?.getAttribute('src')).toBe('assets/images/landing/test-solve.png');
   });
 
   it('#880: sign-in stays in the top bar on small screens', () => {
@@ -156,8 +157,15 @@ describe('LandingComponent in English (#1007)', () => {
 
     const sources = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLImageElement>('img[src*="/landing/"]'))
       .map((i) => i.getAttribute('src'))
-      .filter((src) => !src?.endsWith('brand-mark.svg') && !src?.endsWith('.png'));
-    expect(sources).toEqual(['hero', 'detect', 'parent', 'motivation', 'tutor'].map((n) => `assets/images/landing/${n}.en.svg`));
+      .filter((src) => !src?.endsWith('brand-mark.svg'));
+    expect(sources).toEqual([
+      'assets/images/landing/hero.en.svg',
+      'assets/images/landing/detect.en.svg',
+      'assets/images/landing/test-solve.en.png',
+      'assets/images/landing/parent.en.svg',
+      'assets/images/landing/motivation.en.svg',
+      'assets/images/landing/tutor.en.svg',
+    ]);
     fixture.destroy();
   });
 });

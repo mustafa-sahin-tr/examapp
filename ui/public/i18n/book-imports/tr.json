@@ -329,6 +329,8 @@
     "qrRunFailed": "{{count}} testin QR çözümleri alınamadı; yeniden deneyin.",
     "qrFound": "QR",
     "qrFoundTitle": "Yayıncının QR çözümlerinden okundu (öğretmenin söylediği şık); kontrol edin",
+    "marksFound": "İşaretlerden",
+    "marksFoundTitle": "Anahtar sayfalardaki basılı cevap işaretlerinden okundu; onaydan önce kontrol edin.",
     "qrCountDiffers": "QR'da {{count}} çözüm var, sayfada {{expected}} soru görüldü",
     "qrOpen": "QR bağlantısını aç",
     "noKeyQrHint": "Testlerin sayfalarında QR çözümü var: anahtarlar QR'dan alınabilir.",
@@ -351,7 +353,8 @@
     "noAnswer": "Cevapsız",
     "notSaved": "Kaydedilemedi (ikiden az şık)",
     "detectionFailed": "Tespit başarısız",
-    "saveFailed": "Kayıt başarısız"
+    "saveFailed": "Kayıt başarısız",
+    "markMismatch": "İşaret anahtardan farklı"
   },
   "reviewFlagsShort": {
     "missingNumbers": "bulunamadı",
@@ -360,7 +363,8 @@
     "noAnswer": "cevapsız",
     "notSaved": "kaydedilmedi (ikiden az şık)",
     "detectionFailed": "tespit başarısız",
-    "saveFailed": "kayıt başarısız"
+    "saveFailed": "kayıt başarısız",
+    "markMismatch": "işaret anahtardan farklı (işaret kullanıldı)"
   },
   "review": {
     "title": "İnceleme ve onay",

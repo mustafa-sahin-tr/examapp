@@ -329,6 +329,8 @@
     "qrRunFailed": "QR solutions of {{count}} tests could not be fetched; try again.",
     "qrFound": "QR",
     "qrFoundTitle": "Read from the publisher's QR solutions (the option the teacher says); check it",
+    "marksFound": "From marks",
+    "marksFoundTitle": "The key was read from the answer marks printed on the pages; check it before confirming.",
     "qrCountDiffers": "The QR has {{count}} solutions; {{expected}} questions were seen on the pages",
     "qrOpen": "Open the QR link",
     "noKeyQrHint": "The test pages have QR solutions: the keys can be read from the QR codes.",
@@ -351,7 +353,8 @@
     "noAnswer": "No answer",
     "notSaved": "Not saved (fewer than two choices)",
     "detectionFailed": "Detection failed",
-    "saveFailed": "Saving failed"
+    "saveFailed": "Saving failed",
+    "markMismatch": "Mark differs from the key"
   },
   "reviewFlagsShort": {
     "missingNumbers": "not found",
@@ -360,7 +363,8 @@
     "noAnswer": "no answer",
     "notSaved": "not saved (fewer than two choices)",
     "detectionFailed": "detection failed",
-    "saveFailed": "save failed"
+    "saveFailed": "save failed",
+    "markMismatch": "mark differs from the key (mark used)"
   },
   "review": {
     "title": "Review and approve",

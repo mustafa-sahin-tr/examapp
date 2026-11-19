@@ -137,6 +137,8 @@ public class BookImportJobRunner
                 await EnterStageAsync(job, BookImportStage.Setup);
                 await new BookSetupStage(_db, _minio, _setupAi, budget, _surveyBatchSize, _logger).RunAsync(job);
                 await BookQuestionImportStage.StopIfCancelledAsync(_db, job.Id, default);
+                // #1235: basılı cevap işaretleri anahtarsız testlere anahtar olur, kitabın anahtarıyla farkı uyarı olur.
+                await BookMarkKeys.ApplyAsync(_db, job.Id, default);
 
                 // Kurulum onayı: kullanıcı onaylayana kadar iş bekler; onay ucu (BookImportService.ConfirmSetupAsync) işi
                 // Questions aşamasında yeniden kuyruğa verir.

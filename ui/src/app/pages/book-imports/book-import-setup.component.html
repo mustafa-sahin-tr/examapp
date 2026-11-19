@@ -242,8 +242,12 @@
                   }
                 </label>
                 }
+                @if (row.source === 'Qr' || row.source === 'Marks') {
                 @if (row.source === 'Qr') {
                 <span class="bis-chip bis-key__ai" data-testid="qr-key-chip" [attr.title]="t('setup.qrFoundTitle')">{{ t('setup.qrFound') }}</span>
+                } @else {
+                <span class="bis-chip bis-key__ai" data-testid="marks-key-chip" [attr.title]="t('setup.marksFoundTitle')">{{ t('setup.marksFound') }}</span>
+                }
                 @if (qrCountDiffers(row)) {
                 <span class="bis-error" data-testid="qr-count-differs">
                   {{ t('setup.qrCountDiffers', { count: row.key!.length, expected: row.expected }) }}

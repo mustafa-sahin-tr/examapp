@@ -624,10 +624,33 @@ export class BookImportSetupComponent implements OnInit {
         next: (setup) => {
           this.setup.update((s) => (s ? { ...s, cleaning: setup.cleaning ?? null } : s));
           if (setup.cleaning?.running) this.pollCleaning();
-          else this.refreshImages();
+          else {
+            this.applyMarkKeys(setup);
+            this.refreshImages();
+          }
         },
         error: () => this.pollCleaning(),
       });
+  }
+
+  /**
+   * #1235: temizlik bitince sunucu basılı işaretlerden anahtar yazmış olabilir: anahtarsız ya da işaretten gelen satıra
+   * işaret anahtarı, dokunulmamış kitap anahtarına işaretlerin farklı okuması (diğer okuma). Elle değiştirilen satıra dokunulmaz.
+   */
+  private applyMarkKeys(setup: BookImportSetup): void {
+    for (const test of setup.tests) {
+      const row = this.rows().find((r) => r.order === test.order);
+      if (!row || !test.answerKey) continue;
+      const key = test.answerKey.split('');
+      const conflicts = test.keyConflicts && test.keyConflicts.length === key.length
+        ? test.keyConflicts.split('')
+        : Array<string>(key.length).fill('.');
+      if (test.keySource === 'Marks' && (!row.key || row.source === 'Marks')) {
+        this.update(row, { key, conflicts, source: 'Marks' });
+      } else if (row.key && row.key.join('') === test.answerKey && row.source === (test.keySource ?? 'Book')) {
+        this.update(row, { conflicts });
+      }
+    }
   }
 
   /** Temizlik bitince anahtar küçük resimleri ve açık sayfa yeniden yüklenir (temiz ya da orijinal görsel). */
@@ -664,7 +687,7 @@ export class BookImportSetupComponent implements OnInit {
 
   /** QR'dan gelen anahtarın soru sayısı sayfada görülenden farklıysa (onaydan önce bakılmalı). */
   qrCountDiffers(row: EditableSetupTest): boolean {
-    return row.source === 'Qr' && !!row.key && row.expected != null && row.key.length !== row.expected;
+    return (row.source === 'Qr' || row.source === 'Marks') && !!row.key && row.expected != null && row.key.length !== row.expected;
   }
 
   /** Anahtarın sonuna bir soru ekler (okumada eksik kalan soru). */

@@ -148,6 +148,34 @@ public class BookQuestionImportTests : IDisposable
     }
 
     [Fact]
+    public async Task A_printed_answer_mark_inside_the_question_box_is_its_answer_and_a_different_key_is_flagged_issue1235()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "BC", [2]), new(2, 2, 2, null, [2])]);
+        Detect(1, 4, 4);
+        Detect(2, 4, 4);
+        await using (var ctx = _db.NewContext())
+        {
+            // Soru kutuları (100, 100) ve (100, 800), 900×400: 1. sorunun işareti D (anahtar B), 2. sorununki C (anahtarla aynı);
+            // 2. testin anahtarı yok, yalnız 1. sorusunda işaret var; kutu dışındaki işaret sayılmaz.
+            var pages = await ctx.BookImportPages.AsTracking().ToDictionaryAsync(p => p.FilePage);
+            pages[1].MarksJson = """[{"letter":"D","x":560,"y":300,"w":30,"h":30},{"letter":"C","x":120,"y":1000,"w":30,"h":30}]""";
+            pages[2].MarksJson = """[{"letter":"A","x":120,"y":300,"w":30,"h":30},{"letter":"B","x":1500,"y":300,"w":30,"h":30}]""";
+            await ctx.SaveChangesAsync();
+        }
+
+        await RunAsync(id);
+
+        _saved[0].Questions.Select(q => q.CorrectOptionIndex).ShouldBe([3, 2]);
+        _saved[1].Questions.Select(q => q.CorrectOptionIndex).ShouldBe([0, -1]);
+        await using var check = _db.NewContext();
+        var tests = await check.BookImportJobTests.OrderBy(t => t.Order).ToListAsync();
+        var first = BookImportReviewFlag.Parse(tests[0].ReviewFlagsJson).ShouldHaveSingleItem();
+        (first.Code, first.Numbers!.Single()).ShouldBe((BookImportReviewFlag.MarkMismatch, 1));
+        var second = BookImportReviewFlag.Parse(tests[1].ReviewFlagsJson).ShouldHaveSingleItem();
+        (second.Code, second.Numbers!.Single()).ShouldBe((BookImportReviewFlag.NoAnswer, 2));
+    }
+
+    [Fact]
     public async Task A_missed_question_is_flagged_on_its_page_and_does_not_shift_the_next_page()
     {
         var id = await SeedAsync([new(1, 1, 2, "BCAD", [2, 4])]);

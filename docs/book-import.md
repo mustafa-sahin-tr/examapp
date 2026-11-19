@@ -196,6 +196,19 @@ vardır; ikisi de kırpmalara girer. Sayfalar aşamasının sonunda, kurulum tar
   aynı sayfa ve aynı renk aynı sonucu verir, yeniden denemenin anlamı farklı renk. Temizlik sürerken onay kapalıdır.
   Temizlik özelliğinden önce aktarılıp onay bekleyen kitap da buradan elle temizlenir.
 
+### Basılı işaretlerden cevap anahtarı (#1235)
+
+Temizlikte silinen işaretler (`BookImportPage.MarksJson`: harf + kutu) cevap anahtarı olarak kullanılır (`BookMarkKeys`):
+
+- **Kurulum:** kurulum taramasından sonra (ve onay beklerken yapılan her temizlikten sonra) testin sayfalarındaki işaretler okuma
+  sırasıyla (sol sütun yukarıdan aşağı, sonra sağ) anahtar olur. Anahtarsız teste `KeySource = Marks` ile yazılır (ekranda
+  "İşaretlerden" etiketi; soru sayısı sayfada görülenden farklıysa uyarı). Kitaptan / QR'dan / AI'dan gelen aynı uzunluktaki
+  anahtarla farklı harf `KeyConflicts`'e "diğer okuma" olarak düşer (onaydan önce çözülür). Elle girilen anahtara dokunulmaz;
+  yeniden temizlik (başka renk) işaretten gelen anahtarı yeniler.
+- **Soru aşaması:** soru kutusunun içinde merkezi kalan işaret o sorunun cevabıdır (anahtardaki sıra kaymasını yakalar); anahtardaki
+  harften farklıysa işaret kullanılır ve `markMismatch` inceleme bayrağı düşer. Kutuda işaret yoksa ya da iki farklı harf varsa
+  anahtara bakılır. "Orijinal sayfaları kullan" işaretleri silmez: cevaplar yine işaretlerden gelir.
+
 ## Soru aktarımı (#1022)
 
 - **Taslak bayrağı** (karar 3, #1023'ün bayrak kısmı burada): `Question.IsDraft`, `Worksheet.IsDraft`; iki varlıkta da filtreler

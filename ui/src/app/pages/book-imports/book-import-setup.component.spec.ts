@@ -588,6 +588,36 @@ describe('BookImportSetupComponent (#1021)', () => {
       expect(testId('cleaning-progress')!.textContent).toContain(tr.setup.cleaningPickedColour);
     });
 
+    it('cleaningDone_FillsKeysFromMarks_AndShowsMarkConflictsOnBookKeys (#1235)', () => {
+      vi.useFakeTimers();
+      try {
+        const base = setupData().tests;
+        create(setupData({
+          cleaning: null, cleaningAvailable: true,
+          tests: [{ ...base[0], answerKey: 'ABC', keyConflicts: '...', flags: [] }, { ...base[1], answerKey: null, keyConflicts: null }],
+        }));
+        testId('cleaning-start')!.click();
+        fixture.detectChanges();
+
+        api.setup.mockReturnValue(of(setupData({
+          cleaning: cleaned, cleaningAvailable: true,
+          tests: [
+            { ...base[0], answerKey: 'ABC', keyConflicts: '.D.', flags: [] },
+            { ...base[1], answerKey: 'CD', keyConflicts: '..', keySource: 'Marks' },
+          ],
+        })));
+        vi.advanceTimersByTime(4000);
+        fixture.detectChanges();
+
+        expect(cell(0, 1).closest('label')!.classList).toContain('bis-key__cell--conflict');
+        expect(cell(1, 0).value).toBe('C');
+        expect(cell(1, 1).value).toBe('D');
+        expect(testId('marks-key-chip')!.textContent).toContain(tr.setup.marksFound);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it('demoOrUnavailable_HidesCleaning', () => {
       create(setupData({ isDemo: true, cleaningAvailable: true }));
       expect(testId('cleaning')).toBeNull();

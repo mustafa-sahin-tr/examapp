@@ -362,6 +362,8 @@ public static class BookKeySources
     public const string Qr = "Qr";
     public const string Ai = "Ai";
     public const string Manual = "Manual";
+    /// <summary>#1235: kitapta basılı cevap işaretleri (sayfa temizliğinde okunur).</summary>
+    public const string Marks = "Marks";
 
-    public static bool IsValid(string? source) => source is Book or Qr or Ai or Manual;
+    public static bool IsValid(string? source) => source is Book or Qr or Ai or Manual or Marks;
 }

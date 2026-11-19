@@ -367,7 +367,7 @@ export interface BookImportSetupTest {
 }
 
 /** #1219: cevap anahtarının kaynağı — kitabın anahtar sayfası, QR çözümleri, "AI ile bul" ya da elle. */
-export type BookKeySource = 'Book' | 'Qr' | 'Ai' | 'Manual';
+export type BookKeySource = 'Book' | 'Qr' | 'Ai' | 'Manual' | 'Marks';
 
 /** #1219 "QR'dan al" arka plan okumasının ilerlemesi; okunan anahtarlar test satırlarına QR kaynağıyla yazılır. */
 export interface BookImportQrRun {

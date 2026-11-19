@@ -50,6 +50,9 @@ public sealed record BookImportReviewFlag(
     /// <summary>Sayfanın soruları kaydedilemedi.</summary>
     public const string SaveFailed = "saveFailed";
 
+    /// <summary>#1235: sorunun kutusundaki basılı işaret anahtardaki harften farklı (işaret kullanıldı).</summary>
+    public const string MarkMismatch = "markMismatch";
+
     internal static string? Serialize(IReadOnlyCollection<BookImportReviewFlag> flags) =>
         flags.Count == 0 ? null : JsonSerializer.Serialize(flags, BookSetupSummary.Json);
 
@@ -219,6 +222,7 @@ internal sealed class BookQuestionImportStage(
 
             var toSave = new List<LabelingBankQuestionDto>();
             var savedIndexes = new Dictionary<int, int>();
+            var marks = BookMarkKeys.Parse(page.MarksJson);
             for (var i = 0; i < questions.Count; i++)
             {
                 var number = start + i;
@@ -232,6 +236,13 @@ internal sealed class BookQuestionImportStage(
                 }
 
                 var answer = AnswerIndex(answers, number);
+                // #1235: sorunun kutusundaki basılı işaret cevaptır (anahtardaki sıra kaymasını yakalar); anahtarla farkı uyarı.
+                if (BookMarkKeys.AnswerIn(marks, questions[i].Box) is var marked and >= 0)
+                {
+                    if (answer >= 0 && answer != marked)
+                        flags.Add(BookImportReviewFlag.MarkMismatch, filePage, [number]);
+                    answer = marked;
+                }
                 if (answer >= prepared.Options.Count)
                     answer = -1;
                 if (answer < 0)

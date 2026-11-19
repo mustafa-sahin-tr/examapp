@@ -304,6 +304,9 @@ public sealed class BookPageCleaningService(AppDbContext db, IMinIoService minio
 
             summary.Status = BookPageCleaning.Done;
             await SaveAsync(job, summary, ct);
+            // #1235: kurulum onayı beklerken (elle temizlik) yeni işaretler anahtarlara yansır; aktarım işinde kurulumdan sonra.
+            if (job.Status == BookImportJobStatus.AwaitingConfirmation)
+                await BookMarkKeys.ApplyAsync(db, job.Id, ct);
             logger.LogInformation("Book import job {JobId}: cleaned {Pages} pages (watermark {Watermark}, {Marks} answer marks)",
                 job.Id, pages.Count, summary.Watermark, summary.Marks);
         }

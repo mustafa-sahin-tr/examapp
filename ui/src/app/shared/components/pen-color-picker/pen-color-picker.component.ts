@@ -3,7 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslocoDirective } from '@jsverse/transloco';
+import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { PEN_COLORS, penColor, penColorCss, selectPenColor } from '../../utils/pen-color';
 
 /** Issue #1241: kalem rengi seçici (düğme + menü); karalama alanı, soru üstü çizim ve çözüm kaydı (#1226) aynı seçimi paylaşır. */
@@ -11,9 +11,11 @@ import { PEN_COLORS, penColor, penColorCss, selectPenColor } from '../../utils/p
   selector: 'app-pen-color-picker',
   standalone: true,
   imports: [MatButtonModule, MatIconModule, MatMenuModule, MatTooltipModule, TranslocoDirective],
+  // Kendi sözlüğü: seçici test çözme ekranı dışında da (çözüm kaydı, #1226) kullanılır.
+  providers: [provideTranslocoScope('pen-color')],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ng-container *transloco="let t; prefix: 'test-solve.penColor'">
+    <ng-container *transloco="let t; prefix: 'pen-color'">
       <button mat-icon-button type="button" class="pen-color" data-testid="pen-color-button" [matMenuTriggerFor]="menu"
         [matTooltip]="t('label')" [attr.aria-label]="t('current', { color: t(color()) })">
         <span class="pen-color__dot" [style.background-color]="css(color())"></span>

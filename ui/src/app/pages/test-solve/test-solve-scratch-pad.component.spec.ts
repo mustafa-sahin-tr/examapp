@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import penColorTr from '../../../../public/i18n/pen-color/tr.json';
 import testSolveTr from '../../../../public/i18n/test-solve/tr.json';
 import { selectPenColor } from '../../shared/utils/pen-color';
 import { TestSolveScratchPadComponent } from './test-solve-scratch-pad.component';
@@ -46,7 +47,7 @@ describe('TestSolveScratchPadComponent (#782)', () => {
         TestSolveScratchPadComponent,
         NoopAnimationsModule,
         TranslocoTestingModule.forRoot({
-          langs: { tr: { 'test-solve': testSolveTr } },
+          langs: { tr: { 'test-solve': testSolveTr, 'pen-color': penColorTr } },
           translocoConfig: { availableLangs: ['tr'], defaultLang: 'tr' },
         }),
       ],
@@ -81,6 +82,7 @@ describe('TestSolveScratchPadComponent (#782)', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const options = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]'));
+    expect(options[3].textContent).toContain(penColorTr.blue);
     expect(options.map((option) => option.getAttribute('aria-checked'))).toEqual(['true', 'false', 'false', 'false', 'false']);
     document.querySelector<HTMLButtonElement>('[data-testid="pen-color-blue"]')!.click();
     fixture.detectChanges();

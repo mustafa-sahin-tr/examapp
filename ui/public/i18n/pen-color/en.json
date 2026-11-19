@@ -1,0 +1,9 @@
+{
+  "label": "Pen colour",
+  "current": "Pen colour: {{color}}",
+  "default": "Default",
+  "red": "Red",
+  "green": "Green",
+  "blue": "Blue",
+  "orange": "Orange"
+}

@@ -198,15 +198,6 @@
     "undo": "Undo drawing",
     "clear": "Clear the drawing on the question"
   },
-  "penColor": {
-    "label": "Pen colour",
-    "current": "Pen colour: {{color}}",
-    "default": "Default",
-    "red": "Red",
-    "green": "Green",
-    "blue": "Blue",
-    "orange": "Orange"
-  },
   "report": {
     "action": "Report question",
     "title": "Report question",

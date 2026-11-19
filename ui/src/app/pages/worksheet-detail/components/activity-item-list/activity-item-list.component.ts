@@ -25,6 +25,11 @@ import { filter, map, switchMap } from 'rxjs';
 import { authoringItemTitle, parseDefinition } from '../../../../models/activity-authoring';
 import { Question } from '../../../../models/question';
 import { QuestionService } from '../../../../services/question.service';
+import {
+  SolutionRecordingDialogComponent,
+  SolutionRecordingDialogData,
+  SolutionRecordingDialogResult,
+} from '../../../../shared/components/solution-recording/solution-recording-dialog.component';
 import { TestItemAnswerDialogComponent, TestItemAnswerDialogData } from './test-item-answer-dialog.component';
 import {
   ActivityItemRemoveDialogComponent,
@@ -73,6 +78,10 @@ export interface ActivityItemRow {
   /** Issue #857: şık id'leri (sunucu sırası) ve doğru cevap — cevap diyaloğu için. */
   answerIds: number[];
   correctAnswerId: number | null;
+  /** Issue #1226: çağıran bu soruya çözüm kaydedebilir (soru sahibi ya da admin). */
+  canRecordSolution: boolean;
+  /** Issue #1226: sorunun çözüm kaydı var. */
+  hasSolutionRecording: boolean;
 }
 
 /**
@@ -165,6 +174,37 @@ export class ActivityItemListComponent implements OnInit {
     this.router.navigate(['/activity-editor'], {
       queryParams: { testId: this.worksheetId(), ...(gradeId ? { gradeId } : {}), questionId: row.questionId },
     });
+  }
+
+  /**
+   * Issue #1226: sorunun çözüm kaydı (kalem + ses) — kaydet, izle, yeniden kaydet, sil. Yalnız sorunun sahibi (ya da admin).
+   */
+  openSolution(row: ActivityItemRow): void {
+    this.dialog
+      .open<SolutionRecordingDialogComponent, SolutionRecordingDialogData, SolutionRecordingDialogResult>(
+        SolutionRecordingDialogComponent,
+        {
+          data: {
+            mode: 'record',
+            id: row.questionId,
+            title: this.tr('solutionTitle', { number: row.number }),
+            imageUrl: row.imageUrl,
+            hasRecording: row.hasSolutionRecording,
+          },
+          width: '960px',
+          maxWidth: '96vw',
+          disableClose: true,
+          autoFocus: 'dialog',
+        }
+      )
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((result) => {
+        if (!result) return;
+        this.rows.update((rows) =>
+          rows.map((r) => (r.questionId === row.questionId ? { ...r, hasSolutionRecording: result.hasRecording } : r))
+        );
+      });
   }
 
   /**
@@ -335,6 +375,8 @@ export function toRows(questions: Question[]): ActivityItemRow[] {
       topic,
       answerIds: answers.map((a) => a.id),
       correctAnswerId: correctIndex >= 0 ? q.correctAnswerId! : null,
+      canRecordSolution: !!q.canRecordSolution,
+      hasSolutionRecording: !!q.hasSolutionRecording,
     };
   });
 }

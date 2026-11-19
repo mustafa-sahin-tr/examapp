@@ -99,6 +99,11 @@
                     } @else {
                       <span class="ail__badge">{{ typeName(row) }}</span>
                     }
+                    @if (row.hasSolutionRecording) {
+                      <span class="ail__badge ail__badge--solution" data-testid="test-item-solution-badge">
+                        <mat-icon aria-hidden="true">play_circle</mat-icon>{{ t('solutionBadge') }}
+                      </span>
+                    }
                   </div>
                   <p class="ail__preview" [title]="row.topic">{{ row.topic || t('noPreview') }}</p>
                 } @else {
@@ -114,6 +119,15 @@
                   }
                 }
               </div>
+              @if (isTest() && row.canRecordSolution) {
+                <!-- #1226: çözüm kaydı (kalem + ses); yalnız sorunun sahibine -->
+                <button mat-icon-button type="button" class="ail__solution" (click)="openSolution(row)" [disabled]="busy()"
+                  [matTooltip]="row.hasSolutionRecording ? t('solutionOpen') : t('solutionRecord')"
+                  [attr.aria-label]="t(row.hasSolutionRecording ? 'solutionOpenAria' : 'solutionRecordAria', { number: row.number })"
+                  data-testid="test-item-solution">
+                  <mat-icon>{{ row.hasSolutionRecording ? 'play_circle' : 'mic' }}</mat-icon>
+                </button>
+              }
               @if (canEdit()) {
                 <!-- #838: düzenle görünür; taşı / kaldır taşma menüsünde (madde başına 4 ikon yerine 2) -->
                 <div class="ail__actions">

@@ -49,6 +49,10 @@ export interface Question {
   interactionPlan?: string;
   /** issue #570: doğru yerleşimler (JSON), plandan ayrı; yalnız yetkili/izinli durumda dolu gelir. */
   interactionSolution?: string | null;
+  /** Issue #1226: çözüm kaydı var ve çağıran oynatabilir. */
+  hasSolutionRecording?: boolean;
+  /** Issue #1226: çağıran bu soruya çözüm kaydedebilir (soru sahibi ya da admin). */
+  canRecordSolution?: boolean;
   x: number;
   y: number;
   width: number;

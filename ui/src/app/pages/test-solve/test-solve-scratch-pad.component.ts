@@ -26,6 +26,8 @@ import {
   readScratchNotes,
   writeScratchNotes,
 } from './test-solve-scratch-store';
+import { colorStroke, penColor, penColorCss, strokeCss, strokePath } from '../../shared/utils/pen-color';
+import { PenColorPickerComponent } from '../../shared/components/pen-color-picker/pen-color-picker.component';
 import { ScratchStrokeInput } from './scratch-stroke-input';
 
 const EMPTY_NOTE: ScratchNote = { strokes: [], text: '' };
@@ -38,7 +40,15 @@ const TEXT_SAVE_DELAY_MS = 400;
 @Component({
   selector: 'app-test-solve-scratch-pad',
   standalone: true,
-  imports: [MatButtonModule, MatButtonToggleModule, MatFormFieldModule, MatIconModule, MatInputModule, TranslocoDirective],
+  imports: [
+    MatButtonModule,
+    MatButtonToggleModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    PenColorPickerComponent,
+    TranslocoDirective,
+  ],
   templateUrl: './test-solve-scratch-pad.component.html',
   styleUrl: './test-solve-scratch-pad.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -56,6 +66,9 @@ export class TestSolveScratchPadComponent implements OnInit, OnDestroy {
   protected readonly note = computed(() => this.notes()[this.questionId()] ?? EMPTY_NOTE);
   /** Çizilmekte olan çizgi; bırakılınca nota eklenir. */
   protected readonly currentStroke = computed(() => this.strokeInput.current());
+  protected readonly currentCss = computed(() => penColorCss(penColor()));
+  protected readonly strokePath = strokePath;
+  protected readonly strokeCss = strokeCss;
   protected readonly viewHeight = signal(SCRATCH_VIEW_WIDTH);
   protected readonly saveFailed = signal(false);
   /** Temizlenen çizgiler soru başına; temizleme de geri alınabilir. */
@@ -112,7 +125,7 @@ export class TestSolveScratchPadComponent implements OnInit, OnDestroy {
     this.strokeQuestionId = null;
     if (questionId !== null) {
       const note = this.notes()[questionId] ?? EMPTY_NOTE;
-      this.updateNote(questionId, { ...note, strokes: [...note.strokes, stroke] });
+      this.updateNote(questionId, { ...note, strokes: [...note.strokes, colorStroke(stroke, penColor())] });
       this.forgetCleared(questionId);
       this.save();
     }

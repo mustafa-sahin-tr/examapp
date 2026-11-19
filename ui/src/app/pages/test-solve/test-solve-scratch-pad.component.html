@@ -6,6 +6,7 @@
       <mat-button-toggle value="write">{{ t('write') }}</mat-button-toggle>
     </mat-button-toggle-group>
     @if (mode() === 'draw') {
+      <app-pen-color-picker />
       <button mat-icon-button type="button" [attr.aria-label]="t('undo')" [disabled]="!canUndo()" (click)="undo()">
         <mat-icon>undo</mat-icon>
       </button>
@@ -25,10 +26,10 @@
       (pointerdown)="startStroke($event)" (pointermove)="extendStroke($event)" (pointerup)="endStroke($event)"
       (pointercancel)="endStroke($event)">
       @for (stroke of note().strokes; track $index) {
-        <path class="scratch__stroke" [attr.d]="stroke" />
+        <path class="scratch__stroke" [attr.d]="strokePath(stroke)" [style.stroke]="strokeCss(stroke)" />
       }
       @if (currentStroke(); as stroke) {
-        <path class="scratch__stroke" [attr.d]="stroke" />
+        <path class="scratch__stroke" [attr.d]="stroke" [style.stroke]="currentCss()" />
       }
     </svg>
   } @else {

@@ -3,6 +3,7 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import testSolveTr from '../../../../public/i18n/test-solve/tr.json';
+import { selectPenColor } from '../../shared/utils/pen-color';
 import { TestSolveScratchPadComponent } from './test-solve-scratch-pad.component';
 import { readScratchNotes, writeScratchNotes } from './test-solve-scratch-store';
 
@@ -55,6 +56,7 @@ describe('TestSolveScratchPadComponent (#782)', () => {
   afterEach(() => {
     vi.useRealTimers();
     localStorage.clear();
+    selectPenColor('default');
   });
 
   it('a stroke is saved on this device only when it ends', () => {
@@ -69,6 +71,27 @@ describe('TestSolveScratchPadComponent (#782)', () => {
     const [stroke] = readScratchNotes(INSTANCE_ID)[1].strokes;
     expect(stroke).toMatch(/^M\d+ \d+L\d+ \d+L\d+ \d+$/);
     expect(paths()).toBe(1);
+  });
+
+  it('the pen colour is picked from the menu and stored with the stroke (#1241)', async () => {
+    create();
+    draw();
+
+    root().querySelector<HTMLButtonElement>('[data-testid="pen-color-button"]')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const options = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]'));
+    expect(options.map((option) => option.getAttribute('aria-checked'))).toEqual(['true', 'false', 'false', 'false', 'false']);
+    document.querySelector<HTMLButtonElement>('[data-testid="pen-color-blue"]')!.click();
+    fixture.detectChanges();
+    draw();
+
+    const strokes = readScratchNotes(INSTANCE_ID)[1].strokes;
+    expect(strokes[0]).toMatch(/^M/);
+    expect(strokes[1]).toMatch(/^blue:M/);
+    const drawn = Array.from(root().querySelectorAll<SVGPathElement>('path'));
+    expect(drawn[0].style.stroke).toBe('');
+    expect(drawn[1].style.stroke).not.toBe('');
   });
 
   it('coordinates are relative to width, so a note survives a resize', () => {

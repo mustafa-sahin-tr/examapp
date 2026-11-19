@@ -691,6 +691,14 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
   align-self: center;
 }
 
+// Issue #1241: kalem rengi; varsayılan renk görsel üstü çizimin rengidir.
+.solve-dock__pen-color {
+  --mat-icon-button-icon-color: var(--solve-ink);
+  --pen-color-default: var(--primaryColor);
+  flex: 0 0 auto;
+  align-self: center;
+}
+
 .solve-dock__review {
   min-height: 48px;
   border-radius: 14px;

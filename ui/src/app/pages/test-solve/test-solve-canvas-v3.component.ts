@@ -34,6 +34,7 @@ import { QuestionReportService } from '../../services/question-report.service';
 import { QuestionReportCreated } from '../../models/question-report';
 import { QuestionReportDialogComponent, QuestionReportDialogData } from './question-report-dialog.component';
 import { TestSolveScratchPadComponent } from './test-solve-scratch-pad.component';
+import { PenColorPickerComponent } from '../../shared/components/pen-color-picker/pen-color-picker.component';
 import { TestSolveQuestionInkComponent } from './test-solve-question-ink.component';
 import { QuestionLiteViewComponent } from '../question-lite-view/question-lite-view.component';
 import { CountdownComponent } from '../../shared/components/countdown/countdown.component';
@@ -113,6 +114,7 @@ function isShortcutBlockedTarget(target: EventTarget | null): boolean {
     CommonModule,
     TestSolveScratchPadComponent,
     TestSolveQuestionInkComponent,
+    PenColorPickerComponent,
     MatButtonModule,
     MatIconModule,
     MatTooltipModule,

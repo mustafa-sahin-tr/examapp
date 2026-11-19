@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import testSolveTr from '../../../../public/i18n/test-solve/tr.json';
+import { selectPenColor } from '../../shared/utils/pen-color';
 import { TestSolveQuestionInkComponent } from './test-solve-question-ink.component';
 import { readInkStrokes, writeInkStrokes } from './test-solve-scratch-store';
 
@@ -51,7 +52,10 @@ describe('TestSolveQuestionInkComponent (#1175)', () => {
     });
   });
 
-  afterEach(() => localStorage.clear());
+  afterEach(() => {
+    localStorage.clear();
+    selectPenColor('default');
+  });
 
   it('draws only while active and lets taps through otherwise', () => {
     create(false);
@@ -86,6 +90,21 @@ describe('TestSolveQuestionInkComponent (#1175)', () => {
     fixture.componentRef.setInput('questionId', 1);
     fixture.detectChanges();
     expect(paths()).toBe(1);
+  });
+
+  it('new strokes take the selected pen colour and old ones keep theirs (#1241)', () => {
+    writeInkStrokes(INSTANCE_ID, 1, ['M1 2L3 4']);
+    create(true);
+    selectPenColor('red');
+    draw();
+
+    const stored = readInkStrokes(INSTANCE_ID, 1);
+    expect(stored[0]).toBe('M1 2L3 4');
+    expect(stored[1]).toMatch(/^red:M/);
+    const [old, coloured] = Array.from(host().querySelectorAll<SVGPathElement>('path'));
+    expect(old.style.stroke).toBe('');
+    expect(coloured.style.stroke).not.toBe('');
+    expect(coloured.getAttribute('d')).toMatch(/^M/);
   });
 
   it('undo removes the last stroke, and clear can be undone', () => {

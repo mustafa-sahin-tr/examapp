@@ -254,6 +254,37 @@ ZIP indir). Veri setine yazma: `question-detector/training/import_book_export.py
 `page_id` = görsel SHA-256'sının ilk 16 hanesi, işaretleme ekranıyla aynı; veri setinde olan sayfa atlanır, görsel / hash
 uyuşmazsa sayılır ve yazılmaz). Kitap görselleri yayınevi içeriği: yalnız eğitim için, dışarı paylaşılmaz.
 
+## Kendi modeller: ölçüm (#1136, #1248)
+
+Epic #1136: sayfa tespitinde ve cevap anahtarında Claude'un yerine kendi modellerimiz, Claude yedek. İlk adım ölçüm.
+
+- **Betik:** `question-detector/training/evaluate_export.py <zip> --url http://127.0.0.1:<port> | --models models [--val-only]
+  [--choices 4] [--report rapor.md] [--json sonuc.json]`. Referans, eğitim dışa aktarımıdır (#1133): onaylı testlerin sayfaları;
+  düzeltilen sayfada elle doğrulanmış kutular (`source=Manual`), diğerlerinde Claude'un kutuları (`source=Ai`). Yani `Ai`
+  sayfalarında ölçülen şey modelin Claude ile uyuşmasıdır. `--url` çalışan servisin `/predict` ucunu, `--models` yerel ağırlıkları
+  kullanır (ultralytics gerekir). `--val-only` yalnız `train.py`'nin val'e ayırdığı sayfaları ölçer: yeni eğitilen model
+  görmediği sayfada sınanır.
+- **Ölçütler** (kitap ve kaynak kırılımıyla): soru ve şık için IoU ≥ 0,5 / 0,75 eşleşme, kaçan ve fazla kutu, soru sayısı tutan
+  sayfa, kusursuz sayfa (bütün sorular 0,75'te eşleşir, fazla kutu yok), sayfa başına süre. **Hibrit kabul kuralı** (#1250):
+  bulunan soru sayısı beklenenle aynı ve her soruda `--choices` kadar şık varsa sayfa Claude'a sorulmadan kabul edilir;
+  "kabul edilip yanlış" bu sayfalardan kusursuz olmayanların oranıdır.
+- **İlk ölçüm (2026-11-19):** demodaki onaylı 200 sayfa, 859 soru, aynı yayınevinden iki kitap (5. sınıf Fen ve Din Kültürü yaprak
+  test); ağırlıklar 19 Ekim'deki tek kitaplık eski veri setinden.
+
+  | | Sayfa | Soru IoU≥0,5 | Soru IoU≥0,75 | Kaçan | Fazla | Sayı tutan sayfa | Kusursuz sayfa | Şık IoU≥0,5 | Şık IoU≥0,75 | Şık sayısı tutan soru | Kabul edilen | Kabul edilip yanlış |
+  |---|---|---|---|---|---|---|---|---|---|---|---|---|
+  | Hepsi | 200 | %93,2 | %86,0 | 58 | 141 | %60,5 | %42,5 | %90,8 | %56,0 | %70,4 | %16,0 | %37,5 |
+  | Din Kültürü | 77 | %95,1 | %91,3 | 18 | 26 | %79,2 | %58,4 | %96,2 | %63,8 | %83,2 | %35,1 | %33,3 |
+  | Fen Bilimleri | 123 | %91,8 | %82,0 | 40 | 115 | %48,8 | %32,5 | %86,5 | %50,0 | %60,4 | %4,1 | %60,0 |
+  | Elle doğrulanmış | 9 | %86,2 | %69,0 | 4 | 6 | %44,4 | %33,3 | %84,0 | %50,0 | %52,0 | %11,1 | %0 |
+
+  Süre CPU'da sayfa başına ~1,7 sn (Claude Haiku ~10–15 sn ve ~$0,001).
+- **Sonuç:** eski ağırlıklar soruların çoğunu buluyor ama sayfaların yarısından azı kusursuz, şık kutuları kaba; kabul kuralı
+  sayfaların yalnız %16'sını geçiriyor ve bunların üçte biri yanlış. Bu ağırlıklarla hibrit tespit açılmaz. Önce onaylı
+  sayfalarla yeniden eğitim (EGITIM.md), sonra aynı betikle `--val-only` ölçüm; karar eşiği #1250'de.
+- **Dikkat:** veri iki kitap ve tek yayınevi; dört şıklı çoktan seçmeli. Başka dizgide sonuç farklı olur; her yeni onaylı kitapta
+  betik yeniden çalıştırılır. Dışa aktarım yayınevi içeriğidir, repoya ve issue'ya konmaz.
+
 ## Şık harfleri (#1181, #1183)
 
 - Şıkkın harfi dizideki sırasıdır (0 → A); kayıtta `Answer.Text` ve `Answer.Tag` harfi, `Answer.Order` sırayı tutar.

@@ -309,6 +309,7 @@ public class AppDbContext : DbContext
     public DbSet<TeacherAvailabilitySlot> TeacherAvailabilitySlots { get; set; }
     public DbSet<Booking> Bookings { get; set; }
     public DbSet<AskTeacherQuestion> AskTeacherQuestions { get; set; } // issue #1111
+    public DbSet<QuestionSolutionRecording> QuestionSolutionRecordings { get; set; } // issue #1226
 
     // Tekrarlayan haftalık müsaitlik kuralı (issue #178)
     public DbSet<RecurringAvailabilityRule> RecurringAvailabilityRules { get; set; }
@@ -1092,6 +1093,13 @@ public class AppDbContext : DbContext
             e.HasIndex(q => new { q.StudentUserId, q.CreatedAt });
             e.HasIndex(q => new { q.StudentUserId, q.SavedToNotebookAt });
             e.HasIndex(q => new { q.Status, q.DueAt });
+        });
+
+        // issue #1226: soru başına bir çözüm kaydı.
+        modelBuilder.Entity<QuestionSolutionRecording>(e =>
+        {
+            e.HasOne(r => r.Question).WithMany().HasForeignKey(r => r.QuestionId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(r => r.QuestionId).IsUnique();
         });
 
         modelBuilder.Entity<QuestionHintSet>(e =>

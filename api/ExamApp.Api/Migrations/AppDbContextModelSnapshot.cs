@@ -4305,6 +4305,57 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("QuestionSkills");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.QuestionSolutionRecording", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AudioContentType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("AudioObjectPath")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<long>("AudioSizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DurationMs")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("QuestionId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RecordedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SchemaRevision")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("StrokesJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuestionId")
+                        .IsUnique();
+
+                    b.ToTable("QuestionSolutionRecordings");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.QuestionSource", b =>
                 {
                     b.Property<int>("Id")
@@ -11351,6 +11402,17 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Question");
 
                     b.Navigation("Skill");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.QuestionSolutionRecording", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Question", "Question")
+                        .WithMany()
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Question");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.QuestionSource", b =>

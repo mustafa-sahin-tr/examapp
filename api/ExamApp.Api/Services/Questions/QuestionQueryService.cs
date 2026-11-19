@@ -236,29 +236,32 @@ public class QuestionQueryService : IQuestionQueryService
             })
             .ToListAsync(ct);
 
-        // issue #570: soru bazında sahiplik (QuestionOwnershipGuard.OwnedBy) tek ek sorguyla — N+1 yok; gizlenecek bir şey
-        // yoksa ya da admin ise sorgu atlanır.
-        var candidateIds = rows
-            .Where(r => HasSolutionCandidate(r.InteractionSolution, r.Dto.InteractionPlan))
-            .Select(r => r.Dto.Id)
-            .Distinct()
-            .ToList();
-        HashSet<int> visibleSolutionIds;
-        if (candidateIds.Count == 0)
-            visibleSolutionIds = new HashSet<int>();
-        else if (solutionViewerIsAdmin)
-            visibleSolutionIds = candidateIds.ToHashSet();
+        // issue #570, #1226: soru bazında sahiplik (QuestionOwnershipGuard.OwnedBy) tek ek sorguyla — N+1 yok; admin ise sorgu
+        // atlanır. Etkileşim çözümü ve çözüm kaydı yalnız sahibine / admine.
+        var questionIds = rows.Select(r => r.Dto.Id).Distinct().ToList();
+        HashSet<int> ownedIds;
+        if (questionIds.Count == 0 || solutionViewerIsAdmin)
+            ownedIds = questionIds.ToHashSet();
         else
-            visibleSolutionIds = (await _context.Questions.AsNoTracking()
-                .Where(q => candidateIds.Contains(q.Id))
+            ownedIds = (await _context.Questions.AsNoTracking()
+                .Where(q => questionIds.Contains(q.Id))
                 .Where(QuestionOwnershipGuard.OwnedBy(_context, solutionViewerUserId))
                 .Select(q => q.Id)
+                .ToListAsync(ct)).ToHashSet();
+        var recordedIds = ownedIds.Count == 0
+            ? new HashSet<int>()
+            : (await _context.QuestionSolutionRecordings.AsNoTracking()
+                .Where(r => ownedIds.Contains(r.QuestionId))
+                .Select(r => r.QuestionId)
                 .ToListAsync(ct)).ToHashSet();
 
         var now = DateTime.UtcNow;
         foreach (var row in rows)
         {
-            ApplyInteractionSolution(row.Dto, row.InteractionSolution, visibleSolutionIds.Contains(row.Dto.Id));
+            var owned = ownedIds.Contains(row.Dto.Id);
+            ApplyInteractionSolution(row.Dto, row.InteractionSolution, owned);
+            row.Dto.CanRecordSolution = owned;
+            row.Dto.HasSolutionRecording = recordedIds.Contains(row.Dto.Id);
             row.Dto.PrintBlock = QuestionPrintPolicy.BlockReason(row.SourceType, row.IsUnpublished, row.LicenseEndsAt, now);
         }
 

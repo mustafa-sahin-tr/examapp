@@ -1,0 +1,10 @@
+{
+  "solutionRecording": {
+    "userNotResolved": "Kullanıcı bulunamadı.",
+    "notFound": "Çözüm kaydı bulunamadı.",
+    "invalidAudio": "Ses okunamadı (WebM, MP4, Ogg ya da MP3, en çok 12 MB).",
+    "invalidStrokes": "Çizim verisi geçerli değil.",
+    "invalidDuration": "Kayıt en çok 5 dakika olabilir.",
+    "storageFailed": "Kayıt saklanamadı. Yeniden dene."
+  }
+}

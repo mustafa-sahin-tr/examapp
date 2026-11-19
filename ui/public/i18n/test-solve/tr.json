@@ -198,6 +198,15 @@
     "undo": "Çizimi geri al",
     "clear": "Sorudaki çizimi temizle"
   },
+  "penColor": {
+    "label": "Kalem rengi",
+    "current": "Kalem rengi: {{color}}",
+    "default": "Varsayılan",
+    "red": "Kırmızı",
+    "green": "Yeşil",
+    "blue": "Mavi",
+    "orange": "Turuncu"
+  },
   "report": {
     "action": "Soruyu bildir",
     "title": "Soruyu bildir",

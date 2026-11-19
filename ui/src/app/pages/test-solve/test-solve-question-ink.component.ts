@@ -10,6 +10,7 @@ import {
   signal,
 } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { colorStroke, penColor, penColorCss, strokeCss, strokePath } from '../../shared/utils/pen-color';
 import { ScratchStrokeInput } from './scratch-stroke-input';
 import { SCRATCH_VIEW_WIDTH, readInkStrokes, writeInkStrokes } from './test-solve-scratch-store';
 
@@ -42,6 +43,9 @@ export class TestSolveQuestionInkComponent {
 
   private readonly strokeInput = new ScratchStrokeInput();
   protected readonly currentStroke = this.strokeInput.current;
+  protected readonly currentCss = computed(() => penColorCss(penColor()));
+  protected readonly strokePath = strokePath;
+  protected readonly strokeCss = strokeCss;
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   constructor() {
@@ -66,7 +70,7 @@ export class TestSolveQuestionInkComponent {
     const stroke = this.strokeInput.end(event);
     if (stroke === null) return;
     this.cleared.set(null);
-    this.save([...this.strokes(), stroke]);
+    this.save([...this.strokes(), colorStroke(stroke, penColor())]);
   }
 
   undo(): void {

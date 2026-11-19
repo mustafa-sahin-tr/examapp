@@ -181,6 +181,7 @@
           </button>
           @if (inkMode()) {
           @let ink = inkLayerFor(activeQuestion.question.id);
+          <app-pen-color-picker class="solve-dock__pen-color" />
           <button mat-icon-button class="solve-dock__icon" [matTooltip]="t('ink.undo')" [attr.aria-label]="t('ink.undo')"
             [disabled]="!ink?.canUndo()" (click)="ink?.undo()">
             <mat-icon>undo</mat-icon>

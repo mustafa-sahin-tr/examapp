@@ -24,6 +24,12 @@ describe('test solve scratch store (#782)', () => {
     expect(readScratchNotes(2)[10].text).toBe('b');
   });
 
+  it('keeps coloured strokes and drops unknown colours (#1241)', () => {
+    writeScratchNotes(1, { 10: { strokes: ['red:M1 2L3 4', 'pink:M1 2L3 4', 'M5 6L7 8'], text: '' } });
+
+    expect(readScratchNotes(1)[10].strokes).toEqual(['red:M1 2L3 4', 'M5 6L7 8']);
+  });
+
   it('clearing one session leaves the others', () => {
     writeScratchNotes(1, { 10: { strokes: [], text: 'a' } });
     writeScratchNotes(2, { 10: { strokes: [], text: 'b' } });

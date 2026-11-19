@@ -162,6 +162,11 @@ Seçili şık nötr mavi ve işaretlidir; yeşil yalnız doğru cevap içindir. 
   dışında olduğu için seçimi engellemez; kalem açıkken parmak görselin üstünde sayfayı kaydırmaz. Kapalıyken çizgiler görünür
   kalır. Aynı kurallarla saklanır (`testSolve.ink.<oturum>`, soru başına ayrı yazılır, test bitince ve 30 günde silinir); geri
   al / temizle dock'ta, etkin soruya. Etkinlik türlerinde ve tam ekran büyütmede yok.
+- **Kalem rengi (#1241):** karalama alanında ve soru üstü çizimde aynı seçici (`app-pen-color-picker`, düğme + menü; beş renk:
+  varsayılan, kırmızı, yeşil, mavi, turuncu; kalınlık seçimi yok). Seçim ikisinde ortaktır ve oturum boyunca hatırlanır
+  (`sessionStorage` `testSolve.penColor`). Renk çizgiyle saklanır: yolun başında `renk:` öneki (`red:M1 2L3 4`); öneksiz çizgi
+  (eski kayıtlar dahil) varsayılan renktedir, yani yüzeyin kendi mürekkep rengi. Tanınmayan renkli çizgi okunurken atılır.
+  Renk modeli ve seçici `shared/` altındadır (`shared/utils/pen-color.ts`); öğretmenin çözüm kaydı (#1226) aynısını kullanır.
 
 **Issue #534 — karışık mini deneme.** `POST practice/sessions` `mixedReview: true` ile sabit listeli oturum açar (`MixedReview.cs`). Varsayılan 15 soru: %40 tekrar zamanı gelen (#529), %30 yanlış defteri, %30 zayıf konulardan (son 30 gün, en az 5 cevap, doğruluk %70 altı, #497) hiç cevaplanmamış soru. Pay ve sayı `PracticeMixedReview` bölümünde; `TargetCount` sayıyı ezer. Aynı soru iki kez girmez, eksik pay diğer kaynaklardan tamamlanır, kaynaklar yetmezse oturum kısa kalır, hepsi boşsa 400 `practice.noMixedReview`. "Zor sorular" kaynağı (#526) henüz yok; yerine yanlış defteri kullanılır, #526 gelince değiştirilir. Bitmemiş test ve atama soruları ile bugünün günlük seti girmez. Süre ve net hesabı yok. Giriş pratik kurulum ekranındaki kart; asistan aracı sonraki adım, aynı isteği kullanır.
 

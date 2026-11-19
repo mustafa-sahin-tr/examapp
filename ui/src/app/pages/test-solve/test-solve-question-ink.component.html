@@ -4,9 +4,9 @@
   (pointerdown)="startStroke($event)" (pointermove)="extendStroke($event)" (pointerup)="endStroke($event)"
   (pointercancel)="endStroke($event)">
   @for (stroke of strokes(); track $index) {
-    <path class="ink__stroke" [attr.d]="stroke" />
+    <path class="ink__stroke" [attr.d]="strokePath(stroke)" [style.stroke]="strokeCss(stroke)" />
   }
   @if (currentStroke(); as stroke) {
-    <path class="ink__stroke" [attr.d]="stroke" />
+    <path class="ink__stroke" [attr.d]="stroke" [style.stroke]="currentCss()" />
   }
 </svg>

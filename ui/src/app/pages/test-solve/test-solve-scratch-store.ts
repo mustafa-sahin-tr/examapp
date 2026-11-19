@@ -1,9 +1,14 @@
+import { SCRATCH_STROKE_PATTERN } from '../../shared/utils/pen-color';
+
 /**
  * Issue #782: soru başına karalama notları. Yalnız bu cihazda durur, sunucuya gitmez: öğretmen göremez.
  * Test bitince silinir; bu cihazda bitmeyen testlerin notları {@link SCRATCH_MAX_AGE_MS} sonra temizlenir.
  */
 export interface ScratchNote {
-  /** SVG yol verisi; koordinatlar alan genişliği {@link SCRATCH_VIEW_WIDTH} sayılarak tutulur. */
+  /**
+   * SVG yol verisi, renkliyse `renk:` önekiyle (#1241, bkz. `shared/utils/pen-color.ts`); koordinatlar alan genişliği
+   * {@link SCRATCH_VIEW_WIDTH} sayılarak tutulur.
+   */
   strokes: string[];
   text: string;
 }
@@ -19,8 +24,8 @@ const scratchKey = (instanceId: number) => `${KEY_PREFIX}${instanceId}`;
 /** #1175: soru görselinin üstüne çizilenler; karalama notlarıyla aynı kurallar, ayrı anahtar. */
 const INK_KEY_PREFIX = 'testSolve.ink.';
 const inkKey = (instanceId: number) => `${INK_KEY_PREFIX}${instanceId}`;
-/** Eldeki yol yalnız bizim ürettiğimiz biçimde olabilir: M ile başlar, sayı ve L taşır. */
-const STROKE_PATTERN = /^M[\d L]+$/;
+/** Eldeki yol yalnız bizim ürettiğimiz biçimde olabilir: (isteğe bağlı renk öneki,) M ile başlar, sayı ve L taşır. */
+const STROKE_PATTERN = SCRATCH_STROKE_PATTERN;
 
 function sanitizeStrokes(strokes: unknown): string[] {
   return Array.isArray(strokes)

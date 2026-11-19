@@ -75,6 +75,15 @@ public class QuestionDto
     [MaxLength(ExamApp.Api.Helpers.InteractionPlanSolution.MaxSolutionLength)]
     public string? InteractionSolution { get; set; }
 
+    /// <summary>
+    /// Issue #1226: sorunun çözüm kaydı (kalem + ses) var ve çağıran oynatabilir: öğrenciye bitmiş oturumda ya da örnek soruda,
+    /// öğretmene yalnız kendi sorusunda (admin hepsinde).
+    /// </summary>
+    public bool HasSolutionRecording { get; set; }
+
+    /// <summary>Issue #1226: çağıran bu soruya çözüm kaydedebilir (soru sahibi ya da admin; yalnız öğretmen listelerinde dolu).</summary>
+    public bool CanRecordSolution { get; set; }
+
     public double? X { get; set; }
     public double? Y { get; set; }
     public double? Width { get; set; }

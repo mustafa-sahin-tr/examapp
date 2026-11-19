@@ -607,3 +607,26 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   satılıyorsa öneri yalnız o ders (#1109); `band` öğrencinin fiyat bandı. Eşikler `PlacementService` sabitleri.
 - **Veli:** panelin Plan sekmesinde rapor (`GET /api/exam/parent/children/{id}/placement`, yanıt `{ report }`, çözülmemişse `null`; plan gerekmez; denetim
   kaydı `children.placement`).
+
+## Soru çözüm kaydı: kalem + ses (#1226)
+
+- **Ne:** öğretmen bir sorunun çözümünü soru görselinin üstüne yazarken anlatır; saklanan şey video değil, **çizgiler (veri) + ses
+  dosyasıdır**. Oynatıcı ses çalarken çizgileri zamanı gelince çizer; her boyutta nettir, ileri geri sarılır, birkaç yüz KB tutar.
+  Soru başına bir kayıt; yeniden kaydetmek eskisinin yerine geçer.
+- **Veri:** `QuestionSolutionRecordings` (`QuestionId` tekil; `BaseEntity` değil, silinen kayıt gerçekten silinir). Çizgi belgesi
+  `StrokesJson`: `{v:1, width:1000, height, strokes:[{c, t, e?, p:[x,y,dt,…]}]}`. Koordinatlar sayfa genişliği 1000 sayılarak, zamanlar
+  kaydın başından ms. `c` kalem rengi anahtarı (#1241 ile aynı: default, red, green, blue, orange), `e` çizginin silindiği an (geri al /
+  temizle çizgiyi silmez, silinme anını yazar). Sunucu belgeyi `SolutionStrokeDocument.Normalize` ile doğrular ve yeniden yazar; şema
+  değişirse `QuestionSolutionRecording.CurrentSchemaRevision` artar.
+- **Ses:** MinIO'da özel nesne (`solution-audio/{soru}/{guid}.{uzantı}`), tarayıcıya adresi verilmez, yalnız API ucundan okunur
+  (aralık isteği destekli). Tür dosyanın ilk baytlarından belirlenir (WebM, MP4, Ogg, MP3), en çok 12 MB ve 5 dakika. Kayıt silinince
+  ya da değişince eski ses de silinir. Soru silme ürününde yok; satır soruya `Cascade` bağlı.
+- **Uçlar** (`api/solution-recordings`, gateway `/api/exam/solution-recordings`):
+  - Öğretmen (soru sahibi ya da admin, başkasının sorusu 404): `GET|PUT|DELETE question/{questionId}`, `GET question/{questionId}/audio`.
+    `PUT` multipart: `audio`, `strokes` (JSON metni), `durationMs`.
+  - Öğrenci: `GET session-question/{testInstanceQuestionId}` ve `…/audio`. Kural etkileşim çözümüyle aynı (#570): yalnız **bitmiş
+    oturumda ya da örnek soruda**; öncesinde 404.
+- **Gösterge:** `QuestionDto.HasSolutionRecording` test sonucunda (aynı kapıdan) ve öğretmenin test soru listesinde (`bytest`, yalnız
+  kendi sorularında) dolu; `CanRecordSolution` öğretmen listesinde soru sahibini gösterir.
+- **Kapsam dışı (ilk sürüm):** plan hakkı, pratik oturumunda ve veli panelinde oynatma, bir soruya birden çok çözüm, mp4 dışa aktarım,
+  yayınevi çözümlerinin içe aktarımı, döküm / altyazı.

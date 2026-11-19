@@ -546,6 +546,20 @@ public class TestSessionService : ITestSessionService
             ? await OpenTextReviewSupport.LoadForInstanceAsync(_context, testInstance.Id, ct)
             : new Dictionary<int, OpenTextReview>();
 
+        // issue #1226: çözüm kaydı olan sorular; gösterge etkileşim çözümüyle aynı kapıdan (bitmiş test ya da örnek soru).
+        var solutionCandidateIds = testInstance.WorksheetInstanceQuestions
+            .Select(q => q.WorksheetQuestion?.Question)
+            .Where(q => q != null && (includeCorrectAnswer || q.IsExample))
+            .Select(q => q!.Id)
+            .Distinct()
+            .ToList();
+        var recordedQuestionIds = solutionCandidateIds.Count == 0
+            ? new HashSet<int>()
+            : (await _context.QuestionSolutionRecordings.AsNoTracking()
+                .Where(r => solutionCandidateIds.Contains(r.QuestionId))
+                .Select(r => r.QuestionId)
+                .ToListAsync(ct)).ToHashSet();
+
         var response = new WorksheetInstanceResultDto
         {
             Id = testInstance.Id,
@@ -582,6 +596,7 @@ public class TestSessionService : ITestSessionService
                     InteractionType = questionEntity.InteractionType,
                     InteractionPlan = interactionPlan,
                     InteractionSolution = interactionSolution,
+                    HasSolutionRecording = recordedQuestionIds.Contains(questionEntity.Id),
                     ShowPassageFirst = questionEntity.ShowPassageFirst,
                     CorrectAnswerId = includeCorrectAnswer ? questionEntity.CorrectAnswerId : null,
                     Passage = questionEntity.PassageId.HasValue ? new PassageDto

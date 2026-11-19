@@ -1,0 +1,10 @@
+{
+  "solutionRecording": {
+    "userNotResolved": "User not found.",
+    "notFound": "Solution recording not found.",
+    "invalidAudio": "The audio could not be read (WebM, MP4, Ogg or MP3, up to 12 MB).",
+    "invalidStrokes": "The drawing data is not valid.",
+    "invalidDuration": "A recording can be at most 5 minutes long.",
+    "storageFailed": "The recording could not be stored. Try again."
+  }
+}

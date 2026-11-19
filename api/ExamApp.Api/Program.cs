@@ -712,6 +712,8 @@ builder.Services.Configure<ExamApp.Api.Services.AskTeacher.AskTeacherOptions>(
     builder.Configuration.GetSection(ExamApp.Api.Services.AskTeacher.AskTeacherOptions.Section));
 builder.Services.AddScoped<ExamApp.Api.Services.AskTeacher.IAskTeacherService, ExamApp.Api.Services.AskTeacher.AskTeacherService>();
 builder.Services.AddScoped<ExamApp.Api.Services.AskTeacher.IAskTeacherExpiryJob, ExamApp.Api.Services.AskTeacher.AskTeacherExpiryJob>();
+// issue #1226: soru çözüm kaydı (kalem + ses).
+builder.Services.AddScoped<ExamApp.Api.Services.SolutionRecordings.IQuestionSolutionRecordingService, ExamApp.Api.Services.SolutionRecordings.QuestionSolutionRecordingService>();
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IBookImportCostReportService, ExamApp.Api.Services.BookImport.BookImportCostReportService>(); // issue #1056
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IBookImportPageFixService, ExamApp.Api.Services.BookImport.BookImportPageFixService>();
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.IBookImportTrainingExport, ExamApp.Api.Services.BookImport.BookImportTrainingExport>();

@@ -11,7 +11,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute } from '@angular/router';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
-import { finalize, forkJoin, take } from 'rxjs';
+import { catchError, finalize, forkJoin, map, of, switchMap, take } from 'rxjs';
 
 import {
   ASK_TEACHER_FEATURE,
@@ -23,6 +23,7 @@ import {
 import { Subject } from '../../models/subject';
 import { AskTeacherService } from '../../services/ask-teacher.service';
 import { LocaleService } from '../../services/locale.service';
+import { StudentService } from '../../services/student.service';
 import { SubjectService } from '../../services/subject.service';
 import { AskTeacherImageComponent } from '../../shared/components/ask-teacher-image/ask-teacher-image.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
@@ -62,6 +63,7 @@ export const ASK_TEACHER_MAX_PHOTO_BYTES = 15 * 1024 * 1024;
 export class AskTeacherComponent implements OnInit {
   private readonly service = inject(AskTeacherService);
   private readonly subjectsApi = inject(SubjectService);
+  private readonly studentService = inject(StudentService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly transloco = inject(TranslocoService);
   private readonly locale = inject(LocaleService);
@@ -136,9 +138,17 @@ export class AskTeacherComponent implements OnInit {
 
   private loadForm(): void {
     if (this.subjects().length === 0) {
-      this.subjectsApi
-        .loadCategories()
-        .pipe(takeUntilDestroyed(this.destroyRef))
+      // Issue #1215: öğrencinin sınıfının ana dersleri; sınıf bilinmiyorsa bütün ana dersler.
+      this.studentService
+        .getProfile()
+        .pipe(
+          map((profile) => (profile.gradeId > 0 ? profile.gradeId : null)),
+          catchError(() => of(null)),
+          switchMap((gradeId) =>
+            gradeId ? this.subjectsApi.getCoreSubjectsByGrade(gradeId) : this.subjectsApi.loadCoreSubjects(),
+          ),
+          takeUntilDestroyed(this.destroyRef),
+        )
         .subscribe({ next: (s) => this.subjects.set(s), error: () => this.subjects.set([]) });
     }
     this.loadTeachers();

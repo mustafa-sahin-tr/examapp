@@ -403,7 +403,7 @@ export class PracticeSolveComponent implements OnInit {
             return;
           }
           this.subjectService
-            .getSubjectsByGrade(gradeId)
+            .getCoreSubjectsByGrade(gradeId)
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe({
               next: (subjects) => {

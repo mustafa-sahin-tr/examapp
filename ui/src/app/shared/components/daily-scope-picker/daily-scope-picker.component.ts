@@ -52,7 +52,7 @@ export class DailyScopePickerComponent implements OnInit {
       .pipe(
         switchMap((profile) => {
           this.gradeId = profile.gradeId > 0 ? profile.gradeId : null;
-          return this.gradeId ? this.subjectService.getSubjectsByGrade(this.gradeId) : of([] as Subject[]);
+          return this.gradeId ? this.subjectService.getCoreSubjectsByGrade(this.gradeId) : of([] as Subject[]);
         }),
         takeUntilDestroyed(this.destroyRef)
       )

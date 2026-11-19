@@ -10,6 +10,7 @@ import { AskTeacherComponent } from './ask-teacher.component';
 import { AskTeacherQuestion, AskTeacherQuota } from '../../models/ask-teacher.model';
 import { AskTeacherService } from '../../services/ask-teacher.service';
 import { LocaleService } from '../../services/locale.service';
+import { StudentService } from '../../services/student.service';
 import { SubjectService } from '../../services/subject.service';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import askTr from '../../../../public/i18n/ask-teacher/tr.json';
@@ -61,7 +62,8 @@ describe('AskTeacherComponent (issue #1111)', () => {
       providers: [
         provideRouter([]),
         { provide: AskTeacherService, useValue: service },
-        { provide: SubjectService, useValue: { loadCategories: () => of([{ id: 1, name: 'Matematik' }]) } },
+        { provide: SubjectService, useValue: { getCoreSubjectsByGrade: () => of([{ id: 1, name: 'Matematik' }]) } },
+        { provide: StudentService, useValue: { getProfile: () => of({ gradeId: 22 }) } },
         { provide: LocaleService, useValue: { localeDefinition: signal({ angularLocale: 'tr-TR' }) } },
         {
           provide: ActivatedRoute,

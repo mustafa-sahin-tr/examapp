@@ -248,6 +248,11 @@ Kılavuz özeti ve beceri listesinin kaynağı `docs/context-based-questions.md`
   ana derslerden kurulur: `ProgramService.CoreSubjectCodes` (sınav dersleri `StudentPlanPricing.SingleSubjectCodes` + din
   kültürü, hayat bilgisi, felsefe; ilk kurulumun sınıf–ders bağlarıyla aynı küme). Sınıfın ana dersi yoksa sınıfın bütün
   dersleri, sınıf yoksa bütün dersler.
+- #1215: aynı küme öğrenci seçicilerinde de geçerli. `GET api/subject/by-grade/{gradeId}?coreOnly=true` (sınıfın ana dersi
+  yoksa bütün dersleri) ve `GET api/subject?coreOnly=true`; arayüzde `SubjectService.getCoreSubjectsByGrade` /
+  `loadCoreSubjects`. Kullananlar: günlük sorular kapsamı (`daily-scope-picker`), pratik / karışık mini deneme
+  (`practice-solve`), öğretmene sor. Öğretmen ve admin ekranları (işaretleme, kitaplar, bilgi kartı destesi, test) bütün
+  dersleri görmeye devam eder; yeni bir öğrenci seçicisi `coreOnly` ile okur.
 - Öncelikli dersler her zaman önce: Türkçe (lisede Türk Dili ve Edebiyatı), Matematik, Fen Bilimleri (lisede Fizik, Kimya,
   Biyoloji), Sosyal Bilgiler (lisede Coğrafya),
   Tarih (8. sınıfta İnkılap Tarihi); `ProgramService.PrioritySubjectCodes`. Listede başta gelirler; takvim eşitlikte

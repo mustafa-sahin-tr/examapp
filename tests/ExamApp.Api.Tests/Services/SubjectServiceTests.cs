@@ -69,6 +69,37 @@ public class SubjectServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task GetSubjectsByGradeId_core_only_drops_the_electives()
+    {
+        var (gradeId, _, _) = await SeedAsync();
+        await using (var seed = _db.NewContext())
+        {
+            var maths = new Subject { Name = "Matematik", Code = "matematik" };
+            var baglama = new Subject { Name = "Bağlama Modülü", Code = "baglama-modulu" };
+            seed.AddRange(maths, baglama);
+            await seed.SaveChangesAsync();
+            seed.GradeSubjects.AddRange(
+                new GradeSubject { GradeId = gradeId, SubjectId = maths.Id },
+                new GradeSubject { GradeId = gradeId, SubjectId = baglama.Id });
+            await seed.SaveChangesAsync();
+        }
+
+        await using var ctx = _db.NewContext();
+        (await NewService(ctx).GetSubjectsByGradeIdAsync(gradeId, coreOnly: true)).ShouldHaveSingleItem().Name.ShouldBe("Matematik");
+        (await NewService(ctx).GetSubjectsByGradeIdAsync(gradeId)).Count.ShouldBe(3);
+        (await NewService(ctx).GetAllSubjectsAsync(coreOnly: true)).ShouldHaveSingleItem().Name.ShouldBe("Matematik");
+    }
+
+    [Fact]
+    public async Task GetSubjectsByGradeId_core_only_keeps_every_subject_of_a_grade_without_core_subjects()
+    {
+        var (gradeId, _, _) = await SeedAsync();
+        await using var ctx = _db.NewContext();
+
+        (await NewService(ctx).GetSubjectsByGradeIdAsync(gradeId, coreOnly: true)).ShouldHaveSingleItem().Name.ShouldBe("Sosyal");
+    }
+
+    [Fact]
     public async Task GetTopicsBySubjectAndGrade_filters_on_both()
     {
         var (gradeId, subjectId, topicId) = await SeedAsync();

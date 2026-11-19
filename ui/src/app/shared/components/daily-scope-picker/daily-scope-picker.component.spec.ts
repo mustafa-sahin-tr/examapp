@@ -36,11 +36,11 @@ describe('DailyScopePickerComponent (issue #66)', () => {
             getProfile: vi.fn().mockName("StudentService.getProfile")
         } as unknown as MockedObject<StudentService>;
         subjectService = {
-            getSubjectsByGrade: vi.fn().mockName("SubjectService.getSubjectsByGrade"),
+            getCoreSubjectsByGrade: vi.fn().mockName("SubjectService.getCoreSubjectsByGrade"),
             getTopicsBySubjectAndGrade: vi.fn().mockName("SubjectService.getTopicsBySubjectAndGrade"),
             getSubTopicsByTopic: vi.fn().mockName("SubjectService.getSubTopicsByTopic")
         } as unknown as MockedObject<SubjectService>;
-        subjectService.getSubjectsByGrade.mockReturnValue(of([{ id: 3, name: 'Matematik' }, { id: 4, name: 'Türkçe' }]));
+        subjectService.getCoreSubjectsByGrade.mockReturnValue(of([{ id: 3, name: 'Matematik' }, { id: 4, name: 'Türkçe' }]));
         subjectService.getTopicsBySubjectAndGrade.mockReturnValue(of([{ id: 30, name: 'Kesirler', subjectId: 3, gradeId: 7 }]));
         subjectService.getSubTopicsByTopic.mockReturnValue(of([{ id: 300, name: 'Sadeleştirme', topicId: 30 }]));
 
@@ -57,9 +57,9 @@ describe('DailyScopePickerComponent (issue #66)', () => {
     it('init_LoadsSubjectsForStudentGrade_ShowsOnlySubjectField', () => {
         create();
 
-        expect(subjectService.getSubjectsByGrade).toHaveBeenCalledTimes(1);
+        expect(subjectService.getCoreSubjectsByGrade).toHaveBeenCalledTimes(1);
 
-        expect(subjectService.getSubjectsByGrade).toHaveBeenCalledWith(7);
+        expect(subjectService.getCoreSubjectsByGrade).toHaveBeenCalledWith(7);
         expect(component.subjects().length).toBe(2);
         expect(field('subject')).toBeTruthy();
         expect(field('topic')).toBeNull();
@@ -69,7 +69,7 @@ describe('DailyScopePickerComponent (issue #66)', () => {
     it('init_NoGrade_DoesNotRequestSubjects', () => {
         create(0);
 
-        expect(subjectService.getSubjectsByGrade).not.toHaveBeenCalled();
+        expect(subjectService.getCoreSubjectsByGrade).not.toHaveBeenCalled();
         expect(component.subjects()).toEqual([]);
     });
 

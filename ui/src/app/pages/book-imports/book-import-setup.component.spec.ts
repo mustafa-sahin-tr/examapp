@@ -554,9 +554,38 @@ describe('BookImportSetupComponent (#1021)', () => {
       expect(testId('cleaning-pick-hint')).not.toBeNull();
       expect(api.pageImage).toHaveBeenLastCalledWith('a1', 1, true);
 
-      // jsdom görseli çizmez: renk okunamaz, temizlik başlamaz.
+      // Okunamayan görsel / renksiz nokta: temizlik başlamaz, uyarı görünür.
       el().querySelector<HTMLImageElement>('.bis-view__body img')!.click();
+      fixture.detectChanges();
       expect(api.startCleaning).not.toHaveBeenCalled();
+      expect(testId('cleaning-pick-hint')!.textContent).toContain(tr.setup.cleaningPickMissed);
+    });
+
+    it('pickColour_ClickOnAPinkBox_StartsCleaningWithThatColour', async () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 200;
+      canvas.height = 200;
+      const ctx = canvas.getContext('2d')!;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, 200, 200);
+      ctx.fillStyle = 'rgb(182, 23, 113)';
+      ctx.fillRect(50, 50, 40, 30);
+      const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), 'image/png'));
+      create(setupData({ cleaning: null, cleaningAvailable: true }));
+      api.pageImage.mockReturnValue(of(blob));
+
+      testId('cleaning-pick')!.click();
+      fixture.detectChanges();
+      const img = el().querySelector<HTMLImageElement>('.bis-view__body img')!;
+      await img.decode();
+      const rect = img.getBoundingClientRect();
+      const scale = rect.width / 200;
+      img.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: rect.left + 70 * scale, clientY: rect.top + 65 * scale }));
+      fixture.detectChanges();
+
+      expect(api.startCleaning).toHaveBeenCalledWith('a1', [182, 23, 113]);
+      expect(testId('test-pages')).toBeNull();
+      expect(testId('cleaning-progress')!.textContent).toContain(tr.setup.cleaningPickedColour);
     });
 
     it('demoOrUnavailable_HidesCleaning', () => {

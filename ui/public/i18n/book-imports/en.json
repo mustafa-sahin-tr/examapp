@@ -319,6 +319,8 @@
     "cleaningAgain": "Clean again",
     "cleaningPick": "Pick the mark colour",
     "cleaningPickHint": "Click a marked answer box",
+    "cleaningPickMissed": "No mark colour here; click on a coloured answer box",
+    "cleaningPickedColour": "With the picked colour",
     "cleaningStartFailed": "Cleaning could not be started.",
     "showOriginal": "Show original",
     "showClean": "Show cleaned",

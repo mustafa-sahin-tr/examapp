@@ -216,12 +216,16 @@ public class BookQuestionImportTests : IDisposable
             row.Title = null;
             await seed.SaveChangesAsync();
         }
+        // Sayfadaki basılı en büyük no (5) etkinlik numarasıdır: etkinlik bölümünde "eksik soru" uyarısı çıkmaz.
+        await using (var seed = _db.NewContext())
+            await seed.BookImportPages.ExecuteUpdateAsync(p => p.SetProperty(x => x.MaxQuestionNumber, 5));
         _detections[1] = [Question(100, 100, 4), Activity(100, 800, "slotFill")];
 
         await RunAsync(id);
 
         await using var check = _db.NewContext();
         var test = await check.BookImportJobTests.SingleAsync();
+        Flags(test).ShouldBe([F("noAnswer", [1], [1])]);
         var sheet = await check.Worksheets.WithDrafts().SingleAsync(w => w.Id == test.WorksheetId);
         sheet.Kind.ShouldBe(WorksheetKind.Activity);
         sheet.Name.ShouldEndWith("1-E01 · Etkinlikler");

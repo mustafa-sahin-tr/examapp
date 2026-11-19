@@ -71,8 +71,10 @@ public sealed class DetectorPageCleaner(IHttpClientFactory httpClientFactory, IC
         {
             available = (await Client.GetFromJsonAsync<Status>($"{url}/clean/status", ct))?.Available == true;
         }
-        catch (Exception e) when (e is HttpRequestException or TaskCanceledException or JsonException)
+        catch (Exception e) when (!ct.IsCancellationRequested)
         {
+            // Yanıt vermeyen hizmette dayanıklılık işleyicisinin zaman aşımı (TimeoutRejectedException) da buraya düşer:
+            // temizlik yok sayılır, aktarım sürer (#1134 canlı denemesinde iş bu yüzden düşüyordu).
             logger.LogWarning("Page cleaner status check failed: {Message}", e.Message);
         }
 

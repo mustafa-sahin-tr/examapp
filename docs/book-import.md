@@ -261,17 +261,22 @@ olarak aktarılır. Yalnız kitap aktarımında; hızlı ekleme ve karışık g�
   planı, madde etiketi "E1", "E2" … (test boyunca). Etkinlik bölümünün taslak sayfası `WorksheetKind.Activity` (puansız).
 - **İşaretler:** `activityUnsupported` (tip belirlenemedi ya da çıkarımı yok: çizim, açık uçlu …) ve `activityInvalid`
   (çıkarım başarısız ya da taslak geçersiz, ör. boşluksuz `slotFill`). Bu bloklar aktarılmaz, düz görsel soru da olmaz;
-  sayfa uyarı listesinde görünür, test `NeedsReview` olur (toplu onay atlar). Sayaçlar etkinlikleri de sayar; anahtarla sayı
+  sayfa uyarı listesinde görünür, test `NeedsReview` olur (toplu onay atlar). Etkinlik bölümünde sayfadaki basılı numaralar
+  etkinliklerin numarasıdır: `missingNumbers` / `extraQuestions` üretilmez. Sayaçlar etkinlikleri de sayar; anahtarla sayı
   karşılaştırması yalnız çoktan seçmeli sorularla yapılır.
 - **İnceleme:** önizlemede etkinlik taslağı tipinin çipiyle görünür, cevap düğmesi yoktur; "Cevaplanan x/y" ve onay engeli
   yalnız çoktan seçmeli soruları sayar (karar: etkinlik cevapsız onaylanır, cevabı sonradan etkinlik düzenleyicide elle
   girilir; otomatik çözüm #580 beklemede). Hatalı taslak "testten çıkar" ile atılır. "İşaretlemede düzelt" sayfanın yalnız
   çoktan seçmeli taslaklarını değiştirir; etkinlik taslakları ve sıraları yerinde kalır (sayfanın etkinlik uyarıları da
   düzeltmeyle kapanır).
+- **Temizlik hizmeti yanıt vermezse:** `DetectorPageCleaner.IsAvailableAsync` dayanıklılık işleyicisinin zaman aşımını da
+  "hizmet yok" sayar (önceden iş "The operation didn't complete within the allowed timeout" ile düşüyordu; yerelde
+  question-detector kapalıyken görüldü).
 - **Örnek kitapla deneme (2026-11-19, "5. Sınıf Matematik Altın Etkinlikli SB", öğretmen baskısı, s. 6–25, Haiku):** tarama
   etkinlik sayfalarını ayırdı (3 etkinlik bölümü + 2 test); tablo doldurma bloğu geçerli `slotFill` taslağı verdi; çizim
   etkinlikleri (bileşen F) `activityUnsupported`, cevabı basılı (boşluğu dolu) bloklar `activityInvalid` oldu. Öğretmen
-  baskısında önce "Sayfaları temizle" (#1234) gerekir. Maliyet sayfa başına tespit ~$0,001 + blok başına ~$0,0005.
+  baskısında önce "Sayfaları temizle" (#1234) gerekir. Maliyet sayfa başına tespit ~$0,001 + blok başına ~$0,0005. Aynı 20
+  sayfa yerelde arayüzden uçtan uca aktarıldı (yükleme → kurulum onayı → inceleme): toplam $0,02, 2 `slotFill` taslağı.
 
 ## İnceleme ve onay (#1023)
 

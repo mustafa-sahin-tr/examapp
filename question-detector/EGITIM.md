@@ -143,6 +143,18 @@ Eğitim çıktısı:
 Bir model en az **5 train resmi ve 1 val sayfası** yoksa eğitilmez, atlanır. Sayfaların yaklaşık %10'u val'e
 ayrılır; bir sayfa her zaman aynı tarafta kalır, kırpmalar da kendi sayfalarını izler.
 
+### Onaylı kitap sayfalarıyla ölçüm (#1136)
+
+`train.py` eski ve yeni modeli mAP ile karşılaştırır. Ürün açısından asıl soru "sayfa kusursuz çıktı mı" olduğu için ayrıca
+`training/evaluate_export.py` vardır: kitap aktarımının eğitim dışa aktarımına (ZIP) karşı soru / şık eşleşmesini, kusursuz sayfa
+oranını ve hibrit tespitin kabul kuralını ölçer. Yeni ağırlıkları görmediği sayfalarda sınamak için:
+
+```bash
+python training/evaluate_export.py book-import-training.zip --models models --val-only --report rapor.md
+```
+
+Ölçütler ve ilk sonuçlar `docs/labeling.md` § Kendi modeller.
+
 ## 4. Yeni modeli devreye al
 
 Mac'te senkron gelince:

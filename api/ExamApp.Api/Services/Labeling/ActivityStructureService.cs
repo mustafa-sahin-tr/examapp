@@ -27,12 +27,28 @@ public interface IActivityStructureService
     Task<ActivityStructureResponseDto> ExtractAsync(
         ActivityStructureRequestDto request, LabelingActor actor, CancellationToken ct = default);
 
+    /// <summary>
+    /// Issue #1134: kitap aktarımı işi için aynı çıkarım ve önbellek; kullanıcı kotası / bütçe ayrımı yok (aktarımın bütçesi
+    /// <c>BookImportBudget</c>'ta), ödenen tutar ve token'lar döner. <see cref="LabelingValidationException"/> ve
+    /// <see cref="LabelingAiUnavailableException"/> atar; tek bloğun hatası yalnız o bloğu <c>status = error</c> yapar.
+    /// </summary>
+    Task<ActivityImportExtraction> ExtractForImportAsync(
+        string imageBase64, string modelId, IReadOnlyList<ActivityStructureBlockDto> blocks, CancellationToken ct = default);
+
     Task<ActivityPromptStateDto> GetPromptsAsync(CancellationToken ct = default);
 
     /// <summary>Tipin talimatını yeni sürüm olarak kaydeder; içerik etkin sürümle aynıysa sürüm açılmaz, etkin sürüm döner.</summary>
     Task<ActivityPromptVersionDto> SavePromptAsync(
         string interactionType, ActivitySavePromptRequestDto request, LabelingActor actor, CancellationToken ct = default);
 }
+
+/// <summary>
+/// Issue #1134: aktarım işinin etkinlik çıkarımı. <paramref name="CostUsd"/> / <paramref name="Usage"/> yalnız bu çağrıda ödenen
+/// (önbellekten dönen blok 0); <paramref name="Transient"/>: en az bir blok hız sınırı / aşırı yük yüzünden düştü (iş bekleyip
+/// yeniden dener, başarılı bloklar önbellekte kalır).
+/// </summary>
+public sealed record ActivityImportExtraction(
+    IReadOnlyList<ActivityStructureResultDto> Results, decimal CostUsd, LabelingAiUsage Usage, bool Transient);
 
 /// <summary>
 /// Issue #579: Claude ile etkinlik yapısı çıkarımı. Blok başına bir çağrı, tipe göre talimat + şema; çağrılar paralel
@@ -69,13 +85,31 @@ public sealed class ActivityStructureService(
     internal TimeSpan LiveCallTimeout { get; init; } = TimeSpan.FromMinutes(3);
 
     public async Task<ActivityStructureResponseDto> ExtractAsync(
-        ActivityStructureRequestDto request, LabelingActor actor, CancellationToken ct = default)
+        ActivityStructureRequestDto request, LabelingActor actor, CancellationToken ct = default) =>
+        (await ExtractCoreAsync(request, actor, enforceQuota: true, ct)).Response;
+
+    public async Task<ActivityImportExtraction> ExtractForImportAsync(
+        string imageBase64, string modelId, IReadOnlyList<ActivityStructureBlockDto> blocks, CancellationToken ct = default)
     {
-        // Review L1: kayıttan dönen istek de kırpma hash'i + DB sorgusu harcar; kullanıcı başına dakikalık sınır.
-        var requestDecision = await rateLimitStore.TryAcquireAsync($"labeling-activity-req:{actor.KeycloakId}", 1,
-            options.Value.ActivityStructureRequestsPerMinute, RequestRateWindow, ct);
-        if (!requestDecision.Allowed)
-            throw new LabelingRateLimitException(requestDecision.RetryAfter);
+        var request = new ActivityStructureRequestDto { ImageBase64 = imageBase64, Model = modelId, Blocks = blocks.ToList() };
+        var (response, cost, usage, transient) = await ExtractCoreAsync(request, ImportActor, enforceQuota: false, ct);
+        return new ActivityImportExtraction(response.Results, cost, usage, transient);
+    }
+
+    /// <summary>Aktarım işinin kayıtlarda görünen adı (sonucu "kim üretti").</summary>
+    private static readonly LabelingActor ImportActor = new(null, "Book import");
+
+    private async Task<(ActivityStructureResponseDto Response, decimal Cost, LabelingAiUsage Usage, bool Transient)> ExtractCoreAsync(
+        ActivityStructureRequestDto request, LabelingActor actor, bool enforceQuota, CancellationToken ct)
+    {
+        if (enforceQuota)
+        {
+            // Review L1: kayıttan dönen istek de kırpma hash'i + DB sorgusu harcar; kullanıcı başına dakikalık sınır.
+            var requestDecision = await rateLimitStore.TryAcquireAsync($"labeling-activity-req:{actor.KeycloakId}", 1,
+                options.Value.ActivityStructureRequestsPerMinute, RequestRateWindow, ct);
+            if (!requestDecision.Allowed)
+                throw new LabelingRateLimitException(requestDecision.RetryAfter);
+        }
 
         var model = options.Value.Models.FirstOrDefault(m => string.Equals(m.Id, request.Model, StringComparison.Ordinal))
                     ?? throw new LabelingValidationException("labeling.unknownModel");
@@ -115,6 +149,9 @@ public sealed class ActivityStructureService(
             .ToList();
 
         var outcomes = new Dictionary<(string Hash, string Type), LiveOutcome>();
+        var liveCost = 0m;
+        long liveInput = 0, liveOutput = 0;
+        var transient = false;
         if (live.Count > 0)
         {
             if (!extractor.IsConfigured)
@@ -122,19 +159,24 @@ public sealed class ActivityStructureService(
 
             // Review M2: en kötü durum maliyeti (blok başına kırpma görseli + talimat girdisi, MaxOutputTokens çıktı) bütçeden
             // baştan ayrılır; eşzamanlı istekler bütçeyi bu tahminden fazla aşamaz. Sonra gerçek maliyete düzeltilir.
-            var page = new Size(image.Width, image.Height);
-            var estimate = live.Sum(w => LabelingAiQuota.Cost(model,
-                ClaudeActivityStructureExtractor.WorstCaseInputTokens(w.Rect, page, options.Value.MaxImageEdge),
-                ClaudeActivityStructureExtractor.MaxOutputTokens));
-            var reserved = await LabelingAiQuota.ReserveBudgetAsync(rateLimitStore, actor, options.Value, estimate, ct);
-            try
+            // #1134: aktarım işinde (enforceQuota = false) kullanıcı kotası ve ayrım yok; bütçeyi iş tutar.
+            var reserved = 0;
+            if (enforceQuota)
             {
-                await LabelingAiQuota.AcquireCallsAsync(rateLimitStore, actor, options.Value, live.Count, ct);
-            }
-            catch
-            {
-                await LabelingAiQuota.SettleAsync(rateLimitStore, actor, reserved, 0m);
-                throw;
+                var page = new Size(image.Width, image.Height);
+                var estimate = live.Sum(w => LabelingAiQuota.Cost(model,
+                    ClaudeActivityStructureExtractor.WorstCaseInputTokens(w.Rect, page, options.Value.MaxImageEdge),
+                    ClaudeActivityStructureExtractor.MaxOutputTokens));
+                reserved = await LabelingAiQuota.ReserveBudgetAsync(rateLimitStore, actor, options.Value, estimate, ct);
+                try
+                {
+                    await LabelingAiQuota.AcquireCallsAsync(rateLimitStore, actor, options.Value, live.Count, ct);
+                }
+                catch
+                {
+                    await LabelingAiQuota.SettleAsync(rateLimitStore, actor, reserved, 0m);
+                    throw;
+                }
             }
 
             // Review W1: buradan sonra istek iptali (istemci gitti) çağrıları kesmez — ödenmiş sonuçlar kaydedilir, bütçe
@@ -148,8 +190,15 @@ public sealed class ActivityStructureService(
             foreach (var outcome in results)
                 outcomes[(outcome.Work.Hash, outcome.Work.Type)] = outcome;
 
-            await LabelingAiQuota.SettleAsync(rateLimitStore, actor, reserved, results.Sum(o => o.Cost));
-            await LabelingAiQuota.RefundCallsAsync(rateLimitStore, actor, results.Count(o => !o.Started));
+            liveCost = results.Sum(o => o.Cost);
+            liveInput = results.Sum(o => o.Extraction?.InputTokens ?? o.FailedUsage?.Input ?? 0);
+            liveOutput = results.Sum(o => o.Extraction?.OutputTokens ?? o.FailedUsage?.Output ?? 0);
+            transient = results.Any(o => o.Transient);
+            if (enforceQuota)
+            {
+                await LabelingAiQuota.SettleAsync(rateLimitStore, actor, reserved, liveCost);
+                await LabelingAiQuota.RefundCallsAsync(rateLimitStore, actor, results.Count(o => !o.Started));
+            }
 
             // DbContext eşzamanlı kullanılamaz: kayıtlar çağrılar bittikten sonra sırayla, istek iptalinden bağımsız. Kayıt
             // hatası yalnız loglanır; sonuç yine döner (yalnız önbelleğe girmez).
@@ -176,7 +225,7 @@ public sealed class ActivityStructureService(
             response.Add(ToResult(block, row, isLive ? OriginLive : OriginCached));
         }
 
-        return new ActivityStructureResponseDto(response);
+        return (new ActivityStructureResponseDto(response), liveCost, new LabelingAiUsage(liveInput, liveOutput), transient);
     }
 
     public async Task<ActivityPromptStateDto> GetPromptsAsync(CancellationToken ct = default)
@@ -251,8 +300,10 @@ public sealed class ActivityStructureService(
     private sealed record LiveWork(string Hash, string Type, Rectangle Rect, ActivityPromptSettings Prompt);
 
     /// <param name="Started">Çağrı başladı mı (false: zaman aşımı / kapanış kuyrukta yakaladı → kotası iade edilir).</param>
+    /// <param name="Transient">Hız sınırı / aşırı yük (<see cref="ClaudeTransient"/>): aktarım işi bekleyip yeniden dener.</param>
     private sealed record LiveOutcome(
-        LiveWork Work, ActivityExtraction? Extraction, LabelingAiUsage? FailedUsage, decimal Cost, bool Started);
+        LiveWork Work, ActivityExtraction? Extraction, LabelingAiUsage? FailedUsage, decimal Cost, bool Started,
+        bool Transient = false);
 
     private static List<ValidBlock> ValidateBlocks(List<ActivityStructureBlockDto>? blocks)
     {
@@ -339,7 +390,7 @@ public sealed class ActivityStructureService(
             var cost = usage is { } u ? LabelingAiQuota.Cost(model, u.Input, u.Output) : 0m;
             logger.LogWarning(ex, "[Labeling] Claude {Model} activity {Type} crop {Hash} failed (~${Cost:F4} charged)",
                 model.Id, work.Type, work.Hash[..16], cost);
-            return new LiveOutcome(work, null, usage, cost, Started: true);
+            return new LiveOutcome(work, null, usage, cost, Started: true, Transient: ClaudeTransient.Is(ex));
         }
         catch (Exception ex)
         {

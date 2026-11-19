@@ -318,9 +318,19 @@ public sealed partial class BookImportService
 
     internal static string BookTestName(BookImportJobTest test)
     {
+        // #1134: etkinlik bölümü ayrı numaralanır ("1-E01"); aynı ünitedeki "1-01" testiyle karışmaz.
+        if (IsActivitySection(test))
+            return $"{test.Unit}-E{test.TestNo:D2} · {(string.IsNullOrWhiteSpace(test.Title) ? ActivitySectionTitle : test.Title)}";
         var code = $"{test.Unit}-{test.TestNo:D2}";
         return string.IsNullOrWhiteSpace(test.Title) ? code : $"{code} · {test.Title}";
     }
+
+    /// <summary>#1134: başlığı okunamayan etkinlik bölümünün adı (kitap testi ve taslak etkinlik sayfası).</summary>
+    internal const string ActivitySectionTitle = "Etkinlikler";
+
+    /// <summary>#1134: kurulumun etkinlik bölümü olarak planladığı satır (<see cref="BookSetupPlanner.FlagActivity"/>).</summary>
+    internal static bool IsActivitySection(BookImportJobTest test) =>
+        test.FlagsJson is { Length: > 0 } && ParseFlags(test.FlagsJson).Contains(BookSetupPlanner.FlagActivity);
 
     private async Task<BookImportBookRefDto?> FindBookByNameAsync(string name, CancellationToken ct)
     {

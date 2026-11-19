@@ -159,7 +159,8 @@
     "qrAnswers": "Cevaplar karekodda",
     "missedNumbers": "Eksik soru numarası",
     "keyConflicts": "Anahtar okumaları farklı",
-    "keyByNumber": "Anahtar test numarasıyla eşlendi"
+    "keyByNumber": "Anahtar test numarasıyla eşlendi",
+    "activity": "Etkinlik bölümü"
   },
   "actions": {
     "open": "Aç",
@@ -343,7 +344,8 @@
     "invalidPages": "Sayfa aralıklarını düzelt.",
     "ready": "{{count}} test aktarılmaya hazır.",
     "confirm": "Onayla ve soruları aktar",
-    "confirmFailed": "Kurulum onaylanamadı."
+    "confirmFailed": "Kurulum onaylanamadı.",
+    "activitySection": "Çoktan seçmeli değil: etkinlikler cevapsız taslak olarak aktarılır."
   },
   "reviewFlags": {
     "countMismatch": "{{found}} soru bulundu, anahtarda {{expected}}",
@@ -354,7 +356,9 @@
     "notSaved": "Kaydedilemedi (ikiden az şık)",
     "detectionFailed": "Tespit başarısız",
     "saveFailed": "Kayıt başarısız",
-    "markMismatch": "İşaret anahtardan farklı"
+    "markMismatch": "İşaret anahtardan farklı",
+    "activityUnsupported": "Etkinlik türü belirlenemedi (aktarılmadı)",
+    "activityInvalid": "Etkinlik yapısı çıkarılamadı (aktarılmadı)"
   },
   "reviewFlagsShort": {
     "missingNumbers": "bulunamadı",
@@ -364,7 +368,9 @@
     "notSaved": "kaydedilmedi (ikiden az şık)",
     "detectionFailed": "tespit başarısız",
     "saveFailed": "kayıt başarısız",
-    "markMismatch": "işaret anahtardan farklı (işaret kullanıldı)"
+    "markMismatch": "işaret anahtardan farklı (işaret kullanıldı)",
+    "activityUnsupported": "etkinlik türü belirlenemedi, aktarılmadı",
+    "activityInvalid": "etkinlik yapısı çıkarılamadı, aktarılmadı"
   },
   "review": {
     "title": "İnceleme ve onay",
@@ -427,7 +433,16 @@
     "zoomClose": "Kapat",
     "zoomPosition": "{{index}} / {{total}}",
     "zoomPrev": "Önceki soru",
-    "zoomNext": "Sonraki soru"
+    "zoomNext": "Sonraki soru",
+    "activityAnswerLater": "Cevabı onaydan sonra etkinlik düzenleyicide girilir",
+    "activityTypes": {
+      "matrixChoice": "Tablo seçimi",
+      "slotFill": "Boşluk doldurma",
+      "dragPlace": "Sürükle bırak",
+      "match": "Eşleştirme",
+      "textSelect": "Metinde işaretleme",
+      "crossword": "Bulmaca"
+    }
   },
   "later": {
     "title": "Sonra bakılacaklar",

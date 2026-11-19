@@ -132,6 +132,8 @@ export interface BookImportReviewQuestion {
   imageUrl: string | null;
   passageImageUrl?: string | null;
   answerIndex: number | null;
+  /** #1134: etkinlik taslağının etkileşim tipi (`slotFill`, `match` …); çoktan seçmeli soruda yok. Etkinlik cevapsız onaylanır. */
+  interactionType?: string | null;
 }
 
 /** #1023: "Sorunsuz testleri onayla" sonucu; atlananların nedeni `answerless` ya da `failed`. */
@@ -536,9 +538,22 @@ export interface BookImportReviewApi {
   pageImage?(id: string, filePage: number): Observable<Blob>;
 }
 
-/** Testin kısa adı: "1-03 · Kesirler". */
-export function bookImportTestName(test: Pick<BookImportJobTest, 'unit' | 'testNo' | 'title'>): string {
-  return `${test.unit}-${String(test.testNo).padStart(2, '0')}${test.title ? ' · ' + test.title : ''}`;
+/** #1134: kurulumun etkinlik bölümü olarak planladığı satır (çoktan seçmeli test değil; anahtar beklenmez). */
+export function isActivitySection(test: { flags?: readonly string[] | null }): boolean {
+  return test.flags?.includes('activity') === true;
+}
+
+/** Testin kodu: "1-03"; etkinlik bölümünde "1-E03" (#1134, sunucudaki `BookTestName` ile aynı). */
+export function bookImportTestCode(test: Pick<BookImportJobTest, 'unit' | 'testNo'> & { flags?: readonly string[] | null }): string {
+  return `${test.unit}-${isActivitySection(test) ? 'E' : ''}${String(test.testNo).padStart(2, '0')}`;
+}
+
+/** Testin kısa adı: "1-03 · Kesirler"; etkinlik bölümü "1-E01 · Etkinlikler". */
+export function bookImportTestName(
+  test: Pick<BookImportJobTest, 'unit' | 'testNo' | 'title'> & { flags?: readonly string[] | null },
+): string {
+  const title = test.title || (isActivitySection(test) ? 'Etkinlikler' : '');
+  return `${bookImportTestCode(test)}${title ? ' · ' + title : ''}`;
 }
 
 // ---- Issue #1056: admin maliyet raporu ----

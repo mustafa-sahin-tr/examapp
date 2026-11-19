@@ -78,7 +78,7 @@ aktarım aracındaki Python portu referanstır (#1022).
 
 - **Tarama** (`BookSetupStage`, `IBookSetupAi.SurveyAsync`): sayfalar `BookImport:SurveyBatchSize` (varsayılan 8) sayfalık
   gruplar halinde, uzun kenarı 1000 px JPEG olarak ucuz modele (`BookImport:SurveyModel`, varsayılan `claude-haiku-5-5`)
-  gider. Sayfa başına: tür (`cover|toc|test|answerKey|selfAssessment|other`), basılı sayfa no, test başlığı (ünite, test no,
+  gider. Sayfa başına: tür (`cover|toc|test|activity|answerKey|selfAssessment|other`; `activity` #1134), basılı sayfa no, test başlığı (ünite, test no,
   başlık, dakika), sayfadaki en büyük soru no; içindekiler sayfalarından ünite satırları.
 - **Cevap anahtarı** iki kez okunur (`BookImport:AnswerKeyModel`, varsayılan `claude-haiku-5-5`): tam sayfa (uzun kenar
   1568) ve sayfanın üst / alt %55'lik iki örtüşen döşemesi. İki okuma uyuşmazsa sayfayı hakem okur
@@ -163,7 +163,7 @@ aktarım aracındaki Python portu referanstır (#1022).
 - **Kayıt:** test satırları `BookImportJobTests` (sayfa aralığı, dakika, `AnswerKey` "ABCD…", `KeyConflicts` "." uyumlu /
   diğer okumanın harfi / "-"), özet `BookImportJobs.SetupJson`, maliyet `AiCostUsd` (başarısız çağrılar dahil). Model listesi
   ve fiyatlar `Anthropic:Models`'tan; API anahtarı yoksa iş "Claude is not configured" ile düşer. Hiç test başlığı yoksa
-  "No tests were found in the book". Sistem mesajı / şema / görsel boyutu değişince `ClaudeBookSetupAi.SchemaRevision` artar.
+  "No tests or activity pages were found in the book". Sistem mesajı / şema / görsel boyutu değişince `ClaudeBookSetupAi.SchemaRevision` artar.
 - **Onay ekranı** (takip sayfasında, iş `AwaitingConfirmation` + `SetupConfirmation`): özet, anahtar sayfası görseli, test
   tablosu (aktar / başlık / dakika / sayfalar) ve klavyeyle gezilen anahtar ızgarası (harf → sağa, oklar). Anahtar yoksa
   "cevapsız devam et" ya da "aktarımı iptal et". Uyuşmazlık ve okunamayan hücre kalırken onay kapalı.
@@ -220,7 +220,7 @@ Temizlikte silinen işaretler (`BookImportPage.MarksJson`: harf + kutu) cevap an
   atlanır, yarım test baştan alınır, kaydedilmişler kırpma tekrarı sayılır). Sayfa başına:
   1. Tespit: `ILabelingService.DetectForImportAsync` — işaretleme ekranının "Claude ile tespit"iyle aynı model listesi, etkin prompt,
      kayıt ve önbellek (`LabelingResults`); kullanıcı kotası yok, aktarım bütçesi ve maliyet aşağıda (#1024). Model `BookImport:DetectModel` (varsayılan `claude-haiku-5-5`, izinli listede olmalı).
-  2. Yalnız `mcq_question` blokları; okuma sırası (sütun, sonra yukarıdan aşağı), şıksız kök + hemen altındaki şık kutusu birleşir.
+  2. Soru olarak yalnız `mcq_question` blokları (etkinlik blokları #1134, aşağıda); okuma sırası (sütun, sonra yukarıdan aşağı), şıksız kök + hemen altındaki şık kutusu birleşir.
   3. `BookQuestionLayout.Prepare`: soru kutusu taşan şıkları içine alır, şıklar Claude'un okuduğu harflere (tam takımsa, #1183)
      ya da (satır, x) sırasına dizilip dolgulanır (25 px),
      "Cevapları Hizala" kurallarıyla hizalanır, örtüşen dolgu tespit kutularının ortasından kesilir. Kurallar ve toleranslar el ile
@@ -232,9 +232,46 @@ Temizlikte silinen işaretler (`BookImportPage.MarksJson`: harf + kutu) cevap an
      ve `QuestionCreatedEvent`; sorular taslak, `BankSharing=Private`, cevapsız olabilir. Kırpma hash'i bankada olan soru atlanır ve
      sayılır (`DuplicatesSkipped`). Rol özniteliği, saatlik kota ve sayfa "kaydedildi" kilidi yok.
 - **İşaretler** (`BookImportJobTests.ReviewFlagsJson`, sayfa / soru referanslı): `countMismatch` (bulunan ≠ anahtar), `missingNumbers`,
-  `extraQuestions`, `optionCount` (≠ 4), `noAnswer`, `notSaved` (ikiden az şık), `detectionFailed`, `saveFailed`. İşaretli test
+  `extraQuestions`, `optionCount` (≠ 4), `noAnswer`, `notSaved` (ikiden az şık), `detectionFailed`, `saveFailed`,
+  `activityUnsupported` / `activityInvalid` (#1134, aşağıda). İşaretli test
   `NeedsReview`, işaretsiz `Done`; her sayfası düşen test `Failed`. Bir sayfa ya da test diğerlerini durdurmaz.
 - Takip ekranı test başına bulunan / anahtardaki / kaydedilen / atlanan sayıları ve işaretleri sayfa ve soru numarasıyla gösterir.
+
+## Etkinlik sayfaları (#1134)
+
+Çoktan seçmeli olmayan etkinlikler (eşleştirme, boşluk doldurma, tabloda işaretleme, metinde işaretleme …) taslak etkinlik
+olarak aktarılır. Yalnız kitap aktarımında; hızlı ekleme ve karışık görseller etkinlik bloklarını bugünkü gibi atlar.
+
+- **Kurulum:** tarama etkinlik sayfasına `activity` türü verir (`ClaudeBookSetupAi.SchemaRevision` 7; yalnız serbest yazma
+  sorusu olan sayfa `other` kalır). `BookSetupPlanner.WithActivitySections`: hiçbir testin sayfa aralığına girmeyen ardışık
+  etkinlik sayfaları **etkinlik bölümü** olur (kurulum işareti `activity`, anahtar ve beklenen soru sayısı yok). Dizi,
+  içindekiler satırının başladığı sayfada ve `MaxActivitySectionPages` (8) sayfada bir bölünür. Ünite: bölümden önce başlayan
+  son testinki (hiç test yoksa içindekiler satırınınki / sırası); numara ünite içinde sayfa sırasıyla; ad "1-E01 · Başlık"
+  (başlık içindekilerden, yoksa "Etkinlikler"). Testin aralığındaki etkinlik sayfası (başlıksız kitabın bölümü) o testle aktarılır.
+  Etkinlik bölümü "anahtarsız kitap" sayılmaz (`NoAnswerKey` yalnız testlere bakar), "AI ile bul" / "QR'dan al" onu atlar; onay
+  ekranında satırda "Etkinlik bölümü" çipi durur, işareti kaldırılırsa aktarılmaz.
+- **Soru aktarımı:** her sayfada (test ya da etkinlik bölümü) tespitin `activity` blokları da işlenir. Tipi #579 çıkarımının
+  desteklediği blok (`matrixChoice`, `slotFill`, `dragPlace`, `match`, `textSelect`) için
+  `IActivityStructureService.ExtractForImportAsync` çağrılır: işaretleme ekranıyla aynı talimat, şema ve önbellek
+  (`LabelingActivityResults`), kullanıcı kotası yok. Model `BookImport:ActivityModel` (boşsa tespit modeli). Her çağrıdan önce
+  aktarım bütçesi ve iş tavanı denetlenir, ödenen tutar testin maliyet satırlarına yazılır; hız sınırında iş bekler ve kaldığı
+  testten sürer (çıkan bloklar önbellekte, ücretsiz).
+- **Kayıt:** taslağı geçerli (`ValidateDefinition`) blok, sayfanın sorularıyla okuma sırasında tek kayıtta
+  (`LabelingImportPageRequest.Activities`) şıksız ve **çözümsüz** taslak etkinlik olur: görsel blok kırpması, plan çıkarımın
+  planı, madde etiketi "E1", "E2" … (test boyunca). Etkinlik bölümünün taslak sayfası `WorksheetKind.Activity` (puansız).
+- **İşaretler:** `activityUnsupported` (tip belirlenemedi ya da çıkarımı yok: çizim, açık uçlu …) ve `activityInvalid`
+  (çıkarım başarısız ya da taslak geçersiz, ör. boşluksuz `slotFill`). Bu bloklar aktarılmaz, düz görsel soru da olmaz;
+  sayfa uyarı listesinde görünür, test `NeedsReview` olur (toplu onay atlar). Sayaçlar etkinlikleri de sayar; anahtarla sayı
+  karşılaştırması yalnız çoktan seçmeli sorularla yapılır.
+- **İnceleme:** önizlemede etkinlik taslağı tipinin çipiyle görünür, cevap düğmesi yoktur; "Cevaplanan x/y" ve onay engeli
+  yalnız çoktan seçmeli soruları sayar (karar: etkinlik cevapsız onaylanır, cevabı sonradan etkinlik düzenleyicide elle
+  girilir; otomatik çözüm #580 beklemede). Hatalı taslak "testten çıkar" ile atılır. "İşaretlemede düzelt" sayfanın yalnız
+  çoktan seçmeli taslaklarını değiştirir; etkinlik taslakları ve sıraları yerinde kalır (sayfanın etkinlik uyarıları da
+  düzeltmeyle kapanır).
+- **Örnek kitapla deneme (2026-11-19, "5. Sınıf Matematik Altın Etkinlikli SB", öğretmen baskısı, s. 6–25, Haiku):** tarama
+  etkinlik sayfalarını ayırdı (3 etkinlik bölümü + 2 test); tablo doldurma bloğu geçerli `slotFill` taslağı verdi; çizim
+  etkinlikleri (bileşen F) `activityUnsupported`, cevabı basılı (boşluğu dolu) bloklar `activityInvalid` oldu. Öğretmen
+  baskısında önce "Sayfaları temizle" (#1234) gerekir. Maliyet sayfa başına tespit ~$0,001 + blok başına ~$0,0005.
 
 ## İnceleme ve onay (#1023)
 

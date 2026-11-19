@@ -185,7 +185,7 @@
               <mat-checkbox [checked]="row.include" (change)="update(row, { include: $event.checked })"
                 [aria-label]="t('setup.includeTest', { unit: row.unit, no: row.testNo })"></mat-checkbox>
             </td>
-            <th scope="row" class="bis-code">{{ row.unit }}-{{ row.testNo < 10 ? '0' + row.testNo : row.testNo }}</th>
+            <th scope="row" class="bis-code">{{ testCode(row) }}</th>
             <td colspan="2">
               <mat-form-field class="bis-field bis-field--title" appearance="outline" subscriptSizing="dynamic">
                 <input matInput [ngModel]="row.title" (ngModelChange)="update(row, { title: $event })" maxlength="300"
@@ -264,6 +264,12 @@
                   <mat-icon>add</mat-icon>
                 </button>
               </div>
+              } @else if (isActivity(row)) {
+              <!-- #1134: etkinlik bölümü; anahtarı olmaz, etkinlikler cevapsız taslak olarak aktarılır. -->
+              <div class="bis-key-missing" data-testid="activity-section">
+                <span class="bis-chip">{{ t('flags.activity') }}</span>
+                <span class="bis-muted bis-key-missing__text">{{ t('setup.activitySection') }}</span>
+              </div>
               } @else {
               <div class="bis-key-missing">
                 <span class="bis-muted bis-key-missing__text">{{ t(notFound().has(row.order) ? 'setup.aiNotFound' : 'setup.noKeyForTest') }}</span>
@@ -331,10 +337,10 @@
       @if (viewingBook()) {
       <span class="bis-view__title">
         {{ t('setup.page', { page: viewedPage() }) }} ·
-        @for (r of viewedPageRows(); track r.order; let last = $last) {{{ r.unit }}-{{ r.testNo < 10 ? '0' + r.testNo : r.testNo }}@if (r.title) { {{ r.title }}}{{ last ? '' : ', ' }}} @empty {{{ t('setup.noTestOnPage') }}}
+        @for (r of viewedPageRows(); track r.order; let last = $last) {{{ testCode(r) }}@if (r.title) { {{ r.title }}}{{ last ? '' : ', ' }}} @empty {{{ t('setup.noTestOnPage') }}}
       </span>
       } @else if (viewedRow(); as v) {
-      <span class="bis-view__title">{{ v.unit }}-{{ v.testNo < 10 ? '0' + v.testNo : v.testNo }} · {{ v.title }}</span>
+      <span class="bis-view__title">{{ testCode(v) }} · {{ v.title }}</span>
       @if (v.key; as key) {
       <span class="bis-view__key" [attr.aria-label]="t('setup.keyOf', { unit: v.unit, no: v.testNo })">
         @for (cell of key; track $index; let c = $index) {

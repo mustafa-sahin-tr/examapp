@@ -203,13 +203,13 @@
         @if (previewLoading()) {
         <div class="bir-note" role="status"><mat-spinner diameter="18" aria-hidden="true"></mat-spinner>{{ t('review.loading') }}</div>
         } @else {
-        <p class="bir-preview__counter" aria-live="polite">{{ t('review.answered', { done: answered(), total: questions().length }) }}</p>
+        <p class="bir-preview__counter" aria-live="polite">{{ t('review.answered', { done: answered(), total: choiceQuestions().length }) }}</p>
         <ol class="bir-questions">
           @for (q of questions(); track q.id) {
-          <li class="bir-q" [class.bir-q--missing]="q.answerIndex == null">
+          <li class="bir-q" [class.bir-q--missing]="q.answerIndex == null && !q.interactionType">
             <div class="bir-q__head">
               <span>{{ t(label('question'), { number: q.number ?? '?', page: q.filePage }) }}</span>
-              @if (editable() && canFix() && q.filePage) {
+              @if (editable() && canFix() && q.filePage && !q.interactionType) {
               <a mat-icon-button class="bir-q__fix" routerLink="/labeling" [queryParams]="fixParams(test.id, q.filePage)"
                 [attr.aria-label]="t(label('fixPage'), { page: q.filePage })" [title]="t(label('fixPage'), { page: q.filePage })">
                 <mat-icon>edit_square</mat-icon>
@@ -230,12 +230,20 @@
               </button>
               }
               }
+              @if (q.interactionType; as type) {
+              <!-- #1134: etkinlik taslağı; şıkkı ve anahtar cevabı yok, cevapsız onaylanır. -->
+              <span class="bir-q__activity" data-testid="activity-draft">
+                <span class="bir-chip bir-chip--Done">{{ t('review.activityTypes.' + type) }}</span>
+                <span>{{ t('review.activityAnswerLater') }}</span>
+              </span>
+              } @else {
               <div class="bir-q__answers" role="group" [attr.aria-label]="t('review.answerFor', { number: q.number ?? '?' })">
                 @for (letter of letters.slice(0, q.optionCount); track letter; let i = $index) {
                 <button type="button" class="bir-q__answer" [class.bir-q__answer--on]="q.answerIndex === i"
                   [attr.aria-pressed]="q.answerIndex === i" [disabled]="!editable()" (click)="pick(test, q, i)">{{ letter }}</button>
                 }
               </div>
+              }
             </div>
             @if (q.passageImageUrl || q.imageUrl) {
             <button type="button" class="bir-q__zoom" [attr.aria-label]="t('review.zoom', { number: q.number ?? '?' })" (click)="zoom($index)">

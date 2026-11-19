@@ -178,7 +178,7 @@ internal sealed class BookSetupStage(
             logger.LogInformation("Book import job {JobId}: survey {Pages}; key rows {Keys}", job.Id, DescribePages(surveyed),
                 DescribeKeys(firstRead));
             if (plan.Tests.Count == 0)
-                throw new BookImportFailure("No tests were found in the book (no page with a test header).");
+                throw new BookImportFailure("No tests or activity pages were found in the book.");
 
             var topics = await MapUnitsAsync(job, plan, cost, ct);
             await SaveAsync(job, plan, topics, qrLinks, cost, ct);

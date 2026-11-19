@@ -47,12 +47,17 @@ public sealed class LabelingBankSaveException() : Exception("Saving labeling que
 /// eski taslakları — kayıttan sonra silinecekleri için kırpmaları tekrar sayılmaz. #1025: <c>ResumeDrafts</c> yarıda kalan
 /// aktarımın devamı — aynı kullanıcının bu kitaptaki, başka bir teste bağlı olmayan (ya da <c>ResumeWorksheetId</c>'ye bağlı)
 /// taslak sorusu tekrar sayılmaz, yeniden kullanılır. #1052: <c>BookId</c> null → hızlı ekleme fotoğrafı (kitap kaynağı ve
-/// içindekiler yok; kaynak satırı kırpma hash'i ve fotoğraf sırasıyla yazılır).
+/// içindekiler yok; kaynak satırı kırpma hash'i ve fotoğraf sırasıyla yazılır). #1134: <c>Activities</c> soru sırası →
+/// etkinlik (şıksız; kutu etkinlik bloğu, plan #579 çıkarımının taslağı, çözümsüz).
 /// </summary>
 public sealed record LabelingImportPageRequest(
     string ImageBase64, int? BookId, int FilePage, int GradeId, QuestionBankSharing Sharing,
     IReadOnlyList<LabelingBankQuestionDto> Questions, IReadOnlyCollection<int>? ReplacingQuestionIds = null,
-    bool ResumeDrafts = false, int? ResumeWorksheetId = null, IReadOnlyList<LabelingImportPassage>? Passages = null);
+    bool ResumeDrafts = false, int? ResumeWorksheetId = null, IReadOnlyList<LabelingImportPassage>? Passages = null,
+    IReadOnlyDictionary<int, LabelingImportActivity>? Activities = null);
+
+/// <summary>Issue #1134: aktarılan etkinlik bloğunun tipi ve InteractionPlan v1'i (kutular blok kutusuna göre göreli).</summary>
+public sealed record LabelingImportActivity(string InteractionType, string PlanJson);
 
 /// <summary>Issue #1062: sayfadaki ortak pasaj kutusu; <paramref name="QuestionIndexes"/> isteğin soru listesine göre.</summary>
 public sealed record LabelingImportPassage(LabelingBankBoxDto Box, IReadOnlyList<int> QuestionIndexes);
@@ -272,8 +277,9 @@ public sealed class LabelingBankService(
             return new LabelingImportPageResult(0, [], []);
         if (questions.Count > MaxQuestions)
             throw new LabelingValidationException("labeling.tooManyBoxes");
-        foreach (var q in questions)
-            ValidateShape(q, allowAnswerless: true);
+        var activities = request.Activities ?? new Dictionary<int, LabelingImportActivity>();
+        for (var i = 0; i < questions.Count; i++)
+            ValidateShape(questions[i], allowAnswerless: true, activity: activities.ContainsKey(i));
 
         var bookPage = request.BookId is { } bookId
             ? await books.ResolvePageAsync(bookId, request.FilePage, ct) ?? throw new LabelingValidationException("labeling.books.notFound")
@@ -286,7 +292,8 @@ public sealed class LabelingBankService(
         using (var image = LabelingImage.Decode(request.ImageBase64))
         {
             (pageWidth, pageHeight) = (image.Width, image.Height);
-            bulkQuestions = questions.Select((q, i) => ToBulkQuestion(q, i, image.Width, image.Height)).ToList();
+            bulkQuestions = questions.Select((q, i) => ToBulkQuestion(q, i, image.Width, image.Height, activities.GetValueOrDefault(i)))
+                .ToList();
             pageJpeg = image.Encode(LabelingImage.MaxEdge).Jpeg;
         }
         if (bookPage is not null)
@@ -543,12 +550,13 @@ public sealed class LabelingBankService(
     /// Sayfa boyutundan bağımsız kurallar: şık sayısı, doğru şık, negatif / çok küçük kutu. <paramref name="allowAnswerless"/>
     /// (#1022 aktarım taslağı): doğru şık -1 olabilir.
     /// </summary>
-    private static void ValidateShape(LabelingBankQuestionDto q, bool allowAnswerless = false)
+    private static void ValidateShape(LabelingBankQuestionDto q, bool allowAnswerless = false, bool activity = false)
     {
         var options = q.Options ?? [];
-        if (options.Count is < MinOptions or > MaxOptions)
+        // #1134: etkinlik bloğunun şıkkı olmaz.
+        if (activity ? options.Count != 0 : options.Count is < MinOptions or > MaxOptions)
             throw new LabelingValidationException("labeling.bank.invalidOptions");
-        if (!(allowAnswerless && q.CorrectOptionIndex == -1) && (q.CorrectOptionIndex < 0 || q.CorrectOptionIndex >= options.Count))
+        if (!activity && !(allowAnswerless && q.CorrectOptionIndex == -1) && (q.CorrectOptionIndex < 0 || q.CorrectOptionIndex >= options.Count))
             throw new LabelingValidationException("labeling.bank.correctAnswerMissing");
         if (options.Prepend(q).Any(b => b is null || b.X < 0 || b.Y < 0 || b.Width < MinBoxEdge || b.Height < MinBoxEdge))
             throw new LabelingValidationException("labeling.invalidBox");
@@ -558,9 +566,24 @@ public sealed class LabelingBankService(
     /// İstemci kutusu → toplu kayıt sorusu. Soru sayfaya, şıklar soru kutusuna kırpılır (toplu kayıt şıkları soruya göre
     /// göreli kırpar; dışarı taşan şık bozuk görsel üretirdi). Şıklar gönderilen sırayla A, B, C, ... etiketlenir.
     /// </summary>
-    private static BulkQuestionDto ToBulkQuestion(LabelingBankQuestionDto q, int index, int pageWidth, int pageHeight)
+    private static BulkQuestionDto ToBulkQuestion(LabelingBankQuestionDto q, int index, int pageWidth, int pageHeight,
+        LabelingImportActivity? activity = null)
     {
         var question = Intersect(q, 0, 0, pageWidth, pageHeight) ?? throw new LabelingValidationException("labeling.invalidBox");
+        if (activity is not null)
+        {
+            return new BulkQuestionDto
+            {
+                Name = $"S{index + 1}",
+                X = question.X,
+                Y = question.Y,
+                Width = question.Width,
+                Height = question.Height,
+                InteractionType = activity.InteractionType,
+                InteractionPlan = activity.PlanJson,
+                Answers = [],
+            };
+        }
         return new BulkQuestionDto
         {
             Name = $"S{index + 1}",

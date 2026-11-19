@@ -14,6 +14,8 @@ public enum BookPageKind
     Test,
     AnswerKey,
     SelfAssessment,
+    /// <summary>#1134: çoktan seçmeli olmayan etkinlik sayfası (eşleştirme, boşluk doldurma, tabloda işaretleme …).</summary>
+    Activity,
 }
 
 /// <summary>
@@ -74,7 +76,15 @@ public sealed record BookSetupPlan(
     IReadOnlyList<string> OrphanKeys,
     IReadOnlyList<OrphanKey>? OrphanRows = null)
 {
-    public bool NoAnswerKey => AnswerKeyRanges.Count == 0 || Tests.All(t => t.AnswerKey is null);
+    /// <summary>Etkinlik bölümleri (#1134) anahtar beklemez: yalnız testlere bakılır; hiç test yoksa false.</summary>
+    public bool NoAnswerKey
+    {
+        get
+        {
+            var tests = Tests.Where(t => !t.Flags.Contains(BookSetupPlanner.FlagActivity)).ToList();
+            return tests.Count > 0 && (AnswerKeyRanges.Count == 0 || tests.All(t => t.AnswerKey is null));
+        }
+    }
 }
 
 /// <summary>
@@ -93,6 +103,8 @@ public sealed record BookSetupPlan(
 /// bölüm adı yoksa (#1165) normal "ünite + test no" yolu; başlıkta ünite yoksa ünite numaranın başa dönmesinden çıkar.</item>
 /// <item>Anahtar: iki okuma soru soru karşılaştırılır; farklıysa (biri boş da olsa) ilk okuma alınır, diğeri
 /// <see cref="PlannedTest.KeyConflicts"/>'ta tutulur ("." uyumlu, harf diğer okuma, "-" diğer okumada yok).</item>
+/// <item>Etkinlik bölümü (#1134): hiçbir testin sayfa aralığına girmeyen ardışık etkinlik sayfaları anahtarsız bir bölüm olur
+/// (<see cref="FlagActivity"/>; bkz. <c>WithActivitySections</c>).</item>
 /// </list>
 /// </summary>
 public static class BookSetupPlanner
@@ -103,10 +115,79 @@ public static class BookSetupPlanner
     /// <summary>Anahtar ünitesi tutmadı, kitapta tek olan test numarasıyla eşlendi (testler kitap boyunca numaralı).</summary>
     public const string FlagKeyByNumber = "keyByNumber";
 
+    /// <summary>#1134: etkinlik bölümü (çoktan seçmeli test değil): anahtar beklenmez, adı "1-E01 · Başlık".</summary>
+    public const string FlagActivity = "activity";
+
+    /// <summary>#1134: bir etkinlik bölümündeki en fazla sayfa (uzun etkinlik dizisi bu kadar sayfada bir bölünür).</summary>
+    public const int MaxActivitySectionPages = 8;
+
     /// <summary>Bir testteki en fazla soru (anahtar dizgisinin üst sınırı); bölümlü kitapta bir ünite tek testtir (#1122).</summary>
     public const int MaxQuestionsPerTest = Data.BookImportJobTest.MaxKeyLength;
 
     public static BookSetupPlan Plan(
+        IReadOnlyList<SurveyedPage> pages,
+        IReadOnlyList<SurveyedTocRow> toc,
+        IReadOnlyList<AnswerKeyRow> firstRead,
+        IReadOnlyList<AnswerKeyRow> secondRead) =>
+        WithActivitySections(PlanTests(pages, toc, firstRead, secondRead), pages, toc);
+
+    /// <summary>
+    /// #1134: hiçbir testin sayfa aralığına girmeyen ardışık etkinlik sayfaları etkinlik bölümü olur (testin aralığındaki etkinlik
+    /// sayfası o testle aktarılır). Dizi, içindekiler satırının başladığı sayfada ve <see cref="MaxActivitySectionPages"/> sayfada
+    /// bir bölünür. Ünite: bölümden önce başlayan son testinki (yoksa ilk testinki; hiç test yoksa içindekiler satırınınki, o da
+    /// yoksa satırın sırası); numara ünite içinde sayfa sırasıyla; başlık bölümden önce başlayan son içindekiler satırı.
+    /// </summary>
+    private static BookSetupPlan WithActivitySections(BookSetupPlan plan, IReadOnlyList<SurveyedPage> pages,
+        IReadOnlyList<SurveyedTocRow> toc)
+    {
+        var runs = Ranges(pages.Where(p => p.Kind == BookPageKind.Activity
+                                           && !plan.Tests.Any(t => p.FilePage >= t.FileFrom && p.FilePage <= t.FileTo))
+            .Select(p => p.FilePage));
+        if (runs.Count == 0)
+            return plan;
+
+        var offset = plan.Offset ?? 0;
+        var rows = toc.Where(r => r.PrintedPage is > 0).OrderBy(r => r.PrintedPage).ToList();
+        var sections = new List<(int From, int To)>();
+        foreach (var (from, to) in runs)
+        {
+            var start = from;
+            for (var page = from + 1; page <= to; page++)
+            {
+                if (page - start < MaxActivitySectionPages && !rows.Any(r => r.PrintedPage - offset == page))
+                    continue;
+                sections.Add((start, page - 1));
+                start = page;
+            }
+
+            sections.Add((start, to));
+        }
+
+        var tests = plan.Tests.OrderBy(t => t.FileFrom).ToList();
+        var units = plan.Units.ToDictionary(u => u.Unit);
+        var numbers = new Dictionary<int, int>();
+        var added = new List<PlannedTest>();
+        foreach (var (from, to) in sections)
+        {
+            var row = rows.LastOrDefault(r => r.PrintedPage - offset <= from);
+            var unit = tests.LastOrDefault(t => t.FileFrom < from)?.Unit ?? tests.FirstOrDefault()?.Unit
+                       ?? (row is null ? 1 : row.Unit is > 0 ? row.Unit.Value : rows.IndexOf(row) + 1);
+            var testNo = numbers[unit] = numbers.GetValueOrDefault(unit) + 1;
+            var title = Clean(row?.Title);
+            added.Add(new PlannedTest(0, unit, testNo, title, null, from, to, null, null, null, [FlagActivity]));
+            units[unit] = units.TryGetValue(unit, out var existing)
+                ? existing with { FileFrom = Math.Min(existing.FileFrom, from), FileTo = Math.Max(existing.FileTo, to) }
+                : new PlannedUnit(unit, title, from, to);
+        }
+
+        return plan with
+        {
+            Tests = tests.Concat(added).OrderBy(t => t.FileFrom).Select((t, i) => t with { Order = i + 1 }).ToList(),
+            Units = units.Values.OrderBy(u => u.Unit).ToList(),
+        };
+    }
+
+    private static BookSetupPlan PlanTests(
         IReadOnlyList<SurveyedPage> pages,
         IReadOnlyList<SurveyedTocRow> toc,
         IReadOnlyList<AnswerKeyRow> firstRead,

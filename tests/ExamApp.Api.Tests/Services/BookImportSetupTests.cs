@@ -213,7 +213,7 @@ public class BookImportSetupTests : IDisposable
         await RunAsync(id);
 
         await using var check = _db.NewContext();
-        (await check.BookImportJobs.SingleAsync()).Error.ShouldBe("No tests were found in the book (no page with a test header).");
+        (await check.BookImportJobs.SingleAsync()).Error.ShouldBe("No tests or activity pages were found in the book.");
     }
 
     [Fact]

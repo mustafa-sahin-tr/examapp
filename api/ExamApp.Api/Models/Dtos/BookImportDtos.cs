@@ -206,6 +206,11 @@ public class BookImportReviewQuestionDto
     public string? PassageImageUrl { get; set; }
     /// <summary>Doğru şıkkın sırası (A = 0); cevapsızsa null.</summary>
     public int? AnswerIndex { get; set; }
+    /// <summary>
+    /// Issue #1134: etkinlik taslağının etkileşim tipi (<c>matrixChoice</c>, <c>slotFill</c> …); çoktan seçmeli soruda null.
+    /// Etkinliğin şıkkı ve anahtar cevabı yoktur; cevapsız onaylanır.
+    /// </summary>
+    public string? InteractionType { get; set; }
 }
 
 /// <summary>Issue #1032: öğretmenin demo durumu; <c>Available</c> kaynak seçili ve hak kaldıysa ya da süren demo varsa true.</summary>

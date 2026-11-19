@@ -281,7 +281,9 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
     // talimatı eski/özel bir sürüm olsa da izinli değerler modele ulaşır). Tür önce, koordinatlar sonra: model bloğu
     // sınıflandırıp sonra çerçeveler.
     internal sealed record PageBlocks(
-        [property: Description("Every block on the page in reading order (top to bottom; left column before right column).")]
+        [property: Description("Every block on the page in reading order (top to bottom; left column before right column). " +
+            "Before returning, check each mcq_question: if its printed question number is inside the box, move x1 right to the " +
+            "first letter of the stem.")]
         List<Block> Blocks);
 
     internal sealed record Block(
@@ -295,7 +297,11 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
             "correct option, an answer printed next to it (for example \"Cevap: B\"), or blanks that are already filled in. " +
             "False otherwise and for kinds other than mcq_question and activity.")]
         bool AnswerShown,
-        int X1, int Y1, int X2, int Y2,
+        [property: Description("Left edge. For mcq_question: the x of the first letter of the stem text. The printed question " +
+            "number (\"1.\", \"12)\"; also when it is small, coloured, bold or on the same line as the stem) lies to the LEFT of " +
+            "x1, outside the box; never start the box at the number or at the page margin.")]
+        int X1,
+        int Y1, int X2, int Y2,
         [property: Description("When kind is info_box and its heading names several questions (\"1 - 2. soruları aşağıdaki " +
             "metne göre cevaplayınız.\"): how many questions it serves. 1 otherwise.")]
         int SharedQuestions = 1);

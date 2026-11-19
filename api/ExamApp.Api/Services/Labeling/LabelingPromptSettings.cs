@@ -35,8 +35,10 @@ public sealed record LabelingPromptSettings(
     /// şemasının <c>interactionType</c> açıklamasına <c>textSelect</c> eklendi. 6 (issue #583): H (açık uçlu) → <c>openText</c>;
     /// "other" yalnız E, F, G, I için; yanıt şemasının <c>interactionType</c> açıklamasına <c>openText</c> eklendi. 7 (issue #791):
     /// 1. aşama blokları <c>answerShown</c> taşır (sayfada basılı cevap); kural yalnız şema açıklamasında (talimat 4000 sınırında).
+    /// 9 (issue #1233): soru numarası kutunun dışında kuralı şemada da (<c>x1</c> ve blok listesi açıklaması); küçük / renkli,
+    /// kökle aynı satırdaki numara kutuya giriyordu.
     /// </summary>
-    public const int SchemaRevision = 8;
+    public const int SchemaRevision = 9;
 
     /// <summary>Talimatlar + paylar + <see cref="SchemaRevision"/> SHA-256'sı (hex); AI sonuçlarının önbellek anahtarı.</summary>
     /// Önbelleğe alınmaz: record'un <c>with</c> kopyası alanı da kopyalar ve eski izi taşırdı.

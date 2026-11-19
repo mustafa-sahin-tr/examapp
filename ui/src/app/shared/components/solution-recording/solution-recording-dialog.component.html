@@ -1,0 +1,135 @@
+<div class="rec" *transloco="let t; prefix: 'solution-recording'">
+  <header class="rec__head">
+    <h2 mat-dialog-title class="rec__title">{{ data.title }}</h2>
+    <button mat-icon-button type="button" [attr.aria-label]="t('close')" data-testid="solution-close" (click)="close()">
+      <mat-icon>close</mat-icon>
+    </button>
+  </header>
+
+  <mat-dialog-content class="rec__body">
+    @switch (view()) {
+      @case ('loading') {
+        <div class="rec__state" role="status" [attr.aria-label]="t('loading')">
+          <mat-spinner diameter="32" />
+        </div>
+      }
+      @case ('loadError') {
+        <div class="rec__state" role="alert" data-testid="solution-load-error">
+          <mat-icon aria-hidden="true">error_outline</mat-icon>
+          <span>{{ t('loadError') }}</span>
+          @if (data.hasRecording) {
+            <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+          }
+        </div>
+      }
+      @case ('empty') {
+        <app-solution-page [imageUrl]="data.imageUrl" [label]="t('pageAria')" />
+        <p class="rec__hint">{{ t('emptyHint', { max: maxLabel }) }}</p>
+      }
+      @case ('review') {
+        @if (playable(); as p) {
+          <app-solution-player [imageUrl]="data.imageUrl" [strokes]="p.strokes" [durationMs]="p.durationMs" [audio]="p.audio" />
+        }
+        <p class="rec__hint" data-testid="solution-review-hint">{{ t('reviewHint') }}</p>
+      }
+      @case ('saved') {
+        @if (playable(); as p) {
+          <app-solution-player [imageUrl]="data.imageUrl" [strokes]="p.strokes" [durationMs]="p.durationMs" [audio]="p.audio" />
+        }
+      }
+      @default {
+        <app-solution-page class="rec__page" [class.rec__page--drawing]="view() === 'recording'" [imageUrl]="data.imageUrl"
+          [strokes]="capture.visible()" [current]="capture.current()" [label]="t('drawingAria')" data-testid="solution-page"
+          (pointerdown)="draw($event)" (pointermove)="capture.extend($event)" (pointerup)="capture.end($event)"
+          (pointercancel)="capture.end($event)" />
+      }
+    }
+
+    @if (micError(); as error) {
+      <p class="rec__error" role="alert" data-testid="solution-mic-error">{{ t(error) }}</p>
+    }
+    @if (saveError() !== null) {
+      <p class="rec__error" role="alert" data-testid="solution-save-error">{{ saveError() || t('saveError') }}</p>
+    }
+  </mat-dialog-content>
+
+  @if (confirmClose()) {
+    <div class="rec__bar rec__bar--warn" role="alertdialog" [attr.aria-label]="t('closeQuestion')" data-testid="solution-confirm-close">
+      <span class="rec__grow">{{ t('closeQuestion') }}</span>
+      <button mat-button type="button" (click)="confirmClose.set(false)">{{ t('keepWorking') }}</button>
+      <button mat-flat-button type="button" class="rec__danger" (click)="close(true)">{{ t('discardAndClose') }}</button>
+    </div>
+  } @else if (canRecord) {
+    <div class="rec__bar">
+      @switch (view()) {
+        @case ('empty') {
+          <span class="rec__grow"></span>
+          <button mat-flat-button type="button" data-testid="solution-start" (click)="startRecording()">
+            <mat-icon>fiber_manual_record</mat-icon>{{ t('start') }}
+          </button>
+        }
+        @case ('recording') {
+          <ng-container *ngTemplateOutlet="recordingTools" />
+        }
+        @case ('paused') {
+          <ng-container *ngTemplateOutlet="recordingTools" />
+        }
+        @case ('review') {
+          <button mat-button type="button" [disabled]="busy()" data-testid="solution-rerecord" (click)="startRecording()">
+            <mat-icon>replay</mat-icon>{{ t('rerecord') }}
+          </button>
+          <span class="rec__grow"></span>
+          <button mat-flat-button type="button" [disabled]="busy()" data-testid="solution-save" (click)="save()">
+            <mat-icon>save</mat-icon>{{ t('save') }}
+          </button>
+        }
+        @case ('saved') {
+          @if (confirmDelete()) {
+            <span class="rec__grow">{{ t('deleteQuestion') }}</span>
+            <button mat-button type="button" [disabled]="busy()" (click)="confirmDelete.set(false)">{{ t('cancel') }}</button>
+            <button mat-flat-button type="button" class="rec__danger" [disabled]="busy()" data-testid="solution-delete-confirm"
+              (click)="delete()">{{ t('delete') }}</button>
+          } @else {
+            <button mat-button type="button" data-testid="solution-delete" (click)="confirmDelete.set(true)">
+              <mat-icon>delete_outline</mat-icon>{{ t('delete') }}
+            </button>
+            <span class="rec__grow"></span>
+            <button mat-stroked-button type="button" data-testid="solution-rerecord" (click)="startRecording()">
+              <mat-icon>replay</mat-icon>{{ t('rerecord') }}
+            </button>
+          }
+        }
+      }
+    </div>
+  }
+
+  <ng-template #recordingTools>
+    <span class="rec__clock" [class.rec__clock--live]="view() === 'recording'" role="timer" data-testid="solution-clock">
+      <span class="rec__dot" aria-hidden="true"></span>{{ elapsedLabel() }} / {{ maxLabel }}
+    </span>
+    @if (view() === 'recording') {
+      <button mat-icon-button type="button" [matTooltip]="t('pause')" [attr.aria-label]="t('pause')" data-testid="solution-pause"
+        (click)="pause()">
+        <mat-icon>pause</mat-icon>
+      </button>
+    } @else {
+      <button mat-icon-button type="button" [matTooltip]="t('resume')" [attr.aria-label]="t('resume')"
+        data-testid="solution-resume" (click)="resume()">
+        <mat-icon>fiber_manual_record</mat-icon>
+      </button>
+    }
+    <span class="rec__grow"></span>
+    <app-pen-color-picker class="rec__pen" />
+    <button mat-icon-button type="button" [matTooltip]="t('undo')" [attr.aria-label]="t('undo')"
+      [disabled]="view() !== 'recording' || !capture.canUndo()" data-testid="solution-undo" (click)="capture.undo()">
+      <mat-icon>undo</mat-icon>
+    </button>
+    <button mat-icon-button type="button" [matTooltip]="t('clear')" [attr.aria-label]="t('clear')"
+      [disabled]="view() !== 'recording' || !capture.canUndo()" data-testid="solution-clear" (click)="capture.clear()">
+      <mat-icon>delete_sweep</mat-icon>
+    </button>
+    <button mat-flat-button type="button" data-testid="solution-finish" (click)="finish()">
+      <mat-icon>stop</mat-icon>{{ t('finish') }}
+    </button>
+  </ng-template>
+</div>

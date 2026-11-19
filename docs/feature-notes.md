@@ -166,7 +166,8 @@ Seçili şık nötr mavi ve işaretlidir; yeşil yalnız doğru cevap içindir. 
   varsayılan, kırmızı, yeşil, mavi, turuncu; kalınlık seçimi yok). Seçim ikisinde ortaktır ve oturum boyunca hatırlanır
   (`sessionStorage` `testSolve.penColor`). Renk çizgiyle saklanır: yolun başında `renk:` öneki (`red:M1 2L3 4`); öneksiz çizgi
   (eski kayıtlar dahil) varsayılan renktedir, yani yüzeyin kendi mürekkep rengi. Tanınmayan renkli çizgi okunurken atılır.
-  Renk modeli ve seçici `shared/` altındadır (`shared/utils/pen-color.ts`); öğretmenin çözüm kaydı (#1226) aynısını kullanır.
+  Renk modeli ve seçici `shared/` altındadır (`shared/utils/pen-color.ts`; seçicinin kendi sözlüğü `pen-color`); öğretmenin çözüm
+  kaydı (#1226) aynısını kullanır.
 
 **Issue #534 — karışık mini deneme.** `POST practice/sessions` `mixedReview: true` ile sabit listeli oturum açar (`MixedReview.cs`). Varsayılan 15 soru: %40 tekrar zamanı gelen (#529), %30 yanlış defteri, %30 zayıf konulardan (son 30 gün, en az 5 cevap, doğruluk %70 altı, #497) hiç cevaplanmamış soru. Pay ve sayı `PracticeMixedReview` bölümünde; `TargetCount` sayıyı ezer. Aynı soru iki kez girmez, eksik pay diğer kaynaklardan tamamlanır, kaynaklar yetmezse oturum kısa kalır, hepsi boşsa 400 `practice.noMixedReview`. "Zor sorular" kaynağı (#526) henüz yok; yerine yanlış defteri kullanılır, #526 gelince değiştirilir. Bitmemiş test ve atama soruları ile bugünün günlük seti girmez. Süre ve net hesabı yok. Giriş pratik kurulum ekranındaki kart; asistan aracı sonraki adım, aynı isteği kullanır.
 
@@ -628,5 +629,19 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
     oturumda ya da örnek soruda**; öncesinde 404.
 - **Gösterge:** `QuestionDto.HasSolutionRecording` test sonucunda (aynı kapıdan) ve öğretmenin test soru listesinde (`bytest`, yalnız
   kendi sorularında) dolu; `CanRecordSolution` öğretmen listesinde soru sahibini gösterir.
+- **Arayüz** (`shared/components/solution-recording/`, sözlük `solution-recording`):
+  - **Sayfa** (`app-solution-page`): 1000 × 750 beyaz sayfa, soru görseli SVG'nin içinde üstte (`xMidYMin meet`), altı yazı alanı.
+    Görsel SVG'de olduğu için çizgiler her ekran boyunda aynı yere düşer. Varsayılan kalem koyu mürekkep (sayfa her temada beyaz).
+  - **Kaydedici** (`SolutionRecordingDialogComponent`, `mode: 'record'`): öğretmenin test soru listesinde satırdaki mikrofon düğmesi
+    (yalnız `canRecordSolution`; kayıt varsa oynat simgesi ve "Çözüm var" rozeti). Ses `MediaRecorder` ile; tür tercihi MP4 / AAC
+    (her tarayıcıda çalınır), yoksa WebM / Opus. Kalem girişi `SolutionStrokeCapture` (nokta başına zaman; kalem görülünce dokunma
+    çizmez), renk `app-pen-color-picker` (#1241). Duraklat / sürdür saati de durdurur, böylece çizgi zamanları sesle aynı kalır.
+    5 dakikada kendiliğinden biter. Bitince önizleme → Kaydet ya da Yeniden kaydet; kayıtlı çözümde Sil (onaylı). Kaydedilmemiş
+    kayıt varken pencere sormadan kapanmaz. Mikrofon reddi / yokluğu / desteklenmeyen tarayıcı ayrı mesajlarla söylenir.
+  - **Oynatıcı** (`app-solution-player`): saat sestir (`requestAnimationFrame` ile `currentTime`), sarınca sayfa o ana göre yeniden
+    çizilir. Süre kayıttan gelir; süresini taşımayan dosyada tarayıcıya süreyi buldurmak için bir kez sona sarılır.
+  - **Öğrenci:** test sonucundaki soru incelemesinde "Öğretmenin çözümünü izle" (yalnız `hasSolutionRecording`), aynı pencere
+    `mode: 'watch'` ile.
+  - **CSP:** ses blob olarak gelip `blob:` adresiyle çalındığı için `media-src 'self' blob:` (üç yerde + auth-ui, bkz. local-dev.md).
 - **Kapsam dışı (ilk sürüm):** plan hakkı, pratik oturumunda ve veli panelinde oynatma, bir soruya birden çok çözüm, mp4 dışa aktarım,
   yayınevi çözümlerinin içe aktarımı, döküm / altyazı.

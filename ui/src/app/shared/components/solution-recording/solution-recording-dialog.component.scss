@@ -1,0 +1,112 @@
+.rec {
+  display: flex;
+  flex-direction: column;
+  max-height: 92vh;
+}
+
+.rec__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 0 24px;
+}
+
+.rec__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  font-size: 18px;
+}
+
+.rec__body.mat-mdc-dialog-content {
+  // Material'ın %65'lik sınırı sayfayı kaydırtır; pencere zaten ekranın %92'siyle sınırlı.
+  max-height: none;
+  padding-top: 8px;
+
+  // Sayfa (4:3) pencereye sığsın: genişlik yükseklikten sınırlanır, sayfa kaydırılmadan görünür.
+  app-solution-page,
+  app-solution-player {
+    max-width: max(280px, calc((92vh - 260px) * 4 / 3));
+    margin-inline: auto;
+  }
+}
+
+.rec__state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 220px;
+  text-align: center;
+}
+
+.rec__hint {
+  margin: 12px 0 0;
+  font-size: 14px;
+}
+
+.rec__error {
+  margin: 12px 0 0;
+  color: var(--mat-sys-error, #b3261e);
+  font-size: 14px;
+}
+
+// Kayıt sırasında dokunuş çizime gider; parmak sayfayı kaydırmaz.
+.rec__page--drawing {
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+  outline: 2px dashed var(--primaryColor);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.rec__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px 12px;
+}
+
+.rec__bar--warn {
+  font-size: 14px;
+}
+
+.rec__grow {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.rec__clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+}
+
+.rec__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.4;
+}
+
+.rec__clock--live .rec__dot {
+  background: #e53935;
+  opacity: 1;
+}
+
+// Sayfa beyaz: varsayılan kalem sayfanın koyu mürekkebi.
+.rec__pen {
+  --pen-color-default: #1f2937;
+}
+
+.rec__danger {
+  --mat-button-filled-container-color: var(--mat-sys-error, #b3261e);
+  --mat-button-filled-label-text-color: #fff;
+}

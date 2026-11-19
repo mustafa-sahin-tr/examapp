@@ -76,6 +76,17 @@ public class UiContentSecurityPolicyTests
             nginx[directive].ShouldBe(sources.Where(s => s != DevHmrSource).ToArray(), $"{directive} farklı");
     }
 
+    /// <summary>
+    /// Issue #1226: çözüm kaydının sesi yetkili uçtan blob olarak gelir ve <c>blob:</c> adresiyle çalınır; <c>default-src 'self'</c>
+    /// bunu engeller, bu yüzden <c>media-src</c> ayrıca yazılır. Dış kaynaklı medya yok.
+    /// </summary>
+    [Fact]
+    public void Media_is_limited_to_self_and_blob()
+    {
+        Parse(DevServerPolicy("ui/angular.json"))["media-src"].ShouldBe(["'self'", "blob:"]);
+        Parse(NginxPolicy())["media-src"].ShouldBe(["'self'", "blob:"]);
+    }
+
     [Fact]
     public void Auth_ui_policy_is_the_ui_policy_without_the_video_origin()
     {

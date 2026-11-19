@@ -29,6 +29,10 @@ import { GradesService } from '../../services/grades.service';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatDialog } from '@angular/material/dialog';
+import {
+  SolutionRecordingDialogComponent,
+  SolutionRecordingDialogData,
+} from '../../shared/components/solution-recording/solution-recording-dialog.component';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -1360,6 +1364,31 @@ export class WorksheetDetailComponent implements OnInit {
   /** Issue #61: görüntülenen sorunun test-instance-question kimliği (regions ile aynı sırada). */
   protected currentTestInstanceQuestionId(): number | null {
     return this.results?.testInstanceQuestions?.[this.currentIndex()]?.id ?? null;
+  }
+
+  /** Issue #1226: görüntülenen sorunun öğretmen çözümü (kalem + ses) varsa oynatıcıyı açacak bilgi; yoksa null. */
+  protected currentSolution(): { instanceQuestionId: number; number: number; imageUrl: string | null } | null {
+    const row = this.results?.testInstanceQuestions?.[this.currentIndex()];
+    return row?.question?.hasSolutionRecording
+      ? { instanceQuestionId: row.id, number: this.currentIndex() + 1, imageUrl: row.question.imageUrl || null }
+      : null;
+  }
+
+  protected watchSolution(): void {
+    const solution = this.currentSolution();
+    if (!solution) return;
+    this.dialog.open<SolutionRecordingDialogComponent, SolutionRecordingDialogData>(SolutionRecordingDialogComponent, {
+      data: {
+        mode: 'watch',
+        id: solution.instanceQuestionId,
+        title: this.tr('completed.solutionTitle', { number: solution.number }),
+        imageUrl: solution.imageUrl,
+        hasRecording: true,
+      },
+      width: '960px',
+      maxWidth: '96vw',
+      autoFocus: 'dialog',
+    });
   }
 
   /** Issue #61: çalışma önerileri yalnız yanlış cevaplanan soruda gösterilir (boş/doğru → hiçbir şey). */

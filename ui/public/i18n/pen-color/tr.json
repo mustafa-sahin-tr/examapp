@@ -1,0 +1,9 @@
+{
+  "label": "Kalem rengi",
+  "current": "Kalem rengi: {{color}}",
+  "default": "Varsayılan",
+  "red": "Kırmızı",
+  "green": "Yeşil",
+  "blue": "Mavi",
+  "orange": "Turuncu"
+}

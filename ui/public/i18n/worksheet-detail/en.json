@@ -94,7 +94,9 @@
     "reviewQuestions": "Review the questions",
     "topicBreakdown": "{{correct}} correct · {{wrong}} wrong · {{empty}} blank",
     "nextMistakes": "Review your {{count}} mistakes with solutions",
-    "nextTopic": "Practise questions from “{{name}}”"
+    "nextTopic": "Practise questions from “{{name}}”",
+    "watchSolution": "Watch the teacher's solution",
+    "solutionTitle": "Solution of question {{number}}"
   },
   "teacher": {
     "moreActions": "More actions",
@@ -417,7 +419,13 @@
       "answerPick": "Pick the correct choice",
       "answerSave": "Save",
       "answerSaved": "Answer for question {{number}} saved.",
-      "answerFailed": "Could not save the answer."
+      "answerFailed": "Could not save the answer.",
+      "solutionBadge": "Has a solution",
+      "solutionRecord": "Record a solution (pen + voice)",
+      "solutionRecordAria": "Record a solution for question {{number}}",
+      "solutionOpen": "Open the solution recording",
+      "solutionOpenAria": "Open the solution recording of question {{number}}",
+      "solutionTitle": "Solution of question {{number}}"
     }
   },
   "adminSharing": {

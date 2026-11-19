@@ -94,7 +94,9 @@
     "reviewQuestions": "Soruları incele",
     "topicBreakdown": "{{correct}} doğru · {{wrong}} yanlış · {{empty}} boş",
     "nextMistakes": "{{count}} yanlışını çözümleriyle incele",
-    "nextTopic": "“{{name}}” konusundan soru çöz"
+    "nextTopic": "“{{name}}” konusundan soru çöz",
+    "watchSolution": "Öğretmenin çözümünü izle",
+    "solutionTitle": "{{number}}. sorunun çözümü"
   },
   "teacher": {
     "moreActions": "Diğer işlemler",
@@ -417,7 +419,13 @@
       "answerPick": "Doğru şıkkı seç",
       "answerSave": "Kaydet",
       "answerSaved": "{{number}}. sorunun cevabı kaydedildi.",
-      "answerFailed": "Cevap kaydedilemedi."
+      "answerFailed": "Cevap kaydedilemedi.",
+      "solutionBadge": "Çözüm var",
+      "solutionRecord": "Çözüm kaydet (kalem + ses)",
+      "solutionRecordAria": "{{number}}. soruya çözüm kaydet",
+      "solutionOpen": "Çözüm kaydını aç",
+      "solutionOpenAria": "{{number}}. sorunun çözüm kaydını aç",
+      "solutionTitle": "{{number}}. sorunun çözümü"
     }
   },
   "adminSharing": {

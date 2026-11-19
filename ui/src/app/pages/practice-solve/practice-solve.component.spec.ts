@@ -145,12 +145,12 @@ describe('PracticeSolveComponent', () => {
             getProfile: vi.fn().mockName("StudentService.getProfile")
         } as unknown as MockedObject<StudentService>;
         subjectService = {
-            getSubjectsByGrade: vi.fn().mockName("SubjectService.getSubjectsByGrade"),
+            getCoreSubjectsByGrade: vi.fn().mockName("SubjectService.getCoreSubjectsByGrade"),
             getTopicsBySubjectAndGrade: vi.fn().mockName("SubjectService.getTopicsBySubjectAndGrade")
         } as unknown as MockedObject<SubjectService>;
 
         studentService.getProfile.mockReturnValue(of(profile));
-        subjectService.getSubjectsByGrade.mockReturnValue(of(subjects));
+        subjectService.getCoreSubjectsByGrade.mockReturnValue(of(subjects));
         practiceService.listSessions.mockReturnValue(of(emptyHistory));
         practiceService.getDueReview.mockReturnValue(of({ totalCount: 0, items: [] }));
         practiceService.toQuestionRegion.mockImplementation((q: Question, correctAnswerId?: number | null) => ({

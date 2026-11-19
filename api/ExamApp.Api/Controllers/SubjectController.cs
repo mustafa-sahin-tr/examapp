@@ -17,10 +17,11 @@ public class SubjectController : BaseController
         _subjectService = subjectService;
     }
 
+    /// <param name="coreOnly">Issue #1215: yalnız ana dersler (öğrenci seçicileri); seçmeli modüller ve lehçeler dışarıda.</param>
     [HttpGet]
-    public async Task<ActionResult<List<Subject>>> GetSubjectAsync()
+    public async Task<ActionResult<List<Subject>>> GetSubjectAsync([FromQuery] bool coreOnly = false)
     {
-        return await _subjectService.GetAllSubjectsAsync();
+        return await _subjectService.GetAllSubjectsAsync(coreOnly);
     }
 
     [HttpGet("topics/{subjectId}")]
@@ -39,9 +40,9 @@ public class SubjectController : BaseController
     }
 
     [HttpGet("by-grade/{gradeId}")]
-    public async Task<IActionResult> GetSubjectsByGrade(int gradeId)
+    public async Task<IActionResult> GetSubjectsByGrade(int gradeId, [FromQuery] bool coreOnly = false)
     {
-        var subjects = await _subjectService.GetSubjectsByGradeIdAsync(gradeId);
+        var subjects = await _subjectService.GetSubjectsByGradeIdAsync(gradeId, coreOnly);
         return Ok(subjects);
     }
 

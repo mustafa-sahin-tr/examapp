@@ -22,9 +22,12 @@ public class SubjectService : ISubjectService
         return await _context.SaveChangesAsync() > 0;
     }
 
-    public async Task<List<Subject>> GetAllSubjectsAsync(CancellationToken cancellationToken = default)
+    public async Task<List<Subject>> GetAllSubjectsAsync(bool coreOnly = false, CancellationToken cancellationToken = default)
     {
-        return await _context.Subjects.ToListAsync();
+        var subjects = _context.Subjects.AsQueryable();
+        if (coreOnly)
+            subjects = subjects.Where(s => s.Code != null && ProgramService.CoreSubjectCodes.Contains(s.Code));
+        return await subjects.ToListAsync(cancellationToken);
     }
 
     public async Task<List<Topic>> GetTopicBySubjectIdAsync(int subjectId, CancellationToken cancellationToken = default)
@@ -37,10 +40,19 @@ public class SubjectService : ISubjectService
         return await _context.SubTopics.Where(st => st.TopicId == topicId).ToListAsync(cancellationToken);
     }
 
-    public async Task<List<Subject>> GetSubjectsByGradeIdAsync(int gradeId, CancellationToken cancellationToken = default)
+    public async Task<List<Subject>> GetSubjectsByGradeIdAsync(int gradeId, bool coreOnly = false, CancellationToken cancellationToken = default)
     {
-        return await _context.GradeSubjects
-            .Where(gs => gs.GradeId == gradeId)
+        var links = _context.GradeSubjects.Where(gs => gs.GradeId == gradeId);
+        if (coreOnly)
+        {
+            // Issue #1215: katalog sınıfa bütün seçmelileri bağlar; öğrenci seçicileri yalnız ana dersleri gösterir.
+            // Sınıfın ana dersi yoksa sınıfın bütün dersleri (ProgramService ile aynı kural, #1213).
+            var core = links.Where(gs => gs.Subject.Code != null && ProgramService.CoreSubjectCodes.Contains(gs.Subject.Code));
+            if (await core.AnyAsync(cancellationToken))
+                links = core;
+        }
+
+        return await links
             .Include(gs => gs.Subject)
             .Select(gs => gs.Subject)
             .Distinct()

@@ -722,11 +722,19 @@ builder.Services.AddScoped<ExamApp.Api.Services.BookImport.BookKeyMatchService>(
 // #1219: onay ekranında "QR'dan al" — yayıncı çözüm sayfası (izinli alan adları, iç ağa bağlantı yok) + ses → yazı (question-detector).
 builder.Services.AddHttpClient(ExamApp.Api.Services.BookImport.QrSolutionClient.HttpClientName, c => c.Timeout = TimeSpan.FromSeconds(30))
     .ConfigurePrimaryHttpMessageHandler(ExamApp.Api.Services.BookImport.QrSolutionClient.CreateHandler);
-builder.Services.AddHttpClient(ExamApp.Api.Services.BookImport.DetectorAudioTranscriber.HttpClientName, c => c.Timeout = TimeSpan.FromMinutes(2));
+// RemoveAllResilienceHandlers: AddServiceDefaults() her HttpClient'a standart dayanıklılık işleyicisi ekler (deneme başına 10 sn,
+// toplam 30 sn, yeniden deneme) ve client.Timeout bunu ezmez. Ses yazıya dökme ve sayfa temizliği analizi 10 sn'yi aşar: istek
+// iptal edilip yeniden gönderiliyor, tek işçili serviste yığılıyor ve iş TimeoutRejectedException ile düşüyordu (2026-11-20,
+// demoda "temizlik yarıda kaldı"). Bu iki istemcide tek sınır client.Timeout.
+#pragma warning disable EXTEXP0001 // RemoveAllResilienceHandlers "evaluation" işaretli; ConfigureHttpClientDefaults'u geri almanın tek resmi yolu.
+builder.Services.AddHttpClient(ExamApp.Api.Services.BookImport.DetectorAudioTranscriber.HttpClientName, c => c.Timeout = TimeSpan.FromMinutes(2))
+    .RemoveAllResilienceHandlers();
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.QrSolutionClient>();
 builder.Services.AddSingleton<ExamApp.Api.Services.BookImport.IAudioTranscriber, ExamApp.Api.Services.BookImport.DetectorAudioTranscriber>();
 // #1234: sayfa temizliği (question-detector /clean/*); analiz örnek sayfaların medyanını alır, uzun sürebilir.
-builder.Services.AddHttpClient(ExamApp.Api.Services.BookImport.DetectorPageCleaner.HttpClientName, c => c.Timeout = TimeSpan.FromMinutes(10));
+builder.Services.AddHttpClient(ExamApp.Api.Services.BookImport.DetectorPageCleaner.HttpClientName, c => c.Timeout = TimeSpan.FromMinutes(10))
+    .RemoveAllResilienceHandlers();
+#pragma warning restore EXTEXP0001
 builder.Services.AddSingleton<ExamApp.Api.Services.BookImport.IPageCleaner, ExamApp.Api.Services.BookImport.DetectorPageCleaner>();
 builder.Services.AddScoped<ExamApp.Api.Services.BookImport.BookPageCleaningService>();
 builder.Services.AddSingleton<ExamApp.Api.Services.BookImport.IQrKeyReader, ExamApp.Api.Services.BookImport.FernusQrKeyReader>();

@@ -272,6 +272,10 @@ olarak aktarılır. Yalnız kitap aktarımında; hızlı ekleme ve karışık g�
 - **Temizlik hizmeti yanıt vermezse:** `DetectorPageCleaner.IsAvailableAsync` dayanıklılık işleyicisinin zaman aşımını da
   "hizmet yok" sayar (önceden iş "The operation didn't complete within the allowed timeout" ile düşüyordu; yerelde
   question-detector kapalıyken görüldü).
+- **"Temizlik yarıda kaldı" (2026-11-20, demo):** `page-cleaner` ve `transcriber` istemcilerinde standart dayanıklılık işleyicisi
+  kaldırıldı (`RemoveAllResilienceHandlers`): analiz 10 sn'lik deneme sınırını aşınca istek iptal edilip yeniden gönderiliyor,
+  Hangfire işi `TimeoutRejectedException` ile düşüyor, özet `Running`de kalıp 10 dk sonra "yarıda kaldı" görünüyordu. Tek sınır
+  `client.Timeout` (10 dk / 2 dk). Temizlikte iptal dışındaki her hata artık `Failed` + hata metni olur.
 - **Örnek kitapla deneme (2026-11-19, "5. Sınıf Matematik Altın Etkinlikli SB", öğretmen baskısı, s. 6–25, Haiku):** tarama
   etkinlik sayfalarını ayırdı (3 etkinlik bölümü + 2 test); tablo doldurma bloğu geçerli `slotFill` taslağı verdi; çizim
   etkinlikleri (bileşen F) `activityUnsupported`, cevabı basılı (boşluğu dolu) bloklar `activityInvalid` oldu. Öğretmen

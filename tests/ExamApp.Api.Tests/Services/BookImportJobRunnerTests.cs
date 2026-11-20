@@ -253,6 +253,22 @@ public class BookImportJobRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task An_unexpected_cleaner_error_ends_as_failed_instead_of_staying_running()
+    {
+        // Dayanıklılık işleyicisinin zaman aşımı (TimeoutRejectedException) gibi beklenmeyen türler de "Failed" olmalı.
+        _cleaner = new FakePageCleaner { Watermark = true, AnalyzeFailure = new TimeoutException("analyze timed out") };
+        var id = await SeedJobAsync();
+        await RunAsync(id);
+
+        await using var check = _db.NewContext();
+        var job = await check.BookImportJobs.SingleAsync(j => j.Id == id);
+        job.Status.ShouldBe(BookImportJobStatus.AwaitingConfirmation);
+        var summary = BookPageCleaning.Parse(job.CleanJson)!;
+        summary.Status.ShouldBe(BookPageCleaning.Failed);
+        summary.Error.ShouldBe("analyze timed out");
+    }
+
+    [Fact]
     public async Task Cleaning_again_with_a_picked_colour_starts_from_the_original_pages()
     {
         _cleaner = new FakePageCleaner { Watermark = true };
@@ -290,6 +306,7 @@ public class BookImportJobRunnerTests : IDisposable
         public bool Watermark { get; init; }
         public int[]? MarkColour { get; init; }
         public int? FailOnPage { get; init; }
+        public Exception? AnalyzeFailure { get; init; }
         public int Sampled { get; private set; }
         public int[]? LastColour { get; private set; }
         public List<byte[]> Inputs { get; } = [];
@@ -299,6 +316,8 @@ public class BookImportJobRunnerTests : IDisposable
 
         public Task<PageCleanAnalysis> AnalyzeAsync(IReadOnlyList<byte[]> pages, int[]? markColour, CancellationToken ct)
         {
+            if (AnalyzeFailure is not null)
+                throw AnalyzeFailure;
             Sampled = pages.Count;
             LastColour = markColour;
             Inputs.AddRange(pages);

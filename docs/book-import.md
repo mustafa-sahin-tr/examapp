@@ -173,6 +173,21 @@ aktarım aracındaki Python portu referanstır (#1022).
   kitap varsa 409 + `existingBook`: mevcut kitabı kullan (kayıt kümeleri boşsa kurulumla doldurulur) ya da yeni ad.
   İptal: `POST /api/exam/book-imports/{id}/cancel` (onay beklerken burada; diğer durumlar aşağıda, #1025).
 
+### Varsayılan test süresi (2026-11-20)
+
+Testin başlığında süre yazmıyorsa kurulum süreyi soru sayısından önerir (`BookTestDurations`; kurulum ekranında değiştirilir,
+boşaltılırsa test süresiz olur). Etkinlik bölümleri ve soru sayısı bilinmeyen testler süresiz kalır; üst sınır 600 dk.
+
+| Düzey | Ders | Soru başına | Ölçüt |
+|---|---|---|---|
+| Okul öncesi, 1–4. sınıf | hepsi | 2 dk | merkezi sınav yok; okuma hızı düşük |
+| 5. sınıf ve üstü, hazırlık | Matematik, Fen Bilimleri, Fizik, Kimya, Biyoloji, Geometri | 2 dk | LGS sayısal: 40 soru 80 dk |
+| 5. sınıf ve üstü, hazırlık | diğerleri (ya da ders bilinmiyor) | 1,5 dk | LGS sözel: 50 soru 75 dk; TYT 120 soru 165 dk (~1,4) |
+
+Bursluluk sınavı (İOKBS) daha sıkı: 5–8. sınıf 80 soru 100 dk (1,25), lise 100 soru 120 dk (1,2); sınav ortamı ölçüsü olduğu
+için kitap testlerinde kullanılmadı. Değer yalnız yeni kurulumda yazılır: bu değişiklikten önce kurulumu biten kitapta süre boş
+kalır (kurulum ekranında elle girilir ya da kurulum yeniden çalıştırılır).
+
 ### Sayfa temizliği (#1234)
 
 Bazı kitaplarda her sayfada aynı yerde filigran (ör. açık gri çapraz yayınevi adı) ve renkli kutuyla işaretli doğru şık

@@ -312,8 +312,8 @@ public sealed class BookPageCleaningService(AppDbContext db, IMinIoService minio
             logger.LogInformation("Book import job {JobId}: cleaned {Pages} pages (watermark {Watermark}, {Marks} answer marks)",
                 job.Id, pages.Count, summary.Watermark, summary.Marks);
         }
-        catch (Exception e) when (e is HttpRequestException or TaskCanceledException or JsonException or InvalidOperationException
-                                      or PageCleanExpiredException)
+        // İptal dışındaki her hata: özet "Running"de kalırsa ekran 10 dk sonra yalnız "yarıda kaldı" der, nedeni görünmez.
+        catch (Exception e) when (e is not OperationCanceledException or TaskCanceledException)
         {
             logger.LogWarning("Book import job {JobId}: page cleaning failed, the original pages are used: {Message}", job.Id, e.Message);
             Restore(pages);

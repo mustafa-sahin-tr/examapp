@@ -42,8 +42,8 @@ public class BookImportSetupTests : IDisposable
             .Returns(new EntitlementCheck(true, 5, 1, null, "pro"));
 
         using var ctx = _db.NewContext();
-        var grade = new Grade { Name = "5. Sınıf" };
-        var subject = new Subject { Name = "Matematik" };
+        var grade = new Grade { Name = "5. Sınıf", Code = "5-sinif" };
+        var subject = new Subject { Name = "Matematik", Code = "matematik" };
         ctx.AddRange(grade, subject);
         ctx.SaveChanges();
         var topic = new Topic { Name = "Doğal Sayılar", SubjectId = subject.Id, GradeId = grade.Id };
@@ -139,6 +139,19 @@ public class BookImportSetupTests : IDisposable
         tests[0].KeyAnswers.ShouldBe(4);
         // #1176: düzeltme ekranı anahtar sayfasını gösterir.
         tests.Select(t => t.KeyFilePage).ShouldBe([5, 5]);
+    }
+
+    [Fact]
+    public async Task A_test_without_minutes_in_its_header_gets_the_default_for_the_grade_and_subject()
+    {
+        // 1-02'nin başlığında süre yok: 5. sınıf matematik = sayısal, soru başına 2 dk; 3 soru -> 6 dk. 1-01 başlıktaki 16'yı korur.
+        _ai.Pages[4] = new SurveyedPage(4, BookPageKind.Test, 4, 1, 2, "Milyonlar - II", null, 3);
+        var id = await SeedJobAsync();
+
+        await RunAsync(id, batchSize: 4);
+
+        await using var check = _db.NewContext();
+        (await check.BookImportJobTests.OrderBy(t => t.Order).Select(t => t.Minutes).ToListAsync()).ShouldBe([16, 6]);
     }
 
     [Fact]

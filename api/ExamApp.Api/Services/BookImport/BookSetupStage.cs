@@ -267,6 +267,12 @@ internal sealed class BookSetupStage(
     private async Task SaveAsync(BookImportJob job, BookSetupPlan plan, IReadOnlyDictionary<int, int?> topics,
         IReadOnlyList<BookSetupQr> qrLinks, BookSetupCost cost, CancellationToken ct)
     {
+        // Başlıkta süre yoksa sınıf ve derse göre varsayılan süre (etkinlik bölümü süresiz kalır).
+        var gradeCode = await db.Grades.AsNoTracking().Where(g => g.Id == job.GradeId).Select(g => g.Code).FirstOrDefaultAsync(ct);
+        var subjectCode = job.SubjectId is { } subjectId
+            ? await db.Subjects.AsNoTracking().Where(s => s.Id == subjectId).Select(s => s.Code).FirstOrDefaultAsync(ct)
+            : null;
+
         // Yeniden çalışmada önceki kurulumun test satırları silinir (henüz soru aktarılmadı: aşama onaydan önce).
         await db.BookImportJobTests.Where(t => t.JobId == job.Id).ExecuteDeleteAsync(ct);
         db.BookImportJobTests.AddRange(plan.Tests.Select(t => new BookImportJobTest
@@ -278,7 +284,9 @@ internal sealed class BookSetupStage(
             Title = t.Title,
             FileFrom = t.FileFrom,
             FileTo = t.FileTo,
-            Minutes = t.Minutes,
+            Minutes = t.Minutes ?? (t.Flags.Contains(BookSetupPlanner.FlagActivity)
+                ? null
+                : BookTestDurations.DefaultMinutes(gradeCode, subjectCode, t.ExpectedQuestions ?? 0)),
             ExpectedQuestions = t.ExpectedQuestions,
             AnswerKey = t.AnswerKey,
             KeyConflicts = t.KeyConflicts,

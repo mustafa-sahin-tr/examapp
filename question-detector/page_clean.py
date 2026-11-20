@@ -99,14 +99,16 @@ def colour_boxes(img: np.ndarray, colour=None):
         mask = (img.max(axis=2).astype(np.int16) - img.min(axis=2)) > 90
     else:
         mask = np.abs(img.astype(np.float32) - np.array(colour)).max(axis=2) < 70
-    lab, _ = ndimage.label(ndimage.binary_closing(mask, iterations=2))
     s = max(img.shape[1] / REFERENCE_WIDTH, 0.5)
+    # Kutunun içindeki harf maskede boşluk bırakır; yüksek çözünürlüklü sayfada çizgiler kalın olduğundan kapama ölçekle büyür
+    # ve doluluk, delikleri doldurulmuş lekede ölçülür (yoksa "A)" / "B)" gibi geniş harfli kutular yarı boş sayılıp atlanır).
+    lab, _ = ndimage.label(ndimage.binary_closing(mask, iterations=max(2, round(2 * s))))
     out = []
     for i, sl in enumerate(ndimage.find_objects(lab), 1):
         h, w = sl[0].stop - sl[0].start, sl[1].stop - sl[1].start
         if not (12 * s <= h <= 60 * s and 12 * s <= w <= 80 * s):
             continue
-        area = (lab[sl] == i).sum()
+        area = ndimage.binary_fill_holes(lab[sl] == i).sum()
         if area > 0.5 * h * w:
             out.append(sl)
     return out, mask
@@ -164,6 +166,11 @@ def read_box(img: np.ndarray, sl, mask, pad: int = 8):
     dark_in = np.clip((fill[ch] * 0.85 - reg[..., ch]) / max(fill[ch] * 0.5, 1), 0, 1)
     dark_out = np.clip((200 - reg.mean(axis=2)) / 150, 0, 1)
     dark = np.where(inbox, dark_in, dark_out)
+    # Kutunun koyu kenar çizgisi mürekkep sayılmasın: sol kenar bir harf gövdesi gibi görünür ve "B)" yerine "E)" okutur.
+    edge = max(1, round(1.5 * img.shape[1] / REFERENCE_WIDTH))
+    dark[by0 - y0:by1 - y0, bx0 - x0:bx0 - x0 + edge] = 0
+    dark[by0 - y0:by0 - y0 + edge, bx0 - x0:bx1 - x0] = 0
+    dark[by1 - y0 - edge:by1 - y0, bx0 - x0:bx1 - x0] = 0
     if dark.std() == 0:
         return None
     bh = by1 - by0
@@ -191,7 +198,23 @@ def read_box(img: np.ndarray, sl, mask, pad: int = 8):
                 best = (score, text[0], (y0 + iy, x0 + ix, h))
     if best is None or best[0] < 0.5:
         return None
-    return best[1], best[2]
+    letter, (gy, gx, h) = best[1], best[2]
+    if letter in "BE":
+        letter = "B" if _has_bowls(dark, gy - y0, gx - x0, h, candidate_glyph(letter, h).shape[1]) else "E"
+    return letter, (gy, gx, h)
+
+
+def _has_bowls(dark: np.ndarray, y: int, x: int, h: int, w: int) -> bool:
+    """
+    "B" ile "E" şablon eşlemede karışır (ikisinde de sol gövde + üç yatay çizgi). Ayıran yer harfin sağ kenarı: B'de iki karnın
+    dikey çizgisi (üst ve alt yarının ortasında mürekkep), E'de boşluk.
+    """
+    right = dark[y:y + h, x + w * 3 // 5:x + w + 1]
+    if right.size == 0:
+        return False
+    rows = right.max(axis=1)
+    upper, lower = rows[h * 2 // 10:h * 4 // 10], rows[h * 6 // 10:h * 8 // 10]
+    return upper.size > 0 and lower.size > 0 and float(upper.mean()) > 0.5 and float(lower.mean()) > 0.5
 
 
 def text_colour(img: np.ndarray) -> float:

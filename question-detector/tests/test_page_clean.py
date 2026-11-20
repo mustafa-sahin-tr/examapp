@@ -5,7 +5,7 @@ import sys
 
 import numpy as np
 import pytest
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 page_clean = pytest.importorskip("page_clean")
@@ -72,3 +72,31 @@ def test_picked_mark_colour_is_used_and_marks_are_returned():
     # Pembe kutu silindi.
     assert ((box.max(axis=2) - box.min(axis=2)) > 90).sum() < 20
     assert [m["letter"] for m in marks] == ["B"]
+
+
+def test_wide_letters_in_high_resolution_boxes_are_found_and_b_is_not_read_as_e():
+    """
+    2026-11-20 demo: 2363 px genişlikte sayfada "A)" / "B)" kutuları yarı boş sayılıp atlanıyor, "B)" ile "E)" karışıyordu
+    (gerçek kitapta B -> E; şablonla aynı yazı tipindeki bu sentetik sayfada eski kod E -> B okur).
+    """
+    colour = (234, 9, 125)
+    scale = 2363 / 1400
+    im = Image.new("RGB", (2363, 1200), "white")
+    d = ImageDraw.Draw(im)
+    bold = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+    if not os.path.exists(bold):
+        pytest.skip("DejaVu Sans Bold is not installed")
+    font = ImageFont.truetype(bold, 34)
+    for i, letter in enumerate("ABCDEB"):
+        x, y = 240, 100 + i * 150
+        # Koyu kenarlı kutu, harf kutuyu dolduruyor, parantez sağ kenara taşıyor.
+        d.rectangle([x, y, x + 37, y + 39], fill=colour, outline=(190, 5, 100), width=2)
+        d.text((x + 3, y + 3), letter + ")", fill=(60, 5, 40), font=font, stroke_width=1, stroke_fill=(60, 5, 40))
+    arr = np.asarray(im).copy()
+
+    boxes, _ = page_clean.colour_boxes(arr, list(colour))
+    cleaned, marks = page_clean.remove_marks(arr, list(colour))
+
+    assert scale > 1.5 and len(boxes) == 6
+    assert [m["letter"] for m in sorted(marks, key=lambda m: m["y"])] == list("ABCDEB")
+    assert (np.abs(cleaned.astype(int) - np.array(colour)).max(axis=2) < 70).sum() == 0

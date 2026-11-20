@@ -272,6 +272,13 @@ olarak aktarılır. Yalnız kitap aktarımında; hızlı ekleme ve karışık g�
 - **Temizlik hizmeti yanıt vermezse:** `DetectorPageCleaner.IsAvailableAsync` dayanıklılık işleyicisinin zaman aşımını da
   "hizmet yok" sayar (önceden iş "The operation didn't complete within the allowed timeout" ile düşüyordu; yerelde
   question-detector kapalıyken görüldü).
+- **Atlanan / yanlış okunan işaretler (2026-11-20, demo, 2363 px genişlikte sayfalar):** `page_clean.colour_boxes` kutunun
+  doluluğunu harfin bıraktığı boşlukla birlikte ölçüyordu; kalın harfli "A)" / "B)" kutuları yarı boş sayılıp atlanıyordu.
+  Kapama artık çözünürlükle ölçeklenir, doluluk delikleri doldurulmuş lekede ölçülür. `read_box` kutunun koyu kenar çizgisini
+  mürekkep saymaz ve "B" / "E" ayrımını harfin sağ kenarındaki karınlara bakarak yapar (`_has_bowls`; şablon eşleme "B)"yi
+  "E)" okuyordu). 80 sayfalık kitapta işaret 259 → 383, harf dağılımı A 61 / C 141 / D 35 / E 22'den A 97 / B 96 / C 93 / D 97'ye;
+  kalan pembe lekeler resimlerin içindeki kırmızılar. Eski sürümle temizlenmiş kitap aynı renkle yeniden temizlenir (anahtar da
+  yenilenir).
 - **"Temizlik yarıda kaldı" (2026-11-20, demo):** `page-cleaner` ve `transcriber` istemcilerinde standart dayanıklılık işleyicisi
   kaldırıldı (`RemoveAllResilienceHandlers`): analiz 10 sn'lik deneme sınırını aşınca istek iptal edilip yeniden gönderiliyor,
   Hangfire işi `TimeoutRejectedException` ile düşüyor, özet `Running`de kalıp 10 dk sonra "yarıda kaldı" görünüyordu. Tek sınır

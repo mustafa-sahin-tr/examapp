@@ -153,7 +153,8 @@ public sealed partial class BookImportService
 
         try
         {
-            var bookId = await WriteBookAsync(owner, job, summary, bookName, reuse, ct);
+            var tocRuns = UnitRuns(jobTests.Values, request.Tests);
+            var bookId = await WriteBookAsync(owner, job, summary, tocRuns, bookName, reuse, ct);
             var updated = await ApplyConfirmationAsync(owner, id, bookId, bookName, request, ct);
             _jobs.Enqueue<BookImportJobRunner>(r => r.RunAsync(id));
             return new(ConfirmSetupError.None, ToDto(updated));
@@ -212,12 +213,46 @@ public sealed partial class BookImportService
     }
 
     /// <summary>
-    /// Kitap kaydını yazar (#577): ofset, cevap anahtarı aralıkları, içindekiler (ders seçiliyse). Mevcut kitap kullanılırsa
-    /// kümeleri boşsa doldurulur, doluysa olduğu gibi kalır.
+    /// İçindekiler aralıkları: dosya sırasında aynı üniteden ardışık testler birer aralık (onaylanan testin düzeltilmiş sayfaları,
+    /// diğerlerinin kurulumdaki). Ünitenin en küçük–en büyük sayfası alınmaz: kurulum bir testin ünitesini yanlış okursa
+    /// (5 Fen'de 4. ve 5. ünite testleri "1" okundu) ünite aralıkları çakışır ve onay "İçindekiler aralıkları çakışıyor" ile düşerdi.
     /// </summary>
-    private async Task<int> WriteBookAsync(BookImportOwner owner, BookImportJob job, BookSetupSummary summary, string bookName,
-        BookImportBookRefDto? reuse, CancellationToken ct)
+    internal static List<(int Unit, int FileFrom, int FileTo)> UnitRuns(IEnumerable<BookImportJobTest> tests,
+        IEnumerable<ConfirmBookImportTestDto> confirmed)
     {
+        var pages = confirmed.ToDictionary(t => t.Order, t => (t.FileFrom, t.FileTo));
+        var ordered = tests
+            .Select(t => (t.Unit, Pages: pages.TryGetValue(t.Order, out var p) ? p
+                : t.FileFrom is { } from && t.FileTo is { } to ? (from, to) : ((int, int)?)null))
+            .Where(t => t.Pages is not null)
+            .Select(t => (t.Unit, From: t.Pages!.Value.Item1, To: t.Pages.Value.Item2))
+            .OrderBy(t => t.From).ThenBy(t => t.To);
+        var runs = new List<(int Unit, int FileFrom, int FileTo)>();
+        foreach (var (unit, from, to) in ordered)
+        {
+            if (runs.Count > 0 && runs[^1].Unit == unit)
+            {
+                runs[^1] = runs[^1] with { FileTo = Math.Max(runs[^1].FileTo, to) };
+                continue;
+            }
+
+            // Sayfaları çakışan iki farklı ünite testinde sonraki aralık öncekinin bittiği yerden başlar.
+            var start = runs.Count > 0 ? Math.Max(from, runs[^1].FileTo + 1) : from;
+            if (start <= to)
+                runs.Add((unit, start, to));
+        }
+
+        return runs;
+    }
+
+    /// <summary>
+    /// Kitap kaydını yazar (#577): ofset, cevap anahtarı aralıkları, içindekiler (ders seçiliyse; <see cref="UnitRuns"/>). Mevcut
+    /// kitap kullanılırsa kümeleri boşsa doldurulur, doluysa olduğu gibi kalır.
+    /// </summary>
+    private async Task<int> WriteBookAsync(BookImportOwner owner, BookImportJob job, BookSetupSummary summary,
+        IReadOnlyList<(int Unit, int FileFrom, int FileTo)> tocRuns, string bookName, BookImportBookRefDto? reuse, CancellationToken ct)
+    {
+        var topics = summary.Units.GroupBy(u => u.Unit).ToDictionary(g => g.Key, g => g.First().TopicId);
         var registry = new LabelingBookSaveRequestDto
         {
             Name = reuse?.Name ?? bookName,
@@ -228,9 +263,10 @@ public sealed partial class BookImportService
             AnswerKeyRanges = summary.AnswerKeyRanges
                 .Select(r => new LabelingBookPageRangeDto { FileFrom = r.FileFrom, FileTo = r.FileTo }).ToList(),
             Toc = job.SubjectId is { } subjectId
-                ? summary.Units.Select(u => new LabelingBookTocInputDto
+                ? tocRuns.Select(r => new LabelingBookTocInputDto
                 {
-                    FileFrom = u.FileFrom, FileTo = u.FileTo, GradeId = job.GradeId, SubjectId = subjectId, TopicId = u.TopicId,
+                    FileFrom = r.FileFrom, FileTo = r.FileTo, GradeId = job.GradeId, SubjectId = subjectId,
+                    TopicId = topics.GetValueOrDefault(r.Unit),
                 }).ToList()
                 : [],
         };

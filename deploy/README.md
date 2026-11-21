@@ -232,6 +232,31 @@ Realm import dosyan `my-theme`’i referans ediyorsa, Keycloak recreate sonrası
 
 Marka adı (issue #409): prod realm’de de Realm settings → General → *Display name* = `Hedef Okul` ve Email → *From display name* = `Hedef Okul` ayarlanmalı (Keycloak e-postaları realm görünen adını kullanır).
 
+## 5b) Yönetim arayüzlerine erişim (#369)
+
+Dışarıya yalnız Caddy açıktır (80/443). Caddy yalnız uygulama realm'ini (`/realms/exam-realm`, `/resources`) Keycloak'a
+geçirir. `/realms/master` 404 döner, `/admin` Keycloak'a gitmez (uygulamaya düşer). MinIO konsolu, pgAdmin ve RabbitMQ
+yönetimi için alt alan adı ya da Caddy yolu yoktur. Yönetim yalnız VM'ye SSH ile yapılır:
+
+- **Keycloak:** `docker exec exam-keycloak /opt/keycloak/bin/kcadm.sh config credentials --server http://localhost:8080
+  --realm master --user <admin>` ve ardından `kcadm.sh …`. Konsol gerekiyorsa geçici olarak `127.0.0.1:8081:8080` portunu
+  ekleyip `ssh -L 8081:127.0.0.1:8081 <vm>` ile aç, işin bitince portu kaldır.
+- **pgAdmin:** `docker compose … -f docker-compose.pgadmin.yml up -d` (yalnız `127.0.0.1:5050`) + `ssh -L 5050:127.0.0.1:5050 <vm>`.
+- **RabbitMQ / MinIO konsolu:** gerekirse aynı yolla geçici `127.0.0.1` portu + SSH tüneli; kalıcı public port eklenmez.
+- **Giriş denemeleri:** `/realms/*` istekleri gateway'in giriş hız sınırından (#368) geçmez. Koruma Keycloak'ın brute-force
+  algılamasıdır (#412, realm ayarı); kapatılmamalıdır.
+
+Canlıya çıkışta dışarıdan kontrol (hepsi beklenen sonucu vermeli):
+
+```bash
+D=https://<DOMAIN>
+curl -s -o /dev/null -w '%{http_code}\n' $D/realms/master/.well-known/openid-configuration   # 404
+curl -s -o /dev/null -w '%{http_code}\n' $D/realms/exam-realm/.well-known/openid-configuration # 200
+curl -s $D/admin/master/console/ | grep -c -i keycloak     # 0 (uygulama sayfası döner)
+curl -s $D/minio/ | grep -c -i 'minio console'            # 0
+for h in minio pgadmin rabbitmq; do curl -s -m 10 -o /dev/null -w "$h %{http_code}\n" https://$h.<DOMAIN>/; done  # 000 (DNS yok)
+```
+
 ## 6) Veri Kalıcılığı ve Backup
 
 Compose named volume’ler kullanır:

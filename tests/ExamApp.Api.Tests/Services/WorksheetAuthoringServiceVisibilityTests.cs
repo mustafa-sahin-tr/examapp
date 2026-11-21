@@ -72,6 +72,34 @@ public class WorksheetAuthoringServiceVisibilityTests : IDisposable
         return assignment.Id;
     }
 
+    // issue #1259: kitap erişimi yalnız kitaptan gelen testte ve adminle seçilir; zaten öyleyse sahibin kaydı bozulmaz.
+    [Theory]
+    [InlineData(Owner, false)]
+    [InlineData(Admin, true)]
+    public async Task UpdateVisibilityAsync_BookAudience_IsRejectedOutsideAnAdminOnABookTest(int caller, bool isAdmin)
+    {
+        var id = await SeedWorksheetAsync(Owner);
+
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).UpdateVisibilityAsync(id, Dto(WorksheetTeacherSharing.BookAudience), caller, isAdmin);
+
+        result.Success.ShouldBeFalse();
+        await using var verifyCtx = _db.NewContext();
+        (await verifyCtx.Worksheets.SingleAsync(w => w.Id == id)).TeacherSharing.ShouldBe(WorksheetTeacherSharing.Private);
+    }
+
+    [Fact]
+    public async Task UpdateVisibilityAsync_BookAudience_StaysWhenAlreadySet()
+    {
+        var id = await SeedWorksheetAsync(Owner, WorksheetTeacherSharing.BookAudience);
+
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).UpdateVisibilityAsync(
+            id, Dto(WorksheetTeacherSharing.BookAudience, WorksheetStudentVisibility.Restricted), Owner, isAdmin: false);
+
+        result.Success.ShouldBeTrue();
+    }
+
     [Fact]
     public async Task UpdateVisibilityAsync_Owner_PersistsBothAxesAndReturnsSuccess()
     {

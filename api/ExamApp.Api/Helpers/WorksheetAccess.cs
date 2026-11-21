@@ -32,10 +32,12 @@ public static class WorksheetAccess
     /// atayabilir. Düzenleme yetkisi (<see cref="CanModify"/>) bundan ayrıdır — PublicAssignable veya onaylı
     /// grant atama izni verir, düzenleme izni vermez.
     /// issue #191: TeacherSharing=SchoolOnly ve istekçi sahibiyle aynı okuldaysa PublicAssignable ile aynı.
+    /// issue #1259: TeacherSharing=BookAudience ve istekçi kitabın erişim listesindeyse (<paramref name="inBookAudience"/>,
+    /// <see cref="WorksheetSchoolContext.ResolveBookAudienceAsync"/>) PublicAssignable ile aynı.
     /// </summary>
     public static bool CanAssign(int? createUserId, int userId, bool isAdmin,
         WorksheetTeacherSharing? sharing = null, bool hasApprovedGrant = false,
-        int? requesterSchoolId = null, int? ownerSchoolId = null)
+        int? requesterSchoolId = null, int? ownerSchoolId = null, bool inBookAudience = false)
     {
         if (isAdmin || (createUserId.HasValue && createUserId.Value > 0 && createUserId.Value == userId))
             return true;
@@ -44,7 +46,8 @@ public static class WorksheetAccess
         return hasOwner
             && (sharing == WorksheetTeacherSharing.PublicAssignable
                 || hasApprovedGrant
-                || IsSchoolOnlyMatch(sharing, requesterSchoolId, ownerSchoolId));
+                || IsSchoolOnlyMatch(sharing, requesterSchoolId, ownerSchoolId)
+                || IsBookAudienceMatch(sharing, inBookAudience));
     }
 
     /// <summary>
@@ -52,12 +55,13 @@ public static class WorksheetAccess
     /// Sahibi veya admin her zaman görebilir; ayrıca TeacherSharing PublicView/PublicAssignable
     /// ise herhangi bir kimliği doğrulanmış öğretmen de görüntüleyebilir (issue #11).
     /// issue #191: TeacherSharing=SchoolOnly ise yalnızca sahibiyle aynı okuldaki öğretmen görebilir.
+    /// issue #1259: TeacherSharing=BookAudience ise yalnızca kitabın erişim listesindeki öğretmen görebilir.
     /// Düzenleme yetkisi bundan ayrıdır — bkz. <see cref="CanModify"/>.
     /// </summary>
     public static bool CanView(int? createUserId, int userId, bool isAdmin,
         WorksheetTeacherSharing? sharing = null,
         WorksheetStudentVisibility? studentVisibility = null,
-        int? requesterSchoolId = null, int? ownerSchoolId = null)
+        int? requesterSchoolId = null, int? ownerSchoolId = null, bool inBookAudience = false)
     {
         if (isAdmin || (createUserId.HasValue && createUserId.Value > 0 && createUserId.Value == userId))
             return true;
@@ -68,7 +72,8 @@ public static class WorksheetAccess
         return hasOwner &&
             (sharing == WorksheetTeacherSharing.PublicView
                 || sharing == WorksheetTeacherSharing.PublicAssignable
-                || IsSchoolOnlyMatch(sharing, requesterSchoolId, ownerSchoolId));
+                || IsSchoolOnlyMatch(sharing, requesterSchoolId, ownerSchoolId)
+                || IsBookAudienceMatch(sharing, inBookAudience));
     }
 
     /// <summary>
@@ -80,10 +85,18 @@ public static class WorksheetAccess
     public static bool CanCopy(int? createUserId, int userId, bool isAdmin,
         WorksheetTeacherSharing? sharing = null,
         WorksheetStudentVisibility? studentVisibility = null,
-        int? requesterSchoolId = null, int? ownerSchoolId = null)
+        int? requesterSchoolId = null, int? ownerSchoolId = null, bool inBookAudience = false)
     {
-        return CanView(createUserId, userId, isAdmin, sharing, studentVisibility, requesterSchoolId, ownerSchoolId);
+        return CanView(createUserId, userId, isAdmin, sharing, studentVisibility, requesterSchoolId, ownerSchoolId, inBookAudience);
     }
+
+    /// <summary>
+    /// Issue #1259: BookAudience eşleşmesi — istekçi testin kitabının erişim listesinde (doğrudan ya da okuluyla). Liste kararı
+    /// DB'dedir; çağıran <see cref="WorksheetSchoolContext.ResolveBookAudienceAsync"/> ile çözer, liste sorgusunda
+    /// <see cref="VisibleToTeacherPredicate"/> alt sorgusu aynı koşuldur.
+    /// </summary>
+    public static bool IsBookAudienceMatch(WorksheetTeacherSharing? sharing, bool inBookAudience) =>
+        sharing == WorksheetTeacherSharing.BookAudience && inBookAudience;
 
     /// <summary>
     /// SchoolOnly eşleşmesi (issue #191): iki taraf da okula bağlı VE aynı okul. Okulsuz istekçi
@@ -110,12 +123,15 @@ public static class WorksheetAccess
     /// </summary>
     public static Expression<Func<Worksheet, bool>> VisibleToTeacherPredicate(AppDbContext context, int userId, int? requesterSchoolId)
     {
+        // Issue #1259: BookAudience satırı, kitabının erişim listesinde istekçi ya da (okulu varsa) okulu varsa görünür.
         if (!requesterSchoolId.HasValue)
         {
             return t => t.CreateUserId != null && t.CreateUserId > 0
                 && (t.CreateUserId == userId
                     || t.TeacherSharing == WorksheetTeacherSharing.PublicView
-                    || t.TeacherSharing == WorksheetTeacherSharing.PublicAssignable);
+                    || t.TeacherSharing == WorksheetTeacherSharing.PublicAssignable
+                    || (t.TeacherSharing == WorksheetTeacherSharing.BookAudience && t.BookTestId != null
+                        && context.BookAudienceMembers.Any(m => m.BookId == t.BookTest!.BookId && m.TeacherUserId == userId)));
         }
 
         var schoolId = requesterSchoolId.Value;
@@ -124,7 +140,10 @@ public static class WorksheetAccess
                 || t.TeacherSharing == WorksheetTeacherSharing.PublicView
                 || t.TeacherSharing == WorksheetTeacherSharing.PublicAssignable
                 || (t.TeacherSharing == WorksheetTeacherSharing.SchoolOnly
-                    && context.Teachers.Any(te => te.UserId == t.CreateUserId && te.SchoolId == schoolId)));
+                    && context.Teachers.Any(te => te.UserId == t.CreateUserId && te.SchoolId == schoolId))
+                || (t.TeacherSharing == WorksheetTeacherSharing.BookAudience && t.BookTestId != null
+                    && context.BookAudienceMembers.Any(m => m.BookId == t.BookTest!.BookId
+                        && (m.TeacherUserId == userId || m.SchoolId == schoolId))));
     }
 
     /// <summary>

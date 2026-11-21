@@ -213,7 +213,7 @@ public sealed partial class BookImportService
             Description = $"{job.BookName}. Görsellerden eklenen sorular.",
             GradeId = job.GradeId,
             SubjectId = job.SubjectId,
-            TeacherSharing = WorksheetTeacherSharing.Private,
+            TeacherSharing = job.TeacherSharing, // #1259
         };
         var order = 0;
         foreach (var questionId in questionIds.Distinct())

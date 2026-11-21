@@ -7,6 +7,8 @@ import { of, throwError } from 'rxjs';
 import { BookImportSetupComponent } from './book-import-setup.component';
 import { BookImportSetup } from '../../models/book-import';
 import { BookImportService } from '../../services/book-import.service';
+import { AdminService } from '../../services/admin.service';
+import { WorksheetTeacherSharing } from '../../models/test-instance';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import tr from '../../../../public/i18n/book-imports/tr.json';
 
@@ -54,7 +56,11 @@ describe('BookImportSetupComponent (#1021)', () => {
     } as unknown as MockedObject<BookImportService>;
     TestBed.configureTestingModule({
       imports: [BookImportSetupComponent, translocoTestingModule({ langs: { 'book-imports/tr': tr } })],
-      providers: [provideNoopAnimations(), { provide: BookImportService, useValue: api }],
+      providers: [
+        provideNoopAnimations(),
+        { provide: BookImportService, useValue: api },
+        { provide: AdminService, useValue: { getTeachers: vi.fn() } },
+      ],
     });
     fixture = TestBed.createComponent(BookImportSetupComponent);
     fixture.componentRef.setInput('jobId', 'a1');
@@ -403,8 +409,35 @@ describe('BookImportSetupComponent (#1021)', () => {
       bookName: 'Puan BTS 5 Matematik',
       existingBookId: null,
       tests: [{ order: 1, title: 'Milyonlar - I', minutes: 16, fileFrom: 7, fileTo: 8, answerKey: 'ADC', keySource: 'Book' }],
+      teacherSharing: WorksheetTeacherSharing.Private,
     });
     expect(changed).toHaveBeenCalled();
+  });
+
+  // #1259: paylaşım onayla gider; "Yalnız okulum" yalnız okulu olana, "Seçili okul ve öğretmenler" yalnız admine.
+  it('sharing_OptionsFollowTheSetup_AndBookAudienceNeedsSomeoneBeforeConfirm (#1259)', () => {
+    create(setupData({ canShareWithSchool: false, canShareWithAudience: true,
+      tests: [{ ...setupData().tests[0], answerKey: 'ADC', keyConflicts: '...', flags: [] }] }));
+
+    expect(el().querySelector('[data-testid="book-sharing-schoolOnly"]')).toBeNull();
+    expect(el().querySelector('[data-testid="book-sharing-bookAudience"]')).not.toBeNull();
+    expect(confirmButton().disabled).toBe(false);
+
+    const c = fixture.componentInstance;
+    c.sharing.set(WorksheetTeacherSharing.BookAudience);
+    fixture.detectChanges();
+    expect(confirmButton().disabled).toBe(true);
+    expect(text()).toContain(tr.sharing.emptyAudience);
+
+    c.audienceSchools.set([{ id: 3, name: 'Atatürk O.O.' }]);
+    c.audienceTeachers.set([{ id: 41, name: 'Ayşe Öğretmen', schoolName: null }]);
+    fixture.detectChanges();
+    confirmButton().click();
+
+    expect(api.confirmSetup).toHaveBeenCalledWith('a1', expect.objectContaining({
+      teacherSharing: WorksheetTeacherSharing.BookAudience,
+      audience: { schoolIds: [3], teacherIds: [41] },
+    }));
   });
 
   it('qrFind_ReadsInTheBackground_FillsTheKeysWithAQrChip_AndSendsTheirSource (#1219)', async () => {

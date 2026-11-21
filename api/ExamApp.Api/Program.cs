@@ -445,6 +445,7 @@ builder.Services.AddSingleton<ExamApp.Api.Services.Labeling.IClaudeLabelDetector
 builder.Services.AddScoped<ExamApp.Api.Services.Labeling.ILabelingService, ExamApp.Api.Services.Labeling.LabelingService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Labeling.ILabelingBankService, ExamApp.Api.Services.Labeling.LabelingBankService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Labeling.IBookRegistryService, ExamApp.Api.Services.Labeling.BookRegistryService>(); // issue #577
+builder.Services.AddScoped<ExamApp.Api.Services.Labeling.IBookAudienceService, ExamApp.Api.Services.Labeling.BookAudienceService>(); // issue #1259
 // issue #579: etkinlik yapısı (blok başına tipine göre Claude çağrısı); anahtar boşsa canlı çağrı 503.
 builder.Services.AddSingleton<ExamApp.Api.Services.Labeling.IActivityStructureExtractor, ExamApp.Api.Services.Labeling.ClaudeActivityStructureExtractor>();
 builder.Services.AddScoped<ExamApp.Api.Services.Labeling.IActivityStructureService, ExamApp.Api.Services.Labeling.ActivityStructureService>();

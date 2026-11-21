@@ -357,6 +357,7 @@ public class AppDbContext : DbContext
     public DbSet<BookPageOffset> BookPageOffsets { get; set; }
     public DbSet<BookAnswerKeyRange> BookAnswerKeyRanges { get; set; }
     public DbSet<BookTocEntry> BookTocEntries { get; set; }
+    public DbSet<BookAudienceMember> BookAudienceMembers { get; set; }
     public DbSet<QuestionSource> QuestionSources { get; set; }
 
     // Issue #583: açık uçlu cevap değerlendirmesi (öğretmen kuyruğu; puansız).
@@ -1467,6 +1468,17 @@ public class AppDbContext : DbContext
             e.HasOne<Topic>().WithMany().HasForeignKey(t => t.TopicId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<SubTopic>().WithMany().HasForeignKey(t => t.SubTopicId).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(t => new { t.BookId, t.FileFrom });
+        });
+
+        // Issue #1259: kitabın erişim listesi; okul ya da öğretmen, ikisinden tam biri.
+        modelBuilder.Entity<BookAudienceMember>(e =>
+        {
+            e.HasOne<Book>().WithMany().HasForeignKey(m => m.BookId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<School>().WithMany().HasForeignKey(m => m.SchoolId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(m => new { m.BookId, m.SchoolId }).IsUnique().HasFilter("\"SchoolId\" IS NOT NULL");
+            e.HasIndex(m => new { m.BookId, m.TeacherUserId }).IsUnique().HasFilter("\"TeacherUserId\" IS NOT NULL");
+            e.ToTable(t => t.HasCheckConstraint("CK_BookAudienceMembers_OneTarget",
+                "(\"SchoolId\" IS NULL) <> (\"TeacherUserId\" IS NULL)"));
         });
 
         // Issue #1018: aktarım işi kitap silinince kalır (Restrict); testler işle birlikte yaşar.

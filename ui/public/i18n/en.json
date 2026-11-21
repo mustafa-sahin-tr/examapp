@@ -767,7 +767,8 @@
       "publicAssignable": "Public · Assignable",
       "publicView": "Public · View only",
       "schoolOnly": "My school",
-      "sharedBy": "Shared by {{owner}}"
+      "sharedBy": "Shared by {{owner}}",
+      "bookAudience": "Book access"
     },
     "spinWheel": {
       "spin": "Spin the wheel!",
@@ -806,6 +807,10 @@
           "label": "My school only",
           "description": "Only teachers at your school can view and assign it.",
           "unavailable": "This option is no longer available because you are not linked to a school; pick another option."
+        },
+        "bookAudience": {
+          "label": "Selected schools and teachers",
+          "description": "Teachers on the book's access list and teachers of its schools see it and can assign it without approval. The list is edited from the book import."
         }
       },
       "studentVisibility": {
@@ -817,7 +822,8 @@
         "private": "Only you and an admin can view, edit or assign it.",
         "publicView": "All teachers can view it, assigning requires your approval.",
         "publicAssignable": "All teachers can view and assign it without approval.",
-        "schoolOnly": "Only teachers at your school can view and assign it without approval."
+        "schoolOnly": "Only teachers at your school can view and assign it without approval.",
+        "bookAudience": "Schools and teachers on the book's access list can view it and assign it without approval."
       },
       "summaryStudent": {
         "restricted": "Students can only see it when it is assigned to them.",

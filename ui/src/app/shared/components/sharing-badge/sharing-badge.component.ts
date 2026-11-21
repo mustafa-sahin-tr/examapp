@@ -45,7 +45,8 @@ export class SharingBadgeComponent {
     return (
       value === WorksheetTeacherSharing.PublicView ||
       value === WorksheetTeacherSharing.PublicAssignable ||
-      value === WorksheetTeacherSharing.SchoolOnly
+      value === WorksheetTeacherSharing.SchoolOnly ||
+      value === WorksheetTeacherSharing.BookAudience
     );
   });
 
@@ -56,6 +57,9 @@ export class SharingBadgeComponent {
       // issue #191: okul içi paylaşım
       case WorksheetTeacherSharing.SchoolOnly:
         return 'school';
+      // issue #1259: kitabın erişim listesi
+      case WorksheetTeacherSharing.BookAudience:
+        return 'menu_book';
       case WorksheetTeacherSharing.PublicView:
         return 'visibility';
       default:
@@ -69,6 +73,8 @@ export class SharingBadgeComponent {
         return this.translate('shared.sharingBadge.publicAssignable');
       case WorksheetTeacherSharing.SchoolOnly:
         return this.translate('shared.sharingBadge.schoolOnly');
+      case WorksheetTeacherSharing.BookAudience:
+        return this.translate('shared.sharingBadge.bookAudience');
       case WorksheetTeacherSharing.PublicView:
         return this.translate('shared.sharingBadge.publicView');
       case WorksheetTeacherSharing.Private:

@@ -586,5 +586,46 @@
       "imageMissing": "görsel yok"
     },
     "next": "ZIP'i question-detector klasöründe \"python training/import_book_export.py <zip>\" ile veri setine yazın; sonra her zamanki gibi Drive'a yükleyin."
+  },
+  "sharing": {
+    "title": "Testleri kimler görsün?",
+    "options": {
+      "private": {
+        "label": "Özel",
+        "description": "Yalnız siz ve admin."
+      },
+      "publicView": {
+        "label": "Herkese açık (görüntüleme)",
+        "description": "Tüm öğretmenler görür; atamak için onayınız gerekir."
+      },
+      "publicAssignable": {
+        "label": "Herkese açık (atanabilir)",
+        "description": "Tüm öğretmenler görür ve onaysız atar."
+      },
+      "schoolOnly": {
+        "label": "Yalnız okulum",
+        "description": "Okulunuzdaki öğretmenler görür ve atar."
+      },
+      "bookAudience": {
+        "label": "Seçili okul ve öğretmenler",
+        "description": "Seçtiğiniz okulların öğretmenleri ve seçtiğiniz öğretmenler görür ve atar."
+      }
+    },
+    "schools": {
+      "title": "Okullar",
+      "add": "Okul ekle",
+      "hint": "Okuldaki bütün öğretmenler görür; sonradan katılanlar da."
+    },
+    "teachers": {
+      "title": "Öğretmenler",
+      "school": "Öğretmenin okulu",
+      "hint": "Okulu seçin, listeden öğretmenleri işaretleyin.",
+      "loading": "Öğretmenler yükleniyor…",
+      "failed": "Öğretmenler yüklenemedi.",
+      "none": "Bu okulda öğretmen yok.",
+      "unnamed": "Öğretmen #{{id}}"
+    },
+    "remove": "{{name}} listeden çıkar",
+    "emptyAudience": "En az bir okul ya da öğretmen seçin."
   }
 }

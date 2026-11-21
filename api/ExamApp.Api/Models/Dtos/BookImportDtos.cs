@@ -306,6 +306,12 @@ public class BookImportSetupDto
     public BookImportBookRefDto? ExistingBook { get; set; }
 
     public List<BookImportSetupTestDto> Tests { get; set; } = new();
+
+    /// <summary>Issue #1259: "Yalnız okulum" seçilebilir mi (aktaranın okulu var).</summary>
+    public bool CanShareWithSchool { get; set; }
+
+    /// <summary>Issue #1259: "Seçili okul ve öğretmenler" seçilebilir mi (admin).</summary>
+    public bool CanShareWithAudience { get; set; }
 }
 
 public record BookImportPageRangeDto(int FileFrom, int FileTo);
@@ -418,6 +424,14 @@ public class ConfirmBookImportSetupDto
     public int? ExistingBookId { get; set; }
 
     public List<ConfirmBookImportTestDto> Tests { get; set; } = new();
+
+    /// <summary>
+    /// Issue #1259: aktarımın açtığı testlerin öğretmen paylaşımı (boşsa Private). <c>BookAudience</c> yalnız admin; seçilen
+    /// okul / öğretmenler (<see cref="Audience"/>) kitabın erişim listesine eklenir. <c>SchoolOnly</c> aktaranın okulunu ister.
+    /// </summary>
+    public WorksheetTeacherSharing? TeacherSharing { get; set; }
+
+    public ExamApp.Api.Models.Dtos.Labeling.BookAudienceSaveDto? Audience { get; set; }
 }
 
 public class ConfirmBookImportTestDto

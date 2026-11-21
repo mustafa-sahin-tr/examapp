@@ -44,6 +44,9 @@
     "invalidOption": "Geçersiz şık.",
     "lastQuestion": "Testin son sorusu çıkarılamaz; testi silin.",
     "notInReview": "Bu test şu anda onaylanamaz ya da silinemez.",
-    "fixFailed": "Sayfa düzeltmesi kaydedilemedi; yeniden deneyin."
+    "fixFailed": "Sayfa düzeltmesi kaydedilemedi; yeniden deneyin.",
+    "invalidSharing": "Paylaşım seçimi geçersiz.",
+    "sharingAdminOnly": "Seçili okul ve öğretmenlerle paylaşımı yalnız admin yapabilir.",
+    "schoolOnlyRequiresSchool": "\"Yalnız okulum\" paylaşımı için bir okula bağlı olmanız gerekir."
   }
 }

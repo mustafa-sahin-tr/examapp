@@ -1,6 +1,7 @@
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Models.Dtos.Labeling;
 using ExamApp.Api.Services.BookImport;
 using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Interfaces;
@@ -300,6 +301,65 @@ public class BookImportSetupTests : IDisposable
     }
 
     [Fact]
+    public async Task An_admin_shares_the_import_with_picked_schools_and_teachers_through_the_book_audience()
+    {
+        var id = await SetUpAsync();
+        int schoolId, teacherId;
+        await using (var seed = _db.NewContext())
+        {
+            var school = new School { Name = "V1259 Okul" };
+            var teacher = new Teacher { UserId = 4242 };
+            seed.Schools.Add(school);
+            seed.Teachers.Add(teacher);
+            await seed.SaveChangesAsync();
+            (schoolId, teacherId) = (school.Id, teacher.Id);
+        }
+
+        var request = Request(Confirmed(1));
+        request.TeacherSharing = WorksheetTeacherSharing.BookAudience;
+        request.Audience = new BookAudienceSaveDto { SchoolIds = [schoolId], TeacherIds = [teacherId] };
+
+        (await ConfirmAsync(id, request)).Code.ShouldBe("bookImport.sharingAdminOnly");
+        (await ConfirmAsync(id, request, OwnerId, "Admin")).Error.ShouldBe(ConfirmSetupError.None);
+
+        await using var check = _db.NewContext();
+        (await check.BookImportJobs.SingleAsync()).TeacherSharing.ShouldBe(WorksheetTeacherSharing.BookAudience);
+        var bookId = (await check.Books.SingleAsync()).Id;
+        (await check.BookAudienceMembers.Where(m => m.BookId == bookId).Select(m => new { m.SchoolId, m.TeacherUserId }).ToListAsync())
+            .ShouldBe([new { SchoolId = (int?)schoolId, TeacherUserId = (int?)null }, new { SchoolId = (int?)null, TeacherUserId = (int?)4242 }],
+                ignoreOrder: true);
+    }
+
+    [Theory]
+    [InlineData(WorksheetTeacherSharing.SchoolOnly, null, "bookImport.schoolOnlyRequiresSchool")]
+    [InlineData(WorksheetTeacherSharing.BookAudience, "Admin", "labeling.books.audienceEmpty")]
+    [InlineData((WorksheetTeacherSharing)9, null, "bookImport.invalidSharing")]
+    public async Task Confirm_rejects_a_sharing_the_importer_cannot_use(WorksheetTeacherSharing sharing, string? role, string code)
+    {
+        var id = await SetUpAsync();
+        var request = Request(Confirmed(1));
+        request.TeacherSharing = sharing;
+
+        var result = await ConfirmAsync(id, request, OwnerId, role is null ? [] : [role]);
+
+        (result.Error, result.Code).ShouldBe((ConfirmSetupError.Invalid, code));
+        await AssertStillAwaitingAsync();
+    }
+
+    [Fact]
+    public async Task A_teacher_shares_the_import_with_all_teachers_and_without_a_choice_it_stays_private()
+    {
+        var id = await SetUpAsync();
+        var request = Request(Confirmed(1));
+        request.TeacherSharing = WorksheetTeacherSharing.PublicAssignable;
+
+        (await ConfirmAsync(id, request)).Error.ShouldBe(ConfirmSetupError.None);
+
+        await using var check = _db.NewContext();
+        (await check.BookImportJobs.SingleAsync()).TeacherSharing.ShouldBe(WorksheetTeacherSharing.PublicAssignable);
+    }
+
+    [Fact]
     public async Task After_confirmation_the_runner_continues_past_the_setup()
     {
         var id = await SetUpAsync();
@@ -472,10 +532,11 @@ public class BookImportSetupTests : IDisposable
         return id;
     }
 
-    private async Task<ConfirmSetupResult> ConfirmAsync(Guid id, ConfirmBookImportSetupDto request, int userId = OwnerId)
+    private async Task<ConfirmSetupResult> ConfirmAsync(Guid id, ConfirmBookImportSetupDto request, int userId = OwnerId,
+        params string[] roles)
     {
         await using var ctx = _db.NewContext();
-        return await NewService(ctx).ConfirmSetupAsync(BookImportOwner.Create(userId), id, request, default);
+        return await NewService(ctx).ConfirmSetupAsync(BookImportOwner.Create(userId, roles), id, request, default);
     }
 
     private async Task AssertStillAwaitingAsync()

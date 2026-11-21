@@ -86,6 +86,7 @@
       "visibilityForbidden": "Bu worksheet'in görünürlüğünü değiştirme yetkiniz yok.",
       "visibilityUpdated": "Worksheet görünürlüğü güncellendi.",
       "schoolOnlyRequiresSchool": "\"Sadece okulum\" paylaşımı için sınav sahibinin bir okula bağlı olması gerekir.",
+      "bookAudienceAdminOnly": "Kitap erişimi yalnız kitaptan aktarılan testlerde ve yalnız admin tarafından seçilir.",
       "deleteForbidden": "Bu worksheet'i silme yetkiniz yok.",
       "copied": "Sınav kopyalandı.",
 

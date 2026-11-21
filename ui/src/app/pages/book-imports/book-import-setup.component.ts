@@ -33,8 +33,12 @@ import {
   ConfirmBookImportSetup,
   bookImportTestCode,
   isActivitySection,
+  BookAudienceSchool,
+  BookAudienceTeacher,
 } from '../../models/book-import';
+import { WorksheetTeacherSharing } from '../../models/test-instance';
 import { BookImportService } from '../../services/book-import.service';
+import { BookImportSharingComponent } from './book-import-sharing/book-import-sharing.component';
 
 const KEY_LETTER = /^[A-Ea-e]$/;
 /** Uyuşmazlıkta "-": diğer okumada bu soru yok (BookSetupPlanner). */
@@ -132,6 +136,7 @@ export function toEditable(test: BookImportSetupTest): EditableSetupTest {
   selector: 'app-book-import-setup',
   standalone: true,
   imports: [
+    BookImportSharingComponent,
     FormsModule,
     MatButtonModule,
     MatCheckboxModule,
@@ -160,6 +165,16 @@ export class BookImportSetupComponent implements OnInit {
   readonly loadError = signal(false);
   readonly bookName = signal('');
   readonly useExisting = signal<'existing' | 'new'>('existing');
+  /** #1259: aktarılan testlerin öğretmen paylaşımı ve (admin) kitabın erişim listesi. */
+  readonly sharing = signal<WorksheetTeacherSharing>(WorksheetTeacherSharing.Private);
+  readonly audienceSchools = signal<BookAudienceSchool[]>([]);
+  readonly audienceTeachers = signal<BookAudienceTeacher[]>([]);
+  readonly audienceMissing = computed(
+    () =>
+      this.sharing() === WorksheetTeacherSharing.BookAudience &&
+      this.audienceSchools().length === 0 &&
+      this.audienceTeachers().length === 0,
+  );
   readonly noKeyAcknowledged = signal(false);
   /** "AI ile bul": aranan testler (sıra), AI'nın bulamadıkları, toplu aramanın ilerlemesi; hata mesajı ('generic' çevrilir). */
   readonly finding = signal<ReadonlySet<number>>(new Set());
@@ -263,6 +278,7 @@ export class BookImportSetupComponent implements OnInit {
           this.bookName().trim().length > 0 &&
           !this.qrRunning() &&
           !this.cleaningRunning() &&
+          !this.audienceMissing() &&
           (!this.setup()?.noAnswerKey || this.noKeyAcknowledged() || this.anyKey()))),
   );
 
@@ -749,6 +765,11 @@ export class BookImportSetupComponent implements OnInit {
         answerKey: r.key ? r.key.join('') : null,
         keySource: r.key ? r.source : null,
       })),
+      teacherSharing: this.sharing(),
+      audience:
+        this.sharing() === WorksheetTeacherSharing.BookAudience
+          ? { schoolIds: this.audienceSchools().map((s) => s.id), teacherIds: this.audienceTeachers().map((t) => t.id) }
+          : undefined,
     };
 
     this.saving.set(true);

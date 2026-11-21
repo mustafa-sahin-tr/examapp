@@ -101,6 +101,12 @@ public class BookImportJob : BaseEntity
     [Required, MaxLength(MaxBookNameLength)]
     public string BookName { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Issue #1259: aktarımın açtığı testlerin öğretmen paylaşımı (kurulum onayında seçilir; mevcut işler Private).
+    /// <see cref="WorksheetTeacherSharing.BookAudience"/>'ta görünürlük kitabın erişim listesinden gelir.
+    /// </summary>
+    public WorksheetTeacherSharing TeacherSharing { get; set; } = WorksheetTeacherSharing.Private;
+
     public int GradeId { get; set; }
 
     public int? SubjectId { get; set; }

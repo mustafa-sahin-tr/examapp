@@ -1,4 +1,5 @@
 import { Observable } from 'rxjs';
+import { WorksheetTeacherSharing } from './test-instance';
 
 /** Issue #1018 (epic #1017): kitaptan aktarım işi. Sunucu enum'ları adlarıyla gelir. */
 export type BookImportStatus =
@@ -333,6 +334,28 @@ export interface BookImportSetup {
   schemaRevision: number;
   existingBook: BookImportBookRef | null;
   tests: BookImportSetupTest[];
+  /** #1259: "Yalnız okulum" seçilebilir (aktaran öğretmenin okulu var). */
+  canShareWithSchool?: boolean;
+  /** #1259: "Seçili okul ve öğretmenler" seçilebilir (yalnız admin). */
+  canShareWithAudience?: boolean;
+}
+
+/** #1259: kitabın erişim listesindeki okul. */
+export interface BookAudienceSchool {
+  id: number;
+  name: string;
+}
+
+/** #1259: kitabın erişim listesindeki öğretmen; `id` Teacher kaydının id'si. */
+export interface BookAudienceTeacher {
+  id: number;
+  name: string | null;
+  schoolName: string | null;
+}
+
+export interface BookAudienceSave {
+  schoolIds: number[];
+  teacherIds: number[];
 }
 
 export interface BookImportBookRef {
@@ -426,6 +449,10 @@ export interface ConfirmBookImportSetup {
     answerKey: string | null;
     keySource: BookKeySource | null;
   }[];
+  /** #1259: aktarılan testlerin öğretmen paylaşımı; yoksa Özel. */
+  teacherSharing?: WorksheetTeacherSharing;
+  /** #1259: yalnız `BookAudience` ile; kitabın erişim listesine eklenir. */
+  audience?: BookAudienceSave;
 }
 
 /** Issue #1023: sayfa düzeltmesinin sonucu (kaydedilen, kırpması bankada olduğu için atlanan, silinen eski taslak, cevapsız). */

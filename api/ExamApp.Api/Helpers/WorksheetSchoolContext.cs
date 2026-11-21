@@ -67,4 +67,23 @@ public static class WorksheetSchoolContext
         var schools = await UserSchoolResolver.ResolveTeacherSchoolsAsync(context, new[] { ownerUserId.Value, userId }, ct);
         return (schools.GetValueOrDefault(ownerUserId.Value), schools.GetValueOrDefault(userId));
     }
+
+    /// <summary>
+    /// Issue #1259: istekçi testin kitabının erişim listesinde mi (doğrudan ya da öğretmen kaydındaki okuluyla). Yalnız karar
+    /// için gerekliyse sorgu atar: test BookAudience değilse, kitapsızsa, istekçi admin veya sahibi ise <c>false</c> döner (bu
+    /// durumlarda CanView/CanAssign listeye bakmaz). Okul, liste sorgusundaki dalla aynı tablodan (<c>Teachers.SchoolId</c>).
+    /// </summary>
+    public static async Task<bool> ResolveBookAudienceAsync(
+        this AppDbContext context, Worksheet worksheet, int userId, bool isAdmin, CancellationToken ct = default)
+    {
+        if (worksheet.TeacherSharing != WorksheetTeacherSharing.BookAudience || isAdmin || worksheet.BookTestId is not { } bookTestId)
+            return false;
+        if (worksheet.CreateUserId is not { } ownerUserId || ownerUserId <= 0 || ownerUserId == userId)
+            return false;
+
+        var schoolId = await context.ResolveTeacherSchoolIdAsync(userId, ct);
+        return await context.BookAudienceMembers.AsNoTracking()
+            .AnyAsync(m => context.BookTests.Any(bt => bt.Id == bookTestId && bt.BookId == m.BookId)
+                && (m.TeacherUserId == userId || (schoolId != null && m.SchoolId == schoolId)), ct);
+    }
 }

@@ -9,6 +9,11 @@
   font-family: var(--mainFontFamily);
 }
 
+// #1272: altta sabit anahtar paneli açıkken tuvalin altı panelin arkasında kalmaz.
+.lb:has(.lkp-zoom--bottom[open]) {
+  padding-bottom: calc(42vh + 16px);
+}
+
 .lb-top {
   display: flex;
   align-items: center;

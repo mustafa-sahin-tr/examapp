@@ -4,7 +4,7 @@ import { of, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import labelingTr from '../../../../../public/i18n/labeling/tr.json';
 import { BookImportService } from '../../../services/book-import.service';
-import { LabelingKeyPageComponent } from './labeling-key-page.component';
+import { KEY_DOCKED_STORAGE_KEY, LabelingKeyPageComponent } from './labeling-key-page.component';
 
 describe('LabelingKeyPageComponent (#1176)', () => {
   let fixture: ComponentFixture<LabelingKeyPageComponent>;
@@ -45,6 +45,32 @@ describe('LabelingKeyPageComponent (#1176)', () => {
     expect(dialog().open).toBe(true);
     expect(dialog().querySelector('.lkp-zoom__hint')).toBeNull();
     expect(button(labelingTr.fix.key.next)).toBeNull();
+  });
+
+  it('key docks at the bottom without a modal, zooms, and reopens on the next page while left open (#1272)', async () => {
+    const showModal = vi.spyOn(HTMLDialogElement.prototype, 'showModal');
+    localStorage.removeItem(KEY_DOCKED_STORAGE_KEY);
+    create([41]);
+    el().querySelector<HTMLButtonElement>('[data-testid="labeling-key-page"]')!.click();
+    fixture.detectChanges();
+
+    expect(dialog().open).toBe(true);
+    expect(dialog().classList).toContain('lkp-zoom--bottom');
+    expect(showModal).not.toHaveBeenCalled();
+    expect(localStorage.getItem(KEY_DOCKED_STORAGE_KEY)).toBe('1');
+    button(labelingTr.fix.key.zoomIn).click();
+    fixture.detectChanges();
+    expect(dialog().querySelector<HTMLImageElement>('.lkp-zoom__image')!.style.width).toBe('125%');
+
+    // Sonraki sayfa / test: bileşen yeniden kurulur, panel kendiliğinden açılır.
+    dialog().close();
+    create([42]);
+    await Promise.resolve();
+    expect(dialog().open).toBe(true);
+
+    button(labelingTr.fix.key.close).click();
+    expect(localStorage.getItem(KEY_DOCKED_STORAGE_KEY)).toBe('0');
+    localStorage.removeItem(KEY_DOCKED_STORAGE_KEY);
   });
 
   it('book key pages (older setup) are paged with a hint', () => {

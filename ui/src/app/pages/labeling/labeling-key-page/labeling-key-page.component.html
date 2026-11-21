@@ -11,7 +11,7 @@
   </button>
   }
 
-  <dialog #dialog class="lkp-zoom" [class.lkp-zoom--docked]="original()" [attr.aria-label]="t(ns() + '.title', { page: page() })"
+  <dialog #dialog class="lkp-zoom" [class.lkp-zoom--docked]="original()" [class.lkp-zoom--bottom]="!original()" [attr.aria-label]="t(ns() + '.title', { page: page() })"
     (click)="closeOnBackdrop($event)">
     <div class="lkp-zoom__bar">
       @if (pages().length > 1) {
@@ -28,6 +28,18 @@
         <mat-icon>chevron_right</mat-icon>
       </button>
       }
+      @if (!original()) {
+      <!-- #1272: altta sabit anahtarın yakınlaştırması. -->
+      <span class="lkp-zoom__zoom">
+        <button mat-icon-button type="button" [attr.aria-label]="t('key.zoomOut')" [disabled]="zoom() <= 50" (click)="zoomBy(-25)">
+          <mat-icon>zoom_out</mat-icon>
+        </button>
+        <span class="lkp-zoom__percent">{{ zoom() }}%</span>
+        <button mat-icon-button type="button" [attr.aria-label]="t('key.zoomIn')" [disabled]="zoom() >= 300" (click)="zoomBy(25)">
+          <mat-icon>zoom_in</mat-icon>
+        </button>
+      </span>
+      }
       <button mat-icon-button type="button" class="lkp-zoom__close" [attr.aria-label]="t(ns() + '.close')" (click)="close()">
         <mat-icon>close</mat-icon>
       </button>
@@ -39,7 +51,7 @@
     }
     <div class="lkp-zoom__scroller" tabindex="0">
       @if (imageUrl(); as src) {
-      <img class="lkp-zoom__image" [src]="src" [alt]="t(ns() + '.title', { page: page() })" />
+      <img class="lkp-zoom__image" [src]="src" [style.width.%]="original() ? null : zoom()" [alt]="t(ns() + '.title', { page: page() })" />
       }
     </div>
   </dialog>

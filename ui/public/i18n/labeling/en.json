@@ -34,6 +34,9 @@
     "saving": "Saving…",
     "hint": "The multiple-choice questions on the page replace this page's drafts; unmarked answers come from the book's answer key.",
     "saved": "{{saved}} questions saved, {{removed}} old drafts removed.",
+    "nextPage": "Opening the test's next page that needs checking (p. {{page}}).",
+    "nextTest": "Moving to the next test that needs checking: {{test}}.",
+    "noneLeft": "No test needs checking any more; back to the import page.",
     "duplicates": "{{count}} questions skipped because they are already in the bank.",
     "answerless": "{{count}} questions have no answer; pick it in the review.",
     "failed": "The page fix could not be saved.",
@@ -60,7 +63,9 @@
       "bookPagesHint": "This test was set up before the key page was recorded; all answer key pages of the book are shown.",
       "prev": "Previous key page",
       "next": "Next key page",
-      "close": "Close"
+      "close": "Close",
+      "zoomOut": "Zoom the key out",
+      "zoomIn": "Zoom the key in"
     },
     "original": {
       "label": "Original page",

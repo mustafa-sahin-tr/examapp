@@ -393,7 +393,13 @@ olarak aktarılır. Yalnız kitap aktarımında; hızlı ekleme ve karışık g�
   **Anahtar sayfası (#1176):** kurulum her testin anahtarının okunduğu dosya sayfasını `BookImportJobTests.KeyFilePage`'e yazar
   (ilk okumanınki, yoksa ikincininki). İş detayındaki `keyPages` bu sayfayı, alan boşsa (önceki kurulumlar, demo kopyası)
   kitabın bütün anahtar sayfalarını (`SetupJson.AnswerKeyRanges`) verir; anahtarsız testte boş. Düzeltme şeridinde küçük görsel,
-  tıklayınca büyür (birden çok sayfada önceki / sonraki). Hızlı eklemede yok.
+  tıklayınca büyür (birden çok sayfada önceki / sonraki). Hızlı eklemede yok. **#1272:** büyüyen anahtar ekranın altına
+  sabitlenir (modal değil, %50–300 yakınlaştırma; işaretleme sayfası alttan boşluk bırakır); açık bırakılırsa
+  (`localStorage` `labeling.fix.keyDocked`) sonraki sayfa / testte kendiliğinden açılır.
+  **Sıradaki sorunlu yere geçiş (#1273):** "Yalnız işaretli sayfalar" açıkken "Taslakları değiştir"den sonra iş yeniden okunur:
+  testin kalan işaretli sayfası (kaydedilenden sonrakiler önce), yoksa sıradaki kontrol gerekli test (sıraya göre, sonra
+  baştan; ilk işaretli sayfası, yoksa ilk sayfası) bildirimle açılır; kalmadıysa aktarım sayfasına dönülür
+  (`nextFlaggedFixTarget`). Filtre kapalıyken eski davranış: testin sıradaki sayfası, sonra dönüş.
 
 **Sorular alınırken inceleme (#1267):** iş `Questions` aşamasında ve aktarım sürüyorken (`Queued`, `Running`, `AwaitingBudget`,
 `AwaitingCostApproval`) bitmiş test (`Done`, `NeedsReview`, `Failed`) beklemeden incelenir: işaretlemede düzelt, cevap seçme,

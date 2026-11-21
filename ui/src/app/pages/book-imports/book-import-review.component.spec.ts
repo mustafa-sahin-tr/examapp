@@ -244,6 +244,26 @@ describe('BookImportReviewComponent (#1023)', () => {
     expect(link?.getAttribute('href')).toBe('/labeling?bookImport=a1&test=1&page=4');
   });
 
+  it('importing_FinishedTestIsFixedAndApproved_PendingTestStaysLocked (#1267)', () => {
+    const flags = [{ code: 'missingNumbers', pages: [4], numbers: [3], found: null, expected: null }];
+    setup([test({ status: 'NeedsReview', reviewFlags: flags }), test({ id: 2, order: 2, testNo: 2, title: null, status: 'Pending' })], false);
+    fixture.componentRef.setInput('locked', true);
+    fixture.componentRef.setInput('importing', true);
+    fixture.componentInstance.onlyAttention.set(false);
+    fixture.detectChanges();
+
+    const fix = (row: Element) => Array.from(row.querySelectorAll('a')).find((a) => a.textContent?.includes('İşaretlemede düzelt'));
+    expect(fix(rows()[0])?.getAttribute('href')).toBe('/labeling?bookImport=a1&test=1&page=4');
+    expect(button(rows()[0], 'Onayla').disabled).toBe(false);
+    expect(fix(rows()[1])).toBeUndefined();
+    expect(button(rows()[1], 'Onayla').disabled).toBe(true);
+
+    fixture.componentRef.setInput('importing', false);
+    fixture.detectChanges();
+    expect(fix(rows()[0])).toBeUndefined();
+    expect(button(rows()[0], 'Onayla').disabled).toBe(true);
+  });
+
   it('flags_OpenPerTestWithCompactPagesAndNumbers', () => {
     setup([test({
       status: 'NeedsReview', flags: ['keyMismatch'], duplicatesSkipped: 1,

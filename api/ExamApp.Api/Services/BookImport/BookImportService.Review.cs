@@ -170,6 +170,9 @@ public sealed partial class BookImportService
         var collected = new List<int>();
         foreach (var test in tests)
         {
+            // #1267: aktarım sürerken bekleyen / alınan test atlanır (hata sayılmaz, sonra onaylanır).
+            if (IsUnfinished(test))
+                continue;
             if (!IsReviewable(test))
             {
                 result.Skipped.Add(new BookImportSkippedTestDto(test.Id, SkipFailed));
@@ -236,6 +239,9 @@ public sealed partial class BookImportService
         if (test is null)
             return BookImportReviewResult.NotFound;
         if (test.Status is BookImportTestStatus.Approved or BookImportTestStatus.Removed || !await InReviewAsync(id, ct))
+            return BookImportReviewResult.InvalidState;
+        // #1267: aktarım sürerken bekleyen / alınan test kaldırılamaz (aktarım durumunu yeniden yazar).
+        if (IsUnfinished(test) && await _db.BookImportJobs.AnyAsync(j => j.Id == id && ImportingStatuses.Contains(j.Status), ct))
             return BookImportReviewResult.InvalidState;
 
         var strategy = _db.Database.CreateExecutionStrategy();
@@ -374,9 +380,25 @@ public sealed partial class BookImportService
     private static bool IsReviewable(BookImportJobTest test) =>
         test.Status is BookImportTestStatus.Done or BookImportTestStatus.NeedsReview && test.WorksheetId is not null;
 
-    /// <summary>İncelemede ya da iptal edilmiş (taslakları kalan, #1025) iş: testler onaylanıp silinebilir.</summary>
+    /// <summary>
+    /// İncelemede ya da iptal edilmiş (taslakları kalan, #1025) iş: testler onaylanıp silinebilir. #1267: sorular alınırken de;
+    /// yalnız bitmiş testler (aktarım bitmiş teste bir daha dokunmaz; bekleyen / alınan test engellenir).
+    /// </summary>
     private Task<bool> InReviewAsync(Guid id, CancellationToken ct) =>
-        _db.BookImportJobs.AnyAsync(j => j.Id == id && (j.Status == BookImportJobStatus.ReadyForReview || j.Status == BookImportJobStatus.Cancelled), ct);
+        _db.BookImportJobs.AnyAsync(j => j.Id == id && (j.Status == BookImportJobStatus.ReadyForReview
+                                                        || j.Status == BookImportJobStatus.Cancelled
+                                                        || (j.Stage == BookImportStage.Questions && ImportingStatuses.Contains(j.Status))), ct);
+
+    /// <summary>#1267: soru aktarımı süren işin durumları (çalışıyor, sırada, bütçe / maliyet onayı bekliyor).</summary>
+    internal static readonly BookImportJobStatus[] ImportingStatuses =
+    [
+        BookImportJobStatus.Queued, BookImportJobStatus.Running, BookImportJobStatus.AwaitingBudget,
+        BookImportJobStatus.AwaitingCostApproval,
+    ];
+
+    /// <summary>#1267: aktarım bu teste hâlâ dokunabilir (bekliyor ya da alınıyor).</summary>
+    internal static bool IsUnfinished(BookImportJobTest test) =>
+        test.Status is BookImportTestStatus.Pending or BookImportTestStatus.Running;
 
     /// <summary>Testin taslak soruları (silinmemiş bağlantılar).</summary>
     /// <summary>

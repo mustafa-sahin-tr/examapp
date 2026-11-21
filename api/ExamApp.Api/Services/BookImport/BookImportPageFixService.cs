@@ -228,7 +228,10 @@ public sealed class BookImportPageFixService(
             : await db.BookImportJobTests.AsTracking().FirstOrDefaultAsync(t => t.Id == testId && t.JobId == id, ct);
         if (job is null || test is null)
             return (BookImportPageFixError.NotFound, null, null, null);
-        if (job.Status is not (BookImportJobStatus.ReadyForReview or BookImportJobStatus.Cancelled) || (!job.HasLooseQuestions && job.BookId is null) || job.CreateUserId is not > 0
+        // #1267: sorular alınırken de bitmiş test düzeltilir (aşağıdaki test durumu denetimi bekleyen / alınanı dışarıda tutar).
+        var reviewable = job.Status is BookImportJobStatus.ReadyForReview or BookImportJobStatus.Cancelled
+                         || job.Stage == BookImportStage.Questions && BookImportService.ImportingStatuses.Contains(job.Status);
+        if (!reviewable || (!job.HasLooseQuestions && job.BookId is null) || job.CreateUserId is not > 0
             || test.Status is not (BookImportTestStatus.Done or BookImportTestStatus.NeedsReview or BookImportTestStatus.Failed)
             || test.FileFrom is not { } from || test.FileTo is not { } to || filePage < from || filePage > to)
             return (BookImportPageFixError.InvalidState, null, null, null);

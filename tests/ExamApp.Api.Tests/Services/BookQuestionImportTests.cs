@@ -1119,6 +1119,68 @@ public class BookQuestionImportTests : IDisposable
         _saved.Count.ShouldBe(2);
     }
 
+    // ---------- Issue #1267: sorular alınırken bitmiş testi incele / düzelt ----------
+
+    private async Task BackToImportingAsync(Guid id, params int[] pendingTests)
+    {
+        await using var ctx = _db.NewContext();
+        await ctx.BookImportJobs.Where(j => j.Id == id).ExecuteUpdateAsync(u => u
+            .SetProperty(j => j.Status, BookImportJobStatus.Running).SetProperty(j => j.Stage, BookImportStage.Questions));
+        await ctx.BookImportJobTests.Where(t => pendingTests.Contains(t.Id))
+            .ExecuteUpdateAsync(u => u.SetProperty(t => t.Status, BookImportTestStatus.Pending));
+    }
+
+    [Fact]
+    public async Task A_finished_test_is_reviewed_and_fixed_while_the_rest_are_still_importing()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "A", [1]), new(2, 2, 2, "B", [1])]);
+        Detect(1, 4);
+        Detect(2, 4);
+        await RunAsync(id);
+        var tests = await TestsAsync();
+        await BackToImportingAsync(id, tests[1].Id);
+
+        await using (var ctx = _db.NewContext())
+        {
+            var service = Service(ctx);
+            (await Fix(ctx).ReplacePageAsync(Owner, id, tests[0].Id, 1, [Box(0)], default)).Error.ShouldBe(BookImportPageFixError.None);
+            (await Fix(ctx).ReplacePageAsync(Owner, id, tests[1].Id, 2, [Box(0)], default)).Error.ShouldBe(BookImportPageFixError.InvalidState);
+            (await service.RemoveTestAsync(Owner, id, tests[1].Id, default)).ShouldBe(BookImportReviewResult.InvalidState);
+            var all = await service.ApproveAllAsync(Owner, id, default);
+            all!.Approved.ShouldBe([tests[0].Id]);
+            all.Skipped.ShouldBeEmpty();
+            (await service.ApproveTestAsync(Owner, id, tests[1].Id, default)).ShouldBe(BookImportReviewResult.InvalidState);
+        }
+
+        await using var check = _db.NewContext();
+        var job = await check.BookImportJobs.SingleAsync();
+        job.Status.ShouldBe(BookImportJobStatus.Running);
+        job.Stage.ShouldBe(BookImportStage.Questions);
+        (await check.BookImportJobTests.OrderBy(t => t.Order).Select(t => t.Status).ToListAsync())
+            .ShouldBe([BookImportTestStatus.Approved, BookImportTestStatus.Pending]);
+    }
+
+    [Fact]
+    public async Task Job_completes_when_every_test_was_approved_before_the_import_finished()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "A", [1]), new(2, 2, 2, "B", [1])]);
+        Detect(1, 4);
+        Detect(2, 4);
+        await RunAsync(id);
+        var tests = await TestsAsync();
+        await BackToImportingAsync(id);
+        await using (var ctx = _db.NewContext())
+            (await Service(ctx).ApproveAllAsync(Owner, id, default))!.Approved.Count.ShouldBe(2);
+
+        await RunAsync(id);
+
+        await using var check = _db.NewContext();
+        var job = await check.BookImportJobs.SingleAsync();
+        job.Status.ShouldBe(BookImportJobStatus.Completed);
+        job.Stage.ShouldBe(BookImportStage.Approval);
+        job.FinishedAt.ShouldNotBeNull();
+    }
+
     // ---------- Issue #1025: devam, yeniden deneme, iptal ----------
 
     [Fact]

@@ -32,6 +32,9 @@ import { BOOK_IMPORTS_POLL_MS, BOOK_IMPORTS_SCOPE } from './book-imports.compone
 type Translate = (key: string, params?: Record<string, unknown>) => string;
 
 /** #1025: takip ekranından iptal edilebilen durumlar (sunucudaki liste; onay bekleyen iş kurulum ekranından iptal edilir). */
+/** #1267: soru aktarımı süren işin durumları (sunucudaki `ImportingStatuses`). */
+const IMPORTING: BookImportStatus[] = ['Queued', 'Running', 'AwaitingBudget', 'AwaitingCostApproval'];
+
 const CANCELLABLE: BookImportStatus[] = ['Queued', 'Running', 'AwaitingBudget', 'AwaitingCostApproval', 'Failed'];
 
 /**
@@ -105,6 +108,11 @@ export class BookImportDetailComponent implements OnInit {
   });
   /** #1025: iptal edilen işin kalan taslakları da incelenip onaylanabilir. */
   readonly reviewEditable = computed(() => this.job()?.status === 'ReadyForReview' || this.job()?.status === 'Cancelled');
+  /** #1267: sorular alınırken bitmiş testler düzeltilir / onaylanır (sunucu bekleyen ve alınan testi reddeder). */
+  readonly reviewImporting = computed(() => {
+    const job = this.job();
+    return !!job && job.stage === 'Questions' && IMPORTING.includes(job.status) && !job.isDemo;
+  });
   readonly reviewLocked = computed(() => this.reviewing() && !this.reviewEditable() && this.job()?.status !== 'Completed');
   /** #1025: iptal edilebilir (onay bekleyen işin iptali kurulum ekranında). */
   readonly cancellable = computed(() => CANCELLABLE.includes(this.job()?.status as BookImportStatus));

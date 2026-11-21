@@ -389,6 +389,13 @@ olarak aktarılır. Yalnız kitap aktarımında; hızlı ekleme ve karışık g�
   kitabın bütün anahtar sayfalarını (`SetupJson.AnswerKeyRanges`) verir; anahtarsız testte boş. Düzeltme şeridinde küçük görsel,
   tıklayınca büyür (birden çok sayfada önceki / sonraki). Hızlı eklemede yok.
 
+**Sorular alınırken inceleme (#1267):** iş `Questions` aşamasında ve aktarım sürüyorken (`Queued`, `Running`, `AwaitingBudget`,
+`AwaitingCostApproval`) bitmiş test (`Done`, `NeedsReview`, `Failed`) beklemeden incelenir: işaretlemede düzelt, cevap seçme,
+soru çıkarma, onaylama ve testi çıkarma açık. Bekleyen / alınan testte bunlar kapalı (sunucu `InvalidState`); "hepsini onayla"
+bitmemiş testleri sessizce atlar. Aktarım bittiğinde iş `ReadyForReview`'a geçer; en az bir test onaylanmış ve taslağı olan
+incelenecek test kalmamışsa doğrudan `Completed` olur. Arayüzde `importing` girişi (detay sayfası: aşama `Questions`, aktarım
+durumu, demo değil) bu düğmeleri test bazında açar; yeniden alma düğmeleri iş bitene kadar kapalı kalır.
+
 ## Maliyet ve bütçe (#1024)
 
 - **Bütçe:** aktarımın bütün Claude çağrıları (kurulum taraması, anahtar okumaları, ünite eşleme, sayfa tespiti) `BookImportBudget`'tan

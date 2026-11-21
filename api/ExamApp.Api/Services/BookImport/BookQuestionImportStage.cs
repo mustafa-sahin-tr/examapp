@@ -401,7 +401,7 @@ internal sealed class BookQuestionImportStage(
             SubjectId = job.SubjectId,
             MaxDurationSeconds = (test.Minutes ?? 0) * 60,
             BookTestId = test.BookTestId,
-            TeacherSharing = WorksheetTeacherSharing.Private,
+            TeacherSharing = job.TeacherSharing, // #1259
             IsDraft = true,
         };
     }

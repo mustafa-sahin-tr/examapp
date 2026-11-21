@@ -58,7 +58,10 @@
       "inUse": "Kitap kullanımda (soru, test ya da başka bir baskı ona bağlı); silinemez.",
       "invalidPage": "Sayfa numarası geçersiz.",
       "renameForbidden": "Bu kitap öğretmenlerin içeriğinde kullanılıyor; adını ya da asıl kaydını yalnız yönetici değiştirebilir.",
-      "busy": "Kitap kaydı şu an başka bir işlemde. Tekrar deneyin."
+      "busy": "Kitap kaydı şu an başka bir işlemde. Tekrar deneyin.",
+      "audienceEmpty": "En az bir okul ya da öğretmen seçin.",
+      "audienceTooMany": "En çok 500 okul ve 500 öğretmen seçilebilir.",
+      "audienceUnknownMember": "Seçilen okullardan ya da öğretmenlerden biri bulunamadı; listeyi yenileyin."
     },
     "activity": {
       "unknownType": "Bilinmeyen etkinlik tipi (matrixChoice, slotFill, dragPlace, match, textSelect ya da crossword).",

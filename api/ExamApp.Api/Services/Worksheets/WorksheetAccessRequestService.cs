@@ -58,9 +58,11 @@ public class WorksheetAccessRequestService : IWorksheetAccessRequestService
         var (ownerSchoolId, requesterSchoolId) = worksheet != null
             ? await _context.ResolveSchoolContextAsync(worksheet, userId, isAdmin, ct)
             : (null, null);
+        // Issue #1259: BookAudience testinde kitabın erişim listesi (yalnız gerekiyorsa sorgu atar).
+        var inBookAudience = worksheet != null && await _context.ResolveBookAudienceAsync(worksheet, userId, isAdmin, ct);
         if (worksheet == null ||
             !WorksheetAccess.CanView(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, worksheet.StudentVisibility,
-                requesterSchoolId, ownerSchoolId))
+                requesterSchoolId, ownerSchoolId, inBookAudience))
         {
             return new ResponseBaseDto { Success = false, NotFound = true, Message = _localizer["worksheets.accessRequest.worksheetNotFound"] };
         }
@@ -74,7 +76,7 @@ public class WorksheetAccessRequestService : IWorksheetAccessRequestService
             .AnyAsync(g => g.WorksheetId == worksheetId && g.TeacherUserId == userId && g.RevokedAt == null, ct);
 
         if (WorksheetAccess.CanAssign(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, hasGrant,
-                requesterSchoolId, ownerSchoolId))
+                requesterSchoolId, ownerSchoolId, inBookAudience))
         {
             return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.accessRequest.alreadyAssignable"] };
         }

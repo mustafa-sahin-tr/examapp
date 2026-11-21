@@ -128,3 +128,19 @@ public record LabelingCropDuplicateHiddenDto(int QuestionIndex)
 {
     public bool OtherOwner => true;
 }
+
+/// <summary>Issue #1259: kitabın erişim listesi (okullar ve öğretmenler).</summary>
+public record BookAudienceDto(List<BookAudienceSchoolDto> Schools, List<BookAudienceTeacherDto> Teachers);
+
+public record BookAudienceSchoolDto(int Id, string Name);
+
+/// <summary>Öğretmen: öğretmen kaydı kimliği (<c>Teachers.Id</c>; kullanıcı kimliği dışarı verilmez, #262), adı (auth-api'ye ulaşılamazsa boş) ve okulu.</summary>
+public record BookAudienceTeacherDto(int Id, string? Name, string? SchoolName);
+
+/// <summary>Issue #1259: erişim listesi — okul kimlikleri ve öğretmen kaydı kimlikleri (<c>Teachers.Id</c>).</summary>
+public class BookAudienceSaveDto
+{
+    public List<int>? SchoolIds { get; set; }
+
+    public List<int>? TeacherIds { get; set; }
+}

@@ -30,14 +30,16 @@ public class LabelingBooksController : BaseController
 {
     private readonly IBookRegistryService _books;
     private readonly IBookImportService? _imports;
+    private readonly IBookAudienceService? _audience;
     private readonly IStringLocalizer<Messages> _localizer;
 
     public LabelingBooksController(IBookRegistryService books, IStringLocalizer<Messages>? localizer = null,
-        IBookImportService? imports = null)
+        IBookImportService? imports = null, IBookAudienceService? audience = null)
     {
         _books = books;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         _imports = imports;
+        _audience = audience;
     }
 
     /// <summary>Tüm kitaplar, kümeleriyle (ad sırasıyla).</summary>
@@ -84,6 +86,28 @@ public class LabelingBooksController : BaseController
     [Authorize(Roles = "Admin,QuestionTrainer")]
     public Task<IActionResult> Delete(int id, CancellationToken ct) =>
         Handle(async () => await _books.DeleteAsync(id, ct) ? NoContent() : NotFound(Error("labeling.books.notFound")));
+
+    /// <summary>
+    /// Issue #1259: kitabın erişim listesi (okullar, öğretmenler). Kitabın "seçili okul ve öğretmenler" paylaşımlı testleri bu
+    /// listeye görünür. Yalnız Admin.
+    /// </summary>
+    [HttpGet("{id:int}/audience")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetAudience(int id, CancellationToken ct)
+    {
+        var audience = _audience is null ? null : await _audience.GetAsync(id, ct);
+        return audience is null ? NotFound(Error("labeling.books.notFound")) : Ok(audience);
+    }
+
+    /// <summary>Issue #1259: erişim listesini bütün olarak değiştirir (boş liste: testler yalnız sahibine kalır). 400 geçersiz; 404.</summary>
+    [HttpPut("{id:int}/audience")]
+    [Authorize(Roles = "Admin")]
+    public Task<IActionResult> ReplaceAudience(int id, [FromBody] BookAudienceSaveDto request, CancellationToken ct) =>
+        Handle(async () =>
+        {
+            var audience = _audience is null ? null : await _audience.ReplaceAsync(id, request, ct);
+            return audience is null ? NotFound(Error("labeling.books.notFound")) : Ok(audience);
+        });
 
     /// <summary>Dosya sayfasının bastırılmış numarası, cevap anahtarı mı ve içindekiler satırı (sınıf/ders/konu varsayılanı).</summary>
     [HttpGet("{id:int}/pages/{filePage:int}")]

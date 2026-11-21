@@ -155,8 +155,9 @@ public sealed class QuestionOwnershipGuard : IQuestionOwnershipGuard
             return QuestionAccessResult.Forbidden;
 
         var (ownerSchoolId, requesterSchoolId) = await _context.ResolveSchoolContextAsync(worksheet, userId, isAdmin, ct);
+        var inBookAudience = await _context.ResolveBookAudienceAsync(worksheet, userId, isAdmin, ct); // #1259
         return WorksheetAccess.CanView(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing,
-                worksheet.StudentVisibility, requesterSchoolId, ownerSchoolId)
+                worksheet.StudentVisibility, requesterSchoolId, ownerSchoolId, inBookAudience)
             ? QuestionAccessResult.Allowed
             : QuestionAccessResult.Forbidden;
     }

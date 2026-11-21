@@ -44,6 +44,9 @@
     "invalidOption": "Invalid option.",
     "lastQuestion": "The last question of a test cannot be removed; remove the test instead.",
     "notInReview": "This test cannot be approved or removed right now.",
-    "fixFailed": "The page fix could not be saved; try again."
+    "fixFailed": "The page fix could not be saved; try again.",
+    "invalidSharing": "The sharing choice is invalid.",
+    "sharingAdminOnly": "Only an admin can share with selected schools and teachers.",
+    "schoolOnlyRequiresSchool": "Sharing with \"my school only\" needs you to belong to a school."
   }
 }

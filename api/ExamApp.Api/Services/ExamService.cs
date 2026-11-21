@@ -89,7 +89,7 @@ public class ExamService : IExamService
     private static void ApplyOwnershipAndVisibility(
         WorksheetDto dto, Worksheet w, int? requesterUserId, bool isAdmin, string? ownerName = null,
         bool populateOwnerName = false, bool isTeacher = true, bool hasApprovedGrant = false,
-        int? requesterSchoolId = null, int? ownerSchoolId = null)
+        int? requesterSchoolId = null, int? ownerSchoolId = null, bool inBookAudience = false)
     {
         dto.TeacherSharing = w.TeacherSharing;
         dto.StudentVisibility = w.StudentVisibility;
@@ -101,7 +101,7 @@ public class ExamService : IExamService
         dto.OwnerName = (isAdmin || isOwner || populateOwnerName) ? ownerName : null;
         dto.CanAssign = isTeacher
             && WorksheetAccess.CanAssign(w.CreateUserId, requesterUserId ?? 0, isAdmin, w.TeacherSharing, hasApprovedGrant,
-                requesterSchoolId, ownerSchoolId);
+                requesterSchoolId, ownerSchoolId, inBookAudience);
     }
 
     private static IQueryable<Worksheet> ApplyCommonFilters(IQueryable<Worksheet> query, ExamFilterDto dto)
@@ -286,9 +286,11 @@ public class ExamService : IExamService
             var ownerSchoolId = isSharedRow && t.TeacherSharing == WorksheetTeacherSharing.SchoolOnly
                 ? requesterSchoolId
                 : null;
+            // Issue #1259: sahibi olmadığı BookAudience satırı da yalnız kitabın erişim listesi alt sorgusundan geçerek gelir.
             ApplyOwnershipAndVisibility(d, t, userProfile.Id, isAdmin, ownerName, populateOwnerName: isSharedRow,
                 hasApprovedGrant: grantedWorksheetIds.Contains(t.Id),
-                requesterSchoolId: requesterSchoolId, ownerSchoolId: ownerSchoolId);
+                requesterSchoolId: requesterSchoolId, ownerSchoolId: ownerSchoolId,
+                inBookAudience: isSharedRow && t.TeacherSharing == WorksheetTeacherSharing.BookAudience);
             return d;
         }).ToList();
 
@@ -636,8 +638,10 @@ public class ExamService : IExamService
         var (ownerSchoolId, requesterSchoolId) = isStudent
             ? (null, null)
             : await _context.ResolveSchoolContextAsync(worksheet, userProfile.Id, isAdmin);
+        // Issue #1259: BookAudience testinde kitabın erişim listesi (yalnız gerekiyorsa sorgu atar).
+        var inBookAudience = !isStudent && await _context.ResolveBookAudienceAsync(worksheet, userProfile.Id, isAdmin);
         if (!isStudent && !WorksheetAccess.CanView(worksheet.CreateUserId, userProfile.Id, isAdmin, worksheet.TeacherSharing, worksheet.StudentVisibility,
-                requesterSchoolId, ownerSchoolId))
+                requesterSchoolId, ownerSchoolId, inBookAudience))
             return null;
 
         var isOwner = worksheet.CreateUserId.HasValue && worksheet.CreateUserId.Value > 0
@@ -680,7 +684,7 @@ public class ExamService : IExamService
         };
         // Tekil detay: OwnerName admin, sahip, veya Public* paylaşım sayesinde görülen satır için doldurulur.
         ApplyOwnershipAndVisibility(result, worksheet, userProfile.Id, isAdmin, ownerName, populateOwnerName: isSharedRow,
-            requesterSchoolId: requesterSchoolId, ownerSchoolId: ownerSchoolId);
+            requesterSchoolId: requesterSchoolId, ownerSchoolId: ownerSchoolId, inBookAudience: inBookAudience);
         return result;
     }
 

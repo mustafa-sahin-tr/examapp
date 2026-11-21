@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Labeling;
 using ExamApp.Api.Services.Entitlements;
@@ -91,6 +92,8 @@ public sealed partial class BookImportService
             SchemaRevision = summary.SchemaRevision,
             IsDemo = job.DemoSourceJobId is not null,
             ExistingBook = job.BookId is null && job.DemoSourceJobId is null ? await FindBookByNameAsync(job.BookName, ct) : null,
+            CanShareWithSchool = await _db.ResolveTeacherSchoolIdAsync(owner.UserId, ct) is not null,
+            CanShareWithAudience = owner.IsAdmin,
             Tests = tests.Select(t => new BookImportSetupTestDto
             {
                 Order = t.Order, Unit = t.Unit, TestNo = t.TestNo, Title = t.Title, Minutes = t.Minutes, FileFrom = t.FileFrom,
@@ -126,6 +129,8 @@ public sealed partial class BookImportService
         var bookName = request.BookName?.Trim() ?? string.Empty;
         if (Validate(request, bookName, jobTests, job.PageCount ?? 0) is { } invalid)
             return new(ConfirmSetupError.Invalid, Code: invalid);
+        if (await ValidateSharingAsync(owner, request, ct) is { } invalidSharing)
+            return new(ConfirmSetupError.Invalid, Code: invalidSharing);
 
         BookImportBookRefDto? reuse = null;
         if (request.ExistingBookId is { } existingId)
@@ -180,6 +185,21 @@ public sealed partial class BookImportService
     private Task ReleaseClaimAsync(Guid id) =>
         _db.BookImportJobs.Where(j => j.Id == id && j.Status == BookImportJobStatus.Running && j.Stage == BookImportStage.SetupConfirmation)
             .ExecuteUpdateAsync(s => s.SetProperty(j => j.Status, BookImportJobStatus.AwaitingConfirmation), CancellationToken.None);
+
+    /// <summary>Issue #1259: paylaşım seçimi — tanımlı değer; seçili okul / öğretmenler yalnız admin ve geçerli liste; okulum okul ister.</summary>
+    private async Task<string?> ValidateSharingAsync(BookImportOwner owner, ConfirmBookImportSetupDto request, CancellationToken ct)
+    {
+        var sharing = request.TeacherSharing ?? WorksheetTeacherSharing.Private;
+        if (!Enum.IsDefined(sharing))
+            return "bookImport.invalidSharing";
+        if (sharing == WorksheetTeacherSharing.BookAudience)
+            return owner.IsAdmin
+                ? await new BookAudienceService(_db).ValidateAsync(request.Audience ?? new BookAudienceSaveDto(), ct)
+                : "bookImport.sharingAdminOnly";
+        if (sharing == WorksheetTeacherSharing.SchoolOnly && await _db.ResolveTeacherSchoolIdAsync(owner.UserId, ct) is null)
+            return "bookImport.schoolOnlyRequiresSchool";
+        return null;
+    }
 
     private static bool IsAwaitingSetup(BookImportJob job) =>
         job.Status == BookImportJobStatus.AwaitingConfirmation && job.Stage == BookImportStage.SetupConfirmation;
@@ -289,6 +309,11 @@ public sealed partial class BookImportService
         var job = await _db.BookImportJobs.AsTracking().FirstAsync(j => j.Id == id, ct);
         var tests = await _db.BookImportJobTests.AsTracking().Where(t => t.JobId == id).ToListAsync(ct);
         var confirmed = request.Tests.ToDictionary(t => t.Order);
+
+        // Issue #1259: testlerin paylaşımı işte; seçili okul / öğretmenler kitabın erişim listesine eklenir (aynı kayıtla).
+        job.TeacherSharing = request.TeacherSharing ?? WorksheetTeacherSharing.Private;
+        if (job.TeacherSharing == WorksheetTeacherSharing.BookAudience)
+            await new BookAudienceService(_db).AddAsync(bookId, request.Audience ?? new BookAudienceSaveDto(), ct);
 
         var bookTests = await _db.BookTests.AsTracking().Where(t => t.BookId == bookId).ToListAsync(ct);
         var created = new List<(BookImportJobTest Row, BookTest Test)>();

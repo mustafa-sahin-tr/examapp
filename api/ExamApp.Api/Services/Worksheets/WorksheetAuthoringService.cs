@@ -39,8 +39,9 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
     private async Task<bool> CanViewAsync(Worksheet worksheet, int userId, bool isAdmin, CancellationToken ct = default)
     {
         var (ownerSchoolId, requesterSchoolId) = await _context.ResolveSchoolContextAsync(worksheet, userId, isAdmin, ct);
+        var inBookAudience = await _context.ResolveBookAudienceAsync(worksheet, userId, isAdmin, ct); // #1259
         return WorksheetAccess.CanView(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, worksheet.StudentVisibility,
-            requesterSchoolId, ownerSchoolId);
+            requesterSchoolId, ownerSchoolId, inBookAudience);
     }
 
     // Allow-list: SVG deliberately excluded (inline-served SVG = stored XSS vector).
@@ -763,9 +764,11 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
         var (sourceOwnerSchoolId, copierSchoolId) = source != null
             ? await _context.ResolveSchoolContextAsync(source, userId, isAdmin, ct)
             : (null, null);
+        // Issue #1259: BookAudience kaynak yalnız kitabın erişim listesindekilerce kopyalanır.
+        var copierInBookAudience = source != null && await _context.ResolveBookAudienceAsync(source, userId, isAdmin, ct);
         if (source == null ||
             !WorksheetAccess.CanCopy(source.CreateUserId, userId, isAdmin, source.TeacherSharing, source.StudentVisibility,
-                copierSchoolId, sourceOwnerSchoolId))
+                copierSchoolId, sourceOwnerSchoolId, copierInBookAudience))
         {
             result.Success = false;
             result.NotFound = true;

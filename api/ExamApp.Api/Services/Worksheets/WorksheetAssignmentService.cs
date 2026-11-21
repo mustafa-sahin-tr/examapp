@@ -91,8 +91,10 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         // issue #191: SchoolOnly için sahibin/istekçinin okulu DB'den (yalnızca gerekiyorsa sorgu atar);
         // farklı okul veya okulsuz istekçi için de "bulunamadı".
         var (ownerSchoolId, requesterSchoolId) = await _context.ResolveSchoolContextAsync(worksheet, userId, isAdmin, ct);
+        // Issue #1259: BookAudience testinde kitabın erişim listesi (yalnız gerekiyorsa sorgu atar).
+        var inBookAudience = await _context.ResolveBookAudienceAsync(worksheet, userId, isAdmin, ct);
         if (!WorksheetAccess.CanView(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, worksheet.StudentVisibility,
-                requesterSchoolId, ownerSchoolId))
+                requesterSchoolId, ownerSchoolId, inBookAudience))
         {
             return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.worksheetNotFound"] };
         }
@@ -106,14 +108,14 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         // Sahibi/admin veya PublicAssignable zaten izin veriyorsa grant sorgusunu atla.
         var hasGrant = false;
         if (!WorksheetAccess.CanAssign(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing,
-                requesterSchoolId: requesterSchoolId, ownerSchoolId: ownerSchoolId))
+                requesterSchoolId: requesterSchoolId, ownerSchoolId: ownerSchoolId, inBookAudience: inBookAudience))
         {
             hasGrant = await _context.WorksheetAccessGrants
                 .AnyAsync(g => g.WorksheetId == worksheet.Id && g.TeacherUserId == userId && g.RevokedAt == null, ct);
         }
 
         if (!WorksheetAccess.CanAssign(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, hasGrant,
-                requesterSchoolId, ownerSchoolId))
+                requesterSchoolId, ownerSchoolId, inBookAudience))
         {
             var hasOwner = worksheet.CreateUserId.HasValue && worksheet.CreateUserId.Value > 0;
             var message = hasOwner

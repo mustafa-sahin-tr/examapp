@@ -452,6 +452,41 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("BookAnswerKeyRanges");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.BookAudienceMember", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BookId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("SchoolId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TeacherUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SchoolId");
+
+                    b.HasIndex("BookId", "SchoolId")
+                        .IsUnique()
+                        .HasFilter("\"SchoolId\" IS NOT NULL");
+
+                    b.HasIndex("BookId", "TeacherUserId")
+                        .IsUnique()
+                        .HasFilter("\"TeacherUserId\" IS NOT NULL");
+
+                    b.ToTable("BookAudienceMembers", t =>
+                        {
+                            t.HasCheckConstraint("CK_BookAudienceMembers_OneTarget", "(\"SchoolId\" IS NULL) <> (\"TeacherUserId\" IS NULL)");
+                        });
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.BookImportCost", b =>
                 {
                     b.Property<long>("Id")
@@ -600,6 +635,9 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int?>("SubjectId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TeacherSharing")
                         .HasColumnType("integer");
 
                     b.Property<DateTime?>("UpdateTime")
@@ -10592,6 +10630,20 @@ namespace ExamApp.Api.Migrations
                         .HasForeignKey("BookId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.BookAudienceMember", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Book", null)
+                        .WithMany()
+                        .HasForeignKey("BookId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ExamApp.Api.Data.School", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId")
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.BookImportCost", b =>

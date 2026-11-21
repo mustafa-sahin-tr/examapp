@@ -1567,7 +1567,8 @@ public class WorksheetCommentService : IWorksheetCommentService
         var canView = WorksheetAccess.CanView(worksheet.CreateUserId, userId, actor.IsAdmin, worksheet.TeacherSharing,
             worksheet.StudentVisibility,
             schoolDecision ? readerSchoolId : null,
-            schoolDecision ? schools.GetValueOrDefault(ownerId!.Value) : null);
+            schoolDecision ? schools.GetValueOrDefault(ownerId!.Value) : null,
+            await _context.ResolveBookAudienceAsync(worksheet, userId, actor.IsAdmin, ct)); // #1259
 
         var ownAssignments = _context.WorksheetAssignments
             .AsNoTracking()

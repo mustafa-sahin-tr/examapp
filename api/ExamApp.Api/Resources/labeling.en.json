@@ -58,7 +58,10 @@
       "inUse": "The book is in use (questions, tests or another edition refer to it); it cannot be deleted.",
       "invalidPage": "Invalid page number.",
       "renameForbidden": "This book is used in teachers' content; only an administrator can change its name or canonical edition.",
-      "busy": "The book registry is busy with another operation. Try again."
+      "busy": "The book registry is busy with another operation. Try again.",
+      "audienceEmpty": "Pick at least one school or teacher.",
+      "audienceTooMany": "Up to 500 schools and 500 teachers can be picked.",
+      "audienceUnknownMember": "One of the picked schools or teachers was not found; refresh the list."
     },
     "activity": {
       "unknownType": "Unknown activity type (matrixChoice, slotFill, dragPlace, match, textSelect or crossword).",

@@ -49,3 +49,19 @@ public class BookTocEntry
 
     public int? SubTopicId { get; set; }
 }
+
+/// <summary>
+/// Issue #1259: kitabın erişim listesi satırı — bir okul ya da bir öğretmen (ikisinden tam biri). Kitabın
+/// <see cref="WorksheetTeacherSharing.BookAudience"/> paylaşımlı testleri bu listeye görünür; liste bütün olarak değiştirilir.
+/// </summary>
+public class BookAudienceMember
+{
+    public int Id { get; set; }
+
+    public int BookId { get; set; }
+
+    public int? SchoolId { get; set; }
+
+    /// <summary>Öğretmenin kullanıcı kimliği (<c>Teachers.UserId</c>; testin sahiplik ekseniyle aynı).</summary>
+    public int? TeacherUserId { get; set; }
+}

@@ -103,8 +103,10 @@ public class WorksheetDetailService : IWorksheetDetailService
         var (ownerSchoolId, requesterSchoolId) = isTeacher
             ? await _context.ResolveSchoolContextAsync(worksheet, userId, isAdmin, ct)
             : (null, null);
+        // Issue #1259: BookAudience testinde kitabın erişim listesi (yalnız gerekiyorsa sorgu atar).
+        var inBookAudience = isTeacher && await _context.ResolveBookAudienceAsync(worksheet, userId, isAdmin, ct);
         if (isTeacher && !WorksheetAccess.CanView(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, worksheet.StudentVisibility,
-                requesterSchoolId, ownerSchoolId))
+                requesterSchoolId, ownerSchoolId, inBookAudience))
             return null;
 
         // Base worksheet bilgisi authenticated Student/Teacher'a açık (eski GET {id} ile aynı açıklık).
@@ -229,7 +231,7 @@ public class WorksheetDetailService : IWorksheetDetailService
                 CanEdit = isTeacher && WorksheetAccess.CanModify(worksheet.CreateUserId, userId, isAdmin)
                     && !await _context.MockExamSessions.AnyAsync(s => s.WorksheetId == worksheet.Id, ct),
                 CanAssign = isTeacher && WorksheetAccess.CanAssign(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, hasApprovedGrant,
-                    requesterSchoolId, ownerSchoolId)
+                    requesterSchoolId, ownerSchoolId, inBookAudience)
             },
             RewardBadgeText = worksheet.BadgeText,
             Stats = new WorksheetStatsDto

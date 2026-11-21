@@ -634,6 +634,19 @@ public class BookQuestionImportTests : IDisposable
     }
 
     [Fact]
+    public async Task Test_worksheets_take_the_sharing_picked_at_confirmation()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "A", [2])], WorksheetTeacherSharing.BookAudience);
+        Detect(1, 4);
+
+        await RunAsync(id);
+
+        await using var check = _db.NewContext();
+        var worksheet = await check.Worksheets.WithDrafts().SingleAsync();
+        (worksheet.TeacherSharing, worksheet.BookTestId).ShouldBe((WorksheetTeacherSharing.BookAudience, (await SingleTestAsync()).BookTestId));
+    }
+
+    [Fact]
     public async Task Answerless_test_is_blocked_until_its_answers_are_picked_then_approval_activates_it()
     {
         var id = await SeedAsync([new(1, 1, 1, "A", [2])]);
@@ -1628,7 +1641,8 @@ public class BookQuestionImportTests : IDisposable
     private void Detect(int filePage, params int[] optionCounts) =>
         _detections[filePage] = optionCounts.Select((n, i) => Question(100, 100 + i * 700, n)).ToList();
 
-    private async Task<Guid> SeedAsync(IReadOnlyList<TestSeed> tests)
+    private async Task<Guid> SeedAsync(IReadOnlyList<TestSeed> tests,
+        WorksheetTeacherSharing sharing = WorksheetTeacherSharing.Private)
     {
         await using var ctx = _db.NewContext();
         var grade = new Grade { Name = "5. Sınıf" };
@@ -1648,6 +1662,7 @@ public class BookQuestionImportTests : IDisposable
             Status = BookImportJobStatus.Queued,
             Stage = BookImportStage.Questions,
             FileUrl = "http://minio/source.pdf",
+            TeacherSharing = sharing,
         };
         ctx.SetCurrentUser(OwnerId);
         ctx.BookImportJobs.Add(job);

@@ -81,14 +81,18 @@ public class LabelingBooksControllerTests
             .ToList();
 
         actions.Select(m => m.Name).OrderBy(n => n)
-            .ShouldBe(new[] { "Create", "Delete", "FindFilePages", "Get", "GetPage", "GetPageImage", "List", "Update" });
+            .ShouldBe(new[]
+            {
+                "Create", "Delete", "FindFilePages", "Get", "GetAudience", "GetPage", "GetPageImage", "List", "ReplaceAudience", "Update",
+            });
         foreach (var m in actions)
         {
             m.GetCustomAttributes<AllowAnonymousAttribute>().ShouldBeEmpty(m.Name);
-            // #1087: öğretmen okur; ortak kitap kataloğunu yalnız içerik ekibi yazar.
+            // #1087: öğretmen okur; ortak kitap kataloğunu yalnız içerik ekibi yazar. #1259: erişim listesi yalnız Admin.
             var writes = m.Name is "Create" or "Update" or "Delete";
+            var audience = m.Name is "GetAudience" or "ReplaceAudience";
             m.GetCustomAttributes<AuthorizeAttribute>().Select(a => a.Roles).ToArray()
-                .ShouldBe(writes ? ["Admin,QuestionTrainer"] : [], m.Name);
+                .ShouldBe(audience ? ["Admin"] : writes ? ["Admin,QuestionTrainer"] : [], m.Name);
         }
     }
 

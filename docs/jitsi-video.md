@@ -101,7 +101,7 @@ Randevu iptal edilince (önceki durum Approved) ve öğretmen askıya alınınca
   anahtar sunucusu ayarı boşken de ASAP (RS256 + `kid`) beklediği için paylaşılan `JWT_APP_SECRET` ile imzalı token'ı
   hep 401 ile reddeder. Kopya, token'ı ana host'un `app_secret`'ıyla (HS256) doğrular.
 - **Uç:** `POST {Video:Jitsi:InternalHttpUrl}/end-meeting?conference={oda}@{Video:Jitsi:MucDomain}`,
-  `Authorization: Bearer <JWT>` (2 dk ömürlü, oda adlı). 200 kapatıldı, 404 oda yok (kimse girmemiş), 401 imza hatalı.
+  `Authorization: Bearer <JWT>` (2 dk ömürlü, oda adlı). 200 kapatıldı, 404 oda yok (kimse girmemiş), 401 başlık yok, 403 token geçersiz ya da servis token'ı değil. Modül yalnız `context.user.id = examapp-api` ve `room` claim'i kapatılan odayla aynı olan token'ı kabul eder: katılımcı token'ları aynı anahtarla imzalı olduğu için bir öğrencinin token'ı oda kapatamaz.
   Uç prosody'nin iç HTTP portundadır (5280); jitsi-web nginx'i yalnız `/http-bind`, `/xmpp-websocket`, `/_api/room-info`
   yollarını prosody'ye geçirir, `/end-meeting`'i dışarı açmaz. Prod'da da 5280 dışarı açılmamalı.
 - **API:** `JitsiVideoRoomCloser` (`IVideoRoomCloser`); `InternalHttpUrl` boşsa kapatma atlanır. Compose'da

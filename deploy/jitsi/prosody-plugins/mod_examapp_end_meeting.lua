@@ -17,6 +17,7 @@ local room_jid_match_rewrite = util.room_jid_match_rewrite;
 local get_room_from_jid = util.get_room_from_jid;
 local starts_with = util.starts_with;
 
+local jid_split = require "util.jid".split;
 local neturl = require "net.url";
 local parse = neturl.parseQuery;
 
@@ -25,7 +26,11 @@ local token_util;
 
 local muc_domain_base = module:get_option_string("muc_mapper_domain_base");
 
-local function verify_token(token)
+-- Only the API's own close token is accepted: participant tokens are signed with the same secret, so the token must
+-- name the ExamApp API as its user (participant ids are numeric) and the exact room being closed.
+local SERVICE_USER_ID = "examapp-api";
+
+local function verify_token(token, room_node)
     if token == nil then
         module:log("warn", "no token provided");
         return false;
@@ -36,6 +41,16 @@ local function verify_token(token)
     local verified, reason, msg = token_util:process_and_verify_token(session);
     if not verified then
         module:log("warn", "not a valid token %s %s", tostring(reason), tostring(msg));
+        return false;
+    end
+
+    local user = session.jitsi_meet_context_user;
+    if type(user) ~= "table" or user.id ~= SERVICE_USER_ID then
+        module:log("warn", "end-meeting token is not the service token");
+        return false;
+    end
+    if session.jitsi_meet_room ~= room_node then
+        module:log("warn", "end-meeting token is for another room");
         return false;
     end
     return true;
@@ -60,8 +75,9 @@ local function handle_terminate_meeting(event)
     end
     token = token:sub(8, #token);
 
-    if not verify_token(token) then
-        return { status_code = 401 };
+    local room_node = jid_split(room_jid);
+    if not room_node or not verify_token(token, room_node) then
+        return { status_code = 403 };
     end
 
     local room = get_room_from_jid(room_jid);

@@ -233,3 +233,12 @@ def test_save_page_records_submitter_in_manifest(tmp_path):
     save_page(_page(), [_q((10, 10, 50, 40))], root=tmp_path, submitted_by="0b6f2c1e-1111-2222-3333-444455556666")
     record = json.loads((tmp_path / "manifest.jsonl").read_text().splitlines()[-1])
     assert record["submitted_by"] == "0b6f2c1e-1111-2222-3333-444455556666"
+
+
+def test_open_oriented_rgb_rejects_between_one_and_two_times_the_limit(monkeypatch):
+    # Pillow yalnız uyarır (1x-2x arası); open_oriented_rgb boyutu kendisi denetler.
+    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 6000)
+    buf = BytesIO()
+    Image.new("RGB", (100, 100)).save(buf, format="PNG")  # 10_000 px: 1x-2x arası
+    with pytest.raises(Image.DecompressionBombError):
+        open_oriented_rgb(buf.getvalue())

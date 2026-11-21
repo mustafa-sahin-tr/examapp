@@ -10,9 +10,12 @@
 :80 {
 	encode gzip
 
-	# Only the app realm is public; the master realm (Keycloak's own admins) answers 404 from outside.
-	@masterRealm path /realms/master /realms/master/* /auth/realms/master /auth/realms/master/*
-	handle @masterRealm {
+	# Only the app realm is public (#369): any other realm, the master realm included, answers 404 from outside.
+	@otherRealm {
+		path /realms /realms/* /auth/realms /auth/realms/*
+		not path /realms/exam-realm /realms/exam-realm/* /auth/realms/exam-realm /auth/realms/exam-realm/*
+	}
+	handle @otherRealm {
 		respond 404
 	}
 

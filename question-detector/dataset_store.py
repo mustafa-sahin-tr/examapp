@@ -117,6 +117,10 @@ def open_oriented_rgb(image_bytes: bytes) -> Image.Image:
     Tahmin, QR okuma ve eğitim kaydı aynı uzayda olsun (yoksa döndürülmüş telefon fotoğrafında kutular kayar).
     """
     image = Image.open(BytesIO(image_bytes), formats=ALLOWED_IMAGE_FORMATS)
+    # Pillow 1x-2x MAX_IMAGE_PIXELS arasında yalnız uyarır; sınır gerçekten bu olsun diye çözmeden (başlıktan) reddet.
+    if Image.MAX_IMAGE_PIXELS and image.width * image.height > Image.MAX_IMAGE_PIXELS:
+        raise Image.DecompressionBombError(
+            f"Image size ({image.width * image.height} pixels) exceeds limit of {Image.MAX_IMAGE_PIXELS} pixels.")
     return ImageOps.exif_transpose(image).convert("RGB")
 
 

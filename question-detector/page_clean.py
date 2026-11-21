@@ -49,7 +49,11 @@ def available() -> bool:
 
 
 def _rgb(data: bytes) -> np.ndarray:
-    return np.asarray(Image.open(io.BytesIO(data)).convert("RGB"))
+    # Issue #461: yalnız beklenen biçimler; MAX_IMAGE_PIXELS dataset_store'da ayarlı (bomb sınırı).
+    image = Image.open(io.BytesIO(data), formats=("PNG", "JPEG", "WEBP"))
+    if Image.MAX_IMAGE_PIXELS and image.width * image.height > Image.MAX_IMAGE_PIXELS:
+        raise Image.DecompressionBombError("Image exceeds MAX_IMAGE_PIXELS.")
+    return np.asarray(image.convert("RGB"))
 
 
 # ---------------------------------------------------------------- watermark

@@ -4,11 +4,33 @@ Bağımlılığı yalnız stdlib: ultralytics/torch yüklemeden test edilebilsin
 """
 import json
 import os
+import re
+import shutil
 from pathlib import Path
 
 MAX_BODY_BYTES = int(os.getenv("MAX_REQUEST_BODY_BYTES", str(25 * 1024 * 1024)))  # 25 MiB
 MAX_QUESTIONS_PER_REQUEST = int(os.getenv("MAX_QUESTIONS_PER_REQUEST", "200"))
 MAX_ANSWERS_PER_QUESTION = int(os.getenv("MAX_ANSWERS_PER_QUESTION", "20"))
+# Issue #461: veri seti diskinde bu kadar boş yer kalmadıysa send-to-fix 507 döner (varsayılan 2 GiB).
+MIN_FREE_DISK_BYTES = int(os.getenv("MIN_FREE_DISK_BYTES", str(2 * 1024 * 1024 * 1024)))
+# Issue #461: gateway'in doğrulanmış kullanıcıyla doldurduğu başlık (istemcinin gönderdiği değeri gateway ezer).
+SUBMITTED_BY_HEADER = "x-examapp-user"
+_SUBJECT_RE = re.compile(r"^[A-Za-z0-9-]{1,64}$")
+
+
+def has_free_disk(path: Path, min_free: int = MIN_FREE_DISK_BYTES) -> bool:
+    """Veri seti klasörünün (yoksa en yakın var olan üst klasörün) diskinde min_free bayt boş yer var mı."""
+    probe = Path(path).resolve()
+    while not probe.exists() and probe != probe.parent:
+        probe = probe.parent
+    return shutil.disk_usage(probe).free >= min_free
+
+
+def submitted_by(value: str | None) -> str | None:
+    """Gateway başlığındaki Keycloak sub'ı; beklenen biçimde değilse (UUID benzeri) kaydedilmez."""
+    if value and _SUBJECT_RE.fullmatch(value):
+        return value
+    return None
 
 
 class BodySizeLimitMiddleware:

@@ -101,6 +101,9 @@ public partial class BookingService : IBookingService
     /// <summary>issue #315: iptalde açık tahtayı hemen kapatır; DI'siz kurulan örneklerde null (temizlik turu kapatır).</summary>
     private readonly Whiteboard.IWhiteboardSessionCloser? _whiteboardCloser;
 
+    /// <summary>issue #490: iptalde görüşme odasını sunucuda kapatır; DI'siz kurulan örneklerde no-op.</summary>
+    private readonly IVideoRoomCloser _videoRoomCloser;
+
     public BookingService(
         AppDbContext context,
         IAuthApiClient authApiClient,
@@ -112,8 +115,10 @@ public partial class BookingService : IBookingService
         IStringLocalizer<Messages>? localizer = null,
         IBookingParentApprovalGate? parentApprovalGate = null,
         IOptions<BookingPolicyOptions>? policyOptions = null,
-        Whiteboard.IWhiteboardSessionCloser? whiteboardCloser = null)
+        Whiteboard.IWhiteboardSessionCloser? whiteboardCloser = null,
+        IVideoRoomCloser? videoRoomCloser = null)
     {
+        _videoRoomCloser = videoRoomCloser ?? NoOpVideoRoomCloser.Instance;
         _policyOptions = policyOptions ?? Options.Create(new BookingPolicyOptions());
         _whiteboardCloser = whiteboardCloser;
         _parentApprovalGate = parentApprovalGate ?? NoOpBookingParentApprovalGate.Instance;

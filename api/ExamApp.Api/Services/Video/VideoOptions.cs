@@ -70,5 +70,16 @@ public class JitsiOptions
     /// Üretilen token'ın azami ömrü (dakika). Gerçek <c>exp</c> bununla katılım penceresinin
     /// kapanışından hangisi önceyse odur — bkz. <c>JitsiVideoSessionProvider</c>.
     /// </summary>
-    public int TokenLifetimeMinutes { get; set; } = 60;
+    public int TokenLifetimeMinutes { get; set; } = 30;
+
+    /// <summary>
+    /// issue #490: prosody'nin iç HTTP adresi (docker-jitsi-meet, ör. "http://prosody:5280"). Doluysa randevu iptalinde
+    /// ve öğretmen askısında oda prosody'nin <c>mod_muc_end_meeting</c> ucuyla (<c>POST /end-meeting</c>) sunucu
+    /// tarafında kapatılır. Boşsa kapatma atlanır (yalnız istemci yoklaması ve token ömrü kalır). Bu adres yalnız iç
+    /// ağdan erişilebilir olmalıdır; jitsi-web nginx'i <c>/end-meeting</c>'i dışarı açmaz.
+    /// </summary>
+    public string InternalHttpUrl { get; set; } = string.Empty;
+
+    /// <summary>Prosody MUC alan adı (docker-jitsi-meet <c>XMPP_MUC_DOMAIN</c>); oda JID'i <c>{oda}@{MucDomain}</c>.</summary>
+    public string MucDomain { get; set; } = "muc.meet.jitsi";
 }

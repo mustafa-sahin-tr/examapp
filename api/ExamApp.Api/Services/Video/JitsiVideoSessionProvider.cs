@@ -146,8 +146,6 @@ public sealed class JitsiVideoSessionProvider : IVideoSessionProvider
         DateTime now,
         DateTime expiresAt)
     {
-        var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jitsi.AppSecret));
-
         var user = new Dictionary<string, object>
         {
             ["id"] = request.ParticipantUserId.ToString(CultureInfo.InvariantCulture),
@@ -155,6 +153,23 @@ public sealed class JitsiVideoSessionProvider : IVideoSessionProvider
             ["affiliation"] = isModerator ? "owner" : "member",
             ["moderator"] = isModerator ? "true" : "false"
         };
+
+        return SignToken(jitsi, xmppDomain, roomName, user, now, expiresAt);
+    }
+
+    /// <summary>
+    /// Prosody'nin <c>token_verification</c> / <c>token/util</c> modülünün doğruladığı HS256 JWT. Katılımcı token'ı ve
+    /// sunucu tarafı oda kapatma isteği (#490, <see cref="JitsiVideoRoomCloser"/>) aynı imzayı kullanır.
+    /// </summary>
+    internal static string SignToken(
+        JitsiOptions jitsi,
+        string xmppDomain,
+        string roomName,
+        IDictionary<string, object> user,
+        DateTime now,
+        DateTime expiresAt)
+    {
+        var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jitsi.AppSecret));
 
         var descriptor = new SecurityTokenDescriptor
         {

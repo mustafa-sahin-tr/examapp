@@ -6,7 +6,7 @@ import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angul
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { of, throwError } from 'rxjs';
 
-import { LIVE_STATUS_MAX_FAILURES, LIVE_STATUS_POLL_MS, LessonVideoComponent } from './lesson-video.component';
+import { LIVE_STATUS_MAX_FAILURES, LIVE_STATUS_POLL_MS, LessonVideoComponent, isFatalJitsiError } from './lesson-video.component';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALE_CODES } from '../../models/locale';
 import { AuthService, UserProfile } from '../../services/auth.service';
 import { BookingService } from '../../services/booking.service';
@@ -313,5 +313,131 @@ describe('LessonVideoComponent live status poll (issue #320)', () => {
         expect(bookingService.getLiveSessionStatus).toHaveBeenCalledTimes(2);
         expect(host.querySelector('iframe')).not.toBeNull();
         fixture.destroy();
+    });
+});
+
+describe('LessonVideoComponent Jitsi fatal error rejoin (issue #490)', () => {
+    let fixture: ComponentFixture<LessonVideoComponent>;
+    let bookingService: MockedObject<BookingService>;
+    let listeners: Map<string, (payload: unknown) => void>;
+    let created: number;
+
+    const session = {
+        provider: 'Jitsi',
+        roomName: 'room-42',
+        domain: 'meet.example.com',
+        baseUrl: 'https://meet.example.com',
+        joinUrl: 'https://meet.example.com/room-42?jwt=x',
+        token: 'x',
+        expiresAt: '2030-01-01T00:00:00Z',
+        isModerator: false,
+    };
+
+    class FakeJitsiApi {
+        constructor() {
+            created++;
+            listeners = new Map();
+        }
+        dispose(): void {}
+        addListener(event: string, listener: (payload: unknown) => void): void {
+            listeners.set(event, listener);
+        }
+        removeListener(): void {}
+        executeCommand(): void {}
+    }
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+    });
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    beforeEach(async () => {
+        created = 0;
+        listeners = new Map();
+        bookingService = {
+            getVideoSession: vi.fn().mockName('BookingService.getVideoSession'),
+            getLiveSessionStatus: vi.fn().mockName('BookingService.getLiveSessionStatus'),
+            extractError: vi.fn().mockName('BookingService.extractError'),
+        } as unknown as MockedObject<BookingService>;
+        bookingService.getVideoSession.mockReturnValue(of({ success: true, session }));
+        bookingService.getLiveSessionStatus.mockReturnValue(of({ success: true, active: true }));
+        bookingService.extractError.mockImplementation((_: HttpErrorResponse, fallback: string) => fallback);
+
+        await TestBed.configureTestingModule({
+            imports: [LessonVideoComponent, translocoTesting],
+            providers: [
+                provideRouter([]),
+                { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ bookingId: '42' }) } } },
+                { provide: BookingService, useValue: bookingService },
+                { provide: JitsiScriptLoaderService, useValue: { load: () => Promise.resolve(FakeJitsiApi) } },
+                { provide: AuthService, useValue: { getUserRole: () => 'Student' } },
+            ],
+        }).compileComponents();
+    });
+
+    async function settle(): Promise<void> {
+        for (let i = 0; i < 3; i++) {
+            fixture.detectChanges();
+            await vi.advanceTimersByTimeAsync(0);
+        }
+    }
+
+    async function open(): Promise<void> {
+        fixture = TestBed.createComponent(LessonVideoComponent);
+        await settle();
+    }
+
+    it('isFatalJitsiError_ReadsTopLevelAndNestedFlag', () => {
+        expect(isFatalJitsiError({ isFatal: true })).toBe(true);
+        expect(isFatalJitsiError({ error: { isFatal: true } })).toBe(true);
+        expect(isFatalJitsiError({ isFatal: false })).toBe(false);
+        expect(isFatalJitsiError(null)).toBe(false);
+    });
+
+    it('FatalError_RequestsFreshSessionOnce', async () => {
+        await open();
+        expect(created).toBe(1);
+        expect(bookingService.getVideoSession).toHaveBeenCalledTimes(1);
+
+        listeners.get('errorOccurred')!({ isFatal: true, name: 'conference.connectionError' });
+        await settle();
+
+        expect(bookingService.getVideoSession).toHaveBeenCalledTimes(2);
+        expect(created).toBe(2);
+
+        // Yeniden girmeden ikinci ölümcül hata: döngü yok.
+        listeners.get('errorOccurred')!({ isFatal: true });
+        await settle();
+        expect(bookingService.getVideoSession).toHaveBeenCalledTimes(2);
+    });
+
+    it('FatalErrorAfterRejoin_RequestsAgain', async () => {
+        await open();
+        listeners.get('errorOccurred')!({ isFatal: true });
+        await settle();
+        listeners.get('videoConferenceJoined')!({});
+        listeners.get('errorOccurred')!({ isFatal: true });
+        await settle();
+        expect(bookingService.getVideoSession).toHaveBeenCalledTimes(3);
+    });
+
+    it('NonFatalError_KeepsRoom', async () => {
+        await open();
+        listeners.get('errorOccurred')!({ isFatal: false });
+        await settle();
+        expect(bookingService.getVideoSession).toHaveBeenCalledTimes(1);
+    });
+
+    it('FatalErrorAfterSuspension_ShowsTeacherUnavailable', async () => {
+        await open();
+        bookingService.getVideoSession.mockReturnValue(
+            throwError(() => new HttpErrorResponse({ status: 409, error: { errorCode: 'TeacherUnavailable' } }))
+        );
+        listeners.get('errorOccurred')!({ isFatal: true });
+        await settle();
+        const host = fixture.nativeElement as HTMLElement;
+        expect(host.querySelector('[role="alert"]')?.textContent).toContain(lessonVideoTr.error.teacherUnavailable);
     });
 });

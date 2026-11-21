@@ -103,6 +103,12 @@ export class LessonVideoComponent implements OnInit {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private liveStatusPoll: Subscription | null = null;
   private liveStatusFailures = 0;
+  /**
+   * Issue #490: Jitsi ölümcül hatada (token süresi dolmuş yeniden bağlanma, sunucuda kapatılan oda) bir kez yeni
+   * `video-session` istenir; bu çağrı askıyı, randevu durumunu ve pencereyi sunucuda yeniden doğrular. Odaya
+   * yeniden girilince hak yenilenir; döngü olmasın diye arada ikinci deneme yapılmaz.
+   */
+  private autoRejoinUsed = false;
 
   private readonly container = viewChild<ElementRef<HTMLDivElement>>('jitsiContainer');
   private api: JitsiMeetExternalApi | null = null;
@@ -319,10 +325,21 @@ export class LessonVideoComponent implements OnInit {
         },
       });
       this.api.addListener('readyToClose', () => this.leave());
+      this.api.addListener('errorOccurred', (payload) => this.onJitsiError(payload));
+      this.api.addListener('videoConferenceJoined', () => (this.autoRejoinUsed = false));
     } catch {
       // Betik yüklenemediyse düz iframe'e düş — oda yine de açılabilsin.
       this.mode.set('direct');
     }
+  }
+
+  /** Issue #490: ölümcül Jitsi hatasında bir kez taze token ile yeniden yükle. */
+  private onJitsiError(payload: unknown): void {
+    if (!isFatalJitsiError(payload) || this.autoRejoinUsed || this.sessionEnded()) {
+      return;
+    }
+    this.autoRejoinUsed = true;
+    this.load();
   }
 
   private startLiveStatusPoll(): void {
@@ -405,4 +422,15 @@ export class LessonVideoComponent implements OnInit {
     this.api?.dispose();
     this.api = null;
   }
+}
+
+/**
+ * Jitsi IFrame API `errorOccurred` yükü: `{ name, message, type, isFatal, details }` (bazı sürümlerde `error` altında).
+ */
+export function isFatalJitsiError(payload: unknown): boolean {
+  if (!payload || typeof payload !== 'object') {
+    return false;
+  }
+  const p = payload as { isFatal?: unknown; error?: { isFatal?: unknown } };
+  return p.isFatal === true || p.error?.isFatal === true;
 }

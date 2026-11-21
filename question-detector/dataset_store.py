@@ -15,6 +15,7 @@ Kırpma adları page_id ile başlar; train/val ayrımı sayfa bazında yapılır
 
 Bağımlılığı yalnız stdlib + Pillow: ultralytics yüklemeden test edilebilsin diye main.py'den ayrı.
 """
+import base64
 import hashlib
 import json
 import os
@@ -28,6 +29,11 @@ from typing import List, Sequence, Tuple
 from PIL import Image, ImageOps
 
 from guards import clamp_box
+
+# Issue #461: decompression bomb sınırı (Pillow varsayılanı ~89M piksel uyarı, 2x'i hata). 40M piksel: A4 600 dpi ~35M.
+Image.MAX_IMAGE_PIXELS = int(os.getenv("MAX_IMAGE_PIXELS", str(40_000_000)))
+# Issue #461: yalnız tarayıcı / exam API'nin gönderdiği biçimler; Pillow'un geri kalan çözücüleri (TIFF, PSD, EPS ...) kapalı.
+ALLOWED_IMAGE_FORMATS = ("PNG", "JPEG", "WEBP")
 
 # Box = (x, y, width, height), sayfa pikseli
 Box = Tuple[float, float, float, float]
@@ -110,14 +116,26 @@ def open_oriented_rgb(image_bytes: bytes) -> Image.Image:
     Tarayıcı tuvali ve exam API (#559, SkiaSharp) görseli EXIF yönüyle gösterir/kırpar; kutular o uzayda gelir.
     Tahmin, QR okuma ve eğitim kaydı aynı uzayda olsun (yoksa döndürülmüş telefon fotoğrafında kutular kayar).
     """
-    image = Image.open(BytesIO(image_bytes))
+    image = Image.open(BytesIO(image_bytes), formats=ALLOWED_IMAGE_FORMATS)
+    # Pillow 1x-2x MAX_IMAGE_PIXELS arasında yalnız uyarır; sınır gerçekten bu olsun diye çözmeden (başlıktan) reddet.
+    if Image.MAX_IMAGE_PIXELS and image.width * image.height > Image.MAX_IMAGE_PIXELS:
+        raise Image.DecompressionBombError(
+            f"Image size ({image.width * image.height} pixels) exceeds limit of {Image.MAX_IMAGE_PIXELS} pixels.")
     return ImageOps.exif_transpose(image).convert("RGB")
+
+
+def decode_base64_image(data: str) -> bytes:
+    """`data:image/...;base64,` önekli ya da düz base64 metni çözer; geçersiz karakterde binascii.Error (#461)."""
+    if data.startswith("data:") or "," in data[:100]:
+        data = data.split(",", 1)[1]
+    return base64.b64decode(data, validate=True)
 
 def save_page(
     image_bytes: bytes,
     questions: Sequence[QuestionSample],
     page_complete: bool = True,
     root: Path | None = None,
+    submitted_by: str | None = None,
 ) -> dict:
     """Sayfayı ve kırpmaları veri setine yazar.
 
@@ -170,6 +188,8 @@ def save_page(
         "answer_counts": [len(q.answers) for q in questions],
         "crops": len(crops),
         "skipped_crops": skipped_crops,
+        # Issue #461: gönderenin Keycloak sub'ı (gateway X-Examapp-User); çöp / zehirli veriyi geri almak için.
+        "submitted_by": submitted_by,
     })
 
     return {"page_id": page_id, "page_image": page_image, "crops": crops, "skipped_crops": skipped_crops}

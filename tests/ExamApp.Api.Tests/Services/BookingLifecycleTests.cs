@@ -60,12 +60,13 @@ public partial class BookingLifecycleTests : IDisposable
     /// <summary>Olay metinlerindeki kısa görünen ad ("Ad S."): sahte dizinde "User 43200" → "User 4.".</summary>
     private static string Short(int userId) => $"User {userId.ToString()[0]}.";
 
-    private BookingService NewService(AppDbContext ctx, IWhiteboardSessionCloser? closer = null, IBookingParentApprovalGate? parentApprovalGate = null)
+    private BookingService NewService(AppDbContext ctx, IWhiteboardSessionCloser? closer = null, IBookingParentApprovalGate? parentApprovalGate = null,
+        IVideoRoomCloser? roomCloser = null)
     {
         var recurring = new RecurringAvailabilityService(ctx, _clock, NullLogger<RecurringAvailabilityService>.Instance);
         return new BookingService(ctx, _authApi, Substitute.For<IVideoSessionProvider>(), Options.Create(new VideoOptions()), _clock,
             recurring, NullLogger<BookingService>.Instance, localizer: null, parentApprovalGate: parentApprovalGate,
-            policyOptions: Options.Create(new BookingPolicyOptions()), whiteboardCloser: closer);
+            policyOptions: Options.Create(new BookingPolicyOptions()), whiteboardCloser: closer, videoRoomCloser: roomCloser);
     }
 
     private sealed record World(
@@ -144,10 +145,11 @@ public partial class BookingLifecycleTests : IDisposable
         return id;
     }
 
-    private async Task<T> WithServiceAsync<T>(Func<BookingService, Task<T>> work, IWhiteboardSessionCloser? closer = null)
+    private async Task<T> WithServiceAsync<T>(Func<BookingService, Task<T>> work, IWhiteboardSessionCloser? closer = null,
+        IVideoRoomCloser? roomCloser = null)
     {
         await using var ctx = _db.NewContext();
-        return await work(NewService(ctx, closer));
+        return await work(NewService(ctx, closer, roomCloser: roomCloser));
     }
 
     private async Task<Booking> BookingAsync(int id)
@@ -384,6 +386,32 @@ public partial class BookingLifecycleTests : IDisposable
 
         result.Success.ShouldBeTrue(result.Message);
         await closer.Received(1).CloseAsync(id, WhiteboardCloseReasons.BookingCancelled, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CancelBookingAsync_ApprovedBooking_ClosesVideoRoomOnServer()
+    {
+        var w = await SeedAsync();
+        var id = await ApprovedAsync(w.SlotId);
+        var roomCloser = Substitute.For<IVideoRoomCloser>();
+
+        var result = await WithServiceAsync(s => s.CancelBookingAsync(TeacherUserId, id, null), roomCloser: roomCloser);
+
+        result.Success.ShouldBeTrue(result.Message);
+        await roomCloser.Received(1).CloseRoomAsync(id, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CancelBookingAsync_PendingBooking_DoesNotCloseVideoRoom()
+    {
+        var w = await SeedAsync();
+        var id = (await StudentRequestAsync(w.SlotId)).ObjectId;
+        var roomCloser = Substitute.For<IVideoRoomCloser>();
+
+        var result = await WithServiceAsync(s => s.CancelBookingAsync(StudentUserId, id, null), roomCloser: roomCloser);
+
+        result.Success.ShouldBeTrue(result.Message);
+        roomCloser.ReceivedCalls().ShouldBeEmpty();
     }
 
     [Fact]

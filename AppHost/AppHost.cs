@@ -209,6 +209,14 @@ var prosody = builder.AddContainer("prosody", "jitsi/prosody", "stable-9584")
     .WithEnvironment("ENABLE_GUESTS", "0")
     .WithEnvironment("AUTH_TYPE", "jwt")
     .WithEnvironment("TZ", "Europe/Istanbul")
+    // Issue #490: POST /end-meeting lets the API destroy a booking's room server-side (cancel, teacher suspension).
+    // jitsi-web's nginx does not proxy that path; only the API reaches it. The stock mod_muc_end_meeting only accepts
+    // ASAP (RS256) tokens, so a copy that verifies with JWT_APP_SECRET is mounted from deploy/jitsi/prosody-plugins/.
+    .WithEnvironment("GLOBAL_MODULES", "examapp_end_meeting")
+    .WithBindMount("../deploy/jitsi/prosody-plugins/mod_examapp_end_meeting.lua",
+        "/prosody-plugins-custom/mod_examapp_end_meeting.lua", isReadOnly: true)
+    // Host-side endpoint so ExamDotnetApi (a project, not a container) can reach prosody's HTTP port.
+    .WithHttpEndpoint(targetPort: 5280, name: "http")
     .WithVolume("examapp-jitsi-prosody-config", "/config")
     .WithVolume("examapp-jitsi-prosody-plugins-custom", "/prosody-plugins-custom");
 
@@ -441,9 +449,9 @@ var examDotnetApi = builder.AddProject<Projects.ExamApp_Api>("exam-dotnet-api")
         context.EnvironmentVariables["MinioConfig__Endpoint"] = ReferenceExpression.Create(
             $"{minioApiEndpoint.Property(EndpointProperty.Host)}:{minioApiEndpoint.Property(EndpointProperty.Port)}");
     })
-    // Video__Jitsi__* — token minting only (JitsiVideoSessionProvider signs a
-    // JWT with these values), no HTTP call from ExamDotnetApi to jitsi-web at
-    // any point, so deliberately no .WaitFor(jitsiWeb) below: the API can
+    // Video__Jitsi__* — token minting (JitsiVideoSessionProvider signs a
+    // JWT with these values); the only HTTP call from ExamDotnetApi to Jitsi is
+    // the best-effort room close to prosody (#490, InternalHttpUrl below), so deliberately no .WaitFor(jitsiWeb) below: the API can
     // start and mint tokens before Jitsi's containers are healthy, and a
     // token minted while Jitsi is still starting simply can't be redeemed
     // until jitsi-web/prosody/jicofo/jvb come up (see docs/jitsi-video.md).
@@ -455,6 +463,8 @@ var examDotnetApi = builder.AddProject<Projects.ExamApp_Api>("exam-dotnet-api")
     .WithEnvironment("Video__Jitsi__AppId", jitsiJwtAppId)
     .WithEnvironment("Video__Jitsi__AppSecret", jitsiJwtAppSecret)
     .WithEnvironment("Video__Jitsi__RoomSecret", jitsiRoomSecret)
+    // Issue #490: the one server-side call to Jitsi — POST {prosody}/end-meeting to close a room on cancel / suspension.
+    .WithEnvironment("Video__Jitsi__InternalHttpUrl", prosody.GetEndpoint("http"))
     // Issue #419: parent invite code HMAC pepper (dev-only default in appsettings.json Parameters).
     .WithEnvironment("ParentLinks__InviteCodePepper", parentInviteCodePepper)
     // Issues #440/#441: shared activation-link encryption key (same value as BadgeService).

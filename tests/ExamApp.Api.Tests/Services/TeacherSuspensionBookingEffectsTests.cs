@@ -98,17 +98,51 @@ public class TeacherSuspensionBookingEffectsTests : IDisposable
     }
 
     private AdminTeacherSuspensionService NewSuspensionService(AppDbContext ctx,
-        IWhiteboardStore? store = null, IWhiteboardSessionCloser? closer = null)
+        IWhiteboardStore? store = null, IWhiteboardSessionCloser? closer = null, IVideoRoomCloser? roomCloser = null)
         => new(ctx, new AdminUserActionAuditService(ctx), NullLogger<AdminTeacherSuspensionService>.Instance, _authApi, _clock,
-            store, closer);
+            store, closer, roomCloser, Options.Create(new VideoOptions()));
 
     private const int AdminUserId = 999;
 
     private async Task<AdminTeacherSuspensionResult> SuspendAsync(IWhiteboardStore? store = null, IWhiteboardSessionCloser? closer = null,
-        string reason = "Gizli askı nedeni")
+        string reason = "Gizli askı nedeni", IVideoRoomCloser? roomCloser = null)
     {
         await using var ctx = _db.NewContext();
-        return await NewSuspensionService(ctx, store, closer).SuspendAsync(TeacherId, reason, AdminSub, AdminUserId);
+        return await NewSuspensionService(ctx, store, closer, roomCloser).SuspendAsync(TeacherId, reason, AdminSub, AdminUserId);
+    }
+
+    [Fact]
+    public async Task Suspend_closes_video_rooms_of_the_teachers_live_approved_bookings_only()
+    {
+        await SeedPeopleAsync();
+        var live = await AddBookingAsync(TeacherId, StudentA, BookingStatus.Approved, Today, 12);
+        var tomorrow = await AddBookingAsync(TeacherId, StudentB, BookingStatus.Approved, Today.AddDays(1), 12);
+        var yesterday = await AddBookingAsync(TeacherId, StudentC, BookingStatus.Approved, Today.AddDays(-1), 12);
+        var others = await AddBookingAsync(OtherTeacherId, StudentC, BookingStatus.Approved, Today, 12);
+        var roomCloser = Substitute.For<IVideoRoomCloser>();
+
+        (await SuspendAsync(roomCloser: roomCloser)).Status.ShouldBe(AdminTeacherSuspensionStatus.Success);
+
+        await roomCloser.Received(1).CloseRoomAsync(live, Arg.Any<CancellationToken>());
+        await roomCloser.DidNotReceive().CloseRoomAsync(tomorrow, Arg.Any<CancellationToken>());
+        await roomCloser.DidNotReceive().CloseRoomAsync(yesterday, Arg.Any<CancellationToken>());
+        await roomCloser.DidNotReceive().CloseRoomAsync(others, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Video_room_close_failure_does_not_undo_the_suspension()
+    {
+        await SeedPeopleAsync();
+        var live = await AddBookingAsync(TeacherId, StudentA, BookingStatus.Approved, Today, 12);
+        var roomCloser = Substitute.For<IVideoRoomCloser>();
+        roomCloser.CloseRoomAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns<bool>(_ => throw new InvalidOperationException("prosody down"));
+
+        (await SuspendAsync(roomCloser: roomCloser)).Status.ShouldBe(AdminTeacherSuspensionStatus.Success);
+
+        await roomCloser.Received(1).CloseRoomAsync(live, Arg.Any<CancellationToken>());
+        await using var ctx = _db.NewContext();
+        (await ctx.Teachers.SingleAsync(t => t.Id == TeacherId)).AccountSuspendedAt.ShouldNotBeNull();
     }
 
     private async Task<AdminTeacherSuspensionResult> UnsuspendAsync()

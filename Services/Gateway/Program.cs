@@ -166,6 +166,7 @@ app.UseLoginRateLimit(app.Configuration); // #368: giriş POST uçları, IP baş
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRouteRoleAuth();
+app.UseTrainingUploadGuard(app.Configuration); // #461: send-to-fix kullanıcı başına hız sınırı + gönderen başlığı
 app.UseQuestionTransferUploadLimit();
 
 app.Use(async (context, next) =>

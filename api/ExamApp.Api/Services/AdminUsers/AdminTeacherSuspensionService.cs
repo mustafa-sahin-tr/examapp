@@ -9,12 +9,14 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos.Admin;
 using ExamApp.Api.Services.Bookings;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Video;
 using ExamApp.Api.Services.Whiteboard;
 using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace ExamApp.Api.Services.AdminUsers;
 
@@ -47,6 +49,10 @@ public class AdminTeacherSuspensionService : IAdminTeacherSuspensionService
     private readonly IWhiteboardStore? _whiteboardStore;
     private readonly IWhiteboardSessionCloser? _whiteboardCloser;
 
+    // issue #490: askıda süren görüşmeler sunucuda kapanır. DI'siz örneklerde no-op / varsayılan pencere.
+    private readonly IVideoRoomCloser _videoRoomCloser;
+    private readonly VideoOptions _videoOptions;
+
     public AdminTeacherSuspensionService(
         AppDbContext context,
         IAdminUserActionAuditService audit,
@@ -54,8 +60,12 @@ public class AdminTeacherSuspensionService : IAdminTeacherSuspensionService
         IAuthApiClient? authApiClient = null,
         TimeProvider? timeProvider = null,
         IWhiteboardStore? whiteboardStore = null,
-        IWhiteboardSessionCloser? whiteboardCloser = null)
+        IWhiteboardSessionCloser? whiteboardCloser = null,
+        IVideoRoomCloser? videoRoomCloser = null,
+        IOptions<VideoOptions>? videoOptions = null)
     {
+        _videoRoomCloser = videoRoomCloser ?? NoOpVideoRoomCloser.Instance;
+        _videoOptions = videoOptions?.Value ?? new VideoOptions();
         _context = context;
         _audit = audit;
         _logger = logger ?? NullLogger<AdminTeacherSuspensionService>.Instance;
@@ -174,6 +184,8 @@ public class AdminTeacherSuspensionService : IAdminTeacherSuspensionService
 
         // issue #311: commit'ten SONRA — açık tahtalar 60 sn'lik temizlik turunu beklemeden kapanır.
         await CloseOpenWhiteboardsAsync(teacherId);
+        // issue #490: süren görüşme odaları da sunucuda kapanır (yoklamayı çalıştırmayan istemci odada kalamaz).
+        await CloseOpenVideoRoomsAsync(teacherId);
 
         return new(AdminTeacherSuspensionStatus.Success, AccountApprovedAt: null, AccountSuspendedAt: now);
     }
@@ -367,6 +379,48 @@ public class AdminTeacherSuspensionService : IAdminTeacherSuspensionService
         {
             _logger.LogWarning(ex,
                 "[AdminTeacherSuspension] Açık tahtalar hemen kapatılamadı; temizlik turu kapatacak. Teacher#{TeacherId}", teacherId);
+        }
+    }
+
+    /// <summary>
+    /// issue #490: öğretmenin katılım penceresi şu an açık olan onaylı randevularının görüşme odalarını sunucuda kapatır.
+    /// Approved randevular askıda iptal edilmez (#315); askı kalkınca (pencere içindeyse) yeni token'la yeniden girilir.
+    /// Hata askıyı geri almaz; loglanır (yedek: istemci yoklaması #320 ve token ömrü).
+    /// </summary>
+    private async Task CloseOpenVideoRoomsAsync(int teacherId)
+    {
+        if (_videoRoomCloser is NoOpVideoRoomCloser)
+            return;
+
+        try
+        {
+            var now = UtcNow();
+            // Pencere en çok ders süresi (≤ 4 sa) + açılış/kapanış payı kadar sürer; dünden yarına kadar olan slotlar yeter.
+            var today = DateOnly.FromDateTime(now);
+            var from = today.AddDays(-1);
+            var to = today.AddDays(1);
+
+            var rows = await _context.Bookings
+                .WithSoftDeletedSlots()
+                .AsNoTracking()
+                .Where(b => b.TeacherId == teacherId && b.Status == BookingStatus.Approved
+                    && b.AvailabilitySlot.Date >= from && b.AvailabilitySlot.Date <= to)
+                .Select(b => new { b.Id, b.AvailabilitySlot.Date, b.AvailabilitySlot.StartTime, b.AvailabilitySlot.EndTime })
+                .ToListAsync(CancellationToken.None);
+
+            var liveIds = rows
+                .Where(r => BookingSessionWindow.For(r.Date, r.StartTime, r.EndTime, _videoOptions).StateAt(now)
+                    == BookingWindowState.Open)
+                .Select(r => r.Id)
+                .ToList();
+
+            foreach (var bookingId in liveIds)
+                await _videoRoomCloser.CloseRoomAsync(bookingId, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "[AdminTeacherSuspension] Süren görüşme odaları kapatılamadı. Teacher#{TeacherId}", teacherId);
         }
     }
 

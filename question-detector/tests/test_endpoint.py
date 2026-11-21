@@ -62,3 +62,38 @@ def test_labeled_pages_lists_trained_page_ids(tmp_path, monkeypatch):
         "answerCount": 4, "imageData": {"image_base64": page}, "questions": [], "pageComplete": True,
     }).json()
     assert client.get("/labeled-pages").json() == {"pageIds": [saved["imageFile"]]}
+
+
+# --- Issue #461 ---
+
+def _fix_payload(image_base64: str) -> dict:
+    return {"answerCount": 4, "imageData": {"image_base64": image_base64}, "questions": [], "pageComplete": True}
+
+
+def test_send_to_fix_records_gateway_submitter(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATASET_DIR", str(tmp_path))
+    sub = "0b6f2c1e-1111-2222-3333-444455556666"
+    assert client.post("/send-to-fix", json=_fix_payload(_page_base64()), headers={"X-Examapp-User": sub}).status_code == 200
+    import json as _json
+    record = _json.loads((tmp_path / "manifest.jsonl").read_text().splitlines()[-1])
+    assert record["submitted_by"] == sub
+
+
+def test_send_to_fix_low_disk_returns_507_and_writes_nothing(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATASET_DIR", str(tmp_path))
+    monkeypatch.setattr(main, "has_free_disk", lambda _path: False)
+    assert client.post("/send-to-fix", json=_fix_payload(_page_base64())).status_code == 507
+    assert not (tmp_path / "manifest.jsonl").exists()
+
+
+def test_send_to_fix_invalid_base64_returns_400(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATASET_DIR", str(tmp_path))
+    assert client.post("/send-to-fix", json=_fix_payload("not*base64")).status_code == 400
+
+
+def test_send_to_fix_unsupported_format_returns_400(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATASET_DIR", str(tmp_path))
+    buf = BytesIO()
+    Image.new("RGB", (20, 20)).save(buf, format="BMP")
+    encoded = base64.b64encode(buf.getvalue()).decode()
+    assert client.post("/send-to-fix", json=_fix_payload(encoded)).status_code == 400

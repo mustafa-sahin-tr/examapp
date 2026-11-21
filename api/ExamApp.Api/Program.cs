@@ -569,6 +569,12 @@ builder.Services.AddOptions<ExamApp.Api.Services.Parents.ParentAccessAuditOption
     .ValidateOnStart();
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentAccessAuditRetentionJob, ExamApp.Api.Services.Parents.ParentAccessAuditRetentionJob>();
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminParentAccessAuditService, ExamApp.Api.Services.AdminUsers.AdminParentAccessAuditService>();
+// issue #810: koç notu saklama süresi — CoachNoteRetention:RetentionDays (varsayılan 730, UpdatedAt'ten), günlük Hangfire temizliği.
+builder.Services.AddOptions<ExamApp.Api.Services.Coaching.CoachNoteRetentionOptions>()
+    .BindConfiguration(ExamApp.Api.Services.Coaching.CoachNoteRetentionOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddScoped<ExamApp.Api.Services.Coaching.ICoachNoteRetentionJob, ExamApp.Api.Services.Coaching.CoachNoteRetentionJob>();
 // issue #335: yorum moderasyon geçmişi saklama süresi — CommentModerationHistory:RetentionDays (gizle/aç, varsayılan 730) ve
 // DeniedRetentionDays (reddedilen deneme, varsayılan 90); günlük Hangfire temizliği.
 builder.Services.AddOptions<ExamApp.Api.Services.Worksheets.CommentModerationHistoryOptions>()
@@ -1018,6 +1024,12 @@ RecurringJob.AddOrUpdate<ExamApp.Api.Services.Parents.IParentAccessAuditRetentio
     ExamApp.Api.Services.Parents.ParentAccessAuditRetentionJob.RecurringJobId,
     j => j.PurgeExpiredAsync(CancellationToken.None),
     app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Parents.ParentAccessAuditOptions>>().Value.Cron);
+
+// issue #810: süresi dolan koç notlarını günlük, parti parti siler (hedeflere dokunmaz).
+RecurringJob.AddOrUpdate<ExamApp.Api.Services.Coaching.ICoachNoteRetentionJob>(
+    ExamApp.Api.Services.Coaching.CoachNoteRetentionJob.RecurringJobId,
+    j => j.PurgeExpiredAsync(CancellationToken.None),
+    app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Coaching.CoachNoteRetentionOptions>>().Value.Cron);
 
 // issue #335: WorksheetCommentModerationEvents saklama süresi — tür başına kesimle (gizle/aç, reddedilen deneme) parti parti siler.
 RecurringJob.AddOrUpdate<ExamApp.Api.Services.Worksheets.IWorksheetCommentModerationHistoryRetentionJob>(

@@ -11,6 +11,17 @@
 	# without hitting Let's Encrypt rate limits. Leave empty for normal public ACME.
 	{$CADDY_TLS}
 
+	# Only the app realm is public (#369): any other realm, the master realm (Keycloak's own admins) included, answers 404
+	# from outside. An allowlist rather than a /realms/master block: matrix parameters (/realms/master;x/...) or other
+	# spellings must not slip through to Keycloak.
+	@otherRealm {
+		path /realms /realms/* /auth/realms /auth/realms/*
+		not path /realms/exam-realm /realms/exam-realm/* /auth/realms/exam-realm /auth/realms/exam-realm/*
+	}
+	handle @otherRealm {
+		respond 404
+	}
+
 	# Keycloak must be reachable on the public domain for OIDC flows.
 	# Serve it directly from Caddy (bypassing Ocelot) for common Keycloak paths.
 	# /admin is not listed: Keycloak's admin console stays off the public domain (#369) and the path belongs to the app.

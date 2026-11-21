@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from typing import List
 from pathlib import Path
 from ultralytics import YOLO
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 import base64
 import json
 from io import BytesIO
@@ -16,8 +16,18 @@ from guards import (
     MAX_ANSWERS_PER_QUESTION,
     MAX_COORD,
     MAX_QUESTIONS_PER_REQUEST,
+    SUBMITTED_BY_HEADER,
+    has_free_disk,
+    submitted_by,
 )
-from dataset_store import QuestionSample, labeled_page_ids, open_oriented_rgb, save_page
+from dataset_store import (
+    QuestionSample,
+    dataset_dir,
+    decode_base64_image,
+    labeled_page_ids,
+    open_oriented_rgb,
+    save_page,
+)
 import transcribe
 import page_clean
 
@@ -104,11 +114,7 @@ def validate_upload_limits(payload: UploadQuestionsRequest) -> None:
 def predict(data: ImageData):
     try:
         # Base64 başlığını ayıkla (data:image/...;base64, varsa)
-        base64_data = data.image_base64
-        if base64_data.startswith("data:"):
-            base64_data = base64_data.split(",", 1)[1]
-        # Base64'ten image oluştur
-        image_bytes = base64.b64decode(base64_data)
+        image_bytes = decode_base64_image(data.image_base64)
         image = open_oriented_rgb(image_bytes)
         logger.info(f"Received image with shape: {image.size}")
         # Predict et
@@ -182,7 +188,7 @@ def predict(data: ImageData):
 
 
 @app.post("/send-to-fix")
-def upload_questions(payload: UploadQuestionsRequest):
+def upload_questions(payload: UploadQuestionsRequest, request: Request):
     """Elle dogrulanmis sayfayi egitim veri setine yazar (DATASET_DIR, bkz. dataset_store)."""
     validate_upload_limits(payload)
     # Ön kontrol: answerCount ile eşleşmeyen var mı? (try dışında: 400 olarak kalsın)
@@ -192,11 +198,15 @@ def upload_questions(payload: UploadQuestionsRequest):
             status_code=400,
             detail=f"{len(invalid_questions)} question(s) have answer count mismatch. Expected {payload.answerCount}."
         )
+    # Issue #461: disk dolmadan önce dur (veri seti host'a bağlı ve Drive'a aynalanıyor).
+    if not has_free_disk(dataset_dir()):
+        logger.warning("send-to-fix rejected: low disk space")
+        raise HTTPException(status_code=507, detail="Not enough storage for training data.")
     try:
-        base64_str = payload.imageData.image_base64
-        if "," in base64_str:
-            base64_str = base64_str.split(",")[1]
-        image_bytes = base64.b64decode(base64_str)
+        try:
+            image_bytes = decode_base64_image(payload.imageData.image_base64)
+        except (ValueError, IndexError):
+            raise HTTPException(status_code=400, detail="Invalid image data.")
 
         samples = [
             QuestionSample(
@@ -206,9 +216,16 @@ def upload_questions(payload: UploadQuestionsRequest):
             for q in payload.questions
         ]
         try:
-            saved = save_page(image_bytes, samples, page_complete=payload.pageComplete)
+            saved = save_page(
+                image_bytes,
+                samples,
+                page_complete=payload.pageComplete,
+                submitted_by=submitted_by(request.headers.get(SUBMITTED_BY_HEADER)),
+            )
         except ValueError:
             raise HTTPException(status_code=400, detail="Box is outside the image.")
+        except (UnidentifiedImageError, Image.DecompressionBombError):
+            raise HTTPException(status_code=400, detail="Unsupported or too large image.")
 
         logger.info(
             f"Training sample saved: page={saved['page_id']} complete={payload.pageComplete} "
@@ -241,16 +258,8 @@ def labeled_pages():
 @app.post("/read-qr")
 async def read_qr_code(request: ImageData):
     try:
-        base64_data = request.image_base64
-        if base64_data.startswith("data:"):
-            base64_data = base64_data.split(",", 1)[1]
-        # Base64'ten image oluştur
-        image_bytes = base64.b64decode(base64_data)
+        image_bytes = decode_base64_image(request.image_base64)
         image = open_oriented_rgb(image_bytes)
-
-        # Base64 decode
-        # image_data = base64.b64decode(request.image_base64)
-        # image = Image.open(BytesIO(image_data))
 
         # QR kodları çöz
         qr_codes = decode(image)
@@ -313,7 +322,7 @@ async def clean_analyze(request: CleanAnalyzeRequest):
     if not page_clean.available():
         raise HTTPException(status_code=503, detail="page cleaning is not available")
     try:
-        pages = [base64.b64decode(p.split(",", 1)[1] if p.startswith("data:") else p) for p in request.pages]
+        pages = [decode_base64_image(p) for p in request.pages]
         from starlette.concurrency import run_in_threadpool
         return await run_in_threadpool(page_clean.analyze, pages, request.mark_colour)
     except Exception:

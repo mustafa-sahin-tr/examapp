@@ -71,6 +71,7 @@ import {
   bookImportTestName,
   bookImportTestPages,
   matchPageDrafts,
+  BookImportJobTest,
 } from '../../models/book-import';
 import {
   ConfirmDialogComponent,
@@ -1145,13 +1146,19 @@ export class LabelingComponent {
       .subscribe({
         next: (result) => {
           this.fixSaving.set(false);
-          this.snackBar.open(this.fixSavedMessage(result), this.tr('ok'), { duration: 8000 });
+          const saved = this.fixSavedMessage(result);
+          // #1273: yalnız işaretliler açıkken sıradaki sorunlu sayfaya, test bitince sıradaki sorunlu teste geçilir.
+          if (this.fixOnlyFlagged()) {
+            this.continueToNextFlagged(fix, saved);
+            return;
+          }
+          this.snackBar.open(saved, this.tr('ok'), { duration: 8000 });
           // #1129: sıradaki sayfaya geçilir; son sayfadan sonra incelemeye dönülür.
           const next = this.fixNav()?.next ?? null;
           if (next != null) {
             this.goToFixPage(next);
           } else {
-            void this.router.navigate([fix.kind === 'QuickAdd' ? '/quick-add' : '/book-imports', fix.jobId]);
+            this.leaveFix(fix);
           }
         },
         error: (error) => {
@@ -1159,6 +1166,48 @@ export class LabelingComponent {
           console.error('labeling book import fix failed', error);
           const body = (error as { error?: { message?: string } })?.error;
           this.snackBar.open(body?.message || this.tr('fix.failed'), this.tr('ok'), { duration: 6000 });
+        },
+      });
+  }
+
+  private leaveFix(fix: LabelingFixTarget): void {
+    void this.router.navigate([fix.kind === 'QuickAdd' ? '/quick-add' : '/book-imports', fix.jobId]);
+  }
+
+  /**
+   * #1273: kayıttan sonra iş yeniden okunur (işaretler sunucuda yeniden hesaplandı). Önce bu testin kalan işaretli sayfası,
+   * yoksa sıradaki kontrol gerekli test (ilk işaretli sayfasıyla) açılır; kalmadıysa aktarım sayfasına dönülür.
+   */
+  private continueToNextFlagged(fix: LabelingFixTarget, saved: string): void {
+    const jobs = fix.kind === 'QuickAdd' ? this.quickAdd : this.bookImports;
+    jobs
+      .get(fix.jobId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (job) => {
+          const next = nextFlaggedFixTarget(job.tests, fix.testId, fix.filePage);
+          if (next?.testId === fix.testId) {
+            this.snackBar.open(`${saved} ${this.tr('fix.nextPage', { page: next.page })}`, this.tr('ok'), { duration: 8000 });
+            this.goToFixPage(next.page);
+          } else if (next) {
+            this.snackBar.open(`${saved} ${this.tr('fix.nextTest', { test: next.name })}`, this.tr('ok'), { duration: 8000 });
+            void this.router
+              .navigate([], {
+                relativeTo: this.route,
+                queryParams: { test: next.testId, page: next.page },
+                queryParamsHandling: 'merge',
+                replaceUrl: true,
+              })
+              .then(() => this.startFixFromRoute());
+          } else {
+            this.snackBar.open(`${saved} ${this.tr('fix.noneLeft')}`, this.tr('ok'), { duration: 8000 });
+            this.leaveFix(fix);
+          }
+        },
+        error: (error) => {
+          console.error('labeling book import reload failed', error);
+          this.snackBar.open(saved, this.tr('ok'), { duration: 8000 });
+          this.leaveFix(fix);
         },
       });
   }
@@ -1637,6 +1686,32 @@ export class LabelingComponent {
   private tr(key: string, params?: Record<string, unknown>): string {
     return this.transloco.translate<string>(`${LABELING_SCOPE}.${key}`, params) ?? '';
   }
+}
+
+/**
+ * #1273: kayıttan sonra açılacak sorunlu yer. Önce aynı testin kalan işaretli sayfası (kaydedilenden sonrakiler önce),
+ * yoksa sıradaki kontrol gerekli test (sıraya göre, sonra baştan) ilk işaretli sayfasıyla; işaretli sayfası olmayan
+ * (yalnız soru sayısı tutmayan) test ilk sayfasından açılır. Kalmadıysa null.
+ */
+export function nextFlaggedFixTarget(
+  tests: readonly BookImportJobTest[],
+  testId: number,
+  savedPage: number,
+): { testId: number; page: number; name: string } | null {
+  const current = tests.find((t) => t.id === testId);
+  if (current && current.status !== 'Approved' && current.status !== 'Removed') {
+    const flagged = bookImportTestPages(current).filter((p) => p.flagged && p.page !== savedPage).map((p) => p.page);
+    const page = flagged.find((p) => p > savedPage) ?? flagged[0];
+    if (page != null) return { testId, page, name: bookImportTestName(current) };
+  }
+  const order = current?.order ?? 0;
+  const candidates = tests
+    .filter((t) => t.id !== testId && t.status === 'NeedsReview' && t.worksheetId != null && t.fileFrom != null)
+    .sort((a, b) => a.order - b.order);
+  const next = candidates.find((t) => t.order > order) ?? candidates[0];
+  if (!next) return null;
+  const page = bookImportTestPages(next).find((p) => p.flagged)?.page ?? next.fileFrom!;
+  return { testId: next.id, page, name: bookImportTestName(next) };
 }
 
 /** Düzeltilen aktarım sayfası (#1023). */

@@ -85,6 +85,11 @@ export class BookImportReviewComponent implements OnInit {
   /** Aktarım sürerken bölüm görünür, düğmeler iş bitene kadar kapalı (#1129). */
   readonly locked = input(false);
   readonly actions = computed(() => this.editable() || this.locked());
+  /**
+   * #1267: sorular hâlâ alınıyor; bitmiş test (hazır, kontrol gerekli, hata) aktarım beklenmeden düzeltilir ve onaylanır.
+   * Bekleyen / alınan test ve yeniden alma iş bitene kadar kapalı.
+   */
+  readonly importing = input(false);
   readonly kind = input<BookImportJobKind>('Book');
   /** Issue #1144: karışık sorular (görsel başına bağımsız test); hepsini onaylarken sorular yeni bir teste toplanabilir. */
   readonly loose = input(false);
@@ -214,6 +219,16 @@ export class BookImportReviewComponent implements OnInit {
 
   private get api(): BookImportReviewApi {
     return this.reviewApi() ?? this.defaultApi;
+  }
+
+  /** #1267: bu test şimdi düzeltilip onaylanabilir mi (iş incelemede ya da sorular alınırken bitmiş test). */
+  testEditable(test: BookImportJobTest): boolean {
+    return this.editable() || (this.importing() && test.status !== 'Pending' && test.status !== 'Running');
+  }
+
+  /** #1267: testin düğmeleri kapalı (iş sürüyor ve test henüz bitmedi). */
+  testLocked(test: BookImportJobTest): boolean {
+    return this.locked() && !this.testEditable(test);
   }
 
   /** Türe göre değişen metnin anahtarı. */

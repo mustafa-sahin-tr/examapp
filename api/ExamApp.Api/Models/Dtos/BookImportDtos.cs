@@ -166,6 +166,9 @@ public class BookImportJobTestDto
     public int? FileTo { get; set; }
     public int Answerless { get; set; }
 
+    /// <summary>Issue #1270: işaretlemede elle düzeltildiyse ilk düzeltmenin zamanı.</summary>
+    public DateTime? FixedAt { get; set; }
+
     /// <summary>
     /// Issue #1176: cevap anahtarının okunduğu dosya sayfası; eski kurulumda kitabın bütün anahtar sayfaları. Anahtar yoksa boş.
     /// </summary>

@@ -369,6 +369,7 @@ public sealed partial class BookImportService : IBookImportService
             FileFrom = t.FileFrom,
             FileTo = t.FileTo,
             Answerless = t.WorksheetId is { } w ? answerless.GetValueOrDefault(w) : 0,
+            FixedAt = t.FixedAt,
             KeyPages = t.AnswerKey is null ? [] : t.KeyFilePage is { } keyPage ? [keyPage] : bookKeyPages,
             CostUsd = owner.IsAdmin ? testCosts.GetValueOrDefault(t.Id) : null,
             Error = t.Error,

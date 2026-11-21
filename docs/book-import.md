@@ -228,6 +228,9 @@ vardır; ikisi de kırpmalara girer. Sayfalar aşamasının sonunda, kurulum tar
   kullan" kapalıysa (`BookImportJobDto.HasOriginalPages`) şeritte "Orijinal sayfa" küçük görseli çıkar. Tıklayınca orijinal
   (`pages/{n}?original=true`) tuvalin sağında modal olmayan panelde açılır; işaretli şık orada görülür, kutular temiz sayfada
   düzeltilir. Sayfa değişince panel yeni sayfanın orijinalini yükler.
+- **Testin bütün sayfaları (#1263):** düzeltme şeridinde testin sayfaları düğme olarak (işaretliler bayraklı) görünür; "Yalnız
+  işaretli sayfalar" yalnız önceki / sonraki ve kaydettikten sonraki geçişi süzer. İncelemede test başına göz düğmesi testin
+  sayfalarını açar (uyarılı sayfanın "Sayfayı gör"ü de bütün sayfaları gezer); temizlenmiş kitapta "Orijinali / Temizi göster".
 
 ### Basılı işaretlerden cevap anahtarı (#1235)
 

@@ -2100,6 +2100,17 @@ describe('LabelingComponent', () => {
             component.fixOnlyFlagged.set(false);
             expect(component.fixNav()).toMatchObject({ pages: [11, 12, 13, 14], position: 2, prev: 11, next: 13 });
             component.fixOnlyFlagged.set(true);
+            fixture.detectChanges();
+
+            // #1263: filtre açıkken de testin bütün sayfaları düğme olarak görünür; işaretsiz sayfa doğrudan açılır.
+            const pageButtons = Array.from(
+                (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('[data-testid="labeling-fix-pages"] button'));
+            expect(pageButtons.map((b) => b.getAttribute('aria-label'))).toEqual(
+                ['Sayfa 11', 'Sayfa 12 · işaretli', 'Sayfa 13', 'Sayfa 14 · işaretli']);
+            expect(pageButtons[1].getAttribute('aria-current')).toBe('page');
+            pageButtons[2].click();
+            expect(navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { page: 13 } }));
+            navigate.mockClear();
 
             selector().regions.set([mcq('q1', 1)]);
             fixture.detectChanges();

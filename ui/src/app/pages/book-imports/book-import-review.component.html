@@ -122,6 +122,14 @@
           {{ t('review.flags', { count: flagCount(test) }) }}
         </button>
         }
+        @if (canViewPage() && !perImage() && test.fileFrom != null) {
+        <!-- #1263: testin bütün sayfaları, kurulumdaki göz gibi. -->
+        <button mat-icon-button type="button" data-testid="view-test-pages"
+          [attr.aria-label]="t('review.viewTestPages', { name: testName(test) })" [attr.title]="t('review.viewTestPages', { name: testName(test) })"
+          (click)="openTestPages(test)">
+          <mat-icon>pageview</mat-icon>
+        </button>
+        }
         @if (test.worksheetId) {
         <button mat-stroked-button type="button" [attr.aria-expanded]="previewId() === test.id" (click)="togglePreview(test)">
           <mat-icon aria-hidden="true">{{ previewId() === test.id ? 'expand_less' : 'visibility' }}</mat-icon>{{ t('review.preview') }}
@@ -325,6 +333,11 @@
         }
       </span>
       }
+      @if (hasOriginal()) {
+      <button mat-stroked-button type="button" data-testid="toggle-original" [attr.aria-pressed]="pageOriginal()" (click)="toggleOriginal()">
+        {{ t(pageOriginal() ? 'review.showClean' : 'review.showOriginal') }}
+      </button>
+      }
       @if (editable() && canFix() && (v.testId ?? pageViewTests()[0]?.id); as fixTest) {
       <a mat-stroked-button routerLink="/labeling" [queryParams]="fixParams(fixTest, v.page)">
         <mat-icon aria-hidden="true">edit_square</mat-icon>{{ t('review.fix') }}
@@ -338,7 +351,7 @@
       @if (pageViewLoading()) {
       <div class="bir-note" role="status"><mat-spinner diameter="18" aria-hidden="true"></mat-spinner>{{ t('review.loading') }}</div>
       } @else if (pageViewUrl(); as url) {
-      <img class="bir-zoom__image" [src]="url" [alt]="t('review.pageAlt', { page: v.page })" />
+      <img class="bir-zoom__image" [src]="url" [alt]="t(pageOriginal() ? 'review.originalPageAlt' : 'review.pageAlt', { page: v.page })" />
       } @else {
       <p class="bir-note bir-note--danger" role="alert">{{ t('review.pageFailed') }}</p>
       }

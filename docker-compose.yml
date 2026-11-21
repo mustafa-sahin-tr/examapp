@@ -41,6 +41,8 @@ services:
       - Video__Jitsi__AppId=${JITSI_JWT_APP_ID}
       - Video__Jitsi__AppSecret=${JITSI_JWT_APP_SECRET:?JITSI_JWT_APP_SECRET .env icinde tanimli olmali}
       - Video__Jitsi__RoomSecret=${JITSI_ROOM_SECRET:?JITSI_ROOM_SECRET .env icinde tanimli olmali}
+      # Issue #490: iptal / askida odayi prosody'nin ic /end-meeting ucuyla kapatir (jitsi-web disari acmaz).
+      - Video__Jitsi__InternalHttpUrl=http://prosody:5280
       # Issue #419: veli davet kodu HMAC pepper'i (>= 32 karakter).
       - ParentLinks__InviteCodePepper=${PARENT_INVITE_CODE_PEPPER:?PARENT_INVITE_CODE_PEPPER .env icinde tanimli olmali}
       # Issues #440/#441: veli aktivasyon baglantisi sifreleme anahtari (base64, 32 bayt; BadgeService ile AYNI).
@@ -592,9 +594,13 @@ services:
       - ENABLE_GUESTS=0
       - AUTH_TYPE=jwt
       - TZ=Europe/Istanbul
+      # Issue #490: POST /end-meeting — API odayi sunucuda kapatabilsin. Stok mod_muc_end_meeting yalniz ASAP (RS256)
+      # token kabul ediyor; repodaki kopya JWT_APP_SECRET (HS256) ile dogrular (deploy/jitsi/prosody-plugins/).
+      - GLOBAL_MODULES=examapp_end_meeting
     volumes:
       - ./jitsi-data/prosody/config:/config
       - ./jitsi-data/prosody/prosody-plugins-custom:/prosody-plugins-custom
+      - ./deploy/jitsi/prosody-plugins/mod_examapp_end_meeting.lua:/prosody-plugins-custom/mod_examapp_end_meeting.lua:ro
     networks:
       mynetwork:
         aliases:

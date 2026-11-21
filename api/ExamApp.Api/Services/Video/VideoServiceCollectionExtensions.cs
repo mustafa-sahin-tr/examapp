@@ -41,12 +41,20 @@ public static class VideoServiceCollectionExtensions
             // saklanmazlar (yalnızca Video__Jitsi__* env / user-secrets ile gelirler) ve Jitsi
             // kurulu olmayan bir ortamda API'nin hiç açılmamasını istemiyoruz. Eksiklik,
             // JitsiVideoSessionProvider ilk çağrıldığında açık mesajla patlar.
+            .Validate(o => string.IsNullOrWhiteSpace(o.Jitsi.InternalHttpUrl)
+                    || Uri.TryCreate(o.Jitsi.InternalHttpUrl, UriKind.Absolute, out _),
+                $"{VideoOptions.SectionName}:Jitsi:InternalHttpUrl boş ya da mutlak bir URL olmalıdır (ör. http://prosody:5280).")
+            .Validate(o => !string.IsNullOrWhiteSpace(o.Jitsi.MucDomain),
+                $"{VideoOptions.SectionName}:Jitsi:MucDomain zorunludur (prosody XMPP_MUC_DOMAIN, ör. muc.meet.jitsi).")
             .Validate(o => o.Jitsi.TokenLifetimeMinutes is > 0 and <= 24 * 60,
                 $"{VideoOptions.SectionName}:Jitsi:TokenLifetimeMinutes 1-1440 aralığında olmalıdır.")
             .ValidateOnStart();
 
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<IVideoSessionProvider, JitsiVideoSessionProvider>();
+
+        // issue #490: iptal / askıda odayı prosody'de kapatır. Kısa zaman aşımı: çağıran iş akışı (iptal, askı) beklemesin.
+        services.AddHttpClient<IVideoRoomCloser, JitsiVideoRoomCloser>(c => c.Timeout = TimeSpan.FromSeconds(5));
 
         return services;
     }

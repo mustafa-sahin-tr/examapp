@@ -181,6 +181,10 @@ public partial class BookingService
         if (previous == BookingStatus.Approved && _whiteboardCloser != null)
             await CloseWhiteboardQuietlyAsync(bookingId, ct);
 
+        // issue #490: süren görüşme de sunucuda kapanır; yoklamayı çalıştırmayan istemci odada kalamaz. Hata fırlatmaz.
+        if (previous == BookingStatus.Approved)
+            await _videoRoomCloser.CloseRoomAsync(bookingId, CancellationToken.None);
+
         return await LifecycleSuccessAsync(bookingId, "booking.cancel.done", ct);
     }
 

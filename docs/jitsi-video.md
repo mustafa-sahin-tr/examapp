@@ -90,6 +90,30 @@ modülü) eklemeyi gerektirmez; `XMPP_MUC_MODULES` boş bırakıldı.
   volume'u zaten mount edilmiş durumda (bu compose'da hazır), sadece plugin
   dosyasını oraya koyup `XMPP_MUC_MODULES`'a modül adını eklemek yeterli olur.
 
+## Odayı sunucuda kapatma (#490)
+
+Randevu iptal edilince (önceki durum Approved) ve öğretmen askıya alınınca API odayı prosody'de kapatır; içerideki herkes
+"toplantı sonlandırıldı" ile düşer. Yoklamayı çalıştırmayan bir istemci (ör. askıdaki öğretmenin doğrudan açtığı
+`joinUrl`) artık odada kalamaz. Askıda yalnız katılım penceresi şu an açık olan onaylı randevuların odaları kapatılır.
+
+- **Prosody modülü:** `deploy/jitsi/prosody-plugins/mod_examapp_end_meeting.lua` → `/prosody-plugins-custom/` (compose
+  ve AppHost bind mount, `GLOBAL_MODULES=examapp_end_meeting`). Stok `mod_muc_end_meeting`'in kopyasıdır; stok modül
+  anahtar sunucusu ayarı boşken de ASAP (RS256 + `kid`) beklediği için paylaşılan `JWT_APP_SECRET` ile imzalı token'ı
+  hep 401 ile reddeder. Kopya, token'ı ana host'un `app_secret`'ıyla (HS256) doğrular.
+- **Uç:** `POST {Video:Jitsi:InternalHttpUrl}/end-meeting?conference={oda}@{Video:Jitsi:MucDomain}`,
+  `Authorization: Bearer <JWT>` (2 dk ömürlü, oda adlı). 200 kapatıldı, 404 oda yok (kimse girmemiş), 401 imza hatalı.
+  Uç prosody'nin iç HTTP portundadır (5280); jitsi-web nginx'i yalnız `/http-bind`, `/xmpp-websocket`, `/_api/room-info`
+  yollarını prosody'ye geçirir, `/end-meeting`'i dışarı açmaz. Prod'da da 5280 dışarı açılmamalı.
+- **API:** `JitsiVideoRoomCloser` (`IVideoRoomCloser`); `InternalHttpUrl` boşsa kapatma atlanır. Compose'da
+  `http://prosody:5280`, Aspire'da prosody'nin host uç noktası. Kapatma hata fırlatmaz: iptal / askı yine başarılı olur,
+  yedekler istemci yoklaması (#320) ve token ömrüdür.
+- **Token ömrü** 60 → 30 dk (`Video:Jitsi:TokenLifetimeMinutes`). Ders sayfası (IFrame API kipi, https) Jitsi'den ölümcül
+  hata alınca (ör. ömrü dolmuş token'la yeniden bağlanma) bir kez yeni `video-session` ister; bu çağrı askıyı, durumu ve
+  pencereyi sunucuda yeniden doğrular. Düz iframe kipinde (http self-host) olay yoktur, kullanıcı "Tekrar dene"ye basar.
+- Elle doğrulama: prosody'yi `GLOBAL_MODULES=examapp_end_meeting,admin_shell` ile aç,
+  `prosodyctl --config /config/prosody.cfg.lua shell 'muc:create("oda@muc.meet.jitsi")'`, imzalı istekle kapat,
+  `muc:list("muc.meet.jitsi")` → 0 oda.
+
 ## Tek makinede iki tarayıcıyla test
 
 `JVB_ADVERTISE_IPS=127.0.0.1` olarak ayarlı — aynı PC üzerinde iki farklı

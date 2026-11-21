@@ -58,6 +58,14 @@
       "prev": "Previous key page",
       "next": "Next key page",
       "close": "Close"
+    },
+    "original": {
+      "label": "Original page",
+      "open": "Open the uncleaned original of the page (file page {{page}})",
+      "failed": "Original could not be opened",
+      "title": "Original page · p. {{page}}",
+      "hint": "The marked options are here; fix the boxes on the clean page.",
+      "close": "Close"
     }
   },
   "bank": {

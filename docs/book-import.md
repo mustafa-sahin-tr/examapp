@@ -210,6 +210,10 @@ vardır; ikisi de kırpmalara girer. Sayfalar aşamasının sonunda, kurulum tar
   seç" (orijinal sayfada işaretli kutuya tıklanır, o renkle temizlenir; `POST setup/clean {markColour}`, Hangfire). Hesap sabittir:
   aynı sayfa ve aynı renk aynı sonucu verir, yeniden denemenin anlamı farklı renk. Temizlik sürerken onay kapalıdır.
   Temizlik özelliğinden önce aktarılıp onay bekleyen kitap da buradan elle temizlenir.
+- **Düzeltmede orijinal (#1260):** "İşaretlemede düzelt" tuvali temiz sayfayı açar; temizlik `Done` ve "Orijinal sayfaları
+  kullan" kapalıysa (`BookImportJobDto.HasOriginalPages`) şeritte "Orijinal sayfa" küçük görseli çıkar. Tıklayınca orijinal
+  (`pages/{n}?original=true`) tuvalin sağında modal olmayan panelde açılır; işaretli şık orada görülür, kutular temiz sayfada
+  düzeltilir. Sayfa değişince panel yeni sayfanın orijinalini yükler.
 
 ### Basılı işaretlerden cevap anahtarı (#1235)
 

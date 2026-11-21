@@ -78,6 +78,8 @@ public class BookImportJobDto
     public bool IsDemo { get; set; }
     /// <summary>Issue #1032: öğretmenlere oynatılan demo kaynağı.</summary>
     public bool IsDemoSource { get; set; }
+    /// <summary>Issue #1260: sayfalar temizlendi ve temiz görseller kullanılıyor; düzeltmede orijinal sayfa ayrıca gösterilir.</summary>
+    public bool HasOriginalPages { get; set; }
     public string? FileName { get; set; }
     public long FileSizeBytes { get; set; }
     public int? PageCount { get; set; }

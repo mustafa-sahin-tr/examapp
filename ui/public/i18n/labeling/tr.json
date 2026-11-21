@@ -58,6 +58,14 @@
       "prev": "Önceki anahtar sayfası",
       "next": "Sonraki anahtar sayfası",
       "close": "Kapat"
+    },
+    "original": {
+      "label": "Orijinal sayfa",
+      "open": "Sayfanın temizlenmemiş orijinalini aç (dosya sayfası {{page}})",
+      "failed": "Orijinal açılamadı",
+      "title": "Orijinal sayfa · s. {{page}}",
+      "hint": "İşaretli şıklar burada; kutuları soldaki temiz sayfada düzeltin.",
+      "close": "Kapat"
     }
   },
   "bank": {

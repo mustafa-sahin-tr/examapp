@@ -1218,6 +1218,7 @@ export class LabelingComponent {
             kind,
             pages: bookImportTestPages(test),
             keyPages: kind === 'Book' ? (test.keyPages ?? []) : [],
+            hasOriginal: kind === 'Book' && job.hasOriginalPages === true,
           };
           void this.hashFile(file).then((pageId) => {
             this.fixLoading.set(false);
@@ -1650,6 +1651,8 @@ export interface LabelingFixTarget {
   pages: { page: number; flagged: boolean }[];
   /** #1176: testin cevap anahtarı sayfaları (hızlı eklemede yok); şeritte küçük görsel, tıklayınca büyür. */
   keyPages: number[];
+  /** #1260: sayfa temizlendi; orijinali (işaretli şıklar) ayrıca açılır. */
+  hasOriginal: boolean;
 }
 
 function roundBox(box: LabelingBankBox): LabelingBankBox {

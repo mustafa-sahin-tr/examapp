@@ -665,6 +665,38 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("BookImportJobs");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.BookImportJobEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DataJson")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Stage")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobId", "Id");
+
+                    b.ToTable("BookImportJobEvents");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.BookImportJobTest", b =>
                 {
                     b.Property<int>("Id")
@@ -10681,6 +10713,17 @@ namespace ExamApp.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Book");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.BookImportJobEvent", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.BookImportJob", "Job")
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Job");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.BookImportJobTest", b =>

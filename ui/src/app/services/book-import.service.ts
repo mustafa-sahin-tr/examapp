@@ -18,6 +18,7 @@ import {
 
 import {
   ApproveAllBookImportResult,
+  BookImportActivity,
   BookImportDemo,
   BookImportJob,
   BookImportDeferredJob,
@@ -84,6 +85,16 @@ export class BookImportService {
 
   get(id: string): Observable<BookImportJobDetail> {
     return this.http.get<BookImportJobDetail>(`${this.baseUrl}/${id}`);
+  }
+
+  /** #1265: aktarım akışı; yalnız `afterId` / `afterCallId`'den sonraki satırlar. */
+  activity(id: string, afterId = 0, calls = false, afterCallId = 0): Observable<BookImportActivity> {
+    const params: Record<string, string> = { afterId: String(afterId) };
+    if (calls) {
+      params['calls'] = 'true';
+      params['afterCallId'] = String(afterCallId);
+    }
+    return this.http.get<BookImportActivity>(`${this.baseUrl}/${id}/events`, { params });
   }
 
   quota(): Observable<BookImportQuota> {

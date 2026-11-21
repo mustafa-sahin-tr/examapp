@@ -250,6 +250,7 @@ public sealed class BookPageCleaningService(AppDbContext db, IMinIoService minio
         if (cleaner is null || !await cleaner.IsAvailableAsync(ct))
         {
             summary.Status = BookPageCleaning.Unavailable;
+            BookImportEvents.Add(db, job, BookImportEvents.CleaningUnavailable);
             await SaveAsync(job, summary, ct);
             return;
         }
@@ -257,6 +258,10 @@ public sealed class BookPageCleaningService(AppDbContext db, IMinIoService minio
         var pages = await db.BookImportPages.AsTracking().Where(p => p.JobId == job.Id).OrderBy(p => p.FilePage).ToListAsync(ct);
         try
         {
+            // #1265: analiz tek uzun istek (dakikalar sürebilir), sayaç ilerlemez; akışta başı ve sonu görünür.
+            BookImportEvents.Add(db, job, BookImportEvents.CleaningAnalysisStarted,
+                new { pages = pages.Count, sample = Math.Min(pages.Count, SamplePages), colourPicked = summary.ColourPicked });
+            await db.SaveChangesAsync(ct);
             var analysis = await AnalyzeAsync(pages, summary.ColourPicked ? summary.MarkColour : null, ct);
             summary.Watermark = analysis.Watermark;
             summary.MarkColour = analysis.MarkColour;
@@ -265,10 +270,13 @@ public sealed class BookPageCleaningService(AppDbContext db, IMinIoService minio
             {
                 Restore(pages);
                 summary.Status = BookPageCleaning.NothingFound;
+                BookImportEvents.Add(db, job, BookImportEvents.CleaningNothingFound);
                 await SaveAsync(job, summary, ct);
                 return;
             }
 
+            BookImportEvents.Add(db, job, BookImportEvents.CleaningAnalysisFinished,
+                new { watermark = analysis.Watermark, markColour = analysis.MarkColour });
             var token = analysis.Token;
             summary.Processed = 0;
             summary.Marks = 0;
@@ -305,6 +313,8 @@ public sealed class BookPageCleaningService(AppDbContext db, IMinIoService minio
             }
 
             summary.Status = BookPageCleaning.Done;
+            BookImportEvents.Add(db, job, BookImportEvents.CleaningFinished,
+                new { pages = pages.Count, watermark = summary.Watermark, marks = summary.Marks });
             await SaveAsync(job, summary, ct);
             // #1235: kurulum onayı beklerken (elle temizlik) yeni işaretler anahtarlara yansır; aktarım işinde kurulumdan sonra.
             if (job.Status == BookImportJobStatus.AwaitingConfirmation)
@@ -319,6 +329,7 @@ public sealed class BookPageCleaningService(AppDbContext db, IMinIoService minio
             Restore(pages);
             summary.Status = BookPageCleaning.Failed;
             summary.Error = e.Message.Length > 300 ? e.Message[..300] : e.Message;
+            BookImportEvents.Add(db, job, BookImportEvents.CleaningFailed, new { error = summary.Error });
             await SaveAsync(job, summary, ct);
         }
     }

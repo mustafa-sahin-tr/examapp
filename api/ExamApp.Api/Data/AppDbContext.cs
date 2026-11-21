@@ -243,6 +243,7 @@ public class AppDbContext : DbContext
     public DbSet<BookImportUpload> BookImportUploads { get; set; }
     public DbSet<BookImportPage> BookImportPages { get; set; } // issue #1020
     public DbSet<BookImportCost> BookImportCosts { get; set; } // issue #1024
+    public DbSet<BookImportJobEvent> BookImportJobEvents { get; set; } // issue #1265
     public DbSet<SubscriptionPlan> SubscriptionPlans { get; set; } // issue #1019
     public DbSet<SubscriptionPlanFeatureLimit> SubscriptionPlanFeatureLimits { get; set; }
     public DbSet<UserSubscriptionPlan> UserSubscriptionPlans { get; set; }
@@ -1519,6 +1520,11 @@ public class AppDbContext : DbContext
         {
             e.HasOne(c => c.Job).WithMany(j => j.Costs).HasForeignKey(c => c.JobId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(c => c.JobId);
+        });
+        modelBuilder.Entity<BookImportJobEvent>(e =>
+        {
+            e.HasOne(ev => ev.Job).WithMany().HasForeignKey(ev => ev.JobId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(ev => new { ev.JobId, ev.Id });
         });
 
         // Issue #1019: plan / hak katmanı. Free planı ve sınırı seed'lidir; değerler veritabanından değiştirilebilir.

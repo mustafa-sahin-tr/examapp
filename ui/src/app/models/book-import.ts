@@ -658,3 +658,29 @@ export interface BookImportTrainingSummary {
 }
 
 export type BookImportTrainingSkip = 'openTest' | 'flagged' | 'noDetection' | 'fewChoices' | 'imageMissing';
+
+/** Issue #1265: aktarım akışının bir olayı; `code` çeviri anahtarı (`activity.*`), `data` değerleri. */
+export interface BookImportEvent {
+  id: number;
+  at: string;
+  stage: BookImportStage;
+  code: string;
+  data: Record<string, unknown> | null;
+}
+
+/** Issue #1265: akışta gösterilen yapay zekâ çağrısı (maliyet kaydı). */
+export interface BookImportCall {
+  id: number;
+  at: string;
+  stage: BookImportStage;
+  testId: number | null;
+  modelId: string;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number;
+}
+
+export interface BookImportActivity {
+  events: BookImportEvent[];
+  calls: BookImportCall[] | null;
+}

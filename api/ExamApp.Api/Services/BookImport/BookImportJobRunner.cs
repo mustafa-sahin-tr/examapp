@@ -122,6 +122,12 @@ public class BookImportJobRunner
             return;
         }
 
+        // #1265: ilk çalışma "başladı", bütçe / hız sınırı beklemesinden dönüş "devam etti"; onaydan sonraki kuyruk olay yazmaz
+        // (onay ucu yazdı).
+        if (job.StartedAt is null)
+            BookImportEvents.Add(_db, job, BookImportEvents.Started, new { pages = job.PageCount, fileName = job.FileName });
+        else if (job.Status == BookImportJobStatus.AwaitingBudget)
+            BookImportEvents.Add(_db, job, BookImportEvents.Resumed);
         job.Status = BookImportJobStatus.Running;
         job.StartedAt ??= DateTime.UtcNow;
         job.Error = null;
@@ -134,7 +140,14 @@ public class BookImportJobRunner
         {
             if (job.Stage < BookImportStage.SetupConfirmation)
             {
+                var hadPages = job.PageCount is { } count && await _db.BookImportPages.CountAsync(p => p.JobId == job.Id) >= count;
                 await RenderPagesAsync(job);
+                if (!hadPages)
+                {
+                    BookImportEvents.Add(_db, job, BookImportEvents.PagesReady,
+                        new { pages = await _db.BookImportPages.CountAsync(p => p.JobId == job.Id) });
+                    await _db.SaveChangesAsync();
+                }
                 await CleanPagesAsync(job);
             }
             // #1144 karışık sorular: kurulum ve onay yok, test satırları yüklemede açıldı; sayfalardan sonra sorulara geçer.
@@ -152,6 +165,8 @@ public class BookImportJobRunner
                 job.Status = BookImportJobStatus.AwaitingConfirmation;
                 job.StageTotal = 0;
                 job.StageProcessed = 0;
+                BookImportEvents.Add(_db, job, BookImportEvents.SetupFinished,
+                    new { tests = await _db.BookImportJobTests.CountAsync(t => t.JobId == job.Id) });
                 await _db.SaveChangesAsync();
                 return;
             }
@@ -164,12 +179,13 @@ public class BookImportJobRunner
             await BookQuestionImportStage.StopIfCancelledAsync(_db, job.Id, default);
             job.Stage = BookImportStage.Review;
             job.Status = BookImportJobStatus.ReadyForReview;
-            await _db.SaveChangesAsync();
             await LogSummaryAsync(job);
+            await _db.SaveChangesAsync();
         }
         catch (BookImportCancelled)
         {
-            // #1025: iptal ucu durumu yazdı; iş burada durur (kaydedilmiş taslaklar iptal seçeneğine göre durur / silinir).
+            // #1025: iptal ucu durumu (ve #1265 akış olayını) yazdı; iş burada durur (kaydedilmiş taslaklar iptal seçeneğine göre
+            // durur / silinir).
             await budget.FlushAsync();
             _logger.LogInformation("Book import job {JobId} stopped in stage {Stage}: cancelled", job.Id, job.Stage);
         }
@@ -368,12 +384,14 @@ public class BookImportJobRunner
             var delay = (pause.RetryAfter ?? DefaultBudgetRetry) + TimeSpan.FromMinutes(1);
             job.Status = BookImportJobStatus.AwaitingBudget;
             job.ResumeAt = DateTime.UtcNow + delay;
+            BookImportEvents.Add(_db, job, BookImportEvents.Paused, new { reason = pause.Reason.ToString(), resumeAt = job.ResumeAt });
             await _db.SaveChangesAsync();
             _jobs?.Schedule<BookImportJobRunner>(r => r.RunAsync(job.Id), delay);
         }
         else
         {
             job.Status = BookImportJobStatus.AwaitingCostApproval;
+            BookImportEvents.Add(_db, job, BookImportEvents.Paused, new { reason = pause.Reason.ToString(), cost = job.AiCostUsd });
             await _db.SaveChangesAsync();
         }
         _logger.LogWarning("Book import job {JobId} paused in stage {Stage}: {Reason}; cost ${Cost:F4}, resume at {ResumeAt}",
@@ -385,6 +403,14 @@ public class BookImportJobRunner
     {
         var tests = await _db.BookImportJobTests.AsNoTracking().Where(t => t.JobId == job.Id)
             .Select(t => new { t.Status, t.QuestionsSaved }).ToListAsync();
+        BookImportEvents.Add(_db, job, BookImportEvents.Finished, new
+        {
+            tests = tests.Count,
+            questions = tests.Sum(t => t.QuestionsSaved),
+            flagged = tests.Count(t => t.Status == BookImportTestStatus.NeedsReview),
+            failed = tests.Count(t => t.Status == BookImportTestStatus.Failed),
+            cost = job.AiCostUsd,
+        });
         _logger.LogInformation(
             "Book import job {JobId} finished: {Pages} pages, {Tests} tests, {Questions} questions, {Flagged} flagged tests, {FailedTests} failed tests, cost ${Cost:F4}",
             job.Id, job.PageCount ?? 0, tests.Count, tests.Sum(t => t.QuestionsSaved),
@@ -403,6 +429,7 @@ public class BookImportJobRunner
         job.Stage = stage;
         job.StageTotal = 0;
         job.StageProcessed = 0;
+        BookImportEvents.Add(_db, job, BookImportEvents.StageStarted);
         await _db.SaveChangesAsync();
     }
 
@@ -427,6 +454,7 @@ public class BookImportJobRunner
         if (await CancelledAsync(job.Id))
             return;
         Fail(job, error);
+        BookImportEvents.Add(_db, job, BookImportEvents.Failed, new { error = job.Error });
         await _db.SaveChangesAsync();
     }
 

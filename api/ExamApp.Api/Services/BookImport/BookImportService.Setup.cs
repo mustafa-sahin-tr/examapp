@@ -358,6 +358,8 @@ public sealed partial class BookImportService
         job.Status = BookImportJobStatus.Queued;
         job.StageTotal = 0;
         job.StageProcessed = 0;
+        BookImportEvents.Add(_db, job, BookImportEvents.SetupConfirmed,
+            new { sharing = job.TeacherSharing.ToString() }); // #1265
         _db.SetCurrentUser(owner.UserId);
         await _db.SaveChangesAsync(ct);
 

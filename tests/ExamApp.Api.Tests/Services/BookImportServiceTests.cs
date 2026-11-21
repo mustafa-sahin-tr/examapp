@@ -55,6 +55,41 @@ public class BookImportServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Activity_returns_new_events_and_optional_ai_calls_to_the_owner_only()
+    {
+        // #1265
+        var id = (await StartAs(41, Pdf())).Job!.Id;
+        await using (var ctx = _db.NewContext())
+        {
+            var job = await ctx.BookImportJobs.SingleAsync(j => j.Id == id);
+            BookImportEvents.Add(ctx, job, BookImportEvents.Started, new { pages = 3 });
+            BookImportEvents.Add(ctx, job, BookImportEvents.CleaningAnalysisStarted);
+            ctx.BookImportCosts.Add(new BookImportCost
+            {
+                JobId = id, Stage = BookImportStage.Setup, ModelId = "claude-haiku-5-5", InputTokens = 10, OutputTokens = 2,
+                CostUsd = 0.001m, CreatedAt = DateTime.UtcNow,
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var read = _db.NewContext();
+        var service = NewService(read);
+        (await service.GetActivityAsync(BookImportOwner.Create(42), id, 0, true, 0, default)).ShouldBeNull();
+
+        var all = (await service.GetActivityAsync(BookImportOwner.Create(41), id, 0, false, 0, default)).ShouldNotBeNull();
+        all.Events.Select(e => e.Code).ShouldBe([BookImportEvents.Started, BookImportEvents.CleaningAnalysisStarted]);
+        all.Events[0].Data!.Value.GetProperty("pages").GetInt32().ShouldBe(3);
+        all.Events[1].Data.ShouldBeNull();
+        all.Calls.ShouldBeNull();
+
+        var next = (await service.GetActivityAsync(BookImportOwner.Create(41), id, all.Events[0].Id, true, 0, default))!;
+        next.Events.Single().Code.ShouldBe(BookImportEvents.CleaningAnalysisStarted);
+        next.Calls.ShouldNotBeNull().Single().ModelId.ShouldBe("claude-haiku-5-5");
+        (await service.GetActivityAsync(BookImportOwner.Create(1, EntitlementRoles.Admin), id, 0, true, next.Calls![0].Id, default))!
+            .Calls.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task Start_uploads_the_pdf_privately_queues_the_job_and_records_the_owner()
     {
         var result = await StartAs(41, Pdf());

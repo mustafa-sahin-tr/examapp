@@ -528,3 +528,35 @@ public class BookImportCostJobDto
     /// <summary>İşin yalnız seçilen aralıktaki çağrılarının maliyeti.</summary>
     public decimal CostUsd { get; set; }
 }
+
+/// <summary>Issue #1265: aktarım akışı; <c>afterId</c> / <c>afterCallId</c> ile yalnız yeni satırlar döner.</summary>
+public class BookImportActivityDto
+{
+    public List<BookImportEventDto> Events { get; set; } = new();
+
+    /// <summary>Yapay zekâ çağrıları (<c>calls=true</c> istenince); yoksa null.</summary>
+    public List<BookImportCallDto>? Calls { get; set; }
+}
+
+public class BookImportEventDto
+{
+    public long Id { get; set; }
+    public DateTime At { get; set; }
+    public string Stage { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+
+    /// <summary>Olayın değerleri (camelCase JSON nesnesi); değersiz olayda null.</summary>
+    public System.Text.Json.JsonElement? Data { get; set; }
+}
+
+public class BookImportCallDto
+{
+    public long Id { get; set; }
+    public DateTime At { get; set; }
+    public string Stage { get; set; } = string.Empty;
+    public int? TestId { get; set; }
+    public string ModelId { get; set; } = string.Empty;
+    public long InputTokens { get; set; }
+    public long OutputTokens { get; set; }
+    public decimal CostUsd { get; set; }
+}

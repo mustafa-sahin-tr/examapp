@@ -631,5 +631,53 @@
     },
     "remove": "Remove {{name}} from the list",
     "emptyAudience": "Pick at least one school or teacher."
+  },
+  "activity": {
+    "title": "Activity",
+    "live": "live",
+    "showCalls": "AI calls",
+    "empty": "No activity recorded for this import (activity is recorded for steps from 21 November 2026).",
+    "loading": "Loading activity…",
+    "loadFailed": "Activity could not be refreshed; retrying.",
+    "started": "Import started · {{fileName}}",
+    "resumed": "Wait is over, the import continues",
+    "stageStarted": "{{stage}} stage started",
+    "pagesReady": "Pages ready ({{pages}} pages)",
+    "cleaningUnavailable": "Page cleaning service is off; the original pages are used",
+    "cleaningAnalysisStarted": "Page cleaning: looking for watermarks and answer marks on {{sample}} sample pages (may take a few minutes)",
+    "cleaningNothingFound": "Analysis finished · no watermark or marks, cleaning skipped",
+    "cleaningAnalysisFinished": {
+      "watermark": "Analysis finished · watermark found, cleaning pages",
+      "marks": "Analysis finished · answer marks found, cleaning pages",
+      "both": "Analysis finished · watermark and answer marks found, cleaning pages"
+    },
+    "cleaningFinished": "Page cleaning finished · {{pages}} pages, {{marks}} answer marks",
+    "cleaningFailed": "Page cleaning failed, the original pages are used: {{error}}",
+    "setupFinished": "Setup finished · {{tests}} tests found, waiting for your confirmation",
+    "setupConfirmed": "Setup confirmed · sharing: {{sharing}}; importing questions",
+    "testNo": "Test {{order}}",
+    "testPages": "(pages {{from}}–{{to}})",
+    "testStarted": "Importing {{name}} {{pages}}",
+    "testFinished": {
+      "Done": "{{name}} ready · {{questions}} questions",
+      "NeedsReview": "{{name}} needs checking · {{questions}} questions",
+      "Failed": "{{name}} failed: {{error}}",
+      "Running": "{{name}} finished · {{questions}} questions",
+      "Pending": "{{name}} was interrupted",
+      "Approved": "{{name}} approved",
+      "Removed": "{{name}} removed"
+    },
+    "paused": {
+      "Budget": "AI budget used up; continues around {{resumeAt}}",
+      "RateLimit": "AI rate limit; continues around {{resumeAt}}",
+      "CostCeiling": "Cost ceiling reached ({{cost}}); approval needed to continue"
+    },
+    "retried": "Import retried",
+    "retriedTests": "Retrying {{tests}} failed tests",
+    "continued": "Cost ceiling raised ({{ceiling}}), the import continues",
+    "failed": "Import stopped with an error: {{error}}",
+    "cancelled": "Import cancelled",
+    "finished": "Questions imported · {{tests}} tests, {{questions}} questions, {{flagged}} need checking, {{failed}} failed · {{cost}}",
+    "call": "AI · {{stage}} · {{model}} · {{input}} / {{output}} tokens · {{cost}}"
   }
 }

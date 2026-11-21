@@ -373,3 +373,27 @@ public static class BookKeySources
 
     public static bool IsValid(string? source) => source is Book or Qr or Ai or Manual or Marks;
 }
+
+/// <summary>
+/// Issue #1265: aktarımın zaman damgalı akışı (aşama girişi, sayfa temizliği analizi, test başı / sonu, duraklama, hata, iptal).
+/// Metin kayıtta yok: <see cref="Code"/> + <see cref="DataJson"/> arayüzde TR / EN'e çevrilir. Kodlar <c>BookImportEvents</c>'te.
+/// </summary>
+public class BookImportJobEvent
+{
+    public const int MaxCodeLength = 40;
+
+    public long Id { get; set; }
+    public Guid JobId { get; set; }
+    public BookImportJob Job { get; set; } = null!;
+
+    /// <summary>Olay yazıldığında işin aşaması.</summary>
+    public BookImportStage Stage { get; set; }
+
+    [Required, MaxLength(MaxCodeLength)]
+    public string Code { get; set; } = string.Empty;
+
+    /// <summary>Olayın değerleri (camelCase JSON nesnesi); değersiz olayda null.</summary>
+    public string? DataJson { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+}

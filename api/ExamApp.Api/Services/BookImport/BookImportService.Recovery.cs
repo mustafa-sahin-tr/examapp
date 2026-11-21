@@ -44,6 +44,8 @@ public sealed partial class BookImportService
                 .SetProperty(j => j.FinishedAt, now), ct);
         if (rows == 0)
             return CancelBookImportResult.InvalidState;
+        BookImportEvents.Add(_db, job, BookImportEvents.Cancelled, new { deleteDrafts }); // #1265
+        await _db.SaveChangesAsync(ct);
         if (deleteDrafts)
             await DeleteDraftsAsync(job, owner.UserId, now, ct);
         return CancelBookImportResult.Cancelled;
@@ -57,6 +59,7 @@ public sealed partial class BookImportService
         if (job.Status != BookImportJobStatus.Failed && !IsStalled(job))
             return RetryBookImportResult.InvalidState;
 
+        BookImportEvents.Add(_db, job, BookImportEvents.Retried, new { error = job.Error }); // #1265
         Requeue(job);
         await _db.SaveChangesAsync(ct);
         _jobs.Enqueue<BookImportJobRunner>(r => r.RunAsync(id));
@@ -88,6 +91,7 @@ public sealed partial class BookImportService
         }
         Requeue(job);
         job.Stage = BookImportStage.Questions;
+        BookImportEvents.Add(_db, job, BookImportEvents.Retried, new { tests = tests.Count }); // #1265
         await _db.SaveChangesAsync(ct);
         _jobs.Enqueue<BookImportJobRunner>(r => r.RunAsync(id));
         return RetryBookImportResult.Queued;

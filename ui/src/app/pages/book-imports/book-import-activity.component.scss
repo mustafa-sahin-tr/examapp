@@ -1,0 +1,121 @@
+.bia {
+  border: 1px solid var(--ms-border);
+  border-radius: 12px;
+  background: var(--ms-surface);
+  padding: 8px 16px 16px;
+}
+
+.bia-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  &__toggle {
+    margin-left: -12px;
+
+    h2 {
+      display: inline;
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--ms-text-strong);
+    }
+  }
+}
+
+.bia-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 10px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--ms-success-text);
+
+  &__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ms-success-text);
+    animation: bia-pulse 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes bia-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bia-live__dot {
+    animation: none;
+  }
+}
+
+.bia-empty,
+.bia-error {
+  margin: 8px 0 0;
+  color: var(--ms-text-weak);
+}
+
+.bia-error {
+  color: var(--ms-danger-text-medium);
+}
+
+.bia-log {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 8px 0;
+  max-height: 320px;
+  overflow-y: auto;
+  border-top: 1px solid var(--ms-border);
+  font-family: var(--ms-type-font-family-code);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+.bia-row {
+  display: flex;
+  gap: 12px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  color: var(--ms-text-medium);
+
+  &:hover {
+    background: var(--ms-background-hover);
+  }
+
+  &__time {
+    flex: none;
+    color: var(--ms-text-weak);
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__text {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  &--info &__text {
+    color: var(--ms-text);
+  }
+
+  &--ok &__text {
+    color: var(--ms-success-text);
+  }
+
+  &--warn &__text {
+    color: var(--ms-warning-text);
+  }
+
+  &--danger &__text {
+    color: var(--ms-danger-text-medium);
+  }
+
+  &--muted &__text {
+    color: var(--ms-text-weak);
+  }
+}

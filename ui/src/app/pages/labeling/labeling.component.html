@@ -33,6 +33,10 @@
     <!-- #1176: cevap anahtarı sayfası; tıklayınca büyür. -->
     <app-labeling-key-page [jobId]="f.jobId" [pages]="f.keyPages" />
     }
+    @if (f.hasOriginal) {
+    <!-- #1260: temizlenmiş sayfanın orijinali; işaretli şıklar görünür, panel tuvali kapatmaz. -->
+    <app-labeling-key-page [jobId]="f.jobId" [pages]="[f.filePage]" original />
+    }
     @if (fixNav(); as nav) {
     @if (nav.pages.length > 1 || nav.hasFlagged) {
     <div class="lb-fix__nav" data-testid="labeling-fix-nav">

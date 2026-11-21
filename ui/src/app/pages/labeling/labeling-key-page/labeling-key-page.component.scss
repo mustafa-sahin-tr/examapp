@@ -53,6 +53,23 @@
   }
 }
 
+.lkp-zoom--docked {
+  // #1260: modal değil; tuvalin sağında yüzer, tuval kullanılabilir kalır.
+  position: fixed;
+  inset: 72px 12px auto auto;
+  z-index: 20;
+  width: min(46vw, 720px);
+  max-height: calc(100dvh - 96px);
+  margin: 0;
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--ms-text-strong) 30%, transparent);
+
+  @media (max-width: 720px) {
+    inset: auto 8px 8px 8px;
+    width: auto;
+    max-height: 60dvh;
+  }
+}
+
 .lkp-zoom__bar {
   display: flex;
   align-items: center;

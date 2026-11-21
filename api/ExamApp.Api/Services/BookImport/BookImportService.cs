@@ -453,6 +453,7 @@ public sealed partial class BookImportService : IBookImportService
         dto.Stage = job.Stage.ToString();
         dto.IsDemo = job.DemoSourceJobId is not null;
         dto.IsDemoSource = job.IsDemoSource;
+        dto.HasOriginalPages = BookPageCleaning.Parse(job.CleanJson) is { Status: BookPageCleaning.Done, UseOriginal: false };
         dto.FileName = job.FileName;
         dto.FileSizeBytes = job.FileSizeBytes;
         dto.PageCount = job.PageCount;

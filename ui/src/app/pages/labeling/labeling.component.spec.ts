@@ -1942,7 +1942,7 @@ describe('LabelingComponent', () => {
             fixture.detectChanges();
             await fixture.whenStable();
 
-            expect(bookImportsApi.pageImage).toHaveBeenCalledWith('j1', 41);
+            expect(bookImportsApi.pageImage).toHaveBeenCalledWith('j1', 41, false);
             const el = fixture.nativeElement as HTMLElement;
             const thumb = el.querySelector<HTMLButtonElement>('[data-testid="labeling-key-page"]')!;
             expect(thumb.textContent).toContain('s. 41');
@@ -1956,11 +1956,27 @@ describe('LabelingComponent', () => {
             dialog.close();
         });
 
+        // Issue #1260: temizlenmiş kitapta düzeltilen sayfanın orijinali şeritte; temizlenmemişte yok.
+        it('fix_ShowsTheOriginalPageOnlyWhenThePagesWereCleaned', async () => {
+            routeUrl = '/?bookImport=j1&test=3&page=12';
+            await setupWith(() => {
+                bookImportsApi.get.mockReturnValue(of({ ...job, hasOriginalPages: true }));
+                bookImportsApi.pageImage.mockReturnValue(of(new Blob(['webp'], { type: 'image/webp' })));
+            });
+            fixture.detectChanges();
+            await fixture.whenStable();
+
+            expect(bookImportsApi.pageImage).toHaveBeenCalledWith('j1', 12, true);
+            const el = fixture.nativeElement as HTMLElement;
+            expect(el.querySelector('[data-testid="labeling-original-page"]')).not.toBeNull();
+        });
+
         it('fix_WithoutAKeyPageShowsNoThumbnail', async () => {
             routeUrl = '/?bookImport=j1&test=3&page=12';
             await setupWith(pageResponses);
 
             expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid="labeling-key-page"]')).toBeNull();
+            expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid="labeling-original-page"]')).toBeNull();
         });
 
         // Issue #1173: tuvaldeki kutular taslaklarla eşlenir: numara Madde'ye, doğru şık işaretli; işaretli şık korunur.

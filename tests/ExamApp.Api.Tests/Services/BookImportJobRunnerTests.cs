@@ -221,12 +221,15 @@ public class BookImportJobRunnerTests : IDisposable
         {
             (await ctx.BookImportPages.Where(p => p.JobId == id).ToListAsync()).ShouldAllBe(p => p.ImageUrl == p.OriginalImageUrl);
             BookPageCleaning.Parse((await ctx.BookImportJobs.SingleAsync()).CleanJson)!.UseOriginal.ShouldBeTrue();
+            // #1260: orijinal etkin görselse düzeltmede ayrıca gösterilmez.
+            BookImportService.ToDto(await ctx.BookImportJobs.SingleAsync()).HasOriginalPages.ShouldBeFalse();
             var service = new BookPageCleaningService(ctx, _minio, _cleaner, null, NullLogger<BookPageCleaningService>.Instance);
             (await service.SetUseOriginalAsync(id, false, default)).ShouldBe(PageCleaningError.None);
         }
 
         await using var after = _db.NewContext();
         (await after.BookImportPages.Where(p => p.JobId == id).ToListAsync()).ShouldAllBe(p => p.ImageUrl == p.CleanImageUrl);
+        BookImportService.ToDto(await after.BookImportJobs.SingleAsync()).HasOriginalPages.ShouldBeTrue();
     }
 
     [Fact]
@@ -246,6 +249,7 @@ public class BookImportJobRunnerTests : IDisposable
             var job = await check.BookImportJobs.SingleAsync(j => j.Id == id);
             job.Status.ShouldBe(BookImportJobStatus.AwaitingConfirmation);
             BookPageCleaning.Parse(job.CleanJson)!.Status.ShouldBe(status);
+            BookImportService.ToDto(job).HasOriginalPages.ShouldBeFalse();
             (await check.BookImportPages.Where(p => p.JobId == id).ToListAsync())
                 .ShouldAllBe(p => p.CleanImageUrl == null && p.MarksJson == null
                                   && p.ImageUrl == "http://minio/exam-questions/" + BookImportJobRunner.PageObjectName(id, p.FilePage));

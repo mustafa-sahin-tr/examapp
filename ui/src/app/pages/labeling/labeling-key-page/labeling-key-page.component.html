@@ -1,42 +1,45 @@
-<ng-container *transloco="let t; prefix: 'labeling.fix.key'">
+<ng-container *transloco="let t; prefix: 'labeling.fix'">
   @if (page(); as p) {
-  <button type="button" class="lkp-thumb" data-testid="labeling-key-page" [attr.aria-label]="t('open', { page: p })"
+  <button type="button" class="lkp-thumb" [attr.data-testid]="original() ? 'labeling-original-page' : 'labeling-key-page'" [attr.aria-label]="t(ns() + '.open', { page: p })"
     [disabled]="!imageUrl()" (click)="open()">
     @if (imageUrl(); as src) {
     <img class="lkp-thumb__image" [src]="src" alt="" />
     } @else {
     <span class="lkp-thumb__image lkp-thumb__image--empty" aria-hidden="true"></span>
     }
-    <span class="lkp-thumb__label">{{ failed() ? t('failed') : t('label', { page: p }) }}</span>
+    <span class="lkp-thumb__label">{{ failed() ? t(ns() + '.failed') : t(ns() + '.label', { page: p }) }}</span>
   </button>
   }
 
-  <dialog #dialog class="lkp-zoom" [attr.aria-label]="t('title')" (click)="closeOnBackdrop($event)">
+  <dialog #dialog class="lkp-zoom" [class.lkp-zoom--docked]="original()" [attr.aria-label]="t(ns() + '.title', { page: page() })"
+    (click)="closeOnBackdrop($event)">
     <div class="lkp-zoom__bar">
       @if (pages().length > 1) {
-      <button mat-icon-button type="button" [attr.aria-label]="t('prev')" [disabled]="index() === 0" (click)="move(-1)">
+      <button mat-icon-button type="button" [attr.aria-label]="t(ns() + '.prev')" [disabled]="index() === 0" (click)="move(-1)">
         <mat-icon>chevron_left</mat-icon>
       </button>
       }
       <span class="lkp-zoom__title">
-        {{ pages().length > 1 ? t('positioned', { page: page(), at: index() + 1, total: pages().length }) : t('label', { page: page() }) }}
+        {{ original() ? t('original.title', { page: page() }) : pages().length > 1 ? t('key.positioned', { page: page(), at: index() + 1, total: pages().length }) : t('key.label', { page: page() }) }}
       </span>
       @if (pages().length > 1) {
-      <button mat-icon-button type="button" [attr.aria-label]="t('next')" [disabled]="index() === pages().length - 1"
+      <button mat-icon-button type="button" [attr.aria-label]="t(ns() + '.next')" [disabled]="index() === pages().length - 1"
         (click)="move(1)">
         <mat-icon>chevron_right</mat-icon>
       </button>
       }
-      <button mat-icon-button type="button" class="lkp-zoom__close" [attr.aria-label]="t('close')" (click)="close()">
+      <button mat-icon-button type="button" class="lkp-zoom__close" [attr.aria-label]="t(ns() + '.close')" (click)="close()">
         <mat-icon>close</mat-icon>
       </button>
     </div>
-    @if (pages().length > 1) {
-    <p class="lkp-zoom__hint">{{ t('bookPagesHint') }}</p>
+    @if (original()) {
+    <p class="lkp-zoom__hint">{{ t('original.hint') }}</p>
+    } @else if (pages().length > 1) {
+    <p class="lkp-zoom__hint">{{ t(ns() + '.bookPagesHint') }}</p>
     }
     <div class="lkp-zoom__scroller" tabindex="0">
       @if (imageUrl(); as src) {
-      <img class="lkp-zoom__image" [src]="src" [alt]="t('label', { page: page() })" />
+      <img class="lkp-zoom__image" [src]="src" [alt]="t(ns() + '.title', { page: page() })" />
       }
     </div>
   </dialog>

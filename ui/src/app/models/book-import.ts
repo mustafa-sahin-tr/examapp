@@ -50,6 +50,8 @@ export interface BookImportJobCounts {
 export interface BookImportJob {
   isDemo?: boolean;
   isDemoSource?: boolean;
+  /** #1260: sayfalar temizlendi; düzeltmede orijinal sayfa ayrıca gösterilir. */
+  hasOriginalPages?: boolean;
   id: string;
   bookName: string;
   gradeId: number;

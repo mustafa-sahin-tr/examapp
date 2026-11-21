@@ -432,7 +432,7 @@
     "pageFailed": "The page image could not be loaded.",
     "pagePrev": "Previous page",
     "pageNext": "Next page",
-    "footer": "Approved tests follow normal test settings and are private (only you) by default.",
+    "footer": "Approved tests follow normal test settings; teacher sharing is the one picked at import confirmation (change it later in the test settings).",
     "zoom": "Enlarge question {{number}}",
     "zoomClose": "Close",
     "zoomPosition": "{{index}} of {{total}}",

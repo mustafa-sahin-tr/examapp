@@ -24,6 +24,7 @@ import { AuthService } from '../../services/auth.service';
 import { BookImportService } from '../../services/book-import.service';
 import { BookImportActivityComponent } from './book-import-activity.component';
 import { BookImportReviewComponent } from './book-import-review.component';
+import { BookImportSharingBarComponent } from './book-import-sharing-bar/book-import-sharing-bar.component';
 import { BookImportSetupComponent } from './book-import-setup.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { BOOK_IMPORTS_POLL_MS, BOOK_IMPORTS_SCOPE } from './book-imports.component';
@@ -46,6 +47,7 @@ const CANCELLABLE: BookImportStatus[] = ['Queued', 'Running', 'AwaitingBudget', 
   imports: [
     BookImportActivityComponent,
     BookImportReviewComponent,
+    BookImportSharingBarComponent,
     BookImportSetupComponent,
     CurrencyPipe,
     DatePipe,

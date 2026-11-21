@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Entitlements;
 using ExamApp.Api.Services.Labeling;
@@ -63,6 +64,8 @@ public interface IBookImportService
     /// <summary>Issue #1265: aktarım akışı (olaylar, isteğe bağlı yapay zekâ çağrıları); iş görünmüyorsa null.</summary>
     Task<BookImportActivityDto?> GetActivityAsync(BookImportOwner owner, Guid id, long afterId, bool calls, long afterCallId,
         CancellationToken ct);
+    /// <summary>Issue #1266: kurulum onayından sonra testlerin paylaşımı (onaylanmamış taslaklar ve sonrakiler).</summary>
+    Task<SetBookImportSharingResult> SetSharingAsync(BookImportOwner owner, Guid id, SetBookImportSharingDto request, CancellationToken ct);
     Task<BookImportQuotaDto> GetQuotaAsync(BookImportOwner owner, CancellationToken ct);
 
     /// <summary>Issue #1122: parçalı yükleme (Cloudflare 100 MB istek sınırı).</summary>
@@ -318,6 +321,12 @@ public sealed partial class BookImportService : IBookImportService
         var detail = new BookImportJobDetailDto();
         Fill(detail, job);
         detail.Stalled = IsStalled(job);
+        if (CanChangeSharing(job))
+        {
+            detail.CanChangeSharing = true;
+            detail.CanShareWithSchool = await _db.ResolveTeacherSchoolIdAsync(owner.UserId, ct) is not null;
+            detail.CanShareWithAudience = owner.IsAdmin;
+        }
         var testCosts = new Dictionary<int, decimal>();
         if (owner.IsAdmin)
         {
@@ -459,6 +468,7 @@ public sealed partial class BookImportService : IBookImportService
         dto.IsDemo = job.DemoSourceJobId is not null;
         dto.IsDemoSource = job.IsDemoSource;
         dto.HasOriginalPages = BookPageCleaning.Parse(job.CleanJson) is { Status: BookPageCleaning.Done, UseOriginal: false };
+        dto.TeacherSharing = job.TeacherSharing;
         dto.FileName = job.FileName;
         dto.FileSizeBytes = job.FileSizeBytes;
         dto.PageCount = job.PageCount;

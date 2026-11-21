@@ -432,7 +432,7 @@
     "pageFailed": "Sayfa görseli açılamadı.",
     "pagePrev": "Önceki sayfa",
     "pageNext": "Sonraki sayfa",
-    "footer": "Onaylanan testler normal test ayarlarına uyar; öğretmen paylaşımı aktarım onayında seçilendir (sonradan testin ayarından değişir).",
+    "footer": "Onaylanan testler normal test ayarlarına uyar.",
     "zoom": "Soru {{number}} görselini büyüt",
     "zoomClose": "Kapat",
     "zoomPosition": "{{index}} / {{total}}",
@@ -679,5 +679,14 @@
     "cancelled": "Aktarım iptal edildi",
     "finished": "Sorular alındı · {{tests}} test, {{questions}} soru, {{flagged}} kontrol gerekli, {{failed}} hatalı · {{cost}}",
     "call": "Yapay zekâ · {{stage}} · {{model}} · {{input}} / {{output}} token · {{cost}}"
+  },
+  "sharingBar": {
+    "label": "Testleri kimler görsün:",
+    "change": "Değiştir",
+    "save": "Kaydet",
+    "cancel": "Vazgeç",
+    "failed": "Paylaşım kaydedilemedi.",
+    "note": "Bütün aktarım için geçerli: onaylanmamış testlere ve sonra alınacaklara uygulanır. Onaylanmış testlerin paylaşımı testin ayarından değişir.",
+    "locked": "Aktarım bitti; testlerin paylaşımı artık her testin kendi ayarından değişir."
   }
 }

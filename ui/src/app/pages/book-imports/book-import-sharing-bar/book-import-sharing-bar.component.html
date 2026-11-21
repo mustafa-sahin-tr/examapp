@@ -1,0 +1,29 @@
+<div class="bisb" *transloco="let t; prefix: 'book-imports'" data-testid="sharing-bar">
+  <div class="bisb-row">
+    <mat-icon aria-hidden="true">group</mat-icon>
+    <span class="bisb-row__label">{{ t('sharingBar.label') }}</span>
+    <strong class="bisb-row__value" data-testid="sharing-value">{{ t(labelKey()) }}</strong>
+    @if (canChange() && !editing()) {
+    <button mat-stroked-button type="button" (click)="edit()" data-testid="sharing-edit">
+      <mat-icon aria-hidden="true">edit</mat-icon>{{ t('sharingBar.change') }}
+    </button>
+    }
+  </div>
+  <p class="bisb-note">{{ t(canChange() ? 'sharingBar.note' : 'sharingBar.locked') }}</p>
+
+  @if (editing()) {
+  <div class="bisb-edit">
+    <app-book-import-sharing [canShareWithSchool]="canShareWithSchool()" [canShareWithAudience]="canShareWithAudience()"
+      [disabled]="saving()" [(sharing)]="draft" [(schools)]="schools" [(teachers)]="teachers" />
+    @if (error(); as e) {
+    <p class="bisb-error" role="alert">{{ e === 'failed' ? t('sharingBar.failed') : e }}</p>
+    }
+    <div class="bisb-actions">
+      <button mat-button type="button" [disabled]="saving()" (click)="editing.set(false)">{{ t('sharingBar.cancel') }}</button>
+      <button mat-flat-button type="button" [disabled]="saving() || audienceMissing()" (click)="save()" data-testid="sharing-save">
+        {{ t('sharingBar.save') }}
+      </button>
+    </div>
+  </div>
+  }
+</div>

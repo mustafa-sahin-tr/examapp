@@ -432,7 +432,7 @@
     "pageFailed": "The page image could not be loaded.",
     "pagePrev": "Previous page",
     "pageNext": "Next page",
-    "footer": "Approved tests follow normal test settings; teacher sharing is the one picked at import confirmation (change it later in the test settings).",
+    "footer": "Approved tests follow the normal test settings.",
     "zoom": "Enlarge question {{number}}",
     "zoomClose": "Close",
     "zoomPosition": "{{index}} of {{total}}",
@@ -679,5 +679,14 @@
     "cancelled": "Import cancelled",
     "finished": "Questions imported · {{tests}} tests, {{questions}} questions, {{flagged}} need checking, {{failed}} failed · {{cost}}",
     "call": "AI · {{stage}} · {{model}} · {{input}} / {{output}} tokens · {{cost}}"
+  },
+  "sharingBar": {
+    "label": "Who can see the tests:",
+    "change": "Change",
+    "save": "Save",
+    "cancel": "Cancel",
+    "failed": "The sharing could not be saved.",
+    "note": "Applies to the whole import: tests not yet approved and tests still to be imported. Approved tests are changed from the test settings.",
+    "locked": "The import is finished; each test's sharing is changed from its own settings."
   }
 }

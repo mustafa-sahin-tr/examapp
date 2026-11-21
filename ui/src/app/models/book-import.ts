@@ -53,6 +53,8 @@ export interface BookImportJob {
   isDemoSource?: boolean;
   /** #1260: sayfalar temizlendi; düzeltmede orijinal sayfa ayrıca gösterilir. */
   hasOriginalPages?: boolean;
+  /** #1259 / #1266: aktarılan testlerin öğretmen paylaşımı (kurulum onayında seçilir). */
+  teacherSharing?: WorksheetTeacherSharing;
   id: string;
   bookName: string;
   gradeId: number;
@@ -219,6 +221,10 @@ export function groupReviewFlags(flags: readonly BookImportReviewFlag[]): {
 
 export interface BookImportJobDetail extends BookImportJob {
   tests: BookImportJobTest[];
+  /** #1266: kurulum onayından sonra paylaşım değiştirilebilir (iş bitmedi, demo değil); seçenekler onaydakiyle aynı. */
+  canChangeSharing?: boolean;
+  canShareWithSchool?: boolean;
+  canShareWithAudience?: boolean;
   /** #1024: yalnız Admin'e — aşama ve model bazında maliyet. */
   costs: BookImportCost[];
 }

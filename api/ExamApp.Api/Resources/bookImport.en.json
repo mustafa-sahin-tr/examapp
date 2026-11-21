@@ -46,6 +46,7 @@
     "notInReview": "This test cannot be approved or removed right now.",
     "fixFailed": "The page fix could not be saved; try again.",
     "invalidSharing": "The sharing choice is invalid.",
+    "sharingLocked": "The sharing of this import can no longer be changed (it is finished, cancelled or the setup is not confirmed).",
     "sharingAdminOnly": "Only an admin can share with selected schools and teachers.",
     "schoolOnlyRequiresSchool": "Sharing with \"my school only\" needs you to belong to a school."
   }

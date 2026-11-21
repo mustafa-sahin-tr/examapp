@@ -19,6 +19,7 @@ import {
 import {
   ApproveAllBookImportResult,
   BookImportActivity,
+  BookAudienceSave,
   BookImportDemo,
   BookImportJob,
   BookImportDeferredJob,
@@ -39,6 +40,7 @@ import {
   StartBookImportRequest,
 } from '../models/book-import';
 import { LabelingBankQuestion } from '../models/labeling';
+import { WorksheetTeacherSharing } from '../models/test-instance';
 
 /** Aktarım listesinin bir sayfası ("Daha fazla göster" bu kadar ekler). */
 export const BOOK_IMPORTS_PAGE = 50;
@@ -95,6 +97,15 @@ export class BookImportService {
       params['afterCallId'] = String(afterCallId);
     }
     return this.http.get<BookImportActivity>(`${this.baseUrl}/${id}/events`, { params });
+  }
+
+  /** #1266: kurulum onayından sonra testlerin paylaşımı (onaylanmamış taslaklara ve sonrakilere uygulanır). */
+  setSharing(
+    id: string,
+    teacherSharing: WorksheetTeacherSharing,
+    audience?: BookAudienceSave,
+  ): Observable<{ updatedDrafts: number }> {
+    return this.http.put<{ updatedDrafts: number }>(`${this.baseUrl}/${id}/sharing`, { teacherSharing, audience });
   }
 
   quota(): Observable<BookImportQuota> {

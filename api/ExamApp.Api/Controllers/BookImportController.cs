@@ -289,6 +289,29 @@ public class BookImportController : BaseController
         return activity is null ? NotFound(new { message = _localizer["bookImport.notFound"].Value }) : Ok(activity);
     }
 
+    /// <summary>
+    /// Issue #1266: kurulum onayından sonra testlerin paylaşımını değiştirir (onaylanmamış taslaklara ve sonra alınacaklara);
+    /// doğrulama kurulum onayıyla aynı. 409 iş bitti / iptal / onay öncesi.
+    /// </summary>
+    [HttpPut("{id:guid}/sharing")]
+    public async Task<IActionResult> SetSharing(Guid id, [FromBody] SetBookImportSharingDto request, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        var result = await _service.SetSharingAsync(owner, id, request ?? new SetBookImportSharingDto(), ct);
+        return result.Error switch
+        {
+            SetBookImportSharingError.None => Ok(new { updatedDrafts = result.UpdatedDrafts }),
+            SetBookImportSharingError.NotFound => NotFound(new { message = _localizer["bookImport.notFound"].Value }),
+            SetBookImportSharingError.InvalidState => Conflict(new
+            {
+                code = "bookImport.sharingLocked", message = _localizer["bookImport.sharingLocked"].Value,
+            }),
+            _ => BadRequest(new { code = result.Code, message = _localizer[result.Code ?? "bookImport.invalidSharing"].Value }),
+        };
+    }
+
     /// <summary>Issue #1020: işin sayfa görseli (WebP); iş sahibine (ve Admin'e).</summary>
     [HttpGet("{id:guid}/pages/{filePage:int}")]
     public async Task<IActionResult> GetPage(Guid id, int filePage, [FromQuery] bool original = false, CancellationToken ct = default)

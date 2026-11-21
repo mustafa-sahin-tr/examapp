@@ -631,5 +631,53 @@
     },
     "remove": "{{name}} listeden çıkar",
     "emptyAudience": "En az bir okul ya da öğretmen seçin."
+  },
+  "activity": {
+    "title": "Akış",
+    "live": "canlı",
+    "showCalls": "Yapay zekâ çağrıları",
+    "empty": "Bu aktarım için akış kaydı yok (akış 21 Kasım 2026'dan sonra başlayan adımlarda tutulur).",
+    "loading": "Akış yükleniyor…",
+    "loadFailed": "Akış yenilenemedi; tekrar denenecek.",
+    "started": "Aktarım başladı · {{fileName}}",
+    "resumed": "Bekleme bitti, aktarım devam ediyor",
+    "stageStarted": "{{stage}} aşaması başladı",
+    "pagesReady": "Sayfalar hazır ({{pages}} sayfa)",
+    "cleaningUnavailable": "Sayfa temizliği hizmeti kapalı; orijinal sayfalar kullanılıyor",
+    "cleaningAnalysisStarted": "Sayfa temizliği: {{sample}} örnek sayfada filigran ve cevap işareti aranıyor (birkaç dakika sürebilir)",
+    "cleaningNothingFound": "Analiz bitti · filigran ya da işaret yok, temizlik atlandı",
+    "cleaningAnalysisFinished": {
+      "watermark": "Analiz bitti · filigran bulundu, sayfalar temizleniyor",
+      "marks": "Analiz bitti · cevap işaretleri bulundu, sayfalar temizleniyor",
+      "both": "Analiz bitti · filigran ve cevap işaretleri bulundu, sayfalar temizleniyor"
+    },
+    "cleaningFinished": "Sayfa temizliği bitti · {{pages}} sayfa, {{marks}} cevap işareti",
+    "cleaningFailed": "Sayfa temizliği başarısız, orijinal sayfalar kullanılıyor: {{error}}",
+    "setupFinished": "Kurulum bitti · {{tests}} test bulundu, onayın bekleniyor",
+    "setupConfirmed": "Kurulum onaylandı · paylaşım: {{sharing}}; sorular alınıyor",
+    "testNo": "Test {{order}}",
+    "testPages": "(sayfa {{from}}–{{to}})",
+    "testStarted": "{{name}} alınıyor {{pages}}",
+    "testFinished": {
+      "Done": "{{name}} hazır · {{questions}} soru",
+      "NeedsReview": "{{name}} kontrol gerekli · {{questions}} soru",
+      "Failed": "{{name}} alınamadı: {{error}}",
+      "Running": "{{name}} bitti · {{questions}} soru",
+      "Pending": "{{name}} yarıda kaldı",
+      "Approved": "{{name}} onaylandı",
+      "Removed": "{{name}} kaldırıldı"
+    },
+    "paused": {
+      "Budget": "Yapay zekâ bütçesi doldu; {{resumeAt}} civarı devam edecek",
+      "RateLimit": "Yapay zekâ hız sınırı; {{resumeAt}} civarı devam edecek",
+      "CostCeiling": "Maliyet sınırına ulaşıldı ({{cost}}); devam için onay gerekiyor"
+    },
+    "retried": "Aktarım yeniden denendi",
+    "retriedTests": "{{tests}} hatalı test yeniden deneniyor",
+    "continued": "Maliyet sınırı yükseltildi ({{ceiling}}), aktarım sürüyor",
+    "failed": "Aktarım hatayla durdu: {{error}}",
+    "cancelled": "Aktarım iptal edildi",
+    "finished": "Sorular alındı · {{tests}} test, {{questions}} soru, {{flagged}} kontrol gerekli, {{failed}} hatalı · {{cost}}",
+    "call": "Yapay zekâ · {{stage}} · {{model}} · {{input}} / {{output}} token · {{cost}}"
   }
 }

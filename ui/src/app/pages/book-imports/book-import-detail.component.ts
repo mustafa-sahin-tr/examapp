@@ -22,6 +22,7 @@ import {
 } from '../../models/book-import';
 import { AuthService } from '../../services/auth.service';
 import { BookImportService } from '../../services/book-import.service';
+import { BookImportActivityComponent } from './book-import-activity.component';
 import { BookImportReviewComponent } from './book-import-review.component';
 import { BookImportSetupComponent } from './book-import-setup.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
@@ -43,6 +44,7 @@ const CANCELLABLE: BookImportStatus[] = ['Queued', 'Running', 'AwaitingBudget', 
   selector: 'app-book-import-detail',
   standalone: true,
   imports: [
+    BookImportActivityComponent,
     BookImportReviewComponent,
     BookImportSetupComponent,
     CurrencyPipe,
@@ -145,6 +147,9 @@ export class BookImportDetailComponent implements OnInit {
     const job = this.job();
     return job && job.stageTotal > 0 ? Math.round((100 * job.stageProcessed) / job.stageTotal) : 0;
   });
+
+  /** #1265: akış paneli iş sürerken yoklar. */
+  protected readonly isActive = isBookImportActive;
 
   private poll?: Subscription;
   private id = '';

@@ -59,6 +59,10 @@ public interface IBookImportService
     Task<List<BookImportJobDto>> ListAsync(BookImportOwner owner, int take, CancellationToken ct, BookImportJobStatus? status = null);
     Task<BookImportJobCountsDto> CountsAsync(BookImportOwner owner, CancellationToken ct);
     Task<BookImportJobDetailDto?> GetAsync(BookImportOwner owner, Guid id, CancellationToken ct);
+
+    /// <summary>Issue #1265: aktarım akışı (olaylar, isteğe bağlı yapay zekâ çağrıları); iş görünmüyorsa null.</summary>
+    Task<BookImportActivityDto?> GetActivityAsync(BookImportOwner owner, Guid id, long afterId, bool calls, long afterCallId,
+        CancellationToken ct);
     Task<BookImportQuotaDto> GetQuotaAsync(BookImportOwner owner, CancellationToken ct);
 
     /// <summary>Issue #1122: parçalı yükleme (Cloudflare 100 MB istek sınırı).</summary>
@@ -401,6 +405,7 @@ public sealed partial class BookImportService : IBookImportService
 
         job.CostCeilingUsd = _maxJobCostUsd is { } step ? job.AiCostUsd + step : null;
         job.Status = BookImportJobStatus.Queued;
+        BookImportEvents.Add(_db, job, BookImportEvents.Continued, new { cost = job.AiCostUsd, ceiling = job.CostCeilingUsd }); // #1265
         await _db.SaveChangesAsync(ct);
         _jobs.Enqueue<BookImportJobRunner>(r => r.RunAsync(id));
         return ContinueBookImportResult.Continued;

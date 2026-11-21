@@ -437,6 +437,22 @@ olarak aktarılır. Yalnız kitap aktarımında; hızlı ekleme ve karışık g�
   alınamadı" + "Testi yeniden dene", birden çok hatalı testte "Hatalı testleri yeniden dene (n)"; "Aktarımı iptal et" satır içi
   onay: taslak varsa "İptal et, taslakları sakla" / "İptal et ve taslakları sil".
 
+## Akış (#1265)
+
+Aktarım sayfasının altında zaman damgalı akış: sayacı ilerletmeyen işler de görünür (ör. sayfa temizliği analizi tek uzun
+istek, dakikalar sürer). Kayıt `BookImportJobEvents` (iş, saat, işin o anki aşaması, olay kodu, değerler JSON); metin kayıtta
+yok, arayüz kodu `activity.*` anahtarıyla çevirir. Kodlar `BookImportEvents`'te; olay bağlama eklenir, çağıranın sonraki
+`SaveChangesAsync`'i ile yazılır.
+
+- Yazılan olaylar: başladı / bekleme sonrası devam, aşama girişi, sayfalar hazır, temizlik (hizmet kapalı, analiz başı,
+  sonuç, bitti, hata), kurulum bitti (test sayısı), kurulum onayı (paylaşım), test başı / sonu (durum, soru sayısı, hata),
+  duraklama (bütçe / hız sınırı / maliyet tavanı), tavan yükseltme, yeniden deneme, hata, iptal, sorular bitti (özet).
+- `GET /api/book-imports/{id}/events?afterId=&calls=&afterCallId=`: işi görebilen (sahibi, Admin) okur; yalnız yeni satırlar,
+  yanıt başına en çok 500. `calls=true` ile `BookImportCosts` satırları (yapay zekâ çağrıları) da gelir; arayüzde aç / kapa,
+  tercih tarayıcıda.
+- Ekran iş sürerken (`Queued`, `Running`) 5 sn'de bir yoklar, bitince bir kez daha okur. Bu özellikten önceki aktarımların akışı
+  boştur (geriye dönük doldurulmaz). Demo yeniden oynatması olay yazmaz.
+
 ## Örnek kitapla demo (#1032)
 
 Öğretmen gerçek aktarımı açmadan özelliği görür. Claude çağrısı, depolama yazımı ve `book-import` hakkı yoktur.

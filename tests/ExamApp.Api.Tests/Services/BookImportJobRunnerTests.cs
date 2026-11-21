@@ -233,6 +233,53 @@ public class BookImportJobRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task Activity_log_records_each_step_with_its_stage_in_order()
+    {
+        // #1265: analiz dakikalar sürebilir ve sayaç ilerlemez; akış başını ve sonucunu gösterir.
+        _cleaner = new FakePageCleaner();
+        var nothing = await SeedJobAsync();
+        await RunAsync(nothing);
+
+        _cleaner = new FakePageCleaner { Watermark = true, MarkColour = [182, 23, 113] };
+        var cleaned = await SeedJobAsync();
+        await RunAsync(cleaned);
+
+        await using var check = _db.NewContext();
+        var first = await check.BookImportJobEvents.Where(e => e.JobId == nothing).OrderBy(e => e.Id).ToListAsync();
+        first.Select(e => (e.Code, e.Stage)).ShouldBe([
+            (BookImportEvents.Started, BookImportStage.Upload),
+            (BookImportEvents.StageStarted, BookImportStage.Pages),
+            (BookImportEvents.PagesReady, BookImportStage.Pages),
+            (BookImportEvents.CleaningAnalysisStarted, BookImportStage.Pages),
+            (BookImportEvents.CleaningNothingFound, BookImportStage.Pages),
+            (BookImportEvents.StageStarted, BookImportStage.Setup),
+            (BookImportEvents.SetupFinished, BookImportStage.SetupConfirmation),
+        ]);
+        first[2].DataJson.ShouldBe("{\"pages\":3}");
+        first[3].DataJson.ShouldBe("{\"pages\":3,\"sample\":3,\"colourPicked\":false}");
+
+        var second = await check.BookImportJobEvents.Where(e => e.JobId == cleaned).OrderBy(e => e.Id)
+            .Select(e => e.Code).ToListAsync();
+        second.ShouldContain(BookImportEvents.CleaningAnalysisFinished);
+        var finished = await check.BookImportJobEvents.SingleAsync(e => e.JobId == cleaned && e.Code == BookImportEvents.CleaningFinished);
+        finished.DataJson.ShouldBe("{\"pages\":3,\"watermark\":true,\"marks\":3}");
+    }
+
+    [Fact]
+    public async Task Activity_log_records_the_failure_reason()
+    {
+        _pdf = Encoding.ASCII.GetBytes("%PDF-1.7\nthis is not really a pdf");
+        var id = await SeedJobAsync();
+
+        await RunAsync(id);
+
+        await using var check = _db.NewContext();
+        var failed = await check.BookImportJobEvents.Where(e => e.JobId == id).OrderBy(e => e.Id).LastAsync();
+        failed.Code.ShouldBe(BookImportEvents.Failed);
+        failed.DataJson.ShouldNotBeNull().ShouldContain("\"error\":");
+    }
+
+    [Fact]
     public async Task Pages_stay_original_when_nothing_is_found_or_the_cleaner_fails()
     {
         _cleaner = new FakePageCleaner();

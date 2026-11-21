@@ -52,6 +52,7 @@ describe('BookImportDetailComponent (#1018)', () => {
       retryTest: vi.fn().mockReturnValue(of(undefined)),
       retryFailedTests: vi.fn().mockReturnValue(of(undefined)),
       cancel: vi.fn().mockReturnValue(of(undefined)),
+      activity: vi.fn().mockReturnValue(of({ events: [], calls: null })),
     } as unknown as MockedObject<BookImportService>;
     TestBed.configureTestingModule({
       imports: [BookImportDetailComponent, translocoTestingModule({ langs: { 'book-imports/tr': tr } })],

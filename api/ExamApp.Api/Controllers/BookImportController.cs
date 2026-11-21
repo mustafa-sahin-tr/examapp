@@ -276,6 +276,19 @@ public class BookImportController : BaseController
         return job is null ? NotFound(new { message = _localizer["bookImport.notFound"].Value }) : Ok(job);
     }
 
+    /// <summary>Issue #1265: aktarımın zaman damgalı akışı; ekran <c>afterId</c> / <c>afterCallId</c> ile yalnız yenileri yoklar.</summary>
+    [HttpGet("{id:guid}/events")]
+    [ProducesResponseType(typeof(BookImportActivityDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetActivity(Guid id, [FromQuery] long afterId = 0, [FromQuery] bool calls = false,
+        [FromQuery] long afterCallId = 0, CancellationToken ct = default)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        var activity = await _service.GetActivityAsync(owner, id, afterId, calls, afterCallId, ct);
+        return activity is null ? NotFound(new { message = _localizer["bookImport.notFound"].Value }) : Ok(activity);
+    }
+
     /// <summary>Issue #1020: işin sayfa görseli (WebP); iş sahibine (ve Admin'e).</summary>
     [HttpGet("{id:guid}/pages/{filePage:int}")]
     public async Task<IActionResult> GetPage(Guid id, int filePage, [FromQuery] bool original = false, CancellationToken ct = default)

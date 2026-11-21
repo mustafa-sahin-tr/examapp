@@ -122,6 +122,7 @@ internal sealed class BookQuestionImportStage(
             await StopIfCancelledAsync(job, ct);
             test.Status = BookImportTestStatus.Running;
             test.Error = null;
+            BookImportEvents.Add(db, job, BookImportEvents.TestStarted, TestValues(test));
             await db.SaveChangesAsync(ct);
             budget.Stage = BookImportStage.Questions;
             budget.TestId = test.Id;
@@ -144,10 +145,21 @@ internal sealed class BookQuestionImportStage(
                 test.Error = Truncate(ex.Message);
             }
             job.StageProcessed++;
+            BookImportEvents.Add(db, job, BookImportEvents.TestFinished, new
+            {
+                order = test.Order,
+                title = test.Title,
+                status = test.Status.ToString(),
+                questions = test.QuestionsSaved,
+                error = test.Error,
+            });
             await budget.FlushAsync();
             await db.SaveChangesAsync(CancellationToken.None);
         }
     }
+
+    private static object TestValues(BookImportJobTest test) =>
+        new { order = test.Order, title = test.Title, fileFrom = test.FileFrom, fileTo = test.FileTo };
 
     /// <summary>Yeniden çalıştırmada atlanan testler; incelemede onaylanan / silinen testler de (#1025 hatalı testi yeniden dene).</summary>
     internal static bool IsFinished(BookImportJobTest test) =>

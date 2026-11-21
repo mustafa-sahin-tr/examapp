@@ -1,0 +1,44 @@
+<section class="bia" *transloco="let t; prefix: 'book-imports'" [attr.aria-label]="t('activity.title')">
+  <div class="bia-head">
+    <button mat-button type="button" class="bia-head__toggle" [attr.aria-expanded]="open()" (click)="open.set(!open())">
+      <mat-icon aria-hidden="true">{{ open() ? 'expand_less' : 'expand_more' }}</mat-icon>
+      <h2>{{ t('activity.title') }}</h2>
+      @if (active()) {
+      <span class="bia-live" data-testid="activity-live"><span class="bia-live__dot" aria-hidden="true"></span>{{ t('activity.live') }}</span>
+      }
+    </button>
+    @if (open()) {
+    <mat-slide-toggle [checked]="showCalls()" (change)="toggleCalls($event.checked)" data-testid="activity-calls">
+      {{ t('activity.showCalls') }}
+    </mat-slide-toggle>
+    }
+  </div>
+
+  @if (open()) {
+  @if (rows().length === 0) {
+  <p class="bia-empty">{{ loaded() ? t('activity.empty') : t('activity.loading') }}</p>
+  } @else {
+  <ol class="bia-log" #log role="log" aria-live="polite" data-testid="activity-log">
+    @for (row of rows(); track row.key) {
+    <li class="bia-row bia-row--{{ tone(row) }}">
+      <time class="bia-row__time" [attr.datetime]="row.at">{{ row.at | date: 'HH:mm:ss' }}</time>
+      @if (row.event; as event) {
+      <span class="bia-row__text">{{ text(event, t) }}</span>
+      } @else if (row.call; as call) {
+      <span class="bia-row__text">{{ t('activity.call', {
+        stage: t('stages.' + call.stage),
+        model: call.modelId,
+        input: (call.inputTokens | number),
+        output: (call.outputTokens | number),
+        cost: (call.costUsd | currency: 'USD' : 'symbol' : '1.4-4')
+      }) }}</span>
+      }
+    </li>
+    }
+  </ol>
+  }
+  @if (failed()) {
+  <p class="bia-error" role="alert">{{ t('activity.loadFailed') }}</p>
+  }
+  }
+</section>

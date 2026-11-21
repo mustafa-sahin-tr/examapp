@@ -223,6 +223,8 @@
     }
   </dl>
 
+  <app-book-import-activity [jobId]="j.id" [active]="isActive(j.status)" />
+
   @if (j.aiCostUsd != null) {
   <section class="bid-card bid-cost" [attr.aria-label]="t('cost.title')">
     <h2>{{ t('cost.title') }}</h2>

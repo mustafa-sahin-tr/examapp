@@ -665,11 +665,32 @@ public class BookQuestionImportTests : IDisposable
             questions!.Select(q => (q.Number, q.FilePage, q.OptionCount, q.AnswerIndex)).ShouldBe([("1", 1, 4, 0), ("2", 1, 4, null)]);
             (await service.SetAnswerAsync(Owner, id, test.Id, questions[1].Id, 4, default)).ShouldBe(BookImportReviewResult.InvalidOption);
             (await service.SetAnswerAsync(Owner, id, test.Id, questions[1].Id, 2, default)).ShouldBe(BookImportReviewResult.Ok);
-            (await service.ApproveTestAsync(Owner, id, test.Id, default)).ShouldBe(BookImportReviewResult.Ok);
+        }
+
+        // #1269: cevap seçilince "cevapsız" işareti kalkar; anahtardan fazla soru işareti kaldıkça test onaylanmaz.
+        await using (var ctx = _db.NewContext())
+        {
+            var flagged = await ctx.BookImportJobTests.SingleAsync();
+            BookImportReviewFlag.Parse(flagged.ReviewFlagsJson).Select(f => f.Code).ShouldBe([BookImportReviewFlag.CountMismatch]);
+            flagged.Status.ShouldBe(BookImportTestStatus.NeedsReview);
+            var service = Service(ctx);
+            (await service.ApproveTestAsync(Owner, id, test.Id, default)).ShouldBe(BookImportReviewResult.Flagged);
+            // Fazla soru çıkınca sayı anahtarla tutar: işaret kalmaz, test hazır ve onaylanır.
+            var questions = await service.GetReviewQuestionsAsync(Owner, id, test.Id, default);
+            (await service.RemoveQuestionAsync(Owner, id, test.Id, questions![1].Id, default)).ShouldBe(BookImportReviewResult.Ok);
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            var cleared = await ctx.BookImportJobTests.SingleAsync();
+            BookImportReviewFlag.Parse(cleared.ReviewFlagsJson).ShouldBeEmpty();
+            cleared.Status.ShouldBe(BookImportTestStatus.Done);
+            cleared.FixedAt.ShouldNotBeNull();
+            (await Service(ctx).ApproveTestAsync(Owner, id, test.Id, default)).ShouldBe(BookImportReviewResult.Ok);
         }
 
         await using var check = _db.NewContext();
-        (await check.Questions.CountAsync()).ShouldBe(2);
+        (await check.Questions.CountAsync()).ShouldBe(1);
         var worksheet = await check.Worksheets.SingleAsync();
         worksheet.TeacherSharing.ShouldBe(WorksheetTeacherSharing.Private);
         (await check.BookImportJobTests.SingleAsync()).Status.ShouldBe(BookImportTestStatus.Approved);
@@ -701,7 +722,7 @@ public class BookQuestionImportTests : IDisposable
     }
 
     [Fact]
-    public async Task Approve_all_skips_flagged_tests_which_are_approved_one_by_one()
+    public async Task Approve_all_skips_flagged_tests_which_are_approved_only_after_a_labeling_fix_clears_their_flags()
     {
         var id = await SeedAsync([new(1, 1, 1, "AB", [2]), new(2, 2, 2, "CD", [2])]);
         Detect(1, 4, 4);
@@ -722,6 +743,17 @@ public class BookQuestionImportTests : IDisposable
         await using (var ctx = _db.NewContext())
         {
             (await ctx.BookImportJobs.SingleAsync()).Status.ShouldBe(BookImportJobStatus.ReadyForReview);
+            // #1269: işaretli test tek tek de onaylanmaz; işaretlemede düzeltilip işaretleri kalkınca onaylanır (#1270: işaretli).
+            (await Service(ctx).ApproveTestAsync(Owner, id, tests[1].Id, default)).ShouldBe(BookImportReviewResult.Flagged);
+            (await Fix(ctx).ReplacePageAsync(Owner, id, tests[1].Id, 2, [Box(0), Box(1)], default)).Error.ShouldBe(BookImportPageFixError.None);
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            var fixedTest = await ctx.BookImportJobTests.SingleAsync(t => t.Id == tests[1].Id);
+            fixedTest.Status.ShouldBe(BookImportTestStatus.Done);
+            fixedTest.FixedAt.ShouldNotBeNull();
+            (await Service(ctx).GetAsync(Owner, id, default))!.Tests.Select(t => t.FixedAt is not null).ShouldBe([false, true]);
             (await Service(ctx).ApproveTestAsync(Owner, id, tests[1].Id, default)).ShouldBe(BookImportReviewResult.Ok);
         }
 
@@ -1117,6 +1149,68 @@ public class BookQuestionImportTests : IDisposable
         (await Service(ctx).ApproveTestAsync(Owner, id, tests[0].Id, default)).ShouldBe(BookImportReviewResult.Ok);
         (await fix.ReplacePageAsync(Owner, id, tests[0].Id, 1, [Box(0)], default)).Error.ShouldBe(BookImportPageFixError.InvalidState);
         _saved.Count.ShouldBe(2);
+    }
+
+    // ---------- Issue #1267: sorular alınırken bitmiş testi incele / düzelt ----------
+
+    private async Task BackToImportingAsync(Guid id, params int[] pendingTests)
+    {
+        await using var ctx = _db.NewContext();
+        await ctx.BookImportJobs.Where(j => j.Id == id).ExecuteUpdateAsync(u => u
+            .SetProperty(j => j.Status, BookImportJobStatus.Running).SetProperty(j => j.Stage, BookImportStage.Questions));
+        await ctx.BookImportJobTests.Where(t => pendingTests.Contains(t.Id))
+            .ExecuteUpdateAsync(u => u.SetProperty(t => t.Status, BookImportTestStatus.Pending));
+    }
+
+    [Fact]
+    public async Task A_finished_test_is_reviewed_and_fixed_while_the_rest_are_still_importing()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "A", [1]), new(2, 2, 2, "B", [1])]);
+        Detect(1, 4);
+        Detect(2, 4);
+        await RunAsync(id);
+        var tests = await TestsAsync();
+        await BackToImportingAsync(id, tests[1].Id);
+
+        await using (var ctx = _db.NewContext())
+        {
+            var service = Service(ctx);
+            (await Fix(ctx).ReplacePageAsync(Owner, id, tests[0].Id, 1, [Box(0)], default)).Error.ShouldBe(BookImportPageFixError.None);
+            (await Fix(ctx).ReplacePageAsync(Owner, id, tests[1].Id, 2, [Box(0)], default)).Error.ShouldBe(BookImportPageFixError.InvalidState);
+            (await service.RemoveTestAsync(Owner, id, tests[1].Id, default)).ShouldBe(BookImportReviewResult.InvalidState);
+            var all = await service.ApproveAllAsync(Owner, id, default);
+            all!.Approved.ShouldBe([tests[0].Id]);
+            all.Skipped.ShouldBeEmpty();
+            (await service.ApproveTestAsync(Owner, id, tests[1].Id, default)).ShouldBe(BookImportReviewResult.InvalidState);
+        }
+
+        await using var check = _db.NewContext();
+        var job = await check.BookImportJobs.SingleAsync();
+        job.Status.ShouldBe(BookImportJobStatus.Running);
+        job.Stage.ShouldBe(BookImportStage.Questions);
+        (await check.BookImportJobTests.OrderBy(t => t.Order).Select(t => t.Status).ToListAsync())
+            .ShouldBe([BookImportTestStatus.Approved, BookImportTestStatus.Pending]);
+    }
+
+    [Fact]
+    public async Task Job_completes_when_every_test_was_approved_before_the_import_finished()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "A", [1]), new(2, 2, 2, "B", [1])]);
+        Detect(1, 4);
+        Detect(2, 4);
+        await RunAsync(id);
+        var tests = await TestsAsync();
+        await BackToImportingAsync(id);
+        await using (var ctx = _db.NewContext())
+            (await Service(ctx).ApproveAllAsync(Owner, id, default))!.Approved.Count.ShouldBe(2);
+
+        await RunAsync(id);
+
+        await using var check = _db.NewContext();
+        var job = await check.BookImportJobs.SingleAsync();
+        job.Status.ShouldBe(BookImportJobStatus.Completed);
+        job.Stage.ShouldBe(BookImportStage.Approval);
+        job.FinishedAt.ShouldNotBeNull();
     }
 
     // ---------- Issue #1025: devam, yeniden deneme, iptal ----------

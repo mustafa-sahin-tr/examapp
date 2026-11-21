@@ -106,6 +106,8 @@ export interface BookImportJobTest {
   fileFrom: number | null;
   fileTo: number | null;
   answerless: number;
+  /** #1270: işaretlemede (ya da incelemede) elle düzeltildiyse ilk düzeltmenin zamanı. */
+  fixedAt?: string | null;
   /** #1176: cevap anahtarının okunduğu dosya sayfası; eski kurulumda kitabın bütün anahtar sayfaları. Anahtar yoksa boş. */
   keyPages?: number[];
   /** #1024: yalnız Admin'e — testin soru aktarımı maliyeti. */
@@ -151,7 +153,8 @@ export interface ApproveAllBookImportResult {
 
 /** #1023: onaylanabilir test — aktarımı bitmiş, taslak testi var ve cevapsız sorusu yok. */
 export function isApprovable(test: BookImportJobTest): boolean {
-  return (test.status === 'Done' || test.status === 'NeedsReview') && test.worksheetId != null && test.answerless === 0;
+  // #1269: işaretli (kontrol gerekli) test onaylanmaz; düzeltilip işaretleri kalkınca hazır olur.
+  return test.status === 'Done' && test.worksheetId != null && test.answerless === 0;
 }
 
 /** Toplu onaya girer: onaylanabilir ve işaretsiz (işaretli test bakılıp tek tek onaylanır). */

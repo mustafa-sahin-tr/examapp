@@ -740,6 +740,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("FileTo")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("FixedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("FlagsJson")
                         .HasColumnType("text");
 

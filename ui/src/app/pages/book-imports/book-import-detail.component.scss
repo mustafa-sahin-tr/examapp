@@ -323,10 +323,24 @@
   list-style: none;
 
   &__cell {
+    position: relative;
     width: 14px;
     height: 14px;
     border-radius: 3px;
     background: var(--ms-border);
+
+    // #1270: elle düzeltilen testin sağ üst köşesinde belirgin nokta.
+    &--fixed::after {
+      content: '';
+      position: absolute;
+      top: -3px;
+      right: -3px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--ms-info-text);
+      box-shadow: 0 0 0 1.5px var(--ms-border);
+    }
 
     &--done {
       background: var(--ms-success-border);
@@ -417,4 +431,9 @@
     margin: 0;
     color: var(--ms-text-medium);
   }
+}
+
+// #1270: lejanttaki "elle düzeltildi" ızgaradaki noktayla aynı renkte.
+.bid-legend__fixed {
+  color: var(--ms-info-text);
 }

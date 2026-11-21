@@ -18,7 +18,7 @@
     </button>
     }
     @if (actions() && open().length > 0) {
-    <button mat-flat-button type="button" class="bir-head__bulk" [disabled]="approvable() === 0 || busy() !== null || locked()"
+    <button mat-flat-button type="button" class="bir-head__bulk" [disabled]="approvable() === 0 || busy() !== null || (locked() && !importing())"
       (click)="openApproveAll()">
       <mat-icon aria-hidden="true">done_all</mat-icon>
       {{ t(label('approveAll'), { count: approvable(), total: open().length }) }}
@@ -104,6 +104,9 @@
         }
         <span class="bir-row__name">{{ testName(test) }}</span>
         <span class="bir-chip bir-chip--{{ test.status }}">{{ t('testStatus.' + test.status) }}</span>
+        @if (test.fixedAt) {
+        <span class="bir-chip bir-chip--fixed" data-testid="fixed-chip">{{ t('review.fixedChip') }}</span>
+        }
         @for (flag of test.reviewFlags; track flag.code) {
         <span class="bir-chip">{{ t('reviewFlags.' + flag.code, { found: flag.found, expected: flag.expected }) }}</span>
         }
@@ -135,14 +138,14 @@
           <mat-icon aria-hidden="true">{{ previewId() === test.id ? 'expand_less' : 'visibility' }}</mat-icon>{{ t('review.preview') }}
         </button>
         }
-        @if (editable() && canFix() && fixStart(test); as page) {
+        @if (testEditable(test) && canFix() && fixStart(test); as page) {
         <a mat-stroked-button routerLink="/labeling" [queryParams]="fixParams(test.id, page)">
           <mat-icon aria-hidden="true">edit_square</mat-icon>{{ t('review.fix') }}
         </a>
         }
         @if (actions()) {
-        <button mat-flat-button type="button" [disabled]="!isApprovable(test) || busy() !== null || locked()"
-          [attr.title]="test.answerless > 0 ? t('review.answerlessHint') : null" (click)="approve(test)">
+        <button mat-flat-button type="button" [disabled]="!isApprovable(test) || busy() !== null || testLocked(test)"
+          [attr.title]="test.answerless > 0 ? t('review.answerlessHint') : test.status === 'NeedsReview' ? t('review.flaggedHint') : null" (click)="approve(test)">
           @if (busy() === test.id) { <mat-spinner diameter="16" aria-hidden="true"></mat-spinner> }
           {{ t('review.approve') }}
         </button>
@@ -162,7 +165,7 @@
         <button mat-button type="button" (click)="removingId.set(null)">{{ t('review.cancel') }}</button>
         } @else {
         <button mat-icon-button type="button" [attr.aria-label]="t(label('remove'), { name: testName(test) })"
-          [disabled]="busy() !== null || locked()" (click)="removingId.set(test.id)">
+          [disabled]="busy() !== null || testLocked(test)" (click)="removingId.set(test.id)">
           <mat-icon>delete_outline</mat-icon>
         </button>
         }
@@ -219,13 +222,13 @@
           <li class="bir-q" [class.bir-q--missing]="q.answerIndex == null && !q.interactionType">
             <div class="bir-q__head">
               <span>{{ t(label('question'), { number: q.number ?? '?', page: q.filePage }) }}</span>
-              @if (editable() && canFix() && q.filePage && !q.interactionType) {
+              @if (testEditable(test) && canFix() && q.filePage && !q.interactionType) {
               <a mat-icon-button class="bir-q__fix" routerLink="/labeling" [queryParams]="fixParams(test.id, q.filePage)"
                 [attr.aria-label]="t(label('fixPage'), { page: q.filePage })" [title]="t(label('fixPage'), { page: q.filePage })">
                 <mat-icon>edit_square</mat-icon>
               </a>
               }
-              @if (editable() && canRemoveQuestion()) {
+              @if (testEditable(test) && canRemoveQuestion()) {
               @if (removingQuestionId() === q.id) {
               <span class="bir-q__remove-confirm">
                 <button mat-stroked-button type="button" class="bir-danger" [disabled]="busy() !== null" data-testid="remove-question-confirm"
@@ -250,7 +253,7 @@
               <div class="bir-q__answers" role="group" [attr.aria-label]="t('review.answerFor', { number: q.number ?? '?' })">
                 @for (letter of letters.slice(0, q.optionCount); track letter; let i = $index) {
                 <button type="button" class="bir-q__answer" [class.bir-q__answer--on]="q.answerIndex === i"
-                  [attr.aria-pressed]="q.answerIndex === i" [disabled]="!editable()" (click)="pick(test, q, i)">{{ letter }}</button>
+                  [attr.aria-pressed]="q.answerIndex === i" [disabled]="!testEditable(test)" (click)="pick(test, q, i)">{{ letter }}</button>
                 }
               </div>
               }
@@ -276,7 +279,7 @@
             <div class="bir-q__answers" role="group" [attr.aria-label]="t('review.answerFor', { number: z.number ?? '?' })">
               @for (letter of letters.slice(0, z.optionCount); track letter; let i = $index) {
               <button type="button" class="bir-q__answer" [class.bir-q__answer--on]="z.answerIndex === i"
-                [attr.aria-pressed]="z.answerIndex === i" [disabled]="!editable()" (click)="pick(test, z, i)">{{ letter }}</button>
+                [attr.aria-pressed]="z.answerIndex === i" [disabled]="!testEditable(test)" (click)="pick(test, z, i)">{{ letter }}</button>
               }
             </div>
             <button #zoomClose mat-icon-button type="button" [attr.aria-label]="t('review.zoomClose')" (click)="closeZoom()">
@@ -340,7 +343,7 @@
         {{ t(pageOriginal() ? 'review.showClean' : 'review.showOriginal') }}
       </button>
       }
-      @if (editable() && canFix() && (v.testId ?? pageViewTests()[0]?.id); as fixTest) {
+      @if ((editable() || importing()) && canFix() && (v.testId ?? pageViewTests()[0]?.id); as fixTest) {
       <a mat-stroked-button routerLink="/labeling" [queryParams]="fixParams(fixTest, v.page)">
         <mat-icon aria-hidden="true">edit_square</mat-icon>{{ t('review.fix') }}
       </a>

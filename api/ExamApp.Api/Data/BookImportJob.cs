@@ -288,6 +288,9 @@ public class BookImportJobTest : BaseEntity
     /// </summary>
     public string? ReviewFlagsJson { get; set; }
 
+    /// <summary>Issue #1270: işaretlemede ilk elle düzeltmenin zamanı (inceleme ekranında "elle düzeltildi" işareti).</summary>
+    public DateTime? FixedAt { get; set; }
+
     [MaxLength(BookImportJob.MaxMessageLength)]
     public string? Error { get; set; }
 }

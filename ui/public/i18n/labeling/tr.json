@@ -34,6 +34,9 @@
     "saving": "Kaydediliyor…",
     "hint": "Sayfadaki çoktan seçmeli sorular bu sayfanın taslaklarının yerine geçer; doğru şık işaretlenmezse kitabın cevap anahtarından alınır.",
     "saved": "{{saved}} soru kaydedildi, {{removed}} eski taslak kaldırıldı.",
+    "nextPage": "Testin sıradaki sorunlu sayfası açılıyor (s. {{page}}).",
+    "nextTest": "Sıradaki sorunlu teste geçiliyor: {{test}}.",
+    "noneLeft": "Sorunlu test kalmadı; aktarım sayfasına dönülüyor.",
     "duplicates": "{{count}} soru zaten bankada olduğu için atlandı.",
     "answerless": "{{count}} soru cevapsız; incelemede cevabını seçin.",
     "failed": "Sayfa düzeltmesi kaydedilemedi.",
@@ -60,7 +63,9 @@
       "bookPagesHint": "Bu test kurulurken anahtarın hangi sayfadan okunduğu kaydedilmemiş; kitabın bütün anahtar sayfaları gösteriliyor.",
       "prev": "Önceki anahtar sayfası",
       "next": "Sonraki anahtar sayfası",
-      "close": "Kapat"
+      "close": "Kapat",
+      "zoomOut": "Anahtarı küçült",
+      "zoomIn": "Anahtarı büyüt"
     },
     "original": {
       "label": "Orijinal sayfa",

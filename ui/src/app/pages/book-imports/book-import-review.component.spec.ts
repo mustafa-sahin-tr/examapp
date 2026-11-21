@@ -157,11 +157,23 @@ describe('BookImportReviewComponent (#1023)', () => {
     expect(changed).toBe(1);
   });
 
-  it('approveAll_SkipsFlaggedTests_WhichStayApprovableOneByOne', () => {
+  it('approveAll_SkipsFlaggedTests_WhichCannotBeApprovedUntilFixed (#1269)', () => {
     setup([test({ id: 1 }), test({ id: 2, order: 2, testNo: 2, status: 'NeedsReview' })]);
     expect(button(el(), 'Sorunsuz testleri onayla').textContent).toContain('(1/2)');
-    // Filtre açık: yalnız işaretli test listede; tek başına onaylanabilir.
+    // Filtre açık: yalnız işaretli test listede; düzeltilip uyarıları kalkana kadar onaylanmaz.
     expect(rows().length).toBe(1);
+    const approve = button(rows()[0], 'Onayla');
+    expect(approve.disabled).toBe(true);
+    expect(approve.getAttribute('title')).toContain('işaretlemede düzeltin');
+  });
+
+  it('fixedByHand_ShowsAChipOnTheRow (#1270)', () => {
+    setup([test({ id: 1, fixedAt: '2026-11-21T20:00:00Z' }), test({ id: 2, order: 2, testNo: 2 })]);
+    fixture.componentInstance.onlyAttention.set(false);
+    fixture.detectChanges();
+
+    expect(rows()[0].querySelector('[data-testid="fixed-chip"]')?.textContent).toContain('Elle düzeltildi');
+    expect(rows()[1].querySelector('[data-testid="fixed-chip"]')).toBeNull();
     expect(button(rows()[0], 'Onayla').disabled).toBe(false);
   });
 
@@ -242,6 +254,29 @@ describe('BookImportReviewComponent (#1023)', () => {
 
     const link = Array.from(rows()[0].querySelectorAll('a')).find((a) => a.textContent?.includes('İşaretlemede düzelt'));
     expect(link?.getAttribute('href')).toBe('/labeling?bookImport=a1&test=1&page=4');
+  });
+
+  it('importing_FinishedTestIsFixedAndApproved_PendingTestStaysLocked (#1267)', () => {
+    const flags = [{ code: 'missingNumbers', pages: [4], numbers: [3], found: null, expected: null }];
+    setup([test({ status: 'NeedsReview', reviewFlags: flags }), test({ id: 2, order: 2, testNo: 2, title: null, status: 'Pending' }),
+      test({ id: 3, order: 3, testNo: 3, title: null })], false);
+    fixture.componentRef.setInput('locked', true);
+    fixture.componentRef.setInput('importing', true);
+    fixture.componentInstance.onlyAttention.set(false);
+    fixture.detectChanges();
+
+    const fix = (row: Element) => Array.from(row.querySelectorAll('a')).find((a) => a.textContent?.includes('İşaretlemede düzelt'));
+    expect(fix(rows()[0])?.getAttribute('href')).toBe('/labeling?bookImport=a1&test=1&page=4');
+    // #1269: işaretli test düzeltilmeden onaylanmaz; bitmiş sorunsuz test aktarım sürerken onaylanır.
+    expect(button(rows()[0], 'Onayla').disabled).toBe(true);
+    expect(fix(rows()[1])).toBeUndefined();
+    expect(button(rows()[1], 'Onayla').disabled).toBe(true);
+    expect(button(rows()[2], 'Onayla').disabled).toBe(false);
+
+    fixture.componentRef.setInput('importing', false);
+    fixture.detectChanges();
+    expect(fix(rows()[0])).toBeUndefined();
+    expect(button(rows()[2], 'Onayla').disabled).toBe(true);
   });
 
   it('flags_OpenPerTestWithCompactPagesAndNumbers', () => {

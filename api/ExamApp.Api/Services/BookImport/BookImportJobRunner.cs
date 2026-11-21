@@ -179,6 +179,15 @@ public class BookImportJobRunner
             await BookQuestionImportStage.StopIfCancelledAsync(_db, job.Id, default);
             job.Stage = BookImportStage.Review;
             job.Status = BookImportJobStatus.ReadyForReview;
+            // #1267: testler aktarım sürerken onaylanabilir; bitmiş testlerin hepsi onaylandıysa incelenecek bir şey kalmaz.
+            if (await _db.BookImportJobTests.AnyAsync(t => t.JobId == job.Id && t.Status == BookImportTestStatus.Approved)
+                && !await _db.BookImportJobTests.AnyAsync(t => t.JobId == job.Id && t.WorksheetId != null
+                    && (t.Status == BookImportTestStatus.Done || t.Status == BookImportTestStatus.NeedsReview)))
+            {
+                job.Status = BookImportJobStatus.Completed;
+                job.Stage = BookImportStage.Approval;
+                job.FinishedAt = DateTime.UtcNow;
+            }
             await LogSummaryAsync(job);
             await _db.SaveChangesAsync();
         }

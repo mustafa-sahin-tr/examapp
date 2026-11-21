@@ -353,7 +353,13 @@ olarak aktarılır. Yalnız kitap aktarımında; hızlı ekleme ve karışık g�
 - **Ekran:** takip sayfasında "İnceleme ve onay" (`book-import-review`): "Yalnız bakılması gerekenler" varsayılan açık, satırda
   işaretler, Önizle (soru görselleri + A–D seçici, "Cevaplanan x/y"), Onayla, Sil (ikinci tıkla); toplu onay ("Sorunsuz testleri onayla") onay ister,
   işaretli (`NeedsReview`), cevapsız sorulu ve hatalı testleri atlar (`flagged` / `answerless` / `failed`) ve atlananları bildirir;
-  işaretli test bakılıp satırından tek tek onaylanır. Önizleme taslağı genel test ekranına açmaz (aktarım uç noktasından okur).
+  işaretli test **onaylanmaz** (#1269, sunucu `bookImport.testFlagged` 409): işaretlemede düzeltilir, sayfa kaydı işaretleri
+  yeniden hesaplar, işaret kalmayınca test `Done` olur ve Onayla açılır. İncelemede cevap seçmek "cevapsız" işaretini (cevapsız
+  soru kalmayınca), soru çıkarmak o sorunun cevapsız / şık sayısı işaretini ve soru sayısı anahtarla tutarsa sayı uyuşmazlığını
+  kaldırır; incelemede yeni işaret eklenmez. Düzeltilemeyen test silinir. **Elle düzeltildi (#1270):** ilk düzeltme
+  (işaretlemede sayfa kaydı ya da incelemede işaret kaldıran düzeltme) `BookImportJobTests.FixedAt`'e yazılır, yeniden almada
+  silinir; ızgarada hücrenin sağ üst köşesinde nokta, lejantta sayı, satırda "Elle düzeltildi" etiketi.
+  Önizleme taslağı genel test ekranına açmaz (aktarım uç noktasından okur).
 - **Sayfayı gör (#1190):** Uyarılar açılınca sayfa başlıklı her satırda "Sayfayı gör" işin sayfa görselini
   (`GET {id}/pages/{filePage}`) tam ekran açar: o sayfanın uyarıları üstte, oklarla uyarılı sayfalar arasında gezilir, oradan
   "İşaretlemede düzelt". Hızlı eklemede (sayfa görseli yok, `BookImportReviewApi.pageImage` tanımsız) düğme görünmez.
@@ -387,7 +393,20 @@ olarak aktarılır. Yalnız kitap aktarımında; hızlı ekleme ve karışık g�
   **Anahtar sayfası (#1176):** kurulum her testin anahtarının okunduğu dosya sayfasını `BookImportJobTests.KeyFilePage`'e yazar
   (ilk okumanınki, yoksa ikincininki). İş detayındaki `keyPages` bu sayfayı, alan boşsa (önceki kurulumlar, demo kopyası)
   kitabın bütün anahtar sayfalarını (`SetupJson.AnswerKeyRanges`) verir; anahtarsız testte boş. Düzeltme şeridinde küçük görsel,
-  tıklayınca büyür (birden çok sayfada önceki / sonraki). Hızlı eklemede yok.
+  tıklayınca büyür (birden çok sayfada önceki / sonraki). Hızlı eklemede yok. **#1272:** büyüyen anahtar ekranın altına
+  sabitlenir (modal değil, %50–300 yakınlaştırma; işaretleme sayfası alttan boşluk bırakır); açık bırakılırsa
+  (`localStorage` `labeling.fix.keyDocked`) sonraki sayfa / testte kendiliğinden açılır.
+  **Sıradaki sorunlu yere geçiş (#1273):** "Yalnız işaretli sayfalar" açıkken "Taslakları değiştir"den sonra iş yeniden okunur:
+  testin kalan işaretli sayfası (kaydedilenden sonrakiler önce), yoksa sıradaki kontrol gerekli test (sıraya göre, sonra
+  baştan; ilk işaretli sayfası, yoksa ilk sayfası) bildirimle açılır; kalmadıysa aktarım sayfasına dönülür
+  (`nextFlaggedFixTarget`). Filtre kapalıyken eski davranış: testin sıradaki sayfası, sonra dönüş.
+
+**Sorular alınırken inceleme (#1267):** iş `Questions` aşamasında ve aktarım sürüyorken (`Queued`, `Running`, `AwaitingBudget`,
+`AwaitingCostApproval`) bitmiş test (`Done`, `NeedsReview`, `Failed`) beklemeden incelenir: işaretlemede düzelt, cevap seçme,
+soru çıkarma, onaylama ve testi çıkarma açık. Bekleyen / alınan testte bunlar kapalı (sunucu `InvalidState`); "hepsini onayla"
+bitmemiş testleri sessizce atlar. Aktarım bittiğinde iş `ReadyForReview`'a geçer; en az bir test onaylanmış ve taslağı olan
+incelenecek test kalmamışsa doğrudan `Completed` olur. Arayüzde `importing` girişi (detay sayfası: aşama `Questions`, aktarım
+durumu, demo değil) bu düğmeleri test bazında açar; yeniden alma düğmeleri iş bitene kadar kapalı kalır.
 
 ## Maliyet ve bütçe (#1024)
 

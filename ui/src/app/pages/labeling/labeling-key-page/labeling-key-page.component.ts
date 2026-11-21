@@ -17,11 +17,34 @@ import { MatIconModule } from '@angular/material/icon';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { BookImportService } from '../../../services/book-import.service';
 
+/** #1272: anahtar paneli açık bırakıldıysa sonraki sayfa / testte de açılır. */
+export const KEY_DOCKED_STORAGE_KEY = 'labeling.fix.keyDocked';
+const ZOOM_MIN = 50;
+const ZOOM_MAX = 300;
+
+function readDocked(): boolean {
+  try {
+    return localStorage.getItem(KEY_DOCKED_STORAGE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeDocked(open: boolean): void {
+  try {
+    localStorage.setItem(KEY_DOCKED_STORAGE_KEY, open ? '1' : '0');
+  } catch {
+    // depolama kapalı: yalnız bu sayfada geçerli
+  }
+}
+
 /**
  * Issue #1176: düzeltilen testin cevap anahtarı sayfası. Şeritte küçük görsel; tıklayınca büyür, birden çok sayfa varsa
  * (eski kurulum: kitabın bütün anahtar sayfaları) önceki / sonraki ile gezilir. Görsel aktarımın sayfa ucundan gelir.
  * Issue #1260 (<c>original</c>): düzeltilen sayfanın temizlenmemiş orijinali; işaretli şıklar görünsün diye tuvalin yanında
  * modal olmayan panelde açılır (tuval kullanılabilir kalır).
+ * Issue #1272: anahtar ekranın altına sabitlenir (modal değil; tuval üstte kullanılır), yakınlaştırılır; açık kalması
+ * tarayıcıda hatırlanır, sonraki sayfa / testte kendiliğinden açılır.
  */
 @Component({
   selector: 'app-labeling-key-page',
@@ -46,6 +69,8 @@ export class LabelingKeyPageComponent {
   protected readonly failed = signal(false);
   /** Çeviri anahtarlarının alt dalı: `labeling.fix.key` ya da `labeling.fix.original`. */
   protected readonly ns = computed(() => (this.original() ? 'original' : 'key'));
+  /** #1272: alttaki anahtar panelinde görselin genişliği (%). */
+  protected readonly zoom = signal(100);
 
   constructor() {
     effect((onCleanup) => {
@@ -60,6 +85,8 @@ export class LabelingKeyPageComponent {
         next: (blob) => {
           url = URL.createObjectURL(blob);
           this.imageUrl.set(url);
+          // #1272: anahtar paneli açık bırakılmıştı: yeni sayfada / testte de açık.
+          if (!this.original() && readDocked()) queueMicrotask(() => this.show());
         },
         error: (error) => {
           console.error('labeling key page failed', error);
@@ -75,14 +102,23 @@ export class LabelingKeyPageComponent {
   }
 
   protected open(): void {
-    const dialog = this.dialog()?.nativeElement;
-    if (!dialog) return;
-    if (this.original()) dialog.show();
-    else dialog.showModal();
+    if (!this.original()) writeDocked(true);
+    this.show();
   }
 
   protected close(): void {
+    if (!this.original()) writeDocked(false);
     this.dialog()?.nativeElement.close();
+  }
+
+  /** Orijinal sağda, anahtar altta yüzer; ikisi de modal değil (tuval kullanılabilir kalır). */
+  private show(): void {
+    const dialog = this.dialog()?.nativeElement;
+    if (dialog && !dialog.open) dialog.show();
+  }
+
+  protected zoomBy(step: number): void {
+    this.zoom.update((z) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z + step)));
   }
 
   protected move(step: number): void {

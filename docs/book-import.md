@@ -188,6 +188,20 @@ Bursluluk sınavı (İOKBS) daha sıkı: 5–8. sınıf 80 soru 100 dk (1,25), l
 için kitap testlerinde kullanılmadı. Değer yalnız yeni kurulumda yazılır: bu değişiklikten önce kurulumu biten kitapta süre boş
 kalır (kurulum ekranında elle girilir ya da kurulum yeniden çalıştırılır).
 
+### Paylaşım ve kitabın erişim listesi (#1259)
+
+- **Onayda seçilir:** `ConfirmBookImportSetupDto.TeacherSharing` (`BookImportJob.TeacherSharing`, varsayılan Private); soru
+  aktarımının açtığı taslak testler ve inceleme / toplama testleri bu değeri alır. Öğretmen Özel / Herkese açık (görüntüle,
+  ata) / Yalnız okulum (okulu varsa, `CanShareWithSchool`) seçer.
+- **Seçili okul ve öğretmenler** (`BookAudience = 4`, yalnız admin, `CanShareWithAudience`): erişim **kitap düzeyinde**
+  `BookAudienceMembers` (satır başına okul **ya da** öğretmen; okul, o okulun bugünkü ve sonradan gelen öğretmenlerini kapsar).
+  Listedekiler görür ve onaysız atar (PublicAssignable gibi). Onayda `Audience { schoolIds, teacherIds }` (`teacherIds` =
+  Teacher kaydı id'si, admin öğretmen listesi kullanıcı id'si göstermez, #262; sunucu kullanıcı id'sine çevirir) listeye
+  **eklenir**; liste `GET/PUT labeling/books/{id}/audience` (Admin) ile değiştirilir, en çok 500 satır.
+- **Erişim kuralı:** `WorksheetAccess.VisibleToTeacherPredicate` testin kitabının listesinde öğretmeni ya da okulunu arar
+  (`BookTestId` dolu testler). Testin görünürlük ucunda `BookAudience` yalnız admin + kitap testi ile seçilir, öğretmen geri seçemez.
+- **Henüz yok:** var olan kitabın listesini düzenleyen ekran (uç nokta var).
+
 ### Sayfa temizliği (#1234)
 
 Bazı kitaplarda her sayfada aynı yerde filigran (ör. açık gri çapraz yayınevi adı) ve renkli kutuyla işaretli doğru şık
@@ -311,7 +325,7 @@ olarak aktarılır. Yalnız kitap aktarımında; hızlı ekleme ve karışık g�
 ## İnceleme ve onay (#1023)
 
 - **Taslak test:** soru aktarımı her test için kaydedilen soruları sırayla bağlayan taslak bir test (`Worksheet.IsDraft`) açar
-  (ad "kitap – test", süre kurulumdan, öğretmen paylaşımı Private, sahibi işin sahibi); `BookImportJobTest.WorksheetId`.
+  (ad "kitap – test", süre kurulumdan, öğretmen paylaşımı onayda seçilen (#1259), sahibi işin sahibi); `BookImportJobTest.WorksheetId`.
   Soru id'leri bankaya kayıttan kırpma hash'iyle döner (`LabelingImportPageResult.QuestionIds`).
 - **Uç noktalar** (sahibi / Admin, iş `ReadyForReview`): `GET {id}/tests/{testId}/questions` (numara, sayfa, görsel, cevap),
   `PUT …/questions/{questionId}/answer`, `POST {id}/tests/{testId}/approve` (cevapsız soru → 409 `bookImport.answerless`),
@@ -320,7 +334,7 @@ olarak aktarılır. Yalnız kitap aktarımında; hızlı ekleme ve karışık g�
 - **Soruyu testten çıkar** (#1169): önizlemede soru başına iki tıkla; `DELETE {id}/tests/{testId}/questions/{questionId}` taslak
   soruyu ve bağını soft-delete eder, kalanların sırası değişmez. Yalnız inceleme sürerken ve onaylanmamış testte; testin son
   sorusu çıkarılamaz (409 `bookImport.lastQuestion`, testi silin). Cevapsız soru çıkınca test onaylanabilir.
-- **Onay** `IsDraft`'ı kaldırır; öğretmen paylaşımı Private, soru havuzu paylaşımı olduğu gibi kalır. Sınıflandırma taslakta da
+- **Onay** `IsDraft`'ı kaldırır; öğretmen paylaşımı onayda seçilen (#1259), soru havuzu paylaşımı olduğu gibi kalır. Sınıflandırma taslakta da
   yazar (`WithDrafts`), onaydan sonra gelen sonuç da uygulanır.
 - **Sızıntı:** taslaklar adlı global filtreyle her sorgudan gizlidir. `IgnoreQueryFilters()` kullanan okumalar yalnız oturum /
   cevap geçmişinden okur (taslak atanamaz, başlatılamaz); ham SQL soru / test tablolarına dokunmaz. Alan başına test: havuz

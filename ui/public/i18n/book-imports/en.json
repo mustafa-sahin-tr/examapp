@@ -586,5 +586,46 @@
       "imageMissing": "image missing"
     },
     "next": "Write the ZIP into the dataset with \"python training/import_book_export.py <zip>\" in the question-detector folder, then upload to Drive as usual."
+  },
+  "sharing": {
+    "title": "Who can see the tests?",
+    "options": {
+      "private": {
+        "label": "Private",
+        "description": "Only you and admins."
+      },
+      "publicView": {
+        "label": "Public (view)",
+        "description": "All teachers see them; assigning needs your approval."
+      },
+      "publicAssignable": {
+        "label": "Public (assignable)",
+        "description": "All teachers see and assign them without approval."
+      },
+      "schoolOnly": {
+        "label": "My school only",
+        "description": "Teachers at your school see and assign them."
+      },
+      "bookAudience": {
+        "label": "Selected schools and teachers",
+        "description": "Teachers of the schools you pick and the teachers you pick see and assign them."
+      }
+    },
+    "schools": {
+      "title": "Schools",
+      "add": "Add a school",
+      "hint": "Every teacher at the school sees them, including those who join later."
+    },
+    "teachers": {
+      "title": "Teachers",
+      "school": "Teacher's school",
+      "hint": "Pick the school, then tick teachers in the list.",
+      "loading": "Loading teachers…",
+      "failed": "Teachers could not be loaded.",
+      "none": "No teachers at this school.",
+      "unnamed": "Teacher #{{id}}"
+    },
+    "remove": "Remove {{name}} from the list",
+    "emptyAudience": "Pick at least one school or teacher."
   }
 }

@@ -1,0 +1,74 @@
+<fieldset class="bish" *transloco="let t; prefix: 'book-imports.sharing'" [disabled]="disabled()">
+  <legend class="bish__title">{{ t('title') }}</legend>
+  <mat-radio-group class="bish__options" [value]="sharing()" (change)="sharing.set($event.value)" [disabled]="disabled()"
+    [attr.aria-label]="t('title')">
+    @for (option of options(); track option.value) {
+    <mat-radio-button [value]="option.value" [attr.data-testid]="'book-sharing-' + option.key">
+      <span class="bish__label">{{ t('options.' + option.key + '.label') }}</span>
+      <span class="bish__desc">{{ t('options.' + option.key + '.description') }}</span>
+    </mat-radio-button>
+    }
+  </mat-radio-group>
+
+  @if (sharing() === Sharing.BookAudience) {
+  <div class="bish__audience" data-testid="book-sharing-audience">
+    <section class="bish__group" [attr.aria-label]="t('schools.title')">
+      <h4>{{ t('schools.title') }}</h4>
+      <app-school-select [(value)]="schoolPick" [label]="t('schools.add')" [hint]="t('schools.hint')"
+        (selectionChange)="addSchool($event)" />
+      @if (schools().length) {
+      <mat-chip-set [attr.aria-label]="t('schools.title')">
+        @for (school of schools(); track school.id) {
+        <mat-chip (removed)="removeSchool(school.id)">
+          {{ school.name }}
+          <button matChipRemove type="button" [attr.aria-label]="t('remove', { name: school.name })">
+            <mat-icon>cancel</mat-icon>
+          </button>
+        </mat-chip>
+        }
+      </mat-chip-set>
+      }
+    </section>
+
+    <section class="bish__group" [attr.aria-label]="t('teachers.title')">
+      <h4>{{ t('teachers.title') }}</h4>
+      <app-school-select [(value)]="teacherSchoolId" [label]="t('teachers.school')" [hint]="t('teachers.hint')"
+        (selectionChange)="pickTeacherSchool($event)" />
+      @if (teachersLoading()) {
+      <p class="bish__state" role="status"><mat-spinner diameter="18" aria-hidden="true" />{{ t('teachers.loading') }}</p>
+      } @else if (teachersFailed()) {
+      <p class="bish__state bish__state--error" role="alert">{{ t('teachers.failed') }}</p>
+      } @else if (teacherSchool() && !schoolTeachers().length) {
+      <p class="bish__state" role="status">{{ t('teachers.none') }}</p>
+      } @else if (schoolTeachers().length) {
+      <ul class="bish__teachers" data-testid="book-sharing-teachers">
+        @for (teacher of schoolTeachers(); track teacher.id) {
+        <li>
+          <mat-checkbox [checked]="isTeacherSelected(teacher.id)" (change)="toggleTeacher(teacher, $event.checked)">
+            {{ teacher.fullName || t('teachers.unnamed', { id: teacher.id }) }}
+          </mat-checkbox>
+        </li>
+        }
+      </ul>
+      }
+      @if (teachers().length) {
+      <mat-chip-set [attr.aria-label]="t('teachers.title')">
+        @for (teacher of teachers(); track teacher.id) {
+        <mat-chip (removed)="removeTeacher(teacher.id)">
+          {{ teacher.name || t('teachers.unnamed', { id: teacher.id }) }}
+          @if (teacher.schoolName) { <span class="bish__muted">· {{ teacher.schoolName }}</span> }
+          <button matChipRemove type="button" [attr.aria-label]="t('remove', { name: teacher.name || teacher.id })">
+            <mat-icon>cancel</mat-icon>
+          </button>
+        </mat-chip>
+        }
+      </mat-chip-set>
+      }
+    </section>
+
+    @if (empty()) {
+    <p class="bish__state bish__state--warn" role="status">{{ t('emptyAudience') }}</p>
+    }
+  </div>
+  }
+</fieldset>

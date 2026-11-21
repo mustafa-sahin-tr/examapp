@@ -680,6 +680,17 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
             return response;
         }
 
+        // issue #1259: kitap erişimi yalnız kitaptan gelen testte ve yalnız adminle seçilir (liste admin işidir);
+        // zaten BookAudience olan testte sahip başka değere geçebilir, geri dönemez.
+        if (dto.TeacherSharing == WorksheetTeacherSharing.BookAudience
+            && worksheet.TeacherSharing != WorksheetTeacherSharing.BookAudience
+            && (!isAdmin || worksheet.BookTestId == null))
+        {
+            response.Success = false;
+            response.Message = _localizer["worksheets.authoring.bookAudienceAdminOnly"];
+            return response;
+        }
+
         // issue #191: SchoolOnly, sahibin bir okulu olmasını gerektirir — okul, worksheet SAHİBİNİN
         // Teachers.SchoolId'sinden (sunucu tarafı) çözülür; istekçinin (admin olabilir) okulu değil.
         // Okulsuz/bağımsız sahip veya legacy (owner'sız) worksheet için 400: aksi halde admin dışında

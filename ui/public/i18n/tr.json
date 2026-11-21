@@ -767,7 +767,8 @@
       "publicAssignable": "Herkese Açık · Atanabilir",
       "publicView": "Herkese Açık · Görüntüleme",
       "schoolOnly": "Okulum",
-      "sharedBy": "{{owner}} tarafından paylaşıldı"
+      "sharedBy": "{{owner}} tarafından paylaşıldı",
+      "bookAudience": "Kitap erişimi"
     },
     "spinWheel": {
       "spin": "Çarkı Çevir!",
@@ -806,6 +807,10 @@
           "label": "Sadece okulum",
           "description": "Yalnızca okulunuzdaki öğretmenler görür ve atayabilir.",
           "unavailable": "Bir okula bağlı olmadığınız için bu seçenek artık kullanılamıyor; başka bir seçenek seçin."
+        },
+        "bookAudience": {
+          "label": "Seçili okul ve öğretmenler",
+          "description": "Kitabın erişim listesindeki öğretmenler ve listedeki okulların öğretmenleri görür ve onaysız atayabilir. Liste kitap aktarımından düzenlenir."
         }
       },
       "studentVisibility": {
@@ -817,7 +822,8 @@
         "private": "Yalnızca siz ve admin görebilir/düzenleyebilir/atayabilirsiniz.",
         "publicView": "Tüm öğretmenler görüntüleyebilir, atamak için onayınız gerekir.",
         "publicAssignable": "Tüm öğretmenler görüntüleyebilir ve onaysız atayabilir.",
-        "schoolOnly": "Yalnızca okulunuzdaki öğretmenler görüntüleyebilir ve onaysız atayabilir."
+        "schoolOnly": "Yalnızca okulunuzdaki öğretmenler görüntüleyebilir ve onaysız atayabilir.",
+        "bookAudience": "Kitabın erişim listesindeki okul ve öğretmenler görüntüleyebilir ve onaysız atayabilir."
       },
       "summaryStudent": {
         "restricted": "Öğrenciler yalnızca atandığında görebilir.",

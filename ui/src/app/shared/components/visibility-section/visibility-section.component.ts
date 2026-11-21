@@ -99,6 +99,7 @@ export class VisibilitySectionComponent implements OnDestroy {
     { value: WorksheetTeacherSharing.PublicView, key: 'publicView' },
     { value: WorksheetTeacherSharing.PublicAssignable, key: 'publicAssignable' },
     { value: WorksheetTeacherSharing.SchoolOnly, key: 'schoolOnly' },
+    { value: WorksheetTeacherSharing.BookAudience, key: 'bookAudience' },
   ];
 
   /**
@@ -107,11 +108,13 @@ export class VisibilitySectionComponent implements OnDestroy {
    * böylece mevcut durum gizlenmez ve kullanıcı başka bir seçeneğe geçebilir.
    */
   readonly visibleTeacherSharingOptions = computed(() =>
-    this.teacherSharingOptions.filter(
-      (option) =>
-        option.value !== WorksheetTeacherSharing.SchoolOnly ||
-        this.canChooseSchoolOnly() ||
-        this._teacherSharing() === WorksheetTeacherSharing.SchoolOnly
+    this.teacherSharingOptions.filter((option) =>
+      // issue #1259: kitap erişimi testte seçilmez (kitap aktarımında seçilir); değer zaten oysa görünür kalır.
+      option.value === WorksheetTeacherSharing.BookAudience
+        ? this._teacherSharing() === WorksheetTeacherSharing.BookAudience
+        : option.value !== WorksheetTeacherSharing.SchoolOnly ||
+          this.canChooseSchoolOnly() ||
+          this._teacherSharing() === WorksheetTeacherSharing.SchoolOnly
     )
   );
 
@@ -189,6 +192,8 @@ export class VisibilitySectionComponent implements OnDestroy {
         return this.t('shared.visibilitySection.summaryTeacher.publicAssignable');
       case WorksheetTeacherSharing.SchoolOnly:
         return this.t('shared.visibilitySection.summaryTeacher.schoolOnly');
+      case WorksheetTeacherSharing.BookAudience:
+        return this.t('shared.visibilitySection.summaryTeacher.bookAudience');
       case WorksheetTeacherSharing.Private:
       default:
         return this.t('shared.visibilitySection.summaryTeacher.private');

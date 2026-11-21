@@ -86,6 +86,7 @@
       "visibilityForbidden": "You do not have permission to change this worksheet's visibility.",
       "visibilityUpdated": "Worksheet visibility updated.",
       "schoolOnlyRequiresSchool": "\"My school only\" sharing requires the worksheet owner to belong to a school.",
+      "bookAudienceAdminOnly": "Book access can only be chosen by an admin, for tests imported from a book.",
       "deleteForbidden": "You do not have permission to delete this worksheet.",
       "copied": "The test was copied.",
 

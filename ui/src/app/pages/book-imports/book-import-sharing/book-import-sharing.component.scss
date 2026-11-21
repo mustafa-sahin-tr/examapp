@@ -1,0 +1,78 @@
+.bish {
+  margin: 0;
+  padding: 12px 0 0;
+  border: 0;
+  border-top: 1px solid var(--ms-border);
+  min-width: 0;
+}
+
+.bish__title {
+  padding: 0;
+  font-weight: 600;
+}
+
+.bish__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+
+.bish__label {
+  display: block;
+}
+
+.bish__desc {
+  display: block;
+  color: var(--ms-text-medium);
+  font-size: 0.8rem;
+}
+
+.bish__audience {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.bish__group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+
+  h4 {
+    margin: 0;
+    font-size: 0.95rem;
+  }
+}
+
+.bish__teachers {
+  max-height: 220px;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+  border: 1px solid var(--ms-border);
+  border-radius: 8px;
+}
+
+.bish__state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--ms-text-medium);
+  font-size: 0.85rem;
+
+  &--error {
+    color: var(--ms-danger-text);
+  }
+
+  &--warn {
+    grid-column: 1 / -1;
+  }
+}
+
+.bish__muted {
+  color: var(--ms-text-medium);
+}

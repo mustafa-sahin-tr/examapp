@@ -60,6 +60,12 @@ Eğitime veri yalnız **Admin** veya **`QuestionTrainer`** realm rolü olan hesa
 Rol yeni giriş/token yenilemede geçerli olur (öğretmen çıkış yapıp tekrar girsin).
 **Öğretmeni askıya alır veya yetkisini geri alırsan `QuestionTrainer` rolünü de elle kaldır** (Role mapping → Unassign):
 gateway yalnız token'daki role bakar, öğretmen askıya alma bu rolü kaldırmaz.
+**Sınırlar (#461):** gateway `send-to-fix`'i kullanıcı başına 10 dakikada 60 istekle sınırlar (429;
+`RateLimiting:TrainingUpload:PermitLimit` / `WindowSeconds`). Veri seti diskinde `MIN_FREE_DISK_BYTES` (varsayılan 2 GiB)
+boş yer kalmadıysa detector 507 döner. Görseller yalnız PNG / JPEG / WEBP ve en çok `MAX_IMAGE_PIXELS` (varsayılan 40M)
+piksel olabilir; base64 sıkı çözülür. `manifest.jsonl`'deki her kayıt gönderenin Keycloak `sub`'ını taşır
+(`submitted_by`, gateway'in `X-Examapp-User` başlığından; istemcinin gönderdiği başlık silinir). Çöp veri gelirse o
+kişinin sayfaları manifest'ten bulunur.
 Çalışan (eski) bir Keycloak'ta rol yoksa önce Realm roles → Create role → `QuestionTrainer` ile oluştur;
 temiz import'ta `deploy/keycloak/dev-import/realm-export.json` ile gelir.
 

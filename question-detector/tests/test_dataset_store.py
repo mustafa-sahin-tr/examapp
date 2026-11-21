@@ -9,7 +9,7 @@ from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), "training"))
-from dataset_store import QuestionSample, content_id, labeled_page_ids, open_oriented_rgb, save_page, yolo_lines  # noqa: E402
+from dataset_store import QuestionSample, content_id, decode_base64_image, labeled_page_ids, open_oriented_rgb, save_page, yolo_lines  # noqa: E402
 import train  # noqa: E402
 
 
@@ -195,3 +195,41 @@ def test_open_oriented_rgb_applies_exif_orientation():
 def test_open_oriented_rgb_without_exif_keeps_size():
     image = open_oriented_rgb(_exif_rotated_jpeg(200, 100, 1))
     assert image.size == (200, 100)
+
+
+# --- Issue #461: görsel çözme sınırları ve gönderen kaydı ---
+
+def test_decode_base64_image_accepts_data_url_and_plain():
+    import base64 as b64
+    raw = _page()
+    encoded = b64.b64encode(raw).decode()
+    assert decode_base64_image(encoded) == raw
+    assert decode_base64_image("data:image/jpeg;base64," + encoded) == raw
+
+
+def test_decode_base64_image_rejects_invalid_characters():
+    import binascii
+    with pytest.raises(binascii.Error):
+        decode_base64_image("aGVsbG8*d29ybGQ=")
+
+
+def test_open_oriented_rgb_rejects_formats_outside_allowlist():
+    from PIL import UnidentifiedImageError
+    buf = BytesIO()
+    Image.new("RGB", (10, 10)).save(buf, format="BMP")
+    with pytest.raises(UnidentifiedImageError):
+        open_oriented_rgb(buf.getvalue())
+
+
+def test_open_oriented_rgb_rejects_decompression_bomb(monkeypatch):
+    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 1000)
+    buf = BytesIO()
+    Image.new("RGB", (100, 100)).save(buf, format="PNG")  # 10_000 px > 2 x 1000
+    with pytest.raises(Image.DecompressionBombError):
+        open_oriented_rgb(buf.getvalue())
+
+
+def test_save_page_records_submitter_in_manifest(tmp_path):
+    save_page(_page(), [_q((10, 10, 50, 40))], root=tmp_path, submitted_by="0b6f2c1e-1111-2222-3333-444455556666")
+    record = json.loads((tmp_path / "manifest.jsonl").read_text().splitlines()[-1])
+    assert record["submitted_by"] == "0b6f2c1e-1111-2222-3333-444455556666"

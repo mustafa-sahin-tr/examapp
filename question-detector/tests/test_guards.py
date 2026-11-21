@@ -74,3 +74,25 @@ def test_clamp_box_normal_box_unchanged():
 def test_clamp_box_empty_raises(box):
     with pytest.raises(ValueError):
         clamp_box(*box, 100, 100)
+
+
+# --- Issue #461 ---
+
+def test_has_free_disk_compares_with_threshold(tmp_path):
+    from guards import has_free_disk
+    assert has_free_disk(tmp_path, min_free=1)
+    assert not has_free_disk(tmp_path, min_free=1 << 62)
+
+
+def test_has_free_disk_walks_up_to_existing_parent(tmp_path):
+    from guards import has_free_disk
+    assert has_free_disk(tmp_path / "not" / "yet" / "created", min_free=1)
+
+
+def test_submitted_by_accepts_only_subject_shaped_values():
+    from guards import submitted_by
+    assert submitted_by("0b6f2c1e-1111-2222-3333-444455556666") == "0b6f2c1e-1111-2222-3333-444455556666"
+    assert submitted_by(None) is None
+    assert submitted_by("") is None
+    assert submitted_by("evil\nline") is None
+    assert submitted_by("a" * 65) is None

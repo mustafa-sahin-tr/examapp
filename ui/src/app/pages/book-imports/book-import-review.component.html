@@ -309,6 +309,8 @@
     }
   </ul>
   }
+  <!-- #1266: kitap aktarımında paylaşım bandı (takip ekranı yerleştirir). -->
+  <ng-content select="[bir-sharing]" />
   <p class="bir-footer">{{ t(label('footer')) }}</p>
 
   @if (pageView(); as v) {

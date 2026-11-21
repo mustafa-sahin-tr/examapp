@@ -370,6 +370,10 @@ internal sealed class BookQuestionImportStage(
             : null;
         if (worksheet is null)
         {
+            // #1266: paylaşım aktarım sürerken değişebilir; iş satırı bu çalışmanın başında okundu, güncel değer okunur.
+            var sharing = db.Entry(job).Property(j => j.TeacherSharing);
+            sharing.CurrentValue = sharing.OriginalValue =
+                await db.BookImportJobs.Where(j => j.Id == job.Id).Select(j => j.TeacherSharing).FirstAsync(ct);
             worksheet = NewDraftTest(job, test);
             // Sahip denetim damgasıyla yazılır (iş isteksiz çalışır): taslağın sahibi işin sahibi.
             db.SetCurrentUser(job.CreateUserId!.Value);

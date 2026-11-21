@@ -80,6 +80,9 @@ public class BookImportJobDto
     public bool IsDemoSource { get; set; }
     /// <summary>Issue #1260: sayfalar temizlendi ve temiz görseller kullanılıyor; düzeltmede orijinal sayfa ayrıca gösterilir.</summary>
     public bool HasOriginalPages { get; set; }
+
+    /// <summary>Issue #1259 / #1266: aktarımın açtığı testlerin öğretmen paylaşımı (kurulum onayında seçilir).</summary>
+    public WorksheetTeacherSharing TeacherSharing { get; set; }
     public string? FileName { get; set; }
     public long FileSizeBytes { get; set; }
     public int? PageCount { get; set; }
@@ -114,6 +117,13 @@ public class BookImportJobDto
 public class BookImportJobDetailDto : BookImportJobDto
 {
     public List<BookImportJobTestDto> Tests { get; set; } = new();
+
+    /// <summary>Issue #1266: kurulum onayından sonra testlerin paylaşımı değiştirilebilir mi (iş bitmemiş, demo değil, kitap).</summary>
+    public bool CanChangeSharing { get; set; }
+
+    /// <summary>Issue #1266: paylaşım seçenekleri (kurulum onayındakiyle aynı kural).</summary>
+    public bool CanShareWithSchool { get; set; }
+    public bool CanShareWithAudience { get; set; }
 
     /// <summary>Issue #1024: yalnız Admin'e — aşama ve model bazında maliyet (Admin değilse boş).</summary>
     public List<BookImportCostDto> Costs { get; set; } = new();
@@ -430,6 +440,14 @@ public class ConfirmBookImportSetupDto
     /// okul / öğretmenler (<see cref="Audience"/>) kitabın erişim listesine eklenir. <c>SchoolOnly</c> aktaranın okulunu ister.
     /// </summary>
     public WorksheetTeacherSharing? TeacherSharing { get; set; }
+
+    public ExamApp.Api.Models.Dtos.Labeling.BookAudienceSaveDto? Audience { get; set; }
+}
+
+/// <summary>Issue #1266: kurulum onayından sonra testlerin paylaşımını değiştirme (onaylanmamış testlere ve sonrakilere uygulanır).</summary>
+public class SetBookImportSharingDto
+{
+    public WorksheetTeacherSharing TeacherSharing { get; set; }
 
     public ExamApp.Api.Models.Dtos.Labeling.BookAudienceSaveDto? Audience { get; set; }
 }

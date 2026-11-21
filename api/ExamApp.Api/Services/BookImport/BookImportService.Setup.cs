@@ -129,7 +129,7 @@ public sealed partial class BookImportService
         var bookName = request.BookName?.Trim() ?? string.Empty;
         if (Validate(request, bookName, jobTests, job.PageCount ?? 0) is { } invalid)
             return new(ConfirmSetupError.Invalid, Code: invalid);
-        if (await ValidateSharingAsync(owner, request, ct) is { } invalidSharing)
+        if (await ValidateSharingAsync(owner, request.TeacherSharing ?? WorksheetTeacherSharing.Private, request.Audience, ct) is { } invalidSharing)
             return new(ConfirmSetupError.Invalid, Code: invalidSharing);
 
         BookImportBookRefDto? reuse = null;
@@ -187,14 +187,14 @@ public sealed partial class BookImportService
             .ExecuteUpdateAsync(s => s.SetProperty(j => j.Status, BookImportJobStatus.AwaitingConfirmation), CancellationToken.None);
 
     /// <summary>Issue #1259: paylaşım seçimi — tanımlı değer; seçili okul / öğretmenler yalnız admin ve geçerli liste; okulum okul ister.</summary>
-    private async Task<string?> ValidateSharingAsync(BookImportOwner owner, ConfirmBookImportSetupDto request, CancellationToken ct)
+    private async Task<string?> ValidateSharingAsync(BookImportOwner owner, WorksheetTeacherSharing sharing, BookAudienceSaveDto? audience,
+        CancellationToken ct)
     {
-        var sharing = request.TeacherSharing ?? WorksheetTeacherSharing.Private;
         if (!Enum.IsDefined(sharing))
             return "bookImport.invalidSharing";
         if (sharing == WorksheetTeacherSharing.BookAudience)
             return owner.IsAdmin
-                ? await new BookAudienceService(_db).ValidateAsync(request.Audience ?? new BookAudienceSaveDto(), ct)
+                ? await new BookAudienceService(_db).ValidateAsync(audience ?? new BookAudienceSaveDto(), ct)
                 : "bookImport.sharingAdminOnly";
         if (sharing == WorksheetTeacherSharing.SchoolOnly && await _db.ResolveTeacherSchoolIdAsync(owner.UserId, ct) is null)
             return "bookImport.schoolOnlyRequiresSchool";

@@ -200,6 +200,12 @@ kalır (kurulum ekranında elle girilir ya da kurulum yeniden çalıştırılır
   **eklenir**; liste `GET/PUT labeling/books/{id}/audience` (Admin) ile değiştirilir, en çok 500 satır.
 - **Erişim kuralı:** `WorksheetAccess.VisibleToTeacherPredicate` testin kitabının listesinde öğretmeni ya da okulunu arar
   (`BookTestId` dolu testler). Testin görünürlük ucunda `BookAudience` yalnız admin + kitap testi ile seçilir, öğretmen geri seçemez.
+- **Onaydan sonra değişir (#1266):** paylaşım bütün aktarıma aittir; inceleme ve onay panelinde bant olarak görünür
+  (`app-book-import-sharing-bar`). İş bitene kadar (tamamlandı / iptal değil, kurulum onaylı, demo ve karışık sorular hariç,
+  `CanChangeSharing`) `PUT /api/book-imports/{id}/sharing` (`SetBookImportSharingDto`, doğrulama onaydakiyle aynı) değiştirir:
+  onaylanmamış taslak testler hemen güncellenir, sonra alınacak testler yeni değeri alır (soru aşaması taslak açarken değeri
+  satırdan yeniden okur, çalışan iş eski değeri kullanmaz). Onaylanmış testlere dokunulmaz (testin ayarından değişir). Bitmiş
+  işte bant salt okunur.
 - **Henüz yok:** var olan kitabın listesini düzenleyen ekran (uç nokta var).
 
 ### Sayfa temizliği (#1234)

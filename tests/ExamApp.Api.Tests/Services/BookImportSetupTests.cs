@@ -360,6 +360,72 @@ public class BookImportSetupTests : IDisposable
     }
 
     [Fact]
+    public async Task Sharing_changed_after_confirmation_applies_to_unapproved_drafts_but_not_to_approved_tests()
+    {
+        // #1266
+        var id = await SetUpAsync();
+        (await ConfirmAsync(id, Request(Confirmed(1)))).Error.ShouldBe(ConfirmSetupError.None);
+        int draftId, approvedId;
+        await using (var seed = _db.NewContext())
+        {
+            var job = await seed.BookImportJobs.SingleAsync();
+            var draft = new Worksheet { Name = "Taslak", Description = "", GradeId = job.GradeId, IsDraft = true };
+            var approved = new Worksheet { Name = "Onaylı", Description = "", GradeId = job.GradeId };
+            seed.Worksheets.AddRange(draft, approved);
+            await seed.SaveChangesAsync();
+            (draftId, approvedId) = (draft.Id, approved.Id);
+            (await seed.BookImportJobTests.SingleAsync()).WorksheetId = draftId;
+            seed.BookImportJobTests.Add(new BookImportJobTest
+            {
+                JobId = id, Order = 99, Unit = 9, TestNo = 9, Status = BookImportTestStatus.Approved, WorksheetId = approvedId,
+            });
+            await seed.SaveChangesAsync();
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            var service = NewService(ctx);
+            var owner = BookImportOwner.Create(OwnerId);
+            (await service.GetAsync(owner, id, default))!.CanChangeSharing.ShouldBeTrue();
+            (await service.SetSharingAsync(owner, id,
+                new SetBookImportSharingDto { TeacherSharing = WorksheetTeacherSharing.BookAudience }, default))
+                .ShouldBe(new SetBookImportSharingResult(SetBookImportSharingError.Invalid, "bookImport.sharingAdminOnly"));
+            (await service.SetSharingAsync(owner, id,
+                new SetBookImportSharingDto { TeacherSharing = WorksheetTeacherSharing.PublicAssignable }, default))
+                .ShouldBe(new SetBookImportSharingResult(SetBookImportSharingError.None, UpdatedDrafts: 1));
+        }
+
+        await using (var check = _db.NewContext())
+        {
+            (await check.BookImportJobs.SingleAsync()).TeacherSharing.ShouldBe(WorksheetTeacherSharing.PublicAssignable);
+            var sharing = await check.Worksheets.IgnoreQueryFilters([DraftQueryFilter.Key])
+                .Where(w => w.Id == draftId || w.Id == approvedId).ToDictionaryAsync(w => w.Id, w => w.TeacherSharing);
+            sharing[draftId].ShouldBe(WorksheetTeacherSharing.PublicAssignable);
+            sharing[approvedId].ShouldBe(WorksheetTeacherSharing.Private);
+            var job = await check.BookImportJobs.SingleAsync();
+            job.Status = BookImportJobStatus.Completed;
+            await check.SaveChangesAsync();
+        }
+
+        await using var done = _db.NewContext();
+        var after = NewService(done);
+        (await after.SetSharingAsync(BookImportOwner.Create(OwnerId), id,
+            new SetBookImportSharingDto { TeacherSharing = WorksheetTeacherSharing.Private }, default))
+            .Error.ShouldBe(SetBookImportSharingError.InvalidState);
+        (await after.GetAsync(BookImportOwner.Create(OwnerId), id, default))!.CanChangeSharing.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Sharing_cannot_be_changed_before_setup_confirmation()
+    {
+        var id = await SetUpAsync();
+        await using var ctx = _db.NewContext();
+        (await NewService(ctx).SetSharingAsync(BookImportOwner.Create(OwnerId), id,
+            new SetBookImportSharingDto { TeacherSharing = WorksheetTeacherSharing.PublicView }, default))
+            .Error.ShouldBe(SetBookImportSharingError.InvalidState);
+    }
+
+    [Fact]
     public async Task After_confirmation_the_runner_continues_past_the_setup()
     {
         var id = await SetUpAsync();

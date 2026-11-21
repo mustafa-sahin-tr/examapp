@@ -147,7 +147,12 @@
   }
 
   @if (reviewing()) {
-  <app-book-import-review [jobId]="j.id" [tests]="j.tests" [loose]="j.source === 'LooseImages'" [bookName]="j.bookName" [pageCount]="j.pageCount" [editable]="reviewEditable()" [locked]="reviewLocked()" [canFix]="canFix && !j.isDemo" [hasOriginal]="!!j.hasOriginalPages" [deferrable]="true" [deferred]="!!j.deferredAt" [focusTest]="focusTest" (changed)="load()" (deferChange)="setDeferred($event)" />
+  <app-book-import-review [jobId]="j.id" [tests]="j.tests" [loose]="j.source === 'LooseImages'" [bookName]="j.bookName" [pageCount]="j.pageCount" [editable]="reviewEditable()" [locked]="reviewLocked()" [canFix]="canFix && !j.isDemo" [hasOriginal]="!!j.hasOriginalPages" [deferrable]="true" [deferred]="!!j.deferredAt" [focusTest]="focusTest" (changed)="load()" (deferChange)="setDeferred($event)">
+    @if (j.source !== 'LooseImages' && j.bookId != null) {
+    <app-book-import-sharing-bar bir-sharing [jobId]="j.id" [sharing]="j.teacherSharing ?? 0" [canChange]="!!j.canChangeSharing"
+      [canShareWithSchool]="!!j.canShareWithSchool" [canShareWithAudience]="!!j.canShareWithAudience" (changed)="load()" />
+    }
+  </app-book-import-review>
   }
 
   <div class="bid-body">

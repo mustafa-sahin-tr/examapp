@@ -96,6 +96,8 @@ export class BookImportReviewComponent implements OnInit {
   readonly perImage = computed(() => this.kind() === 'QuickAdd' || this.loose());
   readonly reviewApi = input<BookImportReviewApi | null>(null);
   readonly canFix = input(true);
+  /** #1263: sayfalar temizlendi; görüntüleyicide orijinal / temiz arasında geçilir. */
+  readonly hasOriginal = input(false);
   /** Fotoğraf sırası → küçük resim (hızlı ekleme). */
   readonly thumbs = input<Record<number, string>>({});
   /** Bir işlem testlerin durumunu değiştirdi: takip ekranı yeniden yüklenir. */
@@ -142,18 +144,26 @@ export class BookImportReviewComponent implements OnInit {
   readonly pageView = signal<{ testId: number | null; page: number } | null>(null);
   readonly pageViewUrl = signal<string | null>(null);
   readonly pageViewLoading = signal(false);
+  /** #1263: görüntüleyici temizlenmemiş sayfayı gösteriyor. */
+  readonly pageOriginal = signal(false);
   readonly bookView = computed(() => this.pageView()?.testId === null);
-  readonly pageViewPages = computed(() =>
-    this.bookView()
-      ? Array.from({ length: this.pageCount() ?? 0 }, (_, i) => i + 1)
-      : (this.openFlags()?.pages.map((p) => p.page) ?? [])
-  );
+  /** #1263: test görünümü testin bütün sayfalarını gezer (yalnız uyarılıları değil). */
+  readonly pageViewPages = computed(() => {
+    if (this.bookView()) return Array.from({ length: this.pageCount() ?? 0 }, (_, i) => i + 1);
+    const test = this.viewedTest();
+    return test ? bookImportTestPages(test).map((p) => p.page) : [];
+  });
+  private readonly viewedTest = computed(() => {
+    const id = this.pageView()?.testId;
+    return id == null ? undefined : this.testById(id);
+  });
   /** Kitap görünümünde bütün testlerin uyarıları sayfaya göre. */
   private readonly bookFlags = computed(() => groupReviewFlags(this.tests().flatMap((t) => t.reviewFlags)).pages);
   readonly pageViewFlags = computed(() => {
     const view = this.pageView();
     if (!view) return null;
-    const pages = this.bookView() ? this.bookFlags() : (this.openFlags()?.pages ?? []);
+    const test = this.viewedTest();
+    const pages = this.bookView() ? this.bookFlags() : test ? groupReviewFlags(test.reviewFlags).pages : [];
     return pages.find((p) => p.page === view.page) ?? null;
   });
   /** Gösterilen sayfanın testleri (kitap görünümü başlığı; düzeltme ilk teste açılır). */
@@ -293,7 +303,7 @@ export class BookImportReviewComponent implements OnInit {
     this.revokePageView();
     this.pageViewLoading.set(true);
     load
-      .call(this.api, this.jobId(), page)
+      .call(this.api, this.jobId(), page, this.pageOriginal())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (blob) => {
@@ -327,7 +337,22 @@ export class BookImportReviewComponent implements OnInit {
 
   closePage(): void {
     this.pageView.set(null);
+    this.pageOriginal.set(false);
     this.revokePageView();
+  }
+
+  /** #1263: testin sayfaları (göz düğmesi): ilk uyarılı sayfadan, yoksa ilk sayfadan. */
+  openTestPages(test: BookImportJobTest): void {
+    const page = this.fixStart(test);
+    if (page != null) this.openPage(test, page);
+  }
+
+  /** #1263: aynı sayfa orijinal / temiz olarak yeniden yüklenir. */
+  toggleOriginal(): void {
+    const view = this.pageView();
+    if (!view) return;
+    this.pageOriginal.update((v) => !v);
+    this.openPage(view.testId == null ? null : (this.testById(view.testId) ?? null), view.page);
   }
 
   pageKey(event: KeyboardEvent): void {

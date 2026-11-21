@@ -284,12 +284,12 @@ describe('BookImportReviewComponent (#1023)', () => {
     expect(flags).not.toContain('sayfa 8–10');
   });
 
-  it('flags_ViewPageOpensFlaggedPagesWithoutLeaving (#1190)', () => {
+  it('flags_ViewPageOpensTheTestPagesWithoutLeaving (#1190, #1263)', () => {
     const pageImage = vi.fn().mockReturnValue(of(new Blob(['x'], { type: 'image/webp' })));
     setup([test({
-      status: 'NeedsReview',
+      status: 'NeedsReview', fileFrom: 9, fileTo: 11,
       reviewFlags: [
-        { code: 'optionCount', pages: [9, 69], numbers: [4, 112], found: null, expected: null, byPage: { 9: [4], 69: [112] } },
+        { code: 'optionCount', pages: [9, 11], numbers: [4, 112], found: null, expected: null, byPage: { 9: [4], 11: [112] } },
       ],
     })], true, { pageImage });
     button(rows()[0], 'Uyarılar').click();
@@ -301,21 +301,62 @@ describe('BookImportReviewComponent (#1023)', () => {
     fixture.detectChanges();
     const view = () => el().querySelector('[data-testid="page-view"]') as HTMLElement | null;
     const viewText = () => view()!.textContent!.replace(/\s+/g, ' ');
-    expect(pageImage).toHaveBeenCalledWith('a1', 9);
+    expect(pageImage).toHaveBeenCalledWith('a1', 9, false);
     expect(view()!.textContent).toContain('Sayfa 9');
     expect(viewText()).toContain('4: şık sayısı 4 değil');
-    expect(view()!.textContent).toContain('1 / 2');
+    // #1263: uyarısız sayfa da gezilir.
+    expect(view()!.textContent).toContain('1 / 3');
     expect(view()!.querySelector('img')!.getAttribute('src')).toMatch(/^blob:/);
     expect(view()!.querySelector('a[href*="labeling"]')).not.toBeNull();
 
     view()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
     fixture.detectChanges();
-    expect(pageImage).toHaveBeenLastCalledWith('a1', 69);
+    expect(pageImage).toHaveBeenLastCalledWith('a1', 10, false);
+    expect(viewText()).not.toContain('112:');
+    view()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    fixture.detectChanges();
+    expect(pageImage).toHaveBeenLastCalledWith('a1', 11, false);
     expect(view()!.textContent).toContain('112:');
 
     view()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     fixture.detectChanges();
     expect(view()).toBeNull();
+  });
+
+  // #1263: göz düğmesi testin sayfalarını açar; temizlenmiş kitapta orijinal / temiz arasında geçilir.
+  it('eye_OpensTheTestPages_AndSwitchesBetweenOriginalAndClean (#1263)', () => {
+    const pageImage = vi.fn().mockReturnValue(of(new Blob(['x'], { type: 'image/webp' })));
+    setup([test({ status: 'NeedsReview', fileFrom: 3, fileTo: 4 })], true, { pageImage });
+    fixture.componentRef.setInput('hasOriginal', true);
+    fixture.detectChanges();
+
+    rows()[0].querySelector<HTMLButtonElement>('[data-testid="view-test-pages"]')!.click();
+    fixture.detectChanges();
+    const view = () => el().querySelector('[data-testid="page-view"]') as HTMLElement | null;
+    expect(pageImage).toHaveBeenLastCalledWith('a1', 3, false);
+    expect(view()!.textContent).toContain('1 / 2');
+
+    const toggle = () => view()!.querySelector<HTMLButtonElement>('[data-testid="toggle-original"]')!;
+    expect(toggle().textContent).toContain(tr.review.showOriginal);
+    toggle().click();
+    fixture.detectChanges();
+    expect(pageImage).toHaveBeenLastCalledWith('a1', 3, true);
+    expect(toggle().textContent).toContain(tr.review.showClean);
+
+    view()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    fixture.detectChanges();
+    expect(pageImage).toHaveBeenLastCalledWith('a1', 4, true);
+
+    view()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    rows()[0].querySelector<HTMLButtonElement>('[data-testid="view-test-pages"]')!.click();
+    fixture.detectChanges();
+    expect(pageImage).toHaveBeenLastCalledWith('a1', 3, false);
+  });
+
+  it('eye_HiddenWithoutPageImages (#1263)', () => {
+    setup([test({ status: 'NeedsReview' })]);
+    expect(rows()[0].querySelector('[data-testid="view-test-pages"]')).toBeNull();
   });
 
   it('browseBook_WalksEveryPageWithTheTestsAndFlagsOfThePage (#1229)', () => {
@@ -332,7 +373,7 @@ describe('BookImportReviewComponent (#1023)', () => {
     fixture.detectChanges();
     const view = () => el().querySelector('[data-testid="page-view"]') as HTMLElement | null;
     const viewText = () => view()!.textContent!.replace(/\s+/g, ' ');
-    expect(pageImage).toHaveBeenCalledWith('a1', 1);
+    expect(pageImage).toHaveBeenCalledWith('a1', 1, false);
     expect(viewText()).toContain('bu sayfada test yok');
     expect(view()!.querySelector('a[href*="labeling"]')).toBeNull();
 
@@ -340,12 +381,12 @@ describe('BookImportReviewComponent (#1023)', () => {
     jump.value = '4';
     jump.dispatchEvent(new Event('change'));
     fixture.detectChanges();
-    expect(pageImage).toHaveBeenLastCalledWith('a1', 4);
+    expect(pageImage).toHaveBeenLastCalledWith('a1', 4, false);
     expect(viewText()).toContain('1-01 · Kesirler, 1-02 · Oranlar');
 
     view()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
     fixture.detectChanges();
-    expect(pageImage).toHaveBeenLastCalledWith('a1', 5);
+    expect(pageImage).toHaveBeenLastCalledWith('a1', 5, false);
     expect(viewText()).toContain('7: şık sayısı 4 değil');
     expect(view()!.querySelector('a[href*="labeling"]')).not.toBeNull();
 
@@ -354,12 +395,12 @@ describe('BookImportReviewComponent (#1023)', () => {
     jump.dispatchEvent(new Event('change'));
     jump.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
     fixture.detectChanges();
-    expect(pageImage).toHaveBeenLastCalledWith('a1', 5);
+    expect(pageImage).toHaveBeenLastCalledWith('a1', 5, false);
 
     view()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
     view()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
     fixture.detectChanges();
-    expect(pageImage).toHaveBeenLastCalledWith('a1', 6);
+    expect(pageImage).toHaveBeenLastCalledWith('a1', 6, false);
     expect((view()!.querySelector('[aria-label="Sonraki sayfa"]') as HTMLButtonElement).disabled).toBe(true);
   });
 

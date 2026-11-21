@@ -38,7 +38,7 @@
     <app-labeling-key-page [jobId]="f.jobId" [pages]="[f.filePage]" original />
     }
     @if (fixNav(); as nav) {
-    @if (nav.pages.length > 1 || nav.hasFlagged) {
+    @if (f.pages.length > 1 || nav.hasFlagged) {
     <div class="lb-fix__nav" data-testid="labeling-fix-nav">
       <button mat-icon-button type="button" [disabled]="nav.prev == null || fixLoading() || fixSaving()"
         [attr.aria-label]="t('fix.prev')" [matTooltip]="t('fix.skipHint')" (click)="goToFixPage(nav.prev)">
@@ -52,6 +52,19 @@
         [attr.aria-label]="t('fix.next')" [matTooltip]="t('fix.skipHint')" (click)="goToFixPage(nav.next)">
         <mat-icon>chevron_right</mat-icon>
       </button>
+      @if (f.pages.length > 1) {
+      <!-- #1263: testin bütün sayfaları doğrudan açılır (yalnız-işaretli filtresinden bağımsız). -->
+      <span class="lb-fix__pages" role="group" [attr.aria-label]="t('fix.pages')" data-testid="labeling-fix-pages">
+        @for (p of f.pages; track p.page) {
+        <button type="button" class="lb-fix__page" [class.lb-fix__page--current]="p.page === f.filePage"
+          [attr.aria-current]="p.page === f.filePage ? 'page' : null" [disabled]="fixLoading() || fixSaving()"
+          [attr.aria-label]="t(p.flagged ? 'fix.pageFlagged' : 'fix.page', { page: p.page })"
+          (click)="p.page !== f.filePage && goToFixPage(p.page)">
+          {{ p.page }}@if (p.flagged) {<mat-icon class="lb-fix__flag" aria-hidden="true">flag</mat-icon>}
+        </button>
+        }
+      </span>
+      }
       @if (nav.hasFlagged) {
       <mat-slide-toggle [checked]="fixOnlyFlagged()" (change)="fixOnlyFlagged.set($event.checked)">
         {{ t('fix.onlyFlagged') }}

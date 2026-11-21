@@ -47,6 +47,9 @@
     "position": "Sayfa {{at}} / {{total}}",
     "outside": "{{total}} sayfa",
     "onlyFlagged": "Yalnız işaretli sayfalar",
+    "pages": "Testin sayfaları",
+    "page": "Sayfa {{page}}",
+    "pageFlagged": "Sayfa {{page}} · işaretli",
     "skipHint": "Kaydetmeden geçer; bu sayfadaki değişiklikler atılır.",
     "key": {
       "label": "Cevap anahtarı · s. {{page}}",

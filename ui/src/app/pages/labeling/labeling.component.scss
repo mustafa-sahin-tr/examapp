@@ -70,6 +70,39 @@
     white-space: nowrap;
   }
 
+  &__pages {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  &__page {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    min-width: 36px;
+    min-height: 32px;
+    padding: 0 8px;
+    border: 1px solid var(--ms-border);
+    border-radius: 8px;
+    background: var(--ms-surface);
+    color: var(--ms-text-strong);
+    font: inherit;
+    cursor: pointer;
+
+    &--current {
+      border-color: var(--ms-info-border);
+      background: var(--ms-info-surface);
+      font-weight: 600;
+      cursor: default;
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: 0.6;
+    }
+  }
+
   &__flag {
     font-size: 18px;
     width: 18px;

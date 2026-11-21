@@ -147,7 +147,7 @@
   }
 
   @if (reviewing()) {
-  <app-book-import-review [jobId]="j.id" [tests]="j.tests" [loose]="j.source === 'LooseImages'" [bookName]="j.bookName" [pageCount]="j.pageCount" [editable]="reviewEditable()" [locked]="reviewLocked()" [canFix]="canFix && !j.isDemo" [deferrable]="true" [deferred]="!!j.deferredAt" [focusTest]="focusTest" (changed)="load()" (deferChange)="setDeferred($event)" />
+  <app-book-import-review [jobId]="j.id" [tests]="j.tests" [loose]="j.source === 'LooseImages'" [bookName]="j.bookName" [pageCount]="j.pageCount" [editable]="reviewEditable()" [locked]="reviewLocked()" [canFix]="canFix && !j.isDemo" [hasOriginal]="!!j.hasOriginalPages" [deferrable]="true" [deferred]="!!j.deferredAt" [focusTest]="focusTest" (changed)="load()" (deferChange)="setDeferred($event)" />
   }
 
   <div class="bid-body">

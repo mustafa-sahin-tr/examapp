@@ -286,6 +286,20 @@ public class BookImportSetupTests : IDisposable
     }
 
     [Fact]
+    public void Toc_ranges_follow_consecutive_tests_of_a_unit_so_a_misread_unit_does_not_overlap_the_others()
+    {
+        // 5 Fen: 4. ünite testleri "1" okundu; ünitenin en küçük–en büyük sayfası (1–8) 2. üniteyle çakışırdı.
+        BookImportJobTest Test(int order, int unit, int from, int to) =>
+            new() { Order = order, Unit = unit, FileFrom = from, FileTo = to };
+        var tests = new[] { Test(1, 1, 1, 2), Test(2, 1, 3, 4), Test(3, 2, 5, 6), Test(4, 1, 7, 8), Test(5, 3, 9, 10), Test(6, 3, 11, 12) };
+
+        var runs = BookImportService.UnitRuns(tests,
+            [new ConfirmBookImportTestDto { Order = 6, FileFrom = 10, FileTo = 13 }, new ConfirmBookImportTestDto { Order = 5, FileFrom = 9, FileTo = 9 }]);
+
+        runs.ShouldBe([(1, 1, 4), (2, 5, 6), (1, 7, 8), (3, 9, 13)]);
+    }
+
+    [Fact]
     public async Task After_confirmation_the_runner_continues_past_the_setup()
     {
         var id = await SetUpAsync();

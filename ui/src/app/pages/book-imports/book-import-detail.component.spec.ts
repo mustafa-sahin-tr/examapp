@@ -205,7 +205,7 @@ describe('BookImportDetailComponent (#1018)', () => {
     response = of(detail({
       stage: 'Questions',
       tests: [
-        test({ order: 1, status: 'Done', questionsFound: 10, keyAnswers: 10, questionsSaved: 10 }),
+        test({ order: 1, status: 'Done', questionsFound: 10, keyAnswers: 10, questionsSaved: 10, fixedAt: '2026-11-21T20:00:00Z' }),
         test({
           order: 2, testNo: 2, status: 'NeedsReview', questionsFound: 9, keyAnswers: 10, questionsSaved: 8, duplicatesSkipped: 1,
           flags: ['keyMismatch'],
@@ -225,6 +225,11 @@ describe('BookImportDetailComponent (#1018)', () => {
     expect(cells[1].getAttribute('aria-label')).toBe('Ünite 1, test 2: Kontrol gerekli · 9 soru bulundu, anahtarda 10');
     expect(cells[3].getAttribute('aria-label')).toBe('Ünite 2, test 2: Bekliyor');
     expect(cells[2].classList).toContain('bid-grid__cell--failed');
+    // #1270: elle düzeltilen test köşe noktasıyla ve lejantta.
+    expect(cells[0].classList).toContain('bid-grid__cell--fixed');
+    expect(cells[0].getAttribute('aria-label')).toContain('elle düzeltildi');
+    expect(cells[1].classList).not.toContain('bid-grid__cell--fixed');
+    expect(el().querySelector('.bid-legend')!.textContent).toContain('1 elle düzeltildi');
     // #1129: yan kartta yalnız hatalı testler; işaretler inceleme bölümünde test başına.
     const attention = el().querySelector('.bid-attention')!.textContent ?? '';
     expect(attention).toContain('Sayfa okunamadı');

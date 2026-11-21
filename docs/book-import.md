@@ -353,7 +353,13 @@ olarak aktarılır. Yalnız kitap aktarımında; hızlı ekleme ve karışık g�
 - **Ekran:** takip sayfasında "İnceleme ve onay" (`book-import-review`): "Yalnız bakılması gerekenler" varsayılan açık, satırda
   işaretler, Önizle (soru görselleri + A–D seçici, "Cevaplanan x/y"), Onayla, Sil (ikinci tıkla); toplu onay ("Sorunsuz testleri onayla") onay ister,
   işaretli (`NeedsReview`), cevapsız sorulu ve hatalı testleri atlar (`flagged` / `answerless` / `failed`) ve atlananları bildirir;
-  işaretli test bakılıp satırından tek tek onaylanır. Önizleme taslağı genel test ekranına açmaz (aktarım uç noktasından okur).
+  işaretli test **onaylanmaz** (#1269, sunucu `bookImport.testFlagged` 409): işaretlemede düzeltilir, sayfa kaydı işaretleri
+  yeniden hesaplar, işaret kalmayınca test `Done` olur ve Onayla açılır. İncelemede cevap seçmek "cevapsız" işaretini (cevapsız
+  soru kalmayınca), soru çıkarmak o sorunun cevapsız / şık sayısı işaretini ve soru sayısı anahtarla tutarsa sayı uyuşmazlığını
+  kaldırır; incelemede yeni işaret eklenmez. Düzeltilemeyen test silinir. **Elle düzeltildi (#1270):** ilk düzeltme
+  (işaretlemede sayfa kaydı ya da incelemede işaret kaldıran düzeltme) `BookImportJobTests.FixedAt`'e yazılır, yeniden almada
+  silinir; ızgarada hücrenin sağ üst köşesinde nokta, lejantta sayı, satırda "Elle düzeltildi" etiketi.
+  Önizleme taslağı genel test ekranına açmaz (aktarım uç noktasından okur).
 - **Sayfayı gör (#1190):** Uyarılar açılınca sayfa başlıklı her satırda "Sayfayı gör" işin sayfa görselini
   (`GET {id}/pages/{filePage}`) tam ekran açar: o sayfanın uyarıları üstte, oklarla uyarılı sayfalar arasında gezilir, oradan
   "İşaretlemede düzelt". Hızlı eklemede (sayfa görseli yok, `BookImportReviewApi.pageImage` tanımsız) düğme görünmez.

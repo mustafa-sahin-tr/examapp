@@ -159,6 +159,7 @@ public sealed class BookImportPageFixService(
             test.QuestionsSaved = live;
             test.DuplicatesSkipped += saved.DuplicateIndexes.Count;
             test.ReviewFlagsJson = BookImportReviewFlag.Serialize(flags);
+            test.FixedAt ??= DateTime.UtcNow;
             if (test.WorksheetId is not null)
             {
                 test.Status = flags.Count == 0 ? BookImportTestStatus.Done : BookImportTestStatus.NeedsReview;

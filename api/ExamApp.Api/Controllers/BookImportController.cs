@@ -703,6 +703,7 @@ public class BookImportController : BaseController
         BookImportReviewResult.Answerless => Conflict(new { code = "bookImport.answerless", message = _localizer["bookImport.answerless"].Value }),
         BookImportReviewResult.InvalidOption => BadRequest(new { code = "bookImport.invalidOption", message = _localizer["bookImport.invalidOption"].Value }),
         BookImportReviewResult.LastQuestion => Conflict(new { code = "bookImport.lastQuestion", message = _localizer["bookImport.lastQuestion"].Value }),
+        BookImportReviewResult.Flagged => Conflict(new { code = "bookImport.testFlagged", message = _localizer["bookImport.testFlagged"].Value }),
         _ => Conflict(new { code = "bookImport.notInReview", message = _localizer["bookImport.notInReview"].Value }),
     };
 

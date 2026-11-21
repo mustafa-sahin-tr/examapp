@@ -154,6 +154,23 @@
     color: var(--ms-success-text);
   }
 
+  // #1270: elle düzeltilen test (ızgaradaki köşe noktasıyla aynı renk).
+  &--fixed {
+    background: var(--ms-info-surface-weak);
+    color: var(--ms-info-text);
+
+    &::before {
+      content: '';
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      margin-right: 5px;
+      border-radius: 50%;
+      background: var(--ms-info-text);
+      vertical-align: middle;
+    }
+  }
+
   &--danger,
   &--Failed {
     background: var(--ms-danger-surface-weak);

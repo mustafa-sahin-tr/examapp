@@ -22,6 +22,8 @@ public enum BookImportReviewResult
     InvalidOption,
     /// <summary>#1169: testin son sorusu çıkarılamaz (testi silmek gerekir).</summary>
     LastQuestion,
+    /// <summary>#1269: test işaretli; işaretlemede düzeltilip işaretleri kalkınca onaylanır.</summary>
+    Flagged,
 }
 
 /// <summary>
@@ -76,7 +78,7 @@ public sealed partial class BookImportService
     public async Task<BookImportReviewResult> SetAnswerAsync(BookImportOwner owner, Guid id, int testId, int questionId, int optionIndex,
         CancellationToken ct)
     {
-        var test = await ReviewTestAsync(owner, id, testId, ct);
+        var test = await ReviewTestAsync(owner, id, testId, ct, tracking: true);
         if (test is null)
             return BookImportReviewResult.NotFound;
         if (!IsReviewable(test) || !await InReviewAsync(id, ct))
@@ -94,6 +96,10 @@ public sealed partial class BookImportService
         question.CorrectAnswerId = answers[optionIndex].Id;
         _db.SetCurrentUser(owner.UserId);
         await _db.SaveChangesAsync(ct);
+        // #1269: cevapsız soru kalmadıysa "cevapsız" işareti kalkar.
+        if (!await DraftQuestions(test.WorksheetId!.Value).AnyAsync(AnswerlessQuestion, ct)
+            && ApplyReviewFix(test, f => f.Code == BookImportReviewFlag.NoAnswer ? null : f))
+            await _db.SaveChangesAsync(ct);
         return BookImportReviewResult.Ok;
     }
 
@@ -104,7 +110,7 @@ public sealed partial class BookImportService
     public async Task<BookImportReviewResult> RemoveQuestionAsync(BookImportOwner owner, Guid id, int testId, int questionId,
         CancellationToken ct)
     {
-        var test = await ReviewTestAsync(owner, id, testId, ct);
+        var test = await ReviewTestAsync(owner, id, testId, ct, tracking: true);
         if (test is null)
             return BookImportReviewResult.NotFound;
         if (!IsReviewable(test) || !await InReviewAsync(id, ct))
@@ -129,6 +135,21 @@ public sealed partial class BookImportService
             deleted.DeleteUserId = owner.UserId;
         }
 
+        // #1269: çıkan sorunun cevapsız / şık sayısı işareti kalkar; soru sayısı anahtarla tutarsa sayı uyuşmazlığı da.
+        var label = await _db.QuestionSources.Where(qs => qs.QuestionId == questionId).Select(qs => qs.ItemLabel).FirstOrDefaultAsync(ct);
+        int? number = int.TryParse(label, out var n) ? n : null;
+        var liveQuestions = links.Count(wq => wq != link && (wq.Question.InteractionType == null || wq.Question.InteractionType == McqGrader.Type));
+        var noneAnswerless = !links.Any(wq => wq != link && wq.Question.CorrectAnswerId == null
+                                              && (wq.Question.InteractionType == null || wq.Question.InteractionType == McqGrader.Type));
+        ApplyReviewFix(test, f => f.Code switch
+        {
+            BookImportReviewFlag.NoAnswer when noneAnswerless => null,
+            BookImportReviewFlag.NoAnswer or BookImportReviewFlag.OptionCount when number is { } removed => WithoutNumber(f, removed),
+            BookImportReviewFlag.CountMismatch when f.Expected == liveQuestions => null,
+            BookImportReviewFlag.CountMismatch => f with { Found = liveQuestions },
+            _ => f,
+        });
+
         _db.SetCurrentUser(owner.UserId);
         await _db.SaveChangesAsync(ct);
         return BookImportReviewResult.Ok;
@@ -143,6 +164,9 @@ public sealed partial class BookImportService
             return BookImportReviewResult.InvalidState;
         if (await DraftQuestions(test.WorksheetId!.Value).AnyAsync(AnswerlessQuestion, ct))
             return BookImportReviewResult.Answerless;
+        // #1269: işaretli test onaylanmaz; işaretlemede düzeltilip işaretleri kalkınca (Done) onaylanır.
+        if (test.Status == BookImportTestStatus.NeedsReview)
+            return BookImportReviewResult.Flagged;
 
         await ApproveAsync(owner, test, await HasLooseQuestionsAsync(owner, id, ct), ct);
         await CompleteIfReviewedAsync(id, ct);
@@ -183,7 +207,7 @@ public sealed partial class BookImportService
                 result.Skipped.Add(new BookImportSkippedTestDto(test.Id, SkipAnswerless));
                 continue;
             }
-            // İşaretli test (eksik / fazla soru, şık sayısı …) toplu onaylanmaz: öğretmen bakıp tek tek onaylar.
+            // İşaretli test (eksik / fazla soru, şık sayısı …) onaylanmaz: işaretlemede düzeltilince (Done) onaylanır (#1269).
             if (test.Status == BookImportTestStatus.NeedsReview)
             {
                 result.Skipped.Add(new BookImportSkippedTestDto(test.Id, SkipFlagged));
@@ -329,6 +353,7 @@ public sealed partial class BookImportService
             test.QuestionsSaved = 0;
             test.DuplicatesSkipped = 0;
             test.ReviewFlagsJson = null;
+            test.FixedAt = null;
             Requeue(job);
             job.Stage = BookImportStage.Questions;
             await _db.SaveChangesAsync(ct);
@@ -374,6 +399,38 @@ public sealed partial class BookImportService
     {
         var query = _db.BookImportJobTests.Where(t => t.Id == testId && t.JobId == id && Visible(owner).Any(j => j.Id == id));
         return await (tracking ? query.AsTracking() : query.AsNoTracking()).FirstOrDefaultAsync(ct);
+    }
+
+    /// <summary>
+    /// #1269: incelemedeki düzeltmenin (cevap seçme, soru çıkarma) çözdüğü işaretler değişir; işaret kalmazsa test hazır
+    /// (onaylanabilir) olur ve elle düzeltildi sayılır (#1270). Değişiklik olduysa true.
+    /// </summary>
+    private static bool ApplyReviewFix(BookImportJobTest test, Func<BookImportReviewFlag, BookImportReviewFlag?> change)
+    {
+        var before = BookImportReviewFlag.Parse(test.ReviewFlagsJson);
+        var after = before.Select(change).OfType<BookImportReviewFlag>().ToList();
+        if (after.SequenceEqual(before))
+            return false;
+        test.ReviewFlagsJson = BookImportReviewFlag.Serialize(after);
+        test.FixedAt ??= DateTime.UtcNow;
+        if (after.Count == 0 && test.Status == BookImportTestStatus.NeedsReview)
+            test.Status = BookImportTestStatus.Done;
+        return true;
+    }
+
+    /// <summary>İşaretten bir soru numarası çıkar; numarası kalmayan işaret düşer.</summary>
+    private static BookImportReviewFlag? WithoutNumber(BookImportReviewFlag flag, int number)
+    {
+        if (flag.Numbers is null || !flag.Numbers.Contains(number))
+            return flag;
+        var numbers = flag.Numbers.Where(x => x != number).ToList();
+        if (numbers.Count == 0)
+            return null;
+        var byPage = flag.ByPage?
+            .Select(p => (p.Key, Numbers: (IReadOnlyList<int>)p.Value.Where(x => x != number).ToList()))
+            .Where(p => p.Numbers.Count > 0)
+            .ToDictionary(p => p.Key, p => p.Numbers);
+        return flag with { Numbers = numbers, ByPage = byPage, Pages = byPage is null ? flag.Pages : byPage.Keys.Order().ToList() };
     }
 
     /// <summary>Onaylanabilir: aktarımı bitmiş (sorunsuz ya da kontrol gerekli) ve taslak testi olan.</summary>

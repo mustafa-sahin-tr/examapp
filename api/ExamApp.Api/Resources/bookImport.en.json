@@ -41,6 +41,7 @@
     "notCancellable": "This import cannot be cancelled at this stage.",
     "notRetryable": "This import cannot be retried right now.",
     "answerless": "A test with unanswered questions cannot be approved; pick the answers first.",
+    "testFlagged": "A test that needs checking cannot be approved; fix it in labeling until no warning is left.",
     "invalidOption": "Invalid option.",
     "lastQuestion": "The last question of a test cannot be removed; remove the test instead.",
     "notInReview": "This test cannot be approved or removed right now.",

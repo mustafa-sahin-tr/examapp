@@ -104,6 +104,9 @@
         }
         <span class="bir-row__name">{{ testName(test) }}</span>
         <span class="bir-chip bir-chip--{{ test.status }}">{{ t('testStatus.' + test.status) }}</span>
+        @if (test.fixedAt) {
+        <span class="bir-chip bir-chip--fixed" data-testid="fixed-chip">{{ t('review.fixedChip') }}</span>
+        }
         @for (flag of test.reviewFlags; track flag.code) {
         <span class="bir-chip">{{ t('reviewFlags.' + flag.code, { found: flag.found, expected: flag.expected }) }}</span>
         }
@@ -142,7 +145,7 @@
         }
         @if (actions()) {
         <button mat-flat-button type="button" [disabled]="!isApprovable(test) || busy() !== null || testLocked(test)"
-          [attr.title]="test.answerless > 0 ? t('review.answerlessHint') : null" (click)="approve(test)">
+          [attr.title]="test.answerless > 0 ? t('review.answerlessHint') : test.status === 'NeedsReview' ? t('review.flaggedHint') : null" (click)="approve(test)">
           @if (busy() === test.id) { <mat-spinner diameter="16" aria-hidden="true"></mat-spinner> }
           {{ t('review.approve') }}
         </button>

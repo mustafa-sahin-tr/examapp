@@ -150,6 +150,7 @@ export class BookImportDetailComponent implements OnInit {
       running: tests.filter((t) => t.status === 'Running').length,
       approved: tests.filter((t) => t.status === 'Approved').length,
       removed: tests.filter((t) => t.status === 'Removed').length,
+      fixed: tests.filter((t) => !!t.fixedAt && t.status !== 'Removed').length,
       total: tests.length,
     };
   });
@@ -284,8 +285,9 @@ export class BookImportDetailComponent implements OnInit {
       test.status === 'Pending' || test.status === 'Running'
         ? t('detail.testCell', params)
         : t('detail.testCellCounts', { ...params, found: test.questionsFound, key: test.keyAnswers });
-    // #1024: Admin'e testin maliyeti.
-    return test.costUsd != null ? `${label} · $${test.costUsd.toFixed(4)}` : label;
+    // #1270: elle düzeltilen test; #1024: Admin'e testin maliyeti.
+    const fixed = test.fixedAt ? `${label} · ${t('detail.fixedCell')}` : label;
+    return test.costUsd != null ? `${fixed} · $${test.costUsd.toFixed(4)}` : fixed;
   }
 
   testTone(test: BookImportJobTest): 'done' | 'review' | 'failed' | 'running' | 'pending' | 'approved' | 'removed' {

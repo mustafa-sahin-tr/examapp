@@ -26,6 +26,11 @@ export interface Teacher {
    */
   teacherAccountSuspended?: boolean;
   /**
+   * Issue #1277 (`TeacherDto.IsSchoolAdmin`): okulunun okul yöneticisi (platform admini atar). Yalnız exam-api refresh
+   * doldurur; menü / guard ipucudur, yetkiyi sunucu her istekte DB'den denetler.
+   */
+  isSchoolAdmin?: boolean;
+  /**
    * Issue #287: mevcut başvurunun durumu. Hesabı onaylı öğretmenin sonraki (bağımsız/okul) başvurusu da
    * `Pending` olabilir — erişim kararı yalnız `teacherAccountApproved` ile verilir.
    */

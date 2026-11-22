@@ -6,6 +6,8 @@ import { adminHomeRedirectGuard } from './shared/guards/admin-home-redirect.guar
 import { adminSchoolFilterRedirectGuard } from './shared/guards/admin-school-filter-redirect.guard';
 import { rootRedirect } from './shared/guards/root-redirect';
 import { independentTeacherGuard } from './shared/guards/independent-teacher.guard';
+import { schoolAdminGuard } from './shared/guards/school-admin.guard';
+import { SCHOOL_ADMIN_SCOPE_DATA_KEY } from './services/teacher-applications-api';
 import { studentGuard } from './shared/guards/student.guard';
 import { labelingGuard } from './shared/guards/labeling.guard';
 import { roleGuard } from './shared/guards/role.guard';
@@ -328,6 +330,14 @@ export const routes: Routes = [
         canActivate: [authGuard, adminGuard],
         loadComponent: () =>
           import('./pages/admin/admin-dashboard/admin-dashboard.component').then((m) => m.AdminDashboardComponent),
+      },
+      {
+        // Issue #1277: okul yöneticisi — kendi okulunun öğretmen başvuruları (aynı sayfa, okul kapsamı).
+        path: 'school-admin/teacher-approvals',
+        canActivate: [authGuard, schoolAdminGuard],
+        data: { [SCHOOL_ADMIN_SCOPE_DATA_KEY]: true },
+        loadComponent: () =>
+          import('./pages/admin/teacher-approvals/teacher-approvals.component').then((m) => m.TeacherApprovalsComponent),
       },
       {
         // Issue #94: bağımsız öğretmen başvuruları onay paneli (admin-home sekmesi olarak da gömülü).

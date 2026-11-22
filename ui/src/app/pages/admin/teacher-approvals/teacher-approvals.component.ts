@@ -19,7 +19,10 @@ import {
   provideTranslocoScope,
 } from '@jsverse/transloco';
 import { Observable, Subject, auditTime, catchError, finalize, map, merge, of, switchMap, take, tap } from 'rxjs';
+import { ActivatedRoute } from '@angular/router';
 import { AdminService } from '../../../services/admin.service';
+import { SchoolAdminService } from '../../../services/school-admin.service';
+import { SCHOOL_ADMIN_SCOPE_DATA_KEY, TeacherApplicationsApi } from '../../../services/teacher-applications-api';
 import { adminListErrorMessage } from '../../../shared/utils/school-paged-list';
 import { adminActionErrorMessage } from '../../../shared/utils/admin-action-error.util';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS, lastPageIndex } from '../../../shared/utils/paging.util';
@@ -109,7 +112,13 @@ type LoadResult =
   styleUrls: ['./teacher-approvals.component.scss'],
 })
 export class TeacherApprovalsComponent implements OnInit {
-  private readonly adminService = inject(AdminService);
+  private readonly route = inject(ActivatedRoute, { optional: true });
+  /**
+   * Issue #1277: okul yöneticisi kapsamı (rota verisi `schoolAdminScope`) — yalnız kendi okuluna gelen başvurular, uçlar
+   * `api/school-admin/*`. Admin paneline gömülü kullanımda rota verisi yoktur → platform admin.
+   */
+  readonly schoolScope = this.route?.snapshot?.data?.[SCHOOL_ADMIN_SCOPE_DATA_KEY] === true;
+  private readonly api: TeacherApplicationsApi = this.schoolScope ? inject(SchoolAdminService) : inject(AdminService);
   private readonly signalR = inject(SignalRService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
@@ -165,7 +174,7 @@ export class TeacherApprovalsComponent implements OnInit {
         }),
         switchMap(() => {
           const state = this.currentState();
-          return this.adminService
+          return this.api
             .getTeacherApplications({
               status: state.filter,
               page: state.pageIndex + 1,
@@ -301,7 +310,7 @@ export class TeacherApprovalsComponent implements OnInit {
     }
     this.setFlag(this.revealingIds, id, true);
 
-    this.adminService
+    this.api
       .getTeacherApplication(id)
       .pipe(
         finalize(() => this.setFlag(this.revealingIds, id, false)),
@@ -376,7 +385,7 @@ export class TeacherApprovalsComponent implements OnInit {
     if (this.isActing(row.teacherId) || !this.isPending(row)) {
       return;
     }
-    this.act(row, this.adminService.approveTeacherApplication(row.teacherId), this.text('approved'), {
+    this.act(row, this.api.approveTeacherApplication(row.teacherId), this.text('approved'), {
       status: 'Approved',
       rejectionReason: null,
     });
@@ -398,7 +407,7 @@ export class TeacherApprovalsComponent implements OnInit {
         if (!reason) {
           return;
         }
-        this.act(row, this.adminService.rejectTeacherApplication(row.teacherId, reason), this.text('rejected'), {
+        this.act(row, this.api.rejectTeacherApplication(row.teacherId, reason), this.text('rejected'), {
           status: 'Rejected',
           rejectionReason: reason,
         });

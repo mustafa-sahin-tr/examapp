@@ -53,11 +53,12 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
         { id: 'admin-students', route: '/admin/students', labelKey: 'menu.adminStudents', tr: 'Öğrenciler' },
     ];
 
-    function create(roles: string[], unapprovedTeacher = false): EnhancedLayoutComponent {
+    function create(roles: string[], unapprovedTeacher = false, schoolAdmin = false): EnhancedLayoutComponent {
         const authStub: Partial<AuthService> = {
             hasRealmRole: (role: string) => roles.includes(role),
             isAuthenticated: () => of(true),
             isUnapprovedTeacher: signal(unapprovedTeacher),
+            isSchoolAdmin: signal(schoolAdmin),
             user: signal(null),
         };
         TestBed.configureTestingModule({
@@ -90,6 +91,16 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
             expect(item?.labelKey, entry.id).toBe(entry.labelKey);
             expect(item?.icon, entry.id).toBeTruthy();
         }
+    });
+
+    // Issue #1277: okul yöneticisi menüsü yalnız profil okul yöneticisi diyen öğretmende.
+    it('visibleMenuItems_SchoolAdminTeacher_ShowsSchoolTeacherApprovals', () => {
+        const routes = (c: EnhancedLayoutComponent) => c.visibleMenuItems().map((i) => i.route);
+        expect(routes(create(['Teacher'], false, true))).toContain('/school-admin/teacher-approvals');
+    });
+
+    it('visibleMenuItems_PlainTeacher_HidesSchoolTeacherApprovals', () => {
+        expect(create(['Teacher']).visibleMenuItems().map((i) => i.route)).not.toContain('/school-admin/teacher-approvals');
     });
 
     for (const role of ['Teacher', 'Student']) {
@@ -253,6 +264,7 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
             hasRealmRole: (role: string) => role === 'Teacher',
             isAuthenticated: () => of(true),
             isUnapprovedTeacher: unapproved,
+            isSchoolAdmin: signal(false),
             user: signal(null),
         };
         TestBed.configureTestingModule({
@@ -391,6 +403,7 @@ describe('EnhancedLayoutComponent notification badge (issue #146)', () => {
             hasRealmRole: (role: string) => roles.includes(role),
             isAuthenticated: () => authenticated$.asObservable(),
             isUnapprovedTeacher: signal(false),
+            isSchoolAdmin: signal(false),
             user: signal(null),
             isCachedUserCurrent: () => true,
             refreshProfile: () => NEVER,
@@ -594,6 +607,7 @@ describe('EnhancedLayoutComponent direct messages menu (issue #106)', () => {
             hasRealmRole: (role: string) => roles.includes(role),
             isAuthenticated: () => of(true),
             isUnapprovedTeacher: signal(false),
+            isSchoolAdmin: signal(false),
             user: signal(null),
         };
         TestBed.configureTestingModule({
@@ -680,6 +694,7 @@ describe('EnhancedLayoutComponent DM badge push (issue #106 b)', () => {
             hasRealmRole: (r: string) => r === role,
             isAuthenticated: () => of(true),
             isUnapprovedTeacher: signal(false),
+            isSchoolAdmin: signal(false),
             user: signal(null),
             isCachedUserCurrent: () => true,
             refreshProfile: () => NEVER,
@@ -759,6 +774,7 @@ function layoutProviders(roles: string[], unapprovedTeacher = false, routeConfig
         hasRealmRole: (role: string) => roles.includes(role),
         isAuthenticated: () => of(true),
         isUnapprovedTeacher: signal(unapprovedTeacher),
+        isSchoolAdmin: signal(false),
         user: signal(user),
     };
     return [
@@ -976,6 +992,7 @@ function renderedLayoutProviders(roles: string[], mobile: boolean) {
         hasRealmRole: (role: string) => roles.includes(role),
         isAuthenticated: () => of(true),
         isUnapprovedTeacher: signal(false),
+        isSchoolAdmin: signal(false),
         isCachedUserCurrent: () => true,
         refreshProfile: () => NEVER,
         user: signal(null),

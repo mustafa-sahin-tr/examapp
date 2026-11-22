@@ -26,6 +26,7 @@ describe('EnhancedLayoutComponent question bank menu (issue #471)', () => {
             hasRealmRole: (role: string) => roles.includes(role),
             isAuthenticated: () => of(true),
             isUnapprovedTeacher: signal(false),
+            isSchoolAdmin: signal(false),
             user: signal(null),
         };
         TestBed.configureTestingModule({

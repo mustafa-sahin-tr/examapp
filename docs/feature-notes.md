@@ -657,3 +657,16 @@ Okul yöneticisi ayrı hesap türü ya da Keycloak rolü değildir: onaylı okul
 Yetki claim'den değil DB'den çözülür (`ISchoolAdminResolver`); okul değişimi, bağımsızlığa geçiş ve askı bayrağı temizler
 (`.claude/rules/school-change.md`). Bu dilimde yetkiyi kullanan uç yok; okul yöneticisi onay kuyrukları #1277 ve #1278'de.
 Admini olmayan okulda onaylar platform admininde kalır.
+
+### Okul yöneticisinin öğretmen başvuru onayı (#1277)
+
+Okul yöneticisi kendi okuluna gelen okul bağlantısı taleplerini (`RequestedSchoolId` = okulu) listeler, onaylar, reddeder:
+`GET api/school-admin/summary` (`{ schoolId, pendingTeacherApplications }`, menü rozeti), `GET api/school-admin/teacher-applications`
+(`status=pending|all`, admin listesiyle aynı şekil, e-posta maskeli), `GET .../{id}`, `POST .../{id}/approve`, `POST .../{id}/reject`
+(gateway `/api/exam/{everything}`). Yetki her istekte `ISchoolAdminResolver` ile DB'den; yönetici olmayan öğretmen 403, başka
+okulun başvurusu / bağımsız öğretmen başvurusu / yöneticinin kendi kaydı 404. Aynı `TeacherApprovalService` kullanılır
+(`SchoolApplicationScope`); karar audit'inde aktör yöneticinin Keycloak sub'ı, `ToSchoolId` okulu. Liste / detay erişimi admin
+veri erişimi audit'ine okul filtresiyle yazılır. Bağımsız öğretmen başvurusu ve okul talebi olmayan ilk hesap başvurusu yalnız
+platform admininde; platform admini tüm başvuruları görmeye devam eder. UI: profil (`auth/refresh`) `teacher.isSchoolAdmin`
+→ öğretmen menüsünde "Öğretmen Başvuruları" (rozetli) → `/school-admin/teacher-approvals` (admin onay sayfası, okul kapsamı;
+`schoolAdminGuard`). Yeni başvuru push'u (SignalR) yalnız admine gider; okul yöneticisi sayfası Yenile ile güncellenir.

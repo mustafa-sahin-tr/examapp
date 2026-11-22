@@ -1,8 +1,8 @@
 <section class="ta" *transloco="let t; prefix: 'admin.approvals'">
   <header class="ta__head">
     <div>
-      <h2>{{ t('title') }}</h2>
-      <p>{{ t('subtitle') }}</p>
+      <h2>{{ t(schoolScope ? 'schoolTitle' : 'title') }}</h2>
+      <p>{{ t(schoolScope ? 'schoolSubtitle' : 'subtitle') }}</p>
     </div>
     <div class="ta__tools">
       <mat-button-toggle-group

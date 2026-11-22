@@ -59,7 +59,8 @@ public class TeacherApprovalService : ITeacherApprovalService
     }
 
     public async Task<Paged<TeacherApplicationListItemDto>> ListApplicationsAsync(
-        TeacherApplicationStatusFilter status, int page, int pageSize, CancellationToken ct = default)
+        TeacherApplicationStatusFilter status, int page, int pageSize, CancellationToken ct = default,
+        SchoolApplicationScope? scope = null)
     {
         (page, pageSize) = AdminListPaging.Normalize(page, pageSize);
 
@@ -69,6 +70,8 @@ public class TeacherApprovalService : ITeacherApprovalService
             TeacherApplicationStatusFilter.All => AllApplications(),
             _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Unknown teacher application status filter.")
         };
+        if (scope != null)
+            query = InSchoolScope(query, scope, decidable: status == TeacherApplicationStatusFilter.Pending);
 
         var totalCount = await query.CountAsync(ct);
 
@@ -110,10 +113,14 @@ public class TeacherApprovalService : ITeacherApprovalService
         };
     }
 
-    public async Task<TeacherApplicationDetailDto?> GetApplicationAsync(int teacherId, CancellationToken ct = default)
+    public async Task<TeacherApplicationDetailDto?> GetApplicationAsync(int teacherId, CancellationToken ct = default,
+        SchoolApplicationScope? scope = null)
     {
         // issue #187: her durumdaki başvuru (Pending/Approved/Rejected); başvuru olmayan öğretmen null → 404.
-        var row = await Project(AllApplications().Where(t => t.Id == teacherId)).FirstOrDefaultAsync(ct);
+        var query = AllApplications().Where(t => t.Id == teacherId);
+        if (scope != null)
+            query = InSchoolScope(query, scope, decidable: false);
+        var row = await Project(query).FirstOrDefaultAsync(ct);
         if (row == null)
             return null;
 
@@ -264,6 +271,31 @@ public class TeacherApprovalService : ITeacherApprovalService
                     // security review L5: rolling deploy sırasında eski kodun Approved yazdığı, hesabı onaylanmamış kayıt.
                     || (t.ApprovalStatus == TeacherApprovalStatus.Approved && t.AccountApprovedAt == null && t.AccountSuspendedAt == null));
 
+    public Task<int> CountPendingAsync(SchoolApplicationScope scope, CancellationToken ct = default) =>
+        InSchoolScope(PendingApplications(), scope, decidable: true).CountAsync(ct);
+
+    /// <summary>
+    /// issue #1277: okul yöneticisi kapsamı. <paramref name="decidable"/> → yalnız o okula bekleyen bağlantı talepleri
+    /// (karar verilebilir olanlar); değilse geçmiş de: o okula talep (bekleyen / reddedilmiş) ya da o okula onaylanmış başvuru.
+    /// Bağımsız öğretmen başvurusu ve yöneticinin kendi kaydı hiçbir zaman kapsamda değildir.
+    /// </summary>
+    private static IQueryable<Teacher> InSchoolScope(IQueryable<Teacher> query, SchoolApplicationScope scope, bool decidable)
+    {
+        var schoolId = scope.SchoolId;
+        var actorUserId = scope.ActorUserId;
+        query = query.Where(t => !t.IsIndependentTutor && t.UserId != actorUserId);
+        return decidable
+            ? query.Where(t => t.RequestedSchoolId == schoolId)
+            : query.Where(t => t.RequestedSchoolId == schoolId
+                               || (t.RequestedSchoolId == null && t.ApprovalStatus == TeacherApprovalStatus.Approved
+                                   && t.SchoolId == schoolId));
+    }
+
+    /// <summary>issue #1277: kararın okul yöneticisi kapsamında olup olmadığı (okunan satır üzerinden).</summary>
+    private static bool IsDecidableInScope(Teacher teacher, SchoolApplicationScope? scope) =>
+        scope == null
+        || (!teacher.IsIndependentTutor && teacher.UserId != scope.ActorUserId && teacher.RequestedSchoolId == scope.SchoolId);
+
     /// <summary>
     /// issue #187: her durumdaki başvurular. Bağımsız öğretmen (her durumda) ya da okul talebi olan öğretmen (Pending;
     /// Rejected'da RequestedSchoolId korunur). ONAYLANMIŞ okul talebinde RequestedSchoolId temizlendiği için satır yalnızca
@@ -283,10 +315,12 @@ public class TeacherApprovalService : ITeacherApprovalService
                         && l.Outcome == AdminUserActionOutcome.Succeeded
                         && (l.Action == AdminUserAction.TeacherApproved || l.Action == AdminUserAction.TeacherRejected)));
 
-    public async Task<ResponseBaseDto> ApproveAsync(int teacherId, int adminUserId, string actorAdminKeycloakId, CancellationToken ct = default)
+    public async Task<ResponseBaseDto> ApproveAsync(int teacherId, int adminUserId, string actorAdminKeycloakId, CancellationToken ct = default,
+        SchoolApplicationScope? scope = null)
     {
         var teacher = await _context.Teachers.AsNoTracking().FirstOrDefaultAsync(t => t.Id == teacherId, ct);
-        var guardError = GuardPendingApplication(teacher);
+        // issue #1277: okul yöneticisi kapsamı dışındaki başvuru yok sayılır (404; başka okulun başvurusu sızmaz).
+        var guardError = GuardPendingApplication(teacher is not null && IsDecidableInScope(teacher, scope) ? teacher : null);
         if (guardError != null)
             return guardError;
 
@@ -375,7 +409,7 @@ public class TeacherApprovalService : ITeacherApprovalService
 
         // issue #157 review: audit, best-effort ama karardan hemen sonra — SyncSchoolMembershipAsync
         // (Keycloak/Redis I/O) atmasa da fırlatsa audit izi kaybolmasın.
-        await TryAuditDecisionAsync(AdminUserAction.TeacherApproved, teacherId, actorAdminKeycloakId);
+        await TryAuditDecisionAsync(AdminUserAction.TeacherApproved, teacherId, actorAdminKeycloakId, scope?.SchoolId);
 
         // Önbellek/Keycloak yalnızca güncelleme gerçekten uygulandıysa.
         if (linksSchool)
@@ -384,7 +418,8 @@ public class TeacherApprovalService : ITeacherApprovalService
         return Ok(_localizer["admin.teacherApplication.approved"], teacher.Id);
     }
 
-    public async Task<ResponseBaseDto> RejectAsync(int teacherId, string reason, int adminUserId, string actorAdminKeycloakId, CancellationToken ct = default)
+    public async Task<ResponseBaseDto> RejectAsync(int teacherId, string reason, int adminUserId, string actorAdminKeycloakId, CancellationToken ct = default,
+        SchoolApplicationScope? scope = null)
     {
         var trimmedReason = reason?.Trim();
         if (string.IsNullOrWhiteSpace(trimmedReason))
@@ -394,7 +429,7 @@ public class TeacherApprovalService : ITeacherApprovalService
             return Fail(_localizer["admin.teacherApplication.rejectReasonTooLong", RejectionReasonMaxLength]);
 
         var teacher = await _context.Teachers.AsNoTracking().FirstOrDefaultAsync(t => t.Id == teacherId, ct);
-        var guardError = GuardPendingApplication(teacher);
+        var guardError = GuardPendingApplication(teacher is not null && IsDecidableInScope(teacher, scope) ? teacher : null);
         if (guardError != null)
             return guardError;
 
@@ -436,7 +471,7 @@ public class TeacherApprovalService : ITeacherApprovalService
         if (affected == 0)
             return AlreadyDecided();
 
-        await TryAuditDecisionAsync(AdminUserAction.TeacherRejected, teacherId, actorAdminKeycloakId);
+        await TryAuditDecisionAsync(AdminUserAction.TeacherRejected, teacherId, actorAdminKeycloakId, scope?.SchoolId);
 
         return Ok(_localizer["admin.teacherApplication.rejected"], teacher.Id);
     }
@@ -500,12 +535,16 @@ public class TeacherApprovalService : ITeacherApprovalService
     /// aksine burada dış sistem çağrısı yok; tek DB yazımı zaten atomik şekilde tamamlandı, audit yalnızca
     /// iz amaçlı ek bir kayıttır). actorAdminKeycloakId boşsa (DI'siz test) sessizce atlanır.
     /// </summary>
-    private async Task TryAuditDecisionAsync(AdminUserAction action, int teacherId, string? actorAdminKeycloakId)
+    /// <param name="schoolAdminSchoolId">issue #1277: karar okul yöneticisinden geldiyse o okul (<c>ToSchoolId</c>); aktör
+    /// yine yöneticinin Keycloak sub'ıdır.</param>
+    private async Task TryAuditDecisionAsync(AdminUserAction action, int teacherId, string? actorAdminKeycloakId,
+        int? schoolAdminSchoolId = null)
     {
         if (_audit == null || string.IsNullOrWhiteSpace(actorAdminKeycloakId))
             return;
 
-        var record = new AdminUserActionRecord(actorAdminKeycloakId, action, AdminUserTargetType.Teacher, teacherId);
+        var record = new AdminUserActionRecord(actorAdminKeycloakId, action, AdminUserTargetType.Teacher, teacherId,
+            ToSchoolId: schoolAdminSchoolId);
         await _audit.TryRecordAsync(record, AdminUserActionOutcome.Succeeded);
     }
 

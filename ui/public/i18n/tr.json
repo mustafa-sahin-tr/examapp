@@ -39,7 +39,8 @@
     },
     "routeDenied": {
       "role": "Bu sayfa hesabın için açık değil; ana sayfaya döndün.",
-      "independentTeacher": "Bu sayfa yalnız bağımsız öğretmenler için; ana sayfaya döndün."
+      "independentTeacher": "Bu sayfa yalnız bağımsız öğretmenler için; ana sayfaya döndün.",
+      "schoolAdmin": "Bu sayfa yalnız okul yöneticileri için; ana sayfaya döndün."
     }
   },
   "layout": {

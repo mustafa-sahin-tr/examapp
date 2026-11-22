@@ -39,7 +39,8 @@
     },
     "routeDenied": {
       "role": "This page is not available for your account; you are back on the home page.",
-      "independentTeacher": "This page is only for independent teachers; you are back on the home page."
+      "independentTeacher": "This page is only for independent teachers; you are back on the home page.",
+      "schoolAdmin": "This page is only for school admins; you are back on the home page."
     }
   },
   "layout": {

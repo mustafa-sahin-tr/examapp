@@ -17,6 +17,7 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { AuthService } from '../../services/auth.service';
 import { AdminPendingService } from '../../services/admin-pending.service';
+import { SchoolAdminService } from '../../services/school-admin.service';
 import { UserThemeService } from '../../services/user-theme.service';
 import { ThemeConfigService } from '../../services/theme-config.service';
 import { EMPTY, Subject, forkJoin, fromEvent, interval, merge, of } from 'rxjs';
@@ -68,6 +69,8 @@ interface MenuItem {
    * BİLİNEN öğretmende gizlenir. Bayrak henüz yoksa gösterilir; asıl kapı backend ve `independentTeacherGuard`.
    */
   onlyIndependentTeacher?: boolean;
+  /** Issue #1277: yalnız okul yöneticisine (profil `teacher.isSchoolAdmin`) görünür; asıl kapı backend. */
+  onlySchoolAdmin?: boolean;
 }
 
 @Component({
@@ -165,6 +168,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
       : EnhancedLayoutComponent.SIDENAV_WIDTH_EXPANDED;
   });
   authService = inject(AuthService);
+  private readonly schoolAdminService = inject(SchoolAdminService);
   private readonly isTeacher = this.authService.hasRealmRole('Teacher');
   private readonly signalR = inject(SignalRService);
   private readonly accessRequestService = inject(WorksheetAccessRequestService);
@@ -286,6 +290,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'my-calendar', labelKey: 'menu.myCalendar', icon: 'event_note', route: '/my-calendar', type: 'menu', roles: ['Student', 'Teacher'] },
     { id: 'tutors', labelKey: 'menu.tutors', icon: 'person_search', route: '/tutors', type: 'menu', roles: ['Student'] },
     { id: 'teacher-requests', labelKey: 'menu.requests', icon: 'inbox', route: '/assignment-permission-requests', type: 'menu', roles: ['Teacher'] },
+    // Issue #1277: okul yöneticisi — kendi okulunun öğretmen başvuruları.
+    { id: 'school-admin-teacher-approvals', labelKey: 'menu.teacherApprovals', icon: 'how_to_reg', route: '/school-admin/teacher-approvals', type: 'menu', roles: ['Teacher'], onlySchoolAdmin: true },
     // Issue #106: öğrenci → öğretmen mesajlaşma (booking ile aynı "öğrenci → öğretmen" ailesi).
     { id: 'teacher-messages', labelKey: 'menu.teacherMessages', icon: 'forum', route: '/teacher-messages', type: 'menu', roles: ['Student'] },
     // Issue #106: öğretmenin öğrenci mesajları gelen kutusu.
@@ -429,6 +435,9 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     if (item.onlyIndependentTeacher && notIndependent) {
       return false;
     }
+    if (item.onlySchoolAdmin && !this.authService.isSchoolAdmin()) {
+      return false;
+    }
     if (!item.roles) {
       return true;
     }
@@ -561,6 +570,10 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     this.accessRequestService.refreshPendingCount().subscribe({ error: () => {} });
     this.loadStudentSchoolRequestCount();
     this.openTextReviewService.refreshPendingCount().subscribe({ error: () => {} });
+    // Issue #1277: okul yöneticisinin bekleyen öğretmen başvurusu rozeti.
+    if (this.authService.isSchoolAdmin()) {
+      this.schoolAdminService.refreshSummary().subscribe({ error: () => {} });
+    }
     if (!this.isKnownNotIndependent()) {
       this.bookingService.refreshPendingCount().subscribe({ error: () => {} });
     }
@@ -652,6 +665,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
         return this.accessRequestCount();
       case 'student-school-requests':
         return this.studentSchoolRequestCount();
+      case 'school-admin-teacher-approvals':
+        return this.schoolAdminService.pendingTeacherApplications();
       case 'admin-pending':
         return this.adminPending.total();
       case 'tab-admin-teacher-approvals':

@@ -77,11 +77,14 @@ public class QuestionDto
 
     /// <summary>
     /// Issue #1226: sorunun çözüm kaydı (kalem + ses) var ve çağıran oynatabilir: öğrenciye bitmiş oturumda ya da örnek soruda,
-    /// öğretmene yalnız kendi sorusunda (admin hepsinde).
+    /// öğretmene kendi sorusunda; #1286: test listesinde testi görebilen öğretmene de (admin hepsinde).
     /// </summary>
     public bool HasSolutionRecording { get; set; }
 
-    /// <summary>Issue #1226: çağıran bu soruya çözüm kaydedebilir (soru sahibi ya da admin; yalnız öğretmen listelerinde dolu).</summary>
+    /// <summary>
+    /// Issue #1226: çağıran bu soruya çözüm kaydedebilir (yalnız öğretmen listelerinde dolu): soru sahibi ya da admin; #1286: testi
+    /// görebilen öğretmen, kayıt yoksa ya da kayıt kendisininse.
+    /// </summary>
     public bool CanRecordSolution { get; set; }
 
     public double? X { get; set; }

@@ -45,7 +45,7 @@ public class SolutionRecordingsController : BaseController
     [ProducesResponseType(typeof(QuestionSolutionRecordingDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Get(int questionId, CancellationToken ct)
     {
-        if (!await OwnsAsync(questionId, ct))
+        if (!await CanViewAsync(questionId, ct))
             return NotFoundError();
         var recording = await _service.GetAsync(questionId, ct);
         return recording is null ? NotFoundError() : Ok(recording);
@@ -55,7 +55,7 @@ public class SolutionRecordingsController : BaseController
     [Authorize(Roles = AuthoringRoles)]
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)]
     public async Task<IActionResult> Audio(int questionId, CancellationToken ct) =>
-        await OwnsAsync(questionId, ct) ? await AudioAsync(questionId, ct) : NotFoundError();
+        await CanViewAsync(questionId, ct) ? await AudioAsync(questionId, ct) : NotFoundError();
 
     /// <summary>Kaydı oluşturur ya da değiştirir. Ses en çok 5 dakika; çizgiler JSON metni olarak aynı formda.</summary>
     [HttpPut("question/{questionId:int}")]
@@ -70,13 +70,15 @@ public class SolutionRecordingsController : BaseController
         var user = await GetAuthenticatedUserAsync(ct);
         if (!IsResolvedUser(user))
             return UserNotResolved(new { message = _localizer["solutionRecording.userNotResolved"].Value });
-        if (await _ownership.CanModifyQuestionAsync(questionId, user.Id, IsAdmin, ct) != QuestionAccessResult.Allowed)
+        // #1286: sahip / admin her zaman; soruyu bir testten görebilen öğretmen kayıt yoksa ya da kendi kaydıysa.
+        var owns = await _ownership.CanModifyQuestionAsync(questionId, user.Id, IsAdmin, ct) == QuestionAccessResult.Allowed;
+        if (!owns && await _ownership.CanViewQuestionAsync(questionId, user.Id, IsAdmin, ct) != QuestionAccessResult.Allowed)
             return NotFoundError();
         if (form.Audio is null)
             return Error(SolutionRecordingError.InvalidAudio);
         await using var audio = form.Audio.OpenReadStream();
         var result = await _service.SaveAsync(questionId, user.Id, form.Strokes, form.DurationMs, audio, form.Audio.Length,
-            form.Audio.ContentType, ct);
+            form.Audio.ContentType, ct, mayReplaceOthers: owns);
         return result.Error == SolutionRecordingError.None ? Ok(result.Recording) : Error(result.Error);
     }
 
@@ -85,8 +87,19 @@ public class SolutionRecordingsController : BaseController
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)]
     public async Task<IActionResult> Delete(int questionId, CancellationToken ct)
     {
+        // #1286: kaydı yapan öğretmen de siler.
         if (!await OwnsAsync(questionId, ct))
-            return NotFoundError();
+        {
+            var user = await GetAuthenticatedUserAsync(ct);
+            if (!IsResolvedUser(user)
+                || await _ownership.CanViewQuestionAsync(questionId, user.Id, IsAdmin, ct) != QuestionAccessResult.Allowed)
+                return NotFoundError();
+            var recorder = await _service.RecordedByAsync(questionId, ct);
+            if (recorder is null)
+                return NotFoundError();
+            if (recorder != user.Id)
+                return Error(SolutionRecordingError.RecordedByOther);
+        }
         return await _service.DeleteAsync(questionId, ct) ? NoContent() : NotFoundError();
     }
 
@@ -117,6 +130,13 @@ public class SolutionRecordingsController : BaseController
             && await _ownership.CanModifyQuestionAsync(questionId, user.Id, IsAdmin, ct) == QuestionAccessResult.Allowed;
     }
 
+    private async Task<bool> CanViewAsync(int questionId, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync(ct);
+        return IsResolvedUser(user)
+            && await _ownership.CanViewQuestionAsync(questionId, user.Id, IsAdmin, ct) == QuestionAccessResult.Allowed;
+    }
+
     private async Task<int?> StudentQuestionAsync(int instanceQuestionId, CancellationToken ct)
     {
         var user = await GetAuthenticatedUserAsync(ct);
@@ -140,8 +160,11 @@ public class SolutionRecordingsController : BaseController
     {
         var code = char.ToLowerInvariant(error.ToString()[0]) + error.ToString()[1..];
         var body = new { code = $"solutionRecording.{code}", message = _localizer[$"solutionRecording.{code}"].Value };
-        return error == SolutionRecordingError.StorageFailed
-            ? StatusCode(StatusCodes.Status503ServiceUnavailable, body)
-            : BadRequest(body);
+        return error switch
+        {
+            SolutionRecordingError.StorageFailed => StatusCode(StatusCodes.Status503ServiceUnavailable, body),
+            SolutionRecordingError.RecordedByOther => Conflict(body),
+            _ => BadRequest(body),
+        };
     }
 }

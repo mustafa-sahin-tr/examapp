@@ -5,6 +5,7 @@
     "invalidAudio": "Ses okunamadı (WebM, MP4, Ogg ya da MP3, en çok 12 MB).",
     "invalidStrokes": "Çizim verisi geçerli değil.",
     "invalidDuration": "Kayıt en çok 5 dakika olabilir.",
-    "storageFailed": "Kayıt saklanamadı. Yeniden dene."
+    "storageFailed": "Kayıt saklanamadı. Yeniden dene.",
+    "recordedByOther": "Bu sorunun çözümünü başka bir öğretmen kaydetti; yalnız o, soru sahibi ya da admin değiştirebilir."
   }
 }

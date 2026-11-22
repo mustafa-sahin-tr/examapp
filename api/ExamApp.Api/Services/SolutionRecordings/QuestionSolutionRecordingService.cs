@@ -22,6 +22,8 @@ public enum SolutionRecordingError
     InvalidStrokes,
     InvalidDuration,
     StorageFailed,
+    /// <summary>#1286: kaydı başka bir öğretmen yaptı; yalnız o, soru sahibi ya da admin değiştirir.</summary>
+    RecordedByOther,
 }
 
 public sealed record SolutionRecordingAudio(Stream Content, string ContentType);
@@ -36,9 +38,14 @@ public interface IQuestionSolutionRecordingService
 {
     Task<QuestionSolutionRecordingDto?> GetAsync(int questionId, CancellationToken ct);
     Task<SolutionRecordingAudio?> GetAudioAsync(int questionId, CancellationToken ct);
-    /// <summary>Kaydı oluşturur ya da değiştirir (soru başına bir kayıt); eski ses silinir.</summary>
+    /// <summary>
+    /// Kaydı oluşturur ya da değiştirir (soru başına bir kayıt); eski ses silinir. #1286: <paramref name="mayReplaceOthers"/>
+    /// false ise (soru sahibi / admin değil) başkasının kaydı değiştirilmez (<see cref="SolutionRecordingError.RecordedByOther"/>).
+    /// </summary>
     Task<SolutionRecordingSaveResult> SaveAsync(int questionId, int userId, string? strokesJson, int durationMs,
-        Stream audio, long audioLength, string? audioContentType, CancellationToken ct);
+        Stream audio, long audioLength, string? audioContentType, CancellationToken ct, bool mayReplaceOthers = true);
+    /// <summary>#1286: kaydı yapan öğretmen; kayıt yoksa null.</summary>
+    Task<int?> RecordedByAsync(int questionId, CancellationToken ct);
     /// <summary>Kayıt yoksa false. Ses de depodan silinir.</summary>
     Task<bool> DeleteAsync(int questionId, CancellationToken ct);
     /// <summary>
@@ -80,8 +87,10 @@ public sealed class QuestionSolutionRecordingService(
     }
 
     public async Task<SolutionRecordingSaveResult> SaveAsync(int questionId, int userId, string? strokesJson, int durationMs,
-        Stream audio, long audioLength, string? audioContentType, CancellationToken ct)
+        Stream audio, long audioLength, string? audioContentType, CancellationToken ct, bool mayReplaceOthers = true)
     {
+        if (!mayReplaceOthers && await RecordedByAsync(questionId, ct) is { } recorder && recorder != userId)
+            return Failed(SolutionRecordingError.RecordedByOther);
         if (durationMs is < 1 or > MaxDurationMs + DurationSlackMs)
             return Failed(SolutionRecordingError.InvalidDuration);
         var strokes = SolutionStrokeDocument.Normalize(strokesJson, durationMs);
@@ -111,6 +120,12 @@ public sealed class QuestionSolutionRecordingService(
         }
 
         var row = await db.QuestionSolutionRecordings.AsTracking().FirstOrDefaultAsync(r => r.QuestionId == questionId, ct);
+        // Yükleme sürerken başka öğretmen kaydetmiş olabilir.
+        if (!mayReplaceOthers && row is not null && row.RecordedByUserId != userId)
+        {
+            await DeleteAudioAsync(objectPath);
+            return Failed(SolutionRecordingError.RecordedByOther);
+        }
         var previousAudio = row?.AudioObjectPath;
         if (row is null)
         {
@@ -138,6 +153,12 @@ public sealed class QuestionSolutionRecordingService(
             await DeleteAudioAsync(previousAudio);
         return new SolutionRecordingSaveResult(SolutionRecordingError.None, ToDto(row));
     }
+
+    public async Task<int?> RecordedByAsync(int questionId, CancellationToken ct) =>
+        await db.QuestionSolutionRecordings.AsNoTracking()
+            .Where(r => r.QuestionId == questionId)
+            .Select(r => (int?)r.RecordedByUserId)
+            .FirstOrDefaultAsync(ct);
 
     public async Task<bool> DeleteAsync(int questionId, CancellationToken ct)
     {

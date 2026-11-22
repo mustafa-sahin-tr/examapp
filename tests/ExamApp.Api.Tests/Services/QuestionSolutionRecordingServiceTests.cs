@@ -81,12 +81,13 @@ public class QuestionSolutionRecordingServiceTests : IDisposable
     }
 
     private async Task<SolutionRecordingSaveResult> SaveAsync(byte[]? audio = null, string? strokes = Strokes, int durationMs = 60_000,
-        string? contentType = "audio/webm;codecs=opus", int? questionId = null)
+        string? contentType = "audio/webm;codecs=opus", int? questionId = null, int userId = TeacherUser, bool mayReplaceOthers = true)
     {
         await using var ctx = _db.NewContext();
         audio ??= WebM;
         using var stream = new MemoryStream(audio);
-        return await NewService(ctx).SaveAsync(questionId ?? _questionId, TeacherUser, strokes, durationMs, stream, audio.Length, contentType, default);
+        return await NewService(ctx).SaveAsync(questionId ?? _questionId, userId, strokes, durationMs, stream, audio.Length, contentType,
+            default, mayReplaceOthers);
     }
 
     [Fact]
@@ -122,6 +123,31 @@ public class QuestionSolutionRecordingServiceTests : IDisposable
         await using var ctx = _db.NewContext();
         (await ctx.QuestionSolutionRecordings.CountAsync()).ShouldBe(1);
         (await ctx.QuestionSolutionRecordings.SingleAsync()).DurationMs.ShouldBe(30_000);
+    }
+
+    // #1286: sahip / admin olmayan öğretmen boş soruya kaydeder, kendi kaydını değiştirir; başkasınınkini değiştiremez.
+    [Fact]
+    public async Task A_viewing_teacher_records_first_and_cannot_replace_another_teachers_recording()
+    {
+        const int OtherTeacher = 9399;
+        (await SaveAsync(userId: OtherTeacher, mayReplaceOthers: false)).Error.ShouldBe(SolutionRecordingError.None);
+        (await SaveAsync(userId: OtherTeacher, mayReplaceOthers: false, durationMs: 30_000)).Error.ShouldBe(SolutionRecordingError.None);
+
+        (await SaveAsync(userId: 9400, mayReplaceOthers: false)).Error.ShouldBe(SolutionRecordingError.RecordedByOther);
+        _objects.Count.ShouldBe(1); // reddedilen ses yüklenmez
+
+        await using (var ctx = _db.NewContext())
+        {
+            var row = await ctx.QuestionSolutionRecordings.SingleAsync();
+            row.RecordedByUserId.ShouldBe(OtherTeacher);
+            row.DurationMs.ShouldBe(30_000);
+            (await NewService(ctx).RecordedByAsync(_questionId, default)).ShouldBe(OtherTeacher);
+        }
+
+        // Sahip / admin değiştirir.
+        (await SaveAsync(mayReplaceOthers: true)).Error.ShouldBe(SolutionRecordingError.None);
+        await using var check = _db.NewContext();
+        (await check.QuestionSolutionRecordings.SingleAsync()).RecordedByUserId.ShouldBe(TeacherUser);
     }
 
     [Theory]

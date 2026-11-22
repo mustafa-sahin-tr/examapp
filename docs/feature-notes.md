@@ -726,3 +726,15 @@ mevcut sınıf atamalarıyla aynı). Öğrenci uçları `api/student/homework`: 
 gecikmiş ödev yine işaretlenebilir. Puan, bildirim ve outbox yok. UI: öğretmen menüsü "Ödevler" (`/homework`, okula bağlı öğretmen):
 form + "Verdiğim ödevler" (sayılar, "Kontrol et" ile öğrenci listesi, "yaptım diyenleri onayla"); öğrenci "Ödevlerim" (`/my-homework`,
 Testler bölümünün sekmesi): "Yapılacaklar" (gecikmiş işaretli) ve "Kontrol edilenler". Test / etkinlik ödevi S8 (#1283).
+
+### Test / etkinlik ödevi (#1283)
+
+Atamaya `WorksheetAssignments.IsHomework` bayrağı: atama penceresinde "Ödev olarak ver" (bitiş zamanını açar; teslim zorunlu, admin'in
+platform geneli sınıf ataması ödev olamaz → `worksheets.assignment.homeworkNeedsDueDate`). Durum kaydedilmez, oturumdan çözülür:
+öğrenci `GET api/student/homework/assignments` veli paneliyle AYNI kova (`ParentAssignmentScope.Classify`: Completed / Pending /
+Overdue; atamadan önce bitirilmiş test ve yeniden çözülen etkinlik tamamlanmış sayılır; worksheet başına tek satır; teslimi son 30
+gün içinde ya da ileride, başlamış atamalar). Öğretmen `GET api/homework/assignments` kendi ödev atamaları (≤ 40, aynı 30 gün),
+sayılar atama ilerleme ekranından (`GetWorksheetAssignmentsForTeacherAsync`, worksheet başına bir okuma; gecikti = teslimde
+bitirmeyen). Veli gecikme bildirimi değişmedi: `ParentHomeworkOverdueSweepJob` zaten teslim tarihli HER atamayı tarar (ödev bayrağı
+şart değil). UI: "Ödevlerim"de "Test ve etkinlik ödevleri" bölümü (bekleyende Başla / Devam et → `/test/{id}`), "Ödevler"de aynı
+başlıklı bölüm (İlerleme → `/test/{id}`), test detayındaki atama satırında "Ödev" etiketi. Bu liste yüklenemezse düz ödevler yine görünür.

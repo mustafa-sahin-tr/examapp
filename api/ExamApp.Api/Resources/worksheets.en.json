@@ -56,6 +56,7 @@
     "assignment": {
       "targetRequired": "At least one target (student or class) must be selected.",
       "studentAndGradeTogether": "A student and a class cannot be selected in the same assignment.",
+      "homeworkNeedsDueDate": "Pick a due (end) date to give this as homework; platform-wide assignments cannot be homework.",
       "endBeforeStart": "The end time must be later than the start time.",
       "worksheetNotFound": "Worksheet not found.",
       "grantRequired": "To assign this test you need to request permission from its owner.",

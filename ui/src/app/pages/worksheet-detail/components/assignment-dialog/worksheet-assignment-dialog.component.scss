@@ -176,3 +176,11 @@ mat-chip {
   font-size: 0.8125rem;
   color: var(--ms-text-medium);
 }
+
+// Issue #1283: ödev olarak verme açıklaması.
+.homework-hint {
+  margin: -0.25rem 0 0 2.5rem;
+  font-family: var(--paragraphFontFamily);
+  font-size: 0.8rem;
+  color: var(--ms-text-medium);
+}

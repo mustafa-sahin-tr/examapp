@@ -275,4 +275,34 @@
       }
     }
   </section>
+
+  <section class="hw__list" [attr.aria-label]="t('assignments.title')" data-testid="assignment-homework">
+    <h2 class="hw__heading">{{ t('assignments.title') }}</h2>
+    @if (assignmentItems().length === 0) {
+      <p class="hw__hint" data-testid="assignment-empty">{{ t('assignments.empty') }}</p>
+    } @else {
+      <ul class="hw__items">
+        @for (a of assignmentItems(); track a.assignmentId) {
+          <li class="hw__item" data-testid="assignment-item">
+            <div class="hw__item-head">
+              <strong>{{ a.worksheetName }}</strong>
+              <span class="hw__chip">{{ t('kind.' + a.worksheetKind) }}</span>
+              <span class="hw__chip">{{ a.targetName }}</span>
+              <span class="hw__due" [class.hw__due--past]="a.isPastDue">
+                <mat-icon inline>event</mat-icon> {{ formatDateTime(a.dueAt) }}
+              </span>
+            </div>
+            <div class="hw__item-foot">
+              <span class="hw__muted" data-testid="assignment-counts">{{ assignmentCountsText(a) }}</span>
+              <span class="hw__spacer"></span>
+              <a mat-stroked-button [routerLink]="['/test', a.worksheetId]">
+                <mat-icon>insights</mat-icon>
+                {{ t('assignments.progress') }}
+              </a>
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  </section>
 </section>

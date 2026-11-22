@@ -669,6 +669,9 @@
                           <mat-panel-title>
                             <mat-icon>{{ assignment.targetType === 'Grade' ? 'groups' : 'person' }}</mat-icon>
                             {{ assignment.targetName }}
+                            @if (assignment.isHomework) {
+                              <span class="homework-tag" data-testid="homework-tag">{{ t('teacher.homeworkTag') }}</span>
+                            }
                           </mat-panel-title>
                           <mat-panel-description>
                             {{

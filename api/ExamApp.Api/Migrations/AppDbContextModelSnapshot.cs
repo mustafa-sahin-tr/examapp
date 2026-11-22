@@ -9792,6 +9792,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsHomework")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsPlatformWide")
                         .HasColumnType("boolean");
 

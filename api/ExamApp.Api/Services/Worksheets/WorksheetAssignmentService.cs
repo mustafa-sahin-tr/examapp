@@ -75,6 +75,12 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
             return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.endBeforeStart"] };
         }
 
+        // issue #1283: ödev teslim tarihiyle anlam kazanır (gecikme, veli bildirimi); platform geneli (admin) sınıf ataması ödev olmaz.
+        if (request.IsHomework && (!endAtUtc.HasValue || (requester.IsUnrestricted && request.GradeId.HasValue)))
+        {
+            return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.homeworkNeedsDueDate"] };
+        }
+
         var worksheet = await _context.Worksheets
             .AsNoTracking()
             .FirstOrDefaultAsync(w => w.Id == request.WorksheetId, ct);
@@ -240,7 +246,8 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
             StartAt = startAtUtc,
             EndAt = endAtUtc,
             // issue #105: null = worksheet varsayılanı (CommentsEnabled).
-            CommentsEnabledOverride = request.CommentsEnabledOverride
+            CommentsEnabledOverride = request.CommentsEnabledOverride,
+            IsHomework = request.IsHomework
         };
 
         _context.WorksheetAssignments.Add(assignment);
@@ -548,6 +555,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
                 StartAt = assignment.StartAt,
                 EndAt = assignment.EndAt,
                 CommentsEnabledOverride = assignment.CommentsEnabledOverride,
+                IsHomework = assignment.IsHomework,
                 StudentCount = studentDtos.Count,
                 CompletedCount = completedCount,
                 InProgressCount = inProgressCount,

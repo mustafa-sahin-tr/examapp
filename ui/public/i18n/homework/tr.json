@@ -53,7 +53,9 @@
     "Done": "{{count}} yapıldı",
     "Partial": "{{count}} kısmen",
     "NotDone": "{{count}} yapılmadı",
-    "overdue": "{{count}} gecikti"
+    "overdue": "{{count}} gecikti",
+    "completed": "{{count}} tamamladı",
+    "inProgress": "{{count}} devam ediyor"
   },
   "remove": {
     "title": "Ödevi kaldır",
@@ -80,6 +82,22 @@
     "checked": "Kontrol edilenler",
     "done": "Yaptım",
     "undo": "Geri al",
-    "marked": "Yaptım dedin; öğretmenin kontrol edecek."
+    "marked": "Yaptım dedin; öğretmenin kontrol edecek.",
+    "assignments": "Test ve etkinlik ödevleri"
+  },
+  "assignments": {
+    "title": "Test ve etkinlik ödevleri",
+    "empty": "Bir testi ya da etkinliği atarken “Ödev olarak ver”i seçersen burada görünür; öğrenci bitirince kendiliğinden tamamlanır.",
+    "progress": "İlerleme"
+  },
+  "kind": {
+    "Test": "Test",
+    "Activity": "Etkinlik"
+  },
+  "auto": {
+    "Completed": "Tamamlandı",
+    "InProgress": "Devam ediyor",
+    "start": "Başla",
+    "continue": "Devam et"
   }
 }

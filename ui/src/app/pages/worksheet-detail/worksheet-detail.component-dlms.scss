@@ -1425,3 +1425,14 @@ table {
     margin: 0 0 8px;
   }
 }
+
+// Issue #1283: ödev olarak verilen atama etiketi.
+.homework-tag {
+  margin-left: 0.5rem;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  color: var(--ms-info-text);
+  background: var(--ms-info-surface-weak);
+  border: 1px solid var(--ms-info-border);
+}

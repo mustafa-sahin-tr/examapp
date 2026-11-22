@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Helpers;
@@ -26,13 +27,25 @@ namespace ExamApp.Api.Controllers;
 public class HomeworkController : BaseController
 {
     private readonly ISchoolHomeworkService _homework;
+    private readonly IAssignmentHomeworkService _assignmentHomework;
     private readonly IStringLocalizer<Messages> _localizer;
 
-    public HomeworkController(ISchoolHomeworkService homework, IStringLocalizer<Messages>? localizer = null)
+    public HomeworkController(ISchoolHomeworkService homework, IAssignmentHomeworkService assignmentHomework,
+        IStringLocalizer<Messages>? localizer = null)
     {
         _homework = homework;
+        _assignmentHomework = assignmentHomework;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
+
+    /// <summary>
+    /// GET api/homework/assignments → issue #1283: ödev olarak verilen test / etkinlik atamaları (teslimi son 30 gün içinde ya da
+    /// ileride), ilerleme ekranıyla aynı sayılarla. Bağımsız öğretmen de görür (öğrenci hedefli atama).
+    /// </summary>
+    [HttpGet("assignments")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<ActionResult<IReadOnlyList<AssignmentHomeworkDto>>> ListAssignments(CancellationToken ct)
+        => Ok(await _assignmentHomework.ListForTeacherAsync(await GetSchoolScopeAsync(ct), ct));
 
     /// <summary>POST api/homework → ödevi oluşturur; 201 + özet.</summary>
     [HttpPost]
@@ -125,12 +138,27 @@ public class HomeworkController : BaseController
 public class StudentHomeworkController : BaseController
 {
     private readonly ISchoolHomeworkService _homework;
+    private readonly IAssignmentHomeworkService _assignmentHomework;
     private readonly IStringLocalizer<Messages> _localizer;
 
-    public StudentHomeworkController(ISchoolHomeworkService homework, IStringLocalizer<Messages>? localizer = null)
+    public StudentHomeworkController(ISchoolHomeworkService homework, IAssignmentHomeworkService assignmentHomework,
+        IStringLocalizer<Messages>? localizer = null)
     {
         _homework = homework;
+        _assignmentHomework = assignmentHomework;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
+    }
+
+    /// <summary>GET api/student/homework/assignments → issue #1283: test / etkinlik ödevleri, oturumdan otomatik durumla.</summary>
+    [HttpGet("assignments")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> ListAssignments(CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync(ct);
+        var items = IsResolvedUser(user) ? await _assignmentHomework.ListForStudentAsync(user.Id, ct) : null;
+        return items is null
+            ? StatusCode(StatusCodes.Status403Forbidden, new { message = _localizer["admin.homework.notStudent"].Value })
+            : Ok(items);
     }
 
     /// <summary>GET api/student/homework → teslim gününe göre sıralı ödevler.</summary>

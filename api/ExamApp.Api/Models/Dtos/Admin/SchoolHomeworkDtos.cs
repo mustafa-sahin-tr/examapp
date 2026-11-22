@@ -105,3 +105,53 @@ public sealed class StudentHomeworkDoneRequestDto
 {
     public bool Done { get; init; }
 }
+
+/// <summary>
+/// issue #1283: öğretmenin ödev olarak verdiği test / etkinlik ataması (<c>GET api/homework/assignments</c>). Sayılar atama ilerleme
+/// ekranıyla aynıdır (öğretmenin güncel okul kapsamı); <c>OverdueCount</c> teslimde bitirmeyenler.
+/// </summary>
+public sealed class AssignmentHomeworkDto
+{
+    public int AssignmentId { get; init; }
+    public int WorksheetId { get; init; }
+    public string WorksheetName { get; init; } = string.Empty;
+
+    /// <summary><c>Test</c> | <c>Activity</c>.</summary>
+    public string WorksheetKind { get; init; } = string.Empty;
+
+    /// <summary><c>Grade</c> | <c>Student</c>.</summary>
+    public string TargetType { get; init; } = string.Empty;
+
+    public string TargetName { get; init; } = string.Empty;
+    public DateTime StartAt { get; init; }
+    public DateTime DueAt { get; init; }
+    public bool IsPastDue { get; init; }
+    public int StudentCount { get; init; }
+    public int CompletedCount { get; init; }
+    public int InProgressCount { get; init; }
+    public int NotStartedCount { get; init; }
+    public int OverdueCount { get; init; }
+}
+
+/// <summary>issue #1283: öğrencinin test / etkinlik ödevi (<c>GET api/student/homework/assignments</c>); durum oturumdan otomatik.</summary>
+public sealed class StudentAssignmentHomeworkDto
+{
+    public int AssignmentId { get; init; }
+    public int WorksheetId { get; init; }
+    public string WorksheetName { get; init; } = string.Empty;
+
+    /// <summary><c>Test</c> | <c>Activity</c>.</summary>
+    public string WorksheetKind { get; init; } = string.Empty;
+
+    public string? SubjectName { get; init; }
+    public string TeacherName { get; init; } = string.Empty;
+    public DateTime DueAt { get; init; }
+
+    /// <summary><c>Completed</c> | <c>Pending</c> | <c>Overdue</c> (veli paneliyle aynı kova).</summary>
+    public string Status { get; init; } = string.Empty;
+
+    /// <summary>Bekliyor ve oturum başlamış (devam ediyor).</summary>
+    public bool InProgress { get; init; }
+
+    public DateTime? CompletedAt { get; init; }
+}

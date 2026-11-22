@@ -5,6 +5,7 @@ import { By } from '@angular/platform-browser';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
 import { HomeworkComponent, localIsoDate } from './homework.component';
@@ -67,6 +68,26 @@ describe('HomeworkComponent (issue #1282)', () => {
         of({ ...(studentId === 11 ? ayse : ali), teacherStatus: status, teacherNote: note }),
       ),
       remove: vi.fn().mockReturnValue(of(undefined)),
+      assignments: vi.fn().mockReturnValue(
+        of([
+          {
+            assignmentId: 41,
+            worksheetId: 7,
+            worksheetName: 'Kesirler Testi',
+            worksheetKind: 'Test',
+            targetType: 'Grade',
+            targetName: '7. Sınıf',
+            startAt: '2026-11-20T06:00:00Z',
+            dueAt: '2026-11-24T20:59:00Z',
+            isPastDue: false,
+            studentCount: 24,
+            completedCount: 10,
+            inProgressCount: 0,
+            notStartedCount: 11,
+            overdueCount: 3,
+          },
+        ]),
+      ),
     } as unknown as MockedObject<HomeworkService>;
     sectionService = {
       list: vi.fn().mockReturnValue(of(sections)),
@@ -96,6 +117,7 @@ describe('HomeworkComponent (issue #1282)', () => {
         { provide: MatDialog, useValue: dialog },
         { provide: MatSnackBar, useValue: snackBar },
         provideNoopAnimations(),
+        provideRouter([]),
       ],
     });
     const fixture = TestBed.createComponent(HomeworkComponent);
@@ -238,5 +260,14 @@ describe('HomeworkComponent (issue #1282)', () => {
 
     expect(service.remove).toHaveBeenCalledWith(9);
     expect(service.list).toHaveBeenCalledTimes(2);
+  });
+
+  // Issue #1283: ödev olarak verilen test / etkinlikler ayrı bölümde, ilerleme ekranına bağlantıyla.
+  it('lists test and activity homework with progress counts', () => {
+    const fixture = create();
+    const item = testIds(fixture, 'assignment-item');
+    expect(item.length).toBe(1);
+    expect(testIds(fixture, 'assignment-counts')[0].nativeElement.textContent).toBe('24 öğrenci · 10 tamamladı · 3 gecikti');
+    expect(item[0].nativeElement.querySelector('a').getAttribute('href')).toBe('/test/7');
   });
 });

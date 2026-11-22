@@ -75,6 +75,38 @@ export interface StudentHomework {
   isOverdue: boolean;
 }
 
+/** Issue #1283: ödev olarak verilen test / etkinlik ataması (öğretmen). Sayılar atama ilerleme ekranıyla aynı. */
+export interface TeacherAssignmentHomework {
+  assignmentId: number;
+  worksheetId: number;
+  worksheetName: string;
+  worksheetKind: 'Test' | 'Activity';
+  targetType: 'Grade' | 'Student';
+  targetName: string;
+  startAt: string;
+  dueAt: string;
+  isPastDue: boolean;
+  studentCount: number;
+  completedCount: number;
+  inProgressCount: number;
+  notStartedCount: number;
+  overdueCount: number;
+}
+
+/** Issue #1283: öğrencinin test / etkinlik ödevi; durum oturumdan otomatik (veli paneliyle aynı kova). */
+export interface StudentAssignmentHomework {
+  assignmentId: number;
+  worksheetId: number;
+  worksheetName: string;
+  worksheetKind: 'Test' | 'Activity';
+  subjectName: string | null;
+  teacherName: string;
+  dueAt: string;
+  status: 'Completed' | 'Pending' | 'Overdue';
+  inProgress: boolean;
+  completedAt: string | null;
+}
+
 export const HOMEWORK_BOOK_MAX = 120;
 export const HOMEWORK_PAGES_MAX = 60;
 export const HOMEWORK_NOTE_MAX = 500;
@@ -110,6 +142,16 @@ export class HomeworkService {
 
   remove(id: number): Observable<void> {
     return this.http.delete<void>(`${this.url}/${id}`);
+  }
+
+  /** Issue #1283: ödev olarak verdiğim test / etkinlik atamaları. */
+  assignments(): Observable<TeacherAssignmentHomework[]> {
+    return this.http.get<TeacherAssignmentHomework[]>(`${this.url}/assignments`);
+  }
+
+  /** Issue #1283: öğrencinin test / etkinlik ödevleri. */
+  myAssignments(): Observable<StudentAssignmentHomework[]> {
+    return this.http.get<StudentAssignmentHomework[]>(`${this.studentUrl}/assignments`);
   }
 
   mine(): Observable<StudentHomework[]> {

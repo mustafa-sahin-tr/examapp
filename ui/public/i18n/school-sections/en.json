@@ -1,0 +1,56 @@
+{
+  "title": "Sections",
+  "subtitle": "Your school's sections and their students.",
+  "subtitleManage": "Create sections, place students in sections or move them.",
+  "grade": "Grade",
+  "allGrades": "All grades",
+  "empty": "Your school has no sections yet.",
+  "emptyManage": "No sections yet. Start with \"New section\".",
+  "noStudents": "No students in this section.",
+  "noStudentsManage": "No students in this section. Use \"Add students\" to add students without a section.",
+  "studentCount": "{{count}} students",
+  "since": "since {{date}}",
+  "unknown": "(name unavailable)",
+  "actions": {
+    "create": "New section",
+    "rename": "Rename",
+    "delete": "Delete",
+    "addStudents": "Add students",
+    "move": "Change section",
+    "remove": "Remove from section",
+    "sectionMenu": "Actions for section {{name}}",
+    "studentMenu": "Actions for {{name}}"
+  },
+  "form": {
+    "createTitle": "New section",
+    "renameTitle": "Rename section",
+    "grade": "Grade",
+    "gradeFixed": "Grade: {{grade}}",
+    "name": "Section name",
+    "namePlaceholder": "e.g. A",
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "add": {
+    "title": "Add students to {{section}}",
+    "empty": "No students without a section in this grade.",
+    "selectAll": "Select all ({{count}})",
+    "more": "Showing the first {{shown}} students ({{total}} in total). The rest are listed after adding.",
+    "submit": "Add ({{count}})"
+  },
+  "delete": {
+    "title": "Delete {{name}}?",
+    "message": "The {{count}} students in this section will have no section; their history is kept.",
+    "confirm": "Delete"
+  },
+  "toast": {
+    "created": "Section {{name}} created.",
+    "deleted": "Section {{name}} deleted.",
+    "assigned": "{{count}} students added to the section.",
+    "moved": "{{name}} moved to section {{section}}.",
+    "removed": "{{name}} removed from the section."
+  },
+  "state": {
+    "error": "Could not load sections."
+  }
+}

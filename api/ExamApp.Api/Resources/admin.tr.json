@@ -97,6 +97,14 @@
     "gradePromotion": {
       "notFound": "Bu öğrencinin geri alınabilecek bir sınıf atlaması yok.",
       "gradeChanged": "Öğrencinin sınıfı atlamadan sonra değişmiş; geri alma yapılmadı."
+    },
+    "schoolSection": {
+      "notFound": "Şube ya da öğrenci bulunamadı.",
+      "invalid": "Şube adı 1–20 karakter olmalı ve sınıf seçilmeli; öğrenci listesi 1–100 kişi olmalı.",
+      "duplicate": "Bu sınıfta aynı adlı bir şube var.",
+      "gradeMismatch": "Bazı öğrencilerin sınıfı şubenin sınıfından farklı.",
+      "conflict": "Şube aynı anda değiştirildi; sayfayı yenileyip tekrar deneyin.",
+      "notSchoolTeacher": "Şubeleri yalnız okula bağlı onaylı öğretmenler görebilir."
     }
   }
 }

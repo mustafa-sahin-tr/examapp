@@ -1,0 +1,56 @@
+{
+  "title": "Şubeler",
+  "subtitle": "Okulunun şubeleri ve şubelerdeki öğrenciler.",
+  "subtitleManage": "Şube oluştur, öğrencileri şubelere yerleştir ya da taşı.",
+  "grade": "Sınıf",
+  "allGrades": "Tüm sınıflar",
+  "empty": "Okulunda henüz şube yok.",
+  "emptyManage": "Henüz şube yok. \"Yeni şube\" ile başlayın.",
+  "noStudents": "Bu şubede öğrenci yok.",
+  "noStudentsManage": "Bu şubede öğrenci yok. \"Öğrenci ekle\" ile şubesiz öğrencileri ekleyebilirsiniz.",
+  "studentCount": "{{count}} öğrenci",
+  "since": "{{date}} tarihinden beri",
+  "unknown": "(adı alınamadı)",
+  "actions": {
+    "create": "Yeni şube",
+    "rename": "Yeniden adlandır",
+    "delete": "Sil",
+    "addStudents": "Öğrenci ekle",
+    "move": "Şubeyi değiştir",
+    "remove": "Şubeden çıkar",
+    "sectionMenu": "{{name}} şubesi işlemleri",
+    "studentMenu": "{{name}} için işlemler"
+  },
+  "form": {
+    "createTitle": "Yeni şube",
+    "renameTitle": "Şubeyi yeniden adlandır",
+    "grade": "Sınıf",
+    "gradeFixed": "Sınıf: {{grade}}",
+    "name": "Şube adı",
+    "namePlaceholder": "ör. A",
+    "save": "Kaydet",
+    "cancel": "Vazgeç"
+  },
+  "add": {
+    "title": "{{section}} şubesine öğrenci ekle",
+    "empty": "Bu sınıfta şubesiz öğrenci yok.",
+    "selectAll": "Tümünü seç ({{count}})",
+    "more": "İlk {{shown}} öğrenci gösteriliyor (toplam {{total}}). Ekledikten sonra kalanlar listelenir.",
+    "submit": "Ekle ({{count}})"
+  },
+  "delete": {
+    "title": "{{name}} silinsin mi?",
+    "message": "Şubedeki {{count}} öğrenci şubesiz kalır; geçmiş kayıtları silinmez.",
+    "confirm": "Sil"
+  },
+  "toast": {
+    "created": "{{name}} şubesi oluşturuldu.",
+    "deleted": "{{name}} şubesi silindi.",
+    "assigned": "{{count}} öğrenci şubeye eklendi.",
+    "moved": "{{name}}, {{section}} şubesine taşındı.",
+    "removed": "{{name}} şubeden çıkarıldı."
+  },
+  "state": {
+    "error": "Şubeler yüklenemedi."
+  }
+}

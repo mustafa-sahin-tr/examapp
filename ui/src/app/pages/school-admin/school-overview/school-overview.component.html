@@ -134,6 +134,10 @@
           <th mat-header-cell *matHeaderCellDef>{{ t('columns.grade') }}</th>
           <td mat-cell *matCellDef="let row">{{ row.gradeName || '—' }}</td>
         </ng-container>
+        <ng-container matColumnDef="section">
+          <th mat-header-cell *matHeaderCellDef>{{ t('columns.section') }}</th>
+          <td mat-cell *matCellDef="let row">{{ row.sectionName || '—' }}</td>
+        </ng-container>
         <ng-container matColumnDef="verifiedAt">
           <th mat-header-cell *matHeaderCellDef>{{ t('columns.verifiedAt') }}</th>
           <td mat-cell *matCellDef="let row">{{ formatDate(row.verifiedAt) }}</td>

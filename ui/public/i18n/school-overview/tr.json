@@ -29,7 +29,8 @@
     "approvedAt": "Onay tarihi",
     "number": "Numara",
     "grade": "Sınıf",
-    "verifiedAt": "Üyelik onayı"
+    "verifiedAt": "Üyelik onayı",
+    "section": "Şube"
   },
   "state": {
     "summaryError": "Okul özeti yüklenemedi.",

@@ -71,6 +71,11 @@ interface MenuItem {
   onlyIndependentTeacher?: boolean;
   /** Issue #1277: yalnız okul yöneticisine (profil `teacher.isSchoolAdmin`) görünür; asıl kapı backend. */
   onlySchoolAdmin?: boolean;
+  /**
+   * Issue #1279: yalnız okula bağlı olduğu BİLİNEN öğretmene (profilde `isIndependentTutor === false`), okul yöneticisi
+   * hariç (o Okulum sekmesinden yönetir). Asıl kapı backend.
+   */
+  onlySchoolTeacherNotAdmin?: boolean;
 }
 
 @Component({
@@ -298,6 +303,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'student-messages', labelKey: 'menu.studentMessages', icon: 'forum', route: '/student-messages', type: 'menu', roles: ['Teacher'] },
     // Issue #890: koçluk Mesajlar'ın sekmesi değil, kendi öğesi ("Öğrencilerim").
     { id: 'teacher-coach', labelKey: 'menu.myStudents', icon: 'insights', route: '/teacher/coach', type: 'menu', roles: ['Teacher'] },
+    // Issue #1279: okul öğretmeni — okulun şubeleri (salt okunur).
+    { id: 'school-sections', labelKey: 'menu.schoolSections', icon: 'groups', route: '/school-sections', type: 'menu', roles: ['Teacher'], onlySchoolTeacherNotAdmin: true },
     // Issue #420: veli paneli (çocuk özeti) — velinin ana sayfası.
     { id: 'parent-home', labelKey: 'menu.parentHome', icon: 'home', route: '/parent', type: 'menu', roles: ['Parent'] },
     // Issue #419: velinin çocukları (davet koduyla ekleme + liste).
@@ -409,6 +416,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     [
       { id: 'tab-school-admin-overview', labelKey: 'menu.schoolOverview', icon: '', route: '/school-admin/overview', type: 'menu', roles: ['Teacher'], onlySchoolAdmin: true },
       { id: 'school-admin-teacher-approvals', labelKey: 'menu.teacherApprovals', icon: '', route: '/school-admin/teacher-approvals', type: 'menu', roles: ['Teacher'], onlySchoolAdmin: true },
+      { id: 'tab-school-admin-sections', labelKey: 'menu.schoolSections', icon: '', route: '/school-admin/sections', type: 'menu', roles: ['Teacher'], onlySchoolAdmin: true },
     ],
     [
       { id: 'tab-tutor-profile', labelKey: 'menu.tutorProfile', icon: '', route: '/tutor-profile', type: 'menu', roles: ['Teacher'], allowUnapprovedTeacher: true, onlyIndependentTeacher: true },
@@ -441,6 +449,9 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
       return false;
     }
     if (item.onlySchoolAdmin && !this.authService.isSchoolAdmin()) {
+      return false;
+    }
+    if (item.onlySchoolTeacherNotAdmin && (!notIndependent || this.authService.isSchoolAdmin())) {
       return false;
     }
     if (!item.roles) {

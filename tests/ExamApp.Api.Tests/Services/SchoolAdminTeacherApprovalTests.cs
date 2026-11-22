@@ -155,7 +155,7 @@ public class SchoolAdminTeacherApprovalTests : IDisposable
             .AddSingleton(profiles)
             .BuildServiceProvider();
         return new SchoolAdminController(NewService(ctx), new SchoolAdminResolver(ctx), Substitute.For<IAdminDataAccessAuditService>(),
-            new SchoolAdminOverviewService(ctx, _authApi))
+            new SchoolAdminOverviewService(ctx, _authApi), new SchoolSectionService(ctx, _authApi))
         {
             ControllerContext = new ControllerContext
             {

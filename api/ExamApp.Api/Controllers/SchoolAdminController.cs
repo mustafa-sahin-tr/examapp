@@ -34,12 +34,14 @@ public class SchoolAdminController : BaseController
     private readonly ISchoolAdminResolver _schoolAdmins;
     private readonly IAdminDataAccessAuditService _dataAccessAudit;
     private readonly ISchoolAdminOverviewService _overview;
+    private readonly ISchoolSectionService _sections;
     private readonly IStringLocalizer<Messages> _localizer;
 
     public SchoolAdminController(ITeacherApprovalService approvals, ISchoolAdminResolver schoolAdmins,
-        IAdminDataAccessAuditService dataAccessAudit, ISchoolAdminOverviewService overview,
+        IAdminDataAccessAuditService dataAccessAudit, ISchoolAdminOverviewService overview, ISchoolSectionService sections,
         IStringLocalizer<Messages>? localizer = null)
     {
+        _sections = sections;
         _approvals = approvals;
         _schoolAdmins = schoolAdmins;
         _dataAccessAudit = dataAccessAudit;
@@ -96,6 +98,8 @@ public class SchoolAdminController : BaseController
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)] // kişisel veri
     public async Task<ActionResult<Paged<SchoolAdminStudentDto>>> GetStudents(
         [FromQuery] int? gradeId = null,
+        [FromQuery] int? sectionId = null,
+        [FromQuery] bool unassigned = false,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = AdminListPaging.DefaultPageSize,
         CancellationToken ct = default)
@@ -104,7 +108,7 @@ public class SchoolAdminController : BaseController
         if (actor is null)
             return Forbidden();
 
-        var result = await _overview.ListStudentsAsync(actor.Scope.SchoolId, gradeId, page, pageSize, ct);
+        var result = await _overview.ListStudentsAsync(actor.Scope.SchoolId, gradeId, page, pageSize, ct, sectionId, unassigned);
         await _dataAccessAudit.RecordListAccessAsync(new AdminListAccessRecord(
             actor.KeycloakId, AdminDataAccessResource.StudentList, actor.Scope.SchoolId, false,
             result.PageNumber, result.PageSize, result.Items?.Count ?? 0, result.TotalCount), ct);
@@ -178,6 +182,86 @@ public class SchoolAdminController : BaseController
 
         return Result(await _approvals.RejectAsync(id, dto.Reason, actor.Scope.ActorUserId, actor.KeycloakId, ct, actor.Scope));
     }
+
+    // ---- issue #1279 (#1071 S4): şube yönetimi (okuma uçları api/school-sections, okulun tüm öğretmenlerine açık) ----
+
+    /// <summary>POST api/school-admin/sections <c>{ gradeId, name }</c> → 201 şube; ad boş / &gt;20 / sınıf yok → 400, aynı ad → 409.</summary>
+    [HttpPost("sections")]
+    [EnableRateLimiting(AdminStudentSchoolRateLimiting.Policy)]
+    public async Task<IActionResult> CreateSection([FromBody] SchoolSectionCreateRequestDto dto, CancellationToken ct)
+    {
+        var actor = await ResolveActorAsync(ct);
+        if (actor is null)
+            return Forbidden();
+        var result = await _sections.CreateAsync(actor.Scope.SchoolId, actor.Scope.ActorUserId, dto?.GradeId, dto?.Name, ct);
+        return result.Status == SchoolSectionStatus.Success
+            ? StatusCode(StatusCodes.Status201Created, result.Section)
+            : SectionError(result);
+    }
+
+    /// <summary>PUT api/school-admin/sections/{id} <c>{ name }</c> → yeniden adlandır (sınıf değişmez).</summary>
+    [HttpPut("sections/{id:int}")]
+    [EnableRateLimiting(AdminStudentSchoolRateLimiting.Policy)]
+    public async Task<IActionResult> RenameSection(int id, [FromBody] SchoolSectionRenameRequestDto dto, CancellationToken ct)
+    {
+        var actor = await ResolveActorAsync(ct);
+        if (actor is null)
+            return Forbidden();
+        var result = await _sections.RenameAsync(actor.Scope.SchoolId, actor.Scope.ActorUserId, id, dto?.Name, ct);
+        return result.Status == SchoolSectionStatus.Success ? Ok(result.Section) : SectionError(result);
+    }
+
+    /// <summary>DELETE api/school-admin/sections/{id} → 204; aktif üyelikler kapanır (geçmiş kalır). Başka okul → 404.</summary>
+    [HttpDelete("sections/{id:int}")]
+    [EnableRateLimiting(AdminStudentSchoolRateLimiting.Policy)]
+    public async Task<IActionResult> DeleteSection(int id, CancellationToken ct)
+    {
+        var actor = await ResolveActorAsync(ct);
+        if (actor is null)
+            return Forbidden();
+        var result = await _sections.DeleteAsync(actor.Scope.SchoolId, actor.Scope.ActorUserId, id, ct);
+        return result.Status == SchoolSectionStatus.Success ? NoContent() : SectionError(result);
+    }
+
+    /// <summary>
+    /// POST api/school-admin/sections/{id}/students <c>{ studentIds }</c> (1..100) → öğrencileri şubeye ekler; başka şubedekiler
+    /// taşınır. Okulun doğrulanmış üyesi olmayan öğrenci → 404 (hiçbiri atanmaz); sınıfı farklı → 409 <c>{ studentIds }</c>.
+    /// </summary>
+    [HttpPost("sections/{id:int}/students")]
+    [EnableRateLimiting(AdminStudentSchoolRateLimiting.Policy)]
+    public async Task<IActionResult> AssignStudents(int id, [FromBody] SchoolSectionAssignRequestDto dto, CancellationToken ct)
+    {
+        var actor = await ResolveActorAsync(ct);
+        if (actor is null)
+            return Forbidden();
+        var result = await _sections.AssignAsync(actor.Scope.SchoolId, actor.Scope.ActorUserId, id, dto?.StudentIds, ct);
+        return result.Status == SchoolSectionStatus.Success ? Ok(result.Assignment) : SectionError(result);
+    }
+
+    /// <summary>DELETE api/school-admin/sections/{id}/students/{studentId} → 204; öğrenci bu şubede değilse 404.</summary>
+    [HttpDelete("sections/{id:int}/students/{studentId:int}")]
+    [EnableRateLimiting(AdminStudentSchoolRateLimiting.Policy)]
+    public async Task<IActionResult> RemoveStudent(int id, int studentId, CancellationToken ct)
+    {
+        var actor = await ResolveActorAsync(ct);
+        if (actor is null)
+            return Forbidden();
+        var result = await _sections.RemoveStudentAsync(actor.Scope.SchoolId, actor.Scope.ActorUserId, id, studentId, ct);
+        return result.Status == SchoolSectionStatus.Success ? NoContent() : SectionError(result);
+    }
+
+    private IActionResult SectionError(SchoolSectionResult result) => result.Status switch
+    {
+        SchoolSectionStatus.NotFound => NotFound(new { message = _localizer["admin.schoolSection.notFound"].Value }),
+        SchoolSectionStatus.Invalid => BadRequest(new { message = _localizer["admin.schoolSection.invalid"].Value }),
+        SchoolSectionStatus.Duplicate => Conflict(new { message = _localizer["admin.schoolSection.duplicate"].Value }),
+        SchoolSectionStatus.GradeMismatch => Conflict(new
+        {
+            message = _localizer["admin.schoolSection.gradeMismatch"].Value,
+            studentIds = result.StudentIds
+        }),
+        _ => Conflict(new { message = _localizer["admin.schoolSection.conflict"].Value })
+    };
 
     private sealed record SchoolAdminActor(SchoolApplicationScope Scope, string KeycloakId);
 

@@ -253,6 +253,8 @@ public class AppDbContext : DbContext
     public DbSet<SubscriptionPlanAssignmentAudit> SubscriptionPlanAssignmentAudits { get; set; } // issue #1030
     public DbSet<EntitlementUsage> EntitlementUsages { get; set; }
     public DbSet<SchoolLicense> SchoolLicenses { get; set; } // issue #1092
+    public DbSet<SchoolSection> SchoolSections { get; set; } // issue #1279
+    public DbSet<SchoolSectionMembership> SchoolSectionMemberships { get; set; } // issue #1279
     public DbSet<TeacherSponsorship> TeacherSponsorships { get; set; } // issue #1115
     public DbSet<QuestionHintSet> QuestionHintSets { get; set; } // issue #1113
     public DbSet<QuestionHintStep> QuestionHintSteps { get; set; } // issue #1113
@@ -1595,6 +1597,25 @@ public class AppDbContext : DbContext
             e.Property(a => a.Action).HasConversion<string>().HasMaxLength(16);
         });
         SubscriptionPlanSeed.Apply(modelBuilder);
+
+        // issue #1279: şubeler + geçmişli üyelik. Ad okul + sınıf içinde tekil (silinmişler hariç); öğrenci başına tek aktif
+        // üyelik (EndedAt IS NULL kısmi tekil indeks — eşzamanlı iki atamada ikincisi DbUpdateException → 409).
+        modelBuilder.Entity<SchoolSection>(e =>
+        {
+            e.HasOne(x => x.School).WithMany().HasForeignKey(x => x.SchoolId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Grade).WithMany().HasForeignKey(x => x.GradeId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => new { x.SchoolId, x.GradeId, x.NormalizedName }).IsUnique().HasFilter("NOT \"IsDeleted\"");
+        });
+        modelBuilder.Entity<SchoolSectionMembership>(e =>
+        {
+            e.HasOne(m => m.Section).WithMany().HasForeignKey(m => m.SectionId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(m => m.Student).WithMany().HasForeignKey(m => m.StudentId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(m => m.StudentId).IsUnique().HasFilter("\"EndedAt\" IS NULL");
+            e.HasIndex(m => new { m.SectionId, m.EndedAt });
+            e.Property(m => m.EndReason).HasConversion<string>().HasMaxLength(16);
+            // Silinmiş şube / öğrenci üyelikleri okumalarda görünmez (bağlı entity'lerin global filtresiyle uyumlu).
+            e.HasQueryFilter(m => !m.Section.IsDeleted && !m.Student.IsDeleted);
+        });
 
         // Soru başına tek kaynak; kırpma hash'i tekrar kontrolü için indeksli (tekil değil: Force ile ikinci kayıt mümkün).
         modelBuilder.Entity<QuestionSource>(e =>

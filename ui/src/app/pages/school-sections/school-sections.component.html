@@ -1,0 +1,127 @@
+<section class="ss" *transloco="let t; prefix: 'school-sections'">
+  <app-page-header [title]="t('title')" [description]="manage ? t('subtitleManage') : t('subtitle')">
+    @if (manage) {
+      <button mat-flat-button color="primary" (click)="openCreate()" data-testid="create-section">
+        <mat-icon>add</mat-icon>
+        {{ t('actions.create') }}
+      </button>
+    }
+  </app-page-header>
+
+  <div class="ss__toolbar">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ss__grade">
+      <mat-label>{{ t('grade') }}</mat-label>
+      <mat-select [value]="gradeFilter()" (selectionChange)="onGradeChange($event.value)" data-testid="grade-filter">
+        <mat-option [value]="null">{{ t('allGrades') }}</mat-option>
+        @for (g of grades(); track g.id) {
+          <mat-option [value]="g.id">{{ g.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  @if (loading() && sections().length === 0) {
+    <div class="ss__state"><mat-spinner diameter="32" /></div>
+  } @else if (error()) {
+    <div class="ss__state ss__state--error" role="alert">
+      <span>{{ error() }}</span>
+      <button mat-stroked-button (click)="loadSections()">{{ 'common.retry' | transloco }}</button>
+    </div>
+  } @else if (sections().length === 0) {
+    <div class="ss__state" data-testid="sections-empty">
+      <mat-icon class="ss__empty-icon">groups</mat-icon>
+      <span>{{ manage ? t('emptyManage') : t('empty') }}</span>
+    </div>
+  } @else {
+    <div class="ss__layout">
+      <nav class="ss__list" [attr.aria-label]="t('title')">
+        @for (group of groups(); track group.gradeId) {
+          <h2 class="ss__group">{{ group.gradeName }}</h2>
+          @for (s of group.sections; track s.id) {
+            <div class="ss__item" [class.is-active]="s.id === selectedId()">
+              <button type="button" class="ss__item-main" (click)="select(s.id)" [attr.aria-current]="s.id === selectedId() ? 'true' : null" data-testid="section-item">
+                <span class="ss__item-name">{{ s.name }}</span>
+                <span class="ss__item-count">{{ t('studentCount', { count: s.studentCount }) }}</span>
+              </button>
+              @if (manage) {
+                <button mat-icon-button [matMenuTriggerFor]="sectionMenu" [attr.aria-label]="t('actions.sectionMenu', { name: s.name })" data-testid="section-menu">
+                  <mat-icon>more_vert</mat-icon>
+                </button>
+                <mat-menu #sectionMenu="matMenu">
+                  <button mat-menu-item (click)="openRename(s)" data-testid="rename-section">
+                    <mat-icon>edit</mat-icon>
+                    <span>{{ t('actions.rename') }}</span>
+                  </button>
+                  <button mat-menu-item (click)="confirmDelete(s)" data-testid="delete-section">
+                    <mat-icon>delete</mat-icon>
+                    <span>{{ t('actions.delete') }}</span>
+                  </button>
+                </mat-menu>
+              }
+            </div>
+          }
+        }
+      </nav>
+
+      <div class="ss__detail">
+        @if (selected(); as section) {
+          <div class="ss__detail-head">
+            <h2>{{ section.gradeName }} / {{ section.name }}</h2>
+            @if (manage) {
+              <button mat-stroked-button (click)="openAddStudents(section)" [disabled]="busy()" data-testid="add-students">
+                <mat-icon>person_add</mat-icon>
+                {{ t('actions.addStudents') }}
+              </button>
+            }
+          </div>
+          @if (studentsLoading() && students().length === 0) {
+            <div class="ss__state"><mat-spinner diameter="28" /></div>
+          } @else if (studentsError()) {
+            <div class="ss__state ss__state--error" role="alert">
+              <span>{{ t('state.error') }}</span>
+              <button mat-stroked-button (click)="loadStudents()">{{ 'common.retry' | transloco }}</button>
+            </div>
+          } @else if (students().length === 0) {
+            <div class="ss__state">{{ manage ? t('noStudentsManage') : t('noStudents') }}</div>
+          } @else {
+            <ul class="ss__students" data-testid="section-students">
+              @for (st of students(); track st.studentId) {
+                <li class="ss__student">
+                  <div class="ss__student-main">
+                    <span class="ss__student-name">{{ st.fullName || t('unknown') }}</span>
+                    <span class="ss__student-meta">{{ st.studentNumber || '—' }} · {{ t('since', { date: formatDate(st.since) }) }}</span>
+                  </div>
+                  @if (manage) {
+                    <button mat-icon-button [matMenuTriggerFor]="studentMenu" [disabled]="busy()" [attr.aria-label]="t('actions.studentMenu', { name: st.fullName })" data-testid="student-menu">
+                      <mat-icon>more_vert</mat-icon>
+                    </button>
+                    <mat-menu #studentMenu="matMenu">
+                      @if (moveTargets().length) {
+                        <button mat-menu-item [matMenuTriggerFor]="moveMenu" data-testid="move-student">
+                          <mat-icon>swap_horiz</mat-icon>
+                          <span>{{ t('actions.move') }}</span>
+                        </button>
+                      }
+                      <button mat-menu-item (click)="remove(st)" data-testid="remove-student">
+                        <mat-icon>person_remove</mat-icon>
+                        <span>{{ t('actions.remove') }}</span>
+                      </button>
+                    </mat-menu>
+                    <mat-menu #moveMenu="matMenu">
+                      @for (target of moveTargets(); track target.id) {
+                        <button mat-menu-item (click)="move(st, target)" data-testid="move-target">{{ target.name }}</button>
+                      }
+                    </mat-menu>
+                  }
+                </li>
+              }
+            </ul>
+            @if (studentTotal() > pageSize) {
+              <mat-paginator [length]="studentTotal()" [pageIndex]="studentPage()" [pageSize]="pageSize" [hidePageSize]="true" (page)="onStudentPage($event)" />
+            }
+          }
+        }
+      </div>
+    </div>
+  }
+</section>

@@ -81,6 +81,47 @@ public class AdminStudentSchoolServiceTests : IDisposable
         return await ctx.AdminUserActionLogs.AsNoTracking().OrderBy(l => l.Id).ToListAsync();
     }
 
+    // ---- issue #1279: şube üyeliği okul değişiminde kapanır (geçmiş kalır), aynı okulda kalır ----
+
+    private async Task<int> AddSectionMembershipAsync(Seed s)
+    {
+        await using var ctx = _db.NewContext();
+        var section = new SchoolSection { SchoolId = s.SchoolA, GradeId = s.GradeId, Name = "A", NormalizedName = "A" };
+        ctx.SchoolSections.Add(section);
+        await ctx.SaveChangesAsync();
+        ctx.SchoolSectionMemberships.Add(new SchoolSectionMembership { SectionId = section.Id, StudentId = s.StudentId, StartedAt = DateTime.UtcNow });
+        await ctx.SaveChangesAsync();
+        return section.Id;
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)] // okulsuz yapma (#541)
+    public async Task School_change_ends_the_active_section_membership_and_keeps_history_issue1279(bool toOtherSchool)
+    {
+        var s = await SeedAsync();
+        await AddSectionMembershipAsync(s);
+
+        (await RunAsync(s.StudentId, toOtherSchool ? s.SchoolB : null)).Status.ShouldBe(AdminStudentSchoolChangeStatus.Success);
+
+        await using var ctx = _db.NewContext();
+        var row = (await ctx.SchoolSectionMemberships.AsNoTracking().ToListAsync()).ShouldHaveSingleItem();
+        row.EndedAt.ShouldNotBeNull();
+        row.EndReason.ShouldBe(SchoolSectionEndReason.SchoolChanged);
+    }
+
+    [Fact]
+    public async Task Same_school_request_keeps_the_section_membership_issue1279()
+    {
+        var s = await SeedAsync();
+        await AddSectionMembershipAsync(s);
+
+        await RunAsync(s.StudentId, s.SchoolA);
+
+        await using var ctx = _db.NewContext();
+        (await ctx.SchoolSectionMemberships.AsNoTracking().SingleAsync()).EndedAt.ShouldBeNull();
+    }
+
     [Fact]
     public async Task Changes_the_school_audits_success_and_refreshes_cache_and_school_claim()
     {

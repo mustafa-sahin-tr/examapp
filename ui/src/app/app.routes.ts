@@ -340,6 +340,21 @@ export const routes: Routes = [
       },
       { path: 'school-admin', pathMatch: 'full', redirectTo: 'school-admin/overview' },
       {
+        // Issue #1279: okul yöneticisi — şube yönetimi (Okulum sekmesi).
+        path: 'school-admin/sections',
+        canActivate: [authGuard, schoolAdminGuard],
+        data: { schoolSectionsManage: true },
+        loadComponent: () =>
+          import('./pages/school-sections/school-sections.component').then((m) => m.SchoolSectionsComponent),
+      },
+      {
+        // Issue #1279: okulun onaylı öğretmenleri — şubeleri ve öğrencilerini görür (salt okunur; kapsam sunucuda).
+        path: 'school-sections',
+        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],
+        loadComponent: () =>
+          import('./pages/school-sections/school-sections.component').then((m) => m.SchoolSectionsComponent),
+      },
+      {
         // Issue #1277: okul yöneticisi — kendi okulunun öğretmen başvuruları (aynı sayfa, okul kapsamı).
         path: 'school-admin/teacher-approvals',
         canActivate: [authGuard, schoolAdminGuard],

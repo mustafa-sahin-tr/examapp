@@ -5135,6 +5135,103 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("SchoolLicenseAudits");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.SchoolSection", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("GradeId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int>("SchoolId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GradeId");
+
+                    b.HasIndex("SchoolId", "GradeId", "NormalizedName")
+                        .IsUnique()
+                        .HasFilter("NOT \"IsDeleted\"");
+
+                    b.ToTable("SchoolSections");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.SchoolSectionMembership", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("EndReason")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTime?>("EndedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("EndedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SectionId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("StartedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentId")
+                        .IsUnique()
+                        .HasFilter("\"EndedAt\" IS NULL");
+
+                    b.HasIndex("SectionId", "EndedAt");
+
+                    b.ToTable("SchoolSectionMemberships");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.Skill", b =>
                 {
                     b.Property<int>("Id")
@@ -11628,6 +11725,44 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("StudentPlan");
 
                     b.Navigation("TeacherPlan");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.SchoolSection", b =>
+                {
+                    b.HasOne("Grade", "Grade")
+                        .WithMany()
+                        .HasForeignKey("GradeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ExamApp.Api.Data.School", "School")
+                        .WithMany()
+                        .HasForeignKey("SchoolId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Grade");
+
+                    b.Navigation("School");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.SchoolSectionMembership", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.SchoolSection", "Section")
+                        .WithMany()
+                        .HasForeignKey("SectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ExamApp.Api.Data.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Section");
+
+                    b.Navigation("Student");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Student", b =>

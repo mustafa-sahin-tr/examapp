@@ -1,0 +1,155 @@
+<section class="so" *transloco="let t; prefix: 'school-overview'">
+  <app-page-header [title]="summary()?.schoolName || t('title')" [description]="t('subtitle')" />
+
+  @if (summaryError()) {
+    <div class="so__state so__state--error" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ t('state.summaryError') }}</span>
+      <button mat-stroked-button (click)="loadSummary()">{{ 'common.retry' | transloco }}</button>
+    </div>
+  }
+
+  <div class="so__cards">
+    <div class="so__card" data-testid="card-teachers">
+      <mat-icon>school</mat-icon>
+      <span class="so__card-value">{{ summary()?.teacherCount ?? '—' }}</span>
+      <span class="so__card-label">{{ t('cards.teachers') }}</span>
+    </div>
+    <div class="so__card" data-testid="card-students">
+      <mat-icon>groups</mat-icon>
+      <span class="so__card-value">{{ summary()?.studentCount ?? '—' }}</span>
+      <span class="so__card-label">{{ t('cards.students') }}</span>
+    </div>
+    <a
+      class="so__card so__card--link"
+      [class.so__card--attention]="(summary()?.pendingTeacherApplications ?? 0) > 0"
+      routerLink="/school-admin/teacher-approvals"
+      data-testid="card-teacher-applications"
+    >
+      <mat-icon>how_to_reg</mat-icon>
+      <span class="so__card-value">{{ summary()?.pendingTeacherApplications ?? '—' }}</span>
+      <span class="so__card-label">{{ t('cards.teacherApplications') }}</span>
+      <span class="so__card-action">{{ t('cards.review') }} <mat-icon inline>chevron_right</mat-icon></span>
+    </a>
+    <a
+      class="so__card so__card--link"
+      [class.so__card--attention]="(summary()?.pendingStudentRequests ?? 0) > 0"
+      routerLink="/student-school-requests"
+      data-testid="card-student-requests"
+    >
+      <mat-icon>person_add</mat-icon>
+      <span class="so__card-value">{{ summary()?.pendingStudentRequests ?? '—' }}</span>
+      <span class="so__card-label">{{ t('cards.studentRequests') }}</span>
+      <span class="so__card-action">{{ t('cards.review') }} <mat-icon inline>chevron_right</mat-icon></span>
+    </a>
+  </div>
+
+  <h2 class="so__heading">{{ t('teachers.title') }}</h2>
+  @if (teachersLoading() && teachers().length === 0) {
+    <div class="so__state"><mat-spinner diameter="32" /></div>
+  } @else if (teachersError()) {
+    <div class="so__state so__state--error" role="alert">
+      <span>{{ t('state.listError') }}</span>
+      <button mat-stroked-button (click)="loadTeachers()">{{ 'common.retry' | transloco }}</button>
+    </div>
+  } @else if (teachers().length === 0) {
+    <div class="so__state">{{ t('teachers.empty') }}</div>
+  } @else {
+    <div class="so__table-wrap">
+      <table mat-table [dataSource]="teachers()" class="so__table" data-testid="teachers-table">
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>{{ t('columns.name') }}</th>
+          <td mat-cell *matCellDef="let row">{{ row.fullName || t('unknown') }}</td>
+        </ng-container>
+        <ng-container matColumnDef="subjects">
+          <th mat-header-cell *matHeaderCellDef>{{ t('columns.subjects') }}</th>
+          <td mat-cell *matCellDef="let row">{{ row.subjects.length ? row.subjects.join(', ') : '—' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>{{ t('columns.status') }}</th>
+          <td mat-cell *matCellDef="let row">
+            @if (row.isSchoolAdmin) {
+              <span class="so__chip so__chip--admin">{{ t('teachers.admin') }}</span>
+            }
+            @if (row.isSuspended) {
+              <span class="so__chip so__chip--suspended">{{ t('teachers.suspended') }}</span>
+            }
+            @if (!row.isSchoolAdmin && !row.isSuspended) {
+              <span class="so__chip">{{ t('teachers.active') }}</span>
+            }
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="approvedAt">
+          <th mat-header-cell *matHeaderCellDef>{{ t('columns.approvedAt') }}</th>
+          <td mat-cell *matCellDef="let row">{{ formatDate(row.approvedAt) }}</td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="teacherColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: teacherColumns"></tr>
+      </table>
+    </div>
+    @if (teacherTotal() > pageSize) {
+      <mat-paginator
+        [length]="teacherTotal()"
+        [pageIndex]="teacherPage()"
+        [pageSize]="pageSize"
+        [hidePageSize]="true"
+        (page)="onTeacherPage($event)"
+      />
+    }
+  }
+
+  <div class="so__heading-row">
+    <h2 class="so__heading">{{ t('students.title') }}</h2>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="so__grade">
+      <mat-label>{{ t('students.grade') }}</mat-label>
+      <mat-select [value]="gradeFilter()" (selectionChange)="onGradeChange($event.value)" data-testid="grade-filter">
+        <mat-option [value]="null">{{ t('students.allGrades') }}</mat-option>
+        @for (g of grades(); track g.id) {
+          <mat-option [value]="g.id">{{ g.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
+  @if (studentsLoading() && students().length === 0) {
+    <div class="so__state"><mat-spinner diameter="32" /></div>
+  } @else if (studentsError()) {
+    <div class="so__state so__state--error" role="alert">
+      <span>{{ t('state.listError') }}</span>
+      <button mat-stroked-button (click)="loadStudents()">{{ 'common.retry' | transloco }}</button>
+    </div>
+  } @else if (students().length === 0) {
+    <div class="so__state">{{ t('students.empty') }}</div>
+  } @else {
+    <div class="so__table-wrap">
+      <table mat-table [dataSource]="students()" class="so__table" data-testid="students-table">
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>{{ t('columns.name') }}</th>
+          <td mat-cell *matCellDef="let row">{{ row.fullName || t('unknown') }}</td>
+        </ng-container>
+        <ng-container matColumnDef="number">
+          <th mat-header-cell *matHeaderCellDef>{{ t('columns.number') }}</th>
+          <td mat-cell *matCellDef="let row">{{ row.studentNumber || '—' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="grade">
+          <th mat-header-cell *matHeaderCellDef>{{ t('columns.grade') }}</th>
+          <td mat-cell *matCellDef="let row">{{ row.gradeName || '—' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="verifiedAt">
+          <th mat-header-cell *matHeaderCellDef>{{ t('columns.verifiedAt') }}</th>
+          <td mat-cell *matCellDef="let row">{{ formatDate(row.verifiedAt) }}</td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="studentColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: studentColumns"></tr>
+      </table>
+    </div>
+    @if (studentTotal() > pageSize) {
+      <mat-paginator
+        [length]="studentTotal()"
+        [pageIndex]="studentPage()"
+        [pageSize]="pageSize"
+        [hidePageSize]="true"
+        (page)="onStudentPage($event)"
+      />
+    }
+  }
+</section>

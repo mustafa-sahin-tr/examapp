@@ -670,3 +670,15 @@ veri erişimi audit'ine okul filtresiyle yazılır. Bağımsız öğretmen başv
 platform admininde; platform admini tüm başvuruları görmeye devam eder. UI: profil (`auth/refresh`) `teacher.isSchoolAdmin`
 → öğretmen menüsünde "Öğretmen Başvuruları" (rozetli) → `/school-admin/teacher-approvals` (admin onay sayfası, okul kapsamı;
 `schoolAdminGuard`). Yeni başvuru push'u (SignalR) yalnız admine gider; okul yöneticisi sayfası Yenile ile güncellenir.
+
+### Okul paneli (#1278)
+
+Menüde "Öğretmen Başvuruları" yerine **Okulum** (`/school-admin/overview`, `/school-admin` oraya yönlenir); bölüm sekmeleri
+"Genel bakış" + "Öğretmen Başvuruları". Panel salt okunurdur: okul adı, öğretmen / öğrenci sayısı, bekleyen öğretmen başvurusu ve
+öğrenci üyeliği kartları (kartlar mevcut kuyruklara gider: `/school-admin/teacher-approvals`, `/student-school-requests`), öğretmen
+ve öğrenci tabloları. Uçlar: `GET api/school-admin/summary` genişledi (`schoolName`, `teacherCount`, `studentCount`,
+`pendingStudentRequests`), `GET api/school-admin/teachers` (okula bağlı, hesabı onaylı, bağımsız olmayan; askıdakiler işaretli,
+yöneticiler önce; dersleri), `GET api/school-admin/students?gradeId=` (üyeliği doğrulanmış öğrenciler; numara maskeli #262).
+Kapsam `ISchoolAdminOverviewService`'e controller'ın DB'den çözdüğü okul verilir, istemciden okul alınmaz; listeler admin veri
+erişimi audit'ine okul filtresiyle (`TeacherList` / `StudentList`) yazılır. Öğretmenin okuldan çıkarılması yalnız platform
+admininde (kapsam dışı).

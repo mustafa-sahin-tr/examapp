@@ -332,6 +332,14 @@ export const routes: Routes = [
           import('./pages/admin/admin-dashboard/admin-dashboard.component').then((m) => m.AdminDashboardComponent),
       },
       {
+        // Issue #1278: okul yöneticisi — okul paneli (sayılar, öğretmenler, öğrenciler; kuyruklara bağlantı).
+        path: 'school-admin/overview',
+        canActivate: [authGuard, schoolAdminGuard],
+        loadComponent: () =>
+          import('./pages/school-admin/school-overview/school-overview.component').then((m) => m.SchoolOverviewComponent),
+      },
+      { path: 'school-admin', pathMatch: 'full', redirectTo: 'school-admin/overview' },
+      {
         // Issue #1277: okul yöneticisi — kendi okulunun öğretmen başvuruları (aynı sayfa, okul kapsamı).
         path: 'school-admin/teacher-approvals',
         canActivate: [authGuard, schoolAdminGuard],

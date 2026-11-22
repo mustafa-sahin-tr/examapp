@@ -11,10 +11,34 @@ import {
 } from '../models/teacher-application.model';
 import { TeacherApplicationsApi } from './teacher-applications-api';
 
-/** Issue #1277: `GET /api/exam/school-admin/summary`. */
+/** Issue #1277 / #1278: `GET /api/exam/school-admin/summary` (okul paneli kartları + menü rozeti). */
 export interface SchoolAdminSummary {
   schoolId: number;
+  schoolName: string;
+  teacherCount: number;
+  studentCount: number;
   pendingTeacherApplications: number;
+  pendingStudentRequests: number;
+}
+
+/** Issue #1278: `GET /api/exam/school-admin/teachers` satırı. */
+export interface SchoolAdminTeacher {
+  teacherId: number;
+  fullName: string;
+  isSchoolAdmin: boolean;
+  isSuspended: boolean;
+  approvedAt: string | null;
+  subjects: string[];
+}
+
+/** Issue #1278: `GET /api/exam/school-admin/students` satırı (numara maskeli). */
+export interface SchoolAdminStudent {
+  studentId: number;
+  fullName: string;
+  studentNumber: string;
+  gradeId: number | null;
+  gradeName: string | null;
+  verifiedAt: string | null;
 }
 
 /**
@@ -34,6 +58,19 @@ export class SchoolAdminService implements TeacherApplicationsApi {
     return this.http
       .get<SchoolAdminSummary>(`${this.baseUrl}/summary`)
       .pipe(tap((s) => this.pendingTeacherApplications.set(s?.pendingTeacherApplications ?? 0)));
+  }
+
+  getTeachers(page: number, pageSize: number): Observable<Paged<SchoolAdminTeacher>> {
+    const params = new HttpParams().set('page', page).set('pageSize', pageSize);
+    return this.http.get<Paged<SchoolAdminTeacher>>(`${this.baseUrl}/teachers`, { params });
+  }
+
+  getStudents(page: number, pageSize: number, gradeId: number | null): Observable<Paged<SchoolAdminStudent>> {
+    let params = new HttpParams().set('page', page).set('pageSize', pageSize);
+    if (gradeId != null) {
+      params = params.set('gradeId', gradeId);
+    }
+    return this.http.get<Paged<SchoolAdminStudent>>(`${this.baseUrl}/students`, { params });
   }
 
   getTeacherApplications(query: TeacherApplicationListQuery): Observable<Paged<TeacherApplicationListItem>> {

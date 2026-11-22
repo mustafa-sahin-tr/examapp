@@ -93,14 +93,19 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
         }
     });
 
-    // Issue #1277: okul yöneticisi menüsü yalnız profil okul yöneticisi diyen öğretmende.
-    it('visibleMenuItems_SchoolAdminTeacher_ShowsSchoolTeacherApprovals', () => {
-        const routes = (c: EnhancedLayoutComponent) => c.visibleMenuItems().map((i) => i.route);
-        expect(routes(create(['Teacher'], false, true))).toContain('/school-admin/teacher-approvals');
+    // Issue #1277 / #1278: okul yöneticisi menüsü (Okulum) yalnız profil okul yöneticisi diyen öğretmende; öğretmen
+    // başvuruları panelin bölüm sekmesi.
+    it('visibleMenuItems_SchoolAdminTeacher_ShowsMySchool', () => {
+        const c = create(['Teacher'], false, true);
+        expect(c.visibleMenuItems().map((i) => i.route)).toContain('/school-admin/overview');
+        const tabs = c.visibleSectionTabs().find((g) => g.some((t) => t.id === 'tab-school-admin-overview')) ?? [];
+        expect(tabs.map((t) => t.route)).toEqual(['/school-admin/overview', '/school-admin/teacher-approvals']);
     });
 
-    it('visibleMenuItems_PlainTeacher_HidesSchoolTeacherApprovals', () => {
-        expect(create(['Teacher']).visibleMenuItems().map((i) => i.route)).not.toContain('/school-admin/teacher-approvals');
+    it('visibleMenuItems_PlainTeacher_HidesMySchool', () => {
+        const c = create(['Teacher']);
+        expect(c.visibleMenuItems().map((i) => i.route)).not.toContain('/school-admin/overview');
+        expect(c.visibleSectionTabs().flat().map((t) => t.route)).not.toContain('/school-admin/teacher-approvals');
     });
 
     for (const role of ['Teacher', 'Student']) {

@@ -112,6 +112,15 @@
       "invalid": "Title must be 1–100 and text 1–500 characters; choose a target (at most 200 students).",
       "noRecipients": "Nobody would receive an announcement for this target.",
       "rateLimited": "You can send at most 20 announcements in 24 hours."
+    },
+    "homework": {
+      "forbidden": "Only approved teachers of a school can give homework.",
+      "notFound": "Homework, section or student not found.",
+      "invalid": "Pick a subject and a due date (up to 180 days ahead), write pages or a note and choose a target (at most 200 students). Book ≤ 120, pages ≤ 60, note ≤ 500 characters.",
+      "checkInvalid": "Status must be Done / Partial / Not done; the note is at most 300 characters and only with a status.",
+      "locked": "You cannot change your mark after the teacher has checked the homework.",
+      "rateLimited": "You can give at most 50 homework assignments in 24 hours.",
+      "notStudent": "Student record not found."
     }
   }
 }

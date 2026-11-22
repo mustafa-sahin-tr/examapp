@@ -710,3 +710,19 @@ BadgeService `AnnouncementPublishedConsumer` parçayı toplu yazar (`Announcemen
 `SourceEventId` = alıcının id'si → yeniden teslim atlanır); sub'ı ne event'te ne BadgeService verisinde olan alıcı atlanıp loglanır.
 UI: menüde "Duyurular" (`/announcements`, okulun öğretmenleri ve yöneticisi): gönderme formu (onaylı) + "Gönderilenler"; velinin
 bildirimi çocuğun paneline gider. Düzenleme, silme, cevap, e-posta / push yok.
+
+### Düz ödev (#1282)
+
+`SchoolHomeworks` (okul, öğretmen, ders, kitap ≤ 120 serbest metin, sayfa ≤ 60, not ≤ 500, teslim günü `DateOnly` — yerel takvim
+`Dashboard:TimeZone`, hedef `Grade` / `Section` / `Students`, hedef adı anlık, yumuşak silme), `SchoolHomeworkStudents` (yalnız seçili
+öğrenci hedefi), `SchoolHomeworkProgress` (öğrenci başına tek satır: `StudentDoneAt`, öğretmen `TeacherStatus` Done / Partial / NotDone
++ not ≤ 300). Alıcılar saklanmaz, okunurken çözülür (okul değişimi matrisi "Düz ödev" satırı). Teacher uçları `api/homework`
+(okulun onaylı, askısız, bağımsız olmayan öğretmeni; okul DB'den): `POST` (sınıf / şube / 1–200 doğrulanmış öğrenci; ders ve teslim
+günü bugünden 180 güne kadar zorunlu, sayfa ya da not dolu; başka okulun şubesi / öğrencisi 404; 24 saatte 50 ödev, 429), `GET`
+(kendi ödevleri, okul değişse de; sayılar güncel okulun öğrencileri), `GET {id}` (öğrenci durumları), `PUT {id}/students/{studentId}`
+(`status` null → kontrol kaldırılır; not yalnız durumla), `DELETE {id}`. Sınıf hedefi okulun her öğretmenine açık (duyurudan farklı:
+mevcut sınıf atamalarıyla aynı). Öğrenci uçları `api/student/homework`: `GET` (teslim günü son 30 gün içinde ya da ileride),
+`PUT {id}/done` (`done` true / false; öğretmen kontrol ettiyse 409). Gecikmiş = teslim günü geçmiş, ne "yaptım" ne kontrol var;
+gecikmiş ödev yine işaretlenebilir. Puan, bildirim ve outbox yok. UI: öğretmen menüsü "Ödevler" (`/homework`, okula bağlı öğretmen):
+form + "Verdiğim ödevler" (sayılar, "Kontrol et" ile öğrenci listesi, "yaptım diyenleri onayla"); öğrenci "Ödevlerim" (`/my-homework`,
+Testler bölümünün sekmesi): "Yapılacaklar" (gecikmiş işaretli) ve "Kontrol edilenler". Test / etkinlik ödevi S8 (#1283).

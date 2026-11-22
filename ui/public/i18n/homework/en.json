@@ -1,0 +1,85 @@
+{
+  "title": "Homework",
+  "subtitle": "Give homework to a grade, a section or chosen students at your school and mark whether it was done. No points.",
+  "compose": "New homework",
+  "target": "To",
+  "targets": {
+    "Section": "Section",
+    "Grade": "Grade",
+    "Students": "Chosen students"
+  },
+  "grade": "Grade",
+  "section": "Section",
+  "subject": "Subject",
+  "dueDate": "Due date",
+  "book": "Book",
+  "pages": "Pages",
+  "pagesPlaceholder": "e.g. 8-10",
+  "pagesText": "pp. {{pages}}",
+  "note": "Note",
+  "selectAll": "Select all ({{count}} selected)",
+  "unknown": "Unknown name",
+  "save": "Give homework",
+  "saving": "Saving…",
+  "retry": "Try again",
+  "given": "Homework I gave",
+  "empty": "You have not given any homework yet.",
+  "check": "Check",
+  "close": "Close",
+  "overdue": "Overdue",
+  "studentMarked": "Marked done · {{date}}",
+  "teacherNote": "Note",
+  "statusFor": "Status for {{name}}",
+  "clearStatus": "Clear check",
+  "confirmMarked": "Confirm {{count}} students who marked it done",
+  "status": {
+    "Done": "Done",
+    "Partial": "Partial",
+    "NotDone": "Not done"
+  },
+  "hint": {
+    "optional": "Optional",
+    "pagesOrNote": "Write pages or a note.",
+    "noSections": "Your school has no sections yet. The school admin creates them; you can give homework to a grade.",
+    "emptySection": "This section has no students.",
+    "noStudents": "No students from your school are visible for this homework."
+  },
+  "targetText": {
+    "Students": "Chosen students"
+  },
+  "count": {
+    "students": "{{count}} students",
+    "studentDone": "{{count}} marked done",
+    "Done": "{{count}} done",
+    "Partial": "{{count}} partial",
+    "NotDone": "{{count}} not done",
+    "overdue": "{{count}} overdue"
+  },
+  "remove": {
+    "title": "Remove homework",
+    "message": "Remove the {{subject}} homework? Students will no longer see it.",
+    "confirm": "Remove",
+    "cancel": "Cancel"
+  },
+  "toast": {
+    "created": "Homework given ({{count}} students)."
+  },
+  "state": {
+    "error": "Could not load homework.",
+    "saveError": "Could not save the homework. Try again.",
+    "checkError": "Could not save the status.",
+    "removeError": "Could not remove the homework.",
+    "markError": "Could not save your mark."
+  },
+  "student": {
+    "title": "My homework",
+    "subtitle": "Homework from your teachers. Mark it when you are done; your teacher will check it.",
+    "empty": "You have no homework right now.",
+    "open": "To do",
+    "openEmpty": "No homework waiting.",
+    "checked": "Checked",
+    "done": "I did it",
+    "undo": "Undo",
+    "marked": "You marked it done; your teacher will check it."
+  }
+}

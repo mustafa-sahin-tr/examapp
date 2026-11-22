@@ -1,0 +1,278 @@
+<section class="hw" *transloco="let t; prefix: 'homework'">
+  <app-page-header [title]="t('title')" [description]="t('subtitle')" />
+
+  <form class="hw__card" (ngSubmit)="save()" data-testid="homework-form">
+    <h2 class="hw__heading">{{ t('compose') }}</h2>
+
+    <div class="hw__field">
+      <span class="hw__label" id="hw-target">{{ t('target') }}</span>
+      <mat-button-toggle-group
+        [value]="target()"
+        (change)="onTargetChange($event.value)"
+        aria-labelledby="hw-target"
+        class="hw__targets"
+        data-testid="target"
+      >
+        @for (tg of targets; track tg) {
+          <mat-button-toggle [value]="tg" [attr.data-testid]="'target-' + tg">{{ t('targets.' + tg) }}</mat-button-toggle>
+        }
+      </mat-button-toggle-group>
+    </div>
+
+    @if (target() === 'Grade') {
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="hw__select">
+        <mat-label>{{ t('grade') }}</mat-label>
+        <mat-select [value]="gradeId()" (selectionChange)="gradeId.set($event.value)" data-testid="grade">
+          @for (g of grades(); track g.id) {
+            <mat-option [value]="g.id">{{ g.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    } @else if (sections().length === 0) {
+      <p class="hw__hint" data-testid="no-sections">{{ t('hint.noSections') }}</p>
+    } @else {
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="hw__select">
+        <mat-label>{{ t('section') }}</mat-label>
+        <mat-select [value]="sectionId()" (selectionChange)="setSection($event.value)" data-testid="section">
+          @for (s of sections(); track s.id) {
+            <mat-option [value]="s.id">{{ s.gradeName }} / {{ s.name }} ({{ t('count.students', { count: s.studentCount }) }})</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    }
+
+    @if (target() === 'Students' && sectionId() != null) {
+      <div class="hw__students" data-testid="students">
+        @if (studentsLoading()) {
+          <mat-spinner diameter="24" />
+        } @else if (sectionStudents().length === 0) {
+          <p class="hw__hint">{{ t('hint.emptySection') }}</p>
+        } @else {
+          <mat-checkbox [checked]="allChosen()" (change)="toggleAll($event.checked)" data-testid="students-all">
+            {{ t('selectAll', { count: chosen().size }) }}
+          </mat-checkbox>
+          <ul class="hw__student-list">
+            @for (s of sectionStudents(); track s.studentId) {
+              <li>
+                <mat-checkbox
+                  [checked]="chosen().has(s.studentId)"
+                  (change)="toggleStudent(s.studentId, $event.checked)"
+                  data-testid="student-option"
+                >
+                  {{ s.fullName || t('unknown') }} <span class="hw__muted">{{ s.studentNumber }}</span>
+                </mat-checkbox>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    }
+
+    <div class="hw__row">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="hw__select">
+        <mat-label>{{ t('subject') }}</mat-label>
+        <mat-select [value]="subjectId()" (selectionChange)="subjectId.set($event.value)" data-testid="subject">
+          @for (s of subjects(); track s.id) {
+            <mat-option [value]="s.id">{{ s.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="hw__date">
+        <mat-label>{{ t('dueDate') }}</mat-label>
+        <input
+          matInput
+          type="date"
+          name="dueDate"
+          [min]="minDue"
+          [max]="maxDue"
+          [ngModel]="dueDate()"
+          (ngModelChange)="dueDate.set($event)"
+          required
+          data-testid="due-date"
+        />
+      </mat-form-field>
+    </div>
+
+    <div class="hw__row">
+      <mat-form-field appearance="outline" class="hw__grow">
+        <mat-label>{{ t('book') }}</mat-label>
+        <input
+          matInput
+          name="bookName"
+          [ngModel]="bookName()"
+          (ngModelChange)="bookName.set($event)"
+          [maxlength]="bookMax"
+          data-testid="book"
+        />
+        <mat-hint>{{ t('hint.optional') }}</mat-hint>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="hw__pages">
+        <mat-label>{{ t('pages') }}</mat-label>
+        <input
+          matInput
+          name="pages"
+          [ngModel]="pages()"
+          (ngModelChange)="pages.set($event)"
+          [maxlength]="pagesMax"
+          [placeholder]="t('pagesPlaceholder')"
+          data-testid="pages"
+        />
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="outline" class="hw__wide">
+      <mat-label>{{ t('note') }}</mat-label>
+      <textarea
+        matInput
+        name="note"
+        rows="3"
+        [ngModel]="note()"
+        (ngModelChange)="note.set($event)"
+        [maxlength]="noteMax"
+        data-testid="note"
+      ></textarea>
+      <mat-hint>{{ t('hint.pagesOrNote') }}</mat-hint>
+      <mat-hint align="end">{{ note().length }} / {{ noteMax }}</mat-hint>
+    </mat-form-field>
+
+    @if (saveError()) {
+      <p class="hw__error" role="alert" data-testid="save-error">{{ saveError() }}</p>
+    }
+
+    <div class="hw__actions">
+      <button mat-flat-button color="primary" type="submit" [disabled]="!canSave()" data-testid="save">
+        <mat-icon>assignment_add</mat-icon>
+        {{ saving() ? t('saving') : t('save') }}
+      </button>
+    </div>
+  </form>
+
+  <section class="hw__list" [attr.aria-label]="t('given')">
+    <h2 class="hw__heading">{{ t('given') }}</h2>
+    @if (listError()) {
+      <div class="hw__state hw__state--error" role="alert">
+        <span>{{ t('state.error') }}</span>
+        <button mat-stroked-button (click)="loadList()">{{ t('retry') }}</button>
+      </div>
+    } @else if (listLoading() && items().length === 0) {
+      <div class="hw__state"><mat-spinner diameter="28" /></div>
+    } @else if (items().length === 0) {
+      <p class="hw__hint" data-testid="list-empty">{{ t('empty') }}</p>
+    } @else {
+      <ul class="hw__items">
+        @for (h of items(); track h.id) {
+          <li class="hw__item" data-testid="homework-item">
+            <div class="hw__item-head">
+              <strong>{{ h.subjectName }}</strong>
+              <span class="hw__chip">{{ targetText(h) }}</span>
+              <span class="hw__due" [class.hw__due--past]="h.isPastDue">
+                <mat-icon inline>event</mat-icon> {{ formatDay(h.dueDate) }}
+              </span>
+            </div>
+            @if (workText(h)) {
+              <div class="hw__work">{{ workText(h) }}</div>
+            }
+            @if (h.note) {
+              <p class="hw__item-note">{{ h.note }}</p>
+            }
+            <div class="hw__item-foot">
+              <span class="hw__muted" data-testid="homework-counts">{{ countsText(h) }}</span>
+              <span class="hw__spacer"></span>
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="toggleDetail(h.id)"
+                [attr.aria-expanded]="openId() === h.id"
+                data-testid="toggle-detail"
+              >
+                <mat-icon>{{ openId() === h.id ? 'expand_less' : 'fact_check' }}</mat-icon>
+                {{ openId() === h.id ? t('close') : t('check') }}
+              </button>
+              <button mat-icon-button type="button" (click)="confirmRemove(h)" [attr.aria-label]="t('remove.title')" data-testid="remove">
+                <mat-icon>delete_outline</mat-icon>
+              </button>
+            </div>
+
+            @if (openId() === h.id) {
+              <div class="hw__detail" data-testid="detail">
+                @if (detailError()) {
+                  <p class="hw__error" role="alert">{{ t('state.error') }}</p>
+                } @else if (detailLoading() || !detail()) {
+                  <mat-spinner diameter="24" />
+                } @else if (detail()!.students.length === 0) {
+                  <p class="hw__hint" data-testid="detail-empty">{{ t('hint.noStudents') }}</p>
+                } @else {
+                  @if (pendingConfirmCount() > 0) {
+                    <button mat-button type="button" color="primary" (click)="confirmAllMarked()" data-testid="confirm-marked">
+                      <mat-icon>done_all</mat-icon>
+                      {{ t('confirmMarked', { count: pendingConfirmCount() }) }}
+                    </button>
+                  }
+                  <ul class="hw__rows">
+                    @for (s of detail()!.students; track s.studentId) {
+                      <li class="hw__student" [class.hw__student--overdue]="s.isOverdue" data-testid="student-row">
+                        <div class="hw__student-name">
+                          <span>{{ s.fullName || t('unknown') }}</span>
+                          <span class="hw__muted">{{ s.studentNumber }}</span>
+                          @if (s.studentDoneAt) {
+                            <span class="hw__badge hw__badge--marked" data-testid="student-marked">
+                              <mat-icon inline>check</mat-icon> {{ t('studentMarked', { date: formatDate(s.studentDoneAt) }) }}
+                            </span>
+                          } @else if (s.isOverdue) {
+                            <span class="hw__badge hw__badge--overdue" data-testid="student-overdue">{{ t('overdue') }}</span>
+                          }
+                        </div>
+                        <div class="hw__student-check">
+                          <mat-button-toggle-group
+                            [value]="s.teacherStatus"
+                            (change)="setStatus(s, $event.value ?? null)"
+                            [disabled]="savingStudent() === s.studentId"
+                            [hideSingleSelectionIndicator]="true"
+                            [attr.aria-label]="t('statusFor', { name: s.fullName })"
+                            data-testid="status"
+                          >
+                            @for (st of statuses; track st) {
+                              <mat-button-toggle [value]="st" [attr.data-testid]="'status-' + st">{{ t('status.' + st) }}</mat-button-toggle>
+                            }
+                          </mat-button-toggle-group>
+                          @if (s.teacherStatus) {
+                            <button
+                              mat-icon-button
+                              type="button"
+                              (click)="setStatus(s, null)"
+                              [attr.aria-label]="t('clearStatus')"
+                              data-testid="clear-status"
+                            >
+                              <mat-icon>close</mat-icon>
+                            </button>
+                          }
+                          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="hw__check-note">
+                            <mat-label>{{ t('teacherNote') }}</mat-label>
+                            <input
+                              matInput
+                              [value]="noteValue(s)"
+                              (input)="setNoteDraft(s.studentId, $any($event.target).value)"
+                              (blur)="commitNote(s)"
+                              (keydown.enter)="commitNote(s)"
+                              [attr.maxlength]="teacherNoteMax"
+                              data-testid="teacher-note"
+                            />
+                          </mat-form-field>
+                        </div>
+                      </li>
+                    }
+                  </ul>
+                }
+              </div>
+            }
+          </li>
+        }
+      </ul>
+      @if (total() > pageSize) {
+        <mat-paginator [length]="total()" [pageSize]="pageSize" [pageIndex]="page()" [hidePageSize]="true" (page)="onPage($event)" />
+      }
+    }
+  </section>
+</section>

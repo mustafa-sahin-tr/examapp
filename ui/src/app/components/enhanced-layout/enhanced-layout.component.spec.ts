@@ -135,6 +135,16 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
         expect(routes(create(['Teacher']))).not.toContain('/announcements');
     });
 
+    // Issue #1282: Ödevler okula bağlı öğretmende; öğrencinin "Ödevlerim"i ana menüde değil, Testler sekmelerinde.
+    it('visibleMenuItems_Homework_SchoolTeacherOnly', () => {
+        const routes = (c: EnhancedLayoutComponent) => c.visibleMenuItems().map((i) => i.route);
+        expect(routes(create(['Teacher'], false, false, false))).toContain('/homework');
+        TestBed.resetTestingModule();
+        expect(routes(create(['Teacher'], false, false, true))).not.toContain('/homework');
+        TestBed.resetTestingModule();
+        expect(routes(create(['Student']))).not.toContain('/homework');
+    });
+
     it('visibleMenuItems_PlainTeacher_HidesMySchool', () => {
         const c = create(['Teacher']);
         expect(c.visibleMenuItems().map((i) => i.route)).not.toContain('/school-admin/overview');
@@ -1405,6 +1415,10 @@ describe('EnhancedLayoutComponent role navigation (issue #719)', () => {
         // Issue #1111: öğretmene sor Mesajlar bölümünün sekmesi.
         await goTo(fixture, '/ask-teacher?q=4');
         expect(labels(component.activeSectionTabs())).toEqual(['tab-teacher-messages', 'tab-ask-teacher']);
+
+        // Issue #1282: öğrencinin ödevleri Testler bölümünün sekmesi.
+        await goTo(fixture, '/my-homework');
+        expect(labels(component.activeSectionTabs())).toEqual(['tab-tests', 'tab-my-mock-exams', 'tab-my-homework']);
 
         await goTo(fixture, '/dashboard');
         expect(component.activeSectionTabs()).toEqual([]);

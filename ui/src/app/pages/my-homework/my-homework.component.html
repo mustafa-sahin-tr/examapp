@@ -1,0 +1,90 @@
+<section class="mh" *transloco="let t; prefix: 'homework'">
+  <app-page-header [title]="t('student.title')" [description]="t('student.subtitle')" />
+
+  @if (loadError()) {
+    <div class="mh__state mh__state--error" role="alert" data-testid="my-homework-error">
+      <span>{{ loadError() }}</span>
+      <button mat-stroked-button (click)="load()">{{ t('retry') }}</button>
+    </div>
+  } @else if (loading() && items().length === 0) {
+    <div class="mh__state"><mat-spinner diameter="32" /></div>
+  } @else if (items().length === 0) {
+    <p class="mh__empty" data-testid="my-homework-empty">{{ t('student.empty') }}</p>
+  } @else {
+    <section class="mh__group" [attr.aria-label]="t('student.open')">
+      <h2 class="mh__heading">{{ t('student.open') }}</h2>
+      @if (open().length === 0) {
+        <p class="mh__empty" data-testid="open-empty">{{ t('student.openEmpty') }}</p>
+      }
+      <ul class="mh__list">
+        @for (h of open(); track h.id) {
+          <li class="mh__card" [class.mh__card--overdue]="h.isOverdue" data-testid="open-item">
+            <div class="mh__head">
+              <strong>{{ h.subjectName }}</strong>
+              @if (h.isOverdue) {
+                <span class="mh__badge mh__badge--overdue" data-testid="overdue">{{ t('overdue') }}</span>
+              }
+              <span class="mh__due"><mat-icon inline>event</mat-icon> {{ formatDay(h.dueDate) }}</span>
+            </div>
+            @if (workText(h)) {
+              <div class="mh__work">{{ workText(h) }}</div>
+            }
+            @if (h.note) {
+              <p class="mh__note">{{ h.note }}</p>
+            }
+            <div class="mh__foot">
+              <span class="mh__muted">{{ h.teacherName }}</span>
+              @if (h.studentDoneAt) {
+                <button mat-button type="button" (click)="toggleDone(h)" [disabled]="savingId() === h.id" data-testid="toggle-done">
+                  <mat-icon>undo</mat-icon>
+                  {{ t('student.undo') }}
+                </button>
+              } @else {
+                <button
+                  mat-flat-button
+                  color="primary"
+                  type="button"
+                  (click)="toggleDone(h)"
+                  [disabled]="savingId() === h.id"
+                  data-testid="toggle-done"
+                >
+                  <mat-icon>check</mat-icon>
+                  {{ t('student.done') }}
+                </button>
+              }
+            </div>
+            @if (h.studentDoneAt) {
+              <p class="mh__marked" data-testid="marked">{{ t('student.marked') }}</p>
+            }
+          </li>
+        }
+      </ul>
+    </section>
+
+    @if (checked().length > 0) {
+      <section class="mh__group" [attr.aria-label]="t('student.checked')">
+        <h2 class="mh__heading">{{ t('student.checked') }}</h2>
+        <ul class="mh__list">
+          @for (h of checked(); track h.id) {
+            <li class="mh__card" data-testid="checked-item">
+              <div class="mh__head">
+                <strong>{{ h.subjectName }}</strong>
+                <span [class]="'mh__badge mh__badge--' + h.teacherStatus" data-testid="teacher-status">
+                  {{ t('status.' + h.teacherStatus) }}
+                </span>
+                <span class="mh__due"><mat-icon inline>event</mat-icon> {{ formatDay(h.dueDate) }}</span>
+              </div>
+              @if (workText(h)) {
+                <div class="mh__work">{{ workText(h) }}</div>
+              }
+              @if (h.teacherNote) {
+                <p class="mh__note" data-testid="teacher-note"><mat-icon inline>chat</mat-icon> {{ h.teacherNote }}</p>
+              }
+              <div class="mh__foot"><span class="mh__muted">{{ h.teacherName }}</span></div>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+  }
+</section>

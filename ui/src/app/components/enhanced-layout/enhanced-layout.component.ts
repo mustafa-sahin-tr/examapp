@@ -308,6 +308,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     // Issue #1279: okul öğretmeni — okulun şubeleri (salt okunur).
     { id: 'school-sections', labelKey: 'menu.schoolSections', icon: 'groups', route: '/school-sections', type: 'menu', roles: ['Teacher'], onlySchoolTeacherNotAdmin: true },
     { id: 'announcements', labelKey: 'menu.announcements', icon: 'campaign', route: '/announcements', type: 'menu', roles: ['Teacher'], onlySchoolTeacher: true },
+    // Issue #1282: düz ödev — okul öğretmeni verir / kontrol eder (öğrencinin "Ödevlerim"i Testler sekmelerinde).
+    { id: 'homework', labelKey: 'menu.homework', icon: 'assignment', route: '/homework', type: 'menu', roles: ['Teacher'], onlySchoolTeacher: true },
     // Issue #420: veli paneli (çocuk özeti) — velinin ana sayfası.
     { id: 'parent-home', labelKey: 'menu.parentHome', icon: 'home', route: '/parent', type: 'menu', roles: ['Parent'] },
     // Issue #419: velinin çocukları (davet koduyla ekleme + liste).
@@ -368,6 +370,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     [
       { id: 'tab-tests', labelKey: 'menu.exams', icon: '', route: '/tests', type: 'menu', roles: ['Student', 'Teacher'] },
       { id: 'tab-my-mock-exams', labelKey: 'menu.mockExams', icon: '', route: '/my-mock-exams', type: 'menu', roles: ['Student'] },
+      // Issue #1282: düz ödevler testlerin yanında; ana menü #719 sınırında kalır.
+      { id: 'tab-my-homework', labelKey: 'menu.myHomework', icon: '', route: '/my-homework', type: 'menu', roles: ['Student'] },
       { id: 'tab-mock-exams', labelKey: 'menu.mockExams', icon: '', route: '/mock-exams', type: 'menu', roles: ['Teacher'] },
     ],
     [

@@ -112,6 +112,15 @@
       "invalid": "Başlık 1–100, metin 1–500 karakter olmalı; hedef seçilmeli (en çok 200 öğrenci).",
       "noRecipients": "Bu hedefte duyuruyu alacak kimse yok.",
       "rateLimited": "Son 24 saatte en çok 20 duyuru gönderebilirsiniz."
+    },
+    "homework": {
+      "forbidden": "Ödevi yalnız okula bağlı onaylı öğretmenler verebilir.",
+      "notFound": "Ödev, şube ya da öğrenci bulunamadı.",
+      "invalid": "Ders ve teslim günü (bugünden 180 güne kadar) seçilmeli, sayfa ya da not yazılmalı; hedef seçilmeli (en çok 200 öğrenci). Kitap ≤ 120, sayfa ≤ 60, not ≤ 500 karakter.",
+      "checkInvalid": "Durum Yapıldı / Kısmen / Yapılmadı olmalı; not en çok 300 karakter ve yalnız durumla birlikte.",
+      "locked": "Öğretmenin kontrol ettiği ödevin işareti değiştirilemez.",
+      "rateLimited": "Son 24 saatte en çok 50 ödev verebilirsiniz.",
+      "notStudent": "Öğrenci kaydı bulunamadı."
     }
   }
 }

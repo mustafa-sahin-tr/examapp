@@ -1,0 +1,85 @@
+{
+  "title": "Ödevler",
+  "subtitle": "Okulundaki bir sınıfa, şubeye ya da seçtiğin öğrencilere ödev ver, yapılıp yapılmadığını işaretle. Puan verilmez.",
+  "compose": "Yeni ödev",
+  "target": "Kime",
+  "targets": {
+    "Section": "Şube",
+    "Grade": "Sınıf",
+    "Students": "Seçili öğrenciler"
+  },
+  "grade": "Sınıf",
+  "section": "Şube",
+  "subject": "Ders",
+  "dueDate": "Teslim günü",
+  "book": "Kitap",
+  "pages": "Sayfalar",
+  "pagesPlaceholder": "ör. 8-10",
+  "pagesText": "s. {{pages}}",
+  "note": "Not",
+  "selectAll": "Hepsini seç ({{count}} seçili)",
+  "unknown": "Adı bilinmiyor",
+  "save": "Ödevi ver",
+  "saving": "Kaydediliyor…",
+  "retry": "Tekrar dene",
+  "given": "Verdiğim ödevler",
+  "empty": "Henüz ödev vermedin.",
+  "check": "Kontrol et",
+  "close": "Kapat",
+  "overdue": "Gecikti",
+  "studentMarked": "Yaptım dedi · {{date}}",
+  "teacherNote": "Not",
+  "statusFor": "{{name}} için durum",
+  "clearStatus": "Kontrolü kaldır",
+  "confirmMarked": "Yaptım diyen {{count}} öğrenciyi onayla",
+  "status": {
+    "Done": "Yapıldı",
+    "Partial": "Kısmen",
+    "NotDone": "Yapılmadı"
+  },
+  "hint": {
+    "optional": "İsteğe bağlı",
+    "pagesOrNote": "Sayfa ya da not yazılmalı.",
+    "noSections": "Okulunda henüz şube yok. Şubeleri okul yöneticisi oluşturur; sınıfa ödev verebilirsin.",
+    "emptySection": "Bu şubede öğrenci yok.",
+    "noStudents": "Bu ödevde okulundan görebildiğin öğrenci yok."
+  },
+  "targetText": {
+    "Students": "Seçili öğrenciler"
+  },
+  "count": {
+    "students": "{{count}} öğrenci",
+    "studentDone": "{{count}} yaptım dedi",
+    "Done": "{{count}} yapıldı",
+    "Partial": "{{count}} kısmen",
+    "NotDone": "{{count}} yapılmadı",
+    "overdue": "{{count}} gecikti"
+  },
+  "remove": {
+    "title": "Ödevi kaldır",
+    "message": "{{subject}} ödevi kaldırılsın mı? Öğrenciler artık görmez.",
+    "confirm": "Kaldır",
+    "cancel": "Vazgeç"
+  },
+  "toast": {
+    "created": "Ödev verildi ({{count}} öğrenci)."
+  },
+  "state": {
+    "error": "Ödevler yüklenemedi.",
+    "saveError": "Ödev kaydedilemedi. Tekrar dene.",
+    "checkError": "Durum kaydedilemedi.",
+    "removeError": "Ödev kaldırılamadı.",
+    "markError": "İşaret kaydedilemedi."
+  },
+  "student": {
+    "title": "Ödevlerim",
+    "subtitle": "Öğretmenlerinin verdiği ödevler. Yaptığında işaretle, öğretmenin kontrol edecek.",
+    "empty": "Şu an ödevin yok.",
+    "open": "Yapılacaklar",
+    "openEmpty": "Bekleyen ödevin yok.",
+    "checked": "Kontrol edilenler",
+    "done": "Yaptım",
+    "undo": "Geri al",
+    "marked": "Yaptım dedin; öğretmenin kontrol edecek."
+  }
+}

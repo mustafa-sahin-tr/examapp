@@ -301,6 +301,10 @@ olarak aktarılır. Yalnız kitap aktarımında; hızlı ekleme ve karışık g�
 - **Kayıt:** taslağı geçerli (`ValidateDefinition`) blok, sayfanın sorularıyla okuma sırasında tek kayıtta
   (`LabelingImportPageRequest.Activities`) şıksız ve **çözümsüz** taslak etkinlik olur: görsel blok kırpması, plan çıkarımın
   planı, madde etiketi "E1", "E2" … (test boyunca). Etkinlik bölümünün taslak sayfası `WorksheetKind.Activity` (puansız).
+  **Testte numara tutan etkinlik (#1293):** test bölümünde çoktan seçmeli soru sayısı anahtardan azsa (ya da anahtar yoksa)
+  etkinlik blokları basılı bir soru sanılmıştır (ör. A–D şıklı tablo): sayfanın sorularıyla okuma sırasına dizilip bir numara
+  tutar, madde etiketi o numaradır. Sonraki sorular basılı numaralarını ve anahtar cevaplarını korur (önceden numara
+  `ilk + i` ile etkinliği atlıyor, sonraki soruların cevabı bir kayıyordu). Sayı tutuyorsa etkinlikler "E1" … kalır.
 - **İşaretler:** `activityUnsupported` (tip belirlenemedi ya da çıkarımı yok: çizim, açık uçlu …) ve `activityInvalid`
   (çıkarım başarısız ya da taslak geçersiz, ör. boşluksuz `slotFill`). Bu bloklar aktarılmaz, düz görsel soru da olmaz;
   sayfa uyarı listesinde görünür, test `NeedsReview` olur (toplu onay atlar). Etkinlik bölümünde sayfadaki basılı numaralar
@@ -308,9 +312,13 @@ olarak aktarılır. Yalnız kitap aktarımında; hızlı ekleme ve karışık g�
   karşılaştırması yalnız çoktan seçmeli sorularla yapılır.
 - **İnceleme:** önizlemede etkinlik taslağı tipinin çipiyle görünür, cevap düğmesi yoktur; "Cevaplanan x/y" ve onay engeli
   yalnız çoktan seçmeli soruları sayar (karar: etkinlik cevapsız onaylanır, cevabı sonradan etkinlik düzenleyicide elle
-  girilir; otomatik çözüm #580 beklemede). Hatalı taslak "testten çıkar" ile atılır. "İşaretlemede düzelt" sayfanın yalnız
-  çoktan seçmeli taslaklarını değiştirir; etkinlik taslakları ve sıraları yerinde kalır (sayfanın etkinlik uyarıları da
-  düzeltmeyle kapanır).
+  girilir; otomatik çözüm #580 beklemede). Hatalı taslak "testten çıkar" ile atılır. "İşaretlemede düzelt" sayfanın çoktan
+  seçmeli taslaklarını değiştirir; tuvalde kalan etkinlik kutuları da gönderilir (`activities`, #1293): sayfanın bunlarla
+  örtüşmeyen etkinlik taslağı (tuvalde silinen ya da türü Soru yapılan) silinir, onun kutusuna çizilen soru etkinliğin
+  numarasını ve anahtar cevabını alır; kalan numaralı etkinlikler sorularla numara sırasına dizilir. Elle doğrulanan sonuca
+  da yalnız kalan etkinlikler yazılır (tuval yeniden açılınca silinen etkinlik geri gelmez). Şık çizilmiş etkinlik bölgesi
+  kaydedilmez; tuval uyarır ve "Soruya çevir" önerir. `activities` gönderilmezse (hızlı ekleme) etkinliklere dokunulmaz.
+  Sayfanın etkinlik uyarıları düzeltmeyle kapanır.
 - **Temizlik hizmeti yanıt vermezse:** `DetectorPageCleaner.IsAvailableAsync` dayanıklılık işleyicisinin zaman aşımını da
   "hizmet yok" sayar (önceden iş "The operation didn't complete within the allowed timeout" ile düşüyordu; yerelde
   question-detector kapalıyken görüldü).

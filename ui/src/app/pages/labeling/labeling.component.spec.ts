@@ -2184,7 +2184,37 @@ describe('LabelingComponent', () => {
             component.replaceDrafts();
 
             expect(open).toHaveBeenCalledWith(ConfirmDialogComponent, expect.anything());
-            expect(bookImportsApi.replacePage).toHaveBeenCalledWith('j1', 3, 12, []);
+            expect(bookImportsApi.replacePage).toHaveBeenCalledWith('j1', 3, 12, [], []);
+        });
+
+        // Issue #1293: tuvalde kalan etkinlik kutuları da gider; şık çizilmiş etkinlik sessizce düşmez, soruya çevirmek önerilir.
+        it('fix_Save_SendsActivityBoxesAndWarnsAboutAnActivityWithOptions', async () => {
+            routeUrl = '/?bookImport=j1&test=3&page=12';
+            await setupWith(() => {
+                pageResponses();
+                bookImportsApi.replacePage.mockReturnValue(of({ saved: 1, duplicates: 0, removed: 2, answerless: 0 }));
+            });
+            vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+            const action = new Subject<void>();
+            const snack = vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue({ onAction: () => action.asObservable() } as never);
+            const table = { ...mcq('act', 2), y: 400 };
+            selector().blockKinds = { act: 'activity' };
+            selector().regions.set([mcq('q1', 0), table]);
+
+            component.replaceDrafts();
+
+            expect(snack.mock.calls[0][0]).toContain('Soru yapın');
+            expect(bookImportsApi.replacePage).not.toHaveBeenCalled();
+            action.next();
+            expect(selector().setBlockKind).toHaveBeenCalledWith(1, 'mcq_question');
+
+            // Şıksız etkinlik kutusu etkinlik olarak kalır ve kutusu gönderilir.
+            snack.mockReturnValue(undefined as never);
+            selector().regions.set([mcq('q1', 0), { ...table, answers: [] }]);
+            component.replaceDrafts();
+            const [, , , questions, activities] = bookImportsApi.replacePage.mock.calls[0];
+            expect(questions.length).toBe(1);
+            expect(activities).toEqual([{ x: 10, y: 400, width: table.width, height: table.height }]);
         });
 
         it('fix_UnknownTest_ShowsTheLoadError', async () => {

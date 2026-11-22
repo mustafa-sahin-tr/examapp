@@ -1091,10 +1091,31 @@ export class LabelingComponent {
     if (!fix || !selector || !this.canReplaceDrafts()) {
       return;
     }
+    // #1293: şık çizilmiş etkinlik bölgesi soru olarak kaydedilmez; sessizce düşmesin, türünü Soru'ya çevirmek önerilir.
+    const optioned = selector
+      .regions()
+      .filter((r) => selector.getBlockKind(r.name) === 'activity' && (r.answers.length >= 2 || r.answers.some((a) => a.isCorrect)));
+    if (optioned.length > 0) {
+      this.snackBar
+        .open(this.tr('fix.activityHasOptions', { count: optioned.length }), this.tr('fix.toQuestion'), { duration: 10000 })
+        .onAction()
+        .subscribe(() => {
+          for (const region of optioned) {
+            const index = selector.regions().indexOf(region);
+            if (index >= 0) selector.setBlockKind(index, 'mcq_question');
+          }
+        });
+      return;
+    }
     const regions = selector.regions().filter((r) => selector.isMcqRegion(r.name));
     if (regions.length > 0 && !selector.ensureQuestionsValid({ requireCorrectAnswer: false, skipInteractive: true })) {
       return;
     }
+    // #1293: tuvalde kalan etkinlik kutuları; sayfanın bunlarla örtüşmeyen etkinlik taslakları silinir.
+    const activities = selector
+      .regions()
+      .filter((r) => selector.getBlockKind(r.name) === 'activity')
+      .map(roundBox);
     const questions: LabelingBankQuestion[] = regions.map((q) => {
       const itemLabel = this.labelsOf(q.name).itemLabel.trim();
       return {
@@ -1105,7 +1126,7 @@ export class LabelingComponent {
       };
     });
     if (questions.length > 0) {
-      this.submitFix(fix, questions);
+      this.submitFix(fix, questions, activities);
       return;
     }
     const data: ConfirmDialogData = {
@@ -1121,7 +1142,7 @@ export class LabelingComponent {
       .afterClosed()
       .subscribe((ok) => {
         if (ok && this.fix() === fix) {
-          this.submitFix(fix, []);
+          this.submitFix(fix, [], activities);
         }
       });
   }
@@ -1138,10 +1159,12 @@ export class LabelingComponent {
       .then(() => this.startFixFromRoute());
   }
 
-  private submitFix(fix: LabelingFixTarget, questions: LabelingBankQuestion[]): void {
+  private submitFix(fix: LabelingFixTarget, questions: LabelingBankQuestion[], activities: LabelingBankBox[]): void {
     this.fixSaving.set(true);
-    (fix.kind === 'QuickAdd' ? this.quickAdd : this.bookImports)
-      .replacePage(fix.jobId, fix.testId, fix.filePage, questions)
+    (fix.kind === 'QuickAdd'
+      ? this.quickAdd.replacePage(fix.jobId, fix.testId, fix.filePage, questions)
+      : this.bookImports.replacePage(fix.jobId, fix.testId, fix.filePage, questions, activities)
+    )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {

@@ -32,7 +32,7 @@
     "loadFailed": "The import page could not be opened.",
     "save": "Replace drafts",
     "saving": "Saving…",
-    "hint": "The multiple-choice questions on the page replace this page's drafts; unmarked answers come from the book's answer key.",
+    "hint": "The multiple-choice questions on the page replace this page's drafts; unmarked answers come from the book's answer key. Activities you delete or turn into questions on the canvas are removed from the test too.",
     "saved": "{{saved}} questions saved, {{removed}} old drafts removed.",
     "nextPage": "Opening the test's next page that needs checking (p. {{page}}).",
     "nextTest": "Moving to the next test that needs checking: {{test}}.",
@@ -74,7 +74,9 @@
       "title": "Original page · p. {{page}}",
       "hint": "The marked options are here; fix the boxes on the clean page.",
       "close": "Close"
-    }
+    },
+    "activityHasOptions": "{{count}} activity region(s) have options; activities are not saved as questions. Change the kind to Question to save them as questions.",
+    "toQuestion": "Turn into question"
   },
   "bank": {
     "save": "Save to pool",

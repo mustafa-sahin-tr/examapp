@@ -473,6 +473,13 @@ public class ReplaceBookImportPageDto
 {
     [System.ComponentModel.DataAnnotations.MaxLength(Services.Labeling.LabelingBankService.MaxQuestions)]
     public List<Labeling.LabelingBankQuestionDto> Questions { get; set; } = new();
+
+    /// <summary>
+    /// Issue #1293: tuvalde kalan etkinlik kutuları (sayfa pikseli). Verilirse sayfanın bunlarla örtüşmeyen etkinlik taslakları
+    /// silinir; verilmezse (eski istemci) etkinlik taslaklarına dokunulmaz.
+    /// </summary>
+    [System.ComponentModel.DataAnnotations.MaxLength(Services.Labeling.LabelingBankService.MaxQuestions)]
+    public List<Labeling.LabelingBankBoxDto>? Activities { get; set; }
 }
 
 /// <summary>Issue #1023: sayfa düzeltmesinin sonucu — kaydedilen, kırpması bankada olduğu için atlanan, silinen eski taslak ve cevapsız soru sayısı.</summary>

@@ -677,7 +677,8 @@ public class BookImportController : BaseController
             return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
         try
         {
-            var result = await fix.ReplacePageAsync(owner, id, testId, filePage, request?.Questions ?? [], ct);
+            var activities = request?.Activities?.Select(b => new LayoutBox(b.X, b.Y, b.Width, b.Height)).ToList();
+            var result = await fix.ReplacePageAsync(owner, id, testId, filePage, request?.Questions ?? [], ct, activities);
             return result.Error switch
             {
                 BookImportPageFixError.None => Ok(result.Page),

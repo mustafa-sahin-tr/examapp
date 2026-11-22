@@ -621,6 +621,43 @@ public class AdminController : BaseController
         };
     }
 
+    // ---- Okul yöneticisi yetkisi (issue #1276, #1071 S1) ----
+
+    /// <summary>
+    /// PUT api/admin/teachers/{id}/school-admin, gövde <c>{ "isSchoolAdmin": bool }</c> → onaylı okul öğretmenine okul
+    /// yöneticisi yetkisi verir ya da kaldırır. Yanıt <c>200 { teacherId, isSchoolAdmin, schoolId, changed }</c>; aynı değer
+    /// yan etkisizdir (<c>changed=false</c>). Alan eksik → 400; öğretmen yok → 404; okulsuz / bağımsız, hesabı onaysız ya da
+    /// askıdaki öğretmene vermek ve eşzamanlı değişiklik → 409. AdminUserActionLogs'a audit'lenir.
+    /// </summary>
+    [HttpPut("teachers/{id:int}/school-admin")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> SetTeacherSchoolAdmin(int id, [FromBody] AdminTeacherSchoolAdminRequestDto request,
+        [FromServices] IAdminTeacherSchoolAdminService service, CancellationToken ct)
+    {
+        var actor = KeyCloakId;
+        if (string.IsNullOrWhiteSpace(actor))
+            return Forbid();
+        if (request?.IsSchoolAdmin is not bool isSchoolAdmin)
+            return BadRequest(Message("admin.schoolAdmin.isSchoolAdminRequired"));
+
+        var result = await service.SetAsync(id, isSchoolAdmin, actor, ct);
+        return result.Status switch
+        {
+            AdminTeacherSchoolAdminStatus.Success => Ok(new AdminTeacherSchoolAdminResponseDto
+            {
+                TeacherId = id,
+                IsSchoolAdmin = result.IsSchoolAdmin,
+                SchoolId = result.SchoolId,
+                Changed = result.Changed
+            }),
+            AdminTeacherSchoolAdminStatus.TargetNotFound => NotFound(Message("admin.schoolAdmin.teacherNotFound")),
+            AdminTeacherSchoolAdminStatus.NoSchool => Conflict(Message("admin.schoolAdmin.noSchool")),
+            AdminTeacherSchoolAdminStatus.AccountNotApproved => Conflict(Message("admin.schoolAdmin.accountNotApproved")),
+            AdminTeacherSchoolAdminStatus.AccountSuspended => Conflict(Message("admin.schoolAdmin.accountSuspended")),
+            _ => Conflict(Message("admin.schoolAdmin.concurrentChange"))
+        };
+    }
+
     /// <summary>
     /// GET api/admin/teachers/{id}/school-change-impact → <c>200 { schoolOnlyWorksheetCount }</c> (issue #539): okul değişirse
     /// <c>Private</c> yapılacak <c>SchoolOnly</c> sınav sayısı — admin okul dialog'u onaydan önce uyarı gösterir. Öğretmen yok → 404.

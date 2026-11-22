@@ -54,6 +54,14 @@
       "accountNotApproved": "Öğretmen hesabı henüz onaylanmadı; okula bağlamadan önce hesap onaylanmalıdır.",
       "accountSuspended": "Öğretmen hesabı askıda; okula bağlamadan önce askı kaldırılmalıdır."
     },
+    "schoolAdmin": {
+      "isSchoolAdminRequired": "isSchoolAdmin alanı zorunludur.",
+      "teacherNotFound": "Öğretmen bulunamadı.",
+      "noSchool": "Okul yöneticisi yalnız bir okula bağlı öğretmen olabilir.",
+      "accountNotApproved": "Öğretmen hesabı henüz onaylanmadı; okul yöneticisi yapmadan önce hesap onaylanmalıdır.",
+      "accountSuspended": "Öğretmen hesabı askıda; okul yöneticisi yapmadan önce askı kaldırılmalıdır.",
+      "concurrentChange": "Öğretmenin okulu ya da hesap durumu aynı anda başka bir işlemle değişti. Lütfen sayfayı yenileyip tekrar deneyin."
+    },
     "teacherSuspension": {
       "reasonRequired": "Askıya alma nedeni zorunludur.",
       "reasonTooLong": "Askıya alma nedeni en fazla {0} karakter olabilir.",

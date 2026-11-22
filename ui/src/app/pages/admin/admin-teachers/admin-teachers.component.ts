@@ -35,6 +35,7 @@ import { openAdminTeacherSuspensionDialog } from '../../../shared/components/adm
 import { AdminTeacherSuspensionResponse } from '../../../models/admin-teacher-suspension.model';
 import { openAdminTeacherSchoolDialog } from '../../../shared/components/admin-teacher-school-dialog/admin-teacher-school-dialog.component';
 import { AdminTeacherSchoolResponse } from '../../../models/admin-teacher-school.model';
+import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 
 /** Yönetim ekranlarının ortak Transloco scope'u: `public/i18n/admin/<lang>.json` (issue #183). */
 const ADMIN_SCOPE = 'admin';
@@ -75,6 +76,10 @@ export interface AdminTeacherRow {
   suspendedAt: string | null;
   /** Admin'in girdiği neden (kırpılmış); yoksa null. */
   suspensionReason: string | null;
+  /** Issue #1276: okul yöneticisi yetkisi. */
+  schoolAdmin: boolean;
+  /** Issue #1276: yetki verilebilir mi (okula bağlı, hesabı onaylı, askısız, bağımsız değil). */
+  schoolAdminEligible: boolean;
 }
 
 /**
@@ -313,6 +318,47 @@ export class AdminTeachersComponent {
     if (response.changed || response.schoolId !== row.schoolId) this.list.load();
   }
 
+  // Issue #1276: okul yöneticisi yetkisi (onay dialog'u → PUT → satır sunucudan yenilenir).
+  readonly schoolAdminBusy = signal(false);
+
+  toggleSchoolAdmin(row: AdminTeacherRow): void {
+    if (this.schoolAdminBusy() || (!row.schoolAdmin && !row.schoolAdminEligible)) return;
+    const grant = !row.schoolAdmin;
+    const name = this.rowDisplayName(row);
+    const params = { name, school: row.schoolName ?? '—' };
+    const t = (key: string, p?: Record<string, unknown>) => this.transloco.translate<string>(`${ADMIN_SCOPE}.schoolAdmin.${key}`, p);
+    this.schoolAdminBusy.set(true);
+    this.dialog
+      .open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
+        data: {
+          title: t(grant ? 'grantTitle' : 'revokeTitle'),
+          message: t(grant ? 'grantText' : 'revokeText', params),
+          confirmText: t('confirm'),
+          icon: grant ? 'admin_panel_settings' : 'remove_moderator',
+          confirmColor: grant ? 'primary' : 'warn',
+        },
+      })
+      .afterClosed()
+      .subscribe((confirmed) => {
+        if (!confirmed) {
+          this.schoolAdminBusy.set(false);
+          return;
+        }
+        this.adminService.setTeacherSchoolAdmin(row.id, grant).subscribe({
+          next: () => {
+            this.schoolAdminBusy.set(false);
+            this.snackBar.open(t(grant ? 'granted' : 'revoked', params), t('close'), { duration: 4000 });
+            this.list.load();
+          },
+          error: (err: { error?: { message?: string } }) => {
+            this.schoolAdminBusy.set(false);
+            this.snackBar.open(err?.error?.message || t('failed'), t('close'), { duration: 6000 });
+            this.list.load();
+          },
+        });
+      });
+  }
+
   rowDisplayName(row: AdminTeacherRow): string {
     return (
       row.fullName ??
@@ -386,6 +432,9 @@ function toRow(item: AdminTeacherListItem): AdminTeacherRow {
     accountSuspended: item.accountSuspended === true,
     suspendedAt: item.accountSuspendedAt ?? null,
     suspensionReason: item.accountSuspensionReason?.trim() || null,
+    schoolAdmin: item.isSchoolAdmin === true,
+    schoolAdminEligible:
+      item.schoolId != null && !item.isIndependentTutor && item.accountApproved === true && item.accountSuspended !== true,
   };
 }
 

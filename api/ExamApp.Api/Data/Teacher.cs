@@ -100,6 +100,18 @@ public class Teacher : BaseEntity, ISchoolScoped
     /// </summary>
     public DateTime? LastRejectedAt { get; set; }
 
+    /// <summary>
+    /// issue #1276 (#1071 S1): okul yöneticisi yetkisi. Ayrı hesap türü / Keycloak rolü değil, onaylı okul öğretmenine
+    /// platform admininin verdiği bayrak (<c>PUT api/admin/teachers/{id}/school-admin</c>). Okulda birden çok yönetici
+    /// olabilir. Yetki claim'den değil DB'den çözülür (<c>ISchoolAdminResolver</c>): yalnız okulu dolu, hesabı onaylı,
+    /// askısız, bağımsız olmayan öğretmende geçerlidir. Öğretmen okul değiştirince, bağımsızlığa geçince ya da askıya
+    /// alınınca aynı yazımda temizlenir.
+    /// </summary>
+    public bool IsSchoolAdmin { get; set; }
+
+    /// <summary>issue #1276: okul yöneticisi yetkisinin verildiği an (UTC); yetki yokken null. Veren aktör audit'te.</summary>
+    public DateTime? SchoolAdminGrantedAt { get; set; }
+
     [MaxLength(20)]
     public string? ThemePreset { get; set; } = "standard"; // 🎨 Theme tercihi (minimal, standard, enhanced, full)
 

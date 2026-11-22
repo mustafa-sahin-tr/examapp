@@ -246,6 +246,9 @@ public class TeacherService : ITeacherService
                 teacher.ApprovalStatus = TeacherApprovalStatus.Pending;
                 teacher.RequestedSchoolId = null;
                 teacher.SchoolId = null;
+                // issue #1276: okul bağı kalkınca okul yöneticisi yetkisi de düşer.
+                teacher.IsSchoolAdmin = false;
+                teacher.SchoolAdminGrantedAt = null;
             }
             else if (opensSchoolRequest)
             {

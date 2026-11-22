@@ -145,6 +145,9 @@ public class AdminTeacherSuspensionService : IAdminTeacherSuspensionService
                     .SetProperty(t => t.AccountApprovedAt, (DateTime?)null)
                     .SetProperty(t => t.AccountSuspendedAt, now)
                     .SetProperty(t => t.AccountSuspensionReason, trimmedReason)
+                    // issue #1276: askı okul yöneticisi yetkisini de kaldırır; askı kalkınca kendiliğinden geri gelmez.
+                    .SetProperty(t => t.IsSchoolAdmin, false)
+                    .SetProperty(t => t.SchoolAdminGrantedAt, (DateTime?)null)
                     .SetProperty(t => t.UpdateTime, now), CancellationToken.None);
 
             if (affected == 0)

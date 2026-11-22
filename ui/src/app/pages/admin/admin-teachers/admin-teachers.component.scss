@@ -29,3 +29,11 @@
   font-variant-numeric: tabular-nums;
   opacity: 0.8;
 }
+
+// Issue #1276 — okul yöneticisi rozeti (okul adının yanında).
+.al__chip--school-admin {
+  margin-inline-start: 6px;
+  color: var(--ms-info-text);
+  background: var(--ms-info-surface-weak);
+  border-color: var(--ms-info-border);
+}

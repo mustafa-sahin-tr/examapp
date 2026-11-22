@@ -37,6 +37,8 @@ export interface AdminTeacherListItem {
   accountSuspendedAt: string | null;
   /** Issue #289: admin'in girdiği askı nedeni; askıda değilse null. Yalnız admin'e döner. */
   accountSuspensionReason: string | null;
+  /** Issue #1276: öğretmen kendi okulunun okul yöneticisi. */
+  isSchoolAdmin?: boolean;
 }
 
 /** Sorgu parametreleri; `schoolId` ile `unassigned=true` birlikte gönderilemez. */

@@ -646,3 +646,14 @@ Okul sayısı 54 binin üstünde olduğu için liste hiçbir ekrana bütün inme
   - **CSP:** ses blob olarak gelip `blob:` adresiyle çalındığı için `media-src 'self' blob:` (üç yerde + auth-ui, bkz. local-dev.md).
 - **Kapsam dışı (ilk sürüm):** plan hakkı, pratik oturumunda ve veli panelinde oynatma, bir soruya birden çok çözüm, mp4 dışa aktarım,
   yayınevi çözümlerinin içe aktarımı, döküm / altyazı.
+
+## Okul yöneticisi yetkisi (#1276, epic #1071)
+
+Okul yöneticisi ayrı hesap türü ya da Keycloak rolü değildir: onaylı okul öğretmenindeki `Teachers.IsSchoolAdmin` bayrağıdır
+(+ `SchoolAdminGrantedAt`; veren aktör `AdminUserActionLogs`'ta `SchoolAdminGranted` / `SchoolAdminRevoked`). Okulda birden
+çok yönetici olabilir. Yalnız platform admini verir / kaldırır: `PUT api/admin/teachers/{id}/school-admin`
+`{ "isSchoolAdmin": bool }` (aynı değer `changed=false`, audit yok; okulsuz / bağımsız, hesabı onaysız ya da askıdaki
+öğretmene vermek 409). Admin öğretmen listesinde "Okul yöneticisi" rozeti ve "Yönet" menüsünde ver / kaldır (onay dialog'u).
+Yetki claim'den değil DB'den çözülür (`ISchoolAdminResolver`); okul değişimi, bağımsızlığa geçiş ve askı bayrağı temizler
+(`.claude/rules/school-change.md`). Bu dilimde yetkiyi kullanan uç yok; okul yöneticisi onay kuyrukları #1277 ve #1278'de.
+Admini olmayan okulda onaylar platform admininde kalır.

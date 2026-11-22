@@ -91,6 +91,7 @@ describe('AdminTeachersComponent', () => {
             suspendTeacher: vi.fn().mockName("AdminService.suspendTeacher"),
             unsuspendTeacher: vi.fn().mockName("AdminService.unsuspendTeacher"),
             changeTeacherSchool: vi.fn().mockName("AdminService.changeTeacherSchool"),
+            setTeacherSchoolAdmin: vi.fn().mockName("AdminService.setTeacherSchoolAdmin"),
             getTeacherSchoolChangeImpact: vi.fn().mockName("AdminService.getTeacherSchoolChangeImpact")
                 .mockReturnValue(of({ schoolOnlyWorksheetCount: 0 }))
         } as unknown as MockedObject<AdminService>;
@@ -1158,5 +1159,73 @@ describe('AdminTeachersComponent', () => {
         component.changeSchool(row);
 
         expect(openSpy).toHaveBeenCalledTimes(1);
+    });
+    // ── Okul yöneticisi (issue #1276) ───────────────────────────────────────
+
+    function confirmDialogReturns(confirmed: boolean) {
+        const dialog = fixture.debugElement.injector.get(MatDialog);
+        return vi.spyOn(dialog, 'open').mockReturnValue({ afterClosed: () => of(confirmed) } as never);
+    }
+
+    it('schoolAdmin_EligibleTeacher_GrantAfterConfirm_CallsApiAndReloads', async () => {
+        configure();
+        create();
+        adminService.setTeacherSchoolAdmin.mockReturnValue(of({ teacherId: 12, isSchoolAdmin: true, schoolId: 5, changed: true }));
+        const openSpy = confirmDialogReturns(true);
+        const callsBefore = adminService.getTeachers.mock.calls.length;
+
+        const items = rowMenuItems('school-admin');
+        expect(items.length).toBe(1);
+        expect(items[0].textContent).toContain(adminTr.schoolAdmin.grantAction);
+        items[0].click();
+        fixture.detectChanges();
+
+        expect(openSpy).toHaveBeenCalledTimes(1);
+        expect(adminService.setTeacherSchoolAdmin).toHaveBeenCalledWith(12, true);
+        expect(snackBar.open).toHaveBeenCalled();
+        expect(adminService.getTeachers.mock.calls.length).toBeGreaterThan(callsBefore);
+        expect(component.schoolAdminBusy()).toBe(false);
+    });
+
+    it('schoolAdmin_CancelInConfirm_SendsNoRequest', () => {
+        configure();
+        create();
+        confirmDialogReturns(false);
+
+        rowMenuItems('school-admin')[0].click();
+        fixture.detectChanges();
+
+        expect(adminService.setTeacherSchoolAdmin).not.toHaveBeenCalled();
+        expect(component.schoolAdminBusy()).toBe(false);
+    });
+
+    it('schoolAdmin_ExistingAdmin_ShowsChipAndRevokeAction', () => {
+        configure();
+        adminService.getTeachers.mockReturnValue(of(paged([teacher({ isSchoolAdmin: true })])));
+        create();
+        adminService.setTeacherSchoolAdmin.mockReturnValue(of({ teacherId: 12, isSchoolAdmin: false, schoolId: 5, changed: true }));
+        confirmDialogReturns(true);
+
+        expect(fixture.nativeElement.querySelector('[data-testid="school-admin-chip"]')?.textContent).toContain(adminTr.schoolAdmin.chip);
+        const items = rowMenuItems('school-admin');
+        expect(items[0].textContent).toContain(adminTr.schoolAdmin.revokeAction);
+        items[0].click();
+        fixture.detectChanges();
+
+        expect(adminService.setTeacherSchoolAdmin).toHaveBeenCalledWith(12, false);
+    });
+
+    it('schoolAdmin_IneligibleTeachers_HaveNoGrantAction', () => {
+        configure();
+        adminService.getTeachers.mockReturnValue(of(paged([
+            teacher({ id: 1, schoolId: null, schoolName: null }),
+            teacher({ id: 2, isIndependentTutor: true }),
+            teacher({ id: 3, accountApproved: false }),
+            teacher({ id: 4, accountApproved: false, accountSuspended: true }),
+        ])));
+        create();
+
+        expect(rowMenuItems('school-admin').length).toBe(0);
+        expect(fixture.nativeElement.querySelector('[data-testid="school-admin-chip"]')).toBeNull();
     });
 });

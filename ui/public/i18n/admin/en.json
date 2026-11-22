@@ -587,6 +587,22 @@
       "generic": "Something went wrong while saving the school. Please try again."
     }
   },
+  "schoolAdmin": {
+    "chip": "School admin",
+    "grantAction": "Make school admin",
+    "grantActionFor": "Make {{name}} a school admin",
+    "revokeAction": "Remove school admin",
+    "revokeActionFor": "Remove school admin from {{name}}",
+    "grantTitle": "Make school admin?",
+    "grantText": "{{name}} will become an admin of {{school}}. School admins will later be able to approve their school's teacher applications and membership requests.",
+    "revokeTitle": "Remove school admin?",
+    "revokeText": "{{name}} will no longer be an admin of {{school}}; the teacher account is not affected.",
+    "confirm": "Confirm",
+    "granted": "{{name}} is now a school admin.",
+    "revoked": "{{name}} is no longer a school admin.",
+    "failed": "The action could not be completed. Please refresh and try again.",
+    "close": "Close"
+  },
   "badgeDefinitions": {
     "title": "Badge Definitions",
     "subtitle": "Create and edit badges; activate or deactivate them.",

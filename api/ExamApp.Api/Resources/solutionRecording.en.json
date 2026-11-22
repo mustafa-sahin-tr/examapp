@@ -5,6 +5,7 @@
     "invalidAudio": "The audio could not be read (WebM, MP4, Ogg or MP3, up to 12 MB).",
     "invalidStrokes": "The drawing data is not valid.",
     "invalidDuration": "A recording can be at most 5 minutes long.",
-    "storageFailed": "The recording could not be stored. Try again."
+    "storageFailed": "The recording could not be stored. Try again.",
+    "recordedByOther": "Another teacher recorded this question's solution; only they, the question owner or an admin can change it."
   }
 }

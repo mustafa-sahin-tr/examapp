@@ -248,20 +248,21 @@ public class QuestionQueryService : IQuestionQueryService
                 .Where(QuestionOwnershipGuard.OwnedBy(_context, solutionViewerUserId))
                 .Select(q => q.Id)
                 .ToListAsync(ct)).ToHashSet();
-        var recordedIds = ownedIds.Count == 0
-            ? new HashSet<int>()
-            : (await _context.QuestionSolutionRecordings.AsNoTracking()
-                .Where(r => ownedIds.Contains(r.QuestionId))
-                .Select(r => r.QuestionId)
-                .ToListAsync(ct)).ToHashSet();
+        // #1286: testi görebilen öğretmen kayıtları izler; kayıt yoksa ya da kendisininse kaydeder.
+        var recorders = questionIds.Count == 0
+            ? new Dictionary<int, int>()
+            : await _context.QuestionSolutionRecordings.AsNoTracking()
+                .Where(r => questionIds.Contains(r.QuestionId))
+                .ToDictionaryAsync(r => r.QuestionId, r => r.RecordedByUserId, ct);
 
         var now = DateTime.UtcNow;
         foreach (var row in rows)
         {
             var owned = ownedIds.Contains(row.Dto.Id);
             ApplyInteractionSolution(row.Dto, row.InteractionSolution, owned);
-            row.Dto.CanRecordSolution = owned;
-            row.Dto.HasSolutionRecording = recordedIds.Contains(row.Dto.Id);
+            var recorded = recorders.TryGetValue(row.Dto.Id, out var recorder);
+            row.Dto.CanRecordSolution = owned || (solutionViewerUserId > 0 && (!recorded || recorder == solutionViewerUserId));
+            row.Dto.HasSolutionRecording = recorded;
             row.Dto.PrintBlock = QuestionPrintPolicy.BlockReason(row.SourceType, row.IsUnpublished, row.LicenseEndsAt, now);
         }
 

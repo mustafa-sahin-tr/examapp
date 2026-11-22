@@ -13,6 +13,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
+using ExamApp.Api.Services.Tenancy;
+
 namespace ExamApp.Api.Services.AdminUsers;
 
 /// <summary>
@@ -162,6 +164,11 @@ public class AdminStudentSchoolService : IAdminStudentSchoolService
                     .SetProperty(s => s.UpdateTime, now), CancellationToken.None);
             if (affected == 0)
                 return; // commit yok → dispose'da rollback
+
+            // issue #1279: okul gerçekten değişince (okulsuz yapma dahil) aktif şube üyeliği kapanır; geçmiş satır kalır.
+            if (previousSchoolId != schoolId)
+                await SchoolSectionService.EndForSchoolChangeAsync(_context, studentId, actorUserId is > 0 ? actorUserId : null,
+                    now, CancellationToken.None);
 
             if (plan != null)
             {

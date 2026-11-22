@@ -92,4 +92,7 @@ public sealed class SchoolAdminStudentDto
     public int? GradeId { get; init; }
     public string? GradeName { get; init; }
     public DateTime? VerifiedAt { get; init; }
+    /// <summary>issue #1279: aktif şube (yoksa null).</summary>
+    public int? SectionId { get; init; }
+    public string? SectionName { get; init; }
 }

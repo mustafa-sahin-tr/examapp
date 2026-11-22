@@ -682,3 +682,16 @@ yöneticiler önce; dersleri), `GET api/school-admin/students?gradeId=` (üyeli�
 Kapsam `ISchoolAdminOverviewService`'e controller'ın DB'den çözdüğü okul verilir, istemciden okul alınmaz; listeler admin veri
 erişimi audit'ine okul filtresiyle (`TeacherList` / `StudentList`) yazılır. Öğretmenin okuldan çıkarılması yalnız platform
 admininde (kapsam dışı).
+
+### Şubeler (#1279)
+
+`SchoolSections` (okul, sınıf, ad ≤ 20; ad okul + sınıf içinde tr-TR büyük harfe göre tekil, silinmişler hariç — `NormalizedName`) ve
+geçmişli `SchoolSectionMemberships` (öğrenci başına tek aktif üyelik: `EndedAt IS NULL` kısmi tekil indeks; bitişte `EndReason`
+`Moved` / `Removed` / `SectionDeleted` / `SchoolChanged`, satır silinmez). Yönetim yalnız okul yöneticisinde:
+`POST|PUT|DELETE api/school-admin/sections[/{id}]`, `POST .../{id}/students { studentIds }` (1–100; başka şubedekiler taşınır),
+`DELETE .../{id}/students/{studentId}`. Atama yalnız okulun doğrulanmış üyesine (değilse 404, hiçbiri yazılmaz) ve şubenin
+sınıfındaki öğrenciye (değilse 409 `{ studentIds }`). Okuma okulun onaylı, askısız, bağımsız olmayan her öğretmenine:
+`GET api/school-sections[?gradeId]`, `GET api/school-sections/{id}/students`. `GET api/school-admin/students` satırlarına şube
+eklendi, `sectionId` / `unassigned=true` filtreleri (atama diyaloğu). Okul değişimi üyeliği kapatır (`school-change.md`). Sınıf
+değişimi üyeliği kapatmaz (kapsam dışı). UI: okul yöneticisi Okulum → "Şubeler" sekmesi (`/school-admin/sections`), diğer okul
+öğretmenleri menüde "Şubeler" (`/school-sections`, salt okunur); Okulum öğrenci tablosunda şube sütunu.

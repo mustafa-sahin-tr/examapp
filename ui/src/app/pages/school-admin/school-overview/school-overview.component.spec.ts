@@ -28,6 +28,8 @@ const student: SchoolAdminStudent = {
     gradeId: 5,
     gradeName: '5. Sınıf',
     verifiedAt: '2026-10-02T08:00:00Z',
+    sectionId: 4,
+    sectionName: 'A',
 };
 
 describe('SchoolOverviewComponent (issue #1278)', () => {

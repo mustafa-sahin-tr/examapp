@@ -1,0 +1,158 @@
+:host {
+  display: block;
+  padding: 1.5rem;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+}
+
+.ss__toolbar {
+  margin-bottom: 1rem;
+}
+
+.ss__grade {
+  min-width: 200px;
+}
+
+.ss__layout {
+  display: grid;
+  grid-template-columns: minmax(200px, 280px) 1fr;
+  gap: 1.5rem;
+  align-items: start;
+
+  @media (max-width: 720px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ss__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ss__group {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+  margin: 0.75rem 0 0.25rem;
+
+  &:first-child {
+    margin-top: 0;
+  }
+}
+
+.ss__item {
+  display: flex;
+  align-items: center;
+  border-radius: 10px;
+  border: 1px solid transparent;
+
+  &.is-active {
+    border-color: var(--ms-primary, currentColor);
+    background: var(--main-foreground-color);
+  }
+}
+
+.ss__item-main {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ss__item-name {
+  font-weight: 600;
+}
+
+.ss__item-count {
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.ss__detail {
+  min-width: 0;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border, rgba(0, 0, 0, 0.12));
+  background: var(--main-foreground-color);
+}
+
+.ss__detail-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+
+  h2 {
+    margin: 0;
+    font-size: 1.125rem;
+  }
+}
+
+.ss__students {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ss__student {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--ms-border, rgba(0, 0, 0, 0.08));
+
+  &:last-child {
+    border-bottom: 0;
+  }
+}
+
+.ss__student-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ss__student-name {
+  font-weight: 500;
+}
+
+.ss__student-meta {
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.ss__state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2rem 1rem;
+  text-align: center;
+  opacity: 0.85;
+
+  &--error {
+    color: var(--ms-danger-background);
+  }
+}
+
+.ss__empty-icon {
+  font-size: 2.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  opacity: 0.5;
+}

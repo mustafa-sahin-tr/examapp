@@ -58,7 +58,7 @@ export class SchoolOverviewComponent implements OnInit {
   private readonly localeService = inject(LocaleService);
 
   protected readonly teacherColumns = ['name', 'subjects', 'status', 'approvedAt'];
-  protected readonly studentColumns = ['name', 'number', 'grade', 'verifiedAt'];
+  protected readonly studentColumns = ['name', 'number', 'grade', 'section', 'verifiedAt'];
 
   protected readonly summary = signal<SchoolAdminSummary | null>(null);
   protected readonly summaryError = signal(false);

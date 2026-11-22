@@ -29,7 +29,8 @@
     "approvedAt": "Approved",
     "number": "Number",
     "grade": "Grade",
-    "verifiedAt": "Membership approved"
+    "verifiedAt": "Membership approved",
+    "section": "Section"
   },
   "state": {
     "summaryError": "Could not load the school summary.",

@@ -25,8 +25,12 @@ public interface ISchoolAdminOverviewService
 
     Task<Paged<SchoolAdminTeacherDto>> ListTeachersAsync(int schoolId, int page, int pageSize, CancellationToken ct = default);
 
+    /// <summary>
+    /// <paramref name="sectionId"/> verilirse yalnız o şubenin aktif üyeleri, <paramref name="unassigned"/> ise şubesizler
+    /// (#1279 atama diyaloğu).
+    /// </summary>
     Task<Paged<SchoolAdminStudentDto>> ListStudentsAsync(int schoolId, int? gradeId, int page, int pageSize,
-        CancellationToken ct = default);
+        CancellationToken ct = default, int? sectionId = null, bool unassigned = false);
 }
 
 public class SchoolAdminOverviewService : ISchoolAdminOverviewService
@@ -107,12 +111,17 @@ public class SchoolAdminOverviewService : ISchoolAdminOverviewService
     }
 
     public async Task<Paged<SchoolAdminStudentDto>> ListStudentsAsync(int schoolId, int? gradeId, int page, int pageSize,
-        CancellationToken ct = default)
+        CancellationToken ct = default, int? sectionId = null, bool unassigned = false)
     {
         (page, pageSize) = AdminListPaging.Normalize(page, pageSize);
         var query = Students(schoolId);
         if (gradeId is int grade)
             query = query.Where(s => s.GradeId == grade);
+        var memberships = _context.SchoolSectionMemberships.Where(m => m.EndedAt == null && m.Section.SchoolId == schoolId);
+        if (sectionId is int section)
+            query = query.Where(s => memberships.Any(m => m.StudentId == s.Id && m.SectionId == section));
+        else if (unassigned)
+            query = query.Where(s => !memberships.Any(m => m.StudentId == s.Id));
         var totalCount = await query.CountAsync(ct);
         if (!AdminListPaging.TryGetOffset(page, pageSize, totalCount, out var offset))
             return AdminListPaging.EmptyPage<SchoolAdminStudentDto>(page, pageSize, totalCount);
@@ -129,7 +138,9 @@ public class SchoolAdminOverviewService : ISchoolAdminOverviewService
                 s.StudentNumber,
                 s.GradeId,
                 GradeName = s.Grade != null ? s.Grade.Name : null,
-                s.SchoolVerifiedAt
+                s.SchoolVerifiedAt,
+                Section = memberships.Where(m => m.StudentId == s.Id)
+                    .Select(m => new { m.SectionId, m.Section.Name }).FirstOrDefault()
             })
             .ToListAsync(ct);
 
@@ -147,7 +158,9 @@ public class SchoolAdminOverviewService : ISchoolAdminOverviewService
                 StudentNumber = StudentNumberMask.Apply(r.StudentNumber),
                 GradeId = r.GradeId,
                 GradeName = r.GradeName,
-                VerifiedAt = r.SchoolVerifiedAt
+                VerifiedAt = r.SchoolVerifiedAt,
+                SectionId = r.Section?.SectionId,
+                SectionName = r.Section?.Name
             }).ToList()
         };
     }

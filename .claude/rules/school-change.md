@@ -4,6 +4,7 @@ paths:
   - "api/ExamApp.Api/Services/AdminUsers/**"
   - "api/ExamApp.Api/Services/Tenancy/**"
   - "ui/src/app/pages/admin/**"
+  - "ui/src/app/pages/school-admin/**"
   - "**/*Section*"
   - "**/*Announcement*"
   - "**/*Homework*"
@@ -37,6 +38,7 @@ güncellenir. Davranış değişikliği yapacaksan bu tabloyu ve testlerini birl
 | Okulsuz yapma (K6, #541) | `{ "schoolId": null }` (alan yoksa 400): `SchoolId`, `SchoolVerifiedAt`, `SchoolVerifiedByUserId` temizlenir, Keycloak `school_id` kaldırılır, audit `ToSchoolId=null`; zaten okulsuzsa `changed=false`. Eski okulun bütün kapsamı kalkar, doğrudan / platform geneli atamalar kalır, okul liderliği uygulanamaz. Admin dialog'unda "Okulsuz yap" kipi + onay kutusu | Yapılmaz: `schoolId: null` → 400 (kullanıcı kendi register akışını kullanır) | `AdminStudentSchoolServiceTests` (#541), `AdminController{Student,Teacher}SchoolTests` |
 | Bildirim (K5, #542) | Okul gerçekten değişince (`changed=true` ve okul farklı; yalnız üyelik doğrulaması / talep temizliği değil) okul yazımıyla aynı transaction'da `SchoolChangedEvent`: öğrenciye ve o an Active her veliye birer tane (tek alıcı / event). BadgeService `SchoolChangedConsumer` uygulama içi bildirim yazar: değişti / belirlendi / kaldırıldı (#541) metinleri, alıcının dili; veli bildirimi çocuğun paneline gider | Öğretmene tek event; mesaj #539 ile özel yapılan sınav sayısını içerir (0 ise cümle yok) | `Admin{Student,Teacher}SchoolServiceTests` (#542), `SchoolChangedConsumerTests`, `SchoolChangedRabbitPermissionsTests` |
 | Okul yöneticisi yetkisi (#1276) | — | `Teachers.IsSchoolAdmin` okula bağlıdır: okul değişimi (`AdminTeacherSchoolService`, aynı okulda korunur), bağımsızlığa geçiş (`TeacherService.Save`) ve askı (`AdminTeacherSuspensionService`) aynı yazımda temizler; askı kalkınca kendiliğinden geri gelmez. `ISchoolAdminResolver` bayrağı yalnız okullu, onaylı, askısız, bağımsız olmayan öğretmende sayar | `SchoolAdminPermissionTests` |
+| Şube üyeliği (#1279) | Okul gerçekten değişince (okulsuz yapma dahil) okul yazımıyla aynı transaction'da aktif `SchoolSectionMemberships` satırı `EndReason=SchoolChanged` ile kapanır, satır silinmez (geçmiş); yeni okulda şubesiz başlar. Aynı okul isteği üyeliğe dokunmaz. Sınıf değişimi üyeliği kapatmaz (kapsam dışı; atama yalnız şubenin sınıfındaki öğrenciye yapılır) | — | `AdminStudentSchoolServiceTests.School_change_ends_the_active_section_membership_and_keeps_history_issue1279`, `SchoolSectionTests` |
 | Okul geçmişi (K9) | Yalnız `AdminUserActionLogs` (From/To okul, sonuç, #539 `AffectedCount`); kullanıcıya görünür geçmiş ekranı yok | aynı | `Admin{Student,Teacher}SchoolServiceTests` |
 
 Aynı okul isteği `changed=false` döner, audit / önbellek / Keycloak'a dokunmaz (öğretmende bekleyen okul talebi temizleniyorsa

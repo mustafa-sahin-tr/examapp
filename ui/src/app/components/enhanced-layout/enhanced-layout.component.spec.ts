@@ -53,13 +53,18 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
         { id: 'admin-students', route: '/admin/students', labelKey: 'menu.adminStudents', tr: 'Öğrenciler' },
     ];
 
-    function create(roles: string[], unapprovedTeacher = false, schoolAdmin = false): EnhancedLayoutComponent {
+    function create(
+        roles: string[],
+        unapprovedTeacher = false,
+        schoolAdmin = false,
+        independent: boolean | null = null,
+    ): EnhancedLayoutComponent {
         const authStub: Partial<AuthService> = {
             hasRealmRole: (role: string) => roles.includes(role),
             isAuthenticated: () => of(true),
             isUnapprovedTeacher: signal(unapprovedTeacher),
             isSchoolAdmin: signal(schoolAdmin),
-            user: signal(null),
+            user: signal(independent === null ? null : ({ teacher: { isIndependentTutor: independent } } as never)),
         };
         TestBed.configureTestingModule({
             imports: [EnhancedLayoutComponent, translocoTestingModule()],
@@ -99,7 +104,23 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
         const c = create(['Teacher'], false, true);
         expect(c.visibleMenuItems().map((i) => i.route)).toContain('/school-admin/overview');
         const tabs = c.visibleSectionTabs().find((g) => g.some((t) => t.id === 'tab-school-admin-overview')) ?? [];
-        expect(tabs.map((t) => t.route)).toEqual(['/school-admin/overview', '/school-admin/teacher-approvals']);
+        expect(tabs.map((t) => t.route)).toEqual([
+            '/school-admin/overview',
+            '/school-admin/teacher-approvals',
+            '/school-admin/sections',
+        ]);
+        // Issue #1279: okul yöneticisi şubeleri Okulum sekmesinden yönetir; salt okunur menü öğesi görünmez.
+        expect(c.visibleMenuItems().map((i) => i.route)).not.toContain('/school-sections');
+    });
+
+    // Issue #1279: salt okunur Şubeler yalnız okula bağlı olduğu bilinen öğretmende.
+    it('visibleMenuItems_SchoolTeacher_ShowsSchoolSections', () => {
+        const routes = (c: EnhancedLayoutComponent) => c.visibleMenuItems().map((i) => i.route);
+        expect(routes(create(['Teacher'], false, false, false))).toContain('/school-sections');
+        TestBed.resetTestingModule();
+        expect(routes(create(['Teacher'], false, false, true))).not.toContain('/school-sections');
+        TestBed.resetTestingModule();
+        expect(routes(create(['Teacher']))).not.toContain('/school-sections');
     });
 
     it('visibleMenuItems_PlainTeacher_HidesMySchool', () => {

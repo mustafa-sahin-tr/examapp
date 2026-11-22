@@ -107,6 +107,32 @@ public class SchoolAdminOverviewTests : IDisposable
     }
 
     [Fact]
+    public async Task Student_list_shows_section_and_filters_by_section_or_unassigned_issue1279()
+    {
+        var seed = await SeedAsync();
+        await using (var ctx = _db.NewContext())
+        {
+            var section = new SchoolSection { SchoolId = seed.SchoolA, GradeId = seed.Grade5, Name = "A", NormalizedName = "A" };
+            ctx.SchoolSections.Add(section);
+            await ctx.SaveChangesAsync();
+            ctx.SchoolSectionMemberships.Add(new SchoolSectionMembership { SectionId = section.Id, StudentId = seed.StudentA5, StartedAt = DateTime.UtcNow });
+            await ctx.SaveChangesAsync();
+        }
+        await using var check = _db.NewContext();
+        var service = new SchoolAdminOverviewService(check, _authApi);
+
+        var all = await service.ListStudentsAsync(seed.SchoolA, null, 1, 20);
+        all.Items.Single(s => s.StudentId == seed.StudentA5).SectionName.ShouldBe("A");
+        all.Items.Single(s => s.StudentId == seed.StudentA6).SectionId.ShouldBeNull();
+
+        var sectionId = all.Items.Single(s => s.StudentId == seed.StudentA5).SectionId;
+        (await service.ListStudentsAsync(seed.SchoolA, null, 1, 20, default, sectionId)).Items.Select(s => s.StudentId)
+            .ShouldBe([seed.StudentA5]);
+        (await service.ListStudentsAsync(seed.SchoolA, null, 1, 20, default, null, unassigned: true)).Items.Select(s => s.StudentId)
+            .ShouldBe([seed.StudentA6]);
+    }
+
+    [Fact]
     public async Task Names_missing_when_auth_api_fails_but_list_still_returns()
     {
         var seed = await SeedAsync();

@@ -39,6 +39,15 @@ export interface SchoolAdminStudent {
   gradeId: number | null;
   gradeName: string | null;
   verifiedAt: string | null;
+  /** Issue #1279: aktif şube (yoksa null). */
+  sectionId: number | null;
+  sectionName: string | null;
+}
+
+/** Issue #1279: öğrenci listesi ek filtreleri (şube üyeleri ya da şubesizler). */
+export interface SchoolAdminStudentFilter {
+  sectionId?: number | null;
+  unassigned?: boolean;
 }
 
 /**
@@ -65,10 +74,20 @@ export class SchoolAdminService implements TeacherApplicationsApi {
     return this.http.get<Paged<SchoolAdminTeacher>>(`${this.baseUrl}/teachers`, { params });
   }
 
-  getStudents(page: number, pageSize: number, gradeId: number | null): Observable<Paged<SchoolAdminStudent>> {
+  getStudents(
+    page: number,
+    pageSize: number,
+    gradeId: number | null,
+    filter: SchoolAdminStudentFilter = {},
+  ): Observable<Paged<SchoolAdminStudent>> {
     let params = new HttpParams().set('page', page).set('pageSize', pageSize);
     if (gradeId != null) {
       params = params.set('gradeId', gradeId);
+    }
+    if (filter.sectionId != null) {
+      params = params.set('sectionId', filter.sectionId);
+    } else if (filter.unassigned) {
+      params = params.set('unassigned', true);
     }
     return this.http.get<Paged<SchoolAdminStudent>>(`${this.baseUrl}/students`, { params });
   }

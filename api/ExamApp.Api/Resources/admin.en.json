@@ -97,6 +97,14 @@
     "gradePromotion": {
       "notFound": "This student has no grade promotion to undo.",
       "gradeChanged": "The student's grade changed after the promotion; nothing was undone."
+    },
+    "schoolSection": {
+      "notFound": "Section or student not found.",
+      "invalid": "Section name must be 1–20 characters with a grade; the student list must have 1–100 students.",
+      "duplicate": "A section with this name already exists in this grade.",
+      "gradeMismatch": "Some students are in a different grade than the section.",
+      "conflict": "The section changed at the same time; refresh and try again.",
+      "notSchoolTeacher": "Only approved teachers of a school can view its sections."
     }
   }
 }

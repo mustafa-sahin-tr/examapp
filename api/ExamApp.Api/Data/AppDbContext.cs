@@ -256,6 +256,9 @@ public class AppDbContext : DbContext
     public DbSet<SchoolSection> SchoolSections { get; set; } // issue #1279
     public DbSet<SchoolSectionMembership> SchoolSectionMemberships { get; set; } // issue #1279
     public DbSet<SchoolAnnouncement> SchoolAnnouncements { get; set; } // issue #1281
+    public DbSet<SchoolHomework> SchoolHomeworks { get; set; } // issue #1282
+    public DbSet<SchoolHomeworkStudent> SchoolHomeworkStudents { get; set; } // issue #1282
+    public DbSet<SchoolHomeworkProgress> SchoolHomeworkProgress { get; set; } // issue #1282
     public DbSet<TeacherSponsorship> TeacherSponsorships { get; set; } // issue #1115
     public DbSet<QuestionHintSet> QuestionHintSets { get; set; } // issue #1113
     public DbSet<QuestionHintStep> QuestionHintSteps { get; set; } // issue #1113
@@ -1624,6 +1627,34 @@ public class AppDbContext : DbContext
             e.Property(a => a.Target).HasConversion<string>().HasMaxLength(16);
             e.HasIndex(a => new { a.SenderUserId, a.CreatedAt });
             e.HasIndex(a => a.SchoolId);
+        });
+        // issue #1282: düz ödev — öğretmenin listesi (TeacherUserId, CreatedAt), öğrenci görünümü (okul + sınıf, şube); hedef
+        // öğrencileri ve öğrenci başına durum. Silinmiş öğrencinin satırları okumalarda görünmez.
+        modelBuilder.Entity<SchoolHomework>(e =>
+        {
+            e.HasOne(h => h.School).WithMany().HasForeignKey(h => h.SchoolId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(h => h.Subject).WithMany().HasForeignKey(h => h.SubjectId).OnDelete(DeleteBehavior.Restrict);
+            e.Property(h => h.Target).HasConversion<string>().HasMaxLength(16);
+            e.HasIndex(h => new { h.TeacherUserId, h.CreatedAt });
+            e.HasIndex(h => new { h.SchoolId, h.TargetGradeId, h.DueDate });
+            e.HasIndex(h => h.TargetSectionId);
+        });
+        modelBuilder.Entity<SchoolHomeworkStudent>(e =>
+        {
+            e.HasKey(x => new { x.HomeworkId, x.StudentId });
+            e.HasOne(x => x.Homework).WithMany(h => h.Students).HasForeignKey(x => x.HomeworkId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Student).WithMany().HasForeignKey(x => x.StudentId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.StudentId);
+            e.HasQueryFilter(x => !x.Student.IsDeleted);
+        });
+        modelBuilder.Entity<SchoolHomeworkProgress>(e =>
+        {
+            e.HasOne(x => x.Homework).WithMany().HasForeignKey(x => x.HomeworkId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Student).WithMany().HasForeignKey(x => x.StudentId).OnDelete(DeleteBehavior.Cascade);
+            e.Property(x => x.TeacherStatus).HasConversion<string>().HasMaxLength(16);
+            e.HasIndex(x => new { x.HomeworkId, x.StudentId }).IsUnique();
+            e.HasIndex(x => x.StudentId);
+            e.HasQueryFilter(x => !x.Student.IsDeleted);
         });
 
         // Soru başına tek kaynak; kırpma hash'i tekrar kontrolü için indeksli (tekil değil: Force ile ikinci kayıt mümkün).

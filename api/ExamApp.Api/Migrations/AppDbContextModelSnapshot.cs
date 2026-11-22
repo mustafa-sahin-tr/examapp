@@ -5088,6 +5088,128 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("SchoolAnnouncements");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.SchoolHomework", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BookName")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("DueDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Pages")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<int>("SchoolId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SubjectId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Target")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int?>("TargetGradeId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TargetLabel")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int?>("TargetSectionId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TeacherUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubjectId");
+
+                    b.HasIndex("TargetSectionId");
+
+                    b.HasIndex("TeacherUserId", "CreatedAt");
+
+                    b.HasIndex("SchoolId", "TargetGradeId", "DueDate");
+
+                    b.ToTable("SchoolHomeworks");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.SchoolHomeworkProgress", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("CheckedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CheckedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("HomeworkId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("StudentDoneAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TeacherNote")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("TeacherStatus")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentId");
+
+                    b.HasIndex("HomeworkId", "StudentId")
+                        .IsUnique();
+
+                    b.ToTable("SchoolHomeworkProgress");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.SchoolHomeworkStudent", b =>
+                {
+                    b.Property<int>("HomeworkId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("HomeworkId", "StudentId");
+
+                    b.HasIndex("StudentId");
+
+                    b.ToTable("SchoolHomeworkStudents");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.SchoolLicense", b =>
                 {
                     b.Property<int>("Id")
@@ -11771,6 +11893,63 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("School");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.SchoolHomework", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.School", "School")
+                        .WithMany()
+                        .HasForeignKey("SchoolId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Subject", "Subject")
+                        .WithMany()
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("School");
+
+                    b.Navigation("Subject");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.SchoolHomeworkProgress", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.SchoolHomework", "Homework")
+                        .WithMany()
+                        .HasForeignKey("HomeworkId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ExamApp.Api.Data.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Homework");
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.SchoolHomeworkStudent", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.SchoolHomework", "Homework")
+                        .WithMany("Students")
+                        .HasForeignKey("HomeworkId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ExamApp.Api.Data.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Homework");
+
+                    b.Navigation("Student");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.SchoolLicense", b =>
                 {
                     b.HasOne("ExamApp.Api.Data.School", "School")
@@ -12632,6 +12811,11 @@ namespace ExamApp.Api.Migrations
             modelBuilder.Entity("ExamApp.Api.Data.Reward", b =>
                 {
                     b.Navigation("StudentRewards");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.SchoolHomework", b =>
+                {
+                    b.Navigation("Students");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Student", b =>

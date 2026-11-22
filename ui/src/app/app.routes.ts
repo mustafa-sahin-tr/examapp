@@ -361,6 +361,18 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/announcements/announcements.component').then((m) => m.AnnouncementsComponent),
       },
       {
+        // Issue #1282: düz ödev — okulun onaylı öğretmeni verir ve kontrol eder (okul ve kapsam backend'de).
+        path: 'homework',
+        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],
+        loadComponent: () => import('./pages/homework/homework.component').then((m) => m.HomeworkComponent),
+      },
+      {
+        // Issue #1282: öğrencinin ödevleri — "yaptım" işareti, öğretmen kontrolü ve gecikme.
+        path: 'my-homework',
+        canActivate: [authGuard, roleGuard('Student')],
+        loadComponent: () => import('./pages/my-homework/my-homework.component').then((m) => m.MyHomeworkComponent),
+      },
+      {
         // Issue #1277: okul yöneticisi — kendi okulunun öğretmen başvuruları (aynı sayfa, okul kapsamı).
         path: 'school-admin/teacher-approvals',
         canActivate: [authGuard, schoolAdminGuard],

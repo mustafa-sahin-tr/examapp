@@ -48,6 +48,13 @@ public class WorksheetAssignment : BaseEntity
     public DateTime? EndAt { get; set; }
 
     /// <summary>
+    /// issue #1283 (#1071 S8): öğretmen bu atamayı ödev olarak verdi — öğretmenin "Ödevler" ve öğrencinin "Ödevlerim" listesinde
+    /// görünür; durum oturumdan otomatik çözülür (bitirince tamamlandı, teslimde bitmediyse gecikmiş). Teslim tarihi zorunludur.
+    /// Veli gecikme bildirimi zaten teslim tarihli her atama için çalışır (<c>ParentHomeworkOverdueSweepJob</c>).
+    /// </summary>
+    public bool IsHomework { get; set; }
+
+    /// <summary>
     /// issue #105: bu atama için yorum-soru açık/kapalı override'ı. null = worksheet varsayılanı
     /// (<see cref="Worksheet.CommentsEnabled"/>). Öğrencinin ilgili aktif ataması varsa etkin değer
     /// <c>CommentsEnabledOverride ?? Worksheet.CommentsEnabled</c>.

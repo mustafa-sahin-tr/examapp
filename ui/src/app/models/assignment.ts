@@ -83,6 +83,8 @@ export interface TeacherWorksheetAssignment {
   endAt?: string | null;
   /** Issue #105: atama bazlı yorum-soru override'ı; null = worksheet varsayılanı. */
   commentsEnabledOverride?: boolean | null;
+  /** Issue #1283: ödev olarak verildi. */
+  isHomework?: boolean;
   studentCount: number;
   completedCount: number;
   inProgressCount: number;
@@ -124,6 +126,8 @@ export interface WorksheetAssignmentRequest {
   endAt?: string | null;
   /** Issue #105: bu atamaya özel yorum-soru açık/kapalı; null = worksheet varsayılanı. */
   commentsEnabledOverride?: boolean | null;
+  /** Issue #1283: ödev olarak ver (bitiş zamanı zorunlu); öğrencinin "Ödevlerim" listesinde görünür. */
+  isHomework?: boolean;
 }
 
 export interface ApiResponse {

@@ -124,3 +124,15 @@
 .mh__state--error {
   color: var(--ms-danger-text);
 }
+
+// Issue #1283: test / etkinlik ödevi — tür etiketi ve "devam ediyor".
+.mh__kind {
+  font-size: 0.75rem;
+  color: var(--ms-text-medium);
+}
+
+.mh__badge--progress {
+  color: var(--ms-info-text);
+  background: var(--ms-info-surface-weak);
+  border-color: var(--ms-info-border);
+}

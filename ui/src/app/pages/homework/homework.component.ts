@@ -30,8 +30,10 @@ import {
   HomeworkService,
   HomeworkStudentStatus,
   HomeworkTarget,
+  TeacherAssignmentHomework,
   TeacherHomework,
 } from '../../services/homework.service';
+import { RouterLink } from '@angular/router';
 import { LocaleService } from '../../services/locale.service';
 import { SchoolSection, SchoolSectionService, SchoolSectionStudent } from '../../services/school-section.service';
 import { SubjectService } from '../../services/subject.service';
@@ -70,6 +72,7 @@ export function localIsoDate(date: Date): string {
     MatPaginatorModule,
     MatProgressSpinnerModule,
     MatSelectModule,
+    RouterLink,
     TranslocoDirective,
   ],
   providers: [provideTranslocoScope(HOMEWORK_SCOPE)],
@@ -122,6 +125,8 @@ export class HomeworkComponent implements OnInit {
   protected readonly page = signal(0);
   protected readonly listLoading = signal(false);
   protected readonly listError = signal(false);
+  /** Issue #1283: ödev olarak verilen test / etkinlik atamaları (yüklenemezse boş; bölüm ipucunu gösterir). */
+  protected readonly assignmentItems = signal<TeacherAssignmentHomework[]>([]);
 
   protected readonly openId = signal<number | null>(null);
   protected readonly detail = signal<HomeworkDetail | null>(null);
@@ -179,6 +184,10 @@ export class HomeworkComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({ next: (s) => this.subjects.set(s ?? []), error: () => this.subjects.set([]) });
     this.loadList();
+    this.service
+      .assignments()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({ next: (a) => this.assignmentItems.set(a ?? []), error: () => this.assignmentItems.set([]) });
   }
 
   protected setTarget(target: HomeworkTarget): void {
@@ -471,6 +480,31 @@ export class HomeworkComponent implements OnInit {
     add('count.NotDone', h.notDoneCount);
     add('count.overdue', h.overdueCount);
     return parts.join(' · ');
+  }
+
+  /** Issue #1283: "24 öğrenci · 10 tamamladı · 2 devam ediyor · 3 gecikti" (sıfırlar yazılmaz). */
+  protected assignmentCountsText(a: TeacherAssignmentHomework): string {
+    const parts = [this.t('count.students', { count: a.studentCount })];
+    const add = (key: string, count: number) => {
+      if (count > 0) parts.push(this.t(key, { count }));
+    };
+    add('count.completed', a.completedCount);
+    add('count.inProgress', a.inProgressCount);
+    add('count.overdue', a.overdueCount);
+    return parts.join(' · ');
+  }
+
+  protected formatDateTime(iso: string): string {
+    const date = new Date(iso);
+    return Number.isNaN(date.getTime())
+      ? '—'
+      : date.toLocaleString(this.localeService.localeDefinition().angularLocale, {
+          day: 'numeric',
+          month: 'short',
+          weekday: 'short',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
   }
 
   protected formatDay(iso: string): string {

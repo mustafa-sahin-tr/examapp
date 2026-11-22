@@ -7,7 +7,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
-import { HomeworkService, StudentHomework } from '../../services/homework.service';
+import { RouterLink } from '@angular/router';
+import { HomeworkService, StudentAssignmentHomework, StudentHomework } from '../../services/homework.service';
 import { LocaleService } from '../../services/locale.service';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { backendMessage } from '../../shared/utils/admin-action-error.util';
@@ -17,11 +18,13 @@ import { HOMEWORK_SCOPE } from '../homework/homework.component';
  * Issue #1282 (#1071 S7): öğrencinin düz ödevleri. "Yapılacaklar" (öğretmen henüz kontrol etmedi; gecikmişler işaretli) ve
  * "Kontrol edilenler" (Yapıldı / Kısmen / Yapılmadı + öğretmen notu). Öğrenci "Yaptım" der ya da geri alır; öğretmen kontrol
  * ettikten sonra işaret kilitlenir (sunucu 409). Puan yok.
+ * Issue #1283 (#1071 S8): ödev olarak verilen test / etkinlikler ayrı bölümde; durum oturumdan kendiliğinden (bitirince tamamlandı,
+ * teslimde bitmediyse gecikti). Bu liste yüklenemezse düz ödevler yine görünür (bölüm gizlenir).
  */
 @Component({
   selector: 'app-my-homework',
   standalone: true,
-  imports: [PageHeaderComponent, MatButtonModule, MatIconModule, MatProgressSpinnerModule, TranslocoDirective],
+  imports: [PageHeaderComponent, MatButtonModule, MatIconModule, MatProgressSpinnerModule, RouterLink, TranslocoDirective],
   providers: [provideTranslocoScope(HOMEWORK_SCOPE)],
   templateUrl: './my-homework.component.html',
   styleUrl: './my-homework.component.scss',
@@ -38,6 +41,9 @@ export class MyHomeworkComponent implements OnInit {
   protected readonly loading = signal(true);
   protected readonly loadError = signal<string | null>(null);
   protected readonly savingId = signal<number | null>(null);
+  /** Issue #1283: test / etkinlik ödevleri (teslim sırasıyla). */
+  protected readonly assignmentItems = signal<StudentAssignmentHomework[]>([]);
+  protected readonly nothing = computed(() => this.items().length === 0 && this.assignmentItems().length === 0);
 
   /** Kontrol edilmemişler, teslim gününe göre (sunucu sırası). */
   protected readonly open = computed(() => this.items().filter((h) => !h.teacherStatus));
@@ -69,6 +75,26 @@ export class MyHomeworkComponent implements OnInit {
         next: (items) => this.items.set(items ?? []),
         error: (err: HttpErrorResponse) => this.loadError.set(backendMessage(err) ?? this.t('state.error')),
       });
+    this.service
+      .myAssignments()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (items) => this.assignmentItems.set(items ?? []),
+        error: () => this.assignmentItems.set([]),
+      });
+  }
+
+  protected formatDateTime(iso: string): string {
+    const date = new Date(iso);
+    return Number.isNaN(date.getTime())
+      ? '—'
+      : date.toLocaleString(this.localeService.localeDefinition().angularLocale, {
+          day: 'numeric',
+          month: 'short',
+          weekday: 'short',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
   }
 
   protected toggleDone(h: StudentHomework): void {

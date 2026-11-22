@@ -53,7 +53,9 @@
     "Done": "{{count}} done",
     "Partial": "{{count}} partial",
     "NotDone": "{{count}} not done",
-    "overdue": "{{count}} overdue"
+    "overdue": "{{count}} overdue",
+    "completed": "{{count}} completed",
+    "inProgress": "{{count}} in progress"
   },
   "remove": {
     "title": "Remove homework",
@@ -80,6 +82,22 @@
     "checked": "Checked",
     "done": "I did it",
     "undo": "Undo",
-    "marked": "You marked it done; your teacher will check it."
+    "marked": "You marked it done; your teacher will check it.",
+    "assignments": "Test and activity homework"
+  },
+  "assignments": {
+    "title": "Test and activity homework",
+    "empty": "Pick “Give as homework” when assigning a test or activity and it shows up here; it completes on its own when the student finishes.",
+    "progress": "Progress"
+  },
+  "kind": {
+    "Test": "Test",
+    "Activity": "Activity"
+  },
+  "auto": {
+    "Completed": "Completed",
+    "InProgress": "In progress",
+    "start": "Start",
+    "continue": "Continue"
   }
 }

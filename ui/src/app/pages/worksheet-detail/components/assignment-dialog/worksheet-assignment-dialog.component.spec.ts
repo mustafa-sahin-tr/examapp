@@ -169,6 +169,26 @@ describe('WorksheetAssignmentDialogComponent', () => {
         expect(new Date(request.startAt).getTime()).toBe(new Date(2026, 9, 30, 9, 0).getTime());
     });
 
+    // Issue #1283: ödev olarak ver bitiş zamanını açar; bitiş kapatılınca ödev de kalkar.
+    it('homework turns on the end time and is sent with the request', () => {
+        const fixture = create({ isIndependentTutor: true });
+        const form = fixture.componentInstance['form'];
+        form.controls.studentId.setValue(11);
+        form.controls.isHomework.setValue(true);
+        expect(form.controls.hasEndDate.value).toBe(true);
+        form.controls.endDate.setValue(new Date(2030, 0, 10));
+        fixture.componentInstance['submit']();
+        const request = (vi.mocked(dialogRef.close).mock.lastCall![0] as { request: { isHomework?: boolean; endAt?: string } }).request;
+        expect(request.isHomework).toBe(true);
+        expect(request.endAt).toBeTruthy();
+
+        form.controls.hasEndDate.setValue(false);
+        expect(form.controls.isHomework.value).toBe(false);
+        fixture.componentInstance['submit']();
+        const plain = (vi.mocked(dialogRef.close).mock.lastCall![0] as { request: { isHomework?: boolean } }).request;
+        expect(plain.isHomework).toBeUndefined();
+    });
+
     describe('boş öğrenci listesi (issue #223)', () => {
         const q = (fixture: {
             nativeElement: HTMLElement;

@@ -56,6 +56,7 @@
     "assignment": {
       "targetRequired": "En az bir hedef (öğrenci veya sınıf) seçilmelidir.",
       "studentAndGradeTogether": "Aynı atamada öğrenci ve sınıf birlikte seçilemez.",
+      "homeworkNeedsDueDate": "Ödev olarak vermek için teslim (bitiş) tarihi seçin; platform geneli atama ödev olamaz.",
       "endBeforeStart": "Bitiş zamanı başlangıç zamanından sonra olmalıdır.",
       "worksheetNotFound": "Worksheet bulunamadı.",
       "grantRequired": "Bu testi atamak için sahibinden atama izni istemeniz gerekir.",

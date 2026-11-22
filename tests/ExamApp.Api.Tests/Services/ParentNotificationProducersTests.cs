@@ -250,7 +250,7 @@ public class ParentNotificationProducersTests : IDisposable
     }
 
     private async Task<int> AssignAsync(World w, DateTime? endAt, bool toStudent = true, bool platformWide = false, int? schoolId = null,
-        int? worksheetId = null, DateTime? startAt = null)
+        int? worksheetId = null, DateTime? startAt = null, bool homework = false)
     {
         await using var ctx = _db.NewContext();
         var a = new WorksheetAssignment
@@ -261,7 +261,8 @@ public class ParentNotificationProducersTests : IDisposable
             SchoolId = schoolId,
             IsPlatformWide = platformWide,
             StartAt = startAt ?? _time.Now.UtcDateTime.AddDays(-5),
-            EndAt = endAt
+            EndAt = endAt,
+            IsHomework = homework
         };
         ctx.WorksheetAssignments.Add(a);
         await ctx.SaveChangesAsync();
@@ -467,6 +468,21 @@ public class ParentNotificationProducersTests : IDisposable
         (await SweepAsync(batchSize: 2)).ShouldBe(0);
 
         (await EventsAsync<ParentHomeworkOverdueEvent>()).Count.ShouldBe(3);
+    }
+
+    // issue #1283 (#1071 S8): ödev olarak verilen test atamasının gecikmesi de veliye mevcut süpürücüyle gider; bitirince gitmez.
+    [Fact]
+    public async Task Sweep_notifies_parents_for_overdue_assignment_homework()
+    {
+        var w = await SeedAsync();
+        await LinkAsync(w.ParentA, w.StudentId, ParentStudentLinkStatus.Active);
+        var assignmentId = await AssignAsync(w, Ago(TimeSpan.FromHours(2)), homework: true);
+
+        (await SweepAsync()).ShouldBe(1);
+
+        var e = (await EventsAsync<ParentHomeworkOverdueEvent>()).ShouldHaveSingleItem();
+        e.AssignmentId.ShouldBe(assignmentId);
+        e.ParentUserId.ShouldBe(ParentUserA);
     }
 
     // ---- review fixes (#423) ---------------------------------------------------------------------------------------------

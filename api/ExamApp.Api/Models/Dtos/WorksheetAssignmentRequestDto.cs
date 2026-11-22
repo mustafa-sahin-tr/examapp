@@ -19,4 +19,7 @@ public class WorksheetAssignmentRequestDto
 
     /// <summary>issue #105: bu atamaya özel yorum-soru açık/kapalı. null = worksheet varsayılanı.</summary>
     public bool? CommentsEnabledOverride { get; set; }
+
+    /// <summary>issue #1283: ödev olarak ver (teslim tarihi zorunlu; platform geneli atamada olmaz).</summary>
+    public bool IsHomework { get; set; }
 }

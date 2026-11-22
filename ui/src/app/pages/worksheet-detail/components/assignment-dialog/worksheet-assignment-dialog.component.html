@@ -95,6 +95,11 @@
         </mat-form-field>
       </div>
 
+      <mat-checkbox formControlName="isHomework">{{ t('assignDialog.isHomework') }}</mat-checkbox>
+      @if (form.controls.isHomework.value) {
+        <p class="homework-hint">{{ t('assignDialog.isHomeworkHint') }}</p>
+      }
+
       <mat-checkbox formControlName="hasEndDate">{{ t('assignDialog.hasEndDate') }}</mat-checkbox>
 
       @if (form.controls.hasEndDate.value) {

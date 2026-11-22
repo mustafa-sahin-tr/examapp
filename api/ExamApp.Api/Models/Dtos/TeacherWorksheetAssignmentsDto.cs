@@ -40,6 +40,9 @@ public class TeacherWorksheetAssignmentDto
 
     /// <summary>issue #105: atama bazlı yorum-soru override'ı; null = worksheet varsayılanı.</summary>
     public bool? CommentsEnabledOverride { get; set; }
+
+    /// <summary>issue #1283: ödev olarak verildi.</summary>
+    public bool IsHomework { get; set; }
     public int StudentCount { get; set; }
     public int CompletedCount { get; set; }
     public int InProgressCount { get; set; }

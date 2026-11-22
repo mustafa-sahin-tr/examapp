@@ -106,6 +106,8 @@ export class WorksheetAssignmentDialogComponent {
     studentId: [null as number | null],
     startDate: [new Date(), Validators.required],
     startTime: [currentTimeOfDay(), [Validators.required, Validators.pattern(/^\d{2}:\d{2}$/)]],
+    // Issue #1283: ödev olarak ver — bitiş zamanı (teslim) zorunlu olur.
+    isHomework: [false],
     hasEndDate: [false],
     endDate: [null as Date | null],
     endTime: ['23:59', Validators.pattern(/^\d{2}:\d{2}$/)],
@@ -195,7 +197,16 @@ export class WorksheetAssignmentDialogComponent {
       this.form.controls.studentId.updateValueAndValidity();
     });
 
+    this.form.controls.isHomework.valueChanges.pipe(takeUntilDestroyed()).subscribe((homework) => {
+      if (homework && !this.form.controls.hasEndDate.value) {
+        this.form.controls.hasEndDate.setValue(true);
+      }
+    });
+
     this.form.controls.hasEndDate.valueChanges.pipe(takeUntilDestroyed()).subscribe((hasEnd) => {
+      if (!hasEnd && this.form.controls.isHomework.value) {
+        this.form.controls.isHomework.setValue(false, { emitEvent: false });
+      }
       if (hasEnd) {
         this.form.controls.endDate.addValidators([Validators.required]);
         this.form.controls.endTime.addValidators([Validators.required, Validators.pattern(/^\d{2}:\d{2}$/)]);
@@ -221,7 +232,7 @@ export class WorksheetAssignmentDialogComponent {
       return;
     }
 
-    const { scope, gradeId, studentId, startDate, startTime, hasEndDate, endDate, endTime, commentsOverride } =
+    const { scope, gradeId, studentId, startDate, startTime, isHomework, hasEndDate, endDate, endTime, commentsOverride } =
       this.form.getRawValue();
 
     if (scope === 'grade' && !gradeId) {
@@ -244,6 +255,7 @@ export class WorksheetAssignmentDialogComponent {
       gradeId: scope === 'grade' ? gradeId ?? undefined : undefined,
       studentId: scope === 'student' ? studentId ?? undefined : undefined,
       commentsEnabledOverride: commentsOverrideValue(commentsOverride),
+      ...(isHomework && endAt ? { isHomework: true } : {}),
     };
 
     this.dialogRef.close({ request });

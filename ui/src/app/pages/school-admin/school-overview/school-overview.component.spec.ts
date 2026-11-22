@@ -7,7 +7,7 @@ import { of, throwError } from 'rxjs';
 
 import { SchoolOverviewComponent } from './school-overview.component';
 import { SchoolAdminService, SchoolAdminStudent, SchoolAdminTeacher } from '../../../services/school-admin.service';
-import { CacheService } from '../../../services/cache.service';
+import { GradesService } from '../../../services/grades.service';
 import { LocaleService } from '../../../services/locale.service';
 import { translocoTestingModule } from '../../../shared/testing/transloco-testing';
 import scopeTr from '../../../../../public/i18n/school-overview/tr.json';
@@ -62,7 +62,7 @@ describe('SchoolOverviewComponent (issue #1278)', () => {
             providers: [
                 provideRouter([]),
                 { provide: SchoolAdminService, useValue: service },
-                { provide: CacheService, useValue: { getGrades: () => of([{ id: 5, name: '5. Sınıf' }]) } },
+                { provide: GradesService, useValue: { getGrades: () => of([{ id: 5, name: '5. Sınıf' }]) } },
                 { provide: LocaleService, useValue: { localeDefinition: () => ({ angularLocale: 'tr' }) } },
                 provideNoopAnimations(),
             ],

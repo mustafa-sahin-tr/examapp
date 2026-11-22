@@ -11,7 +11,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { Grade } from '../../../models/student';
-import { CacheService } from '../../../services/cache.service';
+import { GradesService } from '../../../services/grades.service';
 import { LocaleService } from '../../../services/locale.service';
 import {
   SchoolAdminService,
@@ -52,7 +52,7 @@ export const SCHOOL_OVERVIEW_SCOPE = 'school-overview';
 })
 export class SchoolOverviewComponent implements OnInit {
   private readonly service = inject(SchoolAdminService);
-  private readonly cache = inject(CacheService);
+  private readonly gradesService = inject(GradesService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly transloco = inject(TranslocoService);
   private readonly localeService = inject(LocaleService);
@@ -91,10 +91,10 @@ export class SchoolOverviewComponent implements OnInit {
     this.loadSummary();
     this.loadTeachers();
     this.loadStudents();
-    this.cache
+    this.gradesService
       .getGrades()
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({ next: (g) => this.grades.set((g ?? []) as Grade[]), error: () => this.grades.set([]) });
+      .subscribe({ next: (g) => this.grades.set(g ?? []), error: () => this.grades.set([]) });
   }
 
   protected loadSummary(): void {

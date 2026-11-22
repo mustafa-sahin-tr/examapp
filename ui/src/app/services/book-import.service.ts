@@ -39,7 +39,7 @@ import {
   ConfirmBookImportSetup,
   StartBookImportRequest,
 } from '../models/book-import';
-import { LabelingBankQuestion } from '../models/labeling';
+import { LabelingBankBox, LabelingBankQuestion } from '../models/labeling';
 import { WorksheetTeacherSharing } from '../models/test-instance';
 
 /** Aktarım listesinin bir sayfası ("Daha fazla göster" bu kadar ekler). */
@@ -302,15 +302,20 @@ export class BookImportService {
     return this.http.post<void>(`${this.baseUrl}/${id}/tests/${testId}/reimport`, {});
   }
 
-  /** Issue #1023 "İşaretlemede düzelt": testin bir sayfasının taslaklarını işaretleme ekranında düzeltilenlerle değiştirir. */
+  /**
+   * Issue #1023 "İşaretlemede düzelt": testin bir sayfasının taslaklarını işaretleme ekranında düzeltilenlerle değiştirir.
+   * `activities` (#1293): tuvalde kalan etkinlik kutuları; sayfanın bunlarla örtüşmeyen etkinlik taslakları silinir.
+   */
   replacePage(
     id: string,
     testId: number,
     filePage: number,
-    questions: LabelingBankQuestion[]
+    questions: LabelingBankQuestion[],
+    activities?: LabelingBankBox[]
   ): Observable<BookImportPageFix> {
     return this.http.put<BookImportPageFix>(`${this.baseUrl}/${id}/tests/${testId}/pages/${filePage}/questions`, {
       questions,
+      ...(activities ? { activities } : {}),
     });
   }
 

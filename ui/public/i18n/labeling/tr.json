@@ -32,7 +32,7 @@
     "loadFailed": "Aktarım sayfası açılamadı.",
     "save": "Taslakları değiştir",
     "saving": "Kaydediliyor…",
-    "hint": "Sayfadaki çoktan seçmeli sorular bu sayfanın taslaklarının yerine geçer; doğru şık işaretlenmezse kitabın cevap anahtarından alınır.",
+    "hint": "Sayfadaki çoktan seçmeli sorular bu sayfanın taslaklarının yerine geçer; doğru şık işaretlenmezse kitabın cevap anahtarından alınır. Tuvalden sildiğiniz ya da soruya çevirdiğiniz etkinlikler de testten çıkar.",
     "saved": "{{saved}} soru kaydedildi, {{removed}} eski taslak kaldırıldı.",
     "nextPage": "Testin sıradaki sorunlu sayfası açılıyor (s. {{page}}).",
     "nextTest": "Sıradaki sorunlu teste geçiliyor: {{test}}.",
@@ -74,7 +74,9 @@
       "title": "Orijinal sayfa · s. {{page}}",
       "hint": "İşaretli şıklar burada; kutuları soldaki temiz sayfada düzeltin.",
       "close": "Kapat"
-    }
+    },
+    "activityHasOptions": "{{count}} etkinlik bölgesinde şık var; etkinlik soru olarak kaydedilmez. Soru olarak kaydetmek için türünü Soru yapın.",
+    "toQuestion": "Soruya çevir"
   },
   "bank": {
     "save": "Havuza kaydet",

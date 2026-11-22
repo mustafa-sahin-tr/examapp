@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -31,10 +32,12 @@ public interface IBookImportPageFixService
     /// <summary>
     /// Issue #1023 "İşaretlemede düzelt": incelemedeki testin bir sayfasının taslak sorularını işaretleme ekranında düzeltilen
     /// sorularla değiştirir. Görsel işin sayfa görselidir; yeni sorular taslak kaydedilip eskilerinin sırasına bağlanır, eskiler
-    /// silinir. Boş liste sayfanın taslaklarını yalnız siler.
+    /// silinir. Boş liste sayfanın taslaklarını yalnız siler. <paramref name="activities"/> (#1293): tuvalde kalan etkinlik
+    /// kutuları; verilirse sayfanın bunlarla örtüşmeyen etkinlik taslakları (silinen ya da soruya çevrilen) da silinir, null ise
+    /// etkinlik taslaklarına dokunulmaz (hızlı ekleme).
     /// </summary>
     Task<BookImportPageFixResult> ReplacePageAsync(BookImportOwner owner, Guid id, int testId, int filePage,
-        IReadOnlyList<LabelingBankQuestionDto> questions, CancellationToken ct);
+        IReadOnlyList<LabelingBankQuestionDto> questions, CancellationToken ct, IReadOnlyList<LayoutBox>? activities = null);
 
     /// <summary>
     /// Issue #1173: sayfanın yaşayan taslakları (numara, sayfadaki kutu, doğru şık); düzeltme tuvali kutularına numara ve cevabı
@@ -57,7 +60,7 @@ public sealed class BookImportPageFixService(
     : IBookImportPageFixService
 {
     public async Task<BookImportPageFixResult> ReplacePageAsync(BookImportOwner owner, Guid id, int testId, int filePage,
-        IReadOnlyList<LabelingBankQuestionDto> questions, CancellationToken ct)
+        IReadOnlyList<LabelingBankQuestionDto> questions, CancellationToken ct, IReadOnlyList<LayoutBox>? activities = null)
     {
         ArgumentNullException.ThrowIfNull(owner);
         var (error, job, test, page) = await TargetAsync(owner, id, testId, filePage, ct);
@@ -67,18 +70,31 @@ public sealed class BookImportPageFixService(
 
         var bookId = job!.BookId;
         var links = await LinksAsync(test.WorksheetId, bookId, ct);
-        // #1134: sayfanın etkinlik taslakları düzeltmeden etkilenmez (tuval yalnız çoktan seçmeli soruları kaydeder).
+        // #1134: tuval etkinlikleri soru olarak kaydetmez; sayfanın etkinlik taslakları tuvalde kaldıkça (#1293) yerinde kalır.
         var old = links.Where(l => l.FilePage == filePage && l is { IsDraft: true, IsActivity: false }).ToList();
+        var (keptActivities, removedActivities) = SplitActivities(
+            links.Where(l => l.FilePage == filePage && l is { IsDraft: true, IsActivity: true }).ToList(), activities);
         var oldIds = old.Select(l => l.QuestionId).ToList();
-        var start = old.Select(l => l.Number).Where(n => n is not null).Min()
+        var replacedIds = oldIds.Concat(removedActivities.Select(l => l.QuestionId)).ToList();
+        var start = old.Concat(removedActivities).Select(l => l.Number).Where(n => n is not null).Min()
                     ?? (links.Where(l => l.FilePage < filePage).Select(l => l.Number).Max() ?? 0) + 1;
 
         string? image = null;
         var reference = new List<NumberedBox>();
         if (questions.Any(q => !int.TryParse(q.ItemLabel?.Trim(), out var n) || n <= 0))
+        {
             (reference, image) = await ReferenceAsync(page!, links, old, filePage, ct);
-        var numbered = NumberBoxes(questions.Select(q => new LayoutBox(q.X, q.Y, q.Width, q.Height)).ToList(),
-            questions.Select(q => q.ItemLabel).ToList(), reference, start, page.Width);
+            // #1293: silinen etkinliğin yerine çizilen soru etkinliğin tuttuğu numarayı alır.
+            reference.AddRange(removedActivities.Where(l => l is { Number: not null, Box: not null })
+                .Select(l => new NumberedBox(l.Box!.Value, l.Number!.Value)));
+        }
+        // Kalan etkinliklerin numaraları ayrılır (okuma sırasında yer tutarlar, sorular o numarayı almaz).
+        var slots = keptActivities.Where(l => l is { Number: not null, Box: not null }).ToList();
+        var numbered = NumberBoxes(
+                questions.Select(q => new LayoutBox(q.X, q.Y, q.Width, q.Height)).Concat(slots.Select(l => l.Box!.Value)).ToList(),
+                questions.Select(q => q.ItemLabel).Concat(slots.Select(l => (string?)l.Number!.Value.ToString(CultureInfo.InvariantCulture))).ToList(),
+                reference, start, page.Width)
+            .Where(n => n.Index < questions.Count).ToList();
 
         var label = BookQuestionImportStage.SourceLabel(job, test);
         // #1054: hızlı eklemede anahtar yalnız bulunan sayı anahtar uzunluğuna eşitse uygulanır (#1052 ile aynı kural).
@@ -120,10 +136,10 @@ public sealed class BookImportPageFixService(
         {
             await using var tx = await db.Database.BeginTransactionAsync(ct);
             var now = DateTime.UtcNow;
-            if (oldIds.Count > 0)
+            if (replacedIds.Count > 0)
             {
                 await db.Questions.IgnoreQueryFilters([DraftQueryFilter.Key])
-                    .Where(q => oldIds.Contains(q.Id) && q.IsDraft)
+                    .Where(q => replacedIds.Contains(q.Id) && q.IsDraft)
                     .ExecuteUpdateAsync(s => s
                         .SetProperty(q => q.IsDeleted, true)
                         .SetProperty(q => q.DeleteTime, now)
@@ -143,19 +159,22 @@ public sealed class BookImportPageFixService(
                 db.Worksheets.Add(worksheet);
             }
             if (worksheet is not null)
-                Relink(worksheet, links, oldIds, saved.QuestionIds, filePage, owner.UserId, now);
+                Relink(worksheet, links, replacedIds, saved.QuestionIds, filePage, owner.UserId, now,
+                    kept.Select((k, i) => (k.Number, i)).Where(k => k.i < saved.QuestionIds.Count)
+                        .ToDictionary(k => saved.QuestionIds[k.i], k => k.Number),
+                    slots.ToDictionary(l => l.QuestionId, l => l.Number!.Value));
             await db.SaveChangesAsync(ct);
             test.WorksheetId = worksheet?.Id ?? test.WorksheetId;
 
             var live = worksheet?.WorksheetQuestions.Count(wq => !wq.IsDeleted) ?? 0;
             // Anahtarla karşılaştırma yalnız çoktan seçmeli sorularla (etkinlikler anahtarda yok).
-            var liveQuestions = live - links.Count(l => l.IsActivity);
+            var liveQuestions = live - (links.Count(l => l.IsActivity) - removedActivities.Count);
             var flags = ReplacePageFlags(BookImportReviewFlag.Parse(test.ReviewFlagsJson), filePage,
-                old.Select(l => l.Number).OfType<int>().Concat(numbers).ToHashSet(),
+                old.Concat(removedActivities).Select(l => l.Number).OfType<int>().Concat(numbers).ToHashSet(),
                 kept.Where(k => k.Question.CorrectOptionIndex < 0).Select(k => k.Number).ToList(),
                 kept.Where(k => k.Question.Options.Count != BookQuestionImportStage.ExpectedOptions).Select(k => k.Number).ToList(),
                 liveQuestions, test.AnswerKey?.Length, from, to);
-            test.QuestionsFound = Math.Max(0, test.QuestionsFound - old.Count + questions.Count);
+            test.QuestionsFound = Math.Max(0, test.QuestionsFound - old.Count - removedActivities.Count + questions.Count);
             test.QuestionsSaved = live;
             test.DuplicatesSkipped += saved.DuplicateIndexes.Count;
             test.ReviewFlagsJson = BookImportReviewFlag.Serialize(flags);
@@ -169,13 +188,13 @@ public sealed class BookImportPageFixService(
             await tx.CommitAsync(ct);
         });
 
-        await RecordManualAsync(page!, image, questions, owner, ct);
+        await RecordManualAsync(page!, image, questions, activities, owner, ct);
 
         return new(BookImportPageFixError.None, new BookImportPageFixDto
         {
             Saved = saved.Saved,
             Duplicates = saved.DuplicateIndexes.Count,
-            Removed = oldIds.Count,
+            Removed = replacedIds.Count,
             Answerless = kept.Count(k => k.Question.CorrectOptionIndex < 0),
         });
     }
@@ -282,14 +301,16 @@ public sealed class BookImportPageFixService(
 
     /// <summary>
     /// Eski taslakların bağlantıları silinir, yeniler onların yerine (eskisi yoksa önceki sayfaların sorularından sonra)
-    /// girer; sıra 1..n yeniden yazılır.
+    /// girer; sıra 1..n yeniden yazılır. #1293: sayfanın numaralı etkinlikleri (<paramref name="slots"/>) yeni sorularla numara
+    /// sırasına dizilir (soruya çevrilen etkinliğin yanındaki etkinlik sona düşmesin); numarasız etkinlik ("E1") yerinde kalır.
     /// </summary>
     private static void Relink(Worksheet worksheet, List<Link> links, List<int> oldIds, IReadOnlyList<int> newIds, int filePage,
-        int userId, DateTime now)
+        int userId, DateTime now, IReadOnlyDictionary<int, int> newNumbers, IReadOnlyDictionary<int, int> slots)
     {
         var pageOf = links.ToDictionary(l => l.QuestionId, l => l.FilePage);
         var ordered = worksheet.WorksheetQuestions.Where(wq => !wq.IsDeleted).OrderBy(wq => wq.Order).ThenBy(wq => wq.Id).ToList();
-        var at = ordered.FindIndex(wq => oldIds.Contains(wq.QuestionId));
+        var moved = oldIds.Concat(slots.Keys).ToHashSet();
+        var at = ordered.FindIndex(wq => moved.Contains(wq.QuestionId));
         if (at < 0)
         {
             at = ordered.FindLastIndex(wq => pageOf.GetValueOrDefault(wq.QuestionId) is var p && p > 0 && p < filePage) + 1;
@@ -301,15 +322,20 @@ public sealed class BookImportPageFixService(
             wq.DeleteUserId = userId;
         }
 
-        var kept = ordered.Where(wq => !oldIds.Contains(wq.QuestionId)).ToList();
-        var removedBefore = ordered.Take(at).Count(wq => oldIds.Contains(wq.QuestionId));
-        var linked = kept.Select(wq => wq.QuestionId).ToHashSet();
+        var rest = ordered.Where(wq => !moved.Contains(wq.QuestionId)).ToList();
+        var insertAt = ordered.Take(at).Count(wq => !moved.Contains(wq.QuestionId));
+        var linked = rest.Select(wq => wq.QuestionId).ToHashSet();
+        var activities = ordered.Where(wq => slots.ContainsKey(wq.QuestionId)).ToList();
+        linked.UnionWith(activities.Select(wq => wq.QuestionId));
         var added = newIds.Where(linked.Add).Select(qid => new WorksheetQuestion { QuestionId = qid }).ToList();
-        kept.InsertRange(Math.Clamp(at - removedBefore, 0, kept.Count), added);
+        var group = added.Concat(activities)
+            .OrderBy(wq => slots.TryGetValue(wq.QuestionId, out var n) ? n : newNumbers.GetValueOrDefault(wq.QuestionId, int.MaxValue))
+            .ToList();
+        rest.InsertRange(Math.Clamp(insertAt, 0, rest.Count), group);
         foreach (var wq in added)
             worksheet.WorksheetQuestions.Add(wq);
-        for (var i = 0; i < kept.Count; i++)
-            kept[i].Order = i + 1;
+        for (var i = 0; i < rest.Count; i++)
+            rest[i].Order = i + 1;
     }
 
     /// <summary>
@@ -376,7 +402,7 @@ public sealed class BookImportPageFixService(
     /// sonucundaki diğer bloklar (etkinlik, bilgi kutusu …) korunur. Yazılamazsa düzeltme geçerli kalır (loglanır).
     /// </summary>
     private async Task RecordManualAsync(BookImportPage page, string? image, IReadOnlyList<LabelingBankQuestionDto> questions,
-        BookImportOwner owner, CancellationToken ct)
+        IReadOnlyList<LayoutBox>? activities, BookImportOwner owner, CancellationToken ct)
     {
         try
         {
@@ -385,7 +411,9 @@ public sealed class BookImportPageFixService(
             var others = ai is null
                 ? []
                 : (JsonSerializer.Deserialize<PredictionListDto>(ai)?.Predictions ?? [])
-                    .Where(p => (p.Kind ?? LabelingBlocks.McqQuestion) != LabelingBlocks.McqQuestion);
+                    .Where(p => (p.Kind ?? LabelingBlocks.McqQuestion) != LabelingBlocks.McqQuestion).ToList();
+            if (activities is not null)
+                others = KeepActivities(others, activities);
             var predictions = questions.Select(q => new PredictionDto
             {
                 X = q.X,
@@ -430,6 +458,33 @@ public sealed class BookImportPageFixService(
     }
 
     internal sealed record NumberedBox(LayoutBox Box, int Number);
+
+    /// <summary>
+    /// Issue #1293: sayfanın etkinlik taslakları tuvalde kalan etkinlik kutularıyla eşlenir (<see cref="MinOverlap"/>); eşleşmeyen
+    /// (tuvalde silinen ya da soruya çevrilen) taslak silinir. Kutusu bilinmeyen taslak kalır; kutu listesi yoksa hepsi kalır.
+    /// </summary>
+    private static (List<Link> Kept, List<Link> Removed) SplitActivities(List<Link> drafts, IReadOnlyList<LayoutBox>? boxes)
+    {
+        if (boxes is null)
+            return (drafts, []);
+        var removed = drafts.Where(l => l.Box is { } box && !boxes.Any(b => Overlap(b, box) >= MinOverlap)).ToList();
+        return (drafts.Except(removed).ToList(), removed);
+    }
+
+    /// <summary>
+    /// Issue #1293: elle doğrulanan sonuçta Claude'un etkinlik blokları tuvalde kalanlarla sınırlanır (tuval yeniden açılınca
+    /// silinen etkinlik geri gelmesin); eşleşen blok tipiyle kalır, Claude'da olmayan kutu tipsiz etkinlik olarak eklenir.
+    /// </summary>
+    internal static List<PredictionDto> KeepActivities(IReadOnlyList<PredictionDto> others, IReadOnlyList<LayoutBox> activities)
+    {
+        static LayoutBox BoxOf(PredictionDto p) => new(p.X, p.Y, p.Width, p.Height);
+        var result = others.Where(p => p.Kind != LabelingBlocks.Activity
+                                       || activities.Any(a => Overlap(a, BoxOf(p)) >= MinOverlap)).ToList();
+        result.AddRange(activities
+            .Where(a => !others.Any(p => p.Kind == LabelingBlocks.Activity && Overlap(a, BoxOf(p)) >= MinOverlap))
+            .Select(a => new PredictionDto { X = a.X, Y = a.Y, Width = a.Width, Height = a.Height, Kind = LabelingBlocks.Activity }));
+        return result;
+    }
 
     /// <summary>Kutunun eski taslakla eşlenmesi için örtüşme alt sınırı (kesişim / küçük kutunun alanı).</summary>
     internal const double MinOverlap = 0.6;

@@ -239,6 +239,97 @@ public class BookQuestionImportTests : IDisposable
         links.ShouldBe(["mcq", "slotFill"]);
     }
 
+    /// <summary>
+    /// Issue #1293: tablolu soru etkinlik sanıldı (çoktan seçmeli 3, anahtar 4). Etkinlik okuma sırasında 2 numarasını tutar,
+    /// sonraki sorular basılı numaraları ve anahtar cevaplarıyla kalır.
+    /// </summary>
+    [Fact]
+    public async Task An_activity_in_a_test_short_of_its_key_takes_a_question_number_issue1293()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "ABCD", [4])]);
+        _detections[1] =
+        [
+            Question(100, 100, 4), Activity(100, 800, "matrixChoice", "A"), Question(100, 1500, 4), Question(100, 2200, 4),
+        ];
+
+        await RunAsync(id);
+
+        var request = _saved.Single();
+        request.Questions.Select(q => (q.ItemLabel, q.CorrectOptionIndex)).ShouldBe([("1", 0), ("2", -1), ("3", 2), ("4", 3)]);
+        request.Activities!.Keys.ShouldBe([1]);
+        var test = await SingleTestAsync();
+        Flags(test).ShouldBe([F("countMismatch", [1], null, 3, 4)]);
+    }
+
+    /// <summary>
+    /// Issue #1293: tuvalde etkinlik soruya çevrilince (etkinlik kutusu listede yok) etkinlik taslağı silinir, yerine çizilen soru
+    /// etkinliğin numarasını ve anahtardaki cevabını alır; tuvalde kalan etkinlik yerinde kalır ve numarasını korur.
+    /// </summary>
+    [Fact]
+    public async Task Page_fix_replaces_an_activity_turned_into_a_question_and_keeps_one_left_on_the_canvas_issue1293()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "ABCD", [4])]);
+        _detections[1] =
+        [
+            Question(100, 100, 4), Activity(100, 800, "matrixChoice", "A"), Question(100, 1500, 4), Question(100, 2200, 4),
+        ];
+        await RunAsync(id);
+        var test = await SingleTestAsync();
+        var activityBox = new LayoutBox(100, 800, 900, 400);
+
+        // Etkinlik tuvalde kaldı: taslağı ve numarası (2) yerinde, sorular 1, 3, 4.
+        await using (var ctx = _db.NewContext())
+        {
+            var kept = await Fix(ctx).ReplacePageAsync(Owner, id, test.Id, 1, [Box(0), Box(2), Box(3)], default, [activityBox]);
+            kept.Page!.Removed.ShouldBe(3);
+        }
+        _saved.Last().Questions.Select(q => q.ItemLabel).ShouldBe(["1", "3", "4"]);
+        (await LiveAsync(test.WorksheetId)).ShouldBe([("1", "mcq"), ("2", "matrixChoice"), ("3", "mcq"), ("4", "mcq")]);
+
+        // Etkinlik soruya çevrildi: taslağı silinir, onun yerindeki soru 2 numarası ve B cevabıyla girer.
+        await using (var ctx = _db.NewContext())
+        {
+            var result = await Fix(ctx).ReplacePageAsync(Owner, id, test.Id, 1, [Box(0), Box(1), Box(2), Box(3)], default, []);
+            result.Error.ShouldBe(BookImportPageFixError.None);
+            result.Page!.Removed.ShouldBe(4);
+        }
+        _saved.Last().Questions.Select(q => (q.ItemLabel, q.CorrectOptionIndex)).ShouldBe([("1", 0), ("2", 1), ("3", 2), ("4", 3)]);
+        (await LiveAsync(test.WorksheetId)).ShouldBe([("1", "mcq"), ("2", "mcq"), ("3", "mcq"), ("4", "mcq")]);
+        test = await SingleTestAsync();
+        Flags(test).ShouldBeEmpty();
+        test.Status.ShouldBe(BookImportTestStatus.Done);
+        test.QuestionsSaved.ShouldBe(4);
+    }
+
+    /// <summary>Issue #1293: elle doğrulanan sonuçta yalnız tuvalde kalan etkinlikler; yeni etkinlik kutusu tipsiz eklenir.</summary>
+    [Fact]
+    public void Manual_result_keeps_only_the_activities_left_on_the_canvas_issue1293()
+    {
+        PredictionDto[] others =
+        [
+            Activity(100, 800, "matrixChoice", "A"),
+            Activity(100, 1500, "slotFill"),
+            new() { X = 100, Y = 2200, Width = 900, Height = 300, Kind = LabelingBlocks.InfoBox },
+        ];
+
+        var result = BookImportPageFixService.KeepActivities(others, [new LayoutBox(110, 1510, 880, 380), new LayoutBox(1300, 100, 600, 400)]);
+
+        result.Select(p => (p.Kind, p.Y, p.InteractionType)).ShouldBe(
+        [
+            (LabelingBlocks.Activity, 1500, "slotFill"), (LabelingBlocks.InfoBox, 2200, null), (LabelingBlocks.Activity, 100, null),
+        ]);
+        BookImportPageFixService.KeepActivities(others, []).Select(p => p.Kind).ShouldBe([LabelingBlocks.InfoBox]);
+    }
+
+    private async Task<List<(string? Text, string? Type)>> LiveAsync(int? worksheetId)
+    {
+        await using var check = _db.NewContext();
+        return (await check.TestQuestions.IgnoreQueryFilters([DraftQueryFilter.Key])
+                .Where(wq => wq.TestId == worksheetId && !wq.IsDeleted && !wq.Question.IsDeleted).OrderBy(wq => wq.Order)
+                .Select(wq => new { wq.Question.Text, wq.Question.InteractionType }).ToListAsync())
+            .Select(x => ((string?)x.Text, (string?)x.InteractionType)).ToList();
+    }
+
     [Fact]
     public async Task Quick_add_ignores_activity_blocks_issue1134()
     {

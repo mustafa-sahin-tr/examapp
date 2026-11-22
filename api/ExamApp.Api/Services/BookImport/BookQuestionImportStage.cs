@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -224,8 +225,13 @@ internal sealed class BookQuestionImportStage(
         var answers = job.HasLooseQuestions && key is not null && found != key.Length ? null : key;
         // #1134: etkinlik bölümünde sayfadaki basılı numaralar etkinliklerindir; soru numarası beklenmez ("eksik soru" yok).
         var printedNumbers = !BookImportService.IsActivitySection(test);
+        // #1293: test bölümünde çoktan seçmeli sorular anahtardan azsa etkinlik blokları basılı bir soru sanılmıştır (ör. tablolu
+        // soru): her biri okuma sırasında bir numara tutar, sonraki soruların numarası ve anahtar cevabı kaymaz. Sayı tutuyorsa
+        // etkinlikler sorulardan ayrıdır ("E1", "E2" …).
+        var slotActivities = printedNumbers && (key is null || found < key.Length);
         var numbering = NumberPages(
-            detected.Select(d => (d.Page is null || !printedNumbers ? null : d.Page.MaxQuestionNumber, d.Questions?.Count)).ToList(),
+            detected.Select(d => (d.Page is null || !printedNumbers ? null : d.Page.MaxQuestionNumber,
+                d.Questions?.Count + (slotActivities ? d.Activities.Count : 0))).ToList(),
             key?.Length);
 
         for (var p = 0; p < detected.Count; p++)
@@ -241,14 +247,19 @@ internal sealed class BookQuestionImportStage(
                 continue;
             }
             var (width, height) = (page.Width, page.Height);
+            var (questionNumbers, slotted) = slotActivities
+                ? SlotNumbers(questions, activityBlocks, start, width)
+                : (Enumerable.Range(start, questions.Count).ToArray(), activityBlocks);
+            activityBlocks = slotted;
+            var slots = questions.Count + (slotActivities ? activityBlocks.Count : 0);
 
             if (pageMax is { } expectedMax)
             {
                 var expected = expectedMax - start + 1;
-                if (questions.Count < expected)
-                    flags.Add(BookImportReviewFlag.MissingNumbers, filePage, Enumerable.Range(start + questions.Count, expected - questions.Count));
-                else if (questions.Count > expected)
-                    flags.Add(BookImportReviewFlag.ExtraQuestions, filePage, Enumerable.Range(expectedMax + 1, questions.Count - expected));
+                if (slots < expected)
+                    flags.Add(BookImportReviewFlag.MissingNumbers, filePage, Enumerable.Range(start + slots, expected - slots));
+                else if (slots > expected)
+                    flags.Add(BookImportReviewFlag.ExtraQuestions, filePage, Enumerable.Range(expectedMax + 1, slots - expected));
             }
 
             var toSave = new List<LabelingBankQuestionDto>();
@@ -256,7 +267,7 @@ internal sealed class BookQuestionImportStage(
             var marks = BookMarkKeys.Parse(page.MarksJson);
             for (var i = 0; i < questions.Count; i++)
             {
-                var number = start + i;
+                var number = questionNumbers[i];
                 var prepared = BookQuestionLayout.Prepare(questions[i], width, height);
                 if (prepared.Options.Count != ExpectedOptions)
                     flags.Add(BookImportReviewFlag.OptionCount, filePage, [number]);
@@ -435,11 +446,42 @@ internal sealed class BookQuestionImportStage(
     private sealed record DetectedPage(int FilePage, BookImportPage? Page, string? ImageBase64, List<LayoutQuestion>? Questions,
         List<LayoutPassage> Passages, List<ActivityBlock> Activities);
 
-    /// <summary>#1134: sayfadaki etkinlik bloğu; <c>InteractionType</c> tespitin bileşenden türettiği tip (yoksa null).</summary>
-    internal sealed record ActivityBlock(LayoutBox Box, string? InteractionType);
+    /// <summary>
+    /// #1134: sayfadaki etkinlik bloğu; <c>InteractionType</c> tespitin bileşenden türettiği tip (yoksa null). <c>Number</c>: #1293
+    /// test bölümünde bloğun tuttuğu soru numarası (etkinlik bölümünde null, madde etiketi "E1", "E2" …).
+    /// </summary>
+    internal sealed record ActivityBlock(LayoutBox Box, string? InteractionType, int? Number = null);
 
-    /// <summary>#1134: yapısı çıkarılmış, taslağı geçerli etkinlik bloğu.</summary>
-    internal sealed record ActivityDraft(LayoutBox Box, LabelingImportActivity Activity);
+    /// <summary>#1134: yapısı çıkarılmış, taslağı geçerli etkinlik bloğu (<c>Number</c>: bloğunki).</summary>
+    internal sealed record ActivityDraft(LayoutBox Box, LabelingImportActivity Activity, int? Number = null);
+
+    /// <summary>
+    /// Issue #1293: test bölümünde sayfanın soruları ve etkinlik blokları birlikte okuma sırasına dizilir ve <paramref name="start"/>'tan
+    /// sırayla numaralanır; etkinlik de bir numara tutar (anahtarda o sıradaki cevap etkinliğe düşer, sonraki sorular kaymaz).
+    /// Sonuç: soruların numaraları (<paramref name="questions"/> sırasıyla) ve numarası atanmış bloklar.
+    /// </summary>
+    internal static (int[] Questions, List<ActivityBlock> Activities) SlotNumbers(IReadOnlyList<LayoutQuestion> questions,
+        IReadOnlyList<ActivityBlock> blocks, int start, int pageWidth)
+    {
+        if (blocks.Count == 0)
+            return (Enumerable.Range(start, questions.Count).ToArray(), []);
+        var items = questions.Select((q, i) => (Layout: new LayoutQuestion(q.Box, []), Index: i))
+            .Concat(blocks.Select((b, i) => (Layout: new LayoutQuestion(b.Box, []), Index: -1 - i)))
+            .ToList();
+        var byLayout = items.ToDictionary(i => (object)i.Layout, i => i.Index, ReferenceEqualityComparer.Instance);
+        var numbers = new int[questions.Count];
+        var activities = blocks.ToList();
+        var next = start;
+        foreach (var layout in BookQuestionLayout.Order(items.Select(i => i.Layout), pageWidth))
+        {
+            var index = byLayout[layout];
+            if (index >= 0)
+                numbers[index] = next++;
+            else
+                activities[-1 - index] = activities[-1 - index] with { Number = next++ };
+        }
+        return (numbers, activities);
+    }
 
     /// <summary>Ayrı scope (ayrı DbContext): toplu kaydın geri alınan varlıkları işin izleyicisinde kalmasın.</summary>
     private async Task<LabelingImportPageResult> SavePageAsync(LabelingImportPageRequest request, int userId, CancellationToken ct)
@@ -502,7 +544,7 @@ internal sealed class BookQuestionImportStage(
                 }
                 // Plan kutuları sayfaya kırpılmış blok kutusuna göredir (kayıt da aynı kutuyu kırpar).
                 drafts.Add(new ActivityDraft(Clip(chunk[i].Box, page.Width, page.Height),
-                    new LabelingImportActivity(result.InteractionType, plan.GetRawText())));
+                    new LabelingImportActivity(result.InteractionType, plan.GetRawText()), chunk[i].Number));
             }
         }
         return drafts;
@@ -551,7 +593,9 @@ internal sealed class BookQuestionImportStage(
             ordered.Add(new LabelingBankQuestionDto
             {
                 X = draft.Box.X, Y = draft.Box.Y, Width = draft.Box.Width, Height = draft.Box.Height,
-                Options = [], CorrectOptionIndex = -1, ActivityLabel = label, ItemLabel = $"E{++activityNo}",
+                Options = [], CorrectOptionIndex = -1, ActivityLabel = label,
+                // #1293: test bölümünde etkinlik tuttuğu soru numarasıyla görünür.
+                ItemLabel = draft.Number is { } slot ? slot.ToString(CultureInfo.InvariantCulture) : $"E{++activityNo}",
             });
         }
         return (ordered, activities, order);

@@ -5028,6 +5028,66 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("Schools");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.SchoolAnnouncement", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ParentCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SchoolId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SenderUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StudentCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Target")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int?>("TargetGradeId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TargetLabel")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int?>("TargetSectionId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TeacherCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SchoolId");
+
+                    b.HasIndex("SenderUserId", "CreatedAt");
+
+                    b.ToTable("SchoolAnnouncements");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.SchoolLicense", b =>
                 {
                     b.Property<int>("Id")
@@ -11698,6 +11758,17 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("District");
 
                     b.Navigation("Province");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.SchoolAnnouncement", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.School", "School")
+                        .WithMany()
+                        .HasForeignKey("SchoolId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("School");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.SchoolLicense", b =>

@@ -255,6 +255,7 @@ public class AppDbContext : DbContext
     public DbSet<SchoolLicense> SchoolLicenses { get; set; } // issue #1092
     public DbSet<SchoolSection> SchoolSections { get; set; } // issue #1279
     public DbSet<SchoolSectionMembership> SchoolSectionMemberships { get; set; } // issue #1279
+    public DbSet<SchoolAnnouncement> SchoolAnnouncements { get; set; } // issue #1281
     public DbSet<TeacherSponsorship> TeacherSponsorships { get; set; } // issue #1115
     public DbSet<QuestionHintSet> QuestionHintSets { get; set; } // issue #1113
     public DbSet<QuestionHintStep> QuestionHintSteps { get; set; } // issue #1113
@@ -1615,6 +1616,14 @@ public class AppDbContext : DbContext
             e.Property(m => m.EndReason).HasConversion<string>().HasMaxLength(16);
             // Silinmiş şube / öğrenci üyelikleri okumalarda görünmez (bağlı entity'lerin global filtresiyle uyumlu).
             e.HasQueryFilter(m => !m.Section.IsDeleted && !m.Student.IsDeleted);
+        });
+        // issue #1281: okul duyuruları — gönderenin "Gönderilenler" listesi (SenderUserId, CreatedAt) ve günlük gönderim sınırı.
+        modelBuilder.Entity<SchoolAnnouncement>(e =>
+        {
+            e.HasOne(a => a.School).WithMany().HasForeignKey(a => a.SchoolId).OnDelete(DeleteBehavior.Cascade);
+            e.Property(a => a.Target).HasConversion<string>().HasMaxLength(16);
+            e.HasIndex(a => new { a.SenderUserId, a.CreatedAt });
+            e.HasIndex(a => a.SchoolId);
         });
 
         // Soru başına tek kaynak; kırpma hash'i tekrar kontrolü için indeksli (tekil değil: Force ile ikinci kayıt mümkün).

@@ -105,6 +105,13 @@
       "gradeMismatch": "Bazı öğrencilerin sınıfı şubenin sınıfından farklı.",
       "conflict": "Şube aynı anda değiştirildi; sayfayı yenileyip tekrar deneyin.",
       "notSchoolTeacher": "Şubeleri yalnız okula bağlı onaylı öğretmenler görebilir."
+    },
+    "announcement": {
+      "forbidden": "Duyuruyu yalnız okula bağlı onaylı öğretmenler gönderebilir; okul geneli ve sınıf duyurusu okul yöneticisine açıktır.",
+      "notFound": "Şube ya da öğrenci bulunamadı.",
+      "invalid": "Başlık 1–100, metin 1–500 karakter olmalı; hedef seçilmeli (en çok 200 öğrenci).",
+      "noRecipients": "Bu hedefte duyuruyu alacak kimse yok.",
+      "rateLimited": "Son 24 saatte en çok 20 duyuru gönderebilirsiniz."
     }
   }
 }

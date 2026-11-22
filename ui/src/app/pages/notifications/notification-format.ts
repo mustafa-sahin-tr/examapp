@@ -145,6 +145,9 @@ const SCHOOL_CHANGE_SELF_NOTIFICATIONS: ReadonlySet<string> = new Set([
   'SchoolAssignedToTeacher',
 ]);
 
+/** Issue #1281: okul duyurusu (öğrenci / öğretmen) — yalnız bilgi, metin bildirimde; velininki PARENT_NOTIFICATION_PRESENTATION'da. */
+const ANNOUNCEMENT_SELF_NOTIFICATIONS: ReadonlySet<string> = new Set(['AnnouncementToStudent', 'AnnouncementToTeacher']);
+
 /** Issue #1110: öğrencinin kendi sınıf atlaması — yalnız bilgi, hedef yok. Velininki PARENT_NOTIFICATION_PRESENTATION'da. */
 const GRADE_PROMOTED_SELF_NOTIFICATION = 'GradePromotedToStudent';
 
@@ -297,6 +300,9 @@ export function describeNotification(
     // Issue #542: öğrencinin / öğretmenin kendi okul değişimi — yalnız bilgi, hedef yok.
     return { icon: 'school', badge: null, route: null, questionOrder: null };
   }
+  if (ANNOUNCEMENT_SELF_NOTIFICATIONS.has(notification.type)) {
+    return { icon: 'campaign', badge: null, route: null, questionOrder: null };
+  }
   if (notification.type === GRADE_PROMOTED_SELF_NOTIFICATION) {
     return { icon: 'upgrade', badge: null, route: null, questionOrder: null };
   }
@@ -368,6 +374,8 @@ const PARENT_NOTIFICATION_PRESENTATION: Readonly<
   PlanPriceChangeToParent: { icon: 'sell', toParentPage: true, tab: 'plan' },
   // Issue #1112: haftalık rapor → o çocuğun "Rapor" sekmesi.
   ParentWeeklyReport: { icon: 'summarize', toParentPage: true, tab: 'report' },
+  // Issue #1281: çocuğun okulundan duyuru → o çocuğun paneli (metin bildirimde).
+  AnnouncementToParent: { icon: 'campaign', toParentPage: true },
 };
 
 /** Issue #439: öğrenciye giden veli kararı bildirimleri → ikon (hepsi `/my-bookings`). */

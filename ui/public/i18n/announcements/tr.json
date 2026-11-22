@@ -1,0 +1,58 @@
+{
+  "title": "Duyurular",
+  "subtitle": "Okulundaki öğrencilere, velilerine ve öğretmenlere uygulama içi duyuru gönder.",
+  "compose": "Yeni duyuru",
+  "target": "Kime",
+  "targets": {
+    "School": "Tüm okul",
+    "Grade": "Sınıf",
+    "Section": "Şube",
+    "Students": "Seçili öğrenciler"
+  },
+  "grade": "Sınıf",
+  "section": "Şube",
+  "titleField": "Başlık",
+  "bodyField": "Duyuru metni",
+  "selectAll": "Hepsini seç ({{count}} seçili)",
+  "unknown": "Adı bilinmiyor",
+  "send": "Gönder",
+  "sending": "Gönderiliyor…",
+  "retry": "Tekrar dene",
+  "sent": "Gönderilenler",
+  "sentEmpty": "Henüz duyuru göndermedin.",
+  "hint": {
+    "School": "{{school}} okulunun bütün öğrencileri, velileri ve öğretmenleri bildirim alır.",
+    "noSections": "Okulunda henüz şube yok. Şubeleri okul yöneticisi oluşturur.",
+    "emptySection": "Bu şubede öğrenci yok.",
+    "recipients": "Öğrenciler ve bağlı velileri bildirim alır."
+  },
+  "targetText": {
+    "School": "{{school}} (tüm okul)",
+    "Students": "{{count}} öğrenci"
+  },
+  "sentTarget": {
+    "School": "Tüm okul",
+    "Grade": "Sınıf",
+    "Section": "Şube",
+    "Students": "Seçili öğrenciler"
+  },
+  "count": {
+    "students": "{{count}} öğrenci",
+    "parents": "{{count}} veli",
+    "teachers": "{{count}} öğretmen"
+  },
+  "confirm": {
+    "title": "Duyuru gönderilsin mi?",
+    "message": "Duyuru {{target}} hedefine gidecek. Gönderilen duyuru geri alınamaz.",
+    "messageSchool": "Duyuru {{target}} hedefine, öğretmenler dahil herkese gidecek. Gönderilen duyuru geri alınamaz.",
+    "send": "Gönder",
+    "cancel": "Vazgeç"
+  },
+  "toast": {
+    "sent": "Duyuru gönderildi: {{recipients}}."
+  },
+  "state": {
+    "error": "Duyurular yüklenemedi.",
+    "sendError": "Duyuru gönderilemedi. Tekrar dene."
+  }
+}

@@ -105,6 +105,13 @@
       "gradeMismatch": "Some students are in a different grade than the section.",
       "conflict": "The section changed at the same time; refresh and try again.",
       "notSchoolTeacher": "Only approved teachers of a school can view its sections."
+    },
+    "announcement": {
+      "forbidden": "Only approved teachers of a school can send announcements; school-wide and grade announcements are for school admins.",
+      "notFound": "Section or student not found.",
+      "invalid": "Title must be 1–100 and text 1–500 characters; choose a target (at most 200 students).",
+      "noRecipients": "Nobody would receive an announcement for this target.",
+      "rateLimited": "You can send at most 20 announcements in 24 hours."
     }
   }
 }

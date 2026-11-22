@@ -370,6 +370,18 @@
         "moreDays": "Haftaya en az 3 gün çalışmayı hedefleyebilir.",
         "keepGoing": "Güzel bir hafta; aynı tempoyla devam."
       }
+    },
+    "AnnouncementToStudent": {
+      "title": "Duyuru: {0}",
+      "body": "{2}: {1}"
+    },
+    "AnnouncementToTeacher": {
+      "title": "Okul duyurusu: {0}",
+      "body": "{2}: {1}"
+    },
+    "AnnouncementToParent": {
+      "title": "{3} için okul duyurusu: {0}",
+      "body": "{2}: {1}"
     }
   }
 }

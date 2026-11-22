@@ -54,6 +54,14 @@
       "accountNotApproved": "The teacher account has not been approved yet; approve the account before linking a school.",
       "accountSuspended": "The teacher account is suspended; lift the suspension before linking a school."
     },
+    "schoolAdmin": {
+      "isSchoolAdminRequired": "The isSchoolAdmin field is required.",
+      "teacherNotFound": "Teacher not found.",
+      "noSchool": "Only a teacher who belongs to a school can be a school admin.",
+      "accountNotApproved": "The teacher's account is not approved yet; approve it before making them a school admin.",
+      "accountSuspended": "The teacher's account is suspended; lift the suspension before making them a school admin.",
+      "concurrentChange": "The teacher's school or account status was changed by another action at the same time. Please refresh and try again."
+    },
     "teacherSuspension": {
       "reasonRequired": "A suspension reason is required.",
       "reasonTooLong": "The suspension reason can be at most {0} characters.",

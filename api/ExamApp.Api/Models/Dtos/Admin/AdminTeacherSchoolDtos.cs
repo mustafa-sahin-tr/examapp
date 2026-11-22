@@ -41,3 +41,18 @@ public sealed class AdminTeacherSchoolChangeImpactDto
     /// <summary>Okul değişirse <c>Private</c> yapılacak (silinmemiş) <c>SchoolOnly</c> sınav sayısı.</summary>
     public int SchoolOnlyWorksheetCount { get; init; }
 }
+
+/// <summary>issue #1276: <c>PUT api/admin/teachers/{id}/school-admin</c> gövdesi. Alan eksikse 400.</summary>
+public sealed class AdminTeacherSchoolAdminRequestDto
+{
+    public bool? IsSchoolAdmin { get; init; }
+}
+
+/// <summary>issue #1276: okul yöneticisi yetkisi yanıtı (aynı değer → <c>changed = false</c>).</summary>
+public sealed class AdminTeacherSchoolAdminResponseDto
+{
+    public int TeacherId { get; init; }
+    public bool IsSchoolAdmin { get; init; }
+    public int? SchoolId { get; init; }
+    public bool Changed { get; init; }
+}

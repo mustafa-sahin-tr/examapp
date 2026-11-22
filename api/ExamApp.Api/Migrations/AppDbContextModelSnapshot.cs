@@ -8673,6 +8673,9 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
+                    b.Property<bool>("IsSchoolAdmin")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsSeedData")
                         .HasColumnType("boolean");
 
@@ -8685,6 +8688,9 @@ namespace ExamApp.Api.Migrations
 
                     b.Property<int?>("RequestedSchoolId")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime?>("SchoolAdminGrantedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int?>("SchoolId")
                         .HasColumnType("integer");

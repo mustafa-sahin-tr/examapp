@@ -510,6 +510,9 @@ builder.Services.AddScoped<ExamApp.Api.Services.StudentSchoolMemberships.IStuden
 builder.Services.AddStudentSchoolRequestListRateLimiting();
 // issue #313: admin öğretmen okul bağlama/değiştirme — öğrenci okul ucuyla aynı audit ve rate limit kovası.
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminTeacherSchoolService, ExamApp.Api.Services.AdminUsers.AdminTeacherSchoolService>();
+// issue #1276 (#1071 S1): okul yöneticisi yetkisi (platform admini verir) ve DB'den çözümü.
+builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminTeacherSchoolAdminService, ExamApp.Api.Services.AdminUsers.AdminTeacherSchoolAdminService>();
+builder.Services.AddScoped<ExamApp.Api.Services.Tenancy.ISchoolAdminResolver, ExamApp.Api.Services.Tenancy.SchoolAdminResolver>();
 // issue #289: öğretmen hesap onayını askıya alma / geri açma — audit AdminUserActionLogs'a; hesap durumu (#155) rate limit kovası.
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminTeacherSuspensionService, ExamApp.Api.Services.AdminUsers.AdminTeacherSuspensionService>();
 // issue #331: askıdaki öğretmende kalmış Pending talepleri kapatan güvenlik ağı (Hangfire, varsayılan 5 dk).

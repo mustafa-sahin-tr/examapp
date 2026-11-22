@@ -4,6 +4,9 @@ paths:
   - "api/ExamApp.Api/Services/AdminUsers/**"
   - "api/ExamApp.Api/Services/Tenancy/**"
   - "ui/src/app/pages/admin/**"
+  - "**/*Section*"
+  - "**/*Announcement*"
+  - "**/*Homework*"
 ---
 # Okul değişimi — davranış matrisi (#194, #540)
 
@@ -33,6 +36,7 @@ güncellenir. Davranış değişikliği yapacaksan bu tabloyu ve testlerini birl
 | Yeni okulda onay (K7) | — | Admin kararı yeterli; askıdaki / hesabı onaysız / onaylı bağımsız öğretmen 409 | `AdminTeacherSchoolServiceTests` |
 | Okulsuz yapma (K6, #541) | `{ "schoolId": null }` (alan yoksa 400): `SchoolId`, `SchoolVerifiedAt`, `SchoolVerifiedByUserId` temizlenir, Keycloak `school_id` kaldırılır, audit `ToSchoolId=null`; zaten okulsuzsa `changed=false`. Eski okulun bütün kapsamı kalkar, doğrudan / platform geneli atamalar kalır, okul liderliği uygulanamaz. Admin dialog'unda "Okulsuz yap" kipi + onay kutusu | Yapılmaz: `schoolId: null` → 400 (kullanıcı kendi register akışını kullanır) | `AdminStudentSchoolServiceTests` (#541), `AdminController{Student,Teacher}SchoolTests` |
 | Bildirim (K5, #542) | Okul gerçekten değişince (`changed=true` ve okul farklı; yalnız üyelik doğrulaması / talep temizliği değil) okul yazımıyla aynı transaction'da `SchoolChangedEvent`: öğrenciye ve o an Active her veliye birer tane (tek alıcı / event). BadgeService `SchoolChangedConsumer` uygulama içi bildirim yazar: değişti / belirlendi / kaldırıldı (#541) metinleri, alıcının dili; veli bildirimi çocuğun paneline gider | Öğretmene tek event; mesaj #539 ile özel yapılan sınav sayısını içerir (0 ise cümle yok) | `Admin{Student,Teacher}SchoolServiceTests` (#542), `SchoolChangedConsumerTests`, `SchoolChangedRabbitPermissionsTests` |
+| Okul yöneticisi yetkisi (#1276) | — | `Teachers.IsSchoolAdmin` okula bağlıdır: okul değişimi (`AdminTeacherSchoolService`, aynı okulda korunur), bağımsızlığa geçiş (`TeacherService.Save`) ve askı (`AdminTeacherSuspensionService`) aynı yazımda temizler; askı kalkınca kendiliğinden geri gelmez. `ISchoolAdminResolver` bayrağı yalnız okullu, onaylı, askısız, bağımsız olmayan öğretmende sayar | `SchoolAdminPermissionTests` |
 | Okul geçmişi (K9) | Yalnız `AdminUserActionLogs` (From/To okul, sonuç, #539 `AffectedCount`); kullanıcıya görünür geçmiş ekranı yok | aynı | `Admin{Student,Teacher}SchoolServiceTests` |
 
 Aynı okul isteği `changed=false` döner, audit / önbellek / Keycloak'a dokunmaz (öğretmende bekleyen okul talebi temizleniyorsa

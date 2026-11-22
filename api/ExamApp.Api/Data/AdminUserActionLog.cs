@@ -89,7 +89,11 @@ public enum AdminUserAction
     /// <summary>issue #436: admin bir veli–öğrenci bağlantısını kopardı (<see cref="AdminUserTargetType.ParentLink"/>).</summary>
     ParentLinkRevoked = 16,
     /// <summary>issue #1110: admin öğrencinin 1 Ağustos sınıf atlamasını geri aldı (sınıfta kaldı).</summary>
-    GradePromotionReverted = 17
+    GradePromotionReverted = 17,
+    /// <summary>issue #1276: platform admini öğretmene okul yöneticisi yetkisi verdi; <see cref="AdminUserActionLog.ToSchoolId"/> = okul.</summary>
+    SchoolAdminGranted = 18,
+    /// <summary>issue #1276: platform admini öğretmenin okul yöneticisi yetkisini kaldırdı; <see cref="AdminUserActionLog.FromSchoolId"/> = okul.</summary>
+    SchoolAdminRevoked = 19
 }
 
 /// <summary>Admin hesap aksiyonunun sonucu. Kalıcı değer string'dir.</summary>

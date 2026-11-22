@@ -54,6 +54,9 @@ public class AdminTeacherListItemDto
 
     /// <summary>issue #289: admin'in girdiği askı nedeni; askıda değilse null. Yalnızca admin'e döner.</summary>
     public string? AccountSuspensionReason { get; set; }
+
+    /// <summary>issue #1276: öğretmen kendi okulunun okul yöneticisi (Teachers.IsSchoolAdmin).</summary>
+    public bool IsSchoolAdmin { get; set; }
 }
 
 /// <summary>issue #854: öğretmen listesi durum filtresi (üstteki çipler).</summary>

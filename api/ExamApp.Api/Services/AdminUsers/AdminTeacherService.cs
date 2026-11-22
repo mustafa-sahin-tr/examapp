@@ -56,7 +56,8 @@ public class AdminTeacherService : IAdminTeacherService
                 t.ApprovalStatus,
                 t.AccountApprovedAt,
                 t.AccountSuspendedAt,
-                t.AccountSuspensionReason
+                t.AccountSuspensionReason,
+                t.IsSchoolAdmin
             })
             .ToListAsync(ct);
 
@@ -87,7 +88,8 @@ public class AdminTeacherService : IAdminTeacherService
                     AccountApproved = r.AccountApprovedAt != null && r.AccountSuspendedAt == null,
                     AccountSuspended = r.AccountSuspendedAt != null,
                     AccountSuspendedAt = r.AccountSuspendedAt,
-                    AccountSuspensionReason = r.AccountSuspendedAt != null ? r.AccountSuspensionReason : null
+                    AccountSuspensionReason = r.AccountSuspendedAt != null ? r.AccountSuspensionReason : null,
+                    IsSchoolAdmin = r.IsSchoolAdmin
                 };
             }).ToList()
         };

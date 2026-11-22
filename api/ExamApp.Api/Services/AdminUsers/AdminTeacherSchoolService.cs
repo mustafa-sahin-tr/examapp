@@ -198,6 +198,9 @@ public class AdminTeacherSchoolService : IAdminTeacherSchoolService
                     .SetProperty(t => t.RequestedSchoolId, (int?)null)
                     // Bağımsız (Pending/Rejected) öğretmende başvuru durumu korunur; okul öğretmeni onaylı hale gelir.
                     .SetProperty(t => t.ApprovalStatus, t => t.IsIndependentTutor ? t.ApprovalStatus : TeacherApprovalStatus.Approved)
+                    // issue #1276: okul yöneticisi yetkisi okula bağlıdır; okul değişince düşer (aynı okulda korunur).
+                    .SetProperty(t => t.IsSchoolAdmin, t => schoolChanges ? false : t.IsSchoolAdmin)
+                    .SetProperty(t => t.SchoolAdminGrantedAt, t => schoolChanges ? null : t.SchoolAdminGrantedAt)
                     .SetProperty(t => t.UpdateTime, now), CancellationToken.None);
             if (affected == 0)
                 return; // commit yok → dispose'da rollback

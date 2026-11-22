@@ -34,3 +34,11 @@ export interface AdminTeacherSchoolChangeImpact {
   /** Okul değişirse özel yapılacak (silinmemiş) "Okulum" paylaşımlı sınav sayısı. */
   schoolOnlyWorksheetCount: number;
 }
+
+/** Issue #1276 — PUT /api/exam/admin/teachers/{id}/school-admin yanıtı. */
+export interface AdminTeacherSchoolAdminResponse {
+  teacherId: number;
+  isSchoolAdmin: boolean;
+  schoolId: number | null;
+  changed: boolean;
+}

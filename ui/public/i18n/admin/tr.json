@@ -587,6 +587,22 @@
       "generic": "Okul kaydedilirken bir sorun oluştu. Lütfen tekrar deneyin."
     }
   },
+  "schoolAdmin": {
+    "chip": "Okul yöneticisi",
+    "grantAction": "Okul yöneticisi yap",
+    "grantActionFor": "{{name}} öğretmenini okul yöneticisi yap",
+    "revokeAction": "Okul yöneticiliğini kaldır",
+    "revokeActionFor": "{{name}} için okul yöneticiliğini kaldır",
+    "grantTitle": "Okul yöneticisi yapılsın mı?",
+    "grantText": "{{name}}, {{school}} okulunun yöneticisi olacak. Okul yöneticileri ileride okullarının öğretmen başvurularını ve üyelik taleplerini onaylayabilecek.",
+    "revokeTitle": "Okul yöneticiliği kaldırılsın mı?",
+    "revokeText": "{{name}} artık {{school}} okulunun yöneticisi olmayacak; öğretmen hesabı etkilenmez.",
+    "confirm": "Onayla",
+    "granted": "{{name}} okul yöneticisi yapıldı.",
+    "revoked": "{{name}} için okul yöneticiliği kaldırıldı.",
+    "failed": "İşlem yapılamadı. Lütfen sayfayı yenileyip tekrar deneyin.",
+    "close": "Kapat"
+  },
   "badgeDefinitions": {
     "title": "Rozet Tanımları",
     "subtitle": "Rozetleri oluştur, düzenle; aktifleştir veya devre dışı bırak.",

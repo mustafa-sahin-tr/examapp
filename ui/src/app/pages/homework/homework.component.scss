@@ -238,3 +238,9 @@
 .hw__state--error {
   color: var(--ms-danger-text);
 }
+
+// Seçili kontrol durumu açıkça okunsun (varsayılan seçili tonu koyu temada çok soluk).
+.hw__student-check {
+  --mat-button-toggle-selected-state-background-color: var(--ms-action-background);
+  --mat-button-toggle-selected-state-text-color: var(--ms-action-text-inverse);
+}

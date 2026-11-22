@@ -123,6 +123,18 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
         expect(routes(create(['Teacher']))).not.toContain('/school-sections');
     });
 
+    // Issue #1281: Duyurular okula bağlı olduğu bilinen her öğretmende (okul yöneticisi dahil).
+    it('visibleMenuItems_SchoolTeacherAndAdmin_ShowAnnouncements', () => {
+        const routes = (c: EnhancedLayoutComponent) => c.visibleMenuItems().map((i) => i.route);
+        expect(routes(create(['Teacher'], false, false, false))).toContain('/announcements');
+        TestBed.resetTestingModule();
+        expect(routes(create(['Teacher'], false, true, false))).toContain('/announcements');
+        TestBed.resetTestingModule();
+        expect(routes(create(['Teacher'], false, false, true))).not.toContain('/announcements');
+        TestBed.resetTestingModule();
+        expect(routes(create(['Teacher']))).not.toContain('/announcements');
+    });
+
     it('visibleMenuItems_PlainTeacher_HidesMySchool', () => {
         const c = create(['Teacher']);
         expect(c.visibleMenuItems().map((i) => i.route)).not.toContain('/school-admin/overview');

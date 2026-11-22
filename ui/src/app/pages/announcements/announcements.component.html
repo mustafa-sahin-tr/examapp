@@ -1,0 +1,165 @@
+<section class="an" *transloco="let t; prefix: 'announcements'">
+  <app-page-header [title]="t('title')" [description]="t('subtitle')" />
+
+  @if (loadError()) {
+    <div class="an__state an__state--error" role="alert" data-testid="announcements-error">{{ loadError() }}</div>
+  } @else if (!options()) {
+    <div class="an__state"><mat-spinner diameter="32" /></div>
+  } @else {
+    <form class="an__card" (ngSubmit)="confirmSend()" data-testid="announcement-form">
+      <h2 class="an__heading">{{ t('compose') }}</h2>
+
+      <div class="an__field">
+        <span class="an__label" id="an-target">{{ t('target') }}</span>
+        <mat-button-toggle-group
+          [value]="target()"
+          (change)="setTarget($event.value)"
+          aria-labelledby="an-target"
+          class="an__targets"
+          data-testid="target"
+        >
+          @for (tg of targets(); track tg) {
+            <mat-button-toggle [value]="tg" [attr.data-testid]="'target-' + tg">{{ t('targets.' + tg) }}</mat-button-toggle>
+          }
+        </mat-button-toggle-group>
+      </div>
+
+      @if (target() === 'School') {
+        <p class="an__hint" data-testid="school-hint">{{ t('hint.School', { school: options()!.schoolName }) }}</p>
+      }
+
+      @if (target() === 'Grade') {
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="an__select">
+          <mat-label>{{ t('grade') }}</mat-label>
+          <mat-select [value]="gradeId()" (selectionChange)="gradeId.set($event.value)" data-testid="grade">
+            @for (g of grades(); track g.id) {
+              <mat-option [value]="g.id">{{ g.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      }
+
+      @if (target() === 'Section' || target() === 'Students') {
+        @if (sections().length === 0) {
+          <p class="an__hint" data-testid="no-sections">{{ t('hint.noSections') }}</p>
+        } @else {
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="an__select">
+            <mat-label>{{ t('section') }}</mat-label>
+            <mat-select [value]="sectionId()" (selectionChange)="setSection($event.value)" data-testid="section">
+              @for (s of sections(); track s.id) {
+                <mat-option [value]="s.id">{{ s.gradeName }} / {{ s.name }} ({{ t('count.students', { count: s.studentCount }) }})</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        }
+      }
+
+      @if (target() === 'Students' && sectionId() != null) {
+        <div class="an__students" data-testid="students">
+          @if (studentsLoading()) {
+            <mat-spinner diameter="24" />
+          } @else if (sectionStudents().length === 0) {
+            <p class="an__hint">{{ t('hint.emptySection') }}</p>
+          } @else {
+            <mat-checkbox [checked]="allChosen()" (change)="toggleAll($event.checked)" data-testid="students-all">
+              {{ t('selectAll', { count: chosen().size }) }}
+            </mat-checkbox>
+            <ul class="an__student-list">
+              @for (s of sectionStudents(); track s.studentId) {
+                <li>
+                  <mat-checkbox
+                    [checked]="chosen().has(s.studentId)"
+                    (change)="toggleStudent(s.studentId, $event.checked)"
+                    data-testid="student-option"
+                  >
+                    {{ s.fullName || t('unknown') }} <span class="an__muted">{{ s.studentNumber }}</span>
+                  </mat-checkbox>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      }
+
+      <mat-form-field appearance="outline" class="an__wide">
+        <mat-label>{{ t('titleField') }}</mat-label>
+        <input
+          matInput
+          name="title"
+          [ngModel]="title()"
+          (ngModelChange)="title.set($event)"
+          [maxlength]="titleMax"
+          required
+          data-testid="title"
+        />
+        <mat-hint align="end">{{ title().length }} / {{ titleMax }}</mat-hint>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="an__wide">
+        <mat-label>{{ t('bodyField') }}</mat-label>
+        <textarea
+          matInput
+          name="body"
+          rows="4"
+          [ngModel]="body()"
+          (ngModelChange)="body.set($event)"
+          [maxlength]="bodyMax"
+          required
+          data-testid="body"
+        ></textarea>
+        <mat-hint>{{ t('hint.recipients') }}</mat-hint>
+        <mat-hint align="end">{{ body().length }} / {{ bodyMax }}</mat-hint>
+      </mat-form-field>
+
+      @if (sendError()) {
+        <p class="an__error" role="alert" data-testid="send-error">{{ sendError() }}</p>
+      }
+
+      <div class="an__actions">
+        <button mat-flat-button color="primary" type="submit" [disabled]="!canSend()" data-testid="send">
+          <mat-icon>campaign</mat-icon>
+          {{ sending() ? t('sending') : t('send') }}
+        </button>
+      </div>
+    </form>
+  }
+
+  <section class="an__sent" [attr.aria-label]="t('sent')">
+    <h2 class="an__heading">{{ t('sent') }}</h2>
+    @if (sentError()) {
+      <div class="an__state an__state--error" role="alert">
+        <span>{{ t('state.error') }}</span>
+        <button mat-stroked-button (click)="loadSent()">{{ t('retry') }}</button>
+      </div>
+    } @else if (sentLoading() && sent().length === 0) {
+      <div class="an__state"><mat-spinner diameter="28" /></div>
+    } @else if (sent().length === 0) {
+      <p class="an__hint" data-testid="sent-empty">{{ t('sentEmpty') }}</p>
+    } @else {
+      <ul class="an__sent-list">
+        @for (a of sent(); track a.id) {
+          <li class="an__item" data-testid="sent-item">
+            <div class="an__item-head">
+              <strong class="an__item-title">{{ a.title }}</strong>
+              <span class="an__muted">{{ formatDate(a.createdAt) }}</span>
+            </div>
+            <div class="an__item-meta">
+              <span class="an__chip">{{ sentTargetText(a) }}</span>
+              <span class="an__muted" data-testid="sent-counts">{{ recipientsText(a) }}</span>
+            </div>
+            <p class="an__item-body">{{ a.body }}</p>
+          </li>
+        }
+      </ul>
+      @if (sentTotal() > pageSize) {
+        <mat-paginator
+          [length]="sentTotal()"
+          [pageSize]="pageSize"
+          [pageIndex]="sentPage()"
+          [hidePageSize]="true"
+          (page)="onSentPage($event)"
+        />
+      }
+    }
+  </section>
+</section>

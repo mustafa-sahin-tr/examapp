@@ -370,6 +370,18 @@
         "moreDays": "Aim for at least 3 study days next week.",
         "keepGoing": "A good week; keep the same pace."
       }
+    },
+    "AnnouncementToStudent": {
+      "title": "Announcement: {0}",
+      "body": "{2}: {1}"
+    },
+    "AnnouncementToTeacher": {
+      "title": "School announcement: {0}",
+      "body": "{2}: {1}"
+    },
+    "AnnouncementToParent": {
+      "title": "School announcement for {3}: {0}",
+      "body": "{2}: {1}"
     }
   }
 }

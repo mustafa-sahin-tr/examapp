@@ -269,6 +269,17 @@ describe('describeNotification (issue #105)', () => {
         }
     });
 
+    it('Announcement_ParentLinksChild_StudentAndTeacherHaveNoRoute (issue #1281)', () => {
+        const parent = describeNotification({ type: 'AnnouncementToParent', data: JSON.stringify({ announcementId: 3, studentId: 21 }) });
+        expect(parent.route).toEqual({ commands: ['/parent'], queryParams: { child: 21 } });
+        expect(parent.icon).toBe('campaign');
+        for (const type of ['AnnouncementToStudent', 'AnnouncementToTeacher']) {
+            const self = describeNotification({ type, data: JSON.stringify({ announcementId: 3, studentId: null }) });
+            expect(self.route, type).toBeNull();
+            expect(self.icon, type).toBe('campaign');
+        }
+    });
+
     it('GradePromoted_ParentLinksChild_StudentHasNoRoute (issue #1110)', () => {
         const parent = describeNotification({ type: 'GradePromotedToParent', data: JSON.stringify({ studentId: 21, toGradeLevel: 7 }) });
         expect(parent.route).toEqual({ commands: ['/parent'], queryParams: { child: 21 } });

@@ -76,6 +76,8 @@ interface MenuItem {
    * hariç (o Okulum sekmesinden yönetir). Asıl kapı backend.
    */
   onlySchoolTeacherNotAdmin?: boolean;
+  /** Issue #1281: yalnız okula bağlı olduğu BİLİNEN öğretmene (okul yöneticisi dahil). Asıl kapı backend. */
+  onlySchoolTeacher?: boolean;
 }
 
 @Component({
@@ -305,6 +307,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'teacher-coach', labelKey: 'menu.myStudents', icon: 'insights', route: '/teacher/coach', type: 'menu', roles: ['Teacher'] },
     // Issue #1279: okul öğretmeni — okulun şubeleri (salt okunur).
     { id: 'school-sections', labelKey: 'menu.schoolSections', icon: 'groups', route: '/school-sections', type: 'menu', roles: ['Teacher'], onlySchoolTeacherNotAdmin: true },
+    { id: 'announcements', labelKey: 'menu.announcements', icon: 'campaign', route: '/announcements', type: 'menu', roles: ['Teacher'], onlySchoolTeacher: true },
     // Issue #420: veli paneli (çocuk özeti) — velinin ana sayfası.
     { id: 'parent-home', labelKey: 'menu.parentHome', icon: 'home', route: '/parent', type: 'menu', roles: ['Parent'] },
     // Issue #419: velinin çocukları (davet koduyla ekleme + liste).
@@ -452,6 +455,9 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
       return false;
     }
     if (item.onlySchoolTeacherNotAdmin && (!notIndependent || this.authService.isSchoolAdmin())) {
+      return false;
+    }
+    if (item.onlySchoolTeacher && !notIndependent) {
       return false;
     }
     if (!item.roles) {

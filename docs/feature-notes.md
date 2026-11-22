@@ -695,3 +695,18 @@ sınıfındaki öğrenciye (değilse 409 `{ studentIds }`). Okuma okulun onaylı
 eklendi, `sectionId` / `unassigned=true` filtreleri (atama diyaloğu). Okul değişimi üyeliği kapatır (`school-change.md`). Sınıf
 değişimi üyeliği kapatmaz (kapsam dışı). UI: okul yöneticisi Okulum → "Şubeler" sekmesi (`/school-admin/sections`), diğer okul
 öğretmenleri menüde "Şubeler" (`/school-sections`, salt okunur); Okulum öğrenci tablosunda şube sütunu.
+
+### Duyurular (#1281)
+
+`SchoolAnnouncements` (okul, gönderen, hedef `School` / `Grade` / `Section` / `Students`, hedef adı anlık, başlık ≤ 100, metin ≤ 500,
+öğrenci / öğretmen / veli sayısı). `POST api/announcements` gönderen okulun onaylı, askısız, bağımsız olmayan öğretmeni (okul DB'den);
+okul geneli ve sınıf yalnız okul yöneticisi (403), şube / seçili öğrenciler (1–200, okulun doğrulanmış üyeleri) her okul öğretmeni,
+başka okulun şubesi / öğrencisi 404 (hiçbir şey yazılmaz), gönderen başına 24 saatte 20 duyuru (429), alıcı yoksa 400.
+`GET api/announcements/options` (okul adı, okul geneli / sınıf açık mı), `GET api/announcements/sent` (gönderenin duyuruları; okul
+değişse de kalır). Alıcılar producer'da: hedefin doğrulanmış öğrencileri, okul genelinde okulun öğretmenleri, hedeflenen öğrencilerin
+Active velileri; gönderen hariç, kullanıcı başına tek (iki çocuğu hedeflenen veliye tek bildirim, çocuk adı yazılmaz). Duyuru satırı
+ve 500 alıcılık parçalar hâlinde `AnnouncementPublishedEvent` aynı transaction'da; her alıcı kendi `NotificationId`'sini taşır.
+BadgeService `AnnouncementPublishedConsumer` parçayı toplu yazar (`AnnouncementToStudent` / `ToTeacher` / `ToParent`, alıcının dili;
+`SourceEventId` = alıcının id'si → yeniden teslim atlanır); sub'ı ne event'te ne BadgeService verisinde olan alıcı atlanıp loglanır.
+UI: menüde "Duyurular" (`/announcements`, okulun öğretmenleri ve yöneticisi): gönderme formu (onaylı) + "Gönderilenler"; velinin
+bildirimi çocuğun paneline gider. Düzenleme, silme, cevap, e-posta / push yok.

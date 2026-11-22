@@ -355,6 +355,12 @@ export const routes: Routes = [
           import('./pages/school-sections/school-sections.component').then((m) => m.SchoolSectionsComponent),
       },
       {
+        // Issue #1281: okul duyuruları — okulun onaylı öğretmeni (okul geneli / sınıf hedefi yalnız okul yöneticisi; kapı backend).
+        path: 'announcements',
+        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],
+        loadComponent: () => import('./pages/announcements/announcements.component').then((m) => m.AnnouncementsComponent),
+      },
+      {
         // Issue #1277: okul yöneticisi — kendi okulunun öğretmen başvuruları (aynı sayfa, okul kapsamı).
         path: 'school-admin/teacher-approvals',
         canActivate: [authGuard, schoolAdminGuard],

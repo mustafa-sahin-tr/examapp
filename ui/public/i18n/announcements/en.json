@@ -1,0 +1,58 @@
+{
+  "title": "Announcements",
+  "subtitle": "Send in-app announcements to students, their parents and teachers at your school.",
+  "compose": "New announcement",
+  "target": "To",
+  "targets": {
+    "School": "Whole school",
+    "Grade": "Grade",
+    "Section": "Section",
+    "Students": "Selected students"
+  },
+  "grade": "Grade",
+  "section": "Section",
+  "titleField": "Title",
+  "bodyField": "Announcement text",
+  "selectAll": "Select all ({{count}} selected)",
+  "unknown": "Unknown name",
+  "send": "Send",
+  "sending": "Sending…",
+  "retry": "Retry",
+  "sent": "Sent",
+  "sentEmpty": "You haven't sent any announcements yet.",
+  "hint": {
+    "School": "All students, parents and teachers of {{school}} will be notified.",
+    "noSections": "Your school has no sections yet. The school admin creates them.",
+    "emptySection": "This section has no students.",
+    "recipients": "Students and their linked parents are notified."
+  },
+  "targetText": {
+    "School": "{{school}} (whole school)",
+    "Students": "{{count}} students"
+  },
+  "sentTarget": {
+    "School": "Whole school",
+    "Grade": "Grade",
+    "Section": "Section",
+    "Students": "Selected students"
+  },
+  "count": {
+    "students": "{{count}} students",
+    "parents": "{{count}} parents",
+    "teachers": "{{count}} teachers"
+  },
+  "confirm": {
+    "title": "Send this announcement?",
+    "message": "The announcement goes to {{target}}. It can't be taken back.",
+    "messageSchool": "The announcement goes to everyone at {{target}}, teachers included. It can't be taken back.",
+    "send": "Send",
+    "cancel": "Cancel"
+  },
+  "toast": {
+    "sent": "Announcement sent: {{recipients}}."
+  },
+  "state": {
+    "error": "Couldn't load announcements.",
+    "sendError": "Couldn't send the announcement. Try again."
+  }
+}

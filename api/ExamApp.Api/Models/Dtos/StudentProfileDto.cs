@@ -93,6 +93,8 @@ public class TeacherDto
 
     /// <summary>issue #289: öğretmen hesap onayı admin tarafından askıya alındı (neden dönülmez). true iken <see cref="TeacherAccountApproved"/> false.</summary>
     public bool TeacherAccountSuspended { get; set; }
+    /// <summary>issue #1277: UI okul yöneticisi menüsünü açar (<c>SchoolAdminResolver</c> ile aynı kural). Yetkiyi sunucu ayrıca denetler.</summary>
+    public bool IsSchoolAdmin { get; set; }
 
     /// <summary>issue #287: mevcut başvurunun durumu: "Pending" | "Approved" | "Rejected".</summary>
     public string TeacherApplicationStatus { get; set; } = string.Empty;

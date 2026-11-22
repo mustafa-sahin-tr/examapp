@@ -86,6 +86,11 @@ export class AuthService {
     return this.hasRealmRole('Admin') || this.hasRealmRole('SuperAdmin');
   }
 
+  /** Issue #1277: profil okul yöneticisi diyor (onaylı öğretmen). İpucu — asıl kapı backend. */
+  readonly isSchoolAdmin = computed(
+    () => this.hasRealmRole('Teacher') && !this.isUnapprovedTeacher() && this.user()?.teacher?.isSchoolAdmin === true,
+  );
+
   /** Issue #287: öğretmen özellikleri açık mı (Teacher değilse true). Bkz. `isUnapprovedTeacher`. */
   readonly teacherAccountApproved = computed(() => !this.isUnapprovedTeacher());
 

@@ -271,6 +271,8 @@
   },
   "approvals": {
     "title": "Teacher Applications",
+    "schoolTitle": "My School's Teacher Applications",
+    "schoolSubtitle": "Requests from teachers who want to join your school. An approved teacher is linked to your school; when you reject, the reason is shown to the teacher.",
     "subtitle": "Teacher account approvals, independent-teacher applications and school membership requests. A teacher whose account is not approved cannot use teacher features; until a school membership is approved, the teacher cannot see the school’s students or classes.",
     "refresh": "Refresh",
     "loading": "Loading applications...",

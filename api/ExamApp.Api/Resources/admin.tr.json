@@ -55,6 +55,7 @@
       "accountSuspended": "Öğretmen hesabı askıda; okula bağlamadan önce askı kaldırılmalıdır."
     },
     "schoolAdmin": {
+      "notSchoolAdmin": "Bu işlem yalnız okul yöneticilerine açık.",
       "isSchoolAdminRequired": "isSchoolAdmin alanı zorunludur.",
       "teacherNotFound": "Öğretmen bulunamadı.",
       "noSchool": "Okul yöneticisi yalnız bir okula bağlı öğretmen olabilir.",

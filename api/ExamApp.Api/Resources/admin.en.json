@@ -55,6 +55,7 @@
       "accountSuspended": "The teacher account is suspended; lift the suspension before linking a school."
     },
     "schoolAdmin": {
+      "notSchoolAdmin": "This action is only available to school admins.",
       "isSchoolAdminRequired": "The isSchoolAdmin field is required.",
       "teacherNotFound": "Teacher not found.",
       "noSchool": "Only a teacher who belongs to a school can be a school admin.",

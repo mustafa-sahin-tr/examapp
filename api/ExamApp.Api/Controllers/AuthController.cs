@@ -138,6 +138,9 @@ namespace ExamApp.Api.Controllers
                         // issue #287: UI onaysız öğretmene öğretmen menülerini kapatıp "onay bekleniyor" gösterir.
                         TeacherAccountApproved = approval.TeacherAccountApproved,
                         TeacherAccountSuspended = approval.TeacherAccountSuspended, // issue #289
+                        // issue #1277: SchoolAdminResolver ile aynı kural (okullu, bağımsız değil, onaylı, askısız).
+                        IsSchoolAdmin = teacher.IsSchoolAdmin && teacher.SchoolId != null && !teacher.IsIndependentTutor
+                            && approval.TeacherAccountApproved,
                         TeacherApplicationStatus = approval.TeacherApplicationStatus,
                         RejectionReason = approval.RejectionReason
                     };

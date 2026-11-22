@@ -56,3 +56,10 @@ public sealed class AdminTeacherSchoolAdminResponseDto
     public int? SchoolId { get; init; }
     public bool Changed { get; init; }
 }
+
+/// <summary>issue #1277: okul yöneticisi paneli özeti (<c>GET api/school-admin/summary</c>; menü rozeti).</summary>
+public sealed class SchoolAdminSummaryDto
+{
+    public int SchoolId { get; init; }
+    public int PendingTeacherApplications { get; init; }
+}

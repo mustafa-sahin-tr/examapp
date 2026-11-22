@@ -10,6 +10,9 @@ import { EMPTY, Observable, Subject, of, throwError } from 'rxjs';
 
 import { PUSH_RELOAD_AUDIT_MS, TeacherApprovalsComponent } from './teacher-approvals.component';
 import { AdminService } from '../../../services/admin.service';
+import { SchoolAdminService } from '../../../services/school-admin.service';
+import { SCHOOL_ADMIN_SCOPE_DATA_KEY } from '../../../services/teacher-applications-api';
+import { ActivatedRoute } from '@angular/router';
 import { SignalRService } from '../../../services/signalr.service';
 import { TeacherApplicationDetail, TeacherApplicationListItem, TeacherApplicationSubmittedPayload, } from '../../../models/teacher-application.model';
 import { Paged } from '../../../models/test-instance';
@@ -969,5 +972,35 @@ describe('TeacherApprovalsComponent — account approval label (Issue #287)', ()
         expect(tooltip.message).toBe(adminTr.approvals.accountSuspended.hint);
         expect(tooltip.message).toContain('askıyı kaldırmaz');
         expect(rows[1].querySelector('[data-testid="account-suspended-chip"]')).toBeNull();
+    });
+});
+
+// Issue #1277: okul yöneticisi rotasında (data.schoolAdminScope) aynı sayfa okul uçlarını kullanır.
+describe('TeacherApprovalsComponent — school admin scope (Issue #1277)', () => {
+    it('uses SchoolAdminService and the school title when the route is school scoped', () => {
+        const schoolApi = {
+            getTeacherApplications: vi.fn().mockReturnValue(of(paged([]))),
+            approveTeacherApplication: vi.fn(),
+            rejectTeacherApplication: vi.fn(),
+        };
+        const adminApi = { getTeacherApplications: vi.fn().mockReturnValue(of(paged([]))) };
+        TestBed.configureTestingModule({
+            imports: [TeacherApprovalsComponent, translocoTestingModule({ langs: { 'admin/tr': adminTr } })],
+            providers: [
+                { provide: SchoolAdminService, useValue: schoolApi },
+                { provide: AdminService, useValue: adminApi },
+                { provide: ActivatedRoute, useValue: { snapshot: { data: { [SCHOOL_ADMIN_SCOPE_DATA_KEY]: true } } } },
+                { provide: SignalRService, useValue: { teacherApplicationSubmitted$: EMPTY, teacherSchoolRequestSubmitted$: EMPTY } },
+                { provide: MatSnackBar, useValue: { open: vi.fn() } },
+                provideNoopAnimations(),
+            ],
+        });
+        const fixture = TestBed.createComponent(TeacherApprovalsComponent);
+        fixture.detectChanges();
+
+        expect(fixture.componentInstance.schoolScope).toBe(true);
+        expect(schoolApi.getTeacherApplications).toHaveBeenCalledWith({ status: 'pending', page: 1, pageSize: 20 });
+        expect(adminApi.getTeacherApplications).not.toHaveBeenCalled();
+        expect(fixture.nativeElement.querySelector('h2').textContent).toContain(adminTr.approvals.schoolTitle);
     });
 });

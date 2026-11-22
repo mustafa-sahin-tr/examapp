@@ -33,18 +33,24 @@ public class SchoolAdminController : BaseController
     private readonly ITeacherApprovalService _approvals;
     private readonly ISchoolAdminResolver _schoolAdmins;
     private readonly IAdminDataAccessAuditService _dataAccessAudit;
+    private readonly ISchoolAdminOverviewService _overview;
     private readonly IStringLocalizer<Messages> _localizer;
 
     public SchoolAdminController(ITeacherApprovalService approvals, ISchoolAdminResolver schoolAdmins,
-        IAdminDataAccessAuditService dataAccessAudit, IStringLocalizer<Messages>? localizer = null)
+        IAdminDataAccessAuditService dataAccessAudit, ISchoolAdminOverviewService overview,
+        IStringLocalizer<Messages>? localizer = null)
     {
         _approvals = approvals;
         _schoolAdmins = schoolAdmins;
         _dataAccessAudit = dataAccessAudit;
+        _overview = overview;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
-    /// <summary>GET api/school-admin/summary → <c>{ schoolId, pendingTeacherApplications }</c>; okul yöneticisi değilse 403.</summary>
+    /// <summary>
+    /// GET api/school-admin/summary → okul adı, öğretmen / öğrenci sayısı, bekleyen öğretmen başvurusu ve öğrenci üyeliği
+    /// (#1278 okul paneli; menü rozeti de buradan); okul yöneticisi değilse 403.
+    /// </summary>
     [HttpGet("summary")]
     [EnableRateLimiting(StudentSchoolRequestListRateLimiting.Policy)]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
@@ -54,11 +60,55 @@ public class SchoolAdminController : BaseController
         if (actor is null)
             return Forbidden();
 
-        return Ok(new SchoolAdminSummaryDto
-        {
-            SchoolId = actor.Scope.SchoolId,
-            PendingTeacherApplications = await _approvals.CountPendingAsync(actor.Scope, ct)
-        });
+        var pendingTeachers = await _approvals.CountPendingAsync(actor.Scope, ct);
+        return Ok(await _overview.GetSummaryAsync(actor.Scope.SchoolId, actor.Scope.ActorUserId, pendingTeachers, ct));
+    }
+
+    /// <summary>
+    /// GET api/school-admin/teachers?page&amp;pageSize → okulun öğretmenleri (#1278; salt okunur, yöneticiler önce).
+    /// Erişim admin veri erişimi audit'ine okul filtresiyle yazılır.
+    /// </summary>
+    [HttpGet("teachers")]
+    [EnableRateLimiting(StudentSchoolRequestListRateLimiting.Policy)]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)] // kişisel veri
+    public async Task<ActionResult<Paged<SchoolAdminTeacherDto>>> GetTeachers(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = AdminListPaging.DefaultPageSize,
+        CancellationToken ct = default)
+    {
+        var actor = await ResolveActorAsync(ct);
+        if (actor is null)
+            return Forbidden();
+
+        var result = await _overview.ListTeachersAsync(actor.Scope.SchoolId, page, pageSize, ct);
+        await _dataAccessAudit.RecordListAccessAsync(new AdminListAccessRecord(
+            actor.KeycloakId, AdminDataAccessResource.TeacherList, actor.Scope.SchoolId, false,
+            result.PageNumber, result.PageSize, result.Items?.Count ?? 0, result.TotalCount), ct);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// GET api/school-admin/students?gradeId&amp;page&amp;pageSize → okulun doğrulanmış öğrencileri (#1278; numara maskeli).
+    /// Bekleyen üyelikler <c>api/student-school-requests</c> kuyruğundadır.
+    /// </summary>
+    [HttpGet("students")]
+    [EnableRateLimiting(StudentSchoolRequestListRateLimiting.Policy)]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)] // kişisel veri
+    public async Task<ActionResult<Paged<SchoolAdminStudentDto>>> GetStudents(
+        [FromQuery] int? gradeId = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = AdminListPaging.DefaultPageSize,
+        CancellationToken ct = default)
+    {
+        var actor = await ResolveActorAsync(ct);
+        if (actor is null)
+            return Forbidden();
+
+        var result = await _overview.ListStudentsAsync(actor.Scope.SchoolId, gradeId, page, pageSize, ct);
+        await _dataAccessAudit.RecordListAccessAsync(new AdminListAccessRecord(
+            actor.KeycloakId, AdminDataAccessResource.StudentList, actor.Scope.SchoolId, false,
+            result.PageNumber, result.PageSize, result.Items?.Count ?? 0, result.TotalCount), ct);
+        return Ok(result);
     }
 
     /// <summary>

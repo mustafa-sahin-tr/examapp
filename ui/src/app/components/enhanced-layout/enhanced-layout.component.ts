@@ -290,8 +290,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'my-calendar', labelKey: 'menu.myCalendar', icon: 'event_note', route: '/my-calendar', type: 'menu', roles: ['Student', 'Teacher'] },
     { id: 'tutors', labelKey: 'menu.tutors', icon: 'person_search', route: '/tutors', type: 'menu', roles: ['Student'] },
     { id: 'teacher-requests', labelKey: 'menu.requests', icon: 'inbox', route: '/assignment-permission-requests', type: 'menu', roles: ['Teacher'] },
-    // Issue #1277: okul yöneticisi — kendi okulunun öğretmen başvuruları.
-    { id: 'school-admin-teacher-approvals', labelKey: 'menu.teacherApprovals', icon: 'how_to_reg', route: '/school-admin/teacher-approvals', type: 'menu', roles: ['Teacher'], onlySchoolAdmin: true },
+    // Issue #1278: okul yöneticisi — okul paneli; öğretmen başvuruları `sectionTabs` sekmesinde (#1277), rozet bekleyenler.
+    { id: 'school-admin', labelKey: 'menu.mySchool', icon: 'domain', route: '/school-admin/overview', type: 'menu', roles: ['Teacher'], onlySchoolAdmin: true },
     // Issue #106: öğrenci → öğretmen mesajlaşma (booking ile aynı "öğrenci → öğretmen" ailesi).
     { id: 'teacher-messages', labelKey: 'menu.teacherMessages', icon: 'forum', route: '/teacher-messages', type: 'menu', roles: ['Student'] },
     // Issue #106: öğretmenin öğrenci mesajları gelen kutusu.
@@ -404,6 +404,11 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
       { id: 'tab-booking-requests', labelKey: 'menu.bookingRequests', icon: '', route: '/booking-requests', type: 'menu', roles: ['Teacher'], onlyIndependentTeacher: true },
       // Issue #583: açık uçlu etkinlik cevaplarını değerlendirme kuyruğu.
       { id: 'tab-open-text-reviews', labelKey: 'menu.openTextReviews', icon: '', route: '/open-text-reviews', type: 'menu', roles: ['Teacher'] },
+    ],
+    // Issue #1278: okul yöneticisi paneli.
+    [
+      { id: 'tab-school-admin-overview', labelKey: 'menu.schoolOverview', icon: '', route: '/school-admin/overview', type: 'menu', roles: ['Teacher'], onlySchoolAdmin: true },
+      { id: 'school-admin-teacher-approvals', labelKey: 'menu.teacherApprovals', icon: '', route: '/school-admin/teacher-approvals', type: 'menu', roles: ['Teacher'], onlySchoolAdmin: true },
     ],
     [
       { id: 'tab-tutor-profile', labelKey: 'menu.tutorProfile', icon: '', route: '/tutor-profile', type: 'menu', roles: ['Teacher'], allowUnapprovedTeacher: true, onlyIndependentTeacher: true },
@@ -665,6 +670,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
         return this.accessRequestCount();
       case 'student-school-requests':
         return this.studentSchoolRequestCount();
+      case 'school-admin':
       case 'school-admin-teacher-approvals':
         return this.schoolAdminService.pendingTeacherApplications();
       case 'admin-pending':

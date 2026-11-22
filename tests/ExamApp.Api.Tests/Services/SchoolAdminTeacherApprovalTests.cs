@@ -154,7 +154,8 @@ public class SchoolAdminTeacherApprovalTests : IDisposable
                 new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build())
             .AddSingleton(profiles)
             .BuildServiceProvider();
-        return new SchoolAdminController(NewService(ctx), new SchoolAdminResolver(ctx), Substitute.For<IAdminDataAccessAuditService>())
+        return new SchoolAdminController(NewService(ctx), new SchoolAdminResolver(ctx), Substitute.For<IAdminDataAccessAuditService>(),
+            new SchoolAdminOverviewService(ctx, _authApi))
         {
             ControllerContext = new ControllerContext
             {
@@ -177,6 +178,8 @@ public class SchoolAdminTeacherApprovalTests : IDisposable
         (await controller.GetSummary(default)).ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(403);
         (await controller.Approve(seed.PendingA, default)).ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(403);
         (await controller.GetTeacherApplications(ct: default)).Result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(403);
+        (await controller.GetTeachers(ct: default)).Result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(403);
+        (await controller.GetStudents(ct: default)).Result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(403);
     }
 
     [Fact]

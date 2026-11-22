@@ -1,0 +1,38 @@
+{
+  "title": "My school",
+  "subtitle": "Your school's teachers, students and pending requests.",
+  "unknown": "(name unavailable)",
+  "cards": {
+    "teachers": "Teachers",
+    "students": "Students",
+    "teacherApplications": "Pending teacher applications",
+    "studentRequests": "Pending student requests",
+    "review": "Review"
+  },
+  "teachers": {
+    "title": "Teachers",
+    "empty": "No approved teachers at this school yet.",
+    "admin": "School admin",
+    "suspended": "Suspended",
+    "active": "Active"
+  },
+  "students": {
+    "title": "Students",
+    "empty": "No students for this filter.",
+    "grade": "Grade",
+    "allGrades": "All grades"
+  },
+  "columns": {
+    "name": "Name",
+    "subjects": "Subjects",
+    "status": "Status",
+    "approvedAt": "Approved",
+    "number": "Number",
+    "grade": "Grade",
+    "verifiedAt": "Membership approved"
+  },
+  "state": {
+    "summaryError": "Could not load the school summary.",
+    "listError": "Could not load the list."
+  }
+}

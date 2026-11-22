@@ -1,0 +1,38 @@
+{
+  "title": "Okulum",
+  "subtitle": "Okulunun öğretmenleri, öğrencileri ve bekleyen başvurular.",
+  "unknown": "(adı alınamadı)",
+  "cards": {
+    "teachers": "Öğretmen",
+    "students": "Öğrenci",
+    "teacherApplications": "Bekleyen öğretmen başvurusu",
+    "studentRequests": "Bekleyen öğrenci başvurusu",
+    "review": "İncele"
+  },
+  "teachers": {
+    "title": "Öğretmenler",
+    "empty": "Okulda henüz onaylı öğretmen yok.",
+    "admin": "Okul yöneticisi",
+    "suspended": "Askıda",
+    "active": "Aktif"
+  },
+  "students": {
+    "title": "Öğrenciler",
+    "empty": "Bu filtrede öğrenci yok.",
+    "grade": "Sınıf",
+    "allGrades": "Tüm sınıflar"
+  },
+  "columns": {
+    "name": "Ad soyad",
+    "subjects": "Dersler",
+    "status": "Durum",
+    "approvedAt": "Onay tarihi",
+    "number": "Numara",
+    "grade": "Sınıf",
+    "verifiedAt": "Üyelik onayı"
+  },
+  "state": {
+    "summaryError": "Okul özeti yüklenemedi.",
+    "listError": "Liste yüklenemedi."
+  }
+}

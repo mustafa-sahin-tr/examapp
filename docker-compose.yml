@@ -180,6 +180,7 @@ services:
       - ConnectionStrings__DefaultConnection=Host=exam_pg_container;Port=5432;Database=assistant;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       - Keycloak__Host=http://keycloak:8080
       - Anthropic__ApiKey=${ANTHROPIC_API_KEY:-}
+      - Redis__Configuration=redis:6379,password=${REDIS_PASSWORD:?REDIS_PASSWORD .env icinde tanimli olmali}
     depends_on:
       exam-pg-container:
         condition: service_healthy

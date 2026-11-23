@@ -709,6 +709,7 @@ var assistantService = builder.AddProject<Projects.AssistantService>("assistant-
     .WithEnvironment("ASPNETCORE_HTTPS_PORT", "")
     .WithReference(assistantDb, connectionName: "DefaultConnection")
     .WithReference(redis)
+    .WithEnvironment("Redis__Configuration", redis.Resource.ConnectionStringExpression)
     .WithEnvironment("Anthropic__ApiKey", anthropicApiKey)
     .WithEnvironment("ExamApi__BaseUrl", examDotnetApiHttp)
     .WaitFor(postgres);

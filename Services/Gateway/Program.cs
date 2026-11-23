@@ -32,6 +32,7 @@ var ocelotConfigFile = File.Exists($"ocelot.{environment}.json")
 var ocelotJson = JsonNode.Parse(File.ReadAllText(ocelotConfigFile))!;
 OverrideDownstreamHost(ocelotJson, "exam-dotnet-api", "EXAM_DOTNET_API_HOST", "EXAM_DOTNET_API_PORT");
 OverrideDownstreamHost(ocelotJson, "exam-badge-api", "EXAM_BADGE_API_HOST", "EXAM_BADGE_API_PORT");
+OverrideDownstreamHost(ocelotJson, "assistant-service", "ASSISTANT_SERVICE_HOST", "ASSISTANT_SERVICE_PORT"); // #502
 OverrideDownstreamHost(ocelotJson, "auth-ui", "AUTH_UI_HOST", "AUTH_UI_PORT");
 OverrideDownstreamHost(ocelotJson, "angular-app", "ANGULAR_APP_HOST", "ANGULAR_APP_PORT");
 OverrideDownstreamHost(ocelotJson, "auth-api", "AUTH_API_HOST", "AUTH_API_PORT");

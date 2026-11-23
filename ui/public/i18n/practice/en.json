@@ -216,5 +216,9 @@
     "doneTitle": "You finished the page's questions",
     "doneText": "Go back to the page to continue where you left off, or finish the session to see your summary.",
     "back": "Back to page"
+  },
+  "sessionLink": {
+    "ended": "This session has already ended. Start a new one below or review it from your history.",
+    "notFound": "This session could not be found. Start a new one below."
   }
 }

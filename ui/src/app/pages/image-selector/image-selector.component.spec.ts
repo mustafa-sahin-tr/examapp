@@ -835,6 +835,22 @@ describe('ImageSelectorComponent', () => {
             expect(component.getRegionOrAnswerAtPosition(620, 120)).toEqual({ type: 'passage', value: { passageId: 'p3' } });
         });
 
+        it('warningMenu_OpensNextToTheScaledMarker_LeftOfItNearTheRightEdge', () => {
+            vi.spyOn(component, 'canvasDisplayScale', 'get').mockReturnValue(0.5);
+            const canvas = { clientWidth: 1000 } as HTMLCanvasElement;
+            (component as any).canvas = { nativeElement: canvas };
+            const click = new MouseEvent('click');
+
+            component.openWarningContextMenu({ x: 400, y: 200 } as any, click);
+            expect(component.warningMenuX).toBe(200 + 24 + 4);
+            expect(component.warningMenuY).toBe(100);
+            expect(component.warningMenuFlip).toBe(false);
+
+            component.openWarningContextMenu({ x: 1900, y: 200 } as any, click);
+            expect(component.warningMenuFlip).toBe(true);
+            expect(component.warningMenuX).toBe(950 - 4);
+        });
+
         it('setPassageInstruction_TruncatesTo2000Characters', () => {
             component.passages.set([{ id: 'p1', x: 0, y: 0, width: 10, height: 10 }]);
 

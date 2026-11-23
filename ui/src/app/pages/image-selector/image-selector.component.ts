@@ -455,6 +455,9 @@ export interface ActiveInspector {
   selectedPassageId: string;
   passageFirst: boolean;
 }
+/** Uyarı kutusunun en geniş hâli (scss `.wr-custom-context-menu` max-width). */
+const WARNING_MENU_WIDTH = 260;
+
 @Component({
   selector: 'app-image-selector',
   standalone: true,
@@ -733,6 +736,8 @@ export class ImageSelectorComponent {
   warningMenuVisible = false;
   warningMenuX = 0;
   warningMenuY = 0;
+  /** Uyarı kutusu işaretin soluna açılır (sağda yer yok). */
+  warningMenuFlip = false;
 
   // Sayfa içinde herhangi bir yere tıklandığında menüyü kapat
   @HostListener('document:click', ['$event'])
@@ -751,8 +756,16 @@ export class ImageSelectorComponent {
     event.stopPropagation();
     this.selectedWarning = marker;
     this.warningMenuVisible = true;
-    this.warningMenuX = marker.x + 20;
-    this.warningMenuY = marker.y;
+    // İşaret ekranda ölçekli çizilir; kutu da aynı ölçekle işaretin yanına konur (eskiden resmin piksel konumuna gidip
+    // tuvalin çok sağına, Soru Müfettişi'nin altına düşüyordu). Sağa sığmazsa işaretin soluna açılır.
+    const scale = this.canvasDisplayScale;
+    const icon = this.warningIconHeight * scale;
+    const left = marker.x * scale;
+    const shownWidth = this.canvas?.nativeElement.clientWidth ?? Infinity;
+    // Sola açılırken kutunun sağ kenarı işarete yaslanır (`translateX(-100%)`, kutu genişliği içeriğe göre değişir).
+    this.warningMenuFlip = left + icon + WARNING_MENU_WIDTH > shownWidth && left >= WARNING_MENU_WIDTH;
+    this.warningMenuX = this.warningMenuFlip ? left - 4 : left + icon + 4;
+    this.warningMenuY = marker.y * scale;
   }
 
   dismissWarning(event: MouseEvent) {

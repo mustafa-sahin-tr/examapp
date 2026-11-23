@@ -89,4 +89,11 @@ public class ParentStudentLink
     /// (event'le aynı transaction): hafta başına tek rapor.
     /// </summary>
     public DateOnly? WeeklyReportSentFor { get; set; }
+
+    /// <summary>
+    /// Issue #523: bu veli çocuğun AI asistanı kullanmasını kapattı (varsayılan false = açık). Her veli kendi bağlantısında seçer;
+    /// çocuğun velisi silinmemiş Active bağlantılarından herhangi birinde true ise asistan kapalıdır
+    /// (<c>ParentAssistantControl</c>). Koparılan bağlantının seçimi sayılmaz.
+    /// </summary>
+    public bool AssistantBlocked { get; set; }
 }

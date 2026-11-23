@@ -204,5 +204,13 @@
     "done": "Password changed. Your child can sign in with the new password.",
     "error": "The password could not be changed.",
     "onlyPrimary": "Only the child's primary parent can reset the password."
+  },
+  "assistant": {
+    "title": "AI assistant",
+    "hint": "Your child can ask the in-app assistant questions. If you turn it off, the assistant is closed for your child.",
+    "otherParent": "The child's other parent turned the assistant off; both parents need to turn it on.",
+    "on": "Assistant turned on.",
+    "off": "Assistant turned off.",
+    "error": "The setting could not be saved."
   }
 }

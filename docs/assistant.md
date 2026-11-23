@@ -172,3 +172,17 @@ Faz 1a'da yalnız öğrenci makaleleri var (15); menü adları `ui/public/i18n` 
 
 Canlı deneme (Aspire, öğrenci): "Velimi nasıl eklerim?", "Şifremi nasıl değiştiririm?", "Ödevlerimi nerede görürüm?" doğru
 makaleyle cevaplandı (ilk token p50 1,4 sn); konu dışı soru tool çağırmadı.
+
+## Velinin asistanı kapatması (#523)
+
+- Seçim veli başına, bağlantıda tutulur: `ParentStudentLinks.AssistantBlocked` (varsayılan `false` = açık). Çocuğun velisi silinmemiş
+  **herhangi bir** Active bağlantısında kapalıysa asistan kapalıdır; koparılan bağlantının seçimi sayılmaz (`ParentAssistantControl`).
+- Veli: `PUT /api/exam/parent/children/{studentId}/assistant` `{ allowed }` → `{ allowed, effectiveAllowed }`. Kapı
+  `IParentChildAccess` (bağlı olmayan / Pending 404), her değişiklik `ParentAccessAudit` `children.assistant-setting` (ResourceId 1 açık,
+  0 kapalı). *Çocuklarım* kartında anahtar; `my-children` yanıtında `assistantAllowed` + `assistantBlockedByOtherParent`.
+- Öğrenci: `GET /api/exam/student/assistant-access` → `{ allowed }` (asistan paneli #507 düğmeyi buna göre gizler; derin linkle açılırsa
+  "Velin asistanı kapattı" mesajı orada).
+- AssistantService (`Security/ParentControl`): öğrenci rolünde her `/chat` turunda ve onaylanan eylemde (`actions/{id}/confirm`) aynı ucu
+  öğrencinin token'ıyla iç ağdan okur, sonucu kullanıcı başına **30 sn** önbellekler (kapatma en geç 30 sn'de etkili). Kapalı →
+  403 `AssistantDisabledByParent`; exam API cevap veremezse 503 `AssistantUnavailable` (önbelleğe alınmaz, kapalı kabul); exam API'nin
+  kendi 403 kodu (ör. `ParentRequired`) aynen geçer. Konuşma listesi / silme / kullanım açık kalır (öğrenci geçmişini silebilsin).

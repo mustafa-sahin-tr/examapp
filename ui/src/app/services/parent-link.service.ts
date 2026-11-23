@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, switchMap, tap, throwError } from 'rxjs';
 
 import {
+  ChildAssistantState,
   LinkedChild,
   ParentInviteCode,
   ParentLinkApproveConsent,
@@ -30,6 +31,11 @@ export class ParentLinkService {
   /** Öğrenci: bağlı veliler (salt okunur). */
   getMyParents(): Observable<StudentParentLinks> {
     return this.http.get<StudentParentLinks>(`${this.baseUrl}/my-parents`);
+  }
+
+  /** Issue #523: veli çocuğun AI asistanı kullanmasını açar / kapatır (kendi seçimi; herhangi bir veli kapatırsa kapalı). */
+  setChildAssistant(studentId: number, allowed: boolean): Observable<ChildAssistantState> {
+    return this.http.put<ChildAssistantState>(`/api/exam/parent/children/${studentId}/assistant`, { allowed });
   }
 
   /** Veli: ikinci veli kodunu kullan → birincil velinin onayını bekleyen bağlantı (öğrenci verisi yok). */

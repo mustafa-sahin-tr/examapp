@@ -110,4 +110,10 @@ public static class ParentAccessEndpoints
 
     /// <summary><c>POST api/parent/reschedule-requests/{id}/reject</c> (issue #486) — yazma; ResourceId = Booking.Id, tekilleştirme yok.</summary>
     public const string ChildRescheduleReject = "children.reschedule-reject";
+
+    /// <summary>
+    /// <c>PUT api/parent/children/{studentId}/assistant</c> (issue #523) — yazma; ResourceId = yeni değer (1 açık, 0 kapalı), ayrı
+    /// değerler ayrı satır.
+    /// </summary>
+    public const string ChildAssistantSetting = "children.assistant-setting";
 }

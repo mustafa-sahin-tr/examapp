@@ -204,5 +204,13 @@
     "done": "Şifre değiştirildi. Çocuğunuz yeni şifreyle giriş yapabilir.",
     "error": "Şifre değiştirilemedi.",
     "onlyPrimary": "Şifreyi yalnızca çocuğun birincil velisi sıfırlayabilir."
+  },
+  "assistant": {
+    "title": "Yapay zekâ asistanı",
+    "hint": "Çocuğunuz uygulamadaki asistana soru sorabilir. Kapatırsanız asistan çocuğunuza kapanır.",
+    "otherParent": "Diğer velisi asistanı kapattı; açmak için iki velinin de açması gerekir.",
+    "on": "Asistan açıldı.",
+    "off": "Asistan kapatıldı.",
+    "error": "Ayar kaydedilemedi."
   }
 }

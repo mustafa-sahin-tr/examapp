@@ -578,6 +578,7 @@ public sealed class ParentLinkService : IParentLinkService
                 // metin SchoolName veliye "okulu" diye sunulmaz.
                 SchoolName = l.Student.SchoolVerifiedAt != null && l.Student.School != null ? l.Student.School.Name : null,
                 l.Student.ParentManaged, // issue #438
+                l.AssistantBlocked, // issue #523
                 l.ActivatedAt,
                 l.CreatedAt
             })
@@ -624,6 +625,14 @@ public sealed class ParentLinkService : IParentLinkService
                 .ToListAsync(ct);
 
         var coParents = family.Where(f => primaryStudentIds.Contains(f.StudentId) && f.ParentId != parentId).ToList();
+
+        // Issue #523: başka bir Active velinin asistanı kapattığı çocuklar (her veliye; kimin kapattığı söylenmez).
+        var assistantBlockedByOthers = activeStudentIds.Count == 0
+            ? []
+            : await ParentAssistantControl.BlockedLinks(_context)
+                .Where(l => activeStudentIds.Contains(l.StudentId) && l.ParentId != parentId)
+                .Select(l => l.StudentId).Distinct()
+                .ToListAsync(ct);
 
         // issue #440: öğrencinin bu veliyi davet ettiği (StudentRegistered) bekleyen bağlantılar — IsOpen'a girmez (ömrünü davet yönetir);
         // yalnız açık ve süresi dolmamış davetler, rızalı onay için. Öğrenci verisi: yalnız kısa ad ("Ali K.").
@@ -679,6 +688,8 @@ public sealed class ParentLinkService : IParentLinkService
                 IsPrimary = isPrimary,
                 ParentManaged = r.ParentManaged,
                 CanResetPassword = rp,
+                AssistantAllowed = !r.AssistantBlocked,
+                AssistantBlockedByOtherParent = assistantBlockedByOthers.Contains(r.StudentId),
                 MaxParents = ParentLinkRules.MaxActiveParentsPerStudent
             };
             if (!isPrimary)

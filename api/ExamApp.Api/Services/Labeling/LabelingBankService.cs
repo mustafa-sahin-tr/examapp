@@ -236,7 +236,8 @@ public sealed class LabelingBankService(
         var bulk = new BulkQuestionCreateDto
         {
             ImageData = imageData,
-            Passages = [],
+            Passages = ApplyImportPassages(ToImportPassages(request.Passages, bulkQuestions.Count), bulkQuestions, bulkQuestions,
+                width, height),
             Questions = bulkQuestions,
             Header = manualTopic is { } chosen ? ManualHeader(chosen) : BookHeader(toc),
             GradeId = gradeId,
@@ -392,6 +393,25 @@ public sealed class LabelingBankService(
                 // Konu yoksa (yalnız ders) kaynak Human kalır: sınıflandırıcı bugünkü gibi çalışır.
                 ClassificationSource = toc.TopicId is null ? null : nameof(ClassificationSource.Book),
             };
+
+    /// <summary>
+    /// İstemcinin çizdiği pasajlar (işaretleme ekranı): geçersiz / tekrarlanan soru sırası atılır, soru başına tek pasaj (ilk
+    /// kazanır), sorusu kalmayan pasaj düşer.
+    /// </summary>
+    internal static List<LabelingImportPassage> ToImportPassages(IReadOnlyList<LabelingBankPassageDto>? passages, int questionCount)
+    {
+        var claimed = new HashSet<int>();
+        var result = new List<LabelingImportPassage>();
+        foreach (var p in passages ?? [])
+        {
+            if (p is null)
+                continue;
+            var indexes = (p.QuestionIndexes ?? []).Where(i => i >= 0 && i < questionCount && claimed.Add(i)).ToList();
+            if (indexes.Count > 0)
+                result.Add(new LabelingImportPassage(new LabelingBankBoxDto { X = p.X, Y = p.Y, Width = p.Width, Height = p.Height }, indexes));
+        }
+        return result;
+    }
 
     /// <summary>
     /// Issue #1062: pasajlar kırpılacak kutulara çevrilir ve sorular bağlanır. Soru başına tek pasaj; kaydedilecek sorusu kalmayan

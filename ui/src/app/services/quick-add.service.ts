@@ -11,7 +11,7 @@ import {
   BookImportQuota,
   BookImportReviewQuestion,
 } from '../models/book-import';
-import { LabelingBankQuestion } from '../models/labeling';
+import { LabelingBankPassage, LabelingBankQuestion } from '../models/labeling';
 import { StartQuickAddRequest } from '../models/quick-add';
 
 /**
@@ -75,8 +75,17 @@ export class QuickAddService {
   }
 
   /** Issue #1054 "İşaretlemede düzelt" (yalnız Admin / QuestionTrainer): fotoğrafın taslaklarını düzeltilenlerle değiştirir. */
-  replacePage(id: string, testId: number, filePage: number, questions: LabelingBankQuestion[]): Observable<BookImportPageFix> {
-    return this.http.put<BookImportPageFix>(`${this.baseUrl}/${id}/tests/${testId}/pages/${filePage}/questions`, { questions });
+  replacePage(
+    id: string,
+    testId: number,
+    filePage: number,
+    questions: LabelingBankQuestion[],
+    passages?: LabelingBankPassage[]
+  ): Observable<BookImportPageFix> {
+    return this.http.put<BookImportPageFix>(`${this.baseUrl}/${id}/tests/${testId}/pages/${filePage}/questions`, {
+      questions,
+      ...(passages?.length ? { passages } : {}),
+    });
   }
 
   /** Issue #1173: düzeltilecek fotoğrafın taslakları (numara, kutu, doğru şık). */

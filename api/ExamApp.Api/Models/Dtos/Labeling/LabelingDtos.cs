@@ -155,6 +155,17 @@ public class LabelingBankQuestionDto : LabelingBankBoxDto
 }
 
 /// <summary>
+/// Ortak pasaj (okuma metni / görseli) kutusu: orijinal sayfa pikseli ve bağlı soruların istekteki <c>Questions</c> sırası.
+/// Soru başına tek pasaj (ilk kazanır); geçersiz sıra yok sayılır. Pasaj sayfadan kırpılıp sorulara bağlanır (kitap aktarımıyla
+/// aynı yol, #1062).
+/// </summary>
+public class LabelingBankPassageDto : LabelingBankBoxDto
+{
+    [Required, MaxLength(Services.Labeling.LabelingBankService.MaxQuestions)]
+    public List<int> QuestionIndexes { get; set; } = new();
+}
+
+/// <summary>
 /// <c>POST api/labeling/pages/bank</c> — sayfadaki soruları teste bağlamadan soru bankasına kaydeder (issue #470).
 /// </summary>
 public class LabelingBankSaveRequestDto
@@ -165,6 +176,10 @@ public class LabelingBankSaveRequestDto
 
     [Required, MaxLength(100)]
     public List<LabelingBankQuestionDto> Questions { get; set; } = new();
+
+    /// <summary>Tuvalde çizilip sorulara bağlanan pasajlar; yoksa soru pasajsız kaydedilir.</summary>
+    [MaxLength(Services.Labeling.LabelingBankService.MaxQuestions)]
+    public List<LabelingBankPassageDto>? Passages { get; set; }
 
     /// <summary>
     /// Issue #565: sayfanın sınıfı (zorunlu, var olan bir <c>Grade</c>). Sınıflandırıcı soruları yalnız bu sınıfın

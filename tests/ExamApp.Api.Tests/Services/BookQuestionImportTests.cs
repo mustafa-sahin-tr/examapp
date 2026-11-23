@@ -1090,6 +1090,49 @@ public class BookQuestionImportTests : IDisposable
             .ShouldBe(["1", "3", "4"]);
     }
 
+    /// <summary>
+    /// Düzeltmede tuvalde sorulara bağlanan pasajlar kayda gider (kaydedilen sıraya çevrilmiş; geçersiz / ikinci kez bağlanan sıra
+    /// atılır) ve tuval yeniden açılınca taslağın pasajı geri gelir.
+    /// </summary>
+    [Fact]
+    public async Task Passages_drawn_in_a_page_fix_are_saved_with_their_questions_and_come_back_to_the_canvas()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "ABCD", [4])]);
+        Detect(1, 4, 4, 4, 4);
+        await RunAsync(id);
+        var test = await SingleTestAsync();
+
+        await using (var ctx = _db.NewContext())
+        {
+            (await Fix(ctx).ReplacePageAsync(Owner, id, test.Id, 1, [Box(3), Box(0), Box(2)], default, passages:
+            [
+                new LabelingBankPassageDto { X = 100, Y = 20, Width = 900, Height = 60, QuestionIndexes = [1, 2, 9] },
+                new LabelingBankPassageDto { X = 100, Y = 2000, Width = 900, Height = 60, QuestionIndexes = [1, 0] },
+                new LabelingBankPassageDto { X = 100, Y = 2100, Width = 900, Height = 60, QuestionIndexes = [] },
+            ])).Error.ShouldBe(BookImportPageFixError.None);
+        }
+
+        // Kaydedilen sıra okuma sırası: Box(0) "1", Box(2) "3", Box(3) "4".
+        var request = _saved.Last();
+        request.Questions.Select(q => q.ItemLabel).ShouldBe(["1", "3", "4"]);
+        request.Passages.ShouldNotBeNull().Select(p => (p.Box.Y, string.Join(',', p.QuestionIndexes))).ShouldBe([(20, "0,1"), (2000, "2")]);
+
+        await using (var seed = _db.NewContext())
+        {
+            var passage = new Passage { X = 100, Y = 20.4, Width = 900, Height = 60, IsCanvasQuestion = true };
+            seed.Passage.Add(passage);
+            await seed.SaveChangesAsync();
+            await seed.Questions.IgnoreQueryFilters().Where(q => !q.IsDeleted && q.IsDraft && (q.Text == "1" || q.Text == "3"))
+                .ExecuteUpdateAsync(q => q.SetProperty(x => x.PassageId, passage.Id));
+        }
+        await using var check = _db.NewContext();
+        var drafts = (await Fix(check).GetPageDraftsAsync(Owner, id, test.Id, 1, default)).Drafts;
+        drafts.Select(d => d.Number).ShouldBe([1, 3, 4]);
+        drafts[0].Passage.ShouldNotBeNull().Y.ShouldBe(20);
+        drafts[1].Passage.ShouldNotBeNull().Id.ShouldBe(drafts[0].Passage!.Id);
+        drafts[2].Passage.ShouldBeNull();
+    }
+
     /// <summary>Issue #1173: düzeltme tuvali sayfanın taslaklarını numara, kutu ve doğru şıkla alır.</summary>
     [Fact]
     public async Task Page_drafts_list_numbers_boxes_and_correct_options_for_the_canvas()

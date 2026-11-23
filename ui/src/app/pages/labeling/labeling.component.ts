@@ -47,10 +47,12 @@ import {
   LabelingBankBox,
   LabelingBankConflict,
   LabelingBankInfo,
+  LabelingBankPassage,
   LabelingBankQuestion,
   LabelingPage,
   LabelingResult,
   QuestionBankSharing,
+  bankPassages,
 } from '../../models/labeling';
 import { LabelingService, manualDetectionSource, sha256OfDataUrl } from '../../services/labeling.service';
 import {
@@ -517,6 +519,15 @@ export class LabelingComponent {
     const mcq = regions.filter((r) => selector.isMcqRegion(r.name));
     for (const [i, draft] of matchPageDrafts(mcq, this.fixDrafts)) {
       const region = mcq[i];
+      // Taslağın pasajı tuvale gelir ve soruya bağlanır (yeniden kayıtta kaybolmasın); elle seçilen pasaj korunur.
+      if (draft.passage && (!region.passageId || region.passageId === '0')) {
+        const id = `d${draft.passage.id}`;
+        if (!selector.passages().some((p) => String(p.id) === id)) {
+          const { x, y, width, height } = draft.passage;
+          selector.passages.update((all) => [...all, { id, x, y, width, height, showPassageFirst: false }]);
+        }
+        selector.setPassageForQuestion(region.name, id);
+      }
       if (!this.labelsOf(region.name).itemLabel) {
         this.questionLabels.update((all) => ({
           ...all,
@@ -1073,12 +1084,13 @@ export class LabelingComponent {
         ...(itemLabel ? { itemLabel } : {}),
       };
     });
+    const bank: BankPayload = { questions, passages: bankPassages(selector.passages(), regions) };
     const existing = this.bankRecord();
     if (existing) {
-      this.confirmBankAgain(existing, image, questions);
+      this.confirmBankAgain(existing, image, bank);
       return;
     }
-    this.submitBank(image, questions, false);
+    this.submitBank(image, bank, false);
   }
 
   /**
@@ -1126,7 +1138,7 @@ export class LabelingComponent {
       };
     });
     if (questions.length > 0) {
-      this.submitFix(fix, questions, activities);
+      this.submitFix(fix, questions, activities, bankPassages(selector.passages(), regions));
       return;
     }
     const data: ConfirmDialogData = {
@@ -1159,11 +1171,16 @@ export class LabelingComponent {
       .then(() => this.startFixFromRoute());
   }
 
-  private submitFix(fix: LabelingFixTarget, questions: LabelingBankQuestion[], activities: LabelingBankBox[]): void {
+  private submitFix(
+    fix: LabelingFixTarget,
+    questions: LabelingBankQuestion[],
+    activities: LabelingBankBox[],
+    passages: LabelingBankPassage[] = []
+  ): void {
     this.fixSaving.set(true);
     (fix.kind === 'QuickAdd'
-      ? this.quickAdd.replacePage(fix.jobId, fix.testId, fix.filePage, questions)
-      : this.bookImports.replacePage(fix.jobId, fix.testId, fix.filePage, questions, activities)
+      ? this.quickAdd.replacePage(fix.jobId, fix.testId, fix.filePage, questions, passages)
+      : this.bookImports.replacePage(fix.jobId, fix.testId, fix.filePage, questions, activities, passages)
     )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -1337,7 +1354,7 @@ export class LabelingComponent {
     }
   }
 
-  private confirmBankAgain(existing: LabelingBankInfo, image: string, questions: LabelingBankQuestion[]): void {
+  private confirmBankAgain(existing: LabelingBankInfo, image: string, bank: BankPayload): void {
     const token = this.pageToken;
     this.snackBar
       .open(this.tr('bank.alreadySaved', { count: existing.questionCount }), this.tr('bank.saveAgain'), {
@@ -1346,7 +1363,7 @@ export class LabelingComponent {
       .onAction()
       .subscribe(() => {
         if (token === this.pageToken && this.canSaveToBank()) {
-          this.submitBank(image, questions, true);
+          this.submitBank(image, bank, true);
         }
       });
   }
@@ -1356,7 +1373,7 @@ export class LabelingComponent {
    * eğitime gönderilir (send-to-fix → manuel kayıt → sonraki sayfa); eğitim başarısız olursa sayfa açık kalır, "Eğit" ile
    * yeniden denenebilir (kayıt kartı bankada olduğunu gösterir). Kayıt başarısızsa eğitime gönderilmez.
    */
-  private submitBank(image: string, questions: LabelingBankQuestion[], force: boolean): void {
+  private submitBank(image: string, bank: BankPayload, force: boolean): void {
     const gradeId = this.gradeId();
     if (gradeId == null) {
       return;
@@ -1368,7 +1385,15 @@ export class LabelingComponent {
     const source = bookId != null && filePage != null ? { bookId, filePage } : {};
     this.bankSaving.set(true);
     const sharing = this.sharing();
-    this.labelingApi.saveToBank({ imageBase64: image, questions, gradeId, force, sharing, ...source }).subscribe({
+    this.labelingApi.saveToBank({
+        imageBase64: image,
+        questions: bank.questions,
+        ...(bank.passages.length ? { passages: bank.passages } : {}),
+        gradeId,
+        force,
+        sharing,
+        ...source,
+      }).subscribe({
       next: (response) => {
         if (token !== this.pageToken) {
           return;
@@ -1393,19 +1418,19 @@ export class LabelingComponent {
         const body = (error as { error?: Partial<LabelingBankConflict> | Partial<LabelingCropConflict> })?.error;
         if (status === 409 && body?.errorCode === 'LabelingCropAlreadyInBank') {
           // Aynı kırpma bankada (issue #577): mevcut kayıtlar listelenir, onaylanırsa force ile yeniden gönderilir.
-          this.confirmCropDuplicate((body as Partial<LabelingCropConflict>).existing ?? [], image, questions);
+          this.confirmCropDuplicate((body as Partial<LabelingCropConflict>).existing ?? [], image, bank);
           return;
         }
         if (status === 409 && body?.errorCode === 'LabelingAnswerKeyPage') {
           // Sayfa cevap anahtarı aralığında (issue #577): onaylanırsa force ile kaydedilir.
-          this.confirmAnswerKeyPage(body.message || this.tr('bank.answerKey.message'), image, questions);
+          this.confirmAnswerKeyPage(body.message || this.tr('bank.answerKey.message'), image, bank);
           return;
         }
         if (status === 409 && body?.existing) {
           // Kayıt bilgisi bu sayfada yoktu (ya da başka bir sekmede kaydedildi): bilgiyi göster, yeniden kaydı sor.
           const existing = body.existing as LabelingBankInfo;
           this.setBankRecord(null, existing);
-          this.confirmBankAgain(existing, image, questions);
+          this.confirmBankAgain(existing, image, bank);
           return;
         }
         // 403: işaretleme rolü (QuestionTrainer) var ama soru yazma rolü (Teacher/Admin) yok.
@@ -1415,7 +1440,7 @@ export class LabelingComponent {
     });
   }
 
-  private confirmAnswerKeyPage(message: string, image: string, questions: LabelingBankQuestion[]): void {
+  private confirmAnswerKeyPage(message: string, image: string, bank: BankPayload): void {
     const token = this.pageToken;
     const data: ConfirmDialogData = {
       title: this.tr('bank.answerKey.title'),
@@ -1431,7 +1456,7 @@ export class LabelingComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((force) => {
         if (force === true && token === this.pageToken && this.canSaveToBank()) {
-          this.submitBank(image, questions, true);
+          this.submitBank(image, bank, true);
         }
       });
   }
@@ -1439,7 +1464,7 @@ export class LabelingComponent {
   private confirmCropDuplicate(
     existing: LabelingCropConflict['existing'],
     image: string,
-    questions: LabelingBankQuestion[]
+    bank: BankPayload
   ): void {
     const token = this.pageToken;
     const data: LabelingCropDuplicateDialogData = { existing };
@@ -1449,7 +1474,7 @@ export class LabelingComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((force) => {
         if (force === true && token === this.pageToken && this.canSaveToBank()) {
-          this.submitBank(image, questions, true);
+          this.submitBank(image, bank, true);
         }
       });
   }
@@ -1751,6 +1776,12 @@ export interface LabelingFixTarget {
   keyPages: number[];
   /** #1260: sayfa temizlendi; orijinali (işaretli şıklar) ayrıca açılır. */
   hasOriginal: boolean;
+}
+
+/** Bankaya kaydedilecek sorular ve onlara bağlı pasajlar (aynı `questions` sırası). */
+interface BankPayload {
+  questions: LabelingBankQuestion[];
+  passages: LabelingBankPassage[];
 }
 
 function roundBox(box: LabelingBankBox): LabelingBankBox {

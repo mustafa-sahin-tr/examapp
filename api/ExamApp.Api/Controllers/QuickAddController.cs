@@ -243,7 +243,8 @@ public class QuickAddController : BaseController
             return UserNotResolved(new { message = _localizer["quickAdd.userNotResolved"].Value });
         try
         {
-            var result = await fix.ReplacePageAsync(owner, id, testId, filePage, request?.Questions ?? [], ct);
+            var result = await fix.ReplacePageAsync(owner, id, testId, filePage, request?.Questions ?? [], ct,
+                passages: request?.Passages);
             return result.Error switch
             {
                 BookImportPageFixError.None => Ok(result.Page),

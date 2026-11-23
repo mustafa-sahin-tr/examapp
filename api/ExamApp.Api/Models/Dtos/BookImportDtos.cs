@@ -480,6 +480,13 @@ public class ReplaceBookImportPageDto
     /// </summary>
     [System.ComponentModel.DataAnnotations.MaxLength(Services.Labeling.LabelingBankService.MaxQuestions)]
     public List<Labeling.LabelingBankBoxDto>? Activities { get; set; }
+
+    /// <summary>
+    /// Tuvalde çizilip sorulara bağlanan pasajlar (<see cref="Questions"/> sırasıyla); yeni taslaklar pasajla kaydedilir.
+    /// Verilmezse sorular pasajsız kaydedilir.
+    /// </summary>
+    [System.ComponentModel.DataAnnotations.MaxLength(Services.Labeling.LabelingBankService.MaxQuestions)]
+    public List<Labeling.LabelingBankPassageDto>? Passages { get; set; }
 }
 
 /// <summary>Issue #1023: sayfa düzeltmesinin sonucu — kaydedilen, kırpması bankada olduğu için atlanan, silinen eski taslak ve cevapsız soru sayısı.</summary>
@@ -503,6 +510,18 @@ public class BookImportPageDraftDto
     public int? Width { get; set; }
     public int? Height { get; set; }
     public int CorrectOptionIndex { get; set; } = -1;
+
+    /// <summary>Taslağın bağlı olduğu pasaj kutusu (sayfa pikseli); yoksa null. Aynı pasajı paylaşan taslaklarda Id aynıdır.</summary>
+    public BookImportPageDraftPassageDto? Passage { get; set; }
+}
+
+public class BookImportPageDraftPassageDto
+{
+    public int Id { get; set; }
+    public int X { get; set; }
+    public int Y { get; set; }
+    public int Width { get; set; }
+    public int Height { get; set; }
 }
 
 /// <summary>Issue #1056: kitap aktarımı ve hızlı ekleme maliyet raporu (yalnız Admin).</summary>

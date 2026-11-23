@@ -481,6 +481,8 @@ export interface BookImportPageDraft {
   width: number | null;
   height: number | null;
   correctOptionIndex: number;
+  /** Taslağın pasajı (sayfa pikseli); aynı pasajı paylaşan taslaklarda `id` aynı. */
+  passage?: { id: number; x: number; y: number; width: number; height: number } | null;
 }
 
 interface Box {

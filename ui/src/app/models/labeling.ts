@@ -126,6 +126,30 @@ export interface LabelingBankQuestion extends LabelingBankBox {
   itemLabel?: string;
 }
 
+/** Sorulara bağlanan ortak pasaj kutusu; `questionIndexes` istekteki `questions` sırası (soru başına tek pasaj). */
+export interface LabelingBankPassage extends LabelingBankBox {
+  questionIndexes: number[];
+}
+
+/**
+ * Tuvaldeki pasajlardan istek pasajları: her pasaj, kendisine bağlı (`passageId`) soruların `regions` sırasıyla gider;
+ * sorusu olmayan pasaj gönderilmez. Kutular yuvarlanır.
+ */
+export function bankPassages(
+  passages: readonly (LabelingBankBox & { id: string | number })[],
+  regions: readonly { passageId?: string | null }[]
+): LabelingBankPassage[] {
+  return passages
+    .map((p) => ({
+      x: Math.round(p.x),
+      y: Math.round(p.y),
+      width: Math.round(p.width),
+      height: Math.round(p.height),
+      questionIndexes: regions.map((r, i) => (String(r.passageId ?? '') === String(p.id) ? i : -1)).filter((i) => i >= 0),
+    }))
+    .filter((p) => p.questionIndexes.length > 0);
+}
+
 /** `POST /api/exam/labeling/pages/bank`: soruları teste bağlamadan soru bankasına kaydeder. */
 /** Issue #826: havuza kaydedilen sorunun öğretmen havuzunda kime görüneceği (API int: Yalnız ben / Okulum / Herkes). */
 export enum QuestionBankSharing {
@@ -137,6 +161,8 @@ export enum QuestionBankSharing {
 export interface LabelingBankSaveRequest {
   imageBase64: string;
   questions: LabelingBankQuestion[];
+  /** Sorulara bağlanan pasajlar; boşsa gönderilmez. */
+  passages?: LabelingBankPassage[];
   /** Sayfanın sınıfı (`GET /api/exam/worksheet/grades` id'si; zorunlu, bilinmeyen sınıf → 400). Sınıflandırıcı yalnız
    * bu sınıfın konularını kullanır (issue #565). */
   gradeId: number;

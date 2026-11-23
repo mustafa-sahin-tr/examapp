@@ -93,6 +93,26 @@ public class LabelingBankServiceTests : IDisposable
         ],
     };
 
+    /// <summary>Tuvalde çizilip soruya bağlanan pasaj sayfadan kırpılıp o soruya bağlanır; sayfa dışı kısım kırpılır.</summary>
+    [Fact]
+    public async Task A_passage_drawn_on_the_canvas_is_saved_with_its_question()
+    {
+        var request = ValidRequest(Png(200, 200));
+        request.Passages =
+        [
+            new LabelingBankPassageDto { X = 150, Y = 0, Width = 100, Height = 50, QuestionIndexes = [1, 7] },
+            new LabelingBankPassageDto { X = 0, Y = 0, Width = 10, Height = 10, QuestionIndexes = [] },
+        ];
+        await using var ctx = _db.NewContext();
+
+        await NewService(ctx).SaveToBankAsync(request, Actor, ActingUserId);
+
+        var passage = _captured!.Passages.ShouldHaveSingleItem();
+        (passage.X, passage.Y, passage.Width, passage.Height, passage.IdIsInternal).ShouldBe((150, 0, 50, 50, true));
+        _captured.Questions[0].PassageId.ShouldBeNull();
+        _captured.Questions[1].PassageId.ShouldBe(passage.Id);
+    }
+
     [Fact]
     public async Task Owner_without_ai_classification_must_choose_the_page_topic_issue1087()
     {

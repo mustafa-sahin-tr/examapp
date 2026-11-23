@@ -39,7 +39,7 @@ import {
   ConfirmBookImportSetup,
   StartBookImportRequest,
 } from '../models/book-import';
-import { LabelingBankBox, LabelingBankQuestion } from '../models/labeling';
+import { LabelingBankBox, LabelingBankPassage, LabelingBankQuestion } from '../models/labeling';
 import { WorksheetTeacherSharing } from '../models/test-instance';
 
 /** Aktarım listesinin bir sayfası ("Daha fazla göster" bu kadar ekler). */
@@ -311,11 +311,13 @@ export class BookImportService {
     testId: number,
     filePage: number,
     questions: LabelingBankQuestion[],
-    activities?: LabelingBankBox[]
+    activities?: LabelingBankBox[],
+    passages?: LabelingBankPassage[]
   ): Observable<BookImportPageFix> {
     return this.http.put<BookImportPageFix>(`${this.baseUrl}/${id}/tests/${testId}/pages/${filePage}/questions`, {
       questions,
       ...(activities ? { activities } : {}),
+      ...(passages?.length ? { passages } : {}),
     });
   }
 

@@ -52,6 +52,7 @@ interface StubRegion {
     width?: number;
     height?: number;
     answers?: StubAnswer[];
+    passageId?: string;
 }
 
 /** Gerçek tuval yerine; `@ViewChild(ImageSelectorComponent)` bu stub'ı DI token'ı üzerinden bulur. */
@@ -89,6 +90,10 @@ class ImageSelectorStub {
     readonly pageLoadFailed = signal(false);
     readonly predictFailed = signal(false);
     readonly regions = signal<StubRegion[]>([]);
+    readonly passages = signal<{ id: string; x: number; y: number; width: number; height: number; showPassageFirst?: boolean }[]>([]);
+    setPassageForQuestion = vi.fn().mockName('setPassageForQuestion').mockImplementation((name: string, passageId: string) =>
+        this.regions.update((all) => all.map((r) => (r.name === name ? { ...r, passageId } : r)))
+    );
     /** Soru tipi (ad → tip); tanımsız = mcq. */
     interactionTypes: Record<string, string> = {};
     getInteractionType = vi.fn().mockName('getInteractionType').mockImplementation((name: string) => this.interactionTypes[name] ?? 'mcq');
@@ -1186,6 +1191,17 @@ describe('LabelingComponent', () => {
             expect(component.bankSaving()).toBe(false);
         });
 
+        it('saveToBank_PassageLinkedToAQuestion_IsSentWithItsQuestionIndex', async () => {
+            await openPageWith([region('S1', 1), { ...region('S2', 0, 10, 200), passageId: 'p1' }]);
+            selector().passages.set([{ id: 'p1', x: 5.2, y: 150, width: 120, height: 40.4 }]);
+            labelingApi.saveToBank.mockReturnValue(of({ imageSha256: 'abc', bank: savedBank }));
+
+            component.saveToBank();
+
+            const request = vi.mocked(labelingApi.saveToBank).mock.lastCall![0];
+            expect(request.passages).toEqual([{ x: 5, y: 150, width: 120, height: 40, questionIndexes: [1] }]);
+        });
+
         it('saveToBank_ChosenSharing_IsSentAndRemembered', async () => {
             await openPageWith([region('S1', 1)]);
             labelingApi.saveToBank.mockReturnValue(of({ imageSha256: 'abc', bank: savedBank }));
@@ -1985,8 +2001,10 @@ describe('LabelingComponent', () => {
             await setupWith(() => {
                 pageResponses();
                 bookImportsApi.pageDrafts.mockReturnValue(of([
-                    { questionId: 1, number: 5, x: 10, y: 20, width: 300, height: 200, correctOptionIndex: 2 },
-                    { questionId: 2, number: 7, x: 14, y: 410, width: 290, height: 190, correctOptionIndex: 0 },
+                    { questionId: 1, number: 5, x: 10, y: 20, width: 300, height: 200, correctOptionIndex: 2,
+                      passage: { id: 9, x: 10, y: 0, width: 300, height: 15 } },
+                    { questionId: 2, number: 7, x: 14, y: 410, width: 290, height: 190, correctOptionIndex: 0,
+                      passage: { id: 9, x: 10, y: 0, width: 300, height: 15 } },
                     { questionId: 3, number: 8, x: null, y: null, width: null, height: null, correctOptionIndex: 1 },
                 ]));
                 labelingApi.getPage.mockReturnValue(of({
@@ -2009,6 +2027,9 @@ describe('LabelingComponent', () => {
             expect(selector().setCorrectAnswer).toHaveBeenCalledTimes(2);
             expect(selector().setCorrectAnswer).toHaveBeenCalledWith(0, 2, 1);
             expect(selector().setCorrectAnswer).toHaveBeenCalledWith(1, 0, 1);
+            // Taslakların ortak pasajı bir kez tuvale gelir ve iki soruya bağlanır (yeniden kayıtta kaybolmasın).
+            expect(selector().passages().map((p) => [p.id, p.y, p.height])).toEqual([['d9', 0, 15]]);
+            expect(selector().regions().map((r) => r.passageId)).toEqual(['d9', 'd9', undefined]);
 
             // Zaten taslaktaki şık işaretliyse dokunulmaz.
             selector().setCorrectAnswer.mockClear();
@@ -2024,15 +2045,21 @@ describe('LabelingComponent', () => {
                 bookImportsApi.replacePage.mockReturnValue(of({ saved: 2, duplicates: 0, removed: 1, answerless: 1 }));
             });
             const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
-            selector().regions.set([mcq('q1', -1), mcq('q2', 1)]);
+            selector().regions.set([mcq('q1', -1), { ...mcq('q2', 1), passageId: 'p1' }]);
+            // Soruya bağlanan pasaj gider; bağsız pasaj gitmez.
+            selector().passages.set([
+                { id: 'p1', x: 10.4, y: 5.6, width: 300, height: 40 },
+                { id: 'p2', x: 0, y: 0, width: 50, height: 50 },
+            ]);
             fixture.detectChanges();
 
             (fixture.nativeElement.querySelector('[data-testid="labeling-fix-save"]') as HTMLButtonElement).click();
 
             expect(selector().ensureQuestionsValid).toHaveBeenCalledWith({ requireCorrectAnswer: false, skipInteractive: true });
-            const [jobId, testId, filePage, questions] = bookImportsApi.replacePage.mock.calls[0];
+            const [jobId, testId, filePage, questions, , passages] = bookImportsApi.replacePage.mock.calls[0];
             expect([jobId, testId, filePage]).toEqual(['j1', 3, 12]);
             expect(questions.map((q) => [q.x, q.correctOptionIndex, q.options.length])).toEqual([[10, -1, 4], [10, 1, 4]]);
+            expect(passages).toEqual([{ x: 10, y: 6, width: 300, height: 40, questionIndexes: [1] }]);
             expect(labelingApi.saveToBank).not.toHaveBeenCalled();
             expect(navigate).toHaveBeenCalledWith(['/book-imports', 'j1']);
         });
@@ -2184,7 +2211,7 @@ describe('LabelingComponent', () => {
             component.replaceDrafts();
 
             expect(open).toHaveBeenCalledWith(ConfirmDialogComponent, expect.anything());
-            expect(bookImportsApi.replacePage).toHaveBeenCalledWith('j1', 3, 12, [], []);
+            expect(bookImportsApi.replacePage).toHaveBeenCalledWith('j1', 3, 12, [], [], []);
         });
 
         // Issue #1293: tuvalde kalan etkinlik kutuları da gider; şık çizilmiş etkinlik sessizce düşmez, soruya çevirmek önerilir.

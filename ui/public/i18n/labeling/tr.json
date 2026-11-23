@@ -77,7 +77,8 @@
       "close": "Kapat"
     },
     "activityHasOptions": "{{count}} etkinlik bölgesinde şık var; etkinlik soru olarak kaydedilmez. Soru olarak kaydetmek için türünü Soru yapın.",
-    "toQuestion": "Soruya çevir"
+    "toQuestion": "Soruya çevir",
+    "pageChip": "sayfa {{page}}"
   },
   "bank": {
     "save": "Havuza kaydet",
@@ -227,7 +228,8 @@
     "promptSaved": "Prompt v{{version}} kaydedildi; sonraki Claude çağrıları bunu kullanır.",
     "promptAskPage": "Bu sayfayı yeniden sor",
     "promptVersion": "prompt v{{version}}",
-    "legend": "Blok türleri"
+    "legend": "Blok türleri",
+    "legendShort": "Renkler"
   },
   "prompt": {
     "title": "Claude prompt ayarları",
@@ -305,5 +307,7 @@
     "pick": "Kitabın sayfa görsellerinin olduğu klasörü seç.",
     "mark": "Her sayfada soru ve şık kutularını düzelt.",
     "train": "\"Eğit\" ile sayfayı modele gönder; sıradaki sayfa açılır."
-  }
+  },
+  "groupDraw": "Çiz",
+  "groupDetect": "Tespit"
 }

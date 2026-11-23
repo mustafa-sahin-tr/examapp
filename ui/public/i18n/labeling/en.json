@@ -77,7 +77,8 @@
       "close": "Close"
     },
     "activityHasOptions": "{{count}} activity region(s) have options; activities are not saved as questions. Change the kind to Question to save them as questions.",
-    "toQuestion": "Turn into question"
+    "toQuestion": "Turn into question",
+    "pageChip": "page {{page}}"
   },
   "bank": {
     "save": "Save to pool",
@@ -227,7 +228,8 @@
     "promptSaved": "Prompt v{{version}} saved; the next Claude calls use it.",
     "promptAskPage": "Ask this page again",
     "promptVersion": "prompt v{{version}}",
-    "legend": "Block types"
+    "legend": "Block types",
+    "legendShort": "Colours"
   },
   "prompt": {
     "title": "Claude prompt settings",
@@ -305,5 +307,7 @@
     "pick": "Pick the folder with the book's page images.",
     "mark": "Fix the question and option boxes on each page.",
     "train": "Send the page to the model with \"Train\"; the next page opens."
-  }
+  },
+  "groupDraw": "Draw",
+  "groupDetect": "Detect"
 }

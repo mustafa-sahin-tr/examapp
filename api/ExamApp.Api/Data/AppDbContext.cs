@@ -981,6 +981,13 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<WorksheetAssignment>()
             .HasIndex(wa => new { wa.GradeId, wa.WorksheetId, wa.StartAt });
 
+        // issue #1296: şube hedefi. Şube soft delete edilir; satır silinmez (Restrict).
+        modelBuilder.Entity<WorksheetAssignment>()
+            .HasOne(wa => wa.Section)
+            .WithMany()
+            .HasForeignKey(wa => wa.SectionId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         modelBuilder.Entity<WorksheetReminder>()
             .HasOne(wr => wr.Worksheet)
             .WithMany()
@@ -1612,7 +1619,7 @@ public class AppDbContext : DbContext
         });
         modelBuilder.Entity<SchoolSectionMembership>(e =>
         {
-            e.HasOne(m => m.Section).WithMany().HasForeignKey(m => m.SectionId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(m => m.Section).WithMany(s => s.Memberships).HasForeignKey(m => m.SectionId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(m => m.Student).WithMany().HasForeignKey(m => m.StudentId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(m => m.StudentId).IsUnique().HasFilter("\"EndedAt\" IS NULL");
             e.HasIndex(m => new { m.SectionId, m.EndedAt });

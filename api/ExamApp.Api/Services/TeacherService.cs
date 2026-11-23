@@ -573,7 +573,7 @@ public class TeacherService : ITeacherService
             .AsNoTracking()
             .Where(wa => ownedWorksheets.Any(w => w.Id == wa.WorksheetId))
             .Where(wa => expandGrades || wa.StudentId != null)
-            .Select(wa => new { wa.StudentId, wa.GradeId, wa.SchoolId })
+            .Select(wa => new { wa.StudentId, wa.GradeId, wa.SchoolId, wa.SectionId })
             .ToListAsync(ct);
 
         if (assignmentTargets.Count == 0)
@@ -592,7 +592,7 @@ public class TeacherService : ITeacherService
 
         var gradeTargets = assignmentTargets
             .Where(a => a.GradeId.HasValue && !a.StudentId.HasValue)
-            .Select(a => new { GradeId = a.GradeId!.Value, a.SchoolId })
+            .Select(a => new { GradeId = a.GradeId!.Value, a.SchoolId, a.SectionId })
             .Distinct()
             .ToList();
 
@@ -614,14 +614,19 @@ public class TeacherService : ITeacherService
             // issue #235: sınıf genişletmesi de kapsamlı kaynaktan (TargetStudents) — sayaç okul dışı öğrenciyi saymaz.
             var gradeStudents = await TargetStudents(target)
                 .Where(s => s.GradeId.HasValue && gradeIds.Contains(s.GradeId.Value))
-                .Select(s => new { s.Id, GradeId = s.GradeId!.Value, SchoolId = s.SchoolVerifiedAt != null ? s.SchoolId : null }) // issue #361
+                .Select(s => new
+                {
+                    s.Id, GradeId = s.GradeId!.Value, SchoolId = s.SchoolVerifiedAt != null ? s.SchoolId : null, // issue #361
+                    SectionId = _context.SchoolSectionMemberships.Where(m => m.StudentId == s.Id && m.EndedAt == null).Select(m => (int?)m.SectionId).FirstOrDefault() // issue #1296
+                })
                 .ToListAsync(ct);
 
             foreach (var student in gradeStudents)
             {
                 var matches = gradeTargets.Any(g =>
                     g.GradeId == student.GradeId &&
-                    (!g.SchoolId.HasValue || g.SchoolId == student.SchoolId));
+                    (!g.SchoolId.HasValue || g.SchoolId == student.SchoolId) &&
+                    (!g.SectionId.HasValue || g.SectionId == student.SectionId)); // issue #1296: şube yalnız aktif üyelerini
 
                 if (matches)
                 {
@@ -670,6 +675,7 @@ public class TeacherService : ITeacherService
                 wa.StudentId,
                 wa.GradeId,
                 wa.SchoolId,
+                wa.SectionId,
                 wa.StartAt,
                 wa.EndAt
             })
@@ -693,7 +699,8 @@ public class TeacherService : ITeacherService
             : await TargetStudents(target)
                 .Where(s => directStudentIds.Contains(s.Id)
                             || (s.GradeId.HasValue && gradeIds.Contains(s.GradeId.Value)))
-                .Select(s => new StudentTarget(s.Id, s.GradeId, s.SchoolVerifiedAt != null ? s.SchoolId : null)) // issue #361: doğrulanmış okul
+                .Select(s => new StudentTarget(s.Id, s.GradeId, s.SchoolVerifiedAt != null ? s.SchoolId : null, // issue #361: doğrulanmış okul
+                    _context.SchoolSectionMemberships.Where(m => m.StudentId == s.Id && m.EndedAt == null).Select(m => (int?)m.SectionId).FirstOrDefault())) // issue #1296
                 .ToListAsync(ct);
 
         var studentsById = students.ToDictionary(s => s.Id);
@@ -729,7 +736,9 @@ public class TeacherService : ITeacherService
             {
                 foreach (var student in gradeStudents)
                 {
-                    if (!assignment.SchoolId.HasValue || assignment.SchoolId == student.SchoolId)
+                    // issue #1296: şube ataması yalnız şubenin aktif üyelerine.
+                    if ((!assignment.SchoolId.HasValue || assignment.SchoolId == student.SchoolId)
+                        && (!assignment.SectionId.HasValue || assignment.SectionId == student.SectionId))
                     {
                         AddWindow(studentWindows, student.Id, window);
                     }
@@ -1123,6 +1132,7 @@ public class TeacherService : ITeacherService
                 wa.StudentId,
                 wa.GradeId,
                 wa.SchoolId,
+                wa.SectionId,
                 wa.StartAt,
                 wa.EndAt
             })
@@ -1148,7 +1158,8 @@ public class TeacherService : ITeacherService
             : await TargetStudents(target)
                 .Where(s => directStudentIds.Contains(s.Id)
                             || (s.GradeId.HasValue && gradeIds.Contains(s.GradeId.Value)))
-                .Select(s => new AssignedStudentTarget(s.Id, s.UserId, s.StudentNumber, s.GradeId, s.SchoolVerifiedAt != null ? s.SchoolId : null)) // issue #361
+                .Select(s => new AssignedStudentTarget(s.Id, s.UserId, s.StudentNumber, s.GradeId, s.SchoolVerifiedAt != null ? s.SchoolId : null, // issue #361
+                    _context.SchoolSectionMemberships.Where(m => m.StudentId == s.Id && m.EndedAt == null).Select(m => (int?)m.SectionId).FirstOrDefault())) // issue #1296
                 .ToListAsync(ct);
 
         if (students.Count == 0)
@@ -1176,7 +1187,9 @@ public class TeacherService : ITeacherService
             {
                 foreach (var student in gradeStudents)
                 {
-                    if (!assignment.SchoolId.HasValue || assignment.SchoolId == student.SchoolId)
+                    // issue #1296: şube ataması yalnız şubenin aktif üyelerine.
+                    if ((!assignment.SchoolId.HasValue || assignment.SchoolId == student.SchoolId)
+                        && (!assignment.SectionId.HasValue || assignment.SectionId == student.SectionId))
                     {
                         AddPairWindow(windowsByPair, assignment.WorksheetId, student.Id, window);
                     }
@@ -1553,9 +1566,9 @@ public class TeacherService : ITeacherService
         };
     }
 
-    private sealed record StudentTarget(int Id, int? GradeId, int? SchoolId);
+    private sealed record StudentTarget(int Id, int? GradeId, int? SchoolId, int? SectionId);
 
-    private sealed record AssignedStudentTarget(int Id, int UserId, string StudentNumber, int? GradeId, int? SchoolId);
+    private sealed record AssignedStudentTarget(int Id, int UserId, string StudentNumber, int? GradeId, int? SchoolId, int? SectionId);
 
     private sealed record AssignmentWindow(DateTime StartAt, DateTime? EndAt);
 

@@ -11,6 +11,8 @@ import { StudentLookup } from '../../../../models/student';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALE_CODES } from '../../../../models/locale';
 import rootTr from '../../../../../../public/i18n/tr.json';
 import worksheetDetailTr from '../../../../../../public/i18n/worksheet-detail/tr.json';
+import { of } from 'rxjs';
+import { SchoolSection, SchoolSectionService } from '../../../../services/school-section.service';
 
 const translocoTesting = TranslocoTestingModule.forRoot({
     langs: { tr: { ...rootTr, 'worksheet-detail': worksheetDetailTr }, 'worksheet-detail/tr': worksheetDetailTr },
@@ -33,10 +35,13 @@ describe('WorksheetAssignmentDialogComponent', () => {
     type CreateOptions = Partial<Omit<WorksheetAssignmentDialogData, 'students' | 'studentsStatus'>> & {
         students?: StudentLookup[];
         studentsStatus?: StudentLookupStatus;
+        sections?: SchoolSection[];
     };
+    let sectionList: ReturnType<typeof vi.fn>;
 
     function create(options: CreateOptions = {}) {
-        const { students = [ada], studentsStatus = 'loaded', ...overrides } = options;
+        const { students = [ada], studentsStatus = 'loaded', sections = [], ...overrides } = options;
+        sectionList = vi.fn().mockReturnValue(of(sections));
         studentsSig = signal(students);
         statusSig = signal(studentsStatus);
         const data: WorksheetAssignmentDialogData = {
@@ -57,6 +62,7 @@ describe('WorksheetAssignmentDialogComponent', () => {
                 provideNativeDateAdapter(),
                 { provide: MAT_DIALOG_DATA, useValue: data },
                 { provide: MatDialogRef, useValue: dialogRef },
+                { provide: SchoolSectionService, useValue: { list: sectionList } },
             ],
         });
 
@@ -321,6 +327,50 @@ describe('WorksheetAssignmentDialogComponent', () => {
             TestBed.resetTestingModule();
             const off = create({ worksheetCommentsEnabled: false });
             expect(q(off, 'comments-override-helper')!.textContent).toContain(worksheetDetailTr.assignDialog.commentsStateOff);
+        });
+    });
+
+    // Issue #1296: şubeye ata — okulun şubeleri kart olarak, istek yalnız sectionId taşır.
+    describe('section target (#1296)', () => {
+        const sections: SchoolSection[] = [
+            { id: 4, gradeId: 1, gradeName: '5. Sınıf', name: 'A', studentCount: 3 },
+            { id: 5, gradeId: 1, gradeName: '5. Sınıf', name: 'B', studentCount: 0 },
+        ];
+        const pick = (el: HTMLElement, id: string) => el.querySelector(`[data-testid="${id}"] input`) as HTMLInputElement;
+
+        it('lists sections with counts and sends only the section id', () => {
+            const fixture = create({ sections });
+            const el: HTMLElement = fixture.nativeElement;
+            pick(el, 'scope-section').click();
+            fixture.detectChanges();
+
+            expect(el.querySelector('[data-section="4"]')?.textContent).toContain('5. Sınıf / A');
+            expect(el.querySelector('[data-section="4"]')?.textContent).toContain('3 öğrenci');
+            (el.querySelector('[data-section="4"]') as HTMLButtonElement).click();
+            fixture.detectChanges();
+            expect(el.querySelector('[data-testid="assign-summary"]')?.textContent?.trim()).toBe('5. Sınıf / A · 3 öğrenci alacak');
+
+            (el.querySelector('[data-testid="assign-submit"]') as HTMLButtonElement).click();
+            const request = dialogRef.close.mock.calls[0][0].request;
+            expect(request.sectionId).toBe(4);
+            expect(request.gradeId).toBeUndefined();
+            expect(request.studentId).toBeUndefined();
+        });
+
+        it('requires a section and says when the school has none', () => {
+            const fixture = create({ sections: [] });
+            const el: HTMLElement = fixture.nativeElement;
+            pick(el, 'scope-section').click();
+            fixture.detectChanges();
+
+            expect(el.querySelector('[data-testid="no-sections"]')).not.toBeNull();
+            (el.querySelector('[data-testid="assign-submit"]') as HTMLButtonElement).click();
+            expect(dialogRef.close).not.toHaveBeenCalled();
+        });
+
+        it('does not read sections for an independent tutor', () => {
+            create({ isIndependentTutor: true, sections });
+            expect(sectionList).not.toHaveBeenCalled();
         });
     });
 });

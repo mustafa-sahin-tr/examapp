@@ -42,6 +42,16 @@ public class WorksheetAssignment : BaseEntity
     /// </summary>
     public bool IsPlatformWide { get; set; }
 
+    /// <summary>
+    /// issue #1296: şube hedefli atama — <see cref="GradeId"/> ve <see cref="SchoolId"/> şubenin sınıfı / okuluyla yazılır, atama
+    /// yalnız şubenin AKTİF üyelerine görünür (<c>WorksheetStudentAccess.AssignmentVisibleTo</c>). Üyelik bitince (taşındı,
+    /// çıkarıldı, okul değişti, şube silindi) öğrenciden düşer. Null = bütün sınıf ya da öğrenci hedefi.
+    /// </summary>
+    public int? SectionId { get; set; }
+
+    [ForeignKey(nameof(SectionId))]
+    public SchoolSection? Section { get; set; }
+
     [Required]
     public DateTime StartAt { get; set; }
 
@@ -63,6 +73,9 @@ public class WorksheetAssignment : BaseEntity
 
     [NotMapped]
     public bool IsGradeScoped => GradeId.HasValue && !StudentId.HasValue;
+
+    [NotMapped]
+    public bool IsSectionScoped => SectionId.HasValue && !StudentId.HasValue;
 
     [NotMapped]
     public bool IsStudentScoped => StudentId.HasValue;

@@ -26,6 +26,9 @@ public class SchoolSection : BaseEntity
     /// <summary>Tekillik anahtarı: kırpılmış ad, tr-TR büyük harf (servis yazar).</summary>
     [MaxLength(NameMaxLength)]
     public string NormalizedName { get; set; } = string.Empty;
+
+    /// <summary>issue #1296: üyelikler (geçmiş dahil); şube hedefli atama görünürlüğü aktif üyeliğe bakar.</summary>
+    public ICollection<SchoolSectionMembership> Memberships { get; set; } = new List<SchoolSectionMembership>();
 }
 
 /// <summary>Şube üyeliğinin bitiş nedeni (string saklanır).</summary>

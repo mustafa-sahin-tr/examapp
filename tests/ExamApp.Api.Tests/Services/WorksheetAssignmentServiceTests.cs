@@ -84,7 +84,7 @@ public class WorksheetAssignmentServiceTests : IDisposable
         var svc = NewService(ctx);
 
         (await svc.AssignAsUserAsync(ctx, Req(ws), 1)).Message.ShouldContain("En az bir hedef");
-        (await svc.AssignAsUserAsync(ctx, Req(ws, studentId: student, gradeId: 1), 1)).Message.ShouldContain("birlikte seçilemez");
+        (await svc.AssignAsUserAsync(ctx, Req(ws, studentId: student, gradeId: 1), 1)).Message.ShouldContain("yalnız biri");
     }
 
     [Fact]

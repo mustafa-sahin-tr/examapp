@@ -55,7 +55,7 @@
 
     "assignment": {
       "targetRequired": "En az bir hedef (öğrenci veya sınıf) seçilmelidir.",
-      "studentAndGradeTogether": "Aynı atamada öğrenci ve sınıf birlikte seçilemez.",
+      "studentAndGradeTogether": "Aynı atamada öğrenci, sınıf ve şubeden yalnız biri seçilebilir.",
       "homeworkNeedsDueDate": "Ödev olarak vermek için teslim (bitiş) tarihi seçin; platform geneli atama ödev olamaz.",
       "endBeforeStart": "Bitiş zamanı başlangıç zamanından sonra olmalıdır.",
       "worksheetNotFound": "Worksheet bulunamadı.",
@@ -65,6 +65,7 @@
       "independentGradeForbidden": "Bağımsız öğretmenler sınıf bazlı atama yapamaz; yalnızca randevusu olan öğrencilerinizi seçerek atayabilirsiniz.",
       "studentNotFound": "Öğrenci bulunamadı.",
       "gradeNotFound": "Sınıf bulunamadı.",
+      "sectionNotFound": "Şube bulunamadı.",
       "overlappingAssignment": "Seçilen aralıkta mevcut bir atama bulunuyor.",
       "assigned": "Sınav başarıyla atandı.",
       "studentWithNumber": "Öğrenci #{0}",

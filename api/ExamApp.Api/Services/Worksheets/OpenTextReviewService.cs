@@ -274,7 +274,10 @@ public sealed class OpenTextReviewService : IOpenTextReviewService
                     && a.GradeId == q.WorksheetInstance.Student.GradeId
                     && (a.SchoolId == null
                         || (q.WorksheetInstance.Student.SchoolVerifiedAt != null
-                            && q.WorksheetInstance.Student.SchoolId == a.SchoolId))))));
+                            && q.WorksheetInstance.Student.SchoolId == a.SchoolId))
+                    // issue #1296: şube ataması yalnız şubenin aktif üyesi (takip ekranıyla aynı).
+                    && (a.SectionId == null || _context.SchoolSectionMemberships.Any(m => m.SectionId == a.SectionId
+                        && m.StudentId == q.WorksheetInstance.StudentId && m.EndedAt == null))))));
     }
 
     /// <summary>

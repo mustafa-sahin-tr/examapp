@@ -9801,6 +9801,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("SchoolId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("SectionId")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("StartAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -9819,6 +9822,8 @@ namespace ExamApp.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("SchoolId");
+
+                    b.HasIndex("SectionId");
 
                     b.HasIndex("WorksheetId");
 
@@ -12002,7 +12007,7 @@ namespace ExamApp.Api.Migrations
             modelBuilder.Entity("ExamApp.Api.Data.SchoolSectionMembership", b =>
                 {
                     b.HasOne("ExamApp.Api.Data.SchoolSection", "Section")
-                        .WithMany()
+                        .WithMany("Memberships")
                         .HasForeignKey("SectionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -12433,6 +12438,11 @@ namespace ExamApp.Api.Migrations
                         .WithMany()
                         .HasForeignKey("SchoolId");
 
+                    b.HasOne("ExamApp.Api.Data.SchoolSection", "Section")
+                        .WithMany()
+                        .HasForeignKey("SectionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("ExamApp.Api.Data.Student", "Student")
                         .WithMany()
                         .HasForeignKey("StudentId")
@@ -12447,6 +12457,8 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Grade");
 
                     b.Navigation("School");
+
+                    b.Navigation("Section");
 
                     b.Navigation("Student");
 
@@ -12819,6 +12831,11 @@ namespace ExamApp.Api.Migrations
             modelBuilder.Entity("ExamApp.Api.Data.SchoolHomework", b =>
                 {
                     b.Navigation("Students");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.SchoolSection", b =>
+                {
+                    b.Navigation("Memberships");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Student", b =>

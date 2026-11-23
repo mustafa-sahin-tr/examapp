@@ -738,3 +738,15 @@ sayılar atama ilerleme ekranından (`GetWorksheetAssignmentsForTeacherAsync`, w
 bitirmeyen). Veli gecikme bildirimi değişmedi: `ParentHomeworkOverdueSweepJob` zaten teslim tarihli HER atamayı tarar (ödev bayrağı
 şart değil). UI: "Ödevlerim"de "Test ve etkinlik ödevleri" bölümü (bekleyende Başla / Devam et → `/test/{id}`), "Ödevler"de aynı
 başlıklı bölüm (İlerleme → `/test/{id}`), test detayındaki atama satırında "Ödev" etiketi. Bu liste yüklenemezse düz ödevler yine görünür.
+
+### Test / etkinlik atamasında şube hedefi (#1296)
+
+Atama penceresinde üçüncü hedef "Şubeye Ata" (okulun şubeleri, `GET api/school-sections`, düz ödevle aynı liste; bağımsız öğretmende
+yok). İstek `sectionId` taşır (öğrenci / sınıfla birlikte verilmez → `studentAndGradeTogether`); öğretmenin okulunun şubesi değilse
+`sectionNotFound` (admin her okulun şubesine). Satır `WorksheetAssignments.SectionId` + şubenin `GradeId` / `SchoolId`'si, platform geneli
+değil. Görünürlük tek kural: `WorksheetStudentAccess.AssignmentVisibleTo` şube hedefinde şubenin AKTİF üyeliğine bakar
+(`SchoolSection.Memberships`; silinmiş şube query filter'la düşer), bellek içi karşılığı öğrencinin aktif şubesini alır
+(`ActiveSectionIdOf`); eşdeğerlik `WorksheetResponsibleTeacherResolverTests`. Veli gecikme taraması, öğretmen takibi / panel sayıları
+(`TeacherService`), açık uçlu kuyruk aynı koşulu satır içi uygular. Üyelik bitince (taşındı, çıkarıldı, okul değişti, şube silindi)
+atama öğrenciden düşer. Çakışma şube başına: aynı şube ya da şubeyi kapsayan bütün sınıf ataması aynı aralıkta çakışır, 5-A ve 5-B
+ayrı alır. Takipte hedef adı "5. Sınıf / A", `TargetType=Section`.

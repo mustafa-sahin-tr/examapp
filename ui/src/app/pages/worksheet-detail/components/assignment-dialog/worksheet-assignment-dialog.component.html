@@ -10,6 +10,7 @@
       } @else {
         <mat-radio-group formControlName="scope" class="scope-selector">
           <mat-radio-button value="grade" data-testid="scope-grade">{{ t('assignDialog.scopeGrade') }}</mat-radio-button>
+          <mat-radio-button value="section" data-testid="scope-section">{{ t('assignDialog.scopeSection') }}</mat-radio-button>
           <mat-radio-button value="student" data-testid="scope-student">{{ t('assignDialog.scopeStudent') }}</mat-radio-button>
         </mat-radio-group>
       }
@@ -35,6 +36,29 @@
             <div class="helper-text empty">{{ t('assignDialog.gradeRequired') }}</div>
           }
           <div class="helper-text">{{ t('assignDialog.gradeHelper') }}</div>
+        </div>
+      } @else if (isSectionScope()) {
+        <!-- #1296: okulun şubeleri, her birinde aktif öğrenci sayısı (düz ödevle aynı liste). -->
+        <div class="field-pair">
+          <span class="field-label" id="assign-section-label">{{ t('assignDialog.sectionLabel') }}</span>
+          @if (sections().length === 0) {
+            <div class="helper-text empty" data-testid="no-sections">{{ t('assignDialog.noSections') }}</div>
+          } @else {
+            <div class="grade-cards" role="radiogroup" aria-labelledby="assign-section-label" data-testid="section-cards">
+              @for (section of sections(); track section.id) {
+                <button type="button" class="grade-card" role="radio" [attr.aria-checked]="form.controls.sectionId.value === section.id"
+                  [class.is-selected]="form.controls.sectionId.value === section.id" [class.is-empty]="section.studentCount === 0"
+                  [attr.data-section]="section.id" (click)="selectSection(section.id)">
+                  <span class="grade-card__name">{{ sectionLabel(section) }}</span>
+                  <span class="grade-card__count">{{ t('assignDialog.studentCount', { n: section.studentCount }) }}</span>
+                </button>
+              }
+            </div>
+          }
+          @if (form.controls.sectionId.touched && form.controls.sectionId.invalid) {
+            <div class="helper-text empty">{{ t('assignDialog.sectionRequired') }}</div>
+          }
+          <div class="helper-text">{{ t('assignDialog.sectionHelper') }}</div>
         </div>
       } @else {
         <mat-form-field appearance="outline" class="wide">
@@ -147,7 +171,7 @@
   <section mat-dialog-actions class="assign-actions">
     <!-- #860: kimin alacağı, butonun yanında tek satır. -->
     <span class="assign-summary" data-testid="assign-summary" aria-live="polite">
-      @if (isGradeScope()) {
+      @if (isGroupScope()) {
         @if (recipientCount() !== null && selectedGradeName()) {
           {{ t('assignDialog.summaryGrade', { grade: selectedGradeName(), n: recipientCount() }) }}
         }
@@ -157,9 +181,9 @@
     </span>
     <button mat-button type="button" (click)="cancel()">{{ t('assignDialog.cancel') }}</button>
     <button mat-flat-button color="primary" type="button" data-testid="assign-submit" (click)="submit()">
-      @if (isGradeScope() && recipientCount()) {
+      @if (isGroupScope() && recipientCount()) {
         {{ t('assignDialog.submitCount', { n: recipientCount() }) }}
-      } @else if (!isGradeScope() && recipientCount()) {
+      } @else if (!isGroupScope() && recipientCount()) {
         {{ t('assignDialog.submitStudent') }}
       } @else {
         {{ t('assignDialog.save') }}

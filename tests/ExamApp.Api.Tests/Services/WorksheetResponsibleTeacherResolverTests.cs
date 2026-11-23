@@ -318,20 +318,32 @@ public class WorksheetResponsibleTeacherResolverTests : IDisposable
         foreach (var aGrade in ids)
         foreach (var aSchool in ids)
         foreach (var wide in flags)
+        foreach (var aSection in ids)
         foreach (var grade in ids)
         foreach (var school in ids)
+        foreach (var section in ids)
         {
             const int studentId = 1;
+            // issue #1296: SQL tarafı şubenin aktif üyeliğine bakar; bellek içi öğrencinin aktif şubesine. Biten üyelik ve başka
+            // öğrencinin üyeliği eşleşmez.
+            var memberships = new List<SchoolSectionMembership>
+            {
+                new() { StudentId = studentId, EndedAt = DateTime.UtcNow.AddDays(-1) },
+                new() { StudentId = 99 }
+            };
+            if (aSection != null && aSection == section)
+                memberships.Add(new SchoolSectionMembership { StudentId = studentId });
             var expected = WorksheetStudentAccess.AssignmentVisibleTo(studentId, grade, school).Compile()(new WorksheetAssignment
             {
-                StudentId = aStudent, GradeId = aGrade, SchoolId = aSchool, IsPlatformWide = wide
+                StudentId = aStudent, GradeId = aGrade, SchoolId = aSchool, IsPlatformWide = wide, SectionId = aSection,
+                Section = aSection is { } sid ? new SchoolSection { Id = sid, Memberships = memberships } : null
             });
-            WorksheetStudentAccess.IsAssignmentVisibleTo(aStudent, aGrade, aSchool, wide, studentId, grade, school)
-                .ShouldBe(expected, $"a=({aStudent},{aGrade},{aSchool},{wide}) s=({grade},{school})");
+            WorksheetStudentAccess.IsAssignmentVisibleTo(aStudent, aGrade, aSchool, wide, aSection, studentId, grade, school, section)
+                .ShouldBe(expected, $"a=({aStudent},{aGrade},{aSchool},{wide},{aSection}) s=({grade},{school},{section})");
             checkedCases++;
         }
 
-        checkedCases.ShouldBe(3 * 3 * 3 * 2 * 3 * 3);
+        checkedCases.ShouldBe(3 * 3 * 3 * 2 * 3 * 3 * 3 * 3);
     }
 
     // ---- issue #326 (O2): sahip fallback'i yalnız aynı okulda -------------------------------------------------------

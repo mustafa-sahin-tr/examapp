@@ -10039,6 +10039,31 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("WorksheetCommentReports");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.WorksheetInstanceQuestionDrawing", b =>
+                {
+                    b.Property<int>("WorksheetInstanceQuestionId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Ink")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("ScratchStrokes")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("ScratchText")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("WorksheetInstanceQuestionId");
+
+                    b.ToTable("TestInstanceQuestionDrawings");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.WorksheetQuestion", b =>
                 {
                     b.Property<int>("Id")
@@ -12499,6 +12524,17 @@ namespace ExamApp.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Comment");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.WorksheetInstanceQuestionDrawing", b =>
+                {
+                    b.HasOne("WorksheetInstanceQuestion", "WorksheetInstanceQuestion")
+                        .WithOne()
+                        .HasForeignKey("ExamApp.Api.Data.WorksheetInstanceQuestionDrawing", "WorksheetInstanceQuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("WorksheetInstanceQuestion");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.WorksheetQuestion", b =>

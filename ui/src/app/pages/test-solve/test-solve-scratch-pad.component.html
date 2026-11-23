@@ -43,6 +43,6 @@
   @if (saveFailed()) {
     <p class="scratch__notice scratch__notice--error" role="alert">{{ t('saveError') }}</p>
   } @else {
-    <p class="scratch__notice">{{ t('hint') }}</p>
+    <p class="scratch__notice scratch__notice--shared"><mat-icon aria-hidden="true">visibility</mat-icon>{{ t('hint') }}</p>
   }
 </section>

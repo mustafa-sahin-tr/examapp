@@ -30,6 +30,10 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatDialog } from '@angular/material/dialog';
 import {
+  SessionReviewDialogComponent,
+  SessionReviewDialogData,
+} from '../../shared/components/session-review/session-review-dialog.component';
+import {
   SolutionRecordingDialogComponent,
   SolutionRecordingDialogData,
 } from '../../shared/components/solution-recording/solution-recording-dialog.component';
@@ -1100,6 +1104,18 @@ export class WorksheetDetailComponent implements OnInit {
     }
 
     return this.gradeNameById(student.gradeId);
+  }
+
+  /** Issue #1310: öğrencinin bitmiş testini soru soru, karalamalarıyla açar. */
+  protected openSessionReview(student: TeacherAssignmentStudentSummary): void {
+    const worksheetId = this.detail()?.worksheet.id;
+    if (!student.instanceId || !worksheetId) return;
+    this.dialog.open<SessionReviewDialogComponent, SessionReviewDialogData>(SessionReviewDialogComponent, {
+      data: { worksheetId, testInstanceId: student.instanceId, studentName: student.studentName || student.studentNumber },
+      width: '1100px',
+      maxWidth: '96vw',
+      autoFocus: false,
+    });
   }
 
   protected lastActivityLabel(lastActivity?: string | null): string {

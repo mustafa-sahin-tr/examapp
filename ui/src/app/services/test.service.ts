@@ -39,6 +39,7 @@ import {
   WorksheetReminderRequest,
 } from '../models/worksheet-detail';
 import { storageImageKey } from '../shared/utils/storage-image-url.util';
+import { SessionDrawingItem, SessionReview } from '../models/session-review';
 
 /** Backend `ExamSavedDto` — kaydetme yanıtı. */
 export interface WorksheetSaveResult {
@@ -125,6 +126,16 @@ export class TestService {
    */
   completeTest(testInstanceId: number, body?: { activeSeconds: number }): Observable<TestSessionResult> {
     return this.http.put<TestSessionResult>(`${this.baseUrl}/end-test/${testInstanceId}`, body ?? null);
+  }
+
+  /** Issue #1310: öğrencinin çizimleri; yalnız değişen sorular gönderilir (boş öğe = silindi). */
+  saveDrawings(testInstanceId: number, items: SessionDrawingItem[]): Observable<void> {
+    return this.http.put<void>(`${this.baseUrl}/test-instances/${testInstanceId}/drawings`, { items });
+  }
+
+  /** Issue #1310: öğretmen, atadığı sayfada öğrencinin bitmiş oturumunu soru soru görür. */
+  getSessionReview(worksheetId: number, testInstanceId: number): Observable<SessionReview> {
+    return this.http.get<SessionReview>(`${this.baseUrl}/${worksheetId}/assignments/sessions/${testInstanceId}/review`);
   }
 
   startTest(testInstanceId: number): Observable<TestStartResult> {

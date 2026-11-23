@@ -200,6 +200,7 @@ public class AppDbContext : DbContext
     public DbSet<QuestionTransferOrigin> QuestionTransferOrigins { get; set; }
     public DbSet<WorksheetInstance> TestInstances { get; set; }
     public DbSet<WorksheetInstanceQuestion> TestInstanceQuestions { get; set; }
+    public DbSet<WorksheetInstanceQuestionDrawing> TestInstanceQuestionDrawings { get; set; }
     public DbSet<WorksheetPrototype> TestPrototypes { get; set; }
     public DbSet<WorksheetPrototypeDetail> TestPrototypeDetail { get; set; }
     public DbSet<WorksheetAssignment> WorksheetAssignments { get; set; }
@@ -1216,6 +1217,17 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<WorksheetInstanceQuestion>()
             .Property(q => q.Feedback)
             .HasColumnType("jsonb");
+
+        // issue #1310: öğrencinin soru başına çizimleri; oturum satırı silinince (öğrenci sıfırlama) birlikte gider.
+        modelBuilder.Entity<WorksheetInstanceQuestionDrawing>(e =>
+        {
+            e.HasKey(d => d.WorksheetInstanceQuestionId);
+            e.HasOne(d => d.WorksheetInstanceQuestion).WithOne().HasForeignKey<WorksheetInstanceQuestionDrawing>(d => d.WorksheetInstanceQuestionId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.Property(d => d.Ink).HasColumnType("jsonb");
+            e.Property(d => d.ScratchStrokes).HasColumnType("jsonb");
+            e.Property(d => d.ScratchText).HasMaxLength(2000);
+        });
 
         // issue #367 (security review): tekrar çözüm yok — öğrenci başına worksheet başına tek canlı instance. Tamamlanmış
         // teste start-test yeni instance açıp BadgeService'ten (TestInstanceId, QuestionId) anahtarıyla puanı ikinci kez

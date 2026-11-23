@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
@@ -9,6 +9,8 @@ import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@js
 import { finalize } from 'rxjs';
 
 import { ParentChildTestResult } from '../../../models/parent-dashboard.model';
+import { hasDrawing } from '../../../models/session-review';
+import { SessionQuestionViewComponent } from '../../../shared/components/session-review/session-question-view.component';
 import { LocaleService } from '../../../services/locale.service';
 import { ParentDashboardService } from '../../../services/parent-dashboard.service';
 import { approxHourParts, durationKey } from '../parent-format';
@@ -25,12 +27,20 @@ export interface ParentTestResultDialogData {
 
 /**
  * Issue #421 (epic #407 V3): çocuğun bitmiş testinin özeti — puan, doğru/yanlış/boş, süre, başlangıç/bitiş ve konu bazında
- * sayılar. Sunucu soru metni/görseli, cevap anahtarı ya da seçilen şık göndermez; bu dialog da göstermez. Salt okunur.
+ * sayılar. Issue #1310: altında çocuğun karalama yaptığı sorular (soru görseli, çizimleri, cevabı; yanlışsa doğrusu). Salt
+ * okunur.
  */
 @Component({
   selector: 'app-parent-test-result-dialog',
   standalone: true,
-  imports: [MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule, TranslocoDirective],
+  imports: [
+    MatButtonModule,
+    MatDialogModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    TranslocoDirective,
+    SessionQuestionViewComponent,
+  ],
   providers: [provideTranslocoScope(SCOPE)],
   templateUrl: './parent-test-result-dialog.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
@@ -46,6 +56,19 @@ export class ParentTestResultDialogComponent implements OnInit {
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly result = signal<ParentChildTestResult | null>(null);
+  /** Issue #1310: karalama yapılan sorular; ilki açık gelir. */
+  protected readonly drawn = computed(() => (this.result()?.questions ?? []).filter(hasDrawing));
+  private readonly toggled = signal<ReadonlySet<number>>(new Set());
+
+  protected isOpen(id: number): boolean {
+    return (this.drawn()[0]?.instanceQuestionId === id) !== this.toggled().has(id);
+  }
+
+  protected toggle(id: number): void {
+    const next = new Set(this.toggled());
+    if (!next.delete(id)) next.add(id);
+    this.toggled.set(next);
+  }
 
   ngOnInit(): void {
     this.load();

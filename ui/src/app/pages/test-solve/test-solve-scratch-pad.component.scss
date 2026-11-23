@@ -86,6 +86,20 @@
   font-size: 0.8rem;
 }
 
+// Issue #1310: karalamalar öğretmen ve veliyle paylaşılır.
+.scratch__notice--shared {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  mat-icon {
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
 .scratch__notice--error {
   color: var(--ms-danger-border);
   font-weight: 600;

@@ -187,7 +187,7 @@
     "undo": "Undo",
     "clear": "Clear drawing",
     "writeLabel": "Your notes",
-    "hint": "Stays on this device only, and teachers cannot see it. Deleted when the test ends.",
+    "hint": "Your teacher and parent can see your scratch work and what you draw on the question.",
     "saveError": "Could not save on this device. Notes are lost when the page closes."
   },
   "ink": {

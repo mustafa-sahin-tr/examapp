@@ -378,6 +378,30 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         return result;
     }
 
+    /// <summary>Issue #1310: oturum başına doğru / soru / çizimli soru sayısı (oturum okuma kuralıyla, #684).</summary>
+    private async Task<Dictionary<int, (int Correct, int Total, int Drawings)>> LoadSessionTalliesAsync(List<int> instanceIds)
+    {
+        var answers = await _context.TestInstanceQuestions.AsNoTracking()
+            .WithRemovedWorksheetItems()
+            .Where(q => instanceIds.Contains(q.WorksheetInstanceId))
+            .GroupBy(q => q.WorksheetInstanceId)
+            .Select(g => new
+            {
+                InstanceId = g.Key,
+                Total = g.Count(),
+                Correct = g.Count(q => q.SelectedAnswerId != null
+                    ? q.SelectedAnswerId == q.WorksheetQuestion.Question.CorrectAnswerId
+                    : q.AnswerPayload != null && q.IsCorrect),
+            })
+            .ToListAsync();
+        var drawings = await _context.TestInstanceQuestionDrawings.AsNoTracking()
+            .Where(d => instanceIds.Contains(d.WorksheetInstanceQuestion.WorksheetInstanceId))
+            .GroupBy(d => d.WorksheetInstanceQuestion.WorksheetInstanceId)
+            .Select(g => new { InstanceId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.InstanceId, x => x.Count);
+        return answers.ToDictionary(a => a.InstanceId, a => (a.Correct, a.Total, drawings.GetValueOrDefault(a.InstanceId)));
+    }
+
     private async Task<Dictionary<int, string>> LoadStudentNamesAsync(IReadOnlyCollection<Student> students)
     {
         if (_authApiClient is null || students.Count == 0)
@@ -496,6 +520,14 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         var summary = new AssignmentProgressSummaryDto();
         var isActivity = worksheet.Kind == WorksheetKind.Activity;
 
+        // issue #1310: bitmiş test oturumlarında doğru / soru / çizimli soru sayısı (ödev tablosundaki puan ve "Çözümü gör").
+        var finishedIds = isActivity
+            ? new List<int>()
+            : instances.Where(ti => WorksheetInstanceStatusRules.IsFinished(ti.Status)).Select(ti => ti.Id).ToList();
+        var tallies = finishedIds.Count == 0
+            ? new Dictionary<int, (int Correct, int Total, int Drawings)>()
+            : await LoadSessionTalliesAsync(finishedIds);
+
         foreach (var assignment in assignments)
         {
             var targetStudents = assignment.StudentId.HasValue
@@ -527,6 +559,8 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
                     ti => WorksheetInstanceStatusRules.TrackingStatus(ti.Status, ti.FirstCompletedAt));
 
                 var status = ResolveStudentAssignmentStatus(assignment, relevantInstance, now);
+                (int Correct, int Total, int Drawings)? tally =
+                    relevantInstance != null && tallies.TryGetValue(relevantInstance.Id, out var found) ? found : null;
 
                 switch (status)
                 {
@@ -567,7 +601,10 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
                     FirstCheckTotalCount = isActivity ? relevantInstance?.FirstCheckTotalCount : null,
                     Retaking = relevantInstance != null
                         && WorksheetInstanceStatusRules.IsRetaking(relevantInstance.Status, relevantInstance.FirstCompletedAt),
-                    RetakeCount = isActivity ? relevantInstance?.RetakeCount ?? 0 : 0
+                    RetakeCount = isActivity ? relevantInstance?.RetakeCount ?? 0 : 0,
+                    CorrectCount = tally?.Correct,
+                    QuestionCount = tally?.Total,
+                    DrawingCount = tally?.Drawings
                 });
             }
 

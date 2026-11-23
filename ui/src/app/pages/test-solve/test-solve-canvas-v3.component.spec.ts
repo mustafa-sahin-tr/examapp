@@ -84,11 +84,13 @@ describe('TestSolveCanvasComponentv3 — finish flow (issue #383)', () => {
         testService = {
             saveAnswer: vi.fn().mockName("TestService.saveAnswer"),
             completeTest: vi.fn().mockName("TestService.completeTest"),
+            saveDrawings: vi.fn().mockName("TestService.saveDrawings"),
             getCanvasTestWithAnswers: vi.fn().mockName("TestService.getCanvasTestWithAnswers"),
             convertTestInstanceToRegions: vi.fn().mockName("TestService.convertTestInstanceToRegions")
         } as unknown as MockedObject<TestService>;
         testService.completeTest.mockReturnValue(of(OK));
         testService.saveAnswer.mockReturnValue(of(OK));
+        testService.saveDrawings.mockReturnValue(of(undefined));
         dialog = {
             open: vi.fn().mockName("MatDialog.open"),
             closeAll: vi.fn().mockName("MatDialog.closeAll"),
@@ -1019,6 +1021,10 @@ describe('TestSolveCanvasComponentv3 — finish flow (issue #383)', () => {
 
             component['navigateToResult']();
 
+            // Issue #1310: silmeden önce sunucuya gider.
+            expect(testService.saveDrawings).toHaveBeenCalledWith(component.testInstance.id, [
+                { instanceQuestionId: 1, ink: ['M1 2L3 4'], strokes: [], text: 'x' },
+            ]);
             expect(readScratchNotes(component.testInstance.id)).toEqual({});
             expect(readInkStrokes(component.testInstance.id, 1)).toEqual([]);
         });

@@ -14,6 +14,7 @@ import { ParentChildTestResult } from '../../../models/parent-dashboard.model';
 import { translocoTestingModule } from '../../../shared/testing/transloco-testing';
 import parentDashboardTr from '../../../../../public/i18n/parent-dashboard/tr.json';
 import parentDashboardEn from '../../../../../public/i18n/parent-dashboard/en.json';
+import sessionReviewTr from '../../../../../public/i18n/session-review/tr.json';
 
 /** Issue #421: veli test sonucu özeti — sayılar, süre, konu kırılımı; soru/şık içeriği yok; yükleniyor/hata/404 durumları. */
 describe('ParentTestResultDialogComponent (issue #421)', () => {
@@ -49,7 +50,7 @@ describe('ParentTestResultDialogComponent (issue #421)', () => {
                 ParentTestResultDialogComponent,
                 NoopAnimationsModule,
                 translocoTestingModule({
-                    langs: { 'parent-dashboard/tr': parentDashboardTr, 'parent-dashboard/en': parentDashboardEn },
+                    langs: { 'parent-dashboard/tr': parentDashboardTr, 'parent-dashboard/en': parentDashboardEn, 'session-review/tr': sessionReviewTr },
                 }),
             ],
             providers: [
@@ -146,5 +147,29 @@ describe('ParentTestResultDialogComponent (issue #421)', () => {
         expect(text(el.querySelector('[data-test="result-score"]'))).toContain('62%');
         expect(text(el.querySelector('[data-test="result-duration"]'))).toBe('1 h 5 min');
         expect(text(el.querySelector('[data-test="result-close"]'))).toBe(parentDashboardEn.testResult.close);
+    });
+
+    it('drawings_ShowsQuestionsWithScratchWork_FirstOneOpen (#1310)', async () => {
+        const q = (n: number, extra: object) => ({
+            instanceQuestionId: 100 + n, number: n, imageUrl: null, interactionType: null, selectedLetter: 'B',
+            correctLetter: 'C', outcome: 'wrong' as const, timeTakenSeconds: 30, ink: [], strokes: [], text: null, ...extra,
+        });
+        const el = await setup({ ...result, questions: [q(3, { ink: ['red:M1 2L3 4'] }), q(5, { text: 'not' })] });
+
+        const items = Array.from(el.querySelectorAll('[data-test="result-drawing"]'));
+        expect(items).toHaveLength(2);
+        expect(text(items[0])).toContain('Soru 3');
+        expect(text(items[0])).toContain('Cevabı B · Doğrusu C');
+        expect(items[0].querySelector('app-session-question-view')).not.toBeNull();
+        expect(items[1].querySelector('app-session-question-view')).toBeNull();
+
+        (items[1].querySelector('button') as HTMLButtonElement).click();
+        fixture.detectChanges();
+        expect(text(items[1].querySelector('[data-testid="sqv-note"]'))).toBe('not');
+    });
+
+    it('noDrawings_HidesTheSection (#1310)', async () => {
+        const el = await setup();
+        expect(el.querySelector('[data-test="result-drawings"]')).toBeNull();
     });
 });

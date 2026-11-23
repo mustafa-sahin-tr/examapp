@@ -156,3 +156,50 @@
     font-size: 16px;
   }
 }
+
+// Issue #1310: karalama yapılan sorular.
+.ptr__drawings {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ms-border-weak);
+}
+
+.ptr__drawing {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--ms-surface-medium);
+}
+
+.ptr__drawing-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ptr__drawing-meta {
+  flex: 1;
+}
+
+.ptr__chip {
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 11px;
+  background: var(--ms-surface-strong);
+}
+
+.ptr__chip--correct {
+  background: var(--ms-success-surface);
+  color: var(--ms-success-text);
+}
+
+.ptr__chip--wrong {
+  background: var(--ms-danger-surface);
+  color: var(--ms-danger-text);
+}

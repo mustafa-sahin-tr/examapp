@@ -1,0 +1,74 @@
+<ng-container *transloco="let t; prefix: 'session-review'">
+  <header class="srd__head">
+    <div class="srd__title">
+      <h2 mat-dialog-title>{{ data.studentName }}@if (review(); as r) { · {{ r.title }} }</h2>
+      @if (review()) {
+        <span class="srd__summary" data-testid="srd-summary">
+          {{ t('summary', { correct: counts().correct, wrong: counts().wrong, blank: counts().blank, drawings: drawingCount() }) }}
+        </span>
+      }
+    </div>
+    @if (review()) {
+      <mat-checkbox [checked]="onlyDrawings()" (change)="onlyDrawings.set($event.checked)" data-testid="srd-only-drawings">
+        {{ t('onlyDrawings') }}
+      </mat-checkbox>
+      <mat-checkbox [checked]="onlyWrong()" (change)="onlyWrong.set($event.checked)" data-testid="srd-only-wrong">
+        {{ t('onlyWrong') }}
+      </mat-checkbox>
+    }
+    <button mat-icon-button mat-dialog-close type="button" [attr.aria-label]="t('close')">
+      <mat-icon>close</mat-icon>
+    </button>
+  </header>
+
+  <mat-dialog-content class="srd__content">
+    @if (loading()) {
+      <mat-spinner diameter="36" />
+    } @else if (notFound()) {
+      <p class="srd__muted">{{ t('notFound') }}</p>
+    } @else if (failed()) {
+      <p class="srd__muted">{{ t('loadError') }}</p>
+    } @else if (review()) {
+      <div class="srd__body">
+        <nav class="srd__nav" [attr.aria-label]="t('questionsNav')">
+          @for (q of visible(); track q.instanceQuestionId) {
+            <button type="button" class="srd__num" [class]="'srd__num srd__num--' + q.outcome"
+              [class.is-current]="q === current()" [attr.aria-current]="q === current() ? 'true' : null"
+              [attr.aria-label]="t('questionAria', { number: q.number, outcome: t('outcome.' + q.outcome) })"
+              (click)="select(q)" data-testid="srd-num">
+              {{ q.number }}@if (hasDrawing(q)) {<span aria-hidden="true">✎</span>}
+            </button>
+          } @empty {
+            <p class="srd__muted srd__nav-empty">{{ t('noMatch') }}</p>
+          }
+          <p class="srd__legend">{{ t('legend') }}</p>
+        </nav>
+
+        @if (current(); as q) {
+          <section class="srd__main">
+            <div class="srd__qhead">
+              <strong>{{ t('questionTitle', { number: q.number }) }}</strong>
+              <span class="srd__chip" [class]="'srd__chip srd__chip--' + q.outcome">{{ t('outcome.' + q.outcome) }}</span>
+              <span class="srd__meta" data-testid="srd-meta">
+                @if (q.selectedLetter) { {{ t('studentAnswer', { letter: q.selectedLetter }) }} · }
+                @if (q.correctLetter) { {{ t('correctAnswer', { letter: q.correctLetter }) }} · }
+                {{ t('time', minutes(q.timeTakenSeconds)) }}
+              </span>
+              <span class="srd__spacer"></span>
+              <button mat-stroked-button type="button" [disabled]="currentIndex() <= 0" (click)="step(-1)">
+                <mat-icon>chevron_left</mat-icon>{{ t('previous') }}
+              </button>
+              <button mat-stroked-button type="button" [disabled]="currentIndex() >= visible().length - 1" (click)="step(1)">
+                {{ t('next') }}<mat-icon iconPositionEnd>chevron_right</mat-icon>
+              </button>
+            </div>
+            @if (!hasDrawing(q)) {
+              <p class="srd__muted">{{ t('noDrawing') }}</p>
+            }
+            <app-session-question-view [question]="q" />
+          </section>
+        }
+      </div>
+    }
+  </mat-dialog-content>
+</ng-container>

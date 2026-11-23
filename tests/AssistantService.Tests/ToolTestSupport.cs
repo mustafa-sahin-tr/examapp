@@ -70,8 +70,11 @@ public sealed class ToolHarness : IDisposable
         new GetMyProfileTool(Downstream), new SearchTaxonomyTool(Downstream), new GetMyWeakTopicsTool(Downstream),
         new GetMyPerformanceSummaryTool(Downstream), new GetDailySetStatusTool(Downstream), new ListMyCompletedTestsTool(Downstream),
         new GetTestResultTool(Downstream), new StartDailyPracticeTool(Downstream), new StartPracticeSessionTool(Downstream),
-        new UiOpenScreenTool(), new UiSuggestActionsTool(),
+        new SearchHelpTool(Guide), new UiOpenScreenTool(), new UiSuggestActionsTool(),
     ];
+
+    /// <summary>The real embedded guide (#506); loaded once, it is immutable.</summary>
+    public static readonly AssistantService.Help.HelpIndex Guide = AssistantService.Help.HelpIndex.LoadEmbedded();
 
     public ToolExecutor Executor(AssistantDbContext db) =>
         new(new ToolRegistry(AllTools()), db, Clock, NullLogger<ToolExecutor>.Instance);

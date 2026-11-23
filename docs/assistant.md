@@ -79,6 +79,7 @@ bu dilimde eklenmedi: tool arayüzü bunlara bağlı değil, model çağrısı #
 |---|---|---|
 | `get_my_profile` | `GET api/student/profile` | kpi kartı |
 | `search_taxonomy` | `GET api/subject/search` | en çok 10 sonuç |
+| `search_help` | — | kılavuz indeksi (#506), en çok 3 makale |
 | `get_my_weak_topics` | `GET api/student/me/topic-performance` | isabeti %70 altı en çok 5 konu (yoksa boş liste); `days` 7–90 (API sınırı) |
 | `get_my_performance_summary` | aynı uç | ders toplamları sunucu kodunda hesaplanır |
 | `get_daily_set_status` | `GET api/practice/daily` | |
@@ -152,3 +153,22 @@ Canlı denemede bulunan: model öneri çiplerinden sonra cevabını yeniden yaz�
 - **Hesap silme:** bugün üründe kullanılmış bir hesabı silen akış yok (auth-api yalnız hiç kullanılmamış çocuk hesabını geri
   alıyor; onun asistan verisi olmaz). Silme akışı eklenince aynı temizlik (`AssistantDataCleaner.EraseUserConversationsAsync`)
   kendi event'iyle bağlanır.
+
+## Kullanım kılavuzundan yardım araması (#506)
+
+Kılavuz `docs-private/` altında beklenmişti ama orada yok (tam kılavuz #353'te açık). Asistanın kullandığı yayınlanabilir
+kısım repoda: `Services/AssistantService/Help/<rol>/*.md`, bir makale bir soru. Başta front matter (`slug` kebab-case,
+`title`, `roles` virgülle realm rolleri, `keywords` virgülle, kök biçiminde: `veli`, `ekle`), sonra kısa Markdown.
+Faz 1a'da yalnız öğrenci makaleleri var (15); menü adları `ui/public/i18n` metinlerinden alındı, ekran değişince makale de güncellenir.
+
+- **İndeks:** csproj `Help/**/*.md`'yi gömülü kaynak yapar; `HelpIndex` açılışta kurulur. Makale eklemek / değiştirmek yeni
+  build'le indekse girer, elle adım yok. Bozuk makale (front matter, bilinmeyen rol, tekrar eden slug, boş metin) açılışta patlar.
+- **Arama:** taksonomi aramasıyla aynı normalizasyon (`ExamApp.Foundation.Text.SearchText`: Türkçe harf sadeleştirme,
+  sözcüklere bölme, kök eşleşmesi "velimi" ↔ "veli"). Soru sözcükleri ("nasıl", "nerede", …) atılır. Başlık + anahtar
+  sözcük eşleşmesi 3, metin eşleşmesi 1 puan; başlıkta ya da anahtar sözcükte hiç eşleşme yoksa makale dönmez. En çok 3 sonuç,
+  yalnız çağıranın rolündeki makaleler.
+- **Tool:** `search_help` (öğrenci) `{ slug, title, text }` döner; sistem mesajı (Revision 3) uygulama kullanımı sorularında
+  bu tool'u çağırıp yalnız dönen metinden cevaplamasını söyler. `examapp://help/{slug}` resource'u `/mcp` ile (#518) gelir.
+
+Canlı deneme (Aspire, öğrenci): "Velimi nasıl eklerim?", "Şifremi nasıl değiştiririm?", "Ödevlerimi nerede görürüm?" doğru
+makaleyle cevaplandı (ilk token p50 1,4 sn); konu dışı soru tool çağırmadı.

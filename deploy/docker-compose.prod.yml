@@ -97,6 +97,7 @@ services:
       RABBITMQ_BADGE_SERVICE_PASSWORD: ${RABBITMQ_BADGE_SERVICE_PASSWORD}
       RABBITMQ_EXAM_API_PASSWORD: ${RABBITMQ_EXAM_API_PASSWORD}
       RABBITMQ_AUTH_API_PASSWORD: ${RABBITMQ_AUTH_API_PASSWORD}
+      RABBITMQ_ASSISTANT_SERVICE_PASSWORD: ${RABBITMQ_ASSISTANT_SERVICE_PASSWORD}
     volumes:
       - ./scripts/rabbitmq-init.sh:/rabbitmq-init.sh:ro
     entrypoint: ['sh', '/rabbitmq-init.sh']
@@ -509,9 +510,20 @@ services:
       Assistant__Roles__0: ${ASSISTANT_ROLES:-Student}
       Redis__Configuration: redis:6379,password=${REDIS_PASSWORD}
       ExamApi__BaseUrl: http://exam-dotnet-api:5079
+      # Issue #505: consumer of StudentProgressResetEvent (queue "assistant-service"); own least-privilege user created by
+      # rabbitmq-init (reads only that event, publishes nothing). Required in Production.
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Username: assistant_service
+      RabbitMQ__Password: ${RABBITMQ_ASSISTANT_SERVICE_PASSWORD}
     depends_on:
-      - postgres
-      - keycloak
+      postgres:
+        condition: service_started
+      keycloak:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      rabbitmq-init:
+        condition: service_completed_successfully
     networks:
       - exam-net
 

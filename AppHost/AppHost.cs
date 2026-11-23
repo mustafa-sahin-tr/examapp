@@ -64,6 +64,9 @@ var examApiRabbitPassword = builder.AddParameter("rabbitmq-exam-api-password", s
 // from exam API's outbox) — same reasoning as the others above.
 var authApiRabbitUser = "auth_api";
 var authApiRabbitPassword = builder.AddParameter("rabbitmq-auth-api-password", secret: true);
+// Issue #505: AssistantService's consumer user (queue "assistant-service", StudentProgressResetEvent).
+var assistantServiceRabbitUser = "assistant_service";
+var assistantServiceRabbitPassword = builder.AddParameter("rabbitmq-assistant-service-password", secret: true);
 
 // Pinned to the standard AMQP port 5672 (matching docker-compose.yml) because
 // BadgeService/OutboxPublisher's MassTransit setup (cfg.Host(host, "/", ...))
@@ -712,7 +715,16 @@ var assistantService = builder.AddProject<Projects.AssistantService>("assistant-
     .WithEnvironment("Redis__Configuration", redis.Resource.ConnectionStringExpression)
     .WithEnvironment("Anthropic__ApiKey", anthropicApiKey)
     .WithEnvironment("ExamApi__BaseUrl", examDotnetApiHttp)
-    .WaitFor(postgres);
+    // Issue #505: StudentProgressResetEvent consumer (queue "assistant-service").
+    .WithReference(rabbitmq)
+    .WithEnvironment(context =>
+    {
+        context.EnvironmentVariables["RabbitMQ__Host"] = rabbitmqEndpoint.Property(EndpointProperty.Host);
+    })
+    .WithEnvironment("RabbitMQ__Username", assistantServiceRabbitUser)
+    .WithEnvironment("RabbitMQ__Password", assistantServiceRabbitPassword)
+    .WaitFor(postgres)
+    .WaitFor(rabbitmq);
 var assistantServiceHttp = assistantService.GetEndpoint("http");
 
 // BadgeResetApiClient (student reset → BadgeService api/reset, service token) reads BadgeApiBaseUrl;

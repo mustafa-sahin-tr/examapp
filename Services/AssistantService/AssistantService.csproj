@@ -12,6 +12,8 @@
 
   <ItemGroup>
     <PackageReference Include="Anthropic" Version="13.1.0" />
+    <PackageReference Include="MassTransit" Version="8.4.1" />
+    <PackageReference Include="MassTransit.RabbitMQ" Version="8.4.1" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.11" />
     <PackageReference Include="Microsoft.Extensions.AI" Version="10.11.0" />
     <PackageReference Include="StackExchange.Redis" Version="2.7.27" />
@@ -25,6 +27,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\ServiceDefaults\ExamApp.ServiceDefaults.csproj" />
+    <!-- #505: event contracts (StudentProgressResetEvent) and the shared RabbitMQ settings check. -->
+    <ProjectReference Include="..\..\api\ExamApp.Foundation\ExamApp.Foundation.csproj" />
   </ItemGroup>
 
 </Project>

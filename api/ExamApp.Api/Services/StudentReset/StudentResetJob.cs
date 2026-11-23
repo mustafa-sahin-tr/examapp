@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text.Json;
 using ExamApp.Api.Data;
+using ExamApp.Foundation.Contracts;
+using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.Services.StudentReset;
@@ -150,6 +153,22 @@ public sealed class StudentResetJob
                 .ToListAsync(cancellationToken);
             _db.UserPrograms.RemoveRange(programs);
         }
+
+        // 4b) issue #505: assistant conversations live in the assistant DB → outbox event in the SAME SaveChanges as the exam
+        //     data reset (AssistantService deletes the student's conversations created before resetAtUtc; idempotent).
+        _db.OutboxMessages.Add(new OutboxMessage
+        {
+            Type = OutboxEventRegistry.NameFor<StudentProgressResetEvent>(),
+            CreatedAt = resetAtUtc,
+            Content = JsonSerializer.Serialize(new StudentProgressResetEvent
+            {
+                EventId = Guid.NewGuid(),
+                KeycloakId = keycloakUserId,
+                UserId = userId,
+                StudentId = studentId,
+                ResetAtUtc = resetAtUtc,
+            }),
+        });
 
         await _db.SaveChangesAsync(cancellationToken);
 

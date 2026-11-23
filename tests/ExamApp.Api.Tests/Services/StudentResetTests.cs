@@ -141,6 +141,41 @@ public class StudentResetJobTests : IDisposable
         (await check.StudentPoints.AnyAsync(x => x.StudentId == seed.StudentId)).ShouldBeTrue();
     }
 
+    // issue #505: the assistant DB is cleaned through the outbox, in the same SaveChanges as the exam data reset.
+    [Fact]
+    public async Task A_reset_writes_one_StudentProgressResetEvent_for_the_assistant_issue505()
+    {
+        var seed = await SeedProgressAsync();
+
+        await using (var ctx = _db.NewContext())
+            await NewJob(ctx).RunAsync(UserId, seed.StudentId, KeycloakId);
+
+        await using var check = _db.NewContext();
+        var row = (await check.OutboxMessages.ToListAsync())
+            .ShouldHaveSingleItem(); // no other event is written by the reset
+        row.Type.ShouldBe(typeof(ExamApp.Foundation.Contracts.StudentProgressResetEvent).FullName);
+        var evt = System.Text.Json.JsonSerializer.Deserialize<ExamApp.Foundation.Contracts.StudentProgressResetEvent>(row.Content)!;
+        evt.KeycloakId.ShouldBe(KeycloakId);
+        evt.UserId.ShouldBe(UserId);
+        evt.StudentId.ShouldBe(seed.StudentId);
+        evt.EventId.ShouldNotBe(Guid.Empty);
+        evt.ResetAtUtc.ShouldBe(row.CreatedAt);
+    }
+
+    [Fact]
+    public async Task A_failed_badge_reset_writes_no_assistant_event_issue505()
+    {
+        var seed = await SeedProgressAsync();
+        _badgeReset.ResetUserAsync(UserId, Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new HttpRequestException("badge down")));
+
+        await using (var ctx = _db.NewContext())
+            await Should.ThrowAsync<HttpRequestException>(() => NewJob(ctx).RunAsync(UserId, seed.StudentId, KeycloakId));
+
+        await using var check = _db.NewContext();
+        (await check.OutboxMessages.AnyAsync()).ShouldBeFalse();
+    }
+
     [Fact]
     public async Task Parent_projections_are_deleted_after_the_reset_commits_and_the_reset_line_is_recorded_issue_422()
     {

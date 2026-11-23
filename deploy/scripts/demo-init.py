@@ -34,6 +34,7 @@ DEFAULTS = {
     "RABBITMQ_BADGE_SERVICE_PASSWORD": token(),
     "RABBITMQ_EXAM_API_PASSWORD": token(),
     "RABBITMQ_AUTH_API_PASSWORD": token(),
+    "RABBITMQ_ASSISTANT_SERVICE_PASSWORD": token(),  # #505
     "MINIO_ROOT_USER": "demo-root",
     "MINIO_ROOT_PASSWORD": token(),
     "MINIO_PRESIGN_ACCESS_KEY": "exam-presign",

@@ -404,6 +404,10 @@ olarak aktarılır. Yalnız kitap aktarımında; hızlı ekleme ve karışık g�
   uyuşmazlığı testin güncel soru sayısıyla; işaret kalmazsa test `Done`. Başarısız testte (taslak testi yok) düzeltme taslak
   testi açar. Boş sayfa kaydı onayla sayfanın taslaklarını siler. Kayıt başarısızsa test değişmez. Kırpması başka bir aktarımda
   ya da bankada etkin olan soru tekrar sayılır ve bağlanmaz (aktarımla aynı kural).
+  **Yetim taslak (#1320):** yeni taslaklar kaydedildikten sonra bağlama istek iptaliyle kesilmez; yine başarısız olursa yeni
+  taslaklar silinir. Sayfanın hiçbir teste bağlı olmayan taslakları (işin sahibinin, bu kitap sayfası; eski kesik kayıtlardan)
+  düzeltmede `ReplacingQuestionIds`'e girer, kopya sayılmaz ve silinir; sayılara / işaretlere girmez. Kitapta soru alan bir iş
+  varken bu temizlik atlanır (kaydedilip henüz bağlanmamış taslak yetim sanılmasın).
   **Anahtar sayfası (#1176):** kurulum her testin anahtarının okunduğu dosya sayfasını `BookImportJobTests.KeyFilePage`'e yazar
   (ilk okumanınki, yoksa ikincininki). İş detayındaki `keyPages` bu sayfayı, alan boşsa (önceki kurulumlar, demo kopyası)
   kitabın bütün anahtar sayfalarını (`SetupJson.AnswerKeyRanges`) verir; anahtarsız testte boş. Düzeltme şeridinde küçük görsel,

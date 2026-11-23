@@ -52,3 +52,42 @@ Yalnız Development'ta açık `GET /api/assistant/spike/stream?seconds=&interval
   (Faz 1b) audit'e yazılan IP asistanın IP'si olur; o dilimde ele alınacak.
 - MCP C# SDK ve Microsoft.Extensions.AI seçimi tool host'la birlikte #503'te (iskelet bunlara bağlı değil; BadgeService
   `Anthropic` 13.1.0 + `Microsoft.Extensions.AI` 10.11.0 kullanıyor).
+
+## Tool host (#503, öğrenci dilimi)
+
+`Services/AssistantService/Tools/` — her tool bir kez tanımlanır (`IAssistantTool`: ad, açıklama, roller, JSON şema,
+`ExecuteAsync`); sohbet döngüsü (#504) ve ileride `/mcp` (#518) `ToolRegistry`'den okur. MCP SDK / Microsoft.Extensions.AI
+bu dilimde eklenmedi: tool arayüzü bunlara bağlı değil, model çağrısı #504'te seçilecek.
+
+- **Downstream:** `DownstreamClient`, exam API'yi iç ağdan (`ExamApi:BaseUrl`, boşsa açılışta patlar) kullanıcının kendi
+  Bearer token'ı ve `Accept-Language`'ıyla çağırır. API'nin `errorCode`'u tool hatasına aynen geçer; yoksa durum kodundan
+  (`Forbidden`, `NotFound`, `Conflict`, …). Ağ hatası `DownstreamUnavailable`.
+- **Rol süzgeci:** model yalnız rolünün tool'larını görür (`ForRoles`); `ToolExecutor` her çağrıda rolü yeniden denetler
+  (`ToolNotAllowed`).
+- **Sonuç biçimi:** `data` modele, `cards` (kpi, topicTable, confirm) ve `uiActions` (navigate, suggestions) panele gider.
+  Kartlardaki sayılar sunucu verisinden kurulur, modelin yazdığı sayılardan değil. Listeler en çok 20 satır; görsel URL'leri
+  ve iç alanlar atılır; kullanıcı yazımı metin (test adı) `<untrusted>…</untrusted>` ile işaretlenir.
+- **Yazma akışı:** `IAssistantWriteTool`'un model çağrısı yalnız önizler ve sahibi kullanıcı olan bir `PendingAction`
+  (10 dk) yazar; değişiklik `POST /api/assistant/actions/{id}/confirm` ile olur. Talep tek koşullu UPDATE ile alınır
+  (çift dokunuş iki kez çalıştırmaz). Başkasının / bilinmeyen id → 404, süresi dolmuş → 410, karar verilmiş → 409;
+  `.../reject` → 204. Commit başarısızsa eylem `Failed`.
+- **Ekranlar:** `ui_open_screen` yalnız listedeki anahtarları açar (rotayı sunucu kurar; `/testsolve` yok, asistan test
+  sırasında kapalı).
+- `GET /api/assistant/tools` rolün tool listesi; yalnız Development'ta `POST /api/assistant/tools/{name}/invoke` (canlı deneme).
+
+| Tool | Exam API | Not |
+|---|---|---|
+| `get_my_profile` | `GET api/student/profile` | kpi kartı |
+| `search_taxonomy` | `GET api/subject/search` | en çok 10 sonuç |
+| `get_my_weak_topics` | `GET api/student/me/topic-performance` | isabeti %70 altı en çok 5 konu (yoksa boş liste); `days` 7–90 (API sınırı) |
+| `get_my_performance_summary` | aynı uç | ders toplamları sunucu kodunda hesaplanır |
+| `get_daily_set_status` | `GET api/practice/daily` | |
+| `list_my_completed_tests` | `GET api/worksheet/CompletedTests` | sayfa 10 |
+| `get_test_result` | `GET api/worksheet/test-canvas-instance-result/{id}` | bitmemiş / başkasının test boş döner (`TestNotFinished`); çoktan seçmelide `isCorrect` null, `question.correctAnswerId` ile sayılır |
+| `start_daily_practice` ✎ | `POST api/practice/daily/start` | başlamış set kapsamı değiştirmez |
+| `start_practice_session` ✎ | `POST api/practice/sessions` | konu / ders ya da yanlışlar / tekrar şart, 1–50 soru |
+| `ui_open_screen`, `ui_suggest_actions` | — | panel eylemi |
+
+Canlı deneme (Aspire, gateway üzerinden, öğrenci hesabı): 11 tool listelendi; okuma tool'ları gerçek veriyle döndü, başkasının
+test id'si `TestNotFinished`, `ui_open_screen admin` reddedildi; yazma akışında ret → 204, retten sonra onay → 409, onay → 200
+ve pratik oturumu açıldı (`/practice?session=…`), ikinci onay → 409, bilinmeyen id → 404.

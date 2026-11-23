@@ -2,6 +2,7 @@ using AssistantService;
 using AssistantService.Data;
 using AssistantService.Endpoints;
 using AssistantService.Security;
+using AssistantService.Tools;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -42,6 +43,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddScoped<IClaimsTransformation, KeycloakRoleTransformer>();
 builder.Services.AddAuthorization();
 
+// #503: tool host. Tools call the exam API on the internal network with the user's own token.
+builder.Services.AddSingleton(TimeProvider.System);
+var examApiBaseUrl = builder.Configuration["ExamApi:BaseUrl"];
+if (string.IsNullOrWhiteSpace(examApiBaseUrl))
+    throw new InvalidOperationException("ExamApi:BaseUrl is required (exam API on the internal network).");
+builder.Services.AddHttpClient<DownstreamClient>(c =>
+{
+    c.BaseAddress = new Uri(examApiBaseUrl.TrimEnd('/') + "/");
+    c.Timeout = TimeSpan.FromSeconds(20);
+});
+builder.Services.AddAssistantTools();
+
 var app = builder.Build();
 
 app.UseAuthentication();
@@ -54,6 +67,7 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.MapAssistantEndpoints();
+app.MapToolEndpoints();
 app.MapDefaultEndpoints();
 
 app.Run();

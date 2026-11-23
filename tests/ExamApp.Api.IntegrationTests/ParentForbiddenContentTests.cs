@@ -357,7 +357,12 @@ public class ParentForbiddenContentTests(IntegrationApiFactory factory) : Integr
             using var doc = JsonDocument.Parse(json);
             foreach (var (path, name, value) in Walk(doc.RootElement, "$"))
             {
-                ForbiddenProperties.ShouldNotContain(name, $"{url} yasak alan döndü: {path}");
+                // Issue #1310 istisnası (karar 2026-11-23): YALNIZ test sonucunda, çocuğun karalama yaptığı sorular (görsel,
+                // çizimler, not, şık) `$.questions` altında gelir. Başka uç noktada ya da başka yolda yine yasak.
+                var drawingException = url.Contains("/test-results/", StringComparison.Ordinal)
+                    && (path == "$.questions" || path.StartsWith("$.questions[", StringComparison.Ordinal));
+                if (!drawingException)
+                    ForbiddenProperties.ShouldNotContain(name, $"{url} yasak alan döndü: {path}");
 
                 // Başka öğrencinin id'si yok: her studentId bu çocuğun, her test oturumu bu çocuğun.
                 if (name.Equals("studentId", StringComparison.OrdinalIgnoreCase) && value.ValueKind == JsonValueKind.Number)

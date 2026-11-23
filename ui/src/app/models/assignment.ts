@@ -72,6 +72,10 @@ export interface TeacherAssignmentStudentSummary {
   retakeCount?: number;
   /** Issue #1090: öğrencinin planı yok (deneme bitti), işi açamaz; velisi plan seçince açılır. */
   planLocked?: boolean;
+  /** Issue #1310: bitmiş testte doğru / soru / karalamalı soru sayısı; etkinlikte ve bitmemişte null. */
+  correctCount?: number | null;
+  questionCount?: number | null;
+  drawingCount?: number | null;
 }
 
 export interface TeacherWorksheetAssignment {

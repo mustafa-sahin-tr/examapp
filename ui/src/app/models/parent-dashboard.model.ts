@@ -1,3 +1,4 @@
+import { SessionReviewQuestion } from './session-review';
 /**
  * Issue #420 (epic #407 V2): veli paneli. Backend: `/api/exam/parent/children/{studentId}/summary`
  * (gateway `/api/exam/{everything}` → API `/api/parent/children/{studentId}/summary`).
@@ -127,6 +128,8 @@ export interface ParentChildTestResult {
   finishedAt: string | null;
   score: ParentTestScore;
   topics: ParentTestTopicResult[];
+  /** Issue #1310: soru soru cevap ve çocuğun çizimleri (eski sunucuda yok). */
+  questions?: SessionReviewQuestion[];
 }
 
 /**

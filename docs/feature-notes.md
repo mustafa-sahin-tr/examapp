@@ -750,3 +750,20 @@ değil. Görünürlük tek kural: `WorksheetStudentAccess.AssignmentVisibleTo` �
 (`TeacherService`), açık uçlu kuyruk aynı koşulu satır içi uygular. Üyelik bitince (taşındı, çıkarıldı, okul değişti, şube silindi)
 atama öğrenciden düşer. Çakışma şube başına: aynı şube ya da şubeyi kapsayan bütün sınıf ataması aynı aralıkta çakışır, 5-A ve 5-B
 ayrı alır. Takipte hedef adı "5. Sınıf / A", `TargetType=Section`.
+
+## Öğrencinin karalamaları öğretmen ve veliye (#1310)
+
+- **Öğrenci:** soru görseli üstüne kalemle çizdikleri (#1175) ve karalama alanı (#782; çizgi + not) önce cihazda tutulur, 30 sn'de bir
+  yalnız değişen sorular `PUT api/worksheet/test-instances/{id}/drawings` ile gider; bitirirken ve ekrandan çıkarken de. Test
+  bitince cihazdan silinir (silmeden önce son gönderim). Karalama alanının altında "öğretmenin ve velin görebilir" notu.
+- **Saklama:** `TestInstanceQuestionDrawings` (soru satırı başına bir satır, jsonb çizgiler + not; oturum satırı silinince gider).
+  Biçime uymayan çizgi atılır; soru başına 64k karakteri aşan çizgiler sondan düşer (istek reddedilmez); not 2000 karakter.
+  Yükleme çözerken ve bitişten (ya da süre sınırının sonundan) 10 dk sonrasına kadar kabul edilir.
+- **Öğretmen:** ödev tablosunda puan sütunu ve bitmiş testte "Çözümü gör" (karalamalı soru sayısıyla). Pencere soru soru
+  cevap / doğru şık / süre ve çizimleri gösterir; "Yalnız karalaması olanlar", "Yalnız yanlışlar". Uç:
+  `GET api/worksheet/{id}/assignments/sessions/{instanceId}/review`; kapsam ödev tablosuyla aynı (tabloda görünmeyen oturum 404),
+  bitmemiş oturum 404 (öğretmen çözerken izlemez).
+- **Veli (karar 2026-11-23):** test sonucu penceresinde "Sorular ve karalamalar" — yalnız karalama yapılan sorular (görsel,
+  çizimler, şık). #421'in "soru içeriği yok" kuralına bilinçli istisna: sunucu yalnız karalamalı soruları gönderir;
+  `ParentForbiddenContentTests` bu istisnayı yalnız sonuç ucundaki `$.questions` yolunda tanır.
+- Görselsiz soruda (#590) görünümde soru metni gösterilir (soru üstü kalem yalnız görselli soruda var).

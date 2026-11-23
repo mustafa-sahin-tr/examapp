@@ -146,9 +146,20 @@
     "topics": "Konulara göre",
     "topicCounts": "{{correct}} doğru · {{wrong}} yanlış · {{blank}} boş",
     "noTopics": "Konu bilgisi yok.",
-    "privacyNote": "Sorular ve cevaplar velilere gösterilmez; yalnızca sonuç sayıları görünür.",
+    "privacyNote": "Yalnızca karalama yapılan sorular, çizimler ve cevaplar görünür; diğer soruların içeriği gösterilmez.",
     "percent": "%{{value}}",
-    "approxTime": "{{date}}, yaklaşık {{time}}"
+    "approxTime": "{{date}}, yaklaşık {{time}}",
+    "drawingsTitle": "Sorular ve karalamalar",
+    "questionTitle": "Soru {{number}}",
+    "answered": "Cevabı {{letter}}",
+    "correctIs": "Doğrusu {{letter}}",
+    "open": "Aç",
+    "hide": "Gizle",
+    "outcome": {
+      "correct": "Doğru",
+      "wrong": "Yanlış",
+      "blank": "Boş"
+    }
   },
   "rescheduleRequests": {
     "title": "Onay bekleyen ertelemeler",

@@ -687,7 +687,9 @@
                             <tr>
                               <th>{{ t('teacher.thStudent') }}</th>
                               <th>{{ t('teacher.thStatus') }}</th>
+                              <th>{{ t('teacher.thScore') }}</th>
                               <th>{{ t('teacher.thLastActivity') }}</th>
+                              <th><span class="cdk-visually-hidden">{{ t('teacher.viewSolution') }}</span></th>
                             </tr>
                           </thead>
                           <tbody>
@@ -695,10 +697,29 @@
                               <tr>
                                 <td>{{ t('teacher.studentRow', { studentNumber: student.studentName || student.studentNumber, grade: studentGradeLabel(student) }) }}</td>
                                 <td><span [class]="statusClass(student.status)">{{ statusLabel(student.status) }}</span></td>
+                                <td data-testid="student-score">
+                                  @if (student.questionCount != null) {
+                                    {{ t('teacher.scoreValue', { correct: student.correctCount, total: student.questionCount }) }}
+                                  } @else { — }
+                                </td>
                                 <td>{{ lastActivityLabel(student.lastActivity) }}</td>
+                                <td class="solution-cell">
+                                  <!-- Issue #1310: bitmiş testte öğrencinin soru soru çözümü ve karalamaları. -->
+                                  @if (student.instanceId && student.questionCount != null) {
+                                    <button mat-stroked-button type="button" class="solution-btn" data-testid="view-solution"
+                                      (click)="openSessionReview(student)">
+                                      {{ t('teacher.viewSolution') }}
+                                      @if (student.drawingCount) {
+                                        <span class="solution-btn__badge">{{ t('teacher.drawingBadge', { count: student.drawingCount }) }}</span>
+                                      }
+                                    </button>
+                                  } @else if (student.instanceId) {
+                                    <span class="muted">{{ t('teacher.solutionAfterFinish') }}</span>
+                                  }
+                                </td>
                               </tr>
                             } @empty {
-                              <tr><td colspan="3" class="muted">{{ t('teacher.noStudents') }}</td></tr>
+                              <tr><td colspan="5" class="muted">{{ t('teacher.noStudents') }}</td></tr>
                             }
                           </tbody>
                         </table>

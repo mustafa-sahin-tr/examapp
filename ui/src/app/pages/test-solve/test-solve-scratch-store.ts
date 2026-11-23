@@ -1,8 +1,10 @@
 import { SCRATCH_STROKE_PATTERN } from '../../shared/utils/pen-color';
+import { SessionDrawingItem } from '../../models/session-review';
 
 /**
- * Issue #782: soru başına karalama notları. Yalnız bu cihazda durur, sunucuya gitmez: öğretmen göremez.
- * Test bitince silinir; bu cihazda bitmeyen testlerin notları {@link SCRATCH_MAX_AGE_MS} sonra temizlenir.
+ * Issue #782: soru başına karalama notları. Önce bu cihazda tutulur; #1310'dan beri çözerken arada ve test bitince
+ * sunucuya da gider (öğretmen ve veli görür, bkz. {@link collectDrawings}). Test bitince cihazdan silinir; bu cihazda
+ * bitmeyen testlerin notları {@link SCRATCH_MAX_AGE_MS} sonra temizlenir.
  */
 export interface ScratchNote {
   /**
@@ -129,5 +131,52 @@ export function purgeOldScratchNotes(now = Date.now()): void {
     }
   } catch {
     // Bkz. writeScratchNotes.
+  }
+}
+
+/**
+ * Issue #1310: testin bu cihazdaki bütün çizimleri, soru başına (görsel üstü + karalama alanı). Boş soru yer almaz.
+ */
+export function collectDrawings(instanceId: number): SessionDrawingItem[] {
+  const byQuestion = new Map<number, SessionDrawingItem>();
+  const item = (id: number) => {
+    let found = byQuestion.get(id);
+    if (!found) byQuestion.set(id, (found = { instanceQuestionId: id, ink: [], strokes: [], text: null }));
+    return found;
+  };
+  for (const [id, note] of Object.entries(readScratchNotes(instanceId))) {
+    const text = note.text.trim() ? note.text : null;
+    if (!note.strokes.length && !text) continue;
+    Object.assign(item(Number(id)), { strokes: note.strokes, text });
+  }
+  try {
+    const parsed = JSON.parse(localStorage.getItem(inkKey(instanceId)) ?? 'null');
+    for (const [id, strokes] of Object.entries(parsed?.strokes ?? {})) {
+      const clean = sanitizeStrokes(strokes);
+      if (clean.length) item(Number(id)).ink = clean;
+    }
+  } catch {
+    // Okunamayan kayıt atlanır.
+  }
+  return [...byQuestion.values()].filter((i) => Number.isInteger(i.instanceQuestionId) && i.instanceQuestionId > 0);
+}
+
+/**
+ * Issue #1310: son gönderilenle karşılaştırıp yalnız değişen soruları verir; önceden gönderilip artık boş olan soru boş
+ * öğe olarak gelir (sunucu siler). `sent` gönderim başarılı olunca {@link markDrawingsSent} ile güncellenir.
+ */
+export function changedDrawings(current: SessionDrawingItem[], sent: ReadonlyMap<number, string>): SessionDrawingItem[] {
+  const changed = current.filter((i) => sent.get(i.instanceQuestionId) !== JSON.stringify(i));
+  const present = new Set(current.map((i) => i.instanceQuestionId));
+  for (const id of sent.keys()) {
+    if (!present.has(id)) changed.push({ instanceQuestionId: id, ink: [], strokes: [], text: null });
+  }
+  return changed;
+}
+
+export function markDrawingsSent(items: SessionDrawingItem[], sent: Map<number, string>): void {
+  for (const i of items) {
+    if (i.ink.length || i.strokes.length || i.text) sent.set(i.instanceQuestionId, JSON.stringify(i));
+    else sent.delete(i.instanceQuestionId);
   }
 }

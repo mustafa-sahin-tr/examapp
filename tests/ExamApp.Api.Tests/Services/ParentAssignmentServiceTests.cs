@@ -817,8 +817,15 @@ public class ParentAssignmentServiceTests : IDisposable
             { "Deadline", "Result", "StartAt", "Status", "Subject", "TeacherName", "TestInstanceId", "Title", "WorksheetId" });
         Props<ParentTestScoreDto>().ShouldBe(new[]
             { "BlankCount", "CorrectCount", "DurationSeconds", "ScorePercent", "TotalCount", "WrongCount" });
+        // issue #1310 (karar 2026-11-23): veli, çocuğun karalama yaptığı soruları görür — görsel, çizimler, şık. Yalnız
+        // karalamalı sorular gelir (ParentAssignmentService filtreler); alan listesi burada sabitlenir.
         Props<ParentChildTestResultDto>().ShouldBe(new[]
-            { "FinishedAt", "Outcome", "Score", "StartedAt", "StudentId", "Subject", "TestInstanceId", "Title", "Topics", "WorksheetId" });
+            { "FinishedAt", "Outcome", "Questions", "Score", "StartedAt", "StudentId", "Subject", "TestInstanceId", "Title", "Topics", "WorksheetId" });
+        Props<ExamApp.Api.Models.Dtos.SessionReviewQuestionDto>().ShouldBe(new[]
+        {
+            "CorrectLetter", "ImageUrl", "Ink", "InstanceQuestionId", "InteractionType", "Number", "Outcome", "QuestionText", "SelectedLetter",
+            "Strokes", "Text", "TimeTakenSeconds"
+        });
         Props<ParentTestTopicResultDto>().ShouldBe(new[]
             { "BlankCount", "CorrectCount", "Name", "TopicId", "TotalCount", "WrongCount" });
     }

@@ -228,9 +228,11 @@ public class ParentAssignmentEndpointsTests(IntegrationApiFactory factory) : Int
         {
             var root = doc.RootElement;
             Names(root).ShouldBe(new[]
-                { "finishedAt", "outcome", "score", "startedAt", "studentId", "subject", "testInstanceId", "title", "topics", "worksheetId" });
+                { "finishedAt", "outcome", "questions", "score", "startedAt", "studentId", "subject", "testInstanceId", "title", "topics", "worksheetId" });
             root.GetProperty("title").GetString().ShouldBe("Kesirler");
             root.GetProperty("outcome").GetString().ShouldBe("completed");
+            // Issue #1310: veliye yalnız karalama yapılan sorular gider; karalama yoksa soru içeriği yok.
+            root.GetProperty("questions").GetArrayLength().ShouldBe(0);
             // Başlangıç/bitiş saate kesilir; süre kesin.
             var startedAt = root.GetProperty("startedAt").GetDateTime().ToUniversalTime();
             (startedAt.Minute, startedAt.Second).ShouldBe((0, 0));

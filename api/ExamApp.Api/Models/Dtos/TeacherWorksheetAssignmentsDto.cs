@@ -84,6 +84,15 @@ public class TeacherAssignmentStudentDto
 
     /// <summary>Issue #1090: öğrencinin planı yok (deneme bitti), işi açamaz; velisi plan seçince açılır.</summary>
     public bool PlanLocked { get; set; }
+
+    /// <summary>Issue #1310: bitmiş testte doğru sayısı (etkinlikte / bitmemişte null).</summary>
+    public int? CorrectCount { get; set; }
+
+    /// <summary>Issue #1310: bitmiş testteki soru sayısı (etkinlikte / bitmemişte null).</summary>
+    public int? QuestionCount { get; set; }
+
+    /// <summary>Issue #1310: bitmiş testte öğrencinin çizim yaptığı soru sayısı (etkinlikte / bitmemişte null).</summary>
+    public int? DrawingCount { get; set; }
 }
 
 public static class AssignmentStudentStatuses

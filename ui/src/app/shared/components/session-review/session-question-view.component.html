@@ -1,0 +1,40 @@
+<div class="sqv" *transloco="let t; prefix: 'session-review'">
+  <figure class="sqv__figure sqv__figure--question">
+    <figcaption>{{ t('onQuestion') }}</figcaption>
+    @if (question().imageUrl; as src) {
+      <div class="sqv__image">
+        <img #image [src]="src" [alt]="t('questionAlt', { number: question().number })" (load)="imageLoaded(image)" />
+        @if (question().ink.length) {
+          <svg class="sqv__ink" [attr.viewBox]="'0 0 ' + viewWidth + ' ' + inkHeight()" preserveAspectRatio="xMinYMin meet"
+            aria-hidden="true" data-testid="sqv-ink">
+            @for (stroke of question().ink; track $index) {
+              <path class="sqv__stroke" [attr.d]="strokePath(stroke)" [style.stroke]="strokeCss(stroke)" />
+            }
+          </svg>
+        }
+      </div>
+    } @else if (question().questionText) {
+      <p class="sqv__text" data-testid="sqv-text">{{ question().questionText }}</p>
+    } @else {
+      <p class="sqv__muted">{{ t('noImage') }}</p>
+    }
+  </figure>
+
+  @if (hasPad()) {
+    <figure class="sqv__figure sqv__figure--pad" data-testid="sqv-pad">
+      <figcaption>{{ t('scratchPad') }}</figcaption>
+      <div class="sqv__pad">
+        @if (question().strokes.length) {
+          <svg [attr.viewBox]="'0 0 ' + viewWidth + ' ' + padHeight()" preserveAspectRatio="xMinYMin meet" aria-hidden="true">
+            @for (stroke of question().strokes; track $index) {
+              <path class="sqv__stroke" [attr.d]="strokePath(stroke)" [style.stroke]="strokeCss(stroke)" />
+            }
+          </svg>
+        }
+        @if (question().text?.trim()) {
+          <p class="sqv__note" data-testid="sqv-note">{{ question().text }}</p>
+        }
+      </div>
+    </figure>
+  }
+</div>

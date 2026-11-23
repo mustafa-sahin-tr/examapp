@@ -1,0 +1,28 @@
+{
+  "onQuestion": "Soru üzerine çizdikleri",
+  "scratchPad": "Karalama alanı",
+  "questionAlt": "Soru {{number}}",
+  "noImage": "Bu sorunun görseli yok.",
+  "summary": "{{correct}} doğru · {{wrong}} yanlış · {{blank}} boş · {{drawings}} soruda karalama",
+  "onlyDrawings": "Yalnız karalaması olanlar",
+  "onlyWrong": "Yalnız yanlışlar",
+  "close": "Kapat",
+  "notFound": "Bu çözüm görülemiyor (test bitmemiş ya da erişimin yok).",
+  "loadError": "Çözüm yüklenemedi. Biraz sonra yeniden dene.",
+  "questionsNav": "Sorular",
+  "questionAria": "Soru {{number}}, {{outcome}}",
+  "noMatch": "Seçime uyan soru yok.",
+  "legend": "✎ karalama var · yeşil doğru · kırmızı yanlış",
+  "questionTitle": "Soru {{number}}",
+  "studentAnswer": "Cevabı: {{letter}}",
+  "correctAnswer": "Doğrusu: {{letter}}",
+  "time": "{{minutes}} dk {{seconds}} sn",
+  "previous": "Önceki",
+  "next": "Sonraki",
+  "noDrawing": "Bu soruda karalama yok.",
+  "outcome": {
+    "correct": "Doğru",
+    "wrong": "Yanlış",
+    "blank": "Boş"
+  }
+}

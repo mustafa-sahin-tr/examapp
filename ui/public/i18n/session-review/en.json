@@ -1,0 +1,28 @@
+{
+  "onQuestion": "Drawn on the question",
+  "scratchPad": "Scratch pad",
+  "questionAlt": "Question {{number}}",
+  "noImage": "This question has no image.",
+  "summary": "{{correct}} correct · {{wrong}} wrong · {{blank}} blank · scratch work on {{drawings}} questions",
+  "onlyDrawings": "Only with scratch work",
+  "onlyWrong": "Only wrong answers",
+  "close": "Close",
+  "notFound": "This solution can't be shown (the test isn't finished or you don't have access).",
+  "loadError": "The solution couldn't be loaded. Try again shortly.",
+  "questionsNav": "Questions",
+  "questionAria": "Question {{number}}, {{outcome}}",
+  "noMatch": "No question matches.",
+  "legend": "✎ scratch work · green correct · red wrong",
+  "questionTitle": "Question {{number}}",
+  "studentAnswer": "Answered: {{letter}}",
+  "correctAnswer": "Correct: {{letter}}",
+  "time": "{{minutes}} min {{seconds}} s",
+  "previous": "Previous",
+  "next": "Next",
+  "noDrawing": "No scratch work on this question.",
+  "outcome": {
+    "correct": "Correct",
+    "wrong": "Wrong",
+    "blank": "Blank"
+  }
+}

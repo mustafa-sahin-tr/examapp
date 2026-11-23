@@ -132,6 +132,9 @@ public sealed class ParentChildTestResultDto
 
     /// <summary>Konu bazında doğru/yanlış/boş (en çok sorulu konu önce). Konusu atanmamış sorular tek grupta.</summary>
     public List<ParentTestTopicResultDto> Topics { get; set; } = new();
+
+    /// <summary>Issue #1310: öğrencinin karalama yaptığı sorular — cevap ve çizimler (salt okunur, sıra testteki gibi).</summary>
+    public List<ExamApp.Api.Models.Dtos.SessionReviewQuestionDto> Questions { get; set; } = new();
 }
 
 /// <summary><see cref="ParentChildTestResultDto.Outcome"/> değerleri.</summary>

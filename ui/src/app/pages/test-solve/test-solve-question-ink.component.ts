@@ -16,7 +16,8 @@ import { SCRATCH_VIEW_WIDTH, readInkStrokes, writeInkStrokes } from './test-solv
 
 /**
  * Issue #1175: soru görselinin üstünde kalemle karalama katmanı. Çizim yalnız {@link active} iken; kapalıyken çizgiler
- * görünür ama dokunuş görsele geçer. Karalama alanı (#782) gibi yalnız bu cihazda durur, test bitince silinir.
+ * görünür ama dokunuş görsele geçer. Karalama alanı (#782) gibi cihazda tutulur, #1310 ile sunucuya da gider (öğretmen
+ * ve veli görür); test bitince cihazdan silinir.
  */
 @Component({
   selector: 'app-test-solve-question-ink',

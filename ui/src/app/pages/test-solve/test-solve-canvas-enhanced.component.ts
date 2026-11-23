@@ -75,7 +75,7 @@ import {
   writeAutoAdvance,
   writeSolveLocalState,
 } from './test-solve-local-state';
-import { clearScratchNotes } from './test-solve-scratch-store';
+import { changedDrawings, clearScratchNotes, collectDrawings, markDrawingsSent } from './test-solve-scratch-store';
 import { createStorageImageResolver } from '../../shared/utils/storage-image-refresh.util';
 import { WorksheetKind, activityRoute } from '../../models/activity';
 
@@ -117,6 +117,9 @@ export function isTimeExpiredRejection(source: unknown): boolean {
   if (!isTestCompletedRejection(body)) return false;
   return (body as Partial<TestSessionResult>).reason === TEST_SESSION_REJECT_REASONS.timeExpired;
 }
+
+/** Issue #1310: çizimlerin sunucuya gönderilme aralığı (yalnız değişen sorular gider). */
+const DRAWING_SYNC_INTERVAL_MS = 30_000;
 
 @Component({
   selector: 'app-test-solve-v2',
@@ -416,7 +419,14 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     this.spinWheelComp.spinWheel();
   }
 
+  /** Issue #1310: sunucuya son gönderilen çizim, soru başına (değişmeyen soru yeniden gönderilmez). */
+  private readonly drawingsSent = new Map<number, string>();
+  private drawingSyncTimer?: ReturnType<typeof setInterval>;
+  private drawingSyncInFlight = false;
+
   ngOnDestroy(): void {
+    clearInterval(this.drawingSyncTimer);
+    if (!this.redirectedToResult) void this.syncDrawings();
     document.removeEventListener('keydown', this.keyboardShortcutHandler);
     clearTimeout(this.autoAdvanceTimer);
     clearTimeout(this.lowTimeNoticeTimer);
@@ -497,6 +507,9 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
         void this.router.navigate(activityRoute(this.testInstance.id ?? testId), { replaceUrl: true });
         return;
       }
+
+      // Issue #1310: çizimler arada sunucuya gider (öğretmen / veli görür); bitirirken ve ekrandan çıkarken de.
+      this.drawingSyncTimer ??= setInterval(() => void this.syncDrawings(), DRAWING_SYNC_INTERVAL_MS);
 
       // 📜 Passage gruplarını oluştur
       this.testInstance.testInstanceQuestions.forEach((q: TestInstanceQuestion) => {
@@ -1121,6 +1134,23 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     // Temel bileşenin şablonunda cevap kutusu oynatıcısı yok.
   }
 
+  /** Issue #1310: değişen çizimleri gönderir; hata çözmeyi durdurmaz (sonraki turda yeniden denenir). */
+  private async syncDrawings(): Promise<void> {
+    const id = this.testInstance?.id;
+    if (!id || this.drawingSyncInFlight) return;
+    const items = changedDrawings(collectDrawings(id), this.drawingsSent);
+    if (!items.length) return;
+    this.drawingSyncInFlight = true;
+    try {
+      await firstValueFrom(this.testService.saveDrawings(id, items));
+      markDrawingsSent(items, this.drawingsSent);
+    } catch {
+      // Ağ / süre bitti: çizimler cihazda kalır, sonraki turda yeniden.
+    } finally {
+      this.drawingSyncInFlight = false;
+    }
+  }
+
   async completeTest(): Promise<void> {
     if (this.finishing() || this.redirectedToResult || !this.testInstance) return;
     // Kilitten önce: bekleyen cevap kutusu değeri normal kayıt yolundan gider, aşağıdaki flush onu da bekler.
@@ -1138,6 +1168,8 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       this.abortFinish('finish.saveFailed');
       return;
     }
+
+    await this.syncDrawings();
 
     let response: TestSessionResult;
     try {
@@ -1358,9 +1390,14 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   protected navigateToResult(): void {
     this.redirectedToResult = true;
     this.localStateReady.set(false);
+    clearInterval(this.drawingSyncTimer);
     if (this.testInstance?.id) {
-      clearSolveLocalState(this.testInstance.id);
-      clearScratchNotes(this.testInstance.id);
+      // Issue #1310: cihazdan silmeden önce gönderilmemiş çizimler yola çıkar (sunucu bitişten sonra kısa süre kabul eder).
+      const id = this.testInstance.id;
+      const pending = changedDrawings(collectDrawings(id), this.drawingsSent);
+      if (pending.length) this.testService.saveDrawings(id, pending).subscribe({ error: () => undefined });
+      clearSolveLocalState(id);
+      clearScratchNotes(id);
     }
     this.testTimerSubscription?.unsubscribe();
     const worksheetId = this.testInstance?.worksheetId ?? this.navigationWorksheetId;

@@ -1436,3 +1436,17 @@ table {
   background: var(--ms-info-surface-weak);
   border: 1px solid var(--ms-info-border);
 }
+
+// Issue #1310: ödev tablosunda öğrencinin çözümünü açan düğme (karalama sayısıyla).
+.solution-cell {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.solution-btn__badge {
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  background: var(--ms-surface-medium);
+}

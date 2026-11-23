@@ -2,7 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   SCRATCH_MAX_AGE_MS,
   SCRATCH_TEXT_MAX_LENGTH,
+  changedDrawings,
   clearScratchNotes,
+  collectDrawings,
+  markDrawingsSent,
   purgeOldScratchNotes,
   readInkStrokes,
   readScratchNotes,
@@ -96,5 +99,29 @@ describe('test solve scratch store (#782)', () => {
     purgeOldScratchNotes();
     expect(readInkStrokes(1, 10)).toEqual([]);
     expect(readInkStrokes(2, 10)).toEqual(['M1 2L3 4']);
+  });
+
+  it('collects ink and scratch notes per question and sends only what changed (#1310)', () => {
+    writeScratchNotes(5, { 10: { strokes: ['red:M1 2L3 4'], text: 'not' }, 11: { strokes: [], text: '  ' } });
+    writeInkStrokes(5, 10, ['M5 5L6 6']);
+    writeInkStrokes(5, 12, ['blue:M7 7L8 8']);
+
+    const items = collectDrawings(5);
+    expect(items).toEqual([
+      { instanceQuestionId: 10, ink: ['M5 5L6 6'], strokes: ['red:M1 2L3 4'], text: 'not' },
+      { instanceQuestionId: 12, ink: ['blue:M7 7L8 8'], strokes: [], text: null },
+    ]);
+
+    const sent = new Map<number, string>();
+    expect(changedDrawings(items, sent)).toHaveLength(2);
+    markDrawingsSent(items, sent);
+    expect(changedDrawings(collectDrawings(5), sent)).toEqual([]);
+
+    // Silinen çizim boş öğe olarak gider (sunucu siler), sonra unutulur.
+    writeInkStrokes(5, 12, []);
+    const removed = changedDrawings(collectDrawings(5), sent);
+    expect(removed).toEqual([{ instanceQuestionId: 12, ink: [], strokes: [], text: null }]);
+    markDrawingsSent(removed, sent);
+    expect(changedDrawings(collectDrawings(5), sent)).toEqual([]);
   });
 });

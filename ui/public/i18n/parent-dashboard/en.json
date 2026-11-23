@@ -146,9 +146,20 @@
     "topics": "By topic",
     "topicCounts": "{{correct}} correct · {{wrong}} wrong · {{blank}} blank",
     "noTopics": "No topic information.",
-    "privacyNote": "Questions and answers are not shown to parents; only result counts are visible.",
+    "privacyNote": "Only questions with scratch work are shown, with the drawings and answers; other questions' content is not shown.",
     "percent": "{{value}}%",
-    "approxTime": "{{date}}, around {{time}}"
+    "approxTime": "{{date}}, around {{time}}",
+    "drawingsTitle": "Questions and scratch work",
+    "questionTitle": "Question {{number}}",
+    "answered": "Answered {{letter}}",
+    "correctIs": "Correct: {{letter}}",
+    "open": "Open",
+    "hide": "Hide",
+    "outcome": {
+      "correct": "Correct",
+      "wrong": "Wrong",
+      "blank": "Blank"
+    }
   },
   "rescheduleRequests": {
     "title": "Reschedules awaiting approval",

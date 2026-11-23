@@ -763,6 +763,44 @@ public class ExamController : BaseController
         return Ok(response);
     }
 
+    /// <summary>
+    /// Issue #1310: öğrencinin soru başına çizimleri (soru görseli üstü + karalama alanı). Çözerken arada ve bitirirken
+    /// gönderilir; yalnız kendi oturumu. Bitmiş oturuma kısa bir süre daha kabul edilir (bitirme ile son yükleme yarışı).
+    /// </summary>
+    [HttpPut("test-instances/{testInstanceId:int}/drawings")]
+    [Authorize(Roles = "Student")]
+    [RequestSizeLimit(2_000_000)]
+    public async Task<IActionResult> SaveDrawings(int testInstanceId, [FromBody] SaveSessionDrawingsDto dto,
+        [FromServices] ISessionDrawingService drawings, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        return await drawings.SaveAsync(testInstanceId, user.Id, dto, ct) switch
+        {
+            SaveSessionDrawingsResult.NotFound => NotFound(),
+            SaveSessionDrawingsResult.Closed => Conflict(),
+            _ => NoContent(),
+        };
+    }
+
+    /// <summary>
+    /// Issue #1310: öğretmen, atadığı çalışma sayfasında kapsamındaki öğrencinin BİTMİŞ oturumunu soru soru görür
+    /// (cevap + çizimler). Kapsam ödev tablosuyla aynı (<c>assignments/overview</c>): tabloda görünmeyen oturum 404.
+    /// </summary>
+    [HttpGet("{id:int}/assignments/sessions/{testInstanceId:int}/review")]
+    [Authorize(Roles = "Teacher")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)]
+    public async Task<IActionResult> GetSessionReview(int id, int testInstanceId,
+        [FromServices] ISessionDrawingService drawings, CancellationToken ct)
+    {
+        var scope = await GetSchoolScopeAsync(ct);
+        var overview = await _assignmentService.GetWorksheetAssignmentsForTeacherAsync(id, scope);
+        var visible = overview.Assignments.Any(a => a.Students.Any(s => s.InstanceId == testInstanceId));
+        if (!visible)
+            return NotFound();
+        var review = await drawings.BuildReviewAsync(testInstanceId, ct);
+        return review == null ? NotFound() : Ok(review);
+    }
+
     [HttpPut("end-test/{testInstanceId}")]
     [Authorize(Roles = "Student,Teacher,Admin")] // issue #287 review H1: ApprovedTeacher policy tek başına rol kapısı değil
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287

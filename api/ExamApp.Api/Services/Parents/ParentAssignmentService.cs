@@ -36,6 +36,7 @@ public sealed class ParentAssignmentService : IParentAssignmentService
     private readonly TimeProvider _time;
     private readonly ILogger<ParentAssignmentService>? _logger;
     private readonly IParentTestResultProbeMonitor? _probeMonitor;
+    private readonly ExamApp.Api.Services.Worksheets.ISessionDrawingService? _drawings;
 
     public ParentAssignmentService(
         AppDbContext context,
@@ -45,8 +46,10 @@ public sealed class ParentAssignmentService : IParentAssignmentService
         IStringLocalizer<Messages>? localizer = null,
         TimeProvider? time = null,
         ILogger<ParentAssignmentService>? logger = null,
-        IParentTestResultProbeMonitor? probeMonitor = null)
+        IParentTestResultProbeMonitor? probeMonitor = null,
+        ExamApp.Api.Services.Worksheets.ISessionDrawingService? drawings = null)
     {
+        _drawings = drawings;
         _probeMonitor = probeMonitor;
         _context = context;
         _access = access;
@@ -220,6 +223,8 @@ public sealed class ParentAssignmentService : IParentAssignmentService
         var answers = await LoadAnswersAsync(new[] { row!.InstanceId }, ct);
         var meta = await LoadQuestionMetaAsync(answers, ct);
         var unclassified = _localizer["worksheets.detail.unclassifiedTopic"].Value;
+        // issue #1310: soru soru cevap + çizimler (kapsam yukarıda doğrulandı).
+        var review = _drawings == null ? null : await _drawings.BuildReviewAsync(row.InstanceId, ct);
 
         return new ParentTestResultLookup(true, new ParentChildTestResultDto
         {
@@ -254,7 +259,11 @@ public sealed class ParentAssignmentService : IParentAssignmentService
                 })
                 .OrderByDescending(t => t.TotalCount)
                 .ThenBy(t => t.Name, StringComparer.Ordinal)
-                .ToList()
+                .ToList(),
+            // Veliye yalnız karalama yapılan sorular gider (diğer soruların içeriği #421'deki gibi gösterilmez).
+            Questions = review?.Questions
+                .Where(q => q.Ink.Count > 0 || q.Strokes.Count > 0 || !string.IsNullOrWhiteSpace(q.Text))
+                .ToList() ?? new()
         });
     }
 

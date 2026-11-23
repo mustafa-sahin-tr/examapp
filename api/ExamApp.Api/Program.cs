@@ -239,6 +239,7 @@ builder.Services.AddSingleton<Microsoft.Extensions.Options.IConfigureOptions<Mic
 builder.Services.AddScoped<IExamService, ExamService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetAssignmentService, ExamApp.Api.Services.Worksheets.WorksheetAssignmentService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.ITestSessionService, ExamApp.Api.Services.Worksheets.TestSessionService>();
+builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.ISessionDrawingService, ExamApp.Api.Services.Worksheets.SessionDrawingService>(); // issue #1310
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IOpenTextReviewService, ExamApp.Api.Services.Worksheets.OpenTextReviewService>(); // issue #583
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IActivityReportService, ExamApp.Api.Services.Worksheets.ActivityReportService>(); // issue #584
 // issue #571: sunucu tarafı etkileşim kontrolcüleri (tip → kontrolcü; durumsuz).

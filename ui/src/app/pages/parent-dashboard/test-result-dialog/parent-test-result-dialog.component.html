@@ -78,6 +78,34 @@
           </ul>
         }
 
+        <!-- Issue #1310: soru soru cevap + çizimler. İlk karalamalı soru açık; diğerleri "Aç" ile. -->
+        @if (drawn().length) {
+          <section class="ptr__drawings" data-test="result-drawings">
+            <div class="ptr__drawings-head">
+              <h3 class="ptr__section">{{ t('testResult.drawingsTitle') }}</h3>
+            </div>
+            @for (q of drawn(); track q.instanceQuestionId) {
+              <article class="ptr__drawing" data-test="result-drawing">
+                <div class="ptr__drawing-head">
+                  <strong>{{ t('testResult.questionTitle', { number: q.number }) }}</strong>
+                  <span class="ptr__chip" [class]="'ptr__chip ptr__chip--' + q.outcome">{{ t('testResult.outcome.' + q.outcome) }}</span>
+                  <span class="ptr__muted ptr__drawing-meta">
+                    @if (q.selectedLetter) { {{ t('testResult.answered', { letter: q.selectedLetter }) }} }
+                    @if (q.outcome === 'wrong' && q.correctLetter) { · {{ t('testResult.correctIs', { letter: q.correctLetter }) }} }
+                  </span>
+                  <button mat-stroked-button type="button" (click)="toggle(q.instanceQuestionId)"
+                    [attr.aria-expanded]="isOpen(q.instanceQuestionId)">
+                    {{ isOpen(q.instanceQuestionId) ? t('testResult.hide') : t('testResult.open') }}
+                  </button>
+                </div>
+                @if (isOpen(q.instanceQuestionId)) {
+                  <app-session-question-view [question]="q" />
+                }
+              </article>
+            }
+          </section>
+        }
+
         <p class="ptr__note">
           <mat-icon aria-hidden="true">lock</mat-icon>
           {{ t('testResult.privacyNote') }}

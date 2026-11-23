@@ -97,7 +97,7 @@
           <!-- Marker context menü -->
           @if (warningMenuVisible) {
             <div class="wr-custom-context-menu"
-              [ngStyle]="{ top: warningMenuY + 'px', left: warningMenuX + 'px' }" (click)="$event.stopPropagation()">
+              [ngStyle]="{ top: warningMenuY + 'px', left: warningMenuX + 'px', transform: warningMenuFlip ? 'translateX(-100%)' : null }" (click)="$event.stopPropagation()">
               <div style="padding: 8px; max-width: 220px">
                 <!-- <strong>Uyarı:</strong> -->
                 <ul>

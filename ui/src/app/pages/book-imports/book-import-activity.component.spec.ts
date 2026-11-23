@@ -61,14 +61,14 @@ describe('BookImportActivityComponent (#1265)', () => {
 
     expect(lines()).toEqual([
       'Sayfalar hazır (65 sayfa)',
-      'Sayfa temizliği: 32 örnek sayfada filigran ve cevap işareti aranıyor (birkaç dakika sürebilir)',
+      'Sayfa temizliği: 32 örnek sayfada filigran aranıyor',
     ]);
     expect(el().querySelector('[data-testid="activity-live"]')).not.toBeNull();
 
     vi.advanceTimersByTime(BOOK_IMPORTS_POLL_MS);
     fixture.detectChanges();
     expect(api.activity).toHaveBeenLastCalledWith('a1', 2, false, 0);
-    expect(lines()[2]).toBe('Analiz bitti · filigran ya da işaret yok, temizlik atlandı');
+    expect(lines()[2]).toBe('Analiz bitti · filigran yok, temizlik atlandı');
   });
 
   it('does not poll a finished import', () => {

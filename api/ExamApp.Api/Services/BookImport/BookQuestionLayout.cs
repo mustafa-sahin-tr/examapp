@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
+using ExamApp.Api.Models.Dtos.Labeling;
 using ExamApp.Api.Services.Labeling;
 
 namespace ExamApp.Api.Services.BookImport;
@@ -145,6 +147,44 @@ public static class BookQuestionLayout
             : raw.OrderBy(o => (int)(o.Y / row)).ThenBy(o => o.X).ToList();
         var options = TrimOverlaps(ordered, AlignChoices(ordered.Select(o => Padded(o, q, pad)).ToList(), pageWidth));
         return new LayoutQuestion(q, options);
+    }
+
+    /// <summary>
+    /// Issue #1301: işaretlemede düzeltme tuvali Claude tespitini aktarımın kaydettiği gibi görür: her çoktan seçmeli sorunun
+    /// şıkları <see cref="Prepare"/> sırasıyla dizilir, paylanır ve soru şıkları kapsayacak kadar büyür (ham kutularla kaydedilen
+    /// soru şık satırını keserdi). Girdi değişmez (önbellekteki kayıt); diğer bloklar aynen kalır.
+    /// </summary>
+    public static PredictionListDto PrepareForCanvas(PredictionListDto predictions, int pageWidth, int pageHeight)
+    {
+        var copy = JsonSerializer.Deserialize<PredictionListDto>(JsonSerializer.Serialize(predictions)) ?? new PredictionListDto();
+        var row = 60 * pageWidth / BaseWidth;
+        foreach (var p in copy.Predictions ?? [])
+        {
+            if ((p.Kind ?? LabelingBlocks.McqQuestion) != LabelingBlocks.McqQuestion || p.Subpredictions is not { Count: > 0 } subs)
+                continue;
+            var letters = subs.Select(o => OptionLetters.Normalize(o.Label)).ToList();
+            // Prepare'in sırası önceden uygulanır (kararlı sıralama, Prepare aynı sırayı korur): çıktı şıkları bu sırayla eşleşir.
+            var ordered = OptionLetters.IsCompleteSet(letters)
+                ? subs.Zip(letters).OrderBy(x => x.Second, StringComparer.Ordinal).Select(x => x.First).ToList()
+                : subs.OrderBy(o => (int)(o.Y / row)).ThenBy(o => o.X).ToList();
+            var prepared = Prepare(new LayoutQuestion(BoxOf(p), ordered.Select(BoxOf).ToList(),
+                ordered.Select(o => OptionLetters.Normalize(o.Label)).ToList()), pageWidth, pageHeight);
+            SetBox(p, prepared.Box);
+            for (var i = 0; i < ordered.Count; i++)
+                SetBox(ordered[i], prepared.Options[i]);
+            p.Subpredictions = ordered;
+        }
+        return copy;
+    }
+
+    private static LayoutBox BoxOf(PredictionDto p) => new(p.X, p.Y, p.Width, p.Height);
+
+    private static void SetBox(PredictionDto p, LayoutBox box)
+    {
+        p.X = box.X;
+        p.Y = box.Y;
+        p.Width = box.Width;
+        p.Height = box.Height;
     }
 
     /// <summary>Tespit edilen şık son harfi kesebilir: biraz büyütülür, soru kutusunun içinde kalarak.</summary>

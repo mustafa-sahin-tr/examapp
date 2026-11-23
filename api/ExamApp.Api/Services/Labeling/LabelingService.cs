@@ -103,8 +103,21 @@ public sealed class LabelingService(
     }
 
     public async Task<LabelingAiDetectResponseDto> DetectWithAiAsync(
-        LabelingAiDetectRequestDto request, LabelingActor actor, CancellationToken ct = default) =>
-        (await DetectAsync(request.ImageBase64, request.Model, request.Force, actor, enforceQuota: true, ct)).Response;
+        LabelingAiDetectRequestDto request, LabelingActor actor, CancellationToken ct = default)
+    {
+        var response = (await DetectAsync(request.ImageBase64, request.Model, request.Force, actor, enforceQuota: true, ct)).Response;
+        if (!request.BookLayout)
+            return response;
+        // #1301: kitap aktarımı düzeltmesi kutuları aktarımın kaydettiği gibi görür (kayıt değişmez, yalnız yanıt).
+        var header = LabelingImage.ReadHeader(request.ImageBase64);
+        return response with
+        {
+            Result = response.Result with
+            {
+                Predictions = BookImport.BookQuestionLayout.PrepareForCanvas(response.Result.Predictions, header.Width, header.Height)
+            }
+        };
+    }
 
     public async Task<LabelingImportDetection> DetectForImportAsync(string imageBase64, string modelId, CancellationToken ct = default)
     {

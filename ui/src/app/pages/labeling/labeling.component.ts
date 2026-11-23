@@ -832,7 +832,7 @@ export class LabelingComponent {
     this.aiBusy.set(true);
     try {
       const response = await firstValueFrom(
-        this.labelingApi.aiDetect({ imageBase64: image, model, force }).pipe(takeUntil(this.pageChanged))
+        this.labelingApi.aiDetect({ imageBase64: image, model, force, bookLayout: !!this.fix() }).pipe(takeUntil(this.pageChanged))
       );
       if (token !== this.pageToken) {
         return;

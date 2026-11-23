@@ -820,7 +820,7 @@ describe('LabelingComponent', () => {
 
             expect(labelingApi.aiDetect).toHaveBeenCalledTimes(1);
 
-            expect(labelingApi.aiDetect).toHaveBeenCalledWith(expect.objectContaining({ model: 'claude-a', force: false }));
+            expect(labelingApi.aiDetect).toHaveBeenCalledWith(expect.objectContaining({ model: 'claude-a', force: false, bookLayout: false }));
             expect(selector().applyExternalPrediction).toHaveBeenCalledWith(expect.any(Number), prediction(7), { kind: 'Ai', modelName: 'claude-a', promptVersion: null });
             expect(selector().predict).not.toHaveBeenCalled();
         });
@@ -2188,7 +2188,7 @@ describe('LabelingComponent', () => {
             }, [claude]);
 
             expect(component.preferredSource()).toBe('Model');
-            expect(labelingApi.aiDetect).toHaveBeenCalledWith(expect.objectContaining({ model: 'claude-a', force: false }));
+            expect(labelingApi.aiDetect).toHaveBeenCalledWith(expect.objectContaining({ model: 'claude-a', force: false, bookLayout: true }));
         });
 
         it('fix_HidesTheLabeledPagesError', async () => {

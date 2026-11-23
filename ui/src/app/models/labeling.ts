@@ -52,6 +52,8 @@ export interface LabelingAiDetectRequest {
   imageBase64: string;
   model: string;
   force: boolean;
+  /** #1301: kitap aktarımı düzeltmesi — kutular aktarımın kaydettiği gibi (şıklar paylı, soru şıkları kapsar). */
+  bookLayout?: boolean;
 }
 
 /** `origin`: `live` Claude'a soruldu (maliyetli), `cached` kayıtlı sonuç döndü. */

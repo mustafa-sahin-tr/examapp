@@ -156,5 +156,158 @@ public class DashboardServiceTests : IDisposable
         result.TeacherCount.ShouldBe(2);
     }
 
+    // ---- Issue #1315: sınıflandırma kırılımı ve yeniden sınıflandırma ----
+
+    private sealed record Taxonomy(int GradeId, int SubjectId, int TopicId, int SubTopicId);
+
+    private static async Task<Taxonomy> SeedTaxonomyAsync(AppDbContext ctx)
+    {
+        var grade = new Grade { Name = "5" };
+        var subject = new Subject { Name = "Matematik" };
+        ctx.AddRange(grade, subject);
+        await ctx.SaveChangesAsync();
+        var topic = new Topic { Name = "Kesirler", SubjectId = subject.Id, GradeId = grade.Id };
+        ctx.Add(topic);
+        await ctx.SaveChangesAsync();
+        var subTopic = new SubTopic { Name = "Kesir karşılaştırma", TopicId = topic.Id };
+        ctx.Add(subTopic);
+        await ctx.SaveChangesAsync();
+        return new Taxonomy(grade.Id, subject.Id, topic.Id, subTopic.Id);
+    }
+
+    private static Question Q(string text, ClassificationSource? source, Taxonomy? classifiedAs = null) => new()
+    {
+        Text = text,
+        Point = 1,
+        ClassificationSource = source,
+        SubjectId = classifiedAs?.SubjectId,
+        TopicId = classifiedAs?.TopicId,
+    };
+
+    [Fact]
+    public async Task GetSummaryAsync_ClassificationBreakdown_SeparatesFiveGroups_issue1315()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            var tax = await SeedTaxonomyAsync(ctx);
+            ctx.Questions.AddRange(
+                Q("ai1", ClassificationSource.AI, tax), Q("ai2", ClassificationSource.AI, tax),
+                Q("book", ClassificationSource.Book, tax),
+                Q("human", ClassificationSource.Human, tax), Q("legacy", null, tax),
+                Q("aiNoTopic", ClassificationSource.AI),
+                Q("never", ClassificationSource.Human), Q("neverNull", null));
+            // #690: yayından kaldırılmış / lisansı bitmiş sorular gruplara girmez.
+            var withdrawn = Q("withdrawn", ClassificationSource.AI);
+            withdrawn.IsUnpublished = true;
+            var expired = Q("expired", null);
+            expired.LicenseEndsAt = DateTime.UtcNow.AddDays(-1);
+            ctx.Questions.AddRange(withdrawn, expired);
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var check = _db.NewContext();
+        var result = await NewService(check).GetSummaryAsync();
+
+        result.QuestionCount.ShouldBe(10);
+        result.Classification.Unpublished.ShouldBe(2);
+
+        result.Classification.Ai.ShouldBe(2);
+        result.Classification.Book.ShouldBe(1);
+        result.Classification.Teacher.ShouldBe(2);
+        result.Classification.AiNoTopic.ShouldBe(1);
+        result.Classification.NotClassified.ShouldBe(2);
+        result.Classification.ClassifiedRatio.ShouldBe(5.0 / 8.0, 0.0001);
+    }
+
+    [Fact]
+    public async Task QueueClassificationRetryAsync_NotClassified_QueuesOnlyPublishedTopiclessNonAiQuestionsWithoutSubTopics_issue1315()
+    {
+        int neverId, nullId, withGradeId;
+        Taxonomy tax;
+        await using (var ctx = _db.NewContext())
+        {
+            tax = await SeedTaxonomyAsync(ctx);
+            var never = Q("never", ClassificationSource.Human);
+            var nullSource = Q("null", null);
+            var inTest = Q("inTest", ClassificationSource.Book);
+            var withSubTopic = Q("subTopic", ClassificationSource.Book);
+            withSubTopic.QuestionSubTopics.Add(new QuestionSubTopic { SubTopicId = tax.SubTopicId });
+            var withdrawn = Q("withdrawn", ClassificationSource.Human);
+            withdrawn.IsUnpublished = true;
+            ctx.Questions.AddRange(never, nullSource, inTest, withSubTopic, withdrawn,
+                Q("aiNoTopic", ClassificationSource.AI), Q("classified", ClassificationSource.Human, tax));
+            var ws = new Worksheet { Name = "WS", Description = "", GradeId = tax.GradeId };
+            ctx.Worksheets.Add(ws);
+            await ctx.SaveChangesAsync();
+            ctx.TestQuestions.Add(new WorksheetQuestion { TestId = ws.Id, QuestionId = inTest.Id, Order = 1 });
+            await ctx.SaveChangesAsync();
+            (neverId, nullId, withGradeId) = (never.Id, nullSource.Id, inTest.Id);
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            var result = await NewService(ctx).QueueClassificationRetryAsync(ClassificationRetryGroup.NotClassified);
+            result.Queued.ShouldBe(3);
+            result.Remaining.ShouldBe(0);
+        }
+
+        await using var check = _db.NewContext();
+        var events = (await check.OutboxMessages.AsNoTracking().ToListAsync())
+            .Select(m =>
+            {
+                m.Type.ShouldBe(ExamApp.Foundation.Contracts.OutboxEventRegistry.NameFor<ExamApp.Foundation.Contracts.QuestionCreatedEvent>());
+                return System.Text.Json.JsonSerializer.Deserialize<ExamApp.Foundation.Contracts.QuestionCreatedEvent>(m.Content)!;
+            })
+            .ToList();
+        events.Select(e => e.QuestionId).OrderBy(id => id).ShouldBe(new[] { neverId, nullId, withGradeId }.OrderBy(id => id));
+        events.ShouldAllBe(e => e.ClassificationSource == null && !e.TaxonomyLocked);
+        events.Single(e => e.QuestionId == withGradeId).GradeId.ShouldBe(tax.GradeId);
+        events.Single(e => e.QuestionId == neverId).GradeId.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task QueueClassificationRetryAsync_AiNoTopic_QueuesOnlyAiQuestionsWithoutTopic_issue1315()
+    {
+        int aiNoTopicId;
+        await using (var ctx = _db.NewContext())
+        {
+            var tax = await SeedTaxonomyAsync(ctx);
+            var aiNoTopic = Q("aiNoTopic", ClassificationSource.AI);
+            ctx.Questions.AddRange(aiNoTopic, Q("ai", ClassificationSource.AI, tax), Q("never", ClassificationSource.Human));
+            await ctx.SaveChangesAsync();
+            aiNoTopicId = aiNoTopic.Id;
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            var result = await NewService(ctx).QueueClassificationRetryAsync(ClassificationRetryGroup.AiNoTopic);
+            result.Queued.ShouldBe(1);
+        }
+
+        await using var check = _db.NewContext();
+        var message = await check.OutboxMessages.AsNoTracking().SingleAsync();
+        var @event = System.Text.Json.JsonSerializer.Deserialize<ExamApp.Foundation.Contracts.QuestionCreatedEvent>(message.Content)!;
+        @event.QuestionId.ShouldBe(aiNoTopicId);
+        // Tüketici kaynağı "AI" olan olayı atlar; yeniden deneme kaynağı boş gönderir.
+        @event.ClassificationSource.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task QueueClassificationRetryAsync_MoreThanBatch_QueuesBatchAndReportsRemaining_issue1315()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            for (var i = 0; i < DashboardService.ClassificationRetryBatchSize + 5; i++)
+                ctx.Questions.Add(Q($"q{i}", null));
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var run = _db.NewContext();
+        var result = await NewService(run).QueueClassificationRetryAsync(ClassificationRetryGroup.NotClassified);
+
+        result.Queued.ShouldBe(DashboardService.ClassificationRetryBatchSize);
+        result.Remaining.ShouldBe(5);
+    }
+
     public void Dispose() => _db.Dispose();
 }

@@ -76,7 +76,8 @@
       "rateLimited": "Kısa sürede çok fazla liste isteği yapıldı. Lütfen biraz bekleyip tekrar deneyin."
     },
     "dashboard": {
-      "invalidDays": "days 1 ile 365 arasında olmalı."
+      "invalidDays": "days 1 ile 365 arasında olmalı.",
+      "invalidClassificationGroup": "group notClassified ya da aiNoTopic olmalı."
     },
     "parentAccessAudits": {
       "invalidRange": "from, to'dan önce olmalı.",

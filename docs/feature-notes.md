@@ -767,3 +767,16 @@ ayrı alır. Takipte hedef adı "5. Sınıf / A", `TargetType=Section`.
   çizimler, şık). #421'in "soru içeriği yok" kuralına bilinçli istisna: sunucu yalnız karalamalı soruları gönderir;
   `ParentForbiddenContentTests` bu istisnayı yalnız sonuç ucundaki `$.questions` yolunda tanır.
 - Görselsiz soruda (#590) görünümde soru metni gösterilir (soru üstü kalem yalnız görselli soruda var).
+
+## Panoda sınıflandırma kırılımı (#1315)
+
+- Admin panosu: üst kart "Sınıflandırılmış" = AI + kitap + öğretmen / yayındaki sorular. Altında beş grup: Yapay zekâ,
+  Kitap içindekiler, Öğretmen (Human ya da kaynağı boş), Yapay zekâ konu bulamadı (kaynak AI, ders ya da konu boş),
+  Sınıflandırılmamış (konusuz, kaynak AI değil). "Sınıflandırılmış" kuralı soru bankasının `classified` filtresiyle aynı
+  (ders + konu). Taslaklar (global filtre) ve #690 ile kaldırılmış / lisansı bitmiş sorular gruplara girmez; kaldırılanlar not olarak yazılır.
+- Her grup `/question-bank?scope=all&source=…&status=…` ile açılır (sayfa bu parametreleri okur; kaynak filtresine "Kitap" eklendi).
+  Bankanın Human filtresi kaynağı boş soruları içermez; eski, kaynaksız sorular varsa sayı bankadakinden büyük görünür.
+- "Sınıflandır" / "Yeniden dene": `POST /api/admin/dashboard/classification/retry?group=notClassified|aiNoTopic`, en çok 200 soru
+  / çağrı, kalan sayısı döner. Olay `QuestionCreatedEvent` outbox'a kaynak boş yazılır (tüketici "AI" kaynaklı olayı atlar);
+  alt konusu olan sorular alınmaz (öğretmen kilidi konuyla birlikte konduğundan kilitli sorular bu kümede değil). Plan sınırı
+  (#1031) uygulanmaz: admin kararı. Aynı soruyu tekrar sıraya almak engellenmez (iki basış = iki AI çağrısı).

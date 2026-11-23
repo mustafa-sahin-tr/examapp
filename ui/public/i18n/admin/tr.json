@@ -19,10 +19,26 @@
       "openListAria": "{{label}} listesini aç ({{count}})"
     },
     "ai": {
-      "title": "AI Sınıflandırılmış",
-      "ratioLabel": "AI sınıflandırma oranı",
+      "title": "Sınıflandırılmış",
+      "ratioLabel": "Sınıflandırılmış soru oranı",
       "percent": "%{{value}}",
       "noQuestions": "Henüz soru yok"
+    },
+    "classification": {
+      "title": "Sınıflandırma",
+      "aria": "Soruların sınıflandırma durumu",
+      "ai": "Yapay zekâ",
+      "book": "Kitap içindekiler",
+      "teacher": "Öğretmen",
+      "aiNoTopic": "Yapay zekâ konu bulamadı",
+      "notClassified": "Sınıflandırılmamış",
+      "openBank": "{{label}}: soru bankasında aç",
+      "classify": "Sınıflandır",
+      "retry": "Yeniden dene",
+      "queued": "{{count}} soru sınıflandırma sırasına alındı. Sayılar sınıflandırıcı çalıştıkça güncellenir.",
+      "queuedMore": "{{count}} soru sıraya alındı, {{remaining}} soru kaldı; kalanlar için düğmeye yeniden basın.",
+      "retryError": "Sorular sıraya alınamadı. Lütfen tekrar deneyin.",
+      "unpublished": "Yayından kaldırılmış {{count}} soru sayılmadı."
     },
     "trends": {
       "title": "Trendler",

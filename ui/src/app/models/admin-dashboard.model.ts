@@ -24,6 +24,33 @@ export interface AdminDashboardSummary {
   lastAiClassificationAt?: string | null;
   /** Issue #887: hata alıp yayımlanamamış outbox mesajı sayısı. */
   failedOutboxCount?: number;
+  /** Issue #1315: sınıflandırma kırılımı. Eski yanıtta yok. */
+  classification?: AdminClassificationBreakdown;
+}
+
+/**
+ * Issue #1315 — ClassificationBreakdownDto. "Sınıflandırılmış" = ders + konusu var (soru bankasının `classified` filtresi);
+ * kaynağa göre AI / Book / Teacher (Human ya da boş). Konusuz: kaynak AI ise `aiNoTopic`, değilse `notClassified`.
+ */
+export interface AdminClassificationBreakdown {
+  ai: number;
+  book: number;
+  teacher: number;
+  aiNoTopic: number;
+  notClassified: number;
+  /** #690 ile yayından kaldırılmış / lisansı bitmiş sorular; beş gruba girmez. */
+  unpublished: number;
+  /** (ai + book + teacher) / beş grubun toplamı, 0..1. */
+  classifiedRatio: number;
+}
+
+/** Issue #1315 — yeniden sınıflandırılabilen gruplar (POST dashboard/classification/retry?group=). */
+export type AdminClassificationRetryGroup = 'notClassified' | 'aiNoTopic';
+
+/** Issue #1315 — ClassificationRetryResultDto. */
+export interface AdminClassificationRetryResult {
+  queued: number;
+  remaining: number;
 }
 
 /**

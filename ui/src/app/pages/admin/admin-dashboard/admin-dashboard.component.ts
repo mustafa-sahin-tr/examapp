@@ -20,6 +20,7 @@ import { AdminService } from '../../../services/admin.service';
 import { AdminPendingService } from '../../../services/admin-pending.service';
 import { AdminPendingSummary } from '../../../models/admin-pending.model';
 import {
+  AdminClassificationRetryGroup,
   AdminDashboardSummary,
   AdminDashboardTrendPoint,
   AdminDashboardTrends,
@@ -254,6 +255,17 @@ function findPeak(points: AdminDashboardTrendPoint[]): AdminDashboardTrendPoint 
  * İki bölümün loading/error/data durumları birbirinden bağımsızdır; trend endpoint'i düşerse
  * yalnızca trend bölümü hata gösterir, sayaç kartları etkilenmez.
  */
+/** Issue #1315: sınıflandırma kartının bir satırı. */
+interface ClassificationRow {
+  key: 'ai' | 'book' | 'teacher' | 'aiNoTopic' | 'notClassified';
+  labelKey: string;
+  value: number;
+  /** Soru bankası (/question-bank) açılış filtreleri. */
+  query: { scope: 'all'; source: string; status: 'classified' | 'unclassified' };
+  retry: AdminClassificationRetryGroup | null;
+  warn: boolean;
+}
+
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
@@ -359,11 +371,83 @@ export class AdminDashboardComponent implements OnInit {
     ];
   });
 
-  /** 0..100 arası, ilerleme çubuğu genişliği ve rozet için. Backend 0..1 döner. */
+  /**
+   * 0..100 arası, ilerleme çubuğu genişliği ve rozet için. Backend 0..1 döner. Issue #1315: sınıflandırılmış = AI + kitap +
+   * öğretmen; eski API kırılım göndermiyorsa yalnız AI oranı.
+   */
   readonly aiPercent = computed(() => {
-    const ratio = this.summary()?.aiClassifiedRatio ?? 0;
+    const s = this.summary();
+    const ratio = s?.classification?.classifiedRatio ?? s?.aiClassifiedRatio ?? 0;
     return Math.min(100, Math.max(0, ratio * 100));
   });
+
+  /** Issue #1315: üst karttaki sınıflandırılmış soru sayısı (kırılım yoksa AI sayısı). */
+  readonly classifiedCount = computed(() => {
+    const s = this.summary();
+    const c = s?.classification;
+    return c ? c.ai + c.book + c.teacher : (s?.aiClassifiedQuestionCount ?? 0);
+  });
+
+  /** Issue #1315: oranın paydası — yayındaki sorular (beş grup); kırılım yoksa tüm sorular. */
+  readonly classifiableCount = computed(() => {
+    const s = this.summary();
+    const c = s?.classification;
+    return c ? c.ai + c.book + c.teacher + c.aiNoTopic + c.notClassified : (s?.questionCount ?? 0);
+  });
+
+  /**
+   * Issue #1315: sınıflandırma kırılımı satırları. Her grup soru bankasını o gruba süzülmüş açar; konusuz iki grupta
+   * yeniden sınıflandırma düğmesi vardır. Bankanın Human filtresi kaynağı boş eski soruları içermez (sayı bankadakinden büyük olabilir).
+   */
+  readonly classificationRows = computed<ClassificationRow[] | null>(() => {
+    const c = this.summary()?.classification;
+    if (!c) return null;
+    const row = (
+      key: ClassificationRow['key'],
+      value: number,
+      source: string,
+      status: 'classified' | 'unclassified',
+      retry: AdminClassificationRetryGroup | null = null,
+    ): ClassificationRow => ({
+      key,
+      labelKey: `classification.${key}`,
+      value,
+      query: { scope: 'all', source, status },
+      retry,
+      warn: retry !== null && value > 0,
+    });
+    return [
+      row('ai', c.ai, 'AI', 'classified'),
+      row('book', c.book, 'Book', 'classified'),
+      row('teacher', c.teacher, 'Human', 'classified'),
+      row('aiNoTopic', c.aiNoTopic, 'AI', 'unclassified', 'aiNoTopic'),
+      row('notClassified', c.notClassified, 'Human', 'unclassified', 'notClassified'),
+    ];
+  });
+
+  /** Issue #1315: istek süren grup (düğme kilitlenir) ve son sonucun mesajı. */
+  readonly retryingGroup = signal<AdminClassificationRetryGroup | null>(null);
+  readonly retryMessage = signal<{ text: string; error: boolean } | null>(null);
+
+  retryClassification(group: AdminClassificationRetryGroup): void {
+    if (this.retryingGroup()) return;
+    this.retryingGroup.set(group);
+    this.retryMessage.set(null);
+    this.adminService
+      .retryClassification(group)
+      .pipe(finalize(() => this.retryingGroup.set(null)))
+      .subscribe({
+        next: (result) =>
+          this.retryMessage.set({
+            text:
+              result.remaining > 0
+                ? this.text('classification.queuedMore', { count: result.queued, remaining: result.remaining })
+                : this.text('classification.queued', { count: result.queued }),
+            error: false,
+          }),
+        error: () => this.retryMessage.set({ text: this.text('classification.retryError'), error: true }),
+      });
+  }
 
   // ── Phase 2: trendler (summary'den bağımsız durum seti) ────────────────────
   readonly trendLoading = signal(true);

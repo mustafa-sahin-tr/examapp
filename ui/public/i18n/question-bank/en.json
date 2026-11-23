@@ -18,6 +18,7 @@
     "source": "Source",
     "sourceAi": "AI",
     "sourceHuman": "Manual",
+    "sourceBook": "Book",
     "answer": "Correct answer",
     "answerYes": "Set",
     "answerNo": "Not set",

@@ -11,7 +11,12 @@ import {
   TaxonomyFilter,
   TaxonomyTree,
 } from '../models/taxonomy';
-import { AdminDashboardSummary, AdminDashboardTrends } from '../models/admin-dashboard.model';
+import {
+  AdminClassificationRetryGroup,
+  AdminClassificationRetryResult,
+  AdminDashboardSummary,
+  AdminDashboardTrends,
+} from '../models/admin-dashboard.model';
 import {
   TeacherApplicationActionResult,
   TeacherApplicationDetail,
@@ -154,6 +159,13 @@ export class AdminService {
   getDashboardTrends(days = 30): Observable<AdminDashboardTrends> {
     return this.http.get<AdminDashboardTrends>(`${this.baseUrl}/dashboard/trends`, {
       params: { days },
+    });
+  }
+
+  /** Issue #1315: konusuz soruları yeniden sınıflandırmaya gönderir (en çok 200 soru / çağrı). */
+  retryClassification(group: AdminClassificationRetryGroup): Observable<AdminClassificationRetryResult> {
+    return this.http.post<AdminClassificationRetryResult>(`${this.baseUrl}/dashboard/classification/retry`, null, {
+      params: { group },
     });
   }
 

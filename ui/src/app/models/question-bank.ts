@@ -11,7 +11,7 @@ export interface QuestionBankFilter {
   subTopicIds?: number[];
   minDifficulty?: number | null;
   maxDifficulty?: number | null;
-  source?: 'AI' | 'Human' | null;
+  source?: 'AI' | 'Human' | 'Book' | null;
   /** true: ders + konusu belirli; false: sınıflandırması bitmemiş. */
   classified?: boolean | null;
   hasCorrectAnswer?: boolean | null;

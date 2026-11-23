@@ -19,10 +19,26 @@
       "openListAria": "Open {{label}} list ({{count}})"
     },
     "ai": {
-      "title": "AI Classified",
-      "ratioLabel": "AI classification rate",
+      "title": "Classified",
+      "ratioLabel": "Share of classified questions",
       "percent": "{{value}}%",
       "noQuestions": "No questions yet"
+    },
+    "classification": {
+      "title": "Classification",
+      "aria": "Question classification status",
+      "ai": "AI",
+      "book": "Book contents",
+      "teacher": "Teacher",
+      "aiNoTopic": "AI found no topic",
+      "notClassified": "Not classified",
+      "openBank": "{{label}}: open in the question bank",
+      "classify": "Classify",
+      "retry": "Retry",
+      "queued": "{{count}} questions queued for classification. Counts update as the classifier runs.",
+      "queuedMore": "{{count}} questions queued, {{remaining}} left; press the button again for the rest.",
+      "retryError": "Couldn't queue the questions. Please try again.",
+      "unpublished": "{{count}} withdrawn questions are not counted."
     },
     "trends": {
       "title": "Trends",

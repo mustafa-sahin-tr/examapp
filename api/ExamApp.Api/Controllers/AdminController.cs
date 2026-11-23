@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Threading;
@@ -763,6 +764,19 @@ public class AdminController : BaseController
             return BadRequest(new { message = _localizer["admin.dashboard.invalidDays"].Value });
 
         return Ok(await _dashboard.GetTrendsAsync(days, ct));
+    }
+
+    /// <summary>
+    /// Issue #1315: konusuz soruları yeniden sınıflandırmaya gönderir. <c>group</c> = <c>notClassified</c> (hiç denenmemiş,
+    /// "AI ile sınıflandır") ya da <c>aiNoTopic</c> (AI konu bulamadı, "Yeniden dene"). Plan sınırı (#1031) uygulanmaz: admin kararı.
+    /// </summary>
+    [HttpPost("dashboard/classification/retry")]
+    public async Task<ActionResult<ClassificationRetryResultDto>> RetryClassification([FromQuery] string? group, CancellationToken ct = default)
+    {
+        if (!Enum.TryParse<ClassificationRetryGroup>(group, ignoreCase: true, out var parsed) || !Enum.IsDefined(parsed))
+            return BadRequest(new { message = _localizer["admin.dashboard.invalidClassificationGroup"].Value });
+
+        return Ok(await _dashboard.QueueClassificationRetryAsync(parsed, ct));
     }
 
     // ---- Classifier cache ----

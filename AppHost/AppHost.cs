@@ -24,6 +24,8 @@ var postgresEndpoint = postgres.GetEndpoint("tcp");
 var examDb = postgres.AddDatabase("examdb", databaseName: "worksheet");
 var identityDb = postgres.AddDatabase("identitydb", databaseName: "identity");
 var badgeDb = postgres.AddDatabase("badgedb", databaseName: "badge");
+// Issue #502: in-app assistant (epic #495) — its own database, no access to the other services' data.
+var assistantDb = postgres.AddDatabase("assistantdb", databaseName: "assistant");
 // Keycloak's own storage — replaces docker-compose's reliance on a
 // postgres/init-scripts entry to pre-create this database.
 var keycloakDb = postgres.AddDatabase("keycloakdb", databaseName: "keycloak");
@@ -696,6 +698,22 @@ var authApiHttp = authApi.GetEndpoint("http");
 
 var badgeServiceHttp = badgeService.GetEndpoint("http");
 
+// ---------------------------------------------------------------------------
+// AssistantService (Services/AssistantService) — issue #502, epic #495. Reached only through the gateway
+// (/api/assistant/*). Assistant:Enabled / Assistant:Roles in its appsettings; without an Anthropic key every call is
+// 503 AssistantDisabled. Pinned to 8010 like the other services (Program.cs default).
+// ---------------------------------------------------------------------------
+var assistantService = builder.AddProject<Projects.AssistantService>("assistant-service")
+    .WithHttpEndpoint(port: 8010, name: "http", isProxied: false)
+    .WithEnvironment("Kestrel__Port", "8010")
+    .WithEnvironment("ASPNETCORE_HTTPS_PORT", "")
+    .WithReference(assistantDb, connectionName: "DefaultConnection")
+    .WithReference(redis)
+    .WithEnvironment("Anthropic__ApiKey", anthropicApiKey)
+    .WithEnvironment("ExamApi__BaseUrl", examDotnetApiHttp)
+    .WaitFor(postgres);
+var assistantServiceHttp = assistantService.GetEndpoint("http");
+
 // BadgeResetApiClient (student reset → BadgeService api/reset, service token) reads BadgeApiBaseUrl;
 // appsettings.json's docker-compose default (http://exam-badge-api:8006) does not resolve under Aspire.
 // Declared after badgeService (which references examDotnetApi) — deliberately no WaitFor, that would
@@ -705,6 +723,7 @@ examDotnetApi.WithEnvironment("BadgeApiBaseUrl", badgeServiceHttp);
 var ocelotGateway = builder.AddProject<Projects.Gateway>("ocelot-gateway")
     .WithReference(examDotnetApi)
     .WithReference(badgeService)
+    .WithReference(assistantService)
     // isProxied: false for the same dead-end-loopback-proxy reason as
     // ExamDotnetApi above — confirmed via netstat that without it, dcp owned
     // 127.0.0.1:5678/::1:5678 while Gateway.exe only got the wildcard
@@ -718,6 +737,8 @@ var ocelotGateway = builder.AddProject<Projects.Gateway>("ocelot-gateway")
         context.EnvironmentVariables["EXAM_DOTNET_API_PORT"] = examDotnetApiHttp.Property(EndpointProperty.Port);
         context.EnvironmentVariables["EXAM_BADGE_API_HOST"] = badgeServiceHttp.Property(EndpointProperty.Host);
         context.EnvironmentVariables["EXAM_BADGE_API_PORT"] = badgeServiceHttp.Property(EndpointProperty.Port);
+        context.EnvironmentVariables["ASSISTANT_SERVICE_HOST"] = assistantServiceHttp.Property(EndpointProperty.Host);
+        context.EnvironmentVariables["ASSISTANT_SERVICE_PORT"] = assistantServiceHttp.Property(EndpointProperty.Port);
         // auth-api, keycloak and minio's DownstreamHostAndPorts entries are
         // also docker-compose hostnames Ocelot can't resolve under Aspire —
         // same fix, same reason. Missing these specifically broke the login
@@ -788,6 +809,12 @@ badgeService = badgeService
     .WithEnvironment("AuthApi__BaseUrl", authApiHttp)
     .WaitFor(keycloak)
     .WaitFor(authApi);
+
+assistantService
+    .WithReference(keycloak)
+    .WithEnvironment("Keycloak__Host", keycloakHttp)
+    .WithEnvironment("Server__BaseUrl", gatewayPublicUrl)
+    .WaitFor(keycloak);
 
 authApi = authApi
     .WithReference(keycloak)

@@ -42,6 +42,9 @@ services:
   exam-badge-api:
     dns: [1.1.1.1, 8.8.8.8]
 
+  assistant-service:
+    dns: [1.1.1.1, 8.8.8.8]
+
   ocelot-gateway:
     dns: [1.1.1.1, 8.8.8.8]
 

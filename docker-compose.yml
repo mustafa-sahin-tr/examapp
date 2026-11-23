@@ -161,6 +161,31 @@ services:
     networks:
       - mynetwork
 
+  # Issue #502 (epic #495): in-app assistant; the gateway routes /api/assistant/* here. Without ANTHROPIC_API_KEY every
+  # call answers 503 AssistantDisabled.
+  assistant-service:
+    container_name: assistant-service
+    build:
+      context: .
+      dockerfile: deploy/dockerfiles/dotnet-web.Dockerfile
+      args:
+        PROJECT_PATH: Services/AssistantService/AssistantService.csproj
+        APP_DLL: AssistantService.dll
+        EXPOSE_PORT: 8010
+    ports:
+      - '8010:8010'
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Kestrel__Port=8010
+      - ConnectionStrings__DefaultConnection=Host=exam_pg_container;Port=5432;Database=assistant;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - Keycloak__Host=http://keycloak:8080
+      - Anthropic__ApiKey=${ANTHROPIC_API_KEY:-}
+    depends_on:
+      exam-pg-container:
+        condition: service_healthy
+    networks:
+      - mynetwork
+
   exam-outbox-publisher:
     container_name: exam-outbox-publisher
     build:
@@ -544,6 +569,7 @@ services:
       - angular-app
       - exam-dotnet-api
       - exam-badge-api
+      - assistant-service
     networks:
       - mynetwork
 

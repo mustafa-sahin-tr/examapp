@@ -272,6 +272,23 @@
       }
     },
     {
+      "DownstreamPathTemplate": "/api/assistant/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "assistant-service",
+          "Port": 8010
+        }
+      ],
+      "UpstreamPathTemplate": "/api/assistant/{everything}",
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      },
+      "QoSOptions": {
+        "TimeoutValue": 180000
+      }
+    },
+    {
       "DownstreamPathTemplate": "/realms/exam-realm/protocol/openid-connect/auth",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [

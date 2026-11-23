@@ -41,6 +41,7 @@ dev defaults; never reuse them outside local dev.
 | Etkinlik tipleri ve oturumlar: yeniden çöz (#609), openText (#583), analiz (#584), görselsiz editör (#590), mazeTree (#585), crossword / wordSearch / logicGrid / şifre (#586), regionPaint (#587), numberLine / barChart / gridDraw / grafikler (#588), terazi (#632), saat (#634), madde listesi / sıra (#684, #685) | `docs/activities.md` |
 | Profil sayıları (#501), öğretmen transferi (#539), testi yazdırma (#701), MEB kazanımları (#692), denemeler (#693), konu performansı (#497), haftalık gelişim (#531), puan hesaplayıcı (#694), hedef okul (#695), karışık mini deneme (#534), cevap istatistikleri (#785), bilgi kartları (#699), koç paneli (#700), beceri etiketleri (#703), çalışma sayfası blokları (#933), plan ve haklar (#1019), karalamaları öğretmen ve veli görür (#1310) | `docs/feature-notes.md` |
 | Ürün dili: menü ve başlıklarda kullanılacak kelimeler (#718) | `docs/glossary.md` |
+| Uygulama içi asistan (epic #495): Faz 0 kararları (#496), servis iskeleti ve SSE spike'ı (#502) | `docs/assistant.md` |
 | Bağlam temelli sorular: MEB soru yazım kılavuzu özeti, TYMM beceri listesi (#703) | `docs/context-based-questions.md` |
 
 Yeni bir özellik notu bu dosyaya değil ilgili `docs/` dosyasına yazılır; burada yalnız tablo satırı / tuzak güncellenir.
@@ -58,6 +59,7 @@ artık yukarıdaki `docs/` dosyalarındadır; issue numarasıyla ara.
 | exam-outbox-publisher | 5081 (HTTP), 8007 (HTTPS) | outbox → RabbitMQ (worksheet DB) |
 | identity-outbox-publisher | 5082 (HTTP), 8008 (HTTPS) | outbox → RabbitMQ (identity/auth-api DB) |
 | badge-outbox-publisher | 5083 (HTTP), 8009 (HTTPS) | outbox → RabbitMQ (badge DB; puan senkronu #225) |
+| assistant-service | 8010 (HTTP) | uygulama içi asistan (#502, epic #495); yalnız gateway `/api/assistant/*` üzerinden, DB `assistant`; `Assistant:Enabled` / `Assistant:Roles`, anahtarsız 503 |
 | angular-app | 4200 | ana UI |
 | auth-ui | 4201 | Keycloak login akışı |
 | keycloak | 8081 | admin console: http://localhost:8081 |

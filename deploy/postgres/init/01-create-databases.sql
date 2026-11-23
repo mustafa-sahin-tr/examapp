@@ -18,6 +18,11 @@ SELECT format('CREATE DATABASE %I;', 'badge')
 WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'badge');
 \gexec
 
+-- Issue #502: AssistantService (also created by its own migrations if missing).
+SELECT format('CREATE DATABASE %I;', 'assistant')
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'assistant');
+\gexec
+
 SELECT format('CREATE DATABASE %I;', 'catalog')
 WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'catalog');
 \gexec

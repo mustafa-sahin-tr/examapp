@@ -485,6 +485,35 @@ services:
     networks:
       - exam-net
 
+  # Issue #502 (epic #495): in-app assistant, reached only through the gateway (/api/assistant/*). Off unless
+  # ASSISTANT_ENABLED=true and ANTHROPIC_API_KEY is set; ASSISTANT_ROLES picks who may use it (students first, #496).
+  assistant-service:
+    build:
+      context: ..
+      dockerfile: deploy/dockerfiles/dotnet-web.Dockerfile
+      args:
+        PROJECT_PATH: Services/AssistantService/AssistantService.csproj
+        APP_DLL: AssistantService.dll
+        EXPOSE_PORT: 8010
+    container_name: assistant-service
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Kestrel__Port: 8010
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=assistant;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      Server__BaseUrl: ${PUBLIC_BASE_URL}
+      Keycloak__Host: http://keycloak:8080
+      Keycloak__Realm: exam-realm
+      Anthropic__ApiKey: ${ANTHROPIC_API_KEY:-}
+      Assistant__Enabled: ${ASSISTANT_ENABLED:-false}
+      Assistant__Roles__0: ${ASSISTANT_ROLES:-Student}
+      ExamApi__BaseUrl: http://exam-dotnet-api:5079
+    depends_on:
+      - postgres
+      - keycloak
+    networks:
+      - exam-net
+
   angular-app:
     build:
       context: ..
@@ -537,6 +566,7 @@ services:
       - exam-dotnet-api
       - auth-api
       - exam-badge-api
+      - assistant-service
       - keycloak
       - minio
       - rabbitmq

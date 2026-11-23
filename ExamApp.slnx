@@ -13,6 +13,7 @@
     <Project Path="ServiceDefaults/ExamApp.ServiceDefaults.csproj" />
   </Folder>
   <Folder Name="/Services/">
+    <Project Path="Services/AssistantService/AssistantService.csproj" />
     <Project Path="Services/BadgeService/BadgeService.csproj" />
     <Project Path="Services/Gateway/Gateway.csproj" />
   </Folder>
@@ -27,5 +28,6 @@
     <Project Path="tests/ExamApp.Api.IntegrationTests/ExamApp.Api.IntegrationTests.csproj" />
     <Project Path="tests/Gateway.Tests/Gateway.Tests.csproj" />
     <Project Path="tests/AuthApi.Tests/AuthApi.Tests.csproj" />
+    <Project Path="tests/AssistantService.Tests/AssistantService.Tests.csproj" />
   </Folder>
 </Solution>

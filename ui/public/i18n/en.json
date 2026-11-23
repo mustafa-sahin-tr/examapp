@@ -137,6 +137,8 @@
     "toolbar": {
       "searchPlaceholder": "Search tests...",
       "notifications": "Notifications",
+      "assistant": "Assistant",
+      "assistantLabel": "Open the assistant (Ctrl+K)",
       "notificationsUnread": "Notifications ({{count}} unread)",
       "searchPlaceholderTeacher": "Search your tests..."
     },

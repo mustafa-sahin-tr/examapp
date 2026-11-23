@@ -1,0 +1,379 @@
+// Issue #507 — asistan paneli. Mesaj görünümü dm-conversation'dan; renkler yalnız token.
+
+:host {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+}
+
+.asp {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  background: var(--ms-surface-weak);
+  color: var(--ms-text);
+  font-family: var(--paragraphFontFamily);
+  border-left: 1px solid var(--ms-border);
+  box-shadow: var(--ms-shadow-overlay);
+
+  &--mobile {
+    border-left: 0;
+    box-shadow: none;
+  }
+}
+
+.asp__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.asp__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 16px;
+  border-bottom: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+}
+
+.asp__logo {
+  color: var(--ms-action-text);
+}
+
+.asp__title {
+  margin: 0;
+  font-family: var(--mainFontFamily);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ms-text-strong);
+}
+
+.asp__spacer {
+  flex: 1;
+}
+
+.asp__context {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px 2px 16px;
+  border-bottom: 1px solid var(--ms-border-weak);
+  background: var(--ms-info-surface-weak);
+  color: var(--ms-info-text);
+  font-size: 0.8rem;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.asp__context-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asp__context-close {
+  flex-shrink: 0;
+}
+
+.asp__log {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.asp__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  margin: auto 0;
+  padding: 16px 8px;
+}
+
+.asp__empty-icon {
+  font-size: 36px;
+  width: 36px;
+  height: 36px;
+  color: var(--ms-action-text);
+}
+
+.asp__empty-title {
+  margin: 0;
+  font-family: var(--mainFontFamily);
+  font-weight: 600;
+  color: var(--ms-text-strong);
+}
+
+.asp__empty-text {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+  color: var(--ms-text-medium);
+}
+
+.asp__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.asp__chip {
+  border-radius: 999px;
+}
+
+.asp__row {
+  display: flex;
+
+  &--mine {
+    justify-content: flex-end;
+  }
+}
+
+.asp__bubble {
+  max-width: 92%;
+  padding: 8px 12px;
+  border-radius: 14px 14px 14px 4px;
+  background: var(--ms-surface-medium);
+  color: var(--ms-text-strong);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.asp__bubble--mine {
+  max-width: 80%;
+  border-radius: 14px 14px 4px 14px;
+  background: var(--ms-action-background);
+  color: var(--ms-action-text-inverse);
+}
+
+.asp__text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+
+.asp__working {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ms-text-medium);
+}
+
+.asp__muted {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ms-text-medium);
+}
+
+.asp__kpi {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.asp__kpi-item {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--ms-surface);
+  border: 1px solid var(--ms-border-weak);
+
+  dt {
+    font-size: 0.75rem;
+    color: var(--ms-text-medium);
+  }
+
+  dd {
+    margin: 2px 0 0;
+    font-family: var(--mainFontFamily);
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--ms-text-strong);
+  }
+}
+
+.asp__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  background: var(--ms-surface);
+  border-radius: 10px;
+  overflow: hidden;
+
+  th,
+  td {
+    padding: 6px 8px;
+    text-align: left;
+    border-bottom: 1px solid var(--ms-border-weak);
+    vertical-align: top;
+  }
+
+  th {
+    font-weight: 600;
+    color: var(--ms-text-medium);
+  }
+
+  tr:last-child td {
+    border-bottom: 0;
+  }
+}
+
+.asp__num {
+  text-align: right !important;
+  white-space: nowrap;
+}
+
+.asp__row-name {
+  display: block;
+  color: var(--ms-text-strong);
+}
+
+.asp__row-detail {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--ms-text-medium);
+}
+
+.asp__confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--ms-action-border);
+  background: var(--ms-surface);
+}
+
+.asp__confirm-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-weight: 600;
+  color: var(--ms-text-strong);
+
+  mat-icon {
+    color: var(--ms-action-text);
+  }
+}
+
+.asp__confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.asp__confirm-state {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ms-text-medium);
+}
+
+.asp__error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ms-danger-text);
+
+  mat-icon {
+    flex-shrink: 0;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.asp__feedback {
+  display: flex;
+  gap: 2px;
+  margin: -4px -8px -6px auto;
+}
+
+.asp__feedback-btn {
+  color: var(--ms-text-weak);
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  &--on {
+    color: var(--ms-action-text);
+  }
+}
+
+.asp__composer {
+  padding: 8px 12px 10px;
+  border-top: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  .asp--mobile & {
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+.asp__usage,
+.asp__disclaimer {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--ms-text-medium);
+}
+
+.asp__compose-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.asp__field {
+  flex: 1;
+  min-width: 0;
+
+  // styles.scss'teki genel `textarea` kenarlığı / dolgusu Material alanının içine sızmasın.
+  textarea,
+  textarea:focus {
+    resize: none;
+    border: 0;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+  }
+}
+
+.asp__send {
+  color: var(--ms-action-text);
+}

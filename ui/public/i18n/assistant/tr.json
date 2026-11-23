@@ -1,0 +1,93 @@
+{
+  "title": "Asistan",
+  "open": "Asistanı aç",
+  "openShortcut": "Asistan (Ctrl+K / ⌘K)",
+  "close": "Kapat",
+  "newConversation": "Yeni sohbet",
+  "context": "Bağlam: {{role}} · {{route}}",
+  "contextDismiss": "Bağlam şeridini kapat",
+  "roles": {
+    "student": "Öğrenci",
+    "parent": "Veli",
+    "teacher": "Öğretmen",
+    "admin": "Yönetici"
+  },
+  "you": "Sen",
+  "thinking": "Düşünüyor…",
+  "working": "Verilerine bakıyor…",
+  "suggestionsLabel": "Önerilen sorular",
+  "empty": {
+    "title": "Merhaba! Nasıl yardımcı olabilirim?",
+    "text": "Çalışmanla ilgili sorabilir, pratik başlatabilir ya da uygulamayı nasıl kullanacağını öğrenebilirsin."
+  },
+  "starters": {
+    "weakTopics": { "label": "Zorlandığım konular", "prompt": "Zorlandığım konular hangileri?" },
+    "dailySet": { "label": "Günün soruları", "prompt": "Günün soruları setim ne durumda?" },
+    "practice": { "label": "Pratik başlat", "prompt": "Zorlandığım konulardan 10 soruluk bir pratik başlat." },
+    "help": { "label": "Velimi nasıl eklerim?", "prompt": "Velimi nasıl eklerim?" }
+  },
+  "kpi": {
+    "level": "Seviye",
+    "xp": "Puan",
+    "questionsSolved": "Çözülen soru",
+    "accuracyPct": "Doğruluk",
+    "testsCompleted": "Biten test"
+  },
+  "topicTable": {
+    "name": "Konu",
+    "answered": "Cevap",
+    "accuracy": "Doğruluk",
+    "empty": "Gösterilecek konu yok."
+  },
+  "confirm": {
+    "startDailyPractice": "Günün sorularını başlat",
+    "startPracticeSession": "Pratik oturumu başlat",
+    "generic": "Bu işlemi onaylıyor musun?",
+    "count": "{{count}} soru",
+    "mistakes": "Yanlış yaptığın sorulardan",
+    "dueReview": "Tekrar zamanı gelen sorulardan",
+    "yes": "Başlat",
+    "no": "Vazgeç",
+    "state": {
+      "confirmed": "Başlatıldı.",
+      "rejected": "Vazgeçildi.",
+      "expired": "Bu önerinin süresi doldu. İstersen yeniden iste.",
+      "decided": "Bu öneri için zaten karar verilmiş.",
+      "failed": "İşlem yapılamadı. Biraz sonra yeniden dene.",
+      "pending": "",
+      "busy": ""
+    }
+  },
+  "errors": {
+    "AssistantBudgetExceeded": "Şimdilik kullanım sınırına ulaştın. Biraz sonra yeniden dene.",
+    "AssistantDisabledByParent": "Velin asistanı kapattı.",
+    "ParentRequired": "Asistanı kullanmak için önce velinin hesabını onaylaması gerekiyor.",
+    "AssistantClosedDuringTest": "Test çözerken asistan kapalı.",
+    "AssistantDeclined": "Bu konuda yardımcı olamıyorum.",
+    "AssistantUnavailable": "Asistan şu an cevap veremiyor. Biraz sonra yeniden dene.",
+    "AssistantDisabled": "Asistan şu an kapalı.",
+    "AssistantRoleNotEnabled": "Asistan hesabın için henüz açık değil.",
+    "ConversationNotFound": "Bu sohbet artık yok. Yeni bir sohbet başladı; sorunu yeniden yazabilirsin.",
+    "InvalidMessage": "Mesaj boş ya da çok uzun.",
+    "Unauthenticated": "Oturumun sona erdi. Yeniden giriş yap.",
+    "generic": "Bir şeyler ters gitti. Biraz sonra yeniden dene."
+  },
+  "feedback": {
+    "label": "Bu cevap işine yaradı mı?",
+    "up": "Yararlı",
+    "down": "Yararlı değil",
+    "reasons": {
+      "wrongInfo": "Yanlış bilgi",
+      "notHelpful": "İşime yaramadı",
+      "tooLong": "Çok uzun",
+      "inappropriate": "Uygunsuz",
+      "other": "Başka bir neden"
+    }
+  },
+  "usage": "Bu saat kalan mesaj: {{count}}",
+  "inputLabel": "Mesajın",
+  "inputPlaceholder": "Bir şey sor…",
+  "send": "Gönder",
+  "tooLong": "Mesaj en çok {{max}} karakter olabilir.",
+  "disclaimer": "Asistan hata yapabilir; önemli bilgileri kontrol et."
+}

@@ -31,6 +31,18 @@ import { studentGuard } from '../../shared/guards/student.guard';
 import { settingsGuard } from '../../shared/guards/settings.guard';
 import { independentTeacherGuard } from '../../shared/guards/independent-teacher.guard';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
+import { AssistantPanelService } from '../../services/assistant-panel.service';
+
+/** #507: asistan paneli kapalı (layout testleri asistanı denemez; panelin kendi testi var). */
+function assistantPanelStub(): Partial<AssistantPanelService> {
+    return {
+        load: () => undefined,
+        visible: signal(false),
+        isOpen: signal(false),
+        suppressed: signal(false),
+        available: signal(false),
+    } as unknown as Partial<AssistantPanelService>;
+}
 
 /** Issue #106: DM rozet servisi stub'ı (HttpClient gerektirmesin). */
 function directMessageStub(count = 0) {
@@ -69,6 +81,7 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
         TestBed.configureTestingModule({
             imports: [EnhancedLayoutComponent, translocoTestingModule()],
             providers: [
+                { provide: AssistantPanelService, useValue: assistantPanelStub() },
                 provideRouter([]),
                 { provide: AuthService, useValue: authStub },
                 { provide: SignalRService, useValue: { accessRequestUpdates$: new Subject() } },
@@ -318,6 +331,7 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
         TestBed.configureTestingModule({
             imports: [EnhancedLayoutComponent, translocoTestingModule()],
             providers: [
+                { provide: AssistantPanelService, useValue: assistantPanelStub() },
                 provideRouter([]),
                 { provide: AuthService, useValue: authStub },
                 { provide: SignalRService, useValue: { accessRequestUpdates$: new Subject() } },
@@ -460,6 +474,7 @@ describe('EnhancedLayoutComponent notification badge (issue #146)', () => {
         TestBed.configureTestingModule({
             imports: [EnhancedLayoutComponent, NoopAnimationsModule, translocoTestingModule()],
             providers: [
+                { provide: AssistantPanelService, useValue: assistantPanelStub() },
                 // Dil seçici (LocalePreferenceService) HttpClient ister; bu testte istek beklenmez.
                 provideHttpClient(withXhr()),
                 provideHttpClientTesting(),
@@ -661,6 +676,7 @@ describe('EnhancedLayoutComponent direct messages menu (issue #106)', () => {
         TestBed.configureTestingModule({
             imports: [EnhancedLayoutComponent, translocoTestingModule()],
             providers: [
+                { provide: AssistantPanelService, useValue: assistantPanelStub() },
                 provideRouter([]),
                 { provide: AuthService, useValue: authStub },
                 { provide: SignalRService, useValue: { accessRequestUpdates$: new Subject() } },
@@ -750,6 +766,7 @@ describe('EnhancedLayoutComponent DM badge push (issue #106 b)', () => {
         TestBed.configureTestingModule({
             imports: [EnhancedLayoutComponent, NoopAnimationsModule, translocoTestingModule()],
             providers: [
+                { provide: AssistantPanelService, useValue: assistantPanelStub() },
                 provideHttpClient(withXhr()),
                 provideHttpClientTesting(),
                 provideRouter([]),
@@ -826,6 +843,7 @@ function layoutProviders(roles: string[], unapprovedTeacher = false, routeConfig
         user: signal(user),
     };
     return [
+        { provide: AssistantPanelService, useValue: assistantPanelStub() },
         provideRouter(routeConfig),
         { provide: AuthService, useValue: authStub },
         { provide: SignalRService, useValue: { accessRequestUpdates$: new Subject() } },
@@ -1046,6 +1064,7 @@ function renderedLayoutProviders(roles: string[], mobile: boolean) {
         user: signal(null),
     };
     return [
+        { provide: AssistantPanelService, useValue: assistantPanelStub() },
         { provide: BreakpointObserver, useValue: { observe: () => of({ matches: mobile, breakpoints: {} }) } },
         provideHttpClient(withXhr()),
         provideHttpClientTesting(),

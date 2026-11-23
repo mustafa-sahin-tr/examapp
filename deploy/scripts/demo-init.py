@@ -66,13 +66,14 @@ DEFAULTS = {
 
 
 def load_env():
+    # Existing values win; keys this script does not know (DEMO_MINIO_DIR, ASSISTANT_ENABLED …) are kept as they are,
+    # and keys added to DEFAULTS since the last run are filled in. Re-running init never drops a line.
     values = dict(DEFAULTS)
     if ENV_FILE.exists():
         for line in ENV_FILE.read_text().splitlines():
             if line and not line.startswith("#") and "=" in line:
                 key, value = line.split("=", 1)
-                if key in DEFAULTS:
-                    values[key] = value
+                values[key] = value
     ENV_FILE.write_text("".join(f"{k}={v}\n" for k, v in values.items()))
     ENV_FILE.chmod(0o600)
     return values

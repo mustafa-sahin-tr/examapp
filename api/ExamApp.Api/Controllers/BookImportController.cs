@@ -678,7 +678,8 @@ public class BookImportController : BaseController
         try
         {
             var activities = request?.Activities?.Select(b => new LayoutBox(b.X, b.Y, b.Width, b.Height)).ToList();
-            var result = await fix.ReplacePageAsync(owner, id, testId, filePage, request?.Questions ?? [], ct, activities);
+            var result = await fix.ReplacePageAsync(owner, id, testId, filePage, request?.Questions ?? [], ct, activities,
+                request?.Passages);
             return result.Error switch
             {
                 BookImportPageFixError.None => Ok(result.Page),

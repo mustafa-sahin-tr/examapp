@@ -34,10 +34,12 @@ public interface IBookImportPageFixService
     /// sorularla değiştirir. Görsel işin sayfa görselidir; yeni sorular taslak kaydedilip eskilerinin sırasına bağlanır, eskiler
     /// silinir. Boş liste sayfanın taslaklarını yalnız siler. <paramref name="activities"/> (#1293): tuvalde kalan etkinlik
     /// kutuları; verilirse sayfanın bunlarla örtüşmeyen etkinlik taslakları (silinen ya da soruya çevrilen) da silinir, null ise
-    /// etkinlik taslaklarına dokunulmaz (hızlı ekleme).
+    /// etkinlik taslaklarına dokunulmaz (hızlı ekleme). <paramref name="passages"/>: tuvalde sorulara bağlanan pasajlar
+    /// (<paramref name="questions"/> sırasıyla); yeni taslaklar pasajla kaydedilir.
     /// </summary>
     Task<BookImportPageFixResult> ReplacePageAsync(BookImportOwner owner, Guid id, int testId, int filePage,
-        IReadOnlyList<LabelingBankQuestionDto> questions, CancellationToken ct, IReadOnlyList<LayoutBox>? activities = null);
+        IReadOnlyList<LabelingBankQuestionDto> questions, CancellationToken ct, IReadOnlyList<LayoutBox>? activities = null,
+        IReadOnlyList<LabelingBankPassageDto>? passages = null);
 
     /// <summary>
     /// Issue #1173: sayfanın yaşayan taslakları (numara, sayfadaki kutu, doğru şık); düzeltme tuvali kutularına numara ve cevabı
@@ -60,7 +62,8 @@ public sealed class BookImportPageFixService(
     : IBookImportPageFixService
 {
     public async Task<BookImportPageFixResult> ReplacePageAsync(BookImportOwner owner, Guid id, int testId, int filePage,
-        IReadOnlyList<LabelingBankQuestionDto> questions, CancellationToken ct, IReadOnlyList<LayoutBox>? activities = null)
+        IReadOnlyList<LabelingBankQuestionDto> questions, CancellationToken ct, IReadOnlyList<LayoutBox>? activities = null,
+        IReadOnlyList<LabelingBankPassageDto>? passages = null)
     {
         ArgumentNullException.ThrowIfNull(owner);
         var (error, job, test, page) = await TargetAsync(owner, id, testId, filePage, ct);
@@ -123,8 +126,15 @@ public sealed class BookImportPageFixService(
         if (toSave.Count > 0)
         {
             image ??= await LoadAsync(page!);
+            // Pasajların soru sırası istekteki sıradan kaydedilen (numaralanmış) sıraya çevrilir.
+            var position = numbered.Select((n, i) => (n.Index, i)).ToDictionary(p => p.Index, p => p.i);
+            var importPassages = LabelingBankService.ToImportPassages(passages, questions.Count)
+                .Select(p => p with { QuestionIndexes = p.QuestionIndexes.Where(position.ContainsKey).Select(i => position[i]).ToList() })
+                .Where(p => p.QuestionIndexes.Count > 0)
+                .ToList();
             saved = await bank.SaveImportedPageAsync(new LabelingImportPageRequest(
-                image, bookId, filePage, job.GradeId, QuestionBankSharing.Private, toSave, oldIds), job.CreateUserId.Value, ct);
+                image, bookId, filePage, job.GradeId, QuestionBankSharing.Private, toSave, oldIds, Passages: importPassages),
+                job.CreateUserId.Value, ct);
         }
 
         // Kaydedilen (kırpması tekrar olmayan) sorular ve numaraları.
@@ -224,6 +234,20 @@ public sealed class BookImportPageFixService(
             })
             .ToListAsync(ct);
         var correct = answers.ToDictionary(a => a.Id, a => a.Answers.IndexOf(a.CorrectAnswerId!.Value));
+        // Taslağın pasajı (sayfa pikseli): düzeltme tuvalinde yeniden çizilir, kayıtta kaybolmaz.
+        var passages = await db.Questions.IgnoreQueryFilters([DraftQueryFilter.Key]).AsNoTracking()
+            .Where(q => ids.Contains(q.Id) && q.Passage != null && !q.Passage.IsDeleted
+                && q.Passage.X != null && q.Passage.Y != null && q.Passage.Width > 0 && q.Passage.Height > 0)
+            .Select(q => new
+            {
+                q.Id,
+                Box = new BookImportPageDraftPassageDto
+                {
+                    Id = q.Passage.Id, X = (int)Math.Round(q.Passage.X!.Value), Y = (int)Math.Round(q.Passage.Y!.Value),
+                    Width = q.Passage.Width!.Value, Height = q.Passage.Height!.Value,
+                },
+            })
+            .ToDictionaryAsync(q => q.Id, q => q.Box, ct);
         return (error, old.Where(l => l.Number is not null).OrderBy(l => l.Number).Select(l =>
         {
             var box = boxes.TryGetValue(l.Number!.Value, out var b) ? b : (LayoutBox?)null;
@@ -233,6 +257,7 @@ public sealed class BookImportPageFixService(
                 Number = l.Number.Value,
                 X = box?.X, Y = box?.Y, Width = box?.Width, Height = box?.Height,
                 CorrectOptionIndex = correct.GetValueOrDefault(l.QuestionId, -1),
+                Passage = passages.GetValueOrDefault(l.QuestionId),
             };
         }).ToList());
     }

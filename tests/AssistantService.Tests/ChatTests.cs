@@ -79,6 +79,31 @@ public sealed class ChatTurnTests : IDisposable
     }
 
     [Fact]
+    public async Task Suggestion_chips_after_the_answer_end_the_turn_without_another_model_call()
+    {
+        _h.Model.Then(Text("Günlük setin başlamadı."), Call("c1", "ui_suggest_actions",
+            new { suggestions = new[] { new { label = "Seti aç", prompt = "Günlük seti aç" } } }), Usage(1, 1));
+
+        var sink = await _h.TurnAsync("günlük setim");
+
+        _h.Model.Calls.Count.ShouldBe(1);
+        sink.Types.ShouldBe(["text", "tool_start", "tool_end", "ui_action", "done"]);
+        await using var db = _h.Tools.NewDb();
+        (await db.Messages.Select(m => m.Role).ToListAsync()).ShouldBe(["user", "assistant", "tool"]);
+    }
+
+    [Fact]
+    public async Task Chips_without_an_answer_yet_let_the_model_answer()
+    {
+        _h.Model.Then(Call("c1", "ui_suggest_actions", new { suggestions = new[] { new { label = "a", prompt = "b" } } }), Usage(1, 1))
+            .Then(Text("Buyur."), Usage(1, 1));
+
+        await _h.TurnAsync("selam");
+
+        _h.Model.Calls.Count.ShouldBe(2);
+    }
+
+    [Fact]
     public async Task The_next_turn_sends_the_stored_history()
     {
         _h.Model.Then(Text("Merhaba"), Usage(1, 1)).Then(Text("Tekrar merhaba"), Usage(1, 1));

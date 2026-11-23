@@ -57,6 +57,9 @@ public sealed class ChatTurnRunner(
 
     private static readonly JsonSerializerOptions Json = AIJsonUtilities.DefaultOptions;
 
+    /// <summary>Tools that only act on the panel; their results add nothing the model needs to answer.</summary>
+    private static readonly HashSet<string> UiOnlyTools = new(StringComparer.Ordinal) { "ui_suggest_actions", "ui_open_screen" };
+
     /// <summary>Routes where the assistant is closed (a test or activity being solved) — refused on the server too.</summary>
     public static bool IsClosedRoute(string? route) =>
         route is not null && (route.StartsWith("/testsolve", StringComparison.OrdinalIgnoreCase)
@@ -186,7 +189,13 @@ public sealed class ChatTurnRunner(
                 messages.Add(toolMessage);
                 turnMessages.Add((toolMessage, default));
 
-                if (crisis)
+                // Only panel tools (suggestion chips, open a screen) after the answer text: the turn is complete. Calling the
+            // model again only made it repeat its answer (#504 live check) and costs a call.
+            var answered = response.Messages.Any(m => m.Role == AiChatRole.Assistant && m.Contents.OfType<TextContent>().Any(t => !string.IsNullOrWhiteSpace(t.Text)));
+            if (!crisis && answered && calls.All(c => UiOnlyTools.Contains(c.Name)))
+                break;
+
+            if (crisis)
                 {
                     // #496: fixed safe answer, not generated.
                     await sink.SendAsync("text", new { delta = SystemPrompt.CrisisResponse });

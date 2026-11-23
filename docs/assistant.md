@@ -125,3 +125,9 @@ Olaylar: `text {delta}`, `tool_start {tool}`, `tool_end {tool, ok, errorCode, ms
   ilk token ve tur süresi, token (cache yazma / okuma dahil) ve USD.
 - `POST /api/assistant/messages/{id}/feedback` `{ rating: up|down, reason? }` (`wrongInfo`, `notHelpful`, `tooLong`,
   `inappropriate`, `other`; yalnız 👎'de saklanır) → 204; kendi asistan mesajı değilse 404; yeni oy eskisinin yerine geçer.
+
+**Yerel ölçüm (2026-11-23, Aspire, gateway üzerinden, Haiku 5.5, öğrenci hesabı, 7 tur):** ilk token p50 1,76 sn (en çok
+2,8 sn; ilk turda önbellek yazımıyla), tur p50 3,4 sn, p95 4,8 sn — hedefler (p50 ilk token < 2 sn, p95 tur < 8 sn) tuttu.
+Önbellek: ilk tur 2954 token yazdı, sonraki her model çağrısı aynı öneki okudu (`cacheReadTokens`). Tur başına 0,0002–0,0011 USD.
+Canlı denemede bulunan: model öneri çiplerinden sonra cevabını yeniden yazıyordu → yalnız panel tool'ları (`ui_suggest_actions`,
+`ui_open_screen`) cevaptan sonra gelirse tur biter, model yeniden çağrılmaz; olmayan butondan söz ediyordu → sistem istemi r2.

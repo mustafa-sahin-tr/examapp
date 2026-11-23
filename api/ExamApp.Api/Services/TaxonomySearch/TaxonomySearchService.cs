@@ -1,7 +1,6 @@
-using System.Globalization;
-using System.Text;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Foundation.Text;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.Services.TaxonomySearch;
@@ -30,53 +29,15 @@ public sealed class TaxonomySearchService(AppDbContext db) : ITaxonomySearchServ
     private const string PathSeparator = " › ";
     public const int MaxQueryTokens = 8;
 
-    /// <summary>"açıları" sorgusu "Açılar" adını bulsun diye; kısa adlarda ek sayılmaz ("su" sorgusu "sulama"yı değil "su"yu arar).</summary>
-    private const int MinStemLength = 4;
-
     private const int LeafMatch = 3;
     private const int ParentMatch = 2;
     private const int ExactBonus = 1;
     private const int SubjectAndLeafBonus = 2;
 
-    /// <summary>Küçük harf, Türkçe ve diğer aksanlar sade (İ, I, ı → i; ş → s; ğ → g; ç → c; ö → o; ü → u).</summary>
-    public static string Normalize(string text)
-    {
-        var builder = new StringBuilder(text.Length);
-        foreach (var c in text.Normalize(NormalizationForm.FormD))
-        {
-            if (CharUnicodeInfo.GetUnicodeCategory(c) == UnicodeCategory.NonSpacingMark)
-                continue;
-            builder.Append(c == 'ı' ? 'i' : char.ToLowerInvariant(c));
-        }
+    /// <summary>Küçük harf, Türkçe ve diğer aksanlar sade; asistanın yardım aramasıyla ortak (#506, <see cref="SearchText"/>).</summary>
+    public static string Normalize(string text) => SearchText.Normalize(text);
 
-        return builder.ToString();
-    }
-
-    public static string[] Tokenize(string text)
-    {
-        var tokens = new List<string>();
-        var current = new StringBuilder();
-        foreach (var c in Normalize(text))
-        {
-            // Kesme işareti sözcüğü bölmez: "Kur'an" "kuran", "Türkiye'nin" "turkiyenin" olur.
-            if (c is '\'' or '’' or 'ʼ')
-                continue;
-
-            if (char.IsLetterOrDigit(c))
-            {
-                current.Append(c);
-                continue;
-            }
-
-            if (current.Length > 0)
-                tokens.Add(current.ToString());
-            current.Clear();
-        }
-
-        if (current.Length > 0)
-            tokens.Add(current.ToString());
-        return tokens.Distinct().ToArray();
-    }
+    public static string[] Tokenize(string text) => SearchText.Tokenize(text);
 
     public static bool IsValidQuery(string? query)
     {
@@ -188,18 +149,5 @@ public sealed class TaxonomySearchService(AppDbContext db) : ITaxonomySearchServ
     }
 
     /// <returns>2 tam sözcük, 1 önek ya da ek almış hali, 0 eşleşme yok.</returns>
-    private static int MatchOf(string[] nameTokens, string query)
-    {
-        var result = 0;
-        foreach (var name in nameTokens)
-        {
-            if (name == query)
-                return 2;
-            if (name.StartsWith(query, StringComparison.Ordinal)
-                || (name.Length >= MinStemLength && query.StartsWith(name, StringComparison.Ordinal)))
-                result = 1;
-        }
-
-        return result;
-    }
+    private static int MatchOf(string[] nameTokens, string query) => SearchText.MatchOf(nameTokens, query);
 }

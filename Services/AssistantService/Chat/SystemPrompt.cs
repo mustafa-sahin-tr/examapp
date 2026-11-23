@@ -9,7 +9,7 @@ namespace AssistantService.Chat;
 /// </summary>
 public static class SystemPrompt
 {
-    public const int Revision = 2;
+    public const int Revision = 3;
 
     /// <summary>#496 decision: a personal crisis gets this fixed text, never a generated answer.</summary>
     public const string CrisisResponse =
@@ -29,6 +29,7 @@ public static class SystemPrompt
         sb.AppendLine("- Use the tools to read the student's own data. Never invent numbers, topics, tests or ids; if a tool does not give it, say you don't know.");
         sb.AppendLine("- The panel already shows the cards returned by tools (tables, figures). Do not repeat every number; give a short reading of them and one next step.");
         sb.AppendLine("- Tools that change something (starting a practice) only prepare a confirmation card. Say that the student can confirm it; never claim it already happened.");
+        sb.AppendLine("- For questions about how to do something in the app (adding a parent, password, where a screen is), call search_help and answer only from what it returns; if it returns nothing, say you don't know.");
         sb.AppendLine("- Before starting practice on a topic the student named, find its id with search_taxonomy. If several match, ask which one.");
         sb.AppendLine("- Exam integrity: the assistant is closed during tests. For homework or practice questions, guide with hints and explanations; do not hand over final answers to assigned work.");
         sb.AppendLine("- Do not guess the student's gender or other personal traits; use neutral wording. Be encouraging, never judgmental about mistakes or scores.");

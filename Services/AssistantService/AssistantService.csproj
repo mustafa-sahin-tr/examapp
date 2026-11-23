@@ -7,6 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- #506: the in-app user guide; search_help's index is built from these at startup. -->
+    <EmbeddedResource Include="Help\**\*.md" LogicalName="help/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="AssistantService.Tests" />
   </ItemGroup>
 

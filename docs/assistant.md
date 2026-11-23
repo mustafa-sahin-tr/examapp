@@ -186,3 +186,26 @@ makaleyle cevaplandı (ilk token p50 1,4 sn); konu dışı soru tool çağırmad
   öğrencinin token'ıyla iç ağdan okur, sonucu kullanıcı başına **30 sn** önbellekler (kapatma en geç 30 sn'de etkili). Kapalı →
   403 `AssistantDisabledByParent`; exam API cevap veremezse 503 `AssistantUnavailable` (önbelleğe alınmaz, kapalı kabul); exam API'nin
   kendi 403 kodu (ör. `ParentRequired`) aynen geçer. Konuşma listesi / silme / kullanım açık kalır (öğrenci geçmişini silebilsin).
+
+## Panel (#507)
+
+`ui/src/app/shared/components/assistant-panel/`: `AssistantLauncherComponent` (FAB, `Ctrl+K` / `⌘K`, CDK Overlay) ve
+`AssistantPanelComponent` (mesajlar, kartlar, çipler, bağlam şeridi, 👍/👎, kalan mesaj). Durum `AssistantChatStore`
+(kökte; panel kapanınca konuşma ve akan tur sürer, yenilemede yeni konuşma), görünürlük `AssistantPanelService`.
+
+- **Görünürlük:** kabuk açılırken bir kez `GET /api/assistant/status`. Kapı bu ucu (yalnız GET) her oturum açmış kullanıcıya
+  geçirir; asistan kapalı / rol açık değilse 200 + `{ enabled: false, code }` döner (her sayfada console'a 403 / 503 düşmesin).
+  Öğrencide ayrıca `GET /api/exam/student/assistant-access` (#523): kapalıysa giriş noktaları gizli, panel açılırken yeniden
+  bakılır; sohbette `AssistantDisabledByParent` gelirse de gizlenir. Test çözme / etkinlik oynatıcısı (`isExamRoute`) ve tam
+  ekranda gizli, açık panel kapanır. Herkese açık sayfalar kabuğun dışında.
+- **Yerleşim:** masaüstünde 440px sağ panel (üst çubukta "Asistan" düğmesi + sağ altta FAB), mobilde tam ekran (FAB alt
+  navigasyonun üstünde; gezinme eylemi paneli kapatır). Overlay `mat-sidenav-content` stacking context'inin dışında.
+- **Akış:** `fetch` + Bearer (süresi dolmak üzereyse önce yenilenir; 401'de bir kez yenile-tekrarla; `TokenExpired` olayında
+  aynı mesaj bir kez yeniden gönderilir). `navigate` yalnız `/` ile başlayan uygulama yolunu açar. Metinde yalnız `**kalın**`
+  işlenir (innerHTML yok).
+- **Bağlam:** `route` (sorgu dizesi atılır), `/test/:id`'de `worksheetId`, dil. Seçili çocuk veli dilimiyle gelecek.
+- i18n `public/i18n/assistant/{tr,en}.json`; üst çubuk düğmesi kök sözlükte `layout.toolbar.assistant`.
+
+Canlı deneme (Aspire, öğrenci): `Ctrl+K` açtı; "Zorlandığım konular" turu, öneri çipleri ve kalan mesaj göründü; "5 soruluk pratik
+başlat" onay kartı → Başlat → `/practice?session=…` açıldı; `Esc` kapattı; `/testsolve/…`'da FAB yok, kısayol çalışmadı; 390px'te
+tam ekran. Veli hesabında `/status` 200, giriş noktası yok, console temiz.

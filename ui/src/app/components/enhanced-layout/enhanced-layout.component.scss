@@ -648,3 +648,13 @@ button.profile-menu {
 .notification-bell-badge {
     display: inline-flex;
 }
+
+// Issue #507: asistan düğmesi bildirim zilinin solunda
+.toolbar-assistant {
+    margin-right: var(--ms-layout-spacing-xsmall);
+    border-radius: 999px;
+
+    mat-icon {
+        margin-right: 4px;
+    }
+}

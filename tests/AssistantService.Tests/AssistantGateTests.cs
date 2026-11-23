@@ -33,7 +33,7 @@ public sealed class AssistantGateTests
         string? code)
     {
         using var host = await StartAsync(enabled, apiKey);
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/assistant/status");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/assistant/usage/me");
         if (role is not null)
             request.Headers.Add(TestAuth.Header, role);
 
@@ -42,6 +42,40 @@ public sealed class AssistantGateTests
         response.StatusCode.ShouldBe(expected);
         if (code is not null)
             JsonNode.Parse(await response.Content.ReadAsStringAsync())!["code"]!.GetValue<string>().ShouldBe(code);
+    }
+
+    // #507: the panel asks /status on every page; a closed assistant answers there (enabled: false), not with 403 / 503.
+    [Theory]
+    [InlineData(null, true, "key", HttpStatusCode.Unauthorized)]
+    [InlineData("Student", false, "key", HttpStatusCode.OK)]
+    [InlineData("Parent", true, "key", HttpStatusCode.OK)]
+    [InlineData("Student", true, "key", HttpStatusCode.OK)]
+    public async Task Status_passes_the_gate_for_any_signed_in_user(string? role, bool enabled, string apiKey, HttpStatusCode expected)
+    {
+        using var host = await StartAsync(enabled, apiKey);
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/assistant/status");
+        if (role is not null)
+            request.Headers.Add(TestAuth.Header, role);
+
+        (await host.GetTestClient().SendAsync(request)).StatusCode.ShouldBe(expected);
+    }
+
+    [Fact]
+    public async Task Status_exception_is_only_for_get()
+    {
+        using var host = await StartAsync(enabled: false, apiKey: "key");
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/assistant/status");
+        request.Headers.Add(TestAuth.Header, "Student");
+
+        (await host.GetTestClient().SendAsync(request)).StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+    }
+
+    [Fact]
+    public void Gate_codes_match_the_status_answer()
+    {
+        AssistantGate.Code(AssistantGateResult.Disabled).ShouldBe("AssistantDisabled");
+        AssistantGate.Code(AssistantGateResult.RoleNotEnabled).ShouldBe("AssistantRoleNotEnabled");
+        AssistantGate.Code(AssistantGateResult.Allowed).ShouldBeNull();
     }
 
     [Fact]
@@ -107,6 +141,8 @@ public sealed class AssistantGateTests
                     app.UseEndpoints(e =>
                     {
                         e.MapGet("/api/assistant/status", () => "ok").RequireAuthorization();
+                        e.MapGet("/api/assistant/usage/me", () => "ok").RequireAuthorization();
+                        e.MapPost("/api/assistant/status", () => "ok").RequireAuthorization();
                         e.MapGet("/alive-probe", () => "ok");
                     });
                 }))

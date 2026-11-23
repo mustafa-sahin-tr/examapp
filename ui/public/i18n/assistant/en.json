@@ -1,0 +1,93 @@
+{
+  "title": "Assistant",
+  "open": "Open the assistant",
+  "openShortcut": "Assistant (Ctrl+K / ⌘K)",
+  "close": "Close",
+  "newConversation": "New chat",
+  "context": "Context: {{role}} · {{route}}",
+  "contextDismiss": "Hide the context bar",
+  "roles": {
+    "student": "Student",
+    "parent": "Parent",
+    "teacher": "Teacher",
+    "admin": "Admin"
+  },
+  "you": "You",
+  "thinking": "Thinking…",
+  "working": "Looking at your data…",
+  "suggestionsLabel": "Suggested questions",
+  "empty": {
+    "title": "Hi! How can I help?",
+    "text": "Ask about your studies, start a practice session or learn how to use the app."
+  },
+  "starters": {
+    "weakTopics": { "label": "Topics I struggle with", "prompt": "Which topics do I struggle with?" },
+    "dailySet": { "label": "Daily questions", "prompt": "How is my daily question set going?" },
+    "practice": { "label": "Start practice", "prompt": "Start a 10-question practice on the topics I struggle with." },
+    "help": { "label": "How do I add my parent?", "prompt": "How do I add my parent?" }
+  },
+  "kpi": {
+    "level": "Level",
+    "xp": "Points",
+    "questionsSolved": "Questions solved",
+    "accuracyPct": "Accuracy",
+    "testsCompleted": "Tests finished"
+  },
+  "topicTable": {
+    "name": "Topic",
+    "answered": "Answers",
+    "accuracy": "Accuracy",
+    "empty": "No topics to show."
+  },
+  "confirm": {
+    "startDailyPractice": "Start the daily questions",
+    "startPracticeSession": "Start a practice session",
+    "generic": "Do you confirm this action?",
+    "count": "{{count}} questions",
+    "mistakes": "From questions you got wrong",
+    "dueReview": "From questions due for review",
+    "yes": "Start",
+    "no": "Cancel",
+    "state": {
+      "confirmed": "Started.",
+      "rejected": "Cancelled.",
+      "expired": "This suggestion has expired. Ask again if you like.",
+      "decided": "This suggestion was already decided.",
+      "failed": "That did not work. Please try again shortly.",
+      "pending": "",
+      "busy": ""
+    }
+  },
+  "errors": {
+    "AssistantBudgetExceeded": "You have reached the usage limit for now. Please try again later.",
+    "AssistantDisabledByParent": "Your parent has switched the assistant off.",
+    "ParentRequired": "Your parent needs to approve your account before you can use the assistant.",
+    "AssistantClosedDuringTest": "The assistant is closed while you solve a test.",
+    "AssistantDeclined": "I can't help with that.",
+    "AssistantUnavailable": "The assistant can't answer right now. Please try again shortly.",
+    "AssistantDisabled": "The assistant is switched off right now.",
+    "AssistantRoleNotEnabled": "The assistant is not available for your account yet.",
+    "ConversationNotFound": "This chat no longer exists. A new chat has started; you can ask again.",
+    "InvalidMessage": "The message is empty or too long.",
+    "Unauthenticated": "Your session has ended. Please sign in again.",
+    "generic": "Something went wrong. Please try again shortly."
+  },
+  "feedback": {
+    "label": "Was this answer helpful?",
+    "up": "Helpful",
+    "down": "Not helpful",
+    "reasons": {
+      "wrongInfo": "Wrong information",
+      "notHelpful": "Not helpful",
+      "tooLong": "Too long",
+      "inappropriate": "Inappropriate",
+      "other": "Something else"
+    }
+  },
+  "usage": "Messages left this hour: {{count}}",
+  "inputLabel": "Your message",
+  "inputPlaceholder": "Ask something…",
+  "send": "Send",
+  "tooLong": "A message can be at most {{max}} characters.",
+  "disclaimer": "The assistant can make mistakes; check important information."
+}

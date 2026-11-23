@@ -15,10 +15,25 @@ public enum AssistantGateResult
 /// <summary>
 /// Issue #502: every <c>/api/assistant/*</c> request passes this gate after authentication. Order: no token → 401,
 /// switched off or no API key → 503 <c>AssistantDisabled</c>, role not enabled → 403 <c>AssistantRoleNotEnabled</c>.
+/// Exception (#507): <c>GET /api/assistant/status</c> passes for any signed-in user and answers <c>enabled: false</c> itself,
+/// so the panel can ask on every page without a 403 / 503 in the browser console.
 /// </summary>
 public static class AssistantGate
 {
     public const string PathPrefix = "/api/assistant";
+    public const string StatusPath = PathPrefix + "/status";
+
+    /// <summary>Error code of a closed gate (same codes the gate answers with); null when allowed.</summary>
+    public static string? Code(AssistantGateResult result) => result switch
+    {
+        AssistantGateResult.Disabled => "AssistantDisabled",
+        AssistantGateResult.RoleNotEnabled => "AssistantRoleNotEnabled",
+        AssistantGateResult.Unauthenticated => "Unauthenticated",
+        _ => null,
+    };
+
+    public static bool ApiKeyConfigured(IConfiguration configuration) =>
+        !string.IsNullOrWhiteSpace(configuration["Anthropic:ApiKey"]);
 
     public static AssistantGateResult Evaluate(ClaimsPrincipal user, AssistantOptions options, bool apiKeyConfigured)
     {
@@ -38,8 +53,13 @@ public static class AssistantGate
         }
 
         var options = context.RequestServices.GetRequiredService<IOptionsMonitor<AssistantOptions>>().CurrentValue;
-        var apiKey = context.RequestServices.GetRequiredService<IConfiguration>()["Anthropic:ApiKey"];
-        var result = Evaluate(context.User, options, !string.IsNullOrWhiteSpace(apiKey));
+        var result = Evaluate(context.User, options, ApiKeyConfigured(context.RequestServices.GetRequiredService<IConfiguration>()));
+        if (result != AssistantGateResult.Unauthenticated && HttpMethods.IsGet(context.Request.Method)
+            && context.Request.Path.Equals(StatusPath, StringComparison.OrdinalIgnoreCase))
+        {
+            await next();
+            return;
+        }
         switch (result)
         {
             case AssistantGateResult.Allowed:
@@ -49,10 +69,10 @@ public static class AssistantGate
                 await context.ChallengeAsync();
                 return;
             case AssistantGateResult.Disabled:
-                await Problem(context, StatusCodes.Status503ServiceUnavailable, "AssistantDisabled");
+                await Problem(context, StatusCodes.Status503ServiceUnavailable, Code(result)!);
                 return;
             default:
-                await Problem(context, StatusCodes.Status403Forbidden, "AssistantRoleNotEnabled");
+                await Problem(context, StatusCodes.Status403Forbidden, Code(result)!);
                 return;
         }
     });

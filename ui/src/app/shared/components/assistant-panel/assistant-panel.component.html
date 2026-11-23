@@ -1,0 +1,190 @@
+<section class="asp" [class.asp--mobile]="mobile()" *transloco="let t; prefix: 'assistant'">
+  <header class="asp__header">
+    <mat-icon class="asp__logo" aria-hidden="true">auto_awesome</mat-icon>
+    <h2 class="asp__title" id="assistant-panel-title">{{ t('title') }}</h2>
+    <span class="asp__spacer"></span>
+    <button mat-icon-button type="button" data-testid="assistant-new" [attr.aria-label]="t('newConversation')"
+      [matTooltip]="t('newConversation')" [disabled]="!store.messages().length" (click)="newConversation()">
+      <mat-icon>add_comment</mat-icon>
+    </button>
+    <button mat-icon-button type="button" data-testid="assistant-close" [attr.aria-label]="t('close')"
+      [matTooltip]="t('close')" (click)="close()">
+      <mat-icon>close</mat-icon>
+    </button>
+  </header>
+
+  @if (!contextDismissed()) {
+    <div class="asp__context" data-testid="assistant-context">
+      <mat-icon aria-hidden="true">my_location</mat-icon>
+      <span class="asp__context-text">{{ t('context', { role: t('roles.' + roleKey()), route: contextRoute() }) }}</span>
+      <button mat-icon-button type="button" class="asp__context-close" [attr.aria-label]="t('contextDismiss')"
+        (click)="contextDismissed.set(true)">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  }
+
+  <div class="asp__log" #log role="log" aria-live="polite" [attr.aria-busy]="store.sending() ? 'true' : null"
+    data-testid="assistant-log">
+    @if (!store.messages().length) {
+      <div class="asp__empty" data-testid="assistant-empty">
+        <mat-icon class="asp__empty-icon" aria-hidden="true">auto_awesome</mat-icon>
+        <p class="asp__empty-title">{{ t('empty.title') }}</p>
+        <p class="asp__empty-text">{{ t('empty.text') }}</p>
+        <div class="asp__chips" role="group" [attr.aria-label]="t('suggestionsLabel')">
+          @for (key of starters; track key) {
+            <button mat-stroked-button type="button" class="asp__chip" data-testid="assistant-starter"
+              (click)="sendStarter(t('starters.' + key + '.prompt'))">{{ t('starters.' + key + '.label') }}</button>
+          }
+        </div>
+      </div>
+    }
+
+    @for (message of store.messages(); track message.id) {
+      <div class="asp__row" [class.asp__row--mine]="message.role === 'user'" data-testid="assistant-message"
+        [attr.data-role]="message.role">
+        <div class="asp__bubble" [class.asp__bubble--mine]="message.role === 'user'">
+          <span class="asp__sr">{{ message.role === 'user' ? t('you') : t('title') }}:</span>
+          @if (message.text) {
+            <p class="asp__text" dir="auto">@for (s of segments(message.text); track $index) {@if (s.bold) {<strong>{{ s.text }}</strong>} @else {{{ s.text }}}}</p>
+          }
+
+          @if (message.streaming && message.activeTool) {
+            <p class="asp__working" role="status" data-testid="assistant-working">
+              <mat-spinner diameter="14" />{{ t('working') }}
+            </p>
+          } @else if (message.streaming && !message.text && !message.cards.length) {
+            <p class="asp__working" role="status"><mat-spinner diameter="14" />{{ t('thinking') }}</p>
+          }
+
+          @for (card of message.cards; track trackCard($index, card)) {
+            @switch (card.kind) {
+              @case ('kpi') {
+                <dl class="asp__kpi" data-testid="assistant-card-kpi">
+                  @for (item of card.items; track item.key) {
+                    <div class="asp__kpi-item">
+                      <dt>{{ t('kpi.' + item.key) }}</dt>
+                      <dd>{{ item.value === null ? '–' : (item.value | number: '1.0-1') }}{{ item.key === 'accuracyPct' && item.value !== null ? '%' : '' }}</dd>
+                    </div>
+                  }
+                </dl>
+              }
+              @case ('topicTable') {
+                @if (card.rows.length) {
+                  <table class="asp__table" data-testid="assistant-card-topics">
+                    <thead>
+                      <tr>
+                        <th scope="col">{{ t('topicTable.name') }}</th>
+                        <th scope="col" class="asp__num">{{ t('topicTable.answered') }}</th>
+                        <th scope="col" class="asp__num">{{ t('topicTable.accuracy') }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (row of card.rows; track $index) {
+                        <tr>
+                          <td>
+                            <span class="asp__row-name">{{ rowName(row) }}</span>
+                            @if (rowDetail(row); as detail) {
+                              <span class="asp__row-detail">{{ detail }}</span>
+                            }
+                          </td>
+                          <td class="asp__num">{{ rowAnswered(row) ?? '–' }}</td>
+                          <td class="asp__num">{{ row.accuracyPct === null || row.accuracyPct === undefined ? '–' : (row.accuracyPct | number: '1.0-0') + '%' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                } @else {
+                  <p class="asp__muted" data-testid="assistant-card-topics-empty">{{ t('topicTable.empty') }}</p>
+                }
+              }
+              @case ('confirm') {
+                @let state = confirmState(message, card);
+                <div class="asp__confirm" data-testid="assistant-card-confirm" [attr.data-state]="state">
+                  <p class="asp__confirm-title">
+                    <mat-icon aria-hidden="true">play_circle</mat-icon>{{ t('confirm.' + actionKey(card)) }}
+                  </p>
+                  @if (card.preview?.targetCount) {
+                    <p class="asp__muted">{{ t('confirm.count', { count: card.preview?.targetCount }) }}</p>
+                  }
+                  @if (card.preview?.mistakes) {
+                    <p class="asp__muted">{{ t('confirm.mistakes') }}</p>
+                  }
+                  @if (card.preview?.dueReview) {
+                    <p class="asp__muted">{{ t('confirm.dueReview') }}</p>
+                  }
+                  @if (state === 'pending' || state === 'busy') {
+                    <div class="asp__confirm-actions">
+                      <button mat-flat-button type="button" data-testid="assistant-confirm" [disabled]="state === 'busy'"
+                        (click)="store.confirm(message.id, card)">{{ t('confirm.yes') }}</button>
+                      <button mat-stroked-button type="button" data-testid="assistant-reject" [disabled]="state === 'busy'"
+                        (click)="store.reject(message.id, card)">{{ t('confirm.no') }}</button>
+                    </div>
+                  } @else {
+                    <p class="asp__confirm-state" role="status" data-testid="assistant-confirm-state">{{ t('confirm.state.' + state) }}</p>
+                  }
+                </div>
+              }
+            }
+          }
+
+          @if (message.errorCode; as code) {
+            <p class="asp__error" role="alert" data-testid="assistant-error">
+              <mat-icon aria-hidden="true">error_outline</mat-icon><span>{{ t('errors.' + errorKey(code)) }}</span>
+            </p>
+          }
+
+          @if (message.role === 'assistant' && message.messageId && !message.streaming) {
+            <div class="asp__feedback" role="group" [attr.aria-label]="t('feedback.label')">
+              <button mat-icon-button type="button" class="asp__feedback-btn" data-testid="assistant-thumb-up"
+                [class.asp__feedback-btn--on]="message.feedback === 'up'" [attr.aria-pressed]="message.feedback === 'up'"
+                [attr.aria-label]="t('feedback.up')" (click)="rate(message, 'up')">
+                <mat-icon>thumb_up</mat-icon>
+              </button>
+              <button mat-icon-button type="button" class="asp__feedback-btn" data-testid="assistant-thumb-down"
+                [class.asp__feedback-btn--on]="message.feedback === 'down'" [attr.aria-pressed]="message.feedback === 'down'"
+                [attr.aria-label]="t('feedback.down')" [matMenuTriggerFor]="reasons">
+                <mat-icon>thumb_down</mat-icon>
+              </button>
+              <mat-menu #reasons="matMenu">
+                @for (reason of feedbackReasons; track reason) {
+                  <button mat-menu-item type="button" (click)="rate(message, 'down', reason)">{{ t('feedback.reasons.' + reason) }}</button>
+                }
+              </mat-menu>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    @if (store.suggestions().length && !store.sending()) {
+      <div class="asp__chips" role="group" [attr.aria-label]="t('suggestionsLabel')" data-testid="assistant-suggestions">
+        @for (chip of store.suggestions(); track $index) {
+          <button mat-stroked-button type="button" class="asp__chip" data-testid="assistant-chip" (click)="sendChip(chip)">{{ chip.label }}</button>
+        }
+      </div>
+    }
+  </div>
+
+  <footer class="asp__composer">
+    @if (remainingMessages() !== null) {
+      <p class="asp__usage" data-testid="assistant-usage">{{ t('usage', { count: remainingMessages() }) }}</p>
+    }
+    <div class="asp__compose-row">
+      <mat-form-field appearance="outline" class="asp__field" subscriptSizing="dynamic">
+        <mat-label>{{ t('inputLabel') }}</mat-label>
+        <textarea matInput #composer rows="2" dir="auto" data-testid="assistant-input"
+          [placeholder]="t('inputPlaceholder')" [value]="draft()" [attr.aria-invalid]="tooLong()"
+          (input)="onDraft($event)" (keydown)="onComposerKeydown($event)"></textarea>
+      </mat-form-field>
+      <button mat-icon-button type="button" class="asp__send" data-testid="assistant-send" [disabled]="!canSend()"
+        [attr.aria-label]="t('send')" (click)="submit()">
+        <mat-icon>send</mat-icon>
+      </button>
+    </div>
+    @if (tooLong()) {
+      <p class="asp__error" role="alert">{{ t('tooLong', { max: maxLength }) }}</p>
+    }
+    <p class="asp__disclaimer">{{ t('disclaimer') }}</p>
+  </footer>
+</section>

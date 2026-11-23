@@ -1,4 +1,4 @@
-import { Component, signal, OnInit, OnDestroy, computed, inject, DOCUMENT, ChangeDetectionStrategy, DestroyRef, Injector } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy, computed, inject, DOCUMENT, ChangeDetectionStrategy, DestroyRef, Injector, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -80,6 +80,9 @@ interface MenuItem {
   onlySchoolTeacher?: boolean;
 }
 
+import { AssistantLauncherComponent } from '../../shared/components/assistant-panel/assistant-launcher.component';
+import { AssistantPanelService } from '../../services/assistant-panel.service';
+
 @Component({
   selector: 'app-enhanced-layout',
   standalone: true,
@@ -106,6 +109,7 @@ interface MenuItem {
     ParentFinalWarningComponent,
     TranslocoDirective,
     TranslocoPipe,
+    AssistantLauncherComponent,
   ],
   templateUrl: './enhanced-layout.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
@@ -156,6 +160,11 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   isMobileSidenavOpen = signal(false);
   isSidenavCollapsed = computed(() => !this.isMobile() && this.sidenavService.isSidenavCollapsed());
   isFullScreen = computed(() => this.sidenavService.isFullScreen());
+  /** Issue #507: uygulama içi asistan; test çözme / etkinlik / tam ekranda gizli. */
+  readonly assistantPanel = inject(AssistantPanelService);
+  private readonly syncAssistantSuppressed = effect(() =>
+    this.assistantPanel.suppressed.set(this.isExamRoute() || this.isFullScreen())
+  );
   /** Issue #849: çözüm oturumu bölüm sekmelerini gizler. */
   readonly sectionTabsHidden = computed(() => this.sidenavService.sectionTabsHidden());
   /**
@@ -766,6 +775,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
 
 
   ngOnInit() {
+    this.assistantPanel.load();
     if (this.userRoles.includes('Admin') || this.userRoles.includes('Student')) {
       this.targetGoalService.getStatus().subscribe({ next: (status) => this.targetGoalsEnabled.set(status.enabled), error: () => undefined });
     }

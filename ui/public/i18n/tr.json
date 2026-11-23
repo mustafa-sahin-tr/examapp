@@ -137,6 +137,8 @@
     "toolbar": {
       "searchPlaceholder": "Test ara...",
       "notifications": "Bildirimler",
+      "assistant": "Asistan",
+      "assistantLabel": "Asistanı aç (Ctrl+K)",
       "notificationsUnread": "Bildirimler ({{count}} okunmamış)",
       "searchPlaceholderTeacher": "Testlerde ara..."
     },

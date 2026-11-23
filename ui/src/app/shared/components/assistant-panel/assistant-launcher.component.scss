@@ -1,0 +1,15 @@
+// Issue #507 — asistan FAB'ı. Mobilde alt navigasyonun (64px) üstünde.
+
+.assistant-fab {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 900;
+  background: var(--ms-action-background);
+  color: var(--ms-action-text-inverse);
+
+  &--mobile {
+    right: 16px;
+    bottom: calc(64px + 16px + env(safe-area-inset-bottom, 0px));
+  }
+}

@@ -139,6 +139,14 @@
               <app-color-scheme-toggle class="toolbar-scheme-toggle"></app-color-scheme-toggle>
             }
             @if( isAuthenticated | async) {
+              @if (assistantPanel.visible()) {
+                <!-- Issue #507: asistan paneli (Ctrl+K / ⌘K) -->
+                <button mat-stroked-button type="button" class="toolbar-assistant" data-testid="toolbar-assistant"
+                  [attr.aria-label]="t('toolbar.assistantLabel')" [attr.aria-expanded]="assistantPanel.isOpen()"
+                  (click)="assistantPanel.toggle()">
+                  <mat-icon>auto_awesome</mat-icon>{{ t('toolbar.assistant') }}
+                </button>
+              }
               <ng-container *ngTemplateOutlet="notificationBell; context: { $implicit: 'toolbar-notifications' }" />
               <button type="button" class="profile-menu" data-testid="user-menu-trigger" [matMenuTriggerFor]="profileMenu"
                 [attr.aria-label]="t('profile.menuLabel', { name: userName() })">
@@ -252,6 +260,8 @@
       </ng-template>
 
       <!-- Mobile Bottom Navigation Bar (sınav çözme ekranında gizli: ekranın kendi dock'u var) -->
+      <app-assistant-launcher [mobile]="isMobile()" />
+
       @if (isMobile() && !isExamRoute()) {
         <nav class="mobile-bottom-nav">
           @for (item of visibleBottomNavItems(); track item) {

@@ -57,8 +57,27 @@
   flex-wrap: wrap;
 
   &__text {
-    flex: 1;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
     min-width: 0;
+  }
+
+  &__test {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  &__book {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    color: var(--ms-text-medium);
+  }
+
+  &__spacer {
+    flex: 1;
   }
 
   &__nav {
@@ -200,6 +219,97 @@
 
   &__spacer {
     flex: 1;
+  }
+
+  // Çiz ve Tespit grupları arası ince çizgi; satır kırılınca gizlenmez, yalnız ayırır.
+  &__sep {
+    align-self: stretch;
+    width: 1px;
+    margin: 4px 2px;
+    background: var(--ms-border);
+  }
+}
+
+.lb-answer-count {
+  display: inline-flex;
+}
+
+// Araç satırı sığsın: düğmeler ve geçiş grupları sıkı (yükseklik 36px, yan boşluk az).
+.lb-toolbar {
+  gap: 8px;
+  --mat-button-toggle-height: 36px;
+  --mat-standard-button-toggle-height: 36px;
+  --mat-button-toggle-label-text-size: 13px;
+  --mat-standard-button-toggle-label-text-size: 13px;
+  --mat-button-outlined-container-height: 36px;
+  --mat-button-filled-container-height: 36px;
+  --mat-button-outlined-horizontal-padding: 12px;
+  --mat-button-filled-horizontal-padding: 14px;
+
+  .mat-button-toggle-appearance-standard .mat-button-toggle-label-content {
+    padding: 0 10px;
+  }
+}
+
+// Renk açıklaması: satırda yer kaplamaz, tıklayınca açılır (yerel <details>, klavyeyle açılır).
+.lb-legend-pop {
+  position: relative;
+
+  > summary {
+    list-style: none;
+    cursor: pointer;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+  }
+
+  .lb-legend {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 10px 12px;
+    border: 1px solid var(--ms-border);
+    border-radius: 10px;
+    background: var(--ms-surface-strong);
+    box-shadow: var(--ms-shadow-menu);
+  }
+
+  .lb-legend__item {
+    font-size: 12px;
+    color: var(--ms-text);
+  }
+}
+
+.lb-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--ms-border);
+  border-radius: 18px;
+  font-size: 13px;
+  color: var(--ms-text-strong);
+
+  &:hover {
+    background: var(--ms-surface-medium);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ms-focus-ring, var(--primaryColor));
+    outline-offset: 2px;
+  }
+
+  mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
   }
 }
 

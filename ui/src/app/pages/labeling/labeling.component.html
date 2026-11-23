@@ -26,16 +26,25 @@
   @if (fix(); as f) {
   <!-- #1023: kitap aktarımının bir sayfası düzeltiliyor; kayıt o sayfanın taslaklarının yerine geçer. -->
   <div class="lb-fix" role="status" data-testid="labeling-fix">
-    <mat-icon aria-hidden="true">edit_square</mat-icon>
-    <span class="lb-fix__text">{{ t(f.kind === 'QuickAdd' ? 'fix.bannerQuickAdd' : 'fix.banner', { book: f.bookName, test: f.testName, page: f.filePage }) }}</span>
-    <a mat-button [routerLink]="[f.kind === 'QuickAdd' ? '/quick-add' : '/book-imports', f.jobId]">{{ t('fix.back') }}</a>
-    @if (f.keyPages.length) {
-    <!-- #1176: cevap anahtarı sayfası; tıklayınca büyür. -->
-    <app-labeling-key-page [jobId]="f.jobId" [pages]="f.keyPages" />
+    <a mat-button class="lb-fix__back" [routerLink]="[f.kind === 'QuickAdd' ? '/quick-add' : '/book-imports', f.jobId]">
+      <mat-icon>arrow_back</mat-icon>{{ t('fix.back') }}</a>
+    <!-- Bağlam satırı: düzeltmede değişmeyen bilgiler çip; kaydın ne yaptığı kaydet düğmesinin ipucunda. -->
+    <span class="lb-fix__text" [matTooltip]="t(f.kind === 'QuickAdd' ? 'fix.bannerQuickAdd' : 'fix.banner', { book: f.bookName, test: f.testName, page: f.filePage })">
+      <strong class="lb-fix__test">{{ f.testName }}</strong>
+      @if (f.kind !== 'QuickAdd' && f.bookName) { <span class="lb-fix__book">{{ f.bookName }}</span> }
+      <span class="cdk-visually-hidden">{{ t(f.kind === 'QuickAdd' ? 'fix.bannerQuickAdd' : 'fix.banner', { book: f.bookName, test: f.testName, page: f.filePage }) }}</span>
+    </span>
+    @if (bookPage(); as page) {
+    <span class="lb-pill lb-fix__chip lb-book__page">
+      {{ page.printedPage != null ? t('book.printed', { printed: page.printedPage, file: page.filePage }) : t('book.noPrinted', { file: page.filePage }) }}
+    </span>
+    } @else if (f.kind !== 'QuickAdd') {
+    <span class="lb-pill lb-fix__chip">{{ t('fix.pageChip', { page: f.filePage }) }}</span>
     }
-    @if (f.hasOriginal) {
-    <!-- #1260: temizlenmiş sayfanın orijinali; işaretli şıklar görünür, panel tuvali kapatmaz. -->
-    <app-labeling-key-page [jobId]="f.jobId" [pages]="[f.filePage]" original />
+    @if (tocLabel(); as toc) {
+    <span class="lb-pill lb-pill--toc lb-fix__chip lb-book__toc" [matTooltip]="t('book.tocHint')">
+      <mat-icon aria-hidden="true">menu_book</mat-icon>{{ toc }}
+    </span>
     }
     @if (fixNav(); as nav) {
     @if (f.pages.length > 1 || nav.hasFlagged) {
@@ -72,6 +81,15 @@
       }
     </div>
     }
+    }
+    <span class="lb-fix__spacer"></span>
+    @if (f.keyPages.length) {
+    <!-- #1176: cevap anahtarı sayfası; tıklayınca büyür. -->
+    <app-labeling-key-page [jobId]="f.jobId" [pages]="f.keyPages" />
+    }
+    @if (f.hasOriginal) {
+    <!-- #1260: temizlenmiş sayfanın orijinali; işaretli şıklar görünür, panel tuvali kapatmaz. -->
+    <app-labeling-key-page [jobId]="f.jobId" [pages]="[f.filePage]" original />
     }
   </div>
   } @else if (fixLoading()) {
@@ -174,13 +192,14 @@
 
   @if (current()) {
   <div class="lb-toolbar" role="toolbar" [attr.aria-label]="t('toolbarLabel')">
-    <span class="lb-file" [title]="currentPath()">
-      <mat-icon aria-hidden="true">description</mat-icon>
-      <span class="lb-file__path">{{ currentPath() }}</span>
-    </span>
-
-    <span class="lb-group">
-      <span class="lb-group__label">{{ t('answerCount') }}</span>
+    <!-- Çiz: çizim modu, şık sayısı, hizala. -->
+    <span class="lb-group lb-group--tools" role="group" [attr.aria-label]="t('groupDraw')">
+      <span class="lb-group__label">{{ t('groupDraw') }}</span>
+      <mat-button-toggle-group hideSingleSelectionIndicator [value]="selectionMode()" [attr.aria-label]="t('drawMode')">
+        <mat-button-toggle value="question" (click)="setDrawMode('question')">{{ t('modeQuestion') }}</mat-button-toggle>
+        <mat-button-toggle value="answer" (click)="setDrawMode('answer')">{{ t('modeAnswer') }}</mat-button-toggle>
+      </mat-button-toggle-group>
+    <span class="lb-answer-count" [matTooltip]="t('answerCount')">
       <mat-button-toggle-group hideSingleSelectionIndicator [value]="answerCount()"
         (change)="setAnswerCount($event.value)" [attr.aria-label]="t('answerCount')">
         @for (count of answerCounts; track count) {
@@ -189,8 +208,16 @@
       </mat-button-toggle-group>
     </span>
 
+    <button mat-stroked-button type="button" (click)="align()" [disabled]="analysing() || sendingToFix()">
+      <mat-icon>align_horizontal_center</mat-icon>{{ t('align') }}
+    </button>
+    </span>
+
+    <span class="lb-toolbar__sep" aria-hidden="true"></span>
+
+    <!-- Tespit: kaynak (Manuel / Model / Claude) ve yeniden tespit. -->
     <span class="lb-group">
-      <span class="lb-group__label">{{ t('source.label') }}</span>
+      <span class="lb-group__label">{{ t('groupDetect') }}</span>
       <mat-button-toggle-group hideSingleSelectionIndicator [value]="detectionSource()?.kind ?? null"
         (change)="onSourceToggle($event)" [disabled]="sourceLocked()" [attr.aria-label]="t('source.label')">
         <mat-button-toggle value="Manual" [disabled]="!manualRecord()" [matTooltip]="t('source.manualHint')">
@@ -210,14 +237,16 @@
         </mat-select>
       </mat-form-field>
       }
-      <!-- Issue #578: Claude blok türü renkleri (tuvaldeki çerçeve / etiket rengi). -->
-      @if (showKindLegend()) {
-      <ul class="lb-legend" [attr.aria-label]="t('source.legend')">
-        @for (kind of blockKinds; track kind) {
-        <li class="lb-legend__item"><span class="lb-kind-dot lb-kind-dot--{{ kind }}" aria-hidden="true"></span>{{ t('inspector.kind.types.' + kind) }}</li>
-        }
-      </ul>
-      }
+    <button mat-stroked-button type="button" (click)="repredict()" [disabled]="analysing() || sendingToFix()">
+      <mat-icon>smart_toy</mat-icon>{{ t('predict') }}
+    </button>
+    </span>
+
+    @if (!fix()) {
+    <span class="lb-toolbar__sep" aria-hidden="true"></span>
+    <span class="lb-file" [title]="currentPath()">
+      <mat-icon aria-hidden="true">description</mat-icon>
+      <span class="lb-file__path">{{ currentPath() }}</span>
     </span>
 
     <span class="lb-group">
@@ -306,24 +335,24 @@
     </span>
     }
 
-    <mat-button-toggle-group hideSingleSelectionIndicator [value]="selectionMode()" [attr.aria-label]="t('drawMode')">
-      <mat-button-toggle value="question" (click)="setDrawMode('question')">{{ t('modeQuestion') }}</mat-button-toggle>
-      <mat-button-toggle value="answer" (click)="setDrawMode('answer')">{{ t('modeAnswer') }}</mat-button-toggle>
-    </mat-button-toggle-group>
-
-    <button mat-stroked-button type="button" (click)="repredict()" [disabled]="analysing() || sendingToFix()">
-      <mat-icon>smart_toy</mat-icon>{{ t('predict') }}
-    </button>
-    <button mat-stroked-button type="button" (click)="align()" [disabled]="analysing() || sendingToFix()">
-      <mat-icon>align_horizontal_center</mat-icon>{{ t('align') }}
-    </button>
-    @if (contentTeam && aiModels().length > 0) {
-    <button mat-stroked-button type="button" (click)="openPromptDialog()" [matTooltip]="t('source.promptHint')">
-      <mat-icon>tune</mat-icon>{{ t('source.prompt') }}
-    </button>
     }
 
     <span class="lb-toolbar__spacer"></span>
+    <!-- Issue #578: Claude blok türü renkleri; açılır kutuda (satırı doldurmaz). -->
+    @if (showKindLegend()) {
+    <details class="lb-legend-pop">
+      <summary class="lb-tool-btn"><mat-icon aria-hidden="true">palette</mat-icon>{{ t('source.legendShort') }}</summary>
+      <ul class="lb-legend" [attr.aria-label]="t('source.legend')">
+        @for (kind of blockKinds; track kind) {
+        <li class="lb-legend__item"><span class="lb-kind-dot lb-kind-dot--{{ kind }}" aria-hidden="true"></span>{{ t('inspector.kind.types.' + kind) }}</li>
+        }
+      </ul>
+    </details>
+    }
+    @if (contentTeam && aiModels().length > 0) {
+    <button mat-icon-button type="button" (click)="openPromptDialog()" [matTooltip]="t('source.prompt') + ': ' + t('source.promptHint')"
+      [attr.aria-label]="t('source.prompt')"><mat-icon>tune</mat-icon></button>
+    }
 
     <button mat-stroked-button type="button" (click)="toggleInspector()" [attr.aria-pressed]="showInspector()">
       <mat-icon>view_sidebar</mat-icon>{{ t('inspector.title') }}

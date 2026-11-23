@@ -1945,6 +1945,12 @@ describe('LabelingComponent', () => {
             expect(el.querySelector('.lb-stats')).toBeNull();
             expect(el.querySelector('.lb-train')).toBeNull();
             expect(localStorage.getItem('labeling.bookId')).toBeNull();
+            // Düzeltmede değişmeyen alanlar araç çubuğunda değil (dosya adı, sınıf, paylaşım, kitap seçici).
+            const toolbar = el.querySelector('.lb-toolbar')!;
+            expect(toolbar.querySelector('.lb-file')).toBeNull();
+            expect(toolbar.querySelector('.lb-grade')).toBeNull();
+            expect(toolbar.querySelector('.lb-book')).toBeNull();
+            expect(el.querySelector('.lb-fix__test')?.textContent?.trim()).toBe('1-02 · Kesirler');
         });
 
         // Issue #1176: testin cevap anahtarı sayfası şeritte küçük görsel; tıklayınca büyür.

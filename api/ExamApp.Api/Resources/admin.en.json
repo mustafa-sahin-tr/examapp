@@ -76,7 +76,8 @@
       "rateLimited": "Too many list requests in a short time. Please wait a moment and try again."
     },
     "dashboard": {
-      "invalidDays": "days must be between 1 and 365."
+      "invalidDays": "days must be between 1 and 365.",
+      "invalidClassificationGroup": "group must be notClassified or aiNoTopic."
     },
     "parentAccessAudits": {
       "invalidRange": "from must be earlier than to.",

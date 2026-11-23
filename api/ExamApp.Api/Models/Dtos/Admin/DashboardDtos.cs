@@ -18,6 +18,9 @@ public class DashboardSummaryDto
     /// <summary>AiClassifiedQuestionCount / QuestionCount, 0..1 aralığında. Soru yoksa 0.</summary>
     public double AiClassifiedRatio { get; set; }
 
+    /// <summary>Issue #1315: sınıflandırma kırılımı (AI, kitap, öğretmen, AI çalıştı ama konu yok, sınıflandırılmamış).</summary>
+    public ClassificationBreakdownDto Classification { get; set; } = new();
+
     /// <summary>
     /// Issue #441 hedef kümesi: Active velisi ve aktivasyon bekleyen daveti olmayan öğrenciler (hoşgörü sayacı henüz başlamamış olanlar
     /// dahil). Kayıp riskini izlemek için.
@@ -38,6 +41,40 @@ public class DashboardSummaryDto
 
     /// <summary>Issue #440: velisi henüz aktive etmemiş / onaylamamış (açık davetli) öğrenciler — kısıtlı mod.</summary>
     public int StudentsAwaitingParentActivation { get; set; }
+}
+
+/// <summary>
+/// Issue #1315: soruların sınıflandırma durumu. "Sınıflandırılmış" = ders ve konusu var (soru bankasının <c>classified</c>
+/// filtresiyle aynı kural); kaynağa göre AI / Book / Teacher (Human ya da kaynağı boş). Konusuz sorular: kaynağı AI ise
+/// sınıflandırıcı çalışmış ama konu bulamamış (<see cref="AiNoTopic"/>), değilse hiç sınıflandırılmamış (<see cref="NotClassified"/>).
+/// Yalnız yayındaki sorular sayılır (bkz. <see cref="Unpublished"/>).
+/// </summary>
+public class ClassificationBreakdownDto
+{
+    public int Ai { get; set; }
+    public int Book { get; set; }
+    public int Teacher { get; set; }
+    public int AiNoTopic { get; set; }
+    public int NotClassified { get; set; }
+
+    /// <summary>
+    /// Issue #690 ile yayından kaldırılmış ya da lisansı bitmiş sorular: yukarıdaki beş gruba girmez (soru bankasında görünmez,
+    /// yeniden sınıflandırılmaz). Beş grup + bu = <see cref="DashboardSummaryDto.QuestionCount"/>.
+    /// </summary>
+    public int Unpublished { get; set; }
+
+    /// <summary>(Ai + Book + Teacher) / beş grubun toplamı, 0..1. Yayında soru yoksa 0.</summary>
+    public double ClassifiedRatio { get; set; }
+}
+
+/// <summary>Issue #1315: "AI ile sınıflandır" / "Yeniden dene" sonucu.</summary>
+public class ClassificationRetryResultDto
+{
+    /// <summary>Bu çağrıda sınıflandırma olayı yazılan soru sayısı (en çok <c>BatchSize</c>).</summary>
+    public int Queued { get; set; }
+
+    /// <summary>Gruptaki sınıflandırılabilir sorulardan bu çağrıda kuyruğa alınmayanlar (sonraki çağrıya kalır).</summary>
+    public int Remaining { get; set; }
 }
 
 /// <summary>Günlük zaman serisinde tek bir nokta (UTC gün).</summary>

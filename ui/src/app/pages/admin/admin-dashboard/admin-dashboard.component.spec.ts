@@ -777,4 +777,88 @@ describe('AdminDashboardComponent', () => {
 
         expect(fixture.nativeElement.querySelector('[data-test="system-status"]')).toBeNull();
     });
+
+    // ── Issue #1315: sınıflandırma kırılımı ──────────────────────────────────
+    describe('classification breakdown (#1315)', () => {
+        const withBreakdown: AdminDashboardSummary = {
+            ...summary,
+            questionCount: 100,
+            aiClassifiedQuestionCount: 40,
+            aiClassifiedRatio: 0.4,
+            classification: { ai: 40, book: 30, teacher: 20, aiNoTopic: 6, notClassified: 4, unpublished: 0, classifiedRatio: 0.9 },
+        };
+
+        function render(s: AdminDashboardSummary): HTMLElement {
+            fixture = configure();
+            component = fixture.componentInstance;
+            adminService.getDashboardSummary.mockReturnValue(of(s));
+            (adminService as unknown as { retryClassification: ReturnType<typeof vi.fn> }).retryClassification = vi.fn();
+            fixture.detectChanges();
+            return fixture.nativeElement as HTMLElement;
+        }
+
+        it('template_BreakdownGiven_TopCardCountsAllClassifiedAndShowsFiveGroups', () => {
+            const el = render(withBreakdown);
+
+            expect(el.querySelector('[data-key="ai"] .summary-value')?.textContent).toContain('90');
+            expect(component.aiPercent()).toBe(90);
+            const keys = Array.from(el.querySelectorAll('.classification-list__item')).map((i) => i.getAttribute('data-key'));
+            expect(keys).toEqual(['ai', 'book', 'teacher', 'aiNoTopic', 'notClassified']);
+            expect(el.querySelector('[data-key="aiNoTopic"]')?.classList).toContain('classification-list__item--warn');
+            expect(el.querySelector('[data-key="book"] a')?.getAttribute('href')).toBe('/question-bank?scope=all&source=Book&status=classified');
+            expect(el.querySelector('[data-key="notClassified"] a')?.getAttribute('href')).toBe('/question-bank?scope=all&source=Human&status=unclassified');
+            expect(el.querySelector('[data-test="classification-retry-aiNoTopic"]')).not.toBeNull();
+            expect(el.querySelector('[data-test="classification-retry-notClassified"]')).not.toBeNull();
+        });
+
+        it('template_UnpublishedQuestions_TotalExcludesThemAndHintShown', () => {
+            const el = render({
+                ...withBreakdown,
+                questionCount: 120,
+                classification: { ...withBreakdown.classification!, unpublished: 20 },
+            });
+
+            expect(el.querySelector('[data-key="ai"] .summary-value')?.textContent).toContain('/ 100');
+            expect(el.querySelector('[data-test="classification-unpublished"]')?.textContent).toContain('20');
+        });
+
+        it('template_OldApiWithoutBreakdown_HidesSectionAndKeepsAiRatio', () => {
+            const el = render(summary);
+
+            expect(el.querySelector('[data-key="classificationBreakdown"]')).toBeNull();
+            expect(component.aiPercent()).toBe(75);
+        });
+
+        it('template_EmptyProblemGroups_NoRetryButtons', () => {
+            const el = render({ ...withBreakdown, classification: { ...withBreakdown.classification!, aiNoTopic: 0, notClassified: 0 } });
+
+            expect(el.querySelector('[data-test^="classification-retry-"]')).toBeNull();
+            expect(el.querySelector('[data-test="classification-unpublished"]')).toBeNull();
+        });
+
+        it('retryClassification_Click_CallsServiceAndShowsQueuedMessage', () => {
+            const el = render(withBreakdown);
+            const retry = (adminService as unknown as { retryClassification: ReturnType<typeof vi.fn> }).retryClassification;
+            retry.mockReturnValue(of({ queued: 4, remaining: 0 }));
+
+            (el.querySelector('[data-test="classification-retry-notClassified"]') as HTMLButtonElement).click();
+            fixture.detectChanges();
+
+            expect(retry).toHaveBeenCalledWith('notClassified');
+            expect(el.querySelector('[data-test="classification-retry-message"]')?.textContent).toContain('4 soru sınıflandırma sırasına alındı');
+            expect(component.retryingGroup()).toBeNull();
+        });
+
+        it('retryClassification_Error_ShowsErrorMessage', () => {
+            const el = render(withBreakdown);
+            const retry = (adminService as unknown as { retryClassification: ReturnType<typeof vi.fn> }).retryClassification;
+            retry.mockReturnValue(throwError(() => new Error('500')));
+
+            component.retryClassification('aiNoTopic');
+            fixture.detectChanges();
+
+            const message = el.querySelector('[data-test="classification-retry-message"]');
+            expect(message?.classList).toContain('classification-message--error');
+        });
+    });
 });

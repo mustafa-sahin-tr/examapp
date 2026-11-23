@@ -25,7 +25,7 @@ public class QuestionBankQuery
     public int? MinDifficulty { get; set; }
     public int? MaxDifficulty { get; set; }
 
-    /// <summary>Sınıflandırma kaynağı: <c>AI</c> | <c>Human</c>. Kaynağı boş (hiç sınıflandırılmamış) sorular hiçbirine uymaz.</summary>
+    /// <summary>Sınıflandırma kaynağı: <c>AI</c> | <c>Human</c> | <c>Book</c> (#1315). Kaynağı boş sorular hiçbirine uymaz.</summary>
     public string? Source { get; set; }
 
     /// <summary>

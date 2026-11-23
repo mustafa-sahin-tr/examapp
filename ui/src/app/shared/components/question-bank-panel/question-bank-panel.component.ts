@@ -30,7 +30,7 @@ import { QuestionBankPreviewDialogComponent } from './question-bank-preview-dial
 export const QUESTION_BANK_SCOPE = 'question-bank';
 
 export type QuestionBankScope = 'mine' | 'all';
-export type QuestionBankSourceFilter = 'any' | 'AI' | 'Human';
+export type QuestionBankSourceFilter = 'any' | 'AI' | 'Human' | 'Book';
 export type QuestionBankStatusFilter = 'any' | 'classified' | 'unclassified';
 export type QuestionBankAnswerFilter = 'any' | 'yes' | 'no';
 export type QuestionBankInTestFilter = 'any' | 'yes' | 'no';
@@ -125,7 +125,12 @@ export class QuestionBankPanelComponent {
       .filter((group) => group.skills.length > 0),
   );
 
-  readonly scope = signal<QuestionBankScope>('mine');
+  /** Issue #1315: açılış filtreleri (ör. admin panosundaki sınıflandırma grubundan gelen bağlantı); kullanıcı seçimi üzerine yazar. */
+  readonly initialScope = input<QuestionBankScope>('mine');
+  readonly initialSource = input<QuestionBankSourceFilter>('any');
+  readonly initialStatus = input<QuestionBankStatusFilter>('any');
+
+  readonly scope = linkedSignal<QuestionBankScope>(() => this.initialScope());
   // Başlangıç değeri input'tan gelir; kullanıcı seçimi (`onClassificationChange`) üzerine yazar.
   readonly classification = linkedSignal<ClassificationSelection | null>(() => this.initialClassification());
   /**
@@ -134,8 +139,8 @@ export class QuestionBankPanelComponent {
    */
   readonly initialClassification = input<ClassificationSelection | null>(null);
 
-  readonly source = signal<QuestionBankSourceFilter>('any');
-  readonly status = signal<QuestionBankStatusFilter>('any');
+  readonly source = linkedSignal<QuestionBankSourceFilter>(() => this.initialSource());
+  readonly status = linkedSignal<QuestionBankStatusFilter>(() => this.initialStatus());
   readonly answer = linkedSignal<QuestionBankAnswerFilter>(() => this.initialAnswerFilter());
   readonly inTest = signal<QuestionBankInTestFilter>('any');
   readonly difficulty = signal<QuestionBankDifficultyFilter>('any');

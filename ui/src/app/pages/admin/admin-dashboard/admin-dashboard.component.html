@@ -87,8 +87,8 @@
           @if (hasQuestions()) {
             <div class="summary-card__row">
               <span class="summary-value">
-                {{ s.aiClassifiedQuestionCount | number }}
-                <span class="summary-value__total">/ {{ s.questionCount | number }}</span>
+                {{ classifiedCount() | number }}
+                <span class="summary-value__total">/ {{ classifiableCount() | number }}</span>
               </span>
               <span class="summary-badge">{{ t('ai.percent', { value: aiPercent() | number: '1.0-0' }) }}</span>
             </div>
@@ -107,6 +107,49 @@
             <span class="summary-hint">{{ t('ai.noQuestions') }}</span>
           }
         </div>
+
+        <!-- Issue #1315: sınıflandırma kırılımı; her grup soru bankasına süzülmüş açılır, konusuz iki grup yeniden sınıflandırılabilir. -->
+        @if (classificationRows(); as rows) {
+          <section class="summary-card summary-card--classification" data-key="classificationBreakdown" [attr.aria-label]="t('classification.aria')">
+            <div class="summary-card__header">
+              <span class="summary-label">{{ t('classification.title') }}</span>
+              <mat-icon class="summary-icon" aria-hidden="true">category</mat-icon>
+            </div>
+            <dl class="classification-list">
+              @for (row of rows; track row.key) {
+                <div class="classification-list__item" [attr.data-key]="row.key" [class.classification-list__item--warn]="row.warn">
+                  <dt class="summary-hint">{{ t(row.labelKey) }}</dt>
+                  <dd class="summary-value">
+                    @if (row.value > 0) {
+                      <a class="parent-status-list__link" routerLink="/question-bank" [queryParams]="row.query"
+                        [attr.aria-label]="t('classification.openBank', { label: t(row.labelKey) })">{{ row.value | number }}</a>
+                    } @else {
+                      {{ row.value | number }}
+                    }
+                  </dd>
+                  @if (row.retry && row.value > 0) {
+                    <dd class="classification-list__action">
+                      <button mat-stroked-button type="button" [attr.data-test]="'classification-retry-' + row.retry"
+                        [disabled]="retryingGroup() !== null" (click)="retryClassification(row.retry)">
+                        <mat-icon aria-hidden="true">auto_awesome</mat-icon>
+                        {{ t(row.retry === 'aiNoTopic' ? 'classification.retry' : 'classification.classify') }}
+                      </button>
+                    </dd>
+                  }
+                </div>
+              }
+            </dl>
+            @if ((s.classification?.unpublished ?? 0) > 0) {
+              <p class="summary-hint classification-message" data-test="classification-unpublished">
+                {{ t('classification.unpublished', { count: s.classification!.unpublished | number }) }}
+              </p>
+            }
+            @if (retryMessage(); as m) {
+              <p class="summary-hint classification-message" [class.classification-message--error]="m.error" role="status"
+                data-test="classification-retry-message">{{ m.text }}</p>
+            }
+          </section>
+        }
 
         <!-- Issue #440/#441: veli kuralının hedef küme sayaçları. -->
         @if (parentStatusRows(); as rows) {

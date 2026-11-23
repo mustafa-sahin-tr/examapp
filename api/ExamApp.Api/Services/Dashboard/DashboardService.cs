@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
@@ -8,11 +9,16 @@ using ExamApp.Api.Models.Dtos.Admin;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using ExamApp.Api.Services.Parents;
+using ExamApp.Foundation.Contracts;
+using ExamApp.Foundation.Persistence;
 
 namespace ExamApp.Api.Services.Dashboard;
 
 public class DashboardService : IDashboardService
 {
+    /// <summary>Issue #1315: tek "AI ile sınıflandır" çağrısının kuyruğa aldığı en çok soru (sınıflandırıcı sırayla işler).</summary>
+    public const int ClassificationRetryBatchSize = 200;
+
     private readonly AppDbContext _context;
 
     // issue #265: gün kovaları yerel takvim günüdür (Dashboard:TimeZone, varsayılan Europe/Istanbul). DI'siz kurulumda varsayılan.
@@ -59,6 +65,8 @@ public class DashboardService : IDashboardService
         var failedOutbox = await _context.OutboxMessages.AsNoTracking()
             .CountAsync(m => m.ProcessedAt == null && m.Error != null, ct);
 
+        var classification = await GetClassificationBreakdownAsync(questionCount, ct);
+
         return new DashboardSummaryDto
         {
             StudentsWithoutParent = studentsWithoutParent,
@@ -72,8 +80,105 @@ public class DashboardService : IDashboardService
             WorksheetCount = worksheetCount,
             QuestionCount = questionCount,
             AiClassifiedQuestionCount = aiClassifiedCount,
-            AiClassifiedRatio = questionCount == 0 ? 0 : (double)aiClassifiedCount / questionCount
+            AiClassifiedRatio = questionCount == 0 ? 0 : (double)aiClassifiedCount / questionCount,
+            Classification = classification
         };
+    }
+
+    /// <summary>
+    /// Issue #1315: soru bankasında görünen sorular (#690: hak sahibi talebiyle kaldırılmamış, lisansı sürüyor). Kırılım ve yeniden
+    /// sınıflandırma yalnız bunlara bakar; kaldırılmış sorular bankada açılmaz ve sınıflandırılmalarına AI harcanmaz.
+    /// </summary>
+    private IQueryable<Question> PublishedQuestions()
+    {
+        var now = _time.GetUtcNow().UtcDateTime;
+        return _context.Questions.AsNoTracking()
+            .Where(q => !q.IsUnpublished && (q.LicenseEndsAt == null || q.LicenseEndsAt > now));
+    }
+
+    /// <summary>Issue #1315: kaynak × (ders + konu var mı) kırılımı; tek group-by sorgusu.</summary>
+    private async Task<ClassificationBreakdownDto> GetClassificationBreakdownAsync(int questionCount, CancellationToken ct)
+    {
+        var rows = await PublishedQuestions()
+            .GroupBy(q => new { q.ClassificationSource, Classified = q.SubjectId != null && q.TopicId != null })
+            .Select(g => new { g.Key.ClassificationSource, g.Key.Classified, Count = g.Count() })
+            .ToListAsync(ct);
+
+        var result = new ClassificationBreakdownDto();
+        foreach (var row in rows)
+        {
+            if (!row.Classified)
+            {
+                if (row.ClassificationSource == ClassificationSource.AI) result.AiNoTopic += row.Count;
+                else result.NotClassified += row.Count;
+            }
+            else if (row.ClassificationSource == ClassificationSource.AI) result.Ai += row.Count;
+            else if (row.ClassificationSource == ClassificationSource.Book) result.Book += row.Count;
+            else result.Teacher += row.Count; // Human ya da eski, kaynağı boş sorular
+        }
+
+        var classified = result.Ai + result.Book + result.Teacher;
+        var published = classified + result.AiNoTopic + result.NotClassified;
+        result.Unpublished = questionCount - published;
+        result.ClassifiedRatio = published == 0 ? 0 : (double)classified / published;
+        return result;
+    }
+
+    public async Task<ClassificationRetryResultDto> QueueClassificationRetryAsync(ClassificationRetryGroup group, CancellationToken ct = default)
+    {
+        // Konusuz sorular; alt konusu olan (kitap içindekilerinden) sorular yeniden sınıflandırılmaz. Öğretmen kilidi (#590) yalnız
+        // konuyla birlikte konur, bu yüzden kilitli sorular zaten bu kümede değildir.
+        var candidates = PublishedQuestions()
+            .Where(q => (q.SubjectId == null || q.TopicId == null) && !q.QuestionSubTopics.Any());
+        candidates = group == ClassificationRetryGroup.AiNoTopic
+            ? candidates.Where(q => q.ClassificationSource == ClassificationSource.AI)
+            : candidates.Where(q => q.ClassificationSource == null || q.ClassificationSource != ClassificationSource.AI);
+
+        var total = await candidates.CountAsync(ct);
+        var batch = await candidates
+            .OrderBy(q => q.Id)
+            .Take(ClassificationRetryBatchSize)
+            .Select(q => new
+            {
+                q.Id,
+                q.SubjectId,
+                q.TopicId,
+                q.Text,
+                // #565: taksonomi sorunun bağlı olduğu testin sınıfına daralır; testsiz soruda bütün taksonomi.
+                GradeId = _context.TestQuestions
+                    .Where(tq => tq.QuestionId == q.Id && tq.Worksheet.GradeId > 0)
+                    .OrderBy(tq => tq.Id)
+                    .Select(tq => (int?)tq.Worksheet.GradeId)
+                    .FirstOrDefault()
+            })
+            .ToListAsync(ct);
+
+        var queuedAt = _time.GetUtcNow().UtcDateTime;
+        foreach (var q in batch)
+        {
+            // Kaynak boş gönderilir: tüketici "AI" kaynaklı olayı atlar; sonuç yine ClassificationSource=AI olarak yazılır.
+            var @event = new QuestionCreatedEvent
+            {
+                QuestionId = q.Id,
+                SubjectId = q.SubjectId,
+                TopicId = q.TopicId,
+                GradeId = q.GradeId,
+                ClassificationSource = null,
+                SubTopicIds = new List<int>(),
+                TaxonomyLocked = false,
+                CreatedAt = queuedAt,
+                Text = q.Text
+            };
+            _context.OutboxMessages.Add(new OutboxMessage
+            {
+                Type = OutboxEventRegistry.NameFor<QuestionCreatedEvent>(),
+                Content = JsonSerializer.Serialize(@event),
+                CreatedAt = queuedAt
+            });
+        }
+
+        await _context.SaveChangesAsync(ct);
+        return new ClassificationRetryResultDto { Queued = batch.Count, Remaining = total - batch.Count };
     }
 
     public async Task<DashboardTrendsDto> GetTrendsAsync(int days, CancellationToken ct = default)

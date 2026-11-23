@@ -181,6 +181,24 @@
                 }
               </div>
 
+              @if (child.studentId) {
+                <!-- #523: velinin asistan seçimi; herhangi bir veli kapatırsa çocuk için kapalı. -->
+                <div class="pch__assistant" data-test="assistant-setting">
+                  <mat-slide-toggle
+                    data-test="assistant-toggle"
+                    [checked]="child.assistantAllowed !== false"
+                    [disabled]="assistantSavingId() === child.linkId"
+                    (change)="setAssistant(child, $event)"
+                  >
+                    {{ t('assistant.title') }}
+                  </mat-slide-toggle>
+                  <p class="pch__hint">{{ t('assistant.hint') }}</p>
+                  @if (child.assistantBlockedByOtherParent) {
+                    <p class="pch__hint pch__hint--strong" data-test="assistant-other-parent">{{ t('assistant.otherParent') }}</p>
+                  }
+                </div>
+              }
+
               @if (child.isPrimary) {
                 <section class="pch__family" data-test="family" [attr.aria-label]="t('family.title')">
                   <h3 class="pch__subtitle">{{ t('family.title') }}</h3>

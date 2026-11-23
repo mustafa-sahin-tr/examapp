@@ -78,6 +78,10 @@ export interface LinkedChild {
    * yoksa (eski yanıt) düğme gösterilmez.
    */
   canResetPassword?: boolean;
+  /** Issue #523: bu velinin seçimi — çocuk AI asistanı kullanabilir (varsayılan açık). */
+  assistantAllowed?: boolean;
+  /** Issue #523: başka bir veli asistanı kapattı (bu velinin seçimi açık olsa da kapalı). */
+  assistantBlockedByOtherParent?: boolean;
   /**
    * Issue #440: bağlantının kuruluş yolu (`LegacyV1` | `InviteCode` | `ParentCreated` | `StudentRegistered`). `StudentRegistered` +
    * `Pending`: öğrenci bu veliyi kayıtta davet etti — veli rızayla onaylar ya da reddeder (yalnız kısa öğrenci adı gelir).
@@ -145,4 +149,11 @@ export function formatInviteCode(code: string): string {
 /** Girdiden ayraçları atıp büyük harfe çevirir (sunucu da aynı normalize'ı yapar). */
 export function normalizeInviteCodeInput(value: string): string {
   return (value ?? '').replace(/[\s-]/g, '').toUpperCase();
+}
+
+/** Issue #523: `PUT parent/children/{studentId}/assistant` yanıtı. */
+export interface ChildAssistantState {
+  allowed: boolean;
+  /** Çocuk için geçerli durum (başka bir veli kapattıysa false). */
+  effectiveAllowed: boolean;
 }

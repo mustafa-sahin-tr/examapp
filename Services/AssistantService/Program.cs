@@ -85,6 +85,8 @@ else
         sp.GetRequiredService<InMemoryCounterStore>(), sp.GetRequiredService<ILogger<RedisCounterStore>>()));
 builder.Services.AddSingleton<UsageLimiter>();
 builder.Services.AddScoped<ChatTurnRunner>();
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<AssistantService.Security.ParentControl>(); // #523
 
 // #505: retention purge (Assistant:RetentionDays, every Assistant:PurgeIntervalMinutes) and the student reset consumer.
 builder.Services.AddScoped<AssistantDataCleaner>();

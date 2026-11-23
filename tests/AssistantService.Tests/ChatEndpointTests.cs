@@ -6,6 +6,9 @@ using System.Text.Json.Nodes;
 using AssistantService.Chat;
 using AssistantService.Data;
 using AssistantService.Endpoints;
+using AssistantService.Security;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
@@ -24,6 +27,8 @@ public sealed class ChatEndpointTests : IAsyncDisposable
     private readonly ChatHarness _h = new();
     private WebApplication? _app;
 
+    public ChatEndpointTests() => _h.Tools.Api.On("GET", ParentControl.AccessPath, new { allowed = true });
+
     private async Task<HttpClient> ClientAsync(string sub = "student-1")
     {
         if (_app is null)
@@ -34,6 +39,9 @@ public sealed class ChatEndpointTests : IAsyncDisposable
             builder.Services.AddScoped(sp => _h.Runner(sp.GetRequiredService<AssistantDbContext>()));
             builder.Services.AddSingleton(_h.Limiter);
             builder.Services.AddSingleton<TimeProvider>(_h.Tools.Clock);
+            builder.Services.AddMemoryCache();
+            builder.Services.AddScoped(sp => new ParentControl(_h.Tools.Downstream, sp.GetRequiredService<IMemoryCache>(),
+                NullLogger<ParentControl>.Instance));
             builder.Services.AddAuthentication(SubAuth.Scheme).AddScheme<AuthenticationSchemeOptions, SubAuth>(SubAuth.Scheme, _ => { });
             builder.Services.AddAuthorization();
             _app = builder.Build();
@@ -72,6 +80,43 @@ public sealed class ChatEndpointTests : IAsyncDisposable
     {
         var response = await ChatAsync(await ClientAsync(), new { message });
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task A_student_whose_parent_switched_the_assistant_off_is_refused_before_the_model()
+    {
+        _h.Tools.Api.On("GET", ParentControl.AccessPath, new { allowed = false });
+        var client = await ClientAsync();
+
+        var response = await ChatAsync(client, new { message = "selam" });
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await response.Content.ReadFromJsonAsync<JsonObject>())!["code"]!.GetValue<string>().ShouldBe(ParentControl.DisabledCode);
+        // Checked with the student's own token; no conversation was started.
+        _h.Tools.Api.Calls.ShouldContain(c => c.PathAndQuery == ParentControl.AccessPath && c.Authorization == "Bearer token-student-1");
+        await using var db = _h.Tools.NewDb();
+        (await db.Conversations.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task The_parent_check_is_cached_for_a_short_while_and_fails_closed()
+    {
+        var client = await ClientAsync();
+        _h.Model.Then(Text("a"), Usage(1, 1)).Then(Text("b"), Usage(1, 1));
+        (await ChatAsync(client, new { message = "bir" })).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await ChatAsync(client, new { message = "iki" })).StatusCode.ShouldBe(HttpStatusCode.OK);
+        _h.Tools.Api.Calls.Count(c => c.PathAndQuery == ParentControl.AccessPath).ShouldBe(1);
+
+        // Exam API cannot answer → refused (another user, nothing cached).
+        _h.Tools.Api.On("GET", ParentControl.AccessPath, null, HttpStatusCode.InternalServerError);
+        var other = await ClientAsync("student-2");
+        var refused = await ChatAsync(other, new { message = "selam" });
+        refused.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+
+        // The exam API's own 403 code passes through (e.g. the parent-required grace period ended).
+        _h.Tools.Api.On("GET", ParentControl.AccessPath, new { errorCode = "ParentRequired" }, HttpStatusCode.Forbidden);
+        var third = await ChatAsync(await ClientAsync("student-3"), new { message = "selam" });
+        third.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await third.Content.ReadFromJsonAsync<JsonObject>())!["code"]!.GetValue<string>().ShouldBe("ParentRequired");
     }
 
     [Fact]

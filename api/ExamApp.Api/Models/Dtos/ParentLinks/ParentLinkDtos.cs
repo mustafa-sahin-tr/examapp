@@ -197,6 +197,12 @@ public class LinkedChildDto
     /// </summary>
     public bool CanResetPassword { get; set; }
 
+    /// <summary>Issue #523: bu velinin seçimi — çocuk AI asistanı kullanabilir (varsayılan true). Pending satırda false.</summary>
+    public bool AssistantAllowed { get; set; }
+
+    /// <summary>Issue #523: çocuğun başka bir Active velisi asistanı kapattı (bu velinin seçimi açık olsa da kapalıdır).</summary>
+    public bool AssistantBlockedByOtherParent { get; set; }
+
     /// <summary>
     /// Issue #436: yalnız birincil veliye — çocuğun DİĞER Active velileri ve onay bekleyen ikinci veli istekleri; birincil
     /// olmayana ve Pending satıra boş.

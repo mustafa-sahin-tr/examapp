@@ -1,6 +1,7 @@
 using System.Text.Json;
 using AssistantService.Chat;
 using AssistantService.Data;
+using AssistantService.Security;
 using Microsoft.EntityFrameworkCore;
 
 namespace AssistantService.Endpoints;
@@ -21,9 +22,11 @@ public static class ChatEndpoints
         var group = app.MapGroup(AssistantGate.PathPrefix).RequireAuthorization();
 
         group.MapPost("/chat", async (ChatBody body, HttpContext http, ChatTurnRunner runner, UsageLimiter limiter,
-            ILoggerFactory loggers, IHostEnvironment env) =>
+            ILoggerFactory loggers, IHostEnvironment env, ParentControl parentControl) =>
         {
             var context = ToolEndpoints.ContextFrom(http);
+            if (await parentControl.RejectAsync(context) is { } refused)
+                return refused;
             var text = body.Message?.Trim();
             if (string.IsNullOrEmpty(text) || text.Length > ChatTurnRunner.MaxMessageLength)
                 return Results.BadRequest(new { code = "InvalidMessage", maxLength = ChatTurnRunner.MaxMessageLength });

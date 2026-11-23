@@ -91,6 +91,7 @@ describe('ParentChildrenComponent (issue #419, #436)', () => {
             approve: vi.fn().mockName("ParentLinkService.approve"),
             reject: vi.fn().mockName("ParentLinkService.reject"),
             createSecondParentCode: vi.fn().mockName("ParentLinkService.createSecondParentCode"),
+            setChildAssistant: vi.fn().mockName("ParentLinkService.setChildAssistant"),
             extractError: vi.fn().mockName("ParentLinkService.extractError"),
             errorCode: vi.fn().mockName("ParentLinkService.errorCode")
         } as unknown as MockedObject<ParentLinkService>;
@@ -414,6 +415,32 @@ describe('ParentChildrenComponent (issue #419, #436)', () => {
         expect(form).not.toBeNull();
         expect(form!.querySelector('#create-child')).not.toBeNull();
         expect(form!.textContent).toContain(parentLinksTr.createChild.title);
+    });
+
+    it('assistantToggle_SavesTheChoiceAndShowsTheOtherParentsBlock (issue #523)', () => {
+        const el = setup([{ ...ayse, studentId: 41, assistantAllowed: true }, pending]);
+        const rows = el.querySelectorAll('[data-test="child-row"]');
+        expect(rows[0].querySelector('[data-test="assistant-setting"]')).not.toBeNull();
+        expect(el.querySelectorAll('[data-test="assistant-setting"]').length).toBe(1);
+
+        service.setChildAssistant.mockReturnValue(of({ allowed: true, effectiveAllowed: false }));
+        const toggle = rows[0].querySelector<HTMLButtonElement>('[data-test="assistant-toggle"] button')!;
+        expect(toggle.getAttribute('aria-checked')).toBe('true');
+        toggle.click();
+        fixture.detectChanges();
+        expect(service.setChildAssistant).toHaveBeenCalledWith(41, false);
+        // Sunucu: bu velinin seçimi açık ama başka veli kapattı → not görünür.
+        expect(el.querySelector('[data-test="assistant-other-parent"]')?.textContent).toContain(parentLinksTr.assistant.otherParent);
+    });
+
+    it('assistantToggle_RevertsOnError (issue #523)', () => {
+        const el = setup([{ ...ayse, studentId: 41, assistantAllowed: true }]);
+        service.setChildAssistant.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+        const toggle = el.querySelector<HTMLButtonElement>('[data-test="assistant-toggle"] button')!;
+        toggle.click();
+        fixture.detectChanges();
+        expect(toggle.getAttribute('aria-checked')).toBe('true');
+        expect(snackBar.open).toHaveBeenCalledWith(parentLinksTr.assistant.error, expect.anything(), expect.anything());
     });
 
     it('resetPasswordButton_FollowsServerCanResetPassword (issue #438)', () => {

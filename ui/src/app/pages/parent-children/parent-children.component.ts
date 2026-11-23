@@ -10,6 +10,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSlideToggleChange, MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslocoDirective, TranslocoPipe, provideTranslocoScope } from '@jsverse/transloco';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -63,6 +64,7 @@ type AddPanel = 'create' | 'code';
     MatIconModule,
     MatInputModule,
     MatProgressSpinnerModule,
+    MatSlideToggleModule,
     MatTooltipModule,
     RouterLink,
     TranslocoDirective,
@@ -93,6 +95,8 @@ export class ParentChildrenComponent implements OnInit, AfterViewInit {
   protected readonly revokingId = signal<number | null>(null);
   protected readonly decidingId = signal<number | null>(null);
   protected readonly generatingId = signal<number | null>(null);
+  /** Issue #523: asistan ayarı kaydedilen çocuğun bağlantısı. */
+  protected readonly assistantSavingId = signal<number | null>(null);
   /** Issue #440: öğrenci davetlerinde rıza kutusunun durumu (bağlantı id'si → işaretli mi). */
   protected readonly consents = signal<Record<number, boolean>>({});
   /** Issue #440: rıza işaretlenmeden "Onayla"ya basılan davet (satır içi uyarı). */
@@ -178,6 +182,34 @@ export class ParentChildrenComponent implements OnInit, AfterViewInit {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe(() => this.ui.toast(this.ui.text('resetPw.done')));
+  }
+
+  /** Issue #523: çocuğun AI asistanı kullanmasını aç / kapat; hata olursa anahtar eski haline döner. */
+  protected setAssistant(child: LinkedChild, change: MatSlideToggleChange): void {
+    if (!child.studentId) return;
+    const allowed = change.checked;
+    this.assistantSavingId.set(child.linkId);
+    this.service
+      .setChildAssistant(child.studentId, allowed)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (state) => {
+          this.assistantSavingId.set(null);
+          this.children.update((list) =>
+            list.map((c) =>
+              c.linkId === child.linkId
+                ? { ...c, assistantAllowed: state.allowed, assistantBlockedByOtherParent: state.allowed && !state.effectiveAllowed }
+                : c,
+            ),
+          );
+          this.ui.toast(this.ui.text(state.allowed ? 'assistant.on' : 'assistant.off'));
+        },
+        error: () => {
+          this.assistantSavingId.set(null);
+          change.source.checked = !allowed;
+          this.ui.toast(this.ui.text('assistant.error'));
+        },
+      });
   }
 
   private scrolledAfterLoad = false;

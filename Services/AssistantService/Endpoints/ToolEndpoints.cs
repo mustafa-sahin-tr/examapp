@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using AssistantService.Data;
+using AssistantService.Security;
 using AssistantService.Tools;
 
 namespace AssistantService.Endpoints;
@@ -45,8 +46,11 @@ public static class ToolEndpoints
         });
 
         // #503: the only way a write tool's change happens. 404 = not yours / unknown, 410 = expired, 409 = already decided.
-        group.MapPost("/actions/{id:guid}/confirm", async (Guid id, HttpContext http, ToolExecutor executor) =>
+        group.MapPost("/actions/{id:guid}/confirm", async (Guid id, HttpContext http, ToolExecutor executor, ParentControl parentControl) =>
         {
+            // #523: a parent who switched the assistant off also stops an action proposed before that.
+            if (await parentControl.RejectAsync(ContextFrom(http)) is { } refused)
+                return refused;
             var (error, result) = await executor.ConfirmAsync(ContextFrom(http), id);
             return error switch
             {
@@ -65,9 +69,11 @@ public static class ToolEndpoints
         if (app.Environment.IsDevelopment())
         {
             group.MapPost("/tools/{name}/invoke", async (string name, JsonElement? args, HttpContext http, ToolExecutor executor,
-                AssistantDbContext db, TimeProvider clock) =>
+                AssistantDbContext db, TimeProvider clock, ParentControl parentControl) =>
             {
                 var context = ContextFrom(http);
+                if (await parentControl.RejectAsync(context) is { } refused)
+                    return refused;
                 var now = clock.GetUtcNow().UtcDateTime;
                 var conversation = new Conversation
                 {

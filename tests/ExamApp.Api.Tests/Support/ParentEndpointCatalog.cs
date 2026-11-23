@@ -170,6 +170,10 @@ public static class ParentEndpointCatalog
             "(14-day full refund for long plans), audited as children.plan-cancel; returns only access end + refund amount; " +
             "PlanCancellationEndpointsTests.",
         [$"{nameof(ParentController)}.{nameof(ParentController.CheckParent)}"] = "Own profile flag only; no child data.",
+        [$"{nameof(ParentChildAssistantController)}.{nameof(ParentChildAssistantController.Put)}"] =
+            "Parent write (#523): Active-link gate on studentId (unlinked / Pending 404, IDOR); sets the caller's own link flag " +
+            "(assistant on / off), audited as children.assistant-setting; returns only two booleans; " +
+            "ParentChildAssistantEndpointsTests.",
     };
 
     /// <summary>

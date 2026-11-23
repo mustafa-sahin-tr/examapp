@@ -574,6 +574,8 @@ export interface BookImportReviewApi {
   reimportTest?(id: string, testId: number): Observable<void>;
   /** #1169 Kitap aktarımı: hatalı tespit edilmiş taslak soruyu testten çıkar (hızlı eklemede yok). */
   removeQuestion?(id: string, testId: number, questionId: number): Observable<void>;
+  /** #1303 Kitap aktarımı: soru sayısı doğru (anahtar fazla / eksik okunmuş); sayı uyuşmazlığı işareti kalkar. */
+  acceptCount?(id: string, testId: number): Observable<void>;
   /** #1190 Kitap aktarımı: sayfanın görseli (hızlı eklemede yok); #1263 `original`: temizlenmemiş hali. */
   pageImage?(id: string, filePage: number, original?: boolean): Observable<Blob>;
 }

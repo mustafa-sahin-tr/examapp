@@ -790,6 +790,46 @@ public class BookQuestionImportTests : IDisposable
         job.Stage.ShouldBe(BookImportStage.Approval);
     }
 
+    // #1303: anahtar fazla okunmuş (3 cevap, 2 soru), sorular ve cevapları doğru: öğretmen sayıyı doğrular, test onaylanır.
+    [Fact]
+    public async Task Confirming_the_question_count_clears_the_count_mismatch_and_the_test_can_be_approved()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "ABC", [2])]);
+        Detect(1, 4, 4);
+        await RunAsync(id);
+        var test = await SingleTestAsync();
+
+        await using (var ctx = _db.NewContext())
+        {
+            var flagged = await ctx.BookImportJobTests.SingleAsync();
+            BookImportReviewFlag.Parse(flagged.ReviewFlagsJson).Select(f => (f.Code, f.Found, f.Expected))
+                .ShouldBe([(BookImportReviewFlag.CountMismatch, (int?)2, (int?)3)]);
+            var service = Service(ctx);
+            (await service.ApproveTestAsync(Owner, id, test.Id, default)).ShouldBe(BookImportReviewResult.Flagged);
+            (await service.AcceptQuestionCountAsync(Owner, id, test.Id, default)).ShouldBe(BookImportReviewResult.Ok);
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            var cleared = await ctx.BookImportJobTests.SingleAsync();
+            BookImportReviewFlag.Parse(cleared.ReviewFlagsJson).ShouldBeEmpty();
+            (cleared.Status, cleared.ExpectedQuestions, cleared.AnswerKey).ShouldBe((BookImportTestStatus.Done, (int?)2, "ABC"));
+            cleared.FixedAt.ShouldNotBeNull();
+            var service = Service(ctx);
+            // İşaret kalmadı: ikinci doğrulama geçersiz.
+            (await service.AcceptQuestionCountAsync(Owner, id, test.Id, default)).ShouldBe(BookImportReviewResult.InvalidState);
+        }
+
+        // Sonraki sayfa düzeltmesi doğrulanan sayıyla karşılaştırır: işaret geri gelmez, onay açılır.
+        await using (var ctx = _db.NewContext())
+            (await Fix(ctx).ReplacePageAsync(Owner, id, test.Id, 1, [Box(0, 0), Box(1, 1)], default)).Error.ShouldBe(BookImportPageFixError.None);
+        await using (var ctx = _db.NewContext())
+        {
+            BookImportReviewFlag.Parse((await ctx.BookImportJobTests.SingleAsync()).ReviewFlagsJson).ShouldBeEmpty();
+            (await Service(ctx).ApproveTestAsync(Owner, id, test.Id, default)).ShouldBe(BookImportReviewResult.Ok);
+        }
+    }
+
     [Fact]
     public async Task Approve_all_skips_blocked_tests_and_says_why()
     {

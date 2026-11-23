@@ -450,7 +450,9 @@
       "match": "Matching",
       "textSelect": "Mark in text",
       "crossword": "Crossword"
-    }
+    },
+    "acceptCount": "Question count is right",
+    "acceptCountHint": "If the questions and their answers are right: the extra or missing key answers are ignored and the warning clears."
   },
   "later": {
     "title": "Later",

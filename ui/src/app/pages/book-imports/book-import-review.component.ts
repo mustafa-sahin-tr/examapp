@@ -177,6 +177,8 @@ export class BookImportReviewComponent implements OnInit {
     return page == null ? [] : this.tests().filter((t) => t.fileFrom != null && t.fileTo != null && t.fileFrom <= page && page <= t.fileTo);
   });
   readonly canViewPage = computed(() => !!this.api.pageImage);
+  /** #1303: yalnız kitap aktarımında (hızlı eklemede anahtar sayısı kurulumda düzeltilir). */
+  readonly canAcceptCount = computed(() => !!this.api.acceptCount);
   readonly canBrowseBook = computed(() => this.canViewPage() && !this.perImage() && (this.pageCount() ?? 0) > 0);
   private pageViewObjectUrl: string | null = null;
   private readonly pageClose = viewChild('pageClose', { read: ElementRef<HTMLElement> });
@@ -443,6 +445,12 @@ export class BookImportReviewComponent implements OnInit {
       },
       error: (e: HttpErrorResponse) => this.fail(e),
     });
+  }
+
+  /** #1303: anahtar fazla / eksik okunmuş, sorular doğru: öğretmen sayıyı doğrular, işaret kalkar. */
+  acceptCount(test: BookImportJobTest): void {
+    const request = this.api.acceptCount?.(this.jobId(), test.id);
+    if (request) this.run(test.id, request, () => undefined);
   }
 
   approve(test: BookImportJobTest): void {

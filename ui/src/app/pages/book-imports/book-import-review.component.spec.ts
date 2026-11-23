@@ -319,6 +319,35 @@ describe('BookImportReviewComponent (#1023)', () => {
     expect(flags).not.toContain('sayfa 8–10');
   });
 
+  it('flags_CountMismatch_TeacherConfirmsTheCount (#1303)', () => {
+    const acceptCount = vi.fn().mockReturnValue(of(undefined));
+    setup([test({
+      id: 7, status: 'NeedsReview',
+      reviewFlags: [{ code: 'countMismatch', pages: [22, 23], numbers: null, found: 12, expected: 13 }],
+    })], true, { acceptCount });
+    button(rows()[0], 'Uyarılar').click();
+    fixture.detectChanges();
+
+    const accept = el().querySelector<HTMLButtonElement>('[data-testid="accept-count"]')!;
+    expect(accept.textContent).toContain('Soru sayısı doğru');
+    accept.click();
+    fixture.detectChanges();
+
+    expect(acceptCount).toHaveBeenCalledWith('a1', 7);
+    expect(changed).toBe(1);
+  });
+
+  it('flags_CountMismatch_NoConfirmWithoutTheAction (#1303)', () => {
+    setup([test({
+      status: 'NeedsReview',
+      reviewFlags: [{ code: 'countMismatch', pages: [22, 23], numbers: null, found: 12, expected: 13 }],
+    })]);
+    button(rows()[0], 'Uyarılar').click();
+    fixture.detectChanges();
+
+    expect(el().querySelector('[data-testid="accept-count"]')).toBeNull();
+  });
+
   it('flags_ViewPageOpensTheTestPagesWithoutLeaving (#1190, #1263)', () => {
     const pageImage = vi.fn().mockReturnValue(of(new Blob(['x'], { type: 'image/webp' })));
     setup([test({

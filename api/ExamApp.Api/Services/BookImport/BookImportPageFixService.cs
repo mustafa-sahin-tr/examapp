@@ -183,7 +183,8 @@ public sealed class BookImportPageFixService(
                 old.Concat(removedActivities).Select(l => l.Number).OfType<int>().Concat(numbers).ToHashSet(),
                 kept.Where(k => k.Question.CorrectOptionIndex < 0).Select(k => k.Number).ToList(),
                 kept.Where(k => k.Question.Options.Count != BookQuestionImportStage.ExpectedOptions).Select(k => k.Number).ToList(),
-                liveQuestions, test.AnswerKey?.Length, from, to);
+                // #1303: incelemede doğrulanan sayı (ExpectedQuestions) anahtar uzunluğunun yerine geçer.
+                liveQuestions, test.AnswerKey is null ? null : test.ExpectedQuestions ?? test.AnswerKey.Length, from, to);
             test.QuestionsFound = Math.Max(0, test.QuestionsFound - old.Count - removedActivities.Count + questions.Count);
             test.QuestionsSaved = live;
             test.DuplicatesSkipped += saved.DuplicateIndexes.Count;

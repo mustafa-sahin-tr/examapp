@@ -2151,7 +2151,7 @@ describe('LabelingComponent', () => {
         it('fix_SaveOnTheLastFlaggedPage_MovesToTheNextFlaggedTest_ThenBack', async () => {
             routeUrl = '/?bookImport=j1&test=3&page=12';
             const flags = (pages: number[]) => [{ code: 'extraQuestions', pages, numbers: [5], found: null, expected: null }];
-            const current = { ...test, status: 'NeedsReview', order: 1, worksheetId: 1, fileFrom: 11, fileTo: 12, reviewFlags: flags([12]) } as BookImportJobTest;
+            const current = { ...test, status: 'NeedsReview', order: 1, worksheetId: 1, fileFrom: 12, fileTo: 12, reviewFlags: flags([12]) } as BookImportJobTest;
             const other = { ...test, id: 4, testNo: 3, title: 'Ondalık', status: 'NeedsReview', order: 2, worksheetId: 2, fileFrom: 13, fileTo: 15,
                 reviewFlags: flags([14]) } as BookImportJobTest;
             await setupWith(() => {
@@ -2176,6 +2176,31 @@ describe('LabelingComponent', () => {
             (fixture.nativeElement.querySelector('[data-testid="labeling-fix-save"]') as HTMLButtonElement).click();
             expect(navigate).toHaveBeenCalledWith(['/book-imports', 'j1']);
             expect(snack.mock.calls.at(-1)![0]).toContain('Sorunlu test kalmadı');
+        });
+
+        // Düzeltilen testin bakılmamış (işaretsiz) sayfası, sıradaki teste geçmeden önce açılır.
+        it('fix_SaveOpensTheTestsUnseenPageBeforeTheNextTest', async () => {
+            routeUrl = '/?bookImport=j1&test=3&page=12';
+            const flags = (pages: number[]) => [{ code: 'extraQuestions', pages, numbers: [5], found: null, expected: null }];
+            const current = { ...test, status: 'NeedsReview', order: 1, worksheetId: 1, fileFrom: 11, fileTo: 12, reviewFlags: flags([12]) } as BookImportJobTest;
+            const other = { ...test, id: 4, testNo: 3, title: 'Ondalık', status: 'NeedsReview', order: 2, worksheetId: 2, fileFrom: 13, fileTo: 15,
+                reviewFlags: flags([14]) } as BookImportJobTest;
+            await setupWith(() => {
+                bookImportsApi.get.mockReturnValue(of({ ...job, tests: [current, other] }));
+                bookImportsApi.pageImage.mockReturnValue(of(new Blob(['webp'], { type: 'image/webp' })));
+                bookImportsApi.replacePage.mockReturnValue(of({ saved: 1, duplicates: 0, removed: 1, answerless: 0 }));
+            });
+            const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+            const snack = vi.spyOn(TestBed.inject(MatSnackBar), 'open');
+            bookImportsApi.get.mockReturnValue(of({ ...job, tests: [{ ...current, status: 'Done', reviewFlags: [] }, other] }));
+
+            selector().regions.set([mcq('q1', 1)]);
+            fixture.detectChanges();
+            (fixture.nativeElement.querySelector('[data-testid="labeling-fix-save"]') as HTMLButtonElement).click();
+
+            expect(navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { page: 11 } }));
+            expect(navigate).not.toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { test: 4, page: 14 } }));
+            expect(snack.mock.calls.at(-1)![0]).toContain('bakmadığınız sayfası açılıyor (s. 11)');
         });
 
         // #1129: aktarım sayfası Claude ile tespit edilmişti; düzeltmede YOLO yerine Claude (kayıtlı sonuç önbellekten).

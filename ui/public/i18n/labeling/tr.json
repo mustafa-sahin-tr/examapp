@@ -35,6 +35,7 @@
     "hint": "Sayfadaki çoktan seçmeli sorular bu sayfanın taslaklarının yerine geçer; doğru şık işaretlenmezse kitabın cevap anahtarından alınır. Tuvalden sildiğiniz ya da soruya çevirdiğiniz etkinlikler de testten çıkar.",
     "saved": "{{saved}} soru kaydedildi, {{removed}} eski taslak kaldırıldı.",
     "nextPage": "Testin sıradaki sorunlu sayfası açılıyor (s. {{page}}).",
+    "unseenPage": "Testin bakmadığınız sayfası açılıyor (s. {{page}}): düzeltme buradaki numaraları ve cevapları etkilemiş olabilir. Kontrol edip \"Taslakları değiştir\" deyin; sıradaki teste öyle geçilir.",
     "nextTest": "Sıradaki sorunlu teste geçiliyor: {{test}}.",
     "noneLeft": "Sorunlu test kalmadı; aktarım sayfasına dönülüyor.",
     "duplicates": "{{count}} soru zaten bankada olduğu için atlandı.",

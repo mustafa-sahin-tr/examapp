@@ -386,7 +386,8 @@ olarak aktarılır. Yalnız kitap aktarımında; hızlı ekleme ve karışık g�
 - **İşaretlemede düzelt** (karar: seçenek 1 — sayfanın taslaklarını değiştir): satırdaki menü testin sayfalarını listeler
   (inceleme işaretinde geçenler bayraklı), önizlemede her sorunun yanında da kısayol var. `/labeling?bookImport=&test=&page=`
   klasör yerine işin sayfa görselini açar (kitap kilitli, sayaçlar gizli); tespit her zamanki kaynaklardan (aktarımın Claude
-  sonucu önbellekte, maliyetsiz). "Taslakları değiştir" → `PUT {id}/tests/{testId}/pages/{filePage}/questions`
+  sonucu önbellekte, maliyetsiz); Claude kutuları aktarımın kaydettiği gibi gelir (#1301, `ai-detect` `bookLayout`: şıklar
+  `Prepare` sırasıyla paylanır, soru şıkları kapsar; önbellekteki kayıt değişmez), dokunmadan kayıt şık satırını kesmez. "Taslakları değiştir" → `PUT {id}/tests/{testId}/pages/{filePage}/questions`
   (`BookImportPageFixService`): görsel sunucuda işin sayfasından okunur; yeni sorular taslak kaydedilir (eski taslakların
   kırpmaları tekrar sayılmaz, `ReplacingQuestionIds`), sonra tek transaction'da eskiler soft-delete, yeniler eskilerin
   sırasına (eskisi yoksa önceki sayfaların sorularından sonra) bağlanır. Numara (#1171): madde etiketi sayıysa o; yoksa kutunun

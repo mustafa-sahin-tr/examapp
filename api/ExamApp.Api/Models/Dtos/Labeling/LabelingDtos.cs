@@ -240,6 +240,9 @@ public class LabelingAiDetectRequestDto
 
     /// <summary>true: kayıt olsa da Claude'a yeniden sor ve kaydın üzerine yaz.</summary>
     public bool Force { get; set; }
+
+    /// <summary>#1301: kitap aktarımı düzeltmesi — şıklar paylanır, soru şıkları kapsar (aktarımın kaydettiği kutular).</summary>
+    public bool BookLayout { get; set; }
 }
 
 /// <summary><c>Origin</c>: <c>live</c> (Claude'a gerçekten soruldu) veya <c>cached</c> (kayıtlı sonuç, maliyet yok).</summary>

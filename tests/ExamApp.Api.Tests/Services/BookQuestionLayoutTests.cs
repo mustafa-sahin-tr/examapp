@@ -204,4 +204,34 @@ public class BookQuestionLayoutTests
 
         prepared.Options.Select(o => (o.X, o.Y)).ShouldBe([(125, 475), (575, 475), (125, 625), (575, 625)]);
     }
+
+    // Issue #1301: düzeltme tuvali ham Claude kutularını gösteriyordu; kayıtta şık satırı kesiliyordu.
+    [Fact]
+    public void PrepareForCanvas_PadsOptions_GrowsTheQuestion_OrdersByLetter_AndLeavesTheInputAlone()
+    {
+        static ExamApp.Api.Models.Dtos.Labeling.PredictionDto P(int x, int y, int w, int h, string? label = null) =>
+            new() { X = x, Y = y, Width = w, Height = h, Label = label };
+        var question = P(200, 400, 1000, 900);
+        // Şıklar soru kutusunun altına taşıyor, sıra karışık (B önce).
+        question.Subpredictions = [P(500, 1280, 120, 50, "B"), P(210, 1280, 120, 50, "A"), P(800, 1280, 120, 50, "C"), P(1080, 1280, 120, 50, "D")];
+        var activity = P(1300, 400, 800, 600);
+        activity.Kind = "activity";
+        var input = new ExamApp.Api.Models.Dtos.Labeling.PredictionListDto { Predictions = [question, activity] };
+
+        var output = BookQuestionLayout.PrepareForCanvas(input, Width, Height);
+
+        var q = output.Predictions[0];
+        var expected = BookQuestionLayout.Prepare(new LayoutQuestion(B(200, 400, 1000, 900),
+            [B(210, 1280, 120, 50), B(500, 1280, 120, 50), B(800, 1280, 120, 50), B(1080, 1280, 120, 50)],
+            ["A", "B", "C", "D"]), Width, Height);
+        B(q.X, q.Y, q.Width, q.Height).ShouldBe(expected.Box);
+        (q.Y + q.Height).ShouldBe(1280 + 50 + 25); // şık + pay
+        q.Subpredictions.Select(o => o.Label).ShouldBe(["A", "B", "C", "D"]);
+        q.Subpredictions.Select(o => B(o.X, o.Y, o.Width, o.Height)).ShouldBe(expected.Options);
+        output.Predictions[1].X.ShouldBe(1300);
+        output.Predictions[1].Height.ShouldBe(600);
+
+        question.Height.ShouldBe(900);
+        question.Subpredictions[0].Label.ShouldBe("B");
+    }
 }

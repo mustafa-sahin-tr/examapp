@@ -30,7 +30,6 @@ DIGITS = "0123456789"
 # Medyan için en çok bu kadar sayfa (tam çözünürlükte sayfa başına ~23 MB; bellek sınırı).
 MAX_TEMPLATE_PAGES = 32
 MIN_TEMPLATE_PAGES = 8
-MARK_SAMPLE_PAGES = 30
 FONT_PATHS = (
     "/System/Library/Fonts/HelveticaNeue.ttc",
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
@@ -227,29 +226,6 @@ def text_colour(img: np.ndarray) -> float:
     return float(np.percentile(lum[neutral], 10)) if neutral.any() else 40.0
 
 
-def learn_mark_colour(images: list, reads_per_colour: int = 12):
-    """
-    Şık harfi taşıyan kutuların rengi. Harf okumak pahalı (resimlerde çok renkli leke olur): kutular önce renge göre gruplanır,
-    kalabalıktan seyreğe her gruptan birkaç kutu okunur; harf okunan ilk grup işaret rengidir. (renk ya da None, okunan işaret).
-    """
-    groups = collections.defaultdict(list)
-    for img in images:
-        boxes, mask = colour_boxes(img)
-        for sl in boxes:
-            c = np.median(img[sl][mask[sl]], axis=0)
-            groups[tuple((c // 40).astype(int))].append((img, sl, mask, c))
-    for _, boxes in sorted(groups.items(), key=lambda g: -len(g[1])):
-        if len(boxes) < 3:
-            break
-        step = max(1, len(boxes) // reads_per_colour)
-        sample = boxes[::step][:reads_per_colour]
-        read = [c for img, sl, mask, c in sample if (r := read_box(img, sl, mask)) and r[0] in LABELS]
-        # Grubun çoğu şık harfi: işaret rengi bu.
-        if len(read) >= 3 and len(read) * 2 >= len(sample):
-            return [int(v) for v in np.median(read, axis=0).round()], len(boxes)
-    return None, 0
-
-
 def remove_marks(img: np.ndarray, colour):
     """İşaret kutularını siler, harfi düz yazıyla yeniden yazar; (sayfa, işaretler [{letter,x,y,w,h}])."""
     boxes, mask = colour_boxes(img, colour)
@@ -275,7 +251,7 @@ def remove_marks(img: np.ndarray, colour):
 # ---------------------------------------------------------------- service
 
 def analyze(pages: list, mark_colour=None) -> dict:
-    """Örnek sayfalardan filigran şablonları (boyut başına) ve işaret rengi. Sonuç jetonla bellekte tutulur."""
+    """Örnek sayfalardan filigran şablonları (boyut başına); işaret rengi yalnız verildiyse. Sonuç jetonla bellekte tutulur."""
     if not available():
         raise RuntimeError("page cleaning is not available")
     images = [_rgb(p) for p in pages]
@@ -294,10 +270,9 @@ def analyze(pages: list, mark_colour=None) -> dict:
         templates[size] = f.astype(np.float16)
         watermarks.append({"size": size, "colour": [int(c) for c in colour], "pixels": int(keep.sum())})
 
+    # 2026-11-23: işaret rengi kendiliğinden aranmaz. Renkli kutularında harf okunmayan kitapta her renk grubu denenip analiz
+    # 10 dakikayı aşıyordu (5. sınıf Türkçe, 21 grup); renk kurulum ekranında "İşaret rengini seç" ile verilir.
     marks_seen = 0
-    if mark_colour is None:
-        step = max(1, len(images) // MARK_SAMPLE_PAGES)
-        mark_colour, marks_seen = learn_mark_colour(images[::step][:MARK_SAMPLE_PAGES])
 
     token = uuid.uuid4().hex
     analysis = {"templates": templates, "mark_colour": mark_colour}

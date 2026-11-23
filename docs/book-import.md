@@ -217,9 +217,11 @@ vardır; ikisi de kırpmalara girer. Sayfalar aşamasının sonunda, kurulum tar
   `BookImport:PageCleanerUrl`, boşsa `BookImport:TranscriberUrl` (aynı servis); hizmet yoksa (detector kapalı, scipy yok) adım
   atlanır, sayfalar orijinal kalır. Demoda `demo.sh detector up` gerekir.
 - **Analiz:** en çok 32 örnek sayfa gönderilir. Filigran: sayfaların piksel medyanında sayfa kenarına değmeyen büyük, açık, düz
-  lekeler; çarpma biçimli örtü olarak bölünür (yazının üstündeki filigran da gider). İşaret rengi: doygun renkli küçük kutular
-  renge göre gruplanır, harf okunan ilk kalabalık grup (A–E; rakamlar değil). Analiz bellekte jetonla tutulur (servis yeniden
-  başlarsa API yeniden analiz eder).
+  lekeler; çarpma biçimli örtü olarak bölünür (yazının üstündeki filigran da gider). İşaret rengi kendiliğinden ARANMAZ
+  (2026-11-23): renkli kutularında şık harfi okunmayan kitapta (5. sınıf Türkçe, 21 renk grubu) her grup denenip analiz 10
+  dakikalık istemci sınırını aşıyor, temizlik `Failed` oluyordu. Renk yalnız kurulum ekranında "İşaret rengini seç" ile verilir
+  (düğme her zaman görünür); otomatik temizlik yalnız filigranı siler. Analiz bellekte jetonla tutulur (servis yeniden başlarsa
+  API yeniden analiz eder).
 - **Sayfa başına:** kutu silinir, harf sayfanın yazı renginde yeniden yazılır. Temiz kopya `book-imports/{id}/clean/0005.webp`,
   `BookImportPage.ImageUrl` temiz olanı gösterir, orijinal `OriginalImageUrl`'de; silinen işaretler (harf + kutu) `MarksJson`'da
   (#1235 cevap anahtarı için). Kurulum, soru tespiti, düzeltme ve görüntüleyiciler değişmeden temiz sayfayı okur.

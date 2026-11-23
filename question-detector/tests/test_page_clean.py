@@ -62,6 +62,14 @@ def test_too_few_pages_find_nothing_and_unknown_token_expires():
     assert page_clean.get_analysis("missing") is None
 
 
+def test_mark_colour_is_not_searched_without_a_pick():
+    """2026-11-23: renk kendiliğinden aranmaz (çok renkli kitapta analiz 10 dakikayı aşıyordu); yalnız filigran."""
+    pages = [webp(page(i, mark=True)) for i in range(10)]
+    result = page_clean.analyze(pages)
+    assert result["markColour"] is None and result["marksSeen"] == 0
+    assert result["watermarks"]
+
+
 def test_picked_mark_colour_is_used_and_marks_are_returned():
     pages = [webp(page(i, mark=True)) for i in range(10)]
     result = page_clean.analyze(pages, mark_colour=[182, 23, 113])

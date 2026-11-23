@@ -78,7 +78,11 @@ public sealed class BookImportPageFixService(
         var (keptActivities, removedActivities) = SplitActivities(
             links.Where(l => l.FilePage == filePage && l is { IsDraft: true, IsActivity: true }).ToList(), activities);
         var oldIds = old.Select(l => l.QuestionId).ToList();
+        // #1320: yarıda kesilen bir düzeltmenin bıraktığı, hiçbir teste bağlı olmayan taslaklar da değiştirilir (kopya sayılmaz,
+        // silinir); sayılara ve işaretlere girmezler.
+        var orphanIds = await OrphanDraftsAsync(bookId, filePage, job.CreateUserId!.Value, ct);
         var replacedIds = oldIds.Concat(removedActivities.Select(l => l.QuestionId)).ToList();
+        var deletedIds = replacedIds.Concat(orphanIds).Distinct().ToList();
         var start = old.Concat(removedActivities).Select(l => l.Number).Where(n => n is not null).Min()
                     ?? (links.Where(l => l.FilePage < filePage).Select(l => l.Number).Max() ?? 0) + 1;
 
@@ -133,71 +137,84 @@ public sealed class BookImportPageFixService(
                 .Where(p => p.QuestionIndexes.Count > 0)
                 .ToList();
             saved = await bank.SaveImportedPageAsync(new LabelingImportPageRequest(
-                image, bookId, filePage, job.GradeId, QuestionBankSharing.Private, toSave, oldIds, Passages: importPassages),
-                job.CreateUserId.Value, ct);
+                image, bookId, filePage, job.GradeId, QuestionBankSharing.Private, toSave, oldIds.Concat(orphanIds).ToList(),
+                Passages: importPassages), job.CreateUserId.Value, ct);
         }
+        // #1320: yeni taslaklar kaydedildi; bağlama artık istek iptaliyle yarıda kesilmez (yetim taslak kalmasın). Bağlama
+        // yine de başarısız olursa yeni taslaklar silinir.
+        ct = CancellationToken.None;
 
         // Kaydedilen (kırpması tekrar olmayan) sorular ve numaraları.
         var kept = toSave.Select((q, i) => (Question: q, Number: numbers[i], Index: i))
             .Where(k => !saved.DuplicateIndexes.Contains(k.Index)).ToList();
 
         var strategy = db.Database.CreateExecutionStrategy();
-        await strategy.ExecuteAsync(async () =>
+        try
         {
-            await using var tx = await db.Database.BeginTransactionAsync(ct);
-            var now = DateTime.UtcNow;
-            if (replacedIds.Count > 0)
+            await strategy.ExecuteAsync(async () =>
             {
-                await db.Questions.IgnoreQueryFilters([DraftQueryFilter.Key])
-                    .Where(q => replacedIds.Contains(q.Id) && q.IsDraft)
-                    .ExecuteUpdateAsync(s => s
-                        .SetProperty(q => q.IsDeleted, true)
-                        .SetProperty(q => q.DeleteTime, now)
-                        .SetProperty(q => q.DeleteUserId, owner.UserId), ct);
-            }
+                await using var tx = await db.Database.BeginTransactionAsync(ct);
+                var now = DateTime.UtcNow;
+                if (deletedIds.Count > 0)
+                {
+                    await db.Questions.IgnoreQueryFilters([DraftQueryFilter.Key])
+                        .Where(q => deletedIds.Contains(q.Id) && q.IsDraft)
+                        .ExecuteUpdateAsync(s => s
+                            .SetProperty(q => q.IsDeleted, true)
+                            .SetProperty(q => q.DeleteTime, now)
+                            .SetProperty(q => q.DeleteUserId, owner.UserId), ct);
+                }
 
-            var worksheet = test.WorksheetId is { } worksheetId
-                ? await db.Worksheets.IgnoreQueryFilters([DraftQueryFilter.Key]).AsTracking().Include(w => w.WorksheetQuestions)
-                    .FirstOrDefaultAsync(w => w.Id == worksheetId && w.IsDraft && !w.IsDeleted, ct)
-                : null;
-            // Yeni taslak test işin sahibinin damgasıyla yazılır (taslağın sahibi işin sahibi), düzeltme düzeltenin.
-            db.SetCurrentUser(owner.UserId);
-            if (worksheet is null && saved.QuestionIds.Count > 0)
-            {
-                worksheet = BookQuestionImportStage.NewDraftTest(job, test);
-                db.SetCurrentUser(job.CreateUserId!.Value);
-                db.Worksheets.Add(worksheet);
-            }
-            if (worksheet is not null)
-                Relink(worksheet, links, replacedIds, saved.QuestionIds, filePage, owner.UserId, now,
-                    kept.Select((k, i) => (k.Number, i)).Where(k => k.i < saved.QuestionIds.Count)
-                        .ToDictionary(k => saved.QuestionIds[k.i], k => k.Number),
-                    slots.ToDictionary(l => l.QuestionId, l => l.Number!.Value));
-            await db.SaveChangesAsync(ct);
-            test.WorksheetId = worksheet?.Id ?? test.WorksheetId;
+                var worksheet = test.WorksheetId is { } worksheetId
+                    ? await db.Worksheets.IgnoreQueryFilters([DraftQueryFilter.Key]).AsTracking().Include(w => w.WorksheetQuestions)
+                        .FirstOrDefaultAsync(w => w.Id == worksheetId && w.IsDraft && !w.IsDeleted, ct)
+                    : null;
+                // Yeni taslak test işin sahibinin damgasıyla yazılır (taslağın sahibi işin sahibi), düzeltme düzeltenin.
+                db.SetCurrentUser(owner.UserId);
+                if (worksheet is null && saved.QuestionIds.Count > 0)
+                {
+                    worksheet = BookQuestionImportStage.NewDraftTest(job, test);
+                    db.SetCurrentUser(job.CreateUserId!.Value);
+                    db.Worksheets.Add(worksheet);
+                }
+                if (worksheet is not null)
+                    Relink(worksheet, links, replacedIds, saved.QuestionIds, filePage, owner.UserId, now,
+                        kept.Select((k, i) => (k.Number, i)).Where(k => k.i < saved.QuestionIds.Count)
+                            .ToDictionary(k => saved.QuestionIds[k.i], k => k.Number),
+                        slots.ToDictionary(l => l.QuestionId, l => l.Number!.Value));
+                await db.SaveChangesAsync(ct);
+                test.WorksheetId = worksheet?.Id ?? test.WorksheetId;
 
-            var live = worksheet?.WorksheetQuestions.Count(wq => !wq.IsDeleted) ?? 0;
-            // Anahtarla karşılaştırma yalnız çoktan seçmeli sorularla (etkinlikler anahtarda yok).
-            var liveQuestions = live - (links.Count(l => l.IsActivity) - removedActivities.Count);
-            var flags = ReplacePageFlags(BookImportReviewFlag.Parse(test.ReviewFlagsJson), filePage,
-                old.Concat(removedActivities).Select(l => l.Number).OfType<int>().Concat(numbers).ToHashSet(),
-                kept.Where(k => k.Question.CorrectOptionIndex < 0).Select(k => k.Number).ToList(),
-                kept.Where(k => k.Question.Options.Count != BookQuestionImportStage.ExpectedOptions).Select(k => k.Number).ToList(),
-                // #1303: incelemede doğrulanan sayı (ExpectedQuestions) anahtar uzunluğunun yerine geçer.
-                liveQuestions, test.AnswerKey is null ? null : test.ExpectedQuestions ?? test.AnswerKey.Length, from, to);
-            test.QuestionsFound = Math.Max(0, test.QuestionsFound - old.Count - removedActivities.Count + questions.Count);
-            test.QuestionsSaved = live;
-            test.DuplicatesSkipped += saved.DuplicateIndexes.Count;
-            test.ReviewFlagsJson = BookImportReviewFlag.Serialize(flags);
-            test.FixedAt ??= DateTime.UtcNow;
-            if (test.WorksheetId is not null)
-            {
-                test.Status = flags.Count == 0 ? BookImportTestStatus.Done : BookImportTestStatus.NeedsReview;
-                test.Error = null;
-            }
-            await db.SaveChangesAsync(ct);
-            await tx.CommitAsync(ct);
-        });
+                var live = worksheet?.WorksheetQuestions.Count(wq => !wq.IsDeleted) ?? 0;
+                // Anahtarla karşılaştırma yalnız çoktan seçmeli sorularla (etkinlikler anahtarda yok).
+                var liveQuestions = live - (links.Count(l => l.IsActivity) - removedActivities.Count);
+                var flags = ReplacePageFlags(BookImportReviewFlag.Parse(test.ReviewFlagsJson), filePage,
+                    old.Concat(removedActivities).Select(l => l.Number).OfType<int>().Concat(numbers).ToHashSet(),
+                    kept.Where(k => k.Question.CorrectOptionIndex < 0).Select(k => k.Number).ToList(),
+                    kept.Where(k => k.Question.Options.Count != BookQuestionImportStage.ExpectedOptions).Select(k => k.Number).ToList(),
+                    // #1303: incelemede doğrulanan sayı (ExpectedQuestions) anahtar uzunluğunun yerine geçer.
+                    liveQuestions, test.AnswerKey is null ? null : test.ExpectedQuestions ?? test.AnswerKey.Length, from, to);
+                test.QuestionsFound = Math.Max(0, test.QuestionsFound - old.Count - removedActivities.Count + questions.Count);
+                test.QuestionsSaved = live;
+                test.DuplicatesSkipped += saved.DuplicateIndexes.Count;
+                test.ReviewFlagsJson = BookImportReviewFlag.Serialize(flags);
+                test.FixedAt ??= DateTime.UtcNow;
+                if (test.WorksheetId is not null)
+                {
+                    test.Status = flags.Count == 0 ? BookImportTestStatus.Done : BookImportTestStatus.NeedsReview;
+                    test.Error = null;
+                }
+                await db.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+            });
+        }
+        catch (Exception ex) when (saved.QuestionIds.Count > 0)
+        {
+            logger.LogError(ex, "[BookImport] page fix link failed for job {JobId} test {TestId} page {Page}; dropping {Count} new drafts",
+                id, testId, filePage, saved.QuestionIds.Count);
+            await DropNewDraftsAsync(saved.QuestionIds, owner.UserId);
+            throw;
+        }
 
         await RecordManualAsync(page!, image, questions, activities, owner, ct);
 
@@ -301,6 +318,42 @@ public sealed class BookImportPageFixService(
         var previousMax = links.Where(l => l.FilePage < filePage).Select(l => l.Number).Max() ?? 0;
         reference.AddRange(ImportNumbering(await DetectedBoxesAsync(page, image, ct), boxless, previousMax));
         return (reference, image);
+    }
+
+    /// <summary>
+    /// #1320: sayfanın hiçbir teste bağlı olmayan taslakları (işin sahibinin, bu kitabın bu sayfası). Kitapta soru alan bir iş
+    /// varken boş döner: o işin kaydedip henüz bağlamadığı taslak yetim sanılmasın.
+    /// </summary>
+    private async Task<List<int>> OrphanDraftsAsync(int? bookId, int filePage, int ownerId, CancellationToken ct)
+    {
+        if (bookId is null || await db.BookImportJobs.AnyAsync(j => j.BookId == bookId && j.Stage == BookImportStage.Questions
+                && BookImportService.ImportingStatuses.Contains(j.Status), ct))
+            return [];
+        return await db.QuestionSources.IgnoreQueryFilters().AsNoTracking()
+            .Where(s => s.BookId == bookId && s.FilePage == filePage && s.Question.IsDraft && !s.Question.IsDeleted
+                        && s.Question.CreateUserId == ownerId
+                        && !db.TestQuestions.IgnoreQueryFilters().Any(wq => wq.QuestionId == s.QuestionId && !wq.IsDeleted))
+            .Select(s => s.QuestionId).Distinct().ToListAsync(ct);
+    }
+
+    /// <summary>#1320: bağlanamayan yeni taslaklar silinir (yeniden kayıtta kopya sayılmasınlar).</summary>
+    private async Task DropNewDraftsAsync(IReadOnlyList<int> ids, int userId)
+    {
+        try
+        {
+            var now = DateTime.UtcNow;
+            await db.Questions.IgnoreQueryFilters([DraftQueryFilter.Key])
+                .Where(q => ids.Contains(q.Id) && q.IsDraft && !q.IsDeleted
+                            && !db.TestQuestions.IgnoreQueryFilters().Any(wq => wq.QuestionId == q.Id && !wq.IsDeleted))
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(q => q.IsDeleted, true)
+                    .SetProperty(q => q.DeleteTime, now)
+                    .SetProperty(q => q.DeleteUserId, userId));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "[BookImport] could not drop unlinked page fix drafts {Ids}", string.Join(',', ids));
+        }
     }
 
     /// <summary>Taslak testin silinmemiş bağlantıları: soru, kaynak sayfası, numarası (madde etiketi sayıysa).</summary>

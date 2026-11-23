@@ -51,6 +51,8 @@ public class BookQuestionImportTests : IDisposable
     private readonly Dictionary<(int Page, string Label), int> _drafts = new();
     /// <summary>#1025: tespit bu sayfaya gelince çalıştırılır (ör. işi iptal et).</summary>
     private readonly Dictionary<int, Func<Task>> _onDetect = new();
+    /// <summary>#1320: kayıttan hemen sonra iptal edilen istek (düzeltme penceresi kapandı, bağlantı koptu).</summary>
+    private CancellationTokenSource? _cancelAfterSave;
     private int _bookId;
     private int _gradeId;
 
@@ -120,6 +122,7 @@ public class BookQuestionImportTests : IDisposable
                     continue;
                 ids.Add(resumed.TryGetValue(i, out var id) ? id : created[next++].question.Id);
             }
+            _cancelAfterSave?.Cancel();
             return Task.FromResult(new LabelingImportPageResult(created.Count, duplicates, ids, resumed.Count));
         });
         _activity.ExtractForImportAsync(Arg.Any<string>(), Model, Arg.Any<IReadOnlyList<ActivityStructureBlockDto>>(), Arg.Any<CancellationToken>())
@@ -1104,6 +1107,67 @@ public class BookQuestionImportTests : IDisposable
         worksheet.WorksheetQuestions.OrderBy(wq => wq.Order).Select(wq => (wq.Order, wq.Question.Text))
             .ShouldBe([(1, "1"), (2, "2"), (3, "3"), (4, "4")]);
         (await check.Questions.IgnoreQueryFilters().CountAsync(q => q.IsDeleted && q.IsDraft && q.Text == "1")).ShouldBe(1);
+    }
+
+    /// <summary>
+    /// Issue #1320: kayıttan sonra iptal edilen düzeltme isteği yeni taslakları yine bağlar (yetim taslak kalmaz); önceki bir
+    /// kesik kayıttan kalmış, hiçbir teste bağlı olmayan taslak bir sonraki düzeltmede kopya sayılmaz, silinir.
+    /// </summary>
+    [Fact]
+    public async Task A_page_fix_cancelled_after_saving_still_links_and_a_leftover_unlinked_draft_is_replaced_not_counted_issue1320()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "ABCD", [4])]);
+        Detect(1, 4, 4, 4, 4);
+        await RunAsync(id);
+        var test = await SingleTestAsync();
+
+        using (var cts = new CancellationTokenSource())
+        {
+            _cancelAfterSave = cts;
+            await using var ctx = _db.NewContext();
+            // OperationCanceledException xUnit'te başarısızlık sayılmaz; açıkça yakalanır.
+            BookImportPageFixResult? cancelled = null;
+            try
+            {
+                cancelled = await Fix(ctx).ReplacePageAsync(Owner, id, test.Id, 1, [Box(0), Box(1), Box(2), Box(3)], cts.Token);
+            }
+            catch (OperationCanceledException ex)
+            {
+                throw new ShouldAssertException("the page fix was cut off after its drafts were saved", ex);
+            }
+            cancelled.Error.ShouldBe(BookImportPageFixError.None);
+            _cancelAfterSave = null;
+        }
+        test = await SingleTestAsync();
+        test.QuestionsSaved.ShouldBe(4);
+
+        // Eski sürümün bıraktığı yetim taslak: sayfanın kaynağı var, hiçbir teste bağlı değil.
+        int orphanId;
+        await using (var seed = _db.NewContext())
+        {
+            seed.SetCurrentUser(OwnerId);
+            var orphan = new Question { Text = "orphan", IsDraft = true, InteractionType = "mcq" };
+            seed.Questions.Add(orphan);
+            seed.QuestionSources.Add(new QuestionSource
+            {
+                Question = orphan, BookId = _bookId, FilePage = 1, ItemLabel = "1", CropSha256 = Guid.NewGuid().ToString("N"),
+            });
+            await seed.SaveChangesAsync();
+            orphanId = orphan.Id;
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            var result = await Fix(ctx).ReplacePageAsync(Owner, id, test.Id, 1, [Box(0), Box(1), Box(2), Box(3)], default);
+            result.Error.ShouldBe(BookImportPageFixError.None);
+            result.Page!.Removed.ShouldBe(4);
+        }
+        _saved.Last().ReplacingQuestionIds!.ShouldContain(orphanId);
+        await using var check = _db.NewContext();
+        (await check.Questions.IgnoreQueryFilters().SingleAsync(q => q.Id == orphanId)).IsDeleted.ShouldBeTrue();
+        (await SingleTestAsync()).QuestionsSaved.ShouldBe(4);
+        (await check.Questions.WithDrafts().CountAsync(q => q.IsDraft && q.CreateUserId == OwnerId
+            && !check.TestQuestions.Any(wq => wq.QuestionId == q.Id && !wq.IsDeleted))).ShouldBe(0);
     }
 
     /// <summary>Issue #1171: ortadaki kutu silinince kalanlar numaralarını ve anahtardaki cevaplarını korur; sıra okuma sırası.</summary>

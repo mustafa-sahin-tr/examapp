@@ -98,7 +98,25 @@ export class LabelingKeyPageComponent {
         if (url) URL.revokeObjectURL(url);
       });
     });
-    inject(DestroyRef).onDestroy(() => this.dialog()?.nativeElement.close());
+    // Alttaki anahtar paneli işaretleme sayfasının genişliğinde durur (sol menünün altında kalmaz).
+    const host = inject(ElementRef<HTMLElement>).nativeElement as HTMLElement;
+    let observer: ResizeObserver | null = null;
+    queueMicrotask(() => {
+      const page = host.closest<HTMLElement>('.lb');
+      if (!page || typeof ResizeObserver === 'undefined') return;
+      const fit = () => {
+        const rect = page.getBoundingClientRect();
+        host.style.setProperty('--lkp-left', `${Math.max(0, rect.left) + 12}px`);
+        host.style.setProperty('--lkp-right', `${Math.max(0, window.innerWidth - rect.right) + 12}px`);
+      };
+      fit();
+      observer = new ResizeObserver(fit);
+      observer.observe(page);
+    });
+    inject(DestroyRef).onDestroy(() => {
+      observer?.disconnect();
+      this.dialog()?.nativeElement.close();
+    });
   }
 
   protected open(): void {

@@ -30,6 +30,31 @@ public sealed class AssistantOptions
     [Range(0, 1_000)]
     public int ImageExplanationsPerDay { get; set; } = 5;
 
+    /// <summary>#504: per-turn ceilings against runaway tool loops.</summary>
+    [Range(1, 20)]
+    public int MaxToolCallsPerTurn { get; set; } = 6;
+
+    /// <summary>#504: output tokens per model call (a turn may make up to MaxToolCallsPerTurn + 1 calls).</summary>
+    [Range(64, 16_000)]
+    public int MaxOutputTokens { get; set; } = 1024;
+
+    /// <summary>#504: earlier messages sent back to the model (the conversation keeps all of them).</summary>
+    [Range(2, 200)]
+    public int MaxHistoryMessages { get; set; } = 30;
+
+    /// <summary>low / medium / high. Low keeps the first token fast for chat.</summary>
+    public string Effort { get; set; } = "low";
+
+    /// <summary>Prompt cache TTL of the system prompt + tools breakpoint: 5m or 1h.</summary>
+    public string CacheTtl { get; set; } = "5m";
+
+    /// <summary>Prices of <see cref="Model"/> for the budget estimate (Haiku 5.5).</summary>
+    [Range(0, 1_000)]
+    public decimal InputUsdPerMTok { get; set; } = 0.10m;
+
+    [Range(0, 1_000)]
+    public decimal OutputUsdPerMTok { get; set; } = 0.50m;
+
     /// <summary>Conversations are hard-deleted after this many days (#496 decision 2).</summary>
     [Range(1, 365)]
     public int RetentionDays { get; set; } = 30;

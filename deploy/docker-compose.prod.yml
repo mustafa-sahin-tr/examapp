@@ -507,6 +507,7 @@ services:
       Anthropic__ApiKey: ${ANTHROPIC_API_KEY:-}
       Assistant__Enabled: ${ASSISTANT_ENABLED:-false}
       Assistant__Roles__0: ${ASSISTANT_ROLES:-Student}
+      Redis__Configuration: redis:6379,password=${REDIS_PASSWORD}
       ExamApi__BaseUrl: http://exam-dotnet-api:5079
     depends_on:
       - postgres

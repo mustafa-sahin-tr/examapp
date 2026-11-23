@@ -1,4 +1,6 @@
+using Anthropic;
 using AssistantService;
+using AssistantService.Chat;
 using AssistantService.Data;
 using AssistantService.Endpoints;
 using AssistantService.Security;
@@ -6,6 +8,7 @@ using AssistantService.Tools;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.AI;
 using Microsoft.IdentityModel.Tokens;
 
 // Issue #502: in-app assistant service (epic #495). LLM dependency, cost and long streams stay out of the exam API and
@@ -55,6 +58,31 @@ builder.Services.AddHttpClient<DownstreamClient>(c =>
 });
 builder.Services.AddAssistantTools();
 
+// #504: chat. Model client via the Anthropic SDK's Microsoft.Extensions.AI bridge (honours WithCacheControl); gen_ai.* spans
+// and logs as in BadgeService. No key → no client (the gate answers 503 before any chat call).
+builder.Services.AddSingleton(sp =>
+{
+    var apiKey = builder.Configuration["Anthropic:ApiKey"];
+    if (string.IsNullOrWhiteSpace(apiKey))
+        return new ChatModel(null);
+    var client = new AnthropicClient { ApiKey = apiKey.Trim() }
+        .AsIChatClient()
+        .AsBuilder()
+        .UseLogging(sp.GetRequiredService<ILoggerFactory>())
+        .UseOpenTelemetry(sourceName: builder.Environment.ApplicationName)
+        .Build(sp);
+    return new ChatModel(client);
+});
+builder.Services.AddSingleton<InMemoryCounterStore>();
+var redisConfiguration = builder.Configuration["Redis:Configuration"];
+if (string.IsNullOrWhiteSpace(redisConfiguration))
+    builder.Services.AddSingleton<ICounterStore>(sp => sp.GetRequiredService<InMemoryCounterStore>());
+else
+    builder.Services.AddSingleton<ICounterStore>(sp => new RedisCounterStore(redisConfiguration,
+        sp.GetRequiredService<InMemoryCounterStore>(), sp.GetRequiredService<ILogger<RedisCounterStore>>()));
+builder.Services.AddSingleton<UsageLimiter>();
+builder.Services.AddScoped<ChatTurnRunner>();
+
 var app = builder.Build();
 
 app.UseAuthentication();
@@ -68,6 +96,7 @@ using (var scope = app.Services.CreateScope())
 
 app.MapAssistantEndpoints();
 app.MapToolEndpoints();
+app.MapChatEndpoints();
 app.MapDefaultEndpoints();
 
 app.Run();

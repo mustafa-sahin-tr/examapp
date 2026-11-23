@@ -129,6 +129,9 @@ public interface IBookImportService
     Task<BookImportReviewResult> RemoveQuestionAsync(BookImportOwner owner, Guid id, int testId, int questionId, CancellationToken ct);
 
     /// <summary>Issue #1023: testi onayla — taslak test ve soruları etkinleşir; cevapsız soru varsa engellenir.</summary>
+    /// <summary>#1303: sayı uyuşmazlığında öğretmen soru sayısını doğrular; işaret kalkar.</summary>
+    Task<BookImportReviewResult> AcceptQuestionCountAsync(BookImportOwner owner, Guid id, int testId, CancellationToken ct);
+
     Task<BookImportReviewResult> ApproveTestAsync(BookImportOwner owner, Guid id, int testId, CancellationToken ct);
 
     /// <summary>Issue #1023: onaylanabilen bütün testleri onayla; engellenenler nedeniyle döner. İş yoksa null.</summary>

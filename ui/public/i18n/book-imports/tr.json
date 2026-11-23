@@ -450,7 +450,9 @@
       "match": "Eşleştirme",
       "textSelect": "Metinde işaretleme",
       "crossword": "Bulmaca"
-    }
+    },
+    "acceptCount": "Soru sayısı doğru",
+    "acceptCountHint": "Sorular ve cevapları doğruysa: anahtardaki fazla ya da eksik cevap yok sayılır, uyarı kalkar."
   },
   "later": {
     "title": "Sonra bakılacaklar",

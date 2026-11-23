@@ -584,6 +584,16 @@ public class BookImportController : BaseController
         return ReviewResult(await _service.RemoveQuestionAsync(owner, id, testId, questionId, ct));
     }
 
+    /// <summary>#1303: soru sayısı doğru (anahtar fazla / eksik okunmuş); sayı uyuşmazlığı işareti kalkar.</summary>
+    [HttpPost("{id:guid}/tests/{testId:int}/accept-count")]
+    public async Task<IActionResult> AcceptQuestionCount(Guid id, int testId, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        return ReviewResult(await _service.AcceptQuestionCountAsync(owner, id, testId, ct));
+    }
+
     /// <summary>Issue #1023: testi onayla; cevapsız soru varsa 409 <c>bookImport.answerless</c>.</summary>
     [HttpPost("{id:guid}/tests/{testId:int}/approve")]
     public async Task<IActionResult> ApproveTest(Guid id, int testId, CancellationToken ct)

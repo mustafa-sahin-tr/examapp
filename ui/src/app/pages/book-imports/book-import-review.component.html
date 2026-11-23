@@ -186,6 +186,10 @@
           <span class="bir-chip">{{ t('reviewFlags.' + flag.code, { found: flag.found, expected: flag.expected }) }}</span>
           @if (flag.code !== 'countMismatch') {
           <span class="bir-flags__where">{{ flagWhere(flag, t) }}</span>
+          } @else if (canAcceptCount()) {
+          <button mat-stroked-button type="button" class="bir-flags__accept" data-testid="accept-count"
+            [disabled]="busy() !== null || testLocked(test)" [title]="t('review.acceptCountHint')"
+            (click)="acceptCount(test)">{{ t('review.acceptCount') }}</button>
           }
         </li>
         }

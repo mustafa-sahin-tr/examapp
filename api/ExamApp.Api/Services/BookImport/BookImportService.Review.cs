@@ -155,6 +155,29 @@ public sealed partial class BookImportService
         return BookImportReviewResult.Ok;
     }
 
+    /// <summary>
+    /// #1303: öğretmen soru sayısını doğrular (anahtar fazla / eksik okunmuş, sorular ve cevapları doğru): sayı uyuşmazlığı
+    /// işareti kalkar ve sayı beklenen sayı olur (sonraki sayfa düzeltmesi bununla karşılaştırır). Cevaplar soru başına
+    /// saklandığı için anahtarın fazlası hiçbir şeyi etkilemez. İşaret yoksa <see cref="BookImportReviewResult.InvalidState"/>.
+    /// </summary>
+    public async Task<BookImportReviewResult> AcceptQuestionCountAsync(BookImportOwner owner, Guid id, int testId, CancellationToken ct)
+    {
+        var test = await ReviewTestAsync(owner, id, testId, ct, tracking: true);
+        if (test is null)
+            return BookImportReviewResult.NotFound;
+        if (!IsReviewable(test) || !await InReviewAsync(id, ct)
+            || BookImportReviewFlag.Parse(test.ReviewFlagsJson).All(f => f.Code != BookImportReviewFlag.CountMismatch))
+            return BookImportReviewResult.InvalidState;
+
+        // Anahtarla karşılaştırılan sayı: yalnız çoktan seçmeli sorular (etkinlikler anahtarda yok).
+        test.ExpectedQuestions = await DraftQuestions(test.WorksheetId!.Value)
+            .CountAsync(q => q.InteractionType == null || q.InteractionType == McqGrader.Type, ct);
+        ApplyReviewFix(test, f => f.Code == BookImportReviewFlag.CountMismatch ? null : f);
+        _db.SetCurrentUser(owner.UserId);
+        await _db.SaveChangesAsync(ct);
+        return BookImportReviewResult.Ok;
+    }
+
     public async Task<BookImportReviewResult> ApproveTestAsync(BookImportOwner owner, Guid id, int testId, CancellationToken ct)
     {
         var test = await ReviewTestAsync(owner, id, testId, ct, tracking: true);

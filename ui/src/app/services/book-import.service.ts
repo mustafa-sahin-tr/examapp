@@ -297,6 +297,11 @@ export class BookImportService {
     return this.http.delete<void>(`${this.baseUrl}/${id}/tests/${testId}/questions/${questionId}`);
   }
 
+  /** #1303: soru sayısı doğru; sayı uyuşmazlığı işareti kalkar (başka işaret yoksa test onaylanabilir). */
+  acceptCount(id: string, testId: number): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${id}/tests/${testId}/accept-count`, {});
+  }
+
   /** Onaylanmamış testi baştan aktar: taslakları silinir, sayfa tespitleri önbellekten gelir. */
   reimportTest(id: string, testId: number): Observable<void> {
     return this.http.post<void>(`${this.baseUrl}/${id}/tests/${testId}/reimport`, {});

@@ -366,7 +366,10 @@ olarak aktarılır. Yalnız kitap aktarımında; hızlı ekleme ve karışık g�
   işaretli test **onaylanmaz** (#1269, sunucu `bookImport.testFlagged` 409): işaretlemede düzeltilir, sayfa kaydı işaretleri
   yeniden hesaplar, işaret kalmayınca test `Done` olur ve Onayla açılır. İncelemede cevap seçmek "cevapsız" işaretini (cevapsız
   soru kalmayınca), soru çıkarmak o sorunun cevapsız / şık sayısı işaretini ve soru sayısı anahtarla tutarsa sayı uyuşmazlığını
-  kaldırır; incelemede yeni işaret eklenmez. Düzeltilemeyen test silinir. **Elle düzeltildi (#1270):** ilk düzeltme
+  kaldırır; incelemede yeni işaret eklenmez. **Soru sayısı doğru (#1303):** sayı uyuşmazlığı işaretinde düğme
+  (`POST {id}/tests/{testId}/accept-count`): anahtar fazla / eksik okunmuş ama sorular ve cevapları doğruysa işaret kalkar ve
+  güncel çoktan seçmeli soru sayısı `ExpectedQuestions` olur; sonraki sayfa düzeltmesi anahtar uzunluğu yerine bununla
+  karşılaştırır (kurulum onayında ikisi eşittir). Anahtar değişmez; cevaplar soru başına saklandığı için fazlası etkisizdir. Düzeltilemeyen test silinir. **Elle düzeltildi (#1270):** ilk düzeltme
   (işaretlemede sayfa kaydı ya da incelemede işaret kaldıran düzeltme) `BookImportJobTests.FixedAt`'e yazılır, yeniden almada
   silinir; ızgarada hücrenin sağ üst köşesinde nokta, lejantta sayı, satırda "Elle düzeltildi" etiketi.
   Önizleme taslağı genel test ekranına açmaz (aktarım uç noktasından okur).

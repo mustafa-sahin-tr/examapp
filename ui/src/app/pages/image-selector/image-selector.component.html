@@ -137,6 +137,20 @@
               <mat-icon style="vertical-align: middle; margin-right: 8px">crop_square</mat-icon>
               {{ t('menu.drawAnswer') }}
             </button>
+            @if (selectedRegion! >= 0 && passages().length > 0) {
+              <select id="passageSelect"
+                (change)="onPassageChange($event, regions()[selectedRegion || 0].name)" (click)="$event.stopPropagation()">
+                <option value="0" [selected]="!selectedPassageMap.has(regions()[selectedRegion || 0].name)">
+                  {{ t('menu.selectPassage') }}
+                </option>
+                @for (passage of passages(); track passage) {
+                  <option [value]="passage.id"
+                    [selected]="selectedPassageMap.get(regions()[selectedRegion || 0].name) === passage.id">
+                    {{ t('menu.passageOption', { id: passage.id }) }}
+                  </option>
+                }
+              </select>
+            }
             <button (click)="handleMenuAction('selectDropZoneMode', $event)">
               <mat-icon style="vertical-align: middle; margin-right: 8px">radio_button_unchecked</mat-icon>
               {{ t('menu.drawDropZone') }}
@@ -188,20 +202,6 @@
                 <mat-icon style="vertical-align: middle; margin-right: 8px">format_align_center</mat-icon>
                 {{ t('menu.alignAnswers') }}
               </button>
-              @if (selectedRegion! >= 0 && passages().length > 0) {
-                <select id="passageSelect"
-                  (change)="onPassageChange($event, regions()[selectedRegion || 0].name)" (click)="$event.stopPropagation()">
-                  <option value="0" [selected]="!selectedPassageMap.has(regions()[selectedRegion || 0].name)">
-                    {{ t('menu.selectPassage') }}
-                  </option>
-                  @for (passage of passages(); track passage) {
-                    <option [value]="passage.id"
-                      [selected]="selectedPassageMap.get(regions()[selectedRegion || 0].name) === passage.id">
-                      {{ t('menu.passageOption', { id: passage.id }) }}
-                    </option>
-                  }
-                </select>
-              }
             }
             <!-- Answer için menü -->
             @if (contextMenuType === 'answer') {

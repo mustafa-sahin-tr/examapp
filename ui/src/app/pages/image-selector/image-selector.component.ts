@@ -986,19 +986,25 @@ export class ImageSelectorComponent {
     }
   }
 
+  /**
+   * Pasaj ile bölge üst üsteyse küçük olan seçilir, eşitse bölge (aktarım düzeltmesinde taslağın pasajı Anlatım / soru kutusuyla
+   * aynı yerde durur; pasaj önce bakılınca kutu tıklanamıyor, sağ tıkta soru menüsü çıkmıyordu). Pasaj, bölgesi yoksa ya da
+   * daha küçükse seçilir.
+   */
   getRegionOrAnswerAtPosition(x: number, y: number): RegionOrAnswerHit {
-    // Passage hit-test first (so passage context menu works even if it overlaps other drawings)
-    for (const passage of this.passages()) {
-      if (x >= passage.x && x <= passage.x + passage.width && y >= passage.y && y <= passage.y + passage.height) {
-        return {
-          type: 'passage',
-          value: {
-            passageId: String(passage.id),
-          },
-        };
-      }
-    }
+    const inside = (b: { x: number; y: number; width: number; height: number }) =>
+      x >= b.x && x <= b.x + b.width && y >= b.y && y <= b.y + b.height;
+    const passage = this.passages()
+      .filter(inside)
+      .sort((a, b) => a.width * a.height - b.width * b.height)[0];
+    const regionHit = this.regionHitAt(x, y);
+    if (!passage) return regionHit;
+    const region = regionHit && 'questionIndex' in regionHit.value ? this.regions()[regionHit.value.questionIndex] : null;
+    if (region && region.width * region.height <= passage.width * passage.height) return regionHit;
+    return { type: 'passage', value: { passageId: String(passage.id) } };
+  }
 
+  private regionHitAt(x: number, y: number): RegionOrAnswerHit {
     const regions = this.regions();
 
     for (let qi = 0; qi < regions.length; qi++) {

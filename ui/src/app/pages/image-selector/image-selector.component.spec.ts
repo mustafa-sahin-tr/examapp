@@ -824,6 +824,17 @@ describe('ImageSelectorComponent', () => {
             expect(p2).toEqual(expect.objectContaining({ id: 'p2', kind: 1, instruction: 'Resimleri eşleştir.' }));
         });
 
+        // Aktarım düzeltmesinde taslağın pasajı Anlatım kutusuyla aynı yerde: tık kutuyu seçmeli; küçük pasaj yine seçilir.
+        it('hitTest_RegionWinsOverAnEqualOrLargerPassage_SmallerPassageStillHits', () => {
+            component.regions.set([{ ...region('Soru 1', []), x: 100, y: 100, width: 400, height: 300 }] as any);
+            component.passages.set([{ id: 'd1', x: 100, y: 100, width: 400, height: 300 }]);
+            expect(component.getRegionOrAnswerAtPosition(200, 200)).toEqual({ type: 'question', value: { questionIndex: 0, answerIndex: null } });
+
+            component.passages.set([{ id: 'p2', x: 120, y: 120, width: 100, height: 50 }, { id: 'p3', x: 600, y: 100, width: 50, height: 50 }]);
+            expect(component.getRegionOrAnswerAtPosition(150, 130)).toEqual({ type: 'passage', value: { passageId: 'p2' } });
+            expect(component.getRegionOrAnswerAtPosition(620, 120)).toEqual({ type: 'passage', value: { passageId: 'p3' } });
+        });
+
         it('setPassageInstruction_TruncatesTo2000Characters', () => {
             component.passages.set([{ id: 'p1', x: 0, y: 0, width: 10, height: 10 }]);
 

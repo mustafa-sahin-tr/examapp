@@ -131,3 +131,24 @@ Olaylar: `text {delta}`, `tool_start {tool}`, `tool_end {tool, ok, errorCode, ms
 Önbellek: ilk tur 2954 token yazdı, sonraki her model çağrısı aynı öneki okudu (`cacheReadTokens`). Tur başına 0,0002–0,0011 USD.
 Canlı denemede bulunan: model öneri çiplerinden sonra cevabını yeniden yazıyordu → yalnız panel tool'ları (`ui_suggest_actions`,
 `ui_open_screen`) cevaptan sonra gelirse tur biter, model yeniden çağrılmaz; olmayan butondan söz ediyordu → sistem istemi r2.
+
+## Konuşma geçmişi, saklama ve sıfırlamada temizlik (#505)
+
+- **Uçlar (yalnız sahibi; başkasınınki 404, var olup olmadığı sızmaz):** `GET /api/assistant/conversations` (son 50, en yeni
+  önce: `id`, `title`, `createdAt`, `updatedAt`), `GET /conversations/{id}` (yalnız kullanıcı mesajları ve asistanın metni;
+  tool çağrıları ve sonuçları sunucuda kalır), `DELETE /conversations/{id}` → 204, `DELETE /conversations` (geçmişimi temizle)
+  → `{ deleted }`. Mesajlar, onay bekleyen işlemler ve geri bildirimler konuşmayla birlikte gider (FK cascade). Yöneticiye
+  konuşma okuyan uç yok; yönetici yalnız toplu sayı görecek (ileride).
+- **Saklama süresi:** `RetentionPurgeService` açılıştan 1 dk sonra ve her `Assistant:PurgeIntervalMinutes` (60) dakikada
+  `RetentionDays`'ten (30) eski olanları kalıcı siler: son etkinliği eski konuşmalar, hâlâ kullanılan konuşmanın eski mesajları,
+  eski onay bekleyen işlemler ve `Usage` günleri. Asistan kapalıyken de çalışır. Hata loglanır, sonraki turda yeniden dener.
+- **Öğrenci sıfırlama:** `StudentResetJob` (#396) exam verisini sildiği SaveChanges içinde outbox'a `StudentProgressResetEvent`
+  (`EventId`, `KeycloakId`, `UserId`, `StudentId`, `ResetAtUtc`) yazar; AssistantService (`assistant-service` kuyruğu, dead-letter
+  `assistant-service_error`, 1/5/15 sn retry) öğrencinin sıfırlamadan önce başlattığı konuşmaları siler. Tekrar gelen mesaj fazladan
+  bir şey silmez. `Usage` sayaçları kalır (içerik yok; günlük bütçe sıfırlamayla açılmasın).
+- **RabbitMQ:** servise özel `assistant_service` kullanıcısı (#279): yalnız bu event'i okur, hiçbir şey yayınlayamaz.
+  Parola `RABBITMQ_ASSISTANT_SERVICE_PASSWORD` (`.env`, `.env.demo`, prod) / `rabbitmq-assistant-service-password` (AppHost).
+  Production'da `RabbitMQ:Host` zorunlu (tüketicisiz açılış sıfırlanan öğrencinin konuşmalarını bırakırdı).
+- **Hesap silme:** bugün üründe kullanılmış bir hesabı silen akış yok (auth-api yalnız hiç kullanılmamış çocuk hesabını geri
+  alıyor; onun asistan verisi olmaz). Silme akışı eklenince aynı temizlik (`AssistantDataCleaner.EraseUserConversationsAsync`)
+  kendi event'iyle bağlanır.

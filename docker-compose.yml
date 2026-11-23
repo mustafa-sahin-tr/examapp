@@ -181,9 +181,17 @@ services:
       - Keycloak__Host=http://keycloak:8080
       - Anthropic__ApiKey=${ANTHROPIC_API_KEY:-}
       - Redis__Configuration=redis:6379,password=${REDIS_PASSWORD:?REDIS_PASSWORD .env icinde tanimli olmali}
+      # Issue #505: StudentProgressResetEvent consumer (queue "assistant-service"), own least-privilege user (rabbitmq/definitions.json).
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__Username=assistant_service
+      - RabbitMQ__Password=${RABBITMQ_ASSISTANT_SERVICE_PASSWORD:?RABBITMQ_ASSISTANT_SERVICE_PASSWORD .env icinde tanimli olmali}
     depends_on:
       exam-pg-container:
         condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      rabbitmq-permission-sync:
+        condition: service_completed_successfully
     networks:
       - mynetwork
 

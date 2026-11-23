@@ -276,6 +276,7 @@ data:
     : "${RABBITMQ_BADGE_SERVICE_PASSWORD:?RABBITMQ_BADGE_SERVICE_PASSWORD not set}"
     : "${RABBITMQ_EXAM_API_PASSWORD:?RABBITMQ_EXAM_API_PASSWORD not set}"
     : "${RABBITMQ_AUTH_API_PASSWORD:?RABBITMQ_AUTH_API_PASSWORD not set}"
+    : "${RABBITMQ_ASSISTANT_SERVICE_PASSWORD:?RABBITMQ_ASSISTANT_SERVICE_PASSWORD not set}"
 
     RABBIT_HOST="${RABBITMQ_HOST:-rabbitmq}"
     RABBIT_URL="http://${RABBIT_HOST}:15672"
@@ -307,7 +308,7 @@ data:
     # issue #277: TeacherSchoolRequestSubmittedEvent (item 1) and UserRoleChangedEvent
     # (item 4) added — kept in sync with rabbitmq/definitions.json and
     # deploy/scripts/rabbitmq-init.sh (no shared source between the three, see comment above).
-    EXAM_OUTBOX_EVENTS="AnswerSubmittedEvent|QuestionCreatedEvent|WorksheetReminderDueEvent|WorksheetAccessRequestedEvent|WorksheetAccessRequestApprovedEvent|WorksheetAccessRequestRejectedEvent|TeacherApplicationSubmittedEvent|TeacherApplicationDecidedEvent|TeacherSchoolRequestSubmittedEvent|IndependentTeacherRegisteredEvent|BookingRequestCreatedEvent|BookingDecisionEvent|BookingTeacherUnavailableEvent|UserPreferredLocaleChangedEvent|UserRoleChangedEvent|WorksheetCommentCreatedEvent|WorksheetCommentRepliedEvent|WorksheetCommentHiddenEvent|DirectMessageSentEvent|DirectMessageReportedEvent|ParentLinkedEvent|ParentUnlinkedEvent|ParentHomeworkOverdueEvent|ParentChildTestCompletedEvent|BookingParentApprovalRequestedEvent|BookingParentDecisionEvent|ParentInvitationRequestedEvent|StudentParentGraceReminderEvent|BookingLifecycleEvent|ActivityCompletedEvent|SchoolChangedEvent|OpenTextReviewedEvent|ParentChildPlanEndingEvent|StudentGradePromotedEvent|PlanPriceChangeNoticeEvent|ParentWeeklyReportEvent|AskTeacherNoticeEvent|AnnouncementPublishedEvent"
+    EXAM_OUTBOX_EVENTS="AnswerSubmittedEvent|QuestionCreatedEvent|WorksheetReminderDueEvent|WorksheetAccessRequestedEvent|WorksheetAccessRequestApprovedEvent|WorksheetAccessRequestRejectedEvent|TeacherApplicationSubmittedEvent|TeacherApplicationDecidedEvent|TeacherSchoolRequestSubmittedEvent|IndependentTeacherRegisteredEvent|BookingRequestCreatedEvent|BookingDecisionEvent|BookingTeacherUnavailableEvent|UserPreferredLocaleChangedEvent|UserRoleChangedEvent|WorksheetCommentCreatedEvent|WorksheetCommentRepliedEvent|WorksheetCommentHiddenEvent|DirectMessageSentEvent|DirectMessageReportedEvent|ParentLinkedEvent|ParentUnlinkedEvent|ParentHomeworkOverdueEvent|ParentChildTestCompletedEvent|BookingParentApprovalRequestedEvent|BookingParentDecisionEvent|ParentInvitationRequestedEvent|StudentParentGraceReminderEvent|BookingLifecycleEvent|ActivityCompletedEvent|SchoolChangedEvent|OpenTextReviewedEvent|ParentChildPlanEndingEvent|StudentGradePromotedEvent|PlanPriceChangeNoticeEvent|ParentWeeklyReportEvent|AskTeacherNoticeEvent|AnnouncementPublishedEvent|StudentProgressResetEvent"
     IDENTITY_OUTBOX_EVENTS="LoginAttemptedEvent|UserPreferredLocaleChangedEvent"
     BADGE_OUTBOX_EVENTS="StudentPointsChangedEvent|StudentBadgeEarnedEvent"
     # badge_service consumes everything except StudentPointsChangedEvent and UserRoleChangedEvent
@@ -315,6 +316,8 @@ data:
     BADGE_SERVICE_EVENTS="AnswerSubmittedEvent|QuestionCreatedEvent|WorksheetReminderDueEvent|WorksheetAccessRequestedEvent|WorksheetAccessRequestApprovedEvent|WorksheetAccessRequestRejectedEvent|LoginAttemptedEvent|TeacherApplicationSubmittedEvent|TeacherApplicationDecidedEvent|TeacherSchoolRequestSubmittedEvent|IndependentTeacherRegisteredEvent|BookingRequestCreatedEvent|BookingDecisionEvent|BookingTeacherUnavailableEvent|UserPreferredLocaleChangedEvent|WorksheetCommentCreatedEvent|WorksheetCommentRepliedEvent|WorksheetCommentHiddenEvent|DirectMessageSentEvent|DirectMessageReportedEvent|ParentLinkedEvent|ParentUnlinkedEvent|ParentHomeworkOverdueEvent|ParentChildTestCompletedEvent|BookingParentApprovalRequestedEvent|BookingParentDecisionEvent|ParentInvitationRequestedEvent|StudentParentGraceReminderEvent|BookingLifecycleEvent|ActivityCompletedEvent|SchoolChangedEvent|OpenTextReviewedEvent|ParentChildPlanEndingEvent|StudentGradePromotedEvent|PlanPriceChangeNoticeEvent|ParentWeeklyReportEvent|AskTeacherNoticeEvent|AnnouncementPublishedEvent"
     EXAM_API_EVENTS="StudentPointsChangedEvent|StudentBadgeEarnedEvent"
     AUTH_API_EVENTS="UserRoleChangedEvent"
+    # issue #505: the assistant deletes a reset student's conversations (its data lives in the assistant DB).
+    ASSISTANT_SERVICE_EVENTS="StudentProgressResetEvent"
 
     create_user() {
       user="$1"
@@ -391,6 +394,12 @@ data:
       '^auth-api(_error|_skipped)?$' \
       "^(auth-api(_error|_skipped)?|${NS}:(${AUTH_API_EVENTS}))\$"
 
+    create_user assistant_service "${RABBITMQ_ASSISTANT_SERVICE_PASSWORD}"
+    set_perms assistant_service \
+      "^(assistant-service(_error|_skipped)?|${NS}:(${ASSISTANT_SERVICE_EVENTS}))\$" \
+      '^assistant-service(_error|_skipped)?$' \
+      "^(assistant-service(_error|_skipped)?|${NS}:(${ASSISTANT_SERVICE_EVENTS}))\$"
+
     echo 'rabbitmq-init: done'
 ---
 apiVersion: batch/v1
@@ -456,6 +465,11 @@ spec:
                 secretKeyRef:
                   name: examapp-secrets
                   key: RABBITMQ_AUTH_API_PASSWORD
+            - name: RABBITMQ_ASSISTANT_SERVICE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: RABBITMQ_ASSISTANT_SERVICE_PASSWORD
           volumeMounts:
             - name: rabbitmq-init-script
               mountPath: /scripts

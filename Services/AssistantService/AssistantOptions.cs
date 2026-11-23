@@ -58,4 +58,8 @@ public sealed class AssistantOptions
     /// <summary>Conversations are hard-deleted after this many days (#496 decision 2).</summary>
     [Range(1, 365)]
     public int RetentionDays { get; set; } = 30;
+
+    /// <summary>#505: how often the retention purge runs.</summary>
+    [Range(1, 24 * 60)]
+    public int PurgeIntervalMinutes { get; set; } = 60;
 }

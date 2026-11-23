@@ -1,12 +1,15 @@
 using Anthropic;
 using AssistantService;
 using AssistantService.Chat;
+using AssistantService.Consumers;
 using AssistantService.Data;
 using AssistantService.Endpoints;
+using AssistantService.Retention;
 using AssistantService.Security;
 using AssistantService.Tools;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.IdentityModel.Tokens;
@@ -83,6 +86,42 @@ else
 builder.Services.AddSingleton<UsageLimiter>();
 builder.Services.AddScoped<ChatTurnRunner>();
 
+// #505: retention purge (Assistant:RetentionDays, every Assistant:PurgeIntervalMinutes) and the student reset consumer.
+builder.Services.AddScoped<AssistantDataCleaner>();
+builder.Services.AddHostedService<RetentionPurgeService>();
+
+// Queue "assistant-service" (dead-letter assistant-service_error), own least-privilege RabbitMQ user (#279): it can read
+// StudentProgressResetEvent and nothing else, and publish nothing. Without RabbitMQ:Host the bus is not registered (tests,
+// local runs); in Production it is required — a silent no-consumer start would keep reset students' conversations.
+var rabbitMqHost = builder.Configuration["RabbitMQ:Host"];
+if (string.IsNullOrWhiteSpace(rabbitMqHost))
+{
+    if (builder.Environment.IsProduction() && !EF.IsDesignTime)
+        throw new InvalidOperationException("RabbitMQ:Host is required in Production (StudentProgressResetEvent consumer, #505).");
+}
+else
+{
+    var rabbit = ExamApp.Foundation.Messaging.RabbitMqConnectionSettings.Require(builder.Configuration);
+    builder.Services.AddMassTransit(x =>
+    {
+        x.AddConsumer<StudentProgressResetConsumer, StudentProgressResetConsumerDefinition>();
+        x.UsingRabbitMq((context, cfg) =>
+        {
+            cfg.Host(rabbit.Host, "/", h =>
+            {
+                h.Username(rabbit.Username);
+                h.Password(rabbit.Password);
+            });
+            cfg.ReceiveEndpoint("assistant-service", e =>
+            {
+                // Least privilege (#279): faults go to this endpoint's own _error queue, not to a fault exchange.
+                e.PublishFaults = false;
+                e.ConfigureConsumer<StudentProgressResetConsumer>(context);
+            });
+        });
+    });
+}
+
 var app = builder.Build();
 
 app.UseAuthentication();
@@ -97,6 +136,7 @@ using (var scope = app.Services.CreateScope())
 app.MapAssistantEndpoints();
 app.MapToolEndpoints();
 app.MapChatEndpoints();
+app.MapConversationEndpoints();
 app.MapDefaultEndpoints();
 
 app.Run();

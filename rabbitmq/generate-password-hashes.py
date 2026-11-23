@@ -36,6 +36,7 @@ DEV_PASSWORDS = {
     "badge_service": "devOnlyBadgeServicePasswordChangeMe123",
     "exam_api": "devOnlyExamApiPasswordChangeMe123",
     "auth_api": "devOnlyAuthApiPasswordChangeMe123",
+    "assistant_service": "devOnlyAssistantServicePasswordChangeMe123",
 }
 
 

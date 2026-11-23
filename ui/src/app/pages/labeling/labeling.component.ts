@@ -373,6 +373,8 @@ export class LabelingComponent {
   readonly canReplaceDrafts = computed(() => !!this.fix() && this.canTrain() && !this.fixSaving());
   /** #1129: tuvalde testin bütün sayfaları gezilir; açıkken yalnız işaretli sayfalar. */
   readonly fixOnlyFlagged = signal(true);
+  /** Bu oturumda tuvalde açılan aktarım sayfaları (`test:sayfa`); düzeltilen testin bakılmamış sayfası atlanmaz. */
+  private readonly fixSeen = new Set<string>();
   readonly fixNav = computed(() => {
     const fix = this.fix();
     if (!fix) return null;
@@ -1226,9 +1228,15 @@ export class LabelingComponent {
       .subscribe({
         next: (job) => {
           const next = nextFlaggedFixTarget(job.tests, fix.testId, fix.filePage);
+          // Düzeltilen testin bakılmamış (işaretsiz) sayfası: bir sayfadaki düzeltme diğerindeki numaraları / cevapları
+          // etkileyebilir; teste geçmeden önce açılır.
+          const unseen = fix.pages.map((p) => p.page).find((p) => !this.fixSeen.has(`${fix.testId}:${p}`)) ?? null;
           if (next?.testId === fix.testId) {
             this.snackBar.open(`${saved} ${this.tr('fix.nextPage', { page: next.page })}`, this.tr('ok'), { duration: 8000 });
             this.goToFixPage(next.page);
+          } else if (unseen != null) {
+            this.snackBar.open(`${saved} ${this.tr('fix.unseenPage', { page: unseen })}`, this.tr('ok'), { duration: 10000 });
+            this.goToFixPage(unseen);
           } else if (next) {
             this.snackBar.open(`${saved} ${this.tr('fix.nextTest', { test: next.name })}`, this.tr('ok'), { duration: 8000 });
             void this.router
@@ -1330,6 +1338,7 @@ export class LabelingComponent {
     this.sortedFiles = [];
     this.folderName = null;
     this.fix.set(target);
+    this.fixSeen.add(`${target.testId}:${target.filePage}`);
     this.folderPicked.set(true);
     this.exhausted.set(true);
     this.picking.set(false);

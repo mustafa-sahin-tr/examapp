@@ -35,6 +35,7 @@
     "hint": "The multiple-choice questions on the page replace this page's drafts; unmarked answers come from the book's answer key. Activities you delete or turn into questions on the canvas are removed from the test too.",
     "saved": "{{saved}} questions saved, {{removed}} old drafts removed.",
     "nextPage": "Opening the test's next page that needs checking (p. {{page}}).",
+    "unseenPage": "Opening the test's page you have not looked at (p. {{page}}): the fix may have shifted its numbers and answers. Check it and press \"Replace drafts\" to move on to the next test.",
     "nextTest": "Moving to the next test that needs checking: {{test}}.",
     "noneLeft": "No test needs checking any more; back to the import page.",
     "duplicates": "{{count}} questions skipped because they are already in the bank.",

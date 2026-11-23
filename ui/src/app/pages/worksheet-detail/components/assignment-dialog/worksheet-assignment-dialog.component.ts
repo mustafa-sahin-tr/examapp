@@ -16,6 +16,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { WorksheetAssignmentRequest } from '../../../../models/assignment';
 import { Grade, StudentLookup } from '../../../../models/student';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
+import { SchoolSection, SchoolSectionService } from '../../../../services/school-section.service';
+
+/** Issue #1296: atama hedefi — bütün sınıf, şube ya da tek öğrenci. */
+export type AssignmentScope = 'grade' | 'section' | 'student';
 
 export interface WorksheetAssignmentDialogData {
   worksheetId: number;
@@ -87,6 +91,10 @@ export class WorksheetAssignmentDialogComponent {
   );
   protected readonly data = inject<WorksheetAssignmentDialogData>(MAT_DIALOG_DATA);
   private readonly fb = inject(FormBuilder);
+  private readonly sectionService = inject(SchoolSectionService);
+
+  /** Issue #1296: okulun şubeleri (düz ödevle aynı liste); bağımsız öğretmende okunmaz. */
+  protected readonly sections = signal<SchoolSection[]>([]);
 
   protected readonly grades = this.data.grades;
   protected readonly students = this.data.students;
@@ -96,13 +104,14 @@ export class WorksheetAssignmentDialogComponent {
   /** Issue #222: bağımsız öğretmende "Sınıfa ata" seçeneği hiç render edilmez, scope 'student'a sabitlenir. */
   protected readonly isIndependentTutor = this.data.isIndependentTutor === true;
   protected readonly worksheetCommentsEnabled = this.data.worksheetCommentsEnabled !== false;
-  private readonly initialScope: 'grade' | 'student' = this.isIndependentTutor
+  private readonly initialScope: AssignmentScope = this.isIndependentTutor
     ? 'student'
     : this.data.scope ?? 'grade';
 
   protected readonly form = this.fb.nonNullable.group({
     scope: [this.initialScope, Validators.required],
     gradeId: [this.initialScope === 'grade' ? this.defaultGrade() : null],
+    sectionId: [null as number | null],
     studentId: [null as number | null],
     startDate: [new Date(), Validators.required],
     startTime: [currentTimeOfDay(), [Validators.required, Validators.pattern(/^\d{2}:\d{2}$/)]],
@@ -123,6 +132,18 @@ export class WorksheetAssignmentDialogComponent {
   });
 
   protected readonly isGradeScope = computed(() => this.scopeSignal() === 'grade');
+  protected readonly isSectionScope = computed(() => this.scopeSignal() === 'section');
+  /** Sınıf ya da şube: alıcı sayısı karttan gelir. */
+  protected readonly isGroupScope = computed(() => this.scopeSignal() !== 'student');
+
+  private readonly sectionIdSignal = toSignal(this.form.controls.sectionId.valueChanges, {
+    initialValue: this.form.controls.sectionId.value,
+  });
+
+  private readonly selectedSection = computed(() => {
+    const id = this.sectionIdSignal();
+    return id ? this.sections().find((s) => s.id === id) ?? null : null;
+  });
 
   private readonly studentIdSignal = toSignal(this.form.controls.studentId.valueChanges, {
     initialValue: this.form.controls.studentId.value,
@@ -143,13 +164,27 @@ export class WorksheetAssignmentDialogComponent {
 
   /** Issue #860: atamayı kaç öğrenci alacak — özet satırı ve buton; bilinmiyorsa null. */
   protected readonly recipientCount = computed(() => {
+    if (this.isSectionScope()) return this.selectedSection()?.studentCount ?? null;
     if (!this.isGradeScope()) return this.studentIdSignal() ? 1 : 0;
     const counts = this.gradeCounts();
     const gradeId = this.gradeIdSignal();
     return counts && gradeId ? counts.get(gradeId) ?? 0 : null;
   });
 
-  protected readonly selectedGradeName = computed(() => this.gradeLabel(this.gradeIdSignal()));
+  protected readonly selectedGradeName = computed(() => {
+    if (this.isSectionScope()) {
+      const section = this.selectedSection();
+      return section ? sectionLabel(section) : null;
+    }
+    return this.gradeLabel(this.gradeIdSignal());
+  });
+
+  protected readonly sectionLabel = sectionLabel;
+
+  protected selectSection(sectionId: number): void {
+    this.form.controls.sectionId.setValue(sectionId);
+    this.form.controls.sectionId.markAsTouched();
+  }
 
   protected readonly selectedStudentName = computed(() => {
     const id = this.studentIdSignal();
@@ -173,6 +208,13 @@ export class WorksheetAssignmentDialogComponent {
   });
 
   constructor() {
+    if (!this.isIndependentTutor) {
+      this.sectionService
+        .list()
+        .pipe(takeUntilDestroyed())
+        .subscribe({ next: (s) => this.sections.set(s ?? []), error: () => this.sections.set([]) });
+    }
+
     // Issue #223: lookup yüklenmeden/hata varken öğrenci seçilemez.
     effect(() => {
       const control = this.form.controls.studentId;
@@ -184,17 +226,23 @@ export class WorksheetAssignmentDialogComponent {
     });
 
     this.form.controls.scope.valueChanges.pipe(takeUntilDestroyed()).subscribe((scope) => {
+      const { gradeId, sectionId, studentId } = this.form.controls;
+      gradeId.clearValidators();
+      sectionId.clearValidators();
+      studentId.clearValidators();
       if (scope === 'grade') {
-        this.form.controls.gradeId.addValidators([Validators.required]);
-        this.form.controls.studentId.clearValidators();
-        this.form.controls.studentId.reset();
+        gradeId.addValidators([Validators.required]);
+      } else if (scope === 'section') {
+        sectionId.addValidators([Validators.required]);
       } else {
-        this.form.controls.studentId.addValidators([Validators.required]);
-        this.form.controls.gradeId.clearValidators();
+        studentId.addValidators([Validators.required]);
       }
+      if (scope !== 'student') studentId.reset();
+      if (scope !== 'section') sectionId.reset();
 
-      this.form.controls.gradeId.updateValueAndValidity();
-      this.form.controls.studentId.updateValueAndValidity();
+      gradeId.updateValueAndValidity();
+      sectionId.updateValueAndValidity();
+      studentId.updateValueAndValidity();
     });
 
     this.form.controls.isHomework.valueChanges.pipe(takeUntilDestroyed()).subscribe((homework) => {
@@ -232,11 +280,17 @@ export class WorksheetAssignmentDialogComponent {
       return;
     }
 
-    const { scope, gradeId, studentId, startDate, startTime, isHomework, hasEndDate, endDate, endTime, commentsOverride } =
+    const { scope, gradeId, sectionId, studentId, startDate, startTime, isHomework, hasEndDate, endDate, endTime, commentsOverride } =
       this.form.getRawValue();
 
     if (scope === 'grade' && !gradeId) {
       this.form.controls.gradeId.setErrors({ required: true });
+      return;
+    }
+
+    if (scope === 'section' && !sectionId) {
+      this.form.controls.sectionId.setErrors({ required: true });
+      this.form.controls.sectionId.markAsTouched();
       return;
     }
 
@@ -253,6 +307,7 @@ export class WorksheetAssignmentDialogComponent {
       startAt: startAt.toISOString(),
       endAt: endAt ? endAt.toISOString() : undefined,
       gradeId: scope === 'grade' ? gradeId ?? undefined : undefined,
+      sectionId: scope === 'section' ? sectionId ?? undefined : undefined,
       studentId: scope === 'student' ? studentId ?? undefined : undefined,
       commentsEnabledOverride: commentsOverrideValue(commentsOverride),
       ...(isHomework && endAt ? { isHomework: true } : {}),
@@ -285,6 +340,11 @@ export class WorksheetAssignmentDialogComponent {
     const grade = this.grades.find((g) => g.id === gradeId);
     return grade?.name ?? gradeId.toString();
   }
+}
+
+/** Issue #1296: "7. Sınıf / A" (düz ödevin hedef etiketiyle aynı biçim). */
+function sectionLabel(section: SchoolSection): string {
+  return `${section.gradeName} / ${section.name}`;
 }
 
 /** Varsayılan başlangıç: şimdi (yerel saat, dakika). Sabit 09:00 gün içinde atanan sayfayı "planlandı"da bırakıyordu. */

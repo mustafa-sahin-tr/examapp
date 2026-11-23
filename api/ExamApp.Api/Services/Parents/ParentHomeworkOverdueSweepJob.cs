@@ -92,10 +92,11 @@ public sealed class ParentHomeworkOverdueSweepJob : IParentHomeworkOverdueSweepJ
 
     private sealed record Candidate(
         int AssignmentId, int WorksheetId, string WorksheetName, DateTime EndAt,
-        int StudentId, int StudentUserId, int? GradeId, int? VerifiedSchoolId);
+        int StudentId, int StudentUserId, int? GradeId, int? VerifiedSchoolId, int? SectionId);
 
     private sealed record AssignmentLite(
-        int Id, int WorksheetId, int? StudentId, int? GradeId, int? SchoolId, bool IsPlatformWide, DateTime StartAt, DateTime? EndAt);
+        int Id, int WorksheetId, int? StudentId, int? GradeId, int? SchoolId, bool IsPlatformWide, int? SectionId, DateTime StartAt,
+        DateTime? EndAt);
 
     private sealed record InstanceLite(int InstanceId, DateTime StartTime, WorksheetInstanceStatus Status, DateTime? EndTime);
 
@@ -118,11 +119,16 @@ public sealed class ParentHomeworkOverdueSweepJob : IParentHomeworkOverdueSweepJ
                 && (a.StudentId == s.Id
                     || (a.StudentId == null && a.GradeId != null && a.GradeId == s.GradeId
                         && (a.IsPlatformWide
-                            || (a.SchoolId != null && s.SchoolVerifiedAt != null && a.SchoolId == s.SchoolId))))
+                            || (a.SchoolId != null && s.SchoolVerifiedAt != null && a.SchoolId == s.SchoolId))
+                        // issue #1296: şube hedefi yalnız aktif üyeye.
+                        && (a.SectionId == null || _context.SchoolSectionMemberships
+                            .Any(m => m.SectionId == a.SectionId && m.StudentId == s.Id && m.EndedAt == null))))
             where !_context.ParentHomeworkOverdueMarkers.Any(m => m.WorksheetId == a.WorksheetId && m.StudentId == s.Id)
             orderby a.EndAt, a.Id, s.Id
             select new Candidate(a.Id, a.WorksheetId, a.Worksheet.Name, a.EndAt!.Value,
-                s.Id, s.UserId, s.GradeId, s.SchoolVerifiedAt != null ? s.SchoolId : null))
+                s.Id, s.UserId, s.GradeId, s.SchoolVerifiedAt != null ? s.SchoolId : null,
+                _context.SchoolSectionMemberships.Where(m => m.StudentId == s.Id && m.EndedAt == null)
+                    .Select(m => (int?)m.SectionId).FirstOrDefault()))
             .Take(opts.BatchSize)
             .ToListAsync(ct);
 
@@ -144,7 +150,8 @@ public sealed class ParentHomeworkOverdueSweepJob : IParentHomeworkOverdueSweepJ
         var allAssignments = await _context.WorksheetAssignments.AsNoTracking()
             .Where(a => worksheetIds.Contains(a.WorksheetId) && a.StartAt <= now && (a.EndAt == null || a.EndAt >= dashboardFrom)
                 && !a.Worksheet.IsDeleted)
-            .Select(a => new AssignmentLite(a.Id, a.WorksheetId, a.StudentId, a.GradeId, a.SchoolId, a.IsPlatformWide, a.StartAt, a.EndAt))
+            .Select(a => new AssignmentLite(a.Id, a.WorksheetId, a.StudentId, a.GradeId, a.SchoolId, a.IsPlatformWide, a.SectionId,
+                a.StartAt, a.EndAt))
             .ToListAsync(ct);
         var instances = (await _context.TestInstances.AsNoTracking()
                 .Where(ti => studentIds.Contains(ti.StudentId) && worksheetIds.Contains(ti.WorksheetId))
@@ -166,8 +173,8 @@ public sealed class ParentHomeworkOverdueSweepJob : IParentHomeworkOverdueSweepJ
             var any = g.First();
             var visible = allAssignments
                 .Where(a => a.WorksheetId == g.Key.WorksheetId
-                    && WorksheetStudentAccess.IsAssignmentVisibleTo(a.StudentId, a.GradeId, a.SchoolId, a.IsPlatformWide,
-                        any.StudentId, any.GradeId, any.VerifiedSchoolId))
+                    && WorksheetStudentAccess.IsAssignmentVisibleTo(a.StudentId, a.GradeId, a.SchoolId, a.IsPlatformWide, a.SectionId,
+                        any.StudentId, any.GradeId, any.VerifiedSchoolId, any.SectionId))
                 .ToList();
             decisions[g.Key] = Decide(visible, instances[g.Key].ToList(), now);
         }

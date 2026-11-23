@@ -485,6 +485,37 @@ public class ParentNotificationProducersTests : IDisposable
         e.ParentUserId.ShouldBe(ParentUserA);
     }
 
+    // issue #1296: şube hedefli ödev yalnız şubenin aktif üyesinin velisine gecikme bildirimi üretir; üyelik bitince düşer.
+    [Theory]
+    [InlineData(true, 1)]
+    [InlineData(false, 0)]
+    public async Task Sweep_notifies_parents_for_a_section_assignment_only_while_the_student_is_a_member(bool member, int expected)
+    {
+        var w = await SeedAsync();
+        await LinkAsync(w.ParentA, w.StudentId, ParentStudentLinkStatus.Active);
+        await using (var ctx = _db.NewContext())
+        {
+            var section = new SchoolSection { SchoolId = w.SchoolId, GradeId = w.GradeId, Name = "A", NormalizedName = "A" };
+            ctx.SchoolSections.Add(section);
+            await ctx.SaveChangesAsync();
+            ctx.SchoolSectionMemberships.Add(new SchoolSectionMembership
+            {
+                SectionId = section.Id, StudentId = w.StudentId, StartedAt = Ago(TimeSpan.FromDays(30)),
+                EndedAt = member ? null : Ago(TimeSpan.FromDays(1)), EndReason = member ? null : SchoolSectionEndReason.Moved
+            });
+            ctx.WorksheetAssignments.Add(new WorksheetAssignment
+            {
+                WorksheetId = w.WorksheetId, GradeId = w.GradeId, SchoolId = w.SchoolId, SectionId = section.Id,
+                StartAt = Ago(TimeSpan.FromDays(5)), EndAt = Ago(TimeSpan.FromHours(2)), IsHomework = true
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        await SweepAsync();
+
+        (await EventsAsync<ParentHomeworkOverdueEvent>()).Count.ShouldBe(expected);
+    }
+
     // ---- review fixes (#423) ---------------------------------------------------------------------------------------------
 
     [Fact]

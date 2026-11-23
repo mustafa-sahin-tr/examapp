@@ -76,7 +76,7 @@ export interface TeacherAssignmentStudentSummary {
 
 export interface TeacherWorksheetAssignment {
   assignmentId: number;
-  targetType: 'Grade' | 'Student';
+  targetType: 'Grade' | 'Section' | 'Student';
   targetName: string;
   isActive: boolean;
   startAt: string;
@@ -122,6 +122,8 @@ export interface WorksheetAssignmentRequest {
   worksheetId: number;
   studentId?: number | null;
   gradeId?: number | null;
+  /** Issue #1296: şube hedefi (öğrenci / sınıfla birlikte verilmez). */
+  sectionId?: number | null;
   startAt: string;
   endAt?: string | null;
   /** Issue #105: bu atamaya özel yorum-soru açık/kapalı; null = worksheet varsayılanı. */

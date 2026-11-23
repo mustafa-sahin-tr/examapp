@@ -115,7 +115,7 @@ public class FlashcardServicesTests : IDisposable
             var compiled = FlashcardAccess.AssignedTo(1, grade, school).Compile();
             var row = new FlashcardDeckAssignment { StudentId = assignmentStudent, GradeId = assignmentGrade, SchoolId = assignmentSchool };
             compiled(row).ShouldBe(
-                WorksheetStudentAccess.IsAssignmentVisibleTo(assignmentStudent, assignmentGrade, assignmentSchool, false, 1, grade, school));
+                WorksheetStudentAccess.IsAssignmentVisibleTo(assignmentStudent, assignmentGrade, assignmentSchool, false, null, 1, grade, school, null));
         }
     }
 

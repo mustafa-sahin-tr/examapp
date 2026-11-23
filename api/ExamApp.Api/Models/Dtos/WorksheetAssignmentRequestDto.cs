@@ -12,6 +12,9 @@ public class WorksheetAssignmentRequestDto
 
     public int? GradeId { get; set; }
 
+    /// <summary>issue #1296: şube hedefi (öğrenci ve sınıfla birlikte verilmez); atamanın sınıfı ve okulu şubeden gelir.</summary>
+    public int? SectionId { get; set; }
+
     [Required]
     public DateTime StartAt { get; set; }
 

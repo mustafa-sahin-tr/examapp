@@ -81,7 +81,7 @@ export interface TeacherAssignmentHomework {
   worksheetId: number;
   worksheetName: string;
   worksheetKind: 'Test' | 'Activity';
-  targetType: 'Grade' | 'Student';
+  targetType: 'Grade' | 'Section' | 'Student';
   targetName: string;
   startAt: string;
   dueAt: string;

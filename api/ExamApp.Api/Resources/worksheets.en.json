@@ -55,7 +55,7 @@
 
     "assignment": {
       "targetRequired": "At least one target (student or class) must be selected.",
-      "studentAndGradeTogether": "A student and a class cannot be selected in the same assignment.",
+      "studentAndGradeTogether": "Pick only one target: a student, a class or a section.",
       "homeworkNeedsDueDate": "Pick a due (end) date to give this as homework; platform-wide assignments cannot be homework.",
       "endBeforeStart": "The end time must be later than the start time.",
       "worksheetNotFound": "Worksheet not found.",
@@ -65,6 +65,7 @@
       "independentGradeForbidden": "Independent teachers cannot assign to a whole class; you can only assign by selecting students who have a booking with you.",
       "studentNotFound": "Student not found.",
       "gradeNotFound": "Class not found.",
+      "sectionNotFound": "Section not found.",
       "overlappingAssignment": "There is already an assignment in the selected range.",
       "assigned": "The test was assigned successfully.",
       "studentWithNumber": "Student #{0}",

@@ -57,12 +57,14 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
             return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.authoring.editForbidden"] };
         }
 
-        if (!request.StudentId.HasValue && !request.GradeId.HasValue)
+        // issue #1296: hedef tam olarak biri — öğrenci, bütün sınıf ya da şube.
+        var targetCount = (request.StudentId.HasValue ? 1 : 0) + (request.GradeId.HasValue ? 1 : 0) + (request.SectionId.HasValue ? 1 : 0);
+        if (targetCount == 0)
         {
             return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.targetRequired"] };
         }
 
-        if (request.StudentId.HasValue && request.GradeId.HasValue)
+        if (targetCount > 1)
         {
             return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.studentAndGradeTogether"] };
         }
@@ -146,7 +148,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         // yazılan grade ataması tüm okulların o sınıftaki öğrencilerine genişliyordu (PII sızıntısı). Yalnızca
         // Approved Booking'i olan öğrencilere öğrenci bazlı atama yapabilir (#192). Admin (Unrestricted) etkilenmez.
         // Worksheet erişim kontrolünden sonra: görünmeyen worksheet için "bulunamadı" oracle'ı korunur.
-        if (requester.IsIndependent && request.GradeId.HasValue)
+        if (requester.IsIndependent && (request.GradeId.HasValue || request.SectionId.HasValue))
         {
             return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.independentGradeForbidden"] };
         }
@@ -165,7 +167,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
                 return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.onlyOwnStudents"] };
             }
 
-            if (!isOwnerOrAdmin || request.GradeId.HasValue)
+            if (!isOwnerOrAdmin || request.GradeId.HasValue || request.SectionId.HasValue)
             {
                 assignmentSchoolId = requester.SchoolId;
             }
@@ -210,6 +212,20 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
             }
         }
 
+        // issue #1296: şube hedefi — öğretmenin okulunun şubesi (admin: herhangi bir okulun); atamanın sınıfı ve okulu şubeden.
+        SchoolSection? section = null;
+        if (request.SectionId.HasValue)
+        {
+            section = await _context.SchoolSections
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == request.SectionId.Value && (isAdmin || s.SchoolId == assignmentSchoolId), ct);
+
+            if (section == null)
+            {
+                return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.sectionNotFound"] };
+            }
+        }
+
         var overlapQuery = _context.WorksheetAssignments.AsQueryable();
         overlapQuery = overlapQuery.Where(wa => wa.WorksheetId == request.WorksheetId);
 
@@ -220,6 +236,13 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         else if (grade != null)
         {
             overlapQuery = overlapQuery.Where(wa => wa.GradeId == grade.Id);
+        }
+        else if (section != null)
+        {
+            // Aynı şube ya da şubeyi kapsayan bütün sınıf ataması çakışır; başka şube (5-A ve 5-B ayrı) çakışmaz.
+            overlapQuery = overlapQuery.Where(wa => wa.SectionId == section.Id
+                || (wa.SectionId == null && wa.StudentId == null && wa.GradeId == section.GradeId
+                    && (wa.IsPlatformWide || wa.SchoolId == section.SchoolId)));
         }
 
         overlapQuery = overlapQuery.Where(wa => wa.StartAt < (endAtUtc ?? DateTime.MaxValue)
@@ -237,8 +260,9 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         {
             WorksheetId = worksheet.Id,
             StudentId = student?.Id,
-            GradeId = grade?.Id,
-            SchoolId = grade != null ? assignmentSchoolId : null,
+            GradeId = grade?.Id ?? section?.GradeId,
+            SchoolId = grade != null ? assignmentSchoolId : section?.SchoolId,
+            SectionId = section?.Id,
             // issue #277 (madde 7): platform geneli (tüm okulların o sınıfı) sınıf ataması YALNIZCA admin'den (Unrestricted)
             // gelir; öğretmenin sınıf ataması her zaman kendi (doğrulanmış) okuluna yazılır, bağımsız öğretmen sınıf
             // ataması yapamaz (#222). Öğrenci hedefli atama platform geneli değildir.
@@ -367,6 +391,10 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
             .ToDictionary(u => u.Id, u => u.FullName);
     }
 
+    /// <summary>issue #1296: şube hedefinin adı "6. Sınıf / A" (düz ödevin hedef etiketiyle aynı biçim).</summary>
+    private static string SectionLabel(string gradeName, SchoolSection? section)
+        => section == null ? gradeName : $"{gradeName} / {section.Name}";
+
     public async Task<TeacherWorksheetAssignmentsDto> GetWorksheetAssignmentsForTeacherAsync(int worksheetId, SchoolScope requester)
     {
         var teacherUserId = requester.UserId;
@@ -387,6 +415,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
             .AsNoTracking()
             .Include(wa => wa.Grade)
             .Include(wa => wa.Student)
+            .Include(wa => wa.Section)
             .Where(wa => wa.WorksheetId == worksheetId && wa.CreateUserId == teacherUserId)
             .OrderByDescending(wa => wa.StartAt)
             .ToListAsync();
@@ -437,6 +466,12 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
 
         var students = await studentsQuery.ToListAsync();
         var studentsById = students.ToDictionary(s => s.Id);
+        // issue #1296: şube atamaları yalnız şubenin aktif üyelerini sayar (öğrenci ekranıyla aynı kural).
+        var sectionOf = assignments.Any(a => a.SectionId.HasValue) && students.Count > 0
+            ? await _context.SchoolSectionMemberships.AsNoTracking()
+                .Where(m => m.EndedAt == null && studentsById.Keys.Contains(m.StudentId))
+                .ToDictionaryAsync(m => m.StudentId, m => m.SectionId)
+            : new Dictionary<int, int>();
         var studentNames = await LoadStudentNamesAsync(students);
 
         var gradeMap = gradeIds.Any()
@@ -470,7 +505,9 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
                 : requester.IsIndependent
                     ? new List<Student>()
                     : students.Where(s => s.GradeId.HasValue && assignment.GradeId.HasValue && s.GradeId.Value == assignment.GradeId.Value
-                        && (!assignment.SchoolId.HasValue || s.VerifiedSchoolId == assignment.SchoolId)).ToList(); // issue #361
+                        && (!assignment.SchoolId.HasValue || s.VerifiedSchoolId == assignment.SchoolId) // issue #361
+                        && (!assignment.SectionId.HasValue
+                            || (sectionOf.TryGetValue(s.Id, out var sid) && sid == assignment.SectionId.Value))).ToList();
 
             var studentDtos = new List<TeacherAssignmentStudentDto>();
 
@@ -543,13 +580,13 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
                         ? _localizer["worksheets.assignment.studentWithNumber", studentNumber].Value
                         : _localizer["worksheets.assignment.studentWithId", assignment.StudentId].Value
                 : assignment.GradeId.HasValue && gradeMap.TryGetValue(assignment.GradeId.Value, out var resolvedGradeName)
-                    ? resolvedGradeName
-                    : assignment.Grade?.Name ?? _localizer["worksheets.assignment.unnamedGrade"].Value;
+                    ? SectionLabel(resolvedGradeName, assignment.Section)
+                    : SectionLabel(assignment.Grade?.Name ?? _localizer["worksheets.assignment.unnamedGrade"].Value, assignment.Section);
 
             var assignmentDto = new TeacherWorksheetAssignmentDto
             {
                 AssignmentId = assignment.Id,
-                TargetType = assignment.StudentId.HasValue ? "Student" : "Grade",
+                TargetType = assignment.StudentId.HasValue ? "Student" : assignment.SectionId.HasValue ? "Section" : "Grade",
                 TargetName = targetName,
                 IsActive = isActive,
                 StartAt = assignment.StartAt,

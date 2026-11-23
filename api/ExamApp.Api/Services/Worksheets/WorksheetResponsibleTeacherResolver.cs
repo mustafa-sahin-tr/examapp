@@ -20,7 +20,7 @@ public class WorksheetResponsibleTeacherResolver : IWorksheetResponsibleTeacherR
     }
 
     /// <summary>Karar için gereken atama alanları (tam entity yerine projeksiyon).</summary>
-    private sealed record AssignmentRow(int Id, int? StudentId, int? GradeId, int? SchoolId, bool IsPlatformWide,
+    private sealed record AssignmentRow(int Id, int? StudentId, int? GradeId, int? SchoolId, bool IsPlatformWide, int? SectionId,
         DateTime StartAt, int? CreateUserId, bool? CommentsEnabledOverride);
 
     public async Task<ResponsibleTeacher?> ResolveResponsibleTeacherAsync(int worksheetId, int studentUserId, CancellationToken ct = default)
@@ -68,7 +68,12 @@ public class WorksheetResponsibleTeacherResolver : IWorksheetResponsibleTeacherR
         var students = await _context.Students
             .AsNoTracking()
             .Where(s => userIds.Contains(s.UserId))
-            .Select(s => new { s.Id, s.UserId, s.GradeId, SchoolId = s.SchoolVerifiedAt != null ? s.SchoolId : null }) // issue #361: yalnız doğrulanmış okul
+            .Select(s => new
+            {
+                s.Id, s.UserId, s.GradeId, SchoolId = s.SchoolVerifiedAt != null ? s.SchoolId : null, // issue #361: yalnız doğrulanmış okul
+                SectionId = _context.SchoolSectionMemberships // issue #1296: aktif şube (WorksheetStudentAccess.ActiveSectionIdOf)
+                    .Where(m => m.StudentId == s.Id && m.EndedAt == null).Select(m => (int?)m.SectionId).FirstOrDefault()
+            })
             .ToListAsync(ct);
 
         // issue #326 (D3): #259 unique index kullanıcı başına tek canlı Students satırı garanti eder (OrderBy(Id) gereksiz).
@@ -89,7 +94,8 @@ public class WorksheetResponsibleTeacherResolver : IWorksheetResponsibleTeacherR
             {
                 // Hedef/okul koşulu: WorksheetStudentAccess.AssignmentVisibleTo'nun bellek içi eşdeğeri.
                 var row = PickRelevant(activeAssignments.Where(a => WorksheetStudentAccess.IsAssignmentVisibleTo(
-                    a.StudentId, a.GradeId, a.SchoolId, a.IsPlatformWide, student.Id, student.GradeId, student.SchoolId)));
+                    a.StudentId, a.GradeId, a.SchoolId, a.IsPlatformWide, a.SectionId,
+                    student.Id, student.GradeId, student.SchoolId, student.SectionId)));
                 if (row != null)
                     relevantByUser[userId] = new RelevantAssignment(row.Id, row.CreateUserId, row.CommentsEnabledOverride);
             }
@@ -127,7 +133,7 @@ public class WorksheetResponsibleTeacherResolver : IWorksheetResponsibleTeacherR
         var candidates = await _context.ActiveAssignmentsFor(studentId, gradeId, schoolId, DateTime.UtcNow)
             .AsNoTracking()
             .Where(a => a.WorksheetId == worksheetId)
-            .Select(a => new AssignmentRow(a.Id, a.StudentId, a.GradeId, a.SchoolId, a.IsPlatformWide, a.StartAt,
+            .Select(a => new AssignmentRow(a.Id, a.StudentId, a.GradeId, a.SchoolId, a.IsPlatformWide, a.SectionId, a.StartAt,
                 a.CreateUserId, a.CommentsEnabledOverride))
             .ToListAsync(ct);
 
@@ -140,16 +146,17 @@ public class WorksheetResponsibleTeacherResolver : IWorksheetResponsibleTeacherR
             .AsNoTracking()
             .Where(a => a.WorksheetId == worksheetId)
             .Where(WorksheetAccess.ActiveAt(DateTime.UtcNow))
-            .Select(a => new AssignmentRow(a.Id, a.StudentId, a.GradeId, a.SchoolId, a.IsPlatformWide, a.StartAt,
+            .Select(a => new AssignmentRow(a.Id, a.StudentId, a.GradeId, a.SchoolId, a.IsPlatformWide, a.SectionId, a.StartAt,
                 a.CreateUserId, a.CommentsEnabledOverride));
 
     /// <summary>
-    /// Birden fazla aktif atama varsa: öğrenci hedefli (daha özel) sınıf hedefliden önce, sonra en yeni StartAt, sonra Id.
+    /// Birden fazla aktif atama varsa: öğrenci hedefli (daha özel) şube, şube hedefli sınıf hedefliden önce, sonra en yeni StartAt, sonra Id.
     /// Tek yer — hem öğretmen tespiti hem etkin yorum ayarı aynı atamayı görür.
     /// </summary>
     private static AssignmentRow? PickRelevant(IEnumerable<AssignmentRow> activeAssignments) =>
         activeAssignments
             .OrderByDescending(a => a.StudentId.HasValue)
+            .ThenByDescending(a => a.SectionId.HasValue) // issue #1296: şube, bütün sınıftan daha özel
             .ThenByDescending(a => a.StartAt)
             .ThenByDescending(a => a.Id)
             .FirstOrDefault();

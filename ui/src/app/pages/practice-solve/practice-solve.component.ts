@@ -164,6 +164,8 @@ export class PracticeSolveComponent implements OnInit {
   readonly busy = signal(false);
   /** Oturum çağrısı hatası; "Tekrar dene" `retryAction` ile son işlemi yineler. */
   readonly error = signal<string | null>(null);
+  /** #508: `?session=` derin linki açılamadı (bitmiş ya da bulunamayan oturum); kurulumda bilgi kutusu. */
+  readonly sessionLinkNotice = signal<'ended' | 'notFound' | null>(null);
   private retryAction: (() => void) | null = null;
 
   // ── Kurulum ekranı ──────────────────────────────────────────────────────────
@@ -380,7 +382,7 @@ export class PracticeSolveComponent implements OnInit {
 
     const sessionParam = Number(this.route.snapshot.queryParamMap.get(SESSION_QUERY_PARAM));
     if (Number.isInteger(sessionParam) && sessionParam > 0) {
-      this.resumeSession(sessionParam);
+      this.resumeSession(sessionParam, true);
     }
   }
 
@@ -738,6 +740,7 @@ export class PracticeSolveComponent implements OnInit {
   private openSession(request: PracticeSessionStartRequest, retry: () => void): void {
     this.mixedReviewSession.set(request.mixedReview === true);
     this.run(this.practiceService.startSession(request), retry, (session) => {
+      this.sessionLinkNotice.set(null);
       this.session.set(session);
       this.answeredCount.set(session.answeredCount);
       this.correctCount.set(session.correctCount);
@@ -755,23 +758,39 @@ export class PracticeSolveComponent implements OnInit {
    * Sayfa yenilemede `?session=` ile ya da geçmiş listesinden aktif oturuma geri döner;
    * bitmişse kurulumda kalır.
    */
-  private resumeSession(sessionId: number): void {
-    this.run(this.practiceService.getSession(sessionId), () => this.resumeSession(sessionId), (session) => {
-      if (session.status !== 'Active') {
-        this.clearSessionParam();
-        return;
-      }
-      this.session.set(session);
-      this.answeredCount.set(session.answeredCount);
-      this.correctCount.set(session.correctCount);
-      this.skippedCount.set(session.skippedCount);
-      void this.router.navigate([], {
-        relativeTo: this.route,
-        queryParams: { [SESSION_QUERY_PARAM]: session.id },
-        replaceUrl: true,
-      });
-      this.loadNext();
-    });
+  private resumeSession(sessionId: number, fromLink = false): void {
+    const onError = fromLink
+      ? (err: unknown): boolean => {
+          // #508: başka öğrencinin / olmayan oturum API'de 404 (sızıntı yok); genel hata yerine kurulum + bilgi.
+          if (!(err instanceof HttpErrorResponse) || ![400, 403, 404].includes(err.status)) return false;
+          this.clearSessionParam();
+          this.sessionLinkNotice.set('notFound');
+          return true;
+        }
+      : undefined;
+    this.run(
+      this.practiceService.getSession(sessionId),
+      () => this.resumeSession(sessionId, fromLink),
+      (session) => {
+        if (session.status !== 'Active') {
+          this.clearSessionParam();
+          if (fromLink) this.sessionLinkNotice.set('ended');
+          return;
+        }
+        this.sessionLinkNotice.set(null);
+        this.session.set(session);
+        this.answeredCount.set(session.answeredCount);
+        this.correctCount.set(session.correctCount);
+        this.skippedCount.set(session.skippedCount);
+        void this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { [SESSION_QUERY_PARAM]: session.id },
+          replaceUrl: true,
+        });
+        this.loadNext();
+      },
+      onError
+    );
   }
 
   loadNext(): void {
@@ -1269,7 +1288,13 @@ export class PracticeSolveComponent implements OnInit {
   }
 
   /** Tek noktadan busy / error / retry yönetimi. */
-  private run<T>(source: Observable<T>, retry: () => void, onSuccess: (value: T) => void): void {
+  /** `onError` true dönerse hata ele alınmıştır; genel hata kutusu gösterilmez. */
+  private run<T>(
+    source: Observable<T>,
+    retry: () => void,
+    onSuccess: (value: T) => void,
+    onError?: (err: unknown) => boolean
+  ): void {
     if (this.busy()) return;
     this.busy.set(true);
     this.error.set(null);
@@ -1282,6 +1307,7 @@ export class PracticeSolveComponent implements OnInit {
       },
       error: (err: unknown) => {
         this.busy.set(false);
+        if (onError?.(err)) return;
         this.error.set(this.messageOf(err, this.text('error.generic')));
       },
     });

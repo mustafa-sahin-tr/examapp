@@ -22,6 +22,15 @@
   </div>
   }
 
+  <!-- #508: derin link (?session=) açılamadı -->
+  @if (phase() === 'setup' && sessionLinkNotice(); as notice) {
+  <div class="state-box state-box--info" role="status">
+    <mat-icon>info</mat-icon>
+    <p class="state-text">{{ t('sessionLink.' + notice) }}</p>
+    <button mat-stroked-button type="button" (click)="sessionLinkNotice.set(null)">{{ t('common.close') }}</button>
+  </div>
+  }
+
   @switch (phase()) {
   <!-- ── Günün soruları açılışı (issue #99): yükleniyor / hata / havuz boş ── -->
   @case ('daily') {

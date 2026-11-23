@@ -594,6 +594,54 @@ describe('PracticeSolveComponent', () => {
         expect(component.phase()).toBe('question');
     });
 
+    it('sessionLink_ActiveSession_OpensQuestionDirectly', () => {
+        const active: PracticeSession = { ...session, id: 21, status: 'Active' };
+        practiceService.getSession.mockReturnValue(of(active));
+        practiceService.getNextQuestion.mockReturnValue(of({ sessionId: 21, question: buildQuestion(), poolExhausted: false, answeredCount: 0, correctCount: 0 }));
+        setup({ session: '21' });
+        fixture.detectChanges();
+
+        expect(practiceService.getSession).toHaveBeenCalledWith(21);
+        expect(component.phase()).toBe('question');
+        expect(component.sessionLinkNotice()).toBeNull();
+    });
+
+    it('sessionLink_EndedSession_StaysOnSetupWithInfo', () => {
+        practiceService.getSession.mockReturnValue(of({ ...session, id: 22, status: 'Ended' as const, endTime: '2026-10-05T09:00:00Z' }));
+        setup({ session: '22' });
+        fixture.detectChanges();
+
+        expect(practiceService.getNextQuestion).not.toHaveBeenCalled();
+        expect(component.phase()).toBe('setup');
+        expect(component.error()).toBeNull();
+        const notice = fixture.debugElement.query(By.css('.state-box--info[role="status"]')).nativeElement as HTMLElement;
+        expect(notice.textContent).toContain('Bu oturum bitmiş');
+        expect(router.navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: expect.objectContaining({ session: null }) }));
+    });
+
+    it('sessionLink_OtherStudentsSession404_StaysOnSetupWithoutGenericError', () => {
+        practiceService.getSession.mockReturnValue(
+            throwError(() => new HttpErrorResponse({ status: 404, error: { message: 'Pratik oturumu bulunamadı.' } }))
+        );
+        setup({ session: '999' });
+        fixture.detectChanges();
+
+        expect(component.phase()).toBe('setup');
+        expect(component.error()).toBeNull();
+        expect(fixture.debugElement.query(By.css('.state-box--error'))).toBeNull();
+        const notice = fixture.debugElement.query(By.css('.state-box--info[role="status"]')).nativeElement as HTMLElement;
+        expect(notice.textContent).toContain('Bu oturum bulunamadı');
+    });
+
+    it('sessionLink_ServerError_ShowsGenericErrorWithRetry', () => {
+        practiceService.getSession.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+        setup({ session: '23' });
+        fixture.detectChanges();
+
+        expect(component.error()).toBeTruthy();
+        expect(component.sessionLinkNotice()).toBeNull();
+    });
+
     it('studyPageSession_PoolExhausted_EndsSessionAndReturnsToThePage', () => {
         const active: PracticeSession = { ...session, id: 13, status: 'Active' };
         practiceService.getSession.mockReturnValue(of(active));

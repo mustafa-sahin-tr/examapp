@@ -30,6 +30,10 @@ public static class ToolRegistration
         services.AddScoped<IAssistantTool, GetChildWeakTopicsTool>();
         services.AddScoped<IAssistantTool, GetChildProgressTool>();
         services.AddScoped<IAssistantTool, GetChildScheduleTool>();
+        // #511 (Phase 2): activity trend, children side by side, weekly report.
+        services.AddScoped<IAssistantTool, GetChildActivityTrendTool>();
+        services.AddScoped<IAssistantTool, CompareChildrenTool>();
+        services.AddScoped<IAssistantTool, GetChildWeeklyReportTool>();
         services.AddScoped<IAssistantTool, SearchHelpTool>();
         services.AddScoped<IAssistantTool, UiOpenScreenTool>();
         services.AddScoped<IAssistantTool, UiSuggestActionsTool>();

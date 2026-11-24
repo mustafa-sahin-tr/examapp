@@ -67,7 +67,9 @@
     "accuracyPct": "Doğruluk",
     "testsCompleted": "Biten test",
     "activeDays": "Aktif gün",
-    "overdueHomework": "Geciken ödev"
+    "overdueHomework": "Geciken ödev",
+    "previousQuestionsSolved": "Önceki dönem soru",
+    "studyMinutes": "Çalışma (dk)"
   },
   "topicTable": {
     "name": "Konu",

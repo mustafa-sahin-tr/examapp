@@ -138,11 +138,25 @@ public sealed class ParentDashboardService : IParentDashboardService
 
     internal sealed record WeekAnswers(int Solved, int Correct, int ActiveDays);
 
+    /// <summary>One local day's answers (#511 activity trend).</summary>
+    internal sealed record DayAnswers(int Solved, int Correct);
+
     /// <summary>
     /// Haftanın cevapları: sayı, doğru sayısı ve cevap verilen yerel gün sayısı. Bir haftanın cevap anları okunur (iki kolon);
     /// gün hesabı yerel saat diliminde bellekte yapılır. #1112 haftalık rapor da bunu kullanır (panelle aynı sayı).
     /// </summary>
     internal static async Task<WeekAnswers> WeekAnswersAsync(
+        AppDbContext context, TimeZoneInfo timeZone, int studentId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+    {
+        var days = await DailyAnswersAsync(context, timeZone, studentId, fromUtc, toUtc, ct);
+        return new WeekAnswers(days.Values.Sum(d => d.Solved), days.Values.Sum(d => d.Correct), days.Count);
+    }
+
+    /// <summary>
+    /// Issue #511: answers per local day in [<paramref name="fromUtc"/>, <paramref name="toUtc"/>) with the panel's rule (worksheet
+    /// answers at <c>UpdateTime</c> + practice answers, skips excluded). Days without an answer are absent.
+    /// </summary>
+    internal static async Task<Dictionary<DateOnly, DayAnswers>> DailyAnswersAsync(
         AppDbContext context, TimeZoneInfo timeZone, int studentId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
     {
         // IX_TestInstanceQuestions_UpdateTime_Answered yüklemiyle aynı şekil (cevaplı + UpdateTime aralığı).
@@ -159,12 +173,9 @@ public sealed class ParentDashboardService : IParentDashboardService
             .Select(p => new { At = p.AnsweredAt!.Value, p.IsCorrect })
             .ToListAsync(ct);
 
-        var all = worksheetAnswers.Concat(practiceAnswers).ToList();
-        var days = all
-            .Select(a => DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(a.At, DateTimeKind.Utc), timeZone)))
-            .Distinct()
-            .Count();
-        return new WeekAnswers(all.Count, all.Count(a => a.IsCorrect), days);
+        return worksheetAnswers.Concat(practiceAnswers)
+            .GroupBy(a => DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(a.At, DateTimeKind.Utc), timeZone)))
+            .ToDictionary(g => g.Key, g => new DayAnswers(g.Count(), g.Count(a => a.IsCorrect)));
     }
 
     private async Task<ParentChildAssignmentCountsDto> CountAssignmentsAsync(ParentChildAccessGrant grant, DateTime now, CancellationToken ct)

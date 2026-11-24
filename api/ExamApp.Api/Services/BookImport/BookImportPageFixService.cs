@@ -332,7 +332,12 @@ public sealed class BookImportPageFixService(
         return await db.QuestionSources.IgnoreQueryFilters().AsNoTracking()
             .Where(s => s.BookId == bookId && s.FilePage == filePage && s.Question.IsDraft && !s.Question.IsDeleted
                         && s.Question.CreateUserId == ownerId
-                        && !db.TestQuestions.IgnoreQueryFilters().Any(wq => wq.QuestionId == s.QuestionId && !wq.IsDeleted))
+                        // #1344: a draft linked only to a copy test no import test points at (the question stage ran twice) is
+                        // orphaned too; otherwise its crop counts as a duplicate and the page fix saves nothing in its place.
+                        && !db.TestQuestions.IgnoreQueryFilters().Any(wq => wq.QuestionId == s.QuestionId && !wq.IsDeleted
+                            && !wq.Worksheet.IsDeleted
+                            && (!wq.Worksheet.IsDraft || db.BookImportJobTests.IgnoreQueryFilters()
+                                .Any(t => t.WorksheetId == wq.TestId && !t.IsDeleted))))
             .Select(s => s.QuestionId).Distinct().ToListAsync(ct);
     }
 

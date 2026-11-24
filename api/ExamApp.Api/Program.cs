@@ -657,7 +657,10 @@ builder.Services.AddHangfire(config =>
         .UseRecommendedSerializerSettings()
         .UsePostgreSqlStorage(hangfireConn, new PostgreSqlStorageOptions
         {
-            SchemaName = "hangfire"
+            SchemaName = "hangfire",
+            // #1344: a fetched job running longer than this is handed to another worker (no sliding timeout in 1.20); the
+            // default 30 minutes ran a long book import twice. A job cut off by a crash resumes after it (or on Retry).
+            InvisibilityTimeout = TimeSpan.FromHours(builder.Configuration.GetValue("Hangfire:InvisibilityTimeoutHours", 6)),
         });
 });
 

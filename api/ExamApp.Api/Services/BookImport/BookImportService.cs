@@ -115,6 +115,7 @@ public interface IBookImportService
 
     /// <summary>Issue #1025: hatalı ya da takılmış işi kaldığı yerden yeniden kuyruğa verir.</summary>
     Task<RetryBookImportResult> RetryAsync(BookImportOwner owner, Guid id, CancellationToken ct);
+    Task<RetryBookImportResult> RerunSetupAsync(BookImportOwner owner, Guid id, CancellationToken ct);
 
     /// <summary>Issue #1025: hatalı testi (<paramref name="testId"/>) ya da bütün hatalı testleri yeniden aktarır.</summary>
     Task<RetryBookImportResult> RetryTestsAsync(BookImportOwner owner, Guid id, int? testId, CancellationToken ct);

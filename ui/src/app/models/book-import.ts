@@ -585,16 +585,22 @@ export function isActivitySection(test: { flags?: readonly string[] | null }): b
   return test.flags?.includes('activity') === true;
 }
 
-/** Testin kodu: "1-03"; etkinlik bölümünde "1-E03" (#1134, sunucudaki `BookTestName` ile aynı). */
-export function bookImportTestCode(test: Pick<BookImportJobTest, 'unit' | 'testNo'> & { flags?: readonly string[] | null }): string {
-  return `${test.unit}-${isActivitySection(test) ? 'E' : ''}${String(test.testNo).padStart(2, '0')}`;
+/** Kurulumun deneme sınavı satırı ("1. Sınav"; sunucuda `BookSetupPlanner.FlagExam`). */
+export function isExamSection(test: { flags?: readonly string[] | null }): boolean {
+  return test.flags?.includes('exam') === true;
 }
 
-/** Testin kısa adı: "1-03 · Kesirler"; etkinlik bölümü "1-E01 · Etkinlikler". */
+/** Testin kodu: "1-03"; etkinlik bölümünde "1-E03" (#1134), denemede "2-S01" (sunucudaki `BookTestName` ile aynı). */
+export function bookImportTestCode(test: Pick<BookImportJobTest, 'unit' | 'testNo'> & { flags?: readonly string[] | null }): string {
+  const prefix = isActivitySection(test) ? 'E' : isExamSection(test) ? 'S' : '';
+  return `${test.unit}-${prefix}${String(test.testNo).padStart(2, '0')}`;
+}
+
+/** Testin kısa adı: "1-03 · Kesirler"; etkinlik bölümü "1-E01 · Etkinlikler", deneme "2-S01 · Deneme Sınavı". */
 export function bookImportTestName(
   test: Pick<BookImportJobTest, 'unit' | 'testNo' | 'title'> & { flags?: readonly string[] | null },
 ): string {
-  const title = test.title || (isActivitySection(test) ? 'Etkinlikler' : '');
+  const title = test.title || (isActivitySection(test) ? 'Etkinlikler' : isExamSection(test) ? 'Deneme Sınavı' : '');
   return `${bookImportTestCode(test)}${title ? ' · ' + title : ''}`;
 }
 

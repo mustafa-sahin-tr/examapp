@@ -507,6 +507,25 @@ public class BookImportController : BaseController
         return RetryResult(await _service.RetryAsync(owner, id, ct));
     }
 
+    /// <summary>
+    /// Kurulum onayındaki işin kurulumunu baştan çalıştır (tarama + anahtar okuma; sayfalar ve temizlik kalır, onay ekranındaki
+    /// düzenlemeler gider). 204 kuyrukta; 409 onay beklemiyor, temizlik sürüyor ya da kitap aktarımı değil.
+    /// </summary>
+    [HttpPost("{id:guid}/setup/rerun")]
+    [RequiresEntitlement(EntitlementFeatures.BookImport, InPlanOnly = true)]
+    public async Task<IActionResult> RerunSetup(Guid id, CancellationToken ct)
+    {
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
+        return await _service.RerunSetupAsync(owner, id, ct) switch
+        {
+            RetryBookImportResult.Queued => NoContent(),
+            RetryBookImportResult.NotFound => NotFound(new { message = _localizer["bookImport.notFound"].Value }),
+            _ => Conflict(new { code = "bookImport.notAwaitingSetup", message = _localizer["bookImport.notAwaitingSetup"].Value }),
+        };
+    }
+
     /// <summary>Issue #1025: hatalı testi yeniden aktar.</summary>
     [HttpPost("{id:guid}/tests/{testId:int}/retry")]
     [RequiresEntitlement(EntitlementFeatures.BookImport, InPlanOnly = true)]

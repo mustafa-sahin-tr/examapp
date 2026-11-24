@@ -160,7 +160,8 @@
     "missedNumbers": "Eksik soru numarası",
     "keyConflicts": "Anahtar okumaları farklı",
     "keyByNumber": "Anahtar test numarasıyla eşlendi",
-    "activity": "Etkinlik bölümü"
+    "activity": "Etkinlik bölümü",
+    "exam": "Deneme sınavı"
   },
   "actions": {
     "open": "Aç",
@@ -241,6 +242,8 @@
     "noKey": "Cevap anahtarı bulunamadı — sorular cevapsız aktarılacak.",
     "continueWithoutKey": "Cevapsız devam et",
     "cancelImport": "Aktarımı iptal et",
+    "rerun": "Kurulumu yeniden çalıştır",
+    "rerunConfirm": "Düzenlemeler silinir — yeniden çalıştır",
     "tests": "Test",
     "offset": "Sayfa numarası",
     "offsetValue": "basılı = dosya {{offset}}",
@@ -679,6 +682,7 @@
       "CostCeiling": "Maliyet sınırına ulaşıldı ({{cost}}); devam için onay gerekiyor"
     },
     "retried": "Aktarım yeniden denendi",
+    "setupRerun": "Kurulum yeniden çalıştırıldı",
     "retriedTests": "{{tests}} hatalı test yeniden deneniyor",
     "continued": "Maliyet sınırı yükseltildi ({{ceiling}}), aktarım sürüyor",
     "failed": "Aktarım hatayla durdu: {{error}}",

@@ -339,6 +339,11 @@ export class BookImportService {
   }
 
   /** #1234 "Sayfaları temizle": arka planda; işaret rengi verilirse öğrenilmez, bu renk kullanılır. */
+  /** Kurulumu baştan çalıştır (tarama + anahtar okuma); onay ekranındaki düzenlemeler gider. */
+  rerunSetup(id: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${id}/setup/rerun`, {});
+  }
+
   startCleaning(id: string, markColour?: number[]): Observable<void> {
     return this.http.post<void>(`${this.baseUrl}/${id}/setup/clean`, markColour ? { markColour } : {});
   }

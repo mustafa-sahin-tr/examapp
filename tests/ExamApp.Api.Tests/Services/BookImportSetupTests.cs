@@ -287,6 +287,38 @@ public class BookImportSetupTests : IDisposable
     }
 
     [Fact]
+    public async Task Rerun_setup_queues_the_setup_stage_again_and_rewrites_the_test_rows()
+    {
+        var id = await SetUpAsync();
+        await using (var edit = _db.NewContext())
+        {
+            var row = await edit.BookImportJobTests.AsTracking().FirstAsync(t => t.JobId == id);
+            row.Title = "Elle düzenlendi";
+            await edit.SaveChangesAsync();
+        }
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).RerunSetupAsync(BookImportOwner.Create(OwnerId, []), id, default)).ShouldBe(RetryBookImportResult.Queued);
+
+        await using (var check = _db.NewContext())
+        {
+            var job = await check.BookImportJobs.SingleAsync();
+            (job.Stage, job.Status).ShouldBe((BookImportStage.Setup, BookImportJobStatus.Queued));
+        }
+        _jobs.Received(1).Create(Arg.Is<Hangfire.Common.Job>(j => j.Method.Name == nameof(BookImportJobRunner.RunAsync)),
+            Arg.Any<Hangfire.States.IState>());
+
+        await RunAsync(id);
+        await using var after = _db.NewContext();
+        (await after.BookImportJobs.SingleAsync()).Status.ShouldBe(BookImportJobStatus.AwaitingConfirmation);
+        (await after.BookImportJobTests.Where(t => t.JobId == id).Select(t => t.Title).ToListAsync()).ShouldNotContain("Elle düzenlendi");
+
+        // Onay beklemeyen iş yeniden kurulmaz; başkasının işi görünmez.
+        await using var ctx2 = _db.NewContext();
+        (await NewService(ctx2).RerunSetupAsync(BookImportOwner.Create(OwnerId + 1, []), id, default)).ShouldBe(RetryBookImportResult.NotFound);
+    }
+
+    [Fact]
     public void Toc_ranges_follow_consecutive_tests_of_a_unit_so_a_misread_unit_does_not_overlap_the_others()
     {
         // 5 Fen: 4. ünite testleri "1" okundu; ünitenin en küçük–en büyük sayfası (1–8) 2. üniteyle çakışırdı.
@@ -298,6 +330,17 @@ public class BookImportSetupTests : IDisposable
             [new ConfirmBookImportTestDto { Order = 6, FileFrom = 10, FileTo = 13 }, new ConfirmBookImportTestDto { Order = 5, FileFrom = 9, FileTo = 9 }]);
 
         runs.ShouldBe([(1, 1, 4), (2, 5, 6), (1, 7, 8), (3, 9, 13)]);
+    }
+
+    [Fact]
+    public void Toc_range_of_an_exam_has_no_unit_so_its_questions_are_not_bound_to_one_unit_topic()
+    {
+        BookImportJobTest Test(int order, int unit, int from, int to, string? flags = null) =>
+            new() { Order = order, Unit = unit, TestNo = order, FileFrom = from, FileTo = to, FlagsJson = flags };
+        var tests = new[] { Test(1, 2, 1, 4), Test(2, 2, 5, 6, "[\"exam\"]"), Test(3, 3, 7, 8) };
+
+        BookImportService.UnitRuns(tests, []).ShouldBe([(2, 1, 4), (0, 5, 6), (3, 7, 8)]);
+        BookImportService.BookTestName(tests[1]).ShouldBe("2-S02 · Deneme Sınavı");
     }
 
     [Fact]

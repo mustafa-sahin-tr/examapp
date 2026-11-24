@@ -208,6 +208,8 @@ export class BookImportSetupComponent implements OnInit {
   private cleaningPoll?: Subscription;
   private destroyed = false;
   readonly saving = signal(false);
+  /** "Kurulumu yeniden çalıştır" ilk tıkta silahlanır: ikinci tık düzenlemeleri silip kurulumu baştan başlatır. */
+  readonly rerunArmed = signal(false);
   readonly error = signal<string | null>(null);
   /** Anahtar sayfalarının küçük resimleri (dosya sayfası → object URL); hepsi yan yana gösterilir. */
   readonly keyImages = signal<ReadonlyMap<number, string>>(new Map());
@@ -736,6 +738,24 @@ export class BookImportSetupComponent implements OnInit {
   /** Anahtarı bulunmayan kitap: cevapsız aktarıma devam. */
   acknowledgeNoKey(): void {
     this.noKeyAcknowledged.set(true);
+  }
+
+  rerunSetup(): void {
+    if (!this.rerunArmed()) {
+      this.rerunArmed.set(true);
+      return;
+    }
+    this.saving.set(true);
+    this.api
+      .rerunSetup(this.jobId())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => this.changed.emit(),
+        error: (error: HttpErrorResponse) => {
+          this.rerunArmed.set(false);
+          this.fail(error);
+        },
+      });
   }
 
   cancel(): void {

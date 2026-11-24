@@ -53,6 +53,7 @@ describe('BookImportSetupComponent (#1021)', () => {
       startCleaning: vi.fn().mockReturnValue(of(undefined)),
       setCleaning: vi.fn().mockReturnValue(of(undefined)),
       cancel: vi.fn().mockReturnValue(of(undefined)),
+      rerunSetup: vi.fn().mockReturnValue(of(undefined)),
     } as unknown as MockedObject<BookImportService>;
     TestBed.configureTestingModule({
       imports: [BookImportSetupComponent, translocoTestingModule({ langs: { 'book-imports/tr': tr } })],
@@ -526,6 +527,23 @@ describe('BookImportSetupComponent (#1021)', () => {
       .find((b) => b.textContent?.includes(tr.setup.cancelImport))!;
     cancel.click();
     expect(api.cancel).toHaveBeenCalledWith('a1');
+    expect(changed).toHaveBeenCalled();
+  });
+
+  it('rerunSetup_AsksOnceThenQueuesTheSetupAgain', () => {
+    create();
+    const changed = vi.fn();
+    fixture.componentInstance.changed.subscribe(changed);
+    const button = () => el().querySelector<HTMLButtonElement>('[data-testid="setup-rerun"]')!;
+    expect(button().textContent).toContain(tr.setup.rerun);
+
+    button().click();
+    fixture.detectChanges();
+    expect(api.rerunSetup).not.toHaveBeenCalled();
+    expect(button().textContent).toContain(tr.setup.rerunConfirm);
+
+    button().click();
+    expect(api.rerunSetup).toHaveBeenCalledWith('a1');
     expect(changed).toHaveBeenCalled();
   });
 

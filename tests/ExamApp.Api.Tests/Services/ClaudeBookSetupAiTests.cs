@@ -79,7 +79,28 @@ public class ClaudeBookSetupAiTests
     }
 
     /// <summary>İlk <c>truncateFirst</c> çağrı kesik (Length) döner; her çağrının çıktı sınırı kaydedilir.</summary>
-    private sealed class FakeChatClient(int truncateFirst) : IChatClient
+    [Fact]
+    public async Task AnswerKey_ExamRow_IsReadAsAnExamNotAsTestOneOfTheUnit()
+    {
+        // 5. sınıf Sosyal Bilgiler: "1. Sınav" satırı 2. ünite tablosunun altında; eskiden "2-01" sahipsiz anahtar oluyordu.
+        var reply = JsonSerializer.Serialize(new
+        {
+            rows = new object[]
+            {
+                new { unit = 2, testNo = 18, answers = new[] { new { number = 1, answer = "A" } }, series = (string?)null, exam = (int?)null },
+                new { unit = 2, testNo = 0, answers = new[] { new { number = 1, answer = "B" }, new { number = 2, answer = "A" } },
+                    series = (string?)null, exam = (int?)1 },
+            },
+        });
+
+        var rows = await Ai(new FakeChatClient(0, reply))
+            .ReadAnswerKeyAsync(Page(223), tiled: false, strong: false, new BookSetupCost(), CancellationToken.None);
+
+        rows.Select(r => (r.Unit, r.TestNo, r.ExamNo)).ShouldBe([(2, 18, (int?)null), (0, 0, 1)]);
+        rows[1].Answers.ShouldBe(new Dictionary<int, char> { [1] = 'B', [2] = 'A' });
+    }
+
+    private sealed class FakeChatClient(int truncateFirst, string? reply = null) : IChatClient
     {
         public const int OutputTokensPerCall = 7;
 
@@ -89,7 +110,7 @@ public class ClaudeBookSetupAiTests
             IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
         {
             Limits.Add(options?.MaxOutputTokens);
-            return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, SurveyJson))
+            return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, reply ?? SurveyJson))
             {
                 FinishReason = Limits.Count <= truncateFirst ? ChatFinishReason.Length : ChatFinishReason.Stop,
                 Usage = new UsageDetails { InputTokenCount = 10, OutputTokenCount = OutputTokensPerCall },

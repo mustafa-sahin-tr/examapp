@@ -25,6 +25,8 @@ public static class BookImportEvents
     public const string TestFinished = "testFinished";
     public const string Paused = "paused";
     public const string Retried = "retried";
+    /// <summary>Kurulum onayında "Kurulumu yeniden çalıştır": tarama ve anahtar okuma baştan (sayfalar ve temizlik kalır).</summary>
+    public const string SetupRerun = "setupRerun";
     public const string Continued = "continued";
     public const string Failed = "failed";
     public const string Cancelled = "cancelled";

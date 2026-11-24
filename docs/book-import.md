@@ -253,6 +253,28 @@ Temizlikte silinen işaretler (`BookImportPage.MarksJson`: harf + kutu) cevap an
   harften farklıysa işaret kullanılır ve `markMismatch` inceleme bayrağı düşer. Kutuda işaret yoksa ya da iki farklı harf varsa
   anahtara bakılır. "Orijinal sayfaları kullan" işaretleri silmez: cevaplar yine işaretlerden gelir.
 
+### İki sayfalık testler, denemeler ve yeniden kurulum (2026-11-24)
+
+5. sınıf Sosyal Bilgiler soru bankası (aktarım 86827f71) üzerinden; regresyon fikstürü bu kitabın gerçek taraması
+(`BookSetupPlannerSpreadTests`).
+
+- **Ünite yalnız bir sayfada basılı:** testin ünitesi çoğu kez yalnız sağ sayfanın altında yazar. Planlayıcı (`FillUnits`) aynı test
+  numaralı ardışık test / etkinlik sayfalarını bir koşu sayar; koşuda tek ünite varsa bütün sayfalar onu alır, hiç yoksa önceki
+  koşunun ünitesi taşınır (numara geri gitmediyse). Başlıkların yarısından azı ünite taşıyorsa doldurma yapılmaz. Böylece sol
+  sayfa "ünite 1", sağ sayfa "ünite 2" diye ikiye bölünmez, üçüncü sayfalar düşmez.
+- **Hiçbir sayfasında ünite yok:** ünitesi basılı olmayan test (`UnitPrinted=false`) anahtarın aynı test numaralı satırının
+  ünitesini alır (`MatchByTestNo`); içindekiler aralığı ve konu doğru üniteden gelir.
+- **Şıklı soru olan sayfa testtir:** tarama, bulmaca / tablo altında da olsa en az bir şıklı soru olan sayfayı `test` sayar;
+  etkinlik sayfası da test başlığını (test no) bildirir; test no'su süren testinkiyle aynı etkinlik sayfası o teste eklenir.
+- **Deneme sınavları:** "1. Sınav", "Ara Deneme Sınavı" başlıklı sayfalar `exam` numarası taşır (test no yok); anahtarda
+  deneme satırı `exam` ile okunur (`AnswerKeyRow.ExamNo`, test no 0). Planlayıcı denemeyi ayrı test olarak planlar
+  (`FlagExam`, ünite = önceki testin ünitesi, anahtar deneme numarasıyla), ünite aralığına katmaz; kodu `2-S01 · <başlık>`
+  (başlıksız "Deneme Sınavı"). Deneme birden çok üniteyi kapsadığından içindekiler aralığı konusuzdur (sorular normal
+  sınıflanır). Eşleşmeyen deneme anahtarı `S01` etiketiyle sahipsiz satırdır. Prompt değiştiği için `SchemaRevision` 8.
+- **Kurulumu yeniden çalıştır:** onay ekranında `POST /api/book-imports/{id}/setup/rerun` (iki tıklı düğme) işi `Setup`
+  aşamasına geri kuyruğa alır: sayfalar ve temizlik kalır, tarama ve anahtar okuma baştan, test satırları yeniden yazılır
+  (onay ekranındaki düzenlemeler gider, hak düşmez). Temizlik ya da "QR'dan al" sürerken ve demo kopyasında 409.
+
 ## Soru aktarımı (#1022)
 
 - **Taslak bayrağı** (karar 3, #1023'ün bayrak kısmı burada): `Question.IsDraft`, `Worksheet.IsDraft`; iki varlıkta da filtreler

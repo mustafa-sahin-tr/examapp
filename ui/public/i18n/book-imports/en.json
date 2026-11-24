@@ -160,7 +160,8 @@
     "missedNumbers": "Missing question numbers",
     "keyConflicts": "Answer key reads differ",
     "keyByNumber": "Key matched by test number",
-    "activity": "Activity section"
+    "activity": "Activity section",
+    "exam": "Trial exam"
   },
   "actions": {
     "open": "Open",
@@ -241,6 +242,8 @@
     "noKey": "No answer key was found — questions will be imported without answers.",
     "continueWithoutKey": "Continue without answers",
     "cancelImport": "Cancel import",
+    "rerun": "Run setup again",
+    "rerunConfirm": "Your edits will be lost — run again",
     "tests": "Tests",
     "offset": "Page numbers",
     "offsetValue": "printed = file {{offset}}",
@@ -679,6 +682,7 @@
       "CostCeiling": "Cost ceiling reached ({{cost}}); approval needed to continue"
     },
     "retried": "Import retried",
+    "setupRerun": "Setup run again",
     "retriedTests": "Retrying {{tests}} failed tests",
     "continued": "Cost ceiling raised ({{ceiling}}), the import continues",
     "failed": "Import stopped with an error: {{error}}",

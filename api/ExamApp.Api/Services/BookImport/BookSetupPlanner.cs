@@ -31,7 +31,8 @@ public sealed record SurveyedPage(
     string? TestTitle = null,
     int? Minutes = null,
     int? MaxQuestionNumber = null,
-    string? Series = null);
+    string? Series = null,
+    int? ExamNo = null);
 
 /// <summary>İçindekiler satırı: ünite no (varsa), başlık, basılı başlangıç sayfası.</summary>
 public sealed record SurveyedTocRow(int? Unit, string Title, int? PrintedPage);
@@ -41,7 +42,9 @@ public sealed record SurveyedTocRow(int? Unit, string Title, int? PrintedPage);
 /// (#1122: test numarasız anahtar, sayfadaki yerine göre önündeki bölüme bağlanır); bilinmiyorsa 0. <paramref name="Series"/>:
 /// satırın altında durduğu bölüm adı (#1163; <see cref="SurveyedPage.Series"/>).
 /// </summary>
-public sealed record AnswerKeyRow(int Unit, int TestNo, IReadOnlyDictionary<int, char> Answers, int KeyPage = 0, string? Series = null);
+/// <paramref name="ExamNo"/>: satır bir deneme sınavınınsa ("1. Sınav") numarası; test satırında null.
+public sealed record AnswerKeyRow(int Unit, int TestNo, IReadOnlyDictionary<int, char> Answers, int KeyPage = 0, string? Series = null,
+    int? ExamNo = null);
 
 /// <summary>Planlanan bir test (onay ekranındaki tablo satırı).</summary>
 public sealed record PlannedTest(
@@ -117,6 +120,9 @@ public static class BookSetupPlanner
 
     /// <summary>#1134: etkinlik bölümü (çoktan seçmeli test değil): anahtar beklenmez, adı "1-E01 · Başlık".</summary>
     public const string FlagActivity = "activity";
+
+    /// <summary>Deneme sınavı ("1. Sınav", "Ara Deneme Sınavı"): test numarası yok, adı "2-S01"; konusu üniteden alınmaz.</summary>
+    public const string FlagExam = "exam";
 
     /// <summary>#1134: bir etkinlik bölümündeki en fazla sayfa (uzun etkinlik dizisi bu kadar sayfada bir bölünür).</summary>
     public const int MaxActivitySectionPages = 8;
@@ -194,6 +200,8 @@ public static class BookSetupPlanner
         IReadOnlyList<AnswerKeyRow> secondRead)
     {
         var ordered = pages.OrderBy(p => p.FilePage).ToList();
+        // Ünitesi sayfada basılı olan sayfalar (FillUnits komşudan doldurmadan önce): anahtar ünitesi yalnız bunlar yoksa kazanır.
+        var printedUnits = ordered.Where(p => p.Unit is > 0).Select(p => p.FilePage).ToHashSet();
         var keyRanges = Ranges(ordered.Where(p => p.Kind == BookPageKind.AnswerKey).Select(p => p.FilePage));
         var selfAssessment = ordered.Where(p => p.Kind == BookPageKind.SelfAssessment).Select(p => p.FilePage).ToList();
 
@@ -204,8 +212,8 @@ public static class BookSetupPlanner
             ? ordered.Select(p => p.Series is not null && series.TryGetValue(Fold(p.Series), out var id) && p.TestNo is > 0
                 ? p with { Unit = id }
                 : p with { Unit = null, TestNo = null }).ToList()
-            : InferUnits(ordered);
-        var drafts = CollectTests(ordered);
+            : InferUnits(FillUnits(ordered));
+        var drafts = CollectTests(ordered, printedUnits);
         var sectioned = drafts.Count == 0;
         Dictionary<(int Unit, int TestNo), AnswerKeyRow> first, second;
         var unmatched = new List<string>();
@@ -227,13 +235,25 @@ public static class BookSetupPlanner
         }
 
         // Testler kitap boyunca numaralı (Test 1–58), anahtar ünite ünite ("5. Ünite → Test 36"): ünite tutmaz, numara tektir.
-        var byNumber = series.Count == 0 && !sectioned ? MatchByTestNo(drafts, first, second) : [];
+        var byNumber = series.Count == 0 && !sectioned ? MatchByTestNo(drafts.Where(d => !d.Exam).ToList(), first, second) : [];
+        var firstExams = ExamKeys(firstRead);
+        var secondExams = ExamKeys(secondRead);
 
         var tests = new List<PlannedTest>();
         foreach (var draft in drafts)
         {
-            first.TryGetValue((draft.Unit, draft.TestNo), out var a);
-            second.TryGetValue((draft.Unit, draft.TestNo), out var b);
+            AnswerKeyRow? a, b;
+            if (draft.Exam)
+            {
+                firstExams.TryGetValue(draft.TestNo, out a);
+                secondExams.TryGetValue(draft.TestNo, out b);
+            }
+            else
+            {
+                first.TryGetValue((draft.Unit, draft.TestNo), out a);
+                second.TryGetValue((draft.Unit, draft.TestNo), out b);
+            }
+
             var (key, conflicts) = MergeKey(a, b);
             var expected = key?.Length ?? draft.MaxQuestion;
 
@@ -244,10 +264,12 @@ public static class BookSetupPlanner
                 flags.Add(FlagKeyMismatch);
             if (conflicts is not null && conflicts.Any(c => c != '.'))
                 flags.Add(FlagKeyConflicts);
-            if (byNumber.Contains((draft.Unit, draft.TestNo)))
+            if (!draft.Exam && byNumber.Contains((draft.Unit, draft.TestNo)))
                 flags.Add(FlagKeyByNumber);
+            if (draft.Exam)
+                flags.Add(FlagExam);
 
-            tests.Add(new PlannedTest(tests.Count + 1, draft.Unit, draft.TestNo, draft.Title, draft.Minutes, draft.From, draft.To,
+            tests.Add(new PlannedTest(tests.Count + 1, draft.Exam ? ExamUnit(drafts, draft) : draft.Unit, draft.TestNo, draft.Title, draft.Minutes, draft.From, draft.To,
                 expected, key, conflicts, flags, KeyPageOf(a, b)));
         }
 
@@ -258,7 +280,9 @@ public static class BookSetupPlanner
             .OrderBy(k => k.Unit).ThenBy(k => k.TestNo)
             .ToList();
         string Label((int Unit, int TestNo) k) => labels is null ? $"{k.Unit}-{k.TestNo:D2}" : $"{labels[k.Unit]} {k.TestNo:D2}";
-        var orphans = orphanKeys.Select(Label).Concat(unmatched.Distinct()).ToList();
+        var plannedExams = drafts.Where(d => d.Exam).Select(d => d.TestNo).ToHashSet();
+        var orphanExams = firstExams.Keys.Concat(secondExams.Keys).Distinct().Where(n => !plannedExams.Contains(n)).Order().ToList();
+        var orphans = orphanKeys.Select(Label).Concat(orphanExams.Select(ExamLabel)).Concat(unmatched.Distinct()).ToList();
         var orphanRows = new List<OrphanKey>();
         foreach (var k in orphanKeys)
         {
@@ -268,10 +292,19 @@ public static class BookSetupPlanner
                 orphanRows.Add(new OrphanKey(Label(k), key, conflicts, KeyPageOf(a, b)));
         }
 
+        foreach (var n in orphanExams)
+        {
+            firstExams.TryGetValue(n, out var a);
+            secondExams.TryGetValue(n, out var b);
+            if (MergeKey(a, b) is ({ } key, var conflicts))
+                orphanRows.Add(new OrphanKey(ExamLabel(n), key, conflicts, KeyPageOf(a, b)));
+        }
+
         if (labels is not null)
             return SeriesPlan(ordered, toc, keyRanges, selfAssessment, tests, labels, orphans) with { OrphanRows = orphanRows };
 
-        var units = tests.GroupBy(t => t.Unit)
+        // Deneme birden çok üniteyi kapsar: ünite aralığına girmez (konusu üniteden alınmaz).
+        var units = tests.Where(t => !t.Flags.Contains(FlagExam)).GroupBy(t => t.Unit)
             .OrderBy(g => g.Key)
             .Select(g => new PlannedUnit(g.Key, sectioned ? g.First().Title : UnitTitle(g.Key, toc), g.Min(t => t.FileFrom),
                 g.Max(t => t.FileTo)))
@@ -298,6 +331,14 @@ public static class BookSetupPlanner
             if (first.ContainsKey(test) || second.ContainsKey(test) || !uniqueTests.Contains(draft.TestNo)
                 || !orphans.TryGetValue(draft.TestNo, out var orphan))
                 continue;
+            if (!draft.UnitPrinted)
+            {
+                // Sayfada ünite basılı değil (sol sayfa, ünite ilk sayfasından okunmadı): anahtarın ünitesi doğrudur ("2. Ünite → Test 8").
+                draft.Unit = orphan.Unit;
+                matched.Add(orphan);
+                continue;
+            }
+
             Move(first, orphan, test);
             Move(second, orphan, test);
             matched.Add(test);
@@ -367,7 +408,11 @@ public static class BookSetupPlanner
 
     private sealed class TestDraft(int unit, int testNo, int from)
     {
-        public int Unit { get; } = unit;
+        public int Unit { get; set; } = unit;
+        /// <summary>Deneme sınavı: <see cref="TestNo"/> deneme numarası, anahtarı <see cref="AnswerKeyRow.ExamNo"/> satırı.</summary>
+        public bool Exam { get; init; }
+        /// <summary>Sayfalarından birinde ünite basılı (komşudan doldurulmadı).</summary>
+        public bool UnitPrinted { get; set; }
         public int TestNo { get; } = testNo;
         public int From { get; } = from;
         public int To { get; set; } = from;
@@ -376,23 +421,48 @@ public static class BookSetupPlanner
         public int? MaxQuestion { get; set; }
     }
 
-    private static List<TestDraft> CollectTests(List<SurveyedPage> pages)
+    /// <summary>
+    /// Test: başlıklı sayfayla başlar, başlıksız ardışık test sayfaları ona eklenir, test olmayan sayfa kapatır. Testin numarasını
+    /// taşıyan etkinlik sayfası (bulmacalı ama şıklı soru, "Test 3"ün ikinci sayfası) testi kapatmaz, ona eklenir. Deneme başlıklı
+    /// sayfa ("1. Sınav") deneme testi açar.
+    /// </summary>
+    private static List<TestDraft> CollectTests(List<SurveyedPage> pages, IReadOnlySet<int> printedUnits)
     {
         var tests = new List<TestDraft>();
         var seen = new HashSet<(int, int)>();
+        var seenExams = new HashSet<int>();
         TestDraft? current = null;
         foreach (var page in pages)
         {
-            if (page.Kind != BookPageKind.Test)
+            if (page.ExamNo is { } examNo and > 0 && page.Kind is BookPageKind.Test or BookPageKind.Activity)
+            {
+                if (current is not { Exam: true } || current.TestNo != examNo)
+                {
+                    if (!seenExams.Add(examNo))
+                    {
+                        current = null;
+                        continue;
+                    }
+
+                    current = new TestDraft(0, examNo, page.FilePage) { Exam = true };
+                    tests.Add(current);
+                }
+
+                Extend(current, page);
+                continue;
+            }
+
+            var continues = page.Kind == BookPageKind.Activity && current is { Exam: false } && page.TestNo == current.TestNo;
+            if (page.Kind != BookPageKind.Test && !continues)
             {
                 current = null;
                 continue;
             }
 
-            if (page.TestNo is { } testNo and > 0)
+            if (page.TestNo is { } testNo and > 0 && !continues)
             {
                 var unit = page.Unit is > 0 ? page.Unit.Value : 1;
-                if (current is null || current.Unit != unit || current.TestNo != testNo)
+                if (current is null || current.Exam || current.Unit != unit || current.TestNo != testNo)
                 {
                     if (!seen.Add((unit, testNo)))
                     {
@@ -407,15 +477,89 @@ public static class BookSetupPlanner
 
             if (current is null)
                 continue;
-            current.To = page.FilePage;
-            current.Title ??= Clean(page.TestTitle);
-            current.Minutes ??= page.Minutes is > 0 and <= 600 ? page.Minutes : null;
-            if (page.MaxQuestionNumber is > 0 and <= MaxQuestionsPerTest)
-                current.MaxQuestion = Math.Max(current.MaxQuestion ?? 0, page.MaxQuestionNumber.Value);
+            Extend(current, page);
         }
 
         return tests;
+
+        void Extend(TestDraft draft, SurveyedPage page)
+        {
+            draft.To = page.FilePage;
+            draft.Title ??= Clean(page.TestTitle);
+            draft.Minutes ??= page.Minutes is > 0 and <= 600 ? page.Minutes : null;
+            if (page.MaxQuestionNumber is > 0 and <= MaxQuestionsPerTest)
+                draft.MaxQuestion = Math.Max(draft.MaxQuestion ?? 0, page.MaxQuestionNumber.Value);
+            if (printedUnits.Contains(page.FilePage))
+                draft.UnitPrinted = true;
+        }
     }
+
+    /// <summary>
+    /// Sol sayfada yalnız "Test 11" başlığı, ünite sağ sayfanın altında ("Ünite 2"): ünitesiz sayfa ünite 1 sayılınca test ikiye
+    /// bölünüyor, üçüncü sayfası kayboluyordu (5. sınıf Sosyal Bilgiler soru bankası). Aynı test numaralı ardışık sayfalar (test ya
+    /// da etkinlik) bir dizidir: dizide tek ünite okunduysa ünitesiz sayfaları onu alır; hiç okunmadıysa önceki dizinin ünitesi
+    /// (numara geri gitmediyse; geri giderse yeni ünite olabilir, dokunulmaz). Başlıkların yarısından azında ünite varsa
+    /// dokunulmaz: <see cref="InferUnits"/> üniteyi numaranın başa dönmesinden çıkarır.
+    /// </summary>
+    private static List<SurveyedPage> FillUnits(List<SurveyedPage> pages)
+    {
+        var headers = pages.Where(p => p.Kind == BookPageKind.Test && p.TestNo is > 0).ToList();
+        if (headers.Count == 0 || headers.Count(p => p.Unit is > 0) * 2 < headers.Count)
+            return pages;
+
+        static bool InRun(SurveyedPage p) => p.Kind is BookPageKind.Test or BookPageKind.Activity && p.TestNo is > 0 && p.ExamNo is null;
+        var result = pages.ToList();
+        int? lastUnit = null;
+        var lastNo = 0;
+        for (var i = 0; i < result.Count;)
+        {
+            if (!InRun(result[i]))
+            {
+                i++;
+                continue;
+            }
+
+            var testNo = result[i].TestNo!.Value;
+            var j = i;
+            while (j + 1 < result.Count && InRun(result[j + 1]) && result[j + 1].TestNo == testNo)
+                j++;
+            var units = result.Skip(i).Take(j - i + 1).Select(p => p.Unit).OfType<int>().Where(u => u > 0).Distinct().ToList();
+            int? unit = units.Count == 1 ? units[0] : units.Count == 0 && testNo >= lastNo ? lastUnit : null;
+            if (unit is { } u)
+            {
+                for (var k = i; k <= j; k++)
+                    if (result[k].Unit is not > 0)
+                        result[k] = result[k] with { Unit = u };
+            }
+
+            lastUnit = units.Count > 0 ? units[^1] : unit;
+            lastNo = testNo;
+            i = j + 1;
+        }
+
+        return result;
+    }
+
+    /// <summary>Deneme anahtar satırları (<see cref="AnswerKeyRow.ExamNo"/>) deneme numarasına göre; tekrar okunan satır birleşir.</summary>
+    private static Dictionary<int, AnswerKeyRow> ExamKeys(IReadOnlyList<AnswerKeyRow> rows)
+    {
+        var map = new Dictionary<int, AnswerKeyRow>();
+        foreach (var row in rows)
+        {
+            if (row.ExamNo is not { } n || n < 1)
+                continue;
+            map[n] = map.TryGetValue(n, out var existing) ? existing with { Answers = MergeAnswers(existing.Answers, row.Answers) } : row;
+        }
+
+        return map;
+    }
+
+    /// <summary>Denemenin ünitesi (yalnız ad ve sıra için; konusu üniteden alınmaz): önündeki testinki, yoksa sonrakininki, yoksa 1.</summary>
+    private static int ExamUnit(List<TestDraft> drafts, TestDraft exam) =>
+        drafts.LastOrDefault(d => !d.Exam && d.From < exam.From)?.Unit ?? drafts.FirstOrDefault(d => !d.Exam)?.Unit ?? 1;
+
+    /// <summary>Sahipsiz deneme anahtarının etiketi ("S01").</summary>
+    internal static string ExamLabel(int examNo) => $"S{examNo:D2}";
 
     /// <summary>
     /// #1122: test başlığı olmayan kitapta bölümler. Kapak / içindekiler / anahtar sayfası bölümü kapatır; arada kalan "diğer" sayfa

@@ -84,8 +84,9 @@ jobs:
         run: dotnet restore ExamApp.slnx --source https://api.nuget.org/v3/index.json
       - name: Build
         run: dotnet build ExamApp.slnx --no-restore -c Release
-      - name: Unit tests (Category=Integration hariç)
-        run: dotnet test ExamApp.slnx --no-build -c Release --filter "Category!=Integration"
+      # Category=Golden (#509): the assistant's golden set calls the paid model; its own workflow is assistant-golden.yml.
+      - name: Unit tests (Category=Integration / Golden hariç)
+        run: dotnet test ExamApp.slnx --no-build -c Release --filter "Category!=Integration&Category!=Golden"
 
   integration:
     name: integration

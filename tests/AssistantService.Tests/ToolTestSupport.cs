@@ -10,7 +10,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AssistantService.Tests;
 
-/// <summary>Fake exam API: answers by "METHOD path" (path without the leading slash, with query) and records calls.</summary>
+/// <summary>
+/// Fake exam API: answers by "METHOD path" (path without the leading slash, with query) and records calls. A route
+/// registered with <see cref="OnAny"/> answers that path whatever the query, computed from the request (the golden set, #509).
+/// </summary>
 public sealed class FakeExamApi : HttpMessageHandler
 {
     public sealed record Call(string Method, string PathAndQuery, string? Authorization, string? AcceptLanguage, string? Body);
@@ -25,13 +28,27 @@ public sealed class FakeExamApi : HttpMessageHandler
         return this;
     }
 
+    public FakeExamApi OnAny(string method, string path, Func<Uri, string?, object?> respond)
+    {
+        _computed[$"{method} {path}"] = respond;
+        return this;
+    }
+
+    private readonly Dictionary<string, Func<Uri, string?, object?>> _computed = new();
+
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
     {
         var path = request.RequestUri!.PathAndQuery.TrimStart('/');
         Calls.Add(new Call(request.Method.Method, path, request.Headers.Authorization?.ToString(),
             request.Headers.AcceptLanguage.ToString(), request.Content is null ? null : await request.Content.ReadAsStringAsync(ct)));
+        var body = Calls[^1].Body;
         if (!_routes.TryGetValue($"{request.Method.Method} {path}", out var route))
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        {
+            if (!_computed.TryGetValue($"{request.Method.Method} {request.RequestUri.AbsolutePath.TrimStart('/')}", out var respond))
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            var computed = respond(request.RequestUri, body);
+            route = (HttpStatusCode.OK, computed is null ? null : JsonSerializer.Serialize(computed, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        }
         var response = new HttpResponseMessage(route.Status);
         if (route.Json is not null)
             response.Content = new StringContent(route.Json, Encoding.UTF8, "application/json");

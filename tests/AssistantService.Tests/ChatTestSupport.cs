@@ -83,23 +83,24 @@ public sealed class StaticOptions<T>(T value) : IOptionsMonitor<T>
     public IDisposable? OnChange(Action<T, string?> listener) => null;
 }
 
-/// <summary>Chat runner wired like Program.cs on the tool harness (SQLite, fake exam API) and a scripted model.</summary>
-public sealed class ChatHarness : IDisposable
+/// <summary>
+/// Chat runner wired like Program.cs on the tool harness (SQLite, fake exam API) and a scripted model — or a real model
+/// client (the golden set, #509).
+/// </summary>
+public sealed class ChatHarness(IChatClient? client = null) : IDisposable
 {
+    private readonly IChatClient? _client = client;
     public ToolHarness Tools { get; } = new();
     public FakeChatClient Model { get; } = new();
     public AssistantOptions Options { get; } = new() { Enabled = true, Roles = ["Student"], MaxToolCallsPerTurn = 3 };
-    public InMemoryCounterStore Counters { get; }
-    public UsageLimiter Limiter { get; }
 
-    public ChatHarness()
-    {
-        Counters = new InMemoryCounterStore(Tools.Clock);
-        Limiter = new UsageLimiter(Counters, new StaticOptions<AssistantOptions>(Options), Tools.Clock);
-    }
+    public InMemoryCounterStore Counters => _counters ??= new InMemoryCounterStore(Tools.Clock);
+    public UsageLimiter Limiter => _limiter ??= new UsageLimiter(Counters, new StaticOptions<AssistantOptions>(Options), Tools.Clock);
+    private InMemoryCounterStore? _counters;
+    private UsageLimiter? _limiter;
 
     public ChatTurnRunner Runner(AssistantDbContext db) => new(db, new ToolRegistry(Tools.AllTools()), Tools.Executor(db),
-        new ChatModel(Model), Limiter, new StaticOptions<AssistantOptions>(Options), Tools.Clock, NullLogger<ChatTurnRunner>.Instance);
+        new ChatModel(_client ?? Model), Limiter, new StaticOptions<AssistantOptions>(Options), Tools.Clock, NullLogger<ChatTurnRunner>.Instance);
 
     /// <summary>Runs one turn as <paramref name="sub"/>; returns the events.</summary>
     public async Task<ListSink> TurnAsync(string message, Guid? conversationId = null, string sub = "student-1", ChatContext? context = null)

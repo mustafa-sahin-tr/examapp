@@ -55,7 +55,11 @@ public class PracticeSessionStartDto
     public List<int>? QuestionIds { get; set; }
 }
 
-/// <summary>Issue #526: one of the student's hard questions. No correct choice (the assistant explains through #510).</summary>
+/// <summary>
+/// Issue #526: one of the student's hard questions. No correct choice (the assistant explains through #510). Attempts, misses and
+/// the last attempt are the student's own (zero / null in <c>global</c> mode when they never answered it); <c>CorrectPercent</c>
+/// is the share of students who answered it correctly (<c>global</c> mode only, an aggregate: no other student's data).
+/// </summary>
 public sealed record HardQuestionDto(
     int QuestionId,
     int? SubjectId,
@@ -67,12 +71,13 @@ public sealed record HardQuestionDto(
     int MissCount,
     bool MissedAfterCorrect,
     bool LastAttemptCorrect,
-    DateTime LastAttemptAt,
+    DateTime? LastAttemptAt,
     [property: StorageUrl(StorageArea.QuestionImage)] string? ImageUrl,
-    string? Text);
+    string? Text,
+    int? CorrectPercent = null);
 
 /// <summary>GET api/student/me/hard-questions.</summary>
-public sealed record HardQuestionsDto(string Mode, int Days, int TotalCount, List<HardQuestionDto> Items);
+public sealed record HardQuestionsDto(string Mode, int? Days, int TotalCount, List<HardQuestionDto> Items);
 
 /// <summary>GET api/practice/saved: kaydedilen sorular, en yeni önce.</summary>
 public class SavedQuestionsDto

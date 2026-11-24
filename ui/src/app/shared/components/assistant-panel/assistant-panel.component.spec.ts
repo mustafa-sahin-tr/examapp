@@ -182,6 +182,7 @@ describe('AssistantPanelComponent (#507)', () => {
                         items: [
                             { questionId: 42, subjectName: 'Matematik', topicName: 'Açılar', missCount: 3, imageUrl: 'https://img/42.jpg' },
                             { questionId: 43, subjectName: 'Matematik', topicName: 'Açılar', missCount: 1, text: 'Bir açının ölçüsü...' },
+                            { questionId: 44, subjectName: 'Matematik', topicName: 'Açılar', missCount: 0, correctPercent: 25, text: 'Genel zor' },
                         ],
                     },
                     {
@@ -202,10 +203,11 @@ describe('AssistantPanelComponent (#507)', () => {
         expect(card.textContent).toContain('Bir açının ölçüsü');
         expect(card.textContent).toContain('Matematik · Açılar');
         expect(card.textContent).toContain('3 kez yanlış / boş');
-        expect(el('[data-testid="assistant-card-confirm"]')!.textContent).toContain('Zorlandığın soruları çöz');
+        expect(card.textContent).toContain('doğru yapanlar %25');
+        expect(el('[data-testid="assistant-card-confirm"]')!.textContent).toContain('Seçilen soruları çöz');
 
         el('[data-testid="assistant-solve-these"]')!.click();
-        expect(store.send).toHaveBeenCalledWith('Bu soruları tekrar çözmek istiyorum.');
+        expect(store.send).toHaveBeenCalledWith('Bu soruları çözmek istiyorum.');
     });
 
     it('confirmDone_ShowsStateInsteadOfButtons', () => {

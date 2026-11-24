@@ -4134,6 +4134,25 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("Questions");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.QuestionAnswerStat", b =>
+                {
+                    b.Property<int>("QuestionId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("ComputedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("CorrectCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StudentCount")
+                        .HasColumnType("integer");
+
+                    b.HasKey("QuestionId");
+
+                    b.ToTable("QuestionAnswerStats");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.QuestionHintSet", b =>
                 {
                     b.Property<int>("Id")
@@ -11753,6 +11772,17 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Subject");
 
                     b.Navigation("Topic");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.QuestionAnswerStat", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Question", "Question")
+                        .WithMany()
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Question");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.QuestionHintSet", b =>

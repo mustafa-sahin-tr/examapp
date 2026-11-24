@@ -47,9 +47,11 @@ public class PracticeSessionService : IPracticeSessionService
 
     private readonly ITopicPerformanceService _topicPerformance;
     private readonly IOptionsMonitor<MixedReviewOptions>? _mixedReview;
+    private readonly IOptionsMonitor<HardQuestionOptions>? _hardQuestions;
 
-    public PracticeSessionService(AppDbContext context, IStringLocalizer<Messages>? localizer = null, ILocalDayCalendar? calendar = null, ITopicPerformanceService? topicPerformance = null, IOptionsMonitor<MixedReviewOptions>? mixedReview = null)
+    public PracticeSessionService(AppDbContext context, IStringLocalizer<Messages>? localizer = null, ILocalDayCalendar? calendar = null, ITopicPerformanceService? topicPerformance = null, IOptionsMonitor<MixedReviewOptions>? mixedReview = null, IOptionsMonitor<HardQuestionOptions>? hardQuestions = null)
     {
+        _hardQuestions = hardQuestions;
         _context = context;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         _calendar = calendar ?? LocalDayCalendar.Default;
@@ -169,6 +171,14 @@ public class PracticeSessionService : IPracticeSessionService
                     new HardQuestionFilter(HardQuestionQueries.MaxDays, subjectIds, null, null), ct))
                 .Select(h => h.QuestionId)
                 .ToHashSet();
+            // Not one of their own: it must be one of the global hard questions (same rules, #526 global mode).
+            var others = ids.Where(id => !hard.Contains(id)).ToList();
+            if (others.Count > 0)
+            {
+                var (_, global) = await HardQuestionQueries.LoadGlobalAsync(_context, _calendar, student,
+                    new HardQuestionFilter(HardQuestionQueries.MaxDays, subjectIds, null, null), HardQuestionMinStudents, HardQuestionQueries.MaxTake, others, ct);
+                hard.UnionWith(global.Select(h => h.QuestionId));
+            }
             if (ids.Any(id => !hard.Contains(id)))
                 throw new InvalidOperationException(_localizer["practice.hardQuestionInvalid"]);
 
@@ -210,9 +220,17 @@ public class PracticeSessionService : IPracticeSessionService
         };
     }
 
+    private int HardQuestionMinStudents => _hardQuestions?.CurrentValue.MinStudents ?? new HardQuestionOptions().MinStudents;
+
     public async Task<HardQuestionsDto> GetHardQuestionsAsync(StudentProfileDto student, HardQuestionFilter filter, int take,
-        CancellationToken ct = default)
+        bool global = false, CancellationToken ct = default)
     {
+        if (global)
+        {
+            var (total, hardest) = await HardQuestionQueries.LoadGlobalAsync(_context, _calendar, student, filter, HardQuestionMinStudents,
+                Math.Clamp(take, 1, HardQuestionQueries.MaxTake), null, ct);
+            return new HardQuestionsDto("global", null, total, hardest);
+        }
         var items = await HardQuestionQueries.LoadMineAsync(_context, _calendar, student, filter, ct);
         return new HardQuestionsDto("mine", filter.Days, items.Count,
             items.Take(Math.Clamp(take, 1, HardQuestionQueries.MaxTake)).ToList());

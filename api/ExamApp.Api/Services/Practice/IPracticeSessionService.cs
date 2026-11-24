@@ -37,8 +37,12 @@ public interface IPracticeSessionService
     /// <summary>Issue #529: öğrencinin tekrar zamanı gelen soruları, en çok geciken önce.</summary>
     Task<DueReviewDto> GetDueReviewAsync(StudentProfileDto student, int? subjectId, int take, CancellationToken ct = default);
 
-    /// <summary>Issue #526: öğrencinin en çok zorlandığı sorular (<c>mine</c> kipi), en zor önce.</summary>
-    Task<HardQuestionsDto> GetHardQuestionsAsync(StudentProfileDto student, HardQuestionFilter filter, int take, CancellationToken ct = default);
+    /// <summary>
+    /// Issue #526: öğrencinin en çok zorlandığı sorular (<c>mine</c>) ya da öğrencilerin çoğunun yanlış yaptığı sorular
+    /// (<c>global</c>, gece istatistiği), en zor önce.
+    /// </summary>
+    Task<HardQuestionsDto> GetHardQuestionsAsync(StudentProfileDto student, HardQuestionFilter filter, int take, bool global = false,
+        CancellationToken ct = default);
 
     /// <summary>Issue #698: öğrencinin aktif yanlışları, en yeni yanlış önce.</summary>
     Task<MistakeNotebookDto> GetMistakesAsync(StudentProfileDto student, int? subjectId, int? topicId, CancellationToken ct = default);

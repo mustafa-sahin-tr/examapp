@@ -210,16 +210,33 @@ public sealed class GoldenSetTests(ITestOutputHelper output)
         }
     }
 
-    /// <summary>Static routes from <c>api</c>; any query of a path answers the same, and the taxonomy search filters.</summary>
+    /// <summary>
+    /// Static routes from <c>api</c>; any query of a path answers the same, unless a key carries a query (<c>GET path?mode=global</c>):
+    /// that body answers the requests whose query contains it (#526). The taxonomy search filters.
+    /// </summary>
     private static void Load(FakeExamApi api, JsonObject fixture)
     {
-        foreach (var (key, body) in fixture["api"]!.AsObject())
+        var routes = fixture["api"]!.AsObject()
+            .Select(e =>
+            {
+                var space = e.Key.IndexOf(' ');
+                var target = e.Key[(space + 1)..];
+                var q = target.IndexOf('?');
+                return (Method: e.Key[..space], Path: q < 0 ? target : target[..q], Query: q < 0 ? null : target[(q + 1)..], Body: e.Value);
+            })
+            .GroupBy(r => (r.Method, r.Path));
+        foreach (var route in routes)
         {
-            var space = key.IndexOf(' ');
-            var snapshot = body?.ToJsonString();
-            // #1336: a body with "__status" answers that status (a plan without analysis → 403).
-            var status = body is JsonObject o && o["__status"]?.GetValue<int>() is { } code ? (System.Net.HttpStatusCode)code : System.Net.HttpStatusCode.OK;
-            api.OnAny(key[..space], key[(space + 1)..], (_, _) => snapshot is null ? null : JsonNode.Parse(snapshot), status);
+            var variants = route.OrderBy(r => r.Query is null).ToList();
+            // #1336: a body with "__status" answers that status (a plan without analysis → 403); one status per path.
+            var status = variants.Select(v => v.Body).OfType<JsonObject>().Select(o => o["__status"]?.GetValue<int>()).FirstOrDefault(c => c is not null) is { } code
+                ? (System.Net.HttpStatusCode)code : System.Net.HttpStatusCode.OK;
+            var snapshots = variants.Select(v => (v.Query, Json: v.Body?.ToJsonString())).ToList();
+            api.OnAny(route.Key.Method, route.Key.Path, (uri, _) =>
+            {
+                var match = snapshots.FirstOrDefault(v => v.Query is null || uri.Query.Contains(v.Query, StringComparison.Ordinal));
+                return match.Json is null ? null : JsonNode.Parse(match.Json);
+            }, status);
         }
         var taxonomy = (fixture["taxonomy"]?.AsArray() ?? []).Select(t => t!.AsObject()).ToList();
         api.OnAny("GET", "api/subject/search", (uri, _) =>

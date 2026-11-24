@@ -46,6 +46,24 @@ public sealed class HardQuestionToolTests : IDisposable
     }
 
     [Fact]
+    public async Task Global_mode_skips_days_and_shows_the_correct_percent()
+    {
+        _h.Api.On("GET", "api/student/me/hard-questions?mode=global&take=5&subjectId=3", new
+        {
+            mode = "global",
+            totalCount = 1,
+            items = new[] { new { questionId = 50, topicName = "Açılar", missCount = 0, attempts = 0, correctPercent = 25, imageUrl = "https://img/50.jpg" } },
+        });
+
+        var result = await Tool("get_hard_question_examples").ExecuteAsync(Student(), Args(new { mode = "global", subjectId = 3, days = 30 }));
+
+        result.Ok.ShouldBeTrue();
+        result.Data!["mode"]!.GetValue<string>().ShouldBe("global");
+        result.Data!["questions"]![0]!["correctPercent"]!.GetValue<int>().ShouldBe(25);
+        result.Cards.ShouldNotBeNull().Single()["items"]![0]!["correctPercent"]!.GetValue<int>().ShouldBe(25);
+    }
+
+    [Fact]
     public async Task No_hard_questions_means_no_card()
     {
         _h.Api.On("GET", "api/student/me/hard-questions?mode=mine&days=30&take=10", new { mode = "mine", totalCount = 0, items = Array.Empty<object>() });

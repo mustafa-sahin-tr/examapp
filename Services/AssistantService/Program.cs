@@ -24,6 +24,8 @@ builder.WebHost.ConfigureKestrel(o => o.ListenAnyIP(kestrelPort));
 
 builder.Services.AddOptions<AssistantOptions>()
     .BindConfiguration(AssistantOptions.SectionName)
+    // #1336: compose passes one env value ("Student,Parent"); split it into the role list.
+    .PostConfigure(o => o.Roles = AssistantOptions.SplitRoles(o.Roles))
     .ValidateDataAnnotations()
     .ValidateOnStart();
 

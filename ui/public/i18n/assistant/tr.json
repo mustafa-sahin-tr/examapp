@@ -21,17 +21,53 @@
     "text": "Çalışmanla ilgili sorabilir, pratik başlatabilir ya da uygulamayı nasıl kullanacağını öğrenebilirsin."
   },
   "starters": {
-    "weakTopics": { "label": "Zorlandığım konular", "prompt": "Zorlandığım konular hangileri?" },
-    "dailySet": { "label": "Günün soruları", "prompt": "Günün soruları setim ne durumda?" },
-    "practice": { "label": "Pratik başlat", "prompt": "Zorlandığım konulardan 10 soruluk bir pratik başlat." },
-    "help": { "label": "Velimi nasıl eklerim?", "prompt": "Velimi nasıl eklerim?" }
+    "weakTopics": {
+      "label": "Zorlandığım konular",
+      "prompt": "Zorlandığım konular hangileri?"
+    },
+    "dailySet": {
+      "label": "Günün soruları",
+      "prompt": "Günün soruları setim ne durumda?"
+    },
+    "practice": {
+      "label": "Pratik başlat",
+      "prompt": "Zorlandığım konulardan 10 soruluk bir pratik başlat."
+    },
+    "help": {
+      "label": "Velimi nasıl eklerim?",
+      "prompt": "Velimi nasıl eklerim?"
+    }
+  },
+  "parentEmpty": {
+    "title": "Merhaba! Nasıl yardımcı olabilirim?",
+    "text": "Çocuğunuzun haftasını, ödevlerini ve zorlandığı konuları sorabilir ya da uygulamayı nasıl kullanacağınızı öğrenebilirsiniz."
+  },
+  "parentStarters": {
+    "childWeek": {
+      "label": "Bu hafta nasıl?",
+      "prompt": "Çocuğum bu hafta nasıl, geciken ödevi var mı, nerede zorlanıyor?"
+    },
+    "overdue": {
+      "label": "Geciken ödevler",
+      "prompt": "Geciken ödevleri var mı?"
+    },
+    "childWeakTopics": {
+      "label": "Zorlandığı konular",
+      "prompt": "Çocuğum hangi konularda zorlanıyor?"
+    },
+    "childPassword": {
+      "label": "Şifre sıfırlama",
+      "prompt": "Çocuğumun şifresini nasıl sıfırlarım?"
+    }
   },
   "kpi": {
     "level": "Seviye",
     "xp": "Puan",
     "questionsSolved": "Çözülen soru",
     "accuracyPct": "Doğruluk",
-    "testsCompleted": "Biten test"
+    "testsCompleted": "Biten test",
+    "activeDays": "Aktif gün",
+    "overdueHomework": "Geciken ödev"
   },
   "topicTable": {
     "name": "Konu",

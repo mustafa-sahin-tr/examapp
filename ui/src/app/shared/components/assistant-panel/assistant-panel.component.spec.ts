@@ -43,7 +43,10 @@ describe('AssistantPanelComponent (#507)', () => {
     const all = (selector: string): HTMLElement[] =>
         fixture.debugElement.queryAll(By.css(selector)).map((d) => d.nativeElement as HTMLElement);
 
-    function setup(mobile = false): void {
+    let role = 'Student';
+
+    function setup(mobile = false, asRole = 'Student'): void {
+        role = asRole;
         store = {
             messages: signal<PanelMessage[]>([]),
             suggestions: signal<SuggestionChip[]>([]),
@@ -64,7 +67,7 @@ describe('AssistantPanelComponent (#507)', () => {
                 provideRouter([]),
                 { provide: AssistantChatStore, useValue: store },
                 { provide: AssistantPanelService, useValue: panel },
-                { provide: AuthService, useValue: { hasRealmRole: (r: string) => r === 'Student' } },
+                { provide: AuthService, useValue: { hasRealmRole: (r: string) => r === role } },
             ],
         });
         fixture = TestBed.createComponent(AssistantPanelComponent);
@@ -84,6 +87,19 @@ describe('AssistantPanelComponent (#507)', () => {
 
         expect(store.send).toHaveBeenCalledWith('Zorlandığım konular hangileri?');
         expect(store.loadUsage).toHaveBeenCalled();
+    });
+
+    it('parent_GetsParentIntroAndStarters', () => {
+        setup(false, 'Parent');
+
+        expect(el('[data-testid="assistant-context"]')?.textContent).toContain('Bağlam: Veli');
+        expect(el('[data-testid="assistant-empty"]')?.textContent).toContain('Çocuğunuzun haftasını');
+        const starters = all('[data-testid="assistant-starter"]');
+        expect(starters.length).toBe(4);
+
+        starters[0].click();
+
+        expect(store.send).toHaveBeenCalledWith('Çocuğum bu hafta nasıl, geciken ödevi var mı, nerede zorlanıyor?');
     });
 
     it('enter_Sends_ShiftEnter_DoesNot', () => {

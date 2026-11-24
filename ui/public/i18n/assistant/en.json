@@ -21,17 +21,53 @@
     "text": "Ask about your studies, start a practice session or learn how to use the app."
   },
   "starters": {
-    "weakTopics": { "label": "Topics I struggle with", "prompt": "Which topics do I struggle with?" },
-    "dailySet": { "label": "Daily questions", "prompt": "How is my daily question set going?" },
-    "practice": { "label": "Start practice", "prompt": "Start a 10-question practice on the topics I struggle with." },
-    "help": { "label": "How do I add my parent?", "prompt": "How do I add my parent?" }
+    "weakTopics": {
+      "label": "Topics I struggle with",
+      "prompt": "Which topics do I struggle with?"
+    },
+    "dailySet": {
+      "label": "Daily questions",
+      "prompt": "How is my daily question set going?"
+    },
+    "practice": {
+      "label": "Start practice",
+      "prompt": "Start a 10-question practice on the topics I struggle with."
+    },
+    "help": {
+      "label": "How do I add my parent?",
+      "prompt": "How do I add my parent?"
+    }
+  },
+  "parentEmpty": {
+    "title": "Hi! How can I help?",
+    "text": "Ask about your child's week, homework and the topics they struggle with, or learn how to use the app."
+  },
+  "parentStarters": {
+    "childWeek": {
+      "label": "How was the week?",
+      "prompt": "How was my child's week, any overdue homework, where are they struggling?"
+    },
+    "overdue": {
+      "label": "Overdue homework",
+      "prompt": "Is any homework overdue?"
+    },
+    "childWeakTopics": {
+      "label": "Topics they struggle with",
+      "prompt": "Which topics does my child struggle with?"
+    },
+    "childPassword": {
+      "label": "Password reset",
+      "prompt": "How do I reset my child's password?"
+    }
   },
   "kpi": {
     "level": "Level",
     "xp": "Points",
     "questionsSolved": "Questions solved",
     "accuracyPct": "Accuracy",
-    "testsCompleted": "Tests finished"
+    "testsCompleted": "Tests finished",
+    "activeDays": "Active days",
+    "overdueHomework": "Overdue homework"
   },
   "topicTable": {
     "name": "Topic",

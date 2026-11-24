@@ -5,7 +5,7 @@ namespace AssistantService;
 /// <summary>
 /// Issue #502: kill switch and limits (decisions on #496). <see cref="Enabled"/> off, or an empty
 /// <c>Anthropic:ApiKey</c>, answers every <c>/api/assistant/*</c> call with 503 <c>AssistantDisabled</c>;
-/// <see cref="Roles"/> lists the realm roles that may use it (others get 403). Students first (Phase 1a).
+/// <see cref="Roles"/> lists the realm roles that may use it (others get 403). Students first (Phase 1a), parents with #1336.
 /// </summary>
 public sealed class AssistantOptions
 {
@@ -14,6 +14,11 @@ public sealed class AssistantOptions
     public bool Enabled { get; set; }
 
     public string[] Roles { get; set; } = [];
+
+    /// <summary>#1336: entries may be comma separated (<c>ASSISTANT_ROLES=Student,Parent</c>); blanks and repeats are dropped.</summary>
+    public static string[] SplitRoles(IEnumerable<string>? roles) =>
+        (roles ?? []).SelectMany(r => r.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+            .Distinct(StringComparer.Ordinal).ToArray();
 
     [Required]
     public string Model { get; set; } = "claude-haiku-5-5";

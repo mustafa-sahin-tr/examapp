@@ -226,10 +226,13 @@ tam ekran. Veli hesabında `/status` 200, giriş noktası yok, console temiz.
   `.github/workflows/assistant-golden.yml` (elle + prompt / tool / kılavuz değiştiren PR'lar; secret `ASSISTANT_GOLDEN_API_KEY`
   tanımlı değilse yeşil atlar) ya da yerelde `ASSISTANT_GOLDEN_API_KEY=… dotnet test tests/AssistantService.Tests --filter Category=Golden`.
   İlk koşu (2026-11-24, Haiku 5.5, prompt r3): 21/22 → hakem ölçütü düzeltildi; tur başına ≈ 0,00036 USD, set ≈ 0,008 USD + hakem.
-  Veli senaryoları veli tool'ları (Faz 1b) gelince eklenir.
-- **Canlı E2E:** `deploy/scripts/assistant-e2e.mjs --user <öğrenci> [--confirm]` (`ASSISTANT_E2E_PASSWORD`, gateway :5678):
+  Veli seti `Golden/parent.json` (#1336, 17 senaryo, iki çocuk; ikincinin paketinde analiz yok → 403): 2026-11-24 prompt r4
+  17/17, tur başına ≈ 0,00048 USD. Başarısız senaryoda modelin cevabı da yazılır.
+- **Canlı E2E:** `deploy/scripts/assistant-e2e.mjs --user <öğrenci> [--parent <veli>] [--confirm]` (`ASSISTANT_E2E_PASSWORD`, gateway :5678):
   A zorlandığım konular, B açılar günlük seti tek onay kartı (`--confirm` seti açar, veri değiştirir), test sırasında 409.
-  C (velinin haftası) veli dilimine kadar atlanır. 2026-11-24 dev'de 4/4 PASS.
+  C (`--parent`, #1336) "Çocuğum bu hafta nasıl, geciken ödevi var mı, nerede zorlanıyor?" → `list_my_children` + çocuk
+  tool'ları. 2026-11-24 dev'de C PASS (selin.yildiz → Ali); B dev taksonomisinde birkaç "açı" alt konusu olduğundan bazen
+  hangisi diye sorar (kurala uygun).
 
 ## Pratik başlatma kaynağı (#524)
 
@@ -240,3 +243,25 @@ açılırken yazılır. Asistanın iki yazma tool'u `Assistant` gönderir; UI ya
 başlatılan oturumda `DeepLink` gönderir. İstemciden geldiği için yalnız ürün metriğidir (yetki / puan buna bağlanmaz).
 Sayım: `IPracticeSessionService.CountStartsBySourceAsync(since)` → kaynak × (günlük / serbest) adetleri; admin özeti (#513) bunu
 gösterecek. Epic ölçütü: `Assistant` / tümü ≥ %15. `Notification` bugün gönderen yok (bildirimden başlatma gelince).
+
+## Veli dilimi (#1336, Faz 1b)
+
+- **Tool'lar (yalnız Parent):** `list_my_children` (`api/parent-links/my-children`, yalnız Active: `studentId`, ad, sınıf;
+  Pending sayısı), `get_child_weekly_summary` (`summary`), `list_child_assignments` (`assignments`, `status`
+  overdue / pending / completed), `get_child_test_result` (`test-results/{id}`; #1310 soru / karalama listesi modele gitmez),
+  `get_child_weak_topics` (`topic-performance`, `minQuestions=5`, %70 altı; çocuğun paketinde analiz yoksa 403 olduğu gibi
+  iletilir), `get_child_progress`, `get_child_schedule` (`from`/`to` ikisi birlikte, `yyyy-MM-dd`). Hepsi exam API'nin veli
+  uçları (`api/parent/children/{studentId}/…`); veli–çocuk bağı, paket kapısı, oran sınırı ve `ParentAccessAudit` orada kalır.
+  Başka velinin çocuğu / Pending bağlantı 404 → `NotFound`.
+- **Veri azaltma:** modele çocuğun yalnız ilk adı gider (soyadı, okul, öğretmen adı gitmez); ad ve ödev / plan başlıkları
+  `<untrusted>` ile işaretli. Audit tablosunda IP alanı yok: "asistanın IP'si yazılır" endişesi geçersiz (kayıt veli ve çocuk id'si).
+- **Ortak tool'lar** (`search_help`, `ui_open_screen`, `ui_suggest_actions`) öğrenci ve veliye açık; ekranlar rol başına
+  (`parentDashboard` `/parent`, `childDashboard` `/parent?child={studentId}`, `myChildren`). Kılavuzda veli makaleleri
+  `Help/parent/` (panel, çocuk hesabı, kodla bağlanma, şifre sıfırlama, ders onayı, asistan ayarı).
+- **Prompt (r4):** veli sürümü ayrı (`siz`, önce `list_my_children`, birden çok çocukta mesajdaki ada göre, yoksa sor; çocukları
+  karıştırma; başka öğrencilerle karşılaştırma yok; tek tek soru / şık gösterilmez). Kriz metni veliye ayrı
+  (`ParentCrisisResponse`). Öğrenci prompt'una: konu açıksa soru sayısı sormadan kart hazırla.
+- **Panel:** veli boş durum metni ve önerileri (`parentEmpty`, `parentStarters`: haftası, geciken ödev, zorlandığı konular, şifre).
+- **Açma:** `ASSISTANT_ROLES` virgülle (`Student,Parent`); dev `appsettings.Development.json` ikisini de açar. Demo / prod'da veli
+  ayrıca açılmalı (deploy kararı).
+- Sonraki dilim: `list_pending_lesson_approvals`, `explain_parent_notifications`, haftalık rapor tool'u, veli yazma tool'ları.

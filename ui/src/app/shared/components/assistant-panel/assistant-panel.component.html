@@ -29,12 +29,12 @@
     @if (!store.messages().length) {
       <div class="asp__empty" data-testid="assistant-empty">
         <mat-icon class="asp__empty-icon" aria-hidden="true">auto_awesome</mat-icon>
-        <p class="asp__empty-title">{{ t('empty.title') }}</p>
-        <p class="asp__empty-text">{{ t('empty.text') }}</p>
+        <p class="asp__empty-title">{{ t(emptyPrefix() + 'title') }}</p>
+        <p class="asp__empty-text">{{ t(emptyPrefix() + 'text') }}</p>
         <div class="asp__chips" role="group" [attr.aria-label]="t('suggestionsLabel')">
-          @for (key of starters; track key) {
+          @for (key of starters(); track key) {
             <button mat-stroked-button type="button" class="asp__chip" data-testid="assistant-starter"
-              (click)="sendStarter(t('starters.' + key + '.prompt'))">{{ t('starters.' + key + '.label') }}</button>
+              (click)="sendStarter(t(starterPrefix() + key + '.prompt'))">{{ t(starterPrefix() + key + '.label') }}</button>
           }
         </div>
       </div>

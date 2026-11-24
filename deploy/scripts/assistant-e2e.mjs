@@ -2,13 +2,14 @@
 // Issue #509: live end-to-end check of the in-app assistant through the gateway (:5678), with the real model.
 // Logs in as a student in a headless browser (Keycloak), then talks to /api/assistant/chat over SSE.
 //
-//   ASSISTANT_E2E_PASSWORD=… node deploy/scripts/assistant-e2e.mjs --user ali.yildiz@example.test [--confirm] [--base http://localhost:5678]
+//   ASSISTANT_E2E_PASSWORD=… node deploy/scripts/assistant-e2e.mjs --user ali.yildiz@example.test [--parent veli@example.test] [--confirm] [--base http://localhost:5678]
 //
 // Scenario A: "Zorlandığım konular hangileri?" → get_my_weak_topics, an answer.
 // Scenario B: "Açılar konusunda günlük seti aç" → search_taxonomy + exactly one confirmation card; with --confirm the
 //             card is confirmed (opens today's set: changes data) and must answer 200 with a navigate action.
 // Guard:      a chat sent from /testsolve/… is refused with 409 AssistantClosedDuringTest.
-// Scenario C (parent's week) waits for the parent tools (Phase 1b); it is reported as skipped.
+// Scenario C (#1336, parent): with --parent (same password) "Çocuğum bu hafta nasıl, geciken ödevi var mı, nerede zorlanıyor?" →
+//             list_my_children + the child tools, an answer; skipped without --parent. Parent role must be in ASSISTANT_ROLES.
 // Needs Playwright from ui/node_modules (npm ci in ui/) and Chrome. Costs a few model calls. Exit code 1 on any failure.
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -17,6 +18,7 @@ import path from 'node:path';
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : fallback; };
 const user = opt('--user');
+const parentUser = opt('--parent');
 const base = opt('--base', 'http://localhost:5678');
 const confirm = args.includes('--confirm');
 const password = process.env.ASSISTANT_E2E_PASSWORD;
@@ -29,7 +31,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const { chromium } = createRequire(path.join(root, 'ui/package.json'))('playwright');
 const api = `${base}/api/assistant`;
 
-async function login() {
+async function login(user) {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
   try {
     const page = await browser.newPage();
@@ -83,7 +85,7 @@ function check(name, ok, detail) {
 const tools = t => t.events.filter(e => e.type === 'tool_start').map(e => e.data.tool);
 const summary = t => `${t.ms} ms, tools [${tools(t).join(', ')}], $${t.done?.usage?.costUsd ?? '?'}: ${t.text.replace(/\s+/g, ' ').slice(0, 300)}`;
 
-const headers = { Authorization: await login(), 'Content-Type': 'application/json', 'Accept-Language': 'tr-TR' };
+const headers = { Authorization: await login(user), 'Content-Type': 'application/json', 'Accept-Language': 'tr-TR' };
 
 const status = await (await fetch(`${api}/status`, { headers })).json();
 if (!status.enabled) {
@@ -110,7 +112,15 @@ if (confirm && cards.length === 1) {
 const closed = await turn(headers, 'Bu sorunun cevabı ne?', '/testsolve/1');
 check('closed during a test', closed.status === 409 && closed.body?.includes('AssistantClosedDuringTest'), `HTTP ${closed.status}`);
 
-console.log('SKIP C parent week (parent tools come with Phase 1b)');
+if (parentUser) {
+  const parentHeaders = { ...headers, Authorization: await login(parentUser) };
+  const c = await turn(parentHeaders, 'Çocuğum bu hafta nasıl, geciken ödevi var mı, nerede zorlanıyor?', '/parent');
+  const used = c.status === 200 ? tools(c) : [];
+  check('C parent week', c.status === 200 && c.done && used.includes('list_my_children') && used.some(t => t.startsWith('get_child_') || t === 'list_child_assignments')
+    && c.text.trim().length > 0, c.status === 200 ? summary(c) : `HTTP ${c.status} ${c.body}`);
+} else {
+  console.log('SKIP C parent week (pass --parent <user>)');
+}
 const failed = results.filter(r => !r.ok).length;
 console.log(`${results.length - failed}/${results.length} passed`);
 process.exit(failed ? 1 : 0);

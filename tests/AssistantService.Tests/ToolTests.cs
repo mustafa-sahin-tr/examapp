@@ -269,7 +269,8 @@ public class StudentToolTests : IDisposable
         tools.Select(t => t.Name).ShouldBeUnique();
         tools.ShouldAllBe(t => System.Text.RegularExpressions.Regex.IsMatch(t.Name, "^[a-z][a-z_]*$"));
         tools.ShouldAllBe(t => t.InputSchema["type"]!.GetValue<string>() == "object");
-        tools.ShouldAllBe(t => t.Roles.SequenceEqual(new[] { "Student" }));
+        tools.Where(t => !SharedTools.Contains(t.Name)).ShouldAllBe(t => t.Roles.Count == 1);
+        tools.Where(t => SharedTools.Contains(t.Name)).ShouldAllBe(t => t.Roles.SequenceEqual(new[] { "Student", "Parent" }));
     }
 }
 
@@ -374,8 +375,13 @@ public class PendingActionTests : IDisposable
         await using var db = _h.NewDb();
         var parent = new ToolContext("p", ["Parent"], "t", null, await _h.ConversationAsync("p"));
 
-        new ToolRegistry(_h.AllTools()).ForRoles(parent.Roles).ShouldBeEmpty();
+        // #1336: a parent sees the parent tools and the shared ones, never the student's own-data tools (and vice versa).
+        var parentTools = new ToolRegistry(_h.AllTools()).ForRoles(parent.Roles).Select(t => t.Name).ToList();
+        parentTools.ShouldContain("list_my_children");
+        parentTools.ShouldNotContain(n => n.StartsWith("get_my_") || n.StartsWith("start_"));
+        new ToolRegistry(_h.AllTools()).ForRoles(Student().Roles).Select(t => t.Name).ShouldNotContain(n => n.Contains("child"));
         (await _h.Executor(db).InvokeAsync(parent, "get_my_profile", Args())).Result.ErrorCode.ShouldBe("ToolNotAllowed");
+        (await _h.Executor(db).InvokeAsync(Student(), "get_child_weekly_summary", Args(new { studentId = 1 }))).Result.ErrorCode.ShouldBe("ToolNotAllowed");
         (await _h.Executor(db).InvokeAsync(Student(), "no_such_tool", Args())).Result.ErrorCode.ShouldBe("ToolNotAllowed");
         _h.Api.Calls.ShouldBeEmpty();
     }

@@ -487,7 +487,8 @@ services:
       - exam-net
 
   # Issue #502 (epic #495): in-app assistant, reached only through the gateway (/api/assistant/*). Off unless
-  # ASSISTANT_ENABLED=true and ANTHROPIC_API_KEY is set; ASSISTANT_ROLES picks who may use it (students first, #496).
+  # ASSISTANT_ENABLED=true and ANTHROPIC_API_KEY is set; ASSISTANT_ROLES picks who may use it, comma separated
+  # (students first, #496; "Student,Parent" opens the parent tools, #1336).
   assistant-service:
     build:
       context: ..

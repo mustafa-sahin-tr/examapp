@@ -79,6 +79,7 @@ public class ParentToolTests : IDisposable
         var row = result.Data!["assignments"]!.AsArray().Single()!;
         row["title"]!.GetValue<string>().ShouldBe("<untrusted>Kesirler ödevi</untrusted>");
         row["teacherName"].ShouldBeNull();
+        row["deadline"]!.GetValue<string>().ShouldBe("2026-11-22 23:00"); // Istanbul time, not the UTC instant
         result.Data!["counts"]!["overdue"]!.GetValue<int>().ShouldBe(1);
         (await tool.ExecuteAsync(Parent(), Args(new { studentId = 7, status = "late" }))).ErrorCode.ShouldBe("InvalidArguments");
     }
@@ -144,7 +145,10 @@ public class ParentToolTests : IDisposable
 
         var tool = new GetChildScheduleTool(_h.Downstream);
         var schedule = await tool.ExecuteAsync(Parent(), Args(new { studentId = 7, from = "2026-11-23", to = "2026-11-29" }));
-        schedule.Data!["lessons"]!.AsArray().Single()!["teacherName"].ShouldBeNull();
+        var lesson = schedule.Data!["lessons"]!.AsArray().Single()!;
+        lesson["teacherName"].ShouldBeNull();
+        lesson["startAt"]!.GetValue<string>().ShouldBe("2026-11-25 18:00");
+        lesson["endAt"]!.GetValue<string>().ShouldBe("2026-11-25 19:00");
         schedule.Data!["plans"]!.AsArray().Single()!["title"]!.GetValue<string>().ShouldStartWith("<untrusted>");
         (await tool.ExecuteAsync(Parent(), Args(new { studentId = 7, from = "2026-11-23" }))).ErrorCode.ShouldBe("InvalidArguments");
         (await tool.ExecuteAsync(Parent(), Args(new { studentId = 7, from = "x&y=1", to = "2026-11-29" }))).ErrorCode.ShouldBe("InvalidArguments");

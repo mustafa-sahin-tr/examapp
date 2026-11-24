@@ -253,6 +253,8 @@ gösterecek. Epic ölçütü: `Assistant` / tümü ≥ %15. `Notification` bugü
   iletilir), `get_child_progress`, `get_child_schedule` (`from`/`to` ikisi birlikte, `yyyy-MM-dd`). Hepsi exam API'nin veli
   uçları (`api/parent/children/{studentId}/…`); veli–çocuk bağı, paket kapısı, oran sınırı ve `ParentAccessAudit` orada kalır.
   Başka velinin çocuğu / Pending bağlantı 404 → `NotFound`.
+- **Saatler:** veli tool'ları UTC anları (`startAt` / `endAt` / `deadline` / `lastActivityAt`, test `startedAt` / `finishedAt`)
+  İstanbul saatiyle `yyyy-MM-dd HH:mm` verir (`ParentApi.LocalTimes`); model 12:00Z'yi 15:00 yerine "12:00" diyordu.
 - **Veri azaltma:** modele çocuğun yalnız ilk adı gider (soyadı, okul, öğretmen adı gitmez); ad ve ödev / plan başlıkları
   `<untrusted>` ile işaretli. Audit tablosunda IP alanı yok: "asistanın IP'si yazılır" endişesi geçersiz (kayıt veli ve çocuk id'si).
 - **Ortak tool'lar** (`search_help`, `ui_open_screen`, `ui_suggest_actions`) öğrenci ve veliye açık; ekranlar rol başına

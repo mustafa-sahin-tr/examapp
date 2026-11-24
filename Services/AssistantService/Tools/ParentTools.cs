@@ -26,6 +26,24 @@ internal static class ParentApi
         string.Create(CultureInfo.InvariantCulture, $"api/parent/children/{studentId}/{rest}");
 
     public static decimal? Pct(int part, int whole) => whole == 0 ? null : Math.Round(100m * part / whole, 1);
+
+    /// <summary>The exam API's calendar (<c>Dashboard:TimeZone</c>): the parent reads times in Istanbul time.</summary>
+    public static readonly TimeZoneInfo TimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Istanbul");
+
+    /// <summary>
+    /// Rewrites the UTC instants <paramref name="keys"/> of <paramref name="row"/> as local "yyyy-MM-dd HH:mm" (the model turned
+    /// 12:00Z into "12:00" instead of 15:00). A value that is not an instant is left as is.
+    /// </summary>
+    public static JsonObject LocalTimes(JsonObject row, params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            if (row[key] is JsonValue v && v.TryGetValue<string>(out var text)
+                && DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var at))
+                row[key] = TimeZoneInfo.ConvertTime(at, TimeZone).ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+        }
+        return row;
+    }
 }
 
 public sealed class ListMyChildrenTool(DownstreamClient api) : IAssistantTool
@@ -79,6 +97,7 @@ public sealed class GetChildWeeklySummaryTool(DownstreamClient api) : IAssistant
         var correct = Pick.Int(s, "correctThisWeek") ?? 0;
         var data = Pick.Only(s, "studentId", "weekStart", "questionsSolvedThisWeek", "correctThisWeek", "activeDaysThisWeek",
             "totalPoints", "lastActivityAt");
+        ParentApi.LocalTimes(data, "lastActivityAt");
         data["accuracyPct"] = ParentApi.Pct(correct, solved);
         data["assignments"] = Pick.Only(Pick.Get(s, "assignments"), "completed", "overdue", "pending", "windowDays");
         data["activities"] = Pick.Only(Pick.Get(s, "activities"), "completedThisWeek", "completedTotal", "averageFirstCheckPercent");
@@ -126,7 +145,7 @@ public sealed class ListChildAssignmentsTool(DownstreamClient api) : IAssistantT
             return response.ToError();
         var items = Pick.Items(response.Body).Take(MaxListItems).Select(i =>
         {
-            var row = Pick.Only(i, "subject", "startAt", "deadline", "status", "testInstanceId");
+            var row = ParentApi.LocalTimes(Pick.Only(i, "subject", "startAt", "deadline", "status", "testInstanceId"), "startAt", "deadline");
             row["title"] = Untrusted(Pick.Str(i, "title"));
             if (Pick.Get(i, "result") is { } result)
                 row["result"] = Pick.Only(result, "scorePercent", "correctCount", "wrongCount", "blankCount", "totalCount", "durationSeconds");
@@ -160,7 +179,7 @@ public sealed class GetChildTestResultTool(DownstreamClient api) : IAssistantToo
             return response.ToError();
         var r = response.Body;
         // Questions (#1310: answers and drawings) stay on the screen; the model gets counts only.
-        var data = Pick.Only(r, "testInstanceId", "subject", "outcome", "startedAt", "finishedAt");
+        var data = ParentApi.LocalTimes(Pick.Only(r, "testInstanceId", "subject", "outcome", "startedAt", "finishedAt"), "startedAt", "finishedAt");
         data["title"] = Untrusted(Pick.Str(r, "title"));
         data["score"] = Pick.Only(Pick.Get(r, "score"), "scorePercent", "correctCount", "wrongCount", "blankCount", "totalCount", "durationSeconds");
         data["topics"] = new JsonArray(Pick.Items(Pick.Get(r, "topics")).Take(MaxListItems)
@@ -237,7 +256,7 @@ public sealed class GetChildProgressTool(DownstreamClient api) : IAssistantTool
 public sealed class GetChildScheduleTool(DownstreamClient api) : IAssistantTool
 {
     public string Name => "get_child_schedule";
-    public string Description => "One child's plan items (title, subject, planned day) and private lessons (day, start, end, pending / approved) in a date range, this week when no range. Dates yyyy-MM-dd, at most 31 days.";
+    public string Description => "One child's plan items (title, subject, planned day) and private lessons (day, start, end in local time, pending / approved) in a date range, this week when no range. Dates yyyy-MM-dd, at most 31 days.";
     public IReadOnlyCollection<string> Roles => Tools.Roles.ParentOnly;
     public JsonObject InputSchema => Schema(
         ParentApi.StudentIdArg,
@@ -268,7 +287,7 @@ public sealed class GetChildScheduleTool(DownstreamClient api) : IAssistantTool
         }).ToArray());
         // Teacher names stay on the screen (data minimisation).
         data["lessons"] = new JsonArray(Pick.Items(Pick.Get(s, "lessons")).Take(MaxListItems)
-            .Select(l => (JsonNode)Pick.Only(l, "startsOn", "startAt", "endAt", "status")).ToArray());
+            .Select(l => (JsonNode)ParentApi.LocalTimes(Pick.Only(l, "startsOn", "startAt", "endAt", "status"), "startAt", "endAt")).ToArray());
         return ToolResult.Success(data);
     }
 

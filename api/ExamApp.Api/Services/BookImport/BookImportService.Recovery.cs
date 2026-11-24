@@ -66,6 +66,30 @@ public sealed partial class BookImportService
         return RetryBookImportResult.Queued;
     }
 
+    /// <summary>
+    /// Kurulum onayındaki işin kurulumunu baştan çalıştırır (planlayıcı / tarama düzeltmesinden sonra): sayfalar ve temizlik kalır,
+    /// tarama ve anahtar okuma yeniden yapılır, test satırları yeniden yazılır (onay ekranındaki düzenlemeler gider). Temizlik
+    /// sürerken olmaz; hak onayda düştüğünden yeniden hak düşmez.
+    /// </summary>
+    public async Task<RetryBookImportResult> RerunSetupAsync(BookImportOwner owner, Guid id, CancellationToken ct)
+    {
+        var job = await Visible(owner).AsTracking().FirstOrDefaultAsync(j => j.Id == id, ct);
+        if (job is null)
+            return RetryBookImportResult.NotFound;
+        // Temizlik ya da "QR'dan al" sürerken olmaz (ikisi de test satırlarına / sayfalara yazar); demo kopyası kurulum çalıştırmaz.
+        if (!IsAwaitingSetup(job) || BookSetupSummary.Parse(job.SetupJson) is not { } summary || job.IsDemoSource
+            || job.DemoSourceJobId is not null || BookPageCleaning.Parse(job.CleanJson) is { IsActive: true }
+            || summary.QrRun is { } qrRun && BookQrKeyService.IsActive(qrRun))
+            return RetryBookImportResult.InvalidState;
+
+        BookImportEvents.Add(_db, job, BookImportEvents.SetupRerun);
+        job.Stage = BookImportStage.Setup;
+        Requeue(job);
+        await _db.SaveChangesAsync(ct);
+        _jobs.Enqueue<BookImportJobRunner>(r => r.RunAsync(id));
+        return RetryBookImportResult.Queued;
+    }
+
     public async Task<RetryBookImportResult> RetryTestsAsync(BookImportOwner owner, Guid id, int? testId, CancellationToken ct)
     {
         var job = await Visible(owner).AsTracking().FirstOrDefaultAsync(j => j.Id == id, ct);

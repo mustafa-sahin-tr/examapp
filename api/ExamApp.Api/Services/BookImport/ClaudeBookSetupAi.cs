@@ -97,8 +97,8 @@ public interface IBookSetupAi
 /// </summary>
 public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
 {
-    /// <summary>1: ilk sürüm (#1021). 2: test başlığı olmayan bölümlü kitaplar ve test numarasız anahtarlar (#1122). 5: "AI ile eşle" (sahipsiz anahtar satırı → anahtarsız test). 7: etkinlik sayfası türü (#1134).</summary>
-    public const int SchemaRevision = 7;
+    /// <summary>1: ilk sürüm (#1021). 2: test başlığı olmayan bölümlü kitaplar ve test numarasız anahtarlar (#1122). 5: "AI ile eşle" (sahipsiz anahtar satırı → anahtarsız test). 7: etkinlik sayfası türü (#1134). 8: ünite sayfa altından da okunur, şıklı soru olan sayfa test, etkinlik sayfasında test no, deneme sınavları (exam).</summary>
+    public const int SchemaRevision = 8;
 
     public const string DefaultSurveyModel = "claude-haiku-5-5";
     public const string DefaultAnswerKeyModel = "claude-haiku-5-5";
@@ -122,14 +122,18 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
     private const string SurveyInstruction =
         "Each image above is one page; the text before it gives its file page number. For every page return: " +
         "kind (cover, toc, test, activity, answerKey, selfAssessment or other); printedPage, the page number printed on the page " +
-        "(null if none); for test pages the test header if this page shows one: unit (the section number such as " +
-        "\"1. Bölüm\" or \"1. Ünite\"), testNo (\"Test 01\" → 1), title (the topic name next to the test number) and " +
+        "(null if none); for test and activity pages the test header if this page shows one: unit (the section number such as " +
+        "\"1. Bölüm\" or \"1. Ünite\", in the header or in the page footer), testNo (\"Test 01\" → 1), title (the topic name next to the test number) and " +
         "minutes (\"16 dk.\" → 16); maxQuestionNumber, the highest question number printed on the page. Some books name " +
         "each test by a section label and a number instead of \"Test 01\" (\"Kavramları Kavra 01\", \"Öğrendiğini Kanıtla 02\", " +
         "\"Becerini Sergile 01\"): then series is that label, testNo the number, unit null and title the topic line of the header; " +
         "series is null for \"Test 01\" headers. A page whose exercises are not multiple choice but are completed on the page " +
         "(matching, fill in the blanks, true/false or tick tables, sorting into groups, marking words in a text, puzzles) is kind " +
-        "activity, and a page with only free-writing questions (no lettered choices A–D) is kind other, even under such a label. " +
+        "activity, but a page with at least one multiple choice question (lettered choices A–D, even under a puzzle or table) is " +
+        "kind test; a page with only free-writing questions (no lettered choices A–D) is kind other, even under such a label. " +
+        "Exam sections are headed by an exam name instead of a test number (\"1. Sınav\", \"Ara Deneme Sınavı\", \"Deneme 2\"): " +
+        "their question pages are kind test with exam the exam number, testNo and series null and title the exam name; exam is " +
+        "null on every other page. " +
         "A test page " +
         "without its own header still has kind test. Some books (e.g. LGS workbooks) have no test headers at all: the question " +
         "pages of a unit or of an exam section are kind test with unit and testNo null, and the title page of a unit or " +
@@ -149,7 +153,7 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
         "never guess the section. " +
         "Cells look like \"3. B\": number 3, answer B. Skip empty cells. Rows cut off at the image edge are skipped. " +
         "Keys without test numbers: a block per unit (\"1. Ünite\" beside it) is one row with that unit and testNo 1; " +
-        "a single numbered list is one row with unit 0 and testNo 1. Keys grouped under section labels (\"Kavramları Kavra\", " +
+        "a single numbered list is one row with unit 0 and testNo 1. A row labelled as an exam instead of a test (\"1. Sınav\", \"Deneme 2\") has exam the exam number and testNo 0. Keys grouped under section labels (\"Kavramları Kavra\", " +
         "\"Öğrendiğini Kanıtla\") with numbered blocks (01, 02): each block is one row with series the label, testNo the block " +
         "number and unit 1; series is null otherwise. Skip blocks whose answers are not letters (open-ended answers such as " +
         "\"40 cm\").";
@@ -225,7 +229,7 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
             .GroupBy(p => p.FilePage)
             .Select(g => g.First())
             .Select(p => new SurveyedPage(p.FilePage, ParseKind(p.Kind), Positive(p.PrintedPage), Positive(p.Unit), Positive(p.TestNo),
-                p.Title, Positive(p.Minutes), Positive(p.MaxQuestionNumber), Series(p.Series)))
+                p.Title, Positive(p.Minutes), Positive(p.MaxQuestionNumber), Series(p.Series), Positive(p.Exam)))
             .ToList();
         var toc = (batch.TocRows ?? [])
             .Where(r => r is not null && !string.IsNullOrWhiteSpace(r.Title))
@@ -418,6 +422,9 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
         }
 
         // #1167: ünite 0 = görüntüde üstünde ünite başlığı yok; kurulum önceki satırın ünitesinden devam ettirir.
+        // Deneme satırı ("1. Sınav") test değildir: ünite / test no taşımaz, planlayıcı deneme numarasıyla eşler.
+        if (Positive(row.Exam) is { } exam)
+            return new AnswerKeyRow(0, 0, answers, ExamNo: exam);
         return new AnswerKeyRow(row.Unit is > 0 ? row.Unit : 0, row.TestNo, answers, Series: Series(row.Series));
     }
 
@@ -438,7 +445,8 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
         [property: Description("Test title from the header; null when none.")] string? Title,
         [property: Description("Suggested minutes from the header; null when none.")] int? Minutes,
         [property: Description("Highest question number printed on this page; null when the page has no questions.")] int? MaxQuestionNumber,
-        [property: Description("Section label naming the test instead of \"Test\" (\"Kavramları Kavra\"); null when none.")] string? Series);
+        [property: Description("Section label naming the test instead of \"Test\" (\"Kavramları Kavra\"); null when none.")] string? Series,
+        [property: Description("Exam number from an exam header (\"1. Sınav\" → 1); null when the page is not an exam page.")] int? Exam = null);
 
     internal sealed record TocRow(
         [property: Description("Unit/section number; null when the row has none.")] int? Unit,
@@ -450,7 +458,8 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
     internal sealed record KeyTableRow(
         [property: Description("Section number from the heading above the row in this image; 0 when none is printed above it.")] int Unit,
         int TestNo, List<KeyCell> Answers,
-        [property: Description("Section label the row is listed under (\"Kavramları Kavra\"); null when none.")] string? Series);
+        [property: Description("Section label the row is listed under (\"Kavramları Kavra\"); null when none.")] string? Series,
+        [property: Description("Exam number when the row is labelled as an exam (\"1. Sınav\" → 1); null for test rows.")] int? Exam = null);
 
     internal sealed record KeyCell(int Number, [property: Description("A, B, C, D, E or ? when unreadable.")] string Answer);
 

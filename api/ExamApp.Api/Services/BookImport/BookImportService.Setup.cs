@@ -242,7 +242,8 @@ public sealed partial class BookImportService
     {
         var pages = confirmed.ToDictionary(t => t.Order, t => (t.FileFrom, t.FileTo));
         var ordered = tests
-            .Select(t => (t.Unit, Pages: pages.TryGetValue(t.Order, out var p) ? p
+            // Deneme birden çok üniteyi kapsar: konusuz aralık (ünite 0, konu eşlemesinde yok) olur, sorular normal sınıflanır.
+            .Select(t => (Unit: IsExam(t) ? 0 : t.Unit, Pages: pages.TryGetValue(t.Order, out var p) ? p
                 : t.FileFrom is { } from && t.FileTo is { } to ? (from, to) : ((int, int)?)null))
             .Where(t => t.Pages is not null)
             .Select(t => (t.Unit, From: t.Pages!.Value.Item1, To: t.Pages.Value.Item2))
@@ -384,9 +385,19 @@ public sealed partial class BookImportService
         // #1134: etkinlik bölümü ayrı numaralanır ("1-E01"); aynı ünitedeki "1-01" testiyle karışmaz.
         if (IsActivitySection(test))
             return $"{test.Unit}-E{test.TestNo:D2} · {(string.IsNullOrWhiteSpace(test.Title) ? ActivitySectionTitle : test.Title)}";
+        // Deneme sınavı ayrı numaralanır ("2-S01"); başlığı okunamadıysa "Deneme Sınavı".
+        if (IsExam(test))
+            return $"{test.Unit}-S{test.TestNo:D2} · {(string.IsNullOrWhiteSpace(test.Title) ? ExamTitle : test.Title)}";
         var code = $"{test.Unit}-{test.TestNo:D2}";
         return string.IsNullOrWhiteSpace(test.Title) ? code : $"{code} · {test.Title}";
     }
+
+    /// <summary>Başlığı okunamayan deneme sınavının adı.</summary>
+    internal const string ExamTitle = "Deneme Sınavı";
+
+    /// <summary>Kurulumun deneme sınavı olarak planladığı satır (<see cref="BookSetupPlanner.FlagExam"/>).</summary>
+    internal static bool IsExam(BookImportJobTest test) =>
+        test.FlagsJson is { Length: > 0 } && ParseFlags(test.FlagsJson).Contains(BookSetupPlanner.FlagExam);
 
     /// <summary>#1134: başlığı okunamayan etkinlik bölümünün adı (kitap testi ve taslak etkinlik sayfası).</summary>
     internal const string ActivitySectionTitle = "Etkinlikler";

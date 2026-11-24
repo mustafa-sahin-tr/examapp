@@ -332,7 +332,8 @@ public class BookSetupPlannerTests
 
         var plan = BookSetupPlanner.Plan(pages, [], read, read);
 
-        plan.Tests.Select(t => (t.Unit, t.TestNo, t.AnswerKey)).ShouldBe([(1, 1, "AB"), (1, 2, "CD"), (1, 3, "ABC")]);
+        // Sayfada ünite basılı değil: test anahtarın ünitesini alır (içindekiler aralığı ve konu doğru üniteden).
+        plan.Tests.Select(t => (t.Unit, t.TestNo, t.AnswerKey)).ShouldBe([(1, 1, "AB"), (1, 2, "CD"), (2, 3, "ABC")]);
         plan.Tests[2].Flags.ShouldBe([BookSetupPlanner.FlagKeyByNumber]);
         plan.Tests[0].Flags.ShouldBeEmpty();
         plan.OrphanKeys.ShouldBeEmpty();

@@ -37,6 +37,8 @@ FONT_PATHS = (
 # Kutu boyut sınırları bu genişlikteki sayfaya göre; başka genişlikte orantılanır.
 REFERENCE_WIDTH = 1400
 MAX_ANALYSES = 4
+# Sayfanın üst ve alt bu oranı başlık / alt bilgi bandı: yalnız burada kalan leke filigran sayılmaz.
+HEADER_BAND = 0.15
 ANALYSIS_TTL_SECONDS = 6 * 3600
 
 _lock = threading.Lock()
@@ -83,7 +85,13 @@ def learn_watermark(med: np.ndarray):
         return None, None, None
     sizes = ndimage.sum(core, lab, range(1, n + 1))
     edge = set(np.unique(np.r_[lab[0], lab[-1], lab[:, 0], lab[:, -1]]))
-    big = [i + 1 for i, s in enumerate(sizes) if s > 3000 and i + 1 not in edge]
+    # Başlık / alt bilgi bandındaki leke filigran değildir: her sayfada aynı yerde ama içeriği (ünite rengi, test adı) sayfaya göre
+    # değişir; medyanı açık bir leke bırakır ve bölünce bant bozulur (5. sınıf Sosyal Bilgiler, başlıkta "Ünit…" artığı).
+    # Filigran soru alanına uzanır; yalnız üst / alt bantta kalan leke atlanır.
+    band = int(med.shape[0] * HEADER_BAND)
+    in_band = {i + 1 for i, sl in enumerate(ndimage.find_objects(lab))
+               if sl is not None and (sl[0].stop <= band or sl[0].start >= med.shape[0] - band)}
+    big = [i + 1 for i, s in enumerate(sizes) if s > 3000 and i + 1 not in edge and i + 1 not in in_band]
     if sum(sizes[i - 1] for i in big) < 0.01 * core.size:
         return None, None, None
     keep = np.isin(lab, big)

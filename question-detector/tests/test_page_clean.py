@@ -56,6 +56,25 @@ def test_watermark_is_learned_and_divided_out():
     assert blank.mean() > 245
 
 
+def test_header_band_is_not_a_watermark():
+    """Başlık bandı her sayfada aynı yerde ama rengi / yazısı sayfaya göre değişir: medyanın açık izi filigran sayılmaz."""
+    pages = []
+    for i in range(10):
+        arr = page(i).copy()
+        arr[300:500, 150:450] = 255  # bu kitapta gövdede filigran yok
+        tint = (120 + 10 * (i % 3), 160, 230 - 10 * (i % 2))
+        arr[60:200, 100:W - 100] = tint
+        pages.append(webp(arr))
+    result = page_clean.analyze(pages)
+    assert result["watermarks"] == []
+
+    image, _, removed = page_clean.clean_page(pages[0], page_clean.get_analysis(result["token"]))
+    assert not removed
+    clean = np.asarray(Image.open(io.BytesIO(image)).convert("RGB")).astype(int)
+    original = np.asarray(Image.open(io.BytesIO(pages[0])).convert("RGB")).astype(int)
+    assert np.abs(clean[60:200] - original[60:200]).mean() < 2  # yalnız WEBP sıkıştırması
+
+
 def test_too_few_pages_find_nothing_and_unknown_token_expires():
     result = page_clean.analyze([webp(page(i)) for i in range(3)])
     assert result["watermarks"] == []

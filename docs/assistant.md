@@ -285,6 +285,17 @@ gösterecek. Epic ölçütü: `Assistant` / tümü ≥ %15. `Notification` bugü
   2026-11-24) ve öğretmen arama ayrı PR.
 - Altın veli seti: `trend`, `weekly-report`, `weekly-report-forbidden`, `compare-siblings`.
 
+### Ders talepleri ve öğretmen arama (#511, dilim 2)
+
+- `list_pending_lesson_requests`: `api/parent/booking-requests` + `reschedule-requests` (velinin bütün Active çocukları); çocuğun ilk
+  adı, gün ve saatler İstanbul saatiyle (`start` / `end` / `expiresAt`, ertelemede `proposedStart` / `proposedEnd`, `canApprove`),
+  öğretmen adı yok. **Onay / ret asistanda yok** (karar 2026-11-24): model veli panelini (`parentDashboard`) açar.
+- `search_tutors_for_child`: `subject` adı verilmezse çocuğun özetindeki en zayıf konunun dersi (`basis: weakTopic`; özet çağrısı
+  bağlantıyı da doğrular, başka velinin çocuğu `NotFound`; zayıf konu yoksa `NoSubject`). Ders id'si `api/subject/search`, öğretmenler
+  `api/Teacher/search?subjectId=&take=5` (#95 / #439, yalnız onaylı bağımsız öğretmen). Ad ve tanıtım yazısı `<untrusted>`, yazı 200
+  karakter. Randevu asistanda yok: yeni ekran anahtarı `childTutors` (`/my-children/{studentId}/tutors`).
+- Prompt r9. Altın veli seti: `lesson-requests`, `lesson-approve-refused`, `tutors-weak-subject` (tanıtım yazısında talimat).
+
 ## Soru açıklama ve son yanlışlar (#510, Faz 2)
 
 Karar (2026-11-24): açıklama **yalnız öğrencinin cevapladığı sorular** için (bitmiş test ya da cevaplanmış pratik sorusu);

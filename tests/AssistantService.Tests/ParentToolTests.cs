@@ -278,6 +278,90 @@ public class ParentToolTests : IDisposable
         result.ErrorCode.ShouldBe("Forbidden");
         _h.Api.Calls.Count.ShouldBe(1);
     }
+
+    [Fact]
+    public async Task Lesson_requests_list_both_kinds_in_local_time_without_teacher_names()
+    {
+        _h.Api.On("GET", "api/parent/booking-requests", new
+        {
+            items = new[] { new { id = 4, studentId = 7, studentName = "Ayşe Yılmaz", teacherId = 2, teacherName = "Elif Hoca", availabilitySlotId = 9,
+                date = "2026-11-26", startTime = "15:00:00", endTime = "16:00:00", startUtc = "2026-11-26T12:00:00Z", endUtc = "2026-11-26T13:00:00Z",
+                createdAt = "2026-11-23T08:00:00Z", expiresAt = "2026-11-25T12:00:00Z" } },
+        });
+        _h.Api.On("GET", "api/parent/reschedule-requests", new
+        {
+            items = new[] { new { id = 5, studentId = 8, studentName = "Can Yılmaz", teacherId = 3, teacherName = "Ali Hoca",
+                startUtc = "2026-11-27T14:00:00Z", endUtc = "2026-11-27T15:00:00Z", proposedSlotId = 11,
+                proposedStartUtc = "2026-11-28T09:00:00Z", proposedEndUtc = "2026-11-28T10:00:00Z", proposedByRole = "Teacher", canApprove = true } },
+        });
+
+        var result = await new ListPendingLessonRequestsTool(_h.Downstream).ExecuteAsync(Parent(), Args());
+
+        var lesson = result.Data!["newLessons"]!.AsArray().Single()!;
+        lesson["firstName"]!.GetValue<string>().ShouldBe("<untrusted>Ayşe</untrusted>");
+        lesson["start"]!.GetValue<string>().ShouldBe("2026-11-26 15:00");
+        lesson["expiresAt"]!.GetValue<string>().ShouldBe("2026-11-25 15:00");
+        lesson["startUtc"].ShouldBeNull();
+        var move = result.Data!["reschedules"]!.AsArray().Single()!;
+        move["proposedStart"]!.GetValue<string>().ShouldBe("2026-11-28 12:00");
+        move["canApprove"]!.GetValue<bool>().ShouldBeTrue();
+        result.Data!["decideOn"]!.GetValue<string>().ShouldBe("parentDashboard");
+        var json = result.Data!.ToJsonString();
+        json.ShouldNotContain("Hoca");
+        json.ShouldNotContain("Yılmaz");
+        // Read only: the assistant never approves or rejects.
+        _h.Api.Calls.ShouldAllBe(c => c.Method == "GET");
+    }
+
+    [Fact]
+    public async Task Tutors_default_to_the_weak_topic_subject_and_mark_names_and_bios_untrusted()
+    {
+        _h.Api.On("GET", "api/parent/children/7/summary", new
+        {
+            studentId = 7, attention = new { weakTopic = new { topicId = 5, topicName = "Kesirler", subjectName = "Matematik", accuracyPercent = 45, answered = 11 } },
+        });
+        _h.Api.On("GET", "api/subject/search?q=Matematik&take=10", new object[]
+        {
+            new { subjectId = 1, topicId = (int?)5, subTopicId = (int?)null, path = "Matematik › Kesirler" },
+            new { subjectId = 1, topicId = (int?)null, subTopicId = (int?)null, path = "Matematik" },
+        });
+        _h.Api.On("GET", "api/Teacher/search?subjectId=1&take=5", new[]
+        {
+            new { teacherId = 2, fullName = "Elif Kaya", subjects = new[] { new { subjectId = 1, name = "Matematik" } }, hourlyRate = 400m,
+                teachesOnline = true, teachesInPerson = false, bio = new string('a', 250) },
+        });
+
+        var result = await new SearchTutorsForChildTool(_h.Downstream).ExecuteAsync(Parent(), Args(new { studentId = 7 }));
+
+        result.Data!["basis"]!.GetValue<string>().ShouldBe("weakTopic");
+        result.Data!["subjectId"]!.GetValue<int>().ShouldBe(1);
+        var tutor = result.Data!["tutors"]!.AsArray().Single()!;
+        tutor["name"]!.GetValue<string>().ShouldBe("<untrusted>Elif Kaya</untrusted>");
+        tutor["hourlyRate"]!.GetValue<decimal>().ShouldBe(400m);
+        tutor["bio"]!.GetValue<string>().Length.ShouldBeLessThan(250);
+        tutor["subjects"]!.AsArray().Single()!.GetValue<string>().ShouldBe("Matematik");
+    }
+
+    [Fact]
+    public async Task Tutors_need_a_subject_when_the_child_has_no_weak_topic_and_respect_the_link()
+    {
+        _h.Api.On("GET", "api/parent/children/7/summary", new { studentId = 7, attention = new { weakTopic = (object?)null } });
+        _h.Api.On("GET", "api/parent/children/99/summary", new { errorCode = "NotFound" }, HttpStatusCode.NotFound);
+        var tool = new SearchTutorsForChildTool(_h.Downstream);
+
+        (await tool.ExecuteAsync(Parent(), Args(new { studentId = 7 }))).ErrorCode.ShouldBe("NoSubject");
+        (await tool.ExecuteAsync(Parent(), Args(new { studentId = 99 }))).ErrorCode.ShouldBe("NotFound");
+        _h.Api.Calls.ShouldNotContain(c => c.PathAndQuery.Contains("Teacher/search"));
+    }
+
+    [Fact]
+    public async Task Child_tutors_screen_opens_for_parents_only()
+    {
+        var tool = new UiOpenScreenTool();
+        (await tool.ExecuteAsync(Parent(), Args(new { screen = "childTutors", id = 7 }))).UiActions!.Single()["route"]!
+            .GetValue<string>().ShouldBe("/my-children/7/tutors");
+    }
+
 }
 
 public class AssistantRoleOptionTests

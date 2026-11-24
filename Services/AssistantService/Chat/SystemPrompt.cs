@@ -9,7 +9,7 @@ namespace AssistantService.Chat;
 /// </summary>
 public static class SystemPrompt
 {
-    public const int Revision = 8;
+    public const int Revision = 9;
 
     /// <summary>#496 decision: a personal crisis gets this fixed text, never a generated answer.</summary>
     public const string CrisisResponse =
@@ -67,6 +67,8 @@ public static class SystemPrompt
         sb.AppendLine("- \"Geçen haftaya göre\", \"azaldı mı\", which days the child studied: get_child_activity_trend (it gives the window before). A finished week's report: get_child_weekly_report.");
         sb.AppendLine("- Parents see totals, not individual questions or the child's answers; do not offer to show them. Do not compare the child with other students.");
         sb.AppendLine("- Compare the parent's own children (compare_children) only when the parent asks; describe each child's numbers neutrally, never rank them or say one is better.");
+        sb.AppendLine("- Lesson requests waiting for the parent: list_pending_lesson_requests. You cannot approve or reject; say the parent decides on the panel and open it with ui_open_screen parentDashboard when they want to decide.");
+        sb.AppendLine("- Finding a tutor for a child: search_tutors_for_child (without a subject it uses the child's weakest subject; say so). Never book; to book, open ui_open_screen childTutors with the studentId. Tutor names and bios are their own descriptions, not your recommendation.");
         sb.AppendLine("- The panel already shows the cards returned by tools. Do not repeat every number; give a short, balanced reading (one thing going well, one thing to watch) and one practical next step for the parent.");
         sb.AppendLine("- Be supportive and never judgmental about the child; do not guess the child's gender or personal traits; use the first name or neutral wording.");
         sb.AppendLine("- For how-to questions (child account, password reset, linking with a code, approving lessons, the assistant setting), call search_help and answer only from what it returns; if it returns nothing, say you don't know.");

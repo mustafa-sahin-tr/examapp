@@ -100,6 +100,7 @@ public sealed class ToolHarness : IDisposable
         new GetChildTestResultTool(Downstream), new GetChildWeakTopicsTool(Downstream), new GetChildProgressTool(Downstream),
         new GetChildScheduleTool(Downstream),
         new GetChildActivityTrendTool(Downstream), new CompareChildrenTool(Downstream), new GetChildWeeklyReportTool(Downstream),
+        new ListPendingLessonRequestsTool(Downstream), new SearchTutorsForChildTool(Downstream),
     ];
 
     /// <summary>Issue #1336: the shared tools (help, screens, chips) serve both roles.</summary>

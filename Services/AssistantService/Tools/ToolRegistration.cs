@@ -34,6 +34,9 @@ public static class ToolRegistration
         services.AddScoped<IAssistantTool, GetChildActivityTrendTool>();
         services.AddScoped<IAssistantTool, CompareChildrenTool>();
         services.AddScoped<IAssistantTool, GetChildWeeklyReportTool>();
+        // #511 (Phase 2): lesson requests (decided on the dashboard) and tutor search.
+        services.AddScoped<IAssistantTool, ListPendingLessonRequestsTool>();
+        services.AddScoped<IAssistantTool, SearchTutorsForChildTool>();
         services.AddScoped<IAssistantTool, SearchHelpTool>();
         services.AddScoped<IAssistantTool, UiOpenScreenTool>();
         services.AddScoped<IAssistantTool, UiSuggestActionsTool>();

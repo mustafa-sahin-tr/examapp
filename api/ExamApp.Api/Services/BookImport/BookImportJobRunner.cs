@@ -95,11 +95,32 @@ public class BookImportJobRunner
     [AutomaticRetry(Attempts = 0)]
     public async Task RunAsync(Guid jobId)
     {
-        // Aynı iş iki kez kuyruğa düşerse (yeniden başlatma, elle tetikleme) ikinci çalıştırma beklemeden çıkar.
-        using var connection = JobStorage.Current.GetConnection();
-        using var jobLock = connection.AcquireDistributedLock($"book-import:{jobId}", TimeSpan.FromSeconds(5));
-        await RunLockedAsync(jobId);
+        // #1344: Hangfire.PostgreSql's lock expires after DistributedLockTimeout and a job running past InvisibilityTimeout is
+        // fetched again by another worker; a second run of a job already running in this process leaves at once.
+        if (!TryEnter(jobId))
+        {
+            _logger.LogWarning("Book import job {JobId} is already running in this process; the second run left", jobId);
+            return;
+        }
+        try
+        {
+            // Aynı iş iki kez kuyruğa düşerse (yeniden başlatma, elle tetikleme) ikinci çalıştırma beklemeden çıkar.
+            using var connection = JobStorage.Current.GetConnection();
+            using var jobLock = connection.AcquireDistributedLock($"book-import:{jobId}", TimeSpan.FromSeconds(5));
+            await RunLockedAsync(jobId);
+        }
+        finally
+        {
+            Exit(jobId);
+        }
     }
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, byte> Active = new();
+
+    /// <summary>#1344: marks the job as running in this process; false when it already is.</summary>
+    internal static bool TryEnter(Guid jobId) => Active.TryAdd(jobId, 0);
+
+    internal static void Exit(Guid jobId) => Active.TryRemove(jobId, out _);
 
     /// <summary>Kilit altında çalışan gövde; birim testler doğrudan bunu çağırır (Hangfire depolaması gerekmez).</summary>
     internal async Task RunLockedAsync(Guid jobId)

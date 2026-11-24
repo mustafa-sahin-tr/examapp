@@ -1170,6 +1170,74 @@ public class BookQuestionImportTests : IDisposable
             && !check.TestQuestions.Any(wq => wq.QuestionId == q.Id && !wq.IsDeleted))).ShouldBe(0);
     }
 
+    /// <summary>
+    /// Issue #1344: the question stage ran twice and left a copy test no import test points at; its drafts on the page are
+    /// orphans too. The page fix replaces them instead of counting their crops as duplicates of another test.
+    /// </summary>
+    [Fact]
+    public async Task A_page_fix_replaces_drafts_of_a_copy_test_no_import_test_points_at_issue1344()
+    {
+        var id = await SeedAsync([new(1, 1, 1, "ABCD", [4])]);
+        Detect(1, 4, 4, 4, 4);
+        await RunAsync(id);
+        var test = await SingleTestAsync();
+
+        int copyQuestionId, linkedToRealTestId;
+        await using (var seed = _db.NewContext())
+        {
+            seed.SetCurrentUser(OwnerId);
+            var real = await seed.Worksheets.WithDrafts().AsNoTracking().SingleAsync(w => w.Id == test.WorksheetId);
+            var copy = new Worksheet
+            {
+                Name = real.Name, IsDraft = true, GradeId = real.GradeId, SubjectId = real.SubjectId, BookTestId = real.BookTestId,
+            };
+            var copied = new Question { Text = "copy", IsDraft = true, InteractionType = "mcq" };
+            seed.Worksheets.Add(copy);
+            seed.Questions.Add(copied);
+            seed.QuestionSources.Add(new QuestionSource
+            {
+                Question = copied, BookId = _bookId, FilePage = 1, ItemLabel = "2", CropSha256 = Guid.NewGuid().ToString("N"),
+            });
+            await seed.SaveChangesAsync();
+            seed.TestQuestions.Add(new WorksheetQuestion { TestId = copy.Id, QuestionId = copied.Id, Order = 1 });
+            await seed.SaveChangesAsync();
+            copyQuestionId = copied.Id;
+            linkedToRealTestId = await seed.TestQuestions.Where(wq => wq.TestId == test.WorksheetId && !wq.IsDeleted)
+                .Select(wq => wq.QuestionId).FirstAsync();
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            var result = await Fix(ctx).ReplacePageAsync(Owner, id, test.Id, 1, [Box(0), Box(1), Box(2), Box(3)], default);
+            result.Error.ShouldBe(BookImportPageFixError.None);
+        }
+        _saved.Last().ReplacingQuestionIds!.ShouldContain(copyQuestionId);
+        await using var check = _db.NewContext();
+        (await check.Questions.IgnoreQueryFilters().SingleAsync(q => q.Id == copyQuestionId)).IsDeleted.ShouldBeTrue();
+        (await SingleTestAsync()).QuestionsSaved.ShouldBe(4);
+        // A draft of the import test itself is replaced as before, not through the orphan path.
+        _saved.Last().ReplacingQuestionIds!.ShouldContain(linkedToRealTestId);
+    }
+
+    /// <summary>Issue #1344: a second run of a job already running in this process leaves at once.</summary>
+    [Fact]
+    public void A_second_run_of_a_job_running_in_this_process_does_not_enter_issue1344()
+    {
+        var jobId = Guid.NewGuid();
+        BookImportJobRunner.TryEnter(jobId).ShouldBeTrue();
+        try
+        {
+            BookImportJobRunner.TryEnter(jobId).ShouldBeFalse();
+            BookImportJobRunner.TryEnter(Guid.NewGuid()).ShouldBeTrue();
+        }
+        finally
+        {
+            BookImportJobRunner.Exit(jobId);
+        }
+        BookImportJobRunner.TryEnter(jobId).ShouldBeTrue();
+        BookImportJobRunner.Exit(jobId);
+    }
+
     /// <summary>Issue #1171: ortadaki kutu silinince kalanlar numaralarını ve anahtardaki cevaplarını korur; sıra okuma sırası.</summary>
     [Fact]
     public async Task Fixing_a_page_keeps_the_numbers_of_the_remaining_boxes_when_one_is_deleted()

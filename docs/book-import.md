@@ -430,6 +430,11 @@ olarak aktarılır. Yalnız kitap aktarımında; hızlı ekleme ve karışık g�
   taslaklar silinir. Sayfanın hiçbir teste bağlı olmayan taslakları (işin sahibinin, bu kitap sayfası; eski kesik kayıtlardan)
   düzeltmede `ReplacingQuestionIds`'e girer, kopya sayılmaz ve silinir; sayılara / işaretlere girmez. Kitapta soru alan bir iş
   varken bu temizlik atlanır (kaydedilip henüz bağlanmamış taslak yetim sanılmasın).
+  **Çift çalışma (#1344):** Hangfire.PostgreSql 1.20'de `InvisibilityTimeout` varsayılanı 30 dakika (kayan süre yok), iş kilidi
+  `DistributedLockTimeout` (10 dk) sonra düşer: 30 dakikayı geçen soru aşaması ikinci bir worker'da yeniden başladı ve her teste
+  hiçbir aktarım testinin göstermediği ikinci bir taslak test kaldı. Süre `Hangfire:InvisibilityTimeoutHours` (varsayılan 6),
+  aynı süreçte çalışan işin ikinci çalıştırması hemen çıkar. Düzeltmede yalnız böyle bir kopya teste bağlı taslak da yetimdir
+  (yerine yenisi kaydedilir; önceden kopya sayılıp atlanıyordu).
   **Anahtar sayfası (#1176):** kurulum her testin anahtarının okunduğu dosya sayfasını `BookImportJobTests.KeyFilePage`'e yazar
   (ilk okumanınki, yoksa ikincininki). İş detayındaki `keyPages` bu sayfayı, alan boşsa (önceki kurulumlar, demo kopyası)
   kitabın bütün anahtar sayfalarını (`SetupJson.AnswerKeyRanges`) verir; anahtarsız testte boş. Düzeltme şeridinde küçük görsel,

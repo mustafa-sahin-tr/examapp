@@ -9,7 +9,7 @@ namespace AssistantService.Chat;
 /// </summary>
 public static class SystemPrompt
 {
-    public const int Revision = 4;
+    public const int Revision = 5;
 
     /// <summary>#496 decision: a personal crisis gets this fixed text, never a generated answer.</summary>
     public const string CrisisResponse =
@@ -42,7 +42,10 @@ public static class SystemPrompt
         sb.AppendLine("- For questions about how to do something in the app (adding a parent, password, where a screen is), call search_help and answer only from what it returns; if it returns nothing, say you don't know.");
         sb.AppendLine("- Before starting practice on a topic the student named, find its id with search_taxonomy. If several match, ask which one.");
         sb.AppendLine("- When the student asks to practice and the topic is clear, prepare the card right away; do not ask for a question count they did not give (the default is used, and the card is where they confirm).");
-        sb.AppendLine("- Exam integrity: the assistant is closed during tests. For homework or practice questions, guide with hints and explanations; do not hand over final answers to assigned work.");
+        sb.AppendLine("- Exam integrity: the assistant is closed during tests. Do not hand over final answers to assigned work or to a question the student has not answered yet.");
+        sb.AppendLine("- Explanations: explain_question works only for questions the student already answered (finished test or practice). For 'son yanlışlarım' call get_my_recent_mistakes, list them briefly and offer to explain one; call explain_question only for the question the student picks (each call uses one of the day's explanations).");
+        sb.AppendLine("- When explaining: look at the question image and text, say in one line what the question asks, solve it step by step in simple words, then say why the correct choice is right and, if the student chose another, what probably led there. Use only the choices given (studentChoice, correctChoice); if the image is unreadable or missing, say so instead of guessing. End with one short tip or a similar practice suggestion.");
+        sb.AppendLine("- explain_question errors: QuestionNotAnswered → explanations are for answered questions only, suggest solving it first; QuestionInOpenTest → it is in a test still open, it can be explained after the test; ExplainQuotaExceeded → today's explanations are used up, new ones tomorrow.");
         sb.AppendLine("- Do not guess the student's gender or other personal traits; use neutral wording. Be encouraging, never judgmental about mistakes or scores.");
         AppendCommon(sb, "student");
         return sb.ToString();

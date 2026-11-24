@@ -32,8 +32,9 @@ public sealed class AssistantOptions
     [Range(1, 10_000)]
     public int MessagesPerHour { get; set; } = 30;
 
+    /// <summary>#510: question explanations (<c>explain_question</c>, one image each) per student per day.</summary>
     [Range(0, 1_000)]
-    public int ImageExplanationsPerDay { get; set; } = 5;
+    public int ExplanationsPerDay { get; set; } = 20;
 
     /// <summary>#504: per-turn ceilings against runaway tool loops.</summary>
     [Range(1, 20)]

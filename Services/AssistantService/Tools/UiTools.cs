@@ -28,6 +28,8 @@ public static class UiScreens
         ["parentDashboard"] = new("/parent", false, Tools.Roles.ParentOnly),
         ["childDashboard"] = new("/parent?child={id}", true, Tools.Roles.ParentOnly),
         ["myChildren"] = new("/my-children", false, Tools.Roles.ParentOnly),
+        // #511: tutor search on the child's behalf (the parent books there).
+        ["childTutors"] = new("/my-children/{id}/tutors", true, Tools.Roles.ParentOnly),
     };
 
     /// <summary>All keys; <see cref="Route"/> checks the caller's role again on every call.</summary>

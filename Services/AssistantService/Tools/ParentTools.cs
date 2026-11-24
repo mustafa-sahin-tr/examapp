@@ -457,3 +457,122 @@ public sealed class GetChildWeeklyReportTool(DownstreamClient api) : IAssistantT
 
     private static JsonObject Kpi(string key, decimal? value) => new() { ["key"] = key, ["value"] = value };
 }
+
+/// <summary>
+/// Issue #511: the private lesson requests waiting for the parent (new bookings and reschedules of every linked child). The parent
+/// decides on the dashboard: approve / reject is not an assistant action (decision 2026-11-24); the model opens the screen.
+/// </summary>
+public sealed class ListPendingLessonRequestsTool(DownstreamClient api) : IAssistantTool
+{
+    public string Name => "list_pending_lesson_requests";
+    public string Description => "Private lesson requests of the parent's children waiting for the parent's approval: new lessons and reschedules (child, day, start, end, expiry in local time). The assistant cannot approve or reject: to decide, open the parentDashboard screen with ui_open_screen.";
+    public IReadOnlyCollection<string> Roles => Tools.Roles.ParentOnly;
+    public JsonObject InputSchema => Schema();
+
+    public async Task<ToolResult> ExecuteAsync(ToolContext context, JsonElement args)
+    {
+        var bookings = await api.GetAsync(context, "api/parent/booking-requests");
+        if (!bookings.IsSuccess)
+            return bookings.ToError();
+        var reschedules = await api.GetAsync(context, "api/parent/reschedule-requests");
+        if (!reschedules.IsSuccess)
+            return reschedules.ToError();
+
+        // Teacher names stay on the screen (data minimisation, as the schedule).
+        var lessons = Pick.Items(Pick.Get(bookings.Body, "items")).Take(MaxListItems).Select(b =>
+        {
+            var row = ParentApi.LocalTimes(Pick.Only(b, "studentId", "startUtc", "endUtc", "expiresAt"), "startUtc", "endUtc", "expiresAt");
+            row["firstName"] = Untrusted(ListMyChildrenTool.FirstName(Pick.Str(b, "studentName")));
+            return (JsonNode)Rename(row, ("startUtc", "start"), ("endUtc", "end"));
+        }).ToArray();
+        var moves = Pick.Items(Pick.Get(reschedules.Body, "items")).Take(MaxListItems).Select(r =>
+        {
+            var row = ParentApi.LocalTimes(Pick.Only(r, "studentId", "startUtc", "endUtc", "proposedStartUtc", "proposedEndUtc", "proposedByRole", "canApprove"),
+                "startUtc", "endUtc", "proposedStartUtc", "proposedEndUtc");
+            row["firstName"] = Untrusted(ListMyChildrenTool.FirstName(Pick.Str(r, "studentName")));
+            return (JsonNode)Rename(row, ("startUtc", "start"), ("endUtc", "end"), ("proposedStartUtc", "proposedStart"), ("proposedEndUtc", "proposedEnd"));
+        }).ToArray();
+        return ToolResult.Success(new JsonObject
+        {
+            ["newLessons"] = new JsonArray(lessons),
+            ["reschedules"] = new JsonArray(moves),
+            ["decideOn"] = "parentDashboard",
+        });
+    }
+
+    /// <summary>The values are local times now: the <c>Utc</c> suffix would mislead the model.</summary>
+    private static JsonObject Rename(JsonObject row, params (string From, string To)[] keys)
+    {
+        foreach (var (from, to) in keys)
+        {
+            var value = row[from];
+            row.Remove(from);
+            row[to] = value;
+        }
+        return row;
+    }
+}
+
+/// <summary>
+/// Issue #511: independent tutors for a child's subject (the weak topic's subject when none is given), the public tutor search
+/// (#95 / #439). The parent books on the screen (<c>childTutors</c>); the assistant books nothing.
+/// </summary>
+public sealed class SearchTutorsForChildTool(DownstreamClient api) : IAssistantTool
+{
+    public const int Take = 5;
+    private const int MaxBio = 200;
+
+    public string Name => "search_tutors_for_child";
+    public string Description => "Approved independent tutors for one child's subject: name, subjects, hourly rate, online / in person, short bio. subject: a subject name ('Matematik'); empty = the subject of the child's weakest topic. The parent books on the childTutors screen (ui_open_screen with the studentId); the assistant cannot book.";
+    public IReadOnlyCollection<string> Roles => Tools.Roles.ParentOnly;
+    public JsonObject InputSchema => Schema(ParentApi.StudentIdArg, ("subject", StringProp("Subject name, Turkish.", 60), false));
+
+    public async Task<ToolResult> ExecuteAsync(ToolContext context, JsonElement args)
+    {
+        if (ParentApi.StudentId(args, out var id) is { } invalid)
+            return invalid;
+        var subject = String(args, "subject")?.Trim();
+        var basis = "requested";
+        if (string.IsNullOrEmpty(subject))
+        {
+            // The summary also checks the link: another parent's child is NotFound here.
+            var summary = await api.GetAsync(context, ParentApi.Path(id, "summary"));
+            if (!summary.IsSuccess)
+                return summary.ToError();
+            subject = Pick.Str(Pick.Get(Pick.Get(summary.Body, "attention"), "weakTopic"), "subjectName");
+            if (string.IsNullOrEmpty(subject))
+                return ToolResult.Error("NoSubject", "no weak topic in the last 30 days; ask the parent which subject");
+            basis = "weakTopic";
+        }
+
+        var found = await api.GetAsync(context, $"api/subject/search?q={Uri.EscapeDataString(subject)}&take=10");
+        if (!found.IsSuccess)
+            return found.ToError();
+        var match = Pick.Items(found.Body).FirstOrDefault(i => Pick.Int(i, "subjectId") is > 0 && Pick.Int(i, "topicId") is null)
+            ?? Pick.Items(found.Body).FirstOrDefault(i => Pick.Int(i, "subjectId") is > 0);
+        if (match is null || Pick.Int(match, "subjectId") is not { } subjectId)
+            return ToolResult.Error("SubjectNotFound", "no subject with that name");
+
+        var tutors = await api.GetAsync(context, string.Create(CultureInfo.InvariantCulture, $"api/Teacher/search?subjectId={subjectId}&take={Take}"));
+        if (!tutors.IsSuccess)
+            return tutors.ToError();
+        var rows = Pick.Items(tutors.Body).Take(Take).Select(t =>
+        {
+            var row = Pick.Only(t, "teacherId", "hourlyRate", "teachesOnline", "teachesInPerson");
+            row["name"] = Untrusted(Pick.Str(t, "fullName"));
+            row["subjects"] = new JsonArray(Pick.Items(Pick.Get(t, "subjects")).Select(s => (JsonNode?)Pick.Str(s, "name")).ToArray());
+            if (Pick.Str(t, "bio") is { Length: > 0 } bio)
+                row["bio"] = Untrusted(bio.Length <= MaxBio ? bio : bio[..MaxBio] + "…");
+            return (JsonNode)row;
+        }).ToArray();
+        return ToolResult.Success(new JsonObject
+        {
+            ["studentId"] = id,
+            ["subjectId"] = subjectId,
+            ["subject"] = subject,
+            ["basis"] = basis,
+            ["tutors"] = new JsonArray(rows),
+            ["bookOn"] = "childTutors",
+        });
+    }
+}

@@ -264,7 +264,24 @@ gösterecek. Epic ölçütü: `Assistant` / tümü ≥ %15. `Notification` bugü
 - **Panel:** veli boş durum metni ve önerileri (`parentEmpty`, `parentStarters`: haftası, geciken ödev, zorlandığı konular, şifre).
 - **Açma:** `ASSISTANT_ROLES` virgülle (`Student,Parent`); dev `appsettings.Development.json` ikisini de açar. Demo / prod'da veli
   ayrıca açılmalı (deploy kararı).
-- Sonraki dilim: `list_pending_lesson_approvals`, `explain_parent_notifications`, haftalık rapor tool'u, veli yazma tool'ları.
+- Sonraki dilim: `list_pending_lesson_approvals`, `explain_parent_notifications`, veli yazma tool'ları.
+
+### Etkinlik trendi, çocukları karşılaştırma, haftalık rapor (#511, Faz 2)
+
+- **Uç:** `GET api/parent/children/{studentId}/activity?days=` (7–28, varsayılan 14; dışı 400 `invalidDays`): son `days` yerel gün
+  (bugün dahil) gün gün cevap, doğru ve puan (`StudentDailyXps`), aynı toplamlar önceki `days` gün için (`previous`). Cevap kuralı
+  özetle aynı (`ParentDashboardService.DailyAnswersAsync`; `WeekAnswersAsync` artık onu toplar): worksheet cevabı `UpdateTime` +
+  pratik, pas hariç. Yalnız sayılar; saat bilgisi yok. Active bağlantı kapısı, `children.activity` audit, `ChildActivityPolicy`
+  oran sınırı, paket kapısı yok (özet gibi). IDOR / rol matrisi `ParentEndpointCatalog` ile otomatik koşar.
+- **Tool'lar:** `get_child_activity_trend` (`days` 7–28, varsayılan 7; `answeredChangePct`, önceki dönem boşsa null; KPI kartı:
+  çözülen, önceki dönem, doğruluk, aktif gün, puan), `compare_children` (velinin Active çocukları, en çok 6, her biri için aynı uç;
+  biri hata verirse diğerleri gelir; kart yok), `get_child_weekly_report` (#1112 `weekly-report`; `weeksAgo` 0–11 API'nin son biten
+  haftasından geri sayılır, servis kendi takvimini kullanmaz; paket dışı 403 → `Forbidden`; deneme adı `<untrusted>`).
+- **Prompt (r8):** "geçen haftaya göre" → trend; biten hafta → haftalık rapor; çocukları yalnız veli isterse ve tarafsız karşılaştır,
+  sıralama yok.
+- **Sınıf ortalaması** (#496 madde 5) bu dilimde yok; ders talebi listesi + onay ekranı (onay / ret asistanda yok, karar
+  2026-11-24) ve öğretmen arama ayrı PR.
+- Altın veli seti: `trend`, `weekly-report`, `weekly-report-forbidden`, `compare-siblings`.
 
 ## Soru açıklama ve son yanlışlar (#510, Faz 2)
 

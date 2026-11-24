@@ -354,6 +354,7 @@ builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentAccessAuditLog, E
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentDashboardService, ExamApp.Api.Services.Parents.ParentDashboardService>();
 // issue #1112: velinin haftalık raporu (Essential / Pro).
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentWeeklyReportService, ExamApp.Api.Services.Parents.ParentWeeklyReportService>();
+builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentActivityTrendService, ExamApp.Api.Services.Parents.ParentActivityTrendService>();
 // issue #1112: Pazartesi sabahı son biten haftanın raporunu her Active veliye gönderir (in-app + e-posta).
 builder.Services.AddOptions<ExamApp.Api.Services.Parents.ParentWeeklyReportOptions>()
     .BindConfiguration(ExamApp.Api.Services.Parents.ParentWeeklyReportOptions.SectionName)

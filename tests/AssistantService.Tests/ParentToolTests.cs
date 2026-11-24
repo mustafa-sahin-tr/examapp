@@ -176,6 +176,104 @@ public class ParentToolTests : IDisposable
         SystemPrompt.CrisisResponseFor("Parent").ShouldBe(SystemPrompt.ParentCrisisResponse);
         SystemPrompt.CrisisResponseFor("Student").ShouldBe(SystemPrompt.CrisisResponse);
     }
+
+    private static object Activity(int answered, int correct, int prevAnswered) => new
+    {
+        studentId = 7, days = 7, from = "2026-11-18", to = "2026-11-24",
+        daily = new[] { new { day = "2026-11-24", answered, correct, points = 30 } },
+        current = new { answered, correct, activeDays = 2, points = 30 },
+        previous = new { answered = prevAnswered, correct = prevAnswered / 2, activeDays = 1, points = 20 },
+    };
+
+    [Fact]
+    public async Task Activity_trend_compares_with_the_window_before_and_shows_a_kpi_card()
+    {
+        _h.Api.On("GET", "api/parent/children/7/activity?days=7", Activity(30, 24, 20));
+
+        var result = await new GetChildActivityTrendTool(_h.Downstream).ExecuteAsync(Parent(), Args(new { studentId = 7, days = 3 }));
+
+        _h.Api.Calls.Single().PathAndQuery.ShouldEndWith("api/parent/children/7/activity?days=7"); // clamped to the API's minimum
+        result.Data!["current"]!["accuracyPct"]!.GetValue<decimal>().ShouldBe(80m);
+        result.Data!["previous"]!["answered"]!.GetValue<int>().ShouldBe(20);
+        result.Data!["answeredChangePct"]!.GetValue<decimal>().ShouldBe(50m);
+        result.Data!["daily"]!.AsArray().Single()!["points"]!.GetValue<int>().ShouldBe(30);
+        var kpis = result.Cards!.Single()["items"]!.AsArray().Select(i => i!["key"]!.GetValue<string>()).ToList();
+        kpis.ShouldBe(["questionsSolved", "previousQuestionsSolved", "accuracyPct", "activeDays", "xp"]);
+    }
+
+    [Fact]
+    public async Task Activity_trend_has_no_change_when_the_window_before_was_empty()
+    {
+        _h.Api.On("GET", "api/parent/children/7/activity?days=14", Activity(5, 5, 0));
+
+        var result = await new GetChildActivityTrendTool(_h.Downstream).ExecuteAsync(Parent(), Args(new { studentId = 7, days = 14 }));
+
+        result.Data!["answeredChangePct"].ShouldBeNull();
+        result.Data!["previous"]!["accuracyPct"].ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Compare_children_reads_each_active_child_and_keeps_the_others_when_one_fails()
+    {
+        _h.Api.On("GET", "api/parent-links/my-children", new object[]
+        {
+            new { studentId = 7, status = "Active", studentName = "Ayşe Yılmaz" },
+            new { studentId = 8, status = "Active", studentName = "Can Yılmaz" },
+            new { studentId = (int?)null, status = "Pending", studentName = (string?)null },
+        });
+        _h.Api.On("GET", "api/parent/children/7/activity?days=7", Activity(30, 24, 20));
+        _h.Api.On("GET", "api/parent/children/8/activity?days=7", new { errorCode = "NotFound" }, HttpStatusCode.NotFound);
+
+        var result = await new CompareChildrenTool(_h.Downstream).ExecuteAsync(Parent(), Args());
+
+        var children = result.Data!["children"]!.AsArray();
+        children.Count.ShouldBe(2);
+        children[0]!["firstName"]!.GetValue<string>().ShouldBe("<untrusted>Ayşe</untrusted>");
+        children[0]!["current"]!["answered"]!.GetValue<int>().ShouldBe(30);
+        children[1]!["error"]!.GetValue<string>().ShouldBe("NotFound");
+        result.Data!.ToJsonString().ShouldNotContain("Yılmaz");
+    }
+
+    private static object Report(string weekStart) => new
+    {
+        studentId = 7, weekStart, questionsSolved = 50, correct = 40, activeDays = 4, studyMinutes = 95, points = 120,
+        subjects = new[] { new { subjectId = 1, subjectName = "Matematik", answered = 30, correct = 21, accuracyPercent = 70 } },
+        droppedTopics = new[] { new { topicId = 5, topicName = "Kesirler", subjectName = "Matematik", accuracyPercent = 40, previousAccuracyPercent = 70 } },
+        assignmentsCompleted = 2, assignmentsOverdue = 1,
+        mockExams = new[] { new { name = "LGS Deneme 1", net = 42.5m, rank = 3, takers = 40, finishedAtUtc = "2026-11-21T10:00:00Z" } },
+        badges = new[] { new { name = "Haftalık seri", icon = "fire" } },
+        suggestion = "reviewTopic", suggestionTopic = "Kesirler",
+    };
+
+    [Fact]
+    public async Task Weekly_report_keeps_totals_and_counts_older_weeks_back_from_the_api_week()
+    {
+        _h.Api.On("GET", "api/parent/children/7/weekly-report", Report("2026-11-16"));
+        _h.Api.On("GET", "api/parent/children/7/weekly-report?weekStart=2026-11-02", Report("2026-11-02"));
+        var tool = new GetChildWeeklyReportTool(_h.Downstream);
+
+        var latest = await tool.ExecuteAsync(Parent(), Args(new { studentId = 7 }));
+        latest.Data!["accuracyPct"]!.GetValue<decimal>().ShouldBe(80m);
+        latest.Data!["droppedTopics"]!.AsArray().Single()!["topicName"]!.GetValue<string>().ShouldBe("Kesirler");
+        latest.Data!["mockExams"]!.AsArray().Single()!["name"]!.GetValue<string>().ShouldBe("<untrusted>LGS Deneme 1</untrusted>");
+        latest.Data!["badges"]!.AsArray().Single()!["icon"].ShouldBeNull();
+        latest.Cards!.Single()["kind"]!.GetValue<string>().ShouldBe("kpi");
+
+        var older = await tool.ExecuteAsync(Parent(), Args(new { studentId = 7, weeksAgo = 2 }));
+        older.Data!["weekStart"]!.GetValue<string>().ShouldBe("2026-11-02");
+    }
+
+    [Fact]
+    public async Task Weekly_report_outside_the_plan_is_forbidden()
+    {
+        // The real body (EntitlementLimitReachedDto) carries `code`, not `errorCode`: the status maps it.
+        _h.Api.On("GET", "api/parent/children/7/weekly-report", new { code = "entitlement.notInPlan", feature = "weekly-report", limit = 0 }, HttpStatusCode.Forbidden);
+
+        var result = await new GetChildWeeklyReportTool(_h.Downstream).ExecuteAsync(Parent(), Args(new { studentId = 7, weeksAgo = 1 }));
+
+        result.ErrorCode.ShouldBe("Forbidden");
+        _h.Api.Calls.Count.ShouldBe(1);
+    }
 }
 
 public class AssistantRoleOptionTests

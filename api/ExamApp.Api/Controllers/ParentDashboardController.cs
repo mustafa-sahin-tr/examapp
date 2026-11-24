@@ -240,6 +240,27 @@ public class ParentDashboardController : BaseController
         return report == null ? ChildNotFound() : Ok(report);
     }
 
+    /// <summary>
+    /// Issue #511: the child's last <paramref name="days"/> local days (today included), day by day — answers, correct answers and
+    /// points — with the same totals for the window before. Counts only (the summary's answer rule). Another parent's child 404.
+    /// </summary>
+    /// <param name="days">7–28 (default 14); outside is 400.</param>
+    [HttpGet("{studentId:int}/activity")]
+    [EnableRateLimiting(ParentLinkRateLimiting.ChildActivityPolicy)]
+    public async Task<IActionResult> GetChildActivity(int studentId, [FromServices] IParentActivityTrendService activity,
+        [FromQuery] int days = ParentActivityTrendService.DefaultDays, CancellationToken ct = default)
+    {
+        if (days is < ParentActivityTrendService.MinDays or > ParentActivityTrendService.MaxDays)
+            return InvalidQuery(nameof(days), "parentLinks.errors.invalidDays");
+
+        var user = await GetAuthenticatedUserAsync(ct);
+        if (!IsResolvedUser(user))
+            return UserNotResolved(new { message = _localizer["auth.userNotResolved"].Value });
+
+        var result = await activity.GetAsync(user.Id, studentId, days, ct);
+        return result == null ? ChildNotFound() : Ok(result);
+    }
+
     /// <summary>Issue #1112: haftalık raporun geriye gidebildiği hafta sayısı (son biten dahil).</summary>
     public const int MaxWeeklyReportWeeks = 12;
 

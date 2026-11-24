@@ -22,6 +22,7 @@
       "invalidWeek": "Hafta geçersiz: son 12 haftadan biri, Pazartesi günü olmalı.",
       "invalidStatus": "Geçersiz durum filtresi. completed, overdue ya da pending olmalıdır.",
       "invalidRange": "Geçersiz tarih aralığı. from ve to birlikte, yyyy-MM-dd biçiminde ve en fazla 31 gün olmalıdır.",
+      "invalidDays": "days 7 ile 28 arasında olmalıdır.",
       "busy": "İşlem şu anda tamamlanamadı. Lütfen tekrar deneyin.",
       "rateLimited": "Çok fazla kod denemesi yapıldı. Lütfen daha sonra tekrar deneyin.",
       "notPrimaryParent": "Bu işlemi yalnızca çocuğun birincil velisi yapabilir.",

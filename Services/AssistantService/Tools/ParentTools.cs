@@ -275,3 +275,166 @@ public sealed class GetChildScheduleTool(DownstreamClient api) : IAssistantTool
     private static bool IsDate(string value) =>
         DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _);
 }
+
+/// <summary>Issue #511 (Phase 2): one child's day-by-day activity with the window before ("geçen haftaya göre").</summary>
+public sealed class GetChildActivityTrendTool(DownstreamClient api) : IAssistantTool
+{
+    public const int DefaultDays = 7;
+    public const int MinDays = 7;
+    public const int MaxDays = 28;
+
+    public string Name => "get_child_activity_trend";
+    public string Description => "One child's last N days (today included, default 7) day by day — questions answered, correct, points — and the same totals for the N days before. Use for 'geçen haftaya göre nasıl', 'hangi günler çalıştı', 'azaldı mı'.";
+    public IReadOnlyCollection<string> Roles => Tools.Roles.ParentOnly;
+    public JsonObject InputSchema => Schema(ParentApi.StudentIdArg, ("days", IntProp("Window length in days.", MinDays, MaxDays), false));
+
+    public async Task<ToolResult> ExecuteAsync(ToolContext context, JsonElement args)
+    {
+        if (ParentApi.StudentId(args, out var id) is { } invalid)
+            return invalid;
+        var days = Math.Clamp(Int(args, "days") ?? DefaultDays, MinDays, MaxDays);
+        var response = await api.GetAsync(context, ParentApi.Path(id, string.Create(CultureInfo.InvariantCulture, $"activity?days={days}")));
+        if (!response.IsSuccess)
+            return response.ToError();
+        var body = response.Body;
+        var current = Totals(Pick.Get(body, "current"));
+        var previous = Totals(Pick.Get(body, "previous"));
+        var data = Pick.Only(body, "days", "from", "to");
+        data["current"] = current;
+        data["previous"] = previous;
+        data["answeredChangePct"] = Change(Pick.Int(current, "answered") ?? 0, Pick.Int(previous, "answered") ?? 0);
+        data["daily"] = new JsonArray(Pick.Items(Pick.Get(body, "daily"))
+            .Select(d => (JsonNode)Pick.Only(d, "day", "answered", "correct", "points")).ToArray());
+        var card = new JsonObject
+        {
+            ["kind"] = "kpi",
+            ["items"] = new JsonArray(
+                Kpi("questionsSolved", Pick.Int(current, "answered")), Kpi("previousQuestionsSolved", Pick.Int(previous, "answered")),
+                Kpi("accuracyPct", Pick.Dec(current, "accuracyPct")), Kpi("activeDays", Pick.Int(current, "activeDays")),
+                Kpi("xp", Pick.Int(current, "points"))),
+        };
+        return ToolResult.Success(data, [card]);
+    }
+
+    internal static JsonObject Totals(JsonNode? totals)
+    {
+        var row = Pick.Only(totals, "answered", "correct", "activeDays", "points");
+        row["accuracyPct"] = ParentApi.Pct(Pick.Int(totals, "correct") ?? 0, Pick.Int(totals, "answered") ?? 0);
+        return row;
+    }
+
+    /// <summary>Percent change of answered questions; null when the window before had none.</summary>
+    internal static decimal? Change(int current, int previous) =>
+        previous == 0 ? null : Math.Round(100m * (current - previous) / previous, 0);
+
+    private static JsonObject Kpi(string key, decimal? value) => new() { ["key"] = key, ["value"] = value };
+}
+
+/// <summary>
+/// Issue #511: the parent's own children side by side over the same window (activity totals only). Only when the parent asks:
+/// the prompt keeps it neutral, no ranking of siblings.
+/// </summary>
+public sealed class CompareChildrenTool(DownstreamClient api) : IAssistantTool
+{
+    public const int MaxChildren = 6;
+
+    public string Name => "compare_children";
+    public string Description => "The parent's linked children side by side for the last N days (default 7): questions answered, accuracy, active days and points, with the N days before. Only when the parent asks to compare their children.";
+    public IReadOnlyCollection<string> Roles => Tools.Roles.ParentOnly;
+    public JsonObject InputSchema => Schema(("days", IntProp("Window length in days.", GetChildActivityTrendTool.MinDays, GetChildActivityTrendTool.MaxDays), false));
+
+    public async Task<ToolResult> ExecuteAsync(ToolContext context, JsonElement args)
+    {
+        var days = Math.Clamp(Int(args, "days") ?? GetChildActivityTrendTool.DefaultDays, GetChildActivityTrendTool.MinDays, GetChildActivityTrendTool.MaxDays);
+        var links = await api.GetAsync(context, "api/parent-links/my-children");
+        if (!links.IsSuccess)
+            return links.ToError();
+        var children = Pick.Items(links.Body)
+            .Where(c => Pick.Str(c, "status") == "Active" && Pick.Int(c, "studentId") is > 0)
+            .Take(MaxChildren)
+            .ToList();
+
+        var rows = new List<JsonNode>();
+        foreach (var child in children)
+        {
+            var studentId = Pick.Int(child, "studentId")!.Value;
+            var row = new JsonObject
+            {
+                ["studentId"] = studentId,
+                ["firstName"] = Untrusted(ListMyChildrenTool.FirstName(Pick.Str(child, "studentName"))),
+            };
+            var response = await api.GetAsync(context, ParentApi.Path(studentId, string.Create(CultureInfo.InvariantCulture, $"activity?days={days}")));
+            if (response.IsSuccess)
+            {
+                row["current"] = GetChildActivityTrendTool.Totals(Pick.Get(response.Body, "current"));
+                row["previous"] = GetChildActivityTrendTool.Totals(Pick.Get(response.Body, "previous"));
+            }
+            else
+            {
+                // One child's failure (e.g. a link removed meanwhile) does not hide the others.
+                row["error"] = response.ToError().ErrorCode;
+            }
+            rows.Add(row);
+        }
+        return ToolResult.Success(new JsonObject { ["days"] = days, ["children"] = new JsonArray(rows.ToArray()) });
+    }
+}
+
+/// <summary>Issue #511: the weekly report of a finished week (#1112), Monday–Sunday. Forbidden when not in the child's plan.</summary>
+public sealed class GetChildWeeklyReportTool(DownstreamClient api) : IAssistantTool
+{
+    public const int MaxWeeksBack = 12;
+
+    public string Name => "get_child_weekly_report";
+    public string Description => "The weekly report of one child's last finished week (or weeksAgo weeks before it): answers, accuracy, study minutes, points, accuracy per subject, topics that dropped, homework, mock exams, badges and a suggestion. Use for 'geçen hafta raporu', 'haftalık rapor'. Forbidden when the report is not in the child's plan.";
+    public IReadOnlyCollection<string> Roles => Tools.Roles.ParentOnly;
+    public JsonObject InputSchema => Schema(
+        ParentApi.StudentIdArg,
+        ("weeksAgo", IntProp("0 = the last finished week, 1 = the week before…", 0, MaxWeeksBack - 1), false));
+
+    public async Task<ToolResult> ExecuteAsync(ToolContext context, JsonElement args)
+    {
+        if (ParentApi.StudentId(args, out var id) is { } invalid)
+            return invalid;
+        var path = ParentApi.Path(id, "weekly-report");
+        var response = await api.GetAsync(context, path);
+        // An older week counts back from the API's last finished week (its calendar, not this service's clock).
+        if (response.IsSuccess && Int(args, "weeksAgo") is { } weeksAgo and > 0
+            && DateOnly.TryParseExact(Pick.Str(response.Body, "weekStart"), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var last))
+        {
+            var week = last.AddDays(-7 * Math.Min(weeksAgo, MaxWeeksBack - 1));
+            response = await api.GetAsync(context, path + "?weekStart=" + week.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+        }
+        if (!response.IsSuccess)
+            return response.ToError();
+        var r = response.Body;
+        var solved = Pick.Int(r, "questionsSolved") ?? 0;
+        var correct = Pick.Int(r, "correct") ?? 0;
+        var data = Pick.Only(r, "weekStart", "questionsSolved", "correct", "activeDays", "studyMinutes", "points",
+            "assignmentsCompleted", "assignmentsOverdue", "suggestion", "suggestionTopic");
+        data["accuracyPct"] = ParentApi.Pct(correct, solved);
+        data["subjects"] = new JsonArray(Pick.Items(Pick.Get(r, "subjects")).Take(MaxListItems)
+            .Select(s => (JsonNode)Pick.Only(s, "subjectName", "answered", "correct", "accuracyPercent")).ToArray());
+        data["droppedTopics"] = new JsonArray(Pick.Items(Pick.Get(r, "droppedTopics"))
+            .Select(t => (JsonNode)Pick.Only(t, "topicName", "subjectName", "accuracyPercent", "previousAccuracyPercent")).ToArray());
+        data["mockExams"] = new JsonArray(Pick.Items(Pick.Get(r, "mockExams")).Take(MaxListItems).Select(m =>
+        {
+            var row = Pick.Only(m, "net", "rank", "takers", "finishedAtUtc");
+            row["name"] = Untrusted(Pick.Str(m, "name"));
+            return (JsonNode)row;
+        }).ToArray());
+        data["badges"] = new JsonArray(Pick.Items(Pick.Get(r, "badges")).Take(MaxListItems)
+            .Select(b => (JsonNode)Pick.Only(b, "name")).ToArray());
+        var card = new JsonObject
+        {
+            ["kind"] = "kpi",
+            ["items"] = new JsonArray(
+                Kpi("questionsSolved", solved), Kpi("accuracyPct", ParentApi.Pct(correct, solved)),
+                Kpi("activeDays", Pick.Int(r, "activeDays")), Kpi("studyMinutes", Pick.Int(r, "studyMinutes")),
+                Kpi("overdueHomework", Pick.Int(r, "assignmentsOverdue"))),
+        };
+        return ToolResult.Success(data, [card]);
+    }
+
+    private static JsonObject Kpi(string key, decimal? value) => new() { ["key"] = key, ["value"] = value };
+}

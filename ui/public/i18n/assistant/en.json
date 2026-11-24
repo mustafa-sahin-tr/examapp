@@ -67,7 +67,9 @@
     "accuracyPct": "Accuracy",
     "testsCompleted": "Tests finished",
     "activeDays": "Active days",
-    "overdueHomework": "Overdue homework"
+    "overdueHomework": "Overdue homework",
+    "previousQuestionsSolved": "Previous period questions",
+    "studyMinutes": "Study (min)"
   },
   "topicTable": {
     "name": "Topic",

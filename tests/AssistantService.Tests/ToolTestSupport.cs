@@ -94,6 +94,7 @@ public sealed class ToolHarness : IDisposable
         new GetTestResultTool(Downstream), new StartDailyPracticeTool(Downstream), new StartPracticeSessionTool(Downstream),
         new ExplainQuestionTool(Downstream, Counters, new StaticOptions<AssistantService.AssistantOptions>(Options), Clock),
         new GetMyRecentMistakesTool(Downstream),
+        new GetHardQuestionExamplesTool(Downstream), new StartHardQuestionPracticeTool(Downstream),
         new SearchHelpTool(Guide), new UiOpenScreenTool(), new UiSuggestActionsTool(),
         new ListMyChildrenTool(Downstream), new GetChildWeeklySummaryTool(Downstream), new ListChildAssignmentsTool(Downstream),
         new GetChildTestResultTool(Downstream), new GetChildWeakTopicsTool(Downstream), new GetChildProgressTool(Downstream),

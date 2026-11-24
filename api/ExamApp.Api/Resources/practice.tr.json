@@ -5,6 +5,7 @@
     "noDueReview": "Şu an tekrar zamanı gelen soru yok.",
     "noMixedReview": "Karışık deneme için henüz yeterli çalışman yok. Önce biraz soru çöz.",
     "noMistakes": "Defterinde çözülecek soru yok.",
+    "hardQuestionInvalid": "Seçilen sorular zorlandığın sorular arasında değil ya da şu an çözülemez.",
     "noSavedQuestions": "Çözülebilecek kayıtlı soru yok.",
     "savedLimitReached": "En çok 500 soru kaydedebilirsin.",
     "questionNotShown": "Bu soru bu oturumda gösterilmedi",

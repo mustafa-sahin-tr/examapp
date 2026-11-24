@@ -75,6 +75,11 @@
     "accuracy": "Doğruluk",
     "empty": "Gösterilecek konu yok."
   },
+  "questions": {
+    "missCount": "{{count}} kez yanlış / boş",
+    "solve": "Bunları çöz",
+    "solvePrompt": "Bu soruları tekrar çözmek istiyorum."
+  },
   "confirm": {
     "startDailyPractice": "Günün sorularını başlat",
     "startPracticeSession": "Pratik oturumu başlat",
@@ -92,7 +97,8 @@
       "failed": "İşlem yapılamadı. Biraz sonra yeniden dene.",
       "pending": "",
       "busy": ""
-    }
+    },
+    "startHardQuestionPractice": "Zorlandığın soruları çöz"
   },
   "errors": {
     "AssistantBudgetExceeded": "Şimdilik kullanım sınırına ulaştın. Biraz sonra yeniden dene.",

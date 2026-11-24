@@ -98,6 +98,31 @@
                   <p class="asp__muted" data-testid="assistant-card-topics-empty">{{ t('topicTable.empty') }}</p>
                 }
               }
+              @case ('questions') {
+                <div class="asp__questions" data-testid="assistant-card-questions">
+                  <ul class="asp__question-list">
+                    @for (item of card.items; track item.questionId) {
+                      <li class="asp__question">
+                        @if (item.imageUrl) {
+                          <img class="asp__question-img" [src]="item.imageUrl" alt="" loading="lazy" />
+                        } @else if (item.text) {
+                          <p class="asp__question-text">{{ item.text }}</p>
+                        }
+                        <p class="asp__muted">
+                          {{ questionMeta(item) }}
+                          @if (item.missCount) {
+                            · {{ t('questions.missCount', { count: item.missCount }) }}
+                          }
+                        </p>
+                      </li>
+                    }
+                  </ul>
+                  @if (message.role === 'assistant' && !message.streaming && !store.sending()) {
+                    <button mat-stroked-button type="button" class="asp__chip" data-testid="assistant-solve-these"
+                      (click)="sendStarter(t('questions.solvePrompt'))">{{ t('questions.solve') }}</button>
+                  }
+                </div>
+              }
               @case ('confirm') {
                 @let state = confirmState(message, card);
                 <div class="asp__confirm" data-testid="assistant-card-confirm" [attr.data-state]="state">

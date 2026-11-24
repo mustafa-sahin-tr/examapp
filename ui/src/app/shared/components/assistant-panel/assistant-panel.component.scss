@@ -218,6 +218,48 @@
   }
 }
 
+.asp__questions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.asp__question-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.asp__question {
+  background: var(--ms-surface);
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 10px;
+  padding: 8px;
+
+  p {
+    margin: 4px 0 0;
+  }
+}
+
+.asp__question-img {
+  display: block;
+  max-width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.asp__question-text {
+  font-size: 0.85rem;
+  white-space: pre-line;
+}
+
 .asp__table {
   width: 100%;
   border-collapse: collapse;

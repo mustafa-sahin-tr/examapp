@@ -46,7 +46,33 @@ public class PracticeSessionStartDto
 
     /// <summary>Issue #933: <see cref="StudyItemId"/> ile tek soru; soru sayfada değilse oturum açılmaz.</summary>
     public int? StudyQuestionId { get; set; }
+
+    /// <summary>
+    /// Issue #526: oturum bu sorularla, bu sırayla açılır (zorlandığım sorular). Her id öğrencinin zor soru listesinde olmalı
+    /// (<c>GET api/student/me/hard-questions</c> kuralı); olmayan id 400, sessizce atlanmaz.
+    /// </summary>
+    [MaxLength(30)]
+    public List<int>? QuestionIds { get; set; }
 }
+
+/// <summary>Issue #526: one of the student's hard questions. No correct choice (the assistant explains through #510).</summary>
+public sealed record HardQuestionDto(
+    int QuestionId,
+    int? SubjectId,
+    string? SubjectName,
+    int? TopicId,
+    string? TopicName,
+    List<string> SubTopicNames,
+    int Attempts,
+    int MissCount,
+    bool MissedAfterCorrect,
+    bool LastAttemptCorrect,
+    DateTime LastAttemptAt,
+    [property: StorageUrl(StorageArea.QuestionImage)] string? ImageUrl,
+    string? Text);
+
+/// <summary>GET api/student/me/hard-questions.</summary>
+public sealed record HardQuestionsDto(string Mode, int Days, int TotalCount, List<HardQuestionDto> Items);
 
 /// <summary>GET api/practice/saved: kaydedilen sorular, en yeni önce.</summary>
 public class SavedQuestionsDto

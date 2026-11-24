@@ -15,21 +15,26 @@ public sealed record ToolContext(
     Guid? ConversationId = null,
     CancellationToken CancellationToken = default);
 
+/// <summary>Issue #510: an image the model sees with a tool result (a question image). Never stored with the conversation.</summary>
+public sealed record ToolImage(byte[] Bytes, string MediaType);
+
 /// <summary>
-/// A tool result. <see cref="Data"/> goes to the model; <see cref="Cards"/> and <see cref="UiActions"/> go to the panel and
-/// are built from server data, never from numbers the model wrote.
+/// A tool result. <see cref="Data"/> and <see cref="Images"/> go to the model; <see cref="Cards"/> and <see cref="UiActions"/>
+/// go to the panel and are built from server data, never from numbers the model wrote.
 /// </summary>
 public sealed record ToolResult(
     JsonNode? Data,
     string? ErrorCode = null,
     string? Message = null,
     IReadOnlyList<JsonObject>? Cards = null,
-    IReadOnlyList<JsonObject>? UiActions = null)
+    IReadOnlyList<JsonObject>? UiActions = null,
+    IReadOnlyList<ToolImage>? Images = null)
 {
     public bool Ok => ErrorCode is null;
 
-    public static ToolResult Success(JsonNode? data, IReadOnlyList<JsonObject>? cards = null, IReadOnlyList<JsonObject>? uiActions = null) =>
-        new(data, Cards: cards, UiActions: uiActions);
+    public static ToolResult Success(JsonNode? data, IReadOnlyList<JsonObject>? cards = null, IReadOnlyList<JsonObject>? uiActions = null,
+        IReadOnlyList<ToolImage>? images = null) =>
+        new(data, Cards: cards, UiActions: uiActions, Images: images);
 
     public static ToolResult Error(string code, string? message = null) => new(null, code, message);
 }

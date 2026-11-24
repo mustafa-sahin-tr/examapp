@@ -7,7 +7,7 @@ export interface AssistantStatus {
   enabled: boolean;
   code: string | null;
   roles: string[];
-  limits: { messagesPerHour: number; imageExplanationsPerDay: number } | null;
+  limits: { messagesPerHour: number; explanationsPerDay: number } | null;
 }
 
 /** `GET /api/assistant/usage/me`. */

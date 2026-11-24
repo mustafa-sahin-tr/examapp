@@ -110,7 +110,7 @@ public sealed class AssistantGateTests
         options.DailyBudgetUsdPerUser.ShouldBe(0.10m);
         options.DailyBudgetUsdTotal.ShouldBe(5m);
         options.MessagesPerHour.ShouldBe(30);
-        options.ImageExplanationsPerDay.ShouldBe(5);
+        options.ExplanationsPerDay.ShouldBe(20);
         options.RetentionDays.ShouldBe(30);
     }
 

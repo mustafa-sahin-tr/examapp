@@ -47,6 +47,11 @@
       "invalidTimelineTarget": "Bir konu ya da bir alt konu seçin.",
       "invalidWeeks": "Hafta sayısı 1 ile 26 arasında olmalı.",
       "rateLimited": "Kısa sürede çok fazla istek yapıldı. Lütfen biraz bekleyip tekrar deneyin."
+    },
+    "explain": {
+      "notAnswered": "Bu soruyu henüz cevaplamadın. Açıklama yalnız cevapladığın sorular için.",
+      "inOpenTest": "Bu soru devam eden ya da bitirmediğin bir testte. Test bitince açıklama alabilirsin.",
+      "invalidQuery": "Gün 1 ile 90, adet 1 ile 20 arasında olmalı."
     }
   }
 }

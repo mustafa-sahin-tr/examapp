@@ -21,7 +21,7 @@ public static class AssistantEndpoints
                     enabled = true,
                     code = (string?)null,
                     roles = o.Roles.Where(user.IsInRole).ToArray(),
-                    limits = new { o.MessagesPerHour, o.ImageExplanationsPerDay },
+                    limits = new { o.MessagesPerHour, o.ExplanationsPerDay },
                 })
                 : Results.Ok(new { enabled = false, code = AssistantGate.Code(gate), roles = Array.Empty<string>(), limits = (object?)null });
         });

@@ -47,6 +47,11 @@
       "invalidTimelineTarget": "Choose either a topic or a subtopic.",
       "invalidWeeks": "Weeks must be between 1 and 26.",
       "rateLimited": "Too many requests in a short time. Please wait a moment and try again."
+    },
+    "explain": {
+      "notAnswered": "You have not answered this question yet. Explanations are only for questions you answered.",
+      "inOpenTest": "This question is in a test that is running or that you have not finished. You can get an explanation once the test is over.",
+      "invalidQuery": "Days must be between 1 and 90 and take between 1 and 20."
     }
   }
 }

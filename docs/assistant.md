@@ -26,7 +26,7 @@ Ayrıntılı plan (tool kataloğu, ekran senaryoları) epic #495'te. Bu dosya al
 - **Varsayılanlar:** `appsettings.json` kapalı (`Enabled=false`, rol yok), Development açık ve yalnız `Student`.
   Prod / demo compose'da `ASSISTANT_ENABLED` (varsayılan `false`) ve `ASSISTANT_ROLES` (varsayılan `Student`).
 - `GET /api/assistant/status` panelin (#507) kendini gösterip göstermeyeceği için: açık roller ve limitler.
-- Limitler `Assistant:*` (`DailyBudgetUsdPerUser`, `DailyBudgetUsdTotal`, `MessagesPerHour`, `ImageExplanationsPerDay`,
+- Limitler `Assistant:*` (`DailyBudgetUsdPerUser`, `DailyBudgetUsdTotal`, `MessagesPerHour`, `ExplanationsPerDay`,
   `RetentionDays`, `Model`); uygulanmaları #504 / #505'te.
 
 ## SSE spike sonucu (#502)
@@ -265,3 +265,27 @@ gösterecek. Epic ölçütü: `Assistant` / tümü ≥ %15. `Notification` bugü
 - **Açma:** `ASSISTANT_ROLES` virgülle (`Student,Parent`); dev `appsettings.Development.json` ikisini de açar. Demo / prod'da veli
   ayrıca açılmalı (deploy kararı).
 - Sonraki dilim: `list_pending_lesson_approvals`, `explain_parent_notifications`, haftalık rapor tool'u, veli yazma tool'ları.
+
+## Soru açıklama ve son yanlışlar (#510, Faz 2)
+
+Karar (2026-11-24): açıklama **yalnız öğrencinin cevapladığı sorular** için (bitmiş test ya da cevaplanmış pratik sorusu);
+cevaplanmamış soruya ipucu yok (issue'daki `hint-context` / `get_hint` yapılmadı); öğrenci başına günde 20 açıklama.
+
+- **Exam API** (`StudentQuestionExplainController`, yalnız `Student`, öğrenci token'dan; konu performansının hız sınırı):
+  - `GET /api/student/me/questions/{id}/explain-context` → kaynak (`test` / `practice`), sonuç, ders / konu / alt konular,
+    şık sayısı, öğrencinin şıkkı ve doğru şık (harf), soru metni (sınıflandırıcı metni: kapsam, yönerge, kök, şıklar; çözüm yok)
+    ve görsel (JPEG, uzun kenar 1568, base64). Cevaplanmamış / başkasının / olmayan soru 404 `QuestionNotAnswered`.
+    **Sınav bütünlüğü:** soru öğrencinin süren testinde ya da ona atanmış (atama süresi bitmemiş) ve bitirmediği bir testteyse
+    pratikte çözülmüş olsa bile 403 `QuestionInOpenTest`. Etkinlikler test sayılmaz.
+  - `GET /api/student/me/mistakes?subjectId&topicId&days=30&take=20` → bitmiş test + pratik yanlışları, soru başına bir satır
+    (son yanlış zamanı, kaç kez, sonra doğru çözüldü mü), yeniden eskiye. Cevaplar konu raporuyla aynı okuyucudan
+    (`StudentAnswerReader`: süren test okunmaz, sıfırlama öncesi sayılmaz). `days` 1–90, `take` 1–20, dışı 400.
+- **Asistan:** `explain_question` (görseli tool sonucunun içinde modele verir) ve `get_my_recent_mistakes`; ikisi yalnız öğrenci.
+  Kota `Assistant:ExplanationsPerDay` (20; eski `ImageExplanationsPerDay` yerine), Redis sayacı `assistant:explain:{sub}:{gün}`,
+  yalnız başarılı açıklama sayılır, aşımda tool hatası `ExplainQuotaExceeded` (API çağrılmaz).
+- **Görsel saklanmaz:** soru görseli yalnız o turdaki model çağrılarına gider; konuşmaya tool sonucunun metni yazılır, sonraki
+  turlarda görsel yeniden gönderilmez (veritabanı şişmez, görsel her turda yeniden faturalanmaz).
+- Prompt r5: yanlışlar listelenir, açıklama öğrencinin seçtiği soru için çağrılır; açıklama adım adım, öğrencinin şıkkını
+  yargılamadan; görsel okunmuyorsa tahmin yok. Altın sete `mistakes-list`, `explain-mistake`, `explain-open-test` eklendi.
+- Issue'daki `start_weak_topic_practice` mevcut `start_practice_session` (konu / yanlışlar) ile karşılanıyor;
+  `search_study_materials` ve `list_practice_sessions` bu dilimde yok.

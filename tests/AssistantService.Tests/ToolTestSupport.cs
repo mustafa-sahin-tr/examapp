@@ -71,12 +71,17 @@ public sealed class ToolHarness : IDisposable
     public ManualClock Clock { get; } = new(new DateTimeOffset(2026, 11, 23, 10, 0, 0, TimeSpan.Zero));
     public DownstreamClient Downstream { get; }
 
+    /// <summary>#510: the explanation quota's counters and limit.</summary>
+    public AssistantService.Chat.InMemoryCounterStore Counters { get; }
+    public AssistantService.AssistantOptions Options { get; } = new();
+
     public ToolHarness()
     {
         _connection.Open();
         using var db = NewDb();
         db.Database.EnsureCreated();
         Downstream = new DownstreamClient(new HttpClient(Api) { BaseAddress = new Uri("http://exam-api.test/") });
+        Counters = new AssistantService.Chat.InMemoryCounterStore(Clock);
     }
 
     public AssistantDbContext NewDb() =>
@@ -87,6 +92,8 @@ public sealed class ToolHarness : IDisposable
         new GetMyProfileTool(Downstream), new SearchTaxonomyTool(Downstream), new GetMyWeakTopicsTool(Downstream),
         new GetMyPerformanceSummaryTool(Downstream), new GetDailySetStatusTool(Downstream), new ListMyCompletedTestsTool(Downstream),
         new GetTestResultTool(Downstream), new StartDailyPracticeTool(Downstream), new StartPracticeSessionTool(Downstream),
+        new ExplainQuestionTool(Downstream, Counters, new StaticOptions<AssistantService.AssistantOptions>(Options), Clock),
+        new GetMyRecentMistakesTool(Downstream),
         new SearchHelpTool(Guide), new UiOpenScreenTool(), new UiSuggestActionsTool(),
         new ListMyChildrenTool(Downstream), new GetChildWeeklySummaryTool(Downstream), new ListChildAssignmentsTool(Downstream),
         new GetChildTestResultTool(Downstream), new GetChildWeakTopicsTool(Downstream), new GetChildProgressTool(Downstream),

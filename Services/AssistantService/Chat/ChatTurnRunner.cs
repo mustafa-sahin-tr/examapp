@@ -183,11 +183,12 @@ public sealed class ChatTurnRunner(
                     var result = await InvokeToolAsync(context, call, sink, hash);
                     if (result is null)
                         return; // token expired: nothing of the turn is stored; the client refreshes and resends it
-                    results.Add(new FunctionResultContent(call.CallId, ModelResult(result)));
+                    results.Add(ModelResultContent(call.CallId, result));
                 }
-                var toolMessage = new AiChatMessage(AiChatRole.Tool, results);
-                messages.Add(toolMessage);
-                turnMessages.Add((toolMessage, default));
+                // #510: the model sees tool images in this turn only; the stored turn (and later history) keeps the text, so
+                // question images are neither kept in the assistant database nor billed again on every later turn.
+                messages.Add(new AiChatMessage(AiChatRole.Tool, results));
+                turnMessages.Add((new AiChatMessage(AiChatRole.Tool, results.Select(WithoutImages).ToList()), default));
 
                 // Only panel tools (suggestion chips, open a screen) after the answer text: the turn is complete. Calling the
             // model again only made it repeat its answer (#504 live check) and costs a call.
@@ -277,6 +278,22 @@ public sealed class ChatTurnRunner(
             o["shownToUser"] = new JsonArray(cards.Select(c => (JsonNode?)c["kind"]?.DeepClone()).ToArray());
         return JsonSerializer.SerializeToElement(o);
     }
+
+    /// <summary>#510: a result with images becomes a tool_result holding the JSON text and the images (the bridge maps both).</summary>
+    internal static FunctionResultContent ModelResultContent(string callId, ToolResult result)
+    {
+        if (result.Images is not { Count: > 0 } images)
+            return new FunctionResultContent(callId, ModelResult(result));
+        var content = new List<AIContent> { new TextContent(ModelResult(result).GetRawText()) };
+        content.AddRange(images.Select(i => new DataContent(i.Bytes, i.MediaType)));
+        return new FunctionResultContent(callId, content);
+    }
+
+    /// <summary>#510: the stored copy of a tool result: its JSON text only.</summary>
+    internal static AIContent WithoutImages(AIContent content) =>
+        content is FunctionResultContent { Result: IEnumerable<AIContent> parts } result
+            ? new FunctionResultContent(result.CallId, JsonDocument.Parse(parts.OfType<TextContent>().Single().Text).RootElement.Clone())
+            : content;
 
     private IList<AITool> ToolDeclarations(IReadOnlyCollection<string> roles)
     {

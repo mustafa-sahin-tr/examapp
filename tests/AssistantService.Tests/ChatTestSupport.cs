@@ -94,9 +94,8 @@ public sealed class ChatHarness(IChatClient? client = null) : IDisposable
     public FakeChatClient Model { get; } = new();
     public AssistantOptions Options { get; } = new() { Enabled = true, Roles = ["Student"], MaxToolCallsPerTurn = 3 };
 
-    public InMemoryCounterStore Counters => _counters ??= new InMemoryCounterStore(Tools.Clock);
+    public InMemoryCounterStore Counters => Tools.Counters;
     public UsageLimiter Limiter => _limiter ??= new UsageLimiter(Counters, new StaticOptions<AssistantOptions>(Options), Tools.Clock);
-    private InMemoryCounterStore? _counters;
     private UsageLimiter? _limiter;
 
     public ChatTurnRunner Runner(AssistantDbContext db) => new(db, new ToolRegistry(Tools.AllTools()), Tools.Executor(db),

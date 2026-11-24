@@ -16,6 +16,9 @@ public static class ToolRegistration
         services.AddScoped<IAssistantTool, GetTestResultTool>();
         services.AddScoped<IAssistantTool, StartDailyPracticeTool>();
         services.AddScoped<IAssistantTool, StartPracticeSessionTool>();
+        // #510 (Phase 2): explanations of answered questions and recent mistakes.
+        services.AddScoped<IAssistantTool, ExplainQuestionTool>();
+        services.AddScoped<IAssistantTool, GetMyRecentMistakesTool>();
         // #1336 (Phase 1b): parent read tools.
         services.AddScoped<IAssistantTool, ListMyChildrenTool>();
         services.AddScoped<IAssistantTool, GetChildWeeklySummaryTool>();

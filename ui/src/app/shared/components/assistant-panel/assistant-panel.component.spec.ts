@@ -170,6 +170,44 @@ describe('AssistantPanelComponent (#507)', () => {
         expect(store.reject).toHaveBeenCalledWith(2, confirm);
     });
 
+    it('questionsCard_ShowsImagesOrText_SolveTheseSendsPrompt_HardPracticeConfirmTitle', () => {
+        setup();
+        store.messages.set([
+            message({
+                id: 3,
+                text: 'En çok zorlandığın sorular bunlar.',
+                cards: [
+                    {
+                        kind: 'questions',
+                        items: [
+                            { questionId: 42, subjectName: 'Matematik', topicName: 'Açılar', missCount: 3, imageUrl: 'https://img/42.jpg' },
+                            { questionId: 43, subjectName: 'Matematik', topicName: 'Açılar', missCount: 1, text: 'Bir açının ölçüsü...' },
+                        ],
+                    },
+                    {
+                        kind: 'confirm',
+                        pendingActionId: 'h1',
+                        tool: 'start_hard_question_practice',
+                        preview: { action: 'startHardQuestionPractice', targetCount: 2 },
+                        expiresAt: '',
+                    },
+                ],
+                confirmStates: { h1: 'pending' },
+            }),
+        ]);
+        fixture.detectChanges();
+
+        const card = el('[data-testid="assistant-card-questions"]')!;
+        expect(card.querySelector('img')!.getAttribute('src')).toBe('https://img/42.jpg');
+        expect(card.textContent).toContain('Bir açının ölçüsü');
+        expect(card.textContent).toContain('Matematik · Açılar');
+        expect(card.textContent).toContain('3 kez yanlış / boş');
+        expect(el('[data-testid="assistant-card-confirm"]')!.textContent).toContain('Zorlandığın soruları çöz');
+
+        el('[data-testid="assistant-solve-these"]')!.click();
+        expect(store.send).toHaveBeenCalledWith('Bu soruları tekrar çözmek istiyorum.');
+    });
+
     it('confirmDone_ShowsStateInsteadOfButtons', () => {
         setup();
         store.messages.set([

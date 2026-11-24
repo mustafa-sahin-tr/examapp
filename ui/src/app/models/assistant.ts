@@ -53,8 +53,19 @@ export interface ConfirmPreview {
   [key: string]: unknown;
 }
 
+/** Issue #526: zorlandığım sorular kartındaki bir soru (görsel / metin yalnız panelde, modele gitmez). */
+export interface QuestionCardItem {
+  questionId: number;
+  subjectName?: string | null;
+  topicName?: string | null;
+  missCount?: number | null;
+  imageUrl?: string | null;
+  text?: string | null;
+}
+
 export type AssistantCard =
   | { kind: 'kpi'; items: KpiItem[] }
+  | { kind: 'questions'; items: QuestionCardItem[] }
   | { kind: 'topicTable'; rows: TopicRow[] }
   | { kind: 'confirm'; pendingActionId: string; tool: string; preview: ConfirmPreview | null; expiresAt: string };
 

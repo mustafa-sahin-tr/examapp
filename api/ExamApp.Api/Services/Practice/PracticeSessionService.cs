@@ -92,11 +92,12 @@ public class PracticeSessionService : IPracticeSessionService
             var known = await _context.SubTopics.AsNoTracking()
                 .CountAsync(s => subTopicIds.Contains(s.Id) && s.Topic.GradeId == gradeId, ct);
             if (known != request.SubTopicIds.Distinct().Count() || request.DueReview || request.Mistakes || request.Saved || request.MixedReview
-                || request.StudyItemId.HasValue)
+                || request.StudyItemId.HasValue || request.QuestionIds is { Count: > 0 })
                 throw new InvalidOperationException(_localizer["practice.subTopicInvalid"]);
         }
 
         string? fixedQuestionIdsJson = null;
+        var targetCount = request.TargetCount;
         if (request.DueReview)
         {
             var due = await DueReviewQueries.LoadAsync(_context, _calendar, student, subjectIds, ct);
@@ -158,6 +159,23 @@ public class PracticeSessionService : IPracticeSessionService
             fixedQuestionIdsJson = JsonSerializer.Serialize(pageQuestionIds.Take(MaxSavedSessionCount));
         }
 
+        if (request.QuestionIds is { Count: > 0 } requested)
+        {
+            // Issue #526: one fixed-list mode at a time; every id must pass the hard-question rule (no running / open test).
+            if (request.DueReview || request.Mistakes || request.Saved || request.MixedReview || request.StudyItemId.HasValue)
+                throw new InvalidOperationException(_localizer["practice.hardQuestionInvalid"]);
+            var ids = requested.Distinct().ToList();
+            var hard = (await HardQuestionQueries.LoadMineAsync(_context, _calendar, student,
+                    new HardQuestionFilter(HardQuestionQueries.MaxDays, subjectIds, null, null), ct))
+                .Select(h => h.QuestionId)
+                .ToHashSet();
+            if (ids.Any(id => !hard.Contains(id)))
+                throw new InvalidOperationException(_localizer["practice.hardQuestionInvalid"]);
+
+            fixedQuestionIdsJson = JsonSerializer.Serialize(ids);
+            targetCount = ids.Count;
+        }
+
         var session = new PracticeSession
         {
             StudentId = student.Id,
@@ -167,7 +185,7 @@ public class PracticeSessionService : IPracticeSessionService
             SubjectIdsJson = subjectIds.Count > 0 ? JsonSerializer.Serialize(subjectIds) : null,
             TopicIdsJson = topicIds.Count > 0 ? JsonSerializer.Serialize(topicIds) : null,
             SubTopicIdsJson = subTopicIds.Count > 0 ? JsonSerializer.Serialize(subTopicIds) : null,
-            TargetCount = request.TargetCount,
+            TargetCount = targetCount,
             FixedQuestionIdsJson = fixedQuestionIdsJson,
             StartedVia = PracticeStartedVias.TryParse(request.StartedVia, out var via) ? via : PracticeStartedVia.Ui
         };
@@ -190,6 +208,14 @@ public class PracticeSessionService : IPracticeSessionService
             TotalCount = due.Count,
             Items = due.Take(Math.Clamp(take, 1, MaxDueReviewCount)).ToList()
         };
+    }
+
+    public async Task<HardQuestionsDto> GetHardQuestionsAsync(StudentProfileDto student, HardQuestionFilter filter, int take,
+        CancellationToken ct = default)
+    {
+        var items = await HardQuestionQueries.LoadMineAsync(_context, _calendar, student, filter, ct);
+        return new HardQuestionsDto("mine", filter.Days, items.Count,
+            items.Take(Math.Clamp(take, 1, HardQuestionQueries.MaxTake)).ToList());
     }
 
     public async Task<MistakeNotebookDto> GetMistakesAsync(StudentProfileDto student, int? subjectId, int? topicId, CancellationToken ct = default)

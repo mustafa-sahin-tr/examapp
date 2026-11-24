@@ -5,6 +5,7 @@
     "noDueReview": "There are no questions due for review right now.",
     "noMixedReview": "You have not practised enough for a mixed review yet. Solve some questions first.",
     "noMistakes": "There are no questions to practise in your notebook.",
+    "hardQuestionInvalid": "The selected questions are not among your hard questions or cannot be practised now.",
     "noSavedQuestions": "There are no saved questions to practise.",
     "savedLimitReached": "You can save up to 500 questions.",
     "questionNotShown": "This question was not shown in this session",

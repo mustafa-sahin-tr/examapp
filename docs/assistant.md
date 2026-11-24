@@ -289,3 +289,22 @@ cevaplanmamış soruya ipucu yok (issue'daki `hint-context` / `get_hint` yapılm
   yargılamadan; görsel okunmuyorsa tahmin yok. Altın sete `mistakes-list`, `explain-mistake`, `explain-open-test` eklendi.
 - Issue'daki `start_weak_topic_practice` mevcut `start_practice_session` (konu / yanlışlar) ile karşılanıyor;
   `search_study_materials` ve `list_practice_sessions` bu dilimde yok.
+
+## Zorlandığım sorular (#526, Faz 2)
+
+Bu dilim yalnız **`mine`** kipi; `global` kipi (tüm öğrencilerde doğruluğu düşük sorular, gece hesaplanan istatistik tablosu,
+asgari 20 öğrenci) ayrı PR'a kaldı, o zamana kadar `mode=global` 400.
+
+- **Exam API:** `GET /api/student/me/hard-questions?mode=mine&subjectId&topicId&subTopicId&days=90&take=10`
+  (`StudentQuestionExplainController`, yalnız `Student`, konu performansının hız sınırı; `days` 1–90, `take` 1–30, dışı 400).
+  Cevaplar `StudentAnswerReader`'dan (#497 / #510 ile aynı); kaçırma = yanlış ya da boş. Sıra: son denemesi doğru olan en sona,
+  sonra kaçırma sayısı (azalan), sonra son doğrudan sonra yine kaçırılmış olması, sonra son deneme tarihi. Yalnız pratik
+  havuzunun verebileceği sorular (sınıf, Normal görünürlük, yayında) ve yanlış defteriyle aynı dışlama (süren test, bitmemiş
+  açık atama, bugünün cevaplanmamış günlük seti). Satırda görsel / metin var, **doğru şık yok** (açıklama #510 ile).
+- **Pratik:** `PracticeSessionStartDto.QuestionIds` (en çok 30): her id aynı kuraldan (90 gün, tek ders planında o ders) geçer,
+  geçmeyen id 400 `practice.hardQuestionInvalid` (sessizce atlanmaz); başka sabit liste kipiyle (yanlışlar, tekrar, kaydedilen,
+  karışık, çalışma sayfası) ya da alt konuyla birlikte 400. Oturum listeyi verilen sırayla sorar, `TargetCount` = soru sayısı.
+  Plan özelliği yanlış defteri gibi `StudyTools` (sayılmaz).
+- **Asistan:** `get_hard_question_examples` (model id / konu / sayıları görür; görseller ve metin yalnız panelde `questions`
+  kartında, "Bunları çöz" düğmesi mesaj gönderir) ve `start_hard_question_practice` (W, onay kartı, `ui_action` ile pratik
+  ekranı). Prompt r6. Altın sete `hard-mine`, `hard-angles-solve` eklendi.

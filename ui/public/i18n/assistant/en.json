@@ -75,6 +75,11 @@
     "accuracy": "Accuracy",
     "empty": "No topics to show."
   },
+  "questions": {
+    "missCount": "{{count}}× wrong or blank",
+    "solve": "Solve these",
+    "solvePrompt": "I want to solve these questions again."
+  },
   "confirm": {
     "startDailyPractice": "Start the daily questions",
     "startPracticeSession": "Start a practice session",
@@ -92,7 +97,8 @@
       "failed": "That did not work. Please try again shortly.",
       "pending": "",
       "busy": ""
-    }
+    },
+    "startHardQuestionPractice": "Solve your hard questions"
   },
   "errors": {
     "AssistantBudgetExceeded": "You have reached the usage limit for now. Please try again later.",

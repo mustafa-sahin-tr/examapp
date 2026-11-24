@@ -1,5 +1,6 @@
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Practice;
 using ExamApp.Api.Services.StudentQuestions;
 using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
@@ -20,6 +21,7 @@ namespace ExamApp.Api.Controllers;
 public class StudentQuestionExplainController(
     IStudentQuestionExplainService service,
     IStudentService students,
+    IPracticeSessionService practice,
     IStringLocalizer<Messages> localizer) : BaseController
 {
     public const string NotAnsweredCode = "QuestionNotAnswered";
@@ -71,5 +73,36 @@ public class StudentQuestionExplainController(
             return NotFound(new { message = localizer["student.profileNotFound"].Value });
 
         return Ok(await service.GetMistakesAsync(student.Id, days, subjectId, topicId, take, ct));
+    }
+
+    /// <summary>
+    /// Issue #526: the questions the student struggled with most (wrong or blank, most misses first), to solve again with
+    /// <c>POST api/practice/sessions { questionIds }</c>. Only <c>mode=mine</c> for now; <c>global</c> (questions hard for every
+    /// student, needs nightly stats) is 400 until it lands.
+    /// </summary>
+    [HttpGet("hard-questions")]
+    [EnableRateLimiting(TopicPerformanceRateLimiting.Policy)]
+    public async Task<IActionResult> GetHardQuestions(
+        [FromQuery] string? mode = null,
+        [FromQuery] int? subjectId = null,
+        [FromQuery] int? topicId = null,
+        [FromQuery] int? subTopicId = null,
+        [FromQuery] int days = HardQuestionQueries.DefaultDays,
+        [FromQuery] int take = HardQuestionQueries.DefaultTake,
+        CancellationToken ct = default)
+    {
+        if ((mode is not null && !string.Equals(mode, "mine", StringComparison.OrdinalIgnoreCase))
+            || days is < 1 or > HardQuestionQueries.MaxDays || take is < 1 or > HardQuestionQueries.MaxTake)
+            return BadRequest(new { message = localizer["student.explain.invalidQuery"].Value, errorCode = "InvalidQuery" });
+
+        var user = await GetAuthenticatedUserAsync(ct);
+        if (!IsResolvedUser(user))
+            return Unauthorized();
+        var student = await students.GetStudentProfile(user.Id);
+        if (student is null)
+            return NotFound(new { message = localizer["student.profileNotFound"].Value });
+
+        var filter = new HardQuestionFilter(days, subjectId is { } s ? [s] : [], topicId, subTopicId);
+        return Ok(await practice.GetHardQuestionsAsync(student, filter, take, ct));
     }
 }

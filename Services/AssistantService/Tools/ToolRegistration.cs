@@ -19,6 +19,9 @@ public static class ToolRegistration
         // #510 (Phase 2): explanations of answered questions and recent mistakes.
         services.AddScoped<IAssistantTool, ExplainQuestionTool>();
         services.AddScoped<IAssistantTool, GetMyRecentMistakesTool>();
+        // #526: hard questions and a practice session on them.
+        services.AddScoped<IAssistantTool, GetHardQuestionExamplesTool>();
+        services.AddScoped<IAssistantTool, StartHardQuestionPracticeTool>();
         // #1336 (Phase 1b): parent read tools.
         services.AddScoped<IAssistantTool, ListMyChildrenTool>();
         services.AddScoped<IAssistantTool, GetChildWeeklySummaryTool>();

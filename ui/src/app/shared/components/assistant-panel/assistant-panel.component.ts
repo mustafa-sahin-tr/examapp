@@ -32,6 +32,7 @@ import {
   FeedbackReason,
   PanelMessage,
   SuggestionChip,
+  QuestionCardItem,
   TopicRow,
 } from '../../../models/assistant';
 import { ASSISTANT_MAX_MESSAGE_LENGTH, AssistantChatStore } from '../../../services/assistant-chat.store';
@@ -74,7 +75,7 @@ export function segmentsOf(text: string): TextSegment[] {
 
 /**
  * Issue #507: uygulama içi asistan paneli. CDK Overlay içinde açılır (launcher), masaüstünde 440px sağ panel, mobilde
- * tam ekran. Mesaj görünümü `dm-conversation`'dan türetildi; kartlar sunucu verisinden (kpi, topicTable, confirm).
+ * tam ekran. Mesaj görünümü `dm-conversation`'dan türetildi; kartlar sunucu verisinden (kpi, topicTable, questions, confirm).
  */
 @Component({
   selector: 'app-assistant-panel',
@@ -225,7 +226,13 @@ export class AssistantPanelComponent implements AfterViewInit {
   actionKey(card: AssistantCard): string {
     if (card.kind !== 'confirm') return 'generic';
     const action = card.preview?.action;
-    return action === 'startDailyPractice' || action === 'startPracticeSession' ? action : 'generic';
+    return action === 'startDailyPractice' || action === 'startPracticeSession' || action === 'startHardQuestionPractice'
+      ? action
+      : 'generic';
+  }
+
+  questionMeta(item: QuestionCardItem): string {
+    return [item.subjectName, item.topicName].filter(Boolean).join(' · ');
   }
 
   rowName(row: TopicRow): string {

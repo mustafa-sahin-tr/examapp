@@ -369,6 +369,7 @@ public class PracticeController : BaseController
     /// </summary>
     internal static (string Feature, bool Counted) PlanFeatureOf(PracticeSessionStartDto request) =>
         request.MixedReview ? (EntitlementFeatures.MixedMini, true)
-        : request.DueReview || request.Mistakes || request.Saved || request.StudyItemId != null ? (EntitlementFeatures.StudyTools, false)
+        : request.DueReview || request.Mistakes || request.Saved || request.StudyItemId != null || request.QuestionIds is { Count: > 0 }
+            ? (EntitlementFeatures.StudyTools, false)
         : (EntitlementFeatures.Practice, true);
 }

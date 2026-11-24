@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using ExamApp.Api.Data;
 using System.Threading;
 using System.Threading.Tasks;
@@ -19,6 +21,12 @@ public interface IPracticeSessionService
     /// </summary>
     Task<PracticeSessionDto> StartAsync(StudentProfileDto student, PracticeSessionStartDto request, CancellationToken ct = default,
         int? scopeSubjectId = null);
+
+    /// <summary>
+    /// Issue #524: sessions started since <paramref name="sinceUtc"/>, by start source and kind (daily set or free); for the
+    /// admin summary (#513) and the assistant's success metric (share started from the assistant).
+    /// </summary>
+    Task<IReadOnlyList<PracticeStartCountDto>> CountStartsBySourceAsync(DateTime sinceUtc, CancellationToken ct = default);
 
     /// <returns>null: oturum yok ya da bu öğrenciye ait değil.</returns>
     Task<PracticeSessionDto?> GetAsync(int sessionId, int studentId, CancellationToken ct = default);

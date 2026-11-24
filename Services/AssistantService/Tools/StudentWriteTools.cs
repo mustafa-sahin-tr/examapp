@@ -8,8 +8,16 @@ namespace AssistantService.Tools;
 /// Issue #503: opens today's daily set, optionally scoped to a subject / topic / subtopic ("açılar setini aç"). The model's
 /// call previews; the set opens only when the student confirms the card.
 /// </summary>
+/// <summary>Issue #524: the exam API records sessions the assistant opened (the epic's success metric).</summary>
+internal static class StartedViaAssistant
+{
+    public const string Value = "Assistant";
+}
+
 public sealed class StartDailyPracticeTool(DownstreamClient api) : IAssistantWriteTool
 {
+    private const string StartedVia = StartedViaAssistant.Value;
+
     public string Name => "start_daily_practice";
     public string Description => "Open today's daily question set, optionally on one subject / topic / subtopic (ids from search_taxonomy). Needs the student's confirmation; then the practice screen opens.";
     public IReadOnlyCollection<string> Roles => Tools.Roles.StudentOnly;
@@ -41,6 +49,7 @@ public sealed class StartDailyPracticeTool(DownstreamClient api) : IAssistantWri
     {
         var response = await api.PostAsync(context, "api/practice/daily/start", new
         {
+            startedVia = StartedVia,
             subjectId = Int(args, "subjectId"),
             topicId = Int(args, "topicId"),
             subTopicId = Int(args, "subTopicId"),
@@ -81,6 +90,7 @@ public sealed class StartPracticeSessionTool(DownstreamClient api) : IAssistantW
     public async Task<ToolResult> CommitAsync(ToolContext context, JsonElement args)
     {
         var body = Body(args);
+        body["startedVia"] = StartedViaAssistant.Value;
         var response = await api.PostAsync(context, "api/practice/sessions", body);
         if (!response.IsSuccess)
             return response.ToError();

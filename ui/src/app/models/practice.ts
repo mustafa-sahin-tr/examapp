@@ -6,7 +6,12 @@ import { Question } from './question';
  */
 
 /** POST /api/exam/practice/sessions gövdesi. İkisi de boşsa: öğrencinin sınıfı + tüm dersler. */
+/** #524: where a session was started (product metric only); the server defaults to Ui. */
+export type PracticeStartedVia = 'Ui' | 'Assistant' | 'DeepLink' | 'Notification';
+
 export interface PracticeSessionStartRequest {
+  /** #524: sent only when not Ui (e.g. started from the setup a broken `?session=` link fell back to). */
+  startedVia?: PracticeStartedVia;
   subjectIds?: number[];
   topicIds?: number[];
   /** Issue #529: tekrar zamanı gelen sorulardan sabit listeli oturum. */

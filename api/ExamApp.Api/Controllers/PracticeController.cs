@@ -46,11 +46,16 @@ public class PracticeController : BaseController
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
+    private BadRequestObjectResult InvalidStartedVia() =>
+        BadRequest(new { message = "startedVia must be Ui, Assistant, DeepLink or Notification.", errorCode = "InvalidStartedVia" });
+
     /// <summary>Yeni pratik oturumu açar. Gövde boş/eksikse: öğrencinin sınıfı + tüm dersler.</summary>
     [HttpPost("sessions")]
     public async Task<IActionResult> StartSession([FromBody] PracticeSessionStartDto? request, [FromServices] IEntitlementService entitlements,
         CancellationToken ct)
     {
+        if (!PracticeStartedVias.TryParse(request?.StartedVia, out _))
+            return InvalidStartedVia();
         var (student, error, userId) = await ResolveStudentWithUserAsync();
         if (error != null)
             return error;
@@ -204,6 +209,8 @@ public class PracticeController : BaseController
     public async Task<IActionResult> StartDaily([FromServices] IEntitlementService entitlements, [FromBody] DailyStartRequestDto? request,
         CancellationToken ct)
     {
+        if (!PracticeStartedVias.TryParse(request?.StartedVia, out _))
+            return InvalidStartedVia();
         var (student, error, userId) = await ResolveStudentWithUserAsync();
         if (error != null)
             return error;

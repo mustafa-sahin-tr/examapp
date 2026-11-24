@@ -619,6 +619,29 @@ describe('PracticeSolveComponent', () => {
         expect(router.navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: expect.objectContaining({ session: null }) }));
     });
 
+    it('sessionLink_EndedSession_StartFromSetupIsSentAsDeepLink', () => {
+        practiceService.getSession.mockReturnValue(of({ ...session, id: 22, status: 'Ended' as const, endTime: '2026-10-05T09:00:00Z' }));
+        practiceService.startSession.mockReturnValue(of({ ...session, id: 30, status: 'Active' as const }));
+        practiceService.getNextQuestion.mockReturnValue(of({ sessionId: 30, question: buildQuestion(), poolExhausted: false, answeredCount: 0, correctCount: 0 }));
+        setup({ session: '22' });
+        fixture.detectChanges();
+
+        component.startSession();
+
+        expect(practiceService.startSession).toHaveBeenCalledWith(expect.objectContaining({ startedVia: 'DeepLink' }));
+    });
+
+    it('startSession_WithoutLink_SendsNoStartedVia', () => {
+        practiceService.startSession.mockReturnValue(of({ ...session, id: 31, status: 'Active' as const }));
+        practiceService.getNextQuestion.mockReturnValue(of({ sessionId: 31, question: buildQuestion(), poolExhausted: false, answeredCount: 0, correctCount: 0 }));
+        setup();
+        fixture.detectChanges();
+
+        component.startSession();
+
+        expect(practiceService.startSession.mock.calls[0][0].startedVia).toBeUndefined();
+    });
+
     it('sessionLink_OtherStudentsSession404_StaysOnSetupWithoutGenericError', () => {
         practiceService.getSession.mockReturnValue(
             throwError(() => new HttpErrorResponse({ status: 404, error: { message: 'Pratik oturumu bulunamadı.' } }))

@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System;
 
 namespace ExamApp.Api.Models.Dtos;
@@ -80,6 +81,10 @@ public class DailySetScopeDto
 /// </summary>
 public class DailyStartRequestDto
 {
+    /// <summary>Issue #524: Ui (default) | Assistant | DeepLink | Notification; another value is 400. Only a new session records it.</summary>
+    [MaxLength(20)]
+    public string? StartedVia { get; set; }
+
     public int? SubjectId { get; set; }
 
     /// <summary>Doluysa <see cref="SubjectId"/> da dolu olmalı; konu o derse ve öğrencinin sınıfına ait olmalı.</summary>

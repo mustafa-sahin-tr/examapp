@@ -230,3 +230,13 @@ tam ekran. Veli hesabında `/status` 200, giriş noktası yok, console temiz.
 - **Canlı E2E:** `deploy/scripts/assistant-e2e.mjs --user <öğrenci> [--confirm]` (`ASSISTANT_E2E_PASSWORD`, gateway :5678):
   A zorlandığım konular, B açılar günlük seti tek onay kartı (`--confirm` seti açar, veri değiştirir), test sırasında 409.
   C (velinin haftası) veli dilimine kadar atlanır. 2026-11-24 dev'de 4/4 PASS.
+
+## Pratik başlatma kaynağı (#524)
+
+`PracticeSession.StartedVia` (`Ui` = 0 varsayılan, `Assistant`, `DeepLink`, `Notification`): serbest pratik ve günlük setin
+oturumu. `POST api/practice/sessions` ve `POST api/practice/daily/start` isteğe bağlı `startedVia` alır; yalnız bu adlar
+(büyük/küçük harf fark etmez, sayı yok), başka değer 400 `InvalidStartedVia`. Günlük set idempotent: kaynak yalnız oturum ilk
+açılırken yazılır. Asistanın iki yazma tool'u `Assistant` gönderir; UI yalnız `?session=` linki açılamayınca (#508) kurulumdan
+başlatılan oturumda `DeepLink` gönderir. İstemciden geldiği için yalnız ürün metriğidir (yetki / puan buna bağlanmaz).
+Sayım: `IPracticeSessionService.CountStartsBySourceAsync(since)` → kaynak × (günlük / serbest) adetleri; admin özeti (#513) bunu
+gösterecek. Epic ölçütü: `Assistant` / tümü ≥ %15. `Notification` bugün gönderen yok (bildirimden başlatma gelince).

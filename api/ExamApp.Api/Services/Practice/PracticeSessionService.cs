@@ -57,6 +57,17 @@ public class PracticeSessionService : IPracticeSessionService
         _mixedReview = mixedReview;
     }
 
+    public async Task<IReadOnlyList<PracticeStartCountDto>> CountStartsBySourceAsync(DateTime sinceUtc, CancellationToken ct = default)
+    {
+        var rows = await _context.PracticeSessions.AsNoTracking()
+            .Where(s => s.StartTime >= sinceUtc)
+            .GroupBy(s => new { s.StartedVia, Daily = _context.DailyQuestionSets.Any(d => d.PracticeSessionId == s.Id) })
+            .Select(g => new { g.Key.StartedVia, g.Key.Daily, Count = g.Count() })
+            .ToListAsync(ct);
+        return rows.OrderBy(r => r.StartedVia).ThenBy(r => r.Daily)
+            .Select(r => new PracticeStartCountDto(r.StartedVia, r.Daily, r.Count)).ToList();
+    }
+
     public async Task<PracticeSessionDto> StartAsync(StudentProfileDto student, PracticeSessionStartDto request, CancellationToken ct = default,
         int? scopeSubjectId = null)
     {
@@ -157,7 +168,8 @@ public class PracticeSessionService : IPracticeSessionService
             TopicIdsJson = topicIds.Count > 0 ? JsonSerializer.Serialize(topicIds) : null,
             SubTopicIdsJson = subTopicIds.Count > 0 ? JsonSerializer.Serialize(subTopicIds) : null,
             TargetCount = request.TargetCount,
-            FixedQuestionIdsJson = fixedQuestionIdsJson
+            FixedQuestionIdsJson = fixedQuestionIdsJson,
+            StartedVia = PracticeStartedVias.TryParse(request.StartedVia, out var via) ? via : PracticeStartedVia.Ui
         };
 
         _context.PracticeSessions.Add(session);

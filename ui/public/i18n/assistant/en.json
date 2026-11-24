@@ -77,8 +77,9 @@
   },
   "questions": {
     "missCount": "{{count}}× wrong or blank",
+    "correctPercent": "{{percent}}% got it right",
     "solve": "Solve these",
-    "solvePrompt": "I want to solve these questions again."
+    "solvePrompt": "I want to solve these questions."
   },
   "confirm": {
     "startDailyPractice": "Start the daily questions",
@@ -98,7 +99,7 @@
       "pending": "",
       "busy": ""
     },
-    "startHardQuestionPractice": "Solve your hard questions"
+    "startHardQuestionPractice": "Solve the selected questions"
   },
   "errors": {
     "AssistantBudgetExceeded": "You have reached the usage limit for now. Please try again later.",

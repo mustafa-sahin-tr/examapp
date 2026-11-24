@@ -110,7 +110,9 @@
                         }
                         <p class="asp__muted">
                           {{ questionMeta(item) }}
-                          @if (item.missCount) {
+                          @if (item.correctPercent != null) {
+                            · {{ t('questions.correctPercent', { percent: item.correctPercent }) }}
+                          } @else if (item.missCount) {
                             · {{ t('questions.missCount', { count: item.missCount }) }}
                           }
                         </p>

@@ -462,6 +462,11 @@ builder.Services.AddOptions<ExamApp.Api.Services.TopicPerformance.LearningOutcom
 builder.Services.AddScoped<ExamApp.Api.Services.TopicPerformance.ILearningOutcomeMasteryService, ExamApp.Api.Services.TopicPerformance.LearningOutcomeMasteryService>(); // issue #696
 builder.Services.AddScoped<ExamApp.Api.Services.TopicPerformance.IParentLearningOutcomeMasteryService, ExamApp.Api.Services.TopicPerformance.ParentLearningOutcomeMasteryService>(); // issue #696
 builder.Services.AddScoped<ExamApp.Api.Services.MockExams.IMockExamService, ExamApp.Api.Services.MockExams.MockExamService>(); // issue #693
+builder.Services.AddOptions<ExamApp.Api.Services.Practice.HardQuestionOptions>() // issue #526
+    .BindConfiguration(ExamApp.Api.Services.Practice.HardQuestionOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddScoped<ExamApp.Api.Services.Practice.IQuestionAnswerStatsJob, ExamApp.Api.Services.Practice.QuestionAnswerStatsJob>();
 builder.Services.AddOptions<ExamApp.Api.Services.Practice.MixedReviewOptions>() // issue #534
     .BindConfiguration(ExamApp.Api.Services.Practice.MixedReviewOptions.SectionName)
     .ValidateDataAnnotations()
@@ -974,6 +979,12 @@ RecurringJob.AddOrUpdate<ExamApp.Api.Services.AskTeacher.IAskTeacherExpiryJob>(
     ExamApp.Api.Services.AskTeacher.AskTeacherExpiryJob.RecurringJobId,
     j => j.ExpireAsync(CancellationToken.None),
     app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.AskTeacher.AskTeacherOptions>>().Value.Cron);
+
+// issue #526: nightly per-question answer stats for the global hard questions.
+RecurringJob.AddOrUpdate<ExamApp.Api.Services.Practice.IQuestionAnswerStatsJob>(
+    ExamApp.Api.Services.Practice.QuestionAnswerStatsJob.RecurringJobId,
+    j => j.RunAsync(CancellationToken.None),
+    app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Practice.HardQuestionOptions>>().Value.StatsCron);
 
 // issue #396: öğrenci dönmeyince istek anında kapanamayan, süresi dolmuş Started test oturumlarını Expired'a çeker.
 RecurringJob.AddOrUpdate<ExamApp.Api.Services.Worksheets.IExpiredTestInstanceSweepJob>(

@@ -24,6 +24,9 @@ internal static class HardQuestionQueries
     public const int DefaultTake = 10;
     public const int MaxTake = 30;
 
+    /// <summary><c>global</c> mode: how far back the student's own answers are read to leave out what they already solved.</summary>
+    private const int OwnHistoryYears = 5;
+
     private sealed record Ranked(AnsweredQuestion Question, int Attempts, int Misses, bool MissedAfterCorrect, bool LastCorrect, DateTime LastAt);
 
     internal static async Task<List<HardQuestionDto>> LoadMineAsync(
@@ -88,6 +91,72 @@ internal static class HardQuestionQueries
                     string.IsNullOrWhiteSpace(q.Text) ? null : q.Text);
             })
             .ToList();
+    }
+
+    /// <summary>
+    /// <c>global</c> mode: pool questions (as above, not blocked) that at least <paramref name="minStudents"/> distinct students
+    /// answered, lowest correct rate first (nightly <see cref="QuestionAnswerStat"/>; no aggregate at request time). A question the
+    /// student answered correctly last is left out. Only the aggregate percent leaves: no other student's data.
+    /// </summary>
+    /// <param name="onlyIds">Practice validation: restrict to these ids and return every match (no take).</param>
+    internal static async Task<(int Total, List<HardQuestionDto> Items)> LoadGlobalAsync(
+        AppDbContext context, ILocalDayCalendar calendar, StudentProfileDto student, HardQuestionFilter filter, int minStudents,
+        int take, IReadOnlyCollection<int>? onlyIds, CancellationToken ct)
+    {
+        if (student.GradeId is not { } gradeId)
+            return (0, []);
+
+        var to = DateTime.UtcNow;
+        var own = (await new StudentAnswerReader(context).ReadAsync(student.Id, to.AddYears(-OwnHistoryYears), to, ct))
+            .GroupBy(a => a.Question.Id)
+            .ToDictionary(g => g.Key, g => g.OrderBy(a => a.At).ToList());
+        var solved = own.Where(o => o.Value[^1].Outcome == StudentAnswerOutcome.Correct).Select(o => o.Key).ToList();
+        var blocked = (await DueReviewQueries.LoadBlockedAsync(context, calendar, student, ct)).ToList();
+
+        var pool = PracticeQuestionPool.Build(context, gradeId, filter.SubjectIds,
+                filter.TopicId is { } topicId ? [topicId] : [], filter.SubTopicId is { } subTopicId ? [subTopicId] : null)
+            .Where(q => !blocked.Contains(q.Id) && !solved.Contains(q.Id));
+        if (onlyIds is not null)
+            pool = pool.Where(q => onlyIds.Contains(q.Id));
+        var ranked = pool
+            .Join(context.QuestionAnswerStats.Where(s => s.StudentCount >= minStudents), q => q.Id, s => s.QuestionId, (q, s) => new { q, s })
+            .OrderBy(x => (double)x.s.CorrectCount / x.s.StudentCount)
+            .ThenByDescending(x => x.s.StudentCount)
+            .ThenBy(x => x.q.Id);
+
+        var total = await ranked.CountAsync(ct);
+        var page = await (onlyIds is null ? ranked.Take(take) : ranked)
+            .Select(x => new
+            {
+                x.q.Id,
+                x.q.SubjectId,
+                SubjectName = x.q.Subject != null ? x.q.Subject.Name : null,
+                x.q.TopicId,
+                TopicName = x.q.Topic != null ? x.q.Topic.Name : null,
+                SubTopicNames = x.q.QuestionSubTopics.Where(st => !st.IsDeleted).Select(st => st.SubTopic.Name).ToList(),
+                x.q.ImageUrl,
+                x.q.Text,
+                x.s.CorrectCount,
+                x.s.StudentCount,
+            })
+            .AsSplitQuery()
+            .ToListAsync(ct);
+
+        return (total, page.Select(q =>
+        {
+            var attempts = own.GetValueOrDefault(q.Id) ?? [];
+            var mine = attempts.Count > 0 ? Rank(attempts.GroupBy(a => a.Question.Id).Single()) : null;
+            return new HardQuestionDto(
+                q.Id, q.SubjectId, q.SubjectName, q.TopicId, q.TopicName, q.SubTopicNames.Distinct().ToList(),
+                attempts.Count,
+                mine?.Misses ?? 0,
+                mine?.MissedAfterCorrect ?? false,
+                false,
+                attempts.Count > 0 ? attempts[^1].At : null,
+                string.IsNullOrWhiteSpace(q.ImageUrl) ? null : q.ImageUrl,
+                string.IsNullOrWhiteSpace(q.Text) ? null : q.Text,
+                (int)Math.Round(100.0 * q.CorrectCount / q.StudentCount));
+        }).ToList());
     }
 
     /// <summary>Null when the student never missed the question.</summary>

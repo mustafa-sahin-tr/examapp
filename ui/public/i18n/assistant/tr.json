@@ -77,8 +77,9 @@
   },
   "questions": {
     "missCount": "{{count}} kez yanlış / boş",
+    "correctPercent": "doğru yapanlar %{{percent}}",
     "solve": "Bunları çöz",
-    "solvePrompt": "Bu soruları tekrar çözmek istiyorum."
+    "solvePrompt": "Bu soruları çözmek istiyorum."
   },
   "confirm": {
     "startDailyPractice": "Günün sorularını başlat",
@@ -98,7 +99,7 @@
       "pending": "",
       "busy": ""
     },
-    "startHardQuestionPractice": "Zorlandığın soruları çöz"
+    "startHardQuestionPractice": "Seçilen soruları çöz"
   },
   "errors": {
     "AssistantBudgetExceeded": "Şimdilik kullanım sınırına ulaştın. Biraz sonra yeniden dene.",

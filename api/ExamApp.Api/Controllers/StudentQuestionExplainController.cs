@@ -77,8 +77,8 @@ public class StudentQuestionExplainController(
 
     /// <summary>
     /// Issue #526: the questions the student struggled with most (wrong or blank, most misses first), to solve again with
-    /// <c>POST api/practice/sessions { questionIds }</c>. Only <c>mode=mine</c> for now; <c>global</c> (questions hard for every
-    /// student, needs nightly stats) is 400 until it lands.
+    /// <c>POST api/practice/sessions { questionIds }</c>. <c>mode=global</c>: questions most students got wrong (nightly stats,
+    /// at least <c>HardQuestions:MinStudents</c> students; <c>days</c> does not apply).
     /// </summary>
     [HttpGet("hard-questions")]
     [EnableRateLimiting(TopicPerformanceRateLimiting.Policy)]
@@ -91,7 +91,8 @@ public class StudentQuestionExplainController(
         [FromQuery] int take = HardQuestionQueries.DefaultTake,
         CancellationToken ct = default)
     {
-        if ((mode is not null && !string.Equals(mode, "mine", StringComparison.OrdinalIgnoreCase))
+        var global = string.Equals(mode, "global", StringComparison.OrdinalIgnoreCase);
+        if ((mode is not null && !global && !string.Equals(mode, "mine", StringComparison.OrdinalIgnoreCase))
             || days is < 1 or > HardQuestionQueries.MaxDays || take is < 1 or > HardQuestionQueries.MaxTake)
             return BadRequest(new { message = localizer["student.explain.invalidQuery"].Value, errorCode = "InvalidQuery" });
 
@@ -103,6 +104,6 @@ public class StudentQuestionExplainController(
             return NotFound(new { message = localizer["student.profileNotFound"].Value });
 
         var filter = new HardQuestionFilter(days, subjectId is { } s ? [s] : [], topicId, subTopicId);
-        return Ok(await practice.GetHardQuestionsAsync(student, filter, take, ct));
+        return Ok(await practice.GetHardQuestionsAsync(student, filter, take, global, ct));
     }
 }

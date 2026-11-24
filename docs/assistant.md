@@ -292,8 +292,7 @@ cevaplanmamış soruya ipucu yok (issue'daki `hint-context` / `get_hint` yapılm
 
 ## Zorlandığım sorular (#526, Faz 2)
 
-Bu dilim yalnız **`mine`** kipi; `global` kipi (tüm öğrencilerde doğruluğu düşük sorular, gece hesaplanan istatistik tablosu,
-asgari 20 öğrenci) ayrı PR'a kaldı, o zamana kadar `mode=global` 400.
+İki kip: **`mine`** (öğrencinin kendi kaçırdıkları) ve **`global`** (öğrencilerin çoğunun yanlış yaptığı sorular).
 
 - **Exam API:** `GET /api/student/me/hard-questions?mode=mine&subjectId&topicId&subTopicId&days=90&take=10`
   (`StudentQuestionExplainController`, yalnız `Student`, konu performansının hız sınırı; `days` 1–90, `take` 1–30, dışı 400).
@@ -308,3 +307,14 @@ asgari 20 öğrenci) ayrı PR'a kaldı, o zamana kadar `mode=global` 400.
 - **Asistan:** `get_hard_question_examples` (model id / konu / sayıları görür; görseller ve metin yalnız panelde `questions`
   kartında, "Bunları çöz" düğmesi mesaj gönderir) ve `start_hard_question_practice` (W, onay kartı, `ui_action` ile pratik
   ekranı). Prompt r6. Altın sete `hard-mine`, `hard-angles-solve` eklendi.
+- **`global` kipi:** `GET /api/student/me/hard-questions?mode=global&subjectId&topicId&subTopicId&take=10` (`days` uygulanmaz).
+  Kaynak gece işi `QuestionAnswerStatsJob` (Hangfire `question-answer-stats`, `HardQuestions:StatsCron`, varsayılan 03:00 UTC)
+  ve `QuestionAnswerStats` tablosu (soru başına farklı öğrenci ve doğru yapan sayısı; istek anında toplam sorgusu yok). Sayım:
+  bitmiş test oturumları ve pratik cevapları, öğrenci başına **ilk** cevabı (yeniden çözme oranı şişirmez), boş / atlanan cevap
+  sayılmaz (#785), süren test okunmaz, etkinlik ve açık uçlu soru dışarıda. Sorgu: pratik havuzu (sınıf, Normal görünürlük,
+  yayında) + `mine` ile aynı dışlama + son denemesini doğru yaptığı sorular hariç; en az `HardQuestions:MinStudents` (20) farklı
+  öğrenci şartı; doğruluk oranı artan. Satırda yalnız toplu `correctPercent` döner (öğrenci sayısı ya da başka öğrenciye ait veri
+  yok); deneme / kaçırma alanları öğrencinin kendisi (hiç çözmediyse 0, `lastAttemptAt` boş). `QuestionIds` ile pratik: id
+  `mine` listesinde değilse `global` kuralından geçmeli, ikisinden de geçmezse 400. Tool'da `mode=global`, panel kartında
+  "doğru yapanlar %N". Prompt r7 ("en zor sorular" / "herkesin zorlandığı" → global). Altın sete `hard-global` eklendi; altın
+  fikstür anahtarı artık sorgu taşıyabilir (`GET path?mode=global`).

@@ -4,6 +4,8 @@ using System.Text.Json;
 using ExamApp.Api.Data;
 using ExamApp.Api.IntegrationTests.Infrastructure;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Services.Practice;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ExamApp.Api.IntegrationTests;
 
@@ -95,7 +97,7 @@ public class HardQuestionsPostgresTests(IntegrationApiFactory factory) : Integra
         items[0].GetProperty("imageUrl").GetString()!.ShouldContain("X-Amz-");
         // Never the correct choice: the assistant explains through explain-context (#510).
         foreach (var item in items)
-            item.EnumerateObject().Select(p => p.Name).ShouldNotContain(n => n.StartsWith("correct"));
+            item.EnumerateObject().Select(p => p.Name).ShouldNotContain(n => n.StartsWith("correct") && n != "correctPercent");
     }
 
     [Fact]
@@ -138,12 +140,134 @@ public class HardQuestionsPostgresTests(IntegrationApiFactory factory) : Integra
         tooMany.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
     }
 
+    private sealed record GlobalSeeded(int Hard, int Medium, int TooFew, int Restricted, int OtherGrade, int OpenAssigned, int SolvedByMe);
+
+    /// <summary>
+    /// 20 other students answer in practice (one session each); <c>correct</c> of them get the question right. The student 7401
+    /// answers <c>SolvedByMe</c> correctly.
+    /// </summary>
+    private async Task<GlobalSeeded> SeedGlobalAsync() => await WithDbAsync(async db =>
+    {
+        var grade = new Grade { Name = "6. Sınıf" };
+        var otherGrade = new Grade { Name = "7. Sınıf" };
+        var subject = new Subject { Name = "Matematik" };
+        db.AddRange(grade, otherGrade, subject);
+        await db.SaveChangesAsync();
+        Worksheet Sheet(string name, int gradeId, WorksheetStudentVisibility visibility) =>
+            new() { Name = name, Description = "d", GradeId = gradeId, StudentVisibility = visibility };
+        var pool = Sheet("Havuz", grade.Id, WorksheetStudentVisibility.Normal);
+        var restricted = Sheet("Gizli", grade.Id, WorksheetStudentVisibility.Restricted);
+        var other = Sheet("Diğer sınıf", otherGrade.Id, WorksheetStudentVisibility.Normal);
+        var assigned = Sheet("Atanan", grade.Id, WorksheetStudentVisibility.Normal);
+        var me = new Student { UserId = StudentUser, StudentNumber = "S7401", SchoolName = "s", GradeId = grade.Id };
+        var others = Enumerable.Range(0, 20)
+            .Select(i => new Student { UserId = 7410 + i, StudentNumber = $"S{7410 + i}", SchoolName = "s", GradeId = grade.Id }).ToList();
+        db.AddRange(pool, restricted, other, assigned, me);
+        db.AddRange(others);
+        await db.SaveChangesAsync();
+
+        var now = DateTime.UtcNow;
+        var sessions = others.Select(st => new PracticeSession { StudentId = st.Id, GradeId = grade.Id, StartTime = now.AddDays(-3) }).ToList();
+        var mine = new PracticeSession { StudentId = me.Id, GradeId = grade.Id, StartTime = now.AddDays(-2) };
+        var order = 0;
+        async Task<int> QuestionAsync(Worksheet sheet, int students, int correct, bool solvedByMe = false)
+        {
+            var q = new Question { Text = $"G{order}", Point = 5, DifficultyLevel = 3, SubjectId = subject.Id };
+            db.Questions.Add(q);
+            await db.SaveChangesAsync();
+            var right = new Answer { QuestionId = q.Id, Text = "doğru", Order = 1 };
+            var wrong = new Answer { QuestionId = q.Id, Text = "yanlış", Order = 2 };
+            db.Answers.AddRange(right, wrong);
+            await db.SaveChangesAsync();
+            q.CorrectAnswerId = right.Id;
+            db.TestQuestions.Add(new WorksheetQuestion { TestId = sheet.Id, QuestionId = q.Id, Order = ++order });
+            PracticeSessionQuestion Row(bool ok) => new()
+            {
+                QuestionId = q.Id, ShownAt = now.AddDays(-2), AnsweredAt = now.AddDays(-2),
+                SelectedAnswerId = ok ? right.Id : wrong.Id, IsCorrect = ok, TimeTaken = 10,
+            };
+            for (var i = 0; i < students; i++)
+                sessions[i].Questions.Add(Row(i < correct));
+            if (solvedByMe)
+                mine.Questions.Add(Row(true));
+            return q.Id;
+        }
+
+        var hard = await QuestionAsync(pool, 20, 5);
+        var medium = await QuestionAsync(pool, 20, 15);
+        var tooFew = await QuestionAsync(pool, 19, 0);
+        var hidden = await QuestionAsync(restricted, 20, 0);
+        var otherGradeQ = await QuestionAsync(other, 20, 0);
+        var openAssigned = await QuestionAsync(assigned, 20, 0);
+        var solved = await QuestionAsync(pool, 20, 0, solvedByMe: true);
+        db.WorksheetAssignments.Add(new WorksheetAssignment { WorksheetId = assigned.Id, StudentId = me.Id, StartAt = now.AddDays(-1) });
+        db.PracticeSessions.AddRange(sessions);
+        db.PracticeSessions.Add(mine);
+        await db.SaveChangesAsync();
+        return new GlobalSeeded(hard, medium, tooFew, hidden, otherGradeQ, openAssigned, solved);
+    });
+
+    private async Task<int> RunStatsJobAsync()
+    {
+        using var scope = Factory.Services.CreateScope();
+        return await scope.ServiceProvider.GetRequiredService<IQuestionAnswerStatsJob>().RunAsync();
+    }
+
     [Fact]
-    public async Task The_query_is_validated_and_global_mode_is_not_served_yet()
+    public async Task Global_mode_lowest_correct_rate_first_only_with_20_students_in_the_students_pool_and_not_solved_by_them()
+    {
+        var s = await SeedGlobalAsync();
+        (await RunStatsJobAsync()).ShouldBe(7);
+        var client = await StudentAsync();
+
+        var result = await client.GetFromJsonAsync<JsonElement>(Url + "?mode=global", Json);
+
+        result.GetProperty("mode").GetString().ShouldBe("global");
+        var items = result.GetProperty("items").EnumerateArray().ToList();
+        // 19 students: too few. Restricted visibility, another grade, an open assigned test, one they solved: out.
+        items.Select(i => i.GetProperty("questionId").GetInt32()).ShouldBe([s.Hard, s.Medium]);
+        items[0].GetProperty("correctPercent").GetInt32().ShouldBe(25);
+        items[1].GetProperty("correctPercent").GetInt32().ShouldBe(75);
+        items[0].GetProperty("attempts").GetInt32().ShouldBe(0);
+        // Only the aggregate percent: no count of students, nothing about another student.
+        foreach (var item in items)
+            item.EnumerateObject().Select(p => p.Name).ShouldNotContain(n => n.StartsWith("correct") && n != "correctPercent" || n.Contains("student", StringComparison.OrdinalIgnoreCase));
+
+        var created = await client.PostAsJsonAsync("/api/practice/sessions", new { questionIds = new[] { s.Medium, s.Hard } });
+        created.StatusCode.ShouldBe(HttpStatusCode.Created, await created.Content.ReadAsStringAsync());
+        foreach (var refused in new[] { s.TooFew, s.Restricted, s.OtherGrade, s.OpenAssigned, s.SolvedByMe })
+            (await client.PostAsJsonAsync("/api/practice/sessions", new { questionIds = new[] { refused } }))
+                .StatusCode.ShouldBe(HttpStatusCode.BadRequest, refused.ToString());
+    }
+
+    [Fact]
+    public async Task The_stats_job_counts_a_student_once_with_their_first_answer_and_replaces_old_rows()
+    {
+        var s = await SeedGlobalAsync();
+        await WithDbAsync(async db =>
+        {
+            // Student 0 got Hard right first; solving it wrong later does not change their count.
+            var session = new PracticeSession { StudentId = db.Students.Single(st => st.UserId == 7410).Id, GradeId = db.Grades.First().Id, StartTime = DateTime.UtcNow };
+            var wrong = db.Answers.Single(a => a.QuestionId == s.Hard && a.Order == 2);
+            session.Questions.Add(new PracticeSessionQuestion { QuestionId = s.Hard, ShownAt = DateTime.UtcNow, AnsweredAt = DateTime.UtcNow, SelectedAnswerId = wrong.Id, IsCorrect = false, TimeTaken = 5 });
+            db.PracticeSessions.Add(session);
+            await db.SaveChangesAsync();
+        });
+
+        await RunStatsJobAsync();
+        await RunStatsJobAsync();
+
+        var stat = await WithDbAsync(db => Task.FromResult(db.QuestionAnswerStats.Single(x => x.QuestionId == s.Hard)));
+        stat.StudentCount.ShouldBe(20);
+        stat.CorrectCount.ShouldBe(5);
+    }
+
+    [Fact]
+    public async Task The_query_is_validated()
     {
         var client = await StudentAsync();
 
-        foreach (var query in new[] { "?mode=global", "?days=0", "?days=91", "?take=0", "?take=31" })
+        foreach (var query in new[] { "?mode=other", "?days=0", "?days=91", "?take=0", "?take=31" })
             (await client.GetAsync(Url + query)).StatusCode.ShouldBe(HttpStatusCode.BadRequest, query);
     }
 

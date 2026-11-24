@@ -5,33 +5,40 @@ using static AssistantService.Tools.ToolJson;
 namespace AssistantService.Tools;
 
 /// <summary>
-/// Issue #526 (Phase 2): the questions the student struggled with most (wrong or blank answers in finished tests and practice;
-/// a question of a running or unfinished assigned test never shows). The model sees ids, topics and counts; the panel shows the
-/// question images as a card with a "solve these" button. No correct choice: explain_question (#510) explains one.
+/// Issue #526 (Phase 2): the questions the student struggled with most (<c>mine</c>: wrong or blank answers in finished tests
+/// and practice) or that most students got wrong (<c>global</c>: nightly stats, an aggregate percent only). A question of a running
+/// or unfinished assigned test never shows. The model sees ids, topics and counts; the panel shows the question images as a card
+/// with a "solve these" button. No correct choice: explain_question (#510) explains one.
 /// </summary>
 public sealed class GetHardQuestionExamplesTool(DownstreamClient api) : IAssistantTool
 {
     public const int DefaultTake = 5;
     public const int MaxTake = 10;
     private const int MaxCardText = 300;
+    private static readonly string[] Modes = ["mine", "global"];
 
     public string Name => "get_hard_question_examples";
     public string Description =>
-        "Questions the student struggled with most (most wrong / blank first, then ones missed again after a correct answer), " +
-        "optionally on one subject / topic / subtopic (ids from search_taxonomy). Shows the question images to the student. Use for " +
-        "'en çok zorlandığım sorular', 'açılarda zorlandığım sorular'; then start_hard_question_practice with the ids to solve them again.";
+        "mode=mine (default): questions the student struggled with most (most wrong / blank first, then ones missed again after a " +
+        "correct answer). mode=global: questions most students got wrong (lowest correctPercent first; ones the student already " +
+        "solved are left out). Optionally on one subject / topic / subtopic (ids from search_taxonomy). Shows the question images " +
+        "to the student. Then start_hard_question_practice with the ids to solve them.";
     public IReadOnlyCollection<string> Roles => Tools.Roles.StudentOnly;
     public JsonObject InputSchema => Schema(
+        ("mode", StringProp("mine: the student's own; global: hard for most students.", values: Modes), false),
         ("subjectId", IntProp("Subject id."), false),
         ("topicId", IntProp("Topic id."), false),
         ("subTopicId", IntProp("Subtopic id."), false),
-        ("days", IntProp("Look-back window in days.", 1, 90), false),
+        ("days", IntProp("mine only: look-back window in days.", 1, 90), false),
         ("take", IntProp("How many questions.", 1, MaxTake), false));
 
     public async Task<ToolResult> ExecuteAsync(ToolContext context, JsonElement args)
     {
         var take = Math.Clamp(Int(args, "take") ?? DefaultTake, 1, MaxTake);
-        var path = $"api/student/me/hard-questions?mode=mine&days={Math.Clamp(Int(args, "days") ?? 90, 1, 90)}&take={take}";
+        var global = String(args, "mode") == "global";
+        var path = global
+            ? $"api/student/me/hard-questions?mode=global&take={take}"
+            : $"api/student/me/hard-questions?mode=mine&days={Math.Clamp(Int(args, "days") ?? 90, 1, 90)}&take={take}";
         foreach (var name in new[] { "subjectId", "topicId", "subTopicId" })
         {
             if (Int(args, name) is { } id)
@@ -44,9 +51,10 @@ public sealed class GetHardQuestionExamplesTool(DownstreamClient api) : IAssista
         var items = Pick.Items(response.Body).Take(take).ToList();
         var data = new JsonObject
         {
+            ["mode"] = global ? "global" : "mine",
             ["totalCount"] = Pick.Int(response.Body, "totalCount"),
             ["questions"] = new JsonArray(items.Select(i => (JsonNode)Pick.Only(i, "questionId", "subjectName", "topicName",
-                "subTopicNames", "attempts", "missCount", "missedAfterCorrect", "lastAttemptCorrect", "lastAttemptAt")).ToArray()),
+                "subTopicNames", "attempts", "missCount", "missedAfterCorrect", "lastAttemptCorrect", "lastAttemptAt", "correctPercent")).ToArray()),
         };
         if (items.Count == 0)
             return ToolResult.Success(data);
@@ -56,7 +64,7 @@ public sealed class GetHardQuestionExamplesTool(DownstreamClient api) : IAssista
             ["kind"] = "questions",
             ["items"] = new JsonArray(items.Select(i =>
             {
-                var row = Pick.Only(i, "questionId", "subjectName", "topicName", "missCount", "imageUrl");
+                var row = Pick.Only(i, "questionId", "subjectName", "topicName", "missCount", "correctPercent", "imageUrl");
                 if (Pick.Str(i, "text") is { Length: > 0 } text)
                     row["text"] = text.Length <= MaxCardText ? text : text[..MaxCardText] + "…";
                 return (JsonNode)row;

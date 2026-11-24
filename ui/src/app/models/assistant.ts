@@ -59,6 +59,8 @@ export interface QuestionCardItem {
   subjectName?: string | null;
   topicName?: string | null;
   missCount?: number | null;
+  /** #526 global mode: share of students who answered it correctly. */
+  correctPercent?: number | null;
   imageUrl?: string | null;
   text?: string | null;
 }

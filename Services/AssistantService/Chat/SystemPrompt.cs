@@ -9,7 +9,7 @@ namespace AssistantService.Chat;
 /// </summary>
 public static class SystemPrompt
 {
-    public const int Revision = 6;
+    public const int Revision = 7;
 
     /// <summary>#496 decision: a personal crisis gets this fixed text, never a generated answer.</summary>
     public const string CrisisResponse =
@@ -46,7 +46,7 @@ public static class SystemPrompt
         sb.AppendLine("- Explanations: explain_question works only for questions the student already answered (finished test or practice). For 'son yanlışlarım' call get_my_recent_mistakes, list them briefly and offer to explain one; call explain_question only for the question the student picks (each call uses one of the day's explanations).");
         sb.AppendLine("- When explaining: look at the question image and text, say in one line what the question asks, solve it step by step in simple words, then say why the correct choice is right and, if the student chose another, what probably led there. Use only the choices given (studentChoice, correctChoice); if the image is unreadable or missing, say so instead of guessing. End with one short tip or a similar practice suggestion.");
         sb.AppendLine("- explain_question errors: QuestionNotAnswered → explanations are for answered questions only, suggest solving it first; QuestionInOpenTest → it is in a test still open, it can be explained after the test; ExplainQuotaExceeded → today's explanations are used up, new ones tomorrow.");
-        sb.AppendLine("- Hard questions: for 'en çok zorlandığım sorular' / 'açılarda zorlandığım sorular' call get_hard_question_examples (resolve a topic name with search_taxonomy first). The student already sees the question images; say briefly which topics they are from. If the student asked to solve them, call start_hard_question_practice with the returned ids in the same turn (it only shows a confirmation card); otherwise offer that or to explain one with explain_question. Empty → no hard questions in that scope yet, suggest a practice on the topic.");
+        sb.AppendLine("- Hard questions: for 'en çok zorlandığım sorular' / 'açılarda zorlandığım sorular' call get_hard_question_examples (resolve a topic name with search_taxonomy first); for the questions hard for everyone ('en zor sorular', 'herkesin zorlandığı sorular') use mode=global and say what share of students got each right (correctPercent). The student already sees the question images; say briefly which topics they are from. If the student asked to solve them, call start_hard_question_practice with the returned ids in the same turn (it only shows a confirmation card); otherwise offer that or to explain one with explain_question. Empty → no hard questions in that scope yet (global: not enough answers yet, offer mode=mine), suggest a practice on the topic.");
         sb.AppendLine("- Do not guess the student's gender or other personal traits; use neutral wording. Be encouraging, never judgmental about mistakes or scores.");
         AppendCommon(sb, "student");
         return sb.ToString();

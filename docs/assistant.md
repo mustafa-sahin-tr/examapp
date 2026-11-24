@@ -209,3 +209,24 @@ makaleyle cevaplandı (ilk token p50 1,4 sn); konu dışı soru tool çağırmad
 Canlı deneme (Aspire, öğrenci): `Ctrl+K` açtı; "Zorlandığım konular" turu, öneri çipleri ve kalan mesaj göründü; "5 soruluk pratik
 başlat" onay kartı → Başlat → `/practice?session=…` açıldı; `Esc` kapattı; `/testsolve/…`'da FAB yok, kısayol çalışmadı; 390px'te
 tam ekran. Veli hesabında `/status` 200, giriş noktası yok, console temiz.
+
+## Testler: yetki, prompt injection, altın set, canlı E2E (#509)
+
+- **Yetki (LLM'siz, her PR'da):** `tests/AssistantService.Tests` — başkasının konuşması / eylemi 404, onaysız yazma yok,
+  rolü kapalı 403, `/testsolve` 409, bitmemiş testin sonucu yok (`ToolTests`, `ChatEndpointTests`, `HistoryRetentionTests`).
+- **Prompt injection:** kullanıcının yazdığı metin (bugün yalnız test adları) `ToolJson.Untrusted` ile tek `<untrusted>`
+  sarmalında gider; `<` / `>` `‹ ›` olur, `</untrusted>` ile dışarı çıkılamaz (`User_text_cannot_close_the_untrusted_wrapper`,
+  `Instructions_in_a_test_name_reach_the_model_only_as_wrapped_data`). Anthropic SDK tool sonucunu yeniden serileştirir; model
+  etiketleri düz metin görür (JSON'daki `<` kaçışı istek gövdesinde çözülür, 2026-11-24 denendi). Yeni bir tool kullanıcı /
+  öğretmen metni döndürürse (yorum, öğretmen notu, ödev başlığı) o alan da `Untrusted` ile sarılır.
+- **Altın set:** `tests/AssistantService.Tests/Golden/student.json` (sahte exam API verisi + 22 öğrenci senaryosu) ve
+  `GoldenSetTests` (`Category=Golden`, PR koşusunda filtreli; `ASSISTANT_GOLDEN_API_KEY` yoksa atlanır). Kural puanı: çağrılan /
+  çağrılmaması gereken tool, onay kartı sayısı, onaylanınca exam API'ye giden gövde, cevapta geçmesi gereken kelimeler (Türkçe
+  normalize); `rubric` varsa LLM hakem (`claude-sonnet-5-5`). Rapor: geçen / kalan + tur başına maliyet. Koşu:
+  `.github/workflows/assistant-golden.yml` (elle + prompt / tool / kılavuz değiştiren PR'lar; secret `ASSISTANT_GOLDEN_API_KEY`
+  tanımlı değilse yeşil atlar) ya da yerelde `ASSISTANT_GOLDEN_API_KEY=… dotnet test tests/AssistantService.Tests --filter Category=Golden`.
+  İlk koşu (2026-11-24, Haiku 5.5, prompt r3): 21/22 → hakem ölçütü düzeltildi; tur başına ≈ 0,00036 USD, set ≈ 0,008 USD + hakem.
+  Veli senaryoları veli tool'ları (Faz 1b) gelince eklenir.
+- **Canlı E2E:** `deploy/scripts/assistant-e2e.mjs --user <öğrenci> [--confirm]` (`ASSISTANT_E2E_PASSWORD`, gateway :5678):
+  A zorlandığım konular, B açılar günlük seti tek onay kartı (`--confirm` seti açar, veri değiştirir), test sırasında 409.
+  C (velinin haftası) veli dilimine kadar atlanır. 2026-11-24 dev'de 4/4 PASS.

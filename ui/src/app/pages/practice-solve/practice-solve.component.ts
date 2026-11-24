@@ -738,6 +738,9 @@ export class PracticeSolveComponent implements OnInit {
   }
 
   private openSession(request: PracticeSessionStartRequest, retry: () => void): void {
+    // #524: the setup opened from a `?session=` link that could not be resumed (#508) counts as a deep-link start.
+    if (this.sessionLinkNotice() !== null && !request.startedVia)
+      request = { ...request, startedVia: 'DeepLink' };
     this.mixedReviewSession.set(request.mixedReview === true);
     this.run(this.practiceService.startSession(request), retry, (session) => {
       this.sessionLinkNotice.set(null);

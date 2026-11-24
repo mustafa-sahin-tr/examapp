@@ -217,7 +217,7 @@ public class StudentToolTests : IDisposable
         _h.Api.Calls.ShouldAllBe(c => c.Method == "GET");
 
         var commit = await tool.CommitAsync(Student(), Args(new { topicId = 4 }));
-        _h.Api.Calls.Last().Body.ShouldBe("""{"subjectId":null,"topicId":4,"subTopicId":null}""");
+        _h.Api.Calls.Last().Body.ShouldBe("""{"startedVia":"Assistant","subjectId":null,"topicId":4,"subTopicId":null}""");
         commit.UiActions!.Single()["route"]!.GetValue<string>().ShouldBe("/practice?session=12");
     }
 
@@ -230,7 +230,7 @@ public class StudentToolTests : IDisposable
         (await tool.ExecuteAsync(Student(), Args(new { targetCount = 10 }))).ErrorCode.ShouldBe("InvalidArguments");
 
         var commit = await tool.CommitAsync(Student(), Args(new { topicIds = new[] { 1, 1, 2 }, targetCount = 500, mistakes = false }));
-        _h.Api.Calls.Single().Body.ShouldBe("""{"topicIds":[1,2],"targetCount":50}""");
+        _h.Api.Calls.Single().Body.ShouldBe("""{"topicIds":[1,2],"targetCount":50,"startedVia":"Assistant"}""");
         commit.Data!["sessionId"]!.GetValue<int>().ShouldBe(33);
     }
 

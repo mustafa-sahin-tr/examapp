@@ -99,7 +99,8 @@ public sealed class DailyQuestionSetService : IDailyQuestionSetService
             // Sınıf = setin sınıfı (havuzla aynı).
             var scope = await ValidateScopeAsync(scopeRequest, set.GradeId, ct);
             var selection = scope == null ? null : await SelectScopedAsync(set, scope, today, scopeSubjectId, ct);
-            await LinkNewSessionAsync(set, selection, ct);
+            await LinkNewSessionAsync(set, selection,
+                PracticeStartedVias.TryParse(scopeRequest?.StartedVia, out var via) ? via : PracticeStartedVia.Ui, ct);
 
             // Kazanan istek (bizimki ya da eşzamanlı rakip) seti yeniden üretmiş olabilir: canlı listeyi ve kapsamı tazele.
             set = await LoadSetAsync(student.Id, today, ct)
@@ -383,7 +384,8 @@ public sealed class DailyQuestionSetService : IDailyQuestionSetService
     /// sorularını kapsamlı seçimle değiştirir. Bağlama koşullu olduğu için set yalnız oturumsuzken (hiç cevap yokken) değişir.
     /// </para>
     /// </summary>
-    private async Task<int> LinkNewSessionAsync(SetSnapshot set, ScopedSelection? selection, CancellationToken ct)
+    private async Task<int> LinkNewSessionAsync(SetSnapshot set, ScopedSelection? selection, PracticeStartedVia startedVia,
+        CancellationToken ct)
     {
         PracticeSession? attempt = null;
         var newItems = new List<DailyQuestionSetItem>();
@@ -404,7 +406,8 @@ public sealed class DailyQuestionSetService : IDailyQuestionSetService
                 StudentId = set.StudentId,
                 GradeId = set.GradeId,
                 StartTime = DateTime.UtcNow,
-                Status = PracticeSessionStatus.Active
+                Status = PracticeSessionStatus.Active,
+                StartedVia = startedVia
             };
             _context.PracticeSessions.Add(attempt);
             await _context.SaveChangesAsync(ct);

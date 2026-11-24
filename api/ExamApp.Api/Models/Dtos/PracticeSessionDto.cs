@@ -8,6 +8,10 @@ namespace ExamApp.Api.Models.Dtos;
 /// <summary>POST api/practice/sessions gövdesi. İkisi de boşsa: öğrencinin sınıfı + tüm dersler.</summary>
 public class PracticeSessionStartDto
 {
+    /// <summary>Issue #524: Ui (default) | Assistant | DeepLink | Notification; another value is 400.</summary>
+    [MaxLength(20)]
+    public string? StartedVia { get; set; }
+
     [MaxLength(50)]
     public List<int>? SubjectIds { get; set; }
 
@@ -227,3 +231,6 @@ public class PracticeAnswerResultDto
     public int AnsweredCount { get; set; }
     public int CorrectCount { get; set; }
 }
+
+/// <summary>Issue #524: number of sessions with one start source and kind (<see cref="Daily"/>: the daily set's session).</summary>
+public sealed record PracticeStartCountDto(ExamApp.Api.Data.PracticeStartedVia StartedVia, bool Daily, int Count);

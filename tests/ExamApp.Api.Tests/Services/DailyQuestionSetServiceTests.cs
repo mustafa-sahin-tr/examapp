@@ -117,6 +117,79 @@ public class DailyQuestionSetServiceTests : IDisposable
 
     private static readonly DateOnly Today = new(2026, 10, 5);
 
+    // ---- #524: başlatma kaynağı ----
+
+    [Theory]
+    [InlineData(null, true, PracticeStartedVia.Ui)]
+    [InlineData("", true, PracticeStartedVia.Ui)]
+    [InlineData("assistant", true, PracticeStartedVia.Assistant)]
+    [InlineData("DeepLink", true, PracticeStartedVia.DeepLink)]
+    [InlineData("Notification", true, PracticeStartedVia.Notification)]
+    [InlineData("1", false, PracticeStartedVia.Ui)]
+    [InlineData("Admin", false, PracticeStartedVia.Ui)]
+    public void StartedVia_OnlyDefinedNamesParse_Issue524(string? value, bool ok, PracticeStartedVia expected)
+    {
+        PracticeStartedVias.TryParse(value, out var via).ShouldBe(ok);
+        via.ShouldBe(expected);
+    }
+
+    [Fact]
+    public async Task StartEndpoints_InvalidStartedVia_Are400BeforeAnyWork_Issue524()
+    {
+        var practice = Substitute.For<IPracticeSessionService>();
+        var daily = Substitute.For<IDailyQuestionSetService>();
+        var students = Substitute.For<ExamApp.Api.Services.Interfaces.IStudentService>();
+        var controller = new ExamApp.Api.Controllers.PracticeController(practice, daily, students);
+        var entitlements = Substitute.For<ExamApp.Api.Services.Entitlements.IEntitlementService>();
+
+        var free = await controller.StartSession(new PracticeSessionStartDto { StartedVia = "Hack" }, entitlements, default);
+        var day = await controller.StartDaily(entitlements, new DailyStartRequestDto { StartedVia = "7" }, default);
+
+        free.ShouldBeOfType<Microsoft.AspNetCore.Mvc.BadRequestObjectResult>();
+        day.ShouldBeOfType<Microsoft.AspNetCore.Mvc.BadRequestObjectResult>();
+        practice.ReceivedCalls().ShouldBeEmpty();
+        daily.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task StartedVia_IsStoredOnNewSessions_AndCountedBySourceAndKind_Issue524()
+    {
+        var w = await SeedWorldAsync();
+        await AddQuestionsAsync(w, 10);
+        var a = await AddStudentAsync(w, 1);
+        var b = await AddStudentAsync(w, 2);
+
+        DailyStartResultDto dailyA;
+        await using (var ctx = _db.NewContext())
+            dailyA = (await NewDaily(ctx).StartTodayAsync(a, new DailyStartRequestDto { StartedVia = "Assistant" }))!;
+        // Idempotent start: an existing session keeps its source.
+        await using (var ctx = _db.NewContext())
+            (await NewDaily(ctx).StartTodayAsync(a, new DailyStartRequestDto { StartedVia = "Notification" }))!.SessionId.ShouldBe(dailyA.SessionId);
+        await StartAsync(b); // daily, no source → Ui
+        int freeUi, freeLink;
+        await using (var ctx = _db.NewContext())
+        {
+            freeUi = (await NewPractice(ctx).StartAsync(a, new PracticeSessionStartDto())).Id;
+            freeLink = (await NewPractice(ctx).StartAsync(b, new PracticeSessionStartDto { StartedVia = "DeepLink" })).Id;
+        }
+        await AddPracticeAnswerAsync(a, w, (await SetQuestionIdsAsync(a.Id, Today))[0], new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc)); // old, Ui
+
+        await using (var ctx = _db.NewContext())
+        {
+            (await ctx.PracticeSessions.FindAsync(dailyA.SessionId))!.StartedVia.ShouldBe(PracticeStartedVia.Assistant);
+            (await ctx.PracticeSessions.FindAsync(freeUi))!.StartedVia.ShouldBe(PracticeStartedVia.Ui);
+            (await ctx.PracticeSessions.FindAsync(freeLink))!.StartedVia.ShouldBe(PracticeStartedVia.DeepLink);
+
+            var counts = await NewPractice(ctx).CountStartsBySourceAsync(new DateTime(2026, 9, 28, 0, 0, 0, DateTimeKind.Utc));
+            counts.ShouldBe([
+                new PracticeStartCountDto(PracticeStartedVia.Ui, false, 1),
+                new PracticeStartCountDto(PracticeStartedVia.Ui, true, 1),
+                new PracticeStartCountDto(PracticeStartedVia.Assistant, true, 1),
+                new PracticeStartCountDto(PracticeStartedVia.DeepLink, false, 1),
+            ]);
+        }
+    }
+
     // ---- saf seçim kuralı ----
 
     [Fact]

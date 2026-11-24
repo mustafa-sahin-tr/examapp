@@ -63,7 +63,11 @@ public interface IAssistantWriteTool : IAssistantTool
 public static class Roles
 {
     public const string Student = "Student";
+    public const string Parent = "Parent";
     public static readonly IReadOnlyCollection<string> StudentOnly = [Student];
+    /// <summary>Issue #1336 (Phase 1b).</summary>
+    public static readonly IReadOnlyCollection<string> ParentOnly = [Parent];
+    public static readonly IReadOnlyCollection<string> StudentAndParent = [Student, Parent];
 }
 
 /// <summary>Helpers for tool argument parsing and result shaping.</summary>

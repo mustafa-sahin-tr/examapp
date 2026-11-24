@@ -28,13 +28,13 @@ public sealed class FakeExamApi : HttpMessageHandler
         return this;
     }
 
-    public FakeExamApi OnAny(string method, string path, Func<Uri, string?, object?> respond)
+    public FakeExamApi OnAny(string method, string path, Func<Uri, string?, object?> respond, HttpStatusCode status = HttpStatusCode.OK)
     {
-        _computed[$"{method} {path}"] = respond;
+        _computed[$"{method} {path}"] = (respond, status);
         return this;
     }
 
-    private readonly Dictionary<string, Func<Uri, string?, object?>> _computed = new();
+    private readonly Dictionary<string, (Func<Uri, string?, object?> Respond, HttpStatusCode Status)> _computed = new();
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
     {
@@ -46,8 +46,8 @@ public sealed class FakeExamApi : HttpMessageHandler
         {
             if (!_computed.TryGetValue($"{request.Method.Method} {request.RequestUri.AbsolutePath.TrimStart('/')}", out var respond))
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
-            var computed = respond(request.RequestUri, body);
-            route = (HttpStatusCode.OK, computed is null ? null : JsonSerializer.Serialize(computed, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+            var computed = respond.Respond(request.RequestUri, body);
+            route = (respond.Status, computed is null ? null : JsonSerializer.Serialize(computed, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
         }
         var response = new HttpResponseMessage(route.Status);
         if (route.Json is not null)
@@ -88,7 +88,13 @@ public sealed class ToolHarness : IDisposable
         new GetMyPerformanceSummaryTool(Downstream), new GetDailySetStatusTool(Downstream), new ListMyCompletedTestsTool(Downstream),
         new GetTestResultTool(Downstream), new StartDailyPracticeTool(Downstream), new StartPracticeSessionTool(Downstream),
         new SearchHelpTool(Guide), new UiOpenScreenTool(), new UiSuggestActionsTool(),
+        new ListMyChildrenTool(Downstream), new GetChildWeeklySummaryTool(Downstream), new ListChildAssignmentsTool(Downstream),
+        new GetChildTestResultTool(Downstream), new GetChildWeakTopicsTool(Downstream), new GetChildProgressTool(Downstream),
+        new GetChildScheduleTool(Downstream),
     ];
+
+    /// <summary>Issue #1336: the shared tools (help, screens, chips) serve both roles.</summary>
+    public static readonly string[] SharedTools = ["search_help", "ui_open_screen", "ui_suggest_actions"];
 
     /// <summary>The real embedded guide (#506); loaded once, it is immutable.</summary>
     public static readonly AssistantService.Help.HelpIndex Guide = AssistantService.Help.HelpIndex.LoadEmbedded();
@@ -98,6 +104,9 @@ public sealed class ToolHarness : IDisposable
 
     public static ToolContext Student(string sub = "student-1", Guid? conversationId = null) =>
         new(sub, ["Student"], "token-" + sub, "tr-TR", conversationId);
+
+    public static ToolContext Parent(string sub = "parent-1", Guid? conversationId = null) =>
+        new(sub, ["Parent"], "token-" + sub, "tr-TR", conversationId);
 
     public async Task<Guid> ConversationAsync(string sub = "student-1")
     {

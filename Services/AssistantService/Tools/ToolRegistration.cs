@@ -16,6 +16,14 @@ public static class ToolRegistration
         services.AddScoped<IAssistantTool, GetTestResultTool>();
         services.AddScoped<IAssistantTool, StartDailyPracticeTool>();
         services.AddScoped<IAssistantTool, StartPracticeSessionTool>();
+        // #1336 (Phase 1b): parent read tools.
+        services.AddScoped<IAssistantTool, ListMyChildrenTool>();
+        services.AddScoped<IAssistantTool, GetChildWeeklySummaryTool>();
+        services.AddScoped<IAssistantTool, ListChildAssignmentsTool>();
+        services.AddScoped<IAssistantTool, GetChildTestResultTool>();
+        services.AddScoped<IAssistantTool, GetChildWeakTopicsTool>();
+        services.AddScoped<IAssistantTool, GetChildProgressTool>();
+        services.AddScoped<IAssistantTool, GetChildScheduleTool>();
         services.AddScoped<IAssistantTool, SearchHelpTool>();
         services.AddScoped<IAssistantTool, UiOpenScreenTool>();
         services.AddScoped<IAssistantTool, UiSuggestActionsTool>();

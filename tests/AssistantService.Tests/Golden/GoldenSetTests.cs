@@ -19,7 +19,7 @@ namespace AssistantService.Tests.Golden;
 /// <code>ASSISTANT_GOLDEN_API_KEY=… dotnet test tests/AssistantService.Tests --filter Category=Golden</code>
 /// Optional: <c>ASSISTANT_GOLDEN_MODEL</c> (default the service's model), <c>ASSISTANT_GOLDEN_JUDGE_MODEL</c>,
 /// <c>ASSISTANT_GOLDEN_ONLY</c> (comma-separated scenario ids), <c>ASSISTANT_GOLDEN_MIN_PASS</c> (0..1, default 0.8),
-/// <c>ASSISTANT_GOLDEN_REPORT</c> (markdown report path). Parent scenarios join when the parent tools exist.
+/// <c>ASSISTANT_GOLDEN_REPORT</c> (markdown report path). Parent scenarios: <c>Golden/parent.json</c> (#1336).
 /// </summary>
 [Trait("Category", "Golden")]
 public sealed class GoldenSetTests(ITestOutputHelper output)
@@ -27,13 +27,19 @@ public sealed class GoldenSetTests(ITestOutputHelper output)
     private const string DefaultJudgeModel = "claude-sonnet-5-5";
 
     [Fact]
-    public async Task Student_golden_set()
+    public Task Student_golden_set() => RunSetAsync("student.json", "Student");
+
+    /// <summary>#1336 (Phase 1b, #509 C): two linked children, the second on a plan without analysis.</summary>
+    [Fact]
+    public Task Parent_golden_set() => RunSetAsync("parent.json", "Parent");
+
+    private async Task RunSetAsync(string file, string role)
     {
         var apiKey = Environment.GetEnvironmentVariable("ASSISTANT_GOLDEN_API_KEY");
         if (string.IsNullOrWhiteSpace(apiKey))
             Assert.Skip("ASSISTANT_GOLDEN_API_KEY is not set (the golden set calls the paid model).");
 
-        var fixture = JsonNode.Parse(await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "Golden", "student.json")))!.AsObject();
+        var fixture = JsonNode.Parse(await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "Golden", file)))!.AsObject();
         var only = Environment.GetEnvironmentVariable("ASSISTANT_GOLDEN_ONLY")?.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         var scenarios = fixture["scenarios"]!.AsArray().Select(s => s!.AsObject())
             .Where(s => only is null || only.Contains(s["id"]!.GetValue<string>())).ToList();
@@ -46,17 +52,20 @@ public sealed class GoldenSetTests(ITestOutputHelper output)
         var results = new List<ScenarioResult>();
         foreach (var scenario in scenarios)
         {
-            var result = await RunAsync(client, model, fixture, scenario);
+            var result = await RunAsync(client, model, fixture, scenario, role);
             if (result.Failures.Count == 0 && scenario["rubric"]?.GetValue<string>() is { } rubric)
-                result.Failures.AddRange(await JudgeAsync(client, judgeModel, fixture["facts"]!.GetValue<string>(), scenario, result.Answer, rubric));
+                result.Failures.AddRange(await JudgeAsync(client, judgeModel, fixture["facts"]!.GetValue<string>(), scenario, result.Answer, rubric, role));
             results.Add(result);
             output.WriteLine($"{(result.Passed ? "PASS" : "FAIL")} {result.Id} [{string.Join(", ", result.Tools)}] ${result.CostUsd:0.00000} {string.Join("; ", result.Failures)}");
+            if (!result.Passed)
+                output.WriteLine("  answer: " + result.Answer.ReplaceLineEndings(" "));
         }
 
-        var report = Report(results, model, judgeModel);
+        var report = Report(results, model, judgeModel, role);
         output.WriteLine(report);
         var reportPath = Environment.GetEnvironmentVariable("ASSISTANT_GOLDEN_REPORT") is { Length: > 0 } p
-            ? p : Path.Combine(AppContext.BaseDirectory, "golden-report.md");
+            ? (role == "Student" ? p : Path.ChangeExtension(p, null) + "-" + role.ToLowerInvariant() + ".md")
+            : Path.Combine(AppContext.BaseDirectory, $"golden-report-{role.ToLowerInvariant()}.md");
         await File.WriteAllTextAsync(reportPath, report);
 
         var passRate = results.Count == 0 ? 1m : (decimal)results.Count(r => r.Passed) / results.Count;
@@ -68,10 +77,11 @@ public sealed class GoldenSetTests(ITestOutputHelper output)
         public bool Passed => Failures.Count == 0;
     }
 
-    private static async Task<ScenarioResult> RunAsync(IChatClient client, string model, JsonObject fixture, JsonObject scenario)
+    private static async Task<ScenarioResult> RunAsync(IChatClient client, string model, JsonObject fixture, JsonObject scenario, string role)
     {
         var id = scenario["id"]!.GetValue<string>();
         using var h = new ChatHarness(client);
+        h.Options.Roles = [role];
         h.Options.Model = model;
         h.Options.MaxToolCallsPerTurn = new AssistantOptions().MaxToolCallsPerTurn;
         Load(h.Tools.Api, fixture);
@@ -88,7 +98,8 @@ public sealed class GoldenSetTests(ITestOutputHelper output)
             ListSink sink;
             try
             {
-                sink = await h.TurnAsync(message, conversationId, sub, new ChatContext("/dashboard", null, null, "tr"));
+                sink = await h.TurnAsync(message, conversationId, sub,
+                    new ChatContext(role == "Parent" ? "/parent" : "/dashboard", null, null, "tr"), role);
             }
             catch (Exception ex)
             {
@@ -129,7 +140,7 @@ public sealed class GoldenSetTests(ITestOutputHelper output)
             failures.AddRange(await ConfirmAsync(h, sub, conversationId, confirms[^1].Payload, commit));
 
         // The crisis tool is handled by the runner (no tool events): the reply must be the fixed safe answer (#496).
-        if (scenario["crisisResponse"]?.GetValue<bool>() == true && answer != SystemPrompt.CrisisResponse)
+        if (scenario["crisisResponse"]?.GetValue<bool>() == true && answer != SystemPrompt.CrisisResponseFor(role))
             failures.Add("reply is not the fixed crisis response");
 
         var normalized = SearchText.Normalize(answer);
@@ -163,14 +174,17 @@ public sealed class GoldenSetTests(ITestOutputHelper output)
     }
 
     private static async Task<IEnumerable<string>> JudgeAsync(IChatClient client, string model, string facts, JsonObject scenario,
-        string answer, string rubric)
+        string answer, string rubric, string role)
     {
+        var user = role == "Parent" ? "parent" : "student";
         var prompt = new StringBuilder()
-            .AppendLine("You grade one reply of a study assistant for Turkish middle-school students.")
-            .AppendLine("The assistant's tools returned data matching these facts (the student sees cards with them):")
+            .AppendLine(role == "Parent"
+                ? "You grade one reply of the assistant of a Turkish learning platform, talking to a parent about their children."
+                : "You grade one reply of a study assistant for Turkish middle-school students.")
+            .AppendLine($"The assistant's tools returned data matching these facts (the {user} sees cards with them):")
             .AppendLine(facts)
             .AppendLine()
-            .AppendLine("Student message(s):")
+            .AppendLine(role == "Parent" ? "Parent message(s):" : "Student message(s):")
             .AppendLine(string.Join("\n", Strings(scenario["messages"])))
             .AppendLine()
             .AppendLine("Assistant reply:")
@@ -203,9 +217,11 @@ public sealed class GoldenSetTests(ITestOutputHelper output)
         {
             var space = key.IndexOf(' ');
             var snapshot = body?.ToJsonString();
-            api.OnAny(key[..space], key[(space + 1)..], (_, _) => snapshot is null ? null : JsonNode.Parse(snapshot));
+            // #1336: a body with "__status" answers that status (a plan without analysis → 403).
+            var status = body is JsonObject o && o["__status"]?.GetValue<int>() is { } code ? (System.Net.HttpStatusCode)code : System.Net.HttpStatusCode.OK;
+            api.OnAny(key[..space], key[(space + 1)..], (_, _) => snapshot is null ? null : JsonNode.Parse(snapshot), status);
         }
-        var taxonomy = fixture["taxonomy"]!.AsArray().Select(t => t!.AsObject()).ToList();
+        var taxonomy = (fixture["taxonomy"]?.AsArray() ?? []).Select(t => t!.AsObject()).ToList();
         api.OnAny("GET", "api/subject/search", (uri, _) =>
         {
             var q = Uri.UnescapeDataString(System.Web.HttpUtility.ParseQueryString(uri.Query)["q"] ?? "");
@@ -218,12 +234,12 @@ public sealed class GoldenSetTests(ITestOutputHelper output)
     private static IEnumerable<string> Strings(JsonNode? node) =>
         node is JsonArray a ? a.Select(x => x!.GetValue<string>()) : [];
 
-    private static string Report(List<ScenarioResult> results, string model, string judgeModel)
+    private static string Report(List<ScenarioResult> results, string model, string judgeModel, string role)
     {
         var turns = results.Sum(r => r.Turns);
         var cost = results.Sum(r => r.CostUsd);
         var sb = new StringBuilder()
-            .AppendLine("## Assistant golden set (#509)")
+            .AppendLine($"## Assistant golden set (#509) — {role}")
             .AppendLine()
             .AppendLine($"Model `{model}`, judge `{judgeModel}`, prompt r{SystemPrompt.Revision}. " +
                 $"**{results.Count(r => r.Passed)} / {results.Count} passed.** Assistant cost {cost:0.0000} USD over {turns} turns " +

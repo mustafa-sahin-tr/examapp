@@ -198,8 +198,9 @@ public sealed class ChatTurnRunner(
             if (crisis)
                 {
                     // #496: fixed safe answer, not generated.
-                    await sink.SendAsync("text", new { delta = SystemPrompt.CrisisResponse });
-                    var fixedAnswer = new AiChatMessage(AiChatRole.Assistant, SystemPrompt.CrisisResponse);
+                    var crisisText = SystemPrompt.CrisisResponseFor(conversation.Role);
+                    await sink.SendAsync("text", new { delta = crisisText });
+                    var fixedAnswer = new AiChatMessage(AiChatRole.Assistant, crisisText);
                     turnMessages.Add((fixedAnswer, default));
                     break;
                 }

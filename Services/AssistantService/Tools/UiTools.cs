@@ -24,7 +24,14 @@ public static class UiScreens
         ["homework"] = new("/my-homework", false, Tools.Roles.StudentOnly),
         ["mockExams"] = new("/my-mock-exams", false, Tools.Roles.StudentOnly),
         ["worksheet"] = new("/test/{id}", true, Tools.Roles.StudentOnly),
+        // #1336: parent screens (the dashboard picks a child with ?child=<studentId>).
+        ["parentDashboard"] = new("/parent", false, Tools.Roles.ParentOnly),
+        ["childDashboard"] = new("/parent?child={id}", true, Tools.Roles.ParentOnly),
+        ["myChildren"] = new("/my-children", false, Tools.Roles.ParentOnly),
     };
+
+    /// <summary>All keys; <see cref="Route"/> checks the caller's role again on every call.</summary>
+    public static IEnumerable<string> AllKeys => Screens.Keys;
 
     public static IEnumerable<string> KeysFor(IReadOnlyCollection<string> roles) =>
         Screens.Where(s => s.Value.Roles.Any(roles.Contains)).Select(s => s.Key);
@@ -50,10 +57,10 @@ public static class UiScreens
 public sealed class UiOpenScreenTool : IAssistantTool
 {
     public string Name => "ui_open_screen";
-    public string Description => "Open a screen of the app for the user. Only the listed screens; practiceSession and worksheet need an id.";
-    public IReadOnlyCollection<string> Roles => Tools.Roles.StudentOnly;
+    public string Description => "Open a screen of the app for the user. Only screens of the user's role; practiceSession, worksheet and childDashboard (studentId) need an id. Students: dashboard, practice, practiceSession, mistakes, savedQuestions, profile, badges, homework, mockExams, worksheet. Parents: parentDashboard, childDashboard, myChildren.";
+    public IReadOnlyCollection<string> Roles => Tools.Roles.StudentAndParent;
     public JsonObject InputSchema => Schema(
-        ("screen", StringProp("Screen key.", 40, UiScreens.KeysFor(Tools.Roles.StudentOnly)), true),
+        ("screen", StringProp("Screen key.", 40, UiScreens.AllKeys), true),
         ("id", IntProp("Session or worksheet id when the screen needs one."), false));
 
     public Task<ToolResult> ExecuteAsync(ToolContext context, JsonElement args)
@@ -74,7 +81,7 @@ public sealed class UiSuggestActionsTool : IAssistantTool
 
     public string Name => "ui_suggest_actions";
     public string Description => "Show up to 4 follow-up chips the user can tap; each sends its prompt as the user's next message.";
-    public IReadOnlyCollection<string> Roles => Tools.Roles.StudentOnly;
+    public IReadOnlyCollection<string> Roles => Tools.Roles.StudentAndParent;
     public JsonObject InputSchema => Schema(("suggestions", new JsonObject
     {
         ["type"] = "array",

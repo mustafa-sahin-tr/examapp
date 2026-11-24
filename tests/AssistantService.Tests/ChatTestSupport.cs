@@ -103,11 +103,12 @@ public sealed class ChatHarness(IChatClient? client = null) : IDisposable
         new ChatModel(_client ?? Model), Limiter, new StaticOptions<AssistantOptions>(Options), Tools.Clock, NullLogger<ChatTurnRunner>.Instance);
 
     /// <summary>Runs one turn as <paramref name="sub"/>; returns the events.</summary>
-    public async Task<ListSink> TurnAsync(string message, Guid? conversationId = null, string sub = "student-1", ChatContext? context = null)
+    public async Task<ListSink> TurnAsync(string message, Guid? conversationId = null, string sub = "student-1", ChatContext? context = null,
+        string role = "Student")
     {
         await using var db = Tools.NewDb();
         var runner = Runner(db);
-        var tc = ToolHarness.Student(sub);
+        var tc = role == "Parent" ? ToolHarness.Parent(sub) : ToolHarness.Student(sub);
         var conversation = await runner.LoadOrCreateAsync(tc, conversationId, default) ?? throw new InvalidOperationException("not found");
         var sink = new ListSink();
         await runner.RunAsync(tc, conversation, new ChatRequest(conversationId, message, context), sink);

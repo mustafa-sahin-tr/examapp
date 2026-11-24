@@ -54,6 +54,8 @@ const KNOWN_ERRORS = new Set([
 ]);
 
 const STARTERS = ['weakTopics', 'dailySet', 'practice', 'help'] as const;
+/** #1336: velinin önerileri (çocuğun haftası, geciken ödev, zorlandığı konu, kılavuz). */
+const PARENT_STARTERS = ['childWeek', 'overdue', 'childWeakTopics', 'childPassword'] as const;
 
 /** `**kalın**` dışında biçim yok; metin olduğu gibi (innerHTML yok). */
 export interface TextSegment {
@@ -104,7 +106,7 @@ export class AssistantPanelComponent implements AfterViewInit {
   readonly closed = output<void>();
 
   readonly maxLength = ASSISTANT_MAX_MESSAGE_LENGTH;
-  readonly starters = STARTERS;
+
   readonly feedbackReasons = FEEDBACK_REASONS;
   readonly draft = signal('');
   readonly contextDismissed = signal(false);
@@ -123,6 +125,11 @@ export class AssistantPanelComponent implements AfterViewInit {
     }
     return 'student';
   });
+  /** Öneri anahtarları ve boş durum metni role göre (`starters.*`, `empty.*` ya da `parentStarters.*`, `parentEmpty.*`). */
+  readonly isParent = computed(() => this.roleKey() === 'parent');
+  readonly starters = computed<readonly string[]>(() => (this.isParent() ? PARENT_STARTERS : STARTERS));
+  readonly starterPrefix = computed(() => (this.isParent() ? 'parentStarters.' : 'starters.'));
+  readonly emptyPrefix = computed(() => (this.isParent() ? 'parentEmpty.' : 'empty.'));
 
   readonly tooLong = computed(() => this.draft().length > this.maxLength);
   readonly canSend = computed(() => !!this.draft().trim() && !this.tooLong() && !this.store.sending());

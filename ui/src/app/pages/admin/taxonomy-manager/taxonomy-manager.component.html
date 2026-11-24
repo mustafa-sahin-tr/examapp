@@ -101,21 +101,23 @@
                 role="button"
                 tabindex="0"
                 [class.selected]="s.id === selectedSubjectId()"
-                [class.with-grade-chips]="!isEditing('subject', s.id) && !!otherGradeNamesBySubject().get(s.id)?.length"
                 [attr.aria-pressed]="s.id === selectedSubjectId()"
                 (click)="selectSubject(s.id)"
                 (keydown.enter)="selectSubject(s.id)"
                 (keydown.space)="selectSubject(s.id); $event.preventDefault()"
               >
                 @if (!isEditing('subject', s.id)) {
-                  <span class="name" [title]="s.name">{{ s.name }}</span>
-                  <span class="meta">{{ t('subjects.topicCount', { count: gradeTopics(s).length }) }} · {{ t('subTopics.questionCount', { count: subjectQuestionCount(s) }) }}</span>
+                  <!-- Ad ve sayılar alt alta (konu satırları gibi): dar sütunda ad tam genişliği alır. -->
+                  <span class="row-text">
+                    <span class="name" [title]="s.name">{{ s.name }}</span>
+                    <span class="meta">{{ t('subjects.topicCount', { count: gradeTopics(s).length }) }} · {{ t('subTopics.questionCount', { count: subjectQuestionCount(s) }) }}</span>
+                  </span>
                   <span class="actions" (keydown)="$event.stopPropagation()">
                     <button
                       mat-icon-button
                       type="button"
-                      [attr.aria-label]="t('subjects.manageGrades')"
-                      [title]="t('subjects.manageGrades')"
+                      [attr.aria-label]="manageGradesLabel(s.id)"
+                      [matTooltip]="manageGradesLabel(s.id)"
                       (click)="manageGrades(s); $event.stopPropagation()"
                     >
                       <mat-icon>school</mat-icon>
@@ -138,25 +140,6 @@
                       <mat-icon>delete</mat-icon>
                     </button>
                   </span>
-                  <!-- Issue #380: chip'ler adın altında tam genişlikte ayrı satır; fazlası "+N" + tooltip. -->
-                  @let otherGrades = otherGradeNamesBySubject().get(s.id) ?? [];
-                  @if (otherGrades.length) {
-                    <span class="grade-chips" [attr.aria-label]="t('subjects.gradeChipsAria')">
-                      @for (gn of otherGrades.slice(0, maxVisibleGradeChips); track gn) {
-                        <span class="grade-chip">{{ gn }}</span>
-                      }
-                      @if (otherGrades.length > maxVisibleGradeChips) {
-                        @let hiddenGrades = otherGrades.slice(maxVisibleGradeChips);
-                        <!-- Görsel "+N" yalnız işaretçiyle (tooltip); ekran okuyucu tam metni gizli span'den okur. -->
-                        <span class="grade-chip grade-chip--more" aria-hidden="true" [matTooltip]="hiddenGrades.join(', ')"
-                          >+{{ hiddenGrades.length }}</span
-                        >
-                        <span class="cdk-visually-hidden">{{
-                          t('subjects.moreGradesAria', { count: hiddenGrades.length, names: hiddenGrades.join(', ') })
-                        }}</span>
-                      }
-                    </span>
-                  }
                 } @else {
                   <span
                     class="edit-row"

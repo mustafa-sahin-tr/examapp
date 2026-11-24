@@ -555,28 +555,40 @@ describe('TaxonomyManagerComponent', () => {
         expect(meta.textContent?.trim()).toMatch(/^1 alt · \d+ soru$/);
     });
 
-    // ── Issue #282: ders satırı chip'leri seçili sınıfı tekrarlamaz ─────────
+    // ── Issue #282: ders satırında sınıf çipi yok; diğer sınıflar "Sınıfları yönet" ipucunda ─────────
 
-    /** Ders satırı (sırasıyla) → o satırdaki chip metinleri. */
-    const subjectRowChips = (): string[][] => Array.from(fixture.nativeElement.querySelectorAll('.column:nth-child(1) .item') as NodeListOf<HTMLElement>).map((row) => Array.from(row.querySelectorAll('.grade-chip')).map((c) => c.textContent?.trim() ?? ''));
+    const subjectRows = (): HTMLElement[] =>
+        Array.from(fixture.nativeElement.querySelectorAll('.column:nth-child(1) .item') as NodeListOf<HTMLElement>);
+    const gradesButtonLabel = (row: HTMLElement): string =>
+        (row.querySelector('.actions button') as HTMLElement).getAttribute('aria-label') ?? '';
 
-    it('subjectRow_GradeSelected_HidesSelectedGradeChipAndShowsOtherGrades', () => {
+    it('subjectRow_GradeSelected_ShowsNoGradeChipsAndNameKeepsRoom', () => {
+        fixture = configureWithGrade(5);
+        const row = subjectRows()[0];
+
+        // Sınıf üstteki filtreden belli: satırda çip yok, ad tam metni title'da, meta ve üç aksiyon görünür.
+        expect(row.querySelector('.grade-chip, .grade-chips')).toBeNull();
+        expect((row.querySelector('.name') as HTMLElement).title).toBe('Matematik');
+        expect(row.querySelector('.meta')).not.toBeNull();
+        expect(row.querySelectorAll('.actions button').length).toBe(3);
+    });
+
+    it('manageGradesLabel_ListsOtherGradesOnly', () => {
         fixture = configureWithGrade(5);
 
-        // Matematik [5, 11] → seçili 5 gizli, yalnız 11 görünür.
-        expect(subjectRowChips()).toEqual([['11. Sınıf']]);
+        // Matematik [5, 11]: seçili 5 tekrarlanmaz.
+        expect(gradesButtonLabel(subjectRows()[0])).toBe('Sınıfları Yönet · ayrıca: 11. Sınıf');
     });
 
-    it('subjectRow_LinkedOnlyToSelectedGrade_RendersNoChipContainer', () => {
+    it('manageGradesLabel_SubjectOnlyInSelectedGrade_IsPlain', () => {
         fixture = configureWithGrade(11);
 
-        // Matematik [5, 11] → 5. Sınıf; Fizik yalnız [11] → hiç chip (boş kapsayıcı da yok).
-        expect(subjectRowChips()).toEqual([['5. Sınıf'], []]);
-        const rows = fixture.nativeElement.querySelectorAll('.column:nth-child(1) .item') as NodeListOf<HTMLElement>;
-        expect(rows[1].querySelector('.grade-chips')).toBeNull();
+        // Matematik [5, 11] → 5. Sınıf; Fizik yalnız [11] → düz etiket.
+        expect(gradesButtonLabel(subjectRows()[0])).toBe('Sınıfları Yönet · ayrıca: 5. Sınıf');
+        expect(gradesButtonLabel(subjectRows()[1])).toBe('Sınıfları Yönet');
     });
 
-    it('subjectRow_GradeFilterChanges_RecomputesChipsForNewSelection', () => {
+    it('otherGradeNames_GradeFilterChanges_Recomputes', () => {
         fixture = configureWithGrade(5);
         component = fixture.componentInstance;
         expect(component.otherGradeNamesBySubject().get(1)).toEqual(['11. Sınıf']);
@@ -586,75 +598,11 @@ describe('TaxonomyManagerComponent', () => {
 
         expect(component.otherGradeNamesBySubject().get(1)).toEqual(['5. Sınıf']);
         expect(component.otherGradeNamesBySubject().get(2)).toEqual([]);
-        expect(subjectRowChips()).toEqual([['5. Sınıf'], []]);
     });
 
-    // ── Issue #380: chip'ler adın altında ayrı satırda; 3'ten fazlası "+N" ile özetlenir ─────────
-
-    /** Seçili 5. sınıf + `others` adet başka sınıfa bağlı tek ders. */
-    function configureWithManyGrades(others: number): ComponentFixture<TaxonomyManagerComponent> {
-        const manyGrades = [{ id: 5, name: '5. Sınıf' }];
-        for (let i = 0; i < others; i++) {
-            manyGrades.push({ id: 6 + i, name: `${6 + i}. Sınıf` });
-        }
-        const subject: TaxonomySubject = { id: 1, name: 'Matematik', gradeIds: manyGrades.map((g) => g.id), topics: [] };
-        const f = configure();
-        gradesService.getGrades.mockReturnValue(of(manyGrades));
-        adminService.getTaxonomy.mockReturnValue(of({ subjects: [subject], grades: manyGrades }));
-        f.detectChanges();
-        f.componentInstance.setGradeFilter(5);
-        f.detectChanges();
-        return f;
-    }
-
-    const subjectRow = (): HTMLElement => fixture.nativeElement.querySelector('.column:nth-child(1) .item');
-
-    it('subjectRow_ManyOtherGrades_ShowsFirstThreeChipsAndPlusNSummary', () => {
-        fixture = configureWithManyGrades(5);
-
-        expect(subjectRowChips()).toEqual([['6. Sınıf', '7. Sınıf', '8. Sınıf', '+2']]);
-        const more = subjectRow().querySelector('.grade-chip--more') as HTMLElement;
-        // Görsel "+N" ekran okuyucudan gizli; tam metin satır içindeki görünmez span'de.
-        expect(more.getAttribute('aria-hidden')).toBe('true');
-        expect(more.hasAttribute('aria-label')).toBe(false);
-        const hidden = subjectRow().querySelector('.grade-chips .cdk-visually-hidden') as HTMLElement;
-        expect(hidden.textContent?.trim()).toBe('2 sınıf daha: 9. Sınıf, 10. Sınıf');
-    });
-
-    it('subjectRow_ThreeOtherGrades_NoPlusNChip', () => {
-        fixture = configureWithManyGrades(3);
-
-        expect(subjectRowChips()).toEqual([['6. Sınıf', '7. Sınıf', '8. Sınıf']]);
-        expect(subjectRow().querySelector('.grade-chip--more')).toBeNull();
-        expect(subjectRow().querySelector('.cdk-visually-hidden')).toBeNull();
-    });
-
-    it('subjectRow_WithChips_ChipsAreOutsideNameAndRowWraps', () => {
-        fixture = configureWithManyGrades(2);
-        const row = subjectRow();
-        const name = row.querySelector('.name') as HTMLElement;
-
-        // Chip'ler ad bloğunun içinde değil, satırın doğrudan çocuğu (ayrı satıra kırılır); ad tam metni title'da.
-        expect(name.querySelector('.grade-chip')).toBeNull();
-        expect(row.querySelector(':scope > .grade-chips')).not.toBeNull();
-        expect(row.classList).toContain('with-grade-chips');
-        expect(getComputedStyle(row).flexWrap).toBe('wrap');
-        expect(name.title).toBe('Matematik');
-        // Konu sayısı ve aksiyonlar görünür kalır.
-        expect(row.querySelector('.meta')).not.toBeNull();
-        expect(row.querySelectorAll('.actions button').length).toBe(3);
-    });
-
-    it('subjectRow_WithoutOtherGrades_DoesNotWrap', () => {
-        fixture = configureWithGrade(11);
-        const rows = fixture.nativeElement.querySelectorAll('.column:nth-child(1) .item') as NodeListOf<HTMLElement>;
-
-        expect(rows[1].classList).not.toContain('with-grade-chips');
-    });
-
-    it('moreGradesAria_ExistsInTrAndEn', () => {
-        expect(adminTr.taxonomy.subjects.moreGradesAria).toContain('{{count}}');
-        expect(adminEn.taxonomy.subjects.moreGradesAria).toContain('{{names}}');
+    it('manageGradesAlso_ExistsInTrAndEn', () => {
+        expect(adminTr.taxonomy.subjects.manageGradesAlso).toContain('{{names}}');
+        expect(adminEn.taxonomy.subjects.manageGradesAlso).toContain('{{base}}');
     });
 
     it('manageGrades_OpensDialogWithAllSubjectGradesIncludingSelected', async () => {

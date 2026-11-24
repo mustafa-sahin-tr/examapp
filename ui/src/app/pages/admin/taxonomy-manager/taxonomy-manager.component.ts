@@ -37,8 +37,6 @@ const ADMIN_SCOPE = 'admin';
 /** Issue #853: son seçilen sınıf bu cihazda hatırlanır; açılışta o (yoksa ilk) sınıf seçili gelir. */
 export const TAXONOMY_GRADE_STORAGE_KEY = 'admin.taxonomy.gradeId';
 /** Issue #380: ders satırında gösterilen en fazla sınıf chip'i (fazlası "+N"). */
-export const MAX_VISIBLE_GRADE_CHIPS = 3;
-
 @Component({
   selector: 'app-taxonomy-manager',
   standalone: true,
@@ -103,12 +101,10 @@ export class TaxonomyManagerComponent implements OnInit {
   readonly selectedSubTopic = computed(
     () => this.subTopics().find((st) => st.id === this.selectedSubTopicId()) ?? null
   );
-  /** Issue #380: ders satırında gösterilen en fazla sınıf chip'i; fazlası "+N" chip'inde (tooltip) özetlenir. */
-  readonly maxVisibleGradeChips = MAX_VISIBLE_GRADE_CHIPS;
   /**
-   * Issue #282: ders satırı chip'leri — dersin seçili sınıf DIŞINDAKİ sınıflarının adları (ders id → adlar).
-   * Seçili sınıf üst filtreden zaten belli; tekrarlanmaz. Filtre/ders/sınıf listesi değişince yeniden hesaplanır.
-   * Dersin tüm sınıfları "Sınıfları yönet" diyaloğunda görünmeye devam eder.
+   * Issue #282: dersin seçili sınıf DIŞINDAKİ sınıflarının adları (ders id → adlar). Seçili sınıf üst filtreden zaten belli.
+   * Satırda çip olarak gösterilmez (dar sütunda ders adını kesiyordu, filtre seçiliyken gereksiz); "Sınıfları yönet" düğmesinin
+   * ipucuna yazılır, tam liste diyalogda.
    */
   readonly otherGradeNamesBySubject = computed(() => {
     const selected = this.selectedGradeFilter();
@@ -120,6 +116,14 @@ export class TaxonomyManagerComponent implements OnInit {
       ])
     );
   });
+  /** "Sınıfları yönet" düğmesinin etiketi; ders başka sınıflarda da varsa onları sayar. */
+  manageGradesLabel(subjectId: number): string {
+    const base = this.text('subjects.manageGrades');
+    const others = this.otherGradeNamesBySubject().get(subjectId) ?? [];
+    return others.length ? this.text('subjects.manageGradesAlso', { base, names: others.join(', ') }) : base;
+  }
+
+
   /** Çalışma linkleri paneline verilen kapsam adı: alt konu seçiliyse alt konu, değilse konu. */
   readonly studyLinkScopeName = computed(
     () => this.selectedSubTopic()?.name ?? this.selectedTopic()?.name ?? ''

@@ -258,6 +258,43 @@
   padding-bottom: 0;
 }
 
+// #1358: satırdaki ilk sayfa küçük resmi.
+.bis-thumb-cell {
+  vertical-align: top;
+}
+
+.bis-thumb {
+  display: block;
+  width: 64px;
+  padding: 2px;
+  border: 1px solid var(--ms-border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: zoom-in;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--ms-action-border-focus);
+  }
+
+  img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 4px;
+    background: var(--ms-surface);
+  }
+
+  &__empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 3 / 4;
+    color: var(--ms-text-medium);
+  }
+}
+
 .bis-test {
   white-space: nowrap;
 

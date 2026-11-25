@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.BookImport;
 using ExamApp.Api.Services.Entitlements;
@@ -312,16 +313,35 @@ public class BookImportController : BaseController
         };
     }
 
-    /// <summary>Issue #1020: işin sayfa görseli (WebP); iş sahibine (ve Admin'e).</summary>
+    /// <summary>
+    /// Issue #1020: işin sayfa görseli (WebP); iş sahibine (ve Admin'e). #1358: <c>width</c> (64–800) verilirse küçük resim döner
+    /// (onay ekranında satır başına önizleme).
+    /// </summary>
     [HttpGet("{id:guid}/pages/{filePage:int}")]
-    public async Task<IActionResult> GetPage(Guid id, int filePage, [FromQuery] bool original = false, CancellationToken ct = default)
+    public async Task<IActionResult> GetPage(Guid id, int filePage, [FromQuery] bool original = false,
+        [FromQuery] int? width = null, CancellationToken ct = default)
     {
+        if (width is < ThumbnailMinWidth or > ThumbnailMaxWidth)
+            return BadRequest(new { message = $"width must be between {ThumbnailMinWidth} and {ThumbnailMaxWidth}." });
         var owner = await ResolveOwnerAsync(ct);
         if (owner is null)
             return UserNotResolved(new { message = _localizer["bookImport.userNotResolved"].Value });
         var image = await _service.GetPageImageAsync(owner, id, filePage, ct, original);
-        return image is null ? NotFound(new { message = _localizer["bookImport.notFound"].Value }) : File(image, "image/webp");
+        if (image is null)
+            return NotFound(new { message = _localizer["bookImport.notFound"].Value });
+        if (width is not { } w)
+            return File(image, "image/webp");
+
+        await using (image)
+        {
+            using var buffer = new MemoryStream();
+            await image.CopyToAsync(buffer, ct);
+            return File(SkiaImaging.Thumbnail(buffer.ToArray(), w), "image/webp");
+        }
     }
+
+    private const int ThumbnailMinWidth = 64;
+    private const int ThumbnailMaxWidth = 800;
 
     /// <summary>Issue #1021: kurulum onay ekranı (testler, cevap anahtarı, üniteler); kurulum yoksa 404.</summary>
     [HttpGet("{id:guid}/setup")]

@@ -88,6 +88,20 @@ public static class SkiaImaging
         return target;
     }
 
+    /// <summary>
+    /// #1358: küçük resim — genişliği <paramref name="width"/>'ten büyükse oranı korunarak küçültülür, WebP yazılır.
+    /// Zaten dar görsel olduğu gibi yeniden kodlanır (büyütülmez).
+    /// </summary>
+    public static byte[] Thumbnail(byte[] bytes, int width, int quality = 70)
+    {
+        using var bitmap = DecodeOriented(bytes, out _);
+        if (bitmap.Width <= width)
+            return Encode(bitmap, SKEncodedImageFormat.Webp, quality);
+        var height = Math.Max(1, (int)Math.Round((double)bitmap.Height * width / bitmap.Width));
+        using var resized = CropResize(bitmap, SKRectI.Create(0, 0, bitmap.Width, bitmap.Height), width, height);
+        return Encode(resized, SKEncodedImageFormat.Webp, quality);
+    }
+
     public static byte[] Encode(SKBitmap bitmap, SKEncodedImageFormat format, int quality = 90)
     {
         if (bitmap.Width <= 0 || bitmap.Height <= 0)

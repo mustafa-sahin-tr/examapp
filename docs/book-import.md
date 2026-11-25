@@ -89,6 +89,9 @@ aktarım aracındaki Python portu referanstır (#1022).
   tıklayınca kutu silinir), Enter mevcut harfi onaylar, durum satırı ilk açık uyuşmazlığa götürür. Satırdaki göz düğmesi testin
   sayfalarını tam ekran açar (üstte testin anahtarı, uyuşmazlıklar `harf/diğer`; altta önceki / sonraki, ←/→, Esc); soldaki
   anahtar görseline tıklamak anahtar sayfalarını aynı görünümde açar.
+  Satırın solunda bölümün ilk sayfasının küçük resmi durur (#1358; tıklanınca göz düğmesi gibi açar): görseller
+  `GET {id}/pages/{n}?width=` (64–800 px, sunucuda SkiaSharp ile küçültülüp WebP; satır 128 px, anahtar sayfası 320 px) ile, en
+  fazla 4 paralel istekle yüklenir; aralık düzenlenince yeni ilk sayfa yüklenir.
 - **Kaynak PDF (#1198):** bütün sayfalar WebP olarak yazılınca `source.pdf` silinir (sayfa görselleri kalır; eğitim verisi için de
   gerekir). Sayfalar bitmişse (`PageCount` kadar `BookImportPages` satırı) yeniden deneme PDF'i aramaz. Klasör yüklemesinde kaynak
   görseller zaten çevrilince siliniyordu (#1144).

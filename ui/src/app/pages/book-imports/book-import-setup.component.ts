@@ -49,6 +49,11 @@ const MAX_KEY_LENGTH = 200;
 const DEFAULT_KEY_LENGTH = 10;
 /** #1219: "QR'dan al" okuması sürerken kurulumun yeniden okunma aralığı. */
 const QR_POLL_MS = 4000;
+/** #1358: satır küçük resmi genişliği (px; ekranda ~64 px, yüksek DPI için iki kat). */
+const THUMB_WIDTH = 128;
+/** Anahtar sayfası küçük resmi (ekranda 180 px yükseklik). */
+const KEY_THUMB_WIDTH = 320;
+const THUMB_PARALLEL = 4;
 
 function emptyCleaning(): BookImportCleaning {
   return { status: 'Running', running: true, watermark: false, colourPicked: false, marks: 0, pages: 0, processed: 0, useOriginal: false };
@@ -213,6 +218,16 @@ export class BookImportSetupComponent implements OnInit {
   readonly error = signal<string | null>(null);
   /** Anahtar sayfalarının küçük resimleri (dosya sayfası → object URL); hepsi yan yana gösterilir. */
   readonly keyImages = signal<ReadonlyMap<number, string>>(new Map());
+  /** #1358: satır başına ilk sayfanın küçük resmi (dosya sayfası → object URL); bölümde ne olduğu onaydan önce görülsün. */
+  readonly pageThumbs = signal<ReadonlyMap<number, string>>(new Map());
+  private readonly thumbsLoading = new Set<number>();
+  private readonly thumbsFailed = new Set<number>();
+  /** Satırların ilk sayfaları (aralık düzenlenince yenisi yüklenir). */
+  private readonly thumbPages = computed(() => {
+    const count = this.setup()?.pageCount ?? 0;
+    return [...new Set(this.rows().map((r) => r.fileFrom).filter((p): p is number => p != null && p >= 1 && p <= count))];
+  });
+  private readonly thumbLoader = effect(() => this.loadThumbs(this.thumbPages(), this.pageThumbs()));
   /** Altta sabit anahtar paneli: gösterilen sayfa (null kapalı) ve yakınlaştırma (görsel genişliği, %). Cevap girerken açık kalır. */
   readonly dockPage = signal<number | null>(null);
   readonly dockZoom = signal(100);
@@ -292,6 +307,7 @@ export class BookImportSetupComponent implements OnInit {
     this.destroyRef.onDestroy(() => (this.destroyed = true));
     this.destroyRef.onDestroy(() => {
       this.revokeKeyImages();
+      this.revokePageThumbs();
       this.revokeViewed();
     });
   }
@@ -319,11 +335,36 @@ export class BookImportSetupComponent implements OnInit {
       });
   }
 
+  /** Eksik küçük resimler en fazla {@link THUMB_PARALLEL} istekle sırayla yüklenir (büyük kitapta onlarca bölüm olur). */
+  private loadThumbs(pages: readonly number[], loaded: ReadonlyMap<number, string>): void {
+    for (const filePage of pages) {
+      if (this.thumbsLoading.size >= THUMB_PARALLEL) return;
+      if (loaded.has(filePage) || this.thumbsLoading.has(filePage) || this.thumbsFailed.has(filePage)) continue;
+      this.thumbsLoading.add(filePage);
+      this.api
+        .pageImage(this.jobId(), filePage, false, THUMB_WIDTH)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (blob) => {
+            this.thumbsLoading.delete(filePage);
+            const url = URL.createObjectURL(blob);
+            this.pageThumbs.update((thumbs) => new Map(thumbs).set(filePage, url));
+          },
+          // Yüklenemeyen sayfa küçük resimsiz kalır (göz düğmesi büyük görünümü yine açar); tekrar denenmez.
+          error: () => {
+            this.thumbsLoading.delete(filePage);
+            this.thumbsFailed.add(filePage);
+            this.pageThumbs.update((thumbs) => new Map(thumbs));
+          },
+        });
+    }
+  }
+
   private loadKeyImages(): void {
     for (const filePage of this.keyPages()) {
       if (this.keyImages().has(filePage)) continue;
       this.api
-        .pageImage(this.jobId(), filePage)
+        .pageImage(this.jobId(), filePage, false, KEY_THUMB_WIDTH)
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: (blob) => {
@@ -703,6 +744,9 @@ export class BookImportSetupComponent implements OnInit {
     this.revokeKeyImages();
     this.keyImages.set(new Map());
     this.loadKeyImages();
+    this.revokePageThumbs();
+    this.thumbsFailed.clear();
+    this.pageThumbs.set(new Map());
     const page = this.viewedPage();
     if (page != null && this.viewerOpen()) this.showTestPage(page);
   }
@@ -891,5 +935,9 @@ export class BookImportSetupComponent implements OnInit {
 
   private revokeKeyImages(): void {
     for (const url of this.keyImages().values()) URL.revokeObjectURL(url);
+  }
+
+  private revokePageThumbs(): void {
+    for (const url of this.pageThumbs().values()) URL.revokeObjectURL(url);
   }
 }

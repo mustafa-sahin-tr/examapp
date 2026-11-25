@@ -99,9 +99,29 @@
       "decided": "This suggestion was already decided.",
       "failed": "That did not work. Please try again shortly.",
       "pending": "",
-      "busy": ""
+      "busy": "",
+      "done": "Done."
     },
-    "startHardQuestionPractice": "Solve the selected questions"
+    "startHardQuestionPractice": "Solve the selected questions",
+    "startTest": "Start the test",
+    "createStudyProgram": "Create a study program",
+    "scheduleStudyPages": "Add study pages to the program",
+    "markStudyPageDone": "Mark the study page",
+    "setWorksheetReminder": "Set a test reminder",
+    "deleteWorksheetReminder": "Delete the test reminder",
+    "approve": "Confirm",
+    "line": {
+      "name": "{{name}}",
+      "questions": "{{count}} questions",
+      "minutes": "{{minutes}} minutes",
+      "reminder": "{{date}} {{time}}, reminded {{minutes}} minutes before",
+      "replacesReminder": "Replaces this test's current reminder.",
+      "dates": "{{start}} – {{end}}",
+      "replacesProgram": "Replaces your current active program.",
+      "pages": "{{count}} study pages",
+      "markDone": "Marked as done.",
+      "markUndone": "Marked as not done."
+    }
   },
   "errors": {
     "AssistantBudgetExceeded": "You have reached the usage limit for now. Please try again later.",

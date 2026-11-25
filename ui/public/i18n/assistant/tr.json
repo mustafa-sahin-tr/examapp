@@ -99,9 +99,29 @@
       "decided": "Bu öneri için zaten karar verilmiş.",
       "failed": "İşlem yapılamadı. Biraz sonra yeniden dene.",
       "pending": "",
-      "busy": ""
+      "busy": "",
+      "done": "Yapıldı."
     },
-    "startHardQuestionPractice": "Seçilen soruları çöz"
+    "startHardQuestionPractice": "Seçilen soruları çöz",
+    "startTest": "Testi başlat",
+    "createStudyProgram": "Çalışma programı oluştur",
+    "scheduleStudyPages": "Programa çalışma sayfası ekle",
+    "markStudyPageDone": "Çalışma sayfasını işaretle",
+    "setWorksheetReminder": "Test hatırlatması kur",
+    "deleteWorksheetReminder": "Test hatırlatmasını sil",
+    "approve": "Onayla",
+    "line": {
+      "name": "{{name}}",
+      "questions": "{{count}} soru",
+      "minutes": "{{minutes}} dakika",
+      "reminder": "{{date}} {{time}}, {{minutes}} dakika önce hatırlatılır",
+      "replacesReminder": "Bu testin mevcut hatırlatmasının yerine geçer.",
+      "dates": "{{start}} – {{end}}",
+      "replacesProgram": "Şu anki aktif programının yerine geçer.",
+      "pages": "{{count}} çalışma sayfası",
+      "markDone": "Yapıldı olarak işaretlenir.",
+      "markUndone": "Yapılmadı olarak işaretlenir."
+    }
   },
   "errors": {
     "AssistantBudgetExceeded": "Şimdilik kullanım sınırına ulaştın. Biraz sonra yeniden dene.",

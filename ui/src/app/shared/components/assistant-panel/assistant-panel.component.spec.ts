@@ -245,6 +245,37 @@ describe('AssistantPanelComponent (#507)', () => {
         expect(el('[data-testid="assistant-confirm-state"]')!.textContent).toContain('süresi doldu');
     });
 
+    it('planningConfirm_ShowsPlainNameAndDetails_ApproveLabel (issue #515)', () => {
+        setup();
+        store.messages.set([
+            message({
+                cards: [
+                    {
+                        kind: 'confirm', pendingActionId: 'r1', tool: 'set_worksheet_reminder', expiresAt: '',
+                        preview: { action: 'setWorksheetReminder', name: '<untrusted>Kesirler 1</untrusted>', date: '2026-11-27', time: '19:00', remindBeforeMinutes: 30, replacesReminder: true },
+                    },
+                    {
+                        kind: 'confirm', pendingActionId: 's1', tool: 'start_test', expiresAt: '',
+                        preview: { action: 'startTest', name: 'Açılar', questionCount: 12, durationMinutes: 20 },
+                    },
+                ],
+                confirmStates: { s1: 'confirmed' },
+            }),
+        ]);
+        fixture.detectChanges();
+
+        const cards = fixture.nativeElement.querySelectorAll('[data-testid="assistant-card-confirm"]') as NodeListOf<HTMLElement>;
+        expect(cards[0].textContent).toContain('Test hatırlatması kur');
+        expect(cards[0].textContent).toContain('Kesirler 1');
+        expect(cards[0].textContent).not.toContain('untrusted');
+        expect(cards[0].textContent).toContain('27.11.2026 19:00, 30 dakika önce hatırlatılır');
+        expect(cards[0].textContent).toContain('mevcut hatırlatmasının yerine');
+        expect(cards[0].querySelector('[data-testid="assistant-confirm"]')!.textContent).toContain('Onayla');
+        expect(cards[1].textContent).toContain('Testi başlat');
+        expect(cards[1].textContent).toContain('12 soru');
+        expect(cards[1].querySelector('[data-testid="assistant-confirm-state"]')!.textContent).toContain('Başlatıldı');
+    });
+
     it('errors_KnownCodeAndUnknownFallback_ParentBlockHidesEntry', () => {
         setup();
         store.messages.set([

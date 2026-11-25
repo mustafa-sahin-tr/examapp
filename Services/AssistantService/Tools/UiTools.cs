@@ -24,6 +24,11 @@ public static class UiScreens
         ["homework"] = new("/my-homework", false, Tools.Roles.StudentOnly),
         ["mockExams"] = new("/my-mock-exams", false, Tools.Roles.StudentOnly),
         ["worksheet"] = new("/test/{id}", true, Tools.Roles.StudentOnly),
+        // #515: study programs and the calendar.
+        ["programs"] = new("/programs", false, Tools.Roles.StudentOnly),
+        ["program"] = new("/programs/{id}/detail", true, Tools.Roles.StudentOnly),
+        ["calendar"] = new("/my-calendar", false, Tools.Roles.StudentOnly),
+
         // #1336: parent screens (the dashboard picks a child with ?child=<studentId>).
         ["parentDashboard"] = new("/parent", false, Tools.Roles.ParentOnly),
         ["childDashboard"] = new("/parent?child={id}", true, Tools.Roles.ParentOnly),
@@ -46,6 +51,16 @@ public static class UiScreens
             return null;
         return screen.Route.Replace("{id}", id?.ToString(System.Globalization.CultureInfo.InvariantCulture));
     }
+
+    /// <summary>
+    /// Issue #515: the test screen, only after the student confirmed start_test (never a screen key the model can ask for).
+    /// </summary>
+    public static JsonObject NavigateToTest(int instanceId) => new()
+    {
+        ["type"] = "navigate",
+        ["screen"] = "testSolve",
+        ["route"] = "/testsolve/" + instanceId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+    };
 
     /// <summary>A navigate action built by server code (write tools after commit).</summary>
     public static JsonObject Navigate(string key, int? id = null) => new()

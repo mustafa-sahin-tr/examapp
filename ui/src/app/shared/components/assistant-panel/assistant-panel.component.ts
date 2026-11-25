@@ -77,6 +77,31 @@ export function segmentsOf(text: string): TextSegment[] {
  * Issue #507: uygulama içi asistan paneli. CDK Overlay içinde açılır (launcher), masaüstünde 440px sağ panel, mobilde
  * tam ekran. Mesaj görünümü `dm-conversation`'dan türetildi; kartlar sunucu verisinden (kpi, topicTable, questions, confirm).
  */
+const START_ACTIONS = new Set(['startDailyPractice', 'startPracticeSession', 'startHardQuestionPractice', 'startTest']);
+const KNOWN_ACTIONS = new Set([
+  ...START_ACTIONS,
+  'createStudyProgram',
+  'scheduleStudyPages',
+  'markStudyPageDone',
+  'setWorksheetReminder',
+  'deleteWorksheetReminder',
+]);
+
+interface ConfirmLine {
+  key: string;
+  params: Record<string, unknown>;
+}
+
+/** `<untrusted>…</untrusted>` işaretini kaldırır (Angular interpolation zaten kaçışlar). */
+function plainText(value: unknown): string {
+  return typeof value === 'string' ? value.replace(/<\/?untrusted>/g, '').trim() : '';
+}
+
+/** yyyy-MM-dd → gg.aa.yyyy */
+function localDate(value: unknown): string {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value.split('-').reverse().join('.') : '';
+}
+
 @Component({
   selector: 'app-assistant-panel',
   imports: [
@@ -226,9 +251,42 @@ export class AssistantPanelComponent implements AfterViewInit {
   actionKey(card: AssistantCard): string {
     if (card.kind !== 'confirm') return 'generic';
     const action = card.preview?.action;
-    return action === 'startDailyPractice' || action === 'startPracticeSession' || action === 'startHardQuestionPractice'
-      ? action
-      : 'generic';
+    return typeof action === 'string' && KNOWN_ACTIONS.has(action) ? action : 'generic';
+  }
+
+  /** Başlatan eylemlerde "Başlat", diğerlerinde (#515 program, hatırlatma …) "Onayla". */
+  isStartAction(card: AssistantCard): boolean {
+    return START_ACTIONS.has(this.actionKey(card));
+  }
+
+  /** Issue #515: onay kartının ayrıntı satırları (adlar sunucuda `<untrusted>` ile işaretli; panelde düz metin). */
+  confirmLines(card: AssistantCard): ConfirmLine[] {
+    if (card.kind !== 'confirm' || !card.preview) return [];
+    const p = card.preview;
+    const lines: ConfirmLine[] = [];
+    const name = plainText(p['name'] ?? p['programName'] ?? p['title']);
+    if (name) lines.push({ key: 'confirm.line.name', params: { name } });
+    switch (p.action) {
+      case 'startTest':
+        if (p['questionCount']) lines.push({ key: 'confirm.line.questions', params: { count: p['questionCount'] } });
+        if (p['durationMinutes']) lines.push({ key: 'confirm.line.minutes', params: { minutes: p['durationMinutes'] } });
+        break;
+      case 'setWorksheetReminder':
+        lines.push({ key: 'confirm.line.reminder', params: { date: localDate(p['date']), time: p['time'], minutes: p['remindBeforeMinutes'] } });
+        if (p['replacesReminder']) lines.push({ key: 'confirm.line.replacesReminder', params: {} });
+        break;
+      case 'createStudyProgram':
+        lines.push({ key: 'confirm.line.dates', params: { start: localDate(p['startDate']), end: localDate(p['endDate']) } });
+        if (p['replacesActiveProgram']) lines.push({ key: 'confirm.line.replacesProgram', params: {} });
+        break;
+      case 'scheduleStudyPages':
+        lines.push({ key: 'confirm.line.pages', params: { count: Array.isArray(p['items']) ? p['items'].length : 0 } });
+        break;
+      case 'markStudyPageDone':
+        lines.push({ key: p['done'] === false ? 'confirm.line.markUndone' : 'confirm.line.markDone', params: {} });
+        break;
+    }
+    return lines;
   }
 
   questionMeta(item: QuestionCardItem): string {

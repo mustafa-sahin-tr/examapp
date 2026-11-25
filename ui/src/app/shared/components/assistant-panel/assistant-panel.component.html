@@ -140,15 +140,18 @@
                   @if (card.preview?.dueReview) {
                     <p class="asp__muted">{{ t('confirm.dueReview') }}</p>
                   }
+                  @for (line of confirmLines(card); track line.key) {
+                    <p class="asp__muted" data-testid="assistant-confirm-line">{{ t(line.key, line.params) }}</p>
+                  }
                   @if (state === 'pending' || state === 'busy') {
                     <div class="asp__confirm-actions">
                       <button mat-flat-button type="button" data-testid="assistant-confirm" [disabled]="state === 'busy'"
-                        (click)="store.confirm(message.id, card)">{{ t('confirm.yes') }}</button>
+                        (click)="store.confirm(message.id, card)">{{ t(isStartAction(card) ? 'confirm.yes' : 'confirm.approve') }}</button>
                       <button mat-stroked-button type="button" data-testid="assistant-reject" [disabled]="state === 'busy'"
                         (click)="store.reject(message.id, card)">{{ t('confirm.no') }}</button>
                     </div>
                   } @else {
-                    <p class="asp__confirm-state" role="status" data-testid="assistant-confirm-state">{{ t('confirm.state.' + state) }}</p>
+                    <p class="asp__confirm-state" role="status" data-testid="assistant-confirm-state">{{ t('confirm.state.' + (state === 'confirmed' && !isStartAction(card) ? 'done' : state)) }}</p>
                   }
                 </div>
               }

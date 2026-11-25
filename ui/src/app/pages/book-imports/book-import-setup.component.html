@@ -171,7 +171,12 @@
       <table class="bis-table">
         <thead>
           <tr>
-            <th scope="col"><span class="cdk-visually-hidden">{{ t('setup.include') }}</span></th>
+            <th scope="col">
+              <!-- #1358: tek tıkla hepsini seç / hiçbirini seçme (tek bölüm aktarmak için). -->
+              <mat-checkbox data-testid="setup-include-all" [checked]="allIncluded()"
+                [indeterminate]="someIncluded()" (change)="setAllIncluded($event.checked)"
+                [aria-label]="t('setup.includeAll')"></mat-checkbox>
+            </th>
             <th scope="col">{{ t('setup.colTest') }}</th>
             <th scope="col">{{ t('setup.colTitle') }}</th>
             <th scope="col">{{ t('setup.colKey') }}</th>

@@ -9,6 +9,9 @@ public interface ITopicPerformanceService
 {
     /// <summary>Çağıran, öğrenciye erişim hakkını kendi denetler: bu servis kimlik bilmez, veli ve öğretmen uçları da kullanır.</summary>
     Task<TopicPerformanceDto> GetAsync(int studentId, DateTime from, DateTime to, int? subjectId, TopicPerformanceGroupBy groupBy, int minQuestions, CancellationToken ct = default);
+
+    /// <summary>Issue #530: the grade's topics with fewer than <paramref name="minQuestions"/> answers (<see cref="UntouchedTopicsQuery"/>).</summary>
+    Task<List<UntouchedTopicDto>> GetUntouchedAsync(int studentId, int? gradeId, DateTime from, DateTime to, int? subjectId, int minQuestions, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -18,6 +21,10 @@ public interface ITopicPerformanceService
 public sealed class TopicPerformanceService(AppDbContext db) : ITopicPerformanceService
 {
     private const string DefaultInteractionType = "mcq";
+
+    public Task<List<UntouchedTopicDto>> GetUntouchedAsync(int studentId, int? gradeId, DateTime from, DateTime to, int? subjectId, int minQuestions,
+        CancellationToken ct = default) =>
+        UntouchedTopicsQuery.LoadAsync(db, studentId, gradeId, from, to, subjectId, minQuestions, ct);
 
     private readonly record struct GroupKey(int? TopicId, int? SubTopicId, string? Band, string? Interaction);
 

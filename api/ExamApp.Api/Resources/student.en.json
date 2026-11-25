@@ -43,6 +43,7 @@
     "topicPerformance": {
       "invalidDays": "Days must be between 1 and 90.",
       "invalidGroupBy": "Group by must be topic, subtopic, difficulty or interactionType.",
+      "invalidUntouchedGroupBy": "Untouched topics are only available when grouping by topic (groupBy=topic).",
       "invalidMinQuestions": "Minimum questions must be between 1 and 1000.",
       "invalidTimelineTarget": "Choose either a topic or a subtopic.",
       "invalidWeeks": "Weeks must be between 1 and 26.",

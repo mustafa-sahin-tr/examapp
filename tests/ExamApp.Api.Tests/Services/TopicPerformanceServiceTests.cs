@@ -119,6 +119,44 @@ public sealed class TopicPerformanceServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Untouched_topics_are_the_grades_topics_under_the_threshold_with_their_pool_size_issue530()
+    {
+        int fractionsId, otherGradeTopicId;
+        await using (var ctx = _db.NewContext())
+        {
+            var otherGrade = new Grade { Name = "6. Sınıf" };
+            ctx.Add(otherGrade);
+            await ctx.SaveChangesAsync();
+            var fractions = new Topic { Name = "Kesirler", SubjectId = _mathId, GradeId = _gradeId };
+            var otherGradeTopic = new Topic { Name = "Oran", SubjectId = _mathId, GradeId = otherGrade.Id };
+            ctx.AddRange(fractions, otherGradeTopic);
+            await ctx.SaveChangesAsync();
+            (fractionsId, otherGradeTopicId) = (fractions.Id, otherGradeTopic.Id);
+        }
+
+        // Açılar: two answers (one blank more, not counted) and one question in the pool (the test's worksheet).
+        var angle = await QuestionAsync(_anglesId, _mathId);
+        await TestAsync(angle.Id, angle.CorrectAnswer);
+        await PracticeAsync(angle.Id, correct: false);
+        await PracticeAsync(angle.Id, correct: false, skipped: true);
+        // Kesirler: five answers, at the threshold, so not untouched.
+        var fraction = await QuestionAsync(fractionsId, _mathId);
+        for (var i = 0; i < 5; i++)
+            await PracticeAsync(fraction.Id, correct: i % 2 == 0);
+        // Hücre: nothing answered and nothing in the pool. Oran: another grade.
+
+        await using var read = _db.NewContext();
+        var untouched = await new TopicPerformanceService(read).GetUntouchedAsync(_studentId, _gradeId, _from, _to, null, 5);
+
+        untouched.Select(t => (t.TopicName, t.AnsweredCount, t.AvailableQuestionCount, t.Practicable)).ShouldBe(
+            [("Açılar", 2, 1, true), ("Hücre", 0, 0, false)]);
+        untouched.ShouldNotContain(t => t.TopicId == otherGradeTopicId || t.TopicId == fractionsId);
+        (await new TopicPerformanceService(read).GetUntouchedAsync(_studentId, _gradeId, _from, _to, _scienceId, 5))
+            .ShouldHaveSingleItem().TopicName.ShouldBe("Hücre");
+        (await new TopicPerformanceService(read).GetUntouchedAsync(_studentId, null, _from, _to, null, 5)).ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task Tests_and_practice_add_up_under_the_same_topic_with_percentages_from_the_server()
     {
         var q = await QuestionAsync(_anglesId);

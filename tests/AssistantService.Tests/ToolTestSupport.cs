@@ -89,7 +89,7 @@ public sealed class ToolHarness : IDisposable
 
     public IReadOnlyList<IAssistantTool> AllTools() =>
     [
-        new GetMyProfileTool(Downstream), new SearchTaxonomyTool(Downstream), new GetMyWeakTopicsTool(Downstream),
+        new GetMyProfileTool(Downstream), new SearchTaxonomyTool(Downstream), new GetMyWeakTopicsTool(Downstream), new GetUntouchedTopicsTool(Downstream),
         new GetMyPerformanceSummaryTool(Downstream), new GetDailySetStatusTool(Downstream), new ListMyCompletedTestsTool(Downstream),
         new GetTestResultTool(Downstream), new StartDailyPracticeTool(Downstream), new StartPracticeSessionTool(Downstream),
         new ExplainQuestionTool(Downstream, Counters, new StaticOptions<AssistantService.AssistantOptions>(Options), Clock),

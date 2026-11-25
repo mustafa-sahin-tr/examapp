@@ -359,3 +359,12 @@ cevaplanmamış soruya ipucu yok (issue'daki `hint-context` / `get_hint` yapılm
   kart `questions` + `solvable: false`: panel "Bunları çöz" düğmesini göstermez. Prompt r10: velinin görebildiği tek soru bu
   tool'unki; doğru cevap verilmez / tahmin edilmez, veliye pratik önerilmez, çocukla birlikte bakmak önerilir. Altın veli setine
   `child-hard-questions` eklendi.
+
+## Hiç çalışmadığım konular (#530, Faz 2)
+
+- Exam API: `GET /api/student/me/topic-performance?groupBy=topic&minQuestions=5&includeUntouched=true` (`docs/feature-notes.md` #530).
+- Tool `get_untouched_topics` (`days` 7–90, varsayılan 90; `subjectId`): eşik zayıf konularla aynı (5 cevap). Modele pratik yapılabilen
+  ilk 10 konu (`topicId` ile, pratik için `search_taxonomy` gerekmez), `practicableCount`, `neverAnsweredCount` ve havuzunda soru
+  olmayan konu sayısı (`withoutPracticeQuestions`, listelenmez) gider. Kart `topicTable` (konu, cevap sayısı, doğruluk boş).
+- Prompt r11: "hiç çalışmadığım konular" / "sınava hazır mıyım" → bu tool (hazırlıkta zayıf konularla birlikte); "zayıf konun yok"
+  demeden önce bakılır; hazırlık yüzdesi verilmez. Altın öğrenci setine `untouched-topics`, `exam-ready` eklendi.

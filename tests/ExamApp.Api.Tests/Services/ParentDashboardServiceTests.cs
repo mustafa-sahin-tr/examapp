@@ -537,5 +537,8 @@ public class ParentDashboardServiceTests : IDisposable
             (StudentId, From, To, MinQuestions) = (studentId, from, to, minQuestions);
             return Task.FromResult(new TopicPerformanceDto { Items = Items });
         }
+
+        public Task<List<UntouchedTopicDto>> GetUntouchedAsync(int studentId, int? gradeId, DateTime from, DateTime to, int? subjectId,
+            int minQuestions, CancellationToken ct = default) => Task.FromResult(new List<UntouchedTopicDto>());
     }
 }

@@ -115,3 +115,83 @@ public sealed class StartHardQuestionPracticeTool(DownstreamClient api) : IAssis
 
     private static List<int>? Ids(JsonElement args) => IntList(args, "questionIds", MaxQuestions)?.Distinct().ToList();
 }
+
+/// <summary>
+/// Issue #528: subtopics where the student keeps picking the same popular distractor (the wrong choice most students pick).
+/// The model sees the subtopics, counts and the student's own choices (label and text, wrapped as untrusted); never the correct
+/// choice: it explains through explain_question (#510). The panel shows the example questions as a questions card.
+/// </summary>
+public sealed class GetRepeatedTrapAnswersTool(DownstreamClient api) : IAssistantTool
+{
+    public const int DefaultTake = 3;
+    public const int MaxTake = 5;
+    private const int MaxCardText = 300;
+
+    public string Name => "get_repeated_trap_answers";
+    public string Description =>
+        "Subtopics where the student keeps falling for the same trap: in most of their wrong answers there they picked the choice " +
+        "most students wrongly pick. Gives counts and example questions with the student's chosen choice (no correct answer). " +
+        "Optionally one subject / topic (ids from search_taxonomy). Shows the example questions to the student.";
+    public IReadOnlyCollection<string> Roles => Tools.Roles.StudentOnly;
+    public JsonObject InputSchema => Schema(
+        ("subjectId", IntProp("Subject id."), false),
+        ("topicId", IntProp("Topic id."), false),
+        ("take", IntProp("How many subtopics.", 1, MaxTake), false));
+
+    public async Task<ToolResult> ExecuteAsync(ToolContext context, JsonElement args)
+    {
+        var take = Math.Clamp(Int(args, "take") ?? DefaultTake, 1, MaxTake);
+        var path = $"api/student/me/repeated-traps?days=90&take={take}";
+        foreach (var name in new[] { "subjectId", "topicId" })
+        {
+            if (Int(args, name) is { } id)
+                path += $"&{name}={id}";
+        }
+        var response = await api.GetAsync(context, path);
+        if (!response.IsSuccess)
+            return response.ToError();
+
+        var items = Pick.Items(response.Body).Take(take).ToList();
+        var data = new JsonObject
+        {
+            ["minMistakes"] = Pick.Int(response.Body, "minMistakes"),
+            ["totalCount"] = Pick.Int(response.Body, "totalCount"),
+            ["patterns"] = new JsonArray(items.Select(i =>
+            {
+                var row = Pick.Only(i, "subjectName", "topicId", "topicName", "subTopicId", "subTopicName", "mistakeCount", "trapCount");
+                // No percent: the model read it as accuracy; trapCount of mistakeCount says it plainly.
+                row["examples"] = new JsonArray(Pick.Items(Pick.Get(i, "examples")).Select(e => (JsonNode)new JsonObject
+                {
+                    ["questionId"] = Pick.Int(e, "questionId"),
+                    ["chosenLabel"] = Pick.Str(e, "chosenLabel"),
+                    ["chosenText"] = Untrusted(Pick.Str(e, "chosenText")),
+                }).ToArray());
+                return (JsonNode)row;
+            }).ToArray()),
+        };
+        var examples = items.SelectMany(i => Pick.Items(Pick.Get(i, "examples")).Select(e => (Pattern: i, Example: e))).ToList();
+        if (examples.Count == 0)
+            return ToolResult.Success(data);
+
+        var card = new JsonObject
+        {
+            ["kind"] = "questions",
+            // The next step is a practice on the subtopic (offered in the reply), not these questions again.
+            ["solvable"] = false,
+            ["items"] = new JsonArray(examples.Select(x =>
+            {
+                var row = new JsonObject
+                {
+                    ["questionId"] = Pick.Int(x.Example, "questionId"),
+                    ["subjectName"] = Pick.Str(x.Pattern, "subjectName"),
+                    ["topicName"] = Pick.Str(x.Pattern, "subTopicName") ?? Pick.Str(x.Pattern, "topicName"),
+                    ["imageUrl"] = Pick.Str(x.Example, "imageUrl"),
+                };
+                if (Pick.Str(x.Example, "text") is { Length: > 0 } text)
+                    row["text"] = text.Length <= MaxCardText ? text : text[..MaxCardText] + "…";
+                return (JsonNode)row;
+            }).ToArray()),
+        };
+        return ToolResult.Success(data, [card]);
+    }
+}

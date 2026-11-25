@@ -44,6 +44,9 @@ public interface IPracticeSessionService
     Task<HardQuestionsDto> GetHardQuestionsAsync(StudentProfileDto student, HardQuestionFilter filter, int take, bool global = false,
         CancellationToken ct = default);
 
+    /// <summary>Issue #528: subtopics where the student keeps picking the popular distractor (<see cref="RepeatedTrapQueries"/>).</summary>
+    Task<RepeatedTrapsDto> GetRepeatedTrapsAsync(StudentProfileDto student, HardQuestionFilter filter, int take, CancellationToken ct = default);
+
     /// <summary>Issue #698: öğrencinin aktif yanlışları, en yeni yanlış önce.</summary>
     Task<MistakeNotebookDto> GetMistakesAsync(StudentProfileDto student, int? subjectId, int? topicId, CancellationToken ct = default);
 

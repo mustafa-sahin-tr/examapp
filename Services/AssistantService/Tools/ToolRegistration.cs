@@ -23,6 +23,7 @@ public static class ToolRegistration
         // #526: hard questions and a practice session on them.
         services.AddScoped<IAssistantTool, GetHardQuestionExamplesTool>();
         services.AddScoped<IAssistantTool, StartHardQuestionPracticeTool>();
+        services.AddScoped<IAssistantTool, GetRepeatedTrapAnswersTool>(); // #528
         // #1336 (Phase 1b): parent read tools.
         services.AddScoped<IAssistantTool, ListMyChildrenTool>();
         services.AddScoped<IAssistantTool, GetChildWeeklySummaryTool>();

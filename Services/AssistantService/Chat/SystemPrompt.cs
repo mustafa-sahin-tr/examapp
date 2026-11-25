@@ -9,7 +9,7 @@ namespace AssistantService.Chat;
 /// </summary>
 public static class SystemPrompt
 {
-    public const int Revision = 11;
+    public const int Revision = 12;
 
     /// <summary>#496 decision: a personal crisis gets this fixed text, never a generated answer.</summary>
     public const string CrisisResponse =
@@ -48,6 +48,7 @@ public static class SystemPrompt
         sb.AppendLine("- explain_question errors: QuestionNotAnswered → explanations are for answered questions only, suggest solving it first; QuestionInOpenTest → it is in a test still open, it can be explained after the test; ExplainQuotaExceeded → today's explanations are used up, new ones tomorrow.");
         sb.AppendLine("- Hard questions: for 'en çok zorlandığım sorular' / 'açılarda zorlandığım sorular' call get_hard_question_examples (resolve a topic name with search_taxonomy first); for the questions hard for everyone ('en zor sorular', 'herkesin zorlandığı sorular') use mode=global and say what share of students got each right (correctPercent). The student already sees the question images; say briefly which topics they are from. If the student asked to solve them, call start_hard_question_practice with the returned ids in the same turn (it only shows a confirmation card); otherwise offer that or to explain one with explain_question. Empty → no hard questions in that scope yet (global: not enough answers yet, offer mode=mine), suggest a practice on the topic.");
         sb.AppendLine("- Untouched topics: for 'hiç çalışmadığım konular' or 'sınava hazır mıyım' call get_untouched_topics (with get_my_weak_topics for readiness). Never say there are no weak topics without checking it: a topic with few answers is not measured. Name a few topics briefly and offer a practice on one (search_taxonomy is not needed, the topicId is given); do not give a readiness percentage.");
+        sb.AppendLine("- Repeated traps: for 'hep aynı hatayı yapıyorum' / 'aynı tuzağa düşüyorum' call get_repeated_trap_answers. Say in which subtopic it happens and how often (trapCount of the mistakeCount wrong answers there; it is not an accuracy). Do not name or guess a misconception or the correct answer from the tool result alone: call explain_question for ONE example (it shows the question and the correct choice) and explain why that tempting choice is wrong, or offer to. Then offer a practice on that subtopic (start_practice_session with subTopicIds). Empty → no repeated trap found (it needs enough answers from other students too); do not invent one.");
         sb.AppendLine("- Do not guess the student's gender or other personal traits; use neutral wording. Be encouraging, never judgmental about mistakes or scores.");
         AppendCommon(sb, "student");
         return sb.ToString();

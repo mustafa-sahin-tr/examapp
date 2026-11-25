@@ -79,6 +79,31 @@ public sealed record HardQuestionDto(
 /// <summary>GET api/student/me/hard-questions.</summary>
 public sealed record HardQuestionsDto(string Mode, int? Days, int TotalCount, List<HardQuestionDto> Items);
 
+/// <summary>Issue #528: one example of a repeated trap: the student's own choice (label A, B, … and text), never the correct one.</summary>
+public sealed record RepeatedTrapExampleDto(
+    int QuestionId,
+    string? ChosenLabel,
+    string? ChosenText,
+    DateTime AnsweredAt,
+    [property: StorageUrl(StorageArea.QuestionImage)] string? ImageUrl,
+    string? Text);
+
+/// <summary>Issue #528: a subtopic (or a topic, for questions without subtopics) where the student keeps picking the popular distractor.</summary>
+public sealed record RepeatedTrapDto(
+    int? SubjectId,
+    string? SubjectName,
+    int TopicId,
+    string? TopicName,
+    int? SubTopicId,
+    string? SubTopicName,
+    int MistakeCount,
+    int TrapCount,
+    int StrengthPct,
+    List<RepeatedTrapExampleDto> Examples);
+
+/// <summary>Issue #528: <c>GET api/student/me/repeated-traps</c>.</summary>
+public sealed record RepeatedTrapsDto(int Days, int MinMistakes, int TotalCount, List<RepeatedTrapDto> Items);
+
 /// <summary>GET api/practice/saved: kaydedilen sorular, en yeni önce.</summary>
 public class SavedQuestionsDto
 {

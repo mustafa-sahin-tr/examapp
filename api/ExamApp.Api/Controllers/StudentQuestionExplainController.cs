@@ -106,4 +106,30 @@ public class StudentQuestionExplainController(
         var filter = new HardQuestionFilter(days, subjectId is { } s ? [s] : [], topicId, subTopicId);
         return Ok(await practice.GetHardQuestionsAsync(student, filter, take, global, ct));
     }
+
+    /// <summary>
+    /// Issue #528: subtopics where the student keeps picking the same popular distractor (<c>days</c> 1–90, <c>take</c> 1–10).
+    /// Examples carry the student's own choice, never the correct one; explain one with <c>explain-context</c> (#510).
+    /// </summary>
+    [HttpGet("repeated-traps")]
+    [EnableRateLimiting(TopicPerformanceRateLimiting.Policy)]
+    public async Task<IActionResult> GetRepeatedTraps(
+        [FromQuery] int? subjectId = null,
+        [FromQuery] int? topicId = null,
+        [FromQuery] int days = HardQuestionQueries.DefaultDays,
+        [FromQuery] int take = 5,
+        CancellationToken ct = default)
+    {
+        if (days is < 1 or > HardQuestionQueries.MaxDays || take is < 1 or > PracticeSessionService.RepeatedTrapsMaxTake)
+            return BadRequest(new { message = localizer["student.explain.invalidQuery"].Value, errorCode = "InvalidQuery" });
+
+        var user = await GetAuthenticatedUserAsync(ct);
+        if (!IsResolvedUser(user))
+            return Unauthorized();
+        var student = await students.GetStudentProfile(user.Id);
+        if (student is null)
+            return NotFound(new { message = localizer["student.profileNotFound"].Value });
+
+        return Ok(await practice.GetRepeatedTrapsAsync(student, new HardQuestionFilter(days, subjectId is { } s ? [s] : [], topicId, null), take, ct));
+    }
 }

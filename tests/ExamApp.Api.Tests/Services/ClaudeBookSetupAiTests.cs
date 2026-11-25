@@ -55,26 +55,38 @@ public class ClaudeBookSetupAiTests
     }
 
     [Fact]
-    public async Task Survey_TruncatedTwice_FailsTheSetup()
+    public async Task Survey_TruncatedTwice_SurveysTheHalvesAndMerges()
     {
+        // Issue #1354: a dense page set cut even with the large limit is split instead of failing the setup.
         var chat = new FakeChatClient(truncateFirst: 2);
         var cost = new BookSetupCost();
 
-        var ex = await Should.ThrowAsync<BookImportFailure>(() => Ai(chat).SurveyAsync([Page(1), Page(2)], cost, CancellationToken.None));
+        var result = await Ai(chat).SurveyAsync([Page(1), Page(2)], cost, CancellationToken.None);
 
-        ex.Message.ShouldBe("Book setup failed: Claude response was truncated.");
-        chat.Limits.Count.ShouldBe(2);
-        cost.OutputTokens.ShouldBe(2 * FakeChatClient.OutputTokensPerCall);
+        chat.Limits.ShouldBe([400 * 2 + 1000, ClaudeBookSetupAi.SurveyRetryMaxOutputTokens, 400 + 1000, 400 + 1000]);
+        result.Pages.Select(p => p.FilePage).ShouldBe([1, 2]);
+        cost.OutputTokens.ShouldBe(4 * FakeChatClient.OutputTokensPerCall);
     }
 
     [Fact]
-    public async Task AnswerKey_Truncated_IsNotRetried()
+    public async Task Survey_OnePageTruncatedTwice_FailsTheSetup()
+    {
+        var chat = new FakeChatClient(truncateFirst: 2);
+
+        var ex = await Should.ThrowAsync<BookImportFailure>(() => Ai(chat).SurveyAsync([Page(1)], new BookSetupCost(), CancellationToken.None));
+
+        ex.Message.ShouldBe("Book setup failed: Claude response was truncated.");
+        chat.Limits.Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task AnswerKey_Truncated_LeavesTheReadEmptyInsteadOfFailing()
     {
         var chat = new FakeChatClient(truncateFirst: 1);
 
-        await Should.ThrowAsync<BookImportFailure>(() =>
-            Ai(chat).ReadAnswerKeyAsync(Page(9), tiled: false, strong: false, new BookSetupCost(), CancellationToken.None));
+        var rows = await Ai(chat).ReadAnswerKeyAsync(Page(9), tiled: false, strong: false, new BookSetupCost(), CancellationToken.None);
 
+        rows.ShouldBeEmpty();
         chat.Limits.Count.ShouldBe(1);
     }
 

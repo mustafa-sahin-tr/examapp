@@ -589,3 +589,11 @@ sonraki sorulara da bağlanır. İnceleme ekranı pasajı sorunun üstünde gös
 
 Bilinen sınırlar: işaretleme ekranından sayfa düzeltmesi (`ReplacingQuestionIds`) pasaj taşımaz; sonraki sayfadaki soruya ait kutu
 bağlanmaz. Mevcut Puan BTS kitaplarına 97 pasaj elle eklendi (102 soru); araç ve plan harici diskte `book-import/info-box-passages/`.
+
+## Kesik yanıtlar kurulumu düşürmez (#1354)
+
+- **Sayfa taraması:** kesik yanıt önce 16 000 çıktı tokenıyla yeniden sorulur (#1196); o da kesilirse sayfa grubu ikiye bölünüp
+  ayrı taranır ve sonuçlar birleşir. Tek sayfa iki kez kesilirse kurulum yine başarısız olur.
+- **Anahtar okuma, anahtar bulma, ünite → konu eşleme, AI ile eşle:** kesik yanıt o okumayı boş bırakır (anahtarsız test /
+  konusuz ünite incelemede düzeltilir); iş düşmez. Log'da `[BookSetup] … was truncated` uyarısı kalır.
+- Örnek: Define Fen Bil. Fasikül-2 (iş 30099146, demo) kurulumda 27/36'da düşmüştü; deploy sonrası yeniden aktarılmalı.

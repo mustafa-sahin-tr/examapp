@@ -201,27 +201,7 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
 
     public async Task<SurveyResult> SurveyAsync(IReadOnlyList<BookPageImage> pages, BookSetupCost cost, CancellationToken ct)
     {
-        var content = new List<AIContent>();
-        foreach (var page in pages)
-        {
-            content.Add(new TextContent($"File page {page.FilePage}:"));
-            content.Add(new DataContent(Encode(page.Image, SurveyImageEdge, null), "image/jpeg"));
-        }
-
-        content.Add(new TextContent(SurveyInstruction));
-        var model = Model(_surveyModelId);
-        SurveyBatch batch;
-        try
-        {
-            batch = await AskAsync<SurveyBatch>(model, SurveyOutputTokensPerPage * pages.Count + 1000, SurveySystemPrompt, content,
-                cost, ct, retryTruncated: true);
-        }
-        catch (LabelingAiException ex) when (ex.Truncated)
-        {
-            _logger.LogInformation("[BookSetup] Survey of {Count} pages was truncated; retrying with {Tokens} output tokens",
-                pages.Count, SurveyRetryMaxOutputTokens);
-            batch = await AskAsync<SurveyBatch>(model, SurveyRetryMaxOutputTokens, SurveySystemPrompt, content, cost, ct);
-        }
+        var batch = await SurveyBatchAsync(pages, cost, ct);
 
         var asked = pages.Select(p => p.FilePage).ToHashSet();
         var surveyed = (batch.Pages ?? [])
@@ -238,6 +218,48 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
         return new SurveyResult(surveyed, toc);
     }
 
+    /// <summary>
+    /// One survey call; a truncated answer is asked again with <see cref="SurveyRetryMaxOutputTokens"/>. Issue #1354: when that
+    /// is cut too (a dense page set), the pages are surveyed in two halves and merged; a single page still cut fails the job.
+    /// </summary>
+    private async Task<SurveyBatch> SurveyBatchAsync(IReadOnlyList<BookPageImage> pages, BookSetupCost cost, CancellationToken ct)
+    {
+        var content = new List<AIContent>();
+        foreach (var page in pages)
+        {
+            content.Add(new TextContent($"File page {page.FilePage}:"));
+            content.Add(new DataContent(Encode(page.Image, SurveyImageEdge, null), "image/jpeg"));
+        }
+
+        content.Add(new TextContent(SurveyInstruction));
+        var model = Model(_surveyModelId);
+        try
+        {
+            return await AskAsync<SurveyBatch>(model, SurveyOutputTokensPerPage * pages.Count + 1000, SurveySystemPrompt, content,
+                cost, ct, retryTruncated: true);
+        }
+        catch (LabelingAiException ex) when (ex.Truncated)
+        {
+            _logger.LogInformation("[BookSetup] Survey of {Count} pages was truncated; retrying with {Tokens} output tokens",
+                pages.Count, SurveyRetryMaxOutputTokens);
+        }
+
+        try
+        {
+            return await AskAsync<SurveyBatch>(model, SurveyRetryMaxOutputTokens, SurveySystemPrompt, content, cost, ct,
+                retryTruncated: pages.Count > 1);
+        }
+        catch (LabelingAiException ex) when (ex.Truncated && pages.Count > 1)
+        {
+            var half = pages.Count / 2;
+            _logger.LogInformation("[BookSetup] Survey of {Count} pages was truncated again; surveying {First} + {Second} pages",
+                pages.Count, half, pages.Count - half);
+            var first = await SurveyBatchAsync(pages.Take(half).ToList(), cost, ct);
+            var second = await SurveyBatchAsync(pages.Skip(half).ToList(), cost, ct);
+            return new SurveyBatch([.. first.Pages ?? [], .. second.Pages ?? []], [.. first.TocRows ?? [], .. second.TocRows ?? []]);
+        }
+    }
+
     public async Task<IReadOnlyList<AnswerKeyRow>> ReadAnswerKeyAsync(BookPageImage page, bool tiled, bool strong, BookSetupCost cost,
         CancellationToken ct)
     {
@@ -251,7 +273,18 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
                 new DataContent(Encode(page.Image, KeyImageEdge, (top, share)), "image/jpeg"),
                 new TextContent(KeyInstruction),
             };
-            var table = await AskAsync<KeyTable>(model, KeyMaxOutputTokens, KeySystemPrompt, content, cost, ct);
+            // #1354: a cut answer key read leaves this read empty (the other read / the strong model / review covers it)
+            // instead of failing the whole setup.
+            KeyTable table;
+            try
+            {
+                table = await AskAsync<KeyTable>(model, KeyMaxOutputTokens, KeySystemPrompt, content, cost, ct, retryTruncated: true);
+            }
+            catch (LabelingAiException ex) when (ex.Truncated)
+            {
+                _logger.LogWarning("[BookSetup] Answer key read of file page {Page} was truncated; read left empty", page.FilePage);
+                continue;
+            }
             rows.AddRange((table.Rows ?? []).Where(r => r is not null).Select(ToRow));
         }
 
@@ -270,8 +303,18 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
             "\n\nUnits (number: title):\n" + string.Join("\n", units.Where(u => u.Title is not null).Select(u => $"{u.Unit}: {u.Title}")) +
             "\n\nFor every unit give the id of the topic it mostly covers, or null when no topic fits.";
         var model = Model(_surveyModelId);
-        var (mapping, _) = await Call(() => LabelingClaude.AskTextAsync<UnitTopics>(
-            _chat!, _options, _logger, model, MapMaxOutputTokens, MapSystemPrompt, instruction, ct), model, cost, ct);
+        UnitTopics mapping;
+        try
+        {
+            (mapping, _) = await Call(() => LabelingClaude.AskTextAsync<UnitTopics>(
+                _chat!, _options, _logger, model, MapMaxOutputTokens, MapSystemPrompt, instruction, ct), model, cost, ct, retryTruncated: true);
+        }
+        catch (LabelingAiException ex) when (ex.Truncated)
+        {
+            // #1354: units stay without a topic (set in review) rather than failing the setup.
+            _logger.LogWarning("[BookSetup] Unit to topic mapping of {Count} units was truncated; units left without a topic", units.Count);
+            return result;
+        }
 
         var known = topics.Select(t => t.Id).ToHashSet();
         foreach (var match in mapping.Units ?? [])
@@ -297,8 +340,17 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
             string.Join("\n", rows.Select(r => $"{r.Label}: {r.Answers} answers, page {r.KeyPage?.ToString() ?? "?"}")) +
             "\n\nFor every test give the label of its key row, or null.";
         var model = Model(_surveyModelId);
-        var (matches, _) = await Call(() => LabelingClaude.AskTextAsync<KeyMatches>(
-            _chat!, _options, _logger, model, MatchMaxOutputTokens, MatchSystemPrompt, instruction, ct), model, cost, ct);
+        KeyMatches matches;
+        try
+        {
+            (matches, _) = await Call(() => LabelingClaude.AskTextAsync<KeyMatches>(
+                _chat!, _options, _logger, model, MatchMaxOutputTokens, MatchSystemPrompt, instruction, ct), model, cost, ct, retryTruncated: true);
+        }
+        catch (LabelingAiException ex) when (ex.Truncated)
+        {
+            _logger.LogWarning("[BookSetup] Key matching of {Tests} tests was truncated; no matches", tests.Count);
+            return new Dictionary<int, string>();
+        }
 
         var orders = tests.Select(t => t.Order).ToHashSet();
         var labels = rows.Select(r => r.Label).ToHashSet();
@@ -341,7 +393,16 @@ public sealed class ClaudeBookSetupAi : IBookSetupAi, IDisposable
             "or section):\n" + string.Join("\n", neighbours.Select(Describe)) +
             $"\n\nFind the key row of test {Describe(test)} and give its answers in question order."));
         var model = Model(strong ? _tieBreakModelId : _keyModelId);
-        var found = await AskAsync<FoundKey>(model, KeyMaxOutputTokens, FindSystemPrompt, content, cost, ct);
+        FoundKey found;
+        try
+        {
+            found = await AskAsync<FoundKey>(model, KeyMaxOutputTokens, FindSystemPrompt, content, cost, ct, retryTruncated: true);
+        }
+        catch (LabelingAiException ex) when (ex.Truncated)
+        {
+            _logger.LogWarning("[BookSetup] Finding the key of test #{Order} was truncated; not found", test.Order);
+            return null;
+        }
         return found is { Found: true, Answers: { Length: > 0 } answers } ? answers.Trim().ToUpperInvariant() : null;
     }
 

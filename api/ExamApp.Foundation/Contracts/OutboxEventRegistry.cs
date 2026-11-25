@@ -53,6 +53,7 @@ public static class OutboxEventRegistry
         typeof(OpenTextReviewedEvent), // issue #614
         typeof(ParentChildPlanEndingEvent), // issue #1091
         typeof(StudentGradePromotedEvent), // issue #1110
+        typeof(StudentStudyNudgeEvent), // issue #519
         typeof(PlanPriceChangeNoticeEvent), // issue #1116
         typeof(ParentWeeklyReportEvent), // issue #1112
         typeof(AskTeacherNoticeEvent), // issue #1111

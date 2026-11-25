@@ -62,6 +62,23 @@
     }
   </section>
 
+  <!-- Issue #519: the study nudge can be turned off. -->
+  <section class="ss__card" aria-labelledby="ss-notifications">
+    <h2 id="ss-notifications" class="ss__title">{{ t('notifications.title') }}</h2>
+    <mat-slide-toggle
+      data-testid="study-nudge-toggle"
+      [checked]="studyNudge() ?? false"
+      [disabled]="studyNudge() === null || savingStudyNudge()"
+      (change)="setStudyNudge($event.checked)"
+    >
+      {{ t('notifications.studyNudge') }}
+    </mat-slide-toggle>
+    <p class="ss__note">{{ t('notifications.studyNudgeHint') }}</p>
+    @if (studyNudgeError(); as err) {
+      <p class="ss__error" role="alert">{{ t(err === 'load' ? 'notifications.loadError' : 'notifications.saveError') }}</p>
+    }
+  </section>
+
   <section class="ss__card" aria-labelledby="ss-theme">
     <h2 id="ss-theme" class="ss__title">{{ t('theme') }}</h2>
     <app-user-theme-switcher />

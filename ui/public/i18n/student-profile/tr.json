@@ -43,6 +43,13 @@
       "pendingNote": "Okul onayı bekleniyor.",
       "lockedNote": "Okulunu değiştirmek için yöneticiye yaz.",
       "error": "Okul kaydedilemedi; yeniden dene."
+    },
+    "notifications": {
+      "title": "Bildirimler",
+      "studyNudge": "Birkaç gün soru çözmezsem hatırlat",
+      "studyNudgeHint": "3 gün soru çözmediğinde bir hatırlatma gelir; en çok haftada bir.",
+      "loadError": "Bildirim ayarı yüklenemedi.",
+      "saveError": "Kaydedilemedi, tekrar dene."
     }
   }
 }

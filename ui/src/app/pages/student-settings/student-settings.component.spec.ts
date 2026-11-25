@@ -30,6 +30,8 @@ describe('StudentSettingsComponent (#847)', () => {
             getProfile: vi.fn().mockReturnValue(of(profile as StudentProfile)),
             loadGrades: vi.fn().mockReturnValue(of([{ id: 22, name: '5. Sınıf' }, { id: 23, name: '6. Sınıf' }])),
             updateGrade: vi.fn().mockReturnValue(of({} as StudentProfile)),
+            getNotificationSettings: vi.fn().mockReturnValue(of({ studyNudge: true })),
+            updateNotificationSettings: vi.fn().mockReturnValue(of({ studyNudge: false })),
             requestSchool: vi.fn().mockReturnValue(
                 of({ gradeId: 22, pendingSchoolId: 5, pendingSchoolName: 'Kars Ortaokulu' } as StudentProfile),
             ),
@@ -158,5 +160,22 @@ describe('StudentSettingsComponent (#847)', () => {
         TestBed.resetTestingModule();
         setup({ gradeId: 22, parentManaged: true });
         expect(el().querySelector('app-account-security-card')).toBeNull();
+    });
+
+    it('studyNudgeToggle_SavesAndRevertsOnError (issue #519)', () => {
+        setup();
+        const input = () => q('study-nudge-toggle')!.querySelector('button') as HTMLButtonElement;
+        expect(input().getAttribute('aria-checked')).toBe('true');
+
+        input().click();
+        fixture.detectChanges();
+        expect(studentService.updateNotificationSettings).toHaveBeenCalledWith({ studyNudge: false });
+        expect(fixture.componentInstance.studyNudge()).toBe(false);
+
+        studentService.updateNotificationSettings.mockReturnValue(throwError(() => new Error('x')));
+        input().click();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.studyNudge()).toBe(false);
+        expect(el().querySelector('.ss__error')?.textContent).toContain('Kaydedilemedi');
     });
 });

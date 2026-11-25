@@ -9,11 +9,15 @@ namespace ExamApp.Api.Services.Practice;
 /// Issue #533: per topic, the student's accuracy next to their grade's. The student's side is read at request time with the same
 /// rule as the nightly peer stats (answers in the last <c>PeerWindowDays</c>, blanks out, at least <c>PeerMinAnswers</c> in the
 /// topic); the grade's side only from <see cref="TopicAnswerStat"/> (never computed at request time), and only with at least
-/// <c>MinStudents</c> students (k-anonymity), else null. Order: the topics furthest behind the grade first, ones without peer data
+/// <c>MinStudents</c> students (at least 10 whatever the setting; k-anonymity), else null. The student count is not returned:
+/// night-to-night it would show when exactly one student joined (security review). Order: the topics furthest behind the grade first, ones without peer data
 /// last. Same grade, any school: no school data crosses tenants (#160).
 /// </summary>
 internal static class TopicPeerComparisonQueries
 {
+    /// <summary>Security review: a misconfigured <c>MinStudents</c> (e.g. 1) must never show one student's accuracy as an average.</summary>
+    public const int MinPeerStudentsFloor = 10;
+
     internal static async Task<TopicPeerComparisonsDto> LoadAsync(AppDbContext context, StudentProfileDto student, int? subjectId,
         HardQuestionOptions options, CancellationToken ct)
     {
@@ -34,7 +38,7 @@ internal static class TopicPeerComparisonQueries
 
         var topicIds = mine.Select(t => t.TopicId).ToList();
         var peers = await context.TopicAnswerStats.AsNoTracking()
-            .Where(s => s.GradeId == gradeId && topicIds.Contains(s.TopicId) && s.StudentCount >= options.MinStudents)
+            .Where(s => s.GradeId == gradeId && topicIds.Contains(s.TopicId) && s.StudentCount >= Math.Max(options.MinStudents, MinPeerStudentsFloor))
             .ToDictionaryAsync(s => s.TopicId, ct);
         var computedAt = await context.TopicAnswerStats.AsNoTracking().MaxAsync(s => (DateTime?)s.ComputedAtUtc, ct);
         var topics = await context.Topics.AsNoTracking().IgnoreQueryFilters()
@@ -51,8 +55,7 @@ internal static class TopicPeerComparisonQueries
                     topic?.SubjectId, topic?.SubjectName, t.TopicId, topic?.Name, t.Answered,
                     (int)Math.Round(100.0 * t.Correct / t.Answered),
                     peer is null ? null : (int)Math.Round(peer.AccuracyPct),
-                    peer is null ? null : (int)Math.Round(peer.MedianPct),
-                    peer?.StudentCount);
+                    peer is null ? null : (int)Math.Round(peer.MedianPct));
             })
             .OrderBy(i => i.PeerAccuracyPct is null)
             .ThenBy(i => i.MyAccuracyPct - (i.PeerAccuracyPct ?? 0))

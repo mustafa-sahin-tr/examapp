@@ -414,10 +414,9 @@ cevaplanmamış soruya ipucu yok (issue'daki `hint-context` / `get_hint` yapılm
   her gece bütünüyle yenilenir; öğrenci satırı tutulmaz.
 - **Exam API:** `GET /api/student/me/topic-comparison?subjectId` (yalnız `Student`, konu performansı hız sınırı). Öğrencinin tarafı
   istek anında aynı kuralla (`StudentAnswerReader`, en az 5 cevaplı konular); akran tarafı **yalnız** tablodan ve yalnız en az
-  `MinStudents` (20) öğrenci varsa, yoksa `null` (k-anonimlik). Satır: ders / konu, `myAnswered`, `myAccuracyPct`,
-  `peerAccuracyPct`, `peerMedianPct`, `peerStudentCount`. Sıra: akranın en çok gerisinde olunan konu önce, akran verisi olmayan
+  `MinStudents` (20; ayar ne olursa olsun en az 10) öğrenci varsa, yoksa `null` (k-anonimlik). Satır: ders / konu, `myAnswered`, `myAccuracyPct`,
+  `peerAccuracyPct`, `peerMedianPct`. Öğrenci sayısı dönmez (güvenlik incelemesi: geceden geceye tek öğrencinin katıldığını gösterirdi). Sıra: akranın en çok gerisinde olunan konu önce, akran verisi olmayan
   sonda. Öğrenci kimliği, sıralama ya da yüzdelik dilim yok. Akran kümesi aynı sınıf düzeyi, okuldan bağımsız (tenant sınırı, #160).
 - **KVKK (#522):** kullanıcı kararıyla şimdilik ele alınmadı; yalnız toplu değer döndüğü için rıza gerektirmeyen tasarım seçildi.
-- **Tool** `compare_my_topics_with_peers(subjectId?)` (kart yok): model en çok 15 konu ve akran verisi olmayan konu sayısını görür,
-  `peerStudentCount` modele verilmez. Prompt r14: önce güçlü yan, sonra en geride bir iki konu ve pratik önerisi; sıralama /
+- **Tool** `compare_my_topics_with_peers(subjectId?)` (kart yok): model en çok 15 konu ve akran verisi olmayan konu sayısını görür. Prompt r14: önce güçlü yan, sonra en geride bir iki konu ve pratik önerisi; sıralama /
   yüzdelik uydurmaz, başka öğrenci hakkında konuşmaz, `null` ise veri yetmediğini söyler. Altın sete `peer-compare`.

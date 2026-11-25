@@ -114,8 +114,7 @@ public sealed record TopicPeerComparisonDto(
     int MyAnswered,
     int MyAccuracyPct,
     int? PeerAccuracyPct,
-    int? PeerMedianPct,
-    int? PeerStudentCount);
+    int? PeerMedianPct);
 
 /// <summary>Issue #533: <c>GET api/student/me/topic-comparison</c>; <c>ComputedAtUtc</c> is when the peer stats were computed.</summary>
 public sealed record TopicPeerComparisonsDto(int Days, int MinAnswers, DateTime? ComputedAtUtc, List<TopicPeerComparisonDto> Items);

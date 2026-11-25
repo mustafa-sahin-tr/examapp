@@ -655,8 +655,7 @@
      "myAnswered": 12,
      "myAccuracyPct": 42,
      "peerAccuracyPct": 71,
-     "peerMedianPct": 74,
-     "peerStudentCount": 38
+     "peerMedianPct": 74
     },
     {
      "subjectId": 1,
@@ -666,8 +665,7 @@
      "myAnswered": 20,
      "myAccuracyPct": 85,
      "peerAccuracyPct": 68,
-     "peerMedianPct": 70,
-     "peerStudentCount": 41
+     "peerMedianPct": 70
     },
     {
      "subjectId": 2,
@@ -677,8 +675,7 @@
      "myAnswered": 6,
      "myAccuracyPct": 50,
      "peerAccuracyPct": null,
-     "peerMedianPct": null,
-     "peerStudentCount": null
+     "peerMedianPct": null
     }
    ]
   }

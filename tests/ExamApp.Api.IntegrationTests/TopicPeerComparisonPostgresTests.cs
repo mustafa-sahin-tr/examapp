@@ -118,14 +118,14 @@ public class TopicPeerComparisonPostgresTests(IntegrationApiFactory factory) : I
         // the other grade's student is not a peer.
         items.Select(i => i.GetProperty("topicId").GetInt32()).ShouldBe([s.Angles, s.Fractions]);
         var angles = items[0];
-        (angles.GetProperty("myAccuracyPct").GetInt32(), angles.GetProperty("peerAccuracyPct").GetInt32(), angles.GetProperty("peerMedianPct").GetInt32(), angles.GetProperty("peerStudentCount").GetInt32())
-            .ShouldBe((40, 78, 60, 21));
+        (angles.GetProperty("myAccuracyPct").GetInt32(), angles.GetProperty("peerAccuracyPct").GetInt32(), angles.GetProperty("peerMedianPct").GetInt32())
+            .ShouldBe((40, 78, 60));
         // Fractions: 19 classmates + the student = 20; the classmate with only 4 answers does not count.
         var fractions = items[1];
         fractions.GetProperty("myAccuracyPct").GetInt32().ShouldBe(80);
-        fractions.GetProperty("peerStudentCount").GetInt32().ShouldBe(20);
+        fractions.GetProperty("peerAccuracyPct").GetInt32().ShouldBe(80);
 
-        foreach (var forbidden in new[] { "studentId", "userId", "rank", "percentile", "name\":\"S" })
+        foreach (var forbidden in new[] { "studentId", "userId", "studentCount", "rank", "percentile", "name\":\"S" })
             raw.ShouldNotContain(forbidden, Case.Insensitive);
     }
 
@@ -147,7 +147,6 @@ public class TopicPeerComparisonPostgresTests(IntegrationApiFactory factory) : I
 
         var fractions = items.Single(i => i.GetProperty("topicId").GetInt32() == s.Fractions);
         fractions.GetProperty("peerAccuracyPct").ValueKind.ShouldBe(JsonValueKind.Null);
-        fractions.GetProperty("peerStudentCount").ValueKind.ShouldBe(JsonValueKind.Null);
         items[^1].GetProperty("topicId").GetInt32().ShouldBe(s.Fractions);
     }
 

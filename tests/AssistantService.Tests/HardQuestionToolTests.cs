@@ -132,8 +132,8 @@ public sealed class HardQuestionToolTests : IDisposable
             days = 90, minAnswers = 5, computedAtUtc = "2026-11-25T03:00:00Z",
             items = new object[]
             {
-                new { subjectName = "Matematik", topicId = 5, topicName = "Açılar", myAnswered = 12, myAccuracyPct = 40, peerAccuracyPct = 72, peerMedianPct = 75, peerStudentCount = 31 },
-                new { subjectName = "Matematik", topicId = 6, topicName = "Kesirler", myAnswered = 8, myAccuracyPct = 88, peerAccuracyPct = (int?)null, peerMedianPct = (int?)null, peerStudentCount = (int?)null },
+                new { subjectName = "Matematik", topicId = 5, topicName = "Açılar", myAnswered = 12, myAccuracyPct = 40, peerAccuracyPct = 72, peerMedianPct = 75 },
+                new { subjectName = "Matematik", topicId = 6, topicName = "Kesirler", myAnswered = 8, myAccuracyPct = 88, peerAccuracyPct = (int?)null, peerMedianPct = (int?)null },
             },
         });
 
@@ -143,7 +143,6 @@ public sealed class HardQuestionToolTests : IDisposable
         result.Data!["withoutPeerData"]!.GetValue<int>().ShouldBe(1);
         var first = result.Data!["topics"]!.AsArray()[0]!;
         (first["myAccuracyPct"]!.GetValue<int>(), first["peerAccuracyPct"]!.GetValue<int>()).ShouldBe((40, 72));
-        result.Data!.ToJsonString().ShouldNotContain("peerStudentCount");
         result.Cards.ShouldBeNull();
     }
 

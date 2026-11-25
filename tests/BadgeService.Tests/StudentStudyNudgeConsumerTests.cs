@@ -14,6 +14,7 @@ namespace BadgeService.Tests;
 public class StudentStudyNudgeConsumerTests : IDisposable
 {
     private const int StudentUser = 9401;
+    private const string StudentSub = "kc-student-519";
 
     private readonly BadgeTestDb _db = BadgeTestDb.Create();
 
@@ -45,7 +46,7 @@ public class StudentStudyNudgeConsumerTests : IDisposable
         var hub = NewHub();
         var e = new StudentStudyNudgeEvent
         {
-            EventId = Guid.NewGuid(), StudentId = 31, RecipientUserId = StudentUser, RecipientKeycloakId = "kc-student-519",
+            EventId = Guid.NewGuid(), StudentId = 31, RecipientUserId = StudentUser, RecipientKeycloakId = StudentSub,
             InactiveDays = 4, CreatedAtUtc = DateTime.UtcNow,
         };
 
@@ -59,6 +60,6 @@ public class StudentStudyNudgeConsumerTests : IDisposable
         n.Title.ShouldBe("4 gündür soru çözmedin");
         n.Body.ShouldContain("pratik ekranında");
         n.Data!.ShouldContain("\"inactiveDays\":4");
-        hub.Clients.Received(1).User("kc-student-519");
+        hub.Clients.Received(1).User(StudentSub);
     }
 }

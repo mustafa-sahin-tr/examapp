@@ -4,7 +4,7 @@
 
   <span aria-live="polite" class="sr-only">{{ periodLabel() }}</span>
 
-  <div class="my-calendar__card">
+  <div class="my-calendar__card" data-assistant-key="calendar.view">
     <div class="my-calendar__toolbar">
       <button mat-icon-button type="button" class="my-calendar__prev" (click)="prev()"
         [attr.aria-label]="view() === 'week' ? t('prevWeek') : t('prevMonth')">

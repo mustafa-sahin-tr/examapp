@@ -41,6 +41,12 @@ public sealed class DownstreamClient(HttpClient http)
     public Task<DownstreamResponse> PostAsync(ToolContext context, string path, object? body) =>
         SendAsync(context, HttpMethod.Post, path, body);
 
+    /// <summary>Issue #515: reminders and study page completion.</summary>
+    public Task<DownstreamResponse> PutAsync(ToolContext context, string path, object? body) =>
+        SendAsync(context, HttpMethod.Put, path, body);
+
+    public Task<DownstreamResponse> DeleteAsync(ToolContext context, string path) => SendAsync(context, HttpMethod.Delete, path, null);
+
     private async Task<DownstreamResponse> SendAsync(ToolContext context, HttpMethod method, string path, object? body)
     {
         using var request = new HttpRequestMessage(method, path.TrimStart('/'));

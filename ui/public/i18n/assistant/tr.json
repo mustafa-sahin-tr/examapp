@@ -99,9 +99,47 @@
       "decided": "Bu öneri için zaten karar verilmiş.",
       "failed": "İşlem yapılamadı. Biraz sonra yeniden dene.",
       "pending": "",
-      "busy": ""
+      "busy": "",
+      "done": "Yapıldı."
     },
-    "startHardQuestionPractice": "Seçilen soruları çöz"
+    "startHardQuestionPractice": "Seçilen soruları çöz",
+    "startTest": "Testi başlat",
+    "createStudyProgram": "Çalışma programı oluştur",
+    "scheduleStudyPages": "Programa çalışma sayfası ekle",
+    "markStudyPageDone": "Çalışma sayfasını işaretle",
+    "setWorksheetReminder": "Test hatırlatması kur",
+    "deleteWorksheetReminder": "Test hatırlatmasını sil",
+    "approve": "Onayla",
+    "line": {
+      "name": "{{name}}",
+      "questions": "{{count}} soru",
+      "minutes": "{{minutes}} dakika",
+      "reminder": "{{date}} {{time}}, {{minutes}} dakika önce hatırlatılır",
+      "replacesReminder": "Bu testin mevcut hatırlatmasının yerine geçer.",
+      "dates": "{{start}} – {{end}}",
+      "replacesProgram": "Şu anki aktif programının yerine geçer.",
+      "markDone": "Yapıldı olarak işaretlenir.",
+      "markUndone": "Yapılmadı olarak işaretlenir.",
+      "timeBased": "Süreli çalışma: {{duration}} dakika (çalışma-ara)",
+      "questionBased": "Soru takipli: her dersten günde {{count}} soru",
+      "subjectsPerDay": "Günde {{count}} ders",
+      "restDays": "Dinlenme: {{days}}",
+      "difficult": "Zorlandığın dersler: {{subjects}}",
+      "page": "{{title}}: {{start}} – {{end}}",
+      "slot": "{{date}} {{start}}–{{end}}",
+      "hourlyRate": "Saat ücreti: {{rate}} ₺",
+      "teacherDecides": "Öğretmen onaylayınca kesinleşir (veli onayı gerekebilir)."
+    },
+    "day": {
+      "1": "Pazartesi",
+      "2": "Salı",
+      "3": "Çarşamba",
+      "4": "Perşembe",
+      "5": "Cuma",
+      "6": "Cumartesi",
+      "7": "Pazar"
+    },
+    "requestLesson": "Ders talebi gönder"
   },
   "errors": {
     "AssistantBudgetExceeded": "Şimdilik kullanım sınırına ulaştın. Biraz sonra yeniden dene.",
@@ -134,5 +172,12 @@
   "inputPlaceholder": "Bir şey sor…",
   "send": "Gönder",
   "tooLong": "Mesaj en çok {{max}} karakter olabilir.",
-  "disclaimer": "Asistan hata yapabilir; önemli bilgileri kontrol et."
+  "disclaimer": "Asistan hata yapabilir; önemli bilgileri kontrol et.",
+  "draft": {
+    "title": "Mesaj taslağı",
+    "notSent": "Gönderilmedi. Kopyalayıp mesajlar ekranından kendin gönder.",
+    "copy": "Kopyala",
+    "copied": "Kopyalandı",
+    "open": "Mesajlara git"
+  }
 }

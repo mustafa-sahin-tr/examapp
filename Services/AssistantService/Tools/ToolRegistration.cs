@@ -26,6 +26,27 @@ public static class ToolRegistration
         services.AddScoped<IAssistantTool, GetRepeatedTrapAnswersTool>(); // #528
         services.AddScoped<IAssistantTool, GetTimeStruggleQuestionsTool>(); // #527
         services.AddScoped<IAssistantTool, CompareMyTopicsWithPeersTool>(); // #533
+        // #515 (Phase 3): programs, study pages, tests and reminders.
+        services.AddScoped<IAssistantTool, ListMyProgramsTool>();
+        services.AddScoped<IAssistantTool, GetProgramTool>();
+        services.AddScoped<IAssistantTool, CreateStudyProgramTool>();
+        services.AddScoped<IAssistantTool, SearchStudyPagesTool>();
+        services.AddScoped<IAssistantTool, ScheduleStudyPagesTool>();
+        services.AddScoped<IAssistantTool, MarkStudyPageDoneTool>();
+        services.AddScoped<IAssistantTool, SearchWorksheetsTool>();
+        services.AddScoped<IAssistantTool, StartTestTool>();
+        services.AddScoped<IAssistantTool, SetWorksheetReminderTool>();
+        services.AddScoped<IAssistantTool, DeleteWorksheetReminderTool>();
+        services.AddScoped<IAssistantTool, GetMyWeekTool>();
+        services.AddScoped<IAssistantTool, SearchTutorsTool>();
+        services.AddScoped<IAssistantTool, GetTutorProfileTool>();
+        services.AddScoped<IAssistantTool, ListTutorSlotsTool>();
+        services.AddScoped<IAssistantTool, RequestLessonTool>();
+        services.AddScoped<IAssistantTool, ListMyBookingsTool>();
+        services.AddScoped<IAssistantTool, ListMyConversationsTool>();
+        services.AddScoped<IAssistantTool, DraftMessageToTeacherTool>();
+        services.AddScoped<IAssistantTool, SummarizeWorksheetCommentsTool>();
+        services.AddScoped<IAssistantTool, UiHighlightTool>();
         // #1336 (Phase 1b): parent read tools.
         services.AddScoped<IAssistantTool, ListMyChildrenTool>();
         services.AddScoped<IAssistantTool, GetChildWeeklySummaryTool>();

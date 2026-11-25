@@ -77,6 +77,44 @@ export function segmentsOf(text: string): TextSegment[] {
  * Issue #507: uygulama içi asistan paneli. CDK Overlay içinde açılır (launcher), masaüstünde 440px sağ panel, mobilde
  * tam ekran. Mesaj görünümü `dm-conversation`'dan türetildi; kartlar sunucu verisinden (kpi, topicTable, questions, confirm).
  */
+const START_ACTIONS = new Set(['startDailyPractice', 'startPracticeSession', 'startHardQuestionPractice', 'startTest']);
+const KNOWN_ACTIONS = new Set([
+  ...START_ACTIONS,
+  'createStudyProgram',
+  'scheduleStudyPages',
+  'markStudyPageDone',
+  'setWorksheetReminder',
+  'deleteWorksheetReminder',
+  'requestLesson',
+]);
+
+interface ConfirmLine {
+  key: string;
+  params: Record<string, unknown>;
+  /** Dinlenme günleri (1 = Pazartesi … 7 = Pazar); şablon `confirm.day.N` ile adlandırır. */
+  days?: number[];
+}
+
+/** `<untrusted>…</untrusted>` işaretini kaldırır (Angular interpolation zaten kaçışlar). */
+function plainText(value: unknown): string {
+  return typeof value === 'string' ? value.replace(/<\/?untrusted>/g, '').trim() : '';
+}
+
+/** HH:mm:ss → HH:mm */
+function hhmm(value: unknown): string {
+  return typeof value === 'string' && /^\d{2}:\d{2}/.test(value) ? value.slice(0, 5) : '';
+}
+
+/** #515: the draft card opens only the student's messages screen. */
+function isMessagesRoute(route: unknown): route is string {
+  return typeof route === 'string' && /^\/teacher-messages(\?conversation=\d+)?$/.test(route);
+}
+
+/** yyyy-MM-dd → gg.aa.yyyy */
+function localDate(value: unknown): string {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value.split('-').reverse().join('.') : '';
+}
+
 @Component({
   selector: 'app-assistant-panel',
   imports: [
@@ -226,9 +264,88 @@ export class AssistantPanelComponent implements AfterViewInit {
   actionKey(card: AssistantCard): string {
     if (card.kind !== 'confirm') return 'generic';
     const action = card.preview?.action;
-    return action === 'startDailyPractice' || action === 'startPracticeSession' || action === 'startHardQuestionPractice'
-      ? action
-      : 'generic';
+    return typeof action === 'string' && KNOWN_ACTIONS.has(action) ? action : 'generic';
+  }
+
+  /** Başlatan eylemlerde "Başlat", diğerlerinde (#515 program, hatırlatma …) "Onayla". */
+  isStartAction(card: AssistantCard): boolean {
+    return START_ACTIONS.has(this.actionKey(card));
+  }
+
+  /** #515: copied draft ids (the button says "Kopyalandı" for a moment). */
+  readonly copiedDraft = signal<string | null>(null);
+
+  async copyDraft(key: string, text: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(text);
+      this.copiedDraft.set(key);
+      setTimeout(() => this.copiedDraft.update((k) => (k === key ? null : k)), 2000);
+    } catch {
+      this.copiedDraft.set(null);
+    }
+  }
+
+  openDraft(route: string): void {
+    if (isMessagesRoute(route)) void this.router.navigateByUrl(route);
+  }
+
+  draftRouteOk(route: string): boolean {
+    return isMessagesRoute(route);
+  }
+
+  dayNames(days: number[], t: (key: string) => string): string {
+    return days.map((d) => t('confirm.day.' + d)).join(', ');
+  }
+
+  /** Issue #515: onay kartının ayrıntı satırları (adlar sunucuda `<untrusted>` ile işaretli; panelde düz metin). */
+  confirmLines(card: AssistantCard): ConfirmLine[] {
+    if (card.kind !== 'confirm' || !card.preview) return [];
+    const p = card.preview;
+    const lines: ConfirmLine[] = [];
+    const name = plainText(p['name'] ?? p['programName'] ?? p['title']);
+    if (name) lines.push({ key: 'confirm.line.name', params: { name } });
+    switch (p.action) {
+      case 'startTest':
+        if (p['questionCount']) lines.push({ key: 'confirm.line.questions', params: { count: p['questionCount'] } });
+        if (p['durationMinutes']) lines.push({ key: 'confirm.line.minutes', params: { minutes: p['durationMinutes'] } });
+        break;
+      case 'requestLesson':
+        lines.push({ key: 'confirm.line.slot', params: { date: localDate(p['date']), start: hhmm(p['startTime']), end: hhmm(p['endTime']) } });
+        if (typeof p['hourlyRate'] === 'number') lines.push({ key: 'confirm.line.hourlyRate', params: { rate: p['hourlyRate'] } });
+        lines.push({ key: 'confirm.line.teacherDecides', params: {} });
+        break;
+      case 'setWorksheetReminder':
+        lines.push({ key: 'confirm.line.reminder', params: { date: localDate(p['date']), time: p['time'], minutes: p['remindBeforeMinutes'] } });
+        if (p['replacesReminder']) lines.push({ key: 'confirm.line.replacesReminder', params: {} });
+        break;
+      case 'createStudyProgram': {
+        lines.push({ key: 'confirm.line.dates', params: { start: localDate(p['startDate']), end: localDate(p['endDate']) } });
+        lines.push(
+          p['studyType'] === 'time'
+            ? { key: 'confirm.line.timeBased', params: { duration: p['studyDuration'] } }
+            : { key: 'confirm.line.questionBased', params: { count: p['questionsPerDay'] } }
+        );
+        lines.push({ key: 'confirm.line.subjectsPerDay', params: { count: p['subjectsPerDay'] } });
+        const rest = Array.isArray(p['restDays']) ? (p['restDays'] as unknown[]).filter((d): d is number => typeof d === 'number') : [];
+        if (rest.length) lines.push({ key: 'confirm.line.restDays', params: { days: rest.filter((d) => d >= 1 && d <= 7).join(',') }, days: rest.filter((d) => d >= 1 && d <= 7) });
+        const hard = Array.isArray(p['difficultSubjects']) ? (p['difficultSubjects'] as unknown[]).map(plainText).filter(Boolean) : [];
+        if (hard.length) lines.push({ key: 'confirm.line.difficult', params: { subjects: hard.join(', ') } });
+        if (p['replacesActiveProgram']) lines.push({ key: 'confirm.line.replacesProgram', params: {} });
+        break;
+      }
+      case 'scheduleStudyPages':
+        for (const item of Array.isArray(p['items']) ? (p['items'] as Record<string, unknown>[]) : []) {
+          lines.push({
+            key: 'confirm.line.page',
+            params: { title: plainText(item['title']) || '—', start: localDate(item['startDate']), end: localDate(item['endDate']) },
+          });
+        }
+        break;
+      case 'markStudyPageDone':
+        lines.push({ key: p['done'] === false ? 'confirm.line.markUndone' : 'confirm.line.markDone', params: {} });
+        break;
+    }
+    return lines;
   }
 
   questionMeta(item: QuestionCardItem): string {

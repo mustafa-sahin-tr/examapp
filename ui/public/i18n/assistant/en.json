@@ -99,9 +99,47 @@
       "decided": "This suggestion was already decided.",
       "failed": "That did not work. Please try again shortly.",
       "pending": "",
-      "busy": ""
+      "busy": "",
+      "done": "Done."
     },
-    "startHardQuestionPractice": "Solve the selected questions"
+    "startHardQuestionPractice": "Solve the selected questions",
+    "startTest": "Start the test",
+    "createStudyProgram": "Create a study program",
+    "scheduleStudyPages": "Add study pages to the program",
+    "markStudyPageDone": "Mark the study page",
+    "setWorksheetReminder": "Set a test reminder",
+    "deleteWorksheetReminder": "Delete the test reminder",
+    "approve": "Confirm",
+    "line": {
+      "name": "{{name}}",
+      "questions": "{{count}} questions",
+      "minutes": "{{minutes}} minutes",
+      "reminder": "{{date}} {{time}}, reminded {{minutes}} minutes before",
+      "replacesReminder": "Replaces this test's current reminder.",
+      "dates": "{{start}} – {{end}}",
+      "replacesProgram": "Replaces your current active program.",
+      "markDone": "Marked as done.",
+      "markUndone": "Marked as not done.",
+      "timeBased": "Timed study: {{duration}} minutes (work-break)",
+      "questionBased": "Question-based: {{count}} questions per subject a day",
+      "subjectsPerDay": "{{count}} subjects a day",
+      "restDays": "Rest: {{days}}",
+      "difficult": "Hard subjects: {{subjects}}",
+      "page": "{{title}}: {{start}} – {{end}}",
+      "slot": "{{date}} {{start}}–{{end}}",
+      "hourlyRate": "Hourly rate: {{rate}} ₺",
+      "teacherDecides": "Final once the teacher approves (a parent may need to approve first)."
+    },
+    "day": {
+      "1": "Monday",
+      "2": "Tuesday",
+      "3": "Wednesday",
+      "4": "Thursday",
+      "5": "Friday",
+      "6": "Saturday",
+      "7": "Sunday"
+    },
+    "requestLesson": "Send a lesson request"
   },
   "errors": {
     "AssistantBudgetExceeded": "You have reached the usage limit for now. Please try again later.",
@@ -134,5 +172,12 @@
   "inputPlaceholder": "Ask something…",
   "send": "Send",
   "tooLong": "A message can be at most {{max}} characters.",
-  "disclaimer": "The assistant can make mistakes; check important information."
+  "disclaimer": "The assistant can make mistakes; check important information.",
+  "draft": {
+    "title": "Message draft",
+    "notSent": "Not sent. Copy it and send it yourself on the messages screen.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "open": "Go to messages"
+  }
 }

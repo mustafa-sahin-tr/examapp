@@ -435,3 +435,40 @@ cevaplanmamış soruya ipucu yok (issue'daki `hint-context` / `get_hint` yapılm
   GKE `stateful-services.yaml`. Bildirime tıklayınca `/practice`.
 - **Kapatma:** `GET/PUT /api/student/me/notification-settings` (`studyNudge`), öğrenci Ayarlar → Bildirimler anahtarı
   (`Students.StudyNudgeOptOut`).
+
+## Planlama tool'ları (#515, Faz 3 — birinci dilim)
+
+- Okuma: `list_my_programs`, `get_program` (önümüzdeki 14 günün ders oturumları + çalışma sayfaları, `scheduleId`),
+  `search_study_pages` (`api/study-items`), `search_worksheets` (`api/worksheet/list`, yalnız test türü, durum filtresi).
+- Yazma (hepsi onay kartı; önizleme yalnız okur):
+  - `create_study_program`: program sihirbazının seçimleri (adım 1/2/3/5/6 + `difficultSubjectIds`); önizleme ders listesini ve
+    aktif programın yerine geçip geçmediğini söyler. Başlangıç bugün ya da sonrası, en çok 180 gün.
+  - `schedule_study_pages`, `mark_study_page_done`, `set_worksheet_reminder` / `delete_worksheet_reminder`.
+  - `start_test`: onaydan sonra `/testsolve/{instanceId}` açılır; asistan test sırasında kapalı (layout gizler, sohbet
+    `AssistantClosedDuringTest`). Bu rota `ui_open_screen` anahtarı değildir, yalnız onaydan sonra sunucu üretir.
+- Tarihler Türkiye yerel saati (sabit UTC+3); çalışma sayfası günleri ekrandaki gibi yerel gece yarısının UTC'si gönderilir.
+- Onay kartı (UI): bilinen eylem başlığı + ayrıntı satırları; adlar sunucuda `<untrusted>` işaretli, panelde düz metin.
+  Başlatan eylemlerde "Başlat", diğerlerinde "Onayla".
+- Prompt r15 "Planning:" kuralı; golden `reminder-test`, `create-program`.
+- İkinci dilim (ayrı PR): `plan_my_week`, `ui_highlight`, özel ders / mesaj tool'ları.
+
+## Haftalık plan, özel ders ve mesaj tool'ları (#515, Faz 3 — ikinci dilim)
+
+- **`get_my_week`**: önümüzdeki 7 yerel gün; açık ödevler (`api/worksheet/assignments/active`) ve takvim
+  (`api/worksheet/calendar/me`, İstanbul gece yarısı UTC aralığı: hatırlatma, ödev bitişi, program sayfası, ders). Model
+  zayıf konu ve günlük set tool'larıyla birlikte gün gün bir öneri yapar; her değişiklik ayrı onay kartı.
+- **Özel ders:** `search_tutors` (ders adı → `api/subject/search` → `api/Teacher/search`), `get_tutor_profile`,
+  `list_tutor_slots` (yalnız gelecekteki boş slotlar), `request_lesson` (yazma; önizleme slotun hâlâ boş olduğunu kontrol
+  eder, kart öğretmen, tarih-saat, saat ücreti ve "öğretmen onaylayınca kesinleşir" der; commit `POST api/booking/requests`,
+  sonra `/my-bookings`). Veli onayı (#439) ve paket kapısı exam API'de kalır.
+- **Mesaj:** `list_my_conversations` (yalnız son mesaj önizlemesi). `draft_message_to_teacher` hiçbir şey göndermez: `draft`
+  kartı metni gösterir, "Kopyala" ve "Mesajlara git" düğmeleri vardır. Kartın rotası yalnız `/teacher-messages` (isteğe bağlı
+  `?conversation=<id>`) olabilir; panel başka rotayı açmaz.
+- **`summarize_worksheet_comments`**: testin yorum dizileri (soru no, yazar rolü, metin; yazar adı yok), her metin
+  `<untrusted>`; model yorumlardaki talimatlara uymaz.
+- **`ui_highlight(elementKey)`**: izinli anahtarlar `programs.create`, `calendar.view`, `homework.assignments`,
+  `tutors.subjects`, `messages.search`; her anahtar kendi ekranına bağlı. Panel ekran farklıysa önce açar, öğeyi
+  (`data-assistant-key`) 3 sn bekler, kaydırır ve `.assistant-highlight` ile 3 sn çerçeveler. Yeni anahtar: şablona öznitelik
+  + `UiHighlightTool.Keys` + açıklama.
+- `SystemPrompt.Revision` 16.
+

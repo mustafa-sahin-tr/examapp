@@ -47,6 +47,9 @@ public interface IPracticeSessionService
     /// <summary>Issue #527: questions the student answered much slower, or wrong much faster, than average (<see cref="TimeStruggleQueries"/>).</summary>
     Task<TimeStrugglesDto> GetTimeStrugglesAsync(StudentProfileDto student, string kind, HardQuestionFilter filter, int take, CancellationToken ct = default);
 
+    /// <summary>Issue #533: the student's topic accuracy next to their grade's aggregate (<see cref="TopicPeerComparisonQueries"/>).</summary>
+    Task<TopicPeerComparisonsDto> GetTopicPeerComparisonAsync(StudentProfileDto student, int? subjectId, CancellationToken ct = default);
+
     /// <summary>Issue #528: subtopics where the student keeps picking the popular distractor (<see cref="RepeatedTrapQueries"/>).</summary>
     Task<RepeatedTrapsDto> GetRepeatedTrapsAsync(StudentProfileDto student, HardQuestionFilter filter, int take, CancellationToken ct = default);
 

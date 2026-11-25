@@ -276,3 +276,41 @@ public sealed class GetRepeatedTrapAnswersTool(DownstreamClient api) : IAssistan
         return ToolResult.Success(data, [card]);
     }
 }
+
+/// <summary>
+/// Issue #533: the student's accuracy per topic next to their grade's average and median (all students of the same grade, any
+/// school; nightly stats, null below 20 students). Aggregates only: no rank, no other student. No card: the reply compares.
+/// </summary>
+public sealed class CompareMyTopicsWithPeersTool(DownstreamClient api) : IAssistantTool
+{
+    public const int MaxTopics = 15;
+
+    public string Name => "compare_my_topics_with_peers";
+    public string Description =>
+        "The student's accuracy per topic (last 90 days, topics with at least 5 answers) next to the average and median accuracy " +
+        "of students in the same grade. Topics furthest behind first; peer values are null when too few students worked on the " +
+        "topic. Optionally one subject (id from search_taxonomy).";
+    public IReadOnlyCollection<string> Roles => Tools.Roles.StudentOnly;
+    public JsonObject InputSchema => Schema(("subjectId", IntProp("Subject id."), false));
+
+    public async Task<ToolResult> ExecuteAsync(ToolContext context, JsonElement args)
+    {
+        var path = "api/student/me/topic-comparison";
+        if (Int(args, "subjectId") is { } subjectId)
+            path += $"?subjectId={subjectId}";
+        var response = await api.GetAsync(context, path);
+        if (!response.IsSuccess)
+            return response.ToError();
+
+        var items = Pick.Items(response.Body).ToList();
+        return ToolResult.Success(new JsonObject
+        {
+            ["days"] = Pick.Int(response.Body, "days"),
+            ["minAnswers"] = Pick.Int(response.Body, "minAnswers"),
+            ["topicCount"] = items.Count,
+            ["withoutPeerData"] = items.Count(i => Pick.Int(i, "peerAccuracyPct") is null),
+            ["topics"] = new JsonArray(items.Take(MaxTopics).Select(i => (JsonNode)Pick.Only(i, "subjectName", "topicId", "topicName",
+                "myAnswered", "myAccuracyPct", "peerAccuracyPct", "peerMedianPct")).ToArray()),
+        });
+    }
+}

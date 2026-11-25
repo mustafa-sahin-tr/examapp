@@ -42,6 +42,14 @@ public sealed class HardQuestionOptions
     [Range(1, 1_000)]
     public int TimeMinAnswers { get; set; } = 10;
 
+    /// <summary>Issue #533: look-back window of the topic peer stats.</summary>
+    [Range(7, 365)]
+    public int PeerWindowDays { get; set; } = 90;
+
+    /// <summary>Issue #533: a student counts in a topic's peer stats from this many answers there.</summary>
+    [Range(1, 100)]
+    public int PeerMinAnswers { get; set; } = 5;
+
     /// <summary>Questions read per batch.</summary>
     [Range(1, 10_000)]
     public int BatchSize { get; set; } = 1_000;
@@ -60,6 +68,7 @@ public interface IQuestionAnswerStatsJob
 /// practice answers. A student counts once, with their earliest answer (solving again does not inflate the rate). A blank or
 /// skipped answer is not an answer (#785). A running test session is never read. Activities and open-text questions are out
 /// (as in the topic report, #497). The rows of a batch are replaced in one transaction; a question nobody answered has no row.
+/// #528 adds the first-choice counts (<see cref="QuestionChoiceStat"/>), #533 the grade + topic peer accuracy (<see cref="TopicAnswerStat"/>).
 /// </summary>
 public sealed class QuestionAnswerStatsJob(AppDbContext db, IOptionsMonitor<HardQuestionOptions> options, ILogger<QuestionAnswerStatsJob> logger)
     : IQuestionAnswerStatsJob
@@ -72,6 +81,8 @@ public sealed class QuestionAnswerStatsJob(AppDbContext db, IOptionsMonitor<Hard
     {
         var batchSize = options.CurrentValue.BatchSize;
         var now = DateTime.UtcNow;
+        var peerFrom = now.AddDays(-options.CurrentValue.PeerWindowDays);
+        var perStudentTopic = new Dictionary<(int StudentId, int TopicId), (int Answered, int Correct)>();
         var written = 0;
         var lastId = 0;
         while (true)
@@ -80,7 +91,16 @@ public sealed class QuestionAnswerStatsJob(AppDbContext db, IOptionsMonitor<Hard
                 .Where(q => q.Id > lastId)
                 .OrderBy(q => q.Id)
                 .Take(batchSize)
-                .Select(q => new { q.Id, q.IsDeleted, q.CorrectAnswerId, q.InteractionType })
+                .Select(q => new
+                {
+                    q.Id,
+                    q.IsDeleted,
+                    q.CorrectAnswerId,
+                    q.InteractionType,
+                    // #533: the topic, else the first subtopic's (AnsweredQuestion.EffectiveTopicId).
+                    TopicId = q.TopicId ?? q.QuestionSubTopics.Where(st => !st.IsDeleted).OrderBy(st => st.SubTopicId)
+                        .Select(st => (int?)st.SubTopic.TopicId).FirstOrDefault(),
+                })
                 .ToListAsync(ct);
             if (questions.Count == 0)
                 break;
@@ -90,6 +110,16 @@ public sealed class QuestionAnswerStatsJob(AppDbContext db, IOptionsMonitor<Hard
             var known = questions.Where(q => !q.IsDeleted && q.InteractionType != OpenTextGrader.Type).ToDictionary(q => q.Id);
             var answers = await ReadTestAnswersAsync([.. known.Keys], id => (known[id].CorrectAnswerId, !known[id].IsDeleted), now, ct);
             answers.AddRange(await ReadPracticeAnswersAsync([.. known.Keys], ct));
+
+            // #533: every answer in the window, per student and topic.
+            foreach (var a in answers.Where(a => a.At >= peerFrom))
+            {
+                if (known[a.QuestionId].TopicId is not { } topicId)
+                    continue;
+                var key = (a.StudentId, topicId);
+                var (answered, correct) = perStudentTopic.GetValueOrDefault(key);
+                perStudentTopic[key] = (answered + 1, correct + (a.Correct ? 1 : 0));
+            }
 
             var firsts = answers
                 .GroupBy(a => (a.QuestionId, a.StudentId))
@@ -127,8 +157,53 @@ public sealed class QuestionAnswerStatsJob(AppDbContext db, IOptionsMonitor<Hard
             db.ChangeTracker.Clear();
             written += rows.Count;
         }
-        logger.LogInformation("Question answer stats: {Rows} questions written.", written);
+        var topicRows = await WriteTopicStatsAsync(perStudentTopic, now, ct);
+        logger.LogInformation("Question answer stats: {Rows} questions, {TopicRows} grade topics written.", written, topicRows);
         return written;
+    }
+
+    /// <summary>
+    /// Issue #533: per grade (the student's current one) and topic, the mean and median accuracy of the students with at least
+    /// <c>PeerMinAnswers</c> answers there. The whole table is replaced in one transaction.
+    /// </summary>
+    private async Task<int> WriteTopicStatsAsync(Dictionary<(int StudentId, int TopicId), (int Answered, int Correct)> perStudentTopic,
+        DateTime now, CancellationToken ct)
+    {
+        var minAnswers = options.CurrentValue.PeerMinAnswers;
+        var studentIds = perStudentTopic.Keys.Select(k => k.StudentId).Distinct().ToList();
+        var grades = await db.Students.AsNoTracking()
+            .Where(s => studentIds.Contains(s.Id) && s.GradeId != null)
+            .ToDictionaryAsync(s => s.Id, s => s.GradeId!.Value, ct);
+        var rows = perStudentTopic
+            .Where(x => x.Value.Answered >= minAnswers && grades.ContainsKey(x.Key.StudentId))
+            .GroupBy(x => (GradeId: grades[x.Key.StudentId], x.Key.TopicId), x => 100.0 * x.Value.Correct / x.Value.Answered)
+            .Select(g =>
+            {
+                var sorted = g.OrderBy(v => v).ToList();
+                var mid = sorted.Count / 2;
+                return new TopicAnswerStat
+                {
+                    GradeId = g.Key.GradeId,
+                    TopicId = g.Key.TopicId,
+                    StudentCount = sorted.Count,
+                    AccuracyPct = Math.Round(sorted.Average(), 1),
+                    MedianPct = Math.Round(sorted.Count % 2 == 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2, 1),
+                    ComputedAtUtc = now,
+                };
+            })
+            .ToList();
+
+        await db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            db.ChangeTracker.Clear();
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            await db.TopicAnswerStats.ExecuteDeleteAsync(ct);
+            db.TopicAnswerStats.AddRange(rows);
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+        });
+        db.ChangeTracker.Clear();
+        return rows.Count;
     }
 
     private async Task<List<FirstAnswer>> ReadTestAnswersAsync(List<int> questionIds, Func<int, (int? CorrectAnswerId, bool Known)> question,

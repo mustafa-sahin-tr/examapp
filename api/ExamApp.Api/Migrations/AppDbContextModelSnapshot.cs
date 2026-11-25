@@ -9199,6 +9199,31 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("TeacherSubjects");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.TopicAnswerStat", b =>
+                {
+                    b.Property<int>("GradeId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TopicId")
+                        .HasColumnType("integer");
+
+                    b.Property<double>("AccuracyPct")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime>("ComputedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double>("MedianPct")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("StudentCount")
+                        .HasColumnType("integer");
+
+                    b.HasKey("GradeId", "TopicId");
+
+                    b.ToTable("TopicAnswerStats");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.TopicStudyLink", b =>
                 {
                     b.Property<int>("Id")

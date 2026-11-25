@@ -25,6 +25,7 @@ public static class ToolRegistration
         services.AddScoped<IAssistantTool, StartHardQuestionPracticeTool>();
         services.AddScoped<IAssistantTool, GetRepeatedTrapAnswersTool>(); // #528
         services.AddScoped<IAssistantTool, GetTimeStruggleQuestionsTool>(); // #527
+        services.AddScoped<IAssistantTool, CompareMyTopicsWithPeersTool>(); // #533
         // #1336 (Phase 1b): parent read tools.
         services.AddScoped<IAssistantTool, ListMyChildrenTool>();
         services.AddScoped<IAssistantTool, GetChildWeeklySummaryTool>();

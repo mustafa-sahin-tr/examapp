@@ -102,6 +102,23 @@ public sealed record TimeStruggleDto(
 /// <summary>Issue #527: <c>GET api/student/me/time-struggles</c>.</summary>
 public sealed record TimeStrugglesDto(string Kind, int Days, int TotalCount, List<TimeStruggleDto> Items);
 
+/// <summary>
+/// Issue #533: the student's accuracy in a topic next to their grade's (an aggregate of at least <c>HardQuestions:MinStudents</c>
+/// students, else null). No other student's data, no rank or percentile.
+/// </summary>
+public sealed record TopicPeerComparisonDto(
+    int? SubjectId,
+    string? SubjectName,
+    int TopicId,
+    string? TopicName,
+    int MyAnswered,
+    int MyAccuracyPct,
+    int? PeerAccuracyPct,
+    int? PeerMedianPct);
+
+/// <summary>Issue #533: <c>GET api/student/me/topic-comparison</c>; <c>ComputedAtUtc</c> is when the peer stats were computed.</summary>
+public sealed record TopicPeerComparisonsDto(int Days, int MinAnswers, DateTime? ComputedAtUtc, List<TopicPeerComparisonDto> Items);
+
 /// <summary>Issue #528: one example of a repeated trap: the student's own choice (label A, B, … and text), never the correct one.</summary>
 public sealed record RepeatedTrapExampleDto(
     int QuestionId,

@@ -310,6 +310,7 @@ public class AppDbContext : DbContext
     public DbSet<StudentDailyXp> StudentDailyXps { get; set; } // issue #422
     public DbSet<QuestionAnswerStat> QuestionAnswerStats { get; set; } // issue #526
     public DbSet<QuestionChoiceStat> QuestionChoiceStats { get; set; } // issue #528
+    public DbSet<TopicAnswerStat> TopicAnswerStats { get; set; } // issue #533
     public DbSet<ParentHomeworkOverdueMarker> ParentHomeworkOverdueMarkers { get; set; } // issue #423
     public DbSet<ParentInvitation> ParentInvitations { get; set; } // issue #440
     public DbSet<ParentInvitationAttempt> ParentInvitationAttempts { get; set; } // issue #440
@@ -607,6 +608,7 @@ public class AppDbContext : DbContext
             e.HasKey(c => new { c.QuestionId, c.AnswerId });
             e.HasOne(c => c.Question).WithMany().HasForeignKey(c => c.QuestionId).OnDelete(DeleteBehavior.Cascade);
         });
+        modelBuilder.Entity<TopicAnswerStat>(e => e.HasKey(t => new { t.GradeId, t.TopicId })); // #533: no FK, rebuilt nightly
         modelBuilder.Entity<StudentDailyXp>(e =>
         {
             e.HasIndex(d => new { d.StudentId, d.Day }).IsUnique();

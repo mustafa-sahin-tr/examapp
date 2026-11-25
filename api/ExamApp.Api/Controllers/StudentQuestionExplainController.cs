@@ -162,4 +162,22 @@ public class StudentQuestionExplainController(
         return Ok(await practice.GetTimeStrugglesAsync(student, kind,
             new HardQuestionFilter(days, subjectId is { } s ? [s] : [], topicId, subTopicId), take, ct));
     }
+
+    /// <summary>
+    /// Issue #533: per topic, the student's accuracy next to their grade's aggregate from the nightly stats (null below the
+    /// k-anonymity threshold). No other student's data, rank or percentile.
+    /// </summary>
+    [HttpGet("topic-comparison")]
+    [EnableRateLimiting(TopicPerformanceRateLimiting.Policy)]
+    public async Task<IActionResult> GetTopicComparison([FromQuery] int? subjectId = null, CancellationToken ct = default)
+    {
+        var user = await GetAuthenticatedUserAsync(ct);
+        if (!IsResolvedUser(user))
+            return Unauthorized();
+        var student = await students.GetStudentProfile(user.Id);
+        if (student is null)
+            return NotFound(new { message = localizer["student.profileNotFound"].Value });
+
+        return Ok(await practice.GetTopicPeerComparisonAsync(student, subjectId, ct));
+    }
 }

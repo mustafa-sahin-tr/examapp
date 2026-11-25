@@ -125,6 +125,28 @@ public sealed class HardQuestionToolTests : IDisposable
     }
 
     [Fact]
+    public async Task Peer_comparison_passes_the_subject_and_gives_only_aggregates_issue533()
+    {
+        _h.Api.On("GET", "api/student/me/topic-comparison?subjectId=3", new
+        {
+            days = 90, minAnswers = 5, computedAtUtc = "2026-11-25T03:00:00Z",
+            items = new object[]
+            {
+                new { subjectName = "Matematik", topicId = 5, topicName = "Açılar", myAnswered = 12, myAccuracyPct = 40, peerAccuracyPct = 72, peerMedianPct = 75 },
+                new { subjectName = "Matematik", topicId = 6, topicName = "Kesirler", myAnswered = 8, myAccuracyPct = 88, peerAccuracyPct = (int?)null, peerMedianPct = (int?)null },
+            },
+        });
+
+        var result = await Tool("compare_my_topics_with_peers").ExecuteAsync(Student(), Args(new { subjectId = 3 }));
+
+        result.Ok.ShouldBeTrue();
+        result.Data!["withoutPeerData"]!.GetValue<int>().ShouldBe(1);
+        var first = result.Data!["topics"]!.AsArray()[0]!;
+        (first["myAccuracyPct"]!.GetValue<int>(), first["peerAccuracyPct"]!.GetValue<int>()).ShouldBe((40, 72));
+        result.Cards.ShouldBeNull();
+    }
+
+    [Fact]
     public async Task No_hard_questions_means_no_card()
     {
         _h.Api.On("GET", "api/student/me/hard-questions?mode=mine&days=30&take=10", new { mode = "mine", totalCount = 0, items = Array.Empty<object>() });

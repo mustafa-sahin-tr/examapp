@@ -310,7 +310,6 @@ export class AssistantPanelComponent implements AfterViewInit {
         if (p['durationMinutes']) lines.push({ key: 'confirm.line.minutes', params: { minutes: p['durationMinutes'] } });
         break;
       case 'requestLesson':
-        lines.push({ key: 'confirm.line.teacher', params: { name: plainText(p['name']) || '—' } });
         lines.push({ key: 'confirm.line.slot', params: { date: localDate(p['date']), start: hhmm(p['startTime']), end: hhmm(p['endTime']) } });
         if (typeof p['hourlyRate'] === 'number') lines.push({ key: 'confirm.line.hourlyRate', params: { rate: p['hourlyRate'] } });
         lines.push({ key: 'confirm.line.teacherDecides', params: {} });

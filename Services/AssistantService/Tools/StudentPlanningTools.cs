@@ -25,6 +25,16 @@ internal static class LocalTime
     public static DateTime At(DateOnly date, TimeOnly time) =>
         new DateTimeOffset(date.ToDateTime(time), Offset).UtcDateTime;
 
+    /// <summary>An exam API UTC instant as the Turkish local moment (null when it does not parse).</summary>
+    public static DateTime? FromUtc(string? text) =>
+        DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var utc)
+            ? utc + Offset
+            : null;
+
+    /// <summary>"yyyy-MM-dd HH:mm" local, for the model.</summary>
+    public static string? LocalStamp(string? utcText) =>
+        FromUtc(utcText)?.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+
     public static DateOnly Today(TimeProvider clock) => DateOnly.FromDateTime(clock.GetUtcNow().ToOffset(Offset).DateTime);
 
     public static JsonObject DateProp(string description) => StringProp(description + " Format yyyy-MM-dd (Turkish local date).", 10);

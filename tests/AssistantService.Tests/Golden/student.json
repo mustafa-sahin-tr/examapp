@@ -774,6 +774,7 @@
      "startTime": "17:00:00",
      "endTime": "18:00:00",
      "startUtc": "2030-01-10T14:00:00Z",
+     "endUtc": "2030-01-10T15:00:00Z",
      "isBooked": false
     }
    ]

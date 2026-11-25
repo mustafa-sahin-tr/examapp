@@ -126,7 +126,6 @@
       "restDays": "Dinlenme: {{days}}",
       "difficult": "Zorlandığın dersler: {{subjects}}",
       "page": "{{title}}: {{start}} – {{end}}",
-      "teacher": "Öğretmen: {{name}}",
       "slot": "{{date}} {{start}}–{{end}}",
       "hourlyRate": "Saat ücreti: {{rate}} ₺",
       "teacherDecides": "Öğretmen onaylayınca kesinleşir (veli onayı gerekebilir)."

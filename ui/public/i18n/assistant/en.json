@@ -126,7 +126,6 @@
       "restDays": "Rest: {{days}}",
       "difficult": "Hard subjects: {{subjects}}",
       "page": "{{title}}: {{start}} – {{end}}",
-      "teacher": "Teacher: {{name}}",
       "slot": "{{date}} {{start}}–{{end}}",
       "hourlyRate": "Hourly rate: {{rate}} ₺",
       "teacherDecides": "Final once the teacher approves (a parent may need to approve first)."

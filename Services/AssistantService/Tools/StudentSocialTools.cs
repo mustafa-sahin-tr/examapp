@@ -15,7 +15,7 @@ public sealed class GetMyWeekTool(DownstreamClient api, TimeProvider clock) : IA
     private const int Days = 7;
 
     public string Name => "get_my_week";
-    public string Description => "The student's next 7 days: open homework (due dates) and calendar events (test reminders, homework deadlines, program study pages, lessons). For 'haftamı planla'. Names are user-written data.";
+    public string Description => "The student's next 7 days (Turkish local times): open homework (dueAt) and calendar events (test reminders, homework deadlines, program study pages, lessons). For 'haftamı planla'. Names are user-written data.";
     public IReadOnlyCollection<string> Roles => Tools.Roles.StudentOnly;
     public JsonObject InputSchema => Schema();
 
@@ -32,14 +32,18 @@ public sealed class GetMyWeekTool(DownstreamClient api, TimeProvider clock) : IA
 
         var open = Pick.Items(homework.Body).Take(MaxListItems).Select(a =>
         {
-            var row = Pick.Only(a, "worksheetId", "questionCount", "endAt");
+            var row = Pick.Only(a, "worksheetId", "questionCount");
+            row["dueAt"] = LocalTime.LocalStamp(Pick.Str(a, "endAt"));
             row["name"] = Untrusted(Pick.Str(a, "name"));
             row["kind"] = Pick.Int(a, "kind") == 1 ? "activity" : "test";
             return (JsonNode)row;
         }).ToArray();
         var events = Pick.Items(calendar.Body).Take(40).Select(e =>
         {
-            var row = Pick.Only(e, "kind", "date", "endDate", "subject", "status", "isCompleted", "programId");
+            var row = Pick.Only(e, "kind", "subject", "status", "isCompleted", "programId");
+            row["at"] = LocalTime.LocalStamp(Pick.Str(e, "date"));
+            if (LocalTime.LocalStamp(Pick.Str(e, "endDate")) is { } endAt)
+                row["until"] = endAt;
             if (Pick.Int(e, "worksheetId") is > 0)
             {
                 row["worksheetId"] = Pick.Int(e, "worksheetId");
@@ -130,7 +134,7 @@ public sealed class GetTutorProfileTool(DownstreamClient api) : IAssistantTool
 public sealed class ListTutorSlotsTool(DownstreamClient api, TimeProvider clock) : IAssistantTool
 {
     public string Name => "list_tutor_slots";
-    public string Description => "A tutor's free lesson slots from now on (slotId, local date and times) for request_lesson.";
+    public string Description => "A tutor's free lesson slots from now on (slotId, Turkish local date and times) for request_lesson.";
     public IReadOnlyCollection<string> Roles => Tools.Roles.StudentOnly;
     public JsonObject InputSchema => Schema(("teacherId", IntProp("Teacher id.", 1), true));
 
@@ -163,13 +167,21 @@ internal static class Slots
         return (free, null);
     }
 
-    public static JsonObject Row(JsonNode s) => new()
+    /// <summary>Slot Date / StartTime are UTC in the exam API: the row carries the Turkish local date and times.</summary>
+    public static JsonObject Row(JsonNode s) => LocalSlot(Pick.Int(s, "id"), Pick.Str(s, "startUtc"), Pick.Str(s, "endUtc"), "slotId");
+
+    public static JsonObject LocalSlot(int? id, string? startUtc, string? endUtc, string idName)
     {
-        ["slotId"] = Pick.Int(s, "id"),
-        ["date"] = Pick.Str(s, "date"),
-        ["startTime"] = Pick.Str(s, "startTime"),
-        ["endTime"] = Pick.Str(s, "endTime"),
-    };
+        var start = LocalTime.FromUtc(startUtc);
+        var end = LocalTime.FromUtc(endUtc);
+        return new JsonObject
+        {
+            [idName] = id,
+            ["date"] = start?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            ["startTime"] = start?.ToString("HH:mm", CultureInfo.InvariantCulture),
+            ["endTime"] = end?.ToString("HH:mm", CultureInfo.InvariantCulture),
+        };
+    }
 }
 
 /// <summary>
@@ -234,7 +246,10 @@ public sealed class ListMyBookingsTool(DownstreamClient api) : IAssistantTool
             return response.ToError();
         var rows = Pick.Items(response.Body).Take(10).Select(b =>
         {
-            var row = Pick.Only(b, "id", "teacherId", "date", "startTime", "endTime", "status", "rejectionReason");
+            var row = Slots.LocalSlot(Pick.Int(b, "id"), Pick.Str(b, "startUtc"), Pick.Str(b, "endUtc"), "id");
+            row["teacherId"] = Pick.Int(b, "teacherId");
+            row["status"] = Pick.Str(b, "status");
+            row["rejectionReason"] = Pick.Str(b, "rejectionReason");
             row["teacher"] = Untrusted(Pick.Str(b, "teacherName"));
             if (row["rejectionReason"] is JsonValue reason && reason.TryGetValue<string>(out var text))
                 row["rejectionReason"] = Untrusted(text);
@@ -259,7 +274,8 @@ public sealed class ListMyConversationsTool(DownstreamClient api) : IAssistantTo
             return response.ToError();
         var rows = Pick.Items(response.Body).Take(10).Select(c =>
         {
-            var row = Pick.Only(c, "conversationId", "teacherId", "lastMessageAt", "lastMessageIsMine", "unreadCount");
+            var row = Pick.Only(c, "conversationId", "teacherId", "lastMessageIsMine", "unreadCount");
+            row["lastMessageAt"] = LocalTime.LocalStamp(Pick.Str(c, "lastMessageAt"));
             row["teacher"] = Untrusted(Pick.Str(c, "counterpartName"));
             row["lastMessage"] = Untrusted(Pick.Str(c, "lastMessagePreview"));
             return (JsonNode)row;

@@ -261,6 +261,39 @@ public class ParentDashboardController : BaseController
         return result == null ? ChildNotFound() : Ok(result);
     }
 
+    /// <summary>
+    /// Issue #536: the questions the child struggled with most (#526 <c>mine</c>: most misses first), with the question image or
+    /// text, topic and counts. No correct choice and no chosen choice; a running or open assigned test's question never shows.
+    /// Analysis plan gate as topic performance (#498 / #1089: 403); another parent's child 404.
+    /// </summary>
+    [HttpGet("{studentId:int}/hard-questions")]
+    [EnableRateLimiting(ParentLinkRateLimiting.ChildActivityPolicy)]
+    public async Task<IActionResult> GetChildHardQuestions(
+        int studentId,
+        [FromServices] IParentChildAccess access,
+        [FromServices] IEntitlementService entitlements,
+        [FromServices] IParentHardQuestionsService hardQuestions,
+        [FromQuery] int? subjectId = null,
+        [FromQuery] int days = Services.Practice.HardQuestionQueries.DefaultDays,
+        [FromQuery] int take = ParentHardQuestionsService.DefaultTake,
+        CancellationToken ct = default)
+    {
+        if (days is < 1 or > Services.Practice.HardQuestionQueries.MaxDays)
+            return InvalidQuery(nameof(days), "parentLinks.errors.invalidHardQuestionsQuery");
+        if (take is < 1 or > ParentHardQuestionsService.MaxTake)
+            return InvalidQuery(nameof(take), "parentLinks.errors.invalidHardQuestionsQuery");
+
+        var user = await GetAuthenticatedUserAsync(ct);
+        if (!IsResolvedUser(user))
+            return UserNotResolved(new { message = _localizer["auth.userNotResolved"].Value });
+        if (await ChildEntitlements.DenyUnlessChildHasAsync(access, entitlements, user.Id, studentId, EntitlementFeatures.Analytics, ct) is { } denied)
+            return denied;
+
+        var filter = new Services.Practice.HardQuestionFilter(days, subjectId is { } s ? [s] : [], null, null);
+        var result = await hardQuestions.GetAsync(user.Id, studentId, filter, take, ct);
+        return result == null ? ChildNotFound() : Ok(result);
+    }
+
     /// <summary>Issue #1112: haftalık raporun geriye gidebildiği hafta sayısı (son biten dahil).</summary>
     public const int MaxWeeklyReportWeeks = 12;
 

@@ -345,12 +345,19 @@ public class ParentForbiddenContentTests(IntegrationApiFactory factory) : Integr
         Payload("/my-children").ShouldContain("Üçüncü Veli");
         Payload("my-children (second parent)").ShouldContain("Ayşe Kaya");
         Payload("my-children (second parent)").ShouldNotContain("Üçüncü Veli");
+        // Issue #536: the child's missed questions show with their image / text, never a choice or the key.
+        var hard = Payload("/hard-questions");
+        hard.ShouldContain("GIZLI-SORU-");
+        foreach (var key in new[] { "GIZLI-DOGRU", "GIZLI-YANLIS", "GIZLI-PRATIK", "GIZLI-ALT", "dogru.png" })
+            hard.ShouldNotContain(key);
 
         foreach (var (url, raw) in payloads)
         {
             // Issue #436 istisnası: YALNIZ birincil velinin çocuk listesinde, bekleyen ikinci veli isteğinin MASKELİ e-postası
             // (birincil veli kimi onayladığını bilsin). Değer doğrulanıp taramadan önce çıkarılır.
-            var json = url == "/api/parent-links/my-children" ? StripPrimaryParentMaskedEmails(raw) : raw;
+            var json = url == "/api/parent-links/my-children" ? StripPrimaryParentMaskedEmails(raw)
+                : url.Contains("/hard-questions", StringComparison.Ordinal) ? StripHardQuestionContent(raw)
+                : raw;
             foreach (var marker in ForbiddenContent)
                 json.ShouldNotContain(marker, Case.Insensitive, $"{url} yasak içerik taşıyor: '{marker}'");
 
@@ -374,6 +381,22 @@ public class ParentForbiddenContentTests(IntegrationApiFactory factory) : Integr
                     value.GetDecimal().ShouldNotBe(RivalXp, $"{url}: {path}");
             }
         }
+    }
+
+    /// <summary>
+    /// Issue #536 exception (spec: "soru görseli, konu, yanlış sayısı"): YALNIZ <c>hard-questions</c> yanıtında, <c>$.items[*]</c>
+    /// altındaki sorunun kendi <c>imageUrl</c> ve <c>text</c> alanları. Değer taramadan önce çıkarılır; şık, doğru cevap, seçilen
+    /// şık ve alt metin istisna değildir (ayrıca ham yanıtta aranır).
+    /// </summary>
+    private static string StripHardQuestionContent(string json)
+    {
+        var root = System.Text.Json.Nodes.JsonNode.Parse(json)!.AsObject();
+        foreach (var item in root["items"]!.AsArray().OfType<System.Text.Json.Nodes.JsonObject>())
+        {
+            item.Remove("imageUrl");
+            item.Remove("text");
+        }
+        return root.ToJsonString();
     }
 
     /// <summary>

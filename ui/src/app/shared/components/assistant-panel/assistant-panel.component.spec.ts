@@ -210,6 +210,27 @@ describe('AssistantPanelComponent (#507)', () => {
         expect(store.send).toHaveBeenCalledWith('Bu soruları çözmek istiyorum.');
     });
 
+    it('questionsCard_NotSolvable_HasNoSolveButton_issue536', () => {
+        setup();
+        store.messages.set([
+            message({
+                id: 4,
+                text: 'Ali en çok bu sorularda zorlandı.',
+                cards: [
+                    {
+                        kind: 'questions',
+                        solvable: false,
+                        items: [{ questionId: 42, subjectName: 'Matematik', topicName: 'Açılar', missCount: 2, imageUrl: 'https://img/42.jpg' }],
+                    },
+                ],
+            }),
+        ]);
+        fixture.detectChanges();
+
+        expect(el('[data-testid="assistant-card-questions"]')!.textContent).toContain('2 kez yanlış / boş');
+        expect(el('[data-testid="assistant-solve-these"]')).toBeNull();
+    });
+
     it('confirmDone_ShowsStateInsteadOfButtons', () => {
         setup();
         store.messages.set([

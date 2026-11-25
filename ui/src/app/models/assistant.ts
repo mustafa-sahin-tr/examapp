@@ -67,7 +67,8 @@ export interface QuestionCardItem {
 
 export type AssistantCard =
   | { kind: 'kpi'; items: KpiItem[] }
-  | { kind: 'questions'; items: QuestionCardItem[] }
+  /** `solvable: false` (#536, parent): no "solve these" button. */
+  | { kind: 'questions'; items: QuestionCardItem[]; solvable?: boolean }
   | { kind: 'topicTable'; rows: TopicRow[] }
   | { kind: 'confirm'; pendingActionId: string; tool: string; preview: ConfirmPreview | null; expiresAt: string };
 

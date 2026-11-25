@@ -348,3 +348,14 @@ cevaplanmamış soruya ipucu yok (issue'daki `hint-context` / `get_hint` yapılm
   `mine` listesinde değilse `global` kuralından geçmeli, ikisinden de geçmezse 400. Tool'da `mode=global`, panel kartında
   "doğru yapanlar %N". Prompt r7 ("en zor sorular" / "herkesin zorlandığı" → global). Altın sete `hard-global` eklendi; altın
   fikstür anahtarı artık sorgu taşıyabilir (`GET path?mode=global`).
+- **Veli kipi (#536):** `GET /api/parent/children/{studentId}/hard-questions?subjectId&days=90&take=5`
+  (`ParentDashboardController`, `ChildActivityPolicy` oran sınırı; `days` 1–90, `take` 1–10, dışı 400
+  `parentLinks.errors.invalidHardQuestionsQuery`). Sıra #498: Active bağlantı kapısı (yoksa 404), paket kapısı (`Analytics`, yoksa
+  403), `children.hard-questions` audit, sonra `mine` sorgusu değişmeden (çocuk grant'tan; doğru / seçilen şık yok).
+  `lastAttemptAt` saate kesilir (dakika izi yok). Karar: veli soru başına deneme / kaçırma sayısını görür (issue: "soru görseli,
+  konu, yanlış sayısı"); seçilen şık hiç dönmez, tool `lastAttemptCorrect`'i modele vermez. `global` kipi velide yok (başka öğrencilerle karşılaştırma yasağı).
+  `ParentForbiddenContentTests` bu uçta yalnız `items[*].imageUrl/text` alanlarını dar istisna olarak izinli sayar.
+  Tool `get_child_hard_questions` (`take` 1–10, varsayılan 5; model id / konu / sayıları görür, `lastAttemptAt` İstanbul saati);
+  kart `questions` + `solvable: false`: panel "Bunları çöz" düğmesini göstermez. Prompt r10: velinin görebildiği tek soru bu
+  tool'unki; doğru cevap verilmez / tahmin edilmez, veliye pratik önerilmez, çocukla birlikte bakmak önerilir. Altın veli setine
+  `child-hard-questions` eklendi.

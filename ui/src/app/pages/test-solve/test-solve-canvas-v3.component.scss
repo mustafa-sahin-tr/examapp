@@ -653,6 +653,8 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
   box-shadow: var(--ms-shadow-overlay);
   backdrop-filter: blur(10px);
   box-sizing: border-box;
+  // Karalama paneli açıkken dock daralır (tablet); araçlar dock genişliğine göre sadeleşir.
+  container: solve-dock / inline-size;
 }
 
 // Dock sabit yükseklikli (--solve-dock-height) olduğundan araçlar asla ikinci satıra sarmaz;
@@ -669,6 +671,9 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
 }
 
 .solve-dock__tool {
+  // Sıkışınca küçülüp yazıları üst üste bindirmez; yer yoksa yazılar gizlenir (aşağıdaki container sorguları).
+  flex: 0 0 auto;
+  white-space: nowrap;
   // Issue #777: otomatik geçiş artık varsayılan olarak kapalı; pasif metin kart üzerinde okunmalı.
   --mat-button-outlined-label-text-color: var(--solve-ink);
   display: inline-flex;
@@ -1047,6 +1052,35 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
   font-size: 0.75rem;
   color: var(--solve-ink-muted);
   white-space: nowrap;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// Dar dock (tablette karalama paneli açıkken): araç yazıları gizlenir; ikon, ipucu balonu ve aria-label kalır. Klavye
+// ipucu dar dock'ta ve dokunmatik ekranda gösterilmez; arada yer kalmazsa kısalır (üç nokta).
+@container solve-dock (max-width: 1000px) {
+  .solve-dock__hint {
+    display: none;
+  }
+}
+
+@container solve-dock (max-width: 760px) {
+  .solve-dock__tool .solve-dock__label {
+    display: none;
+  }
+
+  .solve-dock__tool {
+    min-width: 48px;
+    padding-inline: 10px;
+  }
+}
+
+@media (hover: none) {
+  .solve-dock__hint {
+    display: none;
+  }
 }
 
 // ---------------------------------------------------------------------------

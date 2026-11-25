@@ -79,6 +79,13 @@
         {{ t('fix.onlyFlagged') }}
       </mat-slide-toggle>
       }
+      @if (!nav.hasFlagged && f.kind !== 'QuickAdd' && f.pages.length > 1) {
+      <!-- İşaretli sayfa kalmadı: kalan sayfaları gezmeden test bu haliyle bırakılır. -->
+      <button mat-stroked-button type="button" data-testid="labeling-fix-accept" [disabled]="fixLoading() || fixSaving()"
+        [matTooltip]="t('fix.acceptAsIsHint')" (click)="acceptFixAsIs()">
+        <mat-icon>done_all</mat-icon>{{ t('fix.acceptAsIs') }}
+      </button>
+      }
     </div>
     }
     }

@@ -448,6 +448,9 @@ olarak aktarılır. Yalnız kitap aktarımında; hızlı ekleme ve karışık g�
   (`nextFlaggedFixTarget`). Filtre kapalıyken eski davranış: testin sıradaki sayfası, sonra dönüş.
   Başka teste geçmeden önce düzeltilen testin bu oturumda tuvalde açılmamış (işaretsiz) sayfası açılır (bildirimle: bir
   sayfadaki düzeltme diğerindeki numaraları / cevapları etkileyebilir); orada kayıt geçişi sürdürür.
+  **Bu haliyle tamam:** testte işaretli sayfa kalmadıysa şeritte düğme: kalan sayfalar gezilmeden (kayıt yok) sıradaki kontrol
+  gerekli teste geçilir, yoksa aktarım sayfasına dönülür. Numara kutudan / eski taslaktan geldiği için (#1171) bir sayfadaki
+  silme diğer sayfaları kaydırmaz; zorunlu gezinti yalnız güvenlik içindi.
 
 **Sorular alınırken inceleme (#1267):** iş `Questions` aşamasında ve aktarım sürüyorken (`Queued`, `Running`, `AwaitingBudget`,
 `AwaitingCostApproval`) bitmiş test (`Done`, `NeedsReview`, `Failed`) beklemeden incelenir: işaretlemede düzelt, cevap seçme,

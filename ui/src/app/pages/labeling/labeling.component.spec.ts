@@ -2209,6 +2209,43 @@ describe('LabelingComponent', () => {
             expect(snack.mock.calls.at(-1)![0]).toContain('bakmadığınız sayfası açılıyor (s. 11)');
         });
 
+        // İşaretli sayfa kalmayan testte "Bu haliyle tamam" kalan sayfaları gezmeden sıradaki sorunlu teste geçer; işaretli
+        // sayfası olan testte görünmez.
+        it('fix_AcceptAsIs_SkipsTheUnseenPages_WhenNoFlagIsLeft', async () => {
+            routeUrl = '/?bookImport=j1&test=3&page=12';
+            const flags = (pages: number[]) => [{ code: 'extraQuestions', pages, numbers: [5], found: null, expected: null }];
+            const current = { ...test, status: 'Done', order: 1, worksheetId: 1, fileFrom: 11, fileTo: 13, reviewFlags: [] } as BookImportJobTest;
+            const other = { ...test, id: 4, testNo: 3, title: 'Ondalık', status: 'NeedsReview', order: 2, worksheetId: 2, fileFrom: 14, fileTo: 15,
+                reviewFlags: flags([14]) } as BookImportJobTest;
+            await setupWith(() => {
+                bookImportsApi.get.mockReturnValue(of({ ...job, tests: [current, other] }));
+                bookImportsApi.pageImage.mockReturnValue(of(new Blob(['webp'], { type: 'image/webp' })));
+            });
+            const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+            const snack = vi.spyOn(TestBed.inject(MatSnackBar), 'open');
+
+            const accept = fixture.nativeElement.querySelector('[data-testid="labeling-fix-accept"]') as HTMLButtonElement;
+            expect(accept.textContent).toContain('Bu haliyle tamam');
+            accept.click();
+
+            expect(navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { test: 4, page: 14 } }));
+            expect(navigate).not.toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { page: 11 } }));
+            expect(snack.mock.calls.at(-1)![0]).toContain('Test bu haliyle bırakıldı.');
+            expect(bookImportsApi.replacePage).not.toHaveBeenCalled();
+        });
+
+        it('fix_AcceptAsIs_HiddenWhileTheTestHasAFlaggedPage', async () => {
+            routeUrl = '/?bookImport=j1&test=3&page=12';
+            const current = { ...test, status: 'NeedsReview', order: 1, worksheetId: 1, fileFrom: 11, fileTo: 12,
+                reviewFlags: [{ code: 'extraQuestions', pages: [12], numbers: [5], found: null, expected: null }] } as BookImportJobTest;
+            await setupWith(() => {
+                bookImportsApi.get.mockReturnValue(of({ ...job, tests: [current] }));
+                bookImportsApi.pageImage.mockReturnValue(of(new Blob(['webp'], { type: 'image/webp' })));
+            });
+
+            expect(fixture.nativeElement.querySelector('[data-testid="labeling-fix-accept"]')).toBeNull();
+        });
+
         // #1129: aktarım sayfası Claude ile tespit edilmişti; düzeltmede YOLO yerine Claude (kayıtlı sonuç önbellekten).
         it('fix_DetectsWithClaudeEvenWhenModelIsPreferred', async () => {
             routeUrl = '/?bookImport=j1&test=3&page=12';

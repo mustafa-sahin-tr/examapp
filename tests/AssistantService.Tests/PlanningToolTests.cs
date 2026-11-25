@@ -119,6 +119,8 @@ public sealed class PlanningToolTests : IDisposable
     [Fact]
     public async Task Reminder_is_local_time_in_utc_and_rejects_the_past()
     {
+        _h.Api.On("GET", "api/worksheet/list?id=301&pageNumber=1&pageSize=1", new { items = new[] { new { id = 301, name = "Kesirler", isAssigned = true } } });
+        _h.Api.On("GET", "api/worksheet/list?id=302&pageNumber=1&pageSize=1", new { items = new[] { new { id = 302, name = "Serbest", isAssigned = false } } });
         _h.Api.On("GET", "api/worksheet/301", new { id = 301, name = "Kesirler" });
         _h.Api.On("GET", "api/worksheet/301/reminder", new { status = "Pending", scheduledFor = "2026-11-25T16:00:00Z" });
         _h.Api.On("PUT", "api/worksheet/301/reminder", new { status = "Pending" });
@@ -127,6 +129,7 @@ public sealed class PlanningToolTests : IDisposable
         var args = Args(new { worksheetId = 301, date = "2026-11-27", time = "19:00", remindBeforeMinutes = 30 });
 
         (await set.ExecuteAsync(Student(), Args(new { worksheetId = 301, date = "2026-11-23", time = "12:59" }))).ErrorCode.ShouldBe("InvalidArguments");
+        (await set.ExecuteAsync(Student(), Args(new { worksheetId = 302, date = "2026-11-27", time = "19:00" }))).ErrorCode.ShouldBe("NotAssigned");
         (await set.ExecuteAsync(Student(), args)).Data!["replacesReminder"]!.GetValue<bool>().ShouldBeTrue();
         await set.CommitAsync(Student(), args);
         _h.Api.Calls.Single(c => c.Method == "PUT").Body.ShouldBe("""{"scheduledFor":"2026-11-27T16:00:00Z","remindBeforeMinutes":30}""");

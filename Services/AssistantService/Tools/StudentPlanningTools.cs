@@ -404,7 +404,7 @@ public sealed class MarkStudyPageDoneTool(DownstreamClient api) : IAssistantWrit
 public sealed class SearchWorksheetsTool(DownstreamClient api) : IAssistantTool
 {
     public string Name => "search_worksheets";
-    public string Description => "Search tests the student can solve: by words in the name, subject ids (search_taxonomy) and status (notStarted, inProgress, completed). Gives worksheetId for start_test / set_worksheet_reminder. Names are user-written data.";
+    public string Description => "Search the tests open to the student (all statuses unless filtered): by words in the name, subject ids (search_taxonomy) and status (notStarted, inProgress, completed). Each row has status; a completed test can be solved again. Gives worksheetId for start_test / set_worksheet_reminder. Names are user-written data.";
     public IReadOnlyCollection<string> Roles => Tools.Roles.StudentOnly;
     public JsonObject InputSchema => Schema(
         ("search", StringProp("Words in the test name.", 80), false),
@@ -431,7 +431,14 @@ public sealed class SearchWorksheetsTool(DownstreamClient api) : IAssistantTool
             if (Pick.Int(w, "maxDurationSeconds") is { } seconds && seconds > 0)
                 row["durationMinutes"] = (seconds + 59) / 60;
             if (Pick.Get(w, "instance") is JsonObject instance)
-                row["lastResult"] = Pick.Only(instance, "score", "correctAnswers", "totalQuestions", "completedDate");
+            {
+                var completed = Pick.Str(instance, "completedDate") is { } at && !at.StartsWith("0001", StringComparison.Ordinal);
+                row["status"] = completed ? "completed" : "inProgress";
+                if (completed)
+                    row["lastResult"] = Pick.Only(instance, "score", "correctAnswers", "totalQuestions", "completedDate");
+            }
+            else
+                row["status"] = "notStarted";
             return (JsonNode)row;
         }).ToArray();
         return ToolResult.Success(new JsonObject { ["totalCount"] = Pick.Int(response.Body, "totalCount"), ["tests"] = new JsonArray(tests) });
@@ -487,7 +494,7 @@ public sealed class StartTestTool(DownstreamClient api) : IAssistantWriteTool
 public sealed class SetWorksheetReminderTool(DownstreamClient api, TimeProvider clock) : IAssistantWriteTool
 {
     public string Name => "set_worksheet_reminder";
-    public string Description => "Plan a test for a local date and time and get a notification remindBeforeMinutes earlier (default 60, at most 1440). Replaces the test's existing reminder. Needs the student's confirmation.";
+    public string Description => "Plan an assigned test (isAssigned in search_worksheets) for a local date and time and get a notification remindBeforeMinutes earlier (default 60, at most 1440). Replaces the test's existing reminder. Not for unassigned tests (NotAssigned). Needs the student's confirmation.";
     public IReadOnlyCollection<string> Roles => Tools.Roles.StudentOnly;
     public JsonObject InputSchema => Schema(
         ("worksheetId", IntProp("Worksheet id.", 1), true),
@@ -500,15 +507,21 @@ public sealed class SetWorksheetReminderTool(DownstreamClient api, TimeProvider 
         var (id, at, before, error) = Parse(args);
         if (error is not null)
             return error;
-        var worksheet = await api.GetAsync(context, $"api/worksheet/{id}");
-        if (!worksheet.IsSuccess)
-            return worksheet.ToError();
+        // The exam API keeps reminders for tests a teacher assigned; only the list answers isAssigned.
+        var listed = await api.GetAsync(context, $"api/worksheet/list?id={id}&pageNumber=1&pageSize=1");
+        if (!listed.IsSuccess)
+            return listed.ToError();
+        var worksheet = Pick.Items(listed.Body).FirstOrDefault(w => Pick.Int(w, "id") == id);
+        if (worksheet is null)
+            return ToolResult.Error("NotFound", "No such test for this student; call search_worksheets.");
+        if (Pick.Bool(worksheet, "isAssigned") != true)
+            return ToolResult.Error("NotAssigned", "Reminders are only for tests a teacher assigned to the student.");
         var existing = await api.GetAsync(context, $"api/worksheet/{id}/reminder");
         return ToolResult.Success(new JsonObject
         {
             ["action"] = "setWorksheetReminder",
             ["worksheetId"] = id,
-            ["name"] = Untrusted(Pick.Str(worksheet.Body, "name")),
+            ["name"] = Untrusted(Pick.Str(worksheet, "name")),
             ["date"] = String(args, "date"),
             ["time"] = String(args, "time"),
             ["remindBeforeMinutes"] = before,

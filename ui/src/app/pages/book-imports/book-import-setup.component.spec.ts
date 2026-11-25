@@ -393,6 +393,26 @@ describe('BookImportSetupComponent (#1021)', () => {
     expect(text()).toContain(tr.setup.noKeyForTest);
   });
 
+  it('includeAll_ClearsAndSelectsEveryRow_Issue1358', () => {
+    create();
+    const box = () => fixture.nativeElement.querySelector('[data-testid="setup-include-all"] input') as HTMLInputElement;
+    const c = fixture.componentInstance;
+    expect(box().checked).toBe(true);
+
+    box().click();
+    fixture.detectChanges();
+    expect(c.rows().every((r) => !r.include)).toBe(true);
+    expect(box().checked).toBe(false);
+
+    c.update(c.rows()[0], { include: true });
+    fixture.detectChanges();
+    expect(box().indeterminate).toBe(true);
+
+    box().click();
+    fixture.detectChanges();
+    expect(c.rows().every((r) => r.include)).toBe(true);
+  });
+
   it('confirm_SendsEditedTestsAndEmitsChanged', () => {
     create();
     const changed = vi.fn();

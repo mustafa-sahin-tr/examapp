@@ -165,7 +165,8 @@ aktarım aracındaki Python portu referanstır (#1022).
   ve fiyatlar `Anthropic:Models`'tan; API anahtarı yoksa iş "Claude is not configured" ile düşer. Hiç test başlığı yoksa
   "No tests or activity pages were found in the book". Sistem mesajı / şema / görsel boyutu değişince `ClaudeBookSetupAi.SchemaRevision` artar.
 - **Onay ekranı** (takip sayfasında, iş `AwaitingConfirmation` + `SetupConfirmation`): özet, anahtar sayfası görseli, test
-  tablosu (aktar / başlık / dakika / sayfalar) ve klavyeyle gezilen anahtar ızgarası (harf → sağa, oklar). Anahtar yoksa
+  tablosu (aktar / başlık / dakika / sayfalar) ve klavyeyle gezilen anahtar ızgarası (harf → sağa, oklar). "Aktar" sütununun
+  başlığındaki kutu (#1358) bütün satırların işaretini birlikte kaldırır / koyar (bazıları seçiliyse yarım işaret). Anahtar yoksa
   "cevapsız devam et" ya da "aktarımı iptal et". Uyuşmazlık ve okunamayan hücre kalırken onay kapalı.
 - **Onay** (`POST /api/exam/book-imports/{id}/setup/confirm`): hak kontrolü (`CheckAsync`, 429) → kitap kaydı (#577:
   ofset, anahtar aralıkları, içindekiler) → `BookTest` satırları ("1-01 · Başlık") → hak düşer

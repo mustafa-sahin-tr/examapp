@@ -269,6 +269,7 @@
     "legendUnreadable": "Okunamadı",
     "keyboardHint": "Harf yazınca sağa geçer; oklarla gezin. Farklı okunan kutuda Enter mevcut harfi onaylar, alttaki küçük harfe tıklamak onu alır (\"-\": diğer okumada bu soru yok, kutu silinir). Göz düğmesi testin sayfalarını büyük açar. Sondaki kutuyu silmek anahtarı kısaltır.",
     "include": "Aktar",
+    "includeAll": "Tümünü aktar",
     "includeTest": "{{unit}}-{{no}} testini aktar",
     "colTest": "Test",
     "colTitle": "Başlık",

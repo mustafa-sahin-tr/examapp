@@ -252,6 +252,9 @@ export class BookImportSetupComponent implements OnInit {
     ),
   );
   readonly included = computed(() => this.rows().filter((r) => r.include));
+  /** #1358: başlıktaki "tümü" kutusunun durumu. */
+  readonly allIncluded = computed(() => this.rows().length > 0 && this.included().length === this.rows().length);
+  readonly someIncluded = computed(() => this.included().length > 0 && !this.allIncluded());
   readonly openConflicts = computed(() =>
     this.included().reduce((sum, r) => sum + r.conflicts.filter((c) => c !== '.').length, 0),
   );
@@ -428,6 +431,11 @@ export class BookImportSetupComponent implements OnInit {
     else if (event.key === 'ArrowRight') this.testPageBy(1);
     else return;
     event.preventDefault();
+  }
+
+  /** #1358: bütün testlerin / bölümlerin işaretini birlikte açar ya da kaldırır. */
+  setAllIncluded(include: boolean): void {
+    this.rows.update((rows) => rows.map((r) => (r.include === include ? r : { ...r, include })));
   }
 
   update(row: EditableSetupTest, patch: Partial<EditableSetupTest>): void {

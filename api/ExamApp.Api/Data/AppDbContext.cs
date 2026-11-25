@@ -309,6 +309,7 @@ public class AppDbContext : DbContext
     public DbSet<StudentBadgeProjection> StudentBadgeProjections { get; set; } // issue #422
     public DbSet<StudentDailyXp> StudentDailyXps { get; set; } // issue #422
     public DbSet<QuestionAnswerStat> QuestionAnswerStats { get; set; } // issue #526
+    public DbSet<QuestionChoiceStat> QuestionChoiceStats { get; set; } // issue #528
     public DbSet<ParentHomeworkOverdueMarker> ParentHomeworkOverdueMarkers { get; set; } // issue #423
     public DbSet<ParentInvitation> ParentInvitations { get; set; } // issue #440
     public DbSet<ParentInvitationAttempt> ParentInvitationAttempts { get; set; } // issue #440
@@ -600,6 +601,12 @@ public class AppDbContext : DbContext
         // issue #526: nightly per-question answer stats; the global hard-question query orders by the correct rate.
         modelBuilder.Entity<QuestionAnswerStat>(e =>
             e.HasOne(s => s.Question).WithMany().HasForeignKey(s => s.QuestionId).OnDelete(DeleteBehavior.Cascade));
+        // issue #528: nightly per-choice counts (first answers); the popular distractor of a question.
+        modelBuilder.Entity<QuestionChoiceStat>(e =>
+        {
+            e.HasKey(c => new { c.QuestionId, c.AnswerId });
+            e.HasOne(c => c.Question).WithMany().HasForeignKey(c => c.QuestionId).OnDelete(DeleteBehavior.Cascade);
+        });
         modelBuilder.Entity<StudentDailyXp>(e =>
         {
             e.HasIndex(d => new { d.StudentId, d.Day }).IsUnique();

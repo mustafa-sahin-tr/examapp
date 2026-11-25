@@ -222,6 +222,15 @@ public class PracticeSessionService : IPracticeSessionService
 
     private int HardQuestionMinStudents => _hardQuestions?.CurrentValue.MinStudents ?? new HardQuestionOptions().MinStudents;
 
+    public async Task<RepeatedTrapsDto> GetRepeatedTrapsAsync(StudentProfileDto student, HardQuestionFilter filter, int take, CancellationToken ct = default)
+    {
+        var options = _hardQuestions?.CurrentValue ?? new HardQuestionOptions();
+        var items = await RepeatedTrapQueries.LoadAsync(_context, _calendar, student, filter, options.MinStudents, options.TrapMinMistakes, ct);
+        return new RepeatedTrapsDto(filter.Days, options.TrapMinMistakes, items.Count, items.Take(Math.Clamp(take, 1, RepeatedTrapsMaxTake)).ToList());
+    }
+
+    public const int RepeatedTrapsMaxTake = 10;
+
     public async Task<HardQuestionsDto> GetHardQuestionsAsync(StudentProfileDto student, HardQuestionFilter filter, int take,
         bool global = false, CancellationToken ct = default)
     {

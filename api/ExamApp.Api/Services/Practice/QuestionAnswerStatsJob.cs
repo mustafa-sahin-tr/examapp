@@ -22,6 +22,10 @@ public sealed class HardQuestionOptions
     [Required]
     public string StatsCron { get; set; } = "0 3 * * *";
 
+    /// <summary>Issue #528: a subtopic is a trap pattern from this many wrong questions on.</summary>
+    [Range(2, 100)]
+    public int TrapMinMistakes { get; set; } = 3;
+
     /// <summary>Questions read per batch.</summary>
     [Range(1, 10_000)]
     public int BatchSize { get; set; } = 1_000;
@@ -46,7 +50,7 @@ public sealed class QuestionAnswerStatsJob(AppDbContext db, IOptionsMonitor<Hard
 {
     public const string RecurringJobId = "question-answer-stats";
 
-    private sealed record FirstAnswer(int QuestionId, int StudentId, DateTime At, bool Correct);
+    private sealed record FirstAnswer(int QuestionId, int StudentId, DateTime At, bool Correct, int? SelectedAnswerId);
 
     public async Task<int> RunAsync(CancellationToken ct = default)
     {
@@ -71,9 +75,11 @@ public sealed class QuestionAnswerStatsJob(AppDbContext db, IOptionsMonitor<Hard
             var answers = await ReadTestAnswersAsync([.. known.Keys], id => (known[id].CorrectAnswerId, !known[id].IsDeleted), now, ct);
             answers.AddRange(await ReadPracticeAnswersAsync([.. known.Keys], ct));
 
-            var rows = answers
+            var firsts = answers
                 .GroupBy(a => (a.QuestionId, a.StudentId))
                 .Select(g => g.OrderBy(a => a.At).First())
+                .ToList();
+            var rows = firsts
                 .GroupBy(a => a.QuestionId)
                 .Select(g => new QuestionAnswerStat
                 {
@@ -83,6 +89,12 @@ public sealed class QuestionAnswerStatsJob(AppDbContext db, IOptionsMonitor<Hard
                     ComputedAtUtc = now,
                 })
                 .ToList();
+            // #528: the choice of each first answer (a choice question; an open payload has none).
+            var choices = firsts
+                .Where(a => a.SelectedAnswerId is not null)
+                .GroupBy(a => (a.QuestionId, AnswerId: a.SelectedAnswerId!.Value))
+                .Select(g => new QuestionChoiceStat { QuestionId = g.Key.QuestionId, AnswerId = g.Key.AnswerId, StudentCount = g.Count(), ComputedAtUtc = now })
+                .ToList();
 
             // The retrying execution strategy runs a user transaction only as one retriable unit.
             await db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
@@ -90,7 +102,9 @@ public sealed class QuestionAnswerStatsJob(AppDbContext db, IOptionsMonitor<Hard
                 db.ChangeTracker.Clear();
                 await using var tx = await db.Database.BeginTransactionAsync(ct);
                 await db.QuestionAnswerStats.Where(s => batchIds.Contains(s.QuestionId)).ExecuteDeleteAsync(ct);
+                await db.QuestionChoiceStats.Where(c => batchIds.Contains(c.QuestionId)).ExecuteDeleteAsync(ct);
                 db.QuestionAnswerStats.AddRange(rows);
+                db.QuestionChoiceStats.AddRange(choices);
                 await db.SaveChangesAsync(ct);
                 await tx.CommitAsync(ct);
             });
@@ -131,7 +145,8 @@ public sealed class QuestionAnswerStatsJob(AppDbContext db, IOptionsMonitor<Hard
                 var (correctAnswerId, known) = question(r.QuestionId);
                 return new FirstAnswer(r.QuestionId, r.StudentId,
                     r.EndTime ?? TestTimeLimit.EndsAt(r.StartTime, r.MaxDurationSeconds) ?? r.StartTime,
-                    WorksheetScoring.IsCorrect(r.SelectedAnswerId, correctAnswerId, r.HasPayload, r.IsCorrect, questionKnown: known));
+                    WorksheetScoring.IsCorrect(r.SelectedAnswerId, correctAnswerId, r.HasPayload, r.IsCorrect, questionKnown: known),
+                    r.SelectedAnswerId);
             })
             .ToList();
     }
@@ -139,6 +154,6 @@ public sealed class QuestionAnswerStatsJob(AppDbContext db, IOptionsMonitor<Hard
     private async Task<List<FirstAnswer>> ReadPracticeAnswersAsync(List<int> questionIds, CancellationToken ct) =>
         await db.PracticeSessionQuestions.AsNoTracking()
             .Where(r => questionIds.Contains(r.QuestionId) && r.AnsweredAt != null && !r.IsSkipped)
-            .Select(r => new FirstAnswer(r.QuestionId, r.PracticeSession.StudentId, r.AnsweredAt!.Value, r.IsCorrect))
+            .Select(r => new FirstAnswer(r.QuestionId, r.PracticeSession.StudentId, r.AnsweredAt!.Value, r.IsCorrect, r.SelectedAnswerId))
             .ToListAsync(ct);
 }

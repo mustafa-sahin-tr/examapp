@@ -368,3 +368,21 @@ cevaplanmamış soruya ipucu yok (issue'daki `hint-context` / `get_hint` yapılm
   olmayan konu sayısı (`withoutPracticeQuestions`, listelenmez) gider. Kart `topicTable` (konu, cevap sayısı, doğruluk boş).
 - Prompt r11: "hiç çalışmadığım konular" / "sınava hazır mıyım" → bu tool (hazırlıkta zayıf konularla birlikte); "zayıf konun yok"
   demeden önce bakılır; hazırlık yüzdesi verilmez. Altın öğrenci setine `untouched-topics`, `exam-ready` eklendi.
+
+
+## Hep aynı tuzağa düştüğüm şıklar (#528, Faz 2)
+
+- **Popüler çeldirici:** gece işi `QuestionAnswerStatsJob` artık `QuestionChoiceStats` da yazar (soru + şık başına, öğrencinin **ilk**
+  cevabında o şıkkı seçen farklı öğrenci sayısı; açık uçlu cevapta şık yok). Bir sorunun popüler çeldiricisi en çok seçilen yanlış
+  şıktır; yalnız `HardQuestions:MinStudents` (20) farklı öğrencinin cevapladığı sorularda, eşitlikte yok. Yalnız toplu bilgi:
+  başka öğrencinin seçimi hiçbir yanıtta yok. Migration `AddQuestionChoiceStats`.
+- **Exam API:** `GET /api/student/me/repeated-traps?subjectId&topicId&days=90&take=5` (`StudentQuestionExplainController`, yalnız
+  `Student`, konu performansı hız sınırı; `days` 1–90, `take` 1–10, dışı 400). Cevaplar `StudentAnswerReader`'dan (artık seçilen şıkkı
+  da taşır); soru başına öğrencinin **son** yanlış seçimi popüler çeldiriciyle karşılaştırılır. Alt konu başına (alt konusuz soru
+  konusunda) en az `HardQuestions:TrapMinMistakes` (3) yanlış soru ve bunların çoğunluğu (yarıdan fazlası) popüler çeldiriciyse
+  desen. Yanlış defteriyle aynı dışlama (süren / bitmemiş atanmış test, bugünün günlük seti): her örnek #510 ile açıklanabilir.
+  Satır: ders / konu / alt konu, `mistakeCount`, `trapCount`, `strengthPct`, en çok 3 örnek (soru id, öğrencinin seçtiği şıkkın
+  harfi ve metni, görsel / metin). **Doğru şık dönmez.** Sıra: güç, sonra tuzak sayısı.
+- **Tool** `get_repeated_trap_answers` (`take` 1–5, varsayılan 3): model alt konuyu, `trapCount` / `mistakeCount` sayılarını (yüzde verilmez: canlı denemede doğruluk sanıldı) ve öğrencinin seçimini görür (şık metni
+  `<untrusted>`), görsel ve soru metni yalnız `questions` kartında (`solvable:false`: sonraki adım alt konu pratiği, "Bunları çöz" düğmesi yok). Prompt r12: kavram yanılgısını yalnız bir örnekte
+  `explain_question` çağırdıktan sonra adlandırır (doğru şık oradan), sonra o alt konudan pratik önerisi; boşsa desen uydurmaz. Altın sete `repeated-trap`.

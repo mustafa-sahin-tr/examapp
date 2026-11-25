@@ -17,7 +17,8 @@ public sealed record AnsweredQuestion(int Id, bool Deleted, int? SubjectId, int?
     public int? EffectiveTopicId => TopicId ?? SubTopics.OrderBy(s => s.Id).Select(s => (int?)s.TopicId).FirstOrDefault();
 }
 
-public sealed record StudentAnswer(AnsweredQuestion Question, DateTime At, int TimeTaken, StudentAnswerOutcome Outcome);
+/// <param name="SelectedAnswerId">The chosen choice (#528); null for a blank, an open payload or a skipped practice question.</param>
+public sealed record StudentAnswer(AnsweredQuestion Question, DateTime At, int TimeTaken, StudentAnswerOutcome Outcome, int? SelectedAnswerId = null);
 
 /// <summary>
 /// Issue #497, #696: konu performansı ve kazanım seviyesinin okuduğu tek cevap listesi; iki rapor aynı cevapları sayar.
@@ -30,7 +31,7 @@ public sealed record StudentAnswer(AnsweredQuestion Question, DateTime At, int T
 public sealed class StudentAnswerReader(AppDbContext db)
 {
     /// <summary>Cevabın kendisi; sonucu sorunun doğru şıkkı okunduktan sonra hesaplanır.</summary>
-    private sealed record RawAnswer(int QuestionId, DateTime At, int TimeTaken, Func<AnsweredQuestion, StudentAnswerOutcome> Grade);
+    private sealed record RawAnswer(int QuestionId, DateTime At, int TimeTaken, Func<AnsweredQuestion, StudentAnswerOutcome> Grade, int? SelectedAnswerId);
 
     public async Task<List<StudentAnswer>> ReadAsync(int studentId, DateTime from, DateTime to, CancellationToken ct = default)
     {
@@ -48,7 +49,7 @@ public sealed class StudentAnswerReader(AppDbContext db)
             .Where(a => questions.ContainsKey(a.QuestionId))
             .Select(a => (Answer: a, Question: questions[a.QuestionId]))
             .Where(x => x.Question.InteractionType != OpenTextGrader.Type)
-            .Select(x => new StudentAnswer(x.Question, x.Answer.At, x.Answer.TimeTaken, x.Answer.Grade(x.Question)))
+            .Select(x => new StudentAnswer(x.Question, x.Answer.At, x.Answer.TimeTaken, x.Answer.Grade(x.Question), x.Answer.SelectedAnswerId))
             .ToList();
     }
 
@@ -82,7 +83,7 @@ public sealed class StudentAnswerReader(AppDbContext db)
         return rows.Select(r => new RawAnswer(r.QuestionId, finishedAt[r.WorksheetInstanceId], r.TimeTaken, question =>
             WorksheetScoring.IsBlank(r.SelectedAnswerId, r.HasPayload) ? StudentAnswerOutcome.Blank
             : WorksheetScoring.IsCorrect(r.SelectedAnswerId, question.CorrectAnswerId, r.HasPayload, r.IsCorrect, questionKnown: !question.Deleted) ? StudentAnswerOutcome.Correct
-            : StudentAnswerOutcome.Wrong)).ToList();
+            : StudentAnswerOutcome.Wrong, r.HasPayload ? null : r.SelectedAnswerId)).ToList();
     }
 
     private async Task<List<RawAnswer>> ReadPracticeAnswersAsync(int studentId, DateTime from, DateTime to, CancellationToken ct)
@@ -92,11 +93,12 @@ public sealed class StudentAnswerReader(AppDbContext db)
             .Where(r => r.PracticeSession.StudentId == studentId && (r.PracticeSession.EndTime == null || r.PracticeSession.EndTime >= from))
             .Where(r => r.AnsweredAt != null || r.IsSkipped)
             .Where(r => (r.AnsweredAt ?? r.ShownAt) >= from && (r.AnsweredAt ?? r.ShownAt) < to)
-            .Select(r => new { r.QuestionId, At = r.AnsweredAt ?? r.ShownAt, r.IsSkipped, r.IsCorrect, r.TimeTaken })
+            .Select(r => new { r.QuestionId, At = r.AnsweredAt ?? r.ShownAt, r.IsSkipped, r.IsCorrect, r.TimeTaken, r.SelectedAnswerId })
             .ToListAsync(ct);
 
         return rows.Select(r => new RawAnswer(r.QuestionId, r.At, r.TimeTaken, _ =>
-            r.IsSkipped ? StudentAnswerOutcome.Blank : r.IsCorrect ? StudentAnswerOutcome.Correct : StudentAnswerOutcome.Wrong)).ToList();
+            r.IsSkipped ? StudentAnswerOutcome.Blank : r.IsCorrect ? StudentAnswerOutcome.Correct : StudentAnswerOutcome.Wrong,
+            r.IsSkipped ? null : r.SelectedAnswerId)).ToList();
     }
 
     private async Task<Dictionary<int, AnsweredQuestion>> ReadQuestionsAsync(List<int> ids, CancellationToken ct)

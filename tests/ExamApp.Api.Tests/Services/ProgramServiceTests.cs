@@ -233,6 +233,42 @@ public class ProgramServiceTests : IDisposable
         (await check.UserProgramStudyPageSchedules.CountAsync()).ShouldBe(1);
     }
 
+    [Fact]
+    public async Task Adding_study_page_schedules_skips_unpublished_deleted_and_out_of_scope_pages()
+    {
+        await SeedSubjectsAsync("Mat", "Fen");
+        int programId, inScope, noSubject, otherSubject, unpublished, deleted;
+        await using (var ctx = _db.NewContext())
+        {
+            var subjects = await ctx.Subjects.OrderBy(s => s.Id).Select(s => s.Id).ToListAsync();
+            StudyItem Page(int? subjectId, bool published = true, bool isDeleted = false) =>
+                new() { Title = "P", Description = "d", CreatedByUserId = 1, SubjectId = subjectId, IsPublished = published, IsDeleted = isDeleted };
+            var pages = new[] { Page(subjects[0]), Page(null), Page(subjects[1]), Page(subjects[0], published: false), Page(subjects[0], isDeleted: true) };
+            ctx.StudyItems.AddRange(pages);
+            await ctx.SaveChangesAsync();
+            (inScope, noSubject, otherSubject, unpublished, deleted) = (pages[0].Id, pages[1].Id, pages[2].Id, pages[3].Id, pages[4].Id);
+
+            programId = (await NewService(ctx).CreateUserProgramAsync(User, new CreateProgramRequestDto
+            {
+                ProgramName = "P", Description = "d",
+                StartDate = "2026-03-02", EndDate = "2026-03-02",
+                UserSelections = new() { Sel(1, "time"), Sel(2, "25-5") },
+            })).Id;
+            ctx.ChangeTracker.Clear();
+            var scopeSubject = subjects[0];
+
+            ProgramStudyItemScheduleRequestDto request = new();
+            foreach (var id in new[] { inScope, noSubject, otherSubject, unpublished, deleted })
+                request.Items.Add(new ProgramStudyItemScheduleItemDto { StudyItemId = id, StartDate = new DateTime(2026, 3, 2), EndDate = new DateTime(2026, 3, 3) });
+
+            await NewService(ctx).AddStudyItemSchedulesAsync(User, programId, request, scopeSubject);
+        }
+
+        await using var check = _db.NewContext();
+        (await check.UserProgramStudyPageSchedules.Select(s => s.StudyItemId).OrderBy(i => i).ToListAsync())
+            .ShouldBe(new[] { inScope, noSubject }.OrderBy(i => i).ToList());
+    }
+
     // ---- CompleteStudyItemAsync / UncompleteStudyItemAsync / DeleteUserProgramAsync (issue #109) ----
 
     private async Task<(int programId, int scheduleId)> SeedProgramWithScheduleAsync(string userId, bool isCompleted = false, DateTime? completedDate = null)

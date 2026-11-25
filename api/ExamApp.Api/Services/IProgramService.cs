@@ -19,7 +19,8 @@ namespace ExamApp.Api.Services
         Task<List<ProgramSubjectDto>> GetProgramSubjectsAsync(int? studentUserId);
         Task<List<UserProgramDto>> GetUserProgramsAsync(string userId);
         Task<UserProgramDto?> GetUserProgramByIdAsync(string userId, int programId);
-        Task<UserProgramDto?> AddStudyItemSchedulesAsync(string userId, int programId, ProgramStudyItemScheduleRequestDto request);
+        Task<UserProgramDto?> AddStudyItemSchedulesAsync(string userId, int programId, ProgramStudyItemScheduleRequestDto request,
+            int? scopeSubjectId = null);
         /// <summary>Sayfayı tamamlandı olarak işaretler (idempotent). Program/schedule sahibine ait değilse veya yoksa false döner.</summary>
         Task<bool> CompleteStudyItemAsync(string userId, int programId, int scheduleId, CancellationToken ct = default);
         /// <summary>Tamamlanma işaretini geri alır (idempotent). Program/schedule sahibine ait değilse veya yoksa false döner.</summary>

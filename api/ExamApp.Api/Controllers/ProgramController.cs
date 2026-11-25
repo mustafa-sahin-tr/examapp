@@ -113,7 +113,8 @@ namespace ExamApp.Api.Controllers
 
         [HttpPost("{id:int}/study-pages")]
         [RequiresEntitlement(EntitlementFeatures.StudyTools, InPlanOnly = true)]
-        public async Task<ActionResult<UserProgramDto>> AddStudyItems(int id, [FromBody] ProgramStudyItemScheduleRequestDto request)
+        public async Task<ActionResult<UserProgramDto>> AddStudyItems(int id, [FromBody] ProgramStudyItemScheduleRequestDto request,
+            [FromServices] IEntitlementService? entitlements = null)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))
@@ -121,7 +122,12 @@ namespace ExamApp.Api.Controllers
                 return Unauthorized(_localizer["program.userIdNotFoundInToken"].Value);
             }
 
-            var program = await _programService.AddStudyItemSchedulesAsync(userId, id, request);
+            // Issue #1353: only pages the student can open (plan subject, published), as the study page list.
+            var profile = _profiles is null ? null : await _profiles.GetAsync(userId, HttpContext.RequestAborted);
+            var scope = profile is { Id: > 0 } && entitlements is not null
+                ? await StudyScope.ForAsync(entitlements, profile.Id, HttpContext.RequestAborted)
+                : StudyScope.All;
+            var program = await _programService.AddStudyItemSchedulesAsync(userId, id, request, scope.SubjectId);
             if (program == null)
             {
                 return NotFound();

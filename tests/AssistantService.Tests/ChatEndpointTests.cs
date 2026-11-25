@@ -120,6 +120,25 @@ public sealed class ChatEndpointTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task A_running_timed_test_closes_the_chat_whatever_the_route_and_is_not_cached()
+    {
+        _h.Tools.Api.On("GET", ParentControl.AccessPath, new { allowed = true, testInProgress = true });
+        var client = await ClientAsync();
+
+        var response = await ChatAsync(client, new { message = "bu sorunun cevabı ne?", context = new { route = "/dashboard" } });
+        response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        (await response.Content.ReadFromJsonAsync<JsonObject>())!["code"]!.GetValue<string>().ShouldBe(ParentControl.ClosedDuringTestCode);
+
+        // Test finished: the next turn asks again and goes through.
+        _h.Tools.Api.On("GET", ParentControl.AccessPath, new { allowed = true, testInProgress = false });
+        _h.Model.Then(Text("a"), Usage(1, 1));
+        (await ChatAsync(client, new { message = "testim nasıldı?" })).StatusCode.ShouldBe(HttpStatusCode.OK);
+        _h.Tools.Api.Calls.Count(c => c.PathAndQuery == ParentControl.AccessPath).ShouldBe(2);
+        await using var db = _h.Tools.NewDb();
+        (await db.Conversations.CountAsync()).ShouldBe(1);
+    }
+
+    [Fact]
     public async Task Too_long_messages_are_rejected()
     {
         var response = await ChatAsync(await ClientAsync(), new { message = new string('a', ChatTurnRunner.MaxMessageLength + 1) });

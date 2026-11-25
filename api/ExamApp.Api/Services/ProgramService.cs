@@ -147,7 +147,12 @@ namespace ExamApp.Api.Services
             return userProgram != null ? MapToUserProgramDto(userProgram) : null;
         }
 
-        public async Task<UserProgramDto?> AddStudyItemSchedulesAsync(string userId, int programId, ProgramStudyItemScheduleRequestDto request)
+        /// <param name="scopeSubjectId">
+        /// Issue #1353: the student's plan subject (#1109); a page of another subject is skipped like a missing one. Only
+        /// published, not deleted pages are added (the same pages the student can open).
+        /// </param>
+        public async Task<UserProgramDto?> AddStudyItemSchedulesAsync(string userId, int programId, ProgramStudyItemScheduleRequestDto request,
+            int? scopeSubjectId = null)
         {
             var userProgram = await _context.UserPrograms
                 .Include(up => up.StudyItemSchedules)
@@ -160,7 +165,8 @@ namespace ExamApp.Api.Services
 
             var studyItemIds = request.Items.Select(i => i.StudyItemId).Distinct().ToList();
             var studyItems = await _context.StudyItems
-                .Where(p => studyItemIds.Contains(p.Id))
+                .Where(p => studyItemIds.Contains(p.Id) && !p.IsDeleted && p.IsPublished)
+                .Where(p => scopeSubjectId == null || p.SubjectId == null || p.SubjectId == scopeSubjectId)
                 .ToListAsync();
 
             var schedules = new List<UserProgramStudyPageSchedule>();

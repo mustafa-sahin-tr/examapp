@@ -472,3 +472,12 @@ cevaplanmamış soruya ipucu yok (issue'daki `hint-context` / `get_hint` yapılm
   + `UiHighlightTool.Keys` + açıklama.
 - `SystemPrompt.Revision` 16.
 
+
+## Sunucu tarafı sertleştirme (#1353)
+
+- **Test sırasında asistan:** `GET api/student/assistant-access` artık `testInProgress` da döner (başlamış, bitmemiş, süresi
+  dolmamış süreli test). `ParentControl` bu durumda sohbeti ve onayı rota ne olursa olsun 409 `AssistantClosedDuringTest` ile
+  reddeder; test sürerken yanıt önbelleğe alınmaz (test biter bitmez soru sorulabilsin). Süresiz açık test ve süresi dolmuş test
+  sayılmaz.
+- **Programa çalışma sayfası ekleme:** `POST api/program/{id}/study-pages` yalnız yayımlanmış, silinmemiş ve öğrencinin plan
+  dersi (#1109) kapsamındaki sayfaları ekler; diğerleri eksik sayfa gibi atlanır.

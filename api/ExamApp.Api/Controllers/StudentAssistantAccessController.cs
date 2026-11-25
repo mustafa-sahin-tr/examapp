@@ -16,6 +16,12 @@ public sealed class StudentAssistantAccessDto
 {
     /// <summary>false: bir velisi asistanı kapattı.</summary>
     public bool Allowed { get; set; }
+
+    /// <summary>
+    /// Issue #1353: the student has a timed test running (started, not finished, time left). The assistant refuses chat then,
+    /// whatever route the client reports (another tab cannot be used to ask about the test).
+    /// </summary>
+    public bool TestInProgress { get; set; }
 }
 
 /// <summary>
@@ -47,6 +53,16 @@ public class StudentAssistantAccessController : BaseController
         var studentId = await _db.Students.AsNoTracking().Where(s => s.UserId == user.Id).Select(s => (int?)s.Id).FirstOrDefaultAsync(ct);
         // Öğrenci profili yoksa velisi de yoktur: açık.
         var allowed = studentId is not { } id || await ParentAssistantControl.IsAllowedAsync(_db, id, ct);
-        return Ok(new StudentAssistantAccessDto { Allowed = allowed });
+        var testInProgress = false;
+        if (studentId is { } sid)
+        {
+            var now = DateTime.UtcNow;
+            testInProgress = await _db.TestInstances.AsNoTracking().AnyAsync(ti =>
+                ti.StudentId == sid
+                && ti.Status == WorksheetInstanceStatus.Started
+                && ti.MaxDurationSeconds > 0
+                && ti.StartTime.AddSeconds((double)ti.MaxDurationSeconds!.Value) > now, ct);
+        }
+        return Ok(new StudentAssistantAccessDto { Allowed = allowed, TestInProgress = testInProgress });
     }
 }

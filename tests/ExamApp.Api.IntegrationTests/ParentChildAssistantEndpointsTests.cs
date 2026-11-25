@@ -130,6 +130,49 @@ public class ParentChildAssistantEndpointsTests(IntegrationApiFactory factory) :
     }
 
     [Fact]
+    public async Task Assistant_access_reports_a_running_timed_test_only()
+    {
+        const int studentUser = 52341;
+        var studentId = await SeedStudentAsync(studentUser);
+        var student = await StudentAsync(studentUser);
+
+        async Task<bool> InProgressAsync()
+        {
+            var res = await student.GetAsync("/api/student/assistant-access");
+            res.StatusCode.ShouldBe(HttpStatusCode.OK);
+            return (await res.Content.ReadFromJsonAsync<StudentAssistantAccessDto>(Json))!.TestInProgress;
+        }
+
+        // One instance per worksheet (unique index): four worksheets.
+        var worksheetIds = await WithDbAsync(async db =>
+        {
+            var grade = new Grade { Name = $"G{studentUser}" };
+            db.Grades.Add(grade);
+            await db.SaveChangesAsync();
+            var worksheets = Enumerable.Range(1, 4).Select(i => new Worksheet { Name = $"T1353 {i}", Description = "", GradeId = grade.Id, MaxDurationSeconds = 600 }).ToList();
+            db.Worksheets.AddRange(worksheets);
+            await db.SaveChangesAsync();
+            var now = DateTime.UtcNow;
+            // Untimed open test, an expired one and a finished one: not "in progress".
+            db.TestInstances.AddRange(
+                new WorksheetInstance { StudentId = studentId, WorksheetId = worksheets[0].Id, StartTime = now, Status = WorksheetInstanceStatus.Started, MaxDurationSeconds = null },
+                new WorksheetInstance { StudentId = studentId, WorksheetId = worksheets[1].Id, StartTime = now.AddHours(-1), Status = WorksheetInstanceStatus.Started, MaxDurationSeconds = 600 },
+                new WorksheetInstance { StudentId = studentId, WorksheetId = worksheets[2].Id, StartTime = now, EndTime = now, Status = WorksheetInstanceStatus.Completed, MaxDurationSeconds = 600 });
+            await db.SaveChangesAsync();
+            return worksheets.Select(w => w.Id).ToList();
+        });
+        (await InProgressAsync()).ShouldBeFalse();
+
+        await WithDbAsync(async db =>
+        {
+            db.TestInstances.Add(new WorksheetInstance { StudentId = studentId, WorksheetId = worksheetIds[3], StartTime = DateTime.UtcNow.AddMinutes(-2), Status = WorksheetInstanceStatus.Started, MaxDurationSeconds = 600 });
+            await db.SaveChangesAsync();
+            return 0;
+        });
+        (await InProgressAsync()).ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task Only_a_student_reads_assistant_access()
     {
         var teacher = await ClientAsAsync(52331, "Teacher", "kc-52331", "Teacher");

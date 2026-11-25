@@ -451,3 +451,24 @@ cevaplanmamış soruya ipucu yok (issue'daki `hint-context` / `get_hint` yapılm
   Başlatan eylemlerde "Başlat", diğerlerinde "Onayla".
 - Prompt r15 "Planning:" kuralı; golden `reminder-test`, `create-program`.
 - İkinci dilim (ayrı PR): `plan_my_week`, `ui_highlight`, özel ders / mesaj tool'ları.
+
+## Haftalık plan, özel ders ve mesaj tool'ları (#515, Faz 3 — ikinci dilim)
+
+- **`get_my_week`**: önümüzdeki 7 yerel gün; açık ödevler (`api/worksheet/assignments/active`) ve takvim
+  (`api/worksheet/calendar/me`, İstanbul gece yarısı UTC aralığı: hatırlatma, ödev bitişi, program sayfası, ders). Model
+  zayıf konu ve günlük set tool'larıyla birlikte gün gün bir öneri yapar; her değişiklik ayrı onay kartı.
+- **Özel ders:** `search_tutors` (ders adı → `api/subject/search` → `api/Teacher/search`), `get_tutor_profile`,
+  `list_tutor_slots` (yalnız gelecekteki boş slotlar), `request_lesson` (yazma; önizleme slotun hâlâ boş olduğunu kontrol
+  eder, kart öğretmen, tarih-saat, saat ücreti ve "öğretmen onaylayınca kesinleşir" der; commit `POST api/booking/requests`,
+  sonra `/my-bookings`). Veli onayı (#439) ve paket kapısı exam API'de kalır.
+- **Mesaj:** `list_my_conversations` (yalnız son mesaj önizlemesi). `draft_message_to_teacher` hiçbir şey göndermez: `draft`
+  kartı metni gösterir, "Kopyala" ve "Mesajlara git" düğmeleri vardır. Kartın rotası yalnız `/teacher-messages` (isteğe bağlı
+  `?conversation=<id>`) olabilir; panel başka rotayı açmaz.
+- **`summarize_worksheet_comments`**: testin yorum dizileri (soru no, yazar rolü, metin; yazar adı yok), her metin
+  `<untrusted>`; model yorumlardaki talimatlara uymaz.
+- **`ui_highlight(elementKey)`**: izinli anahtarlar `programs.create`, `calendar.view`, `homework.assignments`,
+  `tutors.subjects`, `messages.search`; her anahtar kendi ekranına bağlı. Panel ekran farklıysa önce açar, öğeyi
+  (`data-assistant-key`) 3 sn bekler, kaydırır ve `.assistant-highlight` ile 3 sn çerçeveler. Yeni anahtar: şablona öznitelik
+  + `UiHighlightTool.Keys` + açıklama.
+- `SystemPrompt.Revision` 16.
+

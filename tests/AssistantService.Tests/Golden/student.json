@@ -728,6 +728,75 @@
    "programName": "Haftalık plan",
    "isActive": true,
    "schedules": []
+  },
+  "GET api/subject/search?q=Matematik&take=10": [
+   {
+    "subjectId": 3,
+    "topicId": null,
+    "name": "Matematik"
+   }
+  ],
+  "GET api/Teacher/search?subjectId=3&take=5": [
+   {
+    "teacherId": 8,
+    "fullName": "Ali Yılmaz",
+    "hourlyRate": 400,
+    "teachesOnline": true,
+    "teachesInPerson": false,
+    "bio": "Ortaokul matematik, 10 yıl.",
+    "subjects": [
+     {
+      "subjectId": 3,
+      "name": "Matematik"
+     }
+    ]
+   }
+  ],
+  "GET api/Teacher/8/public-profile": {
+   "teacherId": 8,
+   "fullName": "Ali Yılmaz",
+   "hourlyRate": 400,
+   "teachesOnline": true,
+   "teachesInPerson": false,
+   "bio": "Ortaokul matematik, 10 yıl.",
+   "subjects": [
+    {
+     "subjectId": 3,
+     "name": "Matematik"
+    }
+   ]
+  },
+  "GET api/booking/teachers/8/slots?skip=0&take=50": {
+   "items": [
+    {
+     "id": 52,
+     "date": "2030-01-10",
+     "startTime": "17:00:00",
+     "endTime": "18:00:00",
+     "startUtc": "2030-01-10T14:00:00Z",
+     "isBooked": false
+    }
+   ]
+  },
+  "GET api/direct-messages/conversations?page=1&pageSize=10": {
+   "items": [
+    {
+     "conversationId": 12,
+     "teacherId": 8,
+     "counterpartName": "Ali Yılmaz",
+     "lastMessagePreview": "Ödevini kontrol ettim.",
+     "lastMessageAt": "2026-11-20T10:00:00Z",
+     "lastMessageIsMine": false,
+     "unreadCount": 0
+    }
+   ]
+  },
+  "POST api/booking/requests": {
+   "success": true,
+   "booking": {
+    "id": 77,
+    "status": "Pending"
+   }
   }
  },
  "taxonomy": [
@@ -1414,6 +1483,35 @@
     ]
    },
    "rubric": "Soru takipli (her dersten 12 soru), günde 2 ders, pazar dinlenme ve Matematik zor ders olarak bir program kartı hazırlar; tekrar soru sormadan kartı sunar ve onaylaması gerektiğini söyler; programın oluşturulduğunu iddia etmez."
+  },
+  {
+   "id": "draft-message",
+   "messages": [
+    "Ali Yılmaz hocama kesirlerde zorlandığımı, cuma ek ders yapabilir miyiz diye mesaj atar mısın?"
+   ],
+   "tools": [
+    "draft_message_to_teacher"
+   ],
+   "rubric": "Mesajı göndermez; kısa ve kibar bir taslak hazırlar, kopyalayıp mesajlar ekranından kendisinin göndermesi gerektiğini söyler; mesajın gönderildiğini iddia etmez."
+  },
+  {
+   "id": "tutor-lesson",
+   "messages": [
+    "Matematik için özel ders almak istiyorum, Ali Yılmaz'ın ilk boş saatine talep oluştur."
+   ],
+   "tools": [
+    "search_tutors",
+    "list_tutor_slots",
+    "request_lesson"
+   ],
+   "confirmCards": 1,
+   "commit": {
+    "path": "api/booking/requests",
+    "bodyContains": [
+     "\"availabilitySlotId\":52"
+    ]
+   },
+   "rubric": "Öğretmeni bulur, ilk boş saati (10.01.2030 17:00) seçip ders talebi kartı hazırlar; talebin öğretmen onayıyla kesinleşeceğini söyler; talebin gönderildiğini iddia etmez."
   }
  ]
 }

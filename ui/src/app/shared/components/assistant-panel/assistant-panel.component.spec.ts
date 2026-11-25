@@ -1,5 +1,5 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
 import { By } from '@angular/platform-browser';
 import { MockedObject } from 'vitest';
@@ -274,6 +274,51 @@ describe('AssistantPanelComponent (#507)', () => {
         expect(cards[1].textContent).toContain('Testi başlat');
         expect(cards[1].textContent).toContain('12 soru');
         expect(cards[1].querySelector('[data-testid="assistant-confirm-state"]')!.textContent).toContain('Başlatıldı');
+    });
+
+    it('planningCards_ShowEveryChoice_LessonRequestAndDraft (issue #515)', async () => {
+        setup();
+        const router = TestBed.inject(Router);
+        const navigate = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+        store.messages.set([
+            message({
+                cards: [
+                    {
+                        kind: 'confirm', pendingActionId: 'p1', tool: 'create_study_program', expiresAt: '',
+                        preview: { action: 'createStudyProgram', name: '<untrusted>Kış</untrusted>', startDate: '2026-11-23', endDate: '2026-12-23', studyType: 'question', questionsPerDay: 12, subjectsPerDay: 2, restDays: [6, 7], difficultSubjects: ['Matematik'], replacesActiveProgram: true },
+                    },
+                    {
+                        kind: 'confirm', pendingActionId: 'p2', tool: 'schedule_study_pages', expiresAt: '',
+                        preview: { action: 'scheduleStudyPages', name: 'Kış', items: [{ studyItemId: 11, title: '<untrusted>Kesir özeti</untrusted>', startDate: '2026-11-24', endDate: '2026-11-25' }] },
+                    },
+                    {
+                        kind: 'confirm', pendingActionId: 'p3', tool: 'request_lesson', expiresAt: '',
+                        preview: { action: 'requestLesson', name: '<untrusted>Ali Hoca</untrusted>', date: '2026-11-26', startTime: '17:00:00', endTime: '18:00:00', hourlyRate: 400 },
+                    },
+                    { kind: 'draft', text: 'Merhaba hocam', route: '/teacher-messages?conversation=12' },
+                    { kind: 'draft', text: 'x', route: '/admin' },
+                ],
+            }),
+        ]);
+        fixture.detectChanges();
+
+        const cards = fixture.nativeElement.querySelectorAll('[data-testid="assistant-card-confirm"]') as NodeListOf<HTMLElement>;
+        expect(cards[0].textContent).toContain('her dersten günde 12 soru');
+        expect(cards[0].textContent).toContain('Günde 2 ders');
+        expect(cards[0].textContent).toContain('Cumartesi, Pazar');
+        expect(cards[0].textContent).toContain('Matematik');
+        expect(cards[1].textContent).toContain('Kesir özeti: 24.11.2026 – 25.11.2026');
+        expect(cards[1].textContent).not.toContain('untrusted');
+        expect(cards[2].textContent).toContain('Ali Hoca');
+        expect(cards[2].textContent).toContain('26.11.2026 17:00–18:00');
+        expect(cards[2].textContent).toContain('Öğretmen onaylayınca');
+
+        const drafts = fixture.nativeElement.querySelectorAll('[data-testid="assistant-card-draft"]') as NodeListOf<HTMLElement>;
+        expect(drafts[0].textContent).toContain('Merhaba hocam');
+        expect(drafts[0].textContent).toContain('Gönderilmedi');
+        (drafts[0].querySelector('[data-testid="assistant-draft-open"]') as HTMLButtonElement).click();
+        expect(navigate).toHaveBeenCalledWith('/teacher-messages?conversation=12');
+        expect(drafts[1].querySelector('[data-testid="assistant-draft-open"]')).toBeNull();
     });
 
     it('errors_KnownCodeAndUnknownFallback_ParentBlockHidesEntry', () => {

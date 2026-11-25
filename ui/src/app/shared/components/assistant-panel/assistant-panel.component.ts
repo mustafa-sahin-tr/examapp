@@ -85,6 +85,7 @@ const KNOWN_ACTIONS = new Set([
   'markStudyPageDone',
   'setWorksheetReminder',
   'deleteWorksheetReminder',
+  'requestLesson',
 ]);
 
 interface ConfirmLine {
@@ -97,6 +98,16 @@ interface ConfirmLine {
 /** `<untrusted>…</untrusted>` işaretini kaldırır (Angular interpolation zaten kaçışlar). */
 function plainText(value: unknown): string {
   return typeof value === 'string' ? value.replace(/<\/?untrusted>/g, '').trim() : '';
+}
+
+/** HH:mm:ss → HH:mm */
+function hhmm(value: unknown): string {
+  return typeof value === 'string' && /^\d{2}:\d{2}/.test(value) ? value.slice(0, 5) : '';
+}
+
+/** #515: the draft card opens only the student's messages screen. */
+function isMessagesRoute(route: unknown): route is string {
+  return typeof route === 'string' && /^\/teacher-messages(\?conversation=\d+)?$/.test(route);
 }
 
 /** yyyy-MM-dd → gg.aa.yyyy */
@@ -261,6 +272,27 @@ export class AssistantPanelComponent implements AfterViewInit {
     return START_ACTIONS.has(this.actionKey(card));
   }
 
+  /** #515: copied draft ids (the button says "Kopyalandı" for a moment). */
+  readonly copiedDraft = signal<string | null>(null);
+
+  async copyDraft(key: string, text: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(text);
+      this.copiedDraft.set(key);
+      setTimeout(() => this.copiedDraft.update((k) => (k === key ? null : k)), 2000);
+    } catch {
+      this.copiedDraft.set(null);
+    }
+  }
+
+  openDraft(route: string): void {
+    if (isMessagesRoute(route)) void this.router.navigateByUrl(route);
+  }
+
+  draftRouteOk(route: string): boolean {
+    return isMessagesRoute(route);
+  }
+
   dayNames(days: number[], t: (key: string) => string): string {
     return days.map((d) => t('confirm.day.' + d)).join(', ');
   }
@@ -276,6 +308,12 @@ export class AssistantPanelComponent implements AfterViewInit {
       case 'startTest':
         if (p['questionCount']) lines.push({ key: 'confirm.line.questions', params: { count: p['questionCount'] } });
         if (p['durationMinutes']) lines.push({ key: 'confirm.line.minutes', params: { minutes: p['durationMinutes'] } });
+        break;
+      case 'requestLesson':
+        lines.push({ key: 'confirm.line.teacher', params: { name: plainText(p['name']) || '—' } });
+        lines.push({ key: 'confirm.line.slot', params: { date: localDate(p['date']), start: hhmm(p['startTime']), end: hhmm(p['endTime']) } });
+        if (typeof p['hourlyRate'] === 'number') lines.push({ key: 'confirm.line.hourlyRate', params: { rate: p['hourlyRate'] } });
+        lines.push({ key: 'confirm.line.teacherDecides', params: {} });
         break;
       case 'setWorksheetReminder':
         lines.push({ key: 'confirm.line.reminder', params: { date: localDate(p['date']), time: p['time'], minutes: p['remindBeforeMinutes'] } });

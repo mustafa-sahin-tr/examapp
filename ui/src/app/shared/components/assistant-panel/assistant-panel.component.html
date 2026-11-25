@@ -125,6 +125,21 @@
                   }
                 </div>
               }
+              @case ('draft') {
+                <div class="asp__draft" data-testid="assistant-card-draft">
+                  <p class="asp__confirm-title"><mat-icon aria-hidden="true">edit_note</mat-icon>{{ t('draft.title') }}</p>
+                  <p class="asp__draft-text">{{ card.text }}</p>
+                  <p class="asp__muted">{{ t('draft.notSent') }}</p>
+                  <div class="asp__confirm-actions">
+                    <button mat-stroked-button type="button" data-testid="assistant-draft-copy" (click)="copyDraft(message.id + ':' + $index, card.text)">
+                      {{ t(copiedDraft() === message.id + ':' + $index ? 'draft.copied' : 'draft.copy') }}
+                    </button>
+                    @if (draftRouteOk(card.route)) {
+                      <button mat-flat-button type="button" data-testid="assistant-draft-open" (click)="openDraft(card.route)">{{ t('draft.open') }}</button>
+                    }
+                  </div>
+                </div>
+              }
               @case ('confirm') {
                 @let state = confirmState(message, card);
                 <div class="asp__confirm" data-testid="assistant-card-confirm" [attr.data-state]="state">

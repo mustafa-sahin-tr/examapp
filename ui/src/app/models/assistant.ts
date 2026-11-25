@@ -70,6 +70,8 @@ export type AssistantCard =
   /** `solvable: false` (#536, parent): no "solve these" button. */
   | { kind: 'questions'; items: QuestionCardItem[]; solvable?: boolean }
   | { kind: 'topicTable'; rows: TopicRow[] }
+  /** #515: a message the student copies and sends themselves; the assistant never sends it. */
+  | { kind: 'draft'; text: string; route: string }
   | { kind: 'confirm'; pendingActionId: string; tool: string; preview: ConfirmPreview | null; expiresAt: string };
 
 export type ConfirmState = 'pending' | 'busy' | 'confirmed' | 'rejected' | 'expired' | 'decided' | 'failed';
@@ -90,7 +92,14 @@ export interface SuggestionsAction {
   items: SuggestionChip[];
 }
 
-export type UiAction = NavigateAction | SuggestionsAction;
+/** #515 ui_highlight: open `route` if needed, then outline `[data-assistant-key=key]`. */
+export interface HighlightAction {
+  type: 'highlight';
+  key: string;
+  route: string;
+}
+
+export type UiAction = NavigateAction | SuggestionsAction | HighlightAction;
 
 /** SSE olayları (`event:` adı + `data:` JSON). */
 export type AssistantStreamEvent =

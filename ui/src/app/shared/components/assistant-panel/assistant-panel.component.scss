@@ -302,7 +302,8 @@
   color: var(--ms-text-medium);
 }
 
-.asp__confirm {
+.asp__confirm,
+.asp__draft {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -418,4 +419,14 @@
 
 .asp__send {
   color: var(--ms-action-text);
+}
+
+// #515: message draft; the student copies it and sends it themselves.
+.asp__draft-text {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--ms-surface-weak);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }

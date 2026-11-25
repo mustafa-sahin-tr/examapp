@@ -125,7 +125,11 @@
       "subjectsPerDay": "Günde {{count}} ders",
       "restDays": "Dinlenme: {{days}}",
       "difficult": "Zorlandığın dersler: {{subjects}}",
-      "page": "{{title}}: {{start}} – {{end}}"
+      "page": "{{title}}: {{start}} – {{end}}",
+      "teacher": "Öğretmen: {{name}}",
+      "slot": "{{date}} {{start}}–{{end}}",
+      "hourlyRate": "Saat ücreti: {{rate}} ₺",
+      "teacherDecides": "Öğretmen onaylayınca kesinleşir (veli onayı gerekebilir)."
     },
     "day": {
       "1": "Pazartesi",
@@ -135,7 +139,8 @@
       "5": "Cuma",
       "6": "Cumartesi",
       "7": "Pazar"
-    }
+    },
+    "requestLesson": "Ders talebi gönder"
   },
   "errors": {
     "AssistantBudgetExceeded": "Şimdilik kullanım sınırına ulaştın. Biraz sonra yeniden dene.",
@@ -168,5 +173,12 @@
   "inputPlaceholder": "Bir şey sor…",
   "send": "Gönder",
   "tooLong": "Mesaj en çok {{max}} karakter olabilir.",
-  "disclaimer": "Asistan hata yapabilir; önemli bilgileri kontrol et."
+  "disclaimer": "Asistan hata yapabilir; önemli bilgileri kontrol et.",
+  "draft": {
+    "title": "Mesaj taslağı",
+    "notSent": "Gönderilmedi. Kopyalayıp mesajlar ekranından kendin gönder.",
+    "copy": "Kopyala",
+    "copied": "Kopyalandı",
+    "open": "Mesajlara git"
+  }
 }

@@ -32,7 +32,7 @@
     <!-- #872: ders çipleri tek satır; ücret ve biçim "Daha fazla süzgeç" içinde. -->
     <div class="ts__chips-row">
       <mat-chip-listbox class="ts__chips" [attr.aria-label]="t('subject')" [hideSingleSelectionIndicator]="true"
-        [value]="filterForm.controls.subjectId.value" (change)="pickSubject($event.value ?? null)" data-testid="subject-chips">
+        [value]="filterForm.controls.subjectId.value" (change)="pickSubject($event.value ?? null)" data-testid="subject-chips" data-assistant-key="tutors.subjects">
         <mat-chip-option [value]="null" [selectable]="filterForm.controls.subjectId.value !== null">{{ t('allSubjects') }}</mat-chip-option>
         @for (subject of subjects(); track subject.id) {
           <mat-chip-option [value]="subject.id">{{ subject.name }}</mat-chip-option>

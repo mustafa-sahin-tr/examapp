@@ -23,6 +23,11 @@ export const ASSISTANT_MAX_MESSAGE_LENGTH = 2000;
  * Asistan sohbetinin durumu (#507). Kökte tutulur: panel kapanıp açılınca konuşma kaybolmaz; sayfa yenilenince yeni
  * konuşma başlar (geçmiş listesi ayrı iş). Ekranlar arası gezinme `navigated` ile panele bildirilir (mobilde kapanır).
  */
+/** #515 ui_highlight: the element may render after a lazy route loads. */
+const HIGHLIGHT_WAIT_MS = 100;
+const HIGHLIGHT_WAIT_STEPS = 30;
+const HIGHLIGHT_MS = 3000;
+
 @Injectable({ providedIn: 'root' })
 export class AssistantChatStore {
   private readonly api = inject(AssistantService);
@@ -186,6 +191,27 @@ export class AssistantChatStore {
       // Rotayı sunucu kurar (izinli ekranlar listesi); yalnız uygulama içi yol kabul edilir.
       void this.router.navigateByUrl(action.route);
       this.navigated.update((n) => n + 1);
+    } else if (action.type === 'highlight' && typeof action.route === 'string' && action.route.startsWith('/')
+      && typeof action.key === 'string' && /^[a-z]+\.[a-zA-Z]+$/.test(action.key)) {
+      void this.highlight(action.key, action.route);
+    }
+  }
+
+  /** #515: opens the screen when needed, then scrolls to the element and outlines it for a few seconds. */
+  private async highlight(key: string, route: string): Promise<void> {
+    if (this.router.url.split('?')[0] !== route) {
+      if (!(await this.router.navigateByUrl(route))) return;
+      this.navigated.update((n) => n + 1);
+    }
+    for (let i = 0; i < HIGHLIGHT_WAIT_STEPS; i++) {
+      const el = document.querySelector<HTMLElement>(`[data-assistant-key="${key}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('assistant-highlight');
+        setTimeout(() => el.classList.remove('assistant-highlight'), HIGHLIGHT_MS);
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, HIGHLIGHT_WAIT_MS));
     }
   }
 

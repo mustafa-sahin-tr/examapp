@@ -28,6 +28,12 @@ public static class UiScreens
         ["programs"] = new("/programs", false, Tools.Roles.StudentOnly),
         ["program"] = new("/programs/{id}/detail", true, Tools.Roles.StudentOnly),
         ["calendar"] = new("/my-calendar", false, Tools.Roles.StudentOnly),
+        // #515 slice 2: tutors, lessons and messages (the assistant never sends a message).
+        ["tutors"] = new("/tutors", false, Tools.Roles.StudentOnly),
+        ["tutor"] = new("/tutors/{id}", true, Tools.Roles.StudentOnly),
+        ["myBookings"] = new("/my-bookings", false, Tools.Roles.StudentOnly),
+        ["messages"] = new("/teacher-messages", false, Tools.Roles.StudentOnly),
+        ["conversation"] = new("/teacher-messages?conversation={id}", true, Tools.Roles.StudentOnly),
 
         // #1336: parent screens (the dashboard picks a child with ?child=<studentId>).
         ["parentDashboard"] = new("/parent", false, Tools.Roles.ParentOnly),
@@ -74,7 +80,7 @@ public static class UiScreens
 public sealed class UiOpenScreenTool : IAssistantTool
 {
     public string Name => "ui_open_screen";
-    public string Description => "Open a screen of the app for the user. Only screens of the user's role; practiceSession, worksheet and childDashboard (studentId) need an id. Students: dashboard, practice, practiceSession, mistakes, savedQuestions, profile, badges, homework, mockExams, worksheet. Parents: parentDashboard, childDashboard, myChildren.";
+    public string Description => "Open a screen of the app for the user. Only screens of the user's role; practiceSession, worksheet, program, tutor, conversation and childDashboard / childTutors (studentId) need an id. Students: dashboard, practice, practiceSession, mistakes, savedQuestions, profile, badges, homework, mockExams, worksheet, programs, program, calendar, tutors, tutor, myBookings, messages, conversation. Parents: parentDashboard, childDashboard, myChildren, childTutors.";
     public IReadOnlyCollection<string> Roles => Tools.Roles.StudentAndParent;
     public JsonObject InputSchema => Schema(
         ("screen", StringProp("Screen key.", 40, UiScreens.AllKeys), true),
@@ -87,6 +93,36 @@ public sealed class UiOpenScreenTool : IAssistantTool
         if (UiScreens.Route(key, id, context.Roles) is null)
             return Task.FromResult(ToolResult.Error("ScreenNotAllowed", "Unknown screen, not allowed for this role, or wrong id."));
         return Task.FromResult(ToolResult.Success(new JsonObject { ["opened"] = key }, uiActions: [UiScreens.Navigate(key, id)]));
+    }
+}
+
+/// <summary>
+/// Issue #515: point at one control on a screen (<c>data-assistant-key</c>): the panel opens the screen if needed, scrolls to the
+/// element and outlines it for a few seconds. Only the keys below, each tied to its screen and role.
+/// </summary>
+public sealed class UiHighlightTool : IAssistantTool
+{
+    internal static readonly IReadOnlyDictionary<string, string> Keys = new Dictionary<string, string>
+    {
+        ["programs.create"] = "programs",
+        ["calendar.view"] = "calendar",
+        ["homework.assignments"] = "homework",
+        ["tutors.subjects"] = "tutors",
+        ["messages.search"] = "messages",
+    };
+
+    public string Name => "ui_highlight";
+    public string Description => "Show the student where something is: opens the screen and outlines one control. Keys: programs.create (new study program button), calendar.view (the calendar), homework.assignments (homework from teachers), tutors.subjects (tutor search by subject), messages.search (find a teacher to message).";
+    public IReadOnlyCollection<string> Roles => Tools.Roles.StudentOnly;
+    public JsonObject InputSchema => Schema(("elementKey", StringProp("Element key.", 40, Keys.Keys), true));
+
+    public Task<ToolResult> ExecuteAsync(ToolContext context, JsonElement args)
+    {
+        var key = String(args, "elementKey") ?? "";
+        if (!Keys.TryGetValue(key, out var screen) || UiScreens.Route(screen, null, context.Roles) is not { } route)
+            return Task.FromResult(ToolResult.Error("ElementNotAllowed", "Unknown element key."));
+        var action = new JsonObject { ["type"] = "highlight", ["key"] = key, ["route"] = route };
+        return Task.FromResult(ToolResult.Success(new JsonObject { ["highlighted"] = key }, uiActions: [action]));
     }
 }
 

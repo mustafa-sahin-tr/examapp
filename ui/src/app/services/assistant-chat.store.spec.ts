@@ -113,6 +113,29 @@ describe('AssistantChatStore (#507)', () => {
         expect(store.navigated()).toBe(1);
     });
 
+    it('highlightAction_OpensScreenAndOutlinesElement (issue #515)', async () => {
+        vi.useFakeTimers();
+        const target = document.createElement('button');
+        target.setAttribute('data-assistant-key', 'programs.create');
+        target.scrollIntoView = vi.fn();
+        document.body.appendChild(target);
+        turns.push([
+            { event: 'ui_action', data: { type: 'highlight', key: 'programs.create', route: '/programs' } },
+            { event: 'ui_action', data: { type: 'highlight', key: '"]x', route: '/programs' } },
+        ]);
+
+        await store.send('Program nerede?');
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(router.navigateByUrl).toHaveBeenCalledTimes(1);
+        expect(router.navigateByUrl).toHaveBeenCalledWith('/programs');
+        expect(target.classList.contains('assistant-highlight')).toBe(true);
+        await vi.advanceTimersByTimeAsync(3000);
+        expect(target.classList.contains('assistant-highlight')).toBe(false);
+        target.remove();
+        vi.useRealTimers();
+    });
+
     it('tokenExpired_RefreshesAndResendsSameMessageOnce', async () => {
         turns.push([{ event: 'error', data: { code: 'TokenExpired' } }]);
         turns.push([

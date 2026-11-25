@@ -3,7 +3,7 @@
     <app-page-header icon="school" [title]="t('title')" [description]="t('subtitle')">
       <!-- #915: liste boşken tek eylem boş durumdaki karttadır. -->
       @if (loading || loadError || programs.length > 0) {
-        <button mat-flat-button type="button" (click)="createNewProgram()">
+        <button mat-flat-button type="button" (click)="createNewProgram()" data-assistant-key="programs.create">
           <mat-icon>add</mat-icon>
           {{ t('create') }}
         </button>

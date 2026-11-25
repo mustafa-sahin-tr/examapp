@@ -4556,3 +4556,11 @@ mat-icon[mat-card-avatar] {
   width: min(360px, 90vw);
   max-width: min(360px, 90vw);
 }
+
+// #515 ui_highlight: the assistant points at a control for a few seconds.
+.assistant-highlight {
+  outline: 3px solid var(--ms-action-border-focus);
+  outline-offset: 3px;
+  border-radius: 8px;
+  transition: outline-color 0.3s ease;
+}

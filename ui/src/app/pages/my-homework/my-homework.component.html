@@ -12,7 +12,7 @@
     <p class="mh__empty" data-testid="my-homework-empty">{{ t('student.empty') }}</p>
   } @else {
     @if (assignmentItems().length > 0) {
-      <section class="mh__group" [attr.aria-label]="t('student.assignments')" data-testid="assignment-homework">
+      <section class="mh__group" [attr.aria-label]="t('student.assignments')" data-testid="assignment-homework" data-assistant-key="homework.assignments">
         <h2 class="mh__heading">{{ t('student.assignments') }}</h2>
         <ul class="mh__list">
           @for (a of assignmentItems(); track a.assignmentId) {

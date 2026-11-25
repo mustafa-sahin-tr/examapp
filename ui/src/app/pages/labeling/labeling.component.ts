@@ -1220,6 +1220,17 @@ export class LabelingComponent {
    * #1273: kayıttan sonra iş yeniden okunur (işaretler sunucuda yeniden hesaplandı). Önce bu testin kalan işaretli sayfası,
    * yoksa sıradaki kontrol gerekli test (ilk işaretli sayfasıyla) açılır; kalmadıysa aktarım sayfasına dönülür.
    */
+  /**
+   * Testte işaretli sayfa kalmadıysa bakılmamış sayfaları gezmeden test bu haliyle bırakılır: sıradaki kontrol gerekli teste
+   * geçilir, yoksa aktarım sayfasına dönülür. Açık sayfadaki kaydedilmemiş değişiklik kaydedilmez.
+   */
+  acceptFixAsIs(): void {
+    const fix = this.fix();
+    if (!fix || this.fixSaving()) return;
+    for (const p of fix.pages) this.fixSeen.add(`${fix.testId}:${p.page}`);
+    this.continueToNextFlagged(fix, this.tr('fix.acceptedAsIs'));
+  }
+
   private continueToNextFlagged(fix: LabelingFixTarget, saved: string): void {
     const jobs = fix.kind === 'QuickAdd' ? this.quickAdd : this.bookImports;
     jobs

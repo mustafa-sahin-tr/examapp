@@ -436,8 +436,12 @@ olarak aktarılır. Yalnız kitap aktarımında; hızlı ekleme ve karışık g�
   varken bu temizlik atlanır (kaydedilip henüz bağlanmamış taslak yetim sanılmasın).
   **Çift çalışma (#1344):** Hangfire.PostgreSql 1.20'de `InvisibilityTimeout` varsayılanı 30 dakika (kayan süre yok), iş kilidi
   `DistributedLockTimeout` (10 dk) sonra düşer: 30 dakikayı geçen soru aşaması ikinci bir worker'da yeniden başladı ve her teste
-  hiçbir aktarım testinin göstermediği ikinci bir taslak test kaldı. Süre `Hangfire:InvisibilityTimeoutHours` (varsayılan 6),
-  aynı süreçte çalışan işin ikinci çalıştırması hemen çıkar. Düzeltmede yalnız böyle bir kopya teste bağlı taslak da yetimdir
+  hiçbir aktarım testinin göstermediği ikinci bir taslak test kaldı. Aynı süreçte çalışan işin ikinci çalıştırması hemen çıkar.
+  **Çalıştırma dilimi (#1346):** bir Hangfire çalıştırması `BookImport:RunSliceMinutes` (varsayılan 10) dolunca sıradaki adıma
+  geçmez: soru aşamasında sıradaki teste başlamadan (en az bir test ilerler), kurulumdan önce sayfalar + temizlikten sonra durur;
+  iş "Çalışıyor" kalır, kilit bırakıldıktan sonra iş yeniden kuyruğa girer ve kaldığı yerden sürer. Böylece tek çalıştırma kısa
+  kalır (en uzun tek adım kurulum, demoda en fazla 25 dk) ve `Hangfire:InvisibilityTimeoutMinutes` 60'a indi (önceden 6 saat):
+  çöken çalıştırma bir saat içinde yeniden alınır. Birden çok API örneği için iş satırında kira (sahip + nabız) henüz yok. Düzeltmede yalnız böyle bir kopya teste bağlı taslak da yetimdir
   (yerine yenisi kaydedilir; önceden kopya sayılıp atlanıyordu).
   **Anahtar sayfası (#1176):** kurulum her testin anahtarının okunduğu dosya sayfasını `BookImportJobTests.KeyFilePage`'e yazar
   (ilk okumanınki, yoksa ikincininki). İş detayındaki `keyPages` bu sayfayı, alan boşsa (önceki kurulumlar, demo kopyası)

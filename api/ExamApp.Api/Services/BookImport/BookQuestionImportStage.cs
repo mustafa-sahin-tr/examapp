@@ -96,7 +96,11 @@ internal sealed class BookQuestionImportStage(
 
     private readonly string _activityModel = string.IsNullOrEmpty(activityModel) ? detectModel : activityModel;
 
-    public async Task RunAsync(BookImportJob job, CancellationToken ct = default)
+    /// <summary>
+    /// Bitmemiş testleri sırayla aktarır. #1346: <paramref name="sliceEnds"/> geçince sıradaki teste başlamadan durur ve false
+    /// döner (kalan testler sonraki çalıştırmada); bütün testler bittiyse true.
+    /// </summary>
+    public async Task<bool> RunAsync(BookImportJob job, DateTime? sliceEnds = null, CancellationToken ct = default)
     {
         // #1052 / #1144: hızlı ekleme ve karışık soruların kitabı yok; kitap aktarımında kurulum onayı kitabı bağlar.
         var bookId = job.BookId;
@@ -118,9 +122,14 @@ internal sealed class BookQuestionImportStage(
         job.StageProcessed = tests.Count(IsFinished);
         await db.SaveChangesAsync(ct);
 
+        var started = 0;
         foreach (var test in tests.Where(t => !IsFinished(t)))
         {
             await StopIfCancelledAsync(job, ct);
+            // En az bir test ilerler (tek test dilimden uzun sürse de iş ilerlesin).
+            if (started > 0 && DateTime.UtcNow >= sliceEnds)
+                return false;
+            started++;
             test.Status = BookImportTestStatus.Running;
             test.Error = null;
             BookImportEvents.Add(db, job, BookImportEvents.TestStarted, TestValues(test));
@@ -157,6 +166,7 @@ internal sealed class BookQuestionImportStage(
             await budget.FlushAsync();
             await db.SaveChangesAsync(CancellationToken.None);
         }
+        return true;
     }
 
     private static object TestValues(BookImportJobTest test) =>

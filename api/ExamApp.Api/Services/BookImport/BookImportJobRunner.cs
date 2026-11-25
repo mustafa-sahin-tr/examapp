@@ -40,6 +40,13 @@ public class BookImportJobRunner
     /// <summary>Soru / şık tespit modeli (işaretleme ekranının "Claude ile tespit"i); <c>BookImport:DetectModel</c>.</summary>
     public const string DefaultDetectModel = "claude-haiku-5-5";
 
+    /// <summary>
+    /// #1346: bir Hangfire çalıştırmasının dilimi; <c>BookImport:RunSliceMinutes</c>. Dilim dolunca iş sıradaki adıma (kurulum ya da
+    /// sıradaki test) geçmeden durur ve kilidi bıraktıktan sonra kendini yeniden kuyruğa verir; tek çalıştırma Hangfire'ın
+    /// <c>InvisibilityTimeout</c>'unu aşmasın (aşınca iş başka bir işçiye yeniden verilir, #1344). 0: her adımdan sonra durur.
+    /// </summary>
+    public const int DefaultRunSliceMinutes = 10;
+
     /// <summary>Bütçe penceresinin kalan süresi bilinmiyorsa yeniden deneme aralığı.</summary>
     public static readonly TimeSpan DefaultBudgetRetry = TimeSpan.FromMinutes(30);
 
@@ -62,6 +69,7 @@ public class BookImportJobRunner
     private readonly IPageCleaner? _pageCleaner;
     private readonly IActivityStructureService? _activityStructure;
     private readonly string? _activityModel;
+    private readonly TimeSpan _runSlice;
 
     public BookImportJobRunner(AppDbContext db, IApprovedTeacherGuard teacherGuard, IMinIoService minio, IPdfRasterizer rasterizer,
         IBookSetupAi setupAi, ILabelingService labeling, IServiceScopeFactory scopes, IConfiguration? configuration = null,
@@ -88,6 +96,8 @@ public class BookImportJobRunner
         _budgetStore = budgetStore ?? new InMemoryFixedWindowCounterStore();
         _aiOptions = aiOptions?.Value ?? new LabelingAiOptions();
         _jobs = jobs;
+        _runSlice = TimeSpan.FromMinutes(Math.Clamp(
+            configuration?.GetValue<int?>("BookImport:RunSliceMinutes") ?? DefaultRunSliceMinutes, 0, 120));
         _logger = logger ?? NullLogger<BookImportJobRunner>.Instance;
     }
 
@@ -102,16 +112,24 @@ public class BookImportJobRunner
             _logger.LogWarning("Book import job {JobId} is already running in this process; the second run left", jobId);
             return;
         }
+        bool more;
         try
         {
             // Aynı iş iki kez kuyruğa düşerse (yeniden başlatma, elle tetikleme) ikinci çalıştırma beklemeden çıkar.
             using var connection = JobStorage.Current.GetConnection();
             using var jobLock = connection.AcquireDistributedLock($"book-import:{jobId}", TimeSpan.FromSeconds(5));
-            await RunLockedAsync(jobId);
+            more = await RunLockedAsync(jobId);
         }
         finally
         {
             Exit(jobId);
+        }
+
+        // #1346: dilim doldu; sonraki dilim kilit bırakıldıktan sonra kuyruğa girer (önce girse kilidi alamayıp çıkardı).
+        if (more)
+        {
+            _logger.LogInformation("Book import job {JobId}: run slice used up, the next slice is queued", jobId);
+            (_jobs ?? new BackgroundJobClient()).Enqueue<BookImportJobRunner>(r => r.RunAsync(jobId));
         }
     }
 
@@ -122,26 +140,31 @@ public class BookImportJobRunner
 
     internal static void Exit(Guid jobId) => Active.TryRemove(jobId, out _);
 
-    /// <summary>Kilit altında çalışan gövde; birim testler doğrudan bunu çağırır (Hangfire depolaması gerekmez).</summary>
-    internal async Task RunLockedAsync(Guid jobId)
+    /// <summary>
+    /// Kilit altında çalışan gövde; birim testler doğrudan bunu çağırır (Hangfire depolaması gerekmez). #1346: dilim dolup iş
+    /// yarıda bırakıldıysa true döner (çağıran işi yeniden kuyruğa verir).
+    /// </summary>
+    internal async Task<bool> RunLockedAsync(Guid jobId)
     {
         var job = await _db.BookImportJobs.FirstOrDefaultAsync(j => j.Id == jobId);
         if (job is null || job.Status is not (BookImportJobStatus.Queued or BookImportJobStatus.Running or BookImportJobStatus.AwaitingBudget))
-            return;
+            return false;
 
         if (await OwnerNotApprovedAsync(job))
         {
             Fail(job, OwnerNotApprovedMessage);
             await _db.SaveChangesAsync();
-            return;
+            return false;
         }
 
         // Issue #1032: demo hiçbir AI aşamasına girmez; kuyruğa nereden düşerse düşsün (onay, yeniden deneme) burada ayrılır.
         if (job.DemoSourceJobId is not null)
         {
             await new BookImportDemoReplay(_db, _demoStep, _logger).RunAsync(job);
-            return;
+            return false;
         }
+
+        var sliceEnds = DateTime.UtcNow + _runSlice;
 
         // #1265: ilk çalışma "başladı", bütçe / hız sınırı beklemesinden dönüş "devam etti"; onaydan sonraki kuyruk olay yazmaz
         // (onay ucu yazdı).
@@ -169,7 +192,11 @@ public class BookImportJobRunner
                         new { pages = await _db.BookImportPages.CountAsync(p => p.JobId == job.Id) });
                     await _db.SaveChangesAsync();
                 }
-                await CleanPagesAsync(job);
+                var cleaned = await CleanPagesAsync(job);
+                // #1346: bu çalıştırmada sayfa çıkarma / temizlik dilimi doldurduysa kurulum ayrı çalıştırmada başlar (iş
+                // yapılmadıysa durulmaz; yoksa dilim 0'da iş hiç ilerlemezdi).
+                if ((!hadPages || cleaned) && DateTime.UtcNow >= sliceEnds && job.Source != BookImportSource.LooseImages)
+                    return true;
             }
             // #1144 karışık sorular: kurulum ve onay yok, test satırları yüklemede açıldı; sayfalardan sonra sorulara geçer.
             if (job.Stage < BookImportStage.SetupConfirmation && job.Source != BookImportSource.LooseImages)
@@ -189,15 +216,18 @@ public class BookImportJobRunner
                 BookImportEvents.Add(_db, job, BookImportEvents.SetupFinished,
                     new { tests = await _db.BookImportJobTests.CountAsync(t => t.JobId == job.Id) });
                 await _db.SaveChangesAsync();
-                return;
+                return false;
             }
 
             // #1022: test test soru aktarımı; kaldığı testten devam eder (aşama sayaçları sıfırlanmaz).
             if (job.Stage != BookImportStage.Questions)
                 await EnterStageAsync(job, BookImportStage.Questions);
-            await new BookQuestionImportStage(_db, _minio, _labeling, _scopes, budget, _detectModel, _logger, _activityStructure,
-                _activityModel).RunAsync(job);
+            // #1346: dilim dolunca test arasında durur; kalan testler sonraki çalıştırmada.
+            var finished = await new BookQuestionImportStage(_db, _minio, _labeling, _scopes, budget, _detectModel, _logger,
+                _activityStructure, _activityModel).RunAsync(job, sliceEnds);
             await BookQuestionImportStage.StopIfCancelledAsync(_db, job.Id, default);
+            if (!finished)
+                return true;
             job.Stage = BookImportStage.Review;
             job.Status = BookImportJobStatus.ReadyForReview;
             // #1267: testler aktarım sürerken onaylanabilir; bitmiş testlerin hepsi onaylandıysa incelenecek bir şey kalmaz.
@@ -235,17 +265,18 @@ public class BookImportJobRunner
             _logger.LogError(ex, "Book import job {JobId} failed in stage {Stage}", job.Id, job.Stage);
             await FailUnlessCancelledAsync(job, ex.Message);
         }
+        return false;
     }
 
     /// <summary>
     /// #1234: kurulumdan önce filigran ve cevap işaretleri temizlenir (kurulum, soru tespiti ve kırpmalar temiz sayfayı okur).
     /// Hizmet yoksa ya da bir şey bulunamazsa sayfalar orijinal kalır; yarıda kaldıysa temizlenmiş sayfalar atlanır.
     /// </summary>
-    private async Task CleanPagesAsync(BookImportJob job)
+    private async Task<bool> CleanPagesAsync(BookImportJob job)
     {
         if (_pageCleaner is null || job.Kind != BookImportJobKind.Book || job.Source == BookImportSource.LooseImages
             || BookPageCleaning.Parse(job.CleanJson) is { Status: not BookPageCleaning.Running })
-            return;
+            return false;
 
         var service = new BookPageCleaningService(_db, _minio, _pageCleaner, _jobs, NullLogger<BookPageCleaningService>.Instance);
         await service.CleanAsync(job, null, resume: true, async (done, total) =>
@@ -255,6 +286,7 @@ public class BookImportJobRunner
             await _db.SaveChangesAsync();
             await BookQuestionImportStage.StopIfCancelledAsync(_db, job.Id, default);
         }, default);
+        return true;
     }
 
     /// <summary>

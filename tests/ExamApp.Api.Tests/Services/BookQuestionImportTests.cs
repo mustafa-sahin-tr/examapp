@@ -380,6 +380,38 @@ public class BookQuestionImportTests : IDisposable
     }
 
     [Fact]
+    public async Task A_used_up_run_slice_stops_between_tests_and_the_next_run_resumes_issue1346()
+    {
+        _config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["BookImport:RunSliceMinutes"] = "0" }).Build();
+        var id = await SeedAsync(
+            [new(1, 1, 2, "BCAD", [2, 4]), new(2, 3, 3, "DA", [2])]);
+        Detect(1, 4, 4);
+        Detect(2, 4, 4);
+        Detect(3, 4, 4);
+
+        (await RunAsync(id)).ShouldBeTrue();
+
+        await using (var check = _db.NewContext())
+        {
+            var job = await check.BookImportJobs.SingleAsync();
+            job.Status.ShouldBe(BookImportJobStatus.Running);
+            job.Stage.ShouldBe(BookImportStage.Questions);
+            job.StageProcessed.ShouldBe(1);
+            (await check.BookImportJobTests.OrderBy(t => t.Order).Select(t => t.Status).ToListAsync())
+                .ShouldBe([BookImportTestStatus.Done, BookImportTestStatus.Pending]);
+        }
+
+        (await RunAsync(id)).ShouldBeFalse();
+
+        await using var after = _db.NewContext();
+        var done = await after.BookImportJobs.SingleAsync();
+        done.Status.ShouldBe(BookImportJobStatus.ReadyForReview);
+        done.StageProcessed.ShouldBe(2);
+        _saved.Select(s => s.FilePage).ShouldBe([1, 2, 3]);
+    }
+
+    [Fact]
     public async Task A_printed_answer_mark_inside_the_question_box_is_its_answer_and_a_different_key_is_flagged_issue1235()
     {
         var id = await SeedAsync([new(1, 1, 1, "BC", [2]), new(2, 2, 2, null, [2])]);
@@ -2118,13 +2150,13 @@ public class BookQuestionImportTests : IDisposable
         return job.Id;
     }
 
-    private async Task RunAsync(Guid id, IFixedWindowCounterStore? budgetStore = null, LabelingAiOptions? aiOptions = null,
+    private async Task<bool> RunAsync(Guid id, IFixedWindowCounterStore? budgetStore = null, LabelingAiOptions? aiOptions = null,
         IBackgroundJobClient? jobs = null)
     {
         var guard = Substitute.For<IApprovedTeacherGuard>();
         guard.CheckAsync(OwnerId, Arg.Any<CancellationToken>()).Returns(TeacherApprovalCheck.NoTeacherProfile);
         await using var ctx = _db.NewContext();
-        await new BookImportJobRunner(ctx, guard, _minio, Substitute.For<IPdfRasterizer>(), new FakeBookSetupAi(), _labeling,
+        return await new BookImportJobRunner(ctx, guard, _minio, Substitute.For<IPdfRasterizer>(), new FakeBookSetupAi(), _labeling,
             _services.GetRequiredService<IServiceScopeFactory>(), _config, budgetStore: budgetStore,
             aiOptions: aiOptions is null ? null : Options.Create(aiOptions), jobs: jobs, activityStructure: _activity).RunLockedAsync(id);
     }

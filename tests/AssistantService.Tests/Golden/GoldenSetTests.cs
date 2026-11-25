@@ -19,7 +19,7 @@ namespace AssistantService.Tests.Golden;
 /// <code>ASSISTANT_GOLDEN_API_KEY=… dotnet test tests/AssistantService.Tests --filter Category=Golden</code>
 /// Optional: <c>ASSISTANT_GOLDEN_MODEL</c> (default the service's model), <c>ASSISTANT_GOLDEN_JUDGE_MODEL</c>,
 /// <c>ASSISTANT_GOLDEN_ONLY</c> (comma-separated scenario ids), <c>ASSISTANT_GOLDEN_MIN_PASS</c> (0..1, default 0.8),
-/// <c>ASSISTANT_GOLDEN_REPORT</c> (markdown report path). Parent scenarios: <c>Golden/parent.json</c> (#1336).
+/// <c>ASSISTANT_GOLDEN_REPORT</c> (markdown report path). Parent scenarios: <c>Golden/parent.json</c> (#1336), teacher: <c>Golden/teacher.json</c> (#512).
 /// </summary>
 [Trait("Category", "Golden")]
 public sealed class GoldenSetTests(ITestOutputHelper output)
@@ -32,6 +32,10 @@ public sealed class GoldenSetTests(ITestOutputHelper output)
     /// <summary>#1336 (Phase 1b, #509 C): two linked children, the second on a plan without analysis.</summary>
     [Fact]
     public Task Parent_golden_set() => RunSetAsync("parent.json", "Parent");
+
+    /// <summary>#512 (Phase 2): a teacher with five tests; read-only tools.</summary>
+    [Fact]
+    public Task Teacher_golden_set() => RunSetAsync("teacher.json", "Teacher");
 
     private async Task RunSetAsync(string file, string role)
     {
@@ -176,15 +180,18 @@ public sealed class GoldenSetTests(ITestOutputHelper output)
     private static async Task<IEnumerable<string>> JudgeAsync(IChatClient client, string model, string facts, JsonObject scenario,
         string answer, string rubric, string role)
     {
-        var user = role == "Parent" ? "parent" : "student";
+        var user = role.ToLowerInvariant();
         var prompt = new StringBuilder()
-            .AppendLine(role == "Parent"
-                ? "You grade one reply of the assistant of a Turkish learning platform, talking to a parent about their children."
-                : "You grade one reply of a study assistant for Turkish middle-school students.")
+            .AppendLine(role switch
+            {
+                "Parent" => "You grade one reply of the assistant of a Turkish learning platform, talking to a parent about their children.",
+                "Teacher" => "You grade one reply of the assistant of a Turkish learning platform, talking to a teacher about their tests and students.",
+                _ => "You grade one reply of a study assistant for Turkish middle-school students.",
+            })
             .AppendLine($"The assistant's tools returned data matching these facts (the {user} sees cards with them):")
             .AppendLine(facts)
             .AppendLine()
-            .AppendLine(role == "Parent" ? "Parent message(s):" : "Student message(s):")
+            .AppendLine($"{role} message(s):")
             .AppendLine(string.Join("\n", Strings(scenario["messages"])))
             .AppendLine()
             .AppendLine("Assistant reply:")

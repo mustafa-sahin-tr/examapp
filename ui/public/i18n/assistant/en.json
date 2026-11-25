@@ -42,6 +42,10 @@
     "title": "Hi! How can I help?",
     "text": "Ask about your child's week, homework and the topics they struggle with, or learn how to use the app."
   },
+  "teacherEmpty": {
+    "title": "Hello! How can I help?",
+    "text": "Ask about your tests, your students' week and who has not finished, or how to use the app."
+  },
   "parentStarters": {
     "childWeek": {
       "label": "How was the week?",
@@ -60,6 +64,24 @@
       "prompt": "How do I reset my child's password?"
     }
   },
+  "teacherStarters": {
+    "teacherWeek": {
+      "label": "How was the week?",
+      "prompt": "How are my students doing this week, who is behind?"
+    },
+    "lagging": {
+      "label": "Not finished",
+      "prompt": "Which students have not finished the tests I assigned?"
+    },
+    "myTests": {
+      "label": "My tests",
+      "prompt": "How many students finished my tests?"
+    },
+    "assignHelp": {
+      "label": "How to assign",
+      "prompt": "How do I assign a test to students?"
+    }
+  },
   "kpi": {
     "level": "Level",
     "xp": "Points",
@@ -69,7 +91,9 @@
     "activeDays": "Active days",
     "overdueHomework": "Overdue homework",
     "previousQuestionsSolved": "Previous period questions",
-    "studyMinutes": "Study (min)"
+    "studyMinutes": "Study (min)",
+    "worksheets": "Tests",
+    "students": "Students"
   },
   "topicTable": {
     "name": "Topic",

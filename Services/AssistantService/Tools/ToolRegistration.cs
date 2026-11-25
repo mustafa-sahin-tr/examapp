@@ -62,6 +62,10 @@ public static class ToolRegistration
         // #511 (Phase 2): lesson requests (decided on the dashboard) and tutor search.
         services.AddScoped<IAssistantTool, ListPendingLessonRequestsTool>();
         services.AddScoped<IAssistantTool, SearchTutorsForChildTool>();
+        // #512 (Phase 2): teacher read tools.
+        services.AddScoped<IAssistantTool, GetTeacherOverviewTool>();
+        services.AddScoped<IAssistantTool, ListMyWorksheetsTool>();
+        services.AddScoped<IAssistantTool, ListLaggingStudentsTool>();
         // #536: the child's hard questions (#526 mine, no solve button).
         services.AddScoped<IAssistantTool, GetChildHardQuestionsTool>();
         services.AddScoped<IAssistantTool, SearchHelpTool>();

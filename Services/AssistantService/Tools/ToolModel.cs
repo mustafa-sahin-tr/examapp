@@ -72,7 +72,12 @@ public static class Roles
     public static readonly IReadOnlyCollection<string> StudentOnly = [Student];
     /// <summary>Issue #1336 (Phase 1b).</summary>
     public static readonly IReadOnlyCollection<string> ParentOnly = [Parent];
-    public static readonly IReadOnlyCollection<string> StudentAndParent = [Student, Parent];
+    public const string Teacher = "Teacher";
+    /// <summary>Issue #512 (Phase 2).</summary>
+    public static readonly IReadOnlyCollection<string> TeacherOnly = [Teacher];
+    public static readonly IReadOnlyCollection<string> StudentAndTeacher = [Student, Teacher];
+    /// <summary>The shared tools (help, screens, chips) serve every role the assistant is open to.</summary>
+    public static readonly IReadOnlyCollection<string> Everyone = [Student, Parent, Teacher];
 }
 
 /// <summary>Helpers for tool argument parsing and result shaping.</summary>

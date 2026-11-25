@@ -57,6 +57,8 @@ const KNOWN_ERRORS = new Set([
 const STARTERS = ['weakTopics', 'dailySet', 'practice', 'help'] as const;
 /** #1336: velinin önerileri (çocuğun haftası, geciken ödev, zorlandığı konu, kılavuz). */
 const PARENT_STARTERS = ['childWeek', 'overdue', 'childWeakTopics', 'childPassword'] as const;
+/** #512: öğretmen önerileri (`teacherStarters.*`). */
+const TEACHER_STARTERS = ['teacherWeek', 'lagging', 'myTests', 'assignHelp'] as const;
 
 /** `**kalın**` dışında biçim yok; metin olduğu gibi (innerHTML yok). */
 export interface TextSegment {
@@ -164,11 +166,19 @@ export class AssistantPanelComponent implements AfterViewInit {
     }
     return 'student';
   });
-  /** Öneri anahtarları ve boş durum metni role göre (`starters.*`, `empty.*` ya da `parentStarters.*`, `parentEmpty.*`). */
+  /**
+   * Öneri anahtarları ve boş durum metni role göre: öğrenci `starters.*` / `empty.*`, veli `parentStarters.*` / `parentEmpty.*`,
+   * öğretmen (#512) `teacherStarters.*` / `teacherEmpty.*`.
+   */
   readonly isParent = computed(() => this.roleKey() === 'parent');
-  readonly starters = computed<readonly string[]>(() => (this.isParent() ? PARENT_STARTERS : STARTERS));
-  readonly starterPrefix = computed(() => (this.isParent() ? 'parentStarters.' : 'starters.'));
-  readonly emptyPrefix = computed(() => (this.isParent() ? 'parentEmpty.' : 'empty.'));
+  readonly isTeacher = computed(() => this.roleKey() === 'teacher');
+  readonly starters = computed<readonly string[]>(() =>
+    this.isParent() ? PARENT_STARTERS : this.isTeacher() ? TEACHER_STARTERS : STARTERS
+  );
+  readonly starterPrefix = computed(() =>
+    this.isParent() ? 'parentStarters.' : this.isTeacher() ? 'teacherStarters.' : 'starters.'
+  );
+  readonly emptyPrefix = computed(() => (this.isParent() ? 'parentEmpty.' : this.isTeacher() ? 'teacherEmpty.' : 'empty.'));
 
   readonly tooLong = computed(() => this.draft().length > this.maxLength);
   readonly canSend = computed(() => !!this.draft().trim() && !this.tooLong() && !this.store.sending());

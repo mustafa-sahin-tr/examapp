@@ -109,9 +109,10 @@ public sealed class ToolHarness : IDisposable
         new GetChildScheduleTool(Downstream),
         new GetChildActivityTrendTool(Downstream), new CompareChildrenTool(Downstream), new GetChildWeeklyReportTool(Downstream),
         new ListPendingLessonRequestsTool(Downstream), new SearchTutorsForChildTool(Downstream), new GetChildHardQuestionsTool(Downstream),
+        new GetTeacherOverviewTool(Downstream), new ListMyWorksheetsTool(Downstream), new ListLaggingStudentsTool(Downstream),
     ];
 
-    /// <summary>Issue #1336: the shared tools (help, screens, chips) serve both roles.</summary>
+    /// <summary>Issue #1336, #512: the shared tools (help, screens, chips) serve every role.</summary>
     public static readonly string[] SharedTools = ["search_help", "ui_open_screen", "ui_suggest_actions"];
 
     /// <summary>The real embedded guide (#506); loaded once, it is immutable.</summary>
@@ -125,6 +126,9 @@ public sealed class ToolHarness : IDisposable
 
     public static ToolContext Parent(string sub = "parent-1", Guid? conversationId = null) =>
         new(sub, ["Parent"], "token-" + sub, "tr-TR", conversationId);
+
+    public static ToolContext Teacher(string sub = "teacher-1", Guid? conversationId = null) =>
+        new(sub, ["Teacher"], "token-" + sub, "tr-TR", conversationId);
 
     public async Task<Guid> ConversationAsync(string sub = "student-1")
     {

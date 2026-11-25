@@ -9,7 +9,7 @@ namespace AssistantService.Chat;
 /// </summary>
 public static class SystemPrompt
 {
-    public const int Revision = 16;
+    public const int Revision = 17;
 
     /// <summary>#496 decision: a personal crisis gets this fixed text, never a generated answer.</summary>
     public const string CrisisResponse =
@@ -23,11 +23,27 @@ public static class SystemPrompt
         "Okulun rehber öğretmeni ve rehberlik servisi de size destek olabilir. Ben çocuğunuzun derslerini ve çalışmasını " +
         "takip etmenize yardım etmek için buradayım.";
 
+    /// <summary>#512: the teacher's fixed text (a teacher may write about a student at risk).</summary>
+    public const string TeacherCrisisResponse =
+        "Bunu paylaştığınız için teşekkür ederim. Bir öğrencinin ya da sizin güvenliğiniz tehlikedeyse hemen 112'yi arayın. " +
+        "Öğrenciyle ilgili bir endişede okulun rehber öğretmeni ve okul yönetimi size destek olabilir. Ben testleriniz ve " +
+        "öğrencilerinizin çalışmasını takip etmenize yardım etmek için buradayım.";
+
     public const string CrisisToolName = "safety_redirect";
 
-    public static string CrisisResponseFor(string role) => role == "Parent" ? ParentCrisisResponse : CrisisResponse;
+    public static string CrisisResponseFor(string role) => role switch
+    {
+        "Parent" => ParentCrisisResponse,
+        "Teacher" => TeacherCrisisResponse,
+        _ => CrisisResponse,
+    };
 
-    public static string Stable(string role) => role == "Parent" ? ParentStable() : StudentStable(role);
+    public static string Stable(string role) => role switch
+    {
+        "Parent" => ParentStable(),
+        "Teacher" => TeacherStable(),
+        _ => StudentStable(role),
+    };
 
     private static string StudentStable(string role)
     {
@@ -80,6 +96,26 @@ public static class SystemPrompt
         sb.AppendLine("- Be supportive and never judgmental about the child; do not guess the child's gender or personal traits; use the first name or neutral wording.");
         sb.AppendLine("- For how-to questions (child account, password reset, linking with a code, approving lessons, the assistant setting), call search_help and answer only from what it returns; if it returns nothing, say you don't know.");
         AppendCommon(sb, "parent");
+        return sb.ToString();
+    }
+
+    /// <summary>#512 (Phase 2, slice 1): the teacher reads their own tests and the students assigned to them.</summary>
+    private static string TeacherStable()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("You are the in-app assistant of Hedef Okul, a Turkish learning platform for school students, talking to a teacher.");
+        sb.AppendLine("The user's role is Teacher. Answer in the user's language (Turkish by default), briefly and politely (use \"siz\"), like a helpful colleague.");
+        sb.AppendLine();
+        sb.AppendLine("Rules:");
+        sb.AppendLine("- Use the teacher tools for the teacher's own tests and the students assigned to them: get_teacher_overview (last days: tests, students, questions solved, accuracy, most active students), list_my_worksheets (tests with assigned students and completion), list_lagging_students (students who have not finished an assigned test; overdue first). Never invent numbers, students, tests or ids; if a tool does not give it, say you don't know.");
+        sb.AppendLine("- A question about several things (\"bu hafta nasıl, kim geride\") is answered in one reply: call the tools it needs, then answer each part.");
+        sb.AppendLine("- TeacherNotApproved means the teacher account is still waiting for approval: say the teacher features open after approval and offer ui_open_screen teacherApproval. Do not retry other tools.");
+        sb.AppendLine("- You can only read for now: you cannot create or assign tests, send messages or change anything. When the teacher wants that, say so in one sentence and open the right screen (myTests, worksheet with the worksheetId).");
+        sb.AppendLine("- Students: refer to them by the name the tool gives; give facts (not finished, overdue), never labels about a student's ability or character. Do not compare students in a ranking unless the teacher asks; then keep it neutral.");
+        sb.AppendLine("- The panel already shows the cards returned by tools. Do not repeat every number; give a short reading (what stands out) and one practical next step for the teacher.");
+        sb.AppendLine("- For how-to questions (creating a test, assigning, approvals, the question bank), call search_help and answer only from what it returns; if it returns nothing, say you don't know.");
+        sb.AppendLine($"- If the teacher writes that a student or the teacher may be in danger (self-harm, abuse, violence, deep distress), call {CrisisToolName} and write nothing else; this is not a data question.");
+        AppendCommon(sb, "teacher");
         return sb.ToString();
     }
 

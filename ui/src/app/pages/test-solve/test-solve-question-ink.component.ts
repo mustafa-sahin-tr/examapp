@@ -55,12 +55,26 @@ export class TestSolveQuestionInkComponent {
       this.measure(element);
       const observer = new ResizeObserver(() => this.measure(element));
       observer.observe(element);
-      onCleanup(() => observer.disconnect());
+      // iPad Safari kalem dokunuşunu pointer olayının preventDefault'una rağmen metin seçimine / büyütece alabiliyor;
+      // açıkken touch olayları da durdurulur (pasif olmayan dinleyici gerekir).
+      const stopTouch = (touch: TouchEvent) => {
+        if (this.active() && touch.cancelable) touch.preventDefault();
+      };
+      element.addEventListener('touchstart', stopTouch, { passive: false });
+      element.addEventListener('touchmove', stopTouch, { passive: false });
+      onCleanup(() => {
+        observer.disconnect();
+        element.removeEventListener('touchstart', stopTouch);
+        element.removeEventListener('touchmove', stopTouch);
+      });
     });
   }
 
   protected startStroke(event: PointerEvent): void {
-    if (this.active()) this.strokeInput.start(event);
+    if (!this.active()) return;
+    const stale = this.strokeInput.takeStale(event);
+    if (stale !== null) this.commit(stale);
+    this.strokeInput.start(event);
   }
 
   protected extendStroke(event: PointerEvent): void {
@@ -69,7 +83,10 @@ export class TestSolveQuestionInkComponent {
 
   protected endStroke(event: PointerEvent): void {
     const stroke = this.strokeInput.end(event);
-    if (stroke === null) return;
+    if (stroke !== null) this.commit(stroke);
+  }
+
+  private commit(stroke: string): void {
     this.cleared.set(null);
     this.save([...this.strokes(), colorStroke(stroke, penColor())]);
   }

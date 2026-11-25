@@ -26,7 +26,11 @@ export class ScratchStrokeInput {
     }
     event.preventDefault();
     const surface = event.currentTarget as Element;
-    surface.setPointerCapture?.(event.pointerId);
+    try {
+      surface.setPointerCapture?.(event.pointerId);
+    } catch {
+      // Tarayıcı işaretçiyi kendi hareketine aldıysa yakalama atar; çizgi yine başlar (yalnız yüzey dışına taşınca kesilir).
+    }
     this.activePointerId = event.pointerId;
     const point = toPoint(event, surface);
     this.lastPoint = point;
@@ -50,6 +54,21 @@ export class ScratchStrokeInput {
       this.lastPoint = point;
     }
     this.current.set(stroke);
+  }
+
+  /**
+   * iPad'de kalem kaldırılınca `pointerup` / `pointercancel` bazen hiç gelmez (Safari dokunuşu metin seçimi gibi kendi
+   * hareketine alır); eski işaretçi açık kalırsa sonraki çizgiler başlamaz. Yeni birincil işaretçi gelince açık kalan çizgi
+   * biter ve döner (kaydedilsin diye); öyle bir çizgi yoksa null. Kalemden sonra gelen dokunuş (avuç içi) bitirmez.
+   */
+  takeStale(event: PointerEvent): string | null {
+    if (this.activePointerId === null || this.activePointerId === event.pointerId || !event.isPrimary) return null;
+    if (event.pointerType === 'touch' && this.penSeen) return null;
+    const stroke = this.current();
+    this.activePointerId = null;
+    this.lastPoint = null;
+    this.current.set(null);
+    return stroke;
   }
 
   /** Biten çizgi; bu çizginin işaretçisi değilse null. */

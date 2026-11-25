@@ -15,10 +15,10 @@ describe('TestSolveQuestionInkComponent (#1175)', () => {
   const surface = () => host().querySelector<SVGSVGElement>('svg.ink')!;
   const paths = () => host().querySelectorAll('path').length;
 
-  function pointer(type: string, x: number, y: number) {
+  function pointer(type: string, x: number, y: number, pointerId = 1) {
     const rect = surface().getBoundingClientRect();
     surface().dispatchEvent(
-      new PointerEvent(type, { pointerId: 1, isPrimary: true, pointerType: 'pen', bubbles: true, cancelable: true, clientX: rect.left + x, clientY: rect.top + y }),
+      new PointerEvent(type, { pointerId, isPrimary: true, pointerType: 'pen', bubbles: true, cancelable: true, clientX: rect.left + x, clientY: rect.top + y }),
     );
     fixture.detectChanges();
   }
@@ -72,6 +72,36 @@ describe('TestSolveQuestionInkComponent (#1175)', () => {
 
     expect(paths()).toBe(1);
     expect(readInkStrokes(INSTANCE_ID, 1)).toHaveLength(1);
+  });
+
+  // iPad: kalem kaldırılınca pointerup / pointercancel gelmeyebilir (Safari dokunuşu metin seçimine alır). Sonraki kalem
+  // dokunuşu yine çizer; yarım kalan çizgi kaybolmaz.
+  it('a new pen contact draws even when the last one never ended, and keeps that stroke', () => {
+    create(true);
+    pointer('pointerdown', 10, 10, 1);
+    pointer('pointermove', 60, 40, 1);
+    // pointerup yok.
+    pointer('pointerdown', 100, 100, 2);
+    pointer('pointermove', 150, 120, 2);
+    pointer('pointerup', 150, 120, 2);
+
+    expect(readInkStrokes(INSTANCE_ID, 1)).toHaveLength(2);
+    expect(paths()).toBe(2);
+  });
+
+  it('blocks iOS text selection and the touch callout while active', () => {
+    create(true);
+    const style = getComputedStyle(host());
+    expect(style.userSelect).toBe('none');
+    const touch = new TouchEvent('touchstart', { cancelable: true, bubbles: true });
+    host().dispatchEvent(touch);
+    expect(touch.defaultPrevented).toBe(true);
+
+    fixture.componentRef.setInput('active', false);
+    fixture.detectChanges();
+    const passive = new TouchEvent('touchstart', { cancelable: true, bubbles: true });
+    host().dispatchEvent(passive);
+    expect(passive.defaultPrevented).toBe(false);
   });
 
   it('keeps strokes visible when the pen is turned off', () => {

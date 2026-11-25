@@ -124,6 +124,42 @@ public class ParentToolTests : IDisposable
     }
 
     [Fact]
+    public async Task Hard_questions_show_a_card_without_solve_and_no_answers_issue536()
+    {
+        _h.Api.On("GET", "api/parent/children/7/hard-questions?days=90&take=5&subjectId=3", new
+        {
+            mode = "mine", days = 90, totalCount = 8,
+            items = new[]
+            {
+                new
+                {
+                    questionId = 42, subjectId = 3, subjectName = "Mat", topicName = "Açılar", subTopicNames = new[] { "Dar açı" },
+                    attempts = 3, missCount = 2, missedAfterCorrect = true, lastAttemptCorrect = false,
+                    lastAttemptAt = "2026-11-20T12:00:00Z", imageUrl = "https://img/42.jpg", text = (string?)null,
+                    correctAnswerId = 9,
+                },
+            },
+        });
+        _h.Api.On("GET", "api/parent/children/8/hard-questions?days=90&take=5",
+            new { errorCode = "FeatureNotInPlan", message = "m" }, HttpStatusCode.Forbidden);
+        var tool = new GetChildHardQuestionsTool(_h.Downstream);
+
+        var result = await tool.ExecuteAsync(Parent(), Args(new { studentId = 7, subjectId = 3 }));
+        var question = result.Data!["questions"]!.AsArray().Single()!;
+        question["missCount"]!.GetValue<int>().ShouldBe(2);
+        question["lastAttemptAt"]!.GetValue<string>().ShouldBe("2026-11-20 15:00");
+        question["imageUrl"].ShouldBeNull();
+        question["correctAnswerId"].ShouldBeNull();
+        result.Data!["totalCount"]!.GetValue<int>().ShouldBe(8);
+        var card = result.Cards!.Single();
+        card["solvable"]!.GetValue<bool>().ShouldBeFalse();
+        card["items"]!.AsArray().Single()!["imageUrl"]!.GetValue<string>().ShouldBe("https://img/42.jpg");
+        card["items"]!.AsArray().Single()!["correctAnswerId"].ShouldBeNull();
+        (await tool.ExecuteAsync(Parent(), Args(new { studentId = 8 }))).ErrorCode.ShouldBe("FeatureNotInPlan");
+        (await tool.ExecuteAsync(Parent(), Args(new { }))).ErrorCode.ShouldBe("InvalidArguments");
+    }
+
+    [Fact]
     public async Task Progress_and_schedule_keep_only_the_childs_own_safe_fields()
     {
         _h.Api.On("GET", "api/parent/children/7/progress", new

@@ -9,7 +9,7 @@ namespace AssistantService.Chat;
 /// </summary>
 public static class SystemPrompt
 {
-    public const int Revision = 9;
+    public const int Revision = 10;
 
     /// <summary>#496 decision: a personal crisis gets this fixed text, never a generated answer.</summary>
     public const string CrisisResponse =
@@ -65,7 +65,7 @@ public static class SystemPrompt
         sb.AppendLine("- A question about several things (\"bu hafta nasıl, geciken ödevi var mı, nerede zorlanıyor\") is answered in one reply: call the tools it needs, then answer each part.");
         sb.AppendLine("- NotFound for a child means the child is not linked to this parent (or the link is still pending): say so, do not guess. Forbidden means that section is not in the child's plan: say it is not in the plan.");
         sb.AppendLine("- \"Geçen haftaya göre\", \"azaldı mı\", which days the child studied: get_child_activity_trend (it gives the window before). A finished week's report: get_child_weekly_report.");
-        sb.AppendLine("- Parents see totals, not individual questions or the child's answers; do not offer to show them. Do not compare the child with other students.");
+        sb.AppendLine("- Parents see totals and miss counts, never the child's chosen answers. The only questions you can show are get_child_hard_questions (\"hangi sorularda zorlanıyor\", \"örnek göster\"): the panel shows them; never give or guess a correct answer, and do not offer practice for the parent. Suggest looking at them together with the child. Do not compare the child with other students.");
         sb.AppendLine("- Compare the parent's own children (compare_children) only when the parent asks; describe each child's numbers neutrally, never rank them or say one is better.");
         sb.AppendLine("- Lesson requests waiting for the parent: list_pending_lesson_requests. You cannot approve or reject; say the parent decides on the panel and open it with ui_open_screen parentDashboard when they want to decide.");
         sb.AppendLine("- Finding a tutor for a child: search_tutors_for_child (without a subject it uses the child's weakest subject; say so). Never book; to book, open ui_open_screen childTutors with the studentId. Tutor names and bios are their own descriptions, not your recommendation.");

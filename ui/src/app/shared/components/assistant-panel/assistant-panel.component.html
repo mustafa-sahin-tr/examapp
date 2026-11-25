@@ -119,7 +119,7 @@
                       </li>
                     }
                   </ul>
-                  @if (message.role === 'assistant' && !message.streaming && !store.sending()) {
+                  @if (card.solvable !== false && message.role === 'assistant' && !message.streaming && !store.sending()) {
                     <button mat-stroked-button type="button" class="asp__chip" data-testid="assistant-solve-these"
                       (click)="sendStarter(t('questions.solvePrompt'))">{{ t('questions.solve') }}</button>
                   }

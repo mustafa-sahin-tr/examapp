@@ -576,3 +576,67 @@ public sealed class SearchTutorsForChildTool(DownstreamClient api) : IAssistantT
         });
     }
 }
+
+/// <summary>
+/// Issue #536: the questions one child struggled with most (#526 <c>mine</c> over <c>api/parent/children/{id}/hard-questions</c>;
+/// the analysis plan, the link and the access record stay in the exam API). The model sees ids, topics and counts; the panel shows
+/// the question images without a "solve these" button (the parent does not solve; no correct or chosen choice ever leaves).
+/// </summary>
+public sealed class GetChildHardQuestionsTool(DownstreamClient api) : IAssistantTool
+{
+    public const int DefaultTake = 5;
+    public const int MaxTake = 10;
+    private const int MaxCardText = 300;
+
+    public string Name => "get_child_hard_questions";
+    public string Description =>
+        "Example questions one child struggled with most (most wrong / blank first, then ones missed again after a correct answer), " +
+        "from finished tests and practice. Shows the question images to the parent (no answers). Optionally one subject. " +
+        "Forbidden when the child's plan has no analysis.";
+    public IReadOnlyCollection<string> Roles => Tools.Roles.ParentOnly;
+    public JsonObject InputSchema => Schema(
+        ParentApi.StudentIdArg,
+        ("subjectId", IntProp("Limit to one subject."), false),
+        ("days", IntProp("Look-back window in days.", 1, 90), false),
+        ("take", IntProp("How many questions.", 1, MaxTake), false));
+
+    public async Task<ToolResult> ExecuteAsync(ToolContext context, JsonElement args)
+    {
+        if (ParentApi.StudentId(args, out var id) is { } invalid)
+            return invalid;
+        var take = Math.Clamp(Int(args, "take") ?? DefaultTake, 1, MaxTake);
+        var days = Math.Clamp(Int(args, "days") ?? 90, 1, 90);
+        var query = string.Create(CultureInfo.InvariantCulture, $"hard-questions?days={days}&take={take}");
+        if (Int(args, "subjectId") is { } subjectId)
+            query += string.Create(CultureInfo.InvariantCulture, $"&subjectId={subjectId}");
+        var response = await api.GetAsync(context, ParentApi.Path(id, query));
+        if (!response.IsSuccess)
+            return response.ToError();
+
+        var items = Pick.Items(response.Body).Take(take).ToList();
+        var data = new JsonObject
+        {
+            ["days"] = days,
+            ["totalCount"] = Pick.Int(response.Body, "totalCount"),
+            ["questions"] = new JsonArray(items.Select(i => (JsonNode)ParentApi.LocalTimes(Pick.Only(i, "questionId", "subjectName",
+                "topicName", "subTopicNames", "attempts", "missCount", "missedAfterCorrect", "lastAttemptAt"),
+                "lastAttemptAt")).ToArray()),
+        };
+        if (items.Count == 0)
+            return ToolResult.Success(data);
+
+        var card = new JsonObject
+        {
+            ["kind"] = "questions",
+            ["solvable"] = false,
+            ["items"] = new JsonArray(items.Select(i =>
+            {
+                var row = Pick.Only(i, "questionId", "subjectName", "topicName", "missCount", "imageUrl");
+                if (Pick.Str(i, "text") is { Length: > 0 } text)
+                    row["text"] = text.Length <= MaxCardText ? text : text[..MaxCardText] + "…";
+                return (JsonNode)row;
+            }).ToArray()),
+        };
+        return ToolResult.Success(data, [card]);
+    }
+}

@@ -23,6 +23,7 @@
       "invalidStatus": "Invalid status filter. Use completed, overdue or pending.",
       "invalidRange": "Invalid date range. Provide from and to together, as yyyy-MM-dd, spanning at most 31 days.",
       "invalidDays": "days must be between 7 and 28.",
+      "invalidHardQuestionsQuery": "days must be 1–90 and take 1–10.",
       "busy": "The operation could not be completed right now. Please try again.",
       "rateLimited": "Too many code attempts. Please try again later.",
       "notPrimaryParent": "Only the child's primary parent can do this.",

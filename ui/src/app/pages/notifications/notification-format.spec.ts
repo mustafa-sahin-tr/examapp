@@ -289,6 +289,12 @@ describe('describeNotification (issue #105)', () => {
         expect(self.icon).toBe('upgrade');
     });
 
+    it('StudyNudge_LinksPractice (issue #519)', () => {
+        const nudge = describeNotification({ type: 'StudyNudge', data: JSON.stringify({ inactiveDays: 4 }) });
+        expect(nudge.route).toEqual({ commands: ['/practice'] });
+        expect(nudge.icon).toBe('self_improvement');
+    });
+
     it('PlanPriceChange_ParentLinksChildPlanTab_SelfLinksSubscription (issue #1116)', () => {
         const parent = describeNotification({ type: 'PlanPriceChangeToParent', data: JSON.stringify({ studentId: 21, assignmentId: 5 }) });
         expect(parent.route).toEqual({ commands: ['/parent'], queryParams: { child: 21, tab: 'plan' } });

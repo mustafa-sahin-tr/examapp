@@ -327,6 +327,10 @@
       "title": "Trial ending",
       "body": "{0}'s trial ends on {1}. Choose a plan from the parent panel so they can keep going."
     },
+    "StudyNudge": {
+      "title": "You haven't solved a question for {0} days",
+      "body": "A few questions are enough to pick up where you left off: today's questions and your due reviews are waiting on the practice screen."
+    },
     "GradePromotedToStudent": {
       "title": "You're in grade {0} now",
       "body": "A new school year has started: you're now in grade {0}. Lessons, mock exams and suggested content follow your new grade."

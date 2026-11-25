@@ -572,6 +572,11 @@ builder.Services.AddOptions<ExamApp.Api.Services.Entitlements.PlanPriceChangeOpt
     .ValidateOnStart();
 builder.Services.AddScoped<ExamApp.Api.Services.Entitlements.IPlanPriceChangeJob, ExamApp.Api.Services.Entitlements.PlanPriceChangeJob>();
 // issue #1110: 1 Ağustos sınıf atlaması (Hangfire, her gece; iş yalnız atlama haftasında) + admin geri alma.
+builder.Services.AddOptions<ExamApp.Api.Services.Practice.StudentStudyNudgeOptions>() // issue #519
+    .BindConfiguration(ExamApp.Api.Services.Practice.StudentStudyNudgeOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddScoped<ExamApp.Api.Services.Practice.IStudentStudyNudgeJob, ExamApp.Api.Services.Practice.StudentStudyNudgeJob>();
 builder.Services.AddOptions<ExamApp.Api.Services.GradePromotion.StudentGradePromotionOptions>()
     .BindConfiguration(ExamApp.Api.Services.GradePromotion.StudentGradePromotionOptions.SectionName)
     .ValidateDataAnnotations()
@@ -1040,6 +1045,10 @@ RecurringJob.AddOrUpdate<ExamApp.Api.Services.Parents.IParentWeeklyReportJob>(
     app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Parents.ParentWeeklyReportOptions>>().Value.Cron);
 
 // issue #1110: her yıl 1 Ağustos'ta (Europe/Istanbul) öğrencileri bir üst sınıfa taşır; telafi için ilk hafta her gece.
+RecurringJob.AddOrUpdate<ExamApp.Api.Services.Practice.IStudentStudyNudgeJob>( // issue #519
+    ExamApp.Api.Services.Practice.StudentStudyNudgeJob.RecurringJobId,
+    j => j.RunAsync(CancellationToken.None),
+    app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Practice.StudentStudyNudgeOptions>>().Value.Cron);
 RecurringJob.AddOrUpdate<ExamApp.Api.Services.GradePromotion.IStudentGradePromotionJob>(
     ExamApp.Api.Services.GradePromotion.StudentGradePromotionJob.RecurringJobId,
     j => j.RunAsync(CancellationToken.None),

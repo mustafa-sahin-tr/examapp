@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 
 import { Grade } from '../../models/student';
@@ -29,6 +30,7 @@ import { UserThemeSwitcherComponent } from '../../components/user-theme-switcher
     MatButtonModule,
     MatFormFieldModule,
     MatSelectModule,
+    MatSlideToggleModule,
     TranslocoDirective,
     PageHeaderComponent,
     AccountSecurityCardComponent,
@@ -60,12 +62,24 @@ export class StudentSettingsComponent implements OnInit {
   readonly schoolError = signal<string | null>(null);
   readonly canSaveSchool = computed(() => !this.savingSchool() && this.pendingSchoolId() !== null);
 
+  /** Issue #519: "you have not studied for a few days" nudge; null until loaded (the toggle stays disabled). */
+  readonly studyNudge = signal<boolean | null>(null);
+  readonly savingStudyNudge = signal(false);
+  readonly studyNudgeError = signal<'load' | 'save' | null>(null);
+
   readonly gradeName = computed(() => this.grades().find((g) => g.id === this.student()?.gradeId)?.name ?? '');
   readonly canSaveGrade = computed(
     () => !this.savingGrade() && this.pendingGradeId() !== null && this.pendingGradeId() !== this.student()?.gradeId
   );
 
   ngOnInit(): void {
+    this.studentService
+      .getNotificationSettings()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (s) => this.studyNudge.set(s.studyNudge),
+        error: () => this.studyNudgeError.set('load'),
+      });
     this.studentService
       .getProfile()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -124,5 +138,24 @@ export class StudentSettingsComponent implements OnInit {
         this.gradeError.set(true);
       },
     });
+  }
+
+  /** The toggle turns at once; a failed save turns it back. */
+  setStudyNudge(enabled: boolean): void {
+    const previous = this.studyNudge();
+    this.studyNudge.set(enabled);
+    this.studyNudgeError.set(null);
+    this.savingStudyNudge.set(true);
+    this.studentService
+      .updateNotificationSettings({ studyNudge: enabled })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => this.savingStudyNudge.set(false),
+        error: () => {
+          this.savingStudyNudge.set(false);
+          this.studyNudge.set(previous);
+          this.studyNudgeError.set('save');
+        },
+      });
   }
 }

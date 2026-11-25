@@ -151,6 +151,9 @@ const ANNOUNCEMENT_SELF_NOTIFICATIONS: ReadonlySet<string> = new Set(['Announcem
 /** Issue #1110: öğrencinin kendi sınıf atlaması — yalnız bilgi, hedef yok. Velininki PARENT_NOTIFICATION_PRESENTATION'da. */
 const GRADE_PROMOTED_SELF_NOTIFICATION = 'GradePromotedToStudent';
 
+/** Issue #519: a few days without a question → the practice screen (daily set, due reviews). */
+const STUDY_NUDGE_NOTIFICATION = 'StudyNudge';
+
 /** Issue #1116: kendi planının fiyatı değişiyor → Aboneliğim. Velininki PARENT_NOTIFICATION_PRESENTATION'da. */
 const PLAN_PRICE_CHANGE_SELF_NOTIFICATION = 'PlanPriceChange';
 
@@ -305,6 +308,9 @@ export function describeNotification(
   }
   if (notification.type === GRADE_PROMOTED_SELF_NOTIFICATION) {
     return { icon: 'upgrade', badge: null, route: null, questionOrder: null };
+  }
+  if (notification.type === STUDY_NUDGE_NOTIFICATION) {
+    return { icon: 'self_improvement', badge: null, route: { commands: ['/practice'] }, questionOrder: null };
   }
   if (notification.type === PLAN_PRICE_CHANGE_SELF_NOTIFICATION) {
     return { icon: 'sell', badge: null, route: { commands: ['/subscription'] }, questionOrder: null };

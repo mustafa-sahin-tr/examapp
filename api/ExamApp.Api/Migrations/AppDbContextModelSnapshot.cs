@@ -5824,6 +5824,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("LastRejectedSchoolId")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("LastStudyNudgeAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int?>("ParentId")
                         .HasColumnType("integer");
 
@@ -5859,6 +5862,9 @@ namespace ExamApp.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<bool>("StudyNudgeOptOut")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("ThemeCustomConfig")
                         .HasColumnType("text");

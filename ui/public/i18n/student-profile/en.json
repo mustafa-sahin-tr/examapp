@@ -43,6 +43,13 @@
       "pendingNote": "Waiting for school approval.",
       "lockedNote": "Ask an administrator to change your school.",
       "error": "Could not save the school; try again."
+    },
+    "notifications": {
+      "title": "Notifications",
+      "studyNudge": "Remind me when I haven't solved questions for a few days",
+      "studyNudgeHint": "After 3 days without a question you get one reminder, at most once a week.",
+      "loadError": "Could not load the notification setting.",
+      "saveError": "Could not save, try again."
     }
   }
 }

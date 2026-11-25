@@ -78,6 +78,12 @@ public class Student : BaseEntity, ISchoolScoped
     /// </summary>
     public DateTime? ParentRequirementStartedAt { get; set; }
 
+    /// <summary>Issue #519: the student turned the "you have not studied for a few days" nudge off (student settings).</summary>
+    public bool StudyNudgeOptOut { get; set; }
+
+    /// <summary>Issue #519: when the last study nudge was sent (UTC); at most one per inactive spell and per <c>MinDaysBetween</c>.</summary>
+    public DateTime? LastStudyNudgeAtUtc { get; set; }
+
     public int? GradeId { get; set; } // 🟢 Grade artık opsiyonel (nullable)
 
     [ForeignKey("GradeId")]

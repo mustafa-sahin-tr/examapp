@@ -18,6 +18,15 @@ export class StudentService {
   constructor(private http: HttpClient) {}
   private baseUrl = '/api/exam/student';
 
+  /** Issue #519: the student's own notification settings (study nudge). */
+  getNotificationSettings(): Observable<{ studyNudge: boolean }> {
+    return this.http.get<{ studyNudge: boolean }>(`${this.baseUrl}/me/notification-settings`);
+  }
+
+  updateNotificationSettings(settings: { studyNudge: boolean }): Observable<{ studyNudge: boolean }> {
+    return this.http.put<{ studyNudge: boolean }>(`${this.baseUrl}/me/notification-settings`, settings);
+  }
+
   getProfile(): Observable<StudentProfile> {
     return this.http.get<StudentProfile>(`${this.baseUrl}/profile`);
   }

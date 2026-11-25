@@ -327,6 +327,10 @@
       "title": "Deneme süresi bitiyor",
       "body": "{0} için deneme süresi {1} tarihinde bitiyor. Devam edebilmesi için veli panelinden bir plan seçebilirsiniz."
     },
+    "StudyNudge": {
+      "title": "{0} gündür soru çözmedin",
+      "body": "Kaldığın yerden devam etmek için birkaç soru yeter: günün soruları ve tekrar zamanı gelenler pratik ekranında seni bekliyor."
+    },
     "GradePromotedToStudent": {
       "title": "Artık {0}. sınıftasın",
       "body": "Yeni eğitim yılı başladı: artık {0}. sınıftasın. Dersler, denemeler ve önerilen içerikler yeni sınıfına göre geliyor."

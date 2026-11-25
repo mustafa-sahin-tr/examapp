@@ -250,6 +250,7 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<OpenTextReviewedConsumer, OpenTextReviewedConsumerDefinition>(); // issue #614
     x.AddConsumer<ParentChildPlanEndingConsumer, ParentChildPlanEndingConsumerDefinition>(); // issue #1091
     x.AddConsumer<StudentGradePromotedConsumer, StudentGradePromotedConsumerDefinition>(); // issue #1110
+    x.AddConsumer<StudentStudyNudgeConsumer, StudentStudyNudgeConsumerDefinition>(); // issue #519
     x.AddConsumer<PlanPriceChangeNoticeConsumer, PlanPriceChangeNoticeConsumerDefinition>(); // issue #1116
     x.AddConsumer<ParentWeeklyReportConsumer, ParentWeeklyReportConsumerDefinition>(); // issue #1112
     x.AddConsumer<AskTeacherNoticeConsumer, AskTeacherNoticeConsumerDefinition>(); // issue #1111
@@ -314,6 +315,7 @@ builder.Services.AddMassTransit(x =>
             e.ConfigureConsumer<OpenTextReviewedConsumer>(context); // issue #614
             e.ConfigureConsumer<ParentChildPlanEndingConsumer>(context); // issue #1091
             e.ConfigureConsumer<StudentGradePromotedConsumer>(context); // issue #1110
+            e.ConfigureConsumer<StudentStudyNudgeConsumer>(context); // issue #519
             e.ConfigureConsumer<PlanPriceChangeNoticeConsumer>(context); // issue #1116
             e.ConfigureConsumer<ParentWeeklyReportConsumer>(context); // issue #1112
             e.ConfigureConsumer<AskTeacherNoticeConsumer>(context); // issue #1111

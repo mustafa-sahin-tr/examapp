@@ -420,3 +420,18 @@ cevaplanmamış soruya ipucu yok (issue'daki `hint-context` / `get_hint` yapılm
 - **KVKK (#522):** kullanıcı kararıyla şimdilik ele alınmadı; yalnız toplu değer döndüğü için rıza gerektirmeyen tasarım seçildi.
 - **Tool** `compare_my_topics_with_peers(subjectId?)` (kart yok): model en çok 15 konu ve akran verisi olmayan konu sayısını görür. Prompt r14: önce güçlü yan, sonra en geride bir iki konu ve pratik önerisi; sıralama /
   yüzdelik uydurmaz, başka öğrenci hakkında konuşmaz, `null` ise veri yetmediğini söyler. Altın sete `peer-compare`.
+
+## Proaktif asistan (#519, Faz 4)
+
+- **Haftalık veli raporu** zaten #1112 ile var (`ParentWeeklyReportJob`, Pazartesi; uygulama içi + e-posta, e-posta ayarlardan
+  kapanır, yalnız Active bağ). Bu iş yalnız öğrenci tarafını ekler.
+- **Öğrenci dürtmesi:** `StudentStudyNudgeJob` (Hangfire `student-study-nudge`, varsayılan her gün 14:00 UTC = 17:00 İstanbul; ayarlar
+  `StudentStudyNudge`). Son cevabı (pratik cevabı ya da başlatılan test) `InactiveDays` (3) ile `MaxInactiveDays` (30) gün arasında
+  olan öğrenciye bir `StudentStudyNudgeEvent` (outbox) yazar. Sıklık: hareketsizlik dönemi başına bir kez (son dürtme son cevaptan
+  eskiyse) ve en çok `MinDaysBetween` (7) günde bir. Hiç cevabı olmayan öğrenciye gitmez. `Students.LastStudyNudgeAtUtc` koşullu
+  güncellemeyle outbox satırıyla aynı transaction'da: ikinci tur ikinci bildirim üretmez. Migration `AddStudentStudyNudge`.
+- **BadgeService** `StudentStudyNudgeConsumer`: şablon metin (LLM yok), tip `StudyNudge` ("4 gündür soru çözmedin …"), idempotency
+  `(Type, SourceEventId)`, 3 immediate retry sonra `badge-service_error`. RabbitMQ izni `definitions.json`, `rabbitmq-init.sh`,
+  GKE `stateful-services.yaml`. Bildirime tıklayınca `/practice`.
+- **Kapatma:** `GET/PUT /api/student/me/notification-settings` (`studyNudge`), öğrenci Ayarlar → Bildirimler anahtarı
+  (`Students.StudyNudgeOptOut`).

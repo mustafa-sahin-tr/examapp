@@ -179,6 +179,14 @@ public class PracticeSessionService : IPracticeSessionService
                     new HardQuestionFilter(HardQuestionQueries.MaxDays, subjectIds, null, null), HardQuestionMinStudents, HardQuestionQueries.MaxTake, others, ct);
                 hard.UnionWith(global.Select(h => h.QuestionId));
             }
+            // Issue #527: or one of their slow / rushed questions (same scope rules).
+            if (ids.Any(id => !hard.Contains(id)))
+            {
+                var options = _hardQuestions?.CurrentValue ?? new HardQuestionOptions();
+                foreach (var kind in new[] { TimeStruggleQueries.Slow, TimeStruggleQueries.Rushed })
+                    hard.UnionWith((await TimeStruggleQueries.LoadAsync(_context, _calendar, student, kind,
+                        new HardQuestionFilter(HardQuestionQueries.MaxDays, subjectIds, null, null), options, ct)).Select(t => t.QuestionId));
+            }
             if (ids.Any(id => !hard.Contains(id)))
                 throw new InvalidOperationException(_localizer["practice.hardQuestionInvalid"]);
 
@@ -221,6 +229,12 @@ public class PracticeSessionService : IPracticeSessionService
     }
 
     private int HardQuestionMinStudents => _hardQuestions?.CurrentValue.MinStudents ?? new HardQuestionOptions().MinStudents;
+
+    public async Task<TimeStrugglesDto> GetTimeStrugglesAsync(StudentProfileDto student, string kind, HardQuestionFilter filter, int take, CancellationToken ct = default)
+    {
+        var items = await TimeStruggleQueries.LoadAsync(_context, _calendar, student, kind, filter, _hardQuestions?.CurrentValue ?? new HardQuestionOptions(), ct);
+        return new TimeStrugglesDto(kind, filter.Days, items.Count, items.Take(Math.Clamp(take, 1, HardQuestionQueries.MaxTake)).ToList());
+    }
 
     public async Task<RepeatedTrapsDto> GetRepeatedTrapsAsync(StudentProfileDto student, HardQuestionFilter filter, int take, CancellationToken ct = default)
     {

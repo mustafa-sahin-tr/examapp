@@ -98,6 +98,33 @@ public sealed class HardQuestionToolTests : IDisposable
     }
 
     [Fact]
+    public async Task Time_struggles_pass_kind_and_scope_give_times_to_the_model_and_images_to_the_card_issue527()
+    {
+        _h.Api.On("GET", "api/student/me/time-struggles?kind=rushed&days=90&take=5&topicId=9", new
+        {
+            kind = "rushed", days = 90, totalCount = 1,
+            items = new[]
+            {
+                new { questionId = 42, subjectName = "Matematik", topicName = "Kesirler", subTopicNames = new[] { "Denk kesirler" },
+                    timeTakenSeconds = 6, averageSeconds = 70, averageScope = "question", correct = false,
+                    answeredAt = "2026-11-24T10:00:00Z", imageUrl = "https://img/42.jpg", text = "talimat" },
+            },
+        });
+
+        var result = await Tool("get_time_struggle_questions").ExecuteAsync(Student(), Args(new { kind = "rushed", topicId = 9 }));
+
+        var question = result.Data!["questions"]!.AsArray().Single()!;
+        (question["timeTakenSeconds"]!.GetValue<int>(), question["averageSeconds"]!.GetValue<int>()).ShouldBe((6, 70));
+        (question["timeTaken"]!.GetValue<string>(), question["average"]!.GetValue<string>()).ShouldBe(("6 sn", "1 dk 10 sn"));
+        var data = result.Data!.ToJsonString();
+        data.ShouldNotContain("img/42");
+        data.ShouldNotContain("talimat");
+        var card = result.Cards!.Single();
+        card["solvable"].ShouldBeNull();
+        card["items"]!.AsArray().Single()!["imageUrl"]!.GetValue<string>().ShouldBe("https://img/42.jpg");
+    }
+
+    [Fact]
     public async Task No_hard_questions_means_no_card()
     {
         _h.Api.On("GET", "api/student/me/hard-questions?mode=mine&days=30&take=10", new { mode = "mine", totalCount = 0, items = Array.Empty<object>() });

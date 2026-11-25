@@ -386,3 +386,22 @@ cevaplanmamış soruya ipucu yok (issue'daki `hint-context` / `get_hint` yapılm
 - **Tool** `get_repeated_trap_answers` (`take` 1–5, varsayılan 3): model alt konuyu, `trapCount` / `mistakeCount` sayılarını (yüzde verilmez: canlı denemede doğruluk sanıldı) ve öğrencinin seçimini görür (şık metni
   `<untrusted>`), görsel ve soru metni yalnız `questions` kartında (`solvable:false`: sonraki adım alt konu pratiği, "Bunları çöz" düğmesi yok). Prompt r12: kavram yanılgısını yalnız bir örnekte
   `explain_question` çağırdıktan sonra adlandırır (doğru şık oradan), sonra o alt konudan pratik önerisi; boşsa desen uydurmaz. Altın sete `repeated-trap`.
+
+## En çok vakit harcadığım / acele edip yanlış yaptığım sorular (#527, Faz 2)
+
+- **Exam API:** `GET /api/student/me/time-struggles?kind=slow|rushed&subjectId&topicId&subTopicId&days=90&take=10`
+  (`StudentQuestionExplainController`, yalnız `Student`, konu performansı hız sınırı; `kind` dışı, `days` 1–90, `take` 1–30 dışı 400).
+  Soru başına öğrencinin **son** cevabı (boş değil, süresi 1 sn – 30 dk) sorunun ortalama süresiyle karşılaştırılır:
+  - `slow`: süre ≥ `HardQuestions:TimeSlowFactor` (2) × ortalama; doğru da yanlış da girer. Sıra: en yüksek oran önce.
+  - `rushed`: yalnız yanlış; süre ≤ `TimeRushedFactor` (0,25) × ortalama **ve** ≤ `TimeRushedMaxSeconds` (15). Sıra: en düşük oran önce.
+  - **Ortalama** istek anında, **diğer öğrencilerin** geçerli süreli cevaplarından (kapanmış / süresi dolmuş test, pratik; süren test
+    girmez). Soruda `TimeMinAnswers` (10) cevaptan azsa alt konularındaki soruların ortalaması (`averageScope=subTopic`), orada da
+    azsa soru atlanır. Gece işi tablosuna taşımak sonraki iş.
+  - Kapsam #526 `mine` ile aynı: pratik havuzundaki sorular, yanlış defteri gibi dışlama (süren / bitmemiş atanmış test, bugünün seti).
+  - Satır: soru id, ders / konu / alt konu, `timeTakenSeconds`, `averageSeconds`, `averageScope`, `correct` (öğrencinin sonucu), görsel
+    (imzalı) / metin. Doğru şık dönmez.
+- **Pratik:** `POST /api/practice/sessions` `questionIds` artık bu iki listedeki id'leri de kabul eder (#526 kuralı genişledi).
+- **Tool** `get_time_struggle_questions(kind, subjectId?, topicId?, subTopicId?, take?)`: model id, konu ve iki süreyi görür (saniye ve hazır metin `3 dk 20 sn`: canlıda model 200 sn'yi "3,5 dakika" dedi), görsel ve
+  metin yalnız `questions` kartında ("Bunları çöz" var); `start_hard_question_practice` bu id'leri de alır. Prompt r13: süreyi
+  ortalamayla sade söyler; slow'da strateji (atla ve dön), rushed'da dikkat (sonuna kadar oku) önerir, yargılamaz. Altın sete
+  `time-slow`, `time-rushed`.

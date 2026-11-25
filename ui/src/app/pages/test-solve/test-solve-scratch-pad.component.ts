@@ -111,6 +111,8 @@ export class TestSolveScratchPadComponent implements OnInit, OnDestroy {
   }
 
   protected startStroke(event: PointerEvent): void {
+    const stale = this.strokeInput.takeStale(event);
+    if (stale !== null) this.commitStroke(stale);
     if (this.strokeInput.start(event)) this.strokeQuestionId = this.questionId();
   }
 
@@ -120,8 +122,11 @@ export class TestSolveScratchPadComponent implements OnInit, OnDestroy {
 
   protected endStroke(event: PointerEvent): void {
     const stroke = this.strokeInput.end(event);
+    if (stroke !== null) this.commitStroke(stroke);
+  }
+
+  private commitStroke(stroke: string): void {
     const questionId = this.strokeQuestionId;
-    if (stroke === null) return;
     this.strokeQuestionId = null;
     if (questionId !== null) {
       const note = this.notes()[questionId] ?? EMPTY_NOTE;

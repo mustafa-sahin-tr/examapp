@@ -657,6 +657,13 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
   container: solve-dock / inline-size;
 }
 
+// Issue #1175: kalem açıkken iPad'de kalem dokunuşu şıklarda / soru metninde metin seçimi ve büyüteç başlatmasın.
+.solve-v3--inking {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
 // Dock sabit yükseklikli (--solve-dock-height) olduğundan araçlar asla ikinci satıra sarmaz;
 // dar ekranda taşan araçlar yatay kaydırılır.
 .solve-dock__tools {

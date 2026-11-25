@@ -18,7 +18,7 @@
 } @else {
 <!-- Aktif soru: header'daki soru aksiyonları ve dock aynı referansı kullanır. -->
 @let activeQuestion = currentQuestions().length ? currentQuestions()[0] : null;
-<div class="solve-v3" [class.solve-v3--mobile]="isMobileViewport()" [class.solve-v3--fullscreen]="fullscreenOpen()"
+<div class="solve-v3" [class.solve-v3--inking]="inkMode()" [class.solve-v3--mobile]="isMobileViewport()" [class.solve-v3--fullscreen]="fullscreenOpen()"
   *transloco="let t; prefix: 'test-solve'">
   <!-- Tek satır header (issue #74): başlık + süre + soru sayacı + aksiyonlar aynı blokta;
        ilerleme yüzdesi ayrı bir rail yerine bloğun alt kenarında dolan çizgi olarak gösterilir. -->

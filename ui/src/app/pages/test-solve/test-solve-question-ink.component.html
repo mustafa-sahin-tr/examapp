@@ -2,7 +2,7 @@
   preserveAspectRatio="xMinYMin meet" [attr.role]="active() ? 'img' : null"
   [attr.aria-label]="active() ? t('drawingAria') : null" [attr.aria-hidden]="active() ? null : 'true'"
   (pointerdown)="startStroke($event)" (pointermove)="extendStroke($event)" (pointerup)="endStroke($event)"
-  (pointercancel)="endStroke($event)">
+  (pointercancel)="endStroke($event)" (lostpointercapture)="endStroke($event)">
   @for (stroke of strokes(); track $index) {
     <path class="ink__stroke" [attr.d]="strokePath(stroke)" [style.stroke]="strokeCss(stroke)" />
   }

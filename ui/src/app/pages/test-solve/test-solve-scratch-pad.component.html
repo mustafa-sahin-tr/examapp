@@ -24,7 +24,7 @@
     <svg #surface class="scratch__surface" role="img" [attr.aria-label]="t('drawingAria')"
       [attr.viewBox]="'0 0 ' + viewWidth + ' ' + viewHeight()" preserveAspectRatio="xMinYMin meet"
       (pointerdown)="startStroke($event)" (pointermove)="extendStroke($event)" (pointerup)="endStroke($event)"
-      (pointercancel)="endStroke($event)">
+      (pointercancel)="endStroke($event)" (lostpointercapture)="endStroke($event)">
       @for (stroke of note().strokes; track $index) {
         <path class="scratch__stroke" [attr.d]="strokePath(stroke)" [style.stroke]="strokeCss(stroke)" />
       }

@@ -293,7 +293,7 @@ public class StudentToolTests : IDisposable
         tools.ShouldAllBe(t => System.Text.RegularExpressions.Regex.IsMatch(t.Name, "^[a-z][a-z_]*$"));
         tools.ShouldAllBe(t => t.InputSchema["type"]!.GetValue<string>() == "object");
         tools.Where(t => !SharedTools.Contains(t.Name)).ShouldAllBe(t => t.Roles.Count == 1);
-        tools.Where(t => SharedTools.Contains(t.Name)).ShouldAllBe(t => t.Roles.SequenceEqual(new[] { "Student", "Parent" }));
+        tools.Where(t => SharedTools.Contains(t.Name)).ShouldAllBe(t => t.Roles.SequenceEqual(new[] { "Student", "Parent", "Teacher" }));
     }
 }
 
@@ -406,6 +406,10 @@ public class PendingActionTests : IDisposable
         (await _h.Executor(db).InvokeAsync(parent, "get_my_profile", Args())).Result.ErrorCode.ShouldBe("ToolNotAllowed");
         (await _h.Executor(db).InvokeAsync(Student(), "get_child_weekly_summary", Args(new { studentId = 1 }))).Result.ErrorCode.ShouldBe("ToolNotAllowed");
         (await _h.Executor(db).InvokeAsync(Student(), "no_such_tool", Args())).Result.ErrorCode.ShouldBe("ToolNotAllowed");
+        // #512: a teacher sees the teacher tools and the shared ones only.
+        var teacherTools = new ToolRegistry(_h.AllTools()).ForRoles(Teacher().Roles).Select(t => t.Name).ToList();
+        teacherTools.ShouldBe(["get_teacher_overview", "list_my_worksheets", "list_lagging_students", .. SharedTools], ignoreOrder: true);
+        (await _h.Executor(db).InvokeAsync(Student(), "list_lagging_students", Args())).Result.ErrorCode.ShouldBe("ToolNotAllowed");
         _h.Api.Calls.ShouldBeEmpty();
     }
 }

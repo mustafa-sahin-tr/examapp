@@ -107,7 +107,7 @@ public sealed class ChatHarness(IChatClient? client = null) : IDisposable
     {
         await using var db = Tools.NewDb();
         var runner = Runner(db);
-        var tc = role == "Parent" ? ToolHarness.Parent(sub) : ToolHarness.Student(sub);
+        var tc = role switch { "Parent" => ToolHarness.Parent(sub), "Teacher" => ToolHarness.Teacher(sub), _ => ToolHarness.Student(sub) };
         var conversation = await runner.LoadOrCreateAsync(tc, conversationId, default) ?? throw new InvalidOperationException("not found");
         var sink = new ListSink();
         await runner.RunAsync(tc, conversation, new ChatRequest(conversationId, message, context), sink);

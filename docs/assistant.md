@@ -481,3 +481,24 @@ cevaplanmamış soruya ipucu yok (issue'daki `hint-context` / `get_hint` yapılm
   sayılmaz.
 - **Programa çalışma sayfası ekleme:** `POST api/program/{id}/study-pages` yalnız yayımlanmış, silinmemiş ve öğrencinin plan
   dersi (#1109) kapsamındaki sayfaları ekler; diğerleri eksik sayfa gibi atlanır.
+
+## Öğretmen dilimi (#512, Faz 2 — birinci dilim: okuma)
+
+- **Açma:** rol listesine `Teacher` (`ASSISTANT_ROLES=Student,Parent,Teacher`; yerelde git-ignored `appsettings.Development.json` `Assistant:Roles`). Panel rolü sunucunun
+  `/status` cevabından anlar; öğretmende öneriler `teacherStarters.*`, boş durum `teacherEmpty.*`.
+- **Tool'lar (yalnız Teacher):** `get_teacher_overview` (`api/teacher/dashboard-summary` + `students-activity-summary?days=`,
+  1–90 gün, varsayılan 7: test ve atanmış öğrenci sayısı, bu öğrencilerin öğretmenin **atadığı testlerde** çözdüğü soru, doğruluk,
+  dakika, en aktif 5 öğrenci; KPI kartı), `list_my_worksheets` (`worksheets-overview`: atanan öğrenci, tamamlama yüzdesi; ad
+  süzgeci Türkçe i/ı duyarsız; atanmış ve az tamamlanan önce, en çok 20), `list_lagging_students` (`lagging-students?gradeId=`:
+  atama penceresinde testi bitirmeyen öğrenci–test satırları, `overdue` = teslim tarihi geçmiş, önce gelir; isteğe bağlı
+  `worksheetId` süzgeci; en çok 20). Kapsam (kendi testleri, okul #190) ve onaysız öğretmen kapısı (403 `TeacherNotApproved`,
+  #287) exam API'de kalır; model hata kodunu görür, onay ekranını (`teacherApproval`) önerir.
+- **Ekranlar:** `teacherDashboard` (`/dashboard`), `myTests` (`/tests`), `worksheet` (`/test/{id}`, öğrenci ve öğretmen),
+  `teacherApproval`. Yardım: `Help/teacher/` (test oluşturma, atama, öğretmen onayı).
+- **Prompt r17:** öğretmen metni ("siz", meslektaş tonu); şimdilik yalnız okur, test oluşturma / atama isteğinde bunu söyler ve
+  ekranı açar; öğrenci için yetenek etiketi yok; öğretmen bir öğrencinin tehlikede olduğunu yazarsa sabit kriz metni
+  (`TeacherCrisisResponse`). Öğrenci ve test adları `Untrusted` ile sarılır (öğretmen panoda zaten görür; ad tam gider).
+- **Altın set:** `Golden/teacher.json` (4 senaryo: hafta + geride kalanlar, test tamamlama, yazma isteği reddi, kriz);
+  2026-11-25 Haiku 5.5, prompt r17: 4/4 (iki koşu), tur başına ≈ 0,0003 USD.
+- **Sonraki dilim:** `build_test_from_bank` (havuzdan test taslağı + onay kartıyla atama), `lookup_students`, kitap zorunluluğu
+  kararı; ardından #535 (telafi testi).

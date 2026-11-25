@@ -23,7 +23,7 @@ public static class UiScreens
         ["badges"] = new("/badges", false, Tools.Roles.StudentOnly),
         ["homework"] = new("/my-homework", false, Tools.Roles.StudentOnly),
         ["mockExams"] = new("/my-mock-exams", false, Tools.Roles.StudentOnly),
-        ["worksheet"] = new("/test/{id}", true, Tools.Roles.StudentOnly),
+        ["worksheet"] = new("/test/{id}", true, Tools.Roles.StudentAndTeacher),
         // #515: study programs and the calendar.
         ["programs"] = new("/programs", false, Tools.Roles.StudentOnly),
         ["program"] = new("/programs/{id}/detail", true, Tools.Roles.StudentOnly),
@@ -36,6 +36,10 @@ public static class UiScreens
         ["conversation"] = new("/teacher-messages?conversation={id}", true, Tools.Roles.StudentOnly),
 
         // #1336: parent screens (the dashboard picks a child with ?child=<studentId>).
+        // #512: teacher screens.
+        ["teacherDashboard"] = new("/dashboard", false, Tools.Roles.TeacherOnly),
+        ["myTests"] = new("/tests", false, Tools.Roles.TeacherOnly),
+        ["teacherApproval"] = new("/teacher-approval-pending", false, Tools.Roles.TeacherOnly),
         ["parentDashboard"] = new("/parent", false, Tools.Roles.ParentOnly),
         ["childDashboard"] = new("/parent?child={id}", true, Tools.Roles.ParentOnly),
         ["myChildren"] = new("/my-children", false, Tools.Roles.ParentOnly),
@@ -80,8 +84,8 @@ public static class UiScreens
 public sealed class UiOpenScreenTool : IAssistantTool
 {
     public string Name => "ui_open_screen";
-    public string Description => "Open a screen of the app for the user. Only screens of the user's role; practiceSession, worksheet, program, tutor, conversation and childDashboard / childTutors (studentId) need an id. Students: dashboard, practice, practiceSession, mistakes, savedQuestions, profile, badges, homework, mockExams, worksheet, programs, program, calendar, tutors, tutor, myBookings, messages, conversation. Parents: parentDashboard, childDashboard, myChildren, childTutors.";
-    public IReadOnlyCollection<string> Roles => Tools.Roles.StudentAndParent;
+    public string Description => "Open a screen of the app for the user. Only screens of the user's role; practiceSession, worksheet, program, tutor, conversation and childDashboard / childTutors (studentId) need an id. Students: dashboard, practice, practiceSession, mistakes, savedQuestions, profile, badges, homework, mockExams, worksheet, programs, program, calendar, tutors, tutor, myBookings, messages, conversation. Parents: parentDashboard, childDashboard, myChildren, childTutors. Teachers: teacherDashboard, myTests, worksheet (a test's detail page), teacherApproval.";
+    public IReadOnlyCollection<string> Roles => Tools.Roles.Everyone;
     public JsonObject InputSchema => Schema(
         ("screen", StringProp("Screen key.", 40, UiScreens.AllKeys), true),
         ("id", IntProp("Session or worksheet id when the screen needs one."), false));
@@ -134,7 +138,7 @@ public sealed class UiSuggestActionsTool : IAssistantTool
 
     public string Name => "ui_suggest_actions";
     public string Description => "Show up to 4 follow-up chips the user can tap; each sends its prompt as the user's next message.";
-    public IReadOnlyCollection<string> Roles => Tools.Roles.StudentAndParent;
+    public IReadOnlyCollection<string> Roles => Tools.Roles.Everyone;
     public JsonObject InputSchema => Schema(("suggestions", new JsonObject
     {
         ["type"] = "array",

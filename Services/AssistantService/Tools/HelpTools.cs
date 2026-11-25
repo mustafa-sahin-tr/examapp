@@ -17,7 +17,7 @@ public sealed class SearchHelpTool(HelpIndex index) : IAssistantTool
     public string Description =>
         "Search the app's user guide for how to do something in the app (e.g. adding a parent, changing the password, " +
         "where homework is). Answer from the returned text; if nothing comes back, say you don't know.";
-    public IReadOnlyCollection<string> Roles => Tools.Roles.StudentAndParent;
+    public IReadOnlyCollection<string> Roles => Tools.Roles.Everyone;
     public JsonObject InputSchema => Schema(("query", StringProp("The user's question or its key words, Turkish.", MaxQueryLength), true));
 
     public Task<ToolResult> ExecuteAsync(ToolContext context, JsonElement args)

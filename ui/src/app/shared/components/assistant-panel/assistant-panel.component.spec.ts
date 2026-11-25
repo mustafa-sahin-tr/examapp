@@ -102,6 +102,18 @@ describe('AssistantPanelComponent (#507)', () => {
         expect(store.send).toHaveBeenCalledWith('Çocuğum bu hafta nasıl, geciken ödevi var mı, nerede zorlanıyor?');
     });
 
+    it('teacher_GetsTeacherIntroAndStarters_Issue512', () => {
+        setup(false, 'Teacher');
+
+        expect(el('[data-testid="assistant-empty"]')?.textContent).toContain('Testlerinizi');
+        const starters = all('[data-testid="assistant-starter"]');
+        expect(starters.length).toBe(4);
+
+        starters[1].click();
+
+        expect(store.send).toHaveBeenCalledWith('Atadığım testleri bitirmeyen öğrenciler kimler?');
+    });
+
     it('enter_Sends_ShiftEnter_DoesNot', () => {
         setup();
         const input = el('[data-testid="assistant-input"]') as HTMLTextAreaElement;

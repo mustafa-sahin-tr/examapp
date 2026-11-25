@@ -42,6 +42,10 @@
     "title": "Merhaba! Nasıl yardımcı olabilirim?",
     "text": "Çocuğunuzun haftasını, ödevlerini ve zorlandığı konuları sorabilir ya da uygulamayı nasıl kullanacağınızı öğrenebilirsiniz."
   },
+  "teacherEmpty": {
+    "title": "Merhaba! Nasıl yardımcı olabilirim?",
+    "text": "Testlerinizi, öğrencilerinizin haftasını ve testi bitirmeyenleri sorabilir ya da uygulamayı nasıl kullanacağınızı öğrenebilirsiniz."
+  },
   "parentStarters": {
     "childWeek": {
       "label": "Bu hafta nasıl?",
@@ -60,6 +64,24 @@
       "prompt": "Çocuğumun şifresini nasıl sıfırlarım?"
     }
   },
+  "teacherStarters": {
+    "teacherWeek": {
+      "label": "Bu hafta nasıl?",
+      "prompt": "Öğrencilerim bu hafta nasıl, kim geride?"
+    },
+    "lagging": {
+      "label": "Testi bitirmeyenler",
+      "prompt": "Atadığım testleri bitirmeyen öğrenciler kimler?"
+    },
+    "myTests": {
+      "label": "Testlerim",
+      "prompt": "Testlerimi kaç öğrenci bitirdi?"
+    },
+    "assignHelp": {
+      "label": "Test nasıl atanır?",
+      "prompt": "Bir testi öğrencilere nasıl atarım?"
+    }
+  },
   "kpi": {
     "level": "Seviye",
     "xp": "Puan",
@@ -69,7 +91,9 @@
     "activeDays": "Aktif gün",
     "overdueHomework": "Geciken ödev",
     "previousQuestionsSolved": "Önceki dönem soru",
-    "studyMinutes": "Çalışma (dk)"
+    "studyMinutes": "Çalışma (dk)",
+    "worksheets": "Test",
+    "students": "Öğrenci"
   },
   "topicTable": {
     "name": "Konu",

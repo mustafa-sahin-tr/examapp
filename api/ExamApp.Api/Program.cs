@@ -665,8 +665,10 @@ builder.Services.AddHangfire(config =>
         {
             SchemaName = "hangfire",
             // #1344: a fetched job running longer than this is handed to another worker (no sliding timeout in 1.20); the
-            // default 30 minutes ran a long book import twice. A job cut off by a crash resumes after it (or on Retry).
-            InvisibilityTimeout = TimeSpan.FromHours(builder.Configuration.GetValue("Hangfire:InvisibilityTimeoutHours", 6)),
+            // default 30 minutes ran a long book import twice. #1346: a book import run now stops after a slice
+            // (BookImport:RunSliceMinutes, 10) and queues the next one, so one run stays well under an hour (the longest single
+            // step, setup, took 25 minutes). A job cut off by a crash resumes after this window (or on Retry).
+            InvisibilityTimeout = TimeSpan.FromMinutes(builder.Configuration.GetValue("Hangfire:InvisibilityTimeoutMinutes", 60)),
         });
 });
 

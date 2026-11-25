@@ -70,6 +70,28 @@ public class BookImportJobRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task A_used_up_run_slice_stops_after_the_pages_and_the_next_run_does_the_setup_issue1346()
+    {
+        var id = await SeedJobAsync();
+
+        (await RunAsync(id, sliceMinutes: 0)).ShouldBeTrue();
+
+        await using (var check = _db.NewContext())
+        {
+            var job = await check.BookImportJobs.SingleAsync();
+            job.Status.ShouldBe(BookImportJobStatus.Running);
+            job.Stage.ShouldBe(BookImportStage.Pages);
+            (await check.BookImportPages.CountAsync()).ShouldBe(3);
+        }
+
+        // Sayfalar hazır: sonraki çalıştırma dilim 0'da da kuruluma geçer (iş ilerlemeden durmaz).
+        (await RunAsync(id, sliceMinutes: 0)).ShouldBeFalse();
+
+        await using var after = _db.NewContext();
+        (await after.BookImportJobs.SingleAsync()).Status.ShouldBe(BookImportJobStatus.AwaitingConfirmation);
+    }
+
+    [Fact]
     public async Task Retry_after_all_pages_were_rendered_does_not_need_the_deleted_pdf()
     {
         _minio.GetFileStreamAsync(Arg.Any<string>()).Returns(Task.FromResult<Stream?>(null));
@@ -407,13 +429,15 @@ public class BookImportJobRunnerTests : IDisposable
         return job.Id;
     }
 
-    private async Task RunAsync(Guid id, int? maxPages = null)
+    private async Task<bool> RunAsync(Guid id, int? maxPages = null, int? sliceMinutes = null)
     {
         var settings = new Dictionary<string, string?>();
         if (maxPages is { } max)
             settings["BookImport:MaxPages"] = max.ToString();
+        if (sliceMinutes is { } slice)
+            settings["BookImport:RunSliceMinutes"] = slice.ToString();
         await using var ctx = _db.NewContext();
-        await new BookImportJobRunner(ctx, _guard, _minio, new PdfiumRasterizer(pageWidth: 400), _ai,
+        return await new BookImportJobRunner(ctx, _guard, _minio, new PdfiumRasterizer(pageWidth: 400), _ai,
             Substitute.For<ExamApp.Api.Services.Labeling.ILabelingService>(), Substitute.For<IServiceScopeFactory>(),
             new ConfigurationBuilder().AddInMemoryCollection(settings).Build(), pageCleaner: _cleaner).RunLockedAsync(id);
     }
